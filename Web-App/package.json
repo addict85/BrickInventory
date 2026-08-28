@@ -1,0 +1,57 @@
+{
+  "name": "brickinventory-manager",
+  "version": "2026.08.26.1716",
+  "description": "BrickInventory Manager",
+  "main": "dist/server.js",
+  "scripts": {
+    "start": "node dist/server.js",
+    "dev": "node scripts/build-frontend.js && tsx watch server.ts",
+    "build": "node scripts/build-ts.js --outdir dist && node scripts/build-frontend.js",
+    "typecheck": "tsc --noEmit",
+    "version:bump": "node scripts/bump-version.js",
+    "postinstall": "node scripts/bump-version.js",
+    "check-contract": "node scripts/check-api-contract.js",
+    "loadtest": "node scripts/loadtest.js",
+    "diagnose-image": "node scripts/diagnose-image.js",
+    "test": "node --test --test-concurrency=1 --test-timeout=60000 \"test/*.test.js\"",
+    "test:api": "node --test --test-concurrency=1 test/catalog-api.test.js test/api-parity.test.js",
+    "build:frontend": "node scripts/build-frontend.js"
+  },
+  "dependencies": {
+    "archiver": "^7.0.1",
+    "bcryptjs": "^3.0.2",
+    "compression": "^1.7.4",
+    "connect-pg-simple": "^10.0.0",
+    "csv-parse": "^5.5.6",
+    "express": "^4.19.2",
+    "express-session": "^1.18.1",
+    "jimp": "^1.6.0",
+    "multer": "^2.0.0",
+    "nodemailer": "^9.0.5",
+    "oauth": "^0.10.0",
+    "pdfkit": "^0.20.1",
+    "pg": "^8.12.0",
+    "sharp": "^0.35.3"
+  },
+  "devDependencies": {
+    "@types/archiver": "^8.0.0",
+    "@types/bcryptjs": "^2.4.6",
+    "@types/compression": "^1.8.1",
+    "@types/connect-pg-simple": "^7.0.3",
+    "@types/express": "^5.0.6",
+    "@types/express-session": "^1.19.0",
+    "@types/multer": "^2.2.0",
+    "@types/node": "^26.1.1",
+    "@types/nodemailer": "^8.0.1",
+    "@types/oauth": "^0.9.6",
+    "@types/pdfkit": "^0.17.6",
+    "@types/pg": "^8.20.0",
+    "esbuild": "^0.25.12",
+    "jsdom": "^29.1.1",
+    "tsx": "^4.23.1",
+    "typescript": "^7.0.2"
+  },
+  "overrides": {
+    "glob": "^13.0.0"
+  }
+}

@@ -1,0 +1,239 @@
+/* ═══════════════════════════════════════════════════════════════════════════
+   MOBILE / RESPONSIVE
+   ═══════════════════════════════════════════════════════════════════════════
+
+   Wird NACH styles.css und nach dem Theme geladen. Alles hier steht in einer
+   Media Query — auf dem Desktop ändert sich also nichts.
+
+   Warum eine eigene Datei und nicht verteilt in styles.css:
+   Das Layout ist in beiden Designs identisch; brick.css besteht fast nur aus
+   Farbvariablen und Dekoration (Noppenreihen), nur 14 seiner 66 Regeln fassen
+   überhaupt Layout an. Responsive-Regeln gehören deshalb genau einmal hierher
+   und gelten für classic UND brick — und für jedes künftige Design gratis.
+   Wo Brick eine eigene Behandlung braucht (Noppen, Innenabstände), steht sie
+   unten in einem klar markierten Block.
+
+   Breakpoints:
+     ≤ 900px  Tablet — mehrspaltige Layouts einspaltig
+     ≤ 640px  Telefon — Tabellen zu Karten, Modals als Sheets, Touch-Ziele
+     ≤ 380px  kleines Telefon — Feinschliff
+
+   Zu !important: Die generierten Templates tragen rund 90 Inline-Styles mit
+   festen px-Breiten (u. a. `style="table-layout:fixed;width:1065px"` in den
+   Finanztabellen). An Inline-Styles kommt eine Media Query sonst nicht heran.
+   Statt 90 Stellen im JS umzubauen — mit entsprechendem Regressionsrisiko —
+   werden sie hier gezielt überstimmt. !important steht deshalb nur dort, wo
+   nachweislich ein Inline-Style dagegenhält, nicht als Gewohnheit.
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+
+/* ── Tablet ──────────────────────────────────────────────────────────────── */
+@media (max-width: 900px) {
+
+  main { padding: 1rem; }
+
+  /* Zweispaltige Bereiche zusammenklappen */
+  .sgrid2,
+  .add2          { grid-template-columns: 1fr; gap: 1rem; }
+  .parts-layout  { grid-template-columns: 1fr; }
+
+  /* Die Teile-Seitenleiste wird oben zur ausklappbaren Filterzeile */
+  .parts-sidebar { position: static; max-height: none; }
+  .filter-list   { max-height: 150px; }
+
+  .fgrid { grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: .75rem; }
+}
+
+
+/* ── Telefon ─────────────────────────────────────────────────────────────── */
+@media (max-width: 640px) {
+
+  /* ─ Grundgerüst ─────────────────────────────────────────────────────── */
+  main { padding: .75rem .6rem 5rem; }        /* unten Luft für den Daumen */
+
+  header {
+    padding: 0 .75rem;
+    height: 52px;
+    gap: .5rem;
+  }
+  header .logo span,
+  .brand-sub          { display: none; }      /* Wortmarke kürzen */
+  .ubadge             { max-width: 9ch; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+  /* Die Statistikzahlen in der Kopfzeile brauchen den Platz nicht */
+  .hstats             { display: none; }
+
+  /* ─ Navigation ──────────────────────────────────────────────────────── */
+  /* Bleibt eine horizontal scrollbare Leiste statt einer Bottom-Bar: Bei acht
+     Reitern müsste auch eine Bottom-Bar scrollen, womit ihr einziger Vorteil
+     entfällt. Stattdessen grössere Touch-Ziele, Snap-Punkte und ein
+     Rand-Fade, das andeutet, dass es weitergeht. 10-mobile.js scrollt den
+     aktiven Reiter zusätzlich in den sichtbaren Bereich. */
+  nav {
+    top: 52px;
+    padding: 0 .5rem;
+    scroll-snap-type: x proximity;
+    -webkit-overflow-scrolling: touch;
+    mask-image: linear-gradient(to right, transparent 0, #000 12px, #000 calc(100% - 12px), transparent 100%);
+  }
+  .ntab {
+    padding: 14px 12px;                        /* ≥ 44px Trefferfläche */
+    font-size: .82rem;
+    scroll-snap-align: center;
+  }
+
+  /* ─ Flächen und Karten ──────────────────────────────────────────────── */
+  .card, .sc, .ssec  { padding: 1rem .85rem; border-radius: 12px; }
+  .ptitle            { font-size: 1.15rem; }
+
+  .sgrid       { grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: .7rem; }
+  .parts-grid  { grid-template-columns: repeat(auto-fill, minmax(108px, 1fr)); gap: .6rem; }
+  .man-grid    { grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: .6rem; }
+  .fgrid       { grid-template-columns: 1fr 1fr; }
+
+  /* ─ Formularzeilen ──────────────────────────────────────────────────── */
+  .frow, .gctrl, .sform {
+    flex-wrap: wrap;
+    gap: .5rem;
+  }
+  .frow > *, .gctrl > * { min-width: 0; }
+  input, select, textarea, .btn {
+    font-size: 16px;              /* < 16px lässt iOS beim Fokus hineinzoomen */
+    min-height: 42px;
+  }
+  .btn-sm { min-height: 34px; }
+
+  /* Feste px-Breiten aus den Inline-Styles der Templates neutralisieren */
+  [style*="width:"][style*="px"]:not(img):not(svg):not(.color-dot):not(.man-tile-swatch) {
+    max-width: 100% !important;
+  }
+
+  /* ─ Tabellen → Karten ───────────────────────────────────────────────── */
+  /* Die data-label-Attribute stammen aus 10-mobile.js: Ein MutationObserver
+     stempelt jede <td> mit der Beschriftung ihrer Spalte. Dadurch musste
+     keines der zehn Tabellen-Templates angefasst werden, und künftige
+     Tabellen bekommen das Verhalten automatisch. */
+  .tw { overflow-x: visible; }
+
+  .dt {
+    width: auto !important;
+    table-layout: auto !important;
+    display: block;
+  }
+  .dt thead { display: none; }
+  .dt tbody { display: block; }
+
+  .dt tr {
+    display: block;
+    background: var(--sur);
+    border: 1px solid var(--bdr);
+    border-radius: 10px;
+    padding: .5rem .7rem;
+    margin-bottom: .6rem;
+  }
+  .dt tr:hover td { background: none; }
+
+  .dt td {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 1rem;
+    padding: .35rem 0;
+    border: none;
+    border-bottom: 1px dashed var(--bdr);
+    text-align: right;
+  }
+  .dt tr td:last-child { border-bottom: none; }
+
+  .dt td::before {
+    content: attr(data-label);
+    flex: 0 0 auto;
+    text-align: left;
+    font-size: .68rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: .4px;
+    color: var(--mut);
+  }
+  /* Spalten ohne Überschrift (Aktions-Buttons) brauchen keine Beschriftung */
+  .dt td[data-label=""]::before,
+  .dt td:not([data-label])::before { content: none; }
+  .dt td[data-label=""] { justify-content: flex-end; }
+
+  /* Sparklines und Diagramme in Tabellenzellen dürfen die Karte nicht sprengen */
+  .dt td svg, .dt td canvas { max-width: 60%; height: auto; }
+
+  /* ─ Modals als Sheet ────────────────────────────────────────────────── */
+  .ovl { align-items: flex-end; }
+  .modal {
+    width: 100%;
+    max-width: none;
+    max-height: 92vh;
+    padding: 1.1rem .9rem calc(1.1rem + env(safe-area-inset-bottom));
+    border-radius: 16px 16px 0 0;
+    border-left: none;
+    border-right: none;
+    border-bottom: none;
+  }
+  .mhd  { position: sticky; top: 0; background: var(--sur); z-index: 2; padding-top: .2rem; }
+  .mimg { max-height: 34vh; object-fit: contain; }
+
+  /* ─ Fortschritts-Overlay ────────────────────────────────────────────── */
+  .prog-box   { width: 94%; padding: 1.1rem .9rem; }
+  .prog-steps { flex-wrap: wrap; gap: .4rem; }
+
+  /* ─ Toasts über die volle Breite ────────────────────────────────────── */
+  #toasts { left: .6rem; right: .6rem; bottom: .6rem; }
+  .toast  { width: auto; }
+
+  /* ─ Login-, Registrierungs- und Startup-Screen ──────────────────────── */
+  #login-screen, #startup-screen { padding: 1rem .8rem; }
+  .lcard {
+    max-width: none;
+    padding: 1.6rem 1.15rem;
+    border-radius: 14px;
+  }
+  .llogo       { margin-bottom: 1.4rem; }
+  .llogo h1    { font-size: 1.25rem; }
+  .lc          { gap: .7rem; }
+  #startup-screen > div { width: 100%; max-width: 420px; }
+}
+
+
+/* ── Kleines Telefon ─────────────────────────────────────────────────────── */
+@media (max-width: 380px) {
+  .sgrid      { grid-template-columns: 1fr 1fr; gap: .5rem; }
+  .parts-grid { grid-template-columns: repeat(auto-fill, minmax(96px, 1fr)); }
+  .fgrid      { grid-template-columns: 1fr; }
+  .ntab       { padding: 14px 9px; font-size: .78rem; }
+  .ntab .tab-label { display: none; }          /* nur noch Icons */
+  .ntab.active .tab-label { display: inline; } /* ausser beim aktiven Reiter */
+}
+
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   Nur Stein-Design
+   Alles oben gilt für beide Designs. Hier stehen ausschliesslich die Stellen,
+   an denen brick.css eigenes Layout mitbringt — im Wesentlichen die
+   Noppenreihen und die grossen Statistikkacheln.
+   ═══════════════════════════════════════════════════════════════════════════ */
+@media (max-width: 640px) {
+
+  [data-theme="brick"] .brick-stats { grid-template-columns: 1fr; gap: .6rem; }
+
+  /* Noppenreihen schmaler skalieren, sonst wirken sie auf dem Telefon grob */
+  [data-theme="brick"] .sc::after,
+  [data-theme="brick"] .lcard::after {
+    background-size: 13px 100%;
+    background-image: radial-gradient(circle at 6.5px center, rgba(255,255,255,.42) 2.4px, transparent 3px);
+  }
+  [data-theme="brick"] .sc::before,
+  [data-theme="brick"] .sc::after,
+  [data-theme="brick"] .lcard::before,
+  [data-theme="brick"] .lcard::after { height: 11px; }
+
+  [data-theme="brick"] .lcard { padding: 26px 18px 22px; border-radius: 18px; }
+
+  /* Die Tabellen-Karten bekommen im Stein-Design denselben Rahmen wie .sc */
+  [data-theme="brick"] .dt tr { border: none; box-shadow: var(--sh0); }
+}

@@ -1,0 +1,9 @@
+node_modules
+dist
+data
+pgdata
+.git
+.github
+test
+*.log
+public/js/app.bundle.js

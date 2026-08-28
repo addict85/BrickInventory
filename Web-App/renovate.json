@@ -1,0 +1,67 @@
+{
+  "$schema": "https://docs.renovatebot.com/renovate-schema.json",
+  "extends": [
+    "config:recommended"
+  ],
+  "//": "Abh\u00e4ngigkeiten wurden bisher nur von Hand aktualisiert \u2014 bcryptjs stand auf einer Fassung von 2022, oauth ist praktisch unmaintained. Renovate \u00f6ffnet daf\u00fcr PRs, die CI (.github/workflows/ci.yml) pr\u00fcft sie automatisch.",
+  "timezone": "Europe/Zurich",
+  "schedule": [
+    "before 6am on monday"
+  ],
+  "prConcurrentLimit": 3,
+  "labels": [
+    "dependencies"
+  ],
+  "packageRules": [
+    {
+      "//": "Patch- und Minor-Updates der Laufzeitabh\u00e4ngigkeiten zusammenfassen: einzeln erzeugen sie mehr Rauschen als Nutzen, und die CI pr\u00fcft sie ohnehin gemeinsam.",
+      "matchDepTypes": [
+        "dependencies"
+      ],
+      "matchUpdateTypes": [
+        "patch",
+        "minor"
+      ],
+      "groupName": "Laufzeit (patch/minor)"
+    },
+    {
+      "//": "devDependencies noch grossz\u00fcgiger b\u00fcndeln \u2014 ein Fehler dort trifft nur den Build, nicht den laufenden Server.",
+      "matchDepTypes": [
+        "devDependencies"
+      ],
+      "matchUpdateTypes": [
+        "patch",
+        "minor"
+      ],
+      "groupName": "Werkzeuge (patch/minor)"
+    },
+    {
+      "//": "Hauptversionen IMMER einzeln und mit Hinweis: jimp 1.x und express 5 brechen bewusst die API. Solche PRs geh\u00f6ren gelesen, nicht durchgewinkt.",
+      "matchUpdateTypes": [
+        "major"
+      ],
+      "addLabels": [
+        "breaking"
+      ],
+      "dependencyDashboardApproval": true
+    },
+    {
+      "//": "esbuild ist zus\u00e4tzlich in scripts/build-*.js als npx-R\u00fcckfall vermerkt. Ein Update dort nachziehen \u2014 test/build-tooling.test.js meldet, wenn beide auseinanderlaufen.",
+      "matchPackageNames": [
+        "esbuild"
+      ],
+      "addLabels": [
+        "build-pinned"
+      ],
+      "dependencyDashboardApproval": true
+    }
+  ],
+  "vulnerabilityAlerts": {
+    "labels": [
+      "security"
+    ],
+    "schedule": [
+      "at any time"
+    ]
+  }
+}

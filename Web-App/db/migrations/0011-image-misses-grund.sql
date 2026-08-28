@@ -1,0 +1,15 @@
+-- Warum gilt ein Bild als fehlend?
+--
+-- ── Marcos Log (Nachtrag 123) ───────────────────────────────────────────────
+--     [image-queue] 2 bearbeitet: 0 geladen, 0 Vorschau erzeugt,
+--                   0 bereits vorhanden, 2 als fehlend bekannt
+--
+-- Der Zähler aus Nachtrag 122 sagt endlich, WELCHER Ausgang genommen wurde —
+-- aber nicht, warum die beiden Bilder in `image_misses` stehen. Und das ist die
+-- Frage, die zählt: „404 vom CDN" heisst „das Bild gibt es nicht", eine
+-- Zeitüberschreitung heisst „versuch es nochmal". Beide sahen gleich aus, und
+-- beide sperrten das Bild sieben Tage aus.
+--
+-- Die Spalte bleibt NULL für Altbestände — dafür gibt es den Klartext-Hinweis
+-- in image-diag.
+ALTER TABLE image_misses ADD COLUMN IF NOT EXISTS reason TEXT;

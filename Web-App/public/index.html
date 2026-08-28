@@ -1,0 +1,1113 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8">
+  <link rel="icon" type="image/svg+xml" href="/favicon.svg">
+  <!-- Schriften liegen selbst im Haus (public/vendor/fonts/) — kein Fremdhost
+       mehr, damit auch eine reine LAN-Installation die Typografie bekommt und
+       style-src/font-src in der CSP auf 'self' stehen können. preload für die
+       beiden Latein-Dateien: sie werden garantiert gebraucht, und ohne den
+       Hinweis findet der Browser sie erst nach dem Parsen von fonts.css.
+       defer beim QR-Script: wird nur on-demand (Token-QR-Anzeige) gebraucht,
+       muss das Parsing nicht blockieren. -->
+  <link rel="preload" as="font" type="font/woff2" crossorigin
+        href="/vendor/fonts/files/plus-jakarta-sans-latin-wght-normal.woff2">
+  <link rel="preload" as="font" type="font/woff2" crossorigin
+        href="/vendor/fonts/files/jetbrains-mono-latin-wght-normal.woff2">
+  <script defer src="/vendor/qrcode/qrcode.min.js"></script>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>BrickInventory Manager</title>
+  <link rel="stylesheet" href="/vendor/fonts/fonts.css?v=2026.08.26.1716">
+  <link rel="stylesheet" href="/styles.css?v=2026.08.26.1716">
+  <!-- App-Designs (Stein-Look etc.) — je Theme eine Datei unter /themes/, greift via [data-theme] -->
+  <link rel="stylesheet" href="/themes/brick.css?v=2026.08.26.1716">
+  <!-- Responsive-Regeln, nach beiden Designs geladen: das Layout ist in
+       classic und brick identisch, die Regeln gelten daher für beide. -->
+  <link rel="stylesheet" href="/mobile.css?v=2026.08.26.1716">
+  <!-- Setzt data-theme aus dem localStorage-Cache VOR dem ersten Paint und
+       gleicht danach gegen GET /api/settings/theme ab. Blockierend und im
+       <head>, sonst blitzt auf Login-/Startup-Screen kurz das falsche Design auf. -->
+  <script src="/js/00-theme-boot.js?v=2026.08.26.1716"></script>
+  <!-- Aktive Sprachdatei. Blockierend und VOR dem Bündel, weil i18n.js beim
+       Auswerten window.I18N_DE / window.I18N_EN erwartet.
+       Welche Datei hier steht, entscheidet der Server (utils/indexHtml.ts)
+       anhand der gespeicherten Sprache — genauso wie beim Design darüber.
+       Der Wechsel zur anderen Sprache lädt sie zur Laufzeit nach
+       (loadLang() in i18n.js). -->
+  <script src="/locales/de.js?v=2026.08.26.1716" data-i18n-locale></script>
+</head>
+<body>
+
+<!-- import-detail-panel removed — clicking bar reopens overlay -->
+<div id="import-detail-panel" style="display:none"><span id="gib-stats"></span><span id="gib-panel-set"></span><div id="gib-prog-wrap"><div id="gib-panel-fill"></div><div id="gib-panel-footer"></div></div><div id="gib-log"></div></div>
+
+<!-- LOGIN -->
+<!-- kein inline background mehr: das hat jede Theme-Regel überstimmt, siehe --screen-bg in styles.css -->
+<div id="startup-screen" style="display:flex;align-items:center;justify-content:center;min-height:100vh;flex-direction:column;gap:1.5rem">
+  <div style="display:flex;align-items:center;gap:12px;margin-bottom:.5rem">
+    <svg width="48" height="48" viewBox="0 0 120 120" xmlns="http://www.w3.org/2000/svg"><rect x="18" y="38" width="84" height="68" rx="3" fill="#e63329"/><polygon points="18,38 30,20 102,20 102,38" fill="#cc2a21"/><polygon points="102,20 118,30 118,86 102,106" fill="#b5231c"/><rect x="24" y="54" width="72" height="40" rx="2" fill="#fff"/><rect x="29" y="58" width="46" height="15" rx="2" fill="#f5a800"/><text x="52" y="69" text-anchor="middle" font-family="Arial,sans-serif" font-weight="800" font-size="11" fill="white">BIM</text></svg>
+    <div>
+      <div style="font-size:1.5rem;font-weight:800;color:var(--txt)">BrickInventory</div>
+      <div style="font-size:.85rem;color:var(--mut)">Manager</div>
+    </div>
+  </div>
+  <div style="width:360px">
+    <!-- Gesamtfortschritt -->
+    <div style="font-size:.8rem;font-weight:600;color:var(--mut);text-transform:uppercase;letter-spacing:.5px;margin-bottom:.4rem" data-i18n="startup.overall">Gesamtfortschritt</div>
+    <div style="background:var(--s200);border-radius:999px;height:8px;overflow:hidden;margin-bottom:.3rem">
+      <div id="startup-bar" style="height:100%;background:var(--b600);border-radius:999px;width:0%;transition:width .4s ease"></div>
+    </div>
+    <div style="display:flex;justify-content:space-between;font-size:.75rem;color:var(--s400);margin-bottom:1rem">
+      <span id="startup-step" data-i18n="startup.init">Initialisiere...</span>
+      <span id="startup-pct">0%</span>
+    </div>
+    <!-- Aktueller Schritt -->
+    <div id="startup-sub-label" style="display:none;font-size:.8rem;font-weight:600;color:var(--mut);text-transform:uppercase;letter-spacing:.5px;margin-bottom:.4rem" data-i18n="startup.current_step">Aktueller Schritt</div>
+    <div id="startup-sub-wrap" style="display:none">
+      <div style="background:var(--s200);border-radius:999px;height:6px;overflow:hidden;margin-bottom:.3rem">
+        <div id="startup-sub-bar" style="height:100%;background:var(--g500);border-radius:999px;width:0%;transition:width .4s ease"></div>
+      </div>
+      <div style="display:flex;justify-content:space-between;font-size:.75rem;color:var(--s400)">
+        <span id="startup-sub"></span>
+        <span id="startup-sub-pct"></span>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div id="login-screen">
+  <div class="lcard" style="max-width:440px">
+    <div class="llogo"><svg width="44" height="44" viewBox="0 0 120 120" xmlns="http://www.w3.org/2000/svg" style="display:block;flex-shrink:0">
+  <rect x="18" y="38" width="84" height="68" rx="3" fill="#e63329"/>
+  <polygon points="18,38 30,20 102,20 102,38" fill="#cc2a21"/>
+  <polygon points="102,20 118,30 118,86 102,106" fill="#b5231c"/>
+  <rect x="24" y="54" width="72" height="40" rx="2" fill="#fff"/>
+  <rect x="29" y="58" width="46" height="15" rx="2" fill="#f5a800"/>
+  <text x="52" y="69" text-anchor="middle" font-family="Arial,sans-serif" font-weight="800" font-size="11" fill="white">BIM</text>
+  <rect x="29" y="78" width="62" height="5" rx="1" fill="#e5e7eb"/>
+  <rect x="29" y="86" width="42" height="5" rx="1" fill="#e5e7eb"/>
+</svg><h1>BrickInventory <span>Manager</span></h1></div>
+
+    <!-- ── LOGIN ─────────────────────────────────────────────────────── -->
+    <div id="panel-login">
+      <div class="lerr" id="lerr"></div>
+      <div class="sform">
+        <div class="fg"><label for="lu" data-i18n="login.email_or_user">Benutzername oder E-Mail</label><input type="text" id="lu" autocomplete="username" /></div>
+        <div class="fg"><label for="lp" data-i18n="login.password">Passwort</label><input type="password" id="lp" autocomplete="current-password" /></div>
+        <button class="btn bp" id="btn-login" style="width:100%;justify-content:center;padding:11px" data-i18n="login.submit">Anmelden</button>
+      </div>
+      <div style="display:flex;justify-content:space-between;margin-top:.85rem;font-size:.82rem">
+        <a href="#" id="link-forgot" style="color:var(--b600)" data-i18n="login.forgot">Passwort vergessen?</a>
+        <span id="link-register-wrap" style="display:none"><span data-i18n="login.register_prompt">Neu hier?</span> <a href="#" id="link-register" style="color:var(--b600);font-weight:600">Registrieren</a></span>
+      </div>
+      <div style="color:var(--mut);font-size:.7rem;margin-top:1.5rem;text-align:center;opacity:.45;letter-spacing:.03em">Build 2026.08.26.1716</div>
+      <div id="verified-msg" style="display:none;margin-top:.75rem;padding:.65rem .9rem;background:var(--g50);border:1px solid var(--g300);border-radius:7px;font-size:.82rem;color:var(--g700)"><span data-i18n="verify.success">✅ E-Mail erfolgreich bestätigt. Du kannst dich jetzt anmelden.</span></div>
+    </div>
+
+    <!-- ── REGISTRIERUNG ─────────────────────────────────────────────── -->
+    <div id="panel-register" style="display:none">
+      <p style="font-weight:600;margin-bottom:1rem;color:var(--s600);text-align:center" data-i18n="register.title">Neues Konto erstellen</p>
+      <div class="lerr" id="reg-err"></div>
+      <div id="reg-success" style="display:none;padding:.75rem;background:var(--g50);border:1px solid var(--g300);border-radius:8px;color:var(--g700);font-size:.88rem;margin-bottom:.75rem"></div>
+      <div class="sform" id="reg-form">
+        <div style="display:flex;gap:10px">
+          <div class="fg"><label for="reg-first" data-i18n="register.firstname">Vorname</label><input type="text" id="reg-first" autocomplete="given-name" /></div>
+          <div class="fg"><label for="reg-last" data-i18n="register.lastname">Nachname</label><input type="text" id="reg-last" autocomplete="family-name" /></div>
+        </div>
+        <div class="fg"><label for="reg-user" data-i18n="register.username">Benutzername *</label><input type="text" id="reg-user" autocomplete="username" /></div>
+        <div class="fg"><label for="reg-email" data-i18n="register.email_label">E-Mail *</label><input type="email" id="reg-email" autocomplete="email" /></div>
+        <div class="fg"><label for="reg-pass" data-i18n="register.password">Passwort * (min. 8 Zeichen)</label><input type="password" id="reg-pass" autocomplete="new-password" /></div>
+        <div class="fg"><label for="reg-pass2" data-i18n="register.password_repeat">Passwort wiederholen *</label><input type="password" id="reg-pass2" autocomplete="new-password" /></div>
+        <div class="fg"><label for="reg-lang" data-i18n="register.language">Sprache</label>
+          <select id="reg-lang">
+            <option value="de">Deutsch</option>
+            <option value="en">English</option>
+          </select>
+        </div>
+        <button class="btn bp" id="btn-register" style="width:100%;justify-content:center;padding:11px" data-i18n="register.submit">Registrieren</button>
+      </div>
+      <div style="text-align:center;margin-top:.85rem;font-size:.82rem">
+        <a href="#" id="link-to-login" style="color:var(--b600)" data-i18n="auth.back_to_login">← Zurück zur Anmeldung</a>
+      </div>
+    </div>
+
+    <!-- ── PASSWORT VERGESSEN ─────────────────────────────────────────── -->
+    <div id="panel-forgot" style="display:none">
+      <p style="font-weight:600;margin-bottom:1rem;color:var(--s600);text-align:center" data-i18n="reset.title">Passwort zurücksetzen</p>
+      <div class="lerr" id="forgot-err"></div>
+      <div id="forgot-success" style="display:none;padding:.75rem;background:var(--g50);border:1px solid var(--g300);border-radius:8px;color:var(--g700);font-size:.88rem;margin-bottom:.75rem"></div>
+      <div class="sform" id="forgot-form">
+        <div class="fg"><label for="forgot-email" data-i18n="auth.email_label">E-Mail-Adresse</label><input type="email" id="forgot-email" autocomplete="email" /></div>
+        <button class="btn bp" id="btn-forgot" style="width:100%;justify-content:center;padding:11px" data-i18n="auth.send_reset_link">Link senden</button>
+      </div>
+      <div style="text-align:center;margin-top:.85rem;font-size:.82rem">
+        <a href="#" id="link-forgot-to-login" style="color:var(--b600)" data-i18n="auth.back_to_login">← Zurück zur Anmeldung</a>
+      </div>
+    </div>
+
+    <!-- ── PASSWORT ZURÜCKSETZEN ──────────────────────────────────────── -->
+    <div id="panel-reset" style="display:none">
+      <p style="font-weight:600;margin-bottom:1rem;color:var(--s600);text-align:center" data-i18n="reset.new_password">Neues Passwort setzen</p>
+      <div class="lerr" id="reset-err"></div>
+      <div id="reset-success" style="display:none;padding:.75rem;background:var(--g50);border:1px solid var(--g300);border-radius:8px;color:var(--g700);font-size:.88rem;margin-bottom:.75rem"></div>
+      <div class="sform" id="reset-form">
+        <div class="fg"><label for="reset-pass" data-i18n="reset.new_password_label">Neues Passwort (min. 8 Zeichen)</label><input type="password" id="reset-pass" autocomplete="new-password" /></div>
+        <div class="fg"><label for="reset-pass2" data-i18n="reset.repeat">Passwort wiederholen</label><input type="password" id="reset-pass2" autocomplete="new-password" /></div>
+        <button class="btn bp" id="btn-reset" style="width:100%;justify-content:center;padding:11px" data-i18n="reset.button">Passwort ändern</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- PROGRESS OVERLAY -->
+<div id="progress-overlay">
+  <div class="prog-box" style="position:relative">
+    <button data-click="hideProgress" title="Minimieren" style="position:absolute;top:.75rem;right:.75rem;background:none;border:1px solid var(--bdr);cursor:pointer;color:var(--mut);padding:1px 9px 4px;border-radius:4px;line-height:1;font-size:1.1rem;font-weight:400" class="hover-row" >&#8722;</button>
+    <div class="prog-title">🔄 <span id="prog-title-txt" data-i18n="prog.processing">Wird verarbeitet…</span></div>
+    <div class="prog-set-name" id="prog-set-name"></div>
+    <div class="prog-steps" id="prog-steps">
+      <div class="prog-step" id="ps-meta"><span class="step-icon">📋</span><span class="step-txt" data-i18n="prog.step_meta">Set-Informationen abrufen</span></div>
+      <div class="prog-step" id="ps-image"><span class="step-icon">🖼️</span><span class="step-txt" data-i18n="prog.step_image">Bild herunterladen</span></div>
+      <div class="prog-step" id="ps-instructions"><span class="step-icon">📖</span><span class="step-txt" data-i18n="prog.step_instr">Anleitungen herunterladen</span></div>
+      <div class="prog-step" id="ps-parts"><span class="step-icon"><svg viewBox="0 0 120 120" xmlns="http://www.w3.org/2000/svg" style="width:1em;height:1em;vertical-align:middle"><rect x="18" y="62" width="56" height="26" rx="2.5" fill="#0055BF"/><circle cx="28" cy="62" r="5.5" fill="#0055BF"/><circle cx="46" cy="62" r="5.5" fill="#0055BF"/><circle cx="64" cy="62" r="5.5" fill="#0055BF"/><g transform="rotate(-9 66 55)"><rect x="38" y="42" width="52" height="24" rx="2.5" fill="#F2CD37"/><circle cx="49" cy="42" r="5" fill="#F2CD37"/><circle cx="64" cy="42" r="5" fill="#F2CD37"/><circle cx="79" cy="42" r="5" fill="#F2CD37"/></g><g transform="rotate(7 58 80)"><rect x="26" y="76" width="58" height="26" rx="2.5" fill="#E63329"/><circle cx="37" cy="76" r="5.5" fill="#E63329"/><circle cx="55" cy="76" r="5.5" fill="#E63329"/><circle cx="73" cy="76" r="5.5" fill="#E63329"/></g></svg></span><span class="step-txt" data-i18n="prog.step_parts">Teile importieren</span><span class="step-count" id="ps-parts-count"></span></div>
+      <div class="prog-step" id="ps-images"><span class="step-icon">🖼️</span><span class="step-txt" data-i18n="prog.step_partimgs">Teilbilder herunterladen</span><span class="step-count" id="ps-images-count"></span></div>
+      <div class="prog-step" id="ps-price"><span class="step-icon">💰</span><span class="step-txt" data-i18n="prog.step_price">Aktuellen Preis abrufen</span></div>
+    </div>
+    <div class="prog-bar-wrap"><div class="prog-bar" id="prog-bar" style="width:0%"></div></div>
+    <div class="prog-footer" id="prog-footer" data-i18n="common.please_wait">Bitte warten…</div>
+    <div id="csv-log" class="csv-log" style="display:none"></div>
+    <div style="text-align:center;margin-top:1rem;display:flex;gap:.5rem;justify-content:center">
+      <button class="btn bd btn-sm" id="btn-cancel-import" style="display:none" data-i18n="csv.cancel">✕ Abbrechen</button>
+      <button class="btn bp btn-sm" id="btn-close-import" style="display:none" data-click="closeImportProgress" data-i18n="csv.close">✓ Schliessen</button>
+    </div>
+  </div>
+</div>
+
+<!-- APP -->
+<div id="app">
+  <header>
+    <div class="logo"><svg width="28" height="28" viewBox="0 0 120 120" xmlns="http://www.w3.org/2000/svg" style="display:block;flex-shrink:0">
+  <rect x="18" y="38" width="84" height="68" rx="3" fill="#e63329"/>
+  <polygon points="18,38 30,20 102,20 102,38" fill="#cc2a21"/>
+  <polygon points="102,20 118,30 118,86 102,106" fill="#b5231c"/>
+  <ellipse cx="43" cy="20" rx="6" ry="3" fill="#cc2a21"/>
+  <rect x="37" y="17" width="12" height="3" fill="#cc2a21"/>
+  <ellipse cx="43" cy="17" rx="6" ry="3" fill="#b5231c"/>
+  <ellipse cx="58" cy="20" rx="6" ry="3" fill="#cc2a21"/>
+  <rect x="52" y="17" width="12" height="3" fill="#cc2a21"/>
+  <ellipse cx="58" cy="17" rx="6" ry="3" fill="#b5231c"/>
+  <ellipse cx="73" cy="20" rx="6" ry="3" fill="#cc2a21"/>
+  <rect x="67" y="17" width="12" height="3" fill="#cc2a21"/>
+  <ellipse cx="73" cy="17" rx="6" ry="3" fill="#b5231c"/>
+  <ellipse cx="88" cy="20" rx="6" ry="3" fill="#cc2a21"/>
+  <rect x="82" y="17" width="12" height="3" fill="#cc2a21"/>
+  <ellipse cx="88" cy="17" rx="6" ry="3" fill="#b5231c"/>
+  <rect x="24" y="54" width="72" height="40" rx="2" fill="#fff"/>
+  <rect x="29" y="58" width="46" height="15" rx="2" fill="#f5a800"/>
+  <text x="52" y="69" text-anchor="middle" font-family="Arial,sans-serif" font-weight="800" font-size="11" fill="white">BIM</text>
+  <rect x="29" y="78" width="62" height="5" rx="1" fill="#e5e7eb"/>
+  <rect x="29" y="86" width="42" height="5" rx="1" fill="#e5e7eb"/>
+  <rect x="80" y="78" width="16" height="13" rx="2" fill="#f5a800"/>
+  <text x="88" y="88" text-anchor="middle" font-family="Arial,sans-serif" font-weight="800" font-size="9" fill="white">6+</text>
+</svg><h1>BrickInventory <span>Manager</span></h1></div>
+    <div class="hright">
+      <div class="hstats">
+        <div class="hs"><span class="v" id="hs-sets">—</span><span class="l">Sets</span></div>
+        <div class="hs"><span class="v" id="hs-parts">—</span><span class="l" data-i18n="nav.parts">Teile</span></div>
+        <div class="hs"><span class="v" id="hs-minifigs">—</span><span class="l" data-i18n="header.minifigs">Minifigs</span></div>
+        <div class="hs"><span class="v" id="hs-instr">—</span><span class="l" data-i18n="header.instr">Anleit.</span></div>
+      </div>
+      <!-- Inline CSV import progress -->
+      <div id="global-import-bar" style="display:none;align-items:center;gap:8px;min-width:180px;max-width:280px">
+        <span style="font-size:.75rem">📦</span>
+        <div style="flex:1;background:var(--bdr);border-radius:999px;height:5px;overflow:hidden;cursor:pointer" data-click="gibToggle">
+          <div id="gib-fill" style="height:100%;background:var(--b600);border-radius:999px;width:0%;transition:width .4s ease"></div>
+        </div>
+        <span id="gib-text" style="font-size:.72rem;font-weight:600;color:var(--s700);white-space:nowrap;cursor:pointer" data-click="gibToggle">0%</span>
+        <span id="gib-chevron" style="font-size:.72rem;color:var(--mut);cursor:pointer" data-click="gibToggle">▾</span>
+      </div>
+      <div class="umenu">
+        <span class="ubadge" id="ubadge">—</span>
+        <span class="abadge" id="abadge" style="display:none" data-i18n="users.admin_badge">Admin</span>
+        <button class="btn bs btn-sm" id="btn-logout" data-i18n="settings.logout">Abmelden</button>
+      </div>
+    </div>
+  </header>
+
+  <nav>
+    <div class="ntab active" data-tab="gallery" data-i18n-tab="nav.gallery"><svg width="18" height="18" viewBox="0 0 120 120" xmlns="http://www.w3.org/2000/svg" style="flex-shrink:0;vertical-align:middle"><rect x="18" y="38" width="84" height="68" rx="3" fill="#e63329"/><polygon points="18,38 30,20 102,20 102,38" fill="#cc2a21"/><polygon points="102,20 118,30 118,86 102,106" fill="#b5231c"/><ellipse cx="43" cy="20" rx="6" ry="3" fill="#cc2a21"/><rect x="37" y="17" width="12" height="3" fill="#cc2a21"/><ellipse cx="43" cy="17" rx="6" ry="3" fill="#b5231c"/><ellipse cx="58" cy="20" rx="6" ry="3" fill="#cc2a21"/><rect x="52" y="17" width="12" height="3" fill="#cc2a21"/><ellipse cx="58" cy="17" rx="6" ry="3" fill="#b5231c"/><ellipse cx="73" cy="20" rx="6" ry="3" fill="#cc2a21"/><rect x="67" y="17" width="12" height="3" fill="#cc2a21"/><ellipse cx="73" cy="17" rx="6" ry="3" fill="#b5231c"/><ellipse cx="88" cy="20" rx="6" ry="3" fill="#cc2a21"/><rect x="82" y="17" width="12" height="3" fill="#cc2a21"/><ellipse cx="88" cy="17" rx="6" ry="3" fill="#b5231c"/><rect x="24" y="54" width="72" height="40" rx="2" fill="#fff"/><rect x="29" y="58" width="46" height="15" rx="2" fill="#f5a800"/><text x="52" y="69" text-anchor="middle" font-family="Arial,sans-serif" font-weight="800" font-size="11" fill="white">BIM</text></svg> <span class="tab-label">Galerie</span></div>
+    <div class="ntab" data-tab="parts" data-i18n-tab="nav.parts"><svg width="18" height="18" viewBox="0 0 120 120" xmlns="http://www.w3.org/2000/svg" style="flex-shrink:0;vertical-align:middle"><rect x="18" y="62" width="56" height="26" rx="2.5" fill="#0055BF"/><circle cx="28" cy="62" r="5.5" fill="#0055BF"/><circle cx="46" cy="62" r="5.5" fill="#0055BF"/><circle cx="64" cy="62" r="5.5" fill="#0055BF"/><g transform="rotate(-9 66 55)"><rect x="38" y="42" width="52" height="24" rx="2.5" fill="#F2CD37"/><circle cx="49" cy="42" r="5" fill="#F2CD37"/><circle cx="64" cy="42" r="5" fill="#F2CD37"/><circle cx="79" cy="42" r="5" fill="#F2CD37"/></g><g transform="rotate(7 58 80)"><rect x="26" y="76" width="58" height="26" rx="2.5" fill="#E63329"/><circle cx="37" cy="76" r="5.5" fill="#E63329"/><circle cx="55" cy="76" r="5.5" fill="#E63329"/><circle cx="73" cy="76" r="5.5" fill="#E63329"/></g></svg> <span class="tab-label">Teile</span></div>
+    <div class="ntab" data-tab="minifigs" data-i18n-tab="nav.minifigs">👷 <span class="tab-label">Minifiguren</span></div>
+    <div class="ntab" data-tab="partslist" data-i18n-tab="nav.partslist">📋 <span class="tab-label">Teileliste</span></div>
+    <div class="ntab" data-tab="finance" data-i18n-tab="nav.finance">💰 <span class="tab-label">Finanzen</span></div>
+    <div class="ntab" data-tab="catalog" data-i18n-tab="nav.catalog">📚 <span class="tab-label">Katalog</span></div>
+    <div class="ntab" data-tab="settings" data-i18n-tab="nav.settings">⚙️ <span class="tab-label">Einstellungen</span></div>
+    <div class="ntab" id="ntab-monitor" data-tab="monitor" data-i18n-tab="nav.monitoring" style="display:none">📊 <span class="tab-label">Monitoring</span></div>
+  </nav>
+
+  <main>
+
+    <!-- ══ GALERIE ══ -->
+    <div class="tab active" id="tab-gallery">
+      <div class="ph">
+        <h2 class="ptitle" data-tab-title="gallery"><span class="ptitle-icon"></span><span data-i18n="gallery.title">Meine Sammlung</span></h2>
+      </div>
+
+      <div class="brick-stats">
+        <div class="bstat bstat-slate"><div class="bstat-l" data-i18n="brick.stat_sets">Sets gesamt</div><div class="bstat-v" id="bstat-sets">—</div></div>
+        <div class="bstat bstat-petrol"><div class="bstat-l" data-i18n="nav.parts">Teile</div><div class="bstat-v" id="bstat-parts">—</div></div>
+        <div class="bstat bstat-light"><div class="bstat-l" data-i18n="nav.minifigs">Minifiguren</div><div class="bstat-v" id="bstat-minifigs">—</div></div>
+      </div>
+
+      <!-- Grosse Box: Set hinzufügen (Titel links, CSV-Import rechts) — analog Teile -->
+      <div style="background:var(--sur);border:1px solid var(--bdr);border-radius:var(--rad);padding:1.25rem;margin-bottom:1.25rem;box-shadow:var(--sh0)">
+        <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;margin-bottom:1rem">
+          <h3 style="margin:0;font-size:1rem;font-weight:700" data-i18n="gallery.add.title">Set hinzufügen</h3>
+          <div style="display:flex;gap:8px;flex-wrap:wrap">
+            <label for="add-num" class="btn bs" style="cursor:pointer">📥 CSV<input type="file" id="csv-file" aria-label="CSV-Datei" data-i18n="import.csv_file" data-i18n-attr="aria-label" accept=".csv" style="display:none" data-change="startSetCsvImport" /></label>
+            <a class="btn bs" id="btn-set-csv-template" href="#" data-i18n="gallery.template">📄 Vorlage</a>
+          </div>
+        </div>
+        <div class="frow">
+          <div class="fg"><label data-i18n="gallery.add.number">Setnummer</label><input type="text" id="add-num" placeholder="z.B. 75192" data-i18n="gallery.add.number" data-i18n-attr="placeholder" /></div>
+          <div class="fg" style="max-width:82px"><label for="add-qty" data-i18n="gallery.add.qty">Anzahl</label><input type="number" id="add-qty" value="1" min="1" /></div>
+          <div class="fg" style="max-width:120px"><label for="add-price" data-i18n="gallery.add.price">Kaufpreis (opt.)</label><input type="number" id="add-price" placeholder="Marktpreis" data-i18n="detail.market_price" data-i18n-attr="placeholder" step="0.01" min="0" /></div>
+          <div class="fg" style="max-width:110px"><label for="add-condition" data-i18n="common.condition">Zustand</label><select id="add-condition" style="padding:.45rem .7rem;border:1px solid var(--bdr);border-radius:var(--rad);background:var(--sur);color:var(--txt);font-size:.875rem"><option value="N" data-i18n="common.condition_new">Neu</option><option value="U" data-i18n="common.condition_used">Gebraucht</option></select></div>
+          <!-- Kontoauswahl: nur im Haushalt sichtbar (siehe loadHouseholdMembers) -->
+          <div class="fg" id="add-owner-box" style="max-width:150px;display:none"><label for="add-owner" data-i18n="household.for_account">Für Konto</label><select id="add-owner" style="padding:.45rem .7rem;border:1px solid var(--bdr);border-radius:var(--rad);background:var(--sur);color:var(--txt);font-size:.875rem"></select></div>
+          <button class="btn bp" id="btn-add" data-i18n="gallery.add.submit">Hinzufügen</button>
+        </div>
+        <div id="add-status" style="margin-top:8px;font-size:.8rem"></div>
+      </div>
+
+      <!-- Suche/Filter/Sortierung — BEWUSST unter der Erfassen-Box statt im
+           Kopf (Nachtrag 32, Marcos Wunsch): Die Bedienelemente stehen damit
+           direkt über der Liste, auf die sie wirken. Beim Verschieben nur den
+           Container anfassen — die IDs darin sind der Vertrag mit dem JS. -->
+      <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:1.5rem">
+          <input type="text" class="si" id="gs" placeholder="🔍 Sets suchen…" data-i18n="gallery.search" data-i18n-attr="placeholder" style="width:220px" / aria-label="Sets suchen">
+          <select id="gtheme" aria-label="Thema filtern" data-i18n="gallery.theme_all" data-i18n-attr="aria-label" style="width:auto" data-change="renderGallery">
+            <option value="" data-i18n="gallery.filter.all">Alle</option>
+          </select>
+          <select id="gsort" aria-label="Sortierung" data-i18n="gallery.sort" data-i18n-attr="aria-label" style="width:auto">
+            <option value="added_desc" data-i18n="gallery.sort.added">Neueste zuerst</option>
+            <option value="added_asc" data-i18n="gallery.sort.oldest">Älteste zuerst</option>
+            <option value="name_asc" data-i18n="gallery.sort.name">Name A–Z</option>
+            <option value="num_asc" data-i18n="gallery.sort.number">Nummer ↑</option>
+            <option value="year_desc" data-i18n="gallery.sort.year">Jahr ↓</option>
+            <option value="price_desc" data-i18n="gallery.sort.price_desc">Preis ↓</option>
+            <option value="price_asc" data-i18n="gallery.sort.price_asc">Preis ↑</option>
+            <option value="qty_desc" data-i18n="gallery.sort.qty_desc">Anzahl ↓</option>
+            <option value="qty_asc" data-i18n="gallery.sort.qty_asc">Anzahl ↑</option>
+          </select>
+          <select id="scope-gallery" class="scope-select" aria-label="Konten" data-i18n="household.scope_label" data-i18n-attr="aria-label" data-change="onScopeChange" data-arg="gallery" style="width:auto;display:none"></select>
+          <div class="vtgl">
+            <button class="vb active" id="vg">⊞</button>
+            <button class="vb" id="vl">☰</button>
+          </div>
+        </div>
+
+      <div id="gallery"></div>
+      <!-- Ladepunkt für den Endlos-Scroll der Galerie. Steht NEBEN #gallery,
+           weil dessen Inhalt bei jedem Filterwechsel ersetzt wird. -->
+      <div id="gallery-sentinel" style="height:1px"></div>
+    </div>
+
+    <!-- ══ KATALOG ══ -->
+    <div class="tab" id="tab-catalog">
+      <div class="ph">
+        <h2 class="ptitle" data-tab-title="catalog"><span class="ptitle-icon"></span><span data-i18n="catalog.title">Katalog</span></h2>
+      </div>
+      <!-- Suche/Filter unter dem Titel — analog Galerie, Teile, Minifiguren
+           (Nachtrag 34). Der Katalog hat keine Erfassung, hier steht die
+           Leiste also direkt unter der Überschrift. -->
+      <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:1.5rem">
+          <input type="text" class="si" id="cat-search" placeholder="🔍 Setnummer / Name…" data-i18n="catalog.search" data-i18n-attr="placeholder" style="width:220px" / aria-label="Setnummer / Name">
+          <select id="cat-theme" aria-label="Thema filtern" data-i18n="gallery.theme_all" data-i18n-attr="aria-label" style="width:auto;max-width:240px">
+            <option value="" data-i18n="catalog.filter.all_themes">Alle Themen</option>
+          </select>
+          <select id="cat-year-from" aria-label="Jahr von" data-i18n="catalog.year_from" data-i18n-attr="aria-label" style="width:auto">
+            <option value="" data-i18n="catalog.filter.year_from">Von…</option>
+          </select>
+          <select id="cat-year-to" aria-label="Jahr bis" data-i18n="catalog.year_to" data-i18n-attr="aria-label" style="width:auto">
+            <option value="" data-i18n="catalog.filter.year_to">Bis…</option>
+          </select>
+          <select id="cat-sort" aria-label="Sortierung" data-i18n="gallery.sort" data-i18n-attr="aria-label" style="width:auto">
+            <option value="year_desc" data-i18n="catalog.sort.year_desc">Jahr ↓</option>
+            <option value="year_asc" data-i18n="catalog.sort.year_asc">Jahr ↑</option>
+            <option value="name_asc" data-i18n="catalog.sort.name">Name A–Z</option>
+            <option value="num_asc" data-i18n="catalog.sort.number">Nummer ↑</option>
+            <option value="parts_desc" data-i18n="catalog.sort.parts_desc">Teile ↓</option>
+            <option value="parts_asc" data-i18n="catalog.sort.parts_asc">Teile ↑</option>
+          </select>
+      </div>
+      <div id="cat-count" style="font-size:.8rem;color:var(--mut);margin-bottom:.5rem"></div>
+      <!-- Jahres-Bereich: Von-Bis mit zwei Griffen scrubben -->
+      <!-- Katalog-Liste mit Jahres-Leiste am rechten Rand.
+           Der frühere Von-Bis-Schieber ist entfallen (Nachtrag 90): Die Leiste
+           SPRINGT jetzt, statt zu filtern — gefiltert wird über die beiden
+           Jahres-Auswahlfelder darüber. Der Sentinel für den Endlos-Scroll ist
+           ebenfalls weg; geladen wird die Seite, die gerade ins Bild kommt. -->
+      <!-- Die Liste rollt mit der SEITE (Nachtrag 92). Ein eigener
+           Scrollbereich hier hatte zwei Nachteile: Der Balken sass mitten im
+           Fenster statt am Rand, und der Beobachter, der die Seiten nachlädt,
+           mass gegen diesen Bereich — nach unten kam nichts nach. Den
+           Scrollbalken zeichnet jetzt die Anwendung selbst, für die GANZE
+           Seite (#app-scrollbar, siehe js/01-core.js). -->
+      <div id="catalog-grid"></div>
+    </div>
+
+    <!-- ══ TEILE ══ -->
+    <div class="tab" id="tab-parts">
+      <div class="ph">
+        <h2 class="ptitle" data-tab-title="parts"><span class="ptitle-icon"></span><span data-i18n="nav.parts">Teile</span></h2>
+      </div>
+      <div class="brick-stats" id="parts-stats-bar">
+        <div class="bstat bstat-slate"><div class="bstat-l" data-i18n="parts.stat.total_label">Teile total</div><div class="bstat-v" id="ps-total">—</div></div>
+        <div class="bstat bstat-petrol"><div class="bstat-l" data-i18n="parts.stat.unique">Unique Teile</div><div class="bstat-v" id="ps-unique">—</div></div>
+        <div class="bstat bstat-light"><div class="bstat-l" data-i18n="parts.stat.colors">Farben</div><div class="bstat-v" id="ps-colors">—</div></div>
+      </div>
+      <!-- ── Manuell erfasste Teile — vor den Set-Teilen ──────────────────── -->
+      <div style="background:var(--sur);border:1px solid var(--bdr);border-radius:var(--rad);padding:1.25rem;margin-bottom:1.25rem;box-shadow:var(--sh0)">
+        <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;margin-bottom:1rem">
+          <h3 style="margin:0;font-size:1rem;font-weight:700;display:flex;align-items:center;gap:6px"><svg width="18" height="18" viewBox="0 0 120 120" xmlns="http://www.w3.org/2000/svg" style="flex-shrink:0"><rect x="18" y="62" width="56" height="26" rx="2.5" fill="#0055BF"/><circle cx="28" cy="62" r="5.5" fill="#0055BF"/><circle cx="46" cy="62" r="5.5" fill="#0055BF"/><circle cx="64" cy="62" r="5.5" fill="#0055BF"/><g transform="rotate(-9 66 55)"><rect x="38" y="42" width="52" height="24" rx="2.5" fill="#F2CD37"/><circle cx="49" cy="42" r="5" fill="#F2CD37"/><circle cx="64" cy="42" r="5" fill="#F2CD37"/><circle cx="79" cy="42" r="5" fill="#F2CD37"/></g><g transform="rotate(7 58 80)"><rect x="26" y="76" width="58" height="26" rx="2.5" fill="#E63329"/><circle cx="37" cy="76" r="5.5" fill="#E63329"/><circle cx="55" cy="76" r="5.5" fill="#E63329"/><circle cx="73" cy="76" r="5.5" fill="#E63329"/></g></svg> <span data-i18n="parts.new_section">Neues Teil erfassen</span></h3>
+          <div style="display:flex;gap:8px;flex-wrap:wrap">
+            <label for="ap-num-inline" class="btn bs" style="cursor:pointer">📥 CSV<input type="file" id="part-csv-file" aria-label="CSV-Datei" data-i18n="import.csv_file" data-i18n-attr="aria-label" accept=".csv,.txt" style="display:none" data-change="importPartsCsv" /></label>
+            <a class="btn bs" id="btn-csv-template" href="#" data-i18n="gallery.template">📄 Vorlage</a>
+          </div>
+        </div>
+        <div id="part-csv-status" style="display:none;font-size:.85rem;margin-bottom:1rem;padding:.55rem .8rem;border-radius:8px"></div>
+        <!-- mp stats hidden, kept for JS -->
+        <span id="mp-count" style="display:none"></span>
+        <span id="mp-qty" style="display:none"></span>
+        <span id="mp-val" style="display:none"></span>
+
+        <div id="add-part-inline" style="background:var(--s50);border:1px solid var(--bdr);border-radius:var(--rad);padding:1rem;margin-bottom:1.25rem">
+          <div style="font-size:.75rem;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--mut);margin-bottom:.75rem" data-i18n="parts.new_section">➕ Neues Teil erfassen</div>
+          <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:10px;align-items:end">
+            <div class="fg"><label data-i18n="parts.num_label">Teilenummer *</label><input type="text" id="ap-num-inline" placeholder="z.B. 3001" /></div>
+            <div class="fg"><label for="ap-qty-inline" data-i18n="parts.color_label">Farbe</label>
+              <div style="display:flex;gap:6px;align-items:center">
+                <div id="ap-color-dot" style="width:20px;height:20px;border-radius:50%;background:var(--s200);border:1px solid var(--bdr);flex-shrink:0"></div>
+                <select id="ap-color-select" aria-label="Farbe" data-i18n="parts.color" data-i18n-attr="aria-label" style="height:38px;padding:.45rem .7rem;flex:1" data-change="updateColorDot">
+                  <option value="" data-i18n="parts.add.no_color">— Keine Farbe —</option>
+                </select>
+              </div>
+            </div>
+            <div class="fg"><label data-i18n="parts.add.qty">Anzahl</label><input type="number" id="ap-qty-inline" value="1" min="1" style="height:38px" /></div>
+            <div class="fg"><label for="ap-price-inline" data-i18n="parts.add.price">Kaufpreis/Stk (opt.)</label><input type="number" id="ap-price-inline" placeholder="Leer = Marktpreis" data-i18n="parts.add.price_placeholder" data-i18n-attr="placeholder" step="0.01" style="height:38px" /></div>
+            <div class="fg"><label for="ap-note-inline" data-i18n="parts.note_label">Notiz</label><input type="text" id="ap-note-inline" placeholder="Optional" data-i18n="parts.note_placeholder" data-i18n-attr="placeholder" /></div>
+            <div class="fg"><label for="ap-condition" data-i18n="common.condition">Zustand</label><select id="ap-condition" style="height:38px;padding:.45rem .7rem;border:1px solid var(--bdr);border-radius:var(--rad);background:var(--sur);color:var(--txt);font-size:.875rem"><option value="N" data-i18n="common.condition_new">Neu</option><option value="U" data-i18n="common.condition_used">Gebraucht</option></select></div>
+            <div class="fg" id="ap-owner-box" style="max-width:150px;display:none"><label for="ap-owner" data-i18n="household.for_account">Für Konto</label><select id="ap-owner" style="height:38px;padding:.45rem .7rem;border:1px solid var(--bdr);border-radius:var(--rad);background:var(--sur);color:var(--txt);font-size:.875rem"></select></div>
+            <div class="fg" style="align-self:end"><button class="btn bp" id="btn-add-part" style="width:100%;height:38px" data-i18n="adding.button">+ Hinzufügen</button></div>
+          </div>
+          <div id="ap-inline-result" style="font-size:.82rem;margin-top:.5rem;min-height:1rem"></div>
+        </div>
+      </div>
+
+      <!-- Suche/Filter/Sortierung — BEWUSST unter der Erfassen-Box statt im
+           Kopf (Nachtrag 32, Marcos Wunsch): Die Bedienelemente stehen damit
+           direkt über der Liste, auf die sie wirken. Beim Verschieben nur den
+           Container anfassen — die IDs darin sind der Vertrag mit dem JS. -->
+      <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:1.5rem">
+          <input type="text" id="parts-search" placeholder="🔍 Teilenummer / Name…" data-i18n="parts.search" data-i18n-attr="placeholder" style="width:220px" / aria-label="Teilenummer / Name">
+          <select id="parts-spare" aria-label="Ersatzteile" data-i18n="parts.spare" data-i18n-attr="aria-label" style="width:auto">
+            <option value="" data-i18n="parts.filter.all">Alle Teile</option>
+            <option value="0" data-i18n="parts.filter.no_spare">Ohne Ersatzteile</option>
+            <option value="1" data-i18n="parts.filter.spare">Nur Ersatzteile</option>
+          </select>
+          <select id="scope-parts" class="scope-select" aria-label="Konten" data-i18n="household.scope_label" data-i18n-attr="aria-label" data-change="onScopeChange" data-arg="parts" style="width:auto;display:none"></select>
+          <select id="parts-view" aria-label="Ansicht" data-i18n="parts.view" data-i18n-attr="aria-label" style="width:auto">
+            <option value="grid" data-i18n="parts.view.grid">Karten</option>
+            <option value="table" data-i18n="parts.view.table">Tabelle</option>
+          </select>
+      </div>
+
+      <!-- Die manuell erfassten Teile stehen UNTER der Filterleiste
+           (Nachtrag 34, Marcos Hinweis): Der Filter wirkt auf beide Listen —
+           auf die manuellen und die aus Sets. Stünde er darunter, sähe es aus,
+           als beträfe er nur die Set-Teile. -->
+      <div style="background:var(--sur);border:1px solid var(--bdr);border-radius:var(--rad);padding:1.25rem;margin-bottom:1.25rem;box-shadow:var(--sh0)">
+        <div style="font-size:.75rem;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--mut);margin-bottom:.75rem" data-i18n="parts.manual_section">Manuell erfasste Teile</div>
+        <div id="manual-parts-list"></div>
+      </div>
+
+      <!-- ── Teile aus Sets ──────────────────────────────────────────────────── -->
+      <div class="parts-layout">
+        <div class="parts-sidebar" id="parts-sidebar">
+          <div class="sidebar-section">
+            <div class="sidebar-title" data-i18n="parts.filter.color">Nach Farbe filtern</div>
+            <div class="filter-list" id="color-filter"></div>
+          </div>
+          <div class="sidebar-section">
+            <div class="sidebar-title" data-i18n="parts.filter.category">Nach Kategorie filtern</div>
+            <div class="filter-list" id="cat-filter"></div>
+          </div>
+        </div>
+        <div id="parts-main">
+          <div class="loading"><div class="spin"></div><span data-i18n="parts.loading_label">Teile laden…</span></div>
+        </div>
+        <!-- Ladepunkt für den Endlos-Scroll der Teileliste, analog cat-sentinel.
+             Steht bewusst NEBEN #parts-main: dessen Inhalt wird bei jedem
+             Filter- und Moduswechsel ersetzt, der Sentinel muss das überleben. -->
+        <div id="parts-sentinel" style="height:1px"></div>
+      </div>
+
+    </div>
+    <div id="tab-manual-parts" style="display:none"><!-- redirected --></div>
+
+    <!-- ══ MINIFIGUREN ══ -->
+    <div class="tab" id="tab-minifigs">
+      <div class="ph">
+        <h2 class="ptitle" data-tab-title="minifigs"><span class="ptitle-icon"></span><span data-i18n="nav.minifigs">Minifiguren</span></h2>
+      </div>
+
+      <!-- Stats (farbig, wie Galerie) -->
+      <div class="brick-stats" style="grid-template-columns:repeat(2,1fr)">
+        <div class="bstat bstat-slate"><div class="bstat-l" data-i18n="figs.stat.types">Figurtypen</div><div class="bstat-v" id="mf-unique">—</div></div>
+        <div class="bstat bstat-petrol"><div class="bstat-l" data-i18n="figs.stat.total_qty">Gesamtmenge</div><div class="bstat-v" id="mf-total">—</div></div>
+      </div>
+      <span id="mf-val" style="display:none"></span>
+
+      <!-- ── Manuell erfasste Minifiguren — grosse Box wie bei Teilen ──────── -->
+      <div style="background:var(--sur);border:1px solid var(--bdr);border-radius:var(--rad);padding:1.25rem;margin-bottom:1.25rem;box-shadow:var(--sh0)">
+        <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;margin-bottom:1rem">
+          <h3 style="margin:0;font-size:1rem;font-weight:700" data-i18n="figs.new_section">➕ Neue Minifigur erfassen</h3>
+          <div style="display:flex;gap:8px;flex-wrap:wrap">
+            <label for="af-num-inline" class="btn bs" style="cursor:pointer">📥 CSV<input type="file" id="fig-csv-file" aria-label="CSV-Datei" data-i18n="import.csv_file" data-i18n-attr="aria-label" accept=".csv,.txt" style="display:none" data-change="importFigsCsv" /></label>
+            <a class="btn bs" id="btn-fig-csv-template" href="#" data-i18n="gallery.template">📄 Vorlage</a>
+          </div>
+        </div>
+        <div id="fig-csv-status" style="display:none;font-size:.85rem;margin-bottom:1rem;padding:.55rem .8rem;border-radius:8px"></div>
+
+      <!-- Inline add form -->
+      <div style="background:var(--s50);border:1px solid var(--bdr);border-radius:var(--rad);padding:1rem;margin-bottom:1.25rem">
+        <div style="font-size:.75rem;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--mut);margin-bottom:.75rem" data-i18n="figs.new_section">➕ Neue Minifigur erfassen</div>
+        <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:10px;align-items:end">
+          <div class="fg"><label><span data-i18n="figs.num_label">Figur-Nummer *</span> <span style="font-size:.72rem;color:var(--mut)">(Rebrickable, z.B. fig-007357)</span></label>
+            <input type="text" id="af-num-inline" placeholder="fig-007357" /></div>
+          <div class="fg"><label for="af-blnum-inline"><span data-i18n="figs.blnum_label">BrickLink-Nr. (opt.)</span> <span style="font-size:.72rem;color:var(--mut)" data-i18n="parts.add.bl_hint">für Marktpreis</span></label>
+            <input type="text" id="af-blnum-inline" placeholder="z.B. sw0001" /></div>
+          <div class="fg"><label for="af-qty-inline" data-i18n="figs.qty_label">Anzahl</label>
+            <input type="number" id="af-qty-inline" value="1" min="1" style="height:38px" /></div>
+          <div class="fg"><label for="af-price-inline" data-i18n="figs.price_label">Kaufpreis/Stk (opt.)</label>
+            <input type="number" id="af-price-inline" placeholder="Leer = Marktpreis" data-i18n="parts.add.price_placeholder" data-i18n-attr="placeholder" step="0.01" style="height:38px" /></div>
+          <div class="fg"><label for="af-condition" data-i18n="common.condition">Zustand</label><select id="af-condition" style="height:38px;padding:.45rem .7rem;border:1px solid var(--bdr);border-radius:var(--rad);background:var(--sur);color:var(--txt);font-size:.875rem"><option value="N" data-i18n="common.condition_new">Neu</option><option value="U" data-i18n="common.condition_used">Gebraucht</option></select></div>
+            <div class="fg" id="af-owner-box" style="max-width:150px;display:none"><label for="af-owner" data-i18n="household.for_account">Für Konto</label><select id="af-owner" style="height:38px;padding:.45rem .7rem;border:1px solid var(--bdr);border-radius:var(--rad);background:var(--sur);color:var(--txt);font-size:.875rem"></select></div>
+          <div class="fg" style="align-self:end">
+            <button class="btn bp" id="btn-add-fig" style="width:100%;height:38px" data-i18n="adding.button">+ Hinzufügen</button></div>
+        </div>
+        <div style="font-size:.72rem;color:var(--mut);margin-top:.5rem" data-i18n="figs.add.hint">💡 Rebrickable- und BrickLink-Nummern unterscheiden sich meist. Ohne BrickLink-Nr. wird der Marktpreis näherungsweise aus den einzelnen Teilen der Figur berechnet.</div>
+        <div id="af-inline-result" style="font-size:.82rem;margin-top:.5rem;min-height:1rem"></div>
+      </div>
+
+      </div>
+
+      <!-- Suche/Filter/Sortierung — BEWUSST unter der Erfassen-Box statt im
+           Kopf (Nachtrag 32, Marcos Wunsch): Die Bedienelemente stehen damit
+           direkt über der Liste, auf die sie wirken. Beim Verschieben nur den
+           Container anfassen — die IDs darin sind der Vertrag mit dem JS. -->
+      <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:1.5rem">
+          <input type="text" id="fig-search" placeholder="🔍 Minifiguren suchen…" data-i18n="figs.search" data-i18n-attr="placeholder" style="width:220px" data-input="filterFigs" / aria-label="Minifiguren suchen">
+          <select id="fig-source" aria-label="Quelle" data-i18n="figs.source" data-i18n-attr="aria-label" data-change="filterFigs" style="width:auto">
+            <option value="" data-i18n="figs.source_all">Alle Sets</option>
+          </select>
+          <select id="scope-minifigs" class="scope-select" aria-label="Konten" data-i18n="household.scope_label" data-i18n-attr="aria-label" data-change="onScopeChange" data-arg="minifigs" style="width:auto;display:none"></select>
+          <select id="figs-view" aria-label="Ansicht" data-i18n="parts.view" data-i18n-attr="aria-label" style="width:auto" data-change="renderFigsAll">
+            <option value="grid" data-i18n="parts.view.grid">Karten</option>
+            <option value="table" data-i18n="parts.view.table">Tabelle</option>
+          </select>
+      </div>
+
+      <!-- Wie bei den Teilen: Die manuell erfassten Minifiguren stehen UNTER
+           der Filterleiste, weil der Filter beide Listen betrifft. -->
+      <div style="background:var(--sur);border:1px solid var(--bdr);border-radius:var(--rad);padding:1.25rem;margin-bottom:1.25rem;box-shadow:var(--sh0)">
+        <div style="font-size:.75rem;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--mut);margin-bottom:.75rem" data-i18n="figs.manual_section">Manuell erfasste Minifiguren</div>
+        <div id="manual-figs-list"></div>
+      </div>
+
+      <div id="figs-list"></div>
+      <!-- Ladepunkt für den Endlos-Scroll der Minifiguren. Steht NEBEN
+           #figs-list, dessen Inhalt bei jedem Filterwechsel ersetzt wird. -->
+      <div id="figs-sentinel" style="height:1px"></div>
+    </div>
+
+    <!-- ══ FINANZEN ══ -->
+    <div class="tab" id="tab-finance">
+      <div class="ph">
+        <h2 class="ptitle" data-tab-title="finance"><span class="ptitle-icon"></span><span data-i18n="finance.title">Portfolio-Wert</span></h2>
+        <!-- margin-left:auto (Nachtrag 66, Marcos Wunsch „rechts ausgerichtet"):
+             Die Kopfzeile ist flex mit space-between, also stand der Filter auf
+             breiten Fenstern schon rechts. Sie bricht aber um (flex-wrap), und
+             nach einem Umbruch beginnt die neue Zeile wieder LINKS — genau das
+             sieht man auf schmalen Fenstern und auf dem Handy. margin-left:auto
+             schiebt ihn in beiden Fällen ans rechte Ende. -->
+        <select id="scope-finance" class="scope-select" aria-label="Konten" data-i18n="household.scope_label" data-i18n-attr="aria-label" data-change="onScopeChange" data-arg="finance" style="width:auto;display:none;margin-left:auto"></select>
+      </div>
+      <!-- Portfolio Chart -->
+      <div id="portfolio-chart-section" style="background:var(--sur);border:1.5px solid var(--bdr);border-radius:var(--rad);padding:1.25rem;margin-bottom:1.25rem;box-shadow:var(--sh0)">
+        <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;margin-bottom:.75rem">
+          <div style="font-size:.75rem;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--mut)" data-i18n="finance.chart.label">📈 Wertentwicklung Portfolio</div>
+          <div style="display:flex;gap:16px;align-items:center;flex-wrap:wrap">
+            <div style="font-size:.78rem;color:var(--mut)" data-i18n-before="finance.market_label">Ø Marktpreis: <span id="portfolio-current" style="font-weight:700;color:var(--b600)">—</span></div>
+            <span id="portfolio-pnl"></span>
+          </div>
+          <span id="portfolio-purchase" style="display:none"></span>
+        </div>
+        <div class="chart-wrap" id="portfolio-chart" style="min-height:80px">
+          <div style="color:var(--mut);font-size:.82rem;padding:1rem" data-i18n="finance.chart.loading">Laden…</div>
+        </div>
+        <div style="display:flex;gap:6px;margin-top:.75rem;justify-content:center;flex-wrap:wrap">
+          <button class="period-btn active" data-period="week"  data-click="setChartPeriod" data-arg="week" data-i18n="finance.period.week">Woche</button>
+          <button class="period-btn"        data-period="month" data-click="setChartPeriod" data-arg="month" data-i18n="finance.period.month">Monat</button>
+          <button class="period-btn"        data-period="year"  data-click="setChartPeriod" data-arg="year" data-i18n="finance.period.year">Jahr</button>
+          <button class="period-btn"        data-period="max"   data-click="setChartPeriod" data-arg="max" data-i18n="finance.period.max">Max</button>
+
+        </div>
+      </div>
+
+      <div id="fin-figs-banner" style="display:none;background:var(--sur);border:1px solid var(--bdr);border-radius:var(--rad);padding:.85rem 1.25rem;margin-bottom:.75rem;align-items:center;justify-content:space-between">
+        <span style="font-size:.85rem;color:var(--mut)" data-i18n="finance.figs_label">👷 Minifiguren</span>
+        <span id="fin-figs-val" style="font-weight:700;color:var(--b600)">—</span>
+      </div>
+      <div id="fin-parts-banner" style="display:none;background:var(--sur);border:1px solid var(--bdr);border-radius:var(--rad);padding:.85rem 1.25rem;margin-bottom:.75rem;display:none;align-items:center;justify-content:space-between">
+        <span style="font-size:.85rem;color:var(--mut)" data-i18n="parts.single_parts">🔩 Einzel-Teile</span>
+        <span id="fin-parts-val" style="font-weight:700;color:var(--b600)">—</span>
+      </div>
+      <div class="fgrid" id="fin-sum" style="display:none">
+        <div class="fstat"><div class="flbl" data-i18n="finance.stat.min">Mindest-Wert</div><div><span class="fval" id="fmin">—</span><span class="fcur" id="fc1">EUR</span></div></div>
+        <div class="fstat hi"><div class="flbl" data-i18n="finance.stat.avg">Ø Durchschnitt</div><div><span class="fval" id="favg">—</span><span class="fcur" id="fc2">EUR</span></div></div>
+        <div class="fstat"><div class="flbl" data-i18n="finance.stat.max">Maximalwert</div><div><span class="fval" id="fmax">—</span><span class="fcur" id="fc4">EUR</span></div></div>
+        <div class="fstat" id="fin-stat-pnl" style="display:none"><div class="flbl" data-i18n="finance.stat.pnl">Gesamt G&amp;V</div><div><span class="fval" id="fin-total-pnl">—</span></div></div>
+      </div>
+      <div id="fin-tbl"><div class="empty"><div class="icon">💰</div><h3 data-i18n="finance.not_loaded">Preise noch nicht geladen</h3><p>Klicke auf «Preise laden»</p></div></div>
+    </div>
+
+    <!-- ══ TEILELISTE ══ -->
+    <div class="tab" id="tab-partslist">
+      <div class="ph" style="display:flex;flex-direction:column;gap:.5rem;align-items:flex-start">
+        <h2 class="ptitle" data-tab-title="partslist"><span class="ptitle-icon"></span><span data-i18n="nav.partslist">Teileliste</span></h2>
+        <div style="display:flex;align-items:center;gap:.5rem;flex-wrap:nowrap;overflow-x:auto">
+        <input type="text" id="pl-setnr" placeholder="Set-Nr." data-i18n="pl.set_nr" data-i18n-attr="placeholder" style="height:30px;border:1px solid var(--brd);border-radius:6px;padding:0 8px;font-size:.85rem;width:110px;flex-shrink:0" / aria-label="Set-Nr.">
+        <button class="btn bp btn-sm" data-click="plAddSet" style="white-space:nowrap;flex-shrink:0" data-i18n="adding.button">+ Hinzufügen</button>
+        <button class="btn bs btn-sm" data-click="plGenerate" id="btn-pl-gen" disabled style="white-space:nowrap;flex-shrink:0" data-i18n="pl.generate">🔧 Erstellen</button>
+        <button class="btn bp btn-sm" data-click="plExportPdf" id="btn-pl-pdf" style="display:none;white-space:nowrap;flex-shrink:0;width:200px;box-sizing:border-box;justify-content:center">📄 PDF</button>
+        <select id="pl-bl-condition" aria-label="Zustand" data-i18n="detail.condition" data-i18n-attr="aria-label" style="display:none;height:30px;border:1px solid var(--brd);border-radius:6px;padding:0 4px;font-size:.8rem;background:var(--sur);width:90px;flex-shrink:0"><option value="X" data-i18n="pl.condition.any">Beliebig</option><option value="N" data-i18n="pl.condition.new">Neu</option><option value="U" data-i18n="pl.condition.used">Gebraucht</option></select>
+        <button class="btn bs btn-sm" data-click="plExportBricklink" id="btn-pl-bl" style="display:none;white-space:nowrap;flex-shrink:0"><svg width="14" height="14" viewBox="0 0 120 120" xmlns="http://www.w3.org/2000/svg" style="vertical-align:middle;margin-right:4px;flex-shrink:0"><rect x="18" y="38" width="84" height="68" rx="3" fill="#e63329"/><polygon points="18,38 30,20 102,20 102,38" fill="#cc2a21"/><polygon points="102,20 118,30 118,86 102,106" fill="#b5231c"/><ellipse cx="43" cy="20" rx="6" ry="3" fill="#cc2a21"/><rect x="37" y="17" width="12" height="3" fill="#cc2a21"/><ellipse cx="43" cy="17" rx="6" ry="3" fill="#b5231c"/><ellipse cx="58" cy="20" rx="6" ry="3" fill="#cc2a21"/><rect x="52" y="17" width="12" height="3" fill="#cc2a21"/><ellipse cx="58" cy="17" rx="6" ry="3" fill="#b5231c"/><ellipse cx="73" cy="20" rx="6" ry="3" fill="#cc2a21"/><rect x="67" y="17" width="12" height="3" fill="#cc2a21"/><ellipse cx="73" cy="17" rx="6" ry="3" fill="#b5231c"/><ellipse cx="88" cy="20" rx="6" ry="3" fill="#cc2a21"/><rect x="82" y="17" width="12" height="3" fill="#cc2a21"/><ellipse cx="88" cy="17" rx="6" ry="3" fill="#b5231c"/><rect x="24" y="54" width="72" height="40" rx="2" fill="#fff"/><rect x="29" y="58" width="46" height="15" rx="2" fill="#f5a800"/><text x="52" y="69" text-anchor="middle" font-family="Arial,sans-serif" font-weight="800" font-size="11" fill="white">BIM</text></svg>BrickLink XML</button>
+        <button class="btn bd btn-sm" data-click="plReset" style="white-space:nowrap;flex-shrink:0;margin-left:auto" data-i18n="partslist.reset">🗑️ Reset</button>
+        </div>
+      </div>
+      <!-- Added sets -->
+      <div id="pl-sets" style="display:flex;flex-wrap:wrap;gap:.5rem;margin-bottom:1rem;min-height:32px"></div>
+      <!-- Status -->
+      <div id="pl-status" style="color:var(--mut);font-size:.875rem;margin-bottom:.75rem"></div>
+      <!-- Parts list table -->
+      <div id="pl-result"></div>
+    </div>
+
+    <!-- ══ EINSTELLUNGEN ══ -->
+    <div class="tab" id="tab-settings">
+      <div class="ph"><h2 class="ptitle" data-tab-title="settings"><span class="ptitle-icon"></span><span data-i18n="settings.title">Einstellungen</span></h2></div>
+
+      <!-- ── PROFIL-EINSTELLUNGEN ─────────────────────────────────────────── -->
+      <div class="sgroup-label" data-i18n="settings.group.profile">👤 Profil-Einstellungen</div>
+
+      <div class="ssec" style="margin-bottom:1.25rem" id="profile-settings-card">
+        <div class="sform">
+
+          <!-- Sprache -->
+          <div>
+            <label for="lang-select" style="font-weight:600;font-size:.85rem" data-i18n="settings.language">Sprache</label>
+            <select id="lang-select" data-change="setLangFromEl" style="margin-top:4px">
+              <option value="de" data-i18n="settings.lang.de">Deutsch</option>
+              <option value="en" data-i18n="settings.lang.en">Englisch</option>
+            </select>
+          </div>
+
+          <!-- Währung & Preise -->
+          <div>
+            <label for="s-cur" style="font-weight:600;font-size:.85rem" data-i18n="settings.currency">Währung</label>
+            <select id="s-cur" style="margin-top:4px">
+              <option value="EUR" data-i18n="currency.eur">EUR – Euro</option>
+              <option value="CHF" data-i18n="currency.chf">CHF – Schweizer Franken</option>
+              <option value="USD" data-i18n="currency.usd">USD – US-Dollar</option>
+              <option value="GBP" data-i18n="currency.gbp">GBP – Britisches Pfund</option>
+              <option value="SEK" data-i18n="currency.sek">SEK – Schwedische Krone</option>
+              <option value="NOK" data-i18n="currency.nok">NOK – Norwegische Krone</option>
+              <option value="AUD" data-i18n="currency.aud">AUD – Australischer Dollar</option>
+              <option value="CAD" data-i18n="currency.cad">CAD – Kanadischer Dollar</option>
+            </select>
+          </div>
+          <div>
+            <label for="s-default-condition" style="font-weight:600;font-size:.85rem" data-i18n="settings.default_condition">Standard-Zustand</label>
+            <select id="s-default-condition" style="margin-top:4px">
+              <option value="N" data-i18n="common.condition_new">Neu</option>
+              <option value="U" data-i18n="common.condition_used">Gebraucht</option>
+            </select>
+          </div>
+
+          <!-- Profil -->
+          <div class="sgrid2" style="gap:.75rem">
+            <div class="fg"><label for="prof-first" data-i18n="settings.profile.firstname">Vorname</label><input type="text" id="prof-first" data-i18n="settings.profile.firstname" data-i18n-attr="placeholder" placeholder="Vorname" /></div>
+            <div class="fg"><label for="prof-last" data-i18n="settings.profile.lastname">Nachname</label><input type="text" id="prof-last" data-i18n="settings.profile.lastname" data-i18n-attr="placeholder" placeholder="Nachname" /></div>
+          </div>
+          <div class="sgrid2" style="gap:.75rem">
+            <div class="fg"><label for="prof-user" data-i18n="users.col.username">Benutzername</label><input type="text" id="prof-user" /></div>
+            <div class="fg">
+              <label for="prof-email">E-Mail <span id="prof-email-verified" style="font-size:.72rem;margin-left:4px"></span></label>
+              <input type="email" id="prof-email" />
+              <div style="font-size:.72rem;color:var(--mut);margin-top:3px" id="prof-email-hint"></div>
+            </div>
+          </div>
+
+          <!-- Passwort (optional) -->
+          <div style="border-top:1px solid var(--bdr);padding-top:13px">
+            <div style="font-size:.73rem;font-weight:700;text-transform:uppercase;letter-spacing:.6px;color:var(--mut);margin-bottom:.35rem">🔒 <span data-i18n="settings.password.change">Passwort ändern</span></div>
+            <div style="font-size:.75rem;color:var(--mut);margin-bottom:.75rem" data-i18n="settings.password.optional_hint">Nur ausfüllen, wenn du dein Passwort ändern möchtest.</div>
+            <div class="sgrid2" style="gap:.75rem;grid-template-columns:repeat(auto-fit,minmax(160px,1fr))">
+              <div class="fg"><label for="pw-c" data-i18n="settings.password.current">Aktuelles Passwort</label><input type="password" id="pw-c" /></div>
+              <div class="fg"><label for="pw-n" data-i18n="settings.password.new">Neues Passwort</label><input type="password" id="pw-n" /></div>
+              <div class="fg"><label for="pw-r" data-i18n="settings.password.repeat">Wiederholen</label><input type="password" id="pw-r" /></div>
+            </div>
+          </div>
+
+          <button class="btn bp" id="btn-sav-prof" style="align-self:flex-start">💾 <span data-i18n="settings.save">Speichern</span></button>
+        </div>
+      </div>
+
+      <!-- ── HAUSHALT: KONTEN VERKNÜPFEN ─────────────────────────────────── -->
+      <div class="sgroup-label" data-i18n="household.group">👪 Haushalt</div>
+
+      <div class="ssec" style="margin-bottom:1.25rem" id="household-card">
+        <div class="sform">
+          <div style="font-size:.8rem;color:var(--mut)" data-i18n="household.intro">
+            Verknüpfe Konten zu einem Haushalt: Das Hauptkonto sieht alle Sets, Teile und
+            Minifiguren der verknüpften Konten zusammengefasst. Beide Konten müssen dieselbe
+            Währung verwenden.
+          </div>
+
+          <!-- Zustand: wird von renderHousehold() gefüllt -->
+          <div id="household-state" style="font-size:.85rem"></div>
+
+          <!-- Als Hauptkonto: Einladungscode erzeugen -->
+          <div id="household-invite-box" style="display:none;border-top:1px solid var(--bdr);padding-top:13px">
+            <div style="font-size:.73rem;font-weight:700;text-transform:uppercase;letter-spacing:.6px;color:var(--mut);margin-bottom:.35rem">
+              ➕ <span data-i18n="household.invite_title">Konto einladen</span>
+            </div>
+            <div style="font-size:.75rem;color:var(--mut);margin-bottom:.75rem" data-i18n="household.invite_hint">
+              Erzeuge einen Einladungscode und gib ihn im anderen Konto unter Einstellungen ein.
+              Der Code ist 24 Stunden gültig und nur einmal verwendbar.
+            </div>
+            <button class="btn bp" data-click="createHouseholdInvite" style="align-self:flex-start">
+              🔗 <span data-i18n="household.invite_create">Einladungscode erzeugen</span>
+            </button>
+            <div id="household-invite-out" style="display:none;margin-top:.75rem">
+              <div class="fg">
+                <label for="household-invite-code" data-i18n="household.invite_code">Einladungscode</label>
+                <input type="text" id="household-invite-code" readonly data-click="copyHouseholdInvite" style="font-family:var(--mono);font-size:.8rem;cursor:pointer" />
+              </div>
+              <button class="btn" data-click="copyHouseholdInvite">📋 <span data-i18n="household.invite_copy">Kopieren</span></button>
+            </div>
+          </div>
+
+          <!-- Als eigenständiges Konto: Code einlösen -->
+          <div id="household-redeem-box" style="display:none;border-top:1px solid var(--bdr);padding-top:13px">
+            <div style="font-size:.73rem;font-weight:700;text-transform:uppercase;letter-spacing:.6px;color:var(--mut);margin-bottom:.35rem">
+              🔑 <span data-i18n="household.redeem_title">Einladung annehmen</span>
+            </div>
+            <div style="font-size:.75rem;color:var(--mut);margin-bottom:.75rem" data-i18n="household.redeem_hint">
+              Gib den Code aus dem Hauptkonto ein. Dieses Konto wird danach im Hauptkonto
+              mit angezeigt; deine Daten bleiben deine.
+            </div>
+            <div class="fg">
+              <label for="household-redeem-code" data-i18n="household.invite_code">Einladungscode</label>
+              <input type="text" id="household-redeem-code" autocomplete="off" style="font-family:var(--mono);font-size:.8rem" />
+            </div>
+            <button class="btn bp" data-click="redeemHouseholdInvite" style="align-self:flex-start">
+              ✓ <span data-i18n="household.redeem_submit">Verknüpfen</span>
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- ── GLOBALE EINSTELLUNGEN (nur Admins) ─────────────────────────── -->
+      <div class="sgroup-label" id="global-settings-label" data-i18n="settings.global_title" style="display:none">🌐 Globale Einstellungen <span style="font-size:.72rem;color:var(--a500);font-weight:400">(Admin)</span></div>
+      <div class="sgrid2" id="global-settings-grid" style="display:none">
+        <div class="ssec">
+          <div class="stit" data-i18n="settings.general_title">⚙️ Einstellungen</div>
+          <div class="sform">
+            <div class="fg"><label for="mon-app-theme" data-i18n="settings.app_theme">App-Design</label>
+              <select id="mon-app-theme">
+                <option value="classic" data-i18n="settings.theme_classic">Klassisch</option>
+                <option value="brick" data-i18n="settings.theme_brick">Stein (Blau)</option>
+              </select>
+            </div>
+            <div style="font-size:.75rem;color:var(--mut);margin-top:-4px" data-i18n="settings.app_theme_hint">Gilt global für alle Benutzer (Web &amp; App).</div>
+            <button class="btn bp" id="btn-save-theme" data-i18n="settings.save">Speichern</button>
+          </div>
+        </div>
+        <div class="ssec">
+          <div class="stit">🔑 BrickLink API <span class="ao" id="bl-ao" data-i18n="settings.admins_only">⚠️ Nur Admins</span></div>
+          <div class="sform">
+            <div class="fg"><label for="bl-ck">Consumer Key</label><input type="text" id="bl-ck" autocomplete="off" /></div>
+            <div class="fg"><label for="bl-cs">Consumer Secret</label><input type="password" id="bl-cs" autocomplete="off" /></div>
+            <div class="fg"><label for="bl-tok">Token Value</label><input type="text" id="bl-tok" autocomplete="off" /></div>
+            <div class="fg"><label for="bl-ts">Token Secret</label><input type="password" id="bl-ts" autocomplete="off" /></div>
+            <div class="fg"><label for="lim-bl"><span data-i18n="settings.max_calls">Max. Aufrufe pro Tag</span> <span style="font-size:.72rem;color:var(--mut)" data-i18n="settings.default_n" data-i18n-vars='{"n":"4000"}'>(Standard: 4000)</span></label><input type="number" id="lim-bl" min="1" max="100000" value="4000" style="max-width:160px" /></div>
+            <button class="btn bp" id="btn-sav-bl" data-i18n="settings.save_key">🔑 Speichern</button>
+          </div>
+        </div>
+        <div class="ssec">
+          <div class="stit">🔶 Rebrickable API <span class="ao" id="rb-ao" data-i18n="settings.admins_only">⚠️ Nur Admins</span></div>
+          <div class="sform">
+            <div class="ibox" style="margin-bottom:4px"><a href="https://rebrickable.com/api/" target="_blank" rel="noopener noreferrer">rebrickable.com → API → Generate Key</a><br><span style="font-size:.78rem" data-i18n="settings.rebrickable_hint">Set-Infos, Teile &amp; Bilder</span></div>
+            <div class="fg"><label for="rb-key">Rebrickable API Key</label><input type="text" id="rb-key" autocomplete="off" /></div>
+            <div class="fg"><label for="lim-rb"><span data-i18n="settings.max_calls">Max. Aufrufe pro Tag</span> <span style="font-size:.72rem;color:var(--mut)" data-i18n="settings.default_n" data-i18n-vars='{"n":"25000"}'>(Standard: 25000)</span></label><input type="number" id="lim-rb" min="1" max="100000" value="25000" style="max-width:160px" /></div>
+            <button class="btn bp" id="btn-sav-rb" data-i18n="settings.save_key">🔑 Speichern</button>
+          </div>
+        </div>
+        <div class="ssec">
+          <div class="stit">📖 Brickset API <span class="ao" id="bs-ao" data-i18n="settings.admins_only">⚠️ Nur Admins</span></div>
+          <div class="sform">
+            <div class="ibox" style="margin-bottom:4px"><a href="https://brickset.com/tools/webservices/requestkey" target="_blank" rel="noopener noreferrer"><span data-i18n="settings.brickset_link">brickset.com → Tools → API Key anfordern</span></a><br><span style="font-size:.78rem" data-i18n="settings.brickset_hint">Anleitungen, Fallback Set-Infos</span></div>
+            <div class="fg"><label for="bs-key">Brickset API Key</label><input type="text" id="bs-key" autocomplete="off" /></div>
+            <div class="fg"><label for="lim-bs"><span data-i18n="settings.max_calls">Max. Aufrufe pro Tag</span> <span style="font-size:.72rem;color:var(--mut)" data-i18n="settings.default_n" data-i18n-vars='{"n":"100"}'>(Standard: 100)</span></label><input type="number" id="lim-bs" min="1" max="100000" value="100" style="max-width:160px" /></div>
+            <button class="btn bp" id="btn-sav-bs" data-i18n="settings.save_key">🔑 Speichern</button>
+          </div>
+        </div>
+        <div class="ssec full" id="usermgmt" style="display:none">
+          <div class="stit">👥 <span data-i18n="settings.users_title">Benutzerverwaltung</span> <span style="color:var(--a500)" data-i18n="settings.users_admin_badge">(Admin)</span></div>
+          <div style="display:flex;align-items:center;justify-content:space-between;padding:.65rem .9rem;background:var(--s50);border:1px solid var(--bdr);border-radius:var(--rad);margin-bottom:1rem">
+            <div>
+              <!-- Umschliessendes Label (die Checkbox liegt darin) — kein for= nötig. -->
+                <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:.875rem">
+                <input type="checkbox" id="reg-enabled" aria-label="Registrierung erlauben" data-i18n="settings.registration" data-i18n-attr="aria-label" style="width:auto" data-change="saveRegEnabled" />
+                <span data-i18n="settings.public_reg">Öffentliche Registrierung erlauben</span>
+              </label>
+              <div style="font-size:.75rem;color:var(--mut);margin-left:24px" data-i18n="settings.public_reg.hint">Wenn deaktiviert, können nur Admins neue Benutzer anlegen.</div>
+            </div>
+          </div>
+          <div id="users-tbl" style="margin-bottom:1.25rem"></div>
+          <div style="border-top:1px solid var(--bdr);padding-top:1.1rem">
+            <div class="ctitle" data-i18n="settings.users_new">Neuen Benutzer erstellen</div>
+            <div class="frow">
+              <div class="fg"><label for="nu-n" data-i18n="settings.users_username">Benutzername</label><input type="text" id="nu-n" /></div>
+              <div class="fg"><label for="nu-p" data-i18n="settings.users_password">Passwort</label><input type="password" id="nu-p" /></div>
+              <div class="fg" style="max-width:130px;justify-content:flex-end">
+                <!-- Umschliessendes Label: die Checkbox liegt darin, ein for= wäre falsch
+                     (und zeigte hier versehentlich auf ein fremdes Feld). -->
+                <label style="display:flex;align-items:center;gap:6px;cursor:pointer;margin-bottom:9px"><input type="checkbox" id="nu-a" style="width:auto" /> Admin</label>
+              </div>
+              <button class="btn bp" id="btn-cu" data-i18n="settings.users_create">➕ Erstellen</button>
+            </div>
+          </div>
+        </div>
+        <div class="ssec full">
+          <div class="stit">✉️ E-Mail / SMTP <span class="ao" style="display:none" data-i18n="settings.admins_only">⚠️ Nur Admins</span></div>
+          <div class="sform">
+            <div class="ibox" style="margin-bottom:.75rem" data-i18n="settings.smtp.hint">Für Registrierungsbestätigungen und Passwort-Rücksetzungen. Ohne SMTP-Konfiguration werden Links in der Server-Konsole ausgegeben.</div>
+            <div style="display:grid;grid-template-columns:1fr 120px;gap:10px">
+              <div class="fg"><label for="smtp-host">SMTP Host</label><input type="text" id="smtp-host" placeholder="mail.example.com" /></div>
+              <div class="fg"><label for="smtp-port">Port</label><input type="number" id="smtp-port" placeholder="587" /></div>
+            </div>
+            <div class="fg"><label for="smtp-user" data-i18n="settings.smtp.user">Benutzername</label><input type="text" id="smtp-user" autocomplete="off" /></div>
+            <div class="fg"><label for="smtp-pass" data-i18n="settings.smtp.pass">Passwort</label><input type="password" id="smtp-pass" autocomplete="off" /></div>
+            <div class="fg"><label for="smtp-from" data-i18n="settings.smtp.from">Absender (Von)</label><input type="text" id="smtp-from" placeholder="BrickInventory Manager &lt;noreply@example.com&gt;" /></div>
+            <div class="fg"><label style="display:flex;align-items:center;gap:8px;cursor:pointer"><input type="checkbox" id="smtp-secure" aria-label="SMTP-Verschlüsselung" data-i18n="settings.smtp_secure" data-i18n-attr="aria-label" style="width:auto" /> TLS/SSL (Port 465)</label></div>
+            <div class="fg"><label style="display:flex;align-items:center;gap:8px;cursor:pointer"><input type="checkbox" id="smtp-insecure" aria-label="Zertifikat des Mailservers nicht prüfen" data-i18n="settings.smtp.insecure_tls" data-i18n-attr="aria-label" style="width:auto" /> <span data-i18n="settings.smtp.insecure_tls">Zertifikat nicht prüfen (selbst signiert)</span></label></div>
+            <div style="display:flex;gap:8px;flex-wrap:wrap">
+              <button class="btn bp" id="btn-sav-smtp" data-i18n="settings.smtp.save">💾 SMTP speichern</button>
+            </div>
+            <div style="display:flex;gap:8px;align-items:flex-end;flex-wrap:wrap;margin-top:.5rem">
+              <div class="fg" style="max-width:240px;margin:0"><label for="smtp-test-email" data-i18n="settings.smtp.test_to">Test-E-Mail senden an</label><input type="email" id="smtp-test-email" placeholder="deine@email.com" /></div>
+              <button class="btn bs" id="btn-test-smtp" style="margin-bottom:1px" data-i18n="smtp.test_btn">🔌 Verbindung testen</button>
+            </div>
+            <div id="smtp-test-result" style="display:none;font-size:.82rem;margin-top:.5rem;padding:.5rem .75rem;border-radius:6px"></div>
+          </div>
+        </div>
+
+
+      </div>
+
+      <!-- Daten exportieren: für alle Nutzer sichtbar -->
+      <div class="sgroup-label" data-i18n="settings.data_export">📦 Daten exportieren</div>
+
+        <div class="ssec full">
+          <div style="border-top:1px solid var(--bdr);padding-top:1.1rem">
+            <div class="stit" style="display:flex;align-items:center;gap:6px"><svg width="18" height="18" viewBox="0 0 120 120" xmlns="http://www.w3.org/2000/svg" style="flex-shrink:0"><rect x="18" y="38" width="84" height="68" rx="3" fill="#e63329"/><polygon points="18,38 30,20 102,20 102,38" fill="#cc2a21"/><polygon points="102,20 118,30 118,86 102,106" fill="#b5231c"/><ellipse cx="43" cy="20" rx="6" ry="3" fill="#cc2a21"/><rect x="37" y="17" width="12" height="3" fill="#cc2a21"/><ellipse cx="43" cy="17" rx="6" ry="3" fill="#b5231c"/><ellipse cx="58" cy="20" rx="6" ry="3" fill="#cc2a21"/><rect x="52" y="17" width="12" height="3" fill="#cc2a21"/><ellipse cx="58" cy="17" rx="6" ry="3" fill="#b5231c"/><ellipse cx="73" cy="20" rx="6" ry="3" fill="#cc2a21"/><rect x="67" y="17" width="12" height="3" fill="#cc2a21"/><ellipse cx="73" cy="17" rx="6" ry="3" fill="#b5231c"/><ellipse cx="88" cy="20" rx="6" ry="3" fill="#cc2a21"/><rect x="82" y="17" width="12" height="3" fill="#cc2a21"/><ellipse cx="88" cy="17" rx="6" ry="3" fill="#b5231c"/><rect x="24" y="54" width="72" height="40" rx="2" fill="#fff"/><rect x="29" y="58" width="46" height="15" rx="2" fill="#f5a800"/><text x="52" y="69" text-anchor="middle" font-family="Arial,sans-serif" font-weight="800" font-size="11" fill="white">BIM</text></svg> <span data-i18n="settings.data_export_title">Daten exportieren / importieren</span></div>
+
+            <!-- Konfiguration-Export/-Import: nur für Admins sichtbar -->
+            <div class="admin-only" style="display:none">
+              <p style="font-size:.82rem;color:var(--mut);margin:0 0 .5rem 0" data-i18n="settings.cfg_hint">API-Keys und Einstellungen als JSON exportieren/importieren.</p>
+              <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-bottom:1rem">
+                <button class="btn bs" id="btn-cfg-export" data-i18n="settings.cfg_export">📥 Konfiguration exportieren</button>
+                <label for="mon-cache-ttl" class="btn bs" style="cursor:pointer"><span data-i18n="settings.cfg_import">📤 Konfiguration importieren</span><input type="file" id="cfg-import-file" accept=".json" style="display:none" data-change="importConfig" /></label>
+                <span id="cfg-import-status" style="font-size:.8rem;color:var(--mut)"></span>
+              </div>
+            </div>
+
+            <p style="font-size:.82rem;color:var(--mut);margin:0 0 .5rem 0">
+              <span data-i18n="settings.data_zip_hint">Sets, manuell erfasste Teile und Minifiguren als ZIP mit 3 CSV-Dateien exportieren — diese können danach über den entsprechenden CSV-Importer (Reiter Sets/Teile/Minifiguren) wieder importiert werden.</span>
+            </p>
+            <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-bottom:1rem">
+              <a class="btn bs" href="/api/settings/export/data" data-i18n="settings.data_zip_btn">📦 Sets, Teile &amp; Minifiguren exportieren (ZIP)</a>
+            </div>
+
+            <p style="font-size:.82rem;color:var(--mut);margin:0 0 .5rem 0">
+              <span data-i18n="settings.rb_list_hint">Alle Sets im Rebrickable-Listenformat exportieren (Spalten "Set Number,Quantity"), um sie unter „My Sets → Add via List" bei Rebrickable zu importieren.</span>
+            </p>
+            <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center">
+              <a class="btn bs" href="/api/sets/export/rebrickable" style="display:inline-flex;align-items:center;gap:6px"><svg width="16" height="16" viewBox="0 0 120 120" xmlns="http://www.w3.org/2000/svg" style="flex-shrink:0"><rect x="18" y="38" width="84" height="68" rx="3" fill="#e63329"/><polygon points="18,38 30,20 102,20 102,38" fill="#cc2a21"/><polygon points="102,20 118,30 118,86 102,106" fill="#b5231c"/><ellipse cx="43" cy="20" rx="6" ry="3" fill="#cc2a21"/><rect x="37" y="17" width="12" height="3" fill="#cc2a21"/><ellipse cx="43" cy="17" rx="6" ry="3" fill="#b5231c"/><ellipse cx="58" cy="20" rx="6" ry="3" fill="#cc2a21"/><rect x="52" y="17" width="12" height="3" fill="#cc2a21"/><ellipse cx="58" cy="17" rx="6" ry="3" fill="#b5231c"/><ellipse cx="73" cy="20" rx="6" ry="3" fill="#cc2a21"/><rect x="67" y="17" width="12" height="3" fill="#cc2a21"/><ellipse cx="73" cy="17" rx="6" ry="3" fill="#b5231c"/><ellipse cx="88" cy="20" rx="6" ry="3" fill="#cc2a21"/><rect x="82" y="17" width="12" height="3" fill="#cc2a21"/><ellipse cx="88" cy="17" rx="6" ry="3" fill="#b5231c"/><rect x="24" y="54" width="72" height="40" rx="2" fill="#fff"/><rect x="29" y="58" width="46" height="15" rx="2" fill="#f5a800"/><text x="52" y="69" text-anchor="middle" font-family="Arial,sans-serif" font-weight="800" font-size="11" fill="white">BIM</text></svg> <span data-i18n="settings.export_rb">Sets für Rebrickable exportieren</span></a>
+            </div>
+          </div>
+        </div>
+
+      <!-- QR-Code für Android App -->
+      <div class="sgroup-label">📱 Android App</div>
+      <div class="ssec" style="margin-bottom:1.25rem">
+        <div class="stit" data-i18n="settings.qr.title">📲 QR-Code für Android App</div>
+        <p style="font-size:.82rem;color:var(--mut);margin-bottom:1rem" data-i18n="settings.qr.hint">Scanne diesen Code in der Android App um Server-URL und Login automatisch zu konfigurieren. Der Code ist 5 Minuten gültig und kann nur einmal verwendet werden.</p>
+        <div id="qr-container" style="display:flex;flex-direction:column;align-items:flex-start;gap:.75rem">
+          <!-- Hidden URL field — auto-filled from window.location -->
+          <input type="hidden" id="qr-server-url" />
+          <button class="btn bp" id="btn-gen-qr" data-i18n="settings.qr.generate">🔄 QR-Code generieren</button>
+          <div id="qr-code" style="background:#fff;padding:12px;border-radius:8px;border:1px solid var(--bdr);display:inline-block"></div>
+          <div id="qr-hint" style="font-size:.75rem;color:var(--mut)"></div>
+        </div>
+      </div>
+
+      <!-- Gefahrenzone — für alle Benutzer sichtbar -->
+      <div class="sgroup-label" style="color:var(--r500)" data-i18n="settings.danger_zone">⚠️ Gefahrenzone</div>
+      <div class="ssec" style="border:1px solid var(--r200);border-radius:var(--rad);padding:1rem;background:var(--r50,#fff5f5)">
+        <p style="font-size:.82rem;color:var(--mut);margin-bottom:.75rem" data-i18n="settings.danger.hint">Diese Aktionen können nicht rückgängig gemacht werden.</p>
+        <button class="btn bd" id="btn-dall" data-i18n="settings.delete_all_btn">🔥 Alle meine Sets löschen</button>
+      </div>
+    </div>
+
+
+    <!-- MONITOR TAB -->
+    <div class="tab" id="tab-monitor">
+      <div class="ph" style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:.5rem">
+        <h2 class="ptitle" data-tab-title="monitor"><span class="ptitle-icon"></span><span data-i18n="monitor.title">Job Monitoring</span></h2>
+        <button class="btn bs btn-sm" data-click="openLogViewer" style="font-size:.82rem" data-i18n="monitor.logs_btn">🗒️ Logs anzeigen</button>
+      </div>
+      <!-- Hidden stubs so existing JS references don't break -->
+      <div style="display:none">
+        <button id="btn-job-trigger"></button>
+        <button id="btn-clr"></button>
+        <button id="btn-prices"></button>
+        <button id="btn-history-fill"></button>
+        <button id="btn-bl-debug"></button>
+        <button id="btn-reimport-all"></button>
+        <div id="job-dot"></div>
+        <span id="job-status-txt"></span>
+        <span id="job-status-detail"></span>
+        <div id="job-progress-wrap"><div id="job-prog-bar"></div><span id="job-prog-txt"></span></div>
+      </div>
+      <!-- API-Aufrufe heute -->
+      <div class="card" style="padding:1rem;margin-bottom:1rem">
+        <div style="font-weight:600;font-size:.85rem;margin-bottom:.75rem" data-i18n="monitor.api_calls">📊 API-Aufrufe heute</div>
+        <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:.75rem" id="rl-stats">
+          <div class="pstat"><div class="v" id="rl-rebrickable">—</div><div class="l" data-i18n="monitor.api.rebrickable">Rebrickable</div></div>
+          <div class="pstat"><div class="v" id="rl-bricklink">—</div><div class="l" data-i18n="monitor.api.bricklink">BrickLink</div></div>
+          <div class="pstat"><div class="v" id="rl-brickset">—</div><div class="l" data-i18n="monitor.api.brickset">Brickset</div></div>
+        </div>
+      </div>
+
+      <!-- Cache-Status -->
+      <div class="card" style="padding:1rem;margin-bottom:1rem">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:.75rem">
+          <div style="font-weight:600;font-size:.85rem" data-i18n="monitor.cache_status">📊 Cache-Status</div>
+          <div style="display:flex;align-items:center;gap:.5rem">
+            <label style="font-size:.78rem;color:var(--mut)" data-i18n="monitor.cache_duration">Cache-Dauer:</label>
+            <select id="mon-cache-ttl" style="font-size:.78rem;padding:3px 6px;border:1px solid var(--bdr);border-radius:6px;background:var(--sur)">
+              <option value="12" data-i18n="settings.job.h12">12 Stunden</option>
+              <option value="24" selected data-i18n="monitor.cache_day">1 Tag</option>
+              <option value="168" data-i18n="monitor.cache_week">1 Woche</option>
+            </select>
+            <span style="margin-left:.5rem;font-size:.78rem;color:var(--mut)" data-i18n="monitor.default_condition">Preiszustand:</span>
+            <select id="mon-default-condition" style="font-size:.78rem;padding:3px 6px;border:1px solid var(--bdr);border-radius:6px;background:var(--sur)" aria-label="mon-default-condition">
+              <option value="N" data-i18n="monitor.condition_new">Neu</option>
+              <option value="U" data-i18n="monitor.condition_used">Gebraucht</option>
+            </select>
+            <button class="btn bs btn-sm" id="btn-save-cache-ttl" style="padding:3px 10px;font-size:.78rem" data-i18n="settings.save">Speichern</button>
+          </div>
+        </div>
+        <div id="cache-stats-box" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:.75rem;margin-bottom:.75rem">
+          <div class="pstat"><div class="v" id="cs-prices">—</div><div class="l" data-i18n="monitor.prices_cached">Preise gecacht</div></div>
+          <div class="pstat"><div class="v" id="cs-subsets">—</div><div class="l" data-i18n="monitor.parts_lists">Teile-Listen</div></div>
+          <div class="pstat"><div class="v" id="cs-catalog">—</div><div class="l" data-i18n="monitor.catalog_entries">Katalog-Einträge</div></div>
+        </div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap">
+          <button class="btn bs btn-sm" id="btn-clr-prices" data-i18n="settings.clear_price_cache">🗑️ Preis-Cache leeren</button>
+          <button class="btn bs btn-sm" id="btn-clr-all-cache"><span data-i18n="settings.all_cache.clear">🗑️ Alle Caches leeren</span> <span style="font-size:.72rem;color:var(--mut)" data-i18n="settings.clear_all_cache_hint">(Preise + Teile + Katalog)</span></button>
+        </div>
+      </div>
+
+      <div id="monitor-content">
+        <div class="loading"><div class="spin"></div><span data-i18n="monitor.loading">Lade…</span></div>
+      </div>
+    </div>
+  </main>
+</div>
+
+<!-- Confirm Dialog -->
+<div class="ovl" id="confirm-modal" role="dialog" aria-modal="true" style="display:none;z-index:400">
+  <div class="modal" style="max-width:400px;padding:2rem;text-align:center">
+    <div style="font-size:2rem;margin-bottom:.75rem" id="cd-icon">🗑️</div>
+    <h3 style="margin:0 0 .5rem;font-size:1.05rem;font-weight:700" id="cd-title" data-i18n="common.delete_title">Löschen?</h3>
+    <p style="margin:0 0 1.5rem;font-size:.875rem;color:var(--mut);line-height:1.55" id="cd-msg"></p>
+    <div style="display:flex;gap:.75rem;justify-content:center">
+      <button class="btn bs" id="cd-cancel" style="min-width:100px" data-i18n="common.cancel">Abbrechen</button>
+      <button class="btn bd" id="cd-confirm" style="min-width:100px" data-i18n="confirm.delete_btn">Löschen</button>
+    </div>
+  </div>
+</div>
+
+<!-- Set Detail Modal -->
+<div class="ovl" id="set-modal" role="dialog" aria-modal="true">
+  <div class="modal">
+    <div class="mhd"><div class="mtit" id="m-tit">Set</div><button class="btn bs btn-sm" data-click="closeModal">✕</button></div>
+    <img id="m-img" src="" alt="" class="mimg" style="cursor:zoom-in" data-orig="/assets/set-placeholder.svg" data-click="openImageLightboxFromEl" />
+    <div id="m-det"></div>
+    <div id="m-instr" class="il"></div>
+    <div class="mfooter">
+      <button class="btn bd" id="btn-md">🗑️</button>
+    </div>
+  </div>
+</div>
+
+<!-- Katalog Set-Detail Modal -->
+<div class="ovl" id="cat-modal" role="dialog" aria-modal="true">
+  <div class="modal" style="max-width:520px">
+    <div class="mhd">
+      <div>
+        <div class="mtit" id="cat-m-tit">—</div>
+        <div id="cat-m-sub" style="font-size:.78rem;color:var(--mut);margin-top:2px"></div>
+      </div>
+      <button class="btn bs btn-sm" data-click="closeCatModal">✕</button>
+    </div>
+    <img id="cat-m-img" src="" alt="" class="mimg" style="cursor:zoom-in" referrerpolicy="no-referrer" data-orig="/assets/set-placeholder.svg" data-click="openImageLightboxFromEl" />
+    <div id="cat-m-det"></div>
+    <div class="mfooter" style="justify-content:space-between;flex-wrap:wrap;gap:8px">
+      <div style="display:flex;gap:8px;align-items:flex-end;flex-wrap:wrap">
+        <div class="fg" id="cat-m-owner-box" style="max-width:150px;display:none"><label for="cat-m-owner" data-i18n="household.for_account">Für Konto</label><select id="cat-m-owner" style="padding:.45rem .7rem;border:1px solid var(--bdr);border-radius:var(--rad);background:var(--sur);color:var(--txt);font-size:.875rem"></select></div>
+        <div class="fg" style="max-width:74px"><label for="cat-m-qty" data-i18n="gallery.add.qty">Anzahl</label><input type="number" id="cat-m-qty" value="1" min="1" /></div>
+        <div class="fg" style="max-width:110px"><label for="cat-m-price" data-i18n="gallery.add.price">Kaufpreis (opt.)</label><input type="number" id="cat-m-price" step="0.01" min="0" placeholder="—" /></div>
+        <div class="fg" style="max-width:110px"><label for="cat-m-cond" data-i18n="common.condition">Zustand</label><select id="cat-m-cond" style="padding:.45rem .7rem;border:1px solid var(--bdr);border-radius:var(--rad);background:var(--sur);color:var(--txt);font-size:.875rem"><option value="N" data-i18n="common.condition_new">Neu</option><option value="U" data-i18n="common.condition_used">Gebraucht</option></select></div>
+      </div>
+      <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+        <a class="btn bs" id="cat-m-bricklink" href="#" target="_blank" rel="noopener" data-i18n="catalog.buy_bricklink">🛒 Auf BrickLink kaufen</a>
+        <button class="btn bp" id="cat-m-add" data-i18n="catalog.add_to_gallery">➕ In Galerie aufnehmen</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Manual Item Detail Modal (Teile + Minifiguren) -->
+<div class="ovl" id="man-detail-modal" role="dialog" aria-modal="true">
+  <div class="modal" style="max-width:480px">
+    <div class="mhd">
+      <div>
+        <div class="mtit" id="man-detail-tit">—</div>
+        <div id="man-detail-sub" style="font-size:.78rem;color:var(--mut);margin-top:2px"></div>
+      </div>
+      <button class="btn bs btn-sm" data-click="closeManDetail">✕</button>
+    </div>
+    <img id="man-detail-img" src="" alt="" style="width:100%;max-height:160px;object-fit:contain;background:var(--s50);border-radius:8px;border:1px solid var(--bdr);margin-bottom:1rem;display:none" />
+    <div id="man-detail-body"></div>
+    <div class="mfooter" style="justify-content:space-between">
+      <button class="btn bd btn-sm" id="man-detail-del">🗑️</button>
+      <button class="btn bs" data-click="closeManDetail" data-i18n="acq.back">Zurück</button>
+    </div>
+  </div>
+</div>
+
+<!-- PDF-Viewer-Modal (In-App-Anzeige von Anleitungen) -->
+<div class="ovl" id="pdf-viewer-modal" role="dialog" aria-modal="true" style="display:none;z-index:500">
+  <div style="background:var(--sur);width:96vw;height:96vh;max-width:1200px;border-radius:12px;display:flex;flex-direction:column;overflow:hidden;box-shadow:var(--sh1)">
+    <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;padding:.55rem .9rem;border-bottom:1px solid var(--bdr)">
+      <div id="pdf-viewer-title" style="font-weight:600;font-size:.9rem;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">PDF</div>
+      <div style="display:flex;gap:8px;align-items:center;flex-shrink:0">
+        <button id="pdf-viewer-print" class="btn bs btn-sm" data-click="printPdfViewer">🖨️ <span data-i18n="pdf.print">Drucken</span></button>
+        <a id="pdf-viewer-download" class="btn bs btn-sm" download href="#" style="text-decoration:none">⬇️ <span data-i18n="pdf.download">Herunterladen</span></a>
+        <button class="btn bs btn-sm" data-click="closePdfViewer" aria-label="Schliessen">✕</button>
+      </div>
+    </div>
+    <div style="flex:1;position:relative;background:#525659;min-height:0">
+      <div id="pdf-viewer-loading" style="position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;color:#fff;z-index:2">
+        <div class="spin"></div><span data-i18n="pdf.loading">PDF wird geladen…</span>
+      </div>
+      <div id="pdf-viewer-pages" style="position:absolute;inset:0;overflow:auto;padding:14px 0;display:flex;flex-direction:column;align-items:center;gap:14px"></div>
+    </div>
+  </div>
+</div>
+
+<!-- Kaufpreis-Modal (Erfassungen pro Set) -->
+<div class="ovl" id="acq-modal" role="dialog" aria-modal="true" aria-labelledby="acq-modal-tit">
+  <!-- Breiter als die übrigen Dialoge (560px): Die Tabelle hat sechs Spalten,
+       seit der Eigentümer dazugekommen ist — Menge, Datum, Zustand, Preis,
+       Eigentümer, Löschen. Bei 560px lag darüber ein waagerechter Rollbalken,
+       und ein Dialog, in dem man seitwärts scrollen muss, um den Löschknopf zu
+       sehen, ist eine Falle.
+       Die Klasse .acq-wide (styles.css) nimmt zusätzlich etwas Innenabstand
+       weg — der Platz gehört der Tabelle. -->
+  <div class="modal acq-wide" style="max-width:780px">
+    <div class="mhd">
+      <div>
+        <div class="mtit" id="acq-modal-tit" data-i18n="detail.purchase_price">Kaufpreise</div>
+        <div id="acq-modal-sub" style="font-size:.78rem;color:var(--mut);margin-top:2px"></div>
+      </div>
+      <button class="btn bs btn-sm" data-click="closeAcqModal">✕</button>
+    </div>
+    <div id="acq-modal-body" style="margin-top:.5rem"></div>
+    <div class="mfooter">
+      <button class="btn bs" data-click="closeAcqModal" data-i18n="acq.back">Zurück</button>
+    </div>
+  </div>
+</div>
+
+<!-- Image Lightbox (vergrösserte Set-Ansicht) -->
+<div class="ovl" id="img-lightbox" style="z-index:300;background:rgba(255,255,255,.97)" data-click="lightboxBackdrop">
+  <button class="btn bs btn-sm" data-click="closeImageLightbox" style="position:absolute;top:20px;right:20px;font-size:1.1rem;padding:6px 14px">✕</button>
+  <img id="lightbox-img" src="" alt="" data-onerror="keep" style="max-width:92vw;max-height:92vh;object-fit:contain;border-radius:8px" />
+</div>
+
+<!-- Reset PW Modal -->
+<div class="ovl" id="pw-modal" role="dialog" aria-modal="true">
+  <div class="modal" style="max-width:360px">
+    <div class="mhd"><div class="mtit" data-i18n="users.pw_reset_title">Passwort zurücksetzen</div><button class="btn bs btn-sm" data-click="closePwModal">✕</button></div>
+    <div class="sform">
+      <div class="fg"><label for="rpw-v" data-i18n="users.pw_modal.new_password">Neues Passwort</label><input type="password" id="rpw-v" /></div>
+      <input type="hidden" id="rpw-uid" />
+      <div style="display:flex;gap:10px;justify-content:flex-end;margin-top:.5rem">
+        <button class="btn bs" data-click="closePwModal" data-i18n="users.pw_modal.cancel">Abbrechen</button>
+        <button class="btn bp" id="btn-rpw" data-i18n="settings.save">Speichern</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div id="toasts"></div>
+
+<script type="module" src="/js/pdfjs-boot.js?v=2026.08.26.1716"></script>
+<!-- Ein Bündel statt zwölf Einzeldateien.
+     i18n.js und js/01-*.js … js/11-*.js werden von scripts/build-frontend.js in
+     genau dieser Reihenfolge aneinandergehängt und minifiziert. Die Quellen
+     bleiben im Repo lesbar und einzeln editierbar; nach einer Änderung an
+     public/js/ oder public/i18n.js muss `npm run build:frontend` laufen
+     (npm run dev und der Docker-Build tun das automatisch).
+     00-theme-boot.js bleibt oben im <head> (muss vor dem ersten Rendern laufen),
+     pdfjs-boot.js bleibt separat (ES-Modul), logviewer.js wird bei Bedarf
+     zur Laufzeit nachgeladen. -->
+<script src="/js/app.bundle.js?v=2026.08.26.1716"></script>
+<!-- app.js ist in Sektions-Dateien aufgeteilt (public/js/) — Ladereihenfolge
+     ist relevant, die Dateien teilen sich den globalen Scope. -->
+<!-- Der eigene Scrollbalken (#app-scrollbar) wird von js/01-core.js ERZEUGT,
+     nicht hier ausgezeichnet. Grund: app.bundle.js ist ein klassisches Skript
+     und läuft, sobald es geparst ist — also VOR allem, was danach im Markup
+     steht. Ein hier notiertes Element gäbe es beim Start noch nicht, und der
+     Balken erschiene nie. -->
+</body>
+</html>
+

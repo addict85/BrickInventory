@@ -1,0 +1,10 @@
+<svg width="32" height="32" viewBox="0 0 120 120" xmlns="http://www.w3.org/2000/svg">
+  <rect x="18" y="38" width="84" height="68" rx="3" fill="#e63329"/>
+  <polygon points="18,38 30,20 102,20 102,38" fill="#cc2a21"/>
+  <polygon points="102,20 118,30 118,86 102,106" fill="#b5231c"/>
+  <rect x="24" y="54" width="72" height="40" rx="2" fill="#fff"/>
+  <rect x="29" y="58" width="46" height="15" rx="2" fill="#f5a800"/>
+  <text x="52" y="69" text-anchor="middle" font-family="Arial,sans-serif" font-weight="800" font-size="11" fill="white">BIM</text>
+  <rect x="29" y="78" width="62" height="5" rx="1" fill="#e5e7eb"/>
+  <rect x="29" y="86" width="42" height="5" rx="1" fill="#e5e7eb"/>
+</svg>

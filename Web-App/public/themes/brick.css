@@ -1,0 +1,244 @@
+/* ═══════════════════════════════════════════════════════════════════════════
+   APP-DESIGN "brick" (blau) — Stein-Look, vom Admin global wählbar.
+   ---------------------------------------------------------------------------
+   Aktiv, sobald <html data-theme="brick"> gesetzt ist (siehe applyTheme() in
+   js/01-core.js). Alle Regeln sind unter [data-theme="brick"] gescoped, das
+   File wird daher immer geladen, greift aber nur beim aktiven Design.
+
+   NEUES DESIGN HINZUFÜGEN:
+     1. Diese Datei nach themes/<name>.css kopieren und [data-theme="brick"]
+        überall durch [data-theme="<name>"] ersetzen.
+     2. In index.html ein <link rel="stylesheet" href="/themes/<name>.css">
+        ergänzen (neben brick.css).
+     3. In index.html beim Select #mon-app-theme eine <option value="<name>">
+        hinzufügen und den Namen serverseitig in routes/settings.ts
+        (POST /admin/theme, Whitelist) freischalten.
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+[data-theme="brick"]{
+  /* Gedämpfte Schieferblau-Primärpalette */
+  --b50:#eef3f8;--b100:#d9e4f0;--b200:#b7cbe0;--b300:#8fabcb;--b400:#6d94b8;
+  --b500:#4a6f97;--b600:#3d5a80;--b700:#2f4763;
+  /* Diagrammlinien in den Farben der Zustands-Plaketten.
+     Salbeigrün = Neu, Sand = Gebraucht — dieselben Werte wie .cond-new und
+     .cond-used weiter unten in dieser Datei.
+     Der Grund ist nicht Geschmack: Diese beiden Farben stehen überall in der
+     Oberfläche für genau diese Unterscheidung. Wer sie im Diagramm
+     wiedererkennt, muss die Legende nicht lesen.
+     Vorher stand hier --chart-used:#3d5a80 (die Primärfarbe des Designs). Das
+     passte zur Palette, ergab aber zusammen mit dem hellen Blau der
+     Neu-Linie ZWEI Blautöne, die sich nur in der Helligkeit unterschieden —
+     verkleinert oder gedruckt verschwindet so ein Unterschied als Erstes. */
+  --chart-new:#5f8468;--chart-used:#9a7a45;
+  --brick-petrol:#3d7a8c;--brick-petrol-dk:#316775;
+  --brick-slate-lt:#8199b3;
+  --bg:#c9d5e2;                 /* Seitenhintergrund hinter der Grundplatte */
+  --screen-bg:#c9d5e2;          /* Login-/Startup-Screen (vor dem Login) */
+  --rad:14px;
+  --sh0:0 1px 2px rgba(45,71,99,.10);
+  --sh1:0 3px 10px rgba(45,71,99,.12);
+  --sh2:0 8px 24px rgba(45,71,99,.16);
+}
+
+/* Wiederverwendbare Noppenreihe (helle Kreise auf farbiger Fläche) */
+[data-theme="brick"] .brick-studs,
+[data-theme="brick"] .sc::before,
+[data-theme="brick"] .bstat::before{
+  background-image:radial-gradient(circle at 8px center, rgba(255,255,255,.42) 3px, transparent 3.6px);
+  background-size:16px 100%;background-repeat:repeat-x;
+}
+
+/* ── Grundplatte: der gesamte App-Inhalt sitzt in einem hellen, runden Panel ── */
+[data-theme="brick"] #app{
+  max-width:1200px;margin:0 auto;background:#e6ecf2;
+  border-radius:24px;padding:14px 16px 22px;
+}
+[data-theme="brick"] body{background:var(--bg)}
+
+/* ── Header als schwebende blaue Stein-Kachel ────────────────────────────── */
+[data-theme="brick"] header{
+  position:static;background:var(--b600);color:#fff;
+  border-radius:16px;border-bottom:none;overflow:visible;
+  padding:14px 20px;margin-bottom:14px;box-shadow:var(--sh1);
+}
+[data-theme="brick"] header .logo h1,
+[data-theme="brick"] header .logo h1 span{color:#fff}
+[data-theme="brick"] header .logo svg{
+  background:#7fa3c9;border-radius:9px;padding:6px;box-sizing:content-box;
+  filter:hue-rotate(200deg) saturate(.55) brightness(1.05);
+}
+/* Kopf-Statistik rechts als dezente helle Chips */
+[data-theme="brick"] header .hstats .hs .v{color:#fff}
+[data-theme="brick"] header .hstats .hs .l{color:rgba(255,255,255,.72)}
+[data-theme="brick"] header .hstats .hs{border-color:rgba(255,255,255,.18)}
+/* Kopf-Statistik im Stein-Design ausblenden — die Werte stehen bereits in den
+   großen Stat-Kacheln unter der Navigation. */
+[data-theme="brick"] header .hstats{display:none}
+[data-theme="brick"] header .ubadge{background:rgba(255,255,255,.16);color:#fff}
+[data-theme="brick"] header .abadge{background:var(--brick-petrol);color:#fff}
+[data-theme="brick"] header #btn-logout{
+  background:rgba(255,255,255,.14);color:#fff;border-color:rgba(255,255,255,.24)}
+[data-theme="brick"] header #gib-text,
+[data-theme="brick"] header #gib-chevron{color:rgba(255,255,255,.85)}
+
+/* ── Navigation als klobige Pills ────────────────────────────────────────── */
+[data-theme="brick"] nav{
+  position:static;background:transparent;border:none;box-shadow:none;
+  padding:0;gap:9px;margin-bottom:16px;flex-wrap:wrap;
+}
+[data-theme="brick"] .ntab{
+  background:#fff;color:#4a5763;border:1.5px solid #d4dde7;border-bottom:1.5px solid #d4dde7;
+  border-radius:11px;padding:9px 16px;margin:0;font-weight:600;
+}
+[data-theme="brick"] .ntab:hover{background:#f2f6fa}
+[data-theme="brick"] .ntab.active{
+  background:var(--b600);color:#fff;border-color:var(--b600);
+}
+[data-theme="brick"] .ntab.active svg{filter:brightness(0) invert(1)}
+
+/* ── Buttons: primäre Aktionen in Petrol (Stein-Optik mit „Bauhöhe") ─────── */
+[data-theme="brick"] .btn{border-radius:10px}
+[data-theme="brick"] .bp{
+  background:var(--brick-petrol);box-shadow:0 2px 0 var(--brick-petrol-dk);
+}
+[data-theme="brick"] .bp:hover{background:#3a7080;box-shadow:0 1px 0 var(--brick-petrol-dk)}
+
+/* ── Panels/Karten etwas klobiger ────────────────────────────────────────── */
+[data-theme="brick"] .card,[data-theme="brick"] .fstat,
+[data-theme="brick"] .ssec,[data-theme="brick"] .parts-sidebar,
+[data-theme="brick"] .gctrl{border-width:1.5px;border-radius:14px}
+
+/* ── Set-Karten: blauer Noppen-„Deckel" über dem Bild + Badges ──────────── */
+[data-theme="brick"] .sc{border-width:2px;border-radius:16px}
+[data-theme="brick"] .sc::before{
+  content:'';position:absolute;top:0;left:0;right:0;height:18px;z-index:3;
+  background-color:var(--b600);border-bottom:1px solid rgba(0,0,0,.12);
+}
+[data-theme="brick"] .sc .sci{margin-top:18px}
+/* Löschen-Knopf in der Galerie über den Stein-Deckel heben (sonst verdeckt der Deckel es) */
+[data-theme="brick"] .sc .ca{z-index:5}
+/* Der Knopf sitzt auf der dunkelblauen Noppenleiste (--b600, 18px hoch).
+   Das helle Grau aus styles.css wäre dort ein heller Fleck; stattdessen ein
+   heller Strich auf dem Deckel selbst — sichtbar, aber ruhig. Beim Überfahren
+   wechselt er wie im hellen Design auf Rot. */
+/* Der Knopf sitzt auf der dunkelblauen Noppenleiste (--b600). Weiss mit
+   Teiltransparenz wirkte dort ausgewaschen — jetzt volles Weiss für Symbol und
+   Rahmen, der Grund bleibt leicht durchscheinend, damit die Noppen sichtbar
+   bleiben. Beim Überfahren dreht sich das Verhältnis um: weisser Grund,
+   Symbol in der Farbe der Leiste. Dieselbe Farbwelt, kein Rot. */
+/* War: rgba(255,255,255,.22) im Ruhezustand — dadurch kaum sichtbar, solange
+   man nicht direkt über dem Knopf selbst war (nicht nur über der Kachel).
+   Jetzt derselbe volle weisse Grund wie beim Überfahren, von Anfang an. */
+[data-theme="brick"] .sc .delbtn{
+  background:#fff;border-color:#fff;color:var(--b600);
+}
+[data-theme="brick"] .sc .delbtn:hover{
+  background:#fff;border-color:#fff;color:var(--r500);
+}
+[data-theme="brick"] .qbadge{background:var(--b600);color:#fff;border-radius:7px}
+/* Zustands-Plaketten: Neu = Salbeigrün, Gebraucht = Sand (wie im Mockup) */
+[data-theme="brick"] .cond-new{background:#e7efe8;color:#5f8468}
+[data-theme="brick"] .cond-used{background:#eee7db;color:#9a7a45}
+
+/* ── Große Stat-Kacheln in der Galerie (nur im Stein-Design sichtbar) ─────── */
+.brick-stats{display:none}
+[data-theme="brick"] .brick-stats{
+  display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin:0 0 16px;
+}
+[data-theme="brick"] .bstat{
+  position:relative;border-radius:14px;padding:14px 16px;color:#fff;overflow:hidden;
+}
+[data-theme="brick"] .bstat .bstat-l{font-size:.82rem;opacity:.86}
+[data-theme="brick"] .bstat .bstat-v{font-size:1.7rem;font-weight:800;margin-top:2px;line-height:1.1}
+[data-theme="brick"] .bstat-slate{background:var(--b600)}
+[data-theme="brick"] .bstat-petrol{background:var(--brick-petrol)}
+[data-theme="brick"] .bstat-light{background:var(--brick-slate-lt);color:#20303f}
+[data-theme="brick"] .bstat-light .bstat-l{opacity:.9}
+@media(max-width:640px){[data-theme="brick"] .brick-stats{grid-template-columns:1fr}}
+
+/* ── Katalog: Von-Bis-Jahres-Slider im Stein-Look ────────────────────────── */
+/* Schiene wie die Grundplatten-Ränder, Füllung in Slate-Blau */
+[data-theme="brick"] .dual-track{background:#d4dde7;height:6px;top:10px;border-radius:3px}
+[data-theme="brick"] .dual-fill{background:var(--b600);height:6px;border-radius:3px}
+/* Griffe als Noppen: Stud-Glanzpunkt oben links + „Bauhöhe" (Schatten unten) */
+[data-theme="brick"] .dual-range input[type=range]::-webkit-slider-thumb{
+  width:18px;height:18px;margin-top:4px;
+  background:radial-gradient(circle at 35% 32%, rgba(255,255,255,.55) 3.5px, transparent 4.5px), var(--b600);
+  border:2px solid #fff;
+  box-shadow:0 2px 0 var(--b700), 0 1px 3px rgba(45,71,99,.28);
+}
+[data-theme="brick"] .dual-range input[type=range]::-moz-range-thumb{
+  width:14px;height:14px;
+  background:radial-gradient(circle at 35% 32%, rgba(255,255,255,.55) 3px, transparent 4px), var(--b600);
+  border:2px solid #fff;
+  box-shadow:0 2px 0 var(--b700), 0 1px 3px rgba(45,71,99,.28);
+}
+/* Badge + Reset-Chip erben bereits das themable .qbadge (Slate-Blau) */
+
+/* ── Login- und Startup-Screen ───────────────────────────────────────────────
+   Beide Screens laufen VOR dem Login und wurden vom Design bisher gar nicht
+   erfasst: applyTheme() lief erst in showApp(), und #login-screen hatte in
+   styles.css ein hartkodiertes background:#fff. Beides ist gefixt (siehe
+   js/00-theme-boot.js und --screen-bg), hier folgt der eigentliche Stein-Look.
+
+   Die Karte wird zur schwebenden Kachel mit Noppenreihe — dasselbe Motiv wie
+   .sc und .bstat im eingeloggten Zustand, damit der Übergang nach dem Login
+   nicht wie ein Designwechsel wirkt. */
+[data-theme="brick"] #startup-screen,
+[data-theme="brick"] #login-screen{
+  background:var(--screen-bg);
+  padding:20px;
+}
+
+[data-theme="brick"] .lcard{
+  position:relative;
+  background:#e6ecf2;
+  border:none;
+  border-radius:24px;
+  padding:34px 30px 30px;
+  box-shadow:var(--sh2);
+  overflow:hidden;
+}
+
+/* Noppenreihe am oberen Rand der Karte */
+[data-theme="brick"] .lcard::before{
+  content:"";
+  position:absolute;top:0;left:0;right:0;height:14px;
+  background:var(--b600);
+}
+[data-theme="brick"] .lcard::after{
+  content:"";
+  position:absolute;top:0;left:0;right:0;height:14px;
+  background-image:radial-gradient(circle at 8px center, rgba(255,255,255,.42) 3px, transparent 3.6px);
+  background-size:16px 100%;background-repeat:repeat-x;
+}
+
+[data-theme="brick"] .llogo{margin-bottom:1.6rem}
+[data-theme="brick"] .llogo .icon{background:var(--b600);border-radius:8px}
+[data-theme="brick"] .llogo h1 span{color:var(--b600)}
+
+/* Eingabefelder und Buttons wie im App-Bereich */
+[data-theme="brick"] .lcard input,
+[data-theme="brick"] .lcard select{
+  background:var(--sur);
+  border:1px solid var(--b200);
+  border-radius:10px;
+}
+[data-theme="brick"] .lcard input:focus,
+[data-theme="brick"] .lcard select:focus{
+  border-color:var(--b400);
+  outline:none;
+}
+[data-theme="brick"] .lcard .btn{border-radius:10px}
+[data-theme="brick"] .lcard .bp{
+  background:var(--b600);
+  box-shadow:inset 0 -3px 0 rgba(0,0,0,.18);
+}
+[data-theme="brick"] .lcard .bp:hover{background:var(--b700)}
+[data-theme="brick"] .lcard a{color:var(--b600)}
+
+/* Startup-Screen: Fortschrittsanzeige in der Primärfarbe des Designs */
+/* Die Fortschrittsbalken brauchen hier keine eigene Regel mehr: ihre
+   Inline-Styles in index.html verwenden seit diesem Fix var(--b600) bzw.
+   var(--g500) und folgen dem Design damit von allein. */
+[data-theme="brick"] #startup-screen .spin{border-top-color:var(--b600)}

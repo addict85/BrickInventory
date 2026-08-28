@@ -1,0 +1,53 @@
+{
+  // ── TypeScript-Migration ──────────────────────────────────────────────────
+  // tsc läuft als reiner Checker (noEmit); die Transpilation .ts → .js
+  // übernimmt esbuild im Docker-Build, dev-Start via tsx (npm run dev).
+  //
+  // ── strictNullChecks: unterwegs, noch nicht am Ziel ───────────────────────
+  // Eingeschaltet meldete tsc 299 Fehler. Davon liessen sich rund 220
+  // strukturell abräumen, ohne eine einzige Verhaltensentscheidung zu treffen:
+  //   • db.get/all/run hatten keine Rückgabetypen — daraus leitete tsc an
+  //     vielen Stellen `never` ab und meldete Folgefehler, die wie Probleme
+  //     der Aufrufstelle aussahen, aber alle in db/database.ts wurzelten.
+  //   • `let x = null` erzeugt den Typ `null`, nicht `any`.
+  //   • `const x = []` erzeugt `never[]`.
+  //   • 41-mal "req.apiUser is possibly undefined" — hinter requireToken ist es
+  //     garantiert gesetzt; das benennt jetzt der Typ AuthedRequest, statt es
+  //     41-mal mit `!` wegzudrücken.
+  //
+  // Übrig sind rund 78 Fehler, die echte Entscheidungen verlangen ("darf das
+  // hier null sein, und was soll dann passieren?") — verteilt vor allem auf
+  // jobs/priceJob.ts, utils/financeCalc.ts und routes/api_v1/pdf.ts. Die
+  // werden modulweise abgearbeitet; bis dahin bleibt der Schalter aus, WEIL
+  // ein `strictNullChecks: true` mit 78 dauerhaft roten Meldungen die Prüfung
+  // wertlos machen würde: Man gewöhnt sich an rot und übersieht das 79.
+  //
+  // Zwischenstand messen:  npx tsc --noEmit --strictNullChecks
+  "compilerOptions": {
+    "target": "es2022",
+    "module": "node16",
+    "moduleResolution": "node16",
+    "allowImportingTsExtensions": false,
+    // allowJs/checkJs bleiben AN — scripts/ und test/ sind weiterhin JavaScript
+    // und profitieren von der Prüfung. Was wegfällt, ist der erzeugte Code:
+    // Vorher lagen die transpilierten .js neben den .ts und wurden von include
+    // miterfasst, tsc prüfte also jede Datei doppelt (einmal als Quelle, einmal
+    // als Erzeugnis) und meldete Dinge über Code, den niemand liest. Seit der
+    // Build nach dist/ schreibt, reicht ein exclude-Eintrag.
+    "allowJs": true,
+    "checkJs": true,
+    "noEmit": true,
+    "skipLibCheck": true,
+    "resolveJsonModule": true,
+    "esModuleInterop": true,
+    "types": ["node"],
+    "strict": false,
+    "noImplicitAny": false
+  },
+  "include": [
+    "server.ts",
+    "db/**/*", "utils/**/*", "routes/**/*", "jobs/**/*", "scripts/**/*",
+    "types/**/*"
+  ],
+  "exclude": ["node_modules", "public", "data", "dist"]
+}

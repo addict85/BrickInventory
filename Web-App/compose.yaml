@@ -1,0 +1,177 @@
+# ════════════════════════════════════════════════════════════════════════════════
+# BrickInventory Manager — Docker Compose
+#
+# Alle Standardwerte sind im Dockerfile gesetzt und müssen hier nicht wiederholt
+# werden. Nur was du anpassen möchtest, muss hier stehen.
+#
+# Start:
+#   docker compose up -d --build
+#
+# ════════════════════════════════════════════════════════════════════════════════
+
+services:
+
+  # ── PostgreSQL Datenbank ─────────────────────────────────────────────────────
+  postgres:
+    # PostgreSQL 18.
+    #
+    # ⚠️  ACHTUNG BEIM UPDATE VON 16: Ein blosser Tausch des Tags reicht NICHT
+    # und schlägt mit einer Fehlermeldung fehl. Ab Version 18 legt das offizielle
+    # Image seine Daten in einem versionsspezifischen Unterverzeichnis ab
+    # (/var/lib/postgresql/18/docker), und der Mount-Punkt ist deshalb das
+    # ELTERNVERZEICHNIS /var/lib/postgresql statt wie bisher .../data.
+    # Das Datenformat einer Hauptversion ist ausserdem nie direkt lesbar.
+    #
+    # Der Weg von 16 auf 18 steht Schritt für Schritt in UPGRADE.md unter
+    # "PostgreSQL 18". Kurz: pg_dumpall mit dem ALTEN Container, neues
+    # Verzeichnis, einspielen. Das alte ./pgdata bleibt dabei unangetastet und
+    # ist die Rückfallebene.
+    image: postgres:18-alpine
+    container_name: brickinventory-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB:       brickinventory
+      POSTGRES_USER:     brickinventory
+      POSTGRES_PASSWORD: brickinventory_secret
+    command: postgres -c max_connections=200 -c shared_buffers=128MB
+    volumes:
+      # Neuer Pfad UND neues Verzeichnis: ./pgdata (Version 16) bleibt liegen,
+      # damit ein Rückfall auf die alte compose.yaml jederzeit möglich ist.
+      - ./pgdata18:/var/lib/postgresql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U brickinventory -d brickinventory"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 15s
+    networks:
+      - brickinventory-net
+
+  # ── BrickInventory Manager App ───────────────────────────────────────────────
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: brickinventory-app
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+    ports:
+      - "3000:3000"
+    volumes:
+      # EIN Volume genügt. Set-, Teile- und Minifiguren-Bilder liegen unter
+      # data/images/ (siehe utils/appPaths.ts) und sind damit von ./data
+      # miterfasst — inklusive der Vorschaubilder, die als <name>_thumb.jpg
+      # NEBEN dem Original liegen, nicht in einem eigenen Unterordner.
+      #
+      # VORHER stand hier zusätzlich `- ./images:/app/public/images/sets`.
+      # Das war der alte Ablageort. Der Code schreibt dort längst nicht mehr
+      # hin, die Zeile blieb aber stehen — Ergebnis: ein Ordner ./images neben
+      # ./data, der nach der einmaligen Migration leer zurückbleibt und nur
+      # noch verwirrt. Ausserdem mountete er in public/, das seit dem
+      # dist/-Umbau wieder reiner, unveränderlicher Build-Inhalt sein soll.
+      #
+      # Wer ./images noch aus einer älteren Installation hat: siehe UPGRADE.md,
+      # Abschnitt 10 — die Dateien einmal von Hand nach ./data/images/sets/
+      # verschieben, danach kann der Ordner weg.
+      - ./data:/app/data
+    environment:
+
+      # ── PFLICHT: vor dem ersten Start ändern ─────────────────────────────────
+      # Eigenen Zufallswert eintragen, z. B.:  openssl rand -base64 48
+      # Der Server verweigert in Produktion den Start, wenn dieser Beispielwert
+      # stehen bleibt oder der Wert kürzer als 32 Zeichen ist.
+      SESSION_SECRET: change-me-to-a-long-random-string
+
+      # ── App ──────────────────────────────────────────────────────────────────
+      # PORT: 3000
+      # NODE_ENV: production
+      # NODE_OPTIONS: "--max-old-space-size=384"
+
+      # ── Cluster / Worker ─────────────────────────────────────────────────────
+      # Anzahl paralleler Node.js-Prozesse.
+      # 0 = automatisch (Anzahl CPU-Kerne, mind. 2) — empfohlen für Produktion.
+      # 1 = kein Clustering (nützlich zum Debuggen oder auf schwacher Hardware).
+      WEB_WORKERS: 0
+
+      # ── Datenbank-Verbindung ─────────────────────────────────────────────────
+      # PGHOST:     postgres
+      # PGPORT:     5432
+      # PGUSER:     brickinventory
+      # PGPASSWORD: brickinventory_secret
+      # PGDATABASE: brickinventory
+
+      # ── DB-Verbindungspool ───────────────────────────────────────────────────
+      # Maximale gleichzeitige DB-Verbindungen pro Worker-Prozess.
+      # Gesamtverbindungen = PG_POOL_MAX × WEB_WORKERS (oder CPU-Kerne).
+      # Beispiel: 4 Worker × 20 = 80 Verbindungen — PostgreSQL max_connections
+      # prüfen (Standard: 100). Bei Bedarf PG_POOL_MAX reduzieren.
+      # PG_POOL_MAX bewusst nicht gesetzt: db/database.ts rechnet
+      # min(15, 80 / Anzahl Worker) selbst aus. Nur setzen, wenn die Postgres-
+      # Instanz ein abweichendes max_connections hat.
+      # PG_POOL_MAX: 20
+      # PG_POOL_MIN:  2      # Immer warm gehaltene Verbindungen
+      # PG_IDLE_MS:   30000  # Idle-Timeout in ms (Standard: 30 s)
+      # PG_CONN_MS:   5000   # Verbindungs-Timeout in ms (Standard: 5 s)
+      # PG_STMT_MS:   30000  # Max. Query-Laufzeit in ms (Standard: 30 s)
+
+    healthcheck:
+      test: ["CMD", "node", "-e",
+        "require('http').get('http://localhost:3000/api/health', r => process.exit(r.statusCode === 200 ? 0 : 1)).on('error', () => process.exit(1))"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 20s
+    networks:
+      - brickinventory-net
+
+  # ── pgweb — Datenbank im Browser ansehen (OPTIONAL) ──────────────────────────
+  #
+  # Start NUR auf Anforderung:
+  #     docker compose --profile tools up -d pgweb
+  # Danach im Browser:  http://localhost:8081
+  # Wieder abschalten:  docker compose --profile tools down pgweb
+  #
+  # Warum ein Profil? Ohne `--profile tools` startet dieser Dienst NICHT mit —
+  # `docker compose up -d` bringt weiterhin nur Datenbank und App hoch. Ein
+  # Werkzeug, das man dreimal im Jahr braucht, soll nicht dauerhaft mitlaufen.
+  #
+  # ⚠️  SICHERHEIT — der wichtigste Punkt an diesem Dienst:
+  # pgweb bringt KEINE Anmeldung mit. Wer die Seite erreicht, hat vollen Zugriff
+  # auf die Datenbank: alle Konten, alle Sitzungen, alle Daten — und kann sie
+  # ändern. Deshalb:
+  #   • Die Portangabe beginnt mit 127.0.0.1 — damit ist der Dienst NUR auf dem
+  #     Server selbst erreichbar, nicht aus dem Netz. Ein blosses "8081:8081"
+  #     würde ihn an alle Schnittstellen binden und wäre je nach Router von
+  #     aussen offen. Diese Bindung bitte nicht ändern.
+  #   • Von einem anderen Rechner aus per SSH-Tunnel arbeiten:
+  #         ssh -L 8081:127.0.0.1:8081 <benutzer>@<server>
+  #     Dann im lokalen Browser http://localhost:8081 öffnen.
+  #   • Nach getaner Arbeit wieder herunterfahren (Befehl oben).
+  pgweb:
+    image: sosedoff/pgweb:latest
+    container_name: brickinventory-pgweb
+    profiles: ["tools"]
+    restart: "no"          # bewusst nicht "unless-stopped": Werkzeug auf Zeit
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      # Dieselben Zugangsdaten wie oben beim Dienst `postgres`. Wer sie dort
+      # ändert, muss sie hier mitändern — der Verbindungsstring ist die einzige
+      # Stelle, an der pgweb sie erfährt.
+      PGWEB_DATABASE_URL: postgres://brickinventory:brickinventory_secret@postgres:5432/brickinventory?sslmode=disable
+    # --readonly erlaubt ausschliesslich lesende Abfragen. Zum Nachsehen ist
+    # das die richtige Voreinstellung; für Reparaturen die Zeile auskommentieren
+    # und den Dienst neu starten. Lieber bewusst freischalten als versehentlich
+    # ein UPDATE ohne WHERE absetzen.
+    command: ["--bind=0.0.0.0", "--listen=8081", "--readonly"]
+    ports:
+      - "127.0.0.1:8081:8081"
+    networks:
+      - brickinventory-net
+
+networks:
+  brickinventory-net:
+    driver: bridge
