@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Status-Icon für die Foreground-Service-Benachrichtigungen.
+
+  setSmallIcon() braucht ein MONOCHROMES Drawable: Android rendert Status-
+  Icons nur über ihren Alpha-Kanal. Das vorher benutzte adaptive Launcher-
+  Icon (R.mipmap.ic_launcher) erscheint dadurch auf vielen Geräten als
+  graues/weisses Quadrat. Silhouette eines 2x4-Steins, Farbe kommt vom
+  System (weiss in der Statusleiste, Akzentfarbe im aufgeklappten Zustand).
+-->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="24dp"
+    android:height="24dp"
+    android:viewportWidth="24"
+    android:viewportHeight="24">
+    <!-- Steinkörper -->
+    <path
+        android:fillColor="#FFFFFFFF"
+        android:pathData="M2,9 h20 a1,1 0 0 1 1,1 v9 a1,1 0 0 1 -1,1 H2 a1,1 0 0 1 -1,-1 v-9 a1,1 0 0 1 1,-1 Z" />
+    <!-- Vier Noppen -->
+    <path
+        android:fillColor="#FFFFFFFF"
+        android:pathData="M3,5 h3 v4 h-3 Z M8.33,5 h3 v4 h-3 Z M13.66,5 h3 v4 h-3 Z M19,5 h3 v4 h-3 Z" />
+</vector>

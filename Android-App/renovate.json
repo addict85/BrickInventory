@@ -1,0 +1,52 @@
+{
+  "$schema": "https://docs.renovatebot.com/renovate-schema.json",
+  "extends": ["config:recommended"],
+  "timezone": "Europe/Zurich",
+  "schedule": ["before 6am on monday"],
+  "prConcurrentLimit": 3,
+  "labels": ["abhaengigkeiten"],
+  "packageRules": [
+    {
+      "description": "Patch- und Minor-Sprünge zusammenfassen: einzeln erzeugen sie mehr PRs, als jemand durchsieht, und genau dann wird pauschal zugestimmt.",
+      "matchUpdateTypes": ["patch", "minor"],
+      "groupName": "kleine Sprünge",
+      "automerge": false
+    },
+    {
+      "description": "Grosse Sprünge einzeln: Coil 3, OkHttp 5 und Navigation 3 sind Umbauten, keine Aktualisierungen.",
+      "matchUpdateTypes": ["major"],
+      "groupName": null,
+      "automerge": false
+    },
+    {
+      "description": "DataStore bleibt auf 1.1.7 — NICHT auf 1.2.0 heben. Dort ist die native Bibliothek wieder 4-KB-ausgerichtet, siehe INVARIANTEN.md, Abschnitt 16-KB-Speicherseiten. Der Pin ist eine Entscheidung, kein Rückstand.",
+      "matchPackageNames": ["androidx.datastore:datastore-preferences"],
+      "enabled": false
+    },
+    {
+      "description": "graphics-path hängt am selben 16-KB-Thema und wird bewusst direkt statt transitiv gezogen.",
+      "matchPackageNames": ["androidx.graphics:graphics-path"],
+      "enabled": false
+    },
+    {
+      "description": "ML Kit Texterkennung ist FEST EINGEBAUT (com.google.mlkit statt play-services). Ein Wechsel des Artefakts wäre eine Produktentscheidung, kein Update.",
+      "matchPackageNames": ["com.google.mlkit:text-recognition"],
+      "matchUpdateTypes": ["major"],
+      "enabled": false
+    },
+    {
+      "description": "AGP und Kotlin gehören zusammen geprüft: KSP und das Compose-Plugin hängen an der Kotlin-Version.",
+      "matchPackageNames": [
+        "com.android.tools.build:gradle",
+        "org.jetbrains.kotlin:kotlin-gradle-plugin",
+        "com.google.devtools.ksp",
+        "org.jetbrains.kotlin.plugin.compose"
+      ],
+      "groupName": "Toolchain (AGP + Kotlin + KSP)"
+    }
+  ],
+  "vulnerabilityAlerts": {
+    "labels": ["sicherheit"],
+    "schedule": ["at any time"]
+  }
+}

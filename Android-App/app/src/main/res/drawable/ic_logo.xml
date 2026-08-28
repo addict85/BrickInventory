@@ -1,0 +1,64 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="120dp"
+    android:height="120dp"
+    android:viewportWidth="120"
+    android:viewportHeight="120">
+
+    <!-- Brick front face (red) -->
+    <path android:fillColor="#E63329"
+        android:pathData="M21,38 L21,106 Q21,109 24,109 L99,109 Q102,109 102,106 L102,38 Z"/>
+
+    <!-- Brick top face (darker red) -->
+    <path android:fillColor="#CC2A21"
+        android:pathData="M21,38 L30,20 L102,20 L102,38 Z"/>
+
+    <!-- Brick right face (darkest) -->
+    <path android:fillColor="#B5231C"
+        android:pathData="M102,20 L116,28 L116,106 Q116,109 113,109 L102,109 Z"/>
+
+    <!-- Studs: each stud = top ellipse (oval) + rect body + bottom ellipse
+         Using path cubic bezier to approximate ellipses
+         Stud 1 center x=37 -->
+    <!-- Stud 1 top oval -->
+    <path android:fillColor="#B5231C"
+        android:pathData="M31,17 C31,14.2 37,12.5 43,12.5 C49,12.5 55,14.2 55,17 C55,19.8 49,21.5 43,21.5 C37,21.5 31,19.8 31,17 Z"/>
+    <!-- Stud 1 body -->
+    <path android:fillColor="#CC2A21"
+        android:pathData="M31,17 L31,20 C31,22.8 37,24.5 43,24.5 C49,24.5 55,22.8 55,20 L55,17 C55,19.8 49,21.5 43,21.5 C37,21.5 31,19.8 31,17 Z"/>
+
+    <!-- Stud 2 center x=53 -->
+    <path android:fillColor="#B5231C"
+        android:pathData="M47,17 C47,14.2 53,12.5 59,12.5 C65,12.5 71,14.2 71,17 C71,19.8 65,21.5 59,21.5 C53,21.5 47,19.8 47,17 Z"/>
+    <path android:fillColor="#CC2A21"
+        android:pathData="M47,17 L47,20 C47,22.8 53,24.5 59,24.5 C65,24.5 71,22.8 71,20 L71,17 C71,19.8 65,21.5 59,21.5 C53,21.5 47,19.8 47,17 Z"/>
+
+    <!-- Stud 3 center x=69 -->
+    <path android:fillColor="#B5231C"
+        android:pathData="M63,17 C63,14.2 69,12.5 75,12.5 C81,12.5 87,14.2 87,17 C87,19.8 81,21.5 75,21.5 C69,21.5 63,19.8 63,17 Z"/>
+    <path android:fillColor="#CC2A21"
+        android:pathData="M63,17 L63,20 C63,22.8 69,24.5 75,24.5 C81,24.5 87,22.8 87,20 L87,17 C87,19.8 81,21.5 75,21.5 C69,21.5 63,19.8 63,17 Z"/>
+
+    <!-- Stud 4 center x=85 -->
+    <path android:fillColor="#B5231C"
+        android:pathData="M79,17 C79,14.2 85,12.5 91,12.5 C97,12.5 103,14.2 103,17 C103,19.8 97,21.5 91,21.5 C85,21.5 79,19.8 79,17 Z"/>
+    <path android:fillColor="#CC2A21"
+        android:pathData="M79,17 L79,20 C79,22.8 85,24.5 91,24.5 C97,24.5 103,22.8 103,20 L103,17 C103,19.8 97,21.5 91,21.5 C85,21.5 79,19.8 79,17 Z"/>
+
+    <!-- White label area -->
+    <path android:fillColor="#FFFFFF"
+        android:pathData="M25,54 Q25,52 27,52 L97,52 Q99,52 99,54 L99,96 Q99,98 97,98 L27,98 Q25,98 25,96 Z"/>
+
+    <!-- Yellow BIM badge -->
+    <path android:fillColor="#F5A800"
+        android:pathData="M29,57 Q29,55 31,55 L73,55 Q75,55 75,57 L75,72 Q75,74 73,74 L31,74 Q29,74 29,72 Z"/>
+
+    <!-- Grey stripe 1 -->
+    <path android:fillColor="#E5E7EB"
+        android:pathData="M29,78 L93,78 L93,83 L29,83 Z"/>
+
+    <!-- Grey stripe 2 (shorter) -->
+    <path android:fillColor="#E5E7EB"
+        android:pathData="M29,87 L65,87 L65,92 L29,92 Z"/>
+
+</vector>

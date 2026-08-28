@@ -1,0 +1,37 @@
+# Android / Gradle
+build/
+.gradle/
+local.properties
+captures/
+.externalNativeBuild/
+.cxx/
+
+# IDE
+.idea/
+*.iml
+*.hprof
+
+# Signaturen und Geheimnisse — NIE ins Repository
+*.jks
+*.keystore
+*.p12
+keystore.properties
+google-services.json
+.env
+.env.*
+
+# Bauergebnisse
+*.apk
+*.aab
+*.aar
+output-metadata.json
+
+# Betriebssystem
+.DS_Store
+Thumbs.db
+
+# NICHT ignorieren: der Gradle-Wrapper gehört ins Repository, sonst kann
+# niemand das Projekt auf einem frischen Rechner bauen.
+!gradle/wrapper/gradle-wrapper.jar
+!gradlew
+!gradlew.bat

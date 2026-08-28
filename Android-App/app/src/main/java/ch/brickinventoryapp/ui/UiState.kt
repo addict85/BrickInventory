@@ -1,0 +1,324 @@
+package ch.brickinventoryapp.ui
+
+import ch.brickinventoryapp.data.model.*
+
+/**
+ * UI-Zustandsklassen — aus MainViewModel.kt extrahiert.
+ * AppUiState ist der Haupt-Zustand; CsvImportUiState, SetDetailUiState
+ * und der Snackbar-Flow sind bewusst separat, damit deren hochfrequente
+ * Updates nicht alle AppUiState-Konsumenten rekomponieren.
+ */
+/** Zustand der Haushalts-Karte in den Einstellungen. */
+data class HouseholdUiState(
+    val isLoading: Boolean = false,
+    val status: ch.brickinventoryapp.data.model.HouseholdStatusResponse? = null,
+    /** Zuletzt erzeugter Einladungscode — nur bis zum Verlassen der Ansicht. */
+    val inviteCode: String? = null,
+    /** Meldung des Servers (Währung weicht ab, schon verknüpft, zweite Stufe). */
+    val message: String? = null,
+)
+
+data class AppUiState(
+    val isLoading: Boolean = false,
+    /**
+     * Fehler des ANMELDEFORMULARS — und nur der.
+     *
+     * ── Warum der Name so eng ist (Nachtrag 118) ────────────────────────────
+     * Das Feld hiess `error` und wurde von vier Feature-Dateien beschrieben:
+     * Anmeldung, Galerie, Teile, Finanzen — vierundzwanzig Stellen. GELESEN
+     * wurde es an genau EINER: dem Anmeldebildschirm. Achtzehn Fehlerpfade
+     * schrieben also in ein Feld, das niemand anzeigt. Ein fehlgeschlagenes
+     * Löschen einer Minifigur, ein misslungener Bewertungsabruf, eine leer
+     * gebliebene Galerie — der Nutzer sah nichts. `clearError()` hatte dazu
+     * passend null Aufrufer.
+     *
+     * Der Grund war ein zweiter, unfertiger Meldungsweg neben `_snackbar`:
+     * Beide gab es, eine Regel welcher wofür gilt gab es nicht, und einer war
+     * nirgends verdrahtet. Der Name sagt jetzt, wofür das Feld da ist —
+     * flüchtige Meldungen gehen in den Snackbar, DIESES bleibt stehen, weil
+     * der Anmeldefehler im Formular sichtbar bleiben muss, während der Nutzer
+     * das Passwort korrigiert.
+     *
+     * CatalogUiState hat weiterhin ein eigenes `error`: Der Katalog ZEIGT es
+     * (ganzseitige Fehlerfläche mit Erneut-Knopf), es ist also verdrahtet.
+     *
+     * Gesichert durch ErrorChannelTest.
+     */
+    val loginError: String? = null,
+    val serverUrl: String = "",
+    val isLoggedIn: Boolean = false,
+    val isAdmin: Boolean = false,
+    val username: String = "",
+    val sets: List<SetItem> = emptyList(),
+    /**
+     * Galerie-Filter — ausgewertet wird er auf dem SERVER (Marcos Vorgabe).
+     * Hier steht nur, was gerade eingestellt ist, damit die Oberfläche es
+     * anzeigen und die nächste Seite mit denselben Werten nachladen kann.
+     */
+    val galleryQuery: String = "",
+    val galleryTheme: String = "",
+    val gallerySort: String = ch.brickinventoryapp.data.repository.GALLERY_DEFAULT_SORT,
+    /** Themen des ganzen Bestands — vom Server, nicht aus der geladenen Seite. */
+    val galleryThemes: List<String> = emptyList(),
+    val galleryTotal: Int = 0,
+    val galleryPage: Int = 1,
+    val galleryLoadingMore: Boolean = false,
+    val stats: DashboardStats? = null,
+    val authToken: String = "",
+    val currency: String = "EUR",
+    /**
+     * Kontofilter JE ANSICHT (Schlüssel aus ScopeFilter.View).
+     *
+     * Der Wert reist als `accounts=` mit und wird ausschliesslich auf dem
+     * Server in Konto-IDs übersetzt — dadurch kennt ihn jede Zahl derselben
+     * Antwort: Liste, Gesamtzahl, Kennzahlen und Summen.
+     */
+    val scopeModes: Map<String, String> = emptyMap(),
+    /**
+     * Konten des Haushalts, eigenes zuerst. Mehr als einer heisst: Hauptkonto
+     * mit Unterkonten — erst dann erscheinen Kontofilter, Kontoauswahl beim
+     * Erfassen und der Verschieben-Weg.
+     */
+    val householdMembers: List<ch.brickinventoryapp.data.model.HouseholdMember> = emptyList(),
+    val priceCondition: String = "N",
+    val defaultPriceCondition: String = "N", // server-side default condition for new items (N=New, U=Used)
+    val userDefaultCondition: String? = null, // null = use global default
+    val appTheme: String = "classic", // global vom Admin gewähltes App-Design
+    val language: String = "system",
+
+    // Gallery "Search by barcode" flow
+    // Auslöser für „öffne die Detailansicht dieses Sets". Gesetzt vom
+    // Barcode-Scanner im Modus "gallery_search" UND seit Nachtrag 57 auch beim
+    // Erfassen über die Setnummer, wenn das Set bereits vorhanden ist. Der Name
+    // stammt aus der ersten Verwendung; gemeint ist beides.
+    val gallerySearchFoundSetNumber: String? = null,   // → navigate to SetDetail
+)
+
+/**
+ * Teile & Minifiguren — eigener Flow (gleiches Muster wie CatalogUiState).
+ *
+ * Diese Felder lagen bis zuletzt in AppUiState. Folge: Jedes `partsLoading`
+ * beim Blättern durch die Teileliste rekomponierte auch die Galerie, die
+ * Navigationsleiste und alles andere, was AppUiState liest — obwohl nur zwei
+ * Screens diese Daten überhaupt brauchen.
+ */
+data class PartsUiState(
+    val parts: List<Part> = emptyList(),
+    val partsTotal: Int = 0,
+    val partsPage: Int = 1,
+    val partsLoading: Boolean = false,
+    val minifigs: List<Minifig> = emptyList(),
+    /** Kennzahlen der Kacheln — vom Server, nicht aus der (gefilterten) Liste. */
+    val minifigStats: ch.brickinventoryapp.data.model.MinifigStats =
+        ch.brickinventoryapp.data.model.MinifigStats(),
+    val minifigsLoading: Boolean = false,
+    val partsStats: PartsStats? = null,
+    val partsColors: List<BrickColor> = emptyList(),
+)
+
+/**
+ * Finanzen: Bewertung, Gewinn/Verlust und Portfolio-Verlauf — ebenfalls aus
+ * AppUiState herausgelöst.
+ *
+ * Der Verlauf wird beim Wechsel des Zeitraums komplett geleert und neu
+ * geladen; als Teil des Haupt-States löste allein das eine App-weite
+ * Rekomposition aus.
+ */
+data class FinanceUiState(
+    val valuation: ValuationResponse? = null,
+    val partsValuation: PartsValuationResponse? = null,
+    val figsValuation: FigsValuationResponse? = null,
+    val pnl: PnlResponse? = null,
+    val historyLoading: Boolean = false,
+    val historyPeriodChangePct: Double? = null,
+    val historyPoints: List<ChartPoint> = emptyList(),
+    val historyYAxis: List<ChartYAxis> = emptyList(),
+    val historyPeriod: String = "week",
+)
+
+/**
+ * CSV-Import-Fortschritt — bewusst vom Haupt-State getrennt: Während eines
+ * Imports wird dieser Zustand alle 1.5s aktualisiert. Als Teil des grossen
+ * AppUiState hätte jedes Update die gesamte App rekomponiert; als eigener
+ * Flow rekomponiert nur die Stelle, die ihn tatsächlich sammelt (Banner).
+ */
+data class CsvImportUiState(
+    val running: Boolean = false,
+    val done: Int = 0,
+    val total: Int = 0,
+    val current: String? = null,
+    val ok: Int = 0,
+    val warn: Int = 0,
+    val err: Int = 0,
+)
+
+/**
+ * Set-Detail-Zustand — getrennt vom Haupt-State (gleiches Muster wie
+ * CsvImportUiState): Preis- und History-Loads im Detail-Screen haben sonst
+ * bei jedem Update alle Composables rekomponiert, die AppUiState lesen,
+ * obwohl nur der SetDetailScreen diese Felder braucht.
+ */
+data class SetDetailUiState(
+    val setDetail: SetItem? = null,
+    val setDetailLoading: Boolean = false,
+    val setPrice: SetPriceResponse? = null,
+    val setPriceLoading: Boolean = false,
+    // Die ganze Antwort statt einzelner Felder: Sie trägt seit der
+    // Server-Umstellung beide Verlaufsreihen, die fertigen Diagrammdaten, die
+    // aktuellen Preise und die Bewertung je Zustand. Einzeln herausgezogen
+    // müsste jedes neue Feld hier UND in loadSetPriceHistory nachgeführt
+    // werden — die Antwort ist bereits das Modell.
+    val priceHistory: PriceHistoryResponse? = null,
+    val priceHistoryLoading: Boolean = false,
+    val acquisitions: List<ch.brickinventoryapp.data.model.Acquisition> = emptyList(),
+    /**
+     * Summenzeile der Erfassungen — vom Server gerechnet, nicht hier.
+     * Die Ansicht zeigt sie nur an; die Regel steht in utils/acquisitions.ts.
+     */
+    val acquisitionTotals: ch.brickinventoryapp.data.model.AcquisitionTotals =
+        ch.brickinventoryapp.data.model.AcquisitionTotals(),
+    val acquisitionsLoading: Boolean = false,
+)
+
+/**
+ * Zustand für den Detail-Dialog manuell erfasster Teile und Minifiguren.
+ * Getrennt vom Haupt-State damit Acquisition-Updates (die beim Editieren
+ * häufig vorkommen) nicht die gesamte App rekomponieren.
+ */
+data class ManualItemDetailUiState(
+    val acquisitions: List<ch.brickinventoryapp.data.model.Acquisition> = emptyList(),
+    /** Summenzeile vom Server — siehe SetDetailUiState.acquisitionTotals. */
+    val acquisitionTotals: ch.brickinventoryapp.data.model.AcquisitionTotals =
+        ch.brickinventoryapp.data.model.AcquisitionTotals(),
+    val isLoading: Boolean = false,
+    // Identifiziert das aktuell geöffnete Element
+    val itemType: String = "",       // "part" | "fig"
+    val itemId: String = "",         // part_number oder fig_number
+    val colorId: Int = 0,
+    val newQuantity: Int = 0,        // nach Acquisition-Delete aktualisierte Gesamtmenge
+    /**
+     * Marktpreis je Zustand und Verlauf — dieselbe Antwortform wie beim Set.
+     *
+     * Bis hardened-96 gab es die beiden Endpunkte nur für die Webapp; der
+     * Dialog hier zeigte deshalb Kaufpreise, aber keinen Marktpreis.
+     */
+    val priceHistory: PriceHistoryResponse? = null,
+    val priceHistoryLoading: Boolean = false,
+)
+
+/**
+ * Katalog-Zustand — eigener Flow (wie SetDetail/CsvImport): Suche und
+ * Paging aktualisieren häufig; als Teil von AppUiState würde jede
+ * Katalog-Seite die gesamte App rekomponieren.
+ */
+/**
+ * Zustand rund um den Barcode-/OCR-Scanner.
+ *
+ * ── Warum eigener Fluss (Nachtrag 117) ──────────────────────────────────────
+ * Diese zwölf Felder lagen in `AppUiState` — dem gemeinsamen Objekt, an dem
+ * jeder Reiter hängt. Jede Änderung während eines Scans (und das sind viele:
+ * Zwischenstände beim Auflösen, Sperre gegen den zweiten Klick) rekomponierte
+ * damit Galerie, Teile, Minifiguren und Finanzen mit, obwohl der Scanner sie
+ * nichts angeht. Dieselbe Begründung, aus der `_snackbar`, `PartsUiState` und
+ * `FinanceUiState` schon eigene Flüsse haben.
+ *
+ * Die Feldnamen behalten den `barcode`-Vorsatz NICHT — innerhalb dieser Klasse
+ * wäre er eine Wiederholung des Klassennamens. Am Zugriffsort steht dafür
+ * `barcodeState.setName` statt `state.barcodeSetName`, was dieselbe Länge hat
+ * und die Herkunft deutlicher macht.
+ */
+data class BarcodeUiState(
+    val result: String? = null,
+    /** "gallery", "gallery_search" oder "partslist". */
+    val source: String = "gallery",
+    /**
+     * Der Scan blieb ohne Setnummer → die manuelle Erfassung soll aufgehen.
+     *
+     * ── Marcos Vorgabe (Nachtrag 113) ────────────────────────────────────────
+     * „Wenn der Barcode erkannt wurde, aber die API keine Setnummer liefert,
+     * oder wenn die Texterkennung keine Nummer erkennt, soll automatisch die
+     * manuelle Erfassung erscheinen — an allen Stellen, wo der Barcodescanner
+     * eingebaut ist."
+     *
+     * Ein Zustandsfeld statt eines Aufrufs je Bildschirm: Die drei erfolglosen
+     * Wege liegen alle im ViewModel (EAN nicht auflösbar, EAN ohne Setnummer,
+     * Texterkennung ohne Treffer). Wer den Scanner einbindet, liest das Feld
+     * und öffnet seinen eigenen Erfassen-Dialog — die Galerie den für Sets, die
+     * Teileliste ihren eigenen.
+     */
+    val manuelleErfassungAnfordern: Boolean = false,
+    val fuerTeileliste: String? = null,
+    val setName: String? = null,
+    val imageUrl: String? = null,
+    val imageLocal: String? = null,
+    val year: Int? = null,
+    val pieces: Int? = null,
+    val theme: String? = null,
+    val minifigs: Int? = null,
+    // Läuft gerade ein Hinzufügen aus dem Barcode-Dialog? Sperrt den Knopf
+    // gegen den zweiten Klick, der sonst dasselbe Set ein zweites Mal erfasst.
+    val adding: Boolean = false,
+)
+
+data class CatalogUiState(
+    val isLoading: Boolean = false,
+    val error: String? = null,
+    /**
+     * Geladene Seiten, nach Seitennummer.
+     *
+     * ── Warum eine Karte statt einer Liste (Nachtrag 86) ────────────────────
+     * Marcos Vorgabe: Die Zeitleiste rechts soll nicht filtern, sondern
+     * schnell scrollen — „kann nicht geprüft werden, wo man hinscrollt, und
+     * dieser Teil wird dann geladen".
+     *
+     * Genau das geht mit einer angehängten Liste nicht: Wer auf Jahr 2005
+     * springt, landet mitten im Bestand, und darüber wie darunter fehlt alles.
+     * Die Ansicht führt deshalb ALLE `total` Plätze und lädt die Seite, die
+     * gerade sichtbar wird — vorwärts wie rückwärts. Was noch nicht da ist,
+     * steht als Platzhalter.
+     */
+    val loadedPages: Map<Int, List<CatalogSetItem>> = emptyMap(),
+    val loadingPages: Set<Int> = emptySet(),
+    val total: Int = 0,
+    /**
+     * Sprungziel des Scrubbers — die laufende Nummer, zu der gescrollt werden
+     * soll. Die Ansicht führt den Sprung aus und meldet ihn mit
+     * catalogScrollConsumed() zurück; ohne das Zurücksetzen liesse sich
+     * dasselbe Jahr kein zweites Mal anspringen.
+     */
+    val scrollTo: Int? = null,
+    /**
+     * Wo die Liste stand, als man sie verlassen hat.
+     *
+     * ── Marcos Befund (Nachtrag 91) ─────────────────────────────────────────
+     * „Wenn im Katalog eine Detailseite aufgerufen und wieder geschlossen wird,
+     * ist der Scrollbalken ganz zuoberst und nicht an der Stelle von vor dem
+     * Aufruf."
+     *
+     * Die Position lag im `LazyGridState` des Bildschirms. Die Detailseite ist
+     * ein eigener Navigationspunkt — beim Wechsel verlässt die Liste die
+     * Komposition, und was danach wiederhergestellt wird, hängt an Compose'
+     * Speichermechanik. Bei einer Liste, deren Länge (`total`) und Inhalt
+     * (`loadedPages`) erst nachträglich eintreffen, ist das nicht verlässlich:
+     * Wird zum Zeitpunkt der Wiederherstellung noch nichts angezeigt, gibt es
+     * keine Stelle, an die zurückgesprungen werden könnte.
+     *
+     * Im Zustand ist sie unabhängig davon — er lebt im ViewModel und überlebt
+     * jeden Wechsel des Bildschirms.
+     */
+    val scrollIndex: Int = 0,
+    val scrollOffset: Int = 0,
+    // Filter
+    val query: String = "",
+    val themeId: Int? = null,
+    val year: Int? = null,
+    val sort: String = "year_desc",
+    // Meta
+    val themes: List<CatalogTheme> = emptyList(),
+    val yearMin: Int? = null,
+    val yearMax: Int? = null,
+    val yearCounts: Map<Int, Int> = emptyMap(),
+    // Detail
+    val detail: CatalogSetDetail? = null,
+    val detailLoading: Boolean = false,
+)

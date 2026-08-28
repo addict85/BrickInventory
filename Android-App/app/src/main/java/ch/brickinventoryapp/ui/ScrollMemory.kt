@@ -1,0 +1,140 @@
+package ch.brickinventoryapp.ui
+
+import androidx.compose.foundation.lazy.LazyListState
+import androidx.compose.foundation.lazy.grid.LazyGridState
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.compose.runtime.snapshotFlow
+
+/**
+ * Gemerkte Rollpositionen je Reiter.
+ *
+ * ── Warum ein eigener Speicher und kein `rememberLazyGridState()` (Nachtrag 95)
+ *
+ * In Nachtrag 92/94 lag der Zustand oberhalb des NavHost. Die Idee: Das Objekt
+ * überlebt den Ausflug in die Detailseite, also überlebt auch die Position.
+ * Marcos Befund war ein anderer — „in der Galerie ist sie verschoben": nicht
+ * ganz oben, aber auch nicht dort, wo sie war. Der Zustand überlebt also, nur
+ * misst das Raster beim Wiederanhängen offenbar nicht dieselbe Stelle heraus.
+ *
+ * Was dagegen NACHWEISLICH funktioniert, ist der Weg des Katalogs: Position
+ * mitschreiben und beim Betreten ausdrücklich `scrollToItem(index, offset)`
+ * aufrufen. Marco dazu im selben Bericht: „im Katalog ist sie auf der korrekten
+ * Zeile". Genau dieser Weg steht hier — einmal, für alle Reiter, statt dreimal
+ * unterschiedlich abgeschrieben.
+ *
+ * Bewusst eine schlichte Karte und KEIN StateFlow: Die Position ändert sich bei
+ * jeder Rollbewegung. Läge sie im beobachteten Zustand, würde der ganze
+ * Bildschirm bei jedem Bildlauf neu zusammengesetzt. Gelesen wird sie ohnehin
+ * nur beim Betreten.
+ *
+ * Sie lebt im ViewModel und stirbt mit ihm — wie die Listen selbst.
+ */
+class ScrollMemory {
+    private val positionen = mutableMapOf<String, Pair<Int, Int>>()
+
+    fun lies(schluessel: String): Pair<Int, Int> = positionen[schluessel] ?: (0 to 0)
+
+    fun merke(schluessel: String, index: Int, offset: Int) {
+        positionen[schluessel] = index to offset
+    }
+
+    /** Nach einem Filterwechsel: Die alte Stelle zeigt auf Einträge, die es nicht mehr gibt. */
+    fun vergiss(schluessel: String) {
+        positionen.remove(schluessel)
+    }
+}
+
+/**
+ * Die REIHENFOLGE ist die ganze Regel: erst zurückspringen, DANN wieder melden.
+ *
+ * Beide Fallen sind in dieser Reihe schon einmal zugeschnappt (Nachtrag 93):
+ *
+ *  - Der Merker darf den Ausflug NICHT überleben. Als `rememberSaveable` tat er
+ *    es und schaltete die Wiederherstellung nach dem ersten Betreten für immer
+ *    ab. `remember` gilt je Komposition — nach der Rückkehr ist es eine neue.
+ *
+ *  - Der Melder darf nicht vorher loslaufen. Ein frisch angehängtes Raster steht
+ *    auf null, `snapshotFlow` gibt diesen Wert sofort heraus — und überschreibt
+ *    damit die gemerkte Position, bevor jemand sie lesen kann.
+ *
+ * `bereit` sagt, ob die Liste ihren Inhalt hat. Vor dem ersten Eintrag gibt es
+ * keine Stelle, an die gesprungen werden könnte.
+ */
+@Composable
+fun ScrollPositionKeeper(
+    schluessel: String,
+    gridState: LazyGridState,
+    bereit: Boolean,
+    speicher: ScrollMemory,
+) {
+    var wiederhergestellt by remember { mutableStateOf(false) }
+    LaunchedEffect(bereit) {
+        if (wiederhergestellt || !bereit) return@LaunchedEffect
+        val (index, offset) = speicher.lies(schluessel)
+        if (index > 0 || offset > 0) {
+            // Der Rücksprung, der hier vermutet wurde, kam von woanders: Der
+            // SSE-Strom des CSV-Imports löste alle paar Sekunden ein
+            // vollständiges Neuladen aus (Nachtrag 110). Die Diagnosezeile hat
+            // das gezeigt und ist damit erledigt.
+            gridState.scrollToItem(index, offset)
+        }
+        wiederhergestellt = true
+    }
+    LaunchedEffect(gridState, wiederhergestellt) {
+        if (!wiederhergestellt) return@LaunchedEffect
+        snapshotFlow { gridState.firstVisibleItemIndex to gridState.firstVisibleItemScrollOffset }
+            .collect { (index, offset) -> speicher.merke(schluessel, index, offset) }
+    }
+}
+
+/** Dasselbe für eine LazyColumn. */
+@Composable
+fun ScrollPositionKeeper(
+    schluessel: String,
+    listState: LazyListState,
+    bereit: Boolean,
+    speicher: ScrollMemory,
+) {
+    var wiederhergestellt by remember { mutableStateOf(false) }
+    LaunchedEffect(bereit) {
+        if (wiederhergestellt || !bereit) return@LaunchedEffect
+        val (index, offset) = speicher.lies(schluessel)
+        if (index > 0 || offset > 0) listState.scrollToItem(index, offset)
+        wiederhergestellt = true
+    }
+    LaunchedEffect(listState, wiederhergestellt) {
+        if (!wiederhergestellt) return@LaunchedEffect
+        snapshotFlow { listState.firstVisibleItemIndex to listState.firstVisibleItemScrollOffset }
+            .collect { (index, offset) -> speicher.merke(schluessel, index, offset) }
+    }
+}
+
+/**
+ * Ein Reiter wurde unten angetippt → seine gemerkte Rollposition verwerfen.
+ *
+ * ── Marcos Vorgabe (Nachtrag 114) ───────────────────────────────────────────
+ * „Im Reiter Teile muss ich beim Öffnen nach oben scrollen, damit die manuell
+ * erfassten Teile angezeigt werden. Wenn der Reiter geöffnet wird, soll die
+ * Seite direkt die manuell erfassten Teile anzeigen."
+ *
+ * Der Merker ist dafür da, dass die Liste beim ZURÜCKKEHREN aus einer
+ * Detailansicht wieder an derselben Stelle steht (Nachträge 92 bis 95). Er
+ * griff bisher auch beim Antippen des Reiters — dann öffnete sich dieser
+ * irgendwo in der Mitte, und die manuell erfassten Einträge ganz oben waren
+ * nicht zu sehen.
+ *
+ * Zwei verschiedene Absichten: „ich komme zurück" behält die Stelle, „ich gehe
+ * auf diesen Reiter" fängt oben an.
+ *
+ * Die Routennamen sind zugleich die Schlüssel des Merkers ("gallery", "parts",
+ * "minifigs", "finance") — eine zweite Zuordnungstabelle wäre eine zweite
+ * Wahrheit, die auseinanderläuft.
+ */
+fun ScrollMemory.vergissReiter(route: String) {
+    vergiss(route)
+}

@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="24dp"
+    android:height="24dp"
+    android:viewportWidth="120"
+    android:viewportHeight="120">
+
+    <!-- Central post -->
+    <path android:fillColor="#595D60"
+        android:pathData="M56,22 L64,22 L64,96 L56,96 Z"/>
+    <!-- Base -->
+    <path android:fillColor="#595D60"
+        android:pathData="M38,96 L82,96 L82,104 L38,104 Z"/>
+    <!-- Top knob -->
+    <path android:fillColor="#0055BF"
+        android:pathData="M60,14 m-8,0 a8,8 0 1,0 16,0 a8,8 0 1,0 -16,0"/>
+    <!-- Beam -->
+    <path android:fillColor="#595D60"
+        android:pathData="M18,26 L102,26 L102,32 L18,32 Z"/>
+
+    <!-- Left chains -->
+    <path android:fillColor="#9BA19D"
+        android:pathData="M20,29 L20,52 L22,52 L22,29 Z"/>
+    <path android:fillColor="#9BA19D"
+        android:pathData="M34,29 L34,52 L36,52 L36,29 Z"/>
+    <!-- Left pan -->
+    <path android:fillColor="#E63329"
+        android:pathData="M12,52 L44,52 Q44,68 28,68 Q12,68 12,52 Z"/>
+
+    <!-- Right chains -->
+    <path android:fillColor="#9BA19D"
+        android:pathData="M84,29 L84,52 L86,52 L86,29 Z"/>
+    <path android:fillColor="#9BA19D"
+        android:pathData="M98,29 L98,52 L100,52 L100,29 Z"/>
+    <!-- Right pan -->
+    <path android:fillColor="#F2CD37"
+        android:pathData="M76,52 L108,52 Q108,68 92,68 Q76,68 76,52 Z"/>
+
+</vector>

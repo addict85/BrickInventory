@@ -1,0 +1,54 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+
+    <!-- Brick artwork centered in the 108x108 viewport (and within the ~72x72 -->
+    <!-- adaptive-icon safe zone) via a small translate to compensate for the -->
+    <!-- asymmetric shadow/stud geometry. -->
+    <group android:translateX="-3" android:translateY="-0.75">
+
+        <!-- Front face: x=36..72, y=50..74 -->
+        <path android:fillColor="#E63329"
+            android:pathData="M36,50 L36,72 Q36,74 38,74 L70,74 Q72,74 72,72 L72,50 Z"/>
+        <!-- Top face -->
+        <path android:fillColor="#CC2A21"
+            android:pathData="M36,50 L41,38 L72,38 L72,50 Z"/>
+        <!-- Right shadow -->
+        <path android:fillColor="#B5231C"
+            android:pathData="M72,38 L78,42 L78,72 Q78,74 76,74 L72,74 Z"/>
+
+        <!-- Stud 1 -->
+        <path android:fillColor="#CC2A21"
+            android:pathData="M38,38 C38,36.5 41,35.5 45,35.5 C49,35.5 52,36.5 52,38 C52,39.5 49,40.5 45,40.5 C41,40.5 38,39.5 38,38 Z"/>
+        <path android:fillColor="#B5231C"
+            android:pathData="M38,38 L38,40.5 C38,42 41,43 45,43 C49,43 52,42 52,40.5 L52,38 C52,39.5 49,40.5 45,40.5 C41,40.5 38,39.5 38,38 Z"/>
+
+        <!-- Stud 2 -->
+        <path android:fillColor="#CC2A21"
+            android:pathData="M49,38 C49,36.5 52,35.5 56,35.5 C60,35.5 63,36.5 63,38 C63,39.5 60,40.5 56,40.5 C52,40.5 49,39.5 49,38 Z"/>
+        <path android:fillColor="#B5231C"
+            android:pathData="M49,38 L49,40.5 C49,42 52,43 56,43 C60,43 63,42 63,40.5 L63,38 C63,39.5 60,40.5 56,40.5 C52,40.5 49,39.5 49,38 Z"/>
+
+        <!-- Stud 3 -->
+        <path android:fillColor="#CC2A21"
+            android:pathData="M60,38 C60,36.5 63,35.5 67,35.5 C71,35.5 74,36.5 74,38 C74,39.5 71,40.5 67,40.5 C63,40.5 60,39.5 60,38 Z"/>
+        <path android:fillColor="#B5231C"
+            android:pathData="M60,38 L60,40.5 C60,42 63,43 67,43 C71,43 74,42 74,40.5 L74,38 C74,39.5 71,40.5 67,40.5 C63,40.5 60,39.5 60,38 Z"/>
+
+        <!-- Label area -->
+        <path android:fillColor="#FFFFFF"
+            android:pathData="M38,54 Q38,52.5 39.5,52.5 L68.5,52.5 Q70,52.5 70,54 L70,70 Q70,71.5 68.5,71.5 L39.5,71.5 Q38,71.5 38,70 Z"/>
+        <!-- BIM badge -->
+        <path android:fillColor="#F5A800"
+            android:pathData="M40.5,55 Q40.5,53.5 42,53.5 L59,53.5 Q60.5,53.5 60.5,55 L60.5,61 Q60.5,62.5 59,62.5 L42,62.5 Q40.5,62.5 40.5,61 Z"/>
+        <!-- Stripes -->
+        <path android:fillColor="#E5E7EB"
+            android:pathData="M40.5,64.5 L67.5,64.5 L67.5,67 L40.5,67 Z"/>
+        <path android:fillColor="#E5E7EB"
+            android:pathData="M40.5,69 L57,69 L57,71.5 L40.5,71.5 Z"/>
+
+    </group>
+</vector>

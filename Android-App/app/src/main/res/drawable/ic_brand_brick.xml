@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="24dp"
+    android:height="24dp"
+    android:viewportWidth="120"
+    android:viewportHeight="120">
+
+    <!-- Matches the webapp favicon / launcher icon design (red brick, "BIM" badge) -->
+    <path android:fillColor="#E63329"
+        android:pathData="M18,38 L102,38 L102,106 L18,106 Z"/>
+    <path android:fillColor="#CC2A21"
+        android:pathData="M18,38 L30,20 L102,20 L102,38 Z"/>
+    <path android:fillColor="#B5231C"
+        android:pathData="M102,20 L118,30 L118,86 L102,106 Z"/>
+
+    <path android:fillColor="#CC2A21"
+        android:pathData="M43,20 m-6,0 a6,3 0 1,0 12,0 a6,3 0 1,0 -12,0"/>
+    <path android:fillColor="#CC2A21"
+        android:pathData="M58,20 m-6,0 a6,3 0 1,0 12,0 a6,3 0 1,0 -12,0"/>
+    <path android:fillColor="#CC2A21"
+        android:pathData="M73,20 m-6,0 a6,3 0 1,0 12,0 a6,3 0 1,0 -12,0"/>
+    <path android:fillColor="#CC2A21"
+        android:pathData="M88,20 m-6,0 a6,3 0 1,0 12,0 a6,3 0 1,0 -12,0"/>
+
+    <path android:fillColor="#FFFFFF"
+        android:pathData="M24,54 L96,54 L96,94 L24,94 Z"/>
+    <path android:fillColor="#F5A800"
+        android:pathData="M29,58 L75,58 L75,73 L29,73 Z"/>
+</vector>

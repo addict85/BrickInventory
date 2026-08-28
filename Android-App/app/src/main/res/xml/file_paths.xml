@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  FileProvider-Freigabe — bewusst NUR das pdf/-Unterverzeichnis.
+
+  Vorher standen hier cache-path, files-path und external-files-path jeweils
+  mit path=".": die kompletten Wurzelverzeichnisse waren über die
+  Provider-Authority erreichbar — inklusive des API-Caches (api-1/, das
+  Inventar im Klartext-JSON) und des Bild-Caches. Geteilt wird über den
+  Provider aber nur das exportierte Teilelisten-PDF (PdfExportManager legt
+  es in <files>/pdf/ ab, PdfExportService und PartsListFeature reichen es
+  per ACTION_VIEW weiter).
+
+  Beide Wurzeln (extern + intern), weil der Manager auf filesDir
+  zurückfällt, wenn getExternalFilesDir(null) null liefert.
+-->
+<paths>
+    <external-files-path name="pdf_external" path="pdf/" />
+    <files-path name="pdf_internal" path="pdf/" />
+</paths>

@@ -1,0 +1,454 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">BrickInventory Manager</string>
+
+    <!-- ══════════════ Settings screen ══════════════ -->
+    <string name="settings_currency">Currency</string>
+    <string name="settings_price_condition">Price condition</string>
+    <string name="common_condition">Condition</string>
+    <string name="detail_edit_prices">Edit prices</string>
+    <string name="detail_purchase_price">Purchase price</string>
+    <string name="detail_price_placeholder">Market price</string>
+        <string name="common_back">Back</string>
+    <string name="acq_back">Back</string>
+    <string name="acq_delete_title">Delete entry</string>
+    <string name="acq_delete_text">Delete this purchase price entry? The total quantity will be adjusted accordingly.</string>
+    <string name="common_delete">Delete</string>
+    <string name="common_cancel">Cancel</string>
+    <string name="settings_default_condition">Default condition</string>
+    <string name="settings_default_condition_effective">Currently in effect: %1$s.</string>
+    <string name="settings_default_condition_hint">Used as default when adding items. Empty = global default from Monitoring.</string>
+    <string name="settings_default_condition_global">— Global default —</string>
+    <string name="condition_new">New</string>
+    <string name="condition_used">Used</string>
+    <string name="monitoring_default_condition">Default condition</string>
+    <string name="settings_price_basis">Price basis for BrickLink valuations</string>
+    <string name="settings_condition_new">New</string>
+    <string name="settings_condition_used">Used</string>
+    <string name="settings_current_settings">Current settings</string>
+    <string name="settings_current_summary">%1$s · %2$s</string>
+    <string name="settings_save">Save</string>
+    <string name="settings_logout">Log out</string>
+    <string name="settings_language">Language</string>
+    <string name="settings_language_system">Follow system</string>
+    <string name="settings_language_en">English</string>
+    <string name="settings_language_de">German</string>
+
+    <!-- ══════════════ Login screen ══════════════ -->
+    <string name="login_title">Sign in</string>
+    <string name="login_username">Username</string>
+    <string name="login_password">Password</string>
+    <string name="login_button">Sign in</string>
+
+    <!-- ══════════════ CSV import banner ══════════════ -->
+    <string name="csv_ok_count">✅ %1$d ok</string>
+    <string name="csv_stat_success">Success</string>
+    <string name="csv_stat_warnings">Warnings</string>
+    <string name="csv_stat_errors">Errors</string>
+    <string name="csv_import_done">Import complete</string>
+
+    <!-- ══════════════ Portfolio chart ══════════════ -->
+    <string name="chart_portfolio_value">📈 Portfolio value trend</string>
+    <string name="chart_no_history">No history data yet</string>
+    <string name="chart_period_week">Week</string>
+    <string name="chart_period_month">Month</string>
+    <string name="chart_period_year">Year</string>
+    <string name="chart_period_max">Max</string>
+
+    <!-- ══════════════ Comparison screen ══════════════ -->
+    <string name="comparison_search_placeholder">Search e.g. Technic, City…</string>
+    <string name="comparison_clear">Clear</string>
+    <string name="comparison_search">Search</string>
+    <string name="comparison_scan_new">New</string>
+    <string name="comparison_scan">Scan</string>
+    <string name="comparison_barcode_label">Barcode: %1$s</string>
+    <string name="comparison_title">Price comparison</string>
+    <string name="comparison_hint">Enter a search term or scan a barcode.\nThe search opens toppreise.ch in your browser.</string>
+
+    <!-- ══════════════ Barcode result dialog ══════════════ -->
+    <string name="barcode_add">Add</string>
+    <string name="barcode_purchase_price">Purchase price (optional)</string>
+
+    <!-- ══════════════ Barcode scanner screen ══════════════ -->
+    <string name="scanner_hint_default">Point the camera at the barcode on the box</string>
+    <string name="scanner_hint_detected">✅ Detected: %1$s</string>
+    <string name="scanner_hint_confirming">Barcode detected, confirming…</string>
+    <string name="scanner_hint_aim">Point the camera at the barcode</string>
+    <string name="scanner_hint_error">Scan error — please try again</string>
+    <string name="scanner_torch_off">🔦 Turn off light</string>
+    <string name="scanner_torch_on">🔦 Turn on light</string>
+    <string name="scanner_camera_needed">Camera access needed</string>
+    <string name="scanner_allow">Allow</string>
+    <string name="scanner_close">Close</string>
+
+    <!-- ══════════════ Setup screen ══════════════ -->
+    <string name="setup_invalid_qr">Invalid QR code — please use a BrickInventory QR code</string>
+    <string name="setup_subtitle">Server setup</string>
+    <string name="setup_scan_qr">Scan QR code</string>
+    <string name="setup_or_manual">  or manually  </string>
+    <string name="setup_server_url">Server URL</string>
+    <string name="setup_url_label">URL of the BrickInventory Manager webapp</string>
+    <string name="setup_url_placeholder">http://192.168.1.100:3000</string>
+    <string name="setup_url_supporting">e.g. http://192.168.1.100:3000 or https://brick.example.com</string>
+    <string name="setup_continue">Continue</string>
+    <string name="setup_qr_detected">✅ QR code detected</string>
+    <string name="setup_qr_scan_hint">Scan the BrickInventory QR code</string>
+
+    <!-- ══════════════ Gallery screen ══════════════ -->
+    <string name="gallery_stat_sets">Sets</string>
+    <string name="gallery_stat_units">Units</string>
+    <string name="gallery_stat_parts">Parts</string>
+    <string name="gallery_stat_minifigs">Minifigs</string>
+    <string name="gallery_search_placeholder">Search sets…</string>
+    <string name="gallery_clear">Clear</string>
+    <string name="gallery_all">All</string>
+    <string name="gallery_no_sets">No sets yet</string>
+    <string name="gallery_pull_to_refresh">Pull down to refresh</string>
+    <string name="gallery_refresh">Refresh</string>
+    <string name="gallery_no_results">No results for “%1$s”</string>
+    <string name="gallery_quantity_badge">×%1$d</string>
+    <string name="gallery_delete">Delete</string>
+    <string name="gallery_delete_title">Delete set?</string>
+    <string name="gallery_delete_text">%1$s and all parts will be removed.</string>
+    <string name="gallery_pieces_suffix"> parts</string>
+    <string name="gallery_scan_barcode">Scan barcode</string>
+    <string name="gallery_add_set">Add set</string>
+    <string name="gallery_add_set_title">Add set</string>
+    <string name="gallery_set_number">Set number</string>
+    <string name="gallery_set_number_placeholder">e.g. 75192-1 or 75192</string>
+    <string name="gallery_quantity">Quantity</string>
+    <string name="gallery_purchase_price">Purchase price (optional)</string>
+    <string name="gallery_purchase_price_placeholder">Empty = current market price</string>
+    <string name="gallery_add">Add</string>
+    <string name="gallery_cancel">Cancel</string>
+
+    <!-- ══════════════ Minifigs screen ══════════════ -->
+    <string name="minifigs_stat_types">Types</string>
+    <string name="minifigs_stat_total">Total</string>
+    <string name="minifigs_stat_manual">Manual</string>
+    <string name="minifigs_search_placeholder">Search minifigures…</string>
+    <string name="minifigs_manual_section">Manually added minifigures</string>
+    <string name="minifigs_sets_section">From sets</string>
+    <string name="minifigs_none">No minifigures</string>
+    <string name="minifigs_loaded_on_import">Minifigures are loaded when sets are imported</string>
+    <string name="minifigs_no_results">No results</string>
+    <string name="minifigs_add">Add minifigure</string>
+    <string name="minifigs_edit">Edit</string>
+    <string name="minifigs_delete">Delete</string>
+    <string name="minifigs_add_title">Add minifigure</string>
+    <string name="minifigs_fig_number">Figure number</string>
+    <string name="minifigs_fig_number_placeholder">e.g. fig-007357 (Rebrickable)</string>
+    <string name="minifigs_bl_number">BrickLink no. (optional)</string>
+    <string name="minifigs_bl_number_placeholder">e.g. sw0001 — for market price</string>
+    <string name="minifigs_bl_hint">Rebrickable and BrickLink numbers usually differ. Without a BrickLink number, the market price is approximated from the figure\'s individual parts.</string>
+    <string name="minifigs_quantity">Quantity</string>
+    <string name="minifigs_unit_price">Purchase price/pc (optional)</string>
+    <string name="minifigs_unit_price_placeholder">Empty = current market price</string>
+    <string name="minifigs_note">Note (optional)</string>
+    <string name="minifigs_add_button">Add</string>
+    <string name="minifigs_cancel">Cancel</string>
+    <string name="minifigs_delete_title">Delete minifigure?</string>
+    <string name="minifigs_delete_text">%1$s will be removed from your collection.</string>
+    <string name="minifigs_qty_badge">%1$d×</string>
+    <string name="minifigs_manual_badge">Manual</string>
+
+    <!-- ══════════════ Parts list screen ══════════════ -->
+    <string name="partslist_set_already_added">Set already in the list</string>
+    <string name="partslist_sets_in_list">%1$d set(s) in the list</string>
+    <string name="partslist_loading_set">Loading %1$s (%2$d/%3$d)…</string>
+    <string name="partslist_error_for_set">Error for %1$s</string>
+    <string name="partslist_summary">%1$d part types · %2$d parts</string>
+    <string name="partslist_set_number_placeholder">Set number (e.g. 75192)</string>
+    <string name="partslist_scan">Scan</string>
+    <string name="partslist_generate">Generate</string>
+    <string name="partslist_pdf_error_title">PDF error</string>
+    <string name="partslist_ok">OK</string>
+    <string name="partslist_reset">Reset</string>
+    <string name="partslist_empty_hint">Add sets and generate a parts list</string>
+    <string name="partslist_no_color">(No color)</string>
+    <string name="partslist_group_summary">%1$d×  ·  %2$d types</string>
+    <string name="partslist_rb_prefix">RB: %1$s</string>
+    <!-- ══════════════ Finance screen ══════════════ -->
+    <string name="finance_loading">Prices are loading…</string>
+    <string name="finance_no_data">No price data</string>
+    <string name="finance_load_prices">Load prices</string>
+    <string name="finance_price_error">Price error</string>
+    <string name="finance_no_sets">No sets</string>
+    <string name="finance_load_prompt">→ Load prices</string>
+    <string name="finance_total_pnl">Total P&amp;L  %1$s%2$.1f%%</string>
+    <string name="finance_parts_extra">incl. parts &amp; minifigures: %1$s</string>
+    <string name="finance_avg_label">Ø Average</string>
+    <string name="finance_filter_all">All</string>
+    <string name="finance_filter_sets">Sets</string>
+    <string name="finance_filter_parts">Parts</string>
+    <string name="finance_filter_minifigs">Minifigures</string>
+    <string name="finance_section_sets">SETS</string>
+    <string name="finance_section_parts">PARTS</string>
+    <string name="finance_section_minifigs">MINIFIGURES</string>
+    <string name="finance_subtotal_parts">Total parts</string>
+    <string name="finance_subtotal_minifigs">Total minifigures</string>
+    <string name="finance_total_sets">Sets</string>
+    <string name="finance_total_manual_parts">Manually added parts</string>
+    <string name="finance_total_manual_minifigs">Manually added minifigures</string>
+    <string name="finance_grand_total">Total</string>
+    <string name="finance_market_avg">Ø Market price</string>
+
+
+    <!-- ══════════════ Parts screen ══════════════ -->
+    <string name="parts_stat_types">Types</string>
+    <string name="parts_stat_colors">Colors</string>
+    <string name="parts_stat_total">Total</string>
+    <string name="parts_manual_section">Manually added parts</string>
+    <string name="parts_sets_section">From sets</string>
+    <string name="parts_none">No parts</string>
+    <string name="parts_add">Add part</string>
+    <string name="parts_edit">Edit</string>
+    <string name="parts_delete">Delete</string>
+    <string name="parts_delete_title">Delete part?</string>
+    <string name="parts_delete_text">%1$s will be removed from your collection.</string>
+    <string name="parts_quantity">Quantity</string>
+    <string name="parts_unit_price">Purchase price/pc (optional)</string>
+    <string name="parts_unit_price_placeholder">Empty = current market price</string>
+    <string name="parts_cancel">Cancel</string>
+    <string name="parts_add_title">Add part</string>
+    <string name="parts_part_number">Part number</string>
+    <string name="parts_part_number_placeholder">e.g. 3001</string>
+    <string name="parts_no_color">No color</string>
+    <string name="parts_color_label">Color (optional)</string>
+    <string name="parts_note">Note (optional)</string>
+    <string name="parts_add_button">Add</string>
+
+
+    <!-- ══════════════ Monitoring screen ══════════════ -->
+    <string name="monitoring_title">Job Monitoring</string>
+    <string name="monitoring_refresh">Refresh</string>
+    <string name="monitoring_retry_error">Error on retry</string>
+    <string name="monitoring_delete_error">Error deleting</string>
+    <string name="monitoring_sync_now">Sync now</string>
+    <string name="monitoring_queue_collapse">Collapse queue</string>
+    <string name="monitoring_queue_show">Show queue (%1$d)</string>
+    <string name="monitoring_icon_retry">Retry</string>
+    <string name="monitoring_icon_delete">Delete</string>
+    <string name="monitoring_hide_error">Hide error</string>
+    <string name="monitoring_show_error">Show last error</string>
+    <string name="monitoring_price_cache">PRICE CACHE</string>
+    <string name="monitoring_cache_prices">Prices</string>
+    <string name="monitoring_cache_stale">Stale</string>
+    <string name="monitoring_cache_subsets">Subsets</string>
+    <string name="monitoring_cache_catalog">Catalog</string>
+    <string name="monitoring_cache_duration">Cache duration</string>
+    <string name="monitoring_cache_saved">Cache duration saved</string>
+    <string name="monitoring_api_calls">API CALLS</string>
+    <string name="monitoring_limits_saved">Limits saved</string>
+    <string name="monitoring_limits_save">Save limits</string>
+    <string name="monitoring_retry_queued">%1$s will be retried</string>
+    <string name="monitoring_entry_removed">%1$s removed</string>
+    <string name="monitoring_start_error">Error starting</string>
+
+    <!-- ══════════════ Set detail screen ══════════════ -->
+    <string name="detail_back">Back</string>
+    <string name="detail_delete">Delete</string>
+    <string name="detail_year">Year</string>
+    <string name="detail_pieces">Pieces</string>
+    <string name="detail_minifigs">Minifigs</string>
+    <string name="detail_theme">Theme</string>
+    <string name="detail_section_details">Set details</string>
+    <string name="detail_part_number">Part no.</string>
+    <string name="detail_fig_number">Fig. no.</string>
+    <string name="detail_color">Color</string>
+    <string name="detail_section_item">Details</string>
+    <string name="detail_set_number">Set number</string>
+    <string name="detail_added">Added</string>
+    <string name="detail_quantity">Quantity</string>
+    <string name="detail_section_market">Market price</string>
+    <string name="detail_instructions_with_count">Instructions (%1$d)</string>
+    <string name="detail_instructions">Instructions</string>
+    <string name="detail_instruction_default">Instruction</string>
+    <string name="detail_close">Close</string>
+    <string name="detail_price_low">Low</string>
+    <string name="detail_price_current">Current</string>
+    <string name="detail_price_high">High</string>
+
+
+    <!-- ══════════════ Navigation & Main ══════════════ -->
+    <string name="nav_gallery">Gallery</string>
+    <string name="nav_parts">Parts</string>
+    <string name="nav_minifigs">Minifigures</string>
+    <string name="nav_minifigs_short">Minifig.</string>
+    <string name="nav_partslist">Parts list</string>
+    <string name="nav_finance">Finance</string>
+    <string name="nav_comparison">Comparison</string>
+    <string name="nav_settings">Settings</string>
+    <string name="nav_monitoring">📊 Monitoring</string>
+    <string name="main_barcode_add_partslist">Add to parts list?</string>
+    <string name="main_barcode_add_set">Add set?</string>
+    <string name="main_barcode_year">Year</string>
+    <string name="main_barcode_pieces">Pieces</string>
+    <string name="main_barcode_figs">Figures</string>
+    <string name="main_barcode_cancel">Cancel</string>
+    <string name="main_account">Account</string>
+    <string name="main_menu_monitoring">Monitoring</string>
+    <string name="main_menu_logout">Log out</string>
+    <string name="main_menu_change_server">Change server</string>
+    <string name="vm_settings_saved">Settings saved</string>
+
+
+    <!-- ══════════════ ViewModel messages ══════════════ -->
+    <string name="vm_barcode_not_found">No set found for barcode %1$s</string>
+
+
+    <!-- Nachtrag i18n-Pass: zuvor hartkodierte Strings -->
+    <string name="parts_search_placeholder">Search parts…</string>
+    <string name="common_quantity">Quantity</string>
+    <string name="common_loading">Loading…</string>
+    <string name="detail_price_loading">Loading price…</string>
+    <string name="vm_saved">Saved</string>
+    <string name="vm_part_deleted">Part deleted</string>
+    <string name="vm_minifig_deleted">Minifigure deleted</string>
+    <string name="vm_set_deleted">%1$s deleted</string>
+    <string name="vm_added">%1$s added</string>
+    <string name="vm_updated">%1$s updated</string>
+    <string name="vm_barcode_searching">🔍 Searching set for: %1$s…</string>
+    <string name="vm_barcode_no_set">❌ No set found for: %1$s</string>
+    <string name="vm_set_added">✅ %1$s added!</string>
+    <string name="vm_error">Error: %1$s</string>
+    <string name="vm_session_expired">⚠️ Session expired — please log in again</string>
+
+    <!-- Foreground-Service-Benachrichtigungen (CSV-Import / PDF-Export) -->
+    <string name="notif_csv_title">BrickInventory – CSV import</string>
+    <string name="notif_csv_running">CSV import running…</string>
+    <string name="notif_csv_importing">Importing…</string>
+    <string name="notif_csv_done">Import finished ✓</string>
+    <string name="notif_csv_channel_name">CSV import progress</string>
+    <string name="notif_csv_channel_desc">Shows the progress of the CSV import</string>
+    <string name="notif_pdf_title">BrickInventory – PDF export</string>
+    <string name="notif_pdf_running">PDF export running…</string>
+    <string name="notif_pdf_done_tap">PDF ready – tap to open</string>
+    <string name="notif_pdf_failed">PDF export failed: %1$s</string>
+    <string name="notif_pdf_channel_name">PDF export progress</string>
+    <string name="notif_pdf_channel_desc">Shows the progress of the parts-list PDF export</string>
+
+    <!-- PDF-Export-Statustexte (PdfExportManager) -->
+    <string name="pdfexp_no_data">No export data available</string>
+    <string name="pdfexp_starting">Starting export…</string>
+    <string name="pdfexp_unknown_error">Unknown error</string>
+    <string name="pdfexp_loading_images">Loading images…</string>
+    <string name="pdfexp_creating_eta">Creating PDF… ~%1$ds left</string>
+    <string name="pdfexp_almost_done">PDF almost done…</string>
+    <string name="pdfexp_downloading">Downloading PDF…</string>
+    <string name="pdfexp_finalizing">Finalizing PDF…</string>
+    <string name="monitoring_starting">Starting…</string>
+    <string name="monitoring_started">✅ Started</string>
+    <string name="monitoring_sync_started_short">✅ Sync started</string>
+    <string name="monitoring_price_update">Update prices</string>
+    <string name="monitoring_redownload_missing">Redownload missing images</string>
+    <string name="monitoring_import_missing_instr">Import missing instructions</string>
+    <string name="monitoring_loading">Loading…</string>
+    <string name="monitoring_reimport_error">Reimport failed</string>
+    <string name="monitoring_reimport_enqueued">✅ %1$d sets enqueued</string>
+    <!-- Katalog -->
+    <string name="nav_catalog">Catalog</string>
+    <string name="catalog_search_placeholder">Set number / name…</string>
+    <string name="catalog_filter_theme">Theme</string>
+    <string name="catalog_filter_year">Year</string>
+    <string name="catalog_all_themes">All themes</string>
+    <string name="catalog_all_years">All years</string>
+    <string name="catalog_theme_search">Search themes…</string>
+    <string name="catalog_result_count">%1$d sets in catalog</string>
+    <string name="catalog_no_results">No sets found</string>
+    <string name="catalog_owned">Owned</string>
+    <string name="catalog_add_to_gallery">Add to gallery</string>
+    <string name="catalog_add_again">Add again</string>
+    <string name="catalog_add_confirm">Add</string>
+    <string name="catalog_open_in_gallery">Open in gallery</string>
+    <string name="catalog_detail_year">Year</string>
+    <string name="catalog_detail_theme">Theme</string>
+    <string name="catalog_detail_parts">Parts</string>
+    <string name="catalog_detail_minifigs">Minifigures</string>
+    <string name="catalog_sort_year_desc">Year ↓</string>
+    <string name="catalog_sort_year_asc">Year ↑</string>
+    <string name="catalog_sort_name">Name A–Z</string>
+    <string name="catalog_sort_number">Number ↑</string>
+    <string name="catalog_sort_parts_desc">Parts ↓</string>
+    <string name="catalog_sort_parts_asc">Parts ↑</string>
+    <string name="catalog_buy_bricklink">Buy on BrickLink</string>
+    <string name="catalog_search_bricklink">Search on BrickLink</string>
+    <string name="finance_purchase_short">Purchase: %1$s</string>
+    <string name="household_scope_label">Accounts</string>
+    <string name="household_scope_all">All accounts</string>
+    <string name="household_scope_own">Own</string>
+    <string name="household_for_account">For account</string>
+    <string name="household_self">(me)</string>
+    <string name="household_title">Household</string>
+    <string name="household_intro">Link accounts into a household: the main account sees all sets, parts and minifigures combined. Both accounts must use the same currency.</string>
+    <string name="household_state_none">This account is not linked to any other.</string>
+    <string name="household_state_main">Linked accounts</string>
+    <string name="household_state_sub">Linked to main account %1$s</string>
+    <string name="household_invite_create">Create invitation code</string>
+    <string name="household_invite_hint">Enter the code in the other account under Settings. Valid for 24 hours, usable once.</string>
+    <string name="household_invite_copy">Copy</string>
+    <string name="household_redeem_title">Accept an invitation</string>
+    <string name="household_redeem_hint">Enter the code from the main account. Your data stays yours.</string>
+    <string name="household_redeem_submit">Link</string>
+    <string name="household_unlink">Unlink</string>
+    <string name="household_remove">Remove</string>
+    <string name="household_move_ok">Set moved — %1$d parts and %2$d minifigures came along.</string>
+    <!-- Barrierefreiheit: Beschriftungen für Bedienelemente, die NUR aus einem
+         Symbol bestehen. TalkBack liest sonst bloss „Schaltfläche" vor. Icons
+         NEBEN einem Text bekommen bewusst weiterhin contentDescription = null —
+         sonst liest TalkBack dieselbe Sache zweimal. -->
+    <string name="cd_search_clear">Clear search</string>
+    <string name="cd_password_show">Show password</string>
+    <string name="cd_password_hide">Hide password</string>
+    <string name="cd_set_menu">More actions for this set</string>
+    <string name="cd_qty_increase">Increase quantity</string>
+    <string name="cd_qty_decrease">Decrease quantity</string>
+    <string name="cd_edit_cache_ttl">Edit cache duration</string>
+    <string name="cd_edit_limits">Edit API limits</string>
+    <string name="common_no_app_to_open">No app found to open this link</string>
+    <string name="gallery_sort_added_desc">Newest first</string>
+    <string name="gallery_sort_added_asc">Oldest first</string>
+    <string name="gallery_sort_name">Name A–Z</string>
+    <string name="gallery_sort_number">Number ↑</string>
+    <string name="gallery_sort_year_desc">Year ↓</string>
+    <string name="gallery_sort_price_desc">Price ↓</string>
+    <string name="gallery_sort_price_asc">Price ↑</string>
+    <string name="gallery_sort_qty_desc">Quantity ↓</string>
+    <string name="gallery_sort_qty_asc">Quantity ↑</string>
+    <string name="vm_add_failed">%1$s could not be added: %2$s</string>
+
+    <!-- PDF-Betrachter (Nachtrag 115). Der Bildschirm war der einzige ohne
+         stringResource: Beschriftungen, Ladetexte und Toasts standen als
+         deutsche Literale im Code. -->
+    <string name="monitoring_retry_attempt">Attempt %1$d/30 · Retry: %2$s</string>
+    <string name="monitoring_cache_ttl_hours">%1$s hours</string>
+    <string name="acq_total_quantity">Total ×%1$d</string>
+    <string name="setup_build">Build %1$s</string>
+    <string name="err_login_failed">Sign-in failed</string>
+    <string name="err_qr_login_failed">QR sign-in failed</string>
+    <string name="err_network">No connection to the server</string>
+    <string name="err_timeout">The server did not respond in time</string>
+    <string name="err_empty_response">The server sent no data</string>
+    <string name="err_server">Server error (%1$d)</string>
+    <string name="err_not_signed_in">Not signed in</string>
+    <string name="err_connection_closed">The server closed the connection</string>
+    <string name="err_session_expired">Session expired — please sign in again</string>
+    <string name="err_unknown">Something went wrong</string>
+    <string name="pdfview_print">Print</string>
+    <string name="pdfview_download">Download</string>
+    <string name="pdfview_loading_pct">Loading PDF… %1$d%%</string>
+    <string name="pdfview_loading_bytes">Loading PDF… %1$s</string>
+    <string name="pdfview_rendering">Loading PDF…</string>
+    <string name="pdfview_load_failed">Could not load: %1$s</string>
+    <string name="pdfview_page">Page %1$d</string>
+    <string name="pdfview_unknown_error">Unknown error</string>
+    <string name="pdfview_download_failed">Download failed</string>
+    <string name="pdfview_print_failed">Printing failed: %1$s</string>
+    <string name="pdfview_saved">Saved: %1$s</string>
+    <string name="pdfview_save_failed">Saving failed: %1$s</string>
+    <string name="pdfview_no_target">No storage location available</string>
+    <string name="pdfview_write_failed">File could not be written</string>
+    <string name="pdfview_default_name">Instructions</string>
+    <string name="pdfview_empty_response">Empty response from server</string>
+    <string name="pdfview_share">Share PDF</string>
+</resources>

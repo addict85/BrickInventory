@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Ersetzt das pauschale android:usesCleartextTraffic="true" im Manifest.
+
+  Warum trotzdem cleartextTrafficPermitted="true" in der base-config:
+  Die Server-URL gibt der Nutzer selbst ein, typischerweise eine private
+  LAN-Adresse wie http://192.168.1.50:3000. Android kann RFC1918-Bereiche in
+  <domain> nicht per Wildcard ausdrücken, ein Whitelist-Ansatz ist hier also
+  nicht möglich. Die Einschränkung passiert deshalb eine Ebene höher, im
+  OkHttp-Interceptor (siehe util/NetworkPolicy.kt): Klartext ist nur noch zu
+  privaten Adressen erlaubt, zu öffentlichen Hosts wird die Anfrage abgebrochen.
+  Vorher ging der nie ablaufende Bearer-Token unbemerkt auch über das offene
+  Internet im Klartext.
+
+  <trust-anchors> mit "user": damit funktioniert HTTPS mit einem selbst
+  ausgestellten Zertifikat, sobald der Nutzer die eigene CA im System
+  installiert hat — der saubere Weg raus aus dem Klartext-Betrieb.
+-->
+<network-security-config>
+    <base-config cleartextTrafficPermitted="true">
+        <trust-anchors>
+            <certificates src="system" />
+            <certificates src="user" />
+        </trust-anchors>
+    </base-config>
+</network-security-config>

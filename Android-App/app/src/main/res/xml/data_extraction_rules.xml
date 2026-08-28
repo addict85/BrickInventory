@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Cloud-Backup ist über android:allowBackup="false" ohnehin aus. Diese Regeln
+  greifen für den Geräte-zu-Geräte-Transfer (Android 12+), der davon unabhängig
+  läuft: app_prefs enthält den Bearer-Token im Klartext. Er darf das Gerät
+  nicht verlassen.
+
+  Der Token trug früher gar kein Ablaufdatum. Seit TOKEN_IDLE_DAYS (Vorgabe
+  90 Tage) räumt der Server ihn auf, wenn er so lange ungenutzt bleibt — auf
+  einem Gerät, das die App regelmässig öffnet, gilt er weiterhin unbegrenzt.
+  An dieser Regel ändert das nichts: Ein mitgewanderter Token ist auf dem
+  neuen Gerät sofort gültig, und „läuft irgendwann ab" ist kein Ersatz für
+  „kommt gar nicht erst dorthin".
+-->
+<data-extraction-rules>
+    <cloud-backup>
+        <exclude domain="file" path="datastore" />
+    </cloud-backup>
+    <device-transfer>
+        <exclude domain="file" path="datastore" />
+    </device-transfer>
+</data-extraction-rules>

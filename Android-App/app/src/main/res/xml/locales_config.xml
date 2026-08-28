@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Deklariert die von der App unterstützten Sprachen.
+  Wird von Android 13+ genutzt, um die App unter
+  Einstellungen → Apps → BrickInventory → Sprache in den
+  System-Sprachauswahl-Dialog aufzunehmen. Zusätzlich nutzen wir
+  AppCompatDelegate.setApplicationLocales(), damit die manuelle Auswahl
+  auch direkt in der App (SettingsScreen) funktioniert und bis
+  Android 8 (minSdk 26) zurück unterstützt wird.
+-->
+<locale-config xmlns:android="http://schemas.android.com/apk/res/android">
+    <locale android:name="en" />
+    <locale android:name="de" />
+</locale-config>
