@@ -9175,3 +9175,42 @@ rot mit Datei und Zeile, danach wiederhergestellt und wieder grün.
 HINWEIS: weiterhin ohne Android-SDK gebaut. Punkt 1 verändert die Navigation an
 neun Stellen — bitte nach dem Bauen einmal durch alle Reiter klicken und
 prüfen, dass jeder oben anfängt und das Abmelden funktioniert.
+
+---
+
+## Nachtrag 121 — Release signieren
+
+Marco: „Wie kann ich die Signatur-Informationen mitgeben?"
+
+Vorher gab es im Projekt gar keine Signaturkonfiguration; `assembleRelease`
+erzeugte `app-release-unsigned.apk`, das sich auf keinem Gerät installieren
+lässt.
+
+Neu liest das Buildskript vier Werte aus ZWEI Quellen, in dieser Reihenfolge:
+Umgebungsvariable (`BRICK_KEYSTORE_PFAD` …), dann Gradle-Property
+(`brickKeystorePfad` …). Die erste bedient GitHub Actions, die zweite den
+lokalen Bau über `~/.gradle/gradle.properties` — eine Datei AUSSERHALB des
+Projekts, die deshalb nicht versehentlich mitcommittet werden kann. Eine
+`keystore.properties` neben dem Buildskript wäre beim nächsten `git add -A`
+dabei; sie steht trotzdem in der .gitignore, zusammen mit `signing.properties`,
+`*.jks` und `*.keystore` — doppelt hält.
+
+Fehlen die Werte, gibt es keine Signaturkonfiguration und `assembleRelease`
+baut UNSIGNIERT durch statt abzubrechen. Absicht: Ein lokaler Bau soll nicht
+daran scheitern, dass jemand die Werte nicht gesetzt hat. Der CI-Ablauf setzt
+in diesem Fall eine deutliche Warnung ins Protokoll, statt still etwas
+Uninstallierbares hochzuladen.
+
+Kein Vorgabewert irgendwo. Ein fest eingetragenes Passwort wäre schlimmer als
+gar keine Signatur, weil es aussieht, als wäre es geschützt.
+
+README: neuer Abschnitt „Release signieren" mit dem `keytool`-Aufruf, den drei
+Wegen (lokal dauerhaft, lokal für eine Sitzung, GitHub Actions) und dem
+`apksigner verify` zum Nachprüfen. Dazu der Hinweis, der am meisten kostet,
+wenn er fehlt: Ohne den Schlüsselspeicher lässt sich eine installierte App nie
+wieder aktualisieren.
+
+EIGENER FEHLER im CI-Ablauf des Vortags, dabei korrigiert: `if: ${{
+secrets.KEYSTORE_BASE64 != '' }}` auf Schrittebene. Der `secrets`-Kontext steht
+dort nicht zur Verfügung — die Frage wird jetzt einmal in einer Job-Variablen
+beantwortet und über `env` geprüft.

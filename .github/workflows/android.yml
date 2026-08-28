@@ -4,7 +4,7 @@ name: Android
 # berührt — und von Hand über den Knopf "Run workflow".
 #
 # Zweck: Der Übersetzungs- und Testbefund kommt automatisch, ohne dass jemand
-# lokal bauen muss. Schlägt etwas fehl, steht im Protokoll genau, wo.
+# lokal bauen muss. Am Ende steht eine installierbare BrickInventory.apk.
 on:
   push:
     branches: [main]
@@ -16,9 +16,9 @@ on:
       - 'Android-App/**'
   workflow_dispatch:
 
-# Ein neuer Push bricht einen noch laufenden Bau desselben Zweigs ab —
-# sonst stehen bei mehreren Pushes hintereinander drei Läufe in der Schlange
-# und der erste ist längst uninteressant.
+# Ein neuer Push bricht einen noch laufenden Bau desselben Zweigs ab — sonst
+# stehen bei mehreren Pushes drei Läufe in der Schlange und der erste ist
+# längst uninteressant.
 concurrency:
   group: android-${{ github.ref }}
   cancel-in-progress: true
@@ -30,45 +30,130 @@ jobs:
       run:
         working-directory: Android-App
 
-    steps:
-      - uses: actions/checkout@v4
+    # Der `secrets`-Kontext steht in einem `if:` auf SCHRITTEBENE nicht zur
+    # Verfügung — `env` schon. Deshalb wird die Frage "gibt es einen
+    # Schlüsselspeicher?" hier einmal beantwortet und unten über env geprüft.
+    env:
+      HAT_SCHLUESSEL: ${{ secrets.KEYSTORE_BASE64 != '' }}
 
-      # JDK 17 — passt zu sourceCompatibility/targetCompatibility und
-      # jvmTarget im app/build.gradle.kts. Meldet der Bau, dass AGP eine
-      # neuere Fassung verlangt, hier auf '21' stellen; die Zahlen im
-      # Buildskript bleiben dann trotzdem auf 17.
+    steps:
+      - uses: actions/checkout@v6
+
+      # JDK 17 — passt zu sourceCompatibility/targetCompatibility und jvmTarget
+      # im app/build.gradle.kts. Verlangt AGP eine neuere Fassung, steht das
+      # klar im Protokoll; dann hier auf '21' stellen. Die Zahlen im
+      # Buildskript bleiben trotzdem auf 17.
       - name: JDK einrichten
-        uses: actions/setup-java@v4
+        uses: actions/setup-java@v5
         with:
           distribution: temurin
           java-version: '17'
 
-      # Legt den Gradle-Cache an und liest die Wrapper-Version aus dem Repo.
-      # Ohne das lädt jeder Lauf alle Abhängigkeiten neu (mehrere Minuten).
-      - name: Gradle einrichten
-        uses: gradle/actions/setup-gradle@v4
+      # ── Vorabprüfung ────────────────────────────────────────────────────────
+      #
+      # Der Gradle-Wrapper besteht aus DREI Dateien, und zwei davon sind binär:
+      # `gradle-wrapper.jar` kommt beim Zippen eines Projekts oft nicht mit, und
+      # dann fehlt sie im Repository, ohne dass es jemandem auffällt.
+      #
+      # Ohne diese Prüfung scheitert der Lauf ein paar Schritte später mit einer
+      # Meldung, die nicht sagt, was fehlt — `setup-gradle` prüft ab v4 die
+      # Prüfsumme der Wrapper-JAR und bricht ab, `chmod` findet die Datei nicht,
+      # oder Java meldet "Could not find or load main class
+      # org.gradle.wrapper.GradleWrapperMain". Drei verschiedene Fehlerbilder für
+      # dieselbe Ursache.
+      - name: Gradle-Wrapper vorhanden?
+        run: |
+          set -eu
+          fehlt=""
+          for f in gradlew gradlew.bat gradle/wrapper/gradle-wrapper.jar gradle/wrapper/gradle-wrapper.properties; do
+            [ -f "$f" ] || fehlt="$fehlt $f"
+          done
+          if [ -n "$fehlt" ]; then
+            echo "::error::Im Repository fehlen:$fehlt"
+            echo ""
+            echo "Diese Dateien gehören ins Repository — ohne sie kann niemand bauen."
+            echo "Aus dem lokalen Projekt nach Android-App/ kopieren und committen:"
+            echo "  gradlew"
+            echo "  gradlew.bat"
+            echo "  gradle/wrapper/gradle-wrapper.jar"
+            echo ""
+            echo "Was tatsächlich da ist:"
+            ls -la . gradle/wrapper 2>/dev/null || true
+            exit 1
+          fi
+          echo "Wrapper vollständig."
 
-      # Auf Windows committete Dateien haben das Ausführbar-Bit oft nicht.
+      # Legt den Gradle-Cache an. Ohne das lädt jeder Lauf alle Abhängigkeiten
+      # neu — mehrere Minuten pro Bau.
+      - name: Gradle einrichten
+        uses: gradle/actions/setup-gradle@v6
+
+      # Auf Windows committete Dateien tragen das Ausführbar-Bit oft nicht.
       - name: gradlew ausführbar machen
         run: chmod +x gradlew
 
-      # Zuerst die Tests: 50 Testdateien, davon die meisten quelltextlesend.
-      # Sie laufen in Sekunden und fangen das meiste ab, bevor der lange
-      # Übersetzungslauf beginnt.
+      # Zuerst die Tests: rund fünfzig Testdateien, die in Sekunden laufen und
+      # das meiste abfangen, bevor der lange Übersetzungslauf beginnt.
       - name: Unit-Tests
         run: ./gradlew --no-daemon testDebugUnitTest
 
-      - name: Debug-APK bauen
-        run: ./gradlew --no-daemon assembleDebug
+      # ── Signatur ────────────────────────────────────────────────────────────
+      #
+      # Der Schlüsselspeicher liegt als Base64 in einem Repository-Secret und
+      # wird hier in eine Datei ausserhalb des Arbeitsverzeichnisses geschrieben
+      # (RUNNER_TEMP) — so kann er nicht versehentlich ins APK oder in ein
+      # Artefakt geraten.
+      #
+      # Fehlt das Secret, wird der Schritt übersprungen. Der Bau läuft dann
+      # trotzdem durch und liefert ein UNSIGNIERTES APK; der letzte Schritt sagt
+      # das deutlich, statt still etwas Uninstallierbares hochzuladen.
+      - name: Schlüsselspeicher bereitstellen
+        if: env.HAT_SCHLUESSEL == 'true'
+        run: echo "${{ secrets.KEYSTORE_BASE64 }}" | base64 -d > "$RUNNER_TEMP/brick.jks"
 
-      # Android-Lint ist im Buildskript auf ignoreFailures gestellt — der
-      # Bericht ist trotzdem nützlich, deshalb wird er mitgenommen.
+      - name: Release bauen
+        env:
+          # Immer gesetzt, auch ohne Secret: Das Buildskript prüft, ob die
+          # Datei EXISTIERT, und baut sonst unsigniert. Eine Fallunterscheidung
+          # an zwei Stellen wäre eine mehr, als es braucht.
+          BRICK_KEYSTORE_PFAD: ${{ runner.temp }}/brick.jks
+          BRICK_KEYSTORE_PASSWORT: ${{ secrets.KEYSTORE_PASSWORT }}
+          BRICK_KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
+          BRICK_KEY_PASSWORT: ${{ secrets.KEY_PASSWORT }}
+        run: ./gradlew --no-daemon assembleRelease
+
+      # R8 läuft nur im Release-Build (isMinifyEnabled = true). Der Lint-Bericht
+      # ist deshalb gerade hier interessant; abbrechen soll er nicht, das
+      # entspricht abortOnError = false im Buildskript.
       - name: Lint
-        run: ./gradlew --no-daemon lintDebug
+        run: ./gradlew --no-daemon lintRelease
         continue-on-error: true
 
-      # `always()`: Die Berichte sind gerade dann interessant, wenn der Lauf
-      # rot ist. Ohne das lädt GitHub sie bei einem Fehlschlag nicht hoch.
+      # Umbenennen passiert HIER und nicht in Gradle: Der Ausgabename lässt sich
+      # dort nur über interne AGP-Klassen setzen, die zwischen Versionen
+      # wechseln. Ein `mv` ist langweilig und hält.
+      - name: APK umbenennen
+        run: |
+          set -eu
+          cd app/build/outputs/apk/release
+          ls -la
+          if [ -f app-release.apk ]; then
+            mv app-release.apk BrickInventory.apk
+            echo "signiert: ja"
+          elif [ -f app-release-unsigned.apk ]; then
+            mv app-release-unsigned.apk BrickInventory.apk
+            echo "::warning::APK ist UNSIGNIERT und lässt sich nicht installieren. Die vier Secrets KEYSTORE_BASE64, KEYSTORE_PASSWORT, KEY_ALIAS und KEY_PASSWORT fehlen oder sind unvollständig."
+          else
+            echo "::error::Kein APK gefunden."
+            exit 1
+          fi
+
+      # `always()`: Die Berichte sind gerade dann interessant, wenn der Lauf rot
+      # ist. Ohne das lädt GitHub sie bei einem Fehlschlag nicht hoch.
+      # upload-artifact bleibt bei v4: Es warnt wegen Node 20, LÄUFT aber. Eine
+      # geratene v5 wäre "action not found" — ein harter Fehlschlag statt einer
+      # Warnung. Wenn du die Warnung loswerden willst, prüf auf
+      # github.com/actions/upload-artifact, welche Hauptversion aktuell ist.
       - name: Testberichte sichern
         if: always()
         uses: actions/upload-artifact@v4
@@ -76,13 +161,17 @@ jobs:
           name: testberichte
           path: |
             Android-App/app/build/reports/tests/
-            Android-App/app/build/reports/lint-results-debug.html
+            Android-App/app/build/reports/lint-results-release.html
+          # Scheitert der Lauf VOR den Tests, gibt es keine Berichte. Das ist
+          # dann kein zusätzlicher Fehler, sondern nur eine Folge — ohne diese
+          # Zeile schreibt GitHub eine irreführende Warnung ins Protokoll.
+          if-no-files-found: ignore
           retention-days: 14
 
-      - name: APK sichern
+      - name: BrickInventory.apk sichern
         if: success()
         uses: actions/upload-artifact@v4
         with:
-          name: brickinventory-debug-apk
-          path: Android-App/app/build/outputs/apk/debug/*.apk
-          retention-days: 14
+          name: BrickInventory
+          path: Android-App/app/build/outputs/apk/release/BrickInventory.apk
+          retention-days: 90
