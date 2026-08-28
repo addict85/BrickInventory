@@ -1,0 +1,88 @@
+name: Android
+
+# Läuft bei jedem Push auf main und bei jedem Pull-Request, der die App
+# berührt — und von Hand über den Knopf "Run workflow".
+#
+# Zweck: Der Übersetzungs- und Testbefund kommt automatisch, ohne dass jemand
+# lokal bauen muss. Schlägt etwas fehl, steht im Protokoll genau, wo.
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'Android-App/**'
+      - '.github/workflows/android.yml'
+  pull_request:
+    paths:
+      - 'Android-App/**'
+  workflow_dispatch:
+
+# Ein neuer Push bricht einen noch laufenden Bau desselben Zweigs ab —
+# sonst stehen bei mehreren Pushes hintereinander drei Läufe in der Schlange
+# und der erste ist längst uninteressant.
+concurrency:
+  group: android-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: Android-App
+
+    steps:
+      - uses: actions/checkout@v4
+
+      # JDK 17 — passt zu sourceCompatibility/targetCompatibility und
+      # jvmTarget im app/build.gradle.kts. Meldet der Bau, dass AGP eine
+      # neuere Fassung verlangt, hier auf '21' stellen; die Zahlen im
+      # Buildskript bleiben dann trotzdem auf 17.
+      - name: JDK einrichten
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      # Legt den Gradle-Cache an und liest die Wrapper-Version aus dem Repo.
+      # Ohne das lädt jeder Lauf alle Abhängigkeiten neu (mehrere Minuten).
+      - name: Gradle einrichten
+        uses: gradle/actions/setup-gradle@v4
+
+      # Auf Windows committete Dateien haben das Ausführbar-Bit oft nicht.
+      - name: gradlew ausführbar machen
+        run: chmod +x gradlew
+
+      # Zuerst die Tests: 50 Testdateien, davon die meisten quelltextlesend.
+      # Sie laufen in Sekunden und fangen das meiste ab, bevor der lange
+      # Übersetzungslauf beginnt.
+      - name: Unit-Tests
+        run: ./gradlew --no-daemon testDebugUnitTest
+
+      - name: Debug-APK bauen
+        run: ./gradlew --no-daemon assembleDebug
+
+      # Android-Lint ist im Buildskript auf ignoreFailures gestellt — der
+      # Bericht ist trotzdem nützlich, deshalb wird er mitgenommen.
+      - name: Lint
+        run: ./gradlew --no-daemon lintDebug
+        continue-on-error: true
+
+      # `always()`: Die Berichte sind gerade dann interessant, wenn der Lauf
+      # rot ist. Ohne das lädt GitHub sie bei einem Fehlschlag nicht hoch.
+      - name: Testberichte sichern
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: testberichte
+          path: |
+            Android-App/app/build/reports/tests/
+            Android-App/app/build/reports/lint-results-debug.html
+          retention-days: 14
+
+      - name: APK sichern
+        if: success()
+        uses: actions/upload-artifact@v4
+        with:
+          name: brickinventory-debug-apk
+          path: Android-App/app/build/outputs/apk/debug/*.apk
+          retention-days: 14
