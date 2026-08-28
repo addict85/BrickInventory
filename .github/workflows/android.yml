@@ -1,0 +1,114 @@
+name: Android-App
+
+# Baut die App im Ordner Android-App/ und laesst die JVM-Unit-Tests laufen.
+#
+# Der Ordner ist ein eigenstaendiges Gradle-Projekt neben Web-App/, deshalb
+# steht ueberall working-directory: Android-App. Der Wurzelordner des
+# Repositories enthaelt selbst kein Gradle-Projekt.
+on:
+  push:
+    branches: ["main", "claude/**"]
+    paths:
+      - "Android-App/**"
+      - ".github/workflows/android.yml"
+  pull_request:
+    paths:
+      - "Android-App/**"
+      - ".github/workflows/android.yml"
+  workflow_dispatch:
+    inputs:
+      release:
+        description: "Zusaetzlich eine Release-APK bauen (minifiziert, UNSIGNIERT)"
+        type: boolean
+        default: false
+
+concurrency:
+  group: android-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+
+    steps:
+      - uses: actions/checkout@v4
+
+      # JDK 17 — dieselbe Fassung, die app/build.gradle.kts als
+      # sourceCompatibility/jvmTarget setzt. JDK 21 laeuft ebenfalls; 17 ist
+      # hier gewaehlt, damit die CI die dokumentierte Entwicklerumgebung
+      # abbildet und nicht eine zweite, guenstigere.
+      - name: JDK 17 einrichten
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      # Prueft gradle-wrapper.jar gegen die von Gradle veroeffentlichten
+      # Pruefsummen. Eine untergeschobene Wrapper-JAR fuehrt bei jedem Build
+      # beliebigen Code aus — das ist die Standardabwehr dagegen.
+      - name: Gradle-Wrapper pruefen
+        uses: gradle/actions/wrapper-validation@v4
+
+      # Android SDK: der ubuntu-Runner bringt es mit, die Lizenzen sind aber
+      # nicht akzeptiert. Diese Aktion erledigt das und setzt ANDROID_HOME —
+      # damit braucht der Build keine local.properties.
+      - name: Android SDK einrichten
+        uses: android-actions/setup-android@v3
+        with:
+          packages: "platforms;android-36 build-tools;36.0.0"
+
+      - name: Gradle einrichten (mit Cache)
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          build-root-directory: Android-App
+
+      - name: Unit-Tests
+        working-directory: Android-App
+        run: ./gradlew testDebugUnitTest --stacktrace
+
+      - name: Debug-APK bauen
+        working-directory: Android-App
+        run: ./gradlew assembleDebug --stacktrace
+
+      # Lint laeuft mit abortOnError = false (siehe app/build.gradle.kts) und
+      # bricht den Lauf deshalb nicht ab. Der Bericht wird trotzdem erzeugt und
+      # unten als Artefakt angehaengt — sonst waere die Pruefung unsichtbar.
+      - name: Lint (Release-Variante)
+        working-directory: Android-App
+        run: ./gradlew lintRelease --stacktrace
+
+      - name: Release-APK bauen (nur auf Anforderung, UNSIGNIERT)
+        if: inputs.release
+        working-directory: Android-App
+        run: ./gradlew assembleRelease --stacktrace
+
+      - name: Debug-APK anhaengen
+        uses: actions/upload-artifact@v4
+        with:
+          name: brickinventory-debug-apk
+          path: Android-App/app/build/outputs/apk/debug/*.apk
+          if-no-files-found: error
+
+      - name: Release-APK anhaengen
+        if: inputs.release
+        uses: actions/upload-artifact@v4
+        with:
+          name: brickinventory-release-apk-unsigniert
+          path: Android-App/app/build/outputs/apk/release/*.apk
+          if-no-files-found: error
+
+      # Auch bei roten Tests hochladen — genau dann werden die Berichte
+      # gebraucht.
+      - name: Test- und Lint-Berichte anhaengen
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: brickinventory-berichte
+          path: |
+            Android-App/app/build/reports/tests/**
+            Android-App/app/build/reports/lint-results-*.html
+          if-no-files-found: ignore
