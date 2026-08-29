@@ -61,10 +61,12 @@ jobs:
         with:
           packages: "platforms;android-36 build-tools;36.0.0"
 
+      # Kein build-root-directory: die Eingabe gibt es in v4 nicht mehr (der
+      # Lauf quittierte sie mit "Unexpected input(s)"). Die Aktion richtet das
+      # GRADLE_USER_HOME samt Cache ein, und das ist ohnehin global — der
+      # Projektordner steht bei den Aufrufen unten als working-directory.
       - name: Gradle einrichten (mit Cache)
         uses: gradle/actions/setup-gradle@v4
-        with:
-          build-root-directory: Android-App
 
       - name: Unit-Tests
         working-directory: Android-App
