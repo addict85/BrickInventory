@@ -37,7 +37,9 @@ class NoDirectCdnAccessTest {
             "ui/screens/GalleryScreen.kt",
             "ui/screens/SetDetailScreen.kt",
             "ui/screens/PartsScreen.kt",
-            "ui/screens/FinanceScreen.kt",
+            // FinanceScreen.kt wurde aufgeteilt — die Kacheln mit den Bildern
+            // stehen in FinanceSections.kt.
+            "ui/screens/FinanceSections.kt",
             "ui/screens/MinifigsScreen.kt",
             "ui/screens/CatalogScreen.kt",
             "ui/screens/CatalogDetailScreen.kt",

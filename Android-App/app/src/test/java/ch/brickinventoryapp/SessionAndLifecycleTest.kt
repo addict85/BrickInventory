@@ -20,6 +20,18 @@ class SessionAndLifecycleTest {
     private fun exists(rel: String) =
         java.io.File("src/main/java/ch/brickinventoryapp/$rel").exists()
 
+    /**
+     * Ein Kamera-Bildschirm samt seiner ausgelagerten Bildanalyse.
+     *
+     * Der Barcode-Scanner besteht seit Nachtrag 99 aus ZWEI Dateien: der
+     * Bildschirm bindet die Vorschau, BarcodeAnalyzer.kt die ImageAnalysis.
+     * Nur eine davon zu lesen fand die halbe Regel und meldete einen Verstoss,
+     * den es nicht gibt.
+     */
+    private fun mitAnalyse(rel: String): String =
+        read(rel) + if (rel.endsWith("BarcodeScannerScreen.kt"))
+            "\n" + read("ui/screens/BarcodeAnalyzer.kt") else ""
+
     /** Kommentare ausblenden — die Erklärtexte nennen die geprüften Muster selbst. */
     private fun code(src: String): String {
         val withoutBlocks = src.replace(Regex("""/\*.*?\*/""", RegexOption.DOT_MATCHES_ALL), "")
@@ -179,7 +191,7 @@ class SessionAndLifecycleTest {
      */
     @Test
     fun `der Kamera-Autofokus bleibt kontinuierlich und ohne Fokus-Pump`() {
-        val src = read("ui/screens/BarcodeScannerScreen.kt")
+        val src = mitAnalyse("ui/screens/BarcodeScannerScreen.kt")
         val hits = Regex("""CONTROL_AF_MODE_CONTINUOUS_PICTURE""").findAll(code(src)).count()
         assert(hits >= 2) {
             "CONTROL_AF_MODE_CONTINUOUS_PICTURE steht nur ${hits}x im Code. Der Modus " +

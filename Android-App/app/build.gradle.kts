@@ -286,6 +286,22 @@ dependencies {
     //    404 mit Fehlerrumpf, 500 ohne, Zeitüberschreitung, leerer Rumpf.
     //    Kommt aus derselben OkHttp-Version wie der Produktionsclient, es gibt
     //    also keine zweite Netzwerkbibliothek im Testpfad.
+    // org.json — NUR für Tests.
+    //
+    // BrickRepository liest den Fehlerrumpf des Servers mit
+    // org.json.JSONObject. Auf dem Gerät ist das die Fassung aus Android; im
+    // JVM-Test liefert android.jar nur eine Attrappe, und zusammen mit
+    // testOptions { unitTests.isReturnDefaultValues = true } gibt
+    // optString("error") stillschweigend "" zurück statt zu parsen.
+    //
+    // Folge: BrickRepositoryErrorMappingTest sah nie die Servermeldung und
+    // meldete rot, obwohl App UND Test richtig sind. Diese echte Fassung liegt
+    // im Klassenpfad VOR android.jar und macht die Prüfung damit aussagekräftig.
+    //
+    // Alternative wäre, im Repository auf kotlinx.serialization umzustellen
+    // (ohnehin Abhängigkeit) — das wäre eine Änderung am Produktionscode und
+    // gehört nicht in denselben Schritt wie das Reparieren der Tests.
+    testImplementation(libs.json)
     testImplementation(libs.kotlinx.coroutines.test)
     testImplementation(libs.okhttp.mockwebserver)
     testImplementation(libs.retrofit)
