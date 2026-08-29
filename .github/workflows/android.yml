@@ -120,7 +120,18 @@ jobs:
           BRICK_KEYSTORE_PASSWORT: ${{ secrets.KEYSTORE_PASSWORT }}
           BRICK_KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
           BRICK_KEY_PASSWORT: ${{ secrets.KEY_PASSWORT }}
-        run: ./gradlew --no-daemon assembleRelease
+        run: ./gradlew --no-daemon assembleRelease bundleRelease
+
+      # ── Warum ZUSÄTZLICH ein Bundle (.aab) ──────────────────────────────────
+      #
+      # Play nimmt seit August 2021 für neue Apps kein APK mehr an, nur noch ein
+      # Android App Bundle. Das APK bleibt trotzdem: Es ist das, was man sich
+      # hier aus den Artefakten zieht und direkt aufs Gerät schiebt. Ein .aab
+      # lässt sich NICHT installieren — daraus schneidet erst Play die
+      # geräte-passenden APKs.
+      #
+      # Beides entsteht im selben Gradle-Aufruf oben, damit der lange
+      # Übersetzungslauf nur einmal stattfindet.
 
       # R8 läuft nur im Release-Build (isMinifyEnabled = true). Der Lint-Bericht
       # ist deshalb gerade hier interessant; abbrechen soll er nicht, das
@@ -186,4 +197,21 @@ jobs:
         with:
           name: BrickInventory
           path: Android-App/app/build/outputs/apk/release/BrickInventory.apk
+          retention-days: 90
+
+      # Das Bundle wird hier nur GEBAUT und gesichert, nicht veroeffentlicht.
+      # Das Hochladen zu Play steht in einem eigenen Workflow, der von Hand
+      # gestartet wird (android-playstore.yml) — eine Veroeffentlichung soll
+      # nicht bei jedem Push auf main passieren.
+      #
+      # Der Bau hier hat trotzdem einen Zweck: Er faellt auf, wenn das Bundle
+      # bricht, waehrend das APK noch durchlaeuft. Das kommt vor — R8 und die
+      # Ressourcen-Aufteilung arbeiten fuer die beiden Formate nicht gleich.
+      - name: App-Bundle (.aab) sichern
+        if: success()
+        uses: actions/upload-artifact@v6
+        with:
+          name: BrickInventory-bundle
+          path: Android-App/app/build/outputs/bundle/release/app-release.aab
+          if-no-files-found: error
           retention-days: 90
