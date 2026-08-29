@@ -71,8 +71,57 @@ fun ScrollPositionKeeper(
     gridState: LazyGridState,
     bereit: Boolean,
     speicher: ScrollMemory,
+    /**
+     * Wie viele Einträge können NACHTRÄGLICH oben in die Liste kommen?
+     *
+     * ── Wofür das da ist (Nachtrag 122) ─────────────────────────────────────
+     *
+     * Marcos Befund: „Der Reiter Teile startet nicht zuoberst. Man sieht die
+     * Teile aus den Sets und muss nach oben scrollen, um die manuell erfassten
+     * zu sehen." Seine Vermutung, die Listen würden unabhängig geladen, war
+     * richtig — und der Rest folgt daraus:
+     *
+     *  1. Beim Betreten laufen `loadParts()` und `loadValuation()` GLEICHZEITIG
+     *     los. Die Set-Teile sind meist zuerst da.
+     *  2. Das Raster zeigt sie, Position 0.
+     *  3. Die manuellen Teile treffen ein und werden mit zwei Zwischenüberschriften
+     *     OBEN eingefügt.
+     *  4. Und jetzt der entscheidende Teil: LazyGrid hält beim Ändern der Daten
+     *     den SICHTBAREN Eintrag fest, nicht den Index — es sucht den Schlüssel
+     *     des ersten sichtbaren Elements in der neuen Liste wieder. Das ist
+     *     normalerweise genau richtig (beim Nachladen unten springt nichts),
+     *     hier aber nicht: Der festgehaltene Eintrag ist ein Set-Teil, und alles
+     *     neu Eingefügte landet ÜBER dem Sichtfenster.
+     *
+     * Deshalb genügt es nicht, die Reihenfolge im Raster zu prüfen — die stimmt.
+     * Es braucht eine ausdrückliche Korrektur, nachdem die Nachzügler da sind.
+     */
+    obenNachziehend: Int = 0,
 ) {
     var wiederhergestellt by remember { mutableStateOf(false) }
+    // Gab es eine gespeicherte Position? Nur dann ist ein Sprung nach oben
+    // falsch — wer aus der Detailansicht zurückkommt, will an seine Stelle.
+    var hatteGespeicherte by remember { mutableStateOf(false) }
+    // Hat sich die Liste bewegt, bevor die Nachzügler da waren?
+    //
+    // `isScrollInProgress` kann eine Wischgeste ODER einen eigenen
+    // scrollToItem-Aufruf bedeuten — hier aber nur eine Geste, und zwar aus
+    // einem Grund, der in beide Richtungen gilt: Der EINZIGE programmatische
+    // Bildlauf auf diesem Weg ist die Korrektur unten, und die läuft nur, wenn
+    // `hatteGespeicherte` FALSCH ist. Ist eine Position wiederhergestellt
+    // worden, ist die Korrektur ohnehin abgeschaltet. Die Fälle überschneiden
+    // sich also nie.
+    //
+    // (Sauberer wäre `interactionSource`, das nur echte Gesten meldet — ob es
+    // LazyGridState in der hier eingebundenen Compose-Fassung hat, konnte ich
+    // nicht belegen, und eine geratene API bricht den Bau.)
+    var nutzerGeste by remember { mutableStateOf(false) }
+
+    LaunchedEffect(gridState) {
+        snapshotFlow { gridState.isScrollInProgress }
+            .collect { laeuft -> if (laeuft) nutzerGeste = true }
+    }
+
     LaunchedEffect(bereit) {
         if (wiederhergestellt || !bereit) return@LaunchedEffect
         val (index, offset) = speicher.lies(schluessel)
@@ -81,10 +130,22 @@ fun ScrollPositionKeeper(
             // SSE-Strom des CSV-Imports löste alle paar Sekunden ein
             // vollständiges Neuladen aus (Nachtrag 110). Die Diagnosezeile hat
             // das gezeigt und ist damit erledigt.
+            hatteGespeicherte = true
             gridState.scrollToItem(index, offset)
         }
         wiederhergestellt = true
     }
+
+    // Nachzügler oben: an den Anfang, aber nur wenn niemand etwas anderes
+    // wollte — weder eine gespeicherte Position noch eine eigene Wischgeste.
+    LaunchedEffect(obenNachziehend) {
+        if (obenNachziehend > 0 && !hatteGespeicherte && !nutzerGeste &&
+            gridState.firstVisibleItemIndex > 0
+        ) {
+            gridState.scrollToItem(0)
+        }
+    }
+
     LaunchedEffect(gridState, wiederhergestellt) {
         if (!wiederhergestellt) return@LaunchedEffect
         snapshotFlow { gridState.firstVisibleItemIndex to gridState.firstVisibleItemScrollOffset }

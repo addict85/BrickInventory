@@ -155,7 +155,15 @@ fun NavGraphBuilder.collectionGraph(
             }
             ReiterGeruest(stringResource(R.string.nav_parts), vm, navController, bottomNavItems, snackbarHostState) {
                 ch.brickinventoryapp.ui.ScrollPositionKeeper(
-                    "parts", partsGridState, partsState.parts.isNotEmpty(), vm.scrollMemory)
+                    "parts", partsGridState,
+                    // BEIDE Ladevorgänge, nicht nur die Set-Teile (Nachtrag 122).
+                    // `partsValuation != null` heisst "die Bewertung ist
+                    // zurück" — auch bei null manuell erfassten Teilen. Auf
+                    // `isNotEmpty()` zu prüfen hiesse, dass die Position bei
+                    // jemandem ohne eigene Teile nie wiederhergestellt würde.
+                    bereit = partsState.parts.isNotEmpty() && financeState.partsValuation != null,
+                    speicher = vm.scrollMemory,
+                    obenNachziehend = financeState.partsValuation?.parts?.size ?: 0)
                 PartsScreen(
                     vm = vm,
                     imageLoader = imageLoader,
@@ -180,7 +188,14 @@ fun NavGraphBuilder.collectionGraph(
             ReiterGeruest(stringResource(R.string.nav_minifigs), vm, navController, bottomNavItems, snackbarHostState) {
                 ch.brickinventoryapp.ui.ScrollPositionKeeper(
                     "minifigs", minifigsGridState,
-                    financeState.figsValuation?.figs?.isNotEmpty() == true, vm.scrollMemory)
+                    // Stand hier auf `figsValuation?.figs?.isNotEmpty() == true`
+                    // und damit auf INHALT statt auf ABGESCHLOSSEN: Wer keine
+                    // manuell erfassten Minifiguren hat, bekam nie eine
+                    // Position wiederhergestellt. Dieselbe Bedingung wie bei
+                    // den Teilen (Nachtrag 122).
+                    bereit = partsState.minifigs.isNotEmpty() && financeState.figsValuation != null,
+                    speicher = vm.scrollMemory,
+                    obenNachziehend = financeState.figsValuation?.figs?.size ?: 0)
                 MinifigsScreen(
                     vm = vm,
                     imageLoader = imageLoader,

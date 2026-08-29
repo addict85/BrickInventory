@@ -9214,3 +9214,84 @@ EIGENER FEHLER im CI-Ablauf des Vortags, dabei korrigiert: `if: ${{
 secrets.KEYSTORE_BASE64 != '' }}` auf Schrittebene. Der `secrets`-Kontext steht
 dort nicht zur Verfügung — die Frage wird jetzt einmal in einer Job-Variablen
 beantwortet und über `env` geprüft.
+
+---
+
+## Nachtrag 122 — Reiter Teile beginnt nicht bei den manuell erfassten Teilen
+
+Marco: „Der Reiter Teile startet nicht zuoberst. Wenn man diesen aufruft sieht
+man die Teile aus den Sets. Um die manuell erfassten Teile zu sehen muss man
+nach oben scrollen. […] Ich könnte mir vorstellen, dass das Problem ist, dass
+beide Listen wohl unabhängig geladen werden."
+
+Die Vermutung stimmt, und der Rest folgt daraus.
+
+### Was tatsächlich passiert
+
+Die Anordnung im Raster war NIE falsch — die manuellen Teile stehen dort vor
+denen aus den Sets. Ein Test, der nur das prüft, wäre die ganze Zeit grün
+geblieben.
+
+1. Beim Betreten laufen `loadParts()` und `loadValuation()` GLEICHZEITIG los.
+   Die Set-Teile sind meist zuerst da (die Bewertung rechnet über Sets, Teile
+   und Minifiguren).
+2. Das Raster zeigt sie, Position 0.
+3. Die manuellen Teile treffen ein und werden mit zwei Zwischenüberschriften
+   OBEN eingefügt.
+4. Und das ist der entscheidende Teil: LazyGrid hält beim Ändern der Daten den
+   SICHTBAREN Eintrag fest, nicht den Index — es sucht den Schlüssel des ersten
+   sichtbaren Elements in der neuen Liste wieder. Beim Nachladen UNTEN ist das
+   genau richtig und der Grund, warum beim Endlos-Scrollen nichts springt. Hier
+   ist der festgehaltene Eintrag ein Set-Teil, und alles neu Eingefügte landet
+   über dem Sichtfenster.
+
+Das „Vergessen der Rollposition beim Reiter-Tippen" aus Nachtrag 114 half
+dagegen nichts: Die Position war 0 und blieb es — verschoben wurde der INHALT
+unter ihr.
+
+### Behoben
+
+`ScrollPositionKeeper` bekommt `obenNachziehend`: die Zahl der Einträge, die
+nachträglich oben dazukommen können. Ändert sie sich, springt die Liste an den
+Anfang — aber nur, wenn niemand etwas anderes wollte:
+
+- KEINE gespeicherte Position (wer aus der Detailansicht zurückkommt, will an
+  seine Stelle), und
+- keine eigene Wischgeste im Zeitfenster zwischen den beiden Ladevorgängen.
+
+Für die Gestenerkennung genügt hier `isScrollInProgress`, obwohl es
+programmatische Bildläufe nicht von echten unterscheidet: Der einzige
+programmatische Bildlauf auf diesem Weg ist die Korrektur selbst, und die läuft
+nur, wenn KEINE Position wiederhergestellt wurde. Die Fälle überschneiden sich
+nie. (Sauberer wäre `interactionSource`; ob LazyGridState das in der
+eingebundenen Compose-Fassung hat, konnte ich nicht belegen, und eine geratene
+API bricht den Bau.)
+
+### Dabei eine Ungleichheit gefunden
+
+`bereit` stand bei den Teilen auf `partsState.parts.isNotEmpty()` — also nur auf
+der Set-Liste —, bei den Minifiguren dagegen auf
+`figsValuation?.figs?.isNotEmpty() == true`, also nur auf der manuellen. Beide
+Fassungen sind falsch, jede auf ihre Art:
+
+- Teile: Die Position wurde gesetzt, bevor die manuellen Einträge da waren.
+- Minifiguren: Wer KEINE manuell erfassten Minifiguren hat, bekam nie eine
+  Position wiederhergestellt — `isNotEmpty()` prüft Inhalt, nicht ob der Abruf
+  durch ist.
+
+Beide jetzt einheitlich: Set-Liste gefüllt UND Bewertung zurück
+(`partsValuation != null` bzw. `figsValuation != null`) — „abgeschlossen",
+nicht „nicht leer".
+
+### Neu: ManualItemsFirstTest
+
+Drei Prüfungen: die Reihenfolge im Raster, `bereit`/`obenNachziehend` an beiden
+Aufrufstellen, und dass die Korrektur gespeicherte Position wie eigene Geste in
+Ruhe lässt. Gegenprobe bestanden — `bereit` auf den alten Wert zurückgedreht →
+rot.
+
+HINWEIS: ohne Android-SDK gebaut. Dieser Nachtrag ändert Verhalten, das man nur
+am Gerät sieht. Bitte prüfen: Reiter Teile öffnen (manuelle Teile oben), aus
+einem manuellen Teil in die Detailansicht und zurück (Position bleibt), und
+während des Ladens wischen (die Liste soll dann NICHT nach oben springen).
+Dasselbe für die Minifiguren.
