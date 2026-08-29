@@ -70,23 +70,23 @@ jobs:
 
       - name: Unit-Tests
         working-directory: Android-App
-        run: ./gradlew testDebugUnitTest --stacktrace
+        run: ./gradlew testDebugUnitTest
 
       - name: Debug-APK bauen
         working-directory: Android-App
-        run: ./gradlew assembleDebug --stacktrace
+        run: ./gradlew assembleDebug
 
       # Lint laeuft mit abortOnError = false (siehe app/build.gradle.kts) und
       # bricht den Lauf deshalb nicht ab. Der Bericht wird trotzdem erzeugt und
       # unten als Artefakt angehaengt — sonst waere die Pruefung unsichtbar.
       - name: Lint (Release-Variante)
         working-directory: Android-App
-        run: ./gradlew lintRelease --stacktrace
+        run: ./gradlew lintRelease
 
       - name: Release-APK bauen (nur auf Anforderung, UNSIGNIERT)
         if: inputs.release
         working-directory: Android-App
-        run: ./gradlew assembleRelease --stacktrace
+        run: ./gradlew assembleRelease
 
       - name: Debug-APK anhaengen
         uses: actions/upload-artifact@v4
