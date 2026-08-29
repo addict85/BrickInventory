@@ -35,6 +35,20 @@ class GalleryServerFilterTest {
     private fun code(s: String) = s.lines()
         .joinToString("\n") { if (it.trim().startsWith("//") || it.trim().startsWith("*")) "" else it }
 
+    /**
+     * Alle Dateien der Datenschicht-Anlaufstelle als EIN Text (Nachtrag 155).
+     *
+     * Vorher stand hier "data/repository/BrickRepository.kt" — ein Dateiname.
+     * Die 78 Funktionen lagen in einer Klasse mit 519 Zeilen; sie sind seither
+     * als Erweiterungsfunktionen nach Sachgebieten verteilt. Gemeint ist DIE
+     * ANLAUFSTELLE, nicht eine Datei.
+     */
+    private fun repositoryQuelle(): String =
+        java.io.File("src/main/java/ch/brickinventoryapp/data/repository")
+            .listFiles { f -> f.name.startsWith("BrickRepository") && f.extension == "kt" }
+            .orEmpty().sortedBy { it.name }
+            .joinToString("\n") { it.readText() }
+
     @Test
     fun `der Schirm filtert und sortiert die Liste nicht selbst`() {
         val s = code(read("ui/screens/GalleryScreen.kt"))
@@ -107,9 +121,11 @@ class GalleryServerFilterTest {
         // Sonst läge die Antwort eines Filters unter demselben Schlüssel wie
         // die volle Sicht, und nach einem Neustart erschiene der falsche
         // Bestand. Dieselbe Regel wie beim Kontofilter (Haushalt).
-        val r = code(read("data/repository/BrickRepository.kt"))
+        val r = code(repositoryQuelle())
         // Funktionsrumpf statt 1400 fester Zeichen (Nachtrag 115) — siehe Quellen.kt.
-        val block = Quellen.funktion(r, "suspend fun getSets(")
+        // Empfaenger in der Signatur (Nachtrag 155): getSets ist jetzt eine
+        // Erweiterungsfunktion. Quellen.funktion kommt damit zurecht.
+        val block = Quellen.funktion(r, "suspend fun BrickRepository.getSets(")
         assert(block.isNotEmpty()) { "getSets fehlt" }
         assert(block.contains("cached(\"sets\"")) { "der Cache ist ganz weg" }
         assert(block.contains("ungefiltert")) {
