@@ -27,6 +27,10 @@ pgdata/
 *.log
 .env
 .env.*
+# ... aber eine Beispieldatei gehoert ins Repository. Ohne diese Ausnahme
+# verschluckt `.env.*` ein spaeter angelegtes .env.example lautlos — dieselbe
+# Bauart von Verlust, gegen die diese Datei ueberhaupt angelegt wurde.
+!.env.example
 
 # Betriebssystem und Editor
 .DS_Store

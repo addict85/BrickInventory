@@ -397,7 +397,7 @@ async function ensureQrTable() {
   `);
 }
 
-// GET /api/auth/qr-token — Nonce erzeugen (nur für die eigene Session)
+// POST /api/auth/qr-token — Nonce erzeugen (nur für die eigene Session)
 // ── POST statt GET (Nachtrag 154) ────────────────────────────────────────────
 // Diese Route LEGT ETWAS AN: eine QR-Login-Nonce, die fünf Minuten lang ein
 // Konto öffnet. Als GET war sie die einzige zustandsändernde Route im Baum,
