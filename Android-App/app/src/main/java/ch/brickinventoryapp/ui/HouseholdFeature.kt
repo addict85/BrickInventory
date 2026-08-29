@@ -73,7 +73,7 @@ internal fun MainViewModel.loadScopeModes() {
  */
 internal fun MainViewModel.loadHouseholdMembers() {
     viewModelScope.launch {
-        when (val r = repo.getHouseholdMembers()) {
+        when (val r = repo.haushalt.getHouseholdMembers()) {
             is Result.Success -> {
                 val members = r.data.members
                 _state.update { st ->
@@ -98,7 +98,7 @@ internal fun MainViewModel.loadHouseholdMembers() {
 internal fun MainViewModel.loadHouseholdStatus() {
     viewModelScope.launch {
         _householdState.update { it.copy(isLoading = true, message = null) }
-        when (val r = repo.getHousehold()) {
+        when (val r = repo.haushalt.getHousehold()) {
             is Result.Success -> _householdState.update {
                 it.copy(isLoading = false, status = r.data, inviteCode = null)
             }
@@ -110,7 +110,7 @@ internal fun MainViewModel.loadHouseholdStatus() {
 internal fun MainViewModel.createHouseholdInvite() {
     viewModelScope.launch {
         _householdState.update { it.copy(isLoading = true, message = null) }
-        when (val r = repo.createHouseholdInvite()) {
+        when (val r = repo.haushalt.createHouseholdInvite()) {
             is Result.Success ->
                 if (r.data.success) _householdState.update { it.copy(isLoading = false, inviteCode = r.data.code) }
                 else _householdState.update { it.copy(isLoading = false, message = r.data.error) }
@@ -122,7 +122,7 @@ internal fun MainViewModel.createHouseholdInvite() {
 internal fun MainViewModel.redeemHouseholdInvite(code: String) {
     viewModelScope.launch {
         _householdState.update { it.copy(isLoading = true, message = null) }
-        when (val r = repo.redeemHouseholdInvite(code.trim())) {
+        when (val r = repo.haushalt.redeemHouseholdInvite(code.trim())) {
             is Result.Success -> {
                 // Der Server lehnt ab, wenn die Währung abweicht, das Konto
                 // schon verknüpft ist oder die Verknüpfung eine zweite Stufe
@@ -139,7 +139,7 @@ internal fun MainViewModel.redeemHouseholdInvite(code: String) {
 /** subUserId leer = die eigene Verknüpfung lösen (als Unterkonto). */
 internal fun MainViewModel.unlinkHousehold(subUserId: Int? = null) {
     viewModelScope.launch {
-        when (repo.unlinkHousehold(subUserId)) {
+        when (repo.haushalt.unlinkHousehold(subUserId)) {
             is Result.Success -> { loadHouseholdStatus(); loadHouseholdMembers(); loadSets() }
             is Result.Error -> {}
         }
@@ -185,9 +185,9 @@ internal fun MainViewModel.changeAcquisitionOwner(
         val req = ch.brickinventoryapp.data.model.UpdateAcquisitionRequest.fuerStueck(
             ownerUserId = toUserId)
         val r = when (type) {
-            "set"  -> repo.updateAcquisition(id, acqId, ownerUserId = toUserId)
-            "fig"  -> repo.updateFigAcquisition(id, acqId, req)
-            else   -> repo.updatePartAcquisition(id, colorId, acqId, req)
+            "set"  -> repo.haushalt.updateAcquisition(id, acqId, ownerUserId = toUserId)
+            "fig"  -> repo.haushalt.updateFigAcquisition(id, acqId, req)
+            else   -> repo.haushalt.updatePartAcquisition(id, colorId, acqId, req)
         }
         when (r) {
             is Result.Success -> {
@@ -209,7 +209,7 @@ internal fun MainViewModel.moveSet(
     onDone: (String?) -> Unit = {}
 ) {
     viewModelScope.launch {
-        when (val r = repo.moveSet(setNumber, fromUserId, toUserId, acquisitionIds)) {
+        when (val r = repo.sets.moveSet(setNumber, fromUserId, toUserId, acquisitionIds)) {
             is Result.Success -> {
                 if (r.data.success) { loadSets(); loadValuation(); onDone(null) }
                 else onDone(r.data.error ?: "")

@@ -52,7 +52,7 @@ class AddExistingSetTest {
 
     @Test
     fun `der Nummern-Weg prueft nicht mehr selbst, sondern folgt der Serverantwort`() {
-        assert(!addSetBlock.contains("repo.getSetDetail(")) {
+        assert(!addSetBlock.contains("repo.sets.getSetDetail(")) {
             "Der Vorab-Aufruf ist zurück. Die Regel gehört auf den Server — sonst " +
                 "existiert sie zweimal, und die Webapp hatte sie nie."
         }
@@ -78,11 +78,11 @@ class AddExistingSetTest {
         // ausdrücklich beantwortet, statt aus dem FEHLER von getSetDetail zu
         // schliessen — das vermischte „nicht vorhanden" mit „nicht erreichbar".
         val bc = code(read("ui/BarcodeFeature.kt"))
-        assert(!bc.contains("repo.getSetDetail(")) {
+        assert(!bc.contains("repo.sets.getSetDetail(")) {
             "getSetDetail als Existenzprüfung ist zurück — die Antwort ist dort " +
                 "ein Fehler, und Fehler haben mehr als eine Bedeutung"
         }
-        assert(bc.contains("repo.getSetExists(")) { "die Existenzprüfung fehlt ganz" }
+        assert(bc.contains("repo.sets.getSetExists(")) { "die Existenzprüfung fehlt ganz" }
         // Beide Wege: der Scanner-Zweig und useScannedSetNumber (Texterkennung).
         assert(Regex("repo\\.getSetExists\\(").findAll(bc).count() >= 2) {
             "Nur EIN Weg prüft — Scanner und Texterkennung müssen sich gleich verhalten"

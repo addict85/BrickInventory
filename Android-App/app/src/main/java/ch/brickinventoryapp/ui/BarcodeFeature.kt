@@ -25,7 +25,7 @@ internal fun MainViewModel.setScannerSource(source: String) {
 internal fun MainViewModel.resolveBarcode(value: String) {
     viewModelScope.launch {
         _snackbar.value = ctx.getString(R.string.vm_barcode_searching, value)
-        when (val r = repo.resolveBarcode(value)) {
+        when (val r = repo.sets.resolveBarcode(value)) {
             is Result.Success -> {
                 val setNum = r.data.setNumber
                 val name   = r.data.name ?: setNum
@@ -53,7 +53,7 @@ internal fun MainViewModel.resolveBarcode(value: String) {
                         // zum Zwischendialog. Scheitert die Abfrage, wird
                         // abgebrochen statt auf gut Glück ein womöglich
                         // vorhandenes Set anzubieten.
-                        when (val vorhanden = repo.getSetExists(setNum)) {
+                        when (val vorhanden = repo.sets.getSetExists(setNum)) {
                             is Result.Success -> if (vorhanden.data.exists) {
                                 _snackbar.value = null
                                 _state.update { it.copy(gallerySearchFoundSetNumber = vorhanden.data.setNumber) }
@@ -154,7 +154,7 @@ internal fun MainViewModel.useScannedSetNumber(raw: String) {
 
             // Schon vorhanden? Dann Detailansicht statt Erfassen (57–59),
             // inklusive der Trennung von Netzfehler und "nicht gefunden".
-            when (val vorhanden = repo.getSetExists(setNum)) {
+            when (val vorhanden = repo.sets.getSetExists(setNum)) {
                 is Result.Success -> if (vorhanden.data.exists) {
                     _snackbar.value = null
                     _state.update { it.copy(gallerySearchFoundSetNumber = vorhanden.data.setNumber) }
@@ -167,7 +167,7 @@ internal fun MainViewModel.useScannedSetNumber(raw: String) {
             }
         }
 
-        when (val r = repo.getCatalogSetDetail(setNum)) {
+        when (val r = repo.admin.getCatalogSetDetail(setNum)) {
             is Result.Success -> {
                 val d = r.data.set
                 if (d == null) {
@@ -263,7 +263,7 @@ internal fun MainViewModel.confirmAddBarcode(setNum: String, purchasePrice: Doub
         // Server-Route kannten den Eigentümer längst — der Barcode-Weg war der
         // einzige der vier Erfassungswege, der ihn nicht mitgab und damit still
         // immer für das eigene Konto erfasste.
-        when (val r = repo.addSet(setNum, 1, purchasePrice, condition, ownerUserId)) {
+        when (val r = repo.sets.addSet(setNum, 1, purchasePrice, condition, ownerUserId)) {
             is Result.Success -> {
                 _snackbar.value = ctx.getString(R.string.vm_set_added, setNum)
                 _barcodeState.update { it.copy(adding = false) }

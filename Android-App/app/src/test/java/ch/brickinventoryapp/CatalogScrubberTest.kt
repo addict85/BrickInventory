@@ -85,12 +85,12 @@ class CatalogScrubberTest {
     @Test
     fun `das Sprungziel rechnet der Server`() {
         val f = code(read("ui/CatalogFeature.kt"))
-        assert(f.contains("repo.getCatalogYearOffset(")) {
+        assert(f.contains("repo.admin.getCatalogYearOffset(")) {
             "Die App rechnet das Sprungziel selbst — sie kennt aber nur die " +
                 "geladenen Seiten und kann es gar nicht wissen"
         }
         // Mit denselben Filtern wie die Liste, sonst zielt der Sprung daneben.
-        val i = f.indexOf("repo.getCatalogYearOffset(")
+        val i = f.indexOf("repo.admin.getCatalogYearOffset(")
         val aufruf = f.substring(i, minOf(i + 300, f.length))
         for (teil in listOf("q =", "themeId =", "sort =")) {
             assert(aufruf.contains(teil)) {

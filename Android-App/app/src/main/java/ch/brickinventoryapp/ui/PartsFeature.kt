@@ -24,7 +24,7 @@ internal fun MainViewModel.loadParts(search: String? = null, page: Int = 1, debo
     partsJob = viewModelScope.launch {
         if (debounce) kotlinx.coroutines.delay(350)
         _partsState.update { it.copy(partsLoading = true) }
-        when (val r = retryOnNetwork { repo.getParts(search = search, page = page,
+        when (val r = retryOnNetwork { repo.teile.getParts(search = search, page = page,
                                                      accounts = scopeFor(ScopeFilter.View.PARTS)) }) {
             is Result.Success -> {
                 _partsState.update {
@@ -36,7 +36,7 @@ internal fun MainViewModel.loadParts(search: String? = null, page: Int = 1, debo
                     )
                 }
                 if (page == 1) {
-                    when (val s = repo.getPartsStats(scopeFor(ScopeFilter.View.PARTS))) {
+                    when (val s = repo.teile.getPartsStats(scopeFor(ScopeFilter.View.PARTS))) {
                         is Result.Success -> _partsState.update { it.copy(partsStats = s.data.stats) }
                         // Statistik ist Beiwerk: Scheitert sie, bleibt die
                         // Teileliste trotzdem stehen.
@@ -54,7 +54,7 @@ internal fun MainViewModel.loadParts(search: String? = null, page: Int = 1, debo
 
 internal fun MainViewModel.loadPartsColors() {
     viewModelScope.launch {
-        when (val r = repo.getBrickColors()) {
+        when (val r = repo.teile.getBrickColors()) {
             is Result.Success -> if (r.data.success) _partsState.update { it.copy(partsColors = r.data.colors) }
             is Result.Error -> {}
         }
@@ -66,7 +66,7 @@ internal fun MainViewModel.addPart(partNumber: String, colorId: Int = 0, colorNa
             condition: String? = null, ownerUserId: Int? = null) {
     viewModelScope.launch {
         _state.update { it.copy(isLoading = true) }
-        when (val r = repo.addPart(partNumber.trim(), colorId, colorName, colorHex, quantity, note, unitPrice, condition, ownerUserId)) {
+        when (val r = repo.teile.addPart(partNumber.trim(), colorId, colorName, colorHex, quantity, note, unitPrice, condition, ownerUserId)) {
             is Result.Success -> {
                 if (r.data.success) {
                     _snackbar.value = ctx.getString(if (r.data.action == "added") R.string.vm_added else R.string.vm_updated, r.data.partNumber)
@@ -90,7 +90,7 @@ internal fun MainViewModel.addMinifig(figNumber: String, blFigNumber: String? = 
                unitPrice: Double? = null, condition: String? = null, ownerUserId: Int? = null) {
     viewModelScope.launch {
         _state.update { it.copy(isLoading = true) }
-        when (val r = repo.addMinifig(figNumber.trim(), blFigNumber, quantity, note, unitPrice, condition, ownerUserId)) {
+        when (val r = repo.teile.addMinifig(figNumber.trim(), blFigNumber, quantity, note, unitPrice, condition, ownerUserId)) {
             is Result.Success -> {
                 if (r.data.success) {
                     _snackbar.value = ctx.getString(if (r.data.action == "added") R.string.vm_added else R.string.vm_updated, r.data.figNumber)
@@ -112,7 +112,7 @@ internal fun MainViewModel.addMinifig(figNumber: String, blFigNumber: String? = 
 
 internal fun MainViewModel.updatePart(partNumber: String, colorId: Int, quantity: Int, unitPrice: Double?, condition: String? = null) {
     viewModelScope.launch {
-        when (val r = repo.updatePart(partNumber, colorId, quantity, unitPrice, condition)) {
+        when (val r = repo.teile.updatePart(partNumber, colorId, quantity, unitPrice, condition)) {
             is Result.Success -> {
                 if (r.data.success) {
                     _snackbar.value = ctx.getString(R.string.vm_saved)
@@ -134,7 +134,7 @@ internal fun MainViewModel.updatePart(partNumber: String, colorId: Int, quantity
 
 internal fun MainViewModel.deletePart(partNumber: String, colorId: Int) {
     viewModelScope.launch {
-        when (val r = repo.deletePart(partNumber, colorId)) {
+        when (val r = repo.teile.deletePart(partNumber, colorId)) {
             is Result.Success -> {
                 if (r.data.success) { _snackbar.value = ctx.getString(R.string.vm_part_deleted); loadValuation(); loadParts() }
                 else _snackbar.value = r.data.error ?: ctx.getString(R.string.err_unknown)
@@ -146,7 +146,7 @@ internal fun MainViewModel.deletePart(partNumber: String, colorId: Int) {
 
 internal fun MainViewModel.updateMinifig(figNumber: String, quantity: Int, unitPrice: Double?, blFigNumber: String? = null, condition: String? = null) {
     viewModelScope.launch {
-        when (val r = repo.updateMinifig(figNumber, quantity, unitPrice, blFigNumber, condition)) {
+        when (val r = repo.teile.updateMinifig(figNumber, quantity, unitPrice, blFigNumber, condition)) {
             is Result.Success -> {
                 if (r.data.success) {
                     _snackbar.value = ctx.getString(R.string.vm_saved)
@@ -168,7 +168,7 @@ internal fun MainViewModel.updateMinifig(figNumber: String, quantity: Int, unitP
 
 internal fun MainViewModel.deleteMinifig(figNumber: String) {
     viewModelScope.launch {
-        when (val r = repo.deleteMinifig(figNumber)) {
+        when (val r = repo.teile.deleteMinifig(figNumber)) {
             is Result.Success -> {
                 if (r.data.success) { _snackbar.value = ctx.getString(R.string.vm_minifig_deleted); loadValuation(); loadMinifigs() }
                 else _snackbar.value = r.data.error ?: ctx.getString(R.string.err_unknown)
@@ -184,14 +184,14 @@ internal fun MainViewModel.loadMinifigs() {
     // ganzen Bestand nennen — genau wie in der Webapp. Eigener Aufruf, damit
     // die Liste nicht auf die Zählung wartet.
     viewModelScope.launch {
-        when (val r = repo.getMinifigStats(scopeFor(ScopeFilter.View.MINIFIGS))) {
+        when (val r = repo.teile.getMinifigStats(scopeFor(ScopeFilter.View.MINIFIGS))) {
             is Result.Success -> _partsState.update { it.copy(minifigStats = r.data.stats) }
             is Result.Error   -> Unit   // Kacheln behalten den letzten Stand
         }
     }
     viewModelScope.launch {
         _partsState.update { it.copy(minifigsLoading = true) }
-        when (val r = repo.getMinifigs(scopeFor(ScopeFilter.View.MINIFIGS))) {
+        when (val r = repo.teile.getMinifigs(scopeFor(ScopeFilter.View.MINIFIGS))) {
             is Result.Success -> _partsState.update { it.copy(
                 // Manuell erfasste Minifiguren werden nur noch im eigenen Bereich
                 // (editierbare Karten, siehe manualFigs/FigsValuationResponse) angezeigt,

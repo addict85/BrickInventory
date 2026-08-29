@@ -22,7 +22,7 @@ import ch.brickinventoryapp.data.ScopeFilter
 internal fun MainViewModel.loadValuation() {
     viewModelScope.launch {
         _state.update { it.copy(isLoading = true) }
-        when (val r = repo.getValuation(scopeFor(ScopeFilter.View.FINANCE))) {
+        when (val r = repo.finanzen.getValuation(scopeFor(ScopeFilter.View.FINANCE))) {
             is Result.Success -> {
                 prefs.saveCurrency(r.data.currency)
                 _financeState.update { it.copy(valuation = r.data) }
@@ -37,9 +37,9 @@ internal fun MainViewModel.loadValuation() {
         // Alle vier mit DEMSELBEN Filter — sonst stünde eine Summe aus einem
         // Blickfeld neben einer Aufstellung aus einem anderen.
         val acc = scopeFor(ScopeFilter.View.FINANCE)
-        (repo.getPartsValuation(acc) as? Result.Success)?.let { r -> _financeState.update { it.copy(partsValuation = r.data) } }
-        (repo.getMinifigsValuation(acc) as? Result.Success)?.let { r -> _financeState.update { it.copy(figsValuation = r.data) } }
-        (repo.getPnl(acc) as? Result.Success)?.let { r -> _financeState.update { it.copy(pnl = r.data) } }
+        (repo.finanzen.getPartsValuation(acc) as? Result.Success)?.let { r -> _financeState.update { it.copy(partsValuation = r.data) } }
+        (repo.finanzen.getMinifigsValuation(acc) as? Result.Success)?.let { r -> _financeState.update { it.copy(figsValuation = r.data) } }
+        (repo.finanzen.getPnl(acc) as? Result.Success)?.let { r -> _financeState.update { it.copy(pnl = r.data) } }
     }
 }
 
@@ -48,7 +48,7 @@ internal fun MainViewModel.loadPortfolioHistory(period: String = "week") {
         // Clear old history immediately so chart shows loading state for new period
         _financeState.update { it.copy(historyLoading = true, historyPeriod = period,
             historyPoints = emptyList(), historyYAxis = emptyList(), historyPeriodChangePct = null) }
-        when (val r = repo.getPortfolioHistory(period, scopeFor(ScopeFilter.View.FINANCE))) {
+        when (val r = repo.finanzen.getPortfolioHistory(period, scopeFor(ScopeFilter.View.FINANCE))) {
             is Result.Success -> {
                 _financeState.update { it.copy(
                     historyLoading         = false,
@@ -71,14 +71,14 @@ internal fun MainViewModel.loadPortfolioHistory(period: String = "week") {
  */
 internal fun MainViewModel.loadPartsValuationOnly() {
     viewModelScope.launch {
-        (repo.getPartsValuation(scopeFor(ScopeFilter.View.PARTS)) as? Result.Success)
+        (repo.finanzen.getPartsValuation(scopeFor(ScopeFilter.View.PARTS)) as? Result.Success)
             ?.let { r -> _financeState.update { it.copy(partsValuation = r.data) } }
     }
 }
 
 internal fun MainViewModel.loadFigsValuationOnly() {
     viewModelScope.launch {
-        (repo.getMinifigsValuation(scopeFor(ScopeFilter.View.MINIFIGS)) as? Result.Success)
+        (repo.finanzen.getMinifigsValuation(scopeFor(ScopeFilter.View.MINIFIGS)) as? Result.Success)
             ?.let { r -> _financeState.update { it.copy(figsValuation = r.data) } }
     }
 }

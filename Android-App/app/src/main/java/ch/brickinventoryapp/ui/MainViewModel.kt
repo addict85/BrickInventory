@@ -126,7 +126,7 @@ class MainViewModel @Inject constructor(
                     if (token.isNotBlank() && url.isNotBlank()) {
                         launch {
                             try {
-                                val me = repo.getMe()
+                                val me = repo.admin.getMe()
                                 if (me is Result.Success) {
                                     _state.update { it.copy(isAdmin = me.data.user?.isAdmin == true) }
                                 }
@@ -314,7 +314,7 @@ class MainViewModel @Inject constructor(
             val url   = prefs.serverUrl.first()
             val token = prefs.authToken.first()
             if (token.isBlank() || url.isBlank()) return
-            val resp = repo.getCsvImportStatus(url, token)
+            val resp = repo.sets.getCsvImportStatus(url, token)
             if (resp is Result.Success) handleCsvStatus(resp.data)
         } catch (_: Exception) {}
     }

@@ -148,13 +148,13 @@ class ServerComputedValuesTest {
     @Test
     fun `die Kennzahlen werden neben der Liste geladen und ueberleben einen Fehlschlag`() {
         val f = code(read("ui/PartsFeature.kt"))
-        assert(f.contains("repo.getMinifigStats(")) { "Der Abruf der Kennzahlen fehlt" }
+        assert(f.contains("repo.teile.getMinifigStats(")) { "Der Abruf der Kennzahlen fehlt" }
         assert(f.contains("scopeFor(ScopeFilter.View.MINIFIGS)")) {
             "Die Kennzahlen müssen denselben Kontofilter tragen wie die Liste — sonst " +
                 "steht eine Zahl aus einem Blickfeld über einer Liste aus einem anderen"
         }
         // Eigener launch: Die Liste soll nicht auf die Zählung warten.
-        val stelle = f.indexOf("repo.getMinifigStats(")
+        val stelle = f.indexOf("repo.teile.getMinifigStats(")
         val davor = f.substring(maxOf(0, stelle - 400), stelle)
         assert(davor.contains("viewModelScope.launch")) {
             "Der Abruf gehört in einen eigenen launch — sonst wartet die Liste auf ihn"

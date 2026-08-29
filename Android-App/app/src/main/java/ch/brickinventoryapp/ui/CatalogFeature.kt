@@ -43,7 +43,7 @@ private const val CATALOG_RETRY_DELAY_MS = 500L
 
 internal fun MainViewModel.loadCatalogMeta() {
     viewModelScope.launch {
-        when (val r = retryOnNetwork { repo.getCatalogMeta() }) {
+        when (val r = retryOnNetwork { repo.admin.getCatalogMeta() }) {
             is Result.Success -> if (r.data.success) _catalogState.update {
                 it.copy(
                     themes = r.data.themes, yearMin = r.data.yearMin, yearMax = r.data.yearMax,
@@ -72,7 +72,7 @@ internal fun MainViewModel.loadCatalogSets() {
         }
         val s = _catalogState.value
         val r = retryOnNetwork(maxAttempts = CATALOG_RETRIES, delayMs = CATALOG_RETRY_DELAY_MS) {
-            repo.getCatalogSets(
+            repo.admin.getCatalogSets(
                 q = s.query.ifBlank { null }, themeId = s.themeId,
                 yearFrom = s.year, yearTo = s.year, sort = s.sort, page = 1
             )
@@ -112,7 +112,7 @@ internal fun MainViewModel.ensureCatalogPage(seite: Int) {
     _catalogState.update { it.copy(loadingPages = it.loadingPages + seite) }
     viewModelScope.launch {
         val r = retryOnNetwork(maxAttempts = CATALOG_RETRIES, delayMs = CATALOG_RETRY_DELAY_MS) {
-            repo.getCatalogSets(
+            repo.admin.getCatalogSets(
                 q = s.query.ifBlank { null }, themeId = s.themeId,
                 yearFrom = s.year, yearTo = s.year, sort = s.sort, page = seite
             )
@@ -147,7 +147,7 @@ internal fun MainViewModel.ensureCatalogPage(seite: Int) {
 internal fun MainViewModel.jumpToCatalogYear(year: Int) {
     val s = _catalogState.value
     viewModelScope.launch {
-        val r = repo.getCatalogYearOffset(
+        val r = repo.admin.getCatalogYearOffset(
             year = year, q = s.query.ifBlank { null }, themeId = s.themeId, sort = s.sort)
         if (r is Result.Success && r.data.success) {
             ensureCatalogPage(r.data.page)
@@ -203,7 +203,7 @@ internal fun MainViewModel.loadCatalogDetail(setNumber: String) {
     catalogDetailJob?.cancel()
     catalogDetailJob = viewModelScope.launch {
         _catalogState.update { it.copy(detailLoading = true, detail = null) }
-        when (val r = retryOnNetwork(maxAttempts = CATALOG_RETRIES, delayMs = CATALOG_RETRY_DELAY_MS) { repo.getCatalogSetDetail(setNumber) }) {
+        when (val r = retryOnNetwork(maxAttempts = CATALOG_RETRIES, delayMs = CATALOG_RETRY_DELAY_MS) { repo.admin.getCatalogSetDetail(setNumber) }) {
             is Result.Success -> {
                 if (r.data.success && r.data.set != null)
                     _catalogState.update { it.copy(detailLoading = false, detail = r.data.set) }

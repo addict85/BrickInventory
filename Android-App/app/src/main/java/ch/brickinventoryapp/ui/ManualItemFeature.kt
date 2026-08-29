@@ -26,8 +26,8 @@ internal fun MainViewModel.loadManualAcquisitions(type: String, id: String, colo
                     priceHistory = if (sameItem) it.priceHistory else null)
         }
         val result = when (type) {
-            "fig"  -> repo.getFigAcquisitions(id)
-            else   -> repo.getPartAcquisitions(id, colorId)
+            "fig"  -> repo.haushalt.getFigAcquisitions(id)
+            else   -> repo.haushalt.getPartAcquisitions(id, colorId)
         }
         when (result) {
             is Result.Success -> _manDetailState.update {
@@ -57,8 +57,8 @@ internal fun MainViewModel.loadManualPriceHistory(type: String, id: String, colo
     viewModelScope.launch {
         _manDetailState.update { it.copy(priceHistoryLoading = true) }
         val result = when (type) {
-            "fig" -> repo.getFigPriceHistory(id)
-            else  -> repo.getPartPriceHistory(id, colorId)
+            "fig" -> repo.finanzen.getFigPriceHistory(id)
+            else  -> repo.finanzen.getPartPriceHistory(id, colorId)
         }
         when (result) {
             is Result.Success -> _manDetailState.update {
@@ -88,8 +88,8 @@ internal fun MainViewModel.updateManualAcquisition(
             date = date
         )
         val result = when (type) {
-            "fig"  -> repo.updateFigAcquisition(id, acqId, req)
-            else   -> repo.updatePartAcquisition(id, colorId, acqId, req)
+            "fig"  -> repo.haushalt.updateFigAcquisition(id, acqId, req)
+            else   -> repo.haushalt.updatePartAcquisition(id, colorId, acqId, req)
         }
         if (result is Result.Success && result.data.success) {
             loadManualAcquisitions(type, id, colorId)
@@ -107,8 +107,8 @@ internal fun MainViewModel.deleteManualAcquisition(
 ) {
     viewModelScope.launch {
         val result = when (type) {
-            "fig"  -> repo.deleteFigAcquisition(id, acqId)
-            else   -> repo.deletePartAcquisition(id, colorId, acqId)
+            "fig"  -> repo.haushalt.deleteFigAcquisition(id, acqId)
+            else   -> repo.haushalt.deletePartAcquisition(id, colorId, acqId)
         }
         when (result) {
             is Result.Success -> {

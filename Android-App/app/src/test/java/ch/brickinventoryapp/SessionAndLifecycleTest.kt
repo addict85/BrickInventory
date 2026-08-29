@@ -42,9 +42,23 @@ class SessionAndLifecycleTest {
 
     // ── Abgelaufene Sitzung (HTTP 401) ───────────────────────────────────────
 
+    /**
+     * Alle Dateien der Datenschicht als EIN Text (Nachtrag 155).
+     *
+     * Vorher stand hier "data/repository/BrickRepository.kt" — ein Dateiname.
+     * Die 78 Funktionen liegen seither in fuenf Klassen nach Sachgebieten,
+     * die gemeinsame Mechanik in RepoBasis. Gemeint ist DIE DATENSCHICHT,
+     * nicht eine Datei.
+     */
+    private fun datenschicht(): String =
+        java.io.File("src/main/java/ch/brickinventoryapp/data/repository")
+            .listFiles { f -> f.extension == "kt" }
+            .orEmpty().sortedBy { it.name }
+            .joinToString("\n") { it.readText() }
+
     @Test
     fun `safeCall markiert 401 als unauthorized`() {
-        val src = code(read("data/repository/BrickRepository.kt"))
+        val src = code(datenschicht())
         assert(src.contains("val unauthorized: Boolean")) {
             "Result.Error kennt kein unauthorized-Flag — ein 401 ist dann nicht " +
                 "von einem gewöhnlichen Serverfehler unterscheidbar"
@@ -57,7 +71,7 @@ class SessionAndLifecycleTest {
 
     @Test
     fun `cached greift bei 401 NICHT auf den Plattenspeicher zurueck`() {
-        val src = code(read("data/repository/BrickRepository.kt"))
+        val src = code(datenschicht())
         val body = src.substringAfter("private suspend fun <T : Any> cached(")
             .substringBefore("\n    }")
         val guard = body.indexOf("unauthorized")

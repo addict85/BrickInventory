@@ -25,7 +25,14 @@ import org.junit.Test
 class ErrorMessageLayerTest {
 
     private val datenschicht = listOf(
+        // Alle Dateien der Datenschicht (Nachtrag 155) — vorher nur die eine.
         "data/repository/BrickRepository.kt",
+        "data/repository/RepoBasis.kt",
+        "data/repository/SetsRepository.kt",
+        "data/repository/TeileRepository.kt",
+        "data/repository/FinanzenRepository.kt",
+        "data/repository/HaushaltRepository.kt",
+        "data/repository/AdminRepository.kt",
         "data/CsvImportSseClient.kt",
     )
 

@@ -63,7 +63,7 @@ internal fun MainViewModel.loadSets() {
         _state.update { it.copy(isLoading = true, galleryLoadingMore = false, galleryPage = 1) }
         val s = _state.value
         val r = retryOnNetwork {
-            repo.getSets(scopeFor(ScopeFilter.View.GALLERY),
+            repo.sets.getSets(scopeFor(ScopeFilter.View.GALLERY),
                 search = s.galleryQuery, theme = s.galleryTheme, sort = s.gallerySort, page = 1)
         }
         if (gen != galleryGeneration) return@launch   // inzwischen neuer Filter
@@ -122,7 +122,7 @@ internal fun MainViewModel.loadMoreSets() {
     viewModelScope.launch {
         val next = s.galleryPage + 1
         val r = retryOnNetwork {
-            repo.getSets(scopeFor(ScopeFilter.View.GALLERY),
+            repo.sets.getSets(scopeFor(ScopeFilter.View.GALLERY),
                 search = s.galleryQuery, theme = s.galleryTheme, sort = s.gallerySort, page = next)
         }
         if (gen != galleryGeneration) {
@@ -225,7 +225,7 @@ internal fun MainViewModel.addSet(setNumber: String, quantity: Int = 1, purchase
         // die Oberfläche sah also beschäftigt aus, während man schon die nächste
         // Nummer tippen wollte. Das Nachladen unten setzt sein eigenes Flag; für
         // den Abruf hier braucht es keines.
-        when (val r = repo.addSet(eingabe, quantity, purchasePrice, condition, ownerUserId)) {
+        when (val r = repo.sets.addSet(eingabe, quantity, purchasePrice, condition, ownerUserId)) {
             is Result.Success -> {
                 if (r.data.success && r.data.action == "exists") {
                     // Schon im Blickfeld — der Server hat nichts geschrieben.
@@ -286,7 +286,7 @@ internal fun MainViewModel.meldeFehlgeschlageneErfassung(setNumber: String, grun
 
 internal fun MainViewModel.updateQuantity(setNumber: String, quantity: Int, purchasePrice: Double? = null, condition: String? = null) {
     viewModelScope.launch {
-        when (val r = repo.updateQuantity(setNumber, quantity, purchasePrice, condition)) {
+        when (val r = repo.sets.updateQuantity(setNumber, quantity, purchasePrice, condition)) {
             is Result.Success -> {
                 // Die WIRKLICHE Gesamtmenge kommt vom Server (Nachtrag 87).
                 //
@@ -346,7 +346,7 @@ internal fun MainViewModel.updateQuantity(setNumber: String, quantity: Int, purc
 
 internal fun MainViewModel.deleteSet(setNumber: String) {
     viewModelScope.launch {
-        when (val r = repo.deleteSet(setNumber)) {
+        when (val r = repo.sets.deleteSet(setNumber)) {
             is Result.Success -> {
                 // Sofort aus dem State entfernen, damit die Kachel nicht bis zum
                 // Neuladen der Liste sichtbar bleibt; danach mit dem Server syncen.
@@ -372,7 +372,7 @@ internal fun MainViewModel.deleteSet(setNumber: String) {
 // ── Stats ────────────────────────────────────────────────────────────────
 internal fun MainViewModel.loadStats() {
     viewModelScope.launch {
-        when (val r = repo.getStats(scopeFor(ScopeFilter.View.GALLERY))) {
+        when (val r = repo.finanzen.getStats(scopeFor(ScopeFilter.View.GALLERY))) {
             is Result.Success -> _state.update { it.copy(stats = r.data.stats) }
             is Result.Error -> {}
         }
@@ -381,7 +381,7 @@ internal fun MainViewModel.loadStats() {
 
 internal fun MainViewModel.loadGallery() {
     viewModelScope.launch {
-        when (val r = repo.getSets()) {
+        when (val r = repo.sets.getSets()) {
             is Result.Success -> _state.update { it.copy(sets = r.data.sets) }
             is Result.Error -> {}
         }

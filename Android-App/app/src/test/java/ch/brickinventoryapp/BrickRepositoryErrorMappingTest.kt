@@ -2,7 +2,7 @@ package ch.brickinventoryapp
 
 import ch.brickinventoryapp.data.api.BrickApiService
 import ch.brickinventoryapp.data.cache.ResponseCache
-import ch.brickinventoryapp.data.repository.BrickRepository
+import ch.brickinventoryapp.data.repository.AdminRepository
 import ch.brickinventoryapp.data.repository.Fehlerart
 import ch.brickinventoryapp.data.repository.Result
 import kotlinx.coroutines.test.runTest
@@ -48,11 +48,11 @@ import java.util.concurrent.TimeUnit
 class BrickRepositoryErrorMappingTest {
 
     private lateinit var server: MockWebServer
-    private lateinit var repo: BrickRepository
+    private lateinit var repo: AdminRepository
     private lateinit var cacheDir: File
 
     /** Kurze Fristen: Der Zeitüberschreitungs-Fall soll den Lauf nicht bremsen. */
-    private fun baueRepo(leseFristMs: Long = 1_000): BrickRepository {
+    private fun baueRepo(leseFristMs: Long = 1_000): AdminRepository {
         val client = OkHttpClient.Builder()
             .readTimeout(leseFristMs, TimeUnit.MILLISECONDS)
             .connectTimeout(leseFristMs, TimeUnit.MILLISECONDS)
@@ -71,7 +71,11 @@ class BrickRepositoryErrorMappingTest {
             .addConverterFactory(json.asConverterFactory("application/json".toMediaType()))
             .build()
             .create(BrickApiService::class.java)
-        return BrickRepository(api, ResponseCache { cacheDir })
+        // AdminRepository statt BrickRepository (Nachtrag 155): getMe() liegt
+        // seit der Aufteilung dort. Geprueft wird hier die Fehlerumsetzung in
+        // safeCall() — die steht in RepoBasis und ist fuer alle fuenf
+        // Teil-Repositories dieselbe; getMe ist nur das Vehikel.
+        return AdminRepository(api, ResponseCache { cacheDir })
     }
 
     @Before

@@ -165,7 +165,7 @@ class CsvImportService : Service() {
         if (token.isBlank()) {
             PollResult.ERROR
         } else {
-            when (val resp = repo.getCsvImportStatus(url, token)) {
+            when (val resp = repo.sets.getCsvImportStatus(url, token)) {
                 is Result.Success ->
                     if (applyStatus(resp.data)) PollResult.RUNNING else PollResult.FINISHED
                 is Result.Error -> PollResult.ERROR

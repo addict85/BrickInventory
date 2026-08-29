@@ -55,7 +55,7 @@ fun MonitoringScreen(vm: MainViewModel) {
 
     suspend fun loadJobs() {
         isRefreshing = true
-        when (val r = vm.repo.getJobs()) {
+        when (val r = vm.repo.admin.getJobs()) {
             is Result.Success -> jobs = r.data.jobs
             is Result.Error -> {}
         }
@@ -64,7 +64,7 @@ fun MonitoringScreen(vm: MainViewModel) {
 
     suspend fun loadQueue() {
         queueLoading = true
-        when (val r = vm.repo.getBricksetQueue()) {
+        when (val r = vm.repo.admin.getBricksetQueue()) {
             is Result.Success -> queue = r.data.entries
             is Result.Error -> {}
         }
@@ -128,7 +128,7 @@ fun MonitoringScreen(vm: MainViewModel) {
                     },
                     onRetry = { sn ->
                         scope.launch {
-                            when (vm.repo.retryBricksetEntry(sn)) {
+                            when (vm.repo.admin.retryBricksetEntry(sn)) {
                                 is Result.Success -> { snack = String.format(retryQueuedFmt, sn); queueToggleKey++ }
                                 is Result.Error -> snack = retryErrorMsg
                             }
@@ -138,7 +138,7 @@ fun MonitoringScreen(vm: MainViewModel) {
                         scope.launch {
                             // Optimistic remove
                             queue = queue.filter { it.setNumber != sn }
-                            val result = vm.repo.deleteBricksetEntry(sn)
+                            val result = vm.repo.admin.deleteBricksetEntry(sn)
                             when (result) {
                                 is Result.Success -> snack = "$sn entfernt"
                                 is Result.Error -> {
@@ -152,7 +152,7 @@ fun MonitoringScreen(vm: MainViewModel) {
                     onReimport = {
                         scope.launch {
                             reimportMsg = reimportLoadingMsg
-                            when (val r = vm.repo.reimportInstructions()) {
+                            when (val r = vm.repo.sets.reimportInstructions()) {
                                 is Result.Success -> {
                                     reimportMsg = monCtx.getString(R.string.monitoring_reimport_enqueued, r.data.enqueued)
                                     scope.launch { delay(4000); reimportMsg = null }
@@ -240,7 +240,7 @@ private fun JobCard(
                     onClick = {
                         scope.launch {
                             csvMsg = startingMsg
-                            when (vm.repo.triggerCsvSync()) {
+                            when (vm.repo.sets.triggerCsvSync()) {
                                 is Result.Success -> {
                                     csvMsg = syncStartedMsg
                                     kotlinx.coroutines.delay(4000)
@@ -266,7 +266,7 @@ private fun JobCard(
                     onClick = {
                         scope.launch {
                             priceMsg = startingMsg
-                            when (vm.repo.triggerPriceJob()) {
+                            when (vm.repo.finanzen.triggerPriceJob()) {
                                 is Result.Success -> {
                                     priceMsg = startedMsg
                                     kotlinx.coroutines.delay(4000)
@@ -292,7 +292,7 @@ private fun JobCard(
                     onClick = {
                         scope.launch {
                             redlMsg = startingMsg
-                            when (vm.repo.redownloadMissingImages()) {
+                            when (vm.repo.admin.redownloadMissingImages()) {
                                 is Result.Success -> {
                                     redlMsg = startedMsg
                                     kotlinx.coroutines.delay(4000)

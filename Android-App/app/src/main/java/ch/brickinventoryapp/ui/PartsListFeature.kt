@@ -26,10 +26,10 @@ internal fun MainViewModel.clearBarcodeForPartsList() {
 internal suspend fun MainViewModel.resolveSetForPartsList(setNumber: String): Pair<String, List<ch.brickinventoryapp.ui.screens.PlPart>> {
     return try {
         // Use user-independent CSV endpoints (work for all users)
-        val partsResult = repo.getSetPartsList(setNumber)
-        val figsResult  = repo.getSetMinifigsList(setNumber)
+        val partsResult = repo.sets.getSetPartsList(setNumber)
+        val figsResult  = repo.sets.getSetMinifigsList(setNumber)
         // Set-Name über das Detail-Endpoint statt alle Sets zu laden
-        val setName = (repo.getSetDetail(setNumber) as? Result.Success)
+        val setName = (repo.sets.getSetDetail(setNumber) as? Result.Success)
             ?.data?.set?.name ?: setNumber
         // Deduplicate by blPartNumber + colorId (same as webapp)
         val deduped = mutableMapOf<String, ch.brickinventoryapp.ui.screens.PlPart>()

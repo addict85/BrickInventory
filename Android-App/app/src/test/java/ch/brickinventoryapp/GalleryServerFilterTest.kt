@@ -35,6 +35,20 @@ class GalleryServerFilterTest {
     private fun code(s: String) = s.lines()
         .joinToString("\n") { if (it.trim().startsWith("//") || it.trim().startsWith("*")) "" else it }
 
+    /**
+     * Alle Dateien der Datenschicht als EIN Text (Nachtrag 155).
+     *
+     * Vorher stand hier "data/repository/BrickRepository.kt" — ein Dateiname.
+     * Die 78 Funktionen liegen seither in fuenf Klassen nach Sachgebieten,
+     * die gemeinsame Mechanik in RepoBasis. Gemeint ist DIE DATENSCHICHT,
+     * nicht eine Datei.
+     */
+    private fun datenschicht(): String =
+        java.io.File("src/main/java/ch/brickinventoryapp/data/repository")
+            .listFiles { f -> f.extension == "kt" }
+            .orEmpty().sortedBy { it.name }
+            .joinToString("\n") { it.readText() }
+
     @Test
     fun `der Schirm filtert und sortiert die Liste nicht selbst`() {
         val s = code(read("ui/screens/GalleryScreen.kt"))
@@ -107,7 +121,7 @@ class GalleryServerFilterTest {
         // Sonst läge die Antwort eines Filters unter demselben Schlüssel wie
         // die volle Sicht, und nach einem Neustart erschiene der falsche
         // Bestand. Dieselbe Regel wie beim Kontofilter (Haushalt).
-        val r = code(read("data/repository/BrickRepository.kt"))
+        val r = code(datenschicht())
         // Funktionsrumpf statt 1400 fester Zeichen (Nachtrag 115) — siehe Quellen.kt.
         val block = Quellen.funktion(r, "suspend fun getSets(")
         assert(block.isNotEmpty()) { "getSets fehlt" }

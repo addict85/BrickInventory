@@ -21,7 +21,7 @@ import kotlinx.coroutines.launch
 internal fun MainViewModel.loadSetDetail(setNumber: String) {
     viewModelScope.launch {
         _setDetailState.update { it.copy(setDetailLoading = true) }
-        when (val r = repo.getSetDetail(setNumber)) {
+        when (val r = repo.sets.getSetDetail(setNumber)) {
             is Result.Success ->
                 _setDetailState.update { it.copy(setDetail = r.data.set, setDetailLoading = false) }
             is Result.Error -> _setDetailState.update { it.copy(setDetailLoading = false) }
@@ -32,7 +32,7 @@ internal fun MainViewModel.loadSetDetail(setNumber: String) {
 internal fun MainViewModel.loadSetPrice(setNumber: String) {
     viewModelScope.launch {
         _setDetailState.update { it.copy(setPriceLoading = true) }
-        when (val r = repo.getSetPrice(setNumber)) {
+        when (val r = repo.finanzen.getSetPrice(setNumber)) {
             is Result.Success ->
                 _setDetailState.update { it.copy(setPrice = r.data, setPriceLoading = false) }
             is Result.Error -> _setDetailState.update { it.copy(setPriceLoading = false) }
@@ -43,7 +43,7 @@ internal fun MainViewModel.loadSetPrice(setNumber: String) {
 internal fun MainViewModel.loadSetPriceHistory(setNumber: String) {
     viewModelScope.launch {
         _setDetailState.update { it.copy(priceHistoryLoading = true) }
-        when (val r = repo.getSetPriceHistory(setNumber)) {
+        when (val r = repo.finanzen.getSetPriceHistory(setNumber)) {
             is Result.Success ->
                 _setDetailState.update { it.copy(
                     priceHistory = r.data,
@@ -57,7 +57,7 @@ internal fun MainViewModel.loadSetPriceHistory(setNumber: String) {
 internal fun MainViewModel.loadAcquisitions(setNumber: String) {
     viewModelScope.launch {
         _setDetailState.update { it.copy(acquisitionsLoading = true) }
-        when (val r = repo.getAcquisitions(setNumber)) {
+        when (val r = repo.haushalt.getAcquisitions(setNumber)) {
             is Result.Success -> _setDetailState.update {
                 it.copy(acquisitions = r.data.acquisitions,
                         acquisitionTotals = r.data.totals,
@@ -101,7 +101,7 @@ internal fun MainViewModel.applySetAggregate(agg: SetAggregate?) {
 
 internal fun MainViewModel.updateAcquisition(setNumber: String, acqId: Int, purchasePrice: Double? = null, condition: String? = null, quantity: Int? = null, date: String? = null) {
     viewModelScope.launch {
-        when (val r = repo.updateAcquisition(setNumber, acqId, purchasePrice, condition, quantity, date)) {
+        when (val r = repo.haushalt.updateAcquisition(setNumber, acqId, purchasePrice, condition, quantity, date)) {
             is Result.Success -> {
                 if (r.data.success) {
                     applySetAggregate(r.data.set)
@@ -140,7 +140,7 @@ internal fun MainViewModel.updateAcquisition(setNumber: String, acqId: Int, purc
 
 internal fun MainViewModel.deleteAcquisition(setNumber: String, acqId: Int) {
     viewModelScope.launch {
-        when (val r = repo.deleteAcquisition(setNumber, acqId)) {
+        when (val r = repo.haushalt.deleteAcquisition(setNumber, acqId)) {
             is Result.Success -> {
                 if (r.data.success) {
                     applySetAggregate(r.data.set)

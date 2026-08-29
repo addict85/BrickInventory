@@ -145,13 +145,13 @@ fun CacheAndLimitsSection(vm: MainViewModel, onSnack: (String) -> Unit = {}) {
     var bsInput    by rememberSaveable { mutableStateOf("0") }
 
     LaunchedEffect(Unit) {
-        val cs = vm.repo.getCacheStats()
+        val cs = vm.repo.admin.getCacheStats()
         if (cs is Result.Success) cacheStats = cs.data
-        val al = vm.repo.getApiLimits()
+        val al = vm.repo.admin.getApiLimits()
         if (al is Result.Success) { apiLimits = al.data.limits; rbInput = al.data.limits.rebrickable.toString(); blInput = al.data.limits.bricklink.toString(); bsInput = al.data.limits.brickset.toString() }
-        val ttl = vm.repo.getCacheTtl()
+        val ttl = vm.repo.admin.getCacheTtl()
         if (ttl is Result.Success) { cacheTtl = ttl.data.ttl; ttlInput = ttl.data.ttl }
-        val dc = vm.repo.getDefaultCondition()
+        val dc = vm.repo.teile.getDefaultCondition()
         if (dc is Result.Success) defaultCondition = dc.data.condition
     }
 
@@ -187,7 +187,7 @@ fun CacheAndLimitsSection(vm: MainViewModel, onSnack: (String) -> Unit = {}) {
                     onSelect = { newCond ->
                         defaultCondition = newCond
                         scope.launch {
-                            val r = vm.repo.setDefaultCondition(newCond)
+                            val r = vm.repo.teile.setDefaultCondition(newCond)
                             if (r is Result.Success) {
                                 vm.loadSettings()
                                 onSnack(cacheSavedMsg)
@@ -224,7 +224,7 @@ fun CacheAndLimitsSection(vm: MainViewModel, onSnack: (String) -> Unit = {}) {
                             onClick = {
                                 scope.launch {
                                     val h = ttlInput.toIntOrNull() ?: 24
-                                    val r = vm.repo.setCacheTtl(h)
+                                    val r = vm.repo.admin.setCacheTtl(h)
                                     if (r is Result.Success) { cacheTtl = h.toString(); onSnack(cacheSavedMsg) }
                                     editingTtl = false
                                 }
@@ -278,10 +278,10 @@ fun CacheAndLimitsSection(vm: MainViewModel, onSnack: (String) -> Unit = {}) {
                             val rb = rbInput.toIntOrNull() ?: 0
                             val bl = blInput.toIntOrNull() ?: 0
                             val bs = bsInput.toIntOrNull() ?: 0
-                            val r = vm.repo.setApiLimits(rb, bl, bs)
+                            val r = vm.repo.admin.setApiLimits(rb, bl, bs)
                             if (r is Result.Success) {
                                 // refresh
-                                val al2 = vm.repo.getApiLimits()
+                                val al2 = vm.repo.admin.getApiLimits()
                                 if (al2 is Result.Success) apiLimits = al2.data.limits
                                 onSnack(limitsSavedMsg)
                             }

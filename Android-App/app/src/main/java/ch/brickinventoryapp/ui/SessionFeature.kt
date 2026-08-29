@@ -30,7 +30,7 @@ internal fun MainViewModel.login(username: String, password: String) {
     viewModelScope.launch {
         _state.update { it.copy(isLoading = true, loginError = null) }
         val url = prefs.serverUrl.first()
-        when (val r = repo.login(url, username, password)) {
+        when (val r = repo.admin.login(url, username, password)) {
             is Result.Success -> {
                 if (r.data.success && r.data.token != null) {
                     prefs.saveAuthToken(r.data.token)
@@ -57,7 +57,7 @@ internal fun MainViewModel.loginWithQrToken(serverUrl: String, token: String) {
         _state.update { it.copy(isLoading = true, loginError = null) }
         // Save server URL first so Retrofit uses it for this call
         prefs.saveServerUrl(serverUrl.trim().trimEnd('/'))
-        when (val r = repo.qrLogin(token)) {
+        when (val r = repo.admin.qrLogin(token)) {
             is Result.Success -> {
                 if (r.data.success && r.data.token != null) {
                     prefs.saveAuthToken(r.data.token)

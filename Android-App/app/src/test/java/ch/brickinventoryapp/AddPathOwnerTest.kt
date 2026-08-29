@@ -45,7 +45,7 @@ class AddPathOwnerTest {
                 "landet dann immer beim eigenen Konto"
         }
         assert(Regex("""repo\.addSet\([^)]*ownerUserId""").containsMatchIn(feature)) {
-            "der Eigentümer wird nicht an repo.addSet() weitergereicht"
+            "der Eigentümer wird nicht an repo.sets.addSet() weitergereicht"
         }
     }
 

@@ -87,7 +87,7 @@ class PdfExportManager @Inject constructor(
 
         try {
             // Step 1: Job starten
-            val jobId = when (val r = repo.startPdfJob(body)) {
+            val jobId = when (val r = repo.sets.startPdfJob(body)) {
                 is Result.Success -> r.data
                 is Result.Error   -> { _state.value = PdfExportState.Error(r.message); return }
             }
@@ -130,7 +130,7 @@ class PdfExportManager @Inject constructor(
             repeat(5) { attempt ->
                 if (downloadResult !is Result.Success) {
                     if (attempt > 0) { delay(dlDelay); dlDelay = minOf(dlDelay * 2, 30_000L) }
-                    downloadResult = repo.downloadPdf(jobId)
+                    downloadResult = repo.sets.downloadPdf(jobId)
                 }
             }
             when (val r = downloadResult) {
@@ -235,7 +235,7 @@ class PdfExportManager @Inject constructor(
         val deadline = System.currentTimeMillis() + 10 * 60 * 1000L
         while (System.currentTimeMillis() < deadline) {
             delay(3000)
-            when (val r = repo.getPdfJobStatus(jobId)) {
+            when (val r = repo.sets.getPdfJobStatus(jobId)) {
                 is Result.Success -> {
                     errors = 0
                     setEtaOnce(r.data.etaSeconds)

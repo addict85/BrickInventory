@@ -86,7 +86,7 @@ class PartsListScannerTest {
         val zweig = feature.indexOf("""if (_barcodeState.value.source == "partslist")""")
         assert(zweig > 0) { "der Teilelisten-Zweig in confirmAddBarcode fehlt" }
         val bisReturn = feature.substring(zweig, feature.indexOf("return", zweig))
-        assert(!bisReturn.contains("repo.addSet")) {
+        assert(!bisReturn.contains("repo.sets.addSet")) {
             "Aus der Teileliste darf KEIN Set in die Sammlung erfasst werden — die Nummer " +
                 "wird nur an die Liste weitergereicht"
         }
