@@ -120,7 +120,18 @@ jobs:
           BRICK_KEYSTORE_PASSWORT: ${{ secrets.KEYSTORE_PASSWORT }}
           BRICK_KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
           BRICK_KEY_PASSWORT: ${{ secrets.KEY_PASSWORT }}
-        run: ./gradlew --no-daemon assembleRelease
+        run: ./gradlew --no-daemon assembleRelease bundleRelease
+
+      # ── Warum ZUSÄTZLICH ein Bundle (.aab) ──────────────────────────────────
+      #
+      # Play nimmt seit August 2021 für neue Apps kein APK mehr an, nur noch ein
+      # Android App Bundle. Das APK bleibt trotzdem: Es ist das, was man sich
+      # hier aus den Artefakten zieht und direkt aufs Gerät schiebt. Ein .aab
+      # lässt sich NICHT installieren — daraus schneidet erst Play die
+      # geräte-passenden APKs.
+      #
+      # Beides entsteht im selben Gradle-Aufruf oben, damit der lange
+      # Übersetzungslauf nur einmal stattfindet.
 
       # R8 läuft nur im Release-Build (isMinifyEnabled = true). Der Lint-Bericht
       # ist deshalb gerade hier interessant; abbrechen soll er nicht, das
@@ -150,13 +161,25 @@ jobs:
 
       # `always()`: Die Berichte sind gerade dann interessant, wenn der Lauf rot
       # ist. Ohne das lädt GitHub sie bei einem Fehlschlag nicht hoch.
-      # upload-artifact bleibt bei v4: Es warnt wegen Node 20, LÄUFT aber. Eine
-      # geratene v5 wäre "action not found" — ein harter Fehlschlag statt einer
-      # Warnung. Wenn du die Warnung loswerden willst, prüf auf
-      # github.com/actions/upload-artifact, welche Hauptversion aktuell ist.
+      # upload-artifact auf v6 (vorher v4).
+      #
+      # v4 läuft auf Node 20 und erzeugt seit dessen Abkündigung bei jedem Lauf
+      # die Warnung "being forced to run on Node.js 24". Nachgesehen statt
+      # geraten — und das Nachsehen hat sich gelohnt:
+      #
+      #     v4 -> runs.using: node20      (warnt)
+      #     v5 -> runs.using: node20      (warnt EBENFALLS)
+      #     v6 -> runs.using: node24      (still)
+      #
+      # Der naheliegende Sprung auf die nächste Hauptversion hätte die Warnung
+      # also NICHT beseitigt. Wer hier wieder anfasst: Die Fassung am Tag
+      # abrufen und in action.yml unter runs.using nachsehen, welches Node sie
+      # startet — die Versionsnummer allein sagt es nicht.
+      #
+      #     curl https://raw.githubusercontent.com/actions/upload-artifact/v6/action.yml
       - name: Testberichte sichern
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: testberichte
           path: |
@@ -170,8 +193,25 @@ jobs:
 
       - name: BrickInventory.apk sichern
         if: success()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: BrickInventory
           path: Android-App/app/build/outputs/apk/release/BrickInventory.apk
+          retention-days: 90
+
+      # Das Bundle wird hier nur GEBAUT und gesichert, nicht veroeffentlicht.
+      # Das Hochladen zu Play steht in einem eigenen Workflow, der von Hand
+      # gestartet wird (android-playstore.yml) — eine Veroeffentlichung soll
+      # nicht bei jedem Push auf main passieren.
+      #
+      # Der Bau hier hat trotzdem einen Zweck: Er faellt auf, wenn das Bundle
+      # bricht, waehrend das APK noch durchlaeuft. Das kommt vor — R8 und die
+      # Ressourcen-Aufteilung arbeiten fuer die beiden Formate nicht gleich.
+      - name: App-Bundle (.aab) sichern
+        if: success()
+        uses: actions/upload-artifact@v6
+        with:
+          name: BrickInventory-bundle
+          path: Android-App/app/build/outputs/bundle/release/app-release.aab
+          if-no-files-found: error
           retention-days: 90

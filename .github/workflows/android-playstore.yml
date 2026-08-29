@@ -1,0 +1,242 @@
+name: Android-App zu Play veroeffentlichen
+
+# ── Warum ein EIGENER Workflow, und warum nur von Hand ───────────────────────
+#
+# Eine Veroeffentlichung im Play Store ist nach aussen gerichtet und kaum
+# zurueckzunehmen: Ein Build, der einmal in einer Spur liegt, ist fuer die
+# Testenden sichtbar; aus der Produktionsspur bekommt man ihn nur ueber einen
+# neuen, hoeheren Build wieder heraus, nicht durch Loeschen.
+#
+# Deshalb steht hier KEIN `on: push`. Der Lauf startet ausschliesslich ueber
+# den Knopf "Run workflow" — mit bewusster Wahl der Spur. Der normale
+# Android-Workflow baut das Bundle bei jedem Push mit und legt es als Artefakt
+# ab; wer nur sehen will, ob es baut, braucht diesen Workflow hier nicht.
+on:
+  workflow_dispatch:
+    inputs:
+      spur:
+        description: "Play-Spur"
+        required: true
+        default: internal
+        type: choice
+        options:
+          - internal      # nur eingetragene interne Testende, sofort verfuegbar
+          - alpha         # geschlossener Test
+          - beta          # offener Test
+          - production    # alle
+      status:
+        description: "Freigabestatus"
+        required: true
+        default: draft
+        type: choice
+        options:
+          # draft: Der Build landet im Play Console als Entwurf und wird NICHT
+          # ausgeliefert, bis jemand ihn dort von Hand freigibt. Das ist die
+          # sichere Vorgabe — der erste Lauf soll nicht sofort an Nutzende
+          # gehen.
+          - draft
+          - completed
+      hinweise:
+        description: "Aenderungshinweise (leer = Standardtext)"
+        required: false
+        type: string
+
+concurrency:
+  # Zwei gleichzeitige Veroeffentlichungen in dieselbe Spur wuerden sich
+  # gegenseitig ueberholen. Hier wird NICHT abgebrochen (cancel-in-progress:
+  # false): Ein laufender Upload soll zu Ende gehen duerfen, sonst liegt im
+  # Play Console womoeglich ein halber Entwurf.
+  group: playstore-${{ github.event.inputs.spur }}
+  cancel-in-progress: false
+
+jobs:
+  veroeffentlichen:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: Android-App
+
+    steps:
+      # ── Vorabpruefung der Secrets ───────────────────────────────────────────
+      #
+      # Ohne diese Pruefung faellt der Lauf erst nach dem mehrminuetigen
+      # Uebersetzen auf die Nase, und die Meldung der Upload-Action sagt nicht
+      # klar, WELCHES Secret fehlt. Lieber nach zehn Sekunden mit Klartext.
+      - name: Secrets vollstaendig?
+        env:
+          HAT_DIENSTKONTO: ${{ secrets.PLAY_SERVICE_ACCOUNT_JSON != '' }}
+          HAT_SCHLUESSEL:  ${{ secrets.KEYSTORE_BASE64 != '' }}
+          HAT_PASSWORT:    ${{ secrets.KEYSTORE_PASSWORT != '' }}
+          HAT_ALIAS:       ${{ secrets.KEY_ALIAS != '' }}
+          HAT_KEYPASS:     ${{ secrets.KEY_PASSWORT != '' }}
+        run: |
+          set -eu
+          fehlt=""
+          [ "$HAT_DIENSTKONTO" = "true" ] || fehlt="$fehlt PLAY_SERVICE_ACCOUNT_JSON"
+          [ "$HAT_SCHLUESSEL"  = "true" ] || fehlt="$fehlt KEYSTORE_BASE64"
+          [ "$HAT_PASSWORT"    = "true" ] || fehlt="$fehlt KEYSTORE_PASSWORT"
+          [ "$HAT_ALIAS"       = "true" ] || fehlt="$fehlt KEY_ALIAS"
+          [ "$HAT_KEYPASS"     = "true" ] || fehlt="$fehlt KEY_PASSWORT"
+          if [ -n "$fehlt" ]; then
+            echo "::error::Es fehlen diese Repository-Secrets:$fehlt"
+            echo ""
+            echo "Einzutragen unter Settings -> Secrets and variables -> Actions."
+            echo "Was jedes bedeutet, steht in Android-App/PLAYSTORE.md."
+            exit 1
+          fi
+          echo "Alle fuenf Secrets sind gesetzt."
+
+      - uses: actions/checkout@v6
+
+      - name: JDK einrichten
+        uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Gradle einrichten
+        uses: gradle/actions/setup-gradle@v6
+
+      - name: gradlew ausfuehrbar machen
+        run: chmod +x gradlew
+
+      # Die Tests laufen auch hier. Ein Build, der in den Store geht, soll
+      # nicht weniger geprueft sein als einer, der es nicht tut — und der
+      # Push, der diesen Stand nach main gebracht hat, kann Wochen her sein.
+      - name: Unit-Tests
+        run: ./gradlew --no-daemon testDebugUnitTest
+
+      - name: Schluesselspeicher bereitstellen
+        run: echo "${{ secrets.KEYSTORE_BASE64 }}" | base64 -d > "$RUNNER_TEMP/brick.jks"
+
+      # ── Warum bundleRelease und nicht assembleRelease ───────────────────────
+      # Play nimmt fuer neue Apps seit August 2021 kein APK mehr an. Was
+      # hochgeht, ist ein Android App Bundle; die geraete-passenden APKs
+      # schneidet Google daraus selbst.
+      - name: Bundle bauen
+        env:
+          BRICK_KEYSTORE_PFAD:     ${{ runner.temp }}/brick.jks
+          BRICK_KEYSTORE_PASSWORT: ${{ secrets.KEYSTORE_PASSWORT }}
+          BRICK_KEY_ALIAS:         ${{ secrets.KEY_ALIAS }}
+          BRICK_KEY_PASSWORT:      ${{ secrets.KEY_PASSWORT }}
+        run: ./gradlew --no-daemon bundleRelease
+
+      # Ein unsigniertes Bundle weist Play zurueck — mit einer Meldung, die
+      # nach einem Problem bei Google aussieht. Deshalb hier pruefen, solange
+      # noch klar ist, woran es liegt.
+      - name: Bundle signiert?
+        run: |
+          set -eu
+          AAB=app/build/outputs/bundle/release/app-release.aab
+          [ -f "$AAB" ] || { echo "::error::Kein Bundle unter $AAB gebaut."; exit 1; }
+          # Ein signiertes Bundle traegt einen META-INF/*.RSA|DSA|EC-Eintrag.
+          if unzip -l "$AAB" | grep -qE 'META-INF/.*\.(RSA|DSA|EC)$'; then
+            echo "Bundle ist signiert."
+          else
+            echo "::error::Das Bundle ist UNSIGNIERT. Play weist es zurueck."
+            echo "Vermutlich stimmt eines der vier Keystore-Secrets nicht."
+            unzip -l "$AAB" | grep META-INF || true
+            exit 1
+          fi
+          ls -la "$AAB"
+
+      # ── Ablage der Aenderungshinweise ───────────────────────────────────────
+      #
+      # FLACHE Dateien, benannt "whatsnew-<GEBIETSSCHEMA>", ohne Endung und
+      # ohne Unterordner:
+      #
+      #     hinweise/
+      #     ├─ whatsnew-de-DE
+      #     └─ whatsnew-en-US
+      #
+      # Nachgelesen, nicht geraten — der erste Entwurf hier legte
+      # "de-DE/default.txt" an. Das ist die Fastlane-Ablage, eine ANDERE
+      # Konvention; diese Action erwartet das obige Schema und haette die
+      # Hinweise sonst stillschweigend nicht gefunden.
+      - name: Aenderungshinweise schreiben
+        env:
+          HINWEISE: ${{ github.event.inputs.hinweise }}
+        run: |
+          set -eu
+          mkdir -p "$RUNNER_TEMP/hinweise"
+          if [ -n "$HINWEISE" ]; then
+            printf '%s\n' "$HINWEISE" > "$RUNNER_TEMP/hinweise/whatsnew-de-DE"
+            printf '%s\n' "$HINWEISE" > "$RUNNER_TEMP/hinweise/whatsnew-en-US"
+          else
+            # Kein erfundener Funktionstext: Was in diesem Stand steckt, weiss
+            # dieser Workflow nicht. Der Commit-Verweis ist nachpruefbar, eine
+            # ausgedachte Liste waere es nicht.
+            printf 'Verbesserungen und Fehlerbehebungen (Stand %s).\n' "${GITHUB_SHA:0:7}" \
+              > "$RUNNER_TEMP/hinweise/whatsnew-de-DE"
+            printf 'Improvements and bug fixes (build %s).\n' "${GITHUB_SHA:0:7}" \
+              > "$RUNNER_TEMP/hinweise/whatsnew-en-US"
+          fi
+          # Play kappt die Hinweise bei 500 Zeichen. Lieber hier abbrechen als
+          # einen abgeschnittenen Text im Store stehen haben.
+          for f in "$RUNNER_TEMP"/hinweise/whatsnew-*; do
+            n=$(wc -c < "$f")
+            [ "$n" -le 500 ] || { echo "::error::$f hat $n Zeichen, Play erlaubt 500."; exit 1; }
+          done
+          ls -la "$RUNNER_TEMP/hinweise"
+          cat "$RUNNER_TEMP/hinweise/whatsnew-de-DE"
+
+      # ── Version der Action ──────────────────────────────────────────────────
+      # Auf v1.1.5 festgenagelt statt auf das wandernde v1. Nachgesehen statt
+      # geraten, wie beim upload-artifact-Fall:
+      #
+      #     v1.1.3 -> runs.using: node20   (warnt)
+      #     v1.1.4 -> runs.using: node24
+      #     v1.1.5 -> runs.using: node24   <- genommen, neuester Tag
+      #
+      # Ein fester Tag heisst: Was heute laeuft, laeuft morgen genauso. Bei
+      # einer Action, die in unserem Namen im Store veroeffentlicht, ist das
+      # den Verzicht auf selbsttaetige Aktualisierungen wert.
+      - name: Zu Play hochladen
+        uses: r0adkll/upload-google-play@v1.1.5
+        with:
+          serviceAccountJsonPlainText: ${{ secrets.PLAY_SERVICE_ACCOUNT_JSON }}
+          packageName: ch.brickinventoryapp
+          releaseFiles: Android-App/app/build/outputs/bundle/release/app-release.aab
+          # `tracks`, nicht `track`: Letzteres ist in action.yml ausdruecklich
+          # als veraltet markiert ("will be removed in the future").
+          tracks: ${{ github.event.inputs.spur }}
+          status: ${{ github.event.inputs.status }}
+          whatsNewDirectory: ${{ runner.temp }}/hinweise
+          # Die von R8 erzeugte Zuordnungsdatei mitgeben: Ohne sie sind die
+          # Absturzberichte im Play Console unlesbar verschleiert.
+          mappingFile: Android-App/app/build/outputs/mapping/release/mapping.txt
+          # Die Symboldatei fuer nativen Code gibt es hier nicht (die App hat
+          # keinen eigenen), deshalb steht debugSymbols nicht dabei.
+
+      - name: Bundle sichern
+        if: always()
+        uses: actions/upload-artifact@v6
+        with:
+          name: BrickInventory-bundle-${{ github.event.inputs.spur }}
+          path: |
+            Android-App/app/build/outputs/bundle/release/app-release.aab
+            Android-App/app/build/outputs/mapping/release/mapping.txt
+          if-no-files-found: warn
+          retention-days: 90
+
+      - name: Zusammenfassung
+        if: success()
+        run: |
+          {
+            echo "## Zu Play hochgeladen"
+            echo ""
+            echo "| | |"
+            echo "| --- | --- |"
+            echo "| Spur | \`${{ github.event.inputs.spur }}\` |"
+            echo "| Status | \`${{ github.event.inputs.status }}\` |"
+            echo "| Paket | \`ch.brickinventoryapp\` |"
+            echo "| Commit | \`${GITHUB_SHA:0:7}\` |"
+            echo ""
+            if [ "${{ github.event.inputs.status }}" = "draft" ]; then
+              echo "> Der Build liegt als **Entwurf** im Play Console und wird"
+              echo "> NICHT ausgeliefert, bis er dort von Hand freigegeben wird."
+            else
+              echo "> Der Build ist **freigegeben** und wird in der Spur"
+              echo "> \`${{ github.event.inputs.spur }}\` ausgerollt."
+            fi
+          } >> "$GITHUB_STEP_SUMMARY"

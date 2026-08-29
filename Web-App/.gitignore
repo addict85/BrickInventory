@@ -1,0 +1,38 @@
+# ── Warum es diese Datei gibt (Nachtrag 154) ─────────────────────────────────
+#
+# Web-App/ hatte KEINE .gitignore. Beim Import als Unterordner dieses
+# Repositories ist sie offenbar verlorengegangen — .dockerignore daneben ist
+# erhalten geblieben, was den Verdacht stützt.
+#
+# Folge: `git add -A` erfasste 9110 unverfolgte Dateien mit zusammen 216 MB
+# (node_modules, dist, data). Genau das ist beim Erarbeiten von Nachtrag 154
+# einmal passiert und musste zurückgenommen werden; gemerkt hat man es nur,
+# weil die Dateizahl im Commit auffiel. Beim nächsten Mal fällt sie vielleicht
+# nicht auf, und dann liegen 200 MB Abhängigkeiten dauerhaft in der Historie —
+# rückgängig macht man das nur noch durch Umschreiben der Historie.
+#
+# NICHT ignoriert wird public/js/app.bundle.js: Die Datei steht zwar in
+# .dockerignore (im Container wird sie gebaut), ist hier aber VERFOLGT und
+# gehört ins Repository — sie wird ausgeliefert.
+
+# Abhängigkeiten und Bauergebnisse
+node_modules/
+dist/
+
+# Laufzeitdaten: Bilder, Vorschaubilder, Uploads, Zwischenstände
+data/
+pgdata/
+
+# Protokolle und lokale Umgebung
+*.log
+.env
+.env.*
+# ... aber eine Beispieldatei gehoert ins Repository. Ohne diese Ausnahme
+# verschluckt `.env.*` ein spaeter angelegtes .env.example lautlos — dieselbe
+# Bauart von Verlust, gegen die diese Datei ueberhaupt angelegt wurde.
+!.env.example
+
+# Betriebssystem und Editor
+.DS_Store
+Thumbs.db
+*.swp

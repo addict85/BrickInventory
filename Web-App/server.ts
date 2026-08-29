@@ -688,24 +688,21 @@ app.get('/api/debug/test', async (req, res) => {
 // Der Link in der Bestätigungs-Mail zeigt hierher.
 // Wir leiten direkt an den Auth-Handler weiter.
 app.get('/verify', async (req, res) => {
-  const { token } = req.query;
-  if (!token) return res.redirect('/?verified=invalid');
+  // Die Logik steht seit Nachtrag 154 in utils/auth.verifiziereEmailToken().
+  // Vorher lagen hier acht Zeilen, die in routes/auth.ts wortgleich ein
+  // zweites Mal standen — inklusive Hash-Regel und Ablaufprüfung. Wer eine
+  // davon änderte, hatte die andere übersehen.
+  //
+  // Was HIER bleibt, ist die Antwortform: Dieser Weg wird aus einer E-Mail
+  // angeklickt, also muss am Ende eine Seite stehen, keine JSON-Zeile. Die
+  // Oberfläche liest ?verified= aus und zeigt die Meldung.
+  const { verifiziereEmailToken } = require('./utils/auth') as typeof import('./utils/auth');
   try {
-    const db   = require('./db/database');
-    const { hashToken } = require('./utils/auth') as typeof import('./utils/auth');
-    // verification_token liegt seit dem Token-Hardening nur noch als SHA-256
-    // in der DB — hier genauso nachschlagen wie in routes/auth.ts.
-    const user = await db.get(
-      "SELECT id FROM users WHERE verification_token = $1 AND token_expires > NOW() AND email_verified = 0",
-      [hashToken(String(token))]
-    );
-    if (!user) return res.redirect('/?verified=invalid');
-    await db.run(
-      'UPDATE users SET email_verified=1, verification_token=NULL, token_expires=NULL WHERE id=$1',
-      [user.id]
-    );
-    res.redirect('/?verified=1');
+    const e = await verifiziereEmailToken(req.query.token);
+    res.redirect(e.ok ? '/?verified=1' : '/?verified=invalid');
   } catch (e) {
+    // Ein Datenbankfehler darf dem Klickenden keine Fehlerseite zeigen — er
+    // kann nichts damit anfangen. Ins Protokoll gehört er trotzdem.
     console.error('Verify error:', e.message);
     res.redirect('/?verified=invalid');
   }

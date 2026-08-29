@@ -88,7 +88,8 @@ test('QR-Login transportiert kein Passwort-Material mehr', () => {
   const auth = fs.readFileSync(path.join(ROOT, 'routes', 'auth.ts'), 'utf8');
   // Nur den QR-Abschnitt betrachten: dahinter kommen /register und
   // /reset-password, die legitim mit password_hash arbeiten.
-  const from = auth.indexOf("router.get('/qr-token'");
+  // Nachtrag 154: Die Route ist jetzt POST (sie legt eine Nonce an).
+  const from = auth.indexOf("router.post('/qr-token'");
   const to   = auth.indexOf("router.get('/registration-status'");
   assert.ok(from > 0 && to > from, 'QR-Abschnitt nicht gefunden');
   const qr = auth.slice(from, to);
