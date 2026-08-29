@@ -33,7 +33,7 @@ class TabOpensAtTopTest {
 
     @Test
     fun `das Antippen eines Reiters verwirft dessen Rollposition`() {
-        val ms = code(lies("../MainScaffold.kt"))
+        val ms = code(lies("MainScaffold.kt"))
         assert(ms.contains("onTabAngetippt")) { "Der Rückruf fehlt in MainScaffold" }
         // Er muss VOR der Navigation laufen — danach ist der Bildschirm unter
         // Umständen schon zusammengesetzt und hat die alte Stelle gelesen.
@@ -71,7 +71,7 @@ class TabOpensAtTopTest {
                 "genau dabei ist in Nachtrag 114 einer vergessen worden."
         }
 
-        val geruest = code(lies("../MainScaffold.kt"))
+        val geruest = code(lies("MainScaffold.kt"))
         assert(geruest.contains("fun ReiterGeruest(")) { "ReiterGeruest fehlt" }
         assert(geruest.contains("onTabAngetippt = { ziel -> vm.scrollMemory.vergissReiter(ziel.route) }")) {
             "Das Geruest verwirft die Rollposition nicht mehr — dann beginnt der Reiter " +

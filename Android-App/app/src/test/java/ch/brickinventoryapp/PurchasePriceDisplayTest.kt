@@ -42,7 +42,9 @@ class PurchasePriceDisplayTest {
 
     @Test
     fun `die Detailansicht liest nicht mehr direkt den gespiegelten Wert`() {
-        val d = code(read("ui/screens/SetDetailScreen.kt"))
+        // SetDetailScreen.kt wurde aufgeteilt; die Kacheln und Karten stehen
+        // in SetDetailSections.kt. Beide zusammen sind die Detailansicht.
+        val d = code(read("ui/screens/SetDetailScreen.kt") + "\n" + read("ui/screens/SetDetailSections.kt"))
         assert(!d.contains("fmtPrice(set.purchasePrice)")) {
             "Die Kaufpreis-Kachel liest wieder set.purchasePrice — das ist der Preis des " +
                 "LETZTEN Kaufs, nicht der Sammlung"
@@ -70,7 +72,9 @@ class PurchasePriceDisplayTest {
         // steht die Zeile nicht. Im klassischen Design gibt es die Kacheln
         // nicht — dort bleibt sie, sonst verschwände der Marktpreis von der
         // Seite. Genau diese Kopplung soll nicht unbemerkt verlorengehen.
-        val d = code(read("ui/screens/SetDetailScreen.kt"))
+        // SetDetailScreen.kt wurde aufgeteilt; die Kacheln und Karten stehen
+        // in SetDetailSections.kt. Beide zusammen sind die Detailansicht.
+        val d = code(read("ui/screens/SetDetailScreen.kt") + "\n" + read("ui/screens/SetDetailSections.kt"))
         assert(d.contains("val zeigeGrossePreiszeile = !isBrick")) {
             "Die grosse Preiszeile hängt nicht mehr am Design — entweder wiederholt sie " +
                 "die Kacheln wieder, oder sie ist im klassischen Design mit verschwunden"

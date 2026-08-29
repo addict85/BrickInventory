@@ -29,6 +29,21 @@ class CameraXUpgradeTest {
         return s.lines().filterNot { it.trim().startsWith("//") }.joinToString("\n")
     }
 
+    /**
+     * Ein Kamera-Bildschirm samt seiner ausgelagerten Bildanalyse.
+     *
+     * Der Barcode-Scanner besteht seit Nachtrag 99 aus ZWEI Dateien: der
+     * Bildschirm bindet die Vorschau, BarcodeAnalyzer.kt die ImageAnalysis.
+     * Die geprueften Regeln (AF-Modus an BEIDEN Use Cases, Aufraeumen der
+     * nativen Ressourcen, keine getaktete Fokussierung) spannen ueber beide —
+     * eine Datei allein zu lesen fand nur die Haelfte und meldete deshalb
+     * einen Verstoss, den es nicht gibt. SetupScreen bindet beides selbst und
+     * bleibt unveraendert.
+     */
+    private fun mitAnalyse(rel: String): String =
+        read(rel) + if (rel.endsWith("BarcodeScannerScreen.kt"))
+            "\n" + read("ui/screens/BarcodeAnalyzer.kt") else ""
+
     @Test
     fun `CameraX steht auf einer 16-KB-tauglichen Fassung`() {
         val toml = java.io.File("../gradle/libs.versions.toml")
@@ -50,7 +65,7 @@ class CameraXUpgradeTest {
     @Test
     fun `der Kamera-Provider wird abgesichert geholt`() {
         for (rel in screens) {
-            val src = code(read(rel))
+            val src = code(mitAnalyse(rel))
             val idx = src.indexOf("val provider = future.get()")
             assert(idx >= 0) { "$rel: future.get() nicht gefunden — Test veraltet?" }
             assert(src.substring(0, idx).trimEnd().endsWith("try {")) {
@@ -71,7 +86,7 @@ class CameraXUpgradeTest {
     @Test
     fun `der kontinuierliche Autofokus bleibt unveraendert`() {
         for (rel in screens) {
-            val src = code(read(rel))
+            val src = code(mitAnalyse(rel))
             val hits = Regex("CONTROL_AF_MODE_CONTINUOUS_PICTURE").findAll(src).count()
             assert(hits >= 2) {
                 "$rel: CONTROL_AF_MODE_CONTINUOUS_PICTURE steht nur ${hits}x — der Modus " +
@@ -91,7 +106,7 @@ class CameraXUpgradeTest {
      */
     @Test
     fun `die Bildanalyse bleibt auf YUV`() {
-        val src = code(read("ui/screens/BarcodeScannerScreen.kt"))
+        val src = code(mitAnalyse("ui/screens/BarcodeScannerScreen.kt"))
         assert(src.contains("OUTPUT_IMAGE_FORMAT_YUV_420_888")) {
             "Die ImageAnalysis läuft nicht mehr auf YUV_420_888. ML Kit bekommt das " +
                 "mediaImage bisher direkt; bei RGBA würde CameraX zusätzlich seine " +
