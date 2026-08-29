@@ -177,6 +177,61 @@ class BrickRepository @Inject constructor(
     // sind aber innerhalb der App sichtbar. Das ist die bewusst in Kauf
     // genommene Einbusse.
 
+
+    /**
+     * Ein Netzaufruf zu einem Result — die gemeinsame Fehlerbehandlung.
+     *
+     * `internal` statt `private` (Nachtrag 155): Die 77 ausgelagerten
+     * Erweiterungsfunktionen rufen das hier auf, und Erweiterungen kommen an
+     * private Mitglieder nicht heran.
+     */
+    internal suspend fun <T> safeCall(call: suspend () -> Response<T>): Result<T> {
+        return try {
+            val response = call()
+            if (response.isSuccessful) {
+                response.body()?.let { Result.Success(it) }
+                    ?: Result.Error("", art = Fehlerart.LEERE_ANTWORT)
+            } else {
+                // Fehler-Body ({success:false, error:"…"}) auslesen, damit z.B. die
+                // Meldung zum Kaufdatum-Konflikt beim Nutzer ankommt statt nur "Conflict".
+                val bodyMsg = try {
+                    val raw = response.errorBody()?.string()
+                    if (!raw.isNullOrBlank()) org.json.JSONObject(raw).optString("error").takeIf { it.isNotBlank() } else null
+                } catch (_: Exception) { null }
+                // Servermeldung gewinnt, wenn es eine gibt: Sie ist genauer als
+                // jede Einordnung hier. Nur wenn keine da ist, wird die Ursache
+                // als Aufzählung gemeldet und die Anzeige formuliert den Satz.
+                Result.Error(
+                    message = bodyMsg ?: "",
+                    unauthorized = response.code() == 401,
+                    art = when {
+                        bodyMsg != null -> null
+                        response.code() == 401 -> Fehlerart.SITZUNG_ABGELAUFEN
+                        else -> Fehlerart.SERVER
+                    },
+                    httpCode = response.code()
+                )
+            }
+        } catch (e: kotlinx.coroutines.CancellationException) {
+            // Abgebrochene Coroutines (z.B. Suche-Debounce ersetzt Request) dürfen
+            // nicht als "Netzwerkfehler" im State landen — Cancellation weiterreichen.
+            throw e
+        } catch (e: java.net.UnknownHostException) {
+            // Vorübergehende Netzwerkfehler explizit als transient markieren, statt
+            // sie später an der Fehlermeldung zu erraten (retryOnNetwork nutzt das Flag).
+            Result.Error("", transient = true, art = Fehlerart.NETZ)
+        } catch (e: java.net.ConnectException) {
+            Result.Error("", transient = true, art = Fehlerart.NETZ)
+        } catch (e: java.net.SocketTimeoutException) {
+            Result.Error("", transient = true, art = Fehlerart.ZEIT)
+        } catch (e: Exception) {
+            // e.message ist hier durchweg englischer Bibliothekstext ("Socket
+            // closed", "unexpected end of stream"). Als Meldung an den Nutzer
+            // war das nie sinnvoll; sie steht jetzt im Log-Feld statt im Satz.
+            Result.Error("", art = Fehlerart.UNBEKANNT, technisch = e.message)
+        }
+    }
+
     /** Beim Abmelden aufrufen: Der Cache enthält Daten des angemeldeten Kontos. */
     suspend fun clearCache() = cache.clear()
 }
