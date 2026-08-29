@@ -27,9 +27,23 @@ class PurchasePriceDisplayTest {
     private fun code(s: String) = s.lines()
         .joinToString("\n") { if (it.trim().startsWith("//") || it.trim().startsWith("*")) "" else it }
 
+    /**
+     * Alle Modelldateien als EIN Text (Nachtrag 155).
+     *
+     * Vorher stand hier "data/model/Models.kt" — ein Dateiname. Die 92
+     * Datenklassen lagen in einer Datei mit 1158 Zeilen; beim Aufteilen nach
+     * Sachgebieten waeren alle Pruefungen hier rot geworden, obwohl sich an den
+     * Klassen nichts geaendert hat. Gemeint sind DIE MODELLE, nicht eine Datei.
+     */
+    private fun modelle(): String =
+        java.io.File("src/main/java/ch/brickinventoryapp/data/model")
+            .listFiles { f -> f.extension == "kt" }
+            .orEmpty().sortedBy { it.name }
+            .joinToString("\n") { it.readText() }
+
     @Test
     fun `die Anzeigeregel steht im Modell und bevorzugt den Durchschnitt`() {
-        val m = code(read("data/model/Models.kt"))
+        val m = code(modelle())
         assert(m.contains("val anzeigeKaufpreis")) {
             "Die Anzeigeregel fehlt im Modell — dann schreibt sie jede Ansicht selbst, " +
                 "und genau so entstehen unterschiedliche Werte in App und Webapp"

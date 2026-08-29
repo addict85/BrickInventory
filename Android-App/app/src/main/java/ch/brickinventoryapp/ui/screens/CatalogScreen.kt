@@ -142,7 +142,13 @@ fun CatalogScreen(
     // Die REIHENFOLGE ist also die eigentliche Regel: erst springen, dann
     // melden. Deshalb steht der Merker jetzt NACH dem Sprung auf true (ein
     // `scrollToItem` unterbricht) und der Melder hängt an ihm.
-    var wiederhergestellt by rememberSaveable { mutableStateOf(false) }
+    // BEWUSST `remember`, NICHT `rememberSaveable` (Nachtrag 93, erneut 155):
+    // Dieser Merker sagt "in DIESER Komposition wurde schon zurueckgesprungen".
+    // Ueberlebt er den Ausflug in die Detailseite, gilt die Liste nach dem
+    // allerersten Betreten fuer immer als wiederhergestellt — und die Rueckkehr
+    // springt nie mehr zurueck. Genau das ist hier schon einmal passiert und
+    // musste ein zweites Mal gemeldet werden.
+    var wiederhergestellt by remember { mutableStateOf(false) }
     LaunchedEffect(state.total) {
         if (wiederhergestellt || state.total == 0) return@LaunchedEffect
         if (state.scrollIndex > 0) {

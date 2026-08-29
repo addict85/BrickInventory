@@ -80,8 +80,12 @@ class ClientRendersOnlyTest {
                 "die App wieder selbst, und die Webapp tut dasselbe auf ihre Art."
         }
         // Das Modellfeld muss es geben, sonst liest der Ausdruck oben ins Leere.
-        val models = java.io.File(
-            "src/main/java/ch/brickinventoryapp/data/model/Models.kt").readText()
+        // Alle Modelldateien (Nachtrag 155): Vorher stand hier ein Dateiname,
+        // und die Klassen liegen seither nach Sachgebieten verteilt.
+        val models = java.io.File("src/main/java/ch/brickinventoryapp/data/model")
+            .listFiles { f -> f.extension == "kt" }
+            .orEmpty().sortedBy { it.name }
+            .joinToString("\n") { it.readText() }
         assert(models.contains("""@SerialName("grand_total")""")) {
             "PnlTotals kennt grand_total nicht"
         }

@@ -38,6 +38,20 @@ class ServerComputedValuesTest {
     private fun code(s: String) = s.lines()
         .joinToString("\n") { if (it.trim().startsWith("//") || it.trim().startsWith("*")) "" else it }
 
+    /**
+     * Alle Modelldateien als EIN Text (Nachtrag 155).
+     *
+     * Vorher stand hier "data/model/Models.kt" — ein Dateiname. Die 92
+     * Datenklassen lagen in einer Datei mit 1158 Zeilen; beim Aufteilen nach
+     * Sachgebieten waeren alle Pruefungen hier rot geworden, obwohl sich an den
+     * Klassen nichts geaendert hat. Gemeint sind DIE MODELLE, nicht eine Datei.
+     */
+    private fun modelle(): String =
+        java.io.File("src/main/java/ch/brickinventoryapp/data/model")
+            .listFiles { f -> f.extension == "kt" }
+            .orEmpty().sortedBy { it.name }
+            .joinToString("\n") { it.readText() }
+
     @Test
     fun `die Summenzeile der Erfassungen kommt vom Server`() {
         for (f in listOf(
@@ -62,7 +76,7 @@ class ServerComputedValuesTest {
 
     @Test
     fun `die Antwort traegt die Summe, mit sicherer Vorgabe`() {
-        val m = code(read("data/model/Models.kt"))
+        val m = code(modelle())
         assert(m.contains("data class AcquisitionTotals")) { "AcquisitionTotals fehlt im Modell" }
         assert(Regex("""val totals: AcquisitionTotals = AcquisitionTotals\(\)""").containsMatchIn(m)) {
             "Ohne Vorgabe scheitert die Antwort älterer Serverstände an der Deserialisierung"
@@ -101,7 +115,7 @@ class ServerComputedValuesTest {
         // Dieselbe Lücke ist hier schon zweimal aufgefallen — die
         // Verschiebe-Zahlen und das Zustands-Aggregat lieferte der Server
         // seit jeher mit, und die App las sie nie.
-        val m = code(read("data/model/Models.kt"))
+        val m = code(modelle())
         assert(m.contains("val quantity: Int? = null")) {
             "GenericResponse hat kein nullable quantity — dann kann die Antwort " +
                 "die wirkliche Gesamtmenge gar nicht transportieren"

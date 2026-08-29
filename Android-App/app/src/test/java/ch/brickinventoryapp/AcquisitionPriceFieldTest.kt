@@ -35,8 +35,16 @@ import org.junit.Test
  */
 class AcquisitionPriceFieldTest {
 
+    /**
+     * Alle Modelldateien als EIN Text (Nachtrag 155). Vorher war hier ein
+     * Dateiname festgeschrieben; die 92 Datenklassen sind seither nach
+     * Sachgebieten auf mehrere Dateien verteilt. Gemeint sind DIE MODELLE.
+     */
     private fun models(): String =
-        java.io.File("src/main/java/ch/brickinventoryapp/data/model/Models.kt").readText()
+        java.io.File("src/main/java/ch/brickinventoryapp/data/model")
+            .listFiles { f -> f.extension == "kt" }
+            .orEmpty().sortedBy { it.name }
+            .joinToString("\n") { it.readText() }
 
     /** Der Block der Anfrageklasse — Anker auf CODE, nicht auf einen Kommentar. */
     private fun block(): String {
@@ -86,7 +94,9 @@ class AcquisitionPriceFieldTest {
             "Zu wenige Kotlin-Dateien unter ${'$'}{wurzel.path} — Pfad veraltet?"
         }
         for (f in wurzel.walkTopDown().filter { it.extension == "kt" }) {
-            if (f.name == "Models.kt") continue
+            // Die Modelldateien selbst ueberspringen: Dort STEHEN die
+            // Feldnamen ja, geprueft wird der uebrige Baum.
+            if (f.name.endsWith("Models.kt")) continue
             val code = f.readText().lines()
                 .joinToString("\n") { val t = it.trim(); if (t.startsWith("//") || t.startsWith("*")) "" else it }
             for (m in Regex("""UpdateAcquisitionRequest\(""").findAll(code)) {

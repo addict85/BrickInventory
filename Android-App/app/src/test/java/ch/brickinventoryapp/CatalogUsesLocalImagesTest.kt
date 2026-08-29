@@ -26,9 +26,23 @@ class CatalogUsesLocalImagesTest {
         if (line.trim().startsWith("//")) "" else line
     }
 
+    /**
+     * Alle Modelldateien als EIN Text (Nachtrag 155).
+     *
+     * Vorher stand hier "data/model/Models.kt" — ein Dateiname. Die 92
+     * Datenklassen lagen in einer Datei mit 1158 Zeilen; beim Aufteilen nach
+     * Sachgebieten waeren alle Pruefungen hier rot geworden, obwohl sich an den
+     * Klassen nichts geaendert hat. Gemeint sind DIE MODELLE, nicht eine Datei.
+     */
+    private fun modelle(): String =
+        java.io.File("src/main/java/ch/brickinventoryapp/data/model")
+            .listFiles { f -> f.extension == "kt" }
+            .orEmpty().sortedBy { it.name }
+            .joinToString("\n") { it.readText() }
+
     @Test
     fun `Katalog-Modelle kennen image_local`() {
-        val src = read("data/model/Models.kt")
+        val src = modelle()
         assert(src.contains("data class CatalogSetItem")) { "CatalogSetItem fehlt" }
         // Fester Zeichen-Ausschnitt statt naiver Klammersuche: Das erste ")"
         // nach dem Klassennamen gehört zur ERSTEN @SerialName-Annotation, nicht

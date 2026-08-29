@@ -57,6 +57,25 @@ class BildschirmZustandTest {
     /** Zustand eines LAUFENDEN VORGANGS — der darf nicht wiederhergestellt werden. */
     private val fluechtig = Regex("""(?i)lade|loading|busy|running|laeuft|laden|pending|saving|speichert|scanning|scannt|progress|fortschritt""")
 
+    /**
+     * Merker der Rollpositions-Wiederherstellung — dürfen ERST RECHT nicht überleben.
+     *
+     * ── Warum das eine eigene Kategorie ist (Nachtrag 155) ──────────────────
+     *
+     * Beim ersten Anlauf dieser Umstellung stand hier nur eine Ausnahme für die
+     * DATEI ScrollMemory.kt. CatalogScreen.kt hat aber einen eigenen,
+     * gleichnamigen Merker — dieselbe Mechanik, andere Datei. Der wurde
+     * mitgenommen, und ListScrollPositionTest fiel darüber.
+     *
+     * Zu Recht: Überlebt so ein Merker den Ausflug in die Detailseite, gilt die
+     * Liste nach dem allerersten Betreten für immer als wiederhergestellt, und
+     * die Rückkehr springt nie mehr zurück. Genau das ist in Nachtrag 93 schon
+     * einmal passiert und musste ein zweites Mal gemeldet werden.
+     *
+     * Deshalb wird jetzt die ART des Zustands geprüft, nicht sein Wohnort.
+     */
+    private val rollMerker = Regex("""(?i)wiederhergestellt|nutzerGeste|hatteGespeicherte""")
+
     /** Werte, die das Bundle nicht aufnehmen kann. */
     private val nichtSpeicherbar = Regex("""Offset|listOf|mapOf|setOf|Bitmap""")
 
@@ -76,6 +95,7 @@ class BildschirmZustandTest {
                 if ("rememberSaveable" in z) continue
                 val name = nameAus.find(z)?.groupValues?.get(1) ?: continue
                 if (fluechtig.containsMatchIn(name)) continue
+                if (rollMerker.containsMatchIn(name)) continue
                 if (nichtSpeicherbar.containsMatchIn(z)) continue
                 versaeumt += "${f.name}:$zn  $name"
             }
@@ -88,18 +108,21 @@ class BildschirmZustandTest {
     }
 
     @Test
-    fun `Zustand eines laufenden Vorgangs wird NICHT wiederhergestellt`() {
+    fun `laufender Vorgang und Rollmerker werden NICHT wiederhergestellt`() {
         val falsch = mutableListOf<String>()
         for (f in kotlinDateien()) {
             for ((zn, z) in zustandsZeilen(f)) {
                 if ("rememberSaveable" !in z) continue
                 val name = nameAus.find(z)?.groupValues?.get(1) ?: continue
-                if (fluechtig.containsMatchIn(name)) falsch += "${f.name}:$zn  $name"
+                if (fluechtig.containsMatchIn(name) || rollMerker.containsMatchIn(name))
+                    falsch += "${f.name}:$zn  $name"
             }
         }
         assertTrue(
-            "Ein laufender Vorgang darf nicht wiederhergestellt werden — der " +
-                "Ladekringel bliebe nach einer Drehung für immer stehen:\n  " +
+            "Ein laufender Vorgang oder ein Merker der Rollpositions-" +
+                "Wiederherstellung darf NICHT wiederhergestellt werden — der " +
+                "Ladekringel bliebe für immer stehen bzw. die Rückkehr aus der " +
+                "Detailseite spränge nie mehr zurück:\n  " +
                 falsch.joinToString("\n  "),
             falsch.isEmpty(),
         )
