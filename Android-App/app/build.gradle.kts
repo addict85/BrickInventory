@@ -79,8 +79,58 @@ android {
         versionName   = generatedVersionName
     }
 
+    // ── Signatur für Release ─────────────────────────────────────────────────
+    //
+    // Aus UMGEBUNGSVARIABLEN, nicht aus einer Datei im Projekt (Nachtrag 121):
+    // Ein Schlüsselspeicher gehört nie ins Repository, und eine
+    // keystore.properties daneben wird beim nächsten `git add -A` genauso
+    // versehentlich mitgenommen. Auf GitHub Actions kommen die vier Werte aus
+    // den Repository-Secrets.
+    //
+    // Fehlen sie — also bei jedem lokalen Bau ohne gesetzte Variablen —, gibt
+    // es KEINE Signaturkonfiguration und `assembleRelease` erzeugt wie bisher
+    // ein unsigniertes APK. Das ist Absicht: Ein lokaler Bau soll nicht daran
+    // scheitern, dass jemand die Variablen nicht gesetzt hat.
+    // Zwei Quellen, in dieser Reihenfolge:
+    //
+    //  1. Umgebungsvariable — so liefert GitHub Actions die Werte.
+    //  2. Gradle-Property — so hinterlegt man sie EINMAL lokal, in
+    //     ~/.gradle/gradle.properties (Windows: C:\Users\<name>\.gradle\).
+    //     Diese Datei liegt AUSSERHALB des Projekts und kann deshalb nicht
+    //     versehentlich mitcommittet werden. Eine keystore.properties neben
+    //     dem Buildskript wäre beim nächsten `git add -A` dabei.
+    //
+    // Nirgends eine Vorgabe: Ein fest eingetragenes Passwort im Buildskript
+    // wäre schlimmer als gar keine Signatur, weil es aussieht, als wäre es
+    // geschützt.
+    fun signaturWert(umgebung: String, property: String): String? =
+        System.getenv(umgebung) ?: providers.gradleProperty(property).orNull
+
+    val schluesselDatei = signaturWert("BRICK_KEYSTORE_PFAD", "brickKeystorePfad")
+        ?.let { file(it) }
+        ?.takeIf { it.exists() }
+
+    signingConfigs {
+        if (schluesselDatei != null) {
+            create("release") {
+                storeFile     = schluesselDatei
+                storePassword = signaturWert("BRICK_KEYSTORE_PASSWORT", "brickKeystorePasswort")
+                keyAlias      = signaturWert("BRICK_KEY_ALIAS", "brickKeyAlias")
+                keyPassword   = signaturWert("BRICK_KEY_PASSWORT", "brickKeyPasswort")
+                // Beide Schemata: v1 für Android 6 und älter (minSdk ist 26,
+                // also eigentlich entbehrlich), v2/v3 für alles darüber.
+                enableV1Signing = true
+                enableV2Signing = true
+            }
+        }
+    }
+
     buildTypes {
         release {
+            // findByName statt getByName: Ohne Schlüsselspeicher gibt es die
+            // Konfiguration nicht, und `signingConfig = null` heisst
+            // "unsigniert" — kein Buildfehler.
+            signingConfig = signingConfigs.findByName("release")
             isMinifyEnabled = true
             // Entfernt ungenutzte Ressourcen (Icons, Layouts) aus dem APK
             isShrinkResources = true

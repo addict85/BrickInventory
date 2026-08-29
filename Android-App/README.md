@@ -53,28 +53,24 @@ Danach:
 | --- | --- |
 | `./gradlew testDebugUnitTest` | JVM-Unit-Tests, Bericht unter `app/build/reports/tests/` |
 | `./gradlew assembleDebug` | `app/build/outputs/apk/debug/app-debug.apk` — mit dem Debug-Schlüssel signiert, direkt installierbar |
-| `./gradlew assembleRelease` | `app/build/outputs/apk/release/Brickinventory.apk` — minifiziert und **unsigniert** (siehe unten) |
+| `./gradlew assembleRelease` | `app/build/outputs/apk/release/Brickinventory.apk` — minifiziert; signiert nur, wenn die Schlüsselwerte gesetzt sind (siehe unten) |
 | `./gradlew lintRelease` | `app/build/reports/lint-results-release.html` |
 | `./gradlew installDebug` | baut und installiert auf dem angeschlossenen Gerät (`adb devices`) |
 | `./gradlew clean` | löscht `app/build/` |
 
 Unter Windows `gradlew.bat` statt `./gradlew` verwenden.
 
-### Die Release-APK ist unsigniert
+### Ob die Release-APK signiert ist, hängt an der Umgebung
 
-`buildTypes { release { … } }` in `app/build.gradle.kts` hat bewusst **keine**
-`signingConfig` — im Repository liegt kein Schlüssel, und laut `.gitignore` soll
-auch nie einer hineingeraten. `assembleRelease` erzeugt deshalb eine APK, die
-Android **nicht installiert**. Zum Signieren nach dem Bauen:
+`assembleRelease` signiert, **wenn** die vier Werte gesetzt sind
+(`BRICK_KEYSTORE_PFAD`, `BRICK_KEYSTORE_PASSWORT`, `BRICK_KEY_ALIAS`,
+`BRICK_KEY_PASSWORT`) — als Umgebungsvariable oder als Gradle-Property in
+`~/.gradle/gradle.properties`. Fehlen sie, entsteht wie bisher ein
+**unsigniertes** APK, das Android nicht installiert; der Bau scheitert
+deswegen aber nicht.
 
-```bash
-apksigner sign --ks meine.jks --out Brickinventory-signiert.apk \
-  app/build/outputs/apk/release/Brickinventory.apk
-```
-
-Wer regelmässig Release-Builds erzeugt, hängt statt dessen eine `signingConfig`
-an den Release-Typ, die ihre Werte aus einer nicht eingecheckten
-`keystore.properties` liest — `.gitignore` hält diesen Dateinamen bereits frei.
+Wie der Schlüsselspeicher erzeugt und hinterlegt wird, steht weiter unten
+unter *Release signieren*.
 
 ### Erster Lauf dauert lange
 
@@ -91,11 +87,17 @@ Benötigte Hosts — hinter einem restriktiven Proxy müssen diese erreichbar se
 
 ### Continuous Integration
 
-`.github/workflows/android.yml` im Wurzelverzeichnis des Repositories macht
-genau das oben Beschriebene auf einem `ubuntu-latest`-Runner: Wrapper prüfen,
-SDK einrichten, `testDebugUnitTest`, `assembleDebug`, `lintRelease`. Die
-Debug-APK und die Berichte hängen anschliessend als Artefakte am Lauf. Über
-"Run workflow" lässt sich zusätzlich `assembleRelease` anfordern.
+`.github/workflows/android.yml` im Wurzelverzeichnis des Repositories macht auf
+einem `ubuntu-latest`-Runner dasselbe wie oben beschrieben: prüfen, ob der
+Wrapper vollständig im Repository liegt, dann `testDebugUnitTest`,
+`assembleRelease` und `lintRelease`. Am Ende hängt eine `BrickInventory.apk`
+als Artefakt am Lauf, dazu die Test- und Lint-Berichte (auch bei rotem Lauf —
+gerade dann werden sie gebraucht).
+
+Signiert wird die APK nur, wenn die vier Repository-Secrets `KEYSTORE_BASE64`,
+`KEYSTORE_PASSWORT`, `KEY_ALIAS` und `KEY_PASSWORT` hinterlegt sind. Fehlen
+sie, läuft der Bau durch und sagt per Warnung deutlich, dass das Ergebnis
+unsigniert und damit nicht installierbar ist — siehe *Release signieren*.
 
 ## Erster Start
 1. Server-URL eingeben: `http://192.168.x.x:3000`  
@@ -238,3 +240,100 @@ beides Beispiele dafür.
 
 Gemeinsame Helfer für die zweite Art stehen in `test/…/Quellen.kt` —
 insbesondere `fenster()` (misst ZEILEN, nicht Zeichen) und `ohneKommentare()`.
+
+## Release signieren
+
+Ein Release-Build ohne Signatur ergibt ein APK, das sich nicht installieren
+lässt. Vier Angaben werden gebraucht: Pfad zum Schlüsselspeicher, dessen
+Passwort, der Alias und dessen Passwort.
+
+Das Buildskript liest sie aus ZWEI Quellen, in dieser Reihenfolge —
+Umgebungsvariable zuerst, dann Gradle-Property:
+
+| Umgebungsvariable         | Gradle-Property         |
+|---------------------------|-------------------------|
+| `BRICK_KEYSTORE_PFAD`     | `brickKeystorePfad`     |
+| `BRICK_KEYSTORE_PASSWORT` | `brickKeystorePasswort` |
+| `BRICK_KEY_ALIAS`         | `brickKeyAlias`         |
+| `BRICK_KEY_PASSWORT`      | `brickKeyPasswort`      |
+
+Fehlen sie, baut `assembleRelease` UNSIGNIERT durch statt abzubrechen — ein
+lokaler Bau soll nicht daran scheitern, dass jemand die Werte nicht gesetzt hat.
+
+### Schlüsselspeicher erzeugen (einmalig)
+
+```
+keytool -genkeypair -v -keystore brick.jks -alias brickinventory \
+  -keyalg RSA -keysize 2048 -validity 10000
+```
+
+DIE DATEI GEHÖRT NICHT INS REPOSITORY und braucht eine Sicherungskopie
+ausserhalb des Rechners. Geht sie verloren, lässt sich eine installierte App
+nie wieder aktualisieren — Android nimmt Updates nur mit demselben Schlüssel
+an. Neu installieren hiesse deinstallieren, und damit wären die lokalen Daten
+weg.
+
+### Lokal: einmal hinterlegen
+
+In `C:\Users\<name>\.gradle\gradle.properties` (Linux/macOS:
+`~/.gradle/gradle.properties`):
+
+```
+brickKeystorePfad=C:/schluessel/brick.jks
+brickKeystorePasswort=…
+brickKeyAlias=brickinventory
+brickKeyPasswort=…
+```
+
+Diese Datei liegt AUSSERHALB des Projekts und kann deshalb nicht versehentlich
+mitcommittet werden — anders als eine `keystore.properties` neben dem
+Buildskript, die beim nächsten `git add -A` dabei wäre. Vorwärtsschrägstriche
+auch unter Windows: Ein Backslash ist in einer Properties-Datei ein
+Fluchtzeichen.
+
+Danach genügt `./gradlew assembleRelease`.
+
+### Lokal: nur für eine Sitzung
+
+PowerShell:
+
+```powershell
+$env:BRICK_KEYSTORE_PFAD = "C:\schluessel\brick.jks"
+$env:BRICK_KEYSTORE_PASSWORT = "…"
+$env:BRICK_KEY_ALIAS = "brickinventory"
+$env:BRICK_KEY_PASSWORT = "…"
+.\gradlew assembleRelease
+```
+
+### GitHub Actions
+
+Der Schlüsselspeicher ist eine Binärdatei und muss als Base64 hinterlegt
+werden:
+
+```powershell
+[Convert]::ToBase64String([IO.File]::ReadAllBytes("brick.jks")) | Set-Clipboard
+```
+
+Unter **Settings → Secrets and variables → Actions → New repository secret**
+vier Secrets anlegen:
+
+| Secret              | Inhalt                        |
+|---------------------|-------------------------------|
+| `KEYSTORE_BASE64`   | der kopierte Base64-Text      |
+| `KEYSTORE_PASSWORT` | Passwort des Schlüsselspeichers |
+| `KEY_ALIAS`         | `brickinventory`              |
+| `KEY_PASSWORT`      | Passwort des Schlüssels       |
+
+Der Ablauf schreibt den Schlüsselspeicher nach `$RUNNER_TEMP` — ausserhalb des
+Arbeitsverzeichnisses, damit er nicht in ein Artefakt geraten kann — und setzt
+die Umgebungsvariablen daraus. Fehlt eines der Secrets, läuft der Bau durch und
+setzt eine Warnung ins Protokoll, statt still etwas Uninstallierbares
+hochzuladen.
+
+### Prüfen, ob es geklappt hat
+
+```
+apksigner verify --print-certs BrickInventory.apk
+```
+
+Das Werkzeug liegt im Android SDK unter `build-tools/<version>/`.
