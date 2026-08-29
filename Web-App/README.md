@@ -31,10 +31,16 @@ Das Image wird als Multi-Arch-Manifest veroeffentlicht
 ([`addict85/brickinventory`](https://hub.docker.com/r/addict85/brickinventory)),
 `docker` waehlt die passende Architektur also selbst:
 
-| Plattform | enthalten |
+| Plattform | deckt ab |
 | --- | --- |
-| `linux/amd64` | normaler PC / Server |
-| `linux/arm64` | Raspberry Pi 3, 4, 5 und Zero 2 W — **mit 64-Bit-Betriebssystem** |
+| `linux/amd64` | PC, Server, NAS, jede x86-Cloud |
+| `linux/arm64` | Raspberry Pi 3, 4, 5 und Zero 2 W (**64-Bit-System**), Apple Silicon, ARM-Server wie Graviton oder Ampere |
+
+Zusammen decken die beiden praktisch jede Hardware ab, auf der dieser Server
+sinnvoll laeuft. Der Workflow **prueft am Ende**, dass beide tatsaechlich im
+veroeffentlichten Manifest stehen, und scheitert sonst — ein versehentlich
+einarchitektiges Image faellt auf dem Entwicklungsrechner nie auf, der Pi
+bekaeme aber „no matching manifest for linux/arm64/v8".
 
 ```bash
 # auf dem Pi, im Ordner mit der compose.yaml
@@ -46,13 +52,21 @@ Selbst bauen geht auf dem Pi auch (`docker compose up -d --build`), dauert aber
 je nach Modell eine halbe Stunde — `npm ci`, esbuild und die sharp-Binaerdatei
 laufen dann auf der Pi-CPU.
 
-**32-Bit wird nicht unterstuetzt.** `uname -m` muss `aarch64` melden, nicht
-`armv7l`. Der Grund ist nicht Bequemlichkeit: Das Image steht auf Alpine
-(musl-libc), und fuer musl+armv7 gibt es kein `sharp`-Paket — die
-Bildverarbeitung fiele auf den deutlich langsameren Jimp-Rueckfall zurueck oder
-die Installation braeche ab. Wer noch ein 32-Bit-Raspberry-Pi-OS betreibt,
-installiert die 64-Bit-Fassung neu; auf Pi 1, Pi 2 und Pi Zero (1. Gen.) laeuft
-das Image gar nicht.
+**32-Bit (`linux/arm/v7`) wird bewusst nicht gebaut.** `uname -m` muss
+`aarch64` melden, nicht `armv7l`.
+
+Der Grund ist nicht Bequemlichkeit. Das Basis-Image `node:20-alpine` gaebe es
+durchaus fuer `arm/v7` — was fehlt, ist `sharp`: Das Paket
+`@img/sharp-linuxmusl-arm` existiert auf npm nicht, nur die glibc-Fassung
+`@img/sharp-linux-arm`. Auf Alpine (musl) hat ein armv7-Image also keine native
+libvips, und die Bildverarbeitung fiele still auf den deutlich langsameren
+Jimp-Rueckfall zurueck. Ein Image zu veroeffentlichen, das aussieht wie die
+anderen und nur langsamer ist, verwirrt mehr als es hilft.
+
+Wer armv7 wirklich braucht, muss zuerst das Basis-Image im `Dockerfile` auf
+Debian slim (glibc) umstellen — dann gibt es `sharp`, das Image wird dafuer
+groesser und `su-exec` muss `gosu` weichen. Auf Pi 1, Pi 2 und Pi Zero
+(1. Generation) laeuft der Server ohnehin nicht sinnvoll.
 
 Der Pi braucht ausserdem Postgres 18 aus derselben `compose.yaml` — das Bild
 `postgres:18-alpine` gibt es fuer arm64, dort ist nichts zu tun.
