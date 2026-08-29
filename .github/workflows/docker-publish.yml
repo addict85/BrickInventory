@@ -1,4 +1,4 @@
-name: Docker-Image veroeffentlichen
+name: Web-App
 
 # Baut das Image aus Web-App/ und veroeffentlicht es auf Docker Hub als
 # docker.io/addict85/brickinventory.

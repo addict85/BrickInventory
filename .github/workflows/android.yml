@@ -1,4 +1,4 @@
-name: Android
+name: Android-App
 
 # Läuft bei jedem Push auf main und bei jedem Pull-Request, der die App
 # berührt — und von Hand über den Knopf "Run workflow".
