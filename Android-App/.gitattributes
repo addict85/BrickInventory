@@ -1,0 +1,15 @@
+# Der Gradle-Wrapper muss seine Zeilenenden behalten.
+#
+# Dieses Projekt wird auf Windows entwickelt (siehe die KSP-Hinweise in
+# gradle.properties). Steht dort core.autocrlf=true, wandelt Git beim
+# Auschecken LF in CRLF um — gradlew ist dann in Git Bash, WSL, Docker und
+# jeder CI unbrauchbar ("bad interpreter: /bin/sh^M"). Umgekehrt braucht
+# gradlew.bat CRLF, sonst stolpert cmd.exe darüber.
+gradlew         text eol=lf
+gradlew.bat     text eol=crlf
+
+# Binaerdateien: nie umkodieren, nie diffen.
+*.jar           binary
+*.png           binary
+*.jks           binary
+*.keystore      binary

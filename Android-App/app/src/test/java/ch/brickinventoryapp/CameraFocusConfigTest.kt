@@ -30,6 +30,9 @@ class CameraFocusConfigTest {
     private fun analyzer(): String =
         java.io.File("src/main/java/ch/brickinventoryapp/ui/screens/BarcodeAnalyzer.kt").readText()
 
+    private fun setup(): String =
+        java.io.File("src/main/java/ch/brickinventoryapp/ui/screens/SetupScreen.kt").readText()
+
     private fun code(src: String) = src.lines()
         .joinToString("\n") { val t = it.trim(); if (t.startsWith("//") || t.startsWith("*") || t.startsWith("/*")) "" else it }
 
@@ -89,6 +92,42 @@ class CameraFocusConfigTest {
             assert(!Regex(muster).containsMatchIn(c)) {
                 "startFocusAndMetering läuft wieder in einer Schleife oder einem " +
                     "Effekt — das zwingt die Kamera dauernd in einen neuen Suchlauf."
+            }
+        }
+    }
+
+    @Test
+    fun `SetupScreen setzt den AF-Modus an BEIDEN Use Cases`() {
+        // SetupScreen bindet Vorschau UND Analyse selbst, in EINER Datei —
+        // anders als der Scanner, dessen Analyse seit Nachtrag 99 in
+        // BarcodeAnalyzer.kt liegt. Hier zaehlt deshalb die Anzahl, nicht das
+        // blosse Vorkommen: EIN Use Case mit AF-Modus reicht nicht, weil
+        // CameraX beide Konfigurationen zu einem Repeating-Request verschmilzt.
+        //
+        // Diese Pruefung stand bis Nachtrag 119 in einer zweiten, veralteten
+        // Fassung dieser Klasse in ResponseCacheContractTest.kt. Sie erwartete
+        // die zwei Stellen auch in BarcodeScannerScreen.kt — was seit der
+        // Auslagerung des Analyzers nicht mehr zutrifft. Die Doppelung war ein
+        // Uebersetzungsfehler (Redeclaration); erhalten bleibt der Teil, der
+        // stimmt: SetupScreen.
+        val marke = "CONTROL_AF_MODE_CONTINUOUS_PICTURE"
+        val anzahl = Regex(marke).findAll(code(setup())).count()
+        assert(anzahl == 2) {
+            "In SetupScreen.kt steht der AF-Modus $anzahl mal statt zweimal — " +
+                "er muss an Preview UND ImageAnalysis stehen. NICHT diesen Test " +
+                "anpassen, sondern die fehlende Stelle ergaenzen."
+        }
+    }
+
+    @Test
+    fun `kein periodisches Nachfokussieren im SetupScreen`() {
+        val c = code(setup())
+        for (muster in listOf("""LaunchedEffect[\s\S]{0,400}?startFocusAndMetering""",
+                              """while\s*\([^)]*\)[\s\S]{0,400}?startFocusAndMetering""")) {
+            assert(!Regex(muster).containsMatchIn(c)) {
+                "startFocusAndMetering laeuft im SetupScreen in einer Schleife " +
+                    "oder einem Effekt — das zwingt die Kamera dauernd in einen " +
+                    "neuen Suchlauf."
             }
         }
     }
