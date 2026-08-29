@@ -64,7 +64,14 @@ class NumberFormatTest {
                 "$f baut sich das Währungssymbol selbst — das gehört in fmtMoney(), " +
                     "sonst steht es hier vor und anderswo hinter dem Betrag"
             }
-            assert(!Regex("""\{[^}]*fmt[A-Za-z]*\([^)]*\)[^}]*\}\s*\$currency""").containsMatchIn(c)) {
+            // Das Dollarzeichen steht als ${'$'} und nicht als Backslash-$.
+            // In einem Rohstring (dreifache Anfuehrungszeichen) wirken KEINE
+            // Backslash-Escapes, die String-Vorlage aber schon. Die alte
+            // Schreibweise war deshalb kein Zeichen, sondern ein Zugriff auf eine
+            // Variable namens currency — die es nicht gibt. Genau daran scheiterte
+            // der Testbau ("Unresolved reference 'currency'"), und zwar seit dem
+            // ersten Commit: ohne Gradle-Wrapper lief hier nie ein Testlauf.
+            assert(!Regex("""\{[^}]*fmt[A-Za-z]*\([^)]*\)[^}]*\}\s*\${'$'}currency""").containsMatchIn(c)) {
                 "$f hängt den Währungscode von Hand an einen formatierten Betrag"
             }
             assert(!c.contains("\"%,d\".format")) {
