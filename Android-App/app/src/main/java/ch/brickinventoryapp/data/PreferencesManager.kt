@@ -6,6 +6,7 @@ import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
+import ch.brickinventoryapp.util.TokenVerschluesselung
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -22,11 +23,21 @@ val Context.dataStore: DataStore<Preferences> by preferencesDataStore(name = "ap
 
 @Singleton
 class PreferencesManager @Inject constructor(
-    @param:ApplicationContext private val context: Context
+    @param:ApplicationContext private val context: Context,
+    private val tresor: TokenVerschluesselung,
 ) {
     companion object {
         val SERVER_URL   = stringPreferencesKey("server_url")
-        val AUTH_TOKEN   = stringPreferencesKey("auth_token")
+        /**
+         * Der ALTE Klartext-Schlüssel. Bleibt bestehen, weil auf jedem Gerät,
+         * das die App schon benutzt hat, genau dort das Token liegt. Er wird
+         * nur noch GELESEN (einmalig, zur Übernahme) und danach entfernt —
+         * geschrieben wird ausschliesslich AUTH_TOKEN_ENC.
+         */
+        val AUTH_TOKEN     = stringPreferencesKey("auth_token")
+
+        /** Der verschlüsselte Nachfolger (Nachtrag 155). */
+        val AUTH_TOKEN_ENC = stringPreferencesKey("auth_token_enc")
         val USERNAME     = stringPreferencesKey("username")
         val CURRENCY     = stringPreferencesKey("currency")
         // "system" (folgt der OS-Sprache), "en" oder "de"
@@ -41,7 +52,25 @@ class PreferencesManager @Inject constructor(
             raw.substring(0, idx).lowercase() + raw.substring(idx)
         } else raw
     }
-    val authToken: Flow<String> = context.dataStore.data.map { it[AUTH_TOKEN] ?: "" }
+    /**
+     * Das Bearer-Token im Klartext — für Aufrufer unverändert.
+     *
+     * ── Übernahme der Altbestände (Nachtrag 155) ─────────────────────────────
+     * Vor dieser Änderung lag das Token unverschlüsselt unter AUTH_TOKEN. Wer
+     * die App schon benutzt, hat es genau dort. Würde hier nur noch
+     * AUTH_TOKEN_ENC gelesen, wäre jede bestehende Installation beim nächsten
+     * Start abgemeldet — für eine Verbesserung, die niemand angefordert hat,
+     * ein zu hoher Preis.
+     *
+     * Deshalb: Erst den verschlüsselten Wert versuchen, sonst den alten
+     * Klartext nehmen. Das eigentliche Umschreiben passiert in
+     * uebernehmeAltesToken(), nicht hier — ein Lesepfad darf nicht schreiben.
+     */
+    val authToken: Flow<String> = context.dataStore.data.map { prefs ->
+        prefs[AUTH_TOKEN_ENC]?.let { tresor.entschluessle(it) }
+            ?: prefs[AUTH_TOKEN]
+            ?: ""
+    }
     val username:  Flow<String> = context.dataStore.data.map { it[USERNAME]   ?: "" }
     val currency:  Flow<String> = context.dataStore.data.map { it[CURRENCY]   ?: "EUR" }
     val language:  Flow<String> = context.dataStore.data.map { it[LANGUAGE]   ?: "system" }
@@ -68,8 +97,45 @@ class PreferencesManager @Inject constructor(
         }
         context.dataStore.edit { it[SERVER_URL] = normalized }
     }
+    /**
+     * Token ablegen — ab jetzt ausschliesslich verschlüsselt.
+     *
+     * Der alte Klartext-Eintrag wird im selben Zug ENTFERNT. Ohne das bliebe
+     * er neben dem verschlüsselten stehen und wäre weiterhin auslesbar; die
+     * Verschlüsselung wäre dann Zierde.
+     */
     suspend fun saveAuthToken(token: String) {
-        context.dataStore.edit { it[AUTH_TOKEN] = token }
+        val geheim = tresor.verschluessle(token)
+        context.dataStore.edit {
+            it[AUTH_TOKEN_ENC] = geheim
+            it.remove(AUTH_TOKEN)
+        }
+    }
+
+    /**
+     * Ein noch im Klartext liegendes Token einmalig verschlüsselt neu ablegen.
+     *
+     * Wird beim App-Start aufgerufen. Bewusst getrennt vom Lesepfad: `authToken`
+     * ist ein Flow, den beliebig viele Sammler beobachten — ein Schreibvorgang
+     * darin liefe mehrfach und mitten in der Auswertung.
+     *
+     * @return true, wenn tatsächlich etwas übernommen wurde (für Tests und
+     *         Protokoll); false, wenn nichts zu tun war.
+     */
+    suspend fun uebernehmeAltesToken(): Boolean {
+        var uebernommen = false
+        context.dataStore.edit { prefs ->
+            val alt = prefs[AUTH_TOKEN]
+            if (alt != null && alt.isNotEmpty()) {
+                prefs[AUTH_TOKEN_ENC] = tresor.verschluessle(alt)
+                prefs.remove(AUTH_TOKEN)
+                uebernommen = true
+            } else if (alt != null) {
+                // Leerer Alteintrag: nichts zu verschlüsseln, aber weg damit.
+                prefs.remove(AUTH_TOKEN)
+            }
+        }
+        return uebernommen
     }
     suspend fun saveUsername(name: String) {
         context.dataStore.edit { it[USERNAME] = name }
@@ -82,7 +148,10 @@ class PreferencesManager @Inject constructor(
     }
     suspend fun clearSession() {
         context.dataStore.edit {
+            // BEIDE Schlüssel: Bliebe der alte stehen, wäre man nach dem
+            // Abmelden über den Altbestand wieder angemeldet.
             it.remove(AUTH_TOKEN)
+            it.remove(AUTH_TOKEN_ENC)
             it.remove(USERNAME)
         }
     }

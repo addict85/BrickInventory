@@ -3,7 +3,9 @@ package ch.brickinventoryapp.di
 import ch.brickinventoryapp.BuildConfig
 import ch.brickinventoryapp.data.PreferencesManager
 import ch.brickinventoryapp.data.api.BrickApiService
+import ch.brickinventoryapp.util.KeystoreTokenTresor
 import ch.brickinventoryapp.util.NetworkPolicy
+import ch.brickinventoryapp.util.TokenVerschluesselung
 import com.jakewharton.retrofit2.converter.kotlinx.serialization.asConverterFactory
 import dagger.Module
 import dagger.Provides
@@ -26,6 +28,20 @@ import javax.inject.Singleton
 @Module
 @InstallIn(SingletonComponent::class)
 object AppModule {
+
+    /**
+     * Die Token-Verschlüsselung als Schnittstelle bereitstellen, nicht als
+     * konkrete Klasse (Nachtrag 155).
+     *
+     * Grund: Die Umsetzung braucht den Android-Keystore und läuft deshalb NUR
+     * auf einem Gerät. Wäre PreferencesManager fest daran gebunden, liesse
+     * sich seine Übernahme-Logik auf der JVM überhaupt nicht prüfen — und
+     * genau die entscheidet, ob bestehende Installationen beim Update
+     * angemeldet bleiben.
+     */
+    @Provides
+    @Singleton
+    fun provideTokenVerschluesselung(): TokenVerschluesselung = KeystoreTokenTresor()
 
     @Provides
     @Singleton
