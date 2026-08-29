@@ -43,6 +43,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -86,9 +87,9 @@ fun BarcodeScannerScreen(
     val confirmingHint = stringResource(R.string.scanner_hint_confirming)
     val aimHint = stringResource(R.string.scanner_hint_aim)
     val errorHint = stringResource(R.string.scanner_hint_error)
-    var statusText by remember { mutableStateOf(defaultHint) }
-    var frozen    by remember { mutableStateOf(false) }
-    var torchOn   by remember { mutableStateOf(false) }
+    var statusText by rememberSaveable { mutableStateOf(defaultHint) }
+    var frozen    by rememberSaveable { mutableStateOf(false) }
+    var torchOn   by rememberSaveable { mutableStateOf(false) }
     var cameraCtrl by remember { mutableStateOf<CameraControl?>(null) }
 
     LaunchedEffect(Unit) {

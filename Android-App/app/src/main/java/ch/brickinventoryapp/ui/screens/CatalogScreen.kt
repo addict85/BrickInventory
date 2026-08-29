@@ -12,6 +12,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -141,7 +142,7 @@ fun CatalogScreen(
     // Die REIHENFOLGE ist also die eigentliche Regel: erst springen, dann
     // melden. Deshalb steht der Merker jetzt NACH dem Sprung auf true (ein
     // `scrollToItem` unterbricht) und der Melder hängt an ihm.
-    var wiederhergestellt by remember { mutableStateOf(false) }
+    var wiederhergestellt by rememberSaveable { mutableStateOf(false) }
     LaunchedEffect(state.total) {
         if (wiederhergestellt || state.total == 0) return@LaunchedEffect
         if (state.scrollIndex > 0) {
@@ -315,9 +316,9 @@ private fun YearScrubber(
     // Kein `selectedYear` mehr: Die Leiste filtert nicht, sie springt. Ein
     // dauerhaft markiertes Jahr gäbe es also gar nicht — der Daumen zeigt
     // während des Ziehens, wohin es geht, und danach steht die Liste dort.
-    var dragging by remember { mutableStateOf(false) }
+    var dragging by rememberSaveable { mutableStateOf(false) }
     var previewYear by remember(yearMax) { mutableStateOf(yearMax) }
-    var heightPx by remember { mutableStateOf(1) }
+    var heightPx by rememberSaveable { mutableStateOf(1) }
     val thumbHeightPx = with(LocalDensity.current) { 36.dp.roundToPx() }
 
     // Mathematik extrahiert nach CatalogYearMath (unit-getestet)

@@ -12,6 +12,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -48,13 +49,13 @@ fun AddPartDialog(
     /** Konten des Haushalts — ohne Unterkonten bleibt die Auswahl verborgen. */
     householdMembers: List<ch.brickinventoryapp.data.model.HouseholdMember> = emptyList()
 ) {
-    var partNumber by remember { mutableStateOf("") }
-    var quantity   by remember { mutableStateOf("1") }
-    var unitPrice  by remember { mutableStateOf("") }
-    var note       by remember { mutableStateOf("") }
+    var partNumber by rememberSaveable { mutableStateOf("") }
+    var quantity   by rememberSaveable { mutableStateOf("1") }
+    var unitPrice  by rememberSaveable { mutableStateOf("") }
+    var note       by rememberSaveable { mutableStateOf("") }
     var selectedColor by remember { mutableStateOf<BrickColor?>(null) }
-    var colorMenuExpanded by remember { mutableStateOf(false) }
-    var condition  by remember { mutableStateOf(defaultCondition) }
+    var colorMenuExpanded by rememberSaveable { mutableStateOf(false) }
+    var condition  by rememberSaveable { mutableStateOf(defaultCondition) }
     // Vorbelegt mit dem eigenen Konto: Wer nichts wählt, erfasst für sich —
     // dasselbe Verhalten wie vor der Haushaltssicht.
     var owner by remember(householdMembers) {

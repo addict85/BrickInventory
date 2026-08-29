@@ -10,6 +10,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -56,7 +57,7 @@ internal fun BricksetQueueRow(
     onRetry: (String) -> Unit,
     onDelete: (String) -> Unit
 ) {
-    var showError by remember { mutableStateOf(false) }
+    var showError by rememberSaveable { mutableStateOf(false) }
 
     Surface(
         shape = Formen.kachel,
@@ -134,14 +135,14 @@ fun CacheAndLimitsSection(vm: MainViewModel, onSnack: (String) -> Unit = {}) {
     val queueShowFmt   = stringResource(R.string.monitoring_queue_show)
     var cacheStats by remember { mutableStateOf<CacheStatsResponse?>(null) }
     var apiLimits  by remember { mutableStateOf<ApiLimits?>(null) }
-    var cacheTtl   by remember { mutableStateOf("24") }
-    var editingTtl by remember { mutableStateOf(false) }
-    var ttlInput   by remember { mutableStateOf("24") }
-    var defaultCondition by remember { mutableStateOf("N") }
-    var editingLimits by remember { mutableStateOf(false) }
-    var rbInput    by remember { mutableStateOf("0") }
-    var blInput    by remember { mutableStateOf("0") }
-    var bsInput    by remember { mutableStateOf("0") }
+    var cacheTtl   by rememberSaveable { mutableStateOf("24") }
+    var editingTtl by rememberSaveable { mutableStateOf(false) }
+    var ttlInput   by rememberSaveable { mutableStateOf("24") }
+    var defaultCondition by rememberSaveable { mutableStateOf("N") }
+    var editingLimits by rememberSaveable { mutableStateOf(false) }
+    var rbInput    by rememberSaveable { mutableStateOf("0") }
+    var blInput    by rememberSaveable { mutableStateOf("0") }
+    var bsInput    by rememberSaveable { mutableStateOf("0") }
 
     LaunchedEffect(Unit) {
         val cs = vm.repo.getCacheStats()

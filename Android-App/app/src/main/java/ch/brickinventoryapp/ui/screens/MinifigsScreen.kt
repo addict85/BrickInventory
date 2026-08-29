@@ -10,6 +10,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -72,8 +73,8 @@ fun MinifigsScreen(
             vm.addMinifig(num, blNum, qty, note, unitPrice, cond, owner)
         }
 
-    var search by remember { mutableStateOf("") }
-    var showAddDialog by remember { mutableStateOf(false) }
+    var search by rememberSaveable { mutableStateOf("") }
+    var showAddDialog by rememberSaveable { mutableStateOf(false) }
     var deletingFig by remember { mutableStateOf<FigValuationItem?>(null) }
     val filtered = remember(figs, search) {
         if (search.isBlank()) figs
@@ -290,12 +291,12 @@ fun AddMinifigDialog(
     /** Konten des Haushalts — ohne Unterkonten bleibt die Auswahl verborgen. */
     householdMembers: List<ch.brickinventoryapp.data.model.HouseholdMember> = emptyList()
 ) {
-    var figNumber  by remember { mutableStateOf("") }
-    var blFigNumber by remember { mutableStateOf("") }
-    var quantity   by remember { mutableStateOf("1") }
-    var unitPrice  by remember { mutableStateOf("") }
-    var note       by remember { mutableStateOf("") }
-    var condition  by remember { mutableStateOf(defaultCondition) }
+    var figNumber  by rememberSaveable { mutableStateOf("") }
+    var blFigNumber by rememberSaveable { mutableStateOf("") }
+    var quantity   by rememberSaveable { mutableStateOf("1") }
+    var unitPrice  by rememberSaveable { mutableStateOf("") }
+    var note       by rememberSaveable { mutableStateOf("") }
+    var condition  by rememberSaveable { mutableStateOf(defaultCondition) }
     // Vorbelegt mit dem eigenen Konto: Wer nichts wählt, erfasst für sich —
     // dasselbe Verhalten wie vor der Haushaltssicht.
     var owner by remember(householdMembers) {

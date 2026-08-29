@@ -12,6 +12,7 @@ import androidx.compose.runtime.*
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
@@ -59,8 +60,8 @@ fun SetDetailScreen(
     val pnlPct    = history?.pnlPct
     val currency  = detailState.setPrice?.currency?.ifBlank { state.currency } ?: state.currency
     val coroutineScope = rememberCoroutineScope()
-    var showImageZoom by remember { mutableStateOf(false) }
-    var showSetDeleteConfirm by remember { mutableStateOf(false) }
+    var showImageZoom by rememberSaveable { mutableStateOf(false) }
+    var showSetDeleteConfirm by rememberSaveable { mutableStateOf(false) }
 
     val acquisitions = detailState.acquisitions
 

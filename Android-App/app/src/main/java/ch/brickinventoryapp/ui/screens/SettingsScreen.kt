@@ -12,6 +12,7 @@ import androidx.compose.material.icons.automirrored.filled.Label
 import androidx.compose.material.icons.automirrored.filled.Logout
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
@@ -312,7 +313,7 @@ private fun HouseholdCard(
     onUnlink: (Int?) -> Unit,
 ) {
     val st = state.status
-    var code by remember { mutableStateOf("") }
+    var code by rememberSaveable { mutableStateOf("") }
     val clipboard = androidx.compose.ui.platform.LocalClipboardManager.current
 
     SettingsCard(title = stringResource(R.string.household_title), icon = Icons.Default.Group) {

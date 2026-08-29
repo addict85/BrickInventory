@@ -15,6 +15,7 @@ import androidx.compose.material.icons.automirrored.filled.Sort
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -93,7 +94,7 @@ fun GalleryScreen(
     val onAddSet: (String, Int, Double?, String?, Int?) -> Unit =
         { sn, qty, price, cond, owner -> vm.addSet(sn, qty, price, cond, owner) }
 
-    var showAddDialog by remember { mutableStateOf(false) }
+    var showAddDialog by rememberSaveable { mutableStateOf(false) }
 
     // ── Erfolgloser Scan öffnet die manuelle Erfassung (Nachtrag 113) ─────────
     //
@@ -112,7 +113,7 @@ fun GalleryScreen(
     // Filter-Generation hängt. Wechselt der Wert von aussen (Anmeldung,
     // Zurücksetzen), zieht das Feld nach.
     var searchInput by remember(query) { mutableStateOf(query) }
-    var showSortMenu by remember { mutableStateOf(false) }
+    var showSortMenu by rememberSaveable { mutableStateOf(false) }
 
     // KEIN lokales Filtern und keine Themenliste aus `sets` mehr: Beides war
     // eine zweite Fassung der Suche neben der des Servers — ohne Jahr im
@@ -355,8 +356,8 @@ fun SetCard(
     onClick: (String) -> Unit,
     onDelete: (String) -> Unit
 ) {
-    var showMenu by remember { mutableStateOf(false) }
-    var deleting by remember { mutableStateOf(false) }
+    var showMenu by rememberSaveable { mutableStateOf(false) }
+    var deleting by rememberSaveable { mutableStateOf(false) }
     val ctx = LocalContext.current
     // Über den Server auflösen statt roher CDN-Adresse: liefert ein
     // Vorschaubild (kleiner, schneller) und lässt den Server die
@@ -526,8 +527,8 @@ fun AddSetDialog(
     /** Konten des Haushalts — ohne Unterkonten bleibt die Auswahl verborgen. */
     householdMembers: List<ch.brickinventoryapp.data.model.HouseholdMember> = emptyList()
 ) {
-    var setNumber by remember { mutableStateOf("") }
-    var quantity  by remember { mutableStateOf("1") }
+    var setNumber by rememberSaveable { mutableStateOf("") }
+    var quantity  by rememberSaveable { mutableStateOf("1") }
 
     // ── Der Cursor steht sofort im Set-Feld (Nachtrag 113) ────────────────────
     //
@@ -544,8 +545,8 @@ fun AddSetDialog(
         kotlinx.coroutines.delay(120)
         try { setFeldFokus.requestFocus() } catch (_: Exception) { /* Dialog schon zu */ }
     }
-    var purchasePrice by remember { mutableStateOf("") }
-    var condition by remember { mutableStateOf(defaultCondition) }
+    var purchasePrice by rememberSaveable { mutableStateOf("") }
+    var condition by rememberSaveable { mutableStateOf(defaultCondition) }
     // Vorbelegt mit dem eigenen Konto: Wer nichts wählt, erfasst für sich —
     // dasselbe Verhalten wie vor der Haushaltssicht.
     var owner by remember(householdMembers) {

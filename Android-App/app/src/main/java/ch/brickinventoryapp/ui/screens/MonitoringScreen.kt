@@ -12,6 +12,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -41,11 +42,11 @@ fun MonitoringScreen(vm: MainViewModel) {
     val entryRemovedFmt = stringResource(R.string.monitoring_entry_removed)
     var jobs   by remember { mutableStateOf<Map<String, JobStatus>>(emptyMap()) }
     var queue  by remember { mutableStateOf<List<BricksetQueueEntry>>(emptyList()) }
-    var queueOpen      by remember { mutableStateOf(false) }
+    var queueOpen      by rememberSaveable { mutableStateOf(false) }
     var queueToggleKey by remember { mutableIntStateOf(0) }
     var queueLoading   by remember { mutableStateOf(false) }
     var reimportMsg    by remember { mutableStateOf<String?>(null) }
-    var isRefreshing   by remember { mutableStateOf(false) }
+    var isRefreshing   by rememberSaveable { mutableStateOf(false) }
     var snack          by remember { mutableStateOf<String?>(null) }
 
     val monCtx = androidx.compose.ui.platform.LocalContext.current

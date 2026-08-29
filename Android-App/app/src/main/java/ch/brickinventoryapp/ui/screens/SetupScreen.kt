@@ -36,6 +36,7 @@ import androidx.compose.material.icons.filled.Cloud
 import androidx.compose.material.icons.filled.QrCodeScanner
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
@@ -86,8 +87,8 @@ fun SetupScreen(
     onSave: (String) -> Unit,
     onQrScanned: ((url: String, token: String) -> Unit)? = null
 ) {
-    var url          by remember { mutableStateOf(currentUrl) }
-    var showScanner  by remember { mutableStateOf(false) }
+    var url          by rememberSaveable { mutableStateOf(currentUrl) }
+    var showScanner  by rememberSaveable { mutableStateOf(false) }
     var scanError    by remember { mutableStateOf<String?>(null) }
     val invalidQrMsg = stringResource(R.string.setup_invalid_qr)
     val keyboard     = LocalSoftwareKeyboardController.current
@@ -209,7 +210,7 @@ fun SetupScreen(
 @Composable
 fun QrSetupScannerScreen(onResult: (String) -> Unit, onDismiss: () -> Unit) {
     val cameraPermission = rememberPermissionState(android.Manifest.permission.CAMERA)
-    var frozen by remember { mutableStateOf(false) }
+    var frozen by rememberSaveable { mutableStateOf(false) }
 
     LaunchedEffect(Unit) {
         if (!cameraPermission.status.isGranted) cameraPermission.launchPermissionRequest()

@@ -25,6 +25,7 @@ import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.*
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.runtime.*
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
@@ -157,7 +158,7 @@ fun CatalogYearSheet(state: CatalogUiState, showYearSheet: androidx.compose.runt
 fun CatalogThemeSheet(state: CatalogUiState, showThemeSheet: androidx.compose.runtime.MutableState<Boolean>, onThemeChange: (Int?) -> Unit) {
     if (showThemeSheet.value) {
         ModalBottomSheet(onDismissRequest = { showThemeSheet.value = false }) {
-            var themeFilter by remember { mutableStateOf("") }
+            var themeFilter by rememberSaveable { mutableStateOf("") }
             Column(Modifier.padding(horizontal = 16.dp).padding(bottom = 24.dp)) {
                 Text(stringResource(R.string.catalog_filter_theme), fontWeight = FontWeight.Bold, fontSize = 17.sp)
                 OutlinedTextField(

@@ -12,6 +12,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -100,8 +101,8 @@ fun PartsScreen(
             vm.addPart(num, colorId, colorName, colorHex, qty, note, unitPrice, cond, owner)
         }
 
-    var searchQuery by remember { mutableStateOf("") }
-    var showAddDialog by remember { mutableStateOf(false) }
+    var searchQuery by rememberSaveable { mutableStateOf("") }
+    var showAddDialog by rememberSaveable { mutableStateOf(false) }
     var deletingPart by remember { mutableStateOf<PartValuationItem?>(null) }
     // Dedup nur neu berechnen, wenn sich die Daten aendern — nicht bei jeder Recomposition
     val distinctParts = remember(parts) { parts.distinctBy { "${it.partNumber}-${it.colorId}" } }

@@ -16,6 +16,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalFocusManager
@@ -251,7 +252,7 @@ private fun AcquisitionManagementRow(
         mutableStateOf(acquisition.effectivePrice?.let { "%.2f".format(it) } ?: "")
     }
     var condition by remember(acquisition.id) { mutableStateOf(acquisition.condition) }
-    var showDeleteConfirm by remember { mutableStateOf(false) }
+    var showDeleteConfirm by rememberSaveable { mutableStateOf(false) }
     val focusManager = LocalFocusManager.current
 
     // ── Ungespeicherte Eingaben festhalten ──────────────────────────────────

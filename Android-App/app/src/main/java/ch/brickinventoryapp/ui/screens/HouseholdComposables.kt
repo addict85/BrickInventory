@@ -7,6 +7,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowDropDown
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
@@ -51,7 +52,7 @@ fun ScopeFilterChip(
     // steht hier sonst eine leere Beschriftung über einer gefilterten Liste.
     val value = ScopeFilter.sanitize(current, options)
     val label = options.firstOrNull { it.first == value }?.second ?: options.first().second
-    var open by remember { mutableStateOf(false) }
+    var open by rememberSaveable { mutableStateOf(false) }
 
     Box(modifier) {
         AssistChip(
@@ -138,7 +139,7 @@ fun OwnerPicker(
     modifier: Modifier = Modifier,
 ) {
     if (members.size < 2) return
-    var open by remember { mutableStateOf(false) }
+    var open by rememberSaveable { mutableStateOf(false) }
     val current = members.firstOrNull { it.id == selected } ?: members.first()
 
     Box(modifier) {

@@ -15,6 +15,7 @@ import androidx.compose.material.icons.filled.QrCodeScanner
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
@@ -31,9 +32,9 @@ import ch.brickinventoryapp.R
 fun ComparisonScreen() {
     val context        = LocalContext.current
     var scannedBarcode by remember { mutableStateOf<String?>(null) }
-    var searchText     by remember { mutableStateOf("") }
+    var searchText     by rememberSaveable { mutableStateOf("") }
     var activeQuery    by remember { mutableStateOf<String?>(null) }
-    var showScanner    by remember { mutableStateOf(false) }
+    var showScanner    by rememberSaveable { mutableStateOf(false) }
     val keyboard       = LocalSoftwareKeyboardController.current
 
     fun triggerSearch() {

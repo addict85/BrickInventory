@@ -28,6 +28,7 @@ import androidx.compose.foundation.clickable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.saveable.rememberSaveable
 import ch.brickinventoryapp.ui.components.ZoomableImageDialog
 import ch.brickinventoryapp.util.resolveFullUrl
 import coil.ImageLoader
@@ -55,9 +56,9 @@ fun CatalogDetailScreen(
     onBack: () -> Unit
 ) {
     LaunchedEffect(setNumber) { onLoad(setNumber) }
-    var showAddDialog by remember { mutableStateOf(false) }
+    var showAddDialog by rememberSaveable { mutableStateOf(false) }
     // Bildschirmfüllender Zoom wie im Set-Detail — auf Nutzerwunsch auch hier.
-    var showImageZoom by remember { mutableStateOf(false) }
+    var showImageZoom by rememberSaveable { mutableStateOf(false) }
     val ctx = LocalContext.current
 
     Scaffold(
@@ -236,9 +237,9 @@ private fun CatalogAddDialog(
     onDismiss: () -> Unit,
     onAdd: (Int, Double?, String?, Int?) -> Unit
 ) {
-    var quantity      by remember { mutableStateOf("1") }
-    var purchasePrice by remember { mutableStateOf("") }
-    var condition     by remember { mutableStateOf(defaultCondition) }
+    var quantity      by rememberSaveable { mutableStateOf("1") }
+    var purchasePrice by rememberSaveable { mutableStateOf("") }
+    var condition     by rememberSaveable { mutableStateOf(defaultCondition) }
     // Vorbelegt mit dem eigenen Konto, genau wie im Galerie-Dialog.
     var owner         by remember(householdMembers) {
         mutableStateOf(householdMembers.firstOrNull { it.isSelf }?.id)
