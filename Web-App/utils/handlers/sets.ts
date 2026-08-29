@@ -6,6 +6,7 @@ import { fetchMissingBlIds } from '../../routes/parts';
 import { getAllSetParts, getRbKey, httpsGetRobust } from '../../clients/rebrickable';
 import { clampPageSize, conditionFromAcquisitions, conditionsFromAcquisitions, applyManualCondition, withOwners, MAX_PAGE_SIZE, UNPAGED_LIMIT, SET_PARTS_MAX_PAGE_SIZE } from './shared';
 import { getParts } from './parts';
+import { ausTabelle } from '../validate';
 
 /**
  * Leseabfragen für Sets, samt der Ableitung des Zustands aus den Erfassungen.
@@ -140,7 +141,9 @@ async function getSets(userId, query: any = {}) {
                  OR LOWER(COALESCE(s.theme,'')) LIKE $${i} OR COALESCE(s.year,0)::text LIKE $${i})`);
   }
   const whereSql = where.length ? where.join(' AND ') : 'TRUE';
-  const orderSql = SET_SORTS[sort] || SET_SORTS.added_desc;
+  // ausTabelle: siehe utils/validate — ein direkter Zugriff liefert auch
+  // geerbte Eigenschaften, und die haette `|| SET_SORTS.added_desc` durchgelassen.
+  const orderSql = ausTabelle(SET_SORTS, sort, SET_SORTS.added_desc);
 
   // Ohne page_size bleibt die Set-Liste UNBEGRENZT.
   //

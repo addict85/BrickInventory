@@ -164,3 +164,48 @@ export function einzelwert(value: unknown, fallback = ''): string {
   if (value === undefined || value === null) return fallback;
   return String(value);
 }
+
+/**
+ * Einen Wert aus einer Nachschlagetabelle holen, wenn der Schlüssel von aussen
+ * kommt.
+ *
+ * ── Warum es diese Funktion braucht (Nachtrag 155) ──────────────────────────
+ * `TABELLE[schluessel]` liefert in JavaScript auch GEERBTE Eigenschaften, und
+ * die sind wahrheitswertig. Die übliche Absicherung `TABELLE[k] || VORGABE`
+ * greift deshalb nicht:
+ *
+ *     const SORTS = { year_desc: 'rb.year DESC', … };
+ *     SORTS['unbekannt']   -> undefined                -> Vorgabe greift
+ *     SORTS['constructor'] -> function Object() { … }  -> Vorgabe greift NICHT
+ *     SORTS['__proto__']   -> [object Object]          -> Vorgabe greift NICHT
+ *
+ * Gefunden an drei Stellen, zwei davon tragend:
+ *
+ *   routes/api_v1/catalog.ts   Das Ergebnis ging direkt in ein ORDER BY. Kein
+ *                              freies Einschleusen — den eingesetzten Text kann
+ *                              der Aufrufer nicht wählen —, aber ein von aussen
+ *                              auslösbarer 500er. Und es WÜRDE zum Einschleusen,
+ *                              sobald irgendwo eine Prototype-Pollution dazukäme.
+ *   routes/sets.ts             Der Datei-Filter beim Anleitungs-Upload. Mit
+ *                              Content-Type: constructor kam beliebiger Inhalt
+ *                              an der Zusage "nur PDF, JPG oder PNG" vorbei.
+ *   utils/handlers/sets.ts     Dasselbe Muster in der Set-Sortierung.
+ *
+ * `hasOwnProperty.call` statt `Object.hasOwn`: gleichwertig, aber unabhängig
+ * von der lib-Einstellung in tsconfig.
+ *
+ * @param tabelle    Die erlaubten Werte. Nur EIGENE Schlüssel zählen.
+ * @param schluessel Der Schlüssel von aussen — beliebiger Typ, wird zu String.
+ * @param vorgabe    Was zurückkommt, wenn der Schlüssel nicht in der Tabelle steht.
+ * @returns Der Tabellenwert, sonst `vorgabe`.
+ */
+export function ausTabelle<T>(tabelle: Record<string, T>, schluessel: unknown, vorgabe: T): T;
+export function ausTabelle<T>(tabelle: Record<string, T>, schluessel: unknown): T | undefined;
+export function ausTabelle<T>(
+  tabelle: Record<string, T>,
+  schluessel: unknown,
+  vorgabe?: T,
+): T | undefined {
+  const k = einzelwert(schluessel);
+  return Object.prototype.hasOwnProperty.call(tabelle, k) ? tabelle[k] : vorgabe;
+}

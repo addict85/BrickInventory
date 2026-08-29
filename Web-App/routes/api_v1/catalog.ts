@@ -20,6 +20,7 @@ import { resolveIfExists } from '../../utils/images';
 import { requireToken } from './middleware';
 import { resolveMany, resolveOne, resolveViaApi } from '../../utils/bricklinkLink';
 import { downloadSetImage } from '../../utils/setImages';
+import { ausTabelle } from '../../utils/validate';
 
 const router = express.Router();
 
@@ -289,7 +290,11 @@ router.get('/catalog/sets', requireToken, async (req: AuthedRequest, res) => {
     const themeId  = parseInt(String(req.query.theme_id || '')) || null;
     const yearFrom = parseInt(String(req.query.year_from || '')) || null;
     const yearTo   = parseInt(String(req.query.year_to || '')) || null;
-    const sort     = SORTS[String(req.query.sort || '')] || SORTS.year_desc;
+    // ausTabelle statt SORTS[…]: Ein direkter Zugriff liefert auch geerbte
+    // Eigenschaften, und `|| SORTS.year_desc` faengt die NICHT ab. ?sort=constructor
+    // ergab damit `ORDER BY function Object() { [native code] }`. Siehe
+    // utils/validate.ausTabelle.
+    const sort     = ausTabelle(SORTS, req.query.sort, SORTS.year_desc);
     const page     = Math.max(1, parseInt(String(req.query.page || '1')) || 1);
     const limit    = Math.min(200, Math.max(1, parseInt(String(req.query.limit || '60')) || 60));
     const offset   = (page - 1) * limit;

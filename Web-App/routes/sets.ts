@@ -140,6 +140,7 @@ import { scopeIds } from '../utils/household';
 import { findSetInScope } from '../utils/setAdd';
 import { loginOrTokenGuard } from '../utils/auth';
 import { csvEinlesen, entschaerfungRueckgaengig, parseCsvDate, sendCsv, sendCsvText, uebersprungenHinweis } from '../utils/csvExport';
+import { ausTabelle } from '../utils/validate';
 
 const requireLoginOrToken = loginOrTokenGuard({ timeoutMs: 3000 });
 
@@ -743,13 +744,19 @@ const uploadInstr = multer({
     destination: (req, file, cb) => { const dir=path.join(DATA_DIR,'uploads',String(req.session.userId)); fs.mkdirSync(dir,{recursive:true}); cb(null,dir); },
     filename: (req, file, cb) => {
       const safe = String(req.params.setNumber).replace(/[^a-z0-9-]/gi,'_');
-      const ext  = INSTR_EXT_BY_MIME[file.mimetype];
+      // ausTabelle statt direktem Zugriff: `INSTR_EXT_BY_MIME['constructor']`
+      // lieferte die geerbte Object-Funktion — wahrheitswertig, also kam die
+      // Datei am Filter vorbei und landete unter einem Namen aus
+      // "function Object() { [native code] }". Siehe utils/validate.ausTabelle.
+      const ext  = ausTabelle(INSTR_EXT_BY_MIME, file.mimetype);
       if (!ext) return cb(new Error('Nur PDF, JPG oder PNG'), '');
       cb(null, `${safe}_${Date.now()}${ext}`);
     }
   }),
   limits: { fileSize: 50*1024*1024 },
-  fileFilter: (req, file, cb) => { if (INSTR_EXT_BY_MIME[file.mimetype]) cb(null,true); else cb(new Error('Nur PDF, JPG oder PNG')); }
+  // Derselbe Grund wie oben: Das hier ist das TOR. Ein geerbter Wert liess
+  // beliebigen Inhalt an der Zusage "nur PDF, JPG oder PNG" vorbei.
+  fileFilter: (req, file, cb) => { if (ausTabelle(INSTR_EXT_BY_MIME, file.mimetype)) cb(null,true); else cb(new Error('Nur PDF, JPG oder PNG')); }
 });
 router.post('/:setNumber/instructions/upload', uploadInstr.single('file'), async (req, res) => {
   if (!req.file) return res.status(400).json({ success:false, error:'Keine Datei' });
