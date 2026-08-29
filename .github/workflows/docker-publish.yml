@@ -30,6 +30,27 @@ on:
 env:
   IMAGE: addict85/brickinventory
   CONTEXT: Web-App
+  # Die Plattformen, die am Ende IM MANIFEST stehen muessen. Der letzte Schritt
+  # prueft das und laesst den Lauf scheitern, wenn eine fehlt.
+  #
+  # Diese Liste und die build-Matrix unten muessen zusammenpassen — sie stehen
+  # getrennt, weil die Matrix zusaetzlich den passenden Runner braucht.
+  #
+  # Warum genau diese zwei:
+  #   linux/amd64  — PC, Server, NAS, jede x86-Cloud
+  #   linux/arm64  — Raspberry Pi 3/4/5 und Zero 2 W mit 64-Bit-System,
+  #                  Apple Silicon, ARM-Server (Graviton, Ampere)
+  #
+  # NICHT dabei ist linux/arm/v7 (32-Bit-Pi-OS), und das ist kein Versehen:
+  # Dieses Image steht auf Alpine (musl), und fuer musl+armv7 gibt es kein
+  # sharp-Paket — @img/sharp-linuxmusl-arm existiert auf npm nicht, nur die
+  # glibc-Fassung. Ein armv7-Image liesse sich zwar bauen, die Bildverarbeitung
+  # fiele darin aber still auf den deutlich langsameren Jimp-Rueckfall zurueck.
+  # Ein Image zu veroeffentlichen, das nur so aussieht wie die anderen, ist
+  # schlechter als keines. Wer armv7 wirklich braucht, muss zuerst das
+  # Basis-Image auf Debian slim (glibc) umstellen.
+  ERWARTETE_PLATTFORMEN: "linux/amd64 linux/arm64"
+
 
 concurrency:
   group: docker-publish-${{ github.ref }}
@@ -154,7 +175,35 @@ jobs:
             $(jq -cr '.tags | map("-t " + .) | join(" ")' <<< "$DOCKER_METADATA_OUTPUT_JSON") \
             $(printf "${{ env.IMAGE }}@sha256:%s " *)
 
-      - name: Ergebnis anzeigen
+      # PRUEFEN, nicht nur anzeigen.
+      #
+      # Ohne diese Zusicherung koennte ein Manifest mit nur einer Architektur
+      # veroeffentlicht werden — auf dem Entwicklungsrechner faellt das nie auf,
+      # der Pi bekaeme aber beim Ziehen "no matching manifest for
+      # linux/arm64/v8". Genau die Art Fehler, die erst beim Nutzer auftritt.
+      #
+      # Die "unknown"-Eintraege stammen von den Attestierungen, die buildx
+      # mitschiebt; sie sind keine Architekturen und werden ausgefiltert.
+      - name: Manifest pruefen — sind alle Plattformen drin?
         run: |
-          docker buildx imagetools inspect ${{ env.IMAGE }}:latest || \
-          docker buildx imagetools inspect "$(jq -cr '.tags[0]' <<< "$DOCKER_METADATA_OUTPUT_JSON")"
+          set -eu
+          TAG="$(jq -cr '.tags[0]' <<< "$DOCKER_METADATA_OUTPUT_JSON")"
+          echo "Geprueft wird: $TAG"
+          docker buildx imagetools inspect "$TAG" --raw > manifest.json
+          GEFUNDEN="$(jq -r '
+            [ .manifests[]
+              | select(.platform.os == "linux" and .platform.architecture != "unknown")
+              | "linux/" + .platform.architecture
+            ] | unique | join(" ")' manifest.json)"
+          echo "Im Manifest: $GEFUNDEN"
+          echo "Erwartet   : $ERWARTETE_PLATTFORMEN"
+          fehlt=""
+          for p in $ERWARTETE_PLATTFORMEN; do
+            case " $GEFUNDEN " in (*" $p "*) ;; (*) fehlt="$fehlt $p" ;; esac
+          done
+          if [ -n "$fehlt" ]; then
+            echo "::error::Im veroeffentlichten Manifest fehlt:$fehlt (enthalten: $GEFUNDEN)"
+            exit 1
+          fi
+          echo "Alle erwarteten Plattformen sind im Manifest."
+          docker buildx imagetools inspect "$TAG"
