@@ -136,7 +136,10 @@ async function generateQrCode() {
   const container = G('qr-code');
   btn.disabled = true; btn.textContent = '⏳ Generiere...';
   try {
-    const d = await api('GET', '/auth/qr-token');
+    // POST, nicht GET (Nachtrag 154): Der Aufruf LEGT eine Nonce AN. Als GET war
+    // er über eine Navigation von einer fremden Seite auslösbar, weil
+    // SameSite=lax das Cookie dort mitschickt.
+    const d = await api('POST', '/auth/qr-token');
     if (!d.success) { hint.textContent = tRaw('toast.error')+': ' + (d.error||t('common.unknown')); btn.disabled=false; btn.textContent=tRaw('qr.generate'); return; }
     // Get current server URL
     // Use the URL from the input field, fallback to window.location.origin

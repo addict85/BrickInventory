@@ -398,7 +398,24 @@ async function ensureQrTable() {
 }
 
 // GET /api/auth/qr-token — Nonce erzeugen (nur für die eigene Session)
-router.get('/qr-token', async (req, res) => {
+// ── POST statt GET (Nachtrag 154) ────────────────────────────────────────────
+// Diese Route LEGT ETWAS AN: eine QR-Login-Nonce, die fünf Minuten lang ein
+// Konto öffnet. Als GET war sie die einzige zustandsändernde Route im Baum,
+// die an der Session hängt — und genau die Lücke, die SameSite=lax offen
+// lässt: Bei einer Navigation von einer fremden Seite (window.open, ein Link,
+// location=) schickt der Browser das Sitzungs-Cookie mit, und der Server legt
+// eine Nonce an.
+//
+// Lesen konnte ein Angreifer die Antwort nicht — eine Navigation quer über
+// Ursprünge hinweg gibt ihm keinen Zugriff auf den Rumpf. Erzwingen konnte er
+// sie aber, und dasselbe tun Link-Vorschauen, Virenscanner und die
+// Vorab-Ladelogik der Browser: alles, was ein GET für gefahrlos hält, weil GET
+// gefahrlos sein SOLL.
+//
+// Mit POST ist es unabhängig von jeder CSRF-Entscheidung erledigt: SameSite=lax
+// schickt bei einem fremden POST kein Cookie mit. Einziger Aufrufer war
+// public/js/05-settings.js — dort mitgeändert.
+router.post('/qr-token', async (req, res) => {
   if (!req.session?.userId) return res.status(401).json({ success: false });
   try {
     await ensureQrTable();

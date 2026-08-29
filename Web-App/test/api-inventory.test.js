@@ -196,7 +196,10 @@ const C = {
   'POST /api/auth/forgot-password': 'nur-web',
   'POST /api/auth/reset-password': 'nur-web',
   'GET /api/auth/check-token': 'nur-web',
-  'GET /api/auth/qr-token': 'nur-web',
+  // Nachtrag 154: von GET auf POST umgestellt — die Route LEGT eine
+  // Anmelde-Nonce AN und war als GET die einzige zustandsaendernde Route,
+  // die SameSite=lax durchliess.
+  'POST /api/auth/qr-token': 'nur-web',
   'POST /api/auth/qr-login': 'nur-web',
   'GET /api/auth/users': 'nur-web',
   'POST /api/auth/users': 'nur-web',
