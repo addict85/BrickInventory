@@ -101,7 +101,16 @@ test('fehlt die Vorschau, liefert die Bildroute sofort das Original', async () =
 test('server.ts nimmt den Original-Rückfall vor dem CDN-Umweg', () => {
   // Reihenfolge zählt: Ein lokal vorhandenes Original ist immer besser als ein
   // Umweg über das CDN — schneller, ohne fremden Dienst, ohne Kontingent.
-  const src = fs.readFileSync(path.join(__dirname, '..', 'server.ts'), 'utf8');
+  // ohneKommentare() VOR dem indexOf (Nachtrag 155): Ein Blockkommentar in
+  // server.ts trug "app.get('/images/*', …)" als Beispiel, und indexOf() fand
+  // das Beispiel statt der Route — das Fenster lag dann im Dateikopf. Der
+  // Filter weiter unten entfernte nur //-Zeilen, nicht Blockkommentare.
+  //
+  // Genau diese Falle steht in der JSDoc von ohneKommentare() bereits
+  // beschrieben, samt demselben Beispiel. Der Helfer war da; er wurde hier nur
+  // nicht benutzt.
+  const src = require('./helpers/sources')
+    .ohneKommentare(fs.readFileSync(path.join(__dirname, '..', 'server.ts'), 'utf8'));
   const start = src.indexOf("app.get('/images/*'");
   // Erst Kommentare weg, DANN schneiden (Nachtrag 48): Vorher wurde das
   // 4000-Zeichen-Fenster aus dem rohen Quelltext genommen — ein gewachsener
@@ -109,9 +118,7 @@ test('server.ts nimmt den Original-Rückfall vor dem CDN-Umweg', () => {
   // die Regel galt. Dieselbe Falle wie schon bei data-layout und den beiden
   // Kotlin-Tests; sie tritt zuverlässig auf, sobald jemand einen Kommentar
   // ergänzt.
-  const ohneKommentare = src.slice(start)
-    .split('\n').filter(l => !l.trim().startsWith('//')).join('\n')
-    .slice(0, 4000);
+  const ohneKommentare = src.slice(start).slice(0, 4000);
   const rueckfall = ohneKommentare.indexOf('_thumb');
   const cdn = ohneKommentare.indexOf('lookupCdnForMissingImage');
   assert.ok(rueckfall > 0, 'der Rückfall auf das Original fehlt');

@@ -1,3 +1,19 @@
+import type { Request, Response, NextFunction } from 'express';
+
+/**
+ * Anfrage einer Wildcard-Route (`app.get('/images/*', …)`).
+ *
+ * ── Warum benannt (Nachtrag 155) ────────────────────────────────────────────
+ * Express legt die Erfassung eines `*` unter dem numerischen Schluessel `0` ab.
+ * Auf dem allgemeinen Request-Typ ist `params` leer, ein `req.params[0]` also
+ * ein implizites `any` — und der Wert geht hier direkt in safeDataPath(), den
+ * Path-Traversal-Schutz. Ein Pfadsegment ist der letzte Wert, den man
+ * ungeprueft durchreichen will.
+ *
+ * Der Typ schreibt hin, was die Route zusichert, statt es an vier Stellen
+ * wegzucasten.
+ */
+type WildcardRequest = Request<{ 0: string }>;
 // ── Log interceptor — write console output to PostgreSQL app_logs ─────────────
 // Must be first so all subsequent logs are captured
 const _logBuffer: any[] = [];
@@ -16,7 +32,7 @@ setInterval(() => {
   if (_logPool)
     _logPool.query(`DELETE FROM app_logs WHERE logged_at < NOW() - INTERVAL '48 hours'`).catch(() => {});
 }, 6 * 60 * 60 * 1000).unref();
-function _safeStringify(a) {
+function _safeStringify(a: unknown) {
   if (typeof a === 'string') return a;
   try {
     const s = JSON.stringify(a);
@@ -43,8 +59,8 @@ const _reqContext = new AsyncLocalStorage();
 /** Kurze Prozesskennung, damit im Log erkennbar ist, welcher Worker schrieb. */
 const _pidTag = String(process.pid).slice(-4);
 
-function _intercept(level, orig) {
-  return function(...args) {
+function _intercept(level: string, orig: (...a: any[]) => void) {
+  return function(...args: any[]) {
     const ctx = _reqContext.getStore();
     const prefix = ctx?.rid ? `[${_pidTag}/${ctx.rid}] ` : `[${_pidTag}] `;
     orig.apply(console, [prefix + _safeStringify(args[0]), ...args.slice(1)]);
@@ -113,6 +129,13 @@ if (cluster.isPrimary && process.env.NODE_ENV === 'production') {
 // Bewusst require() statt import: dieser Block läuft nur im Worker-Zweig.
 // Ein top-level import würde Express/DB-Pool/Routen auch im Cluster-Primary
 // laden. `as typeof import(...)` liefert trotzdem volle Typisierung.
+//
+// ── Nachtrag 155: das `as typeof import(...)` ist Pflicht, nicht Zierde ──────
+// Es standen 15 require() OHNE diesen Zusatz in der Datei. Die liefern `any`,
+// und damit ist jeder Zugriff darauf ungeprueft — ein vertipptes
+// `scheduler.rescheduleAl()` waere erst zur Laufzeit als "is not a function"
+// aufgeschlagen, beim Hochfahren des Servers. Alle 15 sind jetzt nachgezogen.
+// Wer hier eine neue Zeile ergaenzt: Der Zusatz gehoert dazu.
 const express = require('express') as typeof import('express');
 
 // ── Async-Handler absichern ─────────────────────────────────────────────────
@@ -364,8 +387,11 @@ const { APP_ROOT, DATA_DIR, PUBLIC_DIR, IMAGES_DIR } = require('./utils/appPaths
 // Path-Traversal-Schutz: Segmente wie ".." oder absolute Pfade könnten sonst
 // aus dem data/-Verzeichnis ausbrechen (z.B. /data/uploads/..%2f..%2fserver.js).
 // Wir prüfen deshalb, dass der aufgelöste Pfad innerhalb des Basis-Verzeichnisses bleibt.
-function safeDataPath(subDir, segments) {
-  if (segments.some(s => s === '..' || s === '.' || s.includes('\0'))) return null;
+// segments: string[] — der Typ ist hier kein Beiwerk. Diese Funktion IST der
+// Path-Traversal-Schutz; wer ihr etwas anderes als Zeichenketten reicht, laesst
+// `s === '..'` ins Leere laufen und die Wache mit.
+function safeDataPath(subDir: string, segments: string[]): string | null {
+  if (segments.some((s: string) => s === '..' || s === '.' || s.includes('\0'))) return null;
   const baseDir  = path.resolve(DATA_DIR, subDir);
   const filePath = path.resolve(baseDir, ...segments);
   if (filePath !== baseDir && !filePath.startsWith(baseDir + path.sep)) return null;
@@ -398,8 +424,8 @@ function safeDataPath(subDir, segments) {
  * NICHT an die Uploads des Hauptkontos. Geprüft wird weiterhin gegen eine
  * Liste erlaubter IDs, nicht gegen „irgendwer im System".
  */
-function serveDataFile(subDir) {
-  return async (req, res) => {
+function serveDataFile(subDir: string) {
+  return async (req: WildcardRequest, res: Response) => {
     const userId = await resolveUserId(req);
     if (!userId) return res.status(401).send('Nicht angemeldet');
     const segments = req.params[0].split('/').filter(Boolean);
@@ -413,7 +439,7 @@ function serveDataFile(subDir) {
     if (!filePath) return res.status(404).send('Datei nicht gefunden');
     // Kein fs.existsSync mehr (blockiert den Event-Loop) — sendFile prüft
     // die Existenz selbst; wir mappen den Fehler nur auf 404.
-    res.sendFile(filePath, err => {
+    res.sendFile(filePath, (err?: Error) => {
       if (err && !res.headersSent) res.status(404).send('Datei nicht gefunden');
     });
   };
@@ -425,7 +451,7 @@ function serveDataFile(subDir) {
 // benutzereigene Anleitungen liegen unter data/uploads/<benutzer-id>/. Deshalb
 // KEIN serveDataFile(): dessen Prüfung des ersten Pfadsegments gegen die
 // Benutzer-ID kann hier nie passen.
-app.get('/data/instructions/*', async (req, res) => {
+app.get('/data/instructions/*', async (req: WildcardRequest, res: Response) => {
   const userId = await resolveUserId(req);
   if (!userId) return res.status(401).send('Nicht angemeldet');
   const segments = req.params[0].split('/').filter(Boolean);
@@ -440,7 +466,7 @@ app.get('/data/instructions/*', async (req, res) => {
 // Der Block stand hier als ~440 Zeilen zwischen Session-Aufbau und
 // Cluster-Orchestrierung. server.ts ist dadurch von 1242 auf gut 800 Zeilen
 // geschrumpft und beschreibt jetzt wieder nur noch Aufbau und Start.
-require('./routes/imgProxy').registerImgProxy(app);
+(require('./routes/imgProxy') as typeof import('./routes/imgProxy')).registerImgProxy(app);
 
 // Fallback-Cache: fehlende lokale Bilddatei -> CDN-URL (oder null). Vermeidet
 // wiederholte DB-Lookups, wenn viele Bilder lokal fehlen (z.B. nach Redeploy
@@ -499,7 +525,7 @@ async function lookupCdnForMissingImage(webPath: string): Promise<string | null>
 // Der Platzhalter (set-placeholder.svg) liegt bewusst NICHT hier, sondern unter
 // /assets/: Er ist ein Build-Asset wie CSS und JavaScript und hat mit dem
 // Bestand nichts zu tun.
-app.get('/images/*', async (req, res) => {
+app.get('/images/*', async (req: WildcardRequest, res: Response) => {
   // Session ODER Bearer-Token (Android) — läuft über den gemeinsamen Token-Cache
   const imgUserId = await resolveUserId(req);
   if (!imgUserId) return res.status(401).send('Nicht angemeldet');
@@ -574,7 +600,7 @@ app.get('/images/*', async (req, res) => {
         const webPfadOriginal = '/images/' + originalSegs.join('/');
         setImmediate(() => {
           try {
-            require('./routes/thumbs').generateThumb(webPfadOriginal).catch(() => {});
+            (require('./routes/thumbs') as typeof import('./routes/thumbs')).generateThumb(webPfadOriginal).catch(() => {});
           } catch (_) {}
         });
         return res.sendFile(originalPfad, err2 => {
@@ -637,7 +663,7 @@ app.get('/api/startup-status', async (req, res) => {
 
   // Try DB for cross-worker state
   try {
-    const db2 = require('./db/database');
+    const db2 = require('./db/database') as typeof import('./db/database');
     const row = await db2.get(`SELECT value FROM global_settings WHERE key='startup_status'`).catch(() => null);
     if (row?.value) {
       const status = JSON.parse(row.value);
@@ -652,7 +678,7 @@ app.get('/api/startup-status', async (req, res) => {
 
 // Public: health check with DB pool stats
 app.get('/api/health', (req, res) => {
-  const db = require('./db/database');
+  const db = require('./db/database') as typeof import('./db/database');
   const { getPoolStats } = db;
   const pool = getPoolStats ? getPoolStats() : {};
   res.json({
@@ -744,7 +770,7 @@ app.get('*', async (req, res) => {
 // Fängt synchron geworfene Fehler und next(err)-Aufrufe, die an den
 // Route-Catches vorbeikommen — loggt voll, antwortet generisch.
 const { handleRouteError: _handleRouteError } = require('./utils/httpError') as typeof import('./utils/httpError');
-app.use((err, req, res, next) => { _handleRouteError(res, err); });
+app.use((err: any, req: Request, res: Response, next: NextFunction) => { _handleRouteError(res, err); });
 
 // Der Server nimmt Anfragen erst an, NACHDEM initSchemaOnce() das Schema
 // (inkl. user_sessions) fertig hat — sonst schlägt der Session-Store mit
@@ -761,7 +787,7 @@ const { renderIndexHtml } = require('./utils/indexHtml') as typeof import('./uti
 let isPrimaryWorker = false;
 let _primaryLockClient: any = null; // dedizierte Verbindung, die den Advisory-Lock hält
 
-async function electPrimaryWorker(db) {
+async function electPrimaryWorker(db: typeof import('./db/database')) {
   try {
     // Den Advisory-Lock auf einer DEDIZIERTEN Verbindung halten, die NICHT in
     // den Pool zurückgegeben wird. Sonst schliesst der Pool die Session beim
@@ -770,7 +796,7 @@ async function electPrimaryWorker(db) {
     // Hintergrund-Jobs (z. B. der Bild-Download) liefen mehrfach parallel.
     const client = await db.pool.connect();
     const { rows } = await client.query('SELECT pg_try_advisory_lock($1) AS ok',
-      [require('./utils/lockNamespaces').LOCKS.PRIMARY_WORKER]);
+      [(require('./utils/lockNamespaces') as typeof import('./utils/lockNamespaces')).LOCKS.PRIMARY_WORKER]);
     isPrimaryWorker = !!rows[0]?.ok;
     if (isPrimaryWorker) {
       _primaryLockClient = client;                 // offen halten → Lock bleibt bestehen
@@ -815,7 +841,7 @@ db.initSchemaOnce().then(async () => {
   const SHUTDOWN_TIMEOUT_MS = 8000;
   let shuttingDown = false;
 
-  async function shutdown(signal) {
+  async function shutdown(signal: string) {
     if (shuttingDown) return;
     shuttingDown = true;
     console.log(`[shutdown] ${signal} empfangen — Server wird geordnet beendet`);
@@ -842,12 +868,12 @@ db.initSchemaOnce().then(async () => {
       // für Docker sah jedes Deploy aus wie ein Absturz. Der Kommentar bei
       // der Reissleine nannte das einen Ausnahmefall; es war der Regelfall,
       // weil der Fortschrittskanal der Webapp dauerhaft offen bleibt.
-      const beendet = require('./utils/sseRegistry').closeAllSse();
+      const beendet = (require('./utils/sseRegistry') as typeof import('./utils/sseRegistry')).closeAllSse();
       if (beendet) console.log(`[shutdown] ${beendet} offene Ereignis-Ströme beendet`);
       await new Promise<void>(resolve => httpServer.close(() => resolve()));
       console.log('[shutdown] keine offenen HTTP-Verbindungen mehr');
-      await require('./utils/pgNotify').close().catch(() => {});
-      await require('./db/database').pool.end().catch(() => {});
+      await (require('./utils/pgNotify') as typeof import('./utils/pgNotify')).close().catch(() => {});
+      await (require('./db/database') as typeof import('./db/database')).pool.end().catch(() => {});
       console.log('[shutdown] Datenbankverbindungen geschlossen');
       clearTimeout(force);
       process.exit(0);
@@ -860,9 +886,9 @@ db.initSchemaOnce().then(async () => {
   process.on('SIGTERM', () => shutdown('SIGTERM'));
   process.on('SIGINT',  () => shutdown('SIGINT'));
 
-  global._enableLogPersistence(require('./db/database').pool);
+  global._enableLogPersistence((require('./db/database') as typeof import('./db/database')).pool);
   global.startupStatus = { ready: false, step: 'CSV wird geladen...', progress: 0, total: 6 };
-  const csvSync = require('./jobs/rebrickableCsvSync');
+  const csvSync = require('./jobs/rebrickableCsvSync') as typeof import('./jobs/rebrickableCsvSync');
 
   await electPrimaryWorker(db);
 
@@ -909,9 +935,9 @@ db.initSchemaOnce().then(async () => {
   // Tägliche Jobs mit im Monitoring konfigurierbarer Uhrzeit (HH:MM).
   // Standard: Brickset-Retry 04:00, CSV-Re-Sync 03:00. Änderungen greifen sofort
   // (Reschedule-Trigger, siehe jobs/dailyScheduler.js).
-  const scheduler = require('./jobs/dailyScheduler');
+  const scheduler = require('./jobs/dailyScheduler') as typeof import('./jobs/dailyScheduler');
   scheduler.register('brickset_retry', () =>
-    require('./jobs/bricksetRetry').processRetryQueue().catch(e => console.error('[brickset-retry]', e.message)));
+    (require('./jobs/bricksetRetry') as typeof import('./jobs/bricksetRetry')).processRetryQueue().catch(e => console.error('[brickset-retry]', e.message)));
   scheduler.register('csv_sync', () =>
     db.run("DELETE FROM global_settings WHERE key='rb_csv_last_sync'")
       .then(() => csvSync.run())
@@ -924,7 +950,7 @@ db.initSchemaOnce().then(async () => {
   // Eintrag einmal von sich aus, sodass ein während einer Trennung verpasstes
   // Signal nachgeholt wird (siehe utils/pgNotify.ts).
   let _csvSyncRunning = false;
-  require('./utils/pgNotify').listen('csv_sync_trigger', async () => {
+  (require('./utils/pgNotify') as typeof import('./utils/pgNotify')).listen('csv_sync_trigger', async () => {
     if (_csvSyncRunning) return;
     try {
       const row = await db.get(`SELECT value FROM global_settings WHERE key='csv_sync_trigger'`).catch(() => null);
@@ -942,8 +968,8 @@ db.initSchemaOnce().then(async () => {
   (function scheduleImageDownloads() {
     const run = async () => {
       try {
-        const enrich  = require('./jobs/partsCatalogEnrich');
-        const monitor = require('./utils/jobMonitor');
+        const enrich  = require('./jobs/partsCatalogEnrich') as typeof import('./jobs/partsCatalogEnrich');
+        const monitor = require('./utils/jobMonitor') as typeof import('./utils/jobMonitor');
         const sets = await db.all(
           `SELECT DISTINCT set_number FROM set_parts_catalog
            WHERE image_url IS NOT NULL AND image_local IS NULL

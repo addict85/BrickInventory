@@ -28,6 +28,23 @@ import { queueThumb, drainThumbQueue, mitVorschauSperre, makeProxyThumb, PROXY_T
 import { liefereAusCache } from '../utils/imgCacheServe';
 import { imgProxyFailures } from '../utils/imgProxyStats';
 import { istBekanntFehlend, merkeFehlend } from '../utils/imageMisses';
+import type { Request, Response, Express } from 'express';
+import type { OutgoingHttpHeaders } from 'http';
+import crypto from 'crypto';
+import https from 'https';
+import zlib from 'zlib';
+import { merkeGebraucht } from '../jobs/imageQueue';
+
+// ── Warum diese vier jetzt oben stehen (Nachtrag 155) ────────────────────────
+//
+// Sie standen als require() in den Funktionsruempfen. Node haelt Module im
+// Cache, die Laufzeitkosten waren also gering — der Preis war ein anderer:
+// Die Abhaengigkeiten einer Datei standen nicht mehr an ihrem Kopf, und ein
+// require() ohne Typdeklaration liefert `any`. Damit war jeder Aufruf darauf
+// ungeprueft, in einer Datei, die Bilder von fremden Hosts holt.
+//
+// Geprueft, dass kein Ladezyklus entsteht: ../jobs/imageQueue importiert nicht
+// (auch nicht ueber Umwege) auf routes/imgProxy zurueck.
 
 /**
  * Wurzelverzeichnis der Anwendung.
@@ -173,7 +190,7 @@ const _cdnAgent = new (require('https').Agent)({
  * Fehlanzeige länger (utils/imageMisses, sieben Tage) — dort kostet ein
  * erneuter Versuch ja auch mehr.
  */
-function sende404(res) {
+function sende404(res: Response) {
   res.setHeader('Cache-Control', 'public, max-age=3600');
   return res.status(404).end();
 }
@@ -186,7 +203,7 @@ function sende404(res) {
  * Der eigentliche Ablauf, herausgelöst aus registerImgProxy(). Die Funktion
  * antwortet selbst (res) und gibt nichts zurück.
  */
-export async function bildDurchreichen(req, res) {
+export async function bildDurchreichen(req: Request, res: Response) {
   // Auth: der Proxy holt fremde Inhalte über unseren Server — ohne Login-Pflicht
   // wäre er ein offener Proxy (Bandbreiten-Missbrauch, IP-Verschleierung).
   const proxyUserId = await resolveUserId(req);
@@ -199,7 +216,6 @@ export async function bildDurchreichen(req, res) {
   try { if (!isAllowedImageHost(url)) return res.status(403).end(); } catch(_) { return res.status(400).end(); }
   // Disk-Cache: jedes CDN-Bild wird serverseitig nur einmal geholt.
   // Schlüssel = SHA1 der URL; Content-Type als Sidecar-Datei (.ct).
-  const crypto = require('crypto');
   const cacheDir  = path.join(APP_ROOT, 'data', 'img_proxy_cache');
   const cacheKey  = crypto.createHash('sha1').update(url).digest('hex');
   const cacheFile = path.join(cacheDir, cacheKey);
@@ -234,7 +250,7 @@ export async function bildDurchreichen(req, res) {
   };
   const notiere = () => {
     const sn = setAusUrl();
-    if (sn) require('../jobs/imageQueue').merkeGebraucht(String(url), sn);
+    if (sn) merkeGebraucht(String(url), sn);
   };
   const thumbFile = cacheFile + '_thumb.jpg';
 
@@ -261,7 +277,6 @@ export async function bildDurchreichen(req, res) {
   // Verbindungspool und liess ANDERE Routen in den Zeitfehler laufen.
   if (istBekanntFehlend(cacheKey)) return sende404(res);
 
-  const https2 = require('https');
 
   // Zwei Kopfzeilen-Sätze. Der erste imitiert einen Browser auf rebrickable.com;
   // der zweite lässt Referer und Accept-Language weg.
@@ -296,7 +311,7 @@ export async function bildDurchreichen(req, res) {
   // das nicht mehr die erste. Wird der Client-Abbruch behandelt, muss GENAU
   // diese beendet werden, sonst bleibt ihr Socket belegt.
   let activeReq: any = null;
-  const fetchWith = (headers) => (activeReq = https2.get(url, { headers, agent: _cdnAgent }, r => {
+  const fetchWith = (headers: OutgoingHttpHeaders) => (activeReq = https.get(url, { headers, agent: _cdnAgent }, r => {
     if (r.statusCode !== 200) {
       r.resume();
       // Erster Versuch fehlgeschlagen → einmal ohne Referer nachfassen, BEVOR
@@ -324,7 +339,12 @@ export async function bildDurchreichen(req, res) {
       if (r.statusCode === 404) imgProxyFailures.notFound++; else imgProxyFailures.other++;
       imgProxyFailures.lastError = `HTTP ${r.statusCode} — ${url}`;
       console.error(`[img-proxy] CDN antwortete ${r.statusCode} (auch ohne Referer): ${url}`);
-      return r.statusCode === 404 ? sende404(res) : res.status(r.statusCode).end();
+      // ?? 502: r.statusCode ist auf Nodes IncomingMessage `number | undefined`
+      // — dieselbe Schnittstelle dient auch eingehenden Anfragen, wo es fehlt.
+      // Bei einer Client-Antwort ist es in der Praxis immer gesetzt; faellt es
+      // doch aus, ist "Bad Gateway" die ehrliche Auskunft. Vorher waere hier
+      // res.status(undefined) gelaufen — das wirft.
+      return r.statusCode === 404 ? sende404(res) : res.status(r.statusCode ?? 502).end();
     }
     const contentType = r.headers['content-type'] || 'image/jpeg';
 
@@ -378,8 +398,7 @@ export async function bildDurchreichen(req, res) {
     const enc = String(r.headers['content-encoding'] || '').toLowerCase();
     let body: any = r;
     if (enc === 'gzip' || enc === 'deflate' || enc === 'br') {
-      const zlib = require('zlib');
-      const dec = enc === 'br' ? zlib.createBrotliDecompress()
+          const dec = enc === 'br' ? zlib.createBrotliDecompress()
                 : enc === 'gzip' ? zlib.createGunzip()
                 : zlib.createInflate();
       dec.on('error', () => { if (!res.headersSent) res.status(502).end(); });
@@ -433,7 +452,7 @@ export async function bildDurchreichen(req, res) {
       const tmpFile = `${cacheFile}.tmp-${process.pid}-${_tmpSeq++}`;
       const ws = fs.createWriteStream(tmpFile);
       let bytes = 0, aborted = false;
-      body.on('data', chunk => {
+      body.on('data', (chunk: Buffer) => {
         bytes += chunk.length;
         if (bytes > PROXY_CACHE_MAX_BYTES && !aborted) {
           aborted = true;
@@ -531,7 +550,7 @@ export async function bildDurchreichen(req, res) {
 }
 
 /** Die Route anmelden. Der Ablauf steht in bildDurchreichen(). */
-function registerImgProxy(app) {
+function registerImgProxy(app: Express) {
   app.get('/api/img-proxy', bildDurchreichen);
 }
 
@@ -614,7 +633,6 @@ function isAllowedImageHost(url: string): boolean {
  */
 function proxyCachePathFor(url: string): string | null {
   if (!url) return null;
-  const crypto = require('crypto');
   return path.join(APP_ROOT, 'data', 'img_proxy_cache',
     crypto.createHash('sha1').update(url).digest('hex'));
 }

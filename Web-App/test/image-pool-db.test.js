@@ -152,7 +152,10 @@ test('ein 404 darf der Browser sich merken', () => {
   // Jahrgänge, wo fast jedes Bild fehlt, ist das ein voller Satz Anfragen je
   // Bildschirm — bis zum Server, dort in den Merker und wieder zurück.
   const px = require('./helpers/sources').proxyThumbQuelle();
-  assert.match(px, /function sende404\(res\)/, 'Kein gemeinsamer 404-Weg');
+  // Typangabe zugelassen (Nachtrag 155): Die Signatur heisst jetzt
+  // `sende404(res: Response)`. Gemeint war nie die Schreibweise, sondern dass
+  // es EINEN gemeinsamen 404-Weg gibt.
+  assert.match(px, /function sende404\(res(: \w+)?\)/, 'Kein gemeinsamer 404-Weg');
   assert.match(px, /sende404[\s\S]{0,200}Cache-Control', 'public, max-age=3600/,
     'Der 404 trägt keinen Cache-Hinweis — der Browser fragt jedes Mal neu');
   // Beide Wege müssen ihn benutzen: der Treffer im Merker und die Absage vom CDN.

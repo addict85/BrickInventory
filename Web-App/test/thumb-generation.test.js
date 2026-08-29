@@ -83,8 +83,11 @@ test('beide Erzeuger schreiben temporär auf eine BILDendung', () => {
 });
 
 test('die Bildroute stösst eine fehlende Vorschau selbst an', () => {
-  const src = require('./helpers/sources').startQuelle()
-    .split('\n').filter(l => !l.trim().startsWith('//')).join('\n');
+  // ohneKommentare() statt eines //-Filters (Nachtrag 155): Der Filter liess
+  // Blockkommentare stehen, und einer davon enthielt "app.get('/images/*', …)"
+  // als Beispiel. indexOf() landete dadurch im Dateikopf statt an der Route.
+  const src = require('./helpers/sources').ohneKommentare(
+    require('./helpers/sources').startQuelle());
   const start = src.indexOf("app.get('/images/*'");
   const block = src.slice(start, start + 4000);
   assert.ok(/generateThumb/.test(block),

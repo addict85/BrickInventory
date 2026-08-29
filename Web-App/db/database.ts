@@ -19,6 +19,26 @@
 
 import { Pool, types as pgTypes } from 'pg';
 import { runMigrations } from './migrate';
+import fs from 'fs';
+import path from 'path';
+import bcrypt from 'bcryptjs';
+import crypto from 'crypto';
+import { Client } from 'pg';
+import { LOCKS } from '../utils/lockNamespaces';
+import { initImageMisses } from '../utils/imageMisses';
+import { initImageQueue } from '../jobs/imageQueue';
+
+// ── Warum diese acht jetzt oben stehen (Nachtrag 155) ────────────────────────
+//
+// Sie standen als require() in den Funktionsruempfen. Node haelt Module im
+// Cache, die Laufzeitkosten waren also gering — der Preis war ein anderer: Die
+// Abhaengigkeiten dieser Datei standen nicht an ihrem Kopf, und ein require()
+// ohne Typdeklaration liefert `any`. In der Datei, die Schema, Migrationen und
+// das Admin-Startpasswort verantwortet, ist das die falsche Stelle zum Sparen.
+//
+// NICHT gehoben: ../utils/partsSummary (Ladezyklus, Begruendung an der Stelle
+// selbst) und ../package.json — das ist keine Abhaengigkeit des Moduls,
+// sondern ein Lesevorgang mit Rueckfall.
 
 // ── NUMERIC kommt als Zahl zurück, nicht als Zeichenkette ───────────────────
 //
@@ -159,6 +179,24 @@ function getPoolStats() {
  * any. Wichtig ist, dass es NICHT `never` oder `unknown` ist (siehe
  * queryWithRetry).
  */
+/**
+ * Die Abfrage-Schnittstelle, die dieses Modul anbietet — einmal als Typ.
+ *
+ * ── Warum benannt statt inline (Nachtrag 155) ────────────────────────────────
+ * transaction() reicht dem Rueckruf ein Objekt mit genau diesen vier Methoden.
+ * Beide Seiten hatten bisher keinen Typ: Der Rueckruf-Parameter war implizit
+ * `any`, damit war jeder Aufruf darin ungeprueft — auch `tx.gett(...)` waere
+ * durchgegangen und erst zur Laufzeit als "is not a function" aufgeschlagen.
+ * Als Typ steht die Zusage einmal geschrieben, und die transaktionsgebundene
+ * Fassung muss sie einhalten.
+ */
+export interface DbSchnittstelle {
+  all(sql: string, params?: any[]): Promise<any[]>;
+  get(sql: string, params?: any[]): Promise<any>;
+  run(sql: string, params?: any[]): Promise<{ changes: number | null; lastID: any }>;
+  exec(sql: string): Promise<any>;
+}
+
 async function all(sql: string, params: any[] = []): Promise<any[]> {
   return queryWithRetry(async () => {
     const { rows } = await pool.query(sql, params);
@@ -197,7 +235,7 @@ async function run(sql: string, params: any[] = []): Promise<{ changes: number; 
  * Execute raw SQL (for schema/migrations).
  * Replaces: db.exec(sql)
  */
-async function exec(sql) {
+async function exec(sql: string): Promise<any> {
   await pool.query(sql);
 }
 
@@ -205,16 +243,16 @@ async function exec(sql) {
  * Run multiple statements in a transaction.
  * Replaces: db.transaction(fn)()
  */
-async function transaction(fn) {
+async function transaction<T>(fn: (tx: DbSchnittstelle) => Promise<T>): Promise<T> {
   const client = await pool.connect();
   try {
     await client.query('BEGIN');
     // Provide a client-bound db interface for the transaction
-    const txDb = {
-      all:  (sql, p) => client.query(sql, p).then(r => r.rows),
-      get:  (sql, p) => client.query(sql, p).then(r => r.rows[0]),
-      run:  (sql, p) => client.query(sql, p).then(r => ({ changes: r.rowCount, lastID: (r.rows?.[0] as any)?.id })),
-      exec: (sql)    => client.query(sql),
+    const txDb: DbSchnittstelle = {
+      all:  (sql: string, p?: any[]) => client.query(sql, p).then(r => r.rows),
+      get:  (sql: string, p?: any[]) => client.query(sql, p).then(r => r.rows[0]),
+      run:  (sql: string, p?: any[]) => client.query(sql, p).then(r => ({ changes: r.rowCount, lastID: (r.rows?.[0] as any)?.id })),
+      exec: (sql: string)            => client.query(sql),
     };
     const result = await fn(txDb);
     await client.query('COMMIT');
@@ -274,8 +312,8 @@ async function transaction(fn) {
 let _schemaSql: string | null = null;
 function ladeSchema(): string {
   if (_schemaSql === null) {
-    _schemaSql = require('fs').readFileSync(
-      require('path').join(__dirname, 'schema.sql'), 'utf8') as string;
+    _schemaSql = fs.readFileSync(
+      path.join(__dirname, 'schema.sql'), 'utf8') as string;
   }
   return _schemaSql;
 }
@@ -543,11 +581,19 @@ async function frueherZurLaufzeitAngelegt() {
   // "muss geändert werden" markiert ist (must_change_password s.o.).
   const { rows } = await pool.query('SELECT COUNT(*) as c FROM users');
   if (parseInt(rows[0].c) === 0) {
-    const bcrypt = require('bcryptjs');
-    const useEnvPassword = !!process.env.ADMIN_PASSWORD;
+    // Erst in eine lokale Konstante lesen, dann daraus die Entscheidung
+    // ableiten. Vorher stand die Bedingung als eigene Boolesche
+    // (`!!process.env.ADMIN_PASSWORD`) daneben — fachlich richtig, aber
+    // TypeScript kann ueber eine separate Variable nicht verengen und sah
+    // weiterhin `string | undefined`. Sichtbar wurde das erst, als bcryptjs
+    // oben importiert statt per require() geholt wurde: Solange hashSync `any`
+    // war, prueft niemand sein Argument. Ein Fehler war es nicht — der Zweig
+    // ist durch dieselbe Bedingung geschuetzt —, beweisbar war es aber auch nicht.
+    const envPasswort = process.env.ADMIN_PASSWORD || '';
+    const useEnvPassword = envPasswort !== '';
     const plainPassword = useEnvPassword
-      ? process.env.ADMIN_PASSWORD
-      : require('crypto').randomBytes(15).toString('base64url'); // 20 Zeichen, URL-sicher
+      ? envPasswort
+      : crypto.randomBytes(15).toString('base64url'); // 20 Zeichen, URL-sicher
     const hash = bcrypt.hashSync(plainPassword, 10);
     await pool.query(
       `INSERT INTO users (username, password_hash, is_admin, is_active, email_verified, must_change_password)
@@ -721,7 +767,14 @@ async function indizesUndZusammenfassung() {
   // Zeit einer Seitenabfrage (372 ms → 190 ms).
   await pool.query(`CREATE INDEX IF NOT EXISTS idx_parts_group ON parts(user_id, (COALESCE(bl_part_number, part_number)), color_id)`).catch(e => console.error('[db] idx_parts_group:', e.message));
   // Vorberechnete Teile-Zusammenfassung inkl. Trigger zur Entwertung.
-  await require('../utils/partsSummary').initPartsSummary(pool).catch(e => console.error('[db] parts_summary:', e.message));
+  //
+  // require() ABSICHTLICH hier unten, nicht oben: utils/partsSummary importiert
+  // (ueber Umwege) auf db/database zurueck. Ein Top-Level-Import schloesse den
+  // Ladezyklus, und dann waere eines der beiden Module beim Laden des anderen
+  // noch halb leer — ein Fehler, der sich erst zur Laufzeit und nur manchmal
+  // zeigt. Nachgeprueft mit einer Zyklus-Analyse ueber alle Top-Level-Importe
+  // des Baums; im ganzen Projekt sind es 5 solche Stellen.
+  await require('../utils/partsSummary').initPartsSummary(pool).catch((e: any) => console.error('[db] parts_summary:', e.message));
   // Tabelle für bekannte Bild-Fehlanzeigen (Nachtrag 98). Sie ersetzt zwei
   // Merker, die je Prozess im Arbeitsspeicher lagen — im Cluster hiess das:
   // dasselbe fehlende Bild einmal PRO Arbeitsprozess holen, nach jedem Neustart
@@ -739,12 +792,17 @@ async function indizesUndZusammenfassung() {
  * Upsert a row.
  * upsert(table, { col: val, ... }, conflictCols, updateCols)
  */
-async function upsert(table, data, conflictCols, updateCols) {
+async function upsert(
+  table: string,
+  data: Record<string, any>,
+  conflictCols: string[],
+  updateCols?: string[] | null,
+): Promise<{ changes: number | null }> {
   const keys   = Object.keys(data);
   const vals   = Object.values(data);
   const nums   = keys.map((_, i) => `$${i + 1}`);
   const update = (updateCols || keys.filter(k => !conflictCols.includes(k)))
-    .map(k => `${k} = EXCLUDED.${k}`)
+    .map((k: string) => `${k} = EXCLUDED.${k}`)
     .join(', ');
 
   const sql = `
@@ -762,7 +820,7 @@ async function upsert(table, data, conflictCols, updateCols) {
 // Other workers poll (non-blocking) until migrating worker is done.
 // Falls back to direct execution after 30s timeout.
 async function initSchemaOnce() {
-  const LOCK_ID = require('../utils/lockNamespaces').LOCKS.SCHEMA_INIT;
+  const LOCK_ID = LOCKS.SCHEMA_INIT;
   // Fassung dieses Deployments. Der postinstall-Hook (scripts/bump-version.js)
   // setzt sie bei jeder Installation neu — sie ändert sich also genau dann,
   // wenn auch neue Migrationen dazugekommen sein können.
@@ -838,9 +896,9 @@ async function initSchemaOnce() {
     // bekommt seinen Schreib-Takt. Stünden sie in initSchema(), liefen sie nur
     // in dem einen Worker, der gerade migriert — genau der Fehler, der drei
     // Viertel aller Notizen verschwinden liess.
-    await require('../utils/imageMisses').initImageMisses()
+    await initImageMisses()
       .catch((e: any) => console.error('[db] image_misses:', e.message));
-    await require('../jobs/imageQueue').initImageQueue()
+    await initImageQueue()
       .catch((e: any) => console.error('[db] image_wanted:', e.message));
   } finally {
     await client.query(`SELECT pg_advisory_unlock(${LOCK_ID})`).catch(() => {});
@@ -865,7 +923,6 @@ async function initSchemaOnce() {
  * in getSets, während die Bildarbeit lief.
  */
 async function eigeneVerbindung() {
-  const { Client } = require('pg');
   const c = new Client({ ...baseConfig });
   await c.connect();
   return c;

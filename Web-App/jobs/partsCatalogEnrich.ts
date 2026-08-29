@@ -76,17 +76,32 @@ async function apiGet(url, rbKey) {
  *        vergessenen Aufruf für Minifiguren unbemerkt in den falschen Ordner
  *        schreiben lassen — genau der Fehler, den die Trennung beheben sollte.
  */
-async function downloadImage(imgUrl, partNum, colorId, kind: 'part' | 'minifig') {
+// Rueckgabetyp ausgeschrieben (Nachtrag 155): Das `new Promise(...)` weiter
+// unten hatte keinen Typparameter, damit leitete TypeScript `unknown` ab und
+// die Funktion lieferte in der Summe `string | null | {}`. Aufgefallen ist das
+// erst, als server.ts diese Datei nicht mehr als rohes require() (also `any`)
+// holte: Dort wird das Ergebnis an generateThumb(webPfad: string) gereicht.
+// Jedes resolve() hier drin liefert entweder den Web-Pfad oder null — genau
+// das steht jetzt da.
+async function downloadImage(
+  imgUrl: string | null | undefined,
+  partNum: string,
+  colorId: number,
+  kind: 'part' | 'minifig',
+): Promise<string | null> {
   if (!imgUrl) return null;
   const IMG_DIR = kind === 'minifig' ? MINIFIG_IMAGES_DIR : PART_IMAGES_DIR;
   const webBase = kind === 'minifig' ? '/images/minifigs/' : '/images/parts/';
   fs.mkdirSync(IMG_DIR, { recursive: true });
-  const ext  = (imgUrl.split('.').pop().split('/')[0] || 'jpg').substring(0, 4);
+  // ?. statt Behauptung: pop() liefert laut Typ `string | undefined`. Bei einem
+  // nicht-leeren imgUrl (die Wache oben) kann das nie eintreten — beweisen
+  // laesst es sich aber nicht, und der Rueckfall auf 'jpg' stand ohnehin schon da.
+  const ext  = (imgUrl.split('.').pop()?.split('/')[0] || 'jpg').substring(0, 4);
   const file = `${partNum}_${colorId}.${ext}`;
   const dest = path.join(IMG_DIR, file);
   const rel  = `${webBase}${file}`;
   if (fs.existsSync(dest)) return rel;
-  return new Promise(resolve => {
+  return new Promise<string | null>(resolve => {
     const req = https.get(imgUrl, { family: 4, headers: {
       'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
       'Referer':    'https://rebrickable.com/',

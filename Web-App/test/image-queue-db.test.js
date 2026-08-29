@@ -296,7 +296,21 @@ test('die Bild-Tabellen kommen aus einer MIGRATION, nicht aus initSchema', () =>
   // Tabelle beim Laden des Bestands noch nicht) …
   const dbSrc = fs.readFileSync(path.join(ROOT, 'db', 'database.ts'), 'utf8');
   const nachMigration = dbSrc.indexOf('const applied = await runMigrations(client)');
-  const initAufruf = dbSrc.indexOf("require('../utils/imageMisses').initImageMisses()");
+  // Gesucht wird der AUFRUF, nicht seine Schreibweise (Nachtrag 155).
+  //
+  // Vorher stand hier die Zeichenkette
+  // "require('../utils/imageMisses').initImageMisses()" woertlich. Als der
+  // require() durch einen Top-Level-Import ersetzt wurde — weil ein rohes
+  // require() `any` liefert und damit jeden Zugriff darauf ungeprueft laesst —,
+  // fand indexOf() nichts mehr und lieferte -1. Der Test wurde rot, obwohl die
+  // gepruefte Zusage („der Aufruf steht NACH den Migrationen") unveraendert
+  // galt: Er stand vorher wie nachher an derselben Stelle im Ablauf.
+  //
+  // Beide Schreibweisen zaehlen jetzt, denn beide sind derselbe Aufruf.
+  const initAufruf = Math.max(
+    dbSrc.indexOf("require('../utils/imageMisses').initImageMisses()"),
+    dbSrc.indexOf('await initImageMisses()'),
+  );
   assert.ok(nachMigration > 0 && initAufruf > nachMigration,
     'initImageMisses() läuft vor den Migrationen — dann fehlt die Tabelle noch');
   // … und ausserhalb von initSchema(), damit sie JEDEN Arbeitsprozess erreichen.
@@ -334,7 +348,14 @@ test('der Puffer wird in JEDEM Arbeitsprozess weggeschrieben', () => {
 
   // Und initImageQueue() muss tatsächlich überall laufen.
   const dbInit = fs.readFileSync(path.join(ROOT, 'db', 'database.ts'), 'utf8');
-  assert.match(dbInit, /jobs\/imageQueue'\)\.initImageQueue\(\)/,
+  // UMFORMULIERT in Nachtrag 155 — aus demselben Grund wie zwoelf Zeilen
+  // tiefer bei start(), nur hatte diese Nachbarzusicherung den Fehler behalten:
+  // Sie verlangte die Schreibweise `jobs/imageQueue').initImageQueue()`, also
+  // ausdruecklich ein require(). Als daraus ein Top-Level-Import wurde, wurde
+  // sie rot — obwohl der Aufruf an derselben Stelle steht und dieselbe Wirkung
+  // hat. Gemeint ist: initImageQueue() wird beim Aufbau der Datenbank
+  // aufgerufen. Das prueft jetzt der Aufruf selbst, gleich welcher Herkunft.
+  assert.match(dbInit, /\binitImageQueue\(\)/,
     'initImageQueue() wird nicht beim Aufbau der Datenbank aufgerufen');
 
   // Das ABARBEITEN dagegen gehört auf den Primärprozess — sonst rechnen

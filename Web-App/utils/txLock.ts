@@ -26,6 +26,7 @@
  * hängenbleiben.
  */
 import * as db from '../db/database';
+import type { DbSchnittstelle } from '../db/database';
 
 /**
  * Führt fn in einer Transaktion aus, die exklusiven Zugriff auf den
@@ -42,7 +43,9 @@ import * as db from '../db/database';
  * @returns {Promise<T>}
  */
 async function withInventoryLock(userId: number, scopeKey: string | number, fn: (tx: any) => any) {
-  return db.transaction(async (tx: any) => {
+  // tx: DbSchnittstelle statt any — der Typ steht seit Nachtrag 155 in
+  // db/database. Mit `any` war jeder Aufruf hier drin ungeprueft.
+  return db.transaction(async (tx: DbSchnittstelle) => {
     // hashtext() liefert int4 — zusammen mit der userId ergibt das den
     // zweiteiligen Lock-Schlüssel. Kollisionen zweier verschiedener Sets
     // desselben Nutzers sind theoretisch möglich und harmlos: Dann
