@@ -78,9 +78,25 @@ declare global {
  * Zusicherung einmal geschrieben und ist an die Middleware gebunden, nicht an
  * die Erinnerung des Nächsten.
  */
+/**
+ * ── Warum auch username und isAdmin zugesichert sind (Nachtrag 155) ─────────
+ *
+ * Zuerst stand hier nur `{ userId: number }`. Das reichte nicht: In
+ * POST /change-password werden alle drei Felder gelesen und an
+ * establishSession() weitergegeben, die sie als Pflichtfelder verlangt.
+ * TypeScript meldete zu Recht "string | undefined ist nicht string".
+ *
+ * Die Zusicherung ist nachgeprueft, nicht behauptet: `session.userId` wird im
+ * ganzen Baum an KEINER Stelle direkt gesetzt — der einzige Weg hinein ist
+ * establishSession(), und die schreibt userId, username und isAdmin immer
+ * gemeinsam (drei Aufrufstellen, alle in routes/auth.ts). Wer eine davon
+ * eines Tages aufteilt, muss diesen Typ mit anfassen; genau dafuer steht er
+ * hier und nicht als `!` an der Aufrufstelle.
+ */
 declare global {
   type LoggedInRequest = import('express').Request & {
     session: import('express-session').Session &
-             Partial<import('express-session').SessionData> & { userId: number };
+             Partial<import('express-session').SessionData> &
+             { userId: number; username: string; isAdmin: boolean };
   };
 }

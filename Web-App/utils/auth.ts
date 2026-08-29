@@ -15,6 +15,53 @@
 
 import * as db from '../db/database';
 import crypto from 'crypto';
+import type { Request, Response, NextFunction } from 'express';
+
+/**
+ * ── Warum diese Typen hier stehen (Nachtrag 155) ─────────────────────────────
+ *
+ * Diese Datei hatte 20 implizite `any` — mehr als jede andere sicherheitsnahe
+ * Stelle im Baum. Das ist die schlechteste Stelle dafuer: Wer hier einen
+ * Feldnamen vertippt (`user.is_activ`), bekommt `undefined`, und `undefined`
+ * ist falsy — die Sperre eines deaktivierten Kontos faellt still aus. Genau so
+ * ein Fehler ist ohne Typpruefung nicht zu sehen.
+ *
+ * Die JSDoc darunter beschrieb die Typen laengst korrekt; sie standen nur nicht
+ * in den Signaturen. Hier wird also nichts erfunden, sondern aufgeschrieben,
+ * was schon dokumentiert war.
+ *
+ * Ein Kommentar an resolveUserId behauptete "any bis @types/express installiert
+ * ist" — @types/express IST installiert, samt @types/express-session. Der
+ * Vorbehalt war ueberholt.
+ */
+
+/** Eine Zeile aus api_tokens JOIN users, wie validateToken sie liefert. */
+export interface TokenBenutzer {
+  /** api_tokens.user_id ist INTEGER; der pg-Treiber liefert dafuer `number` (nachgemessen). */
+  user_id: number;
+  username?: string;
+  is_admin?: number | boolean;
+  expires_at?: string | Date | null;
+  last_used?: string | Date | null;
+  [k: string]: unknown;
+}
+
+/** Was der In-Memory-Cache je Token haelt. */
+interface CacheEintrag {
+  user: TokenBenutzer;
+  cachedAt: number;
+  lastUsedWritten: number;
+  dbKey: string;
+}
+
+/** Die Konto-Felder, die assertLoginAllowed tatsaechlich prueft. */
+export interface KontoZustand {
+  is_active?: number | boolean | null;
+  email_verified?: number | boolean | null;
+  email?: string | null;
+  is_admin?: number | boolean | null;
+  [k: string]: unknown;
+}
 
 /**
  * Tokens werden seit diesem Stand NUR als SHA-256-Hash gespeichert — bei
@@ -25,7 +72,7 @@ import crypto from 'crypto';
  * Klartext-Token — nur die DB-Seite ist gehasht.
  */
 /** @param {string} token @returns {string} SHA-256-Hex */
-function hashToken(token) {
+function hashToken(token: string): string {
   return crypto.createHash('sha256').update(token).digest('hex');
 }
 
@@ -61,7 +108,7 @@ function hashToken(token) {
  *   kein Token kam, oder `{ok:false, grund:'ungueltig'}` in allen anderen
  *   Fällen (unbekannt, abgelaufen, bereits eingelöst).
  */
-async function verifiziereEmailToken(token) {
+async function verifiziereEmailToken(token: unknown): Promise<{ ok: boolean; grund?: string; userId?: number }> {
   // Leerstring und Whitespace zählen wie „nicht da" — sonst schlüge unten
   // der Hash eines leeren Strings in der DB auf, und das ist ein gültiger
   // SHA-256-Wert, der theoretisch in einer Zeile stehen könnte.
@@ -114,7 +161,7 @@ function _pruneCache() {
  * @param {string|null|undefined} token
  * @returns {Promise<TokenUser|null>}
  */
-async function validateToken(token) {
+async function validateToken(token: string | null | undefined): Promise<TokenBenutzer | null> {
   if (!token) return null;
   const now = Date.now();
 
@@ -160,7 +207,7 @@ async function validateToken(token) {
 
 // last_used gedrosselt und fire-and-forget aktualisieren — blockiert den
 // Request-Pfad nicht und schreibt höchstens alle 5 Minuten pro Token.
-function _touchLastUsed(token, entry) {
+function _touchLastUsed(token: string, entry: CacheEintrag): void {
   const now = Date.now();
   if (now - entry.lastUsedWritten < LAST_USED_THROTTLE) return;
   entry.lastUsedWritten = now;
@@ -172,7 +219,7 @@ function _touchLastUsed(token, entry) {
  * Beim Logout/Token-Löschen aufrufen, damit der Token sofort ungültig wird.
  * @param {string|null|undefined} token
  */
-function invalidateToken(token) { if (token) _tokenCache.delete(token); }
+function invalidateToken(token: string | null | undefined): void { if (token) _tokenCache.delete(token); }
 
 // ── Gemeinsame Login-/Konto-Regeln ────────────────────────────────────────────
 // Vorher existierten diese Regeln nur im Webapp-Login (routes/auth.ts).
@@ -197,18 +244,22 @@ function invalidateToken(token) { if (token) _tokenCache.delete(token); }
  * @param {any} req
  * @param {{userId:number, username:string, isAdmin:boolean}} data
  */
-function establishSession(req, data) {
+function establishSession(req: Request, data: { userId: number; username: string; isAdmin: boolean }): Promise<void> {
   return new Promise((resolve, reject) => {
     if (!req.session?.regenerate) {   // z. B. in Tests ohne Session-Middleware
-      Object.assign(req.session || (req.session = {}), data);
+      // Bewusste Ausnahme, benannt statt weggedrueckt: Ohne
+      // express-session-Middleware gibt es kein Session-Objekt mit id/cookie.
+      // Dieser Zweig existiert NUR fuer Tests — im Betrieb steht die
+      // Middleware immer davor, und dann greift regenerate() darueber.
+      Object.assign(req.session || (req.session = {} as typeof req.session), data);
       return resolve(undefined);
     }
-    req.session.regenerate((err) => {
+    req.session.regenerate((err?: any) => {
       if (err) return reject(err);
       Object.assign(req.session, data);
       // Sofort schreiben, damit die neue ID auch dann gültig ist, wenn der
       // Client unmittelbar danach eine zweite Anfrage stellt.
-      req.session.save((e2) => (e2 ? reject(e2) : resolve(undefined)));
+      req.session.save((e2?: any) => (e2 ? reject(e2) : resolve(undefined)));
     });
   });
 }
@@ -246,7 +297,7 @@ const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
  * die E-Mail-Adresse eines anderen als Benutzernamen eintragen und dessen
  * Anmeldung an sich ziehen.
  */
-function isValidLoginIdentifier(value) {
+function isValidLoginIdentifier(value: unknown): boolean {
   const v = String(value || '');
   return USERNAME_RE.test(v) || (v.length <= 254 && EMAIL_RE.test(v));
 }
@@ -255,7 +306,7 @@ function isValidLoginIdentifier(value) {
  * Prüft die Konto-Vorbedingungen NACH erfolgreicher Passwortprüfung.
  * @returns {{status:number, error:string, unverified?:boolean}|null} null = Login erlaubt
  */
-function assertLoginAllowed(user) {
+function assertLoginAllowed(user: KontoZustand): { status: number; error: string; unverified?: boolean } | null {
   if (user.is_active === 0 || user.is_active === false)
     return { status: 403, error: 'Konto deaktiviert. Bitte Administrator kontaktieren.' };
   if ((user.email_verified === 0 || user.email_verified === false) && user.email && !user.is_admin)
@@ -268,7 +319,7 @@ function assertLoginAllowed(user) {
  * DELETE /api/settings/tokens/:tokenId alle Tokens des Nutzers auf einmal.
  * @param {string} s
  */
-function escapeLike(s) { return String(s ?? '').replace(/([%_\\])/g, '\\$1'); }
+function escapeLike(s: unknown): string { return String(s ?? '').replace(/([%_\\])/g, '\\$1'); }
 
 /**
  * Pfade, auf denen ?token=… als Authentifizierung zulässig bleibt.
@@ -307,10 +358,10 @@ const TOKEN_QUERY_ALLOWED = [
  * dort). Auf allen anderen Routen zählt ausschliesslich der
  * Authorization-Header.
  *
- * @param {any} req Express-Request (any bis @types/express installiert ist)
+ * @param req Express-Request
  * @returns {Promise<number|null>} null wenn nicht authentifiziert
  */
-async function resolveUserId(req) {
+async function resolveUserId(req: Request): Promise<number | null> {
   if (req.session?.userId) return req.session.userId;
   const auth = req.headers.authorization || '';
   let token: string | null = auth.startsWith('Bearer ') ? auth.slice(7) : null;
@@ -322,7 +373,11 @@ async function resolveUserId(req) {
   }
   if (!token) return null;
   const user = await validateToken(token).catch(() => null);
-  return user ? parseInt(user.user_id) : null;
+  // Vorher stand hier parseInt(user.user_id). Das war schon immer wirkungslos:
+  // Die Spalte ist INTEGER, der Treiber liefert eine Zahl, und parseInt haette
+  // sie erst in einen String verwandelt. Aufgefallen ist es erst, als der Typ
+  // dastand.
+  return user ? user.user_id : null;
 }
 
 /**
@@ -336,7 +391,7 @@ async function resolveUserId(req) {
  *        (unverändertes Verhalten aller übrigen Routen).
  */
 function loginOrTokenGuard(opts: { timeoutMs?: number } = {}) {
-  return async function requireLoginOrToken(req, res, next) {
+  return async function requireLoginOrToken(req: Request, res: Response, next: NextFunction) {
     if (req.session?.userId) return next();
     const timer = opts.timeoutMs
       ? setTimeout(() => {
@@ -359,7 +414,7 @@ const requireLoginOrToken = loginOrTokenGuard();
  * @param {string|null|undefined} token
  * @returns {Promise<void>}
  */
-async function deleteToken(token) {
+async function deleteToken(token: string): Promise<void> {
   if (!token) return;
   await db.run('DELETE FROM api_tokens WHERE token = $1', [hashToken(token)]);
   invalidateToken(token);
@@ -402,11 +457,11 @@ async function deleteToken(token) {
  * mehr passt. Der Store speichert derzeit eine Zahl; der robustere Ausdruck
  * kostet nichts.
  */
-async function revokeAllSessions(userId) {
+async function revokeAllSessions(userId: number): Promise<void> {
   await db.run("DELETE FROM user_sessions WHERE sess::jsonb->>'userId' = $1", [String(userId)]);
 }
 
-async function revokeAllTokens(userId) {
+async function revokeAllTokens(userId: number): Promise<void> {
   // Ohne .catch(() => {}): Das Verwerfen aller Tokens ist ein Sicherheitsschritt
   // (Passwortwechsel, Zurücksetzen). Scheitert es still, meldet der Aufrufer
   // Erfolg, während die alten Tokens weitergelten — und der geleerte Cache

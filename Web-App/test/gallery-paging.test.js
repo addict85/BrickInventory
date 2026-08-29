@@ -50,7 +50,24 @@ const HTML  = fs.readFileSync(path.join(ROOT, 'public', 'index.html'), 'utf8');
 test('die Sortierung ist eine Whitelist, kein interpolierter Parameter', () => {
   assert.match(H_SRC, /const SET_SORTS = \{/,
     'Ohne Whitelist landet der Wert eines <select> ungeprüft in der ORDER BY-Klausel');
-  assert.match(H_SRC, /SET_SORTS\[sort\] \|\| SET_SORTS\.added_desc/,
+  // Geprüft wird die AUSSAGE, nicht der Wortlaut (Nachtrag 155).
+  //
+  // Vorher stand hier der Ausdruck `SET_SORTS[sort] || SET_SORTS.added_desc`
+  // wörtlich. Als dieser Zugriff auf ausTabelle() umgestellt wurde — weil der
+  // direkte Zugriff auch GEERBTE Eigenschaften lieferte und `|| Vorgabe` die
+  // eben NICHT abfing —, wurde der Test rot, obwohl die geprüfte Zusage nicht
+  // nur galt, sondern strenger geworden war.
+  //
+  // Zwei Dinge werden verlangt, beide als Sachverhalt:
+  //   1. Kein direkter Index auf die Tabelle mehr (das war die Lücke).
+  //   2. Der Wert geht durch ausTabelle() MIT Vorgabe (das ist die Zusage).
+  // Das Verhalten von ausTabelle() selbst prüft test/austabelle.test.js.
+  const ohneKommentare = H_SRC.split('\n')
+    .filter(z => !z.trim().startsWith('//') && !z.trim().startsWith('*'))
+    .join('\n');
+  assert.ok(!/SET_SORTS\s*\[/.test(ohneKommentare),
+    'SET_SORTS darf nicht direkt indiziert werden — geerbte Eigenschaften kämen sonst durch');
+  assert.match(ohneKommentare, /ausTabelle\(\s*SET_SORTS\s*,\s*sort\s*,\s*SET_SORTS\.added_desc\s*\)/,
     'Unbekannte Werte müssen auf die Vorgabe fallen');
   // Der Suchbegriff gehört als Parameter gebunden, nicht in den String
   const fn = H_SRC.slice(H_SRC.indexOf('async function getSets'), H_SRC.indexOf('async function getSetConditionAggregate'));

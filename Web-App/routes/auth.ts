@@ -9,6 +9,7 @@ import { checkLoginAllowed, recordLoginFailure, recordLoginSuccess, ipThrottle }
 import crypto from 'crypto';
 import { strictBool } from '../utils/validate';
 import { sendPasswordResetMail, sendVerificationMail } from './mailer';
+import type { Request, Response, NextFunction } from 'express';
 
 /**
  * Fester bcrypt-Hash für Logins mit unbekanntem Benutzernamen.
@@ -20,11 +21,11 @@ import { sendPasswordResetMail, sendVerificationMail } from './mailer';
  */
 const DUMMY_HASH = bcrypt.hashSync('nonexistent-account-placeholder', BCRYPT_ROUNDS);
 
-function requireLogin(req, res, next) {
+function requireLogin(req: Request, res: Response, next: NextFunction) {
   if (!req.session?.userId) return res.status(401).json({ success: false, error: 'Nicht angemeldet' });
   next();
 }
-function requireAdmin(req, res, next) {
+function requireAdmin(req: Request, res: Response, next: NextFunction) {
   if (!req.session?.userId) return res.status(401).json({ success: false, error: 'Nicht angemeldet' });
   if (!req.session?.isAdmin && req.session?.isAdmin !== true) return res.status(403).json({ success: false, error: 'Nur Admins' });
   next();
@@ -313,7 +314,14 @@ router.delete('/users/:id', requireAdmin, async (req, res) => {
 });
 
 // Change password
-router.post('/change-password', requireLogin, async (req, res) => {
+// req als LoggedInRequest: Die Route haengt hinter requireLogin, also IST
+// session.userId gesetzt. Ohne diese Angabe meldete TypeScript an drei Stellen
+// "number | undefined ist nicht number" — und die naheliegende Antwort waere
+// dreimal `req.session.userId!` gewesen. Das haette die Meldung beseitigt und
+// die Pruefung gleich mit: Rutschte die Route eines Tages VOR requireLogin,
+// sagte niemand mehr etwas. Der Typ bindet die Zusicherung an die Middleware,
+// nicht an die Erinnerung des Naechsten. Begruendung: types/augmentations.d.ts.
+router.post('/change-password', requireLogin, async (req: LoggedInRequest, res) => {
   const { current, newPassword } = req.body;
   if (!current || !newPassword) return res.status(400).json({ success: false, error: 'Alle Felder erforderlich' });
   try {
@@ -360,7 +368,7 @@ router.post('/change-password', requireLogin, async (req, res) => {
 // zurück, damit bestehende Installationen ohne Konfiguration weiterlaufen;
 // ein einmaliger Log-Hinweis in Produktion macht auf die Lücke aufmerksam.
 let _baseUrlWarned = false;
-function getBaseUrl(req) {
+function getBaseUrl(req: Request): string {
   if (process.env.APP_BASE_URL) return process.env.APP_BASE_URL.replace(/\/+$/, '');
   if (process.env.NODE_ENV === 'production' && !_baseUrlWarned) {
     _baseUrlWarned = true;
