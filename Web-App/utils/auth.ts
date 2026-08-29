@@ -29,6 +29,62 @@ function hashToken(token) {
   return crypto.createHash('sha256').update(token).digest('hex');
 }
 
+/**
+ * E-Mail-Verifikation: einen Token einlösen.
+ *
+ * ── Warum diese Funktion existiert (Nachtrag 154) ───────────────────────────
+ * Dieselben acht Zeilen standen ZWEIMAL im Baum: in server.ts unter
+ * `GET /verify` (der Link aus der Mail) und in routes/auth.ts unter
+ * `GET /api/auth/verify`. Beide Kopien enthielten die Hash-Regel, die
+ * Ablaufprüfung UND das Abräumen der Token-Felder. Wer die Regel ändert,
+ * ändert sie an einer Stelle und übersieht die andere — genau die Bauart von
+ * Fehler, gegen die dieses Projekt sonst überall angeht (Logik einmal
+ * implementieren, über mehrere Routen anbieten).
+ *
+ * Geteilt wird nur die LOGIK. Die Antwortform bleibt Sache der Aufrufer: der
+ * Browser-Link leitet weiter, die API antwortet mit JSON. Das ist kein
+ * Zufall, sondern der Unterschied zwischen einem Klick in einer Mail und
+ * einem Aufruf aus einem Programm.
+ *
+ * ── Warum „abgelaufen" und „unbekannt" NICHT unterschieden werden ───────────
+ * Beides ergibt `ungueltig`. Die Abfrage prüft Hash, Ablauf und
+ * `email_verified = 0` in EINEM Zug; ein bereits eingelöster Token findet
+ * deshalb ebenfalls keine Zeile. Das ist Absicht: Wer von aussen erfährt, ob
+ * ein Token existiert und nur abgelaufen ist, kann raten, ob eine Adresse ein
+ * Konto hat. Dieselbe Überlegung wie bei der neutralen Antwort in
+ * /forgot-password. Wer hier später doch unterscheiden will, handelt sich
+ * genau diese Preisgabe ein.
+ *
+ * @param {string|undefined|null} token Der ROHE Token aus der URL, ungehasht.
+ * @returns {Promise<{ok: boolean, grund?: string, userId?: number}>}
+ *   `{ok:true, userId}` bei Erfolg, sonst `{ok:false, grund:'fehlt'}` wenn gar
+ *   kein Token kam, oder `{ok:false, grund:'ungueltig'}` in allen anderen
+ *   Fällen (unbekannt, abgelaufen, bereits eingelöst).
+ */
+async function verifiziereEmailToken(token) {
+  // Leerstring und Whitespace zählen wie „nicht da" — sonst schlüge unten
+  // der Hash eines leeren Strings in der DB auf, und das ist ein gültiger
+  // SHA-256-Wert, der theoretisch in einer Zeile stehen könnte.
+  if (token === undefined || token === null || String(token).trim() === '') {
+    return { ok: false, grund: 'fehlt' };
+  }
+  // verification_token liegt seit dem Token-Hardening nur noch als SHA-256 in
+  // der DB. Klartext nachzuschlagen fände nie etwas.
+  const user = await db.get(
+    'SELECT id FROM users WHERE verification_token = $1 AND token_expires > NOW() AND email_verified = 0',
+    [hashToken(String(token))]
+  );
+  if (!user) return { ok: false, grund: 'ungueltig' };
+  // Token-Felder mit abräumen: Ein zweiter Klick auf denselben Link soll
+  // NICHT nochmals „erfolgreich" melden, und ein liegengebliebener Hash wäre
+  // ein unnötig lange gültiges Geheimnis in der Datenbank.
+  await db.run(
+    'UPDATE users SET email_verified=1, verification_token=NULL, token_expires=NULL WHERE id=$1',
+    [user.id]
+  );
+  return { ok: true, userId: user.id };
+}
+
 const TOKEN_TTL_MS      = 60 * 1000;       // Cache-Gültigkeit
 const LAST_USED_THROTTLE = 5 * 60 * 1000;  // last_used max. alle 5 Min schreiben
 
@@ -437,6 +493,7 @@ async function purgeExpiredTokens() {
 
 export {
   validateToken, invalidateToken, resolveUserId, requireLoginOrToken, hashToken, deleteToken,
+  verifiziereEmailToken,
   revokeAllTokens, revokeAllSessions, purgeExpiredTokens, loginOrTokenGuard, TOKEN_IDLE_DAYS,
   assertLoginAllowed, escapeLike, establishSession, BCRYPT_ROUNDS, USERNAME_RE,
   EMAIL_RE, isValidLoginIdentifier,

@@ -4,7 +4,7 @@ const router  = express.Router();
 import bcrypt from 'bcryptjs';
 import * as db from '../db/database';
 import { handleRouteError, logAndContinue } from '../utils/httpError';
-import { hashToken, assertLoginAllowed, establishSession, revokeAllTokens, revokeAllSessions, deleteToken, BCRYPT_ROUNDS, USERNAME_RE, EMAIL_RE, isValidLoginIdentifier } from '../utils/auth';
+import { hashToken, verifiziereEmailToken, assertLoginAllowed, establishSession, revokeAllTokens, revokeAllSessions, deleteToken, BCRYPT_ROUNDS, USERNAME_RE, EMAIL_RE, isValidLoginIdentifier } from '../utils/auth';
 import { checkLoginAllowed, recordLoginFailure, recordLoginSuccess, ipThrottle } from '../utils/loginLimiter';
 import crypto from 'crypto';
 import { strictBool } from '../utils/validate';
@@ -534,19 +534,28 @@ router.post('/register', ipThrottle('register', 5, 60 * 60 * 1000), async (req, 
 
 // ── GET /api/auth/verify?token=... ────────────────────────────────────────────
 router.get('/verify', async (req, res) => {
-  const { token } = req.query;
-  if (!token) return res.status(400).json({ success: false, error: 'Token fehlt.' });
+  // Die Logik steht seit Nachtrag 154 in utils/auth.verifiziereEmailToken() —
+  // vorher wortgleich hier UND in server.ts.
+  //
+  // ── Antwortform berichtigt (Nachtrag 154) ─────────────────────────────────
+  // Diese Route hat vorher auf dem Erfolgs- und dem Ungültig-Pfad
+  // `res.redirect('/?verified=…')` geschickt und nur bei fehlendem Token JSON.
+  // Eine Route unter /api, die mit 302 auf eine HTML-Seite verweist, ist für
+  // jeden Programm-Aufrufer unbrauchbar: fetch() folgt der Weiterleitung und
+  // bekommt die ~189 KB index.html statt einer Antwort — dieselbe Falle, die
+  // weiter unten schon einmal als 404-Regel für /api behoben wurde.
+  //
+  // Gefahrlos umzustellen, weil die Route KEINEN Aufrufer hat: Der Link in der
+  // Verifikationsmail zeigt auf /verify (routes/mailer.ts), das Frontend ruft
+  // sie nicht auf und die Android-App auch nicht. Wer sie künftig benutzt,
+  // bekommt jetzt das, was eine API liefern muss.
   try {
-    const user = await db.get(
-      "SELECT id FROM users WHERE verification_token = $1 AND token_expires > NOW() AND email_verified = 0",
-      [hashToken(String(token))]
-    );
-    if (!user) return res.redirect('/?verified=invalid');
-    await db.run(
-      'UPDATE users SET email_verified=1, verification_token=NULL, token_expires=NULL WHERE id=$1',
-      [user.id]
-    );
-    res.redirect('/?verified=1');
+    const e = await verifiziereEmailToken(req.query.token);
+    if (e.ok) return res.json({ success: true });
+    return res.status(e.grund === 'fehlt' ? 400 : 410).json({
+      success: false,
+      error: e.grund === 'fehlt' ? 'Token fehlt.' : 'Token ungültig oder abgelaufen.',
+    });
   } catch (e) { handleRouteError(res, e); }
 });
 
