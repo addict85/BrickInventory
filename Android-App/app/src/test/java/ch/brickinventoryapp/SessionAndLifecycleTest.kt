@@ -42,23 +42,9 @@ class SessionAndLifecycleTest {
 
     // ── Abgelaufene Sitzung (HTTP 401) ───────────────────────────────────────
 
-    /**
-     * Alle Dateien der Datenschicht-Anlaufstelle als EIN Text (Nachtrag 155).
-     *
-     * Vorher stand hier "data/repository/BrickRepository.kt" — ein Dateiname.
-     * Die 78 Funktionen lagen in einer Klasse mit 519 Zeilen; sie sind seither
-     * als Erweiterungsfunktionen nach Sachgebieten verteilt. Gemeint ist DIE
-     * ANLAUFSTELLE, nicht eine Datei.
-     */
-    private fun repositoryQuelle(): String =
-        java.io.File("src/main/java/ch/brickinventoryapp/data/repository")
-            .listFiles { f -> f.name.startsWith("BrickRepository") && f.extension == "kt" }
-            .orEmpty().sortedBy { it.name }
-            .joinToString("\n") { it.readText() }
-
     @Test
     fun `safeCall markiert 401 als unauthorized`() {
-        val src = code(repositoryQuelle())
+        val src = code(read("data/repository/BrickRepository.kt"))
         assert(src.contains("val unauthorized: Boolean")) {
             "Result.Error kennt kein unauthorized-Flag — ein 401 ist dann nicht " +
                 "von einem gewöhnlichen Serverfehler unterscheidbar"
@@ -71,13 +57,8 @@ class SessionAndLifecycleTest {
 
     @Test
     fun `cached greift bei 401 NICHT auf den Plattenspeicher zurueck`() {
-        val src = code(repositoryQuelle())
-        // Anker ohne Sichtbarkeitsmodifikator (Nachtrag 155): cached() ist
-        // `internal` geworden, damit die ausgelagerten Erweiterungsfunktionen
-        // herankommen. Geprueft ist hier die REIHENFOLGE im Rumpf — erst die
-        // Sperrpruefung, dann der Cache-Rueckfall —, nicht wer die Funktion
-        // sehen darf.
-        val body = src.substringAfter("suspend fun <T : Any> cached(")
+        val src = code(read("data/repository/BrickRepository.kt"))
+        val body = src.substringAfter("private suspend fun <T : Any> cached(")
             .substringBefore("\n    }")
         val guard = body.indexOf("unauthorized")
         val fallback = body.indexOf("cache.get(")

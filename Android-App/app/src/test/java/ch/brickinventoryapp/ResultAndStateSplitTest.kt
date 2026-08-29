@@ -48,23 +48,9 @@ class ResultAndStateSplitTest {
 
     // ── Result ohne Loading ──────────────────────────────────────────────────
 
-    /**
-     * Alle Dateien der Datenschicht-Anlaufstelle als EIN Text (Nachtrag 155).
-     *
-     * Vorher stand hier "data/repository/BrickRepository.kt" — ein Dateiname.
-     * Die 78 Funktionen lagen in einer Klasse mit 519 Zeilen; sie sind seither
-     * als Erweiterungsfunktionen nach Sachgebieten verteilt. Gemeint ist DIE
-     * ANLAUFSTELLE, nicht eine Datei.
-     */
-    private fun repositoryQuelle(): String =
-        java.io.File("src/main/java/ch/brickinventoryapp/data/repository")
-            .listFiles { f -> f.name.startsWith("BrickRepository") && f.extension == "kt" }
-            .orEmpty().sortedBy { it.name }
-            .joinToString("\n") { it.readText() }
-
     @Test
     fun `Result hat genau zwei Varianten`() {
-        val src = code(repositoryQuelle())
+        val src = code(read("data/repository/BrickRepository.kt"))
         assert(!src.contains("Loading")) {
             "Result.Loading ist zurück. Die Variante wurde nie erzeugt — safeCall() " +
                 "liefert nur Success oder Error — erzwang aber in jedem `when` einen " +
