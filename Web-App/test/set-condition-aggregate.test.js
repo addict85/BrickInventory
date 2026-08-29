@@ -23,6 +23,7 @@ const path = require('node:path');
 
 const ROOT = path.join(__dirname, '..');
 const { ohneKommentare } = require('./helpers/sources');
+const { pruefeParameter } = require('./helpers/sources');
 
 test('die Aggregat-Regel steht nur noch an einer Stelle', () => {
   const h = require('./helpers/sources').handlerQuelle();
@@ -30,8 +31,8 @@ test('die Aggregat-Regel steht nur noch an einer Stelle', () => {
     'Der gemeinsame Helfer fehlt');
   // Weder getSets()/getSet() noch die manuellen Listen dürfen die Regel je
   // eigen ausformulieren — sie steht in conditionFromAcquisitions().
-  assert.match(h, /function conditionFromAcquisitions\(acqCount, usedCount, stored\)/,
-    'Der gemeinsame Regel-Helfer fehlt');
+  pruefeParameter(h, 'conditionFromAcquisitions', ['acqCount', 'usedCount', 'stored'],
+    'der gemeinsame Regel-Helfer fehlt');
   // Kommentare ausblenden: Der Erklärtext am Helfer zitiert die Regel selbst.
   const code = h.replace(/\/\*[\s\S]*?\*\//g, '').replace(/\/\/[^\n]*/g, '');
   const inlineRules = [...code.matchAll(/usedCount > 0 \? 'U'/g)];
@@ -120,8 +121,16 @@ test('der im Formular gewählte Zustand kommt beim Anlegen an', () => {
   // Kommentare entfernen: Der Erklärtext nennt addSet() selbst.
   const src = raw.replace(/\/\/[^\n]*/g, '').replace(/\/\*[\s\S]*?\*\//g, '');
 
-  assert.match(src, /async function addSet\(setNumber, quantity, userId, sendProgress, purchasePrice, condition = null\)/,
-    'Signatur von addSet hat sich geändert');
+  // Auf die Parameter geprüft, nicht auf den Wortlaut des Kopfes: Typannotationen
+  // sagen über die Zusicherung nichts (siehe funktionsKopf() im Helfer).
+  const { funktionsKopf } = require('./helpers/sources');
+  const addSetKopf = funktionsKopf(src, 'addSet');
+  for (const p of ['setNumber', 'quantity', 'userId', 'sendProgress', 'purchasePrice', 'condition']) {
+    assert.match(addSetKopf, new RegExp(`\\b${p}\\b`),
+      `addSet nimmt '${p}' nicht mehr entgegen: ${addSetKopf}`);
+  }
+  assert.match(addSetKopf, /condition[^,)]*=\s*null/,
+    `Der Zustand muss die Vorgabe null behalten: ${addSetKopf}`);
 
   // Jeder addSet-Aufruf muss sechs Argumente übergeben. Klammerbewusst zählen:
   // Ein Aufruf enthält eine Pfeilfunktion mit eigenen Kommas und Semikolons.
@@ -209,8 +218,8 @@ test('manuelle Teile und Minifiguren nutzen dieselbe Zustandsregel wie Sets', ()
   // Vorgabewert stehen, die Erfassungen wurden nie befragt.
   const src = require('./helpers/sources').handlerQuelle();
 
-  assert.match(src, /async function applyManualCondition\(userId, rows, kind\)/,
-    'Gemeinsame Regel für manuelle Einträge fehlt');
+  pruefeParameter(src, 'applyManualCondition', ['userId', 'rows', 'kind'],
+    'gemeinsame Regel für manuelle Einträge fehlt');
 
   // Dieselbe Regel wie getSetConditionAggregate: eine gebrauchte Erfassung genügt
   // Der Ausschnitt endet jetzt an der Funktion selbst, nicht an der nächsten:
@@ -394,11 +403,12 @@ test('neue Sets holen den richtigen Zustand, nicht den Standard', () => {
   // Gemeldeter Fall: CSV-Zeile "10214-1,1,,U,01.08.2026" (kein Preis, Zustand
   // U) bekam CHF 216.24 (den Neupreis) statt CHF 135.11 (Gebraucht).
   const job = fs.readFileSync(path.join(ROOT, 'jobs', 'priceJob.ts'), 'utf8');
-  assert.match(job, /async function conditionsNeededFor\(setNumber, userId, hintCondition = null\)/,
+  const { hatParameter } = require('./helpers/sources');
+  assert.ok(hatParameter(job, 'conditionsNeededFor', 'hintCondition', true),
     'Der Hinweis-Parameter fehlt');
   assert.match(job, /if \(hintCondition === 'U' \|\| hintCondition === 'N'\) list\.push\(hintCondition\);/,
     'Der Hinweis muss in die Liste der zu holenden Zustände einfliessen');
-  assert.match(job, /async function refreshPriceForSet\(setNumber, userId, hintCondition = null\)/,
+  assert.ok(hatParameter(job, 'refreshPriceForSet', 'hintCondition', true),
     'refreshPriceForSet muss den Hinweis annehmen');
   assert.match(job, /conditionsNeededFor\(setNumber, userId, hintCondition\)/,
     'refreshPriceForSet muss den Hinweis weiterreichen');
@@ -519,8 +529,8 @@ test('genau EINE Zustandsauflösung für Einzelsets — resolveSetCondition', ()
   const fc = fs.readFileSync(path.join(ROOT, 'utils', 'financeCalc.ts'), 'utf8');
   // Nimmt seit der Haushaltssicht auch eine Liste von Konten entgegen — der
   // Hauptaccount fragt den Zustand eines Sets ab, das einem Unterkonto gehört.
-  assert.match(fc, /async function resolveSetCondition\(uid: number \| number\[\], setNumber: string\)/,
-    'Der gemeinsame Helfer fehlt');
+  pruefeParameter(fc, 'resolveSetCondition', ['uid', 'setNumber'],
+    'der gemeinsame Helfer fehlt');
   assert.match(fc, /resolveSetCondition,\n\};/, 'Der Helfer muss exportiert sein');
 
   // Beide Aufrufer müssen ihn tatsächlich importieren, nicht eine eigene
@@ -575,8 +585,15 @@ test('parts_summary-Neuaufbau ist über eine Datenbank-Sperre vor Cluster-Worker
   const fn = src.slice(src.indexOf('export async function rebuild'),
                        src.indexOf('export async function rebuild') + 3000);
 
-  assert.match(fn, /pg_try_advisory_xact_lock\(77, \$1\)/,
+  // Auf die ART der Sperre geprüft, nicht auf die Zahl: Seit Nachtrag 149
+  // stehen alle Namensräume in utils/lockNamespaces.ts, und dass sie sich
+  // nicht überschneiden, prüft test/lock-namespaces-db.test.js gegen eine
+  // echte Datenbank. Hier zählt nur, dass die Sperre eine DATENBANK-Sperre ist
+  // — die alte In-Memory-Map schützte nur innerhalb eines Workers.
+  assert.match(fn, /pg_try_advisory_xact_lock\(/,
     'Die Sperre muss prozessübergreifend in der Datenbank liegen, nicht nur im Node-Prozess');
+  assert.match(fn, /LOCKS\.TEILE_SUMMARY/,
+    'Der Namensraum gehört aus utils/lockNamespaces.ts, nicht eingetippt');
   assert.match(fn, /if \(!lock\?\.ok\) \{\s*\/\//,
     'Ohne die Sperre muss der Aufbau abgebrochen werden, statt zu kollidieren');
   // Sperre muss VOR dem DELETE erworben werden, sonst nützt sie nichts.
@@ -675,8 +692,15 @@ test('der Hintergrund-Job für Teile und Minifiguren erzeugt jetzt Vorschaubilde
 // ═══════════════════════════════════════════════════════════════════════════
 // Welche Plaketten die Kachel zeigt (hardened-91)
 // ═══════════════════════════════════════════════════════════════════════════
+// utils/handlers.ts gibt es seit Nachtrag 133 nicht mehr (aufgeteilt nach
+// utils/handlers/{shared,parts,sets,minifigs,stats}.ts). Der Aufruf blieb hier
+// stehen und liess die DATEI beim Laden sterben — die zehn Prüfungen unterhalb
+// dieser Zeile liefen dadurch nie, ohne dass jemand ein rotes Ergebnis sah,
+// solange in dist/ noch eine alte handlers.js lag. handlerModul() ist genau
+// dafür da: den GEGENSTAND nennen, nicht den Ablageort.
+const { buildAndRequire, handlerModul } = require('./helpers/sources');
 const { conditionsFromAcquisitions, conditionFromAcquisitions } =
-  require('./helpers/sources').buildAndRequire()('utils/handlers.js');
+  handlerModul(buildAndRequire());
 
 test('gemischte Erfassungen ergeben ZWEI Plaketten', () => {
   // Der gemeldete Fall: ein Exemplar neu, eines gebraucht. Bisher zeigte die

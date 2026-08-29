@@ -91,7 +91,7 @@ router.get('/admin/image-diag/:setNumber', requireApiAdmin, async (req: AuthedRe
 
     // 2. Was liegt auf der Platte?
     const safe = sn.replace(/[^a-z0-9-]/gi, '_');
-    const datei = (p) => {
+    const datei = (p: string) => {
       try { const st = fs.statSync(p); return { vorhanden: true, bytes: st.size, geaendert: st.mtime }; }
       catch (_) { return { vorhanden: false }; }
     };
@@ -171,7 +171,7 @@ router.post('/admin/forget-image-misses', requireApiAdmin, async (req: AuthedReq
     const sets = Array.isArray(req.body?.set_numbers) ? req.body.set_numbers.map(String) : null;
     let entfernt = 0;
     if (sets?.length) {
-      entfernt = await vergissFehlend(sets.map(sn => 'set:' + sn));
+      entfernt = await vergissFehlend(sets.map((sn: string) => 'set:' + sn));
     } else {
       // Nicht die ganze Tabelle: Die Vorschau-Vermerke haben einen anderen
       // Zweck (eine Verkleinerung, die nie gelingen kann) und sollen nicht
@@ -763,7 +763,7 @@ router.get('/admin/jobs', requireApiAdmin, async (req: AuthedRequest, res) => {
   let pdfRunning = 0, pdfDone = 0;
   try {
     const _fs2 = require('fs'), _path2 = require('path');
-    const pdfFiles = _fs2.readdirSync(PDF_JOB_DIR).filter(f => f.endsWith('.json'));
+    const pdfFiles = _fs2.readdirSync(PDF_JOB_DIR).filter((f: string) => f.endsWith('.json'));
     for (const f of pdfFiles) {
       try {
         const j = JSON.parse(_fs2.readFileSync(_path2.join(PDF_JOB_DIR, f), 'utf8'));

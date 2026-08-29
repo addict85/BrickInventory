@@ -72,7 +72,7 @@ function bildUserAgent(): string {
   return `BrickInventoryManager/${appVersion()} (self-hosted; +https://github.com/brickinventory)`;
 }
 
-async function downloadSetImage(url, setNumber, info?: { status?: number }) {
+async function downloadSetImage(url: string, setNumber: string, info?: { status?: number }) {
   if (!url) return null;
   try {
     const safe = setNumber.replace(/[^a-z0-9-]/gi, '_');
@@ -80,7 +80,7 @@ async function downloadSetImage(url, setNumber, info?: { status?: number }) {
     const relPath = `/images/sets/${safe}.jpg`;
     if (await fs.promises.access(localPath).then(() => true, () => false)) return relPath;
     const buf = await new Promise<Buffer | null>(resolve => {
-      const tryGet = (u, rest) => {
+      const tryGet = (u: string, rest: number) => {
         https.get(u, { timeout:10000, family: 4, headers:{
           'User-Agent': bildUserAgent(),
           'Referer':    'https://rebrickable.com/',

@@ -41,6 +41,7 @@ const ESBUILD_VERSION = '0.25.12';
 const outdirArg = process.argv.indexOf('--outdir');
 const OUTDIR = outdirArg !== -1 ? path.resolve(process.argv[outdirArg + 1]) : null;
 
+/** @param {string} dir @param {string[]} out */
 function walkTs(dir, out) {
   for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
     const abs = path.join(dir, entry.name);
@@ -67,6 +68,7 @@ function collectTsFiles() {
   return files;
 }
 
+/** @param {string} tsFile */
 function outPathFor(tsFile) {
   const rel = path.relative(ROOT, tsFile).replace(/\.ts$/, '.js');
   return OUTDIR ? path.join(OUTDIR, rel) : path.join(ROOT, rel);
@@ -135,6 +137,7 @@ execFileSync(cmd, [
 // Datei als "verwaist" ein — die Bilder blieben liegen, ohne dass irgendetwas
 // fehlschlug.
 const ASSET_EXT = ['.sql'];
+/** @param {string} dir @param {string} out */
 function copyAssets(dir, out) {
   if (!fs.existsSync(dir)) return 0;
   let n = 0;

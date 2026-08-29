@@ -66,7 +66,7 @@ const MASK_CHAR = '\u2022';
  * @param {string|null|undefined} value
  * @returns {string}
  */
-function maskSecret(value) {
+function maskSecret(value: string | null | undefined) {
   const v = String(value ?? '');
   if (!v) return '';
   return MASK_CHAR.repeat(12) + v.slice(-4);
@@ -78,7 +78,7 @@ function maskSecret(value) {
  * @param {unknown} value
  * @returns {boolean}
  */
-function isMaskedValue(value) {
+function isMaskedValue(value: string | null | undefined) {
   return typeof value === 'string' && value.includes(MASK_CHAR);
 }
 
@@ -90,12 +90,12 @@ function isMaskedValue(value) {
  * @param {boolean} isAdmin
  * @returns {Record<string, string>}
  */
-function sanitizeGlobal(global, isAdmin) {
+function sanitizeGlobal(global: any, isAdmin: boolean) {
   const out: any = {};
   for (const [k, v] of Object.entries(global)) {
     if (SECRET_KEYS.has(k)) {
       // Nicht-Admins sehen den Schlüssel überhaupt nicht — auch nicht maskiert.
-      if (isAdmin) out[k] = maskSecret(v);
+      if (isAdmin) out[k] = maskSecret(v as string | null | undefined);
       continue;
     }
     out[k] = v;
@@ -121,7 +121,7 @@ function sanitizeGlobal(global, isAdmin) {
  * Jetzt lesen beide durch dieselbe Funktion; eine neue Verpackung kann die
  * Maskierung nicht mehr versehentlich umgehen.
  */
-async function readSettings(userId, isAdmin) {
+async function readSettings(userId: number, isAdmin: boolean) {
   const raw: any = {};
   (await db.all('SELECT key, value FROM global_settings')).forEach(r => { raw[r.key] = r.value; });
   const global = sanitizeGlobal(raw, !!isAdmin);
@@ -131,13 +131,13 @@ async function readSettings(userId, isAdmin) {
   return { ...global, ...user };
 }
 
-router.get('/', async (req, res) => {
+router.get('/', async (req: LoggedInRequest, res) => {
   try {
-    res.json({ success: true, ...(await readSettings(req.session.userId, req.session.isAdmin)) });
+    res.json({ success: true, ...(await readSettings(req.session.userId, !!req.session.isAdmin)) });
   } catch (e) { handleRouteError(res, e); }
 });
 
-router.post('/', async (req, res) => {
+router.post('/', async (req: LoggedInRequest, res) => {
   const globalKeys = ['bricklink_consumer_key','bricklink_consumer_secret','bricklink_token',
     'bricklink_token_secret','brickset_api_key','rebrickable_api_key','price_job_interval_minutes',
     'price_cache_ttl','api_limit_rebrickable','api_limit_bricklink','api_limit_brickset',
@@ -194,9 +194,9 @@ router.post('/', async (req, res) => {
 // /raw — dieselben Werte wie `/`, nur unter `settings` verpackt. Die
 // Einstellungsseite lädt hierüber. Inhalt kommt aus readSettings(), damit die
 // Maskierung nicht an der Verpackung vorbeigeht (siehe dort).
-router.get('/raw', async (req, res) => {
+router.get('/raw', async (req: LoggedInRequest, res) => {
   try {
-    res.json({ success: true, settings: await readSettings(req.session.userId, req.session.isAdmin) });
+    res.json({ success: true, settings: await readSettings(req.session.userId, !!req.session.isAdmin) });
   } catch (e) { handleRouteError(res, e); }
 });
 
@@ -252,7 +252,7 @@ router.get('/export/data', async (req, res) => {
     res.setHeader('Content-Disposition', `attachment; filename="brickinventory-export-${dateStr}.zip"`);
 
     const archive = archiver('zip', { zlib: { level: 9 } });
-    archive.on('error', err => { console.error('[export-zip]', err.message); res.status(500).end(); });
+    archive.on('error', (err: any) => { console.error('[export-zip]', err.message); res.status(500).end(); });
     archive.pipe(res);
     archive.append('\uFEFF' + setsCsv,  { name: 'sets.csv' });
     archive.append('\uFEFF' + partsCsv, { name: 'teile.csv' });
@@ -262,7 +262,7 @@ router.get('/export/data', async (req, res) => {
 });
 
 const importUpload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 1024 * 1024 } });
-router.post('/import', importUpload.single('file'), async (req, res) => {
+router.post('/import', importUpload.single('file'), async (req: LoggedInRequest, res) => {
   if (!req.file) return res.status(400).json({ success: false, error: 'Keine Datei' });
   let config;
   try { config = JSON.parse(req.file.buffer.toString('utf-8')); }

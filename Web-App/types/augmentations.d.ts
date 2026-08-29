@@ -61,3 +61,26 @@ declare global {
     apiUser: { user_id: number; is_admin: number; username?: string; [k: string]: any };
   };
 }
+
+/**
+ * Request NACH requireLogin.
+ *
+ * ── Dieselbe Begründung wie bei AuthedRequest ───────────────────────────────
+ * `session.userId` ist oben mit gutem Grund optional deklariert: Auf einer
+ * beliebigen Anfrage ist niemand angemeldet. Hinter requireLogin IST das Feld
+ * gesetzt — die Middleware setzt es voraus oder antwortet mit 401, ein Handler
+ * dahinter läuft nie ohne.
+ *
+ * Ohne diesen Typ landet man bei `req.session.userId!` an jeder Stelle, an der
+ * eine Funktion eine echte Benutzer-ID verlangt. Das drückt die Meldung weg
+ * und die Prüfung gleich mit: Käme derselbe Handler eines Tages VOR
+ * requireLogin in die Kette, sagte niemand mehr etwas. Als Typ steht die
+ * Zusicherung einmal geschrieben und ist an die Middleware gebunden, nicht an
+ * die Erinnerung des Nächsten.
+ */
+declare global {
+  type LoggedInRequest = import('express').Request & {
+    session: import('express-session').Session &
+             Partial<import('express-session').SessionData> & { userId: number };
+  };
+}

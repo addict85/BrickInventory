@@ -18,6 +18,7 @@ const test   = require('node:test');
 const assert = require('node:assert/strict');
 const fs     = require('node:fs');
 const path   = require('node:path');
+const { pruefeParameter } = require('./helpers/sources');
 
 const ROOT  = path.join(__dirname, '..');
 const read  = f => fs.readFileSync(path.join(ROOT, f), 'utf8');
@@ -167,8 +168,8 @@ test('Teile und Minifiguren stehen in den Finanzen je Kaufpreis in einer Zeile',
     'Alle drei Bewertungen müssen die Einzelzeilen mitliefern');
 
   const fin = read('public/js/04-finance.js');
-  assert.match(fin, /function pmRows\(it, label\)/,
-    'Ein Eintrag ergibt eine Zeile je Erfassung');
+  pruefeParameter(fin, 'pmRows', ['it', 'label'],
+    'ein Eintrag ergibt eine Zeile je Erfassung');
   assert.match(fin, /const acqs = it\.acquisitions \|\| \[\];/,
     'Ohne Erfassungen (Altbestand) bleibt es bei der einen Zeile');
 });

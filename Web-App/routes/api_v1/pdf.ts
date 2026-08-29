@@ -261,7 +261,7 @@ router.post('/sets/partslist-pdf', requireToken, async (req: AuthedRequest, res)
              WHERE part_number = ANY($1) AND image_local IS NOT NULL`,
             [partNums]
           ).catch(() => []);
-          const freshMap = new Map(fresh.map(r => [`${r.part_number}|${r.color_id}`, r.image_local]));
+          const freshMap = new Map<string, any>(fresh.map(r => [`${r.part_number}|${r.color_id}`, r.image_local] as [string, any]));
           for (const p of parts) {
             if (p.is_fig) continue;
             const key = `${p.part_number}|${p.color_id||0}`;
@@ -277,7 +277,7 @@ router.post('/sets/partslist-pdf', requireToken, async (req: AuthedRequest, res)
              WHERE fig_number = ANY($1) AND image_local IS NOT NULL`,
             [figNums]
           ).catch(() => []);
-          const freshMap = new Map(fresh.map(r => [r.fig_number, r.image_local]));
+          const freshMap = new Map<string, any>(fresh.map(r => [r.fig_number, r.image_local] as [string, any]));
           // VORHER: _pdfPath.join(__dirname, '..', 'data', 'part_images') — nur EIN
           // '..'. Von routes/api_v1/ aus zeigte das auf routes/data/part_images,
           // ein Verzeichnis, das es nie gab. Die Existenzprüfungen darunter
@@ -492,7 +492,10 @@ async function buildPdf(sets: any, parts: any[]) {
   }
   const dedupedParts = Object.values(deduped);
 
-  const colorOrder = [], byColor = {};
+  // Ausgeschrieben: `const colorOrder = []` leitet TypeScript als never[] ab,
+  // und jeder Zugriff darauf meldet dann etwas über die Ableitung statt über
+  // den Code.
+  const colorOrder: string[] = [], byColor: Record<string, any[]> = {};
   for (const p of dedupedParts) {
     if (!byColor[p.color_name]) { byColor[p.color_name] = []; colorOrder.push(p.color_name); }
     byColor[p.color_name].push(p);

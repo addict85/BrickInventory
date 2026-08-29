@@ -169,7 +169,7 @@ async function applyManualCondition(userId, rows, kind) {
   const byKey = new Map<string, any>(acq.map((a: any) => [
     isPart ? `${a.part_number}|${a.color_id || 0}` : String(a.fig_number),
     a,
-  ]));
+  ] as [string, any]));
 
   return rows.map(r => {
     const a = byKey.get(keyOf(r));
@@ -208,7 +208,7 @@ async function withOwners(uids: number[], rows: any[]) {
   if (uids.length < 2 || !rows?.length) return rows;
   const owners = await db.all('SELECT id, username FROM users WHERE id = ANY($1)', [uids])
     .catch(() => []);
-  const nameById = new Map(owners.map((u: any) => [parseInt(u.id), u.username]));
+  const nameById = new Map<number, any>(owners.map((u: any) => [parseInt(u.id), u.username] as [number, any]));
   return rows.map(r => r.user_id == null ? r : {
     ...r,
     owners: [{ id: parseInt(r.user_id), username: nameById.get(parseInt(r.user_id)) || String(r.user_id) }],

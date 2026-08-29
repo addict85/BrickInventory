@@ -39,14 +39,15 @@ class RateLimiter {
       if (!this.queue.length) return;
       this.lastCall = Date.now();
       const resolve = this.queue.shift();
-      resolve();
+      // this.queue.length ist zwei Zeilen vorher geprüft; shift() weiss das nicht.
+      if (resolve) resolve();
       // Schedule next if more waiting
       if (this.queue.length) this._schedule();
     }, wait);
   }
 
   // Call when a 429 is received — pauses queue for the specified duration
-  throttle(waitMs) {
+  throttle(waitMs: number) {
     this.lastCall = Date.now() + waitMs - this.windowMs;
     // Re-schedule in case queue is waiting
     if (!this._scheduled && this.queue.length) this._schedule();
@@ -70,7 +71,7 @@ class DailyLimiter {
     this.count = 0;
   }
 
-  setMax(newMax) { this.max = newMax; }
+  setMax(newMax: number) { this.max = newMax; }
 
   tryConsume() {
     const today = new Date().toISOString().slice(0, 10);
@@ -210,7 +211,8 @@ class ConcurrentRateLimiter {
     this.active++;
     this.lastStart = Date.now();
     const resolve = this.queue.shift();
-    resolve();
+    // Wie oben: die Länge ist im Wächter am Methodenanfang geprüft.
+    if (resolve) resolve();
     // If there are more queued and concurrency allows, schedule next
     if (this.queue.length && this.active < this.maxConcurrent) {
       this._timer = setTimeout(() => { this._timer = null; this._drain(); }, this.intervalMs);
@@ -225,7 +227,7 @@ const cdnImageLimiter = new ConcurrentRateLimiter(2, 1000);
  * Parse throttle wait time from Rebrickable 429 response body.
  * Response: {"detail": "Request was throttled. Expected available in 2 seconds."}
  */
-function parseThrottleWait(body) {
+function parseThrottleWait(body: string) {
   try {
     const data = typeof body === 'string' ? JSON.parse(body) : body;
     const match = data?.detail?.match(/(\d+)\s*second/);

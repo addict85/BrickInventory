@@ -20,7 +20,7 @@ async function getRbKey() {
   return (await db.get("SELECT value FROM global_settings WHERE key='rebrickable_api_key'"))?.value || '';
 }
 
-function httpsGetRobust(url, headers = {}, timeoutMs = 60000): Promise<{ status: number | undefined; body: string; buffer: Buffer }> {
+function httpsGetRobust(url, headers = {}, timeoutMs = 60000): Promise<{ status: number; body: string; buffer: Buffer }> {
   return new Promise((resolve, reject) => {
     let attempts = 0;
     const attempt = (u) => {
@@ -46,7 +46,7 @@ function httpsGetRobust(url, headers = {}, timeoutMs = 60000): Promise<{ status:
         if (res.statusCode === 403) { res.resume(); return resolve({ status:403, body:'', buffer:Buffer.alloc(0) }); }
         const chunks: any[] = [];
         res.on('data', d => chunks.push(d));
-        res.on('end', () => { const buffer = Buffer.concat(chunks); resolve({ status: res.statusCode, body: buffer.toString('utf-8'), buffer }); });
+        res.on('end', () => { const buffer = Buffer.concat(chunks); resolve({ status: res.statusCode ?? 0, body: buffer.toString('utf-8'), buffer }); });
         res.on('error', err => { if (attempts < 3) setTimeout(() => attempt(u), 1000); else reject(err); });
       });
       req.setTimeout(timeoutMs, () => { req.destroy(); if (attempts < 2) { setTimeout(() => attempt(u), 1000); } else reject(new Error(`Timeout: ${u.substring(0,120)}`)); });

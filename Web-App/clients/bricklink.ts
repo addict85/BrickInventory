@@ -41,7 +41,7 @@ function buildAuthHeader(method, baseUrl, queryParams, creds) {
   return `OAuth realm="", ${parts}`;
 }
 
-function httpsGet(url, authHeader): Promise<{ status: number | undefined; body: string }> {
+function httpsGet(url, authHeader): Promise<{ status: number; body: string }> {
   return new Promise((resolve, reject) => {
     const parsed = new URL(url);
     https.get({ hostname: parsed.hostname, path: parsed.pathname + parsed.search,
@@ -51,7 +51,7 @@ function httpsGet(url, authHeader): Promise<{ status: number | undefined; body: 
     }, res => {
       let body = '';
       res.on('data', d => body += d);
-      res.on('end', () => resolve({ status: res.statusCode, body }));
+      res.on('end', () => resolve({ status: res.statusCode ?? 0, body }));
     }).on('error', reject).on('timeout', () => reject(new Error('BrickLink timeout')));
   });
 }

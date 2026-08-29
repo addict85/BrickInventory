@@ -112,3 +112,43 @@ test('jedes späte require() holt einen Namen, den es wirklich gibt', () => {
   assert.ok(geprueft > 60, `Nur ${geprueft} Namen geprüft — das Muster greift nicht mehr`);
   assert.deepEqual(fehlend, [], `require() ohne passenden Export:\n  ${fehlend.join('\n  ')}`);
 });
+
+// ═══════════════════════════════════════════════════════════════════════════
+// Dieselbe Frage für die TESTS: laden sie Module, die es noch gibt?
+// ═══════════════════════════════════════════════════════════════════════════
+/**
+ * Der Anlass (Nachtrag 148): set-condition-aggregate.test.js holte auf Zeile
+ * 679 `utils/handlers.js` — aufgeteilt seit Nachtrag 133. Der Aufruf steht auf
+ * DATEIEBENE, also starb die ganze Datei beim Laden; die zehn Prüfungen
+ * darunter liefen nie mehr. Sichtbar war das nur an einer Zahl („nicht ok" für
+ * die Datei), und solange in einem gewachsenen dist/ noch eine alte
+ * handlers.js lag, nicht einmal daran.
+ *
+ * Diese Prüfung stellt die einzige Frage, die zählt: Gibt es die Datei, die
+ * ein Test aus dist/ holen will? Ein Umbau, der ein Modul aufteilt oder
+ * umbenennt, wird dadurch an der Stelle rot, an der er etwas übersehen hat —
+ * nicht erst dort, wo jemand die fehlenden Prüfungen vermisst.
+ */
+test('kein Test holt ein Modul aus dist/, das es nicht gibt', () => {
+  buildAndRequire();                       // stellt sicher, dass dist/ steht
+  const dir = path.join(ROOT, 'test');
+  const fehlend = [];
+  let geprueft = 0;
+
+  for (const f of fs.readdirSync(dir).filter(n => n.endsWith('.test.js'))) {
+    const src = ohneKommentare(fs.readFileSync(path.join(dir, f), 'utf8'));
+    // Bewusst nicht an EINER Aufrufform festgemacht: Die Tests holen mal über
+    // `buildAndRequire()('x')`, mal über einen zwischengespeicherten `req('x')`.
+    // Gesucht wird deshalb, was beide gemeinsam haben — der Modulpfad selbst.
+    for (const m of src.matchAll(
+      /['"]((?:utils|routes|db|jobs|clients|startup)\/[A-Za-z0-9_/-]+\.js|server\.js)['"]/g)) {
+      geprueft++;
+      if (!fs.existsSync(path.join(DIST, m[1]))) fehlend.push(`${f}: ${m[1]}`);
+    }
+  }
+
+  // Untergrenze aus demselben Grund wie oben: Bricht das Suchmuster, prüfte
+  // diese Regel stillschweigend nichts mehr.
+  assert.ok(geprueft > 10, `Nur ${geprueft} Modulpfade gefunden — das Muster greift nicht mehr`);
+  assert.deepEqual(fehlend, [], `Test holt ein Modul, das es in dist/ nicht gibt:\n  ${fehlend.join('\n  ')}`);
+});

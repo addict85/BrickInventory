@@ -16,12 +16,12 @@ async function getApiKey() {
   return (await db.get("SELECT value FROM global_settings WHERE key='brickset_api_key'"))?.value || '';
 }
 
-function httpsGetOnce(url): Promise<{ status: number | undefined; body: string }> {
+function httpsGetOnce(url): Promise<{ status: number; body: string }> {
   return new Promise((resolve, reject) => {
     const attempt = (u) => {
       const req = https.get(u, { timeout:30000, family: 4, headers:{'User-Agent':'BrickInventory/2026.06.17'} }, res => {
         if (res.statusCode===301||res.statusCode===302) { res.resume(); return attempt(res.headers.location); }
-        let body=''; res.on('data',d=>body+=d); res.on('end',()=>resolve({status:res.statusCode,body}));
+        let body=''; res.on('data',d=>body+=d); res.on('end',()=>resolve({status:res.statusCode ?? 0,body}));
       });
       // Netzwerkfehler (ECONNRESET, ETIMEDOUT, ENOTFOUND, socket hang up, …) sind
       // transient → markieren, damit sie NICHT als permanenter Fehler gelten.
@@ -39,7 +39,7 @@ function httpsGetOnce(url): Promise<{ status: number | undefined; body: string }
 
 // Leichter Sofort-Retry für kurzzeitige Aussetzer, bevor auf die (tägliche)
 // Retry-Queue zurückgefallen wird. Nur transiente Fehler werden wiederholt.
-async function httpsGet(url): Promise<{ status: number | undefined; body: string }> {
+async function httpsGet(url): Promise<{ status: number; body: string }> {
   const MAX_ATTEMPTS = 2;
   for (let i = 1; ; i++) {
     try {
@@ -106,7 +106,7 @@ const MAX_QUOTA_RETRIES = 30;
  *        Fehler der Gegenseite (5xx) — die haben mit dem Tageskontingent nichts
  *        zu tun, und einen Tag zu warten ist dafür sinnlos lang.
  */
-async function enqueueRetry(setNumber, errorMsg = null, soon = false) {
+async function enqueueRetry(setNumber, errorMsg: string | null = null, soon = false) {
   const when = new Date();
   if (!soon) when.setDate(when.getDate() + 1);
   const retryDate = when.toISOString().slice(0, 10);

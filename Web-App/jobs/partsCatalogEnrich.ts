@@ -306,7 +306,7 @@ async function downloadSetImages(setNumber, waitIfBusy = false) {
   // Set-Bilder gleichzeitig laden. Advisory-Lock auf einer DEDIZIERTEN
   // Verbindung, damit acquire/release auf derselben Session laufen (ein über
   // den Pool geholter Lock würde beim Idle-Timeout unzuverlässig freigegeben).
-  let lockClient = null, haveXlock = false;
+  let lockClient: import('pg').PoolClient | null = null, haveXlock = false;
   try { lockClient = await db.pool.connect(); } catch (_) { lockClient = null; }
   if (lockClient) {
     // waitIfBusy=true (z. B. PDF-Erzeugung): auf den anderen Worker WARTEN, bis
@@ -315,7 +315,7 @@ async function downloadSetImages(setNumber, waitIfBusy = false) {
     const deadline = Date.now() + 180000; // max. 3 Min auf anderen Worker warten
     while (true) {
       try {
-        const { rows } = await lockClient.query('SELECT pg_try_advisory_lock(42, hashtext($1)) AS ok', [n]);
+        const { rows } = await lockClient.query('SELECT pg_try_advisory_lock($1, hashtext($2)) AS ok', [LOCKS.BILD_DOWNLOAD, n]);
         haveXlock = !!rows[0]?.ok;
       } catch (_) { haveXlock = false; }
       if (haveXlock) break;
@@ -449,7 +449,7 @@ async function downloadSetImages(setNumber, waitIfBusy = false) {
     const _rest = _pendingAdded - _flushed;
     if (_rest > 0) await monitor.imgDlAdd(-_rest).catch(() => {});
     if (lockClient) {
-      if (haveXlock) await lockClient.query('SELECT pg_advisory_unlock(42, hashtext($1))', [n]).catch(() => {});
+      if (haveXlock) await lockClient.query('SELECT pg_advisory_unlock($1, hashtext($2))', [LOCKS.BILD_DOWNLOAD, n]).catch(() => {});
       lockClient.release();
     }
     resolveLock();
@@ -601,7 +601,8 @@ async function enrichSetMinifigs(setNumber) {
 //
 // downloadSetImages() hat für genau dieses Problem längst einen Lock (42 je
 // Set); dieser Weg lädt aber über downloadFile() direkt und lief ungeschützt.
-const REDL_LOCK = 57;   // Namensraum siehe Liste in jobs/instructionQueue.ts
+const { LOCKS } = require('../utils/lockNamespaces');
+const REDL_LOCK = LOCKS.BILDER_NACHLAUF;
 let _redlRunning = false;
 
 /**

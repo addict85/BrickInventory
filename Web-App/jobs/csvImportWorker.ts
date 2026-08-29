@@ -144,7 +144,8 @@ function mkInsert(table, cols, onConflict) {
  * Tabellennamen: Verschiedene Tabellen dürfen weiterhin parallel importiert
  * werden, dieselbe Tabelle nicht zweimal gleichzeitig.
  */
-const CSV_IMPORT_LOCK = 58;
+const { LOCKS } = require('../utils/lockNamespaces');
+const CSV_IMPORT_LOCK = LOCKS.CSV_IMPORT;
 
 /** Tabellenname → stabile 32-Bit-Zahl für den zweiten Sperrschlüssel. */
 function lockKeyFor(tabelle: string): number {

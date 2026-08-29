@@ -18,7 +18,7 @@ import { clampPageSize, conditionFromAcquisitions, conditionsFromAcquisitions, a
  * geht in EINE Richtung, es entsteht also kein Kreis.
  */
 
-async function getStats(userId) {
+async function getStats(userId: number | number[]) {
   // Blickfeld statt einer einzelnen ID: Ein Hauptkonto sieht (und ändert)
   // auch die Daten seiner Unterkonten, alle anderen nur ihre eigenen. Die
   // Liste kommt von scopeIds() in utils/household.ts — hier wird sie nur

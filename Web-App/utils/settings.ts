@@ -14,7 +14,7 @@ import * as db from '../db/database';
  * @param {string} [fallback]
  * @returns {Promise<string>}
  */
-async function getSetting(userId, key, fallback) {
+async function getSetting(userId: number, key: string, fallback?: any) {
   const u = await db.get('SELECT value FROM user_settings WHERE user_id = $1 AND key = $2', [userId, key]);
   if (u?.value) return u.value;
   const g = await db.get('SELECT value FROM global_settings WHERE key = $1', [key]);
@@ -27,7 +27,7 @@ async function getSetting(userId, key, fallback) {
  * @param {string|null} [fallback]
  * @returns {Promise<string|null>}
  */
-async function getGlobalSetting(key, fallback = null) {
+async function getGlobalSetting(key: string, fallback: any = null) {
   const g = await db.get('SELECT value FROM global_settings WHERE key = $1', [key]).catch(() => null);
   return g?.value ?? fallback;
 }
@@ -61,7 +61,7 @@ async function getGlobalSetting(key, fallback = null) {
  * @param {string} key
  * @param {string} value
  */
-async function setUserSetting(userId, key, value) {
+async function setUserSetting(userId: number, key: string, value: any) {
   const v = String(value);
   let vorher = null;
   if (key === 'currency') {
@@ -100,7 +100,7 @@ async function setUserSetting(userId, key, value) {
  * @param {number|string} userId
  * @returns {Promise<'N'|'U'>}
  */
-async function effectiveCondition(userId): Promise<'N' | 'U'> {
+async function effectiveCondition(userId: number): Promise<'N' | 'U'> {
   const u = await db.get(
     "SELECT value FROM user_settings WHERE user_id=$1 AND key='user_default_condition'", [userId]
   ).catch(() => null);

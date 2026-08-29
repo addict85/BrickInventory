@@ -21,7 +21,7 @@ function run() {
   }
 
   const now = new Date();
-  const p = (n, w = 2) => String(n).padStart(w, '0');
+  const p = (/** @type {number} */ n, w = 2) => String(n).padStart(w, '0');
   const yyyy = now.getFullYear();
   const mm   = p(now.getMonth() + 1);
   const dd   = p(now.getDate());

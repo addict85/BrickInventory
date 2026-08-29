@@ -257,7 +257,7 @@ async function getSets(userId, query: any = {}) {
   if (uids.length > 1) {
     const owners = await db.all('SELECT id, username FROM users WHERE id = ANY($1)', [uids])
       .catch(() => []);
-    const nameById = new Map(owners.map((u: any) => [parseInt(u.id), u.username]));
+    const nameById = new Map<number, any>(owners.map((u: any) => [parseInt(u.id), u.username] as [number, any]));
     for (const row of mapped as any[]) {
       row.owners = (row.owner_ids || []).map((id: number) => ({ id, username: nameById.get(id) || String(id) }));
     }

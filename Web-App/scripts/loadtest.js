@@ -190,6 +190,7 @@ async function main() {
 
   // ── Durchgang 2: USERS gleichzeitig, DAUER_S lang ──────────────────────────
   console.log(`\n${USERS} gleichzeitige Nutzer, ${DAUER_S} s …`);
+  /** @type {Record<string, number[]>} */
   const messung = Object.fromEntries(PFADE.map(([n]) => [n, []]));
   const fehler = {};
   const ende = Date.now() + DAUER_S * 1000;

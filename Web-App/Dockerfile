@@ -1,5 +1,46 @@
+# ── Node-Version ──────────────────────────────────────────────────────────────
+#
+# Node 24 (Active LTS, unterstützt bis 2028).
+#
+# ── Warum nicht mehr 20 (Nachtrag 152) ───────────────────────────────────────
+# Node 20 hat am 30.04.2026 sein Lebensende erreicht. Seitdem gibt es KEINE
+# Sicherheits-Patches mehr — auch nicht für kritische CVEs in V8, den
+# HTTP-Parsern oder OpenSSL. Ein Image auf node:20-alpine ist damit keine alte
+# Version, sondern eine ungepatchte Laufzeitumgebung.
+#
+# ── Warum 26 und nicht 24 ────────────────────────────────────────────────────
+# Unterstützt sind derzeit 26, 24 (Active LTS) und 22 (Maintenance LTS).
+# Genommen wird 26 — Marcos Entscheidung, bewusst gegen die Vorgabe des
+# Node-Projekts, das für Produktivbetrieb nur Active- oder Maintenance-LTS
+# empfiehlt. Die Abwägung dahinter:
+#
+#   • 26 ist seit Mai 2026 die Current-Zeile und wird im Oktober 2026 zu Active
+#     LTS. Der Status ändert sich also in wenigen Wochen von selbst; die Zahl im
+#     Image bleibt dieselbe.
+#   • Der Support läuft dann bis 30.04.2029 — ein Jahr länger als bei 24
+#     (30.04.2028). Ein Wechsel jetzt spart den nächsten in zwei Jahren.
+#   • Dies ist eine selbst gehostete Anwendung für den Eigenbedarf. Die
+#     LTS-Empfehlung schützt in erster Linie vor unerwartetem Änderungsdruck in
+#     Teams mit vielen Abhängigkeiten — hier ist der Abhängigkeitsbaum klein und
+#     ein Rückweg auf 24 eine Zeile.
+#
+# ── Der eine Punkt, der nach dem Wechsel zu prüfen ist ───────────────────────
+# sharp bringt libvips als native Bibliothek mit und lädt eine fertige
+# Binärdatei für Plattform und C-Bibliothek. Genau dort geht ein Node-Sprung
+# schief, wenn überhaupt. Der Server bleibt lauffähig — routes/thumbs.ts fällt
+# dann auf Jimp zurück —, aber jede Vorschau liefe still über den langsamen Weg.
+#
+# Nach dem ersten Start deshalb EINMAL eine Vorschau erzeugen und ins Log
+# sehen: Taucht dort die Jimp-Warnung auf, hat sharp seine Binärdatei nicht
+# bekommen. Dann ist 24 der Rückweg, nicht das Abschalten der Warnung.
+#
+# WICHTIG: Diese Zahl steht an drei Stellen — hier zweimal (Build und Runtime)
+# und in .github/workflows/ci.yml. Laufen sie auseinander, prüft CI eine andere
+# Laufzeitumgebung als die ausgelieferte. test/build-tooling.test.js hält die
+# drei zusammen.
+#
 # ── Build Stage ────────────────────────────────────────────────────────────────
-FROM node:20-alpine AS builder
+FROM node:26-alpine AS builder
 
 WORKDIR /app
 
@@ -122,7 +163,8 @@ RUN node scripts/build-frontend.js \
 RUN npm prune --omit=dev --ignore-scripts && npm cache clean --force
 
 # ── Runtime Stage ──────────────────────────────────────────────────────────────
-FROM node:20-alpine
+# Dieselbe Zeile wie im Build-Stage oben — siehe die Begründung dort.
+FROM node:26-alpine
 
 WORKDIR /app
 

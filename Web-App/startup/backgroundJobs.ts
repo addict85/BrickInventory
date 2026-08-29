@@ -160,7 +160,7 @@ export async function starteHintergrundlaeufe(): Promise<void> {
       // Einträgen hat sie den Event-Loop sekundenlang blockiert, auch für
       // die übersprungenen. fs.promises.access() gibt zwischen jeder Prüfung
       // den Loop frei.
-      const exists = (fp) => fs.promises.access(fp).then(() => true, () => false);
+      const exists = (fp: string) => fs.promises.access(fp).then(() => true, () => false);
       for (const localPath of paths) {
         let fsPath;
         if      (localPath.startsWith('/images/')) fsPath = path.join(IMAGES_DIR, localPath.slice('/images/'.length));

@@ -1,6 +1,6 @@
 {
   "name": "brickinventory-manager",
-  "version": "2026.08.26.1716",
+  "version": "2026.08.28.1937",
   "description": "BrickInventory Manager",
   "main": "dist/server.js",
   "scripts": {
@@ -8,6 +8,8 @@
     "dev": "node scripts/build-frontend.js && tsx watch server.ts",
     "build": "node scripts/build-ts.js --outdir dist && node scripts/build-frontend.js",
     "typecheck": "tsc --noEmit",
+    "typecheck:strict": "node scripts/check-noimplicitany.js",
+    "coverage": "node scripts/coverage-map.js",
     "version:bump": "node scripts/bump-version.js",
     "postinstall": "node scripts/bump-version.js",
     "check-contract": "node scripts/check-api-contract.js",
@@ -35,10 +37,9 @@
   },
   "devDependencies": {
     "@types/archiver": "^8.0.0",
-    "@types/bcryptjs": "^2.4.6",
     "@types/compression": "^1.8.1",
     "@types/connect-pg-simple": "^7.0.3",
-    "@types/express": "^5.0.6",
+    "@types/express": "^4.17.25",
     "@types/express-session": "^1.19.0",
     "@types/multer": "^2.2.0",
     "@types/node": "^26.1.1",

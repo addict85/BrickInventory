@@ -170,7 +170,7 @@ function cacheUsable(row, ttlHours) {
   return ageH < Math.min(ZERO_PRICE_TTL_HOURS, ttlHours);
 }
 
-async function fetchPrice(setNumber, condition, guideType, currency, ttlHours, pre = null) {
+async function fetchPrice(setNumber, condition, guideType, currency, ttlHours, pre: { catalog: Map<any, any>; cache: Map<string, any> } | null = null) {
   const catalogRow = pre?.catalog
     ? (pre.catalog.get(setNumber) || null)
     : await db.get('SELECT is_gear, bl_type FROM catalog_cache WHERE set_number = $1', [setNumber]);
@@ -777,7 +777,7 @@ async function withOwnerNames(uids: number[], rows: any[]) {
   if (uids.length < 2 || !rows?.length) return rows;
   const owners = await db.all('SELECT id, username FROM users WHERE id = ANY($1)', [uids])
     .catch(() => []);
-  const nameById = new Map(owners.map((u: any) => [parseInt(u.id), u.username]));
+  const nameById = new Map<number, any>(owners.map((u: any) => [parseInt(u.id), u.username] as [number, any]));
   return rows.map(r => r.user_id == null ? r : {
     ...r,
     owners: [{ id: parseInt(r.user_id), username: nameById.get(parseInt(r.user_id)) || String(r.user_id) }],

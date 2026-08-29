@@ -121,8 +121,19 @@ test('Folgeseiten hängen an, statt alles neu zu bauen', () => {
 const FIGS = stripModuleSyntax(fs.readFileSync(path.join(ROOT, 'public', 'js', '06-minifigs.js'), 'utf8'));
 
 test('Minifiguren laden seitenweise', () => {
-  assert.match(H_SRC, /async function getMinifigs\(userId, \{ search, source, set_number, page = 1, page_size = null \}/,
-    'page/page_size fehlen in getMinifigs');
+  // Auf die Parameter geprüft, nicht auf den Wortlaut des Kopfes: Eine
+  // Typannotation an userId sagt über das Blättern nichts. Derselbe Fall wie
+  // in Nachtrag 148 — dort brachen fünf solcher Muster, ohne dass sich am
+  // Verhalten etwas geändert hatte.
+  const { funktionsKopf } = require('./helpers/sources');
+  const figKopf = funktionsKopf(H_SRC, 'getMinifigs');
+  for (const p of ['userId', 'search', 'source', 'set_number', 'page', 'page_size']) {
+    assert.match(figKopf, new RegExp(`\\b${p}\\b`),
+      `getMinifigs nimmt '${p}' nicht mehr entgegen: ${figKopf}`);
+  }
+  assert.match(figKopf, /page\s*=\s*1/,   'page muss auf 1 vorbelegt sein');
+  assert.match(figKopf, /page_size\s*=\s*null/,
+    'Ohne page_size-Vorgabe null könnte ein Aufrufer ungewollt blättern');
   assert.match(H_SRC, /SELECT 1 FROM minifigs m[\s\S]{0,220}GROUP BY LOWER\(TRIM\(m\.fig_number\)\), m\.source\) g/,
     'Der Zähler muss über die Gruppen laufen — eine Figur aus fünf Sets zählt sonst fünfmal');
   assert.match(FIGS, /_figGen/, 'Generationszähler fehlt');

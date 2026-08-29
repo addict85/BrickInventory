@@ -5,7 +5,7 @@
 
 import * as db from '../db/database';
 
-const JOB_DEFAULTS = {
+const JOB_DEFAULTS: Record<string, any> = {
   csvImport:     { label: 'CSV-Import (Rebrickable)', status: 'idle', progress: 0, total: 6 },
   blIds:         { label: 'BrickLink IDs nachladen',  status: 'idle', progress: 0, total: 0 },
   instrQueue:    { label: 'Handbücher herunterladen', status: 'idle', progress: 0, total: 0 },
@@ -15,7 +15,7 @@ const JOB_DEFAULTS = {
   bricksetRetry: { label: '🔄 Brickset Retry Queue',  status: 'done', progress: 0, total: 0 },
 };
 
-async function update(jobKey, patch) {
+async function update(jobKey: string, patch: any) {
   const defaults = JOB_DEFAULTS[jobKey] || {};
   const value = JSON.stringify({ ...defaults, ...patch, lastRun: new Date().toISOString() });
   await db.run(
@@ -34,7 +34,7 @@ async function update(jobKey, patch) {
 // Monitoring nur der zuletzt gestartete Wert statt der Summe erschien.
 const IMGDL_PENDING_KEY = 'imgdl_pending_count';
 
-async function imgDlAdd(delta) {
+async function imgDlAdd(delta: number) {
   const d = Math.round(Number(delta) || 0);
   if (!d) return;
   await db.run(
@@ -64,7 +64,7 @@ async function imgDlReset() {
   ).catch(() => {});
 }
 
-async function get(jobKey) {
+async function get(jobKey: string) {
   const row = await db.get(
     `SELECT value FROM global_settings WHERE key = $1`,
     [`job_monitor_${jobKey}`]
@@ -77,7 +77,7 @@ async function all() {
   const rows = await db.all(
     `SELECT key, value FROM global_settings WHERE key LIKE 'job_monitor_%'`
   ).catch(() => []);
-  const result = { ...JOB_DEFAULTS };
+  const result: Record<string, any> = { ...JOB_DEFAULTS };
   for (const row of rows) {
     const key = row.key.replace('job_monitor_', '');
     try { result[key] = { ...(JOB_DEFAULTS[key] || {}), ...JSON.parse(row.value) }; } catch(_) {}

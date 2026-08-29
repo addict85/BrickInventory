@@ -55,9 +55,10 @@ async function readIndex(): Promise<string> {
 async function currentTheme(): Promise<string> {
   if (_theme !== null && Date.now() - _themeAt < THEME_TTL_MS) return _theme;
   const row = await db.get("SELECT value FROM global_settings WHERE key='app_theme'").catch(() => null);
-  _theme = ALLOWED.includes(row?.value) ? row.value : 'classic';
+  const gewaehlt: string = ALLOWED.includes(row?.value) ? row.value : 'classic';
+  _theme = gewaehlt;
   _themeAt = Date.now();
-  return _theme;
+  return gewaehlt;
 }
 
 /** Sprachen, für die eine Datei unter public/locales/ existiert. */

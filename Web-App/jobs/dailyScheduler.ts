@@ -19,7 +19,10 @@ const DAILY_JOBS = [
 
 const _registry: any = {}; // name -> { fn, timer }
 
-function _parseHHMM(s, fallback) {
+/** Uhrzeit-Typ des Planers. */
+type Uhrzeit = { h: number; min: number };
+
+function _parseHHMM(s: string | null | undefined, fallback: Uhrzeit): Uhrzeit {
   const m = /^(\d{1,2}):(\d{2})$/.exec(String(s || '').trim());
   if (!m) return fallback;
   const h = +m[1], min = +m[2];
@@ -27,18 +30,18 @@ function _parseHHMM(s, fallback) {
   return { h, min };
 }
 
-function _metaDefault(name) {
+function _metaDefault(name: string) {
   const meta = DAILY_JOBS.find(j => j.name === name);
   return _parseHHMM(meta?.default, { h: 4, min: 0 });
 }
 
 // Konfigurierte Uhrzeit (HH:MM als {h,min}) für einen Job.
-async function getTime(name) {
+async function getTime(name: string) {
   const row = await db.get(`SELECT value FROM global_settings WHERE key=$1`, [`job_time_${name}`]).catch(() => null);
   return _parseHHMM(row?.value, _metaDefault(name));
 }
 
-async function _scheduleOne(name) {
+async function _scheduleOne(name: string) {
   const job = _registry[name];
   if (!job) return;
   if (job.timer) { clearTimeout(job.timer); job.timer = null; }
@@ -55,7 +58,7 @@ async function _scheduleOne(name) {
 }
 
 // Job registrieren und einplanen (im Primary-Worker aufrufen).
-function register(name, fn) {
+function register(name: string, fn: () => any) {
   _registry[name] = { fn, timer: null };
   _scheduleOne(name);
 }

@@ -64,6 +64,152 @@ async function getPartsColors(userId) {
 }
 
 /**
+ * WHERE-Klausel und Parameter der Teileliste aus den Abfrageparametern.
+ *
+ * ── Warum eigenständig (Nachtrag 148) ───────────────────────────────────────
+ * getParts() war 256 Zeilen und tat drei Dinge: Filter bauen, Abfragen
+ * ausführen, und bei einem leeren Ergebnis auf Katalog bzw. Rebrickable
+ * ausweichen. Der Filterteil ist der einzige davon, der ohne Datenbank
+ * nachvollziehbar ist — er nimmt Werte entgegen und gibt eine Zeichenkette
+ * zurück.
+ *
+ * Die laufende Nummer `pi` kommt mit zurück, weil der Aufrufer LIMIT/OFFSET
+ * danach anhängt.
+ */
+function teileFilter(uids, query: any) {
+  const { color, category, search, spare, set_number } = query;
+  let where = 'p.user_id = ANY($1)';
+  const params: any[] = [uids];
+  let pi = 2;
+
+  if (set_number) {
+    const alt = set_number.includes('-') ? set_number.replace(/-\d+$/, '') : set_number + '-1';
+    where += ` AND (p.set_number = $${pi} OR p.set_number = $${pi+1})`;
+    params.push(set_number, alt); pi += 2;
+  }
+  if (color)    { where += ` AND p.color_name = $${pi++}`;    params.push(color); }
+  // Kategorie auch über den Teilekatalog auflösen — parts.category_name steht
+  // bei vielen Teilen auf 'Unknown', weil die Set-Teile-Antwort von
+  // Rebrickable kein part_cat_id mitliefert. Die Filterliste zeigt deshalb die
+  // über rb_parts aufgelöste ID; hier muss dieselbe Auflösung greifen, sonst
+  // fände ein Klick nichts.
+  if (category) {
+    where += ` AND (p.category_name = $${pi}
+                    OR EXISTS (SELECT 1 FROM rb_parts rp
+                                WHERE rp.part_num = p.part_number
+                                  AND rp.part_cat_id::text = $${pi}))`;
+    pi++; params.push(category);
+  }
+  if (spare === '0') where += ' AND p.is_spare = 0';
+  if (spare === '1') where += ' AND p.is_spare = 1';
+  // Manuell erfasste Teile aus der Set-Teile-Übersicht ausschließen — sie haben
+  // ihren eigenen Bereich ("Manuell erfasste Teile") und gehören nicht in die
+  // nach Farbe/Kategorie gruppierte Set-Teileliste.
+  if (query.exclude_manual === '1' || query.exclude_manual === true) {
+    where += " AND COALESCE(p.source,'set') <> 'manual'";
+  }
+  if (search) {
+    where += ` AND (LOWER(p.part_number) LIKE $${pi} OR LOWER(p.part_name) LIKE $${pi})`;
+    params.push(`%${search.toLowerCase()}%`); pi++;
+  }
+
+
+  return { where, params, pi };
+}
+
+/**
+ * Teileliste EINES Sets, wenn der Nutzer selbst keine Zeilen dazu hat.
+ *
+ * Zwei Ersatzquellen in dieser Reihenfolge: der eingespielte Rebrickable-CSV-
+ * Katalog (lokal, kostet nichts) und erst danach die Rebrickable-API (zählt
+ * auf das Tageskontingent). Geblättert wird hier nicht — die Menge ist durch
+ * das Set begrenzt, page_size ist deshalb die Zeilenzahl.
+ *
+ * Gibt null zurück, wenn auch dort nichts zu finden war; dann bleibt es beim
+ * leeren Ergebnis aus der Datenbank.
+ */
+async function teileErsatzquelle(set_number) {
+    const n   = set_number.includes('-') ? set_number : set_number + '-1';
+    const alt = set_number.includes('-') ? set_number.replace(/-\d+$/, '') : set_number + '-1';
+    const inv = await db.get(
+      `SELECT id FROM rb_inventories WHERE set_num=$1 OR set_num=$2 ORDER BY version DESC LIMIT 1`,
+      [n, alt]
+    ).catch(() => null);
+    if (inv) {
+      const csvParts = await db.all(`
+        SELECT ip.part_num AS part_number,
+               COALESCE(m.bl_part_num, ip.part_num) AS bl_part_number,
+               p.name AS part_name, ip.color_id,
+               c.name AS color_name, c.rgb AS color_hex,
+               NULL AS category_name,
+               p.part_img_url AS image_url, NULL AS image_local,
+               CASE WHEN ip.is_spare='t' THEN 1 ELSE 0 END AS is_spare,
+               ip.quantity AS total_quantity,
+               $2 AS in_sets
+        FROM rb_inventory_parts ip
+        LEFT JOIN rb_parts p ON p.part_num = ip.part_num
+        LEFT JOIN rb_colors c ON c.id = ip.color_id
+        LEFT JOIN rb_bl_mapping m ON m.part_num = ip.part_num
+        WHERE ip.inventory_id = $1`, [inv.id, set_number]
+      ).catch(() => []);
+      if (csvParts.length > 0)
+        // page_size gehört in JEDEN Rückgabeweg (Nachtrag 132): Der Client
+        // liest daraus, ob eine weitere Seite nötig ist. Auf dieser
+        // Ausweichebene wird nicht geblättert — die Antwort enthält alles,
+        // also ist die Seitengrösse die Zahl der Zeilen. Fehlte das Feld,
+        // stand beim Client `undefined`, und die Prüfung „total > page_size"
+        // konnte nie greifen.
+        return { parts: csvParts, total: csvParts.length, source: 'csv_cache', page_size: csvParts.length };
+    }
+
+    // Rebrickable-Rückfallebene.
+    //
+    // VORHER stand hier `require('../../routes/parts').fetchRebrickableParts` —
+    // einen Namen, den routes/parts.ts NIE exportiert hat (die Exportliste am
+    // Dateiende führt ihn nicht). Der Ausdruck war also `undefined(…)`, und
+    // weil der TypeError SYNCHRON fliegt, fing ihn auch das `.catch(() => [])`
+    // daneben nicht ab: Die Anfrage endete mit einem 500er statt mit einer
+    // leeren Liste. Aufgefallen ist das nie, weil der Zweig nur greift, wenn
+    // ein Set weder eigene Teile noch einen CSV-Eintrag hat.
+    //
+    // Statt den Namen zu exportieren, geht der Weg jetzt über getAllSetParts()
+    // in clients/rebrickable.ts. Die Funktion kann längst alles, was die
+    // 90-zeilige Zweitfassung nachbaute — und zwar besser: CSV zuerst,
+    // Tageskontingent über consumeRebrickableDaily(), Drossel über den
+    // Limiter, Antwort im subsets_cache. Die Zweitfassung holte ohne all das
+    // und ist entfallen.
+    const rbKey = (await db.get("SELECT value FROM global_settings WHERE key='rebrickable_api_key'"))?.value;
+    if (rbKey) {
+      for (const sn of [n, alt]) {
+        const items = await getAllSetParts(sn).catch(() => []);
+        if (!items?.length) continue;
+        const rbParts = items
+          .filter(it => !it.is_spare)
+          .map(it => ({
+            part_number:    it.part?.part_num,
+            bl_part_number: it.part?.external_ids?.BrickLink?.[0] || it.part?.part_num,
+            part_name:      it.part?.name || it.part?.part_num,
+            color_id:       it.color?.id ?? 0,
+            color_name:     it.color?.name || '',
+            color_hex:      it.color?.rgb || null,
+            category_name:  null,
+            image_url:      it.part?.part_img_url || null,
+            image_local:    null,
+            is_spare:       0,
+            total_quantity: it.quantity,
+            quantity:       it.quantity,
+            in_sets:        set_number,
+          }))
+          .filter(p => p.part_number);
+        // Siehe oben: auch hier wird nicht geblättert, page_size = Zeilenzahl.
+        if (rbParts.length) return { parts: rbParts, total: rbParts.length, source: 'rebrickable', page_size: rbParts.length };
+      }
+    }
+
+  return null;
+}
+
+/**
  * Seitenabfrage aus parts_summary. Gibt null zurück, wenn die Zusammenfassung
  * nicht benutzbar ist — dann übernimmt die Live-Abfrage darunter.
  */
@@ -172,41 +318,7 @@ async function getParts(userId, query: any = {}) {
   // aus; `with_sets=1` schaltet sie ein.
   const withSets = query.with_sets === '1' || query.with_sets === true;
 
-  let where = 'p.user_id = ANY($1)';
-  const params: any[] = [uids];
-  let pi = 2;
-
-  if (set_number) {
-    const alt = set_number.includes('-') ? set_number.replace(/-\d+$/, '') : set_number + '-1';
-    where += ` AND (p.set_number = $${pi} OR p.set_number = $${pi+1})`;
-    params.push(set_number, alt); pi += 2;
-  }
-  if (color)    { where += ` AND p.color_name = $${pi++}`;    params.push(color); }
-  // Kategorie auch über den Teilekatalog auflösen — parts.category_name steht
-  // bei vielen Teilen auf 'Unknown', weil die Set-Teile-Antwort von
-  // Rebrickable kein part_cat_id mitliefert. Die Filterliste zeigt deshalb die
-  // über rb_parts aufgelöste ID; hier muss dieselbe Auflösung greifen, sonst
-  // fände ein Klick nichts.
-  if (category) {
-    where += ` AND (p.category_name = $${pi}
-                    OR EXISTS (SELECT 1 FROM rb_parts rp
-                                WHERE rp.part_num = p.part_number
-                                  AND rp.part_cat_id::text = $${pi}))`;
-    pi++; params.push(category);
-  }
-  if (spare === '0') where += ' AND p.is_spare = 0';
-  if (spare === '1') where += ' AND p.is_spare = 1';
-  // Manuell erfasste Teile aus der Set-Teile-Übersicht ausschließen — sie haben
-  // ihren eigenen Bereich ("Manuell erfasste Teile") und gehören nicht in die
-  // nach Farbe/Kategorie gruppierte Set-Teileliste.
-  if (query.exclude_manual === '1' || query.exclude_manual === true) {
-    where += " AND COALESCE(p.source,'set') <> 'manual'";
-  }
-  if (search) {
-    where += ` AND (LOWER(p.part_number) LIKE $${pi} OR LOWER(p.part_name) LIKE $${pi})`;
-    params.push(`%${search.toLowerCase()}%`); pi++;
-  }
-
+  const { where, params, pi } = teileFilter(uids, query);
   // ::int aus demselben Grund wie in getPartsColors (siehe Kommentar dort):
   // Der JSON-Typ von total_quantity darf nicht vom Zweig abhängen —
   // SUM(BIGINT) käme als Zahl, SUM(INTEGER) und die rohe BIGINT-Spalte als
@@ -305,7 +417,7 @@ async function getParts(userId, query: any = {}) {
     excludesManual ? Promise.resolve([]) : db.all(usedSql, [uids]).catch(() => []),
   ]);
   const total = parseInt(countRow?.c || 0);
-  const usedPartMap = new Map(usedPartRows.map(r => [`${r.pid}|${r.color_id}`, (parseInt(r.any_used) || 0) > 0]));
+  const usedPartMap = new Map<string, boolean>(usedPartRows.map(r => [`${r.pid}|${r.color_id}`, (parseInt(r.any_used) || 0) > 0] as [string, boolean]));
 
   // Normalize is_spare and resolve image paths
   const { resolveImageLocal } = require('../images');
@@ -330,86 +442,12 @@ async function getParts(userId, query: any = {}) {
     } catch(_) {}
   });
 
-  // CSV fallback when no user parts found for a specific set
+  // Hat der Nutzer für dieses Set keine eigenen Zeilen, auf Katalog bzw.
+  // Rebrickable ausweichen (siehe teileErsatzquelle).
   if (!partsResolved.length && set_number) {
-    const n   = set_number.includes('-') ? set_number : set_number + '-1';
-    const alt = set_number.includes('-') ? set_number.replace(/-\d+$/, '') : set_number + '-1';
-    const inv = await db.get(
-      `SELECT id FROM rb_inventories WHERE set_num=$1 OR set_num=$2 ORDER BY version DESC LIMIT 1`,
-      [n, alt]
-    ).catch(() => null);
-    if (inv) {
-      const csvParts = await db.all(`
-        SELECT ip.part_num AS part_number,
-               COALESCE(m.bl_part_num, ip.part_num) AS bl_part_number,
-               p.name AS part_name, ip.color_id,
-               c.name AS color_name, c.rgb AS color_hex,
-               NULL AS category_name,
-               p.part_img_url AS image_url, NULL AS image_local,
-               CASE WHEN ip.is_spare='t' THEN 1 ELSE 0 END AS is_spare,
-               ip.quantity AS total_quantity,
-               $2 AS in_sets
-        FROM rb_inventory_parts ip
-        LEFT JOIN rb_parts p ON p.part_num = ip.part_num
-        LEFT JOIN rb_colors c ON c.id = ip.color_id
-        LEFT JOIN rb_bl_mapping m ON m.part_num = ip.part_num
-        WHERE ip.inventory_id = $1`, [inv.id, set_number]
-      ).catch(() => []);
-      if (csvParts.length > 0)
-        // page_size gehört in JEDEN Rückgabeweg (Nachtrag 132): Der Client
-        // liest daraus, ob eine weitere Seite nötig ist. Auf dieser
-        // Ausweichebene wird nicht geblättert — die Antwort enthält alles,
-        // also ist die Seitengrösse die Zahl der Zeilen. Fehlte das Feld,
-        // stand beim Client `undefined`, und die Prüfung „total > page_size"
-        // konnte nie greifen.
-        return { parts: csvParts, total: csvParts.length, source: 'csv_cache', page_size: csvParts.length };
-    }
-
-    // Rebrickable-Rückfallebene.
-    //
-    // VORHER stand hier `require('../../routes/parts').fetchRebrickableParts` —
-    // einen Namen, den routes/parts.ts NIE exportiert hat (die Exportliste am
-    // Dateiende führt ihn nicht). Der Ausdruck war also `undefined(…)`, und
-    // weil der TypeError SYNCHRON fliegt, fing ihn auch das `.catch(() => [])`
-    // daneben nicht ab: Die Anfrage endete mit einem 500er statt mit einer
-    // leeren Liste. Aufgefallen ist das nie, weil der Zweig nur greift, wenn
-    // ein Set weder eigene Teile noch einen CSV-Eintrag hat.
-    //
-    // Statt den Namen zu exportieren, geht der Weg jetzt über getAllSetParts()
-    // in clients/rebrickable.ts. Die Funktion kann längst alles, was die
-    // 90-zeilige Zweitfassung nachbaute — und zwar besser: CSV zuerst,
-    // Tageskontingent über consumeRebrickableDaily(), Drossel über den
-    // Limiter, Antwort im subsets_cache. Die Zweitfassung holte ohne all das
-    // und ist entfallen.
-    const rbKey = (await db.get("SELECT value FROM global_settings WHERE key='rebrickable_api_key'"))?.value;
-    if (rbKey) {
-      for (const sn of [n, alt]) {
-        const items = await getAllSetParts(sn).catch(() => []);
-        if (!items?.length) continue;
-        const rbParts = items
-          .filter(it => !it.is_spare)
-          .map(it => ({
-            part_number:    it.part?.part_num,
-            bl_part_number: it.part?.external_ids?.BrickLink?.[0] || it.part?.part_num,
-            part_name:      it.part?.name || it.part?.part_num,
-            color_id:       it.color?.id ?? 0,
-            color_name:     it.color?.name || '',
-            color_hex:      it.color?.rgb || null,
-            category_name:  null,
-            image_url:      it.part?.part_img_url || null,
-            image_local:    null,
-            is_spare:       0,
-            total_quantity: it.quantity,
-            quantity:       it.quantity,
-            in_sets:        set_number,
-          }))
-          .filter(p => p.part_number);
-        // Siehe oben: auch hier wird nicht geblättert, page_size = Zeilenzahl.
-        if (rbParts.length) return { parts: rbParts, total: rbParts.length, source: 'rebrickable', page_size: rbParts.length };
-      }
-    }
+    const ersatz = await teileErsatzquelle(set_number);
+    if (ersatz) return ersatz;
   }
-
   return { parts: partsResolved, total, source: 'db', page_size: effektiveGroesse };
 }
 

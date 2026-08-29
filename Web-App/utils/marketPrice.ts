@@ -18,7 +18,7 @@ import { DEFAULT_PRICE_CONDITION } from './financeCalc';
  * durch einen echten Import ersetzt werden.
  */
 
-async function getCurrentMarketPrice(setNumber, userId, condition = null) {
+async function getCurrentMarketPrice(setNumber: string, userId: number, condition: string | null = null) {
   try {
     const currencyRow = await db.get('SELECT value FROM user_settings WHERE user_id=$1 AND key=$2', [userId, 'currency']);
     const globalCurrencyRow = await db.get('SELECT value FROM global_settings WHERE key=$1', ['currency']);

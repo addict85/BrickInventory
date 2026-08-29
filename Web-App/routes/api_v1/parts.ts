@@ -22,8 +22,11 @@ router.get('/parts', requireToken, async (req: AuthedRequest, res) => {
     // „page_size: 2000". Damit konnte kein Client merken, dass Teile fehlen.
     // Der tatsächliche Wert steht jetzt drin; zusammen mit `total` lässt sich
     // ablesen, ob eine weitere Seite nötig ist.
-    res.json({ success: true, page: parseInt(String(req.query.page||1)),
-      page_size: result.page_size, ...result });
+    // `...result` bringt page_size selbst mit — ausdrücklich davorgestellt war
+    // es wirkungslos (der Spread überschrieb es mit demselben Wert). Es hier
+    // stehen zu lassen liest sich, als sicherte die Zeile etwas zu, was in
+    // Wahrheit an getParts hängt.
+    res.json({ success: true, page: parseInt(String(req.query.page||1)), ...result });
   } catch (e) { handleRouteError(res, e); }
 });
 

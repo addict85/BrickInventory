@@ -238,7 +238,7 @@ async function estimateFigPriceFromParts(figNumber, userId, condition = DEFAULT_
   }
 }
 
-async function getCurrentFigMarketPrice(figNumber, userId, blFigNumber?, condition = null) {
+async function getCurrentFigMarketPrice(figNumber, userId, blFigNumber?, condition: string | null = null) {
   try {
     const currency = await getSetting(userId, 'currency', 'EUR');
     // Effektiver Zustand: eine "Gebraucht"-Erfassung genügt → 'U', sonst 'N';
@@ -292,12 +292,13 @@ async function getCurrentFigMarketPrice(figNumber, userId, blFigNumber?, conditi
 //    bei BrickLink nicht (gültig) auffindbar, wird der Preis über die
 //    Einzelteile geschätzt (getCurrentFigMarketPrice → estimateFigPriceFromParts).
 //  • Zustand: N/U falls angegeben, sonst der Standard-Zustand des Nutzers.
-async function resolveManualFigPurchase(uid, { figNumber, blFigNumber = null, unitPrice = null, condition = null }) {
+async function resolveManualFigPurchase(uid, { figNumber, blFigNumber = null, unitPrice = null, condition = null }:
+  { figNumber: string; blFigNumber?: string | null; unitPrice?: any; condition?: string | null }) {
   const entered = (unitPrice !== undefined && unitPrice !== null && String(unitPrice).trim() !== '')
     ? parseFloat(String(unitPrice).replace(',', '.')) : null;
   const effectiveUnitPrice = (entered !== null && !isNaN(entered)) ? entered : null;
 
-  let effectiveCondition = ['N','U'].includes(condition) ? condition : null;
+  let effectiveCondition: string | null = ['N','U'].includes(condition as string) ? condition : null;
   if (!effectiveCondition) {
     effectiveCondition = await userDefaultCondition(uid).catch(()=>'N');
   }
@@ -349,7 +350,7 @@ async function addManualFig(uid, body) {
     // wächst die bestehende Zeile (utils/acquisitions.ts).
     await recordAcquisitionForDay('fig', uid, [num], {
       quantity,
-      price: (re.effectivePurchasePrice > 0 ? re.effectivePurchasePrice : null),
+      price: ((re.effectivePurchasePrice ?? 0) > 0 ? re.effectivePurchasePrice : null),
       condition: re.effectiveCondition, createdAt: acquiredAt,
     }).catch(e => console.error('[addManualFig] Zweiterfassung:', e.message));
 
@@ -480,7 +481,7 @@ async function updateManualFig(uid, figNumber, body) {
 
 // ── POST CSV import ───────────────────────────────────────────────────────────
 const csvUpload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 15 * 1024 * 1024 } });
-router.post('/import/csv', csvUpload.single('file'), async (req, res) => {
+router.post('/import/csv', csvUpload.single('file'), async (req: LoggedInRequest, res) => {
   if (!req.file) return res.status(400).json({ success: false, error: 'Keine Datei' });
   const uid = req.session.userId;
   try {

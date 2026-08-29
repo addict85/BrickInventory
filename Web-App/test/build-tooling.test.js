@@ -142,3 +142,243 @@ test('keine Build-Artefakte neben den TypeScript-Quellen', () => {
     `In-place-Artefakte im Quellbaum: ${offenders.join(', ')} — ` +
     'löschen und mit `node scripts/build-ts.js --outdir dist` bauen');
 });
+
+// ═══════════════════════════════════════════════════════════════════════════
+// Typpakete müssen dieselbe Hauptversion beschreiben, die auch läuft
+// ═══════════════════════════════════════════════════════════════════════════
+/**
+ * Der Anlass (Nachtrag 148): `express` stand auf ^4, `@types/express` auf ^5.
+ * Beides für sich installierbar, npm meldet nichts — aber tsc prüfte den
+ * ganzen Server gegen eine API, die so nicht ausgeliefert wird. Express 5 hat
+ * unter anderem die Router- und Fehler-Signaturen geändert; eine Meldung, die
+ * ausbleibt, weil der Typ sie in der ANDEREN Hauptversion erlaubt, ist eine
+ * Prüfung, die stillschweigend nicht stattfindet.
+ *
+ * Geprüft werden die Pakete, bei denen Laufzeit und Typen getrennt gepflegt
+ * werden. Die Regel ist bewusst auf die HAUPTVERSION beschränkt: Typpakete
+ * ziehen in Neben- und Patchversionen eigenständig nach, das ist normal.
+ */
+test('@types/* beschreiben dieselbe Hauptversion wie das Paket selbst', () => {
+  const pkg = JSON.parse(read('package.json'));
+  const alle = { ...pkg.dependencies, ...pkg.devDependencies };
+  const haupt = s => {
+    const m = String(s).match(/(\d+)\./);
+    return m ? m[1] : null;
+  };
+
+  // ── Freibriefe ────────────────────────────────────────────────────────────
+  // Nicht jedes Typpaket zählt mit seiner Bibliothek mit: DefinitelyTyped
+  // erhöht die Hauptversion, wenn sich die Deklarationen ändern, nicht wenn die
+  // Bibliothek eine neue Fassung bekommt. Für diese beiden ist die aktuelle
+  // (und einzige) Fassung des Typpakets die richtige — nachgesehen am
+  // 28.08.2026, beide beschreiben die eingesetzte API.
+  //
+  // Ein Eintrag hier ist eine ENTSCHEIDUNG, kein Stummschalten: Wer ein Paket
+  // hinzufügt, muss begründen, warum die Nummern auseinanderlaufen dürfen.
+  const freibrief = {
+    'archiver':          'Typpaket zählt eigenständig; 8.x ist die aktuelle Fassung für archiver 7',
+    'connect-pg-simple': 'Typpaket steht seit Jahren auf 7.x, die Bibliothek bei 10 — DT zählt hier nicht mit',
+    'nodemailer':        '8.0.1 ist die NEUESTE veröffentlichte Fassung; für nodemailer 9 gibt es noch keine',
+  };
+
+  const abweichend = [];
+  let geprueft = 0;
+  for (const [name, spanne] of Object.entries(alle)) {
+    if (!name.startsWith('@types/')) continue;
+    const ziel = name.slice('@types/'.length).replace('__', '/');
+    if (!(ziel in alle)) continue;              // @types/node u.ä. haben kein Gegenstück
+    geprueft++;
+    if (ziel in freibrief) continue;
+    const a = haupt(alle[ziel]), b = haupt(spanne);
+    if (a && b && a !== b) abweichend.push(`${ziel} ${alle[ziel]} ↔ ${name} ${spanne}`);
+  }
+
+  // Gegenrichtung: ein Freibrief für ein Paket, das es nicht mehr gibt, ist
+  // toter Ballast und verdeckt beim nächsten Mal die echte Frage.
+  const verwaist = Object.keys(freibrief).filter(z => !(z in alle));
+  assert.deepEqual(verwaist, [],
+    'Freibrief ohne Paket — Eintrag entfernen: ' + verwaist.join(', '));
+
+  assert.ok(geprueft >= 5,
+    `Nur ${geprueft} Paare gefunden — heissen die Typpakete noch @types/<paket>?`);
+  assert.deepEqual(abweichend, [],
+    'Typpaket und Paket in verschiedenen Hauptversionen:\n  ' + abweichend.join('\n  '));
+});
+
+// ═══════════════════════════════════════════════════════════════════════════
+// strictNullChecks bleibt an — und muss durchlaufen
+// ═══════════════════════════════════════════════════════════════════════════
+/**
+ * Der Schalter war seit der TypeScript-Migration aus und wurde in Nachtrag 148
+ * eingeschaltet, nachdem die letzten 93 Meldungen abgeräumt waren.
+ *
+ * Wieder auszuschalten ist eine Zeile — und beim nächsten Mal, wenn eine
+ * Meldung im Weg steht, die naheliegendste. Die Prüfung hier hält beides fest:
+ * dass der Schalter steht, UND dass tsc damit tatsächlich sauber ist. Der erste
+ * Teil allein wäre wertlos: `strictNullChecks: true` mit zwanzig roten
+ * Meldungen ist genau der Zustand, den die alte Begründung im tsconfig zu Recht
+ * vermeiden wollte.
+ *
+ * Der Lauf dauert ein paar Sekunden. Das ist er wert: Er ist die einzige
+ * Stelle, an der das Versprechen „tsc ist sauber" auch geprüft wird.
+ */
+test('tsconfig hat strictNullChecks an und tsc läuft sauber durch', { timeout: 120000 }, () => {
+  // JSON mit Kommentaren — tsc erlaubt sie, JSON.parse nicht.
+  const roh = read('tsconfig.json').replace(/^\s*\/\/[^\n]*$/gm, '');
+  const cfg = JSON.parse(roh);
+  assert.equal(cfg.compilerOptions.strictNullChecks, true,
+    'strictNullChecks wurde in der tsconfig wieder abgeschaltet');
+
+  const { execFileSync } = require('node:child_process');
+  let ausgabe = '';
+  try {
+    execFileSync(process.execPath,
+      [path.join(ROOT, 'node_modules', 'typescript', 'bin', 'tsc'), '--noEmit'],
+      { cwd: ROOT, encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] });
+  } catch (e) {
+    ausgabe = String(e.stdout || '') + String(e.stderr || '');
+  }
+  const fehler = ausgabe.split('\n').filter(l => /error TS\d+/.test(l));
+  assert.deepEqual(fehler.slice(0, 10), [],
+    `tsc meldet ${fehler.length} Fehler (erste zehn oben)`);
+});
+
+// ═══════════════════════════════════════════════════════════════════════════
+// Der CI-Lauf ist die einzige Stelle, an der nichts Altes herumliegt
+// ═══════════════════════════════════════════════════════════════════════════
+/**
+ * Der Anlass (Nachtrag 148/150): Eine Testdatei holte ein Modul aus dist/, das
+ * es nach einer Aufteilung nicht mehr gab. Lokal blieb sie grün, weil in einem
+ * gewachsenen dist/ noch eine alte Fassung lag — zehn Prüfungen liefen
+ * monatelang nicht, ohne dass irgendwo etwas rot war.
+ *
+ * Dagegen hilft kein weiterer Test, sondern ein Lauf auf einem Rechner ohne
+ * Vorgeschichte. Was hier geprüft wird, sind die drei Eigenschaften, ohne die
+ * so ein Lauf wertlos wäre — und jede davon ist eine Zeile, die man beim
+ * Umbauen des Workflows versehentlich verliert.
+ */
+test('der CI-Workflow prüft, was er prüfen soll', () => {
+  const p = path.join(ROOT, '.github', 'workflows', 'ci.yml');
+  assert.ok(fs.existsSync(p), 'Es gibt keinen CI-Workflow mehr');
+  const yml = fs.readFileSync(p, 'utf8');
+
+  // 1. REQUIRE_DB. OHNE diese Variable überspringen die Datenbank-Suiten sich
+  //    selbst, wenn sie keine Verbindung bekommen — in CI wäre das das
+  //    Schlimmste: ein grüner Lauf, der die Hälfte nie ausgeführt hat.
+  assert.match(yml, /REQUIRE_DB:\s*'1'/,
+    'Ohne REQUIRE_DB=1 überspringt CI stillschweigend alle DB-Suiten');
+
+  // 2. Eine echte Datenbank, und zwar in der Hauptversion aus dem Betrieb.
+  const compose = fs.readFileSync(path.join(ROOT, 'compose.yaml'), 'utf8');
+  const betrieb = (compose.match(/image:\s*postgres:(\d+)/) || [])[1];
+  const ci      = (yml.match(/image:\s*postgres:(\d+)/) || [])[1];
+  assert.ok(betrieb && ci, 'Postgres-Abbild nicht auffindbar');
+  assert.equal(ci, betrieb,
+    `CI prüft gegen PostgreSQL ${ci}, im Betrieb läuft ${betrieb} — ` +
+    'Sperren, Indizes und Planerverhalten unterscheiden sich zwischen Hauptversionen');
+
+  // 3. Die vier Schritte, die zusammen die Aussage tragen. `npm ci` statt
+  //    `npm install` gehört dazu: nur ersteres scheitert, wenn package.json
+  //    und Lockfile auseinanderlaufen.
+  //
+  //    Auf `run:` festgemacht und nicht bloss auf den Befehlsnamen: Die
+  //    Begründungen im Workflow nennen `npm ci` und `npm install` im Fliesstext.
+  //    Ein Muster ohne `run:` wäre allein durch die Kommentare erfüllt gewesen —
+  //    ein Test, der sich an der Erklärung statt an der Sache festhält.
+  for (const [muster, warum] of [
+    [/run:\s*npm ci\b/,          'npm install würde ein abweichendes Lockfile stillschweigend hinnehmen'],
+    [/run:\s*npx tsc --noEmit/,  'ohne Typprüfung sagt der Lauf nichts über strictNullChecks'],
+    [/run:\s*npm run build/,     'ohne frischen Build prüft CI womöglich ein altes dist/'],
+    [/run:\s*npm test\b/,        'ohne Tests ist der ganze Lauf sinnlos'],
+    [/run:\s*npm run typecheck:strict/, 'die gestaffelte noImplicitAny-Prüfung fehlt'],
+  ]) {
+    assert.match(yml, muster, `CI-Workflow: ${warum}`);
+  }
+});
+
+test('die noImplicitAny-Ausnahmeliste stimmt noch', () => {
+  // Das Skript prüft sich selbst in beide Richtungen (neue Schuld / verwaiste
+  // Einträge) und wird hier nur ausgeführt, damit ein Verstoss auch dann
+  // auffällt, wenn jemand nur `npm test` laufen lässt.
+  const { execFileSync } = require('node:child_process');
+  try {
+    execFileSync(process.execPath, [path.join(ROOT, 'scripts', 'check-noimplicitany.js')],
+      { cwd: ROOT, encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] });
+  } catch (e) {
+    assert.fail(String(e.stdout || '') + String(e.stderr || ''));
+  }
+});
+
+// ═══════════════════════════════════════════════════════════════════════════
+// Die Node-Version steht an drei Stellen und muss überall dieselbe sein
+// ═══════════════════════════════════════════════════════════════════════════
+/**
+ * Der Anlass (Nachtrag 152): Das Dockerfile lief auf `node:20-alpine`, und der
+ * CI-Workflow schrieb `node-version: '20'` mit der Begründung „wie im
+ * Dockerfile". Die Begründung war richtig, die Zahl falsch — Node 20 hatte am
+ * 30.04.2026 sein Lebensende erreicht und bekam seitdem keine
+ * Sicherheits-Patches mehr. Ausgeliefert wurde also eine ungepatchte
+ * Laufzeitumgebung, und CI prüfte brav dagegen.
+ *
+ * Zwei Dinge werden hier festgehalten:
+ *
+ *   1. Build-Stage, Runtime-Stage und CI nennen DIESELBE Hauptversion. Laufen
+ *      sie auseinander, prüft CI etwas anderes als das, was läuft — und zwar
+ *      still, weil beide für sich funktionieren.
+ *
+ *   2. Die Version ist keine, deren Lebensende bekannt ist. Die Liste unten ist
+ *      bewusst eine Liste ABGELAUFENER Zeilen und keine Liste erlaubter: Eine
+ *      Erlaubnisliste müsste bei jeder neuen Node-Zeile nachgepflegt werden und
+ *      würde einen Aufstieg auf 26 als Fehler melden. Eine Sperrliste altert in
+ *      die richtige Richtung — sie wird nur ergänzt, wenn wirklich eine Zeile
+ *      ausläuft.
+ */
+test('Dockerfile und CI laufen auf derselben, unterstützten Node-Version', () => {
+  const docker = read('Dockerfile');
+  const ci     = read('.github/workflows/ci.yml');
+
+  const imBild = [...docker.matchAll(/^FROM node:(\d+)-/gm)].map(m => m[1]);
+  assert.ok(imBild.length >= 2,
+    `Nur ${imBild.length} FROM node:… im Dockerfile — gibt es die zwei Stufen noch?`);
+  assert.equal(new Set(imBild).size, 1,
+    `Build- und Runtime-Stage laufen auf verschiedenen Node-Versionen: ${imBild.join(', ')}`);
+
+  const imCi = (ci.match(/node-version:\s*'(\d+)'/) || [])[1];
+  assert.ok(imCi, 'Der CI-Workflow legt keine Node-Version fest');
+  assert.equal(imCi, imBild[0],
+    `CI prüft auf Node ${imCi}, ausgeliefert wird Node ${imBild[0]} — ` +
+    'dann sagt ein grüner Lauf nichts über das Image');
+
+  // Abgelaufene Zeilen. Beim Ergänzen bitte das Datum dazuschreiben.
+  const abgelaufen = {
+    '14': '30.04.2023', '16': '11.09.2023', '18': '30.04.2025', '20': '30.04.2026',
+    // Ungerade Zeilen erreichen nie LTS und laufen nach sechs Monaten aus.
+    '19': 'nie LTS', '21': 'nie LTS', '23': 'nie LTS', '25': 'nie LTS',
+  };
+  assert.ok(!(imBild[0] in abgelaufen),
+    `Node ${imBild[0]} bekommt seit ${abgelaufen[imBild[0]]} keine Sicherheits-Patches mehr — ` +
+    'das ist keine alte Version, sondern eine ungepatchte Laufzeitumgebung');
+});
+
+/**
+ * @types/node beschreibt dieselbe Node-Hauptversion, die auch läuft.
+ *
+ * Der Anlass (Nachtrag 153): Beim Wechsel auf Node 26 stand @types/node bereits
+ * auf ^26 — zufällig passend, weil `npm update` es kurz vorher hochgezogen
+ * hatte. Andersherum wäre es unbemerkt geblieben: Der Übersetzer prüfte dann
+ * gegen eine andere Standardbibliothek als die ausgeführte, und ein Aufruf, den
+ * es in der laufenden Fassung gar nicht gibt, käme sauber durch.
+ *
+ * Die allgemeine Regel „Typpaket und Paket in derselben Hauptversion" weiter
+ * oben greift hier nicht: `node` ist keine Abhängigkeit in package.json, die
+ * Version steht im Dockerfile.
+ */
+test('@types/node passt zur Node-Version aus dem Dockerfile', () => {
+  const imBild = (read('Dockerfile').match(/^FROM node:(\d+)-/m) || [])[1];
+  const typen  = (JSON.parse(read('package.json')).devDependencies['@types/node'] || '').match(/(\d+)\./);
+  assert.ok(imBild, 'Keine Node-Version im Dockerfile gefunden');
+  assert.ok(typen,  '@types/node fehlt in den devDependencies');
+  assert.equal(typen[1], imBild,
+    `Ausgeliefert wird Node ${imBild}, typgeprüft wird gegen @types/node ${typen[1]} — ` +
+    'dann beschreibt der Übersetzer eine andere Standardbibliothek als die laufende');
+});

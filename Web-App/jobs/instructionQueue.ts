@@ -45,21 +45,18 @@ const monitor  = require('../utils/jobMonitor');
 const { logAndContinue } = require('../utils/httpError');
 
 let _running        = false;   // billiger Schutz IM eigenen Prozess
-let _timer          = null;
+let _timer: NodeJS.Timeout | null = null;
 let _driver         = false;   // true nur dort, wo start() lief (Primary)
 
 /**
  * Namensraum der prozessübergreifenden Sperre für die Anleitungs-Warteschlange.
  *
- * Belegt sind bereits: 42 (Bild-Download je Set, jobs/partsCatalogEnrich.ts),
- * 55 (Preislauf, jobs/priceJob.ts), 57 (fehlende Bilder neu laden,
- * jobs/partsCatalogEnrich.ts), 58 (Katalog-Import je Tabelle,
- * jobs/csvImportWorker.ts), 77 (Teile-Zusammenfassung, utils/partsSummary.ts),
- * 11223344 (Brickset-Retry, clients/brickset.ts), 99999999
- * (Start-Orchestrierung in server.ts) und die Benutzer-ID als Namensraum in
- * utils/txLock.ts.
+ * Welche Zahl das ist und welche sonst belegt sind, steht seit Nachtrag 149 in
+ * utils/lockNamespaces.ts. Hier stand eine Abschrift davon — die vollständigste
+ * im Projekt, und trotzdem eine, die beim nächsten Zusatz veraltet wäre.
  */
-const QUEUE_LOCK = 56;
+const { LOCKS } = require('../utils/lockNamespaces');
+const QUEUE_LOCK = LOCKS.ANLEITUNGS_QUEUE;
 
 /** Schlüssel der Cloudflare-Pause in global_settings. */
 const BLOCK_KEY = 'instr_queue_block';
@@ -126,7 +123,7 @@ async function clearBlock() {
     .catch(logAndContinue('instr-queue:block-loeschen'));
 }
 
-async function enqueue(setNumber) {
+async function enqueue(setNumber: string) {
   const n = setNumber.includes('-') ? setNumber : `${setNumber}-1`;
   await db.run(
     `INSERT INTO instruction_queue (set_number, status) VALUES ($1, 'pending')
@@ -204,7 +201,7 @@ async function processNext() {
       await db.run(`UPDATE instruction_queue SET status='done', updated_at=NOW() WHERE id=$1`, [row.id]);
       console.log(`[instr-queue] ${row.set_number}: ${count} instructions`);
       db.get(`SELECT COUNT(*) as c FROM instruction_queue WHERE status='pending'`)
-        .then(r => {
+        .then((r: any) => {
           const rem = parseInt(r?.c||0);
           monitor.update('instrQueue', {
             status: rem > 0 ? 'running' : 'done',
@@ -301,11 +298,11 @@ function start() {
   _driver = true;   // ab hier laufen die Nachfolge-Zeitgeber in DIESEM Prozess
   // Resume any pending items from before restart
   db.get(`SELECT COUNT(*) as c FROM instruction_queue WHERE status='pending'`)
-    .then(row => {
+    .then((row: any) => {
       const pending = parseInt(row?.c || 0);
       if (pending > 0) {
         console.log(`[instr-queue] ${pending} pending instructions — resuming`);
-        db.get(`SELECT COUNT(*) as c FROM instruction_queue`).then(t2 => {
+        db.get(`SELECT COUNT(*) as c FROM instruction_queue`).then((t2: any) => {
           const totalAll = parseInt(t2?.c||0);
           monitor.update('instrQueue', {
             status: 'running',
@@ -316,7 +313,7 @@ function start() {
         }).catch(()=>{});
         scheduleNext(3000); // wait 3s after startup
       } else {
-        db.get(`SELECT COUNT(*) as c FROM instruction_queue`).then(t => {
+        db.get(`SELECT COUNT(*) as c FROM instruction_queue`).then((t: any) => {
           const tot = parseInt(t?.c||0);
           if (tot > 0) monitor.update('instrQueue', { status: 'done', progress: tot, total: tot, sub: 'Alle erledigt' });
         }).catch(()=>{});

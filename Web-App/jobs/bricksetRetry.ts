@@ -123,12 +123,13 @@ async function processRetryQueue(force = false) {
   const client = await db2.pool.connect();
   let acquired = false;
   try {
-    const r = await client.query('SELECT pg_try_advisory_lock(11223344) AS ok').catch(() => null);
+    const { LOCKS } = require('../utils/lockNamespaces');
+    const r = await client.query('SELECT pg_try_advisory_lock($1) AS ok', [LOCKS.BRICKSET_RETRY]).catch(() => null);
     acquired = !!r?.rows?.[0]?.ok;
     if (!acquired) { console.log('[brickset] processRetryQueue skipped — another worker is running'); return; }
     await _processRetryQueue(force);
   } finally {
-    if (acquired) await client.query('SELECT pg_advisory_unlock(11223344)').catch(() => {});
+    if (acquired) await client.query('SELECT pg_advisory_unlock($1)', [require('../utils/lockNamespaces').LOCKS.BRICKSET_RETRY]).catch(() => {});
     client.release();
   }
 }

@@ -117,7 +117,7 @@ async function raeumeLeerenBestand(tx: any, cfg: any, ownerId: number, keys: any
   await cfg.cleanupWhenEmpty(tx, ownerId, keys);
 }
 
-async function withSetAggregate(uid, cfgTable, keys, payload) {
+async function withSetAggregate(uid: number, cfgTable: string, keys: any[], payload: any) {
   // Teile- und Minifiguren-Erfassungen haben kein Set-Aggregat.
   if (cfgTable !== 'set_acquisitions') return payload;
   const { withSetAggregate: attach } = require('../../utils/handlers/sets');
@@ -163,7 +163,7 @@ async function withSetAggregate(uid, cfgTable, keys, payload) {
           : kind === 'part'
             ? await withInventoryLock(from, `${keys[0]}:${keys[1]}`, (tx) =>
                 moveManualAcquisition(tx, 'part', keys, id, from, to))
-            : await db.transaction(async (tx) =>
+            : await db.transaction(async (tx: any) =>
                 moveManualAcquisition(tx, 'fig', keys, id, from, to));
         return res.json({ success: true, from_user_id: from, to_user_id: to, ...moved });
       }

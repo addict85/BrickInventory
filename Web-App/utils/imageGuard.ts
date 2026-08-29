@@ -41,7 +41,7 @@ const HEADER_BYTES = 65536;
  * @param {Buffer} buf Die ersten Bytes der Datei
  * @returns {{width: number, height: number} | null}
  */
-function readDimensions(buf) {
+function readDimensions(buf: Buffer) {
   // ── PNG ───────────────────────────────────────────────────────────────────
   // Signatur (8 Byte) + IHDR-Chunk; Breite/Höhe stehen als 32-Bit-Big-Endian
   // an Offset 16 bzw. 20.
@@ -82,7 +82,7 @@ function readDimensions(buf) {
  * @param {string} filePath Pfad zur Bilddatei
  * @returns {Promise<boolean>} false, wenn das Bild zu gross ist
  */
-async function isDecodable(filePath) {
+async function isDecodable(filePath: string) {
   let fh;
   try {
     fh = await fs.promises.open(filePath, 'r');

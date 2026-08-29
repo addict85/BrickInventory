@@ -23,7 +23,7 @@ const _thumbCache = new Map();
  * @param {Map<any, any>} map
  * @param {number} n
  */
-function _evictOldest(map, n) {
+function _evictOldest(map: Map<any, any>, n: number) {
   let removed = 0;
   for (const k of map.keys()) {
     map.delete(k);
@@ -36,7 +36,7 @@ function _evictOldest(map, n) {
  * Original. Unterstützt /data/… (Laufzeit-Daten) und /images/… (public/).
  */
 /** @param {string|null|undefined} localPath @returns {string|null|undefined} */
-function resolveImageLocal(localPath) {
+function resolveImageLocal(localPath: string | null | undefined) {
   if (!localPath) return localPath;
   const ext       = path.extname(localPath);
   const thumbPath = localPath.replace(ext, '_thumb.jpg');
@@ -68,7 +68,7 @@ function resolveImageLocal(localPath) {
  * braucht serverseitige Header (Hotlink-Schutz); alles andere lädt direkt.
  */
 /** @param {string|null|undefined} url @returns {string|null} */
-function proxyImageUrl(url) {
+function proxyImageUrl(url: string | null | undefined) {
   if (!url) return null;
   if (url.startsWith('/')) return url;
   if (url.includes('rebrickable.com')) return `/api/img-proxy?url=${encodeURIComponent(url)}`;
@@ -101,7 +101,7 @@ const _existsCache = new Map();
  * @param {string} publicRelPath z. B. "/images/sets/10283-1.jpg"
  * @returns {string|null}
  */
-function resolveIfExists(publicRelPath) {
+function resolveIfExists(publicRelPath: string) {
   const hit = _existsCache.get(publicRelPath);
   if (hit && (hit.exists || Date.now() - hit.checkedAt < 10 * 60 * 1000))
     return hit.exists ? resolveImageLocal(publicRelPath) : null;

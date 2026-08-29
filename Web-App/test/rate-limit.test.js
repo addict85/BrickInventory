@@ -271,11 +271,14 @@ test('Jobs mit externem Kontingent haben eine prozessübergreifende Sperre', () 
       `${datei}: ohne await meldet die Route ein Promise als „gestartet"`);
   }
 
-  // Namensräume dürfen sich nicht überschneiden — sonst sperren sich zwei
-  // unabhängige Vorgänge gegenseitig aus.
-  const belegt = ['42', '77', '11223344', '99999999'];
-  const gewaehlt = (job.match(/const PRICE_JOB_LOCK = (\d+)/) || [])[1];
-  assert.ok(gewaehlt, 'Der Namensraum gehört als benannte Konstante in die Datei');
-  assert.ok(!belegt.includes(gewaehlt),
-    `Namensraum ${gewaehlt} ist schon vergeben (Bild-Download 42, Teile-Zusammenfassung 77, Brickset 11223344, Start 99999999)`);
+  // Der Namensraum kommt aus der gemeinsamen Liste.
+  //
+  // Hier stand bis Nachtrag 149 eine von Hand gepflegte Abschrift:
+  //     const belegt = ['42', '77', '11223344', '99999999'];
+  // Sie kannte 55, 56, 57 und 58 nicht, obwohl es alle vier längst gab — eine
+  // Kollision mit dreien davon wäre durchgegangen, und der Test wäre dabei
+  // grün geblieben. Dass die Namensräume sich wirklich nicht behindern, misst
+  // jetzt test/lock-namespaces-db.test.js gegen eine echte Datenbank.
+  assert.match(job, /LOCKS\.PREIS_JOB/,
+    'Der Namensraum gehört aus utils/lockNamespaces.ts, nicht eingetippt');
 });

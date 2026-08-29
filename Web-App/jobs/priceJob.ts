@@ -6,21 +6,38 @@ const monitor = require('../utils/jobMonitor');
 const { getPriceGuide } = require('../clients/bricklink');
 const { DEFAULT_PRICE_CONDITION } = require('../utils/financeCalc');
 
-const state = { running:false, lastRun:null, lastDuration:null, lastUpdated:0, lastErrors:0, nextRun:null, progress:null, log:[] };
+/**
+ * Laufzustand des Preis-Jobs.
+ *
+ * Ausgeschrieben, weil TypeScript aus `lastRun:null` sonst den Typ `null`
+ * ableitet und aus `log:[]` den Typ `never[]` — beides ist nicht gemeint und
+ * war unter strictNullChecks die grösste Einzelgruppe Meldungen in dieser
+ * Datei. Der Typ beschreibt, was das Feld über die Laufzeit WIRKLICH annimmt.
+ */
+interface PriceJobState {
+  running: boolean;
+  lastRun: string | null;
+  lastDuration: number | null;
+  lastUpdated: number;
+  lastErrors: number;
+  nextRun: string | null;
+  progress: { current: number; total: number; set: string | null } | null;
+  log: string[];
+}
+const state: PriceJobState = { running:false, lastRun:null, lastDuration:null, lastUpdated:0, lastErrors:0, nextRun:null, progress:null, log:[] };
 let _timer: any = null;
 let _started = false; // true, sobald start() lief (nur im Primary) — schützt reschedule()
 
 /**
  * Namensraum der prozessübergreifenden Sperre für den Preislauf.
  *
- * Belegt sind bereits: 42 (Bild-Download, jobs/partsCatalogEnrich.ts),
- * 56 (Anleitungs-Warteschlange, jobs/instructionQueue.ts), 57 (fehlende Bilder
- * neu laden, jobs/partsCatalogEnrich.ts), 77 (Teile-Zusammenfassung,
- * utils/partsSummary.ts), 11223344 (Brickset),
- * 99999999 (Start-Orchestrierung in server.ts) und die Benutzer-ID als
- * Namensraum in utils/txLock.ts.
+ * Die Zahl steht seit Nachtrag 149 nicht mehr hier, sondern in
+ * utils/lockNamespaces.ts — zusammen mit allen anderen. Hier stand vorher eine
+ * abgeschriebene Liste der belegten Namensräume; sie kannte 55 und 58 nicht
+ * und wäre bei der nächsten Ergänzung wieder veraltet gewesen.
  */
-const PRICE_JOB_LOCK = 55;
+const { LOCKS } = require('../utils/lockNamespaces');
+const PRICE_JOB_LOCK = LOCKS.PREIS_JOB;
 
 /**
  * Sperre über die ganze Laufzeit halten — auf einer EIGENEN Verbindung.
@@ -190,7 +207,12 @@ async function runPriceRefresh(vorhandeneSperre?: (() => Promise<void>) | null) 
     // 60 s abbrach.
     if (!allSets.length) { log('No sets, nothing to do'); state.lastRun=new Date().toISOString(); return; }
     log(`Starting: ${allSets.length} set-slots`);
-    state.progress = { current:0, total:allSets.length, set:null };
+    // Eigene Referenz statt state.progress in der Schleife: Der finally-Block
+    // setzt state.progress am Ende auf null, die Aufgaben laufen aber
+    // nebenläufig (parallelLimit). Über `fortschritt` hängt der Zähler nicht
+    // daran, dass das gemeinsame Feld genau jetzt noch gesetzt ist.
+    const fortschritt = { current:0, total:allSets.length, set:null as string | null };
+    state.progress = fortschritt;
     monitor.update('priceJob', { status:'running', progress:0, total:allSets.length, sub:`0/${allSets.length} Sets` });
     const byUser: any = {};
     for (const row of allSets) (byUser[row.user_id] = byUser[row.user_id] || []).push(row.set_number);
@@ -220,8 +242,8 @@ async function runPriceRefresh(vorhandeneSperre?: (() => Promise<void>) | null) 
           .map(r => [r.set_number, r.condition === 'U' ? 'U' : 'N']));
 
       const tasks = valid.map(sn => async () => {
-        state.progress.current++; state.progress.set = sn;
-        monitor.update('priceJob', { status:'running', progress:state.progress.current, total:state.progress.total, sub:`${sn} (${state.progress.current}/${state.progress.total})` });
+        fortschritt.current++; fortschritt.set = sn;
+        monitor.update('priceJob', { status:'running', progress:fortschritt.current, total:fortschritt.total, sub:`${sn} (${fortschritt.current}/${fortschritt.total})` });
         const conditions = condBySet.has(sn)
           ? [...condBySet.get(sn)]
           : [storedCond.get(sn) || DEFAULT_PRICE_CONDITION];
@@ -299,7 +321,7 @@ async function runPriceRefresh(vorhandeneSperre?: (() => Promise<void>) | null) 
  *
  * @returns {Promise<string[]>} z. B. ['N'], ['U'] oder ['N','U']
  */
-async function conditionsNeededFor(setNumber, userId, hintCondition = null) {
+async function conditionsNeededFor(setNumber, userId, hintCondition: string | null = null) {
   const rows = await db.all(
     `SELECT DISTINCT COALESCE(condition,'N') AS c
        FROM set_acquisitions WHERE user_id=$1 AND set_number=$2`,
@@ -325,7 +347,7 @@ async function conditionsNeededFor(setNumber, userId, hintCondition = null) {
   return [set?.condition === 'U' ? 'U' : 'N'];
 }
 
-async function refreshPriceForSet(setNumber, userId, hintCondition = null) {
+async function refreshPriceForSet(setNumber, userId, hintCondition: string | null = null) {
   if (!/^[a-zA-Z0-9]+-\d+$/.test(setNumber)) { log(`Skipping invalid: ${setNumber}`); return; }
   const ck = await getGlobalSetting('bricklink_consumer_key', '');
   if (!ck) return;

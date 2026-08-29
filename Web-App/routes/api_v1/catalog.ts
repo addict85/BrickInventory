@@ -72,13 +72,14 @@ async function getThemeTree() {
     byId.set(r.id, r);
     if (r.parent_id != null) {
       if (!children.has(r.parent_id)) children.set(r.parent_id, []);
-      children.get(r.parent_id).push(r.id);
+      children.get(r.parent_id)!.push(r.id);
     }
   }
   // Vollständiger Pfadname je Theme ("Eltern › Kind"), zyklen-sicher.
   const pathName = new Map<number, string>();
   const resolvePath = (id: number, seen: Set<number>): string => {
-    if (pathName.has(id)) return pathName.get(id);
+    const fertig = pathName.get(id);
+    if (fertig !== undefined) return fertig;
     const node = byId.get(id);
     if (!node) return '';
     let name = node.name || '';
@@ -102,6 +103,9 @@ function descendantIds(tree: Awaited<ReturnType<typeof getThemeTree>>, rootId: n
   const seen = new Set<number>();
   while (stack.length) {
     const id = stack.pop();
+    // while (stack.length) garantiert eine Zahl; der Typ von Array.pop() sagt
+    // das nicht, also einmal ausdrücklich statt viermal mit `!`.
+    if (id === undefined) break;
     if (seen.has(id)) continue;
     seen.add(id);
     out.push(id);

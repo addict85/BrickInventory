@@ -17,14 +17,14 @@ async function getRbKey() {
   return row?.value || null;
 }
 
-async function fetchBatch(partNums, rbKey) {
+async function fetchBatch(partNums: string[], rbKey: string) {
   const url = `https://rebrickable.com/api/v3/lego/parts/?part_nums=${partNums.join(',')}&page_size=500`;
   for (let attempt = 0; attempt < 3; attempt++) {
     await rebrickableLimiter.waitForSlot();
     const result = await new Promise<JobHttpResult>(resolve => {
-      const req = https.get(url, { family: 4, headers: { Authorization: `key ${rbKey}`, 'User-Agent': 'BrickInventory/1.0' } }, r => {
-        let b = ''; r.on('data', d => b += d);
-        r.on('end', () => resolve({ status: r.statusCode, body: b }));
+      const req = https.get(url, { family: 4, headers: { Authorization: `key ${rbKey}`, 'User-Agent': 'BrickInventory/1.0' } }, (r: any) => {
+        let b = ''; r.on('data', (d: any) => b += d);
+        r.on('end', () => resolve({ status: r.statusCode ?? 0, body: b }));
       });
       req.on('error', () => resolve({ status: 0, body: '' }));
       req.setTimeout(30000, () => { req.destroy(); resolve({ status: 0, body: '' }); });
@@ -55,7 +55,7 @@ async function run() {
   );
   if (!parts.length) { console.log('[bl-backfill] All parts already have bl_part_number'); return; }
 
-  const partNums = parts.map(p => p.part_number);
+  const partNums = parts.map((p: any) => p.part_number);
   console.log(`[bl-backfill] Backfilling ${partNums.length} parts in batches of 500...`);
   const BATCH = 500;
   let updated = 0, skipped = 0;
@@ -81,12 +81,12 @@ async function run() {
       await db.run(
         `UPDATE parts SET bl_part_number=$1 WHERE part_number=$2 AND bl_part_number IS NULL`,
         [blId, partNum]
-      ).catch(e => console.warn(`[bl-backfill] bl_part_number ${partNum}: ${e.message}`));
+      ).catch((e: any) => console.warn(`[bl-backfill] bl_part_number ${partNum}: ${e.message}`));
       await db.run(
         `INSERT INTO rb_bl_mapping (part_num, bl_part_num) VALUES ($1,$2)
          ON CONFLICT (part_num) DO UPDATE SET bl_part_num=$2, fetched_at=NOW()`,
         [partNum, blId]
-      ).catch(e => console.warn(`[bl-backfill] rb_bl_mapping ${partNum}: ${e.message}`));
+      ).catch((e: any) => console.warn(`[bl-backfill] rb_bl_mapping ${partNum}: ${e.message}`));
       if (apiMap[partNum]) updated++; else skipped++;
     }
     console.log(`[bl-backfill] ${Math.min(i+BATCH, partNums.length)}/${partNums.length} done (${updated} updated)`);

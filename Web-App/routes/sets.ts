@@ -382,7 +382,7 @@ router.get('/export/rebrickable', async (req, res) => {
 
 
 
-router.post('/add-stream', async (req, res) => {
+router.post('/add-stream', async (req: LoggedInRequest, res) => {
   const { set_number, quantity=1, purchase_price, condition: setCondition, owner_user_id } = req.body;
   if (!set_number) { res.status(400).json({ success:false, error:'set_number erforderlich' }); return; }
   const streamOwner = await resolveWriteTarget(req.session.userId, owner_user_id);

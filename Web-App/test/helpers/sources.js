@@ -365,3 +365,91 @@ function coreQuelle() {
     .map(f => fs.readFileSync(path.join(dir, f), 'utf8')).join('\n');
 }
 module.exports.coreQuelle = coreQuelle;
+
+/**
+ * Der Kopf einer Funktion — von `function <name>(` bis zur schliessenden
+ * Klammer der Parameterliste.
+ *
+ * ── Warum (Nachtrag 148) ────────────────────────────────────────────────────
+ * Prüfungen der Art „nimmt diese Funktion noch einen Zustand entgegen?" waren
+ * bisher als Muster über den ganzen Kopf geschrieben, inklusive aller anderen
+ * Parameter:
+ *
+ *     assert.match(src, /function getCurrentFigMarketPrice\([^)]*condition = null\)/)
+ *
+ * Damit hängt die Prüfung an Dingen, über die sie gar nichts sagen will: an
+ * der Reihenfolge der Parameter und an ihrer Schreibweise. Beim Einschalten
+ * von strictNullChecks wurde aus `condition = null` ein
+ * `condition: string | null = null` — vier solcher Prüfungen wurden rot,
+ * obwohl sich am Verhalten nichts geändert hatte. Dieselbe Sorte Test, die in
+ * Nachtrag 118 eine Sicherheitslücke festgeschrieben hat.
+ *
+ * Mit dieser Funktion nennt die Prüfung ihren GEGENSTAND: den Parameter.
+ *
+ * @param {string} src Quelltext
+ * @param {string} name Funktionsname
+ * @returns {string} Der Kopf, z.B. "function f(a, b: string | null = null)"
+ */
+function funktionsKopf(src, name) {
+  const i = src.indexOf(`function ${name}(`);
+  if (i < 0) throw new Error(`Funktion ${name} gibt es nicht (mehr)`);
+  let depth = 0;
+  for (let j = src.indexOf('(', i); j < src.length; j++) {
+    if (src[j] === '(') depth++;
+    else if (src[j] === ')' && --depth === 0) return src.slice(i, j + 1);
+  }
+  throw new Error(`Parameterliste von ${name} ist nicht geschlossen`);
+}
+module.exports.funktionsKopf = funktionsKopf;
+
+/**
+ * Nimmt `name` einen Parameter `param` entgegen — unabhängig von Typannotation
+ * und Position? Mit `mitVorgabeNull` zusätzlich: hat er die Vorgabe null (dann
+ * dürfen Aufrufer ihn weglassen)?
+ */
+function hatParameter(src, name, param, mitVorgabeNull = false) {
+  const kopf = funktionsKopf(src, name);
+  const drin = new RegExp(`\\b${param}\\b`).test(kopf);
+  if (!drin) return false;
+  if (!mitVorgabeNull) return true;
+  return new RegExp(`\\b${param}\\b[^,)]*=\\s*null`).test(kopf);
+}
+module.exports.hatParameter = hatParameter;
+
+/**
+ * Prüft, dass `name` genau diese Parameter entgegennimmt — der Reihe nach,
+ * aber ohne Rücksicht auf Typannotationen, Vorgabewerte oder Zeilenumbrüche.
+ *
+ * Die bequeme Form für den häufigsten Fall. Statt
+ *
+ *     assert.match(src, /async function withOwners\(uids: number\[\], rows: any\[\]\)/)
+ *
+ * schreibt man
+ *
+ *     pruefeParameter(src, 'withOwners', ['uids', 'rows']);
+ *
+ * Der Unterschied ist nicht Bequemlichkeit, sondern WORÜBER die Prüfung eine
+ * Aussage macht. Die erste Fassung fällt um, sobald jemand `rows: any[]` zu
+ * `rows: Row[]` schärft — eine Verbesserung, die als Fehler gemeldet wird.
+ * Genau das ist in den Nachträgen 148 und 150 sechsmal passiert.
+ *
+ * @param {string} src Quelltext
+ * @param {string} name Funktionsname
+ * @param {string[]} params Erwartete Parameter, in Reihenfolge
+ * @param {string} [hinweis] Zusatz für die Fehlermeldung
+ */
+function pruefeParameter(src, name, params, hinweis = '') {
+  const assert = require('node:assert/strict');
+  const kopf = funktionsKopf(src, name);
+  // Nur die Parameterliste, ohne "function <name>(" und ohne die letzte ")".
+  const innen = kopf.slice(kopf.indexOf('(') + 1, kopf.length - 1);
+
+  let zuletzt = -1;
+  for (const p of params) {
+    const treffer = new RegExp(`\\b${p}\\b`).exec(innen.slice(zuletzt + 1));
+    assert.ok(treffer,
+      `${name} nimmt '${p}' nicht (mehr) entgegen${hinweis ? ' — ' + hinweis : ''}: ${kopf}`);
+    zuletzt = zuletzt + 1 + treffer.index;
+  }
+}
+module.exports.pruefeParameter = pruefeParameter;

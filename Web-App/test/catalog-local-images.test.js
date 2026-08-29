@@ -20,6 +20,7 @@ const fs = require('node:fs');
 const path = require('node:path');
 
 const ROOT = path.join(__dirname, '..');
+const { pruefeParameter } = require('./helpers/sources');
 const SRC = fs.readFileSync(path.join(ROOT, 'routes', 'api_v1', 'catalog.ts'), 'utf8');
 const CODE = SRC.replace(/\/\/[^\n]*/g, '').replace(/\/\*[\s\S]*?\*\//g, '');
 
@@ -207,7 +208,7 @@ test('der Katalog benutzt jetzt die gecachte, vorschau-bewusste Existenzprüfung
 
 test('resolveIfExists() bevorzugt die Vorschau und ist gecacht', () => {
   const src = fs.readFileSync(path.join(ROOT, 'utils', 'images.ts'), 'utf8');
-  assert.match(src, /function resolveIfExists\(publicRelPath\)/, 'Die Funktion fehlt');
+  pruefeParameter(src, 'resolveIfExists', ['publicRelPath'], 'die Funktion fehlt');
   const fn = src.slice(src.indexOf('function resolveIfExists('));
   assert.match(fn, /return exists \? resolveImageLocal\(publicRelPath\) : null;/,
     'Bei Existenz muss resolveImageLocal() für die Vorschau-Bevorzugung aufgerufen werden');

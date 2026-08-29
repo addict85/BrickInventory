@@ -3,26 +3,36 @@
   // tsc läuft als reiner Checker (noEmit); die Transpilation .ts → .js
   // übernimmt esbuild im Docker-Build, dev-Start via tsx (npm run dev).
   //
-  // ── strictNullChecks: unterwegs, noch nicht am Ziel ───────────────────────
-  // Eingeschaltet meldete tsc 299 Fehler. Davon liessen sich rund 220
-  // strukturell abräumen, ohne eine einzige Verhaltensentscheidung zu treffen:
-  //   • db.get/all/run hatten keine Rückgabetypen — daraus leitete tsc an
-  //     vielen Stellen `never` ab und meldete Folgefehler, die wie Probleme
-  //     der Aufrufstelle aussahen, aber alle in db/database.ts wurzelten.
-  //   • `let x = null` erzeugt den Typ `null`, nicht `any`.
-  //   • `const x = []` erzeugt `never[]`.
-  //   • 41-mal "req.apiUser is possibly undefined" — hinter requireToken ist es
-  //     garantiert gesetzt; das benennt jetzt der Typ AuthedRequest, statt es
-  //     41-mal mit `!` wegzudrücken.
+  // ── strictNullChecks: seit Nachtrag 148 AN ────────────────────────────────
+  // Der Schalter stand jahrelang aus, weil er 299 und zuletzt noch 93 Fehler
+  // meldete. Die Begründung dafür war richtig: Ein Schalter mit dauerhaft
+  // roten Meldungen macht die Prüfung wertlos, man gewöhnt sich an rot und
+  // übersieht die 94.
   //
-  // Übrig sind rund 78 Fehler, die echte Entscheidungen verlangen ("darf das
-  // hier null sein, und was soll dann passieren?") — verteilt vor allem auf
-  // jobs/priceJob.ts, utils/financeCalc.ts und routes/api_v1/pdf.ts. Die
-  // werden modulweise abgearbeitet; bis dahin bleibt der Schalter aus, WEIL
-  // ein `strictNullChecks: true` mit 78 dauerhaft roten Meldungen die Prüfung
-  // wertlos machen würde: Man gewöhnt sich an rot und übersieht das 79.
+  // Abgeräumt wurden sie in Gruppen, ohne eine einzige Verhaltensentscheidung:
+  //   • `res.statusCode` ist number|undefined — die sechs HTTP-Klienten
+  //     normalisieren jetzt auf `?? 0`, wie utils/partsImport.ts es im
+  //     Fehlerfall ohnehin schon tat.
+  //   • Zehn Funktionsköpfe mit `condition = null` bekamen den Typ, den ihre
+  //     Aufrufer längst übergaben (string | null).
+  //   • `new Map(rows.map(r => [a, b]))` ergibt any[][], keine Tupel — acht
+  //     Stellen tragen jetzt den Elementtyp.
+  //   • `let x = null` ergibt den Typ `null`, `const x = []` ergibt `never[]`.
+  //     Betroffen waren der Zustand des Preis-Jobs, die Farbsortierung im PDF
+  //     und die Kopfdaten in addSet().
+  //   • `req.session.userId` ist zu Recht optional — hinter requireLogin ist es
+  //     gesetzt. Das benennt jetzt LoggedInRequest in types/augmentations.d.ts,
+  //     nach demselben Muster wie AuthedRequest, statt `!` an jeder Stelle.
   //
-  // Zwischenstand messen:  npx tsc --noEmit --strictNullChecks
+  // Zwei echte Kleinigkeiten fielen dabei mit ab: In routes/api_v1/parts.ts
+  // stand `page_size: result.page_size` VOR `...result` und war damit
+  // wirkungslos, und der Fortschrittszähler des Preis-Jobs hing an einem Feld,
+  // das der finally-Block nebenläufig auf null setzt.
+  //
+  // Was der Schalter NICHT ist: `strict`. Der meldet weiterhin rund 200 Stellen
+  // (vor allem noImplicitAny) und bleibt aus.
+  //
+  // Stand messen:  npx tsc --noEmit
   "compilerOptions": {
     "target": "es2022",
     "module": "node16",
@@ -42,6 +52,13 @@
     "esModuleInterop": true,
     "types": ["node"],
     "strict": false,
+    "strictNullChecks": true,
+    // Diese beiden meldeten 0 und kosten nichts — eingeschaltet, solange
+    // sie 0 sind (Nachtrag 150). Ein durchgefallener switch-Zweig und eine
+    // vergessene override-Kennzeichnung sind Fehler, die man beim Lesen
+    // übersieht und die der Übersetzer geschenkt findet.
+    "noFallthroughCasesInSwitch": true,
+    "noImplicitOverride": true,
     "noImplicitAny": false
   },
   "include": [

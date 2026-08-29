@@ -1,8 +1,8 @@
 // ── Log interceptor — write console output to PostgreSQL app_logs ─────────────
 // Must be first so all subsequent logs are captured
 const _logBuffer: any[] = [];
-let   _logPool   = null;
-let   _logTimer  = null;
+let   _logPool: import('pg').Pool | null = null;
+let   _logTimer: NodeJS.Timeout | null = null;
 
 function _flushLogs() {
   if (!_logPool || !_logBuffer.length) return;
@@ -59,7 +59,7 @@ function _intercept(level, orig) {
     // unverändert nach stdout/stderr (orig.apply oben) — der Docker-Log-Treiber
     // hat sie also auch dann, wenn die Datenbank sie nie zu sehen bekommt.
     if (_logBuffer.length > 500) _logBuffer.splice(0, _logBuffer.length - 500);
-    clearTimeout(_logTimer);
+    if (_logTimer) clearTimeout(_logTimer);
     _logTimer = setTimeout(() => { _logTimer = null; _flushLogs(); }, 1500);
   };
 }
@@ -772,7 +772,8 @@ async function electPrimaryWorker(db) {
     // könnten sich mehrere Worker gleichzeitig für "primary" halten und
     // Hintergrund-Jobs (z. B. der Bild-Download) liefen mehrfach parallel.
     const client = await db.pool.connect();
-    const { rows } = await client.query('SELECT pg_try_advisory_lock(99999999) AS ok');
+    const { rows } = await client.query('SELECT pg_try_advisory_lock($1) AS ok',
+      [require('./utils/lockNamespaces').LOCKS.PRIMARY_WORKER]);
     isPrimaryWorker = !!rows[0]?.ok;
     if (isPrimaryWorker) {
       _primaryLockClient = client;                 // offen halten → Lock bleibt bestehen

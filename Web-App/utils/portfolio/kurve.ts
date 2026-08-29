@@ -165,8 +165,8 @@ export async function rekonstruiereKurve(opts: {
     });
   }
   rawPoints = rows
-    .map(r => ({ day: r.day, fullDay: r.full_day || r.day, month: r.month, total: parseFloat(r.total) }))
-    .filter(p => p.total > 0);
+    .map((r: any) => ({ day: r.day, fullDay: r.full_day || r.day, month: r.month, total: parseFloat(r.total) }))
+    .filter((p: any) => p.total > 0);
 
   // Ersten Punkt exakt halten.
   //

@@ -11,7 +11,7 @@ const router = express.Router();
 
 function generateToken() { return crypto.randomBytes(32).toString('hex'); }
 
-export async function createToken(userId, label = 'Android App') {
+export async function createToken(userId: number, label = 'Android App') {
   const token = generateToken();
   // DB speichert nur den SHA-256-Hash; der Client erhält den Klartext-Token
   await db.run('INSERT INTO api_tokens (token, user_id, label, expires_at) VALUES ($1,$2,$3,NULL) ON CONFLICT DO NOTHING', [hashToken(token), userId, label]);

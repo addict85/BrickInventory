@@ -275,19 +275,43 @@ let _schemaSql: string | null = null;
 function ladeSchema(): string {
   if (_schemaSql === null) {
     _schemaSql = require('fs').readFileSync(
-      require('path').join(__dirname, 'schema.sql'), 'utf8');
+      require('path').join(__dirname, 'schema.sql'), 'utf8') as string;
   }
   return _schemaSql;
 }
 
 // ── Schema initialisation ─────────────────────────────────────────────────────
+/**
+ * Das Schema anlegen und auf den aktuellen Stand bringen.
+ *
+ * ── Warum in Etappen (Nachtrag 148) ─────────────────────────────────────────
+ * Die Funktion war 408 Zeilen lang und tat fünf verschiedene Dinge
+ * hintereinander. Wer eine davon suchte, las die anderen vier mit; und die
+ * REIHENFOLGE — die hier eine echte Bedingung ist und nicht nur Gewohnheit —
+ * stand nur als Kommentar mitten im Rumpf.
+ *
+ * Jetzt steht sie als Liste. Die Regel dahinter: Erst alle Tabellen und
+ * Spalten, dann die Indizes. Ein Index auf eine Spalte, die eine spätere
+ * ALTER-Migration erst anlegt, scheitert bei einer Neuinstallation mit
+ * "column does not exist".
+ */
 async function initSchema() {
   // Das Grundschema liegt als db/schema.sql daneben — reines SQL ohne
   // Einsetzungen, siehe die Begründung dort. Alles, was eine Bedingung
-  // braucht, steht weiter unten in dieser Funktion.
+  // braucht, steht in den Etappen darunter.
   await pool.query(ladeSchema());
 
+  await preisVerlaufEindeutigProTag();
+  await spaltenMigrationen();
+  await trigrammIndizes();
+  await frueherZurLaufzeitAngelegt();
+  await indizesUndZusammenfassung();   // MUSS zuletzt laufen, siehe dort
 
+  console.log('✅ PostgreSQL schema ready');
+}
+
+/** Etappe 1 — ein Preiseintrag je Set, Zustand, Währung und Tag. */
+async function preisVerlaufEindeutigProTag() {
   // ── Ein Preiseintrag je Set, Zustand, Währung und TAG ───────────────────────
   //
   // Zwei Schreibwege (jobs/priceJob.ts beim Abruf, utils/financeCalc.ts) tragen
@@ -322,7 +346,10 @@ async function initSchema() {
       console.log('  ✅ Migration: Tages-Eindeutigkeit für price_history');
     }
   }
+}
 
+/** Etappe 2 — Spalten, die bestehende Installationen noch nicht haben. */
+async function spaltenMigrationen() {
   // ── Migrations: add columns to existing tables ──────────────────────────────
   // sets table migrations
   const setsMigrations = [
@@ -431,7 +458,10 @@ async function initSchema() {
     UPDATE global_settings SET value = '25000'
     WHERE key = 'api_limit_rebrickable' AND value IN ('4000', '10000')
   `);
+}
 
+/** Etappe 3 — Trigramm-Indizes für die Katalogsuche (optional, pg_trgm). */
+async function trigrammIndizes() {
   // ── Trigramm-Indizes für die Volltextsuche im Katalog ──────────────────────
   // Getrennt vom grossen Schema-Block, weil CREATE EXTENSION fehlschlagen kann
   // (fehlende Rechte bei manchen gehosteten Postgres-Angeboten). Das darf den
@@ -445,7 +475,10 @@ async function initSchema() {
   } catch (e: any) {
     console.warn(`  ⚠️  pg_trgm nicht verfügbar (${e.message}) — Katalogsuche läuft ohne Index (Seq-Scan).`);
   }
+}
 
+/** Etappe 4 — Tabellen und Datenkorrekturen, die früher zur Laufzeit liefen. */
+async function frueherZurLaufzeitAngelegt() {
   // ── Tabellen, die früher zur LAUFZEIT angelegt wurden ──────────────────────
   //
   // csv_import_jobs entstand per ensureJobTable() bei jedem Aufruf des
@@ -645,7 +678,18 @@ async function initSchema() {
       SELECT 1 FROM set_acquisitions a
       WHERE a.user_id = s.user_id AND a.set_number = s.set_number
     )`).catch(e => console.error('[db] acquisitions backfill:', e.message));
+}
 
+/**
+ * Etappe 5 — Indizes und die vorberechnete Teile-Zusammenfassung.
+ *
+ * ZULETZT, und das ist keine Stilfrage: Erst wenn alle Tabellen stehen und
+ * alle ALTER-Migrationen durchgelaufen sind, referenziert ein Index garantiert
+ * nur vorhandene Spalten. Sonst scheitert eine Neuinstallation an
+ * "relation/column does not exist", sobald jemand weiter oben eine Spalte
+ * ergänzt.
+ */
+async function indizesUndZusammenfassung() {
   // ── Indizes ZULETZT anlegen ───────────────────────────────────────────────
   // Bewusst ganz am Ende, nachdem ALLE Tabellen erstellt UND alle ALTER-Migra-
   // tionen durchgelaufen sind. So referenziert ein Index garantiert nur bereits
@@ -686,8 +730,6 @@ async function initSchema() {
   // Die Tabellen dazu legt db/migrations/0009-bild-tabellen.sql an — nicht
   // hier: initSchema() läuft nur bei einer Versionsänderung, und ein stiller
   // Fehlschlag hätte den Bild-Job dauerhaft abgeschaltet (siehe dort).
-
-  console.log('✅ PostgreSQL schema ready');
 }
 
 // ── Upsert helpers ────────────────────────────────────────────────────────────
@@ -720,7 +762,7 @@ async function upsert(table, data, conflictCols, updateCols) {
 // Other workers poll (non-blocking) until migrating worker is done.
 // Falls back to direct execution after 30s timeout.
 async function initSchemaOnce() {
-  const LOCK_ID = 55667788;
+  const LOCK_ID = require('../utils/lockNamespaces').LOCKS.SCHEMA_INIT;
   // Fassung dieses Deployments. Der postinstall-Hook (scripts/bump-version.js)
   // setzt sie bei jeder Installation neu — sie ändert sich also genau dann,
   // wenn auch neue Migrationen dazugekommen sein können.
@@ -762,7 +804,9 @@ async function initSchemaOnce() {
       'SELECT applied_version FROM schema_meta WHERE id = 1 AND applied_version = $1',
       [appVersion]);
 
-    if (done.rowCount > 0 && process.env.FORCE_SCHEMA_INIT !== '1') {
+    // rowCount ist bei pg für Nicht-SELECT null — hier immer eine Zahl, aber
+    // der Typ weiss das nicht.
+    if ((done.rowCount ?? 0) > 0 && process.env.FORCE_SCHEMA_INIT !== '1') {
       // Kurze Meldung statt des kompletten Migrationsprotokolls je Worker.
       console.log(`✅ Schema aktuell (${appVersion}) — Migration übersprungen`);
     } else {

@@ -123,13 +123,13 @@ async function priceForNewAcquisition(userId, setNumber, dbh: any = db) {
 // ── Kaufpreis-Historie ────────────────────────────────────────────────────────
 // Jede Erfassung (auch Re-Add desselben Sets) erzeugt eine Zeile in
 // set_acquisitions. sets.purchase_price spiegelt den Preis der letzten Erfassung.
-async function recordAcquisition(userId, setNumber, quantity, purchasePrice, condition = null, dbh: any = db) {
+async function recordAcquisition(userId, setNumber, quantity, purchasePrice, condition: string | null = null, dbh: any = db) {
   // Der Zustand wurde von allen Aufrufern schon immer als 5. Argument
   // übergeben, aber bisher hier ignoriert (Signatur hatte nur 4 Parameter) —
   // neue Erfassungen bekamen dadurch nie den Set-Zustand, sondern den
   // Spalten-Default. Jetzt wird er mitgeschrieben.
   const pp   = (purchasePrice !== null && purchasePrice !== undefined && !isNaN(purchasePrice)) ? purchasePrice : null;
-  const cond = ['N','U'].includes(condition) ? condition : null;
+  const cond = ['N','U'].includes(condition as string) ? condition : null;
   // Kein Rückfall ohne condition mehr.
   //
   // Hier stand ein try/catch, das bei JEDEM Fehler ein zweites INSERT ohne die
@@ -234,7 +234,7 @@ async function addSetWithDate(setNumber, quantity, userId, purchasePrice, condit
   return result;
 }
 
-async function addSet(setNumber, quantity, userId, sendProgress, purchasePrice, condition = null) {
+async function addSet(setNumber, quantity, userId, sendProgress, purchasePrice, condition: string | null = null) {
   const normalized = sanitizeSetNumber(setNumber);
   if (sendProgress) sendProgress({ step:'meta', set:normalized });
 
@@ -287,7 +287,10 @@ async function addSet(setNumber, quantity, userId, sendProgress, purchasePrice, 
     return { action:'updated', set_number:normalized };
   }
 
-  let name=null, year=null, theme=null, pieces=null, minifigs=null, imageUrl=null;
+  // Ausgeschrieben, weil `let x = null` den Typ `null` ergibt und jede spätere
+  // Zuweisung dann als Fehler gemeldet wird.
+  let name: string | null = null, year: number | null = null, theme: string | null = null,
+      pieces: number | null = null, minifigs: number | null = null, imageUrl: string | null = null;
   // Fetch from Rebrickable (primary) — never blocks import
   const rb = await getSetInfo(normalized).catch(() => null);
   if (rb) { name=rb.name; year=rb.year; theme=rb.theme; pieces=rb.pieces; imageUrl=rb.image_url; }

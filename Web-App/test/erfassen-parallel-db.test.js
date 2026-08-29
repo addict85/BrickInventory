@@ -213,7 +213,16 @@ test('die Teileliste liefert, was sie meldet', () => {
 
   // Die Antwort meldet die TATSÄCHLICHE Seitengrösse, nicht die angefragte.
   const v1 = ohneKommentare(fs.readFileSync(path.join(ROOT, 'routes', 'api_v1', 'parts.ts'), 'utf8'));
-  assert.match(v1, /page_size: result\.page_size/,
+  const antwort = v1.slice(v1.indexOf("router.get('/parts'"), v1.indexOf("router.get('/parts/brick-colors'"));
+  // Geprüft wird, WOHER die Zahl kommt, nicht wie die Zeile geschrieben ist.
+  //
+  // Vorher stand hier der Wortlaut `page_size: result.page_size`. Der war seit
+  // jeher wirkungslos — er stand VOR `...result`, das ihn mit demselben Wert
+  // überschrieb — und wurde beim Aufräumen entfernt. Der Test wurde dadurch
+  // rot, obwohl die Antwort sich um kein Byte geändert hat.
+  assert.match(antwort, /\.\.\.result/,
+    'Die Antwort übernimmt das Ergebnis von getParts nicht mehr — dann fehlt page_size ganz');
+  assert.doesNotMatch(antwort, /page_size:\s*(parseInt\()?(String\()?req\.query/,
     'Die Antwort spiegelt wieder die Anfrage zurück statt zu sagen, was geliefert wurde');
 
   // ── Und die SET-Liste bleibt unbegrenzt ──────────────────────────────────

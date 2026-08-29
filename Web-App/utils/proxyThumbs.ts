@@ -66,7 +66,7 @@ const THUMB_MAX_QUEUE = 40;
 let _thumbRunning = 0;
 const _thumbQueue: any[] = [];
 
-function queueThumb(srcFile, thumbFile) {
+function queueThumb(srcFile: string, thumbFile: string) {
   if (_thumbInFlight.has(thumbFile)) return;
   // ── Gescheiterte Verkleinerungen nicht endlos wiederholen ──────────────
   //
@@ -125,12 +125,13 @@ let _thumbInFlight = new Map();
  * Der Schlüssel ist fest — es geht nicht um DIESES Bild, sondern darum, dass
  * überhaupt nur eine Verkleinerung zur Zeit läuft.
  */
-const THUMB_LOCK_KEY = 918_273_645;
+const { LOCKS } = require('./lockNamespaces');
+const THUMB_LOCK_KEY = LOCKS.PROXY_THUMBS;
 
 /** Die Sperr-Verbindung. EINMAL aufgebaut, dann wiederverwendet. */
 let _sperrClient: any = null;
 
-async function mitVorschauSperre(arbeit) {
+async function mitVorschauSperre(arbeit: () => Promise<any>) {
   const db = require('../db/database');
   // ── NICHT aus dem Pool (Nachtrag 115) ──────────────────────────────────
   //
@@ -166,7 +167,7 @@ async function mitVorschauSperre(arbeit) {
   }
 }
 
-async function makeProxyThumb(srcFile, thumbFile) {
+async function makeProxyThumb(srcFile: string, thumbFile: string) {
   // Die Entdopplung liegt jetzt in queueThumb(); hier nur noch die Arbeit.
   const p = mitVorschauSperre(async () => {
     try {

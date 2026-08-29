@@ -16,6 +16,7 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
+const { pruefeParameter } = require('./helpers/sources');
 
 /**
  * import-/export-Syntax aus einer Moduldatei entfernen.
@@ -245,7 +246,7 @@ test('Minifiguren hängen Folgeseiten an, statt neu zu bauen', () => {
     'Ein voller Neuaufbau bricht alle laufenden Bildanfragen ab');
 
   assert.match(figs, /function appendFigs\(batch\)/, 'appendFigs fehlt');
-  assert.match(figs, /function renderFigs\(list, target\)/,
+  pruefeParameter(figs, 'renderFigs', ['list', 'target'],
     'renderFigs braucht ein Ziel, um losgelöst rendern zu können');
   assert.match(figs, /tbody\.append\(\.\.\.newRows\)/, 'Tabellenzeilen werden nicht angehängt');
   assert.match(figs, /lastGrid\.append\(\.\.\.newTiles\)/, 'Kacheln werden nicht angehängt');

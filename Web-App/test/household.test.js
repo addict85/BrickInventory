@@ -9,6 +9,7 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
+const { pruefeParameter } = require('./helpers/sources');
 
 const ROOT = path.join(__dirname, '..');
 const read = f => fs.readFileSync(path.join(ROOT, f), 'utf8');
@@ -307,14 +308,17 @@ test('manuelle Teile und Minifiguren tragen den Besitzer', () => {
   // Bearbeiten-Weg führt auf genau eine Zeile. Ohne Plakette sähe die Liste
   // wie eine doppelte Zeile aus.
   const h = require('./helpers/sources').handlerQuelle();
-  assert.match(h, /async function withOwners\(uids: number\[\], rows: any\[\]\)/);
+  // Auf die Parameter geprüft, nicht auf den Wortlaut: `rows: any[]` eines Tages
+  // zu `rows: Row[]` zu schärfen ist eine Verbesserung und darf hier nicht als
+  // Fehler erscheinen (siehe pruefeParameter() im Helfer).
+  pruefeParameter(h, 'withOwners', ['uids', 'rows']);
   assert.match(h, /if \(uids\.length < 2 \|\| !rows\?\.length\) return rows;/,
     'Im Einzelkonto darf keine Plakette erscheinen');
   assert.match(h, /SELECT id, user_id, part_number/,
     'Ohne user_id in der Abfrage gibt es keinen Besitzer');
 
   const fc = read('utils/financeCalc.ts');
-  assert.match(fc, /async function withOwnerNames\(uids: number\[\], rows: any\[\]\)/);
+  pruefeParameter(fc, 'withOwnerNames', ['uids', 'rows']);
   const uses = (fc.match(/await withOwnerNames\(uids, await parallelLimit\(tasks, 5\)\)/g) || []).length;
   assert.equal(uses, 2, 'Teile- und Minifiguren-Bewertung brauchen beide den Besitzer');
 });

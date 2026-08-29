@@ -9,12 +9,12 @@
 import { validateToken } from '../../utils/auth';
 
 /** Extrahiert den Bearer-Token aus dem Authorization-Header (oder null). */
-export function bearerToken(req): string | null {
+export function bearerToken(req: any): string | null {
   const auth = req.headers.authorization || '';
   return auth.startsWith('Bearer ') ? auth.slice(7) : null;
 }
 
-export function requireToken(req, res, next) {
+export function requireToken(req: any, res: any, next: any) {
   // Accept session cookie (webapp) OR Bearer token (Android)
   if (req.session?.userId) {
     req.apiUser = { user_id: req.session.userId, is_admin: req.session.isAdmin ? 1 : 0, username: req.session.username };
@@ -28,7 +28,7 @@ export function requireToken(req, res, next) {
   }).catch(() => res.status(401).json({ success:false, error:'Auth-Fehler' }));
 }
 
-export function requireApiAdmin(req, res, next) {
+export function requireApiAdmin(req: any, res: any, next: any) {
   requireToken(req, res, () => {
     if (!req.apiUser?.is_admin) return res.status(403).json({ success: false, error: 'Nur für Admins' });
     next();

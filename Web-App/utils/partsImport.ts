@@ -200,10 +200,10 @@ async function fetchMissingBlIds() {
       await rebrickableLimiter.waitForSlot();
       const batch = missing.slice(i, i + BATCH).map(r => r.part_number);
       const url = `https://rebrickable.com/api/v3/lego/parts/?part_nums=${batch.join(',')}&page_size=500`;
-      const result = await new Promise<{ status: number | undefined; body: string }>(resolve => {
+      const result = await new Promise<{ status: number; body: string }>(resolve => {
         const req = https2.get(url, { family: 4, headers: { Authorization: `key ${rbKey}`, 'User-Agent': 'BrickInventory/1.0' } }, r => {
           let b = ''; r.on('data', d => b += d);
-          r.on('end', () => resolve({ status: r.statusCode, body: b }));
+          r.on('end', () => resolve({ status: r.statusCode ?? 0, body: b }));
         });
         req.on('error', () => resolve({ status: 0, body: '' }));
         req.setTimeout(30000, () => { req.destroy(); resolve({ status: 0, body: '' }); });

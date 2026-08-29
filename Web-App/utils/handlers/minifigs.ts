@@ -22,7 +22,7 @@ import { getSets } from './sets';
  * Filter lagen hier schon serverseitig; ergänzt sind nur page/page_size.
  * Ohne page_size unverändertes Verhalten — die Android-App ruft so auf.
  */
-async function getMinifigs(userId, { search, source, set_number, page = 1, page_size = null }: any = {}) {
+async function getMinifigs(userId: number | number[], { search, source, set_number, page = 1, page_size = null }: any = {}) {
   // Blickfeld statt einer einzelnen ID: Ein Hauptkonto sieht (und ändert)
   // auch die Daten seiner Unterkonten, alle anderen nur ihre eigenen. Die
   // Liste kommt von scopeIds() in utils/household.ts — hier wird sie nur
@@ -97,7 +97,7 @@ async function getMinifigs(userId, { search, source, set_number, page = 1, page_
      GROUP BY LOWER(TRIM(a.fig_number))`,
     [uids]
   ).catch(() => []);
-  const usedFigMap = new Map(usedFigRows.map(r => [r.fkey, (parseInt(r.any_used) || 0) > 0]));
+  const usedFigMap = new Map<string, boolean>(usedFigRows.map(r => [r.fkey, (parseInt(r.any_used) || 0) > 0] as [string, boolean]));
 
   const mappedFigs = figs.map(f => ({
     ...f,
@@ -137,7 +137,7 @@ async function getMinifigs(userId, { search, source, set_number, page = 1, page_
  *
  * @param userId Blickfeld (scopeIds) oder eine einzelne ID
  */
-async function getMinifigStats(userId) {
+async function getMinifigStats(userId: number | number[]) {
   const uids = asIds(userId as any);
   const row = await db.get(`
     SELECT COUNT(*)::int AS types,
@@ -162,7 +162,7 @@ async function getMinifigStats(userId) {
 
 /** Manuell erfasste Minifiguren.
  *  Von /api/minifigs/manual UND /api/v1/minifigs/manual genutzt (Parität). */
-async function getManualMinifigs(userId, { page = 1, page_size = null }: any = {}) {
+async function getManualMinifigs(userId: number | number[], { page = 1, page_size = null }: any = {}) {
   // Blickfeld statt einer einzelnen ID: Ein Hauptkonto sieht (und ändert)
   // auch die Daten seiner Unterkonten, alle anderen nur ihre eigenen. Die
   // Liste kommt von scopeIds() in utils/household.ts — hier wird sie nur

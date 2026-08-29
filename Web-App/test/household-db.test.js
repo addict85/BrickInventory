@@ -525,6 +525,89 @@ test('Haushalt gegen echte Datenbank', async (t) => {
     assert.equal(await bei('parts', U.fremd), 0, 'Teile wanderten in ein fremdes Konto');
   });
 
+  await t.test('in ein fremdes Konto schreiben — die Richtung entscheidet', async () => {
+    // ── Warum diese Prüfung hier steht (Nachtrag 149) ────────────────────────
+    // Die Regel „owner_user_id wird geprüft, nicht bloss übernommen" lag
+    // ausschliesslich als Quelltextprüfung vor (test/household.test.js,
+    // „Schreiben in ein fremdes Konto verlangt die richtige Richtung"). Die
+    // suchte nach `resolveWriteTarget(` und nach einem 403 irgendwo in
+    // derselben Datei — beides wäre auch dann noch dagestanden, wenn der
+    // Rückgabewert nicht mehr ausgewertet würde.
+    //
+    // Und das ist der teuerste denkbare stille Fehlalarm im ganzen Projekt:
+    // Fällt die Prüfung aus, schreibt ein Konto in ein fremdes, ohne dass
+    // irgendetwas rot wird. Deshalb wird sie jetzt über die ECHTEN Routen
+    // gefahren, für alle drei Anlege-Pfade.
+
+    /** Über die v1-Fabrik anlegen, mit gewähltem Zielkonto. */
+    async function anlegen(actor, pfad, koerper) {
+      _actingAs = actor;
+      const r = await fetch(_base + pfad, {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify(koerper),
+      });
+      return { status: r.status, body: await r.json().catch(() => null) };
+    }
+
+    // Eigene, sonst nirgends benutzte Nummern: Die vorherigen Prüfungen legen
+    // 3001/3002/sw0001 für kindA an. Mit denselben Nummern zählte diese Prüfung
+    // fremde Zeilen mit und wäre aus dem falschen Grund rot geworden.
+    const faelle = [
+      { name: 'Teile',       pfad: '/api/v1/parts',
+        koerper: { part_number: '99991', color_id: 4, quantity: 1 },
+        tabelle: 'parts',    wo: `part_number='99991'` },
+      { name: 'Minifiguren', pfad: '/api/v1/minifigs',
+        koerper: { fig_number: 'zz9999', quantity: 1 },
+        tabelle: 'minifigs', wo: `fig_number='zz9999'` },
+    ];
+
+    const zaehle = (tabelle, wo, uid) =>
+      db.get(`SELECT COUNT(*)::int AS c FROM ${tabelle} WHERE ${wo} AND user_id=$1`, [uid])
+        .then(r => r.c);
+
+    for (const f of faelle) {
+      // 1. Hauptkonto → eigenes Unterkonto: erlaubt, und es landet DORT.
+      const hin = await anlegen(U.eltern, f.pfad, { ...f.koerper, owner_user_id: U.kindA });
+      assert.equal(hin.status, 200, `${f.name}: Hauptkonto durfte nicht ins eigene Unterkonto schreiben`);
+      assert.equal(await zaehle(f.tabelle, f.wo, U.kindA), 1,
+        `${f.name}: gelandet ist es nicht beim gewählten Konto`);
+      assert.equal(await zaehle(f.tabelle, f.wo, U.eltern), 0,
+        `${f.name}: es landete beim Absender statt beim Zielkonto`);
+
+      // 2. Unterkonto → Geschwisterkonto: verboten. „Steht im Blickfeld"
+      //    genügt NICHT — kindA und kindB sehen sich gegenseitig nicht einmal.
+      const quer = await anlegen(U.kindA, f.pfad, { ...f.koerper, owner_user_id: U.kindB });
+      assert.equal(quer.status, 403, `${f.name}: Unterkonto schrieb ins Geschwisterkonto`);
+
+      // 3. Unterkonto → Hauptkonto: verboten. Die Richtung ist EINE.
+      const rueck = await anlegen(U.kindA, f.pfad, { ...f.koerper, owner_user_id: U.eltern });
+      assert.equal(rueck.status, 403, `${f.name}: Unterkonto schrieb ins Hauptkonto`);
+
+      // 4. Konto von ausserhalb des Haushalts: verboten.
+      const fremd = await anlegen(U.fremd, f.pfad, { ...f.koerper, owner_user_id: U.eltern });
+      assert.equal(fremd.status, 403, `${f.name}: ein fremdes Konto schrieb in den Haushalt`);
+
+      // 5. Und in KEINEM der drei abgelehnten Fälle darf still etwas entstehen —
+      //    weder beim Ziel noch beim Absender. Genau das ist der Unterschied
+      //    zwischen „403" und „schreibt heimlich ins eigene Konto".
+      assert.equal(await zaehle(f.tabelle, f.wo, U.kindB), 0,
+        `${f.name}: trotz 403 ist beim Zielkonto etwas entstanden`);
+      assert.equal(await zaehle(f.tabelle, f.wo, U.fremd), 0,
+        `${f.name}: trotz 403 ist beim fremden Konto etwas entstanden`);
+
+      await db.run(`DELETE FROM ${f.tabelle} WHERE ${f.wo}`);
+    }
+
+    // Ohne Angabe bleibt es beim eigenen Konto — der Normalfall darf sich
+    // durch die Prüfung nicht ändern.
+    const ohne = await anlegen(U.kindA, '/api/v1/parts', { part_number: '99992', color_id: 4, quantity: 1 });
+    assert.equal(ohne.status, 200);
+    assert.equal(await zaehle('parts', `part_number='99992'`, U.kindA), 1,
+      'Ohne owner_user_id muss es beim Erfasser landen');
+    await db.run(`DELETE FROM parts WHERE part_number='99992'`);
+  });
+
   await t.test('aufräumen', async () => {
     _srv?.close();
     await db.pool.end().catch(() => {});

@@ -41,8 +41,8 @@ import * as db from '../db/database';
  * @param {(tx: any) => Promise<T>} fn
  * @returns {Promise<T>}
  */
-async function withInventoryLock(userId, scopeKey, fn) {
-  return db.transaction(async (tx) => {
+async function withInventoryLock(userId: number, scopeKey: string | number, fn: (tx: any) => any) {
+  return db.transaction(async (tx: any) => {
     // hashtext() liefert int4 — zusammen mit der userId ergibt das den
     // zweiteiligen Lock-Schlüssel. Kollisionen zweier verschiedener Sets
     // desselben Nutzers sind theoretisch möglich und harmlos: Dann

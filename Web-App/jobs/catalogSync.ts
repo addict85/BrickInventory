@@ -16,7 +16,7 @@ const fs   = require('fs');
 // Teilebilder — Figuren liegen getrennt (siehe utils/appPaths.ts).
 const { PART_IMAGES_DIR: IMG_DIR } = require('../utils/appPaths');
 
-async function syncSetCatalog(setNumber) {
+async function syncSetCatalog(setNumber: string) {
   const n = setNumber.includes('-') ? setNumber : `${setNumber}-1`;
   const alt = setNumber.includes('-') ? setNumber.replace(/-\d+$/, '') : `${setNumber}-1`;
 

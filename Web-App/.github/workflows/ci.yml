@@ -1,0 +1,128 @@
+# ═══════════════════════════════════════════════════════════════════════════
+# CI — läuft bei jedem Push und jedem Pull Request
+# ═══════════════════════════════════════════════════════════════════════════
+#
+# ── Warum es das gibt (Nachtrag 150) ────────────────────────────────────────
+# Bis hierher lief die Suite nur, wenn jemand sie von Hand anstiess — mit den
+# richtigen Umgebungsvariablen und auf einem gewachsenen Arbeitsverzeichnis.
+# Genau daran ist in Nachtrag 148 ein Fehler durchgerutscht: Eine Testdatei
+# holte `dist/utils/handlers.js`, das es seit einer Aufteilung nicht mehr gibt.
+# Lokal blieb sie grün, weil in `dist/` noch eine alte Datei aus der Zeit davor
+# lag; die zehn Prüfungen darunter liefen monatelang nicht.
+#
+# Der Lauf hier hat kein gewachsenes Verzeichnis. Er checkt aus, installiert
+# aus dem Lockfile, baut neu und startet ein leeres PostgreSQL. Was hier grün
+# ist, ist grün — nicht bloss auf einem Rechner grün.
+#
+# ── REQUIRE_DB=1 ───────────────────────────────────────────────────────────
+# Ohne diese Variable ÜBERSPRINGEN die Datenbank-Suiten sich selbst, wenn sie
+# keine Verbindung bekommen. Das ist lokal richtig und in CI das Schlimmste,
+# was passieren kann: ein grüner Lauf, der die Hälfte gar nicht geprüft hat.
+# Mit REQUIRE_DB=1 wirft eine unerreichbare Datenbank statt zu überspringen.
+name: CI
+
+on:
+  push:
+    branches: ['**']
+  pull_request:
+  # Von Hand anstossbar, etwa um nach einer Änderung an diesem Workflow selbst
+  # einen Lauf zu sehen, ohne einen leeren Commit zu bauen.
+  workflow_dispatch:
+
+# Ein neuer Push auf denselben Zweig bricht den vorherigen Lauf ab. Die Suite
+# braucht rund vier Minuten; zwei parallele Läufe auf demselben Stand sind
+# verschenkte Zeit.
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    services:
+      postgres:
+        # Dieselbe Hauptversion wie im Betrieb (compose.yaml: postgres:18-alpine).
+        # Eine andere zu nehmen hiesse, gegen eine Datenbank zu prüfen, die
+        # nirgends läuft — Indizes, Sperren und Planerverhalten unterscheiden
+        # sich zwischen Hauptversionen durchaus.
+        image: postgres:18-alpine
+        env:
+          POSTGRES_USER: tester
+          POSTGRES_PASSWORD: tester
+          POSTGRES_DB: cattest
+        ports:
+          - 5432:5432
+        # Ohne den Health-Check startet der erste Test, bevor die Datenbank
+        # Verbindungen annimmt — und scheitert an etwas, das nichts mit dem
+        # Code zu tun hat.
+        options: >-
+          --health-cmd "pg_isready -U tester -d cattest"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 20
+
+    env:
+      TEST_DATABASE_URL: postgres://tester:tester@localhost:5432/cattest
+      REQUIRE_DB: '1'
+      # Einige Suiten bauen eine echte Session auf. Der Wert ist beliebig, muss
+      # aber die Mindestlänge aus server.ts erfüllen (32 Zeichen).
+      SESSION_SECRET: ci-secret-nur-fuer-den-testlauf-lang-genug
+      # Kein Cluster im Test: Die Sperr-Suiten stellen mehrere Worker selbst
+      # nach, indem sie eigene Verbindungen aufmachen.
+      WEB_WORKERS: '1'
+
+    steps:
+      - uses: actions/checkout@v4
+
+      # pg_dump/psql für test/backup-restore-db.test.js. Der Postgres-DIENST
+      # oben ist ein Container — die Klienten laufen auf dem Runner. Ohne sie
+      # überspränge der Test sich selbst, und der Sicherungsweg bliebe genau so
+      # ungeprüft wie vor Nachtrag 152. Auf ubuntu-latest sind sie in aller
+      # Regel vorinstalliert; die Zeile stellt es sicher.
+      - name: PostgreSQL-Klienten bereitstellen
+        run: |
+          command -v pg_dump >/dev/null 2>&1 \
+            || (sudo apt-get update -qq && sudo apt-get install -y -qq postgresql-client)
+          pg_dump --version
+
+      - uses: actions/setup-node@v4
+        with:
+          # Wie im Dockerfile (node:26-alpine) — geprüft werden soll, was auch
+          # ausgeliefert wird. Node 20 stand hier bis Nachtrag 152 und war zu
+          # dem Zeitpunkt bereits seit dem 30.04.2026 ohne Sicherheits-Patches.
+          # test/build-tooling.test.js hält diese Zahl und das Dockerfile
+          # zusammen. Die Begründung für gerade 26 steht im Dockerfile.
+          node-version: '26'
+          cache: npm
+
+      # npm ci statt npm install: installiert exakt das Lockfile und scheitert,
+      # wenn package.json und package-lock.json auseinanderlaufen.
+      - name: Abhängigkeiten installieren
+        run: npm ci
+
+      - name: Typprüfung
+        run: npx tsc --noEmit
+
+      # Zweite Front (Nachtrag 150): noImplicitAny ist für alle Dateien scharf
+      # ausser den in scripts/check-noimplicitany.js namentlich aufgeführten.
+      # Der Schritt schlägt fehl, wenn eine saubere Datei neue Schuld aufnimmt
+      # ODER wenn ein Eintrag der Liste verwaist ist.
+      - name: Typprüfung (noImplicitAny, gestaffelt)
+        run: npm run typecheck:strict
+
+      # Vor den Tests bauen. Die Testhelfer bauen zwar bei Bedarf selbst
+      # (test/helpers/sources.js), aber ein eigener Schritt macht sichtbar, WO
+      # es klemmt: ein Build-Fehler soll nicht als "Test rot" erscheinen.
+      - name: Bauen
+        run: npm run build
+
+      - name: Tests
+        run: npm test
+
+      # npm audit hat einen eigenen Schritt, damit ein neuer Befund nicht in
+      # den Testausgaben untergeht. --omit=dev: Was nur beim Bauen läuft, ist
+      # kein Angriffsweg auf den laufenden Dienst.
+      - name: Sicherheitsprüfung der Abhängigkeiten
+        run: npm audit --omit=dev --audit-level=high

@@ -14,11 +14,11 @@ import { getCurrentPartMarketPrice, lookupPart } from '../routes/parts';
 
 const db = require('../db/database');
 
-function log(msg) {
+function log(msg: string) {
   console.log(`  [purchase-price-backfill] ${msg}`);
 }
 
-async function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
+async function sleep(ms: number) { return new Promise(r => setTimeout(r, ms)); }
 
 /**
  * Erfassungen ohne Kaufpreis nachtragen — unabhängig von der Set-Zeile.
@@ -58,7 +58,7 @@ async function backfillAcquisitions() {
         // bewusst gepflegten Wert.
         await db.run(`UPDATE sets SET purchase_price=$1
                        WHERE user_id=$2 AND set_number=$3 AND purchase_price IS NULL`,
-          [price, row.user_id, row.set_number]).catch(e => log(`Spiegelung ${row.set_number} fehlgeschlagen: ${e.message}`));
+          [price, row.user_id, row.set_number]).catch((e: any) => log(`Spiegelung ${row.set_number} fehlgeschlagen: ${e.message}`));
         done++;
       }
     } catch (e) {
@@ -87,7 +87,7 @@ async function backfillSets() {
         // Erfassungen ohne Preis mit dem ermittelten Marktpreis nachziehen
         await db.run(`UPDATE set_acquisitions SET purchase_price=$1
                       WHERE user_id=$2 AND set_number=$3 AND purchase_price IS NULL`,
-          [price, row.user_id, row.set_number]).catch(e => log(`Nachtrag ${row.set_number} fehlgeschlagen: ${e.message}`));
+          [price, row.user_id, row.set_number]).catch((e: any) => log(`Nachtrag ${row.set_number} fehlgeschlagen: ${e.message}`));
         done++;
       }
     } catch (e) {

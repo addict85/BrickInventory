@@ -121,7 +121,11 @@ test('die Sortierung "hat einen Preis vor passendem Zustand" ist überall weg', 
 test('getPriceGuide holt ohne Angabe den Neupreis', () => {
   // Fundort seit Nachtrag 131: clients/bricklink.ts (null Routen, nie montiert).
   const src = fs.readFileSync(path.join(ROOT, 'clients', 'bricklink.ts'), 'utf8');
-  assert.match(src, /function getPriceGuide\(setNumber, condition = 'N'/,
+  const { pruefeParameter, funktionsKopf } = require('./helpers/sources');
+  pruefeParameter(src, 'getPriceGuide', ['setNumber', 'condition']);
+  // Der Punkt ist die VORGABE, nicht der Rest des Kopfes: Mit 'U' landete der
+  // Gebraucht-Preis unter dem Neu-Schlüssel im Cache.
+  assert.match(funktionsKopf(src, 'getPriceGuide'), /condition[^,)]*=\s*'N'/,
     "Vorgabe 'U' hätte den Gebraucht-Preis in den Cache geschrieben");
 });
 

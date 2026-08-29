@@ -220,7 +220,7 @@ async function resolvePartCondition(userId, partNumber, colorId) {
   catch (_) { return DEFAULT_PRICE_CONDITION; }
 }
 
-async function getCurrentPartMarketPrice(partNumber, colorId, userId, condition = null) {
+async function getCurrentPartMarketPrice(partNumber, colorId, userId, condition: string | null = null) {
   try {
     const currency  = await getSetting(userId, 'currency', 'EUR');
     const ttlHours  = 24;
@@ -309,7 +309,7 @@ async function addManualPart(uid, rawBody) {
     // wächst die bestehende Zeile, statt dass eine zweite entsteht
     // (utils/acquisitions.ts).
     await recordAcquisitionForDay('part', uid, [part_number, color_id || 0], {
-      quantity, price: (rePrice > 0 ? rePrice : null), condition: reCond, createdAt: acquiredAt,
+      quantity, price: ((rePrice ?? 0) > 0 ? rePrice : null), condition: reCond, createdAt: acquiredAt,
     }).catch(e => console.error('[addManualPart] Zweiterfassung:', e.message));
 
     return { action: 'updated', part_number };
@@ -468,7 +468,7 @@ import { rebrickableBackgroundLimiter } from '../utils/rateLimiter';
 import { csvEinlesen, parseCsvDate, sendCsvText, toCsv, uebersprungenHinweis } from '../utils/csvExport';
 const csvUpload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 15 * 1024 * 1024 } });
 
-router.post('/import/csv', csvUpload.single('file'), async (req, res) => {
+router.post('/import/csv', csvUpload.single('file'), async (req: LoggedInRequest, res) => {
   if (!req.file) return res.status(400).json({ success: false, error: 'Keine Datei' });
   const uid = req.session.userId;
   try {

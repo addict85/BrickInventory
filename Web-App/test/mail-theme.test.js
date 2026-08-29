@@ -16,6 +16,7 @@ const path = require('node:path');
 
 const ROOT = path.join(__dirname, '..');
 const SRC = fs.readFileSync(path.join(ROOT, 'routes', 'mailer.ts'), 'utf8');
+const { pruefeParameter, funktionsKopf } = require('./helpers/sources');
 
 test('es gibt eine Palette je Design', () => {
   assert.match(SRC, /const MAIL_THEMES = \{/, 'Paletten fehlen');
@@ -44,12 +45,19 @@ test('das Design wird beim Versand geladen, nicht fest verdrahtet', () => {
 });
 
 test('Vorlage, Knopf und Infobox nehmen das Design entgegen', () => {
-  for (const sig of [
-    /function emailTemplate\(title, preheader, content, theme = MAIL_THEMES\.classic\)/,
-    /function emailBtn\(url, text, theme = MAIL_THEMES\.classic\)/,
-    /function infoBox\(text, theme = MAIL_THEMES\.classic\)/,
+  // Geprüft wird der Design-Parameter samt seiner Vorgabe — nicht der Wortlaut
+  // des ganzen Kopfes. Die alte Fassung nagelte alle Parameter mitsamt
+  // Reihenfolge fest und wäre schon an einer Typannotation zerbrochen.
+  for (const [name, params] of [
+    ['emailTemplate', ['title', 'preheader', 'content', 'theme']],
+    ['emailBtn',      ['url', 'text', 'theme']],
+    ['infoBox',       ['text', 'theme']],
   ]) {
-    assert.match(SRC, sig, `Signatur ohne Design-Parameter: ${sig}`);
+    pruefeParameter(SRC, name, params, 'ohne Design-Parameter bleibt die Mail beim alten Aussehen');
+    // Die Vorgabe ist der Punkt: Ohne sie müsste jeder Aufrufer das Design
+    // mitgeben, und ein vergessener Aufruf fiele auf undefined statt auf classic.
+    assert.match(funktionsKopf(SRC, name), /theme\s*=\s*MAIL_THEMES\.classic/,
+      `${name}: theme muss auf MAIL_THEMES.classic vorbelegt sein`);
   }
   // Und im Rumpf der Vorlage dürfen die Chrome-Farben nicht mehr fest stehen
   const tpl = SRC.slice(SRC.indexOf('function emailTemplate('), SRC.indexOf('function emailBtn('));

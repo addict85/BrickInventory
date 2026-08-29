@@ -10,7 +10,7 @@ import { getSetMinifigs } from '../clients/rebrickable';
  */
 
 // ── Import minifigs from a set (called during set import) ─────────────────────
-async function importMinifigsForSet(setNumber, userId) {
+async function importMinifigsForSet(setNumber: string, userId: number) {
   try {
     const n = setNumber.includes('-') ? setNumber : setNumber + '-1';
     const catalogFigs = await db.all(

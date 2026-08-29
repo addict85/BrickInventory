@@ -31,7 +31,7 @@ const DOWNLOAD_IDLE_MS = 60000;
 if (!global.startupStatus) global.startupStatus = { ready: false, step: 'Starte...', progress: 0, total: 8 };
 const monitor = require('../utils/jobMonitor');
 
-function updateStatus(step, progress, total, sub = null) {
+function updateStatus(step, progress, total, sub: string | null = null) {
   const status = { ready: false, step, progress, total: TOTAL_STEPS, sub };
   global.startupStatus = status;
   // Write to PostgreSQL so all cluster workers see the same status

@@ -32,8 +32,9 @@ const ROOT = path.join(__dirname, '..');
 const db = require(path.join(ROOT, 'dist/db/database.js'));
 const { DATA_DIR } = require(path.join(ROOT, 'dist/utils/appPaths.js'));
 
-const zeile = (k, v) => console.log(`   ${String(k).padEnd(14)} ${v}`);
+const zeile = (/** @type {string} */ k, /** @type {any} */ v) => console.log(`   ${String(k).padEnd(14)} ${v}`);
 
+/** @param {string} url */
 function hole(url) {
   return new Promise(r => {
     const mod = url.startsWith('https') ? https : http;

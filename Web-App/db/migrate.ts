@@ -59,7 +59,7 @@ import path from 'path';
  *                     Lock und Migration auf derselben Session liegen.
  * @returns {Promise<string[]>} Namen der neu angewandten Migrationen
  */
-async function runMigrations(client): Promise<string[]> {
+async function runMigrations(client: any): Promise<string[]> {
   await client.query(`
     CREATE TABLE IF NOT EXISTS schema_migrations (
       name       TEXT PRIMARY KEY,
@@ -74,7 +74,7 @@ async function runMigrations(client): Promise<string[]> {
   if (!files.length) return [];
 
   const { rows } = await client.query('SELECT name FROM schema_migrations');
-  const done = new Set(rows.map(r => r.name));
+  const done = new Set(rows.map((r: any) => r.name));
 
   const applied: string[] = [];
   for (const file of files) {
@@ -105,7 +105,7 @@ async function runMigrations(client): Promise<string[]> {
  * @param {any} db Modul db/database
  * @returns {Promise<{name: string, applied_at: string}[]>}
  */
-async function listMigrations(db): Promise<any[]> {
+async function listMigrations(db: any): Promise<any[]> {
   return db.all('SELECT name, applied_at FROM schema_migrations ORDER BY name')
     .catch(() => []);
 }

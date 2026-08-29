@@ -168,7 +168,7 @@ async function currentVersion(userId: number): Promise<number> {
 /** Baut die Zusammenfassung eines Nutzers neu auf. */
 export async function rebuild(userId: number, version?: number): Promise<void> {
   const v = version ?? await currentVersion(userId);
-  await db.transaction(async (tx) => {
+  await db.transaction(async (tx: any) => {
     // Sperre über die Datenbank, nicht nur über die In-Memory-Map
     // (_rebuilding) weiter unten.
     //
@@ -192,7 +192,8 @@ export async function rebuild(userId: number, version?: number): Promise<void> {
     // Transaktion automatisch freigegeben. Namensraum 77, um nicht mit den
     // bestehenden Sperren in server.ts (99999999), jobs/partsCatalogEnrich.ts
     // (42) oder clients/brickset.ts (11223344) zu kollidieren.
-    const lock = await tx.get('SELECT pg_try_advisory_xact_lock(77, $1) AS ok', [userId]);
+    const lock = await tx.get('SELECT pg_try_advisory_xact_lock($1, $2) AS ok',
+      [require('./lockNamespaces').LOCKS.TEILE_SUMMARY, userId]);
     if (!lock?.ok) {
       // Ein anderer Worker baut gerade für denselben Nutzer — nichts tun,
       // dessen Ergebnis gilt gleich mit. Kein Fehler, kein Retry nötig.

@@ -55,10 +55,24 @@ test('die Preisermittler nehmen einen Zustand entgegen', () => {
   const mf = fs.readFileSync(path.join(__dirname, '..', 'routes', 'minifigs.ts'), 'utf8');
   const pt = fs.readFileSync(path.join(__dirname, '..', 'routes', 'parts.ts'), 'utf8');
 
-  assert.match(mf, /function getCurrentFigMarketPrice\([^)]*condition\s*=\s*null\)/,
-    'getCurrentFigMarketPrice nimmt keinen Zustand mehr entgegen');
-  assert.match(pt, /function getCurrentPartMarketPrice\([^)]*condition\s*=\s*null\)/,
-    'getCurrentPartMarketPrice nimmt keinen Zustand mehr entgegen');
+  // Auf den PARAMETER geprüft, nicht auf seine Schreibweise: Ob dort
+  // `condition = null` oder `condition: string | null = null` steht, ist eine
+  // Frage der Typannotation und ändert an der Zusicherung nichts. Der Wortlaut
+  // stand hier fest und wurde beim Einschalten von strictNullChecks rot,
+  // obwohl sich am Verhalten nichts geändert hatte — dieselbe Sorte Test, die
+  // in Nachtrag 118 eine Sicherheitslücke festgeschrieben hat.
+  const nimmtZustand = (src, name) => {
+    const i = src.indexOf(`function ${name}(`);
+    assert.ok(i >= 0, `${name} gibt es nicht mehr`);
+    const kopf = src.slice(i, src.indexOf(')', i) + 1);
+    assert.match(kopf, /\bcondition\b/,
+      `${name} nimmt keinen Zustand mehr entgegen: ${kopf}`);
+    assert.match(kopf, /condition[^,)]*=\s*null/,
+      `${name} muss den Zustand mit Vorgabe null annehmen, damit Aufrufer ` +
+      `ihn weglassen dürfen: ${kopf}`);
+  };
+  nimmtZustand(mf, 'getCurrentFigMarketPrice');
+  nimmtZustand(pt, 'getCurrentPartMarketPrice');
 
   // Und der übergebene muss Vorrang haben vor dem abgeleiteten.
   assert.match(mf, /let effCond = condition;/,

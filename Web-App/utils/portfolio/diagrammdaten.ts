@@ -19,7 +19,7 @@ import { buildChart } from '../chartData';
  */
 export function baueDiagrammdaten(rawPoints: any[], currency: string, downsampled: boolean) {
 // X-label formatter — all label logic lives here on the server
-function fmtX(point) {
+function fmtX(point: any) {
   const d = (point.day||'').toString();
   if (d.length===10 && d[4]==='-' && d[7]==='-') {
     return d.slice(8)+'.'+d.slice(5,7);   // DD.MM  (daily resolution)
@@ -43,7 +43,7 @@ const vMax   = vRawMax + pad2;
 const sym = currency==='CHF' ? 'CHF'
           : currency==='USD' ? '$'
           : currency==='GBP' ? '£' : '€';
-function fmtY(v) {
+function fmtY(v: number) {
   const n = Math.round(v);
   const s = n.toLocaleString('de-CH').replace(/\./g,"'");
   return `${sym} ${s}`;
@@ -66,7 +66,7 @@ for (let i = 0; i < n; i += step) labelIdxs.add(i);
 labelIdxs.add(n - 1); // always label last point
 
 const now = new Date();
-const pad = n => String(n).padStart(2,'0');
+const pad = (n: number) => String(n).padStart(2,'0');
 const todayFmt = `${pad(now.getDate())}.${pad(now.getMonth()+1)}`;
 
 const points = rawPoints.map((p, i) => {
