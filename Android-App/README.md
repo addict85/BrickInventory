@@ -3,16 +3,101 @@
 Kotlin + Jetpack Compose App für den BrickInventory Manager Server.
 
 ## Voraussetzungen
-- Android Studio Ladybug (2024.2) oder neuer
-- JDK 17
-- Android SDK 35
+- **JDK 17** (JDK 21 funktioniert ebenfalls) — `java -version` muss 17 oder
+  höher melden
+- **Android SDK** mit Plattform **36** und Build-Tools **36.x**
+  (`compileSdk = targetSdk = 36`, siehe `app/build.gradle.kts`)
+- Android Studio in einer Fassung, die **AGP 9.2** versteht — nur nötig, wenn
+  in der IDE gearbeitet wird; auf der Kommandozeile reichen JDK und SDK
+- Gradle muss **nicht** installiert sein: der mitgelieferte Wrapper holt
+  Gradle 9.6.1 selbst (siehe *Gradle-Wrapper* weiter unten)
 - BrickInventory Manager Server läuft und ist erreichbar
 
 ## Öffnen in Android Studio
 1. Android Studio öffnen
-2. "Open" → diesen Ordner (`brickinventory-android/`) wählen
+2. "Open" → diesen Ordner (`Android-App/`) wählen
 3. Warten bis Gradle sync abgeschlossen ist
 4. App starten (▶)
+
+## Bauen auf der Kommandozeile
+
+Alle Befehle laufen **in diesem Ordner** (`Android-App/`) — das Wurzelverzeichnis
+des Repositories enthält kein Gradle-Projekt, dort liegt daneben noch `Web-App/`.
+
+Zuerst muss Gradle das Android SDK finden. Entweder über die Umgebung:
+
+```bash
+export ANDROID_HOME=$HOME/Android/Sdk      # Linux
+# export ANDROID_HOME=$HOME/Library/Android/sdk   # macOS
+```
+
+… oder über eine `local.properties` (rechnerspezifisch, steht deshalb in
+`.gitignore`):
+
+```bash
+cp local.properties.example local.properties   # danach sdk.dir anpassen
+```
+
+Ohne Android Studio lässt sich das SDK mit den
+[Command-line Tools](https://developer.android.com/studio#command-line-tools-only)
+einrichten:
+
+```bash
+sdkmanager --install "platform-tools" "platforms;android-36" "build-tools;36.0.0"
+sdkmanager --licenses
+```
+
+Danach:
+
+| Befehl | Ergebnis |
+| --- | --- |
+| `./gradlew testDebugUnitTest` | JVM-Unit-Tests, Bericht unter `app/build/reports/tests/` |
+| `./gradlew assembleDebug` | `app/build/outputs/apk/debug/app-debug.apk` — mit dem Debug-Schlüssel signiert, direkt installierbar |
+| `./gradlew assembleRelease` | `app/build/outputs/apk/release/Brickinventory.apk` — minifiziert; signiert nur, wenn die Schlüsselwerte gesetzt sind (siehe unten) |
+| `./gradlew lintRelease` | `app/build/reports/lint-results-release.html` |
+| `./gradlew installDebug` | baut und installiert auf dem angeschlossenen Gerät (`adb devices`) |
+| `./gradlew clean` | löscht `app/build/` |
+
+Unter Windows `gradlew.bat` statt `./gradlew` verwenden.
+
+### Ob die Release-APK signiert ist, hängt an der Umgebung
+
+`assembleRelease` signiert, **wenn** die vier Werte gesetzt sind
+(`BRICK_KEYSTORE_PFAD`, `BRICK_KEYSTORE_PASSWORT`, `BRICK_KEY_ALIAS`,
+`BRICK_KEY_PASSWORT`) — als Umgebungsvariable oder als Gradle-Property in
+`~/.gradle/gradle.properties`. Fehlen sie, entsteht wie bisher ein
+**unsigniertes** APK, das Android nicht installiert; der Bau scheitert
+deswegen aber nicht.
+
+Wie der Schlüsselspeicher erzeugt und hinterlegt wird, steht weiter unten
+unter *Release signieren*.
+
+### Erster Lauf dauert lange
+
+Der Wrapper lädt beim ersten Aufruf Gradle 9.6.1 (~140 MB), danach ziehen AGP,
+Kotlin, KSP und die Abhängigkeiten nochmals einige hundert MB. Das passiert
+einmal pro Rechner; Gradle legt alles unter `~/.gradle/` ab.
+
+Benötigte Hosts — hinter einem restriktiven Proxy müssen diese erreichbar sein:
+
+- `services.gradle.org` (die Gradle-Distribution)
+- `dl.google.com` / `maven.google.com` (AGP, AndroidX, ML Kit, das SDK selbst)
+- `repo1.maven.org` (Kotlin, Retrofit, OkHttp, Coil, Hilt)
+- `plugins.gradle.org` (Plugin-Auflösung)
+
+### Continuous Integration
+
+`.github/workflows/android.yml` im Wurzelverzeichnis des Repositories macht auf
+einem `ubuntu-latest`-Runner dasselbe wie oben beschrieben: prüfen, ob der
+Wrapper vollständig im Repository liegt, dann `testDebugUnitTest`,
+`assembleRelease` und `lintRelease`. Am Ende hängt eine `BrickInventory.apk`
+als Artefakt am Lauf, dazu die Test- und Lint-Berichte (auch bei rotem Lauf —
+gerade dann werden sie gebraucht).
+
+Signiert wird die APK nur, wenn die vier Repository-Secrets `KEYSTORE_BASE64`,
+`KEYSTORE_PASSWORT`, `KEY_ALIAS` und `KEY_PASSWORT` hinterlegt sind. Fehlen
+sie, läuft der Bau durch und sagt per Warnung deutlich, dass das Ergebnis
+unsigniert und damit nicht installierbar ist — siehe *Release signieren*.
 
 ## Erster Start
 1. Server-URL eingeben: `http://192.168.x.x:3000`  
@@ -59,24 +144,57 @@ sind ausdrücklich abgeschaltet und dürfen NICHT automatisch steigen —
 (siehe INVARIANTEN.md). Die Begründung steht als `description` direkt in der
 Regel, damit sie beim Lesen der Konfiguration mitkommt.
 
-### Prüfsumme des Gradle-Wrappers
+### Gradle-Wrapper
 
-`gradle/wrapper/gradle-wrapper.properties` hat noch kein
-`distributionSha256Sum`. Ohne das Feld wird die heruntergeladene
-Gradle-Distribution nicht gegen einen erwarteten Hash geprüft — bei einer App,
-die einen langlebigen Bearer-Token hält, ist das die billigste Absicherung, die
-es gibt.
+Vier Dateien gehören zusammen und müssen alle im Repository liegen — ohne sie
+lässt sich das Projekt auf einem frischen Rechner nicht bauen. `.gitignore`
+nimmt sie deshalb ausdrücklich von den `build/`-Regeln aus:
 
-Die Prüfsumme lässt sich nicht raten, sie muss von der Quelle kommen:
+```
+gradlew                              Startskript (Linux/macOS, muss ausführbar sein)
+gradlew.bat                          Startskript (Windows)
+gradle/wrapper/gradle-wrapper.jar    lädt und startet die Distribution
+gradle/wrapper/gradle-wrapper.properties   welche Fassung, und ihr Hash
+```
+
+`gradle-wrapper.jar` wird bei **jedem** Build ausgeführt. Eine untergeschobene
+Fassung wäre beliebiger Code auf jedem Entwicklerrechner und in der CI —
+`.github/workflows/android.yml` prüft die Datei deshalb mit
+`gradle/actions/wrapper-validation` gegen die von Gradle veröffentlichten
+Prüfsummen.
+
+Die Zeilenenden der beiden Startskripte hält `.gitattributes` fest: `gradlew`
+auf LF, `gradlew.bat` auf CRLF. Ohne das macht ein Windows-Checkout mit
+`core.autocrlf=true` aus `gradlew` eine Datei, die keine Shell mehr startet.
+
+#### Prüfsumme der Distribution
+
+`gradle-wrapper.properties` enthält ein `distributionSha256Sum`. Damit wird die
+heruntergeladene Gradle-Distribution gegen einen erwarteten Hash geprüft, statt
+blind ausgepackt zu werden — bei einer App, die einen langlebigen Bearer-Token
+hält, ist das die billigste Absicherung, die es gibt.
+
+Der eingetragene Wert stammt aus Gradles Veröffentlichung und gilt für
+`gradle-9.6.1-bin.zip`:
+
+```
+distributionSha256Sum=9c0f7faeeb306cb14e4279a3e084ca6b596894089a0638e68a07c945a32c9e14
+```
+
+**Beim Anheben der Gradle-Fassung muss die Zeile mitwandern**, sonst bricht der
+nächste Build mit „Verification of Gradle distribution failed" ab. Die neue
+Prüfsumme lässt sich nicht raten, sie muss von der Quelle kommen — entweder von
+<https://gradle.org/release-checksums/> oder:
 
 ```bash
-curl -sS https://services.gradle.org/distributions/gradle-9.6.1-bin.zip.sha256
+curl -sS https://services.gradle.org/distributions/gradle-<fassung>-bin.zip.sha256
 ```
 
-Die Ausgabe als eine Zeile ergänzen:
+Am einfachsten erledigt das der Wrapper selbst, dann stimmen Fassung und Hash
+automatisch zusammen:
 
-```
-distributionSha256Sum=<Ausgabe>
+```bash
+./gradlew wrapper --gradle-version <fassung> --gradle-distribution-sha256-sum <hash>
 ```
 
 Danach `./gradlew --version` — schlägt es fehl, stimmt die Zeile nicht.

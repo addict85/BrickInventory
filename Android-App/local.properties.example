@@ -1,0 +1,16 @@
+# Vorlage fuer local.properties — DIESE Datei liegt im Repository, die daraus
+# erzeugte local.properties NICHT (sie steht in .gitignore, weil sie einen
+# rechnerspezifischen Pfad enthaelt).
+#
+# Kopieren und den Pfad anpassen:
+#   cp local.properties.example local.properties
+#
+# Nur noetig, wenn weder ANDROID_HOME noch ANDROID_SDK_ROOT gesetzt ist.
+# Android Studio schreibt die Datei beim ersten Sync selbst.
+#
+# Linux:    /home/<benutzer>/Android/Sdk
+# macOS:    /Users/<benutzer>/Library/Android/sdk
+# Windows:  C\:\\Users\\<benutzer>\\AppData\\Local\\Android\\Sdk
+#           (Doppelpunkt und Backslash muessen escaped werden — es ist eine
+#            java.util.Properties-Datei, kein normaler Pfad.)
+sdk.dir=/home/<benutzer>/Android/Sdk

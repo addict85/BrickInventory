@@ -21,8 +21,15 @@ import org.junit.Test
  */
 class ScannerPerformanceTest {
 
+    // Beide Dateien des Scanners: Der Bildschirm traegt den Tap-to-Focus, die
+    // Drosselung der Texterkennung steht seit Nachtrag 99 in BarcodeAnalyzer.kt.
+    // Die Reihenfolge-Pruefungen unten bleiben gueltig — barcodeScanner.process(),
+    // letzteOcr und textRecognizer.process() stehen ausschliesslich in der
+    // Analyse-Datei, ihre Reihenfolge zueinander aendert das Voranstellen nicht.
     private val src: String by lazy {
-        java.io.File("src/main/java/ch/brickinventoryapp/ui/screens/BarcodeScannerScreen.kt").readText()
+        val w = "src/main/java/ch/brickinventoryapp/ui/screens/"
+        java.io.File(w + "BarcodeScannerScreen.kt").readText() + "\n" +
+            java.io.File(w + "BarcodeAnalyzer.kt").readText()
     }
     private fun code(s: String) = s.lines()
         .joinToString("\n") { if (it.trim().startsWith("//") || it.trim().startsWith("*")) "" else it }

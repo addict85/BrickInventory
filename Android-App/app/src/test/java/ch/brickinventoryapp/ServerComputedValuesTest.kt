@@ -123,7 +123,9 @@ class ServerComputedValuesTest {
         // Und der Regler muss der Zahl aus dem Zustand folgen. Hinge sein
         // `remember` nur an der Setnummer, behielte er seinen alten Wert,
         // obwohl der Zustand längst korrigiert ist.
-        val d = code(read("ui/screens/SetDetailScreen.kt"))
+        // SetDetailScreen.kt wurde aufgeteilt; die Kacheln und Karten stehen
+        // in SetDetailSections.kt. Beide zusammen sind die Detailansicht.
+        val d = code(read("ui/screens/SetDetailScreen.kt") + "\n" + read("ui/screens/SetDetailSections.kt"))
         assert(d.contains("remember(set.setNumber, set.quantity)")) {
             "Der Mengenregler ist nicht an set.quantity gekoppelt"
         }

@@ -56,10 +56,19 @@ class GalleryServerFilterTest {
         for (r in listOf("onQueryChange", "onThemeChange", "onSortChange", "onLoadMore")) {
             assert(s.contains(r)) { "Rückruf $r fehlt — der Wert käme nie beim Server an" }
         }
-        // Die Themen kommen als Parameter herein, nicht aus `sets`.
-        assert(s.contains("themes: List<String>")) {
-            "Die Themenliste muss vom Server kommen; aus der geladenen Seite " +
-                "abgeleitet schrumpft sie beim Blättern"
+        // Die Themen kommen vom Server, NICHT aus der geladenen Seite —
+        // abgeleitet schrumpfte die Liste beim Blaettern.
+        //
+        // Frueher stand die Regel als Parameter `themes: List<String>` im
+        // Bildschirm. Seit die Bildschirme ihren Zustand selbst abholen
+        // (Nachtrag 96/115) ist es ein Feld: `state.galleryThemes`. Geprueft
+        // wird deshalb die ABSICHT — Herkunft Zustand, keine eigene Ableitung
+        // aus `sets` — statt der damaligen Schreibweise.
+        assert(s.contains("state.galleryThemes")) {
+            "Die Themenliste kommt nicht mehr aus dem Zustand (state.galleryThemes)"
+        }
+        assert(!Regex("""themes[^\n]*=[^\n]*\bsets\b""").containsMatchIn(s)) {
+            "Die Themenliste wird aus `sets` abgeleitet — dann schrumpft sie beim Blättern"
         }
     }
 

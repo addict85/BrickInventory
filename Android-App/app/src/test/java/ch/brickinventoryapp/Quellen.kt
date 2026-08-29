@@ -54,7 +54,7 @@ object Quellen {
     fun alle(): List<File> {
         val dateien = wurzel.walkTopDown().filter { it.isFile && it.extension == "kt" }.toList()
         check(dateien.size >= 60) {
-            "Nur ${'$'}{dateien.size} Kotlin-Dateien unter ${'$'}{wurzel.absolutePath} gefunden. " +
+            "Nur ${dateien.size} Kotlin-Dateien unter ${wurzel.absolutePath} gefunden. " +
                 "Das ist zu wenig — vermutlich stimmt der Pfad nicht mehr. Alle Prüfungen, " +
                 "die darauf aufbauen, wären sonst stillschweigend grün."
         }
@@ -73,10 +73,10 @@ object Quellen {
      * hier über die Prüfung unten mit.
      */
     fun unter(ordner: String): List<File> {
-        val muster = "/${'$'}{ordner.trim('/')}/"
+        val muster = "/${ordner.trim('/')}/"
         val treffer = alle().filter { it.invariantSeparatorsPath.contains(muster) }
         check(treffer.isNotEmpty()) {
-            "Keine Kotlin-Dateien unter '${'$'}ordner' gefunden — Ordner umbenannt? " +
+            "Keine Kotlin-Dateien unter '$ordner' gefunden — Ordner umbenannt? " +
                 "Eine leere Liste würde jede darauf aufbauende Prüfung stillschweigend bestehen."
         }
         return treffer

@@ -94,7 +94,11 @@ class BarcodeDoubleAddGuardTest {
 
     @Test
     fun `der Knopf im Dialog ist waehrend des Hinzufuegens gesperrt`() {
-        val src = code(read("AppNavigation.kt"))
+        // Der Barcode-Dialog steht seit seiner Auslagerung in
+        // ui/dialogs/BarcodeResultDialog.kt; AppNavigation.kt ruft ihn nur noch
+        // auf. Gelesen werden BEIDE Dateien, damit die Regel dort gefunden
+        // wird, wo sie heute steht.
+        val src = code(read("AppNavigation.kt") + "\n" + read("ui/dialogs/BarcodeResultDialog.kt"))
         assert(src.contains("enabled = !barcodeState.adding")) {
             "Der Bestätigen-Knopf des Barcode-Dialogs wird nicht gesperrt — " +
                 "der Nutzer bekommt kein Feedback und tippt weiter"

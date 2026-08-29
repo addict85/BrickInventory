@@ -24,8 +24,16 @@ import org.junit.Test
  */
 class PartsListScannerTest {
 
+    // Der Barcode-Dialog steht seit seiner Auslagerung in
+    // ui/dialogs/BarcodeResultDialog.kt; AppNavigation.kt ruft ihn nur noch auf.
+    // Beide Dateien werden aneinandergehaengt gelesen. Die Reihenfolge-Pruefungen
+    // unten bleiben gueltig: Die gesuchten Marken stehen ausschliesslich in der
+    // Dialogdatei, ihre Reihenfolge zueinander aendert sich durch das
+    // Voranstellen von AppNavigation.kt nicht.
     private val src: String by lazy {
-        java.io.File("src/main/java/ch/brickinventoryapp/AppNavigation.kt").readText()
+        val w = "src/main/java/ch/brickinventoryapp/"
+        java.io.File(w + "AppNavigation.kt").readText() + "\n" +
+            java.io.File(w + "ui/dialogs/BarcodeResultDialog.kt").readText()
     }
 
     /** Kommentare ausblenden — die Erklärtexte nennen die geprüften Muster selbst. */

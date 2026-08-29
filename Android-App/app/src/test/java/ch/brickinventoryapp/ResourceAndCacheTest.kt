@@ -20,6 +20,18 @@ class ResourceAndCacheTest {
         return s.lines().filterNot { it.trim().startsWith("//") }.joinToString("\n")
     }
 
+    /**
+     * Ein Kamera-Bildschirm samt seiner ausgelagerten Bildanalyse.
+     *
+     * Der Barcode-Scanner besteht seit Nachtrag 99 aus ZWEI Dateien: der
+     * Bildschirm bindet die Vorschau und den Tap-to-Focus, BarcodeAnalyzer.kt
+     * die ImageAnalysis samt Aufraeumen. Nur eine davon zu lesen fand die
+     * halbe Regel und meldete einen Verstoss, den es nicht gibt.
+     */
+    private fun mitAnalyse(rel: String): String =
+        read(rel) + if (rel.endsWith("BarcodeScannerScreen.kt"))
+            "\n" + read("ui/screens/BarcodeAnalyzer.kt") else ""
+
     // ── Kamera-Ressourcen ────────────────────────────────────────────────────
 
     @Test
@@ -28,7 +40,7 @@ class ResourceAndCacheTest {
             "ui/screens/BarcodeScannerScreen.kt" to "barcodeScanner.close()",
             "ui/screens/SetupScreen.kt" to "scanner.close()",
         )) {
-            val src = code(read(rel))
+            val src = code(mitAnalyse(rel))
             assert(src.contains("DisposableEffect(Unit)") && src.contains("onDispose")) {
                 "$rel räumt nicht auf. remember() hat KEINEN Aufräum-Hook: Analyse-Thread " +
                     "und ML-Kit-Client (native Ressourcen) überleben sonst jeden Besuch " +
@@ -50,7 +62,7 @@ class ResourceAndCacheTest {
             "ui/screens/BarcodeScannerScreen.kt",
             "ui/screens/SetupScreen.kt",
         )) {
-            val src = code(read(rel))
+            val src = code(mitAnalyse(rel))
             val hits = Regex("CONTROL_AF_MODE_CONTINUOUS_PICTURE").findAll(src).count()
             assert(hits >= 2) {
                 "$rel: CONTROL_AF_MODE_CONTINUOUS_PICTURE steht nur ${hits}x — der Modus " +
