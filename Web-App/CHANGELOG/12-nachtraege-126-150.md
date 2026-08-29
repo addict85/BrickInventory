@@ -999,3 +999,183 @@ Gegenproben: Minifiguren-Aufruf ohne Zustand → rot mit Datei und Zeile; Teile
 ebenso.
 
 721 Tests grün gegen echtes Postgres 16.
+
+## Nachtrag 148 (hardened-238) — Ein Test, der seit Nachtrag 133 nicht mehr lief
+
+Ausgangspunkt war eine Qualitätseinschätzung, keine Fehlermeldung. Beim
+Nachmessen fiel `test/set-condition-aggregate.test.js` auf: Zeile 679 holte
+`dist/utils/handlers.js` — aufgeteilt seit Nachtrag 133 nach
+`utils/handlers/{shared,parts,sets,minifigs,stats}.ts`.
+
+Der Aufruf steht auf DATEIEBENE. Die Datei starb also beim Laden, und die zehn
+Prüfungen darunter liefen nie mehr. Lokal war das unsichtbar, weil in einem
+gewachsenen `dist/` noch eine alte `handlers.js` lag — dieselbe Klasse wie die
+veralteten Build-Artefakte aus Nachtrag 115.
+
+Der Ersatzhelfer `handlerModul()` stand längst in `test/helpers/sources.js` und
+nannte diesen Aufruf sogar im Kommentar. Eine Aufrufstelle war beim Umbau
+übersehen worden.
+
+**Prüfung:** `test/require-exports.test.js` prüft jetzt alle 39 Modulpfade, die
+Tests aus `dist/` holen. Gegenprobe: alte Fassung → rot mit Datei und Pfad.
+
+### strictNullChecks ist an
+
+Der Schalter stand seit der TypeScript-Migration aus, zuletzt mit 93 Meldungen.
+Abgeräumt in Gruppen, ohne eine einzige Verhaltensentscheidung:
+
+| Gruppe | Umfang |
+|---|---|
+| `res.statusCode ?? 0` in den HTTP-Klienten | 6 Dateien |
+| Funktionsköpfe mit `condition = null` typisiert | 10 |
+| `new Map(rows.map(…))` mit Elementtyp | 8 |
+| `let x = null` / `const x = []` ausgeschrieben | Preis-Job, PDF, `addSet` |
+| `req.session.userId` hinter requireLogin | neuer Typ `LoggedInRequest` |
+
+`LoggedInRequest` in `types/augmentations.d.ts` folgt dem Muster von
+`AuthedRequest`: Die Zusicherung steht einmal geschrieben und ist an die
+Middleware gebunden, statt als `!` an jeder Stelle.
+
+Zwei Kleinigkeiten fielen dabei ab. In `routes/api_v1/parts.ts` stand
+`page_size: result.page_size` VOR `...result` und war damit wirkungslos. Und der
+Fortschrittszähler des Preis-Jobs hing an einem Feld, das der `finally`-Block
+nebenläufig auf null setzt — jetzt eine lokale Referenz.
+
+### Fünf Tests wurden rot, ohne dass sich Verhalten geändert hatte
+
+`condition = null` wurde zu `condition: string | null = null`, und fünf
+Prüfungen nagelten den Wortlaut der Signatur fest. Dieselbe Sorte Test, die in
+Nachtrag 118 eine Sicherheitslücke festgeschrieben hat.
+
+Neue Helfer in `test/helpers/sources.js`: `funktionsKopf()` schneidet
+klammerbewusst die Parameterliste heraus, `hatParameter()` fragt nach dem
+Parameter statt nach seiner Schreibweise.
+
+### Lange Funktionen
+
+| Funktion | vorher | nachher |
+|---|---|---|
+| `registerImgProxy` | 458 | 3 (Ablauf als exportiertes `bildDurchreichen`) |
+| `initSchema` | 408 | 30 (fünf benannte Etappen) |
+| `getParts` | 256 | ~100 (`teileFilter`, `teileErsatzquelle`) |
+
+Bei `initSchema` steht die Reihenfolge „Indizes zuletzt" jetzt als Liste statt
+als Kommentar mitten im Rumpf — sie ist eine echte Bedingung, keine Gewohnheit.
+
+`bildDurchreichen` bleibt bei 343 Zeilen. Der CDN-Abruf ist eine
+Rückruf-Kette um `res`, `activeReq` und den Referer-Rückfall; ein Schnitt
+hinein braucht einen Lasttest gegen echte CDN-Antworten.
+
+### Werkzeug
+
+`@types/express` von ^5 auf ^4 (Express 4 läuft). `@types/bcryptjs` ersatzlos
+entfernt — bcryptjs 3 bringt eigene Typen mit, das v2-Paket beschrieb eine
+andere API. Neue Regel in `test/build-tooling.test.js`: Typpaket und Paket in
+derselben Hauptversion, mit begründeter Ausnahmeliste für `archiver`,
+`connect-pg-simple` und `nodemailer` (DefinitelyTyped zählt dort eigenständig).
+
+`CHANGELOG-fixes.md` war auf 640 KB in einer Datei gewachsen. Jetzt ein
+2,6-KB-Index mit Tabelle, die 281 Abschnitte liegen als Teile unter
+`CHANGELOG/`. `test/changelog-index.test.js` hält beides zusammen.
+
+728 Tests grün gegen echtes Postgres 16.
+
+## Nachtrag 149 (hardened-238) — Drei Regeln, die nur der Quelltext kannte
+
+Von 111 Testdateien lasen 38 ausschliesslich Quelltext. Für Architekturregeln
+ist das richtig. Für drei Regeln war es die falsche Form — jede davon ist in
+dieser Reihe schon einmal still grün geblieben, während die Regel tot war.
+
+### Blickfeld im Haushalt
+
+Die Regel „`owner_user_id` wird geprüft, nicht bloss übernommen" lag als
+Quelltextprüfung vor: Sie suchte nach `resolveWriteTarget(` und nach einem 403
+irgendwo in derselben Datei. Beides stünde auch dann noch da, wenn der
+Rückgabewert nicht mehr ausgewertet würde.
+
+Das ist der teuerste denkbare stille Fehlalarm im Projekt: Fällt die Prüfung
+aus, schreibt ein Konto in ein fremdes, ohne dass etwas rot wird.
+
+`household-db.test.js` legt jetzt über die echten v1-Routen an. Hauptkonto →
+eigenes Unterkonto landet dort; Geschwisterkonto, Rückrichtung und fremdes Konto
+geben 403 — und in keinem der drei Fälle entsteht still eine Zeile.
+
+**Gegenprobe:** `canWriteFor` erlaubt heimlich auch die Gegenrichtung.
+Quelltexttest 25/25 grün, Verhaltenstest rot.
+
+### Sperr-Namensräume
+
+Die Zahlen lagen als Konstanten in sechs Dateien, jede mit einer abgeschriebenen
+Liste der belegten Namensräume. Beide Listen waren veraltet, und der Test in
+`rate-limit.test.js` prüfte gegen `['42','77','11223344','99999999']` — er
+kannte 55, 56, 57 und 58 nicht und hätte eine Kollision mit dreien davon
+durchgelassen.
+
+Alle Namensräume stehen jetzt in `utils/lockNamespaces.ts`; elf Aufrufstellen
+importieren daraus. Keine eingetippte Zahl mehr in einem `pg_*advisory*`-Aufruf
+— das prüft die einzige verbliebene Quelltextregel, und sie prüft nicht WELCHE
+Zahl dasteht, sondern DASS keine dasteht.
+
+`lock-namespaces-db.test.js` misst gegen echtes Postgres: alle gleichzeitig
+belegbar, derselbe Namensraum sperrt aus, der zweite Wert unterteilt.
+
+### Bild-Auslieferungsreihenfolge
+
+`liefereAusCache()` entscheidet bei jeder Bildanfrage, was rausgeht. Geprüft
+wurde das an drei Stellen im Quelltext. Das fängt, dass jemand die
+Grössenprüfung LÖSCHT — nicht, dass sie danebengreift.
+
+`img-cache-serve.test.js` ruft die echte Funktion gegen echte Dateien.
+
+**Gegenprobe:** `return true` nach dem 304 weggelassen. Quelltexttests 42/42
+grün, Verhaltenstest rot.
+
+744 Tests grün.
+
+## Nachtrag 150 (hardened-239) — Der Rechner ohne Vorgeschichte
+
+Nachtrag 148 hätte nicht monatelang unbemerkt bleiben können, wenn irgendwo ein
+Lauf ohne gewachsenes Arbeitsverzeichnis stattgefunden hätte. Es gab keinen.
+
+`.github/workflows/ci.yml`: Postgres 18 als Dienst (dieselbe Hauptversion wie
+`compose.yaml`), dann `npm ci` → `tsc --noEmit` → `typecheck:strict` →
+`npm run build` → `npm test` → `npm audit`.
+
+`REQUIRE_DB=1` ist gesetzt. Ohne die Variable überspringen die
+Datenbank-Suiten sich selbst — ein grüner Lauf, der die Hälfte nie ausgeführt
+hat, wäre das Schlimmste, was hier passieren kann.
+
+Ein Wächter hält die Zeilen fest, die man beim Umbauen verliert: `REQUIRE_DB`,
+die Postgres-Hauptversion gegen `compose.yaml` abgeglichen, und die Schritte.
+Die Muster hängen an `run:` — beim ersten Versuch griffen sie auch, wenn der
+Schritt fehlte, weil `npm ci` im Erklärtext des Workflows vorkommt.
+
+### noImplicitAny, gestaffelt
+
+680 Meldungen, 632 davon TS7006. Den Schalter einzuschalten hiesse, den
+Übersetzer dauerhaft rot zu machen.
+
+Eine zweite `tsconfig` mit `exclude` funktioniert NICHT: `exclude` bestimmt nur
+die Einstiegspunkte, importierte Module landen trotzdem im Programm. Gemessen
+blieben 471 der 631 Meldungen übrig.
+
+Deshalb `scripts/check-noimplicitany.js` mit einer AUSNAHMELISTE: Der Schalter
+ist für alles ausser den aufgeführten Dateien scharf, eine neue Datei ist
+automatisch streng. Geprüft in beide Richtungen — neue Meldung in sauberer
+Datei UND verwaister Eintrag. Ohne die zweite Richtung wüchse hier dieselbe
+ungepflegte Abschrift heran wie bei den Namensräumen in Nachtrag 149.
+
+### Kein Linter
+
+`typescript-eslint` bricht bei TypeScript 7 mit einer ausdrücklichen Meldung
+ab; Unterstützung ab TS 7.1 ist als Issue #10940 offen. Zum Laufen bekommt man
+es nur mit einem zweiten, geschachtelten TypeScript 6 und einem Import quer
+durch `node_modules` — genau die Konstruktion, gegen die Nachtrag 148 bei
+`@types/express` argumentiert hat. Nicht eingetragen.
+
+Stattdessen das ohne eslint Verfügbare: `noFallthroughCasesInSwitch` und
+`noImplicitOverride` sind an (beide meldeten null). Zurückgestellt:
+`noUnusedLocals` (138), `useUnknownInCatchVariables` (106),
+`noImplicitReturns` (64).
+
+746 Tests grün.

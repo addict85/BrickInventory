@@ -63,6 +63,32 @@ test('kein Nachtrag steht in zwei Teilen', () => {
     `Nur ${gesehen.size} nummerierte Nachträge gefunden — greift das Muster noch?`);
 });
 
+test('der Dateiname deckt sich mit dem Inhalt', () => {
+  // Der Anlass (Nachtrag 154): Beim Nachtragen der Einträge 148–153 landeten
+  // 151, 152 und 153 in `12-nachtraege-126-150.md`. Alle bisherigen Prüfungen
+  // blieben grün — die Nummern überschnitten sich nicht, jede Datei stand im
+  // Index, jeder Verweis stimmte. Nur hiess die Datei etwas anderes, als sie
+  // enthielt, und genau davon lebt die Auffindbarkeit: Wer Nachtrag 152 sucht,
+  // sieht in der Tabelle nach und öffnet die Datei mit der passenden Spanne.
+  //
+  // Geprüft wird deshalb der Dateiname gegen seinen Inhalt. Die frühen Teile
+  // ohne Nummerierung sind ausgenommen — bei ihnen gibt es nichts abzugleichen.
+  const daneben = [];
+  for (const f of aufPlatte()) {
+    const spanne = f.match(/nachtraege-(\d+)-(\d+)\.md$/);
+    if (!spanne) continue;                       // 01-frueh-N.md
+    const [von, bis] = [Number(spanne[1]), Number(spanne[2])];
+    const src = fs.readFileSync(path.join(DIR, f), 'utf8');
+    for (const m of src.matchAll(/^## Nachtrag (\d+)\b/gm)) {
+      const n = Number(m[1]);
+      if (n < von || n > bis) daneben.push(`${f} enthält Nachtrag ${n} (Spanne ${von}–${bis})`);
+    }
+  }
+  assert.deepEqual(daneben, [],
+    'Eintrag in der falschen Datei — beim Überschreiten einer Fünfundzwanziger-' +
+    'Grenze gehört eine neue Datei angelegt:\n  ' + daneben.join('\n  '));
+});
+
 test('jeder Teil nennt am Anfang, wohin er gehört', () => {
   const ohne = aufPlatte().filter(f =>
     !fs.readFileSync(path.join(DIR, f), 'utf8')

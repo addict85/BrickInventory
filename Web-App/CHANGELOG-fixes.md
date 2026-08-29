@@ -28,7 +28,8 @@ Ordner `CHANGELOG/`; der Inhalt ist unverändert, nur aufgeteilt.
 | [09-nachtraege-051-075.md](CHANGELOG/09-nachtraege-051-075.md) | Nachträge 51–75 | Nachtrag 51–75 | 13 | 23 KB |
 | [10-nachtraege-076-100.md](CHANGELOG/10-nachtraege-076-100.md) | Nachträge 76–100 | Nachtrag 78–100 | 23 | 62 KB |
 | [11-nachtraege-101-125.md](CHANGELOG/11-nachtraege-101-125.md) | Nachträge 101–125 | Nachtrag 101–125 | 25 | 63 KB |
-| [12-nachtraege-126-150.md](CHANGELOG/12-nachtraege-126-150.md) | Nachträge 126–150 | Nachtrag 127–147 | 17 | 42 KB |
+| [12-nachtraege-126-150.md](CHANGELOG/12-nachtraege-126-150.md) | Nachträge 126–150 | Nachtrag 127–150 | 20 | 50 KB |
+| [13-nachtraege-151-175.md](CHANGELOG/13-nachtraege-151-175.md) | Nachträge 151–175 | Nachtrag 151–153 | 3 | 5 KB |
 
 ### Suchen
 
