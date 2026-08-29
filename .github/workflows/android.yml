@@ -35,6 +35,11 @@ jobs:
     # Schlüsselspeicher?" hier einmal beantwortet und unten über env geprüft.
     env:
       HAT_SCHLUESSEL: ${{ secrets.KEYSTORE_BASE64 != '' }}
+      # Aus demselben Grund wie oben: Der Drive-Schritt haengt an einem Secret,
+      # und ein `if:` auf Schrittebene kann `secrets` nicht lesen. Das eigene
+      # `env:` DES SCHRITTES hilft dabei nicht — dessen `if:` wird ausgewertet,
+      # bevor es gilt. Also hier.
+      HAT_DRIVE: ${{ secrets.GDRIVE_REFRESH_TOKEN != '' }}
 
     steps:
       - uses: actions/checkout@v6
@@ -215,3 +220,123 @@ jobs:
           path: Android-App/app/build/outputs/bundle/release/app-release.aab
           if-no-files-found: error
           retention-days: 90
+
+      # ── APK nach Google Drive ───────────────────────────────────────────────
+      #
+      # Warum ueberhaupt: Ein Artefakt hier laesst sich nur herunterladen, wer
+      # bei GitHub ANGEMELDET ist, und es verfaellt nach 90 Tagen. Wer die App
+      # jemandem zum Ausprobieren geben will, kann damit nichts anfangen.
+      # Ein Drive-Link geht an jeden.
+      #
+      # ── Warum ein Refresh-Token und KEIN Dienstkonto ────────────────────────
+      #
+      # Der Weg, den fast jede Anleitung im Netz vorschlaegt, funktioniert bei
+      # einem privaten Google-Konto NICHT: Ein Dienstkonto hat in Drive kein
+      # Speicherkontingent und kann keine Dateien besitzen. Der Upload endet in
+      # `storageQuotaExceeded`. Der offizielle Ausweg sind "Geteilte Ablagen",
+      # und die gibt es nur mit Google Workspace.
+      #
+      # Deshalb hier ein Refresh-Token eines echten Kontos: Die Datei gehoert
+      # dann dir und zaehlt gegen deine 15 GB. Einrichtung: Android-App/GDRIVE.md
+      #
+      # ── Warum curl und keine fertige Action ─────────────────────────────────
+      #
+      # Das Token gibt Schreibzugriff auf Drive. Eine Action aus dritter Hand
+      # bekaeme es in die Hand, bei jedem Lauf, mit jeder kuenftigen Fassung.
+      # Zwanzig Zeilen curl sind nachlesbar; ein npm-Buendel ist es nicht.
+      #
+      # Der Scope ist `drive.file`: Damit sieht dieses Token AUSSCHLIESSLICH
+      # Dateien, die es selbst angelegt hat — nicht dein uebriges Drive. Das ist
+      # der Unterschied zwischen "darf ein APK ablegen" und "darf alles lesen".
+      - name: APK nach Google Drive
+        if: success() && env.HAT_DRIVE == 'true'
+        env:
+          CLIENT_ID:     ${{ secrets.GDRIVE_CLIENT_ID }}
+          CLIENT_SECRET: ${{ secrets.GDRIVE_CLIENT_SECRET }}
+          REFRESH_TOKEN: ${{ secrets.GDRIVE_REFRESH_TOKEN }}
+          ORDNER_ID:     ${{ secrets.GDRIVE_ORDNER_ID }}
+        run: |
+          set -euo pipefail
+          APK=app/build/outputs/apk/release/BrickInventory.apk
+          NAME=BrickInventory.apk
+
+          # 1) Refresh-Token gegen ein kurzlebiges Zugriffstoken tauschen.
+          #    --fail-with-body: sonst laeuft curl bei HTTP 400 mit Exitcode 0
+          #    weiter und der Fehler faellt erst drei Schritte spaeter auf.
+          ANTWORT=$(curl -sS --fail-with-body -X POST https://oauth2.googleapis.com/token \
+            -d client_id="$CLIENT_ID" \
+            -d client_secret="$CLIENT_SECRET" \
+            -d refresh_token="$REFRESH_TOKEN" \
+            -d grant_type=refresh_token) || {
+              echo "::error::Zugriffstoken nicht erhalten. Haeufigste Ursache: Der"
+              echo "OAuth-Zustimmungsbildschirm steht noch auf 'Testing' — dann"
+              echo "verfaellt das Refresh-Token nach 7 Tagen. Siehe Android-App/GDRIVE.md."
+              exit 1
+            }
+          TOKEN=$(printf '%s' "$ANTWORT" | python3 -c 'import sys,json; print(json.load(sys.stdin)["access_token"])')
+          # Der Wert darf nie im Protokoll landen, auch nicht versehentlich
+          # ueber ein `set -x` weiter unten.
+          echo "::add-mask::$TOKEN"
+
+          # 2) Gibt es die Datei schon? Dann wird sie AKTUALISIERT statt neu
+          #    angelegt. Das ist der Kern: Die Datei-ID bleibt, damit bleibt der
+          #    Freigabe-Link stabil. Sonst braeuchten die Testenden nach jedem
+          #    Bau einen neuen Link.
+          Q="name='$NAME' and trashed=false"
+          [ -n "${ORDNER_ID:-}" ] && Q="$Q and '$ORDNER_ID' in parents"
+          VORHANDEN=$(curl -sS --fail-with-body -G https://www.googleapis.com/drive/v3/files \
+            -H "Authorization: Bearer $TOKEN" \
+            --data-urlencode "q=$Q" \
+            --data-urlencode "fields=files(id)" \
+            | python3 -c 'import sys,json; f=json.load(sys.stdin).get("files",[]); print(f[0]["id"] if f else "")')
+
+          if [ -n "$VORHANDEN" ]; then
+            echo "Datei existiert ($VORHANDEN) — Inhalt wird ersetzt, Link bleibt."
+            ERGEBNIS=$(curl -sS --fail-with-body -X PATCH \
+              "https://www.googleapis.com/upload/drive/v3/files/$VORHANDEN?uploadType=media&fields=id,name,size" \
+              -H "Authorization: Bearer $TOKEN" \
+              -H "Content-Type: application/vnd.android.package-archive" \
+              --data-binary @"$APK")
+          else
+            echo "Datei noch nicht vorhanden — wird angelegt."
+            ELTERN="[]"
+            [ -n "${ORDNER_ID:-}" ] && ELTERN="[\"$ORDNER_ID\"]"
+            printf '{"name":"%s","parents":%s}' "$NAME" "$ELTERN" > "$RUNNER_TEMP/meta.json"
+            ERGEBNIS=$(curl -sS --fail-with-body -X POST \
+              "https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&fields=id,name,size" \
+              -H "Authorization: Bearer $TOKEN" \
+              -F "metadata=@$RUNNER_TEMP/meta.json;type=application/json;charset=UTF-8" \
+              -F "file=@$APK;type=application/vnd.android.package-archive") || {
+                echo "::error::Upload abgelehnt. Steht in der Meldung 'storageQuotaExceeded',"
+                echo "gehoert das Token einem DIENSTKONTO — die haben in Drive kein"
+                echo "Kontingent. Es braucht ein Refresh-Token eines echten Kontos."
+                exit 1
+              }
+          fi
+
+          ID=$(printf '%s' "$ERGEBNIS" | python3 -c 'import sys,json; print(json.load(sys.stdin)["id"])')
+          GROESSE=$(printf '%s' "$ERGEBNIS" | python3 -c 'import sys,json; print(json.load(sys.stdin).get("size","?"))')
+
+          # Gegenprobe: Nicht der Antwort glauben, sondern die Datei ZURUECK
+          # fragen und die Groesse mit der lokalen vergleichen. Ein abgebrochener
+          # Upload liefert sonst eine gueltig aussehende Antwort und einen Link
+          # auf ein halbes APK.
+          LOKAL=$(stat -c%s "$APK")
+          if [ "$GROESSE" != "$LOKAL" ]; then
+            echo "::error::Drive meldet $GROESSE Bytes, lokal sind es $LOKAL. Upload unvollstaendig."
+            exit 1
+          fi
+          echo "Hochgeladen: $GROESSE Bytes, vollstaendig."
+
+          {
+            echo "## APK liegt in Google Drive"
+            echo ""
+            echo "| | |"
+            echo "| --- | --- |"
+            echo "| Datei | \`$NAME\` |"
+            echo "| Groesse | $GROESSE Bytes |"
+            echo "| Link | https://drive.google.com/file/d/$ID/view |"
+            echo ""
+            echo "> Der Link bleibt ueber alle Builds hinweg derselbe — die Datei"
+            echo "> wird ersetzt, nicht neu angelegt. Einmal freigeben genuegt."
+          } >> "$GITHUB_STEP_SUMMARY"
