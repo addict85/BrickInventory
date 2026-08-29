@@ -146,7 +146,7 @@ Android-App/   Kotlin + Jetpack Compose, Hilt, Retrofit, CameraX + ML Kit
 | | Web-App | Android-App |
 | --- | --- | --- |
 | Sprache | TypeScript (~24 700 Zeilen) | Kotlin (78 Dateien) |
-| Tests | 119 Testdateien, 785 Prüfungen | 59 Testdateien, 286 Prüfungen |
+| Tests | 119 Testdateien, 785 Prüfungen | 58 Testdateien, 289 Prüfungen |
 | Laufzeit | Node 26, PostgreSQL 18 | Android 8.0+ (API 26) |
 
 Beide Bäume tragen eine ausführliche Änderungshistorie mit Begründungen:
