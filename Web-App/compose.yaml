@@ -49,6 +49,12 @@ services:
 
   # ── BrickInventory Manager App ───────────────────────────────────────────────
   app:
+    # Der veroeffentlichte Name. Zusammen mit build: bedeutet das:
+    #   docker compose up -d --build   baut lokal und stempelt diesen Namen drauf
+    #   docker compose pull            holt das fertige Multi-Arch-Image
+    # Auf dem Raspberry Pi ist der zweite Weg gemeint — dort dauert ein
+    # Eigenbau (npm ci, esbuild, sharp) je nach Modell eine halbe Stunde.
+    image: addict85/brickinventory:latest
     build:
       context: .
       dockerfile: Dockerfile
