@@ -10,8 +10,8 @@ Android-App und ein gemeinsamer Server.
 Sets erfassen, Teile und Minifiguren im Blick behalten, Marktwerte über
 BrickLink verfolgen, Anleitungen automatisch von Brickset holen.
 
-[![Android](https://github.com/addict85/BrickInventory/actions/workflows/android.yml/badge.svg)](https://github.com/addict85/BrickInventory/actions/workflows/android.yml)
-[![Docker](https://github.com/addict85/BrickInventory/actions/workflows/docker-publish.yml/badge.svg)](https://github.com/addict85/BrickInventory/actions/workflows/docker-publish.yml)
+[![Android-App](https://github.com/addict85/BrickInventory/actions/workflows/android.yml/badge.svg)](https://github.com/addict85/BrickInventory/actions/workflows/android.yml)
+[![Web-App](https://github.com/addict85/BrickInventory/actions/workflows/docker-publish.yml/badge.svg)](https://github.com/addict85/BrickInventory/actions/workflows/docker-publish.yml)
 
 </div>
 
