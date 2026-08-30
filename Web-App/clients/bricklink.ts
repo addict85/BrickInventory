@@ -19,11 +19,30 @@ async function getCredentials() {
   return c;
 }
 
-function pct(s) {
+/**
+ * Die vier BrickLink-Zugangsdaten aus den globalen Einstellungen.
+ *
+ * Ausgeschrieben statt `any`: Ein Tippfehler in einem dieser vier Namen ergaebe
+ * `undefined` in der Signatur, und die Anfrage kaeme mit 401 zurueck — ein
+ * Fehlerbild, das nach abgelaufenen Schluesseln aussieht statt nach einem
+ * Schreibfehler.
+ */
+type BricklinkZugang = {
+  bricklink_consumer_key: string;
+  bricklink_consumer_secret: string;
+  bricklink_token: string;
+  bricklink_token_secret: string;
+};
+
+// `unknown`: Hier laufen Zeichenketten UND Zahlen aus den Abfrageparametern
+// hinein; der Rumpf macht String(s) daraus.
+function pct(s: unknown) {
   return encodeURIComponent(String(s)).replace(/[!'()*]/g, c => '%' + c.charCodeAt(0).toString(16).toUpperCase());
 }
 
-function buildAuthHeader(method, baseUrl, queryParams, creds) {
+function buildAuthHeader(method: string, baseUrl: string,
+                        queryParams: Record<string, string | number>,
+                        creds: BricklinkZugang) {
   const ts    = String(Math.floor(Date.now() / 1000));
   const nonce = crypto.randomBytes(16).toString('hex');
   const op = {
@@ -36,12 +55,12 @@ function buildAuthHeader(method, baseUrl, queryParams, creds) {
   const sigBase  = method.toUpperCase() + '&' + pct(baseUrl) + '&' + pct(paramStr);
   const sigKey   = pct(creds.bricklink_consumer_secret) + '&' + pct(creds.bricklink_token_secret);
   const sig      = crypto.createHmac('sha1', sigKey).update(sigBase).digest('base64');
-  const allHeader = Object.assign({}, op, { oauth_signature: sig });
+  const allHeader: Record<string, string> = Object.assign({}, op, { oauth_signature: sig });
   const parts = Object.keys(allHeader).sort().map(k => `${k}="${pct(allHeader[k])}"`).join(', ');
   return `OAuth realm="", ${parts}`;
 }
 
-function httpsGet(url, authHeader): Promise<{ status: number; body: string }> {
+function httpsGet(url: string, authHeader: string): Promise<{ status: number; body: string }> {
   return new Promise((resolve, reject) => {
     const parsed = new URL(url);
     https.get({ hostname: parsed.hostname, path: parsed.pathname + parsed.search,
@@ -56,11 +75,23 @@ function httpsGet(url, authHeader): Promise<{ status: number; body: string }> {
   });
 }
 
-async function bricklinkRequest(method, path, queryParams = {}) {
-  const creds = await getCredentials();
-  if (!creds.bricklink_consumer_key || !creds.bricklink_consumer_secret ||
-      !creds.bricklink_token || !creds.bricklink_token_secret)
+async function bricklinkRequest(method: string, path: string,
+                                queryParams: Record<string, string | number> = {}) {
+  const roh = await getCredentials();
+  if (!roh.bricklink_consumer_key || !roh.bricklink_consumer_secret ||
+      !roh.bricklink_token || !roh.bricklink_token_secret)
     throw new Error('BrickLink API Zugangsdaten nicht vollständig.');
+  // Der Waechter darueber prueft genau diese vier Felder — er soll den Typ
+  // deshalb auch HERSTELLEN und nicht nur behaupten. getCredentials() liefert
+  // ein Record<string,string>, und aus Wahrheitspruefungen kann der Uebersetzer
+  // keine feste Form ableiten. So steht jeder der vier Namen genau einmal, und
+  // ein Schreibfehler ist ein Uebersetzungsfehler statt eines 401.
+  const creds: BricklinkZugang = {
+    bricklink_consumer_key:    roh.bricklink_consumer_key,
+    bricklink_consumer_secret: roh.bricklink_consumer_secret,
+    bricklink_token:           roh.bricklink_token,
+    bricklink_token_secret:    roh.bricklink_token_secret,
+  };
   const baseUrl = `${BASE}${path}`;
   const qs = Object.keys(queryParams).length
     ? '?' + Object.keys(queryParams).sort().map(k => pct(k) + '=' + pct(queryParams[k])).join('&') : '';
@@ -74,13 +105,13 @@ async function bricklinkRequest(method, path, queryParams = {}) {
   return data?.data ?? data;
 }
 
-function getItemImageUrl(setNumber) {
+function getItemImageUrl(setNumber: string) {
   const n = setNumber.includes('-') ? setNumber : `${setNumber}-1`;
   return `https://img.bricklink.com/ItemImage/SN/0/${n}.png`;
 }
 
 /** Enthält die Antwort einen brauchbaren Preis? */
-function hasUsablePrice(g) {
+function hasUsablePrice(g: { avg_price?: any; qty_avg_price?: any } | null | undefined) {
   return parseFloat(g?.avg_price || 0) > 0 || parseFloat(g?.qty_avg_price || 0) > 0;
 }
 
@@ -97,7 +128,7 @@ function hasUsablePrice(g) {
  * Ergebnis trägt `guide_used`, damit nachvollziehbar bleibt, woher der Wert
  * kommt (und die Anzeige es später kennzeichnen könnte).
  */
-async function getPriceGuide(setNumber, condition = 'N', guideType = 'sold', currencyCode = 'EUR') {
+async function getPriceGuide(setNumber: string, condition = 'N', guideType = 'sold', currencyCode = 'EUR') {
   const first = await getPriceGuideRaw(setNumber, condition, guideType, currencyCode);
   if (hasUsablePrice(first) || guideType !== 'sold') {
     return { ...first, guide_used: guideType };
@@ -112,7 +143,7 @@ async function getPriceGuide(setNumber, condition = 'N', guideType = 'sold', cur
 
 // Vorgabe 'N': Ein Aufruf ohne expliziten Zustand hat vorher den
 // GEBRAUCHT-Preis geholt und im Cache abgelegt.
-async function getPriceGuideRaw(setNumber, condition = 'N', guideType = 'sold', currencyCode = 'EUR') {
+async function getPriceGuideRaw(setNumber: string, condition = 'N', guideType = 'sold', currencyCode = 'EUR') {
   const n = setNumber.includes('-') ? setNumber : `${setNumber}-1`;
   const bare = n.replace(/-[0-9]+$/, '');
   const params = { guide_type: guideType, new_or_used: condition, currency_code: currencyCode, vat: 'N' };

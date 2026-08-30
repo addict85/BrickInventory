@@ -16,11 +16,26 @@ async function getApiKey() {
   return (await db.get("SELECT value FROM global_settings WHERE key='brickset_api_key'"))?.value || '';
 }
 
-function httpsGetOnce(url): Promise<{ status: number; body: string }> {
+function httpsGetOnce(url: string): Promise<{ status: number; body: string }> {
   return new Promise((resolve, reject) => {
-    const attempt = (u) => {
+    const attempt = (u: string) => {
       const req = https.get(u, { timeout:30000, family: 4, headers:{'User-Agent':'BrickInventory/2026.06.17'} }, res => {
-        if (res.statusCode===301||res.statusCode===302) { res.resume(); return attempt(res.headers.location); }
+        if (res.statusCode===301||res.statusCode===302) {
+          res.resume();
+          const ziel = res.headers.location;
+          // Eine Umleitung OHNE Location-Kopfzeile ist nicht befolgbar, und
+          // hier waere sie teuer: `attempt(undefined)` liefe in
+          // https.get(undefined, …), das wirft — AUS EINEM ANTWORT-RUECKRUF
+          // heraus, also nicht mehr im Promise-Rumpf. Damit waere es eine
+          // uncaughtException, und der Handler in server.ts beendet den Worker
+          // (Code 1, der Cluster forkt Ersatz). Also hier abweisen, wo es
+          // entsteht. Zweiter Fundort desselben Musters — der erste war
+          // clients/rebrickable.ts, dort fing ein `new URL()` in einem try
+          // den Fall noch ab.
+          if (!ziel) return reject(new Error(
+            `Brickset: Umleitung ${res.statusCode} ohne Location-Kopfzeile`));
+          return attempt(ziel);
+        }
         let body=''; res.on('data',d=>body+=d); res.on('end',()=>resolve({status:res.statusCode ?? 0,body}));
       });
       // Netzwerkfehler (ECONNRESET, ETIMEDOUT, ENOTFOUND, socket hang up, …) sind
@@ -39,7 +54,7 @@ function httpsGetOnce(url): Promise<{ status: number; body: string }> {
 
 // Leichter Sofort-Retry für kurzzeitige Aussetzer, bevor auf die (tägliche)
 // Retry-Queue zurückgefallen wird. Nur transiente Fehler werden wiederholt.
-async function httpsGet(url): Promise<{ status: number; body: string }> {
+async function httpsGet(url: string): Promise<{ status: number; body: string }> {
   const MAX_ATTEMPTS = 2;
   for (let i = 1; ; i++) {
     try {
@@ -60,7 +75,7 @@ class BricksetQuotaError extends Error {
   constructor() { super('Daily API key usage limit exceeded'); this.isQuota = true; }
 }
 
-function parseResponse(body) {
+function parseResponse(body: string) {
   let data;
   try { data = JSON.parse(body); } catch(_) { throw new Error(`Brickset: invalid JSON response: ${body?.substring(0, 200)}`); }
   if (data.status === 'error') {
@@ -73,7 +88,7 @@ function parseResponse(body) {
 
 // Check HTTP status — throws BricksetQuotaError on 429 daily limit,
 // throws retryable CloudflareRateLimitError on 1015, returns false on other non-200
-function checkStatus(status, body, label) {
+function checkStatus(status: number, body: string, label: string) {
   if (status === 429) {
     // Distinguish Cloudflare 1015 from Brickset daily quota
     if (body && body.includes('1015')) {
@@ -106,7 +121,7 @@ const MAX_QUOTA_RETRIES = 30;
  *        Fehler der Gegenseite (5xx) — die haben mit dem Tageskontingent nichts
  *        zu tun, und einen Tag zu warten ist dafür sinnlos lang.
  */
-async function enqueueRetry(setNumber, errorMsg: string | null = null, soon = false) {
+async function enqueueRetry(setNumber: string, errorMsg: string | null = null, soon = false) {
   const when = new Date();
   if (!soon) when.setDate(when.getDate() + 1);
   const retryDate = when.toISOString().slice(0, 10);
@@ -132,7 +147,7 @@ async function enqueueRetry(setNumber, errorMsg: string | null = null, soon = fa
   return true;
 }
 
-async function checkRateLimit(setNumber) {
+async function checkRateLimit(setNumber: string) {
   try {
     const rl = await checkAndIncrementRateLimit('brickset', 100);
     if (!rl.allowed) {
@@ -146,12 +161,12 @@ async function checkRateLimit(setNumber) {
 }
 
 // Remove from queue when a non-quota error occurs — no point retrying
-async function removeFromQueue(setNumber) {
+async function removeFromQueue(setNumber: string) {
   await db.run(`DELETE FROM brickset_retry_queue WHERE set_number = $1`, [setNumber]).catch(() => {});
   console.log(`[brickset] ${setNumber}: non-quota error — removed from retry queue, using fallback`);
 }
 
-async function getSetInfo(setNumber) {
+async function getSetInfo(setNumber: string) {
   const key = await getApiKey();
   if (!key) return null;
   const n = setNumber.includes('-') ? setNumber : `${setNumber}-1`;
@@ -186,7 +201,7 @@ async function getSetInfo(setNumber) {
   }
 }
 
-async function getInstructions(setNumber) {
+async function getInstructions(setNumber: string) {
   const key = await getApiKey();
   if (!key) return { instructions: [], usesFallback: true };
   const n = setNumber.includes('-') ? setNumber : `${setNumber}-1`;
@@ -215,7 +230,8 @@ async function getInstructions(setNumber) {
       return { instructions: [], usesFallback: true };
     }
     const data = parseResponse(body);
-    const instructions = (data.instructions || []).map(i => ({ url: i.URL, description: i.description }));
+    const instructions = (data.instructions || [])
+      .map((i: { URL: string; description?: string | null }) => ({ url: i.URL, description: i.description }));
     return { instructions, usesFallback: instructions.length === 0 };
   } catch (e) {
     if (e.isCloudflare) {
@@ -253,7 +269,7 @@ async function getInstructions(setNumber) {
  * Jetzt eine Umsetzung mit einer Herkunftsangabe fürs Log; die beiden alten
  * Namen bleiben als dünne Hüllen erhalten, damit Aufrufer lesbar bleiben.
  */
-async function findSetByQuery(query, herkunft) {
+async function findSetByQuery(query: string, herkunft: string) {
   const key = await getApiKey();
   if (!key) return null;
   try {
@@ -271,7 +287,7 @@ async function findSetByQuery(query, herkunft) {
   }
 }
 
-const getSetByEan     = (ean)     => findSetByQuery(ean, 'EAN');
-const getSetByBarcode = (barcode) => findSetByQuery(barcode, 'barcode');
+const getSetByEan     = (ean: string)     => findSetByQuery(ean, 'EAN');
+const getSetByBarcode = (barcode: string) => findSetByQuery(barcode, 'barcode');
 
 export { getSetInfo, getInstructions, getSetByEan, getSetByBarcode };

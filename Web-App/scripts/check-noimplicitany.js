@@ -49,12 +49,10 @@ const ROOT = path.join(__dirname, '..');
  * Stand bei Einführung: 44 offen, 48 bereits sauber.
  * Nachtrag 151: noch 30 offen, 62 sauber.
  * Nachtrag 156: noch 24 offen.
- * Diese Etappe: noch 13 offen. Anfragestrecke, Geldrechnung, Set-Kernlogik,
- * die PDF-Ausgabe und der Rebrickable-Klient sind sauber.
+ * Diese Etappe: noch 11 offen. Anfragestrecke, Geldrechnung, Set-Kernlogik,
+ * die PDF-Ausgabe und ALLE DREI Fremd-Klienten sind sauber.
  */
 const OFFEN = new Set([
-  'clients/bricklink.ts',
-  'clients/brickset.ts',
   'jobs/csvImportWorker.ts',
   'jobs/partsCatalogEnrich.ts',
   'jobs/priceJob.ts',
