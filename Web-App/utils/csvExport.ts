@@ -12,6 +12,17 @@
 const FORMEL_START = /^[=+\-@\t\r]/;
 
 /**
+ * Nur der Ausschnitt von Express' Response, den diese Datei braucht.
+ *
+ * Statt @types/express hereinzuziehen: Diese Datei kennt Express sonst nicht,
+ * und ein Ausschnitt sagt genauer, was sie tut — Kopfzeilen setzen und senden.
+ */
+type ExpressAntwort = {
+  setHeader(name: string, value: string): void;
+  send(body: string | Buffer): unknown;
+};
+
+/**
  * Ein Feld gegen Formelausführung entschärfen.
  *
  * Öffnet jemand den Export in Excel, LibreOffice oder Google Sheets, wird ein
@@ -39,7 +50,9 @@ function entschaerfe(s: string): string {
 }
 
 /** Gegenstück zu entschaerfe() für den Import. */
-function entschaerfungRueckgaengig(v) {
+// `unknown`: Die Werte kommen aus geparsten CSV-Zeilen, sind also nicht
+// zwingend Zeichenketten — der Rumpf prueft das als Erstes selbst.
+function entschaerfungRueckgaengig(v: unknown) {
   if (typeof v !== 'string') return v;
   if (v.length > 1 && v[0] === "'" && FORMEL_START.test(v.slice(1))) return v.slice(1);
   return v;
@@ -60,22 +73,22 @@ function csvZeilenBereinigen(records: any[]): any[] {
   });
 }
 
-function csvField(v) {
+function csvField(v: unknown) {
   if (v === null || v === undefined) return '';
   const s = entschaerfe(String(v));
   if (/[",\n]/.test(s)) return '"' + s.replace(/"/g, '""') + '"';
   return s;
 }
 
-function toCsv(headers, rows) {
+function toCsv(headers: string[], rows: Record<string, unknown>[]) {
   const lines = [headers.join(',')];
   for (const row of rows) {
-    lines.push(headers.map(h => csvField(row[h])).join(','));
+    lines.push(headers.map((h: string) => csvField(row[h])).join(','));
   }
   return lines.join('\r\n') + '\r\n';
 }
 
-function sendCsv(res, filename, headers, rows) {
+function sendCsv(res: ExpressAntwort, filename: string, headers: string[], rows: Record<string, unknown>[]) {
   const csv = toCsv(headers, rows);
   res.setHeader('Content-Type', 'text/csv; charset=utf-8');
   res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
@@ -85,7 +98,7 @@ function sendCsv(res, filename, headers, rows) {
 // Wie sendCsv, aber für bereits fertig gebaute CSV-Strings (z. B. aus den
 // buildXCsv-Buildern), damit Export-Route und Builder dieselbe Spaltenlogik
 // teilen statt sie zu duplizieren.
-function sendCsvText(res, filename, csv) {
+function sendCsvText(res: ExpressAntwort, filename: string, csv: string) {
   res.setHeader('Content-Type', 'text/csv; charset=utf-8');
   res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
   res.send('\uFEFF' + csv);
@@ -117,7 +130,7 @@ export { csvField, toCsv, sendCsv, sendCsvText, parseCsvDate, entschaerfe, entsc
  * @param {string|null|undefined} raw
  * @returns {string|null} ISO-Datum oder null, wenn nichts Brauchbares drinsteht
  */
-function parseCsvDate(raw) {
+function parseCsvDate(raw: unknown) {
   const s = String(raw ?? '').trim();
   if (!s) return null;
 

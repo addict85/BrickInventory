@@ -7,6 +7,7 @@ import { getPortfolioHistory } from '../../utils/portfolioHistory';
 import { getSetting } from '../../utils/settings';
 import { scopeIds, parseScopeMode } from '../../utils/household';
 import { computeMinifigsValuation, computePartsValuation, computePnl, computeSetsValuation, getRateLimitStatus } from '../../utils/financeCalc';
+import { einzelwert } from '../../utils/validate';
 const router = express.Router();
 
 // ── FINANCE ───────────────────────────────────────────────────────────────────
@@ -45,7 +46,12 @@ router.get('/finance/pnl', requireToken, async (req: AuthedRequest, res) => {
 // ── PORTFOLIO HISTORY — uses shared util (identical to webapp) ───────────────
 router.get('/finance/portfolio-history', requireToken, async (req: AuthedRequest, res) => {
   const uid    = req.apiUser.user_id;
-  const period = req.query.period || 'week';
+  // einzelwert(): Ein Abfrageparameter kann als ARRAY ankommen
+  // (?period=week&period=year) — Express macht daraus ['week','year'].
+  // Ein Array faellt hier zwar auf den Standardzweig (verglichen wird mit ===
+  // gegen drei Literale, nichts landet in SQL), wuerde aber unveraendert in der
+  // Antwort zurueckgegeben. Derselbe Helfer wie im Anmeldezaehler.
+  const period = einzelwert(req.query.period, 'week');
   try {
     const result = await getPortfolioHistory(uid, await scopeIds(uid, parseScopeMode(req.query.accounts)), period, db, getSetting);
     res.json(result);

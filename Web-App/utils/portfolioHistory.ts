@@ -2,7 +2,16 @@ import { baueDiagrammdaten } from './portfolio/diagrammdaten';
 import { rekonstruiereKurve } from './portfolio/kurve';
 import { DEFAULT_PRICE_CONDITION } from './financeCalc';
 import { buildChart } from './chartData';
-async function getPortfolioHistory(viewerId, ids, period, db, getSetting) {
+/**
+ * `db` und `getSetting` kommen HEREIN statt importiert zu werden — die Datei
+ * war so schon vor dieser Aenderung ohne Datenbank pruefbar. Der Typ schreibt
+ * den Ausschnitt aus, der tatsaechlich benutzt wird.
+ */
+async function getPortfolioHistory(
+  viewerId: number, ids: number[], period: string,
+  db: { all(sql: string, params?: any[]): Promise<any[]>; get(sql: string, params?: any[]): Promise<any> },
+  getSetting: (userId: number, key: string, fallback?: any) => Promise<any>,
+) {
   // viewerId = wessen Einstellungen gelten, ids = wessen Daten gerechnet
   // werden. Steht der Kontofilter auf „Unterkonten", enthält ids das fragende
   // Konto gar nicht — die Währung dürfte dann nicht aus ids[0] kommen.
@@ -30,10 +39,10 @@ async function getPortfolioHistory(viewerId, ids, period, db, getSetting) {
     return { success:true, currency, period, points:[], y_axis:[], period_change_pct:null };
   }
 
-  const setNumbers    = sets.map(s => s.set_number);
-  const setQty        = Object.fromEntries(sets.map(s => [s.set_number, s.quantity||1]));
-  const placeholders  = setNumbers.map((_,i) => `$${i+3}`).join(',');
-  const purchaseTotal = sets.reduce((s,r) => s + parseFloat(r.purchase_price||0)*(r.quantity||1), 0);
+  const setNumbers    = sets.map((s: { set_number: string }) => s.set_number);
+  const setQty        = Object.fromEntries(sets.map((s: any) => [s.set_number, s.quantity||1]));
+  const placeholders  = setNumbers.map((_: unknown, i: number) => `$${i+3}`).join(',');
+  const purchaseTotal = sets.reduce((s: number, r: any) => s + parseFloat(r.purchase_price||0)*(r.quantity||1), 0);
 
   // Date filter
   let dateFilter = '';
@@ -143,7 +152,7 @@ async function getPortfolioHistory(viewerId, ids, period, db, getSetting) {
   // Prepend synthetic start baseline if only 1 real point
   if (rawPoints.length <= 1) {
     const now = new Date();
-    const pad = n => String(n).padStart(2,'0');
+    const pad = (n: number) => String(n).padStart(2,'0');
     let startDate = new Date(now);
     if      (period==='week')  startDate.setDate(now.getDate()-7);
     else if (period==='month') startDate.setDate(now.getDate()-30);

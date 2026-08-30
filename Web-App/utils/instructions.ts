@@ -78,7 +78,7 @@ import * as brickset from '../clients/brickset';
 let _letzterAbrufWarExtern = false;
 function letzterAbrufWarExtern(): boolean { return _letzterAbrufWarExtern; }
 
-async function scrapeInstructionsFromFallback(setNumber) {
+async function scrapeInstructionsFromFallback(setNumber: string) {
   const n = setNumber.includes('-') ? setNumber : `${setNumber}-1`;
   const existing = (await db.get('SELECT COUNT(*) as c FROM shared_instructions WHERE set_number = $1', [n])).c;
   if (parseInt(existing) > 0) return parseInt(existing);
@@ -122,7 +122,9 @@ async function scrapeInstructionsFromFallback(setNumber) {
  *   es KEINEN Takt darüber. Dort bleiben die Pausen; deshalb ein Schalter und
  *   kein Löschen.
  */
-async function downloadSetInstructions(setNumber, sendProgress, eigenerTakt = false) {
+async function downloadSetInstructions(setNumber: string,
+                                       sendProgress: ((n: any) => void) | null,
+                                       eigenerTakt = false) {
   const n = setNumber.includes('-') ? setNumber : `${setNumber}-1`;
   if (sendProgress) sendProgress({ step:'instructions', set:n });
 
@@ -226,7 +228,9 @@ async function downloadSetInstructions(setNumber, sendProgress, eigenerTakt = fa
 }
 
 // BrickInstructions PDF helpers (unchanged — file system ops)
-async function collectAndBuildPDF(baseUrl, hdrs, firstPageBuf, pdfDest, relPath, setNumber) {
+async function collectAndBuildPDF(baseUrl: string, hdrs: Record<string, string>,
+                                  firstPageBuf: Buffer, pdfDest: string,
+                                  relPath: string, setNumber: string) {
   try {
     const imageBuffers = [firstPageBuf];
     for (let p = 2; p <= 99; p++) {
@@ -243,14 +247,14 @@ async function collectAndBuildPDF(baseUrl, hdrs, firstPageBuf, pdfDest, relPath,
   } catch (e) { console.log(`  PDF build failed for ${setNumber}: ${e.message}`); }
 }
 
-async function buildImagePDF_fromBuffers(imgBuffers, destPath) {
+async function buildImagePDF_fromBuffers(imgBuffers: Buffer[], destPath: string) {
   if (fs.existsSync(destPath)) return true;
   let PDFDocument; try { PDFDocument = require('pdfkit'); } catch (e) { throw new Error('pdfkit not installed'); }
   return new Promise(resolve => {
     try {
       const doc = new PDFDocument({ autoFirstPage:false, margin:0 });
       const chunks: any[] = [];
-      doc.on('data', d => chunks.push(d));
+      doc.on('data', (d: Buffer) => chunks.push(d));
       doc.on('end', () => { try { fs.writeFileSync(destPath, Buffer.concat(chunks)); resolve(true); } catch(_){ resolve(false); } });
       doc.on('error', () => resolve(false));
       for (const buf of imgBuffers) { try { doc.addPage({ size:'A4', layout:'landscape', margin:0 }); doc.image(buf, 0, 0, { fit:[doc.page.width, doc.page.height], align:'center', valign:'center' }); } catch(_){} }

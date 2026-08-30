@@ -722,7 +722,8 @@ router.post('/:setNumber/instructions', async (req, res) => {
   } catch (e) { handleRouteError(res, e); }
 });
 
-router.post('/:setNumber/parts', async (req, res) => {
+// LoggedInRequest: liegt hinter dem router.use(requireLogin) weiter oben.
+router.post('/:setNumber/parts', async (req: LoggedInRequest, res) => {
   try { const count = await importPartsForSet(req.params.setNumber, req.session.userId, null); res.json({ success:true, count }); }
   catch (e) { handleRouteError(res, e); }
 });

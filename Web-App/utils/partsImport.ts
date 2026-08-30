@@ -22,12 +22,15 @@ import { consumeRebrickableDaily } from './rateLimiter';
  * lagen in routes/parts.ts, weil die HTTP-Route dort steht, die sie auslöst.
  */
 
-async function downloadPartImagesBackground(imageDownloads, setNumber) {
+async function downloadPartImagesBackground(
+  imageDownloads: { url: string; dest: string; partNumber: string; colorId: number | string }[],
+  setNumber: string) {
   let done = 0;
   const BATCH = 10;
   for (let i = 0; i < imageDownloads.length; i += BATCH) {
     const batch = imageDownloads.slice(i, i + BATCH);
-    await Promise.all(batch.map(async ({ url, dest, partNumber, colorId }) => {
+    await Promise.all(batch.map(async ({ url, dest, partNumber, colorId }:
+      { url: string; dest: string; partNumber: string; colorId: number | string }) => {
       await downloadFile(url, dest).catch(() => {});
       // Nur weitermachen, wenn die Datei wirklich geschrieben wurde. Andernfalls
       // würde image_local auf eine nicht existierende Datei zeigen und in Web +
@@ -80,7 +83,8 @@ async function syncBlPartNumbers() {
   if (count) console.log(`[parts] BrickLink-Nummern nachgetragen: ${count} Zeilen`);
 }
 
-async function importPartsForSet(setNumber, userId, sendProgress) {
+async function importPartsForSet(setNumber: string, userId: number,
+                                 sendProgress: ((n: any) => void) | null) {
   const n = setNumber.includes('-') ? setNumber : `${setNumber}-1`;
   try {
     if (sendProgress) sendProgress({ step:'parts_start', set:n });
@@ -192,7 +196,9 @@ async function fetchMissingBlIds() {
 
     monitor.update('blIds', { status: 'running', progress: 0, total: missing.length, sub: `0 / ${missing.length}` });
 
-    const https2 = require('https');
+    // `as typeof import('https')` wie in Punkt 3: Ohne das ist die Rueckgabe
+// von require() `any`, und damit auch der Antwort-Rueckruf `r`.
+const https2 = require('https') as typeof import('https');
     const BATCH = 500;
     let serverErrors = 0;
     for (let i = 0; i < missing.length; i += BATCH) {
@@ -202,7 +208,7 @@ async function fetchMissingBlIds() {
       const url = `https://rebrickable.com/api/v3/lego/parts/?part_nums=${batch.join(',')}&page_size=500`;
       const result = await new Promise<{ status: number; body: string }>(resolve => {
         const req = https2.get(url, { family: 4, headers: { Authorization: `key ${rbKey}`, 'User-Agent': 'BrickInventory/1.0' } }, r => {
-          let b = ''; r.on('data', d => b += d);
+          let b = ''; r.on('data', (d: Buffer) => b += d);
           r.on('end', () => resolve({ status: r.statusCode ?? 0, body: b }));
         });
         req.on('error', () => resolve({ status: 0, body: '' }));
@@ -230,7 +236,7 @@ async function fetchMissingBlIds() {
         ).catch(()=>{});
       }
       // Mark unmatched as checked
-      const returned = new Set((data?.results||[]).map(p => p.part_num));
+      const returned = new Set((data?.results||[]).map((p: { part_num: string }) => p.part_num));
       for (const pn of batch) {
         if (!returned.has(pn)) {
           await db.run(`INSERT INTO rb_bl_mapping (part_num, bl_part_num) VALUES ($1,$1) ON CONFLICT DO NOTHING`, [pn]).catch(()=>{});

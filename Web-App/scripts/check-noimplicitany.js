@@ -49,8 +49,9 @@ const ROOT = path.join(__dirname, '..');
  * Stand bei Einführung: 44 offen, 48 bereits sauber.
  * Nachtrag 151: noch 30 offen, 62 sauber.
  * Nachtrag 156: noch 24 offen.
- * Diese Etappe: noch 11 offen. Anfragestrecke, Geldrechnung, Set-Kernlogik,
- * die PDF-Ausgabe und ALLE DREI Fremd-Klienten sind sauber.
+ * Diese Etappe: noch 7 offen — vier Hintergrundjobs, zwei Werkzeugskripte
+ * (nicht ausgeliefert) und routes/sets.ts. Alles Ausgelieferte ausser
+ * routes/sets.ts ist sauber.
  */
 const OFFEN = new Set([
   'jobs/csvImportWorker.ts',
@@ -60,10 +61,6 @@ const OFFEN = new Set([
   'routes/sets.ts',
   'scripts/check-api-contract.js',
   'scripts/loadtest.js',
-  'utils/csvExport.ts',
-  'utils/instructions.ts',
-  'utils/partsImport.ts',
-  'utils/portfolioHistory.ts',
 ]);
 
 /** tsc mit noImplicitAny laufen lassen und die Meldungen je Datei sammeln. */
