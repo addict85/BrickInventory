@@ -72,7 +72,12 @@ class SessionAndLifecycleTest {
     @Test
     fun `cached greift bei 401 NICHT auf den Plattenspeicher zurueck`() {
         val src = code(datenschicht())
-        val body = src.substringAfter("private suspend fun <T : Any> cached(")
+        // Anker ohne Sichtbarkeitsmodifikator (Nachtrag 155): cached() ist nach
+        // der Aufteilung `protected` in RepoBasis, damit die fuenf
+        // Teil-Repositories herankommen. Geprueft ist hier die REIHENFOLGE im
+        // Rumpf — erst die 401-Ausnahme, dann der Cache-Rueckgriff —, nicht wer
+        // die Funktion sehen darf.
+        val body = src.substringAfter("suspend fun <T : Any> cached(")
             .substringBefore("\n    }")
         val guard = body.indexOf("unauthorized")
         val fallback = body.indexOf("cache.get(")
