@@ -84,7 +84,7 @@ class CatalogScrubberTest {
 
     @Test
     fun `das Sprungziel rechnet der Server`() {
-        val f = code(read("ui/CatalogFeature.kt"))
+        val f = code(read("ui/viewmodel/CatalogViewModel.kt"))
         assert(f.contains("repo.admin.getCatalogYearOffset(")) {
             "Die App rechnet das Sprungziel selbst — sie kennt aber nur die " +
                 "geladenen Seiten und kann es gar nicht wissen"
@@ -102,7 +102,7 @@ class CatalogScrubberTest {
             "Die Zielseite wird nicht vorgeladen"
         }
         // Und das Ziel muss wieder zurückgesetzt werden.
-        assert(f.contains("fun MainViewModel.catalogScrollConsumed()")) {
+        assert(f.contains("fun catalogScrollConsumed()")) {
             "Ohne Zurücksetzen liesse sich dasselbe Jahr kein zweites Mal anspringen"
         }
     }
@@ -111,9 +111,9 @@ class CatalogScrubberTest {
     fun `eine Seite wird nicht mehrfach geladen`() {
         // Beim Scrollen kommt derselbe Bereich vielfach vorbei. Ohne diese
         // Prüfung löste jeder Schritt denselben Abruf erneut aus.
-        val f = code(read("ui/CatalogFeature.kt"))
+        val f = code(read("ui/viewmodel/CatalogViewModel.kt"))
         // Funktionsrumpf statt 700 fester Zeichen (Nachtrag 115) — siehe Quellen.kt.
-        val fn = Quellen.funktion(f, "fun MainViewModel.ensureCatalogPage(")
+        val fn = Quellen.funktion(f, "fun ensureCatalogPage(")
         assert(fn.isNotEmpty()) { "ensureCatalogPage fehlt" }
         assert(fn.contains("loadedPages.containsKey(seite)") && fn.contains("loadingPages.contains(seite)")) {
             "Bereits geladene oder ladende Seiten werden nicht übersprungen"
@@ -163,8 +163,8 @@ class CatalogScrubberTest {
 
         // Und beim FILTERWECHSEL muss sie zurückgesetzt werden: Die alte
         // Position zeigte sonst auf Sets, die es in der neuen Liste nicht gibt.
-        val f = code(read("ui/CatalogFeature.kt"))
-        val block = Quellen.funktion(f, "fun MainViewModel.loadCatalogSets(")
+        val f = code(read("ui/viewmodel/CatalogViewModel.kt"))
+        val block = Quellen.funktion(f, "fun loadCatalogSets(")
         assert(block.isNotEmpty()) { "loadCatalogSets fehlt" }
         assert(block.contains("scrollIndex = 0")) {
             "Beim Neuaufbau der Liste bleibt die alte Rollposition stehen"

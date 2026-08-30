@@ -9,6 +9,7 @@ import androidx.navigation.compose.*
 import ch.brickinventoryapp.nav.authGraph
 import ch.brickinventoryapp.nav.collectionGraph
 import ch.brickinventoryapp.nav.catalogGraph
+import ch.brickinventoryapp.ui.viewmodel.CatalogViewModel
 import ch.brickinventoryapp.nav.toolsGraph
 import ch.brickinventoryapp.ui.*
 import ch.brickinventoryapp.ui.screens.*
@@ -34,7 +35,13 @@ import androidx.compose.ui.res.stringResource
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun BrickInventoryManagerApp(vm: MainViewModel, imageLoader: coil.ImageLoader) {
+fun BrickInventoryManagerApp(
+    vm: MainViewModel,
+    // Der Katalog haelt seinen Zustand selbst; die Activity haelt beide, damit
+    // Liste und Detail dieselbe Instanz sehen (siehe CatalogViewModel).
+    katalog: CatalogViewModel,
+    imageLoader: coil.ImageLoader,
+) {
     // collectAsStateWithLifecycle: Collection stoppt, wenn die App im
     // Hintergrund ist — kein unnötiges Recomposition-/State-Processing mehr.
     val state by vm.state.collectAsStateWithLifecycle()
@@ -143,7 +150,7 @@ fun BrickInventoryManagerApp(vm: MainViewModel, imageLoader: coil.ImageLoader) {
         authGraph(vm, navController)
         collectionGraph(vm, navController, imageLoader, bottomNavItems, snackbarHostState,
             galleryGridState, partsGridState, minifigsGridState)
-        catalogGraph(vm, navController, imageLoader, bottomNavItems, snackbarHostState)
+        catalogGraph(vm, katalog, navController, imageLoader, bottomNavItems, snackbarHostState)
         toolsGraph(vm, navController, imageLoader, bottomNavItems, snackbarHostState, activity,
             financeListState, partsListState)
     }

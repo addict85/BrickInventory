@@ -107,6 +107,19 @@ class UiStateFieldsTest {
                 .findAll(s).forEach { m ->
                     fluesse[m.groupValues[2]]?.let { lokal[m.groupValues[1]] = it }
                 }
+            // Seit es Bildschirm-ViewModels gibt, heisst der Fluss in beiden
+            // schlicht `state`: `vm.state` ist der App-Zustand, `katalog.state`
+            // der Katalogzustand. Der Name sagt es nicht mehr, der EMPFÄNGER
+            // sagt es — sonst hielte die Prüfung `state` in CatalogScreen für
+            // den App-Zustand und meldete zehn Fehlalarme. Genau die Falle, vor
+            // der der Kommentar darüber schon einmal gewarnt hat.
+            val vms = Quellen.viewModelNamen(s)
+            val jeVm = Quellen.fluesseJeViewModel()
+            Regex("""\bval\s+(\w+)\s+by\s+(\w+)\.(\w+)\.collectAsStateWithLifecycle""")
+                .findAll(s).forEach { m ->
+                    val klasse = vms[m.groupValues[2]] ?: return@forEach
+                    jeVm[klasse]?.get(m.groupValues[3])?.let { lokal[m.groupValues[1]] = it }
+                }
             lokal.putIfAbsent("state", "AppUiState")
 
             for ((name, kls) in lokal) {

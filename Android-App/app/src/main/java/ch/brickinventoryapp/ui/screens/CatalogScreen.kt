@@ -33,6 +33,7 @@ import ch.brickinventoryapp.data.model.CatalogSetItem
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import ch.brickinventoryapp.ui.CatalogUiState
 import ch.brickinventoryapp.ui.MainViewModel
+import ch.brickinventoryapp.ui.viewmodel.CatalogViewModel
 import ch.brickinventoryapp.ui.*  // Feature-Extensions (setCatalogQuery, loadCatalogSets, …)
 import ch.brickinventoryapp.ui.CatalogYearMath
 import ch.brickinventoryapp.ui.theme.BrickStudCap
@@ -55,6 +56,7 @@ import ch.brickinventoryapp.data.repository.CATALOG_PAGE_SIZE
 @Composable
 fun CatalogScreen(
     vm: MainViewModel,
+    katalog: CatalogViewModel,
     imageLoader: ImageLoader,
     /** Klick auf ein Set — nur der Graph kennt den NavController. */
     onSetClick: (String) -> Unit,
@@ -63,24 +65,24 @@ fun CatalogScreen(
     // dasselbe Muster wie in Galerie/Finanzen/Teile/Minifiguren (Nachtrag 96).
     // Die Namen darunter bleiben absichtlich dieselben, damit der Rumpf
     // unverändert ist.
-    val state by vm.catalogState.collectAsStateWithLifecycle()
+    val state by katalog.state.collectAsStateWithLifecycle()
     val appState by vm.state.collectAsStateWithLifecycle()
 
     val serverUrl = appState.serverUrl
 
-    val onQueryChange: (String) -> Unit = { q -> vm.setCatalogQuery(q) }
-    val onThemeChange: (Int?) -> Unit = { t -> vm.setCatalogTheme(t) }
-    val onYearChange: (Int?) -> Unit = { y -> vm.setCatalogYear(y) }
-    val onSortChange: (String) -> Unit = { srt -> vm.setCatalogSort(srt) }
+    val onQueryChange: (String) -> Unit = { q -> katalog.setCatalogQuery(q) }
+    val onThemeChange: (Int?) -> Unit = { t -> katalog.setCatalogTheme(t) }
+    val onYearChange: (Int?) -> Unit = { y -> katalog.setCatalogYear(y) }
+    val onSortChange: (String) -> Unit = { srt -> katalog.setCatalogSort(srt) }
     /** Eine Seite laden, die gerade ins Bild kommt (vorwärts wie rückwärts). */
-    val onEnsurePage: (Int) -> Unit = { seite -> vm.ensureCatalogPage(seite) }
+    val onEnsurePage: (Int) -> Unit = { seite -> katalog.ensureCatalogPage(seite) }
     /** Zum ersten Set eines Jahres springen — ohne zu filtern. */
-    val onJumpToYear: (Int) -> Unit = { jahr -> vm.jumpToCatalogYear(jahr) }
+    val onJumpToYear: (Int) -> Unit = { jahr -> katalog.jumpToCatalogYear(jahr) }
     /** Meldet, dass der Sprung ausgeführt wurde. */
-    val onScrollConsumed: () -> Unit = { vm.catalogScrollConsumed() }
+    val onScrollConsumed: () -> Unit = { katalog.catalogScrollConsumed() }
     /** Meldet die Rollposition, damit sie den Wechsel zur Detailseite überlebt. */
-    val onScrollPos: (Int, Int) -> Unit = { index, offset -> vm.setCatalogScrollPos(index, offset) }
-    val onRefresh: () -> Unit = { vm.loadCatalogMeta(); vm.loadCatalogSets() }
+    val onScrollPos: (Int, Int) -> Unit = { index, offset -> katalog.setCatalogScrollPos(index, offset) }
+    val onRefresh: () -> Unit = { katalog.loadCatalogMeta(); katalog.loadCatalogSets() }
 
     // Als State-Objekte statt per `by`: CatalogFilterRow() setzt sie, und dafür
     // muss es dasselbe Objekt sein, keine Kopie (Nachtrag 98).
@@ -231,7 +233,7 @@ fun CatalogScreen(
         ) {
             // In eine lokale Variable gehoben, damit der Smart Cast greift:
             // `state` ist seit Nachtrag 115 ein DELEGIERTES Property (`by
-            // vm.catalogState.collectAsStateWithLifecycle()`), vorher war es ein
+            // katalog.state.collectAsStateWithLifecycle()`), vorher war es ein
             // Parameter. Bei einem Delegierten ruft jeder Zugriff erneut
             // getValue() auf — der Compiler kann also nicht garantieren, dass
             // `state.error` zwischen der Null-Prüfung und der Verwendung

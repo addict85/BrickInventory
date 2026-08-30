@@ -77,8 +77,9 @@ class MainViewModel @Inject constructor(
     internal val _barcodeState = MutableStateFlow(BarcodeUiState())
     val barcodeState = _barcodeState.asStateFlow()
 
-    internal val _catalogState = MutableStateFlow(CatalogUiState())
-    val catalogState = _catalogState.asStateFlow()
+    // Der Katalogzustand ist nach CatalogViewModel gewandert. Er wurde von
+    // niemandem ausser den Katalogfunktionen gelesen — und die stehen jetzt
+    // dort, wo sie auch ihre Abbruch-Jobs halten koennen.
 
     // Teile/Minifiguren und Finanzen — aus AppUiState herausgelöst, gleiches
     // Muster wie oben. Nur die Screens, die diese Daten tatsächlich anzeigen,
@@ -163,29 +164,9 @@ class MainViewModel @Inject constructor(
         }
     }
 
-    /**
-     * Gemeinsamer Retry-Wrapper für Aufrufe, die beim App-Start an noch nicht
-     * verfügbarem Netzwerk/DNS scheitern können (ersetzt die duplizierten
-     * Retry-Schleifen in loadSets/loadParts).
-     */
-    internal suspend fun <T> retryOnNetwork(
-        maxAttempts: Int = 10,
-        delayMs: Long = 2000,
-        call: suspend () -> Result<T>
-    ): Result<T> {
-        var attempts = 0
-        while (true) {
-            val r = call()
-            if (r is Result.Error) {
-                if (r.transient && attempts < maxAttempts - 1) {
-                    attempts++
-                    kotlinx.coroutines.delay(delayMs)
-                    continue
-                }
-            }
-            return r
-        }
-    }
+    // retryOnNetwork() steht jetzt paketweit in Netzwiederholung.kt — sie
+    // brauchte nichts aus dieser Klasse, und die Bildschirm-ViewModels
+    // ausserhalb von ui/ sollen sie ebenfalls benutzen koennen.
 
     // ── Parts ────────────────────────────────────────────────────────────────
     // Suche wird debounced (350 ms) und der vorherige Request abgebrochen:

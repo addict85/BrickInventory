@@ -35,6 +35,7 @@ import coil.ImageLoader
 import androidx.compose.foundation.Image
 import androidx.compose.ui.res.painterResource
 import ch.brickinventoryapp.R
+import ch.brickinventoryapp.ui.viewmodel.CatalogViewModel
 import androidx.compose.ui.res.vectorResource
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.graphics.Color
@@ -51,6 +52,12 @@ import javax.inject.Inject
 @AndroidEntryPoint
 class MainActivity : ComponentActivity() {
     private val vm: MainViewModel by viewModels()
+
+    // Hier gehalten und nicht ueber hiltViewModel() geholt: Katalogliste und
+    // Katalogdetail sind zwei NavHost-Ziele, und an den Backstack-Eintrag
+    // gebunden waeren es zwei Instanzen — das Detail setzt „besitze ich“,
+    // und die Liste bekaeme es nie zu sehen.
+    private val katalogVm: CatalogViewModel by viewModels()
 
     // ImageLoader kommt jetzt als Hilt-Singleton aus AppModule — eine
     // Instanz für die gesamte Prozesslaufzeit statt einer pro Activity
@@ -70,7 +77,7 @@ class MainActivity : ComponentActivity() {
             // und darüber die ganze App rekomponiert.
             val theme by vm.appTheme.collectAsStateWithLifecycle()
             BrickInventoryManagerTheme(theme = theme) {
-                BrickInventoryManagerApp(vm, imageLoader)
+                BrickInventoryManagerApp(vm, katalogVm, imageLoader)
             }
         }
     }

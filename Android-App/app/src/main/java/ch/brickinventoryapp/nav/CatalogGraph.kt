@@ -52,6 +52,7 @@ import androidx.navigation.NavType
 import androidx.navigation.navArgument
 import ch.brickinventoryapp.*
 import ch.brickinventoryapp.ui.MainViewModel
+import ch.brickinventoryapp.ui.viewmodel.CatalogViewModel
 import ch.brickinventoryapp.ui.ManualItemDetailUiState
 
 /**
@@ -66,6 +67,7 @@ import ch.brickinventoryapp.ui.ManualItemDetailUiState
  */
 fun NavGraphBuilder.catalogGraph(
     vm: MainViewModel,
+    katalog: CatalogViewModel,
     navController: NavHostController,
     imageLoader: coil.ImageLoader,
     bottomNavItems: List<Triple<Screen, @Composable () -> Unit, String>>,
@@ -75,15 +77,23 @@ fun NavGraphBuilder.catalogGraph(
             // Zustand INNERHALB des Ziels lesen — als Parameter wäre es eine
             // Momentaufnahme vom Aufbau des Graphen (der NavHost-Builder läuft nur einmal).
             val state by vm.state.collectAsStateWithLifecycle()
-            val catalogState by vm.catalogState.collectAsStateWithLifecycle()
+            val catalogState by katalog.state.collectAsStateWithLifecycle()
+            // Eine sichtbare Leiste, ein Halter: der Katalog meldet, das
+            // MainViewModel zeigt. Zwei Snackbar-Halter waeren zwei
+            // Warteschlangen fuer dieselbe Leiste.
+            val katMeldung by katalog.snackbar.collectAsStateWithLifecycle()
+            LaunchedEffect(katMeldung) {
+                katMeldung?.let { vm.showSnackbar(it); katalog.snackbarGelesen() }
+            }
             LaunchedEffect(state.serverUrl) {
                 if (state.serverUrl.isNotBlank() && catalogState.loadedPages.isEmpty() && !catalogState.isLoading) {
-                    vm.loadCatalogMeta(); vm.loadCatalogSets()
+                    katalog.loadCatalogMeta(); katalog.loadCatalogSets()
                 }
             }
             ReiterGeruest(stringResource(R.string.nav_catalog), vm, navController, bottomNavItems, snackbarHostState) {
                 CatalogScreen(
                     vm = vm,
+                    katalog = katalog,
                     imageLoader = imageLoader,
                     onSetClick = { navController.navigate(Screen.CatalogDetail.createRoute(it)) },
                 )
@@ -99,7 +109,14 @@ fun NavGraphBuilder.catalogGraph(
             // Momentaufnahme vom Aufbau des Graphen (der NavHost-Builder läuft nur einmal).
             val state by vm.state.collectAsStateWithLifecycle()
             val catSetNumber = backStack.arguments?.getString("setNumber") ?: ""
-            val catalogState by vm.catalogState.collectAsStateWithLifecycle()
+            val catalogState by katalog.state.collectAsStateWithLifecycle()
+            // Auch hier: loadCatalogDetail() meldet („Set nicht gefunden",
+            // Netzfehler). Ohne diese Bruecke bliebe die Meldung im Katalog
+            // liegen und niemand saehe sie.
+            val katMeldung by katalog.snackbar.collectAsStateWithLifecycle()
+            LaunchedEffect(katMeldung) {
+                katMeldung?.let { vm.showSnackbar(it); katalog.snackbarGelesen() }
+            }
             CatalogDetailScreen(
                 setNumber = catSetNumber,
                 detail = catalogState.detail?.takeIf { it.setNumber == catSetNumber },
@@ -107,9 +124,16 @@ fun NavGraphBuilder.catalogGraph(
                 imageLoader = imageLoader,
                 serverUrl = state.serverUrl,
                 defaultCondition = state.userDefaultCondition ?: "N",
-                onLoad = vm::loadCatalogDetail,
+                onLoad = katalog::loadCatalogDetail,
                 householdMembers = state.householdMembers,
-                onAddToGallery = { sn, qty, price, cond, owner -> vm.addCatalogSetToGallery(sn, qty, price, cond, owner) },
+                onAddToGallery = { sn, qty, price, cond, owner ->
+                    // Das Aufnehmen gehoert der Galerie, das „besitze ich"
+                    // dem Katalog. Frueher tat addCatalogSetToGallery() beides
+                    // in einer Funktion — die Abhaengigkeit steht jetzt sichtbar
+                    // hier statt versteckt dort.
+                    vm.addSet(sn, qty, price, cond, owner)
+                    katalog.markiereAufgenommen(sn, qty)
+                },
                 onOpenInGallery = { sn -> navController.navigate(Screen.SetDetail.createRoute(sn)) },
                 onBack = { navController.popBackStack() }
             )

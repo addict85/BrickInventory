@@ -119,6 +119,55 @@ object Quellen {
             .associate { it.groupValues[1] to it.groupValues[2] }
 
     /**
+     * Dasselbe für JEDES ViewModel: Klasse → (öffentlicher Flussname → Typ).
+     *
+     * ── Warum das nötig wurde ───────────────────────────────────────────────
+     * Solange aller Zustand im MainViewModel lag, genügte ein Name: `vm`. Seit
+     * es Bildschirm-ViewModels gibt, heisst der Fluss in beiden schlicht
+     * `state` und trägt Verschiedenes — `vm.state` ist der App-Zustand,
+     * `katalog.state` der Katalogzustand. Der Name allein sagt es nicht mehr,
+     * der EMPFÄNGER sagt es.
+     *
+     * Zwei Schreibweisen werden gelesen, weil beide vorkommen:
+     *   private val _catalogState = MutableStateFlow(CatalogUiState())
+     *   val state = _catalogState.asStateFlow()
+     * Ohne die zweite hiesse der Fluss hier `catalogState` und wäre unter
+     * seinem echten Namen `state` nicht zu finden.
+     */
+    fun fluesseJeViewModel(): Map<String, Map<String, String>> {
+        val ergebnis = mutableMapOf<String, Map<String, String>>()
+        for (datei in alle().filter { it.name.endsWith("ViewModel.kt") }) {
+            val src = ohneKommentare(datei.readText())
+            val klasse = Regex("""class (\w+ViewModel)""").find(src)?.groupValues?.get(1) ?: continue
+            // privater Feldname (ohne Unterstrich) → UiState-Klasse
+            val privat = Regex("""(_\w+)\s*=\s*MutableStateFlow\((\w+UiState)\(""")
+                .findAll(src).associate { it.groupValues[1] to it.groupValues[2] }
+            val namen = mutableMapOf<String, String>()
+            privat.forEach { (feld, typ) -> namen[feld.removePrefix("_")] = typ }
+            Regex("""\bval\s+(\w+)\s*=\s*(_\w+)\.asStateFlow\(\)""").findAll(src).forEach { m ->
+                privat[m.groupValues[2]]?.let { namen[m.groupValues[1]] = it }
+            }
+            ergebnis[klasse] = namen
+        }
+        return ergebnis
+    }
+
+    /**
+     * Welcher Name in dieser Datei hält welches ViewModel?
+     *
+     * Aus Parametern (`katalog: CatalogViewModel`) und aus dem Einhängen
+     * (`val mon: MonitoringViewModel = hiltViewModel()`).
+     */
+    fun viewModelNamen(quelle: String): Map<String, String> {
+        val sauber = ohneKommentare(quelle)
+        val namen = mutableMapOf<String, String>()
+        Regex("""\b(\w+)\s*:\s*(?:[\w.]*\.)?(\w+ViewModel)\b""").findAll(sauber).forEach {
+            namen[it.groupValues[1]] = it.groupValues[2]
+        }
+        return namen
+    }
+
+    /**
      * Welchen Zustandstyp trägt ein Name in DIESER Datei?
      *
      * Zwei Quellen, in dieser Reihenfolge: ein Parameter `name: XyzUiState`,
@@ -139,6 +188,16 @@ object Quellen {
         Regex("""\bval\s+(\w+)\s+by\s+vm\.(\w+)\.collectAsStateWithLifecycle""")
             .findAll(sauber).forEach { m ->
                 fluesse[m.groupValues[2]]?.let { namen[m.groupValues[1]] = it }
+            }
+        // Und dasselbe für jeden anderen Empfänger: `val state by katalog.state
+        // .collectAsStateWithLifecycle()`. Welchen Typ das trägt, verrät die
+        // Klasse hinter `katalog` — nicht der Name `state`.
+        val vms = viewModelNamen(sauber)
+        val jeVm = fluesseJeViewModel()
+        Regex("""\bval\s+(\w+)\s+by\s+(\w+)\.(\w+)\.collectAsStateWithLifecycle""")
+            .findAll(sauber).forEach { m ->
+                val klasse = vms[m.groupValues[2]] ?: return@forEach
+                jeVm[klasse]?.get(m.groupValues[3])?.let { namen[m.groupValues[1]] = it }
             }
         return namen
     }
