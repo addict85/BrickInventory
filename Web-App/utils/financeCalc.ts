@@ -38,6 +38,42 @@ function effectiveCondition(set: any): 'N' | 'U' {
   return set?.condition === 'U' ? 'U' : 'N';
 }
 
+
+/**
+ * Die drei Fremd-Schnittstellen, deren Tagesbudget hier gezaehlt wird.
+ *
+ * Eine Union und KEIN string: Alle acht Aufrufstellen im Baum uebergeben eines
+ * dieser drei Literale, nie einen Wert von aussen. Damit prueft der Uebersetzer
+ * `defaults[apiName]` selbst — der Indexzugriff braucht hier weder ausTabelle()
+ * noch einen Rueckfall gegen geerbte Mitglieder, weil gar kein fremder
+ * Schluessel hineinkommen kann. (Anders als in routes/mailer.ts, wo der
+ * Schluessel aus der Datenbank stammt.)
+ */
+type ApiName = 'bricklink' | 'rebrickable' | 'brickset';
+
+/**
+ * Blickfeld: wessen DATEN gerechnet werden. Getrennt von `viewerId`, wessen
+ * EINSTELLUNGEN gelten — die beiden fallen auseinander, sobald der Kontofilter
+ * auf „Unterkonten" steht (siehe computeSetsValuation).
+ */
+type Blickfeld = number[];
+
+/** Eine Preis-Cache-Zeile, soweit hier gelesen. */
+type PreisZeile = { avg_price?: number | string | null; fetched_at?: string | Date | null } | null | undefined;
+
+/**
+ * Cache-Dauer in Stunden — `string | number`, und das ist NACHGEMESSEN:
+ *
+ *   getGlobalSetting('price_cache_ttl', '24')  ->  Zeichenkette (DB-Textspalte,
+ *                                                  Rueckfall '24')
+ *   routes/minifigs.ts:201                     ->  die Zahl 24
+ *
+ * Deshalb bleibt `parseInt(String(ttlHours))` in den vier Rechnern stehen: Es
+ * ist tragend, nicht Zierde. Ein blosses `number` waere dieselbe falsche
+ * Annahme wie bei getPartAcquisitions im vorigen Commit.
+ */
+type Stunden = string | number;
+
 /**
  * DIE Zustandsauflösung für ein einzelnes Set — per Datenbankabfrage, für
  * Aufrufer ohne bereits geladene acq_count/used_count-Felder.
@@ -77,7 +113,7 @@ async function resolveSetCondition(uid: number | number[], setNumber: string): P
 // eigene Kopie derselben Zahl — zwei Konstanten mit derselben Bedeutung
 // driften irgendwann auseinander.
 
-async function checkAndIncrementRateLimit(apiName, _defaultLimit = 4000) {
+async function checkAndIncrementRateLimit(apiName: ApiName, _defaultLimit = 4000) {
   const key  = `api_calls_${apiName}`;
   const dateKey = `api_calls_date_${apiName}`;
   const today = new Date().toISOString().slice(0, 10);
@@ -104,7 +140,7 @@ async function checkAndIncrementRateLimit(apiName, _defaultLimit = 4000) {
   });
 }
 
-async function getLimitForApi(apiName) {
+async function getLimitForApi(apiName: ApiName) {
   // Rückfallwerte, falls global_settings nichts sagt.
   //
   // rebrickable stand hier auf 4000, während utils/rateLimiter.ts 25'000 als
@@ -118,7 +154,7 @@ async function getLimitForApi(apiName) {
   return parseInt(row?.value) || defaults[apiName] || 4000;
 }
 
-async function getRateLimitStatus(apiName) {
+async function getRateLimitStatus(apiName: ApiName) {
   const key = `api_calls_${apiName}`;
   const dateKey = `api_calls_date_${apiName}`;
   const today = new Date().toISOString().slice(0, 10);
@@ -161,23 +197,26 @@ const PRICE_CACHE_COLS = 'set_number, condition, min_price, avg_price, max_price
 const ZERO_PRICE_TTL_HOURS = 6;
 
 /** Ist der Cache-Eintrag brauchbar, oder soll neu geholt werden? */
-function cacheUsable(row, ttlHours) {
+function cacheUsable(row: PreisZeile, ttlHours: number) {
   if (!row) return false;
-  if (parseFloat(row.avg_price) > 0) return true;
+  // parseFloat(String(...)): avg_price ist eine numeric-Spalte, und der
+  // pg-Treiber gibt numeric als Zeichenkette zurueck. Der Typ macht das
+  // sichtbar, statt es der JS-Umwandlung zu ueberlassen.
+  if (parseFloat(String(row.avg_price ?? '')) > 0) return true;
   // 0-Eintrag: nur kurz vertrauen, danach neu versuchen.
   if (!row.fetched_at) return false;
   const ageH = (Date.now() - new Date(row.fetched_at).getTime()) / 3600000;
   return ageH < Math.min(ZERO_PRICE_TTL_HOURS, ttlHours);
 }
 
-async function fetchPrice(setNumber, condition, guideType, currency, ttlHours, pre: { catalog: Map<any, any>; cache: Map<string, any> } | null = null) {
+async function fetchPrice(setNumber: string, condition: string, guideType: string, currency: string, ttlHours: Stunden, pre: { catalog: Map<any, any>; cache: Map<string, any> } | null = null) {
   const catalogRow = pre?.catalog
     ? (pre.catalog.get(setNumber) || null)
     : await db.get('SELECT is_gear, bl_type FROM catalog_cache WHERE set_number = $1', [setNumber]);
   if (catalogRow?.is_gear === 1 && catalogRow?.bl_type === 'NONE')
     return { min_price:0, avg_price:0, max_price:0, qty_avg_price:0, from_cache:true, no_price:true };
 
-  const ttl = Math.max(1, parseInt(ttlHours));
+  const ttl = Math.max(1, parseInt(String(ttlHours)));
   const fallbackCondition = condition === 'N' ? 'U' : 'N';
 
   const cached = pre?.cache
@@ -202,7 +241,7 @@ async function fetchPrice(setNumber, condition, guideType, currency, ttlHours, p
     return { min_price:0, avg_price:0, max_price:0, qty_avg_price:0, from_cache:true, no_price:true };
   }
 
-  async function tryFetch(cond) {
+  async function tryFetch(cond: string) {
     try {
       // Lazy-Require: Top-Level würde einen Require-Zyklus utils ↔ routes
       // erzeugen (bricklink.js nutzt den Rate-Limiter von hier).
@@ -248,7 +287,7 @@ async function fetchPrice(setNumber, condition, guideType, currency, ttlHours, p
   throw new Error(`${setNumber} — kein BrickLink-Preis gefunden`);
 }
 
-async function parallelLimit(tasks, limit) {
+async function parallelLimit<T>(tasks: (() => Promise<T>)[], limit: number) {
   const results = new Array(tasks.length); let idx = 0;
   async function worker() { while (idx < tasks.length) { const i = idx++; results[i] = await tasks[i](); } }
   await Promise.all(Array.from({ length: Math.min(limit, tasks.length) }, worker));
@@ -258,7 +297,7 @@ async function parallelLimit(tasks, limit) {
 // ── Compute the price valuation for all of a user's sets ────────────────────
 // Shared by the session route (/finance/valuation) and the token API
 // (/api/v1/finance/valuation) so the logic exists exactly once.
-async function computeSetsValuation(viewerId, ids) {
+async function computeSetsValuation(viewerId: number, ids: Blickfeld) {
   // ZWEI Grössen, bewusst getrennt:
   //   viewerId — wessen EINSTELLUNGEN gelten (Währung, Cache-Dauer, Preisart)
   //   ids      — WESSEN DATEN gerechnet werden (Blickfeld, ggf. gefiltert)
@@ -266,7 +305,7 @@ async function computeSetsValuation(viewerId, ids) {
   // Sie fallen auseinander, sobald der Kontofilter auf „Unterkonten" steht:
   // Dann enthält ids das fragende Konto gar nicht. Die Einstellungen mit
   // ids[0] zu holen hiesse dort, die Währung eines Kindes zu benutzen.
-  const uids = asIds(ids as any);
+  const uids = asIds(ids);
   const [currency, ttlHours, guideType] = await Promise.all([
     getSetting(viewerId, 'currency', 'EUR'),
     getSetting(viewerId, 'price_cache_ttl', '24'),
@@ -287,7 +326,7 @@ async function computeSetsValuation(viewerId, ids) {
 
   // Batch-Prefetch: Katalog-Flags, Preiscache (beide Zustände) und ALLE
   // Erfassungen in je einer Query — sonst wäre das eine Abfrage je Set.
-  const ttl = Math.max(1, parseInt(ttlHours));
+  const ttl = Math.max(1, parseInt(String(ttlHours)));
   const setNumbers = sets.map(s => s.set_number);
   const [catRows, cacheRows, acqRows] = await Promise.all([
     db.all('SELECT set_number, is_gear, bl_type FROM catalog_cache WHERE set_number = ANY($1)', [setNumbers]),
@@ -416,7 +455,7 @@ async function computeSetsValuation(viewerId, ids) {
   };
 }
 
-async function resolveBlColorId(rbColorId) {
+async function resolveBlColorId(rbColorId: number) {
   if (rbColorId == null || rbColorId === 0) return rbColorId;
   try {
     const row = await db.get('SELECT bl_color_id FROM rb_colors WHERE id=$1', [rbColorId]);
@@ -429,7 +468,7 @@ async function resolveBlColorId(rbColorId) {
 // Übersetzung antwortet BrickLink für RB-Nummern mit 404 RESOURCE_NOT_FOUND —
 // analog zu resolveBlColorId für die Farben. Unbekannte Nummern (oder bereits
 // BL-Nummern) laufen unverändert durch.
-async function resolveBlPartNumber(partNumber) {
+async function resolveBlPartNumber(partNumber: string) {
   try {
     const row = await db.get('SELECT bl_part_num FROM rb_bl_mapping WHERE part_num=$1', [partNumber]);
     return row?.bl_part_num || partNumber;
@@ -440,12 +479,12 @@ async function resolveBlPartNumber(partNumber) {
 // Spiegelt die Fallback-Logik von fetchPrice (Sets): Liefert der gewünschte
 // Zustand (neu/gebraucht) keinen Preis, wird der jeweils andere Zustand
 // versucht — viele ältere Teile werden nur noch gebraucht angeboten.
-async function fetchPartPrice(partNumber, rbColorId, condition, currency, ttlHours) {
-  const ttl = Math.max(1, parseInt(ttlHours));
+async function fetchPartPrice(partNumber: string, rbColorId: number, condition: string, currency: string, ttlHours: Stunden) {
+  const ttl = Math.max(1, parseInt(String(ttlHours)));
   const colorId = await resolveBlColorId(rbColorId);
   const fallbackCondition = condition === 'N' ? 'U' : 'N';
 
-  const readCache = (cond) => db.get(
+  const readCache = (cond: string) => db.get(
     `SELECT avg_price, avg_price FROM part_price_cache WHERE part_number=$1 AND color_id=$2 AND condition=$3 AND currency_code=$4 AND fetched_at > NOW() - make_interval(hours => $5)`,
     [partNumber, colorId, cond, currency, ttl]);
 
@@ -469,7 +508,7 @@ async function fetchPartPrice(partNumber, rbColorId, condition, currency, ttlHou
 
   const blPartNumber = await resolveBlPartNumber(partNumber);
 
-  async function tryFetch(cond) {
+  async function tryFetch(cond: string) {
     try {
       const qp: Record<string, any> = { guide_type: 'sold', new_or_used: cond, currency_code: currency, vat: 'N' };
       if (colorId && colorId !== 0) qp.color_id = String(colorId);
@@ -541,11 +580,11 @@ async function fetchPartPrice(partNumber, rbColorId, condition, currency, ttlHou
 // ── Fetch price for a single minifig from BrickLink ─────────────────────────
 // Gleiche Fallback-Logik wie fetchPartPrice: erst der gewünschte Zustand,
 // bei leerem Price Guide der jeweils andere ('U' ↔ 'N').
-async function fetchMinifigPrice(figNumber, condition, currency, ttlHours) {
-  const ttl = Math.max(1, parseInt(ttlHours));
+async function fetchMinifigPrice(figNumber: string, condition: string, currency: string, ttlHours: Stunden) {
+  const ttl = Math.max(1, parseInt(String(ttlHours)));
   const fallbackCondition = condition === 'N' ? 'U' : 'N';
 
-  const readCache = (cond) => db.get(
+  const readCache = (cond: string) => db.get(
     `SELECT avg_price, avg_price FROM minifig_price_cache WHERE fig_number=$1 AND condition=$2 AND currency_code=$3 AND fetched_at > NOW() - make_interval(hours => $4)`,
     [figNumber, cond, currency, ttl]);
 
@@ -562,7 +601,7 @@ async function fetchMinifigPrice(figNumber, condition, currency, ttlHours) {
     skipPrimaryFetch = true;
   }
 
-  async function tryFetch(cond) {
+  async function tryFetch(cond: string) {
     try {
       const qp = { guide_type: 'sold', new_or_used: cond, currency_code: currency, vat: 'N' };
       let g = await bricklinkRequest('GET', `/items/minifig/${figNumber}/price`, qp);
@@ -638,7 +677,7 @@ async function fetchMinifigPrice(figNumber, condition, currency, ttlHours) {
  * @param {'part'|'fig'} kind
  * @returns Map key → Erfassungszeilen; key ist `nummer|farbe` bzw. `nummer`
  */
-async function loadManualAcquisitions(uid, kind: 'part' | 'fig') {
+async function loadManualAcquisitions(uid: Blickfeld, kind: 'part' | 'fig') {
   // Blickfeld: Ein Hauptkonto bewertet den ganzen Haushalt. Die Währung ist
   // beim Verknüpfen erzwungen gleich (utils/household.ts) — sonst summierte
   // diese Rechnung zwei Währungen, ohne dass man es der Zahl ansähe.
@@ -675,7 +714,7 @@ function conditionsOf(acqs: any[], stored: string): ('N' | 'U')[] {
 // ── Compute valuation for all manually captured minifigs of a user ──────────
 // Shared by the session route (/finance/minifigs-valuation) and the token API
 // (/api/v1/finance/minifigs-valuation) so the logic exists exactly once.
-async function computeMinifigsValuation(viewerId, ids) {
+async function computeMinifigsValuation(viewerId: number, ids: Blickfeld) {
   // ZWEI Grössen, bewusst getrennt:
   //   viewerId — wessen EINSTELLUNGEN gelten (Währung, Cache-Dauer, Preisart)
   //   ids      — WESSEN DATEN gerechnet werden (Blickfeld, ggf. gefiltert)
@@ -683,7 +722,7 @@ async function computeMinifigsValuation(viewerId, ids) {
   // Sie fallen auseinander, sobald der Kontofilter auf „Unterkonten" steht:
   // Dann enthält ids das fragende Konto gar nicht. Die Einstellungen mit
   // ids[0] zu holen hiesse dort, die Währung eines Kindes zu benutzen.
-  const uids = asIds(ids as any);
+  const uids = asIds(ids);
   const [currency, ttlHours] = await Promise.all([
     getSetting(viewerId, 'currency', 'EUR'),
     getGlobalSetting('price_cache_ttl', '24'),
@@ -785,7 +824,7 @@ async function withOwnerNames(uids: number[], rows: any[]) {
 }
 
 // ── GET /api/finance/minifigs-valuation ───────────────────────────────────────
-async function computePartsValuation(viewerId, ids) {
+async function computePartsValuation(viewerId: number, ids: Blickfeld) {
   // ZWEI Grössen, bewusst getrennt:
   //   viewerId — wessen EINSTELLUNGEN gelten (Währung, Cache-Dauer, Preisart)
   //   ids      — WESSEN DATEN gerechnet werden (Blickfeld, ggf. gefiltert)
@@ -793,7 +832,7 @@ async function computePartsValuation(viewerId, ids) {
   // Sie fallen auseinander, sobald der Kontofilter auf „Unterkonten" steht:
   // Dann enthält ids das fragende Konto gar nicht. Die Einstellungen mit
   // ids[0] zu holen hiesse dort, die Währung eines Kindes zu benutzen.
-  const uids = asIds(ids as any);
+  const uids = asIds(ids);
   const [currency, ttlHours] = await Promise.all([
     getSetting(viewerId, 'currency', 'EUR'),
     getGlobalSetting('price_cache_ttl', '24'),
@@ -879,7 +918,7 @@ async function computePartsValuation(viewerId, ids) {
 }
 
 // ── GET /api/finance/parts-valuation ─────────────────────────────────────────────
-async function computePnl(viewerId, ids) {
+async function computePnl(viewerId: number, ids: Blickfeld) {
   // ZWEI Grössen, bewusst getrennt:
   //   viewerId — wessen EINSTELLUNGEN gelten (Währung, Cache-Dauer, Preisart)
   //   ids      — WESSEN DATEN gerechnet werden (Blickfeld, ggf. gefiltert)
@@ -887,7 +926,7 @@ async function computePnl(viewerId, ids) {
   // Sie fallen auseinander, sobald der Kontofilter auf „Unterkonten" steht:
   // Dann enthält ids das fragende Konto gar nicht. Die Einstellungen mit
   // ids[0] zu holen hiesse dort, die Währung eines Kindes zu benutzen.
-  const uids = asIds(ids as any);
+  const uids = asIds(ids);
   const [currency, ttlHours] = await Promise.all([
     getSetting(viewerId, 'currency', 'EUR'),
     getGlobalSetting('price_cache_ttl', '24'),
@@ -926,7 +965,7 @@ async function computePnl(viewerId, ids) {
 
   // Statt 2 Queries pro Set: aktuelle Cache-Preise und ältester History-Eintrag
   // für ALLE Sets in je einer Batch-Query (nutzt UNIQUE-Index bzw. idx_price_history_set).
-  const ttl = Math.max(1, parseInt(ttlHours));
+  const ttl = Math.max(1, parseInt(String(ttlHours)));
   const setNumbers = sets.map(s => s.set_number);
   const priceMap = new Map(), firstHistMap = new Map();
   // Kaufpreis und Menge kommen jetzt ebenfalls aus den Erfassungen, damit
@@ -971,8 +1010,9 @@ async function computePnl(viewerId, ids) {
     ]);
 
     /** avg_price zuerst; qty_avg_price nur als Rückfall. */
-    const val = (r) => parseFloat(r?.avg_price || 0) || parseFloat(r?.qty_avg_price || 0) || 0;
-    const byKey = (rows) => {
+    const val = (r: { avg_price?: any; qty_avg_price?: any } | undefined) =>
+      parseFloat(r?.avg_price || 0) || parseFloat(r?.qty_avg_price || 0) || 0;
+    const byKey = (rows: any[]) => {
       const m = new Map();
       for (const r of rows) m.set(`${r.set_number}|${r.condition}`, r);
       return m;
@@ -993,7 +1033,7 @@ async function computePnl(viewerId, ids) {
       const fallbackCond = effectiveCondition(set);
       // Map in der Form, die valueSet() erwartet — das Ausweichen auf den
       // anderen Zustand steckt dort schon drin (priceFor).
-      const asPriceMap = (m) => {
+      const asPriceMap = (m: Map<string, any>) => {
         const out = new Map();
         for (const cond of ['N', 'U']) {
           const v = val(m.get(`${set.set_number}|${cond}`));

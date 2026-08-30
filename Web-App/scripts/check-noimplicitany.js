@@ -49,8 +49,8 @@ const ROOT = path.join(__dirname, '..');
  * Stand bei Einführung: 44 offen, 48 bereits sauber.
  * Nachtrag 151: noch 30 offen, 62 sauber.
  * Nachtrag 156: noch 24 offen.
- * Diese Etappe: noch 17 offen. Die Anfragestrecke ist damit vollstaendig
- * sauber — Routen und Handler; dort kommen Benutzereingaben an.
+ * Diese Etappe: noch 16 offen. Anfragestrecke (Routen und Handler) und die
+ * Geldrechnung sind sauber.
  */
 const OFFEN = new Set([
   'clients/bricklink.ts',
@@ -65,7 +65,6 @@ const OFFEN = new Set([
   'scripts/check-api-contract.js',
   'scripts/loadtest.js',
   'utils/csvExport.ts',
-  'utils/financeCalc.ts',
   'utils/instructions.ts',
   'utils/partsImport.ts',
   'utils/portfolioHistory.ts',
