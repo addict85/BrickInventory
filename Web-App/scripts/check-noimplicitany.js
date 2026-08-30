@@ -49,8 +49,8 @@ const ROOT = path.join(__dirname, '..');
  * Stand bei Einführung: 44 offen, 48 bereits sauber.
  * Nachtrag 151: noch 30 offen, 62 sauber.
  * Nachtrag 156: noch 24 offen.
- * Diese Etappe: noch 16 offen. Anfragestrecke (Routen und Handler) und die
- * Geldrechnung sind sauber.
+ * Diese Etappe: noch 15 offen. Anfragestrecke, Geldrechnung und die
+ * Set-Kernlogik sind sauber.
  */
 const OFFEN = new Set([
   'clients/bricklink.ts',
@@ -68,7 +68,6 @@ const OFFEN = new Set([
   'utils/instructions.ts',
   'utils/partsImport.ts',
   'utils/portfolioHistory.ts',
-  'utils/setService.ts',
 ]);
 
 /** tsc mit noImplicitAny laufen lassen und die Meldungen je Datei sammeln. */

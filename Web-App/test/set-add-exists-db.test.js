@@ -180,8 +180,12 @@ test('normalizeSetNumber stimmt mit sanitizeSetNumber überein', () => {
   const fs = require('node:fs');
   const { normalizeSetNumber } = _req('utils/setAdd.js');
   const setsSrc = require('./helpers/sources').setKernQuelle();
-  const koerper = setsSrc.slice(setsSrc.indexOf('function sanitizeSetNumber(input) {'));
-  const sanitize = new Function('input', koerper.slice(koerper.indexOf('{') + 1, koerper.indexOf('\n}')));
+  // funktionsRumpf() statt eigener Extraktion: Der frühere Anker trug den
+  // Parameternamen mit ('...(input) {') und zerbrach an der Typannotation —
+  // OHNE es zu melden. Der Helfer sucht nur `function name(` und wirft, wenn
+  // er nichts findet.
+  const sanitize = new Function('input',
+    require('./helpers/sources').funktionsRumpf(setsSrc, 'sanitizeSetNumber'));
   for (const eingabe of ['75192', '75192-1', ' 75192 ', '75192; irgendwas', '75192 Falcon', 'ab-12', '4002!!']) {
     assert.equal(normalizeSetNumber(eingabe), sanitize(eingabe),
       `Abweichung bei "${eingabe}"`);

@@ -403,6 +403,40 @@ function funktionsKopf(src, name) {
 module.exports.funktionsKopf = funktionsKopf;
 
 /**
+ * Der RUMPF einer Funktion, ohne die umschliessenden Klammern.
+ *
+ * ── Warum es das gibt (diese Sitzung) ───────────────────────────────────────
+ * set-add-exists-db baute sich die Extraktion selbst:
+ *
+ *     src.indexOf('function sanitizeSetNumber(input) {')
+ *
+ * Zwei Fehler in einer Zeile. Der Parametername steht mit drin, also zerbrach
+ * der Anker, sobald `input` eine Typannotation bekam. Und es gab keine
+ * Fundpruefung: indexOf lieferte -1, slice(-1) das letzte Zeichen, und
+ * `new Function` daraus eine Funktion, die still `undefined` zurueckgab. Der
+ * Test meldete deshalb nicht „Anker veraltet", sondern eine Abweichung im
+ * ERGEBNIS — das kostet beim Suchen ein Vielfaches.
+ *
+ * Deshalb hier, neben funktionsKopf, mit denselben zwei Eigenschaften:
+ * annotationsunabhaengig (gesucht wird `function name(`) und WIRFT, wenn es
+ * nichts findet.
+ *
+ * Das Ende ist die schliessende Klammer in SPALTE 0 — in diesem Baum die
+ * Konvention fuer Funktionen der obersten Ebene, und robust gegen geschweifte
+ * Klammern in Zeichenketten und Kommentaren.
+ */
+function funktionsRumpf(src, name) {
+  const kopf = funktionsKopf(src, name);
+  const nachKopf = src.indexOf(kopf) + kopf.length;
+  const auf = src.indexOf('{', nachKopf);
+  if (auf < 0) throw new Error(`Rumpf von ${name} beginnt nicht mit {`);
+  const zu = src.indexOf('\n}', auf);
+  if (zu < 0) throw new Error(`Rumpf von ${name} ist nicht geschlossen`);
+  return src.slice(auf + 1, zu);
+}
+module.exports.funktionsRumpf = funktionsRumpf;
+
+/**
  * Nimmt `name` einen Parameter `param` entgegen — unabhängig von Typannotation
  * und Position? Mit `mitVorgabeNull` zusätzlich: hat er die Vorgabe null (dann
  * dürfen Aufrufer ihn weglassen)?

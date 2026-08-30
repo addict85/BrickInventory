@@ -333,7 +333,10 @@ router.use(requireLogin);
 
 
 // ── GET /api/sets/export/csv — export all sets for re-import with the Sets CSV importer
-router.get('/export/csv', async (req, res) => {
+// LoggedInRequest: Die Route liegt hinter dem router.use(requireLogin) direkt
+// darueber. (Die drei Routen OBERHALB tragen ihre eigene Absicherung —
+// requireLoginOrToken bzw. requireLogin —, die Platzierung ist Absicht.)
+router.get('/export/csv', async (req: LoggedInRequest, res) => {
   try {
     const csv = await buildSetsCsv(req.session.userId);
     sendCsvText(res, `sets-export-${new Date().toISOString().substring(0,10)}.csv`, csv);

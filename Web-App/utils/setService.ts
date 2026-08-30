@@ -47,7 +47,7 @@ import { enrichSetParts, enrichSetMinifigs, downloadSetImages } from '../jobs/pa
 // eine Erfassung U ist, sonst "Neu". Ohne Erfassungen bleibt der Wert
 // unverändert. Wird nach jeder Mengen-/Erfassungsänderung aufgerufen, damit
 // der denormalisierte Wert nicht veraltet (z. B. nach LIFO-Reduktion).
-async function recomputeSetCondition(userId, setNumber, dbh: any = db) {
+async function recomputeSetCondition(userId: number, setNumber: string, dbh: any = db) {
   const row = await dbh.get(
     "SELECT COUNT(*) AS n, COUNT(*) FILTER (WHERE condition='U') AS used FROM set_acquisitions WHERE user_id=$1 AND set_number=$2",
     [userId, setNumber]
@@ -61,7 +61,9 @@ async function recomputeSetCondition(userId, setNumber, dbh: any = db) {
   await dbh.run('UPDATE sets SET condition=$1 WHERE user_id=$2 AND set_number=$3', [cond, userId, setNumber]);
 }
 
-function sanitizeSetNumber(input) {
+// `unknown`, weil der Rumpf mit String(input) genau das abfaengt — hier
+// kommen Formularfelder und CSV-Zellen an, nicht garantierte Zeichenketten.
+function sanitizeSetNumber(input: unknown) {
   let s = String(input).trim().split(';')[0].trim().split(' ')[0].trim().replace(/[^a-zA-Z0-9-]/g, '');
   if (!/-\d+$/.test(s)) s = s + '-1';
   return s;
@@ -85,7 +87,7 @@ function sanitizeSetNumber(input) {
  * Dass der Preis dabei ein paar Millisekunden alt ist, spielt keine Rolle —
  * es ist ein Marktpreis, kein Bestandswert.
  */
-async function priceForNewAcquisition(userId, setNumber, dbh: any = db) {
+async function priceForNewAcquisition(userId: number, setNumber: string, dbh: any = db) {
   const setRow = await dbh.get('SELECT condition FROM sets WHERE user_id=$1 AND set_number=$2', [userId, setNumber]);
   const cond = setRow?.condition || 'N';
   const currRow = await dbh.get("SELECT value FROM global_settings WHERE key='currency'").catch(()=>null);
@@ -123,7 +125,7 @@ async function priceForNewAcquisition(userId, setNumber, dbh: any = db) {
 // ── Kaufpreis-Historie ────────────────────────────────────────────────────────
 // Jede Erfassung (auch Re-Add desselben Sets) erzeugt eine Zeile in
 // set_acquisitions. sets.purchase_price spiegelt den Preis der letzten Erfassung.
-async function recordAcquisition(userId, setNumber, quantity, purchasePrice, condition: string | null = null, dbh: any = db) {
+async function recordAcquisition(userId: number, setNumber: string, quantity: number, purchasePrice: number | null, condition: string | null = null, dbh: any = db) {
   // Der Zustand wurde von allen Aufrufern schon immer als 5. Argument
   // übergeben, aber bisher hier ignoriert (Signatur hatte nur 4 Parameter) —
   // neue Erfassungen bekamen dadurch nie den Set-Zustand, sondern den
@@ -157,12 +159,12 @@ async function recordAcquisition(userId, setNumber, quantity, purchasePrice, con
  *        priceForNewAcquisition). Ohne Angabe wird er hier geholt — dann darf
  *        dbh KEINE Transaktion sein, weil ein Netzaufruf darin steckt.
  */
-async function adjustAcquisitionsToQuantity(userId, setNumber, newTotalQty, dbh: any = db,
+async function adjustAcquisitionsToQuantity(userId: number, setNumber: string, newTotalQty: number, dbh: any = db,
                                             pricePlan: { price: number | null; condition: string } | null = null) {
   const rows = await dbh.all(
     'SELECT id, quantity, created_at FROM set_acquisitions WHERE user_id=$1 AND set_number=$2 ORDER BY created_at DESC, id DESC',
     [userId, setNumber]).catch(() => []);
-  const current = rows.reduce((sum, r) => sum + (r.quantity || 0), 0);
+  const current = rows.reduce((sum: number, r: { quantity?: number | null }) => sum + (r.quantity || 0), 0);
   let delta = newTotalQty - current;
   if (delta === 0) return;
   if (delta > 0) {
@@ -219,7 +221,8 @@ async function adjustAcquisitionsToQuantity(userId, setNumber, newTotalQty, dbh:
 }
 
 // CSV import helper: add set with specific acquisition date (avoids duplicate acquisitions)
-async function addSetWithDate(setNumber, quantity, userId, purchasePrice, condition, acquiredAt) {
+async function addSetWithDate(setNumber: string, quantity: number, userId: number, purchasePrice: number | null,
+                              condition: string | null, acquiredAt: string | null) {
   // Always use addSet for the set metadata; then fix the acquisition date if provided
   const result = await addSet(setNumber, quantity, userId, null, purchasePrice, condition);
   if (acquiredAt && result) {
@@ -234,7 +237,10 @@ async function addSetWithDate(setNumber, quantity, userId, purchasePrice, condit
   return result;
 }
 
-async function addSet(setNumber, quantity, userId, sendProgress, purchasePrice, condition: string | null = null) {
+/** `sendProgress` meldet Zwischenschritte an den SSE-Strom; null beim CSV-Import. */
+async function addSet(setNumber: string, quantity: number, userId: number,
+                      sendProgress: ((n: { step: string; set: string }) => void) | null,
+                      purchasePrice: number | null, condition: string | null = null) {
   const normalized = sanitizeSetNumber(setNumber);
   if (sendProgress) sendProgress({ step:'meta', set:normalized });
 
@@ -247,8 +253,13 @@ async function addSet(setNumber, quantity, userId, sendProgress, purchasePrice, 
     // Der Marktpreis wird VOR der Sperre geholt: Das ist ein Netzaufruf, und
     // eine Sperre über einen Netzaufruf zu halten blockiert jeden anderen
     // Schreibvorgang auf diesem Set für die Dauer der Antwort.
-    let reAddPrice = (purchasePrice !== undefined && purchasePrice !== null && purchasePrice !== '')
-      ? parseFloat(purchasePrice) : null;
+    // purchasePrice ist number|null. NACHGEMESSEN: Es gibt genau drei
+    // Importeure (routes/sets.ts, routes/api_v1/sets.ts, addSetWithDate), und
+    // alle drei normalisieren vorher — V.optionalPrice() bzw. routes/sets.ts
+    // Zeile 549 beim CSV-Import. Die frueheren Pruefungen auf '' und das
+    // parseFloat verteidigten gegen eine Form, die hier nicht ankommt; der Typ
+    // hat das sichtbar gemacht ("number und string haben keine Ueberschneidung").
+    let reAddPrice: number | null = purchasePrice;
     if (reAddPrice === null || isNaN(reAddPrice)) {
       reAddPrice = await getCurrentMarketPrice(normalized, userId, condition || null).catch(() => null);
     }
@@ -337,8 +348,8 @@ async function addSet(setNumber, quantity, userId, sendProgress, purchasePrice, 
   // Standardzustand des Nutzers zurück, also in aller Regel „Neu". Ein als
   // gebraucht erfasstes Set bekam dadurch den Neupreis als Kaufpreis
   // eingetragen — im gemeldeten Fall 55 statt 33 CHF.
-  let effectivePurchasePrice = (purchasePrice !== undefined && purchasePrice !== null && purchasePrice !== '')
-    ? parseFloat(purchasePrice) : null;
+  // wie oben: purchasePrice kommt normalisiert als number|null herein
+  let effectivePurchasePrice: number | null = purchasePrice;
   if (effectivePurchasePrice === null || isNaN(effectivePurchasePrice)) {
     effectivePurchasePrice = await getCurrentMarketPrice(normalized, userId, effectiveCondition);
   }
@@ -385,7 +396,10 @@ async function addSet(setNumber, quantity, userId, sendProgress, purchasePrice, 
  *   Verringerung bei 0 gedeckelt (fremde Exemplare lassen sich nicht
  *   wegnehmen), steht hier eine andere Zahl als die gesendete.
  */
-async function updateSet(uid, sn, body) {
+// `uid` ist eine EINZELNE ID, kein Blickfeld: Zeile darunter vergleicht
+// `user_id = $3` damit, und scopeIds(uid) verlangt eine Zahl. Das Blickfeld
+// wird im Rumpf daraus berechnet (_wids, leseFeld).
+async function updateSet(uid: number, sn: string, body: any) {
   // SCHREIB-Blickfeld statt eigener ID (Nachtrag 52, Marcos Bericht: „Wenn die
   // Anzahl eines Sets erhöht wird, das einem Unterkonto gehört, funktioniert
   // die ganze Logik mit dem Kaufpreis nicht und die Anzahl wird nicht
@@ -543,7 +557,7 @@ async function updateSet(uid, sn, body) {
 
 // Shared logic to build the Sets CSV export content. Used by both the
 // standalone CSV download and the combined ZIP export in settings.js.
-async function buildSetsCsv(uid) {
+async function buildSetsCsv(uid: number) {
   const sets = await db.all('SELECT * FROM sets WHERE user_id=$1 ORDER BY set_number ASC', [uid]);
   // Eine Zeile pro Erfassung, damit Kaufpreis, Zustand und Datum je Kauf
   // erhalten bleiben und beim Re-Import 1:1 wiederhergestellt werden. Sets ohne
