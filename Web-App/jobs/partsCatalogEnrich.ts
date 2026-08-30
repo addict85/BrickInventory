@@ -31,7 +31,7 @@ async function getRbKey() {
   return row?.value || null;
 }
 
-async function apiGet(url, rbKey) {
+async function apiGet(url: string, rbKey: string) {
   const { rebrickableBackgroundLimiter: rebrickableLimiter, consumeRebrickableDaily, parseThrottleWait } = require('../utils/rateLimiter');
   let serverErrors = 0;
   while (true) {
@@ -41,9 +41,9 @@ async function apiGet(url, rbKey) {
       const req = https.get(url, {
         family: 4,   // Server hat keine IPv6-Route (bestätigt), siehe server.ts _cdnAgent
         headers: { Authorization: `key ${rbKey}`, 'User-Agent': 'BrickInventory/1.0' }
-      }, r => {
+      }, (r: import('http').IncomingMessage) => {
         let b = ''; r.on('data', d => b += d);
-        r.on('end', () => resolve({ status: r.statusCode, body: b }));
+        r.on('end', () => resolve({ status: r.statusCode ?? 0, body: b }));
       });
       req.on('error', () => resolve({ status: 0, body: '' }));
       req.setTimeout(30000, () => { req.destroy(); resolve({ status: 0, body: '' }); });
@@ -106,7 +106,7 @@ async function downloadImage(
       'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
       'Referer':    'https://rebrickable.com/',
       'Accept':     'image/avif,image/webp,image/apng,image/*,*/*;q=0.8',
-    } }, r => {
+    } }, (r: import('http').IncomingMessage) => {
       if (r.statusCode !== 200) { r.resume(); return resolve(null); }
       const out = fs.createWriteStream(dest);
       r.pipe(out);
@@ -121,7 +121,7 @@ async function downloadImage(
   });
 }
 
-async function enrichSetParts(setNumber) {
+async function enrichSetParts(setNumber: string) {
   const n   = setNumber.includes('-') ? setNumber : `${setNumber}-1`;
   const alt = n.replace(/-\d+$/, '');
 
@@ -152,12 +152,12 @@ async function enrichSetParts(setNumber) {
   // Get all part_nums already in rb_bl_mapping (= already looked up via API)
   const lookedUp = await db.all(
     `SELECT part_num FROM rb_bl_mapping WHERE part_num = ANY($1::text[])`,
-    [csvParts.map(p => p.part_num)]
+    [csvParts.map((p: { part_num: string }) => p.part_num)]
   ).catch(() => []);
-  const lookedUpSet = new Set(lookedUp.map(r => r.part_num));
+  const lookedUpSet = new Set(lookedUp.map((r: { part_num: string }) => r.part_num));
 
   // Only re-enrich parts NOT yet in rb_bl_mapping (never looked up)
-  const missing = csvParts.filter(p => {
+  const missing = csvParts.filter((p: { part_num: string; color_id: number | string; [k: string]: any }) => {
     const cat = catalogMap[`${p.part_num}|${p.color_id}`];
     if (!cat) return true;                    // not in catalog at all
     if (!cat.bl_part_number) return true;     // in catalog but no BL ID
@@ -199,7 +199,7 @@ async function enrichSetParts(setNumber) {
 
     // Step 3b: Batch-fetch BL IDs via /lego/parts/?part_nums= (most reliable source)
     // Use ALL unique part_nums from CSV (not just from apiParts which may be incomplete)
-    const missingBl = [...new Set(csvParts.map(p => p.part_num))];
+    const missingBl = [...new Set(csvParts.map((p: { part_num: string }) => p.part_num))];
     if (missingBl.length > 0) {
       
       const BATCH = 500;
@@ -235,7 +235,7 @@ async function enrichSetParts(setNumber) {
     const blMapRows = await db.all(
       `SELECT part_num, bl_part_num FROM rb_bl_mapping
        WHERE part_num = ANY($1::text[])`,
-      [csvParts.map(p => p.part_num)]
+      [csvParts.map((p: { part_num: string }) => p.part_num)]
     ).catch(() => []);
     const blMap: any = {};
     for (const r of blMapRows) blMap[r.part_num] = r.bl_part_num;
@@ -289,7 +289,7 @@ async function enrichSetParts(setNumber) {
              image_url = COALESCE(EXCLUDED.image_url, set_minifigs_catalog.image_url),
              updated_at = NOW()`,
           [n, item.set_num, item.set_name||item.set_num, item.quantity||1, item.set_img_url||null]
-        ).catch(e => console.error('[parts-enrich] minifig insert error:', e.message));
+        ).catch((e: Error) => console.error('[parts-enrich] minifig insert error:', e.message));
       }
       
     }
@@ -303,7 +303,7 @@ async function enrichSetParts(setNumber) {
 // Per-set download lock: prevents concurrent downloadSetImages calls for the same set
 const _downloadLocks = new Map();
 
-async function downloadSetImages(setNumber, waitIfBusy = false) {
+async function downloadSetImages(setNumber: string, waitIfBusy = false) {
   const n   = setNumber.includes('-') ? setNumber : `${setNumber}-1`;
   const alt = n.replace(/-\d+$/, '');
 
@@ -312,8 +312,12 @@ async function downloadSetImages(setNumber, waitIfBusy = false) {
     await _downloadLocks.get(n);
     return;
   }
-  let resolveLock;
-  const lock = new Promise(r => { resolveLock = r; });
+  // `!` ist hier BEWEISBAR und keine Beschwichtigung: Der Rumpf eines
+  // Promise-Konstruktors laeuft laut Spezifikation SYNCHRON, resolveLock ist
+  // also gesetzt, bevor irgendeine Zeile darunter laeuft. Ein `?.()`
+  // stattdessen waere eine stille Wache vor einem Fall, den es nicht gibt.
+  let resolveLock!: () => void;
+  const lock = new Promise<void>(r => { resolveLock = r; });
   _downloadLocks.set(n, lock);
 
   // Cross-worker Lock: verhindert, dass zwei Cluster-Worker (z. B. der
@@ -378,7 +382,7 @@ async function downloadSetImages(setNumber, waitIfBusy = false) {
     _pendingAdded = needsImg.length;
     await monitor.imgDlAdd(_pendingAdded).catch(() => {});
 
-    async function processOne(p) {
+    async function processOne(p: { part_number: string; image_url?: string | null; [k: string]: any }) {
       const rawUrl = p.image_url || '';
       let cdnUrl = rawUrl;
       const m = rawUrl.match(/\/api\/img-proxy\?url=(.+)/);
@@ -388,7 +392,11 @@ async function downloadSetImages(setNumber, waitIfBusy = false) {
         return;
       }
 
-      const ext  = (cdnUrl.split('.').pop().split('?')[0].split('/')[0] || 'jpg').substring(0, 4).toLowerCase();
+      // `?? ''` ist unerreichbar und trotzdem richtig: String.split gibt nie
+      // ein leeres Array zurueck (''.split('.') ist ['']), pop() kann hier
+      // also nicht undefined werden. Der Uebersetzer weiss das nicht, und
+      // ein `!` waere eine Behauptung statt einer Ableitung.
+      const ext  = ((cdnUrl.split('.').pop() ?? '').split('?')[0].split('/')[0] || 'jpg').substring(0, 4).toLowerCase();
       const file = p.kind === 'fig'
         ? `${p.id.replace(/[^a-z0-9-]/gi, '_')}.${ext}`
         : `${p.id}_${p.color_id}.${ext}`;
@@ -402,7 +410,7 @@ async function downloadSetImages(setNumber, waitIfBusy = false) {
             'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
             'Referer':    'https://rebrickable.com/',
             'Accept':     'image/avif,image/webp,image/apng,image/*,*/*;q=0.8',
-          } }, r => {
+          } }, (r: import('http').IncomingMessage) => {
             if (r.statusCode !== 200) {
               r.resume();
               console.warn(`[img-dl] HTTP ${r.statusCode} for ${p.id}: ${cdnUrl.substring(0, 80)}`);
@@ -413,9 +421,9 @@ async function downloadSetImages(setNumber, waitIfBusy = false) {
             const out = fs.createWriteStream(dest);
             r.pipe(out);
             out.on('finish', () => { cdnImageLimiter.release(); resolve(true); });
-            out.on('error',  e => { console.warn(`[img-dl] write error for ${p.id}: ${e.message}`); cdnImageLimiter.release(); resolve(false); });
+            out.on('error',  (e: Error) => { console.warn(`[img-dl] write error for ${p.id}: ${e.message}`); cdnImageLimiter.release(); resolve(false); });
           });
-          req.on('error', e => { console.warn(`[img-dl] request error for ${p.id}: ${e.message}`); cdnImageLimiter.release(); resolve(false); });
+          req.on('error', (e: Error) => { console.warn(`[img-dl] request error for ${p.id}: ${e.message}`); cdnImageLimiter.release(); resolve(false); });
           req.setTimeout(15000, () => { req.destroy(); console.warn(`[img-dl] timeout for ${p.id}`); cdnImageLimiter.release(); resolve(false); });
         });
         if (!ok) return;
@@ -442,7 +450,7 @@ async function downloadSetImages(setNumber, waitIfBusy = false) {
     // Massen-Importen deutlich; der Live-Countdown bleibt praktisch gleich flüssig.
     // Der Zähler wird VOR dem await erhöht, damit gleichzeitige Aufrufe nicht
     // doppelt melden.
-    const flushProgress = async (force) => {
+    const flushProgress = async (force?: boolean) => {
       const delta = done - _flushed;
       if (delta <= 0) return;
       if (!force && Date.now() - _lastFlush < 1000) return;
@@ -473,7 +481,7 @@ async function downloadSetImages(setNumber, waitIfBusy = false) {
 }
 
 // Enrich all minifigs for a set in one batch
-async function enrichSetMinifigs(setNumber) {
+async function enrichSetMinifigs(setNumber: string) {
   const n   = setNumber.includes('-') ? setNumber : `${setNumber}-1`;
   const alt = n.replace(/-\d+$/, '');
   const rbKey = await getRbKey();
@@ -488,7 +496,7 @@ async function enrichSetMinifigs(setNumber) {
   if (!figs.length) return;
 
   // Get all rb_inventories for these minifigs
-  const figNums = figs.map(f => f.fig_number);
+  const figNums = figs.map((f: { fig_number: string }) => f.fig_number);
   const invRows = await db.all(
     `SELECT set_num, id FROM rb_inventories
      WHERE set_num = ANY($1::text[])
@@ -519,7 +527,7 @@ async function enrichSetMinifigs(setNumber) {
     ).catch(() => []);
 
     figPartsMap[fig.fig_number] = { parts, figQty: fig.quantity };
-    parts.forEach(p => allPartNums.add(p.part_num));
+    parts.forEach((p: { part_num: string }) => allPartNums.add(p.part_num));
   }
 
   if (!allPartNums.size) return;
@@ -630,7 +638,7 @@ let _redlRunning = false;
  * deshalb blieb Marcos Set-Bild ohne Vorschau, obwohl der Lauf durchlief und
  * „fertig" meldete.
  */
-function _fsPathFromLocal(imageLocal) {
+function _fsPathFromLocal(imageLocal: string) {
   if (!imageLocal) return null;
   const bereiche: Array<[string, string]> = [
     ['/images/parts/',    PART_IMAGES_DIR],
@@ -648,7 +656,7 @@ function _fsPathFromLocal(imageLocal) {
   return null;
 }
 
-async function _redlSetStatus(obj) {
+async function _redlSetStatus(obj: Record<string, unknown>) {
   await db.run(
     `INSERT INTO global_settings (key, value) VALUES ('imgredl_status', $1)
      ON CONFLICT (key) DO UPDATE SET value = $1`,
@@ -737,7 +745,7 @@ async function _redownloadMissingImages() {
     }
 
     let done = 0, redownloaded = 0, cleared = 0, _lastFlush = 0;
-    const flush = async (force) => {
+    const flush = async (force?: boolean) => {
       const now = Date.now();
       if (!force && now - _lastFlush < 1000) return;
       _lastFlush = now;

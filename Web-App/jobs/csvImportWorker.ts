@@ -49,7 +49,7 @@ const CSV_CACHE_DIR = path.join(DATA_DIR, 'csv_cache');
  * lange nicht aufgefallen — es traf nur die Zeichen selbst, in Teile- und
  * Setnamen mit Zollangaben oder Zitaten.
  */
-function parseCsvLine(line) {
+function parseCsvLine(line: string) {
   const result: any[] = [];
   let cur = '', inQuotes = false;
   for (let i = 0; i < line.length; i++) {
@@ -70,7 +70,10 @@ function parseCsvLine(line) {
  * Node.js readline async iterator respects backpressure natively —
  * no pause/resume, no promise chains, minimal buffer.
  */
-async function streamInsert(tmpFile, chunkSize, mapRow, insertChunk, filename) {
+async function streamInsert(tmpFile: string, chunkSize: number,
+                            mapRow: (spalten: string[]) => unknown[],
+                            insertChunk: (chunk: unknown[][]) => Promise<unknown>,
+                            filename: string) {
   const fileSize = fs.statSync(tmpFile).size;
   const input    = fs.createReadStream(tmpFile, { encoding: 'utf8', highWaterMark: 64 * 1024 });
   const rl       = require('readline').createInterface({ input, crlfDelay: Infinity });
@@ -78,7 +81,7 @@ async function streamInsert(tmpFile, chunkSize, mapRow, insertChunk, filename) {
   let headers: string[] | null = null, chunk: any[] = [], total = 0, bytesRead = 0, lastPct = -1;
 
   // Track bytes via the underlying stream
-  input.on('data', d => { bytesRead += Buffer.byteLength(d); });
+  input.on('data', (d: Buffer | string) => { bytesRead += Buffer.byteLength(d); });
 
   // Async iterator — Node.js pauses reading automatically between iterations
   for await (const line of rl) {
@@ -106,11 +109,11 @@ async function streamInsert(tmpFile, chunkSize, mapRow, insertChunk, filename) {
   return total;
 }
 
-function mkInsert(table, cols, onConflict) {
+function mkInsert(table: string, cols: string[], onConflict: string) {
   const n = cols.length;
-  return async (client, chunk) => {
-    const ph = chunk.map((_, j) =>
-      '(' + cols.map((_, k) => `$${j * n + k + 1}`).join(',') + ')'
+  return async (client: { query(sql: string, params?: unknown[]): Promise<unknown> }, chunk: unknown[][]) => {
+    const ph = chunk.map((_: unknown, j: number) =>
+      '(' + cols.map((_: string, k: number) => `$${j * n + k + 1}`).join(',') + ')'
     ).join(',');
     // KEIN .catch(() => {}) mehr: Ein abgewiesener Block verlor bis zu 100
     // Zeilen, der Import meldete trotzdem Erfolg und der Tagesmarker wurde
@@ -229,7 +232,7 @@ async function importiereMitTauschIntern(client: any, opts: any) {
     await client.query(`CREATE UNLOGGED TABLE ${schatten} (LIKE ${tabelle} INCLUDING ALL)`);
 
     const ins = mkInsert(schatten, cols, onConflict);
-    const total = await streamInsert(tmp, chunkSize, mapRow, chunk => ins(client, chunk), filename);
+    const total = await streamInsert(tmp, chunkSize, mapRow, (chunk: unknown[][]) => ins(client, chunk), filename);
 
     if (total === 0) {
       throw new Error(`${filename}: 0 Zeilen gelesen — Tausch abgebrochen, bisheriger Bestand bleibt erhalten`);
@@ -261,7 +264,7 @@ const TASKS = {
     // Tausch leer.
     cols: ['id','name','rgb','is_trans'],
     onConflict: 'ON CONFLICT (id) DO UPDATE SET name=EXCLUDED.name,rgb=EXCLUDED.rgb,is_trans=EXCLUDED.is_trans',
-    mapRow: c => [parseInt(c[0])||0, c[1]||'', c[2]||'', c[3]||'f'],
+    mapRow: (c: string[]) => [parseInt(c[0])||0, c[1]||'', c[2]||'', c[3]||'f'],
   }),
 
   part_categories: () => importiereMitTausch({
@@ -269,7 +272,7 @@ const TASKS = {
     tmp: path.join(DATA_DIR, 'part_categories.csv.tmp'),
     cols: ['id','name'],
     onConflict: 'ON CONFLICT (id) DO UPDATE SET name=EXCLUDED.name',
-    mapRow: c => [parseInt(c[0])||0, c[1]||''],
+    mapRow: (c: string[]) => [parseInt(c[0])||0, c[1]||''],
   }),
 
   parts: () => importiereMitTausch({
@@ -278,7 +281,7 @@ const TASKS = {
     // parts.csv: part_num,name,part_cat_id,part_url,part_img_url,print_of
     cols: ['part_num','name','part_cat_id','part_img_url'],
     onConflict: 'ON CONFLICT (part_num) DO UPDATE SET name=EXCLUDED.name,part_cat_id=EXCLUDED.part_cat_id,part_img_url=EXCLUDED.part_img_url',
-    mapRow: c => [c[0]||'', c[1]||'', parseInt(c[2])||0, c[4]||''],
+    mapRow: (c: string[]) => [c[0]||'', c[1]||'', parseInt(c[2])||0, c[4]||''],
   }),
 
   sets: () => importiereMitTausch({
@@ -286,7 +289,7 @@ const TASKS = {
     tmp: path.join(DATA_DIR, 'sets.csv.tmp'),
     cols: ['set_num','name','year','theme_id','num_parts','set_img_url'],
     onConflict: 'ON CONFLICT (set_num) DO UPDATE SET name=EXCLUDED.name,year=EXCLUDED.year,theme_id=EXCLUDED.theme_id,num_parts=EXCLUDED.num_parts,set_img_url=EXCLUDED.set_img_url',
-    mapRow: c => [c[0]||'', c[1]||'', parseInt(c[2])||0, parseInt(c[3])||0, parseInt(c[4])||0, c[5]||''],
+    mapRow: (c: string[]) => [c[0]||'', c[1]||'', parseInt(c[2])||0, parseInt(c[3])||0, parseInt(c[4])||0, c[5]||''],
   }),
 
   inventories: () => importiereMitTausch({
@@ -295,7 +298,7 @@ const TASKS = {
     // inventories.csv: id,version,set_num
     cols: ['id','set_num','version'],
     onConflict: 'ON CONFLICT (id) DO UPDATE SET set_num=EXCLUDED.set_num,version=EXCLUDED.version',
-    mapRow: c => [parseInt(c[0])||0, c[2]||'', parseInt(c[1])||1],
+    mapRow: (c: string[]) => [parseInt(c[0])||0, c[2]||'', parseInt(c[1])||1],
   }),
 
   themes: () => importiereMitTausch({
@@ -304,7 +307,7 @@ const TASKS = {
     // themes.csv: id,name,parent_id (parent_id kann leer sein)
     cols: ['id','name','parent_id'],
     onConflict: 'ON CONFLICT (id) DO UPDATE SET name=EXCLUDED.name,parent_id=EXCLUDED.parent_id',
-    mapRow: c => [parseInt(c[0])||0, c[1]||'', c[2] ? (parseInt(c[2])||null) : null],
+    mapRow: (c: string[]) => [parseInt(c[0])||0, c[1]||'', c[2] ? (parseInt(c[2])||null) : null],
   }),
 
   inventory_minifigs: () => importiereMitTausch({
@@ -313,7 +316,7 @@ const TASKS = {
     // inventory_minifigs.csv: inventory_id,fig_num,quantity
     cols: ['inventory_id','fig_num','quantity'],
     onConflict: 'ON CONFLICT DO NOTHING',
-    mapRow: c => [parseInt(c[0])||0, c[1]||'', parseInt(c[2])||1],
+    mapRow: (c: string[]) => [parseInt(c[0])||0, c[1]||'', parseInt(c[2])||1],
   }),
 
   inventory_parts: () => importiereMitTausch({
@@ -321,17 +324,31 @@ const TASKS = {
     tmp: path.join(DATA_DIR, 'inventory_parts.csv.tmp'),
     cols: ['inventory_id','part_num','color_id','quantity','is_spare','img_url'],
     chunkSize: 50,
-    mapRow: c => [parseInt(c[0])||0, c[1]||'', parseInt(c[2])||0, parseInt(c[3])||1,
+    mapRow: (c: string[]) => [parseInt(c[0])||0, c[1]||'', parseInt(c[2])||0, parseInt(c[3])||1,
                   (c[4]==='True'||c[4]==='t'||c[4]==='1')?'t':'f', c[5]||''],
   }),
 };
 
+type Aufgabe = keyof typeof TASKS;
+
 process.on('message', async (msg: any) => {
   // In .ts trägt der JSDoc-Typ nicht mehr — die Annotation steht jetzt direkt
   // am Parameter. Die Nachricht kommt aus dem Elternprozess (server.ts).
-  const { task } = msg;
+  const task: string = msg?.task;
+  // Die Pruefung ist hier NICHT ueberfluessig, obwohl alle Aufrufer im
+  // Elternprozess Literale uebergeben (rebrickableCsvSync.ts): Ein Typ traegt
+  // nicht ueber die Prozessgrenze — was per IPC ankommt, prueft kein
+  // Uebersetzer. Ohne sie waere `TASKS['constructor']()` ein Aufruf von
+  // Object() : kein Absturz, sondern ein leeres Ergebnis, das als
+  // erfolgreicher Import gemeldet wuerde und den Tagesmarker setzt.
+  if (!Object.prototype.hasOwnProperty.call(TASKS, task)) {
+    send({ type: 'error', task, error: `Unbekannte Aufgabe: ${task}` });
+    await pool.end().catch(() => {});
+    process.exit(1);
+    return;
+  }
   try {
-    const total = await TASKS[task]();
+    const total = await TASKS[task as Aufgabe]();
     send({ type: 'done', filename: task, total });
     send({ type: 'complete', task });
     await pool.end();

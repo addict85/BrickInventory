@@ -88,14 +88,14 @@ async function acquireRunLock(): Promise<(() => Promise<void>) | null> {
   };
 }
 
-function log(msg) {
+function log(msg: string) {
   const line = `[${new Date().toISOString().replace('T',' ').substring(0,19)}] ${msg}`;
   console.log('  PriceJob:', msg);
   state.log.unshift(line);
   if (state.log.length > 50) state.log.length = 50;
 }
 
-async function getSetting(userId, key, fallback) {
+async function getSetting(userId: number, key: string, fallback: any) {
   const u = await db.get('SELECT value FROM user_settings WHERE user_id = $1 AND key = $2', [userId, key]);
   if (u?.value) return u.value;
   const g = await db.get('SELECT value FROM global_settings WHERE key = $1', [key]);
@@ -106,22 +106,26 @@ async function getSetting(userId, key, fallback) {
  * überschrieb die erste stillschweigend. Inhaltlich taten beide dasselbe;
  * TypeScript hat das Duplikat beim Umstellen aufgedeckt.
  */
-async function getGlobalSetting(key, fallback) {
+async function getGlobalSetting(key: string, fallback: any) {
   return (await db.get('SELECT value FROM global_settings WHERE key = $1', [key]))?.value || fallback;
 }
 
-async function parallelLimit(tasks, limit) {
+async function parallelLimit<T>(tasks: (() => Promise<T>)[], limit: number) {
   const results = new Array(tasks.length); let idx = 0;
   async function worker() { while (idx < tasks.length) { const i = idx++; results[i] = await tasks[i](); } }
   await Promise.all(Array.from({ length: Math.min(limit, tasks.length) }, worker));
   return results;
 }
 
-async function fetchAndCachePrice(setNumber, condition, guideType, currency, forceTtlHours) {
+// forceTtlHours ist `string | number`: dieselbe Herkunft wie in
+// utils/financeCalc.ts — getGlobalSetting() liefert eine Zeichenkette,
+// andere Aufrufer eine Zahl.
+async function fetchAndCachePrice(setNumber: string, condition: string, guideType: string,
+                                  currency: string, forceTtlHours?: string | number) {
   const catalog = await db.get('SELECT is_gear, bl_type FROM catalog_cache WHERE set_number = $1', [setNumber]);
   if (catalog?.is_gear === 1 && catalog?.bl_type === 'NONE') return 'skipped_gear';
 
-  const ttl = Math.max(1, parseInt(forceTtlHours));
+  const ttl = Math.max(1, parseInt(String(forceTtlHours ?? '')));
   const fresh = await db.get(
     `SELECT 1 FROM price_cache WHERE set_number = $1 AND condition = $2 AND currency_code = $3 AND fetched_at > NOW() - INTERVAL '${ttl} hours'`,
     [setNumber, condition, currency]);
@@ -217,7 +221,11 @@ async function runPriceRefresh(vorhandeneSperre?: (() => Promise<void>) | null) 
     const byUser: any = {};
     for (const row of allSets) (byUser[row.user_id] = byUser[row.user_id] || []).push(row.set_number);
     for (const [userId, setNumbers] of Object.entries(byUser)) {
-      const currency  = await getSetting(userId, 'currency', 'EUR');
+      // Number(): Object.entries() gibt Schluessel als ZEICHENKETTEN zurueck,
+      // auch wenn sie aus row.user_id (einer Zahl) stammen. Postgres wuerde
+      // '7' fuer die integer-Spalte zwar umwandeln — auf genau diese
+      // Umwandlung wollen wir uns hier nicht verlassen.
+      const currency  = await getSetting(Number(userId), 'currency', 'EUR');
       // 'sold' = tatsächlich erzielte Preise der letzten sechs Monate.
       const guideType = 'sold';
       const ttlHours  = await getGlobalSetting('price_cache_ttl', '24');
@@ -239,7 +247,8 @@ async function runPriceRefresh(vorhandeneSperre?: (() => Promise<void>) | null) 
       }
       const storedCond = new Map(
         (await db.all('SELECT set_number, condition FROM sets WHERE user_id=$1', [userId]).catch(() => []))
-          .map(r => [r.set_number, r.condition === 'U' ? 'U' : 'N']));
+          .map((r: { set_number: string; condition?: string | null }) =>
+            [r.set_number, r.condition === 'U' ? 'U' : 'N']));
 
       const tasks = valid.map(sn => async () => {
         fortschritt.current++; fortschritt.set = sn;
@@ -321,12 +330,17 @@ async function runPriceRefresh(vorhandeneSperre?: (() => Promise<void>) | null) 
  *
  * @returns {Promise<string[]>} z. B. ['N'], ['U'] oder ['N','U']
  */
-async function conditionsNeededFor(setNumber, userId, hintCondition: string | null = null) {
+async function conditionsNeededFor(setNumber: string, userId: number,
+                                   hintCondition: string | null = null): Promise<string[]> {
   const rows = await db.all(
     `SELECT DISTINCT COALESCE(condition,'N') AS c
        FROM set_acquisitions WHERE user_id=$1 AND set_number=$2`,
     [userId, setNumber]).catch(() => []);
-  const list = rows.map(r => (r.c === 'U' ? 'U' : 'N'));
+  // Der Typ steht hier, weil `db.all(...).catch(() => [])` eine Union aus
+  // any[] und never[] ergibt — darauf verliert .map() sein Ergebnis nach
+  // unknown[], und die Zusage Promise<string[]> oben waere nicht mehr
+  // einloesbar.
+  const list: string[] = rows.map((r: { c?: string | null }) => (r.c === 'U' ? 'U' : 'N'));
 
   // Beim Anlegen eines NEUEN Sets existiert weder die sets- noch die
   // set_acquisitions-Zeile schon — getCurrentMarketPrice() ruft
@@ -347,7 +361,7 @@ async function conditionsNeededFor(setNumber, userId, hintCondition: string | nu
   return [set?.condition === 'U' ? 'U' : 'N'];
 }
 
-async function refreshPriceForSet(setNumber, userId, hintCondition: string | null = null) {
+async function refreshPriceForSet(setNumber: string, userId: number, hintCondition: string | null = null) {
   if (!/^[a-zA-Z0-9]+-\d+$/.test(setNumber)) { log(`Skipping invalid: ${setNumber}`); return; }
   const ck = await getGlobalSetting('bricklink_consumer_key', '');
   if (!ck) return;

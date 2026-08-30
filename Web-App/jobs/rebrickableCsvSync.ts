@@ -31,7 +31,7 @@ const DOWNLOAD_IDLE_MS = 60000;
 if (!global.startupStatus) global.startupStatus = { ready: false, step: 'Starte...', progress: 0, total: 8 };
 const monitor = require('../utils/jobMonitor');
 
-function updateStatus(step, progress, total, sub: string | null = null) {
+function updateStatus(step: string, progress: number, total: number, sub: string | null = null) {
   const status = { ready: false, step, progress, total: TOTAL_STEPS, sub };
   global.startupStatus = status;
   // Write to PostgreSQL so all cluster workers see the same status
@@ -47,7 +47,7 @@ function updateStatus(step, progress, total, sub: string | null = null) {
 const CSV_CACHE_DIR = path.join(DATA_DIR, 'csv_cache');
 const SYNC_KEY = 'rb_csv_last_sync';
 
-function log(msg) { console.log(`[rb-csv-sync] ${msg}`); }
+function log(msg: string) { console.log(`[rb-csv-sync] ${msg}`); }
 
 // ── Schema ────────────────────────────────────────────────────────────────────
 async function ensureSchema() {
@@ -142,7 +142,10 @@ const _workerPath = path.join(__dirname, 'csvImportWorker.js');
 // sodass der Balken NICHT pro File springt, sondern durchgehend waechst.
 const TOTAL_STEPS = 8;
 const DOWNLOAD_WEIGHT = 0.4;
-function fileOverall(stepNum, phase, pct) {
+// `phase` ist KEINE Zahl — alle fuenf Aufrufstellen uebergeben 'download'
+// oder 'import', und die Zeile darunter vergleicht mit === gegen
+// 'download'. Der Pruefer hat meine erste Annahme korrigiert.
+function fileOverall(stepNum: number, phase: 'download' | 'import', pct: number) {
   const p = Math.max(0, Math.min(100, pct || 0)) / 100;
   const frac = phase === 'download'
     ? DOWNLOAD_WEIGHT * p
@@ -151,7 +154,7 @@ function fileOverall(stepNum, phase, pct) {
 }
 
 // Download im Hauptprozess (Netzwerkzugriff), Import im Worker (isolierter Heap)
-async function downloadToTmp(filename, stepLabel, stepNum) {
+async function downloadToTmp(filename: string, stepLabel: string, stepNum: number) {
   const tmp = path.join(DATA_DIR, filename.replace('.gz', '.tmp'));
   await new Promise((resolve, reject) => {
     const { get } = require('https');
@@ -162,7 +165,7 @@ async function downloadToTmp(filename, stepLabel, stepNum) {
     // jeher 30 s, dieser Weg nicht. Die Frist gilt je Datenpaket (setTimeout
     // auf der Anfrage misst Untätigkeit), nicht für die Gesamtdauer — grosse
     // Dateien dürfen also beliebig lange laden, solange etwas ankommt.
-    const req = get(`${CSV_BASE}${filename}`, { family: 4 }, res => {
+    const req = get(`${CSV_BASE}${filename}`, { family: 4 }, (res: import('http').IncomingMessage) => {
       if (res.statusCode !== 200) return reject(new Error(`HTTP ${res.statusCode} for ${filename}`));
       const totalBytes = parseInt(res.headers['content-length'] || '0', 10);
       let received = 0, lastTick = 0;
@@ -189,7 +192,7 @@ async function downloadToTmp(filename, stepLabel, stepNum) {
   return tmp;
 }
 
-async function runWorker(task, stepNum, stepLabel, filename) {
+async function runWorker(task: string, stepNum: number, stepLabel: string, filename: string) {
   updateStatus(`${stepLabel} (Download...)`, fileOverall(stepNum, 'download', 0), TOTAL_STEPS);
   const tmpFile = await downloadToTmp(filename, stepLabel, stepNum);
   updateStatus(`${stepLabel} (Importiere...)`, fileOverall(stepNum, 'import', 0), TOTAL_STEPS);
@@ -203,10 +206,10 @@ async function runWorker(task, stepNum, stepLabel, filename) {
   }
 }
 
-function importInWorker(task, stepNum, stepLabel) {
+function importInWorker(task: string, stepNum: number, stepLabel: string) {
   return new Promise((resolve, reject) => {
     const worker = _fork(_workerPath, [], { env: process.env, silent: false });
-    worker.on('message', (/** @type {any} */ msg) => {
+    worker.on('message', (msg: any) => {
       if (msg.type === 'progress') {
         const sub = msg.pct != null ? `${msg.pct}%` : null;
         const rowInfo = msg.total > 0 ? ` (${(msg.total/1000).toFixed(0)}k)` : '';
@@ -220,7 +223,7 @@ function importInWorker(task, stepNum, stepLabel) {
       }
     });
     worker.on('error', reject);
-    worker.on('exit', code => {
+    worker.on('exit', (code: number | null) => {
       if (code !== 0) reject(new Error(`Worker exited with code ${code}`));
     });
     worker.send({ task });
@@ -233,7 +236,7 @@ const CATALOG_EXTRAS_KEY = 'rb_catalog_extras_last_sync';
 // Themes + Inventar-Minifiguren nachziehen, wenn der Haupt-Sync heute schon
 // lief, diese Files aber noch fehlen (z.B. direkt nach dem Update auf die
 // Katalog-Version). Analog zu syncPartCategoriesDaily.
-async function syncCatalogExtrasDaily(today) {
+async function syncCatalogExtrasDaily(today: string) {
   const m = await db.get(`SELECT value FROM global_settings WHERE key=$1`, [CATALOG_EXTRAS_KEY]).catch(() => null);
   if (m && m.value === today) return;
   try {
@@ -251,7 +254,7 @@ async function syncCatalogExtrasDaily(today) {
 
 // Stellt sicher, dass part_categories AUCH dann taeglich importiert wird, wenn der
 // Haupt-Sync heute bereits lief (z.B. weil das File nachtraeglich hinzugefuegt wurde).
-async function syncPartCategoriesDaily(today) {
+async function syncPartCategoriesDaily(today: string) {
   const m = await db.get(`SELECT value FROM global_settings WHERE key=$1`, [PART_CAT_KEY]).catch(() => null);
   if (m && m.value === today) return;
   try {
