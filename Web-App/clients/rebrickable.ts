@@ -16,6 +16,29 @@ import { rebrickableBackgroundLimiter } from '../utils/rateLimiter';
 
 const BASE = 'https://rebrickable.com/api/v3';
 
+
+/**
+ * Eine Teilezeile, wie sie /lego/sets/{id}/parts liefert.
+ *
+ * Steht HIER und nicht bei den zwei Aufrufern: Der Vertrag gehoert dem, der
+ * ihn liefert. Zweimal hingeschrieben waere er eine zweite Wahrheit, die beim
+ * naechsten Feld auseinanderlaeuft.
+ *
+ * Alles Optionale ist als solches markiert; jedes `||`- oder `??`-Ausweichen
+ * bei den Aufrufern entspricht genau einem `?` hier.
+ */
+export type RbSetTeil = {
+  part: {
+    part_num: string;
+    name?: string | null;
+    part_img_url?: string | null;
+    external_ids?: { BrickLink?: string[] };
+  };
+  color: { id: number; name?: string | null; rgb?: string | null };
+  quantity: number;
+  is_spare?: boolean;
+};
+
 async function getRbKey() {
   return (await db.get("SELECT value FROM global_settings WHERE key='rebrickable_api_key'"))?.value || '';
 }

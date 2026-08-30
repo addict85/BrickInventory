@@ -49,8 +49,8 @@ const ROOT = path.join(__dirname, '..');
  * Stand bei Einführung: 44 offen, 48 bereits sauber.
  * Nachtrag 151: noch 30 offen, 62 sauber.
  * Nachtrag 156: noch 24 offen.
- * Diese Etappe: noch 19 offen — die Anfragestrecke zuerst, dort kommen
- * Benutzereingaben an.
+ * Diese Etappe: noch 17 offen. Die Anfragestrecke ist damit vollstaendig
+ * sauber — Routen und Handler; dort kommen Benutzereingaben an.
  */
 const OFFEN = new Set([
   'clients/bricklink.ts',
@@ -66,8 +66,6 @@ const OFFEN = new Set([
   'scripts/loadtest.js',
   'utils/csvExport.ts',
   'utils/financeCalc.ts',
-  'utils/handlers/parts.ts',
-  'utils/handlers/sets.ts',
   'utils/instructions.ts',
   'utils/partsImport.ts',
   'utils/portfolioHistory.ts',

@@ -18,6 +18,7 @@ import { fetchPrice } from '../../utils/financeCalc';
 import { addSet, updateSet } from '../../utils/setService';
 import { getSetByBarcode, getSetByEan } from '../../clients/brickset';
 import { consumeRebrickableDaily, rebrickableLimiter } from '../../utils/rateLimiter';
+import type { RbSetTeil } from '../../clients/rebrickable';
 import { getAllSetParts, getMinifigInfo, getSetMinifigs } from '../../clients/rebrickable';
 import { deleteSet, getSet, getSets } from '../../utils/handlers/sets';
 import { resolveSetCondition } from '../../utils/financeCalc';
@@ -286,22 +287,7 @@ router.get('/sets/:setNumber/parts-list', requireToken, async (req: AuthedReques
       const rbParts = await getAllSetParts(n).catch(() => null)
                    || await getAllSetParts(bare).catch(() => null);
       if (rbParts?.length) {
-        // Der Vertrag, den Rebrickable hier liefert — ausgeschrieben statt
-        // `any`, weil der Rumpf darunter ihn ohnehin Feld fuer Feld nennt.
-        // Alles Optionale ist als solches markiert; jedes `||`-Ausweichen
-        // darunter entspricht genau einem `?` hier oben.
-        type RbTeil = {
-          part: {
-            part_num: string;
-            name?: string | null;
-            part_img_url?: string | null;
-            external_ids?: { BrickLink?: string[] };
-          };
-          color: { id: number; name?: string | null; rgb?: string | null };
-          quantity: number;
-          is_spare?: boolean;
-        };
-        csvParts = rbParts.map((r: RbTeil) => ({
+        csvParts = rbParts.map((r: RbSetTeil) => ({
           part_number:    r.part.part_num,
           bl_part_number: r.part.external_ids?.BrickLink?.[0] || r.part.part_num,
           part_name:      r.part.name || r.part.part_num,

@@ -1,4 +1,5 @@
 import * as db from '../../db/database';
+import type { DbSchnittstelle } from '../../db/database';
 import { resolveImageLocal } from '../images';
 import { asIds } from '../household';
 import { ensureFresh } from '../partsSummary';
@@ -45,6 +46,15 @@ const SET_SORTS = {
 };
 
 /**
+ * Ein Blickfeld: entweder eine einzelne Konto-ID oder die Liste aus
+ * scopeIds() (utils/household.ts). asIds() normalisiert beides auf eine Liste.
+ *
+ * Der Typ macht die Casts `asIds(userId)` ueberfluessig — die standen
+ * nur da, weil der Parameter gar keinen Typ hatte.
+ */
+type Blickfeld = number | number[];
+
+/**
  * @param {number} userId
  * @param {{search?:string, theme?:string, sort?:string, page?:number,
  *          page_size?:number|null}} [query]
@@ -57,12 +67,12 @@ const SET_SORTS = {
  * Ohne page_size verhält sich die Funktion wie bisher und liefert alles. Die
  * Android-App ruft sie so auf und bleibt damit unverändert lauffähig.
  */
-async function getSets(userId, query: any = {}) {
+async function getSets(userId: Blickfeld, query: any = {}) {
   // Blickfeld statt einer einzelnen ID: Ein Hauptkonto sieht (und ändert)
   // auch die Daten seiner Unterkonten, alle anderen nur ihre eigenen. Die
   // Liste kommt von scopeIds() in utils/household.ts — hier wird sie nur
   // normalisiert, damit ältere Aufrufer mit einer nackten ID weiter gehen.
-  const uids = asIds(userId as any);
+  const uids = asIds(userId);
   // Explizite Spaltenliste statt SELECT *: id/user_id/brickset_id/updated_at
   // werden weder von der Webapp noch von der Android-App gelesen — sie haben
   // den JSON-Payload der /sets-Antwort nur unnötig aufgebläht.
@@ -289,12 +299,12 @@ async function getSets(userId, query: any = {}) {
  * Jetzt gibt es die Regel einmal, und die Schreib-Endpunkte liefern das
  * Ergebnis in ihrer Antwort mit — die Clients rechnen nichts mehr nach.
  */
-async function getSetConditionAggregate(userId, setNumber, storedCondition) {
+async function getSetConditionAggregate(userId: Blickfeld, setNumber: string, storedCondition: string | null | undefined) {
   // Blickfeld statt einer einzelnen ID: Ein Hauptkonto sieht (und ändert)
   // auch die Daten seiner Unterkonten, alle anderen nur ihre eigenen. Die
   // Liste kommt von scopeIds() in utils/household.ts — hier wird sie nur
   // normalisiert, damit ältere Aufrufer mit einer nackten ID weiter gehen.
-  const uids = asIds(userId as any);
+  const uids = asIds(userId);
   const acq = await db.get(
     "SELECT COUNT(*) AS acq_count, COUNT(*) FILTER (WHERE condition='U') AS used_count," +
     " MAX(purchase_price) AS max_purchase_price," +
@@ -327,20 +337,20 @@ async function getSetConditionAggregate(userId, setNumber, storedCondition) {
  * eigenen Handler in routes/sets.ts — und bekam deshalb kein `set` in der
  * Antwort, sodass die Galerie-Kachel weiterhin veraltet blieb.
  */
-async function withSetAggregate(userId, setNumber, payload) {
-  const uids = asIds(userId as any);
+async function withSetAggregate<T extends object>(userId: Blickfeld, setNumber: string, payload: T) {
+  const uids = asIds(userId);
   const row = await db.get('SELECT condition FROM sets WHERE user_id = ANY($1) AND set_number=$2',
     [uids, setNumber]).catch(() => null);
   const agg = await getSetConditionAggregate(uids, setNumber, row?.condition).catch(() => null);
   return agg ? { ...payload, set: { set_number: setNumber, ...agg } } : payload;
 }
 
-async function getSet(userId, setNumber) {
+async function getSet(userId: Blickfeld, setNumber: string) {
   // Blickfeld statt einer einzelnen ID: Ein Hauptkonto sieht (und ändert)
   // auch die Daten seiner Unterkonten, alle anderen nur ihre eigenen. Die
   // Liste kommt von scopeIds() in utils/household.ts — hier wird sie nur
   // normalisiert, damit ältere Aufrufer mit einer nackten ID weiter gehen.
-  const uids = asIds(userId as any);
+  const uids = asIds(userId);
   const [set, shared, uploaded] = await Promise.all([
     // ── Eine Zeile, aber die Menge des GANZEN Blickfelds ───────────────────
     //
@@ -389,19 +399,19 @@ async function getSet(userId, setNumber) {
  *
  * Erwartet eine offene Transaktion; die Aufrufer bringen ihre eigene mit.
  */
-async function deleteSetRows(tx, uids, setNumber) {
+async function deleteSetRows(tx: DbSchnittstelle, uids: number[], setNumber: string) {
   await tx.run('DELETE FROM sets WHERE user_id = ANY($1) AND set_number = $2', [uids, setNumber]);
   await tx.run('DELETE FROM parts WHERE user_id = ANY($1) AND set_number = $2', [uids, setNumber]);
   await tx.run('DELETE FROM minifigs WHERE user_id = ANY($1) AND set_number = $2', [uids, setNumber]);
   await tx.run('DELETE FROM set_acquisitions WHERE user_id = ANY($1) AND set_number = $2', [uids, setNumber]);
 }
 
-async function deleteSet(userId, setNumber) {
+async function deleteSet(userId: Blickfeld, setNumber: string) {
   // Blickfeld statt einer einzelnen ID: Ein Hauptkonto sieht (und ändert)
   // auch die Daten seiner Unterkonten, alle anderen nur ihre eigenen. Die
   // Liste kommt von scopeIds() in utils/household.ts — hier wird sie nur
   // normalisiert, damit ältere Aufrufer mit einer nackten ID weiter gehen.
-  const uids = asIds(userId as any);
+  const uids = asIds(userId);
   // Atomar: vorher waren das vier sequenzielle DELETEs ohne Transaktion —
   // bricht eins davon ab (Statement-Timeout, Verbindungsverlust), bleiben
   // Teile und Minifiguren ohne zugehöriges Set in der DB zurück und tauchen
@@ -414,12 +424,12 @@ async function deleteSet(userId, setNumber) {
   });
 }
 
-async function updateSetQuantity(userId, setNumber, quantity) {
+async function updateSetQuantity(userId: Blickfeld, setNumber: string, quantity: number) {
   // Blickfeld statt einer einzelnen ID: Ein Hauptkonto sieht (und ändert)
   // auch die Daten seiner Unterkonten, alle anderen nur ihre eigenen. Die
   // Liste kommt von scopeIds() in utils/household.ts — hier wird sie nur
   // normalisiert, damit ältere Aufrufer mit einer nackten ID weiter gehen.
-  const uids = asIds(userId as any);
+  const uids = asIds(userId);
   // `uids` statt `userId`: Die normalisierte Liste wurde oben berechnet und
   // dann nicht benutzt — ANY() bekam den rohen Parameter. Mit einer nackten
   // Zahl statt eines Feldes bricht die Abfrage ab, und die Mengenänderung fiel

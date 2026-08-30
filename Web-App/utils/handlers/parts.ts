@@ -3,6 +3,7 @@ import { resolveImageLocal } from '../images';
 import { asIds } from '../household';
 import { ensureFresh } from '../partsSummary';
 import { fetchMissingBlIds } from '../../routes/parts';
+import type { RbSetTeil } from '../../clients/rebrickable';
 import { getAllSetParts, getRbKey, httpsGetRobust } from '../../clients/rebrickable';
 import { clampPageSize, conditionFromAcquisitions, conditionsFromAcquisitions, applyManualCondition, withOwners, MAX_PAGE_SIZE, UNPAGED_LIMIT, SET_PARTS_MAX_PAGE_SIZE } from './shared';
 
@@ -18,15 +19,23 @@ import { clampPageSize, conditionFromAcquisitions, conditionsFromAcquisitions, a
  * geht in EINE Richtung, es entsteht also kein Kreis.
  */
 
+/**
+ * Ein Blickfeld: eine einzelne Konto-ID oder die Liste aus scopeIds()
+ * (utils/household.ts). asIds() normalisiert beides auf eine Liste — mit dem
+ * Typ entfaellt der Cast `asIds(userId)`, der nur da stand, weil der
+ * Parameter keinen hatte. Dieselbe Erklaerung wie in handlers/sets.ts.
+ */
+type Blickfeld = number | number[];
+
 /** Farbliste des Teilebestands (ohne manuelle Positionen — die haben eine
  *  eigene Ansicht). Hex-Fallback aus rb_colors für Teile ohne eigenen Wert.
  *  Von /api/parts/colors UND /api/v1/parts/colors genutzt (Parität). */
-async function getPartsColors(userId) {
+async function getPartsColors(userId: Blickfeld) {
   // Blickfeld statt einer einzelnen ID: Ein Hauptkonto sieht (und ändert)
   // auch die Daten seiner Unterkonten, alle anderen nur ihre eigenen. Die
   // Liste kommt von scopeIds() in utils/household.ts — hier wird sie nur
   // normalisiert, damit ältere Aufrufer mit einer nackten ID weiter gehen.
-  const uids = asIds(userId as any);
+  const uids = asIds(userId);
   // Aus der Zusammenfassung: dieselbe Gruppierung, aber über 66'000 statt
   // 171'000 Zeilen und ohne den Join auf sets — die Mengen sind dort bereits
   // mit der Set-Anzahl multipliziert.
@@ -76,7 +85,7 @@ async function getPartsColors(userId) {
  * Die laufende Nummer `pi` kommt mit zurück, weil der Aufrufer LIMIT/OFFSET
  * danach anhängt.
  */
-function teileFilter(uids, query: any) {
+function teileFilter(uids: number[], query: any) {
   const { color, category, search, spare, set_number } = query;
   let where = 'p.user_id = ANY($1)';
   const params: any[] = [uids];
@@ -128,7 +137,7 @@ function teileFilter(uids, query: any) {
  * Gibt null zurück, wenn auch dort nichts zu finden war; dann bleibt es beim
  * leeren Ergebnis aus der Datenbank.
  */
-async function teileErsatzquelle(set_number) {
+async function teileErsatzquelle(set_number: string) {
     const n   = set_number.includes('-') ? set_number : set_number + '-1';
     const alt = set_number.includes('-') ? set_number.replace(/-\d+$/, '') : set_number + '-1';
     const inv = await db.get(
@@ -184,8 +193,8 @@ async function teileErsatzquelle(set_number) {
         const items = await getAllSetParts(sn).catch(() => []);
         if (!items?.length) continue;
         const rbParts = items
-          .filter(it => !it.is_spare)
-          .map(it => ({
+          .filter((it: RbSetTeil) => !it.is_spare)
+          .map((it: RbSetTeil) => ({
             part_number:    it.part?.part_num,
             bl_part_number: it.part?.external_ids?.BrickLink?.[0] || it.part?.part_num,
             part_name:      it.part?.name || it.part?.part_num,
@@ -200,7 +209,7 @@ async function teileErsatzquelle(set_number) {
             quantity:       it.quantity,
             in_sets:        set_number,
           }))
-          .filter(p => p.part_number);
+          .filter((p: { part_number?: string | null }) => p.part_number);
         // Siehe oben: auch hier wird nicht geblättert, page_size = Zeilenzahl.
         if (rbParts.length) return { parts: rbParts, total: rbParts.length, source: 'rebrickable', page_size: rbParts.length };
       }
@@ -213,8 +222,8 @@ async function teileErsatzquelle(set_number) {
  * Seitenabfrage aus parts_summary. Gibt null zurück, wenn die Zusammenfassung
  * nicht benutzbar ist — dann übernimmt die Live-Abfrage darunter.
  */
-async function tryPartsSummary(userId, o) {
-  const uids = asIds(userId as any);
+async function tryPartsSummary(userId: Blickfeld, o: any) {
+  const uids = asIds(userId);
   // Die Zusammenfassung ist JE KONTO aufgebaut. Für den Haushalt wird über
   // alle beteiligten Konten gelesen und über part_key verdichtet — dasselbe
   // Teil in zwei Konten ergibt EINE Zeile mit der Summe der Mengen, genau wie
@@ -302,12 +311,12 @@ async function tryPartsSummary(userId, o) {
   };
 }
 
-async function getParts(userId, query: any = {}) {
+async function getParts(userId: Blickfeld, query: any = {}) {
   // Blickfeld statt einer einzelnen ID: Ein Hauptkonto sieht (und ändert)
   // auch die Daten seiner Unterkonten, alle anderen nur ihre eigenen. Die
   // Liste kommt von scopeIds() in utils/household.ts — hier wird sie nur
   // normalisiert, damit ältere Aufrufer mit einer nackten ID weiter gehen.
-  const uids = asIds(userId as any);
+  const uids = asIds(userId);
   const { color, category, search, spare, set_number,
           page = 1, page_size = null } = query;
 
@@ -451,12 +460,12 @@ async function getParts(userId, query: any = {}) {
   return { parts: partsResolved, total, source: 'db', page_size: effektiveGroesse };
 }
 
-async function getPartsStats(userId) {
+async function getPartsStats(userId: Blickfeld) {
   // Blickfeld statt einer einzelnen ID: Ein Hauptkonto sieht (und ändert)
   // auch die Daten seiner Unterkonten, alle anderen nur ihre eigenen. Die
   // Liste kommt von scopeIds() in utils/household.ts — hier wird sie nur
   // normalisiert, damit ältere Aufrufer mit einer nackten ID weiter gehen.
-  const uids = asIds(userId as any);
+  const uids = asIds(userId);
   // Ebenfalls aus der Zusammenfassung. Die Kennzahlen beziehen sich wie die
   // Liste auf Set-Teile; manuell erfasste haben ihren eigenen Bereich.
   // strict: Kennzahlen müssen zwischen Webapp und App übereinstimmen — ein
@@ -501,7 +510,10 @@ async function getBlColorMap() {
   // Fallback: fetch from Rebrickable API and cache in DB
   const key = await getRbKey().catch(() => null);
   if (!key) return { map: {}, source: 'empty' };
-  let page = 1, map = {}, hasNext = true;
+  // map traegt die Zuordnung Rebrickable-Farb-ID -> BrickLink-Farb-ID.
+  // Ohne Typ ist `{}` fuer den Pruefer leer, und `map[c.id] = blId` waere
+  // ein Schreibzugriff auf ein Feld, das es laut Typ nicht gibt.
+  let page = 1, map: Record<string, any> = {}, hasNext = true;
   while (hasNext) {
     const { status, body } = await httpsGetRobust(
       `https://rebrickable.com/api/v3/lego/colors/?page_size=200&page=${page}`,
@@ -522,12 +534,12 @@ async function getBlColorMap() {
   return { map, source: 'api' };
 }
 
-async function getManualParts(userId, { page = 1, page_size = null }: any = {}) {
+async function getManualParts(userId: Blickfeld, { page = 1, page_size = null }: any = {}) {
   // Blickfeld statt einer einzelnen ID: Ein Hauptkonto sieht (und ändert)
   // auch die Daten seiner Unterkonten, alle anderen nur ihre eigenen. Die
   // Liste kommt von scopeIds() in utils/household.ts — hier wird sie nur
   // normalisiert, damit ältere Aufrufer mit einer nackten ID weiter gehen.
-  const uids = asIds(userId as any);
+  const uids = asIds(userId);
   const params: any[] = [uids];
   let limit = '';
   if (page_size) {
