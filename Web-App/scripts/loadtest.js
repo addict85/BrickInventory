@@ -50,6 +50,18 @@ process.env.DATABASE_URL = DB_URL;
 process.env.WEB_WORKERS = '1';
 
 // ── Argumente ────────────────────────────────────────────────────────────────
+/**
+ * Ein Kommandozeilenargument als ZAHL lesen.
+ *
+ * Der Rumpf gibt Number(...) zurueck, und alle drei Aufrufer uebergeben einen
+ * Zahl-Rueckfall — mein erster Entwurf hatte hier `string|number` stehen, was
+ * die drei Rechnungen unten (DAUER_S * 1000, Array.from({length: USERS}))
+ * unmoeglich gemacht haette.
+ *
+ * @param {string} name
+ * @param {number} fallback
+ * @returns {number}
+ */
 function arg(name, fallback) {
   const i = process.argv.indexOf(`--${name}`);
   return i !== -1 && process.argv[i + 1] ? Number(process.argv[i + 1]) : fallback;
@@ -120,6 +132,7 @@ async function seed() {
        FROM generate_series(1, $1) g, generate_series(1, 180) d
       WHERE (d + g) % 4 = 0`, [N_SETS]);
 
+  /** @param {string} t Tabellenname — fest verdrahtet unten, keine Eingabe */
   const z = async (t) => (await db.get(`SELECT count(*)::int n FROM ${t}`)).n;
   console.log(`  → sets ${await z('sets')}, parts ${await z('parts')}, ` +
               `minifigs ${await z('minifigs')}, price_history ${await z('price_history')}\n`);
@@ -129,7 +142,7 @@ async function seed() {
 function buildApp() {
   const app = express();
   app.use(express.json());
-  app.use((req, _res, next) => {
+  app.use((/** @type {any} */ req, /** @type {any} */ _res, /** @type {any} */ next) => {
     req.session = { userId: USER.id, username: USER.username, isAdmin: false };
     next();
   });
@@ -155,12 +168,21 @@ const PFADE = [
   ['Portfolio-Verlauf',      '/api/finance/portfolio-history?range=year'],
 ];
 
+/**
+ * @param {number[]} arr
+ * @param {number} p  Anteil zwischen 0 und 1, z. B. 0.5 fuer den Median
+ */
 const perzentil = (arr, p) => {
   if (!arr.length) return 0;
   const s = [...arr].sort((a, b) => a - b);
   return s[Math.min(s.length - 1, Math.floor(s.length * p))];
 };
 
+/**
+ * Eine Route einmal messen.
+ * @param {string} base
+ * @param {string} pfad
+ */
 async function miss(base, pfad) {
   const t0 = process.hrtime.bigint();
   const r = await fetch(base + pfad);
@@ -180,6 +202,10 @@ async function main() {
 
   // ── Durchgang 1: allein (Referenz) ─────────────────────────────────────────
   console.log('Referenz ohne Nebenlast (je 5 Aufrufe, Median):');
+  // Die Typen stehen hier, weil `{}` fuer den Pruefer keine Schluessel hat —
+  // `allein[name] = …` waere sonst ein Schreibzugriff auf ein Feld, das es
+  // laut Typ nicht gibt.
+  /** @type {Record<string, number>} */
   const allein = {};
   for (const [name, p] of PFADE) {
     const w = [];
@@ -192,10 +218,12 @@ async function main() {
   console.log(`\n${USERS} gleichzeitige Nutzer, ${DAUER_S} s …`);
   /** @type {Record<string, number[]>} */
   const messung = Object.fromEntries(PFADE.map(([n]) => [n, []]));
+  /** @type {Record<string, number>} */
   const fehler = {};
   const ende = Date.now() + DAUER_S * 1000;
   let gesamt = 0;
 
+  /** @param {number} id */
   const nutzer = async (id) => {
     // Versetzter Start, damit nicht alle im Gleichschritt laufen.
     await new Promise(r => setTimeout(r, (id * 37) % 250));

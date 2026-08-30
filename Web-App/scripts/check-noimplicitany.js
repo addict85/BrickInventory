@@ -20,10 +20,23 @@
  * welcher Datei eine Meldung kommt. Der Schalter ist damit für alle Dateien
  * ausser den unten aufgeführten scharf.
  *
- * ── Die Richtung ist der Punkt ─────────────────────────────────────────────
- * Die Liste ist eine AUSNAHMELISTE, keine Auswahlliste. Eine neue Datei ist
- * automatisch streng; Schuld lässt sich nur abbauen, nicht mehr stillschweigend
- * anhäufen. Beim Aufräumen einer Datei fällt ihre Zeile hier weg, sonst nichts.
+ * ── Die Liste ist LEER, und damit hat dieses Skript eine neue Aufgabe ──────
+ * Der Abbau ist durch: `noImplicitAny` steht seit dieser Etappe in
+ * tsconfig.json auf `true`, `npx tsc --noEmit` ist also selbst die Prüfung.
+ *
+ * Weshalb das Skript trotzdem bleibt: Den Schalter WIEDER AUSZUSCHALTEN macht
+ * den Übersetzer GRÜNER, nicht röter. Das ist die eine Regression, die tsc
+ * grundsätzlich nicht melden kann — es gäbe schlicht keine Meldung mehr. Also
+ * prüft dieses Skript jetzt die Regel selbst: dass der Schalter an ist.
+ *
+ * Die Ausnahmeliste bleibt als Mechanik stehen. Wer den nächsten Schalter
+ * gestaffelt einführt (strictFunctionTypes, useUnknownInCatchVariables …),
+ * findet hier das Gerüst und muss es nicht neu bauen.
+ *
+ * ── Die Richtung war der Punkt ─────────────────────────────────────────────
+ * Die Liste war eine AUSNAHMELISTE, keine Auswahlliste. Eine neue Datei war
+ * automatisch streng; Schuld liess sich nur abbauen, nicht mehr stillschweigend
+ * anhäufen. Beim Aufräumen einer Datei fiel ihre Zeile weg, sonst nichts.
  *
  *   npm run typecheck:strict
  *
@@ -49,14 +62,13 @@ const ROOT = path.join(__dirname, '..');
  * Stand bei Einführung: 44 offen, 48 bereits sauber.
  * Nachtrag 151: noch 30 offen, 62 sauber.
  * Nachtrag 156: noch 24 offen.
- * Diese Etappe: noch 2 offen — beides Werkzeugskripte, die der Server nicht
- * ausliefert (scripts/loadtest.js, scripts/check-api-contract.js).
- * Der gesamte ausgelieferte Code und alle Hintergrundjobs sind sauber.
+ * Diese Etappe: LEER. Der Schalter steht in tsconfig.json.
  */
-const OFFEN = new Set([
-  'scripts/check-api-contract.js',
-  'scripts/loadtest.js',
-]);
+// Der Typ steht hier, seit die Liste LEER ist: `new Set([])` ergibt sonst
+// Set<never>, und dieses Skript faellt durch seine eigene Pruefung. Genau die
+// Sorte Stelle, die es ueberall sonst gemeldet hat.
+/** @type {Set<string>} */
+const OFFEN = new Set([]);
 
 /** tsc mit noImplicitAny laufen lassen und die Meldungen je Datei sammeln. */
 function meldungenJeDatei() {
@@ -79,7 +91,31 @@ function meldungenJeDatei() {
   return jeDatei;
 }
 
+/**
+ * Steht `noImplicitAny` in tsconfig.json wirklich auf true?
+ *
+ * Gelesen als TEXT und nicht per require(): tsconfig.json trägt Kommentare
+ * (JSONC), JSON.parse scheitert daran. Ein Muster reicht hier — geprüft wird
+ * eine einzelne, eindeutige Zeile, nicht die Struktur der Datei.
+ */
+function schalterIstAn() {
+  const roh = require('node:fs').readFileSync(path.join(ROOT, 'tsconfig.json'), 'utf8');
+  const m = roh.match(/"noImplicitAny"\s*:\s*(true|false)/);
+  if (!m) return { an: false, grund: 'Der Eintrag "noImplicitAny" fehlt in tsconfig.json.' };
+  if (m[1] !== 'true') return { an: false, grund: 'tsconfig.json hat "noImplicitAny": false.' };
+  return { an: true, grund: '' };
+}
+
 function main() {
+  const schalter = schalterIstAn();
+  if (!schalter.an) {
+    console.error('\n❌ ' + schalter.grund + '\n');
+    console.error('Der Schalter war einmal aus, und der Abbau von 454 Meldungen hat');
+    console.error('ihn scharf gemacht. Ihn wieder auszuschalten macht `tsc` GRUENER —');
+    console.error('genau deshalb steht diese Pruefung hier und nicht im Uebersetzer.');
+    process.exit(1);
+  }
+
   const jeDatei = meldungenJeDatei();
 
   const neu = [...jeDatei.keys()].filter(d => !OFFEN.has(d)).sort();
@@ -109,6 +145,10 @@ function main() {
 
   if (neu.length || verwaist.length) process.exit(1);
 
+  if (OFFEN.size === 0) {
+    console.log('✅ noImplicitAny: in tsconfig.json scharf, Ausnahmeliste leer — der ganze Baum ist sauber.');
+    return;
+  }
   console.log(`✅ noImplicitAny: alle Dateien ausser den ${OFFEN.size} bekannten sind sauber ` +
               `(${offeneMeldungen} Meldungen stehen dort noch offen).`);
 }

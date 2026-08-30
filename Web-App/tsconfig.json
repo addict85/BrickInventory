@@ -29,8 +29,35 @@
   // wirkungslos, und der Fortschrittszähler des Preis-Jobs hing an einem Feld,
   // das der finally-Block nebenläufig auf null setzt.
   //
-  // Was der Schalter NICHT ist: `strict`. Der meldet weiterhin rund 200 Stellen
-  // (vor allem noImplicitAny) und bleibt aus.
+  // ── noImplicitAny: jetzt ebenfalls AN ─────────────────────────────────────
+  // Er stand aus dem gleichen Grund aus wie strictNullChecks davor: 631
+  // Meldungen, davon 632 derselbe Fall (ein Parameter ohne Typ). Abgebaut
+  // wurde er gestaffelt ueber scripts/check-noimplicitany.js — eine
+  // AUSNAHMELISTE, die nur kuerzer werden durfte, in der Reihenfolge des
+  // Risikos: erst die Anfragestrecke (dort kommen Benutzereingaben an), dann
+  // die Geldrechnung, die Set-Kernlogik, die PDF-Ausgabe, die drei
+  // Fremd-Klienten, die Hilfsmodule, die Hintergrundjobs, zuletzt das
+  // Werkzeug.
+  //
+  // Was dabei gefunden wurde — nicht gesucht, gefunden:
+  //   • Eine Umleitung, deren Location-Kopfzeile ungeprueft weiterlief. An
+  //     ZWEI Stellen; bei Brickset haette sie den Worker beendet.
+  //   • MAIL_THEMES[wert aus der Datenbank] — dieselbe Prototypen-Falle wie in
+  //     der Katalogsortierung, zweiter Fundort.
+  //   • Drei Zahlen, die als Zeichenkette ankommen: COUNT(*) und numeric
+  //     (bigint/numeric ueber den pg-Treiber) sowie die Cache-Dauer aus den
+  //     Einstellungen. Regeln, die nur ueber die JS-Umwandlung funktionierten.
+  //   • Toter Code in addSet(): eine Verteidigung gegen eine Form, die keiner
+  //     der drei Aufrufer erzeugt.
+  //   • req.query.period kann ein Array sein.
+  //   • TASKS[task] im CSV-Worker: der Wert kommt per IPC, und dort traegt
+  //     kein Typ — die einzige Stelle dieser Bauart, die eine
+  //     LAUFZEIT-Pruefung braucht.
+  //
+  // Was der Schalter immer noch NICHT ist: `strict`. Der bringt zusaetzlich
+  // strictFunctionTypes, strictBindCallApply, useUnknownInCatchVariables und
+  // noImplicitThis mit; die sind ungemessen und bleiben aus, bis jemand sie
+  // genauso staffelt.
   //
   // Stand messen:  npx tsc --noEmit
   "compilerOptions": {
@@ -59,7 +86,7 @@
     // übersieht und die der Übersetzer geschenkt findet.
     "noFallthroughCasesInSwitch": true,
     "noImplicitOverride": true,
-    "noImplicitAny": false
+    "noImplicitAny": true
   },
   "include": [
     "server.ts",

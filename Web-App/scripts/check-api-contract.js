@@ -96,6 +96,18 @@ const CHECKS = [
 ];
 
 // ── Validierung ───────────────────────────────────────────────────────────────
+/**
+ * Ein Einzelwert gegen eine Typangabe pruefen.
+ *
+ * JSDoc statt TypeScript-Syntax: Das hier ist eine .js-Datei, die per node
+ * direkt laufen soll — sie wird nicht uebersetzt. `checkJs` liest die
+ * Anmerkungen trotzdem, der Pruefer greift also genauso.
+ *
+ * @param {unknown} value
+ * @param {string} type  z. B. 'string', '?int' (das ? macht das Feld optional)
+ * @param {string} path  Pfad im Antwortobjekt, fuer die Meldung
+ * @param {string[]} errors  Sammelliste, wird beschrieben
+ */
 function checkType(value, type, path, errors) {
   const optional = type.startsWith('?');
   const t = optional ? type.slice(1) : type;
@@ -109,6 +121,14 @@ function checkType(value, type, path, errors) {
   if (t === 'int' && (typeof value !== 'number' || !Number.isInteger(value))) errors.push(`${path}: erwartet Int, ist ${typeof value} ${JSON.stringify(value).slice(0, 40)}`);
 }
 
+/**
+ * Ein Antwortobjekt rekursiv gegen ein Schema pruefen.
+ *
+ * @param {unknown} obj
+ * @param {unknown} schema  Zeichenkette (Typ), Array (je Element) oder Objekt
+ * @param {string} path
+ * @param {string[]} errors
+ */
 function validate(obj, schema, path, errors) {
   if (Array.isArray(schema)) {
     if (!Array.isArray(obj)) { errors.push(`${path}: erwartet Array, ist ${typeof obj}`); return; }
@@ -118,7 +138,13 @@ function validate(obj, schema, path, errors) {
   }
   if (typeof schema === 'string') { checkType(obj, schema, path, errors); return; }
   if (obj === undefined || obj === null) { errors.push(`${path}: Objekt fehlt`); return; }
-  for (const [key, sub] of Object.entries(schema)) validate(obj[key], sub, `${path}.${key}`, errors);
+  // Ab hier ist beides ein Objekt: Die drei Wachen darueber haben Array,
+  // Zeichenkette und null/undefined bereits abgefangen. Die Einengung steht
+  // ausgeschrieben da, statt die Parameter oben auf `any` zu setzen — dann
+  // pruefte der Rest der Funktion naemlich auch nichts mehr.
+  const felder = /** @type {Record<string, unknown>} */ (schema);
+  const werte  = /** @type {Record<string, unknown>} */ (obj);
+  for (const [key, sub] of Object.entries(felder)) validate(werte[key], sub, `${path}.${key}`, errors);
 }
 
 // ── Ablauf ────────────────────────────────────────────────────────────────────
@@ -142,6 +168,7 @@ async function getToken() {
   const token = await getToken();
   let failed = 0;
   for (const check of CHECKS) {
+    /** @type {string[]} */
     const errors = [];
     try {
       const r = await fetch(BASE + check.path, { headers: { Authorization: `Bearer ${token}` } });
