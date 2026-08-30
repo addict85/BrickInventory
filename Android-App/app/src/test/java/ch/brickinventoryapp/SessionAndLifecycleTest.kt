@@ -150,7 +150,7 @@ class SessionAndLifecycleTest {
                 "LaunchedEffect endet erst beim Verlassen des Screens, nicht beim " +
                 "Wechsel in den Hintergrund — die App pollt dann weiter."
         }
-        val loop = src.indexOf("while (true) { loadJobs()")
+        val loop = src.indexOf("while (true) { mon.ladeJobs()")
         val guard = src.indexOf("repeatOnLifecycle")
         assert(loop >= 0) { "Poll-Schleife nicht gefunden — Test veraltet?" }
         assert(guard in 1 until loop) {

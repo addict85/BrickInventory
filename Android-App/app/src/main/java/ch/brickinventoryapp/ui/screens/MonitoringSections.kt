@@ -18,10 +18,12 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import ch.brickinventoryapp.data.model.*
-import ch.brickinventoryapp.data.repository.Result
 import androidx.compose.ui.res.stringResource
 import ch.brickinventoryapp.R
 import ch.brickinventoryapp.ui.MainViewModel
+import ch.brickinventoryapp.ui.viewmodel.MonitoringViewModel
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.hilt.navigation.compose.hiltViewModel
 import ch.brickinventoryapp.ui.*  // Feature-Extensions (loadSetDetail, updateQuantity, …)
 import kotlinx.coroutines.launch
 import ch.brickinventoryapp.util.NumericInput
@@ -127,32 +129,44 @@ internal fun BricksetQueueRow(
 @Composable
 fun CacheAndLimitsSection(vm: MainViewModel, onSnack: (String) -> Unit = {}) {
     val scope = rememberCoroutineScope()
-    val retryErrorMsg  = stringResource(R.string.monitoring_retry_error)
-    val deleteErrorMsg = stringResource(R.string.monitoring_delete_error)
-    val startErrorMsg  = stringResource(R.string.monitoring_start_error)
     val cacheSavedMsg  = stringResource(R.string.monitoring_cache_saved)
     val limitsSavedMsg = stringResource(R.string.monitoring_limits_saved)
-    val queueShowFmt   = stringResource(R.string.monitoring_queue_show)
-    var cacheStats by remember { mutableStateOf<CacheStatsResponse?>(null) }
-    var apiLimits  by remember { mutableStateOf<ApiLimits?>(null) }
-    var cacheTtl   by rememberSaveable { mutableStateOf("24") }
+
+    // Serverdaten aus dem ViewModel; hiltViewModel() liefert im selben
+    // NavHost-Ziel dieselbe Instanz wie in MonitoringScreen.
+    val mon: MonitoringViewModel = hiltViewModel()
+    val monState by mon.state.collectAsStateWithLifecycle()
+    val cacheStats = monState.cacheStats
+    val apiLimits  = monState.apiLimits
+    val cacheTtl   = monState.cacheTtl
+    val defaultCondition = monState.vorgabeZustand
+
+    // Bedienzustand: was gerade bearbeitet und halb eingetippt ist. Bleibt hier
+    // und speicherbar — das ueberlebt auch den Prozesstod, ein ViewModel nicht.
     var editingTtl by rememberSaveable { mutableStateOf(false) }
     var ttlInput   by rememberSaveable { mutableStateOf("24") }
-    var defaultCondition by rememberSaveable { mutableStateOf("N") }
     var editingLimits by rememberSaveable { mutableStateOf(false) }
     var rbInput    by rememberSaveable { mutableStateOf("0") }
     var blInput    by rememberSaveable { mutableStateOf("0") }
     var bsInput    by rememberSaveable { mutableStateOf("0") }
 
-    LaunchedEffect(Unit) {
-        val cs = vm.repo.admin.getCacheStats()
-        if (cs is Result.Success) cacheStats = cs.data
-        val al = vm.repo.admin.getApiLimits()
-        if (al is Result.Success) { apiLimits = al.data.limits; rbInput = al.data.limits.rebrickable.toString(); blInput = al.data.limits.bricklink.toString(); bsInput = al.data.limits.brickset.toString() }
-        val ttl = vm.repo.admin.getCacheTtl()
-        if (ttl is Result.Success) { cacheTtl = ttl.data.ttl; ttlInput = ttl.data.ttl }
-        val dc = vm.repo.teile.getDefaultCondition()
-        if (dc is Result.Success) defaultCondition = dc.data.condition
+    LaunchedEffect(Unit) { mon.ladeCacheUndGrenzen() }
+
+    // Die Eingabefelder mit den geladenen Werten vorbelegen — aber nur, solange
+    // NICHT bearbeitet wird. Das Speichern laedt die Grenzwerte selbst neu; ohne
+    // die Bedingung schriebe diese Antwort dem Benutzer die halb getippte Zahl
+    // wieder um. Vorher stand die Vorbelegung im einmaligen Ladevorgang und
+    // konnte das nicht — jetzt haengt sie am Zustand und koennte es.
+    LaunchedEffect(apiLimits, editingLimits) {
+        val al = apiLimits
+        if (al != null && !editingLimits) {
+            rbInput = al.rebrickable.toString()
+            blInput = al.bricklink.toString()
+            bsInput = al.brickset.toString()
+        }
+    }
+    LaunchedEffect(cacheTtl, editingTtl) {
+        if (!editingTtl) ttlInput = cacheTtl
     }
 
     // ── Price Cache ───────────────────────────────────────────────────────────
@@ -185,10 +199,8 @@ fun CacheAndLimitsSection(vm: MainViewModel, onSnack: (String) -> Unit = {}) {
                 ch.brickinventoryapp.ui.screens.ConditionToggle(
                     selected = defaultCondition,
                     onSelect = { newCond ->
-                        defaultCondition = newCond
                         scope.launch {
-                            val r = vm.repo.teile.setDefaultCondition(newCond)
-                            if (r is Result.Success) {
+                            if (mon.setzeVorgabeZustand(newCond)) {
                                 vm.loadSettings()
                                 onSnack(cacheSavedMsg)
                             }
@@ -224,8 +236,7 @@ fun CacheAndLimitsSection(vm: MainViewModel, onSnack: (String) -> Unit = {}) {
                             onClick = {
                                 scope.launch {
                                     val h = ttlInput.toIntOrNull() ?: 24
-                                    val r = vm.repo.admin.setCacheTtl(h)
-                                    if (r is Result.Success) { cacheTtl = h.toString(); onSnack(cacheSavedMsg) }
+                                    if (mon.setzeCacheDauer(h)) onSnack(cacheSavedMsg)
                                     editingTtl = false
                                 }
                             },
@@ -278,13 +289,8 @@ fun CacheAndLimitsSection(vm: MainViewModel, onSnack: (String) -> Unit = {}) {
                             val rb = rbInput.toIntOrNull() ?: 0
                             val bl = blInput.toIntOrNull() ?: 0
                             val bs = bsInput.toIntOrNull() ?: 0
-                            val r = vm.repo.admin.setApiLimits(rb, bl, bs)
-                            if (r is Result.Success) {
-                                // refresh
-                                val al2 = vm.repo.admin.getApiLimits()
-                                if (al2 is Result.Success) apiLimits = al2.data.limits
-                                onSnack(limitsSavedMsg)
-                            }
+                            // Das Nachladen der Grenzwerte steht im ViewModel.
+                            if (mon.setzeGrenzwerte(rb, bl, bs)) onSnack(limitsSavedMsg)
                             editingLimits = false
                         }
                     },

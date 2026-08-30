@@ -20,10 +20,12 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import ch.brickinventoryapp.data.model.*
-import ch.brickinventoryapp.data.repository.Result
 import androidx.compose.ui.res.stringResource
 import ch.brickinventoryapp.R
 import ch.brickinventoryapp.ui.MainViewModel
+import ch.brickinventoryapp.ui.viewmodel.MonitoringViewModel
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.hilt.navigation.compose.hiltViewModel
 import ch.brickinventoryapp.ui.*  // Feature-Extensions (loadSetDetail, updateQuantity, …)
 import androidx.lifecycle.repeatOnLifecycle
 import kotlinx.coroutines.delay
@@ -34,42 +36,28 @@ fun MonitoringScreen(vm: MainViewModel) {
     val scope  = rememberCoroutineScope()
     val retryErrorMsg  = stringResource(R.string.monitoring_retry_error)
     val deleteErrorMsg = stringResource(R.string.monitoring_delete_error)
-    val startErrorMsg  = stringResource(R.string.monitoring_start_error)
-    val cacheSavedMsg  = stringResource(R.string.monitoring_cache_saved)
-    val limitsSavedMsg = stringResource(R.string.monitoring_limits_saved)
-    val queueShowFmt   = stringResource(R.string.monitoring_queue_show)
     val retryQueuedFmt = stringResource(R.string.monitoring_retry_queued)
     val entryRemovedFmt = stringResource(R.string.monitoring_entry_removed)
-    var jobs   by remember { mutableStateOf<Map<String, JobStatus>>(emptyMap()) }
-    var queue  by remember { mutableStateOf<List<BricksetQueueEntry>>(emptyList()) }
+    // Serverdaten liegen im ViewModel (siehe MonitoringViewModel: die Grenze
+    // laeuft zwischen "kommt vom Server" und "hat der Mensch angefasst").
+    val mon: MonitoringViewModel = hiltViewModel()
+    val monState by mon.state.collectAsStateWithLifecycle()
+    val jobs = monState.jobs
+    val queue = monState.queue
+    val queueLoading = monState.queueLoading
+    val isRefreshing = monState.aktualisiert
+
+    // Bedienzustand bleibt hier: rememberSaveable ueberlebt auch den Prozesstod,
+    // ein ViewModel nur die Drehung.
     var queueOpen      by rememberSaveable { mutableStateOf(false) }
     var queueToggleKey by remember { mutableIntStateOf(0) }
-    var queueLoading   by remember { mutableStateOf(false) }
+    // Laufender Vorgang bzw. fluechtige Meldung — soll die Drehung NICHT ueberleben.
     var reimportMsg    by remember { mutableStateOf<String?>(null) }
-    var isRefreshing   by rememberSaveable { mutableStateOf(false) }
     var snack          by remember { mutableStateOf<String?>(null) }
 
     val monCtx = androidx.compose.ui.platform.LocalContext.current
     val reimportLoadingMsg = stringResource(R.string.monitoring_loading)
     val reimportErrorMsg   = stringResource(R.string.monitoring_reimport_error)
-
-    suspend fun loadJobs() {
-        isRefreshing = true
-        when (val r = vm.repo.admin.getJobs()) {
-            is Result.Success -> jobs = r.data.jobs
-            is Result.Error -> {}
-        }
-        isRefreshing = false
-    }
-
-    suspend fun loadQueue() {
-        queueLoading = true
-        when (val r = vm.repo.admin.getBricksetQueue()) {
-            is Result.Success -> queue = r.data.entries
-            is Result.Error -> {}
-        }
-        queueLoading = false
-    }
 
     // Auto-refresh jobs every 5s — nur solange der Screen sichtbar ist.
     // repeatOnLifecycle(STARTED) pausiert die Schleife, wenn die App in den
@@ -78,12 +66,12 @@ fun MonitoringScreen(vm: MainViewModel) {
     val monitoringLifecycleOwner = androidx.lifecycle.compose.LocalLifecycleOwner.current
     LaunchedEffect(Unit) {
         monitoringLifecycleOwner.lifecycle.repeatOnLifecycle(androidx.lifecycle.Lifecycle.State.STARTED) {
-            while (true) { loadJobs(); delay(5000) }
+            while (true) { mon.ladeJobs(); delay(5000) }
         }
     }
 
     LaunchedEffect(queueToggleKey) {
-        if (queueOpen) loadQueue()
+        if (queueOpen) mon.ladeWarteschlange()
     }
 
     LaunchedEffect(snack) {
@@ -100,7 +88,7 @@ fun MonitoringScreen(vm: MainViewModel) {
                 Row(Modifier.fillMaxWidth(), Arrangement.SpaceBetween, Alignment.CenterVertically) {
                     Text(stringResource(R.string.monitoring_title), fontWeight = FontWeight.Bold, fontSize = 18.sp)
                     if (isRefreshing) CircularProgressIndicator(Modifier.size(20.dp), strokeWidth = 2.dp)
-                    else IconButton(onClick = { scope.launch { loadJobs() } }) {
+                    else IconButton(onClick = { scope.launch { mon.ladeJobs() } }) {
                         Icon(Icons.Default.Refresh, stringResource(R.string.monitoring_refresh))
                     }
                 }
@@ -120,7 +108,7 @@ fun MonitoringScreen(vm: MainViewModel) {
                     queueLoading = queueLoading,
                     queue    = queue,
                     reimportMsg = reimportMsg,
-                    vm       = vm,
+                    mon      = mon,
                     onSnack  = { snack = it },
                     onToggleQueue = {
                         queueOpen = !queueOpen
@@ -128,36 +116,27 @@ fun MonitoringScreen(vm: MainViewModel) {
                     },
                     onRetry = { sn ->
                         scope.launch {
-                            when (vm.repo.admin.retryBricksetEntry(sn)) {
-                                is Result.Success -> { snack = String.format(retryQueuedFmt, sn); queueToggleKey++ }
-                                is Result.Error -> snack = retryErrorMsg
-                            }
+                            snack = if (mon.wiederholeEintrag(sn)) String.format(retryQueuedFmt, sn)
+                                    else retryErrorMsg
                         }
                     },
                     onDelete = { sn ->
                         scope.launch {
-                            // Optimistic remove
-                            queue = queue.filter { it.setNumber != sn }
-                            val result = vm.repo.admin.deleteBricksetEntry(sn)
-                            when (result) {
-                                is Result.Success -> snack = "$sn entfernt"
-                                is Result.Error -> {
-                                    // Revert on failure
-                                    snack = deleteErrorMsg
-                                    loadQueue()
-                                }
-                            }
+                            // Das Vorwegnehmen und das Wiederherstellen bei Fehlschlag
+                            // stehen jetzt im ViewModel — hier bleibt die Meldung.
+                            snack = if (mon.entferneEintrag(sn)) String.format(entryRemovedFmt, sn)
+                                    else deleteErrorMsg
                         }
                     },
                     onReimport = {
                         scope.launch {
                             reimportMsg = reimportLoadingMsg
-                            when (val r = vm.repo.sets.reimportInstructions()) {
-                                is Result.Success -> {
-                                    reimportMsg = monCtx.getString(R.string.monitoring_reimport_enqueued, r.data.enqueued)
-                                    scope.launch { delay(4000); reimportMsg = null }
-                                }
-                                is Result.Error -> { reimportMsg = null; snack = reimportErrorMsg }
+                            val eingereiht = mon.leseAnleitungenNeuEin()
+                            if (eingereiht != null) {
+                                reimportMsg = monCtx.getString(R.string.monitoring_reimport_enqueued, eingereiht)
+                                scope.launch { delay(4000); reimportMsg = null }
+                            } else {
+                                reimportMsg = null; snack = reimportErrorMsg
                             }
                         }
                     }
@@ -174,7 +153,7 @@ private fun JobCard(
     queueLoading: Boolean,
     queue: List<BricksetQueueEntry>,
     reimportMsg: String?,
-    vm: MainViewModel,
+    mon: MonitoringViewModel,
     onSnack: (String) -> Unit,
     onToggleQueue: () -> Unit,
     onRetry: (String) -> Unit,
@@ -182,8 +161,6 @@ private fun JobCard(
     onReimport: () -> Unit
 ) {
     val scope = rememberCoroutineScope()
-    val retryErrorMsg  = stringResource(R.string.monitoring_retry_error)
-    val deleteErrorMsg = stringResource(R.string.monitoring_delete_error)
     val startErrorMsg  = stringResource(R.string.monitoring_start_error)
     val startingMsg      = stringResource(R.string.monitoring_starting)
     val startedMsg       = stringResource(R.string.monitoring_started)
@@ -240,14 +217,11 @@ private fun JobCard(
                     onClick = {
                         scope.launch {
                             csvMsg = startingMsg
-                            when (vm.repo.sets.triggerCsvSync()) {
-                                is Result.Success -> {
-                                    csvMsg = syncStartedMsg
-                                    kotlinx.coroutines.delay(4000)
-                                    csvMsg = null
-                                }
-                                is Result.Error -> { csvMsg = null; onSnack(startErrorMsg) }
-                            }
+                            if (mon.starteCsvAbgleich()) {
+                                csvMsg = syncStartedMsg
+                                kotlinx.coroutines.delay(4000)
+                                csvMsg = null
+                            } else { csvMsg = null; onSnack(startErrorMsg) }
                         }
                     },
                     shape = Formen.kachel,
@@ -266,14 +240,11 @@ private fun JobCard(
                     onClick = {
                         scope.launch {
                             priceMsg = startingMsg
-                            when (vm.repo.finanzen.triggerPriceJob()) {
-                                is Result.Success -> {
-                                    priceMsg = startedMsg
-                                    kotlinx.coroutines.delay(4000)
-                                    priceMsg = null
-                                }
-                                is Result.Error -> { priceMsg = null; onSnack(startErrorMsg) }
-                            }
+                            if (mon.startePreislauf()) {
+                                priceMsg = startedMsg
+                                kotlinx.coroutines.delay(4000)
+                                priceMsg = null
+                            } else { priceMsg = null; onSnack(startErrorMsg) }
                         }
                     },
                     shape = Formen.kachel,
@@ -292,14 +263,11 @@ private fun JobCard(
                     onClick = {
                         scope.launch {
                             redlMsg = startingMsg
-                            when (vm.repo.admin.redownloadMissingImages()) {
-                                is Result.Success -> {
-                                    redlMsg = startedMsg
-                                    kotlinx.coroutines.delay(4000)
-                                    redlMsg = null
-                                }
-                                is Result.Error -> { redlMsg = null; onSnack(startErrorMsg) }
-                            }
+                            if (mon.ladeFehlendeBilderNach()) {
+                                redlMsg = startedMsg
+                                kotlinx.coroutines.delay(4000)
+                                redlMsg = null
+                            } else { redlMsg = null; onSnack(startErrorMsg) }
                         }
                     },
                     shape = Formen.kachel,
