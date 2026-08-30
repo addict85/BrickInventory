@@ -77,14 +77,34 @@ const JOB_ID_RE = /^\d{10,16}-[a-z0-9]{4,12}$/;
  * routes/auth.ts); hier war die Ausnahme ohne Grund. Der Zeitstempel bleibt
  * vorn, weil cleanOldPdfJobs und die Fehlersuche im Log davon leben.
  */
+/**
+ * Eine Teilezeile im PDF-Auftrag, soweit hier gelesen.
+ *
+ * `is_fig` und die zwei Bildfelder entscheiden ueber Nachladen und Layout;
+ * mehr braucht diese Datei nicht zu wissen.
+ */
+type PdfTeil = {
+  part_number: string;
+  is_fig?: boolean | number | null;
+  image_url?: string | null;
+  image_local?: string | null;
+};
+
+/** Ein Auftragszustand, wie ihn der Ereignisstrom weiterreicht. */
+type PdfJobStatus = { status?: string; [k: string]: any };
+
 function neueJobId(): string {
   return `${Date.now()}-${require('crypto').randomBytes(6).toString('hex')}`;
 }
 function validJobId(id: string): boolean { return JOB_ID_RE.test(id); }
 
-function pdfJobPath(id)  { return _pdfPath.join(PDF_JOB_DIR, `${id}.json`); }
-function pdfFilePath(id) { return _pdfPath.join(PDF_JOB_DIR, `${id}.pdf`);  }
-async function pdfJobRead(id) {
+// `string`, nicht `unknown`: Alle drei Abrufrouten pruefen vorher mit
+// validJobId() gegen JOB_ID_RE (^\d{10,16}-[a-z0-9]{4,12}$) — daher kommt
+// hier nie ein Pfadtrenner oder '..' an. Der Typ haelt fest, dass die
+// Absicherung OBERHALB liegt und diese Funktion sie nicht wiederholt.
+function pdfJobPath(id: string)  { return _pdfPath.join(PDF_JOB_DIR, `${id}.json`); }
+function pdfFilePath(id: string) { return _pdfPath.join(PDF_JOB_DIR, `${id}.pdf`);  }
+async function pdfJobRead(id: string) {
   try { return JSON.parse(await _pdfFs.readFile(pdfJobPath(id), 'utf8')); } catch(_) { return null; }
 }
 
@@ -99,13 +119,13 @@ async function pdfJobRead(id) {
  * zehn Minuten alt, siehe PDF_JOB_TTL) und werden abgewiesen — bis zum
  * nächsten Export ist das Feld überall gesetzt.
  */
-async function pdfJobReadFor(id, userId) {
+async function pdfJobReadFor(id: string, userId: number) {
   const job = await pdfJobRead(id);
   if (!job) return null;
   if (job.user_id !== userId) return null;
   return job;
 }
-async function pdfJobWrite(id, data) {
+async function pdfJobWrite(id: string, data: PdfJobStatus) {
   await _pdfFs.mkdir(PDF_JOB_DIR, { recursive: true });
   await _pdfFs.writeFile(pdfJobPath(id), JSON.stringify(data));
 }
@@ -120,7 +140,7 @@ async function pdfJobWrite(id, data) {
  * Worker mitten im Lauf ab, bleibt die Datei auf `running` stehen, und ohne
  * diese Frist wäre der Benutzer dauerhaft ausgesperrt.
  */
-async function laufendeJobs(userId): Promise<number> {
+async function laufendeJobs(userId: number): Promise<number> {
   let n = 0;
   try {
     for (const f of await _pdfFs.readdir(PDF_JOB_DIR)) {
@@ -156,7 +176,7 @@ async function cleanOldPdfJobs() {
 const _pdfJobBus = new EventEmitter();
 _pdfJobBus.setMaxListeners(0);
 
-async function pdfJobWriteAndEmit(id, data) {
+async function pdfJobWriteAndEmit(id: string, data: PdfJobStatus) {
   await pdfJobWrite(id, data);
   _pdfJobBus.emit(`status:${id}`, data);
 }
@@ -225,12 +245,12 @@ router.post('/sets/partslist-pdf', requireToken, async (req: AuthedRequest, res)
 
   setImmediate(async () => {
     try {
-      const setNumbers = (sets || []).map(s => s.set_number).filter(Boolean);
+      const setNumbers = (sets || []).map((s: { set_number: string }) => s.set_number).filter(Boolean);
       if (setNumbers.length) {
         const enrich = require('../../jobs/partsCatalogEnrich');
 
         // For minifigs with null image_url, fetch from Rebrickable API before downloading
-        const figsNoUrl = parts.filter(p => (p.is_fig || String(p.part_number).startsWith('fig-')) && !p.image_url && !p.image_local);
+        const figsNoUrl = parts.filter((p: PdfTeil) => (p.is_fig || String(p.part_number).startsWith('fig-')) && !p.image_url && !p.image_local);
         if (figsNoUrl.length) {
           for (const p of figsNoUrl) {
             try {
@@ -250,11 +270,11 @@ router.post('/sets/partslist-pdf', requireToken, async (req: AuthedRequest, res)
         // anderer Cluster-Worker dieselben Bilder gerade lädt, WARTEN bis
         // fertig — sonst würde das PDF mit unvollständigen Bildern erzeugt.
         for (const sn of setNumbers) {
-          await enrich.downloadSetImages(sn, true).catch(e => console.error('[PDF job] download error:', e.message));
+          await enrich.downloadSetImages(sn, true).catch((e: Error) => console.error('[PDF job] download error:', e.message));
         }
 
         // Reload image_local from DB for parts
-        const partNums = [...new Set(parts.filter(p => !p.is_fig).map(p => p.part_number))];
+        const partNums = [...new Set(parts.filter((p: PdfTeil) => !p.is_fig).map((p: PdfTeil) => p.part_number))];
         if (partNums.length) {
           const fresh = await db.all(
             `SELECT part_number, color_id, image_local FROM set_parts_catalog
@@ -270,7 +290,7 @@ router.post('/sets/partslist-pdf', requireToken, async (req: AuthedRequest, res)
         }
 
         // Reload image_local from DB for minifigs
-        const figNums = [...new Set(parts.filter(p => p.is_fig || String(p.part_number).startsWith('fig-')).map(p => p.part_number))];
+        const figNums = [...new Set(parts.filter((p: PdfTeil) => p.is_fig || String(p.part_number).startsWith('fig-')).map((p: PdfTeil) => p.part_number))];
         if (figNums.length) {
           const fresh = await db.all(
             `SELECT fig_number, image_local FROM set_minifigs_catalog
@@ -329,7 +349,7 @@ router.post('/sets/partslist-pdf', requireToken, async (req: AuthedRequest, res)
       // nachladen. Fängt Fälle ab, in denen das Teil nicht im Set-Katalog
       // steht, die Farbe abweicht (z. B. Element-Bild) oder der Set-Download
       // einzelne Bilder verpasst hat — sonst fehlten sie im PDF.
-      const stillMissing = parts.filter(p => !p.image_local && p.image_url);
+      const stillMissing = parts.filter((p: PdfTeil) => !p.image_local && p.image_url);
       if (stillMissing.length) {
         console.log(`[PDF job] ${jobId}: ${stillMissing.length} Bilder werden einzeln nachgeladen…`);
         for (const p of stillMissing) {
@@ -341,7 +361,7 @@ router.post('/sets/partslist-pdf', requireToken, async (req: AuthedRequest, res)
         }
       }
 
-      const withImg = parts.filter(p => p.image_local).length;
+      const withImg = parts.filter((p: PdfTeil) => p.image_local).length;
       if (withImg < parts.length) {
         console.log(`[PDF job] ${jobId}: ${withImg}/${parts.length} Bilder vorhanden (${parts.length - withImg} ohne Bild)`);
       }
@@ -389,21 +409,21 @@ router.get('/sets/partslist-pdf/stream/:jobId', requireToken, async (req: Authed
 
   let closed = false;
   let lastSent = '';
-  const send = (data) => {
+  const send = (data: PdfJobStatus) => {
     if (closed) return;
     const payload = JSON.stringify(data);
     if (payload === lastSent) return;   // Duplikate unterdrücken
     lastSent = payload;
     res.write(`data: ${payload}\n\n`);
   };
-  const isDone = (s) => s === 'done' || s === 'error';
+  const isDone = (s: string | undefined) => s === 'done' || s === 'error';
 
   // 1) Sofort aktuellen Stand senden
   send({ status: initial.status, error: initial.error || null, etaSeconds: initial.etaSeconds ?? null, missingImages: initial.missingImages ?? null });
   if (isDone(initial.status)) { closed = true; unregisterSse(); return res.end(); }
 
   // 2) Auf Worker-Events hören
-  const onStatus = (data) => {
+  const onStatus = (data: PdfJobStatus) => {
     send({ status: data.status, error: data.error || null });
     if (isDone(data.status)) cleanup();
   };
@@ -460,7 +480,7 @@ async function buildPdf(sets: any, parts: any[]) {
   const path2 = require('path');
   const chunks: any[] = [];
   const doc = new PDFDocument({ margin: 40, size: 'A4' });
-  doc.on('data', chunk => chunks.push(chunk));
+  doc.on('data', (chunk: Buffer) => chunks.push(chunk));
   const pdfDone = new Promise((resolve, reject) => { doc.on('end', resolve); doc.on('error', reject); });
 
   let _pageNum = 1;
@@ -477,7 +497,7 @@ async function buildPdf(sets: any, parts: any[]) {
   function newPage() { addFooter(); _pageNum++; doc.addPage(); doc.y = 40; }
 
   doc.fontSize(18).font('Helvetica-Bold').text('Teileliste', { align: 'left' });
-  doc.fontSize(10).font('Helvetica').fillColor('#64748b').text(`Sets: ${sets.map(s => s.set_number).join(', ')}`, { align: 'left' });
+  doc.fontSize(10).font('Helvetica').fillColor('#64748b').text(`Sets: ${sets.map((s: { set_number: string }) => s.set_number).join(', ')}`, { align: 'left' });
   doc.moveDown(0.5);
   const totalQty = parts.reduce((s,p) => s + (parseInt(p.quantity)||0), 0);
   doc.fontSize(9).fillColor('#64748b').text(`${parts.length} Teiletypen · ${totalQty.toLocaleString()} Teile total`);
@@ -508,7 +528,7 @@ async function buildPdf(sets: any, parts: any[]) {
   // Bild-Puffer VORAB asynchron (gebündelt) laden, statt synchron pro Zeile im
   // Zeichnen-Loop — so bleibt der Event-Loop frei, während die Bilddateien von
   // der Platte gelesen werden. pdfkit zeichnet danach synchron aus der Map.
-  const _imgFp = (p) => {
+  const _imgFp = (p: PdfTeil) => {
     const imgSrc = p.image_local || p.image_url || null;
     if (!imgSrc) return null;
     let src = imgSrc;

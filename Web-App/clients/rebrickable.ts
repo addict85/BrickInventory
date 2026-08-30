@@ -43,17 +43,28 @@ async function getRbKey() {
   return (await db.get("SELECT value FROM global_settings WHERE key='rebrickable_api_key'"))?.value || '';
 }
 
-function httpsGetRobust(url, headers = {}, timeoutMs = 60000): Promise<{ status: number; body: string; buffer: Buffer }> {
+function httpsGetRobust(url: string, headers: Record<string, string> = {}, timeoutMs = 60000): Promise<{ status: number; body: string; buffer: Buffer }> {
   return new Promise((resolve, reject) => {
     let attempts = 0;
-    const attempt = (u) => {
+    const attempt = (u: string) => {
       attempts++;
       let parsed; try { parsed = new URL(u); } catch (e) { return reject(new Error('Invalid URL: ' + u)); }
       const lib = parsed.protocol === 'https:' ? https : http;
       const req = lib.get({ hostname: parsed.hostname, path: parsed.pathname + parsed.search,
         headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36', ...headers } }, res => {
         req.setTimeout(0);
-        if (res.statusCode === 301 || res.statusCode === 302) { res.resume(); return attempt(res.headers.location); }
+        if (res.statusCode === 301 || res.statusCode === 302) {
+          res.resume();
+          const ziel = res.headers.location;
+          // Eine Umleitung OHNE Location-Kopfzeile ist nicht befolgbar. Vorher
+          // lief `undefined` in attempt(), und das kam als
+          // "Invalid URL: undefined" heraus — richtig abgewiesen, aber mit
+          // einer Meldung, die auf die falsche Ursache zeigt. Der Typ
+          // (string | undefined) hat die Stelle sichtbar gemacht.
+          if (!ziel) return reject(new Error(
+            `Umleitung ${res.statusCode} ohne Location-Kopfzeile: ${u.substring(0, 120)}`));
+          return attempt(ziel);
+        }
         if (res.statusCode === 429) {
           let body429 = '';
           res.on('data', d => body429 += d);
@@ -79,7 +90,7 @@ function httpsGetRobust(url, headers = {}, timeoutMs = 60000): Promise<{ status:
   });
 }
 
-async function rbGet(apiPath, params = {}) {
+async function rbGet(apiPath: string, params: Record<string, string | number> = {}) {
   const key = await getRbKey();
   if (!key) throw new Error('Rebrickable API Key nicht konfiguriert.');
   await rebrickableLimiter.waitForSlot();
@@ -98,14 +109,14 @@ async function rbGet(apiPath, params = {}) {
 }
 
 const themeCache = new Map();
-async function getThemeName(themeId) {
+async function getThemeName(themeId: number | string) {
   if (!themeId) return null;
   if (themeCache.has(themeId)) return themeCache.get(themeId);
   try { const d = await rbGet(`/lego/themes/${themeId}/`); const name = d?.name||null; themeCache.set(themeId, name); return name; }
   catch (_) { return null; }
 }
 
-async function getSetInfo(setNumber) {
+async function getSetInfo(setNumber: string) {
   const n = setNumber.includes('-') ? setNumber : `${setNumber}-1`;
   const cached = await db.get('SELECT * FROM catalog_cache WHERE set_number = $1', [n]);
   if (cached?.name) return cached;
@@ -123,7 +134,7 @@ async function getSetInfo(setNumber) {
   return row;
 }
 
-async function getAllSetPartsFromCsv(setNumber) {
+async function getAllSetPartsFromCsv(setNumber: string) {
   const db = require('../db/database');
   const n = setNumber.includes('-') ? setNumber : setNumber + '-1';
   const bare = n.replace(/-\d+$/, ''); // e.g. "42083" from "42083-1"
@@ -147,7 +158,7 @@ async function getAllSetPartsFromCsv(setNumber) {
   ).catch(()=>[]);
 
   if (!parts.length) return null;
-  return parts.map(p => ({
+  return parts.map((p: any) => ({
     part: {
       part_num:     p.part_num,
       name:         p.name || p.part_num,
@@ -164,7 +175,7 @@ async function getAllSetPartsFromCsv(setNumber) {
   }));
 }
 
-async function getAllSetParts(setNumber) {
+async function getAllSetParts(setNumber: string) {
   // Try local CSV data first (fast, no API quota used)
   const csvParts = await getAllSetPartsFromCsv(setNumber);
   if (csvParts) {
@@ -173,7 +184,7 @@ async function getAllSetParts(setNumber) {
   return getAllSetPartsApi(setNumber);
 }
 
-async function getAllSetPartsApi(setNumber) {
+async function getAllSetPartsApi(setNumber: string) {
   const n = setNumber.includes('-') ? setNumber : `${setNumber}-1`;
   const cached = await db.get('SELECT data FROM subsets_cache WHERE set_number = $1', [n]);
   if (cached) { try { return JSON.parse(cached.data); } catch (_) {} }
@@ -213,24 +224,34 @@ async function getAllSetPartsApi(setNumber) {
   return allParts;
 }
 
-async function scrapeInstructions(setNumber) {
+async function scrapeInstructions(setNumber: string) {
   const n = setNumber.includes('-') ? setNumber : `${setNumber}-1`;
   try {
     const { status, body } = await httpsGetRobust(`https://rebrickable.com/sets/${n}/`, { 'User-Agent': 'Mozilla/5.0', 'Accept': 'text/html' }, 8000);
     if (status !== 200) return [];
     const found: any[] = [];
     for (const re of [/href="(https?:\/\/[^"]*lego\.com[^"]*\.pdf[^"]*)"/gi, /href="(https?:\/\/cdn\.rebrickable\.com\/media\/instructions[^"]+\.pdf[^"]*)"/gi, /href="(https?:\/\/assets\.lego\.com[^"]*\.pdf[^"]*)"/gi]) {
-      let m; while ((m = re.exec(body)) !== null) { if (!found.find(f => f.url === m[1])) found.push({ url: m[1], description: `Anleitung ${n}` }); }
+      // Der Typ muss hier stehen: Ohne ihn ist `let m` implizit any und der
+      // Zugriff m[1] unten ungeprueft (TS7034/TS7005).
+      let m: RegExpExecArray | null;
+      while ((m = re.exec(body)) !== null) {
+        // Der Treffer wird in eine Konstante gezogen: Innerhalb des
+        // find()-Rueckrufs kann der Uebersetzer `m` nicht mehr als
+        // nicht-null fuehren — ein Rueckruf koennte grundsaetzlich spaeter
+        // laufen, wenn m schon weitergerueckt ist.
+        const treffer = m[1];
+        if (!found.find(f => f.url === treffer)) found.push({ url: treffer, description: `Anleitung ${n}` });
+      }
     }
     return found;
   } catch (_) { return []; }
 }
 
-async function downloadFile(url, destPath) {
+async function downloadFile(url: string, destPath: string) {
   if (fs.existsSync(destPath)) return true;
   fs.mkdirSync(path.dirname(destPath), { recursive: true });
   return new Promise(resolve => {
-    const attempt = (u, redirects = 0) => {
+    const attempt = (u: string, redirects = 0) => {
       if (redirects > 5) return resolve(false);
       let parsed; try { parsed = new URL(u); } catch (_) { return resolve(false); }
       const lib = parsed.protocol === 'https:' ? https : http;
@@ -263,11 +284,11 @@ async function downloadFile(url, destPath) {
   });
 }
 
-function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
+function sleep(ms: number) { return new Promise(r => setTimeout(r, ms)); }
 
 
 // ── Minifigs in a set ─────────────────────────────────────────────────────────
-async function getSetMinifigs(setNumber) {
+async function getSetMinifigs(setNumber: string) {
   const n = setNumber.includes('-') ? setNumber : `${setNumber}-1`;
   try {
     const key = await getRbKey();
@@ -281,7 +302,8 @@ async function getSetMinifigs(setNumber) {
     if (status !== 200) return [];
     const data = JSON.parse(body);
     if (!data?.results) return [];
-    return data.results.map(m => ({
+    return data.results.map((m: { id: number; set_num?: string; quantity?: number;
+                                 set_name?: string; set_img_url?: string | null }) => ({
       fig_number: m.set_num,
       fig_name:   m.set_name,
       quantity:   m.quantity || 1,
@@ -294,7 +316,7 @@ async function getSetMinifigs(setNumber) {
 }
 
 // ── Single minifig lookup ─────────────────────────────────────────────────────
-async function getMinifigInfo(figNumber) {
+async function getMinifigInfo(figNumber: string) {
   try {
     const data = await rbGet(`/lego/minifigs/${figNumber}/`);
     if (!data) return null;
@@ -319,7 +341,8 @@ async function getBrickColors() {
     );
     if (status !== 200) return [];
     const data = JSON.parse(body);
-    _colorsCache = (data.results || []).map(c => ({
+    _colorsCache = (data.results || []).map((c: { id: number; name?: string;
+                                                 rgb?: string | null }) => ({
       id:   c.id,
       name: c.name,
       hex:  c.rgb || null,
@@ -332,7 +355,7 @@ async function getBrickColors() {
 // its constituent parts when no direct BrickLink minifig number is known) ────
 // Global, shared cache (analog subsets_cache for sets) since this data rarely
 // changes and Rebrickable's API is rate-limited.
-async function getMinifigParts(figNumber) {
+async function getMinifigParts(figNumber: string) {
   const cached = await db.get('SELECT data FROM minifig_parts_cache WHERE fig_number = $1', [figNumber]).catch(() => null);
   if (cached) { try { return JSON.parse(cached.data); } catch (_) {} }
 
@@ -350,12 +373,12 @@ async function getMinifigParts(figNumber) {
     );
     if (status !== 200) return [];
     const data = JSON.parse(body);
-    const parts = (data.results || []).map(r => ({
+    const parts = (data.results || []).map((r: RbSetTeil) => ({
       part_num:  r.part?.part_num || null,
       color_id:  r.color?.id ?? 0,
       quantity:  r.quantity || 1,
       bl_part_num: r.part?.external_ids?.BrickLink?.[0] || null,
-    })).filter(p => p.part_num);
+    })).filter((p: { part_num?: string | null }) => p.part_num);
 
     await db.run(
       'INSERT INTO minifig_parts_cache (fig_number, data, fetched_at) VALUES ($1,$2,NOW()) ON CONFLICT (fig_number) DO UPDATE SET data=$2, fetched_at=NOW()',
