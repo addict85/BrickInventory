@@ -8,6 +8,7 @@
  *   das der Primary hier alle 3s pollt und dann alles neu plant. Zusätzlich ruft
  *   die API rescheduleAll() direkt auf (falls die Anfrage auf dem Primary landet).
  */
+import { meldeUndWeiter } from '../utils/httpError';
 const db = require('../db/database');
 
 // Metadaten der täglichen Jobs. monitorKey = Schlüssel der Job-Karte im Monitoring
@@ -66,7 +67,7 @@ function register(name: string, fn: () => any) {
 // Alle täglichen Jobs neu planen (nach Config-Änderung) + Preis-Job (Intervall).
 async function rescheduleAll() {
   for (const name of Object.keys(_registry)) await _scheduleOne(name);
-  try { require('./priceJob').reschedule(); } catch (_) {}
+  try { require('./priceJob').reschedule(); } catch (e) { meldeUndWeiter('zeitplan:preis-job-neu-planen', e); }
 }
 
 // Poll für Reschedule-Signal (Config-Änderung kann auf beliebigem Worker passieren).

@@ -3,7 +3,7 @@ import express from 'express';
 const router  = express.Router();
 import multer from 'multer';
 import * as db from '../db/database';
-import { handleRouteError, logAndContinue } from '../utils/httpError';
+import { handleRouteError, logAndContinue, meldeUndWeiter } from '../utils/httpError';
 import { requireLogin, requireAdmin } from './auth';
 
 import { setUserSetting, globalDefaultCondition } from '../utils/settings';
@@ -329,7 +329,7 @@ router.post('/import', importUpload.single('file'), async (req: LoggedInRequest,
       // Weckt die Scheduler sofort; ohne Signal bliebe der Eintrag bis zum
       // nächsten Verbindungsaufbau liegen.
       await require('../utils/pgNotify').notify('job_reschedule_trigger');
-      try { await require('../jobs/dailyScheduler').rescheduleAll(); } catch (_) {}
+      try { await require('../jobs/dailyScheduler').rescheduleAll(); } catch (e) { meldeUndWeiter('einstellungen:zeitplan-neu-planen', e); }
     }
     res.json({ success: true, imported, note: req.session.isAdmin ? 'Globale + Benutzer-Einstellungen importiert' : 'Nur Benutzer-Einstellungen importiert' });
   } catch (e) { handleRouteError(res, e); }

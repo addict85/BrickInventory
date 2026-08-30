@@ -6,6 +6,7 @@ import { getAllSetParts, getRbKey, httpsGetRobust, downloadFile, sleep } from '.
 import { logAndContinue } from './httpError';
 import { generateThumb } from '../routes/thumbs';
 import { consumeRebrickableDaily } from './rateLimiter';
+import { meldeUndWeiter } from '../utils/httpError';
 
 /**
  * Teile eines Sets aus dem Katalog übernehmen.
@@ -113,7 +114,7 @@ async function importPartsForSet(setNumber: string, userId: number,
           localPath = `/images/parts/${imgFile}`;
           const fullPath = path.join(imgDir, imgFile);
           if (!fs.existsSync(fullPath)) imageDownloads.push({ url: imageUrl, dest: fullPath });
-        } catch (_) {}
+        } catch (e) { meldeUndWeiter('teile-import:bildpfad', e); }
       }
       const blNum = p.external_ids?.BrickLink?.[0] || null; // null = not yet known
       rows.push([userId, n, partNo, blNum, p.name||'', colorId, colorName, colorHex, catName, part.quantity||1, imageUrl, localPath, part.is_spare?1:0]);

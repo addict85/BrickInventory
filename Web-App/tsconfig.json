@@ -54,10 +54,11 @@
   //     kein Typ — die einzige Stelle dieser Bauart, die eine
   //     LAUFZEIT-Pruefung braucht.
   //
-  // Was der Schalter immer noch NICHT ist: `strict`. Der bringt zusaetzlich
-  // strictFunctionTypes, strictBindCallApply, useUnknownInCatchVariables und
-  // noImplicitThis mit; die sind ungemessen und bleiben aus, bis jemand sie
-  // genauso staffelt.
+  // Was `strict` daraus noch nicht macht: strictFunctionTypes (102),
+  // useUnknownInCatchVariables (108) und, ausserhalb von strict,
+  // noUncheckedIndexedAccess (86), noUnusedLocals (139), noUnusedParameters
+  // (33). Alle gemessen, alle offen — sie brauchen dieselbe gestaffelte
+  // Behandlung wie noImplicitAny und bleiben bis dahin aus.
   //
   // Stand messen:  npx tsc --noEmit
   "compilerOptions": {
@@ -86,6 +87,26 @@
     // übersieht und die der Übersetzer geschenkt findet.
     "noFallthroughCasesInSwitch": true,
     "noImplicitOverride": true,
+    // ── Nach derselben Regel: gemessen, dann eingeschaltet ────────────────────
+    // Die drei ersten meldeten 0, die zwei letzten 3 bzw. 2 Stellen. Gemessen
+    // wurde einzeln (npx tsc --noEmit --<schalter>), nicht geschätzt.
+    //
+    //   strictBindCallApply          0   .call/.apply/.bind mit falschen Argumenten
+    //   alwaysStrict                 0   'use strict' in jeder erzeugten Datei
+    //   strictPropertyInitialization 0   Klassenfelder ohne Zuweisung
+    //   noImplicitThis               3   zwei setTimeout-Rückrufe (dort ist `this`
+    //                                    die ClientRequest) und der Middleware-
+    //                                    Wrapper in server.ts
+    //   exactOptionalPropertyTypes   2   trennt „Feld fehlt" von „Feld ist
+    //                                    undefined". Genau diese Unterscheidung
+    //                                    trifft jobs/imageQueue.ts bereits von
+    //                                    Hand: „HTTP 404" gegen „kein Statuscode
+    //                                    — vorübergehend?"
+    "strictBindCallApply": true,
+    "alwaysStrict": true,
+    "strictPropertyInitialization": true,
+    "noImplicitThis": true,
+    "exactOptionalPropertyTypes": true,
     "noImplicitAny": true
   },
   "include": [

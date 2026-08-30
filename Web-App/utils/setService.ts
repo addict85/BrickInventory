@@ -1,5 +1,5 @@
 import * as db from '../db/database';
-import { logAndContinue } from './httpError';
+import { logAndContinue, meldeUndWeiter } from './httpError';
 import { scopeIds, writableIds } from './household';
 import { recordAcquisitionForDay } from './acquisitions';
 import { withInventoryLock } from './txLock';
@@ -312,7 +312,7 @@ async function addSet(setNumber: string, quantity: number, userId: number,
   if (!global._csvImportRunning) {
     try {
       bsInfo = await brickset.getSetInfo(normalized);
-    } catch(_) {}
+    } catch (e) { meldeUndWeiter('set-anlegen:brickset-info', e); }
     if (bsInfo) {
       if (!name) name=bsInfo.name; if (!year) year=bsInfo.year;
       if (!theme) theme=bsInfo.theme; if (!pieces) pieces=bsInfo.pieces;
@@ -327,7 +327,7 @@ async function addSet(setNumber: string, quantity: number, userId: number,
   try {
     const imgTimeout = new Promise((_,rej)=>setTimeout(()=>rej(new Error('Image timeout')),15000));
     localImage = await Promise.race([downloadSetImage(imageUrl, normalized), imgTimeout]);
-  } catch(e) {  }
+  } catch (e) { meldeUndWeiter('set-anlegen:bild-laden', e); }
   // Generate thumbnail in background
   if(localImage){
     setImmediate(()=>generateThumb(localImage).catch(()=>{}));

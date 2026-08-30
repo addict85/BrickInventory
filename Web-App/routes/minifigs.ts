@@ -41,7 +41,7 @@ const router  = express.Router();
 import multer from 'multer';
 import { parse } from 'csv-parse/sync';
 import * as db from '../db/database';
-import { handleRouteError, logAndContinue } from '../utils/httpError';
+import { handleRouteError, logAndContinue, meldeUndWeiter } from '../utils/httpError';
 import { recordAcquisitionForDay, findSameDayAcquisition } from '../utils/acquisitions';
 import { acquisitionMoveSource, resolveWriteTarget, parseScopeMode } from '../utils/household';
 import { getSetMinifigs, getMinifigInfo, getRbKey } from '../clients/rebrickable';
@@ -257,7 +257,7 @@ async function getCurrentFigMarketPrice(figNumber: string, userId: number, blFig
           "SELECT MAX(CASE WHEN condition='U' THEN 1 ELSE 0 END) AS any_used, COUNT(*) AS cnt FROM minifig_acquisitions WHERE user_id=$1 AND fig_number=$2",
           [userId, figNumber]);
         if (row && parseInt(row.cnt) > 0) effCond = parseInt(row.any_used) > 0 ? 'U' : 'N';
-      } catch (_) {}
+      } catch (e) { meldeUndWeiter('minifiguren:zustand-ermitteln', e); }
       if (!effCond) { try { effCond = await userDefaultCondition(userId); } catch (_) { effCond = DEFAULT_PRICE_CONDITION; } }
     }
     // BrickLink zuerst — und zwar auch OHNE separate bl_fig_number.

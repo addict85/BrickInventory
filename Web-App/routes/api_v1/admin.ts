@@ -6,7 +6,7 @@
 import express from 'express';
 import { APP_ROOT, DATA_DIR, PUBLIC_DIR, resolveWebPath } from '../../utils/appPaths';
 import * as db from '../../db/database';
-import { handleRouteError } from '../../utils/httpError';
+import { handleRouteError, meldeUndWeiter } from '../../utils/httpError';
 import { requireApiAdmin } from './middleware';
 import { strictBool } from '../../utils/validate';
 import { PDF_JOB_DIR } from './pdf';
@@ -576,7 +576,7 @@ router.delete('/admin/brickset-queue/:setNumber', requireApiAdmin, async (req: A
   setImmediate(async () => {
     try {
       await scrapeInstructionsFromFallback(sn).catch(() => {});
-    } catch(_) {}
+    } catch (e) { meldeUndWeiter('admin:anleitungen-nachschlagen', e); }
   });
   res.json({ success: true, set_number: sn });
 });
@@ -769,9 +769,9 @@ router.get('/admin/jobs', requireApiAdmin, async (req: AuthedRequest, res) => {
         const j = JSON.parse(_fs2.readFileSync(_path2.join(PDF_JOB_DIR, f), 'utf8'));
         if (j.status === 'running') pdfRunning++;
         else if (j.status === 'done') pdfDone++;
-      } catch(_) {}
+      } catch (e) { meldeUndWeiter('admin:pdf-auftrag-lesen', e); }
     }
-  } catch(_) {}
+  } catch (e) { meldeUndWeiter('admin:auftragsordner-lesen', e); }
   jobs.pdfJobs = {
     label:   '📄 PDF-Jobs',
     status:  pdfRunning > 0 ? 'running' : pdfDone > 0 ? 'idle' : 'done',
@@ -837,7 +837,7 @@ router.post('/admin/job-schedule', requireApiAdmin, async (req: AuthedRequest, r
       `INSERT INTO global_settings (key, value) VALUES ('job_reschedule_trigger', NOW()::TEXT) ON CONFLICT (key) DO UPDATE SET value = NOW()::TEXT`
     ).catch(() => {});
     await require('../../utils/pgNotify').notify('job_reschedule_trigger');
-    try { await require('../../jobs/dailyScheduler').rescheduleAll(); } catch (_) {}
+    try { await require('../../jobs/dailyScheduler').rescheduleAll(); } catch (e) { meldeUndWeiter('admin:zeitplan-neu-planen', e); }
     res.json({ success: true });
   } catch (e) { handleRouteError(res, e); }
 });

@@ -40,6 +40,7 @@
  */
 const db      = require('../db/database');
 import { downloadSetInstructions, letzterAbrufWarExtern } from '../utils/instructions';
+import { meldeUndWeiter } from '../utils/httpError';
 const path     = require('path');
 const monitor  = require('../utils/jobMonitor');
 const { logAndContinue } = require('../utils/httpError');
@@ -330,7 +331,7 @@ function start() {
         console.log('[instr-queue] Trigger received — starting queue processing');
         if (!_running) processNext().catch(() => {});
       }
-    } catch(_) {}
+    } catch (e) { meldeUndWeiter('instr-queue:ausloeser', e); }
   }, 3000);
 }
 

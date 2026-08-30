@@ -4,6 +4,7 @@
  */
 
 import * as db from '../db/database';
+import { meldeUndWeiter } from './httpError';
 
 const JOB_DEFAULTS: Record<string, any> = {
   csvImport:     { label: 'CSV-Import (Rebrickable)', status: 'idle', progress: 0, total: 6 },
@@ -80,7 +81,7 @@ async function all() {
   const result: Record<string, any> = { ...JOB_DEFAULTS };
   for (const row of rows) {
     const key = row.key.replace('job_monitor_', '');
-    try { result[key] = { ...(JOB_DEFAULTS[key] || {}), ...JSON.parse(row.value) }; } catch(_) {}
+    try { result[key] = { ...(JOB_DEFAULTS[key] || {}), ...JSON.parse(row.value) }; } catch (e) { meldeUndWeiter('job-monitor:beschaedigter-eintrag', e); }
   }
   return result;
 }

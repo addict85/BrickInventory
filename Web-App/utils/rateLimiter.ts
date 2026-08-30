@@ -86,7 +86,7 @@ class DailyLimiter {
           [`api_calls_${this.dbKey}`, String(this.count)]).catch(()=>{});
         db.run('INSERT INTO global_settings (key,value) VALUES ($1,$2) ON CONFLICT (key) DO UPDATE SET value=$2',
           [`api_calls_date_${this.dbKey}`, new Date().toISOString().slice(0,10)]).catch(()=>{});
-      } catch(_) {}
+      } catch (e) { meldeUndWeiter('kontingent:zaehler-schreiben', e); }
     }
     return true;
   }
@@ -99,6 +99,8 @@ class DailyLimiter {
 }
 
 // Primary limiter: CSV import, set info, image downloads (foreground)
+import { meldeUndWeiter } from './httpError';
+
 const rebrickableLimiter = new RateLimiter(1, 1500);
 // Secondary limiter: background enrichment jobs (parts catalog, BL IDs)
 const rebrickableBackgroundLimiter = new RateLimiter(1, 1500);
@@ -232,7 +234,7 @@ function parseThrottleWait(body: string) {
     const data = typeof body === 'string' ? JSON.parse(body) : body;
     const match = data?.detail?.match(/(\d+)\s*second/);
     if (match) return parseInt(match[1]) * 1000 + 500; // add 500ms buffer
-  } catch(_) {}
+  } catch (e) { meldeUndWeiter('kontingent:retry-after-lesen', e); }
   return 5000; // default 5s
 }
 

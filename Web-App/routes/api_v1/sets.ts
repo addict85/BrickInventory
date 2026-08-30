@@ -4,7 +4,7 @@
  */
 import express from 'express';
 import * as db from '../../db/database';
-import { handleRouteError } from '../../utils/httpError';
+import { handleRouteError, meldeUndWeiter } from '../../utils/httpError';
 import { requireToken } from './middleware';
 import { resolveImageLocal, proxyImageUrl } from '../../utils/images';
 import { getSetting } from '../../utils/settings';
@@ -93,7 +93,7 @@ router.get('/sets/barcode/:barcode', requireToken, async (req: AuthedRequest, re
       https.get(url, opts, r => {
         let b = ''; r.on('data', d => b += d);
         r.on('end', () => { try { resolve(JSON.parse(b)); } catch(_) { resolve(null); } });
-      }).on('error', () => resolve(null)).setTimeout(8000, function(){ this.destroy(); resolve(null); });
+      }).on('error', () => resolve(null)).setTimeout(8000, function (this: import('http').ClientRequest) { this.destroy(); resolve(null); });
     });
   };
 
@@ -220,7 +220,7 @@ router.get('/sets/barcode/:barcode', requireToken, async (req: AuthedRequest, re
               } catch(_){resolve(null);}
             });
           }
-        ).on('error',()=>resolve(null)).setTimeout(6000,function(){this.destroy();resolve(null);});
+        ).on('error',()=>resolve(null)).setTimeout(6000, function (this: import('http').ClientRequest) { this.destroy(); resolve(null); });
       });
       if (upc) return res.json(await enrichResult(upc.set_number, upc.name, 'upcitemdb'));
     }
@@ -446,7 +446,7 @@ router.get('/sets/:setNumber/minifigs-list', requireToken, async (req: AuthedReq
           try {
             const info = await getMinifigInfo(f.fig_number);
             if (info?.image_url) imageUrl = info.image_url;
-          } catch(_) {}
+          } catch (e) { meldeUndWeiter('sets:minifigur-info', e); }
         }
         await db.run(
           `INSERT INTO set_minifigs_catalog (set_number, fig_number, fig_name, quantity, image_url)

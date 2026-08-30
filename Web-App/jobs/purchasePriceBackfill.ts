@@ -1,6 +1,7 @@
 import { getCurrentMarketPrice } from '../utils/marketPrice';
 import { getCurrentFigMarketPrice } from '../routes/minifigs';
 import { getCurrentPartMarketPrice, lookupPart } from '../routes/parts';
+import { meldeUndWeiter } from '../utils/httpError';
 'use strict';
 
 // One-time (idempotent) background migration: fills purchase_price for
@@ -112,7 +113,7 @@ async function backfillMinifigs() {
         await db.run('UPDATE minifigs SET purchase_price=$1 WHERE id=$2', [price, row.id]);
         done++;
       }
-    } catch (_) {}
+    } catch (e) { meldeUndWeiter('kaufpreis-nachtrag:minifigur', e); }
     await sleep(1500);
   }
   log(`Minifiguren migriert: ${done}/${rows.length}`);
@@ -132,7 +133,7 @@ async function backfillParts() {
       // dauerhaft leer ("Marktpreis"-Platzhalter) und den Job ewig neu versuchen.
       await db.run('UPDATE parts SET purchase_price=$1 WHERE id=$2', [price || 0, row.id]);
       done++;
-    } catch (_) {}
+    } catch (e) { meldeUndWeiter('kaufpreis-nachtrag:teil', e); }
     await sleep(1500);
   }
   log(`Teile migriert: ${done}/${rows.length}`);
@@ -155,7 +156,7 @@ async function backfillPartImages() {
         await db.run('UPDATE parts SET image_url=$1 WHERE id=$2', [info.image_url, row.id]);
         done++;
       }
-    } catch (_) {}
+    } catch (e) { meldeUndWeiter('kaufpreis-nachtrag:teilebild', e); }
     await sleep(1500);
   }
   log(`Teile-Bilder aktualisiert: ${done}/${rows.length}`);

@@ -9,6 +9,7 @@
  */
 const db    = require('../db/database');
 import { cdnImageLimiter } from '../utils/rateLimiter';
+import { meldeUndWeiter } from '../utils/httpError';
 const https = require('https');
 const fs    = require('fs');
 const path  = require('path');
@@ -111,7 +112,7 @@ async function downloadImage(
       const out = fs.createWriteStream(dest);
       r.pipe(out);
       out.on('finish', async () => {
-        try { await require('../routes/thumbs').generateThumb(rel).catch(() => {}); } catch(_) {}
+        try { await require('../routes/thumbs').generateThumb(rel).catch(() => {}); } catch (e) { meldeUndWeiter('teile-enrich:vorschau', e); }
         resolve(rel);
       });
       out.on('error', () => resolve(null));

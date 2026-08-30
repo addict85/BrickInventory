@@ -3,7 +3,7 @@ import express from 'express';
 const router  = express.Router();
 import bcrypt from 'bcryptjs';
 import * as db from '../db/database';
-import { handleRouteError, logAndContinue } from '../utils/httpError';
+import { handleRouteError, logAndContinue, meldeUndWeiter } from '../utils/httpError';
 import { hashToken, verifiziereEmailToken, assertLoginAllowed, establishSession, revokeAllTokens, revokeAllSessions, deleteToken, BCRYPT_ROUNDS, USERNAME_RE, EMAIL_RE, isValidLoginIdentifier } from '../utils/auth';
 import { checkLoginAllowed, recordLoginFailure, recordLoginSuccess, ipThrottle } from '../utils/loginLimiter';
 import crypto from 'crypto';
@@ -204,7 +204,7 @@ router.put('/profile', async (req, res) => {
       let emailSent = false;
       try {
         emailSent = (await sendVerificationMail(email, first_name || username || user.username, token, getBaseUrl(req))).success;
-      } catch(_) {}
+      } catch (e) { meldeUndWeiter('anmeldung:bestaetigungsmail', e); }
       return res.json({ success: true, emailChanged: true, emailSent });
     }
 

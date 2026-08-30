@@ -96,7 +96,10 @@ async function downloadSetImage(url: string, setNumber: string, info?: { status?
             // Bot-Erkennung" verlangen völlig verschiedene Massnahmen —
             // vorher waren beide dasselbe schweigende null.
             console.error(`[set-img] ${setNumber}: HTTP ${res.statusCode} vom Bildserver: ${url}`);
-            if (info) info.status = res.statusCode;
+            // Nur zuweisen, wenn es wirklich einen Code gibt: jobs/imageQueue.ts
+            // unterscheidet „HTTP 404" von „kein Statuscode — voruebergehend?"
+            // (Zeile 573). Ein zugewiesenes undefined machte beide gleich.
+            if (info && res.statusCode != null) info.status = res.statusCode;
             res.resume(); return resolve(null);
           }
           const chunks: any[] = []; let gelesen = 0;

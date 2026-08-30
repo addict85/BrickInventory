@@ -4,6 +4,7 @@ import * as db from '../db/database';
 import { INSTRUCTIONS_DIR } from './appPaths';
 import { downloadFile, scrapeInstructions, sleep, httpsGetRobust } from '../clients/rebrickable';
 import * as brickset from '../clients/brickset';
+import { meldeUndWeiter } from './httpError';
 
 /**
  * Bauanleitungen beschaffen: Rebrickable → Brickset → BrickLink-Designer →
@@ -147,7 +148,7 @@ async function downloadSetInstructions(setNumber: string,
   let instrList: any[] = [];
   let bricksetSucceededEmpty = false;
   _letzterAbrufWarExtern = true;   // ab hier wird wirklich gefragt
-  try { instrList = await scrapeInstructions(n); } catch (e) {}
+  try { instrList = await scrapeInstructions(n); } catch (e) { meldeUndWeiter('anleitungen:auslesen', e); }
   if (!instrList.length) {
     const bsResult = await brickset.getInstructions(n).catch(() => ({ instructions: [], usesFallback: true }));
     instrList = bsResult.instructions || [];
@@ -212,7 +213,7 @@ async function downloadSetInstructions(setNumber: string,
       const pdfName = `${safeBase}_brickinstructions.pdf`;
       const pdfDest = path.join(instrDir, pdfName);
       const relPath = `/data/instructions/${pdfName}`;
-      try { await db.run('INSERT INTO shared_instructions (set_number,url,description,local_path) VALUES ($1,$2,$3,$4) ON CONFLICT (set_number,url) DO NOTHING', [n, instr.url, instr.description, null]); saved++; } catch (_) {}
+      try { await db.run('INSERT INTO shared_instructions (set_number,url,description,local_path) VALUES ($1,$2,$3,$4) ON CONFLICT (set_number,url) DO NOTHING', [n, instr.url, instr.description, null]); saved++; } catch (e) { meldeUndWeiter('anleitungen:pdf-eintragen', e); }
       setImmediate(() => { collectAndBuildPDF(instr.brickinstructions_base, instr.brickinstructions_hdrs, instr.brickinstructions_first, pdfDest, relPath, n).catch(()=>{}); });
       continue;
     }
@@ -220,7 +221,7 @@ async function downloadSetInstructions(setNumber: string,
     const dest = path.join(instrDir, safeName);
     const relPath = `/data/instructions/${safeName}`;
     const ok = await downloadFile(instr.url, dest);
-    try { await db.run('INSERT INTO shared_instructions (set_number,url,description,local_path) VALUES ($1,$2,$3,$4) ON CONFLICT (set_number,url) DO NOTHING', [n, instr.url, instr.description||`Anleitung ${n}`, ok?relPath:null]); saved++; } catch (_) {}
+    try { await db.run('INSERT INTO shared_instructions (set_number,url,description,local_path) VALUES ($1,$2,$3,$4) ON CONFLICT (set_number,url) DO NOTHING', [n, instr.url, instr.description||`Anleitung ${n}`, ok?relPath:null]); saved++; } catch (e) { meldeUndWeiter('anleitungen:datei-eintragen', e); }
     if (i < instrList.length - 1) await sleep(200);
   }
   

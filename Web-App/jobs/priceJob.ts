@@ -2,6 +2,7 @@
 
 const db      = require('../db/database');
 import { checkAndIncrementRateLimit } from '../utils/financeCalc';
+import { meldeUndWeiter } from '../utils/httpError';
 const monitor = require('../utils/jobMonitor');
 const { getPriceGuide } = require('../clients/bricklink');
 const { DEFAULT_PRICE_CONDITION } = require('../utils/financeCalc');
@@ -151,7 +152,7 @@ async function fetchAndCachePrice(setNumber: string, condition: string, guideTyp
             [setNumber, fallback, currency, parseFloat(g2.min_price||0), avg2, parseFloat(g2.max_price||0), q2, parseInt(g2.total_quantity||0)]);
           return 'updated';
         }
-      } catch (_) {}
+      } catch (e) { meldeUndWeiter('preis-job:rueckfall-zustand', e); }
     }
   }
 

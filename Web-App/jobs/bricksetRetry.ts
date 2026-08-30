@@ -2,6 +2,7 @@ import * as db from '../db/database';
 import { getSetInfo } from '../clients/brickset';
 import { downloadSetInstructions } from '../utils/instructions';
 import { getLimitForApi, getRateLimitStatus } from '../utils/financeCalc';
+import { meldeUndWeiter } from '../utils/httpError';
 
 /**
  * Die Brickset-Wiederholungsschlange.
@@ -72,7 +73,7 @@ async function _processRetryQueue(force = false) {
         stopped = true;
         break;
       }
-    } catch(_) {}
+    } catch (e) { meldeUndWeiter('brickset-retry:kontingent', e); }
 
     try {
       // Retry set info
@@ -97,7 +98,7 @@ async function _processRetryQueue(force = false) {
         console.log(`[brickset] Retry OK: ${set_number}`);
         processed++;
       }
-    } catch(_) {}
+    } catch (e) { meldeUndWeiter('brickset-retry:eintrag', e); }
 
     // Retry instructions if none exist yet
     try {
@@ -110,7 +111,7 @@ async function _processRetryQueue(force = false) {
         // Umzug nach utils/instructions.ts weg (Nachtrag 127).
         await downloadSetInstructions(set_number, null).catch(() => {});
       }
-    } catch(_) {}
+    } catch (e) { meldeUndWeiter('brickset-retry:anleitungen', e); }
 
     await new Promise(r => setTimeout(r, 1000));
   }

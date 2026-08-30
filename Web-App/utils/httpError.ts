@@ -50,7 +50,26 @@ function logAndContinue(kontext: string) {
   };
 }
 
-export { handleRouteError, logAndContinue };
+/**
+ * Dasselbe fuer try/catch statt fuer .catch().
+ *
+ * logAndContinue() gibt einen RUECKRUF zurueck und passt damit an ein
+ * Versprechen; in einem catch-Block laese sich das als
+ * `logAndContinue('x')(e)`. Diese Form nimmt den Fehler direkt und benutzt
+ * darunter denselben Helfer — es gibt also weiterhin genau EIN Format fuer
+ * diese Meldungen, und eine Suche nach `[weiter-trotz-fehler]` findet beide.
+ *
+ * Gedacht fuer Stellen, an denen der Ablauf bewusst weitergeht, der Fehlschlag
+ * aber jemanden interessiert: ein uebersprungener Datensatz in einem
+ * Hintergrundjob, eine nicht verschickte Mail, ein nicht neu geplanter Zeitplan.
+ * NICHT fuer Aufraeumarbeiten — ein `c.end()` auf einer schon toten Verbindung
+ * darf schweigen.
+ */
+function meldeUndWeiter(kontext: string, e: unknown) {
+  logAndContinue(kontext)(e);
+}
+
+export { handleRouteError, logAndContinue, meldeUndWeiter };
 
 /**
  * Eine Datei an die Antwort streamen — mit Fehlerbehandlung.

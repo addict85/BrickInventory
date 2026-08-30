@@ -44,7 +44,7 @@ const router  = express.Router();
 import path from 'path';
 import fs from 'fs';
 import * as db from '../db/database';
-import { handleRouteError, logAndContinue } from '../utils/httpError';
+import { handleRouteError, logAndContinue, meldeUndWeiter } from '../utils/httpError';
 import { recordAcquisitionForDay, findSameDayAcquisition } from '../utils/acquisitions';
 import { acquisitionMoveSource, resolveWriteTarget, parseScopeMode, writableIds } from '../utils/household';
 import { getAllSetParts, downloadFile, sleep } from '../clients/rebrickable';
@@ -217,7 +217,7 @@ async function resolvePartCondition(userId: number, partNumber: string, colorId:
       // number zurueck). parseInt(5) ging nur ueber den Umweg ueber "5".
       [userId, partNumber, colorId || 0]);
     if (row && parseInt(row.cnt) > 0) return parseInt(row.any_used) > 0 ? 'U' : 'N';
-  } catch (_) {}
+  } catch (e) { meldeUndWeiter('teile:zustand-ermitteln', e); }
   try { return await userDefaultCondition(userId); }
   catch (_) { return DEFAULT_PRICE_CONDITION; }
 }

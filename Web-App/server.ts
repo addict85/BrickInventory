@@ -103,6 +103,7 @@ process.on('uncaughtException', (err) => {
 global.startupStatus = { ready: false, step: 'Datenbank wird initialisiert...', progress: 0, total: 6 };
 
 // ── Cluster: fork one worker per CPU so multiple requests run in parallel ─────
+import { meldeUndWeiter } from './utils/httpError';
 import cluster from 'cluster';
 import os from 'os';
 import { downloadSetImage } from './utils/setImages';
@@ -156,7 +157,9 @@ const express = require('express') as typeof import('express');
 const _Router = express.Router;
 function _wrapAsync(fn: any) {
   if (typeof fn !== 'function' || fn.length >= 4) return fn;   // Fehler-Middleware unangetastet
-  const wrapped = function (req: any, res: any, next: any) {
+  // `this: unknown` benennt nur, was Express ohnehin uebergibt — der Wrapper
+  // reicht es unveraendert an fn.call() weiter und liest es selbst nie.
+  const wrapped = function (this: unknown, req: any, res: any, next: any) {
     let out;
     try { out = fn.call(this, req, res, next); }
     catch (e) { return next(e); }                              // synchroner Wurf
@@ -601,7 +604,7 @@ app.get('/images/*', async (req: WildcardRequest, res: Response) => {
         setImmediate(() => {
           try {
             (require('./routes/thumbs') as typeof import('./routes/thumbs')).generateThumb(webPfadOriginal).catch(() => {});
-          } catch (_) {}
+          } catch (e) { meldeUndWeiter('server:vorschau-erzeugen', e); }
         });
         return res.sendFile(originalPfad, err2 => {
           if (err2 && !res.headersSent) res.status(404).send('Datei nicht gefunden');
@@ -960,7 +963,7 @@ db.initSchemaOnce().then(async () => {
       _csvSyncRunning = true;
       await db.run("DELETE FROM global_settings WHERE key='rb_csv_last_sync'").catch(() => {});
       await csvSync.run().catch(e => console.error('[rb-csv-sync manual]', e.message));
-    } catch(_) {}
+    } catch (e) { meldeUndWeiter('server:csv-abgleich-anstossen', e); }
     finally { _csvSyncRunning = false; }
   });
 

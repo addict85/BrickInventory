@@ -22,7 +22,7 @@
 import express from 'express';
 import { APP_ROOT, DATA_DIR, PUBLIC_DIR, resolveWebPath } from '../../utils/appPaths';
 import * as db from '../../db/database';
-import { handleRouteError, streamFileToResponse } from '../../utils/httpError';
+import { handleRouteError, streamFileToResponse, meldeUndWeiter } from '../../utils/httpError';
 import { requireToken } from './middleware';
 import { registerSse } from '../../utils/sseRegistry';
 import _pdfPath from 'path';
@@ -90,8 +90,16 @@ type PdfTeil = {
   image_local?: string | null;
 };
 
-/** Ein Auftragszustand, wie ihn der Ereignisstrom weiterreicht. */
-type PdfJobStatus = { status?: string; [k: string]: any };
+/**
+ * Ein Auftragszustand, wie ihn der Ereignisstrom weiterreicht.
+ *
+ * `status?: string | undefined` und nicht nur `status?: string`: Der Strom baut
+ * bei onStatus() ausdruecklich `{ status: data.status, … }`, und data.status
+ * KANN undefined sein. Mit exactOptionalPropertyTypes ist das ein Unterschied —
+ * „Feld fehlt" und „Feld ist undefined" sind dann nicht mehr dasselbe, und hier
+ * kommt das zweite vor.
+ */
+type PdfJobStatus = { status?: string | undefined; [k: string]: any };
 
 function neueJobId(): string {
   return `${Date.now()}-${require('crypto').randomBytes(6).toString('hex')}`;
@@ -151,9 +159,9 @@ async function laufendeJobs(userId: number): Promise<number> {
         if (Date.now() - st.mtimeMs > PDF_JOB_TTL) continue;
         const job = JSON.parse(await _pdfFs.readFile(fp, 'utf8'));
         if (job?.status === 'running' && job?.user_id === userId) n++;
-      } catch(_) {}
+      } catch (e) { meldeUndWeiter('pdf:auftrag-lesen', e); }
     }
-  } catch(_) {}
+  } catch (e) { meldeUndWeiter('pdf:auftragsordner-lesen', e); }
   return n;
 }
 
@@ -262,7 +270,7 @@ router.post('/sets/partslist-pdf', requireToken, async (req: AuthedRequest, res)
                   [info.image_url, p.part_number]
                 ).catch(() => {});
               }
-            } catch(_) {}
+            } catch (e) { meldeUndWeiter('pdf:teilebild-merken', e); }
           }
         }
 

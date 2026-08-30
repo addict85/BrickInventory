@@ -6,6 +6,7 @@
  */
 
 import * as db from '../db/database';
+import { meldeUndWeiter } from './httpError';
 
 /** User-Einstellung mit Fallback auf globale Einstellung, dann Default. */
 /**
@@ -76,7 +77,7 @@ async function setUserSetting(userId: number, key: string, value: any) {
   if (key === 'currency' && vorher !== v) {
     console.log(`[settings] Währung für Benutzer ${userId} geändert (${vorher ?? '—'} → ${v}) — Preis-Job wird angestossen`);
     setImmediate(() => {
-      try { require('../jobs/priceJob').triggerNow().catch(() => {}); } catch (_) {}
+      try { require('../jobs/priceJob').triggerNow().catch(() => {}); } catch (e) { meldeUndWeiter('einstellungen:preis-job-anstossen', e); }
     });
   }
 }
