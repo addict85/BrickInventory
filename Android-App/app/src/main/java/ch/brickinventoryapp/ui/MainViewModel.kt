@@ -174,6 +174,16 @@ class MainViewModel @Inject constructor(
     // und eine langsame alte Antwort kann eine neuere überschreiben (Race).
     internal var partsJob: kotlinx.coroutines.Job? = null
 
+    // ── Galerie ──────────────────────────────────────────────────────────────
+    // Dieselbe Mechanik, und sie gehoert aus demselben Grund hierher: Als
+    // `private var` auf Dateiebene in GalleryFeature.kt war sie prozessweit
+    // statt je Instanz. Die Filter-Generation verwirft Antworten eines alten
+    // Filters — eine geteilte Generation liesse zwei Instanzen einander die
+    // Ergebnisse wegwerfen.
+    internal var gallerySearchJob: kotlinx.coroutines.Job? = null
+    internal var galleryListJob: kotlinx.coroutines.Job? = null
+    internal var galleryGeneration = 0
+
     /**
      * Die EINE Stelle, an der ein Fehler einen Satz bekommt (Nachtrag 116).
      *

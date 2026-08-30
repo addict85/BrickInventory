@@ -24,11 +24,20 @@ import org.junit.Test
  * Beim Katalog ist es behoben: Die Funktionen stehen in CatalogViewModel und
  * halten ihre Jobs als Felder.
  *
- * ── Die Galerie ist die benannte Ausnahme ──────────────────────────────────
- * GalleryFeature.kt hat dieselben drei und ist noch nicht umgestellt. Sie
- * steht hier ausdrücklich drin, statt die Prüfung zu verwässern: Solange der
- * Eintrag da ist, ist der Rest gesichert — und der Eintrag zeigt, was noch
- * offen ist. Fällt er weg, greift die Regel automatisch auch dort.
+ * ── Und die Galerie? ───────────────────────────────────────────────────────
+ * Sie hatte dieselben drei. Ein eigenes GalleryViewModel wäre hier aber die
+ * falsche Antwort gewesen: GalleryFeature schreibt siebzehnmal in AppUiState,
+ * und `sets` wird in SECHZEHN Dateien gelesen — Barcode, SetDetail, Katalog,
+ * Teileliste. Das ist App-Zustand, kein Bildschirmzustand; herausgezogen wäre
+ * es dasselbe Gott-Objekt unter neuem Namen, mit Verkabelung in sechzehn
+ * Dateien obendrauf.
+ *
+ * Die drei Variablen sind deshalb FELDER des MainViewModel geworden — genau
+ * dort, wo `partsJob` seit jeher steht. Das Projekt kannte die richtige
+ * Antwort also schon; die Galerie folgte nur ihrem eigenen Muster nicht.
+ *
+ * Damit steht keine Ausnahme mehr in der Liste, und die Regel gilt für ui/
+ * vollständig.
  *
  * Gegenprobe (durchgeführt): `private var catalogGeneration = 0` wieder auf
  * Dateiebene gelegt → die Prüfung meldet Datei und Zeile. Ohne die Rückgabe
@@ -36,8 +45,13 @@ import org.junit.Test
  */
 class KeinDateiweiterZustandTest {
 
-    /** Noch nicht umgestellt — siehe KDoc. Kein Freibrief, ein Merkposten. */
-    private val nochOffen = setOf("GalleryFeature.kt")
+    /**
+     * Leer — und das soll so bleiben.
+     *
+     * Der zweite Test unten meldet jeden Eintrag, der nicht mehr gebraucht
+     * wird. Ein Eintrag hier ist ein Merkposten, kein Freibrief.
+     */
+    private val nochOffen = emptySet<String>()
 
     @Test
     fun `keine Feature-Datei haelt veraenderlichen Zustand auf Dateiebene`() {

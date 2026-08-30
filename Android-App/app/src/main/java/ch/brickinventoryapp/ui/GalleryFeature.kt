@@ -4,7 +4,6 @@ import androidx.lifecycle.viewModelScope
 import ch.brickinventoryapp.R
 import ch.brickinventoryapp.data.model.*
 import ch.brickinventoryapp.data.repository.Result
-import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
@@ -36,11 +35,10 @@ internal fun MainViewModel.loadDashboard() {
 }
 
 // ── Sets ─────────────────────────────────────────────────────────────────
-// Entprellte Suche und Filter-Generation — dasselbe Muster wie im Katalog
-// (ui/CatalogFeature.kt), der seit jeher serverseitig sucht.
-private var gallerySearchJob: Job? = null
-private var galleryListJob: Job? = null
-private var galleryGeneration = 0
+// Entprellte Suche und Filter-Generation stehen als FELDER im MainViewModel
+// (wie partsJob dort seit jeher). Auf Dateiebene waren sie prozessweit: Zwei
+// Instanzen haetten sich Abbruch-Job und Generation geteilt, und die eine
+// Ladung haette die andere abgebrochen.
 
 /**
  * Erste Seite der Galerie laden — mit den aktuell eingestellten Filtern.
