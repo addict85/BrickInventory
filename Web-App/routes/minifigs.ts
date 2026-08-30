@@ -69,7 +69,7 @@ router.use(requireLogin);
 
 // Shared logic to build the Minifiguren CSV export content (manuell erfasst only).
 // Used by both the standalone CSV download and the combined ZIP export in settings.js.
-async function buildFigsCsv(uid) {
+async function buildFigsCsv(uid: number) {
   const figs = await db.all(
     "SELECT * FROM minifigs WHERE user_id=$1 AND source='manual' ORDER BY fig_name ASC, fig_number ASC",
     [uid]);
@@ -104,7 +104,9 @@ async function buildFigsCsv(uid) {
 }
 
 // ── GET /api/minifigs/export/csv — export manuell erfasste Minifiguren for re-import with the Minifiguren CSV importer
-router.get('/export/csv', async (req, res) => {
+// LoggedInRequest wie in routes/parts.ts: Der Router liegt hinter
+// requireLogin (oben), und die Augmentierung sichert userId als number zu.
+router.get('/export/csv', async (req: LoggedInRequest, res) => {
   try {
     const csv = await buildFigsCsv(req.session.userId);
     sendCsvText(res, `minifiguren-export-${new Date().toISOString().substring(0,10)}.csv`, csv);
@@ -119,7 +121,9 @@ router.get('/export/csv', async (req, res) => {
 // hinterlegt, die BrickLink-Nummer (bl_fig_number) verwendet; ansonsten wird
 // mit der (ggf. falschen) Rebrickable-Nummer versucht, was für die meisten
 // manuell erfassten Figuren zu keinem Treffer führt.
-function resolveBlFigNumber(fig) { return fig?.bl_fig_number || fig?.fig_number; }
+function resolveBlFigNumber(fig: { bl_fig_number?: string | null; fig_number?: string | null } | null | undefined) {
+  return fig?.bl_fig_number || fig?.fig_number;
+}
 
 // Fällt keine BrickLink-Minifigur-Nummer vor, wird der Marktpreis stattdessen
 // aus den einzelnen BrickLink-Teilepreisen der Minifigur zusammengesetzt
@@ -138,7 +142,7 @@ function resolveBlFigNumber(fig) { return fig?.bl_fig_number || fig?.fig_number;
 // muss nur durchgereicht werden.
 //
 // @param {'N'|'U'} condition Zustand, in dem die Teile bepreist werden.
-async function estimateFigPriceFromParts(figNumber, userId, condition = DEFAULT_PRICE_CONDITION) {
+async function estimateFigPriceFromParts(figNumber: string, userId: number, condition = DEFAULT_PRICE_CONDITION) {
   try {
     const currency = await getSetting(userId, 'currency', 'EUR');
     const cond0 = ['N','U'].includes(condition) ? condition : DEFAULT_PRICE_CONDITION;
@@ -174,7 +178,9 @@ async function estimateFigPriceFromParts(figNumber, userId, condition = DEFAULT_
 
     // BrickLink-Nummern für Teile ohne external_ids in EINER Abfrage vorladen
     // (statt pro Teil eine eigene Query — vermeidet N+1).
-    const needLookup = [...new Set(parts.filter(p => !p.bl_part_num).map(p => p.part_num))];
+    const needLookup = [...new Set(parts
+      .filter((p: { bl_part_num?: string | null }) => !p.bl_part_num)
+      .map((p: { part_num: string }) => p.part_num))];
     const blMap = new Map();
     if (needLookup.length) {
       const rows = await db.all(
@@ -238,7 +244,7 @@ async function estimateFigPriceFromParts(figNumber, userId, condition = DEFAULT_
   }
 }
 
-async function getCurrentFigMarketPrice(figNumber, userId, blFigNumber?, condition: string | null = null) {
+async function getCurrentFigMarketPrice(figNumber: string, userId: number, blFigNumber?: string | null, condition: string | null = null) {
   try {
     const currency = await getSetting(userId, 'currency', 'EUR');
     // Effektiver Zustand: eine "Gebraucht"-Erfassung genügt → 'U', sonst 'N';
@@ -292,7 +298,7 @@ async function getCurrentFigMarketPrice(figNumber, userId, blFigNumber?, conditi
 //    bei BrickLink nicht (gültig) auffindbar, wird der Preis über die
 //    Einzelteile geschätzt (getCurrentFigMarketPrice → estimateFigPriceFromParts).
 //  • Zustand: N/U falls angegeben, sonst der Standard-Zustand des Nutzers.
-async function resolveManualFigPurchase(uid, { figNumber, blFigNumber = null, unitPrice = null, condition = null }:
+async function resolveManualFigPurchase(uid: number, { figNumber, blFigNumber = null, unitPrice = null, condition = null }:
   { figNumber: string; blFigNumber?: string | null; unitPrice?: any; condition?: string | null }) {
   const entered = (unitPrice !== undefined && unitPrice !== null && String(unitPrice).trim() !== '')
     ? parseFloat(String(unitPrice).replace(',', '.')) : null;
@@ -310,7 +316,9 @@ async function resolveManualFigPurchase(uid, { figNumber, blFigNumber = null, un
   return { effectiveUnitPrice, effectivePurchasePrice, effectiveCondition };
 }
 
-async function addManualFig(uid, body) {
+// body ist `any` wie in routes/parts.ts — so kommt es von Express, und die
+// Validierer in utils/validate.ts nehmen es genauso entgegen.
+async function addManualFig(uid: number, body: any) {
   // Gleiche Eingangsvalidierung wie bei manuellen Teilen (utils/validate.ts).
   const V = require('../utils/validate');
   const num       = V.requireItemNumber(body?.fig_number, 'fig_number');
@@ -378,7 +386,7 @@ async function addManualFig(uid, body) {
 // as the Kaufpreis baseline — same rule as when adding) of a manually captured
 // minifig. Used by both the session-based web route and the token-based API,
 // so the behaviour is implemented exactly once.
-async function updateManualFig(uid, figNumber, body) {
+async function updateManualFig(uid: number, figNumber: string, body: any) {
   const existing = await db.get(
     "SELECT id, bl_fig_number, condition FROM minifigs WHERE user_id=$1 AND fig_number=$2 AND source='manual'",
     [uid, figNumber]);
@@ -561,7 +569,8 @@ router.post('/import/csv', csvUpload.single('file'), async (req: LoggedInRequest
 // mit den intern/von jobs/ genutzten Funktionen als Properties (wie zuvor).
 // ── minifig_acquisitions: CRUD ───────────────────────────────────────────────
 
-async function getFigAcquisitions(uid, figNumber) {
+/** Wie getPartAcquisitions: `uid` ist das Blickfeld (Liste), das SQL fragt ANY($1). */
+async function getFigAcquisitions(uid: number[], figNumber: string) {
   return db.all(
     `SELECT a.id, a.quantity,
             COALESCE(a.unit_price, m.unit_price, m.purchase_price) AS unit_price,

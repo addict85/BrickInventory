@@ -110,7 +110,7 @@ router.get('/categories', async (req, res) => {
 
 
 // ── Manual part lookup via Rebrickable ────────────────────────────────────────
-async function lookupPart(partNumber, colorId?) {
+async function lookupPart(partNumber: string, colorId?: number | null) {
   const key = await getRbKey();
   if (!key) return null;
   try {
@@ -209,18 +209,20 @@ async function getPartColorList() {
 // "Gebraucht" ist → 'U', sonst 'N'; ohne Erfassungen der User-Default. Der
 // eigentliche Preis-Fallback (gewünschter Zustand → jeweils anderer) steckt in
 // fetchPartPrice.
-async function resolvePartCondition(userId, partNumber, colorId) {
+async function resolvePartCondition(userId: number, partNumber: string, colorId: number) {
   try {
     const row = await db.get(
       "SELECT MAX(CASE WHEN condition='U' THEN 1 ELSE 0 END) AS any_used, COUNT(*) AS cnt FROM part_acquisitions WHERE user_id=$1 AND part_number=$2 AND color_id=$3",
-      [userId, partNumber, parseInt(colorId) || 0]);
+      // parseInt entfaellt: colorId ist bereits eine Zahl (V.colorId gibt
+      // number zurueck). parseInt(5) ging nur ueber den Umweg ueber "5".
+      [userId, partNumber, colorId || 0]);
     if (row && parseInt(row.cnt) > 0) return parseInt(row.any_used) > 0 ? 'U' : 'N';
   } catch (_) {}
   try { return await userDefaultCondition(userId); }
   catch (_) { return DEFAULT_PRICE_CONDITION; }
 }
 
-async function getCurrentPartMarketPrice(partNumber, colorId, userId, condition: string | null = null) {
+async function getCurrentPartMarketPrice(partNumber: string, colorId: number, userId: number, condition: string | null = null) {
   try {
     const currency  = await getSetting(userId, 'currency', 'EUR');
     const ttlHours  = 24;
@@ -243,7 +245,12 @@ async function getCurrentPartMarketPrice(partNumber, colorId, userId, condition:
 // enters a price it is used as both the current value override AND the
 // purchase-price baseline for the G&V calculation; if left empty, the
 // current BrickLink market price is used for both.
-async function addManualPart(uid, rawBody) {
+// rawBody ist `any` — so kommt es von Express, und so nehmen es auch die
+// Validierer in utils/validate.ts entgegen. Der Gewinn liegt bei ihren
+// RUECKGABEN: V.colorId() gibt number, V.requireItemNumber() gibt string.
+// Ein `unknown` hier waere strenger, aber jeder Feldzugriff muesste dann
+// einzeln eingeengt werden, bevor der Validierer ihn ueberhaupt sieht.
+async function addManualPart(uid: number, rawBody: any) {
   // Eingangsvalidierung (utils/validate.ts): vorher wurden part_number,
   // part_name, color_name, category_name, note und image_url völlig ungeprüft
   // gespeichert und später per innerHTML gerendert — das war die Server-Hälfte
@@ -367,7 +374,7 @@ async function addManualPart(uid, rawBody) {
 // as the Kaufpreis baseline — same rule as when adding) of a manually captured
 // part. Used by both the session-based web route and the token-based API, so
 // the behaviour is implemented exactly once.
-async function updateManualPart(uid, partNumber, colorId, body) {
+async function updateManualPart(uid: number, partNumber: string, colorId: number, body: any) {
   const existing = await db.get(
     "SELECT id, condition FROM parts WHERE user_id=$1 AND part_number=$2 AND color_id=$3 AND source='manual'",
     [uid, partNumber, colorId]
@@ -558,7 +565,7 @@ router.post('/import/csv', csvUpload.single('file'), async (req: LoggedInRequest
 
 // Shared logic to build the Teile CSV export content (manuell erfasst only).
 // Used by both the standalone CSV download and the combined ZIP export in settings.js.
-async function buildPartsCsv(uid) {
+async function buildPartsCsv(uid: number) {
   const parts = await db.all(
     "SELECT * FROM parts WHERE user_id=$1 AND source='manual' ORDER BY part_name ASC, part_number ASC",
     [uid]);
@@ -593,7 +600,10 @@ async function buildPartsCsv(uid) {
 }
 
 // ── GET /api/parts/export/csv — export manually erfasste Teile for re-import with the Teile CSV importer
-router.get('/export/csv', async (req, res) => {
+// LoggedInRequest statt req: Der ganze Router liegt hinter requireLogin
+// (oben, router.use), und die Augmentierung sichert userId als number zu.
+// Ohne sie waere es number|undefined, und buildPartsCsv bekaeme undefined.
+router.get('/export/csv', async (req: LoggedInRequest, res) => {
   try {
     const csv = await buildPartsCsv(req.session.userId);
     sendCsvText(res, `teile-export-${new Date().toISOString().substring(0,10)}.csv`, csv);
@@ -606,7 +616,16 @@ router.get('/export/csv', async (req, res) => {
 
 // partIsToday() stand hier — ein Datumsvergleich ohne Aufrufer. Entfallen.
 
-async function getPartAcquisitions(uid, partNumber, colorId) {
+/**
+ * Erfassungen eines Teils — fuer den Kaufpreis-Dialog.
+ *
+ * `uid` ist eine LISTE (das Blickfeld, siehe Kommentar unten), nicht eine ID:
+ * Das SQL fragt `user_id = ANY($1)`. Und `colorId` kommt als ZEICHENKETTE
+ * herein — der einzige Aufrufer ist routes/api_v1/acquisitions.ts und reicht
+ * `req.params.colorId` durch, also einen Express-Pfadparameter. Deshalb bleibt
+ * das parseInt hier stehen; es ist tragend, nicht Zierde.
+ */
+async function getPartAcquisitions(uid: number[], partNumber: string, colorId: string | number) {
   // uid ist hier das BLICKFELD (Liste): Im Haushalt können die Kaufpreise
   // eines Teils mehreren Konten gehören, und je Zeile kommt der Eigentümer
   // mit — sonst wüsste die Auswahl im Dialog nicht, worauf sie steht.
@@ -620,7 +639,7 @@ async function getPartAcquisitions(uid, partNumber, colorId) {
                        AND p.color_id=a.color_id AND p.source='manual'
      WHERE a.user_id = ANY($1) AND a.part_number=$2 AND a.color_id=$3
      ORDER BY a.created_at ASC, a.id ASC`,
-    [uid, partNumber, parseInt(colorId)||0]
+    [uid, partNumber, parseInt(String(colorId)) || 0]
   );
 }
 

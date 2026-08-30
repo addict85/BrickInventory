@@ -49,7 +49,7 @@ const ROOT = path.join(__dirname, '..');
  * Stand bei Einführung: 44 offen, 48 bereits sauber.
  * Nachtrag 151: noch 30 offen, 62 sauber.
  * Nachtrag 156: noch 24 offen.
- * Diese Etappe: noch 21 offen — die Anfragestrecke zuerst, dort kommen
+ * Diese Etappe: noch 19 offen — die Anfragestrecke zuerst, dort kommen
  * Benutzereingaben an.
  */
 const OFFEN = new Set([
@@ -61,8 +61,6 @@ const OFFEN = new Set([
   'jobs/priceJob.ts',
   'jobs/rebrickableCsvSync.ts',
   'routes/api_v1/pdf.ts',
-  'routes/minifigs.ts',
-  'routes/parts.ts',
   'routes/sets.ts',
   'scripts/check-api-contract.js',
   'scripts/loadtest.js',

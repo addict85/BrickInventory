@@ -238,7 +238,9 @@ router.get('/export', async (req, res) => {
 // ── GET /api/settings/export/data — Sets, Teile und Minifiguren jeweils als CSV,
 // gebündelt in einem ZIP (reuses the exact same CSV-building logic as the
 // individual /api/sets|parts|minifigs/export/csv endpoints, implemented once).
-router.get('/export/data', async (req, res) => {
+// LoggedInRequest: Der Router liegt hinter requireLogin (oben), und die
+// Augmentierung sichert userId als number zu — die drei CSV-Bauer verlangen das.
+router.get('/export/data', async (req: LoggedInRequest, res) => {
   try {
     const archiver = require('archiver');
     const uid = req.session.userId;
