@@ -44,7 +44,7 @@ class AddPathOwnerTest {
             "confirmAddBarcode kennt keinen Eigentümer — ein per Barcode erfasstes Set " +
                 "landet dann immer beim eigenen Konto"
         }
-        assert(Regex("""repo\.addSet\([^)]*ownerUserId""").containsMatchIn(feature)) {
+        assert(Regex("""repo\.sets\.addSet\([^)]*ownerUserId""").containsMatchIn(feature)) {
             "der Eigentümer wird nicht an repo.sets.addSet() weitergereicht"
         }
     }

@@ -84,7 +84,7 @@ class AddExistingSetTest {
         }
         assert(bc.contains("repo.sets.getSetExists(")) { "die Existenzprüfung fehlt ganz" }
         // Beide Wege: der Scanner-Zweig und useScannedSetNumber (Texterkennung).
-        assert(Regex("repo\\.getSetExists\\(").findAll(bc).count() >= 2) {
+        assert(Regex("repo\\.sets\\.getSetExists\\(").findAll(bc).count() >= 2) {
             "Nur EIN Weg prüft — Scanner und Texterkennung müssen sich gleich verhalten"
         }
         assert(bc.contains("data.exists")) {
