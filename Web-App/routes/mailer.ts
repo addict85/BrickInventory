@@ -6,7 +6,8 @@
 import * as db from '../db/database';
 // Zentraler Settings-Helfer — lokale Kopie entfernt
 import { getGlobalSetting } from '../utils/settings';
-const getSetting = (key) => getGlobalSetting(key, '');
+import { ausTabelle } from '../utils/validate';
+const getSetting = (key: string) => getGlobalSetting(key, '');
 
 /**
  * Verbindung zum Mailserver.
@@ -46,7 +47,15 @@ async function getFrom() {
   return (await getSetting('smtp_from')) || 'BrickInventory Manager <noreply@brickinventory.local>';
 }
 
-async function sendMail({ to, subject, html, text }) {
+/**
+ * Eine E-Mail verschicken — oder, ohne SMTP, auf der Konsole zeigen.
+ *
+ * `html` und `text` sind optional, weil beide Aufrufwege vorkommen: Die
+ * Konsolenausgabe unten liest `text`, der Versand schickt beides mit.
+ */
+async function sendMail({ to, subject, html, text }: {
+  to: string; subject: string; html?: string; text?: string;
+}) {
   const transporter = await getTransporter();
   const from = await getFrom();
   if (!transporter) {
@@ -69,7 +78,15 @@ async function sendMail({ to, subject, html, text }) {
   }
 }
 
-function esc(s) {
+/**
+ * Maskiert `&`, `<` und `>` fuer die Ausgabe in HTML.
+ *
+ * Der Parameter ist `unknown` und nicht `string`: Hier laufen Werte aus der
+ * Datenbank und aus Formularen hinein, und `String(s || '')` faengt genau das
+ * ab. Ein `string`-Typ waere eine Behauptung ueber die Aufrufer, die dieser
+ * Rumpf gar nicht braucht.
+ */
+function esc(s: unknown) {
   return String(s || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 }
 
@@ -140,6 +157,13 @@ const LOGO_HTML = `
  * Das Design ist eine GLOBALE Einstellung (`app_theme` in global_settings),
  * nicht pro Nutzer — der Mailer liest sie beim Versand.
  */
+/**
+ * Ein Mail-Design. ABGELEITET aus MAIL_THEMES.classic, nicht danebengeschrieben:
+ * Eine zweite Aufzaehlung der neun Felder waere eine zweite Wahrheit, die beim
+ * naechsten neuen Feld still veraltet.
+ */
+type MailTheme = typeof MAIL_THEMES.classic;
+
 const MAIL_THEMES = {
   classic: {
     primary:  '#2563eb',   // --b600
@@ -173,11 +197,18 @@ async function getMailTheme() {
   try {
     const db = require('../db/database');
     const row = await db.get("SELECT value FROM global_settings WHERE key='app_theme'");
-    return MAIL_THEMES[row?.value] || MAIL_THEMES.classic;
+    // ausTabelle statt MAIL_THEMES[...]: Ein Indexzugriff mit einem Wert aus
+    // der Datenbank liefert auch GEERBTE Mitglieder — bei 'constructor' oder
+    // '__proto__' kaeme etwas Wahres zurueck, und der ||-Rueckfall griffe nie.
+    // Die Schreibroute (routes/settings.ts) prueft heute gegen eine
+    // Positivliste, es ist also nicht erreichbar; aber utils/indexHtml.ts
+    // prueft an der LESESTELLE, und das ist der Stand, auf den diese hier
+    // gehoert. Eine Absicherung drei Dateien entfernt ist keine dieser Stelle.
+    return ausTabelle(MAIL_THEMES, row?.value, MAIL_THEMES.classic);
   } catch (_) { return MAIL_THEMES.classic; }
 }
 
-function emailTemplate(title, preheader, content, theme = MAIL_THEMES.classic) {
+function emailTemplate(title: string, preheader: string, content: string, theme: MailTheme = MAIL_THEMES.classic) {
   return `<!DOCTYPE html>
 <html lang="de" xmlns="http://www.w3.org/1999/xhtml">
 <head>
@@ -248,7 +279,7 @@ function emailTemplate(title, preheader, content, theme = MAIL_THEMES.classic) {
 }
 
 // ── Button helper (Outlook-kompatibel via table) ───────────────────────────────
-function emailBtn(url, text, theme = MAIL_THEMES.classic) {
+function emailBtn(url: string, text: string, theme: MailTheme = MAIL_THEMES.classic) {
   return `
   <table role="presentation" cellspacing="0" cellpadding="0" border="0" align="center" style="margin:28px auto 12px">
     <tr>
@@ -272,7 +303,7 @@ function emailBtn(url, text, theme = MAIL_THEMES.classic) {
 }
 
 // ── Info-Box (hellblau, wie .ibox in der Webapp) ──────────────────────────────
-function infoBox(text, theme = MAIL_THEMES.classic) {
+function infoBox(text: string, theme: MailTheme = MAIL_THEMES.classic) {
   return `<table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%" style="margin-bottom:20px">
     <tr>
       <td style="background:#eff6ff;border:1px solid #bfdbfe;border-radius:8px;
@@ -289,7 +320,7 @@ const DIVIDER = `<table role="presentation" cellspacing="0" cellpadding="0" bord
 </table>`;
 
 // ── Bestätigungsmail ──────────────────────────────────────────────────────────
-async function sendVerificationMail(to, username, token, baseUrl, lang = 'de') {
+async function sendVerificationMail(to: string, username: string, token: string, baseUrl: string, lang = 'de') {
   // Design beim Versand laden — es ist eine globale Einstellung und kann sich
   // zwischen zwei Mails geändert haben.
   const theme = await getMailTheme();
@@ -336,7 +367,7 @@ async function sendVerificationMail(to, username, token, baseUrl, lang = 'de') {
 }
 
 // ── Passwort-Reset-Mail ───────────────────────────────────────────────────────
-async function sendPasswordResetMail(to, username, token, baseUrl) {
+async function sendPasswordResetMail(to: string, username: string, token: string, baseUrl: string) {
   const theme = await getMailTheme();
   const url = `${baseUrl}/reset-password?token=${token}`;
   return sendMail({

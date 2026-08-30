@@ -35,7 +35,13 @@ test('die Aggregat-Regel steht nur noch an einer Stelle', () => {
     'der gemeinsame Regel-Helfer fehlt');
   // Kommentare ausblenden: Der Erklärtext am Helfer zitiert die Regel selbst.
   const code = h.replace(/\/\*[\s\S]*?\*\//g, '').replace(/\/\/[^\n]*/g, '');
-  const inlineRules = [...code.matchAll(/usedCount > 0 \? 'U'/g)];
+  // Der Anker nennt bewusst KEINEN Variablennamen: Er hiess frueher
+  // `usedCount`, und als das Typisieren daraus ein normalisiertes `used`
+  // machte, fand das alte Muster nichts mehr — der Test meldete 0 statt 1.
+  // Gemeint ist die REGEL, nicht ihre Schreibweise. So gefasst faengt er
+  // ausserdem eine Ausformulierung unter anderem Namen, die er vorher
+  // durchgelassen haette.
+  const inlineRules = [...code.matchAll(/\b\w+ > 0 \? 'U'/g)];
   assert.equal(inlineRules.length, 1,
     `Die Regel steht ${inlineRules.length}× im Code — sie gehört genau einmal in conditionFromAcquisitions()`);
 });

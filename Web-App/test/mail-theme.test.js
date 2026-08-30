@@ -56,7 +56,11 @@ test('Vorlage, Knopf und Infobox nehmen das Design entgegen', () => {
     pruefeParameter(SRC, name, params, 'ohne Design-Parameter bleibt die Mail beim alten Aussehen');
     // Die Vorgabe ist der Punkt: Ohne sie müsste jeder Aufrufer das Design
     // mitgeben, und ein vergessener Aufruf fiele auf undefined statt auf classic.
-    assert.match(funktionsKopf(SRC, name), /theme\s*=\s*MAIL_THEMES\.classic/,
+    // Die Typannotation steht ZWISCHEN Name und Vorgabe
+    // (`theme: MailTheme = MAIL_THEMES.classic`) — der Kommentar oben hatte
+    // das bereits als Bruchstelle benannt, dieses Muster liess sie aber noch
+    // offen. Der Teil dazwischen ist jetzt ausdruecklich erlaubt.
+    assert.match(funktionsKopf(SRC, name), /theme\s*(?::[^=]+)?=\s*MAIL_THEMES\.classic/,
       `${name}: theme muss auf MAIL_THEMES.classic vorbelegt sein`);
   }
   // Und im Rumpf der Vorlage dürfen die Chrome-Farben nicht mehr fest stehen

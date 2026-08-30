@@ -79,6 +79,17 @@ function clampPageSize(value: any, fallback: number): number {
 /** Manuell erfasste Teile (eigene Ansicht neben den Set-Teilen).
  *  Von /api/parts/manual UND /api/v1/parts/manual genutzt (Parität). */
 /**
+ * Eine Anzahl, wie sie aus der Datenbank kommt.
+ *
+ * NACHGEMESSEN, nicht angenommen: `COUNT(*)` ist in Postgres `bigint`, und der
+ * pg-Treiber gibt bigint als ZEICHENKETTE zurueck ("0"), damit keine
+ * Genauigkeit verlorengeht. Auch `COALESCE(count, 0)` bleibt bigint. Andere
+ * Aufrufer reichen bereits mit parseInt normalisierte Zahlen herein, und
+ * fehlende Zeilen ergeben null — deshalb alle drei Formen.
+ */
+type Zaehlwert = number | string | null | undefined;
+
+/**
  * DIE Zustandsregel — für Sets, manuelle Teile und manuelle Minifiguren.
  *
  * Sobald EINE Erfassung gebraucht ist, gilt der Eintrag als gebraucht. Gibt es
@@ -89,8 +100,15 @@ function clampPageSize(value: any, fallback: number): number {
  * doppelt ausformuliert und lief dadurch auseinander. Ein Test hält fest, dass
  * `usedCount > 0 ? 'U'` im Code nur einmal vorkommt.
  */
-function conditionFromAcquisitions(acqCount, usedCount, stored) {
-  return usedCount > 0 ? 'U' : (acqCount > 0 ? 'N' : (stored || 'N'));
+function conditionFromAcquisitions(acqCount: Zaehlwert, usedCount: Zaehlwert, stored: string | null | undefined) {
+  // parseInt wie in der Schwesterfunktion unten. Vorher stand hier
+  // `usedCount > 0` — das ging nur ueber die JS-Umwandlung gut, weil COUNT(*)
+  // als "2" ankommt. Nachgemessen und gleichwertig fuer alles, was hier
+  // ankommt: "2"/2 -> wahr, "0"/0/null/undefined -> falsch. Der Typ hat die
+  // Stelle sichtbar gemacht; verlassen wollen wir uns auf die Umwandlung nicht.
+  const acq  = parseInt(String(acqCount ?? ''))  || 0;
+  const used = parseInt(String(usedCount ?? '')) || 0;
+  return used > 0 ? 'U' : (acq > 0 ? 'N' : (stored || 'N'));
 }
 
 /**
@@ -109,9 +127,9 @@ function conditionFromAcquisitions(acqCount, usedCount, stored) {
  * Reihenfolge immer Neu vor Gebraucht — nicht nach Häufigkeit, sonst tauschen
  * die Plaketten beim nächsten Kauf die Plätze.
  */
-function conditionsFromAcquisitions(acqCount, usedCount, stored): ('N' | 'U')[] {
-  const acq  = parseInt(acqCount)  || 0;
-  const used = parseInt(usedCount) || 0;
+function conditionsFromAcquisitions(acqCount: Zaehlwert, usedCount: Zaehlwert, stored: string | null | undefined): ('N' | 'U')[] {
+  const acq  = parseInt(String(acqCount ?? ''))  || 0;
+  const used = parseInt(String(usedCount ?? '')) || 0;
   if (acq <= 0) return [stored === 'U' ? 'U' : 'N'];
   const out: ('N' | 'U')[] = [];
   if (acq - used > 0) out.push('N');
@@ -134,7 +152,14 @@ function conditionsFromAcquisitions(acqCount, usedCount, stored): ('N' | 'U')[] 
  *
  * @param {'part'|'fig'} kind
  */
-async function applyManualCondition(userId, rows, kind) {
+/**
+ * `rows` ist `any[]` und nicht `any[] | null`: Beide Aufrufstellen
+ * (handlers/minifigs.ts, handlers/parts.ts) reichen das Ergebnis eines
+ * `db.all(...).map(...)` herein, also immer ein Array. Die Abfrage
+ * `!rows?.length` im Rumpf bleibt trotzdem stehen — sie kostet nichts und
+ * faengt den leeren Fall, auf den es ihr eigentlich ankommt.
+ */
+async function applyManualCondition(userId: unknown, rows: any[], kind: 'part' | 'fig') {
   // Blickfeld statt einer einzelnen ID: Ein Hauptkonto sieht (und ändert)
   // auch die Daten seiner Unterkonten, alle anderen nur ihre eigenen. Die
   // Liste kommt von scopeIds() in utils/household.ts — hier wird sie nur
@@ -143,7 +168,7 @@ async function applyManualCondition(userId, rows, kind) {
   if (!rows?.length) return rows;
 
   const isPart = kind === 'part';
-  const keyOf = (r) => isPart
+  const keyOf = (r: any) => isPart
     ? `${r.part_number}|${r.color_id || 0}`
     : String(r.fig_number);
 

@@ -85,7 +85,9 @@ router.get('/sets/barcode/:barcode', requireToken, async (req: AuthedRequest, re
     }
     await rebrickableLimiter.waitForSlot();
     return new Promise(resolve => {
-      const https = require('https');
+      // Typisiert wie in Punkt 3: Ohne `as typeof import` ist die Rueckgabe
+      // von require() `any`, und damit auch jeder Rueckruf-Parameter.
+      const https = require('https') as typeof import('https');
       const opts = { family: 4, headers: { Authorization: `key ${rbKey}`, 'User-Agent': 'BrickInventoryManager/1.0' } };
       https.get(url, opts, r => {
         let b = ''; r.on('data', d => b += d);
@@ -95,7 +97,7 @@ router.get('/sets/barcode/:barcode', requireToken, async (req: AuthedRequest, re
   };
 
   // Helper: enrich result with set image and details from local DB or Rebrickable
-  async function enrichResult(setNumber, name, source) {
+  async function enrichResult(setNumber: string, name: string | null, source: string) {
     // Always fetch Rebrickable for minifigs + image (most reliable source)
     let rbData: any = null;
     let rbMinifigs: any = null;
@@ -179,7 +181,11 @@ router.get('/sets/barcode/:barcode', requireToken, async (req: AuthedRequest, re
           }
         }
         // Plausible match fallback
-        const plausible = rb?.results?.find(s => s.year > 2010 && s.num_parts > 0);
+        // Was wir von Rebrickable tatsaechlich lesen — mehr braucht die
+        // Stelle nicht, und mehr zu behaupten waere geraten.
+        const plausible = rb?.results?.find(
+          (s: { year: number; num_parts: number; set_num: string; name: string }) =>
+            s.year > 2010 && s.num_parts > 0);
         if (plausible) {
           return res.json(await enrichResult(plausible.set_num, plausible.name, 'rebrickable-search'));
         }
@@ -199,7 +205,7 @@ router.get('/sets/barcode/:barcode', requireToken, async (req: AuthedRequest, re
 
       // 2c. UPCitemdb (free, 100/day)
       const upc = await new Promise<{ set_number: string; name: string } | null>(resolve => {
-        require('https').get(
+        (require('https') as typeof import('https')).get(
           `https://api.upcitemdb.com/prod/trial/lookup?upc=${ean13}`,
           { family: 4, headers:{ 'User-Agent':'BrickInventoryManager/1.0' } }, r => {
             let b=''; r.on('data',d=>b+=d);
@@ -280,7 +286,22 @@ router.get('/sets/:setNumber/parts-list', requireToken, async (req: AuthedReques
       const rbParts = await getAllSetParts(n).catch(() => null)
                    || await getAllSetParts(bare).catch(() => null);
       if (rbParts?.length) {
-        csvParts = rbParts.map(r => ({
+        // Der Vertrag, den Rebrickable hier liefert — ausgeschrieben statt
+        // `any`, weil der Rumpf darunter ihn ohnehin Feld fuer Feld nennt.
+        // Alles Optionale ist als solches markiert; jedes `||`-Ausweichen
+        // darunter entspricht genau einem `?` hier oben.
+        type RbTeil = {
+          part: {
+            part_num: string;
+            name?: string | null;
+            part_img_url?: string | null;
+            external_ids?: { BrickLink?: string[] };
+          };
+          color: { id: number; name?: string | null; rgb?: string | null };
+          quantity: number;
+          is_spare?: boolean;
+        };
+        csvParts = rbParts.map((r: RbTeil) => ({
           part_number:    r.part.part_num,
           bl_part_number: r.part.external_ids?.BrickLink?.[0] || r.part.part_num,
           part_name:      r.part.name || r.part.part_num,
