@@ -49,16 +49,15 @@ const ROOT = path.join(__dirname, '..');
  * Stand bei Einführung: 44 offen, 48 bereits sauber.
  * Nachtrag 151: noch 30 offen, 62 sauber.
  * Nachtrag 156: noch 24 offen.
- * Diese Etappe: noch 7 offen — vier Hintergrundjobs, zwei Werkzeugskripte
- * (nicht ausgeliefert) und routes/sets.ts. Alles Ausgelieferte ausser
- * routes/sets.ts ist sauber.
+ * Diese Etappe: noch 6 offen — vier Hintergrundjobs und zwei
+ * Werkzeugskripte, die nicht ausgeliefert werden. ALLES, was der Server
+ * ausliefert, ist sauber.
  */
 const OFFEN = new Set([
   'jobs/csvImportWorker.ts',
   'jobs/partsCatalogEnrich.ts',
   'jobs/priceJob.ts',
   'jobs/rebrickableCsvSync.ts',
-  'routes/sets.ts',
   'scripts/check-api-contract.js',
   'scripts/loadtest.js',
 ]);

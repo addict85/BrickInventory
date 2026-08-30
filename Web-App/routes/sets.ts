@@ -145,13 +145,30 @@ import { ausTabelle } from '../utils/validate';
 const requireLoginOrToken = loginOrTokenGuard({ timeoutMs: 3000 });
 
 // Baut das Status-Objekt aus einem Job-Datensatz — gemeinsam genutzt von
+/**
+ * Ein Ergebnis je Set im CSV-Import — nur die drei Felder, nach denen hier
+ * gezaehlt wird. `isWarning` trennt „hat nicht geklappt" von „ist eine
+ * Anmerkung"; ohne die Unterscheidung stuende jede Anmerkung als Fehler da.
+ */
+type ImportErgebnis = { success?: boolean; isWarning?: boolean; [k: string]: any };
+
+/** Ein Auftragsdatensatz aus import_jobs, soweit buildJobStatus ihn liest. */
+type ImportAuftrag = {
+  status?: string | null;
+  total?: number | null;
+  done?: number | null;
+  current?: string | null;
+  error?: string | null;
+  results?: ImportErgebnis[] | null;
+} | null | undefined;
+
 // /status (Polling-Fallback) und /stream (SSE).
-function buildJobStatus(job) {
+function buildJobStatus(job: ImportAuftrag) {
   if (!job || !job.status) return { success: false, error: 'Kein Import läuft' };
   const results = Array.isArray(job.results) ? job.results : [];
-  const ok   = results.filter(r=>r.success).length;
-  const err  = results.filter(r=>!r.success && !r.isWarning).length;
-  const warn = results.filter(r=>!r.success &&  r.isWarning).length;
+  const ok   = results.filter((r: ImportErgebnis)=>r.success).length;
+  const err  = results.filter((r: ImportErgebnis)=>!r.success && !r.isWarning).length;
+  const warn = results.filter((r: ImportErgebnis)=>!r.success &&  r.isWarning).length;
   return {
     success: true,
     status:  job.status,
@@ -166,7 +183,7 @@ function buildJobStatus(job) {
 
 // Wird vom Import-Worker nach jedem jobUpdate aufgerufen: liest den frischen
 // Stand und feuert ihn an alle SSE-Listener dieses Users.
-async function emitJobStatus(userId) {
+async function emitJobStatus(userId: number) {
   try {
     const job = await jobGet(userId);
     csvImportBus.emit(`progress:${userId}`, buildJobStatus(job));
@@ -218,7 +235,7 @@ router.get('/import/csv/stream', requireLoginOrToken, async (req, res) => {
   let closed = false;
   let lastJson = '';
 
-  const send = (payload) => {
+  const send = (payload: unknown) => {
     if (closed) return;
     const json = JSON.stringify(payload);
     if (json === lastJson) return; // keine Duplikate
@@ -249,13 +266,13 @@ router.get('/import/csv/stream', requireLoginOrToken, async (req, res) => {
   // Gegendruck-Hinweis, dann der Fehler.
 
   // 1) Alle zukünftigen Statusänderungen (Import-Start, Fortschritt, Abschluss)
-  const onProgress = (status) => { send(status); };
+  const onProgress = (status: unknown) => { send(status); };
   csvImportBus.on(`progress:${uid}`, onProgress);
 
   // 2b) Dasselbe Signal aus ANDEREN Cluster-Workern, per LISTEN/NOTIFY.
   //     Der Payload ist die userId; nur der eigene Nutzer löst ein Nachladen aus.
   const pgNotify = require('../utils/pgNotify');
-  const onNotify = async (payload) => {
+  const onNotify = async (payload: any) => {
     if (String(payload) !== String(uid)) return;
     send(buildJobStatus(await jobGet(uid).catch(() => null)));
   };
@@ -400,7 +417,7 @@ router.post('/add-stream', async (req: LoggedInRequest, res) => {
   res.setHeader('Content-Type','text/event-stream'); res.setHeader('Cache-Control','no-cache'); res.setHeader('Connection','keep-alive'); res.flushHeaders();
   const unregisterAddSse = registerSse(res);
   let cancelled=false; req.on('close',()=>{cancelled=true;});
-  const send = d => { if(!cancelled&&!res.destroyed) res.write(`data: ${JSON.stringify(d)}\n\n`); };
+  const send = (d: unknown) => { if(!cancelled&&!res.destroyed) res.write(`data: ${JSON.stringify(d)}\n\n`); };
   try {
     // setCondition wurde oben aus dem Body gelesen, aber nicht weitergereicht —
     // der im Formular gewählte Zustand ging dadurch verloren.
@@ -436,7 +453,7 @@ async function ensureJobTable() {
   `);
 }
 
-async function jobGet(userId) {
+async function jobGet(userId: number) {
   const row = await db.get('SELECT * FROM csv_import_jobs WHERE user_id = $1', [userId]);
   if (!row) return null;
   return { ...row, results: row.results || [] };
@@ -459,7 +476,11 @@ const JOB_COLUMNS = new Set(['status', 'total', 'done', 'current', 'results', 'e
  * @param {Record<string, unknown>} fields
  * @returns {string[]} geprüfte Spaltennamen
  */
-function assertJobColumns(fields) {
+// Der Injektionsschutz dieser Datei: Die Schluessel landen als SPALTENNAMEN
+// im Abfragetext (dort hilft keine Parameterbindung), deshalb die
+// Positivliste. Der Typ sagt, dass beliebige Schluessel hereinkommen
+// duerfen — genau darum wird hier geprueft.
+function assertJobColumns(fields: Record<string, unknown>): string[] {
   const keys = Object.keys(fields);
   for (const k of keys) {
     if (!JOB_COLUMNS.has(k)) throw new Error(`jobSet: unerlaubte Spalte "${k}"`);
@@ -467,7 +488,7 @@ function assertJobColumns(fields) {
   return keys;
 }
 
-async function jobSet(userId, fields) {
+async function jobSet(userId: number, fields: Record<string, unknown>) {
   const keys   = assertJobColumns(fields);
   const values = keys.map(k => fields[k]);
   // Build: INSERT ... ON CONFLICT (user_id) DO UPDATE SET k=$n, ...
@@ -482,7 +503,7 @@ async function jobSet(userId, fields) {
   );
 }
 
-async function jobUpdate(userId, fields) {
+async function jobUpdate(userId: number, fields: Record<string, unknown>) {
   if (!fields || !Object.keys(fields).length) return;
   const keys   = assertJobColumns(fields);
   const values = keys.map(k => fields[k]);
@@ -631,7 +652,7 @@ router.post('/import/csv', upload.single('file'), async (req, res) => {
       //   Pass 2 (durch den globalen CDN-Limiter ohnehin gedrosselt): Bilder.
       const ENRICH_CONCURRENCY = Math.max(1, parseInt(process.env.ENRICH_CONCURRENCY || '2'));
 
-      const importOne = async (sn) => {
+      const importOne = async (sn: string) => {
         await importMinifigsForSet(sn, userId).catch(() => {});
         await importPartsForSet(sn, userId, null).catch(() => {});
         await enrich.enrichSetParts(sn).catch(() => {});
@@ -640,7 +661,7 @@ router.post('/import/csv', upload.single('file'), async (req, res) => {
         // Metadaten sind Beiwerk: Sie dürfen den Import eines Sets nicht
         // scheitern lassen — aber schweigend übersprungen sah ein dauerhaft
         // kaputter Brickset-Zugang genauso aus wie ein Set ohne Eintrag dort.
-        await require('../clients/brickset').getSetInfo(sn).then(bs => {
+        await require('../clients/brickset').getSetInfo(sn).then((bs: any) => {
           if (!bs) return;
           return db.run(
             `UPDATE sets SET name=COALESCE(name,$1), year=COALESCE(year,$2), theme=COALESCE(theme,$3), pieces=COALESCE(pieces,$4), minifigs=COALESCE(minifigs,$5) WHERE set_number=$6`,
@@ -654,7 +675,7 @@ router.post('/import/csv', upload.single('file'), async (req, res) => {
         await require('../jobs/instructionQueue').enqueue(sn).catch(() => {});
       };
 
-      const runPool = async (fn) => {
+      const runPool = async (fn: (sn: string) => Promise<unknown>) => {
         let i = 0;
         const worker = async () => {
           while (i < successSets.length) {
