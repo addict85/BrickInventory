@@ -1,9 +1,8 @@
 import * as db from '../db/database';
-import { logAndContinue, meldeUndWeiter, fehlertext, vorDem } from './httpError';
+import { logAndContinue, meldeUndWeiter, fehlertext } from './httpError';
 import { scopeIds, writableIds } from './household';
 import { recordAcquisitionForDay } from './acquisitions';
 import { withInventoryLock } from './txLock';
-import { findSetInScope } from './setAdd';
 import { downloadSetImage } from './setImages';
 import { getCurrentMarketPrice } from './marketPrice';
 import { downloadSetInstructions } from './instructions';

@@ -16,7 +16,6 @@ const fs    = require('fs');
 const path  = require('path');
 // Pfade zentral auflösen — __dirname zeigt seit dem dist/-Build nicht mehr
 // auf die Wurzel. Siehe utils/appPaths.ts.
-const { APP_ROOT, DATA_DIR, PUBLIC_DIR } = require('../utils/appPaths');
 
 /** Ergebnis der handgebauten HTTPS-Aufrufe in dieser Datei. Ohne Typparameter
  *  leitet TypeScript bei `new Promise` `unknown` ab. */
@@ -34,7 +33,7 @@ async function getRbKey() {
 }
 
 async function apiGet(url: string, rbKey: string) {
-  const { rebrickableBackgroundLimiter: rebrickableLimiter, consumeRebrickableDaily, parseThrottleWait } = require('../utils/rateLimiter');
+  const { rebrickableBackgroundLimiter: rebrickableLimiter, consumeRebrickableDaily } = require('../utils/rateLimiter');
   let serverErrors = 0;
   while (true) {
     if (!await consumeRebrickableDaily()) return null;
@@ -592,8 +591,6 @@ async function enrichSetMinifigs(setNumber: string) {
   for (const [figNum, { parts }] of Object.entries(figPartsMap) as [string, { parts: any[] }][]) {
     for (const p of parts) {
       const blId = finalBlMap[p.part_num] || p.part_num;
-      const catKey = `${p.part_num}|${p.color_id}`;
-      const existingUrl = existingBlMap[catKey] ? null : null; // image handled separately
       await db.run(
         `INSERT INTO set_parts_catalog
            (set_number, part_number, bl_part_number, color_id, quantity, is_spare)

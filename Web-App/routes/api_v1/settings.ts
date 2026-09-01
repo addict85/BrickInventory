@@ -45,7 +45,7 @@ router.put('/settings', requireToken, async (req: AuthedRequest, res) => {
 
 // GET /api/v1/settings/default-condition — der GLOBALE Default (Monitoring-UI).
 // Für den effektiven, benutzerspezifischen Wert: GET /settings (effective_condition).
-router.get('/settings/default-condition', requireToken, async (req: AuthedRequest, res) => {
+router.get('/settings/default-condition', requireToken, async (_req: AuthedRequest, res) => {
   try {
     res.json({ success: true, condition: await globalDefaultCondition() });
   } catch (e) { handleRouteError(res, e); }

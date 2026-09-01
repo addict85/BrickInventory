@@ -71,12 +71,6 @@ function collectTsFiles() {
   return files;
 }
 
-/** @param {string} tsFile */
-function outPathFor(tsFile) {
-  const rel = path.relative(ROOT, tsFile).replace(/\.ts$/, '.js');
-  return OUTDIR ? path.join(OUTDIR, rel) : path.join(ROOT, rel);
-}
-
 
 /**
  * Pfad zum esbuild-Programm.

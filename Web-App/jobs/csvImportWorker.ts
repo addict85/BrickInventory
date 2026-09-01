@@ -3,7 +3,7 @@ import { fehlertext } from '../utils/httpError';
 const fs       = require('fs');
 // Pfade zentral auflösen — __dirname zeigt seit dem dist/-Build nicht mehr
 // auf die Wurzel. Siehe utils/appPaths.ts.
-const { APP_ROOT, DATA_DIR, PUBLIC_DIR } = require('../utils/appPaths');
+const {  DATA_DIR } = require('../utils/appPaths');
 const path     = require('path');
 const { Pool } = require('pg');
 
@@ -54,7 +54,6 @@ const pool = new Pool(
  */
 const sp = (c: string[], i: number): string => c[i] ?? '';
 
-const CSV_CACHE_DIR = path.join(DATA_DIR, 'csv_cache');
 
 /**
  * Eine CSV-Zeile in Felder zerlegen.

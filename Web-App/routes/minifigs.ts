@@ -39,19 +39,15 @@ import express from 'express';
 
 const router  = express.Router();
 import multer from 'multer';
-import { parse } from 'csv-parse/sync';
 import * as db from '../db/database';
 import { handleRouteError, logAndContinue, meldeUndWeiter, fehlertext } from '../utils/httpError';
-import { recordAcquisitionForDay, findSameDayAcquisition } from '../utils/acquisitions';
-import { acquisitionMoveSource, resolveWriteTarget, parseScopeMode } from '../utils/household';
-import { getSetMinifigs, getMinifigInfo, getRbKey } from '../clients/rebrickable';
+import { recordAcquisitionForDay } from '../utils/acquisitions';
+import {  getMinifigInfo } from '../clients/rebrickable';
 import { importMinifigsForSet } from '../utils/minifigsImport';
 import { requireLogin } from './auth';
 import { DEFAULT_PRICE_CONDITION } from '../utils/financeCalc';
 // Siehe routes/parts.ts: Alias wegen der lokalen `effectiveCondition`.
 import { effectiveCondition as userDefaultCondition } from '../utils/settings';
-import { scopeIds, writableIds } from '../utils/household';
-import { moveManualAcquisition } from '../utils/setMove';
 import { fetchMinifigPrice, fetchPartPrice } from '../utils/financeCalc';
 import { getSetting, getGlobalSetting } from '../utils/settings';
 import { csvEinlesen, sendCsvText, toCsv, uebersprungenHinweis } from '../utils/csvExport';

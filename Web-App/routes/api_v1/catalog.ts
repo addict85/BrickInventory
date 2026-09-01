@@ -116,7 +116,7 @@ function descendantIds(tree: Awaited<ReturnType<typeof getThemeTree>>, rootId: n
 }
 
 // ── GET /catalog/meta ────────────────────────────────────────────────────────
-router.get('/catalog/meta', requireToken, async (req: AuthedRequest, res) => {
+router.get('/catalog/meta', requireToken, async (_req: AuthedRequest, res) => {
   try {
     const tree = await getThemeTree();
     const [counts, years, yearCounts] = await Promise.all([

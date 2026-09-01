@@ -1,9 +1,5 @@
 import * as db from '../../db/database';
-import { resolveImageLocal } from '../images';
 import { asIds } from '../household';
-import { ensureFresh } from '../partsSummary';
-import { fetchMissingBlIds } from '../../routes/parts';
-import { getAllSetParts, getRbKey, httpsGetRobust } from '../../clients/rebrickable';
 
 /**
  * Was alle drei Domänen brauchen: Seitengrössen, Zustandsableitung aus

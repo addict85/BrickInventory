@@ -3,7 +3,6 @@
  * Design: blue/white, matching the webapp (--b600: #2563eb).
  */
 
-import * as db from '../db/database';
 // Zentraler Settings-Helfer — lokale Kopie entfernt
 import { getGlobalSetting } from '../utils/settings';
 import { ausTabelle } from '../utils/validate';
@@ -304,11 +303,28 @@ function emailBtn(url: string, text: string, theme: MailTheme = MAIL_THEMES.clas
 }
 
 // ── Info-Box (hellblau, wie .ibox in der Webapp) ──────────────────────────────
+/**
+ * Hinweiskasten in der Mail.
+ *
+ * ── Der Parameter war da und wurde ignoriert ────────────────────────────────
+ * `theme` stand seit jeher in der Signatur, aber die Farben waren fest
+ * verdrahtet (#eff6ff/#bfdbfe/#1e40af — das Blau des klassischen Designs). Im
+ * Stein-Design blieb der Kasten deshalb blau, waehrend Kopf, Knopf und
+ * Hintergrund umschalteten.
+ *
+ * Gefunden von noUnusedParameters: Ein Parameter, den niemand liest, ist
+ * entweder ueberfluessig — oder er sollte benutzt werden und wurde vergessen.
+ * Hier das Zweite; mail-theme.test.js prueft seit jeher, dass die Funktion ihn
+ * ENTGEGENNIMMT, und genau das war zu wenig.
+ *
+ * `border` und `text` kommen aus dem Design, der Hintergrund bleibt eine helle
+ * Tonung: `surface` waere weiss und der Kasten damit unsichtbar.
+ */
 function infoBox(text: string, theme: MailTheme = MAIL_THEMES.classic) {
   return `<table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%" style="margin-bottom:20px">
     <tr>
-      <td style="background:#eff6ff;border:1px solid #bfdbfe;border-radius:8px;
-                 padding:12px 16px;font-size:13px;color:#1e40af;font-family:Arial,Helvetica,sans-serif">
+      <td style="background:${theme.bg};border:1px solid ${theme.border};border-radius:8px;
+                 padding:12px 16px;font-size:13px;color:${theme.text};font-family:Arial,Helvetica,sans-serif">
         ${text}
       </td>
     </tr>

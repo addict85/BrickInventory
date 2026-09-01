@@ -8,7 +8,6 @@ import { handleRouteError, meldeUndWeiter, pfadParam } from '../../utils/httpErr
 import { requireToken } from './middleware';
 import { resolveImageLocal, proxyImageUrl } from '../../utils/images';
 import { getSetting, getGlobalSetting } from '../../utils/settings';
-import { DEFAULT_PRICE_CONDITION } from '../../utils/financeCalc';
 import { findSetInScope, normalizeSetNumber } from '../../utils/setAdd';
 import { scopeIds, parseScopeMode, writableIds } from '../../utils/household';
 import { householdMembers, resolveWriteTarget } from '../../utils/household';

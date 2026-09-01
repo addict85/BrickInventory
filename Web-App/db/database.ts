@@ -92,18 +92,18 @@ const baseConfig = process.env.DATABASE_URL
 const pool = new Pool({ ...baseConfig, ...POOL_CONFIG });
 
 // ── Pool event logging ────────────────────────────────────────────────────────
-pool.on('error', (err, client) => {
+pool.on('error', (err, _client) => {
   console.error('[db-pool] idle client error:', err.message);
 });
 
-pool.on('connect', (client) => {
+pool.on('connect', (_client) => {
   // statement_timeout is set via pool options below — no extra query needed
 });
 
 // Optional: log pool exhaustion warnings (fires when all connections are in use)
 let _poolWarnTimer: any = null;
 pool.on('acquire', () => {
-  const { totalCount, idleCount, waitingCount } = pool;
+  const {   waitingCount } = pool;
   if (waitingCount > 0 && !_poolWarnTimer) {
     _poolWarnTimer = setTimeout(() => {
       // Pool pressure warning suppressed — too noisy during bulk imports

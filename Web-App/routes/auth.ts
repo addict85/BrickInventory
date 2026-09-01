@@ -216,7 +216,7 @@ router.put('/profile', async (req, res) => {
 });
 
 // Admin: list users
-router.get('/users', requireAdmin, async (req, res) => {
+router.get('/users', requireAdmin, async (_req, res) => {
   try {
     const users = await db.all('SELECT id, username, is_admin, created_at FROM users ORDER BY id');
     res.json({ success: true, users });
@@ -484,7 +484,7 @@ router.post('/qr-login', ipThrottle('qr-login', 30, 60 * 60 * 1000), async (req,
 });
 
 // ── GET /api/auth/registration-status — public, no auth required ─────────────
-router.get('/registration-status', async (req, res) => {
+router.get('/registration-status', async (_req, res) => {
   try {
     const row = await db.get("SELECT value FROM global_settings WHERE key='registration_enabled'");
     res.json({ enabled: row?.value === '1' });

@@ -28,7 +28,6 @@
  *    unsichtbar, während die Datei auf der Platte liegt. Auch sie werden
  *    kopiert bzw. beim letzten Exemplar mitgenommen.
  */
-import * as db from '../db/database';
 import { recordAcquisitionForDay } from './acquisitions';
 
 export interface MoveResult {

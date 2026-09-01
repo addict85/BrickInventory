@@ -9,7 +9,7 @@
  */
 
 import fs from 'fs';
-import { APP_ROOT, DATA_DIR, PUBLIC_DIR, IMAGES_DIR } from '../utils/appPaths';
+import { APP_ROOT, IMAGES_DIR } from '../utils/appPaths';
 import path from 'path';
 
 // thumbFs → { exists, checkedAt }. Positive Treffer bleiben dauerhaft gültig

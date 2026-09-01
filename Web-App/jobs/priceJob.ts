@@ -291,7 +291,11 @@ async function runPriceRefresh(vorhandeneSperre?: (() => Promise<void>) | null) 
               AND ph.recorded_at::date = CURRENT_DATE
           ) ON CONFLICT DO NOTHING
       `);
-      log(`Daily snapshot: inserted price history entries`);
+      // Mit ZAHL: Die Meldung stand vorher ohne sie da, obwohl das Ergebnis
+      // in `inserted` schon bereitlag — ungenutzt. Ob der Schnappschuss 0
+      // oder 5000 Zeilen geschrieben hat, war damit aus dem Log nicht zu
+      // erkennen. Gefunden von noUnusedLocals.
+      log(`Daily snapshot: ${inserted.changes} price history entries inserted`);
     } catch(e) { log(`Daily snapshot error: ${fehlertext(e)}`); }
 
     // Der Portfolio-Schnappschuss je Konto ist entfallen (Nachtrag 82).

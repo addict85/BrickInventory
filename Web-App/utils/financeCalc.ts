@@ -932,7 +932,6 @@ async function computePnl(viewerId: number, ids: Blickfeld) {
     getSetting(viewerId, 'currency', 'EUR'),
     getGlobalSetting('price_cache_ttl', '24'),
   ]);
-  const defaultCondition = DEFAULT_PRICE_CONDITION;
 
   const sets = await db.all(
     `SELECT s.set_number, s.name, s.year, s.quantity, s.image_local, s.image_url, s.added_at, s.condition,

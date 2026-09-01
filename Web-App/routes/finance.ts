@@ -26,21 +26,12 @@
  */
 import express from 'express';
 const router  = express.Router();
-import * as db from '../db/database';
-import { handleRouteError } from '../utils/httpError';
-import { requireLogin, requireAdmin } from './auth';
-import { getRateLimitStatus } from '../utils/financeCalc';
+import { requireLogin } from './auth';
 
-// Bild-Helfer zentral in utils/images.ts — hier nur für den Re-Export am
-// Dateiende, den jobs/ und routes/ weiterhin nutzen.
-import { resolveImageLocal } from '../utils/images';
-import { getSetting } from '../utils/settings';
-
-const {
-  checkAndIncrementRateLimit, getLimitForApi,
-  fetchPrice, parallelLimit, fetchPartPrice, fetchMinifigPrice,
-  computeSetsValuation, computeMinifigsValuation, computePartsValuation, computePnl,
-} = require('../utils/financeCalc');
+// Der frueher hier stehende Sammel-require auf utils/financeCalc ist entfallen:
+// Er holte zehn Namen fuer den Re-Export am Dateiende — und den gibt es seit
+// Nachtrag 126 nicht mehr (siehe die Begruendung dort unten). Geblieben war ein
+// Modul-Ladevorgang fuer nichts. Gefunden von noUnusedLocals.
 
 router.use(requireLogin);
 

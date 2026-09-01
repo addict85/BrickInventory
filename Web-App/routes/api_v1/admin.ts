@@ -4,7 +4,7 @@
  * der Check liegt in der Middleware statt in jedem Handler.
  */
 import express from 'express';
-import { APP_ROOT, DATA_DIR, PUBLIC_DIR, resolveWebPath } from '../../utils/appPaths';
+import {  DATA_DIR } from '../../utils/appPaths';
 import * as db from '../../db/database';
 import { handleRouteError, meldeUndWeiter } from '../../utils/httpError';
 import { requireApiAdmin } from './middleware';
@@ -26,7 +26,7 @@ import { setGlobalSetting } from '../../utils/settings';
 const router = express.Router();
 
 // ── POST /api/v1/admin/trigger-csv-sync — manually trigger CSV sync ──────────
-router.post('/admin/trigger-csv-sync', requireApiAdmin, async (req: AuthedRequest, res) => {
+router.post('/admin/trigger-csv-sync', requireApiAdmin, async (_req: AuthedRequest, res) => {
   // Signal primary worker via DB flag (same pattern as instruction queue trigger)
   try {
     await db.run(`
@@ -41,7 +41,7 @@ router.post('/admin/trigger-csv-sync', requireApiAdmin, async (req: AuthedReques
 });
 
 // ── GET /api/v1/admin/cache-stats ─────────────────────────────────────────────
-router.get('/admin/cache-stats', requireApiAdmin, async (req: AuthedRequest, res) => {
+router.get('/admin/cache-stats', requireApiAdmin, async (_req: AuthedRequest, res) => {
   try {
     const { getCacheStats }      = require('../../clients/bricklink');
     const [stats, stale, rlBL, rlRB, rlBS] = await Promise.all([
@@ -79,7 +79,7 @@ router.get('/admin/image-diag/:setNumber', requireApiAdmin, async (req: AuthedRe
   try {
     const fs   = require('fs');
     const path = require('path');
-    const { SET_IMAGES_DIR, resolveWebPath } = require('../../utils/appPaths');
+    const { SET_IMAGES_DIR } = require('../../utils/appPaths');
     const sn = String(req.params.setNumber);
 
     // 1. Was weiss die Datenbank — eigene Zeile UND gemeinsamer Katalog?
@@ -214,7 +214,7 @@ router.post('/admin/cache-clear', requireApiAdmin, async (req: AuthedRequest, re
 });
 
 // ── GET /api/v1/admin/cache-ttl ───────────────────────────────────────────────
-router.get('/admin/cache-ttl', requireApiAdmin, async (req: AuthedRequest, res) => {
+router.get('/admin/cache-ttl', requireApiAdmin, async (_req: AuthedRequest, res) => {
   try {
     const row = await db.get("SELECT value FROM global_settings WHERE key='price_cache_ttl'");
     res.json({ success:true, ttl: row?.value || '24' });
@@ -242,7 +242,7 @@ router.post('/admin/default-condition', requireApiAdmin, async (req: AuthedReque
 });
 
 // GET /api/v1/admin/api-limits — get current limits
-router.get('/admin/api-limits', requireApiAdmin, async (req: AuthedRequest, res) => {
+router.get('/admin/api-limits', requireApiAdmin, async (_req: AuthedRequest, res) => {
   const [rb, bl, bs] = await Promise.all([
     getLimitForApi('rebrickable'), getLimitForApi('bricklink'), getLimitForApi('brickset')
   ]);
@@ -290,7 +290,7 @@ router.put('/admin/api-limits', requireApiAdmin, async (req: AuthedRequest, res)
 // Admin: job monitoring
 // ── GET /api/v1/admin/brickset-queue — list retry queue entries ───────────────
 // ── POST /api/v1/admin/reimport-instructions — enqueue all sets missing instructions ─
-router.post('/admin/reimport-instructions', requireApiAdmin, async (req: AuthedRequest, res) => {
+router.post('/admin/reimport-instructions', requireApiAdmin, async (_req: AuthedRequest, res) => {
   try {
     // Find all sets across all users that have no instruction
     const missing = await db.all(`
@@ -333,13 +333,13 @@ router.post('/admin/reimport-instructions', requireApiAdmin, async (req: AuthedR
  * Stelle nachgezogen wurde — jetzt gibt es eine, und requireApiAdmin nimmt
  * beide Ausweise.
  */
-router.get('/admin/job-status', requireApiAdmin, async (req: AuthedRequest, res) => {
+router.get('/admin/job-status', requireApiAdmin, async (_req: AuthedRequest, res) => {
   try {
     res.json({ success: true, job: getJobStatus(), rate_limit: await getRateLimitStatus('bricklink') });
   } catch (e) { handleRouteError(res, e); }
 });
 
-router.post('/admin/trigger-price-job', requireApiAdmin, async (req: AuthedRequest, res) => {
+router.post('/admin/trigger-price-job', requireApiAdmin, async (_req: AuthedRequest, res) => {
   try {
     const started = await triggerNow();
     res.json({ success: true, started });
@@ -484,7 +484,7 @@ router.post('/admin/catalog-images', requireApiAdmin, async (req: AuthedRequest,
 // Lädt Bilder neu, die laut DB (image_local) heruntergeladen sind, deren Datei
 // aber physisch fehlt. Läuft im Hintergrund; Fortschritt erscheint im Monitoring
 // unter „Bild-Download (CDN)".
-router.post('/admin/redownload-missing-images', requireApiAdmin, async (req: AuthedRequest, res) => {
+router.post('/admin/redownload-missing-images', requireApiAdmin, async (_req: AuthedRequest, res) => {
   try {
     const enrich = require('../../jobs/partsCatalogEnrich');
     // Nicht awaiten — kann je nach Kataloggröße lange dauern.
@@ -494,7 +494,7 @@ router.post('/admin/redownload-missing-images', requireApiAdmin, async (req: Aut
 });
 
 // ── GET /api/v1/admin/users — list all users ──────────────────────────────────
-router.get('/admin/users', requireApiAdmin, async (req: AuthedRequest, res) => {
+router.get('/admin/users', requireApiAdmin, async (_req: AuthedRequest, res) => {
   try {
     const users = await db.all(
       `SELECT id, username, email, is_admin, is_active, created_at FROM users ORDER BY username ASC`
@@ -538,7 +538,7 @@ router.get('/admin/logs', requireApiAdmin, async (req: AuthedRequest, res) => {
   } catch (e) { handleRouteError(res, e); }
 });
 
-router.get('/admin/brickset-queue', requireApiAdmin, async (req: AuthedRequest, res) => {
+router.get('/admin/brickset-queue', requireApiAdmin, async (_req: AuthedRequest, res) => {
   const rows = await db.all(
     `SELECT q.set_number, q.retry_after, q.attempts, q.last_error, q.created_at,
             s.name
@@ -557,7 +557,6 @@ router.post('/admin/brickset-queue/:setNumber/retry', requireApiAdmin, async (re
     `UPDATE brickset_retry_queue SET retry_after = CURRENT_DATE WHERE set_number = $1`, [sn]
   ).catch(() => {});
   // Temporarily reset today's rate limit counter so the retry goes through even if limit reached
-  const today = new Date().toISOString().slice(0, 10);
   await db.run(
     `DELETE FROM global_settings WHERE key = 'api_calls_brickset' OR key = 'api_calls_date_brickset'`
   ).catch(() => {});
@@ -579,7 +578,7 @@ router.delete('/admin/brickset-queue/:setNumber', requireApiAdmin, async (req: A
   res.json({ success: true, set_number: sn });
 });
 
-router.get('/admin/jobs', requireApiAdmin, async (req: AuthedRequest, res) => {
+router.get('/admin/jobs', requireApiAdmin, async (_req: AuthedRequest, res) => {
   const monitor = require('../../utils/jobMonitor');
   const jobs = await monitor.all(); // reads from PostgreSQL — shared across all cluster workers
 

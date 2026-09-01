@@ -139,7 +139,26 @@
     // Ein Fund dabei: In jobs/instructionQueue.ts waere `?? 0` die
     // gefaehrlichste Antwort gewesen — eine Cloudflare-Pause von 0 ms statt
     // fuenf Minuten. Der Rueckfall ist jetzt die letzte Stufe der Leiter.
-    "noUncheckedIndexedAccess": true
+    "noUncheckedIndexedAccess": true,
+    // ── noUnusedLocals / noUnusedParameters: 141 und 33, jetzt 0 ────────────
+    // Ueberwiegend Aufraeumarbeit — 107 ungenutzte Importe, meist Reste
+    // frueherer Umbauten. DREI echte Funde waren dabei, und alle drei sind
+    // vom selben Typ: etwas wurde geholt oder berechnet und dann weggeworfen.
+    //
+    //   • server.ts: `_primaryLockClient` wurde gesetzt und nie wieder
+    //     gelesen — also auch beim Beenden nie zurueckgegeben. Die Verbindung
+    //     kommt aus pool.connect(), und pool.end() wartet auf JEDEN
+    //     ausgeliehenen Client.
+    //   • jobs/priceJob.ts: Die Logzeile des Tagesschnappschusses stand ohne
+    //     Zahl da, obwohl das Ergebnis danebenlag. „inserted price history
+    //     entries" sagte nicht, ob es 0 oder 5000 waren.
+    //   • routes/finance.ts: Ein Sammel-require holte zehn Namen fuer einen
+    //     Re-Export, den es seit Nachtrag 126 nicht mehr gibt.
+    //
+    // Ungenutzte PARAMETER tragen einen Unterstrich — die uebliche
+    // Kennzeichnung fuer „gehoert zur Signatur, wird hier nicht gebraucht".
+    "noUnusedLocals": true,
+    "noUnusedParameters": true
   },
   "include": [
     "server.ts",

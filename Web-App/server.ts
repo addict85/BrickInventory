@@ -87,7 +87,7 @@ global._enableLogPersistence = (pool) => { _logPool = pool; _flushLogs(); };
 
 // Prevent worker crashes from unhandled promise rejections
 // Log them instead of crashing the process
-process.on('unhandledRejection', (reason: any, promise) => {
+process.on('unhandledRejection', (reason: any, _promise) => {
   console.error('[unhandledRejection] Unhandled promise rejection:', reason?.message || reason);
 });
 process.on('uncaughtException', (err) => {
@@ -106,12 +106,8 @@ global.startupStatus = { ready: false, step: 'Datenbank wird initialisiert...', 
 import { meldeUndWeiter, fehlertext } from './utils/httpError';
 import cluster from 'cluster';
 import os from 'os';
-import { downloadSetImage } from './utils/setImages';
 import { starteHintergrundlaeufe } from './startup/backgroundJobs';
 import { bricklinkRequest } from './clients/bricklink';
-import { purgeExpiredTokens } from './utils/auth';
-import { purgeAltePreise } from './utils/priceHistory';
-import { enqueue } from './jobs/instructionQueue';
 import { generateThumb } from './routes/thumbs';
 import { alsAbrufFehler } from './clients/abrufFehler';
 
@@ -218,7 +214,7 @@ app.use(compression({
 // die Header schützen trotzdem gegen fremdes Framing (Clickjacking durch andere
 // Seiten; same-origin ist für den eigenen PDF-Viewer erlaubt), MIME-Sniffing
 // und fremde Ressourcen-Quellen.
-app.use((req, res, next) => {
+app.use((_req, res, next) => {
   res.setHeader('X-Frame-Options', 'SAMEORIGIN');
   res.setHeader('X-Content-Type-Options', 'nosniff');
   res.setHeader('Referrer-Policy', 'same-origin');
@@ -389,7 +385,7 @@ app.use(session({
 // Request die api_tokens-Tabelle zu befragen.
 const { resolveUserId } = require('./utils/auth') as typeof import('./utils/auth');
 // Pfade zentral — NICHT aus __dirname ableiten, siehe utils/appPaths.ts.
-const { APP_ROOT, DATA_DIR, PUBLIC_DIR, IMAGES_DIR } = require('./utils/appPaths') as typeof import('./utils/appPaths');
+const {  DATA_DIR, PUBLIC_DIR } = require('./utils/appPaths') as typeof import('./utils/appPaths');
 
 // Path-Traversal-Schutz: Segmente wie ".." oder absolute Pfade könnten sonst
 // aus dem data/-Verzeichnis ausbrechen (z.B. /data/uploads/..%2f..%2fserver.js).
@@ -660,7 +656,7 @@ app.use(express.static(PUBLIC_DIR, {
 }));
 
 // Public: startup status (no auth — needed before login)
-app.get('/api/startup-status', async (req, res) => {
+app.get('/api/startup-status', async (_req, res) => {
   res.set('Cache-Control', 'no-store, no-cache, must-revalidate');
   res.set('Pragma', 'no-cache');
   res.set('Expires', '0');
@@ -684,7 +680,7 @@ app.get('/api/startup-status', async (req, res) => {
 });
 
 // Public: health check with DB pool stats
-app.get('/api/health', (req, res) => {
+app.get('/api/health', (_req, res) => {
   const db = require('./db/database') as typeof import('./db/database');
   const { getPoolStats } = db;
   const pool = getPoolStats ? getPoolStats() : {};
@@ -747,7 +743,7 @@ app.get('/verify', async (req, res) => {
 
 // ── Passwort zurücksetzen: /reset-password?token=... ──────────────────────────
 // Explizit registriert damit location.pathname === '/reset-password' stimmt.
-app.get('/reset-password', (req, res) => {
+app.get('/reset-password', (_req, res) => {
   res.set('Cache-Control', 'no-cache');
   res.sendFile(path.join(PUBLIC_DIR, 'index.html'));
 });
@@ -760,7 +756,7 @@ app.get('/reset-password', (req, res) => {
 // Retry hat die komplette HTML-Seite übertragen.
 // Alle echten /api-Routen (inkl. img-proxy und debug/test) sind weiter oben
 // registriert und damit nicht betroffen.
-app.use('/api', (req, res) => res.status(404).json({ success: false, error: 'Endpoint nicht gefunden' }));
+app.use('/api', (_req, res) => res.status(404).json({ success: false, error: 'Endpoint nicht gefunden' }));
 
 app.get('*', async (req, res) => {
   res.set('Cache-Control', 'no-cache');
@@ -781,7 +777,7 @@ app.get('*', async (req, res) => {
 // Fängt synchron geworfene Fehler und next(err)-Aufrufe, die an den
 // Route-Catches vorbeikommen — loggt voll, antwortet generisch.
 const { handleRouteError: _handleRouteError } = require('./utils/httpError') as typeof import('./utils/httpError');
-app.use((err: any, req: Request, res: Response, next: NextFunction) => { _handleRouteError(res, err); });
+app.use((err: any, _req: Request, res: Response, _next: NextFunction) => { _handleRouteError(res, err); });
 
 // Der Server nimmt Anfragen erst an, NACHDEM initSchemaOnce() das Schema
 // (inkl. user_sessions) fertig hat — sonst schlägt der Session-Store mit
@@ -884,6 +880,23 @@ db.initSchemaOnce().then(async () => {
       await new Promise<void>(resolve => httpServer.close(() => resolve()));
       console.log('[shutdown] keine offenen HTTP-Verbindungen mehr');
       await (require('./utils/pgNotify') as typeof import('./utils/pgNotify')).close().catch(() => {});
+      // Die Sperr-Verbindung des primaeren Workers ZUERST zurueckgeben.
+      //
+      // Sie kommt aus `pool.connect()` und wird absichtlich nie freigegeben,
+      // damit der Advisory-Lock bestehen bleibt (siehe electPrimaryWorker).
+      // `pool.end()` wartet aber auf JEDEN ausgeliehenen Client — ohne diese
+      // Zeile bleibt sie bis zur Frist oben offen, und der Lock wird erst
+      // freigegeben, wenn Postgres die Verbindung als tot erkennt. Ein sofort
+      // nachfolgender Start faende ihn dann noch belegt.
+      //
+      // Gefunden von noUnusedLocals: `_primaryLockClient` wurde gesetzt und
+      // nie wieder gelesen — also auch nie geschlossen.
+      if (_primaryLockClient) {
+        // Ein Fehler hier heisst: Die Verbindung ist schon tot — dann ist der
+        // Lock ohnehin weg.
+        try { _primaryLockClient.release(); } catch { void 0; }
+        _primaryLockClient = null;
+      }
       await (require('./db/database') as typeof import('./db/database')).pool.end().catch(() => {});
       console.log('[shutdown] Datenbankverbindungen geschlossen');
       clearTimeout(force);

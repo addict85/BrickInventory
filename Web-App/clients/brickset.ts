@@ -8,7 +8,7 @@
 
 import https from 'https';
 import * as db from '../db/database';
-import { checkAndIncrementRateLimit, getLimitForApi, getRateLimitStatus } from '../utils/financeCalc';
+import { checkAndIncrementRateLimit } from '../utils/financeCalc';
 import { fehlertext } from '../utils/httpError';
 import { alsAbrufFehler } from './abrufFehler';
 

@@ -14,7 +14,7 @@
  */
 // Pfade zentral auflösen — __dirname zeigt seit dem dist/-Build nicht mehr
 // auf die Wurzel. Siehe utils/appPaths.ts.
-const { APP_ROOT, DATA_DIR, PUBLIC_DIR } = require('../utils/appPaths');
+const {  DATA_DIR } = require('../utils/appPaths');
 import { fetchMissingBlIds } from '../routes/parts';
 import { getRbKey, httpsGetRobust } from '../clients/rebrickable';
 import { fehlertext } from '../utils/httpError';
@@ -33,7 +33,7 @@ const DOWNLOAD_IDLE_MS = 60000;
 if (!global.startupStatus) global.startupStatus = { ready: false, step: 'Starte...', progress: 0, total: 8 };
 const monitor = require('../utils/jobMonitor');
 
-function updateStatus(step: string, progress: number, total: number, sub: string | null = null) {
+function updateStatus(step: string, progress: number, _total: number, sub: string | null = null) {
   const status = { ready: false, step, progress, total: TOTAL_STEPS, sub };
   global.startupStatus = status;
   // Write to PostgreSQL so all cluster workers see the same status
@@ -42,7 +42,6 @@ function updateStatus(step: string, progress: number, total: number, sub: string
   // Only log step changes, not progress updates
   if (!sub && !step.includes('k)')) log(step);
 }
-const CSV_CACHE_DIR = path.join(DATA_DIR, 'csv_cache');
 const SYNC_KEY = 'rb_csv_last_sync';
 
 function log(msg: string) { console.log(`[rb-csv-sync] ${msg}`); }

@@ -42,7 +42,6 @@ const db      = require('../db/database');
 import { downloadSetInstructions, letzterAbrufWarExtern } from '../utils/instructions';
 import { meldeUndWeiter, fehlertext } from '../utils/httpError';
 import { alsAbrufFehler } from '../clients/abrufFehler';
-const path     = require('path');
 const monitor  = require('../utils/jobMonitor');
 const { logAndContinue } = require('../utils/httpError');
 

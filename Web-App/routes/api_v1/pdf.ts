@@ -20,9 +20,9 @@
  * serveDataFile in server.ts).
  */
 import express from 'express';
-import { APP_ROOT, DATA_DIR, PUBLIC_DIR, resolveWebPath } from '../../utils/appPaths';
+import { APP_ROOT, DATA_DIR, resolveWebPath } from '../../utils/appPaths';
 import * as db from '../../db/database';
-import { handleRouteError, streamFileToResponse, meldeUndWeiter, fehlertext, pfadParam } from '../../utils/httpError';
+import {  streamFileToResponse, meldeUndWeiter, fehlertext, pfadParam } from '../../utils/httpError';
 import { requireToken } from './middleware';
 import { registerSse } from '../../utils/sseRegistry';
 import _pdfPath from 'path';

@@ -20,7 +20,7 @@
  *     (invalidateTheme() in routes/settings.ts) — kein DB-Treffer pro Aufruf.
  */
 import fs from 'fs';
-import { APP_ROOT, DATA_DIR, PUBLIC_DIR } from '../utils/appPaths';
+import {  PUBLIC_DIR } from '../utils/appPaths';
 import path from 'path';
 import * as db from '../db/database';
 

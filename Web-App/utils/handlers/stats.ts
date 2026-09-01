@@ -1,10 +1,5 @@
 import * as db from '../../db/database';
-import { resolveImageLocal } from '../images';
 import { asIds } from '../household';
-import { ensureFresh } from '../partsSummary';
-import { fetchMissingBlIds } from '../../routes/parts';
-import { getAllSetParts, getRbKey, httpsGetRobust } from '../../clients/rebrickable';
-import { clampPageSize, conditionFromAcquisitions, conditionsFromAcquisitions, applyManualCondition, withOwners, MAX_PAGE_SIZE, UNPAGED_LIMIT, SET_PARTS_MAX_PAGE_SIZE } from './shared';
 
 /**
  * Die Kennzahlen der Übersichtsseite — spannen über alle drei Domänen und

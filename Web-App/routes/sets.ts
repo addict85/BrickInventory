@@ -1,6 +1,6 @@
 
 import express from 'express';
-import { APP_ROOT, DATA_DIR, PUBLIC_DIR, IMAGES_DIR , INSTRUCTIONS_DIR} from '../utils/appPaths';
+import { APP_ROOT, DATA_DIR, IMAGES_DIR } from '../utils/appPaths';
 /*
  * ── Erfassungs-Routen leben jetzt NUR NOCH in routes/api_v1/acquisitions.ts ──
  *
@@ -44,36 +44,22 @@ import { APP_ROOT, DATA_DIR, PUBLIC_DIR, IMAGES_DIR , INSTRUCTIONS_DIR} from '..
 
 const router  = express.Router();
 import multer from 'multer';
-import { parse } from 'csv-parse/sync';
-import { DEFAULT_PRICE_CONDITION } from '../utils/financeCalc';
 import path from 'path';
 import fs from 'fs';
-import https from 'https';
 
 import * as db from '../db/database';
 import { handleRouteError, logAndContinue, fehlertext, pfadParam, vorDem } from '../utils/httpError';
-import { downloadSetImage } from '../utils/setImages';
 // Der Kern liegt seit Nachtrag 131 in utils/setService.ts; hier bleiben die
 // HTTP-Routen, die ihn rufen.
-import { addSet, updateSet, buildSetsCsv, recordAcquisition, sanitizeSetNumber, addSetWithDate } from '../utils/setService';
-import { downloadSetInstructions, scrapeInstructionsFromFallback } from '../utils/instructions';
-import { getCurrentMarketPrice } from '../utils/marketPrice';
+import { addSet, buildSetsCsv, addSetWithDate } from '../utils/setService';
+import { downloadSetInstructions } from '../utils/instructions';
 // Der Standard-Zustand eines Benutzers. Stand hier bis Nachtrag 125 als
 // `getUserDefaultCondition` — eine wortgleiche Zweitfassung von
 // effectiveCondition() in utils/settings.ts.
-import { effectiveCondition as userDefaultCondition } from '../utils/settings';
-import { recordAcquisitionForDay, findSameDayAcquisition } from '../utils/acquisitions';
-import { moveSetBetweenAccounts } from '../utils/setMove';
-import { acquisitionMoveSource, canWriteFor, householdMembers, resolveWriteTarget, parseScopeMode, writableIds } from '../utils/household';
+import {  resolveWriteTarget } from '../utils/household';
 import { registerSse } from '../utils/sseRegistry';
-import { getItemImageUrl } from '../clients/bricklink';
-import { getSetInfo, downloadFile, scrapeInstructions, sleep, httpsGetRobust } from '../clients/rebrickable';
-import * as brickset from '../clients/brickset';
 import { requireLogin } from './auth';
-import { withInventoryLock } from '../utils/txLock';
 import { importPartsForSet } from './parts';
-import { importMinifigsForSet } from './minifigs';
-import { refreshPriceForSet } from '../jobs/priceJob';
 
 const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 15 * 1024 * 1024 } });
 
@@ -136,7 +122,6 @@ if (!fs.existsSync(SET_IMAGES_DIR)) fs.mkdirSync(SET_IMAGES_DIR, { recursive: tr
 // Prüfung kommt von der zentralen Stelle. Das 3s-Zeitlimit bleibt: Während
 // eines Imports kann die Datenbank ausgelastet sein, und ein Client, der 503
 // bekommt, versucht es gleich wieder — besser als eine hängende Verbindung.
-import { scopeIds } from '../utils/household';
 import { findSetInScope } from '../utils/setAdd';
 import { loginOrTokenGuard } from '../utils/auth';
 import { csvEinlesen, entschaerfungRueckgaengig, parseCsvDate, sendCsv, sendCsvText, uebersprungenHinweis } from '../utils/csvExport';
@@ -766,7 +751,7 @@ const INSTR_EXT_BY_MIME = { 'application/pdf': '.pdf', 'image/jpeg': '.jpg', 'im
 
 const uploadInstr = multer({
   storage: multer.diskStorage({
-    destination: (req, file, cb) => { const dir=path.join(DATA_DIR,'uploads',String(req.session.userId)); fs.mkdirSync(dir,{recursive:true}); cb(null,dir); },
+    destination: (req, _file, cb) => { const dir=path.join(DATA_DIR,'uploads',String(req.session.userId)); fs.mkdirSync(dir,{recursive:true}); cb(null,dir); },
     filename: (req, file, cb) => {
       const safe = String(req.params.setNumber).replace(/[^a-z0-9-]/gi,'_');
       // ausTabelle statt direktem Zugriff: `INSTR_EXT_BY_MIME['constructor']`
@@ -781,7 +766,7 @@ const uploadInstr = multer({
   limits: { fileSize: 50*1024*1024 },
   // Derselbe Grund wie oben: Das hier ist das TOR. Ein geerbter Wert liess
   // beliebigen Inhalt an der Zusage "nur PDF, JPG oder PNG" vorbei.
-  fileFilter: (req, file, cb) => { if (ausTabelle(INSTR_EXT_BY_MIME, file.mimetype)) cb(null,true); else cb(new Error('Nur PDF, JPG oder PNG')); }
+  fileFilter: (_req, file, cb) => { if (ausTabelle(INSTR_EXT_BY_MIME, file.mimetype)) cb(null,true); else cb(new Error('Nur PDF, JPG oder PNG')); }
 });
 router.post('/:setNumber/instructions/upload', uploadInstr.single('file'), async (req, res) => {
   if (!req.file) return res.status(400).json({ success:false, error:'Keine Datei' });

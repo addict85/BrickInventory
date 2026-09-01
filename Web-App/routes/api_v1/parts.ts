@@ -31,7 +31,7 @@ router.get('/parts', requireToken, async (req: AuthedRequest, res) => {
 });
 
 // ── GET /api/v1/parts/brick-colors — full brick color list for the add-part color picker (same logic as web app) ───────
-router.get('/parts/brick-colors', requireToken, async (req: AuthedRequest, res) => {
+router.get('/parts/brick-colors', requireToken, async (_req: AuthedRequest, res) => {
   try {
     const colors = await getPartColorList();
     res.json({ success: true, colors });
@@ -79,7 +79,7 @@ router.delete('/parts/:partNumber/:colorId', requireToken, async (req: AuthedReq
 });
 
 // ── GET /api/v1/parts/bl-color-map — Rebrickable color_id → BrickLink color_id
-router.get('/parts/bl-color-map', requireToken, async (req: AuthedRequest, res) => {
+router.get('/parts/bl-color-map', requireToken, async (_req: AuthedRequest, res) => {
   try {
     const result = await getBlColorMap();
     res.json({ success: true, ...result });

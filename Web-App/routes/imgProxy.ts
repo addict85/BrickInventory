@@ -20,11 +20,11 @@
  * Allowlist beschränkt.
  */
 import path from 'path';
-import { APP_ROOT, DATA_DIR, PUBLIC_DIR } from '../utils/appPaths';
+import { APP_ROOT } from '../utils/appPaths';
 import fs from 'fs';
 import { resolveUserId } from '../utils/auth';
 import { streamFileToResponse, vorDem } from '../utils/httpError';
-import { queueThumb, drainThumbQueue, mitVorschauSperre, makeProxyThumb, PROXY_THUMB_SIZE } from '../utils/proxyThumbs';
+import { queueThumb } from '../utils/proxyThumbs';
 import { liefereAusCache } from '../utils/imgCacheServe';
 import { imgProxyFailures } from '../utils/imgProxyStats';
 import { istBekanntFehlend, merkeFehlend } from '../utils/imageMisses';

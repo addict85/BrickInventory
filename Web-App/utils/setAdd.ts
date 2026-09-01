@@ -26,7 +26,6 @@
  */
 import * as db from '../db/database';
 import { scopeIds } from './household';
-import { vorDem } from '../utils/httpError';
 
 /**
  * Setnummer normalisieren — dieselbe Regel wie sanitizeSetNumber() in

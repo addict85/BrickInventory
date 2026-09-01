@@ -5,7 +5,7 @@ import { ensureFresh } from '../partsSummary';
 import { fetchMissingBlIds } from '../../routes/parts';
 import type { RbSetTeil } from '../../clients/rebrickable';
 import { getAllSetParts, getRbKey, httpsGetRobust } from '../../clients/rebrickable';
-import { clampPageSize, conditionFromAcquisitions, conditionsFromAcquisitions, applyManualCondition, withOwners, MAX_PAGE_SIZE, UNPAGED_LIMIT, SET_PARTS_MAX_PAGE_SIZE } from './shared';
+import { clampPageSize, applyManualCondition, withOwners, MAX_PAGE_SIZE, UNPAGED_LIMIT, SET_PARTS_MAX_PAGE_SIZE } from './shared';
 import { meldeUndWeiter } from '../../utils/httpError';
 import { getGlobalSetting } from '../../utils/settings';
 

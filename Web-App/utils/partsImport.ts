@@ -2,10 +2,9 @@ import path from 'path';
 import fs from 'fs';
 import * as db from '../db/database';
 import { PART_IMAGES_DIR } from './appPaths';
-import { getAllSetParts, getRbKey, httpsGetRobust, downloadFile, sleep } from '../clients/rebrickable';
+import { getAllSetParts, downloadFile, sleep } from '../clients/rebrickable';
 import { logAndContinue, fehlertext } from './httpError';
 import { generateThumb } from '../routes/thumbs';
-import { consumeRebrickableDaily } from './rateLimiter';
 import { meldeUndWeiter } from '../utils/httpError';
 import { getGlobalSetting } from '../utils/settings';
 
@@ -182,7 +181,7 @@ async function importPartsForSet(setNumber: string, userId: number) {
 async function fetchMissingBlIds() {
   const monitor = require('../utils/jobMonitor');
   try {
-    const { rebrickableBackgroundLimiter: rebrickableLimiter, consumeRebrickableDaily, parseThrottleWait } = require('../utils/rateLimiter');
+    const { rebrickableBackgroundLimiter: rebrickableLimiter, consumeRebrickableDaily } = require('../utils/rateLimiter');
     const rbKey = await getGlobalSetting('rebrickable_api_key');
     if (!rbKey) return;
 

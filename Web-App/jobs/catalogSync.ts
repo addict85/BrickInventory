@@ -9,7 +9,6 @@ import { downloadFile } from '../clients/rebrickable';
 import { generateThumb } from '../routes/thumbs';
 // Pfade zentral auflösen — __dirname zeigt seit dem dist/-Build nicht mehr
 // auf die Wurzel. Siehe utils/appPaths.ts.
-const { APP_ROOT, DATA_DIR, PUBLIC_DIR } = require('../utils/appPaths');
 const path = require('path');
 const fs   = require('fs');
 

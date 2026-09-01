@@ -2,7 +2,6 @@ import path from 'path';
 import fs from 'fs';
 import https from 'https';
 import { SET_IMAGES_DIR } from './appPaths';
-import { appVersion } from './appVersion';
 
 /**
  * Set-Bilder vom CDN holen und lokal ablegen.

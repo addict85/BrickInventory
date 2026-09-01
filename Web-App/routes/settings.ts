@@ -6,7 +6,7 @@ import * as db from '../db/database';
 import { handleRouteError, logAndContinue, meldeUndWeiter } from '../utils/httpError';
 import { requireLogin, requireAdmin } from './auth';
 
-import { setUserSetting, globalDefaultCondition, setGlobalSetting } from '../utils/settings';
+import { setUserSetting, setGlobalSetting } from '../utils/settings';
 import { getRateLimitStatus } from '../utils/financeCalc';
 import { buildSetsCsv } from '../utils/setService';
 import { buildPartsCsv } from './parts';
@@ -21,7 +21,7 @@ import { sendMail, testSmtp } from './mailer';
 // Login-Pflicht — und damit war das global eingestellte Design auf dem Login-
 // und dem Startup-Screen gar nicht abrufbar. Der Wert ist eine reine
 // UI-Einstellung ('classic' | 'brick') und verrät nichts über Konten oder Daten.
-router.get('/theme', async (req, res) => {
+router.get('/theme', async (_req, res) => {
   const row = await db.get("SELECT value FROM global_settings WHERE key='app_theme'").catch(() => null);
   res.set('Cache-Control', 'no-cache');
   res.json({ success: true, theme: row?.value || 'classic' });
