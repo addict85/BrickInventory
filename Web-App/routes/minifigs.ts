@@ -69,38 +69,44 @@ router.use(requireLogin);
 
 // Shared logic to build the Minifiguren CSV export content (manuell erfasst only).
 // Used by both the standalone CSV download and the combined ZIP export in settings.js.
+// Dieselbe Bauart wie SETS_CSV_SQL in utils/setService.ts, aus demselben Grund:
+// Hier lief eine Abfrage JE MINIFIGUR. Auch die Falle ist dieselbe — zu einer
+// vorhandenen Erfassung OHNE Preis gehoert ein leeres Feld, nicht der Preis der
+// Figuren-Zeile. Entschieden wird deshalb an `a.id IS NULL`, nicht mit COALESCE
+// ueber die Werte.
+const FIGS_CSV_SQL = `
+  SELECT f.fig_number,
+         COALESCE(f.bl_fig_number,'') AS bl_fig_number,
+         CASE WHEN a.id IS NULL THEN f.quantity   ELSE a.quantity   END AS quantity,
+         CASE WHEN a.id IS NULL THEN f.unit_price ELSE a.unit_price END AS unit_price,
+         COALESCE(f.note,'') AS note,
+         COALESCE(CASE WHEN a.id IS NULL THEN f.condition ELSE a.condition END, 'N') AS condition,
+         CASE WHEN a.id IS NULL THEN ''
+              ELSE TO_CHAR(a.created_at AT TIME ZONE 'UTC','YYYY-MM-DD') END AS acquired_at
+    FROM minifigs f
+    LEFT JOIN minifig_acquisitions a
+           ON a.user_id = f.user_id AND a.fig_number = f.fig_number
+   WHERE f.user_id = $1 AND f.source = 'manual'
+   ORDER BY f.fig_name ASC, f.fig_number ASC, a.created_at ASC, a.id ASC`;
+
 async function buildFigsCsv(uid: number) {
-  const figs = await db.all(
-    "SELECT * FROM minifigs WHERE user_id=$1 AND source='manual' ORDER BY fig_name ASC, fig_number ASC",
-    [uid]);
-  const acqRows: any[] = [];
-  for (const f of figs) {
-    const acqs = await db.all(
-      `SELECT quantity, unit_price, COALESCE(condition,'N') AS condition,
-              TO_CHAR(created_at AT TIME ZONE 'UTC','YYYY-MM-DD') AS acquired_at
-       FROM minifig_acquisitions WHERE user_id=$1 AND fig_number=$2
-       ORDER BY created_at ASC`,
-      [f.user_id, f.fig_number]
-    ).catch(()=>[]);
-    if (acqs.length) {
-      for (const a of acqs) {
-        acqRows.push({ fig_number: f.fig_number, bl_fig_number: f.bl_fig_number||'',
-          quantity: a.quantity, unit_price: a.unit_price??'', note: f.note||'',
-          condition: a.condition, acquired_at: a.acquired_at||'' });
-      }
-    } else {
-      acqRows.push({ fig_number: f.fig_number, bl_fig_number: f.bl_fig_number||'',
-        quantity: f.quantity, unit_price: f.unit_price??'', note: f.note||'',
-        condition: f.condition||'N', acquired_at: '' });
-    }
-  }
+  // Rueckfallweg wie beim Sets-Export: Das frueherere `.catch(()=>[])` je Figur
+  // liess den Export weiterlaufen, wenn minifig_acquisitions fehlt. Ein JOIN
+  // wuerde stattdessen die ganze Abfrage abbrechen.
+  const acqRows = (await db.all(FIGS_CSV_SQL, [uid]).catch(() => null)
+    ?? await db.all(
+      `SELECT fig_number, COALESCE(bl_fig_number,'') AS bl_fig_number, quantity, unit_price,
+              COALESCE(note,'') AS note, COALESCE(condition,'N') AS condition, '' AS acquired_at
+         FROM minifigs WHERE user_id=$1 AND source='manual'
+        ORDER BY fig_name ASC, fig_number ASC`, [uid])
+  ).map((r: any) => ({ ...r, unit_price: r.unit_price ?? '' }));
+
+  // Die Abfrage liefert die Felder bereits in der Form, die der Export braucht
+  // (COALESCE auf '' beziehungsweise 'N' steht oben im SQL) — das frueher hier
+  // stehende zweite Mapping war damit eine zweite Fassung derselben Regel.
   return toCsv(
     ['fig_number', 'bl_fig_number', 'quantity', 'unit_price', 'note', 'condition', 'acquired_at'],
-    acqRows.map(f => ({
-      fig_number: f.fig_number, bl_fig_number: f.bl_fig_number || '',
-      quantity: f.quantity, unit_price: f.unit_price ?? '', note: f.note || '', condition: f.condition || 'N', acquired_at: f.acquired_at||'',
-    }))
-  );
+    acqRows);
 }
 
 // ── GET /api/minifigs/export/csv — export manuell erfasste Minifiguren for re-import with the Minifiguren CSV importer

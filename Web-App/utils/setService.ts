@@ -560,30 +560,51 @@ async function updateSet(uid: number, sn: string, body: any) {
 
 // Shared logic to build the Sets CSV export content. Used by both the
 // standalone CSV download and the combined ZIP export in settings.js.
+// Eine Zeile pro Erfassung, damit Kaufpreis, Zustand und Datum je Kauf erhalten
+// bleiben und beim Re-Import 1:1 wiederhergestellt werden. Sets ohne Erfassungen
+// fallen auf die Set-Zeile zurück.
+//
+// ── Warum ein LEFT JOIN und keine Schleife ──────────────────────────────────
+// Vorher lief hier eine Abfrage JE SET. Bei 700 Sets waren das 701 Hin- und
+// Rückwege zur Datenbank; jeder einzelne war schnell, die Summe nicht. Der
+// Export ist die Stelle, an der ein Nutzer am ehesten den GANZEN Bestand
+// anfasst — also genau die, an der sich das am stärksten auswirkt.
+//
+// Der LEFT JOIN erzeugt dieselben Zeilen: zu jedem Set entweder eine je
+// Erfassung oder, wenn es keine gibt, genau eine mit NULL-Erfassungsspalten.
+//
+// ── Die Falle dabei ─────────────────────────────────────────────────────────
+// Die naheliegende Formulierung `COALESCE(a.purchase_price, s.purchase_price)`
+// wäre FALSCH: Zu einer vorhandenen Erfassung OHNE Preis gehört ein leeres
+// Feld, nicht der Preis der Set-Zeile. Entschieden wird deshalb an `a.id IS
+// NULL` — also daran, OB es eine Erfassung gibt, nicht daran, ob ihre Werte
+// gefüllt sind. csv-export-acquisitions-db.test.js prüft genau diesen Fall.
+const SETS_CSV_SQL = `
+  SELECT s.set_number,
+         CASE WHEN a.id IS NULL THEN s.quantity       ELSE a.quantity       END AS quantity,
+         CASE WHEN a.id IS NULL THEN s.purchase_price ELSE a.purchase_price END AS purchase_price,
+         COALESCE(CASE WHEN a.id IS NULL THEN s.condition ELSE a.condition END, 'N') AS condition,
+         CASE WHEN a.id IS NULL THEN ''
+              ELSE TO_CHAR(a.created_at AT TIME ZONE 'UTC','YYYY-MM-DD') END AS acquired_at
+    FROM sets s
+    LEFT JOIN set_acquisitions a
+           ON a.user_id = s.user_id AND a.set_number = s.set_number
+   WHERE s.user_id = $1
+   ORDER BY s.set_number ASC, a.created_at ASC, a.id ASC`;
+
 async function buildSetsCsv(uid: number) {
-  const sets = await db.all('SELECT * FROM sets WHERE user_id=$1 ORDER BY set_number ASC', [uid]);
-  // Eine Zeile pro Erfassung, damit Kaufpreis, Zustand und Datum je Kauf
-  // erhalten bleiben und beim Re-Import 1:1 wiederhergestellt werden. Sets ohne
-  // Erfassungen fallen auf die Set-Zeile zurück.
-  const rows: any[] = [];
-  for (const s of sets) {
-    const acqs = await db.all(
-      `SELECT quantity, purchase_price, COALESCE(condition,'N') AS condition,
-              TO_CHAR(created_at AT TIME ZONE 'UTC','YYYY-MM-DD') AS acquired_at
-       FROM set_acquisitions WHERE user_id=$1 AND set_number=$2 ORDER BY created_at ASC`,
-      [uid, s.set_number]
-    ).catch(() => []);
-    if (acqs.length) {
-      for (const a of acqs) {
-        rows.push({ set_number: s.set_number, quantity: a.quantity,
-          purchase_price: a.purchase_price ?? '', condition: a.condition, acquired_at: a.acquired_at || '' });
-      }
-    } else {
-      rows.push({ set_number: s.set_number, quantity: s.quantity,
-        purchase_price: s.purchase_price ?? '', condition: s.condition || 'N', acquired_at: '' });
-    }
-  }
-  return toCsv(['set_number', 'quantity', 'purchase_price', 'condition', 'acquired_at'], rows);
+  // Der Rückfallweg bewahrt, was das frühere `.catch(() => [])` je Set leistete:
+  // Fehlt set_acquisitions (Migration noch nicht gelaufen), kam dort weiterhin
+  // die Set-Zeile heraus. Ein JOIN würde stattdessen die GANZE Abfrage
+  // abbrechen — der Export lieferte gar nichts mehr.
+  const rows = await db.all(SETS_CSV_SQL, [uid]).catch(() => null)
+    ?? await db.all(
+      `SELECT set_number, quantity, purchase_price, COALESCE(condition,'N') AS condition,
+              '' AS acquired_at
+         FROM sets WHERE user_id=$1 ORDER BY set_number ASC`, [uid]);
+
+  return toCsv(['set_number', 'quantity', 'purchase_price', 'condition', 'acquired_at'],
+    rows.map((r: any) => ({ ...r, purchase_price: r.purchase_price ?? '' })));
 }
 
 export { addSet, updateSet, buildSetsCsv, recordAcquisition, sanitizeSetNumber, addSetWithDate };
