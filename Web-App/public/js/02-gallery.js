@@ -105,10 +105,13 @@ export function showProgress(title, csvMode){
   G('csv-log').style.display=csvMode?'block':'none';
   G('csv-log').innerHTML='';
   G('prog-steps').style.display=csvMode?'none':'';
-  ['ps-meta','ps-image','ps-instructions','ps-parts'].forEach(id=>{
+  // Der Hintergrund-Hinweis gilt nur fürs Erfassen eines einzelnen Sets. Beim
+  // CSV-Import ist die Schrittliste ohnehin ausgeblendet, dort zeigt das
+  // Protokoll (`csv-log`) je Zeile ein echtes Ergebnis.
+  if (G('prog-hint')) G('prog-hint').style.display=csvMode?'none':'';
+  ['ps-meta','ps-image'].forEach(id=>{
     const el=G(id); el.classList.remove('active','done','err');
   });
-  G('ps-parts-count').textContent='';
   G('progress-overlay').classList.add('open');
   // Reset buttons for new import
   G('btn-cancel-import').style.display='none';
@@ -132,10 +135,12 @@ function syncGibFromProgress(pct, text) {
   G('gib-fill').style.width = pct + '%';
   G('gib-text').textContent = text;
 }
-function setStep(stepId, state, extra){
+// `extra` fiel weg: Es schrieb in ein `.step-count`-Feld, das nur die
+// entfernten Teile-/Teilbilder-Schritte hatten. Ohne diese Schritte gibt es
+// kein Element mehr, in das es hätte schreiben können.
+function setStep(stepId, state){
   const el=G('ps-'+stepId); if(!el) return;
   el.classList.remove('active','done','err'); el.classList.add(state);
-  if(extra) el.querySelector('.step-count').textContent=extra;
 }
 function setProgBar(pct){ G('prog-bar').style.width=Math.min(100,pct)+'%'; }
 function addCsvLog(text, ok){
@@ -144,20 +149,38 @@ function addCsvLog(text, ok){
   line.textContent=text; d.appendChild(line); d.scrollTop=d.scrollHeight;
 }
 
-// Process SSE events for single-set add
+// Verarbeitet die SSE-Ereignisse beim Erfassen EINES Sets.
+//
+// ── Warum hier nur noch zwei Schritte stehen ────────────────────────────────
+// Der Dialog listete früher sechs Schritte: Set-Infos, Bild, Anleitungen,
+// Teile, Teilbilder, Preis. Davon wartet der Aufrufer heute nur noch auf die
+// ersten beiden — `addSet()` (utils/setService.ts) holt Set-Daten und Bild
+// synchron und schiebt alles Übrige in ein `setTimeout`, das erst nach der
+// Antwort läuft. Die vier hinteren Schritte konnten den Browser deshalb gar
+// nicht mehr erreichen:
+//   • `instructions` wurde zwar noch gesendet, aber der Download lief bereits
+//     in einem `setImmediate` — der Punkt sprang auf „aktiv" und blieb dort
+//     stehen, weil ihn nie ein Abschluss erreichte.
+//   • `parts_start`, `parts_importing`, `parts_done`, `parts_images` und
+//     `parts_error` stammen aus `importPartsForSet()`. NACHGEMESSEN: alle fünf
+//     Aufrufstellen übergeben dort `null` als Fortschritts-Melder.
+//   • `step:'price'` wurde von KEINER Serverstelle je gesendet.
+// Ein Fortschrittsbalken, der Arbeit anzeigt, auf die niemand wartet, ist
+// keine Auskunft, sondern eine Behauptung. Statt der vier Punkte steht jetzt
+// ein fester Hinweis im Dialog (`prog-hint`), dass diese Arbeit im Hintergrund
+// weiterläuft — was zutrifft und den Dialog nicht künstlich offen hält.
+//
+// `done_meta` markiert die Stelle, an der der synchrone Teil fertig ist. Der
+// Schritt wurde bisher gesendet und vom Browser verworfen; er schliesst jetzt
+// den Bild-Schritt ab. Ohne ihn bliebe „Bild herunterladen" bis zum Ende auf
+// „aktiv", weil das früher der `instructions`-Zweig erledigt hat.
 export function handleSseEvent(ev, singleSetName){
   switch(ev.step){
-    case 'meta':        setStep('meta','active'); setProgBar(10); G('prog-set-name').textContent=ev.set||singleSetName||''; break;
-    case 'image':       setStep('meta','done'); setStep('image','active'); setProgBar(25); break;
-    case 'instructions':setStep('image','done'); setStep('instructions','active'); setProgBar(45); break;
-    case 'parts_start': setStep('instructions','done'); setStep('parts','active'); setProgBar(60); break;
-    case 'parts_importing': setStep('parts','active'); G('ps-parts-count').textContent=`0/${ev.total}`; setProgBar(65); break;
-    case 'parts_done':  setStep('parts','done'); G('ps-parts-count').textContent=`${ev.count} ${t('parts.stat.total')}`; setProgBar(88); break;
-    case 'parts_images': setStep('images','active'); if(G('ps-images-count')) G('ps-images-count').textContent=ev.done?`${ev.done}/${ev.total}`:``; setProgBar(88 + (ev.done||0)/(ev.total||1)*8); break;
-    case 'price': setStep('images','done'); setStep('price','active'); setProgBar(97); break;
-    case 'parts_error': setStep('parts','err'); G('ps-parts-count').textContent=ev.error; break;
-    case 'done':        setProgBar(100); G('prog-footer').textContent=`✅ ${ev.action==='added'?t('common.added_cap'):t('common.updated_cap')}: ${esc(ev.set_number)}`; break;
-    case 'error':       G('prog-footer').textContent=`❌ ${esc(ev.error)}`; break;
+    case 'meta':      setStep('meta','active'); setProgBar(10); G('prog-set-name').textContent=ev.set||singleSetName||''; break;
+    case 'image':     setStep('meta','done'); setStep('image','active'); setProgBar(35); break;
+    case 'done_meta': setStep('image','done'); setProgBar(90); break;
+    case 'done':      setProgBar(100); G('prog-footer').textContent=`✅ ${ev.action==='added'?t('common.added_cap'):t('common.updated_cap')}: ${esc(ev.set_number)}`; break;
+    case 'error':     G('prog-footer').textContent=`❌ ${esc(ev.error)}`; break;
   }
 }
 
@@ -758,7 +781,6 @@ async function csvPollLoop(ctx, fi){
   }
 }
 
-function resetSteps(){ ['meta','image','instructions','parts','images','price'].forEach(s=>{ const el=G('ps-'+s); if(el){el.classList.remove('active','done','err');} }); G('ps-parts-count').textContent=''; if(G('ps-images-count')) G('ps-images-count').textContent=''; }
 
 // ── CSV import polling state ─────────────────────────────────────────────────
 export let _csvPollActive = false;

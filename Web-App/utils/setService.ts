@@ -286,7 +286,7 @@ async function addSet(setNumber: string, quantity: number, userId: number,
     // The import loop triggers enrichment after all sets are imported.
     if (!global._csvImportRunning) {
       setTimeout(async () => {
-        await importPartsForSet(normalized, userId, null).catch(() => {});
+        await importPartsForSet(normalized, userId).catch(() => {});
         fetchMissingBlIds().catch(() => {});
         enqueue(normalized).catch(() => {});
         requestRun().catch(() => {});
@@ -364,10 +364,13 @@ async function addSet(setNumber: string, quantity: number, userId: number,
 
   if (minifigs) await db.run('UPDATE sets SET minifigs = $1 WHERE user_id = $2 AND set_number = $3', [minifigs, userId, normalized]);
 
-  if (sendProgress) sendProgress({ step:'instructions', set:normalized });
+  // Kein 'instructions'-Schritt mehr an die Oberfläche: Der Download läuft
+  // eine Zeile tiefer in einem setImmediate() und damit NACH der Antwort. Der
+  // Dialog zeigte dadurch einen Punkt, der auf „aktiv" sprang und nie fertig
+  // wurde. Der Hinweis auf die Hintergrundarbeit steht jetzt fest im Dialog.
   // Skip instructions during CSV bulk import — instructionQueue handles it after
   if (!global._csvImportRunning) {
-    setImmediate(() => downloadSetInstructions(normalized, null).catch(()=>{}));
+    setImmediate(() => downloadSetInstructions(normalized).catch(()=>{}));
   }
 
   if (sendProgress) sendProgress({ step:'done_meta', set:normalized });
@@ -375,7 +378,7 @@ async function addSet(setNumber: string, quantity: number, userId: number,
   if (!global._csvImportRunning) {
     setTimeout(async () => {
       await importMinifigsForSet(normalized, userId).catch(() => {});
-      await importPartsForSet(normalized, userId, null).catch(() => {});
+      await importPartsForSet(normalized, userId).catch(() => {});
       // Kein Hinweis nötig: Läuft NACH recordAcquisition(), die Zeile existiert
       // bereits — conditionsNeededFor() findet den Zustand selbst.
       refreshPriceForSet(normalized, userId).catch(() => {});

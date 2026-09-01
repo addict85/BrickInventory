@@ -84,14 +84,18 @@ async function syncBlPartNumbers() {
   if (count) console.log(`[parts] BrickLink-Nummern nachgetragen: ${count} Zeilen`);
 }
 
-async function importPartsForSet(setNumber: string, userId: number,
-                                 sendProgress: ((n: any) => void) | null) {
+// Der frühere `sendProgress`-Parameter ist ersatzlos entfallen, und mit ihm die
+// Schritte 'parts_start', 'parts_importing', 'parts_done', 'parts_images' und
+// 'parts_error'. NACHGEMESSEN: alle fünf Aufrufstellen (setService zweimal,
+// routes/sets.ts zweimal, routes/parts.ts) übergaben `null`, seit der
+// Teile-Import aus addSet() heraus in ein setTimeout gewandert ist. Die
+// Ereignisse konnten den Browser also nicht mehr erreichen; der Fortschritts-
+// dialog zeigte trotzdem Punkte dafür an. Beides ist jetzt weg.
+async function importPartsForSet(setNumber: string, userId: number) {
   const n = setNumber.includes('-') ? setNumber : `${setNumber}-1`;
   try {
-    if (sendProgress) sendProgress({ step:'parts_start', set:n });
     const rawParts = await getAllSetParts(n);
-    if (!rawParts || rawParts.length === 0) { if (sendProgress) sendProgress({ step:'parts_done', set:n, count:0 }); return 0; }
-    if (sendProgress) sendProgress({ step:'parts_importing', set:n, total:rawParts.length });
+    if (!rawParts || rawParts.length === 0) return 0;
 
     const imgDir = PART_IMAGES_DIR;
     if (!fs.existsSync(imgDir)) fs.mkdirSync(imgDir, { recursive: true });
@@ -162,16 +166,13 @@ async function importPartsForSet(setNumber: string, userId: number,
     }
 
     if (imageDownloads.length > 0) {
-      if (sendProgress) sendProgress({ step:'parts_images', set:n, total:imageDownloads.length });
       setImmediate(() => downloadPartImagesBackground(imageDownloads, n));
     }
 
-    if (sendProgress) sendProgress({ step:'parts_done', set:n, count:rows.length });
     console.log(`[parts] ${n}: ${rows.length} importiert`);
     return rows.length;
   } catch (e) {
     console.error(`Parts import failed for ${n}:`, e.message);
-    if (sendProgress) sendProgress({ step:'parts_error', set:n, error:e.message });
     return 0;
   }
 }

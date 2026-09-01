@@ -92,9 +92,24 @@ test('der Job verzichtet auf die Pausen, die er selbst schon einhält', () => {
   const jobs = fs.readFileSync(path.join(__dirname, '..', 'jobs', 'instructionQueue.ts'), 'utf8');
   const ins  = fs.readFileSync(path.join(__dirname, '..', 'utils', 'instructions.ts'), 'utf8');
 
-  assert.match(jobs, /downloadSetInstructions\(row\.set_number, null, true\)/,
+  // Der Anker buchstabierte früher die ganze Argumentliste aus
+  // (`(row.set_number, null, true)`) und wurde rot, als der tote
+  // `sendProgress`-Parameter aus downloadSetInstructions verschwand — obwohl
+  // sich an der geprüften Aussage nichts geändert hatte. Gemeint ist nur: DER
+  // JOB SETZT DEN TAKT-SCHALTER. Genau das steht jetzt hier, unabhängig davon,
+  // wie viele Argumente die Funktion sonst noch nimmt.
+  assert.match(jobs, /downloadSetInstructions\([^)]*\btrue\s*\)/,
     'Der Job meldet nicht mehr, dass er den Takt selbst einhält — dann wartet ' +
     'er wieder 20 Sekunden statt 15.');
+
+  // Und nur er: Die drei übrigen Aufrufer haben keinen Takt über sich, für die
+  // sind die Pausen die einzige Bremse. Setzte einer von ihnen den Schalter,
+  // fielen dort 5 Sekunden weg, ohne dass etwas anderes sie ersetzt.
+  const fremde = ['utils/setService.ts', 'jobs/bricksetRetry.ts', 'routes/sets.ts']
+    .filter(d => /downloadSetInstructions\([^)]*\btrue\s*\)/
+      .test(fs.readFileSync(path.join(__dirname, '..', d), 'utf8')));
+  assert.deepEqual(fremde, [],
+    `Diese Aufrufer setzen den Takt-Schalter, obwohl kein Takt über ihnen liegt: ${fremde.join(', ')}`);
   assert.match(ins, /if \(!eigenerTakt\) await sleep\(5000\)/,
     'Die Pausen sind nicht mehr abschaltbar');
 

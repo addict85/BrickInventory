@@ -197,7 +197,7 @@ async function processNext() {
       // echten Import prüft tsc den Namen; der Abbruchpfad entfällt.
       // eigenerTakt: Die Pausen IN der Funktion entfallen — diese Schlange
       // wartet unten selbst 15 Sekunden. Zusammen waren es 20 (Nachtrag 142).
-      const count = await downloadSetInstructions(row.set_number, null, true);
+      const count = await downloadSetInstructions(row.set_number, true);
       if (block.retries || block.until) await clearBlock(); // Erfolg — Backoff zurücksetzen
       await db.run(`UPDATE instruction_queue SET status='done', updated_at=NOW() WHERE id=$1`, [row.id]);
       console.log(`[instr-queue] ${row.set_number}: ${count} instructions`);

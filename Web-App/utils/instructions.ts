@@ -123,11 +123,14 @@ async function scrapeInstructionsFromFallback(setNumber: string) {
  *   es KEINEN Takt darüber. Dort bleiben die Pausen; deshalb ein Schalter und
  *   kein Löschen.
  */
+// Der frühere `sendProgress`-Parameter ist ersatzlos entfallen. NACHGEMESSEN:
+// alle vier Aufrufstellen (setService, instructionQueue, bricksetRetry,
+// routes/sets.ts) übergaben `null` — der 'instructions'-Schritt konnte den
+// Browser also gar nicht mehr erreichen. Ein Parameter, den jeder Aufrufer mit
+// null füllt, sagt dem Leser bloss eine Möglichkeit vor, die es nicht gibt.
 async function downloadSetInstructions(setNumber: string,
-                                       sendProgress: ((n: any) => void) | null,
                                        eigenerTakt = false) {
   const n = setNumber.includes('-') ? setNumber : `${setNumber}-1`;
-  if (sendProgress) sendProgress({ step:'instructions', set:n });
 
   // ── Wurde für DIESES Set überhaupt ein fremder Server befragt? ────────────
   //

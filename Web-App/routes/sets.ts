@@ -654,7 +654,7 @@ router.post('/import/csv', upload.single('file'), async (req, res) => {
 
       const importOne = async (sn: string) => {
         await importMinifigsForSet(sn, userId).catch(() => {});
-        await importPartsForSet(sn, userId, null).catch(() => {});
+        await importPartsForSet(sn, userId).catch(() => {});
         await enrich.enrichSetParts(sn).catch(() => {});
         await enrich.enrichSetMinifigs(sn).catch(() => {});
         // Brickset-Metadaten (respektiert Quota)
@@ -737,7 +737,7 @@ router.post('/:setNumber/instructions', async (req, res) => {
     const sn = req.params.setNumber;
     await db.run('DELETE FROM shared_instructions WHERE set_number = $1', [sn]);
     // Download synchronously so we can return the actual results
-    await downloadSetInstructions(sn, null).catch(() => {});
+    await downloadSetInstructions(sn).catch(() => {});
     const instrs = await db.all('SELECT * FROM shared_instructions WHERE set_number = $1', [sn]);
     res.json({ success: true, instructions: instrs, count: instrs.length });
   } catch (e) { handleRouteError(res, e); }
@@ -745,7 +745,7 @@ router.post('/:setNumber/instructions', async (req, res) => {
 
 // LoggedInRequest: liegt hinter dem router.use(requireLogin) weiter oben.
 router.post('/:setNumber/parts', async (req: LoggedInRequest, res) => {
-  try { const count = await importPartsForSet(req.params.setNumber, req.session.userId, null); res.json({ success:true, count }); }
+  try { const count = await importPartsForSet(req.params.setNumber, req.session.userId); res.json({ success:true, count }); }
   catch (e) { handleRouteError(res, e); }
 });
 
