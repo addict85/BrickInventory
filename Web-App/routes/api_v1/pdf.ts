@@ -22,7 +22,7 @@
 import express from 'express';
 import { APP_ROOT, DATA_DIR, PUBLIC_DIR, resolveWebPath } from '../../utils/appPaths';
 import * as db from '../../db/database';
-import { handleRouteError, streamFileToResponse, meldeUndWeiter } from '../../utils/httpError';
+import { handleRouteError, streamFileToResponse, meldeUndWeiter, fehlertext } from '../../utils/httpError';
 import { requireToken } from './middleware';
 import { registerSse } from '../../utils/sseRegistry';
 import _pdfPath from 'path';
@@ -378,8 +378,8 @@ router.post('/sets/partslist-pdf', requireToken, async (req: AuthedRequest, res)
       await _pdfFs.writeFile(pdfFilePath(jobId), buf);
       await pdfJobWriteAndEmit(jobId, { status: 'done', error: null, user_id: uid });
     } catch(e) {
-      await pdfJobWriteAndEmit(jobId, { status: 'error', error: e.message, user_id: uid }).catch(() => {});
-      console.error('[PDF job] error:', e.message);
+      await pdfJobWriteAndEmit(jobId, { status: 'error', error: fehlertext(e), user_id: uid }).catch(() => {});
+      console.error('[PDF job] error:', fehlertext(e));
     }
   });
 

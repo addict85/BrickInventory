@@ -107,7 +107,21 @@
     "strictPropertyInitialization": true,
     "noImplicitThis": true,
     "exactOptionalPropertyTypes": true,
-    "noImplicitAny": true
+    "noImplicitAny": true,
+    // ── useUnknownInCatchVariables: gemessen 107, jetzt 0 ────────────────────
+    // `catch (e)` gab bisher `any`. Das ist nicht nur eine Typluecke: An 91
+    // Stellen wurde `e.message` gelesen, und in JavaScript darf ALLES geworfen
+    // werden — eine Zeichenkette, ein Objekt ohne `message`, bei einem
+    // abgelehnten Versprechen auch `undefined`. In genau diesen Faellen stand
+    // beim Nutzer „Fehler: undefined".
+    //
+    // Abgeraeumt mit zwei Helfern in utils/httpError.ts — fehlertext() und
+    // fehlerCode() — plus clients/abrufFehler.ts fuer die angereicherten Fehler
+    // der Abruf-Klienten (isQuota, isTransient, isCloudflare, detail). Deren
+    // Verstaendigung war nirgends aufgeschrieben und funktionierte nur, weil
+    // der gefangene Wert `any` war; ein Tippfehler im Feldnamen haette den
+    // Zweig lautlos uebersprungen.
+    "useUnknownInCatchVariables": true
   },
   "include": [
     "server.ts",

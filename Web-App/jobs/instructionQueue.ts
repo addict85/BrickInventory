@@ -40,7 +40,8 @@
  */
 const db      = require('../db/database');
 import { downloadSetInstructions, letzterAbrufWarExtern } from '../utils/instructions';
-import { meldeUndWeiter } from '../utils/httpError';
+import { meldeUndWeiter, fehlertext } from '../utils/httpError';
+import { alsAbrufFehler } from '../clients/abrufFehler';
 const path     = require('path');
 const monitor  = require('../utils/jobMonitor');
 const { logAndContinue } = require('../utils/httpError');
@@ -222,9 +223,10 @@ async function processNext() {
       scheduleNext(letzterAbrufWarExtern() ? 15000 : 250);
 
     } catch(e) {
-      const msg = e.message || '';
+      const f = alsAbrufFehler(e);
+      const msg = fehlertext(e) || '';
 
-      if (e.isCloudflare || msg.includes('1015')) {
+      if (f.isCloudflare || msg.includes('1015')) {
         if (_timer) { clearTimeout(_timer); _timer = null; }
 
         if (block.retries < CF_DELAYS_MS.length) {
@@ -256,7 +258,7 @@ async function processNext() {
       }
     }
   } catch(e) {
-    console.error('[instr-queue] error:', e.message);
+    console.error('[instr-queue] error:', fehlertext(e));
     scheduleNext(2000);
   } finally {
     _running = false;

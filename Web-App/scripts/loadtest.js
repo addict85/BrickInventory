@@ -72,6 +72,28 @@ const N_SETS   = arg('sets', 800);   // Sammlungsgrösse (wie in Durchgang 119)
 
 const db = require(path.join(ROOT, 'dist/db/database.js'));
 
+/**
+ * Lesbarer Text eines gefangenen Fehlers.
+ *
+ * Bewusst eine eigene, kurze Fassung statt utils/httpError: Dieses Skript
+ * laeuft als eigenstaendiges Werkzeug ueber `node`, ohne den Build — es kann
+ * ein TypeScript-Modul gar nicht laden. Die Regel ist dieselbe: Ein geworfener
+ * String oder ein Objekt ohne `message` soll nicht als „undefined" enden.
+ * @param {unknown} e
+ * @returns {string}
+ */
+function fehlertext(e) {
+  if (e instanceof Error && e.message) return e.message;
+  if (typeof e === 'string' && e) return e;
+  // Der Umweg ueber die Zwischenvariable ist noetig, weil `typeof e === 'object'`
+  // den Typ auf `object` verengt und der kein `message` kennt.
+  const m = e ? /** @type {any} */ (e).message : undefined;
+  if (typeof m === 'string' && m) return m;
+  // `String([])` ist leer — siehe utils/httpError.ts, dort gefunden.
+  return e === null || e === undefined ? 'Unbekannter Fehler' : (String(e) || 'Unbekannter Fehler');
+}
+
+
 const USER = { id: null, username: 'loadtest-user' };
 
 // ── Seed: eine Sammlung in realistischer Grössenordnung ──────────────────────
@@ -235,7 +257,7 @@ async function main() {
         gesamt++;
         if (!ok) fehler[`${name} → HTTP ${status}`] = (fehler[`${name} → HTTP ${status}`] || 0) + 1;
       } catch (e) {
-        fehler[`${name} → ${e.message}`] = (fehler[`${name} → ${e.message}`] || 0) + 1;
+        fehler[`${name} → ${fehlertext(e)}`] = (fehler[`${name} → ${fehlertext(e)}`] || 0) + 1;
       }
     }
   };

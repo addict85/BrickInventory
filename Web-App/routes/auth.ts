@@ -3,7 +3,7 @@ import express from 'express';
 const router  = express.Router();
 import bcrypt from 'bcryptjs';
 import * as db from '../db/database';
-import { handleRouteError, logAndContinue, meldeUndWeiter } from '../utils/httpError';
+import { handleRouteError, logAndContinue, meldeUndWeiter, fehlerCode, fehlertext } from '../utils/httpError';
 import { hashToken, verifiziereEmailToken, assertLoginAllowed, establishSession, revokeAllTokens, revokeAllSessions, deleteToken, BCRYPT_ROUNDS, USERNAME_RE, EMAIL_RE, isValidLoginIdentifier } from '../utils/auth';
 import { checkLoginAllowed, recordLoginFailure, recordLoginSuccess, ipThrottle } from '../utils/loginLimiter';
 import crypto from 'crypto';
@@ -83,7 +83,7 @@ router.post('/login', async (req, res) => {
         [hashToken(webToken), user.id]  // DB speichert nur den Hash
       );
     } catch (e) {
-      console.warn('[login] Web-Token konnte nicht gespeichert werden, Anmeldung läuft über die Session:', e?.message || e);
+      console.warn('[login] Web-Token konnte nicht gespeichert werden, Anmeldung läuft über die Session:', fehlertext(e));
       webToken = null;
     }
     res.json({ success: true, ...(webToken ? { webToken } : {}), user: { id: user.id, username: user.username, isAdmin: req.session.isAdmin,
@@ -240,7 +240,7 @@ router.post('/users', requireAdmin, async (req, res) => {
     if (r.changes === 0) return res.status(409).json({ success: false, error: 'Benutzername bereits vergeben' });
     res.json({ success: true });
   } catch (e) {
-    if (e.code === '23505') return res.status(409).json({ success: false, error: 'Benutzername bereits vergeben' });
+    if (fehlerCode(e) === '23505') return res.status(409).json({ success: false, error: 'Benutzername bereits vergeben' });
     handleRouteError(res, e);
   }
 });
@@ -552,7 +552,7 @@ router.post('/register', ipThrottle('register', 5, 60 * 60 * 1000), async (req, 
       console_mode: result.mode === 'console',
     });
   } catch (e) {
-    if (e.code === '23505') return res.status(409).json({ success: false, error: 'Benutzername oder E-Mail bereits vergeben.' });
+    if (fehlerCode(e) === '23505') return res.status(409).json({ success: false, error: 'Benutzername oder E-Mail bereits vergeben.' });
     handleRouteError(res, e);
   }
 });

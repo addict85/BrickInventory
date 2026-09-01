@@ -9,7 +9,7 @@
  */
 const db    = require('../db/database');
 import { cdnImageLimiter } from '../utils/rateLimiter';
-import { meldeUndWeiter } from '../utils/httpError';
+import { meldeUndWeiter, fehlertext } from '../utils/httpError';
 const https = require('https');
 const fs    = require('fs');
 const path  = require('path');
@@ -787,9 +787,9 @@ async function _redownloadMissingImages() {
     console.log(`[img-redl] fertig: ${redownloaded} neu geladen, ${cleared} geleert (von ${total} fehlenden), ${thumbsErzeugt} Vorschauen erzeugt`);
     return { total, redownloaded, cleared, thumbs: thumbsErzeugt };
   } catch (e) {
-    await _redlSetStatus({ running: false, phase: 'error', error: e.message });
-    console.error('[img-redl] Fehler:', e.message);
-    return { error: e.message };
+    await _redlSetStatus({ running: false, phase: 'error', error: fehlertext(e) });
+    console.error('[img-redl] Fehler:', fehlertext(e));
+    return { error: fehlertext(e) };
   }
 }
 

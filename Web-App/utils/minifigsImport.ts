@@ -1,5 +1,6 @@
 import * as db from '../db/database';
 import { getSetMinifigs } from '../clients/rebrickable';
+import { fehlertext } from '../utils/httpError';
 
 /**
  * Minifiguren eines Sets aus dem Katalog übernehmen.
@@ -52,7 +53,7 @@ async function importMinifigsForSet(setNumber: string, userId: number) {
     console.log(`[minifigs] ${setNumber}: ${figs.length} importiert`);
     return figs.length;
   } catch (e) {
-    console.warn(`[minifigs] Import fehlgeschlagen für ${setNumber}: ${e.message}`);
+    console.warn(`[minifigs] Import fehlgeschlagen für ${setNumber}: ${fehlertext(e)}`);
     return 0;
   }
 }

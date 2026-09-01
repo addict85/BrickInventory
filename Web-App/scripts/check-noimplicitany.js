@@ -78,7 +78,13 @@ function meldungenJeDatei() {
       [path.join(ROOT, 'node_modules', 'typescript', 'bin', 'tsc'), '--noEmit', '--noImplicitAny'],
       { cwd: ROOT, encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] });
   } catch (e) {
-    ausgabe = String(e.stdout || '') + String(e.stderr || '');
+    // execFileSync haengt stdout/stderr an den geworfenen Fehler — genau die
+    // brauchen wir hier, denn tsc meldet seine Funde ueber die Ausgabe und
+    // beendet sich dabei mit einem Fehlercode. Der Cast benennt das; ein
+    // `unknown` liesse sich sonst nicht auslesen, und ein `any` am
+    // catch-Parameter waere wieder die Tuer, die dieser Schalter schliesst.
+    const p = /** @type {{ stdout?: unknown, stderr?: unknown }} */ (e);
+    ausgabe = String(p.stdout || '') + String(p.stderr || '');
   }
   const jeDatei = new Map();
   for (const zeile of ausgabe.split('\n')) {

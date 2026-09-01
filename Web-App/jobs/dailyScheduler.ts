@@ -8,7 +8,7 @@
  *   das der Primary hier alle 3s pollt und dann alles neu plant. Zusätzlich ruft
  *   die API rescheduleAll() direkt auf (falls die Anfrage auf dem Primary landet).
  */
-import { meldeUndWeiter } from '../utils/httpError';
+import { meldeUndWeiter, fehlertext } from '../utils/httpError';
 const db = require('../db/database');
 
 // Metadaten der täglichen Jobs. monitorKey = Schlüssel der Job-Karte im Monitoring
@@ -53,7 +53,7 @@ async function _scheduleOne(name: string) {
   const ms = next.getTime() - now.getTime();
   console.log(`[scheduler] ${name}: nächster Lauf ${next.toLocaleString('de-CH')} (in ${Math.round(ms / 3600000 * 10) / 10}h)`);
   job.timer = setTimeout(async () => {
-    try { await job.fn(); } catch (e) { console.error(`[scheduler] ${name}:`, e.message); }
+    try { await job.fn(); } catch (e) { console.error(`[scheduler] ${name}:`, fehlertext(e)); }
     _scheduleOne(name); // für den nächsten Tag neu planen
   }, ms);
 }

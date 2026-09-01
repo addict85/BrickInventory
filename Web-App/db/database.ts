@@ -27,6 +27,7 @@ import { Client } from 'pg';
 import { LOCKS } from '../utils/lockNamespaces';
 import { initImageMisses } from '../utils/imageMisses';
 import { initImageQueue } from '../jobs/imageQueue';
+import { fehlerCode } from '../utils/httpError';
 
 // ── Warum diese acht jetzt oben stehen (Nachtrag 155) ────────────────────────
 //
@@ -141,7 +142,10 @@ async function queryWithRetry<T>(queryFn: () => Promise<T>, maxRetries = 2): Pro
       return await queryFn();
     } catch (err) {
       lastErr = err;
-      if (!RETRYABLE_CODES.has(err.code) || attempt === maxRetries) throw err;
+      // `?? ''` statt eines Nicht-Null-Ausrufezeichens: Ein Fehler ohne Code
+      // ist eben nicht wiederholbar, und der leere String faellt sauber
+      // durch die Menge — genau das Verhalten von vorher, nur ohne `any`.
+      if (!RETRYABLE_CODES.has(fehlerCode(err) ?? '') || attempt === maxRetries) throw err;
       const wait = 50 * Math.pow(2, attempt); // 50 ms, 100 ms
       await new Promise(r => setTimeout(r, wait));
     }

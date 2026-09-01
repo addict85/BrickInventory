@@ -44,7 +44,7 @@ const router  = express.Router();
 import path from 'path';
 import fs from 'fs';
 import * as db from '../db/database';
-import { handleRouteError, logAndContinue, meldeUndWeiter } from '../utils/httpError';
+import { handleRouteError, logAndContinue, meldeUndWeiter, fehlertext } from '../utils/httpError';
 import { recordAcquisitionForDay, findSameDayAcquisition } from '../utils/acquisitions';
 import { acquisitionMoveSource, resolveWriteTarget, parseScopeMode, writableIds } from '../utils/household';
 import { getAllSetParts, downloadFile, sleep } from '../clients/rebrickable';
@@ -427,7 +427,7 @@ async function updateManualPart(uid: number, partNumber: string, colorId: number
           rem -= take;
         }
       }
-    } catch(e) { console.error('[updateManualPart] acq tracking:', e.message); }
+    } catch(e) { console.error('[updateManualPart] acq tracking:', fehlertext(e)); }
   }
   if (body.unit_price !== undefined) {
     const raw = body.unit_price;
@@ -450,7 +450,7 @@ async function updateManualPart(uid: number, partNumber: string, colorId: number
     try {
       await db.run('UPDATE parts SET condition=$1 WHERE id=$2', [cond, existing.id]);
     } catch (e) {
-      console.error('[updateManualPart] condition update skipped (migration pending?):', e.message);
+      console.error('[updateManualPart] condition update skipped (migration pending?):', fehlertext(e));
     }
   }
 }
@@ -551,7 +551,7 @@ router.post('/import/csv', csvUpload.single('file'), async (req: LoggedInRequest
         }
       } catch (e) {
         errors++;
-        results.push({ part_number: partNumber, action: 'error', error: e.message });
+        results.push({ part_number: partNumber, action: 'error', error: fehlertext(e) });
       }
     }
 

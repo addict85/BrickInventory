@@ -1,3 +1,4 @@
+import { fehlertext } from '../utils/httpError';
 'use strict';
 const fs       = require('fs');
 // Pfade zentral auflösen — __dirname zeigt seit dem dist/-Build nicht mehr
@@ -354,7 +355,7 @@ process.on('message', async (msg: any) => {
     await pool.end();
     process.exit(0);
   } catch(e) {
-    send({ type: 'error', task, error: e.message });
+    send({ type: 'error', task, error: fehlertext(e) });
     await pool.end().catch(() => {});
     process.exit(1);
   }

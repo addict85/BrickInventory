@@ -16,6 +16,7 @@ import { asIds } from './household';
 import { valueSet, valueAcquisitionRows, weightedPurchase, pnlPct as calcPnlPct, PNL_EPS } from './setValue';
 import { REBRICKABLE_DEFAULT_DAILY } from './rateLimiter';
 import { bricklinkRequest, getPriceGuide } from '../clients/bricklink';
+import { fehlertext } from '../utils/httpError';
 
 /**
  * Zustand eines Sets nach derselben Regel wie die Anzeige
@@ -260,7 +261,7 @@ async function fetchPrice(setNumber: string, condition: string, guideType: strin
           [setNumber, cond, currency, avg, qavg, min, max]).catch(()=>{});
       }
       return { min_price:min, avg_price:avg, max_price:max, qty_avg_price:qavg, from_cache:false };
-    } catch (e) { console.log(`  Price ${setNumber} cond=${cond} error: ${e.message}`); return null; }
+    } catch (e) { console.log(`  Price ${setNumber} cond=${cond} error: ${fehlertext(e)}`); return null; }
   }
 
   const rl1 = await checkAndIncrementRateLimit('bricklink');
@@ -547,7 +548,7 @@ async function fetchPartPrice(partNumber: string, rbColorId: number, condition: 
       }
       return { avg_price: avg, qty_avg_price: qavg, from_cache: false };
     } catch (e) {
-      console.log(`  Part price failed ${partNumber}${blPartNumber !== partNumber ? ` (bl ${blPartNumber})` : ''} color ${colorId} (rb color ${rbColorId}) cond=${cond}: ${e.message}`);
+      console.log(`  Part price failed ${partNumber}${blPartNumber !== partNumber ? ` (bl ${blPartNumber})` : ''} color ${colorId} (rb color ${rbColorId}) cond=${cond}: ${fehlertext(e)}`);
       return null;
     }
   }
@@ -637,7 +638,7 @@ async function fetchMinifigPrice(figNumber: string, condition: string, currency:
       }
       return { avg_price: avg, qty_avg_price: qavg, from_cache: false };
     } catch (e) {
-      console.log(`  Minifig price failed ${figNumber} cond=${cond}: ${e.message}`);
+      console.log(`  Minifig price failed ${figNumber} cond=${cond}: ${fehlertext(e)}`);
       return null;
     }
   }

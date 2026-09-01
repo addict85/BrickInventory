@@ -41,7 +41,7 @@ const router  = express.Router();
 import multer from 'multer';
 import { parse } from 'csv-parse/sync';
 import * as db from '../db/database';
-import { handleRouteError, logAndContinue, meldeUndWeiter } from '../utils/httpError';
+import { handleRouteError, logAndContinue, meldeUndWeiter, fehlertext } from '../utils/httpError';
 import { recordAcquisitionForDay, findSameDayAcquisition } from '../utils/acquisitions';
 import { acquisitionMoveSource, resolveWriteTarget, parseScopeMode } from '../utils/household';
 import { getSetMinifigs, getMinifigInfo, getRbKey } from '../clients/rebrickable';
@@ -245,7 +245,7 @@ async function estimateFigPriceFromParts(figNumber: string, userId: number, cond
 
     return total;
   } catch (e) {
-    console.warn(`[minifig-price-estimate] ${figNumber}: ${e.message}`);
+    console.warn(`[minifig-price-estimate] ${figNumber}: ${fehlertext(e)}`);
     return null;
   }
 }
@@ -453,7 +453,7 @@ async function updateManualFig(uid: number, figNumber: string, body: any) {
           rem -= take;
         }
       }
-    } catch(e) { console.error('[updateManualFig] acq tracking:', e.message); }
+    } catch(e) { console.error('[updateManualFig] acq tracking:', fehlertext(e)); }
   }
   let newBlNum = existing.bl_fig_number;
   if (body.bl_fig_number !== undefined) {
@@ -482,7 +482,7 @@ async function updateManualFig(uid: number, figNumber: string, body: any) {
     try {
       await db.run('UPDATE minifigs SET condition=$1 WHERE id=$2', [cond, existing.id]);
     } catch (e) {
-      console.error('[updateManualFig] condition update skipped (migration pending?):', e.message);
+      console.error('[updateManualFig] condition update skipped (migration pending?):', fehlertext(e));
     }
   }
 }
@@ -561,7 +561,7 @@ router.post('/import/csv', csvUpload.single('file'), async (req: LoggedInRequest
         }
       } catch (e) {
         errors++;
-        results.push({ fig_number: figNumber, action: 'error', error: e.message });
+        results.push({ fig_number: figNumber, action: 'error', error: fehlertext(e) });
       }
     }
 

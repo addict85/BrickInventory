@@ -9,6 +9,7 @@
 import crypto from 'crypto';
 import https from 'https';
 import * as db from '../db/database';
+import { alsAbrufFehler } from './abrufFehler';
 
 const BASE = 'https://api.bricklink.com/api/store/v1';
 
@@ -154,7 +155,8 @@ async function getPriceGuideRaw(setNumber: string, condition = 'N', guideType = 
   try {
     return await bricklinkRequest('GET', `/items/set/${n}/price`, params);
   } catch (e) {
-    const code = e.detail?.meta?.code;
+    const f = alsAbrufFehler(e);
+    const code = f.detail?.meta?.code;
     if (code === 404 || code === 400) {
       // Try gear endpoint
       try {
@@ -162,14 +164,16 @@ async function getPriceGuideRaw(setNumber: string, condition = 'N', guideType = 
         await db.run('INSERT INTO catalog_cache (set_number, name, bl_type, is_gear) VALUES ($1,$2,$3,0) ON CONFLICT (set_number) DO UPDATE SET bl_type=$3, is_gear=0', [n, `Set ${n}`, 'GEAR']);
         return result;
       } catch (e2) {
-        if (e2.detail?.meta?.code !== 404 && e2.detail?.meta?.code !== 400) throw e2;
+        const f2 = alsAbrufFehler(e2);
+        if (f2.detail?.meta?.code !== 404 && f2.detail?.meta?.code !== 400) throw e2;
         // Try book endpoint
         try {
           const result = await bricklinkRequest('GET', `/items/book/${bare}/price`, params);
           await db.run('INSERT INTO catalog_cache (set_number, name, bl_type, is_gear) VALUES ($1,$2,$3,0) ON CONFLICT (set_number) DO UPDATE SET bl_type=$3, is_gear=0', [n, `Set ${n}`, 'BOOK']);
           return result;
         } catch (e3) {
-          if (e3.detail?.meta?.code !== 404 && e3.detail?.meta?.code !== 400) throw e3;
+          const f3 = alsAbrufFehler(e3);
+          if (f3.detail?.meta?.code !== 404 && f3.detail?.meta?.code !== 400) throw e3;
           await db.run('INSERT INTO catalog_cache (set_number, name, bl_type, is_gear) VALUES ($1,$2,$3,1) ON CONFLICT (set_number) DO UPDATE SET bl_type=$3, is_gear=1', [n, `Set ${n}`, 'NONE']);
           throw new Error(`${n} nicht auf BrickLink gefunden (Set/Gear/Book) — kein Preis`);
         }

@@ -51,7 +51,7 @@ import fs from 'fs';
 import https from 'https';
 
 import * as db from '../db/database';
-import { handleRouteError, logAndContinue } from '../utils/httpError';
+import { handleRouteError, logAndContinue, fehlertext } from '../utils/httpError';
 import { downloadSetImage } from '../utils/setImages';
 // Der Kern liegt seit Nachtrag 131 in utils/setService.ts; hier bleiben die
 // HTTP-Routen, die ihn rufen.
@@ -426,7 +426,7 @@ router.post('/add-stream', async (req: LoggedInRequest, res) => {
       d=>{ if(cancelled) throw new Error('CANCELLED'); send(d); },
       V2.optionalPrice(purchase_price, 'Kaufpreis'), setCondition);
     send({ step:'done', ...result });
-  } catch (e) { if(e.message!=='CANCELLED') send({ step:'error', error:e.message }); }
+  } catch (e) { if(fehlertext(e)!=='CANCELLED') send({ step:'error', error:fehlertext(e) }); }
   unregisterAddSse();
   res.end();
 });
@@ -536,7 +536,7 @@ router.post('/import/csv', upload.single('file'), async (req, res) => {
     records = gelesen.records;
     uebersprungen = gelesen.uebersprungen;
   } catch(e) {
-    return res.status(400).json({ success:false, error:'CSV Parse Fehler: ' + e.message });
+    return res.status(400).json({ success:false, error:'CSV Parse Fehler: ' + fehlertext(e) });
   }
   if (!records.length) {
     return res.status(400).json({ success:false,
@@ -607,7 +607,7 @@ router.post('/import/csv', upload.single('file'), async (req, res) => {
           break;
         } catch(e) {
           attempt++;
-          const msg = e.message || 'Unbekannter Fehler';
+          const msg = fehlertext(e) || 'Unbekannter Fehler';
           const isTimeout   = msg.includes('Timeout');
           const isRateLimit = msg.includes('429') || msg.includes('rate limit') || msg.includes('Daily limit');
           if ((isTimeout || isRateLimit) && attempt < 2) {
@@ -812,7 +812,7 @@ router.delete('/:setNumber/instructions/:instrId', async (req, res) => {
         [instr.local_path]).catch(() => ({ ok: 1 }));   // im Zweifel behalten
       if (!rest) {
         try { const fp=path.join(APP_ROOT,instr.local_path.slice(1)); if(fs.existsSync(fp))fs.unlinkSync(fp); }
-        catch(e){ console.warn('[instructions] Datei konnte nicht gelöscht werden:', e.message); }
+        catch(e){ console.warn('[instructions] Datei konnte nicht gelöscht werden:', fehlertext(e)); }
       }
     }
     res.json({ success:true });

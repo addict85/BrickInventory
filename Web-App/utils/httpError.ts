@@ -69,7 +69,53 @@ function meldeUndWeiter(kontext: string, e: unknown) {
   logAndContinue(kontext)(e);
 }
 
-export { handleRouteError, logAndContinue, meldeUndWeiter };
+/**
+ * Der lesbare Text eines gefangenen Fehlers — egal was geworfen wurde.
+ *
+ * ── Warum das mehr ist als eine Typ-Beruhigung ──────────────────────────────
+ * `catch (e) { … e.message … }` stand an 91 Stellen. In JavaScript darf aber
+ * ALLES geworfen werden, nicht nur ein Error: eine Zeichenkette, ein Objekt
+ * ohne `message`, bei einem abgelehnten Versprechen auch `undefined`. In genau
+ * diesen Faellen war `e.message` seinerseits `undefined` — und beim Nutzer
+ * stand dann „Fehler: undefined", also die eine Meldung, mit der niemand
+ * etwas anfangen kann.
+ *
+ * Die Reihenfolge ist die der Nuetzlichkeit:
+ *   1. `message` einer Error-artigen Ausnahme — der Normalfall.
+ *   2. Der Wert selbst, wenn eine Zeichenkette geworfen wurde.
+ *   3. `String(e)` als letzter Ausweg; fuer `null`/`undefined` ein fester
+ *      Text, weil „null" als Fehlermeldung nichts erklaert.
+ *
+ * Absichtlich KEINE Serialisierung des ganzen Objekts: Ein geworfener
+ * Datenbankfehler traegt gern die vollstaendige Abfrage samt Parametern, und
+ * die gehoert nicht in eine Meldung, die bis zur Oberflaeche laufen kann.
+ */
+function fehlertext(e: unknown): string {
+  if (e instanceof Error && e.message) return e.message;
+  if (typeof e === 'string' && e) return e;
+  if (e && typeof e === 'object' && typeof (e as any).message === 'string' && (e as any).message)
+    return (e as any).message;
+  if (e === null || e === undefined) return 'Unbekannter Fehler';
+  // `String(e)` kann selbst leer sein — `String([])` ergibt den leeren String,
+  // und dann staende in der Oberflaeche „Fehler: " mit nichts dahinter. Der
+  // Test hat genau diesen Fall gefunden; die erste Fassung hatte ihn nicht.
+  return String(e) || 'Unbekannter Fehler';
+}
+
+/**
+ * Der Fehlercode einer Ausnahme, falls sie einen traegt.
+ *
+ * Node-Systemfehler (ENOENT, ECONNREFUSED, 23505 von Postgres) fuehren ihn in
+ * `code`. Die drei Stellen, die danach verzweigen, brauchen ihn typsicher —
+ * und `undefined` ist die richtige Antwort, wenn kein Code da ist, weil jeder
+ * Vergleich damit sauber fehlschlaegt.
+ */
+function fehlerCode(e: unknown): string | undefined {
+  const c = (e as any)?.code;
+  return typeof c === 'string' || typeof c === 'number' ? String(c) : undefined;
+}
+
+export { handleRouteError, logAndContinue, meldeUndWeiter, fehlertext, fehlerCode };
 
 /**
  * Eine Datei an die Antwort streamen — mit Fehlerbehandlung.

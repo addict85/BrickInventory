@@ -7,6 +7,7 @@ import * as db from '../db/database';
 // Zentraler Settings-Helfer — lokale Kopie entfernt
 import { getGlobalSetting } from '../utils/settings';
 import { ausTabelle } from '../utils/validate';
+import { fehlertext } from '../utils/httpError';
 const getSetting = (key: string) => getGlobalSetting(key, '');
 
 /**
@@ -73,8 +74,8 @@ async function sendMail({ to, subject, html, text }: {
     console.log(`📧 E-Mail gesendet an ${to}: ${info.messageId}`);
     return { success: true, mode: 'smtp', messageId: info.messageId };
   } catch (e) {
-    console.error(`📧 SMTP Fehler (${to}):`, e.message);
-    return { success: false, error: e.message, mode: 'smtp' };
+    console.error(`📧 SMTP Fehler (${to}):`, fehlertext(e));
+    return { success: false, error: fehlertext(e), mode: 'smtp' };
   }
 }
 
@@ -399,7 +400,7 @@ async function testSmtp() {
     await transporter.verify();
     return { success: true, message: 'SMTP-Verbindung erfolgreich' };
   } catch (e) {
-    return { success: false, error: e.message };
+    return { success: false, error: fehlertext(e) };
   }
 }
 

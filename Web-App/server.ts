@@ -103,7 +103,7 @@ process.on('uncaughtException', (err) => {
 global.startupStatus = { ready: false, step: 'Datenbank wird initialisiert...', progress: 0, total: 6 };
 
 // ── Cluster: fork one worker per CPU so multiple requests run in parallel ─────
-import { meldeUndWeiter } from './utils/httpError';
+import { meldeUndWeiter, fehlertext } from './utils/httpError';
 import cluster from 'cluster';
 import os from 'os';
 import { downloadSetImage } from './utils/setImages';
@@ -113,6 +113,7 @@ import { purgeExpiredTokens } from './utils/auth';
 import { purgeAltePreise } from './utils/priceHistory';
 import { enqueue } from './jobs/instructionQueue';
 import { generateThumb } from './routes/thumbs';
+import { alsAbrufFehler } from './clients/abrufFehler';
 
 const WORKERS = parseInt(process.env.WEB_WORKERS || '0') || Math.max(2, os.cpus().length);
 
@@ -710,7 +711,11 @@ app.get('/api/debug/test', async (req, res) => {
     res.json({ success: true, data });
   // Diese Diagnoseroute ist ohnehin nur ausserhalb von Produktion erreichbar
   // (siehe 404 oben), die Detailausgabe ist hier also gewollt und harmlos.
-  } catch (e) { res.json({ success: false, error: e.message, detail: e.detail || null }); }
+  } catch (e) {
+    // `detail` traegt die Antwort der Gegenstelle, wenn ein Abruf-Klient sie
+    // angehaengt hat — siehe clients/abrufFehler.ts.
+    res.json({ success: false, error: fehlertext(e), detail: alsAbrufFehler(e).detail || null });
+  }
 });
 
 // ── E-Mail Bestätigung: /verify?token=... ─────────────────────────────────────
@@ -732,7 +737,7 @@ app.get('/verify', async (req, res) => {
   } catch (e) {
     // Ein Datenbankfehler darf dem Klickenden keine Fehlerseite zeigen — er
     // kann nichts damit anfangen. Ins Protokoll gehört er trotzdem.
-    console.error('Verify error:', e.message);
+    console.error('Verify error:', fehlertext(e));
     res.redirect('/?verified=invalid');
   }
 });
@@ -905,7 +910,7 @@ db.initSchemaOnce().then(async () => {
       try {
         await csvSync.run();
       } catch(e) {
-        console.error('[rb-csv-sync] startup error:', e.message);
+        console.error('[rb-csv-sync] startup error:', fehlertext(e));
         global.startupStatus = { ready: true, step: 'Fehler beim CSV-Import', progress: 6, total: 6 };
       }
     } else {
@@ -1055,7 +1060,7 @@ db.initSchemaOnce().then(async () => {
           await tick();
         }
         await monitor.update('imgDl', { status: 'idle', sub: 'Alle Bilder gecacht', label: '📥 Bild-Download (CDN)' }).catch(() => {});
-      } catch(e) { console.error('[img-dl-bg] error:', e.message); }
+      } catch(e) { console.error('[img-dl-bg] error:', fehlertext(e)); }
     };
     setTimeout(() => run().finally(() => setInterval(run, 60 * 60 * 1000)), 30_000);
   })();

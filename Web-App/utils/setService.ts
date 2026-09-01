@@ -1,5 +1,5 @@
 import * as db from '../db/database';
-import { logAndContinue, meldeUndWeiter } from './httpError';
+import { logAndContinue, meldeUndWeiter, fehlertext } from './httpError';
 import { scopeIds, writableIds } from './household';
 import { recordAcquisitionForDay } from './acquisitions';
 import { withInventoryLock } from './txLock';
@@ -548,7 +548,7 @@ async function updateSet(uid: number, sn: string, body: any) {
                                 ORDER BY created_at DESC, id DESC LIMIT 1)`,
         [cond, uid, sn]);
     } catch (e) {
-      console.error('[updateSet] condition update skipped (migration pending?):', e.message);
+      console.error('[updateSet] condition update skipped (migration pending?):', fehlertext(e));
     }
   }
   // Die Gesamtmenge des Blickfelds NACH der Änderung — siehe Kopfkommentar.

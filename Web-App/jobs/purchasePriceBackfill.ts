@@ -1,7 +1,7 @@
 import { getCurrentMarketPrice } from '../utils/marketPrice';
 import { getCurrentFigMarketPrice } from '../routes/minifigs';
 import { getCurrentPartMarketPrice, lookupPart } from '../routes/parts';
-import { meldeUndWeiter } from '../utils/httpError';
+import { meldeUndWeiter, fehlertext } from '../utils/httpError';
 'use strict';
 
 // One-time (idempotent) background migration: fills purchase_price for
@@ -66,7 +66,7 @@ async function backfillAcquisitions() {
       // Eine Zeile darf den Nachtrag nicht abbrechen — aber schweigend
       // überspringen hiess: Ein Job, der bei JEDER Zeile scheitert, sieht im
       // Log identisch aus wie einer, der sauber durchläuft.
-      log(`übersprungen (${row.set_number}): ${e.message}`);
+      log(`übersprungen (${row.set_number}): ${fehlertext(e)}`);
     }
     await sleep(1500); // Tageskontingent von BrickLink schonen
   }
@@ -92,7 +92,7 @@ async function backfillSets() {
         done++;
       }
     } catch (e) {
-      log(`übersprungen (${row.set_number}): ${e.message}`);
+      log(`übersprungen (${row.set_number}): ${fehlertext(e)}`);
     }
     await sleep(1500); // pace requests to respect BrickLink daily limit
   }

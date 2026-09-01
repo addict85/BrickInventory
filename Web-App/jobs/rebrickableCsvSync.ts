@@ -17,6 +17,7 @@
 const { APP_ROOT, DATA_DIR, PUBLIC_DIR } = require('../utils/appPaths');
 import { fetchMissingBlIds } from '../routes/parts';
 import { getRbKey, httpsGetRobust } from '../clients/rebrickable';
+import { fehlertext } from '../utils/httpError';
 const fs       = require('fs');
 const path     = require('path');
 const db       = require('../db/database');
@@ -248,7 +249,7 @@ async function syncCatalogExtrasDaily(today: string) {
     );
     log('catalog extras (themes + inventory_minifigs): Tagesimport erledigt');
   } catch (e) {
-    log(`catalog extras: Tagesimport fehlgeschlagen: ${e.message}`);
+    log(`catalog extras: Tagesimport fehlgeschlagen: ${fehlertext(e)}`);
   }
 }
 
@@ -265,7 +266,7 @@ async function syncPartCategoriesDaily(today: string) {
     );
     log('part_categories: Tagesimport erledigt');
   } catch (e) {
-    log(`part_categories: Tagesimport fehlgeschlagen: ${e.message}`);
+    log(`part_categories: Tagesimport fehlgeschlagen: ${fehlertext(e)}`);
   }
 }
 
@@ -316,7 +317,7 @@ async function run() {
       );
       log(`CSV sync complete for ${today}`);
     } catch(e) {
-      log(`CSV sync failed: ${e.message}`);
+      log(`CSV sync failed: ${fehlertext(e)}`);
       return; // Don't try BL mapping if CSV sync failed
     }
   }
@@ -324,7 +325,7 @@ async function run() {
   // Fetch missing BL IDs + sync bl_part_number via shared function
   try {
     await fetchMissingBlIds();
-  } catch(e) { log(`fetchMissingBlIds error: ${e.message}`); }
+  } catch(e) { log(`fetchMissingBlIds error: ${fehlertext(e)}`); }
 
   const s2 = { ready: true, step: 'Bereit', progress: TOTAL_STEPS, total: TOTAL_STEPS };
   global.startupStatus = s2;
@@ -359,7 +360,7 @@ async function run() {
       log(`[colors] BrickLink color mapping: ${count} colors cached`);
     }
   } catch(e) {
-    log(`[colors] BrickLink color mapping fetch failed: ${e.message}`);
+    log(`[colors] BrickLink color mapping fetch failed: ${fehlertext(e)}`);
   }
 }
 

@@ -4,7 +4,7 @@ import * as db from '../db/database';
 import { INSTRUCTIONS_DIR } from './appPaths';
 import { downloadFile, scrapeInstructions, sleep, httpsGetRobust } from '../clients/rebrickable';
 import * as brickset from '../clients/brickset';
-import { meldeUndWeiter } from './httpError';
+import { meldeUndWeiter, fehlertext } from './httpError';
 
 /**
  * Bauanleitungen beschaffen: Rebrickable → Brickset → BrickLink-Designer →
@@ -106,7 +106,7 @@ async function scrapeInstructionsFromFallback(setNumber: string) {
       console.log(`[brickinstructions] Fallback triggered for ${n}`);
       return 1;
     }
-  } catch (e) { console.log(`[brickinstructions] Fallback failed for ${n}: ${e.message}`); }
+  } catch (e) { console.log(`[brickinstructions] Fallback failed for ${n}: ${fehlertext(e)}`); }
   return 0;
 }
 
@@ -182,7 +182,7 @@ async function downloadSetInstructions(setNumber: string,
         if (!eigenerTakt) await sleep(5000);
         return 1;
       }
-    } catch(e) { console.log(`[instr] BDP failed: ${e.message}`); }
+    } catch(e) { console.log(`[instr] BDP failed: ${fehlertext(e)}`); }
     if (!eigenerTakt) await sleep(5000); // throttle regardless of result
   }
 
@@ -200,7 +200,7 @@ async function downloadSetInstructions(setNumber: string,
           brickinstructions_base:baseUrl, brickinstructions_hdrs:hdrs, brickinstructions_first:probe.buffer });
         
       }
-    } catch (e) { console.log(`  BrickInstructions probe failed: ${e.message}`); }
+    } catch (e) { console.log(`  BrickInstructions probe failed: ${fehlertext(e)}`); }
   }
 
   if (!instrList.length) {  return 0; }
@@ -248,7 +248,7 @@ async function collectAndBuildPDF(baseUrl: string, hdrs: Record<string, string>,
       await db.run('UPDATE shared_instructions SET local_path = $1 WHERE set_number = $2 AND local_path IS NULL', [relPath, setNumber]);
       console.log(`  ✅ PDF ready for ${setNumber}`);
     }
-  } catch (e) { console.log(`  PDF build failed for ${setNumber}: ${e.message}`); }
+  } catch (e) { console.log(`  PDF build failed for ${setNumber}: ${fehlertext(e)}`); }
 }
 
 async function buildImagePDF_fromBuffers(imgBuffers: Buffer[], destPath: string) {

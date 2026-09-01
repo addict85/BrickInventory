@@ -19,7 +19,7 @@ import express from 'express';
 import * as db from '../../db/database';
 import { writableIds } from '../../utils/household';
 import { findSameDayAcquisition, acquisitionTotals } from '../../utils/acquisitions';
-import { handleRouteError } from '../../utils/httpError';
+import { handleRouteError, fehlertext } from '../../utils/httpError';
 import { withInventoryLock } from '../../utils/txLock';
 import { requireToken } from './middleware';
 import { acquisitionMoveSource, resolveWriteTarget, scopeIds, parseScopeMode } from '../../utils/household';
@@ -355,7 +355,7 @@ router.get('/sets/:setNumber/acquisitions', requireToken, async (req: AuthedRequ
     // sonst in jeder Oberfläche noch einmal.
     res.json({ success: true, acquisitions: rows, totals: acquisitionTotals(rows), owner_user_id: uid });
   } catch (e) {
-    console.error('[v1 acquisitions GET]', e.message);
+    console.error('[v1 acquisitions GET]', fehlertext(e));
     res.json({ success: true, acquisitions: [], totals: acquisitionTotals([]) }); // graceful fallback
   }
 });
