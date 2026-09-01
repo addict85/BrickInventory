@@ -104,6 +104,10 @@ internal fun MainViewModel.logout() {
         // Die herausgelösten Flows gehören zum selben Konto und müssen
         // mit zurückgesetzt werden — sonst zeigt der nächste Nutzer auf
         // demselben Gerät noch fremde Teile und Bewertungen.
+        // Die Galerie gehoert dazu, seit sie einen eigenen Fluss hat: Ohne
+        // diese Zeile zeigte der naechste Nutzer auf demselben Geraet noch
+        // die Sets und Kennzahlen des vorigen.
+        _galleryState.value = GalleryUiState()
         _partsState.value = PartsUiState()
         _financeState.value = FinanceUiState()
         _csvImportState.value = CsvImportUiState()

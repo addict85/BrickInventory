@@ -81,7 +81,7 @@ internal fun MainViewModel.resolveBarcode(value: String) {
                         when (val vorhanden = repo.sets.getSetExists(setNum)) {
                             is Result.Success -> if (vorhanden.data.exists) {
                                 _snackbar.value = null
-                                _state.update { it.copy(gallerySearchFoundSetNumber = vorhanden.data.setNumber) }
+                                _galleryState.update { it.copy(gallerySearchFoundSetNumber = vorhanden.data.setNumber) }
                                 return@launch
                             }
                             is Result.Error -> {
@@ -195,7 +195,7 @@ internal fun MainViewModel.useScannedSetNumber(raw: String) {
             when (val vorhanden = repo.sets.getSetExists(setNum)) {
                 is Result.Success -> if (vorhanden.data.exists) {
                     _snackbar.value = null
-                    _state.update { it.copy(gallerySearchFoundSetNumber = vorhanden.data.setNumber) }
+                    _galleryState.update { it.copy(gallerySearchFoundSetNumber = vorhanden.data.setNumber) }
                     return@launch
                 }
                 is Result.Error -> {
@@ -243,7 +243,7 @@ internal fun MainViewModel.useScannedSetNumber(raw: String) {
 }
 
 internal fun MainViewModel.gallerySearchFoundConsumed() {
-    _state.update { it.copy(gallerySearchFoundSetNumber = null) }
+    _galleryState.update { it.copy(gallerySearchFoundSetNumber = null) }
 }
 
 /**

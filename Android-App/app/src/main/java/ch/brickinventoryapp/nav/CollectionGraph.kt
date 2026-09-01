@@ -85,20 +85,21 @@ fun NavGraphBuilder.collectionGraph(
             // Zustand INNERHALB des Ziels lesen — als Parameter wäre es eine
             // Momentaufnahme vom Aufbau des Graphen (der NavHost-Builder läuft nur einmal).
             val state by vm.state.collectAsStateWithLifecycle()
+            val galerie by vm.galleryState.collectAsStateWithLifecycle()
             // Retry loading if sets are empty and server URL is available
             LaunchedEffect(state.serverUrl) {
-                if (state.serverUrl.isNotBlank() && state.sets.isEmpty() && !state.isLoading) {
+                if (state.serverUrl.isNotBlank() && galerie.sets.isEmpty() && !state.isLoading) {
                     vm.loadSets(); vm.loadStats()
                 }
             }
             // Rollposition ausdrücklich wiederherstellen — der hochgezogene
             // Zustand allein landete „verschoben" (Marcos Befund, Nachtrag 95).
             ch.brickinventoryapp.ui.ScrollPositionKeeper(
-                "gallery", galleryGridState, state.sets.isNotEmpty(), vm.scrollMemory)
+                "gallery", galleryGridState, galerie.sets.isNotEmpty(), vm.scrollMemory)
 
             // Gallery-Search: set found → navigate to detail
-            LaunchedEffect(state.gallerySearchFoundSetNumber) {
-                val found = state.gallerySearchFoundSetNumber
+            LaunchedEffect(galerie.gallerySearchFoundSetNumber) {
+                val found = galerie.gallerySearchFoundSetNumber
                 if (found != null) {
                     vm.gallerySearchFoundConsumed()
                     navController.navigate(Screen.SetDetail.createRoute(found))

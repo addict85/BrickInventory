@@ -83,6 +83,16 @@ class MainViewModel @Inject constructor(
      * Eigener Fluss, weil ihn alle vier Erfassungswege speisen (Barcode,
      * Texterkennung, Galerie, Katalog) und nur der Anzeige-Dialog ihn liest.
      */
+    /**
+     * Galerie — eigener Fluss (Nachtrag: AppUiState-Aufteilung).
+     *
+     * Sechzehn Dateien sammeln `state`; die Galerie-Felder lesen davon drei.
+     * Als Teil von AppUiState loeste jedes Blaettern und jede Suche eine
+     * Rekomposition in allen sechzehn aus. Siehe GalleryUiState.
+     */
+    internal val _galleryState = MutableStateFlow(GalleryUiState())
+    val galleryState = _galleryState.asStateFlow()
+
     internal val _erfassungState = MutableStateFlow(ErfassungUiState())
     val erfassungState = _erfassungState.asStateFlow()
 
@@ -300,7 +310,7 @@ class MainViewModel @Inject constructor(
         }
 
         // Sets nachlagen falls Erstladung beim App-Start scheiterte
-        if (_state.value.sets.isEmpty() && !_state.value.isLoading) loadDashboard()
+        if (_galleryState.value.sets.isEmpty() && !_state.value.isLoading) loadDashboard()
     }
 
     /** Import abgeschlossen: Daten neu laden, Banner kurz sichtbar lassen, dann ausblenden. */

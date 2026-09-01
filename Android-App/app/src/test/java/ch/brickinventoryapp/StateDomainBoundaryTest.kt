@@ -32,11 +32,12 @@ class StateDomainBoundaryTest {
 
     /** Feld → Domäne. Die Domäne ist der Name der Feature-Datei ohne "Feature.kt". */
     private val domaene = mapOf(
-        // Galerie
-        "sets" to "Gallery", "galleryQuery" to "Gallery", "galleryTheme" to "Gallery",
-        "gallerySort" to "Gallery", "galleryThemes" to "Gallery", "galleryTotal" to "Gallery",
-        "galleryPage" to "Gallery", "galleryLoadingMore" to "Gallery", "stats" to "Gallery",
-        "gallerySearchFoundSetNumber" to "Gallery",
+        // Die zehn Galerie-Felder stehen hier nicht mehr: Sie sind nach
+        // GalleryUiState gewandert, genau wie die zwoelf Barcode-Felder in
+        // Nachtrag 117. Der Anlass war diesmal die Rekomposition — SECHZEHN
+        // Dateien sammeln `vm.state`, gelesen wurden die Galerie-Felder von
+        // dreien. Und wieder hat der zweite Test unten die zugehoerigen
+        // Ausnahmen als tot gemeldet, statt sie liegen zu lassen.
         // Die zwölf Barcode-Felder stehen hier nicht mehr: Sie sind in
         // Nachtrag 117 nach BarcodeUiState gewandert und damit gar nicht mehr
         // Teil des gemeinsamen Objekts. Das ist der erwünschte Ausgang — die
@@ -70,26 +71,17 @@ class StateDomainBoundaryTest {
      * Stelle, an der die Trennung nicht gilt.
      */
     private val ausnahmen = mapOf(
-        // Der Scanner findet ein Set, das schon im Bestand liegt, und die
-        // Galerie soll dorthin springen. Die Übergabe ist der Zweck des Scans;
-        // sie über einen Rückruf zu führen, wäre derselbe Schreibzugriff mit
-        // mehr Zeremonie.
-        ("Barcode" to "gallerySearchFoundSetNumber") to
-            "Scanner reicht den Treffer an die Galerie weiter",
         // Die Finanzübersicht bekommt die Währung des Kontos in derselben
         // Antwort wie die Bewertung — ein zweiter Abruf nur für die Währung
         // wäre eine Anfrage mehr für denselben Wert.
         ("Finance" to "currency") to
             "Währung kommt in der Bewertungsantwort mit",
-        // applySetAggregate() schreibt das Zustands-Aggregat des Servers in die
-        // Galerie-Liste zurück. Ohne das blieb die Kachel nach einer
-        // Zustandsänderung im Kaufpreis-Dialog auf dem alten Label stehen, bis
-        // die Liste vollständig neu geladen wurde. Der saubere Weg wäre, dass
-        // die Kachel ihren Zustand nicht doppelt hält — das ist ein eigener
-        // Umbau, kein Nebeneffekt dieses Tests.
-        ("SetDetail" to "sets") to
-            "Zustands-Aggregat wird in die Galerie-Kachel zurückgeschrieben",
     )
+    // Zwei Ausnahmen sind mit der Galerie-Aufteilung entfallen — beide
+    // betrafen Schreibzugriffe auf Felder, die es in AppUiState nicht mehr
+    // gibt: „Barcode → gallerySearchFoundSetNumber" und „SetDetail → sets".
+    // Der Test darunter hat sie als tot gemeldet; das ist genau der Ausgang,
+    // den sein Kommentar beschreibt.
 
     @Test
     fun `jede Feature-Datei schreibt nur ihre eigenen Felder`() {

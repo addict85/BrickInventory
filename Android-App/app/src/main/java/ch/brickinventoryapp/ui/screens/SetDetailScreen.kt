@@ -52,9 +52,12 @@ fun SetDetailScreen(
     // Detail-Zustand aus eigenem Flow — Preis-/History-Loads rekomponieren
     // so nur noch diesen Screen, nicht alle AppUiState-Konsumenten.
     val detailState by vm.setDetailState.collectAsStateWithLifecycle()
+    // Die Galerie-Liste dient hier nur als Rueckfall, solange das Detail noch
+    // laedt — deshalb der eigene Fluss statt des ganzen App-Zustands.
+    val galerie by vm.galleryState.collectAsStateWithLifecycle()
     val authToken = state.authToken
     val set       = detailState.setDetail?.takeIf { it.setNumber == setNumber }
-                 ?: state.sets.find { it.setNumber == setNumber }
+                 ?: galerie.sets.find { it.setNumber == setNumber }
     val price     = detailState.setPrice?.takeIf { it.setNumber == setNumber }
     val history   = detailState.priceHistory
     val pnlPct    = history?.pnlPct

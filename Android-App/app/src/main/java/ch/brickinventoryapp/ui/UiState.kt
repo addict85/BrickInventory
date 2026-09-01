@@ -49,21 +49,6 @@ data class AppUiState(
     val isLoggedIn: Boolean = false,
     val isAdmin: Boolean = false,
     val username: String = "",
-    val sets: List<SetItem> = emptyList(),
-    /**
-     * Galerie-Filter — ausgewertet wird er auf dem SERVER (Marcos Vorgabe).
-     * Hier steht nur, was gerade eingestellt ist, damit die Oberfläche es
-     * anzeigen und die nächste Seite mit denselben Werten nachladen kann.
-     */
-    val galleryQuery: String = "",
-    val galleryTheme: String = "",
-    val gallerySort: String = ch.brickinventoryapp.data.repository.GALLERY_DEFAULT_SORT,
-    /** Themen des ganzen Bestands — vom Server, nicht aus der geladenen Seite. */
-    val galleryThemes: List<String> = emptyList(),
-    val galleryTotal: Int = 0,
-    val galleryPage: Int = 1,
-    val galleryLoadingMore: Boolean = false,
-    val stats: DashboardStats? = null,
     val authToken: String = "",
     val currency: String = "EUR",
     /**
@@ -85,6 +70,43 @@ data class AppUiState(
     val userDefaultCondition: String? = null, // null = use global default
     val appTheme: String = "classic", // global vom Admin gewähltes App-Design
     val language: String = "system",
+)
+
+/**
+ * Galerie: Liste, Filter, Blaetterstand und Kennzahlen.
+ *
+ * ── Warum diese zehn Felder aus AppUiState heraus mussten ───────────────────
+ * NACHGEMESSEN, nicht vermutet: SECHZEHN Dateien sammeln `vm.state`. Gelesen
+ * werden die Galerie-Felder aber nur von dreien (GalleryScreen,
+ * CollectionGraph, SetDetailScreen). Die uebrigen dreizehn wurden bei jedem
+ * Blaettern, jeder Suche und jedem Nachladen neu zusammengesetzt, ohne ein
+ * einziges dieser Felder zu lesen — Minifiguren, Finanzen, Einstellungen, die
+ * Navigationsleiste.
+ *
+ * Und gerade die Galerie ist der Zustand, der sich am haeufigsten aendert:
+ * `galleryLoadingMore` allein wird an fuenf Stellen geschrieben, `sets` an
+ * sechs.
+ *
+ * Es ist dasselbe Muster, das fuer Teile, Finanzen, Katalog und den Barcode
+ * schon vollzogen wurde (Nachtraege 117 ff.) — bei der Galerie war es
+ * steckengeblieben, ausgerechnet beim groessten und lautesten Block.
+ */
+data class GalleryUiState(
+    val sets: List<SetItem> = emptyList(),
+    /**
+     * Galerie-Filter — ausgewertet wird er auf dem SERVER (Marcos Vorgabe).
+     * Hier steht nur, was gerade eingestellt ist, damit die Oberfläche es
+     * anzeigen und die nächste Seite mit denselben Werten nachladen kann.
+     */
+    val galleryQuery: String = "",
+    val galleryTheme: String = "",
+    val gallerySort: String = ch.brickinventoryapp.data.repository.GALLERY_DEFAULT_SORT,
+    /** Themen des ganzen Bestands — vom Server, nicht aus der geladenen Seite. */
+    val galleryThemes: List<String> = emptyList(),
+    val galleryTotal: Int = 0,
+    val galleryPage: Int = 1,
+    val galleryLoadingMore: Boolean = false,
+    val stats: DashboardStats? = null,
 
     // Gallery "Search by barcode" flow
     // Auslöser für „öffne die Detailansicht dieses Sets". Gesetzt vom
@@ -93,6 +115,7 @@ data class AppUiState(
     // stammt aus der ersten Verwendung; gemeint ist beides.
     val gallerySearchFoundSetNumber: String? = null,   // → navigate to SetDetail
 )
+
 
 /**
  * Teile & Minifiguren — eigener Flow (gleiches Muster wie CatalogUiState).
