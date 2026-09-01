@@ -75,11 +75,12 @@ class GalleryServerFilterTest {
         //
         // Frueher stand die Regel als Parameter `themes: List<String>` im
         // Bildschirm. Seit die Bildschirme ihren Zustand selbst abholen
-        // (Nachtrag 96/115) ist es ein Feld: `state.galleryThemes`. Geprueft
+        // (Nachtrag 96/115) ist es ein Feld des Galerie-Zustands. Geprueft
         // wird deshalb die ABSICHT — Herkunft Zustand, keine eigene Ableitung
         // aus `sets` — statt der damaligen Schreibweise.
-        assert(s.contains("state.galleryThemes")) {
-            "Die Themenliste kommt nicht mehr aus dem Zustand (state.galleryThemes)"
+        // Wieder das FELD statt des Zustandsnamens — siehe AddExistingSetTest.
+        assert(Regex("""\w+\.galleryThemes""").containsMatchIn(s)) {
+            "Die Themenliste kommt nicht mehr aus dem Zustand (…galleryThemes)"
         }
         assert(!Regex("""themes[^\n]*=[^\n]*\bsets\b""").containsMatchIn(s)) {
             "Die Themenliste wird aus `sets` abgeleitet — dann schrumpft sie beim Blättern"
