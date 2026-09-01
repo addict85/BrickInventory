@@ -112,5 +112,11 @@ internal fun MainViewModel.logout() {
         // stünde er nach dem Abmelden noch da — genau der Fall, den die drei
         // Zeilen darüber schon abdecken.
         _barcodeState.value = BarcodeUiState()
+        // Und die Prüfanzeige, aus demselben Grund — sie nennt die Setnummer
+        // des vorigen Kontos und liesse sich nach dem Abmelden nicht mehr
+        // wegklicken: Der Abbrechen-Knopf sitzt im Dialog selbst, und der läge
+        // dann über dem Anmeldebildschirm. Der laufende Abruf wird mit
+        // abgebrochen, nicht nur ausgeblendet.
+        brichPruefungAb()
     }
 }

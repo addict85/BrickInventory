@@ -223,7 +223,38 @@ internal fun MainViewModel.addSet(setNumber: String, quantity: Int = 1, purchase
         // die Oberfläche sah also beschäftigt aus, während man schon die nächste
         // Nummer tippen wollte. Das Nachladen unten setzt sein eigenes Flag; für
         // den Abruf hier braucht es keines.
-        when (val r = repo.sets.addSet(eingabe, quantity, purchasePrice, condition, ownerUserId)) {
+        //
+        // ── Die Prüfung dagegen SCHON, und nur sie ──────────────────────────
+        //
+        // Marcos zweiter Befund: „man sieht nicht, dass die App am Prüfen ist,
+        // ob man das Set bereits besitzt." Das ist kein Widerspruch zu
+        // Nachtrag 87, sondern dessen Ergänzung — dort ging es um das
+        // Nachladen der Galerie, hier um die Frage davor.
+        //
+        // Anders als beim Scanner gibt es hier keine eigene Vorabfrage: Der
+        // Server beantwortet die Bestandsfrage IM Erfassungsaufruf und meldet
+        // `action = "exists"`, ohne etwas zu schreiben. Eine zweite Abfrage
+        // davorzusetzen hiesse, seine Regel im Client nachzubauen — genau das,
+        // was zwanzig Zeilen weiter oben als Fehler beschrieben ist. Die
+        // Wartezeit auf DIESE Antwort ist die Prüfung.
+        //
+        // Das `finally` umschliesst deshalb NUR den Abruf, nicht die
+        // Auswertung: Stünde die Anzeige noch während loadSets()/loadStats()/
+        // loadValuation(), wartete man wieder auf das Nachladen — und Nachtrag
+        // 87 wäre zurückgenommen.
+        //
+        // ABBRECHBAR IST DAS HIER NICHT, und das ist Absicht: Der Aufruf
+        // SCHREIBT bereits. Ihn abzubrechen liesse offen, ob der Server das Set
+        // angelegt hat. Deshalb wird `erfassungsJob` hier auch nicht gesetzt —
+        // der Abbrechen-Knopf räumt dann nur die Anzeige, und die Erfassung
+        // läuft im Hintergrund zu Ende. Genau das ist Marcos Vorgabe.
+        val r = try {
+            zeigePruefung(sn, Pruefphase.BESTAND)
+            repo.sets.addSet(eingabe, quantity, purchasePrice, condition, ownerUserId)
+        } finally {
+            pruefungFertig()
+        }
+        when (r) {
             is Result.Success -> {
                 if (r.data.success && r.data.action == "exists") {
                     // Schon im Blickfeld — der Server hat nichts geschrieben.

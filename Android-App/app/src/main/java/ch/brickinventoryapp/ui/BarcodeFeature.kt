@@ -23,8 +23,28 @@ internal fun MainViewModel.setScannerSource(source: String) {
 }
 
 internal fun MainViewModel.resolveBarcode(value: String) {
-    viewModelScope.launch {
-        _snackbar.value = ctx.getString(R.string.vm_barcode_searching, value)
+    // ── Sichtbar prüfen statt still arbeiten (Marcos Befund) ────────────────
+    //
+    // Hier lag vorher nur eine Schnellmeldung („Suche Set für …"). Die
+    // verschwindet von selbst, und der Scanner-Bildschirm ist zu diesem
+    // Zeitpunkt bereits geschlossen: nav/ToolsGraph.kt ruft `popBackStack()`
+    // VOR `resolveBarcode()`. Wer in dieser Lücke den Scanner erneut öffnet,
+    // scannt das nächste Set, während das vorige noch geprüft wird.
+    //
+    // Der Dialog aus zeigePruefung() bleibt stehen, bis die Frage beantwortet
+    // ist, und hält damit genau so lange an, wie die App noch nicht weiss, ob
+    // das Set schon vorhanden ist.
+    //
+    // Ein laufender Vorgang wird abgebrochen: Kommt trotzdem ein zweiter Scan
+    // durch, gilt der neue — sonst beantwortete die Anzeige eine Frage, die
+    // niemand mehr gestellt hat.
+    erfassungsJob?.cancel()
+    erfassungsJob = viewModelScope.launch {
+      // Das `finally` ist der Kern und kein Beiwerk: Der Körper hat sechs
+      // Rückwege, davon vier vorzeitige. Ein einziger übersehener liesse den
+      // Dialog stehen, und die App wirkte eingefroren.
+      try {
+        zeigePruefung(value, Pruefphase.BARCODE)
         when (val r = repo.sets.resolveBarcode(value)) {
             is Result.Success -> {
                 val setNum = r.data.setNumber
@@ -53,6 +73,11 @@ internal fun MainViewModel.resolveBarcode(value: String) {
                         // zum Zwischendialog. Scheitert die Abfrage, wird
                         // abgebrochen statt auf gut Glück ein womöglich
                         // vorhandenes Set anzubieten.
+                        // Ab hier ist die Setnummer bekannt — die Anzeige
+                        // nennt jetzt SIE statt der EAN. Beim schnellen
+                        // Scannen ist das der Unterschied zwischen „irgendein
+                        // Strichcode" und „42200-1 wird geprüft".
+                        zeigePruefung(setNum, Pruefphase.BESTAND)
                         when (val vorhanden = repo.sets.getSetExists(setNum)) {
                             is Result.Success -> if (vorhanden.data.exists) {
                                 _snackbar.value = null
@@ -98,6 +123,9 @@ internal fun MainViewModel.resolveBarcode(value: String) {
                 _barcodeState.update { it.copy(result = null, manuelleErfassungAnfordern = true) }
             }
         }
+      } finally {
+        pruefungFertig()
+      }
     }
 }
 
@@ -117,9 +145,19 @@ internal fun MainViewModel.resolveBarcode(value: String) {
  * auch für Sets, die noch niemand erfasst hat.
  */
 internal fun MainViewModel.useScannedSetNumber(raw: String) {
-    viewModelScope.launch {
+    // Dieser Weg war bisher der STILLSTE der vier: keine Schnellmeldung, keine
+    // Anzeige — zwischen dem gelesenen Text und dem Zwischendialog liegen ein
+    // getSetExists() und ein Katalogabruf, und der Bildschirm zeigte davon
+    // nichts. Siehe resolveBarcode() oben für die vollständige Begründung.
+    erfassungsJob?.cancel()
+    erfassungsJob = viewModelScope.launch {
+      try {
         // Wie in der Galerie: eine nackte Zahl ist die Grundvariante "-1".
         val setNum = raw.trim().let { if (it.contains("-")) it else "$it-1" }
+
+        // Die EAN-Auflösung entfällt hier — die Nummer steht bereits fest.
+        // Angezeigt wird deshalb sofort die Bestandsfrage.
+        zeigePruefung(setNum, Pruefphase.BESTAND)
 
         // HERKUNFT ZUERST (Nachtrag 64, Marcos Fehlerbericht).
         //
@@ -198,6 +236,9 @@ internal fun MainViewModel.useScannedSetNumber(raw: String) {
                 _barcodeState.update { it.copy(manuelleErfassungAnfordern = true) }
             }
         }
+      } finally {
+        pruefungFertig()
+      }
     }
 }
 

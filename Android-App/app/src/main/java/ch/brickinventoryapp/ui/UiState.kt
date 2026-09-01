@@ -260,6 +260,66 @@ data class BarcodeUiState(
     val adding: Boolean = false,
 )
 
+/**
+ * Welche Frage beantwortet die App gerade, bevor ein Set erfasst wird?
+ *
+ * ── Marcos Befund ───────────────────────────────────────────────────────────
+ * „Wenn man mit dem Barcode oder auch manuell ein Set erfasst, sieht man nicht,
+ * dass die App am Prüfen ist, ob man das Set bereits besitzt. Erst das
+ * effektive Hinzufügen soll im Hintergrund passieren — sonst passiert es, dass
+ * man zu schnell Sets einscannt."
+ *
+ * Genau so war es. Der Scanner-Bildschirm ruft `popBackStack()` SOFORT und
+ * startet die Auflösung erst danach (nav/ToolsGraph.kt) — die Kamera ist also
+ * schon weg, während die eigentliche Arbeit noch läuft:
+ *
+ *   • `resolveBarcode()` löste die EAN auf (bis zu acht Rebrickable-Abrufe)
+ *     und fragte danach `GET /sets/exists`. Sichtbar war davon nur eine
+ *     Schnellmeldung, die von selbst wieder verschwindet.
+ *   • `useScannedSetNumber()` (Texterkennung) zeigte GAR NICHTS an.
+ *   • Der Galerie-Weg `addSet()` schloss seinen Dialog sofort und wartete
+ *     stumm auf die Antwort des Servers.
+ *
+ * Wer in dieser Lücke den Scanner erneut öffnet, scannt das nächste Set,
+ * während das vorige noch geprüft wird.
+ *
+ * ── Die Regel, die daraus folgt ─────────────────────────────────────────────
+ * PRÜFEN ist sichtbar und hält an. ERFASSEN läuft unsichtbar im Hintergrund.
+ *
+ * Beides zusammen ist die eigentliche Aussage: Der Anzeige-Dialog steht nur,
+ * solange die App noch nicht weiss, ob das Set schon vorhanden ist. Sobald die
+ * Antwort da ist, verschwindet er — das Nachladen von Teilen, Anleitungen und
+ * Preisen erledigt der Server ohnehin im Hintergrund.
+ */
+enum class Pruefphase {
+    /** EAN → Setnummer. Der lange Teil: bis zu acht Rebrickable-Abrufe. */
+    BARCODE,
+    /** Steht das Set schon im Blickfeld? */
+    BESTAND,
+}
+
+/**
+ * @param bezeichner Was gerade geprüft wird — die EAN oder die Setnummer. Ohne
+ *   sie sagt der Dialog beim schnellen Scannen nicht, WELCHES Set gemeint ist.
+ */
+data class Pruefschritt(
+    val bezeichner: String,
+    val phase: Pruefphase,
+)
+
+/**
+ * Eigener Fluss statt eines Feldes in `BarcodeUiState` oder `AppUiState`.
+ *
+ * Die Prüfung gehört zu KEINEM der beiden: Sie läuft im Barcode-Weg, im
+ * Texterkennungs-Weg und beim manuellen Erfassen aus Galerie und Katalog. In
+ * `BarcodeUiState` wäre sie für die manuellen Wege ein falscher Name; in
+ * `AppUiState` ginge jeder Zwischenstand jeden Reiter an — genau der Grund,
+ * aus dem die zwölf Barcode-Felder dort herausgelöst wurden (Nachtrag 117).
+ */
+data class ErfassungUiState(
+    val pruefung: Pruefschritt? = null,
+)
+
 data class CatalogUiState(
     val isLoading: Boolean = false,
     val error: String? = null,

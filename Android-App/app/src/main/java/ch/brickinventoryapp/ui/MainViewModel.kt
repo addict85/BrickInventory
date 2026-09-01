@@ -77,6 +77,25 @@ class MainViewModel @Inject constructor(
     internal val _barcodeState = MutableStateFlow(BarcodeUiState())
     val barcodeState = _barcodeState.asStateFlow()
 
+    /**
+     * Läuft gerade eine Prüfung vor dem Erfassen? Siehe ErfassungUiState.
+     *
+     * Eigener Fluss, weil ihn alle vier Erfassungswege speisen (Barcode,
+     * Texterkennung, Galerie, Katalog) und nur der Anzeige-Dialog ihn liest.
+     */
+    internal val _erfassungState = MutableStateFlow(ErfassungUiState())
+    val erfassungState = _erfassungState.asStateFlow()
+
+    /**
+     * Die laufende Prüfung, damit sie abgebrochen werden kann.
+     *
+     * Ohne den Merker wäre der Dialog eine Sackgasse: Hängt die Gegenstelle,
+     * bliebe er stehen, bis das Zeitlimit der Verbindung greift — und genau in
+     * dieser Zeit will man weiterscannen können. Neben partsJob und den
+     * Galerie-Jobs, gleiches Muster.
+     */
+    internal var erfassungsJob: kotlinx.coroutines.Job? = null
+
     // Der Katalogzustand ist nach CatalogViewModel gewandert. Er wurde von
     // niemandem ausser den Katalogfunktionen gelesen — und die stehen jetzt
     // dort, wo sie auch ihre Abbruch-Jobs halten koennen.

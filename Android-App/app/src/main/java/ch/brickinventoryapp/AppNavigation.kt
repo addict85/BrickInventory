@@ -139,6 +139,13 @@ fun BrickInventoryManagerApp(
         ch.brickinventoryapp.ui.dialogs.BarcodeResultDialog(vm, imageLoader)
     }
 
+    // ── „Wird geprüft" — über allem, auch über dem Scanner-Weg ──────────────
+    // Neben dem Bestätigungsdialog und aus demselben Grund hier: Die Prüfung
+    // gehört zu keinem einzelnen Bildschirm. Sie beginnt im Scanner, der sich
+    // sofort schliesst, und läuft danach über Galerie, Teileliste oder Katalog
+    // weiter — je nachdem, wo man gerade steht.
+    ch.brickinventoryapp.ui.dialogs.SetPruefungDialog(vm)
+
 
     val activity = androidx.compose.ui.platform.LocalContext.current
     NavHost(navController, startDestination = startDest) {
