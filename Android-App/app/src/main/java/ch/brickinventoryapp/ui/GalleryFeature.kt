@@ -268,8 +268,9 @@ internal fun MainViewModel.addSet(setNumber: String, quantity: Int = 1, purchase
                 if (r.data.success && r.data.action == "exists") {
                     // Schon im Blickfeld — der Server hat nichts geschrieben.
                     // Detailansicht öffnen, wie beim Scanner.
-                    _state.update { it.copy(isLoading = false,
-                        gallerySearchFoundSetNumber = r.data.setNumber ?: sn) }
+                    // Zwei Fluesse, zwei Domaenen — wie oben in loadSets().
+                    _state.update { it.copy(isLoading = false) }
+                    _galleryState.update { it.copy(gallerySearchFoundSetNumber = r.data.setNumber ?: sn) }
                 } else if (r.data.success) {
                     _snackbar.value = ctx.getString(if (r.data.action == "added") R.string.vm_added else R.string.vm_updated, r.data.setNumber)
                     loadSets()
