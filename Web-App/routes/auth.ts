@@ -10,6 +10,7 @@ import crypto from 'crypto';
 import { strictBool } from '../utils/validate';
 import { sendPasswordResetMail, sendVerificationMail } from './mailer';
 import type { Request, Response, NextFunction } from 'express';
+import { getGlobalSetting } from '../utils/settings';
 
 /**
  * Fester bcrypt-Hash für Logins mit unbekanntem Benutzernamen.
@@ -496,7 +497,7 @@ router.post('/register', ipThrottle('register', 5, 60 * 60 * 1000), async (req, 
   const lang = ['de', 'en'].includes(language) ? language : 'de';
 
   // Check if registration is enabled
-  const regEnabled = (await db.get("SELECT value FROM global_settings WHERE key='registration_enabled'"))?.value;
+  const regEnabled = await getGlobalSetting('registration_enabled');
   if (regEnabled === '0') return res.status(403).json({ success: false, error: 'Registrierung ist deaktiviert.' });
 
   if (!username || !email || !password)

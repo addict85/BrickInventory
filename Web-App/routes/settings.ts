@@ -6,7 +6,7 @@ import * as db from '../db/database';
 import { handleRouteError, logAndContinue, meldeUndWeiter } from '../utils/httpError';
 import { requireLogin, requireAdmin } from './auth';
 
-import { setUserSetting, globalDefaultCondition } from '../utils/settings';
+import { setUserSetting, globalDefaultCondition, setGlobalSetting } from '../utils/settings';
 import { getRateLimitStatus } from '../utils/financeCalc';
 import { buildSetsCsv } from '../utils/setService';
 import { buildPartsCsv } from './parts';
@@ -397,7 +397,7 @@ router.post('/smtp-test', async (req, res) => {
 router.post('/admin/theme', requireAdmin, async (req, res) => {
   const theme = String(req.body?.theme || 'classic');
   if (!['classic', 'brick'].includes(theme)) return res.status(400).json({ success: false, error: 'Ungültiges Design' });
-  await db.run("INSERT INTO global_settings(key,value) VALUES('app_theme',$1) ON CONFLICT(key) DO UPDATE SET value=$1", [theme]);
+  setGlobalSetting('app_theme', theme);
   // Der Wert steckt im serverseitig gerenderten <html data-theme> — Cache
   // verwerfen, sonst liefert der Server bis zum Neustart das alte Design aus.
   require('../utils/indexHtml').invalidateTheme();

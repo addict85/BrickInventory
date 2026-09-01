@@ -124,4 +124,30 @@ async function globalDefaultCondition(): Promise<'N' | 'U'> {
   return g?.value === 'U' ? 'U' : 'N';
 }
 
-export { getSetting, getGlobalSetting, setUserSetting, effectiveCondition, globalDefaultCondition };
+/**
+ * Globale Einstellung schreiben — die EINE Stelle dafuer.
+ *
+ * ── Warum es das jetzt gibt ─────────────────────────────────────────────────
+ * NACHGEMESSEN: `global_settings` wurde aus 22 Dateien direkt angefasst, in
+ * vier verschiedenen Schreibweisen fuer dasselbe Lesen und mit neun eigenen
+ * INSERT-Varianten fuer dasselbe Schreiben. Eine davon setzte `updated_at`,
+ * die uebrigen acht nicht — das Feld blieb dort auf dem Wert des allerersten
+ * Anlegens stehen.
+ *
+ * Gelesen wird `updated_at` heute nirgends. Genau deshalb ist es einheitlich
+ * zu setzen billig und richtig: Es kostet nichts, und wer es kuenftig braucht
+ * („wann wurde das Kontingent zuletzt geaendert?"), findet einen Wert vor,
+ * dem er trauen kann.
+ *
+ * Der Wert wird als Zeichenkette abgelegt, weil die Spalte TEXT ist — eine
+ * Zahl oder ein Wahrheitswert kaeme sonst je nach Aufrufer als '1', 'true'
+ * oder '1.0' an.
+ */
+async function setGlobalSetting(key: string, value: unknown) {
+  await db.run(
+    `INSERT INTO global_settings (key, value, updated_at) VALUES ($1, $2, NOW())
+     ON CONFLICT (key) DO UPDATE SET value = $2, updated_at = NOW()`,
+    [key, String(value)]);
+}
+
+export { getSetting, getGlobalSetting, setGlobalSetting, setUserSetting, effectiveCondition, globalDefaultCondition };

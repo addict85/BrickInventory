@@ -18,6 +18,7 @@ const { APP_ROOT, DATA_DIR, PUBLIC_DIR } = require('../utils/appPaths');
 import { fetchMissingBlIds } from '../routes/parts';
 import { getRbKey, httpsGetRobust } from '../clients/rebrickable';
 import { fehlertext } from '../utils/httpError';
+import { setGlobalSetting } from '../utils/settings';
 const fs       = require('fs');
 const path     = require('path');
 const db       = require('../db/database');
@@ -36,11 +37,7 @@ function updateStatus(step: string, progress: number, total: number, sub: string
   const status = { ready: false, step, progress, total: TOTAL_STEPS, sub };
   global.startupStatus = status;
   // Write to PostgreSQL so all cluster workers see the same status
-  db.run(
-    `INSERT INTO global_settings (key,value) VALUES ('startup_status',$1)
-     ON CONFLICT (key) DO UPDATE SET value=$1`,
-    [JSON.stringify(status)]
-  ).catch(() => {});
+  setGlobalSetting('startup_status', JSON.stringify(status)).catch(() => {});
   monitor.update('csvImport', { status: 'running', progress, total: TOTAL_STEPS, sub, label: `CSV-Import: ${step}` });
   // Only log step changes, not progress updates
   if (!sub && !step.includes('k)')) log(step);
@@ -287,7 +284,7 @@ async function run() {
     await syncCatalogExtrasDaily(today);
     const s1 = { ready: true, step: 'Bereit (Cache)', progress: TOTAL_STEPS, total: TOTAL_STEPS };
     global.startupStatus = s1;
-    db.run(`INSERT INTO global_settings (key,value) VALUES ('startup_status',$1) ON CONFLICT (key) DO UPDATE SET value=$1`, [JSON.stringify(s1)]).catch(() => {});
+    setGlobalSetting('startup_status', JSON.stringify(s1)).catch(() => {});
   } else {
     log(`Starting CSV sync for ${today}...`);
     try {
@@ -329,7 +326,7 @@ async function run() {
 
   const s2 = { ready: true, step: 'Bereit', progress: TOTAL_STEPS, total: TOTAL_STEPS };
   global.startupStatus = s2;
-  db.run(`INSERT INTO global_settings (key,value) VALUES ('startup_status',$1) ON CONFLICT (key) DO UPDATE SET value=$1`, [JSON.stringify(s2)]).catch(() => {});
+  setGlobalSetting('startup_status', JSON.stringify(s2)).catch(() => {});
   monitor.update('csvImport', { status: 'done', progress: TOTAL_STEPS, total: TOTAL_STEPS, sub: null });
   log('Startup complete — server ready');
 

@@ -7,7 +7,7 @@ import * as db from '../../db/database';
 import { handleRouteError, meldeUndWeiter, pfadParam } from '../../utils/httpError';
 import { requireToken } from './middleware';
 import { resolveImageLocal, proxyImageUrl } from '../../utils/images';
-import { getSetting } from '../../utils/settings';
+import { getSetting, getGlobalSetting } from '../../utils/settings';
 import { DEFAULT_PRICE_CONDITION } from '../../utils/financeCalc';
 import { findSetInScope, normalizeSetNumber } from '../../utils/setAdd';
 import { scopeIds, parseScopeMode, writableIds } from '../../utils/household';
@@ -78,7 +78,7 @@ router.get('/sets/barcode/:barcode', requireToken, async (req: AuthedRequest, re
   // utils/rateLimiter.ts); dies war die letzte Tür daneben. Ist es erschöpft,
   // liefert rbGet null, und die Route nimmt denselben Weg wie bei einem
   // fehlgeschlagenen Abruf.
-  const rbKey = (await db.get("SELECT value FROM global_settings WHERE key='rebrickable_api_key'"))?.value;
+  const rbKey = await getGlobalSetting('rebrickable_api_key');
   const rbGet = async (url: string): Promise<any> => {
     if (!await consumeRebrickableDaily()) {
       console.log('[barcode] Rebrickable-Tageslimit erreicht — Abruf übersprungen');

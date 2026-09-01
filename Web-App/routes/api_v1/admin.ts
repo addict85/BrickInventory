@@ -22,6 +22,7 @@ import { getJobStatus, triggerNow } from '../../jobs/priceJob';
 import { SET_IMAGES_DIR } from '../../utils/appPaths';
 import { anfragenJeMinute } from '../../jobs/imageQueue';
 import { DAILY_JOBS } from '../../jobs/dailyScheduler';
+import { setGlobalSetting } from '../../utils/settings';
 const router = express.Router();
 
 // ── POST /api/v1/admin/trigger-csv-sync — manually trigger CSV sync ──────────
@@ -225,7 +226,7 @@ router.post('/admin/cache-ttl', requireApiAdmin, async (req: AuthedRequest, res)
   const ttl = String(req.body?.ttl || '24');
   if (!['12','24','168'].includes(ttl)) return res.status(400).json({ success:false, error:'Ungültiger Wert' });
   try {
-    await db.run("INSERT INTO global_settings(key,value) VALUES('price_cache_ttl',$1) ON CONFLICT(key) DO UPDATE SET value=$1", [ttl]);
+    setGlobalSetting('price_cache_ttl', ttl);
     res.json({ success:true, ttl });
   } catch (e) { handleRouteError(res, e); }
 });
@@ -235,10 +236,7 @@ router.post('/admin/default-condition', requireApiAdmin, async (req: AuthedReque
   const condition = String(req.body?.condition || 'N');
   if (!['N','U'].includes(condition)) return res.status(400).json({ success: false, error: 'N oder U erwartet' });
   try {
-    await db.run(
-      "INSERT INTO global_settings(key,value) VALUES('default_price_condition',$1) ON CONFLICT(key) DO UPDATE SET value=$1",
-      [condition]
-    );
+    setGlobalSetting('default_price_condition', condition);
     res.json({ success: true, condition });
   } catch (e) { handleRouteError(res, e); }
 });
@@ -261,20 +259,20 @@ router.put('/admin/api-limits', requireApiAdmin, async (req: AuthedRequest, res)
       const n = parseInt(rebrickable, 10);
       if (!Number.isFinite(n) || n < 1 || n > 100000)
         return res.status(400).json({ success: false, error: 'Tageslimit muss zwischen 1 und 100000 liegen' });
-      await db.run("INSERT INTO global_settings (key,value) VALUES ('api_limit_rebrickable',$1) ON CONFLICT (key) DO UPDATE SET value=$1", [String(n)]);
+      setGlobalSetting('api_limit_rebrickable', String(n));
       // Kein setMax() mehr nötig: Der Zähler liegt in der Datenbank und liest
       // die Grenze bei jedem Aufruf (getLimitForApi). Der Wert galt vorher nur
       // im Worker, der diese Anfrage bearbeitet hat — die übrigen liefen bis
       // zum Neustart mit dem alten weiter.
     }
     if (bricklink) {
-      await db.run("INSERT INTO global_settings (key,value) VALUES ('api_limit_bricklink',$1) ON CONFLICT (key) DO UPDATE SET value=$1", [String(parseInt(bricklink))]);
+      setGlobalSetting('api_limit_bricklink', String(parseInt(bricklink)));
     }
     if (brickset) {
       const newLimit = parseInt(brickset);
       const oldRow = await db.get("SELECT value FROM global_settings WHERE key='api_limit_brickset'").catch(() => null);
       const oldLimit = parseInt(oldRow?.value || '100');
-      await db.run("INSERT INTO global_settings (key,value) VALUES ('api_limit_brickset',$1) ON CONFLICT (key) DO UPDATE SET value=$1", [String(newLimit)]);
+      setGlobalSetting('api_limit_brickset', String(newLimit));
       // If limit was increased and quota is available, trigger retry queue
       if (newLimit > oldLimit) {
         const rl = await getRateLimitStatus('brickset').catch(() => null);
@@ -825,10 +823,7 @@ router.post('/admin/job-schedule', requireApiAdmin, async (req: AuthedRequest, r
       );
     } else if (name === 'priceJob') {
       const min = Math.max(5, parseInt(minutes) || 60);
-      await db.run(
-        `INSERT INTO global_settings (key, value) VALUES ('price_job_interval_minutes', $1) ON CONFLICT (key) DO UPDATE SET value = $1`,
-        [String(min)]
-      );
+      setGlobalSetting('price_job_interval_minutes', String(min));
     } else {
       return res.status(400).json({ success: false, error: 'Unbekannter Job' });
     }

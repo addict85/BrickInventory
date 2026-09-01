@@ -10,6 +10,7 @@
 const db    = require('../db/database');
 import { cdnImageLimiter } from '../utils/rateLimiter';
 import { meldeUndWeiter, fehlertext, vorDem } from '../utils/httpError';
+import { setGlobalSetting } from '../utils/settings';
 const https = require('https');
 const fs    = require('fs');
 const path  = require('path');
@@ -658,11 +659,7 @@ function _fsPathFromLocal(imageLocal: string) {
 }
 
 async function _redlSetStatus(obj: Record<string, unknown>) {
-  await db.run(
-    `INSERT INTO global_settings (key, value) VALUES ('imgredl_status', $1)
-     ON CONFLICT (key) DO UPDATE SET value = $1`,
-    [JSON.stringify({ ...obj, at: Date.now() })]
-  ).catch(() => {});
+  setGlobalSetting('imgredl_status', JSON.stringify({ ...obj, at: Date.now() })).catch(() => {});
 }
 
 async function redownloadMissingImages() {

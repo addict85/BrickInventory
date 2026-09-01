@@ -7,6 +7,7 @@ import { logAndContinue, fehlertext } from './httpError';
 import { generateThumb } from '../routes/thumbs';
 import { consumeRebrickableDaily } from './rateLimiter';
 import { meldeUndWeiter } from '../utils/httpError';
+import { getGlobalSetting } from '../utils/settings';
 
 /**
  * Teile eines Sets aus dem Katalog übernehmen.
@@ -182,7 +183,7 @@ async function fetchMissingBlIds() {
   const monitor = require('../utils/jobMonitor');
   try {
     const { rebrickableBackgroundLimiter: rebrickableLimiter, consumeRebrickableDaily, parseThrottleWait } = require('../utils/rateLimiter');
-    const rbKey = (await db.get("SELECT value FROM global_settings WHERE key='rebrickable_api_key'").catch(()=>null))?.value;
+    const rbKey = await getGlobalSetting('rebrickable_api_key');
     if (!rbKey) return;
 
     // Only fetch parts not yet in rb_bl_mapping (source of truth for BL IDs)
