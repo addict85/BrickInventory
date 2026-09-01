@@ -38,6 +38,22 @@ const pool = new Pool(
       }
 );
 
+/**
+ * Eine Spalte einer CSV-Zeile, die fehlen darf.
+ *
+ * ── Warum benannt und nicht `?? ''` an vierzig Stellen ──────────────────────
+ * Die Rebrickable-Dateien haben nicht in jeder Zeile alle Spalten: parts.csv
+ * fuehrt `print_of` nur bei bedruckten Teilen, und eine Zeile endet dann
+ * frueher. Der Code hat das immer schon abgefangen (`sp(c,0)`), nur stand
+ * nirgends, DASS es Absicht ist — mit noUncheckedIndexedAccess wurde daraus
+ * ein Uebersetzungsfehler an vierzig Stellen.
+ *
+ * Der Name sagt es jetzt: Eine fehlende Spalte ist der leere Wert, kein
+ * Fehler. Fuer die Zahlenspalten steht darunter `parseInt(sp(c,2))||0` —
+ * `parseInt('')` ergibt NaN, und das `||0` faengt es wie zuvor.
+ */
+const sp = (c: string[], i: number): string => c[i] ?? '';
+
 const CSV_CACHE_DIR = path.join(DATA_DIR, 'csv_cache');
 
 /**
@@ -265,7 +281,7 @@ const TASKS = {
     // Tausch leer.
     cols: ['id','name','rgb','is_trans'],
     onConflict: 'ON CONFLICT (id) DO UPDATE SET name=EXCLUDED.name,rgb=EXCLUDED.rgb,is_trans=EXCLUDED.is_trans',
-    mapRow: (c: string[]) => [parseInt(c[0])||0, c[1]||'', c[2]||'', c[3]||'f'],
+    mapRow: (c: string[]) => [parseInt(sp(c,0))||0, sp(c,1), sp(c,2), sp(c,3)||'f'],
   }),
 
   part_categories: () => importiereMitTausch({
@@ -273,7 +289,7 @@ const TASKS = {
     tmp: path.join(DATA_DIR, 'part_categories.csv.tmp'),
     cols: ['id','name'],
     onConflict: 'ON CONFLICT (id) DO UPDATE SET name=EXCLUDED.name',
-    mapRow: (c: string[]) => [parseInt(c[0])||0, c[1]||''],
+    mapRow: (c: string[]) => [parseInt(sp(c,0))||0, sp(c,1)],
   }),
 
   parts: () => importiereMitTausch({
@@ -282,7 +298,7 @@ const TASKS = {
     // parts.csv: part_num,name,part_cat_id,part_url,part_img_url,print_of
     cols: ['part_num','name','part_cat_id','part_img_url'],
     onConflict: 'ON CONFLICT (part_num) DO UPDATE SET name=EXCLUDED.name,part_cat_id=EXCLUDED.part_cat_id,part_img_url=EXCLUDED.part_img_url',
-    mapRow: (c: string[]) => [c[0]||'', c[1]||'', parseInt(c[2])||0, c[4]||''],
+    mapRow: (c: string[]) => [sp(c,0), sp(c,1), parseInt(sp(c,2))||0, sp(c,4)],
   }),
 
   sets: () => importiereMitTausch({
@@ -290,7 +306,7 @@ const TASKS = {
     tmp: path.join(DATA_DIR, 'sets.csv.tmp'),
     cols: ['set_num','name','year','theme_id','num_parts','set_img_url'],
     onConflict: 'ON CONFLICT (set_num) DO UPDATE SET name=EXCLUDED.name,year=EXCLUDED.year,theme_id=EXCLUDED.theme_id,num_parts=EXCLUDED.num_parts,set_img_url=EXCLUDED.set_img_url',
-    mapRow: (c: string[]) => [c[0]||'', c[1]||'', parseInt(c[2])||0, parseInt(c[3])||0, parseInt(c[4])||0, c[5]||''],
+    mapRow: (c: string[]) => [sp(c,0), sp(c,1), parseInt(sp(c,2))||0, parseInt(sp(c,3))||0, parseInt(sp(c,4))||0, sp(c,5)],
   }),
 
   inventories: () => importiereMitTausch({
@@ -299,7 +315,7 @@ const TASKS = {
     // inventories.csv: id,version,set_num
     cols: ['id','set_num','version'],
     onConflict: 'ON CONFLICT (id) DO UPDATE SET set_num=EXCLUDED.set_num,version=EXCLUDED.version',
-    mapRow: (c: string[]) => [parseInt(c[0])||0, c[2]||'', parseInt(c[1])||1],
+    mapRow: (c: string[]) => [parseInt(sp(c,0))||0, sp(c,2), parseInt(sp(c,1))||1],
   }),
 
   themes: () => importiereMitTausch({
@@ -308,7 +324,7 @@ const TASKS = {
     // themes.csv: id,name,parent_id (parent_id kann leer sein)
     cols: ['id','name','parent_id'],
     onConflict: 'ON CONFLICT (id) DO UPDATE SET name=EXCLUDED.name,parent_id=EXCLUDED.parent_id',
-    mapRow: (c: string[]) => [parseInt(c[0])||0, c[1]||'', c[2] ? (parseInt(c[2])||null) : null],
+    mapRow: (c: string[]) => [parseInt(sp(c,0))||0, sp(c,1), sp(c,2) ? (parseInt(sp(c,2))||null) : null],
   }),
 
   inventory_minifigs: () => importiereMitTausch({
@@ -317,7 +333,7 @@ const TASKS = {
     // inventory_minifigs.csv: inventory_id,fig_num,quantity
     cols: ['inventory_id','fig_num','quantity'],
     onConflict: 'ON CONFLICT DO NOTHING',
-    mapRow: (c: string[]) => [parseInt(c[0])||0, c[1]||'', parseInt(c[2])||1],
+    mapRow: (c: string[]) => [parseInt(sp(c,0))||0, sp(c,1), parseInt(sp(c,2))||1],
   }),
 
   inventory_parts: () => importiereMitTausch({
@@ -325,8 +341,8 @@ const TASKS = {
     tmp: path.join(DATA_DIR, 'inventory_parts.csv.tmp'),
     cols: ['inventory_id','part_num','color_id','quantity','is_spare','img_url'],
     chunkSize: 50,
-    mapRow: (c: string[]) => [parseInt(c[0])||0, c[1]||'', parseInt(c[2])||0, parseInt(c[3])||1,
-                  (c[4]==='True'||c[4]==='t'||c[4]==='1')?'t':'f', c[5]||''],
+    mapRow: (c: string[]) => [parseInt(sp(c,0))||0, sp(c,1), parseInt(sp(c,2))||0, parseInt(sp(c,3))||1,
+                  (sp(c,4)==='True'||sp(c,4)==='t'||sp(c,4)==='1')?'t':'f', sp(c,5)],
   }),
 };
 

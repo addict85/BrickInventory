@@ -298,7 +298,10 @@ if (process.env.NODE_ENV === 'production') app.set('trust proxy', 1);
 // normalisiert.
 app.use((req, _res, next) => {
   if (req.url.startsWith('//') || req.url.includes('//', 1)) {
-    const [pathPart, ...rest] = req.url.split('?');
+    const [pathTeil, ...rest] = req.url.split('?');
+    // split() liefert immer mindestens ein Element — auch fuer den leeren
+    // String. `?? ''` sagt das dem Pruefer, es ist kein zweiter Fall.
+    const pathPart = pathTeil ?? '';
     const cleaned = pathPart.replace(/\/{2,}/g, '/');
     if (cleaned !== pathPart) req.url = cleaned + (rest.length ? '?' + rest.join('?') : '');
   }

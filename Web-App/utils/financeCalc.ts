@@ -290,7 +290,7 @@ async function fetchPrice(setNumber: string, condition: string, guideType: strin
 
 async function parallelLimit<T>(tasks: (() => Promise<T>)[], limit: number) {
   const results = new Array(tasks.length); let idx = 0;
-  async function worker() { while (idx < tasks.length) { const i = idx++; results[i] = await tasks[i](); } }
+  async function worker() { while (idx < tasks.length) { const i = idx++; const t = tasks[i]; if (t) results[i] = await t(); } }
   await Promise.all(Array.from({ length: Math.min(limit, tasks.length) }, worker));
   return results;
 }

@@ -26,7 +26,7 @@ type Uhrzeit = { h: number; min: number };
 function _parseHHMM(s: string | null | undefined, fallback: Uhrzeit): Uhrzeit {
   const m = /^(\d{1,2}):(\d{2})$/.exec(String(s || '').trim());
   if (!m) return fallback;
-  const h = +m[1], min = +m[2];
+  const h = +(m[1] ?? ''), min = +(m[2] ?? '');
   if (h > 23 || min > 59) return fallback;
   return { h, min };
 }

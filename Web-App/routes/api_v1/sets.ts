@@ -4,7 +4,7 @@
  */
 import express from 'express';
 import * as db from '../../db/database';
-import { handleRouteError, meldeUndWeiter } from '../../utils/httpError';
+import { handleRouteError, meldeUndWeiter, pfadParam } from '../../utils/httpError';
 import { requireToken } from './middleware';
 import { resolveImageLocal, proxyImageUrl } from '../../utils/images';
 import { getSetting } from '../../utils/settings';
@@ -576,7 +576,7 @@ router.get('/sets/:setNumber', requireToken, async (req: AuthedRequest, res) => 
   try {
     // Gemeinsamer Handler (auch /api/sets/:setNumber) — inkl. Zustands-
     // Aggregat über die Erfassungen und aufgelöstem image_local (Parität).
-    const set = await getSet(await scopeIds(req.apiUser.user_id, parseScopeMode(req.query.accounts)), req.params.setNumber);
+    const set = await getSet(await scopeIds(req.apiUser.user_id, parseScopeMode(req.query.accounts)), pfadParam(req, 'setNumber'));
     if (!set) return res.status(404).json({ success:false, error:'Set nicht gefunden' });
     res.json({ success:true, set });
   } catch (e) { handleRouteError(res, e); }
@@ -615,7 +615,7 @@ router.put('/sets/:setNumber', requireToken, async (req: AuthedRequest, res) => 
     // Verringerung deckelt der Server bei den eigenen Exemplaren (fremde lassen
     // sich nicht wegnehmen), und dann steht dort eine andere Zahl als die
     // gesendete. Ohne sie zeigte die Oberfläche weiter ihre eigene Annahme.
-    const r = await updateSet(req.apiUser.user_id, req.params.setNumber, req.body);
+    const r = await updateSet(req.apiUser.user_id, pfadParam(req, 'setNumber'), req.body);
     res.json({ success: true, ...(r || {}) });
   } catch (e) { handleRouteError(res, e); }
 });
@@ -625,7 +625,7 @@ router.delete('/sets/:setNumber', requireToken, async (req: AuthedRequest, res) 
     // deleteSet() kann das Blickfeld längst (asIds + ANY) — es bekam bisher
     // nur eine nackte ID und löschte damit ausschliesslich Eigenes. Also
     // dasselbe SCHREIB-Blickfeld wie in der Webapp-Route (Nachtrag 53).
-    const ok = await deleteSet(await writableIds(req.apiUser.user_id), req.params.setNumber);
+    const ok = await deleteSet(await writableIds(req.apiUser.user_id), pfadParam(req, 'setNumber'));
     if (!ok) return res.status(404).json({ success: false, error: 'Set nicht gefunden' });
     res.json({ success: true });
   } catch (e) { handleRouteError(res, e); }

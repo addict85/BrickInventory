@@ -178,6 +178,13 @@ function buildApp() {
 
 // Die Endpunkte, die eine Sitzung tatsächlich anfasst: Galerie öffnen, Teile
 // durchblättern, Finanzen ansehen.
+//
+// Die Typangabe ist der Grund, warum es hier keine `?? ''` braucht: Ohne sie
+// liest der Pruefer `string[][]`, und dann ist JEDER Zugriff — auch `p[0]` auf
+// eine handgeschriebene Zeile mit zwei Feldern — moeglicherweise leer. Als
+// Tupel steht die Laenge fest, und fuenfzehn Meldungen verschwinden an ihrer
+// Ursache statt an fuenfzehn Symptomen.
+/** @type {Array<[string, string]>} */
 const PFADE = [
   ['Galerie (Seite 1)',      '/api/sets/?page=1&page_size=60'],
   ['Galerie (Seite 5)',      '/api/sets/?page=5&page_size=60'],
@@ -194,10 +201,17 @@ const PFADE = [
  * @param {number[]} arr
  * @param {number} p  Anteil zwischen 0 und 1, z. B. 0.5 fuer den Median
  */
+/**
+ * @param {number[]} arr
+ * @param {number} p
+ * @returns {number}
+ */
 const perzentil = (arr, p) => {
   if (!arr.length) return 0;
   const s = [...arr].sort((a, b) => a - b);
-  return s[Math.min(s.length - 1, Math.floor(s.length * p))];
+  // Der Index ist durch das Math.min gedeckelt und die Liste ist nicht leer —
+  // `?? 0` ist die Zusicherung fuer den Pruefer, nicht ein zweiter Fall.
+  return s[Math.min(s.length - 1, Math.floor(s.length * p))] ?? 0;
 };
 
 /**
@@ -220,7 +234,7 @@ async function main() {
   const base = `http://localhost:${srv.address().port}`;
 
   // Aufwärmen: erster Treffer baut Caches und Abfragepläne auf.
-  for (const [, p] of PFADE) await miss(base, p).catch(() => {});
+  for (const [, pfad] of PFADE) await miss(base, pfad).catch(() => {});
 
   // ── Durchgang 1: allein (Referenz) ─────────────────────────────────────────
   console.log('Referenz ohne Nebenlast (je 5 Aufrufe, Median):');
@@ -229,11 +243,16 @@ async function main() {
   // laut Typ nicht gibt.
   /** @type {Record<string, number>} */
   const allein = {};
-  for (const [name, p] of PFADE) {
+  for (const [name, pfad] of PFADE) {
+    // Der Median wird EINMAL berechnet und in einer Variablen gehalten, statt
+    // ihn nach dem Schreiben wieder aus der Karte zu lesen. Das ist nicht nur
+    // typsicher (ein Lesezugriff auf eine Karte kann leer sein), sondern sagt
+    // auch besser, was hier passiert.
     const w = [];
-    for (let i = 0; i < 5; i++) w.push((await miss(base, p)).ms);
-    allein[name] = perzentil(w, 0.5);
-    console.log(`  ${name.padEnd(24)} ${allein[name].toFixed(0).padStart(6)} ms`);
+    for (let i = 0; i < 5; i++) w.push((await miss(base, pfad)).ms);
+    const median = perzentil(w, 0.5);
+    allein[name] = median;
+    console.log(`  ${name.padEnd(24)} ${median.toFixed(0).padStart(6)} ms`);
   }
 
   // ── Durchgang 2: USERS gleichzeitig, DAUER_S lang ──────────────────────────
@@ -250,10 +269,15 @@ async function main() {
     // Versetzter Start, damit nicht alle im Gleichschritt laufen.
     await new Promise(r => setTimeout(r, (id * 37) % 250));
     while (Date.now() < ende) {
-      const [name, p] = PFADE[Math.floor(Math.random() * PFADE.length)];
+      // Der Rueckfall auf den ersten Eintrag macht sichtbar, dass die Liste
+      // nie leer ist — ein Index in ein Array bleibt auch mit Tupel-Elementen
+      // moeglicherweise daneben.
+      const eintrag = PFADE[Math.floor(Math.random() * PFADE.length)];
+      if (!eintrag) continue;   // PFADE ist nie leer; das sagt es dem Pruefer
+      const [name, p] = eintrag;
       try {
         const { ms, ok, status } = await miss(base, p);
-        messung[name].push(ms);
+        (messung[name] ??= []).push(ms);
         gesamt++;
         if (!ok) fehler[`${name} → HTTP ${status}`] = (fehler[`${name} → HTTP ${status}`] || 0) + 1;
       } catch (e) {
@@ -270,11 +294,14 @@ async function main() {
   console.log('Endpunkt                   allein     p50     p95     max   Faktor   n');
   console.log('─'.repeat(76));
   for (const [name] of PFADE) {
-    const w = messung[name];
+    // Ein Endpunkt, den in der Laufzeit kein Nutzer erwischt hat, hat keine
+    // Messwerte — `?? []` ist hier kein Beruhigungsmittel, sondern der Fall.
+    const w = messung[name] ?? [];
+    const referenz = allein[name] ?? 0;
     const p50 = perzentil(w, 0.5), p95 = perzentil(w, 0.95), max = Math.max(0, ...w);
-    const faktor = allein[name] > 0 ? (p50 / allein[name]) : 0;
+    const faktor = referenz > 0 ? (p50 / referenz) : 0;
     console.log(
-      `${name.padEnd(24)} ${allein[name].toFixed(0).padStart(6)}  ${p50.toFixed(0).padStart(6)}  ` +
+      `${name.padEnd(24)} ${referenz.toFixed(0).padStart(6)}  ${p50.toFixed(0).padStart(6)}  ` +
       `${p95.toFixed(0).padStart(6)}  ${max.toFixed(0).padStart(6)}  ${faktor.toFixed(1).padStart(6)}x  ${String(w.length).padStart(4)}`
     );
   }

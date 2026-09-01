@@ -23,7 +23,7 @@ import path from 'path';
 import { APP_ROOT, DATA_DIR, PUBLIC_DIR } from '../utils/appPaths';
 import fs from 'fs';
 import { resolveUserId } from '../utils/auth';
-import { streamFileToResponse } from '../utils/httpError';
+import { streamFileToResponse, vorDem } from '../utils/httpError';
 import { queueThumb, drainThumbQueue, mitVorschauSperre, makeProxyThumb, PROXY_THUMB_SIZE } from '../utils/proxyThumbs';
 import { liefereAusCache } from '../utils/imgCacheServe';
 import { imgProxyFailures } from '../utils/imgProxyStats';
@@ -287,6 +287,10 @@ export async function bildDurchreichen(req: Request, res: Response) {
   // die Regel soll sich nicht verraten. Ein zweiter Versuch ohne Referer
   // klärt das: Klappt er, war es der Hotlink-Schutz; bleibt es bei 404, fehlt
   // das Bild wirklich.
+  // `as const` macht daraus ein Tupel fester Laenge: `HEADER_SETS[0]` ist
+  // dann ein echtes Element, keine Index-Signatur, die leer sein koennte.
+  // Dieselbe Ursache wie bei PFADE in scripts/loadtest.js — an EINER
+  // Stelle behoben statt an zwei Zugriffen abgesichert.
   const HEADER_SETS = [
     {
       'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
@@ -304,7 +308,7 @@ export async function bildDurchreichen(req: Request, res: Response) {
       'Accept':     'image/avif,image/webp,image/apng,image/*,*/*;q=0.8',
       'Accept-Encoding': 'identity',
     },
-  ];
+  ] as const;
 
   let attempt = 0;
   // Die jeweils laufende Anfrage festhalten — beim Rückfall ohne Referer ist
@@ -361,7 +365,7 @@ export async function bildDurchreichen(req: Request, res: Response) {
     // SVG ist bewusst NICHT erlaubt: Es ist das einzige Bildformat, das als
     // Dokument geöffnet aktiv wird, und keines der angebundenen CDNs liefert
     // Teile- oder Setbilder als SVG.
-    const mime = contentType.split(';')[0].trim().toLowerCase();
+    const mime = vorDem(contentType, ';').trim().toLowerCase();
     if (!mime.startsWith('image/') || mime === 'image/svg+xml') {
       r.resume();
       imgProxyFailures.other++;

@@ -575,7 +575,7 @@ router.delete('/admin/brickset-queue/:setNumber', requireApiAdmin, async (req: A
   // Trigger fallback directly — skip Brickset since that's why it was in the queue
   setImmediate(async () => {
     try {
-      await scrapeInstructionsFromFallback(sn).catch(() => {});
+      await scrapeInstructionsFromFallback(sn ?? '').catch(() => {});
     } catch (e) { meldeUndWeiter('admin:anleitungen-nachschlagen', e); }
   });
   res.json({ success: true, set_number: sn });
@@ -815,10 +815,10 @@ router.post('/admin/job-schedule', requireApiAdmin, async (req: AuthedRequest, r
     const daily = DAILY_JOBS.find(j => j.monitorKey === name);
     if (daily) {
       const m = /^(\d{1,2}):(\d{2})$/.exec(String(time || '').trim());
-      if (!m || +m[1] > 23 || +m[2] > 59) {
+      if (!m || +(m[1] ?? '') > 23 || +(m[2] ?? '') > 59) {
         return res.status(400).json({ success: false, error: 'Ungültige Uhrzeit (HH:MM)' });
       }
-      const norm = `${String(+m[1]).padStart(2, '0')}:${String(+m[2]).padStart(2, '0')}`;
+      const norm = `${String(+(m[1] ?? '')).padStart(2, '0')}:${String(+(m[2] ?? '')).padStart(2, '0')}`;
       await db.run(
         `INSERT INTO global_settings (key, value) VALUES ($1, $2) ON CONFLICT (key) DO UPDATE SET value = $2`,
         [`job_time_${daily.name}`, norm]

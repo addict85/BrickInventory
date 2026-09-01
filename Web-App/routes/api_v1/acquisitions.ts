@@ -19,7 +19,7 @@ import express from 'express';
 import * as db from '../../db/database';
 import { writableIds } from '../../utils/household';
 import { findSameDayAcquisition, acquisitionTotals } from '../../utils/acquisitions';
-import { handleRouteError, fehlertext } from '../../utils/httpError';
+import { handleRouteError, fehlertext, pfadParam } from '../../utils/httpError';
 import { withInventoryLock } from '../../utils/txLock';
 import { requireToken } from './middleware';
 import { acquisitionMoveSource, resolveWriteTarget, scopeIds, parseScopeMode } from '../../utils/household';
@@ -415,7 +415,7 @@ router.get('/parts/:partNumber/:colorId/acquisitions', requireToken, async (req:
   try {
     const rows = await getPartAcquisitions(
       await scopeIds(req.apiUser.user_id, parseScopeMode(req.query.accounts)),
-      req.params.partNumber, req.params.colorId);
+      pfadParam(req, 'partNumber'), pfadParam(req, 'colorId'));
     res.json({ success: true, acquisitions: rows, totals: acquisitionTotals(rows), owner_user_id: req.apiUser.user_id });
   } catch (e) { handleRouteError(res, e); }
 });
@@ -467,7 +467,7 @@ registerAcquisitionRoutes({
 router.get('/minifigs/:figNumber/acquisitions', requireToken, async (req: AuthedRequest, res) => {
   try {
     const rows = await getFigAcquisitions(
-      await scopeIds(req.apiUser.user_id, parseScopeMode(req.query.accounts)), req.params.figNumber);
+      await scopeIds(req.apiUser.user_id, parseScopeMode(req.query.accounts)), pfadParam(req, 'figNumber'));
     res.json({ success: true, acquisitions: rows, totals: acquisitionTotals(rows), owner_user_id: req.apiUser.user_id });
   } catch (e) { handleRouteError(res, e); }
 });

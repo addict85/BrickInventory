@@ -115,7 +115,42 @@ function fehlerCode(e: unknown): string | undefined {
   return typeof c === 'string' || typeof c === 'number' ? String(c) : undefined;
 }
 
-export { handleRouteError, logAndContinue, meldeUndWeiter, fehlertext, fehlerCode };
+/**
+ * Ein Routen-Parameter, den der Pfad garantiert.
+ *
+ * ── Warum es diesen Helfer gibt ─────────────────────────────────────────────
+ * Express fuellt `req.params.setNumber`, sonst waere die Route gar nicht
+ * angesprungen: `/:setNumber` matcht nur, wenn dort etwas steht. Der Typ sagt
+ * das aber nicht — `ParamsDictionary` ist eine Index-Signatur, und unter
+ * noUncheckedIndexedAccess liest der Pruefer daraus `string | undefined`.
+ *
+ * Eine Augmentierung loest das NICHT: Auch `Record<string, string>` traegt eine
+ * Index-Signatur, der Schalter greift genauso. Die saubere Alternative waere
+ * `Request<{ setNumber: string }>` je Route — elf Signaturen, die beim naechsten
+ * Pfad wieder nachgezogen werden muessen.
+ *
+ * Deshalb ein benannter Zugriff: Er sagt aus, dass der Router die Garantie
+ * gibt, und der leere String ist der ehrliche Rueckfall fuer den Fall, den es
+ * nach dem Routing nicht geben kann. `''` faellt bei jeder Pruefung darunter
+ * sauber durch — anders als ein `!`, das im Fehlerfall einen Absturz erzeugt.
+ */
+function pfadParam(req: { params: Record<string, string | undefined> }, name: string): string {
+  return req.params[name] ?? '';
+}
+
+/**
+ * Der Teil vor dem ersten Trenner.
+ *
+ * `'a;b'.split(';')[0]` ist immer da — auch `''.split(';')` liefert `['']`.
+ * Der Pruefer weiss das nicht: Eine Index-Signatur ist fuer ihn immer
+ * moeglicherweise leer. Statt an sechs Stellen `?? ''` anzuhaengen, steht die
+ * Zusicherung einmal hier, mit dem Grund dabei.
+ */
+function vorDem(s: string, trenner: string): string {
+  return s.split(trenner)[0] ?? '';
+}
+
+export { handleRouteError, logAndContinue, meldeUndWeiter, fehlertext, fehlerCode, pfadParam, vorDem };
 
 /**
  * Eine Datei an die Antwort streamen — mit Fehlerbehandlung.

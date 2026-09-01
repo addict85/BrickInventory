@@ -1,5 +1,5 @@
 import * as db from '../db/database';
-import { logAndContinue, meldeUndWeiter, fehlertext } from './httpError';
+import { logAndContinue, meldeUndWeiter, fehlertext, vorDem } from './httpError';
 import { scopeIds, writableIds } from './household';
 import { recordAcquisitionForDay } from './acquisitions';
 import { withInventoryLock } from './txLock';
@@ -64,7 +64,13 @@ async function recomputeSetCondition(userId: number, setNumber: string, dbh: any
 // `unknown`, weil der Rumpf mit String(input) genau das abfaengt — hier
 // kommen Formularfelder und CSV-Zellen an, nicht garantierte Zeichenketten.
 function sanitizeSetNumber(input: unknown) {
-  let s = String(input).trim().split(';')[0].trim().split(' ')[0].trim().replace(/[^a-zA-Z0-9-]/g, '');
+  // Bewusst OHNE den vorDem()-Helfer: Diese Funktion steht in zwei Fassungen
+  // nebeneinander (ein Import baute einen Kreis, siehe oben), und
+  // set-add-exists-db.test.js fuehrt ihren Rumpf ISOLIERT aus, um beide zu
+  // vergleichen. Ein externer Aufruf darin waere dort nicht aufloesbar — der
+  // Test hat das gemeldet, als ich es zuerst anders gemacht habe.
+  let s = ((String(input).trim().split(';')[0] ?? '').trim().split(' ')[0] ?? '')
+    .trim().replace(/[^a-zA-Z0-9-]/g, '');
   if (!/-\d+$/.test(s)) s = s + '-1';
   return s;
 }

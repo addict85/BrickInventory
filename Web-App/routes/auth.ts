@@ -3,7 +3,7 @@ import express from 'express';
 const router  = express.Router();
 import bcrypt from 'bcryptjs';
 import * as db from '../db/database';
-import { handleRouteError, logAndContinue, meldeUndWeiter, fehlerCode, fehlertext } from '../utils/httpError';
+import { handleRouteError, logAndContinue, meldeUndWeiter, fehlerCode, fehlertext, pfadParam } from '../utils/httpError';
 import { hashToken, verifiziereEmailToken, assertLoginAllowed, establishSession, revokeAllTokens, revokeAllSessions, deleteToken, BCRYPT_ROUNDS, USERNAME_RE, EMAIL_RE, isValidLoginIdentifier } from '../utils/auth';
 import { checkLoginAllowed, recordLoginFailure, recordLoginSuccess, ipThrottle } from '../utils/loginLimiter';
 import crypto from 'crypto';
@@ -247,7 +247,7 @@ router.post('/users', requireAdmin, async (req, res) => {
 
 // Admin: toggle admin role
 router.put('/users/:id/admin', requireAdmin, async (req, res) => {
-  const targetId = parseInt(req.params.id);
+  const targetId = parseInt(pfadParam(req, 'id'));
   try {
     // Dieselbe strenge Prüfung wie auf der v1-Route — die Zeichenkette "false"
     // ist in JavaScript wahr und meldete hier Erfolg, ohne Rechte zu entziehen.
@@ -276,7 +276,7 @@ router.put('/users/:id/admin', requireAdmin, async (req, res) => {
  */
 router.put('/users/:id/password', requireAdmin, async (req, res) => {
   const { password } = req.body || {};
-  const targetId = parseInt(req.params.id);
+  const targetId = parseInt(pfadParam(req, 'id'));
 
   if (!password || String(password).length < 8)
     return res.status(400).json({ success: false, error: 'Passwort muss mindestens 8 Zeichen lang sein.' });

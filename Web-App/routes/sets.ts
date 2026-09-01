@@ -51,7 +51,7 @@ import fs from 'fs';
 import https from 'https';
 
 import * as db from '../db/database';
-import { handleRouteError, logAndContinue, fehlertext } from '../utils/httpError';
+import { handleRouteError, logAndContinue, fehlertext, pfadParam, vorDem } from '../utils/httpError';
 import { downloadSetImage } from '../utils/setImages';
 // Der Kern liegt seit Nachtrag 131 in utils/setService.ts; hier bleiben die
 // HTTP-Routen, die ihn rufen.
@@ -326,7 +326,7 @@ router.get('/import/csv/stream', requireLoginOrToken, async (req, res) => {
 // ── GET /api/sets/info/:setNumber — lightweight name lookup from shared catalog ─
 // Used by the Teileliste to resolve set names without requiring user ownership.
 router.get('/info/:setNumber', requireLogin, async (req, res) => {
-  const n = req.params.setNumber.includes('-')
+  const n = pfadParam(req, 'setNumber').includes('-')
     ? req.params.setNumber
     : req.params.setNumber + '-1';
   try {
@@ -559,7 +559,7 @@ router.post('/import/csv', upload.single('file'), async (req, res) => {
   const rows: any[] = [];
   for (const row of records) {
     const rawSn = row.set_number || row['setnummer'] || row['set'] || Object.values(row)[0];
-    const sn = rawSn ? String(rawSn).split(';')[0].trim() : null;
+    const sn = rawSn ? vorDem(String(rawSn), ';').trim() : null;
     if (!sn) continue;
     const rawQty = row.quantity || row['anzahl'] || row['qty'] || row['menge'] || '1';
     const qty = parseInt(String(rawQty).replace(/[^0-9]/g, '') || '1') || 1;
@@ -745,7 +745,7 @@ router.post('/:setNumber/instructions', async (req, res) => {
 
 // LoggedInRequest: liegt hinter dem router.use(requireLogin) weiter oben.
 router.post('/:setNumber/parts', async (req: LoggedInRequest, res) => {
-  try { const count = await importPartsForSet(req.params.setNumber, req.session.userId); res.json({ success:true, count }); }
+  try { const count = await importPartsForSet(pfadParam(req, 'setNumber'), req.session.userId); res.json({ success:true, count }); }
   catch (e) { handleRouteError(res, e); }
 });
 

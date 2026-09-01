@@ -278,7 +278,9 @@ export async function ensureFresh(userId: number | number[], opts?: { strict?: b
     const results = await Promise.all(ids.map(id => ensureFresh(id, opts)));
     return results.every(Boolean);
   }
-  userId = ids[0];
+  // Ein Blickfeld mit genau einem Konto — der Fall darueber hat mehrere
+  // bereits abgehandelt, eine leere Liste kann es nach `[userId]` nicht geben.
+  userId = ids[0] ?? 0;
   try {
     const [v, state] = await Promise.all([
       currentVersion(userId as number),

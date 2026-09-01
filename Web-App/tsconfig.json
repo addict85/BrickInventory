@@ -121,7 +121,25 @@
     // Verstaendigung war nirgends aufgeschrieben und funktionierte nur, weil
     // der gefangene Wert `any` war; ein Tippfehler im Feldnamen haette den
     // Zweig lautlos uebersprungen.
-    "useUnknownInCatchVariables": true
+    "useUnknownInCatchVariables": true,
+    // ── noUncheckedIndexedAccess: gemessen 86, jetzt 0 ──────────────────────
+    // Jeder Zugriff ueber eine Index-Signatur liefert jetzt `| undefined`.
+    // Abgeraeumt wurde ueberwiegend an der URSACHE, nicht am Symptom:
+    //
+    //   • PFADE (loadtest) und HEADER_SETS (imgProxy) waren `X[][]` statt
+    //     Tupel — je EINE Typangabe loeste 15 bzw. 2 Meldungen auf.
+    //   • Die CSV-Spalten in csvImportWorker heissen jetzt `sp(c, i)`: Eine
+    //     fehlende Spalte ist dort Absicht (kuerzere Zeilen sind in den
+    //     Rebrickable-Dateien normal), das stand aber nirgends.
+    //   • Routen-Parameter gehen ueber `pfadParam(req, name)`. Eine
+    //     Augmentierung half nicht: Auch `Record<string, string>` traegt eine
+    //     Index-Signatur, der Schalter greift genauso.
+    //   • `vorDem(s, trenner)` fuer die sechs `split(x)[0]`.
+    //
+    // Ein Fund dabei: In jobs/instructionQueue.ts waere `?? 0` die
+    // gefaehrlichste Antwort gewesen — eine Cloudflare-Pause von 0 ms statt
+    // fuenf Minuten. Der Rueckfall ist jetzt die letzte Stufe der Leiter.
+    "noUncheckedIndexedAccess": true
   },
   "include": [
     "server.ts",

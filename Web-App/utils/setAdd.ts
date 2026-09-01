@@ -26,6 +26,7 @@
  */
 import * as db from '../db/database';
 import { scopeIds } from './household';
+import { vorDem } from '../utils/httpError';
 
 /**
  * Setnummer normalisieren — dieselbe Regel wie sanitizeSetNumber() in
@@ -37,7 +38,13 @@ import { scopeIds } from './household';
  * später geschrieben wird — und das Set wäre trotz Prüfung doppelt.
  */
 export function normalizeSetNumber(input: string): string {
-  let s = String(input).trim().split(';')[0].trim().split(' ')[0].trim().replace(/[^a-zA-Z0-9-]/g, '');
+  // Bewusst OHNE den vorDem()-Helfer: Diese Funktion steht in zwei Fassungen
+  // nebeneinander (ein Import baute einen Kreis, siehe oben), und
+  // set-add-exists-db.test.js fuehrt ihren Rumpf ISOLIERT aus, um beide zu
+  // vergleichen. Ein externer Aufruf darin waere dort nicht aufloesbar — der
+  // Test hat das gemeldet, als ich es zuerst anders gemacht habe.
+  let s = ((String(input).trim().split(';')[0] ?? '').trim().split(' ')[0] ?? '')
+    .trim().replace(/[^a-zA-Z0-9-]/g, '');
   if (!/-\d+$/.test(s)) s = s + '-1';
   return s;
 }

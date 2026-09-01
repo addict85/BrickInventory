@@ -9,7 +9,7 @@
  */
 const db    = require('../db/database');
 import { cdnImageLimiter } from '../utils/rateLimiter';
-import { meldeUndWeiter, fehlertext } from '../utils/httpError';
+import { meldeUndWeiter, fehlertext, vorDem } from '../utils/httpError';
 const https = require('https');
 const fs    = require('fs');
 const path  = require('path');
@@ -387,7 +387,7 @@ async function downloadSetImages(setNumber: string, waitIfBusy = false) {
       const rawUrl = p.image_url || '';
       let cdnUrl = rawUrl;
       const m = rawUrl.match(/\/api\/img-proxy\?url=(.+)/);
-      if (m) cdnUrl = decodeURIComponent(m[1]);
+      if (m) cdnUrl = decodeURIComponent((m[1] ?? ''));
       if (!cdnUrl.startsWith('http')) {
         console.warn(`[img-dl] skipping invalid URL for ${p.id}: ${rawUrl.substring(0, 80)}`);
         return;
@@ -397,7 +397,7 @@ async function downloadSetImages(setNumber: string, waitIfBusy = false) {
       // ein leeres Array zurueck (''.split('.') ist ['']), pop() kann hier
       // also nicht undefined werden. Der Uebersetzer weiss das nicht, und
       // ein `!` waere eine Behauptung statt einer Ableitung.
-      const ext  = ((cdnUrl.split('.').pop() ?? '').split('?')[0].split('/')[0] || 'jpg').substring(0, 4).toLowerCase();
+      const ext  = (vorDem(vorDem(cdnUrl.split('.').pop() ?? '', '?'), '/') || 'jpg').substring(0, 4).toLowerCase();
       const file = p.kind === 'fig'
         ? `${p.id.replace(/[^a-z0-9-]/gi, '_')}.${ext}`
         : `${p.id}_${p.color_id}.${ext}`;

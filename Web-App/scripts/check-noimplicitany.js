@@ -90,7 +90,7 @@ function meldungenJeDatei() {
   for (const zeile of ausgabe.split('\n')) {
     const m = zeile.match(/^([^(]+)\(\d+,\d+\): error TS\d+/);
     if (!m) continue;
-    const datei = m[1].replace(/\\/g, '/');
+    const datei = (m[1] ?? '').replace(/\\/g, '/');
     if (!jeDatei.has(datei)) jeDatei.set(datei, []);
     jeDatei.get(datei).push(zeile);
   }

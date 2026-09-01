@@ -230,7 +230,12 @@ async function processNext() {
         if (_timer) { clearTimeout(_timer); _timer = null; }
 
         if (block.retries < CF_DELAYS_MS.length) {
-          const delayMs = CF_DELAYS_MS[block.retries];
+          // Der Rueckfall ist die LETZTE Stufe, nicht 0. Die Bedingung eine
+          // Zeile darueber schliesst den Fall zwar aus, aber der Uebersetzer
+          // sieht das nicht — und `?? 0` waere hier die gefaehrlichste
+          // Antwort: keine Pause, also weiter gegen eine Cloudflare-Sperre
+          // laufen, die genau deshalb verhaengt wurde.
+          const delayMs = CF_DELAYS_MS[block.retries] ?? CF_DELAYS_MS[CF_DELAYS_MS.length - 1] ?? 300000;
           const delayMin = Math.round(delayMs / 60000);
           await writeBlock(Date.now() + delayMs, block.retries + 1);
           console.log(`[instr-queue] Cloudflare 1015 — pausing ${delayMin} min (attempt ${block.retries + 1}/${CF_DELAYS_MS.length})`);
