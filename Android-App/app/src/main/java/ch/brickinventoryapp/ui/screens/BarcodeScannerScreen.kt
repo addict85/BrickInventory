@@ -28,9 +28,7 @@ package ch.brickinventoryapp.ui.screens
 
 import ch.brickinventoryapp.ui.theme.Formen
 import ch.brickinventoryapp.ui.theme.LocalStatusFarben
-import android.hardware.camera2.CaptureRequest
 import android.view.ViewGroup
-import androidx.camera.camera2.interop.Camera2Interop
 import androidx.camera.camera2.interop.ExperimentalCamera2Interop
 import androidx.camera.core.*
 import androidx.camera.lifecycle.ProcessCameraProvider
@@ -101,8 +99,8 @@ fun BarcodeScannerScreen(
 
     // WICHTIG (bitte nicht wieder einen periodischen Fokus-Trigger einbauen!):
     // Der Autofokus läuft ausschliesslich über den CONTINUOUS_PICTURE-Modus der
-    // Kamera (siehe Camera2Interop unten). Ein zusätzlicher, im Takt laufender
-    // startFocusAndMetering-Aufruf ("Pump") zwingt die Kamera immer wieder in
+    // Kamera (autofokusDauerhaft() in KameraAufbau.kt). Ein zusätzlicher, im
+    // Takt laufender startFocusAndMetering-Aufruf ("Pump") zwingt die Kamera immer wieder in
     // einen Einzelfokus und lässt sie dadurch dauernd nachpumpen statt scharf zu
     // bleiben — das war die Ursache des wiederkehrenden Fokus-Problems. Manuelles
     // Fokussieren gibt es NUR noch beim Antippen (Tap-to-Focus, mit Auto-Cancel).
@@ -321,10 +319,10 @@ fun CameraPreviewBarcode(
                 // — genau das (ein periodischer "Pump") liess den Fokus früher
                 // dauernd wandern. Nicht wieder einbauen.
                 val previewBuilder = Preview.Builder()
-                Camera2Interop.Extender(previewBuilder).setCaptureRequestOption(
-                    CaptureRequest.CONTROL_AF_MODE,
-                    CaptureRequest.CONTROL_AF_MODE_CONTINUOUS_PICTURE
-                )
+                // Derselbe AF-Modus wie an der Bildanalyse — die Begruendung,
+                // warum er an BEIDEN stehen muss, steht in KameraAufbau.kt.
+                autofokusDauerhaft(previewBuilder)
+
                 val preview = previewBuilder.build()
                     .also { it.setSurfaceProvider(previewView.surfaceProvider) }
                 try {

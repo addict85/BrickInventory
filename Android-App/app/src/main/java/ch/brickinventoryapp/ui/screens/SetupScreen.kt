@@ -47,9 +47,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import android.view.ViewGroup
 import androidx.camera.core.*
-import android.hardware.camera2.CaptureRequest
 import android.view.MotionEvent
-import androidx.camera.camera2.interop.Camera2Interop
 import androidx.camera.camera2.interop.ExperimentalCamera2Interop
 import androidx.camera.lifecycle.ProcessCameraProvider
 import androidx.camera.view.PreviewView
@@ -296,41 +294,11 @@ fun QrCameraPreview(frozen: Boolean, onQrFound: (String) -> Unit) {
     }
 
     val imageAnalyzer = remember {
-        ImageAnalysis.Builder()
-            // AF-Modus AUCH hier setzen, nicht nur am Preview.
-            //
-            // CameraX führt die Konfigurationen aller gebundenen Use Cases zu
-            // EINEM Repeating-Request zusammen. Steht CONTROL_AF_MODE nur am
-            // Preview, entscheidet je nach Gerät und CameraX-Fassung die
-            // Analyse-Konfiguration mit — und deren Vorgabe ist nicht
-            // zwingend CONTINUOUS_PICTURE. Auf solchen Geräten bleibt das Bild
-            // unscharf, obwohl der Code richtig aussieht.
-            //
-            // Beide Use Cases auf denselben Modus zu setzen macht das Ergebnis
-            // unabhängig davon, welcher die Führung übernimmt.
-            .also {
-                androidx.camera.camera2.interop.Camera2Interop.Extender(it).setCaptureRequestOption(
-                    CaptureRequest.CONTROL_AF_MODE,
-                    CaptureRequest.CONTROL_AF_MODE_CONTINUOUS_PICTURE
-                )
-            }
-            // 1280x720, im Barcodescanner dagegen 1920x1080 — der Unterschied
-            // ist gewollt: Hier wird EIN QR-Code mit grossen Modulen gelesen,
-            // dort kleine EAN-Striche und Setnummern per Texterkennung. Mehr
-            // Auflösung kostet je Bild Rechenzeit, die sich Kamera und Vorschau
-            // teilen; genau daran hing Marcos träger Fokus in Nachtrag 71.
-            .setResolutionSelector(
-                androidx.camera.core.resolutionselector.ResolutionSelector.Builder()
-                    .setResolutionStrategy(
-                        androidx.camera.core.resolutionselector.ResolutionStrategy(
-                            android.util.Size(1280, 720),
-                            androidx.camera.core.resolutionselector.ResolutionStrategy.FALLBACK_RULE_CLOSEST_HIGHER_THEN_LOWER
-                        )
-                    ).build()
-            )
-            .setBackpressureStrategy(ImageAnalysis.STRATEGY_KEEP_ONLY_LATEST)
-            .setOutputImageFormat(ImageAnalysis.OUTPUT_IMAGE_FORMAT_YUV_420_888)
-            .build()
+        // Aufbau samt AF-Modus: ui/screens/KameraAufbau.kt. 1280x720 statt
+        // 1920x1080 wie im Barcodescanner: Hier wird EIN QR-Code mit grossen
+        // Modulen gelesen, und weniger Aufloesung heisst mehr Rechenzeit fuer
+        // Kamera und Vorschau (Nachtrag 71).
+        bildAnalyse(1280, 720)
             .also { analysis ->
                 analysis.setAnalyzer(executor) { imageProxy ->
                     if (frozen) { imageProxy.close(); return@setAnalyzer }
@@ -369,10 +337,10 @@ fun QrCameraPreview(frozen: Boolean, onQrFound: (String) -> Unit) {
                 // einmalige Fokus-Trigger beim Start war geräteabhängig unzuverlässig;
                 // CONTINUOUS_PICTURE fokussiert permanent selbstständig nach.
                 val previewBuilder = Preview.Builder()
-                Camera2Interop.Extender(previewBuilder).setCaptureRequestOption(
-                    CaptureRequest.CONTROL_AF_MODE,
-                    CaptureRequest.CONTROL_AF_MODE_CONTINUOUS_PICTURE
-                )
+                // Derselbe AF-Modus wie an der Bildanalyse — die Begruendung,
+                // warum er an BEIDEN stehen muss, steht in KameraAufbau.kt.
+                autofokusDauerhaft(previewBuilder)
+
                 val preview = previewBuilder.build()
                     .also { it.setSurfaceProvider(previewView.surfaceProvider) }
                 try {

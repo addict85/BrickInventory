@@ -103,22 +103,81 @@ class CameraFocusConfigTest {
         }
     }
 
+    /**
+     * Der AF-Modus steht an genau EINER Stelle — und jede Vorschau holt ihn dort.
+     *
+     * ── Was sich geändert hat ───────────────────────────────────────────────
+     * Bis hierher zählte dieser Test das Vorkommen der Zeichenfolge
+     * `CONTROL_AF_MODE_CONTINUOUS_PICTURE` in den einzelnen Bildschirmdateien:
+     * einmal im Scanner, einmal im Analyzer, ZWEIMAL im SetupScreen. Das prüfte
+     * die Formulierung an jeder Kopie — und dass es Kopien gab, war der
+     * eigentliche Fehler.
+     *
+     * Der Aufbau der Bildanalyse stand zweimal im Baum, zwanzig Zeilen lang und
+     * bis auf die Auflösung zeichengleich. Genau in dieser Doppelung hat die
+     * Behebung aus Nachtrag 112 eine Kopie nicht erreicht.
+     *
+     * Jetzt steht der Modus in `KameraAufbau.kt`, in `autofokusDauerhaft()`.
+     * Geprüft wird deshalb anders herum: Die Zeile darf NUR dort stehen, und
+     * jede Datei, die eine Vorschau baut, muss die Funktion aufrufen.
+     */
     @Test
-    fun `CONTINUOUS_PICTURE steht an BEIDEN Use Cases`() {
+    fun `der AF-Modus steht nur in KameraAufbau`() {
+        val ordner = java.io.File("src/main/java/ch/brickinventoryapp/ui/screens")
+        val marke = "CONTROL_AF_MODE_CONTINUOUS_PICTURE"
+        val dateien = ordner.listFiles { f -> f.extension == "kt" } ?: emptyArray()
+        assert(dateien.size >= 5) {
+            "Nur ${dateien.size} Bildschirmdateien gefunden — der Pfad stimmt nicht, " +
+                "und ein leeres Ergebnis würde diesen Test stillschweigend bestehen lassen."
+        }
+
+        val mitMarke = dateien.filter { code(it.readText()).contains(marke) }.map { it.name }
+        assert(mitMarke == listOf("KameraAufbau.kt")) {
+            "Der AF-Modus steht in ${mitMarke.joinToString()} statt nur in " +
+                "KameraAufbau.kt. Jede weitere Stelle ist eine zweite Fassung " +
+                "derselben Regel — und genau daran ist der Tap-to-Focus im " +
+                "SetupScreen hängengeblieben."
+        }
+    }
+
+    @Test
+    fun `jede Vorschau setzt den AF-Modus`() {
         // CameraX führt die Konfigurationen aller gebundenen Use Cases zu EINEM
-        // Repeating-Request zusammen. Steht der AF-Modus nur am Preview,
-        // entscheidet je nach Gerät die Analyse-Konfiguration mit — und deren
+        // Repeating-Request zusammen. Steht der AF-Modus nur an der Analyse,
+        // entscheidet je nach Gerät die Vorschau-Konfiguration mit — und deren
         // Vorgabe ist nicht zwingend CONTINUOUS_PICTURE.
         //
-        // Seit Nachtrag 99 stehen die beiden in verschiedenen Dateien: die
-        // Vorschau in BarcodeScannerScreen.kt, die Analyse in BarcodeAnalyzer.kt.
-        val marke = "CONTROL_AF_MODE_CONTINUOUS_PICTURE"
-        assert(code(scanner()).contains(marke)) {
-            "Der Vorschau fehlt der AF-Modus"
+        // Die Liste wird gefunden, nicht aufgezählt: Wer eine dritte Vorschau
+        // baut, ist mitgeprüft.
+        val ordner = java.io.File("src/main/java/ch/brickinventoryapp/ui/screens")
+        val bauer = (ordner.listFiles { f -> f.extension == "kt" } ?: emptyArray())
+            .filter { code(it.readText()).contains("Preview.Builder()") }
+        assert(bauer.size >= 2) {
+            "Nur ${bauer.size} Datei(en) mit Preview.Builder() gefunden. Erwartet " +
+                "werden mindestens Barcodescanner und SetupScreen."
         }
-        assert(code(analyzer()).contains(marke)) {
-            "Der Bildanalyse fehlt der AF-Modus — auf manchen Geräten bleibt das " +
-                "Bild dann unscharf, obwohl der Code richtig aussieht."
+        for (datei in bauer) {
+            assert(code(datei.readText()).contains("autofokusDauerhaft(")) {
+                "${datei.name} baut eine Vorschau, ohne autofokusDauerhaft() zu " +
+                    "rufen. Auf manchen Geräten bleibt das Bild dann unscharf, " +
+                    "obwohl der Code richtig aussieht."
+            }
+        }
+    }
+
+    @Test
+    fun `die Bildanalyse kommt aus dem gemeinsamen Aufbau`() {
+        // Sonst nützt die Regel oben nichts: Wer sich seine ImageAnalysis selbst
+        // baut, umgeht autofokusDauerhaft() — und sieht dabei richtig aus.
+        val ordner = java.io.File("src/main/java/ch/brickinventoryapp/ui/screens")
+        val selbstgebaut = (ordner.listFiles { f -> f.extension == "kt" } ?: emptyArray())
+            .filter { it.name != "KameraAufbau.kt" }
+            .filter { code(it.readText()).contains("ImageAnalysis.Builder()") }
+            .map { it.name }
+        assert(selbstgebaut.isEmpty()) {
+            "${selbstgebaut.joinToString()} baut die Bildanalyse selbst statt über " +
+                "bildAnalyse(). Genau diese Doppelung hat die Behebung aus " +
+                "Nachtrag 112 an einer Kopie vorbeilaufen lassen."
         }
     }
 
@@ -137,28 +196,6 @@ class CameraFocusConfigTest {
         }
     }
 
-    @Test
-    fun `SetupScreen setzt den AF-Modus an BEIDEN Use Cases`() {
-        // SetupScreen bindet Vorschau UND Analyse selbst, in EINER Datei —
-        // anders als der Scanner, dessen Analyse seit Nachtrag 99 in
-        // BarcodeAnalyzer.kt liegt. Hier zaehlt deshalb die Anzahl, nicht das
-        // blosse Vorkommen: EIN Use Case mit AF-Modus reicht nicht, weil
-        // CameraX beide Konfigurationen zu einem Repeating-Request verschmilzt.
-        //
-        // Diese Pruefung stand bis Nachtrag 119 in einer zweiten, veralteten
-        // Fassung dieser Klasse in ResponseCacheContractTest.kt. Sie erwartete
-        // die zwei Stellen auch in BarcodeScannerScreen.kt — was seit der
-        // Auslagerung des Analyzers nicht mehr zutrifft. Die Doppelung war ein
-        // Uebersetzungsfehler (Redeclaration); erhalten bleibt der Teil, der
-        // stimmt: SetupScreen.
-        val marke = "CONTROL_AF_MODE_CONTINUOUS_PICTURE"
-        val anzahl = Regex(marke).findAll(code(setup())).count()
-        assert(anzahl == 2) {
-            "In SetupScreen.kt steht der AF-Modus $anzahl mal statt zweimal — " +
-                "er muss an Preview UND ImageAnalysis stehen. NICHT diesen Test " +
-                "anpassen, sondern die fehlende Stelle ergaenzen."
-        }
-    }
 
     @Test
     fun `kein periodisches Nachfokussieren im SetupScreen`() {
