@@ -51,8 +51,7 @@ class SetsRepository @Inject constructor(
         page: Int = 1,
         pageSize: Int = GALLERY_PAGE_SIZE
     ): Result<SetsResponse> {
-        val ungefiltert = accounts == null && search.isNullOrBlank() && theme.isNullOrBlank() &&
-            (sort == null || sort == GALLERY_DEFAULT_SORT) && page == 1
+        val ungefiltert = true
         return if (ungefiltert)
             cached("sets", SetsResponse.serializer()) {
                 safeCall { api.getSets(null, null, null, sort, 1, pageSize) }
