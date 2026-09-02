@@ -286,7 +286,7 @@ async function fetchPrice(setNumber: string, condition: string, guideType: strin
   if (!rl2.allowed) { if (pd) return { ...pd, condition_used: condition }; throw new Error('BrickLink Tageslimit erreicht'); }
 
   const pd2 = await tryFetch(fallbackCondition);
-  if (pd2 && pd2.avg_price > 0) return { ...pd2, condition_used: fallbackCondition, is_fallback: true };
+  if (hatPreis(pd2)) return { ...pd2, condition_used: fallbackCondition, is_fallback: true };
   if (pd) return { ...pd, condition_used: condition };
   throw new Error(`${setNumber} — kein BrickLink-Preis gefunden`);
 }
@@ -489,13 +489,13 @@ async function fetchPartPrice(partNumber: string, rbColorId: number, condition: 
   const fallbackCondition = condition === 'N' ? 'U' : 'N';
 
   const readCache = (cond: string) => db.get(
-    `SELECT avg_price, avg_price FROM part_price_cache WHERE part_number=$1 AND color_id=$2 AND condition=$3 AND currency_code=$4 AND fetched_at > NOW() - make_interval(hours => $5)`,
+    `SELECT avg_price, qty_avg_price FROM part_price_cache WHERE part_number=$1 AND color_id=$2 AND condition=$3 AND currency_code=$4 AND fetched_at > NOW() - make_interval(hours => $5)`,
     [partNumber, colorId, cond, currency, ttl]);
 
   // Frischer Cache-Treffer mit echtem Preis → fertig
   const cached = await readCache(condition);
   if (hatPreis(cached))
-    return { avg_price: parseFloat(cached.avg_price), qty_avg_price: parseFloat(cached.avg_price), from_cache: true };
+    return { avg_price: parseFloat(cached.avg_price), qty_avg_price: parseFloat(cached.qty_avg_price), from_cache: true };
 
   // Frische 0 gecacht: Fallback-Zustand aus dem Cache probieren. Ist der
   // Fallback ebenfalls frisch gecacht (und 0), gibt es wirklich keinen Preis.
@@ -505,7 +505,11 @@ async function fetchPartPrice(partNumber: string, rbColorId: number, condition: 
   if (cached && !hatPreis(cached)) {
     const cachedFb = await readCache(fallbackCondition);
     if (hatPreis(cachedFb))
-      return { avg_price: parseFloat(cachedFb.avg_price), qty_avg_price: parseFloat(cachedFb.avg_price), from_cache: true, condition_used: fallbackCondition, is_fallback: true };
+      // qty_avg_price kam hier aus cachedFb.AVG_price — derselbe Operand
+      // zweimal, wie schon bei `avg > 0 || avg > 0`. Beide Funktionen sind
+      // voneinander kopiert, der Fehler damit auch. Der Set-Pfad weiter oben
+      // macht es richtig.
+      return { avg_price: parseFloat(cachedFb.avg_price), qty_avg_price: parseFloat(cachedFb.qty_avg_price), from_cache: true, condition_used: fallbackCondition, is_fallback: true };
     if (cachedFb) return { avg_price: 0, qty_avg_price: 0, from_cache: true, no_price: true };
     skipPrimaryFetch = true;
   }
@@ -561,11 +565,11 @@ async function fetchPartPrice(partNumber: string, rbColorId: number, condition: 
     const rl1 = await checkAndIncrementRateLimit('bricklink');
     if (!rl1.allowed) throw new Error('BrickLink Tageslimit erreicht');
     pd = await tryFetch(condition);
-    if (pd && pd.avg_price > 0) return { ...pd, condition_used: condition };
+    if (hatPreis(pd)) return { ...pd, condition_used: condition };
 
     const cachedFallback = await readCache(fallbackCondition);
     if (hatPreis(cachedFallback))
-      return { avg_price: parseFloat(cachedFallback.avg_price), qty_avg_price: parseFloat(cachedFallback.avg_price), from_cache: true, condition_used: fallbackCondition, is_fallback: true };
+      return { avg_price: parseFloat(cachedFallback.avg_price), qty_avg_price: parseFloat(cachedFallback.qty_avg_price), from_cache: true, condition_used: fallbackCondition, is_fallback: true };
   }
 
   const rl2 = await checkAndIncrementRateLimit('bricklink');
@@ -575,7 +579,7 @@ async function fetchPartPrice(partNumber: string, rbColorId: number, condition: 
   }
 
   const pd2 = await tryFetch(fallbackCondition);
-  if (pd2 && pd2.avg_price > 0) return { ...pd2, condition_used: fallbackCondition, is_fallback: true };
+  if (hatPreis(pd2)) return { ...pd2, condition_used: fallbackCondition, is_fallback: true };
   if (pd2) return { ...pd2, condition_used: fallbackCondition };
   if (pd)  return { ...pd, condition_used: condition };
   return { avg_price: 0, qty_avg_price: 0, from_cache: false, error: 'kein BrickLink-Preis gefunden' };
@@ -589,18 +593,22 @@ async function fetchMinifigPrice(figNumber: string, condition: string, currency:
   const fallbackCondition = condition === 'N' ? 'U' : 'N';
 
   const readCache = (cond: string) => db.get(
-    `SELECT avg_price, avg_price FROM minifig_price_cache WHERE fig_number=$1 AND condition=$2 AND currency_code=$3 AND fetched_at > NOW() - make_interval(hours => $4)`,
+    `SELECT avg_price, qty_avg_price FROM minifig_price_cache WHERE fig_number=$1 AND condition=$2 AND currency_code=$3 AND fetched_at > NOW() - make_interval(hours => $4)`,
     [figNumber, cond, currency, ttl]);
 
   const cached = await readCache(condition);
   if (hatPreis(cached))
-    return { avg_price: parseFloat(cached.avg_price), qty_avg_price: parseFloat(cached.avg_price), from_cache: true };
+    return { avg_price: parseFloat(cached.avg_price), qty_avg_price: parseFloat(cached.qty_avg_price), from_cache: true };
 
   let skipPrimaryFetch = false;
   if (cached && !hatPreis(cached)) {
     const cachedFb = await readCache(fallbackCondition);
     if (hatPreis(cachedFb))
-      return { avg_price: parseFloat(cachedFb.avg_price), qty_avg_price: parseFloat(cachedFb.avg_price), from_cache: true, condition_used: fallbackCondition, is_fallback: true };
+      // qty_avg_price kam hier aus cachedFb.AVG_price — derselbe Operand
+      // zweimal, wie schon bei `avg > 0 || avg > 0`. Beide Funktionen sind
+      // voneinander kopiert, der Fehler damit auch. Der Set-Pfad weiter oben
+      // macht es richtig.
+      return { avg_price: parseFloat(cachedFb.avg_price), qty_avg_price: parseFloat(cachedFb.qty_avg_price), from_cache: true, condition_used: fallbackCondition, is_fallback: true };
     if (cachedFb) return { avg_price: 0, qty_avg_price: 0, from_cache: true, no_price: true };
     skipPrimaryFetch = true;
   }
@@ -651,11 +659,11 @@ async function fetchMinifigPrice(figNumber: string, condition: string, currency:
     const rl1 = await checkAndIncrementRateLimit('bricklink');
     if (!rl1.allowed) throw new Error('BrickLink Tageslimit erreicht');
     pd = await tryFetch(condition);
-    if (pd && pd.avg_price > 0) return { ...pd, condition_used: condition };
+    if (hatPreis(pd)) return { ...pd, condition_used: condition };
 
     const cachedFallback = await readCache(fallbackCondition);
     if (hatPreis(cachedFallback))
-      return { avg_price: parseFloat(cachedFallback.avg_price), qty_avg_price: parseFloat(cachedFallback.avg_price), from_cache: true, condition_used: fallbackCondition, is_fallback: true };
+      return { avg_price: parseFloat(cachedFallback.avg_price), qty_avg_price: parseFloat(cachedFallback.qty_avg_price), from_cache: true, condition_used: fallbackCondition, is_fallback: true };
   }
 
   const rl2 = await checkAndIncrementRateLimit('bricklink');
@@ -665,7 +673,7 @@ async function fetchMinifigPrice(figNumber: string, condition: string, currency:
   }
 
   const pd2 = await tryFetch(fallbackCondition);
-  if (pd2 && pd2.avg_price > 0) return { ...pd2, condition_used: fallbackCondition, is_fallback: true };
+  if (hatPreis(pd2)) return { ...pd2, condition_used: fallbackCondition, is_fallback: true };
   if (pd2) return { ...pd2, condition_used: fallbackCondition };
   if (pd)  return { ...pd, condition_used: condition };
   return { avg_price: 0, qty_avg_price: 0, from_cache: false, error: 'kein BrickLink-Preis gefunden' };

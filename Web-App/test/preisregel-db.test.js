@@ -126,7 +126,30 @@ test('die Preisregel gilt an jeder Stelle gleich', { concurrency: 1 }, async (t)
       }
     }
 
-    // 4. Und die Regel steht nur an EINER Stelle. Eine zweite Fassung wäre
+    // 4. Der mengengewichtete Schnitt ist der mengengewichtete Schnitt.
+    //
+    // Bei Teilen und Minifiguren war er es nie: Die Cache-Abfrage lautete
+    // `SELECT avg_price, avg_price FROM part_price_cache` — dieselbe Spalte
+    // zweimal, obwohl die Tabelle qty_avg_price hat. Entsprechend füllten alle
+    // sechs Rückgabewege beider Funktionen qty_avg_price aus avg_price.
+    // Aufgefallen ist das nicht beim Lesen, sondern an der Regel weiter unten,
+    // nachdem ich sie geweitet hatte — mit blossem Auge hatte ich zwei der
+    // sechs Stellen gesehen.
+    const PN = `probe-teil-${process.pid}`;
+    await db.run(`DELETE FROM part_price_cache WHERE part_number=$1`, [PN]).catch(() => {});
+    await db.run(
+      `INSERT INTO part_price_cache (part_number,color_id,condition,currency_code,avg_price,qty_avg_price,fetched_at)
+       VALUES ($1,0,'N','EUR',5,7,NOW())`, [PN]);
+    const { fetchPartPrice } = _req('utils/financeCalc.js');
+    const teil = await fetchPartPrice(PN, 0, 'N', 'EUR', '24');
+    await db.run(`DELETE FROM part_price_cache WHERE part_number=$1`, [PN]).catch(() => {});
+    assert.equal(Number(teil.avg_price), 5);
+    assert.equal(Number(teil.qty_avg_price), 7,
+      'qty_avg_price kommt aus avg_price statt aus der eigenen Spalte — der ' +
+      'mengengewichtete Schnitt ist dann still der einfache. Bekommen: ' +
+      JSON.stringify(teil));
+
+    // 5. Und die Regel steht nur an EINER Stelle. Eine zweite Fassung wäre
     //    genau der Zustand, aus dem der Fehler entstanden ist.
     const fs = require('node:fs');
     const path = require('node:path');
@@ -134,9 +157,26 @@ test('die Preisregel gilt an jeder Stelle gleich', { concurrency: 1 }, async (t)
     for (const rel of ['utils/financeCalc.ts', 'clients/bricklink.ts']) {
       const src = fs.readFileSync(path.join(ROOT, rel), 'utf8')
         .split('\n').filter(z => !z.trim().startsWith('//') && !z.trim().startsWith('*')).join('\n');
-      assert.doesNotMatch(src, /parseFloat\([^)]*avg_price[^)]*\)\s*(?:>|===|==)\s*0/,
+      // Beide Schreibweisen. Die erste Fassung dieser Regel prüfte nur die
+      // parseFloat-Form — und übersah damit fünf Stellen, die schlicht
+      // `pd.avg_price > 0` schrieben. Aufgefallen ist das nicht an der Regel,
+      // sondern an einer Suche nach wortgleich wiederholten Bedingungen.
+      // Der Vergleich muss DIREKT am avg_price-Ausdruck haengen. Eine weitere
+      // Fassung („avg_price irgendwas > 0") traf auch
+      // `!priceData.avg_price && v > 0` — das ist keine Preispruefung, sondern
+      // „noch kein Wert gemerkt UND der neue taugt". Eine zu weite Regel ist
+      // so unbrauchbar wie eine zu enge: Sie zwingt zur naechsten Ausnahme.
+      assert.doesNotMatch(src, /(?:parseFloat\([^)]*avg_price[^)]*\)|[\w?.]*\.avg_price)\s*(?:>|<|===|==)\s*0/,
         `${rel} prüft den Preis wieder selbst statt über hatPreis() — und dann ` +
         'können die Fassungen erneut auseinanderlaufen');
+      // Und der zweite Operand einer solchen Prüfung darf nicht derselbe sein
+      // wie der erste. Genau das stand hier achtmal (`avg > 0 || avg > 0`) und
+      // zweimal als `qty_avg_price: parseFloat(x.avg_price)`.
+      assert.doesNotMatch(src, /(\w+)\.avg_price\)?[^\n]{0,20}\|\|[^\n]{0,20}\1\.avg_price/,
+        `${rel} prüft zweimal denselben Wert — gemeint war sicher qty_avg_price`);
+      assert.doesNotMatch(src, /qty_avg_price:\s*parseFloat\((\w+)\.avg_price\)/,
+        `${rel} füllt qty_avg_price aus avg_price — der mengengewichtete Schnitt ` +
+        'ist dann still der einfache');
     }
   } finally {
     await aufraeumen();
