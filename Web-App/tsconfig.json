@@ -159,6 +159,23 @@
     // Kennzeichnung fuer „gehoert zur Signatur, wird hier nicht gebraucht".
     "noUnusedLocals": true,
     "noUnusedParameters": true
+    // ── strictFunctionTypes: bewusst AUS, nachgemessen ──────────────────────
+    // 102 Meldungen, und alle 102 sind DERSELBE strukturelle Fall — keine
+    // davon deutet auf einen Fehler. Nachgezaehlt: 89x `req: AuthedRequest`,
+    // 13x `req: LoggedInRequest`.
+    //
+    // Der Grund ist eine Eigenschaft des Typsystems, nicht des Codes: Unter
+    // dem Schalter werden Funktionsparameter KONTRAVARIANT geprueft. Ein
+    // Handler, der `AuthedRequest` VERLANGT, ist damit nicht zuweisbar an
+    // Express' Signatur, die nur `Request` LIEFERT — obwohl die Middleware
+    // davor das Feld garantiert setzt.
+    //
+    // Ihn anzuschalten hiesse, genau diese Zusicherung aufzugeben: `req` waere
+    // ueberall der nackte Express-Typ, und `req.apiUser` muesste an 102 Stellen
+    // einzeln geprueft werden. Das ist teurer als der Schalter wert ist, und
+    // es nimmt eine Aussage weg, die heute etwas leistet.
+    //
+    // Stand messen:  npx tsc --noEmit --strictFunctionTypes
   },
   "include": [
     "server.ts",

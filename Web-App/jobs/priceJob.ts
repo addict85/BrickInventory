@@ -3,6 +3,7 @@
 const db      = require('../db/database');
 import { checkAndIncrementRateLimit } from '../utils/financeCalc';
 import { meldeUndWeiter, fehlertext } from '../utils/httpError';
+import { getSetting, getGlobalSetting } from '../utils/settings';
 const monitor = require('../utils/jobMonitor');
 const { getPriceGuide } = require('../clients/bricklink');
 const { DEFAULT_PRICE_CONDITION } = require('../utils/financeCalc');
@@ -96,20 +97,17 @@ function log(msg: string) {
   if (state.log.length > 50) state.log.length = 50;
 }
 
-async function getSetting(userId: number, key: string, fallback: any) {
-  const u = await db.get('SELECT value FROM user_settings WHERE user_id = $1 AND key = $2', [userId, key]);
-  if (u?.value) return u.value;
-  const g = await db.get('SELECT value FROM global_settings WHERE key = $1', [key]);
-  return g?.value || fallback;
-}
-/**
- * Es gab diese Funktion zweimal in derselben Datei — die zweite Definition
- * überschrieb die erste stillschweigend. Inhaltlich taten beide dasselbe;
- * TypeScript hat das Duplikat beim Umstellen aufgedeckt.
- */
-async function getGlobalSetting(key: string, fallback: any) {
-  return (await db.get('SELECT value FROM global_settings WHERE key = $1', [key]))?.value || fallback;
-}
+// getSetting()/getGlobalSetting() standen hier als wortgleiche Kopien von
+// utils/settings.ts — inklusive der eigenen SELECT-Anweisung auf
+// global_settings. Beide sind ersatzlos gestrichen: Wer den Tabellenzugriff
+// aendert (Zwischenspeicher, Umbenennung einer Spalte), soll das an EINER
+// Stelle tun und nicht danach suchen muessen.
+//
+// Ein Unterschied bleibt zu beachten: Die zentrale Fassung nimmt den
+// Ersatzwert nur bei NULL (`??`), die hiesige Kopie nahm ihn auch bei einem
+// leeren Eintrag (`||`). Fuer die beiden Zahlenwerte unten haengt daran, ob
+// parseInt('') ein NaN liefert — deshalb steht dort jeweils ein
+// ausgeschriebenes `||`.
 
 async function parallelLimit<T>(tasks: (() => Promise<T>)[], limit: number) {
   const results = new Array(tasks.length); let idx = 0;
@@ -229,7 +227,7 @@ async function runPriceRefresh(vorhandeneSperre?: (() => Promise<void>) | null) 
       const currency  = await getSetting(Number(userId), 'currency', 'EUR');
       // 'sold' = tatsächlich erzielte Preise der letzten sechs Monate.
       const guideType = 'sold';
-      const ttlHours  = await getGlobalSetting('price_cache_ttl', '24');
+      const ttlHours  = (await getGlobalSetting('price_cache_ttl', '24')) || '24';
       const valid = (setNumbers as string[]).filter(sn => /^[a-zA-Z0-9]+-\d+$/.test(sn));
 
       // Zustände je Set in EINER Abfrage vorab bestimmen, statt pro Set einzeln
@@ -391,7 +389,8 @@ async function refreshPriceForSet(setNumber: string, userId: number, hintConditi
 
 function scheduleNext() {
   if (_timer) clearTimeout(_timer);
-  getGlobalSetting('price_job_interval_minutes', '60').then(minutes => {
+  getGlobalSetting('price_job_interval_minutes', '60').then((gespeichert: unknown) => {
+    const minutes = String(gespeichert || '60');
     // NOCHMAL abräumen: Zwischen dem clearTimeout oben und diesem Rückruf
     // liegt eine Datenbankabfrage. Läuft in dieser Lücke ein zweiter
     // scheduleNext()-Aufruf durch, überschriebe seine Zuweisung den Verweis

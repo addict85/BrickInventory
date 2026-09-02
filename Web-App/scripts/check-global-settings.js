@@ -37,31 +37,38 @@ const ERLAUBT = new Map([
 ]);
 
 /**
- * Der Bestand beim Einführen dieser Prüfung. Diese Zahlen dürfen nur SINKEN.
- * Wer eine Datei leerräumt, streicht ihre Zeile.
+ * Der Rest-Bestand. Diese Zahlen duerfen nur SINKEN.
+ * Wer eine Datei leerraeumt, streicht ihre Zeile.
+ *
+ * Beim Einfuehren der Pruefung standen hier 22 Dateien mit 92 Fundstellen. Was
+ * jetzt noch uebrig ist, ist ueberwiegend KEIN einfacher Schluesselzugriff mehr:
+ *   - utils/financeCalc.ts: Der Kontingentzaehler laeuft in einer Transaktion
+ *     mit SELECT ... FOR UPDATE. Ein Helfer mit eigener Verbindung wuerde
+ *     gerade die Sperre aufgeben, fuer die es die Transaktion gibt.
+ *   - utils/jobMonitor.ts: ein atomares UPDATE mit GREATEST/COALESCE und eine
+ *     LIKE-Abfrage ueber alle job_monitor_*-Schluessel.
+ *   - routes/settings.ts: gibt die Tabelle als GANZES aus (Einstellungsseite
+ *     und Export) — das ist kein Zugriff auf einen einzelnen Schluessel.
+ *   - utils/setService.ts: liest ueber den uebergebenen Verbindungs-Handle,
+ *     damit der Wert innerhalb DERSELBEN Transaktion gesehen wird.
+ *   - Der Rest sind Erwaehnungen in Kommentaren. Die zaehlt die Pruefung mit,
+ *     weil sie nur nach dem Tabellennamen sucht — Absicht: lieber eine Zahl zu
+ *     hoch als eine echte Fundstelle uebersehen.
  */
 const OFFEN = new Map([
-  ['jobs/backfillBlPartNumbers.ts', 1],
-  ['jobs/dailyScheduler.ts', 5],
-  ['jobs/imageQueue.ts', 3],
-  ['jobs/instructionQueue.ts', 7],
-  ['jobs/partsCatalogEnrich.ts', 2],
-  ['jobs/priceJob.ts', 2],
-  ['jobs/rebrickableCsvSync.ts', 8],
-  ['routes/api_v1/admin.ts', 15],
-  ['routes/api_v1/settings.ts', 1],
-  ['routes/auth.ts', 1],
-  ['routes/mailer.ts', 2],
-  ['routes/settings.ts', 11],
-  ['server.ts', 8],
-  ['utils/bricklinkLink.ts', 1],
-  ['utils/financeCalc.ts', 8],
-  ['utils/handlers/stats.ts', 1],
-  ['utils/indexHtml.ts', 1],
-  ['utils/jobMonitor.ts', 7],
-  ['utils/marketPrice.ts', 1],
+  ['jobs/dailyScheduler.ts', 2],
+  ['jobs/imageQueue.ts', 2],
+  ['jobs/instructionQueue.ts', 1],
+  ['jobs/partsCatalogEnrich.ts', 1],
+  ['jobs/priceJob.ts', 1],
+  ['routes/api_v1/admin.ts', 3],
+  ['routes/mailer.ts', 1],
+  ['routes/settings.ts', 6],
+  ['server.ts', 1],
+  ['utils/financeCalc.ts', 5],
+  ['utils/jobMonitor.ts', 3],
   ['utils/pgNotify.ts', 3],
-  ['utils/rateLimiter.ts', 3],
+  ['utils/rateLimiter.ts', 1],
   ['utils/setService.ts', 1],
 ]);
 

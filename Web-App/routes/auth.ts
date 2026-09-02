@@ -486,8 +486,7 @@ router.post('/qr-login', ipThrottle('qr-login', 30, 60 * 60 * 1000), async (req,
 // ── GET /api/auth/registration-status — public, no auth required ─────────────
 router.get('/registration-status', async (_req, res) => {
   try {
-    const row = await db.get("SELECT value FROM global_settings WHERE key='registration_enabled'");
-    res.json({ enabled: row?.value === '1' });
+    res.json({ enabled: await getGlobalSetting('registration_enabled') === '1' });
   } catch(_) { res.json({ enabled: false }); }
 });
 

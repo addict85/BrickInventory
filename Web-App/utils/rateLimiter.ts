@@ -78,14 +78,13 @@ class DailyLimiter {
     if (this.date !== today) { this.date = today; this.count = 0; }
     if (this.count >= this.max) return false;
     this.count++;
-    // Persist to DB so UI can display counts
+    // Persist to DB so UI can display counts.
+    // Das frühere `const db = require(...)` ist weg: Seit der Schreibweg über
+    // setGlobalSetting() läuft, greift hier keine SQL-Anweisung mehr direkt zu.
     if (this.dbKey) {
       try {
-        const db = require('../db/database');
-        db.run('INSERT INTO global_settings (key,value) VALUES ($1,$2) ON CONFLICT (key) DO UPDATE SET value=$2',
-          [`api_calls_${this.dbKey}`, String(this.count)]).catch(()=>{});
-        db.run('INSERT INTO global_settings (key,value) VALUES ($1,$2) ON CONFLICT (key) DO UPDATE SET value=$2',
-          [`api_calls_date_${this.dbKey}`, new Date().toISOString().slice(0,10)]).catch(()=>{});
+        setGlobalSetting(`api_calls_${this.dbKey}`, String(this.count)).catch(()=>{});
+        setGlobalSetting(`api_calls_date_${this.dbKey}`, new Date().toISOString().slice(0, 10)).catch(()=>{});
       } catch (e) { meldeUndWeiter('kontingent:zaehler-schreiben', e); }
     }
     return true;
@@ -100,6 +99,7 @@ class DailyLimiter {
 
 // Primary limiter: CSV import, set info, image downloads (foreground)
 import { meldeUndWeiter } from './httpError';
+import { setGlobalSetting } from '../utils/settings';
 
 const rebrickableLimiter = new RateLimiter(1, 1500);
 // Secondary limiter: background enrichment jobs (parts catalog, BL IDs)

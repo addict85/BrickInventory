@@ -18,7 +18,7 @@ const {  DATA_DIR } = require('../utils/appPaths');
 import { fetchMissingBlIds } from '../routes/parts';
 import { getRbKey, httpsGetRobust } from '../clients/rebrickable';
 import { fehlertext } from '../utils/httpError';
-import { setGlobalSetting } from '../utils/settings';
+import { getGlobalSetting, setGlobalSetting } from '../utils/settings';
 const fs       = require('fs');
 const path     = require('path');
 const db       = require('../db/database');
@@ -234,15 +234,11 @@ const CATALOG_EXTRAS_KEY = 'rb_catalog_extras_last_sync';
 // lief, diese Files aber noch fehlen (z.B. direkt nach dem Update auf die
 // Katalog-Version). Analog zu syncPartCategoriesDaily.
 async function syncCatalogExtrasDaily(today: string) {
-  const m = await db.get(`SELECT value FROM global_settings WHERE key=$1`, [CATALOG_EXTRAS_KEY]).catch(() => null);
-  if (m && m.value === today) return;
+  if (await getGlobalSetting(CATALOG_EXTRAS_KEY) === today) return;
   try {
     await runWorker('themes',             TOTAL_STEPS, 'Themen laden...',           'themes.csv.gz');
     await runWorker('inventory_minifigs', TOTAL_STEPS, 'Inventar-Figuren laden...', 'inventory_minifigs.csv.gz');
-    await db.run(
-      `INSERT INTO global_settings (key,value) VALUES ($1,$2) ON CONFLICT (key) DO UPDATE SET value=$2`,
-      [CATALOG_EXTRAS_KEY, today]
-    );
+    setGlobalSetting(CATALOG_EXTRAS_KEY, today);
     log('catalog extras (themes + inventory_minifigs): Tagesimport erledigt');
   } catch (e) {
     log(`catalog extras: Tagesimport fehlgeschlagen: ${fehlertext(e)}`);
@@ -252,14 +248,10 @@ async function syncCatalogExtrasDaily(today: string) {
 // Stellt sicher, dass part_categories AUCH dann taeglich importiert wird, wenn der
 // Haupt-Sync heute bereits lief (z.B. weil das File nachtraeglich hinzugefuegt wurde).
 async function syncPartCategoriesDaily(today: string) {
-  const m = await db.get(`SELECT value FROM global_settings WHERE key=$1`, [PART_CAT_KEY]).catch(() => null);
-  if (m && m.value === today) return;
+  if (await getGlobalSetting(PART_CAT_KEY) === today) return;
   try {
     await runWorker('part_categories', TOTAL_STEPS, 'Kategorien laden...', 'part_categories.csv.gz');
-    await db.run(
-      `INSERT INTO global_settings (key,value) VALUES ($1,$2) ON CONFLICT (key) DO UPDATE SET value=$2`,
-      [PART_CAT_KEY, today]
-    );
+    setGlobalSetting(PART_CAT_KEY, today);
     log('part_categories: Tagesimport erledigt');
   } catch (e) {
     log(`part_categories: Tagesimport fehlgeschlagen: ${fehlertext(e)}`);
@@ -272,9 +264,9 @@ async function run() {
   await ensureSchema();
 
   // Check last sync date
-  const lastSync = await db.get(`SELECT value FROM global_settings WHERE key=$1`, [SYNC_KEY]).catch(()=>null);
+  const lastSync = await getGlobalSetting(SYNC_KEY);
   const today = new Date().toISOString().slice(0, 10);
-  if (lastSync?.value === today) {
+  if (lastSync === today) {
     log(`Already synced today (${today}) — skipping CSV download`);
     // part_categories dennoch taeglich sicherstellen (auch ohne Haupt-Sync).
     await syncPartCategoriesDaily(today);
@@ -296,21 +288,11 @@ async function run() {
       await runWorker('inventory_parts',   7, 'Inventar-Teile laden...',  'inventory_parts.csv.gz');
       await runWorker('inventory_minifigs',8, 'Inventar-Figuren laden...','inventory_minifigs.csv.gz');
 
-      await db.run(
-        `INSERT INTO global_settings (key, value) VALUES ($1,$2)
-         ON CONFLICT (key) DO UPDATE SET value=$2`,
-        [SYNC_KEY, today]
-      );
+      setGlobalSetting(SYNC_KEY, today);
       // part_categories wurde in der Schleife importiert -> Tagesmarker mitsetzen.
-      await db.run(
-        `INSERT INTO global_settings (key,value) VALUES ($1,$2) ON CONFLICT (key) DO UPDATE SET value=$2`,
-        [PART_CAT_KEY, today]
-      );
+      setGlobalSetting(PART_CAT_KEY, today);
       // themes + inventory_minifigs ebenfalls in der Schleife importiert.
-      await db.run(
-        `INSERT INTO global_settings (key,value) VALUES ($1,$2) ON CONFLICT (key) DO UPDATE SET value=$2`,
-        [CATALOG_EXTRAS_KEY, today]
-      );
+      setGlobalSetting(CATALOG_EXTRAS_KEY, today);
       log(`CSV sync complete for ${today}`);
     } catch(e) {
       log(`CSV sync failed: ${fehlertext(e)}`);

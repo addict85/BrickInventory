@@ -195,8 +195,7 @@ const MAIL_THEMES = {
  */
 async function getMailTheme() {
   try {
-    const db = require('../db/database');
-    const row = await db.get("SELECT value FROM global_settings WHERE key='app_theme'");
+    const gespeichert = await getGlobalSetting('app_theme');
     // ausTabelle statt MAIL_THEMES[...]: Ein Indexzugriff mit einem Wert aus
     // der Datenbank liefert auch GEERBTE Mitglieder — bei 'constructor' oder
     // '__proto__' kaeme etwas Wahres zurueck, und der ||-Rueckfall griffe nie.
@@ -204,7 +203,7 @@ async function getMailTheme() {
     // Positivliste, es ist also nicht erreichbar; aber utils/indexHtml.ts
     // prueft an der LESESTELLE, und das ist der Stand, auf den diese hier
     // gehoert. Eine Absicherung drei Dateien entfernt ist keine dieser Stelle.
-    return ausTabelle(MAIL_THEMES, row?.value, MAIL_THEMES.classic);
+    return ausTabelle(MAIL_THEMES, gespeichert, MAIL_THEMES.classic);
   } catch (_) { return MAIL_THEMES.classic; }
 }
 

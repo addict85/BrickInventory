@@ -364,11 +364,19 @@ function merkeLauf(erg: StapelErgebnis): void {
  * reichlich — sie wertet den Zeitpunkt in Minuten aus.
  */
 async function speichereLauf(erg: StapelErgebnis): Promise<void> {
-  await db.run(
-    `INSERT INTO global_settings (key, value) VALUES ($1, $2)
-       ON CONFLICT (key) DO UPDATE SET value = $2`,
-    [LAUF_SCHLUESSEL, JSON.stringify({ zeit: Date.now(), ergebnis: erg })]
-  ).catch(() => {});
+  // Spaetes require() statt import ganz oben, und zwar mit Grund: db/database.ts
+  // holt initImageQueue() aus DIESER Datei. Eine import-Anweisung auf
+  // utils/settings.ts — das seinerseits db/database.ts importiert — schloesse
+  // den Kreis, und zur Ladezeit waere eine der beiden Seiten undefined
+  // (siehe test/module-layout.test.js). Ein require() im Rumpf laeuft erst beim
+  // Aufruf und ist deshalb unbedenklich.
+  const { setGlobalSetting } = require('../utils/settings') as typeof import('../utils/settings');
+  // Das await gehoert hier hin: Der naechste Takt liest den Stand ueber einen
+  // ANDEREN Prozess wieder aus. Ohne await kehrt der Aufrufer zurueck, bevor
+  // die Zeile steht — die Kachel meldet dann „Job noch nicht gelaufen", waehrend
+  // im Log Durchgaenge stehen.
+  await setGlobalSetting(LAUF_SCHLUESSEL, JSON.stringify({ zeit: Date.now(), ergebnis: erg }))
+    .catch(() => {});
 }
 
 /**

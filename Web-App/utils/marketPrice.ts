@@ -2,6 +2,7 @@ import * as db from '../db/database';
 import { refreshPriceForSet } from '../jobs/priceJob';
 import { getSetValue } from './setValue';
 import { effectiveCondition as userDefaultCondition } from './settings';
+import { getGlobalSetting } from './settings';
 import { DEFAULT_PRICE_CONDITION } from './financeCalc';
 
 /**
@@ -21,8 +22,8 @@ import { DEFAULT_PRICE_CONDITION } from './financeCalc';
 async function getCurrentMarketPrice(setNumber: string, userId: number, condition: string | null = null) {
   try {
     const currencyRow = await db.get('SELECT value FROM user_settings WHERE user_id=$1 AND key=$2', [userId, 'currency']);
-    const globalCurrencyRow = await db.get('SELECT value FROM global_settings WHERE key=$1', ['currency']);
-    const currency = currencyRow?.value || globalCurrencyRow?.value || 'EUR';
+    const globalCurrency = await getGlobalSetting('currency');
+    const currency = currencyRow?.value || globalCurrency || 'EUR';
     // Effective condition: parameter → user setting → global setting → 'N'
     const effectiveCond = condition || await userDefaultCondition(userId).catch(()=>DEFAULT_PRICE_CONDITION);
     // condition als Hinweis mitgeben: Beim Anlegen eines neuen Sets existieren

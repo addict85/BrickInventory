@@ -7,14 +7,14 @@
 const db      = require('../db/database');
 const https   = require('https');
 const { rebrickableBackgroundLimiter: rebrickableLimiter, consumeRebrickableDaily, parseThrottleWait } = require('../utils/rateLimiter');
+import { getGlobalSetting } from '../utils/settings';
 
 /** Ergebnis der handgebauten HTTPS-Aufrufe in dieser Datei. Ohne Typparameter
  *  leitet TypeScript bei `new Promise` `unknown` ab. */
 type JobHttpResult = { status: number; body: string };
 
 async function getRbKey() {
-  const row = await db.get("SELECT value FROM global_settings WHERE key='rebrickable_api_key'").catch(()=>null);
-  return row?.value || null;
+  return await getGlobalSetting('rebrickable_api_key') || null;
 }
 
 async function fetchBatch(partNums: string[], rbKey: string) {

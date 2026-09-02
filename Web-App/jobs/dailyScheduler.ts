@@ -9,7 +9,9 @@
  *   die API rescheduleAll() direkt auf (falls die Anfrage auf dem Primary landet).
  */
 import { meldeUndWeiter, fehlertext } from '../utils/httpError';
-const db = require('../db/database');
+import { getGlobalSetting, deleteGlobalSetting } from '../utils/settings';
+// Kein eigener db-Verweis mehr: Der Planer liest und löscht seine Uhrzeiten
+// und den Auslöser ausschliesslich über utils/settings.
 
 // Metadaten der täglichen Jobs. monitorKey = Schlüssel der Job-Karte im Monitoring
 // (damit die UI die passende Uhrzeit dem richtigen Job zuordnen kann).
@@ -38,8 +40,8 @@ function _metaDefault(name: string) {
 
 // Konfigurierte Uhrzeit (HH:MM als {h,min}) für einen Job.
 async function getTime(name: string) {
-  const row = await db.get(`SELECT value FROM global_settings WHERE key=$1`, [`job_time_${name}`]).catch(() => null);
-  return _parseHHMM(row?.value, _metaDefault(name));
+  const zeit = await getGlobalSetting(`job_time_${name}`);
+  return _parseHHMM(zeit, _metaDefault(name));
 }
 
 async function _scheduleOne(name: string) {
@@ -80,9 +82,9 @@ async function rescheduleAll() {
  */
 function startTriggerPoll() {
   require('../utils/pgNotify').listen('job_reschedule_trigger', async () => {
-    const row = await db.get(`SELECT value FROM global_settings WHERE key='job_reschedule_trigger'`).catch(() => null);
-    if (!row?.value) return;
-    await db.run(`DELETE FROM global_settings WHERE key='job_reschedule_trigger'`).catch(() => {});
+    const ausloeser = await getGlobalSetting('job_reschedule_trigger');
+    if (!ausloeser) return;
+    await deleteGlobalSetting('job_reschedule_trigger').catch(() => {});
     console.log('[scheduler] Reschedule-Trigger empfangen — plane Jobs neu');
     await rescheduleAll();
   });

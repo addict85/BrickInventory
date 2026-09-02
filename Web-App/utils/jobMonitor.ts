@@ -5,6 +5,7 @@
 
 import * as db from '../db/database';
 import { meldeUndWeiter } from './httpError';
+import { getGlobalSetting, setGlobalSetting } from '../utils/settings';
 
 const JOB_DEFAULTS: Record<string, any> = {
   csvImport:     { label: 'CSV-Import (Rebrickable)', status: 'idle', progress: 0, total: 6 },
@@ -19,11 +20,7 @@ const JOB_DEFAULTS: Record<string, any> = {
 async function update(jobKey: string, patch: any) {
   const defaults = JOB_DEFAULTS[jobKey] || {};
   const value = JSON.stringify({ ...defaults, ...patch, lastRun: new Date().toISOString() });
-  await db.run(
-    `INSERT INTO global_settings (key, value) VALUES ($1, $2)
-     ON CONFLICT (key) DO UPDATE SET value = $2`,
-    [`job_monitor_${jobKey}`, value]
-  ).catch(e => console.error('[jobMonitor] update error:', e.message));
+  setGlobalSetting(`job_monitor_${jobKey}`, value).catch(e => console.error('[jobMonitor] update error:', e.message));
 }
 
 // ── Bild-Download-Zähler ──────────────────────────────────────────────────
@@ -52,26 +49,22 @@ async function imgDlAdd(delta: number) {
 }
 
 async function imgDlPending() {
-  const row = await db.get(
-    `SELECT value FROM global_settings WHERE key = $1`, [IMGDL_PENDING_KEY]
-  ).catch(() => null);
-  const n = parseInt(row?.value || '0', 10);
+  const n = parseInt(await getGlobalSetting(IMGDL_PENDING_KEY) || '0', 10);
   return Number.isFinite(n) ? Math.max(0, n) : 0;
 }
 
 async function imgDlReset() {
-  await db.run(
-    `UPDATE global_settings SET value = '0' WHERE key = $1`, [IMGDL_PENDING_KEY]
-  ).catch(() => {});
+  // Vorher ein reines UPDATE: Fehlt die Zeile, tat es nichts. Das war folgenlos,
+  // weil imgDlPending() eine fehlende Zeile ohnehin als 0 liest — deshalb ist
+  // das Anlegen durch setGlobalSetting() hier unschaedlich und der Zaehler
+  // steht danach in jedem Fall sichtbar auf 0.
+  await setGlobalSetting(IMGDL_PENDING_KEY, 0).catch(() => {});
 }
 
 async function get(jobKey: string) {
-  const row = await db.get(
-    `SELECT value FROM global_settings WHERE key = $1`,
-    [`job_monitor_${jobKey}`]
-  ).catch(() => null);
-  if (!row) return JOB_DEFAULTS[jobKey] || null;
-  try { return JSON.parse(row.value); } catch(_) { return JOB_DEFAULTS[jobKey]; }
+  const roh = await getGlobalSetting(`job_monitor_${jobKey}`);
+  if (!roh) return JOB_DEFAULTS[jobKey] || null;
+  try { return JSON.parse(roh); } catch(_) { return JOB_DEFAULTS[jobKey]; }
 }
 
 async function all() {

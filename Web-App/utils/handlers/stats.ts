@@ -1,5 +1,6 @@
 import * as db from '../../db/database';
 import { asIds } from '../household';
+import { getGlobalSetting } from '../settings';
 
 /**
  * Die Kennzahlen der Übersichtsseite — spannen über alle drei Domänen und
@@ -32,9 +33,9 @@ async function getStats(userId: number | number[]) {
     db.get("SELECT value FROM user_settings WHERE user_id = ANY($1) AND key = 'currency'", [uids]),
   ]);
   const userCondRow = await db.get("SELECT value FROM user_settings WHERE user_id = ANY($1) AND key='user_default_condition'", [uids]).catch(() => null);
-  const globalCondRow = await db.get("SELECT value FROM global_settings WHERE key='default_price_condition'").catch(() => null);
+  const globalCond = await getGlobalSetting('default_price_condition');
   const effectiveCondition = (userCondRow?.value && ['N','U'].includes(userCondRow.value))
-    ? userCondRow.value : (globalCondRow?.value || 'N');
+    ? userCondRow.value : (globalCond || 'N');
   const pieces = parseInt(partsRow?.t || 0);
   return {
     total_sets:          parseInt(setsRow?.total_sets || 0),

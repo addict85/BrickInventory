@@ -150,4 +150,33 @@ async function setGlobalSetting(key: string, value: unknown) {
     [key, String(value)]);
 }
 
-export { getSetting, getGlobalSetting, setGlobalSetting, setUserSetting, effectiveCondition, globalDefaultCondition };
+/**
+ * Auslöser-Zeile setzen (csv_sync_trigger, job_reschedule_trigger,
+ * instr_queue_trigger).
+ *
+ * Getrennt von setGlobalSetting(), weil hier bewusst die Uhr der DATENBANK
+ * schreibt und nicht die des Prozesses: Diese Zeilen schreibt ein Worker und
+ * liest ein anderer. Käme die Zeit aus dem jeweiligen Node-Prozess, entschiede
+ * bei auseinanderlaufenden Uhren der Schreiber darüber, was der Leser für
+ * frisch hält.
+ */
+async function setGlobalTrigger(key: string) {
+  await db.run(
+    `INSERT INTO global_settings (key, value, updated_at) VALUES ($1, NOW()::TEXT, NOW())
+     ON CONFLICT (key) DO UPDATE SET value = NOW()::TEXT, updated_at = NOW()`, [key]);
+}
+
+/**
+ * Globale Einstellung entfernen.
+ *
+ * Es gibt einen echten Unterschied zwischen „Schlüssel fehlt" und „Wert ist
+ * leer": Ein Auslöser-Schlüssel (instr_queue_trigger) gilt als abgearbeitet,
+ * sobald die ZEILE weg ist — ein leerer Wert liesse die Warteschlange in einer
+ * Schleife weiterlaufen. Deshalb ein eigener Weg statt setGlobalSetting(k, '').
+ */
+async function deleteGlobalSetting(...keys: string[]) {
+  if (keys.length === 0) return;
+  await db.run(`DELETE FROM global_settings WHERE key = ANY($1)`, [keys]);
+}
+
+export { getSetting, getGlobalSetting, setGlobalSetting, setGlobalTrigger, deleteGlobalSetting, setUserSetting, effectiveCondition, globalDefaultCondition };

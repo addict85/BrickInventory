@@ -31,8 +31,15 @@ test('es gibt eine Palette je Design', () => {
 
 test('das Design wird beim Versand geladen, nicht fest verdrahtet', () => {
   assert.match(SRC, /async function getMailTheme\(\)/, 'Loader fehlt');
-  assert.match(SRC, /SELECT value FROM global_settings WHERE key='app_theme'/,
+  // Früher stand hier die SQL-Anweisung selbst. Seit alle Zugriffe auf
+  // global_settings über utils/settings.ts laufen, prüft der Test den Weg
+  // dorthin — die Aussage ist dieselbe: Das Design ist eine GLOBALE
+  // Einstellung und darf nicht aus dem Prozess oder aus einer Konstanten
+  // kommen.
+  assert.match(SRC, /await getGlobalSetting\('app_theme'\)/,
     'Das Design ist eine globale Einstellung und muss von dort kommen');
+  assert.match(SRC, /import \{[^}]*getGlobalSetting[^}]*\} from '\.\.\/utils\/settings'/,
+    'und zwar über die zentrale Fassung, nicht über eine eigene Abfrage');
   // Bei jedem Zweifel classic — eine E-Mail darf nie am Design scheitern
   assert.match(SRC, /catch \(_\) \{ return MAIL_THEMES\.classic; \}/,
     'Ohne Rückfall bliebe eine E-Mail bei einem Datenbankfehler aus');

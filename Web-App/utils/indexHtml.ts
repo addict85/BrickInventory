@@ -23,6 +23,7 @@ import fs from 'fs';
 import {  PUBLIC_DIR } from '../utils/appPaths';
 import path from 'path';
 import * as db from '../db/database';
+import { getGlobalSetting } from './settings';
 
 const INDEX_PATH = path.join(PUBLIC_DIR, 'index.html');
 const ALLOWED = ['classic', 'brick'];
@@ -54,8 +55,8 @@ async function readIndex(): Promise<string> {
 
 async function currentTheme(): Promise<string> {
   if (_theme !== null && Date.now() - _themeAt < THEME_TTL_MS) return _theme;
-  const row = await db.get("SELECT value FROM global_settings WHERE key='app_theme'").catch(() => null);
-  const gewaehlt: string = ALLOWED.includes(row?.value) ? row.value : 'classic';
+  const gespeichert = await getGlobalSetting('app_theme').catch(() => null);
+  const gewaehlt: string = ALLOWED.includes(gespeichert) ? gespeichert : 'classic';
   _theme = gewaehlt;
   _themeAt = Date.now();
   return gewaehlt;

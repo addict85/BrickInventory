@@ -22,17 +22,14 @@ import { getJobStatus, triggerNow } from '../../jobs/priceJob';
 import { SET_IMAGES_DIR } from '../../utils/appPaths';
 import { anfragenJeMinute } from '../../jobs/imageQueue';
 import { DAILY_JOBS } from '../../jobs/dailyScheduler';
-import { setGlobalSetting } from '../../utils/settings';
+import { getGlobalSetting, setGlobalSetting, setGlobalTrigger, deleteGlobalSetting } from '../../utils/settings';
 const router = express.Router();
 
 // ── POST /api/v1/admin/trigger-csv-sync — manually trigger CSV sync ──────────
 router.post('/admin/trigger-csv-sync', requireApiAdmin, async (_req: AuthedRequest, res) => {
   // Signal primary worker via DB flag (same pattern as instruction queue trigger)
   try {
-    await db.run(`
-      INSERT INTO global_settings (key, value) VALUES ('csv_sync_trigger', NOW()::TEXT)
-      ON CONFLICT (key) DO UPDATE SET value = NOW()::TEXT
-    `);
+    await setGlobalTrigger('csv_sync_trigger');
     // Weckt den Primary-Worker sofort. Der Eintrag oben bleibt die belastbare
     // Quelle — ohne Signal liefe er erst beim nächsten Verbindungsaufbau an.
     await require('../../utils/pgNotify').notify('csv_sync_trigger');
@@ -216,8 +213,8 @@ router.post('/admin/cache-clear', requireApiAdmin, async (req: AuthedRequest, re
 // ── GET /api/v1/admin/cache-ttl ───────────────────────────────────────────────
 router.get('/admin/cache-ttl', requireApiAdmin, async (_req: AuthedRequest, res) => {
   try {
-    const row = await db.get("SELECT value FROM global_settings WHERE key='price_cache_ttl'");
-    res.json({ success:true, ttl: row?.value || '24' });
+    const ttl = await getGlobalSetting('price_cache_ttl');
+    res.json({ success:true, ttl: ttl || '24' });
   } catch (e) { handleRouteError(res, e); }
 });
 
@@ -270,8 +267,7 @@ router.put('/admin/api-limits', requireApiAdmin, async (req: AuthedRequest, res)
     }
     if (brickset) {
       const newLimit = parseInt(brickset);
-      const oldRow = await db.get("SELECT value FROM global_settings WHERE key='api_limit_brickset'").catch(() => null);
-      const oldLimit = parseInt(oldRow?.value || '100');
+      const oldLimit = parseInt(await getGlobalSetting('api_limit_brickset') || '100');
       setGlobalSetting('api_limit_brickset', String(newLimit));
       // If limit was increased and quota is available, trigger retry queue
       if (newLimit > oldLimit) {
@@ -557,9 +553,8 @@ router.post('/admin/brickset-queue/:setNumber/retry', requireApiAdmin, async (re
     `UPDATE brickset_retry_queue SET retry_after = CURRENT_DATE WHERE set_number = $1`, [sn]
   ).catch(() => {});
   // Temporarily reset today's rate limit counter so the retry goes through even if limit reached
-  await db.run(
-    `DELETE FROM global_settings WHERE key = 'api_calls_brickset' OR key = 'api_calls_date_brickset'`
-  ).catch(() => {});
+  await deleteGlobalSetting('api_calls_brickset', 'api_calls_date_brickset')
+    .catch(() => {});
   // Trigger queue processing immediately
   setImmediate(() => require('../../jobs/bricksetRetry').processRetryQueue(true).catch(() => {}));
   res.json({ success: true, set_number: sn });
@@ -592,7 +587,7 @@ router.get('/admin/jobs', requireApiAdmin, async (_req: AuthedRequest, res) => {
   const blTotal  = await db.get(`SELECT COUNT(DISTINCT part_number) as c FROM parts WHERE source!='manual'`).catch(()=>null);
   const rbParts  = await db.get(`SELECT COUNT(*) as c FROM rb_parts`).catch(()=>null);
   const rbInvParts = await db.get(`SELECT COUNT(*) as c FROM rb_inventory_parts`).catch(()=>null);
-  const lastSync = await db.get(`SELECT value FROM global_settings WHERE key='rb_csv_last_sync'`).catch(()=>null);
+  const lastSync = await getGlobalSetting('rb_csv_last_sync');
 
   // Enrich blIds job with live DB counts
   const mappedC = parseInt(blMapped?.c||0);
@@ -673,8 +668,8 @@ router.get('/admin/jobs', requireApiAdmin, async (_req: AuthedRequest, res) => {
   // Status liegt in global_settings.imgredl_status.
   let reDl: any = null;
   try {
-    const r = await db.get(`SELECT value FROM global_settings WHERE key='imgredl_status'`);
-    if (r?.value) reDl = JSON.parse(r.value);
+    const roh = await getGlobalSetting('imgredl_status');
+    if (roh) reDl = JSON.parse(roh);
   } catch (_) { reDl = null; }
   const reDlRunning = reDl?.running === true;
   const reDlSub = reDlRunning
@@ -722,8 +717,8 @@ router.get('/admin/jobs', requireApiAdmin, async (_req: AuthedRequest, res) => {
   // von dort sehen ihn alle Worker.
   let letzterLauf: { zeit?: number } | null = null;
   try {
-    const r = await db.get(`SELECT value FROM global_settings WHERE key='imgqueue_last_run'`);
-    if (r?.value) letzterLauf = JSON.parse(r.value);
+    const roh = await getGlobalSetting('imgqueue_last_run');
+    if (roh) letzterLauf = JSON.parse(roh);
   } catch (_) { letzterLauf = null; }
   const seitLauf = letzterLauf?.zeit ? Date.now() - letzterLauf.zeit : null;
   const jobLaeuft = seitLauf !== null && seitLauf < 3 * 60_000;
@@ -784,11 +779,11 @@ router.get('/admin/jobs', requireApiAdmin, async (_req: AuthedRequest, res) => {
   // tägliche Jobs (HH:MM) + Preis-Job (Intervall in Minuten).
   const schedules: any = {};
   for (const dj of DAILY_JOBS) {
-    const r = await db.get(`SELECT value FROM global_settings WHERE key=$1`, [`job_time_${dj.name}`]).catch(() => null);
-    schedules[dj.monitorKey] = { type: 'daily', time: r?.value || dj.default };
+    const zeit = await getGlobalSetting(`job_time_${dj.name}`);
+    schedules[dj.monitorKey] = { type: 'daily', time: zeit || dj.default };
   }
-  const priceInt = await db.get(`SELECT value FROM global_settings WHERE key='price_job_interval_minutes'`).catch(() => null);
-  schedules.priceJob = { type: 'interval', minutes: parseInt(priceInt?.value || '60') };
+  const priceInt = await getGlobalSetting('price_job_interval_minutes');
+  schedules.priceJob = { type: 'interval', minutes: parseInt(priceInt || '60') };
 
   res.json({
     success: true,
@@ -797,7 +792,7 @@ router.get('/admin/jobs', requireApiAdmin, async (_req: AuthedRequest, res) => {
     db: {
       instrQueue: { pending: pendingC, done: doneC, failed: failedC },
       blMapping:  { mapped: parseInt(blMapped?.c||0), total: parseInt(blTotal?.c||0) },
-      csvCache:   { parts: parseInt(rbParts?.c||0), inventoryParts: parseInt(rbInvParts?.c||0), lastSync: lastSync?.value || null },
+      csvCache:   { parts: parseInt(rbParts?.c||0), inventoryParts: parseInt(rbInvParts?.c||0), lastSync: lastSync || null },
     }
   });
 });
@@ -816,10 +811,7 @@ router.post('/admin/job-schedule', requireApiAdmin, async (req: AuthedRequest, r
         return res.status(400).json({ success: false, error: 'Ungültige Uhrzeit (HH:MM)' });
       }
       const norm = `${String(+(m[1] ?? '')).padStart(2, '0')}:${String(+(m[2] ?? '')).padStart(2, '0')}`;
-      await db.run(
-        `INSERT INTO global_settings (key, value) VALUES ($1, $2) ON CONFLICT (key) DO UPDATE SET value = $2`,
-        [`job_time_${daily.name}`, norm]
-      );
+      setGlobalSetting(`job_time_${daily.name}`, norm);
     } else if (name === 'priceJob') {
       const min = Math.max(5, parseInt(minutes) || 60);
       setGlobalSetting('price_job_interval_minutes', String(min));
@@ -827,9 +819,7 @@ router.post('/admin/job-schedule', requireApiAdmin, async (req: AuthedRequest, r
       return res.status(400).json({ success: false, error: 'Unbekannter Job' });
     }
     // Sofort anwenden: Flag für den Primary-Worker + direkter Aufruf (falls dieser Prozess der Primary ist).
-    await db.run(
-      `INSERT INTO global_settings (key, value) VALUES ('job_reschedule_trigger', NOW()::TEXT) ON CONFLICT (key) DO UPDATE SET value = NOW()::TEXT`
-    ).catch(() => {});
+    await setGlobalTrigger('job_reschedule_trigger').catch(() => {});
     await require('../../utils/pgNotify').notify('job_reschedule_trigger');
     try { await require('../../jobs/dailyScheduler').rescheduleAll(); } catch (e) { meldeUndWeiter('admin:zeitplan-neu-planen', e); }
     res.json({ success: true });
@@ -997,7 +987,7 @@ router.get('/admin/price-probe', requireApiAdmin, async (req: AuthedRequest, res
     db.all(`SELECT condition, avg_price, qty_avg_price, recorded_at FROM price_history
              WHERE set_number=$1 ORDER BY recorded_at DESC LIMIT 5`, [setNumber]),
     db.get("SELECT value FROM user_settings WHERE user_id=$1 AND key='currency'", [uid]).catch(() => null),
-    db.get("SELECT value FROM global_settings WHERE key='price_cache_ttl'").catch(() => null),
+    getGlobalSetting('price_cache_ttl'),
   ]);
 
   // Welchen Zustand würde die Bewertung wählen? Dieselbe Regel wie
@@ -1023,7 +1013,7 @@ router.get('/admin/price-probe', requireApiAdmin, async (req: AuthedRequest, res
              + 'Weicht "chosen_for_price" von der Anzeige ab, liegt der Fehler dort.',
     },
     currency: currRow?.value || 'EUR',
-    ttl_hours: parseInt(ttlRow?.value || '24'),
+    ttl_hours: parseInt(ttlRow || '24'),
     price_cache: cacheRows,
     price_history_last5: histRows,
   };

@@ -34,6 +34,7 @@
  */
 import * as db from '../db/database';
 import { bricklinkRequest } from '../clients/bricklink';
+import { getGlobalSetting } from './settings';
 
 export type BlType = 'SET' | 'GEAR' | 'BOOK' | 'MINIFIG' | 'NONE';
 
@@ -152,10 +153,10 @@ export async function resolveViaApi(setNumber: string): Promise<BlLink> {
   const bare = bareNumber(setNumber);
 
   // Kein Zugang konfiguriert → bei der Annahme bleiben, nichts cachen.
-  const creds = await db.get(
-    "SELECT COUNT(*)::int AS n FROM global_settings WHERE key = 'bricklink_consumer_key' AND value <> ''"
-  ).catch(() => null);
-  if (!creds?.n) return toLink(n, null);
+  // Die frühere COUNT-Abfrage prüfte zusätzlich auf value <> ''; getGlobalSetting()
+  // liefert den Wert selbst, und die leere Zeichenkette ist hier gleichbedeutend
+  // mit „nicht konfiguriert".
+  if (!await getGlobalSetting('bricklink_consumer_key')) return toLink(n, null);
 
   const notFound = (e: any) => e?.detail?.meta?.code === 404 || e?.detail?.meta?.code === 400;
 

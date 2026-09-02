@@ -120,7 +120,9 @@ test('ein geändertes Limit gilt sofort in ALLEN Workern', () => {
     .replace(/\/\/[^\n]*/g, '');
   const fn = fc.slice(fc.indexOf('async function getLimitForApi'),
                       fc.indexOf('async function getRateLimitStatus'));
-  assert.match(fn, /FROM global_settings WHERE key=\$1/,
+  // Der Zugriff läuft inzwischen über utils/settings.ts statt über eine eigene
+  // SQL-Anweisung. Die Aussage bleibt: Die Grenze wird IM AUFRUF geholt.
+  assert.match(fn, /await getGlobalSetting\(`api_limit_\$\{apiName\}`\)/,
     'Die Grenze muss bei jedem Aufruf gelesen werden, nicht aus dem Prozessspeicher kommen');
 });
 

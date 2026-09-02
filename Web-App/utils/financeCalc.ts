@@ -151,21 +151,20 @@ async function getLimitForApi(apiName: ApiName) {
   // wäre es eine stille Kürzung auf ein Sechstel gewesen. Der Wert kommt
   // deshalb aus derselben Quelle wie dort.
   const defaults = { bricklink: 4000, rebrickable: REBRICKABLE_DEFAULT_DAILY, brickset: 100 };
-  const row = await db.get('SELECT value FROM global_settings WHERE key=$1', [`api_limit_${apiName}`]).catch(()=>null);
-  return parseInt(row?.value) || defaults[apiName] || 4000;
+  const grenze = await getGlobalSetting(`api_limit_${apiName}`);
+  return parseInt(grenze) || defaults[apiName] || 4000;
 }
 
 async function getRateLimitStatus(apiName: ApiName) {
   const key = `api_calls_${apiName}`;
   const dateKey = `api_calls_date_${apiName}`;
   const today = new Date().toISOString().slice(0, 10);
-  const [dateRow, countRow, limit] = await Promise.all([
-    db.get('SELECT value FROM global_settings WHERE key = $1', [dateKey]),
-    db.get('SELECT value FROM global_settings WHERE key = $1', [key]),
+  const [storedDate, rohCount, limit] = await Promise.all([
+    getGlobalSetting(dateKey),
+    getGlobalSetting(key),
     getLimitForApi(apiName),
   ]);
-  const storedDate  = dateRow?.value;
-  const storedCount = parseInt(countRow?.value || '0');
+  const storedCount = parseInt(rohCount || '0');
   const count = (storedDate === today) ? storedCount : 0;
   return { count, limit, remaining: Math.max(0, limit - count), date: today };
 }

@@ -110,6 +110,7 @@ import { starteHintergrundlaeufe } from './startup/backgroundJobs';
 import { bricklinkRequest } from './clients/bricklink';
 import { generateThumb } from './routes/thumbs';
 import { alsAbrufFehler } from './clients/abrufFehler';
+import { getGlobalSetting, deleteGlobalSetting } from './utils/settings';
 
 const WORKERS = parseInt(process.env.WEB_WORKERS || '0') || Math.max(2, os.cpus().length);
 
@@ -666,10 +667,9 @@ app.get('/api/startup-status', async (_req, res) => {
 
   // Try DB for cross-worker state
   try {
-    const db2 = require('./db/database') as typeof import('./db/database');
-    const row = await db2.get(`SELECT value FROM global_settings WHERE key='startup_status'`).catch(() => null);
-    if (row?.value) {
-      const status = JSON.parse(row.value);
+    const roh = await getGlobalSetting('startup_status');
+    if (roh) {
+      const status = JSON.parse(roh);
       global.startupStatus = status;
       return res.json(status);
     }
@@ -918,7 +918,7 @@ db.initSchemaOnce().then(async () => {
 
   // Only primary worker clears stale startup_status — secondaries read it from DB
   if (isPrimaryWorker) {
-    await db.run(`DELETE FROM global_settings WHERE key='startup_status'`).catch(() => {});
+    await deleteGlobalSetting('startup_status').catch(() => {});
   }
 
   (async () => {
@@ -934,9 +934,9 @@ db.initSchemaOnce().then(async () => {
       while (true) {
         await new Promise(r => setTimeout(r, 500));
         try {
-          const row = await db.get(`SELECT value FROM global_settings WHERE key='startup_status'`).catch(() => null);
-          if (row?.value) {
-            const s = JSON.parse(row.value);
+          const roh = await getGlobalSetting('startup_status');
+          if (roh) {
+            const s = JSON.parse(roh);
             global.startupStatus = s;
             if (s.ready) break;
           }
@@ -963,7 +963,7 @@ db.initSchemaOnce().then(async () => {
   scheduler.register('brickset_retry', () =>
     (require('./jobs/bricksetRetry') as typeof import('./jobs/bricksetRetry')).processRetryQueue().catch(e => console.error('[brickset-retry]', e.message)));
   scheduler.register('csv_sync', () =>
-    db.run("DELETE FROM global_settings WHERE key='rb_csv_last_sync'")
+    deleteGlobalSetting('rb_csv_last_sync')
       .then(() => csvSync.run())
       .catch(e => console.error('[rb-csv-sync daily]', e.message)));
   scheduler.startTriggerPoll();
@@ -977,12 +977,12 @@ db.initSchemaOnce().then(async () => {
   (require('./utils/pgNotify') as typeof import('./utils/pgNotify')).listen('csv_sync_trigger', async () => {
     if (_csvSyncRunning) return;
     try {
-      const row = await db.get(`SELECT value FROM global_settings WHERE key='csv_sync_trigger'`).catch(() => null);
-      if (!row?.value) return;
-      await db.run(`DELETE FROM global_settings WHERE key='csv_sync_trigger'`).catch(() => {});
+      const ausloeser = await getGlobalSetting('csv_sync_trigger');
+      if (!ausloeser) return;
+      await deleteGlobalSetting('csv_sync_trigger').catch(() => {});
       console.log('[rb-csv-sync] Manual trigger received — starting CSV sync');
       _csvSyncRunning = true;
-      await db.run("DELETE FROM global_settings WHERE key='rb_csv_last_sync'").catch(() => {});
+      await deleteGlobalSetting('rb_csv_last_sync').catch(() => {});
       await csvSync.run().catch(e => console.error('[rb-csv-sync manual]', e.message));
     } catch (e) { meldeUndWeiter('server:csv-abgleich-anstossen', e); }
     finally { _csvSyncRunning = false; }
