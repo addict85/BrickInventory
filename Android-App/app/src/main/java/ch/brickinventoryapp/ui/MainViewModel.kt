@@ -328,14 +328,14 @@ class MainViewModel @Inject constructor(
 
     /** Verarbeitet ein Status-Event: aktualisiert Banner und startet bei Bedarf den FG-Service. */
     internal suspend fun handleCsvStatus(s: ch.brickinventoryapp.data.model.CsvImportStatus) {
-        val running = s.status == "running" || s.status == "pending"
-        // Zustand VOR dieser Meldung — unten wird _csvImportState überschrieben.
-        val warVorherAktiv = _csvImportState.value.running
+        val running = importLaeuft(s.status)
+        // Die Entscheidung fällt VOR dem Überschreiben von _csvImportState —
+        // danach gelesen wäre der „vorherige" Zustand bereits der neue, und die
+        // Unterscheidung Übergang/Zustand (Nachtrag 110) wäre wirkungslos.
+        // Die Regel selbst steht in CsvUebergang.kt: dort ohne Context prüfbar.
+        val folge = csvFolge(warVorherAktiv = _csvImportState.value.running, status = s.status)
 
-        // FG-Service starten/stoppen je nach Import-Zustand
-        if (running && !_csvImportState.value.running) {
-            CsvImportService.start(ctx)
-        }
+        if (folge == CsvFolge.DIENST_STARTEN) CsvImportService.start(ctx)
 
         _csvImportState.value = CsvImportUiState(
             running = running,
@@ -347,38 +347,15 @@ class MainViewModel @Inject constructor(
             err     = s.err ?: 0
         )
 
-        // ── Nur beim ÜBERGANG „lief" → „fertig" (Nachtrag 110) ────────────────
-        //
-        // Marcos Befund: „In der Galerie springt die Liste beim Scrollen zurück."
-        // Sein Protokoll zeigte es unmissverständlich:
-        //
-        //     Seite 2: 60 empfangen, Liste  60 -> 120
-        //     Seite 3: 60 empfangen, Liste 120 -> 180
-        //     Seite 4: 60 empfangen, Liste 180 -> 240
-        //     Seite 2: 60 empfangen, Liste  60 -> 120     ← zurück auf Anfang
-        //
-        // Alle fünf bis zehn Sekunden fiel die Liste auf 60 Einträge zurück, und
-        // das Raster landete auf der letzten noch vorhandenen Zeile — immer
-        // derselben. Genau der beobachtete Sprung.
-        //
-        // Ursache: Der SSE-Strom meldet den Importstatus fortlaufend, auch wenn
-        // der Import längst abgeschlossen ist. Die Bedingung fragte nur „läuft
-        // gerade nicht und ist kein Fehler" — das trifft auf JEDE Meldung eines
-        // fertigen Imports zu. Also lief `finishCsvImport()` alle paar Sekunden
-        // neu und ersetzte mit `loadSets()` die ganze Liste durch Seite 1.
-        //
-        // Der Wächter `csvFinishing` half nicht: Er wird nach fünf Sekunden
-        // wieder freigegeben — genau im Takt der Meldungen.
-        //
-        // Ein Abschluss ist ein ÜBERGANG, kein Zustand. Nachgeladen wird jetzt
-        // nur, wenn vorher tatsächlich ein Import lief.
-        if (!running && warVorherAktiv && s.status != null && s.status != "error") {
+        when (folge) {
             // Import abgeschlossen → Daten neu laden, Banner nach kurzer Pause ausblenden
-            finishCsvImport()
-        } else if (s.status == "error") {
-            kotlinx.coroutines.delay(5000)
-            _csvImportState.value = CsvImportUiState()
-            CsvImportService.stop(ctx)
+            CsvFolge.NACHLADEN -> finishCsvImport()
+            CsvFolge.FEHLER_AUFRAEUMEN -> {
+                kotlinx.coroutines.delay(5000)
+                _csvImportState.value = CsvImportUiState()
+                CsvImportService.stop(ctx)
+            }
+            CsvFolge.DIENST_STARTEN, CsvFolge.NICHTS -> {}
         }
 
         // Sets nachlagen falls Erstladung beim App-Start scheiterte
