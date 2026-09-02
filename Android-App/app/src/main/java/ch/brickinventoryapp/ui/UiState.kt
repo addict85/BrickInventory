@@ -80,7 +80,11 @@ data class AppUiState(
     val serverUrl: String = "",
     val isLoggedIn: Boolean = false,
     val isAdmin: Boolean = false,
-    val username: String = "",
+    // `username` stand hier und wurde aus den Einstellungen gefuellt — gelesen
+    // hat es niemand. Was die Oberflaeche zeigt, ist `HouseholdMember.username`
+    // aus der Haushalts-Antwort, ein anderer Wert. Gefunden von der Regel
+    // „kein Zustandsfeld wird geschrieben, ohne je gelesen zu werden"
+    // (UiStateFieldsTest).
     val authToken: String = "",
     val currency: String = "EUR",
     /**
@@ -266,7 +270,11 @@ data class ManualItemDetailUiState(
     val itemType: String = "",       // "part" | "fig"
     val itemId: String = "",         // part_number oder fig_number
     val colorId: Int = 0,
-    val newQuantity: Int = 0,        // nach Acquisition-Delete aktualisierte Gesamtmenge
+    // `newQuantity` stand hier — die Gesamtmenge nach dem Loeschen einer
+    // Erfassung. Gelesen wurde sie nie, und sie wird auch nicht gebraucht: Die
+    // angezeigte Menge folgt der SUMME der Erfassungen
+    // (ManualItemDetailScreen), und die laedt deleteManualAcquisition()
+    // unmittelbar danach neu.
     /**
      * Marktpreis je Zustand und Verlauf — dieselbe Antwortform wie beim Set.
      *
@@ -448,7 +456,10 @@ data class CatalogUiState(
     val themes: List<CatalogTheme> = emptyList(),
     val yearMin: Int? = null,
     val yearMax: Int? = null,
-    val yearCounts: Map<Int, Int> = emptyMap(),
+    // `yearCounts` (Anzahl Sets je Jahr) stand hier, wurde aus der
+    // Katalog-Metaantwort gefuellt und nirgends angezeigt. Der Wert steht
+    // weiterhin in CatalogMetaResponse; wer ein Jahres-Histogramm bauen will,
+    // holt ihn von dort. Gefunden von derselben Regel.
     // Detail
     val detail: CatalogSetDetail? = null,
     val detailLoading: Boolean = false,

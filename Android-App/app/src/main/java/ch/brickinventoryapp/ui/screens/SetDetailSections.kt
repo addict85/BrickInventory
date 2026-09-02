@@ -265,10 +265,27 @@ fun LazyListScope.setDetailPriceSection(set: SetItem, detailState: SetDetailUiSt
                     }
 
                     // ── Verlauf: eine Linie je Zustand ───────────────
+                    //
+                    // Preis und Verlauf sind ZWEI Abrufe. Der Preis ist meist
+                    // zuerst da; ohne den Hinweis hier springt das Diagramm
+                    // spaeter kommentarlos in die schon sichtbare Karte.
+                    // `priceHistoryLoading` wurde dafuer geschrieben, aber
+                    // nirgends gelesen.
                     val chart = history?.chart
                     if (chart != null && chart.values.isNotEmpty()) {
                         Spacer(Modifier.height(8.dp))
                         PriceChart(chart)
+                    } else if (detailState.priceHistoryLoading) {
+                        Spacer(Modifier.height(8.dp))
+                        Row(
+                            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            CircularProgressIndicator(Modifier.size(14.dp), strokeWidth = 2.dp)
+                            Text(stringResource(R.string.detail_price_loading),
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        }
                     }
                 }
             }

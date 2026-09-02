@@ -223,9 +223,9 @@ class MainViewModel @Inject constructor(
                 }
         }
         // Anzeige-Präferenzen separat — lösen keine Reloads aus
-        viewModelScope.launch {
-            prefs.username.collect { user -> _state.update { it.copy(username = user) } }
-        }
+        // Der frueher hier gesammelte Benutzername ist entfallen (siehe
+        // AppUiState). PreferencesManager.username und saveUsername() gibt es
+        // noch — sie haben damit allerdings auch keinen Leser mehr.
         viewModelScope.launch {
             prefs.currency.collect { cur -> _state.update { it.copy(currency = cur) } }
         }

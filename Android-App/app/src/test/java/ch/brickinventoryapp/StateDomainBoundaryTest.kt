@@ -48,7 +48,7 @@ class StateDomainBoundaryTest {
         "defaultPriceCondition" to "Settings", "userDefaultCondition" to "Settings",
         "appTheme" to "Settings", "language" to "Settings",
         // Sitzung
-        "isLoggedIn" to "Session", "isAdmin" to "Session", "username" to "Session",
+        "isLoggedIn" to "Session", "isAdmin" to "Session",
         "authToken" to "Session", "serverUrl" to "Session",
         // `loginLaeuft` hiess `isLoading` und stand bis zuletzt in `querschnitt`
         // darunter — als EINZIGES Feld, das jeder beschreiben durfte. Es hat

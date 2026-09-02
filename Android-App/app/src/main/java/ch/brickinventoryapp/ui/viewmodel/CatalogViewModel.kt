@@ -129,8 +129,7 @@ class CatalogViewModel @Inject constructor(
             when (val r = retryOnNetwork { repo.admin.getCatalogMeta() }) {
                 is Result.Success -> if (r.data.success) _catalogState.update {
                     it.copy(
-                        themes = r.data.themes, yearMin = r.data.yearMin, yearMax = r.data.yearMax,
-                        yearCounts = r.data.yearCounts.associate { yc -> yc.year to yc.n }
+                        themes = r.data.themes, yearMin = r.data.yearMin, yearMax = r.data.yearMax
                     )
                 }
                 is Result.Error -> { /* Meta ist optional — Filter bleiben leer, Liste geht trotzdem */ }
