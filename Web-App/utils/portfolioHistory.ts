@@ -1,7 +1,6 @@
 import { baueDiagrammdaten } from './portfolio/diagrammdaten';
 import { rekonstruiereKurve } from './portfolio/kurve';
 import { DEFAULT_PRICE_CONDITION } from './financeCalc';
-import { buildChart } from './chartData';
 /**
  * `db` und `getSetting` kommen HEREIN statt importiert zu werden — die Datei
  * war so schon vor dieser Aenderung ohne Datenbank pruefbar. Der Typ schreibt
@@ -59,7 +58,6 @@ async function getPortfolioHistory(
   // adaptiv auf Monate verdichtet, wenn es wirklich zu viele Punkte sind
   // (> 120). Der erste Datenpunkt bleibt dabei immer exakt erhalten, sodass
   // Monat/Jahr/Max bei kurzer Historie identische Kurven zeigen.
-  const groupExpr = "to_char(recorded_at,'YYYY-MM-DD')";
 
   // Auflösung der Rekonstruktion (nicht des Schnappschuss-Wegs): Für Woche und
   // Monat je Tag, für Jahr und Max je MONAT.

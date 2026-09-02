@@ -1,7 +1,7 @@
 /** /api/v1/minifigs — CRUD und Teile-Liste (Erfassungen: ./acquisitions.ts). */
 import express from 'express';
 import * as db from '../../db/database';
-import { handleRouteError } from '../../utils/httpError';
+import { handleRouteError, pfadParam } from '../../utils/httpError';
 import { requireToken } from './middleware';
 import { scopeIds, parseScopeMode, resolveWriteTarget } from '../../utils/household';
 import { getManualMinifigs, getMinifigStats, getMinifigs } from '../../utils/handlers/minifigs';
@@ -33,7 +33,7 @@ router.post('/minifigs', requireToken, async (req: AuthedRequest, res) => {
 // ── PUT /api/v1/minifigs/:figNumber — edit quantity / Preis/Stk (same logic as web app)
 router.put('/minifigs/:figNumber', requireToken, async (req: AuthedRequest, res) => {
   try {
-    await updateManualFig(req.apiUser.user_id, req.params.figNumber, req.body);
+    await updateManualFig(req.apiUser.user_id, pfadParam(req, 'figNumber'), req.body);
     res.json({ success: true });
   } catch (e) { handleRouteError(res, e); }
 });

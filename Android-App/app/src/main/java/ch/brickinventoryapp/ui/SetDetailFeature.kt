@@ -73,7 +73,7 @@ internal fun MainViewModel.loadAcquisitions(setNumber: String) {
  *
  * Ohne diesen Schritt blieb die Kachel nach einer Zustandsänderung im
  * Kaufpreis-Dialog auf dem alten Label stehen: loadAcquisitions() und
- * loadSetDetail() aktualisieren nur _setDetailState, die Liste in _state.sets
+ * loadSetDetail() aktualisieren nur _setDetailState, die Liste im Galerie-Fluss
  * blieb unberührt bis zum nächsten vollständigen Neuladen.
  *
  * Bewusst der Serverwert und keine lokale Neuberechnung — die Regel
@@ -81,7 +81,9 @@ internal fun MainViewModel.loadAcquisitions(setNumber: String) {
  */
 internal fun MainViewModel.applySetAggregate(agg: SetAggregate?) {
     if (agg == null || agg.setNumber.isBlank()) return
-    _state.update { st ->
+    // Die Liste liegt seit der Aufteilung im Galerie-Fluss, nicht mehr in
+    // AppUiState — der Kommentar oben nennt sie noch `_state.sets`.
+    _galleryState.update { st ->
         st.copy(sets = st.sets.map { s ->
             if (s.setNumber != agg.setNumber) s
             else s.copy(
@@ -151,7 +153,7 @@ internal fun MainViewModel.deleteAcquisition(setNumber: String, acqId: Int) {
                     loadValuation()
                 }
             }
-            is Result.Error -> _snackbar.value = ctx.getString(R.string.vm_error, "Delete failed")
+            is Result.Error -> _snackbar.value = text(R.string.vm_error, "Delete failed")
         }
     }
 }

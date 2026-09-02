@@ -56,7 +56,10 @@ function main() {
   const ziel = '/tmp/brickinv-coverage.info';
   console.log('Suite mit Abdeckungsmessung — das dauert ein paar Minuten …\n');
 
-  const r = spawnSync(process.execPath, [
+  // Ohne Zuweisung: Das Ergebnis wird nicht gebraucht, der AUFRUF aber sehr
+  // wohl — er faehrt die ganze Suite. (Meine Automatik hatte die Zeile samt
+  // Aufruf entfernt, weil nur die Bindung ungenutzt war.)
+  spawnSync(process.execPath, [
     '--test', '--test-concurrency=1', '--test-timeout=60000',
     '--experimental-test-coverage',
     '--test-reporter=lcov', `--test-reporter-destination=${ziel}`,

@@ -27,6 +27,7 @@ import { Client } from 'pg';
 import { LOCKS } from '../utils/lockNamespaces';
 import { initImageMisses } from '../utils/imageMisses';
 import { initImageQueue } from '../jobs/imageQueue';
+import { fehlerCode } from '../utils/httpError';
 
 // ── Warum diese acht jetzt oben stehen (Nachtrag 155) ────────────────────────
 //
@@ -91,18 +92,18 @@ const baseConfig = process.env.DATABASE_URL
 const pool = new Pool({ ...baseConfig, ...POOL_CONFIG });
 
 // ── Pool event logging ────────────────────────────────────────────────────────
-pool.on('error', (err, client) => {
+pool.on('error', (err, _client) => {
   console.error('[db-pool] idle client error:', err.message);
 });
 
-pool.on('connect', (client) => {
+pool.on('connect', (_client) => {
   // statement_timeout is set via pool options below — no extra query needed
 });
 
 // Optional: log pool exhaustion warnings (fires when all connections are in use)
 let _poolWarnTimer: any = null;
 pool.on('acquire', () => {
-  const { totalCount, idleCount, waitingCount } = pool;
+  const {   waitingCount } = pool;
   if (waitingCount > 0 && !_poolWarnTimer) {
     _poolWarnTimer = setTimeout(() => {
       // Pool pressure warning suppressed — too noisy during bulk imports
@@ -141,7 +142,10 @@ async function queryWithRetry<T>(queryFn: () => Promise<T>, maxRetries = 2): Pro
       return await queryFn();
     } catch (err) {
       lastErr = err;
-      if (!RETRYABLE_CODES.has(err.code) || attempt === maxRetries) throw err;
+      // `?? ''` statt eines Nicht-Null-Ausrufezeichens: Ein Fehler ohne Code
+      // ist eben nicht wiederholbar, und der leere String faellt sauber
+      // durch die Menge — genau das Verhalten von vorher, nur ohne `any`.
+      if (!RETRYABLE_CODES.has(fehlerCode(err) ?? '') || attempt === maxRetries) throw err;
       const wait = 50 * Math.pow(2, attempt); // 50 ms, 100 ms
       await new Promise(r => setTimeout(r, wait));
     }

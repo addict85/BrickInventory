@@ -1,6 +1,5 @@
 /** /api/v1 — Dashboard-Statistiken und Endpoint-Übersicht. */
 import express from 'express';
-import * as db from '../../db/database';
 import { handleRouteError } from '../../utils/httpError';
 import { requireToken } from './middleware';
 import { scopeIds, parseScopeMode } from '../../utils/household';
@@ -17,7 +16,7 @@ router.get('/stats', requireToken, async (req: AuthedRequest, res) => {
 });
 
 // Hinter requireToken: die Übersicht verrät ohne Auth die komplette API-Fläche.
-router.get('/', requireToken, (req: AuthedRequest, res) => res.json({
+router.get('/', requireToken, (_req: AuthedRequest, res) => res.json({
   api:'Brick Manager API v1', version:'1.0',
   auth:'Bearer token — POST /api/v1/auth/login',
   endpoints:{

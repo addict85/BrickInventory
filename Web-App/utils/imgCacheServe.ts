@@ -1,5 +1,6 @@
 import fs from 'fs';
 import { queueThumb } from './proxyThumbs';
+import { vorDem } from '../utils/httpError';
 
 /**
  * Ein Bild aus dem Platten-Cache ausliefern, falls es dort liegt.
@@ -100,7 +101,7 @@ export async function liefereAusCache(opts: {
     // unten beim Abruf). Im Zweifel als JPEG ausliefern — zusammen mit
     // nosniff ist das die harmlose Auslegung.
     const ctRaw = await fs.promises.readFile(cacheFile + '.ct', 'utf8').catch(() => 'image/jpeg');
-    const ctMime = ctRaw.split(';')[0].trim().toLowerCase();
+    const ctMime = vorDem(ctRaw, ';').trim().toLowerCase();
     const ct = (ctMime.startsWith('image/') && ctMime !== 'image/svg+xml') ? ctRaw : 'image/jpeg';
     res.setHeader('Content-Type', ct);
     // Länge mitgeben: Ohne sie geht die Antwort als chunked raus, und ein

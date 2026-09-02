@@ -175,7 +175,7 @@ async function schreibePuffer(): Promise<void> {
        SELECT * FROM unnest($1::text[], ARRAY(SELECT NOW() FROM unnest($1::text[])), $2::text[])
        ON CONFLICT (cache_key) DO UPDATE SET checked_at = NOW(), reason = EXCLUDED.reason`,
     [keys, gruende]
-  ).catch(() => { for (let i = 0; i < keys.length; i++) _zuSchreiben.set(keys[i], gruende[i]); });
+  ).catch(() => { for (let i = 0; i < keys.length; i++) { const k = keys[i]; if (k) _zuSchreiben.set(k, gruende[i] ?? ''); } });
 }
 
 /** Nur für Tests: den Merker im Arbeitsspeicher leeren. */

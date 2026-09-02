@@ -6,7 +6,7 @@ import * as db from '../db/database';
 import { handleRouteError, logAndContinue, meldeUndWeiter } from '../utils/httpError';
 import { requireLogin, requireAdmin } from './auth';
 
-import { setUserSetting, globalDefaultCondition } from '../utils/settings';
+import { setUserSetting, setGlobalSetting, setGlobalTrigger, getGlobalSetting } from '../utils/settings';
 import { getRateLimitStatus } from '../utils/financeCalc';
 import { buildSetsCsv } from '../utils/setService';
 import { buildPartsCsv } from './parts';
@@ -21,10 +21,10 @@ import { sendMail, testSmtp } from './mailer';
 // Login-Pflicht — und damit war das global eingestellte Design auf dem Login-
 // und dem Startup-Screen gar nicht abrufbar. Der Wert ist eine reine
 // UI-Einstellung ('classic' | 'brick') und verrät nichts über Konten oder Daten.
-router.get('/theme', async (req, res) => {
-  const row = await db.get("SELECT value FROM global_settings WHERE key='app_theme'").catch(() => null);
+router.get('/theme', async (_req, res) => {
+  const theme = await getGlobalSetting('app_theme');
   res.set('Cache-Control', 'no-cache');
-  res.json({ success: true, theme: row?.value || 'classic' });
+  res.json({ success: true, theme: theme || 'classic' });
 });
 
 router.use(requireLogin);
@@ -149,7 +149,7 @@ router.post('/', async (req: LoggedInRequest, res) => {
     if (req.session.isAdmin) {
       // Check if brickset limit is being increased before saving
       const oldBricksetLimit = req.body.api_limit_brickset !== undefined
-        ? parseInt((await db.get('SELECT value FROM global_settings WHERE key=$1', ['api_limit_brickset']))?.value || '100')
+        ? parseInt(await getGlobalSetting('api_limit_brickset') || '100')
         : null;
 
       for (const key of globalKeys) {
@@ -160,10 +160,7 @@ router.post('/', async (req: LoggedInRequest, res) => {
           // neuer Wert gespeichert werden: Sonst überschreibt jedes Speichern
           // der Einstellungsseite die echten API-Schlüssel mit Punkten.
           if (SECRET_KEYS.has(key) && isMaskedValue(req.body[key])) continue;
-          await db.run(
-            'INSERT INTO global_settings (key, value, updated_at) VALUES ($1, $2, NOW()) ON CONFLICT (key) DO UPDATE SET value = $2, updated_at = NOW()',
-            [key, req.body[key]]
-          );
+          await setGlobalSetting(key, req.body[key]);
         }
       }
 
@@ -286,7 +283,7 @@ router.post('/import', importUpload.single('file'), async (req: LoggedInRequest,
           // Eine Datei aus einem älteren Export kann noch maskierte Werte
           // enthalten — die dürfen die echten Schlüssel nicht überschreiben.
           if (SECRET_KEYS.has(key) && isMaskedValue(config.global[key])) continue;
-          await db.run('INSERT INTO global_settings (key, value) VALUES ($1, $2) ON CONFLICT (key) DO UPDATE SET value = $2', [key, config.global[key]]);
+          await setGlobalSetting(key, config.global[key]);
           imported++;
         }
       }
@@ -324,7 +321,7 @@ router.post('/import', importUpload.single('file'), async (req: LoggedInRequest,
 
     // Importierte Job-Zeiten / Preis-Intervall sofort übernehmen (Scheduler neu planen).
     if (req.session.isAdmin) {
-      await db.run(`INSERT INTO global_settings (key, value) VALUES ('job_reschedule_trigger', NOW()::TEXT) ON CONFLICT (key) DO UPDATE SET value = NOW()::TEXT`)
+      await setGlobalTrigger('job_reschedule_trigger')
         .catch(logAndContinue('settings:job_reschedule_trigger'));
       // Weckt die Scheduler sofort; ohne Signal bliebe der Eintrag bis zum
       // nächsten Verbindungsaufbau liegen.
@@ -397,7 +394,7 @@ router.post('/smtp-test', async (req, res) => {
 router.post('/admin/theme', requireAdmin, async (req, res) => {
   const theme = String(req.body?.theme || 'classic');
   if (!['classic', 'brick'].includes(theme)) return res.status(400).json({ success: false, error: 'Ungültiges Design' });
-  await db.run("INSERT INTO global_settings(key,value) VALUES('app_theme',$1) ON CONFLICT(key) DO UPDATE SET value=$1", [theme]);
+  setGlobalSetting('app_theme', theme);
   // Der Wert steckt im serverseitig gerenderten <html data-theme> — Cache
   // verwerfen, sonst liefert der Server bis zum Neustart das alte Design aus.
   require('../utils/indexHtml').invalidateTheme();

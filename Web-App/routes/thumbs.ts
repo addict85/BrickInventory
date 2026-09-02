@@ -25,7 +25,6 @@
  */
 
 import path from 'path';
-import { APP_ROOT, DATA_DIR, PUBLIC_DIR, IMAGES_DIR } from '../utils/appPaths';
 import fs from 'fs';
 import { resolveWebPath } from '../utils/appPaths';
 import { isDecodable } from '../utils/imageGuard';

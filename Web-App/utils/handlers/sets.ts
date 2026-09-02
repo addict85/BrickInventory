@@ -2,11 +2,7 @@ import * as db from '../../db/database';
 import type { DbSchnittstelle } from '../../db/database';
 import { resolveImageLocal } from '../images';
 import { asIds } from '../household';
-import { ensureFresh } from '../partsSummary';
-import { fetchMissingBlIds } from '../../routes/parts';
-import { getAllSetParts, getRbKey, httpsGetRobust } from '../../clients/rebrickable';
-import { clampPageSize, conditionFromAcquisitions, conditionsFromAcquisitions, applyManualCondition, withOwners, MAX_PAGE_SIZE, UNPAGED_LIMIT, SET_PARTS_MAX_PAGE_SIZE } from './shared';
-import { getParts } from './parts';
+import { clampPageSize, conditionFromAcquisitions, conditionsFromAcquisitions } from './shared';
 import { ausTabelle } from '../validate';
 
 /**

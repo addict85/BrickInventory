@@ -112,7 +112,9 @@ internal fun MainViewModel.deleteManualAcquisition(
         }
         when (result) {
             is Result.Success -> {
-                _manDetailState.update { it.copy(newQuantity = result.data.newQuantity) }
+                // Kein eigenes Mengenfeld mehr: Die Anzeige rechnet die Menge
+                // aus den Erfassungen, und die kommen in der naechsten Zeile
+                // frisch. Ein zweiter Wert daneben koennte nur abweichen.
                 loadManualAcquisitions(type, id, colorId)
                 reloadItemList(type)
             }

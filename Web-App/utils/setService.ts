@@ -1,9 +1,8 @@
 import * as db from '../db/database';
-import { logAndContinue, meldeUndWeiter } from './httpError';
+import { logAndContinue, meldeUndWeiter, fehlertext } from './httpError';
 import { scopeIds, writableIds } from './household';
 import { recordAcquisitionForDay } from './acquisitions';
 import { withInventoryLock } from './txLock';
-import { findSetInScope } from './setAdd';
 import { downloadSetImage } from './setImages';
 import { getCurrentMarketPrice } from './marketPrice';
 import { downloadSetInstructions } from './instructions';
@@ -64,7 +63,13 @@ async function recomputeSetCondition(userId: number, setNumber: string, dbh: any
 // `unknown`, weil der Rumpf mit String(input) genau das abfaengt — hier
 // kommen Formularfelder und CSV-Zellen an, nicht garantierte Zeichenketten.
 function sanitizeSetNumber(input: unknown) {
-  let s = String(input).trim().split(';')[0].trim().split(' ')[0].trim().replace(/[^a-zA-Z0-9-]/g, '');
+  // Bewusst OHNE den vorDem()-Helfer: Diese Funktion steht in zwei Fassungen
+  // nebeneinander (ein Import baute einen Kreis, siehe oben), und
+  // set-add-exists-db.test.js fuehrt ihren Rumpf ISOLIERT aus, um beide zu
+  // vergleichen. Ein externer Aufruf darin waere dort nicht aufloesbar — der
+  // Test hat das gemeldet, als ich es zuerst anders gemacht habe.
+  let s = ((String(input).trim().split(';')[0] ?? '').trim().split(' ')[0] ?? '')
+    .trim().replace(/[^a-zA-Z0-9-]/g, '');
   if (!/-\d+$/.test(s)) s = s + '-1';
   return s;
 }
@@ -548,7 +553,7 @@ async function updateSet(uid: number, sn: string, body: any) {
                                 ORDER BY created_at DESC, id DESC LIMIT 1)`,
         [cond, uid, sn]);
     } catch (e) {
-      console.error('[updateSet] condition update skipped (migration pending?):', e.message);
+      console.error('[updateSet] condition update skipped (migration pending?):', fehlertext(e));
     }
   }
   // Die Gesamtmenge des Blickfelds NACH der Änderung — siehe Kopfkommentar.
@@ -560,30 +565,51 @@ async function updateSet(uid: number, sn: string, body: any) {
 
 // Shared logic to build the Sets CSV export content. Used by both the
 // standalone CSV download and the combined ZIP export in settings.js.
+// Eine Zeile pro Erfassung, damit Kaufpreis, Zustand und Datum je Kauf erhalten
+// bleiben und beim Re-Import 1:1 wiederhergestellt werden. Sets ohne Erfassungen
+// fallen auf die Set-Zeile zurück.
+//
+// ── Warum ein LEFT JOIN und keine Schleife ──────────────────────────────────
+// Vorher lief hier eine Abfrage JE SET. Bei 700 Sets waren das 701 Hin- und
+// Rückwege zur Datenbank; jeder einzelne war schnell, die Summe nicht. Der
+// Export ist die Stelle, an der ein Nutzer am ehesten den GANZEN Bestand
+// anfasst — also genau die, an der sich das am stärksten auswirkt.
+//
+// Der LEFT JOIN erzeugt dieselben Zeilen: zu jedem Set entweder eine je
+// Erfassung oder, wenn es keine gibt, genau eine mit NULL-Erfassungsspalten.
+//
+// ── Die Falle dabei ─────────────────────────────────────────────────────────
+// Die naheliegende Formulierung `COALESCE(a.purchase_price, s.purchase_price)`
+// wäre FALSCH: Zu einer vorhandenen Erfassung OHNE Preis gehört ein leeres
+// Feld, nicht der Preis der Set-Zeile. Entschieden wird deshalb an `a.id IS
+// NULL` — also daran, OB es eine Erfassung gibt, nicht daran, ob ihre Werte
+// gefüllt sind. csv-export-acquisitions-db.test.js prüft genau diesen Fall.
+const SETS_CSV_SQL = `
+  SELECT s.set_number,
+         CASE WHEN a.id IS NULL THEN s.quantity       ELSE a.quantity       END AS quantity,
+         CASE WHEN a.id IS NULL THEN s.purchase_price ELSE a.purchase_price END AS purchase_price,
+         COALESCE(CASE WHEN a.id IS NULL THEN s.condition ELSE a.condition END, 'N') AS condition,
+         CASE WHEN a.id IS NULL THEN ''
+              ELSE TO_CHAR(a.created_at AT TIME ZONE 'UTC','YYYY-MM-DD') END AS acquired_at
+    FROM sets s
+    LEFT JOIN set_acquisitions a
+           ON a.user_id = s.user_id AND a.set_number = s.set_number
+   WHERE s.user_id = $1
+   ORDER BY s.set_number ASC, a.created_at ASC, a.id ASC`;
+
 async function buildSetsCsv(uid: number) {
-  const sets = await db.all('SELECT * FROM sets WHERE user_id=$1 ORDER BY set_number ASC', [uid]);
-  // Eine Zeile pro Erfassung, damit Kaufpreis, Zustand und Datum je Kauf
-  // erhalten bleiben und beim Re-Import 1:1 wiederhergestellt werden. Sets ohne
-  // Erfassungen fallen auf die Set-Zeile zurück.
-  const rows: any[] = [];
-  for (const s of sets) {
-    const acqs = await db.all(
-      `SELECT quantity, purchase_price, COALESCE(condition,'N') AS condition,
-              TO_CHAR(created_at AT TIME ZONE 'UTC','YYYY-MM-DD') AS acquired_at
-       FROM set_acquisitions WHERE user_id=$1 AND set_number=$2 ORDER BY created_at ASC`,
-      [uid, s.set_number]
-    ).catch(() => []);
-    if (acqs.length) {
-      for (const a of acqs) {
-        rows.push({ set_number: s.set_number, quantity: a.quantity,
-          purchase_price: a.purchase_price ?? '', condition: a.condition, acquired_at: a.acquired_at || '' });
-      }
-    } else {
-      rows.push({ set_number: s.set_number, quantity: s.quantity,
-        purchase_price: s.purchase_price ?? '', condition: s.condition || 'N', acquired_at: '' });
-    }
-  }
-  return toCsv(['set_number', 'quantity', 'purchase_price', 'condition', 'acquired_at'], rows);
+  // Der Rückfallweg bewahrt, was das frühere `.catch(() => [])` je Set leistete:
+  // Fehlt set_acquisitions (Migration noch nicht gelaufen), kam dort weiterhin
+  // die Set-Zeile heraus. Ein JOIN würde stattdessen die GANZE Abfrage
+  // abbrechen — der Export lieferte gar nichts mehr.
+  const rows = await db.all(SETS_CSV_SQL, [uid]).catch(() => null)
+    ?? await db.all(
+      `SELECT set_number, quantity, purchase_price, COALESCE(condition,'N') AS condition,
+              '' AS acquired_at
+         FROM sets WHERE user_id=$1 ORDER BY set_number ASC`, [uid]);
+
+  return toCsv(['set_number', 'quantity', 'purchase_price', 'condition', 'acquired_at'],
+    rows.map((r: any) => ({ ...r, purchase_price: r.purchase_price ?? '' })));
 }
 
 export { addSet, updateSet, buildSetsCsv, recordAcquisition, sanitizeSetNumber, addSetWithDate };

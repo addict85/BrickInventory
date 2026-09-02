@@ -8,8 +8,10 @@
  *   das der Primary hier alle 3s pollt und dann alles neu plant. Zusätzlich ruft
  *   die API rescheduleAll() direkt auf (falls die Anfrage auf dem Primary landet).
  */
-import { meldeUndWeiter } from '../utils/httpError';
-const db = require('../db/database');
+import { meldeUndWeiter, fehlertext } from '../utils/httpError';
+import { getGlobalSetting, deleteGlobalSetting } from '../utils/settings';
+// Kein eigener db-Verweis mehr: Der Planer liest und löscht seine Uhrzeiten
+// und den Auslöser ausschliesslich über utils/settings.
 
 // Metadaten der täglichen Jobs. monitorKey = Schlüssel der Job-Karte im Monitoring
 // (damit die UI die passende Uhrzeit dem richtigen Job zuordnen kann).
@@ -26,7 +28,7 @@ type Uhrzeit = { h: number; min: number };
 function _parseHHMM(s: string | null | undefined, fallback: Uhrzeit): Uhrzeit {
   const m = /^(\d{1,2}):(\d{2})$/.exec(String(s || '').trim());
   if (!m) return fallback;
-  const h = +m[1], min = +m[2];
+  const h = +(m[1] ?? ''), min = +(m[2] ?? '');
   if (h > 23 || min > 59) return fallback;
   return { h, min };
 }
@@ -38,8 +40,8 @@ function _metaDefault(name: string) {
 
 // Konfigurierte Uhrzeit (HH:MM als {h,min}) für einen Job.
 async function getTime(name: string) {
-  const row = await db.get(`SELECT value FROM global_settings WHERE key=$1`, [`job_time_${name}`]).catch(() => null);
-  return _parseHHMM(row?.value, _metaDefault(name));
+  const zeit = await getGlobalSetting(`job_time_${name}`);
+  return _parseHHMM(zeit, _metaDefault(name));
 }
 
 async function _scheduleOne(name: string) {
@@ -53,7 +55,7 @@ async function _scheduleOne(name: string) {
   const ms = next.getTime() - now.getTime();
   console.log(`[scheduler] ${name}: nächster Lauf ${next.toLocaleString('de-CH')} (in ${Math.round(ms / 3600000 * 10) / 10}h)`);
   job.timer = setTimeout(async () => {
-    try { await job.fn(); } catch (e) { console.error(`[scheduler] ${name}:`, e.message); }
+    try { await job.fn(); } catch (e) { console.error(`[scheduler] ${name}:`, fehlertext(e)); }
     _scheduleOne(name); // für den nächsten Tag neu planen
   }, ms);
 }
@@ -80,9 +82,9 @@ async function rescheduleAll() {
  */
 function startTriggerPoll() {
   require('../utils/pgNotify').listen('job_reschedule_trigger', async () => {
-    const row = await db.get(`SELECT value FROM global_settings WHERE key='job_reschedule_trigger'`).catch(() => null);
-    if (!row?.value) return;
-    await db.run(`DELETE FROM global_settings WHERE key='job_reschedule_trigger'`).catch(() => {});
+    const ausloeser = await getGlobalSetting('job_reschedule_trigger');
+    if (!ausloeser) return;
+    await deleteGlobalSetting('job_reschedule_trigger').catch(() => {});
     console.log('[scheduler] Reschedule-Trigger empfangen — plane Jobs neu');
     await rescheduleAll();
   });

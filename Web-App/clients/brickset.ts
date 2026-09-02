@@ -8,7 +8,9 @@
 
 import https from 'https';
 import * as db from '../db/database';
-import { checkAndIncrementRateLimit, getLimitForApi, getRateLimitStatus } from '../utils/financeCalc';
+import { checkAndIncrementRateLimit } from '../utils/financeCalc';
+import { fehlertext } from '../utils/httpError';
+import { alsAbrufFehler } from './abrufFehler';
 
 const BASE = 'https://brickset.com/api/v3.asmx';
 
@@ -181,22 +183,23 @@ async function getSetInfo(setNumber: string) {
     await db.run(`DELETE FROM brickset_retry_queue WHERE set_number = $1`, [n]).catch(() => {});
     return { name:s.name||null, year:s.year||null, theme:s.theme||null, pieces:s.pieces||null, minifigs:s.minifigs||null, image_url:s.image?.imageURL||s.image?.thumbnailURL||null };
   } catch (e) {
-    if (e.isQuota) {
-      const errMsg = e.detail
-        ? `HTTP ${e.detail.meta?.code ?? '429'}: ${JSON.stringify(e.detail)}`
-        : e.message;
+    const f = alsAbrufFehler(e);
+    if (f.isQuota) {
+      const errMsg = f.detail
+        ? `HTTP ${f.detail.meta?.code ?? '429'}: ${JSON.stringify(f.detail)}`
+        : fehlertext(e);
       await enqueueRetry(n, errMsg);
       return null;
     }
-    if (e.isTransient) {
+    if (f.isTransient) {
       // Timeout / Netzwerkfehler ist transient (Brickset gerade langsam/nicht
       // erreichbar) → in der Retry-Queue BEHALTEN statt dauerhaft aufzugeben.
-      await enqueueRetry(n, e.message, true);
-      console.log(`  Brickset getSetInfo transient error for ${n}: ${e.message} — für Retry heute eingereiht`);
+      await enqueueRetry(n, fehlertext(e), true);
+      console.log(`  Brickset getSetInfo transient error for ${n}: ${fehlertext(e)} — für Retry heute eingereiht`);
       return null;
     }
     await removeFromQueue(n);
-    console.log(`  Brickset getSetInfo failed for ${n}: ${e.message}`);
+    console.log(`  Brickset getSetInfo failed for ${n}: ${fehlertext(e)}`);
     return null;
   }
 }
@@ -234,28 +237,29 @@ async function getInstructions(setNumber: string) {
       .map((i: { URL: string; description?: string | null }) => ({ url: i.URL, description: i.description }));
     return { instructions, usesFallback: instructions.length === 0 };
   } catch (e) {
-    if (e.isCloudflare) {
+    const f = alsAbrufFehler(e);
+    if (f.isCloudflare) {
       // Cloudflare temporary block — rethrow so instructionQueue can retry in 5 min
       throw e;
     }
-    if (e.isQuota) {
-      const errMsg = e.detail
-        ? `HTTP ${e.detail.meta?.code ?? '429'}: ${JSON.stringify(e.detail)}`
-        : `Quota exceeded: ${e.message}`;
+    if (f.isQuota) {
+      const errMsg = f.detail
+        ? `HTTP ${f.detail.meta?.code ?? '429'}: ${JSON.stringify(f.detail)}`
+        : `Quota exceeded: ${fehlertext(e)}`;
       const requeued = await enqueueRetry(n, errMsg);
       return { instructions: [], usesFallback: !requeued };
     }
-    if (e.isTransient) {
+    if (f.isTransient) {
       // Timeout / Netzwerkfehler ist transient → in der Retry-Queue behalten und
       // NICHT sofort auf die Fallback-Quellen ausweichen (usesFallback=false),
       // solange ein Retry ansteht.
-      const requeued = await enqueueRetry(n, e.message);
-      console.log(`  Brickset getInstructions transient error for ${n}: ${e.message} — für Retry eingereiht`);
+      const requeued = await enqueueRetry(n, fehlertext(e));
+      console.log(`  Brickset getInstructions transient error for ${n}: ${fehlertext(e)} — für Retry eingereiht`);
       return { instructions: [], usesFallback: !requeued };
     }
     await removeFromQueue(n);
-    const detail = e.detail ? ` | response: ${JSON.stringify(e.detail)}` : '';
-    console.log(`  Brickset getInstructions failed for ${n}: ${e.message}${detail}`);
+    const detail = f.detail ? ` | response: ${JSON.stringify(f.detail)}` : '';
+    console.log(`  Brickset getInstructions failed for ${n}: ${fehlertext(e)}${detail}`);
     return { instructions: [], usesFallback: true };
   }
 }
@@ -281,8 +285,9 @@ async function findSetByQuery(query: string, herkunft: string) {
     const s = data.sets[0];
     return { set_number:`${s.number}-${s.numberVariant}`, name:s.name, year:s.year, theme:s.theme, pieces:s.pieces, image_url:s.image?.imageURL||null };
   } catch (e) {
-    if (e.isQuota) { console.log(`[brickset] Quota exceeded for ${herkunft} ${query}`); return null; }
-    console.log(`[brickset] ${herkunft}-Suche für ${query} fehlgeschlagen: ${e.message}`);
+    const f = alsAbrufFehler(e);
+    if (f.isQuota) { console.log(`[brickset] Quota exceeded for ${herkunft} ${query}`); return null; }
+    console.log(`[brickset] ${herkunft}-Suche für ${query} fehlgeschlagen: ${fehlertext(e)}`);
     return null;
   }
 }

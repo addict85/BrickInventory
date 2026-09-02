@@ -1,5 +1,4 @@
 import fs from 'fs';
-import * as db from '../db/database';
 import { merkeFehlend } from './imageMisses';
 import { imgProxyFailures } from './imgProxyStats';
 import { istBekanntFehlend } from '../utils/imageMisses';

@@ -40,8 +40,9 @@
  */
 const db      = require('../db/database');
 import { downloadSetInstructions, letzterAbrufWarExtern } from '../utils/instructions';
-import { meldeUndWeiter } from '../utils/httpError';
-const path     = require('path');
+import { meldeUndWeiter, fehlertext } from '../utils/httpError';
+import { alsAbrufFehler } from '../clients/abrufFehler';
+import { getGlobalSetting, setGlobalSetting, setGlobalTrigger, deleteGlobalSetting } from '../utils/settings';
 const monitor  = require('../utils/jobMonitor');
 const { logAndContinue } = require('../utils/httpError');
 
@@ -103,24 +104,20 @@ async function acquireQueueLock(): Promise<(() => Promise<void>) | null> {
 
 /** Cloudflare-Pause lesen: { until: ms-Zeitpunkt, retries: Anzahl } */
 async function readBlock(): Promise<{ until: number; retries: number }> {
-  const row = await db.get('SELECT value FROM global_settings WHERE key=$1', [BLOCK_KEY]).catch(() => null);
-  if (!row?.value) return { until: 0, retries: 0 };
+  const roh = await getGlobalSetting(BLOCK_KEY);
+  if (!roh) return { until: 0, retries: 0 };
   try {
-    const o = JSON.parse(row.value);
+    const o = JSON.parse(roh);
     return { until: parseInt(o?.until) || 0, retries: parseInt(o?.retries) || 0 };
   } catch { return { until: 0, retries: 0 }; }
 }
 
 async function writeBlock(until: number, retries: number) {
-  await db.run(
-    `INSERT INTO global_settings (key, value) VALUES ($1, $2)
-     ON CONFLICT (key) DO UPDATE SET value = $2`,
-    [BLOCK_KEY, JSON.stringify({ until, retries })]
-  ).catch(logAndContinue('instr-queue:block-schreiben'));
+  setGlobalSetting(BLOCK_KEY, JSON.stringify({ until, retries })).catch(logAndContinue('instr-queue:block-schreiben'));
 }
 
 async function clearBlock() {
-  await db.run('DELETE FROM global_settings WHERE key=$1', [BLOCK_KEY])
+  await deleteGlobalSetting(BLOCK_KEY)
     .catch(logAndContinue('instr-queue:block-loeschen'));
 }
 
@@ -141,10 +138,8 @@ async function enqueue(setNumber: string) {
  * Prozess, sonst laufen zwei Ketten mit eigener Drossel nebeneinander.
  */
 async function requestRun() {
-  await db.run(
-    `INSERT INTO global_settings (key, value) VALUES ('instr_queue_trigger', NOW()::TEXT)
-     ON CONFLICT (key) DO UPDATE SET value = NOW()::TEXT`
-  ).catch(logAndContinue('instr-queue:trigger'));
+  await setGlobalTrigger('instr_queue_trigger')
+    .catch(logAndContinue('instr-queue:trigger'));
 }
 
 async function processNext() {
@@ -222,13 +217,19 @@ async function processNext() {
       scheduleNext(letzterAbrufWarExtern() ? 15000 : 250);
 
     } catch(e) {
-      const msg = e.message || '';
+      const f = alsAbrufFehler(e);
+      const msg = fehlertext(e) || '';
 
-      if (e.isCloudflare || msg.includes('1015')) {
+      if (f.isCloudflare || msg.includes('1015')) {
         if (_timer) { clearTimeout(_timer); _timer = null; }
 
         if (block.retries < CF_DELAYS_MS.length) {
-          const delayMs = CF_DELAYS_MS[block.retries];
+          // Der Rueckfall ist die LETZTE Stufe, nicht 0. Die Bedingung eine
+          // Zeile darueber schliesst den Fall zwar aus, aber der Uebersetzer
+          // sieht das nicht — und `?? 0` waere hier die gefaehrlichste
+          // Antwort: keine Pause, also weiter gegen eine Cloudflare-Sperre
+          // laufen, die genau deshalb verhaengt wurde.
+          const delayMs = CF_DELAYS_MS[block.retries] ?? CF_DELAYS_MS[CF_DELAYS_MS.length - 1] ?? 300000;
           const delayMin = Math.round(delayMs / 60000);
           await writeBlock(Date.now() + delayMs, block.retries + 1);
           console.log(`[instr-queue] Cloudflare 1015 — pausing ${delayMin} min (attempt ${block.retries + 1}/${CF_DELAYS_MS.length})`);
@@ -256,7 +257,7 @@ async function processNext() {
       }
     }
   } catch(e) {
-    console.error('[instr-queue] error:', e.message);
+    console.error('[instr-queue] error:', fehlertext(e));
     scheduleNext(2000);
   } finally {
     _running = false;
@@ -325,9 +326,9 @@ function start() {
   // Poll every 3s for trigger signals from other workers (e.g. admin reimport)
   setInterval(async () => {
     try {
-      const row = await db.get(`SELECT value FROM global_settings WHERE key='instr_queue_trigger'`).catch(() => null);
-      if (row?.value) {
-        await db.run(`DELETE FROM global_settings WHERE key='instr_queue_trigger'`).catch(() => {});
+      const ausloeser = await getGlobalSetting('instr_queue_trigger');
+      if (ausloeser) {
+        await deleteGlobalSetting('instr_queue_trigger').catch(() => {});
         console.log('[instr-queue] Trigger received — starting queue processing');
         if (!_running) processNext().catch(() => {});
       }

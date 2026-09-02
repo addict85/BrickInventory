@@ -9,13 +9,13 @@
  */
 const db    = require('../db/database');
 import { cdnImageLimiter } from '../utils/rateLimiter';
-import { meldeUndWeiter } from '../utils/httpError';
+import { meldeUndWeiter, fehlertext, vorDem } from '../utils/httpError';
+import { getGlobalSetting, setGlobalSetting } from '../utils/settings';
 const https = require('https');
 const fs    = require('fs');
 const path  = require('path');
 // Pfade zentral auflösen — __dirname zeigt seit dem dist/-Build nicht mehr
 // auf die Wurzel. Siehe utils/appPaths.ts.
-const { APP_ROOT, DATA_DIR, PUBLIC_DIR } = require('../utils/appPaths');
 
 /** Ergebnis der handgebauten HTTPS-Aufrufe in dieser Datei. Ohne Typparameter
  *  leitet TypeScript bei `new Promise` `unknown` ab. */
@@ -28,12 +28,11 @@ type JobHttpResult = { status: number; body: string };
 const { PART_IMAGES_DIR, MINIFIG_IMAGES_DIR, SET_IMAGES_DIR } = require('../utils/appPaths');
 
 async function getRbKey() {
-  const row = await db.get("SELECT value FROM global_settings WHERE key='rebrickable_api_key'").catch(() => null);
-  return row?.value || null;
+  return await getGlobalSetting('rebrickable_api_key') || null;
 }
 
 async function apiGet(url: string, rbKey: string) {
-  const { rebrickableBackgroundLimiter: rebrickableLimiter, consumeRebrickableDaily, parseThrottleWait } = require('../utils/rateLimiter');
+  const { rebrickableBackgroundLimiter: rebrickableLimiter, consumeRebrickableDaily } = require('../utils/rateLimiter');
   let serverErrors = 0;
   while (true) {
     if (!await consumeRebrickableDaily()) return null;
@@ -387,7 +386,7 @@ async function downloadSetImages(setNumber: string, waitIfBusy = false) {
       const rawUrl = p.image_url || '';
       let cdnUrl = rawUrl;
       const m = rawUrl.match(/\/api\/img-proxy\?url=(.+)/);
-      if (m) cdnUrl = decodeURIComponent(m[1]);
+      if (m) cdnUrl = decodeURIComponent((m[1] ?? ''));
       if (!cdnUrl.startsWith('http')) {
         console.warn(`[img-dl] skipping invalid URL for ${p.id}: ${rawUrl.substring(0, 80)}`);
         return;
@@ -397,7 +396,7 @@ async function downloadSetImages(setNumber: string, waitIfBusy = false) {
       // ein leeres Array zurueck (''.split('.') ist ['']), pop() kann hier
       // also nicht undefined werden. Der Uebersetzer weiss das nicht, und
       // ein `!` waere eine Behauptung statt einer Ableitung.
-      const ext  = ((cdnUrl.split('.').pop() ?? '').split('?')[0].split('/')[0] || 'jpg').substring(0, 4).toLowerCase();
+      const ext  = (vorDem(vorDem(cdnUrl.split('.').pop() ?? '', '?'), '/') || 'jpg').substring(0, 4).toLowerCase();
       const file = p.kind === 'fig'
         ? `${p.id.replace(/[^a-z0-9-]/gi, '_')}.${ext}`
         : `${p.id}_${p.color_id}.${ext}`;
@@ -591,8 +590,6 @@ async function enrichSetMinifigs(setNumber: string) {
   for (const [figNum, { parts }] of Object.entries(figPartsMap) as [string, { parts: any[] }][]) {
     for (const p of parts) {
       const blId = finalBlMap[p.part_num] || p.part_num;
-      const catKey = `${p.part_num}|${p.color_id}`;
-      const existingUrl = existingBlMap[catKey] ? null : null; // image handled separately
       await db.run(
         `INSERT INTO set_parts_catalog
            (set_number, part_number, bl_part_number, color_id, quantity, is_spare)
@@ -658,11 +655,7 @@ function _fsPathFromLocal(imageLocal: string) {
 }
 
 async function _redlSetStatus(obj: Record<string, unknown>) {
-  await db.run(
-    `INSERT INTO global_settings (key, value) VALUES ('imgredl_status', $1)
-     ON CONFLICT (key) DO UPDATE SET value = $1`,
-    [JSON.stringify({ ...obj, at: Date.now() })]
-  ).catch(() => {});
+  setGlobalSetting('imgredl_status', JSON.stringify({ ...obj, at: Date.now() })).catch(() => {});
 }
 
 async function redownloadMissingImages() {
@@ -787,9 +780,9 @@ async function _redownloadMissingImages() {
     console.log(`[img-redl] fertig: ${redownloaded} neu geladen, ${cleared} geleert (von ${total} fehlenden), ${thumbsErzeugt} Vorschauen erzeugt`);
     return { total, redownloaded, cleared, thumbs: thumbsErzeugt };
   } catch (e) {
-    await _redlSetStatus({ running: false, phase: 'error', error: e.message });
-    console.error('[img-redl] Fehler:', e.message);
-    return { error: e.message };
+    await _redlSetStatus({ running: false, phase: 'error', error: fehlertext(e) });
+    console.error('[img-redl] Fehler:', fehlertext(e));
+    return { error: fehlertext(e) };
   }
 }
 

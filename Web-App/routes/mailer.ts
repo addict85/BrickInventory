@@ -3,10 +3,10 @@
  * Design: blue/white, matching the webapp (--b600: #2563eb).
  */
 
-import * as db from '../db/database';
 // Zentraler Settings-Helfer — lokale Kopie entfernt
 import { getGlobalSetting } from '../utils/settings';
 import { ausTabelle } from '../utils/validate';
+import { fehlertext } from '../utils/httpError';
 const getSetting = (key: string) => getGlobalSetting(key, '');
 
 /**
@@ -73,8 +73,8 @@ async function sendMail({ to, subject, html, text }: {
     console.log(`📧 E-Mail gesendet an ${to}: ${info.messageId}`);
     return { success: true, mode: 'smtp', messageId: info.messageId };
   } catch (e) {
-    console.error(`📧 SMTP Fehler (${to}):`, e.message);
-    return { success: false, error: e.message, mode: 'smtp' };
+    console.error(`📧 SMTP Fehler (${to}):`, fehlertext(e));
+    return { success: false, error: fehlertext(e), mode: 'smtp' };
   }
 }
 
@@ -195,8 +195,7 @@ const MAIL_THEMES = {
  */
 async function getMailTheme() {
   try {
-    const db = require('../db/database');
-    const row = await db.get("SELECT value FROM global_settings WHERE key='app_theme'");
+    const gespeichert = await getGlobalSetting('app_theme');
     // ausTabelle statt MAIL_THEMES[...]: Ein Indexzugriff mit einem Wert aus
     // der Datenbank liefert auch GEERBTE Mitglieder — bei 'constructor' oder
     // '__proto__' kaeme etwas Wahres zurueck, und der ||-Rueckfall griffe nie.
@@ -204,7 +203,7 @@ async function getMailTheme() {
     // Positivliste, es ist also nicht erreichbar; aber utils/indexHtml.ts
     // prueft an der LESESTELLE, und das ist der Stand, auf den diese hier
     // gehoert. Eine Absicherung drei Dateien entfernt ist keine dieser Stelle.
-    return ausTabelle(MAIL_THEMES, row?.value, MAIL_THEMES.classic);
+    return ausTabelle(MAIL_THEMES, gespeichert, MAIL_THEMES.classic);
   } catch (_) { return MAIL_THEMES.classic; }
 }
 
@@ -303,11 +302,28 @@ function emailBtn(url: string, text: string, theme: MailTheme = MAIL_THEMES.clas
 }
 
 // ── Info-Box (hellblau, wie .ibox in der Webapp) ──────────────────────────────
+/**
+ * Hinweiskasten in der Mail.
+ *
+ * ── Der Parameter war da und wurde ignoriert ────────────────────────────────
+ * `theme` stand seit jeher in der Signatur, aber die Farben waren fest
+ * verdrahtet (#eff6ff/#bfdbfe/#1e40af — das Blau des klassischen Designs). Im
+ * Stein-Design blieb der Kasten deshalb blau, waehrend Kopf, Knopf und
+ * Hintergrund umschalteten.
+ *
+ * Gefunden von noUnusedParameters: Ein Parameter, den niemand liest, ist
+ * entweder ueberfluessig — oder er sollte benutzt werden und wurde vergessen.
+ * Hier das Zweite; mail-theme.test.js prueft seit jeher, dass die Funktion ihn
+ * ENTGEGENNIMMT, und genau das war zu wenig.
+ *
+ * `border` und `text` kommen aus dem Design, der Hintergrund bleibt eine helle
+ * Tonung: `surface` waere weiss und der Kasten damit unsichtbar.
+ */
 function infoBox(text: string, theme: MailTheme = MAIL_THEMES.classic) {
   return `<table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%" style="margin-bottom:20px">
     <tr>
-      <td style="background:#eff6ff;border:1px solid #bfdbfe;border-radius:8px;
-                 padding:12px 16px;font-size:13px;color:#1e40af;font-family:Arial,Helvetica,sans-serif">
+      <td style="background:${theme.bg};border:1px solid ${theme.border};border-radius:8px;
+                 padding:12px 16px;font-size:13px;color:${theme.text};font-family:Arial,Helvetica,sans-serif">
         ${text}
       </td>
     </tr>
@@ -399,7 +415,7 @@ async function testSmtp() {
     await transporter.verify();
     return { success: true, message: 'SMTP-Verbindung erfolgreich' };
   } catch (e) {
-    return { success: false, error: e.message };
+    return { success: false, error: fehlertext(e) };
   }
 }
 

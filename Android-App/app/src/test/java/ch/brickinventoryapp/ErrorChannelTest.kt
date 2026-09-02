@@ -61,7 +61,12 @@ class ErrorChannelTest {
         val quelle = Quellen.ohneKommentare(Quellen.lies("ui/UiState.kt"))
         val block = quelle.substringAfter("data class AppUiState(").substringBefore("\n)")
         val felder = Regex("""val\s+(\w+)\s*:""").findAll(block).map { it.groupValues[1] }.toList()
-        assert(felder.size > 15) { "Nur ${felder.size} Felder gefunden — Muster veraltet?" }
+        // Untergrenze gegen ein veraltetes Muster, nicht gegen einen Sollwert:
+        // AppUiState hatte 25 Felder, seit der Galerie-Aufteilung sind es 15.
+        // Die Grenze liegt darunter, damit ein leerer Treffer weiterhin
+        // auffaellt — wie klein das Objekt sein DARF, prueft
+        // ZustandsflussBreiteTest, und zwar von der anderen Seite.
+        assert(felder.size >= 10) { "Nur ${felder.size} Felder gefunden — Muster veraltet?" }
 
         // Gelesen wird ausserhalb des ViewModels: in Bildschirmen, Dialogen und
         // Navigationsgraphen. Das ViewModel selbst zählt NICHT als Leser — es

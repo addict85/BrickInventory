@@ -284,12 +284,32 @@ fun ManualItemDetailScreen(
             }
 
             // ── Marktpreis je Zustand und Verlauf ──────────────────────────────
+            //
+            // Der Ladezustand gehoert MIT in die Bedingung: Ohne ihn erscheint
+            // der ganze Abschnitt erst, wenn die Antwort da ist — und bis dahin
+            // ist nicht zu unterscheiden, ob noch geladen wird oder ob es zu
+            // diesem Teil keine Marktpreise gibt. `priceHistoryLoading` wurde
+            // dafuer geschrieben, aber nirgends gelesen; die Preis-Sektion des
+            // Sets macht es seit jeher richtig (setPriceLoading in
+            // SetDetailSections.kt).
             val history = manDetailState.priceHistory
             val byCond  = history?.byCondition
             val chart   = history?.chart
-            if (byCond?.present()?.isNotEmpty() == true || chart?.values?.isNotEmpty() == true) {
+            val laedt   = manDetailState.priceHistoryLoading
+            if (byCond?.present()?.isNotEmpty() == true || chart?.values?.isNotEmpty() == true || laedt) {
                 item {
                     SectionCard(title = stringResource(R.string.detail_section_market)) {
+                        if (laedt && history == null) {
+                            Row(
+                                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                CircularProgressIndicator(Modifier.size(14.dp), strokeWidth = 2.dp)
+                                Text(stringResource(R.string.detail_price_loading),
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            }
+                        }
                         byCond?.takeIf { it.present().isNotEmpty() }?.let {
                             MarketPriceByCondition(it, currency)
                         }

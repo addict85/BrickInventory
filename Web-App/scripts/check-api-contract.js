@@ -1,4 +1,25 @@
 #!/usr/bin/env node
+
+/**
+ * Lesbarer Text eines gefangenen Fehlers.
+ *
+ * Bewusst eine eigene, kurze Fassung statt utils/httpError: Dieses Skript
+ * laeuft als eigenstaendiges Werkzeug ueber `node`, ohne den Build — es kann
+ * ein TypeScript-Modul gar nicht laden. Die Regel ist dieselbe: Ein geworfener
+ * String oder ein Objekt ohne `message` soll nicht als „undefined" enden.
+ * @param {unknown} e
+ * @returns {string}
+ */
+function fehlertext(e) {
+  if (e instanceof Error && e.message) return e.message;
+  if (typeof e === 'string' && e) return e;
+  // Der Umweg ueber die Zwischenvariable ist noetig, weil `typeof e === 'object'`
+  // den Typ auf `object` verengt und der kein `message` kennt.
+  const m = e ? /** @type {any} */ (e).message : undefined;
+  if (typeof m === 'string' && m) return m;
+  // `String([])` ist leer — siehe utils/httpError.ts, dort gefunden.
+  return e === null || e === undefined ? 'Unbekannter Fehler' : (String(e) || 'Unbekannter Fehler');
+}
 /**
  * API-Vertrags-Check: Server-Antworten gegen die Kotlin-Modelle der
  * Android-App prüfen.
@@ -174,7 +195,7 @@ async function getToken() {
       const r = await fetch(BASE + check.path, { headers: { Authorization: `Bearer ${token}` } });
       if (!r.ok) { errors.push(`HTTP ${r.status}`); }
       else validate(await r.json(), check.schema, '$', errors);
-    } catch (e) { errors.push(`Request fehlgeschlagen: ${e.message}`); }
+    } catch (e) { errors.push(`Request fehlgeschlagen: ${fehlertext(e)}`); }
     if (errors.length) {
       failed++;
       console.error(`✗ ${check.name}`);

@@ -2,7 +2,8 @@
 
 const db      = require('../db/database');
 import { checkAndIncrementRateLimit } from '../utils/financeCalc';
-import { meldeUndWeiter } from '../utils/httpError';
+import { meldeUndWeiter, fehlertext } from '../utils/httpError';
+import { getSetting, getGlobalSetting } from '../utils/settings';
 const monitor = require('../utils/jobMonitor');
 const { getPriceGuide } = require('../clients/bricklink');
 const { DEFAULT_PRICE_CONDITION } = require('../utils/financeCalc');
@@ -71,7 +72,7 @@ async function acquireRunLock(): Promise<(() => Promise<void>) | null> {
   catch (e) {
     // Ohne Verbindung keine Sperre — dann lieber laufen als gar nicht
     // aktualisieren. state.running schützt im eigenen Prozess weiterhin.
-    log(`Sperre nicht verfügbar (${e.message}) — Lauf ohne prozessübergreifenden Schutz`);
+    log(`Sperre nicht verfügbar (${fehlertext(e)}) — Lauf ohne prozessübergreifenden Schutz`);
     return async () => {};
   }
   try {
@@ -79,12 +80,12 @@ async function acquireRunLock(): Promise<(() => Promise<void>) | null> {
     if (!rows[0]?.ok) { client.release(); return null; }
   } catch (e) {
     client.release();
-    log(`Sperre nicht verfügbar (${e.message}) — Lauf ohne prozessübergreifenden Schutz`);
+    log(`Sperre nicht verfügbar (${fehlertext(e)}) — Lauf ohne prozessübergreifenden Schutz`);
     return async () => {};
   }
   return async () => {
     try { await client.query('SELECT pg_advisory_unlock($1, 0)', [PRICE_JOB_LOCK]); }
-    catch (e) { log(`Sperre konnte nicht freigegeben werden: ${e.message}`); }
+    catch (e) { log(`Sperre konnte nicht freigegeben werden: ${fehlertext(e)}`); }
     finally { client.release(); }
   };
 }
@@ -96,24 +97,21 @@ function log(msg: string) {
   if (state.log.length > 50) state.log.length = 50;
 }
 
-async function getSetting(userId: number, key: string, fallback: any) {
-  const u = await db.get('SELECT value FROM user_settings WHERE user_id = $1 AND key = $2', [userId, key]);
-  if (u?.value) return u.value;
-  const g = await db.get('SELECT value FROM global_settings WHERE key = $1', [key]);
-  return g?.value || fallback;
-}
-/**
- * Es gab diese Funktion zweimal in derselben Datei — die zweite Definition
- * überschrieb die erste stillschweigend. Inhaltlich taten beide dasselbe;
- * TypeScript hat das Duplikat beim Umstellen aufgedeckt.
- */
-async function getGlobalSetting(key: string, fallback: any) {
-  return (await db.get('SELECT value FROM global_settings WHERE key = $1', [key]))?.value || fallback;
-}
+// getSetting()/getGlobalSetting() standen hier als wortgleiche Kopien von
+// utils/settings.ts — inklusive der eigenen SELECT-Anweisung auf
+// global_settings. Beide sind ersatzlos gestrichen: Wer den Tabellenzugriff
+// aendert (Zwischenspeicher, Umbenennung einer Spalte), soll das an EINER
+// Stelle tun und nicht danach suchen muessen.
+//
+// Ein Unterschied bleibt zu beachten: Die zentrale Fassung nimmt den
+// Ersatzwert nur bei NULL (`??`), die hiesige Kopie nahm ihn auch bei einem
+// leeren Eintrag (`||`). Fuer die beiden Zahlenwerte unten haengt daran, ob
+// parseInt('') ein NaN liefert — deshalb steht dort jeweils ein
+// ausgeschriebenes `||`.
 
 async function parallelLimit<T>(tasks: (() => Promise<T>)[], limit: number) {
   const results = new Array(tasks.length); let idx = 0;
-  async function worker() { while (idx < tasks.length) { const i = idx++; results[i] = await tasks[i](); } }
+  async function worker() { while (idx < tasks.length) { const i = idx++; const t = tasks[i]; if (t) results[i] = await t(); } }
   await Promise.all(Array.from({ length: Math.min(limit, tasks.length) }, worker));
   return results;
 }
@@ -138,7 +136,7 @@ async function fetchAndCachePrice(setNumber: string, condition: string, guideTyp
   const fallback = condition === 'N' ? 'U' : 'N';
   let g, usedCondition = condition;
   try { g = await getPriceGuide(setNumber, condition, guideType, currency); }
-  catch (e) { log(`Error ${setNumber} (${condition}): ${e.message.substring(0,60)}`); return 'error'; }
+  catch (e) { log(`Error ${setNumber} (${condition}): ${fehlertext(e).substring(0,60)}`); return 'error'; }
 
   const avg = parseFloat(g?.avg_price||0), qavg = parseFloat(g?.qty_avg_price||0);
   if (avg === 0 && qavg === 0) {
@@ -229,7 +227,7 @@ async function runPriceRefresh(vorhandeneSperre?: (() => Promise<void>) | null) 
       const currency  = await getSetting(Number(userId), 'currency', 'EUR');
       // 'sold' = tatsächlich erzielte Preise der letzten sechs Monate.
       const guideType = 'sold';
-      const ttlHours  = await getGlobalSetting('price_cache_ttl', '24');
+      const ttlHours  = (await getGlobalSetting('price_cache_ttl', '24')) || '24';
       const valid = (setNumbers as string[]).filter(sn => /^[a-zA-Z0-9]+-\d+$/.test(sn));
 
       // Zustände je Set in EINER Abfrage vorab bestimmen, statt pro Set einzeln
@@ -264,7 +262,7 @@ async function runPriceRefresh(vorhandeneSperre?: (() => Promise<void>) | null) 
             if (r === 'updated') { updated++; last = 'updated'; }
             else if (r === 'rate_limited') { errors++; return 'rate_limited'; }
             else if (last !== 'updated') { skipped++; }
-          } catch (e) { errors++; log(`Error ${sn} (${c}): ${e.message.substring(0,80)}`); last = 'error'; }
+          } catch (e) { errors++; log(`Error ${sn} (${c}): ${fehlertext(e).substring(0,80)}`); last = 'error'; }
         }
         return last;
       });
@@ -291,8 +289,12 @@ async function runPriceRefresh(vorhandeneSperre?: (() => Promise<void>) | null) 
               AND ph.recorded_at::date = CURRENT_DATE
           ) ON CONFLICT DO NOTHING
       `);
-      log(`Daily snapshot: inserted price history entries`);
-    } catch(e) { log(`Daily snapshot error: ${e.message}`); }
+      // Mit ZAHL: Die Meldung stand vorher ohne sie da, obwohl das Ergebnis
+      // in `inserted` schon bereitlag — ungenutzt. Ob der Schnappschuss 0
+      // oder 5000 Zeilen geschrieben hat, war damit aus dem Log nicht zu
+      // erkennen. Gefunden von noUnusedLocals.
+      log(`Daily snapshot: ${inserted.changes} price history entries inserted`);
+    } catch(e) { log(`Daily snapshot error: ${fehlertext(e)}`); }
 
     // Der Portfolio-Schnappschuss je Konto ist entfallen (Nachtrag 82).
     //
@@ -307,7 +309,7 @@ async function runPriceRefresh(vorhandeneSperre?: (() => Promise<void>) | null) 
     // Nebenbei gespart: eine price_cache-Abfrage je Set und Konto bei JEDEM
     // Lauf, plus eine Zeile je Konto und Tag in price_history.
 
-  } catch (e) { log(`Fatal: ${e.message}`); }
+  } catch (e) { log(`Fatal: ${fehlertext(e)}`); }
   finally {
     state.running=false; state.progress=null;
     await releaseLock();   // MUSS hier stehen: sonst blockiert ein abgestürzter
@@ -380,14 +382,15 @@ async function refreshPriceForSet(setNumber: string, userId: number, hintConditi
     log(`Immediate price done: ${setNumber}`);
   } catch (e) {
     // Suppress transient connection errors — they resolve on retry
-    const isConnErr = e.message.includes('timeout') || e.message.includes('terminated') || e.message.includes('connect');
-    if (!isConnErr) log(`Immediate price failed for ${setNumber}: ${e.message.substring(0, 80)}`);
+    const isConnErr = fehlertext(e).includes('timeout') || fehlertext(e).includes('terminated') || fehlertext(e).includes('connect');
+    if (!isConnErr) log(`Immediate price failed for ${setNumber}: ${fehlertext(e).substring(0, 80)}`);
   }
 }
 
 function scheduleNext() {
   if (_timer) clearTimeout(_timer);
-  getGlobalSetting('price_job_interval_minutes', '60').then(minutes => {
+  getGlobalSetting('price_job_interval_minutes', '60').then((gespeichert: unknown) => {
+    const minutes = String(gespeichert || '60');
     // NOCHMAL abräumen: Zwischen dem clearTimeout oben und diesem Rückruf
     // liegt eine Datenbankabfrage. Läuft in dieser Lücke ein zweiter
     // scheduleNext()-Aufruf durch, überschriebe seine Zuweisung den Verweis

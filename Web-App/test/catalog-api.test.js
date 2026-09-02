@@ -45,6 +45,26 @@ async function dbReachable() {
   try { await db.get('SELECT 1 AS ok'); return true; } catch { return false; }
 }
 
+/**
+ * Stellt das echte Schema wieder her, das seed() durch Attrappen ersetzt.
+ *
+ * ── Warum das noetig ist ────────────────────────────────────────────────────
+ * seed() legt `sets` als Dreispalter an (user_id, set_number, quantity) und
+ * liess sie so stehen. Fuer DIESEN Test reicht das — fuer jeden spaeteren, der
+ * danach in derselben Datenbank laeuft, nicht: Er findet eine verstuemmelte
+ * Tabelle. Aufgefallen ist es erst, als csv-export-acquisitions-db.test.js
+ * `sets.name` brauchte und im GESAMTLAUF rot wurde, einzeln aber gruen blieb —
+ * die unangenehmste Sorte Fehler, weil sie von der Reihenfolge abhaengt.
+ *
+ * Die Attrappen der rb_*-Tabellen bleiben absichtlich liegen: Sie tragen
+ * dieselben Spalten wie das echte Schema, nur ohne Indizes und Beiwerk.
+ * `sets` ist der einzige echte Eingriff.
+ */
+async function schemaWiederherstellen() {
+  await db.run(`DROP TABLE IF EXISTS sets CASCADE`).catch(() => {});
+  await db.initSchema();
+}
+
 async function seed() {
   await db.run(`DROP TABLE IF EXISTS rb_sets, rb_themes, rb_inventories, rb_inventory_minifigs, sets CASCADE`);
   await db.run(`CREATE TABLE rb_sets (set_num TEXT PRIMARY KEY, name TEXT, year INTEGER, theme_id INTEGER, num_parts INTEGER, set_img_url TEXT)`);
@@ -157,5 +177,13 @@ test('Katalog-API (Postgres-Integration)', async (t) => {
   });
 
   srv.close();
+  // ── REIHENFOLGE: erst das Schema, dann der Pool ──────────────────────────
+  // Der erste Anlauf stand als `test.after(...)` UNTER dieser Zeile und lief
+  // damit gegen einen bereits geschlossenen Pool. Ein `.catch(() => {})` darin
+  // hat den Fehler still verschluckt — die Wiederherstellung fand nie statt,
+  // und der Gesamtlauf blieb rot, ohne zu sagen warum. Kein stilles catch hier:
+  // Scheitert die Wiederherstellung, sollen es die naechsten Tests nicht
+  // ausbaden.
+  await schemaWiederherstellen();
   await db.pool.end();   // pg-Pool schließen, sonst hält er den Prozess offen
 });

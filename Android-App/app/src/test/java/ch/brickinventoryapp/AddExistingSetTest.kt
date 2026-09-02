@@ -141,7 +141,11 @@ class AddExistingSetTest {
         // Ein gesetzter Auslöser ohne Empfänger wäre wirkungslos — und ohne
         // Zurücksetzen liesse sich dasselbe Set kein zweites Mal öffnen.
         val nav = code(java.io.File("src/main/java/ch/brickinventoryapp/nav/CollectionGraph.kt").readText())
-        assert(nav.contains("state.gallerySearchFoundSetNumber")) {
+        // Geprueft wird das FELD, nicht der Name des Zustands davor: Seit die
+        // Galerie einen eigenen Fluss hat, heisst er dort `galerie` statt
+        // `state`. Der Anker buchstabierte den alten Namen aus und wurde durch
+        // den blossen Umzug rot, obwohl die gepruefte Aussage unveraendert galt.
+        assert(Regex("""\w+\.gallerySearchFoundSetNumber""").containsMatchIn(nav)) {
             "die Galerie beobachtet den Auslöser nicht — es passiert dann gar nichts"
         }
         assert(nav.contains("gallerySearchFoundConsumed()")) {

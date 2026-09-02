@@ -16,6 +16,7 @@ import { asIds } from './household';
 import { valueSet, valueAcquisitionRows, weightedPurchase, pnlPct as calcPnlPct, PNL_EPS } from './setValue';
 import { REBRICKABLE_DEFAULT_DAILY } from './rateLimiter';
 import { bricklinkRequest, getPriceGuide } from '../clients/bricklink';
+import { fehlertext } from '../utils/httpError';
 
 /**
  * Zustand eines Sets nach derselben Regel wie die Anzeige
@@ -150,21 +151,20 @@ async function getLimitForApi(apiName: ApiName) {
   // wäre es eine stille Kürzung auf ein Sechstel gewesen. Der Wert kommt
   // deshalb aus derselben Quelle wie dort.
   const defaults = { bricklink: 4000, rebrickable: REBRICKABLE_DEFAULT_DAILY, brickset: 100 };
-  const row = await db.get('SELECT value FROM global_settings WHERE key=$1', [`api_limit_${apiName}`]).catch(()=>null);
-  return parseInt(row?.value) || defaults[apiName] || 4000;
+  const grenze = await getGlobalSetting(`api_limit_${apiName}`);
+  return parseInt(grenze) || defaults[apiName] || 4000;
 }
 
 async function getRateLimitStatus(apiName: ApiName) {
   const key = `api_calls_${apiName}`;
   const dateKey = `api_calls_date_${apiName}`;
   const today = new Date().toISOString().slice(0, 10);
-  const [dateRow, countRow, limit] = await Promise.all([
-    db.get('SELECT value FROM global_settings WHERE key = $1', [dateKey]),
-    db.get('SELECT value FROM global_settings WHERE key = $1', [key]),
+  const [storedDate, rohCount, limit] = await Promise.all([
+    getGlobalSetting(dateKey),
+    getGlobalSetting(key),
     getLimitForApi(apiName),
   ]);
-  const storedDate  = dateRow?.value;
-  const storedCount = parseInt(countRow?.value || '0');
+  const storedCount = parseInt(rohCount || '0');
   const count = (storedDate === today) ? storedCount : 0;
   return { count, limit, remaining: Math.max(0, limit - count), date: today };
 }
@@ -260,7 +260,7 @@ async function fetchPrice(setNumber: string, condition: string, guideType: strin
           [setNumber, cond, currency, avg, qavg, min, max]).catch(()=>{});
       }
       return { min_price:min, avg_price:avg, max_price:max, qty_avg_price:qavg, from_cache:false };
-    } catch (e) { console.log(`  Price ${setNumber} cond=${cond} error: ${e.message}`); return null; }
+    } catch (e) { console.log(`  Price ${setNumber} cond=${cond} error: ${fehlertext(e)}`); return null; }
   }
 
   const rl1 = await checkAndIncrementRateLimit('bricklink');
@@ -289,7 +289,7 @@ async function fetchPrice(setNumber: string, condition: string, guideType: strin
 
 async function parallelLimit<T>(tasks: (() => Promise<T>)[], limit: number) {
   const results = new Array(tasks.length); let idx = 0;
-  async function worker() { while (idx < tasks.length) { const i = idx++; results[i] = await tasks[i](); } }
+  async function worker() { while (idx < tasks.length) { const i = idx++; const t = tasks[i]; if (t) results[i] = await t(); } }
   await Promise.all(Array.from({ length: Math.min(limit, tasks.length) }, worker));
   return results;
 }
@@ -547,7 +547,7 @@ async function fetchPartPrice(partNumber: string, rbColorId: number, condition: 
       }
       return { avg_price: avg, qty_avg_price: qavg, from_cache: false };
     } catch (e) {
-      console.log(`  Part price failed ${partNumber}${blPartNumber !== partNumber ? ` (bl ${blPartNumber})` : ''} color ${colorId} (rb color ${rbColorId}) cond=${cond}: ${e.message}`);
+      console.log(`  Part price failed ${partNumber}${blPartNumber !== partNumber ? ` (bl ${blPartNumber})` : ''} color ${colorId} (rb color ${rbColorId}) cond=${cond}: ${fehlertext(e)}`);
       return null;
     }
   }
@@ -637,7 +637,7 @@ async function fetchMinifigPrice(figNumber: string, condition: string, currency:
       }
       return { avg_price: avg, qty_avg_price: qavg, from_cache: false };
     } catch (e) {
-      console.log(`  Minifig price failed ${figNumber} cond=${cond}: ${e.message}`);
+      console.log(`  Minifig price failed ${figNumber} cond=${cond}: ${fehlertext(e)}`);
       return null;
     }
   }
@@ -931,7 +931,6 @@ async function computePnl(viewerId: number, ids: Blickfeld) {
     getSetting(viewerId, 'currency', 'EUR'),
     getGlobalSetting('price_cache_ttl', '24'),
   ]);
-  const defaultCondition = DEFAULT_PRICE_CONDITION;
 
   const sets = await db.all(
     `SELECT s.set_number, s.name, s.year, s.quantity, s.image_local, s.image_url, s.added_at, s.condition,

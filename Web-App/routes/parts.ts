@@ -1,4 +1,3 @@
-import { APP_ROOT, DATA_DIR, PUBLIC_DIR , PART_IMAGES_DIR} from '../utils/appPaths';
 import express from 'express';
 /*
  * ── Erfassungs-Routen leben jetzt NUR NOCH in routes/api_v1/acquisitions.ts ──
@@ -41,18 +40,13 @@ import express from 'express';
  */
 
 const router  = express.Router();
-import path from 'path';
-import fs from 'fs';
 import * as db from '../db/database';
-import { handleRouteError, logAndContinue, meldeUndWeiter } from '../utils/httpError';
-import { recordAcquisitionForDay, findSameDayAcquisition } from '../utils/acquisitions';
-import { acquisitionMoveSource, resolveWriteTarget, parseScopeMode, writableIds } from '../utils/household';
-import { getAllSetParts, downloadFile, sleep } from '../clients/rebrickable';
+import { handleRouteError, meldeUndWeiter, fehlertext } from '../utils/httpError';
+import { recordAcquisitionForDay } from '../utils/acquisitions';
 // Die Katalogarbeit liegt seit Nachtrag 131 in utils/partsImport.ts — sonst
 // müsste utils/setService.ts (addSet) einen Router importieren.
-import { importPartsForSet, fetchMissingBlIds, syncBlPartNumbers, downloadPartImagesBackground } from '../utils/partsImport';
+import { importPartsForSet, fetchMissingBlIds, syncBlPartNumbers } from '../utils/partsImport';
 import { requireLogin } from './auth';
-import { withInventoryLock } from '../utils/txLock';
 import { DEFAULT_PRICE_CONDITION } from '../utils/financeCalc';
 // Der Standard-Zustand eines Benutzers. Hiess in routes/sets.ts einmal
 // `getUserDefaultCondition` und war dort eine wortgleiche Zweitfassung dieser
@@ -427,7 +421,7 @@ async function updateManualPart(uid: number, partNumber: string, colorId: number
           rem -= take;
         }
       }
-    } catch(e) { console.error('[updateManualPart] acq tracking:', e.message); }
+    } catch(e) { console.error('[updateManualPart] acq tracking:', fehlertext(e)); }
   }
   if (body.unit_price !== undefined) {
     const raw = body.unit_price;
@@ -450,7 +444,7 @@ async function updateManualPart(uid: number, partNumber: string, colorId: number
     try {
       await db.run('UPDATE parts SET condition=$1 WHERE id=$2', [cond, existing.id]);
     } catch (e) {
-      console.error('[updateManualPart] condition update skipped (migration pending?):', e.message);
+      console.error('[updateManualPart] condition update skipped (migration pending?):', fehlertext(e));
     }
   }
 }
@@ -465,9 +459,6 @@ async function updateManualPart(uid: number, partNumber: string, colorId: number
 // ── POST /api/parts/import/csv — CSV import of manual parts ──────────────────
 // CSV columns: part_number, color_id (opt), color_name (opt), quantity, unit_price (opt), note (opt)
 import multer from 'multer';
-import { parse } from 'csv-parse/sync';
-import { scopeIds } from '../utils/household';
-import { moveManualAcquisition } from '../utils/setMove';
 import { fetchPartPrice } from '../utils/financeCalc';
 import { getSetting } from '../utils/settings';
 import { getBrickColors, getRbKey, httpsGetRobust } from '../clients/rebrickable';
@@ -551,7 +542,7 @@ router.post('/import/csv', csvUpload.single('file'), async (req: LoggedInRequest
         }
       } catch (e) {
         errors++;
-        results.push({ part_number: partNumber, action: 'error', error: e.message });
+        results.push({ part_number: partNumber, action: 'error', error: fehlertext(e) });
       }
     }
 

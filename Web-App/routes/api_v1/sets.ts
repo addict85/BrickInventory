@@ -4,11 +4,10 @@
  */
 import express from 'express';
 import * as db from '../../db/database';
-import { handleRouteError, meldeUndWeiter } from '../../utils/httpError';
+import { handleRouteError, meldeUndWeiter, pfadParam } from '../../utils/httpError';
 import { requireToken } from './middleware';
 import { resolveImageLocal, proxyImageUrl } from '../../utils/images';
-import { getSetting } from '../../utils/settings';
-import { DEFAULT_PRICE_CONDITION } from '../../utils/financeCalc';
+import { getSetting, getGlobalSetting } from '../../utils/settings';
 import { findSetInScope, normalizeSetNumber } from '../../utils/setAdd';
 import { scopeIds, parseScopeMode, writableIds } from '../../utils/household';
 import { householdMembers, resolveWriteTarget } from '../../utils/household';
@@ -78,7 +77,7 @@ router.get('/sets/barcode/:barcode', requireToken, async (req: AuthedRequest, re
   // utils/rateLimiter.ts); dies war die letzte Tür daneben. Ist es erschöpft,
   // liefert rbGet null, und die Route nimmt denselben Weg wie bei einem
   // fehlgeschlagenen Abruf.
-  const rbKey = (await db.get("SELECT value FROM global_settings WHERE key='rebrickable_api_key'"))?.value;
+  const rbKey = await getGlobalSetting('rebrickable_api_key');
   const rbGet = async (url: string): Promise<any> => {
     if (!await consumeRebrickableDaily()) {
       console.log('[barcode] Rebrickable-Tageslimit erreicht — Abruf übersprungen');
@@ -576,7 +575,7 @@ router.get('/sets/:setNumber', requireToken, async (req: AuthedRequest, res) => 
   try {
     // Gemeinsamer Handler (auch /api/sets/:setNumber) — inkl. Zustands-
     // Aggregat über die Erfassungen und aufgelöstem image_local (Parität).
-    const set = await getSet(await scopeIds(req.apiUser.user_id, parseScopeMode(req.query.accounts)), req.params.setNumber);
+    const set = await getSet(await scopeIds(req.apiUser.user_id, parseScopeMode(req.query.accounts)), pfadParam(req, 'setNumber'));
     if (!set) return res.status(404).json({ success:false, error:'Set nicht gefunden' });
     res.json({ success:true, set });
   } catch (e) { handleRouteError(res, e); }
@@ -615,7 +614,7 @@ router.put('/sets/:setNumber', requireToken, async (req: AuthedRequest, res) => 
     // Verringerung deckelt der Server bei den eigenen Exemplaren (fremde lassen
     // sich nicht wegnehmen), und dann steht dort eine andere Zahl als die
     // gesendete. Ohne sie zeigte die Oberfläche weiter ihre eigene Annahme.
-    const r = await updateSet(req.apiUser.user_id, req.params.setNumber, req.body);
+    const r = await updateSet(req.apiUser.user_id, pfadParam(req, 'setNumber'), req.body);
     res.json({ success: true, ...(r || {}) });
   } catch (e) { handleRouteError(res, e); }
 });
@@ -625,7 +624,7 @@ router.delete('/sets/:setNumber', requireToken, async (req: AuthedRequest, res) 
     // deleteSet() kann das Blickfeld längst (asIds + ANY) — es bekam bisher
     // nur eine nackte ID und löschte damit ausschliesslich Eigenes. Also
     // dasselbe SCHREIB-Blickfeld wie in der Webapp-Route (Nachtrag 53).
-    const ok = await deleteSet(await writableIds(req.apiUser.user_id), req.params.setNumber);
+    const ok = await deleteSet(await writableIds(req.apiUser.user_id), pfadParam(req, 'setNumber'));
     if (!ok) return res.status(404).json({ success: false, error: 'Set nicht gefunden' });
     res.json({ success: true });
   } catch (e) { handleRouteError(res, e); }

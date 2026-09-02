@@ -61,25 +61,35 @@ internal fun MainViewModel.loadPartsColors() {
     }
 }
 
+/**
+ * Teil erfassen.
+ *
+ * ── Ohne Ladeanzeige, und das ist eine Korrektur ────────────────────────────
+ * Hier standen vier `_state.copy(isLoading = …)` (in addMinifig noch einmal
+ * vier). Sie hatten in dieser Domäne KEINE Wirkung: Kein Teile-Bildschirm liest
+ * das Feld — die Teileliste hat `partsLoading`, die Minifiguren
+ * `minifigsLoading`. Gelesen wurde es von der Galerie, der Finanzübersicht und
+ * dem Anmeldeformular.
+ *
+ * Die Wirkung lag also ausschliesslich woanders: Wer ein Teil erfasste, liess
+ * die Galerie beschäftigt aussehen und blockierte über den Wächter in
+ * loadMoreSets() ihr Nachladen. Siehe AppUiState.loginLaeuft.
+ */
 internal fun MainViewModel.addPart(partNumber: String, colorId: Int = 0, colorName: String? = null, colorHex: String? = null,
             quantity: Int = 1, note: String? = null, unitPrice: Double? = null,
             condition: String? = null, ownerUserId: Int? = null) {
     viewModelScope.launch {
-        _state.update { it.copy(isLoading = true) }
         when (val r = repo.teile.addPart(partNumber.trim(), colorId, colorName, colorHex, quantity, note, unitPrice, condition, ownerUserId)) {
             is Result.Success -> {
                 if (r.data.success) {
-                    _snackbar.value = ctx.getString(if (r.data.action == "added") R.string.vm_added else R.string.vm_updated, r.data.partNumber)
-                    _state.update { it.copy(isLoading = false) }
+                    _snackbar.value = text(if (r.data.action == "added") R.string.vm_added else R.string.vm_updated, r.data.partNumber)
                     loadValuation()
                     loadParts()
                 } else {
-                    _state.update { it.copy(isLoading = false) }
-                    _snackbar.value = r.data.error ?: ctx.getString(R.string.err_unknown)
+                    _snackbar.value = r.data.error ?: text(R.string.err_unknown)
                 }
             }
             is Result.Error -> {
-                _state.update { it.copy(isLoading = false) }
                 _snackbar.value = meldung(r)
             }
         }
@@ -89,21 +99,17 @@ internal fun MainViewModel.addPart(partNumber: String, colorId: Int = 0, colorNa
 internal fun MainViewModel.addMinifig(figNumber: String, blFigNumber: String? = null, quantity: Int = 1, note: String? = null,
                unitPrice: Double? = null, condition: String? = null, ownerUserId: Int? = null) {
     viewModelScope.launch {
-        _state.update { it.copy(isLoading = true) }
         when (val r = repo.teile.addMinifig(figNumber.trim(), blFigNumber, quantity, note, unitPrice, condition, ownerUserId)) {
             is Result.Success -> {
                 if (r.data.success) {
-                    _snackbar.value = ctx.getString(if (r.data.action == "added") R.string.vm_added else R.string.vm_updated, r.data.figNumber)
-                    _state.update { it.copy(isLoading = false) }
+                    _snackbar.value = text(if (r.data.action == "added") R.string.vm_added else R.string.vm_updated, r.data.figNumber)
                     loadValuation()
                     loadMinifigs()
                 } else {
-                    _state.update { it.copy(isLoading = false) }
-                    _snackbar.value = r.data.error ?: ctx.getString(R.string.err_unknown)
+                    _snackbar.value = r.data.error ?: text(R.string.err_unknown)
                 }
             }
             is Result.Error -> {
-                _state.update { it.copy(isLoading = false) }
                 _snackbar.value = meldung(r)
             }
         }
@@ -115,7 +121,7 @@ internal fun MainViewModel.updatePart(partNumber: String, colorId: Int, quantity
         when (val r = repo.teile.updatePart(partNumber, colorId, quantity, unitPrice, condition)) {
             is Result.Success -> {
                 if (r.data.success) {
-                    _snackbar.value = ctx.getString(R.string.vm_saved)
+                    _snackbar.value = text(R.string.vm_saved)
                     // reloadItemList statt nur loadValuation: Die Kachel in der
                     // Übersicht zeigt Menge und Preis und blieb sonst auf dem
                     // alten Stand, bis der Reiter erneut geöffnet wurde.
@@ -125,7 +131,7 @@ internal fun MainViewModel.updatePart(partNumber: String, colorId: Int, quantity
                     if (det.itemType == "part" && det.itemId == partNumber && det.colorId == colorId) {
                         loadManualAcquisitions("part", partNumber, colorId)
                     }
-                } else _snackbar.value = r.data.error ?: ctx.getString(R.string.err_unknown)
+                } else _snackbar.value = r.data.error ?: text(R.string.err_unknown)
             }
             is Result.Error -> _snackbar.value = meldung(r)
         }
@@ -136,8 +142,8 @@ internal fun MainViewModel.deletePart(partNumber: String, colorId: Int) {
     viewModelScope.launch {
         when (val r = repo.teile.deletePart(partNumber, colorId)) {
             is Result.Success -> {
-                if (r.data.success) { _snackbar.value = ctx.getString(R.string.vm_part_deleted); loadValuation(); loadParts() }
-                else _snackbar.value = r.data.error ?: ctx.getString(R.string.err_unknown)
+                if (r.data.success) { _snackbar.value = text(R.string.vm_part_deleted); loadValuation(); loadParts() }
+                else _snackbar.value = r.data.error ?: text(R.string.err_unknown)
             }
             is Result.Error -> _snackbar.value = meldung(r)
         }
@@ -149,7 +155,7 @@ internal fun MainViewModel.updateMinifig(figNumber: String, quantity: Int, unitP
         when (val r = repo.teile.updateMinifig(figNumber, quantity, unitPrice, blFigNumber, condition)) {
             is Result.Success -> {
                 if (r.data.success) {
-                    _snackbar.value = ctx.getString(R.string.vm_saved)
+                    _snackbar.value = text(R.string.vm_saved)
                     // reloadItemList statt nur loadValuation: Die Kachel in der
                     // Übersicht zeigt Menge und Preis und blieb sonst auf dem
                     // alten Stand, bis der Reiter erneut geöffnet wurde.
@@ -159,7 +165,7 @@ internal fun MainViewModel.updateMinifig(figNumber: String, quantity: Int, unitP
                     if (det.itemType == "fig" && det.itemId == figNumber) {
                         loadManualAcquisitions("fig", figNumber)
                     }
-                } else _snackbar.value = r.data.error ?: ctx.getString(R.string.err_unknown)
+                } else _snackbar.value = r.data.error ?: text(R.string.err_unknown)
             }
             is Result.Error -> _snackbar.value = meldung(r)
         }
@@ -170,8 +176,8 @@ internal fun MainViewModel.deleteMinifig(figNumber: String) {
     viewModelScope.launch {
         when (val r = repo.teile.deleteMinifig(figNumber)) {
             is Result.Success -> {
-                if (r.data.success) { _snackbar.value = ctx.getString(R.string.vm_minifig_deleted); loadValuation(); loadMinifigs() }
-                else _snackbar.value = r.data.error ?: ctx.getString(R.string.err_unknown)
+                if (r.data.success) { _snackbar.value = text(R.string.vm_minifig_deleted); loadValuation(); loadMinifigs() }
+                else _snackbar.value = r.data.error ?: text(R.string.err_unknown)
             }
             is Result.Error -> _snackbar.value = meldung(r)
         }

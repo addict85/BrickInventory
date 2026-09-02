@@ -28,6 +28,8 @@ class MainViewModel @Inject constructor(
     internal val sseClient: CsvImportSseClient,
     internal val pdfExport: PdfExportManager,
     internal val sessionExpired: ch.brickinventoryapp.data.SessionExpiredSignal,
+    // Der eine Weg zur Snackbar — geteilt mit den uebrigen ViewModels.
+    meldungen: ch.brickinventoryapp.data.MeldungsKanal,
     // Für den PdfViewer: Er leitet seinen Download-Client per newBuilder()
     // von diesem ab, statt einen eigenen OkHttpClient zu bauen. Damit teilt
     // er Thread- und Connection-Pool, und Interceptor-Regeln (Bearer-Token,
@@ -47,6 +49,54 @@ class MainViewModel @Inject constructor(
 
     internal val ctx get() = getApplication<Application>().applicationContext
 
+    /**
+     * Ein Text aus den Ressourcen — in der SPRACHE DER APP, nicht des Systems.
+     *
+     * ── Der Fehler, der hier steckte ────────────────────────────────────────
+     * Hier stand dreissigmal ein getString() direkt auf dem
+     * Application-Context. `AppCompatDelegate.setApplicationLocales()`
+     * lokalisiert aber nur AppCompat-ACTIVITIES; der Application-Context
+     * behaelt unterhalb von Android 13 die SYSTEM-Sprache
+     * (siehe LanguageManager.localizedContext(), minSdk ist 26 — betroffen
+     * sind also Android 8 bis 12).
+     *
+     * Folge: Wer sein Telefon auf Deutsch stehen hat und die App auf Englisch
+     * stellt, bekam JEDE Snackbar und JEDE Fehlermeldung des ViewModels
+     * trotzdem auf Deutsch. Das trifft ausgerechnet meldung() — die Funktion,
+     * die es nur gibt, damit Fehlermeldungen nicht in einer Sprache
+     * herauskommen, die der Nutzer nicht gewaehlt hat.
+     *
+     * Fuer die Foreground-Services und den PDF-Export ist genau dieser Fall
+     * schon geloest (CsvImportService, PdfExportService, PdfExportManager holen
+     * sich den lokalisierten Context). Die ViewModels waren die Luecke.
+     *
+     * ── Warum ohne Zwischenspeicher ─────────────────────────────────────────
+     * localizedContext() baut den Context bei jedem Aufruf neu. Das ist
+     * Absicht: Die Sprache kann waehrend der Laufzeit umgestellt werden, ein
+     * gemerkter Context waere danach der alte. Die Kosten fallen nur an, wenn
+     * tatsaechlich eine Meldung entsteht.
+     *
+     * ── Warum `Any?` und nicht `Any` ────────────────────────────────────────
+     * Die erste Fassung stand auf `vararg args: Any` und liess drei
+     * Aufrufstellen nicht mehr uebersetzen: Sie reichen `r.data.setNumber`,
+     * `partNumber` und `figNumber` durch, und die sind `String?`. Vorher fiel
+     * das nicht auf, weil Androids `getString(int, Object...)` in Kotlin als
+     * Plattformtyp `Any!` ankommt — dort wird Nullbarkeit nicht geprueft.
+     *
+     * Der Helfer darf nicht strenger sein als die Stelle, die er ersetzt:
+     * Sonst verlagert eine Aenderung an der SPRACHE eine Aufraeumarbeit an
+     * dreissig Aufrufstellen, die damit nichts zu tun hat. Ob eine Setnummer
+     * `null` sein kann, ist eine eigene Frage — und keine, die hier
+     * mitentschieden werden soll.
+     */
+    internal fun text(id: Int, vararg args: Any?): String {
+        val c = ch.brickinventoryapp.util.LanguageManager.localizedContext(ctx)
+        // Ohne Argumente die einfache Ueberladung: getString(id, *leer) laeuft
+        // durch String.format, und ein Text mit einem einzelnen Prozentzeichen
+        // wuerde dort eine Ausnahme werfen statt angezeigt zu werden.
+        return if (args.isEmpty()) c.getString(id) else c.getString(id, *args)
+    }
+
     internal val _state = MutableStateFlow(AppUiState())
     val state = _state.asStateFlow()
 
@@ -60,8 +110,13 @@ class MainViewModel @Inject constructor(
     // Snackbar getrennt vom Haupt-State: Meldungen sind der häufigste
     // querschneidende Update — als Feld in AppUiState hat jede Snackbar
     // den gesamten UI-Tree rekomponiert.
-    internal val _snackbar = MutableStateFlow<String?>(null)
-    val snackbar = _snackbar.asStateFlow()
+    //
+    // Der Fluss gehoert seit dem Meldungskanal nicht mehr diesem ViewModel:
+    // CatalogViewModel und jedes kuenftig herausgeloeste ViewModel schreiben in
+    // DENSELBEN. Der Name bleibt `_snackbar`, damit die Schreibstellen in den
+    // Feature-Dateien unveraendert lesen. Warum das so ist: MeldungsKanal.kt.
+    internal val _snackbar = meldungen.fluss
+    val snackbar = meldungen.meldung
 
     internal val _setDetailState = MutableStateFlow(SetDetailUiState())
     val setDetailState = _setDetailState.asStateFlow()
@@ -83,6 +138,16 @@ class MainViewModel @Inject constructor(
      * Eigener Fluss, weil ihn alle vier Erfassungswege speisen (Barcode,
      * Texterkennung, Galerie, Katalog) und nur der Anzeige-Dialog ihn liest.
      */
+    /**
+     * Galerie — eigener Fluss (Nachtrag: AppUiState-Aufteilung).
+     *
+     * Sechzehn Dateien sammeln `state`; die Galerie-Felder lesen davon drei.
+     * Als Teil von AppUiState loeste jedes Blaettern und jede Suche eine
+     * Rekomposition in allen sechzehn aus. Siehe GalleryUiState.
+     */
+    internal val _galleryState = MutableStateFlow(GalleryUiState())
+    val galleryState = _galleryState.asStateFlow()
+
     internal val _erfassungState = MutableStateFlow(ErfassungUiState())
     val erfassungState = _erfassungState.asStateFlow()
 
@@ -158,9 +223,9 @@ class MainViewModel @Inject constructor(
                 }
         }
         // Anzeige-Präferenzen separat — lösen keine Reloads aus
-        viewModelScope.launch {
-            prefs.username.collect { user -> _state.update { it.copy(username = user) } }
-        }
+        // Der frueher hier gesammelte Benutzername ist entfallen (siehe
+        // AppUiState). PreferencesManager.username und saveUsername() gibt es
+        // noch — sie haben damit allerdings auch keinen Leser mehr.
         viewModelScope.launch {
             prefs.currency.collect { cur -> _state.update { it.copy(currency = cur) } }
         }
@@ -176,7 +241,7 @@ class MainViewModel @Inject constructor(
         viewModelScope.launch {
             sessionExpired.events.collect {
                 if (_state.value.isLoggedIn) {
-                    _snackbar.value = ctx.getString(R.string.vm_session_expired)
+                    _snackbar.value = text(R.string.vm_session_expired)
                     logout()
                 }
             }
@@ -223,8 +288,8 @@ class MainViewModel @Inject constructor(
         // Welcher Text zu welcher Ursache gehört, steht in FehlerTexte.kt —
         // als reine Funktion ohne Context, damit sie prüfbar ist (Nachtrag 117).
         val id = fehlerTextId(fehler.art)
-        return if (fehlerTextBrauchtCode(fehler.art)) ctx.getString(id, fehler.httpCode ?: 0)
-        else ctx.getString(id)
+        return if (fehlerTextBrauchtCode(fehler.art)) text(id, fehler.httpCode ?: 0)
+        else text(id)
     }
 
 
@@ -300,7 +365,7 @@ class MainViewModel @Inject constructor(
         }
 
         // Sets nachlagen falls Erstladung beim App-Start scheiterte
-        if (_state.value.sets.isEmpty() && !_state.value.isLoading) loadDashboard()
+        if (_galleryState.value.sets.isEmpty() && !_galleryState.value.galleryLoading) loadDashboard()
     }
 
     /** Import abgeschlossen: Daten neu laden, Banner kurz sichtbar lassen, dann ausblenden. */

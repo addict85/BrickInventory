@@ -63,7 +63,11 @@ function readDimensions(buf: Buffer) {
     let off = 2;
     while (off + 9 < buf.length) {
       if (buf[off] !== 0xff) { off++; continue; }          // Füllbytes überspringen
-      const marker = buf[off + 1];
+      // Die Schleifenbedingung (`off + 9 < buf.length`) sichert den Zugriff,
+      // der Uebersetzer sieht das nicht. 0x00 ist kein gueltiger JPEG-Marker
+      // und faellt durch alle Vergleiche darunter — der Rueckfall aendert also
+      // nichts am Ablauf.
+      const marker = buf[off + 1] ?? 0x00;
       if (marker === 0xd8 || marker === 0x01 || (marker >= 0xd0 && marker <= 0xd7)) { off += 2; continue; }
       const len = buf.readUInt16BE(off + 2);
       const isSof = marker >= 0xc0 && marker <= 0xcf && marker !== 0xc4 && marker !== 0xc8 && marker !== 0xcc;

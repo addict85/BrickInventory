@@ -66,17 +66,21 @@ fun GalleryScreen(
     // die Begründung steht bei PartsScreen (Nachtrag 96). Die Namen bleiben
     // absichtlich dieselben, damit der Rumpf darunter unverändert bleibt.
     val state by vm.state.collectAsStateWithLifecycle()
+    // Eigener Fluss fuer die Galerie: Blaettern, Suchen und Nachladen aendern
+    // nur noch DIESEN Zustand — die uebrigen Bildschirme, die `vm.state`
+    // sammeln, werden dadurch nicht mehr mit rekomponiert (siehe GalleryUiState).
+    val galerie by vm.galleryState.collectAsStateWithLifecycle()
     val barcodeState by vm.barcodeState.collectAsStateWithLifecycle()
 
-    val sets = state.sets
-    val query = state.galleryQuery
-    val theme = state.galleryTheme
-    val sort = state.gallerySort
-    val themes = state.galleryThemes
-    val total = state.galleryTotal
-    val loadingMore = state.galleryLoadingMore
-    val stats = state.stats
-    val isLoading = state.isLoading
+    val sets = galerie.sets
+    val query = galerie.galleryQuery
+    val theme = galerie.galleryTheme
+    val sort = galerie.gallerySort
+    val themes = galerie.galleryThemes
+    val total = galerie.galleryTotal
+    val loadingMore = galerie.galleryLoadingMore
+    val stats = galerie.stats
+    val isLoading = galerie.galleryLoading
     val serverUrl = state.serverUrl
     val defaultCondition = state.userDefaultCondition ?: "N"
     val currency = state.currency

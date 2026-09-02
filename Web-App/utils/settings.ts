@@ -124,4 +124,59 @@ async function globalDefaultCondition(): Promise<'N' | 'U'> {
   return g?.value === 'U' ? 'U' : 'N';
 }
 
-export { getSetting, getGlobalSetting, setUserSetting, effectiveCondition, globalDefaultCondition };
+/**
+ * Globale Einstellung schreiben — die EINE Stelle dafuer.
+ *
+ * ── Warum es das jetzt gibt ─────────────────────────────────────────────────
+ * NACHGEMESSEN: `global_settings` wurde aus 22 Dateien direkt angefasst, in
+ * vier verschiedenen Schreibweisen fuer dasselbe Lesen und mit neun eigenen
+ * INSERT-Varianten fuer dasselbe Schreiben. Eine davon setzte `updated_at`,
+ * die uebrigen acht nicht — das Feld blieb dort auf dem Wert des allerersten
+ * Anlegens stehen.
+ *
+ * Gelesen wird `updated_at` heute nirgends. Genau deshalb ist es einheitlich
+ * zu setzen billig und richtig: Es kostet nichts, und wer es kuenftig braucht
+ * („wann wurde das Kontingent zuletzt geaendert?"), findet einen Wert vor,
+ * dem er trauen kann.
+ *
+ * Der Wert wird als Zeichenkette abgelegt, weil die Spalte TEXT ist — eine
+ * Zahl oder ein Wahrheitswert kaeme sonst je nach Aufrufer als '1', 'true'
+ * oder '1.0' an.
+ */
+async function setGlobalSetting(key: string, value: unknown) {
+  await db.run(
+    `INSERT INTO global_settings (key, value, updated_at) VALUES ($1, $2, NOW())
+     ON CONFLICT (key) DO UPDATE SET value = $2, updated_at = NOW()`,
+    [key, String(value)]);
+}
+
+/**
+ * Auslöser-Zeile setzen (csv_sync_trigger, job_reschedule_trigger,
+ * instr_queue_trigger).
+ *
+ * Getrennt von setGlobalSetting(), weil hier bewusst die Uhr der DATENBANK
+ * schreibt und nicht die des Prozesses: Diese Zeilen schreibt ein Worker und
+ * liest ein anderer. Käme die Zeit aus dem jeweiligen Node-Prozess, entschiede
+ * bei auseinanderlaufenden Uhren der Schreiber darüber, was der Leser für
+ * frisch hält.
+ */
+async function setGlobalTrigger(key: string) {
+  await db.run(
+    `INSERT INTO global_settings (key, value, updated_at) VALUES ($1, NOW()::TEXT, NOW())
+     ON CONFLICT (key) DO UPDATE SET value = NOW()::TEXT, updated_at = NOW()`, [key]);
+}
+
+/**
+ * Globale Einstellung entfernen.
+ *
+ * Es gibt einen echten Unterschied zwischen „Schlüssel fehlt" und „Wert ist
+ * leer": Ein Auslöser-Schlüssel (instr_queue_trigger) gilt als abgearbeitet,
+ * sobald die ZEILE weg ist — ein leerer Wert liesse die Warteschlange in einer
+ * Schleife weiterlaufen. Deshalb ein eigener Weg statt setGlobalSetting(k, '').
+ */
+async function deleteGlobalSetting(...keys: string[]) {
+  if (keys.length === 0) return;
+  await db.run(`DELETE FROM global_settings WHERE key = ANY($1)`, [keys]);
+}
+
+export { getSetting, getGlobalSetting, setGlobalSetting, setGlobalTrigger, deleteGlobalSetting, setUserSetting, effectiveCondition, globalDefaultCondition };

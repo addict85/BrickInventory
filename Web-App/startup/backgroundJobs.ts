@@ -18,6 +18,7 @@ import { purgeExpiredTokens } from '../utils/auth';
 import { APP_ROOT, IMAGES_DIR } from '../utils/appPaths';
 import { startImgCacheCleanup } from '../routes/imgProxy';
 import { startPdfJobCleanup } from '../routes/api_v1/pdf';
+import { fehlertext } from '../utils/httpError';
 
 /**
  * Was nach dem Start im Hintergrund anläuft — ausschliesslich im Primär-Worker.
@@ -120,7 +121,7 @@ export async function starteHintergrundlaeufe(): Promise<void> {
         for (const { set_number } of missing) await enqueue(set_number).catch(() => {});
         processNext();
       }
-    } catch(e) { console.error('[instr-queue startup]', e.message); }
+    } catch(e) { console.error('[instr-queue startup]', fehlertext(e)); }
   }, 15000);
   setTimeout(() => processRetryQueue().catch(() => {}), 20000);
 
@@ -143,7 +144,7 @@ export async function starteHintergrundlaeufe(): Promise<void> {
         await new Promise(r => setTimeout(r, 300));
       }
       console.log(`[set-img-bg] Done`);
-    } catch(e) { console.error('[set-img-bg]', e.message); }
+    } catch(e) { console.error('[set-img-bg]', fehlertext(e)); }
   }, 45_000);
 
   // Generate missing thumbnails
@@ -173,6 +174,6 @@ export async function starteHintergrundlaeufe(): Promise<void> {
         if (generated % 10 === 0) await new Promise(r => setTimeout(r, 10));
       }
       if (generated > 0) console.log(`  🖼️  ${generated} Thumbnails generiert`);
-    } catch(e) { console.error('Thumb gen error:', e.message); }
+    } catch(e) { console.error('Thumb gen error:', fehlertext(e)); }
   });
 }

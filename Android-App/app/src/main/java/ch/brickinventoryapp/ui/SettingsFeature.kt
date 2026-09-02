@@ -40,7 +40,7 @@ internal fun MainViewModel.saveSettings(currency: String, condition: String) {
     viewModelScope.launch {
         when (val r = repo.admin.updateSettings(currency, condition)) {
             is Result.Success -> {
-                _snackbar.value = ctx.getString(ch.brickinventoryapp.R.string.vm_settings_saved)
+                _snackbar.value = text(ch.brickinventoryapp.R.string.vm_settings_saved)
                 _state.update { it.copy(currency = currency, priceCondition = condition) }
                 // Währung und Preiszustand bestimmen, welche Preise der Server
                 // liefert. Ohne Nachladen zeigte die App die alten Werte mit dem
@@ -59,7 +59,7 @@ internal fun MainViewModel.saveUserDefaultCondition(condition: String) {
     viewModelScope.launch {
         when (val r = repo.teile.setUserDefaultCondition(condition)) {
             is Result.Success -> loadSettings() // effective default in State aktualisieren
-            is Result.Error   -> _snackbar.value = ctx.getString(R.string.vm_error, meldung(r))
+            is Result.Error   -> _snackbar.value = text(R.string.vm_error, meldung(r))
         }
     }
 }

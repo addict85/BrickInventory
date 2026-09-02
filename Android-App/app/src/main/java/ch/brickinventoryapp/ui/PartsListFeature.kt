@@ -163,6 +163,6 @@ internal suspend fun MainViewModel.exportPartsPdf(
         // beide hier nicht — first{} oben lässt nur Done und Error durch —,
         // aber genau das soll sichtbar bleiben.
         is PdfExportState.Idle,
-        is PdfExportState.Running -> ctx.getString(ch.brickinventoryapp.R.string.pdfexp_unknown_error)
+        is PdfExportState.Running -> text(ch.brickinventoryapp.R.string.pdfexp_unknown_error)
     }
 }

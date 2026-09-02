@@ -13,6 +13,7 @@ import path from 'path';
 import fs from 'fs';
 import * as db from '../db/database';
 import { rebrickableBackgroundLimiter } from '../utils/rateLimiter';
+import { fehlertext } from '../utils/httpError';
 
 const BASE = 'https://rebrickable.com/api/v3';
 
@@ -201,7 +202,7 @@ async function getAllSetPartsApi(setNumber: string) {
     await rebrickableLimiter.waitForSlot();
     let status, body;
     try { ({ status, body } = await httpsGetRobust(url, { Authorization: `key ${key}` }, 60000)); }
-    catch (e) { console.error(`  Parts page ${pages} failed: ${e.message}`); break; }
+    catch (e) { console.error(`  Parts page ${pages} failed: ${fehlertext(e)}`); break; }
     if (status === 404 || status === 403) {
       if (status === 403) {
         console.log(`  Parts HTTP 403 for ${n} — set not found or access denied, skipping`);
@@ -310,7 +311,7 @@ async function getSetMinifigs(setNumber: string) {
       image_url:  m.set_img_url || null,
     }));
   } catch (e) {
-    console.log(`  Minifigs fetch failed for ${n}: ${e.message}`);
+    console.log(`  Minifigs fetch failed for ${n}: ${fehlertext(e)}`);
     return [];
   }
 }

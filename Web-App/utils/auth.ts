@@ -16,6 +16,7 @@
 import * as db from '../db/database';
 import crypto from 'crypto';
 import type { Request, Response, NextFunction } from 'express';
+import { vorDem } from '../utils/httpError';
 
 /**
  * ── Warum diese Typen hier stehen (Nachtrag 155) ─────────────────────────────
@@ -368,7 +369,7 @@ async function resolveUserId(req: Request): Promise<number | null> {
   if (!token && req.query?.token) {
     // req.path ist bei Sub-Routern relativ — für die Prüfung zählt der volle
     // Pfad, deshalb originalUrl ohne Query-Teil.
-    const fullPath = String(req.originalUrl || req.url || '').split('?')[0];
+    const fullPath = vorDem(String(req.originalUrl || req.url || ''), '?');
     if (TOKEN_QUERY_ALLOWED.some(re => re.test(fullPath))) token = String(req.query.token);
   }
   if (!token) return null;

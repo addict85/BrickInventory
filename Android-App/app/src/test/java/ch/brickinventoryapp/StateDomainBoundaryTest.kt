@@ -32,11 +32,12 @@ class StateDomainBoundaryTest {
 
     /** Feld → Domäne. Die Domäne ist der Name der Feature-Datei ohne "Feature.kt". */
     private val domaene = mapOf(
-        // Galerie
-        "sets" to "Gallery", "galleryQuery" to "Gallery", "galleryTheme" to "Gallery",
-        "gallerySort" to "Gallery", "galleryThemes" to "Gallery", "galleryTotal" to "Gallery",
-        "galleryPage" to "Gallery", "galleryLoadingMore" to "Gallery", "stats" to "Gallery",
-        "gallerySearchFoundSetNumber" to "Gallery",
+        // Die zehn Galerie-Felder stehen hier nicht mehr: Sie sind nach
+        // GalleryUiState gewandert, genau wie die zwoelf Barcode-Felder in
+        // Nachtrag 117. Der Anlass war diesmal die Rekomposition — SECHZEHN
+        // Dateien sammeln `vm.state`, gelesen wurden die Galerie-Felder von
+        // dreien. Und wieder hat der zweite Test unten die zugehoerigen
+        // Ausnahmen als tot gemeldet, statt sie liegen zu lassen.
         // Die zwölf Barcode-Felder stehen hier nicht mehr: Sie sind in
         // Nachtrag 117 nach BarcodeUiState gewandert und damit gar nicht mehr
         // Teil des gemeinsamen Objekts. Das ist der erwünschte Ausgang — die
@@ -47,8 +48,12 @@ class StateDomainBoundaryTest {
         "defaultPriceCondition" to "Settings", "userDefaultCondition" to "Settings",
         "appTheme" to "Settings", "language" to "Settings",
         // Sitzung
-        "isLoggedIn" to "Session", "isAdmin" to "Session", "username" to "Session",
+        "isLoggedIn" to "Session", "isAdmin" to "Session",
         "authToken" to "Session", "serverUrl" to "Session",
+        // `loginLaeuft` hiess `isLoading` und stand bis zuletzt in `querschnitt`
+        // darunter — als EINZIGES Feld, das jeder beschreiben durfte. Es hat
+        // jetzt einen Eigner, weil es nur noch eine Bedeutung hat.
+        "loginLaeuft" to "Session",
         // Seit Nachtrag 118 gehört der Anmeldefehler ausdrücklich der Sitzung
         // und ist NICHT mehr querschneidend — vorher hiess er `error`, durfte
         // von jedem beschrieben werden, und genau das war der Fehler.
@@ -58,38 +63,41 @@ class StateDomainBoundaryTest {
     )
 
     /**
-     * Querschneidende Felder. Sie sind der Grund, warum es `AppUiState` als
-     * gemeinsames Objekt überhaupt noch gibt. `PartsFeature` fasste siebzehnmal
-     * auf `_state` zu — für `isLoading` und das frühere `error`. Seit Nachtrag
-     * 118 bleibt nur `isLoading`; Fehler gehen in den Snackbar.
+     * Querschneidende Felder — Felder, die JEDE Feature-Datei beschreiben darf.
+     *
+     * Die Menge ist LEER, und das ist das Ergebnis, nicht der Ausgangspunkt.
+     * Zuletzt stand hier `isLoading`. NACHGEMESSEN: vier Feature-Dateien
+     * schrieben es an dreiundzwanzig Stellen, fünf Stellen lasen es — und die
+     * fünf meinten vier verschiedene Dinge (Anmeldung, Galerie, Bewertung, und
+     * die Teileliste schrieb es, ohne dass ein Teile-Bildschirm es je las).
+     *
+     * Genau das ist der Schaden, den ein querschneidendes Feld anrichtet: Es
+     * sieht nach einem gemeinsamen Begriff aus und ist in Wahrheit vier. Wer
+     * schneller fertig war, gewann — `loadValuation()` beendete am Ende die
+     * Ladeanzeige eines noch laufenden Galerie-Abrufs.
+     *
+     * Ein neuer Eintrag hier ist deshalb kein Formalismus, sondern die
+     * Entscheidung, dieses Muster wieder zuzulassen. Die dritte Prüfung unten
+     * hält die Menge deshalb ausdrücklich leer.
      */
-    private val querschnitt = setOf("isLoading")
+    private val querschnitt = emptySet<String>()
 
     /**
      * Ausnahmen, jede mit Grund. Kurz halten: Jeder Eintrag hier ist eine
      * Stelle, an der die Trennung nicht gilt.
      */
     private val ausnahmen = mapOf(
-        // Der Scanner findet ein Set, das schon im Bestand liegt, und die
-        // Galerie soll dorthin springen. Die Übergabe ist der Zweck des Scans;
-        // sie über einen Rückruf zu führen, wäre derselbe Schreibzugriff mit
-        // mehr Zeremonie.
-        ("Barcode" to "gallerySearchFoundSetNumber") to
-            "Scanner reicht den Treffer an die Galerie weiter",
         // Die Finanzübersicht bekommt die Währung des Kontos in derselben
         // Antwort wie die Bewertung — ein zweiter Abruf nur für die Währung
         // wäre eine Anfrage mehr für denselben Wert.
         ("Finance" to "currency") to
             "Währung kommt in der Bewertungsantwort mit",
-        // applySetAggregate() schreibt das Zustands-Aggregat des Servers in die
-        // Galerie-Liste zurück. Ohne das blieb die Kachel nach einer
-        // Zustandsänderung im Kaufpreis-Dialog auf dem alten Label stehen, bis
-        // die Liste vollständig neu geladen wurde. Der saubere Weg wäre, dass
-        // die Kachel ihren Zustand nicht doppelt hält — das ist ein eigener
-        // Umbau, kein Nebeneffekt dieses Tests.
-        ("SetDetail" to "sets") to
-            "Zustands-Aggregat wird in die Galerie-Kachel zurückgeschrieben",
     )
+    // Zwei Ausnahmen sind mit der Galerie-Aufteilung entfallen — beide
+    // betrafen Schreibzugriffe auf Felder, die es in AppUiState nicht mehr
+    // gibt: „Barcode → gallerySearchFoundSetNumber" und „SetDetail → sets".
+    // Der Test darunter hat sie als tot gemeldet; das ist genau der Ausgang,
+    // den sein Kommentar beschreibt.
 
     @Test
     fun `jede Feature-Datei schreibt nur ihre eigenen Felder`() {
@@ -126,6 +134,67 @@ class StateDomainBoundaryTest {
         assert(tot.isEmpty()) {
             "Diese Ausnahmen werden nicht mehr gebraucht und gehören gelöscht: " +
                 tot.joinToString { "${it.first} → ${it.second}" }
+        }
+    }
+
+    /**
+     * Aus dem gemeinsamen Zustand darf eine Feature-Datei nur LESEN, was ihr
+     * gehört — mit Grund eingetragene Ausnahmen ausgenommen.
+     *
+     * ── Warum lesen genauso zählt wie schreiben ─────────────────────────────
+     * Die erste Prüfung oben deckt nur Schreibzugriffe ab, und genau daran ist
+     * `isLoading` vorbeigekommen: Es stand in `querschnitt`, also durfte jeder
+     * es schreiben — und `loadMoreSets()` in GalleryFeature hängte seinen
+     * Wächter daran. Damit sperrte JEDER fremde Abruf (Anmeldung, Teileliste,
+     * Bewertung) das Nachladen der Galerie, und niemand konnte das an einer
+     * einzelnen Zeile sehen: Der Schreiber stand in einer anderen Datei als der
+     * Leser.
+     *
+     * Ein Wächter, der an einem Feld hängt, das eine FREMDE Domäne setzt, ist
+     * eine Kopplung ohne Vertrag. Diese Prüfung macht sie sichtbar.
+     */
+    @Test
+    fun `eine Feature-Datei liest aus dem gemeinsamen Zustand nur ihr Eigenes`() {
+        // Ausnahmen, jede mit Grund — wie oben, kurz halten.
+        val leseAusnahmen = mapOf(
+            // Die Serveradresse ist keine Domänen-Information, sondern die
+            // Grundlage jeder Anfrage. Sie kommt aus den Einstellungen und
+            // ändert sich nur beim An- und Abmelden.
+            ("PartsList" to "serverUrl") to "Basisadresse für den PDF-Export",
+        )
+        val fehler = mutableListOf<String>()
+        for (datei in Quellen.alle().filter { it.name.endsWith("Feature.kt") }) {
+            val feature = datei.name.removeSuffix("Feature.kt")
+            val s = Quellen.ohneKommentare(datei.readText())
+            for (m in Regex("""_state\.value\.(\w+)""").findAll(s)) {
+                val feld = m.groupValues[1]
+                val eigner = domaene[feld] ?: continue
+                if (eigner == feature) continue
+                if ((feature to feld) in leseAusnahmen.keys) continue
+                fehler += "${datei.name} liest $feld (gehört zu $eigner)"
+            }
+        }
+        assert(fehler.isEmpty()) {
+            "Eine Feature-Datei hängt an einem Feld, das eine andere Domäne setzt. " +
+                "Entweder gehört der Zustand in die eigene Domäne, oder die Ausnahme " +
+                "braucht einen Eintrag MIT Grund:\n  " + fehler.distinct().joinToString("\n  ")
+        }
+    }
+
+    /**
+     * `querschnitt` bleibt leer.
+     *
+     * Kein Formalismus: Solange dort etwas steht, ist die erste Prüfung für
+     * dieses Feld ausgeschaltet — und dann sagt kein Test mehr, wer es setzen
+     * darf. Genau in dieser Lücke lebte `isLoading` mit vier Bedeutungen.
+     * Ein neuer Eintrag soll eine bewusste Entscheidung sein, keine Beiläufigkeit.
+     */
+    @Test
+    fun `es gibt kein querschneidendes Feld mehr`() {
+        assert(querschnitt.isEmpty()) {
+            "Diese Felder sind wieder von der Domänenprüfung ausgenommen: " +
+                querschnitt.joinToString() + ".\nJedes davon darf jede Feature-Datei " +
+                "beschreiben — und wer es liest, weiss nicht, wer es gesetzt hat."
         }
     }
 

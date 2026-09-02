@@ -90,9 +90,21 @@ test('jedes Job-Modul lässt sich laden', () => {
   }
 });
 
-test('das Duplikat in priceJob ist weg', () => {
+test('priceJob hat keine eigene Fassung der Einstellungs-Helfer', () => {
+  // Ursprung: getGlobalSetting stand ZWEIMAL in dieser Datei, die zweite
+  // Definition überschrieb die erste stillschweigend. Inzwischen steht gar
+  // keine mehr dort — beide Helfer kommen aus utils/settings.ts.
+  //
+  // Die Prüfung bleibt, weil der Rückfall derselbe wäre: Wer sich hier wieder
+  // eine eigene Fassung schreibt, hat eine zweite Wahrheit über dieselbe
+  // Tabelle, und die beiden können auseinanderlaufen (die alte Kopie nahm den
+  // Ersatzwert schon beim LEEREN Eintrag, die zentrale erst bei NULL).
   const src = fs.readFileSync(path.join(JOBS, 'priceJob.ts'), 'utf8');
-  const defs = (src.match(/async function getGlobalSetting\(/g) || []).length;
-  assert.equal(defs, 1,
-    `getGlobalSetting ist ${defs}× definiert — die spätere überschreibt die frühere stillschweigend`);
+  for (const name of ['getSetting', 'getGlobalSetting']) {
+    const defs = (src.match(new RegExp(`(async )?function ${name}\\(`, 'g')) || []).length;
+    assert.equal(defs, 0,
+      `${name} ist in priceJob.ts ${defs}× definiert — es gehört nach utils/settings.ts`);
+  }
+  assert.match(src, /import \{[^}]*getGlobalSetting[^}]*\} from '\.\.\/utils\/settings'/,
+    'priceJob muss die zentrale Fassung holen');
 });

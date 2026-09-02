@@ -39,7 +39,10 @@ const SRC_DIRS = ['db', 'utils', 'routes', 'jobs', 'clients', 'startup'];
 const ESBUILD_VERSION = '0.25.12';
 
 const outdirArg = process.argv.indexOf('--outdir');
-const OUTDIR = outdirArg !== -1 ? path.resolve(process.argv[outdirArg + 1]) : null;
+// `--outdir` ohne Wert dahinter ist ein Bedienfehler und ergibt jetzt null
+// statt eines Absturzes in path.resolve().
+const zielArg = outdirArg !== -1 ? process.argv[outdirArg + 1] : undefined;
+const OUTDIR = zielArg ? path.resolve(zielArg) : null;
 
 /** @param {string} dir @param {string[]} out */
 function walkTs(dir, out) {
@@ -66,12 +69,6 @@ function collectTsFiles() {
     walkTs(abs, files);
   }
   return files;
-}
-
-/** @param {string} tsFile */
-function outPathFor(tsFile) {
-  const rel = path.relative(ROOT, tsFile).replace(/\.ts$/, '.js');
-  return OUTDIR ? path.join(OUTDIR, rel) : path.join(ROOT, rel);
 }
 
 

@@ -2,11 +2,11 @@ import path from 'path';
 import fs from 'fs';
 import * as db from '../db/database';
 import { PART_IMAGES_DIR } from './appPaths';
-import { getAllSetParts, getRbKey, httpsGetRobust, downloadFile, sleep } from '../clients/rebrickable';
-import { logAndContinue } from './httpError';
+import { getAllSetParts, downloadFile, sleep } from '../clients/rebrickable';
+import { logAndContinue, fehlertext } from './httpError';
 import { generateThumb } from '../routes/thumbs';
-import { consumeRebrickableDaily } from './rateLimiter';
 import { meldeUndWeiter } from '../utils/httpError';
+import { getGlobalSetting } from '../utils/settings';
 
 /**
  * Teile eines Sets aus dem Katalog übernehmen.
@@ -157,7 +157,7 @@ async function importPartsForSet(setNumber: string, userId: number) {
           });
           break; // success
         } catch(e) {
-          if (e.message?.includes('deadlock') && attempt < 3) {
+          if (fehlertext(e)?.includes('deadlock') && attempt < 3) {
             console.warn(`[parts] Deadlock on ${n}, retry ${attempt}/3...`);
             await new Promise(r => setTimeout(r, 200 * attempt));
           } else throw e;
@@ -172,7 +172,7 @@ async function importPartsForSet(setNumber: string, userId: number) {
     console.log(`[parts] ${n}: ${rows.length} importiert`);
     return rows.length;
   } catch (e) {
-    console.error(`Parts import failed for ${n}:`, e.message);
+    console.error(`Parts import failed for ${n}:`, fehlertext(e));
     return 0;
   }
 }
@@ -181,8 +181,8 @@ async function importPartsForSet(setNumber: string, userId: number) {
 async function fetchMissingBlIds() {
   const monitor = require('../utils/jobMonitor');
   try {
-    const { rebrickableBackgroundLimiter: rebrickableLimiter, consumeRebrickableDaily, parseThrottleWait } = require('../utils/rateLimiter');
-    const rbKey = (await db.get("SELECT value FROM global_settings WHERE key='rebrickable_api_key'").catch(()=>null))?.value;
+    const { rebrickableBackgroundLimiter: rebrickableLimiter, consumeRebrickableDaily } = require('../utils/rateLimiter');
+    const rbKey = await getGlobalSetting('rebrickable_api_key');
     if (!rbKey) return;
 
     // Only fetch parts not yet in rb_bl_mapping (source of truth for BL IDs)
@@ -248,7 +248,7 @@ const https2 = require('https') as typeof import('https');
     await syncBlPartNumbers();
     monitor.update('blIds', { status: 'done', sub: null });
 
-  } catch(e) { console.error('[bl-fetch] error:', e.message); }
+  } catch(e) { console.error('[bl-fetch] error:', fehlertext(e)); }
 }
 
 export { importPartsForSet, fetchMissingBlIds, syncBlPartNumbers, downloadPartImagesBackground };

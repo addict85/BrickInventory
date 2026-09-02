@@ -1,6 +1,6 @@
 
 import express from 'express';
-import { APP_ROOT, DATA_DIR, PUBLIC_DIR, IMAGES_DIR , INSTRUCTIONS_DIR} from '../utils/appPaths';
+import { APP_ROOT, DATA_DIR, IMAGES_DIR } from '../utils/appPaths';
 /*
  * ── Erfassungs-Routen leben jetzt NUR NOCH in routes/api_v1/acquisitions.ts ──
  *
@@ -44,36 +44,22 @@ import { APP_ROOT, DATA_DIR, PUBLIC_DIR, IMAGES_DIR , INSTRUCTIONS_DIR} from '..
 
 const router  = express.Router();
 import multer from 'multer';
-import { parse } from 'csv-parse/sync';
-import { DEFAULT_PRICE_CONDITION } from '../utils/financeCalc';
 import path from 'path';
 import fs from 'fs';
-import https from 'https';
 
 import * as db from '../db/database';
-import { handleRouteError, logAndContinue } from '../utils/httpError';
-import { downloadSetImage } from '../utils/setImages';
+import { handleRouteError, logAndContinue, fehlertext, pfadParam, vorDem } from '../utils/httpError';
 // Der Kern liegt seit Nachtrag 131 in utils/setService.ts; hier bleiben die
 // HTTP-Routen, die ihn rufen.
-import { addSet, updateSet, buildSetsCsv, recordAcquisition, sanitizeSetNumber, addSetWithDate } from '../utils/setService';
-import { downloadSetInstructions, scrapeInstructionsFromFallback } from '../utils/instructions';
-import { getCurrentMarketPrice } from '../utils/marketPrice';
+import { addSet, buildSetsCsv, addSetWithDate } from '../utils/setService';
+import { downloadSetInstructions } from '../utils/instructions';
 // Der Standard-Zustand eines Benutzers. Stand hier bis Nachtrag 125 als
 // `getUserDefaultCondition` — eine wortgleiche Zweitfassung von
 // effectiveCondition() in utils/settings.ts.
-import { effectiveCondition as userDefaultCondition } from '../utils/settings';
-import { recordAcquisitionForDay, findSameDayAcquisition } from '../utils/acquisitions';
-import { moveSetBetweenAccounts } from '../utils/setMove';
-import { acquisitionMoveSource, canWriteFor, householdMembers, resolveWriteTarget, parseScopeMode, writableIds } from '../utils/household';
+import {  resolveWriteTarget } from '../utils/household';
 import { registerSse } from '../utils/sseRegistry';
-import { getItemImageUrl } from '../clients/bricklink';
-import { getSetInfo, downloadFile, scrapeInstructions, sleep, httpsGetRobust } from '../clients/rebrickable';
-import * as brickset from '../clients/brickset';
 import { requireLogin } from './auth';
-import { withInventoryLock } from '../utils/txLock';
 import { importPartsForSet } from './parts';
-import { importMinifigsForSet } from './minifigs';
-import { refreshPriceForSet } from '../jobs/priceJob';
 
 const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 15 * 1024 * 1024 } });
 
@@ -136,7 +122,6 @@ if (!fs.existsSync(SET_IMAGES_DIR)) fs.mkdirSync(SET_IMAGES_DIR, { recursive: tr
 // Prüfung kommt von der zentralen Stelle. Das 3s-Zeitlimit bleibt: Während
 // eines Imports kann die Datenbank ausgelastet sein, und ein Client, der 503
 // bekommt, versucht es gleich wieder — besser als eine hängende Verbindung.
-import { scopeIds } from '../utils/household';
 import { findSetInScope } from '../utils/setAdd';
 import { loginOrTokenGuard } from '../utils/auth';
 import { csvEinlesen, entschaerfungRueckgaengig, parseCsvDate, sendCsv, sendCsvText, uebersprungenHinweis } from '../utils/csvExport';
@@ -326,7 +311,7 @@ router.get('/import/csv/stream', requireLoginOrToken, async (req, res) => {
 // ── GET /api/sets/info/:setNumber — lightweight name lookup from shared catalog ─
 // Used by the Teileliste to resolve set names without requiring user ownership.
 router.get('/info/:setNumber', requireLogin, async (req, res) => {
-  const n = req.params.setNumber.includes('-')
+  const n = pfadParam(req, 'setNumber').includes('-')
     ? req.params.setNumber
     : req.params.setNumber + '-1';
   try {
@@ -426,7 +411,7 @@ router.post('/add-stream', async (req: LoggedInRequest, res) => {
       d=>{ if(cancelled) throw new Error('CANCELLED'); send(d); },
       V2.optionalPrice(purchase_price, 'Kaufpreis'), setCondition);
     send({ step:'done', ...result });
-  } catch (e) { if(e.message!=='CANCELLED') send({ step:'error', error:e.message }); }
+  } catch (e) { if(fehlertext(e)!=='CANCELLED') send({ step:'error', error:fehlertext(e) }); }
   unregisterAddSse();
   res.end();
 });
@@ -536,7 +521,7 @@ router.post('/import/csv', upload.single('file'), async (req, res) => {
     records = gelesen.records;
     uebersprungen = gelesen.uebersprungen;
   } catch(e) {
-    return res.status(400).json({ success:false, error:'CSV Parse Fehler: ' + e.message });
+    return res.status(400).json({ success:false, error:'CSV Parse Fehler: ' + fehlertext(e) });
   }
   if (!records.length) {
     return res.status(400).json({ success:false,
@@ -559,7 +544,7 @@ router.post('/import/csv', upload.single('file'), async (req, res) => {
   const rows: any[] = [];
   for (const row of records) {
     const rawSn = row.set_number || row['setnummer'] || row['set'] || Object.values(row)[0];
-    const sn = rawSn ? String(rawSn).split(';')[0].trim() : null;
+    const sn = rawSn ? vorDem(String(rawSn), ';').trim() : null;
     if (!sn) continue;
     const rawQty = row.quantity || row['anzahl'] || row['qty'] || row['menge'] || '1';
     const qty = parseInt(String(rawQty).replace(/[^0-9]/g, '') || '1') || 1;
@@ -607,7 +592,7 @@ router.post('/import/csv', upload.single('file'), async (req, res) => {
           break;
         } catch(e) {
           attempt++;
-          const msg = e.message || 'Unbekannter Fehler';
+          const msg = fehlertext(e) || 'Unbekannter Fehler';
           const isTimeout   = msg.includes('Timeout');
           const isRateLimit = msg.includes('429') || msg.includes('rate limit') || msg.includes('Daily limit');
           if ((isTimeout || isRateLimit) && attempt < 2) {
@@ -745,7 +730,7 @@ router.post('/:setNumber/instructions', async (req, res) => {
 
 // LoggedInRequest: liegt hinter dem router.use(requireLogin) weiter oben.
 router.post('/:setNumber/parts', async (req: LoggedInRequest, res) => {
-  try { const count = await importPartsForSet(req.params.setNumber, req.session.userId); res.json({ success:true, count }); }
+  try { const count = await importPartsForSet(pfadParam(req, 'setNumber'), req.session.userId); res.json({ success:true, count }); }
   catch (e) { handleRouteError(res, e); }
 });
 
@@ -766,7 +751,7 @@ const INSTR_EXT_BY_MIME = { 'application/pdf': '.pdf', 'image/jpeg': '.jpg', 'im
 
 const uploadInstr = multer({
   storage: multer.diskStorage({
-    destination: (req, file, cb) => { const dir=path.join(DATA_DIR,'uploads',String(req.session.userId)); fs.mkdirSync(dir,{recursive:true}); cb(null,dir); },
+    destination: (req, _file, cb) => { const dir=path.join(DATA_DIR,'uploads',String(req.session.userId)); fs.mkdirSync(dir,{recursive:true}); cb(null,dir); },
     filename: (req, file, cb) => {
       const safe = String(req.params.setNumber).replace(/[^a-z0-9-]/gi,'_');
       // ausTabelle statt direktem Zugriff: `INSTR_EXT_BY_MIME['constructor']`
@@ -781,7 +766,7 @@ const uploadInstr = multer({
   limits: { fileSize: 50*1024*1024 },
   // Derselbe Grund wie oben: Das hier ist das TOR. Ein geerbter Wert liess
   // beliebigen Inhalt an der Zusage "nur PDF, JPG oder PNG" vorbei.
-  fileFilter: (req, file, cb) => { if (ausTabelle(INSTR_EXT_BY_MIME, file.mimetype)) cb(null,true); else cb(new Error('Nur PDF, JPG oder PNG')); }
+  fileFilter: (_req, file, cb) => { if (ausTabelle(INSTR_EXT_BY_MIME, file.mimetype)) cb(null,true); else cb(new Error('Nur PDF, JPG oder PNG')); }
 });
 router.post('/:setNumber/instructions/upload', uploadInstr.single('file'), async (req, res) => {
   if (!req.file) return res.status(400).json({ success:false, error:'Keine Datei' });
@@ -812,7 +797,7 @@ router.delete('/:setNumber/instructions/:instrId', async (req, res) => {
         [instr.local_path]).catch(() => ({ ok: 1 }));   // im Zweifel behalten
       if (!rest) {
         try { const fp=path.join(APP_ROOT,instr.local_path.slice(1)); if(fs.existsSync(fp))fs.unlinkSync(fp); }
-        catch(e){ console.warn('[instructions] Datei konnte nicht gelöscht werden:', e.message); }
+        catch(e){ console.warn('[instructions] Datei konnte nicht gelöscht werden:', fehlertext(e)); }
       }
     }
     res.json({ success:true });

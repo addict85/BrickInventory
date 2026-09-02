@@ -22,8 +22,52 @@ const path   = require('node:path');
 const ROOT   = path.join(__dirname, '..');
 const read   = f => fs.readFileSync(path.join(ROOT, f), 'utf8');
 const SERVER = read('server.ts');
-/** Kommentare weg — der Erklärtext oben nennt express.static selbst. */
-const CODE   = SERVER.replace(/\/\*[\s\S]*?\*\//g, '').replace(/(^|[^:])\/\/[^\n]*/g, '$1');
+/**
+ * Kommentare weg — der Erklärtext oben nennt express.static selbst.
+ *
+ * ── Warum das mehr braucht als zwei replace() ───────────────────────────────
+ * Die frühere Fassung war `.replace(/\/\*[\s\S]*?\*\//g, '')`. Sie sieht harmlos
+ * aus, hat aber einen Startpunkt mitten in einer ZEICHENKETTE: `'/images/*'`
+ * enthält `/*`. Von dort frass sie alles bis zum nächsten `*​/` — und wie viel
+ * das ist, hing davon ab, wo zufällig der nächste Blockkommentar stand.
+ *
+ * Aufgefallen ist es, als ein einziger neuer Inline-Kommentar (`catch { /*…*​/ }`)
+ * weiter unten dazukam: Danach fand die Prüfung NULL Datei-Routen und meldete
+ * „liefe ins Leere" — vier Sicherheitsprüfungen auf einmal, ohne dass sich an
+ * der Sicherheit irgendetwas geändert hatte.
+ *
+ * Genau das ist der Schaden: Ein Sicherheitstest, der aus einem unbeteiligten
+ * Grund rot wird, wird beim nächsten Mal übergangen.
+ *
+ * Der Ersatz läuft einmal durch den Text und merkt sich, ob er gerade in einer
+ * Zeichenkette steht. Zeilenkommentare und Blockkommentare fallen weg,
+ * Zeichenketten bleiben unangetastet.
+ */
+function ohneKommentare(src) {
+  let out = '', i = 0, str = null;
+  while (i < src.length) {
+    const c = src[i], n = src[i + 1];
+    if (str) {                                   // in einer Zeichenkette
+      if (c === '\\') { out += c + (n ?? ''); i += 2; continue; }
+      if (c === str) str = null;
+      out += c; i++; continue;
+    }
+    if (c === '"' || c === "'" || c === '`') { str = c; out += c; i++; continue; }
+    if (c === '/' && n === '*') {                // Blockkommentar
+      const e = src.indexOf('*/', i + 2);
+      const bis = e < 0 ? src.length : e + 2;
+      for (const ch of src.slice(i, bis)) if (ch === '\n') out += '\n';   // Zeilen erhalten
+      i = bis; continue;
+    }
+    if (c === '/' && n === '/') {                // Zeilenkommentar
+      const e = src.indexOf('\n', i);
+      i = e < 0 ? src.length : e; continue;
+    }
+    out += c; i++;
+  }
+  return out;
+}
+const CODE   = ohneKommentare(SERVER);
 
 test('kein statischer Mount liefert Dateien aus dem Datenverzeichnis aus', () => {
   // express.static kennt keine Anmeldeprüfung. Für PUBLIC_DIR ist das richtig

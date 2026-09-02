@@ -141,9 +141,9 @@ function parseCsvDate(raw: unknown) {
   // Tag zuerst, mit Punkt oder Schrägstrich
   m = /^(\d{1,2})[./](\d{1,2})[./](\d{2}|\d{4})$/.exec(s);
   if (m) {
-    const day = parseInt(m[1]), mon = parseInt(m[2]);
-    let year = parseInt(m[3]);
-    if (m[3].length === 2) year += year < 70 ? 2000 : 1900;
+    const day = parseInt((m[1] ?? '')), mon = parseInt((m[2] ?? ''));
+    let year = parseInt((m[3] ?? ''));
+    if ((m[3] ?? '').length === 2) year += year < 70 ? 2000 : 1900;
     if (day < 1 || day > 31 || mon < 1 || mon > 12) return null;
     // Gegenprobe über ein echtes Datum: 31.02. gibt es nicht, die Prüfung auf
     // 1–31 allein liesse es durch. Date rollt einen ungültigen Tag in den

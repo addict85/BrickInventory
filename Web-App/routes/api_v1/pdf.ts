@@ -20,9 +20,9 @@
  * serveDataFile in server.ts).
  */
 import express from 'express';
-import { APP_ROOT, DATA_DIR, PUBLIC_DIR, resolveWebPath } from '../../utils/appPaths';
+import { APP_ROOT, DATA_DIR, resolveWebPath } from '../../utils/appPaths';
 import * as db from '../../db/database';
-import { handleRouteError, streamFileToResponse, meldeUndWeiter } from '../../utils/httpError';
+import {  streamFileToResponse, meldeUndWeiter, fehlertext, pfadParam } from '../../utils/httpError';
 import { requireToken } from './middleware';
 import { registerSse } from '../../utils/sseRegistry';
 import _pdfPath from 'path';
@@ -378,8 +378,8 @@ router.post('/sets/partslist-pdf', requireToken, async (req: AuthedRequest, res)
       await _pdfFs.writeFile(pdfFilePath(jobId), buf);
       await pdfJobWriteAndEmit(jobId, { status: 'done', error: null, user_id: uid });
     } catch(e) {
-      await pdfJobWriteAndEmit(jobId, { status: 'error', error: e.message, user_id: uid }).catch(() => {});
-      console.error('[PDF job] error:', e.message);
+      await pdfJobWriteAndEmit(jobId, { status: 'error', error: fehlertext(e), user_id: uid }).catch(() => {});
+      console.error('[PDF job] error:', fehlertext(e));
     }
   });
 
@@ -389,7 +389,7 @@ router.post('/sets/partslist-pdf', requireToken, async (req: AuthedRequest, res)
 // ── GET /api/v1/sets/partslist-pdf/status/:jobId ──────────────────────────────
 router.get('/sets/partslist-pdf/status/:jobId', requireToken, async (req: AuthedRequest, res) => {
   if (!validJobId(String(req.params.jobId))) return res.status(400).json({ success: false, error: 'Ungültige Job-ID' });
-  const job = await pdfJobReadFor(req.params.jobId, req.apiUser.user_id);
+  const job = await pdfJobReadFor(pfadParam(req, 'jobId'), req.apiUser.user_id);
   if (!job) return res.status(404).json({ success: false, error: 'Job nicht gefunden oder abgelaufen' });
   res.json({ success: true, status: job.status, error: job.error || null, etaSeconds: job.etaSeconds ?? null, missingImages: job.missingImages ?? null });
 });
@@ -525,12 +525,14 @@ async function buildPdf(sets: any, parts: any[]) {
   // den Code.
   const colorOrder: string[] = [], byColor: Record<string, any[]> = {};
   for (const p of dedupedParts) {
-    if (!byColor[p.color_name]) { byColor[p.color_name] = []; colorOrder.push(p.color_name); }
-    byColor[p.color_name].push(p);
+    // Die Liste einmal holen statt zweimal indizieren: `??=` legt sie an, wenn
+    // es sie noch nicht gibt, und liefert sie in beiden Faellen zurueck.
+    const liste = byColor[p.color_name] ??= (colorOrder.push(p.color_name), []);
+    liste.push(p);
   }
   colorOrder.sort((a, b) => a.localeCompare(b, 'de'));
   for (const color of colorOrder) {
-    byColor[color].sort((a, b) => (a.bl_part_number || a.part_number || '').localeCompare(b.bl_part_number || b.part_number || '', undefined, { numeric: true }));
+    byColor[color]?.sort((a, b) => (a.bl_part_number || a.part_number || '').localeCompare(b.bl_part_number || b.part_number || '', undefined, { numeric: true }));
   }
 
   // Bild-Puffer VORAB asynchron (gebündelt) laden, statt synchron pro Zeile im
@@ -541,7 +543,7 @@ async function buildPdf(sets: any, parts: any[]) {
     if (!imgSrc) return null;
     let src = imgSrc;
     const m = imgSrc.match(/\/api\/img-proxy\?url=(.+)/);
-    if (m) src = decodeURIComponent(m[1]);
+    if (m) src = decodeURIComponent((m[1] ?? ''));
     if (src.startsWith('/data/') || src.startsWith('/images/')) {
       return resolveWebPath(src) || path2.join(APP_ROOT, src.replace(/^\//, ''));
     }
@@ -560,10 +562,13 @@ async function buildPdf(sets: any, parts: any[]) {
 
   const COL = { num: 40, name: 200 };
   for (const colorName of colorOrder) {
-    const colorParts = byColor[colorName];
+    // Ein Farbname aus colorOrder hat immer eine Liste — er kam ja beim
+    // Anlegen dorthin. `?? []` sagt das dem Pruefer, ohne einen zweiten Fall
+    // zu erfinden.
+    const colorParts = byColor[colorName] ?? [];
     if (doc.y > 700) newPage();
 
-    const colorPart0 = byColor[colorName][0];
+    const colorPart0 = colorParts[0];
     const hexColor = colorPart0?.color_hex ? '#' + colorPart0.color_hex : '#94a3b8';
     const dotX = 40, dotY = doc.y + 3;
     doc.circle(dotX + 5, dotY + 5, 5).fill(hexColor).fillColor('#1e293b');

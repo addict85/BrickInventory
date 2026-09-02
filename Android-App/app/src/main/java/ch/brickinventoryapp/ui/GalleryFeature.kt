@@ -58,24 +58,32 @@ internal fun MainViewModel.loadSets() {
     val gen = ++galleryGeneration
     galleryListJob?.cancel()
     galleryListJob = viewModelScope.launch {
-        _state.update { it.copy(isLoading = true, galleryLoadingMore = false, galleryPage = 1) }
-        val s = _state.value
+        // Ein Fluss, eine Domaene: Seit `isLoading` aufgeteilt ist (siehe
+        // AppUiState.loginLaeuft), steht der Ladezustand der Galerie in der
+        // Galerie — und ein Abruf der Teileliste kann ihn nicht mehr beenden.
+        _galleryState.update {
+            it.copy(galleryLoading = true, galleryLoadingMore = false, galleryPage = 1)
+        }
+        val g = _galleryState.value
         val r = retryOnNetwork {
             repo.sets.getSets(scopeFor(ScopeFilter.View.GALLERY),
-                search = s.galleryQuery, theme = s.galleryTheme, sort = s.gallerySort, page = 1)
+                search = g.galleryQuery, theme = g.galleryTheme, sort = g.gallerySort, page = 1)
         }
         if (gen != galleryGeneration) return@launch   // inzwischen neuer Filter
         when (r) {
-            is Result.Success -> _state.update {
-                it.copy(isLoading = false, sets = r.data.sets, galleryTotal = r.data.total,
-                    galleryPage = 1,
-                    // Themen nur übernehmen, wenn welche kommen: Der Server
-                    // schickt sie ausschliesslich mit der ersten Seite, und
-                    // eine leere Liste würde die Auswahl sonst leerräumen.
-                    galleryThemes = if (r.data.themes.isNotEmpty()) r.data.themes else it.galleryThemes)
+            is Result.Success -> {
+                _galleryState.update {
+                    it.copy(sets = r.data.sets, galleryTotal = r.data.total,
+                        galleryPage = 1,
+                        // Themen nur übernehmen, wenn welche kommen: Der Server
+                        // schickt sie ausschliesslich mit der ersten Seite, und
+                        // eine leere Liste würde die Auswahl sonst leerräumen.
+                        galleryThemes = if (r.data.themes.isNotEmpty()) r.data.themes else it.galleryThemes,
+                        galleryLoading = false)
+                }
             }
             is Result.Error   -> {
-                _state.update { it.copy(isLoading = false) }
+                _galleryState.update { it.copy(galleryLoading = false) }
                 _snackbar.value = meldung(r)
             }
         }
@@ -90,9 +98,12 @@ internal fun MainViewModel.loadSets() {
  * Inhalt und doppelten Schlüsseln im Raster.
  */
 internal fun MainViewModel.loadMoreSets() {
-    val s = _state.value
-    if (s.isLoading || s.galleryLoadingMore) return
-    if (s.galleryTotal > 0 && s.sets.size >= s.galleryTotal) return
+    // Beide Ladezustaende der Galerie, und nur die: Vorher stand der erste in
+    // AppUiState.isLoading, und damit sperrte JEDER fremde Abruf — Anmeldung,
+    // Teileliste, Bewertung — das Nachladen hier (siehe AppUiState.loginLaeuft).
+    val g = _galleryState.value
+    if (g.galleryLoading || g.galleryLoadingMore) return
+    if (g.galleryTotal > 0 && g.sets.size >= g.galleryTotal) return
     val gen = galleryGeneration
 
     // ── Die Sperre MUSS vor dem launch stehen (Nachtrag 106) ─────────────────
@@ -115,23 +126,23 @@ internal fun MainViewModel.loadMoreSets() {
     //
     // Synchron gesetzt, vor dem launch: Der zweite Aufruf sieht `true` und
     // kehrt um.
-    _state.update { it.copy(galleryLoadingMore = true) }
+    _galleryState.update { it.copy(galleryLoadingMore = true) }
 
     viewModelScope.launch {
-        val next = s.galleryPage + 1
+        val next = g.galleryPage + 1
         val r = retryOnNetwork {
             repo.sets.getSets(scopeFor(ScopeFilter.View.GALLERY),
-                search = s.galleryQuery, theme = s.galleryTheme, sort = s.gallerySort, page = next)
+                search = g.galleryQuery, theme = g.galleryTheme, sort = g.gallerySort, page = next)
         }
         if (gen != galleryGeneration) {
             // Sperre lösen, sonst bleibt der Endlos-Scroll für immer blockiert:
             // Sie wird jetzt VOR dem launch gesetzt, also auch dann, wenn diese
             // Antwort verworfen wird (Nachtrag 106).
-            _state.update { it.copy(galleryLoadingMore = false) }
+            _galleryState.update { it.copy(galleryLoadingMore = false) }
             return@launch
         }
         when (r) {
-            is Result.Success -> _state.update {
+            is Result.Success -> _galleryState.update {
                 // ── Zweite Sicherung: keine doppelten Schlüssel (Nachtrag 106)
                 //
                 // Der Wächter oben schliesst das Wettrennen im Client. Der
@@ -149,7 +160,7 @@ internal fun MainViewModel.loadMoreSets() {
                 it.copy(galleryLoadingMore = false, sets = it.sets + neue,
                     galleryTotal = r.data.total, galleryPage = next)
             }
-            is Result.Error   -> _state.update { it.copy(galleryLoadingMore = false) }
+            is Result.Error   -> _galleryState.update { it.copy(galleryLoadingMore = false) }
         }
     }
 }
@@ -159,7 +170,7 @@ internal fun MainViewModel.setGalleryQuery(q: String) {
     // Suchtext gewechselt: Die gemerkte Stelle zeigt auf Sets, die in der neuen
     // Liste woanders oder gar nicht stehen (ScrollMemory.kt).
     scrollMemory.vergiss("gallery")
-    _state.update { it.copy(galleryQuery = q) }
+    _galleryState.update { it.copy(galleryQuery = q) }
     gallerySearchJob?.cancel()
     gallerySearchJob = viewModelScope.launch {
         delay(350)
@@ -171,7 +182,7 @@ internal fun MainViewModel.setGalleryTheme(theme: String) {
     // Thema gewechselt: Die gemerkte Stelle zeigt auf Sets, die in der neuen
     // Liste woanders oder gar nicht stehen (ScrollMemory.kt).
     scrollMemory.vergiss("gallery")
-    _state.update { it.copy(galleryTheme = theme) }
+    _galleryState.update { it.copy(galleryTheme = theme) }
     loadSets()
 }
 
@@ -179,7 +190,7 @@ internal fun MainViewModel.setGallerySort(sort: String) {
     // Sortierung gewechselt: Die gemerkte Stelle zeigt auf Sets, die in der neuen
     // Liste woanders oder gar nicht stehen (ScrollMemory.kt).
     scrollMemory.vergiss("gallery")
-    _state.update { it.copy(gallerySort = sort) }
+    _galleryState.update { it.copy(gallerySort = sort) }
     loadSets()
 }
 
@@ -219,10 +230,11 @@ internal fun MainViewModel.addSet(setNumber: String, quantity: Int = 1, purchase
         // Die Erfassung soll dann im Hintergrund erfolgen."
         //
         // Der Dialog schloss schon vorher sofort — was blieb, war das
-        // Ladehäkchen: `isLoading` speist den Aktualisieren-Kringel der Galerie,
-        // die Oberfläche sah also beschäftigt aus, während man schon die nächste
-        // Nummer tippen wollte. Das Nachladen unten setzt sein eigenes Flag; für
-        // den Abruf hier braucht es keines.
+        // Ladehäkchen: Der Aktualisieren-Kringel der Galerie hing daran (damals
+        // an `isLoading`, heute an `galleryLoading`), die Oberfläche sah also
+        // beschäftigt aus, während man schon die nächste Nummer tippen wollte.
+        // Das Nachladen unten setzt sein eigenes Flag; für den Abruf hier
+        // braucht es keines.
         //
         // ── Die Prüfung dagegen SCHON, und nur sie ──────────────────────────
         //
@@ -259,10 +271,15 @@ internal fun MainViewModel.addSet(setNumber: String, quantity: Int = 1, purchase
                 if (r.data.success && r.data.action == "exists") {
                     // Schon im Blickfeld — der Server hat nichts geschrieben.
                     // Detailansicht öffnen, wie beim Scanner.
-                    _state.update { it.copy(isLoading = false,
-                        gallerySearchFoundSetNumber = r.data.setNumber ?: sn) }
+                    //
+                    // Das frühere `isLoading = false` hier ist ersatzlos weg: Der
+                    // Erfassungsweg setzt es nirgends auf `true` (Nachtrag 87,
+                    // gleich darüber), es räumte also nur eine Anzeige ab, die
+                    // einer ANDEREN Domäne gehörte — im Zweifel dem laufenden
+                    // Galerie-Abruf.
+                    _galleryState.update { it.copy(gallerySearchFoundSetNumber = r.data.setNumber ?: sn) }
                 } else if (r.data.success) {
-                    _snackbar.value = ctx.getString(if (r.data.action == "added") R.string.vm_added else R.string.vm_updated, r.data.setNumber)
+                    _snackbar.value = text(if (r.data.action == "added") R.string.vm_added else R.string.vm_updated, r.data.setNumber)
                     loadSets()
                     // Alles nachladen, was sich mitverändert hat.
                     //
@@ -307,9 +324,9 @@ internal fun MainViewModel.addSet(setNumber: String, quantity: Int = 1, purchase
  * wissen, WELCHES nicht durchkam.
  */
 internal fun MainViewModel.meldeFehlgeschlageneErfassung(setNumber: String, grund: String?) {
-    _snackbar.value = ctx.getString(
+    _snackbar.value = text(
         R.string.vm_add_failed, setNumber,
-        grund ?: ctx.getString(R.string.pdfexp_unknown_error)
+        grund ?: text(R.string.pdfexp_unknown_error)
     )
 }
 
@@ -368,7 +385,7 @@ internal fun MainViewModel.updateQuantity(setNumber: String, quantity: Int, purc
             is Result.Error ->
                 // Fehler nicht mehr verschlucken — sonst ist ein fehlgeschlagener
                 // Save für den Nutzer unsichtbar.
-                _snackbar.value = ctx.getString(R.string.vm_error, meldung(r))
+                _snackbar.value = text(R.string.vm_error, meldung(r))
         }
     }
 }
@@ -379,8 +396,8 @@ internal fun MainViewModel.deleteSet(setNumber: String) {
             is Result.Success -> {
                 // Sofort aus dem State entfernen, damit die Kachel nicht bis zum
                 // Neuladen der Liste sichtbar bleibt; danach mit dem Server syncen.
-                _state.update { st -> st.copy(sets = st.sets.filterNot { it.setNumber == setNumber }) }
-                _snackbar.value = ctx.getString(R.string.vm_set_deleted, setNumber)
+                _galleryState.update { st -> st.copy(sets = st.sets.filterNot { it.setNumber == setNumber }) }
+                _snackbar.value = text(R.string.vm_set_deleted, setNumber)
                 loadSets()
                 loadStats()
                 // Die Portfolio-Bewertung enthält Sets — deletePart lädt sie
@@ -402,7 +419,7 @@ internal fun MainViewModel.deleteSet(setNumber: String) {
 internal fun MainViewModel.loadStats() {
     viewModelScope.launch {
         when (val r = repo.finanzen.getStats(scopeFor(ScopeFilter.View.GALLERY))) {
-            is Result.Success -> _state.update { it.copy(stats = r.data.stats) }
+            is Result.Success -> _galleryState.update { it.copy(stats = r.data.stats) }
             is Result.Error -> {}
         }
     }
@@ -411,7 +428,7 @@ internal fun MainViewModel.loadStats() {
 internal fun MainViewModel.loadGallery() {
     viewModelScope.launch {
         when (val r = repo.sets.getSets()) {
-            is Result.Success -> _state.update { it.copy(sets = r.data.sets) }
+            is Result.Success -> _galleryState.update { it.copy(sets = r.data.sets) }
             is Result.Error -> {}
         }
     }

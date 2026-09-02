@@ -19,7 +19,39 @@ data class HouseholdUiState(
 )
 
 data class AppUiState(
-    val isLoading: Boolean = false,
+    /**
+     * Läuft gerade eine ANMELDUNG? Und nur das.
+     *
+     * ── Warum das Feld umbenannt wurde ──────────────────────────────────────
+     * Es hiess `isLoading` und war das letzte querschneidende Feld des
+     * gemeinsamen Zustands — StateDomainBoundaryTest führte es ausdrücklich als
+     * den Grund, warum es AppUiState als geteiltes Objekt überhaupt noch gibt.
+     *
+     * NACHGEMESSEN: Geschrieben wurde es von vier Feature-Dateien an
+     * dreiundzwanzig Stellen (Sitzung 8, Teile 8, Galerie 4, Finanzen 3),
+     * GELESEN an fünf — und die fünf meinten vier verschiedene Dinge:
+     *   • AuthGraph        → „die Anmeldung läuft" (Knopf sperren)
+     *   • GalleryScreen    → „die Galerie lädt" (Aktualisieren-Kringel)
+     *   • CollectionGraph  → „die Galerie lädt" (Nachlade-Wächter)
+     *   • FinanceScreen    → „die Bewertung lädt"
+     *   • loadMoreSets()   → „die Galerie lädt" (Wächter gegen Doppelabruf)
+     *
+     * Ein Feld, vier Bedeutungen — das hatte Folgen, die über Rekomposition
+     * hinausgehen:
+     *   • Die Teileliste schrieb es, obwohl KEIN Teile-Bildschirm es liest
+     *     (dort gibt es partsLoading/minifigsLoading). Wirkung hatte es nur
+     *     woanders: `addPart()` liess die Galerie beschäftigt aussehen und
+     *     blockierte über den Wächter in loadMoreSets() das Nachladen.
+     *   • Wer schneller fertig war, gewann. `loadValuation()` setzte am Ende
+     *     `false` — mitten in einen noch laufenden Galerie-Abruf hinein. Der
+     *     Wächter gab damit einen zweiten Abruf frei, der Kringel verschwand
+     *     zu früh.
+     *
+     * Jede der vier Bedeutungen hat jetzt ihr eigenes Feld in ihrer eigenen
+     * Domäne: `galleryLoading`, `valuationLoading`, `partsLoading` (bestand
+     * schon) — und dieses hier für die Anmeldung.
+     */
+    val loginLaeuft: Boolean = false,
     /**
      * Fehler des ANMELDEFORMULARS — und nur der.
      *
@@ -48,22 +80,11 @@ data class AppUiState(
     val serverUrl: String = "",
     val isLoggedIn: Boolean = false,
     val isAdmin: Boolean = false,
-    val username: String = "",
-    val sets: List<SetItem> = emptyList(),
-    /**
-     * Galerie-Filter — ausgewertet wird er auf dem SERVER (Marcos Vorgabe).
-     * Hier steht nur, was gerade eingestellt ist, damit die Oberfläche es
-     * anzeigen und die nächste Seite mit denselben Werten nachladen kann.
-     */
-    val galleryQuery: String = "",
-    val galleryTheme: String = "",
-    val gallerySort: String = ch.brickinventoryapp.data.repository.GALLERY_DEFAULT_SORT,
-    /** Themen des ganzen Bestands — vom Server, nicht aus der geladenen Seite. */
-    val galleryThemes: List<String> = emptyList(),
-    val galleryTotal: Int = 0,
-    val galleryPage: Int = 1,
-    val galleryLoadingMore: Boolean = false,
-    val stats: DashboardStats? = null,
+    // `username` stand hier und wurde aus den Einstellungen gefuellt — gelesen
+    // hat es niemand. Was die Oberflaeche zeigt, ist `HouseholdMember.username`
+    // aus der Haushalts-Antwort, ein anderer Wert. Gefunden von der Regel
+    // „kein Zustandsfeld wird geschrieben, ohne je gelesen zu werden"
+    // (UiStateFieldsTest).
     val authToken: String = "",
     val currency: String = "EUR",
     /**
@@ -85,6 +106,53 @@ data class AppUiState(
     val userDefaultCondition: String? = null, // null = use global default
     val appTheme: String = "classic", // global vom Admin gewähltes App-Design
     val language: String = "system",
+)
+
+/**
+ * Galerie: Liste, Filter, Blaetterstand und Kennzahlen.
+ *
+ * ── Warum diese zehn Felder aus AppUiState heraus mussten ───────────────────
+ * NACHGEMESSEN, nicht vermutet: SECHZEHN Dateien sammeln `vm.state`. Gelesen
+ * werden die Galerie-Felder aber nur von dreien (GalleryScreen,
+ * CollectionGraph, SetDetailScreen). Die uebrigen dreizehn wurden bei jedem
+ * Blaettern, jeder Suche und jedem Nachladen neu zusammengesetzt, ohne ein
+ * einziges dieser Felder zu lesen — Minifiguren, Finanzen, Einstellungen, die
+ * Navigationsleiste.
+ *
+ * Und gerade die Galerie ist der Zustand, der sich am haeufigsten aendert:
+ * `galleryLoadingMore` allein wird an fuenf Stellen geschrieben, `sets` an
+ * sechs.
+ *
+ * Es ist dasselbe Muster, das fuer Teile, Finanzen, Katalog und den Barcode
+ * schon vollzogen wurde (Nachtraege 117 ff.) — bei der Galerie war es
+ * steckengeblieben, ausgerechnet beim groessten und lautesten Block.
+ */
+data class GalleryUiState(
+    val sets: List<SetItem> = emptyList(),
+    /**
+     * Galerie-Filter — ausgewertet wird er auf dem SERVER (Marcos Vorgabe).
+     * Hier steht nur, was gerade eingestellt ist, damit die Oberfläche es
+     * anzeigen und die nächste Seite mit denselben Werten nachladen kann.
+     */
+    val galleryQuery: String = "",
+    val galleryTheme: String = "",
+    val gallerySort: String = ch.brickinventoryapp.data.repository.GALLERY_DEFAULT_SORT,
+    /** Themen des ganzen Bestands — vom Server, nicht aus der geladenen Seite. */
+    val galleryThemes: List<String> = emptyList(),
+    val galleryTotal: Int = 0,
+    val galleryPage: Int = 1,
+    /**
+     * Erste Seite / Neuladen. `galleryLoadingMore` ist das Gegenstück fürs
+     * Anhängen — getrennt, weil die Oberfläche beide unterschiedlich zeigt
+     * (Kringel oben gegen Fussleiste unten) und der Wächter in loadMoreSets()
+     * beide braucht.
+     *
+     * Kam aus AppUiState.isLoading hierher: Dort teilte sich die Galerie das
+     * Feld mit Anmeldung, Teileliste und Bewertung. Siehe AppUiState.loginLaeuft.
+     */
+    val galleryLoading: Boolean = false,
+    val galleryLoadingMore: Boolean = false,
+    val stats: DashboardStats? = null,
 
     // Gallery "Search by barcode" flow
     // Auslöser für „öffne die Detailansicht dieses Sets". Gesetzt vom
@@ -93,6 +161,7 @@ data class AppUiState(
     // stammt aus der ersten Verwendung; gemeint ist beides.
     val gallerySearchFoundSetNumber: String? = null,   // → navigate to SetDetail
 )
+
 
 /**
  * Teile & Minifiguren — eigener Flow (gleiches Muster wie CatalogUiState).
@@ -129,6 +198,12 @@ data class FinanceUiState(
     val partsValuation: PartsValuationResponse? = null,
     val figsValuation: FigsValuationResponse? = null,
     val pnl: PnlResponse? = null,
+    /**
+     * Die Bewertung wird geholt. Kam aus AppUiState.isLoading — dort setzte
+     * ausgerechnet `loadValuation()` das Feld am Ende auf `false` und beendete
+     * damit die Ladeanzeige einer fremden Domäne (siehe AppUiState.loginLaeuft).
+     */
+    val valuationLoading: Boolean = false,
     val historyLoading: Boolean = false,
     val historyPeriodChangePct: Double? = null,
     val historyPoints: List<ChartPoint> = emptyList(),
@@ -195,7 +270,11 @@ data class ManualItemDetailUiState(
     val itemType: String = "",       // "part" | "fig"
     val itemId: String = "",         // part_number oder fig_number
     val colorId: Int = 0,
-    val newQuantity: Int = 0,        // nach Acquisition-Delete aktualisierte Gesamtmenge
+    // `newQuantity` stand hier — die Gesamtmenge nach dem Loeschen einer
+    // Erfassung. Gelesen wurde sie nie, und sie wird auch nicht gebraucht: Die
+    // angezeigte Menge folgt der SUMME der Erfassungen
+    // (ManualItemDetailScreen), und die laedt deleteManualAcquisition()
+    // unmittelbar danach neu.
     /**
      * Marktpreis je Zustand und Verlauf — dieselbe Antwortform wie beim Set.
      *
@@ -377,7 +456,10 @@ data class CatalogUiState(
     val themes: List<CatalogTheme> = emptyList(),
     val yearMin: Int? = null,
     val yearMax: Int? = null,
-    val yearCounts: Map<Int, Int> = emptyMap(),
+    // `yearCounts` (Anzahl Sets je Jahr) stand hier, wurde aus der
+    // Katalog-Metaantwort gefuellt und nirgends angezeigt. Der Wert steht
+    // weiterhin in CatalogMetaResponse; wer ein Jahres-Histogramm bauen will,
+    // holt ihn von dort. Gefunden von derselben Regel.
     // Detail
     val detail: CatalogSetDetail? = null,
     val detailLoading: Boolean = false,

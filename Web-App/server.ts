@@ -87,7 +87,7 @@ global._enableLogPersistence = (pool) => { _logPool = pool; _flushLogs(); };
 
 // Prevent worker crashes from unhandled promise rejections
 // Log them instead of crashing the process
-process.on('unhandledRejection', (reason: any, promise) => {
+process.on('unhandledRejection', (reason: any, _promise) => {
   console.error('[unhandledRejection] Unhandled promise rejection:', reason?.message || reason);
 });
 process.on('uncaughtException', (err) => {
@@ -103,16 +103,14 @@ process.on('uncaughtException', (err) => {
 global.startupStatus = { ready: false, step: 'Datenbank wird initialisiert...', progress: 0, total: 6 };
 
 // ── Cluster: fork one worker per CPU so multiple requests run in parallel ─────
-import { meldeUndWeiter } from './utils/httpError';
+import { meldeUndWeiter, fehlertext } from './utils/httpError';
 import cluster from 'cluster';
 import os from 'os';
-import { downloadSetImage } from './utils/setImages';
 import { starteHintergrundlaeufe } from './startup/backgroundJobs';
 import { bricklinkRequest } from './clients/bricklink';
-import { purgeExpiredTokens } from './utils/auth';
-import { purgeAltePreise } from './utils/priceHistory';
-import { enqueue } from './jobs/instructionQueue';
 import { generateThumb } from './routes/thumbs';
+import { alsAbrufFehler } from './clients/abrufFehler';
+import { getGlobalSetting, deleteGlobalSetting } from './utils/settings';
 
 const WORKERS = parseInt(process.env.WEB_WORKERS || '0') || Math.max(2, os.cpus().length);
 
@@ -217,7 +215,7 @@ app.use(compression({
 // die Header schützen trotzdem gegen fremdes Framing (Clickjacking durch andere
 // Seiten; same-origin ist für den eigenen PDF-Viewer erlaubt), MIME-Sniffing
 // und fremde Ressourcen-Quellen.
-app.use((req, res, next) => {
+app.use((_req, res, next) => {
   res.setHeader('X-Frame-Options', 'SAMEORIGIN');
   res.setHeader('X-Content-Type-Options', 'nosniff');
   res.setHeader('Referrer-Policy', 'same-origin');
@@ -297,7 +295,10 @@ if (process.env.NODE_ENV === 'production') app.set('trust proxy', 1);
 // normalisiert.
 app.use((req, _res, next) => {
   if (req.url.startsWith('//') || req.url.includes('//', 1)) {
-    const [pathPart, ...rest] = req.url.split('?');
+    const [pathTeil, ...rest] = req.url.split('?');
+    // split() liefert immer mindestens ein Element — auch fuer den leeren
+    // String. `?? ''` sagt das dem Pruefer, es ist kein zweiter Fall.
+    const pathPart = pathTeil ?? '';
     const cleaned = pathPart.replace(/\/{2,}/g, '/');
     if (cleaned !== pathPart) req.url = cleaned + (rest.length ? '?' + rest.join('?') : '');
   }
@@ -385,7 +386,7 @@ app.use(session({
 // Request die api_tokens-Tabelle zu befragen.
 const { resolveUserId } = require('./utils/auth') as typeof import('./utils/auth');
 // Pfade zentral — NICHT aus __dirname ableiten, siehe utils/appPaths.ts.
-const { APP_ROOT, DATA_DIR, PUBLIC_DIR, IMAGES_DIR } = require('./utils/appPaths') as typeof import('./utils/appPaths');
+const {  DATA_DIR, PUBLIC_DIR } = require('./utils/appPaths') as typeof import('./utils/appPaths');
 
 // Path-Traversal-Schutz: Segmente wie ".." oder absolute Pfade könnten sonst
 // aus dem data/-Verzeichnis ausbrechen (z.B. /data/uploads/..%2f..%2fserver.js).
@@ -656,7 +657,7 @@ app.use(express.static(PUBLIC_DIR, {
 }));
 
 // Public: startup status (no auth — needed before login)
-app.get('/api/startup-status', async (req, res) => {
+app.get('/api/startup-status', async (_req, res) => {
   res.set('Cache-Control', 'no-store, no-cache, must-revalidate');
   res.set('Pragma', 'no-cache');
   res.set('Expires', '0');
@@ -666,10 +667,9 @@ app.get('/api/startup-status', async (req, res) => {
 
   // Try DB for cross-worker state
   try {
-    const db2 = require('./db/database') as typeof import('./db/database');
-    const row = await db2.get(`SELECT value FROM global_settings WHERE key='startup_status'`).catch(() => null);
-    if (row?.value) {
-      const status = JSON.parse(row.value);
+    const roh = await getGlobalSetting('startup_status');
+    if (roh) {
+      const status = JSON.parse(roh);
       global.startupStatus = status;
       return res.json(status);
     }
@@ -680,7 +680,7 @@ app.get('/api/startup-status', async (req, res) => {
 });
 
 // Public: health check with DB pool stats
-app.get('/api/health', (req, res) => {
+app.get('/api/health', (_req, res) => {
   const db = require('./db/database') as typeof import('./db/database');
   const { getPoolStats } = db;
   const pool = getPoolStats ? getPoolStats() : {};
@@ -710,7 +710,11 @@ app.get('/api/debug/test', async (req, res) => {
     res.json({ success: true, data });
   // Diese Diagnoseroute ist ohnehin nur ausserhalb von Produktion erreichbar
   // (siehe 404 oben), die Detailausgabe ist hier also gewollt und harmlos.
-  } catch (e) { res.json({ success: false, error: e.message, detail: e.detail || null }); }
+  } catch (e) {
+    // `detail` traegt die Antwort der Gegenstelle, wenn ein Abruf-Klient sie
+    // angehaengt hat — siehe clients/abrufFehler.ts.
+    res.json({ success: false, error: fehlertext(e), detail: alsAbrufFehler(e).detail || null });
+  }
 });
 
 // ── E-Mail Bestätigung: /verify?token=... ─────────────────────────────────────
@@ -732,14 +736,14 @@ app.get('/verify', async (req, res) => {
   } catch (e) {
     // Ein Datenbankfehler darf dem Klickenden keine Fehlerseite zeigen — er
     // kann nichts damit anfangen. Ins Protokoll gehört er trotzdem.
-    console.error('Verify error:', e.message);
+    console.error('Verify error:', fehlertext(e));
     res.redirect('/?verified=invalid');
   }
 });
 
 // ── Passwort zurücksetzen: /reset-password?token=... ──────────────────────────
 // Explizit registriert damit location.pathname === '/reset-password' stimmt.
-app.get('/reset-password', (req, res) => {
+app.get('/reset-password', (_req, res) => {
   res.set('Cache-Control', 'no-cache');
   res.sendFile(path.join(PUBLIC_DIR, 'index.html'));
 });
@@ -752,7 +756,7 @@ app.get('/reset-password', (req, res) => {
 // Retry hat die komplette HTML-Seite übertragen.
 // Alle echten /api-Routen (inkl. img-proxy und debug/test) sind weiter oben
 // registriert und damit nicht betroffen.
-app.use('/api', (req, res) => res.status(404).json({ success: false, error: 'Endpoint nicht gefunden' }));
+app.use('/api', (_req, res) => res.status(404).json({ success: false, error: 'Endpoint nicht gefunden' }));
 
 app.get('*', async (req, res) => {
   res.set('Cache-Control', 'no-cache');
@@ -773,7 +777,7 @@ app.get('*', async (req, res) => {
 // Fängt synchron geworfene Fehler und next(err)-Aufrufe, die an den
 // Route-Catches vorbeikommen — loggt voll, antwortet generisch.
 const { handleRouteError: _handleRouteError } = require('./utils/httpError') as typeof import('./utils/httpError');
-app.use((err: any, req: Request, res: Response, next: NextFunction) => { _handleRouteError(res, err); });
+app.use((err: any, _req: Request, res: Response, _next: NextFunction) => { _handleRouteError(res, err); });
 
 // Der Server nimmt Anfragen erst an, NACHDEM initSchemaOnce() das Schema
 // (inkl. user_sessions) fertig hat — sonst schlägt der Session-Store mit
@@ -876,6 +880,23 @@ db.initSchemaOnce().then(async () => {
       await new Promise<void>(resolve => httpServer.close(() => resolve()));
       console.log('[shutdown] keine offenen HTTP-Verbindungen mehr');
       await (require('./utils/pgNotify') as typeof import('./utils/pgNotify')).close().catch(() => {});
+      // Die Sperr-Verbindung des primaeren Workers ZUERST zurueckgeben.
+      //
+      // Sie kommt aus `pool.connect()` und wird absichtlich nie freigegeben,
+      // damit der Advisory-Lock bestehen bleibt (siehe electPrimaryWorker).
+      // `pool.end()` wartet aber auf JEDEN ausgeliehenen Client — ohne diese
+      // Zeile bleibt sie bis zur Frist oben offen, und der Lock wird erst
+      // freigegeben, wenn Postgres die Verbindung als tot erkennt. Ein sofort
+      // nachfolgender Start faende ihn dann noch belegt.
+      //
+      // Gefunden von noUnusedLocals: `_primaryLockClient` wurde gesetzt und
+      // nie wieder gelesen — also auch nie geschlossen.
+      if (_primaryLockClient) {
+        // Ein Fehler hier heisst: Die Verbindung ist schon tot — dann ist der
+        // Lock ohnehin weg.
+        try { _primaryLockClient.release(); } catch { void 0; }
+        _primaryLockClient = null;
+      }
       await (require('./db/database') as typeof import('./db/database')).pool.end().catch(() => {});
       console.log('[shutdown] Datenbankverbindungen geschlossen');
       clearTimeout(force);
@@ -897,7 +918,7 @@ db.initSchemaOnce().then(async () => {
 
   // Only primary worker clears stale startup_status — secondaries read it from DB
   if (isPrimaryWorker) {
-    await db.run(`DELETE FROM global_settings WHERE key='startup_status'`).catch(() => {});
+    await deleteGlobalSetting('startup_status').catch(() => {});
   }
 
   (async () => {
@@ -905,7 +926,7 @@ db.initSchemaOnce().then(async () => {
       try {
         await csvSync.run();
       } catch(e) {
-        console.error('[rb-csv-sync] startup error:', e.message);
+        console.error('[rb-csv-sync] startup error:', fehlertext(e));
         global.startupStatus = { ready: true, step: 'Fehler beim CSV-Import', progress: 6, total: 6 };
       }
     } else {
@@ -913,9 +934,9 @@ db.initSchemaOnce().then(async () => {
       while (true) {
         await new Promise(r => setTimeout(r, 500));
         try {
-          const row = await db.get(`SELECT value FROM global_settings WHERE key='startup_status'`).catch(() => null);
-          if (row?.value) {
-            const s = JSON.parse(row.value);
+          const roh = await getGlobalSetting('startup_status');
+          if (roh) {
+            const s = JSON.parse(roh);
             global.startupStatus = s;
             if (s.ready) break;
           }
@@ -942,7 +963,7 @@ db.initSchemaOnce().then(async () => {
   scheduler.register('brickset_retry', () =>
     (require('./jobs/bricksetRetry') as typeof import('./jobs/bricksetRetry')).processRetryQueue().catch(e => console.error('[brickset-retry]', e.message)));
   scheduler.register('csv_sync', () =>
-    db.run("DELETE FROM global_settings WHERE key='rb_csv_last_sync'")
+    deleteGlobalSetting('rb_csv_last_sync')
       .then(() => csvSync.run())
       .catch(e => console.error('[rb-csv-sync daily]', e.message)));
   scheduler.startTriggerPoll();
@@ -956,12 +977,12 @@ db.initSchemaOnce().then(async () => {
   (require('./utils/pgNotify') as typeof import('./utils/pgNotify')).listen('csv_sync_trigger', async () => {
     if (_csvSyncRunning) return;
     try {
-      const row = await db.get(`SELECT value FROM global_settings WHERE key='csv_sync_trigger'`).catch(() => null);
-      if (!row?.value) return;
-      await db.run(`DELETE FROM global_settings WHERE key='csv_sync_trigger'`).catch(() => {});
+      const ausloeser = await getGlobalSetting('csv_sync_trigger');
+      if (!ausloeser) return;
+      await deleteGlobalSetting('csv_sync_trigger').catch(() => {});
       console.log('[rb-csv-sync] Manual trigger received — starting CSV sync');
       _csvSyncRunning = true;
-      await db.run("DELETE FROM global_settings WHERE key='rb_csv_last_sync'").catch(() => {});
+      await deleteGlobalSetting('rb_csv_last_sync').catch(() => {});
       await csvSync.run().catch(e => console.error('[rb-csv-sync manual]', e.message));
     } catch (e) { meldeUndWeiter('server:csv-abgleich-anstossen', e); }
     finally { _csvSyncRunning = false; }
@@ -1055,7 +1076,7 @@ db.initSchemaOnce().then(async () => {
           await tick();
         }
         await monitor.update('imgDl', { status: 'idle', sub: 'Alle Bilder gecacht', label: '📥 Bild-Download (CDN)' }).catch(() => {});
-      } catch(e) { console.error('[img-dl-bg] error:', e.message); }
+      } catch(e) { console.error('[img-dl-bg] error:', fehlertext(e)); }
     };
     setTimeout(() => run().finally(() => setInterval(run, 60 * 60 * 1000)), 30_000);
   })();

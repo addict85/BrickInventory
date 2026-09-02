@@ -3,13 +3,14 @@ import express from 'express';
 const router  = express.Router();
 import bcrypt from 'bcryptjs';
 import * as db from '../db/database';
-import { handleRouteError, logAndContinue, meldeUndWeiter } from '../utils/httpError';
+import { handleRouteError, logAndContinue, meldeUndWeiter, fehlerCode, fehlertext, pfadParam } from '../utils/httpError';
 import { hashToken, verifiziereEmailToken, assertLoginAllowed, establishSession, revokeAllTokens, revokeAllSessions, deleteToken, BCRYPT_ROUNDS, USERNAME_RE, EMAIL_RE, isValidLoginIdentifier } from '../utils/auth';
 import { checkLoginAllowed, recordLoginFailure, recordLoginSuccess, ipThrottle } from '../utils/loginLimiter';
 import crypto from 'crypto';
 import { strictBool } from '../utils/validate';
 import { sendPasswordResetMail, sendVerificationMail } from './mailer';
 import type { Request, Response, NextFunction } from 'express';
+import { getGlobalSetting } from '../utils/settings';
 
 /**
  * Fester bcrypt-Hash für Logins mit unbekanntem Benutzernamen.
@@ -83,7 +84,7 @@ router.post('/login', async (req, res) => {
         [hashToken(webToken), user.id]  // DB speichert nur den Hash
       );
     } catch (e) {
-      console.warn('[login] Web-Token konnte nicht gespeichert werden, Anmeldung läuft über die Session:', e?.message || e);
+      console.warn('[login] Web-Token konnte nicht gespeichert werden, Anmeldung läuft über die Session:', fehlertext(e));
       webToken = null;
     }
     res.json({ success: true, ...(webToken ? { webToken } : {}), user: { id: user.id, username: user.username, isAdmin: req.session.isAdmin,
@@ -215,7 +216,7 @@ router.put('/profile', async (req, res) => {
 });
 
 // Admin: list users
-router.get('/users', requireAdmin, async (req, res) => {
+router.get('/users', requireAdmin, async (_req, res) => {
   try {
     const users = await db.all('SELECT id, username, is_admin, created_at FROM users ORDER BY id');
     res.json({ success: true, users });
@@ -240,14 +241,14 @@ router.post('/users', requireAdmin, async (req, res) => {
     if (r.changes === 0) return res.status(409).json({ success: false, error: 'Benutzername bereits vergeben' });
     res.json({ success: true });
   } catch (e) {
-    if (e.code === '23505') return res.status(409).json({ success: false, error: 'Benutzername bereits vergeben' });
+    if (fehlerCode(e) === '23505') return res.status(409).json({ success: false, error: 'Benutzername bereits vergeben' });
     handleRouteError(res, e);
   }
 });
 
 // Admin: toggle admin role
 router.put('/users/:id/admin', requireAdmin, async (req, res) => {
-  const targetId = parseInt(req.params.id);
+  const targetId = parseInt(pfadParam(req, 'id'));
   try {
     // Dieselbe strenge Prüfung wie auf der v1-Route — die Zeichenkette "false"
     // ist in JavaScript wahr und meldete hier Erfolg, ohne Rechte zu entziehen.
@@ -276,7 +277,7 @@ router.put('/users/:id/admin', requireAdmin, async (req, res) => {
  */
 router.put('/users/:id/password', requireAdmin, async (req, res) => {
   const { password } = req.body || {};
-  const targetId = parseInt(req.params.id);
+  const targetId = parseInt(pfadParam(req, 'id'));
 
   if (!password || String(password).length < 8)
     return res.status(400).json({ success: false, error: 'Passwort muss mindestens 8 Zeichen lang sein.' });
@@ -483,10 +484,9 @@ router.post('/qr-login', ipThrottle('qr-login', 30, 60 * 60 * 1000), async (req,
 });
 
 // ── GET /api/auth/registration-status — public, no auth required ─────────────
-router.get('/registration-status', async (req, res) => {
+router.get('/registration-status', async (_req, res) => {
   try {
-    const row = await db.get("SELECT value FROM global_settings WHERE key='registration_enabled'");
-    res.json({ enabled: row?.value === '1' });
+    res.json({ enabled: await getGlobalSetting('registration_enabled') === '1' });
   } catch(_) { res.json({ enabled: false }); }
 });
 
@@ -496,7 +496,7 @@ router.post('/register', ipThrottle('register', 5, 60 * 60 * 1000), async (req, 
   const lang = ['de', 'en'].includes(language) ? language : 'de';
 
   // Check if registration is enabled
-  const regEnabled = (await db.get("SELECT value FROM global_settings WHERE key='registration_enabled'"))?.value;
+  const regEnabled = await getGlobalSetting('registration_enabled');
   if (regEnabled === '0') return res.status(403).json({ success: false, error: 'Registrierung ist deaktiviert.' });
 
   if (!username || !email || !password)
@@ -552,7 +552,7 @@ router.post('/register', ipThrottle('register', 5, 60 * 60 * 1000), async (req, 
       console_mode: result.mode === 'console',
     });
   } catch (e) {
-    if (e.code === '23505') return res.status(409).json({ success: false, error: 'Benutzername oder E-Mail bereits vergeben.' });
+    if (fehlerCode(e) === '23505') return res.status(409).json({ success: false, error: 'Benutzername oder E-Mail bereits vergeben.' });
     handleRouteError(res, e);
   }
 });

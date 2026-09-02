@@ -11,6 +11,7 @@ import { handleRouteError } from '../../utils/httpError';
 import { requireToken } from './middleware';
 import { householdStatus, createInvite, redeemInvite, unlink } from '../../utils/household';
 import { setUserSetting, effectiveCondition, globalDefaultCondition } from '../../utils/settings';
+import { getGlobalSetting } from '../../utils/settings';
 const router = express.Router();
 
 router.get('/settings', requireToken, async (req: AuthedRequest, res) => {
@@ -23,8 +24,7 @@ router.get('/settings', requireToken, async (req: AuthedRequest, res) => {
   // zweites Mal existiert (Etappe 6).
   settings['effective_condition'] = await effectiveCondition(uid);
   // Globales App-Design (vom Admin gesetzt) — die App wendet es an
-  const themeRow = await db.get("SELECT value FROM global_settings WHERE key='app_theme'").catch(()=>null);
-  settings['app_theme'] = themeRow?.value || 'classic';
+  settings['app_theme'] = await getGlobalSetting('app_theme') || 'classic';
   res.json({ success:true, settings });
 });
 
@@ -45,7 +45,7 @@ router.put('/settings', requireToken, async (req: AuthedRequest, res) => {
 
 // GET /api/v1/settings/default-condition — der GLOBALE Default (Monitoring-UI).
 // Für den effektiven, benutzerspezifischen Wert: GET /settings (effective_condition).
-router.get('/settings/default-condition', requireToken, async (req: AuthedRequest, res) => {
+router.get('/settings/default-condition', requireToken, async (_req: AuthedRequest, res) => {
   try {
     res.json({ success: true, condition: await globalDefaultCondition() });
   } catch (e) { handleRouteError(res, e); }

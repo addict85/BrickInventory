@@ -62,16 +62,36 @@ private const val CATALOG_RETRY_DELAY_MS = 500L
 class CatalogViewModel @Inject constructor(
     private val repo: BrickRepository,
     @param:ApplicationContext private val ctx: Context,
+    meldungen: ch.brickinventoryapp.data.MeldungsKanal,
 ) : ViewModel() {
 
     private val _catalogState = MutableStateFlow(CatalogUiState())
     val state = _catalogState.asStateFlow()
 
-    /** Meldungen fuer die Snackbar; der Graph leitet sie weiter und quittiert. */
-    private val _snackbar = MutableStateFlow<String?>(null)
-    val snackbar = _snackbar.asStateFlow()
+    /**
+     * Meldungen fuer die Snackbar — jetzt DERSELBE Fluss wie im MainViewModel.
+     *
+     * Vorher hatte dieses ViewModel einen eigenen, und der Navigationsgraph
+     * musste ihn weiterleiten und quittieren: zwei gleichlautende Bloecke in
+     * CatalogGraph.kt, einer je Ziel. Wer ein drittes Ziel hinzufuegt und den
+     * Block vergisst, verliert die Meldungen dieses Bildschirms lautlos.
+     * Begruendung und Muster: MeldungsKanal.kt.
+     */
+    private val _snackbar = meldungen.fluss
 
-    fun snackbarGelesen() { _snackbar.value = null }
+    /**
+     * Text in der SPRACHE DER APP — dieselbe Regel wie in MainViewModel.text().
+     *
+     * `ctx` ist der Application-Context, und den lokalisiert
+     * AppCompatDelegate.setApplicationLocales() unterhalb von Android 13
+     * nicht. Ein direktes ctx.getString() gab hier die Systemsprache aus —
+     * ausgerechnet in meldung(), der Stelle, die es nur gibt, damit
+     * Fehlermeldungen in der gewaehlten Sprache erscheinen.
+     */
+    private fun text(id: Int, vararg args: Any?): String {
+        val c = ch.brickinventoryapp.util.LanguageManager.localizedContext(ctx)
+        return if (args.isEmpty()) c.getString(id) else c.getString(id, *args)
+    }
 
     // Entprellte Suche: pro Tastendruck wird der vorherige Lade-Job
     // abgebrochen, geladen wird erst 350ms nach dem letzten.
@@ -100,8 +120,8 @@ class CatalogViewModel @Inject constructor(
     private fun meldung(fehler: Result.Error): String {
         if (fehler.message.isNotBlank()) return fehler.message
         val id = fehlerTextId(fehler.art)
-        return if (fehlerTextBrauchtCode(fehler.art)) ctx.getString(id, fehler.httpCode ?: 0)
-        else ctx.getString(id)
+        return if (fehlerTextBrauchtCode(fehler.art)) text(id, fehler.httpCode ?: 0)
+        else text(id)
     }
 
     fun loadCatalogMeta() {
@@ -109,8 +129,7 @@ class CatalogViewModel @Inject constructor(
             when (val r = retryOnNetwork { repo.admin.getCatalogMeta() }) {
                 is Result.Success -> if (r.data.success) _catalogState.update {
                     it.copy(
-                        themes = r.data.themes, yearMin = r.data.yearMin, yearMax = r.data.yearMax,
-                        yearCounts = r.data.yearCounts.associate { yc -> yc.year to yc.n }
+                        themes = r.data.themes, yearMin = r.data.yearMin, yearMax = r.data.yearMax
                     )
                 }
                 is Result.Error -> { /* Meta ist optional — Filter bleiben leer, Liste geht trotzdem */ }

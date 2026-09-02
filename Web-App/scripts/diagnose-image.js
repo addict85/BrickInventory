@@ -94,7 +94,9 @@ function hole(url) {
     const abs = path.join(DATA_DIR, lokal.replace(/^\//, ''));
     const orig = abs.replace(/_thumb(\.[^.]+)$/, '$1');
     const thumb = orig.replace(/(\.[^.]+)$/, '_thumb$1');
-    for (const [was, p] of [['Original', orig], ['Vorschau', thumb]]) {
+    /** @type {Array<[string, string]>} */
+    const paare = [['Original', orig], ['Vorschau', thumb]];
+    for (const [was, p] of paare) {
       const st = fs.existsSync(p) ? fs.statSync(p) : null;
       zeile(was, st ? `${p}  (${st.size} Bytes)` : `FEHLT: ${p}`);
     }

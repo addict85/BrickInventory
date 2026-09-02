@@ -5,8 +5,9 @@ import { ensureFresh } from '../partsSummary';
 import { fetchMissingBlIds } from '../../routes/parts';
 import type { RbSetTeil } from '../../clients/rebrickable';
 import { getAllSetParts, getRbKey, httpsGetRobust } from '../../clients/rebrickable';
-import { clampPageSize, conditionFromAcquisitions, conditionsFromAcquisitions, applyManualCondition, withOwners, MAX_PAGE_SIZE, UNPAGED_LIMIT, SET_PARTS_MAX_PAGE_SIZE } from './shared';
+import { clampPageSize, applyManualCondition, withOwners, MAX_PAGE_SIZE, UNPAGED_LIMIT, SET_PARTS_MAX_PAGE_SIZE } from './shared';
 import { meldeUndWeiter } from '../../utils/httpError';
+import { getGlobalSetting } from '../../utils/settings';
 
 /**
  * Leseabfragen für Teile — inklusive der Ausweichebenen (CSV-Zwischenspeicher,
@@ -188,7 +189,7 @@ async function teileErsatzquelle(set_number: string) {
     // Tageskontingent über consumeRebrickableDaily(), Drossel über den
     // Limiter, Antwort im subsets_cache. Die Zweitfassung holte ohne all das
     // und ist entfallen.
-    const rbKey = (await db.get("SELECT value FROM global_settings WHERE key='rebrickable_api_key'"))?.value;
+    const rbKey = await getGlobalSetting('rebrickable_api_key');
     if (rbKey) {
       for (const sn of [n, alt]) {
         const items = await getAllSetParts(sn).catch(() => []);

@@ -28,7 +28,7 @@ internal fun MainViewModel.saveServerUrl(url: String) {
 // ── Auth ─────────────────────────────────────────────────────────────────
 internal fun MainViewModel.login(username: String, password: String) {
     viewModelScope.launch {
-        _state.update { it.copy(isLoading = true, loginError = null) }
+        _state.update { it.copy(loginLaeuft = true, loginError = null) }
         val url = prefs.serverUrl.first()
         when (val r = repo.admin.login(url, username, password)) {
             is Result.Success -> {
@@ -41,20 +41,20 @@ internal fun MainViewModel.login(username: String, password: String) {
                     // etwas auf den Filter hinwies. Dieselbe Regel wie in der
                     // Webapp.
                     ch.brickinventoryapp.data.ScopeFilter.resetAll(ctx)
-                    _state.update { it.copy(isLoading = false, isLoggedIn = true, isAdmin = r.data.user?.isAdmin == true) }
+                    _state.update { it.copy(loginLaeuft = false, isLoggedIn = true, isAdmin = r.data.user?.isAdmin == true) }
                     loadDashboard()
                 } else {
-                    _state.update { it.copy(isLoading = false, loginError = r.data.error ?: ctx.getString(R.string.err_login_failed)) }
+                    _state.update { it.copy(loginLaeuft = false, loginError = r.data.error ?: text(R.string.err_login_failed)) }
                 }
             }
-            is Result.Error -> _state.update { it.copy(isLoading = false, loginError = meldung(r)) }
+            is Result.Error -> _state.update { it.copy(loginLaeuft = false, loginError = meldung(r)) }
         }
     }
 }
 
 internal fun MainViewModel.loginWithQrToken(serverUrl: String, token: String) {
     viewModelScope.launch {
-        _state.update { it.copy(isLoading = true, loginError = null) }
+        _state.update { it.copy(loginLaeuft = true, loginError = null) }
         // Save server URL first so Retrofit uses it for this call
         prefs.saveServerUrl(serverUrl.trim().trimEnd('/'))
         when (val r = repo.admin.qrLogin(token)) {
@@ -64,13 +64,13 @@ internal fun MainViewModel.loginWithQrToken(serverUrl: String, token: String) {
                     prefs.saveUsername(r.data.user?.username ?: "")
                     // Auch der QR-Login ist eine Anmeldung (Nachtrag 46).
                     ch.brickinventoryapp.data.ScopeFilter.resetAll(ctx)
-                    _state.update { it.copy(isLoading = false, isLoggedIn = true, isAdmin = r.data.user?.isAdmin == true) }
+                    _state.update { it.copy(loginLaeuft = false, isLoggedIn = true, isAdmin = r.data.user?.isAdmin == true) }
                     loadDashboard()
                 } else {
-                    _state.update { it.copy(isLoading = false, loginError = r.data.error ?: ctx.getString(R.string.err_qr_login_failed)) }
+                    _state.update { it.copy(loginLaeuft = false, loginError = r.data.error ?: text(R.string.err_qr_login_failed)) }
                 }
             }
-            is Result.Error -> _state.update { it.copy(isLoading = false, loginError = meldung(r)) }
+            is Result.Error -> _state.update { it.copy(loginLaeuft = false, loginError = meldung(r)) }
         }
     }
 }
@@ -104,6 +104,10 @@ internal fun MainViewModel.logout() {
         // Die herausgelösten Flows gehören zum selben Konto und müssen
         // mit zurückgesetzt werden — sonst zeigt der nächste Nutzer auf
         // demselben Gerät noch fremde Teile und Bewertungen.
+        // Die Galerie gehoert dazu, seit sie einen eigenen Fluss hat: Ohne
+        // diese Zeile zeigte der naechste Nutzer auf demselben Geraet noch
+        // die Sets und Kennzahlen des vorigen.
+        _galleryState.value = GalleryUiState()
         _partsState.value = PartsUiState()
         _financeState.value = FinanceUiState()
         _csvImportState.value = CsvImportUiState()

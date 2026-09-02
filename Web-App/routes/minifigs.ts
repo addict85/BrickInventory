@@ -39,19 +39,15 @@ import express from 'express';
 
 const router  = express.Router();
 import multer from 'multer';
-import { parse } from 'csv-parse/sync';
 import * as db from '../db/database';
-import { handleRouteError, logAndContinue, meldeUndWeiter } from '../utils/httpError';
-import { recordAcquisitionForDay, findSameDayAcquisition } from '../utils/acquisitions';
-import { acquisitionMoveSource, resolveWriteTarget, parseScopeMode } from '../utils/household';
-import { getSetMinifigs, getMinifigInfo, getRbKey } from '../clients/rebrickable';
+import { handleRouteError, logAndContinue, meldeUndWeiter, fehlertext } from '../utils/httpError';
+import { recordAcquisitionForDay } from '../utils/acquisitions';
+import {  getMinifigInfo } from '../clients/rebrickable';
 import { importMinifigsForSet } from '../utils/minifigsImport';
 import { requireLogin } from './auth';
 import { DEFAULT_PRICE_CONDITION } from '../utils/financeCalc';
 // Siehe routes/parts.ts: Alias wegen der lokalen `effectiveCondition`.
 import { effectiveCondition as userDefaultCondition } from '../utils/settings';
-import { scopeIds, writableIds } from '../utils/household';
-import { moveManualAcquisition } from '../utils/setMove';
 import { fetchMinifigPrice, fetchPartPrice } from '../utils/financeCalc';
 import { getSetting, getGlobalSetting } from '../utils/settings';
 import { csvEinlesen, sendCsvText, toCsv, uebersprungenHinweis } from '../utils/csvExport';
@@ -69,38 +65,44 @@ router.use(requireLogin);
 
 // Shared logic to build the Minifiguren CSV export content (manuell erfasst only).
 // Used by both the standalone CSV download and the combined ZIP export in settings.js.
+// Dieselbe Bauart wie SETS_CSV_SQL in utils/setService.ts, aus demselben Grund:
+// Hier lief eine Abfrage JE MINIFIGUR. Auch die Falle ist dieselbe — zu einer
+// vorhandenen Erfassung OHNE Preis gehoert ein leeres Feld, nicht der Preis der
+// Figuren-Zeile. Entschieden wird deshalb an `a.id IS NULL`, nicht mit COALESCE
+// ueber die Werte.
+const FIGS_CSV_SQL = `
+  SELECT f.fig_number,
+         COALESCE(f.bl_fig_number,'') AS bl_fig_number,
+         CASE WHEN a.id IS NULL THEN f.quantity   ELSE a.quantity   END AS quantity,
+         CASE WHEN a.id IS NULL THEN f.unit_price ELSE a.unit_price END AS unit_price,
+         COALESCE(f.note,'') AS note,
+         COALESCE(CASE WHEN a.id IS NULL THEN f.condition ELSE a.condition END, 'N') AS condition,
+         CASE WHEN a.id IS NULL THEN ''
+              ELSE TO_CHAR(a.created_at AT TIME ZONE 'UTC','YYYY-MM-DD') END AS acquired_at
+    FROM minifigs f
+    LEFT JOIN minifig_acquisitions a
+           ON a.user_id = f.user_id AND a.fig_number = f.fig_number
+   WHERE f.user_id = $1 AND f.source = 'manual'
+   ORDER BY f.fig_name ASC, f.fig_number ASC, a.created_at ASC, a.id ASC`;
+
 async function buildFigsCsv(uid: number) {
-  const figs = await db.all(
-    "SELECT * FROM minifigs WHERE user_id=$1 AND source='manual' ORDER BY fig_name ASC, fig_number ASC",
-    [uid]);
-  const acqRows: any[] = [];
-  for (const f of figs) {
-    const acqs = await db.all(
-      `SELECT quantity, unit_price, COALESCE(condition,'N') AS condition,
-              TO_CHAR(created_at AT TIME ZONE 'UTC','YYYY-MM-DD') AS acquired_at
-       FROM minifig_acquisitions WHERE user_id=$1 AND fig_number=$2
-       ORDER BY created_at ASC`,
-      [f.user_id, f.fig_number]
-    ).catch(()=>[]);
-    if (acqs.length) {
-      for (const a of acqs) {
-        acqRows.push({ fig_number: f.fig_number, bl_fig_number: f.bl_fig_number||'',
-          quantity: a.quantity, unit_price: a.unit_price??'', note: f.note||'',
-          condition: a.condition, acquired_at: a.acquired_at||'' });
-      }
-    } else {
-      acqRows.push({ fig_number: f.fig_number, bl_fig_number: f.bl_fig_number||'',
-        quantity: f.quantity, unit_price: f.unit_price??'', note: f.note||'',
-        condition: f.condition||'N', acquired_at: '' });
-    }
-  }
+  // Rueckfallweg wie beim Sets-Export: Das frueherere `.catch(()=>[])` je Figur
+  // liess den Export weiterlaufen, wenn minifig_acquisitions fehlt. Ein JOIN
+  // wuerde stattdessen die ganze Abfrage abbrechen.
+  const acqRows = (await db.all(FIGS_CSV_SQL, [uid]).catch(() => null)
+    ?? await db.all(
+      `SELECT fig_number, COALESCE(bl_fig_number,'') AS bl_fig_number, quantity, unit_price,
+              COALESCE(note,'') AS note, COALESCE(condition,'N') AS condition, '' AS acquired_at
+         FROM minifigs WHERE user_id=$1 AND source='manual'
+        ORDER BY fig_name ASC, fig_number ASC`, [uid])
+  ).map((r: any) => ({ ...r, unit_price: r.unit_price ?? '' }));
+
+  // Die Abfrage liefert die Felder bereits in der Form, die der Export braucht
+  // (COALESCE auf '' beziehungsweise 'N' steht oben im SQL) — das frueher hier
+  // stehende zweite Mapping war damit eine zweite Fassung derselben Regel.
   return toCsv(
     ['fig_number', 'bl_fig_number', 'quantity', 'unit_price', 'note', 'condition', 'acquired_at'],
-    acqRows.map(f => ({
-      fig_number: f.fig_number, bl_fig_number: f.bl_fig_number || '',
-      quantity: f.quantity, unit_price: f.unit_price ?? '', note: f.note || '', condition: f.condition || 'N', acquired_at: f.acquired_at||'',
-    }))
-  );
+    acqRows);
 }
 
 // ── GET /api/minifigs/export/csv — export manuell erfasste Minifiguren for re-import with the Minifiguren CSV importer
@@ -239,7 +241,7 @@ async function estimateFigPriceFromParts(figNumber: string, userId: number, cond
 
     return total;
   } catch (e) {
-    console.warn(`[minifig-price-estimate] ${figNumber}: ${e.message}`);
+    console.warn(`[minifig-price-estimate] ${figNumber}: ${fehlertext(e)}`);
     return null;
   }
 }
@@ -447,7 +449,7 @@ async function updateManualFig(uid: number, figNumber: string, body: any) {
           rem -= take;
         }
       }
-    } catch(e) { console.error('[updateManualFig] acq tracking:', e.message); }
+    } catch(e) { console.error('[updateManualFig] acq tracking:', fehlertext(e)); }
   }
   let newBlNum = existing.bl_fig_number;
   if (body.bl_fig_number !== undefined) {
@@ -476,7 +478,7 @@ async function updateManualFig(uid: number, figNumber: string, body: any) {
     try {
       await db.run('UPDATE minifigs SET condition=$1 WHERE id=$2', [cond, existing.id]);
     } catch (e) {
-      console.error('[updateManualFig] condition update skipped (migration pending?):', e.message);
+      console.error('[updateManualFig] condition update skipped (migration pending?):', fehlertext(e));
     }
   }
 }
@@ -555,7 +557,7 @@ router.post('/import/csv', csvUpload.single('file'), async (req: LoggedInRequest
         }
       } catch (e) {
         errors++;
-        results.push({ fig_number: figNumber, action: 'error', error: e.message });
+        results.push({ fig_number: figNumber, action: 'error', error: fehlertext(e) });
       }
     }
 

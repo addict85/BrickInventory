@@ -107,7 +107,75 @@
     "strictPropertyInitialization": true,
     "noImplicitThis": true,
     "exactOptionalPropertyTypes": true,
-    "noImplicitAny": true
+    "noImplicitAny": true,
+    // ── useUnknownInCatchVariables: gemessen 107, jetzt 0 ────────────────────
+    // `catch (e)` gab bisher `any`. Das ist nicht nur eine Typluecke: An 91
+    // Stellen wurde `e.message` gelesen, und in JavaScript darf ALLES geworfen
+    // werden — eine Zeichenkette, ein Objekt ohne `message`, bei einem
+    // abgelehnten Versprechen auch `undefined`. In genau diesen Faellen stand
+    // beim Nutzer „Fehler: undefined".
+    //
+    // Abgeraeumt mit zwei Helfern in utils/httpError.ts — fehlertext() und
+    // fehlerCode() — plus clients/abrufFehler.ts fuer die angereicherten Fehler
+    // der Abruf-Klienten (isQuota, isTransient, isCloudflare, detail). Deren
+    // Verstaendigung war nirgends aufgeschrieben und funktionierte nur, weil
+    // der gefangene Wert `any` war; ein Tippfehler im Feldnamen haette den
+    // Zweig lautlos uebersprungen.
+    "useUnknownInCatchVariables": true,
+    // ── noUncheckedIndexedAccess: gemessen 86, jetzt 0 ──────────────────────
+    // Jeder Zugriff ueber eine Index-Signatur liefert jetzt `| undefined`.
+    // Abgeraeumt wurde ueberwiegend an der URSACHE, nicht am Symptom:
+    //
+    //   • PFADE (loadtest) und HEADER_SETS (imgProxy) waren `X[][]` statt
+    //     Tupel — je EINE Typangabe loeste 15 bzw. 2 Meldungen auf.
+    //   • Die CSV-Spalten in csvImportWorker heissen jetzt `sp(c, i)`: Eine
+    //     fehlende Spalte ist dort Absicht (kuerzere Zeilen sind in den
+    //     Rebrickable-Dateien normal), das stand aber nirgends.
+    //   • Routen-Parameter gehen ueber `pfadParam(req, name)`. Eine
+    //     Augmentierung half nicht: Auch `Record<string, string>` traegt eine
+    //     Index-Signatur, der Schalter greift genauso.
+    //   • `vorDem(s, trenner)` fuer die sechs `split(x)[0]`.
+    //
+    // Ein Fund dabei: In jobs/instructionQueue.ts waere `?? 0` die
+    // gefaehrlichste Antwort gewesen — eine Cloudflare-Pause von 0 ms statt
+    // fuenf Minuten. Der Rueckfall ist jetzt die letzte Stufe der Leiter.
+    "noUncheckedIndexedAccess": true,
+    // ── noUnusedLocals / noUnusedParameters: 141 und 33, jetzt 0 ────────────
+    // Ueberwiegend Aufraeumarbeit — 107 ungenutzte Importe, meist Reste
+    // frueherer Umbauten. DREI echte Funde waren dabei, und alle drei sind
+    // vom selben Typ: etwas wurde geholt oder berechnet und dann weggeworfen.
+    //
+    //   • server.ts: `_primaryLockClient` wurde gesetzt und nie wieder
+    //     gelesen — also auch beim Beenden nie zurueckgegeben. Die Verbindung
+    //     kommt aus pool.connect(), und pool.end() wartet auf JEDEN
+    //     ausgeliehenen Client.
+    //   • jobs/priceJob.ts: Die Logzeile des Tagesschnappschusses stand ohne
+    //     Zahl da, obwohl das Ergebnis danebenlag. „inserted price history
+    //     entries" sagte nicht, ob es 0 oder 5000 waren.
+    //   • routes/finance.ts: Ein Sammel-require holte zehn Namen fuer einen
+    //     Re-Export, den es seit Nachtrag 126 nicht mehr gibt.
+    //
+    // Ungenutzte PARAMETER tragen einen Unterstrich — die uebliche
+    // Kennzeichnung fuer „gehoert zur Signatur, wird hier nicht gebraucht".
+    "noUnusedLocals": true,
+    "noUnusedParameters": true
+    // ── strictFunctionTypes: bewusst AUS, nachgemessen ──────────────────────
+    // 102 Meldungen, und alle 102 sind DERSELBE strukturelle Fall — keine
+    // davon deutet auf einen Fehler. Nachgezaehlt: 89x `req: AuthedRequest`,
+    // 13x `req: LoggedInRequest`.
+    //
+    // Der Grund ist eine Eigenschaft des Typsystems, nicht des Codes: Unter
+    // dem Schalter werden Funktionsparameter KONTRAVARIANT geprueft. Ein
+    // Handler, der `AuthedRequest` VERLANGT, ist damit nicht zuweisbar an
+    // Express' Signatur, die nur `Request` LIEFERT — obwohl die Middleware
+    // davor das Feld garantiert setzt.
+    //
+    // Ihn anzuschalten hiesse, genau diese Zusicherung aufzugeben: `req` waere
+    // ueberall der nackte Express-Typ, und `req.apiUser` muesste an 102 Stellen
+    // einzeln geprueft werden. Das ist teurer als der Schalter wert ist, und
+    // es nimmt eine Aussage weg, die heute etwas leistet.
+    //
+    // Stand messen:  npx tsc --noEmit --strictFunctionTypes
   },
   "include": [
     "server.ts",
