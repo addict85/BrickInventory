@@ -32,8 +32,25 @@ import org.junit.Test
  * Jetzt vergibt Gradle den Namen, und der Workflow sieht nur nach. Dieser Test
  * hält fest, dass es dabei bleibt.
  *
- * ── Gegenprobe ──────────────────────────────────────────────────────────────
- * Siehe unten am jeweiligen Test — die Ergebnisse stehen dort, wo sie hingehören.
+ * ── Gegenprobe (ausgeführt, Lauf 33634274161) ───────────────────────────────
+ * `build.gradle.kts` schrieb wieder „Brickinventory.apk" — also der Stand von
+ * vorher. Ergebnis: `354 tests completed, 1 failed`, und zwar
+ * `ApkNameTest > Gradle und Workflow meinen dieselbe Datei`.
+ *
+ * Die beiden anderen Regeln blieben grün, weil sie nicht gebrochen waren. Das
+ * ist der Punkt: Ein Test, der bei jedem Bruch anschlägt, sagt nicht, welcher
+ * es war.
+ *
+ * Die Muster hier haben vorher zwei eigene Fehler gehabt, beide von einem
+ * örtlichen Spiegel gefunden statt von einem zehnminütigen Lauf:
+ *   - `File(dir, "…")` fand DREI „Zielnamen", weil daneben die Quellnamen von
+ *     AGP in derselben Schreibweise stehen. Jetzt `val target = File(dir, …)`.
+ *   - Der Erklärabsatz im Workflow nennt die alte Schreibweise zwangsläufig und
+ *     war damit selbst der Verstoss. Kommentarzeilen werden ausgeblendet.
+ * Die dritte Regel ist ihrer eigenen Gegenprobe zunächst NICHT standgehalten:
+ * Sie mass `indexOf` über die ganze Datei und traf den Kommentar, nicht den
+ * Code — bei umgedrehter Reihenfolge blieb sie grün. Jetzt misst sie im
+ * Ausdruck.
  */
 class ApkNameTest {
 
