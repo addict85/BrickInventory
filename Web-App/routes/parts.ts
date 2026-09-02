@@ -41,7 +41,7 @@ import express from 'express';
 
 const router  = express.Router();
 import * as db from '../db/database';
-import { handleRouteError, meldeUndWeiter, fehlertext } from '../utils/httpError';
+import { fehlertext, handleRouteError, logAndContinue, meldeUndWeiter } from '../utils/httpError';
 import { recordAcquisitionForDay } from '../utils/acquisitions';
 // Die Katalogarbeit liegt seit Nachtrag 131 in utils/partsImport.ts — sonst
 // müsste utils/setService.ts (addSet) einen Router importieren.
@@ -331,10 +331,10 @@ async function addManualPart(uid: number, rawBody: any) {
     // Ursache wie zuvor bei den Sets.
     : (await getCurrentPartMarketPrice(part_number, color_id, uid, condition)) ?? 0;
 
-  let effectiveCondition = condition;
-  if (!effectiveCondition) {
-    effectiveCondition = await userDefaultCondition(uid).catch(()=>'N');
-  }
+  // Eingabe → (kein Bestand) → Standard, siehe utils/settings.ts. condition ist
+  // durch V.optionalCondition() bereits auf 'N'/'U'/null eingegrenzt, die
+  // Umstellung ist damit verhaltensgleich.
+  const effectiveCondition = await zustandFuerPreis(condition, null, uid);
   // Farbcode möglichst füllen: vom Client übergeben, sonst aus rb_colors ableiten
   // (sonst bleibt der Farbpunkt in der Oberfläche grau).
   const effectiveColorHex = color_hex
@@ -495,10 +495,8 @@ router.post('/import/csv', csvUpload.single('file'), async (req: LoggedInRequest
       // Siehe utils/csvExport.ts: Tag zuerst, nicht Monat.
       const acquiredAt = parseCsvDate(row.acquired_at || row['erfassungsdatum']);
       const rawCondition = (row.condition || row['zustand'] || '').trim().toUpperCase();
-      let csvCondition = ['N','U'].includes(rawCondition) ? rawCondition : null;
-      if (!csvCondition) {
-        csvCondition = await userDefaultCondition(uid).catch(()=>'N');
-      }
+      // Eingabe → (kein Bestand) → Standard, siehe utils/settings.ts.
+      const csvCondition = await zustandFuerPreis(rawCondition, null, uid);
 
       try {
         // Lookup from Rebrickable
@@ -526,7 +524,7 @@ router.post('/import/csv', csvUpload.single('file'), async (req: LoggedInRequest
           // importierten Menge erhalten bleiben (und das Zustands-Aggregat stimmt).
           await recordAcquisitionForDay('part', uid, [partNumber, colorId],
             { quantity: qty, price: resolvedPrice, condition: csvCondition||'N', createdAt: acqDate }
-          ).catch(()=>{});
+          ).catch(logAndContinue(`teile:import ${partNumber}/${colorId} (aufgestockt)`));
           updated++;
           results.push({ part_number: partNumber, action: 'updated' });
         } else {
@@ -536,7 +534,7 @@ router.post('/import/csv', csvUpload.single('file'), async (req: LoggedInRequest
             [uid, partNumber, partName, colorId, colorName, colorHex, categoryName, qty, imageUrl, resolvedPrice, resolvedPrice, note, csvCondition]);
           await recordAcquisitionForDay('part', uid, [partNumber, colorId],
             { quantity: qty, price: resolvedPrice, condition: csvCondition||'N', createdAt: acqDate }
-          ).catch(()=>{});
+          ).catch(logAndContinue(`teile:import ${partNumber}/${colorId} (neu)`));
           added++;
           results.push({ part_number: partNumber, action: 'added' });
         }

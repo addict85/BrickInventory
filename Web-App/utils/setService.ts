@@ -6,7 +6,7 @@ import { withInventoryLock } from './txLock';
 import { downloadSetImage } from './setImages';
 import { getCurrentMarketPrice } from './marketPrice';
 import { downloadSetInstructions } from './instructions';
-import { effectiveCondition as userDefaultCondition } from './settings';
+import { zustandFuerPreis } from './settings';
 import { importPartsForSet, fetchMissingBlIds } from './partsImport';
 import { importMinifigsForSet } from './minifigsImport';
 import { deleteSetRows } from '../utils/handlers/sets';
@@ -249,6 +249,22 @@ async function addSet(setNumber: string, quantity: number, userId: number,
   const normalized = sanitizeSetNumber(setNumber);
   if (sendProgress) sendProgress({ step:'meta', set:normalized });
 
+  // Zustand EINMAL bestimmen, fuer BEIDE Zweige.
+  //
+  // Er stand vorher zweimal da, und die beiden Fassungen waren nicht gleich:
+  // Der Neuanlage-Zweig rechnete `condition || userDefaultCondition(...)`, der
+  // Aufstock-Zweig gab dem Preis `condition || null` (worauf getCurrentMarketPrice
+  // intern denselben Standard einsetzte) und der ERFASSUNG hart `condition || 'N'`.
+  //
+  // Steht der Standard des Nutzers auf „Gebraucht", bekam eine Erfassung ohne
+  // Zustandsangabe damit den Gebraucht-Preis, wurde aber als NEU verbucht. In
+  // der Finanzansicht zaehlt sie danach in der falschen Gruppe.
+  //
+  // Es ist dieselbe Verwechslung wie in Nachtrag 68, nur andersherum: Damals
+  // war der Preis falsch, hier der Vermerk. Die Staffelung steht seit dem
+  // Zusammenlegen in utils/settings.ts.
+  const zustand = await zustandFuerPreis(condition, null, userId);
+
   const existing = await db.get('SELECT id FROM sets WHERE user_id = $1 AND set_number = $2', [userId, normalized]);
   if (existing) {
     // Kaufpreis dieser Erfassung festhalten (ging früher verloren!) —
@@ -266,7 +282,7 @@ async function addSet(setNumber: string, quantity: number, userId: number,
     // hat das sichtbar gemacht ("number und string haben keine Ueberschneidung").
     let reAddPrice: number | null = purchasePrice;
     if (reAddPrice === null || isNaN(reAddPrice)) {
-      reAddPrice = await getCurrentMarketPrice(normalized, userId, condition || null).catch(() => null);
+      reAddPrice = await getCurrentMarketPrice(normalized, userId, zustand).catch(() => null);
     }
 
     // ── Menge und Erfassung GESPERRT schreiben ────────────────────────────
@@ -280,7 +296,7 @@ async function addSet(setNumber: string, quantity: number, userId: number,
     // diese Sperre längst; ausgerechnet das Erfassen nicht.
     await withInventoryLock(userId, normalized, async (tx) => {
       await tx.run('UPDATE sets SET quantity = quantity + $1 WHERE user_id = $2 AND set_number = $3', [quantity, userId, normalized]);
-      await recordAcquisition(userId, normalized, quantity, reAddPrice, condition || 'N', tx);
+      await recordAcquisition(userId, normalized, quantity, reAddPrice, zustand, tx);
       // sets.purchase_price = Preis der letzten Erfassung (editierbar im Detail)
       if (reAddPrice !== null && !isNaN(reAddPrice)) {
         await tx.run('UPDATE sets SET purchase_price=$1 WHERE user_id=$2 AND set_number=$3',
@@ -343,8 +359,8 @@ async function addSet(setNumber: string, quantity: number, userId: number,
   await db.run('INSERT INTO set_catalog (set_number,name,year,theme,pieces,minifigs,image_url,image_local) VALUES ($1,$2,$3,$4,$5,$6,$7,$8) ON CONFLICT (set_number) DO UPDATE SET name=EXCLUDED.name,year=EXCLUDED.year,theme=EXCLUDED.theme,pieces=EXCLUDED.pieces,minifigs=EXCLUDED.minifigs,image_url=COALESCE(EXCLUDED.image_url,set_catalog.image_url),image_local=COALESCE(EXCLUDED.image_local,set_catalog.image_local),updated_at=NOW()',
     [normalized, name, year, theme||null, pieces, minifigs, imageUrl, localImage]).catch(()=>{});
 
-  // Zustand ZUERST bestimmen — der Marktpreis darunter hängt davon ab.
-  const effectiveCondition = condition || await userDefaultCondition(userId).catch(()=>'N');
+  // Zustand: siehe oben, einmal fuer beide Zweige bestimmt.
+  const effectiveCondition = zustand;
 
   // Kaufpreis: falls nicht angegeben, aktuellen Marktpreis (BrickLink) als
   // Kaufpreis hinterlegen — und zwar für den GEWÄHLTEN Zustand.

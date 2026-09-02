@@ -306,10 +306,8 @@ async function resolveManualFigPurchase(uid: number, { figNumber, blFigNumber = 
     ? parseFloat(String(unitPrice).replace(',', '.')) : null;
   const effectiveUnitPrice = (entered !== null && !isNaN(entered)) ? entered : null;
 
-  let effectiveCondition: string | null = ['N','U'].includes(condition as string) ? condition : null;
-  if (!effectiveCondition) {
-    effectiveCondition = await userDefaultCondition(uid).catch(()=>'N');
-  }
+  // Eingabe → (kein Bestand) → Standard, siehe utils/settings.ts.
+  const effectiveCondition: string = await zustandFuerPreis(condition, null, uid);
 
   const effectivePurchasePrice = effectiveUnitPrice !== null
     ? effectiveUnitPrice
@@ -379,7 +377,7 @@ async function addManualFig(uid: number, body: any) {
   await recordAcquisitionForDay('fig', uid, [num], {
     quantity, price: effectivePurchasePrice,
     condition: effectiveCondition, createdAt: acquiredAt,
-  }).catch(()=>{});
+  }).catch(logAndContinue(`minifiguren:anlegen ${num}`));
 
   return { action: 'added', fig_number: num, fig_name };
 }
