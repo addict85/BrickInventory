@@ -61,10 +61,12 @@ class ScannerPerformanceTest {
             "Ohne Tippen zum Scharfstellen bleibt nur der kontinuierliche Autofokus, " +
                 "der bei nahen Vorlagen lange braucht"
         }
-        assert(c.contains("disableAutoCancel()")) {
-            "Ohne disableAutoCancel fällt die Kamera nach wenigen Sekunden auf ihre " +
-                "eigene Wahl zurück — der gezielte Fokus wäre gleich wieder weg"
-        }
+        // Dass der Tipper den Fokus auch HÄLT (disableAutoCancel), stand hier
+        // als fünfte Kopie derselben Regel. Sie steht jetzt vollständig in
+        // CameraFocusConfigTest, dort für JEDE Datei mit Tap-to-Focus statt für
+        // eine aufgezählte Auswahl — genau daran ist der SetupScreen
+        // vorbeigelaufen. Hier bleibt, was zum Thema dieser Datei gehört: dass
+        // es das Tippen überhaupt gibt.
         assert(c.contains("_kameraCtrl.set(")) {
             "Die Kamerasteuerung wird dem Listener nie übergeben — Tippen bliebe wirkungslos"
         }

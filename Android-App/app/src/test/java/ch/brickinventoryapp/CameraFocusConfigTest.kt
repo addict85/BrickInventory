@@ -181,31 +181,47 @@ class CameraFocusConfigTest {
         }
     }
 
+    /**
+     * Kein „Fokus-Pump" — in KEINER Kameradatei.
+     *
+     * ── Warum das hier zusammengezogen ist ──────────────────────────────────
+     * Diese Regel stand VIERMAL im Testbaum: hier zweimal (Scanner und
+     * SetupScreen getrennt), in CameraXUpgradeTest und in
+     * SessionAndLifecycleTest. Drei davon zaehlten ausserdem das Vorkommen von
+     * CONTROL_AF_MODE_CONTINUOUS_PICTURE je Datei.
+     *
+     * Aufgefallen ist das erst, als der Kamera-Aufbau in KameraAufbau.kt
+     * zusammengefasst wurde und drei dieser Pruefungen rot wurden — nicht weil
+     * die Regel verletzt war, sondern weil sie an Kopien gemessen hatten, die
+     * es nicht mehr gibt. Das ist dieselbe Fehlerklasse, gegen die der Umbau
+     * gerichtet war, nur eine Ebene hoeher: nicht die Regel stand doppelt,
+     * sondern ihre Pruefung.
+     *
+     * Das Muster ist bewusst das WEITERE der beiden, die im Baum standen:
+     * `while | delay | Timer | fixedRate` statt nur `LaunchedEffect | while`.
+     * Beim Zusammenlegen gewinnt die schaerfere Fassung, sonst geht beim
+     * Aufraeumen Deckung verloren.
+     */
     @Test
     fun `kein periodisches Nachfokussieren`() {
-        // „Fokus-Pump": Ein im Takt laufendes startFocusAndMetering unterbricht
-        // den kontinuierlichen Autofokus immer wieder. Fokussiert wird NUR beim
+        // Ein im Takt laufendes startFocusAndMetering unterbricht den
+        // kontinuierlichen Autofokus immer wieder. Fokussiert wird NUR beim
         // Antippen.
-        val c = code(scanner()) + "\n" + code(analyzer())
-        for (muster in listOf("""LaunchedEffect[\s\S]{0,400}?startFocusAndMetering""",
-                              """while\s*\([^)]*\)[\s\S]{0,400}?startFocusAndMetering""")) {
-            assert(!Regex(muster).containsMatchIn(c)) {
-                "startFocusAndMetering läuft wieder in einer Schleife oder einem " +
-                    "Effekt — das zwingt die Kamera dauernd in einen neuen Suchlauf."
-            }
+        val pump = Regex(
+            """(while\s*\(|delay\s*\(|Timer\(|fixedRate|LaunchedEffect)[\s\S]{0,400}?startFocusAndMetering""")
+        val ordner = java.io.File("src/main/java/ch/brickinventoryapp/ui/screens")
+        val dateien = (ordner.listFiles { f -> f.extension == "kt" } ?: emptyArray())
+            .filter { code(it.readText()).contains("startFocusAndMetering") }
+        assert(dateien.size >= 2) {
+            "Nur ${dateien.size} Datei(en) mit startFocusAndMetering gefunden — " +
+                "erwartet werden mindestens Barcodescanner und SetupScreen. " +
+                "Ein leeres Ergebnis wuerde diesen Test stillschweigend bestehen lassen."
         }
-    }
-
-
-    @Test
-    fun `kein periodisches Nachfokussieren im SetupScreen`() {
-        val c = code(setup())
-        for (muster in listOf("""LaunchedEffect[\s\S]{0,400}?startFocusAndMetering""",
-                              """while\s*\([^)]*\)[\s\S]{0,400}?startFocusAndMetering""")) {
-            assert(!Regex(muster).containsMatchIn(c)) {
-                "startFocusAndMetering laeuft im SetupScreen in einer Schleife " +
-                    "oder einem Effekt — das zwingt die Kamera dauernd in einen " +
-                    "neuen Suchlauf."
+        for (datei in dateien) {
+            assert(!pump.containsMatchIn(code(datei.readText()))) {
+                "${datei.name}: startFocusAndMetering laeuft in einer Schleife, hinter " +
+                    "einem Timer oder in einem Effekt (Fokus-Pump) — das zwingt die " +
+                    "Kamera dauernd in einen neuen Suchlauf."
             }
         }
     }
