@@ -134,7 +134,7 @@ class CsvStatusReloadTest {
         assert(geschrieben >= 0) { "handleCsvStatus() setzt _csvImportState nicht mehr" }
         assert(entschieden < geschrieben) {
             "csvFolge() wird erst nach dem Überschreiben von _csvImportState " +
-                "aufgerufen und bekommt damit immer den neuen Zustand als „vorher"."
+                "aufgerufen und bekommt damit immer den neuen Zustand als \"vorher\"."
         }
     }
 
