@@ -364,11 +364,25 @@ export async function getPartPriceHistory(uid: number | number[], partNumber: st
   // Die Erfassungen (part_acquisitions) tragen dagegen die
   // Rebrickable-Nummer, denn so hat der Benutzer sie eingegeben. Deshalb
   // werden unten BEIDE Schlüssel gebraucht, nicht einer für alles.
+  //
+  // ── Nachtrag: BEIDE Nummern, nicht nur die BrickLink-Nummer ───────────────
+  // Der Satz oben stimmte fuer die Farbe, fuer die NUMMER nicht:
+  // fetchPartPrice uebersetzte nur die Farbe und nahm die Teilenummer so, wie
+  // der Aufrufer sie mitbrachte. Von drei Aufrufern brachten zwei die
+  // BrickLink-Nummer mit und einer (getCurrentPartMarketPrice, also die
+  // Teileansicht) die Rebrickable-Nummer. In part_price_cache und
+  // part_price_history stehen deshalb ALTE Zeilen unter beiden Nummern.
+  //
+  // fetchPartPrice uebersetzt jetzt oben und schreibt nur noch unter der
+  // BrickLink-Nummer. Damit die bereits vorhandenen Punkte nicht aus dem
+  // Diagramm verschwinden, wird hier unter beiden gesucht — dieselbe Loesung
+  // wie bei den Minifiguren.
   const blNummer = await resolveBlPartNumber(partNumber);
   const blFarbe  = await resolveBlColorId(colorId);
+  const nummern  = [...new Set([blNummer, partNumber])];
   return manualPriceHistory(uid, currency,
     'part_price_history', 'part_price_cache', 'part_acquisitions',
-    'part_number = $1 AND color_id = $2', [blNummer, blFarbe],
+    'part_number = ANY($1) AND color_id = $2', [nummern, blFarbe],
     'part_number = $1 AND color_id = $2', [partNumber, colorId]);
 }
 

@@ -483,14 +483,38 @@ async function resolveBlPartNumber(partNumber: string) {
 // Spiegelt die Fallback-Logik von fetchPrice (Sets): Liefert der gewünschte
 // Zustand (neu/gebraucht) keinen Preis, wird der jeweils andere Zustand
 // versucht — viele ältere Teile werden nur noch gebraucht angeboten.
+/**
+ * ── Ein Schlüsselraum für den Teile-Cache ───────────────────────────────────
+ *
+ * Die Nummer wird HIER übersetzt, ganz oben, und danach für alles benutzt: den
+ * Cache-Zugriff, die Anfrage und das Schreiben. Vorher übersetzte diese
+ * Funktion nur die FARBE; die Teilenummer nahm sie so, wie der Aufrufer sie
+ * mitbrachte — und die drei Aufrufer bringen Verschiedenes mit:
+ *
+ *   utils/financeCalc.ts:878   part.bl_part_number || part.part_number → BL
+ *   routes/parts.ts:224        partNumber                              → RB
+ *   routes/minifigs.ts:203     blPartNum                               → BL
+ *
+ * Für ein Teil, dessen Nummern sich unterscheiden, standen dadurch ZWEI Zeilen
+ * für denselben Gegenstand in part_price_cache, mit eigener Frist. Die
+ * Bewertung sah die Zeile nicht, die der Marktpreis der Teileansicht
+ * geschrieben hatte, und umgekehrt — jede holte den Preis erneut. Und
+ * getPartPriceHistory fragte unter der BrickLink-Nummer, fand also nur die
+ * Hälfte: für ein Teil, das nur über routes/parts.ts lief, gar nichts.
+ *
+ * Der Kommentar in utils/priceHistory.ts behauptete diesen einen Schlüsselraum
+ * bereits („werden unter der BRICKLINK-Teilenummer geschrieben"). Für die
+ * Farbe stimmte er, für die Nummer nicht. Jetzt stimmt er für beides.
+ */
 async function fetchPartPrice(partNumber: string, rbColorId: number, condition: string, currency: string, ttlHours: Stunden) {
   const ttl = Math.max(1, parseInt(String(ttlHours)));
   const colorId = await resolveBlColorId(rbColorId);
+  const blPartNumber = await resolveBlPartNumber(partNumber);
   const fallbackCondition = condition === 'N' ? 'U' : 'N';
 
   const readCache = (cond: string) => db.get(
     `SELECT avg_price, qty_avg_price FROM part_price_cache WHERE part_number=$1 AND color_id=$2 AND condition=$3 AND currency_code=$4 AND fetched_at > NOW() - make_interval(hours => $5)`,
-    [partNumber, colorId, cond, currency, ttl]);
+    [blPartNumber, colorId, cond, currency, ttl]);
 
   // Frischer Cache-Treffer mit echtem Preis → fertig
   const cached = await readCache(condition);
@@ -514,8 +538,6 @@ async function fetchPartPrice(partNumber: string, rbColorId: number, condition: 
     skipPrimaryFetch = true;
   }
 
-  const blPartNumber = await resolveBlPartNumber(partNumber);
-
   async function tryFetch(cond: string) {
     try {
       const qp: Record<string, any> = { guide_type: 'sold', new_or_used: cond, currency_code: currency, vat: 'N' };
@@ -534,7 +556,7 @@ async function fetchPartPrice(partNumber: string, rbColorId: number, condition: 
       await db.run(`INSERT INTO part_price_cache (part_number, color_id, condition, currency_code, avg_price, qty_avg_price, fetched_at)
         VALUES ($1,$2,$3,$4,$5,$6,NOW()) ON CONFLICT (part_number,color_id,condition,currency_code)
         DO UPDATE SET avg_price=$5, qty_avg_price=$6, fetched_at=NOW()`,
-        [partNumber, colorId || 0, cond, currency, avg, qavg]);
+        [blPartNumber, colorId || 0, cond, currency, avg, qavg]);
       // Verlaufspunkt mitschreiben — nur bei echtem Preis.
       //
       // Der Cache oben speichert über sein UNIQUE nur den ZULETZT abgerufenen
@@ -550,7 +572,7 @@ async function fetchPartPrice(partNumber: string, rbColorId: number, condition: 
         await db.run(
           `INSERT INTO part_price_history (part_number, color_id, condition, currency_code, avg_price, qty_avg_price)
            VALUES ($1,$2,$3,$4,$5,$6) ON CONFLICT DO NOTHING`,
-          [partNumber, colorId || 0, cond, currency, avg, qavg]
+          [blPartNumber, colorId || 0, cond, currency, avg, qavg]
         ).catch(() => {});
       }
       return { avg_price: avg, qty_avg_price: qavg, from_cache: false };
