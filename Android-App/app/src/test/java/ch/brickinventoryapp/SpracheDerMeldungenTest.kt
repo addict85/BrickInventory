@@ -109,7 +109,7 @@ class SpracheDerMeldungenTest {
         // Ohne den Helfer schreibt der naechste Aufrufer wieder ctx.getString().
         for (datei in listOf("ui/MainViewModel.kt", "ui/viewmodel/CatalogViewModel.kt")) {
             val s = Quellen.ohneKommentare(Quellen.lies(datei))
-            assert(Regex("""fun text\(id: Int, vararg args: Any\)""").containsMatchIn(s)) {
+            assert(Regex("""fun text\(id: Int, vararg args: Any\?\)""").containsMatchIn(s)) {
                 "$datei hat keinen text()-Helfer mehr"
             }
             assert(s.contains("localizedContext")) {

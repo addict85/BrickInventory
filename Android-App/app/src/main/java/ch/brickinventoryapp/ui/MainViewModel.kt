@@ -75,8 +75,21 @@ class MainViewModel @Inject constructor(
      * Absicht: Die Sprache kann waehrend der Laufzeit umgestellt werden, ein
      * gemerkter Context waere danach der alte. Die Kosten fallen nur an, wenn
      * tatsaechlich eine Meldung entsteht.
+     *
+     * ── Warum `Any?` und nicht `Any` ────────────────────────────────────────
+     * Die erste Fassung stand auf `vararg args: Any` und liess drei
+     * Aufrufstellen nicht mehr uebersetzen: Sie reichen `r.data.setNumber`,
+     * `partNumber` und `figNumber` durch, und die sind `String?`. Vorher fiel
+     * das nicht auf, weil Androids `getString(int, Object...)` in Kotlin als
+     * Plattformtyp `Any!` ankommt — dort wird Nullbarkeit nicht geprueft.
+     *
+     * Der Helfer darf nicht strenger sein als die Stelle, die er ersetzt:
+     * Sonst verlagert eine Aenderung an der SPRACHE eine Aufraeumarbeit an
+     * dreissig Aufrufstellen, die damit nichts zu tun hat. Ob eine Setnummer
+     * `null` sein kann, ist eine eigene Frage — und keine, die hier
+     * mitentschieden werden soll.
      */
-    internal fun text(id: Int, vararg args: Any): String {
+    internal fun text(id: Int, vararg args: Any?): String {
         val c = ch.brickinventoryapp.util.LanguageManager.localizedContext(ctx)
         // Ohne Argumente die einfache Ueberladung: getString(id, *leer) laeuft
         // durch String.format, und ein Text mit einem einzelnen Prozentzeichen

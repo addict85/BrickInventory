@@ -88,7 +88,7 @@ class CatalogViewModel @Inject constructor(
      * ausgerechnet in meldung(), der Stelle, die es nur gibt, damit
      * Fehlermeldungen in der gewaehlten Sprache erscheinen.
      */
-    private fun text(id: Int, vararg args: Any): String {
+    private fun text(id: Int, vararg args: Any?): String {
         val c = ch.brickinventoryapp.util.LanguageManager.localizedContext(ctx)
         return if (args.isEmpty()) c.getString(id) else c.getString(id, *args)
     }
