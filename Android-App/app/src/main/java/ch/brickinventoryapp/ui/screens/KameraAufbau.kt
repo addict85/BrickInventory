@@ -3,8 +3,15 @@ package ch.brickinventoryapp.ui.screens
 import android.hardware.camera2.CaptureRequest
 import androidx.camera.camera2.interop.Camera2Interop
 import androidx.camera.camera2.interop.ExperimentalCamera2Interop
+import android.content.Context
+import androidx.camera.core.Camera
+import androidx.camera.core.CameraSelector
 import androidx.camera.core.ImageAnalysis
 import androidx.camera.core.Preview
+import androidx.camera.lifecycle.ProcessCameraProvider
+import androidx.camera.view.PreviewView
+import androidx.core.content.ContextCompat
+import androidx.lifecycle.LifecycleOwner
 import androidx.camera.core.resolutionselector.ResolutionSelector
 import androidx.camera.core.resolutionselector.ResolutionStrategy
 
@@ -98,4 +105,81 @@ internal fun autofokusDauerhaft(bauer: Preview.Builder) {
         CaptureRequest.CONTROL_AF_MODE,
         CaptureRequest.CONTROL_AF_MODE_CONTINUOUS_PICTURE
     )
+}
+
+/**
+ * Vorschau und Bildanalyse an den Lebenszyklus binden — für beide Scanner.
+ *
+ * ── Warum auch das hierher gehört ───────────────────────────────────────────
+ * Der Ablauf stand zweimal im Baum, 19 von 23 Zeilen zeichengleich: Anbieter
+ * holen, im Rückruf `future.get()`, Vorschau bauen, AF-Modus setzen,
+ * `unbindAll()`, `bindToLifecycle(...)`. Auseinander gingen die beiden erst
+ * DANACH — der Scanner reicht die Kamerasteuerung nach aussen, der
+ * SetupScreen hängt sein Tippen zum Scharfstellen an.
+ *
+ * Zwei Regeln steckten in dem gemeinsamen Teil, und beide sind teuer erkauft:
+ *
+ *  1. Das `try` umschliesst den GESAMTEN Rückruf. `future.get()` kann werfen,
+ *     seit CameraX 1.4.0 strenger prüft, ob die Kamera überhaupt verfügbar ist
+ *     (etwa weil eine andere App sie belegt). Unter 1.3.4 gab es diese Prüfung
+ *     nicht. Ohne die Absicherung stürzt die App ab, statt nur kein Bild zu
+ *     zeigen.
+ *
+ *  2. `unbindAll()` vor dem Binden. Sonst bleibt eine frühere Bindung an
+ *     derselben Kamera hängen.
+ *
+ * Der Kommentar im SetupScreen verwies für die erste Regel bis zuletzt auf
+ * „Siehe BarcodeScannerScreen" — ein Zeiger auf eine Regel, die woanders
+ * wohnt, ist genau das Muster, das in dieser Reihe schon dreimal einen Fehler
+ * überleben liess.
+ *
+ * @param analyse die Bildanalyse aus [bildAnalyse]
+ * @param beiFehler wird gerufen, wenn die Kamera nicht verfügbar ist. Der
+ *   Scanner meldet das dem Nutzer; der SetupScreen lässt die Vorschau bewusst
+ *   leer — deshalb ein Rückruf und keine feste Behandlung hier.
+ * @param beiKamera bekommt die gebundene Kamera. Hier hängen die Aufrufer an,
+ *   was nur sie betrifft.
+ */
+internal fun kameraBinden(
+    ctx: Context,
+    previewView: PreviewView,
+    lifecycleOwner: LifecycleOwner,
+    analyse: ImageAnalysis,
+    beiFehler: () -> Unit = {},
+    beiKamera: (Camera) -> Unit,
+) {
+    val future = ProcessCameraProvider.getInstance(ctx)
+    future.addListener({
+        // Siehe Regel 1 oben: Das try umschliesst den GESAMTEN Rueckruf.
+        try {
+            val provider = future.get()
+            val previewBuilder = Preview.Builder()
+            autofokusDauerhaft(previewBuilder)
+            val preview = previewBuilder.build()
+                .also { it.setSurfaceProvider(previewView.surfaceProvider) }
+            try {
+                provider.unbindAll()
+                beiKamera(
+                    provider.bindToLifecycle(
+                        lifecycleOwner,
+                        CameraSelector.DEFAULT_BACK_CAMERA,
+                        preview,
+                        analyse
+                    )
+                )
+            } catch (_: Exception) {
+                // BEWUSST still, und zwar nach dem Vorbild beider Aufrufer: Das
+                // Binden selbst scheitert praktisch nur, wenn der Lebenszyklus
+                // schon beendet ist — dann gibt es niemanden mehr, dem man
+                // etwas melden koennte. beiFehler() gehoert an den aeusseren
+                // Fall, wo die Kamera gar nicht erst verfuegbar ist.
+            }
+        } catch (_: Exception) {
+            // Kamera nicht verfuegbar (belegt, Hardware-Fehler). Was daraus
+            // folgt, entscheidet der Aufrufer: Der Scanner zeigt einen Hinweis
+            // statt eines schwarzen Bildes, der SetupScreen laesst die Vorschau
+            // bewusst leer.
+            beiFehler()
+        }
+    }, ContextCompat.getMainExecutor(ctx))
 }

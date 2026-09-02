@@ -31,13 +31,11 @@ import ch.brickinventoryapp.ui.theme.LocalStatusFarben
 import android.view.ViewGroup
 import androidx.camera.camera2.interop.ExperimentalCamera2Interop
 import androidx.camera.core.*
-import androidx.camera.lifecycle.ProcessCameraProvider
 import androidx.camera.view.PreviewView
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.*
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -49,7 +47,6 @@ import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.viewinterop.AndroidView
-import androidx.core.content.ContextCompat
 import com.google.accompanist.permissions.*
 import androidx.compose.ui.res.stringResource
 import ch.brickinventoryapp.R
@@ -302,69 +299,31 @@ fun CameraPreviewBarcode(
                 true
             }
 
-            val future = ProcessCameraProvider.getInstance(ctx)
-            future.addListener({
-                // future.get() kann werfen, seit CameraX 1.4.0 strenger prüft, ob
-                // die Kamera überhaupt verfügbar ist (z. B. weil eine andere App
-                // sie belegt). Unter 1.3.4 gab es diese Prüfung nicht. Ohne
-                // Absicherung stürzt die App hier ab, statt nur kein Bild zu
-                // zeigen — deshalb umschliesst das try den GESAMTEN Listener.
-                try {
-                val provider = future.get()
-                // Kontinuierlicher Autofokus über den Kamera-Modus selbst — der
-                // Standard fürs Barcode-/Dokument-Scannen mit CameraX + ML Kit.
-                // CONTINUOUS_PICTURE hält die Szene laufend scharf und fokussiert
-                // bei Bewegung (Handy näher/weiter) automatisch neu. Der Modus wird
-                // hier EINMAL gesetzt und braucht danach kein manuelles Nachtriggern
-                // — genau das (ein periodischer "Pump") liess den Fokus früher
-                // dauernd wandern. Nicht wieder einbauen.
-                val previewBuilder = Preview.Builder()
-                // Derselbe AF-Modus wie an der Bildanalyse — die Begruendung,
-                // warum er an BEIDEN stehen muss, steht in KameraAufbau.kt.
-                autofokusDauerhaft(previewBuilder)
-
-                val preview = previewBuilder.build()
-                    .also { it.setSurfaceProvider(previewView.surfaceProvider) }
-                try {
-                    provider.unbindAll()
-                    val camera = provider.bindToLifecycle(
-                        lifecycleOwner,
-                        CameraSelector.DEFAULT_BACK_CAMERA,
-                        preview,
-                        imageAnalyzer
-                    )
-                    onCamera(camera.cameraControl)
-                    // Auch für das Tippen zum Scharfstellen bereitstellen
-                    // (Nachtrag 71) — ohne diese Zeile bliebe der Listener wirkungslos.
-                    _kameraCtrl.set(camera.cameraControl)
-
-                    // ── Hier stand ein ZWEITER Tap-to-Focus (Nachtrag 112) ──────
-                    //
-                    // Marcos Befund: „Die Kamera im Barcodescanner stellt wieder
-                    // nicht scharf."
-                    //
-                    // `setOnTouchListener` FÜGT NICHT HINZU, es ersetzt. Oben in
-                    // der factory (previewView.setOnTouchListener) wird der
-                    // gewollte Listener gesetzt; dieser hier lief später im
-                    // Kamera-Rückruf und überschrieb ihn stillschweigend.
-                    //
-                    // Wirksam war damit die Fassung mit
-                    // `setAutoCancelDuration(3, SECONDS)` — und genau davor warnt
-                    // der Kommentar oben: „Bewusst mit disableAutoCancel(): Ohne
-                    // das fällt die Kamera nach wenigen Sekunden auf ihre eigene
-                    // Wahl zurück." Man tippt, es wird scharf, und Sekunden
-                    // später ist es wieder weg.
-                    //
-                    // Der Listener oben braucht nur die Kamerasteuerung, und die
-                    // bekommt er eine Zeile darüber über _kameraCtrl.
-
-                } catch (_: Exception) {}
-                } catch (_: Exception) {
+            // Anbieter holen, Vorschau bauen, binden: KameraAufbau.kt. Hier
+            // bleibt nur, was den Scanner betrifft.
+            kameraBinden(
+                ctx = ctx,
+                previewView = previewView,
+                lifecycleOwner = lifecycleOwner,
+                analyse = imageAnalyzer,
+                beiFehler = {
                     // Kamera nicht verfügbar (belegt, Hardware-Fehler): Hinweis
                     // zeigen statt schwarzem Bild ohne Erklärung.
                     onStatus(errorHint)
-                }
-            }, ContextCompat.getMainExecutor(ctx))
+                },
+            ) { camera ->
+                onCamera(camera.cameraControl)
+                // Auch für das Tippen zum Scharfstellen bereitstellen
+                // (Nachtrag 71) — ohne diese Zeile bliebe der Listener wirkungslos.
+                //
+                // Hier stand ein ZWEITER Tap-to-Focus (Nachtrag 112). Marcos
+                // Befund: „Die Kamera im Barcodescanner stellt wieder nicht
+                // scharf." `setOnTouchListener` FÜGT NICHT HINZU, es ersetzt —
+                // der Listener oben in der factory wurde von diesem hier
+                // stillschweigend überschrieben. Der Listener oben braucht nur
+                // die Kamerasteuerung, und die bekommt er über _kameraCtrl.
+                _kameraCtrl.set(camera.cameraControl)
+            }
             previewView
         },
         modifier = Modifier.fillMaxSize()

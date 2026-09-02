@@ -49,14 +49,11 @@ import android.view.ViewGroup
 import androidx.camera.core.*
 import android.view.MotionEvent
 import androidx.camera.camera2.interop.ExperimentalCamera2Interop
-import androidx.camera.lifecycle.ProcessCameraProvider
 import androidx.camera.view.PreviewView
 import androidx.compose.foundation.background
 import androidx.compose.ui.graphics.Color
 import androidx.compose.foundation.border
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.filled.Close
-import androidx.core.content.ContextCompat
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import com.google.accompanist.permissions.ExperimentalPermissionsApi
@@ -325,63 +322,44 @@ fun QrCameraPreview(frozen: Boolean, onQrFound: (String) -> Unit) {
                 scaleType = PreviewView.ScaleType.FILL_CENTER
                 implementationMode = PreviewView.ImplementationMode.PERFORMANCE
             }
-            val future = ProcessCameraProvider.getInstance(ctx)
-            future.addListener({
-                // Siehe BarcodeScannerScreen: future.get() kann seit CameraX 1.4.0
-                // werfen, wenn die Kamera nicht verfügbar ist. Das try umschliesst
-                // den gesamten Listener, sonst stürzt die App statt eines leeren
-                // Vorschaubilds ab.
-                try {
-                val provider = future.get()
-                // Kontinuierlichen Autofokus explizit erzwingen — der frühere
-                // einmalige Fokus-Trigger beim Start war geräteabhängig unzuverlässig;
-                // CONTINUOUS_PICTURE fokussiert permanent selbstständig nach.
-                val previewBuilder = Preview.Builder()
-                // Derselbe AF-Modus wie an der Bildanalyse — die Begruendung,
-                // warum er an BEIDEN stehen muss, steht in KameraAufbau.kt.
-                autofokusDauerhaft(previewBuilder)
-
-                val preview = previewBuilder.build()
-                    .also { it.setSurfaceProvider(previewView.surfaceProvider) }
-                try {
-                    provider.unbindAll()
-                    val camera = provider.bindToLifecycle(
-                        lifecycleOwner,
-                        CameraSelector.DEFAULT_BACK_CAMERA,
-                        preview,
-                        imageAnalyzer
-                    )
-                    // Tap-to-Focus — bewusst mit disableAutoCancel().
-                    //
-                    // Hier stand bis zuletzt setAutoCancelDuration(3, SECONDS):
-                    // genau die Fassung, die im Barcodescanner Marcos Befund aus
-                    // Nachtrag 112 ausgelöst hat („man tippt, es wird scharf, und
-                    // Sekunden später ist es wieder weg"). Behoben wurde damals
-                    // nur die eine Kopie — diese hier blieb stehen, weil die
-                    // Regel an zwei Stellen steht und der Test nur eine ansah.
-                    //
-                    // Der Nutzer tippt, weil der kontinuierliche Autofokus gerade
-                    // danebenliegt. Fällt die Kamera nach drei Sekunden auf ihre
-                    // eigene Wahl zurück, ist genau das wieder da, wogegen der
-                    // Tipper gerichtet war.
-                    previewView.setOnTouchListener { v, event ->
-                        if (event.action == MotionEvent.ACTION_UP) {
-                            try {
-                                val point = previewView.meteringPointFactory
-                                    .createPoint(event.x, event.y)
-                                val action = FocusMeteringAction.Builder(point, FocusMeteringAction.FLAG_AF)
-                                    .addPoint(point, FocusMeteringAction.FLAG_AE)
-                                    .disableAutoCancel()
-                                    .build()
-                                camera.cameraControl.startFocusAndMetering(action)
-                            } catch (_: Exception) {}
-                            v.performClick()
-                        }
-                        true
+            // Anbieter holen, Vorschau bauen, binden: KameraAufbau.kt. Kein
+            // beiFehler: Ist die Kamera nicht verfügbar, bleibt die Vorschau
+            // bewusst leer — anders als im Scanner, der einen Hinweis zeigt.
+            kameraBinden(
+                ctx = ctx,
+                previewView = previewView,
+                lifecycleOwner = lifecycleOwner,
+                analyse = imageAnalyzer,
+            ) { camera ->
+                // Tap-to-Focus — bewusst mit disableAutoCancel().
+                //
+                // Hier stand bis zuletzt setAutoCancelDuration(3, SECONDS):
+                // genau die Fassung, die im Barcodescanner Marcos Befund aus
+                // Nachtrag 112 ausgelöst hat („man tippt, es wird scharf, und
+                // Sekunden später ist es wieder weg"). Behoben wurde damals nur
+                // die eine Kopie — diese hier blieb stehen, weil die Regel an
+                // zwei Stellen stand und der Test nur eine ansah.
+                //
+                // Der Nutzer tippt, weil der kontinuierliche Autofokus gerade
+                // danebenliegt. Fällt die Kamera nach drei Sekunden auf ihre
+                // eigene Wahl zurück, ist genau das wieder da, wogegen der
+                // Tipper gerichtet war.
+                previewView.setOnTouchListener { v, event ->
+                    if (event.action == MotionEvent.ACTION_UP) {
+                        try {
+                            val point = previewView.meteringPointFactory
+                                .createPoint(event.x, event.y)
+                            val action = FocusMeteringAction.Builder(point, FocusMeteringAction.FLAG_AF)
+                                .addPoint(point, FocusMeteringAction.FLAG_AE)
+                                .disableAutoCancel()
+                                .build()
+                            camera.cameraControl.startFocusAndMetering(action)
+                        } catch (_: Exception) {}
+                        v.performClick()
                     }
-                } catch (_: Exception) {}
-                } catch (_: Exception) { /* Kamera nicht verfügbar — Vorschau bleibt leer */ }
-            }, ContextCompat.getMainExecutor(ctx))
+                    true
+                }
+            }
             previewView
         },
         modifier = Modifier.fillMaxSize()

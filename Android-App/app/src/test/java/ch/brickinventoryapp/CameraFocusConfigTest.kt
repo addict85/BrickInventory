@@ -121,87 +121,74 @@ class CameraFocusConfigTest {
      * Geprüft wird deshalb anders herum: Die Zeile darf NUR dort stehen, und
      * jede Datei, die eine Vorschau baut, muss die Funktion aufrufen.
      */
+    /**
+     * Der ganze Kamera-Aufbau steht an EINER Stelle.
+     *
+     * ── Warum die Regel schaerfer wurde ─────────────────────────────────────
+     * Zuerst hiess sie „wer eine Vorschau baut, muss den AF-Modus setzen" —
+     * die Fassung fuer eine Welt mit zwei Kopien. Seit auch die BINDUNG
+     * zusammengelegt ist (19 von 23 Zeilen waren zeichengleich), baut niemand
+     * ausser KameraAufbau.kt noch eine Vorschau, eine Bildanalyse oder eine
+     * Bindung. Damit laesst sich das Staerkere pruefen: Es gibt nur einen Ort.
+     *
+     * Der Umbau hat diese Pruefung selbst rot gemeldet — sie fand nur noch
+     * EINE Datei mit `Preview.Builder()` und verlangte mindestens zwei. Das
+     * war kein Verstoss, sondern der Beweis, dass die Zusammenlegung gegriffen
+     * hat; die Regel ist der neuen Struktur nachgezogen.
+     */
     @Test
-    fun `der AF-Modus steht nur in KameraAufbau`() {
+    fun `der Kamera-Aufbau steht nur in KameraAufbau`() {
         val ordner = java.io.File("src/main/java/ch/brickinventoryapp/ui/screens")
-        val marke = "CONTROL_AF_MODE_CONTINUOUS_PICTURE"
-        val dateien = ordner.listFiles { f -> f.extension == "kt" } ?: emptyArray()
+        val dateien = (ordner.listFiles { f -> f.extension == "kt" } ?: emptyArray()).toList()
         assert(dateien.size >= 5) {
-            "Nur ${dateien.size} Bildschirmdateien gefunden — der Pfad stimmt nicht, " +
-                "und ein leeres Ergebnis würde diesen Test stillschweigend bestehen lassen."
+            "Nur ${dateien.size} Bildschirmdateien gefunden — der Pfad stimmt nicht, und ein " +
+                "leeres Ergebnis würde diesen Test stillschweigend bestehen lassen."
         }
 
-        val mitMarke = dateien.filter { code(it.readText()).contains(marke) }.map { it.name }
-        assert(mitMarke == listOf("KameraAufbau.kt")) {
-            "Der AF-Modus steht in ${mitMarke.joinToString()} statt nur in " +
-                "KameraAufbau.kt. Jede weitere Stelle ist eine zweite Fassung " +
-                "derselben Regel — und genau daran ist der Tap-to-Focus im " +
-                "SetupScreen hängengeblieben."
-        }
-    }
-
-    @Test
-    fun `jede Vorschau setzt den AF-Modus`() {
-        // CameraX führt die Konfigurationen aller gebundenen Use Cases zu EINEM
-        // Repeating-Request zusammen. Steht der AF-Modus nur an der Analyse,
-        // entscheidet je nach Gerät die Vorschau-Konfiguration mit — und deren
-        // Vorgabe ist nicht zwingend CONTINUOUS_PICTURE.
-        //
-        // Die Liste wird gefunden, nicht aufgezählt: Wer eine dritte Vorschau
-        // baut, ist mitgeprüft.
-        val ordner = java.io.File("src/main/java/ch/brickinventoryapp/ui/screens")
-        val bauer = (ordner.listFiles { f -> f.extension == "kt" } ?: emptyArray())
-            .filter { code(it.readText()).contains("Preview.Builder()") }
-        assert(bauer.size >= 2) {
-            "Nur ${bauer.size} Datei(en) mit Preview.Builder() gefunden. Erwartet " +
-                "werden mindestens Barcodescanner und SetupScreen."
-        }
-        for (datei in bauer) {
-            assert(code(datei.readText()).contains("autofokusDauerhaft(")) {
-                "${datei.name} baut eine Vorschau, ohne autofokusDauerhaft() zu " +
-                    "rufen. Auf manchen Geräten bleibt das Bild dann unscharf, " +
-                    "obwohl der Code richtig aussieht."
+        for ((marke, was) in listOf(
+            "CONTROL_AF_MODE_CONTINUOUS_PICTURE" to "Der AF-Modus",
+            "Preview.Builder()"                  to "Die Vorschau",
+            "ImageAnalysis.Builder()"            to "Die Bildanalyse",
+            "bindToLifecycle("                   to "Die Bindung",
+        )) {
+            val wo = dateien.filter { code(it.readText()).contains(marke) }.map { it.name }
+            assert(wo == listOf("KameraAufbau.kt")) {
+                "$was ($marke) steht in ${wo.joinToString()} statt nur in KameraAufbau.kt. " +
+                    "Jede weitere Stelle ist eine zweite Fassung derselben Regel — und genau " +
+                    "daran ist der Tap-to-Focus im SetupScreen hängengeblieben."
             }
         }
     }
 
     @Test
-    fun `die Bildanalyse kommt aus dem gemeinsamen Aufbau`() {
-        // Sonst nützt die Regel oben nichts: Wer sich seine ImageAnalysis selbst
-        // baut, umgeht autofokusDauerhaft() — und sieht dabei richtig aus.
-        val ordner = java.io.File("src/main/java/ch/brickinventoryapp/ui/screens")
-        val selbstgebaut = (ordner.listFiles { f -> f.extension == "kt" } ?: emptyArray())
-            .filter { it.name != "KameraAufbau.kt" }
-            .filter { code(it.readText()).contains("ImageAnalysis.Builder()") }
-            .map { it.name }
-        assert(selbstgebaut.isEmpty()) {
-            "${selbstgebaut.joinToString()} baut die Bildanalyse selbst statt über " +
-                "bildAnalyse(). Genau diese Doppelung hat die Behebung aus " +
-                "Nachtrag 112 an einer Kopie vorbeilaufen lassen."
+    fun `KameraAufbau setzt den AF-Modus an BEIDEN Use Cases`() {
+        // CameraX führt die Konfigurationen aller gebundenen Use Cases zu EINEM
+        // Repeating-Request zusammen. Steht der Modus nur an einem, entscheidet
+        // je nach Gerät der andere mit — und das Bild bleibt unscharf, obwohl
+        // der Code richtig aussieht.
+        val src = code(Quellen.lies("ui/screens/KameraAufbau.kt"))
+        val n = Regex("CONTROL_AF_MODE_CONTINUOUS_PICTURE").findAll(src).count()
+        assert(n >= 2) {
+            "Der AF-Modus steht in KameraAufbau.kt nur ${n}x — er muss an Vorschau UND " +
+                "Bildanalyse hängen. NICHT diesen Test anpassen, sondern die Stelle ergänzen."
         }
     }
 
-    /**
-     * Kein „Fokus-Pump" — in KEINER Kameradatei.
-     *
-     * ── Warum das hier zusammengezogen ist ──────────────────────────────────
-     * Diese Regel stand VIERMAL im Testbaum: hier zweimal (Scanner und
-     * SetupScreen getrennt), in CameraXUpgradeTest und in
-     * SessionAndLifecycleTest. Drei davon zaehlten ausserdem das Vorkommen von
-     * CONTROL_AF_MODE_CONTINUOUS_PICTURE je Datei.
-     *
-     * Aufgefallen ist das erst, als der Kamera-Aufbau in KameraAufbau.kt
-     * zusammengefasst wurde und drei dieser Pruefungen rot wurden — nicht weil
-     * die Regel verletzt war, sondern weil sie an Kopien gemessen hatten, die
-     * es nicht mehr gibt. Das ist dieselbe Fehlerklasse, gegen die der Umbau
-     * gerichtet war, nur eine Ebene hoeher: nicht die Regel stand doppelt,
-     * sondern ihre Pruefung.
-     *
-     * Das Muster ist bewusst das WEITERE der beiden, die im Baum standen:
-     * `while | delay | Timer | fixedRate` statt nur `LaunchedEffect | while`.
-     * Beim Zusammenlegen gewinnt die schaerfere Fassung, sonst geht beim
-     * Aufraeumen Deckung verloren.
-     */
+    @Test
+    fun `beide Scanner holen ihre Kamera dort`() {
+        // Sonst nützt die Regel oben nichts: Wer sich die Kamera selbst bindet,
+        // umgeht autofokusDauerhaft() — und sieht dabei richtig aus.
+        val ordner = java.io.File("src/main/java/ch/brickinventoryapp/ui/screens")
+        val nutzer = (ordner.listFiles { f -> f.extension == "kt" } ?: emptyArray())
+            .filter { it.name != "KameraAufbau.kt" }
+            .filter { code(it.readText()).contains("kameraBinden(") }
+            .map { it.name }
+        assert(nutzer.size >= 2) {
+            "Nur ${nutzer.size} Bildschirm(e) rufen kameraBinden() (${nutzer.joinToString()}). " +
+                "Erwartet werden Barcodescanner und SetupScreen."
+        }
+    }
+
     @Test
     fun `kein periodisches Nachfokussieren`() {
         // Ein im Takt laufendes startFocusAndMetering unterbricht den
