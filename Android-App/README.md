@@ -53,7 +53,7 @@ Danach:
 | --- | --- |
 | `./gradlew testDebugUnitTest` | JVM-Unit-Tests, Bericht unter `app/build/reports/tests/` |
 | `./gradlew assembleDebug` | `app/build/outputs/apk/debug/app-debug.apk` — mit dem Debug-Schlüssel signiert, direkt installierbar |
-| `./gradlew assembleRelease` | `app/build/outputs/apk/release/Brickinventory.apk` — minifiziert; signiert nur, wenn die Schlüsselwerte gesetzt sind (siehe unten) |
+| `./gradlew assembleRelease` | `app/build/outputs/apk/release/BrickInventory.apk` — minifiziert; signiert nur, wenn die Schlüsselwerte gesetzt sind (siehe unten) |
 | `./gradlew lintRelease` | `app/build/reports/lint-results-release.html` |
 | `./gradlew installDebug` | baut und installiert auf dem angeschlossenen Gerät (`adb devices`) |
 | `./gradlew clean` | löscht `app/build/` |

@@ -417,26 +417,27 @@ router.post('/add-stream', async (req: LoggedInRequest, res) => {
 });
 
 // ── CSV Import — polling approach (avoids SSE connection issues) ──────────────
-// Job state stored in PostgreSQL so all cluster workers can read it.
-// Schema (created on first import if missing):
-//   csv_import_jobs(user_id PK, status, total, done, current, results JSONB,
-//                  error, started_at, updated_at)
-
-async function ensureJobTable() {
-  await db.exec(`
-    CREATE TABLE IF NOT EXISTS csv_import_jobs (
-      user_id    INTEGER PRIMARY KEY,
-      status     TEXT    NOT NULL DEFAULT 'running',
-      total      INTEGER NOT NULL DEFAULT 0,
-      done       INTEGER NOT NULL DEFAULT 0,
-      current    TEXT,
-      results    JSONB   NOT NULL DEFAULT '[]',
-      error      TEXT,
-      started_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-      updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
-    )
-  `);
-}
+// Der Job-Zustand steht in PostgreSQL, damit alle Arbeitsprozesse ihn lesen.
+//
+// Die Tabelle csv_import_jobs wird NICHT hier angelegt, sondern beim Start in
+// db/database.ts (Etappe „frueherZurLaufzeitAngelegt"). Hier stand bis zuletzt
+// ein zweites CREATE TABLE IF NOT EXISTS mit demselben Wortlaut, aufgerufen vor
+// jedem Import und jedem Abbruch.
+//
+// Der zentrale Kommentar dort sagt seit der Umstellung: „DDL im Request-Pfad ist
+// aus zwei Gründen unschön: Sie kostet bei jeder Anfrage einen Katalog-Zugriff,
+// und sie verteilt das Schema über die Codebasis, sodass niemand mehr an einer
+// Stelle sehen kann, wie die Datenbank aussieht. Beide gehören hierher." Die
+// Kopie hier blieb trotzdem stehen — die Aussage stimmte also nicht.
+//
+// Dass es gutging, lag daran, dass beide Fassungen zeichengleich waren. Das ist
+// kein Zustand, auf den man sich verlässt: Wer die zentrale Fassung um eine
+// Spalte erweitert, bekommt bei einer NEUINSTALLATION je nach Reihenfolge die
+// alte Tabelle — und CREATE TABLE IF NOT EXISTS meldet das nicht, es tut
+// einfach nichts.
+//
+// Entfernen ist sicher, weil server.ts app.listen() erst im then() von
+// initSchemaOnce() aufruft: Wenn die erste Anfrage ankommt, steht das Schema.
 
 async function jobGet(userId: number) {
   const row = await db.get('SELECT * FROM csv_import_jobs WHERE user_id = $1', [userId]);
@@ -502,8 +503,6 @@ async function jobUpdate(userId: number, fields: Record<string, unknown>) {
 router.post('/import/csv', upload.single('file'), async (req, res) => {
   if (!req.file) return res.status(400).json({ success:false, error:'Keine Datei' });
   const userId = Number(req.session.userId);
-
-  await ensureJobTable();
 
   // Mark any running job as cancelled
   const existing = await jobGet(userId);
@@ -707,7 +706,6 @@ router.post('/import/csv', upload.single('file'), async (req, res) => {
 // ── POST /api/sets/import/csv/cancel — cancel running import ─────────────────
 router.post('/import/csv/cancel', requireLogin, async (req, res) => {
   const userId = Number(req.session.userId);
-  await ensureJobTable().catch(logAndContinue('csv-import:job-tabelle'));
   await jobUpdate(userId, { status: 'cancelled' }).catch(logAndContinue('csv-import:abbruch vermerken'));
   emitJobStatus(userId);
   res.json({ success:true });

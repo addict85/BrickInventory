@@ -1,7 +1,7 @@
 package ch.brickinventoryapp.ui
 
-import android.app.Application
-import androidx.lifecycle.AndroidViewModel
+import android.content.Context
+import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import ch.brickinventoryapp.R
 import ch.brickinventoryapp.data.CsvImportSseClient
@@ -15,6 +15,7 @@ import ch.brickinventoryapp.service.PdfExportManager
 import ch.brickinventoryapp.service.PdfExportService
 import ch.brickinventoryapp.service.PdfExportState
 import dagger.hilt.android.lifecycle.HiltViewModel
+import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
@@ -22,7 +23,25 @@ import javax.inject.Inject
 
 @HiltViewModel
 class MainViewModel @Inject constructor(
-    application: Application,
+    /**
+     * Der Anwendungs-Context, eingespritzt statt geerbt.
+     *
+     * ── Warum das keine Kosmetik ist ────────────────────────────────────────
+     * Diese Klasse war das EINZIGE AndroidViewModel im Baum. CatalogViewModel
+     * und MonitoringViewModel sind gewoehnliche ViewModel und lassen sich den
+     * Context einspritzen — genau wie ResponseCache, PreferencesManager und
+     * PdfExportManager. Zwei Muster fuer dieselbe Sache, und das seltenere war
+     * das teurere: AndroidViewModel verlangt eine echte Application im
+     * Konstruktor. Damit laesst sich diese Klasse in einem JVM-Test nicht
+     * bauen, und deshalb liest der grosse Teil der Android-Tests Quelltext,
+     * statt Code auszufuehren.
+     *
+     * Der Context bleibt derselbe: getApplication<Application>()
+     * .applicationContext und Hilts @ApplicationContext liefern dasselbe
+     * Objekt. Was sich aendert, ist nur, dass er ueber die Tuer hereinkommt
+     * statt aus der Oberklasse — und damit in einem Test ersetzbar ist.
+     */
+    @param:ApplicationContext internal val ctx: Context,
     internal val repo: BrickRepository,
     internal val prefs: PreferencesManager,
     internal val sseClient: CsvImportSseClient,
@@ -38,7 +57,7 @@ class MainViewModel @Inject constructor(
     // Nur fürs Abmelden: Der Bild-Cache enthält Thumbnails des angemeldeten
     // Kontos und wird zusammen mit dem API-Cache geleert (SessionFeature.kt).
     internal val imageLoader: coil.ImageLoader
-) : AndroidViewModel(application) {
+) : ViewModel() {
 
     /**
      * Gemerkte Rollpositionen der Reiter (siehe ScrollMemory.kt). Kein
@@ -46,8 +65,6 @@ class MainViewModel @Inject constructor(
      * sie nur beim Betreten eines Reiters.
      */
     val scrollMemory = ScrollMemory()
-
-    internal val ctx get() = getApplication<Application>().applicationContext
 
     /**
      * Ein Text aus den Ressourcen — in der SPRACHE DER APP, nicht des Systems.
@@ -311,14 +328,14 @@ class MainViewModel @Inject constructor(
 
     /** Verarbeitet ein Status-Event: aktualisiert Banner und startet bei Bedarf den FG-Service. */
     internal suspend fun handleCsvStatus(s: ch.brickinventoryapp.data.model.CsvImportStatus) {
-        val running = s.status == "running" || s.status == "pending"
-        // Zustand VOR dieser Meldung — unten wird _csvImportState überschrieben.
-        val warVorherAktiv = _csvImportState.value.running
+        val running = importLaeuft(s.status)
+        // Die Entscheidung fällt VOR dem Überschreiben von _csvImportState —
+        // danach gelesen wäre der „vorherige" Zustand bereits der neue, und die
+        // Unterscheidung Übergang/Zustand (Nachtrag 110) wäre wirkungslos.
+        // Die Regel selbst steht in CsvUebergang.kt: dort ohne Context prüfbar.
+        val folge = csvFolge(warVorherAktiv = _csvImportState.value.running, status = s.status)
 
-        // FG-Service starten/stoppen je nach Import-Zustand
-        if (running && !_csvImportState.value.running) {
-            CsvImportService.start(ctx)
-        }
+        if (folge == CsvFolge.DIENST_STARTEN) CsvImportService.start(ctx)
 
         _csvImportState.value = CsvImportUiState(
             running = running,
@@ -330,38 +347,15 @@ class MainViewModel @Inject constructor(
             err     = s.err ?: 0
         )
 
-        // ── Nur beim ÜBERGANG „lief" → „fertig" (Nachtrag 110) ────────────────
-        //
-        // Marcos Befund: „In der Galerie springt die Liste beim Scrollen zurück."
-        // Sein Protokoll zeigte es unmissverständlich:
-        //
-        //     Seite 2: 60 empfangen, Liste  60 -> 120
-        //     Seite 3: 60 empfangen, Liste 120 -> 180
-        //     Seite 4: 60 empfangen, Liste 180 -> 240
-        //     Seite 2: 60 empfangen, Liste  60 -> 120     ← zurück auf Anfang
-        //
-        // Alle fünf bis zehn Sekunden fiel die Liste auf 60 Einträge zurück, und
-        // das Raster landete auf der letzten noch vorhandenen Zeile — immer
-        // derselben. Genau der beobachtete Sprung.
-        //
-        // Ursache: Der SSE-Strom meldet den Importstatus fortlaufend, auch wenn
-        // der Import längst abgeschlossen ist. Die Bedingung fragte nur „läuft
-        // gerade nicht und ist kein Fehler" — das trifft auf JEDE Meldung eines
-        // fertigen Imports zu. Also lief `finishCsvImport()` alle paar Sekunden
-        // neu und ersetzte mit `loadSets()` die ganze Liste durch Seite 1.
-        //
-        // Der Wächter `csvFinishing` half nicht: Er wird nach fünf Sekunden
-        // wieder freigegeben — genau im Takt der Meldungen.
-        //
-        // Ein Abschluss ist ein ÜBERGANG, kein Zustand. Nachgeladen wird jetzt
-        // nur, wenn vorher tatsächlich ein Import lief.
-        if (!running && warVorherAktiv && s.status != null && s.status != "error") {
+        when (folge) {
             // Import abgeschlossen → Daten neu laden, Banner nach kurzer Pause ausblenden
-            finishCsvImport()
-        } else if (s.status == "error") {
-            kotlinx.coroutines.delay(5000)
-            _csvImportState.value = CsvImportUiState()
-            CsvImportService.stop(ctx)
+            CsvFolge.NACHLADEN -> finishCsvImport()
+            CsvFolge.FEHLER_AUFRAEUMEN -> {
+                kotlinx.coroutines.delay(5000)
+                _csvImportState.value = CsvImportUiState()
+                CsvImportService.stop(ctx)
+            }
+            CsvFolge.DIENST_STARTEN, CsvFolge.NICHTS -> {}
         }
 
         // Sets nachlagen falls Erstladung beim App-Start scheiterte

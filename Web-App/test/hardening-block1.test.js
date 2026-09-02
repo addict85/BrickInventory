@@ -93,12 +93,22 @@ test('Teile- und Minifiguren-Preise lesen avg_price', () => {
 
 test('Preis-Vorhandensein hängt an avg_price', () => {
   const fc = read('utils/financeCalc.ts');
-  // Fünf gleichartige Stellen: Sets, Teile und Minifiguren, je Haupt- und
-  // Rückfall-Zustand.
+  // Die Aussage ist unverändert: Ein Datensatz mit avg_price = 0 darf nicht
+  // als „hat einen Preis" durchgehen, sonst steht überall 0.
+  //
+  // Gezählt wurden dafür früher fünf Vorkommen von `pd.avg_price > 0` — Sets,
+  // Teile und Minifiguren, je Haupt- und Rückfall-Zustand. Die gibt es nicht
+  // mehr: Dieselbe Frage stand in dieser Datei an 22 Stellen, in drei
+  // Fassungen, und widersprach dabei der Fassung in clients/bricklink.ts.
+  // Sie liegt jetzt einmal in utils/preisRegel.ts (siehe
+  // test/preisregel-db.test.js). Gezählt werden deshalb die Stellen, die sie
+  // BENUTZEN — die Zahl bleibt die Zusicherung, dass keine davon verschwindet.
   assert.doesNotMatch(fc, /avg_price > 0 \|\| \w+\.qty_avg_price > 0/,
     'Ein Datensatz mit avg_price = 0 ginge sonst als "hat einen Preis" durch und ergäbe überall 0');
-  assert.ok((fc.match(/\bpd2?\.avg_price > 0/g) || []).length >= 5,
-    'Alle Preis-Vorhandensein-Prüfungen müssen auf avg_price stehen');
+  assert.ok((fc.match(/\bhatPreis\(/g) || []).length >= 5,
+    'Alle Preis-Vorhandensein-Prüfungen müssen über dieselbe Regel laufen');
+  assert.match(fc, /from '\.\/preisRegel'/,
+    'und zwar über die eine, die auch clients/bricklink.ts anwendet');
 });
 
 test('nur eine Stelle entscheidet, wo ein Token in der URL reiten darf', () => {

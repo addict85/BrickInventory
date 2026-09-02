@@ -395,16 +395,11 @@ function getBaseUrl(req: Request): string {
 // HMAC-Signatur nötig, keine Zweitverwendung des SESSION_SECRET.
 const QR_TTL_MS = 5 * 60 * 1000;
 
-async function ensureQrTable() {
-  await db.exec(`
-    CREATE TABLE IF NOT EXISTS qr_login_tokens (
-      token      TEXT PRIMARY KEY,
-      user_id    INTEGER NOT NULL,
-      expires_at TIMESTAMPTZ NOT NULL,
-      used_at    TIMESTAMPTZ
-    )
-  `);
-}
+// qr_login_tokens wird beim Start in db/database.ts angelegt, nicht hier. An
+// dieser Stelle stand bis zuletzt ein zweites, zeichengleiches CREATE TABLE IF
+// NOT EXISTS, aufgerufen bei JEDER Token-Erzeugung und JEDER Einlösung — obwohl
+// der zentrale Kommentar dort das Gegenteil behauptet. Siehe die ausführliche
+// Begründung in routes/sets.ts an derselben Stelle.
 
 // POST /api/auth/qr-token — Nonce erzeugen (nur für die eigene Session)
 // ── POST statt GET (Nachtrag 154) ────────────────────────────────────────────
@@ -427,7 +422,6 @@ async function ensureQrTable() {
 router.post('/qr-token', async (req, res) => {
   if (!req.session?.userId) return res.status(401).json({ success: false });
   try {
-    await ensureQrTable();
     // Abgelaufene/verbrauchte Nonces mitentsorgen — die Tabelle bleibt so klein.
     await db.run(`DELETE FROM qr_login_tokens WHERE expires_at < NOW() - INTERVAL '1 hour'`)
       .catch(logAndContinue('qr-token:aufräumen'));
@@ -451,7 +445,6 @@ router.post('/qr-login', ipThrottle('qr-login', 30, 60 * 60 * 1000), async (req,
   if (typeof token !== 'string' || !token.startsWith('bim:'))
     return res.status(400).json({ success: false, error: 'Ungültiger Token' });
   try {
-    await ensureQrTable();
     // Atomar entwerten: Nur die erste Anfrage bekommt eine Zeile zurück, alle
     // weiteren laufen ins Leere — kein Race zwischen zwei Geräten möglich.
     const claimed = await db.get(

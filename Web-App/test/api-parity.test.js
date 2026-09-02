@@ -330,16 +330,34 @@ test('API-Parität Webapp ↔ Android', async (t) => {
     assert.equal(r.body.total_value, r.body.totals.qty_avg);
   });
 
-  await t.test('Bewertung liefert rate_limit — mit beiden Ausweisen', async () => {
-    // Vorher verglich diese Prüfung die zwei Routen miteinander. Es gibt nur
-    // noch eine; die Aussage lautet jetzt: Das Feld ist da, unabhängig davon,
-    // womit man sich ausweist. Die Webapp zeigt daraus den API-Verbrauch an.
-    const mitSitzung = (await get('/api/v1/finance/valuation')).body.rate_limit;
+  await t.test('Bewertung: gleiche Antwortform mit beiden Ausweisen', async () => {
+    // ── Was hier vorher stand, und warum es weg ist ─────────────────────────
+    //
+    // Diese Prüfung hiess „Bewertung liefert rate_limit" und begründete sich
+    // mit: „Die Webapp zeigt daraus den API-Verbrauch an." Das stimmte nicht.
+    // Nachgemessen über beide Clients in dieser Ablage: Den API-Verbrauch
+    // zeigen Einstellungsseite und Android aus `rate_limits` (PLURAL) von
+    // /v1/admin/cache-stats — den Singular aus der Bewertung las niemand.
+    // Auch die zweite Behauptung im Quelltext („wie in /api/finance/valuation,
+    // Parität") war falsch: Dort gab es das Feld gar nicht.
+    //
+    // Gekostet hat es drei Datenbankabfragen JE AUFRUF (gemessen), bei jedem
+    // Öffnen des Finanzreiters und nach jedem Erfassen. Das Feld ist raus;
+    // scripts/check-antwortfelder.js hält es künftig draussen.
+    //
+    // Die eigentliche Aussage dieser Prüfung — Sitzung und Token bekommen
+    // DASSELBE — bleibt, jetzt an der ganzen Antwortform statt an einem Feld.
+    // Sie ist damit sogar breiter als vorher.
+    const mitSitzung = (await get('/api/v1/finance/valuation')).body;
     const mitToken = (await get('/api/v1/finance/valuation',
-      { authorization: `Bearer ${TOKEN}`, 'x-no-session': '1' })).body.rate_limit;
-    assert.ok(mitSitzung && mitToken, 'rate_limit fehlt bei einem der beiden Ausweise');
-    assert.deepEqual(Object.keys(mitToken).sort(), Object.keys(mitSitzung).sort());
-    assert.equal(mitToken.limit, mitSitzung.limit);
+      { authorization: `Bearer ${TOKEN}`, 'x-no-session': '1' })).body;
+    assert.deepEqual(Object.keys(mitToken).sort(), Object.keys(mitSitzung).sort(),
+      'Sitzung und Token liefern verschiedene Felder — dann sieht die App etwas ' +
+      'anderes als die Webapp, je nachdem womit sie sich ausweist');
+    assert.equal(mitToken.total_value, mitSitzung.total_value);
+    assert.ok(!('rate_limit' in mitToken),
+      'rate_limit ist wieder in der Bewertung — es liest niemand, und es kostet ' +
+      'drei Abfragen je Aufruf');
   });
 
   await t.test('v1-Zusatzfelder sind konsistent (count = sets.length)', async () => {
