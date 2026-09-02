@@ -52,7 +52,7 @@ import { DEFAULT_PRICE_CONDITION } from '../utils/financeCalc';
 // `getUserDefaultCondition` und war dort eine wortgleiche Zweitfassung dieser
 // Funktion (Nachtrag 125). Der Alias, weil in dieser Datei mehrfach eine lokale
 // Variable `effectiveCondition` steht.
-import { effectiveCondition as userDefaultCondition } from '../utils/settings';
+import { effectiveCondition as userDefaultCondition, zustandFuerPreis } from '../utils/settings';
 
 router.use(requireLogin);
 
@@ -406,8 +406,9 @@ async function updateManualPart(uid: number, partNumber: string, colorId: number
         // "Gebraucht" geführtes Teil bei jeder Mengen-Erhöhung eine
         // "Neu"-Erfassung. Der Standard-Zustand kommt aus utils/settings.ts;
         // lazy require wegen des Zyklus parts↔sets.
-        const cond = existing.condition
-          || await userDefaultCondition(uid).catch(()=>'N');
+        // Beim Erfassen gibt es keine Zustandseingabe — dieselbe Staffelung wie
+        // beim Bearbeiten, nur ohne den ersten Schritt (utils/settings.ts).
+        const cond = await zustandFuerPreis(undefined, existing.condition, uid);
         const mp = await getCurrentPartMarketPrice(partNumber, colorId, uid, cond).catch(()=>null);
         await recordAcquisitionForDay('part', uid, [partNumber, colorId],
           { quantity: delta, price: mp, condition: cond });
@@ -431,10 +432,9 @@ async function updateManualPart(uid: number, partNumber: string, colorId: number
       purchasePrice = up;
     } else {
       up = null;
-      // Zustand mitgeben — siehe oben (Nachtrag 147).
-      const preisCond = (['N','U'].includes(body.condition) ? body.condition : null)
-        || existing.condition
-        || await userDefaultCondition(uid).catch(() => 'N');
+      // Zustand mitgeben — siehe oben (Nachtrag 147). Die Staffelung
+      // Eingabe → Bestand → Standard steht in utils/settings.ts.
+      const preisCond = await zustandFuerPreis(body.condition, existing.condition, uid);
       purchasePrice = await getCurrentPartMarketPrice(partNumber, colorId, uid, preisCond);
     }
     await db.run('UPDATE parts SET unit_price=$1, purchase_price=$2 WHERE id=$3', [up, purchasePrice, existing.id]);

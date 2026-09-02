@@ -47,7 +47,7 @@ import { importMinifigsForSet } from '../utils/minifigsImport';
 import { requireLogin } from './auth';
 import { DEFAULT_PRICE_CONDITION } from '../utils/financeCalc';
 // Siehe routes/parts.ts: Alias wegen der lokalen `effectiveCondition`.
-import { effectiveCondition as userDefaultCondition } from '../utils/settings';
+import { effectiveCondition as userDefaultCondition, zustandFuerPreis } from '../utils/settings';
 import { fetchMinifigPrice, fetchPartPrice } from '../utils/financeCalc';
 import { getSetting, getGlobalSetting } from '../utils/settings';
 import { csvEinlesen, sendCsvText, toCsv, uebersprungenHinweis } from '../utils/csvExport';
@@ -434,8 +434,9 @@ async function updateManualFig(uid: number, figNumber: string, body: any) {
         //
         // Nachtrag 146 hat dasselbe für das BEARBEITEN behoben. Das ERFASSEN
         // hatte ich dabei übersehen; es sind zwei getrennte Wege.
-        const cond = existing.condition
-          || await userDefaultCondition(uid).catch(()=>'N');
+        // Beim Erfassen gibt es keine Zustandseingabe — dieselbe Staffelung wie
+        // beim Bearbeiten, nur ohne den ersten Schritt (utils/settings.ts).
+        const cond = await zustandFuerPreis(undefined, existing.condition, uid);
         const mp = await getCurrentFigMarketPrice(figNumber, uid, existing.bl_fig_number, cond).catch(()=>null);
         await recordAcquisitionForDay('fig', uid, [figNumber],
           { quantity: delta, price: mp, condition: cond });
@@ -466,9 +467,8 @@ async function updateManualFig(uid: number, figNumber: string, body: any) {
       up = null;
       // Zustand mitgeben — siehe oben (Nachtrag 147). Steht im Rumpf ein neuer,
       // gilt dieser; sonst der bisherige der Figur, sonst der Benutzer-Standard.
-      const preisCond = (['N','U'].includes(body.condition) ? body.condition : null)
-        || existing.condition
-        || await userDefaultCondition(uid).catch(() => 'N');
+      // Die Staffelung selbst steht in utils/settings.ts.
+      const preisCond = await zustandFuerPreis(body.condition, existing.condition, uid);
       purchasePrice = await getCurrentFigMarketPrice(figNumber, uid, newBlNum, preisCond);
     }
     await db.run('UPDATE minifigs SET unit_price=$1, purchase_price=$2 WHERE id=$3', [up, purchasePrice, existing.id]);

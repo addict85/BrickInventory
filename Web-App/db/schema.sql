@@ -181,6 +181,33 @@ CREATE TABLE IF NOT EXISTS rb_bl_mapping (
   fetched_at  TIMESTAMPTZ DEFAULT NOW()
 );
 
+-- ── Katalog-Erweiterung: Themen und Minifiguren je Inventar ──────────────
+--
+-- Diese beiden Tabellen standen bis jetzt AUSSCHLIESSLICH in
+-- jobs/rebrickableCsvSync.ts, in einer Funktion ensureSchema(), die der
+-- Katalog-Abgleich beim Start aufrief. Damit gab es sie auf einer frischen
+-- Installation erst, wenn dieser Abgleich durchgelaufen war.
+--
+-- Das ist ein echtes Zeitfenster und kein theoretisches: Der Abgleich läuft
+-- nur im primären Arbeitsprozess, die übrigen nehmen Anfragen schon an,
+-- sobald das Schema steht. Eine Abfrage auf rb_themes in dieser Spanne
+-- bekommt keinen leeren Treffer, sondern "relation does not exist".
+--
+-- Dieselbe Begründung wie ein paar Zeilen weiter oben bei rb_colors: Das
+-- Schema gehört an EINE Stelle, und diese hier ist es.
+CREATE TABLE IF NOT EXISTS rb_themes (
+  id        INTEGER PRIMARY KEY,
+  name      TEXT,
+  parent_id INTEGER
+);
+CREATE TABLE IF NOT EXISTS rb_inventory_minifigs (
+  id           SERIAL PRIMARY KEY,
+  inventory_id INTEGER NOT NULL,
+  fig_num      TEXT NOT NULL,
+  quantity     INTEGER
+);
+CREATE INDEX IF NOT EXISTS idx_rb_inv_minifigs_inv ON rb_inventory_minifigs(inventory_id);
+
 -- ── Shared catalog tables (user-independent) ─────────────────────────────
 CREATE TABLE IF NOT EXISTS set_catalog (
   set_number  TEXT PRIMARY KEY,

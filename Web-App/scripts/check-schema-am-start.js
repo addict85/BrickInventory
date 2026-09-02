@@ -147,4 +147,106 @@ if (treffer.length) {
   process.exit(1);
 }
 
-console.log(`GRUEN — ${dateien.length} Dateien im Anfragepfad, keine Schema-Anweisung darin`);
+// ═══════════════════════════════════════════════════════════════════════════
+// Regel 2 — jede Tabelle und jeder Index wird an GENAU EINER Stelle angelegt
+// ═══════════════════════════════════════════════════════════════════════════
+//
+// Regel 1 oben hätte den zweiten Fund dieser Reihe NICHT gesehen:
+// jobs/rebrickableCsvSync.ts legte in einer Funktion ensureSchema() sieben
+// Tabellen an, die wortgleich schon in db/schema.sql standen — und zwei
+// weitere (rb_themes, rb_inventory_minifigs), die es SONST NIRGENDS gab.
+//
+// Die zweite Hälfte ist die gefährlichere. Der Abgleich läuft nur im primären
+// Arbeitsprozess; die übrigen nehmen Anfragen an, sobald das Schema steht. Auf
+// einer frischen Installation gab es die beiden Tabellen in dieser Spanne noch
+// nicht, und eine Abfrage darauf bekommt kein leeres Ergebnis, sondern
+// "relation does not exist".
+//
+// Deshalb hier die schärfere Frage: Wo wird dieselbe Tabelle zweimal angelegt?
+// Zwei Fassungen fallen nicht auf, solange sie dasselbe wollen — und beim
+// Vergleich fiel nebenbei auf, dass zwei der Indizes im Job überzählig waren
+// (derselbe Index unter anderem Namen, und ein Präfix eines vorhandenen).
+
+/**
+ * Absichtlich doppelt, mit Grund. Die Liste darf nur KÜRZER werden.
+ * @type {Map<string, string>}
+ */
+const DOPPELT_ERLAUBT = new Map([
+  // runMigrations() legt seine eigene Buchführung an und kann sich nicht auf
+  // schema.sql verlassen: initSchema() wird übersprungen, wenn schema_meta
+  // bereits die aktuelle App-Version trägt — die Migrationen laufen trotzdem.
+  ['schema_migrations', 'db/migrate.ts führt seine Buchführung selbst, auch wenn initSchema() übersprungen wird'],
+]);
+
+/** @type {string[]} */
+const alleQuellen = [];
+for (const teil of ['db', 'routes', 'utils', 'jobs', 'clients', 'scripts']) {
+  const verz = path.join(ROOT, teil);
+  if (fs.existsSync(verz)) sammleAlle(verz, alleQuellen);
+}
+if (fs.existsSync(path.join(ROOT, 'server.ts'))) alleQuellen.push(path.join(ROOT, 'server.ts'));
+
+/** @param {string} verz @param {string[]} raus */
+function sammleAlle(verz, raus) {
+  for (const eintrag of fs.readdirSync(verz, { withFileTypes: true })) {
+    const p = path.join(verz, eintrag.name);
+    if (eintrag.isDirectory()) sammleAlle(p, raus);
+    else if (/\.(ts|js|sql)$/.test(eintrag.name)) raus.push(p);
+  }
+  return raus;
+}
+
+if (alleQuellen.length < 100) {
+  console.error(`ROT — nur ${alleQuellen.length} Quelldateien gefunden; der Pfad stimmt nicht.`);
+  process.exit(1);
+}
+
+/** @type {Map<string, string[]>} */
+const angelegt = new Map();
+for (const datei of alleQuellen) {
+  const rel = path.relative(ROOT, datei);
+  const text = ohneKommentare(fs.readFileSync(datei, 'utf8'));
+  const re = /CREATE\s+(?:TABLE|(?:UNIQUE\s+)?INDEX)(?:\s+IF\s+NOT\s+EXISTS)?\s+(\w+)/gi;
+  let m;
+  while ((m = re.exec(text)) !== null) {
+    // m[1] ist unter noUncheckedIndexedAccess moeglicherweise undefined —
+    // die Gruppe ist im Muster zwar nicht optional, aber das weiss der
+    // Typpruefer nicht. Ein leerer Name faellt hier still durch statt zu werfen.
+    const name = (m[1] || '').toLowerCase();
+    if (!name) continue;
+    const wo = angelegt.get(name) || [];
+    if (!wo.includes(rel)) wo.push(rel);
+    angelegt.set(name, wo);
+  }
+}
+
+// Selbstbeweis: Eine bekannte Tabelle MUSS gefunden werden. Sonst ist das
+// Muster veraltet und "nichts doppelt" bedeutet nichts.
+if (!angelegt.has('rb_sets')) {
+  console.error('ROT — rb_sets wird nirgends angelegt gefunden. Das Muster ist veraltet;');
+  console.error('ein leeres Ergebnis unten waere dann wertlos.');
+  process.exit(1);
+}
+
+/** @type {string[]} */
+const mehrfach = [];
+for (const [name, orte] of angelegt) {
+  if (orte.length < 2) continue;
+  if (DOPPELT_ERLAUBT.has(name)) continue;
+  mehrfach.push(`${name}  —  ${orte.join(', ')}`);
+}
+
+if (mehrfach.length) {
+  console.error(`ROT — mehrfach angelegt (${mehrfach.length}):`);
+  for (const t of mehrfach) console.error('  ' + t);
+  console.error('');
+  console.error('Eine Tabelle gehoert an EINE Stelle. Zwei Fassungen fallen nicht auf,');
+  console.error('solange sie dasselbe wollen — und CREATE TABLE IF NOT EXISTS meldet');
+  console.error('einen Unterschied nicht, es tut dann einfach nichts.');
+  console.error('Ist die Doppelung unvermeidlich, gehoert sie mit Grund in');
+  console.error('DOPPELT_ERLAUBT in dieser Datei.');
+  process.exit(1);
+}
+
+console.log(`GRUEN — ${dateien.length} Dateien im Anfragepfad ohne Schema-Anweisung, ` +
+            `${angelegt.size} Tabellen/Indizes je genau einmal angelegt`);

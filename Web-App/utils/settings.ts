@@ -113,6 +113,49 @@ async function effectiveCondition(userId: number): Promise<'N' | 'U'> {
 }
 
 /**
+ * Welcher Zustand gilt für einen Marktpreis: Eingabe → Bestand → Standard.
+ *
+ * ── Warum das hier steht ────────────────────────────────────────────────────
+ * Dieselbe Staffelung stand VIERMAL im Baum, in zwei Fassungen:
+ *
+ *   routes/parts.ts:437     Eingabe → Bestand → Standard   (Bearbeiten)
+ *   routes/minifigs.ts:471  Eingabe → Bestand → Standard   (Bearbeiten)
+ *   routes/parts.ts:410              Bestand → Standard    (Erfassen)
+ *   routes/minifigs.ts:438           Bestand → Standard    (Erfassen)
+ *
+ * Die zweite ist keine andere Regel, sondern derselbe Fall ohne Eingabe — der
+ * Erfassen-Weg bekommt schlicht keinen Zustand mitgeschickt. Aufgefallen ist
+ * das erst bei einem mechanischen Vergleich gleicher Codeblöcke; die beiden
+ * Nachträge 146 und 147 haben genau daran gelitten, dass Bearbeiten und
+ * Erfassen getrennte Wege sind und jeweils einzeln nachgezogen werden mussten.
+ *
+ * Ein Absatz aus routes/parts.ts sagt, worum es geht: „Zustand der neuen
+ * Erfassung folgt dem Teil selbst (bzw. dem User-Default), nicht hartkodiert
+ * 'N' — sonst bekäme ein als \"Gebraucht\" geführtes Teil bei jeder
+ * Mengen-Erhöhung eine \"Neu\"-Erfassung."
+ *
+ * ── Eine Feinheit, die erhalten bleiben muss ────────────────────────────────
+ * Ein LEERER `bisher` (die leere Zeichenkette, wie sie das Formular schreibt)
+ * zählt als nicht gesetzt und fällt auf den Standard durch — genau wie an den
+ * vier Stellen vorher, die dafür `||` benutzt haben. Mit `??` wäre das eine
+ * stille Verhaltensänderung; in diesem Projekt sind an dieser Naht zwischen
+ * JS-Falsy und Kotlin-Null schon mehrfach Zahlen auseinandergelaufen.
+ *
+ * @param eingabe Was im Rumpf steht; alles ausser 'N'/'U' zählt als nichts.
+ * @param bisher  Der bisherige Zustand des Bestands, falls vorhanden.
+ * @param userId  Für den Standard, wenn beides fehlt.
+ */
+async function zustandFuerPreis(
+  eingabe: unknown,
+  bisher: string | null | undefined,
+  userId: number,
+): Promise<string> {
+  if (eingabe === 'N' || eingabe === 'U') return eingabe;
+  if (bisher) return bisher;
+  return await effectiveCondition(userId).catch(() => 'N');
+}
+
+/**
  * Der GLOBALE Standard-Zustand (Admin-Ansicht) — ohne Benutzer-Override.
  *
  * @returns {Promise<'N'|'U'>}
@@ -179,4 +222,4 @@ async function deleteGlobalSetting(...keys: string[]) {
   await db.run(`DELETE FROM global_settings WHERE key = ANY($1)`, [keys]);
 }
 
-export { getSetting, getGlobalSetting, setGlobalSetting, setGlobalTrigger, deleteGlobalSetting, setUserSetting, effectiveCondition, globalDefaultCondition };
+export { getSetting, getGlobalSetting, setGlobalSetting, setGlobalTrigger, deleteGlobalSetting, setUserSetting, effectiveCondition, globalDefaultCondition, zustandFuerPreis };
