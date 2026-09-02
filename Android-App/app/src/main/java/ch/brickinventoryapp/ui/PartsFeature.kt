@@ -19,12 +19,25 @@ import ch.brickinventoryapp.data.ScopeFilter
  * bleiben unverändert: vm.funktion() löst die Extension auf.
  */
 
-internal fun MainViewModel.loadParts(search: String? = null, page: Int = 1, debounce: Boolean = false) {
+/**
+ * Die Teileliste laden — den Suchtext holt sie sich SELBST aus dem Zustand.
+ *
+ * Frueher war `search` ein Parameter. Damit kannte ihn nur, wer aus dem
+ * Suchfeld heraus lud; `onLoadMore(page)` gab ihn nicht mit und bekam eine
+ * ungefilterte Seite 2, die an eine gefilterte Seite 1 gehaengt wurde (siehe
+ * PartsUiState.partsQuery). Wer den Filter aendern will, ruft
+ * [setPartsQuery] — genau wie in der Galerie.
+ */
+internal fun MainViewModel.loadParts(page: Int = 1, debounce: Boolean = false) {
     partsJob?.cancel()
     partsJob = viewModelScope.launch {
         if (debounce) kotlinx.coroutines.delay(350)
         _partsState.update { it.copy(partsLoading = true) }
-        when (val r = retryOnNetwork { repo.teile.getParts(search = search, page = page,
+        // Nach dem Entprellen gelesen: Bei schneller Eingabe gewinnt der
+        // zuletzt gestartete Auftrag, und der soll den NEUESTEN Text sehen.
+        // Leer heisst "kein Filter" — die API erwartet dafuer null, nicht "".
+        val suche = _partsState.value.partsQuery.ifBlank { null }
+        when (val r = retryOnNetwork { repo.teile.getParts(search = suche, page = page,
                                                      accounts = scopeFor(ScopeFilter.View.PARTS)) }) {
             is Result.Success -> {
                 _partsState.update {
@@ -50,6 +63,22 @@ internal fun MainViewModel.loadParts(search: String? = null, page: Int = 1, debo
             }
         }
     }
+}
+
+/**
+ * Suchtext der Teileliste setzen: entprellt, damit nicht jeder Tastendruck
+ * eine Abfrage ausloest. Gegenstueck zu setGalleryQuery.
+ */
+internal fun MainViewModel.setPartsQuery(q: String) {
+    // Suchtext gewechselt: Die gemerkte Stelle zeigt auf Teile, die in der
+    // neuen Liste woanders oder gar nicht stehen (ScrollMemory.kt). Die
+    // Galerie vergisst sie bei jedem Filterwechsel; hier fehlte das, solange
+    // der Suchtext gar nicht im Zustand stand.
+    scrollMemory.vergiss("parts")
+    _partsState.update { it.copy(partsQuery = q) }
+    // Kein eigener Auftrag noetig: loadParts bricht partsJob selbst ab, ein
+    // zweiter Tastendruck loescht also den entprellten ersten.
+    loadParts(page = 1, debounce = true)
 }
 
 internal fun MainViewModel.loadPartsColors() {
