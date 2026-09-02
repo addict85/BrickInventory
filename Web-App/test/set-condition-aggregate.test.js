@@ -179,11 +179,40 @@ test('der Marktpreis als Kaufpreis richtet sich nach dem gewählten Zustand', ()
       `getCurrentMarketPrice mit nur ${args} Argumenten — der Zustand fehlt: ${m[0]}`);
   }
 
-  // Der Zustand muss VOR der Preisermittlung feststehen
-  const iCond = src.indexOf('const effectiveCondition = condition ||');
-  const iPrice = src.indexOf('effectivePurchasePrice = await getCurrentMarketPrice');
-  assert.ok(iCond > 0 && iCond < iPrice,
-    'effectiveCondition muss vor der Preisermittlung bestimmt werden');
+  // Der Zustand muss VOR JEDER Preisermittlung feststehen.
+  //
+  // Diese Prüfung suchte bis zuletzt die Zeichenfolge
+  // `const effectiveCondition = condition ||` — also die FORMULIERUNG einer
+  // bestimmten Fassung. Sie brach, als die Staffelung nach utils/settings.ts
+  // wanderte und `addSet()` den Zustand einmal oben für beide Zweige bestimmt.
+  // Die Regel war dabei nicht verletzt, im Gegenteil: Sie wird jetzt früher
+  // erfüllt als vorher.
+  //
+  // Geprüft wird deshalb die Reihenfolge selbst: Wo auch immer der Zustand
+  // bestimmt wird, es muss vor dem ERSTEN Preisabruf geschehen.
+  // GEMESSEN WIRD IN addSet(), nicht über den ganzen Quelltext.
+  //
+  // setKernQuelle() verkettet vier Dateien, und setService.ts enthält weitere
+  // Preisabrufe in anderen Funktionen — der erste steht in
+  // priceForNewAcquisition() und hat mit dieser Regel nichts zu tun. Ein
+  // indexOf über alles vergleicht Positionen quer durch fremde Funktionen und
+  // misst damit nichts. (Genau so ist der erste Entwurf dieser Fassung
+  // fehlgeschlagen.)
+  const fnStart = src.indexOf('async function addSet(');
+  assert.ok(fnStart > 0, 'addSet() ist nicht mehr zu finden');
+  const fnEnde = src.indexOf('\nasync function ', fnStart + 10);
+  const addSetSrc = src.slice(fnStart, fnEnde > fnStart ? fnEnde : undefined);
+
+  const iCond = addSetSrc.indexOf('zustandFuerPreis(');
+  const iPrice = addSetSrc.indexOf('getCurrentMarketPrice(');
+  assert.ok(iCond >= 0,
+    'addSet() bestimmt den Zustand nicht mehr über zustandFuerPreis() — steht ' +
+    'die Staffelung wieder ausgeschrieben da, womöglich zweimal?');
+  assert.ok(iPrice >= 0, 'addSet() ruft keinen Marktpreis mehr ab — Muster veraltet?');
+  assert.ok(iCond < iPrice,
+    'Der Zustand wird erst NACH dem ersten Preisabruf bestimmt. Dann holt der ' +
+    'Abruf den Preis für den falschen Zustand — genau der gemeldete Fall ' +
+    '(55 statt 33 CHF).');
 
   // Beim Ändern zählt der Zustand der letzten Erfassung — die wird aktualisiert
   assert.match(src, /SELECT condition FROM set_acquisitions[\s\S]{0,140}ORDER BY created_at DESC, id DESC LIMIT 1/,
@@ -260,8 +289,28 @@ test('ein manuell erfasstes Teil bekommt Marktpreis und Erfassung', () => {
   const fn = src.slice(src.indexOf('async function addManualPart'),
                        src.indexOf('async function updateManualPart'));
 
-  assert.match(fn, /getCurrentPartMarketPrice\(part_number, color_id, uid, condition\)/,
-    'Der Zustand muss in die Preisermittlung — sonst kommt der Neupreis');
+  // Der Zustand muss in die Preisermittlung — sonst kommt der Neupreis, auch
+  // bei „Gebraucht".
+  //
+  // Geprüft wird das an JEDEM Aufruf, nicht an einer Fundstelle in
+  // addManualPart. Die Zusicherung stand hier wörtlich als
+  // `getCurrentPartMarketPrice(part_number, color_id, uid, condition)` und
+  // wurde rot, als die Rechnung in resolveManualPartPurchase zusammenzog —
+  // obwohl der Zustand dort sehr wohl mitgeht. Eine Regel, die an einem Ort
+  // festgeschrieben ist, meldet den Umzug als Fehler und verpasst dafür die
+  // vier anderen Aufrufer.
+  const ohneZustand = [...src.matchAll(/getCurrentPartMarketPrice\(([^)]*)\)/g)]
+    .filter(m => !m[1].includes('function'))          // die Definition selbst nicht
+    .filter(m => m[1].split(',').length < 4);
+  assert.equal(ohneZustand.length, 0,
+    'Diese Aufrufe holen den Marktpreis OHNE Zustand:\n  ' +
+    ohneZustand.map(m => m[0]).join('\n  ') +
+    '\nDann fällt die Ermittlung intern auf den Standardzustand zurück, und ein ' +
+    'als gebraucht erfasstes Teil bekommt den Neupreis.');
+  // Selbstbeweis: Ohne Fundstellen sagt eine leere Liste nichts.
+  const alleAufrufe = [...src.matchAll(/getCurrentPartMarketPrice\(/g)];
+  assert.ok(alleAufrufe.length >= 4,
+    `Nur ${alleAufrufe.length} Vorkommen von getCurrentPartMarketPrice( — Muster veraltet?`);
   // Zwei Pfade: neu angelegt und erneut erfasst — BEIDE brauchen eine
   // Erfassung. Der zweite endete früher mit `return { action: 'updated' }`,
   // ohne eine anzulegen; ein abweichendes Erfassungsdatum ging dabei verloren.

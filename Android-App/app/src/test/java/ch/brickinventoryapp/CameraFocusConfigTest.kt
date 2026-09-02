@@ -103,72 +103,112 @@ class CameraFocusConfigTest {
         }
     }
 
+    /**
+     * Der AF-Modus steht an genau EINER Stelle — und jede Vorschau holt ihn dort.
+     *
+     * ── Was sich geändert hat ───────────────────────────────────────────────
+     * Bis hierher zählte dieser Test das Vorkommen der Zeichenfolge
+     * `CONTROL_AF_MODE_CONTINUOUS_PICTURE` in den einzelnen Bildschirmdateien:
+     * einmal im Scanner, einmal im Analyzer, ZWEIMAL im SetupScreen. Das prüfte
+     * die Formulierung an jeder Kopie — und dass es Kopien gab, war der
+     * eigentliche Fehler.
+     *
+     * Der Aufbau der Bildanalyse stand zweimal im Baum, zwanzig Zeilen lang und
+     * bis auf die Auflösung zeichengleich. Genau in dieser Doppelung hat die
+     * Behebung aus Nachtrag 112 eine Kopie nicht erreicht.
+     *
+     * Jetzt steht der Modus in `KameraAufbau.kt`, in `autofokusDauerhaft()`.
+     * Geprüft wird deshalb anders herum: Die Zeile darf NUR dort stehen, und
+     * jede Datei, die eine Vorschau baut, muss die Funktion aufrufen.
+     */
+    /**
+     * Der ganze Kamera-Aufbau steht an EINER Stelle.
+     *
+     * ── Warum die Regel schaerfer wurde ─────────────────────────────────────
+     * Zuerst hiess sie „wer eine Vorschau baut, muss den AF-Modus setzen" —
+     * die Fassung fuer eine Welt mit zwei Kopien. Seit auch die BINDUNG
+     * zusammengelegt ist (19 von 23 Zeilen waren zeichengleich), baut niemand
+     * ausser KameraAufbau.kt noch eine Vorschau, eine Bildanalyse oder eine
+     * Bindung. Damit laesst sich das Staerkere pruefen: Es gibt nur einen Ort.
+     *
+     * Der Umbau hat diese Pruefung selbst rot gemeldet — sie fand nur noch
+     * EINE Datei mit `Preview.Builder()` und verlangte mindestens zwei. Das
+     * war kein Verstoss, sondern der Beweis, dass die Zusammenlegung gegriffen
+     * hat; die Regel ist der neuen Struktur nachgezogen.
+     */
     @Test
-    fun `CONTINUOUS_PICTURE steht an BEIDEN Use Cases`() {
-        // CameraX führt die Konfigurationen aller gebundenen Use Cases zu EINEM
-        // Repeating-Request zusammen. Steht der AF-Modus nur am Preview,
-        // entscheidet je nach Gerät die Analyse-Konfiguration mit — und deren
-        // Vorgabe ist nicht zwingend CONTINUOUS_PICTURE.
-        //
-        // Seit Nachtrag 99 stehen die beiden in verschiedenen Dateien: die
-        // Vorschau in BarcodeScannerScreen.kt, die Analyse in BarcodeAnalyzer.kt.
-        val marke = "CONTROL_AF_MODE_CONTINUOUS_PICTURE"
-        assert(code(scanner()).contains(marke)) {
-            "Der Vorschau fehlt der AF-Modus"
+    fun `der Kamera-Aufbau steht nur in KameraAufbau`() {
+        val ordner = java.io.File("src/main/java/ch/brickinventoryapp/ui/screens")
+        val dateien = (ordner.listFiles { f -> f.extension == "kt" } ?: emptyArray()).toList()
+        assert(dateien.size >= 5) {
+            "Nur ${dateien.size} Bildschirmdateien gefunden — der Pfad stimmt nicht, und ein " +
+                "leeres Ergebnis würde diesen Test stillschweigend bestehen lassen."
         }
-        assert(code(analyzer()).contains(marke)) {
-            "Der Bildanalyse fehlt der AF-Modus — auf manchen Geräten bleibt das " +
-                "Bild dann unscharf, obwohl der Code richtig aussieht."
-        }
-    }
 
-    @Test
-    fun `kein periodisches Nachfokussieren`() {
-        // „Fokus-Pump": Ein im Takt laufendes startFocusAndMetering unterbricht
-        // den kontinuierlichen Autofokus immer wieder. Fokussiert wird NUR beim
-        // Antippen.
-        val c = code(scanner()) + "\n" + code(analyzer())
-        for (muster in listOf("""LaunchedEffect[\s\S]{0,400}?startFocusAndMetering""",
-                              """while\s*\([^)]*\)[\s\S]{0,400}?startFocusAndMetering""")) {
-            assert(!Regex(muster).containsMatchIn(c)) {
-                "startFocusAndMetering läuft wieder in einer Schleife oder einem " +
-                    "Effekt — das zwingt die Kamera dauernd in einen neuen Suchlauf."
+        for ((marke, was) in listOf(
+            "CONTROL_AF_MODE_CONTINUOUS_PICTURE" to "Der AF-Modus",
+            "Preview.Builder()"                  to "Die Vorschau",
+            "ImageAnalysis.Builder()"            to "Die Bildanalyse",
+            "bindToLifecycle("                   to "Die Bindung",
+        )) {
+            val wo = dateien.filter { code(it.readText()).contains(marke) }.map { it.name }
+            assert(wo == listOf("KameraAufbau.kt")) {
+                "$was ($marke) steht in ${wo.joinToString()} statt nur in KameraAufbau.kt. " +
+                    "Jede weitere Stelle ist eine zweite Fassung derselben Regel — und genau " +
+                    "daran ist der Tap-to-Focus im SetupScreen hängengeblieben."
             }
         }
     }
 
     @Test
-    fun `SetupScreen setzt den AF-Modus an BEIDEN Use Cases`() {
-        // SetupScreen bindet Vorschau UND Analyse selbst, in EINER Datei —
-        // anders als der Scanner, dessen Analyse seit Nachtrag 99 in
-        // BarcodeAnalyzer.kt liegt. Hier zaehlt deshalb die Anzahl, nicht das
-        // blosse Vorkommen: EIN Use Case mit AF-Modus reicht nicht, weil
-        // CameraX beide Konfigurationen zu einem Repeating-Request verschmilzt.
-        //
-        // Diese Pruefung stand bis Nachtrag 119 in einer zweiten, veralteten
-        // Fassung dieser Klasse in ResponseCacheContractTest.kt. Sie erwartete
-        // die zwei Stellen auch in BarcodeScannerScreen.kt — was seit der
-        // Auslagerung des Analyzers nicht mehr zutrifft. Die Doppelung war ein
-        // Uebersetzungsfehler (Redeclaration); erhalten bleibt der Teil, der
-        // stimmt: SetupScreen.
-        val marke = "CONTROL_AF_MODE_CONTINUOUS_PICTURE"
-        val anzahl = Regex(marke).findAll(code(setup())).count()
-        assert(anzahl == 2) {
-            "In SetupScreen.kt steht der AF-Modus $anzahl mal statt zweimal — " +
-                "er muss an Preview UND ImageAnalysis stehen. NICHT diesen Test " +
-                "anpassen, sondern die fehlende Stelle ergaenzen."
+    fun `KameraAufbau setzt den AF-Modus an BEIDEN Use Cases`() {
+        // CameraX führt die Konfigurationen aller gebundenen Use Cases zu EINEM
+        // Repeating-Request zusammen. Steht der Modus nur an einem, entscheidet
+        // je nach Gerät der andere mit — und das Bild bleibt unscharf, obwohl
+        // der Code richtig aussieht.
+        val src = code(Quellen.lies("ui/screens/KameraAufbau.kt"))
+        val n = Regex("CONTROL_AF_MODE_CONTINUOUS_PICTURE").findAll(src).count()
+        assert(n >= 2) {
+            "Der AF-Modus steht in KameraAufbau.kt nur ${n}x — er muss an Vorschau UND " +
+                "Bildanalyse hängen. NICHT diesen Test anpassen, sondern die Stelle ergänzen."
         }
     }
 
     @Test
-    fun `kein periodisches Nachfokussieren im SetupScreen`() {
-        val c = code(setup())
-        for (muster in listOf("""LaunchedEffect[\s\S]{0,400}?startFocusAndMetering""",
-                              """while\s*\([^)]*\)[\s\S]{0,400}?startFocusAndMetering""")) {
-            assert(!Regex(muster).containsMatchIn(c)) {
-                "startFocusAndMetering laeuft im SetupScreen in einer Schleife " +
-                    "oder einem Effekt — das zwingt die Kamera dauernd in einen " +
-                    "neuen Suchlauf."
+    fun `beide Scanner holen ihre Kamera dort`() {
+        // Sonst nützt die Regel oben nichts: Wer sich die Kamera selbst bindet,
+        // umgeht autofokusDauerhaft() — und sieht dabei richtig aus.
+        val ordner = java.io.File("src/main/java/ch/brickinventoryapp/ui/screens")
+        val nutzer = (ordner.listFiles { f -> f.extension == "kt" } ?: emptyArray())
+            .filter { it.name != "KameraAufbau.kt" }
+            .filter { code(it.readText()).contains("kameraBinden(") }
+            .map { it.name }
+        assert(nutzer.size >= 2) {
+            "Nur ${nutzer.size} Bildschirm(e) rufen kameraBinden() (${nutzer.joinToString()}). " +
+                "Erwartet werden Barcodescanner und SetupScreen."
+        }
+    }
+
+    @Test
+    fun `kein periodisches Nachfokussieren`() {
+        // Ein im Takt laufendes startFocusAndMetering unterbricht den
+        // kontinuierlichen Autofokus immer wieder. Fokussiert wird NUR beim
+        // Antippen.
+        val pump = Regex(
+            """(while\s*\(|delay\s*\(|Timer\(|fixedRate|LaunchedEffect)[\s\S]{0,400}?startFocusAndMetering""")
+        val ordner = java.io.File("src/main/java/ch/brickinventoryapp/ui/screens")
+        val dateien = (ordner.listFiles { f -> f.extension == "kt" } ?: emptyArray())
+            .filter { code(it.readText()).contains("startFocusAndMetering") }
+        assert(dateien.size >= 2) {
+            "Nur ${dateien.size} Datei(en) mit startFocusAndMetering gefunden — " +
+                "erwartet werden mindestens Barcodescanner und SetupScreen. " +
+                "Ein leeres Ergebnis wuerde diesen Test stillschweigend bestehen lassen."
+        }
+        for (datei in dateien) {
+            assert(!pump.containsMatchIn(code(datei.readText()))) {
+                "${datei.name}: startFocusAndMetering laeuft in einer Schleife, hinter " +
+                    "einem Timer oder in einem Effekt (Fokus-Pump) — das zwingt die " +
+                    "Kamera dauernd in einen neuen Suchlauf."
             }
         }
     }

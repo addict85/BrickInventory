@@ -227,9 +227,13 @@ test('die Teileliste liefert, was sie meldet', () => {
 
   // ── Und die SET-Liste bleibt unbegrenzt ──────────────────────────────────
   //
-  // Die App blättert die Galerie nicht (BrickApiService.getSets kennt keinen
-  // page-Parameter). Eine Grenze dort unterschlüge ihr stillschweigend Sets.
+  // Nicht mehr, weil die App nicht blättern könnte — sie kann es längst
+  // (SetsRepository.getSets nimmt page und pageSize). Sondern weil der Weg
+  // ohne page_size absichtlich offen bleibt: Skripte und ältere App-Stände
+  // holen darüber alles, und eine stille Grenze unterschlüge ihnen ab dem
+  // Grenzwert Sets. Die Begründung steht einmal, in routes/api_v1/sets.ts.
   const getSets = src.slice(src.indexOf('async function getSets'), src.indexOf('async function getSetConditionAggregate'));
   assert.match(getSets, /if \(page_size\) \{/,
-    'Die Set-Liste darf ohne page_size NICHT gedeckelt werden — die App blättert dort nicht');
+    'Die Set-Liste darf ohne page_size NICHT gedeckelt werden — Aufrufer ohne ' +
+    'page_size (Skripte, ältere App-Stände) bekämen sonst stillschweigend weniger Sets');
 });

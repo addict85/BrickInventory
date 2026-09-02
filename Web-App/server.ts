@@ -103,7 +103,7 @@ process.on('uncaughtException', (err) => {
 global.startupStatus = { ready: false, step: 'Datenbank wird initialisiert...', progress: 0, total: 6 };
 
 // ── Cluster: fork one worker per CPU so multiple requests run in parallel ─────
-import { meldeUndWeiter, fehlertext } from './utils/httpError';
+import { fehlertext, logAndContinue, meldeUndWeiter } from './utils/httpError';
 import cluster from 'cluster';
 import os from 'os';
 import { starteHintergrundlaeufe } from './startup/backgroundJobs';
@@ -1050,7 +1050,10 @@ db.initSchemaOnce().then(async () => {
             await db.run(
               "UPDATE parts SET image_local=$1 WHERE user_id=$2 AND part_number=$3 AND color_id=$4 AND source='manual'",
               [local, p.user_id, p.part_number, p.color_id || 0]
-            ).catch(() => {});
+            // Das Bild liegt dann auf der Platte, die Zeile zeigt aber nicht
+            // darauf: In der Oberflaeche fehlt es weiterhin, und der naechste
+            // Start laedt es erneut herunter.
+            ).catch(logAndContinue(`bilder:teil ${p.part_number}`));
             // Fehlte bisher: Ohne diesen Aufruf blieb es bei der Originalgrösse,
             // dauerhaft — anders als bei Sets (downloadSetImages() oben), wo
             // die Vorschau schon immer angestossen wurde. Der einmalige
@@ -1069,7 +1072,7 @@ db.initSchemaOnce().then(async () => {
             await db.run(
               'UPDATE minifigs SET image_local=$1 WHERE fig_number=$2 AND image_local IS NULL',
               [local, f.fig_number]
-            ).catch(() => {});
+            ).catch(logAndContinue(`bilder:minifigur ${f.fig_number}`));
             // Dieselbe fehlende Vorschau-Erzeugung wie bei den Teilen oben.
             generateThumb(local).catch(() => {});
           }

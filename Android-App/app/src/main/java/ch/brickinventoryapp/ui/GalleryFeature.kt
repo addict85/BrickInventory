@@ -420,16 +420,27 @@ internal fun MainViewModel.loadStats() {
     viewModelScope.launch {
         when (val r = repo.finanzen.getStats(scopeFor(ScopeFilter.View.GALLERY))) {
             is Result.Success -> _galleryState.update { it.copy(stats = r.data.stats) }
+            // Bewusst ohne Meldung: Die Kennzahlen sind Beiwerk — scheitern sie,
+            // bleibt die Galerie stehen, und eine Meldung über eine Zahlenreihe
+            // am Kopf der Seite wäre lauter als der Verlust. Dieselbe Begründung
+            // wie bei den Teile-Kennzahlen in PartsFeature.kt.
             is Result.Error -> {}
         }
     }
 }
 
-internal fun MainViewModel.loadGallery() {
-    viewModelScope.launch {
-        when (val r = repo.sets.getSets()) {
-            is Result.Success -> _galleryState.update { it.copy(sets = r.data.sets) }
-            is Result.Error -> {}
-        }
-    }
-}
+// Hier stand loadGallery(): ein ZWEITER Lader fuer dieselbe Liste, der
+// `repo.sets.getSets()` ohne jedes Argument rief.
+//
+// Er verwarf damit VIER Dinge, die loadSets() mitfuehrt — den Haushaltsfilter,
+// den Suchtext, den Themenfilter und die Sortierung — und liess galleryTotal
+// und galleryPage unberuehrt stehen. Wer mit gesetztem Filter ein Set per
+// Barcode erfasste, bekam danach eine ungefilterte Seite 1 in einer Ansicht,
+// deren Filterchips weiter den alten Stand zeigten.
+//
+// Schlimmer noch die Paginierung: loadMoreSets() prueft
+// `sets.size >= galleryTotal`. Danach standen dort eine UNGEFILTERTE Liste und
+// eine GEFILTERTE Gesamtzahl nebeneinander — je nachdem entweder gar kein
+// Nachladen mehr oder gefilterte Seiten, an eine ungefilterte Liste gehaengt.
+//
+// Es gibt genau einen Weg, die Galerie zu laden, und das ist loadSets().

@@ -29,20 +29,8 @@ class CameraXUpgradeTest {
         return s.lines().filterNot { it.trim().startsWith("//") }.joinToString("\n")
     }
 
-    /**
-     * Ein Kamera-Bildschirm samt seiner ausgelagerten Bildanalyse.
-     *
-     * Der Barcode-Scanner besteht seit Nachtrag 99 aus ZWEI Dateien: der
-     * Bildschirm bindet die Vorschau, BarcodeAnalyzer.kt die ImageAnalysis.
-     * Die geprueften Regeln (AF-Modus an BEIDEN Use Cases, Aufraeumen der
-     * nativen Ressourcen, keine getaktete Fokussierung) spannen ueber beide —
-     * eine Datei allein zu lesen fand nur die Haelfte und meldete deshalb
-     * einen Verstoss, den es nicht gibt. SetupScreen bindet beides selbst und
-     * bleibt unveraendert.
-     */
-    private fun mitAnalyse(rel: String): String =
-        read(rel) + if (rel.endsWith("BarcodeScannerScreen.kt"))
-            "\n" + read("ui/screens/BarcodeAnalyzer.kt") else ""
+    /** Kamerabildschirm samt Analyse und gemeinsamem Aufbau — siehe [Quellen.kameraQuelle]. */
+    private fun mitAnalyse(rel: String): String = Quellen.kameraQuelle(rel)
 
     @Test
     fun `CameraX steht auf einer 16-KB-tauglichen Fassung`() {
@@ -77,27 +65,17 @@ class CameraXUpgradeTest {
         }
     }
 
-    /**
-     * Der Autofokus überlebt den Sprung nur, wenn die Regel unverändert
-     * bleibt: CONTINUOUS_PICTURE an BEIDEN Use Cases, kein getakteter
-     * Fokus-Trigger. CameraPipe (1.6.0) hat den Unterbau ausgetauscht — genau
-     * hier würde eine Regression zuerst sichtbar.
-     */
-    @Test
-    fun `der kontinuierliche Autofokus bleibt unveraendert`() {
-        for (rel in screens) {
-            val src = code(mitAnalyse(rel))
-            val hits = Regex("CONTROL_AF_MODE_CONTINUOUS_PICTURE").findAll(src).count()
-            assert(hits >= 2) {
-                "$rel: CONTROL_AF_MODE_CONTINUOUS_PICTURE steht nur ${hits}x — der Modus " +
-                    "muss an Preview UND ImageAnalysis hängen."
-            }
-            assert(!Regex("""(while\s*\(|delay\s*\(|Timer\(|fixedRate)[\s\S]{0,200}?startFocusAndMetering""")
-                .containsMatchIn(src)) {
-                "$rel: getakteter Fokus-Trigger (\"Fokus-Pump\") wieder eingebaut"
-            }
-        }
-    }
+    // Hier stand eine zweite Fassung der Autofokus-Regel: Zaehlen von
+    // CONTROL_AF_MODE_CONTINUOUS_PICTURE je Bildschirmdatei plus die Suche nach
+    // einem getakteten Fokus-Trigger. Beides steht jetzt in
+    // CameraFocusConfigTest, und zwar strukturell statt zaehlend: Der AF-Modus
+    // hat seit KameraAufbau.kt genau EINE Stelle, und jede Vorschau holt ihn
+    // dort.
+    //
+    // Aufgefallen ist die Doppelung, als der Kamera-Aufbau zusammengefasst
+    // wurde und diese Pruefung rot wurde — nicht weil die Regel verletzt war,
+    // sondern weil sie an Kopien gemessen hat, die es nicht mehr gibt.
+
 
     /**
      * Die Analyse läuft auf YUV. Wird das auf RGBA umgestellt, greift CameraX

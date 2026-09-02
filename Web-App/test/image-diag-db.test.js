@@ -30,6 +30,7 @@ process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:t
 process.env.WEB_WORKERS = '1';
 
 const _req = require('./helpers/sources').buildAndRequire();
+const { testServer } = require('./helpers/server');
 const db = _req('db/database.js');
 const express = require(path.join(ROOT, 'node_modules', 'express'));
 
@@ -65,16 +66,12 @@ test('die Bild-Diagnose beschreibt jede Lage im Klartext',
   await new Jimp({ width: 500, height: 400, color: 0x0000ffff }).write(original);
   fs.rmSync(vorschau, { force: true });
 
-  const app = express();
-  app.use(express.json());
-  app.use((req, _res, next) => {
-    req.session = { userId: uid, isAdmin: true };
-    req.apiUser = { user_id: uid, is_admin: 1 };
-    next();
+  const { base, srv } = testServer(_req, {
+    sitzung: { userId: uid, isAdmin: true },
+    apiNutzer: { user_id: uid, is_admin: 1 },
+    routen: { '/api/v1': 'routes/api_v1/index.js' },
+    t,
   });
-  app.use('/api/v1', _req('routes/api_v1/index.js'));
-  const srv = app.listen(0);
-  const base = `http://localhost:${srv.address().port}`;
   const frag = async (sn) => {
     const r = await fetch(`${base}/api/v1/admin/image-diag/${sn}`);
     assert.equal(r.status, 200, 'die Diagnose muss antworten');

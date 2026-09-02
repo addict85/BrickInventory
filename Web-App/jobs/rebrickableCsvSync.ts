@@ -47,69 +47,29 @@ const SYNC_KEY = 'rb_csv_last_sync';
 function log(msg: string) { console.log(`[rb-csv-sync] ${msg}`); }
 
 // ── Schema ────────────────────────────────────────────────────────────────────
-async function ensureSchema() {
-  await db.run(`CREATE TABLE IF NOT EXISTS rb_parts (
-    part_num   TEXT PRIMARY KEY,
-    name       TEXT,
-    part_cat_id INTEGER,
-    part_img_url TEXT
-  )`);
-  await db.run(`CREATE TABLE IF NOT EXISTS rb_colors (
-    id    INTEGER PRIMARY KEY,
-    name  TEXT,
-    rgb   TEXT,
-    is_trans TEXT,
-    bl_color_id INTEGER
-  )`);
-  await db.run(`CREATE TABLE IF NOT EXISTS rb_part_categories (
-    id   INTEGER PRIMARY KEY,
-    name TEXT
-  )`);
-  await db.run(`CREATE TABLE IF NOT EXISTS rb_inventories (
-    id      INTEGER PRIMARY KEY,
-    set_num TEXT,
-    version INTEGER
-  )`);
-  await db.run(`CREATE TABLE IF NOT EXISTS rb_inventory_parts (
-    id           SERIAL PRIMARY KEY,
-    inventory_id INTEGER NOT NULL,
-    part_num     TEXT NOT NULL,
-    color_id     INTEGER,
-    quantity     INTEGER,
-    is_spare     TEXT,
-    img_url      TEXT
-  )`);
-  await db.run(`CREATE INDEX IF NOT EXISTS idx_rb_inv_parts_set ON rb_inventory_parts(inventory_id)`);
-  await db.run(`CREATE TABLE IF NOT EXISTS rb_sets (
-    set_num     TEXT PRIMARY KEY,
-    name        TEXT,
-    year        INTEGER,
-    theme_id    INTEGER,
-    num_parts   INTEGER,
-    set_img_url TEXT
-  )`);
-  await db.run(`CREATE TABLE IF NOT EXISTS rb_bl_mapping (
-    part_num    TEXT PRIMARY KEY,
-    bl_part_num TEXT,
-    fetched_at  TIMESTAMPTZ DEFAULT NOW()
-  )`);
-  // ── Katalog-Erweiterung: Themes (Kategorien) + Minifiguren pro Inventar ──
-  await db.run(`CREATE TABLE IF NOT EXISTS rb_themes (
-    id        INTEGER PRIMARY KEY,
-    name      TEXT,
-    parent_id INTEGER
-  )`);
-  await db.run(`CREATE TABLE IF NOT EXISTS rb_inventory_minifigs (
-    id           SERIAL PRIMARY KEY,
-    inventory_id INTEGER NOT NULL,
-    fig_num      TEXT NOT NULL,
-    quantity     INTEGER
-  )`);
-  await db.run(`CREATE INDEX IF NOT EXISTS idx_rb_inv_minifigs_inv ON rb_inventory_minifigs(inventory_id)`);
-  // Indexe fuer Katalog-Browsing (Filter nach Theme/Jahr auf ~25k Sets)
-  await db.run(`CREATE INDEX IF NOT EXISTS idx_rb_sets_theme ON rb_sets(theme_id)`);
-  await db.run(`CREATE INDEX IF NOT EXISTS idx_rb_sets_year  ON rb_sets(year)`);
-}
+// Hier stand ensureSchema(): sieben CREATE TABLE IF NOT EXISTS und vier
+// CREATE INDEX IF NOT EXISTS, ausgefuehrt bei jedem Start des Abgleichs.
+//
+// Sieben der Tabellen standen damit ZWEIMAL im Baum, wortgleich zu
+// db/schema.sql. Zwei — rb_themes und rb_inventory_minifigs — standen NUR
+// hier, das zentrale Schema war also unvollstaendig. Das ist die schlechtere
+// Haelfte derselben Doppelung: Auf einer frischen Installation gab es die
+// beiden erst, wenn dieser Abgleich durchgelaufen war, waehrend die uebrigen
+// Arbeitsprozesse schon Anfragen annahmen. Eine Abfrage in dieser Spanne
+// bekommt kein leeres Ergebnis, sondern "relation does not exist".
+//
+// Zwei der Indizes waren ueberzaehlig, nicht fehlend:
+//   idx_rb_inv_parts_set (inventory_id) — derselbe wie idx_rb_inv_parts in
+//                                         schema.sql, nur anders benannt
+//   idx_rb_sets_theme    (theme_id)     — Praefix von idx_rb_sets_theme_year
+// Beide kosteten beim Massenimport Schreibarbeit, ohne eine Abfrage zu
+// beschleunigen, die nicht schon bedient war. Auf BESTEHENDEN Datenbanken
+// liegen sie weiterhin; sie zu entfernen waere eine Migration und damit eine
+// Entscheidung ueber fremde Daten.
+//
+// Alles Noetige steht jetzt in db/schema.sql und laeuft beim Start —
+// server.ts ruft csvSync.run() erst im then() von initSchemaOnce() auf.
+
 
 // ── Download & parse gzipped CSV ─────────────────────────────────────────────
 // Hier standen downloadCsv() und streamCsvToDB() — zwei vollständige
@@ -261,7 +221,6 @@ async function syncPartCategoriesDaily(today: string) {
 async function run() {
   // Ensure temp directory exists
   fs.mkdirSync(DATA_DIR, { recursive: true });
-  await ensureSchema();
 
   // Check last sync date
   const lastSync = await getGlobalSetting(SYNC_KEY);

@@ -91,8 +91,12 @@ fun PartsScreen(
         ?: ch.brickinventoryapp.data.ScopeFilter.ALL
     val manualParts = financeState.partsValuation?.parts ?: emptyList()
 
-    val onRefresh: () -> Unit = { vm.loadParts(search = null, page = 1); vm.loadValuation() }
-    val onSearch: (String) -> Unit = { vm.loadParts(search = it.ifBlank { null }, debounce = true) }
+    // Aktualisieren BEHAELT den Suchtext — frueher stand hier `search = null`,
+    // die Liste sprang also auf den ganzen Bestand, waehrend das Suchfeld
+    // daneben den Text weiter anzeigte. Die Galerie macht es genauso
+    // (onRefresh = loadSets()).
+    val onRefresh: () -> Unit = { vm.loadParts(); vm.loadValuation() }
+    val onSearch: (String) -> Unit = vm::setPartsQuery
     val onLoadMore: (Int) -> Unit = { vm.loadParts(page = it) }
     val onScopeChange: (String) -> Unit = { vm.setScope(ch.brickinventoryapp.data.ScopeFilter.View.PARTS, it) }
     val onDeletePart: (String, Int) -> Unit = { partNumber, colorId -> vm.deletePart(partNumber, colorId) }
@@ -101,7 +105,11 @@ fun PartsScreen(
             vm.addPart(num, colorId, colorName, colorHex, qty, note, unitPrice, cond, owner)
         }
 
-    var searchQuery by rememberSaveable { mutableStateOf("") }
+    // Das Feld zeigt, was im Zustand steht. `remember(...)` darauf geschluesselt
+    // statt `rememberSaveable`: Der Text ueberlebt jetzt im ViewModel, und beim
+    // Zuruecknavigieren soll das Feld zum tatsaechlichen Filter der Liste
+    // passen — nicht zu einem eigenen, davon unabhaengigen Gedaechtnis.
+    var searchQuery by remember(partsState.partsQuery) { mutableStateOf(partsState.partsQuery) }
     var showAddDialog by rememberSaveable { mutableStateOf(false) }
     var deletingPart by remember { mutableStateOf<PartValuationItem?>(null) }
     // Dedup nur neu berechnen, wenn sich die Daten aendern — nicht bei jeder Recomposition
@@ -267,7 +275,7 @@ fun ManualPartTile(part: PartValuationItem, serverUrl: String, imageLoader: Imag
 
     Card(
         onClick = onEdit,  // ganze Karte klickbar — öffnet den Kaufpreis/Anzahl-Dialog, analog Sets
-        modifier = Modifier.width(112.dp).height(178.dp),
+        modifier = Modifier.width(Formen.kachelBreite).height(Formen.kachelHoehe),
         shape = Formen.leiste,
         elevation = CardDefaults.cardElevation(defaultElevation = Formen.karteErhebung),
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
@@ -282,7 +290,7 @@ fun ManualPartTile(part: PartValuationItem, serverUrl: String, imageLoader: Imag
                         onState = { st ->
                             if (st is coil.compose.AsyncImagePainter.State.Error) onImageError()
                         },
-                        modifier = Modifier.fillMaxSize().clip(RoundedCornerShape(topStart = 14.dp, topEnd = 14.dp)),
+                        modifier = Modifier.fillMaxSize().clip(Formen.kachelBildEcken),
                         contentScale = ContentScale.Fit
                     )
                 } else {
@@ -359,7 +367,7 @@ fun PartCard(part: Part, serverUrl: String, imageLoader: ImageLoader) {
                             if (st is coil.compose.AsyncImagePainter.State.Error) onImageError()
                         },
                         modifier = Modifier.fillMaxSize()
-                            .clip(RoundedCornerShape(topStart = 14.dp, topEnd = 14.dp)),
+                            .clip(Formen.kachelBildEcken),
                         contentScale = ContentScale.Fit
                     )
                 } else {

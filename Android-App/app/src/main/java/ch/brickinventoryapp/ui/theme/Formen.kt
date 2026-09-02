@@ -41,6 +41,14 @@ import androidx.compose.ui.unit.dp
  * beurteilen lässt. Der Schritt bleibt offen und ist dann eine Zeile.
  */
 object Formen {
+    /**
+     * Der Eckenradius der Leiste — als eigener Wert, weil ZWEI Formen ihn
+     * teilen müssen: [leiste] und [kachelBildEcken]. Das Bild einer Kachel
+     * sitzt oben bündig in der Karte; wären die Radien verschieden, stünde es
+     * an den oberen Ecken über oder liesse einen Spalt.
+     */
+    private val leisteRadius = 14.dp
+
     /** Karten und Abschnitte. */
     val karte = RoundedCornerShape(16.dp)
     /** Chips (Filter, Auswahl) — die häufigste Form im Baum. */
@@ -50,7 +58,7 @@ object Formen {
     /** Kachelbilder und kleinere Flächen. */
     val kachel = RoundedCornerShape(10.dp)
     /** Hinweisleisten und eingebettete Flächen. */
-    val leiste = RoundedCornerShape(14.dp)
+    val leiste = RoundedCornerShape(leisteRadius)
     /** Etiketten und kleine Marken. */
     val etikett = RoundedCornerShape(8.dp)
     /** Sehr kleine Marken (Zustandspunkte, Zähler). */
@@ -59,6 +67,27 @@ object Formen {
     val fab = RoundedCornerShape(18.dp)
     /** Trennstriche und Fortschrittsbalken — fast eckig. */
     val strich = RoundedCornerShape(2.dp)
+
+    /**
+     * Die oberen Ecken eines Kachelbildes — passt zwingend zu [leiste].
+     *
+     * Stand als `RoundedCornerShape(topStart = 14.dp, topEnd = 14.dp)`
+     * zeichengleich in PartsScreen und MinifigsScreen, also zweimal dieselbe
+     * Zahl neben zweimal derselben Kartenform. Wer eine davon ändert, muss
+     * heute alle drei finden.
+     */
+    val kachelBildEcken = RoundedCornerShape(topStart = leisteRadius, topEnd = leisteRadius)
+
+    /**
+     * Masse einer Bestandskachel (Teile- und Minifiguren-Reiter).
+     *
+     * Beide Reiter zeigen dieselbe Rasterbreite; standen die Zahlen in beiden
+     * Bildschirmen, konnte eine davon still abweichen und das Raster brechen.
+     * Nur diese zwei Stellen im Baum tragen sie — es ist eine Regel, kein
+     * Geschmack.
+     */
+    val kachelBreite = 112.dp
+    val kachelHoehe  = 178.dp
 
     /** Erhebung einer flachen Karte (Listen, Abschnitte). */
     val karteErhebung = 1.dp

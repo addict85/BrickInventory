@@ -1,7 +1,7 @@
 import { getCurrentMarketPrice } from '../utils/marketPrice';
 import { getCurrentFigMarketPrice } from '../routes/minifigs';
 import { getCurrentPartMarketPrice, lookupPart } from '../routes/parts';
-import { meldeUndWeiter, fehlertext } from '../utils/httpError';
+import { fehlertext, logAndContinue, meldeUndWeiter } from '../utils/httpError';
 'use strict';
 
 // One-time (idempotent) background migration: fills purchase_price for
@@ -170,10 +170,12 @@ async function backfillPartImages() {
 async function backfillFromUnitPrice() {
   const r1 = await db.run(
     "UPDATE parts SET purchase_price = unit_price WHERE source='manual' AND purchase_price IS NULL AND unit_price IS NOT NULL"
-  ).catch(() => null);
+  // Die Logzeile unten meldet sonst "0 uebernommen" — nicht unterscheidbar
+  // von "es gab nichts zu tun".
+  ).catch(logAndContinue('kaufpreis-nachtrag:teile'));
   const r2 = await db.run(
     "UPDATE minifigs SET purchase_price = unit_price WHERE source='manual' AND purchase_price IS NULL AND unit_price IS NOT NULL"
-  ).catch(() => null);
+  ).catch(logAndContinue('kaufpreis-nachtrag:minifiguren'));
   log(`Kaufpreis aus vorhandenem Preis/Stk übernommen: ${r1?.changes||0} Teile, ${r2?.changes||0} Minifiguren`);
 }
 

@@ -47,18 +47,13 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import android.view.ViewGroup
 import androidx.camera.core.*
-import android.hardware.camera2.CaptureRequest
 import android.view.MotionEvent
-import androidx.camera.camera2.interop.Camera2Interop
 import androidx.camera.camera2.interop.ExperimentalCamera2Interop
-import androidx.camera.lifecycle.ProcessCameraProvider
 import androidx.camera.view.PreviewView
 import androidx.compose.foundation.background
 import androidx.compose.ui.graphics.Color
 import androidx.compose.foundation.border
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.filled.Close
-import androidx.core.content.ContextCompat
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import com.google.accompanist.permissions.ExperimentalPermissionsApi
@@ -296,41 +291,11 @@ fun QrCameraPreview(frozen: Boolean, onQrFound: (String) -> Unit) {
     }
 
     val imageAnalyzer = remember {
-        ImageAnalysis.Builder()
-            // AF-Modus AUCH hier setzen, nicht nur am Preview.
-            //
-            // CameraX führt die Konfigurationen aller gebundenen Use Cases zu
-            // EINEM Repeating-Request zusammen. Steht CONTROL_AF_MODE nur am
-            // Preview, entscheidet je nach Gerät und CameraX-Fassung die
-            // Analyse-Konfiguration mit — und deren Vorgabe ist nicht
-            // zwingend CONTINUOUS_PICTURE. Auf solchen Geräten bleibt das Bild
-            // unscharf, obwohl der Code richtig aussieht.
-            //
-            // Beide Use Cases auf denselben Modus zu setzen macht das Ergebnis
-            // unabhängig davon, welcher die Führung übernimmt.
-            .also {
-                androidx.camera.camera2.interop.Camera2Interop.Extender(it).setCaptureRequestOption(
-                    CaptureRequest.CONTROL_AF_MODE,
-                    CaptureRequest.CONTROL_AF_MODE_CONTINUOUS_PICTURE
-                )
-            }
-            // 1280x720, im Barcodescanner dagegen 1920x1080 — der Unterschied
-            // ist gewollt: Hier wird EIN QR-Code mit grossen Modulen gelesen,
-            // dort kleine EAN-Striche und Setnummern per Texterkennung. Mehr
-            // Auflösung kostet je Bild Rechenzeit, die sich Kamera und Vorschau
-            // teilen; genau daran hing Marcos träger Fokus in Nachtrag 71.
-            .setResolutionSelector(
-                androidx.camera.core.resolutionselector.ResolutionSelector.Builder()
-                    .setResolutionStrategy(
-                        androidx.camera.core.resolutionselector.ResolutionStrategy(
-                            android.util.Size(1280, 720),
-                            androidx.camera.core.resolutionselector.ResolutionStrategy.FALLBACK_RULE_CLOSEST_HIGHER_THEN_LOWER
-                        )
-                    ).build()
-            )
-            .setBackpressureStrategy(ImageAnalysis.STRATEGY_KEEP_ONLY_LATEST)
-            .setOutputImageFormat(ImageAnalysis.OUTPUT_IMAGE_FORMAT_YUV_420_888)
-            .build()
+        // Aufbau samt AF-Modus: ui/screens/KameraAufbau.kt. 1280x720 statt
+        // 1920x1080 wie im Barcodescanner: Hier wird EIN QR-Code mit grossen
+        // Modulen gelesen, und weniger Aufloesung heisst mehr Rechenzeit fuer
+        // Kamera und Vorschau (Nachtrag 71).
+        bildAnalyse(1280, 720)
             .also { analysis ->
                 analysis.setAnalyzer(executor) { imageProxy ->
                     if (frozen) { imageProxy.close(); return@setAnalyzer }
@@ -357,63 +322,44 @@ fun QrCameraPreview(frozen: Boolean, onQrFound: (String) -> Unit) {
                 scaleType = PreviewView.ScaleType.FILL_CENTER
                 implementationMode = PreviewView.ImplementationMode.PERFORMANCE
             }
-            val future = ProcessCameraProvider.getInstance(ctx)
-            future.addListener({
-                // Siehe BarcodeScannerScreen: future.get() kann seit CameraX 1.4.0
-                // werfen, wenn die Kamera nicht verfügbar ist. Das try umschliesst
-                // den gesamten Listener, sonst stürzt die App statt eines leeren
-                // Vorschaubilds ab.
-                try {
-                val provider = future.get()
-                // Kontinuierlichen Autofokus explizit erzwingen — der frühere
-                // einmalige Fokus-Trigger beim Start war geräteabhängig unzuverlässig;
-                // CONTINUOUS_PICTURE fokussiert permanent selbstständig nach.
-                val previewBuilder = Preview.Builder()
-                Camera2Interop.Extender(previewBuilder).setCaptureRequestOption(
-                    CaptureRequest.CONTROL_AF_MODE,
-                    CaptureRequest.CONTROL_AF_MODE_CONTINUOUS_PICTURE
-                )
-                val preview = previewBuilder.build()
-                    .also { it.setSurfaceProvider(previewView.surfaceProvider) }
-                try {
-                    provider.unbindAll()
-                    val camera = provider.bindToLifecycle(
-                        lifecycleOwner,
-                        CameraSelector.DEFAULT_BACK_CAMERA,
-                        preview,
-                        imageAnalyzer
-                    )
-                    // Tap-to-Focus — bewusst mit disableAutoCancel().
-                    //
-                    // Hier stand bis zuletzt setAutoCancelDuration(3, SECONDS):
-                    // genau die Fassung, die im Barcodescanner Marcos Befund aus
-                    // Nachtrag 112 ausgelöst hat („man tippt, es wird scharf, und
-                    // Sekunden später ist es wieder weg"). Behoben wurde damals
-                    // nur die eine Kopie — diese hier blieb stehen, weil die
-                    // Regel an zwei Stellen steht und der Test nur eine ansah.
-                    //
-                    // Der Nutzer tippt, weil der kontinuierliche Autofokus gerade
-                    // danebenliegt. Fällt die Kamera nach drei Sekunden auf ihre
-                    // eigene Wahl zurück, ist genau das wieder da, wogegen der
-                    // Tipper gerichtet war.
-                    previewView.setOnTouchListener { v, event ->
-                        if (event.action == MotionEvent.ACTION_UP) {
-                            try {
-                                val point = previewView.meteringPointFactory
-                                    .createPoint(event.x, event.y)
-                                val action = FocusMeteringAction.Builder(point, FocusMeteringAction.FLAG_AF)
-                                    .addPoint(point, FocusMeteringAction.FLAG_AE)
-                                    .disableAutoCancel()
-                                    .build()
-                                camera.cameraControl.startFocusAndMetering(action)
-                            } catch (_: Exception) {}
-                            v.performClick()
-                        }
-                        true
+            // Anbieter holen, Vorschau bauen, binden: KameraAufbau.kt. Kein
+            // beiFehler: Ist die Kamera nicht verfügbar, bleibt die Vorschau
+            // bewusst leer — anders als im Scanner, der einen Hinweis zeigt.
+            kameraBinden(
+                ctx = ctx,
+                previewView = previewView,
+                lifecycleOwner = lifecycleOwner,
+                analyse = imageAnalyzer,
+            ) { camera ->
+                // Tap-to-Focus — bewusst mit disableAutoCancel().
+                //
+                // Hier stand bis zuletzt setAutoCancelDuration(3, SECONDS):
+                // genau die Fassung, die im Barcodescanner Marcos Befund aus
+                // Nachtrag 112 ausgelöst hat („man tippt, es wird scharf, und
+                // Sekunden später ist es wieder weg"). Behoben wurde damals nur
+                // die eine Kopie — diese hier blieb stehen, weil die Regel an
+                // zwei Stellen stand und der Test nur eine ansah.
+                //
+                // Der Nutzer tippt, weil der kontinuierliche Autofokus gerade
+                // danebenliegt. Fällt die Kamera nach drei Sekunden auf ihre
+                // eigene Wahl zurück, ist genau das wieder da, wogegen der
+                // Tipper gerichtet war.
+                previewView.setOnTouchListener { v, event ->
+                    if (event.action == MotionEvent.ACTION_UP) {
+                        try {
+                            val point = previewView.meteringPointFactory
+                                .createPoint(event.x, event.y)
+                            val action = FocusMeteringAction.Builder(point, FocusMeteringAction.FLAG_AF)
+                                .addPoint(point, FocusMeteringAction.FLAG_AE)
+                                .disableAutoCancel()
+                                .build()
+                            camera.cameraControl.startFocusAndMetering(action)
+                        } catch (_: Exception) {}
+                        v.performClick()
                     }
-                } catch (_: Exception) {}
-                } catch (_: Exception) { /* Kamera nicht verfügbar — Vorschau bleibt leer */ }
-            }, ContextCompat.getMainExecutor(ctx))
+                    true
+                }
+            }
             previewView
         },
         modifier = Modifier.fillMaxSize()

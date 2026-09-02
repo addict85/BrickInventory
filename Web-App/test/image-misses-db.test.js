@@ -56,6 +56,7 @@ Module.prototype.require = function (name) {
 };
 
 const _req = require('./helpers/sources').buildAndRequire();
+const { testServer } = require('./helpers/server');
 const db = _req('db/database.js');
 const express = require(path.join(ROOT, 'node_modules', 'express'));
 
@@ -85,16 +86,12 @@ test('bildlose Sets werden nicht immer wieder beim CDN gesucht',
   await db.run(`INSERT INTO users (username,password_hash) VALUES ($1,'x')`, [NUTZER]);
   const uid = (await db.get(`SELECT id FROM users WHERE username=$1`, [NUTZER])).id;
 
-  const app = express();
-  app.use(express.json());
-  app.use((req, _res, next) => {
-    req.session = { userId: uid };
-    req.apiUser = { user_id: uid, is_admin: 0 };
-    next();
+  const { base, srv } = testServer(_req, {
+    sitzung: { userId: uid },
+    apiNutzer: { user_id: uid, is_admin: 0 },
+    routen: { '/api/v1': 'routes/api_v1/index.js' },
+    t,
   });
-  app.use('/api/v1', _req('routes/api_v1/index.js'));
-  const srv = app.listen(0);
-  const base = `http://localhost:${srv.address().port}`;
 
   // Die Warteschlange arbeitet nebenläufig — nach dem Abruf kurz warten.
   const besuch = async () => {

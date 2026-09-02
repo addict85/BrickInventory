@@ -20,17 +20,8 @@ class ResourceAndCacheTest {
         return s.lines().filterNot { it.trim().startsWith("//") }.joinToString("\n")
     }
 
-    /**
-     * Ein Kamera-Bildschirm samt seiner ausgelagerten Bildanalyse.
-     *
-     * Der Barcode-Scanner besteht seit Nachtrag 99 aus ZWEI Dateien: der
-     * Bildschirm bindet die Vorschau und den Tap-to-Focus, BarcodeAnalyzer.kt
-     * die ImageAnalysis samt Aufraeumen. Nur eine davon zu lesen fand die
-     * halbe Regel und meldete einen Verstoss, den es nicht gibt.
-     */
-    private fun mitAnalyse(rel: String): String =
-        read(rel) + if (rel.endsWith("BarcodeScannerScreen.kt"))
-            "\n" + read("ui/screens/BarcodeAnalyzer.kt") else ""
+    /** Kamerabildschirm samt Analyse und gemeinsamem Aufbau — siehe [Quellen.kameraQuelle]. */
+    private fun mitAnalyse(rel: String): String = Quellen.kameraQuelle(rel)
 
     // ── Kamera-Ressourcen ────────────────────────────────────────────────────
 
@@ -51,31 +42,10 @@ class ResourceAndCacheTest {
         }
     }
 
-    /**
-     * Der Autofokus darf durch das Aufräumen nicht angefasst werden — die
-     * Regel steht in INVARIANTEN.md und wurde schon mehrfach unbeabsichtigt
-     * gebrochen. Hier für BEIDE Kamera-Screens geprüft.
-     */
-    @Test
-    fun `der kontinuierliche Autofokus bleibt in beiden Kamera-Screens intakt`() {
-        for (rel in listOf(
-            "ui/screens/BarcodeScannerScreen.kt",
-            "ui/screens/SetupScreen.kt",
-        )) {
-            val src = code(mitAnalyse(rel))
-            val hits = Regex("CONTROL_AF_MODE_CONTINUOUS_PICTURE").findAll(src).count()
-            assert(hits >= 2) {
-                "$rel: CONTROL_AF_MODE_CONTINUOUS_PICTURE steht nur ${hits}x — der Modus " +
-                    "muss an Preview UND ImageAnalysis hängen, sonst entscheidet je nach " +
-                    "Gerät die andere Konfiguration mit."
-            }
-            assert(!Regex("""(while\s*\(|delay\s*\(|Timer\(|fixedRate)[\s\S]{0,200}?startFocusAndMetering""")
-                .containsMatchIn(src)) {
-                "$rel: startFocusAndMetering hinter Schleife/Timer (\"Fokus-Pump\") — " +
-                    "der Fokus wandert dann dauernd"
-            }
-        }
-    }
+    // Die Autofokus-Regel stand hier ein drittes Mal. Sie gehoert nicht zum
+    // Thema dieser Datei (Aufraeumen von Ressourcen) und steht jetzt
+    // vollstaendig in CameraFocusConfigTest.
+
 
     // ── PDF-Cache ────────────────────────────────────────────────────────────
 

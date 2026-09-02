@@ -308,10 +308,14 @@ internal fun MainViewModel.confirmAddBarcode(setNum: String, purchasePrice: Doub
             is Result.Success -> {
                 _snackbar.value = text(R.string.vm_set_added, setNum)
                 _barcodeState.update { it.copy(adding = false) }
-                // loadGallery() lädt NUR die Set-Liste. Kennzahlen und Bewertung
-                // ändern sich beim Erfassen ebenso — sie blieben bisher stehen,
-                // bis der jeweilige Reiter neu geöffnet wurde.
-                loadGallery()
+                // loadSets() und nicht loadGallery(): Der zweite Lader rief
+                // getSets() OHNE Argumente und warf damit Haushaltsfilter,
+                // Suchtext, Themenfilter und Sortierung weg. Er ist entfernt;
+                // die Begründung steht an seiner Stelle in GalleryFeature.kt.
+                //
+                // Kennzahlen und Bewertung ändern sich beim Erfassen ebenso —
+                // sie blieben früher stehen, bis der Reiter neu geöffnet wurde.
+                loadSets()
                 loadStats()
                 loadValuation()
             }

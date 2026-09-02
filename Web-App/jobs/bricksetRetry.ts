@@ -2,7 +2,7 @@ import * as db from '../db/database';
 import { getSetInfo } from '../clients/brickset';
 import { downloadSetInstructions } from '../utils/instructions';
 import { getLimitForApi, getRateLimitStatus } from '../utils/financeCalc';
-import { meldeUndWeiter } from '../utils/httpError';
+import { logAndContinue, meldeUndWeiter } from '../utils/httpError';
 
 /**
  * Die Brickset-Wiederholungsschlange.
@@ -86,7 +86,8 @@ async function _processRetryQueue(force = false) {
             minifigs = COALESCE(minifigs, $5)
            WHERE set_number = $6`,
           [info.name, info.year, info.theme, info.pieces, info.minifigs, set_number]
-        ).catch(() => {});
+        // Ohne Protokoll sieht ein erfolgloser Nachlauf aus wie ein erfolgreicher.
+        ).catch(logAndContinue(`brickset-nachlauf:set ${set_number}`));
         await db.run(
           `UPDATE set_catalog SET
             name    = COALESCE(name, $1),    year     = COALESCE(year, $2),

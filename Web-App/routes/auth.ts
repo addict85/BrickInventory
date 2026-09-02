@@ -531,7 +531,9 @@ router.post('/register', ipThrottle('register', 5, 60 * 60 * 1000), async (req, 
       await db.run(
         "INSERT INTO user_settings (user_id, key, value) VALUES ($1,'language',$2) ON CONFLICT (user_id, key) DO UPDATE SET value=$2",
         [newUser.id, lang]
-      ).catch(() => {});
+      // Ohne Protokoll bleibt unklar, warum ein frisch angelegtes Konto in der
+      // falschen Sprache startet.
+      ).catch(logAndContinue(`registrierung:sprache ${newUser.id}`));
     }
 
     const result = await sendVerificationMail(email, first_name || username, token, getBaseUrl(req), lang);

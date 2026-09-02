@@ -69,7 +69,7 @@ async function getSets(userId: Blickfeld, query: any = {}) {
   // Liste kommt von scopeIds() in utils/household.ts — hier wird sie nur
   // normalisiert, damit ältere Aufrufer mit einer nackten ID weiter gehen.
   const uids = asIds(userId);
-  // Explizite Spaltenliste statt SELECT *: id/user_id/brickset_id/updated_at
+  // Explizite Spaltenliste statt SELECT *: id/user_id/updated_at
   // werden weder von der Webapp noch von der Android-App gelesen — sie haben
   // den JSON-Payload der /sets-Antwort nur unnötig aufgebläht.
   // Mit "s." qualifiziert: die angehängte Aggregat-Subquery führt set_number
@@ -153,12 +153,22 @@ async function getSets(userId: Blickfeld, query: any = {}) {
 
   // Ohne page_size bleibt die Set-Liste UNBEGRENZT.
   //
-  // Hier stand kurzzeitig eine Obergrenze. Das war falsch: Die Android-App
-  // blättert die Galerie NICHT (BrickApiService.getSets kennt keinen
-  // page-Parameter, siehe auch die Notiz in routes/api_v1/sets.ts). Eine
-  // Grenze hätte ihr ab dem Grenzwert stillschweigend Sets unterschlagen —
-  // schlimmer als eine grosse Antwort. Für die Teileliste gilt das nicht,
-  // dort blättern beide Clients (siehe getParts).
+  // Hier stand kurzzeitig eine Obergrenze. Das war falsch, und der Grund hat
+  // sich seither GEÄNDERT — die frühere Begründung stand noch hier:
+  //
+  //   „Die Android-App blättert die Galerie NICHT (BrickApiService.getSets
+  //    kennt keinen page-Parameter)."
+  //
+  // Das stimmt nicht mehr. SetsRepository.getSets nimmt page und pageSize,
+  // und loadMoreSets fordert `galleryPage + 1` an: BEIDE Clients blättern.
+  // Der Satz stand an drei Stellen, berichtigt wurde nur eine (die Notiz in
+  // routes/api_v1/sets.ts) — dieselbe Falle wie bei jeder anderen Regel, die
+  // mehrfach niedergeschrieben ist.
+  //
+  // Unbegrenzt bleibt die Liste trotzdem, aus dem Grund, der DORT steht: Der
+  // Weg ist absichtlich offen für Aufrufer, die alles wollen — Skripte und
+  // ältere App-Stände, denen eine stille Grenze ab dem Grenzwert Sets
+  // unterschlüge. Wer blättert, schickt page_size mit und bekommt die Grenze.
   let limitSql = '';
   const listParams = [...params];
   if (page_size) {

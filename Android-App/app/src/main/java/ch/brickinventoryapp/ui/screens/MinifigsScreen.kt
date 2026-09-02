@@ -233,7 +233,7 @@ fun ManualFigTile(fig: FigValuationItem, serverUrl: String, imageLoader: ImageLo
 
     Card(
         onClick = onEdit,  // ganze Karte klickbar — öffnet den Kaufpreis/Anzahl-Dialog, analog Sets
-        modifier = Modifier.width(112.dp).height(178.dp),
+        modifier = Modifier.width(Formen.kachelBreite).height(Formen.kachelHoehe),
         shape = Formen.leiste,
         elevation = CardDefaults.cardElevation(defaultElevation = Formen.karteErhebung),
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
@@ -251,7 +251,7 @@ fun ManualFigTile(fig: FigValuationItem, serverUrl: String, imageLoader: ImageLo
                         onState = { st ->
                             if (st is coil.compose.AsyncImagePainter.State.Error) onImgError()
                         },
-                        modifier = Modifier.fillMaxSize().clip(RoundedCornerShape(topStart = 14.dp, topEnd = 14.dp)),
+                        modifier = Modifier.fillMaxSize().clip(Formen.kachelBildEcken),
                         contentScale = ContentScale.Fit
                     )
                 } else {
@@ -405,14 +405,14 @@ fun MinifigCard(fig: Minifig, serverUrl: String, imageLoader: ImageLoader) {
                             if (st is coil.compose.AsyncImagePainter.State.Error) onFigImgError()
                         },
                         modifier = Modifier.fillMaxSize()
-                            .clip(RoundedCornerShape(topStart = 14.dp, topEnd = 14.dp)),
+                            .clip(Formen.kachelBildEcken),
                         contentScale = ContentScale.Fit
                     )
                 } else {
                     Surface(
                         color = MaterialTheme.colorScheme.surfaceVariant,
                         modifier = Modifier.fillMaxSize()
-                            .clip(RoundedCornerShape(topStart = 14.dp, topEnd = 14.dp))
+                            .clip(Formen.kachelBildEcken)
                     ) {
                         Box(Modifier.fillMaxSize(), Alignment.Center) { Text("👷", fontSize = 36.sp) }
                     }

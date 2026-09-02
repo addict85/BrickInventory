@@ -175,6 +175,22 @@ data class PartsUiState(
     val parts: List<Part> = emptyList(),
     val partsTotal: Int = 0,
     val partsPage: Int = 1,
+    /**
+     * Der Suchtext der Teileliste — im ZUSTAND, nicht im Bildschirm.
+     *
+     * Er stand als `var searchQuery by rememberSaveable` in PartsScreen und
+     * wurde jedem Ladeaufruf als Argument mitgegeben. Jeder Weg, der die Liste
+     * NICHT aus dem Suchfeld heraus nachlud, kannte ihn damit nicht:
+     * `onLoadMore` holte Seite 2 ungefiltert und haengte sie an eine
+     * gefilterte Seite 1, und `partsTotal` kam aus der ungefilterten Abfrage.
+     * Ebenso nach dem Loeschen eines manuellen Teils, nach einem Wechsel des
+     * Kontofilters und beim Betreten des Reiters.
+     *
+     * Die Galerie macht es seit jeher so (galleryQuery daneben) — dort liest
+     * JEDER Lader den Filter aus dem Zustand, und genau deshalb gab es das
+     * Problem dort nicht.
+     */
+    val partsQuery: String = "",
     val partsLoading: Boolean = false,
     val minifigs: List<Minifig> = emptyList(),
     /** Kennzahlen der Kacheln — vom Server, nicht aus der (gefilterten) Liste. */

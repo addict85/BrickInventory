@@ -131,7 +131,7 @@ class MinifigImageFieldTest {
         val serverUrl = "https://lego.example.org"
         val resolved = when {
             fig.imageLocal != null -> "$serverUrl${fig.imageLocal}"
-            fig.imageUrl != null && fig.imageUrl!!.startsWith("/") -> "$serverUrl${fig.imageUrl}"
+            fig.imageUrl != null && fig.imageUrl.startsWith("/") -> "$serverUrl${fig.imageUrl}"
             else -> fig.imageUrl
         }
         assertEquals("https://lego.example.org/images/sets/fig-000140.jpg", resolved)

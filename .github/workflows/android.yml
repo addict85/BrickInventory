@@ -40,6 +40,12 @@ jobs:
       # `env:` DES SCHRITTES hilft dabei nicht — dessen `if:` wird ausgewertet,
       # bevor es gilt. Also hier.
       HAT_DRIVE: ${{ secrets.GDRIVE_REFRESH_TOKEN != '' }}
+      # Die uebrigen drei einzeln, damit der Hinweis unten sagen kann, WELCHES
+      # fehlt. `secrets` ist auf Schrittebene in `if:` nicht lesbar (siehe oben),
+      # in `run:` schon — aber dann stuende das Geheimnis im Protokollbefehl.
+      HAT_DRIVE_ID:     ${{ secrets.GDRIVE_CLIENT_ID != '' }}
+      HAT_DRIVE_SECRET: ${{ secrets.GDRIVE_CLIENT_SECRET != '' }}
+      HAT_DRIVE_ORDNER: ${{ secrets.GDRIVE_ORDNER_ID != '' }}
 
     steps:
       - uses: actions/checkout@v6
@@ -260,6 +266,30 @@ jobs:
       # Der Scope ist `drive.file`: Damit sieht dieses Token AUSSCHLIESSLICH
       # Dateien, die es selbst angelegt hat — nicht dein uebriges Drive. Das ist
       # der Unterschied zwischen "darf ein APK ablegen" und "darf alles lesen".
+      # ── Warum dieser Hinweis ueberhaupt existiert ───────────────────────────
+      #
+      # Der Schritt darunter wird uebersprungen, wenn das Refresh-Token fehlt.
+      # Ein uebersprungener Schritt sieht im Protokoll aus wie einer, der nichts
+      # zu tun hatte — grau, kommentarlos. Genau so ist die Drive-Ablage hier
+      # ueber viele Laeufe hinweg stillschweigend ausgefallen, ohne dass es
+      # jemandem auffiel: Der Lauf war ja gruen.
+      #
+      # Ein Fehlschlag waere falsch — Drive ist eine Bequemlichkeit, das APK
+      # haengt ohnehin als Artefakt am Lauf. Aber sichtbar gehoert es.
+      #
+      # Dasselbe Muster wie die Vorabpruefung in android-playstore.yml: lieber
+      # in Klartext sagen, WELCHES Secret fehlt, als es raten zu lassen.
+      - name: Drive-Ablage uebersprungen?
+        if: success() && env.HAT_DRIVE != 'true'
+        run: |
+          set -eu
+          fehlt=""
+          [ "$HAT_DRIVE"        = "true" ] || fehlt="$fehlt GDRIVE_REFRESH_TOKEN"
+          [ "$HAT_DRIVE_ID"     = "true" ] || fehlt="$fehlt GDRIVE_CLIENT_ID"
+          [ "$HAT_DRIVE_SECRET" = "true" ] || fehlt="$fehlt GDRIVE_CLIENT_SECRET"
+          [ "$HAT_DRIVE_ORDNER" = "true" ] || fehlt="$fehlt GDRIVE_ORDNER_ID"
+          echo "::notice::Die Ablage in Google Drive ist uebersprungen worden. Es fehlen diese Secrets:$fehlt — einzutragen unter Settings -> Secrets and variables -> Actions. Wie man sie bekommt, steht in Android-App/GDRIVE.md. Das APK haengt trotzdem als Artefakt an diesem Lauf."
+
       - name: APK nach Google Drive
         if: success() && env.HAT_DRIVE == 'true'
         env:

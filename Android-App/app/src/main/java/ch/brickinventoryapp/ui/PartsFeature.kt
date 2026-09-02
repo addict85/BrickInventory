@@ -19,12 +19,25 @@ import ch.brickinventoryapp.data.ScopeFilter
  * bleiben unverändert: vm.funktion() löst die Extension auf.
  */
 
-internal fun MainViewModel.loadParts(search: String? = null, page: Int = 1, debounce: Boolean = false) {
+/**
+ * Die Teileliste laden — den Suchtext holt sie sich SELBST aus dem Zustand.
+ *
+ * Frueher war `search` ein Parameter. Damit kannte ihn nur, wer aus dem
+ * Suchfeld heraus lud; `onLoadMore(page)` gab ihn nicht mit und bekam eine
+ * ungefilterte Seite 2, die an eine gefilterte Seite 1 gehaengt wurde (siehe
+ * PartsUiState.partsQuery). Wer den Filter aendern will, ruft
+ * [setPartsQuery] — genau wie in der Galerie.
+ */
+internal fun MainViewModel.loadParts(page: Int = 1, debounce: Boolean = false) {
     partsJob?.cancel()
     partsJob = viewModelScope.launch {
         if (debounce) kotlinx.coroutines.delay(350)
         _partsState.update { it.copy(partsLoading = true) }
-        when (val r = retryOnNetwork { repo.teile.getParts(search = search, page = page,
+        // Nach dem Entprellen gelesen: Bei schneller Eingabe gewinnt der
+        // zuletzt gestartete Auftrag, und der soll den NEUESTEN Text sehen.
+        // Leer heisst "kein Filter" — die API erwartet dafuer null, nicht "".
+        val suche = _partsState.value.partsQuery.ifBlank { null }
+        when (val r = retryOnNetwork { repo.teile.getParts(search = suche, page = page,
                                                      accounts = scopeFor(ScopeFilter.View.PARTS)) }) {
             is Result.Success -> {
                 _partsState.update {
@@ -52,10 +65,29 @@ internal fun MainViewModel.loadParts(search: String? = null, page: Int = 1, debo
     }
 }
 
+/**
+ * Suchtext der Teileliste setzen: entprellt, damit nicht jeder Tastendruck
+ * eine Abfrage ausloest. Gegenstueck zu setGalleryQuery.
+ */
+internal fun MainViewModel.setPartsQuery(q: String) {
+    // Suchtext gewechselt: Die gemerkte Stelle zeigt auf Teile, die in der
+    // neuen Liste woanders oder gar nicht stehen (ScrollMemory.kt). Die
+    // Galerie vergisst sie bei jedem Filterwechsel; hier fehlte das, solange
+    // der Suchtext gar nicht im Zustand stand.
+    scrollMemory.vergiss("parts")
+    _partsState.update { it.copy(partsQuery = q) }
+    // Kein eigener Auftrag noetig: loadParts bricht partsJob selbst ab, ein
+    // zweiter Tastendruck loescht also den entprellten ersten.
+    loadParts(page = 1, debounce = true)
+}
+
 internal fun MainViewModel.loadPartsColors() {
     viewModelScope.launch {
         when (val r = repo.teile.getBrickColors()) {
             is Result.Success -> if (r.data.success) _partsState.update { it.copy(partsColors = r.data.colors) }
+            // Bewusst ohne Meldung: Die Farbliste füllt nur die Auswahl im
+            // Erfassungsdialog. Fehlt sie, tippt der Nutzer die Farb-ID — eine
+            // Meldung beim Öffnen des Bildschirms hülfe ihm dabei nicht.
             is Result.Error -> {}
         }
     }
@@ -83,8 +115,8 @@ internal fun MainViewModel.addPart(partNumber: String, colorId: Int = 0, colorNa
             is Result.Success -> {
                 if (r.data.success) {
                     _snackbar.value = text(if (r.data.action == "added") R.string.vm_added else R.string.vm_updated, r.data.partNumber)
-                    loadValuation()
-                    loadParts()
+                    // Liste, Bewertung UND Kennzahlen — siehe reloadItemList().
+                    reloadItemList("part")
                 } else {
                     _snackbar.value = r.data.error ?: text(R.string.err_unknown)
                 }
@@ -103,8 +135,8 @@ internal fun MainViewModel.addMinifig(figNumber: String, blFigNumber: String? = 
             is Result.Success -> {
                 if (r.data.success) {
                     _snackbar.value = text(if (r.data.action == "added") R.string.vm_added else R.string.vm_updated, r.data.figNumber)
-                    loadValuation()
-                    loadMinifigs()
+                    // Liste, Bewertung UND Kennzahlen — siehe reloadItemList().
+                    reloadItemList("fig")
                 } else {
                     _snackbar.value = r.data.error ?: text(R.string.err_unknown)
                 }
@@ -142,7 +174,7 @@ internal fun MainViewModel.deletePart(partNumber: String, colorId: Int) {
     viewModelScope.launch {
         when (val r = repo.teile.deletePart(partNumber, colorId)) {
             is Result.Success -> {
-                if (r.data.success) { _snackbar.value = text(R.string.vm_part_deleted); loadValuation(); loadParts() }
+                if (r.data.success) { _snackbar.value = text(R.string.vm_part_deleted); reloadItemList("part") }
                 else _snackbar.value = r.data.error ?: text(R.string.err_unknown)
             }
             is Result.Error -> _snackbar.value = meldung(r)
@@ -176,7 +208,7 @@ internal fun MainViewModel.deleteMinifig(figNumber: String) {
     viewModelScope.launch {
         when (val r = repo.teile.deleteMinifig(figNumber)) {
             is Result.Success -> {
-                if (r.data.success) { _snackbar.value = text(R.string.vm_minifig_deleted); loadValuation(); loadMinifigs() }
+                if (r.data.success) { _snackbar.value = text(R.string.vm_minifig_deleted); reloadItemList("fig") }
                 else _snackbar.value = r.data.error ?: text(R.string.err_unknown)
             }
             is Result.Error -> _snackbar.value = meldung(r)

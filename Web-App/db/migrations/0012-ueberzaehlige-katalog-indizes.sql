@@ -1,0 +1,33 @@
+-- Zwei überzählige Indizes auf dem Katalog entfernen.
+--
+-- ── Woher sie kamen ─────────────────────────────────────────────────────────
+-- jobs/rebrickableCsvSync.ts legte in ensureSchema() sieben Tabellen und vier
+-- Indizes an, die grösstenteils schon in db/schema.sql standen. Beim
+-- Zusammenführen fiel auf, dass zwei der Indizes nicht fehlten, sondern
+-- doppelt waren:
+--
+--   idx_rb_inv_parts_set (inventory_id)
+--       zeichengleich mit idx_rb_inv_parts aus schema.sql, nur anders benannt.
+--       Nachgemessen: pg_indexes zeigt für beide dieselbe indexdef.
+--
+--   idx_rb_sets_theme (theme_id)
+--       Präfix von idx_rb_sets_theme_year (theme_id, year). Nachgemessen an
+--       30'000 Zeilen: Nach dem Entfernen wählt der Planer für
+--       `WHERE theme_id = ?` den zusammengesetzten Index, mit derselben
+--       Planform (Bitmap Index Scan). Kein Rückfall auf einen Tabellenscan.
+--
+-- Seit der Zusammenführung entstehen sie auf NEUEN Installationen nicht mehr.
+-- Auf bestehenden liegen sie weiter und kosten bei jedem Katalog-Import
+-- Schreibarbeit — der Massenimport schreibt rund 25'000 Sets und mehrere
+-- Millionen Inventarzeilen.
+--
+-- ── Warum IF EXISTS ─────────────────────────────────────────────────────────
+-- Auf einer frischen Installation gab es sie nie. Die Migration muss dort
+-- ohne Fehler durchlaufen.
+--
+-- Kein CONCURRENTLY: Das ist in einer Transaktion nicht erlaubt, und
+-- runMigrations() führt jede Datei in einer aus. Ein DROP INDEX nimmt eine
+-- kurze Sperre auf die Tabelle; beim Start, vor der ersten Anfrage, ist das
+-- unkritisch.
+DROP INDEX IF EXISTS idx_rb_inv_parts_set;
+DROP INDEX IF EXISTS idx_rb_sets_theme;

@@ -249,4 +249,30 @@ object Quellen {
         val ende = rest.drop(1).indexOfFirst { it == "$einzug}" }
         return if (ende < 0) rest.joinToString("\n") else rest.take(ende + 2).joinToString("\n")
     }
+
+    /**
+     * Ein Kamerabildschirm samt allem, was zu seiner Kamera gehört.
+     *
+     * ── Warum das hier steht ────────────────────────────────────────────────
+     * Diese Funktion hiess `mitAnalyse` und stand DREIMAL im Testbaum — in
+     * CameraXUpgradeTest, ResourceAndCacheTest und SessionAndLifecycleTest,
+     * jeweils mit fast gleichlautendem Erklärkommentar. Sie ist selbst ein
+     * Beispiel für das, wogegen sie gebaut wurde: Die Kamera besteht aus
+     * mehreren Dateien, und wer nur eine liest, findet die halbe Regel.
+     *
+     * Seit Nachtrag 99 liegt die Bildanalyse des Scanners in
+     * BarcodeAnalyzer.kt; seit dem Zusammenfassen des Kamera-Aufbaus liegt die
+     * gemeinsame Einstellung (AF-Modus, Auflösung, Ausgabeformat) in
+     * KameraAufbau.kt. Beides gehört dazu — als der Aufbau umzog, sind genau
+     * die drei Prüfungen rot geworden, die es nicht wussten.
+     *
+     * @param rel z. B. "ui/screens/BarcodeScannerScreen.kt"
+     */
+    fun kameraQuelle(rel: String): String = buildString {
+        append(lies(rel))
+        if (rel.endsWith("BarcodeScannerScreen.kt")) {
+            append("\n"); append(lies("ui/screens/BarcodeAnalyzer.kt"))
+        }
+        append("\n"); append(lies("ui/screens/KameraAufbau.kt"))
+    }
 }

@@ -1,7 +1,5 @@
 package ch.brickinventoryapp.ui.screens
 
-import android.hardware.camera2.CaptureRequest
-import androidx.camera.camera2.interop.Camera2Interop
 import androidx.camera.core.*
 import androidx.compose.animation.core.*
 import androidx.compose.foundation.layout.*
@@ -98,36 +96,10 @@ fun rememberBarcodeAnalyzer(
         }
     }
     val imageAnalyzer = remember {
-        ImageAnalysis.Builder()
-            // AF-Modus AUCH hier setzen, nicht nur am Preview.
-            //
-            // CameraX führt die Konfigurationen aller gebundenen Use Cases zu
-            // EINEM Repeating-Request zusammen. Steht CONTROL_AF_MODE nur am
-            // Preview, entscheidet je nach Gerät und CameraX-Fassung die
-            // Analyse-Konfiguration mit — und deren Vorgabe ist nicht
-            // zwingend CONTINUOUS_PICTURE. Auf solchen Geräten bleibt das Bild
-            // unscharf, obwohl der Code richtig aussieht.
-            //
-            // Beide Use Cases auf denselben Modus zu setzen macht das Ergebnis
-            // unabhängig davon, welcher die Führung übernimmt.
-            .also {
-                androidx.camera.camera2.interop.Camera2Interop.Extender(it).setCaptureRequestOption(
-                    CaptureRequest.CONTROL_AF_MODE,
-                    CaptureRequest.CONTROL_AF_MODE_CONTINUOUS_PICTURE
-                )
-            }
-            .setResolutionSelector(
-                androidx.camera.core.resolutionselector.ResolutionSelector.Builder()
-                    .setResolutionStrategy(
-                        androidx.camera.core.resolutionselector.ResolutionStrategy(
-                            android.util.Size(1920, 1080),
-                            androidx.camera.core.resolutionselector.ResolutionStrategy.FALLBACK_RULE_CLOSEST_HIGHER_THEN_LOWER
-                        )
-                    ).build()
-            )
-            .setBackpressureStrategy(ImageAnalysis.STRATEGY_KEEP_ONLY_LATEST)
-            .setOutputImageFormat(ImageAnalysis.OUTPUT_IMAGE_FORMAT_YUV_420_888)
-            .build()
+        // Aufbau samt AF-Modus: ui/screens/KameraAufbau.kt — dieselbe
+        // Einstellung wie im SetupScreen, nur mit mehr Aufloesung fuer
+        // kleine EAN-Striche und die Texterkennung.
+        bildAnalyse(1920, 1080)
             .also { analysis ->
                 analysis.setAnalyzer(executor) { imageProxy ->
                     if (frozen) { imageProxy.close(); return@setAnalyzer }

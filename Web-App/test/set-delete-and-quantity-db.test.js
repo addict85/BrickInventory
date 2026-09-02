@@ -50,6 +50,7 @@ process.env.WEB_WORKERS = '1';
 
 const { ohneKommentare } = require('./helpers/sources');
 const _req = require('./helpers/sources').buildAndRequire();
+const { testServer } = require('./helpers/server');
 const db = _req('db/database.js');
 const express = require(path.join(ROOT, 'node_modules', 'express'));
 
@@ -129,16 +130,12 @@ test('Löschen und Mengenänderung gegen die Datenbank', { concurrency: 1 }, asy
   await db.run(`INSERT INTO minifigs (user_id,fig_number,fig_name,quantity,source,set_number)
                 VALUES ($1,'cty0001','Polizist',1,'set',$2)`, [uid, SN]);
 
-  const app = express();
-  app.use(express.json());
-  app.use((req, _res, next) => {
-    req.session = { userId: uid };
-    req.apiUser = { user_id: uid, is_admin: 0 };
-    next();
+  const { base, srv } = testServer(_req, {
+    sitzung: { userId: uid },
+    apiNutzer: { user_id: uid, is_admin: 0 },
+    routen: { '/api/v1': 'routes/api_v1/index.js' },
+    t,
   });
-  app.use('/api/v1', _req('routes/api_v1/index.js'));
-  const srv = app.listen(0);
-  const base = `http://localhost:${srv.address().port}`;
 
   const H = require('./helpers/sources').handlerModul(_req);
   const setzen = (n) => fetch(`${base}/api/v1/sets/${SN}`, {

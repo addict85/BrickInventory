@@ -37,6 +37,7 @@ process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:t
 process.env.WEB_WORKERS = '1';
 
 const _req = require('./helpers/sources').buildAndRequire();
+const { testServer } = require('./helpers/server');
 const db = _req('db/database.js');
 const express = require(path.join(ROOT, 'node_modules', 'express'));
 
@@ -66,16 +67,12 @@ test('der currency-Parameter der App übersteuert die Nutzereinstellung NICHT',
                 ON CONFLICT (set_number,condition,currency_code)
                 DO UPDATE SET avg_price=629.90, fetched_at=NOW()`, [SET]);
 
-  const app = express();
-  app.use(express.json());
-  app.use((req, _res, next) => {
-    req.session = { userId: uid, username: USERNAME, isAdmin: false };
-    req.apiUser = { user_id: uid, is_admin: 0 };
-    next();
+  const { base, srv } = testServer(_req, {
+    sitzung: { userId: uid, username: USERNAME, isAdmin: false },
+    apiNutzer: { user_id: uid, is_admin: 0 },
+    routen: { '/api/v1': 'routes/api_v1/index.js' },
+    t,
   });
-  app.use('/api/v1', _req('routes/api_v1/index.js'));
-  const srv = app.listen(0);
-  const base = `http://localhost:${srv.address().port}`;
 
   const hole = async (query) => {
     const r = await fetch(`${base}/api/v1/sets/${SET}/price${query}`);

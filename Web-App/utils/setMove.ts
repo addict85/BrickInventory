@@ -87,9 +87,29 @@ async function copyContents(tx: any, sn: string, fromId: number, toId: number) {
        FROM parts
       WHERE user_id = $2 AND set_number = $3 AND COALESCE(source,'set') <> 'manual'`,
     [toId, fromId, sn]);
+  // image_local kommt MIT — wie bei den Teilen eine Zeile darüber.
+  //
+  // Es fehlte hier, und das war die einzige Spalte, die beide Zweige
+  // verschieden behandelten: Die Teile nehmen 14 Spalten mit, die Minifiguren
+  // nahmen 7. Von den fehlenden sind unit_price, purchase_price, note,
+  // condition und bl_fig_number ausschliesslich bei MANUELL erfassten Figuren
+  // gefüllt — hier werden aber nur Set-Figuren kopiert, dort steht überall
+  // NULL. image_local nicht: Der Bild-Job setzt es „über Nutzer und Quellen
+  // hinweg" (server.ts, UPDATE minifigs SET image_local … WHERE fig_number=…),
+  // Set-Figuren haben es also.
+  //
+  // Ohne diese Spalte verlor ein verschobenes Set im Zielkonto die
+  // zwischengespeicherten Figuren-Bilder — die Teile behielten ihre. Bis zum
+  // nächsten Durchlauf des Bild-Jobs (der nur beim Serverstart läuft) kam
+  // jedes Bild wieder über den Proxy vom CDN.
+  //
+  // Den Pfad wörtlich zu übernehmen ist die hier bereits getroffene
+  // Entscheidung: Die Datei heisst nach der Nummer, und wer sie sehen darf,
+  // entscheidet scopeIds() — nicht die Benutzer-ID im Pfad (siehe server.ts
+  // zur selben Frage bei den Anleitungen).
   const m = hasFigs ? { changes: 0 } : await tx.run(
-    `INSERT INTO minifigs (user_id, set_number, fig_number, fig_name, quantity, image_url, source)
-     SELECT $1, set_number, fig_number, fig_name, quantity, image_url, source
+    `INSERT INTO minifigs (user_id, set_number, fig_number, fig_name, quantity, image_url, image_local, source)
+     SELECT $1, set_number, fig_number, fig_name, quantity, image_url, image_local, source
        FROM minifigs
       WHERE user_id = $2 AND set_number = $3 AND COALESCE(source,'set') <> 'manual'`,
     [toId, fromId, sn]);

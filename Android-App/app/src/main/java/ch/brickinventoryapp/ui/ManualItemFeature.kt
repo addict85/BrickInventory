@@ -118,7 +118,9 @@ internal fun MainViewModel.deleteManualAcquisition(
                 loadManualAcquisitions(type, id, colorId)
                 reloadItemList(type)
             }
-            is Result.Error -> {}
+            // Ohne Meldung verschwindet die Zeile nicht, und niemand sagt warum.
+            // updateManualAcquisition zwei Funktionen weiter meldet längst.
+            is Result.Error -> _snackbar.value = meldung(result)
         }
     }
 }
@@ -139,10 +141,24 @@ internal fun MainViewModel.deleteManualAcquisition(
  * internal statt private: Die Funktion war dateiprivat, weil sie nur hier
  * gebraucht wurde. Seit updatePart()/updateMinifig() in PartsFeature.kt sie
  * ebenfalls aufrufen, muss sie im Modul sichtbar sein.
+ *
+ * ── Warum auch loadStats() (dritter Fall derselben Sorte) ───────────────────
+ * Die Kennzahlen der GALERIE enthalten `total_parts` und `total_minifigs` und
+ * werden ausschliesslich von loadStats() erneuert. Wer ein Teil erfasst und
+ * dann zur Galerie wechselt, sah dort bis zuletzt den alten Stand — bis zum
+ * Herunterziehen oder zum naechsten Anmelden, denn loadDashboard() laeuft nur
+ * bei der Anmeldung, nicht beim Reiterwechsel.
+ *
+ * Es ist derselbe Fehler wie die beiden oben beschriebenen, nur eine Zahl
+ * weiter: Der Barcode-Weg hatte ihn fuer Sets (dort steht im Kommentar
+ * „Kennzahlen und Bewertung aendern sich beim Erfassen ebenso"), diese
+ * Funktion hatte ihn fuer die Liste. Dreimal dasselbe Muster — deshalb steht
+ * das Nachladen jetzt an EINER Stelle, und die Erfassungswege rufen sie.
  */
 internal fun MainViewModel.reloadItemList(type: String) {
     viewModelScope.launch {
         if (type == "fig") loadMinifigs() else loadParts()
         loadValuation()
+        loadStats()
     }
 }
