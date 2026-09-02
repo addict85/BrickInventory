@@ -43,14 +43,23 @@ import java.util.concurrent.TimeUnit
  * danach auf der Platte), und die zeigt nur ein Aufruf. Aufbau wie in
  * RepoCacheRueckfallTest: echter MockWebServer, echter Plattencache.
  *
- * Gegenproben (durchgeführt):
- *   a) In getSets() im gefilterten Zweig `search` durch `null` ersetzt
- *      → Teilschritt 1 rot ("search fehlt in der Anfrage").
- *   b) Die Bedingung `ungefiltert` durch `true` ersetzt, sodass auch gefilterte
- *      Abrufe über den Cache laufen → Teilschritt 3 rot: Der zweite,
- *      ungefilterte Abruf lieferte die gefilterte Liste.
- *   c) `page == 1` aus der Bedingung `ungefiltert` gestrichen → Teilschritt 4
- *      rot (Seite 2 landete im Cache der ersten Seite).
+ * Gegenproben — durchgeführt über die GitHub-Action, weil hier kein
+ * Android-Build möglich ist (dl.google.com liefert 403 über den Proxy):
+ *
+ *   Lauf 1 (fec5f68), zwei unabhängige Brüche gleichzeitig:
+ *     a) `search` im gefilterten Zweig durch `null` ersetzt.
+ *     c) `page == 1` aus der Bedingung `ungefiltert` gestrichen.
+ *     → „336 tests completed, 2 failed": Teilschritt 1 (Zeile 101) und
+ *       Teilschritt 4 (Zeile 159). Genau die beiden und keine anderen — die
+ *       Brüche greifen also getrennt, und kein anderer Test im Baum merkt
+ *       davon etwas.
+ *
+ *   Lauf 2 (283e64d), ein Bruch:
+ *     b) Die Bedingung `ungefiltert` durch `true` ersetzt, sodass auch
+ *        gefilterte Abrufe über den Cache laufen.
+ *     → „336 tests completed, 3 failed": Teilschritt 3 (Zeile 137) — der
+ *       gesuchte Fall — sowie 1 und 4. Das ist stimmig: Der Cache-Zweig ruft
+ *       ohne Filter und mit Seite 1 ab, verletzt also alle drei Aussagen.
  */
 class GalerieAbfrageTest {
 

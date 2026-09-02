@@ -78,13 +78,10 @@ fun NavGraphBuilder.catalogGraph(
             // Momentaufnahme vom Aufbau des Graphen (der NavHost-Builder läuft nur einmal).
             val state by vm.state.collectAsStateWithLifecycle()
             val catalogState by katalog.state.collectAsStateWithLifecycle()
-            // Eine sichtbare Leiste, ein Halter: der Katalog meldet, das
-            // MainViewModel zeigt. Zwei Snackbar-Halter waeren zwei
-            // Warteschlangen fuer dieselbe Leiste.
-            val katMeldung by katalog.snackbar.collectAsStateWithLifecycle()
-            LaunchedEffect(katMeldung) {
-                katMeldung?.let { vm.showSnackbar(it); katalog.snackbarGelesen() }
-            }
+            // Hier stand die Weiterleitung der Katalog-Meldungen an das
+            // MainViewModel — zweimal in dieser Datei, wortgleich. Sie ist weg:
+            // Beide ViewModels schreiben jetzt in denselben Kanal
+            // (data/MeldungsKanal.kt), eingesammelt wird er in AppNavigation.kt.
             LaunchedEffect(state.serverUrl) {
                 if (state.serverUrl.isNotBlank() && catalogState.loadedPages.isEmpty() && !catalogState.isLoading) {
                     katalog.loadCatalogMeta(); katalog.loadCatalogSets()
@@ -110,13 +107,9 @@ fun NavGraphBuilder.catalogGraph(
             val state by vm.state.collectAsStateWithLifecycle()
             val catSetNumber = backStack.arguments?.getString("setNumber") ?: ""
             val catalogState by katalog.state.collectAsStateWithLifecycle()
-            // Auch hier: loadCatalogDetail() meldet („Set nicht gefunden",
-            // Netzfehler). Ohne diese Bruecke bliebe die Meldung im Katalog
-            // liegen und niemand saehe sie.
-            val katMeldung by katalog.snackbar.collectAsStateWithLifecycle()
-            LaunchedEffect(katMeldung) {
-                katMeldung?.let { vm.showSnackbar(it); katalog.snackbarGelesen() }
-            }
+            // loadCatalogDetail() meldet ebenfalls („Set nicht gefunden",
+            // Netzfehler). Die Bruecke dafuer stand hier und ist entfallen —
+            // siehe oben und data/MeldungsKanal.kt.
             CatalogDetailScreen(
                 setNumber = catSetNumber,
                 detail = catalogState.detail?.takeIf { it.setNumber == catSetNumber },

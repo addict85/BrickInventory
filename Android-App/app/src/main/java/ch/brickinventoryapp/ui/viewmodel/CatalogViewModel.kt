@@ -62,16 +62,22 @@ private const val CATALOG_RETRY_DELAY_MS = 500L
 class CatalogViewModel @Inject constructor(
     private val repo: BrickRepository,
     @param:ApplicationContext private val ctx: Context,
+    meldungen: ch.brickinventoryapp.data.MeldungsKanal,
 ) : ViewModel() {
 
     private val _catalogState = MutableStateFlow(CatalogUiState())
     val state = _catalogState.asStateFlow()
 
-    /** Meldungen fuer die Snackbar; der Graph leitet sie weiter und quittiert. */
-    private val _snackbar = MutableStateFlow<String?>(null)
-    val snackbar = _snackbar.asStateFlow()
-
-    fun snackbarGelesen() { _snackbar.value = null }
+    /**
+     * Meldungen fuer die Snackbar — jetzt DERSELBE Fluss wie im MainViewModel.
+     *
+     * Vorher hatte dieses ViewModel einen eigenen, und der Navigationsgraph
+     * musste ihn weiterleiten und quittieren: zwei gleichlautende Bloecke in
+     * CatalogGraph.kt, einer je Ziel. Wer ein drittes Ziel hinzufuegt und den
+     * Block vergisst, verliert die Meldungen dieses Bildschirms lautlos.
+     * Begruendung und Muster: MeldungsKanal.kt.
+     */
+    private val _snackbar = meldungen.fluss
 
     // Entprellte Suche: pro Tastendruck wird der vorherige Lade-Job
     // abgebrochen, geladen wird erst 350ms nach dem letzten.

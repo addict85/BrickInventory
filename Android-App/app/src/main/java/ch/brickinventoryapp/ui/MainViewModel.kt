@@ -28,6 +28,8 @@ class MainViewModel @Inject constructor(
     internal val sseClient: CsvImportSseClient,
     internal val pdfExport: PdfExportManager,
     internal val sessionExpired: ch.brickinventoryapp.data.SessionExpiredSignal,
+    // Der eine Weg zur Snackbar — geteilt mit den uebrigen ViewModels.
+    meldungen: ch.brickinventoryapp.data.MeldungsKanal,
     // Für den PdfViewer: Er leitet seinen Download-Client per newBuilder()
     // von diesem ab, statt einen eigenen OkHttpClient zu bauen. Damit teilt
     // er Thread- und Connection-Pool, und Interceptor-Regeln (Bearer-Token,
@@ -60,8 +62,13 @@ class MainViewModel @Inject constructor(
     // Snackbar getrennt vom Haupt-State: Meldungen sind der häufigste
     // querschneidende Update — als Feld in AppUiState hat jede Snackbar
     // den gesamten UI-Tree rekomponiert.
-    internal val _snackbar = MutableStateFlow<String?>(null)
-    val snackbar = _snackbar.asStateFlow()
+    //
+    // Der Fluss gehoert seit dem Meldungskanal nicht mehr diesem ViewModel:
+    // CatalogViewModel und jedes kuenftig herausgeloeste ViewModel schreiben in
+    // DENSELBEN. Der Name bleibt `_snackbar`, damit die Schreibstellen in den
+    // Feature-Dateien unveraendert lesen. Warum das so ist: MeldungsKanal.kt.
+    internal val _snackbar = meldungen.fluss
+    val snackbar = meldungen.meldung
 
     internal val _setDetailState = MutableStateFlow(SetDetailUiState())
     val setDetailState = _setDetailState.asStateFlow()
