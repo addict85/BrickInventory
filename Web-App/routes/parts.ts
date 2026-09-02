@@ -230,6 +230,49 @@ async function getCurrentPartMarketPrice(partNumber: string, colorId: number, us
   } catch (_) { return null; }
 }
 
+/**
+ * Preis/Stk, Kaufpreis und Zustand fuer ein manuell erfasstes Teil.
+ *
+ * ── Warum es das jetzt gibt ─────────────────────────────────────────────────
+ * Bei den Minifiguren steht diese Rechnung EINMAL (resolveManualFigPurchase in
+ * routes/minifigs.ts) und hat drei Aufrufer: Anlegen, Bearbeiten, CSV-Import.
+ * Bei den Teilen stand sie an jeder Stelle neu — und die beiden Fassungen im
+ * Anlegen und im CSV-Import sagten zweierlei:
+ *
+ *  1. Preis/Stk. Der CSV-Import schrieb den MARKTPREIS in unit_price. Das Feld
+ *     heisst „Preis/Stk" und bedeutet „was der Mensch bezahlt hat"; ohne Angabe
+ *     in der Datei gehoert dort NULL hin, so wie beim Anlegen von Hand. Der
+ *     Nachtrag-Job (jobs/purchasePriceBackfill.ts, backfillFromUnitPrice) liest
+ *     unit_price ausdruecklich als „wurde beim Erfassen eingegeben" — ein
+ *     importiertes Teil behauptete also eine Eingabe, die es nie gab.
+ *
+ *  2. Kaufpreis ohne Marktpreis. Beim Anlegen wird bewusst 0 gespeichert statt
+ *     NULL, sonst zeigt das Kaufpreis-Feld dauerhaft den „Marktpreis"-Platz-
+ *     halter (siehe Kommentar unten im Anlegen-Zweig). Der CSV-Import schrieb
+ *     NULL — dasselbe Teil sah je nach Erfassungsweg anders aus.
+ *
+ * Beides faellt weg, sobald die Rechnung nur noch an einer Stelle steht.
+ */
+async function resolveManualPartPurchase(uid: number, { partNumber, colorId, unitPrice = null, condition = null }:
+  { partNumber: string; colorId: number; unitPrice?: any; condition?: string | null }) {
+  const entered = (unitPrice !== undefined && unitPrice !== null && String(unitPrice).trim() !== '')
+    ? parseFloat(String(unitPrice).replace(',', '.')) : null;
+  const effectiveUnitPrice = (entered !== null && !isNaN(entered)) ? entered : null;
+
+  // Eingabe → (kein Bestand) → Standard, siehe utils/settings.ts.
+  const effectiveCondition: string = await zustandFuerPreis(condition, null, uid);
+
+  // Kaufpreis: eingegebener Preis/Stk falls vorhanden, sonst aktueller
+  // Marktpreis FUER diesen Zustand. Liefert BrickLink keinen Preis, wird 0
+  // gespeichert (nicht NULL) — sonst zeigt das Kaufpreis-Feld im Frontend
+  // dauerhaft den „Marktpreis"-Platzhalter.
+  const effectivePurchasePrice = effectiveUnitPrice !== null
+    ? effectiveUnitPrice
+    : (await getCurrentPartMarketPrice(partNumber, colorId, uid, effectiveCondition)) ?? 0;
+
+  return { effectiveUnitPrice, effectivePurchasePrice, effectiveCondition };
+}
+
 // Shared logic to add/update a single manual part. Used by both the
 // session-based web route (POST /api/parts) and the token-based API
 // (POST /api/v1/parts), so the behaviour (incl. Kaufpreis handling) is
@@ -316,25 +359,17 @@ async function addManualPart(uid: number, rawBody: any) {
     return { action: 'updated', part_number };
   }
 
-  const enteredPrice = (unit_price !== undefined && unit_price !== null && unit_price !== '')
-    ? parseFloat(unit_price) : null;
-  const effectiveUnitPrice = (enteredPrice !== null && !isNaN(enteredPrice)) ? enteredPrice : null;
-  // Kaufpreis: eingegebener Preis/Stk falls vorhanden, sonst aktueller Marktpreis.
-  // Liefert BrickLink keinen Preis, wird 0 gespeichert (nicht NULL) — sonst
-  // zeigt das Kaufpreis-Feld im Frontend dauerhaft den "Marktpreis"-Platzhalter.
-  const effectivePurchasePrice = effectiveUnitPrice !== null
-    ? effectiveUnitPrice
-    // Zustand mitgeben: Ohne ihn fällt getCurrentPartMarketPrice auf
-    // resolvePartCondition() zurück, und die kennt beim Anlegen noch keine
-    // Erfassung — sie liefert dann den Standardzustand, also meist „Neu".
-    // Ein als gebraucht erfasstes Teil bekäme so den Neupreis. Gleiche
-    // Ursache wie zuvor bei den Sets.
-    : (await getCurrentPartMarketPrice(part_number, color_id, uid, condition)) ?? 0;
-
-  // Eingabe → (kein Bestand) → Standard, siehe utils/settings.ts. condition ist
-  // durch V.optionalCondition() bereits auf 'N'/'U'/null eingegrenzt, die
-  // Umstellung ist damit verhaltensgleich.
-  const effectiveCondition = await zustandFuerPreis(condition, null, uid);
+  // Preis/Stk, Kaufpreis und Zustand: eine Rechnung, eine Stelle
+  // (resolveManualPartPurchase oben) — dieselbe, die der CSV-Import benutzt.
+  //
+  // Der Marktpreis wird dort mit dem AUFGELOESTEN Zustand geholt statt mit der
+  // rohen Eingabe. Das ist derselbe Wert: Ohne Eingabe fiel
+  // getCurrentPartMarketPrice bisher intern auf resolvePartCondition zurueck,
+  // und die kennt beim Anlegen noch keine Erfassung — sie lieferte also
+  // ebenfalls den Standardzustand des Kontos. Nur steht die Staffelung jetzt
+  // sichtbar da, statt zweimal auf verschiedenen Wegen berechnet zu werden.
+  const { effectiveUnitPrice, effectivePurchasePrice, effectiveCondition } =
+    await resolveManualPartPurchase(uid, { partNumber: part_number, colorId: color_id, unitPrice: unit_price, condition });
   // Farbcode möglichst füllen: vom Client übergeben, sonst aus rb_colors ableiten
   // (sonst bleibt der Farbpunkt in der Oberfläche grau).
   const effectiveColorHex = color_hex
@@ -495,8 +530,6 @@ router.post('/import/csv', csvUpload.single('file'), async (req: LoggedInRequest
       // Siehe utils/csvExport.ts: Tag zuerst, nicht Monat.
       const acquiredAt = parseCsvDate(row.acquired_at || row['erfassungsdatum']);
       const rawCondition = (row.condition || row['zustand'] || '').trim().toUpperCase();
-      // Eingabe → (kein Bestand) → Standard, siehe utils/settings.ts.
-      const csvCondition = await zustandFuerPreis(rawCondition, null, uid);
 
       try {
         // Lookup from Rebrickable
@@ -507,11 +540,13 @@ router.post('/import/csv', csvUpload.single('file'), async (req: LoggedInRequest
           if (info) { partName = info.part_name; imageUrl = info.image_url; categoryName = info.category_name; }
         }
 
-        // Kaufpreis = CSV-Preis/Stk, sonst aktueller Marktpreis FÜR den
-        // gesetzten Zustand (csvCondition wird an die Preisabfrage übergeben).
-        const resolvedPrice = unitPrice !== null
-          ? unitPrice
-          : await getCurrentPartMarketPrice(partNumber, colorId, uid, csvCondition);
+        // Dieselbe Rechnung wie beim Anlegen von Hand — eine Stelle,
+        // resolveManualPartPurchase. Zwei Unterschiede fielen damit weg:
+        // unit_price bekam hier den MARKTPREIS (das Feld heisst „Preis/Stk"
+        // und meint, was der Mensch bezahlt hat), und ohne Marktpreis stand
+        // NULL im Kaufpreis statt der 0, die das Frontend erwartet.
+        const { effectiveUnitPrice, effectivePurchasePrice, effectiveCondition: csvCondition } =
+          await resolveManualPartPurchase(uid, { partNumber, colorId, unitPrice, condition: rawCondition });
         const acqDate = acquiredAt || new Date().toISOString().slice(0,10);
 
         const existing = await db.get(
@@ -523,7 +558,10 @@ router.post('/import/csv', csvUpload.single('file'), async (req: LoggedInRequest
           // Erfassung auch beim Aufstocken anlegen, damit Zustand/Preis/Datum der
           // importierten Menge erhalten bleiben (und das Zustands-Aggregat stimmt).
           await recordAcquisitionForDay('part', uid, [partNumber, colorId],
-            { quantity: qty, price: resolvedPrice, condition: csvCondition||'N', createdAt: acqDate }
+            // > 0 wie beim Anlegen von Hand: Die 0 ist ein Anzeigewert fuer
+            // die Stammzeile, in der Erfassung steht dafuer NULL.
+            { quantity: qty, price: (effectivePurchasePrice > 0 ? effectivePurchasePrice : null),
+              condition: csvCondition||'N', createdAt: acqDate }
           ).catch(logAndContinue(`teile:import ${partNumber}/${colorId} (aufgestockt)`));
           updated++;
           results.push({ part_number: partNumber, action: 'updated' });
@@ -531,9 +569,12 @@ router.post('/import/csv', csvUpload.single('file'), async (req: LoggedInRequest
           const colorHex = (await db.get('SELECT rgb FROM rb_colors WHERE id=$1', [colorId]).catch(() => null))?.rgb || null;
           await db.run(`INSERT INTO parts (user_id, set_number, part_number, part_name, color_id, color_name, color_hex, category_name, quantity, image_url, source, unit_price, purchase_price, note, condition)
             VALUES ($1, NULL, $2, $3, $4, $5, $6, $7, $8, $9, 'manual', $10, $11, $12, $13) ON CONFLICT DO NOTHING`,
-            [uid, partNumber, partName, colorId, colorName, colorHex, categoryName, qty, imageUrl, resolvedPrice, resolvedPrice, note, csvCondition]);
+            [uid, partNumber, partName, colorId, colorName, colorHex, categoryName, qty, imageUrl, effectiveUnitPrice, effectivePurchasePrice, note, csvCondition]);
           await recordAcquisitionForDay('part', uid, [partNumber, colorId],
-            { quantity: qty, price: resolvedPrice, condition: csvCondition||'N', createdAt: acqDate }
+            // > 0 wie beim Anlegen von Hand: Die 0 ist ein Anzeigewert fuer
+            // die Stammzeile, in der Erfassung steht dafuer NULL.
+            { quantity: qty, price: (effectivePurchasePrice > 0 ? effectivePurchasePrice : null),
+              condition: csvCondition||'N', createdAt: acqDate }
           ).catch(logAndContinue(`teile:import ${partNumber}/${colorId} (neu)`));
           added++;
           results.push({ part_number: partNumber, action: 'added' });

@@ -289,8 +289,28 @@ test('ein manuell erfasstes Teil bekommt Marktpreis und Erfassung', () => {
   const fn = src.slice(src.indexOf('async function addManualPart'),
                        src.indexOf('async function updateManualPart'));
 
-  assert.match(fn, /getCurrentPartMarketPrice\(part_number, color_id, uid, condition\)/,
-    'Der Zustand muss in die Preisermittlung — sonst kommt der Neupreis');
+  // Der Zustand muss in die Preisermittlung — sonst kommt der Neupreis, auch
+  // bei „Gebraucht".
+  //
+  // Geprüft wird das an JEDEM Aufruf, nicht an einer Fundstelle in
+  // addManualPart. Die Zusicherung stand hier wörtlich als
+  // `getCurrentPartMarketPrice(part_number, color_id, uid, condition)` und
+  // wurde rot, als die Rechnung in resolveManualPartPurchase zusammenzog —
+  // obwohl der Zustand dort sehr wohl mitgeht. Eine Regel, die an einem Ort
+  // festgeschrieben ist, meldet den Umzug als Fehler und verpasst dafür die
+  // vier anderen Aufrufer.
+  const ohneZustand = [...src.matchAll(/getCurrentPartMarketPrice\(([^)]*)\)/g)]
+    .filter(m => !m[1].includes('function'))          // die Definition selbst nicht
+    .filter(m => m[1].split(',').length < 4);
+  assert.equal(ohneZustand.length, 0,
+    'Diese Aufrufe holen den Marktpreis OHNE Zustand:\n  ' +
+    ohneZustand.map(m => m[0]).join('\n  ') +
+    '\nDann fällt die Ermittlung intern auf den Standardzustand zurück, und ein ' +
+    'als gebraucht erfasstes Teil bekommt den Neupreis.');
+  // Selbstbeweis: Ohne Fundstellen sagt eine leere Liste nichts.
+  const alleAufrufe = [...src.matchAll(/getCurrentPartMarketPrice\(/g)];
+  assert.ok(alleAufrufe.length >= 4,
+    `Nur ${alleAufrufe.length} Vorkommen von getCurrentPartMarketPrice( — Muster veraltet?`);
   // Zwei Pfade: neu angelegt und erneut erfasst — BEIDE brauchen eine
   // Erfassung. Der zweite endete früher mit `return { action: 'updated' }`,
   // ohne eine anzulegen; ein abweichendes Erfassungsdatum ging dabei verloren.
