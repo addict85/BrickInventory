@@ -145,23 +145,35 @@ jobs:
         run: ./gradlew --no-daemon lintRelease
         continue-on-error: true
 
-      # Umbenennen passiert HIER und nicht in Gradle: Der Ausgabename lässt sich
-      # dort nur über interne AGP-Klassen setzen, die zwischen Versionen
-      # wechseln. Ein `mv` ist langweilig und hält.
-      - name: APK umbenennen
+      # Den Namen vergibt GRADLE (Aufgabe copyReleaseApkAsBrickInventory in
+      # app/build.gradle.kts), nicht dieser Schritt. Hier wird nur nachgesehen,
+      # was dabei herausgekommen ist.
+      #
+      # Vorher stand die Regel doppelt: Gradle legte "Brickinventory.apk" ab
+      # (kleines i), dieser Schritt schob app-release.apk nach
+      # "BrickInventory.apk" (grosses I). Auf Linux sind das zwei Dateien; im
+      # Protokoll lagen beide nebeneinander. Und das `mv` verschob genau die
+      # Original-APK, die Gradle ausdrücklich stehen lässt, damit nachgelagerte
+      # Schritte sie noch finden. Ein Name gehört an eine Stelle.
+      #
+      # Ein lokaler Bau bekommt damit denselben Dateinamen wie der Lauf hier —
+      # vorher unterschied er sich in einem Buchstaben.
+      - name: APK prüfen
         run: |
           set -eu
           cd app/build/outputs/apk/release
           ls -la
-          if [ -f app-release.apk ]; then
-            mv app-release.apk BrickInventory.apk
-            echo "signiert: ja"
-          elif [ -f app-release-unsigned.apk ]; then
-            mv app-release-unsigned.apk BrickInventory.apk
-            echo "::warning::APK ist UNSIGNIERT und lässt sich nicht installieren. Die vier Secrets KEYSTORE_BASE64, KEYSTORE_PASSWORT, KEY_ALIAS und KEY_PASSWORT fehlen oder sind unvollständig."
-          else
-            echo "::error::Kein APK gefunden."
+          if [ ! -f BrickInventory.apk ]; then
+            echo "::error::BrickInventory.apk fehlt. Die Gradle-Aufgabe copyReleaseApkAsBrickInventory hat nicht gegriffen — ohne sie gibt es nichts hochzuladen."
             exit 1
+          fi
+          # Signiert oder nicht, sagt der Name der QUELLE: Ohne Schlüssel legt
+          # AGP app-release-unsigned.apk ab. Die Kopie heisst in beiden Fällen
+          # gleich, deshalb ist sie hier keine Auskunft.
+          if [ -f app-release.apk ]; then
+            echo "signiert: ja"
+          else
+            echo "::warning::APK ist UNSIGNIERT und lässt sich nicht installieren. Die vier Secrets KEYSTORE_BASE64, KEYSTORE_PASSWORT, KEY_ALIAS und KEY_PASSWORT fehlen oder sind unvollständig."
           fi
 
       # `always()`: Die Berichte sind gerade dann interessant, wenn der Lauf rot

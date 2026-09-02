@@ -239,29 +239,53 @@ kotlin {
 }
 
 // ── APK-Dateiname ─────────────────────────────────────────────────────────────
-// Das als Release gebaute APK soll als "Brickinventory.apk" bereitstehen
+// Das als Release gebaute APK soll als "BrickInventory.apk" bereitstehen
 // (statt nur des Standardnamens app-release.apk). Die alte
 // applicationVariants-API zum Umbenennen wurde in AGP 9 entfernt; stattdessen
 // wird über die öffentliche Artifacts-API der Ausgabeordner der Release-APK
-// ermittelt und die erzeugte Datei danach als Brickinventory.apk bereitgestellt.
+// ermittelt und die erzeugte Datei danach als BrickInventory.apk bereitgestellt.
 //
 // Wichtig: AGP legt neben der APK eine output-metadata.json ab, die auf den
 // Originalnamen verweist. Damit nachgelagerte Schritte (Signieren, Bundle,
 // Install) nicht brechen, wird die Original-APK NICHT umbenannt, sondern eine
 // Kopie mit dem Wunschnamen daneben abgelegt.
+//
+// ── Eine Regel, eine Fassung ─────────────────────────────────────────────────
+// Bis hierher gab es diese Regel ZWEIMAL, in zwei Schreibweisen: Gradle legte
+// "Brickinventory.apk" ab (kleines i), der Workflow benannte danach
+// app-release.apk in "BrickInventory.apk" um (grosses I). Auf Linux sind das
+// zwei Dateien — im Protokoll des Laufs lagen beide nebeneinander, gleich gross.
+// Hochgeladen wurde nur die des Workflows; die Gradle-Kopie war totes Gewicht,
+// und die README beschrieb beide Namen an verschiedenen Stellen.
+//
+// Schlimmer als der doppelte Name war, was die zweite Fassung tat: Der Workflow
+// verschob (mv) genau die Original-APK, die der Absatz oben ausdrücklich stehen
+// lassen will. Heute geht das gut, weil Bundle und Lint vorher laufen — das ist
+// aber eine Reihenfolge, auf die sich niemand verlassen sollte.
+//
+// Jetzt benennt nur noch Gradle; der Workflow prüft bloss, was dabei
+// herausgekommen ist. Der Name steht damit an genau einer Stelle.
 androidComponents {
     onVariants(selector().withBuildType("release")) { variant ->
         val apkDir = variant.artifacts.get(com.android.build.api.artifact.SingleArtifact.APK)
-        val renameTask = tasks.register("copyReleaseApkAsBrickinventory") {
+        val renameTask = tasks.register("copyReleaseApkAsBrickInventory") {
             inputs.dir(apkDir)
             doLast {
                 val dir = apkDir.get().asFile
-                val target = File(dir, "Brickinventory.apk")
-                // Die (einzige, universelle) Release-APK finden — unabhängig
-                // vom Standardnamen — und als Brickinventory.apk kopieren.
-                val built = dir.listFiles { f ->
-                    f.name.endsWith(".apk") && f.name != target.name
-                }?.maxByOrNull { it.lastModified() }
+                val target = File(dir, "BrickInventory.apk")
+                // Die Release-APK finden — unabhängig vom Standardnamen — und
+                // als BrickInventory.apk kopieren.
+                //
+                // Die Reihenfolge ist FEST und nicht "die neueste Datei": Ohne
+                // Signierschlüssel heisst die Ausgabe app-release-unsigned.apk,
+                // mit Schlüssel app-release.apk. Liegen nach einem Wechsel
+                // beide im Ordner, soll immer die signierte gewinnen — nach
+                // Zeitstempel wäre das Zufall, und ein unsigniertes APK lässt
+                // sich nicht installieren.
+                val built = File(dir, "app-release.apk").takeIf { it.isFile }
+                    ?: File(dir, "app-release-unsigned.apk").takeIf { it.isFile }
+                    ?: dir.listFiles { f -> f.name.endsWith(".apk") && f.name != target.name }
+                        ?.maxByOrNull { it.lastModified() }
                 if (built != null) {
                     built.copyTo(target, overwrite = true)
                     println("Release-APK bereitgestellt als: ${target.absolutePath}")
@@ -275,6 +299,7 @@ androidComponents {
         }
     }
 }
+
 
 dependencies {
     implementation(libs.androidx.core.ktx)
