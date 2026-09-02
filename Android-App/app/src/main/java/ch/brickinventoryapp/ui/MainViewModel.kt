@@ -1,7 +1,7 @@
 package ch.brickinventoryapp.ui
 
-import android.app.Application
-import androidx.lifecycle.AndroidViewModel
+import android.content.Context
+import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import ch.brickinventoryapp.R
 import ch.brickinventoryapp.data.CsvImportSseClient
@@ -15,6 +15,7 @@ import ch.brickinventoryapp.service.PdfExportManager
 import ch.brickinventoryapp.service.PdfExportService
 import ch.brickinventoryapp.service.PdfExportState
 import dagger.hilt.android.lifecycle.HiltViewModel
+import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
@@ -22,7 +23,25 @@ import javax.inject.Inject
 
 @HiltViewModel
 class MainViewModel @Inject constructor(
-    application: Application,
+    /**
+     * Der Anwendungs-Context, eingespritzt statt geerbt.
+     *
+     * ── Warum das keine Kosmetik ist ────────────────────────────────────────
+     * Diese Klasse war das EINZIGE AndroidViewModel im Baum. CatalogViewModel
+     * und MonitoringViewModel sind gewoehnliche ViewModel und lassen sich den
+     * Context einspritzen — genau wie ResponseCache, PreferencesManager und
+     * PdfExportManager. Zwei Muster fuer dieselbe Sache, und das seltenere war
+     * das teurere: AndroidViewModel verlangt eine echte Application im
+     * Konstruktor. Damit laesst sich diese Klasse in einem JVM-Test nicht
+     * bauen, und deshalb liest der grosse Teil der Android-Tests Quelltext,
+     * statt Code auszufuehren.
+     *
+     * Der Context bleibt derselbe: getApplication<Application>()
+     * .applicationContext und Hilts @ApplicationContext liefern dasselbe
+     * Objekt. Was sich aendert, ist nur, dass er ueber die Tuer hereinkommt
+     * statt aus der Oberklasse — und damit in einem Test ersetzbar ist.
+     */
+    @param:ApplicationContext internal val ctx: Context,
     internal val repo: BrickRepository,
     internal val prefs: PreferencesManager,
     internal val sseClient: CsvImportSseClient,
@@ -38,7 +57,7 @@ class MainViewModel @Inject constructor(
     // Nur fürs Abmelden: Der Bild-Cache enthält Thumbnails des angemeldeten
     // Kontos und wird zusammen mit dem API-Cache geleert (SessionFeature.kt).
     internal val imageLoader: coil.ImageLoader
-) : AndroidViewModel(application) {
+) : ViewModel() {
 
     /**
      * Gemerkte Rollpositionen der Reiter (siehe ScrollMemory.kt). Kein
@@ -46,8 +65,6 @@ class MainViewModel @Inject constructor(
      * sie nur beim Betreten eines Reiters.
      */
     val scrollMemory = ScrollMemory()
-
-    internal val ctx get() = getApplication<Application>().applicationContext
 
     /**
      * Ein Text aus den Ressourcen — in der SPRACHE DER APP, nicht des Systems.
