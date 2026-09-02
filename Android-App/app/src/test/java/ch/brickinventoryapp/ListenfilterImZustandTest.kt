@@ -33,6 +33,11 @@ import org.junit.Test
  * geblaetterte Seiten und eine Gesamtzahl aus verschiedenen Abfragen.
  * `loadPortfolioHistory(period)` ist bewusst nicht gemeint — der Verlauf wird
  * vollstaendig ersetzt, blaettert nicht und fuehrt keine Gesamtzahl.
+ *
+ * Geprueft werden ALLE Lader unter ui/, nicht nur die des MainViewModel:
+ * CatalogViewModel blaettert genauso (ensureCatalogPage) und haelt seine
+ * Filter ebenfalls im Zustand. Waere die Regel auf MainViewModel begrenzt,
+ * duerfte ausgerechnet der zweite blaetternde Bildschirm sie brechen.
  */
 class ListenfilterImZustandTest {
 
@@ -44,7 +49,7 @@ class ListenfilterImZustandTest {
 
         for (datei in Quellen.unter("ui")) {
             val src = Quellen.ohneKommentare(datei.readText())
-            for (treffer in Regex("""fun MainViewModel\.(load\w+)\(([^)]*)\)""").findAll(src)) {
+            for (treffer in Regex("""fun (?:MainViewModel\.)?(load\w+)\(([^)]*)\)""").findAll(src)) {
                 lader++
                 val name = treffer.groupValues[1]
                 val parameter = treffer.groupValues[2]
@@ -62,8 +67,8 @@ class ListenfilterImZustandTest {
 
         // Selbstbeweis: Findet das Muster keine Lader, waere die Liste leer und
         // der Test gruen, ohne etwas geprueft zu haben.
-        assert(lader >= 15) {
-            "Nur $lader Lader gefunden — das Muster 'fun MainViewModel.loadXyz(' passt nicht mehr."
+        assert(lader >= 20) {
+            "Nur $lader Lader gefunden — das Muster 'fun loadXyz(' passt nicht mehr."
         }
 
         assert(verstoesse.isEmpty()) {
