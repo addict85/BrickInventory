@@ -1,0 +1,33 @@
+-- Die tote Spalte sets.brickset_id entfernen.
+--
+-- ── Der Befund ──────────────────────────────────────────────────────────────
+-- Gesucht wurde nach dem Muster, das in dieser Reihe die meisten Fehler
+-- geliefert hat: „Was steht in einem und fehlt im anderen?" Beim Vergleich der
+-- vier Stellen, die eine Zeile in DIESELBE Tabelle kopieren
+-- (INSERT INTO t (…) SELECT … FROM t), fiel auf, dass utils/setService.ts elf
+-- der sechzehn sets-Spalten mitnimmt. Von den fünf ausgelassenen sind
+-- added_at/updated_at Vorgabewerte, purchase_price wird danach aus den
+-- Erfassungen gespiegelt — und brickset_id fehlte nicht aus einem Grund,
+-- sondern weil sie niemanden interessiert.
+--
+-- Nachgeprüft über den ganzen Baum:
+--
+--   grep -rn "brickset_id" --include=*.ts --include=*.js .
+--     → genau EIN Treffer, und der ist ein Kommentar:
+--       utils/handlers/sets.ts:72
+--       „Explizite Spaltenliste statt SELECT *: id/user_id/brickset_id/
+--        updated_at werden weder von der Webapp noch von der Android-App
+--        gelesen"
+--
+-- Kein INSERT, kein UPDATE, kein SELECT. Die Spalte wird seit dem Umstieg auf
+-- die Brickset-Anbindung über catalog_cache nicht mehr gefüllt.
+--
+-- ── Was verloren geht ───────────────────────────────────────────────────────
+-- Auf einer Datenbank, die aus der Zeit davor stammt, können dort noch Werte
+-- stehen. Sie werden von nichts gelesen — es geht also nur Inhalt verloren,
+-- der keine Funktion mehr hat. Wer sie aufheben will, sichert die Tabelle vor
+-- dem Einspielen.
+--
+-- IF EXISTS, damit die Migration auf einer frischen Installation durchläuft,
+-- wo die Spalte nie angelegt wurde: db/schema.sql führt sie nicht.
+ALTER TABLE sets DROP COLUMN IF EXISTS brickset_id;

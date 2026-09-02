@@ -7,17 +7,13 @@ import { downloadSetImage } from './setImages';
 import { getCurrentMarketPrice } from './marketPrice';
 import { downloadSetInstructions } from './instructions';
 import { zustandFuerPreis } from './settings';
-import { importPartsForSet, fetchMissingBlIds } from './partsImport';
-import { importMinifigsForSet } from './minifigsImport';
 import { deleteSetRows } from '../utils/handlers/sets';
 import { toCsv } from './csvExport';
 import { getSetInfo } from '../clients/rebrickable';
 import * as brickset from '../clients/brickset';
 import { getItemImageUrl } from '../clients/bricklink';
 import { generateThumb } from '../routes/thumbs';
-import { refreshPriceForSet } from '../jobs/priceJob';
-import { enqueue, requestRun } from '../jobs/instructionQueue';
-import { enrichSetParts, enrichSetMinifigs, downloadSetImages } from '../jobs/partsCatalogEnrich';
+import * as nachErfassung from '../jobs/nachErfassung';
 
 /**
  * Sets anlegen, ändern und ausgeben — der Kern hinter den Set-Routen.
@@ -305,17 +301,11 @@ async function addSet(setNumber: string, quantity: number, userId: number,
     });
     // During bulk CSV import, skip immediate background jobs to avoid DB pool exhaustion.
     // The import loop triggers enrichment after all sets are imported.
-    if (!global._csvImportRunning) {
-      setTimeout(async () => {
-        await importPartsForSet(normalized, userId).catch(() => {});
-        fetchMissingBlIds().catch(() => {});
-        enqueue(normalized).catch(() => {});
-        requestRun().catch(() => {});
-        await enrichSetParts(normalized).catch(() => {});
-        await enrichSetMinifigs(normalized).catch(() => {});
-        downloadSetImages(normalized).catch(() => {});
-      }, 2000 + Math.random() * 3000);
-    }
+    //
+    // Der Rumpf steht seit dem Herausziehen in jobs/nachErfassung.ts — als
+    // anonymer Block im setTimeout war er in Tests nicht abfangbar und lief
+    // dort echt, gegen einen meist schon geschlossenen Pool.
+    if (!global._csvImportRunning) nachErfassung.zieheNach(normalized, userId);
     return { action:'updated', set_number:normalized };
   }
 
@@ -396,18 +386,10 @@ async function addSet(setNumber: string, quantity: number, userId: number,
 
   if (sendProgress) sendProgress({ step:'done_meta', set:normalized });
   // All heavy work in background — don't block the response
-  if (!global._csvImportRunning) {
-    setTimeout(async () => {
-      await importMinifigsForSet(normalized, userId).catch(() => {});
-      await importPartsForSet(normalized, userId).catch(() => {});
-      // Kein Hinweis nötig: Läuft NACH recordAcquisition(), die Zeile existiert
-      // bereits — conditionsNeededFor() findet den Zustand selbst.
-      refreshPriceForSet(normalized, userId).catch(() => {});
-      await enrichSetParts(normalized).catch(() => {});
-      await enrichSetMinifigs(normalized).catch(() => {});
-      downloadSetImages(normalized).catch(() => {});
-    }, 2000 + Math.random() * 3000);
-  }
+  // Rumpf in jobs/nachErfassung.ts — dort steht er neben dem Nachzug des
+  // Zweiterfassungs-Zweigs, und der Unterschied zwischen beiden ist damit an
+  // einer Stelle zu sehen statt vierzig Zeilen auseinander.
+  if (!global._csvImportRunning) nachErfassung.zieheNachNeuanlage(normalized, userId);
   return { action:'added', set_number:normalized, name };
 }
 

@@ -69,7 +69,7 @@ async function getSets(userId: Blickfeld, query: any = {}) {
   // Liste kommt von scopeIds() in utils/household.ts — hier wird sie nur
   // normalisiert, damit ältere Aufrufer mit einer nackten ID weiter gehen.
   const uids = asIds(userId);
-  // Explizite Spaltenliste statt SELECT *: id/user_id/brickset_id/updated_at
+  // Explizite Spaltenliste statt SELECT *: id/user_id/updated_at
   // werden weder von der Webapp noch von der Android-App gelesen — sie haben
   // den JSON-Payload der /sets-Antwort nur unnötig aufgebläht.
   // Mit "s." qualifiziert: die angehängte Aggregat-Subquery führt set_number

@@ -35,6 +35,23 @@ const ROOT = path.join(__dirname, '..');
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
 process.env.WEB_WORKERS = '1';
 
+// Der Nachzug nach dem Erfassen (jobs/nachErfassung.ts) wird abgefangen.
+//
+// Er haengt an einem setTimeout von zwei bis fuenf Sekunden und laeuft damit
+// NACH diesem Test — gegen einen dann geschlossenen Verbindungspool:
+//   [weiter-trotz-fehler] instr-queue:trigger: Cannot use a pool after ...
+// Sichtbar war nur dieser eine Schritt, weil nur er protokolliert; die
+// uebrigen sechs schluckten ihren Fehler und liefen genauso ins Leere.
+const Module = require('node:module');
+const _echtesRequire = Module.prototype.require;
+Module.prototype.require = function (name) {
+  const m = _echtesRequire.apply(this, arguments);
+  if (typeof name === 'string' && /jobs[/\\]nachErfassung(\.js)?$/.test(name))
+    return new Proxy(m, { get: (t, k) =>
+      (k === 'zieheNach' || k === 'zieheNachNeuanlage') ? () => {} : t[k] });
+  return m;
+};
+
 const _req = require('./helpers/sources').buildAndRequire();
 const db = _req('db/database.js');
 const express = require(path.join(ROOT, 'node_modules', 'express'));

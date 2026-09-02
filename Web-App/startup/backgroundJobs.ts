@@ -1,24 +1,20 @@
-import * as db from '../db/database';
-import { downloadSetImage } from '../utils/setImages';
-import { generateThumb } from '../routes/thumbs';
 // ── Echte Importe statt später require() (Nachtrag 139) ─────────────────────
 //
 // Beim Auslagern aus server.ts wanderten zehn `require('./jobs/...')`
 // WORTGLEICH mit. Aus startup/ gesehen gibt es './jobs' nicht — jeder dieser
 // Aufrufe warf, und weil sie in `setTimeout`/`.catch(() => {})` stecken, blieb
 // es still: KEIN Job lief mehr an, ohne eine einzige Fehlermeldung.
-import { enqueue, processNext, start as starteJobAnleitungen } from '../jobs/instructionQueue';
 import { start as starteJobPreise } from '../jobs/priceJob';
 import { start as starteJobBilder } from '../jobs/imageQueue';
 import { processRetryQueue } from '../jobs/bricksetRetry';
 import * as purchasePriceBackfill from '../jobs/purchasePriceBackfill';
+import { start as starteJobAnleitungen } from '../jobs/instructionQueue';
 import * as catalogSync from '../jobs/catalogSync';
+import * as nachlaeufe from '../jobs/startNachlaeufe';
 import { purgeAltePreise } from '../utils/priceHistory';
 import { purgeExpiredTokens } from '../utils/auth';
-import { APP_ROOT, IMAGES_DIR } from '../utils/appPaths';
 import { startImgCacheCleanup } from '../routes/imgProxy';
 import { startPdfJobCleanup } from '../routes/api_v1/pdf';
-import { fehlertext, logAndContinue } from '../utils/httpError';
 
 /**
  * Was nach dem Start im Hintergrund anläuft — ausschliesslich im Primär-Worker.
@@ -105,76 +101,13 @@ export async function starteHintergrundlaeufe(): Promise<void> {
 
   setTimeout(() => catalogSync.syncAllMissing().catch(() => {}), 10000);
 
-  // Enqueue all sets that have no instructions yet
-  setTimeout(async () => {
-    try {
-      const missing = await db.all(
-        `SELECT DISTINCT s.set_number FROM sets s
-         WHERE NOT EXISTS (
-           SELECT 1 FROM shared_instructions si WHERE si.set_number = s.set_number
-         ) AND NOT EXISTS (
-           SELECT 1 FROM instruction_queue iq WHERE iq.set_number = s.set_number AND iq.status IN ('pending','done')
-         )`
-      ).catch(() => []);
-      if (missing.length) {
-        console.log(`[instr-queue] Enqueueing ${missing.length} sets missing instructions`);
-        for (const { set_number } of missing) await enqueue(set_number).catch(() => {});
-        processNext();
-      }
-    } catch(e) { console.error('[instr-queue startup]', fehlertext(e)); }
-  }, 15000);
+  // Sets ohne Anleitung in die Warteschlange (jobs/startNachlaeufe.ts).
+  setTimeout(() => nachlaeufe.anleitungenNachtragen().catch(() => {}), 15000);
   setTimeout(() => processRetryQueue().catch(() => {}), 20000);
 
-  // Background: download missing set images
-  setTimeout(async () => {
-    try {
-      const missing = await db.all(
-        `SELECT DISTINCT set_number, image_url FROM sets
-         WHERE image_local IS NULL AND image_url IS NOT NULL LIMIT 500`
-      ).catch(() => []);
-      if (!missing.length) return;
-      console.log(`[set-img-bg] Downloading ${missing.length} missing set images…`);
-      for (const { set_number, image_url } of missing) {
-        const local = await downloadSetImage(image_url, set_number).catch(() => null);
-        if (local) {
-          await db.run(`UPDATE sets SET image_local=$1 WHERE set_number=$2 AND image_local IS NULL`, [local, set_number])
-            .catch(logAndContinue(`bilder:set ${set_number}`));
-          await db.run(`UPDATE set_catalog SET image_local=$1 WHERE set_number=$2 AND image_local IS NULL`, [local, set_number]).catch(() => {});
-          generateThumb(local).catch(() => {});
-        }
-        await new Promise(r => setTimeout(r, 300));
-      }
-      console.log(`[set-img-bg] Done`);
-    } catch(e) { console.error('[set-img-bg]', fehlertext(e)); }
-  }, 45_000);
+  // Fehlende Set-Bilder vom CDN (jobs/startNachlaeufe.ts).
+  setTimeout(() => nachlaeufe.setBilderNachladen().catch(() => {}), 45_000);
 
-  // Generate missing thumbnails
-  setImmediate(async () => {
-    try {
-      const fs   = require('fs');
-      const path = require('path');
-      const sets  = await db.all("SELECT image_local FROM sets WHERE image_local IS NOT NULL");
-      const parts = await db.all("SELECT image_local FROM parts WHERE image_local IS NOT NULL");
-      const paths = [...sets, ...parts].map(r => r.image_local).filter(Boolean);
-      let generated = 0;
-      // Async statt existsSync: die Schleife läuft über ALLE Bilder von Sets
-      // und Teilen und lief direkt nach app.listen() — bei ein paar tausend
-      // Einträgen hat sie den Event-Loop sekundenlang blockiert, auch für
-      // die übersprungenen. fs.promises.access() gibt zwischen jeder Prüfung
-      // den Loop frei.
-      const exists = (fp: string) => fs.promises.access(fp).then(() => true, () => false);
-      for (const localPath of paths) {
-        let fsPath;
-        if      (localPath.startsWith('/images/')) fsPath = path.join(IMAGES_DIR, localPath.slice('/images/'.length));
-        else if (localPath.startsWith('/data/'))   fsPath = path.join(APP_ROOT, localPath.slice(1));
-        else continue;
-        const thumbPath = fsPath.replace(path.extname(fsPath), '_thumb.jpg');
-        if (await exists(thumbPath) || !(await exists(fsPath))) continue;
-        await generateThumb(localPath).catch(() => {});
-        generated++;
-        if (generated % 10 === 0) await new Promise(r => setTimeout(r, 10));
-      }
-      if (generated > 0) console.log(`  🖼️  ${generated} Thumbnails generiert`);
-    } catch(e) { console.error('Thumb gen error:', fehlertext(e)); }
-  });
+  // Fehlende Vorschaubilder (jobs/startNachlaeufe.ts).
+  setImmediate(() => { nachlaeufe.vorschaubilderNachtragen().catch(() => {}); });
 }
