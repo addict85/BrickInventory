@@ -50,7 +50,7 @@ import { DEFAULT_PRICE_CONDITION } from '../utils/financeCalc';
 import { effectiveCondition as userDefaultCondition, zustandFuerPreis } from '../utils/settings';
 import { fetchMinifigPrice, fetchPartPrice } from '../utils/financeCalc';
 import { getSetting, getGlobalSetting } from '../utils/settings';
-import { csvEinlesen, sendCsvText, toCsv, uebersprungenHinweis } from '../utils/csvExport';
+import { csvEinlesen, parseCsvDate, sendCsvText, toCsv, uebersprungenHinweis } from '../utils/csvExport';
 import { getMinifigParts } from '../clients/rebrickable';
 
 router.use(requireLogin);
@@ -516,7 +516,14 @@ router.post('/import/csv', csvUpload.single('file'), async (req: LoggedInRequest
       if (unitPrice !== null && isNaN(unitPrice)) unitPrice = null;
       const note      = row.note || row['Notiz'] || null;
       const blFigNumber = (row.bl_fig_number || row['BrickLink-Nr'] || '').trim() || null;
-      const acquiredAt = (row.acquired_at || row['erfassungsdatum'] || '').trim() || null;
+      // parseCsvDate statt roher Zeichenkette (siehe test/csv-date.test.js):
+      // Postgres liest bei DateStyle MDY "01.02.2026" als 2. Januar, nicht als
+      // 1. Februar — stillschweigend, ohne Fehler. Ab Tag 13 bricht es ab und
+      // die Erfassung geht verloren.
+      //
+      // Der Fehler war bekannt und fuer Sets und Teile behoben; dieser dritte
+      // Aufrufer hat die Behebung nie bekommen.
+      const acquiredAt = parseCsvDate(row.acquired_at || row['erfassungsdatum']);
       const rawCondition = (row.condition || row['zustand'] || '').trim().toUpperCase();
 
       try {
