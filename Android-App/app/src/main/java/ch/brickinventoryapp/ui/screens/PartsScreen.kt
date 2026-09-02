@@ -275,7 +275,7 @@ fun ManualPartTile(part: PartValuationItem, serverUrl: String, imageLoader: Imag
 
     Card(
         onClick = onEdit,  // ganze Karte klickbar — öffnet den Kaufpreis/Anzahl-Dialog, analog Sets
-        modifier = Modifier.width(112.dp).height(178.dp),
+        modifier = Modifier.width(Formen.kachelBreite).height(Formen.kachelHoehe),
         shape = Formen.leiste,
         elevation = CardDefaults.cardElevation(defaultElevation = Formen.karteErhebung),
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
@@ -290,7 +290,7 @@ fun ManualPartTile(part: PartValuationItem, serverUrl: String, imageLoader: Imag
                         onState = { st ->
                             if (st is coil.compose.AsyncImagePainter.State.Error) onImageError()
                         },
-                        modifier = Modifier.fillMaxSize().clip(RoundedCornerShape(topStart = 14.dp, topEnd = 14.dp)),
+                        modifier = Modifier.fillMaxSize().clip(Formen.kachelBildEcken),
                         contentScale = ContentScale.Fit
                     )
                 } else {
@@ -367,7 +367,7 @@ fun PartCard(part: Part, serverUrl: String, imageLoader: ImageLoader) {
                             if (st is coil.compose.AsyncImagePainter.State.Error) onImageError()
                         },
                         modifier = Modifier.fillMaxSize()
-                            .clip(RoundedCornerShape(topStart = 14.dp, topEnd = 14.dp)),
+                            .clip(Formen.kachelBildEcken),
                         contentScale = ContentScale.Fit
                     )
                 } else {
