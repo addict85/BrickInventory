@@ -53,7 +53,6 @@ import androidx.camera.camera2.interop.Camera2Interop
 import androidx.camera.camera2.interop.ExperimentalCamera2Interop
 import androidx.camera.lifecycle.ProcessCameraProvider
 import androidx.camera.view.PreviewView
-import java.util.concurrent.TimeUnit
 import androidx.compose.foundation.background
 import androidx.compose.ui.graphics.Color
 import androidx.compose.foundation.border
@@ -315,6 +314,11 @@ fun QrCameraPreview(frozen: Boolean, onQrFound: (String) -> Unit) {
                     CaptureRequest.CONTROL_AF_MODE_CONTINUOUS_PICTURE
                 )
             }
+            // 1280x720, im Barcodescanner dagegen 1920x1080 — der Unterschied
+            // ist gewollt: Hier wird EIN QR-Code mit grossen Modulen gelesen,
+            // dort kleine EAN-Striche und Setnummern per Texterkennung. Mehr
+            // Auflösung kostet je Bild Rechenzeit, die sich Kamera und Vorschau
+            // teilen; genau daran hing Marcos träger Fokus in Nachtrag 71.
             .setResolutionSelector(
                 androidx.camera.core.resolutionselector.ResolutionSelector.Builder()
                     .setResolutionStrategy(
@@ -379,7 +383,19 @@ fun QrCameraPreview(frozen: Boolean, onQrFound: (String) -> Unit) {
                         preview,
                         imageAnalyzer
                     )
-                    // Tap-to-Focus mit Auto-Cancel: kehrt nach 3s zum Continuous-AF zurück
+                    // Tap-to-Focus — bewusst mit disableAutoCancel().
+                    //
+                    // Hier stand bis zuletzt setAutoCancelDuration(3, SECONDS):
+                    // genau die Fassung, die im Barcodescanner Marcos Befund aus
+                    // Nachtrag 112 ausgelöst hat („man tippt, es wird scharf, und
+                    // Sekunden später ist es wieder weg"). Behoben wurde damals
+                    // nur die eine Kopie — diese hier blieb stehen, weil die
+                    // Regel an zwei Stellen steht und der Test nur eine ansah.
+                    //
+                    // Der Nutzer tippt, weil der kontinuierliche Autofokus gerade
+                    // danebenliegt. Fällt die Kamera nach drei Sekunden auf ihre
+                    // eigene Wahl zurück, ist genau das wieder da, wogegen der
+                    // Tipper gerichtet war.
                     previewView.setOnTouchListener { v, event ->
                         if (event.action == MotionEvent.ACTION_UP) {
                             try {
@@ -387,7 +403,7 @@ fun QrCameraPreview(frozen: Boolean, onQrFound: (String) -> Unit) {
                                     .createPoint(event.x, event.y)
                                 val action = FocusMeteringAction.Builder(point, FocusMeteringAction.FLAG_AF)
                                     .addPoint(point, FocusMeteringAction.FLAG_AE)
-                                    .setAutoCancelDuration(3, TimeUnit.SECONDS)
+                                    .disableAutoCancel()
                                     .build()
                                 camera.cameraControl.startFocusAndMetering(action)
                             } catch (_: Exception) {}

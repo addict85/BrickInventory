@@ -61,6 +61,17 @@ class CameraFocusConfigTest {
      * dritte Kamera-Ansicht baut, ist sofort mitgeprüft, ohne diese Datei
      * anzufassen. Eine aufgezählte Liste wäre die dritte Fassung derselben
      * Regel gewesen.
+     *
+     * ── Gegenprobe (Lauf 33635964430) ───────────────────────────────────────
+     * Die erweiterte Prüfung wurde ABSICHTLICH allein veröffentlicht, vor der
+     * Behebung. Der Lauf meldete `354 tests completed, 1 failed`, und zwar
+     * genau diesen Test. Der Fehler war also echt und nicht nachgestellt —
+     * ein künstlich eingebauter Bruch hätte nur gezeigt, dass die Prüfung
+     * greift, nicht dass sie etwas gefunden hat.
+     *
+     * Gefunden hat den Befund übrigens nicht dieser Test, sondern ein
+     * Vergleich gleicher Codeblöcke über den ganzen Baum. Eine Regel, die an
+     * zwei Stellen steht, sieht an jeder einzelnen Stelle richtig aus.
      */
     private fun mitTapToFocus(): List<java.io.File> {
         val ordner = java.io.File("src/main/java/ch/brickinventoryapp/ui/screens")
