@@ -48,17 +48,47 @@ class CameraFocusConfigTest {
         }
     }
 
+    /**
+     * Jede Datei, die Tap-to-Focus anbietet — nicht nur der Scanner.
+     *
+     * Bis hierher sah dieser Test allein in BarcodeScannerScreen.kt nach. Der
+     * SetupScreen bietet dasselbe an und stand die ganze Zeit auf
+     * `setAutoCancelDuration(3, SECONDS)` — also genau der Fassung, die der
+     * Test zwei Zeilen weiter als Ursache von Nachtrag 112 verbietet. Behoben
+     * wurde damals nur die Kopie, die der Test ansah.
+     *
+     * Die Liste wird deshalb nicht aufgezählt, sondern GEFUNDEN: Wer eine
+     * dritte Kamera-Ansicht baut, ist sofort mitgeprüft, ohne diese Datei
+     * anzufassen. Eine aufgezählte Liste wäre die dritte Fassung derselben
+     * Regel gewesen.
+     */
+    private fun mitTapToFocus(): List<java.io.File> {
+        val ordner = java.io.File("src/main/java/ch/brickinventoryapp/ui/screens")
+        val treffer = ordner.listFiles { f -> f.extension == "kt" }
+            ?.filter { code(it.readText()).contains("startFocusAndMetering(") }
+            ?: emptyList()
+        assert(treffer.size >= 2) {
+            "Nur ${treffer.size} Datei(en) mit Tap-to-Focus gefunden. Erwartet " +
+                "werden mindestens der Barcodescanner und der SetupScreen — " +
+                "findet die Suche weniger, prüft dieser Test nichts und wäre " +
+                "trotzdem grün."
+        }
+        return treffer
+    }
+
     @Test
     fun `der Tap-to-Focus haelt den Fokus`() {
-        val c = code(scanner())
-        assert(c.contains("disableAutoCancel()")) {
-            "Ohne disableAutoCancel() fällt die Kamera nach wenigen Sekunden auf " +
-                "ihre eigene Wahl zurück — der Nutzer stellt gezielt scharf, und " +
-                "es ist gleich wieder weg."
-        }
-        assert(!c.contains("setAutoCancelDuration")) {
-            "setAutoCancelDuration ist zurück. Das ist das Gegenteil von " +
-                "disableAutoCancel() und war die Ursache in Nachtrag 112."
+        for (datei in mitTapToFocus()) {
+            val c = code(datei.readText())
+            assert(c.contains("disableAutoCancel()")) {
+                "${datei.name}: Ohne disableAutoCancel() fällt die Kamera nach " +
+                    "wenigen Sekunden auf ihre eigene Wahl zurück — der Nutzer " +
+                    "stellt gezielt scharf, und es ist gleich wieder weg."
+            }
+            assert(!c.contains("setAutoCancelDuration")) {
+                "${datei.name}: setAutoCancelDuration ist da. Das ist das Gegenteil " +
+                    "von disableAutoCancel() und war die Ursache in Nachtrag 112."
+            }
         }
     }
 
