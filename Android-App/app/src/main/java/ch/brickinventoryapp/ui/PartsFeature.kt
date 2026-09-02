@@ -56,6 +56,9 @@ internal fun MainViewModel.loadPartsColors() {
     viewModelScope.launch {
         when (val r = repo.teile.getBrickColors()) {
             is Result.Success -> if (r.data.success) _partsState.update { it.copy(partsColors = r.data.colors) }
+            // Bewusst ohne Meldung: Die Farbliste füllt nur die Auswahl im
+            // Erfassungsdialog. Fehlt sie, tippt der Nutzer die Farb-ID — eine
+            // Meldung beim Öffnen des Bildschirms hülfe ihm dabei nicht.
             is Result.Error -> {}
         }
     }

@@ -118,7 +118,9 @@ internal fun MainViewModel.deleteManualAcquisition(
                 loadManualAcquisitions(type, id, colorId)
                 reloadItemList(type)
             }
-            is Result.Error -> {}
+            // Ohne Meldung verschwindet die Zeile nicht, und niemand sagt warum.
+            // updateManualAcquisition zwei Funktionen weiter meldet längst.
+            is Result.Error -> _snackbar.value = meldung(result)
         }
     }
 }

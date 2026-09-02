@@ -139,9 +139,17 @@ internal fun MainViewModel.redeemHouseholdInvite(code: String) {
 /** subUserId leer = die eigene Verknüpfung lösen (als Unterkonto). */
 internal fun MainViewModel.unlinkHousehold(subUserId: Int? = null) {
     viewModelScope.launch {
-        when (repo.haushalt.unlinkHousehold(subUserId)) {
+        when (val r = repo.haushalt.unlinkHousehold(subUserId)) {
             is Result.Success -> { loadHouseholdStatus(); loadHouseholdMembers(); loadSets() }
-            is Result.Error -> {}
+            // Ohne Meldung tippt der Nutzer auf „Verknüpfung lösen", und es
+            // passiert sichtbar nichts — weder Erfolg noch Grund.
+            //
+            // Über _householdState.message und nicht über den Schnipsel: Genau
+            // dort melden die vier anderen ändernden Wege dieser Datei, und die
+            // Haushaltskarte zeigt das Feld an (SettingsScreen.kt). Ein zweiter
+            // Meldeweg für dieselbe Karte wäre die dritte Fassung derselben
+            // Sache.
+            is Result.Error -> _householdState.update { it.copy(message = meldung(r)) }
         }
     }
 }

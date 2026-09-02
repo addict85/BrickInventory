@@ -420,6 +420,10 @@ internal fun MainViewModel.loadStats() {
     viewModelScope.launch {
         when (val r = repo.finanzen.getStats(scopeFor(ScopeFilter.View.GALLERY))) {
             is Result.Success -> _galleryState.update { it.copy(stats = r.data.stats) }
+            // Bewusst ohne Meldung: Die Kennzahlen sind Beiwerk — scheitern sie,
+            // bleibt die Galerie stehen, und eine Meldung über eine Zahlenreihe
+            // am Kopf der Seite wäre lauter als der Verlust. Dieselbe Begründung
+            // wie bei den Teile-Kennzahlen in PartsFeature.kt.
             is Result.Error -> {}
         }
     }
