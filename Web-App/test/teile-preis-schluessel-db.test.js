@@ -63,6 +63,8 @@ test('Teile-Preise stehen unter EINER Nummer', { concurrency: 1 }, async (t) => 
   const RB = `pt${p}`;          // so steht das Teil in der Sammlung
   const BL = `pt${p}bl`;        // so kennt BrickLink es
   const FARBE = 0;              // 0 wird nicht übersetzt (resolveBlColorId)
+  const RB2 = `qt${p}`;         // zweites Teil: BL-Nummer nur in parts
+  const BL2 = `qt${p}bl`;
   const WAEHRUNG = 'CHF';
 
   await db.run(`DELETE FROM users WHERE username=$1`, [NUTZER]);
@@ -111,10 +113,34 @@ test('Teile-Preise stehen unter EINER Nummer', { concurrency: 1 }, async (t) => 
       'der Cache-Eintrag unter der BrickLink-Nummer wird nicht gefunden.');
     assert.equal(Number(v.by_condition.N.purchase_price), 5,
       'Der Kaufpreis steht unter der Nummer des Benutzers und muss weiter gefunden werden');
+
+    // ── 3. Zweite Quelle: parts.bl_part_number ohne rb_bl_mapping ─────────
+    //
+    // jobs/backfillBlPartNumbers.ts schreibt beide im selben Durchlauf.
+    // Scheitert dort das INSERT in rb_bl_mapping, bleibt die Lücke für immer:
+    // Der Job wählt beim nächsten Mal nur Teile mit leerem bl_part_number, und
+    // dieses hat ja eines. Genau dieser Zustand wird hier hergestellt.
+    await db.run(`DELETE FROM rb_bl_mapping WHERE part_num=$1`, [RB2]);
+    await db.run(
+      `INSERT INTO parts (user_id,part_number,bl_part_number,color_id,quantity,source)
+       VALUES ($1,$2,$3,$4,1,'manual')`, [uid, RB2, BL2, FARBE]);
+    await db.run(
+      `INSERT INTO part_price_cache (part_number,color_id,condition,currency_code,avg_price,qty_avg_price,fetched_at)
+       VALUES ($1,$2,'N',$3,15.00,15.00,NOW())
+       ON CONFLICT (part_number,color_id,condition,currency_code)
+       DO UPDATE SET avg_price=15.00, qty_avg_price=15.00, fetched_at=NOW()`,
+      [BL2, FARBE, WAEHRUNG]);
+
+    const preis2 = await fetchPartPrice(RB2, FARBE, 'N', WAEHRUNG, 24);
+    assert.equal(Number(preis2?.avg_price), 15,
+      `fetchPartPrice lieferte ${JSON.stringify(preis2)} statt 15. Für dieses Teil steht ` +
+      'die BrickLink-Nummer nur in parts.bl_part_number, nicht in rb_bl_mapping — ein ' +
+      'Zustand, aus dem der Nachtrag-Job von selbst nie wieder herausfindet.');
   } finally {
-    await db.run(`DELETE FROM part_price_history WHERE part_number IN ($1,$2)`, [RB, BL]).catch(() => {});
-    await db.run(`DELETE FROM part_price_cache   WHERE part_number IN ($1,$2)`, [RB, BL]).catch(() => {});
-    await db.run(`DELETE FROM rb_bl_mapping WHERE part_num=$1`, [RB]).catch(() => {});
+    await db.run(`DELETE FROM part_price_history WHERE part_number = ANY($1)`, [[RB, BL, RB2, BL2]]).catch(() => {});
+    await db.run(`DELETE FROM part_price_cache   WHERE part_number = ANY($1)`, [[RB, BL, RB2, BL2]]).catch(() => {});
+    await db.run(`DELETE FROM rb_bl_mapping WHERE part_num = ANY($1)`, [[RB, RB2]]).catch(() => {});
+    await db.run(`DELETE FROM parts WHERE user_id=$1`, [uid]).catch(() => {});
     await db.run(`DELETE FROM part_acquisitions WHERE user_id=$1`, [uid]).catch(() => {});
     await db.run(`DELETE FROM users WHERE id=$1`, [uid]).catch(() => {});
     await db.pool.end().catch(() => {});

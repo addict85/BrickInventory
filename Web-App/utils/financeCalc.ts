@@ -475,7 +475,22 @@ async function resolveBlColorId(rbColorId: number) {
 async function resolveBlPartNumber(partNumber: string) {
   try {
     const row = await db.get('SELECT bl_part_num FROM rb_bl_mapping WHERE part_num=$1', [partNumber]);
-    return row?.bl_part_num || partNumber;
+    if (row?.bl_part_num) return row.bl_part_num;
+    // Zweite Quelle: parts.bl_part_number.
+    //
+    // jobs/backfillBlPartNumbers.ts schreibt beide im selben Durchlauf mit
+    // demselben Wert — sie stimmen also normalerweise überein. Scheitert dort
+    // aber ausgerechnet das INSERT in rb_bl_mapping (es wird protokolliert und
+    // übergangen), bleibt die Lücke FÜR IMMER: Der Job wählt beim nächsten Mal
+    // nur noch Teile mit leerem bl_part_number, und dieses hat ja eines.
+    //
+    // Beim LESEN kostet der Rückfall einen Indexzugriff und macht die Frage
+    // unabhängig davon, welcher der beiden Schreibvorgänge durchkam.
+    const teil = await db.get(
+      `SELECT bl_part_number FROM parts
+        WHERE part_number=$1 AND bl_part_number IS NOT NULL AND bl_part_number <> ''
+        LIMIT 1`, [partNumber]);
+    return teil?.bl_part_number || partNumber;
   } catch (_) { return partNumber; }
 }
 
