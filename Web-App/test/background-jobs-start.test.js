@@ -31,7 +31,11 @@ const echtesRequire = Module.prototype.require;
 Module.prototype.require = function (name) {
   const m = echtesRequire.apply(this, arguments);
   if (typeof name !== 'string') return m;
-  const merke = (job, fn) => (...args) => { gestartet.push(job); return undefined; };
+  // Ein aufgeloestes Promise, nicht undefined: Die gestaffelten Laeufe werden
+  // als `job.run().catch(() => {})` aufgerufen — auf undefined gaebe es kein
+  // .catch, und der Fehler flaege NACH dem Test als uncaughtException hoch.
+  // Fuer die fuenf sofortigen ist der Rueckgabewert gleichgueltig.
+  const merke = (job, fn) => (...args) => { gestartet.push(job); return Promise.resolve(); };
   if (/jobs[/\\]priceJob(\.js)?$/.test(name))
     return new Proxy(m, { get: (t, k) => k === 'start' ? merke('priceJob') : t[k] });
   if (/jobs[/\\]instructionQueue(\.js)?$/.test(name))
@@ -45,6 +49,32 @@ Module.prototype.require = function (name) {
     return new Proxy(m, { get: (t, k) => k === 'startImgCacheCleanup' ? merke('imgCacheCleanup') : t[k] });
   if (/api_v1[/\\]pdf(\.js)?$/.test(name))
     return new Proxy(m, { get: (t, k) => k === 'startPdfJobCleanup' ? merke('pdfJobCleanup') : t[k] });
+
+  // ── Auch die GESTAFFELTEN Laeufe abfangen (Nachtrag) ─────────────────────
+  //
+  // Sie werden unten nicht abgefragt — sie haengen an setTimeout von 10 bis 45
+  // Sekunden, und so lange wartet hier niemand. Abgefangen werden muessen sie
+  // trotzdem, denn sonst laufen sie WIRKLICH:
+  //
+  //   [weiter-trotz-fehler] kaufpreis-nachtrag:teile:
+  //       Cannot use a pool after calling end on the pool
+  //
+  // Der Kaufpreis-Nachtrag feuerte nach 45 Sekunden gegen den Pool, den dieser
+  // Test laengst geschlossen hatte. Zwei Dinge daran sind schlecht: Er
+  // veraendert waehrend des Testlaufs echte Daten in der Testdatenbank
+  // (UPDATE parts SET purchase_price=…), und er verstopft genau den Kanal, an
+  // dem verschluckte Fehler sichtbar werden — schema-start-ohne-fehler-db
+  // horcht darauf.
+  //
+  // `.unref()` an den Staffeln waere das falsche Mittel: Gemessen haelt ein
+  // ref'd Timer aus pg-pool (connectionTimeoutMillis) die Schleife ohnehin am
+  // Leben, die Rueckrufe kaemen also trotzdem dran.
+  if (/jobs[/\\]purchasePriceBackfill(\.js)?$/.test(name))
+    return new Proxy(m, { get: (t, k) => k === 'run' ? merke('purchasePriceBackfill') : t[k] });
+  if (/jobs[/\\]catalogSync(\.js)?$/.test(name))
+    return new Proxy(m, { get: (t, k) => k === 'syncAllMissing' ? merke('catalogSync') : t[k] });
+  if (/jobs[/\\]bricksetRetry(\.js)?$/.test(name))
+    return new Proxy(m, { get: (t, k) => k === 'processRetryQueue' ? merke('bricksetRetry') : t[k] });
   return m;
 };
 
