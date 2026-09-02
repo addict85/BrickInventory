@@ -35,6 +35,7 @@ process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:t
 process.env.WEB_WORKERS = '1';
 
 const _req = require('./helpers/sources').buildAndRequire();
+const { testServer } = require('./helpers/server');
 const db = _req('db/database.js');
 const express = require(path.join(ROOT, 'node_modules', 'express'));
 
@@ -73,17 +74,12 @@ test('das Hauptkonto sieht Marktpreis und Verlauf eines Unterkonto-Sets',
                 SELECT $1,'U','CHF',20+d*0.1,20,(CURRENT_DATE-d)::timestamptz FROM generate_series(1,10) d`, [SET]);
 
   // Betrachter ist das HAUPTKONTO.
-  const app = express();
-  app.use(express.json());
-  app.use((req, _res, next) => {
-    req.session = { userId: hauptId, username: HAUPT, isAdmin: false };
-    req.apiUser = { user_id: hauptId, is_admin: 0 };
-    next();
+  const { base, srv } = testServer(_req, {
+    sitzung: { userId: hauptId, username: HAUPT, isAdmin: false },
+    apiNutzer: { user_id: hauptId, is_admin: 0 },
+    routen: { '/api/v1': 'routes/api_v1/index.js', '/api/finance': 'routes/finance.js' },
+    t,
   });
-  app.use('/api/v1', _req('routes/api_v1/index.js'));
-  app.use('/api/finance', _req('routes/finance.js'));
-  const srv = app.listen(0);
-  const base = `http://localhost:${srv.address().port}`;
 
   try {
     // 1. Der eigentliche Fund: Die Preisroute darf nicht mehr 404 geben.

@@ -53,6 +53,7 @@ Module.prototype.require = function (name) {
 };
 
 const _req = require('./helpers/sources').buildAndRequire();
+const { testServer } = require('./helpers/server');
 const db = _req('db/database.js');
 const express = require(path.join(ROOT, 'node_modules', 'express'));
 
@@ -108,17 +109,12 @@ test('vorhandenes Set: Erfassen meldet exists und schreibt nichts',
     zeilen:(await db.get(`SELECT COUNT(*)::int AS c FROM sets WHERE set_number=$1`, [sn])).c,
   });
 
-  const app = express();
-  app.use(express.json());
-  app.use((req, _res, next) => {
-    req.session = { userId: hauptId };
-    req.apiUser = { user_id: hauptId, is_admin: 0 };
-    next();
+  const { base, srv } = testServer(_req, {
+    sitzung: { userId: hauptId },
+    apiNutzer: { user_id: hauptId, is_admin: 0 },
+    routen: { '/api/sets': 'routes/sets.js', '/api/v1': 'routes/api_v1/index.js' },
+    t,
   });
-  app.use('/api/sets', _req('routes/sets.js'));
-  app.use('/api/v1',   _req('routes/api_v1/index.js'));
-  const srv = app.listen(0);
-  const base = `http://localhost:${srv.address().port}`;
 
   const erfassen = async (pfad, sn) => {
     const r = await fetch(base + pfad, {

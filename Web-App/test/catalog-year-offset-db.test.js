@@ -33,6 +33,7 @@ process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:t
 process.env.WEB_WORKERS = '1';
 
 const _req = require('./helpers/sources').buildAndRequire();
+const { testServer } = require('./helpers/server');
 const db = _req('db/database.js');
 const express = require(path.join(ROOT, 'node_modules', 'express'));
 
@@ -61,16 +62,12 @@ test('Katalog: der Jahres-Sprung trifft die erste Zeile des Jahres',
                 SELECT 'KY'||y||'-'||i, 'Set '||y||'/'||i, y, 1, 100
                   FROM generate_series(2000,2026) y, generate_series(1,5) i`);
 
-  const app = express();
-  app.use(express.json());
-  app.use((req, _res, next) => {
-    req.session = { userId: uid };
-    req.apiUser = { user_id: uid, is_admin: 0 };
-    next();
+  const { base, srv } = testServer(_req, {
+    sitzung: { userId: uid },
+    apiNutzer: { user_id: uid, is_admin: 0 },
+    routen: { '/api/v1': 'routes/api_v1/index.js' },
+    t,
   });
-  app.use('/api/v1', _req('routes/api_v1/index.js'));
-  const srv = app.listen(0);
-  const base = `http://localhost:${srv.address().port}`;
   const hol = async (p) => (await fetch(base + p)).json();
 
   try {

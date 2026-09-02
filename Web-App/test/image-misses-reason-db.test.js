@@ -24,7 +24,6 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 const path = require('node:path');
 const Module = require('node:module');
-const express = require('express');
 
 const ROOT = path.join(__dirname, '..');
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
@@ -51,6 +50,7 @@ Module.prototype.require = function (name) {
 };
 
 const _req = require('./helpers/sources').buildAndRequire();
+const { testServer } = require('./helpers/server');
 const db = _req('db/database.js');
 const IQ = _req('jobs/imageQueue.js');
 const IM = _req('utils/imageMisses.js');
@@ -143,16 +143,12 @@ test('Fehlanzeigen lassen sich zurücknehmen und sind erklärbar',
   await db.run(`INSERT INTO users (username,password_hash,is_admin) VALUES ($1,'x',1)`, [NUTZER]);
   const uid = (await db.get(`SELECT id FROM users WHERE username=$1`, [NUTZER])).id;
 
-  const app = express();
-  app.use(express.json());
-  app.use((req, _res, next) => {
-    req.session = { userId: uid, isAdmin: 1 };
-    req.apiUser = { user_id: uid, is_admin: 1 };
-    next();
+  const { base, srv } = testServer(_req, {
+    sitzung: { userId: uid, isAdmin: 1 },
+    apiNutzer: { user_id: uid, is_admin: 1 },
+    routen: { '/api/v1': 'routes/api_v1/index.js' },
+    t,
   });
-  app.use('/api/v1', _req('routes/api_v1/index.js'));
-  const srv = app.listen(0);
-  const base = `http://localhost:${srv.address().port}`;
 
   try {
     await db.run(`DELETE FROM image_misses WHERE cache_key LIKE $1`, ['set:' + P + '%']);

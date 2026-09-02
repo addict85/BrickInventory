@@ -63,6 +63,7 @@ Module.prototype.require = function (name) {
 };
 
 const _req = require('./helpers/sources').buildAndRequire();
+const { testServer } = require('./helpers/server');
 const db = _req('db/database.js');
 const express = require(path.join(ROOT, 'node_modules', 'express'));
 
@@ -99,16 +100,12 @@ test('Katalogbilder auf Knopfdruck', { concurrency: 1 }, async (t) => {
                [`set:${P}_3`, 'HTTP 404 vom CDN']);
   await db.run(`INSERT INTO image_misses (cache_key) VALUES ($1)`, [`set:${P}_4`]);
 
-  const app = express();
-  app.use(express.json());
-  app.use((req, _res, next) => {
-    req.session = { userId: uid, isAdmin: 1 };
-    req.apiUser = { user_id: uid, is_admin: 1 };
-    next();
+  const { base, srv } = testServer(_req, {
+    sitzung: { userId: uid, isAdmin: 1 },
+    apiNutzer: { user_id: uid, is_admin: 1 },
+    routen: { '/api/v1': 'routes/api_v1/index.js' },
+    t,
   });
-  app.use('/api/v1', _req('routes/api_v1/index.js'));
-  const srv = app.listen(0);
-  const base = `http://localhost:${srv.address().port}`;
 
   try {
     await t.test('der Knopf reiht ein, ohne bekannte Fehlanzeigen', async () => {

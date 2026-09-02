@@ -38,6 +38,7 @@ process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:t
 process.env.WEB_WORKERS = '1';
 
 const _req = require('./helpers/sources').buildAndRequire();
+const { testServer } = require('./helpers/server');
 const db = _req('db/database.js');
 const express = require(path.join(ROOT, 'node_modules', 'express'));
 
@@ -85,17 +86,12 @@ test('eine echte Währungsänderung stösst den Preis-Job an, ein No-op-Speicher
     `INSERT INTO user_settings (user_id, key, value) VALUES ($1,'currency','EUR')
      ON CONFLICT (user_id, key) DO UPDATE SET value='EUR'`, [uid]);
 
-  const app = express();
-  app.use(express.json());
-  app.use((req, _res, next) => {
-    req.session = { userId: uid, username: USERNAME, isAdmin: false };
-    req.apiUser = { user_id: uid };
-    next();
+  const { base, srv } = testServer(_req, {
+    sitzung: { userId: uid, username: USERNAME, isAdmin: false },
+    apiNutzer: { user_id: uid },
+    routen: { '/api/settings': 'routes/settings.js', '/api/v1': 'routes/api_v1/index.js' },
+    t,
   });
-  app.use('/api/settings', _req('routes/settings.js'));
-  app.use('/api/v1', _req('routes/api_v1/index.js'));
-  const srv = app.listen(0);
-  const base = `http://localhost:${srv.address().port}`;
 
   const postWeb = (body) => fetch(`${base}/api/settings/`, {
     method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(body),

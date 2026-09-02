@@ -35,6 +35,7 @@ process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:t
 process.env.WEB_WORKERS = '1';
 
 const _req = require('./helpers/sources').buildAndRequire();
+const { testServer } = require('./helpers/server');
 const db = _req('db/database.js');
 const express = require(path.join(ROOT, 'node_modules', 'express'));
 
@@ -67,17 +68,12 @@ test('ein geleerter Kaufpreis wird aus dem Marktpreis gefüllt — Webapp UND Ap
   await db.run(`INSERT INTO global_settings (key,value) VALUES ('currency','CHF')
                 ON CONFLICT (key) DO UPDATE SET value='CHF'`);
 
-  const app = express();
-  app.use(express.json());
-  app.use((req, _res, next) => {
-    req.session = { userId: hauptId };
-    req.apiUser = { user_id: hauptId, is_admin: 0 };
-    next();
+  const { base, srv } = testServer(_req, {
+    sitzung: { userId: hauptId },
+    apiNutzer: { user_id: hauptId, is_admin: 0 },
+    routen: { '/api/sets': 'routes/sets.js', '/api/v1': 'routes/api_v1/index.js' },
+    t,
   });
-  app.use('/api/sets', _req('routes/sets.js'));
-  app.use('/api/v1', _req('routes/api_v1/index.js'));
-  const srv = app.listen(0);
-  const base = `http://localhost:${srv.address().port}`;
 
   // Ausgangslage: Set des UNTERKONTOS mit zwei Erfassungen (gebraucht + neu).
   const aufbauen = async () => {
