@@ -272,7 +272,7 @@ androidComponents {
             inputs.dir(apkDir)
             doLast {
                 val dir = apkDir.get().asFile
-                val target = File(dir, "BrickInventory.apk")
+                val target = File(dir, "Brickinventory.apk")
                 // Die Release-APK finden — unabhängig vom Standardnamen — und
                 // als BrickInventory.apk kopieren.
                 //
