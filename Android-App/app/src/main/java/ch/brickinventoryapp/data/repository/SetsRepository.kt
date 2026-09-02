@@ -52,12 +52,12 @@ class SetsRepository @Inject constructor(
         pageSize: Int = GALLERY_PAGE_SIZE
     ): Result<SetsResponse> {
         val ungefiltert = accounts == null && search.isNullOrBlank() && theme.isNullOrBlank() &&
-            (sort == null || sort == GALLERY_DEFAULT_SORT)
+            (sort == null || sort == GALLERY_DEFAULT_SORT) && page == 1
         return if (ungefiltert)
             cached("sets", SetsResponse.serializer()) {
                 safeCall { api.getSets(null, null, null, sort, 1, pageSize) }
             }
-        else safeCall { api.getSets(accounts, null, theme?.ifBlank { null }, sort, page, pageSize) }
+        else safeCall { api.getSets(accounts, search?.ifBlank { null }, theme?.ifBlank { null }, sort, page, pageSize) }
     }
 
     /**
