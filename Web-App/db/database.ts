@@ -662,33 +662,6 @@ async function frueherZurLaufzeitAngelegt() {
       condition   TEXT    DEFAULT 'N',
       created_at  TIMESTAMPTZ DEFAULT NOW()
     )`);
-  // Backfill: existing manual parts/minifigs get one acquisition row if none exists
-  await pool.query(`
-    INSERT INTO part_acquisitions (user_id, part_number, color_id, quantity, unit_price, condition, created_at)
-    SELECT p.user_id, p.part_number, COALESCE(p.color_id,0), p.quantity,
-           COALESCE(p.unit_price, p.purchase_price), COALESCE(p.condition,'N'), p.added_at
-    FROM parts p
-    WHERE p.source='manual'
-    AND NOT EXISTS (
-      SELECT 1 FROM part_acquisitions a
-      WHERE a.user_id=p.user_id AND a.part_number=p.part_number AND a.color_id=COALESCE(p.color_id,0)
-    )
-  // Scheitert das Nachtragen, bleiben manuelle Teile dauerhaft ohne
-  // Erst-Erfassung — die Kaufhistorie hat ein Loch und die Finanzansicht
-  // rechnet mit einer Zeile weniger. Ohne Protokoll erfaehrt das niemand.
-  `).catch(logAndContinue('start:erfassungen fuer Teile nachtragen'));
-  await pool.query(`
-    INSERT INTO minifig_acquisitions (user_id, fig_number, quantity, unit_price, condition, created_at)
-    SELECT m.user_id, m.fig_number, m.quantity,
-           COALESCE(m.unit_price, m.purchase_price), COALESCE(m.condition,'N'), m.added_at
-    FROM minifigs m
-    WHERE m.source='manual'
-    AND NOT EXISTS (
-      SELECT 1 FROM minifig_acquisitions a
-      WHERE a.user_id=m.user_id AND a.fig_number=m.fig_number
-    )
-  `).catch(logAndContinue('start:erfassungen fuer Minifiguren nachtragen'));
-  console.log('  ✅ part_acquisitions + minifig_acquisitions erstellt/migriert');
 
   // Migration: condition column for set_acquisitions
   const acqCondExists = await pool.query(
@@ -724,6 +697,62 @@ async function frueherZurLaufzeitAngelegt() {
     await pool.query("ALTER TABLE minifigs ADD COLUMN condition TEXT DEFAULT 'N'");
     console.log('  ✅ Migration: minifigs.condition hinzugefügt');
   }
+
+  // ── Nachtragen: erst hier, NACH den Spaltenmigrationen ──────────────────
+  //
+  // Diese beiden Bloecke standen weiter oben, VOR den ALTER TABLEs, die
+  // parts.added_at und parts.condition anlegen. Auf jeder Datenbank, die
+  // diese Spalten noch nicht hatte — also bei jedem Hochziehen von einem
+  // aelteren Stand —, lief der Teile-Nachtrag damit gegen eine Spalte, die es
+  // erst zwei Bloecke spaeter gab, und scheiterte. Lautlos, denn der Fehler
+  // wurde verschluckt. Beim naechsten Start war die Spalte da und es klappte:
+  // ein Start ohne Nachtrag, ohne dass es jemand erfuhr.
+  //
+  // Der Sets-Nachtrag direkt darunter stand immer schon an der richtigen
+  // Stelle. Von dreien war einer richtig einsortiert und zwei nicht.
+  // Backfill: existing manual parts/minifigs get one acquisition row if none exists
+  // Scheitert das Nachtragen, bleiben manuelle Teile dauerhaft ohne
+  // Erst-Erfassung — die Kaufhistorie hat ein Loch und die Finanzansicht
+  // rechnet mit einer Zeile weniger. Ohne Protokoll erfaehrt das niemand.
+  //
+  // Der Kommentar stand hier zwischenzeitlich INNERHALB des Literals, also
+  // hinter der schliessenden Klammer der Abfrage. Postgres bekam ihn mit
+  // gesendet und antwortete `syntax error at or near "das"` — das Nachtragen
+  // lief ab da gar nicht mehr. Aufgefallen ist es genau durch das Protokoll,
+  // das im selben Zug eingebaut wurde.
+  await pool.query(`
+    INSERT INTO part_acquisitions (user_id, part_number, color_id, quantity, unit_price, condition, created_at)
+    SELECT p.user_id, p.part_number, COALESCE(p.color_id,0), p.quantity,
+           COALESCE(p.unit_price, p.purchase_price), COALESCE(p.condition,'N'), p.added_at
+    FROM parts p
+    WHERE p.source='manual'
+    AND NOT EXISTS (
+      SELECT 1 FROM part_acquisitions a
+      WHERE a.user_id=p.user_id AND a.part_number=p.part_number AND a.color_id=COALESCE(p.color_id,0)
+    )
+  `).catch(logAndContinue('start:erfassungen fuer Teile nachtragen'));
+  // NOW() statt m.added_at: Die Tabelle minifigs hat GAR KEINE Zeitspalte —
+  // weder im Schema noch in einer Migration. Diese Abfrage ist deshalb seit
+  // jeher an `column m.added_at does not exist` gescheitert, bei jedem Start,
+  // und der Fehler wurde verschluckt. Manuell erfasste Minifiguren aus der
+  // Zeit vor den Erfassungen haben daher bis heute keine Erst-Erfassung: Ihr
+  // Kaufpreis fehlt in der Historie und in der Finanzansicht.
+  //
+  // Ein Datum zu erfinden waere schlechter als das Erfassungsdatum "jetzt":
+  // Der Portfolio-Verlauf ordnet nach created_at, und ein frei gewaehltes
+  // Datum verschoebe eine Kurve, die nie so verlaufen ist.
+  await pool.query(`
+    INSERT INTO minifig_acquisitions (user_id, fig_number, quantity, unit_price, condition, created_at)
+    SELECT m.user_id, m.fig_number, m.quantity,
+           COALESCE(m.unit_price, m.purchase_price), COALESCE(m.condition,'N'), NOW()
+    FROM minifigs m
+    WHERE m.source='manual'
+    AND NOT EXISTS (
+      SELECT 1 FROM minifig_acquisitions a
+      WHERE a.user_id=m.user_id AND a.fig_number=m.fig_number
+    )
+  `).catch(logAndContinue('start:erfassungen fuer Minifiguren nachtragen'));
+  console.log('  ✅ part_acquisitions + minifig_acquisitions erstellt/migriert');
 
   // Migration: bestehende Sets ohne Kaufpreis-Historie bekommen genau eine
   // Acquisition-Zeile (Menge/Preis/Datum vom Set) — Finanzsummen bleiben identisch.
