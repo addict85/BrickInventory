@@ -84,5 +84,7 @@ internal fun csvFolge(warVorherAktiv: Boolean, status: String?): CsvFolge = when
     status == null -> CsvFolge.NICHTS
 
     // Fertig — aber nur nachladen, wenn vorher wirklich etwas lief.
-    else -> CsvFolge.NACHLADEN   // GEGENPROBE: der Fehler aus Nachtrag 110
+    warVorherAktiv -> CsvFolge.NACHLADEN
+
+    else -> CsvFolge.NICHTS
 }

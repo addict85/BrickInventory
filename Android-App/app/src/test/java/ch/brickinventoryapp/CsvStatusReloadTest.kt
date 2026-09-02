@@ -49,12 +49,20 @@ import org.junit.Test
  * Überschreiben des Zustands fallen); genau das prüft der letzte Test hier,
  * und nur das.
  *
- * ── Gegenprobe ──────────────────────────────────────────────────────────────
- * In der Action-Ausführung zum Gegenprobe-Commit gab `csvFolge()` im Fall
- * „fertig" immer NACHLADEN zurück (also ohne `warVorherAktiv`) — genau der
- * Fehler aus Nachtrag 110. `ein seit Stunden fertiger Import laedt nicht nach`
- * und `nur der Uebergang laedt nach` schlugen fehl; die frühere Textsuche
- * hätte diesen Bruch nicht gesehen, weil sie in einer anderen Datei suchte.
+ * ── Gegenprobe (ausgeführt, Lauf 33632359947) ───────────────────────────────
+ * Im Gegenprobe-Commit gab `csvFolge()` im Fall „fertig" immer NACHLADEN
+ * zurück, also ohne `warVorherAktiv` — genau der Fehler aus Nachtrag 110.
+ * Ergebnis: `351 tests completed, 1 failed`, und zwar
+ * `ein seit Stunden fertiger Import laedt nicht nach` (Zeile 74).
+ *
+ * Zwei Dinge stehen damit fest. Erstens greift die Prüfung. Zweitens — und
+ * darum ging der ganze Umbau — hätte die frühere Textsuche geschwiegen: Sie
+ * sah in MainViewModel.kt nach, und dort steht der Aufruf von `csvFolge()`
+ * unverändert richtig da. Der Fehler lag eine Datei weiter.
+ *
+ * Nur EIN Test wurde rot, nicht mehrere: `nur der Uebergang laedt nach` ist
+ * grün geblieben, weil der Bruch genau dessen Erwartung erfüllt. Ein Test, der
+ * bei jedem Bruch anschlägt, prüft zu grob — hier trennt die Tabelle sauber.
  */
 class CsvStatusReloadTest {
 
