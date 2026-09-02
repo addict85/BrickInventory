@@ -268,9 +268,14 @@ export async function conditionRows(
   acqKeySql: string = keySql, acqKeyVals: any[] = keyVals
 ) {
   const uids = asIds(uid as any);
+  // ORDER BY fetched_at DESC, damit `.find()` unten den NEUESTEN Eintrag
+  // nimmt. Solange der Schlüssel genau eine Zeile je Zustand traf, war die
+  // Reihenfolge gleichgültig; seit der Minifiguren-Verlauf beide Nummern
+  // abfragt (siehe getMinifigPriceHistory), kann es zwei geben.
   const cacheRows = await db.all(
     `SELECT condition, avg_price FROM ${cacheTable}
-      WHERE ${keySql} AND currency_code = $${keyVals.length + 1} AND avg_price > 0`,
+      WHERE ${keySql} AND currency_code = $${keyVals.length + 1} AND avg_price > 0
+      ORDER BY fetched_at DESC`,
     [...keyVals, currency]
   ).catch(() => []);
   // Eigener Schlüssel: Erfassungen tragen die Rebrickable-Nummer, der Cache
@@ -312,9 +317,14 @@ export async function conditionRows(
 /**
  * @param keySql/keyVals  Schlüssel für PREISE (Cache und Verlauf).
  * @param acqKeySql/acqKeyVals  Schlüssel für ERFASSUNGEN. Ohne Angabe
- *   dieselben — bei Minifiguren stimmen beide überein, bei Teilen NICHT:
- *   Preise stehen unter der BrickLink-Nummer, Erfassungen unter der
- *   Rebrickable-Nummer (Nachtrag 143).
+ *   dieselben. Bei Teilen weichen sie ab: Preise stehen unter der
+ *   BrickLink-Nummer, Erfassungen unter der Rebrickable-Nummer (Nachtrag 143).
+ *
+ *   Hier stand „bei Minifiguren stimmen beide überein". Das war falsch, und
+ *   die Annahme kostete dort denselben Fehler: Sobald eine Figur eine eigene
+ *   bl_fig_number trägt, schreibt fetchMinifigPrice Cache und Verlauf UNTER
+ *   DIESER Nummer, die Erfassungen tragen aber die des Benutzers. Siehe
+ *   getMinifigPriceHistory.
  */
 async function manualPriceHistory(
   uid: number | number[], currency: string,
@@ -362,11 +372,53 @@ export async function getPartPriceHistory(uid: number | number[], partNumber: st
     'part_number = $1 AND color_id = $2', [partNumber, colorId]);
 }
 
-/** Preisverlauf einer manuell erfassten Minifigur (ohne Farbe). */
+/**
+ * Preisverlauf einer manuell erfassten Minifigur (ohne Farbe).
+ *
+ * ── Derselbe Fehler wie bei den Teilen, hier nie behoben ────────────────────
+ * Für Teile ist er in Nachtrag 143 beschrieben und behoben: Preise stehen
+ * unter der BrickLink-Nummer, Erfassungen unter der des Benutzers. Für
+ * Minifiguren stand hier EIN Schlüssel für beides, und der Kommentar an
+ * manualPriceHistory behauptete ausdrücklich, das gehe in Ordnung.
+ *
+ * Es geht nicht: getCurrentFigMarketPrice versucht `[blFigNumber, figNumber]`
+ * der Reihe nach, und fetchMinifigPrice legt Cache und Verlauf unter der
+ * Nummer ab, mit der der Abruf geklappt hat. Trägt die Figur eine eigene
+ * bl_fig_number, stehen die Preise dort — gesucht wurde unter der Nummer des
+ * Benutzers.
+ *
+ * Sichtbar genau wie bei den Teilen: In der Finanzliste steht ein Marktpreis,
+ * im Detailfenster ein „—", und das Diagramm bleibt leer.
+ *
+ * Abgefragt werden deshalb BEIDE Nummern. Nicht nur die BrickLink-Nummer: Der
+ * Schätzpfad über die Einzelteile (estimateFigPriceFromParts) schreibt
+ * ausdrücklich unter der Nummer des Benutzers, und ältere Zeilen stammen aus
+ * der Zeit vor der bl_fig_number. Beide Töpfe gehören zur selben Figur.
+ */
 export async function getMinifigPriceHistory(uid: number | number[], figNumber: string, currency: string) {
+  const nummern = await preisNummernFuerFigur(uid, figNumber);
   return manualPriceHistory(uid, currency,
     'minifig_price_history', 'minifig_price_cache', 'minifig_acquisitions',
+    'fig_number = ANY($1)', [nummern],
+    // Die Erfassungen tragen ausschliesslich die Nummer des Benutzers — so
+    // hat er sie eingegeben.
     'fig_number = $1', [figNumber]);
+}
+
+/**
+ * Unter welchen Nummern können die Preise dieser Figur liegen?
+ *
+ * Die eigene und, falls hinterlegt, die BrickLink-Nummer aus dem Blickfeld.
+ * Doppelte fallen weg — meist sind beide gleich, dann bleibt es bei einer.
+ */
+async function preisNummernFuerFigur(uid: number | number[], figNumber: string): Promise<string[]> {
+  const zeilen = await db.all(
+    `SELECT DISTINCT bl_fig_number FROM minifigs
+      WHERE user_id = ANY($1) AND fig_number = $2
+        AND bl_fig_number IS NOT NULL AND bl_fig_number <> ''`,
+    [asIds(uid as any), figNumber]
+  ).catch(() => []);
+  return [...new Set([figNumber, ...zeilen.map((z: any) => z.bl_fig_number)])];
 }
 
 /**
