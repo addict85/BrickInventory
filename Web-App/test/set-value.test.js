@@ -210,7 +210,15 @@ test("ohne Verkauf in sechs Monaten wird auf 'stock' ausgewichen", () => {
   // BrickLink liefert für selten gehandelte Artikel eine Antwort mit
   // avg_price = 0 — 'sold' allein hiesse dort dauerhaft kein Marktpreis.
   const bl = fs.readFileSync(path.join(ROOT, 'clients', 'bricklink.ts'), 'utf8');
-  assert.match(bl, /function hasUsablePrice/, 'Prüfung auf brauchbaren Preis fehlt');
+  // Frueher stand hier `/function hasUsablePrice/` — ein Name. Die Pruefung
+  // heisst inzwischen hatPreis() und liegt in utils/preisRegel.ts, weil sie
+  // DIESELBE sein muss wie beim Lesen: Solange der Torwaechter hier weiter war
+  // als der Leser dort, unterblieb der Rueckfall auf 'stock' fuer genau die
+  // Artikel, fuer die er gebaut wurde (siehe test/preisregel-db.test.js).
+  // Geprueft wird deshalb die Herkunft der Regel, nicht ihr Name.
+  assert.match(bl, /hatPreis/, 'Prüfung auf brauchbaren Preis fehlt');
+  assert.match(bl, /from '\.\.\/utils\/preisRegel'/,
+    'Der Rückfall muss an derselben Regel hängen, die auch beim Lesen gilt');
   assert.match(bl, /getPriceGuideRaw\(setNumber, condition, 'stock', currencyCode\)/,
     "Rückfall auf 'stock' fehlt");
   assert.match(bl, /guide_used/, 'Es muss nachvollziehbar bleiben, woher der Wert kommt');
@@ -233,15 +241,23 @@ test('ein gecachter Null-Preis blockiert den Rückfall nicht dauerhaft', () => {
   assert.match(fc, /const ZERO_PRICE_TTL_HOURS/,
     '0-Einträge brauchen ein kürzeres Fenster als Einträge mit Preis');
   assert.match(fc, /function cacheUsable/, 'Prüffunktion fehlt');
-  assert.match(fc, /cached && parseFloat\(cached\.avg_price\) === 0 && cacheUsable\(cached, ttl\)/,
+  assert.match(fc, /cached && !hatPreis\(cached\) && cacheUsable\(cached, ttl\)/,
     'Ein alter 0-Eintrag muss durchfallen und einen Neuabruf auslösen');
   assert.match(fc, /fetched_at/,
     'Ohne fetched_at in PRICE_CACHE_COLS lässt sich das Alter nicht bewerten');
-  // Der Zustands-Fallback darf erst NACH dem Preis-Check greifen
-  const idxZero = fc.indexOf('parseFloat(cached.avg_price) === 0');
-  const idxOk   = fc.indexOf('parseFloat(cached.avg_price) > 0');
-  assert.ok(idxOk > 0 && idxOk < idxZero,
+  // Der Zustands-Fallback darf erst NACH dem Preis-Check greifen.
+  //
+  // Vorher stand die Reihenfolge hier als indexOf() auf zwei ausgeschriebenen
+  // parseFloat-Ausdrücken. Beide gibt es nicht mehr — die Regel liegt in
+  // utils/preisRegel.ts. Die Aussage bleibt und wird jetzt an der Regel selbst
+  // gemessen: Der Treffer mit Preis kommt vor dem Zweig ohne.
+  const idxOk   = fc.indexOf('if (hatPreis(cached))');
+  const idxZero = fc.indexOf('cached && !hatPreis(cached)');
+  assert.ok(idxOk > 0 && idxZero > 0 && idxOk < idxZero,
     'Ein vorhandener Preis muss vor jeder Ausweichlogik zurückgegeben werden');
+  // Und dass der Rückfall wirklich greift, prüft test/preisregel-db.test.js
+  // gegen die Datenbank — ein frischer 0-Eintrag antwortet aus dem Cache, ein
+  // alter löst einen Neuabruf aus. Am Quelltext allein ist das nicht zu sehen.
 });
 
 test('KEINE Abfrage stellt mehr "hat einen Preis" vor "passender Zustand"', () => {

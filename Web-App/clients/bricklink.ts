@@ -7,6 +7,7 @@
 //
 
 import crypto from 'crypto';
+import { hatPreis } from '../utils/preisRegel';
 import https from 'https';
 import * as db from '../db/database';
 import { alsAbrufFehler } from './abrufFehler';
@@ -111,10 +112,16 @@ function getItemImageUrl(setNumber: string) {
   return `https://img.bricklink.com/ItemImage/SN/0/${n}.png`;
 }
 
-/** Enthält die Antwort einen brauchbaren Preis? */
-function hasUsablePrice(g: { avg_price?: any; qty_avg_price?: any } | null | undefined) {
-  return parseFloat(g?.avg_price || 0) > 0 || parseFloat(g?.qty_avg_price || 0) > 0;
-}
+/**
+ * Enthält die Antwort einen brauchbaren Preis?
+ *
+ * Die Regel steht in utils/preisRegel.ts — und zwar dieselbe, die beim LESEN
+ * gilt. Vorher genügte hier ein qty_avg_price > 0; damit galt eine Antwort
+ * ohne avg_price als brauchbar, der Rückfall auf `stock` unterblieb, und der
+ * Leser meldete danach trotzdem „kein Preis". Die Begründung im Einzelnen
+ * steht in preisRegel.ts.
+ */
+const hasUsablePrice = hatPreis;
 
 /**
  * Preisabfrage mit Rückfall von 'sold' auf 'stock'.
