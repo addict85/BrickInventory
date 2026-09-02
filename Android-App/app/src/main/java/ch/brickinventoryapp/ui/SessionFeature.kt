@@ -44,7 +44,7 @@ internal fun MainViewModel.login(username: String, password: String) {
                     _state.update { it.copy(loginLaeuft = false, isLoggedIn = true, isAdmin = r.data.user?.isAdmin == true) }
                     loadDashboard()
                 } else {
-                    _state.update { it.copy(loginLaeuft = false, loginError = r.data.error ?: ctx.getString(R.string.err_login_failed)) }
+                    _state.update { it.copy(loginLaeuft = false, loginError = r.data.error ?: text(R.string.err_login_failed)) }
                 }
             }
             is Result.Error -> _state.update { it.copy(loginLaeuft = false, loginError = meldung(r)) }
@@ -67,7 +67,7 @@ internal fun MainViewModel.loginWithQrToken(serverUrl: String, token: String) {
                     _state.update { it.copy(loginLaeuft = false, isLoggedIn = true, isAdmin = r.data.user?.isAdmin == true) }
                     loadDashboard()
                 } else {
-                    _state.update { it.copy(loginLaeuft = false, loginError = r.data.error ?: ctx.getString(R.string.err_qr_login_failed)) }
+                    _state.update { it.copy(loginLaeuft = false, loginError = r.data.error ?: text(R.string.err_qr_login_failed)) }
                 }
             }
             is Result.Error -> _state.update { it.copy(loginLaeuft = false, loginError = meldung(r)) }

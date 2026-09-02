@@ -112,14 +112,14 @@ internal fun MainViewModel.resolveBarcode(value: String) {
                     )}
                 } else {
                     // Kein Set zur EAN → manuelle Erfassung (Nachtrag 113).
-                    _snackbar.value = ctx.getString(R.string.vm_barcode_no_set, value)
+                    _snackbar.value = text(R.string.vm_barcode_no_set, value)
                     _barcodeState.update { it.copy(manuelleErfassungAnfordern = true) }
                 }
             }
             is Result.Error -> {
                 // EAN nicht auflösbar → manuelle Erfassung (Nachtrag 113). Die
                 // Meldung bleibt: Sie sagt, WARUM der Dialog aufgeht.
-                _snackbar.value = ctx.getString(R.string.vm_barcode_not_found, value)
+                _snackbar.value = text(R.string.vm_barcode_not_found, value)
                 _barcodeState.update { it.copy(result = null, manuelleErfassungAnfordern = true) }
             }
         }
@@ -213,7 +213,7 @@ internal fun MainViewModel.useScannedSetNumber(raw: String) {
                     // Ausgang einer Fehllesung und deshalb eine normale Meldung,
                     // kein Fehler.
                     // Texterkennung ohne verwertbare Nummer → manuelle Erfassung.
-                    _snackbar.value = ctx.getString(R.string.vm_barcode_no_set, setNum)
+                    _snackbar.value = text(R.string.vm_barcode_no_set, setNum)
                     _barcodeState.update { it.copy(manuelleErfassungAnfordern = true) }
                     return@launch
                 }
@@ -306,7 +306,7 @@ internal fun MainViewModel.confirmAddBarcode(setNum: String, purchasePrice: Doub
         // immer für das eigene Konto erfasste.
         when (val r = repo.sets.addSet(setNum, 1, purchasePrice, condition, ownerUserId)) {
             is Result.Success -> {
-                _snackbar.value = ctx.getString(R.string.vm_set_added, setNum)
+                _snackbar.value = text(R.string.vm_set_added, setNum)
                 _barcodeState.update { it.copy(adding = false) }
                 // loadGallery() lädt NUR die Set-Liste. Kennzahlen und Bewertung
                 // ändern sich beim Erfassen ebenso — sie blieben bisher stehen,

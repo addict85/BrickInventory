@@ -79,6 +79,20 @@ class CatalogViewModel @Inject constructor(
      */
     private val _snackbar = meldungen.fluss
 
+    /**
+     * Text in der SPRACHE DER APP — dieselbe Regel wie in MainViewModel.text().
+     *
+     * `ctx` ist der Application-Context, und den lokalisiert
+     * AppCompatDelegate.setApplicationLocales() unterhalb von Android 13
+     * nicht. Ein direktes ctx.getString() gab hier die Systemsprache aus —
+     * ausgerechnet in meldung(), der Stelle, die es nur gibt, damit
+     * Fehlermeldungen in der gewaehlten Sprache erscheinen.
+     */
+    private fun text(id: Int, vararg args: Any): String {
+        val c = ch.brickinventoryapp.util.LanguageManager.localizedContext(ctx)
+        return if (args.isEmpty()) c.getString(id) else c.getString(id, *args)
+    }
+
     // Entprellte Suche: pro Tastendruck wird der vorherige Lade-Job
     // abgebrochen, geladen wird erst 350ms nach dem letzten.
     private var catalogSearchJob: Job? = null
@@ -106,8 +120,8 @@ class CatalogViewModel @Inject constructor(
     private fun meldung(fehler: Result.Error): String {
         if (fehler.message.isNotBlank()) return fehler.message
         val id = fehlerTextId(fehler.art)
-        return if (fehlerTextBrauchtCode(fehler.art)) ctx.getString(id, fehler.httpCode ?: 0)
-        else ctx.getString(id)
+        return if (fehlerTextBrauchtCode(fehler.art)) text(id, fehler.httpCode ?: 0)
+        else text(id)
     }
 
     fun loadCatalogMeta() {

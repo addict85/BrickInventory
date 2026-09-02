@@ -279,7 +279,7 @@ internal fun MainViewModel.addSet(setNumber: String, quantity: Int = 1, purchase
                     // Galerie-Abruf.
                     _galleryState.update { it.copy(gallerySearchFoundSetNumber = r.data.setNumber ?: sn) }
                 } else if (r.data.success) {
-                    _snackbar.value = ctx.getString(if (r.data.action == "added") R.string.vm_added else R.string.vm_updated, r.data.setNumber)
+                    _snackbar.value = text(if (r.data.action == "added") R.string.vm_added else R.string.vm_updated, r.data.setNumber)
                     loadSets()
                     // Alles nachladen, was sich mitverändert hat.
                     //
@@ -324,9 +324,9 @@ internal fun MainViewModel.addSet(setNumber: String, quantity: Int = 1, purchase
  * wissen, WELCHES nicht durchkam.
  */
 internal fun MainViewModel.meldeFehlgeschlageneErfassung(setNumber: String, grund: String?) {
-    _snackbar.value = ctx.getString(
+    _snackbar.value = text(
         R.string.vm_add_failed, setNumber,
-        grund ?: ctx.getString(R.string.pdfexp_unknown_error)
+        grund ?: text(R.string.pdfexp_unknown_error)
     )
 }
 
@@ -385,7 +385,7 @@ internal fun MainViewModel.updateQuantity(setNumber: String, quantity: Int, purc
             is Result.Error ->
                 // Fehler nicht mehr verschlucken — sonst ist ein fehlgeschlagener
                 // Save für den Nutzer unsichtbar.
-                _snackbar.value = ctx.getString(R.string.vm_error, meldung(r))
+                _snackbar.value = text(R.string.vm_error, meldung(r))
         }
     }
 }
@@ -397,7 +397,7 @@ internal fun MainViewModel.deleteSet(setNumber: String) {
                 // Sofort aus dem State entfernen, damit die Kachel nicht bis zum
                 // Neuladen der Liste sichtbar bleibt; danach mit dem Server syncen.
                 _galleryState.update { st -> st.copy(sets = st.sets.filterNot { it.setNumber == setNumber }) }
-                _snackbar.value = ctx.getString(R.string.vm_set_deleted, setNumber)
+                _snackbar.value = text(R.string.vm_set_deleted, setNumber)
                 loadSets()
                 loadStats()
                 // Die Portfolio-Bewertung enthält Sets — deletePart lädt sie

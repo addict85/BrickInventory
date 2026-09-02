@@ -49,6 +49,41 @@ class MainViewModel @Inject constructor(
 
     internal val ctx get() = getApplication<Application>().applicationContext
 
+    /**
+     * Ein Text aus den Ressourcen — in der SPRACHE DER APP, nicht des Systems.
+     *
+     * ── Der Fehler, der hier steckte ────────────────────────────────────────
+     * Hier stand dreissigmal ein getString() direkt auf dem
+     * Application-Context. `AppCompatDelegate.setApplicationLocales()`
+     * lokalisiert aber nur AppCompat-ACTIVITIES; der Application-Context
+     * behaelt unterhalb von Android 13 die SYSTEM-Sprache
+     * (siehe LanguageManager.localizedContext(), minSdk ist 26 — betroffen
+     * sind also Android 8 bis 12).
+     *
+     * Folge: Wer sein Telefon auf Deutsch stehen hat und die App auf Englisch
+     * stellt, bekam JEDE Snackbar und JEDE Fehlermeldung des ViewModels
+     * trotzdem auf Deutsch. Das trifft ausgerechnet meldung() — die Funktion,
+     * die es nur gibt, damit Fehlermeldungen nicht in einer Sprache
+     * herauskommen, die der Nutzer nicht gewaehlt hat.
+     *
+     * Fuer die Foreground-Services und den PDF-Export ist genau dieser Fall
+     * schon geloest (CsvImportService, PdfExportService, PdfExportManager holen
+     * sich den lokalisierten Context). Die ViewModels waren die Luecke.
+     *
+     * ── Warum ohne Zwischenspeicher ─────────────────────────────────────────
+     * localizedContext() baut den Context bei jedem Aufruf neu. Das ist
+     * Absicht: Die Sprache kann waehrend der Laufzeit umgestellt werden, ein
+     * gemerkter Context waere danach der alte. Die Kosten fallen nur an, wenn
+     * tatsaechlich eine Meldung entsteht.
+     */
+    internal fun text(id: Int, vararg args: Any): String {
+        val c = ch.brickinventoryapp.util.LanguageManager.localizedContext(ctx)
+        // Ohne Argumente die einfache Ueberladung: getString(id, *leer) laeuft
+        // durch String.format, und ein Text mit einem einzelnen Prozentzeichen
+        // wuerde dort eine Ausnahme werfen statt angezeigt zu werden.
+        return if (args.isEmpty()) c.getString(id) else c.getString(id, *args)
+    }
+
     internal val _state = MutableStateFlow(AppUiState())
     val state = _state.asStateFlow()
 
@@ -193,7 +228,7 @@ class MainViewModel @Inject constructor(
         viewModelScope.launch {
             sessionExpired.events.collect {
                 if (_state.value.isLoggedIn) {
-                    _snackbar.value = ctx.getString(R.string.vm_session_expired)
+                    _snackbar.value = text(R.string.vm_session_expired)
                     logout()
                 }
             }
@@ -240,8 +275,8 @@ class MainViewModel @Inject constructor(
         // Welcher Text zu welcher Ursache gehört, steht in FehlerTexte.kt —
         // als reine Funktion ohne Context, damit sie prüfbar ist (Nachtrag 117).
         val id = fehlerTextId(fehler.art)
-        return if (fehlerTextBrauchtCode(fehler.art)) ctx.getString(id, fehler.httpCode ?: 0)
-        else ctx.getString(id)
+        return if (fehlerTextBrauchtCode(fehler.art)) text(id, fehler.httpCode ?: 0)
+        else text(id)
     }
 
 

@@ -153,7 +153,7 @@ internal fun MainViewModel.deleteAcquisition(setNumber: String, acqId: Int) {
                     loadValuation()
                 }
             }
-            is Result.Error -> _snackbar.value = ctx.getString(R.string.vm_error, "Delete failed")
+            is Result.Error -> _snackbar.value = text(R.string.vm_error, "Delete failed")
         }
     }
 }
