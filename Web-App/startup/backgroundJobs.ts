@@ -18,7 +18,7 @@ import { purgeExpiredTokens } from '../utils/auth';
 import { APP_ROOT, IMAGES_DIR } from '../utils/appPaths';
 import { startImgCacheCleanup } from '../routes/imgProxy';
 import { startPdfJobCleanup } from '../routes/api_v1/pdf';
-import { fehlertext } from '../utils/httpError';
+import { fehlertext, logAndContinue } from '../utils/httpError';
 
 /**
  * Was nach dem Start im Hintergrund anläuft — ausschliesslich im Primär-Worker.
@@ -137,7 +137,8 @@ export async function starteHintergrundlaeufe(): Promise<void> {
       for (const { set_number, image_url } of missing) {
         const local = await downloadSetImage(image_url, set_number).catch(() => null);
         if (local) {
-          await db.run(`UPDATE sets SET image_local=$1 WHERE set_number=$2 AND image_local IS NULL`, [local, set_number]).catch(() => {});
+          await db.run(`UPDATE sets SET image_local=$1 WHERE set_number=$2 AND image_local IS NULL`, [local, set_number])
+            .catch(logAndContinue(`bilder:set ${set_number}`));
           await db.run(`UPDATE set_catalog SET image_local=$1 WHERE set_number=$2 AND image_local IS NULL`, [local, set_number]).catch(() => {});
           generateThumb(local).catch(() => {});
         }

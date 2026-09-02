@@ -67,7 +67,7 @@ async function syncBlPartNumbers() {
      WHERE parts.part_number = m.part_num
        AND (parts.bl_part_number IS NULL OR parts.bl_part_number = parts.part_number)
        AND m.bl_part_num IS NOT NULL`
-  ).catch(()=>null);
+  ).catch(logAndContinue('teile:bl-nummern (Bestand)'));
   // Sync to shared catalog too
   const r2 = await db.run(
     `UPDATE set_parts_catalog SET bl_part_number = m.bl_part_num
@@ -75,7 +75,7 @@ async function syncBlPartNumbers() {
      WHERE set_parts_catalog.part_number = m.part_num
        AND (set_parts_catalog.bl_part_number IS NULL OR set_parts_catalog.bl_part_number = set_parts_catalog.part_number)
        AND m.bl_part_num IS NOT NULL`
-  ).catch(()=>null);
+  ).catch(logAndContinue('teile:bl-nummern (Katalog)'));
   // db.run() liefert { changes, lastID } — nicht rowCount. Hier stand
   // r1?.rowCount + r2?.rowCount, und die Summe war deshalb immer 0. Da sie
   // ausserdem nirgends verwendet wurde, war die ganze Zeile wirkungslos:

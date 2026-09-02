@@ -19,6 +19,7 @@
 
 import { Pool, types as pgTypes } from 'pg';
 import { runMigrations } from './migrate';
+import { logAndContinue } from '../utils/httpError';
 import fs from 'fs';
 import path from 'path';
 import bcrypt from 'bcryptjs';
@@ -451,12 +452,15 @@ async function spaltenMigrationen() {
   }
 
   // Make sure existing admin user is marked as active + verified
+  // Mit Protokoll: Scheitert eine dieser beiden, bleibt ein Konto inaktiv oder
+  // unbestaetigt und niemand kann sich anmelden — der Grund stuende nirgends.
+  // Die Spaltenmigrationen darueber melden ihren Erfolg ebenfalls.
   await pool.query(
     "UPDATE users SET is_active=1, email_verified=1 WHERE is_admin=1"
-  ).catch(()=>{});
+  ).catch(logAndContinue('start:admin aktiv setzen'));
   await pool.query(
     "UPDATE users SET is_active=COALESCE(is_active,1), email_verified=COALESCE(email_verified,0)"
-  ).catch(()=>{});
+  ).catch(logAndContinue('start:konten-vorgaben'));
 
   // Add unique constraint on email if not exists (ignore error if already exists)
   await pool.query(
@@ -669,7 +673,10 @@ async function frueherZurLaufzeitAngelegt() {
       SELECT 1 FROM part_acquisitions a
       WHERE a.user_id=p.user_id AND a.part_number=p.part_number AND a.color_id=COALESCE(p.color_id,0)
     )
-  `).catch(()=>{});
+  // Scheitert das Nachtragen, bleiben manuelle Teile dauerhaft ohne
+  // Erst-Erfassung — die Kaufhistorie hat ein Loch und die Finanzansicht
+  // rechnet mit einer Zeile weniger. Ohne Protokoll erfaehrt das niemand.
+  `).catch(logAndContinue('start:erfassungen fuer Teile nachtragen'));
   await pool.query(`
     INSERT INTO minifig_acquisitions (user_id, fig_number, quantity, unit_price, condition, created_at)
     SELECT m.user_id, m.fig_number, m.quantity,
@@ -680,7 +687,7 @@ async function frueherZurLaufzeitAngelegt() {
       SELECT 1 FROM minifig_acquisitions a
       WHERE a.user_id=m.user_id AND a.fig_number=m.fig_number
     )
-  `).catch(()=>{});
+  `).catch(logAndContinue('start:erfassungen fuer Minifiguren nachtragen'));
   console.log('  ✅ part_acquisitions + minifig_acquisitions erstellt/migriert');
 
   // Migration: condition column for set_acquisitions

@@ -508,7 +508,13 @@ async function updateSet(uid: number, sn: string, body: any) {
                   image_url, image_local, 0, condition
              FROM sets WHERE user_id = ANY($2) AND set_number = $3
             ORDER BY id ASC LIMIT 1
-           ON CONFLICT DO NOTHING`, [uid, leseFeld, sn]).catch(() => {});
+           ON CONFLICT DO NOTHING`, [uid, leseFeld, sn])
+          // Scheitert dieses INSERT, trifft das UPDATE zwei Zeilen weiter NULL
+          // Zeilen — die Mengenaenderung geht verloren, waehrend
+          // adjustAcquisitionsToQuantity() trotzdem Erfassungen schreibt. Der
+          // Kommentar oben nennt genau diese Gefahr; still verschluckt werden
+          // darf sie deshalb nicht.
+          .catch(logAndContinue(`sets:eigene Zeile anlegen ${sn}`));
       }
       // Der Marktpreis wird VOR der Sperre geholt (Netzaufruf); innerhalb
       // läuft nur noch Datenbankarbeit.
