@@ -83,8 +83,8 @@ internal fun MainViewModel.addPart(partNumber: String, colorId: Int = 0, colorNa
             is Result.Success -> {
                 if (r.data.success) {
                     _snackbar.value = text(if (r.data.action == "added") R.string.vm_added else R.string.vm_updated, r.data.partNumber)
-                    loadValuation()
-                    loadParts()
+                    // Liste, Bewertung UND Kennzahlen — siehe reloadItemList().
+                    reloadItemList("part")
                 } else {
                     _snackbar.value = r.data.error ?: text(R.string.err_unknown)
                 }
@@ -103,8 +103,8 @@ internal fun MainViewModel.addMinifig(figNumber: String, blFigNumber: String? = 
             is Result.Success -> {
                 if (r.data.success) {
                     _snackbar.value = text(if (r.data.action == "added") R.string.vm_added else R.string.vm_updated, r.data.figNumber)
-                    loadValuation()
-                    loadMinifigs()
+                    // Liste, Bewertung UND Kennzahlen — siehe reloadItemList().
+                    reloadItemList("fig")
                 } else {
                     _snackbar.value = r.data.error ?: text(R.string.err_unknown)
                 }
@@ -142,7 +142,7 @@ internal fun MainViewModel.deletePart(partNumber: String, colorId: Int) {
     viewModelScope.launch {
         when (val r = repo.teile.deletePart(partNumber, colorId)) {
             is Result.Success -> {
-                if (r.data.success) { _snackbar.value = text(R.string.vm_part_deleted); loadValuation(); loadParts() }
+                if (r.data.success) { _snackbar.value = text(R.string.vm_part_deleted); reloadItemList("part") }
                 else _snackbar.value = r.data.error ?: text(R.string.err_unknown)
             }
             is Result.Error -> _snackbar.value = meldung(r)
@@ -176,7 +176,7 @@ internal fun MainViewModel.deleteMinifig(figNumber: String) {
     viewModelScope.launch {
         when (val r = repo.teile.deleteMinifig(figNumber)) {
             is Result.Success -> {
-                if (r.data.success) { _snackbar.value = text(R.string.vm_minifig_deleted); loadValuation(); loadMinifigs() }
+                if (r.data.success) { _snackbar.value = text(R.string.vm_minifig_deleted); reloadItemList("fig") }
                 else _snackbar.value = r.data.error ?: text(R.string.err_unknown)
             }
             is Result.Error -> _snackbar.value = meldung(r)
