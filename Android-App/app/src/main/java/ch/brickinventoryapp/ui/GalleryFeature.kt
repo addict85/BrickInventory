@@ -58,10 +58,12 @@ internal fun MainViewModel.loadSets() {
     val gen = ++galleryGeneration
     galleryListJob?.cancel()
     galleryListJob = viewModelScope.launch {
-        // Zwei Fluesse, weil zwei Domaenen: `isLoading` ist der App-weite
-        // Ladezustand, die beiden anderen gehoeren zur Galerie.
-        _state.update { it.copy(isLoading = true) }
-        _galleryState.update { it.copy(galleryLoadingMore = false, galleryPage = 1) }
+        // Ein Fluss, eine Domaene: Seit `isLoading` aufgeteilt ist (siehe
+        // AppUiState.loginLaeuft), steht der Ladezustand der Galerie in der
+        // Galerie — und ein Abruf der Teileliste kann ihn nicht mehr beenden.
+        _galleryState.update {
+            it.copy(galleryLoading = true, galleryLoadingMore = false, galleryPage = 1)
+        }
         val g = _galleryState.value
         val r = retryOnNetwork {
             repo.sets.getSets(scopeFor(ScopeFilter.View.GALLERY),
@@ -76,12 +78,12 @@ internal fun MainViewModel.loadSets() {
                         // Themen nur übernehmen, wenn welche kommen: Der Server
                         // schickt sie ausschliesslich mit der ersten Seite, und
                         // eine leere Liste würde die Auswahl sonst leerräumen.
-                        galleryThemes = if (r.data.themes.isNotEmpty()) r.data.themes else it.galleryThemes)
+                        galleryThemes = if (r.data.themes.isNotEmpty()) r.data.themes else it.galleryThemes,
+                        galleryLoading = false)
                 }
-                _state.update { it.copy(isLoading = false) }
             }
             is Result.Error   -> {
-                _state.update { it.copy(isLoading = false) }
+                _galleryState.update { it.copy(galleryLoading = false) }
                 _snackbar.value = meldung(r)
             }
         }
@@ -96,11 +98,11 @@ internal fun MainViewModel.loadSets() {
  * Inhalt und doppelten Schlüsseln im Raster.
  */
 internal fun MainViewModel.loadMoreSets() {
-    // `isLoading` lebt im App-Zustand, alles Uebrige in der Galerie — der
-    // Waechter braucht deshalb beide.
-    val s = _state.value
+    // Beide Ladezustaende der Galerie, und nur die: Vorher stand der erste in
+    // AppUiState.isLoading, und damit sperrte JEDER fremde Abruf — Anmeldung,
+    // Teileliste, Bewertung — das Nachladen hier (siehe AppUiState.loginLaeuft).
     val g = _galleryState.value
-    if (s.isLoading || g.galleryLoadingMore) return
+    if (g.galleryLoading || g.galleryLoadingMore) return
     if (g.galleryTotal > 0 && g.sets.size >= g.galleryTotal) return
     val gen = galleryGeneration
 
@@ -228,10 +230,11 @@ internal fun MainViewModel.addSet(setNumber: String, quantity: Int = 1, purchase
         // Die Erfassung soll dann im Hintergrund erfolgen."
         //
         // Der Dialog schloss schon vorher sofort — was blieb, war das
-        // Ladehäkchen: `isLoading` speist den Aktualisieren-Kringel der Galerie,
-        // die Oberfläche sah also beschäftigt aus, während man schon die nächste
-        // Nummer tippen wollte. Das Nachladen unten setzt sein eigenes Flag; für
-        // den Abruf hier braucht es keines.
+        // Ladehäkchen: Der Aktualisieren-Kringel der Galerie hing daran (damals
+        // an `isLoading`, heute an `galleryLoading`), die Oberfläche sah also
+        // beschäftigt aus, während man schon die nächste Nummer tippen wollte.
+        // Das Nachladen unten setzt sein eigenes Flag; für den Abruf hier
+        // braucht es keines.
         //
         // ── Die Prüfung dagegen SCHON, und nur sie ──────────────────────────
         //
@@ -268,8 +271,12 @@ internal fun MainViewModel.addSet(setNumber: String, quantity: Int = 1, purchase
                 if (r.data.success && r.data.action == "exists") {
                     // Schon im Blickfeld — der Server hat nichts geschrieben.
                     // Detailansicht öffnen, wie beim Scanner.
-                    // Zwei Fluesse, zwei Domaenen — wie oben in loadSets().
-                    _state.update { it.copy(isLoading = false) }
+                    //
+                    // Das frühere `isLoading = false` hier ist ersatzlos weg: Der
+                    // Erfassungsweg setzt es nirgends auf `true` (Nachtrag 87,
+                    // gleich darüber), es räumte also nur eine Anzeige ab, die
+                    // einer ANDEREN Domäne gehörte — im Zweifel dem laufenden
+                    // Galerie-Abruf.
                     _galleryState.update { it.copy(gallerySearchFoundSetNumber = r.data.setNumber ?: sn) }
                 } else if (r.data.success) {
                     _snackbar.value = ctx.getString(if (r.data.action == "added") R.string.vm_added else R.string.vm_updated, r.data.setNumber)

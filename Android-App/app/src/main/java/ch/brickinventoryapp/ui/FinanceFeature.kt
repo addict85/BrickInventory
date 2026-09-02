@@ -21,15 +21,21 @@ import ch.brickinventoryapp.data.ScopeFilter
 // ── Finance ──────────────────────────────────────────────────────────────
 internal fun MainViewModel.loadValuation() {
     viewModelScope.launch {
-        _state.update { it.copy(isLoading = true) }
+        // Der Ladezustand steht in der eigenen Domäne, die Währung im
+        // gemeinsamen: Sie kommt in DIESER Antwort mit (die eingetragene
+        // Ausnahme in StateDomainBoundaryTest), gelesen wird sie aber von
+        // Galerie, Set-Detail und Erfassungen. Vorher hing beides an
+        // AppUiState.isLoading — und dieses `false` am Ende beendete die
+        // Ladeanzeige eines noch laufenden Galerie-Abrufs.
+        _financeState.update { it.copy(valuationLoading = true) }
         when (val r = repo.finanzen.getValuation(scopeFor(ScopeFilter.View.FINANCE))) {
             is Result.Success -> {
                 prefs.saveCurrency(r.data.currency)
-                _financeState.update { it.copy(valuation = r.data) }
-                _state.update { it.copy(isLoading = false, currency = r.data.currency) }
+                _financeState.update { it.copy(valuation = r.data, valuationLoading = false) }
+                _state.update { it.copy(currency = r.data.currency) }
             }
             is Result.Error -> {
-                _state.update { it.copy(isLoading = false) }
+                _financeState.update { it.copy(valuationLoading = false) }
                 _snackbar.value = meldung(r)
             }
         }

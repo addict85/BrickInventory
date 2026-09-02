@@ -61,25 +61,35 @@ internal fun MainViewModel.loadPartsColors() {
     }
 }
 
+/**
+ * Teil erfassen.
+ *
+ * ── Ohne Ladeanzeige, und das ist eine Korrektur ────────────────────────────
+ * Hier standen vier `_state.copy(isLoading = …)` (in addMinifig noch einmal
+ * vier). Sie hatten in dieser Domäne KEINE Wirkung: Kein Teile-Bildschirm liest
+ * das Feld — die Teileliste hat `partsLoading`, die Minifiguren
+ * `minifigsLoading`. Gelesen wurde es von der Galerie, der Finanzübersicht und
+ * dem Anmeldeformular.
+ *
+ * Die Wirkung lag also ausschliesslich woanders: Wer ein Teil erfasste, liess
+ * die Galerie beschäftigt aussehen und blockierte über den Wächter in
+ * loadMoreSets() ihr Nachladen. Siehe AppUiState.loginLaeuft.
+ */
 internal fun MainViewModel.addPart(partNumber: String, colorId: Int = 0, colorName: String? = null, colorHex: String? = null,
             quantity: Int = 1, note: String? = null, unitPrice: Double? = null,
             condition: String? = null, ownerUserId: Int? = null) {
     viewModelScope.launch {
-        _state.update { it.copy(isLoading = true) }
         when (val r = repo.teile.addPart(partNumber.trim(), colorId, colorName, colorHex, quantity, note, unitPrice, condition, ownerUserId)) {
             is Result.Success -> {
                 if (r.data.success) {
                     _snackbar.value = ctx.getString(if (r.data.action == "added") R.string.vm_added else R.string.vm_updated, r.data.partNumber)
-                    _state.update { it.copy(isLoading = false) }
                     loadValuation()
                     loadParts()
                 } else {
-                    _state.update { it.copy(isLoading = false) }
                     _snackbar.value = r.data.error ?: ctx.getString(R.string.err_unknown)
                 }
             }
             is Result.Error -> {
-                _state.update { it.copy(isLoading = false) }
                 _snackbar.value = meldung(r)
             }
         }
@@ -89,21 +99,17 @@ internal fun MainViewModel.addPart(partNumber: String, colorId: Int = 0, colorNa
 internal fun MainViewModel.addMinifig(figNumber: String, blFigNumber: String? = null, quantity: Int = 1, note: String? = null,
                unitPrice: Double? = null, condition: String? = null, ownerUserId: Int? = null) {
     viewModelScope.launch {
-        _state.update { it.copy(isLoading = true) }
         when (val r = repo.teile.addMinifig(figNumber.trim(), blFigNumber, quantity, note, unitPrice, condition, ownerUserId)) {
             is Result.Success -> {
                 if (r.data.success) {
                     _snackbar.value = ctx.getString(if (r.data.action == "added") R.string.vm_added else R.string.vm_updated, r.data.figNumber)
-                    _state.update { it.copy(isLoading = false) }
                     loadValuation()
                     loadMinifigs()
                 } else {
-                    _state.update { it.copy(isLoading = false) }
                     _snackbar.value = r.data.error ?: ctx.getString(R.string.err_unknown)
                 }
             }
             is Result.Error -> {
-                _state.update { it.copy(isLoading = false) }
                 _snackbar.value = meldung(r)
             }
         }

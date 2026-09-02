@@ -48,7 +48,7 @@ fun FinanceScreen(
     val financeState by vm.financeState.collectAsStateWithLifecycle()
 
     val valuation = financeState.valuation
-    val isLoading = state.isLoading
+    val isLoading = financeState.valuationLoading
     val serverUrl = state.serverUrl
     val priceCondition = state.priceCondition
     val historyLoading = financeState.historyLoading

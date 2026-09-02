@@ -310,7 +310,7 @@ class MainViewModel @Inject constructor(
         }
 
         // Sets nachlagen falls Erstladung beim App-Start scheiterte
-        if (_galleryState.value.sets.isEmpty() && !_state.value.isLoading) loadDashboard()
+        if (_galleryState.value.sets.isEmpty() && !_galleryState.value.galleryLoading) loadDashboard()
     }
 
     /** Import abgeschlossen: Daten neu laden, Banner kurz sichtbar lassen, dann ausblenden. */

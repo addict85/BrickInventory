@@ -88,7 +88,7 @@ fun NavGraphBuilder.collectionGraph(
             val galerie by vm.galleryState.collectAsStateWithLifecycle()
             // Retry loading if sets are empty and server URL is available
             LaunchedEffect(state.serverUrl) {
-                if (state.serverUrl.isNotBlank() && galerie.sets.isEmpty() && !state.isLoading) {
+                if (state.serverUrl.isNotBlank() && galerie.sets.isEmpty() && !galerie.galleryLoading) {
                     vm.loadSets(); vm.loadStats()
                 }
             }

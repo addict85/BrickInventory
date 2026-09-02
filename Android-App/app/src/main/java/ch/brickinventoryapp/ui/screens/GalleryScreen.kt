@@ -80,7 +80,7 @@ fun GalleryScreen(
     val total = galerie.galleryTotal
     val loadingMore = galerie.galleryLoadingMore
     val stats = galerie.stats
-    val isLoading = state.isLoading
+    val isLoading = galerie.galleryLoading
     val serverUrl = state.serverUrl
     val defaultCondition = state.userDefaultCondition ?: "N"
     val currency = state.currency

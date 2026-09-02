@@ -19,7 +19,39 @@ data class HouseholdUiState(
 )
 
 data class AppUiState(
-    val isLoading: Boolean = false,
+    /**
+     * Läuft gerade eine ANMELDUNG? Und nur das.
+     *
+     * ── Warum das Feld umbenannt wurde ──────────────────────────────────────
+     * Es hiess `isLoading` und war das letzte querschneidende Feld des
+     * gemeinsamen Zustands — StateDomainBoundaryTest führte es ausdrücklich als
+     * den Grund, warum es AppUiState als geteiltes Objekt überhaupt noch gibt.
+     *
+     * NACHGEMESSEN: Geschrieben wurde es von vier Feature-Dateien an
+     * dreiundzwanzig Stellen (Sitzung 8, Teile 8, Galerie 4, Finanzen 3),
+     * GELESEN an fünf — und die fünf meinten vier verschiedene Dinge:
+     *   • AuthGraph        → „die Anmeldung läuft" (Knopf sperren)
+     *   • GalleryScreen    → „die Galerie lädt" (Aktualisieren-Kringel)
+     *   • CollectionGraph  → „die Galerie lädt" (Nachlade-Wächter)
+     *   • FinanceScreen    → „die Bewertung lädt"
+     *   • loadMoreSets()   → „die Galerie lädt" (Wächter gegen Doppelabruf)
+     *
+     * Ein Feld, vier Bedeutungen — das hatte Folgen, die über Rekomposition
+     * hinausgehen:
+     *   • Die Teileliste schrieb es, obwohl KEIN Teile-Bildschirm es liest
+     *     (dort gibt es partsLoading/minifigsLoading). Wirkung hatte es nur
+     *     woanders: `addPart()` liess die Galerie beschäftigt aussehen und
+     *     blockierte über den Wächter in loadMoreSets() das Nachladen.
+     *   • Wer schneller fertig war, gewann. `loadValuation()` setzte am Ende
+     *     `false` — mitten in einen noch laufenden Galerie-Abruf hinein. Der
+     *     Wächter gab damit einen zweiten Abruf frei, der Kringel verschwand
+     *     zu früh.
+     *
+     * Jede der vier Bedeutungen hat jetzt ihr eigenes Feld in ihrer eigenen
+     * Domäne: `galleryLoading`, `valuationLoading`, `partsLoading` (bestand
+     * schon) — und dieses hier für die Anmeldung.
+     */
+    val loginLaeuft: Boolean = false,
     /**
      * Fehler des ANMELDEFORMULARS — und nur der.
      *
@@ -105,6 +137,16 @@ data class GalleryUiState(
     val galleryThemes: List<String> = emptyList(),
     val galleryTotal: Int = 0,
     val galleryPage: Int = 1,
+    /**
+     * Erste Seite / Neuladen. `galleryLoadingMore` ist das Gegenstück fürs
+     * Anhängen — getrennt, weil die Oberfläche beide unterschiedlich zeigt
+     * (Kringel oben gegen Fussleiste unten) und der Wächter in loadMoreSets()
+     * beide braucht.
+     *
+     * Kam aus AppUiState.isLoading hierher: Dort teilte sich die Galerie das
+     * Feld mit Anmeldung, Teileliste und Bewertung. Siehe AppUiState.loginLaeuft.
+     */
+    val galleryLoading: Boolean = false,
     val galleryLoadingMore: Boolean = false,
     val stats: DashboardStats? = null,
 
@@ -152,6 +194,12 @@ data class FinanceUiState(
     val partsValuation: PartsValuationResponse? = null,
     val figsValuation: FigsValuationResponse? = null,
     val pnl: PnlResponse? = null,
+    /**
+     * Die Bewertung wird geholt. Kam aus AppUiState.isLoading — dort setzte
+     * ausgerechnet `loadValuation()` das Feld am Ende auf `false` und beendete
+     * damit die Ladeanzeige einer fremden Domäne (siehe AppUiState.loginLaeuft).
+     */
+    val valuationLoading: Boolean = false,
     val historyLoading: Boolean = false,
     val historyPeriodChangePct: Double? = null,
     val historyPoints: List<ChartPoint> = emptyList(),

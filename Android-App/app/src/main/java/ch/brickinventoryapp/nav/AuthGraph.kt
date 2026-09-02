@@ -97,7 +97,7 @@ fun NavGraphBuilder.authGraph(
             val state by vm.state.collectAsStateWithLifecycle()
             LoginScreen(
                 serverUrl = state.serverUrl,
-                isLoading = state.isLoading,
+                isLoading = state.loginLaeuft,
                 error = state.loginError,
                 onLogin = { user, pw -> vm.login(user, pw) },
                 onChangeServer = {
