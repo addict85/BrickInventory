@@ -199,10 +199,10 @@ router.get('/minifigs/:figNumber/parts', requireToken, async (req: AuthedRequest
 router.get('/minifigs/:figNumber/sets', requireToken, async (req: AuthedRequest, res) => {
   try {
     const uids = await scopeIds(req.apiUser.user_id, parseScopeMode(req.query.accounts));
-    const sets = await verwendendeSets(uids, 'minifigs', {
+    const { item, sets } = await verwendendeSets(uids, 'minifigs', {
       fig_number: einzelwert(req.params.figNumber),
     });
-    res.json({ success: true, sets });
+    res.json({ success: true, item, sets });
   } catch (e) { handleRouteError(res, e); }
 });
 

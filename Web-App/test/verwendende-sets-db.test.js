@@ -84,7 +84,7 @@ test('die Liste der verwendenden Sets folgt dem Blickfeld', async (t) => {
       VALUES ($1,NULL,'sw0001','Han Solo',9,'manual')`, [haupt]);
 
   // ── Teil, Blickfeld des Hauptkontos (Haushalt) ───────────────────────────
-  const imHaushalt = await verwendendeSets([haupt, kind], 'parts',
+  const { item, sets: imHaushalt } = await verwendendeSets([haupt, kind], 'parts',
     { part_number: '3001', color_id: 4 });
   assert.deepEqual(imHaushalt.map(s => s.set_number), ['10305-1', '21058-1', '75192-1'],
     `Erwartet drei Sets in Nummernfolge, bekam ${JSON.stringify(imHaushalt.map(s => s.set_number))}`);
@@ -104,20 +104,39 @@ test('die Liste der verwendenden Sets folgt dem Blickfeld', async (t) => {
   assert.equal(summe, 25, `Summe ${summe} — die manuell erfasste Zeile ist mitgezählt worden`);
 
   // ── Die FARBE trennt ─────────────────────────────────────────────────────
-  const blau = await verwendendeSets([haupt, kind], 'parts', { part_number: '3001', color_id: 1 });
+  const blau = (await verwendendeSets([haupt, kind], 'parts', { part_number: '3001', color_id: 1 })).sets;
   assert.deepEqual(blau.map(s => [s.set_number, s.quantity]), [['75192-1', 99]],
     'Die Farbe wird nicht unterschieden — dann zeigt der Dialog fremde Bestände');
 
   // ── Einzelkonto sieht nur sein eigenes Set ───────────────────────────────
-  const nurKind = await verwendendeSets([kind], 'parts', { part_number: '3001', color_id: 4 });
+  const nurKind = (await verwendendeSets([kind], 'parts', { part_number: '3001', color_id: 4 })).sets;
   assert.deepEqual(nurKind.map(s => s.set_number), ['21058-1'],
     'Ohne Haushalt darf nur das eigene Set erscheinen');
 
   // ── Figuren: dieselbe Funktion, dieselben Regeln ─────────────────────────
-  const figuren = await verwendendeSets([haupt, kind], 'minifigs', { fig_number: 'sw0001' });
+  const { item: figItem, sets: figuren } = await verwendendeSets([haupt, kind], 'minifigs', { fig_number: 'sw0001' });
   assert.deepEqual(figuren.map(s => [s.set_number, s.quantity]),
     [['21058-1', 1], ['75192-1', 2]],
     'Für Figuren gilt dasselbe — inklusive: die manuell erfasste zählt nicht mit');
+
+  // ── Der Kopf des Dialogs kommt aus DENSELBEN Zeilen ─────────────────────
+  //
+  // Eine zweite Abfrage für Name, Farbe und Bild könnte etwas anderes sagen
+  // als die Liste darunter. Deshalb wird beides aus einem Durchgang gebildet —
+  // und deshalb wird hier beides geprüft.
+  assert.equal(item.nummer, '3001');
+  assert.equal(item.name, 'Brick 2x4');
+  assert.equal(item.color_name, 'Rot');
+  assert.equal(item.total_quantity, 25,
+    'Die Gesamtmenge muss die Summe der Sets sein — und die manuelle Zeile NICHT enthalten');
+  assert.equal(item.is_spare, false,
+    'is_spare kommt als INTEGER; "0" ist in JavaScript WAHR — hier muss ein echter Wahrheitswert stehen');
+
+  assert.equal(figItem.nummer, 'sw0001');
+  assert.equal(figItem.name, 'Han Solo');
+  assert.equal(figItem.color_name, null,
+    'Figuren haben keine Farbe — das Feld muss trotzdem dastehen, damit beide Antworten dieselbe Form haben');
+  assert.equal(figItem.total_quantity, 3);
 
   // Selbstbeweis: Wäre die Abfrage kaputt und lieferte gar nichts, wären alle
   // deepEqual oben gegen leere Listen gelaufen — die erste hätte es gemeldet.

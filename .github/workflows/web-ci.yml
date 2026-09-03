@@ -199,7 +199,7 @@ jobs:
           # ohne Ausnahmeliste auskommen, und grep kann selbst begrenzen.
           grep -E -m 20 -A 12 '^not ok' "$RUNNER_TEMP/test.log" || true
 
-          # ── Und jeden roten Namen als ANNOTATION ────────────────────────────
+          # ── Und den Befund als ANNOTATION ───────────────────────────────────
           #
           # Warum zusaetzlich: Die Zusammenfassung oben steht nur auf der
           # Weboberflaeche, und das rohe Protokoll ist von hier aus nicht zu
@@ -208,12 +208,33 @@ jobs:
           # Annotation war „Process completed with exit code 1".
           #
           # `::error::`-Zeilen werden zu Annotationen und sind ueber
-          # /check-runs/<id>/annotations abrufbar. Damit ist ein roter Lauf
-          # auch ohne Browser diagnostizierbar.
-          while IFS= read -r zeile; do
-            [ -n "$zeile" ] || continue
-            echo "::error title=Roter Test::${zeile#not ok }"
-          done < <(grep -E -m 20 '^not ok' "$RUNNER_TEMP/test.log" || true)
+          # /check-runs/<id>/annotations abrufbar.
+          #
+          # ── Und warum BEIDE Faelle ──────────────────────────────────────────
+          #
+          # Der erste Entwurf meldete nur `not ok`-Zeilen. GEMESSEN an Lauf
+          # 33804... : Der Schritt lief, fand KEINE einzige — und lieferte
+          # damit genau nichts. Das war selbst der Befund: Der Testlauf
+          # scheitert, OHNE dass ein einzelner Test fehlschlaegt (ein Modul
+          # laedt nicht, eine Ausnahme fliegt ausserhalb eines Tests, der
+          # Prozess stirbt). Eine Diagnose, die nur den erwarteten Ausgang
+          # abdeckt, schweigt genau dann, wenn etwas Unerwartetes passiert.
+          rot=$(grep -E -c '^not ok' "$RUNNER_TEMP/test.log" || true)
+          if [ "${rot:-0}" -gt 0 ]; then
+            while IFS= read -r zeile; do
+              [ -n "$zeile" ] || continue
+              echo "::error title=Roter Test::${zeile#not ok }"
+            done < <(grep -E -m 20 '^not ok' "$RUNNER_TEMP/test.log" || true)
+          else
+            # Kein einziger fehlgeschlagener Test, und trotzdem rot. Dann sagt
+            # das ENDE des Protokolls, was los war — als eine Annotation, damit
+            # sie ueber die API lesbar ist.
+            ende=$(tail -n 40 "$RUNNER_TEMP/test.log" | tr '\n' '~' | sed 's/%/%25/g; s/\r/%0D/g; s/~/%0A/g')
+            echo "::error title=Testlauf ohne einzelnen Fehlschlag::$ende"
+          fi
+          # Die Summenzeile immer — sie sagt, ob ueberhaupt etwas gelaufen ist.
+          summe=$(grep -E '^# (tests|pass|fail)' "$RUNNER_TEMP/test.log" | tr '\n' ' ' || true)
+          echo "::notice title=Testsumme::${summe:-keine Summenzeile — der Lauf ist vor dem ersten Test gescheitert}"
 
       # npm audit hat einen eigenen Schritt, damit ein neuer Befund nicht in
       # den Testausgaben untergeht. --omit=dev: Was nur beim Bauen läuft, ist

@@ -170,11 +170,11 @@ router.get('/parts/:partNumber/:colorId/price-history', requireToken, async (req
 router.get('/parts/:partNumber/:colorId/sets', requireToken, async (req: AuthedRequest, res) => {
   try {
     const uids = await scopeIds(req.apiUser.user_id, parseScopeMode(req.query.accounts));
-    const sets = await verwendendeSets(uids, 'parts', {
+    const { item, sets } = await verwendendeSets(uids, 'parts', {
       part_number: einzelwert(req.params.partNumber),
       color_id: parseInt(String(req.params.colorId)) || 0,
     });
-    res.json({ success: true, sets });
+    res.json({ success: true, item, sets });
   } catch (e) { handleRouteError(res, e); }
 });
 

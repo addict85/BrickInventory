@@ -1,4 +1,5 @@
 import * as db from '../../db/database';
+import { istErsatzteil } from '../validate';
 import { asIds } from '../household';
 
 /**
@@ -289,14 +290,57 @@ export interface VerwendendesSet {
   owner_user_id: number;
 }
 
+/** Das Teil bzw. die Figur selbst — für die Kopfzeile des Dialogs. */
+export interface BestandteilKopf {
+  nummer: string;
+  name: string | null;
+  color_id: number | null;
+  color_name: string | null;
+  color_hex: string | null;
+  category_name: string | null;
+  image_local: string | null;
+  image_url: string | null;
+  is_spare: boolean;
+  /** Summe über ALLE Sets im Blickfeld. */
+  total_quantity: number;
+}
+
+export interface BestandteilAntwort {
+  item: BestandteilKopf | null;
+  sets: VerwendendesSet[];
+}
+
 /** Spalten, über die gesucht werden darf. Siehe verwendendeSets(). */
 const SUCHSPALTEN = new Set(['part_number', 'color_id', 'fig_number']);
+
+/**
+ * Die Felder, die das Teil/die Figur selbst beschreiben — je Tabelle andere.
+ *
+ * `minifigs` hat keine Farbe und keine Kategorie; damit beide Zweige DIESELBE
+ * Antwortform liefern, stehen sie dort als feste NULL im Ausdruck. Sonst
+ * müssten die beiden Oberflächen zwei Formen unterscheiden, und genau daran
+ * laufen in diesem Projekt Dinge auseinander.
+ */
+const KOPFFELDER = {
+  parts: `x.part_number AS nummer, MAX(x.part_name) AS name,
+          MAX(x.color_id) AS color_id, MAX(x.color_name) AS color_name,
+          MAX(x.color_hex) AS color_hex, MAX(x.category_name) AS category_name,
+          MAX(x.image_local) AS teil_image_local, MAX(x.image_url) AS teil_image_url,
+          MAX(x.is_spare) AS is_spare`,
+  minifigs: `x.fig_number AS nummer, MAX(x.fig_name) AS name,
+          NULL::int AS color_id, NULL::text AS color_name,
+          NULL::text AS color_hex, NULL::text AS category_name,
+          MAX(x.image_local) AS teil_image_local, MAX(x.image_url) AS teil_image_url,
+          0 AS is_spare`,
+} as const;
+
+const SCHLUESSELSPALTE = { parts: 'x.part_number', minifigs: 'x.fig_number' } as const;
 
 async function verwendendeSets(
   uids: number[],
   tabelle: 'parts' | 'minifigs',
   schluessel: Record<string, string | number>,
-): Promise<VerwendendesSet[]> {
+): Promise<BestandteilAntwort> {
   const spalten = Object.keys(schluessel);
   // Die Namen kommen aus Literalen der beiden Aufrufer, nie aus einer
   // Anfrage. Die Schranke steht trotzdem: Ein künftiger Aufrufer soll hier
@@ -309,30 +353,56 @@ async function verwendendeSets(
   const bedingungen = spalten.map(sp => `x.${sp} = $${params.push(schluessel[sp])}`);
   const rows = await db.all(
     `SELECT x.set_number,
-            x.user_id                AS owner_user_id,
-            SUM(x.quantity)::int     AS quantity,
-            s.name                   AS set_name,
-            s.image_local, s.image_url
+            x.user_id            AS owner_user_id,
+            SUM(x.quantity)::int AS quantity,
+            s.name               AS set_name,
+            s.image_local        AS set_image_local,
+            s.image_url          AS set_image_url,
+            ${KOPFFELDER[tabelle]}
        FROM ${tabelle} x
        LEFT JOIN sets s ON s.user_id = x.user_id AND s.set_number = x.set_number
       WHERE x.user_id = ANY($1)
         AND x.set_number IS NOT NULL
         AND ${bedingungen.join(' AND ')}
-      GROUP BY x.set_number, x.user_id, s.name, s.image_local, s.image_url
+      GROUP BY x.set_number, x.user_id, ${SCHLUESSELSPALTE[tabelle]},
+               s.name, s.image_local, s.image_url
       ORDER BY x.set_number`,
     params,
   ).catch(() => []);
-  // SUM() liefert der Treiber als Zeichenkette; ::int oben macht daraus eine
-  // Zahl. Die ausdrückliche Umwandlung bleibt trotzdem — in diesem Projekt
-  // sind schon mehrere Fehler daran gehangen, dass "0" in JavaScript WAHR ist.
-  return rows.map((r: any) => ({
+
+  const sets: VerwendendesSet[] = rows.map((r: any) => ({
     set_number:    String(r.set_number),
     set_name:      r.set_name ?? null,
     quantity:      parseInt(r.quantity, 10) || 0,
-    image_local:   r.image_local ?? null,
-    image_url:     r.image_url ?? null,
+    image_local:   r.set_image_local ?? null,
+    image_url:     r.set_image_url ?? null,
     owner_user_id: parseInt(r.owner_user_id, 10),
   }));
+
+  // Der Kopf entsteht aus DENSELBEN Zeilen — keine zweite Abfrage, die etwas
+  // anderes sagen könnte als die Liste darunter. Das Bild wird von der ersten
+  // Zeile genommen, die eines hat: Nicht jede Set-Zeile trägt ein Bild, und
+  // ein leerer Rahmen im Dialog wäre schlechter als das Bild aus dem
+  // Nachbarset — es ist dasselbe Teil.
+  const erste = rows[0] as any;
+  const mitBild = (rows as any[]).find(r => r.teil_image_local || r.teil_image_url);
+  const item: BestandteilKopf | null = erste ? {
+    nummer:         String(erste.nummer),
+    name:           erste.name ?? null,
+    color_id:       erste.color_id == null ? null : parseInt(erste.color_id, 10),
+    color_name:     erste.color_name ?? null,
+    color_hex:      erste.color_hex ?? null,
+    category_name:  erste.category_name ?? null,
+    image_local:    mitBild?.teil_image_local ?? null,
+    image_url:      mitBild?.teil_image_url ?? null,
+    // is_spare kommt als INTEGER aus der Spalte; der Treiber liefert
+    // Aggregate als ZEICHENKETTE, und "0" ist in JavaScript WAHR. Deshalb
+    // ausdrücklich über istErsatzteil() — dieselbe Lesart wie überall sonst.
+    is_spare:       istErsatzteil(erste.is_spare),
+    total_quantity: sets.reduce((n, s) => n + s.quantity, 0),
+  } : null;
+
+  return { item, sets };
 }
 
 export { clampPageSize, conditionFromAcquisitions, conditionsFromAcquisitions, applyManualCondition, withOwners, verwendendeSets };
