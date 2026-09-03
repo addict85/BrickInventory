@@ -24,6 +24,20 @@ import { DAILY_JOBS } from '../../jobs/dailyScheduler';
 import { getGlobalSetting, setGlobalSetting, setGlobalTrigger, deleteGlobalSetting } from '../../utils/settings';
 const router = express.Router();
 
+/**
+ * Wie lange ein gemeldeter Betrieb ohne neues Lebenszeichen gilt.
+ *
+ * Steht an EINER Stelle, weil zwei Kacheln dieselbe Frage beantworten: Ist das
+ * „laeuft" von eben noch aktuell? Vorher stand die Zahl nur beim Katalog-Job;
+ * der Bilder-Nachlauf daneben hatte gar keine Frist und blieb nach einem
+ * abgebrochenen Lauf fuer immer auf „laeuft".
+ *
+ * Drei Minuten: lang genug, dass ein langsamer Durchgang nicht faelschlich als
+ * tot gilt (der Takt schreibt alle zwanzig Sekunden), kurz genug, dass ein
+ * abgestuerzter Lauf nicht den ganzen Tag Betrieb vortaeuscht.
+ */
+const JOB_FRISCH_MS = 3 * 60_000;
+
 // ── POST /api/v1/admin/trigger-csv-sync — manually trigger CSV sync ──────────
 router.post('/admin/trigger-csv-sync', requireApiAdmin, async (_req: AuthedRequest, res) => {
   // Signal primary worker via DB flag (same pattern as instruction queue trigger)
@@ -656,7 +670,31 @@ router.get('/admin/jobs', requireApiAdmin, async (_req: AuthedRequest, res) => {
     const roh = await getGlobalSetting('imgredl_status');
     if (roh) reDl = JSON.parse(roh);
   } catch (_) { reDl = null; }
-  const reDlRunning = reDl?.running === true;
+  // ── „laeuft" heisst auch hier: hat KUERZLICH etwas getan ──────────────────
+  //
+  // Hier stand `reDl?.running === true` — der Wert allein, ohne sein Alter.
+  // Ein Prozess, der mitten im Lauf beendet wird (Neustart, Auslieferung,
+  // Container gestoppt), kommt nie mehr dazu, `false` zu schreiben. Der Stand
+  // blieb dann fuer immer auf „laeuft", und diese Kachel meldete Betrieb, bis
+  // jemand den Schluessel von Hand loeschte.
+  //
+  // Der Zeitstempel dafuer wird laengst mitgeschrieben: _redlSetStatus() in
+  // jobs/partsCatalogEnrich.ts haengt an JEDEN Stand ein `at`. Gelesen wurde
+  // er nie.
+  //
+  // Zwoelf Zeilen weiter unten steht fuer den Katalog-Job dieselbe Regel, und
+  // zwar begruendet mit genau diesem Befund von Marco („Der Job scheint zu
+  // laufen laut Monitoring, aber im Log sind keine Eintraege dazu zu finden").
+  // Sie stand nur an einer der beiden Stellen. Deshalb jetzt EINE Konstante
+  // fuer beide — sonst laufen die zwei Fenster beim naechsten Anfassen
+  // auseinander.
+  //
+  // NACHGEMESSEN: Ein hinterlassenes {running:true} macht
+  // test/image-queue-db.test.js rot („'running' !== 'idle'"). So ist der
+  // Fehler ueberhaupt aufgefallen — im allerersten CI-Lauf dieses Repositories.
+  const seitReDl = typeof reDl?.at === 'number' ? Date.now() - reDl.at : null;
+  const reDlRunning = reDl?.running === true
+    && (seitReDl === null || seitReDl < JOB_FRISCH_MS);
   const reDlSub = reDlRunning
     ? (reDl.phase === 'scanning'
         ? '↻ suche fehlende Bilder…'
@@ -706,7 +744,7 @@ router.get('/admin/jobs', requireApiAdmin, async (_req: AuthedRequest, res) => {
     if (roh) letzterLauf = JSON.parse(roh);
   } catch (_) { letzterLauf = null; }
   const seitLauf = letzterLauf?.zeit ? Date.now() - letzterLauf.zeit : null;
-  const jobLaeuft = seitLauf !== null && seitLauf < 3 * 60_000;
+  const jobLaeuft = seitLauf !== null && seitLauf < JOB_FRISCH_MS;
   const katalogSub = katalogOffen > 0
     ? `${katalogOffen} Katalog-Bilder in Warteschlange` +
       (jobLaeuft ? '' : seitLauf === null ? ' · Job noch nicht gelaufen'

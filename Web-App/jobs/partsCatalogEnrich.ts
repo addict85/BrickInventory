@@ -654,8 +654,33 @@ function _fsPathFromLocal(imageLocal: string) {
   return null;
 }
 
+/**
+ * Den Fortschritt des Bilder-Nachlaufs ablegen.
+ *
+ * ── Das `await` hat gefehlt ─────────────────────────────────────────────────
+ *
+ * Hier stand `setGlobalSetting(...).catch(() => {})` OHNE await. Die Funktion
+ * ist `async` und war damit sofort fertig, obwohl die Zeile noch gar nicht
+ * geschrieben war. Alle sieben Aufrufer schreiben `await _redlSetStatus(...)`
+ * und warteten auf nichts.
+ *
+ * Folgenreich ist genau der LETZTE Aufruf, `{ running: false, phase: 'done' }`:
+ * Danach kehrt der Lauf zurueck, der Handler antwortet — und wird der Prozess
+ * in diesem Fenster beendet (Neustart, Auslieferung, Container gestoppt),
+ * ist der zuletzt WIRKLICH geschriebene Stand `{ running: true }`. Der bleibt
+ * dann fuer immer stehen, und die Kachel „Bild-Download (CDN)" meldet Betrieb,
+ * bis jemand den Schluessel von Hand loescht.
+ *
+ * Das ist Marcos alter Befund an der Nachbarstelle („Der Job scheint zu laufen
+ * laut Monitoring, aber im Log sind keine Eintraege dazu zu finden"). Fuer den
+ * Katalog-Job ist er behoben worden, fuer diesen hier nicht.
+ *
+ * Das `.catch` bleibt: Ein misslungenes Schreiben des Fortschritts soll den
+ * Lauf nicht abbrechen. Gewartet wird jetzt trotzdem.
+ */
 async function _redlSetStatus(obj: Record<string, unknown>) {
-  setGlobalSetting('imgredl_status', JSON.stringify({ ...obj, at: Date.now() })).catch(() => {});
+  await setGlobalSetting('imgredl_status', JSON.stringify({ ...obj, at: Date.now() }))
+    .catch(() => {});
 }
 
 async function redownloadMissingImages() {
