@@ -390,8 +390,19 @@ G('btn-dall').onclick=async()=>{
   const confirm2 = window.prompt(t('settings.delete_all.prompt'));
   if(confirm2 !== t('settings.delete_all.confirm')) { toast(tRaw('settings.delete_all.cancelled'),'info'); return; }
   toast(tRaw('settings.delete_all.deleting'),'info');
-  const s=await api('GET','/v1/sets');
-  for(const set of s.sets||[]) await api('DELETE',`/v1/sets/${esc(set.set_number)}`);
+  // accounts=own, zweimal — beim Auflisten UND beim Löschen.
+  //
+  // Ohne das listete der Knopf im Haushalt auch die Sets der verknüpften
+  // Konten, und DELETE löschte jede Nummer im vollen Schreib-Blickfeld.
+  // NACHGEMESSEN mit zwei Konten: Das Unterkonto verlor Sets, Teile und
+  // Minifiguren vollständig — darunter ein Set, das das Hauptkonto nie besass.
+  // Der Knopf heisst „Alle MEINE Sets löschen" und der Text verspricht
+  // „Deine gesamte Sammlung".
+  //
+  // Fest 'own' und nicht scopeQuery(): Das Versprechen des Knopfes hängt nicht
+  // davon ab, welchen Kontofilter jemand zuletzt in der Galerie stehen hatte.
+  const s=await api('GET','/v1/sets?accounts=own');
+  for(const set of s.sets||[]) await api('DELETE',`/v1/sets/${esc(set.set_number)}?accounts=own`);
   toast(tRaw('settings.delete_all.done'),'success'); loadGallery(); loadParts(); loadMinifigs(); loadStats();
 };
 

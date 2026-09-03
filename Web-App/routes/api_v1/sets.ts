@@ -651,12 +651,32 @@ router.put('/sets/:setNumber', requireToken, async (req: AuthedRequest, res) => 
   } catch (e) { handleRouteError(res, e); }
 });
 
+/**
+ * Set löschen — standardmässig im ganzen SCHREIB-Blickfeld.
+ *
+ * Im Haushalt fasst die Galerie dieselbe Setnummer zu EINER Kachel zusammen
+ * (utils/handlers/sets.ts gruppiert nach set_number). Wer diese Kachel löscht,
+ * meint alle Exemplare dahinter — deshalb writableIds().
+ *
+ * ── Warum es jetzt eingrenzbar ist ──────────────────────────────────────────
+ * Genau diese Vorgabe war in „Alle meine Sets löschen" falsch. NACHGEMESSEN
+ * in einem Haushalt aus zwei Konten: Der Knopf listete /v1/sets ohne Blickfeld
+ * (also auch die Sets des Unterkontos) und löschte jede Nummer mit dem vollen
+ * Schreib-Blickfeld. Das Unterkonto verlor Sets, Teile und Minifiguren
+ * vollständig — darunter ein Set, das das Hauptkonto nie besass. Versprochen
+ * hatte der Knopf „Alle MEINE Sets löschen".
+ *
+ * `accounts` darf das Blickfeld nur EINSCHRÄNKEN, nie erweitern: Die gewählte
+ * Menge wird gegen writableIds() geschnitten. Damit ist der Parameter eine
+ * Sicherung und kein Zugriffsweg — dieselbe Regel wie bei scopeIds() selbst.
+ */
 router.delete('/sets/:setNumber', requireToken, async (req: AuthedRequest, res) => {
   try {
-    // deleteSet() kann das Blickfeld längst (asIds + ANY) — es bekam bisher
-    // nur eine nackte ID und löschte damit ausschliesslich Eigenes. Also
-    // dasselbe SCHREIB-Blickfeld wie in der Webapp-Route (Nachtrag 53).
-    const ok = await deleteSet(await writableIds(req.apiUser.user_id), pfadParam(req, 'setNumber'));
+    const schreibbar = await writableIds(req.apiUser.user_id);
+    const gewaehlt = req.query.accounts === undefined ? schreibbar
+      : await scopeIds(req.apiUser.user_id, parseScopeMode(req.query.accounts));
+    const ok = await deleteSet(gewaehlt.filter(id => schreibbar.includes(id)),
+                               pfadParam(req, 'setNumber'));
     if (!ok) return res.status(404).json({ success: false, error: 'Set nicht gefunden' });
     res.json({ success: true });
   } catch (e) { handleRouteError(res, e); }
