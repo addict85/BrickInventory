@@ -142,6 +142,60 @@ export function strictBool(value: any, feld = 'Wert'): boolean {
 }
 
 /**
+ * Ist dieser Wert ein ERSATZTEIL-Kennzeichen, das „ja" bedeutet?
+ *
+ * ── Warum das nötig wurde ───────────────────────────────────────────────────
+ * NACHGEMESSEN: `is_spare` wurde an SECHS Stellen gedeutet, mit vier
+ * verschiedenen Vorstellungen davon, was „ja" heisst:
+ *
+ *   utils/handlers/parts.ts    true, 1, 't', 'true'
+ *   routes/api_v1/sets.ts      true, 1, 't', 'true', 'True'   ← eine mehr
+ *   routes/api_v1/sets.ts      r.is_spare ? 't' : 'f'         ← dritte Form
+ *   routes/api_v1/sets.ts      nicht-Ersatzteil: 'f','false','False','0',''
+ *   routes/api_v1/minifigs.ts  nur 't'
+ *   Android, Part.isSpareFlag  '1', 'true', 't'               ← ohne 'True'
+ *
+ * Die Spalte ist INTEGER, der Treiber liefert Aggregate als Zeichenkette, und
+ * der Rebrickable-Katalog schreibt 't'/'f'. Genau deshalb hat nie jemand die
+ * Ersatzteil-Plakette gezeichnet, obwohl der Text dafür in beiden Sprachen
+ * bereitliegt: Man konnte nicht sagen, was das Feld bedeutet.
+ *
+ * Und die naheliegende Abkürzung wäre falsch gewesen: Der Server liefert
+ * `"0"` als ZEICHENKETTE, und die ist in JavaScript WAHR. Ein `if (p.is_spare)`
+ * im Frontend hätte JEDES Teil als Ersatzteil markiert.
+ *
+ * Deshalb hier, an einer Stelle, grosszügig im Lesen — und die Antworten
+ * tragen danach einen echten Wahrheitswert, sodass die Clients gar nichts
+ * mehr deuten müssen.
+ *
+ * Bewusst KEIN strictBool(): Das ist für Eingaben aus Anfragen gedacht und
+ * wirft bei Unlesbarem. Hier kommen Werte aus der eigenen Datenbank und aus
+ * Fremdkatalogen; ein unbekannter Wert heisst „kein Ersatzteil", nicht
+ * „Abbruch der Teileliste".
+ */
+export function istErsatzteil(value: unknown): boolean {
+  if (value === true || value === 1) return true;
+  if (typeof value !== 'string') return false;
+  const v = value.trim().toLowerCase();
+  return v === '1' || v === 't' || v === 'true' || v === 'y' || v === 'yes';
+}
+
+/**
+ * Dieselbe Lesart wie [istErsatzteil], aber als SQL-Ausdruck.
+ *
+ * Drei Abfragen entscheiden schon in der Datenbank, ob eine Zeile ein
+ * Ersatzteil ist — dort kann keine TypeScript-Funktion laufen. Ohne diesen
+ * Helfer stuende die Aufzaehlung ein zweites Mal im Baum, in SQL, und genau
+ * so ist sie ueberhaupt erst auseinandergelaufen (eine Stelle kannte nur 't').
+ *
+ * @param spalte Spaltenname, bereits vertrauenswuerdig — es ist NIE ein Wert
+ *               aus einer Anfrage, sondern immer ein im Code stehender Name.
+ */
+export function ersatzteilSql(spalte: string): string {
+  return `LOWER(TRIM(${spalte}::text)) IN ('1','t','true','y','yes')`;
+}
+
+/**
  * Einen Routen- oder Abfrageparameter als EINEN Text nehmen.
  *
  * ── Warum es das braucht (Nachtrag 132) ─────────────────────────────────────

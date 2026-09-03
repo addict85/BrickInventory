@@ -304,6 +304,7 @@
 
     <!-- Nachtrag i18n-Pass: zuvor hartkodierte Strings -->
     <string name="parts_search_placeholder">Search parts…</string>
+    <string name="parts_spare_tag">Spare</string>
     <string name="parts_filter_all">All parts</string>
     <string name="view_cards">Cards</string>
     <string name="view_table">Table</string>

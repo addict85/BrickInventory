@@ -84,9 +84,20 @@ data class Part(
     @SerialName("image_local") val imageLocal: String? = null,
     @SerialName("total_quantity") val totalQuantity: Int = 0,
     @SerialName("in_sets") val inSets: String? = null,
-    @SerialName("is_spare") val isSpare: String? = null  // can be 'f','false','0' or '1'
+    /**
+     * Ersatzteil? Ein echter Wahrheitswert.
+     *
+     * Stand hier als String? mit dem Vermerk „can be 'f','false','0' or '1'"
+     * — und daneben ein Helfer isSpareFlag, der das deutete. Beides ist weg:
+     * Der Server liest die Schreibweisen jetzt an EINER Stelle
+     * (istErsatzteil() in utils/validate.ts) und liefert true/false.
+     *
+     * Der Helfer war ausserdem gefaehrlich nah an einem Fehler: "0" ist in
+     * JavaScript wahr, und die Webapp haette mit einem naiven Test JEDES Teil
+     * als Ersatzteil markiert.
+     */
+    @SerialName("is_spare") val isSpare: Boolean = false
 )
-val Part.isSpareFlag: Boolean get() = isSpare == "1" || isSpare == "true" || isSpare == "t"
 
 @Serializable
 data class PartsResponse(

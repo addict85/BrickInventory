@@ -307,6 +307,11 @@
     .cond-badge{font-size:.6rem;padding:1px 5px;border-radius:10px;font-weight:600;display:inline-block}
     .cond-new{background:var(--g100);color:var(--g600)}
     .cond-used{background:var(--s100);color:var(--s600)}
+    /* Ersatzteil: dieselbe Form wie die Zustands-Plakette, aber ruhiger —
+       ein Ersatzteil ist eine Nebeninformation, kein Zustand. Gegenstueck zu
+       ErsatzteilPlakette() in ManualItemComposables.kt der App. */
+    .spare-tag{font-size:.6rem;padding:1px 5px;border-radius:10px;font-weight:600;
+               display:inline-block;background:var(--s100);color:var(--mut)}
 
 /* ── Eigener Scrollbalken für die GANZE Anwendung ──
    Marcos Vorgabe: „Der rechte Scrollbalken ist der vom Browser, der durch den

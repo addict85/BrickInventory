@@ -455,6 +455,10 @@ fun PartCard(part: Part, serverUrl: String, imageLoader: ImageLoader) {
                 if (part.colorName != null)
                     Text(part.colorName, style = MaterialTheme.typography.labelSmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1, fontSize = 10.sp)
+                // Ersatzteil — Sets enthalten ein Tuetchen davon. Nur wenn es
+                // eines IST: eine Plakette „kein Ersatzteil" an jeder Kachel
+                // waere Rauschen.
+                if (part.isSpare) ErsatzteilPlakette(Modifier.padding(top = 2.dp))
             }
         }
     }
@@ -494,9 +498,14 @@ fun PartTableRow(part: Part, serverUrl: String, imageLoader: ImageLoader) {
         serverUrl, part.imageLocal, part.imageUrl, fullViaProxy = true)
     // Kategorie und Sets in einer Zeile, mit „·" getrennt — und nur, was da
     // ist. Ein leeres „ · " sieht nach einem fehlenden Wert aus.
+    val ersatzteil = stringResource(R.string.parts_spare_tag)
     val zweite = listOfNotNull(
         part.categoryName?.takeIf { it.isNotBlank() },
         part.inSets?.takeIf { it.isNotBlank() }?.replace(",", ", "),
+        // In der Tabellenzeile als Wort statt als Plakette: Die Zeile ist auf
+        // Dichte gebaut, eine Flaeche mit eigenem Hintergrund saehe darin aus
+        // wie ein Knopf.
+        ersatzteil.takeIf { part.isSpare },
     ).joinToString(" · ").ifBlank { null }
 
     TabellenZeile(

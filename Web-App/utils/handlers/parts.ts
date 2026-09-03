@@ -1,6 +1,7 @@
 import * as db from '../../db/database';
 import { resolveImageLocal } from '../images';
 import { asIds } from '../household';
+import { istErsatzteil, ersatzteilSql } from '../validate';
 import { ensureFresh } from '../partsSummary';
 import { fetchMissingBlIds } from '../../routes/parts';
 import type { RbSetTeil } from '../../clients/rebrickable';
@@ -154,7 +155,10 @@ async function teileErsatzquelle(set_number: string) {
                c.name AS color_name, c.rgb AS color_hex,
                NULL AS category_name,
                p.part_img_url AS image_url, NULL AS image_local,
-               CASE WHEN ip.is_spare='t' THEN 1 ELSE 0 END AS is_spare,
+               -- Dieselbe Lesart wie istErsatzteil(); istErsatzteil() liest
+               -- den Wert unten ohnehin noch einmal, aber ein 't'-only-Vergleich
+               -- hier haette '1' schon vorher verworfen.
+               ${ersatzteilSql('ip.is_spare')} AS is_spare,
                ip.quantity AS total_quantity,
                $2 AS in_sets
         FROM rb_inventory_parts ip
@@ -439,7 +443,10 @@ async function getParts(userId: Blickfeld, query: any = {}) {
       : (p.stored_condition || 'N'),
     image_local: resolveImageLocal(p.image_local),
     image_url:   p.image_url || null,
-    is_spare: (p.is_spare === true || p.is_spare === 1 || p.is_spare === 't' || p.is_spare === 'true') ? '1' : '0'
+    // Ein echter Wahrheitswert, nicht '1'/'0': Der Treiber liefert das
+    // Aggregat als ZEICHENKETTE, und "0" ist in JavaScript wahr. Die
+    // Schreibweisen liest istErsatzteil() (utils/validate.ts) an EINER Stelle.
+    is_spare: istErsatzteil(p.is_spare)
   }));
 
   // Background: fetch missing BL IDs

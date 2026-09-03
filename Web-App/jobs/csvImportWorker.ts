@@ -1,4 +1,7 @@
 import { fehlertext } from '../utils/httpError';
+// Nur eine reine Funktion, kein Verbindungspool — der eigene Prozess
+// dieses Workers bleibt davon unberuehrt.
+import { istErsatzteil } from '../utils/validate';
 'use strict';
 const fs       = require('fs');
 // Pfade zentral auflösen — __dirname zeigt seit dem dist/-Build nicht mehr
@@ -341,7 +344,12 @@ const TASKS = {
     cols: ['inventory_id','part_num','color_id','quantity','is_spare','img_url'],
     chunkSize: 50,
     mapRow: (c: string[]) => [parseInt(sp(c,0))||0, sp(c,1), parseInt(sp(c,2))||0, parseInt(sp(c,3))||1,
-                  (sp(c,4)==='True'||sp(c,4)==='t'||sp(c,4)==='1')?'t':'f', sp(c,5)],
+                  // Diese Zeile SCHREIBT, was spaeter alle lesen. Hier stand
+                  // eine eigene Aufzaehlung ('True','t','1') — ein
+                  // kleingeschriebenes 'true' aus der Katalogdatei landete
+                  // damit als 'f' in der Datenbank, und kein Leser konnte das
+                  // hinterher noch richtigstellen.
+                  istErsatzteil(sp(c,4)) ? 't' : 'f', sp(c,5)],
   }),
 };
 

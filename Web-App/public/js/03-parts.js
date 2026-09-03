@@ -263,6 +263,23 @@ function bumpGroupCount(groupEl, add){
   if (sub) sub.textContent = `${n} ${t('parts.stat.types')}`;
 }
 
+/**
+ * Ersatzteil-Plakette. Sets enthalten ein Tütchen Ersatzteile; Rebrickable
+ * kennzeichnet sie.
+ *
+ * Der Text `parts.spare_tag` liegt seit jeher in beiden Sprachdateien —
+ * gezeichnet hat ihn nie jemand. Der Grund stand im Feld selbst: `is_spare`
+ * kam in vier Schreibweisen an, und die naheliegende Prüfung wäre falsch
+ * gewesen, weil der Server "0" als ZEICHENKETTE lieferte und die in
+ * JavaScript WAHR ist — jedes Teil wäre als Ersatzteil markiert worden.
+ *
+ * Seit der Server die Schreibweisen an einer Stelle liest (istErsatzteil() in
+ * utils/validate.ts), ist es ein echter Wahrheitswert und `p.is_spare` genügt.
+ */
+function ersatzteilPlakette(p){
+  return p.is_spare ? `<span class="spare-tag">${esc(t('parts.spare_tag'))}</span>` : '';
+}
+
 function partsCard(p){
   // data-orig speist den Zoom (11-actions.js, openImageLightboxFromEl):
   // ÜBER den Server-Proxy in voller Auflösung (imgUrl(fullUrl(...), false)),
@@ -277,6 +294,7 @@ function partsCard(p){
     <div class="part-name">${esc(p.part_name)||'—'}</div>
     <div class="part-color"><div class="color-dot" style="background:${escHex(p.color_hex, 'var(--s300)')}"></div>${esc(colorName(p.color_name))}</div>
     <div class="part-qty">${(p.total_quantity||0).toLocaleString(locale())}×</div>
+    ${ersatzteilPlakette(p)}
   </div>`;
 }
 
@@ -284,7 +302,7 @@ function partsTableRow(p){
   return `<tr>
     <td><img src="${escUrl(imgUrl(thumbUrl(p.image_local||p.image_url)||p.image_local||p.image_url||'', true)||'')}" loading="lazy" decoding="async" data-onerror="clear" style="width:36px;height:36px;object-fit:contain;background:var(--s50);border-radius:5px" /></td>
     <td><span style="font-family:var(--mono);font-size:.77rem;color:var(--b600)" title="${esc(p.part_number)}">${esc(p.bl_part_number||p.part_number)}</span></td>
-    <td style="max-width:200px">${esc(p.part_name)||'—'}</td>
+    <td style="max-width:200px">${esc(p.part_name)||'—'} ${ersatzteilPlakette(p)}</td>
     <td><div style="display:flex;align-items:center;gap:5px"><div class="color-dot" style="background:${escHex(p.color_hex, 'var(--s300)')}"></div>${esc(colorName(p.color_name))}</div></td>
     <td>${esc(catLabel(p.category_name))}</td>
     <td><span style="font-family:var(--mono);font-weight:600;color:var(--b700)">${(p.total_quantity||0).toLocaleString(locale())}</span></td>

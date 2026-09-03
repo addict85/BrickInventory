@@ -10,6 +10,7 @@ import { resolveImageLocal, proxyImageUrl } from '../../utils/images';
 import { getSetting, getGlobalSetting } from '../../utils/settings';
 import { findSetInScope, normalizeSetNumber } from '../../utils/setAdd';
 import { scopeIds, parseScopeMode, writableIds } from '../../utils/household';
+import { istErsatzteil, ersatzteilSql } from '../../utils/validate';
 import { householdMembers, resolveWriteTarget } from '../../utils/household';
 import { moveSetBetweenAccounts } from '../../utils/setMove';
 import { istVermutung } from '../../utils/barcodeQuelle';
@@ -307,7 +308,12 @@ router.get('/sets/:setNumber/parts-list', requireToken, async (req: AuthedReques
          LEFT JOIN rb_colors     c ON c.id       = ip.color_id
          LEFT JOIN rb_bl_mapping m ON m.part_num = ip.part_num
          WHERE ip.inventory_id = $1
-           AND (ip.is_spare IS NULL OR ip.is_spare IN ('f','false','False','0',''))`,
+           -- „Kein Ersatzteil" als Kehrseite derselben Lesart wie
+           -- istErsatzteil() in utils/validate.ts. Vorher stand hier eine
+           -- eigene Liste ('f','false','False','0',''), die z. B. 'no' oder
+           -- ein grossgeschriebenes 'T' anders eingeordnet haette als der
+           -- Rest des Baums.
+           AND (ip.is_spare IS NULL OR NOT ${ersatzteilSql('ip.is_spare')})`,
         [inv.id]
       );
     }
@@ -327,7 +333,9 @@ router.get('/sets/:setNumber/parts-list', requireToken, async (req: AuthedReques
           color_hex:      r.color.rgb  || null,
           rb_image_url:   r.part.part_img_url || null,
           total_quantity: r.quantity,
-          is_spare:       r.is_spare ? 't' : 'f'
+          // Wahrheitswert statt 't'/'f' — die dritte Darstellung desselben
+          // Merkmals in derselben Datei.
+          is_spare:       !!r.is_spare
         }));
       }
     }
@@ -386,9 +394,10 @@ router.get('/sets/:setNumber/parts-list', requireToken, async (req: AuthedReques
           color_hex:      cat.color_hex   || p.color_hex   || null,
           image_url:      imageUrl,
           total_quantity: qty,
-          is_spare: (p.is_spare === true || p.is_spare === 1 ||
-                     p.is_spare === 't' || p.is_spare === 'true' ||
-                     p.is_spare === 'True') ? '1' : '0'
+          // Ein echter Wahrheitswert ueber den gemeinsamen Helfer. Hier stand
+          // eine eigene Aufzaehlung der Schreibweisen — eine, die 'True'
+          // kannte, waehrend die Teileliste daneben es nicht tat.
+          is_spare: istErsatzteil(p.is_spare)
         });
       }
     }

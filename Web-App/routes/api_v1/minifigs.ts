@@ -7,6 +7,7 @@ import { scopeIds, parseScopeMode, resolveWriteTarget } from '../../utils/househ
 import { getManualMinifigs, getMinifigStats, getMinifigs } from '../../utils/handlers/minifigs';
 import { addManualFig, updateManualFig } from '../minifigs';
 import { getSetting } from '../../utils/settings';
+import { ersatzteilSql } from '../../utils/validate';
 import { getMinifigPriceHistory } from '../../utils/priceHistory';
 import { einzelwert } from '../../utils/validate';
 const router = express.Router();
@@ -116,7 +117,10 @@ router.get('/minifigs/:figNumber/parts', requireToken, async (req: AuthedRequest
               COALESCE(m.bl_part_num, ip.part_num) AS bl_part_number,
               p.name AS part_name, ip.color_id,
               c.name AS color_name, c.rgb AS color_hex,
-              CASE WHEN ip.is_spare='t' THEN 1 ELSE 0 END AS is_spare,
+              -- Dieselbe Lesart wie istErsatzteil() in utils/validate.ts.
+              -- Vorher nur 't' — ein '1' oder 'true' aus dem Katalog galt hier
+              -- als KEIN Ersatzteil, drei Dateien weiter aber als eines.
+              ${ersatzteilSql('ip.is_spare')} AS is_spare,
               ip.quantity
        FROM rb_inventory_parts ip
        LEFT JOIN rb_parts  p ON p.part_num = ip.part_num

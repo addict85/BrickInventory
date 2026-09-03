@@ -291,6 +291,7 @@
 
     <!-- Nachtrag i18n-Pass: zuvor hartkodierte Strings -->
     <string name="parts_search_placeholder">Teile suchen…</string>
+    <string name="parts_spare_tag">Ersatzteil</string>
     <string name="parts_filter_all">Alle Teile</string>
     <string name="view_cards">Karten</string>
     <string name="view_table">Tabelle</string>
