@@ -292,19 +292,79 @@ test('der CI-Workflow prüft, was er prüfen soll', () => {
   //    `npm install` gehört dazu: nur ersteres scheitert, wenn package.json
   //    und Lockfile auseinanderlaufen.
   //
-  //    Auf `run:` festgemacht und nicht bloss auf den Befehlsnamen: Die
-  //    Begründungen im Workflow nennen `npm ci` und `npm install` im Fliesstext.
-  //    Ein Muster ohne `run:` wäre allein durch die Kommentare erfüllt gewesen —
-  //    ein Test, der sich an der Erklärung statt an der Sache festhält.
+  //    Gesucht wird im Workflow OHNE seine Kommentarzeilen. Der frühere Anker
+  //    war `run:\s*npm test` — direkt hinter dem Schlüsselwort. Er sollte
+  //    verhindern, dass die Begründungen im Fliesstext („npm ci statt npm
+  //    install") die Prüfung von selbst erfüllen. Er hat aber auch etwas
+  //    anderes festgeschrieben: dass der Befehl in DERSELBEN Zeile steht.
+  //
+  //    Sobald der Testschritt ein mehrzeiliger Block wurde (`set -o pipefail`
+  //    davor, `| tee` dahinter, damit ein roter Lauf lesbar bleibt), fand der
+  //    Anker nichts mehr und meldete „ohne Tests ist der ganze Lauf sinnlos" —
+  //    obwohl die Tests laufen. Kommentare wegzuschneiden erreicht dasselbe
+  //    Ziel, ohne die FORM des Schrittes vorzuschreiben.
+  const code = yml.split('\n').filter(z => !z.trimStart().startsWith('#')).join('\n');
   for (const [muster, warum] of [
-    [/run:\s*npm ci\b/,          'npm install würde ein abweichendes Lockfile stillschweigend hinnehmen'],
-    [/run:\s*npx tsc --noEmit/,  'ohne Typprüfung sagt der Lauf nichts über strictNullChecks'],
-    [/run:\s*npm run build/,     'ohne frischen Build prüft CI womöglich ein altes dist/'],
-    [/run:\s*npm test\b/,        'ohne Tests ist der ganze Lauf sinnlos'],
-    [/run:\s*npm run typecheck:strict/, 'die gestaffelte noImplicitAny-Prüfung fehlt'],
+    [/\bnpm ci\b/,          'npm install würde ein abweichendes Lockfile stillschweigend hinnehmen'],
+    [/\bnpx tsc --noEmit/,  'ohne Typprüfung sagt der Lauf nichts über strictNullChecks'],
+    [/\bnpm run build\b/,   'ohne frischen Build prüft CI womöglich ein altes dist/'],
+    [/\bnpm test\b/,        'ohne Tests ist der ganze Lauf sinnlos'],
+    [/\bnpm run typecheck:strict/, 'die gestaffelte noImplicitAny-Prüfung fehlt'],
   ]) {
-    assert.match(yml, muster, `CI-Workflow: ${warum}`);
+    assert.match(code, muster, `CI-Workflow: ${warum}`);
   }
+  // Gegenprobe zur Kommentar-Regel: `npm install` steht NUR im Fliesstext der
+  // Begründung. Bliebe es nach dem Wegschneiden übrig, schnitte die Funktion
+  // nichts weg — und alles darüber wäre wertlos.
+  assert.doesNotMatch(code, /\bnpm install\b/,
+    'npm install steht im ausführbaren Teil des Workflows — oder die ' +
+    'Kommentarzeilen werden nicht mehr weggeschnitten.');
+});
+
+test('eine Pipe im Workflow verliert den Fehlschlag nicht', () => {
+  // ── Gemessen, nicht vermutet ──────────────────────────────────────────────
+  //
+  //     bash -c 'set -e;               (echo x; exit 1) | tee /dev/null' -> 0
+  //     bash -c 'set -e -o pipefail;   (echo x; exit 1) | tee /dev/null' -> 1
+  //
+  // In einer Kette ist der Rückgabewert der des LETZTEN Gliedes. `npm test |
+  // tee protokoll` meldet also immer Erfolg, egal wie viele Tests rot sind.
+  // GitHub startet `run:`-Blöcke mit `bash -e`, aber OHNE pipefail.
+  //
+  // Der Testschritt benutzt genau diese Kette, damit ein roter Lauf lesbar
+  // bleibt (das Container-Protokoll überdeckt am Ende die `not ok`-Zeilen).
+  // Ohne die eine Zeile davor wäre der Preis dafür ein Workflow, der bei
+  // gescheiterten Tests grün ist — schlimmer als gar keiner.
+  //
+  // ── Wonach genau gesucht wird ─────────────────────────────────────────────
+  //
+  // Nicht nach JEDER Pipe. Der erste Entwurf tat das und meldete sofort einen
+  // Fehlalarm: `[ "$X" = "true" ] || fehlt=…` ist ein logisches ODER, und
+  // `--jq '.assets[] | select(…)'` ist ein Rohr INNERHALB von jq. Beide sind
+  // harmlos, beide enthalten ein `|`.
+  //
+  // Gefährlich ist die Kette, deren LETZTES Glied nur durchreicht: tee, head,
+  // tail, cat. Dort will man den Rückgabewert von LINKS, bekommt aber den von
+  // rechts — und der ist bei einem Durchreicher fast immer 0. Bei allen
+  // anderen Ketten ist das letzte Glied das, worauf es ankommt.
+  const DURCHREICHER = /\|\s*(tee|head|tail|cat)\b/;
+  const wf = path.join(ROOT, '..', '.github', 'workflows');
+  let geprueft = 0;
+  for (const datei of fs.readdirSync(wf).filter(f => /\.ya?ml$/.test(f))) {
+    const roh = fs.readFileSync(path.join(wf, datei), 'utf8');
+    for (const block of roh.split(/^      - /m).slice(1)) {
+      const rumpf = block.split('\n').filter(z => !z.trimStart().startsWith('#')).join('\n');
+      if (!/\brun:/.test(rumpf) || !DURCHREICHER.test(rumpf)) continue;
+      geprueft++;
+      assert.match(rumpf, /set -o pipefail|set -[a-z]*o[a-z]* pipefail/,
+        `${datei}: Ein run-Block leitet in einen Durchreicher (tee/head/tail/cat), ` +
+        'ohne "set -o pipefail". Der Rückgabewert ist dann dessen — ein ' +
+        `Fehlschlag davor geht verloren. Block:\n${rumpf.slice(0, 300)}`);
+    }
+  }
+  // Selbstbeweis: Findet die Suche keinen einzigen solchen Block, prüft die
+  // Schleife nichts und wäre trotzdem grün.
+  assert.ok(geprueft >= 1, 'Kein run-Block mit Durchreicher gefunden — Muster veraltet?');
 });
 
 test('die noImplicitAny-Ausnahmeliste stimmt noch', () => {

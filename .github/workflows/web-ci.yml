@@ -157,8 +157,47 @@ jobs:
       - name: Bauen
         run: npm run build
 
+      # ── Warum das Protokoll umgeleitet wird ─────────────────────────────────
+      #
+      # Ein roter Lauf muss LESBAR sein. GitHub haengt am Ende jedes Jobs das
+      # Protokoll der Dienst-Container an — hier mehrere hundert Zeilen
+      # PostgreSQL. Genau darunter liegen die `not ok`-Zeilen, und das rohe
+      # Protokoll laesst sich nicht ohne weiteres herunterladen (der Ablageort
+      # liegt hinter einer Weiterleitung).
+      #
+      # Nachgemessen an Lauf 33794579113: Die letzten 210 Zeilen waren
+      # ausschliesslich Container-Protokoll. Wer wissen will, WAS rot war,
+      # findet es nicht.
+      #
+      # `set -o pipefail` ist dabei nicht Kosmetik: Ohne diese Zeile ist der
+      # Rueckgabewert der von `tee`, also immer 0 — der Schritt waere bei
+      # gescheiterten Tests GRUEN. Genau die Sorte stiller Fehlschlag, gegen
+      # die dieser ganze Workflow gebaut ist.
       - name: Tests
-        run: npm test
+        run: |
+          set -o pipefail
+          npm test 2>&1 | tee "$RUNNER_TEMP/test.log"
+
+      - name: Rote Tests auflisten
+        if: failure()
+        run: |
+          set -eu
+          [ -f "$RUNNER_TEMP/test.log" ] || { echo "Kein Testprotokoll — der Lauf ist vorher gescheitert."; exit 0; }
+          {
+            echo "## Rote Tests"
+            echo ""
+            echo '```'
+            grep -E '^not ok' "$RUNNER_TEMP/test.log" || echo "(keine — der Lauf ist an etwas anderem gescheitert)"
+            echo '```'
+            echo ""
+            grep -E '^# (tests|pass|fail)' "$RUNNER_TEMP/test.log" || true
+          } >> "$GITHUB_STEP_SUMMARY"
+          echo "── Rote Tests samt Begruendung ──"
+          # `-m 20` statt `| head`: Eine Kette, deren letztes Glied nur
+          # durchreicht, verschluckt den Rueckgabewert davor. Hier waere das
+          # harmlos — aber die Regel dagegen (test/build-tooling.test.js) soll
+          # ohne Ausnahmeliste auskommen, und grep kann selbst begrenzen.
+          grep -E -m 20 -A 12 '^not ok' "$RUNNER_TEMP/test.log" || true
 
       # npm audit hat einen eigenen Schritt, damit ein neuer Befund nicht in
       # den Testausgaben untergeht. --omit=dev: Was nur beim Bauen läuft, ist
