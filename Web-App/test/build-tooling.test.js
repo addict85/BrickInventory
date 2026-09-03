@@ -256,9 +256,20 @@ test('tsconfig hat strictNullChecks an und tsc läuft sauber durch', { timeout: 
  * Vorgeschichte. Was hier geprüft wird, sind die drei Eigenschaften, ohne die
  * so ein Lauf wertlos wäre — und jede davon ist eine Zeile, die man beim
  * Umbauen des Workflows versehentlich verliert.
+ *
+ * ── Und wo die Datei liegt, war das Wichtigste ─────────────────────────────
+ * Dieser Test zeigte auf `Web-App/.github/workflows/ci.yml` und war grün.
+ * GitHub liest Workflows aber AUSSCHLIESSLICH aus `.github/workflows/` im
+ * Wurzelverzeichnis; in einem Unterordner ist so eine Datei nur Text.
+ * NACHGEMESSEN über die Actions-API: Das Repository kannte drei Workflows,
+ * dieser war keiner davon — er ist nie gelaufen.
+ *
+ * Der Inhalt war also die ganze Zeit bewacht und der Lauf fand nie statt.
+ * Dass eine Prüfung grün ist, sagt eben nur etwas über das, worauf sie zeigt.
+ * Der Ort selbst wird jetzt in workflow-ort.test.js geprüft.
  */
 test('der CI-Workflow prüft, was er prüfen soll', () => {
-  const p = path.join(ROOT, '.github', 'workflows', 'ci.yml');
+  const p = path.join(ROOT, '..', '.github', 'workflows', 'web-ci.yml');
   assert.ok(fs.existsSync(p), 'Es gibt keinen CI-Workflow mehr');
   const yml = fs.readFileSync(p, 'utf8');
 
@@ -335,7 +346,9 @@ test('die noImplicitAny-Ausnahmeliste stimmt noch', () => {
  */
 test('Dockerfile und CI laufen auf derselben, unterstützten Node-Version', () => {
   const docker = read('Dockerfile');
-  const ci     = read('.github/workflows/ci.yml');
+  // Der Workflow liegt im Wurzelverzeichnis des REPOSITORIES, nicht in
+  // Web-App/ — siehe den Absatz im Test darueber.
+  const ci     = read('../.github/workflows/web-ci.yml');
 
   const imBild = [...docker.matchAll(/^FROM node:(\d+)-/gm)].map(m => m[1]);
   assert.ok(imBild.length >= 2,

@@ -19,6 +19,31 @@
 # keine Verbindung bekommen. Das ist lokal richtig und in CI das Schlimmste,
 # was passieren kann: ein grüner Lauf, der die Hälfte gar nicht geprüft hat.
 # Mit REQUIRE_DB=1 wirft eine unerreichbare Datenbank statt zu überspringen.
+#
+# ── Warum diese Datei UMGEZOGEN ist ────────────────────────────────────────
+#
+# Sie lag in `Web-App/.github/workflows/ci.yml`. GitHub liest Workflows
+# AUSSCHLIESSLICH aus `.github/workflows/` im Wurzelverzeichnis des
+# Repositories; in einem Unterordner ist eine solche Datei nichts als Text.
+#
+# NACHGEMESSEN über die Actions-API: Das Repository kannte drei Workflows —
+# android.yml, android-playstore.yml, docker-publish.yml. Dieser hier war
+# keiner davon. Er ist nie gelaufen, kein einziges Mal.
+#
+# Bitter daran: Der Kopf oben beschreibt genau den Fehler, gegen den er gebaut
+# wurde („die zehn Prüfungen darunter liefen monatelang nicht"), und
+# test/build-tooling.test.js bewacht seinen INHALT seither zuverlässig. Eine
+# Regel, ein Wächter — und beide zeigten auf eine Datei, die niemand ausführt.
+# Genau dieselbe Fehlerklasse, nur eine Ebene höher.
+#
+# ── Warum KEIN paths-Filter ────────────────────────────────────────────────
+#
+# Naheliegend wäre `paths: ['Web-App/**']`, wie android.yml es macht. Das wäre
+# falsch: Die Web-Suite prüft ausdrücklich BEIDE Bäume — app-endpunkte.test.js
+# liest die Retrofit-Schnittstelle der App, setnummer-korpus.test.js die
+# Kotlin-Fassung der Setnummer-Regel. Eine Änderung, die nur `Android-App/**`
+# anfasst, kann sie also rot machen. Ein Filter auf Web-App/** würde genau
+# diese Läufe überspringen.
 name: CI
 
 on:
@@ -40,6 +65,13 @@ jobs:
   test:
     runs-on: ubuntu-latest
     timeout-minutes: 20
+
+    # Die Datei lag frueher IN Web-App/ und ging davon aus, dass das das
+    # Wurzelverzeichnis ist. Vom Repositoriums-Wurzelverzeichnis aus muss jeder
+    # Befehl dorthin — sonst findet `npm ci` keine package.json.
+    defaults:
+      run:
+        working-directory: Web-App
 
     services:
       postgres:
@@ -74,7 +106,7 @@ jobs:
       WEB_WORKERS: '1'
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
       # pg_dump/psql für test/backup-restore-db.test.js. Der Postgres-DIENST
       # oben ist ein Container — die Klienten laufen auf dem Runner. Ohne sie
@@ -87,7 +119,10 @@ jobs:
             || (sudo apt-get update -qq && sudo apt-get install -y -qq postgresql-client)
           pg_dump --version
 
-      - uses: actions/setup-node@v4
+      # v4 und v5 nachgesehen statt geraten (dieselbe Methode wie in android.yml):
+      #     actions/setup-node@v4 -> runs.using: node20   (warnt)
+      #     actions/setup-node@v5 -> runs.using: node24    (still)
+      - uses: actions/setup-node@v6
         with:
           # Wie im Dockerfile (node:26-alpine) — geprüft werden soll, was auch
           # ausgeliefert wird. Node 20 stand hier bis Nachtrag 152 und war zu
@@ -96,6 +131,10 @@ jobs:
           # zusammen. Die Begründung für gerade 26 steht im Dockerfile.
           node-version: '26'
           cache: npm
+          # Ohne diesen Pfad sucht setup-node die package-lock.json im
+          # Wurzelverzeichnis — `defaults.run.working-directory` gilt nur fuer
+          # `run:`-Schritte, nicht fuer Actions.
+          cache-dependency-path: Web-App/package-lock.json
 
       # npm ci statt npm install: installiert exakt das Lockfile und scheitert,
       # wenn package.json und package-lock.json auseinanderlaufen.
