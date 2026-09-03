@@ -421,8 +421,13 @@ interface BrickApiService {
         @Body body: Map<String, String>
     ): Response<GenericAdminResponse>
 
-    @GET("api/settings/admin/default-condition")
-    suspend fun getDefaultConditionAdmin(): Response<DefaultConditionResponse>
+    // getDefaultConditionAdmin() stand hier und zeigte auf
+    // api/settings/admin/default-condition. Diese Route ist in Etappe 7
+    // geloescht worden; in routes/settings.ts steht an ihrer Stelle nur noch
+    // ein Kommentar. Aufgerufen hat die Methode niemand — sie sah aber aus wie
+    // ein unterstuetzter Aufruf, und der Naechste haette einen 404 im eigenen
+    // Code gesucht. Der globale Standard-Zustand steht unter
+    // getGlobalDefaultCondition() (api/v1/settings/default-condition).
 
     @GET("api/v1/admin/api-limits")
     suspend fun getApiLimits(): Response<ApiLimitsResponse>
