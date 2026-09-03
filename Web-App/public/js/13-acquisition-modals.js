@@ -305,7 +305,7 @@ export function renderAcquisitionSummary(acqs, sn) {
 }
 
 // ── MANUAL ITEM DETAIL MODAL (Teile + Minifiguren) ─────────────────────────
-let _manItem = null; // { type:'part'|'fig', id:'partNumber|colorId' or 'figNumber', colorId:int }
+let _manItem = null; // { type:'part'|'fig', id, colorId:int, owner:int|undefined }
 
 // Compact acquisition summary for parts/minifigs (uses unit_price, not purchase_price)
 function renderManAcqSummary(acqs, type, id, colorId) {
@@ -348,6 +348,12 @@ export async function openManDetail(type, id, colorId) {
     else                await loadManualParts().catch(() => {});
     item = fromCache();
   }
+  // Besitzer der KARTE merken. Im Haushalt zeigt der manuelle Bereich die
+  // Eintraege aller Konten; ohne diese Angabe schrieb der Server in die Zeile
+  // des Aufrufers. NACHGEMESSEN: Das Hauptkonto setzte auf der Karte des
+  // Kindes die Menge auf 99 — geaendert wurde die eigene (vorher 5|9, nachher
+  // 99|9), und die Antwort sagte „success".
+  _manItem.owner = item?.user_id;
   if (!item) return;
 
   G('man-detail-tit').textContent = item.fig_name || item.part_name || id;
@@ -387,7 +393,7 @@ export async function openManDetail(type, id, colorId) {
   if (type === 'fig') {
     rows.push(detailZeile('BrickLink-Nr.', `
       <input type="text" value="${esc(item.bl_fig_number||'')}" placeholder="z.B. sw0001" style="width:110px;text-align:right;border:1px solid var(--bdr);border-radius:6px;padding:2px 6px"
-        data-blur="saveManualFigBl" data-arg="${esc(id)}" />
+        data-blur="saveManualFigBl" data-arg="${esc(id)}" data-arg2="${item?.user_id||''}" />
     `));
   }
 
@@ -479,12 +485,12 @@ function manQtyChange(delta) {
 async function manQtySave() {
   const inp = G('man-det-qty');
   if (!inp || !_manItem) return;
-  const { type, id, colorId } = _manItem;
+  const { type, id, colorId, owner } = _manItem;
   const qty = parseInt(inp.value)||1;
   if (type === 'fig') {
-    await updateManualFig(id, { quantity: qty });
+    await updateManualFig(id, { quantity: qty }, owner);
   } else {
-    await updateManualPart(id, colorId, { quantity: qty });
+    await updateManualPart(id, colorId, { quantity: qty }, owner);
   }
 
   // Erfassungsliste IMMER neu laden — in beide Richtungen.

@@ -219,7 +219,9 @@ interface BrickApiService {
     suspend fun updatePart(
         @Path("partNumber") partNumber: String,
         @Path("colorId") colorId: Int,
-        @Body request: UpdateManualItemRequest
+        @Body request: UpdateManualItemRequest,
+        // Wessen Karte gemeint war — siehe deletePart.
+        @Query("owner") owner: Int? = null
     ): Response<GenericResponse>
 
     @DELETE("api/v1/parts/{partNumber}/{colorId}")
@@ -234,7 +236,9 @@ interface BrickApiService {
     @PUT("api/v1/minifigs/{figNumber}")
     suspend fun updateMinifig(
         @Path("figNumber") figNumber: String,
-        @Body request: UpdateManualItemRequest
+        @Body request: UpdateManualItemRequest,
+        // Wessen Karte gemeint war — siehe deletePart.
+        @Query("owner") owner: Int? = null
     ): Response<GenericResponse>
 
     @DELETE("api/v1/minifigs/{figNumber}")

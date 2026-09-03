@@ -104,6 +104,28 @@ test('der Papierkorb trifft die geklickte Karte, nicht die eigene', async (t) =>
   assert.equal(c.status, 200, JSON.stringify(c.body));
   assert.deepEqual(await figuren(), [haupt], 'Die Figur des Unterkontos muss weg sein');
 
+  // ── Dasselbe beim ÄNDERN ────────────────────────────────────────────────
+  // NACHGEMESSEN: Das Hauptkonto setzte auf der Karte des Kindes die Menge auf
+  // 99 — geändert wurde die EIGENE Zeile (vorher 5|9, nachher 99|9), und die
+  // Antwort sagte „success". Lesen und Löschen zu prüfen und das Schreiben
+  // auszulassen hiesse, denselben Fehler an der dritten Stelle stehen zu lassen.
+  await db.run(`INSERT INTO parts (user_id,part_number,color_id,part_name,quantity,source)
+                VALUES ($1,'3020',0,'Plate',5,'manual'), ($2,'3020',0,'Plate',9,'manual')`, [haupt, kind]);
+  const mengen = async () => (await db.all(
+    `SELECT user_id, quantity FROM parts WHERE part_number='3020' ORDER BY user_id`))
+    .map(r => `${r.user_id}:${r.quantity}`);
+  const setze = async (pfad, menge) => (await fetch(base + pfad, {
+    method: 'PUT', headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({ quantity: menge }),
+  })).status;
+
+  assert.equal(await setze(`/api/v1/parts/3020/0?owner=${kind}`, 99), 200);
+  assert.deepEqual(await mengen(), [`${haupt}:5`, `${kind}:99`],
+    'Geändert werden muss die Karte des Unterkontos — die eigene bleibt');
+  assert.equal(await setze(`/api/v1/parts/3020/0?owner=${fremd}`, 42), 403,
+    'Ein Konto ausserhalb des Haushalts wird abgelehnt');
+  assert.deepEqual(await mengen(), [`${haupt}:5`, `${kind}:99`], 'und nichts angefasst');
+
   // Ein Konto ausserhalb des Haushalts geht nicht — der Parameter ist eine
   // Angabe der Ansicht, kein Zugriffsweg.
   const d = await ruf(`/api/v1/minifigs/sw0001?owner=${fremd}`, 'DELETE');
@@ -129,8 +151,12 @@ test('beide Bewertungen fuehren den Besitzer mit', async (t) => {
     if (process.env.REQUIRE_DB === '1') assert.fail('Test-DB nicht erreichbar, REQUIRE_DB=1');
     t.skip('keine Test-DB'); return;
   }
-  await db.run('DROP SCHEMA public CASCADE');
-  await db.run('CREATE SCHEMA public');
+  // KEIN zweites DROP SCHEMA: Der erste Test in dieser Datei hat das Schema
+  // schon frisch aufgebaut, und jedes weitere Fallenlassen ist eine Sperre
+  // mehr, die mit dem Verbindungspool einer gerade beendeten Testdatei
+  // zusammentreffen kann. Die Vorlage hier benutzt deshalb eigene Namen (h2,
+  // k2) und eigene Nummern, damit sie sich mit der ersten nicht ins Gehege
+  // kommt. initSchemaOnce() bleibt, damit der Test auch einzeln läuft.
   await db.initSchemaOnce();
 
   await db.run(`INSERT INTO users (username,password_hash) VALUES ('h2','x'),('k2','x')`);

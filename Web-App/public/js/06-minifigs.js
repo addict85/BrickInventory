@@ -307,8 +307,9 @@ function renderManualFigsTable() {
   </div>`;
 }
 
-export async function updateManualFig(figNumber, body) {
-  const d = await api('PUT', `/v1/minifigs/${encodeURIComponent(figNumber)}`, body);
+/** @param {number} [owner] Besitzer der Karte — siehe deleteManualPart. */
+export async function updateManualFig(figNumber, body, owner) {
+  const d = await api('PUT', `/v1/minifigs/${encodeURIComponent(figNumber)}${owner ? `?owner=${encodeURIComponent(owner)}` : ''}`, body);
   if (d.success) { toast(tRaw('settings.saved'),'success'); loadManualFigsTable(); loadMinifigs(); if(document.querySelector('.ntab.active')?.dataset?.tab==='finance') loadFinance(); }
   else toast(d.error||t('settings.error'),'error');
 }
@@ -465,8 +466,9 @@ function renderManualParts() {
   </div>`;
 }
 
-export async function updateManualPart(partNumber, colorId, body) {
-  const d = await api('PUT', `/v1/parts/${encodeURIComponent(partNumber)}/${colorId}`, body);
+/** @param {number} [owner] Besitzer der Karte — siehe deleteManualPart. */
+export async function updateManualPart(partNumber, colorId, body, owner) {
+  const d = await api('PUT', `/v1/parts/${encodeURIComponent(partNumber)}/${colorId}${owner ? `?owner=${encodeURIComponent(owner)}` : ''}`, body);
   if (d.success) { toast(tRaw('settings.saved'),'success'); loadManualParts(); if(document.querySelector('.ntab.active')?.dataset?.tab==='finance') loadFinance(); }
   else toast(d.error||t('settings.error'),'error');
 }

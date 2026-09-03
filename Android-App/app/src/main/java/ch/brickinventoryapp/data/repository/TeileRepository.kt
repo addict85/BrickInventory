@@ -60,8 +60,9 @@ class TeileRepository @Inject constructor(
                          condition: String? = null, ownerUserId: Int? = null): Result<AddPartResponse> =
         safeCall { api.addPart(AddPartRequest(partNumber, colorId, colorName, colorHex, quantity, note, unitPrice, condition, ownerUserId)) }
 
-    suspend fun updatePart(partNumber: String, colorId: Int, quantity: Int, unitPrice: Double?, condition: String? = null): Result<GenericResponse> =
-        safeCall { api.updatePart(partNumber, colorId, UpdateManualItemRequest(quantity, unitPrice, condition = condition)) }
+    /** @param owner Besitzer der Karte; null = eigenes Konto. */
+    suspend fun updatePart(partNumber: String, colorId: Int, quantity: Int, unitPrice: Double?, condition: String? = null, owner: Int? = null): Result<GenericResponse> =
+        safeCall { api.updatePart(partNumber, colorId, UpdateManualItemRequest(quantity, unitPrice, condition = condition), owner) }
 
     /** @param owner Besitzer der Karte; null = eigenes Konto. */
     suspend fun deletePart(partNumber: String, colorId: Int, owner: Int? = null): Result<GenericResponse> =
@@ -72,8 +73,9 @@ class TeileRepository @Inject constructor(
                            ownerUserId: Int? = null): Result<AddMinifigResponse> =
         safeCall { api.addMinifig(AddMinifigRequest(figNumber, blFigNumber, quantity, note, unitPrice, condition, ownerUserId)) }
 
-    suspend fun updateMinifig(figNumber: String, quantity: Int, unitPrice: Double?, blFigNumber: String? = null, condition: String? = null): Result<GenericResponse> =
-        safeCall { api.updateMinifig(figNumber, UpdateManualItemRequest(quantity, unitPrice, blFigNumber, condition)) }
+    /** @param owner Besitzer der Karte; null = eigenes Konto. */
+    suspend fun updateMinifig(figNumber: String, quantity: Int, unitPrice: Double?, blFigNumber: String? = null, condition: String? = null, owner: Int? = null): Result<GenericResponse> =
+        safeCall { api.updateMinifig(figNumber, UpdateManualItemRequest(quantity, unitPrice, blFigNumber, condition), owner) }
 
     /** @param owner Besitzer der Karte; null = eigenes Konto. */
     suspend fun deleteMinifig(figNumber: String, owner: Int? = null): Result<GenericResponse> =

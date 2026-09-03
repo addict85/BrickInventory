@@ -33,7 +33,10 @@ router.post('/minifigs', requireToken, async (req: AuthedRequest, res) => {
 // ── PUT /api/v1/minifigs/:figNumber — edit quantity / Preis/Stk (same logic as web app)
 router.put('/minifigs/:figNumber', requireToken, async (req: AuthedRequest, res) => {
   try {
-    await updateManualFig(req.apiUser.user_id, pfadParam(req, 'figNumber'), req.body);
+    // Wie bei den Teilen: Ohne den Parameter das eigene Konto.
+    const besitzer = await resolveWriteTarget(req.apiUser.user_id, req.query.owner);
+    if (besitzer === null) return res.status(403).json({ success: false, error: 'Kein Zugriff auf dieses Konto' });
+    await updateManualFig(besitzer, pfadParam(req, 'figNumber'), req.body);
     res.json({ success: true });
   } catch (e) { handleRouteError(res, e); }
 });

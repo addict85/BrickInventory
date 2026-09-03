@@ -229,7 +229,11 @@ export function saveJobTime(k) { saveJobSchedule(k, { time: this.value }); }
 export function saveJobMinutes(k) { saveJobSchedule(k, { minutes: this.value }); }
 
 /** War: onblur="updateManualFig('${id}',{bl_fig_number:this.value.trim()||null})" */
-export function saveManualFigBl(id) { updateManualFig(id, { bl_fig_number: this.value.trim() || null }); }
+// owner: Besitzer der Karte. Ohne ihn schriebe der Server in die Zeile des
+// Aufrufers statt in die angezeigte — siehe openManDetail.
+export function saveManualFigBl(id, owner) {
+  updateManualFig(id, { bl_fig_number: this.value.trim() || null }, owner);
+}
 
 /** War: onclick="event.stopPropagation();delSet('${sn}')" — Löschen auf klickbarer Kachel */
 export function delSetStop(sn, ev) { ev?.stopPropagation(); delSet(sn); }

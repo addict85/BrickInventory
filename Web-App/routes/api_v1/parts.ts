@@ -54,7 +54,13 @@ router.post('/parts', requireToken, async (req: AuthedRequest, res) => {
 // ── PUT /api/v1/parts/:partNumber/:colorId — edit quantity / Preis/Stk (same logic as web app)
 router.put('/parts/:partNumber/:colorId', requireToken, async (req: AuthedRequest, res) => {
   try {
-    await updateManualPart(req.apiUser.user_id, String(req.params.partNumber), parseInt(String(req.params.colorId)), req.body);
+    // Wie beim Loeschen: Die Ansicht sagt, wessen Karte gemeint ist.
+    // NACHGEMESSEN — das Hauptkonto setzte auf der Karte des Kindes die Menge
+    // auf 99, und geaendert wurde die EIGENE Zeile: vorher 5|9, nachher 99|9,
+    // Antwort 200 {"success":true}.
+    const besitzer = await resolveWriteTarget(req.apiUser.user_id, req.query.owner);
+    if (besitzer === null) return res.status(403).json({ success: false, error: 'Kein Zugriff auf dieses Konto' });
+    await updateManualPart(besitzer, String(req.params.partNumber), parseInt(String(req.params.colorId)), req.body);
     res.json({ success: true });
   } catch (e) { handleRouteError(res, e); }
 });

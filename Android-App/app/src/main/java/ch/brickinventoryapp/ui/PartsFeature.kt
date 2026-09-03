@@ -167,9 +167,10 @@ internal fun MainViewModel.addMinifig(figNumber: String, blFigNumber: String? = 
     }
 }
 
-internal fun MainViewModel.updatePart(partNumber: String, colorId: Int, quantity: Int, unitPrice: Double?, condition: String? = null) {
+/** @param owner Besitzer der Karte — siehe [deletePart]. */
+internal fun MainViewModel.updatePart(partNumber: String, colorId: Int, quantity: Int, unitPrice: Double?, condition: String? = null, owner: Int? = null) {
     viewModelScope.launch {
-        when (val r = repo.teile.updatePart(partNumber, colorId, quantity, unitPrice, condition)) {
+        when (val r = repo.teile.updatePart(partNumber, colorId, quantity, unitPrice, condition, owner)) {
             is Result.Success -> {
                 if (r.data.success) {
                     _snackbar.value = text(R.string.vm_saved)
@@ -208,9 +209,10 @@ internal fun MainViewModel.deletePart(partNumber: String, colorId: Int, owner: I
     }
 }
 
-internal fun MainViewModel.updateMinifig(figNumber: String, quantity: Int, unitPrice: Double?, blFigNumber: String? = null, condition: String? = null) {
+/** @param owner Besitzer der Karte — siehe [deletePart]. */
+internal fun MainViewModel.updateMinifig(figNumber: String, quantity: Int, unitPrice: Double?, blFigNumber: String? = null, condition: String? = null, owner: Int? = null) {
     viewModelScope.launch {
-        when (val r = repo.teile.updateMinifig(figNumber, quantity, unitPrice, blFigNumber, condition)) {
+        when (val r = repo.teile.updateMinifig(figNumber, quantity, unitPrice, blFigNumber, condition, owner)) {
             is Result.Success -> {
                 if (r.data.success) {
                     _snackbar.value = text(R.string.vm_saved)
