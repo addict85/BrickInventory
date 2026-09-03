@@ -2,7 +2,7 @@ import { ladeAnzeige } from './01-bausteine.js';
 import { registerActions } from './00-registry.js';
 import { locale, t, tRaw} from '../i18n.js';
 import { CURRENCY, G, ME, TRASH_ICON_SVG, _gibSse, _gibTimer, _monitorTimer, api, esc, escJs, escUrl, fmtBig, fmtN, gibStart, imgUrl, loadMonitor, observeLazyImages, thumbUrl, toast, set_monitorTimer } from './01-core.js';
-import { SCOPE_VIEWS, addScopeParam, scopeMode, setScopeMode } from './14-scope.js';
+import { SCOPE_VIEWS, addScopeParam, scopeMode, scopeQuery, setScopeMode } from './14-scope.js';
 import { setScrollLabel } from './15-scrollbar.js';
 import { loadParts } from './03-parts.js';
 import { loadFinance } from './04-finance.js';
@@ -84,7 +84,17 @@ export function bindTabs(){
 
 // ── STATS ─────────────────────────────────────────────
 export async function loadStats(){
-  const d = await api('GET', '/v1/stats');
+  // Mit Kontofilter. Hier stand `api('GET', '/v1/stats')` ohne ihn — und das
+  // war nachweislich nicht so gemeint: onScopeChange('gallery') ruft
+  // ausgerechnet loadStats() gleich nach loadGallery() auf. Etwas neu zu laden,
+  // das sich nicht ändern kann, ergibt nur einen Sinn, wenn es sich ändern
+  // SOLLTE.
+  //
+  // Die Wirkung: Wer auf „nur meine" stellte, sah darunter eine gefilterte
+  // Liste und darüber weiter die Zahlen des ganzen Haushalts. Am Telefon
+  // stimmten beide — die App schickt accounts an /v1/stats seit jeher
+  // (BrickApiService.getStats).
+  const d = await api('GET', '/v1/stats' + scopeQuery('gallery'));
   if (d.success) {
     G('hs-sets').textContent     = d.stats.total_sets;
     G('hs-parts').textContent    = fmtBig(d.stats.total_parts    || 0);
