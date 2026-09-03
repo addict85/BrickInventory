@@ -122,15 +122,6 @@ const OHNE_AUFRUFER = new Map([
   ['POST /api/v1/admin/forget-image-misses',
     'Wartungsgriff, von Hand gerufen: nimmt gemerkte Bild-Fehlanzeigen zurück, ' +
     'damit der Nachlauf es erneut versucht.'],
-  ['GET /api/v1/admin/users',
-    'Nutzerverwaltung auf der Token-Oberfläche. Die Webapp benutzt ' +
-    '/api/auth/users, die App hat keine Nutzerverwaltung — also ruft sie ' +
-    'derzeit niemand.'],
-  ['PUT /api/v1/admin/users/:id/role',
-    'Gegenstück dazu. Achtung: Die Webapp schaltet Administratorrechte über ' +
-    'PUT /api/auth/users/:id/admin mit dem Feld is_admin, diese Route über ' +
-    'role. Zwei Schreibweisen für dieselbe Umschaltung — wer sie eines Tages ' +
-    'benutzt, prüft zuerst, ob beide dasselbe tun.'],
   ['GET /api/v1/catalog/bricklink',
     'Gebündelte Abfrage der BrickLink-Nummern aus dem lokalen Katalog-Cache. ' +
     'Gegen BrickLink selbst geht das nicht (deren API kennt nur einzelne ' +

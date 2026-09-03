@@ -168,8 +168,6 @@ const C = {
   'GET /api/v1/admin/jobs': 'nur-v1',
   'POST /api/v1/admin/job-schedule': 'nur-v1',
   'GET /api/v1/admin/logs': 'nur-v1',
-  'GET /api/v1/admin/users': 'nur-v1',
-  'PUT /api/v1/admin/users/:id/role': 'nur-v1',
   // Preisverlauf manueller Teile und Minifiguren. Webapp-seitig; die
   // Android-App zeichnet dort (noch) kein Diagramm — deshalb kein v1-Gegenstück.
   // Seit hardened-96 gibt es beide auch für die Android-App — der

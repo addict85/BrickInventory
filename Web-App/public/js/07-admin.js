@@ -85,18 +85,59 @@ export async function enrichGalleryWithPrices(){
   // Wechsel des Kontofilters. Etwas neu zu laden, das sich dadurch nicht
   // aendern kann, ergibt nur einen Sinn, wenn es sich aendern sollte.
   //
-  // OFFEN und bewusst nicht hier entschieden: /finance/pnl liefert EINE ZEILE
-  // JE BESITZER, die Galerie zeigt im Haushalt aber eine Kachel je Setnummer.
-  // Besitzen zwei Konten dasselbe Set, gewinnt in `_pnlCache` die zuletzt
-  // gelesene Zeile — die Kachel nennt dann den Kaufpreis EINES Kontos statt
-  // des Haushaltswerts. Mit dem Filter oben trifft das nur noch die Ansicht
-  // „alle Konten"; was die Kachel dort zeigen soll, ist eine Entscheidung
-  // ueber die Darstellung und keine Fehlerbehebung.
   const pnl = await api('GET','/v1/finance/pnl' + scopeQuery('gallery'));
   if(!pnl.success) return;
   set_pnlCache({});
+  // ── Mehrere Zeilen, EINE Kachel ─────────────────────────────────────────
+  //
+  // /finance/pnl liefert eine Zeile JE BESITZER (die Finanztabelle zeigt sie
+  // so, mit Besitzer-Plakette). Die Galerie fasst im Haushalt dieselbe
+  // Setnummer zu EINER Kachel zusammen. Hier stand nur
+  // `_pnlCache[s.set_number] = …` — die zuletzt gelesene Zeile gewann.
+  //
+  // NACHGEMESSEN, und der Fall ist enger als er aussieht: Sind Kaufpreise
+  // ERFASST (der Normalfall), rechnet der Server den mengengewichteten Wert
+  // schon je Zeile aus — zwei Konten mit 600 und 100 ergaben in BEIDEN Zeilen
+  // 350, „letzte gewinnt" traf also zufaellig das Richtige.
+  //
+  // Fehlen die Erfassungen und steht nur noch sets.purchase_price (Altdaten,
+  // oder alle Kaufpreise eines Sets wieder entfernt), fallen die Zeilen
+  // auseinander: 100 mit 750 % und 600 mit 41,7 %, und die Kachel nahm eine
+  // davon.
+  //
+  // Gewichtet nach Menge ergibt in BEIDEN Faellen dasselbe: 350 und 142,9 %.
+  // Gerechnet wird ueber `baseline_price` — das ist der Kaufpreis, wenn er
+  // bekannt ist, und sonst der erste beobachtete Marktpreis (financeCalc.ts).
+  // Nur so bleibt der Rueckfall erhalten, den `baseline_pnl_pct` mitbringt.
+  const jeSet = new Map();
   for(const s of pnl.sets){
-    _pnlCache[s.set_number] = { price: s.current_price, pnl_pct: s.baseline_pnl_pct || s.pnl_pct };
+    if(!jeSet.has(s.set_number)) jeSet.set(s.set_number, []);
+    jeSet.get(s.set_number).push(s);
+  }
+  for(const [nr, zeilen] of jeSet){
+    // Eine Zeile: den Wert des Servers unveraendert nehmen. Alles andere waere
+    // dieselbe Rechnung ein zweites Mal, mit der Chance abzuweichen.
+    if(zeilen.length === 1){
+      const s = zeilen[0];
+      _pnlCache[nr] = { price: s.current_price, pnl_pct: s.baseline_pnl_pct || s.pnl_pct };
+      continue;
+    }
+    let summe = 0, menge = 0;
+    for(const s of zeilen){
+      const m = parseInt(s.quantity) || 1;
+      const b = s.baseline_price == null ? null : parseFloat(s.baseline_price);
+      if(b != null){ summe += b * m; menge += m; }
+    }
+    const markt = parseFloat(zeilen[0].current_price) || 0;
+    const basis = menge > 0 ? summe / menge : null;
+    // Math.max(basis, 0.01) wie PNL_EPS auf dem Server (utils/setValue.ts) —
+    // ohne das ergibt ein Kaufpreis von 0 eine Division durch null.
+    _pnlCache[nr] = {
+      price: zeilen[0].current_price,
+      pnl_pct: (basis != null && markt > 0)
+        ? ((markt - basis) / Math.max(basis, 0.01) * 100).toFixed(1)
+        : null,
+    };
   }
   // Inject price data into cached sets
   setAllSets(allSets.map(s => ({

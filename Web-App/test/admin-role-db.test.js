@@ -16,10 +16,16 @@
  * Selbstschutz („eigene Admin-Rolle kann nicht entfernt werden") hing an
  * derselben Prüfung und lief mit "false" ebenfalls ins Leere.
  *
- * Wieder das bekannte Muster „dieselbe Lücke an ZWEI Wegen": Webapp
+ * Es war das bekannte Muster „dieselbe Lücke an ZWEI Wegen": Webapp
  * (PUT /api/auth/users/:id/admin) und Android-API
- * (PUT /api/v1/admin/users/:id/role) hatten beide denselben Fehler, deshalb
- * prüft dieser Test auch beide.
+ * (PUT /api/v1/admin/users/:id/role) hatten beide denselben Fehler.
+ *
+ * Den zweiten Weg gibt es nicht mehr. Er hatte nie einen Aufrufer —
+ * nachgemessen über den Browser-Code und die Retrofit-Anmerkungen
+ * (test/api-aufrufer.test.js) —, schaltete dieselbe Rolle aber unter einem
+ * anderen Feldnamen (`role` statt `is_admin`) mit eigener Prüfung. Bei Rechten
+ * ist das die Sorte Doppelung, bei der irgendwann eine Seite großzügiger ist
+ * als die andere. Geprüft wird deshalb jetzt der eine Weg, den es gibt.
  *
  * Gegenprobe (durchgeführt): strictBool() in einem der beiden Endpunkte wieder
  * durch `is_admin ? 1 : 0` ersetzt → der zugehörige Teilschritt wird rot.
@@ -39,7 +45,7 @@ const { testServer } = require('./helpers/server');
 const db = _req('db/database.js');
 const express = require(path.join(ROOT, 'node_modules', 'express'));
 
-test('Adminrechte lassen sich auch mit "false" als Text entziehen — an beiden Wegen',
+test('Adminrechte lassen sich auch mit "false" als Text entziehen',
   { concurrency: 1 }, async (t) => {
 
   try { await db.initSchema(); }
@@ -76,10 +82,10 @@ test('Adminrechte lassen sich auch mit "false" als Text entziehen — an beiden 
   };
 
   const WEB = `${base}/api/auth/users/${zielId}/admin`;
-  const V1  = `${base}/api/v1/admin/users/${zielId}/role`;
 
   try {
-    for (const [name, url] of [['Webapp', WEB], ['Android-API', V1]]) {
+    {
+      const name = 'Webapp', url = WEB;
       // Der eigentliche Fund: "false" als Zeichenkette MUSS entziehen.
       let e = await entziehe(url, 'PUT', 'false');
       assert.equal(e.status, 200, `${name}: "false" sollte angenommen werden`);
@@ -101,8 +107,10 @@ test('Adminrechte lassen sich auch mit "false" als Text entziehen — an beiden 
       assert.equal(e.adminDanach, 1, `${name}: bei 400 darf sich nichts geändert haben`);
     }
 
-    // Der Selbstschutz muss auch mit "false" als Text greifen.
-    const r = await fetch(`${base}/api/v1/admin/users/${adminId}/role`, {
+    // Der Selbstschutz muss auch mit "false" als Text greifen. Stand vorher
+    // auf der v1-Route; die Regel selbst ist unverändert und steht in
+    // routes/auth.ts.
+    const r = await fetch(`${base}/api/auth/users/${adminId}/admin`, {
       method: 'PUT', headers: { 'content-type': 'application/json' },
       body: JSON.stringify({ is_admin: 'false' }),
     });

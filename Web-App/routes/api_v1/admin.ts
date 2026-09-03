@@ -8,7 +8,6 @@ import {  DATA_DIR } from '../../utils/appPaths';
 import * as db from '../../db/database';
 import { handleRouteError, meldeUndWeiter } from '../../utils/httpError';
 import { requireApiAdmin } from './middleware';
-import { strictBool } from '../../utils/validate';
 import { PDF_JOB_DIR } from './pdf';
 import { getLimitForApi, getRateLimitStatus } from '../../utils/financeCalc';
 import { scrapeInstructionsFromFallback } from '../../utils/instructions';
@@ -489,34 +488,20 @@ router.post('/admin/redownload-missing-images', requireApiAdmin, async (_req: Au
   } catch (e) { handleRouteError(res, e); }
 });
 
-// ── GET /api/v1/admin/users — list all users ──────────────────────────────────
-router.get('/admin/users', requireApiAdmin, async (_req: AuthedRequest, res) => {
-  try {
-    const users = await db.all(
-      `SELECT id, username, email, is_admin, is_active, created_at FROM users ORDER BY username ASC`
-    );
-    res.json({ success: true, users });
-  } catch (e) { handleRouteError(res, e); }
-});
-
-// ── PUT /api/v1/admin/users/:id/role — toggle admin role ─────────────────────
-router.put('/admin/users/:id/role', requireApiAdmin, async (req: AuthedRequest, res) => {
-  const { is_admin } = req.body;
-  if (is_admin === undefined) return res.status(400).json({ success: false, error: 'is_admin erforderlich' });
-  try {
-    // strictBool statt `is_admin ? 1 : 0`: Die Zeichenkette "false" ist in
-    // JavaScript WAHR — der Endpunkt meldete dann Erfolg, ohne die Rechte zu
-    // entziehen (siehe utils/validate.ts). Auch der Selbstschutz unten hing an
-    // derselben Prüfung und lief deshalb ins Leere.
-    const soll = strictBool(is_admin, 'is_admin');
-    if (parseInt(String(req.params.id)) === req.apiUser.user_id && !soll)
-      return res.status(400).json({ success: false, error: 'Eigene Admin-Rolle kann nicht entfernt werden' });
-    const r = await db.run(`UPDATE users SET is_admin = $1 WHERE id = $2`, [soll ? 1 : 0, req.params.id]);
-    // Ohne diese Prüfung meldete auch eine unbekannte Benutzer-ID Erfolg.
-    if (r.changes === 0) return res.status(404).json({ success: false, error: 'Benutzer nicht gefunden' });
-    res.json({ success: true });
-  } catch (e) { handleRouteError(res, e); }
-});
+// ── Nutzerverwaltung: NUR unter /api/auth/users ───────────────────────────────
+//
+// Hier standen GET /api/v1/admin/users und PUT /api/v1/admin/users/:id/role.
+// Beide hat kein Client gerufen — nachgemessen ueber den Browser-Code und die
+// Retrofit-Anmerkungen der App (test/api-aufrufer.test.js). Die Webapp
+// verwaltet Konten ueber /api/auth/users, die App hat keine Nutzerverwaltung.
+//
+// Schwerer als das Totliegen wog die Doppelung: Adminrechte liessen sich hier
+// mit dem Feld `is_admin` und dort mit `role` umschalten — zwei Schreibweisen
+// fuer dieselbe Umschaltung, jede mit eigener Pruefung. Bei Rechten ist genau
+// das die Sorte Doppelung, bei der irgendwann eine Seite grosszuegiger ist.
+//
+// Der Selbstschutz („eigene Admin-Rolle kann nicht entfernt werden") und die
+// strictBool-Pruefung stehen weiter in routes/auth.ts, PUT /users/:id/admin.
 
 // ── GET /api/v1/admin/logs?minutes=15 — return recent log entries ─────────────
 router.get('/admin/logs', requireApiAdmin, async (req: AuthedRequest, res) => {
