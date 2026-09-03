@@ -225,7 +225,10 @@ interface BrickApiService {
     @DELETE("api/v1/parts/{partNumber}/{colorId}")
     suspend fun deletePart(
         @Path("partNumber") partNumber: String,
-        @Path("colorId") colorId: Int
+        @Path("colorId") colorId: Int,
+        // Wessen Karte gemeint war. null = eigenes Konto (Verhalten wie
+        // bisher); ob ein fremdes erlaubt ist, entscheidet der Server.
+        @Query("owner") owner: Int? = null
     ): Response<GenericResponse>
 
     @PUT("api/v1/minifigs/{figNumber}")
@@ -236,7 +239,9 @@ interface BrickApiService {
 
     @DELETE("api/v1/minifigs/{figNumber}")
     suspend fun deleteMinifig(
-        @Path("figNumber") figNumber: String
+        @Path("figNumber") figNumber: String,
+        // Wie bei deletePart: null = eigenes Konto.
+        @Query("owner") owner: Int? = null
     ): Response<GenericResponse>
 
     @GET("api/v1/finance/parts-valuation")

@@ -67,7 +67,10 @@ fun MinifigsScreen(
 
     val onRefresh: () -> Unit = { vm.loadMinifigs(); vm.loadValuation() }
     val onScopeChange: (String) -> Unit = { vm.setScope(ch.brickinventoryapp.data.ScopeFilter.View.MINIFIGS, it) }
-    val onDeleteFig: (String) -> Unit = { figNumber -> vm.deleteMinifig(figNumber) }
+    // Besitzer der Karte mitgeben: Im Haushalt stehen hier die Eintraege aller
+    // Konten. Ohne die Angabe loescht der Server die Zeile des Aufrufers —
+    // geklickt waere die fremde Karte, weg die eigene.
+    val onDeleteFig: (String, Int?) -> Unit = { figNumber, owner -> vm.deleteMinifig(figNumber, owner) }
     val onAddMinifig: (String, String?, Int, String?, Double?, String?, Int?) -> Unit =
         { num, blNum, qty, note, unitPrice, cond, owner ->
             vm.addMinifig(num, blNum, qty, note, unitPrice, cond, owner)
@@ -220,7 +223,7 @@ fun MinifigsScreen(
             title = { Text(stringResource(R.string.minifigs_delete_title)) },
             text = { Text(stringResource(R.string.minifigs_delete_text, fig.figName ?: fig.figNumber)) },
             confirmButton = {
-                TextButton(onClick = { onDeleteFig(fig.figNumber); deletingFig = null }) {
+                TextButton(onClick = { onDeleteFig(fig.figNumber, fig.userId); deletingFig = null }) {
                     Text(stringResource(R.string.minifigs_delete), color = MaterialTheme.colorScheme.error)
                 }
             },

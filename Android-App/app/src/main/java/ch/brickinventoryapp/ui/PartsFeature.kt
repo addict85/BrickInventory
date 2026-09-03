@@ -189,9 +189,16 @@ internal fun MainViewModel.updatePart(partNumber: String, colorId: Int, quantity
     }
 }
 
-internal fun MainViewModel.deletePart(partNumber: String, colorId: Int) {
+/**
+ * Manuelles Teil loeschen.
+ *
+ * @param owner Besitzer der KARTE. Im Haushalt zeigt der manuelle Bereich die
+ *   Eintraege aller Konten; ohne diese Angabe loescht der Server die Zeile des
+ *   Aufrufers — geklickt waere die fremde Karte, weg die eigene.
+ */
+internal fun MainViewModel.deletePart(partNumber: String, colorId: Int, owner: Int? = null) {
     viewModelScope.launch {
-        when (val r = repo.teile.deletePart(partNumber, colorId)) {
+        when (val r = repo.teile.deletePart(partNumber, colorId, owner)) {
             is Result.Success -> {
                 if (r.data.success) { _snackbar.value = text(R.string.vm_part_deleted); reloadItemList("part") }
                 else _snackbar.value = r.data.error ?: text(R.string.err_unknown)
@@ -223,9 +230,10 @@ internal fun MainViewModel.updateMinifig(figNumber: String, quantity: Int, unitP
     }
 }
 
-internal fun MainViewModel.deleteMinifig(figNumber: String) {
+/** @param owner Besitzer der Karte — siehe [deletePart]. */
+internal fun MainViewModel.deleteMinifig(figNumber: String, owner: Int? = null) {
     viewModelScope.launch {
-        when (val r = repo.teile.deleteMinifig(figNumber)) {
+        when (val r = repo.teile.deleteMinifig(figNumber, owner)) {
             is Result.Success -> {
                 if (r.data.success) { _snackbar.value = text(R.string.vm_minifig_deleted); reloadItemList("fig") }
                 else _snackbar.value = r.data.error ?: text(R.string.err_unknown)

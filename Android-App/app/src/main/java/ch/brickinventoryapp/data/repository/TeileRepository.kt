@@ -63,8 +63,9 @@ class TeileRepository @Inject constructor(
     suspend fun updatePart(partNumber: String, colorId: Int, quantity: Int, unitPrice: Double?, condition: String? = null): Result<GenericResponse> =
         safeCall { api.updatePart(partNumber, colorId, UpdateManualItemRequest(quantity, unitPrice, condition = condition)) }
 
-    suspend fun deletePart(partNumber: String, colorId: Int): Result<GenericResponse> =
-        safeCall { api.deletePart(partNumber, colorId) }
+    /** @param owner Besitzer der Karte; null = eigenes Konto. */
+    suspend fun deletePart(partNumber: String, colorId: Int, owner: Int? = null): Result<GenericResponse> =
+        safeCall { api.deletePart(partNumber, colorId, owner) }
 
     suspend fun addMinifig(figNumber: String, blFigNumber: String? = null, quantity: Int = 1, note: String? = null,
                            unitPrice: Double? = null, condition: String? = null,
@@ -74,8 +75,9 @@ class TeileRepository @Inject constructor(
     suspend fun updateMinifig(figNumber: String, quantity: Int, unitPrice: Double?, blFigNumber: String? = null, condition: String? = null): Result<GenericResponse> =
         safeCall { api.updateMinifig(figNumber, UpdateManualItemRequest(quantity, unitPrice, blFigNumber, condition)) }
 
-    suspend fun deleteMinifig(figNumber: String): Result<GenericResponse> =
-        safeCall { api.deleteMinifig(figNumber) }
+    /** @param owner Besitzer der Karte; null = eigenes Konto. */
+    suspend fun deleteMinifig(figNumber: String, owner: Int? = null): Result<GenericResponse> =
+        safeCall { api.deleteMinifig(figNumber, owner) }
 
     /**
      * Set-Figuren der Uebersicht. `source = "set"` und der Suchtext gehen an den

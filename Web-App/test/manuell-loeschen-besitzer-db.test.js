@@ -27,6 +27,7 @@
  * Voraussetzung: Test-DB über TEST_DATABASE_URL (Inhalt wird geleert!).
  */
 const test = require('node:test');
+const { after } = require('node:test');
 const assert = require('node:assert/strict');
 const path = require('node:path');
 
@@ -41,6 +42,12 @@ async function erreichbar() {
   try { await db.get('SELECT 1'); return true; } catch { return false; }
 }
 
+// EINMAL fuer die Datei, nicht je Test: Ein t.after(() => db.pool.end()) im
+// ersten Test schloss den Pool, bevor der zweite lief — der meldete dann
+// „Test-DB nicht erreichbar" statt zu pruefen. Auf Dateiebene laeuft es nach
+// dem letzten Test, auch wenn eine Zusicherung vorher scheitert.
+after(() => db.pool.end());
+
 test('der Papierkorb trifft die geklickte Karte, nicht die eigene', async (t) => {
   if (!await erreichbar()) {
     if (process.env.REQUIRE_DB === '1') assert.fail('Test-DB nicht erreichbar, REQUIRE_DB=1');
@@ -49,7 +56,6 @@ test('der Papierkorb trifft die geklickte Karte, nicht die eigene', async (t) =>
   await db.run('DROP SCHEMA public CASCADE');
   await db.run('CREATE SCHEMA public');
   await db.initSchemaOnce();
-  t.after(() => db.pool.end());
 
   await db.run(`INSERT INTO users (username,password_hash) VALUES ('haupt','x'),('kind','x'),('fremd','x')`);
   const id = async (n) => (await db.get(`SELECT id FROM users WHERE username=$1`, [n])).id;
@@ -103,4 +109,59 @@ test('der Papierkorb trifft die geklickte Karte, nicht die eigene', async (t) =>
   const d = await ruf(`/api/v1/minifigs/sw0001?owner=${fremd}`, 'DELETE');
   assert.equal(d.status, 403, 'Fremdes Konto muss abgelehnt werden, nicht stillschweigend ignoriert');
   assert.deepEqual(await figuren(), [haupt], 'und nichts anfassen');
+});
+
+/**
+ * Damit eine Ansicht den Besitzer MITGEBEN kann, muss sie ihn erst BEKOMMEN.
+ *
+ * NACHGEMESSEN in einem Haushalt aus zwei Konten: Die Figuren-Bewertung trug
+ * user_id und owners, die Teile-Bewertung weder das eine noch das andere —
+ * computePartsValuation() zählt seine Felder einzeln auf und liess user_id
+ * weg, während die Figuren-Fassung `{ ...fig }` streut. withOwnerNames()
+ * hängt `owners` aber nur an Zeilen MIT user_id an.
+ *
+ * Sichtbar war das in der Android-App: Die manuelle Teile-Kachel zeichnet
+ * OwnerBadges(part.owners) — die Plakette blieb immer leer, während sie auf
+ * der Figuren-Kachel erschien. Die Absicht stand im Code, der Wert kam nie an.
+ */
+test('beide Bewertungen fuehren den Besitzer mit', async (t) => {
+  if (!await erreichbar()) {
+    if (process.env.REQUIRE_DB === '1') assert.fail('Test-DB nicht erreichbar, REQUIRE_DB=1');
+    t.skip('keine Test-DB'); return;
+  }
+  await db.run('DROP SCHEMA public CASCADE');
+  await db.run('CREATE SCHEMA public');
+  await db.initSchemaOnce();
+
+  await db.run(`INSERT INTO users (username,password_hash) VALUES ('h2','x'),('k2','x')`);
+  const id = async (n) => (await db.get(`SELECT id FROM users WHERE username=$1`, [n])).id;
+  const haupt = await id('h2'), kind = await id('k2');
+  await db.run(`INSERT INTO account_links (main_user_id,sub_user_id) VALUES ($1,$2)`, [haupt, kind]);
+  await db.run(`INSERT INTO parts (user_id,part_number,color_id,part_name,quantity,source,unit_price)
+                VALUES ($1,'3001',4,'Brick',5,'manual',0.5), ($2,'3020',0,'Plate',9,'manual',0.3)`, [haupt, kind]);
+  await db.run(`INSERT INTO minifigs (user_id,fig_number,fig_name,quantity,source,unit_price)
+                VALUES ($1,'sw0001','Luke',1,'manual',12.0), ($2,'sw0002','Leia',2,'manual',9.0)`, [haupt, kind]);
+
+  const { base } = testServer(_req, {
+    sitzung: { userId: haupt },
+    apiNutzer: { user_id: haupt, is_admin: 0, username: 'h2' },
+    routen: { '/api/v1': 'routes/api_v1/index.js' },
+    t,
+  });
+  const hole = async (p) => (await fetch(base + p)).json();
+
+  // Beide Arten in EINER Schleife: Die Zusicherung soll für beide gleich
+  // lauten, sonst driften sie wieder auseinander.
+  for (const [pfad, feld, art] of [
+    ['/api/v1/finance/parts-valuation', 'parts', 'Teile'],
+    ['/api/v1/finance/minifigs-valuation', 'figs', 'Minifiguren'],
+  ]) {
+    const zeilen = (await hole(pfad))[feld] || [];
+    assert.equal(zeilen.length, 2, `${art}: Vorlage hat zwei Einträge`);
+    for (const z of zeilen) {
+      assert.ok(z.user_id, `${art}: user_id fehlt — ohne das hängt withOwnerNames() nichts an`);
+      assert.equal(z.owners?.length, 1, `${art}: genau eine Besitzer-Plakette erwartet`);
+      assert.equal(z.owners[0].id, z.user_id, `${art}: Plakette muss zum Besitzer passen`);
+    }
+  }
 });

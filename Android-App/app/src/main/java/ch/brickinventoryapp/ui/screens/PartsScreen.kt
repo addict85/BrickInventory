@@ -99,7 +99,10 @@ fun PartsScreen(
     val onSearch: (String) -> Unit = vm::setPartsQuery
     val onLoadMore: (Int) -> Unit = { vm.loadParts(page = it) }
     val onScopeChange: (String) -> Unit = { vm.setScope(ch.brickinventoryapp.data.ScopeFilter.View.PARTS, it) }
-    val onDeletePart: (String, Int) -> Unit = { partNumber, colorId -> vm.deletePart(partNumber, colorId) }
+    // Besitzer der Karte mitgeben — Begruendung wie in MinifigsScreen.
+    val onDeletePart: (String, Int, Int?) -> Unit = { partNumber, colorId, owner ->
+        vm.deletePart(partNumber, colorId, owner)
+    }
     val onAddPart: (String, Int, String?, String?, Int, String?, Double?, String?, Int?) -> Unit =
         { num, colorId, colorName, colorHex, qty, note, unitPrice, cond, owner ->
             vm.addPart(num, colorId, colorName, colorHex, qty, note, unitPrice, cond, owner)
@@ -279,7 +282,7 @@ fun PartsScreen(
             title = { Text(stringResource(R.string.parts_delete_title)) },
             text = { Text(stringResource(R.string.parts_delete_text, part.partName ?: part.partNumber)) },
             confirmButton = {
-                TextButton(onClick = { onDeletePart(part.partNumber, part.colorId); deletingPart = null }) {
+                TextButton(onClick = { onDeletePart(part.partNumber, part.colorId, part.userId); deletingPart = null }) {
                     Text(stringResource(R.string.parts_delete), color = MaterialTheme.colorScheme.error)
                 }
             },

@@ -934,6 +934,18 @@ async function computePartsValuation(viewerId: number, ids: Blickfeld) {
     const purchasePrice = acqPurchase != null ? acqPurchase : parseFloat(part.purchase_price || 0);
     return {
       id:           part.id,
+      // user_id gehoert in die Antwort, obwohl die Kachel keine Kontonummer
+      // zeigt: withOwnerNames() weiter unten macht daraus `owners`, und ohne
+      // das Feld tut es gar nichts (`r.user_id == null` -> Zeile unveraendert).
+      //
+      // NACHGEMESSEN in einem Haushalt aus zwei Konten:
+      //   Figuren-Bewertung: user_id 2/3, owners gesetzt
+      //   Teile-Bewertung:   weder das eine noch das andere
+      // Die Android-App zeichnet auf der manuellen Teile-Kachel
+      // OwnerBadges(part.owners) — die Plakette blieb dort immer leer, waehrend
+      // sie auf der Figuren-Kachel erschien. Die Absicht stand im Code, der
+      // Wert kam nie an.
+      user_id:      part.user_id,
       part_number:  part.part_number,
       bl_part_number: part.bl_part_number,
       part_name:    part.part_name,
