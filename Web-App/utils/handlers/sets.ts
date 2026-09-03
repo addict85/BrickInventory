@@ -2,7 +2,7 @@ import * as db from '../../db/database';
 import type { DbSchnittstelle } from '../../db/database';
 import { resolveImageLocal } from '../images';
 import { asIds } from '../household';
-import { clampPageSize, conditionFromAcquisitions, conditionsFromAcquisitions } from './shared';
+import { clampPageSize, conditionFromAcquisitions, conditionsFromAcquisitions, withOwners } from './shared';
 import { ausTabelle } from '../validate';
 
 /**
@@ -263,30 +263,28 @@ async function getSets(userId: Blickfeld, query: any = {}) {
     image_local: resolveImageLocal(s.image_local),
     // Besitzer nur im Haushalt: Im Einzelkonto wäre die Angabe „gehört mir“ an
     // jeder Kachel nur Rauschen.
-    ...(s.owner_ids ? { owner_ids: s.owner_ids.map((n: any) => parseInt(n)) } : {}),
+    // Im Haushalt IMMER dabei, auch leer: array_agg liefert NULL, wenn der
+    // FILTER alles ausschliesst (ein Set, das niemand mehr in Menge > 0
+    // besitzt). withOwners() unten macht daraus eine leere Plakettenliste —
+    // wie die frueher hier stehende Schleife.
+    ...(uids.length > 1 ? { owner_ids: (s.owner_ids || []).map((n: any) => parseInt(n)) } : {}),
     instructions: [
       ...(sharedBySet.get(s.set_number) || []),
       ...(userBySet.get(s.set_number) || []),
     ],
   }));
 
-  // Namen zu den Besitzer-IDs — eine Abfrage für die ganze Seite, nicht eine
-  // je Zeile. Die Kachel zeigt sie als Plakette; ohne Namen bliebe nur eine
-  // Zahl, mit der niemand etwas anfangen kann.
-  if (uids.length > 1) {
-    const owners = await db.all('SELECT id, username FROM users WHERE id = ANY($1)', [uids])
-      .catch(() => []);
-    const nameById = new Map<number, any>(owners.map((u: any) => [parseInt(u.id), u.username] as [number, any]));
-    for (const row of mapped as any[]) {
-      row.owners = (row.owner_ids || []).map((id: number) => ({ id, username: nameById.get(id) || String(id) }));
-    }
-  }
+  // Namen zu den Besitzer-IDs steht in withOwners() (handlers/shared.ts) —
+  // eine Abfrage fuer die ganze Seite, nicht eine je Zeile. Hier stand
+  // dieselbe Aufloesung noch einmal ausformuliert; als die Set-Figuren
+  // dieselbe Plakette bekamen, waere daraus eine dritte Kopie geworden.
+  const mitBesitzern = await withOwners(uids, mapped);
 
   // Rückgabeform ist jetzt ein Objekt statt eines nackten Arrays, damit die
   // Gesamtzahl für den Endlos-Scroll mitkommt. Ohne Paginierung entspricht
   // total der Länge der Liste — die Aufrufer bleiben dadurch beide gleich.
   return {
-    sets: mapped,
+    sets: mitBesitzern,
     total: countRow ? parseInt(countRow.c) : mapped.length,
     ...(themeRows ? { themes: themeRows.map(r => r.theme) } : {}),
   };

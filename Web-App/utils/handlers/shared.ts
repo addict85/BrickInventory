@@ -225,14 +225,35 @@ async function applyManualCondition(userId: unknown, rows: any[], kind: 'part' |
  * Änderung wieder auseinanderzunehmen, wem was gehört. Die Plakette macht
  * sichtbar, warum dasselbe Teil zweimal erscheint.
  */
+/**
+ * Besitzer-Plaketten anhaengen — fuer EINZELNE Zeilen (`user_id`) und fuer
+ * GRUPPIERTE (`owner_ids`).
+ *
+ * ── Warum beide Formen hier ─────────────────────────────────────────────────
+ * Die Namensauflösung stand zweimal: hier fuer die ungruppierten Listen und in
+ * getSets() noch einmal, weil die Galerie im Haushalt nach set_number
+ * gruppiert und die Zeile deshalb MEHRERE Besitzer hat. Eine dritte Kopie
+ * waere faellig geworden, als die Set-Figuren dieselbe Plakette bekamen —
+ * `array_agg(DISTINCT user_id)`, dieselbe Auflösung, dieselbe Form.
+ *
+ * Deshalb kennt der Helfer jetzt beide Eingaben. Zeilen, die weder das eine
+ * noch das andere Feld tragen (die gruppierte Teileliste), bleiben unberuehrt
+ * — sonst stuende dort ploetzlich ein leeres `owners`.
+ */
 async function withOwners(uids: number[], rows: any[]) {
   if (uids.length < 2 || !rows?.length) return rows;
   const owners = await db.all('SELECT id, username FROM users WHERE id = ANY($1)', [uids])
     .catch(() => []);
   const nameById = new Map<number, any>(owners.map((u: any) => [parseInt(u.id), u.username] as [number, any]));
-  return rows.map(r => r.user_id == null ? r : {
-    ...r,
-    owners: [{ id: parseInt(r.user_id), username: nameById.get(parseInt(r.user_id)) || String(r.user_id) }],
+  const platte = (id: number) => ({ id, username: nameById.get(id) || String(id) });
+  return rows.map(r => {
+    // `owner_ids` KANN als Schluessel mit dem Wert null dastehen: array_agg
+    // liefert NULL, wenn der FILTER alles ausschliesst (ein Set, das niemand
+    // mehr in Menge > 0 besitzt). Dann gehoert eine LEERE Plakettenliste
+    // heraus, nicht keine — genau das tat getSets vorher schon.
+    if ('owner_ids' in r) return { ...r, owners: (r.owner_ids || []).map((n: any) => platte(parseInt(n))) };
+    if (r.user_id != null) return { ...r, owners: [platte(parseInt(r.user_id))] };
+    return r;
   });
 }
 

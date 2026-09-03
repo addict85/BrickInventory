@@ -60,6 +60,15 @@ async function getMinifigs(userId: number | number[], { search, source, set_numb
 
   const figs = await db.all(`
     SELECT MIN(m.id) AS id,
+           -- Besitzer der GRUPPE. Die Zeile fasst dieselbe Figur ueber alle
+           -- Konten des Haushalts zusammen, hat also keine einzelne user_id
+           -- mehr — genau wie die Galerie-Kachel (owner_ids in
+           -- handlers/sets.ts). Ohne dieses Aggregat blieb die
+           -- Besitzer-Plakette leer, obwohl beide Clients sie zeichnen:
+           -- ownerBadges(f) in public/js/06-minifigs.js und OwnerBadges in
+           -- MinifigsScreen.kt. NACHGEMESSEN im Haushalt: Galerie JA,
+           -- manuelle Figuren JA, Set-Figuren nein.
+           array_agg(DISTINCT m.user_id) AS owner_ids,
            MIN(TRIM(m.fig_number)) AS fig_number,
            MAX(m.fig_name) AS fig_name,
            SUM(m.quantity) AS quantity,
@@ -95,8 +104,15 @@ async function getMinifigs(userId: number | number[], { search, source, set_numb
   ).catch(() => []);
   const usedFigMap = new Map<string, boolean>(usedFigRows.map(r => [r.fkey, (parseInt(r.any_used) || 0) > 0] as [string, boolean]));
 
-  const mappedFigs = figs.map(f => ({
+  const mappedFigs = figs.map(({ owner_ids, ...f }: any) => ({
     ...f,
+    // Nur im Haushalt: Im Einzelkonto waere „gehoert mir" an jeder Kachel
+    // Rauschen — dieselbe Entscheidung wie bei den Sets.
+    //
+    // owner_ids wird beim Zerlegen oben ABGETRENNT und hier bewusst wieder
+    // hinzugefuegt. Mit `...f` allein waere das Aggregat aus der Abfrage auch
+    // im Einzelkonto durchgerutscht — der Test hat genau das gemeldet.
+    ...(uids.length > 1 ? { owner_ids: (owner_ids || []).map((n: any) => parseInt(n)) } : {}),
     image_local: resolveImageLocal(f.image_local),
     condition: usedFigMap.has(String(f.fig_number).trim().toLowerCase())
       ? (usedFigMap.get(String(f.fig_number).trim().toLowerCase()) ? 'U' : 'N')
@@ -105,7 +121,10 @@ async function getMinifigs(userId: number | number[], { search, source, set_numb
 
   // Objektform wie bei getSets, damit die Gesamtzahl für den Endlos-Scroll
   // mitkommt. Ohne Paginierung entspricht total der Listenlänge.
-  return { figs: mappedFigs, total: figCount ? parseInt(figCount.c) : mappedFigs.length };
+  return {
+    figs: await withOwners(uids, mappedFigs),
+    total: figCount ? parseInt(figCount.c) : mappedFigs.length,
+  };
 }
 
 /**
