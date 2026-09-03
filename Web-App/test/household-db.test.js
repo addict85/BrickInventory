@@ -208,7 +208,22 @@ test('Haushalt gegen echte Datenbank', async (t) => {
   await t.test('Kennzahlen folgen dem Filter', async () => {
     const all  = await handlers.getStats(await household.scopeIds(U.eltern, 'all'));
     const own  = await handlers.getStats(await household.scopeIds(U.eltern, 'own'));
-    assert.equal(parseInt(all.total_sets), 3, 'Sets im Haushalt (Mengen summiert)');
+
+    // ── Warum hier jetzt 2 steht und vorher 3 ───────────────────────────────
+    // Die Vorlage: kindA hat 75192-1 (×1) und 10290-1 (×1), kindB 75192-1 (×2).
+    // Das sind DREI Tabellenzeilen, aber ZWEI verschiedene Sets — und die
+    // Galerie zeigt zwei Kacheln, weil sie nach set_number gruppiert.
+    //
+    // Die alte Zusicherung nagelte die Zeilenzahl fest, und ihre Beschriftung
+    // sagte „(Mengen summiert)" — was COUNT(*) gerade nicht tut. Zwei
+    // Zusicherungen weiter oben steht in DERSELBEN Datei
+    // `getSets(..., 'subs').sets.length === 2`. Beide Zahlen standen hier
+    // nebeneinander, verglichen hat sie nie jemand.
+    //
+    // Der Vergleich selbst steht jetzt in kennzahlen-haushalt-db.test.js;
+    // hier bleiben die konkreten Zahlen der Vorlage.
+    assert.equal(parseInt(all.total_sets), 2, 'verschiedene Sets im Haushalt — wie die Galerie sie zeigt');
+    assert.equal(parseInt(all.total_quantity), 4, 'Exemplare: 1 + 2 + 1');
     assert.equal(parseInt(own.total_sets), 0);
   });
 
