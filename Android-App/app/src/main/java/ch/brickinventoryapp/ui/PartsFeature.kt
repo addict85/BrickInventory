@@ -40,9 +40,12 @@ internal fun MainViewModel.loadParts(page: Int = 1, debounce: Boolean = false) {
         // Ebenfalls aus dem Zustand, aus demselben Grund wie der Suchtext:
         // Als Parameter kaeme er beim Nachladen von Seite 2 nicht mit.
         val ersatzteile = _partsState.value.partsSpare.ifBlank { null }
+        // „In Sets" nur, wenn die Tabelle es zeigt — die Spalte kostet eine
+        // eigene Abfrage. Dieselbe Bedingung wie in der Webapp.
+        val mitSets = if (_partsState.value.partsView == "table") "1" else null
         when (val r = retryOnNetwork { repo.teile.getParts(search = suche, page = page,
                                                      accounts = scopeFor(ScopeFilter.View.PARTS),
-                                                     spare = ersatzteile) }) {
+                                                     spare = ersatzteile, withSets = mitSets) }) {
             is Result.Success -> {
                 _partsState.update {
                     it.copy(
@@ -98,6 +101,27 @@ internal fun MainViewModel.setPartsSpare(wert: String) {
     scrollMemory.vergiss("parts")
     _partsState.update { it.copy(partsSpare = wert) }
     loadParts(page = 1)
+}
+
+/**
+ * Karten oder Tabelle fuer die Teileliste.
+ *
+ * Laedt neu, weil die Tabelle eine Spalte mehr braucht („In Sets"), die der
+ * Server nur auf Anfrage mitschickt. Ohne Neuladen blieben die Zellen leer,
+ * bis irgendein anderer Weg die Liste erneuert.
+ */
+internal fun MainViewModel.setPartsView(wert: String) {
+    if (_partsState.value.partsView == wert) return
+    _partsState.update { it.copy(partsView = wert) }
+    loadParts(page = 1)
+}
+
+/**
+ * Karten oder Tabelle fuer die Figurenliste. Ohne Neuladen: Die Tabelle zeigt
+ * nur Felder, die schon da sind.
+ */
+internal fun MainViewModel.setMinifigsView(wert: String) {
+    _partsState.update { it.copy(minifigsView = wert) }
 }
 
 internal fun MainViewModel.loadPartsColors() {

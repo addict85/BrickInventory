@@ -99,6 +99,7 @@ fun PartsScreen(
     val onSearch: (String) -> Unit = vm::setPartsQuery
     val onLoadMore: (Int) -> Unit = { vm.loadParts(page = it) }
     val onScopeChange: (String) -> Unit = { vm.setScope(ch.brickinventoryapp.data.ScopeFilter.View.PARTS, it) }
+    val ansicht = partsState.partsView
     // Besitzer der Karte mitgeben — Begruendung wie in MinifigsScreen.
     val onDeletePart: (String, Int, Int?) -> Unit = { partNumber, colorId, owner ->
         vm.deletePart(partNumber, colorId, owner)
@@ -195,6 +196,15 @@ fun PartsScreen(
             }
         }
 
+        // Karten oder Tabelle — wie das Auswahlfeld parts-view der Webapp.
+        // Eigene Zeile, weil die drei Ersatzteil-Chips darueber die Breite
+        // eines Telefons schon fuellen.
+        AnsichtUmschalter(
+            aktuell = ansicht,
+            onWechsel = { vm.setPartsView(it) },
+            modifier = Modifier.padding(horizontal = 14.dp).padding(bottom = 8.dp),
+        )
+
         if (isLoading && parts.isEmpty() && manualParts.isEmpty()) {
             Box(Modifier.fillMaxSize(), Alignment.Center) { CircularProgressIndicator() }
         } else if (parts.isEmpty() && manualParts.isEmpty()) {
@@ -236,8 +246,20 @@ fun PartsScreen(
                             }
                         }
                     }
-                    items(distinctParts, key = { "${it.partNumber}-${it.colorId}" }) { part ->
-                        PartCard(part, serverUrl, imageLoader)
+                    // In der Tabellenansicht nimmt jede Zeile die ganze Breite
+                    // (span = maxLineSpan). Der Raster-Container bleibt derselbe —
+                    // mit einem zweiten Container waeren Scrollstand,
+                    // Endlos-Nachladen und die manuelle Sektion doppelt zu
+                    // pflegen. Die manuellen Eintraege bleiben in BEIDEN
+                    // Ansichten Kacheln, genau wie in der Webapp: Dort haengt
+                    // #manual-parts-list nicht an parts-view.
+                    items(
+                        distinctParts,
+                        key = { "${it.partNumber}-${it.colorId}" },
+                        span = { if (ansicht == "table") GridItemSpan(maxLineSpan) else GridItemSpan(1) },
+                    ) { part ->
+                        if (ansicht == "table") PartTableRow(part, serverUrl, imageLoader)
+                        else PartCard(part, serverUrl, imageLoader)
                     }
                     if (isLoading) {
                         // Fester Schlüssel wie bei den Kopfzeilen darüber — siehe
@@ -447,4 +469,44 @@ fun SectionHeader(text: String) {
         color = MaterialTheme.colorScheme.onSurfaceVariant,
         letterSpacing = 0.8.sp,
         modifier = Modifier.padding(horizontal = 2.dp, vertical = 4.dp))
+}
+
+/**
+ * Ein Teil als Tabellenzeile.
+ *
+ * Zeigt, was die Tabelle der Webapp zeigt (partsTableRow in 03-parts.js):
+ * Bild, Nummer, Name, Farbe, Kategorie, Menge, In Sets. Die beiden breiten
+ * Spalten — Kategorie und Sets — stehen als zweite Zeile darunter statt
+ * daneben; sieben Spalten nebeneinander passen auf kein Telefon.
+ *
+ * „In Sets" ist nur gefuellt, wenn der Lader `with_sets=1` mitgegeben hat, und
+ * das tut er nur in dieser Ansicht (loadParts in PartsFeature.kt).
+ */
+@Composable
+fun PartTableRow(part: Part, serverUrl: String, imageLoader: ImageLoader) {
+    val farbe = remember(part.colorHex) {
+        part.colorHex?.let {
+            try { Color(android.graphics.Color.parseColor("#$it")) }
+            catch (_: Exception) { null }
+        }
+    }
+    val (bildUrl, onFehler) = rememberTileImageWithFallback(
+        serverUrl, part.imageLocal, part.imageUrl, fullViaProxy = true)
+    // Kategorie und Sets in einer Zeile, mit „·" getrennt — und nur, was da
+    // ist. Ein leeres „ · " sieht nach einem fehlenden Wert aus.
+    val zweite = listOfNotNull(
+        part.categoryName?.takeIf { it.isNotBlank() },
+        part.inSets?.takeIf { it.isNotBlank() }?.replace(",", ", "),
+    ).joinToString(" · ").ifBlank { null }
+
+    TabellenZeile(
+        bildUrl = bildUrl,
+        nummer = part.blPartNumber ?: part.partNumber,
+        name = part.partName,
+        menge = part.totalQuantity.takeIf { it > 0 } ?: 1,
+        imageLoader = imageLoader,
+        farbe = farbe,
+        zweiteZeile = zweite,
+        onBildFehler = onFehler,
+    )
 }

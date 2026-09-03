@@ -33,7 +33,9 @@ class TeileRepository @Inject constructor(
                          category: String? = null, page: Int = 1,
                          accounts: String? = null,
                          /** "0" ohne, "1" nur Ersatzteile, null alle — wie parts-spare in der Webapp. */
-                         spare: String? = null): Result<PartsResponse> =
+                         spare: String? = null,
+                         /** "1" nur in der Tabellenansicht — siehe BrickApiService.getParts. */
+                         withSets: String? = null): Result<PartsResponse> =
         // Manuell erfasste Teile haben ihren eigenen Bereich — die Set-Teileliste
         // schließt sie aus (wie in der Webapp).
         // Nur die ungefilterte erste Seite wird gecacht — sie ist das, was nach
@@ -41,13 +43,14 @@ class TeileRepository @Inject constructor(
         // wertlos und würde nur Platz belegen.
         // Auch hier: gecacht wird nur die ungefilterte Sicht (siehe getSets).
         if (search.isNullOrBlank() && color == null && category == null && page == 1 &&
-            accounts == null && spare.isNullOrBlank())
+            accounts == null && spare.isNullOrBlank() && withSets.isNullOrBlank())
             cached("parts", PartsResponse.serializer()) {
                 safeCall { api.getParts(null, null, null, 1, pageSize = 500, excludeManual = "1") }
             }
         else safeCall { api.getParts(search, color, category, page, pageSize = 500,
                                      excludeManual = "1", accounts = accounts,
-                                     spare = spare?.ifBlank { null }) }
+                                     spare = spare?.ifBlank { null },
+                                     withSets = withSets?.ifBlank { null }) }
 
     suspend fun getPartsStats(accounts: String? = null): Result<PartsStatsResponse> =
         safeCall { api.getPartsStats(accounts) }

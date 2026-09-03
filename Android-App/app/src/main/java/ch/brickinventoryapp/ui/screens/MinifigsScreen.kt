@@ -22,6 +22,7 @@ import androidx.compose.ui.unit.sp
 import ch.brickinventoryapp.data.model.Minifig
 import ch.brickinventoryapp.util.fmtInt
 import ch.brickinventoryapp.data.model.FigValuationItem
+import ch.brickinventoryapp.util.fmtDatum
 import ch.brickinventoryapp.util.rememberTileImageWithFallback
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
@@ -29,8 +30,6 @@ import coil.compose.AsyncImage
 import coil.ImageLoader
 import coil.request.ImageRequest
 import androidx.compose.ui.platform.LocalContext
-import java.text.SimpleDateFormat
-import java.util.Locale
 import androidx.compose.ui.res.stringResource
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import ch.brickinventoryapp.R
@@ -86,6 +85,7 @@ fun MinifigsScreen(
     // Tippens selbst, uebernimmt aber einen von aussen gesetzten (Leeren beim
     // Abmelden, Wiederherstellen). Genau wie in PartsScreen.
     var search by remember(partsState.minifigsQuery) { mutableStateOf(partsState.minifigsQuery) }
+    val ansicht = partsState.minifigsView
     var showAddDialog by rememberSaveable { mutableStateOf(false) }
     var deletingFig by remember { mutableStateOf<FigValuationItem?>(null) }
 
@@ -136,6 +136,13 @@ fun MinifigsScreen(
             )
         )
 
+        // Karten oder Tabelle — wie das Auswahlfeld figs-view der Webapp.
+        AnsichtUmschalter(
+            aktuell = ansicht,
+            onWechsel = { vm.setMinifigsView(it) },
+            modifier = Modifier.padding(horizontal = 14.dp).padding(bottom = 8.dp),
+        )
+
         when {
             isLoading && figs.isEmpty() && manualFigs.isEmpty() -> Box(Modifier.fillMaxSize(), Alignment.Center) {
                 CircularProgressIndicator()
@@ -184,11 +191,18 @@ fun MinifigsScreen(
                             }
                         }
                     }
+                    // Wie bei den Teilen: In der Tabellenansicht nimmt jede
+                    // Zeile die ganze Breite, der Raster-Container bleibt
+                    // derselbe. Die manuellen Figuren bleiben in beiden
+                    // Ansichten Kacheln — dort haengt in der Webapp
+                    // #manual-figs-list ebenfalls nicht an figs-view.
                     itemsIndexed(
                         figs,
-                        key = { index, fig -> "${fig.figNumber}_${fig.source}_$index" }
+                        key = { index, fig -> "${fig.figNumber}_${fig.source}_$index" },
+                        span = { _, _ -> if (ansicht == "table") GridItemSpan(maxLineSpan) else GridItemSpan(1) },
                     ) { _, fig ->
-                        MinifigCard(fig, serverUrl, imageLoader)
+                        if (ansicht == "table") MinifigTableRow(fig, serverUrl, imageLoader)
+                        else MinifigCard(fig, serverUrl, imageLoader)
                     }
                 }
             }
@@ -472,14 +486,13 @@ fun MinifigCard(fig: Minifig, serverUrl: String, imageLoader: ImageLoader) {
                     style = MaterialTheme.typography.bodySmall,
                     fontWeight = FontWeight.Medium,
                     maxLines = 2, overflow = TextOverflow.Ellipsis)
-                val dateFmt = remember { SimpleDateFormat("dd.MM.yy", Locale.getDefault()) }
+                // Gemeinsamer Helfer (util/DatumFormat.kt). Hier stand ein
+                // SimpleDateFormat mit dem festen Muster
+                // "yyyy-MM-dd'T'HH:mm:ss.SSS'Z'" — bei einem Zeitstempel OHNE
+                // Millisekunden fiel es still auf null zurueck, und dann stand
+                // gar kein Datum da.
                 val dateLabel = remember(fig.setAddedAt) {
-                    fig.setAddedAt?.let { dateStr ->
-                        runCatching {
-                            val inFmt = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'", Locale.US)
-                            inFmt.parse(dateStr)?.let { dateFmt.format(it) }
-                        }.getOrNull()
-                    }
+                    fmtDatum(fig.setAddedAt, zweistelligesJahr = true)
                 }
                 if (dateLabel != null)
                     Text(dateLabel, style = MaterialTheme.typography.labelSmall,
@@ -487,4 +500,30 @@ fun MinifigCard(fig: Minifig, serverUrl: String, imageLoader: ImageLoader) {
             }
         }
     }
+}
+
+/**
+ * Eine Figur als Tabellenzeile.
+ *
+ * Zeigt, was die Tabelle der Webapp zeigt (renderFigs in 06-minifigs.js):
+ * Bild, Nummer, Name, Menge, Erfassungsdatum.
+ *
+ * Die Spalten „Quelle" und Papierkorb, die dort einmal standen, sind es
+ * nicht — beide waren konstant, weil diese Liste ausschliesslich `source=set`
+ * laedt. Sie sind im selben Zug auch in der Webapp entfernt worden; hier steht
+ * also nicht weniger, sondern in beiden dasselbe.
+ */
+@Composable
+fun MinifigTableRow(fig: Minifig, serverUrl: String, imageLoader: ImageLoader) {
+    val (bildUrl, onFehler) = rememberTileImageWithFallback(
+        serverUrl, fig.imageLocal, fig.imageUrl, fullViaProxy = true)
+    TabellenZeile(
+        bildUrl = bildUrl,
+        nummer = fig.figNumber,
+        name = fig.figName,
+        menge = fig.totalQuantity ?: fig.quantity,
+        imageLoader = imageLoader,
+        zweiteZeile = fmtDatum(fig.setAddedAt),
+        onBildFehler = onFehler,
+    )
 }

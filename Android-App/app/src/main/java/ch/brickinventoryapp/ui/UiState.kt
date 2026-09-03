@@ -205,6 +205,15 @@ data class PartsUiState(
      * haengt eine ungefilterte Seite 2 an eine gefilterte Seite 1.
      */
     val partsSpare: String = "",
+    /**
+     * Darstellung der Teileliste: "grid" (Karten) oder "table" (Zeilen).
+     *
+     * Wie in der Webapp (Auswahlfeld parts-view). Im Zustand und nicht im
+     * Bildschirm, weil der Ladeweg ihn braucht: Die Spalte „In Sets" kostet
+     * den Server eine eigene Abfrage, deshalb holt die Webapp `with_sets=1`
+     * NUR in der Tabellenansicht — und die App tut es genauso.
+     */
+    val partsView: String = "grid",
     val partsLoading: Boolean = false,
     val minifigs: List<Minifig> = emptyList(),
     /** Kennzahlen der Kacheln — vom Server, nicht aus der (gefilterten) Liste. */
@@ -222,6 +231,13 @@ data class PartsUiState(
      * steht partsQuery oben im Zustand.
      */
     val minifigsQuery: String = "",
+    /**
+     * Darstellung der Figurenliste: "grid" oder "table" — wie figs-view in der
+     * Webapp. Anders als bei den Teilen braucht der Ladeweg ihn nicht (es gibt
+     * keine zusaetzliche Spalte vom Server), er steht aber aus demselben Grund
+     * hier: Beim Zuruecknavigieren soll die Ansicht dieselbe sein.
+     */
+    val minifigsView: String = "grid",
     val partsStats: PartsStats? = null,
     val partsColors: List<BrickColor> = emptyList(),
 )

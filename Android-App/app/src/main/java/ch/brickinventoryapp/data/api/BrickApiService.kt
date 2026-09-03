@@ -194,7 +194,11 @@ interface BrickApiService {
         // "0" = ohne Ersatzteile, "1" = nur Ersatzteile, null = alle.
         // Dieselben drei Werte wie das Auswahlfeld der Webapp (parts-spare);
         // der Server liest sie in utils/handlers/parts.ts.
-        @Query("spare") spare: String? = null
+        @Query("spare") spare: String? = null,
+        // "1" holt zusaetzlich, in welchen Sets das Teil steckt. Kostet den
+        // Server eine eigene Abfrage — deshalb nur in der Tabellenansicht,
+        // genau wie in der Webapp (parts-view === 'table').
+        @Query("with_sets") withSets: String? = null
     ): Response<PartsResponse>
 
     @GET("api/v1/parts/stats")

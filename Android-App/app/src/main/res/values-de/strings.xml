@@ -292,6 +292,14 @@
     <!-- Nachtrag i18n-Pass: zuvor hartkodierte Strings -->
     <string name="parts_search_placeholder">Teile suchen…</string>
     <string name="parts_filter_all">Alle Teile</string>
+    <string name="view_cards">Karten</string>
+    <string name="view_table">Tabelle</string>
+    <string name="col_number">Nr.</string>
+    <string name="col_color">Farbe</string>
+    <string name="col_category">Kategorie</string>
+    <string name="col_qty">Menge</string>
+    <string name="col_in_sets">In Sets</string>
+    <string name="col_added">Erfasst</string>
     <string name="parts_filter_no_spare">Ohne Ersatzteile</string>
     <string name="parts_filter_spare">Nur Ersatzteile</string>
     <string name="common_quantity">Anzahl</string>
