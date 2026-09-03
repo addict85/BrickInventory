@@ -1,3 +1,4 @@
+import { ladeAnzeige } from './01-bausteine.js';
 import { registerActions } from './00-registry.js';
 import { colorName, locale, t, tRaw} from '../i18n.js';
 import { CURRENCY, G, api, esc, escJs, escUrl, fmtN, imgUrl, thumbUrl, toast } from './01-core.js';
@@ -97,7 +98,7 @@ function priceStatusBadge(s){
 }
 
 export async function loadFinance(){
-  G('fin-tbl').innerHTML=`<div class="loading"><div class="spin"></div><span>${t('finance.fetch_prices')}</span></div>`;
+  G('fin-tbl').innerHTML = ladeAnzeige(t('finance.fetch_prices'));
   G('fin-sum').style.display='none';
   // Fetch all finance data in parallel
   const [d, partsVal, figsVal, pnlData] = await Promise.all([

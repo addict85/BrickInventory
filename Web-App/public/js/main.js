@@ -20,6 +20,7 @@
 // Ereignisbehandlern und die Registrierung beim Dispatcher.
 import '../i18n.js';
 import './01-core.js';
+import './01-bausteine.js';
 import './02-gallery.js';
 import './03-parts.js';
 import './04-finance.js';

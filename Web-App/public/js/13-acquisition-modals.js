@@ -13,6 +13,7 @@
 // 07-admin.js herüber (confirmDelete, renderMarketRows, priceChartSVG), und
 // hinaus geht renderAcquisitionSummary. Genau das machte den Schnitt möglich,
 // ohne irgendetwas umzubauen.
+import { detailZeile } from './01-bausteine.js';
 import { registerActions } from './00-registry.js';
 import { locale, t, tRaw } from '../i18n.js';
 import { CURRENCY, G, ME, api, esc, escJs, fmtN, fullUrl, imgUrl, toast } from './01-core.js';
@@ -376,37 +377,37 @@ export async function openManDetail(type, id, colorId) {
   // Summenzeile darunter (`totals`), nicht aus einer eigenen Schleife.
   const totalQty = ad?.totals?.priced_rows !== undefined && acqs.length
     ? ad.totals.quantity : item.quantity;
-  rows.push(`<div class="dr"><span class="dl">${t('detail.qty')}</span><span class="dv" style="display:flex;align-items:center;gap:6px">
+  rows.push(detailZeile(t('detail.qty'), `
     <button class="btn bs btn-sm" data-click="manQtyChange" data-arg="-1" style="font-size:1rem;padding:2px 8px;line-height:1">−</button>
     <input type="number" id="man-det-qty" min="1" value="${totalQty}" style="width:46px;text-align:center;border:1px solid var(--bdr);border-radius:6px;padding:2px;font-weight:600" data-change="manQtySave" />
     <button class="btn bs btn-sm" data-click="manQtyChange" data-arg="1" style="font-size:1rem;padding:2px 8px;line-height:1">+</button>
-  </span></div>`);
+  `, { wertStil: 'display:flex;align-items:center;gap:6px' }));
 
   // BrickLink-Nr (minifigs only, editable)
   if (type === 'fig') {
-    rows.push(`<div class="dr"><span class="dl">BrickLink-Nr.</span><span class="dv">
+    rows.push(detailZeile('BrickLink-Nr.', `
       <input type="text" value="${esc(item.bl_fig_number||'')}" placeholder="z.B. sw0001" style="width:110px;text-align:right;border:1px solid var(--bdr);border-radius:6px;padding:2px 6px"
         data-blur="saveManualFigBl" data-arg="${esc(id)}" />
-    </span></div>`);
+    `));
   }
 
   // Colour (parts only, read-only)
   if (type === 'part' && item.color_name) {
     const swatch = item.color_hex ? `<span style="display:inline-block;width:12px;height:12px;border-radius:50%;background:#${item.color_hex};border:1px solid rgba(0,0,0,.15);margin-right:4px;vertical-align:middle"></span>` : '';
-    rows.push(`<div class="dr"><span class="dl">${t('parts.color_label')}</span><span class="dv">${swatch}${esc(item.color_name)}</span></div>`);
+    rows.push(detailZeile(t('parts.color_label'), `${swatch}${esc(item.color_name)}`));
   }
 
   // Note
-  if (item.note) rows.push(`<div class="dr"><span class="dl">${t('parts.note_label')}</span><span class="dv" style="color:var(--mut);font-size:.83rem">${esc(item.note)}</span></div>`);
+  if (item.note) rows.push(detailZeile(t('parts.note_label'), esc(item.note),
+    { wertStil: 'color:var(--mut);font-size:.83rem' }));
 
   // Acquisition summary — compact, like set-detail
-  rows.push(`<div class="dr" style="align-items:flex-start">
-    <span class="dl">${t('detail.purchase_price')}</span>
-    <span id="man-acq-summary" class="dv" style="flex-direction:column;align-items:flex-end;gap:3px">
+  rows.push(detailZeile(t('detail.purchase_price'), `
       ${renderManAcqSummary(acqs, type, id, colorId)}
       <button class="btn bs btn-sm" data-click="openManAcqModal" style="margin-top:4px;font-size:.75rem;padding:2px 10px">✏️ ${t('detail.edit_prices')}</button>
-    </span>
-  </div>`);
+    `, { zeilenStil: 'align-items:flex-start',
+         wertId: 'man-acq-summary',
+         wertStil: 'flex-direction:column;align-items:flex-end;gap:3px' }));
 
   // Preisverlauf — wie im Set-Detail, beide Zustände in einem Diagramm.
   //

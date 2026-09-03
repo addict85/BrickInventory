@@ -1,3 +1,4 @@
+import { ladeAnzeige } from './01-bausteine.js';
 import { registerActions } from './00-registry.js';
 import { colorName, locale, t } from '../i18n.js';
 import { G, api, esc, escHex, escHtml, escUrl, fmtBig, fullUrl, imgUrl, observeLazyImages, thumbUrl } from './01-core.js';
@@ -124,7 +125,7 @@ async function loadPartsData(){
   _partsDone = false; _partsLoading = false; _partsLastColor = null;
 
   const main = G('parts-main');
-  main.innerHTML = `<div class="loading"><div class="spin"></div><span>${t('parts.loading')}</span></div>`;
+  main.innerHTML = ladeAnzeige(t('parts.loading'));
   await loadPartsPage(true);
 }
 
@@ -300,7 +301,7 @@ function updatePartsSentinel(){
       ? `<div style="text-align:center;color:var(--mut);font-size:.8rem;padding:1rem">${_partsTotal.toLocaleString(locale())} ${t('parts.stat.types')}</div>`
       : '';
   } else {
-    s.innerHTML = `<div class="loading" style="padding:1rem"><div class="spin"></div></div>`;
+    s.innerHTML = ladeAnzeige('', { stil: 'padding:1rem' });
   }
 }
 

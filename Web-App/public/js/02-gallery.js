@@ -1,3 +1,4 @@
+import { ladeAnzeige } from './01-bausteine.js';
 import { registerActions } from './00-registry.js';
 import { locale, t, tRaw} from '../i18n.js';
 import { CURRENCY, G, ME, TRASH_ICON_SVG, _gibSse, _gibTimer, _monitorTimer, api, esc, escJs, escUrl, fmtBig, fmtN, gibStart, imgUrl, loadMonitor, observeLazyImages, thumbUrl, toast, set_monitorTimer } from './01-core.js';
@@ -425,7 +426,7 @@ export async function loadGallery(opts = {}){
   // Antwort da ist; erst dann wird einmal neu gezeichnet.
   const gal = G('gallery');
   if (!allSets.length || !gal.querySelector('.sgrid, .tw, .empty')) {
-    gal.innerHTML = `<div class="loading"><div class="spin"></div><span>${t('gallery.loading')}</span></div>`;
+    gal.innerHTML = ladeAnzeige(t('gallery.loading'));
   }
   _galGen++; _galPage = 1; _galDone = false; _galLoadingMore = false;
   const gen = _galGen;

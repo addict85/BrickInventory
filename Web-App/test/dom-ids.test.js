@@ -37,6 +37,16 @@ const collect = src => {
   // gewöhnte sich an, ihn zu übergehen.
   for (const m of src.matchAll(/\.id\s*=\s*'([^']+)'/g)) knownIds.add(m[1]);
   for (const m of src.matchAll(/\.id\s*=\s*"([^"]+)"/g)) knownIds.add(m[1]);
+  // Und der vierte Weg: Der Ansichts-Baustein setzt die id als OPTION.
+  //
+  //     detailZeile(t('detail.purchase_price'), inhalt, { wertId: 'm-acq-summary' })
+  //
+  // Genau dieselbe Lage wie beim Scrollbalken eine Zeile darüber: Das Element
+  // entsteht wirklich — 01-bausteine.js schreibt ` id="${o.wertId}"` —, nur
+  // steht das id-Literal nicht mehr an der Aufrufstelle. Ohne diese Zeile
+  // meldete der Prüfer drei Modal-IDs als fehlend, obwohl sie da sind.
+  for (const m of src.matchAll(/wertId:\s*'([^']+)'/g)) knownIds.add(m[1]);
+  for (const m of src.matchAll(/wertId:\s*"([^"]+)"/g)) knownIds.add(m[1]);
 };
 collect(fs.readFileSync(path.join(PUB, 'index.html'), 'utf8'));
 for (const f of JS_FILES) collect(fs.readFileSync(path.join(PUB, 'js', f), 'utf8'));

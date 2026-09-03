@@ -1,4 +1,5 @@
 import { registerActions } from './00-registry.js';
+import { detailZeile, oderStrich, textOderStrich } from './01-bausteine.js';
 import { renderAcquisitionSummary } from './13-acquisition-modals.js';
 import { locale, t, tRaw} from '../i18n.js';
 import { CURRENCY, G, ME, _settingsCache, api, esc, escJs, fmtN, fullUrl, imgUrl, toast , set_settingsCache} from './01-core.js';
@@ -201,10 +202,10 @@ export function renderMarketRows(ph, targetId = 'm-market-rows') {
         ? `<span style="font-weight:700;color:var(--b600)">${esc(fmtN(d.market_price, CURRENCY))}</span>`
         : '<span style="color:var(--mut)">—</span>';
       const pnl = d.pnl_pct != null ? pnlBadge(d.pnl_pct) : '';
-      return `<div class="dr">
-        <span class="dl">${esc(t('detail.market_price'))} (${esc(LABEL[c])})</span>
-        <span class="dv" style="display:flex;align-items:center;gap:8px">${price}${pnl}</span>
-      </div>`;
+      return detailZeile(
+        `${esc(t('detail.market_price'))} (${esc(LABEL[c])})`,
+        `${price}${pnl}`,
+        { wertStil: 'display:flex;align-items:center;gap:8px' });
     });
   el.innerHTML = rows.join('');
 }
@@ -418,30 +419,29 @@ export async function openModal(sn){
   // vermischte Entwicklung.
   const priceRow = '<div id="m-market-rows"></div>';
   const pnlRow  = '';
-  const qtyRow = `<div class="dr"><span class="dl">${t('detail.qty')}</span><span class="dv" style="display:flex;align-items:center;gap:6px">
+  const qtyRow = detailZeile(t('detail.qty'), `
       <button class="btn bs btn-sm" data-click="mQtyDec" style="font-size:1rem;padding:2px 8px;line-height:1">−</button>
       <input type="number" id="m-qty" min="1" style="width:46px;text-align:center;border:1px solid var(--bdr);border-radius:6px;padding:2px;font-weight:600" data-change="autosaveSet" />
       <button class="btn bs btn-sm" data-click="mQtyInc" style="font-size:1rem;padding:2px 8px;line-height:1">+</button>
-    </span></div>`;
+    `, { wertStil: 'display:flex;align-items:center;gap:6px' });
 
   // Acquisition summary: compact read-only rows + button to open full editor
   const acqs = ad?.acquisitions || [];
-  const acqRows = `<div class="dr" style="align-items:flex-start">
-    <span class="dl">${t('detail.purchase_price')}</span>
-    <span id="m-acq-summary" class="dv" style="flex-direction:column;align-items:flex-end;gap:3px">
+  const acqRows = detailZeile(t('detail.purchase_price'), `
       ${renderAcquisitionSummary(acqs, sn)}
       <button class="btn bs btn-sm" data-click="openAcqModal" data-arg="${escJs(sn)}" style="margin-top:4px;font-size:.75rem;padding:2px 10px">✏️ ${t('detail.edit_prices')}</button>
-    </span>
-  </div>`;
+    `, { zeilenStil: 'align-items:flex-start',
+         wertId: 'm-acq-summary',
+         wertStil: 'flex-direction:column;align-items:flex-end;gap:3px' });
 
   G('m-det').innerHTML = `
-    <div class="dr"><span class="dl">Name</span><span class="dv">${esc(curSet.name)||'—'}</span></div>
-    <div class="dr"><span class="dl">${t('detail.year')}</span><span class="dv">${curSet.year||'—'}</span></div>
-    <div class="dr"><span class="dl">${t('detail.theme')}</span><span class="dv">${esc(curSet.theme||'—')}</span></div>
+    ${detailZeile('Name', textOderStrich(curSet.name))}
+    ${detailZeile(t('detail.year'), oderStrich(curSet.year))}
+    ${detailZeile(t('detail.theme'), esc(oderStrich(curSet.theme)))}
     ${qtyRow}
-    <div class="dr"><span class="dl">${t('detail.pieces')}</span><span class="dv">${curSet.pieces?curSet.pieces.toLocaleString(locale()):'—'} <button class="btn bs btn-sm" data-click="reimportParts" data-arg="${escJs(sn)}" title="${t('detail.reimport_parts')}" style="padding:1px 6px;font-size:.75rem;margin-left:4px">${PARTS_ICON_SVG}</button></span></div>
-    <div class="dr"><span class="dl">${t('detail.minifigs')}</span><span class="dv" id="m-minifigs-val">${curSet.minifigs||'—'}</span></div>
-    <div class="dr"><span class="dl">${t('detail.added')}</span><span class="dv">📅 ${addedFmt}</span></div>
+    ${detailZeile(t('detail.pieces'), `${curSet.pieces ? curSet.pieces.toLocaleString(locale()) : '—'} <button class="btn bs btn-sm" data-click="reimportParts" data-arg="${escJs(sn)}" title="${t('detail.reimport_parts')}" style="padding:1px 6px;font-size:.75rem;margin-left:4px">${PARTS_ICON_SVG}</button>`)}
+    ${detailZeile(t('detail.minifigs'), oderStrich(curSet.minifigs), { wertId: 'm-minifigs-val' })}
+    ${detailZeile(t('detail.added'), `📅 ${addedFmt}`)}
     ${acqRows}
     ${priceRow}${pnlRow}
     <div id="m-price-chart" style="margin-top:.75rem">

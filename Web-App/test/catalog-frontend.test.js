@@ -52,7 +52,17 @@ function stripModuleSyntax(src) {
        + body;
 }
 
-const CODE = stripModuleSyntax(fs.readFileSync(path.join(__dirname, '..', 'public', 'js', '09-catalog.js'), 'utf8'));
+// Die Ansichts-Bausteine kommen MIT in die Sandbox, nicht als Attrappe.
+//
+// 09-catalog.js baut seine Detailzeilen seit dem Zusammenziehen über
+// detailZeile()/ladeAnzeige() aus 01-bausteine.js. Nach dem Entfernen der
+// Importe waeren sie undefiniert — der Test scheiterte mit
+// „ladeAnzeige is not defined", ohne dass am Katalog etwas kaputt war.
+//
+// Eingesetzt wird der ECHTE Baustein: Dieser Test prueft unter anderem, was
+// im Katalogfenster steht; mit einer Attrappe pruefte er die Attrappe.
+const BAUSTEINE = stripModuleSyntax(fs.readFileSync(path.join(__dirname, '..', 'public', 'js', '01-bausteine.js'), 'utf8'));
+const CODE = BAUSTEINE + '\n' + stripModuleSyntax(fs.readFileSync(path.join(__dirname, '..', 'public', 'js', '09-catalog.js'), 'utf8'));
 const dom = new JSDOM(`<!doctype html><html><body>
   <input id="cat-search" />
   <select id="cat-theme"><option value=""></option></select>
