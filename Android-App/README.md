@@ -90,9 +90,21 @@ Benötigte Hosts — hinter einem restriktiven Proxy müssen diese erreichbar se
 `.github/workflows/android.yml` im Wurzelverzeichnis des Repositories macht auf
 einem `ubuntu-latest`-Runner dasselbe wie oben beschrieben: prüfen, ob der
 Wrapper vollständig im Repository liegt, dann `testDebugUnitTest`,
-`assembleRelease` und `lintRelease`. Am Ende hängt eine `BrickInventory.apk`
-als Artefakt am Lauf, dazu die Test- und Lint-Berichte (auch bei rotem Lauf —
-gerade dann werden sie gebraucht).
+`assembleRelease` und `lintRelease`. Die Test- und Lint-Berichte hängen als
+Artefakt am Lauf (auch bei rotem Lauf — gerade dann werden sie gebraucht).
+
+Die APK **nicht**: Sie wird als Anhang am Release `apk-neuste` abgelegt und
+ist damit direkt herunterladbar —
+
+<https://github.com/addict85/BrickInventory/releases/download/apk-neuste/BrickInventory.apk>
+
+Der Grund steht ausführlich im Workflow: GitHub packt **jedes** Artefakt in ein
+Zip, auch eine einzelne Datei, und es gibt dagegen keinen Schalter (»There is
+currently no way to download artifacts in a format other than a Zip«, Anleitung
+von `actions/upload-artifact`). Ein Release-Anhang wird roh ausgeliefert,
+braucht kein GitHub-Konto und verfällt nicht nach 90 Tagen. Bei
+Pull-Request-Läufen wird er **nicht** ersetzt — sonst zeigte der stabile Link
+auf einen ungeprüften Zweig.
 
 Signiert wird die APK nur, wenn die vier Repository-Secrets `KEYSTORE_BASE64`,
 `KEYSTORE_PASSWORT`, `KEY_ALIAS` und `KEY_PASSWORT` hinterlegt sind. Fehlen

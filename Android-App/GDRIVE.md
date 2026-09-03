@@ -4,11 +4,21 @@ Nach jedem grünen Build auf `main` landet `BrickInventory.apk` in deinem
 Google Drive — **unter demselben Link wie beim letzten Mal**. Einmal freigeben
 genügt; wer den Link hat, bekommt immer die neueste Fassung.
 
-## Wozu, wenn es doch Artefakte gibt
+## Wozu, wenn es doch den Release-Link gibt
 
-Ein GitHub-Artefakt kann nur herunterladen, wer bei GitHub **angemeldet** ist,
-und es verfällt nach 90 Tagen. Wer die App jemandem zum Ausprobieren geben
-will, kann damit nichts anfangen. Ein Drive-Link geht an jeden.
+**Ehrlicherweise: für die zwei Gründe, die hier ursprünglich standen, braucht
+es Drive nicht mehr.** Sie waren „ein Artefakt kann nur herunterladen, wer bei
+GitHub angemeldet ist" und „es verfällt nach 90 Tagen". Seit die APK als
+Release-Anhang abgelegt wird, gilt beides nicht mehr:
+
+<https://github.com/addict85/BrickInventory/releases/download/apk-neuste/BrickInventory.apk>
+
+Der Link ist öffentlich, stabil und liefert die Datei roh aus. Was Drive
+darüber hinaus kann: Er liegt ausserhalb von GitHub — für jemanden, dem man
+keinen GitHub-Link schicken will, und als zweite Ablage, falls das Repository
+einmal privat gestellt wird. Wer das nicht braucht, lässt die vier `GDRIVE_*`-
+Secrets einfach leer; der Schritt wird dann übersprungen und sagt es im
+Protokoll.
 
 ---
 

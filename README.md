@@ -128,11 +128,15 @@ cd Android-App
 ./gradlew assembleRelease      # → app/build/outputs/apk/release/
 ```
 
-Fertige APKs hängen als Artefakt an jedem
-[Android-Workflow-Lauf](https://github.com/addict85/BrickInventory/actions/workflows/android.yml).
-Signiert wird, wenn die vier Keystore-Secrets hinterlegt sind — sonst entsteht
-ein unsigniertes APK, das sich nicht installieren lässt. Siehe
-[`Android-App/README.md`](Android-App/README.md).
+Die neuste fertige APK liegt hier — **ein Klick, kein Zip, kein GitHub-Konto**:
+
+**<https://github.com/addict85/BrickInventory/releases/download/apk-neuste/BrickInventory.apk>**
+
+Der Link bleibt über alle Builds derselbe; der
+[Android-Workflow](https://github.com/addict85/BrickInventory/actions/workflows/android.yml)
+ersetzt nur die Datei dahinter. Signiert wird, wenn die vier Keystore-Secrets
+hinterlegt sind — sonst entsteht ein unsigniertes APK, das sich nicht
+installieren lässt. Siehe [`Android-App/README.md`](Android-App/README.md).
 
 ---
 

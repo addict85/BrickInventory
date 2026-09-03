@@ -35,6 +35,13 @@ jobs:
       run:
         working-directory: Android-App
 
+    # Nur so viel, wie der Lauf braucht: `contents: write` fuer den
+    # Release-Anhang unten. Sobald dieser Block da steht, sind ALLE anderen
+    # Bereiche auf `none` — das ist Absicht und der Grund, warum er hier
+    # ausdruecklich und nicht am Anfang der Datei steht.
+    permissions:
+      contents: write
+
     # Der `secrets`-Kontext steht in einem `if:` auf SCHRITTEBENE nicht zur
     # Verfügung — `env` schon. Deshalb wird die Frage "gibt es einen
     # Schlüsselspeicher?" hier einmal beantwortet und unten über env geprüft.
@@ -219,13 +226,85 @@ jobs:
           if-no-files-found: ignore
           retention-days: 14
 
-      - name: BrickInventory.apk sichern
-        if: success()
-        uses: actions/upload-artifact@v6
-        with:
-          name: BrickInventory
-          path: Android-App/app/build/outputs/apk/release/BrickInventory.apk
-          retention-days: 90
+      # ── Warum ein Release und kein Artefakt ─────────────────────────────────
+      #
+      # Marcos Wunsch: am Ende kein Zip, sondern direkt das APK. Als Artefakt
+      # geht das NICHT — nachgelesen in der Anleitung von upload-artifact,
+      # nicht aus dem Gedaechtnis:
+      #
+      #   "When an Artifact is uploaded, all the files are assembled into an
+      #    immutable Zip archive. There is currently no way to download
+      #    artifacts in a format other than a Zip [...]"
+      #
+      # GitHub packt also selbst ein, auch bei einer einzigen Datei, und es gibt
+      # keinen Schalter dagegen. Ein Release-ANHANG wird dagegen roh
+      # ausgeliefert: ein Klick, und es ist das APK.
+      #
+      # Zwei Dinge kommen dazu, die beide in GDRIVE.md als Nachteil des
+      # Artefakts stehen: Ein Release-Anhang braucht KEIN GitHub-Konto (das
+      # Repository ist oeffentlich), und er verfaellt nicht nach 90 Tagen.
+      #
+      # ── Ein Etikett, nicht eins je Lauf ─────────────────────────────────────
+      #
+      # Dieselbe Ueberlegung wie bei der Drive-Ablage weiter unten: Die Datei
+      # wird ERSETZT, damit der Link stabil bleibt. Sonst braucht jeder nach
+      # jedem Bau einen neuen.
+      #
+      # Das Etikett bleibt auf dem Commit stehen, auf dem es angelegt wurde.
+      # Verschieben hiesse, ein Etikett umzuschreiben, das jemand schon
+      # ausgecheckt haben kann — woher das APK stammt, steht deshalb im TEXT
+      # des Release und wird bei jedem Lauf neu geschrieben.
+      #
+      # NICHT bei Pull-Requests: Sonst ueberschriebe ein ungeprueftes Zweig-APK
+      # die Datei hinter dem stabilen Link.
+      - name: BrickInventory.apk als Release bereitstellen
+        if: success() && github.event_name != 'pull_request'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          ETIKETT=apk-neuste
+          APK=app/build/outputs/apk/release/BrickInventory.apk
+          LINK="https://github.com/$GITHUB_REPOSITORY/releases/download/$ETIKETT/BrickInventory.apk"
+          TEXT="Gebaut aus \`$GITHUB_REF_NAME\` ($GITHUB_SHA) am $(date -u '+%d.%m.%Y %H:%M UTC').
+
+          Direkter Download (immer die neuste Fassung, kein Zip):
+          $LINK"
+
+          if gh release view "$ETIKETT" >/dev/null 2>&1; then
+            gh release edit "$ETIKETT" --notes "$TEXT"
+          else
+            gh release create "$ETIKETT" --title "BrickInventory — neustes APK" --notes "$TEXT"
+          fi
+          # --clobber: Der Anhang heisst immer gleich; ohne das lehnt gh den
+          # zweiten Lauf ab, weil die Datei schon da haengt.
+          gh release upload "$ETIKETT" "$APK" --clobber
+
+          # Gegenprobe: nicht der Ausgabe glauben, sondern den Anhang ZURUECK
+          # fragen und die Groesse vergleichen. Genau dieselbe Vorsicht wie bei
+          # der Drive-Ablage, wo ein abgebrochener Upload eine gueltig
+          # aussehende Antwort liefert.
+          LOKAL=$(stat -c%s "$APK")
+          DRAUSSEN=$(gh release view "$ETIKETT" --json assets \
+            --jq '.assets[] | select(.name=="BrickInventory.apk") | .size')
+          if [ "$DRAUSSEN" != "$LOKAL" ]; then
+            echo "::error::Das Release meldet $DRAUSSEN Bytes, lokal sind es $LOKAL. Anhang unvollstaendig."
+            exit 1
+          fi
+
+          {
+            echo "## APK zum direkten Herunterladen"
+            echo ""
+            echo "**$LINK**"
+            echo ""
+            echo "| | |"
+            echo "| --- | --- |"
+            echo "| Groesse | $LOKAL Bytes |"
+            echo "| Gebaut aus | \`$GITHUB_REF_NAME\` ($GITHUB_SHA) |"
+            echo ""
+            echo "> Kein Zip: Ein Release-Anhang wird roh ausgeliefert. Der Link"
+            echo "> bleibt ueber alle Builds derselbe und braucht kein GitHub-Konto."
+          } >> "$GITHUB_STEP_SUMMARY"
 
       # Das Bundle wird hier nur GEBAUT und gesichert, nicht veroeffentlicht.
       # Das Hochladen zu Play steht in einem eigenen Workflow, der von Hand
@@ -246,10 +325,12 @@ jobs:
 
       # ── APK nach Google Drive ───────────────────────────────────────────────
       #
-      # Warum ueberhaupt: Ein Artefakt hier laesst sich nur herunterladen, wer
-      # bei GitHub ANGEMELDET ist, und es verfaellt nach 90 Tagen. Wer die App
-      # jemandem zum Ausprobieren geben will, kann damit nichts anfangen.
-      # Ein Drive-Link geht an jeden.
+      # Warum ueberhaupt — und ehrlich gesagt kaum noch: Die Begruendung war
+      # "ein Artefakt kann nur herunterladen, wer bei GitHub angemeldet ist,
+      # und es verfaellt nach 90 Tagen". Seit die APK oben als Release-Anhang
+      # abgelegt wird, gilt beides nicht mehr. Was bleibt: eine Ablage
+      # AUSSERHALB von GitHub, falls das Repository einmal privat gestellt wird
+      # oder jemand keinen GitHub-Link bekommen soll.
       #
       # ── Warum ein Refresh-Token und KEIN Dienstkonto ────────────────────────
       #
@@ -293,7 +374,7 @@ jobs:
           [ "$HAT_DRIVE_ID"     = "true" ] || fehlt="$fehlt GDRIVE_CLIENT_ID"
           [ "$HAT_DRIVE_SECRET" = "true" ] || fehlt="$fehlt GDRIVE_CLIENT_SECRET"
           [ "$HAT_DRIVE_ORDNER" = "true" ] || fehlt="$fehlt GDRIVE_ORDNER_ID"
-          echo "::notice::Die Ablage in Google Drive ist uebersprungen worden. Es fehlen diese Secrets:$fehlt — einzutragen unter Settings -> Secrets and variables -> Actions. Wie man sie bekommt, steht in Android-App/GDRIVE.md. Das APK haengt trotzdem als Artefakt an diesem Lauf."
+          echo "::notice::Die Ablage in Google Drive ist uebersprungen worden. Es fehlen diese Secrets:$fehlt — einzutragen unter Settings -> Secrets and variables -> Actions. Wie man sie bekommt, steht in Android-App/GDRIVE.md. Das APK liegt trotzdem bereit: https://github.com/$GITHUB_REPOSITORY/releases/download/apk-neuste/BrickInventory.apk"
 
       - name: APK nach Google Drive
         if: success() && env.HAT_DRIVE == 'true'
