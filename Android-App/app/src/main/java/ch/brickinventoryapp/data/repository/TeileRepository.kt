@@ -31,19 +31,23 @@ class TeileRepository @Inject constructor(
 
     suspend fun getParts(search: String? = null, color: String? = null,
                          category: String? = null, page: Int = 1,
-                         accounts: String? = null): Result<PartsResponse> =
+                         accounts: String? = null,
+                         /** "0" ohne, "1" nur Ersatzteile, null alle — wie parts-spare in der Webapp. */
+                         spare: String? = null): Result<PartsResponse> =
         // Manuell erfasste Teile haben ihren eigenen Bereich — die Set-Teileliste
         // schließt sie aus (wie in der Webapp).
         // Nur die ungefilterte erste Seite wird gecacht — sie ist das, was nach
         // einem Neustart gebraucht wird. Für Suchergebnisse wäre ein Cache
         // wertlos und würde nur Platz belegen.
         // Auch hier: gecacht wird nur die ungefilterte Sicht (siehe getSets).
-        if (search.isNullOrBlank() && color == null && category == null && page == 1 && accounts == null)
+        if (search.isNullOrBlank() && color == null && category == null && page == 1 &&
+            accounts == null && spare.isNullOrBlank())
             cached("parts", PartsResponse.serializer()) {
                 safeCall { api.getParts(null, null, null, 1, pageSize = 500, excludeManual = "1") }
             }
         else safeCall { api.getParts(search, color, category, page, pageSize = 500,
-                                     excludeManual = "1", accounts = accounts) }
+                                     excludeManual = "1", accounts = accounts,
+                                     spare = spare?.ifBlank { null }) }
 
     suspend fun getPartsStats(accounts: String? = null): Result<PartsStatsResponse> =
         safeCall { api.getPartsStats(accounts) }

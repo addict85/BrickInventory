@@ -191,6 +191,20 @@ data class PartsUiState(
      * Problem dort nicht.
      */
     val partsQuery: String = "",
+    /**
+     * Ersatzteil-Filter: "" alle, "0" ohne Ersatzteile, "1" nur Ersatzteile.
+     *
+     * Dieselben drei Werte wie das Auswahlfeld der Webapp (parts-spare in
+     * index.html). Die App las `is_spare` bisher zwar aus der Antwort und hatte
+     * sogar einen Helfer dafuer (Part.isSpareFlag) — benutzt hat sie beides
+     * nirgends. Wer am Telefon nachsah, wie viele Teile er wirklich hat, bekam
+     * die Ersatzteile immer mitgezaehlt; am Rechner konnte er sie ausblenden.
+     *
+     * Aus demselben Grund wie partsQuery im Zustand und nicht im Bildschirm:
+     * Sonst kennt ihn nur, wer aus dem Filter heraus laedt, und `onLoadMore`
+     * haengt eine ungefilterte Seite 2 an eine gefilterte Seite 1.
+     */
+    val partsSpare: String = "",
     val partsLoading: Boolean = false,
     val minifigs: List<Minifig> = emptyList(),
     /** Kennzahlen der Kacheln — vom Server, nicht aus der (gefilterten) Liste. */

@@ -165,6 +165,33 @@ fun PartsScreen(
             )
         )
 
+        // Ersatzteil-Filter — dieselben drei Werte wie das Auswahlfeld der
+        // Webapp (parts-spare). Er fehlte hier ganz: Die App las `is_spare`
+        // aus der Antwort und hatte sogar einen Helfer dafuer, benutzte aber
+        // beides nirgends. Wer am Telefon nachsah, wie viele Teile er wirklich
+        // hat, bekam die Ersatzteile immer mitgezaehlt.
+        //
+        // Gefiltert wird auf dem SERVER (partsSpare im UiState) — clientseitig
+        // ueber die geladene Seite gefiltert koennte eine ganze Seite wegfallen
+        // und die Liste bliebe scheinbar leer.
+        Row(
+            Modifier.fillMaxWidth().padding(horizontal = 14.dp).padding(bottom = 8.dp),
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            val filter = listOf(
+                "" to R.string.parts_filter_all,
+                "0" to R.string.parts_filter_no_spare,
+                "1" to R.string.parts_filter_spare,
+            )
+            for ((wert, text) in filter) {
+                FilterChip(
+                    selected = partsState.partsSpare == wert,
+                    onClick = { vm.setPartsSpare(wert) },
+                    label = { Text(stringResource(text), fontSize = 13.sp) },
+                )
+            }
+        }
+
         if (isLoading && parts.isEmpty() && manualParts.isEmpty()) {
             Box(Modifier.fillMaxSize(), Alignment.Center) { CircularProgressIndicator() }
         } else if (parts.isEmpty() && manualParts.isEmpty()) {

@@ -291,6 +291,9 @@
 
     <!-- Nachtrag i18n-Pass: zuvor hartkodierte Strings -->
     <string name="parts_search_placeholder">Teile suchen…</string>
+    <string name="parts_filter_all">Alle Teile</string>
+    <string name="parts_filter_no_spare">Ohne Ersatzteile</string>
+    <string name="parts_filter_spare">Nur Ersatzteile</string>
     <string name="common_quantity">Anzahl</string>
     <string name="common_cancel">Abbrechen</string>
     <string name="common_loading">Laden…</string>

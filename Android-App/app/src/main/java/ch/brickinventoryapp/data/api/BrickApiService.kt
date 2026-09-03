@@ -190,7 +190,11 @@ interface BrickApiService {
         @Query("page_size") pageSize: Int = 500,
         @Query("set_number") setNumber: String? = null,
         @Query("exclude_manual") excludeManual: String? = null,
-        @Query("accounts") accounts: String? = null
+        @Query("accounts") accounts: String? = null,
+        // "0" = ohne Ersatzteile, "1" = nur Ersatzteile, null = alle.
+        // Dieselben drei Werte wie das Auswahlfeld der Webapp (parts-spare);
+        // der Server liest sie in utils/handlers/parts.ts.
+        @Query("spare") spare: String? = null
     ): Response<PartsResponse>
 
     @GET("api/v1/parts/stats")

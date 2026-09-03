@@ -37,8 +37,12 @@ internal fun MainViewModel.loadParts(page: Int = 1, debounce: Boolean = false) {
         // zuletzt gestartete Auftrag, und der soll den NEUESTEN Text sehen.
         // Leer heisst "kein Filter" — die API erwartet dafuer null, nicht "".
         val suche = _partsState.value.partsQuery.ifBlank { null }
+        // Ebenfalls aus dem Zustand, aus demselben Grund wie der Suchtext:
+        // Als Parameter kaeme er beim Nachladen von Seite 2 nicht mit.
+        val ersatzteile = _partsState.value.partsSpare.ifBlank { null }
         when (val r = retryOnNetwork { repo.teile.getParts(search = suche, page = page,
-                                                     accounts = scopeFor(ScopeFilter.View.PARTS)) }) {
+                                                     accounts = scopeFor(ScopeFilter.View.PARTS),
+                                                     spare = ersatzteile) }) {
             is Result.Success -> {
                 _partsState.update {
                     it.copy(
@@ -79,6 +83,21 @@ internal fun MainViewModel.setPartsQuery(q: String) {
     // Kein eigener Auftrag noetig: loadParts bricht partsJob selbst ab, ein
     // zweiter Tastendruck loescht also den entprellten ersten.
     loadParts(page = 1, debounce = true)
+}
+
+/**
+ * Ersatzteil-Filter setzen: "" alle, "0" ohne Ersatzteile, "1" nur
+ * Ersatzteile — dieselben Werte wie das Auswahlfeld der Webapp.
+ *
+ * Nicht entprellt: Anders als beim Tippen ist ein Klick ein fertiger Wunsch,
+ * und 350 ms Warten waeren nur Traegheit.
+ */
+internal fun MainViewModel.setPartsSpare(wert: String) {
+    // Wie beim Suchtext: Die gemerkte Scrollstelle zeigt auf Teile, die in der
+    // neuen Liste woanders oder gar nicht stehen (ScrollMemory.kt).
+    scrollMemory.vergiss("parts")
+    _partsState.update { it.copy(partsSpare = wert) }
+    loadParts(page = 1)
 }
 
 internal fun MainViewModel.loadPartsColors() {

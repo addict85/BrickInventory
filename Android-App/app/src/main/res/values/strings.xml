@@ -304,6 +304,9 @@
 
     <!-- Nachtrag i18n-Pass: zuvor hartkodierte Strings -->
     <string name="parts_search_placeholder">Search parts…</string>
+    <string name="parts_filter_all">All parts</string>
+    <string name="parts_filter_no_spare">Without spare parts</string>
+    <string name="parts_filter_spare">Spare parts only</string>
     <string name="common_quantity">Quantity</string>
     <string name="common_loading">Loading…</string>
     <string name="detail_price_loading">Loading price…</string>
