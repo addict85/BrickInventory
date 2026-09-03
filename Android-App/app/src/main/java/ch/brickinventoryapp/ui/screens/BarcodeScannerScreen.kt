@@ -215,23 +215,12 @@ fun BarcodeScannerScreen(
 }
 
 /**
- * Setnummer-Kandidaten aus erkanntem Text ziehen (Nachtrag 60).
- *
- * Auf der ANLEITUNG steht kein Barcode — die Setnummer ist dort nur gedruckt.
- * Genau dafür ist die Texterkennung da.
- *
- * Der Filter ist der eigentliche Kern: Die Kamera sieht auf so einer Seite
- * viele Zahlen (Altersangabe, Teilezahl, Seitenzahl, Jahr). Ohne Einschränkung
- * käme ständig Unsinn heraus. LEGO-Setnummern haben vier bis sieben Ziffern,
- * optional mit Variantenzusatz `-1`. Damit fallen "8+", Seitenzahlen und
- * dreistellige Angaben weg; vierstellige Jahreszahlen können durchrutschen,
- * deshalb wird jeder Treffer weiterhin im Dialog mit Bild und Name bestätigt.
- *
- * Sortiert nach LÄNGE absteigend: Die Setnummer ist auf der Seite fast immer
- * die längste Zahl, und der erste Kandidat ist der, den der Scanner nimmt.
- */
-/**
  * Kandidaten fuer eine Setnummer aus erkanntem Text — in absteigender Guete.
+ *
+ * Auf der ANLEITUNG steht kein Barcode; die Setnummer ist dort nur gedruckt.
+ * Genau dafuer ist die Texterkennung da. Der Filter ist der eigentliche Kern:
+ * Die Kamera sieht auf so einer Seite viele Zahlen (Altersangabe, Teilezahl,
+ * Seitenzahl, Jahr). Ohne Einschraenkung kaeme staendig Unsinn heraus.
  *
  * ── Warum nicht mehr „die laengste gewinnt" (Marcos Meldung) ────────────────
  *
@@ -241,37 +230,112 @@ fun BarcodeScannerScreen(
  * Auf einer Anleitung stimmt das nicht. Dort stehen sechs- und siebenstellige
  * Zahlen, die KEINE Setnummern sind — die Bestellnummer des Hefts auf dem
  * Umschlag, die Elementnummern in der Teileliste. Die Setnummer selbst hat
- * vier oder fuenf Stellen. Die alte Regel griff also regelmaessig zur
- * falschen Zahl, und genau das war Marcos Befund.
+ * vier oder fuenf Stellen.
+ *
+ * ── Warum dreistellige Zahlen jetzt zaehlen ─────────────────────────────────
+ *
+ * NACHGEMESSEN an zehn Kartonaufdrucken: acht richtig an erster Stelle, und
+ * beide Fehlschlaege waren alte Sets mit dreistelliger Nummer —
+ *
+ *     „375 YELLOW CASTLE 1978"  → ['1978']   (das JAHR gewann)
+ *     „928 GALAXY EXPLORER"     → []         (gar kein Kandidat)
+ *
+ * `\d{4,7}` sah die 375 und die 928 nie. Wer ein altes Set vor die Kamera
+ * haelt, bekam entweder nichts oder die Jahreszahl angeboten.
+ *
+ * Dreistellige Zahlen sind dafuer haeufiger Rauschen. Deshalb stehen sie in
+ * der Guete GANZ HINTEN: Solange irgendeine vier- bis siebenstellige Zahl
+ * uebrig ist, aendert sich an der Antwort nichts. Das ist hier wichtiger als
+ * auf dem Server, denn BarcodeAnalyzer.kt nimmt `firstOrNull()` OHNE
+ * Katalogabgleich — die Reihenfolge entscheidet direkt, was der Nutzer sieht.
  *
  * ── Die Reihenfolge, und warum ──────────────────────────────────────────────
  *
- *  1. Mit Variantensuffix (`60445-1`) zuerst. So schreibt sich eine Setnummer
+ *  1. Eine Zahl, auf die ein MENGENWORT folgt, ist eine Teilezahl und faellt
+ *     ganz weg („1215 Teile").
+ *  2. Mit Variantensuffix (`60445-1`) zuerst. So schreibt sich eine Setnummer
  *     und sonst nichts auf der Seite — das ist die einzige EINDEUTIGE Form.
- *  2. Danach nach Stellenzahl in der Reihenfolge 5, 4, 6, 7. Das ist die
+ *  3. Eine Zahl direkt hinter `#` ist bevorzugt.
+ *  4. Eine vierstellige Zahl zwischen 1949 und dem naechsten Jahr ist
+ *     wahrscheinlich ein Jahr und wird ZURUECKGESTUFT — nicht verworfen.
+ *     Vierstellige Setnummern in diesem Bereich gibt es wirklich.
+ *  5. Danach nach Stellenzahl in der Reihenfolge 5, 4, 6, 7, 3. Das ist die
  *     Haeufigkeit echter Setnummern, nicht ihre Groesse.
- *  3. Bei Gleichstand die Reihenfolge im Text.
+ *  6. Bei Gleichstand die Reihenfolge im Text.
  *
  * Geraten bleibt es trotzdem — deshalb markiert die App jeden so gelesenen
  * Treffer als unsicher (BarcodeUiState.unsicher), und der Dialog sagt es.
- * Dieselbe Ueberlegung steht serverseitig in utils/produkttitel.ts, wo aus
- * einem Produkttitel dieselbe Frage zu beantworten ist.
+ *
+ * ── Dieselbe Frage steht in TypeScript ──────────────────────────────────────
+ * Web-App/utils/produkttitel.ts beantwortet sie fuer Haendlertitel. Diese
+ * Fassung laeuft offline in der Kameraschleife und kann sie nicht aufrufen —
+ * damit die beiden nicht auseinanderlaufen, pruefen BEIDE Seiten denselben
+ * Korpus: shared/setnummer-korpus.json (siehe SetnummerKorpusTest).
  */
+
+/**
+ * Woerter, die eine Zahl als Mengenangabe ausweisen.
+ *
+ * Wortgleich mit MENGENWORT in Web-App/utils/produkttitel.ts. `(?iu)` statt
+ * RegexOption.IGNORE_CASE: Javas Ignorieren der Gross-/Kleinschreibung ist
+ * ohne `u` auf ASCII beschraenkt, „STUECKE" mit Umlaut faellt sonst durch.
+ */
+private val MENGENWORT = Regex(
+    "(?iu)^\\s*(?:x\\s*)?(?:pcs?|pieces?|piece|teil(?:e|en)?|stück(?:e|en)?|" +
+    "stueck(?:e|en)?|stein(?:e|en)?|bricks?|parts?|element(?:e|en|s)?)\\b"
+)
+
+/**
+ * Stellenzahlen in absteigender Guete. Unbekannte Laengen landen dahinter.
+ * Muss mit `GUETE` in Web-App/utils/produkttitel.ts uebereinstimmen.
+ */
+internal val GUETE = listOf(5, 4, 6, 7, 3)
+
+/**
+ * Drei bis sieben Ziffern, optional mit `#` davor und Variantenzusatz dahinter.
+ *
+ * Steht hier oben und nicht in der Funktion: Sie laeuft in der Kameraschleife
+ * (alle 700 ms, siehe BarcodeAnalyzer.kt), und ein Regex wird sonst bei jedem
+ * Bild neu uebersetzt. Wortgleich mit `muster` in produkttitel.ts.
+ */
+private val SETNUMMER_MUSTER = Regex("(#\\s*)?\\b(\\d{3,7})(-\\d{1,2})?\\b")
+
+private data class SetnummerKandidat(
+    val wert: String,
+    val mitSuffix: Boolean,
+    val mitRaute: Boolean,
+    val jahr: Boolean,
+    val guete: Int,
+)
+
 internal fun setNumberCandidates(text: String): List<String> {
-    val guete = listOf(5, 4, 6, 7)
-    return Regex("\\b(\\d{4,7})(-\\d{1,2})?\\b").findAll(text)
-        .map { it.value }
-        .distinct()
-        .toList()
+    val jahrGrenze = java.time.Year.now().value + 1
+    val gefunden = ArrayList<SetnummerKandidat>()
+    for (treffer in SETNUMMER_MUSTER.findAll(text)) {
+        val ziffern = treffer.groupValues[2]
+        val suffix = treffer.groupValues[3]
+        // Regel 1: Was ein Mengenwort hinter sich hat, ist eine Teilezahl.
+        val danach = text.substring(treffer.range.last + 1)
+        if (MENGENWORT.containsMatchIn(danach)) continue
+        val zahl = ziffern.toIntOrNull() ?: continue
+        // Mit Variantenzusatz ist es keine Jahreszahl mehr, sondern eine
+        // Setnummer in ihrer eindeutigen Schreibweise.
+        val jahr = suffix.isEmpty() && ziffern.length == 4 && zahl >= 1949 && zahl <= jahrGrenze
+        // Unbekannte Laenge ganz nach hinten statt an den Anfang: indexOf
+        // liefert sonst -1 und die Zahl gewaenne alles.
+        val guete = GUETE.indexOf(ziffern.length).let { if (it < 0) GUETE.size else it }
+        gefunden.add(SetnummerKandidat(ziffern + suffix, suffix.isNotEmpty(),
+            treffer.groupValues[1].isNotEmpty(), jahr, guete))
+    }
+    // sortedWith ist stabil, also bleibt bei Gleichstand die Reihenfolge im Text.
+    return gefunden.distinctBy { it.wert }
         .sortedWith(
-            compareByDescending<String> { it.contains('-') }
-                .thenBy {
-                    val stellen = it.substringBefore('-').length
-                    // Unbekannte Laenge ganz nach hinten statt an den Anfang:
-                    // indexOf liefert sonst -1 und die Zahl gewaenne alles.
-                    guete.indexOf(stellen).let { i -> if (i < 0) guete.size else i }
-                }
+            compareByDescending<SetnummerKandidat> { it.mitSuffix }
+                .thenByDescending { it.mitRaute }
+                .thenBy { it.jahr }
+                .thenBy { it.guete }
         )
+        .map { it.wert }
 }
 
 @androidx.annotation.OptIn(ExperimentalCamera2Interop::class)

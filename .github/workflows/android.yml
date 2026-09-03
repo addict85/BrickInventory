@@ -10,10 +10,15 @@ on:
     branches: [main]
     paths:
       - 'Android-App/**'
+      # shared/ ist der gemeinsame Pruefkorpus beider Apps (siehe shared/README.md).
+      # SetnummerKorpusTest liest ihn — wer nur dort etwas aendert, muss trotzdem
+      # den Android-Lauf bekommen, sonst prueft ihn nur noch die Web-Seite.
+      - 'shared/**'
       - '.github/workflows/android.yml'
   pull_request:
     paths:
       - 'Android-App/**'
+      - 'shared/**'
   workflow_dispatch:
 
 # Ein neuer Push bricht einen noch laufenden Bau desselben Zweigs ab — sonst

@@ -238,8 +238,12 @@ router.get('/sets/barcode/:barcode', requireToken, async (req: AuthedRequest, re
         ).on('error',()=>resolve(null)).setTimeout(6000, function (this: import('http').ClientRequest) { this.destroy(); resolve(null); });
       });
       if (titel) {
-        for (const kandidat of setnummerKandidaten(titel)) {
-          const n = `${kandidat}-1`;
+        const kandidaten = setnummerKandidaten(titel);
+        for (const kandidat of kandidaten) {
+          // normalizeSetNumber statt `${kandidat}-1`: Ein Kandidat kann den
+          // Variantenzusatz schon mitbringen („60445-1" im Titel), und daraus
+          // wurde sonst „60445-1-1" — eine Nummer, die es nirgends gibt.
+          const n = normalizeSetNumber(kandidat);
           const bekannt = await db.get(
             'SELECT set_number FROM catalog_cache WHERE set_number = $1 OR set_number = $2',
             [kandidat, n]
@@ -250,9 +254,9 @@ router.get('/sets/barcode/:barcode', requireToken, async (req: AuthedRequest, re
         // Marcos Entscheidung, lieber einen markierten Vorschlag als gar nichts.
         // enrichResult holt Bild und Namen dazu, und die App weist im Dialog
         // darauf hin, dass hier hingesehen werden muss.
-        const ersterKandidat = setnummerKandidaten(titel)[0];
+        const ersterKandidat = kandidaten[0];
         if (ersterKandidat) {
-          return res.json(await enrichResult(`${ersterKandidat}-1`, titel, 'upcitemdb'));
+          return res.json(await enrichResult(normalizeSetNumber(ersterKandidat), titel, 'upcitemdb'));
         }
       }
     }
