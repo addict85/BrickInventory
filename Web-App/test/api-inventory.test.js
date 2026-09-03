@@ -14,6 +14,16 @@
  *                      ist Android-spezifisch (z.B. Barcode)
  *   nur-web          — Webapp-spezifisch (Session-Auth-Flows, Datei-Exporte,
  *                      Uploads, SSE-Streams, Admin-UI der Webapp)
+ *
+ * ── Was dieser Test NICHT prueft ────────────────────────────────────────────
+ * Ob die Kategorie STIMMT. Geprueft wird nur, dass jeder Endpunkt eine hat und
+ * dass kein Eintrag verwaist ist. NACHGEMESSEN: Acht als `nur-v1` beschriftete
+ * Endpunkte werden von keinem der beiden Clients gerufen — die Beschriftung
+ * sagt aber woertlich „wird von BEIDEN Clients genutzt". Eine Beschriftung,
+ * die niemand nachmisst, wird irgendwann falsch.
+ *
+ * Wer wen wirklich ruft, prueft test/api-aufrufer.test.js; dass keine Adresse
+ * unbegruendet auf beiden Oberflaechen steht, test/api-oberflaechen.test.js.
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
