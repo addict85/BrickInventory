@@ -535,6 +535,13 @@ window.I18N_DE = {
   'parts.filter.color': 'Nach Farbe filtern',
   'parts.filter.category': 'Nach Kategorie filtern',
   'parts.spare_tag': 'Ersatzteil',
+  // Detail-Dialog fuer Teile und Figuren AUS SETS (Marcos Wunsch): kein
+  // Marktpreis, Anzahl nicht aenderbar, dafuer die verwendenden Sets.
+  'setitem.used_in': 'Verwendet in',
+  'setitem.used_in_none': 'In keinem Set gefunden',
+  'setitem.total_qty': 'Gesamtmenge',
+  'setitem.open_set': 'Set öffnen',
+  'setitem.category': 'Kategorie',
   'parts.none_manual': 'Keine Einzel-Teile',
   'parts.none_manual_hint': 'Füge Teile einzeln hinzu oder importiere eine CSV-Datei',
   'figs.num_label': 'Figur-Nummer *',

@@ -1,6 +1,6 @@
 import { registerActions } from './00-registry.js';
 import { colorName, locale, t, tRaw} from '../i18n.js';
-import { escHex, hexZiffern, CURRENCY, G, TRASH_ICON_SVG, api, esc, escUrl, fmtN, fullUrl, imgUrl, thumbUrl, toast } from './01-core.js';
+import { escHex, hexZiffern, CURRENCY, G, TRASH_ICON_SVG, api, esc, escJs, escUrl, fmtN, fullUrl, imgUrl, thumbUrl, toast } from './01-core.js';
 import { addScopeParam, scopeQuery } from './14-scope.js';
 import { condBadges, ownerBadges, selectedOwner, PARTS_ICON_SVG } from './02-gallery.js';
 import { loadFinance } from './04-finance.js';
@@ -202,7 +202,9 @@ export function renderFigs(list, target) {
         const imgSrc = imgUrl(thumbUrl(f.image_local || f.image_url) || f.image_local || f.image_url || '', true);
         const dateVal = f.set_added_at || null;
         const erfasst = dateVal ? new Date(dateVal).toLocaleDateString(locale()) : '—';
-        return `<tr>
+        // Anklickbar wie die Kachel darunter — dieselbe Handlung in beiden
+        // Ansichten (Marcos Detail-Dialog fuer automatisch erfasste Figuren).
+        return `<tr style="cursor:pointer" data-click="${f.source==='manual'?'openManDetail':'openSetItemDetail'}" data-arg="fig" data-arg2="${escJs(f.fig_number)}" data-arg3="0">
           <td>${imgSrc?`<img src="${escUrl(imgSrc)}" loading="lazy" decoding="async" data-onerror="hide" style="width:36px;height:36px;object-fit:contain;background:var(--s50);border-radius:5px" />`:'—'}</td>
           <td><span style="font-family:var(--mono);font-size:.77rem;color:var(--b600)">${esc(f.fig_number)}</span></td>
           <td style="max-width:200px">${esc(f.fig_name)||'—'}</td>
@@ -256,7 +258,12 @@ export function renderFigs(list, target) {
           const besitzer = ownerBadges(f)
             ? `<div style="display:flex;gap:3px;justify-content:center;flex-wrap:wrap;margin-top:3px">${ownerBadges(f)}</div>`
             : '';
-          return `<div class="part-card" style="position:relative">
+          // Manuell erfasste Figuren haben ihren eigenen Dialog (Kaufpreise,
+          // Menge aenderbar); die aus Sets den neuen ohne Preis und ohne
+          // Mengenaenderung. Die Kachel entscheidet nach der Quelle, damit
+          // BEIDE Faelle richtig sind — auch wenn diese Liste heute nur
+          // `source=set` laedt.
+          return `<div class="part-card" style="position:relative;cursor:pointer" data-click="${f.source==='manual'?'openManDetail':'openSetItemDetail'}" data-arg="fig" data-arg2="${escJs(f.fig_number)}" data-arg3="0">
             ${delBtn}
             ${imgSrc ? `<img src="${escUrl(imgSrc)}" class="part-img" loading="lazy" decoding="async" data-fade="1" data-orig="${escUrl(fullUrl(imgSrc))}" />` : ''}
             <div class="part-img-ph" style="display:${imgSrc?'none':'flex'}">👷</div>

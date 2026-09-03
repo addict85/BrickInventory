@@ -13,14 +13,15 @@
 // 07-admin.js herüber (confirmDelete, renderMarketRows, priceChartSVG), und
 // hinaus geht renderAcquisitionSummary. Genau das machte den Schnitt möglich,
 // ohne irgendetwas umzubauen.
-import { detailZeile } from './01-bausteine.js';
+import { detailZeile, ladeAnzeige } from './01-bausteine.js';
 import { registerActions } from './00-registry.js';
 import { locale, t, tRaw } from '../i18n.js';
 import { escHex, CURRENCY, G, ME, api, esc, escJs, fmtN, fullUrl, imgUrl, toast } from './01-core.js';
 import { allSets, applySetAggregate, closeModal, curSet, loadGallery, pnlBadge, updateGalleryPrices } from './02-gallery.js';
 import { loadFinance } from './04-finance.js';
 import { deleteManualFig, deleteManualPart, loadManualFigsTable, loadManualParts, manualFigsCache, manualPartsCache, updateManualFig, updateManualPart } from './06-minifigs.js';
-import { confirmDelete, priceChartSVG, renderMarketRows } from './07-admin.js';
+import { confirmDelete, openModal, priceChartSVG, renderMarketRows } from './07-admin.js';
+import { scopeQuery } from './14-scope.js';
 import { blurOnEnter, mQtyDec, mQtyInc, saveManualFigBl } from './11-actions.js';
 
 // ── KAUFPREIS-MODAL ─────────────────────────────────────────────────────────
@@ -466,6 +467,133 @@ export async function openManDetail(type, id, colorId) {
 
 }
 
+// ═══ Detail-Dialog fuer Teile und Figuren AUS SETS ═════════════════════════
+//
+// ── Marcos Wunsch ──────────────────────────────────────────────────────────
+// „Kannst du noch einbauen, dass auch die automatisch erfassten Teile und
+// Minifiguren einen Detail-Dialog inkl. Zoom haben? Der Marktpreis kann
+// weggelassen werden. Die Anzahl soll nicht geändert werden können. Dafür soll
+// angezeigt werden, welche Sets dieses Teil und Minifigur verwenden — inkl.
+// Link, um den Detail-Dialog des Sets öffnen zu können."
+//
+// ── Warum derselbe Rahmen wie openManDetail ────────────────────────────────
+// Es ist dieselbe Frage („was ist das für ein Teil?"), nur eine andere
+// Herkunft. Zwei verschieden aussehende Dialoge für dieselbe Sache wären genau
+// das Gegenteil von „einheitliche Ansichten". Geteilt werden deshalb der
+// Modal-Rahmen, die Kopfzeile, das Bild samt Zoom (data-orig, 11-actions.js)
+// und detailZeile(); unterschiedlich ist nur, WAS darin steht.
+//
+// Der Löschknopf wird ausgeblendet: Ein Teil aus einem Set löscht man nicht
+// einzeln — es verschwindet mit dem Set. Der Knopf säße hier also für eine
+// Handlung, die es nicht gibt.
+//
+// ── Warum EIN Aufruf und keine Daten aus dem DOM ───────────────────────────
+// Die Kacheln der automatischen Liste halten keinen Zwischenspeicher (sie
+// hängt HTML seitenweise an). Die Felder aus der angeklickten Kachel
+// zurückzulesen wäre möglich und brüchig — jede Änderung am Kachel-Aufbau
+// bräche den Dialog still.
+//
+// Stattdessen liefert /v1/parts/:nr/:farbe/sets (bzw. /v1/minifigs/:nr/sets)
+// BEIDES aus derselben Abfrage: das Teil selbst und die Sets, in denen es
+// steckt. Eine zweite Quelle für den Kopf könnte etwas anderes sagen als die
+// Liste darunter.
+export async function openSetItemDetail(type, id, colorId) {
+  const farbe = parseInt(colorId) || 0;
+  _manItem = null;                       // fremder Dialog, fremder Zustand
+  const modal  = G('setitem-modal');
+  const bodyEl = G('setitem-body');
+  const imgEl  = G('setitem-img');
+
+  G('setitem-tit').textContent = id;
+  G('setitem-sub').textContent = '';
+  imgEl.style.display = 'none';
+  bodyEl.innerHTML = ladeAnzeige('', { stil: 'padding:1rem' });
+  modal.classList.add('open');
+
+  // Blickfeld mitgeben wie überall sonst — im Haushalt gehört das Set des
+  // Geschwisterkontos dazu, sonst sagt der Dialog etwas anderes als die Liste,
+  // aus der man kommt.
+  //
+  // scopeQuery() ANGEHAENGT statt in die Zeichenkette hinein: Genau so machen
+  // es die übrigen Aufrufe, und test/frontend-api-paths.test.js liest die
+  // Adresse aus dem Quelltext. Ein `${…}` am Ende las es als Teil des Pfades
+  // („/sets:x — keine passende Route") und meldete den Aufruf als ins Leere
+  // gehend. Der Waechter hatte recht mit seiner Form, nicht mit dem Befund —
+  // die einheitliche Schreibweise löst beides.
+  const url = (type === 'fig'
+    ? `/v1/minifigs/${encodeURIComponent(id)}/sets`
+    : `/v1/parts/${encodeURIComponent(id)}/${farbe}/sets`)
+    + scopeQuery(type === 'fig' ? 'minifigs' : 'parts');
+  const d = await api('GET', url).catch(() => null);
+  // Zwischenzeitlich geschlossen? Dann nichts mehr hineinschreiben.
+  if (!modal.classList.contains('open')) return;
+
+  const item = d?.item || null;
+  const sets = d?.sets || [];
+
+  G('setitem-tit').textContent = item?.name || id;
+  G('setitem-sub').textContent = id + (item?.color_name ? ' · ' + item.color_name : '');
+
+  // Bild wie im manuellen Dialog: über den Server-Proxy in voller Auflösung.
+  // data-orig speist den Zoom (openImageLightboxFromEl in 11-actions.js) —
+  // ohne dieses Attribut gäbe es kein Vergrössern, und genau das war Teil des
+  // Wunsches.
+  const roh = item?.image_local || item?.image_url || '';
+  const voll = roh ? imgUrl(fullUrl(roh), false) : '';
+  if (voll) {
+    imgEl.src = voll;
+    imgEl.dataset.orig = voll;
+    imgEl.style.display = '';
+  } else {
+    imgEl.style.display = 'none';
+  }
+
+  const zeilen = [];
+  // Anzahl: NUR Anzeige. Marcos Vorgabe — eine Menge, die aus den Inventaren
+  // der Sets entsteht, lässt sich hier nicht sinnvoll ändern.
+  zeilen.push(detailZeile(t('setitem.total_qty'),
+    `<span style="font-family:var(--mono);font-weight:600">${fmtN(item?.total_quantity || 0)}×</span>`));
+
+  if (type === 'part' && item?.color_name) {
+    const punkt = item.color_hex
+      ? `<span style="display:inline-block;width:12px;height:12px;border-radius:50%;background:${escHex(item.color_hex, 'var(--s300)')};border:1px solid rgba(0,0,0,.15);margin-right:4px;vertical-align:middle"></span>`
+      : '';
+    zeilen.push(detailZeile(t('parts.color_label'), `${punkt}${esc(item.color_name)}`));
+  }
+  if (item?.category_name) zeilen.push(detailZeile(t('setitem.category'), esc(item.category_name)));
+  if (item?.is_spare) zeilen.push(detailZeile(t('parts.spare_tag'), '✓'));
+
+  // ── Die verwendenden Sets ────────────────────────────────────────────────
+  // Jede Zeile öffnet das Set-Detail. `openSetAusItem` schliesst diesen Dialog
+  // zuerst — zwei offene Fenster übereinander wären nicht mehr zu schliessen.
+  const liste = sets.length
+    ? sets.map(s => `<div data-click="openSetAusItem" data-arg="${escJs(s.set_number)}"
+          title="${esc(t('setitem.open_set'))}"
+          style="display:flex;align-items:center;gap:8px;padding:4px 0;cursor:pointer">
+        <span style="font-family:var(--mono);font-size:.78rem;color:var(--b600)">${esc(s.set_number)}</span>
+        <span style="flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(s.set_name || '')}</span>
+        <span style="color:var(--mut);font-size:.78rem">×${fmtN(s.quantity)}</span>
+      </div>`).join('')
+    : `<span style="color:var(--mut);font-size:.83rem">${esc(t('setitem.used_in_none'))}</span>`;
+  zeilen.push(detailZeile(t('setitem.used_in'), liste,
+    { zeilenStil: 'align-items:flex-start',
+      wertStil: 'flex-direction:column;align-items:stretch;gap:0;flex:1;min-width:0' }));
+
+  bodyEl.innerHTML = zeilen.join('');
+}
+
+function closeSetItemDetail() {
+  G('setitem-modal').classList.remove('open');
+}
+G('setitem-modal').addEventListener('click',
+  e => e.target.id === 'setitem-modal' && closeSetItemDetail());
+
+/** Aus dem Teil-Dialog ins Set-Detail — der eine schliesst, der andere öffnet. */
+function openSetAusItem(setNumber) {
+  closeSetItemDetail();
+  openModal(setNumber);
+}
+
 function closeManDetail() {
   G('man-detail-modal').classList.remove('open');
   _manItem = null;
@@ -753,4 +881,7 @@ registerActions({
   openAcqModal,
   openManAcqModal,
   openManDetail,
+  openSetAusItem,
+  openSetItemDetail,
+  closeSetItemDetail,
 });

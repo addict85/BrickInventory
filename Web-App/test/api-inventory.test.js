@@ -119,6 +119,12 @@ const C = {
   'GET /api/v1/sets/:setNumber/price-history': 'nur-v1',
   'GET /api/v1/parts/:partNumber/:colorId/price-history': 'nur-v1',
   'GET /api/v1/minifigs/:figNumber/price-history': 'nur-v1',
+  // Detail-Dialog fuer Teile/Figuren AUS SETS (Marcos Wunsch): welche Sets
+  // verwenden dieses Teil? Beide gehen durch DIESELBE Funktion
+  // (verwendendeSets in utils/handlers/shared.ts) — die alte Oberflaeche hat
+  // dafuer nie etwas gehabt, es gibt also kein Gegenstueck zu paaren.
+  'GET /api/v1/parts/:partNumber/:colorId/sets': 'nur-v1',
+  'GET /api/v1/minifigs/:figNumber/sets': 'nur-v1',
   'GET /api/v1/': 'nur-v1',
   'GET /api/v1/auth/me': 'nur-v1',
   'POST /api/v1/auth/login': 'nur-v1',

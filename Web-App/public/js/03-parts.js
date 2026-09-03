@@ -1,7 +1,7 @@
 import { ladeAnzeige } from './01-bausteine.js';
 import { registerActions } from './00-registry.js';
 import { colorName, locale, t } from '../i18n.js';
-import { G, api, esc, escHex, escHtml, escUrl, fmtBig, fullUrl, imgUrl, observeLazyImages, thumbUrl } from './01-core.js';
+import { G, api, esc, escHex, escHtml, escJs, escUrl, fmtBig, fullUrl, imgUrl, observeLazyImages, thumbUrl } from './01-core.js';
 import { addScopeParam, scopeQuery } from './14-scope.js';
 import { PARTS_ICON_SVG, allSets } from './02-gallery.js';
 
@@ -287,7 +287,11 @@ function partsCard(p){
   // bewusst so — auf Nutzerwunsch soll auch das Detailbild der Teile über
   // das Backend laufen, nicht am Server vorbei direkt zum CDN.
   const rawSrc = p.image_local||p.image_url||'';
-  return `<div class="part-card">
+  // Die Kachel oeffnet den Detail-Dialog (Marcos Wunsch). Bis hierher war sie
+  // tot: Anders als bei manuell erfassten Teilen gab es zu einem Teil aus einem
+  // Set nichts zu sehen — kein Bild in voller Groesse, keine Angabe, aus
+  // welchem Set es stammt.
+  return `<div class="part-card" style="cursor:pointer" data-click="openSetItemDetail" data-arg="part" data-arg2="${escJs(p.part_number)}" data-arg3="${p.color_id||0}">
     <img src="${escUrl(imgUrl(thumbUrl(p.image_local||p.image_url)||p.image_local||p.image_url||'', true)||'')}" class="part-img" loading="lazy" decoding="async" data-fade="1" data-orig="${escUrl(rawSrc ? imgUrl(fullUrl(rawSrc), false) : '')}" />
     <div class="part-img-ph" style="display:none">${partsIconLarge()}</div>
     <div class="part-num" title="${esc(p.part_number)}">${esc(p.bl_part_number||p.part_number)}</div>
@@ -299,7 +303,10 @@ function partsCard(p){
 }
 
 function partsTableRow(p){
-  return `<tr>
+  // Dieselbe Handlung wie auf der Kachel — eine Ansicht darf nicht koennen,
+  // was die andere nicht kann. Genau daran ist in diesem Projekt schon mehrfach
+  // etwas auseinandergelaufen.
+  return `<tr style="cursor:pointer" data-click="openSetItemDetail" data-arg="part" data-arg2="${escJs(p.part_number)}" data-arg3="${p.color_id||0}">
     <td><img src="${escUrl(imgUrl(thumbUrl(p.image_local||p.image_url)||p.image_local||p.image_url||'', true)||'')}" loading="lazy" decoding="async" data-onerror="clear" style="width:36px;height:36px;object-fit:contain;background:var(--s50);border-radius:5px" /></td>
     <td><span style="font-family:var(--mono);font-size:.77rem;color:var(--b600)" title="${esc(p.part_number)}">${esc(p.bl_part_number||p.part_number)}</span></td>
     <td style="max-width:200px">${esc(p.part_name)||'—'} ${ersatzteilPlakette(p)}</td>

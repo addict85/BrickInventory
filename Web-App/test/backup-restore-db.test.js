@@ -75,6 +75,20 @@ test('Sicherung und Wiederherstellung', async (t) => {
 
   const pgDump = klient('pg_dump');
   const psql   = klient('psql');
+  /**
+   * Die Fassung eines Klienten — gehört in die Fehlermeldung.
+   *
+   * pg_dump und psql verweigern die Arbeit an einem NEUEREN Server, und genau
+   * das ist ein Unterschied zwischen hier und dem CI-Lauf: lokal PostgreSQL 16,
+   * im Lauf 18 (compose.yaml, geprüft in test/build-tooling.test.js). Steht die
+   * Zahl in der Meldung, ist die Frage in einer Zeile beantwortet statt in
+   * einer Runde.
+   */
+  const fassung = (bin) => {
+    if (!bin) return '—';
+    const r = spawnSync(bin, ['--version'], { encoding: 'utf8', stdio: 'pipe' });
+    return (r.stdout || r.stderr || '').trim() || '?';
+  };
   if (!pgDump || !psql) {
     await db.pool.end().catch(() => {});
     if (process.env.REQUIRE_DB === '1') {
@@ -89,11 +103,29 @@ test('Sicherung und Wiederherstellung', async (t) => {
   const arbeit = fs.mkdtempSync(path.join(os.tmpdir(), 'bi-backup-'));
   const dump = path.join(arbeit, 'db.sql');
 
-  /** psql mit einem Dump füttern; gibt den Exit-Code zurück. */
-  const einspielen = (datei, mitStopp) => spawnSync(psql, ['-v', 'ON_ERROR_STOP=1', url, '-f', datei],
-    { encoding: 'utf8', stdio: 'pipe', env: { ...process.env } }).status;
-  const einspielenOhneStopp = (datei) => spawnSync(psql, [url, '-f', datei],
-    { encoding: 'utf8', stdio: 'pipe', env: { ...process.env } }).status;
+  // ── psql mit einem Dump füttern ──────────────────────────────────────────
+  //
+  // Der Rückgabewert war NUR der Exit-Code, und `stdio: 'pipe'` verschluckt,
+  // was psql zu sagen hatte. Ein Fehlschlag las sich dann als „1 !== 0" —
+  // ohne einen Hinweis darauf, WELCHE Anweisung gescheitert ist.
+  //
+  // GEMESSEN: Genau so ist dieser Test im CI-Lauf rot geworden, und weder das
+  // Protokoll noch die Meldung sagten, woran. Ein Test, der nur „ging nicht"
+  // meldet, kostet eine ganze Runde.
+  //
+  // Der Parameter `mitStopp` ist dabei mit weggefallen: Er wurde nie
+  // ausgewertet — ON_ERROR_STOP stand ohnehin fest drin, und für den anderen
+  // Fall gibt es einspielenOhneStopp(). Ein Argument, das nichts tut, behauptet
+  // etwas.
+  const lauf = (args, datei) => spawnSync(psql, [...args, url, '-f', datei],
+    { encoding: 'utf8', stdio: 'pipe', env: { ...process.env } });
+  /** Exit-Code; `grund()` liefert danach die Meldung von psql dazu. */
+  let letzterLauf = null;
+  const einspielen = (datei) => (letzterLauf = lauf(['-v', 'ON_ERROR_STOP=1'], datei)).status;
+  const einspielenOhneStopp = (datei) => (letzterLauf = lauf([], datei)).status;
+  /** Was psql gesagt hat — die letzten Zeilen, damit die Meldung lesbar bleibt. */
+  const grund = () => (letzterLauf?.stderr || '').trim().split('\n').slice(-8).join('\n')
+    || '(psql hat nichts nach stderr geschrieben)';
 
   await t.test('Aufbau: Schema und ein paar Daten', async () => {
     await db.run('DROP SCHEMA public CASCADE');
@@ -129,7 +161,9 @@ test('Sicherung und Wiederherstellung', async (t) => {
     await assert.rejects(() => db.get('SELECT COUNT(*) FROM sets'),
       'Der Aufbau der Gegenprobe stimmt nicht — die Tabellen sind noch da');
 
-    assert.equal(einspielen(dump, true), 0, 'Das Zurückspielen scheiterte');
+    assert.equal(einspielen(dump), 0,
+      `Das Zurückspielen scheiterte. psql sagt:\n${grund()}\n` +
+      `pg_dump: ${fassung(pgDump)} · psql: ${fassung(psql)}`);
 
     const s = await db.get(`SELECT set_number, name, quantity, condition FROM sets`);
     assert.equal(s.set_number, '10214-1');
@@ -166,7 +200,7 @@ test('Sicherung und Wiederherstellung', async (t) => {
     assert.equal(einspielenOhneStopp(kaputt), 0,
       'Ohne ON_ERROR_STOP müsste psql den Fehler verschlucken — tut es das nicht ' +
       'mehr, ist die Begründung in restore.sh überholt und gehört angepasst');
-    assert.notEqual(einspielen(kaputt, true), 0,
+    assert.notEqual(einspielen(kaputt), 0,
       'MIT ON_ERROR_STOP muss psql mit einem Fehler abbrechen — sonst schützt die Variable nichts');
   });
 
