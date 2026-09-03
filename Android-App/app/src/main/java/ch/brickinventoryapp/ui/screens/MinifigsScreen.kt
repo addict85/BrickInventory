@@ -434,15 +434,24 @@ fun MinifigCard(fig: Minifig, serverUrl: String, imageLoader: ImageLoader) {
                     }
                 }
                 // Zustand nur bei manuell erfassten Minifiguren (automatisch aus
-                // Sets übernommene haben keinen eigenen Zustand).
-                if (fig.source == "manual") {
-                    // Column statt Box: Zwei Plaketten übereinander, nicht
-                    // aufeinander — in einer Box lägen sie am selben Punkt.
-                    Column(Modifier.align(Alignment.BottomStart).padding(4.dp),
-                        verticalArrangement = Arrangement.spacedBy(2.dp)) {
-                        ConditionBadges(fig.conditions, fig.condition)
-                        OwnerBadges(fig.owners)
-                    }
+                // Sets übernommene haben keinen eigenen Zustand). Die
+                // BESITZER-Plakette dagegen unbedingt: Sie beantwortet „wem
+                // gehört das?", und die Frage stellt sich bei einer Figur aus
+                // dem Set eines Kindes genauso. Die Galerie-Kachel zeigt sie
+                // seit jeher.
+                //
+                // Sie stand INNERHALB dieser Bedingung — und diese Liste lädt
+                // ausschliesslich `source=set`. Die Plakette war also
+                // unerreichbar. Ohne Haushalt ist `owners` leer, und
+                // OwnerBadges kehrt dann sofort zurück; im Einzelkonto ändert
+                // sich nichts.
+                //
+                // Column statt Box: Zwei Plaketten übereinander, nicht
+                // aufeinander — in einer Box lägen sie am selben Punkt.
+                Column(Modifier.align(Alignment.BottomStart).padding(4.dp),
+                    verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                    if (fig.source == "manual") ConditionBadges(fig.conditions, fig.condition)
+                    OwnerBadges(fig.owners)
                 }
                 if (fig.source == "manual") {
                     Surface(

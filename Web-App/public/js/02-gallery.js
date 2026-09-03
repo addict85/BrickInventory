@@ -611,7 +611,7 @@ function tableRow(s){
     <td style="font-size:.75rem;color:var(--mut)">${addedFmt}</td>
     <td>${s.instructions?.length?`<span class="ibadge">📋${s.instructions.length}</span>`:'—'}</td>
     <td data-click="stopEvent"><button class="btn bs btn-sm" data-click="reimportParts" data-arg="${escJs(s.set_number)}">${PARTS_ICON_SVG}</button></td>
-    <td data-click="stopEvent"><button class="btn bd btn-sm" data-click="delSet" data-arg="${escJs(s.set_number)}">🗑️</button></td>
+    <td data-click="stopEvent"><button class="btn bd btn-sm" data-click="delSet" data-arg="${escJs(s.set_number)}" title="${esc(t('detail.delete'))}" aria-label="${esc(t('detail.delete'))}">${TRASH_ICON_SVG}</button></td>
   </tr>`;
 }
 

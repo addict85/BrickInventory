@@ -233,17 +233,56 @@ test('Löschknöpfe auf Kacheln tragen einen Papierkorb, kein ✕', () => {
   // auf hellem Grund (.bd) — keine zweite Fassung nötig.
   assert.match(core, /stroke="currentColor"/, 'Das Symbol muss die Farbe erben');
 
-  // 06-minifigs.js: drei statt zwei — die manuelle TEILE-Kachel hat jetzt
-  // ebenfalls einen Löschknopf. Vorher hatten nur Sets und Minifiguren einen,
-  // und die drei Tabellen verhielten sich unterschiedlich.
-  // 06-minifigs.js: vier — Minifiguren-Übersicht, manuelle Figuren-Kachel und
-  // manuelle Teile-Kachel. Die manuelle FIGUREN-Kachel hatte als letzte keinen
-  // Löschknopf; alle drei Tabellen verhalten sich jetzt gleich.
-  for (const [file, count] of [['02-gallery.js', 1], ['06-minifigs.js', 4]]) {
+  // ── Die Regel statt der Anzahl ────────────────────────────────────────────
+  //
+  // Hier standen feste Zahlen („02-gallery.js: 1, 06-minifigs.js: 4"), und die
+  // Begründung darüber erzählte die Geschichte ihrer Änderungen: erst zwei,
+  // dann drei, dann vier. Eine Zahl, die bei jedem Umbau nachgezogen werden
+  // muss, prüft die Absicht nicht — sie prüft den letzten Stand.
+  //
+  // Zuletzt schlug sie an, weil ein Löschknopf in der Figuren-TABELLE
+  // entfernt wurde: Er hing an `f.source==='manual'`, und diese Liste lädt
+  // ausschliesslich `source=set` — der Knopf war unerreichbar. Ein richtiger
+  // Schritt, der einen roten Test erzeugte.
+  //
+  // Geprüft wird jetzt, worum es geht: JEDER Löschknopf auf einer Kachel oder
+  // in einer Tabellenzeile trägt den Papierkorb.
+  //
+  // Die eine Ausnahme, mit Grund: `delInstr` entfernt einen Anleitungs-LINK
+  // aus einer Liste im Set-Detail — ein kleines, graues ✕ neben dem Eintrag,
+  // keine Kachelaktion. „Aus der Liste nehmen" und „diesen Eintrag löschen"
+  // sind verschiedene Dinge, und der Titel dieses Tests spricht von Kacheln.
+  // Wer das ändern will, entscheidet über die Darstellung — nicht über eine
+  // Regel, die hier durchgesetzt wird.
+  const AUSNAHME = new Set(['delInstr']);
+  let ausnahmenGesehen = 0;
+
+  for (const file of ['02-gallery.js', '06-minifigs.js']) {
     const src = fs.readFileSync(path.join(PUB, 'js', file), 'utf8');
-    const uses = (src.match(/\$\{TRASH_ICON_SVG\}/g) || []).length;
-    assert.equal(uses, count, `${file}: ${uses} statt ${count} Papierkorb-Symbole`);
+    // `del\w*` und nicht `delete\w*`: Die Galerie-Kachel ruft `delSetStop`.
+    // Mit dem engeren Muster fand die Suche dort NICHTS — und der Selbstbeweis
+    // darunter hat genau das gemeldet, statt gruen durchzulaufen.
+    const knoepfe = [...src.matchAll(/<button[^>]*data-click="del\w*"[\s\S]{0,400}?<\/button>/g)]
+      .map(m => m[0]);
+    // Selbstbeweis: Findet das Muster keinen Knopf, wäre die Schleife leer und
+    // der Test grün, ohne etwas geprüft zu haben.
+    assert.ok(knoepfe.length >= 1, `${file}: kein Löschknopf gefunden — Muster veraltet?`);
+    let gefunden = 0;
+    for (const k of knoepfe) {
+      const name = (k.match(/data-click="(del\w*)"/) || [])[1];
+      if (AUSNAHME.has(name)) { gefunden++; continue; }
+      assert.match(k, /\$\{TRASH_ICON_SVG\}/,
+        `${file}: ein Löschknopf ohne Papierkorb-Symbol — ` +
+        `dieselbe Aktion soll überall gleich aussehen:\n${k.slice(0, 160)}`);
+    }
+    ausnahmenGesehen += gefunden;
   }
+
+  // Eine Zeile, die niemand mehr braucht, ist eine Erlaubnis, die niemand
+  // prueft — dieselbe Regel wie in den anderen Waechtern dieses Baums.
+  assert.equal(ausnahmenGesehen, AUSNAHME.size,
+    `${ausnahmenGesehen} von ${AUSNAHME.size} Ausnahmen gefunden — eine davon ` +
+    'beschreibt keinen Knopf mehr und gehoert gestrichen.');
 
   // Die betroffenen Knöpfe dürfen kein ✕ mehr enthalten
   const gallery = fs.readFileSync(path.join(PUB, 'js', '02-gallery.js'), 'utf8');

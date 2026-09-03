@@ -183,26 +183,31 @@ export function renderFigs(list, target) {
   const viewMode = G('figs-view')?.value || 'grid';
 
   if (viewMode === 'table') {
+    // Ohne die Spalten „Quelle" und Papierkorb.
+    //
+    // Beide waren KONSTANT: renderFigs() bekommt ausschliesslich
+    // `allFigsCache`, und der wird mit `source=set` geladen (figParams). Die
+    // Quelle stand also in jeder Zeile auf „aus Set", und der Papierkorb —
+    // `f.source==='manual' ? … : ''` — war in jeder Zeile leer. Zwei von
+    // sieben Spalten, die etwas versprachen und nichts zeigten. Manuell
+    // erfasste Figuren haben ihren eigenen Bereich mit editierbaren Karten.
+    //
+    // Aufgefallen beim Uebertragen der Tabelle in die App: Was dort nachgebaut
+    // wird, muss vorher stimmen.
     el.innerHTML = `<div class="tw"><table class="dt">
       <thead><tr>
-        <th>${t('col.image')}</th><th>${t('col.number')}</th><th>Name</th><th>${t('detail.qty')}</th><th>${t('col.source')}</th><th>${t('detail.added')}</th><th></th>
+        <th>${t('col.image')}</th><th>${t('col.number')}</th><th>Name</th><th>${t('detail.qty')}</th><th>${t('detail.added')}</th>
       </tr></thead>
       <tbody>${list.map(f => {
         const imgSrc = imgUrl(thumbUrl(f.image_local || f.image_url) || f.image_local || f.image_url || '', true);
         const dateVal = f.set_added_at || null;
         const erfasst = dateVal ? new Date(dateVal).toLocaleDateString(locale()) : '—';
-        const src = f.source==='manual'
-          ? `<span style="background:var(--b50);color:var(--b600);border-radius:4px;padding:2px 6px;font-size:.72rem;font-weight:600">${t('figs.badge_manual')}</span>`
-          : `<span style="background:var(--s100);color:var(--mut);border-radius:4px;padding:2px 6px;font-size:.72rem">${t('figs.badge_set')}</span>`;
-        const delBtn = f.source==='manual' ? `<button class="btn bd btn-sm" data-click="deleteManualFig" data-arg="${esc(f.fig_number)}" data-arg2="${f.user_id||''}" title="${esc(t('figs.delete'))}" aria-label="${esc(t('figs.delete'))}">${TRASH_ICON_SVG}</button>` : '';
         return `<tr>
           <td>${imgSrc?`<img src="${escUrl(imgSrc)}" loading="lazy" decoding="async" data-onerror="hide" style="width:36px;height:36px;object-fit:contain;background:var(--s50);border-radius:5px" />`:'—'}</td>
           <td><span style="font-family:var(--mono);font-size:.77rem;color:var(--b600)">${esc(f.fig_number)}</span></td>
           <td style="max-width:200px">${esc(f.fig_name)||'—'}</td>
           <td><span style="font-family:var(--mono);font-weight:600;color:var(--b700)">${f.total_quantity||f.quantity}</span></td>
-          <td>${src}</td>
           <td style="font-size:.75rem;color:var(--mut)">${erfasst}</td>
-          <td>${delBtn}</td>
         </tr>`;
       }).join('')}</tbody></table></div>`;
     return;
@@ -235,8 +240,21 @@ export function renderFigs(list, target) {
           // Eine Plakette je erfasstem Zustand — gemeinsame Fassung in
           // 02-gallery.js. Die frühere Inline-Fassung hier trug dieselben
           // Farben noch einmal von Hand ein.
+          // Zustand nur bei manuell erfassten — die Begruendung darueber gilt.
+          // Die BESITZER-Plakette dagegen unbedingt: Sie beantwortet „wem
+          // gehoert das?", und diese Frage stellt sich bei einer Figur aus dem
+          // Set eines Kindes genauso wie bei einer selbst erfassten. Die
+          // Galerie-Kachel daneben zeigt sie seit jeher.
+          //
+          // Sie stand hier INNERHALB der manual-Bedingung — und diese Liste
+          // laedt ausschliesslich `source=set` (figParams). Die Plakette war
+          // also unerreichbar. Ohne Haushalt ist `owners` leer und
+          // ownerBadges() liefert '' — im Einzelkonto aendert sich nichts.
           const condBadge = f.source==='manual'
-            ? `<div style="display:flex;gap:3px;justify-content:center;flex-wrap:wrap;margin-top:3px">${condBadges(f)}${ownerBadges(f)}</div>`
+            ? `<div style="display:flex;gap:3px;justify-content:center;flex-wrap:wrap;margin-top:3px">${condBadges(f)}</div>`
+            : '';
+          const besitzer = ownerBadges(f)
+            ? `<div style="display:flex;gap:3px;justify-content:center;flex-wrap:wrap;margin-top:3px">${ownerBadges(f)}</div>`
             : '';
           return `<div class="part-card" style="position:relative">
             ${delBtn}
@@ -246,6 +264,7 @@ export function renderFigs(list, target) {
             <div class="part-name">${esc(f.fig_name)||'—'}</div>
             <div class="part-qty">${f.total_quantity||f.quantity}×</div>
             ${condBadge}
+            ${besitzer}
             ${erfasst ? `<div style="font-size:.65rem;color:var(--mut)">${erfasst}</div>` : ''}
           </div>`;
         }).join('')}
