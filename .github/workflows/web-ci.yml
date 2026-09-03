@@ -199,6 +199,22 @@ jobs:
           # ohne Ausnahmeliste auskommen, und grep kann selbst begrenzen.
           grep -E -m 20 -A 12 '^not ok' "$RUNNER_TEMP/test.log" || true
 
+          # ── Und jeden roten Namen als ANNOTATION ────────────────────────────
+          #
+          # Warum zusaetzlich: Die Zusammenfassung oben steht nur auf der
+          # Weboberflaeche, und das rohe Protokoll ist von hier aus nicht zu
+          # holen — der Ablageort liegt hinter einer Weiterleitung, die der
+          # Proxy mit 403 ablehnt. GEMESSEN an Lauf 33799134289: Die einzige
+          # Annotation war „Process completed with exit code 1".
+          #
+          # `::error::`-Zeilen werden zu Annotationen und sind ueber
+          # /check-runs/<id>/annotations abrufbar. Damit ist ein roter Lauf
+          # auch ohne Browser diagnostizierbar.
+          while IFS= read -r zeile; do
+            [ -n "$zeile" ] || continue
+            echo "::error title=Roter Test::${zeile#not ok }"
+          done < <(grep -E -m 20 '^not ok' "$RUNNER_TEMP/test.log" || true)
+
       # npm audit hat einen eigenen Schritt, damit ein neuer Befund nicht in
       # den Testausgaben untergeht. --omit=dev: Was nur beim Bauen läuft, ist
       # kein Angriffsweg auf den laufenden Dienst.

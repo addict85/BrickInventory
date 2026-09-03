@@ -257,4 +257,82 @@ async function withOwners(uids: number[], rows: any[]) {
   });
 }
 
-export { clampPageSize, conditionFromAcquisitions, conditionsFromAcquisitions, applyManualCondition, withOwners };
+/**
+ * In welchen Sets steckt dieses Teil / diese Figur?
+ *
+ * ── Marcos Wunsch ───────────────────────────────────────────────────────────
+ * „Es soll angezeigt werden, welche Sets dieses Teil und Minifigur verwenden.
+ * Inkl. mit Link, um den Detail-Dialog des Sets öffnen zu können."
+ *
+ * ── Warum EINE Funktion für beide ───────────────────────────────────────────
+ * Die Frage ist zweimal dieselbe, nur die Tabelle und der Schlüssel wechseln:
+ * `parts` wird über Teilenummer UND Farbe angesprochen, `minifigs` über die
+ * Figurennummer. Alles andere — Blickfeld, Zusammenzählen je Set, Verbinden
+ * mit der Set-Zeile für Name und Bild — ist Wort für Wort gleich.
+ *
+ * In diesem Projekt ist genau das schon mehrfach schiefgegangen: dieselbe
+ * Regel an zwei Stellen, eine davon gepflegt. Deshalb hier einmal.
+ *
+ * ── Warum die automatisch erfassten Zeilen ──────────────────────────────────
+ * `parts.set_number` steht in jeder Zeile, die aus dem Inventar eines Sets
+ * stammt (`source = 'set'`). Manuell erfasste Positionen haben dort NULL —
+ * `set_number IS NOT NULL` trennt die beiden, ohne sich auf `source` zu
+ * verlassen. Das ist wichtig, weil eine Zeile mit Set-Nummer auch dann
+ * dorthin gehört, wenn `source` einmal anders gesetzt wurde.
+ */
+export interface VerwendendesSet {
+  set_number: string;
+  set_name: string | null;
+  quantity: number;
+  image_local: string | null;
+  image_url: string | null;
+  owner_user_id: number;
+}
+
+/** Spalten, über die gesucht werden darf. Siehe verwendendeSets(). */
+const SUCHSPALTEN = new Set(['part_number', 'color_id', 'fig_number']);
+
+async function verwendendeSets(
+  uids: number[],
+  tabelle: 'parts' | 'minifigs',
+  schluessel: Record<string, string | number>,
+): Promise<VerwendendesSet[]> {
+  const spalten = Object.keys(schluessel);
+  // Die Namen kommen aus Literalen der beiden Aufrufer, nie aus einer
+  // Anfrage. Die Schranke steht trotzdem: Ein künftiger Aufrufer soll hier
+  // nichts anderes einsetzen können, und ein Spaltenname lässt sich nicht
+  // als Parameter binden — er wird zwangsläufig in den Text eingefügt.
+  for (const sp of spalten) {
+    if (!SUCHSPALTEN.has(sp)) throw new Error(`verwendendeSets: unerlaubte Spalte ${sp}`);
+  }
+  const params: any[] = [uids];
+  const bedingungen = spalten.map(sp => `x.${sp} = $${params.push(schluessel[sp])}`);
+  const rows = await db.all(
+    `SELECT x.set_number,
+            x.user_id                AS owner_user_id,
+            SUM(x.quantity)::int     AS quantity,
+            s.name                   AS set_name,
+            s.image_local, s.image_url
+       FROM ${tabelle} x
+       LEFT JOIN sets s ON s.user_id = x.user_id AND s.set_number = x.set_number
+      WHERE x.user_id = ANY($1)
+        AND x.set_number IS NOT NULL
+        AND ${bedingungen.join(' AND ')}
+      GROUP BY x.set_number, x.user_id, s.name, s.image_local, s.image_url
+      ORDER BY x.set_number`,
+    params,
+  ).catch(() => []);
+  // SUM() liefert der Treiber als Zeichenkette; ::int oben macht daraus eine
+  // Zahl. Die ausdrückliche Umwandlung bleibt trotzdem — in diesem Projekt
+  // sind schon mehrere Fehler daran gehangen, dass "0" in JavaScript WAHR ist.
+  return rows.map((r: any) => ({
+    set_number:    String(r.set_number),
+    set_name:      r.set_name ?? null,
+    quantity:      parseInt(r.quantity, 10) || 0,
+    image_local:   r.image_local ?? null,
+    image_url:     r.image_url ?? null,
+    owner_user_id: parseInt(r.owner_user_id, 10),
+  }));
+}
+
+export { clampPageSize, conditionFromAcquisitions, conditionsFromAcquisitions, applyManualCondition, withOwners, verwendendeSets };

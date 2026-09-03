@@ -10,6 +10,7 @@ import { getSetting } from '../../utils/settings';
 import { ersatzteilSql } from '../../utils/validate';
 import { getMinifigPriceHistory } from '../../utils/priceHistory';
 import { einzelwert } from '../../utils/validate';
+import { verwendendeSets } from '../../utils/handlers/shared';
 const router = express.Router();
 
 // ── MINIFIGS ─────────────────────────────────────────────────────────────────
@@ -181,5 +182,28 @@ router.get('/minifigs/:figNumber/parts', requireToken, async (req: AuthedRequest
   } catch (e) { handleRouteError(res, e); }
 });
 
+
+// ── GET /api/v1/minifigs/:figNumber/sets ─────────────────────────────────────
+/**
+ * In welchen Sets steckt diese Figur?
+ *
+ * Gegenstück zu /api/v1/parts/:partNumber/:colorId/sets. Beide rufen dieselbe
+ * Funktion in utils/handlers/shared.ts auf — die Frage ist zweimal dieselbe,
+ * nur Tabelle und Schlüssel wechseln. Zwei getrennte Abfragen waeren genau die
+ * Sorte Doppelung, die in diesem Projekt schon mehrfach auseinandergelaufen
+ * ist (zuletzt routes/minifigs.ts gegen routes/parts.ts).
+ *
+ * Blickfeld, nicht eigenes Konto: Im Haushalt soll auch das Set des
+ * Geschwisterkontos auftauchen, in dem dieselbe Figur steckt.
+ */
+router.get('/minifigs/:figNumber/sets', requireToken, async (req: AuthedRequest, res) => {
+  try {
+    const uids = await scopeIds(req.apiUser.user_id, parseScopeMode(req.query.accounts));
+    const sets = await verwendendeSets(uids, 'minifigs', {
+      fig_number: einzelwert(req.params.figNumber),
+    });
+    res.json({ success: true, sets });
+  } catch (e) { handleRouteError(res, e); }
+});
 
 export default router;
