@@ -32,9 +32,27 @@ class ManualItemsFirstTest {
     // Raster kommen — bei den Teilen `items(...)`, bei den Minifiguren
     // `itemsIndexed(...)`, weil dort der Schlüssel den Index braucht (dieselbe
     // Figur kann aus mehreren Sets stammen).
+    //
+    // Als MUSTER, nicht als Zeichenkette: Die Aufrufe stehen ueber mehrere
+    // Zeilen, sobald sie mehr als zwei Argumente haben —
+    //
+    //     items(
+    //         distinctParts,
+    //         key = { … },
+    //         span = { … },
+    //     ) { part -> … }
+    //
+    // Die feste Zeichenkette "items(distinctParts" fand das nicht mehr und
+    // meldete „Name geaendert?", obwohl sich nur der Zeilenumbruch geaendert
+    // hatte. Geprueft werden soll die REIHENFOLGE im Raster, nicht die
+    // Formatierung.
     private val bildschirme = mapOf(
-        "ui/screens/PartsScreen.kt" to Pair("items(manualParts", "items(distinctParts"),
-        "ui/screens/MinifigsScreen.kt" to Pair("items(manualFigs", "itemsIndexed("),
+        "ui/screens/PartsScreen.kt" to Pair(
+            Regex("""items\s*\(\s*manualParts"""),
+            Regex("""items\s*\(\s*distinctParts""")),
+        "ui/screens/MinifigsScreen.kt" to Pair(
+            Regex("""items\s*\(\s*manualFigs"""),
+            Regex("""itemsIndexed\s*\(""")),
     )
 
     @Test
@@ -43,11 +61,11 @@ class ManualItemsFirstTest {
             val (manuell, ausSets) = listen
             val s = Quellen.ohneKommentare(Quellen.lies(rel))
             val kopf = s.indexOf("\"manual-header\"")
-            val manuellItems = s.indexOf(manuell)
-            val setItems = s.indexOf(ausSets)
+            val manuellItems = manuell.find(s)?.range?.first ?: -1
+            val setItems = ausSets.find(s)?.range?.first ?: -1
             assert(kopf >= 0) { "$rel: Zwischenüberschrift der manuellen Einträge fehlt" }
-            assert(manuellItems >= 0) { "$rel: $manuell fehlt — Name geändert?" }
-            assert(setItems >= 0) { "$rel: $ausSets fehlt — Name geändert?" }
+            assert(manuellItems >= 0) { "$rel: ${manuell.pattern} fehlt — Name geändert?" }
+            assert(setItems >= 0) { "$rel: ${ausSets.pattern} fehlt — Name geändert?" }
             assert(kopf < manuellItems && manuellItems < setItems) {
                 "$rel: Die manuell erfassten Einträge stehen nicht mehr vor denen aus Sets"
             }

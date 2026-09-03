@@ -307,12 +307,6 @@
     <string name="parts_filter_all">All parts</string>
     <string name="view_cards">Cards</string>
     <string name="view_table">Table</string>
-    <string name="col_number">No.</string>
-    <string name="col_color">Color</string>
-    <string name="col_category">Category</string>
-    <string name="col_qty">Qty</string>
-    <string name="col_in_sets">In sets</string>
-    <string name="col_added">Added</string>
     <string name="parts_filter_no_spare">Without spare parts</string>
     <string name="parts_filter_spare">Spare parts only</string>
     <string name="common_quantity">Quantity</string>

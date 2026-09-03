@@ -246,13 +246,41 @@ class PartsMinifigsFullResBypassProxyTest {
 
     @Test
     fun `Teile und Minifiguren uebergeben fullViaProxy = true, Sets und Katalog nicht`() {
-        val parts = read("ui/screens/PartsScreen.kt")
-        val partsCount = Regex("""rememberTileImageWithFallback\([^)]*fullViaProxy = true\)""").findAll(parts).count()
-        assert(partsCount == 2) { "PartsScreen.kt: $partsCount statt 2 Stellen mit fullViaProxy = true" }
-
-        val minifigs = read("ui/screens/MinifigsScreen.kt")
-        val minifigsCount = Regex("""rememberTileImageWithFallback\([^)]*fullViaProxy = true\)""").findAll(minifigs).count()
-        assert(minifigsCount == 2) { "MinifigsScreen.kt: $minifigsCount statt 2 Stellen mit fullViaProxy = true" }
+        // ── JEDER Aufruf, nicht eine Anzahl ─────────────────────────────────
+        //
+        // Hier stand `partsCount == 2`. Die Zahl war so lange richtig, wie es
+        // genau zwei Aufrufstellen gab — mit der Tabellenansicht kam in jedem
+        // der beiden Bildschirme eine dritte dazu, und der Test meldete „3
+        // statt 2", obwohl die dritte Stelle es GENAUSO richtig macht.
+        //
+        // Die Regel steht im Namen dieses Tests: In diesen zwei Bildschirmen
+        // laeuft die volle Aufloesung ueber den Proxy. Also muss JEDER Aufruf
+        // von rememberTileImageWithFallback dort fullViaProxy = true setzen —
+        // eine vergessene Stelle faellt damit auf, eine hinzugefuegte richtige
+        // nicht.
+        val aufruf = Regex("""rememberTileImageWithFallback\s*\(([^)]*)\)""")
+        for (rel in listOf("ui/screens/PartsScreen.kt", "ui/screens/MinifigsScreen.kt")) {
+            // ohneKommentare: Beide Dateien ERWAEHNEN den Helfer in einem
+            // Erklaerkommentar („siehe util/ImageUrls.kt,
+            // rememberTileImageWithFallback()"). Ohne diesen Schritt meldet
+            // die Pruefung genau diese Erwaehnung als Aufruf ohne
+            // fullViaProxy — beim Nachrechnen ist mir das sofort passiert.
+            val src = Quellen.ohneKommentare(read(rel))
+            val stellen = aufruf.findAll(src).toList()
+            // Selbstbeweis: Findet das Muster nichts, waere die Schleife leer
+            // und der Test gruen, ohne etwas geprueft zu haben.
+            assert(stellen.size >= 2) {
+                "$rel: nur ${stellen.size} Aufruf(e) von rememberTileImageWithFallback gefunden — Muster veraltet?"
+            }
+            for (m in stellen) {
+                val zeile = src.substring(0, m.range.first).count { it == '\n' } + 1
+                assert(m.groupValues[1].contains("fullViaProxy = true")) {
+                    "$rel:$zeile — dieser Aufruf setzt fullViaProxy nicht. Teile und " +
+                    "Minifiguren holen die volle Aufloesung ueber den Proxy, weil " +
+                    "Rebrickable direkt nicht erreichbar ist."
+                }
+            }
+        }
 
         val gallery = read("ui/screens/GalleryScreen.kt")
         assert(!gallery.contains("fullViaProxy")) { "GalleryScreen.kt darf fullViaProxy nicht setzen — Sets bleiben direkt" }
