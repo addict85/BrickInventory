@@ -114,14 +114,34 @@ async function seed() {
     `INSERT INTO set_acquisitions (user_id, set_number, quantity, purchase_price, condition)
      VALUES ($1,'40567-1',1,35.00,'N'), ($1,'40568-1',1,35.00,'N') ON CONFLICT DO NOTHING`, [USER.id]);
 
-  // Einstellungen (User + global) — Grundlage für den Settings-Vergleich
+  // ── Einstellungen: die Vorlage muss BEIDE Wege abdecken ────────────────────
+  //
+  // Vorher stand price_cache_ttl hier als BENUTZER-Einstellung. Damit lasen
+  // beide APIs dieselbe Tabelle, und der globale Weg wurde nie berührt — die
+  // v1-Route las ausschliesslich user_settings und lieferte sonst ihre fest
+  // verdrahtete 24. Gemessen: global 48 → Webapp 48, App 24. Der Test war
+  // grün, weil seine Vorlage die einzige Zeile schrieb, die den Fehler
+  // verdeckt.
+  //
+  // Jetzt trägt die Vorlage beide Fälle:
+  //   price_cache_ttl  NUR global   → ein globaler Wert muss die App erreichen
+  //   currency         beides       → der Wert des Nutzers muss gewinnen
+  //
+  // DO UPDATE statt DO NOTHING ist hier Bedingung: initSchema() legt
+  // price_cache_ttl bereits global mit '24' an — ausgerechnet dem Wert, den
+  // die v1-Route fest verdrahtet hatte. Mit DO NOTHING bliebe die 24 stehen,
+  // beide APIs lieferten 24, und der Vergleich wäre wieder grün, ohne den
+  // globalen Weg berührt zu haben. Kein Wert der Vorlage darf mit einer
+  // Vorgabe übereinstimmen, sonst prüft die Zusicherung nur die Vorgabe.
   await db.run(
     `INSERT INTO user_settings (user_id, key, value)
-     VALUES ($1,'currency','CHF'), ($1,'price_cache_ttl','48'), ($1,'user_default_condition','U') ON CONFLICT DO NOTHING`,
+     VALUES ($1,'currency','CHF'), ($1,'user_default_condition','U') ON CONFLICT DO NOTHING`,
     [USER.id]);
   await db.run(
     `INSERT INTO global_settings (key, value)
-     VALUES ('default_price_condition','N'), ('app_theme','brick') ON CONFLICT DO NOTHING`);
+     VALUES ('currency','USD'), ('price_cache_ttl','48'),
+            ('default_price_condition','N'), ('app_theme','brick')
+     ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value`);
 
   // Preis-Caches füllen, damit die Bewertungs-Endpunkte OHNE externe
   // Preis-API auskommen (wie in Produktion nach dem Preis-Job)
@@ -323,6 +343,16 @@ test('API-Parität Webapp ↔ Android', async (t) => {
     assert.equal(v1.default_price_condition, web.default_price_condition);
     assert.equal(v1.app_theme, web.app_theme);
     assert.equal(v1.effective_condition, 'U');   // User-Wert schlägt global
+
+    // Der Vergleich oben allein reicht nicht: Lieferten BEIDE die fest
+    // verdrahtete Vorgabe, wäre er ebenfalls grün. Deshalb hier die
+    // absoluten Werte aus der Vorlage — 48 kann nur aus global_settings
+    // stammen, CHF nur aus user_settings.
+    assert.equal(v1.price_cache_ttl, '48',
+      'Ein GLOBAL gesetzter Wert erreicht die App nicht — liest die v1-Route ' +
+      'wieder selbst auf user_settings statt über readSettings()?');
+    assert.equal(v1.currency, 'CHF',
+      'Der Wert des Nutzers muss den globalen überschreiben (global steht USD)');
   });
 
   await t.test('v1 valuation: total_value ist Alias von totals.qty_avg', async () => {

@@ -47,8 +47,10 @@ const ERLAUBT = new Map([
  *     gerade die Sperre aufgeben, fuer die es die Transaktion gibt.
  *   - utils/jobMonitor.ts: ein atomares UPDATE mit GREATEST/COALESCE und eine
  *     LIKE-Abfrage ueber alle job_monitor_*-Schluessel.
- *   - routes/settings.ts: gibt die Tabelle als GANZES aus (Einstellungsseite
- *     und Export) — das ist kein Zugriff auf einen einzelnen Schluessel.
+ *   - routes/settings.ts: liest die Tabelle als GANZES fuer den
+ *     Konfigurations-Export — das ist kein Zugriff auf einen einzelnen
+ *     Schluessel. Die Einstellungsseite stand hier bis zur Zusammenlegung der
+ *     API-Oberflaechen ebenfalls; sie liest jetzt ueber readSettings().
  *   - utils/setService.ts: liest ueber den uebergebenen Verbindungs-Handle,
  *     damit der Wert innerhalb DERSELBEN Transaktion gesehen wird.
  *   - Der Rest sind Erwaehnungen in Kommentaren. Die zaehlt die Pruefung mit,
@@ -63,7 +65,7 @@ const OFFEN = new Map([
   ['jobs/priceJob.ts', 1],
   ['routes/api_v1/admin.ts', 3],
   ['routes/mailer.ts', 1],
-  ['routes/settings.ts', 6],
+  ['routes/settings.ts', 1],
   ['server.ts', 1],
   ['utils/financeCalc.ts', 5],
   ['utils/jobMonitor.ts', 3],

@@ -6,7 +6,8 @@ import * as db from '../db/database';
 import { handleRouteError, logAndContinue, meldeUndWeiter } from '../utils/httpError';
 import { requireLogin, requireAdmin } from './auth';
 
-import { setUserSetting, setGlobalSetting, setGlobalTrigger, getGlobalSetting } from '../utils/settings';
+import { setUserSetting, setGlobalSetting, setGlobalTrigger, getGlobalSetting,
+         SECRET_KEYS, isMaskedValue, readSettings } from '../utils/settings';
 import { getRateLimitStatus } from '../utils/financeCalc';
 import { buildSetsCsv } from '../utils/setService';
 import { buildPartsCsv } from './parts';
@@ -28,108 +29,6 @@ router.get('/theme', async (_req, res) => {
 });
 
 router.use(requireLogin);
-
-/**
- * Schlüssel aus global_settings, deren WERT ein Geheimnis ist.
- *
- * ── Warum das nötig wurde ───────────────────────────────────────────────────
- * GET /api/settings/ hat die komplette global_settings-Tabelle in die Antwort
- * gespreadet — inklusive bricklink_consumer_secret, bricklink_token_secret,
- * brickset_api_key, rebrickable_api_key und smtp_pass. Schreiben durfte nur
- * ein Admin, LESEN aber jedes angemeldete Konto. Ein zweiter Benutzer ohne
- * Admin-Rechte konnte damit sämtliche API-Zugangsdaten der Installation
- * abziehen. Dasselbe galt für GET /api/settings/export.
- *
- * Verschärfend: Die Werte landeten im Frontend-JavaScript und damit im
- * Browser-Speicher — jede XSS-Lücke wäre automatisch ein Schlüsseldiebstahl
- * gewesen.
- *
- * Jetzt: Geheimnisse gehen nur maskiert raus (Länge + letzte vier Zeichen,
- * damit man im Formular erkennt, OB und WELCHER Wert hinterlegt ist).
- * Geschrieben wird nur, wenn der Client einen echten neuen Wert schickt —
- * die Maske selbst wird beim Speichern ignoriert (siehe isMaskedValue).
- */
-const SECRET_KEYS = new Set([
-  'bricklink_consumer_key', 'bricklink_consumer_secret',
-  'bricklink_token', 'bricklink_token_secret',
-  'brickset_api_key', 'rebrickable_api_key',
-  'smtp_pass',
-]);
-
-/** Erkennungszeichen der Maske — kommt in echten Schlüsseln nicht vor. */
-const MASK_CHAR = '\u2022';
-
-/**
- * Geheimen Wert durch eine Maske ersetzen: 12 Punkte + die letzten vier
- * Zeichen. Leere Werte bleiben leer, damit das Formular "nicht gesetzt"
- * weiterhin von "gesetzt" unterscheiden kann.
- * @param {string|null|undefined} value
- * @returns {string}
- */
-function maskSecret(value: string | null | undefined) {
-  const v = String(value ?? '');
-  if (!v) return '';
-  return MASK_CHAR.repeat(12) + v.slice(-4);
-}
-
-/**
- * Ist der übergebene Wert die von uns ausgelieferte Maske (also unverändert
- * zurückgeschickt) statt eines echten neuen Geheimnisses?
- * @param {unknown} value
- * @returns {boolean}
- */
-function isMaskedValue(value: string | null | undefined) {
-  return typeof value === 'string' && value.includes(MASK_CHAR);
-}
-
-/**
- * global_settings so aufbereiten, wie sie an einen Client gehen dürfen:
- * Nicht-Admins bekommen die globalen Schlüssel gar nicht zu sehen, Admins
- * bekommen Geheimnisse maskiert.
- * @param {Record<string, string>} global
- * @param {boolean} isAdmin
- * @returns {Record<string, string>}
- */
-function sanitizeGlobal(global: any, isAdmin: boolean) {
-  const out: any = {};
-  for (const [k, v] of Object.entries(global)) {
-    if (SECRET_KEYS.has(k)) {
-      // Nicht-Admins sehen den Schlüssel überhaupt nicht — auch nicht maskiert.
-      if (isAdmin) out[k] = maskSecret(v as string | null | undefined);
-      continue;
-    }
-    out[k] = v;
-  }
-  return out;
-}
-
-/**
- * Einstellungen so lesen, wie sie an einen Client gehen dürfen: globale Werte
- * durch sanitizeGlobal(), darüber die Werte des Nutzers.
- *
- * ── Warum als eigener Helfer ────────────────────────────────────────────────
- * Es gibt ZWEI Leserouten mit demselben Inhalt und verschiedener Verpackung:
- * `/` liefert flach, `/raw` unter `settings`. Die Abfrage stand zweimal da —
- * und nur die Fassung in `/` bekam die Maskierung. `/raw` gab die komplette
- * global_settings-Tabelle roh heraus, samt bricklink_*_secret,
- * brickset_api_key, rebrickable_api_key und smtp_pass, an JEDES angemeldete
- * Konto (der Router trägt nur requireLogin). Und ausgerechnet `/raw` ist die
- * Route, die die Einstellungsseite lädt (public/js/05-settings.js,
- * loadSettings) — die Maskierung war damit für ihren eigentlichen Konsumenten
- * wirkungslos.
- *
- * Jetzt lesen beide durch dieselbe Funktion; eine neue Verpackung kann die
- * Maskierung nicht mehr versehentlich umgehen.
- */
-async function readSettings(userId: number, isAdmin: boolean) {
-  const raw: any = {};
-  (await db.all('SELECT key, value FROM global_settings')).forEach(r => { raw[r.key] = r.value; });
-  const global = sanitizeGlobal(raw, !!isAdmin);
-  const user: any = {};
-  (await db.all('SELECT key, value FROM user_settings WHERE user_id = $1', [userId]))
-    .forEach(r => { user[r.key] = r.value; });
-  return { ...global, ...user };
-}
 
 router.get('/', async (req: LoggedInRequest, res) => {
   try {
