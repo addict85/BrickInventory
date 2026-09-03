@@ -542,7 +542,6 @@ window.I18N_DE = {
   'figs.qty_label': 'Anzahl',
   'figs.price_label': 'Kaufpreis/Stk (opt.)',
   'figs.new_section': 'Neue Minifigur erfassen',
-  'figs.source_all': 'Alle Sets',
   'figs.from_csv_hint': 'Über das Formular oben oder per CSV-Import hinzufügen',
   'finance.title': 'Portfolio-Wert',
   'finance.chart.label': 'Wertentwicklung Portfolio',

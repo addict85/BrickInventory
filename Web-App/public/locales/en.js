@@ -539,7 +539,6 @@ window.I18N_EN = {
   'figs.qty_label': 'Quantity',
   'figs.price_label': 'Purchase price/pc (opt.)',
   'figs.new_section': 'Add new minifigure',
-  'figs.source_all': 'All sets',
   'figs.from_csv_hint': 'Add via the form above or import a CSV file',
   'finance.title': 'Portfolio value',
   'finance.chart.label': 'Portfolio performance',

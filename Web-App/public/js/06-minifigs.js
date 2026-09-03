@@ -32,7 +32,17 @@ function figParams(page) {
   // Manuell erfasste Figuren haben oben eine eigene Sektion. Der Ausschluss
   // gehört auf den Server — clientseitig gefiltert könnte eine ganze Seite
   // wegfallen und die Liste bliebe scheinbar leer.
-  p.set('source', G('fig-source')?.value || 'set');
+  // Fest 'set': Manuell erfasste Figuren haben ihren eigenen Bereich mit
+  // editierbaren Karten (manual-figs-list) — in dieser Liste waeren sie
+  // doppelt. Der Ausschluss gehoert auf den Server; clientseitig gefiltert
+  // koennte eine ganze Seite wegfallen und die Liste bliebe scheinbar leer.
+  //
+  // Hier stand `G('fig-source')?.value || 'set'`. Das Auswahlfeld daneben trug
+  // GENAU EINE Option mit dem Wert "" und wurde von nirgends gefuellt — der
+  // Ausdruck ergab also immer 'set', und sein change-Ereignis konnte nie
+  // eintreten. Ein Bedienelement, das eine Wahl verspricht und keine anbietet,
+  // ist raus (die Android-App zeigt an dieser Stelle ebenfalls keines).
+  p.set('source', 'set');
   const q = G('fig-search')?.value?.trim();
   if (q) p.set('search', q);
   addScopeParam(p, 'minifigs');

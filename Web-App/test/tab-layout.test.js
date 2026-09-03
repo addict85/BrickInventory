@@ -56,7 +56,9 @@ test('die Reiterköpfe enthalten keine Filter-Bedienelemente mehr', () => {
 test('jede Bedienelement-ID existiert genau einmal', () => {
   const ids = ['id="gs"', 'id="gtheme"', 'id="gsort"', 'id="scope-gallery"', 'id="vg"', 'id="vl"',
                'id="parts-search"', 'id="parts-spare"', 'id="parts-view"', 'id="scope-parts"',
-               'id="fig-search"', 'id="fig-source"', 'id="figs-view"', 'id="scope-minifigs"'];
+               // fig-source ist entfernt: ein Auswahlfeld mit einer einzigen
+               // Option, das von nirgends gefüllt wurde.
+               'id="fig-search"', 'id="figs-view"', 'id="scope-minifigs"'];
   for (const id of ids) {
     const n = html.split(id).length - 1;
     assert.equal(n, 1, `${id} kommt ${n}× vor — die IDs sind der Vertrag mit dem JS`);
