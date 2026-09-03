@@ -536,3 +536,35 @@ data class CatalogUiState(
     val detail: CatalogSetDetail? = null,
     val detailLoading: Boolean = false,
 )
+
+/**
+ * Der Detail-Dialog fuer ein Teil / eine Figur AUS EINEM SET.
+ *
+ * ── Marcos Wunsch ──────────────────────────────────────────────────────────
+ * „Auch die automatisch erfassten Teile und Minifiguren sollen einen
+ * Detail-Dialog inkl. Zoom haben. Der Marktpreis kann weggelassen werden, die
+ * Anzahl soll nicht geaendert werden koennen. Dafuer soll angezeigt werden,
+ * welche Sets dieses Teil und Minifigur verwenden — inkl. Link, um den
+ * Detail-Dialog des Sets oeffnen zu koennen."
+ *
+ * ── Warum ein eigener Fluss ────────────────────────────────────────────────
+ * Dieselbe Ueberlegung wie bei BarcodeUiState: Ein geoeffneter Dialog erzeugt
+ * Zwischenstaende (laedt, da, Fehler), und die gingen als Felder in AppUiState
+ * jeden Reiter an. `offen == null` heisst: kein Dialog.
+ *
+ * EIN Zustand fuer Teile UND Figuren — der Server beantwortet beide Faelle mit
+ * derselben Funktion und liefert dieselbe Form. Zwei Zustaende waeren zwei
+ * Stellen, an denen dasselbe steht.
+ */
+data class SetItemUiState(
+    /** "part" oder "fig"; null heisst: der Dialog ist zu. */
+    val art: String? = null,
+    val nummer: String = "",
+    val colorId: Int = 0,
+    val laedt: Boolean = false,
+    val kopf: BestandteilKopf? = null,
+    val sets: List<VerwendendesSet> = emptyList(),
+    val fehler: String? = null,
+) {
+    val offen: Boolean get() = art != null
+}

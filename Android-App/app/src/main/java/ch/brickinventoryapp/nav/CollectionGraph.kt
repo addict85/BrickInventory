@@ -20,6 +20,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.navigation.NavDestination.Companion.hierarchy
 import androidx.navigation.NavGraph.Companion.findStartDestination
 import androidx.navigation.compose.*
+import ch.brickinventoryapp.ui.dialogs.SetItemDetailDialog
 import ch.brickinventoryapp.ui.*
 import ch.brickinventoryapp.ui.AppUiState
 import ch.brickinventoryapp.ui.screens.*
@@ -177,6 +178,18 @@ fun NavGraphBuilder.collectionGraph(
                     },
                     gridState = partsGridState
                 )
+                // ── Der Detail-Dialog fuer Teile AUS SETS ──────────────────
+                //
+                // Er liegt HIER und nicht im Bildschirm, weil nur der Graph
+                // den NavController kennt — dieselbe Bauart wie onOpenDetail
+                // darueber. Der Dialog zeigt sich selbst nur, wenn im
+                // Zustand ein Teil offen ist (SetItemUiState.offen).
+                SetItemDetailDialog(
+                    vm = vm,
+                    imageLoader = imageLoader,
+                    serverUrl = state.serverUrl,
+                    onOpenSet = { navController.navigate(Screen.SetDetail.createRoute(it)) },
+                )
             }
         }
         composable(Screen.Minifigs.route) {
@@ -207,6 +220,14 @@ fun NavGraphBuilder.collectionGraph(
                                 ?.figName ?: figNumber))
                     },
                     gridState = minifigsGridState
+                )
+                // Derselbe Dialog wie im Teile-Reiter — er unterscheidet
+                // Teile und Figuren selbst ueber SetItemUiState.art.
+                SetItemDetailDialog(
+                    vm = vm,
+                    imageLoader = imageLoader,
+                    serverUrl = state.serverUrl,
+                    onOpenSet = { navController.navigate(Screen.SetDetail.createRoute(it)) },
                 )
             }
         }

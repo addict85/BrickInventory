@@ -1,5 +1,6 @@
 package ch.brickinventoryapp.ui.screens
 
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -50,6 +51,7 @@ import ch.brickinventoryapp.ui.theme.Formen
  * @param zweiteZeile Kategorie/Sets bzw. Erfassungsdatum, oder null
  * @param onBildFehler Rueckfall auf die volle Auflösung, siehe
  *        rememberTileImageWithFallback
+ * @param onClick Antippen der ganzen Zeile, oder null fuer „nicht anklickbar"
  */
 @Composable
 fun TabellenZeile(
@@ -62,13 +64,25 @@ fun TabellenZeile(
     farbe: Color? = null,
     zweiteZeile: String? = null,
     onBildFehler: () -> Unit = {},
+    onClick: (() -> Unit)? = null,
 ) {
     val ctx = LocalContext.current
-    // Kein onClick: Auch in der Webapp ist die Tabellenzeile nicht anklickbar
-    // — angetippt wird in der Kachelansicht. Ein Parameter, den niemand
-    // benutzt, waere nur eine Einladung, es an einer Stelle anders zu machen.
+    // ── Warum es onClick jetzt GIBT ─────────────────────────────────────────
+    //
+    // Hier stand: „Kein onClick: Auch in der Webapp ist die Tabellenzeile
+    // nicht anklickbar — angetippt wird in der Kachelansicht."
+    //
+    // Das stimmt seit dem Detail-Dialog fuer Teile und Figuren aus Sets nicht
+    // mehr: Dort oeffnen BEIDE Ansichten denselben Dialog (03-parts.js und
+    // 06-minifigs.js, je Kachel und Tabellenzeile). Eine Ansicht, die weniger
+    // kann als die andere, ist genau das, wogegen diese gemeinsame Zeile
+    // gebaut wurde.
+    //
+    // `null` heisst weiterhin „nicht anklickbar" — die Begruendung von damals
+    // gilt fuer jeden Aufrufer, der keinen Dialog dahinter hat.
     Surface(
-        modifier = modifier.fillMaxWidth(),
+        modifier = modifier.fillMaxWidth()
+            .let { if (onClick != null) it.clickable(onClick = onClick) else it },
         color = MaterialTheme.colorScheme.surface,
     ) {
         Column {

@@ -149,6 +149,12 @@ class MainViewModel @Inject constructor(
     internal val _barcodeState = MutableStateFlow(BarcodeUiState())
     val barcodeState = _barcodeState.asStateFlow()
 
+    // Detail-Dialog fuer ein Teil/eine Figur aus einem Set (Marcos Wunsch).
+    // Eigener Fluss aus demselben Grund wie der Barcode-Zustand darueber: Er
+    // hat eigene Zwischenstaende und geht sonst jeden Reiter an.
+    internal val _setItemState = MutableStateFlow(SetItemUiState())
+    val setItemState = _setItemState.asStateFlow()
+
     /**
      * Läuft gerade eine Prüfung vor dem Erfassen? Siehe ErfassungUiState.
      *

@@ -305,6 +305,14 @@
     <!-- Nachtrag i18n-Pass: zuvor hartkodierte Strings -->
     <string name="parts_search_placeholder">Search parts…</string>
     <string name="parts_spare_tag">Spare</string>
+    <!-- Detail dialog for parts/minifigs FROM SETS: no market price,
+         quantity read-only, instead the sets that use it. -->
+    <string name="setitem_used_in">Used in</string>
+    <string name="setitem_used_in_none">Not found in any set</string>
+    <string name="setitem_total_qty">Total quantity</string>
+    <string name="setitem_open_set">Open set</string>
+    <string name="setitem_category">Category</string>
+    <string name="setitem_color">Colour</string>
     <string name="parts_filter_all">All parts</string>
     <string name="view_cards">Cards</string>
     <string name="view_table">Table</string>

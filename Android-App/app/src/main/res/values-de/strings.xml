@@ -292,6 +292,12 @@
     <!-- Nachtrag i18n-Pass: zuvor hartkodierte Strings -->
     <string name="parts_search_placeholder">Teile suchen…</string>
     <string name="parts_spare_tag">Ersatzteil</string>
+    <string name="setitem_used_in">Verwendet in</string>
+    <string name="setitem_used_in_none">In keinem Set gefunden</string>
+    <string name="setitem_total_qty">Gesamtmenge</string>
+    <string name="setitem_open_set">Set öffnen</string>
+    <string name="setitem_category">Kategorie</string>
+    <string name="setitem_color">Farbe</string>
     <string name="parts_filter_all">Alle Teile</string>
     <string name="view_cards">Karten</string>
     <string name="view_table">Tabelle</string>

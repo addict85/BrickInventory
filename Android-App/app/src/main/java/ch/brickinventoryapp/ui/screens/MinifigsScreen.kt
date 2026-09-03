@@ -1,6 +1,7 @@
 package ch.brickinventoryapp.ui.screens
 
 import ch.brickinventoryapp.ui.theme.Formen
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.grid.*
 import androidx.compose.foundation.rememberScrollState
@@ -201,8 +202,10 @@ fun MinifigsScreen(
                         key = { index, fig -> "${fig.figNumber}_${fig.source}_$index" },
                         span = { _, _ -> if (ansicht == "table") GridItemSpan(maxLineSpan) else GridItemSpan(1) },
                     ) { _, fig ->
-                        if (ansicht == "table") MinifigTableRow(fig, serverUrl, imageLoader)
-                        else MinifigCard(fig, serverUrl, imageLoader)
+                        // BEIDE Ansichten oeffnen denselben Dialog.
+                        val oeffne = { vm.oeffneSetItem("fig", fig.figNumber) }
+                        if (ansicht == "table") MinifigTableRow(fig, serverUrl, imageLoader, oeffne)
+                        else MinifigCard(fig, serverUrl, imageLoader, oeffne)
                     }
                 }
             }
@@ -401,11 +404,14 @@ fun AddMinifigDialog(
 }
 
 @Composable
-fun MinifigCard(fig: Minifig, serverUrl: String, imageLoader: ImageLoader) {
+fun MinifigCard(fig: Minifig, serverUrl: String, imageLoader: ImageLoader,
+                onClick: (() -> Unit)? = null) {
     val qty = fig.totalQuantity ?: fig.quantity
 
     Card(
-        modifier = Modifier.fillMaxWidth().height(196.dp),
+        // Antippen oeffnet den Detail-Dialog — wie bei den Teilen daneben.
+        modifier = Modifier.fillMaxWidth().height(196.dp)
+            .let { if (onClick != null) it.clickable(onClick = onClick) else it },
         shape = Formen.leiste,
         elevation = CardDefaults.cardElevation(defaultElevation = Formen.karteErhebung),
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
@@ -514,7 +520,8 @@ fun MinifigCard(fig: Minifig, serverUrl: String, imageLoader: ImageLoader) {
  * also nicht weniger, sondern in beiden dasselbe.
  */
 @Composable
-fun MinifigTableRow(fig: Minifig, serverUrl: String, imageLoader: ImageLoader) {
+fun MinifigTableRow(fig: Minifig, serverUrl: String, imageLoader: ImageLoader,
+                    onClick: (() -> Unit)? = null) {
     val (bildUrl, onFehler) = rememberTileImageWithFallback(
         serverUrl, fig.imageLocal, fig.imageUrl, fullViaProxy = true)
     TabellenZeile(
@@ -525,5 +532,6 @@ fun MinifigTableRow(fig: Minifig, serverUrl: String, imageLoader: ImageLoader) {
         imageLoader = imageLoader,
         zweiteZeile = fmtDatum(fig.setAddedAt),
         onBildFehler = onFehler,
+        onClick = onClick,
     )
 }

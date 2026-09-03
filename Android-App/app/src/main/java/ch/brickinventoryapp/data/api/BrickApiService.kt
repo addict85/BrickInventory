@@ -140,6 +140,29 @@ interface BrickApiService {
         @Path("figNumber") figNumber: String
     ): Response<PriceHistoryResponse>
 
+    // ── In welchen Sets steckt dieses Teil / diese Figur? ────────────────────
+    //
+    // Fuer den Detail-Dialog automatisch erfasster Teile und Figuren (Marcos
+    // Wunsch). Beide Adressen beantwortet auf dem Server DIESELBE Funktion
+    // (verwendendeSets in utils/handlers/shared.ts) — deshalb dieselbe
+    // Antwortform und dasselbe Modell hier.
+    //
+    // `accounts` ist das Blickfeld wie ueberall sonst: Im Haushalt gehoert
+    // auch das Set des Geschwisterkontos dazu, sonst sagte der Dialog etwas
+    // anderes als die Liste, aus der man kommt.
+    @GET("api/v1/parts/{partNumber}/{colorId}/sets")
+    suspend fun getSetsMitTeil(
+        @Path("partNumber") partNumber: String,
+        @Path("colorId") colorId: Int,
+        @Query("accounts") accounts: String? = null,
+    ): Response<VerwendendeSetsResponse>
+
+    @GET("api/v1/minifigs/{figNumber}/sets")
+    suspend fun getSetsMitFigur(
+        @Path("figNumber") figNumber: String,
+        @Query("accounts") accounts: String? = null,
+    ): Response<VerwendendeSetsResponse>
+
     // Parts acquisitions
     @GET("api/v1/parts/{partNumber}/{colorId}/acquisitions")
     suspend fun getPartAcquisitions(

@@ -1,6 +1,7 @@
 package ch.brickinventoryapp.ui.screens
 
 import ch.brickinventoryapp.ui.theme.Formen
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.grid.*
@@ -258,8 +259,11 @@ fun PartsScreen(
                         key = { "${it.partNumber}-${it.colorId}" },
                         span = { if (ansicht == "table") GridItemSpan(maxLineSpan) else GridItemSpan(1) },
                     ) { part ->
-                        if (ansicht == "table") PartTableRow(part, serverUrl, imageLoader)
-                        else PartCard(part, serverUrl, imageLoader)
+                        // BEIDE Ansichten oeffnen denselben Dialog — eine
+                        // Ansicht darf nicht koennen, was die andere nicht kann.
+                        val oeffne = { vm.oeffneSetItem("part", part.partNumber, part.colorId) }
+                        if (ansicht == "table") PartTableRow(part, serverUrl, imageLoader, oeffne)
+                        else PartCard(part, serverUrl, imageLoader, oeffne)
                     }
                     if (isLoading) {
                         // Fester Schlüssel wie bei den Kopfzeilen darüber — siehe
@@ -389,7 +393,8 @@ fun ManualPartTile(part: PartValuationItem, serverUrl: String, imageLoader: Imag
 }
 
 @Composable
-fun PartCard(part: Part, serverUrl: String, imageLoader: ImageLoader) {
+fun PartCard(part: Part, serverUrl: String, imageLoader: ImageLoader,
+             onClick: (() -> Unit)? = null) {
     val ctx = LocalContext.current
     val qty = part.totalQuantity.takeIf { it > 0 } ?: 1
     val colorObj = remember(part.colorHex) {
@@ -403,7 +408,11 @@ fun PartCard(part: Part, serverUrl: String, imageLoader: ImageLoader) {
     val (imageUrl, onImageError) = rememberTileImageWithFallback(serverUrl, part.imageLocal, part.imageUrl, fullViaProxy = true)
 
     Card(
-        modifier = Modifier.fillMaxWidth().height(164.dp),
+        // Antippen oeffnet den Detail-Dialog (Marcos Wunsch). Bis dahin war
+        // die Kachel eines Teils aus einem Set tot — anders als bei manuell
+        // erfassten Teilen gab es dazu nichts zu sehen.
+        modifier = Modifier.fillMaxWidth().height(164.dp)
+            .let { if (onClick != null) it.clickable(onClick = onClick) else it },
         shape = Formen.leiste,
         elevation = CardDefaults.cardElevation(defaultElevation = Formen.karteErhebung),
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
@@ -487,7 +496,8 @@ fun SectionHeader(text: String) {
  * das tut er nur in dieser Ansicht (loadParts in PartsFeature.kt).
  */
 @Composable
-fun PartTableRow(part: Part, serverUrl: String, imageLoader: ImageLoader) {
+fun PartTableRow(part: Part, serverUrl: String, imageLoader: ImageLoader,
+                 onClick: (() -> Unit)? = null) {
     val farbe = remember(part.colorHex) {
         part.colorHex?.let {
             try { Color(android.graphics.Color.parseColor("#$it")) }
@@ -517,5 +527,6 @@ fun PartTableRow(part: Part, serverUrl: String, imageLoader: ImageLoader) {
         farbe = farbe,
         zweiteZeile = zweite,
         onBildFehler = onFehler,
+        onClick = onClick,
     )
 }

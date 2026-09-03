@@ -55,6 +55,21 @@ class TeileRepository @Inject constructor(
     suspend fun getPartsStats(accounts: String? = null): Result<PartsStatsResponse> =
         safeCall { api.getPartsStats(accounts) }
 
+    // ── In welchen Sets steckt dieses Teil / diese Figur? ────────────────────
+    //
+    // Fuer den Detail-Dialog automatisch erfasster Teile und Figuren. BEWUSST
+    // ohne Zwischenspeicher (anders als getParts/getMinifigs darueber): Die
+    // Antwort haengt an genau einem Teil und wird auf Tastendruck geholt —
+    // ein Eintrag je Teil-Farb-Paar waere ein Speicher, den niemand mehr
+    // ungueltig macht, wenn ein Set dazukommt oder verschwindet.
+    suspend fun getSetsMitTeil(partNumber: String, colorId: Int,
+                               accounts: String? = null): Result<VerwendendeSetsResponse> =
+        safeCall { api.getSetsMitTeil(partNumber, colorId, accounts) }
+
+    suspend fun getSetsMitFigur(figNumber: String,
+                                accounts: String? = null): Result<VerwendendeSetsResponse> =
+        safeCall { api.getSetsMitFigur(figNumber, accounts) }
+
     suspend fun getBrickColors(): Result<BrickColorsResponse> =
         safeCall { api.getBrickColors() }
 
