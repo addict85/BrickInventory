@@ -21,12 +21,22 @@
  * sich ändern sollte. Die Absicht steht also im Code selbst — sie war nur
  * nicht umgesetzt.
  *
+ * ── Der zweite Fund, und warum der Test dafür umgebaut wurde ────────────────
+ * Die erste Fassung fragte je LADEFUNKTION: „steht irgendwo in ihrer
+ * Aufrufkette ein scopeQuery()?" Damit war sie blind für
+ * `enrichGalleryWithPrices()`: Es hängt am Ende von `loadGallery()`, das den
+ * Filter über galleryParams() sehr wohl mitgibt — der Aufruf auf
+ * /v1/finance/pnl darin aber nicht. Die Kette trug ihn, der Aufruf nicht.
+ *
+ * Geprüft wird deshalb JE AUFRUF. Das ist die Regel, die beide Fälle trifft.
+ *
  * ── Warum gesucht und nicht aufgezählt ──────────────────────────────────────
- * Beide Seiten werden gelesen: WAS der Filterwechsel neu lädt (aus
- * onScopeChange) und OB die dazugehörige Ladefunktion den Filter mitgibt.
- * Kommt eine vierte Ansicht dazu oder lädt ein Wechsel etwas Weiteres nach,
- * ist es von selbst mitgeprüft. Eine Liste hier wäre eine zweite Wahrheit,
- * die beim nächsten Umbau still veraltet.
+ * Drei Seiten werden gelesen: WAS der Filterwechsel neu lädt (aus
+ * onScopeChange), WELCHE v1-Routen `accounts` überhaupt auswerten (aus den
+ * Router-Dateien) und OB jeder Aufruf dorthin den Filter mitgibt. Ein neuer
+ * Endpunkt, eine neue Ansicht, ein neuer Zwischenaufruf — alles ist von selbst
+ * mitgeprüft. Eine Liste hier wäre eine zweite Wahrheit, die beim nächsten
+ * Umbau still veraltet.
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -77,7 +87,7 @@ function rumpf(src, kopf) {
   return src.slice(i, j);
 }
 
-test('jeder Lader hinter dem Kontofilter gibt den Kontofilter mit', () => {
+test('jeder Abruf hinter dem Kontofilter gibt den Kontofilter mit', () => {
   const module = alleModule();
   const gallery = module['02-gallery.js'];
   assert.ok(gallery, '02-gallery.js nicht gefunden');
@@ -106,47 +116,75 @@ test('jeder Lader hinter dem Kontofilter gibt den Kontofilter mit', () => {
   }
 
   /**
-   * Trägt dieser Lader den Filter — selbst oder über das, was er aufruft?
-   *
-   * Über die Aufrufkette, nicht nur den eigenen Rumpf: `loadParts()` besteht
-   * aus drei Zeilen, die drei Unterlader aufrufen; jeder von ihnen gibt den
-   * Filter mit. `loadGallery()` baut ihn über galleryParams(). Nur den ersten
-   * Rumpf anzusehen, meldete beide zu Unrecht — und ein Test, der korrekten
-   * Code anmeckert, wird abgeschaltet statt befolgt.
+   * Welche v1-Routen werten `accounts` aus? Aus den Router-Dateien gelesen,
+   * nicht aufgezählt — eine Liste hier wäre eine zweite Wahrheit, die beim
+   * nächsten neuen Endpunkt still veraltet.
    */
-  function traegtFilter(name, tiefe = 0, gesehen = new Set()) {
-    if (tiefe > 3 || gesehen.has(name)) return false;
+  function kontenbewusst() {
+    const wurzel = path.join(__dirname, '..', 'routes', 'api_v1');
+    const menge = new Set();
+    for (const f of fs.readdirSync(wurzel)) {
+      if (!f.endsWith('.ts') || f === 'index.ts' || f === 'middleware.ts') continue;
+      const src = ohneKommentare(fs.readFileSync(path.join(wurzel, f), 'utf8'));
+      for (const m of src.matchAll(/router\.(get|post|put|delete)\(\s*'([^']+)'([\s\S]*?)\n\}\);/g))
+        if (m[3].includes('query.accounts')) menge.add(m[2].split('/:')[0].replace(/\/+$/, ''));
+    }
+    return menge;
+  }
+
+  /**
+   * Trägt dieser Aufruf den Filter?
+   *
+   * Geprüft wird JE AUFRUF, nicht je Ladefunktion. Die erste Fassung dieses
+   * Tests fragte „steht irgendwo in der Aufrufkette ein scopeQuery()?" — und
+   * war damit blind für genau den zweiten Fund: `loadGallery()` baut den
+   * Filter über galleryParams(), ruft am Ende aber
+   * `enrichGalleryWithPrices()`, das /v1/finance/pnl OHNE Filter holte. Die
+   * Kette trug ihn, der Aufruf nicht.
+   */
+  function aufrufeOhneFilter(name, konten, tiefe = 0, gesehen = new Set()) {
+    if (tiefe > 3 || gesehen.has(name)) return [];
     gesehen.add(name);
     const treffer = suche(name);
-    if (!treffer) return false;
-    // Drei Wege, den Filter mitzugeben: über die Params-Funktion
-    // (addScopeParam), als fertiges Suffix (scopeQuery) oder von Hand aus
-    // scopeMode() zusammengebaut.
-    if (/addScopeParam\(|scopeQuery\(|scopeMode\(/.test(treffer.koerper)) return true;
-    for (const m of treffer.koerper.matchAll(/\b([a-z]\w*(?:Params|Data|Stats|Filters|Page|More))\s*\(/g))
-      if (traegtFilter(m[1], tiefe + 1, gesehen)) return true;
-    for (const m of treffer.koerper.matchAll(/\b(load[A-Z]\w*)\s*\(/g))
-      if (m[1] !== name && traegtFilter(m[1], tiefe + 1, gesehen)) return true;
-    return false;
+    if (!treffer) return [];
+    const fehlt = [];
+    for (const m of treffer.koerper.matchAll(/api\(\s*'GET'\s*,\s*[`'"]([^`'"]*?)[`'"\s)]/g)) {
+      const pfad = m[1].split('?')[0].split('${')[0].replace(/\/+$/, '');
+      if (!konten.has(pfad.replace(/^\/v1/, ''))) continue;
+      // Der Filter darf im Aufruf selbst stehen (scopeQuery/scopeMode) oder in
+      // der Params-Funktion, deren Ergebnis angehängt wird.
+      const zeile = treffer.koerper.slice(m.index, m.index + 220);
+      if (/scopeQuery\(|scopeMode\(|accounts/.test(zeile)) continue;
+      const viaParams = [...zeile.matchAll(/\b(\w*[Pp]arams)\s*\(/g)]
+        .some(p => { const t2 = suche(p[1]); return t2 && /addScopeParam\(|scopeQuery\(|scopeMode\(/.test(t2.koerper); });
+      if (viaParams) continue;
+      fehlt.push(`${treffer.datei}: ${name}() -> ${pfad}`);
+    }
+    for (const m of treffer.koerper.matchAll(/\b([a-z]\w*)\s*\(/g))
+      if (m[1] !== name) fehlt.push(...aufrufeOhneFilter(m[1], konten, tiefe + 1, gesehen));
+    return fehlt;
   }
+
+  const konten = kontenbewusst();
+  // 22 Routen werten accounts aus; auf den Pfadstamm vor dem ersten
+  // Platzhalter zusammengefasst bleiben 14. Die Grenze soll „gar nichts
+  // gefunden" fangen, nicht das Entfernen eines Endpunkts verbieten.
+  assert.ok(konten.size >= 12,
+    `Nur ${konten.size} kontenbewusste Routen gefunden — Muster veraltet?`);
 
   const ohneFilter = [];
   let geprueft = 0;
   for (const name of lader) {
-    const treffer = suche(name);
-    if (!treffer) continue;
+    if (!suche(name)) continue;
     geprueft++;
-    if (!traegtFilter(name)) ohneFilter.push(`${treffer.datei}: ${name}()`);
+    ohneFilter.push(...aufrufeOhneFilter(name, konten));
   }
 
-  assert.ok(geprueft >= 4,
-    `Nur ${geprueft} der ${lader.length} Lader im Quelltext gefunden — ` +
-    'die Namenssuche greift nicht mehr.');
-
-  assert.deepEqual(ohneFilter, [],
-    'Diese Lader hängen am Kontofilter, schicken ihn aber nicht mit:\n  ' +
-    ohneFilter.join('\n  ') +
+  const offen = [...new Set(ohneFilter)].sort();
+  assert.deepEqual(offen, [],
+    'Diese Aufrufe hängen am Kontofilter, schicken ihn aber nicht mit:\n  ' +
+    offen.join('\n  ') +
     '\nSie werden beim Wechsel neu geladen und liefern trotzdem jedesmal ' +
     'dasselbe. Der Nutzer sieht dann eine gefilterte Liste neben ungefilterten ' +
-    'Zahlen — genau das war bei loadStats() der Fall.');
+    'Zahlen — genau das war bei loadStats() und bei enrichGalleryWithPrices() der Fall.');
 });

@@ -5,6 +5,7 @@ import { locale, t, tRaw} from '../i18n.js';
 import { CURRENCY, G, ME, _settingsCache, api, esc, escJs, fmtN, fullUrl, imgUrl, toast , set_settingsCache} from './01-core.js';
 import { PARTS_ICON_SVG, _pnlCache, allSets, setAllSets, applySetAggregate, autosaveSet, closeModal, curSet, loadGallery, pnlBadge, reimportParts, renderInstructions, updateGalleryPrices , set_pnlCache, set_curSet} from './02-gallery.js';
 import { loadFinance } from './04-finance.js';
+import { scopeQuery } from './14-scope.js';
 import { loadApiLimits, loadCacheTtl, loadSettings } from './05-settings.js';
 import { deleteManualFig, deleteManualPart, loadManualFigsTable, loadManualParts, manualFigsCache, manualPartsCache, updateManualFig, updateManualPart } from './06-minifigs.js';
 
@@ -79,7 +80,19 @@ async function importConfig() {
 
 
 export async function enrichGalleryWithPrices(){
-  const pnl = await api('GET','/v1/finance/pnl');
+  // Mit Kontofilter — aus demselben Grund wie loadStats(): Diese Funktion
+  // steht am Ende von loadGallery(), und loadGallery() laeuft bei jedem
+  // Wechsel des Kontofilters. Etwas neu zu laden, das sich dadurch nicht
+  // aendern kann, ergibt nur einen Sinn, wenn es sich aendern sollte.
+  //
+  // OFFEN und bewusst nicht hier entschieden: /finance/pnl liefert EINE ZEILE
+  // JE BESITZER, die Galerie zeigt im Haushalt aber eine Kachel je Setnummer.
+  // Besitzen zwei Konten dasselbe Set, gewinnt in `_pnlCache` die zuletzt
+  // gelesene Zeile — die Kachel nennt dann den Kaufpreis EINES Kontos statt
+  // des Haushaltswerts. Mit dem Filter oben trifft das nur noch die Ansicht
+  // „alle Konten"; was die Kachel dort zeigen soll, ist eine Entscheidung
+  // ueber die Darstellung und keine Fehlerbehebung.
+  const pnl = await api('GET','/v1/finance/pnl' + scopeQuery('gallery'));
   if(!pnl.success) return;
   set_pnlCache({});
   for(const s of pnl.sets){
