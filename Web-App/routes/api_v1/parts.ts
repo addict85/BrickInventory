@@ -62,9 +62,17 @@ router.put('/parts/:partNumber/:colorId', requireToken, async (req: AuthedReques
 // ── DELETE /api/v1/parts/:partNumber/:colorId — delete a manual part ─────────
 router.delete('/parts/:partNumber/:colorId', requireToken, async (req: AuthedRequest, res) => {
   try {
+    // WESSEN Karte war gemeint? Ohne den Parameter das eigene Konto — also
+    // unverändert für jeden Client, der ihn nicht kennt.
+    //
+    // resolveWriteTarget() ist derselbe Helfer, den das ERFASSEN schon nutzt
+    // (owner_user_id): Die Ansicht sagt, wessen Zeile gemeint ist; ob das
+    // erlaubt ist, entscheidet der Server über canWriteFor() — nie der Client.
+    const besitzer = await resolveWriteTarget(req.apiUser.user_id, req.query.owner);
+    if (besitzer === null) return res.status(403).json({ success: false, error: 'Kein Zugriff auf dieses Konto' });
     const r = await db.run(
       "DELETE FROM parts WHERE user_id=$1 AND part_number=$2 AND color_id=$3 AND source='manual'",
-      [req.apiUser.user_id, String(req.params.partNumber), parseInt(String(req.params.colorId))]
+      [besitzer, String(req.params.partNumber), parseInt(String(req.params.colorId))]
     );
     if (r.changes === 0) return res.status(404).json({ success: false, error: 'Teil nicht gefunden oder nicht manuell hinzugefügt' });
     // Erfassungshistorie mitlöschen — sonst tauchen die alten Preise beim
@@ -73,7 +81,7 @@ router.delete('/parts/:partNumber/:colorId', requireToken, async (req: AuthedReq
     // Finanzsummen lesen die Erfassungen und hätten das gelöschte Teil
     // dauerhaft weitergezählt. Gleiche Änderung in der Session-Route.
     await db.run('DELETE FROM part_acquisitions WHERE user_id=$1 AND part_number=$2 AND color_id=$3',
-      [req.apiUser.user_id, String(req.params.partNumber), parseInt(String(req.params.colorId)) || 0]);
+      [besitzer, String(req.params.partNumber), parseInt(String(req.params.colorId)) || 0]);
     res.json({ success: true });
   } catch (e) { handleRouteError(res, e); }
 });

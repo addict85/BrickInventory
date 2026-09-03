@@ -41,14 +41,17 @@ router.put('/minifigs/:figNumber', requireToken, async (req: AuthedRequest, res)
 // ── DELETE /api/v1/minifigs/:figNumber — delete a manual minifig ─────────────
 router.delete('/minifigs/:figNumber', requireToken, async (req: AuthedRequest, res) => {
   try {
+    // Wie bei den Teilen: Ohne den Parameter das eigene Konto.
+    const besitzer = await resolveWriteTarget(req.apiUser.user_id, req.query.owner);
+    if (besitzer === null) return res.status(403).json({ success: false, error: 'Kein Zugriff auf dieses Konto' });
     const r = await db.run(
       "DELETE FROM minifigs WHERE user_id=$1 AND fig_number=$2 AND source='manual'",
-      [req.apiUser.user_id, req.params.figNumber]);
+      [besitzer, req.params.figNumber]);
     if (r.changes === 0) return res.status(404).json({ success: false, error: 'Minifigur nicht gefunden oder nicht manuell hinzugefügt' });
     // OHNE .catch(() => {}) — siehe Session-Route: verwaiste Erfassungen
     // zählen in den Finanzsummen weiter, ohne dass eine Ansicht sie zeigt.
     await db.run('DELETE FROM minifig_acquisitions WHERE user_id=$1 AND fig_number=$2',
-      [req.apiUser.user_id, req.params.figNumber]);
+      [besitzer, req.params.figNumber]);
     res.json({ success: true });
   } catch (e) { handleRouteError(res, e); }
 });

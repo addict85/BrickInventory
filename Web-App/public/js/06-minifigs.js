@@ -194,7 +194,7 @@ export function renderFigs(list, target) {
         const src = f.source==='manual'
           ? `<span style="background:var(--b50);color:var(--b600);border-radius:4px;padding:2px 6px;font-size:.72rem;font-weight:600">${t('figs.badge_manual')}</span>`
           : `<span style="background:var(--s100);color:var(--mut);border-radius:4px;padding:2px 6px;font-size:.72rem">${t('figs.badge_set')}</span>`;
-        const delBtn = f.source==='manual' ? `<button class="btn bd btn-sm" data-click="deleteManualFig" data-arg="${esc(f.fig_number)}" title="${esc(t('figs.delete'))}" aria-label="${esc(t('figs.delete'))}">${TRASH_ICON_SVG}</button>` : '';
+        const delBtn = f.source==='manual' ? `<button class="btn bd btn-sm" data-click="deleteManualFig" data-arg="${esc(f.fig_number)}" data-arg2="${f.user_id||''}" title="${esc(t('figs.delete'))}" aria-label="${esc(t('figs.delete'))}">${TRASH_ICON_SVG}</button>` : '';
         return `<tr>
           <td>${imgSrc?`<img src="${escUrl(imgSrc)}" loading="lazy" decoding="async" data-onerror="hide" style="width:36px;height:36px;object-fit:contain;background:var(--s50);border-radius:5px" />`:'—'}</td>
           <td><span style="font-family:var(--mono);font-size:.77rem;color:var(--b600)">${esc(f.fig_number)}</span></td>
@@ -229,7 +229,7 @@ export function renderFigs(list, target) {
           // Gleiches Muster wie Set- und Teile-Kacheln: .ca + .delbtn, sichtbar
           // beim Überfahren. Vorher ein dauerhaft sichtbarer roter Knopf (btn bd)
           // in abweichender Grösse — dieselbe Aktion sah in jeder Tabelle anders aus.
-          const delBtn = f.source==='manual' ? `<div class="ca"><button class="delbtn" data-click="deleteManualFigStop" data-arg="${esc(f.fig_number)}" title="${esc(t('figs.delete'))}" aria-label="${esc(t('figs.delete'))}">${TRASH_ICON_SVG}</button></div>` : '';
+          const delBtn = f.source==='manual' ? `<div class="ca"><button class="delbtn" data-click="deleteManualFigStop" data-arg="${esc(f.fig_number)}" data-arg2="${f.user_id||''}" title="${esc(t('figs.delete'))}" aria-label="${esc(t('figs.delete'))}">${TRASH_ICON_SVG}</button></div>` : '';
           // Zustand nur bei manuell erfassten Minifiguren anzeigen (automatisch
           // hinzugefügte aus Sets haben keinen eigenen Zustand).
           // Eine Plakette je erfasstem Zustand — gemeinsame Fassung in
@@ -253,9 +253,10 @@ export function renderFigs(list, target) {
     </div>`).join('');
 }
 
-export async function deleteManualFig(figNumber) {
+/** @param {string} figNumber @param {number|string} [owner] siehe deleteManualPart */
+export async function deleteManualFig(figNumber, owner) {
   if (!await confirmDelete(tRaw('figs.delete.title'), t('gallery.delete.text',{name:figNumber}), '👷')) return false;
-  const d = await api('DELETE', `/v1/minifigs/${encodeURIComponent(figNumber)}`);
+  const d = await api('DELETE', `/v1/minifigs/${encodeURIComponent(figNumber)}${owner ? `?owner=${encodeURIComponent(owner)}` : ''}`);
   if (d.success) { toast(tRaw('figs.deleted'), 'success'); loadMinifigs(); loadManualFigsTable(); return true; }
   else { toast(d.error || t('settings.error'), 'error'); return false; }
 }
@@ -292,7 +293,7 @@ function renderManualFigsTable() {
       const priceStr = figPrice!=null ? fmtN(figPrice, CURRENCY) : '—';
       const condBadge = condBadges(f);
       return `<div class="man-tile" data-click="openManDetail" data-arg="fig" data-arg2="${esc(f.fig_number)}" data-arg3="0" style="cursor:pointer">
-        <div class="ca"><button class="delbtn" data-click="deleteManualFigStop" data-arg="${esc(f.fig_number)}" title="${esc(t('figs.delete'))}" aria-label="${esc(t('figs.delete'))}">${TRASH_ICON_SVG}</button></div>
+        <div class="ca"><button class="delbtn" data-click="deleteManualFigStop" data-arg="${esc(f.fig_number)}" data-arg2="${f.user_id||''}" title="${esc(t('figs.delete'))}" aria-label="${esc(t('figs.delete'))}">${TRASH_ICON_SVG}</button></div>
         ${img}
         <div class="man-tile-num">${esc(f.fig_number)}</div>
         <div class="man-tile-name">${esc(f.fig_name) || '—'}</div>
@@ -449,7 +450,7 @@ function renderManualParts() {
       const priceStr = partPrice!=null ? fmtN(partPrice, CURRENCY) : '—';
       const condBadge = condBadges(p);
       return `<div class="man-tile" data-click="openManDetail" data-arg="part" data-arg2="${esc(p.part_number)}" data-arg3="${p.color_id||0}" style="cursor:pointer">
-        <div class="ca"><button class="delbtn" data-click="deleteManualPartStop" data-arg="${esc(p.part_number)}" data-arg2="${p.color_id||0}" title="${esc(t('parts.delete.title'))}" aria-label="${esc(t('parts.delete.title'))}">${TRASH_ICON_SVG}</button></div>
+        <div class="ca"><button class="delbtn" data-click="deleteManualPartStop" data-arg="${esc(p.part_number)}" data-arg2="${p.color_id||0}" data-arg3="${p.user_id||''}" title="${esc(t('parts.delete.title'))}" aria-label="${esc(t('parts.delete.title'))}">${TRASH_ICON_SVG}</button></div>
         ${img}
         <div class="man-tile-num" title="${esc(p.part_number)}">${esc(p.bl_part_number||p.part_number)}</div>
         <div class="man-tile-name">${esc(p.part_name) || '—'}</div>
@@ -470,9 +471,18 @@ export async function updateManualPart(partNumber, colorId, body) {
   else toast(d.error||t('settings.error'),'error');
 }
 
-export async function deleteManualPart(partNumber, colorId) {
+/**
+ * @param {string} partNumber
+ * @param {number} colorId
+ * @param {number|string} [owner]  Besitzer der KARTE. Im Haushalt zeigt der
+ *   manuelle Bereich die Einträge aller Konten mit Plakette und Papierkorb;
+ *   ohne diese Angabe löschte der Server immer die Zeile des Aufrufers —
+ *   geklickt war die fremde Karte, weg war die eigene, und die Antwort sagte
+ *   „success". Begründung und Messung in utils/household.ts.
+ */
+export async function deleteManualPart(partNumber, colorId, owner) {
   if (!await confirmDelete(tRaw('parts.delete.title'), t('gallery.delete.text',{name:partNumber}), '🔩')) return false;
-  const d = await api('DELETE', `/v1/parts/${encodeURIComponent(partNumber)}/${colorId}`);
+  const d = await api('DELETE', `/v1/parts/${encodeURIComponent(partNumber)}/${colorId}${owner ? `?owner=${encodeURIComponent(owner)}` : ''}`);
   if (d.success) { toast(tRaw('parts.deleted'), 'success'); loadManualParts(); return true; }
   else { toast(d.error || t('settings.error'), 'error'); return false; }
 }

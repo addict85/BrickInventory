@@ -235,7 +235,7 @@ export function saveManualFigBl(id) { updateManualFig(id, { bl_fig_number: this.
 export function delSetStop(sn, ev) { ev?.stopPropagation(); delSet(sn); }
 
 /** War: onclick="event.stopPropagation();deleteManualFig('${n}')" */
-export function deleteManualFigStop(n, ev) { ev?.stopPropagation(); deleteManualFig(n); }
+export function deleteManualFigStop(n, owner, ev) { ev?.stopPropagation(); deleteManualFig(n, owner); }
 
 /**
  * Löschen eines manuellen Teils von der Kachel aus.
@@ -248,9 +248,9 @@ export function deleteManualFigStop(n, ev) { ev?.stopPropagation(); deleteManual
  * @param {string} colorId Kommt als Zeichenkette aus data-arg2
  * @param {Event} ev
  */
-export function deleteManualPartStop(partNumber, colorId, ev) {
+export function deleteManualPartStop(partNumber, colorId, owner, ev) {
   ev?.stopPropagation();
-  deleteManualPart(partNumber, parseInt(colorId) || 0);
+  deleteManualPart(partNumber, parseInt(colorId) || 0, owner);
 }
 
 /** War: onclick="openPdfViewer('${href}','${desc}');return false;" auf einem Link */
