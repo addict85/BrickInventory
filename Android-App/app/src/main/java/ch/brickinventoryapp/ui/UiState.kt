@@ -197,6 +197,17 @@ data class PartsUiState(
     val minifigStats: ch.brickinventoryapp.data.model.MinifigStats =
         ch.brickinventoryapp.data.model.MinifigStats(),
     val minifigsLoading: Boolean = false,
+    /**
+     * Suchtext der Figurenliste — im Zustand, nicht im Composable.
+     *
+     * Er stand als `var search by rememberSaveable` in MinifigsScreen und
+     * filterte die schon geladene Liste. Damit gab es dieselbe Suchregel
+     * zweimal (hier und im Server-Handler), und sie waren nicht deckungsgleich:
+     * Der Server sucht vor der Gruppierung ueber jede fig_name-Zeile, das
+     * Composable danach ueber die eine, die uebrig bleibt. Aus demselben Grund
+     * steht partsQuery oben im Zustand.
+     */
+    val minifigsQuery: String = "",
     val partsStats: PartsStats? = null,
     val partsColors: List<BrickColor> = emptyList(),
 )

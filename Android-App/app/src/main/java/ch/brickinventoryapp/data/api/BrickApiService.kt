@@ -308,7 +308,8 @@ interface BrickApiService {
     suspend fun getMinifigs(
         @Query("source") source: String? = null,
         @Query("set_number") setNumber: String? = null,
-        @Query("accounts") accounts: String? = null
+        @Query("accounts") accounts: String? = null,
+        @Query("search") search: String? = null
     ): Response<MinifigsResponse>
 
     @GET("api/v1/sets/barcode/{barcode}")

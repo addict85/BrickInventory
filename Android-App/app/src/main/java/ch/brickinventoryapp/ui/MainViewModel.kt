@@ -275,6 +275,12 @@ class MainViewModel @Inject constructor(
     // und eine langsame alte Antwort kann eine neuere überschreiben (Race).
     internal var partsJob: kotlinx.coroutines.Job? = null
 
+    // ── Minifiguren ──────────────────────────────────────────────────────────
+    // Dieselbe Mechanik aus demselben Grund: Seit die Suche zum Server geht
+    // (loadMinifigs), loest jeder Tastendruck sonst eine eigene Abfrage aus,
+    // und eine langsame alte Antwort koennte eine neuere ueberschreiben.
+    internal var minifigsJob: kotlinx.coroutines.Job? = null
+
     // ── Galerie ──────────────────────────────────────────────────────────────
     // Dieselbe Mechanik, und sie gehoert aus demselben Grund hierher: Als
     // `private var` auf Dateiebene in GalleryFeature.kt war sie prozessweit

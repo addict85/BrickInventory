@@ -216,29 +216,59 @@ internal fun MainViewModel.deleteMinifig(figNumber: String) {
     }
 }
 
-internal fun MainViewModel.loadMinifigs() {
+/**
+ * Figurenliste laden. Der Suchtext kommt aus dem Zustand, nicht als Parameter —
+ * dieselbe Regel wie bei [loadParts] und der Galerie: Wer als Parameter laedt,
+ * kennt den Filter nur beim Tippen; jeder andere Ladeweg (Aktualisieren,
+ * Erfassen, Kontowechsel) reicht ihn nicht mit und liefert eine ungefilterte
+ * Liste in eine Ansicht, deren Suchfeld weiter den alten Text zeigt.
+ */
+internal fun MainViewModel.loadMinifigs(debounce: Boolean = false) {
     // Kennzahlen NEBENHER holen, nicht aus der Liste rechnen: Die Liste unten
     // ist gefiltert (ohne manuell erfasste), die Kacheln sollen aber den
     // ganzen Bestand nennen — genau wie in der Webapp. Eigener Aufruf, damit
     // die Liste nicht auf die Zählung wartet.
-    viewModelScope.launch {
+    //
+    // Beim Tippen NICHT: Die Kacheln zeigen den ganzen Bestand, den aendert ein
+    // Suchtext nicht. Ohne diese Bedingung schickte jeder Tastendruck eine
+    // eigene Zaehlabfrage los — und die haengt an keinem Auftrag, waere also
+    // auch nicht abgebrochen worden.
+    if (!debounce) viewModelScope.launch {
         when (val r = repo.teile.getMinifigStats(scopeFor(ScopeFilter.View.MINIFIGS))) {
             is Result.Success -> _partsState.update { it.copy(minifigStats = r.data.stats) }
             is Result.Error   -> Unit   // Kacheln behalten den letzten Stand
         }
     }
-    viewModelScope.launch {
+    minifigsJob?.cancel()
+    minifigsJob = viewModelScope.launch {
+        if (debounce) kotlinx.coroutines.delay(350)
         _partsState.update { it.copy(minifigsLoading = true) }
-        when (val r = repo.teile.getMinifigs(scopeFor(ScopeFilter.View.MINIFIGS))) {
+        // Nach dem Entprellen gelesen: Bei schneller Eingabe gewinnt der zuletzt
+        // gestartete Auftrag, und der soll den NEUESTEN Text sehen.
+        val suche = _partsState.value.minifigsQuery.ifBlank { null }
+        when (val r = repo.teile.getMinifigs(scopeFor(ScopeFilter.View.MINIFIGS), suche)) {
+            // Manuell erfasste Figuren schliesst jetzt der SERVER aus
+            // (source=set im Repository) — sie haben ihren eigenen Bereich mit
+            // editierbaren Karten. Vorher stand der Ausschluss hier als
+            // `filter { it.source != "manual" }`, also ein zweites Mal neben
+            // der Regel im Server-Handler.
             is Result.Success -> _partsState.update { it.copy(
-                // Manuell erfasste Minifiguren werden nur noch im eigenen Bereich
-                // (editierbare Karten, siehe manualFigs/FigsValuationResponse) angezeigt,
-                // hier daher ausgeschlossen, um Duplikate zu vermeiden.
-                minifigs = r.data.figs.filter { it.source != "manual" }, minifigsLoading = false) }
+                minifigs = r.data.figs, minifigsLoading = false) }
             is Result.Error   -> {
                 _snackbar.value = meldung(r)
                 _partsState.update { it.copy(minifigsLoading = false) }
             }
         }
     }
+}
+
+/**
+ * Suchtext der Figurenliste setzen: entprellt, damit nicht jeder Tastendruck
+ * eine Abfrage ausloest. Gegenstueck zu [setPartsQuery] und setGalleryQuery.
+ */
+internal fun MainViewModel.setMinifigsQuery(q: String) {
+    _partsState.update { it.copy(minifigsQuery = q) }
+    // Kein eigener Auftrag noetig: loadMinifigs bricht minifigsJob selbst ab,
+    // ein zweiter Tastendruck loescht also den entprellten ersten.
+    loadMinifigs(debounce = true)
 }

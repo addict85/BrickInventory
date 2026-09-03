@@ -73,10 +73,29 @@ class TeileRepository @Inject constructor(
     suspend fun deleteMinifig(figNumber: String): Result<GenericResponse> =
         safeCall { api.deleteMinifig(figNumber) }
 
-    suspend fun getMinifigs(accounts: String? = null): Result<MinifigsResponse> =
-        if (accounts == null)
-            cached("minifigs", MinifigsResponse.serializer()) { safeCall { api.getMinifigs() } }
-        else safeCall { api.getMinifigs(accounts = accounts) }
+    /**
+     * Set-Figuren der Uebersicht. `source = "set"` und der Suchtext gehen an den
+     * SERVER — wie in der Webapp (public/js/06-minifigs.js, figParams).
+     *
+     * Vorher holte die App die GANZE Figurenliste und filterte beides im
+     * Composable: `figs.filter { it.source != "manual" }` im Zustand und
+     * `contains(search)` in MinifigsScreen. Damit stand dieselbe Regel zweimal
+     * im Baum, und die Suche traf nur die zusammengefasste Zeile: Der Server
+     * sucht VOR der Gruppierung ueber jede fig_name-Zeile, die App danach nur
+     * ueber die eine, die MAX(fig_name) uebrig laesst. Dieselbe Figur, unter
+     * zwei Namen aus zwei Sets, fand die Webapp und das Telefon nicht.
+     *
+     * Gecacht wird nur die ungefilterte Sicht — genau wie bei getParts und
+     * getSets. Ein Suchergebnis im Cache waere nach dem Neustart die ganze
+     * Sammlung, und der Cache wird nur im Fehlerfall gelesen.
+     */
+    suspend fun getMinifigs(accounts: String? = null, search: String? = null): Result<MinifigsResponse> =
+        if (accounts == null && search.isNullOrBlank())
+            cached("minifigs", MinifigsResponse.serializer()) {
+                safeCall { api.getMinifigs(source = "set") }
+            }
+        else safeCall { api.getMinifigs(source = "set", accounts = accounts,
+                                        search = search?.ifBlank { null }) }
 
     suspend fun getMinifigStats(accounts: String? = null): Result<ch.brickinventoryapp.data.model.MinifigStatsResponse> =
         safeCall { api.getMinifigStats(accounts) }

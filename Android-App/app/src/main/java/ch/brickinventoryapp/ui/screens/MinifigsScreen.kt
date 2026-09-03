@@ -73,16 +73,18 @@ fun MinifigsScreen(
             vm.addMinifig(num, blNum, qty, note, unitPrice, cond, owner)
         }
 
-    var search by rememberSaveable { mutableStateOf("") }
+    // Suchtext aus dem Zustand, gefiltert wird auf dem SERVER — wie bei den
+    // Teilen (PartsScreen) und in der Galerie. Hier stand ein eigenes
+    // `filter { contains(search) }` ueber die schon geladene Liste; damit
+    // existierte die Suchregel zweimal, und sie traf etwas anderes als die des
+    // Servers (Begruendung in TeileRepository.getMinifigs).
+    //
+    // remember(partsState.minifigsQuery): Das Feld haelt den Text waehrend des
+    // Tippens selbst, uebernimmt aber einen von aussen gesetzten (Leeren beim
+    // Abmelden, Wiederherstellen). Genau wie in PartsScreen.
+    var search by remember(partsState.minifigsQuery) { mutableStateOf(partsState.minifigsQuery) }
     var showAddDialog by rememberSaveable { mutableStateOf(false) }
     var deletingFig by remember { mutableStateOf<FigValuationItem?>(null) }
-    val filtered = remember(figs, search) {
-        if (search.isBlank()) figs
-        else figs.filter {
-            it.figNumber.contains(search, ignoreCase = true) ||
-            it.figName?.contains(search, ignoreCase = true) == true
-        }
-    }
 
     Box(Modifier.fillMaxSize()) {
     Column(Modifier.fillMaxSize()) {
@@ -116,12 +118,12 @@ fun MinifigsScreen(
         // Search
         OutlinedTextField(
             value = search,
-            onValueChange = { search = it },
+            onValueChange = { search = it; vm.setMinifigsQuery(it) },
             placeholder = { Text(stringResource(R.string.minifigs_search_placeholder)) },
             leadingIcon = { Icon(Icons.Default.Search, null, Modifier.size(20.dp)) },
             trailingIcon = {
                 if (search.isNotEmpty())
-                    IconButton(onClick = { search = "" }) { Icon(Icons.Default.Clear, stringResource(R.string.minifigs_delete)) }
+                    IconButton(onClick = { search = ""; vm.setMinifigsQuery("") }) { Icon(Icons.Default.Clear, stringResource(R.string.minifigs_delete)) }
             },
             modifier = Modifier.fillMaxWidth().padding(horizontal = 14.dp, vertical = 8.dp),
             singleLine = true,
@@ -144,7 +146,7 @@ fun MinifigsScreen(
                         color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
             }
-            filtered.isEmpty() && manualFigs.isEmpty() -> Box(Modifier.fillMaxSize(), Alignment.Center) {
+            figs.isEmpty() && manualFigs.isEmpty() -> Box(Modifier.fillMaxSize(), Alignment.Center) {
                 Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     Text("🔍", fontSize = 40.sp)
                     Text(stringResource(R.string.minifigs_no_results), fontWeight = FontWeight.SemiBold)
@@ -173,14 +175,14 @@ fun MinifigsScreen(
                                 onDelete = { deletingFig = fig }
                             )
                         }
-                        if (filtered.isNotEmpty()) {
+                        if (figs.isNotEmpty()) {
                             item(span = { GridItemSpan(maxLineSpan) }, key = "sets-header") {
                                 SectionHeader(stringResource(R.string.minifigs_sets_section))
                             }
                         }
                     }
                     itemsIndexed(
-                        filtered,
+                        figs,
                         key = { index, fig -> "${fig.figNumber}_${fig.source}_$index" }
                     ) { _, fig ->
                         MinifigCard(fig, serverUrl, imageLoader)
