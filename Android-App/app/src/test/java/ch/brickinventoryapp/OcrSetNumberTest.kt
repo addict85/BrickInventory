@@ -15,9 +15,20 @@ import org.junit.Test
  * Der Filter ist deshalb der Kern der Sache: Die Kamera sieht auf so einer
  * Seite mehrere Zahlen, und ohne Einschränkung käme ständig Unsinn heraus.
  *
- * BEKANNTE GRENZE, bewusst so gelassen: Sind Teilezahl und Setnummer gleich
- * lang, kann die falsche gewinnen. Genau dagegen steht der Bestätigungsdialog
- * mit Bild und Name — er ist Teil des Entwurfs, nicht nur Höflichkeit.
+ * ── Was sich geändert hat (Marcos Meldung „falsche Nummern") ────────────────
+ * Hier stand „die längste Zahl gewinnt", und die Prüfung unten schrieb die
+ * Annahme fest: „Die Setnummer ist auf der Seite fast immer die längste Zahl."
+ *
+ * Auf einer Anleitung stimmt das nicht. Dort stehen sechs- und siebenstellige
+ * Zahlen, die KEINE Setnummern sind — die Bestellnummer des Hefts auf dem
+ * Umschlag, die Elementnummern in der Teileliste. Die Setnummer hat vier oder
+ * fünf Stellen. Die alte Regel griff also regelmässig daneben.
+ *
+ * BEKANNTE GRENZE, bewusst so gelassen: Sind zwei Zahlen gleich plausibel,
+ * kann die falsche gewinnen. Dagegen steht der Bestätigungsdialog mit Bild und
+ * Name — und seit dieser Meldung sagt er ausdrücklich, dass die Nummer geraten
+ * ist (BarcodeUiState.unsicher). Er ist Teil des Entwurfs, nicht nur
+ * Höflichkeit.
  */
 class OcrSetNumberTest {
 
@@ -79,10 +90,36 @@ class OcrSetNumberTest {
     }
 
     @Test
-    fun `laengere Zahlen stehen vorn`() {
-        // Die Setnummer ist auf der Seite fast immer die längste Zahl; der
-        // erste Kandidat ist der, den der Scanner nimmt.
+    fun `die plausiblere Stellenzahl steht vorn`() {
+        // Fünfstellig schlägt vierstellig — das ist die häufigste Form einer
+        // Setnummer, und die Teilezahl daneben hat meist vier.
         val k = setNumberCandidates("1215 Teile  75192")
         assert(k.first() == "75192") { "Reihenfolge falsch: $k" }
+    }
+
+    @Test
+    fun `die Bestellnummer des Hefts gewinnt NICHT`() {
+        // Genau Marcos Fall: Auf dem Umschlag einer Anleitung steht die
+        // siebenstellige Bestellnummer gross oben, die Setnummer daneben. Die
+        // alte Regel („die längste gewinnt") nahm die Bestellnummer.
+        val k = setNumberCandidates("6284070\n75192\n1215")
+        assert(k.first() == "75192") {
+            "Die siebenstellige Bestellnummer hat gewonnen: $k"
+        }
+    }
+
+    @Test
+    fun `die Elementnummer aus der Teileliste gewinnt NICHT`() {
+        // Sechsstellige Elementnummern stehen in jeder Teileliste.
+        val k = setNumberCandidates("Teile: 302326 4211525\nSet 31142")
+        assert(k.first() == "31142") { "Elementnummer hat gewonnen: $k" }
+    }
+
+    @Test
+    fun `die eindeutige Schreibweise mit Suffix schlaegt alles`() {
+        // `60445-1` ist die einzige Form, die auf der Seite nichts anderes
+        // sein kann.
+        val k = setNumberCandidates("6284070  60445-1  75192")
+        assert(k.first() == "60445-1") { "Suffix-Form nicht vorn: $k" }
     }
 }

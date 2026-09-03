@@ -230,12 +230,49 @@ fun BarcodeScannerScreen(
  * Sortiert nach LÄNGE absteigend: Die Setnummer ist auf der Seite fast immer
  * die längste Zahl, und der erste Kandidat ist der, den der Scanner nimmt.
  */
-internal fun setNumberCandidates(text: String): List<String> =
-    Regex("\\b(\\d{4,7})(-\\d{1,2})?\\b").findAll(text)
+/**
+ * Kandidaten fuer eine Setnummer aus erkanntem Text — in absteigender Guete.
+ *
+ * ── Warum nicht mehr „die laengste gewinnt" (Marcos Meldung) ────────────────
+ *
+ * Hier stand `sortedByDescending { length }`, und der Test daneben schrieb die
+ * Annahme hin: „Die Setnummer ist auf der Seite fast immer die laengste Zahl."
+ *
+ * Auf einer Anleitung stimmt das nicht. Dort stehen sechs- und siebenstellige
+ * Zahlen, die KEINE Setnummern sind — die Bestellnummer des Hefts auf dem
+ * Umschlag, die Elementnummern in der Teileliste. Die Setnummer selbst hat
+ * vier oder fuenf Stellen. Die alte Regel griff also regelmaessig zur
+ * falschen Zahl, und genau das war Marcos Befund.
+ *
+ * ── Die Reihenfolge, und warum ──────────────────────────────────────────────
+ *
+ *  1. Mit Variantensuffix (`60445-1`) zuerst. So schreibt sich eine Setnummer
+ *     und sonst nichts auf der Seite — das ist die einzige EINDEUTIGE Form.
+ *  2. Danach nach Stellenzahl in der Reihenfolge 5, 4, 6, 7. Das ist die
+ *     Haeufigkeit echter Setnummern, nicht ihre Groesse.
+ *  3. Bei Gleichstand die Reihenfolge im Text.
+ *
+ * Geraten bleibt es trotzdem — deshalb markiert die App jeden so gelesenen
+ * Treffer als unsicher (BarcodeUiState.unsicher), und der Dialog sagt es.
+ * Dieselbe Ueberlegung steht serverseitig in utils/produkttitel.ts, wo aus
+ * einem Produkttitel dieselbe Frage zu beantworten ist.
+ */
+internal fun setNumberCandidates(text: String): List<String> {
+    val guete = listOf(5, 4, 6, 7)
+    return Regex("\\b(\\d{4,7})(-\\d{1,2})?\\b").findAll(text)
         .map { it.value }
         .distinct()
-        .sortedByDescending { it.substringBefore('-').length }
         .toList()
+        .sortedWith(
+            compareByDescending<String> { it.contains('-') }
+                .thenBy {
+                    val stellen = it.substringBefore('-').length
+                    // Unbekannte Laenge ganz nach hinten statt an den Anfang:
+                    // indexOf liefert sonst -1 und die Zahl gewaenne alles.
+                    guete.indexOf(stellen).let { i -> if (i < 0) guete.size else i }
+                }
+        )
+}
 
 @androidx.annotation.OptIn(ExperimentalCamera2Interop::class)
 @Composable

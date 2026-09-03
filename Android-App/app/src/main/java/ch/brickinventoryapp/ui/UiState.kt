@@ -353,6 +353,21 @@ data class BarcodeUiState(
     // Läuft gerade ein Hinzufügen aus dem Barcode-Dialog? Sperrt den Knopf
     // gegen den zweiten Klick, der sonst dasselbe Set ein zweites Mal erfasst.
     val adding: Boolean = false,
+    /**
+     * Die angezeigte Nummer ist GERATEN — der Dialog weist darauf hin.
+     *
+     * Zwei Quellen setzen das Feld:
+     *  - Der Server, wenn er die EAN nicht abgleichen konnte und nur einen
+     *    plausiblen Kandidaten hat (BarcodeResponse.unsicher).
+     *  - Die App selbst bei der Texterkennung: Dort ist schon das LESEN eine
+     *    Vermutung. Die gefundene Zahl ergibt zwar ein echtes Set — sonst käme
+     *    der Dialog gar nicht —, aber ob es das Set auf dem Papier ist, weiss
+     *    niemand.
+     *
+     * Der Dialog zeigt Bild und Namen ohnehin. Es fehlte nur der Hinweis,
+     * WANN man hinsehen muss.
+     */
+    val unsicher: Boolean = false,
 )
 
 /**

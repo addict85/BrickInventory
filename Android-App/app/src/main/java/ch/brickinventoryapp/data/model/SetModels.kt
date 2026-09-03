@@ -214,6 +214,23 @@ data class BarcodeResponse(
     @SerialName("image_url")   val imageUrl: String? = null,
     @SerialName("image_local") val imageLocal: String? = null,
     val source: String? = null,
+    /**
+     * Die Antwort ist GERATEN, nicht abgeglichen — bitte hinsehen.
+     *
+     * Der Server hat sieben Wege zu einer Setnummer; fünf gleichen eine
+     * Kennung ab, zwei raten (utils/barcodeQuelle.ts). Bis hierher waren beide
+     * nicht zu unterscheiden: Auch der Ratepfad antwortete mit `success: true`
+     * und einer konkreten Nummer, und die App zeigte den Bestätigungsdialog,
+     * als wäre das Set erkannt worden.
+     *
+     * Marcos Meldung war genau das: „Es werden regelmässig falsche Nummern
+     * erkannt."
+     *
+     * Vorgabe false: Ein älterer Server kennt das Feld nicht, und dessen
+     * Antworten sind nicht schlechter als vorher — der Hinweis fehlt dann
+     * bloss.
+     */
+    val unsicher: Boolean = false,
     val error: String? = null
 )
 

@@ -108,6 +108,10 @@ internal fun MainViewModel.resolveBarcode(value: String) {
                         pieces     = r.data.pieces,
                         theme      = r.data.theme,
                         minifigs   = r.data.minifigs,
+                        // Ausdruecklich gesetzt, nicht weggelassen: copy()
+                        // behielte sonst den Wert des VORIGEN Scans, und ein
+                        // sicherer Treffer traege die Warnung des letzten.
+                        unsicher   = r.data.unsicher,
                         adding     = false
                     )}
                 } else {
@@ -227,6 +231,13 @@ internal fun MainViewModel.useScannedSetNumber(raw: String) {
                     pieces     = d.numParts,
                     theme      = d.themeName,
                     minifigs   = d.minifigs,
+                    // IMMER unsicher: Hierher kommt, was die Texterkennung
+                    // gelesen hat. Die Zahl ergibt ein echtes Set — sonst
+                    // waere d null und wir waeren oben ausgestiegen —, aber ob
+                    // es das Set auf dem Papier ist, weiss niemand. Auf einer
+                    // Anleitung stehen mehrere sechs- und siebenstellige
+                    // Nummern, und nur eine davon ist die Setnummer.
+                    unsicher   = true,
                     adding     = false
                 )}
             }
@@ -267,7 +278,7 @@ internal fun MainViewModel.confirmAddBarcode(setNum: String, purchasePrice: Doub
             imageUrl = null, imageLocal = null,
             year = null, pieces = null,
             theme = null, minifigs = null,
-            adding = false,
+            adding = false, unsicher = false,
             fuerTeileliste = setNum
         )}
         return
@@ -331,7 +342,7 @@ internal fun MainViewModel.confirmAddBarcode(setNum: String, purchasePrice: Doub
     }
 }
 
-internal fun MainViewModel.cancelBarcode() { _barcodeState.update { it.copy(result = null, setName = null, imageUrl = null, imageLocal = null, year = null, pieces = null, theme = null, minifigs = null, adding = false) } }
+internal fun MainViewModel.cancelBarcode() { _barcodeState.update { it.copy(result = null, setName = null, imageUrl = null, imageLocal = null, year = null, pieces = null, theme = null, minifigs = null, adding = false, unsicher = false) } }
 
 /**
  * Die Anforderung ist beim Bildschirm angekommen — Feld zurücksetzen.

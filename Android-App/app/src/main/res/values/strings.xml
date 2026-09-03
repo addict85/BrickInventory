@@ -282,6 +282,11 @@
     <string name="nav_monitoring">📊 Monitoring</string>
     <string name="main_barcode_add_partslist">Add to parts list?</string>
     <string name="main_barcode_add_set">Add set?</string>
+    <!-- Shown when the set number was guessed, not matched: the EAN could not be
+         resolved and only a plausible candidate remains, or the number was read by
+         text recognition. The dialog already shows image and name — this says when
+         to look. -->
+    <string name="main_barcode_unsure">Not certain — please check image and name</string>
     <string name="main_barcode_year">Year</string>
     <string name="main_barcode_pieces">Pieces</string>
     <string name="main_barcode_figs">Figures</string>

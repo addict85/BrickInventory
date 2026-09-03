@@ -273,6 +273,7 @@
     <string name="nav_monitoring">📊 Monitoring</string>
     <string name="main_barcode_add_partslist">Zur Teileliste hinzufügen?</string>
     <string name="main_barcode_add_set">Set hinzufügen?</string>
+    <string name="main_barcode_unsure">Nicht sicher erkannt — bitte Bild und Namen prüfen</string>
     <string name="main_barcode_year">Jahr</string>
     <string name="main_barcode_pieces">Teile</string>
     <string name="main_barcode_figs">Figuren</string>

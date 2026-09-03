@@ -12,6 +12,8 @@ import { findSetInScope, normalizeSetNumber } from '../../utils/setAdd';
 import { scopeIds, parseScopeMode, writableIds } from '../../utils/household';
 import { householdMembers, resolveWriteTarget } from '../../utils/household';
 import { moveSetBetweenAccounts } from '../../utils/setMove';
+import { istVermutung } from '../../utils/barcodeQuelle';
+import { setnummerKandidaten } from '../../utils/produkttitel';
 import { withInventoryLock } from '../../utils/txLock';
 import { fetchPrice } from '../../utils/financeCalc';
 import { addSet, updateSet } from '../../utils/setService';
@@ -118,8 +120,14 @@ router.get('/sets/barcode/:barcode', requireToken, async (req: AuthedRequest, re
     const image_url = rbData?.set_img_url || local?.image_url || null;
     const image_local = local?.image_local ? resolveImageLocal(local.image_local) : null;
 
+    // Jede Antwort sagt, WIE sie zustande kam (utils/barcodeQuelle.ts).
+    // Positivliste: Was dort nicht als geprüft steht, gilt als Vermutung — ein
+    // künftiger achter Weg ist damit automatisch als unsicher markiert, statt
+    // still als Treffer durchzugehen.
+    const unsicher = istVermutung(source);
+
     if (local) {
-      return { success:true, set_number:setNumber,
+      return { success:true, unsicher, set_number:setNumber,
         name:  local.name  || rbData?.name  || name,
         year:  local.year  || rbData?.year,
         pieces:local.pieces|| rbData?.num_parts,
@@ -133,7 +141,7 @@ router.get('/sets/barcode/:barcode', requireToken, async (req: AuthedRequest, re
         'INSERT INTO catalog_cache(set_number,name,year,theme,pieces,image_url) VALUES($1,$2,$3,$4,$5,$6) ON CONFLICT(set_number) DO UPDATE SET name=$2,year=$3,theme=$4,pieces=$5,image_url=$6',
         [setNumber, rbData.name, rbData.year, rbData.theme_name, rbData.num_parts, rbData.set_img_url]
       ).catch(()=>{});
-      return { success:true, set_number:setNumber,
+      return { success:true, unsicher, set_number:setNumber,
         name:   rbData.name     || name,
         year:   rbData.year,
         pieces: rbData.num_parts,
@@ -147,12 +155,12 @@ router.get('/sets/barcode/:barcode', requireToken, async (req: AuthedRequest, re
       [setNumber]
     ).catch(()=>null);
     if (cat) {
-      return { success:true, set_number:setNumber, name:cat.name||name,
+      return { success:true, unsicher, set_number:setNumber, name:cat.name||name,
         year:cat.year, pieces:cat.pieces, theme:cat.theme, minifigs,
         image_url:cat.image_url||image_url, source };
     }
 
-    return { success:true, set_number:setNumber, name, minifigs, image_url, source };
+    return { success:true, unsicher, set_number:setNumber, name, minifigs, image_url, source };
   }
 
   try {
@@ -204,7 +212,17 @@ router.get('/sets/barcode/:barcode', requireToken, async (req: AuthedRequest, re
       }
 
       // 2c. UPCitemdb (free, 100/day)
-      const upc = await new Promise<{ set_number: string; name: string } | null>(resolve => {
+      //
+      // Der Titel ist Fliesstext eines Händlers. Hier stand `match(/(\d{4,6})/)`
+      // — also die ERSTE vier- bis sechsstellige Zahl, egal welche. Bei
+      // „LEGO City 2023 Feuerwehrstation 60320" gewann das JAHR, und die
+      // Antwort ging als gültige Setnummer an die App.
+      //
+      // Jetzt liefert utils/produkttitel.ts geordnete Kandidaten (Teilezahlen
+      // und Jahre aussortiert), und der KATALOG entscheidet, welcher davon
+      // wirklich ein Set ist. Nur eine lokale Abfrage je Kandidat — sie kostet
+      // nichts am Tageskontingent.
+      const titel = await new Promise<string | null>(resolve => {
         (require('https') as typeof import('https')).get(
           `https://api.upcitemdb.com/prod/trial/lookup?upc=${ean13}`,
           { family: 4, headers:{ 'User-Agent':'BrickInventoryManager/1.0' } }, r => {
@@ -212,16 +230,30 @@ router.get('/sets/barcode/:barcode', requireToken, async (req: AuthedRequest, re
             r.on('end',()=>{
               try {
                 const d=JSON.parse(b);
-                const item=d?.items?.[0];
-                if(!item?.title) return resolve(null);
-                const m=(item.title||'').match(/(?:#\s*)?(\d{4,6})/i);
-                resolve(m ? {set_number:`${m[1]}-1`,name:item.title} : null);
+                resolve(d?.items?.[0]?.title || null);
               } catch(_){resolve(null);}
             });
           }
         ).on('error',()=>resolve(null)).setTimeout(6000, function (this: import('http').ClientRequest) { this.destroy(); resolve(null); });
       });
-      if (upc) return res.json(await enrichResult(upc.set_number, upc.name, 'upcitemdb'));
+      if (titel) {
+        for (const kandidat of setnummerKandidaten(titel)) {
+          const n = `${kandidat}-1`;
+          const bekannt = await db.get(
+            'SELECT set_number FROM catalog_cache WHERE set_number = $1 OR set_number = $2',
+            [kandidat, n]
+          ).catch(() => null);
+          if (bekannt) return res.json(await enrichResult(bekannt.set_number, titel, 'upcitemdb'));
+        }
+        // Kein Kandidat im Katalog: Der erste bleibt als VERMUTUNG stehen —
+        // Marcos Entscheidung, lieber einen markierten Vorschlag als gar nichts.
+        // enrichResult holt Bild und Namen dazu, und die App weist im Dialog
+        // darauf hin, dass hier hingesehen werden muss.
+        const ersterKandidat = setnummerKandidaten(titel)[0];
+        if (ersterKandidat) {
+          return res.json(await enrichResult(`${ersterKandidat}-1`, titel, 'upcitemdb'));
+        }
+      }
     }
 
 
