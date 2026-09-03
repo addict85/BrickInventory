@@ -64,6 +64,23 @@ export function escHex(hex, fallback){
   return /^[0-9A-Fa-f]{6}$/.test(v) ? '#' + v : (fallback || 'var(--s300)');
 }
 
+/**
+ * Dieselbe Prüfung wie [escHex], aber OHNE das Doppelkreuz.
+ *
+ * Für Attribute, die den nackten Farbwert tragen und deren Leser das `#`
+ * selbst ergänzen — `data-hex` in der Farbauswahl ist so eines:
+ *
+ *     dot.style.background = hex ? '#' + hex : 'var(--s200)';
+ *
+ * escHex() dort einzusetzen hätte beide Leser gebrochen (`##RRGGBB`). Statt
+ * die Regel zu verbiegen, gibt es sie zweimal: einmal für `style`, einmal für
+ * das Attribut. Geprüft wird beide Male dasselbe — genau sechs Hexziffern.
+ */
+export function hexZiffern(hex){
+  const v = String(hex ?? '').trim().replace(/^#/, '');
+  return /^[0-9A-Fa-f]{6}$/.test(v) ? v : '';
+}
+
 /** Rückwärtskompatibler Alias (wurde früher in 03-parts.js definiert). */
 export const escHtml = escJs;
 

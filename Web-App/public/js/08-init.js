@@ -1,7 +1,7 @@
 import { PARTS_ICON_SVG, bindTabs } from './02-gallery.js';
 import { registerActions } from './00-registry.js';
 import { locale, t, tRaw} from '../i18n.js';
-import { G, api, checkAuth, esc, escUrl, imgUrl, thumbUrl, toast } from './01-core.js';
+import { escHex, G, api, checkAuth, esc, escUrl, imgUrl, thumbUrl, toast } from './01-core.js';
 import { initScrollbalken } from './15-scrollbar.js';
 
 // ═══ App-Initialisierung + temporaere Teileliste ═══
@@ -230,7 +230,7 @@ function plRenderTable() {
   let html = '';
   let totalParts = 0;
   for (const grp of sorted) {
-    const colorDot = grp.color_hex ? `<span style="display:inline-block;width:14px;height:14px;border-radius:50%;background:#${grp.color_hex};border:1px solid rgba(0,0,0,.15);vertical-align:middle;margin-right:6px"></span>` : '';
+    const colorDot = grp.color_hex ? `<span style="display:inline-block;width:14px;height:14px;border-radius:50%;background:${escHex(grp.color_hex, 'var(--s300)')};border:1px solid rgba(0,0,0,.15);vertical-align:middle;margin-right:6px"></span>` : '';
     html += `<div style="margin-bottom:1.5rem"><div style="font-weight:700;font-size:.95rem;padding:6px 0;border-bottom:2px solid var(--b200);margin-bottom:.5rem;color:var(--b700)">${colorDot}${esc(grp.color_name)} <span style="font-weight:400;color:var(--mut);font-size:.85rem">${t('pl.types',{n:grp.parts.length})}</span></div><div>`;
       html += `<div style="display:flex;align-items:center;gap:10px;padding:3px 4px;font-size:.7rem;font-weight:700;color:var(--mut);text-transform:uppercase;letter-spacing:.4px;border-bottom:1.5px solid var(--b200)"><span style="width:44px;flex-shrink:0"></span><span style="min-width:65px;flex-shrink:0">Nr.</span><span style="flex:1">${t('pl.col_name')}</span><span style="width:70px;text-align:right;flex-shrink:0">${t('pl.col_needed')}</span><span style="width:70px;padding-left:6px;flex-shrink:0">${t('pl.col_have')}</span></div>`;
     for (const p of grp.parts.sort((a,b) => (a.bl_part_number||a.part_number).localeCompare(b.bl_part_number||b.part_number, undefined, { numeric: true }))) {

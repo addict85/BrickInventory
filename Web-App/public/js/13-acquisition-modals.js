@@ -16,7 +16,7 @@
 import { detailZeile } from './01-bausteine.js';
 import { registerActions } from './00-registry.js';
 import { locale, t, tRaw } from '../i18n.js';
-import { CURRENCY, G, ME, api, esc, escJs, fmtN, fullUrl, imgUrl, toast } from './01-core.js';
+import { escHex, CURRENCY, G, ME, api, esc, escJs, fmtN, fullUrl, imgUrl, toast } from './01-core.js';
 import { allSets, applySetAggregate, closeModal, curSet, loadGallery, pnlBadge, updateGalleryPrices } from './02-gallery.js';
 import { loadFinance } from './04-finance.js';
 import { deleteManualFig, deleteManualPart, loadManualFigsTable, loadManualParts, manualFigsCache, manualPartsCache, updateManualFig, updateManualPart } from './06-minifigs.js';
@@ -393,7 +393,7 @@ export async function openManDetail(type, id, colorId) {
 
   // Colour (parts only, read-only)
   if (type === 'part' && item.color_name) {
-    const swatch = item.color_hex ? `<span style="display:inline-block;width:12px;height:12px;border-radius:50%;background:#${item.color_hex};border:1px solid rgba(0,0,0,.15);margin-right:4px;vertical-align:middle"></span>` : '';
+    const swatch = item.color_hex ? `<span style="display:inline-block;width:12px;height:12px;border-radius:50%;background:${escHex(item.color_hex, 'var(--s300)')};border:1px solid rgba(0,0,0,.15);margin-right:4px;vertical-align:middle"></span>` : '';
     rows.push(detailZeile(t('parts.color_label'), `${swatch}${esc(item.color_name)}`));
   }
 

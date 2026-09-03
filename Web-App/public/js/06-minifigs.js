@@ -1,6 +1,6 @@
 import { registerActions } from './00-registry.js';
 import { colorName, locale, t, tRaw} from '../i18n.js';
-import { CURRENCY, G, TRASH_ICON_SVG, api, esc, escUrl, fmtN, fullUrl, imgUrl, thumbUrl, toast } from './01-core.js';
+import { escHex, hexZiffern, CURRENCY, G, TRASH_ICON_SVG, api, esc, escUrl, fmtN, fullUrl, imgUrl, thumbUrl, toast } from './01-core.js';
 import { addScopeParam, scopeQuery } from './14-scope.js';
 import { condBadges, ownerBadges, selectedOwner, PARTS_ICON_SVG } from './02-gallery.js';
 import { loadFinance } from './04-finance.js';
@@ -432,7 +432,7 @@ function renderManualParts() {
         ? `<img class="man-tile-img" src="${escUrl(imgSrc)}" loading="lazy" decoding="async" data-onerror="hide" />`
         : `<div class="man-tile-img-ph">${PARTS_ICON_SVG.replace('style="width:1em;height:1em;vertical-align:middle"','style="width:1.6em;height:1.6em"')}</div>`;
       const colorRow = p.color_name
-        ? `<div class="man-tile-color">${p.color_hex ? `<span class="man-tile-swatch" style="background:#${p.color_hex}"></span>` : ''}${esc(colorName(p.color_name))}</div>`
+        ? `<div class="man-tile-color">${p.color_hex ? `<span class="man-tile-swatch" style="background:${escHex(p.color_hex, 'var(--s300)')}"></span>` : ''}${esc(colorName(p.color_name))}</div>`
         : '';
       // Wie bei den Minifiguren: mengengewichtet über die Erfassungen.
       const partPrice = p.avg_purchase_price ?? p.unit_price ?? p.purchase_price;
@@ -490,7 +490,7 @@ function renderColorDropdown(){
   // Übersetzt wird nur der sichtbare Text, mit derselben Funktion wie die
   // Farbanzeige und der Filter im Teile-Reiter.
   sel.innerHTML = `<option value="">${t('parts.no_color_dash')}</option>`
-    + _brickColors.map(c=>`<option value="${c.id}" data-name="${esc((c.name||'').replace(/"/g,'&quot;'))}" data-hex="${c.hex||''}">${esc(colorName(c.name))}</option>`).join('');
+    + _brickColors.map(c=>`<option value="${c.id}" data-name="${esc((c.name||'').replace(/"/g,'&quot;'))}" data-hex="${hexZiffern(c.hex)}">${esc(colorName(c.name))}</option>`).join('');
 }
 
 G('btn-add-part')?.addEventListener('click', async () => {
