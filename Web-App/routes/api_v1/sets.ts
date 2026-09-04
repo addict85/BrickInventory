@@ -26,6 +26,7 @@ import { deleteSet, getSet, getSets } from '../../utils/handlers/sets';
 import { resolveSetCondition } from '../../utils/financeCalc';
 import { getSetPriceHistory } from '../../utils/priceHistory';
 import { einzelwert } from '../../utils/validate';
+import { neuestesInventar } from '../../utils/rbInventar';
 const router = express.Router();
 
 // ── GIBT ES DIESES SET SCHON? ────────────────────────────────────────────────
@@ -290,15 +291,12 @@ router.get('/sets/:setNumber/parts-list', requireToken, async (req: AuthedReques
   const bare = n.replace(/-\d+$/, '');
   try {
     // ── Step 1: Find inventory in CSV database ─────────────────────────────
-    const inv = await db.get(
-      `SELECT id FROM rb_inventories WHERE set_num=$1 OR set_num=$2 ORDER BY version DESC LIMIT 1`,
-      [n, bare]
-    );
+    const invId = await neuestesInventar(setNum);
 
     let csvParts: any[] = [];
     let source   = 'db';
 
-    if (inv) {
+    if (invId) {
       // Fetch all parts including spares flag from DB
       csvParts = await db.all(
         `SELECT ip.part_num AS part_number, ip.color_id,
@@ -318,7 +316,7 @@ router.get('/sets/:setNumber/parts-list', requireToken, async (req: AuthedReques
            -- ein grossgeschriebenes 'T' anders eingeordnet haette als der
            -- Rest des Baums.
            AND (ip.is_spare IS NULL OR NOT ${ersatzteilSql('ip.is_spare')})`,
-        [inv.id]
+        [invId]
       );
     }
 
@@ -442,13 +440,10 @@ router.get('/sets/:setNumber/minifigs-list', requireToken, async (req: AuthedReq
     }
 
     // 2. Try rb_inventory_parts (CSV cache) — fig- entries
-    const inv = await db.get(
-      `SELECT id FROM rb_inventories WHERE set_num=$1 OR set_num=$2 ORDER BY version DESC LIMIT 1`,
-      [n, bare]
-    );
+    const invId = await neuestesInventar(setNum);
 
     let figs: any[] = [];
-    if (inv) {
+    if (invId) {
       const rows = await db.all(
         `SELECT ip.part_num AS fig_number, ip.quantity,
                 COALESCE(mc.fig_name, ip.part_num) AS fig_name,
@@ -456,7 +451,7 @@ router.get('/sets/:setNumber/minifigs-list', requireToken, async (req: AuthedReq
          FROM rb_inventory_parts ip
          LEFT JOIN set_minifigs_catalog mc ON mc.fig_number = ip.part_num
          WHERE ip.inventory_id = $1 AND ip.part_num LIKE 'fig-%'`,
-        [inv.id]
+        [invId]
       );
       figs = rows;
     }

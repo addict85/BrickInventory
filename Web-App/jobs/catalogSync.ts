@@ -7,6 +7,7 @@
 const db   = require('../db/database');
 import { downloadFile } from '../clients/rebrickable';
 import { generateThumb } from '../routes/thumbs';
+import { neuestesInventar } from '../utils/rbInventar';
 // Pfade zentral auflösen — __dirname zeigt seit dem dist/-Build nicht mehr
 // auf die Wurzel. Siehe utils/appPaths.ts.
 const path = require('path');
@@ -32,11 +33,8 @@ async function syncSetCatalog(setNumber: string) {
     return;
   }
   // Find inventory in CSV cache
-  const inv = await db.get(
-    'SELECT id FROM rb_inventories WHERE set_num=$1 OR set_num=$2 ORDER BY version DESC LIMIT 1',
-    [n, alt]
-  ).catch(()=>null);
-  if (!inv) {
+  const invId = await neuestesInventar(n).catch(() => null);
+  if (!invId) {
     return;
   }
 
@@ -54,7 +52,7 @@ async function syncSetCatalog(setNumber: string) {
      LEFT JOIN rb_bl_mapping m ON m.part_num = ip.part_num
      WHERE ip.inventory_id = $1
        AND (ip.is_spare IS NULL OR ip.is_spare IN ('f','false','False','0',''))`,
-    [inv.id]
+    [invId]
   ).catch(()=>[]);
 
   if (!parts.length) {
@@ -120,7 +118,7 @@ async function syncSetCatalog(setNumber: string) {
      FROM rb_inventory_parts ip
      LEFT JOIN rb_sets s ON s.set_num = ip.part_num
      WHERE ip.inventory_id = $1 AND ip.part_num LIKE 'fig-%'`,
-    [inv.id]
+    [invId]
   ).catch(()=>[]);
 
   for (const f of figs) {

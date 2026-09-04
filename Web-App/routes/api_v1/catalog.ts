@@ -21,6 +21,7 @@ import { requireToken } from './middleware';
 import { resolveMany, resolveOne, resolveViaApi } from '../../utils/bricklinkLink';
 import { downloadSetImage } from '../../utils/setImages';
 import { ausTabelle } from '../../utils/validate';
+import { neuestesInventar } from '../../utils/rbInventar';
 
 const router = express.Router();
 
@@ -156,84 +157,6 @@ const SORTS: Record<string, string> = {
   parts_desc: 'rb.num_parts DESC, rb.set_num ASC',
   parts_asc:  'rb.num_parts ASC, rb.set_num ASC',
 };
-
-/**
- * GET /api/v1/catalog/year-offset?year=2015&…
- *
- * „An welcher Stelle der Liste beginnt dieses Jahr?" — die Rechnung hinter dem
- * Schnell-Scroll am rechten Rand.
- *
- * ── Marcos Vorgabe ──────────────────────────────────────────────────────────
- * „Im Katalog die Zeitleiste rechts anpassen. Diese soll nicht ein Filter sein,
- * sondern zum Schnellscrollen verwendet werden können, analog wie es in der
- * Android-Galerie-Foto-App der Fall ist."
- *
- * Der Unterschied ist wesentlich: Ein Filter WIRFT die anderen Jahre weg. Ein
- * Schnell-Scroll springt nur hin — davor und danach bleibt alles erreichbar.
- *
- * ── Warum der Server das rechnet ────────────────────────────────────────────
- * Der Katalog hat rund 25 000 Sets und wird seitenweise geliefert; die Clients
- * kennen immer nur die geladenen Seiten. Wohin „Jahr 2015" gehört, weiss nur
- * die Datenbank — und beide Oberflächen sollen dieselbe Stelle treffen.
- *
- * Gezählt wird mit DENSELBEN Filtern und DERSELBEN Sortierung wie die Liste;
- * eine eigene Zählung wäre eine zweite Fassung derselben Abfrage und würde
- * genau dann danebenliegen, wenn ein Filter gesetzt ist.
- *
- * @returns {{offset:number, page:number, total:number}} offset = Anzahl Sets
- *   VOR dem ersten Set dieses Jahres, page = die Seite, auf der es liegt.
- *   Gibt es das Jahr nicht (Filter, Lücke im Katalog), wird die nächste
- *   erreichbare Stelle geliefert — springen soll immer etwas.
- */
-router.get('/catalog/year-offset', requireToken, async (req: AuthedRequest, res) => {
-  try {
-    const jahr     = parseInt(String(req.query.year || '')) || null;
-    if (!jahr) return res.status(400).json({ success: false, error: 'year erforderlich' });
-    const q        = String(req.query.q || '').trim();
-    const themeId  = parseInt(String(req.query.theme_id || '')) || null;
-    const sortKey  = String(req.query.sort || '');
-    const limit    = Math.min(200, Math.max(1, parseInt(String(req.query.limit || '60')) || 60));
-    // Nur die Jahres-Sortierungen kennen eine sinnvolle Stelle für ein Jahr.
-    // Bei „Name A–Z" liegen die Jahre verstreut; dort ist ein Sprung sinnlos,
-    // und die Oberfläche blendet die Leiste aus.
-    const absteigend = sortKey !== 'year_asc';
-
-    const themeIds = themeId ? descendantIds(await getThemeTree(), themeId) : null;
-    const params: any[] = [];
-    const where: string[] = [];
-    if (q) {
-      params.push(`%${q}%`);
-      where.push(`(rb.set_num ILIKE $${params.length} OR rb.name ILIKE $${params.length})`);
-    }
-    if (themeIds) { params.push(themeIds); where.push(`rb.theme_id = ANY($${params.length})`); }
-    const basis = where.length ? `WHERE ${where.join(' AND ')}` : '';
-
-    // Die Sets VOR dem gesuchten Jahr zählen — in der Richtung der Sortierung.
-    // Bei absteigenden Jahren stehen die NEUEREN davor, bei aufsteigenden die
-    // älteren. NULL-Jahre sortiert Postgres bei DESC nach vorne; sie zählen
-    // deshalb dort mit.
-    params.push(jahr);
-    const jahrParam = params.length;
-    const vergleich = absteigend
-      ? `(rb.year IS NULL OR rb.year > $${jahrParam})`
-      : `(rb.year IS NOT NULL AND rb.year < $${jahrParam})`;
-    const vor = await db.get(
-      `SELECT COUNT(*)::int AS n FROM rb_sets rb ${basis}
-        ${basis ? 'AND' : 'WHERE'} ${vergleich}`, params);
-
-    const gesamtParams = params.slice(0, jahrParam - 1);
-    const gesamt = await db.get(
-      `SELECT COUNT(*)::int AS n FROM rb_sets rb ${basis}`, gesamtParams);
-
-    const offset = Math.max(0, Math.min(vor?.n ?? 0, Math.max(0, (gesamt?.n ?? 0) - 1)));
-    res.json({
-      success: true,
-      offset,
-      page: Math.floor(offset / limit) + 1,
-      total: gesamt?.n ?? 0,
-    });
-  } catch (e) { handleRouteError(res, e); }
-});
 
 /**
  * GET /api/v1/catalog/year-verteilung?q=&theme_id=&sort=
@@ -415,15 +338,14 @@ router.get('/catalog/sets/:setNumber', requireToken, async (req: AuthedRequest, 
     if (!set) { res.status(404).json({ success: false, error: 'Set nicht im Katalog gefunden' }); return; }
 
     // Minifiguren-Zahl aus dem neuesten Inventar (analog catalogSync).
-    const inv = await db.get(
-      'SELECT id FROM rb_inventories WHERE set_num = $1 ORDER BY version DESC LIMIT 1',
-      [n]
-    ).catch(() => null);
+    // Vorher nur EIN Kandidat, obwohl der Kommentar darueber schon auf
+    // catalogSync verwies — das prueft zwei.
+    const invId = await neuestesInventar(n).catch(() => null);
     let minifigCount = 0;
-    if (inv) {
+    if (invId) {
       const m = await db.get(
         'SELECT COALESCE(SUM(quantity), 0)::int AS n FROM rb_inventory_minifigs WHERE inventory_id = $1',
-        [inv.id]
+        [invId]
       ).catch(() => null);
       minifigCount = m?.n || 0;
     }

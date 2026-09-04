@@ -309,4 +309,69 @@ jobs:
       # den Testausgaben untergeht. --omit=dev: Was nur beim Bauen läuft, ist
       # kein Angriffsweg auf den laufenden Dienst.
       - name: Sicherheitsprüfung der Abhängigkeiten
-        run: npm audit --omit=dev --audit-level=high
+        env:
+          BERICHT: ${{ runner.temp }}/audit.json
+          FEHLER: ${{ runner.temp }}/audit.err
+        run: |
+          set -uo pipefail
+          # ── Warum nicht mehr eine Zeile ─────────────────────────────────────
+          #
+          # Hier stand `npm audit --omit=dev --audit-level=high`. GEMESSEN an
+          # Lauf 33867656667: Der Schritt lief GENAU 5:00 min und fiel dann um.
+          # Die einzige Annotation war „Process completed with exit code 1",
+          # und das rohe Protokoll ist von hier aus nicht zu holen — der
+          # Ablageort liegt hinter einer Weiterleitung, die der Proxy mit 403
+          # ablehnt (dieselbe Begruendung wie beim Testschritt oben). Von
+          # aussen war damit NICHT zu unterscheiden:
+          #
+          #   * eine echte Luecke ab „high" — dann gehoert der Lauf rot, oder
+          #   * die Registry antwortet nicht — dann sagt der Lauf nichts aus.
+          #
+          # Derselbe Befehl meldet lokal „found 0 vulnerabilities" in Sekunden.
+          # Die fuenf Minuten sind npms Vorgabe fuer --fetch-timeout (300000
+          # ms), also die Laufzeit einer haengenden Anfrage, nicht die einer
+          # Antwort.
+          #
+          # Deshalb wird die Antwort jetzt GELESEN statt nur ihr Rueckgabewert
+          # betrachtet: --json liefert entweder einen auswertbaren Befund oder
+          # eben keinen, und beide Faelle werden gemeldet. Eine Diagnose, die
+          # nur den erwarteten Ausgang abdeckt, schweigt genau dann, wenn etwas
+          # Unerwartetes passiert — dieselbe Ueberlegung wie beim Testschritt.
+          #
+          # --fetch-timeout kurz und EINMAL wiederholen: Eine echte Luecke
+          # meldet sich in Sekunden, eine haengende Registry kostet so 2x60 s
+          # statt 5 min. Wiederholt wird NUR die unlesbare Antwort — ein
+          # Befund wird nicht so lange abgefragt, bis er passt.
+          for versuch in 1 2; do
+            npm audit --omit=dev --json --fetch-timeout=60000 \
+              > "$BERICHT" 2> "$FEHLER" || true
+            if node -e 'JSON.parse(require("fs").readFileSync(process.argv[1],"utf8")).metadata.vulnerabilities' "$BERICHT" 2>/dev/null; then
+              break
+            fi
+            echo "Versuch $versuch: keine auswertbare Antwort von der Registry."
+            [ "$versuch" = 1 ] || {
+              ende=$(tail -c 1500 "$FEHLER" | tr '\n' '~' | sed 's/%/%25/g; s/\r/%0D/g; s/~/%0A/g')
+              echo "::error title=npm audit ohne auswertbare Antwort::${ende:-keine Fehlerausgabe}"
+              exit 1
+            }
+          done
+          node -e '
+            const r = JSON.parse(require("fs").readFileSync(process.env.BERICHT, "utf8"));
+            const m = r.metadata.vulnerabilities;
+            const stand = Object.entries(m).map(([k, v]) => k + "=" + v).join(" ");
+            const schwer = (m.high || 0) + (m.critical || 0);
+            if (schwer === 0) {
+              console.log("::notice title=npm audit::keine Luecke ab \"high\" — " + stand);
+            } else {
+              // Jede einzeln als Annotation: „5 Luecken" allein zwingt wieder
+              // zum Protokoll, das von hier aus nicht zu holen ist.
+              for (const [name, v] of Object.entries(r.vulnerabilities || {})) {
+                if (v.severity !== "high" && v.severity !== "critical") continue;
+                const woher = (v.via || [])
+                  .map(x => typeof x === "string" ? x : x.title).join("; ");
+                console.log("::error title=Schwachstelle (" + v.severity + ")::" + name + " — " + woher);
+              }
+              console.log("::error title=npm audit::" + schwer + " Luecken ab \"high\" — " + stand);
+              process.exit(1);
+            }
+          '

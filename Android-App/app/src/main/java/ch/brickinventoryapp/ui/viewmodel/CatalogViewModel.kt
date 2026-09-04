@@ -150,8 +150,9 @@ class CatalogViewModel @Inject constructor(
                 // zeigte sie auf Sets, die es in der neuen Liste nicht mehr gibt.
                 it.copy(isLoading = true, error = null,
                         loadedPages = emptyMap(), loadingPages = emptySet(), scrollTo = null,
-                        scrollIndex = 0, scrollOffset = 0)
+                        scrollIndex = 0, scrollOffset = 0, jahrVerteilung = emptyList())
             }
+            ladeJahrVerteilung(gen)
             val s = _catalogState.value
             val r = retryOnNetwork(maxAttempts = CATALOG_RETRIES, delayMs = CATALOG_RETRY_DELAY_MS) {
                 repo.admin.getCatalogSets(
@@ -215,29 +216,43 @@ class CatalogViewModel @Inject constructor(
     }
 
     /**
-     * Zum ersten Set eines Jahres springen — OHNE zu filtern.
+     * Die Jahresverteilung zu den aktuellen Filtern holen.
      *
-     * Das ist der Unterschied, auf den es Marco ankam: Ein Filter wirft die
-     * anderen Jahre weg, ein Sprung lässt sie stehen. Wohin gesprungen wird,
-     * rechnet der Server (GET /api/v1/catalog/year-offset) mit denselben Filtern
-     * und derselben Sortierung wie die Liste — die App kennt immer nur die
-     * geladenen Seiten und könnte es gar nicht selbst wissen.
+     * Vom SERVER, weil nur der die Filter kennt: Eine Verteilung ueber den
+     * ganzen Katalog laege bei gesetztem Thema oder Suchtext genauso daneben
+     * wie die frueher lineare Schaetzung. Einmal je Listenaufbau, nicht beim
+     * Rollen — dieselbe Stelle wie in der Webapp (_ladeJahrVerteilung).
      *
-     * Die Zielseite wird gleich mitgeladen, damit an der Sprungstelle nicht für
-     * einen Moment nur Platzhalter stehen.
+     * `gen` ist dieselbe Generationsnummer wie beim Seitenabruf: Wechselt der
+     * Filter waehrend des Abrufs, gehoert die Antwort zu einer Liste, die es
+     * nicht mehr gibt.
      */
-    fun jumpToCatalogYear(year: Int) {
-        val s = _catalogState.value
+    private fun ladeJahrVerteilung(gen: Int) {
         viewModelScope.launch {
-            val r = repo.admin.getCatalogYearOffset(
-                year = year, q = s.query.ifBlank { null }, themeId = s.themeId, sort = s.sort)
+            val s = _catalogState.value
+            val r = repo.admin.getCatalogYearVerteilung(
+                q = s.query.ifBlank { null }, themeId = s.themeId, sort = s.sort)
+            if (gen != catalogGeneration) return@launch
             if (r is Result.Success && r.data.success) {
-                ensureCatalogPage(r.data.page)
-                _catalogState.update { it.copy(scrollTo = r.data.offset) }
-            } else if (r is Result.Error) {
-                _snackbar.value = meldung(r)
+                // Jahrgaenge OHNE Jahr wegwerfen — genau wie die Webapp es tut.
+                // Ihre Zahl bleibt in `total` enthalten; siehe
+                // CatalogYearMath.jahrAnPosition.
+                _catalogState.update { it.copy(jahrVerteilung = r.data.years.filter { j -> j.year != null }) }
             }
         }
+    }
+
+    /**
+     * Die Leiste rechts rollt die Liste an eine Stelle.
+     *
+     * Die laufende Nummer geht ueber den Zustand an die Ansicht, weil das
+     * Rollen dort geschieht (LazyGridState) und die Leiste selbst in einer
+     * Gestenerkennung sitzt. Die Ansicht meldet den Sprung mit
+     * catalogScrollConsumed() zurueck; ohne das Zuruecksetzen liesse sich
+     * dieselbe Stelle kein zweites Mal anfahren.
+     */
+    fun scrollCatalogTo(nummer: Int) {
+        _catalogState.update { it.copy(scrollTo = nummer) }
     }
 
     /**

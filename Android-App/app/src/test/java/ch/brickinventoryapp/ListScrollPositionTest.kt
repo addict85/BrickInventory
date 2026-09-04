@@ -228,29 +228,26 @@ class ListScrollPositionTest {
     }
 
     @Test
-    fun `der Daumen der Jahresleiste folgt der Liste`() {
+    fun `der Griff der Jahresleiste folgt der Liste`() {
         // Marcos Befund: „im Katalog ist sie auf der korrekten Zeile, aber die
         // Scrollbar zeigt an, dass man sich zuoberst befindet."
         //
-        // Der Daumen folgte NIE der Liste, sondern nur dem eigenen Ziehen:
-        // previewYear startet auf yearMax, und thumbOffset(yearMax) ist genau
+        // Der Griff folgte NIE der Liste, sondern nur dem eigenen Ziehen:
+        // previewYear startete auf yearMax, und thumbOffset(yearMax) ist genau
         // null — also ganz oben. Auch beim Rollen mit dem Finger blieb er
         // stehen; aufgefallen ist es erst nach der Detailseite, weil dort die
         // Komposition neu beginnt und ein gezogenes Jahr verlorengeht.
+        //
+        // Seit die Leiste dieselbe ist wie in der Webapp, haengt sie nicht mehr
+        // am JAHR, sondern an der STELLE in der Liste. Die Aussage bleibt: ohne
+        // Ziehen zeigt der Griff, wo man IST.
         val katalog = code(read("ui/screens/CatalogScreen.kt"))
-        assert(katalog.contains("val thumbYear = if (dragging) previewYear else")) {
-            "Der Daumen zeigt weiterhin nur das gezogene Jahr — ohne Ziehen steht " +
-                "er dauerhaft auf yearMax, und das ist genau der obere Anschlag"
+        assert(katalog.contains("if (dragging) ziehAnteil else CatalogYearMath.anteilAusNummer(listenNummer, total)")) {
+            "Der Griff zeigt weiterhin nur die gezogene Stelle — ohne Ziehen bliebe " +
+                "er dort stehen, wo zuletzt gezogen wurde"
         }
-        assert(katalog.contains("listenJahr")) {
-            "Die Jahresleiste bekommt das Jahr der Liste gar nicht zu sehen"
-        }
-        // Der Stand ist ein PARAMETER, kein beobachteter Wert: Ohne
-        // rememberUpdatedState friert die Ableitung den Stand ein, den sie beim
-        // Anlegen gesehen hat — und loadedPages füllt sich erst danach.
-        assert(katalog.contains("rememberUpdatedState(state)")) {
-            "Die Ableitung hält einen eingefrorenen Stand fest und verstummt, " +
-                "sobald eine Seite nachlädt"
+        assert(katalog.contains("listenNummer = gridState.firstVisibleItemIndex")) {
+            "Die Jahresleiste bekommt die Stelle der Liste gar nicht zu sehen"
         }
     }
 
