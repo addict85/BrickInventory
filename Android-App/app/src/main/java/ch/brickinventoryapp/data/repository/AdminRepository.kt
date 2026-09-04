@@ -43,6 +43,16 @@ class AdminRepository @Inject constructor(
 
     suspend fun getMe(): Result<MeResponse> = safeCall { api.getMe() }
 
+    // Konto anlegen und Passwort vergessen — beides ohne bestehende Anmeldung.
+    suspend fun getRegistrationStatus(): Result<RegistrationStatusResponse> =
+        safeCall { api.getRegistrationStatus() }
+
+    suspend fun register(request: RegisterRequest): Result<RegisterResponse> =
+        safeCall { api.register(request) }
+
+    suspend fun forgotPassword(email: String): Result<ForgotPasswordResponse> =
+        safeCall { api.forgotPassword(ForgotPasswordRequest(email)) }
+
     suspend fun getTokens(): Result<TokensResponse> = safeCall { api.getTokens() }
 
     suspend fun revokeToken(tokenId: String): Result<GenericResponse> =

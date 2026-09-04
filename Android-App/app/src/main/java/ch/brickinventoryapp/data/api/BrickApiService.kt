@@ -27,6 +27,21 @@ interface BrickApiService {
     @POST("api/v1/auth/logout")
     suspend fun logout(): Response<GenericResponse>
 
+    // ── Konto anlegen und Passwort vergessen ────────────────────────────────
+    //
+    // Die drei stehen ABSICHTLICH ohne Anmeldung: Sie werden gebraucht, BEVOR
+    // es einen Token gibt. Der Server laesst sie deshalb vor requireLogin
+    // stehen (routes/auth.ts), und der Interceptor der App haengt bei fehlendem
+    // Token einfach keinen Kopf an.
+    @GET("api/v1/auth/registration-status")
+    suspend fun getRegistrationStatus(): Response<RegistrationStatusResponse>
+
+    @POST("api/v1/auth/register")
+    suspend fun register(@Body request: RegisterRequest): Response<RegisterResponse>
+
+    @POST("api/v1/auth/forgot-password")
+    suspend fun forgotPassword(@Body request: ForgotPasswordRequest): Response<ForgotPasswordResponse>
+
     @GET("api/v1/sets/{setNumber}")
     suspend fun getSetDetail(
         @Path("setNumber") setNumber: String

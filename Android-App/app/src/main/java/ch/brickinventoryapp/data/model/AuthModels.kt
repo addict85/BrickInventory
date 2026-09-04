@@ -110,3 +110,74 @@ data class MeResponse(
     val success: Boolean,
     val user: User? = null
 )
+
+// ── Konto anlegen und Passwort vergessen ────────────────────────────────────
+//
+// Die Webapp konnte das von Anfang an, die App nicht: Wer die App als Erstes
+// installierte, brauchte zwingend einen Browser, um ueberhaupt ein Konto zu
+// bekommen. Dieselben Adressen, dieselben Felder wie in public/js/01-core.js.
+
+/**
+ * Registrierung — POST /api/v1/auth/register.
+ *
+ * `language` steuert die Sprache der Bestaetigungs-E-Mail UND die
+ * Nutzereinstellung des neuen Kontos (routes/auth.ts schreibt sie direkt in
+ * user_settings). Die App schickt deshalb ihre eigene Anzeigesprache mit,
+ * statt den Server auf 'de' zurueckfallen zu lassen.
+ */
+@Serializable
+data class RegisterRequest(
+    val username: String,
+    val email: String,
+    @SerialName("first_name") val firstName: String? = null,
+    @SerialName("last_name") val lastName: String? = null,
+    val password: String,
+    val language: String = "de",
+)
+
+/**
+ * Die Antwort auf eine Registrierung.
+ *
+ * `consoleMode` ist der Fall ohne eingerichteten Mailversand: Der Server legt
+ * das Konto an und schreibt den Bestaetigungslink in seine Konsole. Ohne diesen
+ * Hinweis wartet man auf eine E-Mail, die nie kommt — die Webapp haengt dafuer
+ * einen eigenen Satz an, und die App tut jetzt dasselbe.
+ */
+@Serializable
+data class RegisterResponse(
+    val success: Boolean,
+    val message: String? = null,
+    @SerialName("email_sent") val emailSent: Boolean = false,
+    @SerialName("console_mode") val consoleMode: Boolean = false,
+    val error: String? = null,
+)
+
+@Serializable
+data class ForgotPasswordRequest(val email: String)
+
+/**
+ * Die Antwort auf „Passwort vergessen".
+ *
+ * Sie ist ABSICHTLICH immer dieselbe — „Falls die E-Mail existiert, wurde ein
+ * Link gesendet." Der Server unterscheidet nicht zwischen bekannter und
+ * unbekannter Adresse, sonst verriete das Formular, wer hier ein Konto hat.
+ * Die App darf daraus also keine Erfolgs- oder Fehlermeldung ableiten; sie
+ * zeigt den Satz des Servers.
+ */
+@Serializable
+data class ForgotPasswordResponse(
+    val success: Boolean,
+    val message: String? = null,
+    val error: String? = null,
+)
+
+/**
+ * Ist die Registrierung ueberhaupt offen? — GET /api/v1/auth/registration-status.
+ *
+ * OHNE Anmeldung erreichbar, wie im Web. Der Verwalter kann Registrierungen
+ * global abschalten (global_settings.registration_enabled); dann blendet die
+ * Webapp den Link aus, und die App tut jetzt dasselbe. Ein Knopf, der immer zu
+ * einem 403 fuehrt, ist schlimmer als kein Knopf.
+ */
+@Serializable
+data class RegistrationStatusResponse(val enabled: Boolean = false)

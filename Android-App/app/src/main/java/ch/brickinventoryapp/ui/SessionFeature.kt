@@ -83,6 +83,96 @@ internal fun MainViewModel.loginWithQrToken(serverUrl: String, token: String) {
  * Modul verschluckt.
  */
 @OptIn(coil.annotation.ExperimentalCoilApi::class)
+// ── Konto anlegen und Passwort vergessen ─────────────────────────────────
+//
+// Beides braucht KEINE Anmeldung und laeuft deshalb ueber eigene Felder
+// (kontoLaeuft/kontoFehler/kontoMeldung) statt ueber loginLaeuft/loginError.
+// Sonst haetten zwei Formulare denselben Fehlerplatz — genau die Verwechslung,
+// wegen der `error` einmal in `loginError` umbenannt wurde (siehe UiState).
+
+/**
+ * Steht die Registrierung offen? Einmal beim Aufbau des Anmeldebildschirms.
+ *
+ * Bei einem Fehler bleibt das Feld auf `null` und der Link damit VERBORGEN.
+ * Das ist die vorsichtige Seite: Ein Server, der die Frage nicht beantwortet,
+ * beantwortet auch die Registrierung nicht — und ein Knopf, der ins Leere
+ * fuehrt, ist schlechter als keiner. Die Webapp macht es genauso
+ * (`catch(_){}` um checkRegistrationEnabled).
+ */
+internal fun MainViewModel.pruefeRegistrierungOffen() {
+    viewModelScope.launch {
+        when (val r = repo.admin.getRegistrationStatus()) {
+            is Result.Success -> _state.update { it.copy(registrierungOffen = r.data.enabled) }
+            is Result.Error   -> Unit
+        }
+    }
+}
+
+/** Zwischen Anmelden, Registrieren und „Passwort vergessen" umschalten. */
+internal fun MainViewModel.zeigeAnmeldeFormular(formular: AnmeldeFormular) {
+    // Meldung UND Fehler gehen mit: Sonst stuende die Erfolgsmeldung der
+    // Registrierung noch im Formular „Passwort vergessen".
+    _state.update { it.copy(anmeldeFormular = formular, kontoMeldung = null, kontoFehler = null) }
+}
+
+internal fun MainViewModel.registriere(
+    username: String, email: String, vorname: String, nachname: String, passwort: String,
+) {
+    viewModelScope.launch {
+        _state.update { it.copy(kontoLaeuft = true, kontoFehler = null, kontoMeldung = null) }
+        val anfrage = RegisterRequest(
+            username = username.trim(),
+            email = email.trim(),
+            // Leer bedeutet „nicht angegeben", nicht „leerer Vorname": Der
+            // Server nimmt null und traegt dann gar nichts ein.
+            firstName = vorname.trim().ifBlank { null },
+            lastName = nachname.trim().ifBlank { null },
+            password = passwort,
+            // Die Sprache, die die Oberflaeche GERADE zeigt — aus den
+            // Ressourcen, nicht aus einer eigenen Ermittlung. Steuert die
+            // Sprache der Bestaetigungs-E-Mail und die Nutzereinstellung des
+            // neuen Kontos (routes/auth.ts schreibt sie in user_settings).
+            language = text(R.string.lang_code),
+        )
+        when (val r = repo.admin.register(anfrage)) {
+            is Result.Success ->
+                if (r.data.success) {
+                    // Der SATZ DES SERVERS, plus der Konsolen-Hinweis, wenn
+                    // kein Mailversand eingerichtet ist. Ohne den wartet man
+                    // auf eine E-Mail, die nie kommt.
+                    val hinweis = if (r.data.consoleMode) " " + text(R.string.register_console_hint) else ""
+                    _state.update { it.copy(
+                        kontoLaeuft = false,
+                        kontoMeldung = (r.data.message ?: text(R.string.register_done)) + hinweis) }
+                } else {
+                    _state.update { it.copy(kontoLaeuft = false,
+                        kontoFehler = r.data.error ?: text(R.string.err_generic)) }
+                }
+            is Result.Error -> _state.update { it.copy(kontoLaeuft = false, kontoFehler = meldung(r)) }
+        }
+    }
+}
+
+/**
+ * Einen Link zum Zuruecksetzen anfordern.
+ *
+ * Die Antwort des Servers ist ABSICHTLICH immer dieselbe, egal ob es die
+ * Adresse gibt. Deshalb wird sie unveraendert angezeigt und NICHT in ein
+ * eigenes „erfolgreich" uebersetzt — sonst verriete die App, was der Server
+ * gerade verschweigt.
+ */
+internal fun MainViewModel.passwortVergessen(email: String) {
+    viewModelScope.launch {
+        _state.update { it.copy(kontoLaeuft = true, kontoFehler = null, kontoMeldung = null) }
+        when (val r = repo.admin.forgotPassword(email.trim())) {
+            is Result.Success -> _state.update { it.copy(
+                kontoLaeuft = false,
+                kontoMeldung = r.data.message ?: text(R.string.forgot_done)) }
+            is Result.Error -> _state.update { it.copy(kontoLaeuft = false, kontoFehler = meldung(r)) }
+        }
+    }
+}
+
 internal fun MainViewModel.logout() {
     csvWatchJob?.cancel(); csvWatchJob = null
     viewModelScope.launch {

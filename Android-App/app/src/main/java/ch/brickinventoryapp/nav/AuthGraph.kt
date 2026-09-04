@@ -95,11 +95,24 @@ fun NavGraphBuilder.authGraph(
             // Zustand INNERHALB des Ziels lesen — als Parameter wäre es eine
             // Momentaufnahme vom Aufbau des Graphen (der NavHost-Builder läuft nur einmal).
             val state by vm.state.collectAsStateWithLifecycle()
+            // Einmal beim Betreten: Steht die Registrierung ueberhaupt offen?
+            // Ohne Anmeldung erreichbar — die Frage kommt ja, bevor es ein
+            // Konto gibt. `Unit` als Schluessel: genau einmal je Aufbau, nicht
+            // bei jeder Zustandsaenderung.
+            LaunchedEffect(Unit) { vm.pruefeRegistrierungOffen() }
             LoginScreen(
                 serverUrl = state.serverUrl,
                 isLoading = state.loginLaeuft,
                 error = state.loginError,
+                formular = state.anmeldeFormular,
+                registrierungOffen = state.registrierungOffen,
+                kontoLaeuft = state.kontoLaeuft,
+                kontoMeldung = state.kontoMeldung,
+                kontoFehler = state.kontoFehler,
                 onLogin = { user, pw -> vm.login(user, pw) },
+                onFormular = { vm.zeigeAnmeldeFormular(it) },
+                onRegistrieren = { u, e, v, n, pw -> vm.registriere(u, e, v, n, pw) },
+                onPasswortVergessen = { vm.passwortVergessen(it) },
                 onChangeServer = {
                     navController.navigate(Screen.Setup.route) {
                         popUpTo(Screen.Login.route) { inclusive = true }

@@ -1,6 +1,11 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="app_name">BrickInventory Manager</string>
+    <!-- Die Sprachkennung DIESER Ressourcen. Wird an den Server geschickt
+         (Registrierung: Sprache der Bestaetigungs-E-Mail und des neuen Kontos).
+         Aus den Ressourcen abgeleitet statt selbst ermittelt: So sagt sie
+         genau das, was die Oberflaeche gerade zeigt. -->
+    <string name="lang_code" translatable="false">en</string>
 
     <!-- ══════════════ Settings screen ══════════════ -->
     <string name="settings_currency">Currency</string>
@@ -446,6 +451,7 @@
     <string name="monitoring_cache_ttl_hours">%1$s hours</string>
     <string name="acq_total_quantity">Total ×%1$d</string>
     <string name="setup_build">Build %1$s</string>
+    <string name="err_generic">The server rejected the request without giving a reason</string>
     <string name="err_login_failed">Sign-in failed</string>
     <string name="err_qr_login_failed">QR sign-in failed</string>
     <string name="err_network">No connection to the server</string>
@@ -492,4 +498,26 @@
     <string name="tokens_revoked_n">%1$d tokens signed out</string>
     <string name="tokens_no_others">There are no other tokens.</string>
     <string name="tokens_self_unknown">This device\'s own token is not identifiable — without it there is no way to tell which ones are “the others”.</string>
+
+    <!-- ══════════════ Create account / forgot password ══════════════ -->
+    <string name="login_no_account">No account yet? Register</string>
+    <string name="login_forgot">Forgot password?</string>
+    <string name="login_back">Back to sign-in</string>
+    <string name="register_title">Create account</string>
+    <string name="register_email">Email</string>
+    <string name="register_first_name">First name (optional)</string>
+    <string name="register_last_name">Last name (optional)</string>
+    <string name="register_password_repeat">Repeat password</string>
+    <string name="register_button">Register</string>
+    <string name="register_req_fields">Username, email and password are required.</string>
+    <string name="register_password_short">Password must be at least 8 characters.</string>
+    <string name="register_password_mismatch">The passwords do not match.</string>
+    <string name="register_done">Account created. Please confirm your email address.</string>
+    <string name="register_console_hint">SMTP is not configured — the confirmation link is in the server console.</string>
+    <string name="forgot_title">Reset password</string>
+    <string name="forgot_hint">We will send you a link to set a new password. Open it on this device — it leads to the web interface of your server.</string>
+    <string name="forgot_button">Send link</string>
+    <string name="forgot_email_required">Please enter your email address.</string>
+    <string name="forgot_done">If the address exists, a link has been sent.</string>
+
 </resources>

@@ -33,6 +33,14 @@ data class GeraeteUiState(
     val fehler: String? = null,
 )
 
+/**
+ * Welches der drei Formulare der Anmeldebildschirm gerade zeigt.
+ *
+ * Dieselben drei wie in der Webapp (`showPanel` in public/js/01-core.js):
+ * anmelden, ein Konto anlegen, einen Link zum Zuruecksetzen anfordern.
+ */
+enum class AnmeldeFormular { ANMELDEN, REGISTRIEREN, PASSWORT_VERGESSEN }
+
 data class AppUiState(
     /**
      * Läuft gerade eine ANMELDUNG? Und nur das.
@@ -92,6 +100,39 @@ data class AppUiState(
      * Gesichert durch ErrorChannelTest.
      */
     val loginError: String? = null,
+    /**
+     * Der Anmeldebildschirm zeigt DREI Formulare: Anmelden, Registrieren,
+     * Passwort vergessen. Welches, sagt dieses Feld.
+     *
+     * Genau wie in der Webapp, wo `showPanel('login'|'register'|'forgot')`
+     * zwischen denselben drei umschaltet. Ein eigener Navigationseintrag waere
+     * die zweite Wahrheit: Der Zurueck-Knopf des Geraets muesste dann etwas
+     * anderes bedeuten als das „Zurueck zur Anmeldung" im Formular.
+     */
+    val anmeldeFormular: AnmeldeFormular = AnmeldeFormular.ANMELDEN,
+    /**
+     * Steht die Registrierung offen? `null` = noch nicht gefragt.
+     *
+     * Der Unterschied traegt: Bei `null` zeigt der Bildschirm den Link NICHT —
+     * und bei `false` auch nicht. Ein Knopf, der erst erscheint und beim
+     * Antippen an einem 403 scheitert, ist schlechter als keiner. Der Server
+     * kann Registrierungen global abschalten (registration_enabled), und die
+     * Webapp blendet den Link genau so aus.
+     */
+    val registrierungOffen: Boolean? = null,
+    /**
+     * Die Antwort auf Registrieren oder „Passwort vergessen" — der SATZ DES
+     * SERVERS, nicht ein eigener.
+     *
+     * Bei „Passwort vergessen" ist das wesentlich: Der Server antwortet
+     * absichtlich immer gleich („Falls die E-Mail existiert …"), damit das
+     * Formular nicht verraet, wer hier ein Konto hat. Wuerde die App daraus
+     * eine eigene Erfolgsmeldung machen, waere die Vorsicht des Servers
+     * umsonst.
+     */
+    val kontoMeldung: String? = null,
+    val kontoFehler: String? = null,
+    val kontoLaeuft: Boolean = false,
     val serverUrl: String = "",
     val isLoggedIn: Boolean = false,
     val isAdmin: Boolean = false,
