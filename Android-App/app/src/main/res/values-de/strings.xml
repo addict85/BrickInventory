@@ -519,4 +519,16 @@
     <string name="konto_password_changed">Passwort geändert. Bitte melde dich neu an.</string>
     <string name="konto_password_button">Passwort ändern</string>
 
+
+    <!-- ══════════════ CSV hochladen ══════════════ -->
+    <string name="csv_upload_title">CSV importieren</string>
+    <string name="csv_upload_sets">Sets</string>
+    <string name="csv_upload_parts">Teile</string>
+    <string name="csv_upload_figs">Minifiguren</string>
+    <string name="csv_upload_hint">Dieselben Dateien wie in der Webapp. Höchstens %1$d MB.</string>
+    <string name="csv_upload_unreadable">Die gewählte Datei liess sich nicht lesen.</string>
+    <string name="csv_upload_too_big">Die Datei ist grösser als %1$d MB.</string>
+    <string name="csv_upload_result">%1$d Zeilen: %2$d neu, %3$d aktualisiert, %4$d Fehler</string>
+    <string name="csv_upload_close">Schliessen</string>
+
 </resources>

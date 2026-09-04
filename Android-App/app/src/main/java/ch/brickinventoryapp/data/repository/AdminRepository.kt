@@ -61,6 +61,32 @@ class AdminRepository @Inject constructor(
     suspend fun changePassword(aktuell: String, neu: String): Result<GenericResponse> =
         safeCall { api.changePassword(PasswortAenderung(aktuell, neu)) }
 
+    /**
+     * Eine CSV-Datei importieren — Sets, Teile oder Minifiguren.
+     *
+     * Die Bytes kommen fertig gelesen herein und nicht als Uri: Das Aufloesen
+     * eines content://-Verweises braucht den ContentResolver und gehoert damit
+     * in die Schicht, die einen Context hat. Ein Repository, das Android-Typen
+     * kennt, waere in diesem Baum die Ausnahme.
+     *
+     * `text/csv` als Typ, weil der Server nur die Endung und den Inhalt liest;
+     * der Dateiname geht mit, damit im Serverprotokoll steht, was importiert
+     * wurde.
+     */
+    suspend fun importiereCsv(
+        art: CsvArt, dateiname: String, inhalt: ByteArray,
+    ): Result<CsvImportErgebnis> {
+        val koerper = okhttp3.RequestBody.create("text/csv".toMediaType(), inhalt)
+        val teil = okhttp3.MultipartBody.Part.createFormData("file", dateiname, koerper)
+        return safeCall {
+            when (art) {
+                CsvArt.SETS      -> api.importSetsCsv(teil)
+                CsvArt.TEILE     -> api.importPartsCsv(teil)
+                CsvArt.MINIFIGUREN -> api.importMinifigsCsv(teil)
+            }
+        }
+    }
+
     suspend fun getTokens(): Result<TokensResponse> = safeCall { api.getTokens() }
 
     suspend fun revokeToken(tokenId: String): Result<GenericResponse> =

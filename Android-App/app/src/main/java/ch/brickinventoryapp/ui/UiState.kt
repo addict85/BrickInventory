@@ -73,6 +73,32 @@ enum class AnmeldeFormular { ANMELDEN, REGISTRIEREN, PASSWORT_VERGESSEN }
  * deshalb in den Snackbar, der das ueberlebt. (Gefunden von der Regel „kein
  * Feld ohne Leser".)
  */
+/**
+ * Eine CSV-Datei hochladen — eigener Zustand.
+ *
+ * ── Warum die App das erst jetzt kann (Nachtrag 128) ────────────────────────
+ *
+ * Sie hat CSV-Importe bisher nur BEOBACHTET: Der Fortschrittsbalken
+ * (CsvImportUiState) haengt an einem Ereigniskanal des Servers und zeigt, was
+ * jemand anderes gestartet hat — in aller Regel die Webapp. Starten konnte die
+ * App keinen, und zwar aus zwei Gruenden: Es fehlte die Dateiauswahl, und die
+ * drei Adressen lagen hinter einem Waechter, der nur Browser-Sitzungen kannte
+ * (Nachtrag 127).
+ *
+ * Das hier ist der HOCHLADE-Vorgang, nicht der Import-Fortschritt. Die beiden
+ * sind bewusst getrennt: Das Hochladen dauert Sekunden und endet mit einer
+ * Zahl; der Import danach laeuft auf dem Server weiter und meldet sich ueber
+ * den bestehenden Kanal. Sie in ein Feld zu legen hiesse, zwei Vorgaenge mit
+ * verschiedener Lebensdauer denselben Fortschritt teilen zu lassen.
+ */
+data class CsvHochladenUiState(
+    val laeuft: Boolean = false,
+    /** Welche Art gerade hochgeladen wird — fuer die Anzeige am richtigen Knopf. */
+    val art: ch.brickinventoryapp.data.model.CsvArt? = null,
+    val ergebnis: ch.brickinventoryapp.data.model.CsvImportErgebnis? = null,
+    val fehler: String? = null,
+)
+
 data class KontoUiState(
     val laedt: Boolean = false,
     val profil: ch.brickinventoryapp.data.model.Profil? = null,

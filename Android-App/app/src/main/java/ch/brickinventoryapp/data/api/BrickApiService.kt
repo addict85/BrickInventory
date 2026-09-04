@@ -52,6 +52,24 @@ interface BrickApiService {
     @POST("api/v1/auth/change-password")
     suspend fun changePassword(@Body request: PasswortAenderung): Response<GenericResponse>
 
+    // ── CSV-Import: dieselben drei Adressen wie in der Webapp ───────────────
+    //
+    // Das Feld heisst ueberall `file` und die Grenze liegt ueberall bei 15 MB
+    // (utils/dateiEmpfang.ts). Drei Aufrufe statt eines mit Pfadparameter, weil
+    // es drei verschiedene Router sind — ein `@Url` waere hier nur eine
+    // Verschleierung dessen, was ohnehin dasteht.
+    @Multipart
+    @POST("api/v1/sets/import/csv")
+    suspend fun importSetsCsv(@Part datei: okhttp3.MultipartBody.Part): Response<CsvImportErgebnis>
+
+    @Multipart
+    @POST("api/v1/parts/import/csv")
+    suspend fun importPartsCsv(@Part datei: okhttp3.MultipartBody.Part): Response<CsvImportErgebnis>
+
+    @Multipart
+    @POST("api/v1/minifigs/import/csv")
+    suspend fun importMinifigsCsv(@Part datei: okhttp3.MultipartBody.Part): Response<CsvImportErgebnis>
+
     @GET("api/v1/sets/{setNumber}")
     suspend fun getSetDetail(
         @Path("setNumber") setNumber: String

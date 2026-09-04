@@ -293,3 +293,40 @@ data class DeleteWithQuantityResponse(
     val success: Boolean,
     @SerialName("new_quantity") val newQuantity: Int = 0
 )
+
+/**
+ * Das Ergebnis eines CSV-Imports — Sets, Teile oder Minifiguren.
+ *
+ * ── Eine Huelle fuer drei Adressen (Nachtrag 128) ───────────────────────────
+ *
+ * /sets/import/csv, /parts/import/csv und /minifigs/import/csv antworten mit
+ * denselben Feldern; nur bei den Sets heisst „hinzugefuegt" `imported` statt
+ * `added`. Die Alternative waeren drei fast gleiche Datenklassen gewesen —
+ * genau die Form, die in diesem Baum wiederholt auseinandergelaufen ist.
+ *
+ * Alle Zaehler haben einen Vorgabewert: Welches Feld eine Adresse schickt,
+ * unterscheidet sich, und ein fehlendes Feld ist kein Fehler, sondern eine
+ * Null.
+ */
+@Serializable
+data class CsvImportErgebnis(
+    val success: Boolean,
+    val total: Int = 0,
+    val added: Int = 0,
+    /** Die Set-Adresse nennt dasselbe `imported`. Siehe [neuAngelegt]. */
+    val imported: Int = 0,
+    val updated: Int = 0,
+    val errors: Int = 0,
+    val error: String? = null,
+) {
+    /** Wie viele Zeilen NEU angelegt wurden, egal welche Adresse geantwortet hat. */
+    val neuAngelegt: Int get() = if (added > 0) added else imported
+}
+
+/**
+ * Welche Art CSV importiert wird.
+ *
+ * Drei Adressen, dieselbe Bedienung — deshalb ein Aufzaehlungstyp statt drei
+ * Aufrufwegen durch die ganze Anwendung. Die Webapp bietet genau diese drei an.
+ */
+enum class CsvArt { SETS, TEILE, MINIFIGUREN }

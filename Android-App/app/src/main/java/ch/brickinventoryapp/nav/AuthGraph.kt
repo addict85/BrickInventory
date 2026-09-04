@@ -72,7 +72,6 @@ fun NavGraphBuilder.authGraph(
             // Zustand INNERHALB des Ziels lesen — als Parameter wäre es eine
             // Momentaufnahme vom Aufbau des Graphen (der NavHost-Builder läuft nur einmal).
             val state by vm.state.collectAsStateWithLifecycle()
-            val anmeldung by vm.anmeldeState.collectAsStateWithLifecycle()
             SetupScreen(
                 currentUrl = state.serverUrl,
                 onSave = { url ->
@@ -96,6 +95,7 @@ fun NavGraphBuilder.authGraph(
             // Zustand INNERHALB des Ziels lesen — als Parameter wäre es eine
             // Momentaufnahme vom Aufbau des Graphen (der NavHost-Builder läuft nur einmal).
             val state by vm.state.collectAsStateWithLifecycle()
+            val anmeldung by vm.anmeldeState.collectAsStateWithLifecycle()
             // Einmal beim Betreten: Steht die Registrierung ueberhaupt offen?
             // Ohne Anmeldung erreichbar — die Frage kommt ja, bevor es ein
             // Konto gibt. `Unit` als Schluessel: genau einmal je Aufbau, nicht

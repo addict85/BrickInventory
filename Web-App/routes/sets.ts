@@ -61,7 +61,7 @@ import { registerSse } from '../utils/sseRegistry';
 import { requireLogin } from './auth';
 import { importPartsForSet } from './parts';
 
-const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 15 * 1024 * 1024 } });
+
 
 // ── CSV-Import Fortschritt: In-Process Event-Bus ──────────────────────────────
 // Der Import-Worker läuft im selben Prozess und feuert bei jedem Fortschritt
@@ -127,6 +127,7 @@ import { loginOrTokenGuard, angemeldeteNutzerId } from '../utils/auth';
 import { csvEinlesen, entschaerfungRueckgaengig, parseCsvDate, sendCsv, uebersprungenHinweis } from '../utils/csvExport';
 import { ausTabelle } from '../utils/validate';
 import { mitVersion } from '../utils/setNummer';
+import { csvEmpfang } from '../utils/dateiEmpfang';
 
 const requireLoginOrToken = loginOrTokenGuard({ timeoutMs: 3000 });
 
@@ -498,7 +499,7 @@ async function jobUpdate(userId: number, fields: Record<string, unknown>) {
   );
 }
 
-router.post('/import/csv', upload.single('file'), async (req, res) => {
+router.post('/import/csv', csvEmpfang.single('file'), async (req, res) => {
   if (!req.file) return res.status(400).json({ success:false, error:'Keine Datei' });
   const userId = Number(angemeldeteNutzerId(req));
 

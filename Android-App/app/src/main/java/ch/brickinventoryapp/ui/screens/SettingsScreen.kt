@@ -22,6 +22,7 @@ import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.input.PasswordVisualTransformation
 import ch.brickinventoryapp.R
 import ch.brickinventoryapp.util.fmtDatum
 import ch.brickinventoryapp.ui.MainViewModel
@@ -61,6 +62,7 @@ fun SettingsScreen(
     // `kontoZustand`, nicht `konto`: dieselbe Begruendung wie zwei Absaetze
     // darueber — UiStateFieldsTest bestimmt den Typ je Name und Datei.
     val kontoZustand by vm.kontoState.collectAsStateWithLifecycle()
+    val csvZustand by vm.csvHochladenState.collectAsStateWithLifecycle()
 
     // Einmal beim Betreten laden. LaunchedEffect(Unit) und nicht bei jedem
     // Neuzeichnen: Die Liste aendert sich nur, wenn sich ein Geraet an- oder
@@ -224,6 +226,12 @@ fun SettingsScreen(
             onSpeichern = { b, e, v, n -> vm.speichereProfil(b, e, v, n) },
             onPasswort = { alt, neu -> vm.aenderePasswort(alt, neu) },
             onMeldungWeg = { vm.kontoMeldungWeg() },
+        )
+
+        CsvImportCard(
+            csvZustand = csvZustand,
+            onDatei = { art, uri -> vm.ladeCsvHoch(art, uri) },
+            onSchliessen = { vm.csvHochladenWeg() },
         )
 
         GeraeteCard(
@@ -692,6 +700,90 @@ private fun KontoCard(
                 enabled = !kontoZustand.speichert && pwAktuell.isNotBlank() && pwNeu.length >= 8,
                 modifier = Modifier.fillMaxWidth().height(44.dp), shape = Formen.knopf
             ) { Text(stringResource(R.string.konto_password_button), fontWeight = FontWeight.SemiBold) }
+        }
+    }
+}
+
+/**
+ * Eine CSV-Datei hochladen — Sets, Teile oder Minifiguren.
+ *
+ * Dieselben drei Adressen, die die Webapp anbietet. Die App konnte Importe
+ * bisher nur beobachten (der Fortschrittsbalken oben in der Galerie); starten
+ * konnte sie keinen, weil die Dateiauswahl fehlte und die Routen an einem
+ * sitzungsgebundenen Waechter hingen (Nachtrag 127/128).
+ *
+ * Der Fortschritt DANACH kommt weiterhin ueber den bestehenden Kanal: Der
+ * Import laeuft auf dem Server weiter, auch wenn die App zugeklappt wird.
+ */
+@Composable
+private fun CsvImportCard(
+    csvZustand: ch.brickinventoryapp.ui.CsvHochladenUiState,
+    onDatei: (ch.brickinventoryapp.data.model.CsvArt, android.net.Uri) -> Unit,
+    onSchliessen: () -> Unit,
+) {
+    // Welche Art beim Antippen gemeint war. Der Dateiauswahl-Vertrag liefert
+    // nur den Uri zurueck, nicht den Knopf — also muss die App es sich merken.
+    //
+    // rememberSaveable und NICHT remember: Die Dateiauswahl ist eine fremde
+    // Anwendung. Waehrend sie oben liegt, darf das System diesen Vorgang
+    // beenden; kommt der Nutzer mit einer Teile-Datei zurueck und der Wert ist
+    // auf SETS zurueckgefallen, landet sie in der falschen Tabelle. Genau
+    // dieser Unterschied ist die Regel von BildschirmZustandTest, und der
+    // oertliche Spiegel hat die Stelle prompt gemeldet.
+    var gewaehlteArt by rememberSaveable { mutableStateOf(ch.brickinventoryapp.data.model.CsvArt.SETS) }
+    val auswahl = androidx.activity.compose.rememberLauncherForActivityResult(
+        androidx.activity.result.contract.ActivityResultContracts.OpenDocument()
+    ) { uri -> if (uri != null) onDatei(gewaehlteArt, uri) }
+
+    // `text/*` UND `text/comma-separated-values`: Manche Dateiverwaltungen
+    // geben einer .csv den Typ `application/vnd.ms-excel`, andere gar keinen.
+    // Zu eng gefiltert waere die Datei in der Auswahl ausgegraut, ohne dass
+    // erkennbar ist, warum.
+    val typen = arrayOf("text/csv", "text/comma-separated-values", "text/plain",
+                        "application/vnd.ms-excel", "application/octet-stream")
+
+    SettingsCard(title = stringResource(R.string.csv_upload_title), icon = Icons.Default.UploadFile) {
+        Text(
+            stringResource(R.string.csv_upload_hint,
+                (ch.brickinventoryapp.ui.CSV_MAX_BYTES / 1024 / 1024).toInt()),
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant)
+
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
+            listOf(
+                ch.brickinventoryapp.data.model.CsvArt.SETS to R.string.csv_upload_sets,
+                ch.brickinventoryapp.data.model.CsvArt.TEILE to R.string.csv_upload_parts,
+                ch.brickinventoryapp.data.model.CsvArt.MINIFIGUREN to R.string.csv_upload_figs,
+            ).forEach { (art, textId) ->
+                OutlinedButton(
+                    onClick = { gewaehlteArt = art; auswahl.launch(typen) },
+                    enabled = !csvZustand.laeuft,
+                    modifier = Modifier.weight(1f), shape = Formen.knopf,
+                    contentPadding = PaddingValues(horizontal = 4.dp)
+                ) {
+                    if (csvZustand.laeuft && csvZustand.art == art) {
+                        CircularProgressIndicator(Modifier.size(16.dp), strokeWidth = 2.dp)
+                    } else {
+                        Text(stringResource(textId), maxLines = 1,
+                            style = MaterialTheme.typography.labelLarge)
+                    }
+                }
+            }
+        }
+
+        val ergebnis = csvZustand.ergebnis
+        if (ergebnis != null) {
+            Text(
+                stringResource(R.string.csv_upload_result,
+                    ergebnis.total, ergebnis.neuAngelegt, ergebnis.updated, ergebnis.errors),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.primary)
+            TextButton(onClick = onSchliessen) { Text(stringResource(R.string.csv_upload_close)) }
+        }
+        if (csvZustand.fehler != null) {
+            Text(csvZustand.fehler, style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.error)
+            TextButton(onClick = onSchliessen) { Text(stringResource(R.string.csv_upload_close)) }
         }
     }
 }

@@ -215,6 +215,12 @@ class MainViewModel @Inject constructor(
     internal val _kontoState = MutableStateFlow(KontoUiState())
     val kontoState = _kontoState.asStateFlow()
 
+    // Das HOCHLADEN einer CSV-Datei — nicht zu verwechseln mit
+    // _csvImportState, das den Fortschritt des Imports auf dem Server zeigt.
+    // Begruendung in CsvHochladenUiState.
+    internal val _csvHochladenState = MutableStateFlow(CsvHochladenUiState())
+    val csvHochladenState = _csvHochladenState.asStateFlow()
+
     /**
      * Nur das App-Design, entkoppelt vom übrigen Zustand.
      *

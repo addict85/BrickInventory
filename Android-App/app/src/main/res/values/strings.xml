@@ -533,4 +533,16 @@
     <string name="konto_password_changed">Password changed. Please sign in again.</string>
     <string name="konto_password_button">Change password</string>
 
+
+    <!-- ══════════════ CSV upload ══════════════ -->
+    <string name="csv_upload_title">Import CSV</string>
+    <string name="csv_upload_sets">Sets</string>
+    <string name="csv_upload_parts">Parts</string>
+    <string name="csv_upload_figs">Minifigures</string>
+    <string name="csv_upload_hint">Same files as in the web app. Maximum %1$d MB.</string>
+    <string name="csv_upload_unreadable">The selected file could not be read.</string>
+    <string name="csv_upload_too_big">The file is larger than %1$d MB.</string>
+    <string name="csv_upload_result">%1$d rows: %2$d new, %3$d updated, %4$d errors</string>
+    <string name="csv_upload_close">Close</string>
+
 </resources>

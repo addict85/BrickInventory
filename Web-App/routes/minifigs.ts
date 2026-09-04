@@ -38,7 +38,6 @@ import express from 'express';
  */
 
 const router  = express.Router();
-import multer from 'multer';
 import * as db from '../db/database';
 import { handleRouteError, logAndContinue, meldeUndWeiter, fehlertext } from '../utils/httpError';
 import { recordAcquisitionForDay } from '../utils/acquisitions';
@@ -52,6 +51,7 @@ import { getSetting, getGlobalSetting } from '../utils/settings';
 import { csvEinlesen, parseCsvDate, toCsv, uebersprungenHinweis } from '../utils/csvExport';
 import { getMinifigParts } from '../clients/rebrickable';
 import { angemeldeteNutzerId } from '../utils/auth';
+import { csvEmpfang } from '../utils/dateiEmpfang';
 
 router.use(requireLogin);
 
@@ -483,8 +483,8 @@ async function updateManualFig(uid: number, figNumber: string, body: any) {
 // ── DELETE manual minifig ─────────────────────────────────────────────────────
 
 // ── POST CSV import ───────────────────────────────────────────────────────────
-const csvUpload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 15 * 1024 * 1024 } });
-router.post('/import/csv', csvUpload.single('file'), async (req: LoggedInRequest, res) => {
+
+router.post('/import/csv', csvEmpfang.single('file'), async (req: LoggedInRequest, res) => {
   if (!req.file) return res.status(400).json({ success: false, error: 'Keine Datei' });
   const uid = angemeldeteNutzerId(req);
   try {
