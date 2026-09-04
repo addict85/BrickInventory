@@ -12,7 +12,7 @@ import { buildSetsCsv } from '../utils/setService';
 import { buildPartsCsv } from './parts';
 import { buildFigsCsv } from './minifigs';
 import { DAILY_JOBS } from '../jobs/dailyScheduler';
-import { escapeLike, requireLoginOrToken, nutzerId, angemeldeteNutzerId, istVerwalter, hashToken, leereTokenCache } from '../utils/auth';
+import { escapeLike, requireLoginOrToken, nutzerId, angemeldeteNutzerId, istVerwalter, nutzerName, hashToken, leereTokenCache } from '../utils/auth';
 import { bearerToken } from './api_v1/middleware';
 import { sendMail, testSmtp } from './mailer';
 
@@ -214,7 +214,7 @@ router.get('/export', async (req, res) => {
     const userSettings: any = await nutzerEinstellungen(nutzerId(req)!);
     res.setHeader('Content-Type', 'application/json');
     res.setHeader('Content-Disposition', `attachment; filename="brickinventory-config-${new Date().toISOString().substring(0,10)}.json"`);
-    res.json({ exported_at: new Date().toISOString(), exported_by: req.session.username, version: '3.0', global, user_settings: userSettings });
+    res.json({ exported_at: new Date().toISOString(), exported_by: nutzerName(req), version: '3.0', global, user_settings: userSettings });
   } catch (e) { handleRouteError(res, e); }
 });
 

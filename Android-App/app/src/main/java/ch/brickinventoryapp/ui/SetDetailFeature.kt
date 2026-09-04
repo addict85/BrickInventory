@@ -6,6 +6,7 @@ import ch.brickinventoryapp.data.model.*
 import ch.brickinventoryapp.data.repository.Result
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 
 /**
@@ -157,3 +158,84 @@ internal fun MainViewModel.deleteAcquisition(setNumber: String, acqId: Int) {
         }
     }
 }
+
+// ── Anleitungen hinzufuegen und entfernen ────────────────────────────────
+//
+// Die App konnte sie bisher nur ANSEHEN. Beide Routen gab es laengst; sie lagen
+// hinter dem sitzungsgebundenen Waechter (Nachtrag 127).
+
+/**
+ * Wie gross eine Anleitung sein darf.
+ *
+ * Derselbe Wert wie das `limits.fileSize` von uploadInstr in routes/sets.ts.
+ * Er steht hier aus demselben Grund ein zweites Mal wie CSV_MAX_BYTES: Die App
+ * muss die Grenze kennen, BEVOR sie eine 80-MB-Anleitung durch ein
+ * Mobilfunknetz schickt.
+ */
+internal const val ANLEITUNG_MAX_BYTES = 50L * 1024 * 1024
+
+/**
+ * Welche Typen der Server annimmt.
+ *
+ * Die Liste steht in routes/sets.ts als INSTR_EXT_BY_MIME und ist dort eine
+ * feste Allowlist mit Begruendung: Aus dem gemeldeten Typ leitet der Server die
+ * DATEIENDUNG ab, und eine falsche Endung machte die Datei einmal zu
+ * ausfuehrbarem HTML vom eigenen Origin. Die App filtert damit schon die
+ * Auswahl, statt den Nutzer erst nach dem Hochladen abzuweisen.
+ */
+internal val ANLEITUNG_TYPEN = arrayOf("application/pdf", "image/jpeg", "image/png")
+
+internal fun MainViewModel.ladeAnleitungHoch(setNumber: String, uri: android.net.Uri) {
+    viewModelScope.launch {
+        val gelesen = withContext(kotlinx.coroutines.Dispatchers.IO) {
+            runCatching {
+                val name = anleitungName(uri)
+                val typ = ctx.contentResolver.getType(uri)
+                val bytes = ctx.contentResolver.openInputStream(uri)?.use { it.readBytes() }
+                if (bytes == null || typ == null) null else Triple(name, typ, bytes)
+            }.getOrNull()
+        }
+        if (gelesen == null) {
+            _snackbar.value = text(R.string.csv_upload_unreadable); return@launch
+        }
+        val (name, typ, bytes) = gelesen
+        if (typ !in ANLEITUNG_TYPEN) {
+            _snackbar.value = text(R.string.instr_upload_wrong_type); return@launch
+        }
+        if (bytes.size > ANLEITUNG_MAX_BYTES) {
+            _snackbar.value = text(R.string.csv_upload_too_big, ANLEITUNG_MAX_BYTES / 1024 / 1024)
+            return@launch
+        }
+        when (val r = repo.sets.uploadAnleitung(setNumber, name, typ, bytes, name)) {
+            is Result.Success ->
+                if (r.data.success) {
+                    _snackbar.value = text(R.string.instr_upload_done)
+                    // Neu laden statt die Liste hier zu ergaenzen: Der Server
+                    // vergibt Kennung und Pfad, und die Anzeige haengt an
+                    // beidem.
+                    loadSetDetail(setNumber)
+                } else _snackbar.value = r.data.error ?: text(R.string.err_generic)
+            is Result.Error -> _snackbar.value = meldung(r)
+        }
+    }
+}
+
+internal fun MainViewModel.loescheAnleitung(setNumber: String, instrId: Int) {
+    viewModelScope.launch {
+        when (val r = repo.sets.deleteAnleitung(setNumber, instrId)) {
+            is Result.Success ->
+                if (r.data.success) loadSetDetail(setNumber)
+                else _snackbar.value = r.data.error ?: text(R.string.err_generic)
+            is Result.Error -> _snackbar.value = meldung(r)
+        }
+    }
+}
+
+/** Der Anzeigename einer gewaehlten Datei — siehe dateiname() in SettingsFeature. */
+private fun MainViewModel.anleitungName(uri: android.net.Uri): String =
+    runCatching {
+        ctx.contentResolver.query(uri, null, null, null, null)?.use { c ->
+            val i = c.getColumnIndex(android.provider.OpenableColumns.DISPLAY_NAME)
+            if (i >= 0 && c.moveToFirst()) androidx.core.database.getStringOrNull(c, i) else null
+        }
+    }.getOrNull() ?: "anleitung"

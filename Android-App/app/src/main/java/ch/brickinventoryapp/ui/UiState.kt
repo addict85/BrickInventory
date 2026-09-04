@@ -91,6 +91,28 @@ enum class AnmeldeFormular { ANMELDEN, REGISTRIEREN, PASSWORT_VERGESSEN }
  * den bestehenden Kanal. Sie in ein Feld zu legen hiesse, zwei Vorgaenge mit
  * verschiedener Lebensdauer denselben Fortschritt teilen zu lassen.
  */
+/**
+ * Nutzerverwaltung und Server-Protokoll — eigener Zustand fuer Verwalter.
+ *
+ * Beides liest genau EIN Bildschirm, und beides ist fuer die meisten Nutzer
+ * nie sichtbar. In AppUiState laege es sechzehn Dateien im Weg, die es nie
+ * lesen (ZustandsflussBreiteTest).
+ *
+ * Konten und Protokoll stehen zusammen, weil sie dieselbe Voraussetzung haben
+ * und derselbe Bildschirm sie zeigt — nicht, weil sie dasselbe waeren. Ihre
+ * Ladezustaende sind getrennt: Das Protokoll wird beim Ansehen wiederholt
+ * geholt, die Kontenliste nur bei einer Aenderung.
+ */
+data class VerwaltungUiState(
+    val kontenLaden: Boolean = false,
+    val konten: List<ch.brickinventoryapp.data.model.Konto> = emptyList(),
+    val protokollLaden: Boolean = false,
+    val protokoll: List<ch.brickinventoryapp.data.model.ProtokollZeile> = emptyList(),
+    /** Zeitspanne des Protokolls in Minuten — der Server begrenzt auf 2880. */
+    val protokollMinuten: Int = 15,
+    val fehler: String? = null,
+)
+
 data class CsvHochladenUiState(
     val laeuft: Boolean = false,
     /** Welche Art gerade hochgeladen wird — fuer die Anzeige am richtigen Knopf. */

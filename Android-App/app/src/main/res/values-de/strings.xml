@@ -531,4 +531,37 @@
     <string name="csv_upload_result">%1$d Zeilen: %2$d neu, %3$d aktualisiert, %4$d Fehler</string>
     <string name="csv_upload_close">Schliessen</string>
 
+
+    <!-- ══════════════ Anleitung hochladen ══════════════ -->
+    <string name="instr_upload">Anleitung hinzufügen</string>
+    <string name="instr_upload_wrong_type">Nur PDF, JPG oder PNG.</string>
+    <string name="instr_upload_done">Anleitung hinzugefügt</string>
+    <string name="instr_delete">Anleitung entfernen</string>
+
+
+    <!-- ══════════════ Sicherung der Einstellungen ══════════════ -->
+    <string name="backup_title">Sicherung</string>
+    <string name="backup_hint">Nur die Konfiguration — keine Zugangsschlüssel. Der Server lässt sie bewusst weg.</string>
+    <string name="backup_save">Sicherung speichern</string>
+    <string name="backup_restore">Sicherung einspielen</string>
+    <string name="backup_saved">Sicherung gespeichert</string>
+    <string name="backup_write_failed">Die Datei liess sich nicht schreiben.</string>
+    <string name="backup_restored">Sicherung eingespielt</string>
+
+
+    <!-- ══════════════ Nutzerverwaltung / Server-Protokoll ══════════════ -->
+    <string name="admin_users_title">Konten</string>
+    <string name="admin_user_new">Neues Konto</string>
+    <string name="admin_user_created">Konto angelegt</string>
+    <string name="admin_user_saved">Konto geändert</string>
+    <string name="admin_user_deleted">Konto gelöscht</string>
+    <string name="admin_user_is_admin">Verwalter</string>
+    <string name="admin_user_set_password">Passwort setzen</string>
+    <string name="admin_user_delete_title">Konto löschen?</string>
+    <string name="admin_user_delete_text">%1$s wird samt allen Sets, Teilen und Minifiguren entfernt. Das lässt sich nicht rückgängig machen.</string>
+    <string name="admin_log_title">Server-Protokoll</string>
+    <string name="admin_log_minutes">Letzte %1$d Min</string>
+    <string name="admin_log_empty">Keine Einträge in diesem Zeitraum.</string>
+    <string name="admin_log_reload">Neu laden</string>
+
 </resources>

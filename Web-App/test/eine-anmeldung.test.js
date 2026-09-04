@@ -84,14 +84,14 @@ test('kein Handler fragt die Sitzung selbst nach der Nutzerkennung', () => {
       // Kommentare raus: Ein Erklärtext, der `req.session.userId` NENNT
       // (dieser hier zum Beispiel), ist keine Nutzung.
       .split('\n').filter(z => !z.trimStart().startsWith('//') && !z.trimStart().startsWith('*')).join('\n');
-    for (const m of src.matchAll(/req\.session\??\.(userId|isAdmin)\b/g)) {
+    for (const m of src.matchAll(/req\.session\??\.(userId|isAdmin|username)\b/g)) {
       const zeile = src.slice(0, m.index).split('\n').length;
       verstoesse.push(`${rel}:${zeile}  ${m[0]}`);
     }
   }
 
   assert.deepEqual(verstoesse, [],
-    'Diese Stellen lesen die Sitzung direkt statt nutzerId()/istVerwalter():\n  ' +
+    'Diese Stellen lesen die Sitzung direkt statt nutzerId()/istVerwalter()/nutzerName():\n  ' +
     verstoesse.join('\n  ') +
     '\nMit einem Bearer-Token — dem einzigen Ausweis der App — ist das immer ' +
     'undefined. Das fällt nicht als Fehler auf: Die Route antwortet mit 401, ' +

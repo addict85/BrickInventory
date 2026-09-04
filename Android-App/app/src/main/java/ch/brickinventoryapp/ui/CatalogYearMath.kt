@@ -59,22 +59,6 @@ object CatalogYearMath {
     }
 
     /**
-     * Welches Jahr liegt an diesem Anteil der Liste?
-     *
-     * Wortgleich zur Webapp (js/09-catalog.js → _jahrAnPosition): aus dem
-     * Anteil wird eine laufende Nummer, und die wandert durch die Verteilung,
-     * bis sie in einen Jahrgang fällt.
-     *
-     * `verteilung` enthält KEINE Jahrgänge ohne Jahr — beide Oberflächen
-     * werfen die vorher weg. `total` zählt sie dagegen mit, deshalb kann die
-     * Nummer über das Ende hinauslaufen; dann gilt der letzte Jahrgang. Das
-     * ist dieselbe Abweichung wie in der Webapp und deshalb gewollt: Ein
-     * eigener Sonderweg hier hiesse, dass die beiden an derselben Stelle
-     * verschiedene Jahre zeigen.
-     *
-     * @return das Jahr, oder null wenn es nichts zu zeigen gibt
-     */
-    /**
      * Das Jahr, das neben dem Griff steht — in derselben Reihenfolge wie die
      * Webapp (js/09-catalog.js → _jahrAnPosition):
      *
@@ -91,6 +75,22 @@ object CatalogYearMath {
         geladen: (Int) -> Int?
     ): Int? = geladen(nummerAus(anteil, total)) ?: jahrAnPosition(anteil, total, verteilung)
 
+    /**
+     * Welches Jahr liegt an diesem Anteil der Liste?
+     *
+     * Wortgleich zur Webapp (js/09-catalog.js → _jahrAnPosition): aus dem
+     * Anteil wird eine laufende Nummer, und die wandert durch die Verteilung,
+     * bis sie in einen Jahrgang fällt.
+     *
+     * `verteilung` enthält KEINE Jahrgänge ohne Jahr — beide Oberflächen
+     * werfen die vorher weg. `total` zählt sie dagegen mit, deshalb kann die
+     * Nummer über das Ende hinauslaufen; dann gilt der letzte Jahrgang. Das
+     * ist dieselbe Abweichung wie in der Webapp und deshalb gewollt: Ein
+     * eigener Sonderweg hier hiesse, dass die beiden an derselben Stelle
+     * verschiedene Jahre zeigen.
+     *
+     * @return das Jahr, oder null wenn es nichts zu zeigen gibt
+     */
     fun jahrAnPosition(anteil: Float, total: Int, verteilung: List<JahrAnzahl>): Int? {
         if (verteilung.isEmpty() || total <= 0) return null
         var nummer = nummerAus(anteil, total)

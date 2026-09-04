@@ -545,4 +545,37 @@
     <string name="csv_upload_result">%1$d rows: %2$d new, %3$d updated, %4$d errors</string>
     <string name="csv_upload_close">Close</string>
 
+
+    <!-- ══════════════ Instructions upload ══════════════ -->
+    <string name="instr_upload">Add instruction</string>
+    <string name="instr_upload_wrong_type">Only PDF, JPG or PNG.</string>
+    <string name="instr_upload_done">Instruction added</string>
+    <string name="instr_delete">Remove instruction</string>
+
+
+    <!-- ══════════════ Settings backup ══════════════ -->
+    <string name="backup_title">Backup</string>
+    <string name="backup_hint">Configuration only — no access keys. The server leaves them out on purpose.</string>
+    <string name="backup_save">Save backup</string>
+    <string name="backup_restore">Restore backup</string>
+    <string name="backup_saved">Backup saved</string>
+    <string name="backup_write_failed">The file could not be written.</string>
+    <string name="backup_restored">Backup restored</string>
+
+
+    <!-- ══════════════ User management / server log ══════════════ -->
+    <string name="admin_users_title">Accounts</string>
+    <string name="admin_user_new">New account</string>
+    <string name="admin_user_created">Account created</string>
+    <string name="admin_user_saved">Account updated</string>
+    <string name="admin_user_deleted">Account deleted</string>
+    <string name="admin_user_is_admin">Administrator</string>
+    <string name="admin_user_set_password">Set password</string>
+    <string name="admin_user_delete_title">Delete account?</string>
+    <string name="admin_user_delete_text">%1$s is removed together with all of their sets, parts and minifigures. This cannot be undone.</string>
+    <string name="admin_log_title">Server log</string>
+    <string name="admin_log_minutes">Last %1$d min</string>
+    <string name="admin_log_empty">No entries in this period.</string>
+    <string name="admin_log_reload">Reload</string>
+
 </resources>

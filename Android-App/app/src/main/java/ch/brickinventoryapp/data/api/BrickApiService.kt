@@ -70,6 +70,70 @@ interface BrickApiService {
     @POST("api/v1/minifigs/import/csv")
     suspend fun importMinifigsCsv(@Part datei: okhttp3.MultipartBody.Part): Response<CsvImportErgebnis>
 
+    // ── Anleitungen: hinzufuegen und entfernen ──────────────────────────────
+    //
+    // Die App konnte Anleitungen bisher nur ANSEHEN. Beide Routen gab es
+    // laengst; sie lagen hinter dem sitzungsgebundenen Waechter (Nachtrag 127).
+    //
+    // Der Server nimmt NUR PDF, JPG und PNG an und leitet die Dateiendung aus
+    // dem gemeldeten Typ ab (feste Liste in routes/sets.ts). Was die App als
+    // Typ schickt, entscheidet also mit, unter welchem Namen die Datei landet —
+    // deshalb wird er aus der Dateiauswahl uebernommen und nicht geraten.
+    @Multipart
+    @POST("api/v1/sets/{setNumber}/instructions/upload")
+    suspend fun uploadAnleitung(
+        @Path("setNumber") setNumber: String,
+        @Part datei: okhttp3.MultipartBody.Part,
+        @Part("description") beschreibung: okhttp3.RequestBody,
+    ): Response<GenericResponse>
+
+    @DELETE("api/v1/sets/{setNumber}/instructions/{instrId}")
+    suspend fun deleteAnleitung(
+        @Path("setNumber") setNumber: String,
+        @Path("instrId") instrId: Int,
+    ): Response<GenericResponse>
+
+    // ── Sicherung der Einstellungen ─────────────────────────────────────────
+    //
+    // Als ResponseBody und NICHT als Datenklasse: Die Datei soll unveraendert
+    // beim Nutzer landen. Sie hier zu zerlegen und neu zu schreiben hiesse, dass
+    // eine kuenftige Ergaenzung des Servers beim Sichern durch die App
+    // stillschweigend verlorenginge — dieselbe Sicherung, zwei verschiedene
+    // Inhalte, je nachdem womit man sie gezogen hat.
+    //
+    // Die Datei enthaelt AUSDRUECKLICH keine Zugangsschluessel: Der Server
+    // siebt sie aus (SECRET_KEYS in routes/settings.ts), weil eine Sicherung
+    // weitergeschickt und abgelegt wird.
+    @GET("api/v1/settings/export")
+    suspend fun exportEinstellungen(): Response<okhttp3.ResponseBody>
+
+    @Multipart
+    @POST("api/v1/settings/import")
+    suspend fun importEinstellungen(@Part datei: okhttp3.MultipartBody.Part): Response<GenericResponse>
+
+    // ── Nutzerverwaltung und Protokoll (nur fuer Verwalter) ─────────────────
+    @GET("api/v1/auth/users")
+    suspend fun getKonten(): Response<KontenResponse>
+
+    @POST("api/v1/auth/users")
+    suspend fun createKonto(@Body request: NeuesKonto): Response<GenericResponse>
+
+    @PUT("api/v1/auth/users/{id}/admin")
+    suspend fun setzeVerwalter(
+        @Path("id") id: Int, @Body request: VerwalterAenderung,
+    ): Response<GenericResponse>
+
+    @PUT("api/v1/auth/users/{id}/password")
+    suspend fun setzeFremdesPasswort(
+        @Path("id") id: Int, @Body request: FremdesPasswort,
+    ): Response<GenericResponse>
+
+    @DELETE("api/v1/auth/users/{id}")
+    suspend fun loescheKonto(@Path("id") id: Int): Response<GenericResponse>
+
+    @GET("api/v1/admin/logs")
+    suspend fun getProtokoll(@Query("minutes") minuten: Int): Response<ProtokollResponse>
+
     @GET("api/v1/sets/{setNumber}")
     suspend fun getSetDetail(
         @Path("setNumber") setNumber: String

@@ -234,6 +234,11 @@ fun SettingsScreen(
             onSchliessen = { vm.csvHochladenWeg() },
         )
 
+        SicherungCard(
+            onSichern = { vm.sichereEinstellungen(it) },
+            onEinspielen = { vm.spieleEinstellungenEin(it) },
+        )
+
         GeraeteCard(
             zustand = geraeteZustand,
             onReload = { vm.ladeGeraete() },
@@ -784,6 +789,52 @@ private fun CsvImportCard(
             Text(csvZustand.fehler, style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.error)
             TextButton(onClick = onSchliessen) { Text(stringResource(R.string.csv_upload_close)) }
+        }
+    }
+}
+
+/**
+ * Die Einstellungen sichern und wieder einspielen.
+ *
+ * Die Datei ist dieselbe, die die Webapp herunterlaedt — und sie enthaelt
+ * AUSDRUECKLICH keine Zugangsschluessel: Der Server siebt sie aus, weil eine
+ * Sicherung weitergeschickt und abgelegt wird. Der Hinweistext sagt das, damit
+ * niemand sie fuer eine vollstaendige Kopie haelt.
+ */
+@Composable
+private fun SicherungCard(
+    onSichern: (android.net.Uri) -> Unit,
+    onEinspielen: (android.net.Uri) -> Unit,
+) {
+    // CreateDocument statt eines eigenen Ordners: Eine Sicherung, die im
+    // Speicher der App liegt, verschwindet mit ihr — und genau dann braucht man
+    // sie. Der Nutzer waehlt den Ort.
+    val speichern = androidx.activity.compose.rememberLauncherForActivityResult(
+        androidx.activity.result.contract.ActivityResultContracts.CreateDocument("application/json")
+    ) { uri -> if (uri != null) onSichern(uri) }
+    val laden = androidx.activity.compose.rememberLauncherForActivityResult(
+        androidx.activity.result.contract.ActivityResultContracts.OpenDocument()
+    ) { uri -> if (uri != null) onEinspielen(uri) }
+
+    SettingsCard(title = stringResource(R.string.backup_title), icon = Icons.Default.Backup) {
+        Text(stringResource(R.string.backup_hint),
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant)
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
+            OutlinedButton(
+                // Derselbe Name wie in der Webapp, damit die beiden Dateien
+                // nebeneinander erkennbar sind.
+                onClick = { speichern.launch("brickinventory-config.json") },
+                modifier = Modifier.weight(1f), shape = Formen.knopf,
+                contentPadding = PaddingValues(horizontal = 4.dp)
+            ) { Text(stringResource(R.string.backup_save), maxLines = 1,
+                     style = MaterialTheme.typography.labelLarge) }
+            OutlinedButton(
+                onClick = { laden.launch(arrayOf("application/json", "text/plain")) },
+                modifier = Modifier.weight(1f), shape = Formen.knopf,
+                contentPadding = PaddingValues(horizontal = 4.dp)
+            ) { Text(stringResource(R.string.backup_restore), maxLines = 1,
+                     style = MaterialTheme.typography.labelLarge) }
         }
     }
 }

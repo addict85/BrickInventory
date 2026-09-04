@@ -104,28 +104,17 @@ class CameraFocusConfigTest {
     }
 
     /**
-     * Der AF-Modus steht an genau EINER Stelle — und jede Vorschau holt ihn dort.
-     *
-     * ── Was sich geändert hat ───────────────────────────────────────────────
-     * Bis hierher zählte dieser Test das Vorkommen der Zeichenfolge
-     * `CONTROL_AF_MODE_CONTINUOUS_PICTURE` in den einzelnen Bildschirmdateien:
-     * einmal im Scanner, einmal im Analyzer, ZWEIMAL im SetupScreen. Das prüfte
-     * die Formulierung an jeder Kopie — und dass es Kopien gab, war der
-     * eigentliche Fehler.
-     *
-     * Der Aufbau der Bildanalyse stand zweimal im Baum, zwanzig Zeilen lang und
-     * bis auf die Auflösung zeichengleich. Genau in dieser Doppelung hat die
-     * Behebung aus Nachtrag 112 eine Kopie nicht erreicht.
-     *
-     * Jetzt steht der Modus in `KameraAufbau.kt`, in `autofokusDauerhaft()`.
-     * Geprüft wird deshalb anders herum: Die Zeile darf NUR dort stehen, und
-     * jede Datei, die eine Vorschau baut, muss die Funktion aufrufen.
-     */
-    /**
      * Der ganze Kamera-Aufbau steht an EINER Stelle.
      *
      * ── Warum die Regel schaerfer wurde ─────────────────────────────────────
-     * Zuerst hiess sie „wer eine Vorschau baut, muss den AF-Modus setzen" —
+     * Ganz zuerst zaehlte dieser Test das Vorkommen der Zeichenfolge
+     * `CONTROL_AF_MODE_CONTINUOUS_PICTURE` in den einzelnen Bildschirmdateien:
+     * einmal im Scanner, einmal im Analyzer, ZWEIMAL im SetupScreen. Das
+     * pruefte die Formulierung an jeder Kopie — und dass es Kopien gab, war der
+     * eigentliche Fehler. Genau in dieser Doppelung hat die Behebung aus
+     * Nachtrag 112 eine Kopie nicht erreicht.
+     *
+     * Dann hiess sie „wer eine Vorschau baut, muss den AF-Modus setzen" —
      * die Fassung fuer eine Welt mit zwei Kopien. Seit auch die BINDUNG
      * zusammengelegt ist (19 von 23 Zeilen waren zeichengleich), baut niemand
      * ausser KameraAufbau.kt noch eine Vorschau, eine Bildanalyse oder eine

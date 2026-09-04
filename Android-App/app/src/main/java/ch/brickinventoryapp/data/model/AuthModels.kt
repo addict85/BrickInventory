@@ -245,3 +245,68 @@ data class PasswortAenderung(
     val current: String,
     @SerialName("newPassword") val neuesPasswort: String,
 )
+
+// ── Nutzerverwaltung und Protokoll (nur fuer Verwalter) ─────────────────────
+//
+// Auch das konnte die Webapp seit jeher. Die Routen lagen hinter dem
+// sitzungsgebundenen requireAdmin; seit der Waechter beide Ausweise nimmt
+// (Nachtrag 127), erreicht die App sie mit ihrem Token.
+
+/** Ein Konto in der Verwalterliste — GET /api/v1/auth/users. */
+@Serializable
+data class Konto(
+    val id: Int,
+    val username: String,
+    /**
+     * 0/1 aus der Datenbank, nicht `Boolean`: Der Treiber liefert je nach
+     * Spaltentyp eine Zahl, und als Boolean deserialisiert eine 0 nicht.
+     * Gelesen wird sie als `istVerwalter`.
+     */
+    @SerialName("is_admin") val isAdmin: Int = 0,
+    @SerialName("created_at") val createdAt: String? = null,
+) {
+    val istVerwalter: Boolean get() = isAdmin == 1
+}
+
+@Serializable
+data class KontenResponse(
+    val success: Boolean,
+    val users: List<Konto> = emptyList(),
+    val error: String? = null,
+)
+
+@Serializable
+data class NeuesKonto(
+    val username: String,
+    val password: String,
+    val isAdmin: Boolean = false,
+)
+
+@Serializable
+data class VerwalterAenderung(@SerialName("is_admin") val isAdmin: Boolean)
+
+@Serializable
+data class FremdesPasswort(val password: String)
+
+/**
+ * Eine Zeile aus dem Server-Protokoll — GET /api/v1/admin/logs?minutes=15.
+ *
+ * Der Server begrenzt selbst auf 2880 Minuten und 5000 Zeilen; die App muss
+ * dafuer nichts tun ausser die Zeitspanne zu schicken.
+ */
+@Serializable
+data class ProtokollZeile(
+    val id: Int? = null,
+    val level: String? = null,
+    val message: String? = null,
+    @SerialName("logged_at") val loggedAt: String? = null,
+)
+
+@Serializable
+data class ProtokollResponse(
+    val success: Boolean,
+    val minutes: Int = 0,
+    val count: Int = 0,
+    val logs: List<ProtokollZeile> = emptyList(),
+    val error: String? = null,
+)

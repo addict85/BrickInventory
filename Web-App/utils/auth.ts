@@ -599,6 +599,22 @@ function angemeldeteNutzerId(req: Request): number {
   return id;
 }
 
+/**
+ * Wie heisst der Anfragende? — Sitzung ODER Bearer-Token.
+ *
+ * Die dritte Eigenschaft nach [nutzerId] und [istVerwalter], und sie stand
+ * genauso einseitig da: `req.session.username` in der Sicherung
+ * (routes/settings.ts) ist bei einer Token-Anfrage `undefined`. Das faellt
+ * nicht als Fehler auf — die exportierte Datei traegt dann `exported_by: null`,
+ * und wer sie spaeter ansieht, weiss nicht mehr, von welchem Konto sie stammt.
+ *
+ * `null`, wenn niemand angemeldet ist. Ein Anzeigename ist nichts, worauf eine
+ * Berechtigung fussen darf — dafuer gibt es [nutzerId].
+ */
+function nutzerName(req: Request): string | null {
+  return req.session?.username ?? (req as any).apiUser?.username ?? null;
+}
+
 function istVerwalter(req: Request): boolean {
   if (req.session?.isAdmin) return true;
   return !!(req as any).apiUser?.is_admin;
@@ -778,7 +794,7 @@ async function purgeExpiredTokens() {
 }
 
 export {
-  validateToken, invalidateToken, leereTokenCache, resolveUserId, requireLoginOrToken, nutzerId, angemeldeteNutzerId, istVerwalter, hashToken, deleteToken,
+  validateToken, invalidateToken, leereTokenCache, resolveUserId, requireLoginOrToken, nutzerId, angemeldeteNutzerId, istVerwalter, nutzerName, hashToken, deleteToken,
   verifiziereEmailToken,
   revokeAllTokens, revokeAllSessions, purgeExpiredTokens, loginOrTokenGuard, TOKEN_IDLE_DAYS,
   assertLoginAllowed, pruefeAnmeldedaten, createToken, escapeLike, establishSession, BCRYPT_ROUNDS, USERNAME_RE,

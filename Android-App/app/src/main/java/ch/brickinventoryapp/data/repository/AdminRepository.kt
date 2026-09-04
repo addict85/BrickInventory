@@ -61,6 +61,21 @@ class AdminRepository @Inject constructor(
     suspend fun changePassword(aktuell: String, neu: String): Result<GenericResponse> =
         safeCall { api.changePassword(PasswortAenderung(aktuell, neu)) }
 
+    /** Die Sicherung holen — unveraendert, so wie der Server sie schickt. */
+    suspend fun exportEinstellungen(): Result<ByteArray> =
+        safeCall { api.exportEinstellungen() }.let { r ->
+            when (r) {
+                is Result.Success -> Result.Success(r.data.bytes())
+                is Result.Error -> r
+            }
+        }
+
+    suspend fun importEinstellungen(dateiname: String, inhalt: ByteArray): Result<GenericResponse> {
+        val koerper = okhttp3.RequestBody.create("application/json".toMediaType(), inhalt)
+        val teil = okhttp3.MultipartBody.Part.createFormData("file", dateiname, koerper)
+        return safeCall { api.importEinstellungen(teil) }
+    }
+
     /**
      * Eine CSV-Datei importieren — Sets, Teile oder Minifiguren.
      *
@@ -86,6 +101,23 @@ class AdminRepository @Inject constructor(
             }
         }
     }
+
+    // ── Nutzerverwaltung und Protokoll (nur fuer Verwalter) ─────────────────
+    suspend fun getKonten(): Result<KontenResponse> = safeCall { api.getKonten() }
+
+    suspend fun createKonto(name: String, passwort: String, verwalter: Boolean): Result<GenericResponse> =
+        safeCall { api.createKonto(NeuesKonto(name, passwort, verwalter)) }
+
+    suspend fun setzeVerwalter(id: Int, verwalter: Boolean): Result<GenericResponse> =
+        safeCall { api.setzeVerwalter(id, VerwalterAenderung(verwalter)) }
+
+    suspend fun setzeFremdesPasswort(id: Int, passwort: String): Result<GenericResponse> =
+        safeCall { api.setzeFremdesPasswort(id, FremdesPasswort(passwort)) }
+
+    suspend fun loescheKonto(id: Int): Result<GenericResponse> = safeCall { api.loescheKonto(id) }
+
+    suspend fun getProtokoll(minuten: Int): Result<ProtokollResponse> =
+        safeCall { api.getProtokoll(minuten) }
 
     suspend fun getTokens(): Result<TokensResponse> = safeCall { api.getTokens() }
 

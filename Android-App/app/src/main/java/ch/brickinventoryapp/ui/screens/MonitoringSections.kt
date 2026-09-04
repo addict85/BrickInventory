@@ -360,3 +360,225 @@ private fun RateLimitRow(
         )
     }
 }
+
+/**
+ * Konten anlegen, Rolle setzen, Passwort setzen, Konto entfernen.
+ *
+ * ── Warum das in der App fehlte (Nachtrag 127) ──────────────────────────────
+ *
+ * Nicht, weil es die Routen nicht gaebe: /auth/users gibt es seit jeher, und
+ * die Webapp benutzt sie. Sie lagen hinter einem requireAdmin, das
+ * ausschliesslich die Browser-Sitzung kannte — die App weist sich mit einem
+ * Bearer-Token aus.
+ *
+ * `internal` statt `private`: Der Aufrufer steht in einer ANDEREN Datei
+ * (MonitoringScreen.kt), und `private` gilt in Kotlin dateiweit.
+ */
+@Composable
+internal fun KontenSection(vm: MainViewModel) {
+    val verwaltung by vm.verwaltungState.collectAsStateWithLifecycle()
+
+    // Einmal beim Betreten. Nach jeder Aenderung holt das ViewModel die Liste
+    // selbst neu — deshalb hier kein Schluessel ausser Unit.
+    LaunchedEffect(Unit) { vm.ladeKonten() }
+
+    var neuOffen  by rememberSaveable { mutableStateOf(false) }
+    var neuName   by rememberSaveable { mutableStateOf("") }
+    var neuPw     by rememberSaveable { mutableStateOf("") }
+    var neuAdmin  by rememberSaveable { mutableStateOf(false) }
+    // Welches Konto gerade ein neues Passwort bekommt bzw. entfernt werden soll.
+    // rememberSaveable, weil ein Dialog den Prozesstod ueberleben koennen muss —
+    // sonst steht er nach dem Zurueckkehren ohne Bezug da.
+    var pwFuer    by rememberSaveable { mutableStateOf<Int?>(null) }
+    var pwWert    by rememberSaveable { mutableStateOf("") }
+    var loeschen  by rememberSaveable { mutableStateOf<Int?>(null) }
+
+    AppKarte {
+        Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            Row(Modifier.fillMaxWidth(), Arrangement.SpaceBetween, Alignment.CenterVertically) {
+                Text(stringResource(R.string.admin_users_title),
+                    fontWeight = FontWeight.Bold, fontSize = 15.sp)
+                if (verwaltung.kontenLaden) CircularProgressIndicator(Modifier.size(18.dp), strokeWidth = 2.dp)
+                else IconButton(onClick = { neuOffen = !neuOffen }) {
+                    Icon(if (neuOffen) Icons.Default.Close else Icons.Default.Add,
+                        stringResource(R.string.admin_user_new))
+                }
+            }
+
+            if (verwaltung.fehler != null) {
+                Text(verwaltung.fehler!!, style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.error)
+            }
+
+            AnimatedVisibility(neuOffen) {
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    OutlinedTextField(neuName, { neuName = it },
+                        label = { Text(stringResource(R.string.login_username)) },
+                        singleLine = true, shape = Formen.knopf, modifier = Modifier.fillMaxWidth())
+                    OutlinedTextField(neuPw, { neuPw = it },
+                        label = { Text(stringResource(R.string.login_password)) },
+                        singleLine = true, shape = Formen.knopf, modifier = Modifier.fillMaxWidth())
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Checkbox(neuAdmin, { neuAdmin = it })
+                        Text(stringResource(R.string.admin_user_is_admin))
+                    }
+                    Button(
+                        onClick = {
+                            vm.legeKontoAn(neuName, neuPw, neuAdmin)
+                            neuName = ""; neuPw = ""; neuAdmin = false; neuOffen = false
+                        },
+                        // Dieselbe Mindestlaenge wie auf dem Server
+                        // (routes/auth.ts) — hier vorweggenommen, damit man
+                        // dafuer nicht erst eine Runde ueber das Netz braucht.
+                        enabled = neuName.isNotBlank() && neuPw.length >= 8,
+                        modifier = Modifier.fillMaxWidth(), shape = Formen.knopf
+                    ) { Text(stringResource(R.string.admin_user_new)) }
+                }
+            }
+
+            verwaltung.konten.forEach { konto ->
+                HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
+                Row(Modifier.fillMaxWidth(), Arrangement.spacedBy(4.dp), Alignment.CenterVertically) {
+                    Column(Modifier.weight(1f)) {
+                        Text(konto.username, fontWeight = FontWeight.Medium)
+                        if (konto.istVerwalter) {
+                            Text(stringResource(R.string.admin_user_is_admin),
+                                style = MaterialTheme.typography.labelSmall,
+                                color = MaterialTheme.colorScheme.primary)
+                        }
+                    }
+                    // Die Rolle als Schalter, nicht als Knopf: Sie hat zwei
+                    // Zustaende und keinen Vorgang.
+                    Switch(
+                        checked = konto.istVerwalter,
+                        onCheckedChange = { vm.setzeVerwalterrolle(konto.id, it) })
+                    IconButton(onClick = { pwFuer = konto.id; pwWert = "" }) {
+                        Icon(Icons.Default.Lock, stringResource(R.string.admin_user_set_password),
+                            Modifier.size(18.dp))
+                    }
+                    IconButton(onClick = { loeschen = konto.id }) {
+                        Icon(Icons.Default.Delete, null, Modifier.size(18.dp),
+                            tint = MaterialTheme.colorScheme.error)
+                    }
+                }
+            }
+        }
+    }
+
+    val pwZiel = pwFuer
+    if (pwZiel != null) {
+        AlertDialog(
+            onDismissRequest = { pwFuer = null },
+            title = { Text(stringResource(R.string.admin_user_set_password)) },
+            text = {
+                OutlinedTextField(pwWert, { pwWert = it },
+                    label = { Text(stringResource(R.string.konto_password_new)) },
+                    singleLine = true, shape = Formen.knopf)
+            },
+            confirmButton = {
+                TextButton(
+                    onClick = { vm.setzeFremdesPasswort(pwZiel, pwWert); pwFuer = null },
+                    enabled = pwWert.length >= 8
+                ) { Text(stringResource(R.string.admin_user_set_password)) }
+            },
+            dismissButton = {
+                TextButton(onClick = { pwFuer = null }) { Text(stringResource(R.string.common_cancel)) }
+            })
+    }
+
+    val loeschZiel = loeschen
+    if (loeschZiel != null) {
+        // Der Name statt der Kennung im Text: Wer ein Konto loescht, soll
+        // lesen, WEN er loescht.
+        val name = verwaltung.konten.firstOrNull { it.id == loeschZiel }?.username ?: "?"
+        AlertDialog(
+            onDismissRequest = { loeschen = null },
+            icon = { Icon(Icons.Default.Delete, null, tint = MaterialTheme.colorScheme.error) },
+            title = { Text(stringResource(R.string.admin_user_delete_title)) },
+            text = { Text(stringResource(R.string.admin_user_delete_text, name)) },
+            confirmButton = {
+                TextButton(onClick = { vm.loescheKonto(loeschZiel); loeschen = null }) {
+                    Text(stringResource(R.string.admin_user_delete_title),
+                        color = MaterialTheme.colorScheme.error)
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { loeschen = null }) { Text(stringResource(R.string.common_cancel)) }
+            })
+    }
+}
+
+/**
+ * Das Server-Protokoll — dieselbe Ansicht, die die Webapp unter „Logs" zeigt.
+ *
+ * Wird NICHT von selbst geladen: Es sind bis zu 5000 Zeilen, und wer das
+ * Monitoring oeffnet, will in aller Regel die Job-Karten sehen. Ein Abruf beim
+ * Betreten waere Datenverkehr fuer etwas, das niemand angesehen hat.
+ */
+@Composable
+internal fun ProtokollSection(vm: MainViewModel) {
+    val verwaltung by vm.verwaltungState.collectAsStateWithLifecycle()
+    var offen by rememberSaveable { mutableStateOf(false) }
+
+    AppKarte {
+        Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            Row(Modifier.fillMaxWidth(), Arrangement.SpaceBetween, Alignment.CenterVertically) {
+                Text(stringResource(R.string.admin_log_title),
+                    fontWeight = FontWeight.Bold, fontSize = 15.sp)
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    if (verwaltung.protokollLaden) {
+                        CircularProgressIndicator(Modifier.size(18.dp), strokeWidth = 2.dp)
+                    } else if (offen) {
+                        IconButton(onClick = { vm.ladeProtokoll() }) {
+                            Icon(Icons.Default.Refresh, stringResource(R.string.admin_log_reload),
+                                Modifier.size(18.dp))
+                        }
+                    }
+                    IconButton(onClick = {
+                        offen = !offen
+                        if (offen && verwaltung.protokoll.isEmpty()) vm.ladeProtokoll()
+                    }) {
+                        Icon(if (offen) Icons.Default.ExpandLess else Icons.Default.ExpandMore, null)
+                    }
+                }
+            }
+
+            AnimatedVisibility(offen) {
+                Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                    // Dieselben Spannen wie die Webapp anbietet. Der Server
+                    // begrenzt selbst auf 2880 Minuten.
+                    Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                        listOf(15, 60, 240, 1440).forEach { min ->
+                            FilterChip(
+                                selected = verwaltung.protokollMinuten == min,
+                                onClick = { vm.ladeProtokoll(min) },
+                                label = { Text(stringResource(R.string.admin_log_minutes, min),
+                                               style = MaterialTheme.typography.labelSmall) },
+                                shape = Formen.chip)
+                        }
+                    }
+                    if (verwaltung.protokoll.isEmpty() && !verwaltung.protokollLaden) {
+                        Text(stringResource(R.string.admin_log_empty),
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    }
+                    verwaltung.protokoll.forEach { zeile ->
+                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                            Text(zeile.level.orEmpty().uppercase(),
+                                style = MaterialTheme.typography.labelSmall,
+                                fontWeight = FontWeight.Bold,
+                                color = when (zeile.level?.lowercase()) {
+                                    "error" -> MaterialTheme.colorScheme.error
+                                    "warn"  -> MaterialTheme.colorScheme.tertiary
+                                    else    -> MaterialTheme.colorScheme.onSurfaceVariant
+                                },
+                                modifier = Modifier.width(46.dp))
+                            Text(zeile.message.orEmpty(),
+                                style = MaterialTheme.typography.bodySmall)
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
