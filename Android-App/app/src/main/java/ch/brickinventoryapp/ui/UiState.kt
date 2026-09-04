@@ -196,7 +196,6 @@ data class PartsUiState(
      * Zwei Quellen fuer dieselbe Liste, und die App lud dafuer jedes Mal die
      * ganze Bewertung samt Marktpreis-Abfragen — obwohl die Kachel nur
      * Nummer, Name, Farbe, Zustand, Bild, Menge und Besitzer zeigt.
-     */
      *
      * NULL heisst „noch nicht geladen", eine leere Liste „keine vorhanden".
      * Der Unterschied traegt: Die Wiederherstellung der Rollposition wartet
