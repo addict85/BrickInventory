@@ -21,6 +21,7 @@ import { requireToken } from './middleware';
 import { resolveMany, resolveOne, resolveViaApi } from '../../utils/bricklinkLink';
 import { downloadSetImage } from '../../utils/setImages';
 import { ausTabelle } from '../../utils/validate';
+import { neuestesInventar } from '../../utils/rbInventar';
 
 const router = express.Router();
 
@@ -415,15 +416,14 @@ router.get('/catalog/sets/:setNumber', requireToken, async (req: AuthedRequest, 
     if (!set) { res.status(404).json({ success: false, error: 'Set nicht im Katalog gefunden' }); return; }
 
     // Minifiguren-Zahl aus dem neuesten Inventar (analog catalogSync).
-    const inv = await db.get(
-      'SELECT id FROM rb_inventories WHERE set_num = $1 ORDER BY version DESC LIMIT 1',
-      [n]
-    ).catch(() => null);
+    // Vorher nur EIN Kandidat, obwohl der Kommentar darueber schon auf
+    // catalogSync verwies — das prueft zwei.
+    const invId = await neuestesInventar(n).catch(() => null);
     let minifigCount = 0;
-    if (inv) {
+    if (invId) {
       const m = await db.get(
         'SELECT COALESCE(SUM(quantity), 0)::int AS n FROM rb_inventory_minifigs WHERE inventory_id = $1',
-        [inv.id]
+        [invId]
       ).catch(() => null);
       minifigCount = m?.n || 0;
     }

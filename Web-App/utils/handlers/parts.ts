@@ -9,6 +9,7 @@ import { getAllSetParts, getRbKey, httpsGetRobust } from '../../clients/rebricka
 import { clampPageSize, applyManualCondition, withOwners, MAX_PAGE_SIZE, UNPAGED_LIMIT, SET_PARTS_MAX_PAGE_SIZE } from './shared';
 import { meldeUndWeiter } from '../../utils/httpError';
 import { getGlobalSetting } from '../../utils/settings';
+import { neuestesInventar, inventarKandidaten } from '../rbInventar';
 
 /**
  * Leseabfragen für Teile — inklusive der Ausweichebenen (CSV-Zwischenspeicher,
@@ -141,13 +142,17 @@ function teileFilter(uids: number[], query: any) {
  * leeren Ergebnis aus der Datenbank.
  */
 async function teileErsatzquelle(set_number: string) {
-    const n   = set_number.includes('-') ? set_number : set_number + '-1';
-    const alt = set_number.includes('-') ? set_number.replace(/-\d+$/, '') : set_number + '-1';
-    const inv = await db.get(
-      `SELECT id FROM rb_inventories WHERE set_num=$1 OR set_num=$2 ORDER BY version DESC LIMIT 1`,
-      [n, alt]
-    ).catch(() => null);
-    if (inv) {
+    // Hier standen n und alt einzeln, und alt war
+    //   set_number.includes('-') ? set_number.replace(/-\d+$/,'') : set_number + '-1'
+    // — fuer eine Nummer OHNE Versionsanhang also derselbe Wert wie n. Das
+    // schlug zweimal durch: Die Inventar-Abfrage unten fragte zweimal
+    // dasselbe (die blanke Nummer wurde nie geprueft), und die
+    // Rebrickable-Schleife `for (const sn of [n, alt])` holte denselben Satz
+    // zweimal ueber die Leitung, auf Kosten des dortigen Tageskontingents.
+    // Alle anderen sieben Fundstellen bildeten die Kandidaten richtig.
+    const [n, alt] = inventarKandidaten(set_number);
+    const invId = await neuestesInventar(set_number).catch(() => null);
+    if (invId) {
       const csvParts = await db.all(`
         SELECT ip.part_num AS part_number,
                COALESCE(m.bl_part_num, ip.part_num) AS bl_part_number,
@@ -165,7 +170,7 @@ async function teileErsatzquelle(set_number: string) {
         LEFT JOIN rb_parts p ON p.part_num = ip.part_num
         LEFT JOIN rb_colors c ON c.id = ip.color_id
         LEFT JOIN rb_bl_mapping m ON m.part_num = ip.part_num
-        WHERE ip.inventory_id = $1`, [inv.id, set_number]
+        WHERE ip.inventory_id = $1`, [invId, set_number]
       ).catch(() => []);
       if (csvParts.length > 0)
         // page_size gehört in JEDEN Rückgabeweg (Nachtrag 132): Der Client

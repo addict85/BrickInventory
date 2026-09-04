@@ -15,6 +15,7 @@ import fs from 'fs';
 import * as db from '../db/database';
 import { rebrickableBackgroundLimiter } from '../utils/rateLimiter';
 import { fehlertext } from '../utils/httpError';
+import { neuestesInventar } from '../utils/rbInventar';
 
 const BASE = 'https://rebrickable.com/api/v3';
 
@@ -138,13 +139,8 @@ async function getSetInfo(setNumber: string) {
 
 async function getAllSetPartsFromCsv(setNumber: string) {
   const db = require('../db/database');
-  const n = setNumber.includes('-') ? setNumber : setNumber + '-1';
-  const bare = n.replace(/-\d+$/, ''); // e.g. "42083" from "42083-1"
-  const inv = await db.get(
-    `SELECT id FROM rb_inventories WHERE set_num=$1 OR set_num=$2 ORDER BY version DESC LIMIT 1`,
-    [n, bare]
-  ).catch(()=>null);
-  if (!inv) return null;
+  const invId = await neuestesInventar(setNumber).catch(() => null);
+  if (!invId) return null;
 
   const parts = await db.all(
     `SELECT ip.part_num, ip.color_id, ip.quantity, ip.is_spare, ip.img_url,
@@ -156,7 +152,7 @@ async function getAllSetPartsFromCsv(setNumber: string) {
      LEFT JOIN rb_colors c ON c.id = ip.color_id
      LEFT JOIN rb_bl_mapping m ON m.part_num = ip.part_num
      WHERE ip.inventory_id = $1`,
-    [inv.id]
+    [invId]
   ).catch(()=>[]);
 
   if (!parts.length) return null;

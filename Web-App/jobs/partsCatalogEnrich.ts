@@ -11,6 +11,7 @@ const db    = require('../db/database');
 import { cdnImageLimiter } from '../utils/rateLimiter';
 import { meldeUndWeiter, fehlertext, vorDem } from '../utils/httpError';
 import { getGlobalSetting, setGlobalSetting } from '../utils/settings';
+import { neuestesInventar, inventarKandidaten } from '../utils/rbInventar';
 const https = require('https');
 const fs    = require('fs');
 const path  = require('path');
@@ -122,22 +123,21 @@ async function downloadImage(
 }
 
 async function enrichSetParts(setNumber: string) {
-  const n   = setNumber.includes('-') ? setNumber : `${setNumber}-1`;
-  const alt = n.replace(/-\d+$/, '');
+  // n und alt sind dieselben zwei Kandidaten, unter denen auch das Inventar
+  // gesucht wird — set_parts_catalog und set_minifigs_catalog fuehren die
+  // Nummer in beiden Schreibweisen.
+  const [n, alt] = inventarKandidaten(setNumber);
 
   // Step 1: Check if all CSV parts are already in catalog with image_url
-  const inv = await db.get(
-    'SELECT id FROM rb_inventories WHERE set_num=$1 OR set_num=$2 ORDER BY version DESC LIMIT 1',
-    [n, alt]
-  ).catch(() => null);
-  if (!inv) return;
+  const invId = await neuestesInventar(setNumber).catch(() => null);
+  if (!invId) return;
 
   const csvParts = await db.all(
     `SELECT ip.part_num, ip.color_id, ip.quantity
      FROM rb_inventory_parts ip
      WHERE ip.inventory_id = $1
        AND (ip.is_spare IS NULL OR ip.is_spare IN ('f','false','False','0',''))`,
-    [inv.id]
+    [invId]
   );
   if (!csvParts.length) return;
 

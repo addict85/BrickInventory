@@ -11,6 +11,7 @@ import { ersatzteilSql } from '../../utils/validate';
 import { getMinifigPriceHistory } from '../../utils/priceHistory';
 import { einzelwert } from '../../utils/validate';
 import { verwendendeSets } from '../../utils/handlers/shared';
+import { inventarNachKandidaten } from '../../utils/rbInventar';
 const router = express.Router();
 
 // ── MINIFIGS ─────────────────────────────────────────────────────────────────
@@ -105,12 +106,12 @@ router.get('/minifigs/:figNumber/parts', requireToken, async (req: AuthedRequest
   const figNumber = req.params.figNumber;
   try {
     // Look up in rb_inventories (minifigs are stored as sets with fig- prefix)
-    const inv = await db.get(
-      `SELECT id FROM rb_inventories WHERE set_num = $1 OR set_num = $2 ORDER BY version DESC LIMIT 1`,
-      [figNumber, String(figNumber).replace('fig-', '')]
-    ).catch(() => null);
+    // Figuren haben keinen Versionsanhang, sondern ein 'fig-' davor —
+    // deshalb eigene Kandidaten, aber dieselbe Abfrage.
+    const invId = await inventarNachKandidaten(
+      [String(figNumber), String(figNumber).replace('fig-', '')]).catch(() => null);
 
-    if (!inv) return res.json({ success: true, parts: [], source: 'not_found' });
+    if (!invId) return res.json({ success: true, parts: [], source: 'not_found' });
 
     // Get CSV parts for this minifig
     const csvParts = await db.all(
@@ -128,7 +129,7 @@ router.get('/minifigs/:figNumber/parts', requireToken, async (req: AuthedRequest
        LEFT JOIN rb_colors c ON c.id       = ip.color_id
        LEFT JOIN rb_bl_mapping m ON m.part_num = ip.part_num
        WHERE ip.inventory_id = $1`,
-      [inv.id]
+      [invId]
     ).catch(() => []);
 
     // Check catalog — if empty, enrich NOW (get correct BL IDs before responding)
