@@ -188,6 +188,23 @@ data class GalleryUiState(
  */
 data class PartsUiState(
     val parts: List<Part> = emptyList(),
+    /**
+     * Die manuell erfassten Teile — aus /api/v1/parts/manual, derselben
+     * Quelle wie die Webapp.
+     *
+     * Sie kamen bisher aus der BEWERTUNG (FinanceUiState.partsValuation).
+     * Zwei Quellen fuer dieselbe Liste, und die App lud dafuer jedes Mal die
+     * ganze Bewertung samt Marktpreis-Abfragen — obwohl die Kachel nur
+     * Nummer, Name, Farbe, Zustand, Bild, Menge und Besitzer zeigt.
+     */
+     *
+     * NULL heisst „noch nicht geladen", eine leere Liste „keine vorhanden".
+     * Der Unterschied traegt: Die Wiederherstellung der Rollposition wartet
+     * darauf, dass die Liste DA ist — auf `isNotEmpty()` zu warten hiesse,
+     * dass sie bei jemandem ohne eigene Teile nie wiederhergestellt wuerde
+     * (so stand es schon einmal da, siehe CollectionGraph).
+     */
+    val manualParts: List<ch.brickinventoryapp.data.model.PartValuationItem>? = null,
     val partsTotal: Int = 0,
     val partsPage: Int = 1,
     /**
@@ -231,6 +248,8 @@ data class PartsUiState(
     val partsView: String = "grid",
     val partsLoading: Boolean = false,
     val minifigs: List<Minifig> = emptyList(),
+    /** Die manuell erfassten Figuren — siehe manualParts, null wie dort. */
+    val manualFigs: List<ch.brickinventoryapp.data.model.FigValuationItem>? = null,
     /** Kennzahlen der Kacheln — vom Server, nicht aus der (gefilterten) Liste. */
     val minifigStats: ch.brickinventoryapp.data.model.MinifigStats =
         ch.brickinventoryapp.data.model.MinifigStats(),

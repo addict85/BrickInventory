@@ -178,6 +178,41 @@ data class PartValuationItem(
 )
 
 @Serializable
+/**
+ * Die manuell erfassten Teile — GET /api/v1/parts/manual.
+ *
+ * ── Warum es diese Huelle gibt ──────────────────────────────────────────────
+ * Die App holte diese Liste bisher aus der BEWERTUNG
+ * (partsValuation?.parts), die Webapp aus /parts/manual. Zwei Quellen fuer
+ * dieselbe Liste — und genau daran haben die beiden Apps schon einmal
+ * ENTGEGENGESETZTE Zustaende angezeigt (Nachtrag: „Ein manuell erfasstes
+ * Stueck hat EINEN Zustand").
+ *
+ * NACHGESEHEN, welche Felder die Oberflaeche wirklich liest: ManualPartTile,
+ * ManualFigTile und ManualItemDetailScreen benutzen ausschliesslich
+ * Bestandsfelder (Nummer, Name, Farbe, Zustand, Bild, Menge, Besitzer) —
+ * keinen einzigen Bewertungswert. Die App lud also die ganze Bewertung samt
+ * Marktpreis-Abfragen, um Namen und Bilder anzuzeigen.
+ *
+ * Der Elementtyp bleibt PartValuationItem: Er ist ein Obermenge der
+ * Bestandsfelder, und die Bewertungsfelder haben alle einen Vorgabewert. So
+ * bleibt die Oberflaeche unveraendert, waehrend die Quelle wechselt.
+ */
+@Serializable
+data class ManualPartsResponse(
+    val success: Boolean = false,
+    val parts: List<PartValuationItem> = emptyList(),
+    val error: String? = null
+)
+
+/** Die manuell erfassten Figuren — GET /api/v1/minifigs/manual. Siehe oben. */
+@Serializable
+data class ManualFigsResponse(
+    val success: Boolean = false,
+    val figs: List<FigValuationItem> = emptyList(),
+    val error: String? = null
+)
+
 data class PartsValuationResponse(
     val success: Boolean,
     val currency: String = "EUR",

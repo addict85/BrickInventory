@@ -53,7 +53,6 @@ fun MinifigsScreen(
     // absichtlich dieselben, damit der Rumpf darunter unverändert bleibt.
     val state by vm.state.collectAsStateWithLifecycle()
     val partsState by vm.partsState.collectAsStateWithLifecycle()
-    val financeState by vm.financeState.collectAsStateWithLifecycle()
 
     val figs = partsState.minifigs
     val minifigStats = partsState.minifigStats
@@ -63,9 +62,9 @@ fun MinifigsScreen(
     val householdMembers = state.householdMembers
     val scopeMode = state.scopeModes[ch.brickinventoryapp.data.ScopeFilter.View.MINIFIGS.key]
         ?: ch.brickinventoryapp.data.ScopeFilter.ALL
-    val manualFigs = financeState.figsValuation?.figs ?: emptyList()
+    val manualFigs = partsState.manualFigs ?: emptyList()
 
-    val onRefresh: () -> Unit = { vm.loadMinifigs(); vm.loadValuation() }
+    val onRefresh: () -> Unit = { vm.loadMinifigs() }
     val onScopeChange: (String) -> Unit = { vm.setScope(ch.brickinventoryapp.data.ScopeFilter.View.MINIFIGS, it) }
     // Besitzer der Karte mitgeben: Im Haushalt stehen hier die Eintraege aller
     // Konten. Ohne die Angabe loescht der Server die Zeile des Aufrufers —

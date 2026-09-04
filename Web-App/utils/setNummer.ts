@@ -55,6 +55,41 @@ export function mitVersion(setNumber: string | number): string {
   return /-\d+$/.test(s) ? s : `${s}-1`;
 }
 
+/**
+ * Eine EINGABE zu einer Set-Nummer machen — aus einem Barcode, einem
+ * abgetippten Feld, einer CSV-Zeile.
+ *
+ * Was wegfaellt: alles ab dem ersten Semikolon oder Leerzeichen (so kommen
+ * Scanner-Ausgaben und Produkttitel daher) und jedes Zeichen, das weder
+ * Ziffer noch Buchstabe noch Bindestrich ist. Was dazukommt: der
+ * Versionsanhang, falls er fehlt.
+ *
+ * ── Warum das hier steht und nicht zweimal daneben ──────────────────────────
+ * Diese Funktion stand in zwei Fassungen nebeneinander — utils/setAdd.ts
+ * (normalizeSetNumber) und utils/setService.ts (sanitizeSetNumber) —, und
+ * beide trugen denselben Kommentar: „Bewusst OHNE den vorDem()-Helfer: Ein
+ * Import baute einen Kreis, und set-add-exists-db.test.js fuehrt ihren Rumpf
+ * ISOLIERT aus."
+ *
+ * Beides gilt hier nicht mehr. Der Kreis war zwischen jenen beiden Modulen;
+ * diese Datei ist ein Blatt und baut keinen. Und die Isolation war eine
+ * Eigenart des TESTS, nicht des Codes: Er zog den Rumpf per `new Function`
+ * heraus, obwohl beide Funktionen ausdruecklich exportiert sind — er
+ * vergleicht sie jetzt als Funktionen.
+ *
+ * Beide Namen bleiben, wo sie waren; die Aufrufer aendern sich nicht.
+ *
+ * `unknown` statt `string`: Die beiden Fassungen hatten verschiedene
+ * Signaturen (setAdd nahm `string`, setService `unknown`), der Rumpf machte
+ * aber immer `String(input)`. `unknown` sagt, was wirklich hereinkommt.
+ */
+export function normalisiereSetNummer(input: unknown): string {
+  let s = ((String(input).trim().split(';')[0] ?? '').trim().split(' ')[0] ?? '')
+    .trim().replace(/[^a-zA-Z0-9-]/g, '');
+  if (!/-\d+$/.test(s)) s = s + '-1';
+  return s;
+}
+
 /** Dieselbe Nummer ohne Versionsanhang — „10179" aus „10179-1". */
 export function ohneVersion(setNumber: string | number): string {
   return mitVersion(setNumber).replace(/-\d+$/, '');

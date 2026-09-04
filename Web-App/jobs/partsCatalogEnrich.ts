@@ -10,10 +10,11 @@
 const db    = require('../db/database');
 import { cdnImageLimiter } from '../utils/rateLimiter';
 import { meldeUndWeiter, fehlertext, vorDem } from '../utils/httpError';
-import { getGlobalSetting, setGlobalSetting } from '../utils/settings';
+import { setGlobalSetting } from '../utils/settings';
 import { neuestesInventar, inventarKandidaten } from '../utils/rbInventar';
 import { mitVersion, ohneVersion } from '../utils/setNummer';
 import { merkeBlTeilnummer } from '../utils/blZuordnung';
+import { getRbKey } from '../clients/rebrickable';
 const https = require('https');
 const fs    = require('fs');
 const path  = require('path');
@@ -30,9 +31,6 @@ type JobHttpResult = { status: number; body: string };
 // Hälfte des Inhalts falsch machte.
 const { PART_IMAGES_DIR, MINIFIG_IMAGES_DIR, SET_IMAGES_DIR } = require('../utils/appPaths');
 
-async function getRbKey() {
-  return await getGlobalSetting('rebrickable_api_key') || null;
-}
 
 async function apiGet(url: string, rbKey: string) {
   const { rebrickableBackgroundLimiter: rebrickableLimiter, consumeRebrickableDaily } = require('../utils/rateLimiter');

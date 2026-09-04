@@ -1,7 +1,7 @@
 import * as db from '../db/database';
 import { refreshPriceForSet } from '../jobs/priceJob';
 import { getSetValue } from './setValue';
-import { effectiveCondition as userDefaultCondition } from './settings';
+import { nutzerStandardZustand as userDefaultCondition } from './settings';
 import { getGlobalSetting } from './settings';
 import { DEFAULT_PRICE_CONDITION } from './financeCalc';
 

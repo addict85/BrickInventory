@@ -7,16 +7,14 @@
 const db      = require('../db/database');
 const https   = require('https');
 const { rebrickableBackgroundLimiter: rebrickableLimiter, consumeRebrickableDaily, parseThrottleWait } = require('../utils/rateLimiter');
-import { getGlobalSetting } from '../utils/settings';
+
 import { merkeBlTeilnummer } from '../utils/blZuordnung';
+import { getRbKey } from '../clients/rebrickable';
 
 /** Ergebnis der handgebauten HTTPS-Aufrufe in dieser Datei. Ohne Typparameter
  *  leitet TypeScript bei `new Promise` `unknown` ab. */
 type JobHttpResult = { status: number; body: string };
 
-async function getRbKey() {
-  return await getGlobalSetting('rebrickable_api_key') || null;
-}
 
 async function fetchBatch(partNums: string[], rbKey: string) {
   const url = `https://rebrickable.com/api/v3/lego/parts/?part_nums=${partNums.join(',')}&page_size=500`;

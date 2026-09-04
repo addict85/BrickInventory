@@ -153,28 +153,18 @@ test('die Schreibweise wird nirgends noch einmal ausgerechnet', () => {
       if (m.test(code)) { eigene.push(rel); break; }
     if (/SELECT is_gear, bl_type FROM catalog_cache/.test(code)) vorpruefer.push(rel);
   }
-  // Zwei bewusste Ausnahmen, jede mit eigenem Grund und eigenem Test:
-  // utils/setAdd.ts und utils/setService.ts tragen denselben Normalisierer
-  // absichtlich doppelt — ein Import baute einen Kreis, und
-  // set-add-exists-db.test.js fuehrt BEIDE Ruempfe isoliert aus, um sie zu
-  // vergleichen. Ein Aufruf nach aussen waere dort nicht aufloesbar. Sie
-  // schreiben seit der Vereinheitlichung dieselbe Regel wie setNummer.ts —
-  // das prueft der Teilschritt darunter.
-  assert.deepEqual(eigene, ['utils/setAdd.ts', 'utils/setNummer.ts', 'utils/setService.ts'],
+  // KEINE Ausnahmen mehr. utils/setAdd.ts und utils/setService.ts trugen den
+  // Normalisierer zuletzt noch absichtlich doppelt, mit zwei Begruendungen:
+  // ein Import baue einen Kreis, und set-add-exists-db.test.js fuehre beide
+  // Ruempfe ISOLIERT aus. Beides galt nicht mehr — der Kreis war zwischen
+  // JENEN BEIDEN Modulen, und utils/setNummer.ts ist ein Blatt; die Isolation
+  // war eine Eigenart des Tests, der den Rumpf per `new Function`
+  // heraussschnitt, obwohl beide Funktionen exportiert sind. Er vergleicht
+  // sie jetzt als Funktionen, und beide reichen an normalisiereSetNummer()
+  // durch.
+  assert.deepEqual(eigene, ['utils/setNummer.ts'],
     'Die Schreibweise wird woanders noch einmal ausgerechnet — genau so laufen ' +
     'zwei Stellen auseinander, die dasselbe meinen');
-
-  // Und die beiden Ausnahmen sagen WORTGLEICH dasselbe wie die eine Stelle.
-  // Vorher taten sie es nur beinahe: `!/-\d+$/.test(s)` hier gegen
-  // `includes('-')` dort.
-  const regel = /\/-\\d\+\$\/\.test\(/;
-  for (const f of ['utils/setAdd.ts', 'utils/setService.ts', 'utils/setNummer.ts']) {
-    const code = fs.readFileSync(path.join(ROOT, f), 'utf8')
-      .replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/[^\n]*$/gm, '');
-    assert.match(code, regel,
-      `${f}: prueft nicht auf einen Versionsanhang — dann sagt der eine Weg ` +
-      '"10179-a" und der andere "10179-a-1"');
-  }
   assert.deepEqual(vorpruefer, ['utils/setNummer.ts'],
     'Der Katalog wird an mehr als einer Stelle gelesen');
 });

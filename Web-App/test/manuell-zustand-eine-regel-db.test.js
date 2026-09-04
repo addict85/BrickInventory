@@ -135,3 +135,51 @@ test('manuelle Teile und Figuren: Liste und Bewertung sagen denselben Zustand',
     await db.pool.end().catch(() => {});
   }
 });
+
+test('beide Oberflaechen holen die manuellen Stuecke aus derselben Adresse', () => {
+  // ── Der Befund ─────────────────────────────────────────────────────────
+  // Die Webapp holte sie aus /api/v1/parts/manual, die Android-App aus der
+  // BEWERTUNG (financeState.partsValuation?.parts). Zwei Quellen fuer
+  // dieselbe Liste — und genau daran haben die beiden Apps schon einmal
+  // ENTGEGENGESETZTE Zustaende angezeigt (der Teilschritt darueber ist der
+  // Nachweis, dass sie es heute nicht mehr tun).
+  //
+  // NACHGESEHEN, welche Felder die App wirklich liest: ManualPartTile,
+  // ManualFigTile und ManualItemDetailScreen benutzen ausschliesslich
+  // Bestandsfelder — keinen einzigen Bewertungswert. Die App lud also die
+  // ganze Bewertung samt Marktpreis-Abfragen, um Namen und Bilder
+  // anzuzeigen.
+  const fs = require('node:fs');
+  const path = require('node:path');
+  const APP = path.join(__dirname, '..', '..', 'Android-App', 'app', 'src', 'main');
+
+  const kotlin = [];
+  const gehen = (d) => {
+    if (!fs.existsSync(d)) return;
+    for (const e of fs.readdirSync(d, { withFileTypes: true })) {
+      const abs = path.join(d, e.name);
+      if (e.isDirectory()) gehen(abs);
+      else if (e.name.endsWith('.kt')) kotlin.push(abs);
+    }
+  };
+  gehen(APP);
+  // Selbstnachweis: Faende die Suche nichts, waere die Regel leer wahr.
+  assert.ok(kotlin.length >= 40, `Nur ${kotlin.length} App-Quellen gefunden`);
+
+  // FinanceSections.kt ist ausgenommen: Der Finanz-Reiter zeigt die BEWERTUNG
+  // — dort gehoert partsValuation hin. Verboten ist, die LISTE der manuellen
+  // Stuecke daraus zu nehmen.
+  const quelle = kotlin.filter(f => !f.endsWith('FinanceSections.kt'))
+    .map(f => fs.readFileSync(f, 'utf8')).join('\n')
+    .replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/[^\n]*$/gm, '');
+
+  assert.match(quelle, /api\/v1\/parts\/manual/,
+    'Die App ruft /parts/manual nicht — dann hat die Liste wieder zwei Quellen');
+  assert.match(quelle, /api\/v1\/minifigs\/manual/,
+    'Die App ruft /minifigs/manual nicht');
+  // Und sie nimmt die Liste NICHT mehr aus der Bewertung.
+  assert.doesNotMatch(quelle, /partsValuation\?\.parts/,
+    'Die manuellen Teile kommen wieder aus der Bewertung statt aus ihrer eigenen Adresse');
+  assert.doesNotMatch(quelle, /figsValuation\?\.figs/,
+    'Die manuellen Figuren kommen wieder aus der Bewertung');
+});

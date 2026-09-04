@@ -14,6 +14,7 @@ import * as brickset from '../clients/brickset';
 import { getItemImageUrl } from '../clients/bricklink';
 import { generateThumb } from '../routes/thumbs';
 import * as nachErfassung from '../jobs/nachErfassung';
+import { normalisiereSetNummer } from './setNummer';
 
 /**
  * Sets anlegen, ändern und ausgeben — der Kern hinter den Set-Routen.
@@ -59,15 +60,7 @@ async function recomputeSetCondition(userId: number, setNumber: string, dbh: any
 // `unknown`, weil der Rumpf mit String(input) genau das abfaengt — hier
 // kommen Formularfelder und CSV-Zellen an, nicht garantierte Zeichenketten.
 function sanitizeSetNumber(input: unknown) {
-  // Bewusst OHNE den vorDem()-Helfer: Diese Funktion steht in zwei Fassungen
-  // nebeneinander (ein Import baute einen Kreis, siehe oben), und
-  // set-add-exists-db.test.js fuehrt ihren Rumpf ISOLIERT aus, um beide zu
-  // vergleichen. Ein externer Aufruf darin waere dort nicht aufloesbar — der
-  // Test hat das gemeldet, als ich es zuerst anders gemacht habe.
-  let s = ((String(input).trim().split(';')[0] ?? '').trim().split(' ')[0] ?? '')
-    .trim().replace(/[^a-zA-Z0-9-]/g, '');
-  if (!/-\d+$/.test(s)) s = s + '-1';
-  return s;
+  return normalisiereSetNummer(input);
 }
 
 /**

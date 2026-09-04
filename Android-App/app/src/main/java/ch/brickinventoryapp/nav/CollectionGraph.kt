@@ -163,16 +163,16 @@ fun NavGraphBuilder.collectionGraph(
                     // zurück" — auch bei null manuell erfassten Teilen. Auf
                     // `isNotEmpty()` zu prüfen hiesse, dass die Position bei
                     // jemandem ohne eigene Teile nie wiederhergestellt würde.
-                    bereit = partsState.parts.isNotEmpty() && financeState.partsValuation != null,
+                    bereit = partsState.parts.isNotEmpty() && partsState.manualParts != null,
                     speicher = vm.scrollMemory,
-                    obenNachziehend = financeState.partsValuation?.parts?.size ?: 0)
+                    obenNachziehend = partsState.manualParts?.size ?: 0)
                 PartsScreen(
                     vm = vm,
                     imageLoader = imageLoader,
                     onOpenDetail = { partNumber, colorId ->
                         navController.navigate(Screen.ManualItemDetail.createRoute(
                             "part", partNumber, colorId,
-                            financeState.partsValuation?.parts
+                            partsState.manualParts
                                 ?.find { it.partNumber == partNumber && it.colorId == colorId }
                                 ?.partName ?: partNumber))
                     },
@@ -207,16 +207,16 @@ fun NavGraphBuilder.collectionGraph(
                     // manuell erfassten Minifiguren hat, bekam nie eine
                     // Position wiederhergestellt. Dieselbe Bedingung wie bei
                     // den Teilen (Nachtrag 122).
-                    bereit = partsState.minifigs.isNotEmpty() && financeState.figsValuation != null,
+                    bereit = partsState.minifigs.isNotEmpty() && partsState.manualFigs != null,
                     speicher = vm.scrollMemory,
-                    obenNachziehend = financeState.figsValuation?.figs?.size ?: 0)
+                    obenNachziehend = partsState.manualFigs?.size ?: 0)
                 MinifigsScreen(
                     vm = vm,
                     imageLoader = imageLoader,
                     onOpenDetail = { figNumber ->
                         navController.navigate(Screen.ManualItemDetail.createRoute(
                             "fig", figNumber, 0,
-                            financeState.figsValuation?.figs?.find { it.figNumber == figNumber }
+                            partsState.manualFigs?.find { it.figNumber == figNumber }
                                 ?.figName ?: figNumber))
                     },
                     gridState = minifigsGridState

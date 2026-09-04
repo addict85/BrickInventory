@@ -55,7 +55,7 @@ import { addSet, addSetWithDate } from '../utils/setService';
 import { downloadSetInstructions, anleitungenZuSet, loescheAnleitungen } from '../utils/instructions';
 // Der Standard-Zustand eines Benutzers. Stand hier bis Nachtrag 125 als
 // `getUserDefaultCondition` — eine wortgleiche Zweitfassung von
-// effectiveCondition() in utils/settings.ts.
+// nutzerStandardZustand() in utils/settings.ts.
 import {  resolveWriteTarget } from '../utils/household';
 import { registerSse } from '../utils/sseRegistry';
 import { requireLogin } from './auth';
@@ -814,7 +814,7 @@ router.delete('/:setNumber/instructions/:instrId', async (req, res) => {
 
 // downloadSetImage und getUserDefaultCondition stehen hier NICHT mehr: Die
 // erste lebt in utils/setImages.ts, die zweite war eine Dublette von
-// effectiveCondition() in utils/settings.ts (Nachtrag 125). Was hier noch
+// nutzerStandardZustand() in utils/settings.ts (Nachtrag 125). Was hier noch
 // mitexportiert wird, wartet auf spätere Durchgänge.
 // Der Anhang ist leer: addSet, updateSet und buildSetsCsv leben in
 // utils/setService.ts und werden von dort importiert — kein Router mehr, der

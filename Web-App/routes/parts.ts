@@ -51,8 +51,7 @@ import { DEFAULT_PRICE_CONDITION } from '../utils/financeCalc';
 // Der Standard-Zustand eines Benutzers. Hiess in routes/sets.ts einmal
 // `getUserDefaultCondition` und war dort eine wortgleiche Zweitfassung dieser
 // Funktion (Nachtrag 125). Der Alias, weil in dieser Datei mehrfach eine lokale
-// Variable `effectiveCondition` steht.
-import { effectiveCondition as userDefaultCondition, zustandFuerPreis } from '../utils/settings';
+import { nutzerStandardZustand as userDefaultCondition, zustandFuerPreis } from '../utils/settings';
 
 router.use(requireLogin);
 

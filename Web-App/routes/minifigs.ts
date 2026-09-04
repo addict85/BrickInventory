@@ -46,8 +46,7 @@ import {  getMinifigInfo } from '../clients/rebrickable';
 import { importMinifigsForSet } from '../utils/minifigsImport';
 import { requireLogin } from './auth';
 import { DEFAULT_PRICE_CONDITION } from '../utils/financeCalc';
-// Siehe routes/parts.ts: Alias wegen der lokalen `effectiveCondition`.
-import { effectiveCondition as userDefaultCondition, zustandFuerPreis } from '../utils/settings';
+import { nutzerStandardZustand as userDefaultCondition, zustandFuerPreis } from '../utils/settings';
 import { fetchMinifigPrice, fetchPartPrice } from '../utils/financeCalc';
 import { getSetting, getGlobalSetting } from '../utils/settings';
 import { csvEinlesen, parseCsvDate, toCsv, uebersprungenHinweis } from '../utils/csvExport';

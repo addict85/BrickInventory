@@ -186,21 +186,34 @@ test('vorhandenes Set: Erfassen meldet exists und schreibt nichts',
 });
 
 test('normalizeSetNumber stimmt mit sanitizeSetNumber überein', () => {
-  // Die beiden Fassungen stehen absichtlich getrennt (ein Import aus
-  // routes/sets.ts baute einen Kreis). Weichen sie ab, prüft die Regel eine
-  // ANDERE Nummer als die, die danach geschrieben wird — und das Set landet
-  // trotz Prüfung doppelt.
-  const fs = require('node:fs');
+  // ── Warum das jetzt anders geprueft wird ────────────────────────────────
+  //
+  // Hier stand: den Rumpf von sanitizeSetNumber per funktionsRumpf() aus der
+  // Quelle schneiden und mit `new Function` ausfuehren. Das war noetig,
+  // solange die beiden Fassungen getrennt nebeneinander standen — und es
+  // hatte einen Preis, der laenger wog als der Nutzen: In BEIDEN Funktionen
+  // stand deshalb der Kommentar „Bewusst OHNE den vorDem()-Helfer … ein
+  // externer Aufruf waere hier nicht aufloesbar". Der Test schrieb dem Code
+  // vor, wie er auszusehen hat.
+  //
+  // Beide sind ausdruecklich EXPORTIERT. Sie werden jetzt einfach beide
+  // geholt und verglichen — und weil beide an
+  // utils/setNummer.ts -> normalisiereSetNummer() durchreichen, koennen sie
+  // gar nicht mehr auseinanderlaufen. Die Aussage bleibt dieselbe: Weichen
+  // sie ab, prueft die Regel eine ANDERE Nummer als die, die danach
+  // geschrieben wird — und das Set landet trotz Pruefung doppelt.
   const { normalizeSetNumber } = _req('utils/setAdd.js');
-  const setsSrc = require('./helpers/sources').setKernQuelle();
-  // funktionsRumpf() statt eigener Extraktion: Der frühere Anker trug den
-  // Parameternamen mit ('...(input) {') und zerbrach an der Typannotation —
-  // OHNE es zu melden. Der Helfer sucht nur `function name(` und wirft, wenn
-  // er nichts findet.
-  const sanitize = new Function('input',
-    require('./helpers/sources').funktionsRumpf(setsSrc, 'sanitizeSetNumber'));
+  const { sanitizeSetNumber }  = _req('utils/setService.js');
+  assert.equal(typeof sanitizeSetNumber, 'function',
+    'sanitizeSetNumber ist nicht mehr exportiert — dann prueft dieser Test nichts');
   for (const eingabe of ['75192', '75192-1', ' 75192 ', '75192; irgendwas', '75192 Falcon', 'ab-12', '4002!!']) {
-    assert.equal(normalizeSetNumber(eingabe), sanitize(eingabe),
+    assert.equal(normalizeSetNumber(eingabe), sanitizeSetNumber(eingabe),
       `Abweichung bei "${eingabe}"`);
+  }
+  // Und beide sagen dasselbe wie die Stelle, an der die Regel steht.
+  const { normalisiereSetNummer } = _req('utils/setNummer.js');
+  for (const eingabe of ['75192', '75192-1', ' 75192 ', '75192; irgendwas', 'ab-12', '4002!!']) {
+    assert.equal(normalizeSetNumber(eingabe), normalisiereSetNummer(eingabe),
+      `Abweichung zur zentralen Fassung bei "${eingabe}"`);
   }
 });

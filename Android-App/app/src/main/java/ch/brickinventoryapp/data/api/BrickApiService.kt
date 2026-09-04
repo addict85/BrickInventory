@@ -318,6 +318,16 @@ interface BrickApiService {
         @Path("setNumber") setNumber: String
     ): Response<MinifigsResponse>
 
+    @GET("api/v1/parts/manual")
+    suspend fun getManualParts(
+        @Query("accounts") accounts: String? = null
+    ): Response<ch.brickinventoryapp.data.model.ManualPartsResponse>
+
+    @GET("api/v1/minifigs/manual")
+    suspend fun getManualMinifigs(
+        @Query("accounts") accounts: String? = null
+    ): Response<ch.brickinventoryapp.data.model.ManualFigsResponse>
+
     @GET("api/v1/catalog/year-verteilung")
     suspend fun getCatalogYearVerteilung(
         @Query("q") q: String? = null,

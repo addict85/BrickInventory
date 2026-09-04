@@ -10,7 +10,7 @@ import * as db from '../../db/database';
 import { handleRouteError } from '../../utils/httpError';
 import { requireToken } from './middleware';
 import { householdStatus, createInvite, redeemInvite, unlink } from '../../utils/household';
-import { setUserSetting, effectiveCondition, globalDefaultCondition } from '../../utils/settings';
+import { setUserSetting, nutzerStandardZustand, globalDefaultCondition } from '../../utils/settings';
 import { getGlobalSetting, readSettings } from '../../utils/settings';
 const router = express.Router();
 
@@ -53,7 +53,7 @@ router.get('/settings', requireToken, async (req: AuthedRequest, res) => {
   // Effektiver Zustand: eigener Wert → globaler Standard → 'N'. Die Regel
   // steht in utils/settings.ts, damit sie nicht neben dem Webapp-Weg ein
   // zweites Mal existiert (Etappe 6).
-  settings['effective_condition'] = await effectiveCondition(uid);
+  settings['effective_condition'] = await nutzerStandardZustand(uid);
   // Globales App-Design (vom Admin gesetzt) — die App wendet es an
   settings['app_theme'] = await getGlobalSetting('app_theme') || 'classic';
   res.json({ success:true, settings });
@@ -93,7 +93,7 @@ router.get('/settings/default-condition', requireToken, async (_req: AuthedReque
  */
 router.get('/settings/user/default-condition', requireToken, async (req: AuthedRequest, res) => {
   try {
-    res.json({ success: true, condition: await effectiveCondition(req.apiUser.user_id) });
+    res.json({ success: true, condition: await nutzerStandardZustand(req.apiUser.user_id) });
   } catch (e) { handleRouteError(res, e); }
 });
 

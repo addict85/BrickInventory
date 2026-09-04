@@ -2,6 +2,7 @@ import { getCurrentMarketPrice } from '../utils/marketPrice';
 import { getCurrentFigMarketPrice } from '../routes/minifigs';
 import { getCurrentPartMarketPrice, lookupPart } from '../routes/parts';
 import { fehlertext, logAndContinue, meldeUndWeiter } from '../utils/httpError';
+import { sleep } from '../clients/rebrickable';
 'use strict';
 
 // One-time (idempotent) background migration: fills purchase_price for
@@ -19,7 +20,6 @@ function log(msg: string) {
   console.log(`  [purchase-price-backfill] ${msg}`);
 }
 
-async function sleep(ms: number) { return new Promise(r => setTimeout(r, ms)); }
 
 /**
  * Erfassungen ohne Kaufpreis nachtragen — unabhängig von der Set-Zeile.
