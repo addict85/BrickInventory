@@ -78,20 +78,27 @@ class ManualItemsFirstTest {
         // der Set-Liste. Die Position wurde damit wiederhergestellt, bevor die
         // manuellen Einträge überhaupt da waren.
         //
-        // Und auf `!= null` statt `isNotEmpty()`: "die Bewertung ist zurück",
-        // nicht "sie enthält etwas". Bei den Minifiguren stand hier
+        // Und auf `!= null` statt `isNotEmpty()`: "die Liste ist zurück", nicht
+        // "sie enthält etwas". Bei den Minifiguren stand hier
         // `figsValuation?.figs?.isNotEmpty() == true` — wer keine manuell
         // erfassten Minifiguren hat, bekam damit NIE eine Position
         // wiederhergestellt.
+        //
+        // Die QUELLE hat gewechselt (Nachtrag 124): Die manuellen Einträge kamen
+        // aus der Bewertung (partsValuation/figsValuation), jetzt aus
+        // /parts/manual bzw. /minifigs/manual — dieselbe Adresse wie in der
+        // Webapp. Gewartet wird deshalb auf manualParts/manualFigs. Auf die
+        // Bewertung zu warten hiesse jetzt: auf etwas warten, das dieser Reiter
+        // gar nicht mehr holt.
         val graph = Quellen.ohneKommentare(Quellen.lies("nav/CollectionGraph.kt"))
-        for ((schluessel, bewertung) in listOf(
-            "\"parts\"" to "partsValuation",
-            "\"minifigs\"" to "figsValuation",
+        for ((schluessel, liste) in listOf(
+            "\"parts\"" to "manualParts",
+            "\"minifigs\"" to "manualFigs",
         )) {
             val block = Quellen.fenster(graph, "ScrollPositionKeeper(\n                    $schluessel", 12)
             assert(block.isNotEmpty()) { "Kein ScrollPositionKeeper für $schluessel gefunden" }
-            assert(block.contains("$bewertung != null")) {
-                "$schluessel: `bereit` wartet nicht auf $bewertung — dann wird die " +
+            assert(block.contains("$liste != null")) {
+                "$schluessel: `bereit` wartet nicht auf $liste — dann wird die " +
                     "Position gesetzt, bevor die manuellen Einträge da sind"
             }
             assert(block.contains("obenNachziehend =")) {
