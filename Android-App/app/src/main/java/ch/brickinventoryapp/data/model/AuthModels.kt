@@ -20,8 +20,26 @@ import kotlinx.serialization.Serializable
  * an die Datei.
  */
 
+/**
+ * Anmeldung mit Zugangsdaten.
+ *
+ * `neverExpires` sagt dem Server, dass dieses Geraet einen Token OHNE
+ * Ablaufdatum bekommen soll. Bis zum Zusammenlegen der beiden Anmeldungen
+ * steckte diese Entscheidung in der ADRESSE: /api/v1/auth/login gab dauerhafte
+ * Token aus, /api/auth/login solche mit sieben Tagen Laufzeit. Jetzt gibt es
+ * nur noch eine Adresse, und der Unterschied steht da, wo man ihn sieht.
+ *
+ * Fuer die App ist `true` richtig: Der Token ist ihr einziger Ausweis, und wer
+ * die App oeffnet, soll nicht jedes Mal sein Passwort eintippen. Ungenutzt
+ * verfaellt er trotzdem (TOKEN_IDLE_DAYS auf dem Server, Vorgabe 90 Tage).
+ */
 @Serializable
-data class LoginRequest(val username: String, val password: String, val label: String = "Android App")
+data class LoginRequest(
+    val username: String,
+    val password: String,
+    val label: String = "Android App",
+    @SerialName("never_expires") val neverExpires: Boolean = true,
+)
 
 @Serializable
 data class QrLoginRequest(val token: String)

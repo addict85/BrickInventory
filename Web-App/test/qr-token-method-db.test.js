@@ -2,7 +2,7 @@
  * Die QR-Nonce wird per POST angelegt, nicht per GET.
  *
  * ── Der Befund (Nachtrag 154) ───────────────────────────────────────────────
- * /api/auth/qr-token legt eine Nonce an, die fünf Minuten lang ein Konto
+ * /api/v1/auth/qr-token legt eine Nonce an, die fünf Minuten lang ein Konto
  * öffnet. Sie war als GET registriert und hing an der Session — die EINZIGE
  * zustandsändernde Route im Baum mit dieser Kombination.
  *
@@ -35,6 +35,8 @@ process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:t
 process.env.WEB_WORKERS = '1';
 
 const _req = require('./helpers/sources').buildAndRequire();
+// Adresse aus server.ts lesen — siehe einhaengung() in helpers/sources.js.
+const AUTH = require('./helpers/sources').einhaengung('auth');
 const db   = _req('db/database.js');
 const express = require(path.join(ROOT, 'node_modules', 'express'));
 
@@ -61,12 +63,12 @@ test('QR-Nonce nur per POST', async (t) => {
   const app = express();
   app.use(express.json());
   app.use((req, _res, next) => { req.session = { userId: _uid }; next(); });
-  app.use('/api/auth', _req('routes/auth.js'));
+  app.use(AUTH, _req('routes/auth.js'));
   _srv  = app.listen(0);
   _base = `http://localhost:${_srv.address().port}`;
 
   const ruf = async (methode) => {
-    const r = await fetch(`${_base}/api/auth/qr-token`, { method: methode, redirect: 'manual' });
+    const r = await fetch(`${_base}${AUTH}/qr-token`, { method: methode, redirect: 'manual' });
     return { status: r.status, body: await r.json().catch(() => null) };
   };
   const nonces = async () =>
@@ -85,7 +87,7 @@ test('QR-Nonce nur per POST', async (t) => {
     const vorher = await nonces();
     const r = await ruf('GET');
     assert.notEqual(r.status, 200,
-      'GET /api/auth/qr-token antwortet wieder mit 200 — damit ist die ' +
+      'GET ' + AUTH + '/qr-token antwortet wieder mit 200 — damit ist die ' +
       'SameSite=lax-Lücke aus Nachtrag 154 zurück: eine Navigation von einer ' +
       'fremden Seite legt dann wieder eine Anmelde-Nonce an.');
     assert.equal(await nonces(), vorher, 'Ein GET hat trotzdem etwas angelegt');

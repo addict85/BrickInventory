@@ -4,7 +4,7 @@ const router  = express.Router();
 import bcrypt from 'bcryptjs';
 import * as db from '../db/database';
 import { handleRouteError, logAndContinue, meldeUndWeiter, fehlerCode, fehlertext, pfadParam } from '../utils/httpError';
-import { hashToken, pruefeAnmeldedaten, assertLoginAllowed, establishSession, revokeAllTokens, revokeAllSessions, deleteToken, BCRYPT_ROUNDS, USERNAME_RE, EMAIL_RE } from '../utils/auth';
+import { hashToken, pruefeAnmeldedaten, createToken, validateToken, assertLoginAllowed, establishSession, revokeAllTokens, revokeAllSessions, deleteToken, BCRYPT_ROUNDS, USERNAME_RE, EMAIL_RE } from '../utils/auth';
 import { ipThrottle } from '../utils/loginLimiter';
 import crypto from 'crypto';
 import { strictBool } from '../utils/validate';
@@ -22,79 +22,174 @@ function requireAdmin(req: Request, res: Response, next: NextFunction) {
   next();
 }
 
+/**
+ * POST /api/v1/auth/login — die EINE Anmeldung, fuer Webapp und App.
+ *
+ * ── Warum es davon nur noch eine gibt ───────────────────────────────────────
+ * Es gab zwei: diese hier (Sitzung, Cookie) und /api/v1/auth/login (Token).
+ * Sie beantworten dieselbe Frage und unterschieden sich nur darin, WAS sie
+ * zurueckgeben — und genau das hat sie zweimal auseinanderlaufen lassen (siehe
+ * pruefeAnmeldedaten in utils/auth.ts).
+ *
+ * Zusammenlegen geht, weil der Sitzungs-Login SCHON IMMER auch einen Token
+ * ausgestellt hat: Die Webapp braucht ihn fuer EventSource, das keine
+ * Kopfzeilen setzen kann. Beide Clients bekommen jetzt beides; der Browser
+ * benutzt die Sitzung und legt den Token daneben, die App ignoriert das
+ * Cookie und benutzt den Token.
+ *
+ * Der einzige echte Unterschied ist die LAUFZEIT des Tokens, und die steht
+ * jetzt ausdruecklich in der Anfrage (`never_expires`) statt implizit in der
+ * Adresse. Begruendung siehe createToken().
+ */
 router.post('/login', async (req, res) => {
-  const { username, password } = req.body;
+  const { username, password, label, never_expires } = req.body;
   try {
     // Form des Namens, Brute-Force-Sperre, Passwortvergleich und die
-    // Konto-Vorbedingungen stehen in utils/auth.ts — dieselbe Funktion nutzt
-    // der Token-Login der App. Hier bleibt nur, was die beiden unterscheidet:
-    // eine Sitzung anlegen statt einen Token ausstellen.
+    // Konto-Vorbedingungen stehen in utils/auth.ts.
     const pruefung = await pruefeAnmeldedaten(req, username, password);
     if (!pruefung.ok) {
       const { status, error, unverified } = pruefung.absage;
       return res.status(status).json({ success: false, error, ...(unverified ? { unverified: true } : {}) });
     }
     const user = pruefung.user;
-    // Session-ID erneuern (gegen Session Fixation) und erst dann füllen.
+    // Session-ID erneuern (gegen Session Fixation) und erst dann fuellen.
+    // Auch fuer die App: Sie schickt das Cookie nie zurueck, die Zeile
+    // verfaellt von selbst — und einen Sonderfall weniger gibt es hier.
     await establishSession(req, {
       userId:   parseInt(user.id),   // always int
       username: user.username,
       isAdmin:  user.is_admin == 1 || user.is_admin === true,
     });
-    // Web-Token, damit andere Tabs den CSV-Status per Bearer abfragen können.
-    //
     // Scheitert das INSERT, wird der Token NICHT mitgeschickt. Vorher stand
     // hier .catch(() => {}) — die Anmeldung galt als erfolgreich, der Client
     // legte einen Token in den sessionStorage, den die Datenbank nie gesehen
-    // hatte, und der SSE-Kanal (`?token=…`, EventSource kann keine Header
-    // setzen) lief in ein 401. Ohne Token fällt der Client auf die
-    // Cookie-Session zurück — der Weg funktioniert ohnehin und ist genau der
-    // für Alt-Clients vorgesehene.
-    let webToken: string | null = crypto.randomBytes(24).toString('hex');
+    // hatte, und der SSE-Kanal (`?token=…`) lief in ein 401. Ohne Token faellt
+    // der Browser auf die Cookie-Sitzung zurueck; die App kann ohne Token
+    // nichts anfangen und bekommt deshalb einen Fehler statt eines halben
+    // Erfolgs.
+    const dauerhaft = never_expires === true;
+    let token: string | null = null;
     try {
-      await db.run(
-        "INSERT INTO api_tokens (token, user_id, label, expires_at) VALUES ($1,$2,'webapp-session', NOW() + INTERVAL '7 days') ON CONFLICT DO NOTHING",
-        [hashToken(webToken), user.id]  // DB speichert nur den Hash
-      );
+      token = await createToken(user.id, label || 'webapp-session', dauerhaft);
     } catch (e) {
-      console.warn('[login] Web-Token konnte nicht gespeichert werden, Anmeldung läuft über die Session:', fehlertext(e));
-      webToken = null;
+      console.warn('[login] Token konnte nicht gespeichert werden:', fehlertext(e));
+      if (dauerhaft)
+        return res.status(500).json({ success: false, error: 'Anmeldung fehlgeschlagen: Token konnte nicht ausgestellt werden.' });
     }
-    res.json({ success: true, ...(webToken ? { webToken } : {}), user: { id: user.id, username: user.username, isAdmin: req.session.isAdmin,
+    res.json({ success: true, ...(token ? { token } : {}), never_expires: dauerhaft,
+      user: { id: user.id, username: user.username, is_admin: user.is_admin == 1 || user.is_admin === true,
       // Nur beim automatisch generierten Default-Admin-Passwort gesetzt (siehe
-      // db/database.ts) — Frontend kann das nutzen, um zur Passwortänderung
-      // aufzufordern. Wird durch POST /change-password wieder gelöscht.
+      // db/database.ts) — der Client fordert dann zur Passwortaenderung auf.
+      // Wird durch POST /change-password wieder geloescht.
       mustChangePassword: !!(user.must_change_password === 1 || user.must_change_password === true) } });
   } catch (e) { handleRouteError(res, e); }
 });
 
+/**
+ * POST /api/v1/auth/logout — Sitzung beenden UND den Token entwerten.
+ *
+ * Auch hiervon gab es zwei Fassungen: Die eine zerstoerte die Sitzung, die
+ * andere loeschte den Token. Wer beides hat — und seit dem Zusammenlegen des
+ * Logins hat das JEDER angemeldete Client —, musste beide aufrufen, um
+ * wirklich abgemeldet zu sein.
+ *
+ * Ohne Anmeldung erreichbar (kein requireToken davor): Abmelden ist nichts,
+ * woran man scheitern koennen soll. Wer weder Sitzung noch Token schickt,
+ * bekommt success — es gibt schlicht nichts zu tun.
+ *
+ * Der Token muss im Authorization-Header stehen; sonst kann der Server nicht
+ * wissen, welcher es war. Fehlt er, wird nur die Sitzung zerstoert. Er liegt
+ * im sessionStorage des Browsers und ist damit per XSS auslesbar — ein Token,
+ * der eine bewusste Abmeldung ueberlebt, ist genau das, was man dabei nicht
+ * will.
+ */
 router.post('/logout', async (req, res) => {
-  // Den beim Login ausgegebenen webToken mit entwerten.
-  //
-  // Vorher blieb er nach dem Abmelden volle sieben Tage gültig. Er liegt im
-  // sessionStorage des Browsers, ist also per XSS auslesbar — ein Token, das
-  // eine bewusste Abmeldung überlebt, ist genau das, was man dabei nicht will.
-  // Der Client schickt ihn im Authorization-Header mit; fehlt er, wird nur die
-  // Session zerstört (unverändertes Verhalten für Alt-Clients).
   const auth = String(req.headers.authorization || '');
   // Fehler hier nur loggen: Die Abmeldung darf nicht daran scheitern, dass der
-  // Token nicht entsorgt werden konnte — aber schweigend übergangen hiess, dass
-  // genau der Fall unbemerkt bleibt, den der Absatz oben verhindern soll (ein
-  // Token, der die bewusste Abmeldung überlebt).
+  // Token nicht entsorgt werden konnte — aber schweigend uebergangen hiesse,
+  // dass genau der Fall unbemerkt bleibt, den der Absatz oben verhindern soll.
   if (auth.startsWith('Bearer ')) await deleteToken(auth.slice(7)).catch(logAndContinue('logout:token entsorgen'));
-  req.session.destroy(() => res.json({ success: true }));
+  // req.session.destroy gibt es nur mit Sitzungs-Middleware davor; die App
+  // ruft dieselbe Adresse ohne Cookie auf.
+  if (req.session?.destroy) return req.session.destroy(() => res.json({ success: true }));
+  res.json({ success: true });
 });
 
+/**
+ * GET /api/v1/auth/me — wer bin ich? Sitzung ODER Token.
+ *
+ * ── Die eine Stelle, an der die beiden Fassungen wirklich verschieden waren ─
+ * Die Sitzungs-Fassung antwortete `{loggedIn:false}` mit 200, die
+ * Token-Fassung mit 401. Beides ist fuer sich richtig, und zwar aus
+ * verschiedenen Gruenden:
+ *
+ *  * Der Browser fragt das VOR jeder Anmeldung, ganz ohne Ausweis. Ein 401
+ *    waere dort die normale Antwort auf eine normale Frage — die Webapp
+ *    muesste ihn eigens ausnehmen (und tat das auch).
+ *  * Die App fragt es MIT einem Token, den sie fuer gueltig haelt. Ein 200
+ *    waere dort eine verpasste Gelegenheit: Ihr OkHttp-Interceptor macht aus
+ *    jedem 401 „Sitzung abgelaufen" und fuehrt zurueck zur Anmeldung
+ *    (RepoBasis.kt: `response.code() == 401 -> Fehlerart.SITZUNG_ABGELAUFEN`).
+ *
+ * Die Regel, die beide Faelle richtig bedient, unterscheidet nicht nach
+ * CLIENT, sondern nach dem, was tatsaechlich mitgeschickt wurde:
+ *
+ *     kein Ausweis dabei        -> 200 { loggedIn: false }
+ *     Ausweis dabei, ungueltig  -> 401
+ *
+ * „Du hast mir nichts gegeben" ist eben etwas anderes als „was du mir gegeben
+ * hast, gilt nicht".
+ *
+ * `token_expires`/`token_last_used` stehen nur bei einer Token-Anmeldung drin.
+ */
 router.get('/me', async (req, res) => {
-  if (!req.session?.userId) return res.json({ loggedIn: false });
+  const auth = String(req.headers.authorization || '');
+  const token = auth.startsWith('Bearer ') ? auth.slice(7) : null;
   try {
-    const user = await db.get('SELECT id, username, is_admin FROM users WHERE id = $1', [req.session.userId]);
-    if (!user) return res.json({ loggedIn: false });
-    res.json({ loggedIn: true, id: user.id, username: user.username, isAdmin: user.is_admin == 1 || user.is_admin === true });
-  } catch (e) { res.json({ loggedIn: false }); }
+    if (req.session?.userId) {
+      const user = await db.get('SELECT id, username, is_admin FROM users WHERE id = $1', [req.session.userId]);
+      if (user) return res.json({ success: true, loggedIn: true,
+        user: { id: user.id, username: user.username, is_admin: user.is_admin == 1 || user.is_admin === true } });
+    }
+    const u = token ? await validateToken(token) : null;
+    if (u) return res.json({ success: true, loggedIn: true,
+      user: { id: u.user_id, username: u.username, is_admin: u.is_admin === 1 || u.is_admin === true },
+      token_expires: u.expires_at, token_last_used: u.last_used });
+    if (token) return res.status(401).json({ success: false, loggedIn: false, user: null,
+      error: 'Ungültiger oder abgelaufener Token' });
+    res.json({ success: true, loggedIn: false, user: null });
+  } catch (e) {
+    // Wer hier scheitert, ist eben nicht angemeldet — die Anmeldemaske ist die
+    // richtige Antwort, keine Fehlerseite. Mit vorgelegtem Token gilt aber
+    // dasselbe wie oben: Die App soll es merken.
+    meldeUndWeiter('auth:me', e);
+    if (token) return res.status(401).json({ success: false, loggedIn: false, user: null,
+      error: 'Ungültiger oder abgelaufener Token' });
+    res.json({ success: true, loggedIn: false, user: null });
+  }
 });
 
-// GET /api/auth/profile — get current user profile
+/**
+ * POST /api/v1/auth/token-create — einen zusaetzlichen Token ausstellen.
+ *
+ * Fuer den Fall, dass ein bereits angemeldeter Client einen zweiten Ausweis
+ * braucht (die App holt sich so einen nach der QR-Anmeldung). Sitzung ODER
+ * Token genuegt als Nachweis — wer schon drin ist, darf sich einen weiteren
+ * Schluessel machen.
+ */
+router.post('/token-create', async (req, res) => {
+  try {
+    const auth = String(req.headers.authorization || '');
+    const tokenUser = auth.startsWith('Bearer ') ? await validateToken(auth.slice(7)) : null;
+    const userId = req.session?.userId || tokenUser?.user_id;
+    if (!userId) return res.status(401).json({ success: false, error: 'Nicht angemeldet' });
+    const label = req.body?.label || 'Android App';
+    const neu = await createToken(userId, label, true);
+    res.json({ success: true, token: neu, label, never_expires: true });
+  } catch (e) { handleRouteError(res, e); }
+});
+
+// GET /api/v1/auth/profile — get current user profile
 router.get('/profile', async (req, res) => {
   if (!req.session?.userId) return res.status(401).json({ success: false });
   try {
@@ -107,7 +202,7 @@ router.get('/profile', async (req, res) => {
   } catch (e) { handleRouteError(res, e); }
 });
 
-// PUT /api/auth/profile — update current user profile
+// PUT /api/v1/auth/profile — update current user profile
 router.put('/profile', async (req, res) => {
   if (!req.session?.userId) return res.status(401).json({ success: false });
   const { username, email, first_name, last_name, password, password_current } = req.body;
@@ -236,7 +331,7 @@ router.put('/users/:id/admin', requireAdmin, async (req, res) => {
 
 // Admin: delete user
 /**
- * PUT /api/auth/users/:id/password — Passwort eines anderen Nutzers setzen.
+ * PUT /api/v1/auth/users/:id/password — Passwort eines anderen Nutzers setzen.
  *
  * Der Dialog in den Einstellungen rief diesen Endpunkt schon immer auf, es gab
  * ihn nur nicht: „API-Endpunkt nicht gefunden" beim Speichern.
@@ -374,7 +469,7 @@ const QR_TTL_MS = 5 * 60 * 1000;
 // der zentrale Kommentar dort das Gegenteil behauptet. Siehe die ausführliche
 // Begründung in routes/sets.ts an derselben Stelle.
 
-// POST /api/auth/qr-token — Nonce erzeugen (nur für die eigene Session)
+// POST /api/v1/auth/qr-token — Nonce erzeugen (nur für die eigene Session)
 // ── POST statt GET (Nachtrag 154) ────────────────────────────────────────────
 // Diese Route LEGT ETWAS AN: eine QR-Login-Nonce, die fünf Minuten lang ein
 // Konto öffnet. Als GET war sie die einzige zustandsändernde Route im Baum,
@@ -407,7 +502,7 @@ router.post('/qr-token', async (req, res) => {
   } catch (e) { handleRouteError(res, e); }
 });
 
-// POST /api/auth/qr-login — Nonce einlösen
+// POST /api/v1/auth/qr-login — Nonce einlösen
 //
 // ipThrottle wie bei register/forgot/reset: Der Endpunkt schreibt ohne
 // Anmeldung in die Datenbank. Die 32-Byte-Nonce ist nicht zu erraten, aber es
@@ -438,25 +533,22 @@ router.post('/qr-login', ipThrottle('qr-login', 30, 60 * 60 * 1000), async (req,
       username: user.username,
       isAdmin:  !!user.is_admin,
     });
-    // Bearer-Token für die Android-App (DB speichert nur den Hash)
-    const bearerToken = crypto.randomBytes(32).toString('hex');
-    await db.run(
-      "INSERT INTO api_tokens (token, user_id, label, expires_at) VALUES ($1,$2,'qr-login',NULL)",
-      [hashToken(bearerToken), user.id]
-    );
+    // Bearer-Token für die Android-App — dauerhaft, wie bei der Anmeldung
+    // per Passwort aus der App. Dasselbe INSERT stand hier von Hand.
+    const bearerToken = await createToken(user.id, 'qr-login', true);
     res.json({ success: true, token: bearerToken, username: user.username, isAdmin: !!user.is_admin, userId: user.id,
       user: { id: user.id, username: user.username } });
   } catch (e) { handleRouteError(res, e); }
 });
 
-// ── GET /api/auth/registration-status — public, no auth required ─────────────
+// ── GET /api/v1/auth/registration-status — public, no auth required ─────────────
 router.get('/registration-status', async (_req, res) => {
   try {
     res.json({ enabled: await getGlobalSetting('registration_enabled') === '1' });
   } catch(_) { res.json({ enabled: false }); }
 });
 
-// ── POST /api/auth/register ───────────────────────────────────────────────────
+// ── POST /api/v1/auth/register ───────────────────────────────────────────────────
 router.post('/register', ipThrottle('register', 5, 60 * 60 * 1000), async (req, res) => {
   const { username, email, first_name, last_name, password, language } = req.body;
   const lang = ['de', 'en'].includes(language) ? language : 'de';
@@ -525,7 +617,7 @@ router.post('/register', ipThrottle('register', 5, 60 * 60 * 1000), async (req, 
   }
 });
 
-// ── GET /api/auth/verify ist ENTFERNT ────────────────────────────────────────
+// ── GET /api/v1/auth/verify ist ENTFERNT ────────────────────────────────────────
 //
 // Sie hatte keinen Aufrufer, und das stand seit Nachtrag 154 als Kommentar
 // genau hier: „Gefahrlos umzustellen, weil die Route KEINEN Aufrufer hat: Der
@@ -538,7 +630,7 @@ router.post('/register', ipThrottle('register', 5, 60 * 60 * 1000), async (req, 
 // zweite: Die Bestaetigung laeuft ueber die Frontend-Seite /verify, die
 // utils/auth.verifiziereEmailToken() aufruft. Diese Funktion bleibt.
 
-// ── POST /api/auth/forgot-password ───────────────────────────────────────────
+// ── POST /api/v1/auth/forgot-password ───────────────────────────────────────────
 router.post('/forgot-password', ipThrottle('forgot-password', 5, 60 * 60 * 1000), async (req, res) => {
   const { email } = req.body;
   if (!email) return res.status(400).json({ success: false, error: 'E-Mail erforderlich.' });
@@ -572,7 +664,7 @@ router.post('/forgot-password', ipThrottle('forgot-password', 5, 60 * 60 * 1000)
   } catch (e) { handleRouteError(res, e); }
 });
 
-// ── POST /api/auth/reset-password ────────────────────────────────────────────
+// ── POST /api/v1/auth/reset-password ────────────────────────────────────────────
 router.post('/reset-password', ipThrottle('reset-password', 10, 60 * 60 * 1000), async (req, res) => {
   const { token, password } = req.body;
   if (!token || !password) return res.status(400).json({ success: false, error: 'Token und Passwort erforderlich.' });
@@ -594,7 +686,7 @@ router.post('/reset-password', ipThrottle('reset-password', 10, 60 * 60 * 1000),
   } catch (e) { handleRouteError(res, e); }
 });
 
-// ── GET /api/auth/check-token ist ENTFERNT ───────────────────────────────────
+// ── GET /api/v1/auth/check-token ist ENTFERNT ───────────────────────────────────
 //
 // Sie sagte, ob ein Reset- oder Verifikations-Token noch gilt. Kein Aufrufer:
 // Die Reset-Seite schickt das neue Passwort direkt und wertet die Antwort aus,

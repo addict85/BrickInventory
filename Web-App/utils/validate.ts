@@ -117,7 +117,7 @@ export function optionalPrice(value: any, feld = 'Preis'): number | null {
  * Einen Wahrheitswert aus einer Anfrage lesen — streng.
  *
  * ── Warum nicht einfach `wert ? 1 : 0` ──────────────────────────────────────
- * Genau das stand an beiden Rollen-Endpunkten (PUT /api/auth/users/:id/admin
+ * Genau das stand an beiden Rollen-Endpunkten (PUT /api/v1/auth/users/:id/admin
  * und PUT /api/v1/admin/users/:id/role). In JavaScript ist die ZEICHENKETTE
  * "false" wahr. Am laufenden Endpunkt nachgestellt:
  *

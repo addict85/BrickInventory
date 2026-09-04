@@ -502,12 +502,12 @@ router.post('/admin/redownload-missing-images', requireApiAdmin, async (_req: Au
   } catch (e) { handleRouteError(res, e); }
 });
 
-// ── Nutzerverwaltung: NUR unter /api/auth/users ───────────────────────────────
+// ── Nutzerverwaltung: NUR unter /api/v1/auth/users ───────────────────────────────
 //
 // Hier standen GET /api/v1/admin/users und PUT /api/v1/admin/users/:id/role.
 // Beide hat kein Client gerufen — nachgemessen ueber den Browser-Code und die
 // Retrofit-Anmerkungen der App (test/api-aufrufer.test.js). Die Webapp
-// verwaltet Konten ueber /api/auth/users, die App hat keine Nutzerverwaltung.
+// verwaltet Konten ueber /api/v1/auth/users, die App hat keine Nutzerverwaltung.
 //
 // Schwerer als das Totliegen wog die Doppelung: Adminrechte liessen sich hier
 // mit dem Feld `is_admin` und dort mit `role` umschalten — zwei Schreibweisen

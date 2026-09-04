@@ -9,6 +9,10 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+// rememberSaveable liegt im UNTERPAKET runtime.saveable — der Sammelimport
+// darueber deckt es nicht ab (Kotlin-Sternimporte gelten nicht fuer
+// Unterpakete). Genau daran ist Lauf 81 gescheitert.
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.layout.ContentScale

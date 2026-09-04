@@ -716,30 +716,25 @@ app.get('/api/health', (_req, res) => {
 // will, stellt requireLogin auf requireToken um — ein eigener Schritt.
 //
 // ── Reihenfolge ist Absicht ─────────────────────────────────────────────────
-// /api/v1 (der Index) steht ZUERST. Bei den drei Auth-Adressen, die es auf
-// beiden Seiten gibt, gewinnt damit die Token-Fassung — genau das, was
-// /api/v1/auth/login schon immer bedeutet hat. Der sitzungsgebundene Login der
-// Webapp bleibt vorerst unter /api/auth (siehe unten).
+// /api/v1 (der Index) steht ZUERST, die Fach-Router danach. Andersherum finge
+// ein sitzungsgebundener Router unter /api/v1/sets die Token-Anfragen ab —
+// gemessen als 401 „Nicht angemeldet" auf /api/v1/sets/…/acquisitions mit
+// gueltigem Token.
+//
+// /api/v1/auth steht ZULETZT und ist der einzige Eintrag, bei dem die
+// Reihenfolge KEINE Rolle mehr spielt: Seit dem Zusammenlegen gibt es die
+// Adressen /auth/login, /auth/logout und /auth/me nur noch einmal. Vorher
+// hatte sie jede Seite mit eigener Bedeutung — Sitzung gegen Bearer-Token —,
+// und welche gewann, entschied diese Liste.
+//
+// `/api/finance` ist ersatzlos entfallen: Der Router dort trug NULL Routen
+// (58 Zeilen, nur `router.use(requireLogin)` und der Export).
 app.use('/api/v1',          require('./routes/api_v1/index') as typeof import('./routes/api_v1/index'));
 app.use('/api/v1/sets',     require('./routes/sets') as typeof import('./routes/sets'));
 app.use('/api/v1/parts',    require('./routes/parts') as typeof import('./routes/parts'));
 app.use('/api/v1/settings', require('./routes/settings') as typeof import('./routes/settings'));
 app.use('/api/v1/minifigs', require('./routes/minifigs') as typeof import('./routes/minifigs'));
-
-// ── Die Anmeldung zieht ZULETZT um ───────────────────────────────────────────
-//
-// Sie ist der einzige Block mit einer echten Kollision: POST /auth/login,
-// POST /auth/logout und GET /auth/me gibt es unter /api/v1 bereits — mit
-// anderer Bedeutung (Bearer-Token statt Sitzung). Das zusammenzulegen heisst,
-// zwei Anmeldeverfahren zu vereinen, und daran haengt, ob man sich ueberhaupt
-// noch anmelden kann. Getrennter Schritt, getrennter Lauf.
-//
-// `/api/finance` ist ersatzlos entfallen: Der Router dort trug NULL Routen
-// (58 Zeilen, nur `router.use(requireLogin)` und der Export). Seine eigene
-// Begruendung — „Die Datei bleibt, weil jobs/ und routes/ die Funktionen
-// weiterhin von hier beziehen" — war im naechsten Absatz derselben Datei
-// bereits widerlegt: Die dreizehn Namen sind seit Nachtrag 126 weg.
-app.use('/api/auth',        require('./routes/auth') as typeof import('./routes/auth'));
+app.use('/api/v1/auth',     require('./routes/auth') as typeof import('./routes/auth'));
 
 // Nur ausserhalb von production erreichbar — der Endpoint feuert echte
 // BrickLink-Calls und gehört nicht in eine laufende Installation.

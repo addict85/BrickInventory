@@ -375,13 +375,13 @@ export async function api(method, path, body) {
  * hier.
  *
  * Zwei Ausnahmen:
- *   • /auth/me beantwortet die Frage „bin ich angemeldet?" — ein 401 ist dort
+ *   • /v1/auth/me beantwortet die Frage „bin ich angemeldet?" — ein 401 ist dort
  *     die normale Antwort für „nein" und wird von checkAuth() behandelt.
- *   • /auth/login meldet mit 401 ein falsches Passwort; die Anmeldemaske steht
+ *   • /v1/auth/login meldet mit 401 ein falsches Passwort; die Anmeldemaske steht
  *     dann ohnehin schon auf dem Schirm.
  */
 function meldeSitzungBeendet(path) {
-  if (path.startsWith('/auth/me') || path.startsWith('/auth/login')) return;
+  if (path.startsWith('/v1/auth/me') || path.startsWith('/v1/auth/login')) return;
   if (!ME) return;                       // war nie angemeldet — nichts zu beenden
   ME = null;
   toast(tRaw('auth.session_expired'), 'error');
@@ -443,7 +443,7 @@ G('btn-register')?.addEventListener('click', async () => {
   if(!u||!e||!p){ err.textContent=tRaw('register.req_fields'); err.style.display='block'; return; }
   if(p!==p2){ err.textContent=tRaw('settings.password.mismatch'); err.style.display='block'; return; }
   const btn=G('btn-register'); btn.disabled=true; btn.textContent='Registrieren…';
-  const d=await api('POST','/auth/register',{
+  const d=await api('POST','/v1/auth/register',{
     username:u, email:e, first_name:G('reg-first').value.trim()||null,
     last_name:G('reg-last').value.trim()||null, password:p,
     language: G('reg-lang')?.value || LANG || 'de'
@@ -464,7 +464,7 @@ G('btn-forgot')?.addEventListener('click', async () => {
   err.style.display='none';
   if(!email){ err.textContent=tRaw('register.email_required'); err.style.display='block'; return; }
   const btn=G('btn-forgot'); btn.disabled=true; btn.textContent='Senden…';
-  const d=await api('POST','/auth/forgot-password',{email});
+  const d=await api('POST','/v1/auth/forgot-password',{email});
   btn.disabled=false; btn.textContent='Link senden';
   G('forgot-form').style.display='none';
   G('forgot-success').style.display='block';
@@ -479,7 +479,7 @@ G('btn-reset')?.addEventListener('click', async () => {
   if(!p||p!==p2){ err.textContent=tRaw('settings.password.mismatch'); err.style.display='block'; return; }
   if(!_resetToken){ err.textContent=tRaw('reset.invalid_token'); err.style.display='block'; return; }
   const btn=G('btn-reset'); btn.disabled=true; btn.textContent=tRaw('reset.saving');
-  const d=await api('POST','/auth/reset-password',{token:_resetToken,password:p});
+  const d=await api('POST','/v1/auth/reset-password',{token:_resetToken,password:p});
   btn.disabled=false; btn.textContent=tRaw('reset.button');
   if(d.success){
     G('reset-form').style.display='none';
@@ -530,8 +530,13 @@ export async function checkAuth(){
   // (bisher lief applyLang erst nach dem Login in showApp).
   applyLang(LANG, false);
   await waitForStartup();
-  const d=await api('GET','/auth/me');
-  if(d.loggedIn){ ME=d; showApp(); }
+  const d=await api('GET','/v1/auth/me');
+  // Seit dem Zusammenlegen der Anmeldung steht der Nutzer unter `user` und
+  // das Admin-Kennzeichen heisst `is_admin` — dieselbe Form wie in der
+  // Antwort des Logins und dieselbe, die die App liest. ME behält seine
+  // gewohnten Felder (isAdmin, id, username), damit die Oberfläche
+  // unverändert bleibt.
+  if(d.loggedIn){ ME = { ...d, ...(d.user||{}), isAdmin: d.user?.is_admin === true }; showApp(); }
   else {
     G('login-screen').style.display='flex';
     G('app').style.display='none';
@@ -1048,7 +1053,7 @@ function showLogin(){
 }
 async function checkRegistrationEnabled(){
   try {
-    const d = await fetch('/api/auth/registration-status').then(r=>r.json());
+    const d = await fetch('/api/v1/auth/registration-status').then(r=>r.json());
     const wrap = G('link-register-wrap');
     if(wrap) wrap.style.display = d.enabled ? '' : 'none';
   } catch(_){}
@@ -1109,9 +1114,9 @@ G('btn-login').onclick=doLogin;
 ['lu','lp'].forEach(id=>G(id).addEventListener('keydown',e=>e.key==='Enter'&&doLogin()));
 async function doLogin(){
   const b=G('btn-login'); b.disabled=true; b.textContent='…';
-  const d=await api('POST','/auth/login',{username:G('lu').value,password:G('lp').value});
+  const d=await api('POST','/v1/auth/login',{username:G('lu').value,password:G('lp').value});
   b.disabled=false; b.textContent='Anmelden';
-  if(d.success){ ME = { ...d, ...(d.user||{}), isAdmin: d.user?.isAdmin || d.isAdmin || false }; if(d.webToken) sessionStorage.setItem('webToken',d.webToken);
+  if(d.success){ ME = { ...d, ...(d.user||{}), isAdmin: d.user?.is_admin === true }; if(d.token) sessionStorage.setItem('webToken',d.token);
     // Jede Anmeldung beginnt mit „Alle Konten" (Nachtrag 46) — VOR showApp(),
     // damit die Auswahlfelder gleich mit dem zurückgesetzten Wert entstehen.
     resetScopeModes();
@@ -1120,14 +1125,14 @@ async function doLogin(){
 G('btn-logout').onclick=async()=>{
   // Den webToken MITSCHICKEN, sonst kann der Server ihn nicht entwerten.
   //
-  // POST /api/auth/logout löscht den beim Login ausgegebenen Bearer-Token —
+  // POST /api/v1/auth/logout beendet die Sitzung UND löscht den Bearer-Token —
   // aber nur, wenn er im Authorization-Header steht. api() setzt den Header
   // nicht (die Webapp arbeitet sonst per Session-Cookie), die Löschung lief
   // deshalb ins Leere: Der Token blieb nach dem Abmelden volle sieben Tage
   // gültig. Da er im sessionStorage liegt und damit per XSS auslesbar ist, ist
   // genau das der Fall, den ein bewusstes Abmelden ausschliessen soll.
   const _wt = sessionStorage.getItem('webToken');
-  await fetch('/api/auth/logout', {
+  await fetch('/api/v1/auth/logout', {
     method: 'POST',
     headers: _wt ? { 'Authorization': 'Bearer ' + _wt } : {},
   }).catch(()=>{});

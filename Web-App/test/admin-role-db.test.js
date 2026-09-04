@@ -17,7 +17,7 @@
  * derselben Prüfung und lief mit "false" ebenfalls ins Leere.
  *
  * Es war das bekannte Muster „dieselbe Lücke an ZWEI Wegen": Webapp
- * (PUT /api/auth/users/:id/admin) und Android-API
+ * (PUT /api/v1/auth/users/:id/admin) und Android-API
  * (PUT /api/v1/admin/users/:id/role) hatten beide denselben Fehler.
  *
  * Den zweiten Weg gibt es nicht mehr. Er hatte nie einen Aufrufer —
@@ -41,6 +41,8 @@ process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:t
 process.env.WEB_WORKERS = '1';
 
 const _req = require('./helpers/sources').buildAndRequire();
+// Adresse aus server.ts lesen — siehe einhaengung() in helpers/sources.js.
+const AUTH = require('./helpers/sources').einhaengung('auth');
 const { testServer } = require('./helpers/server');
 const db = _req('db/database.js');
 const express = require(path.join(ROOT, 'node_modules', 'express'));
@@ -65,7 +67,7 @@ test('Adminrechte lassen sich auch mit "false" als Text entziehen',
   const { base, srv } = testServer(_req, {
     sitzung: { userId: adminId, username: ADMIN, isAdmin: true },
     apiNutzer: { user_id: adminId, is_admin: 1 },
-    routen: { '/api/auth': 'routes/auth.js', '/api/v1': 'routes/api_v1/index.js' },
+    routen: { [AUTH]: 'routes/auth.js', '/api/v1': 'routes/api_v1/index.js' },
     t,
   });
 
@@ -81,7 +83,7 @@ test('Adminrechte lassen sich auch mit "false" als Text entziehen',
     return { status: r.status, adminDanach: await istAdmin() };
   };
 
-  const WEB = `${base}/api/auth/users/${zielId}/admin`;
+  const WEB = `${base}${AUTH}/users/${zielId}/admin`;
 
   try {
     {
@@ -110,7 +112,7 @@ test('Adminrechte lassen sich auch mit "false" als Text entziehen',
     // Der Selbstschutz muss auch mit "false" als Text greifen. Stand vorher
     // auf der v1-Route; die Regel selbst ist unverändert und steht in
     // routes/auth.ts.
-    const r = await fetch(`${base}/api/auth/users/${adminId}/admin`, {
+    const r = await fetch(`${base}${AUTH}/users/${adminId}/admin`, {
       method: 'PUT', headers: { 'content-type': 'application/json' },
       body: JSON.stringify({ is_admin: 'false' }),
     });

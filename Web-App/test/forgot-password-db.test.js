@@ -33,6 +33,8 @@ process.env.WEB_WORKERS = '1';
 process.env.SESSION_SECRET = 'test-secret-lang-genug-fuer-die-pruefung';
 
 const _req = require('./helpers/sources').buildAndRequire();
+// Adresse aus server.ts lesen — siehe einhaengung() in helpers/sources.js.
+const AUTH = require('./helpers/sources').einhaengung('auth');
 const db = _req('db/database.js');
 const express = require(path.join(ROOT, 'node_modules', 'express'));
 const bcrypt  = require(path.join(ROOT, 'node_modules', 'bcryptjs'));
@@ -65,12 +67,12 @@ test('forgot-password findet die E-Mail unabhängig von der Schreibweise',
   const app = express();
   app.use(express.json());
   app.use((req, _res, next) => { req.session = {}; next(); });
-  app.use('/api/auth', _req('routes/auth.js'));
+  app.use(AUTH, _req('routes/auth.js'));
   const srv = app.listen(0);
   const port = srv.address().port;
 
   const forgot = async (email) => {
-    const r = await fetch(`http://localhost:${port}/api/auth/forgot-password`, {
+    const r = await fetch(`http://localhost:${port}${AUTH}/forgot-password`, {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
       body: JSON.stringify({ email }),

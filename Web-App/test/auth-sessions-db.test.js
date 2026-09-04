@@ -30,6 +30,9 @@ process.env.WEB_WORKERS = '1';
 process.env.SESSION_SECRET = 'test-secret-lang-genug-fuer-die-pruefung';
 
 const _req = require('./helpers/sources').buildAndRequire();
+// Die Adresse aus server.ts LESEN, nicht abschreiben: Ein eigener Pruefstand
+// mit fester Adresse bleibt gruen, waehrend der Router laengst woanders haengt.
+const AUTH = require('./helpers/sources').einhaengung('auth');
 const db = _req('db/database.js');
 const express     = require(path.join(ROOT, 'node_modules', 'express'));
 const session     = require(path.join(ROOT, 'node_modules', 'express-session'));
@@ -67,7 +70,7 @@ test('ein Passwortwechsel beendet Sitzungen UND Token — gegen echten Store',
     store: new pgSession({ pool: db.pool, tableName: 'user_sessions' }),
     secret: process.env.SESSION_SECRET, resave: false, saveUninitialized: false,
   }));
-  app.use('/api/auth', _req('routes/auth.js'));
+  app.use(AUTH, _req('routes/auth.js'));
   const srv = app.listen(0);
   const basis = `http://localhost:${srv.address().port}`;
 
@@ -76,7 +79,7 @@ test('ein Passwortwechsel beendet Sitzungen UND Token — gegen echten Store',
   // die nächste Anmeldung, und der dritte Subtest wäre aus einem Grund rot, der
   // nichts mit der geprüften Regel zu tun hat.
   const anmelden = async (user, passwort) => {
-    const r = await fetch(`${basis}/api/auth/login`, {
+    const r = await fetch(`${basis}${AUTH}/login`, {
       method: 'POST', headers: { 'content-type': 'application/json' },
       body: JSON.stringify({ username: user, password: passwort }),
     });
@@ -85,7 +88,7 @@ test('ein Passwortwechsel beendet Sitzungen UND Token — gegen echten Store',
     return { cookie: (r.headers.get('set-cookie') || '').split(';')[0], body };
   };
   const angemeldet = async (cookie) =>
-    (await fetch(`${basis}/api/auth/me`, { headers: { cookie } }).then(r => r.json())).loggedIn === true;
+    (await fetch(`${basis}${AUTH}/me`, { headers: { cookie } }).then(r => r.json())).loggedIn === true;
   const sitzungen = async (uid) => (await db.get(
     "SELECT COUNT(*)::int n FROM user_sessions WHERE sess::jsonb->>'userId' = $1", [String(uid)])).n;
 
@@ -96,7 +99,7 @@ test('ein Passwortwechsel beendet Sitzungen UND Token — gegen echten Store',
       assert.equal(await angemeldet(angreifer.cookie), true, 'Vorbedingung: Sitzung steht');
       assert.ok(await sitzungen(opferId) >= 1, 'Vorbedingung: Sitzung liegt in user_sessions');
 
-      const r = await fetch(`${basis}/api/auth/users/${opferId}/password`, {
+      const r = await fetch(`${basis}${AUTH}/users/${opferId}/password`, {
         method: 'PUT', headers: { 'content-type': 'application/json', cookie: chef.cookie },
         body: JSON.stringify({ password: 'neuesPasswort1' }),
       });
@@ -117,7 +120,7 @@ test('ein Passwortwechsel beendet Sitzungen UND Token — gegen echten Store',
       const fensterB = await anmelden('pw_chef', 'altesPasswort1');
       assert.equal(await angemeldet(fensterB.cookie), true, 'Vorbedingung: zweites Fenster offen');
 
-      const r = await fetch(`${basis}/api/auth/change-password`, {
+      const r = await fetch(`${basis}${AUTH}/change-password`, {
         method: 'POST', headers: { 'content-type': 'application/json', cookie: fensterA.cookie },
         body: JSON.stringify({ current: 'altesPasswort1', newPassword: 'nochNeuer12' }),
       });
@@ -145,7 +148,7 @@ test('ein Passwortwechsel beendet Sitzungen UND Token — gegen echten Store',
       const chef = await anmelden('pw_chef', 'nochNeuer12');
       // Das Passwort des OPFERS wurde im ersten Subtest geändert — hier zählt nur, dass
       // der Reset läuft; der Admin-Weg verlangt kein altes Passwort.
-      const r = await fetch(`${basis}/api/auth/users/${opferId}/password`, {
+      const r = await fetch(`${basis}${AUTH}/users/${opferId}/password`, {
         method: 'PUT', headers: { 'content-type': 'application/json', cookie: chef.cookie },
         body: JSON.stringify({ password: 'wiederNeu123' }),
       });

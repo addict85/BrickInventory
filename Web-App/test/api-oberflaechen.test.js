@@ -84,25 +84,21 @@ function webRouter() {
  * Verglichen wird OHNE Präfix (`/auth/login` statt `/api/v1/auth/login`), weil
  * genau das die Frage ist: Beantworten zwei Umsetzungen dieselbe Adresse?
  *
- * `GET /settings` stand hier und ist entfallen — die Webapp-Fassung war eine
- * Route ohne Aufrufer, die dasselbe lieferte wie /settings/raw, nur in einer
- * anderen Hülle. Damit bleibt genau die Anmeldung übrig.
+ * ── Die Liste ist LEER, und das ist das Ergebnis ────────────────────────────
+ * Hier standen zuletzt drei Zeilen: POST /auth/login, POST /auth/logout und
+ * GET /auth/me. Der Grund daneben war jedes Mal derselbe — „verschiedene
+ * Ausweise: Sitzung gegen Bearer-Token". Er war richtig und trotzdem kein
+ * Grund für zwei Umsetzungen: Der Sitzungs-Login hat schon immer BEIDES
+ * ausgestellt. Seit dem Zusammenlegen gibt es die drei Adressen je einmal.
+ *
+ * Davor war `GET /settings` entfallen — eine Route ohne Aufrufer, die
+ * dasselbe lieferte wie /settings/raw, nur in einer anderen Hülle.
+ *
+ * Eine leere Liste heisst: JEDE Überschneidung wird gemeldet. Wer eine Zeile
+ * hinzufügt, schreibt den Grund dazu; wer keinen hat, hat eine Doppelung
+ * gefunden.
  */
-const ERLAUBT = new Map([
-  ['POST /auth/login',
-    'Stellt den Ausweis aus — die Webapp eine Sitzung im Cookie, die App einen ' +
-    'Bearer-Token. Verschiedene Ergebnisse, nicht zwei Fassungen desselben. Die ' +
-    'Prüfung der Zugangsdaten selbst steht gemeinsam in utils/auth.ts.'],
-  ['POST /auth/logout',
-    'Entwertet den Ausweis. Sitzung zerstören und Token-Zeile löschen sind ' +
-    'verschiedene Vorgänge; die Webapp-Route macht beides, weil ein Browser ' +
-    'beides halten kann.'],
-  ['GET /auth/me',
-    'Verschiedene Fragen: Die Webapp fragt „bin ich angemeldet?" und bekommt ' +
-    'flach { loggedIn, id, username, isAdmin } frisch aus der Datenbank. Die App ' +
-    'fragt „wem gehört dieser Token und wie lange gilt er?" und bekommt ' +
-    '{ user, token_expires, token_last_used } aus dem Token-Cache.'],
-]);
+const ERLAUBT = new Map([]);
 
 /** Präfix weg: /api/v1/sets/x und /api/sets/x werden beide zu /sets/x. */
 function ohnePraefix(eintrag) {
@@ -158,14 +154,12 @@ test('jeder Router haengt unter /api/v1 — mit genau einer eingetragenen Ausnah
   // Diese Regel ist die Antwort in Form einer Pruefung. Sie zaehlt die
   // Ausnahmen NICHT auf — sie liest die Einhaengepunkte aus server.ts und
   // laesst genau eine zu, die hier begruendet steht.
-  const NOCH_NICHT = new Map([
-    ['/api/auth',
-     'Die Anmeldung zieht ZULETZT um: POST /auth/login, POST /auth/logout und ' +
-     'GET /auth/me gibt es unter /api/v1 bereits, mit anderer Bedeutung ' +
-     '(Bearer-Token statt Sitzung). Das zusammenzulegen heisst, zwei ' +
-     'Anmeldeverfahren zu vereinen — daran haengt, ob man sich ueberhaupt noch ' +
-     'anmelden kann. Eigener Schritt, eigener Lauf.'],
-  ]);
+  // Die Liste ist LEER. Hier stand /api/auth mit der Begruendung, die
+  // Anmeldung ziehe zuletzt um — sie ist umgezogen: routes/auth.ts haengt
+  // unter /api/v1/auth, und die drei Adressen, die es auf beiden Seiten gab,
+  // sind zusammengelegt. Eine leere Liste heisst: JEDER Router muss unter
+  // /api/v1 haengen, ohne Ausnahme.
+  const NOCH_NICHT = new Map([]);
 
   const einhaengungen = webRouter();
   // Selbstbeweis: Findet das Muster keine Einhaengepunkte, prueft alles

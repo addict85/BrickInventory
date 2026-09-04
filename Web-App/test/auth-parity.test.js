@@ -87,11 +87,20 @@ test('jede Anmeldung mit Passwort läuft über dieselbe Prüfung', () => {
   const gefunden = anmeldeHandler();
   // Selbstbeweis: Findet das Muster nichts, wäre die Fehlerliste leer und der
   // Test grün, ohne etwas geprüft zu haben.
-  assert.ok(gefunden.length >= 3,
+  //
+  // Die Zahlen sind bewusst klein: Seit dem Zusammenlegen gibt es genau ZWEI
+  // Anmelde-Routen (/login und /qr-login) und davon EINE mit Passwort. Genau
+  // das ist das Ziel — eine Untergrenze von zwei passwortbasierten
+  // Anmeldungen hätte den erreichten Zustand als Fehler gemeldet. Das Gewicht
+  // liegt deshalb auf der Prüfung darunter und auf der Zähler-Regel danach;
+  // hier wird nur belegt, dass das Muster ueberhaupt noch greift.
+  assert.ok(gefunden.length >= 2,
     `Nur ${gefunden.length} Anmelde-Routen gefunden — Muster veraltet?`);
   const mitPasswort = gefunden.filter(h => /password/.test(h.koerper));
-  assert.ok(mitPasswort.length >= 2,
-    `Nur ${mitPasswort.length} passwortbasierte Anmeldungen gefunden — Muster veraltet?`);
+  assert.equal(mitPasswort.length, 1,
+    `${mitPasswort.length} passwortbasierte Anmeldungen: ` +
+    mitPasswort.map(h => `${h.datei} ${h.pfad}`).join(', ') +
+    ' — es soll genau eine geben.');
 
   const abweichler = mitPasswort
     .filter(h => !/pruefeAnmeldedaten/.test(h.koerper))
@@ -258,11 +267,24 @@ test('Sicherheitsschritte am Konto scheitern nicht mehr stillschweigend', () => 
   const auth  = fs.readFileSync(path.join(ROOT, 'routes', 'auth.ts'), 'utf8');
   const utils = fs.readFileSync(path.join(ROOT, 'utils', 'auth.ts'), 'utf8');
 
-  const login = auth.slice(auth.indexOf('webapp-session'), auth.indexOf('mustChangePassword'));
+  // Das Feld heisst seit dem Zusammenlegen der beiden Anmeldungen `token`
+  // (vorher `webToken`) und die Zeile steht in derselben Route.
+  //
+  // Kommentare raus, BEVOR gesucht wird: Der Erklaertext IN der Route nennt
+  // `.catch(() => {})` als das, was dort frueher stand — die Prüfung schlug
+  // darauf an, sobald der Ausschnitt frueher begann. Dieselbe Falle wie
+  // mehrfach zuvor in dieser Suite; sie ist der haeufigste Fehler beim
+  // Schreiben quelltextlesender Tests.
+  const authOhne = ohneKommentare(auth);
+  const login = authOhne.slice(authOhne.indexOf("router.post('/login'"), authOhne.indexOf('mustChangePassword'));
   assert.doesNotMatch(login, /\.catch\(\(\)\s*=>\s*\{\}\)/,
     'Ein Token, den die Datenbank nicht kennt, darf nicht ausgeliefert werden');
-  assert.match(auth, /webToken \? \{ webToken \} : \{\}/,
+  assert.match(login, /token \? \{ token \} : \{\}/,
     'Ohne gespeicherten Token gehört das Feld nicht in die Antwort');
+  // Und fuer die App ist ein Login ohne Token gar kein Erfolg: Sie hat keinen
+  // zweiten Ausweg (der Browser faellt auf die Cookie-Sitzung zurueck).
+  assert.match(login, /if \(dauerhaft\)[\s\S]{0,200}?status\(500\)/,
+    'Scheitert der Token, muss die App einen Fehler bekommen statt eines halben Erfolgs');
 
   // Die Löschungen selbst stehen inzwischen nur noch in utils/auth.ts
   // (revokeAllTokens / revokeAllSessions) — routes/auth.ts ruft sie auf.

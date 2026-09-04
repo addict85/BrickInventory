@@ -5,9 +5,13 @@
  * aufgeteilt; jedes Modul bringt seine eigenen Routen mit und nutzt die
  * gemeinsame Middleware aus ./middleware.ts. Die Mount-Reihenfolge ist
  * unkritisch (keine überlappenden Pfad-Muster zwischen den Modulen).
+ *
+ * Die Anmeldung ist NICHT dabei. Sie hängt als eigener Router unter
+ * /api/v1/auth (routes/auth.ts) — dort steht sie vollständig, statt auf zwei
+ * Dateien verteilt zu sein. Siehe die Begründung an der Einhängung in
+ * server.ts.
  */
 import express from 'express';
-import authRouter from './auth';
 import setsRouter from './sets';
 import pdfRouter from './pdf';
 import acquisitionsRouter from './acquisitions';
@@ -21,7 +25,6 @@ import catalogRouter from './catalog';
 
 const router = express.Router();
 
-router.use(authRouter);
 router.use(pdfRouter);          // /sets/partslist-pdf/* (literale Pfade)
 router.use(setsRouter);         // /sets, /sets/barcode, /sets/:setNumber/*
 router.use(acquisitionsRouter); // Kaufpreis-Erfassungen für Sets/Teile/Figuren

@@ -21,7 +21,7 @@ interface BrickApiService {
         @Header("Authorization") token: String
     ): Response<ch.brickinventoryapp.data.model.CsvImportStatus>
 
-    @POST("api/auth/qr-login")
+    @POST("api/v1/auth/qr-login")
     suspend fun qrLogin(@Body request: QrLoginRequest): Response<LoginResponse>
 
     @POST("api/v1/auth/logout")

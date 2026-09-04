@@ -507,6 +507,42 @@ function loginOrTokenGuard(opts: { timeoutMs?: number } = {}) {
 const requireLoginOrToken = loginOrTokenGuard();
 
 /**
+ * Einen Bearer-Token ausstellen.
+ *
+ * ── Warum das hier steht ────────────────────────────────────────────────────
+ * Dasselbe INSERT stand dreimal, mit drei verschiedenen Laengen und zwei
+ * verschiedenen Laufzeiten: im Token-Login (32 Byte, ohne Ablauf), im
+ * Sitzungs-Login (24 Byte, sieben Tage) und in /qr-login (32 Byte, ohne
+ * Ablauf). Die Laenge war schlicht Zufall; die Laufzeit ist es NICHT — und
+ * genau deshalb ist sie jetzt ein benannter Parameter statt einer Eigenheit
+ * der Kopie, in der man gerade liest.
+ *
+ * ── Warum Browser und App verschiedene Laufzeiten bekommen ──────────────────
+ * Der Token des Browsers liegt im sessionStorage und ist damit per XSS
+ * auslesbar; er existiert nur, damit EventSource sich ausweisen kann (dort
+ * lassen sich keine Kopfzeilen setzen). Sieben Tage sind dafür reichlich.
+ * Der Token der App ist dagegen der einzige Ausweis des Geräts — wer die App
+ * öffnet, soll nicht jedes Mal sein Passwort eintippen. Er bekommt kein
+ * Ablaufdatum und verfällt stattdessen nach TOKEN_IDLE_DAYS ohne Nutzung
+ * (siehe purgeExpiredTokens).
+ *
+ * Die Datenbank speichert nur den SHA-256-Hash; der Aufrufer bekommt den
+ * Klartext.
+ *
+ * @param dauerhaft true = kein Ablaufdatum (App, QR-Anmeldung).
+ */
+async function createToken(userId: number, label = 'Android App', dauerhaft = false): Promise<string> {
+  const token = crypto.randomBytes(32).toString('hex');
+  await db.run(
+    dauerhaft
+      ? 'INSERT INTO api_tokens (token, user_id, label, expires_at) VALUES ($1,$2,$3,NULL) ON CONFLICT DO NOTHING'
+      : "INSERT INTO api_tokens (token, user_id, label, expires_at) VALUES ($1,$2,$3, NOW() + INTERVAL '7 days') ON CONFLICT DO NOTHING",
+    [hashToken(token), userId, label]
+  );
+  return token;
+}
+
+/**
  * Löscht einen Token und invalidiert den Cache.
  * @param {string|null|undefined} token
  * @returns {Promise<void>}
@@ -647,6 +683,6 @@ export {
   validateToken, invalidateToken, resolveUserId, requireLoginOrToken, hashToken, deleteToken,
   verifiziereEmailToken,
   revokeAllTokens, revokeAllSessions, purgeExpiredTokens, loginOrTokenGuard, TOKEN_IDLE_DAYS,
-  assertLoginAllowed, pruefeAnmeldedaten, escapeLike, establishSession, BCRYPT_ROUNDS, USERNAME_RE,
+  assertLoginAllowed, pruefeAnmeldedaten, createToken, escapeLike, establishSession, BCRYPT_ROUNDS, USERNAME_RE,
   EMAIL_RE, isValidLoginIdentifier,
 };

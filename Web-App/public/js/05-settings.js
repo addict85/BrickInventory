@@ -139,7 +139,7 @@ async function generateQrCode() {
     // POST, nicht GET (Nachtrag 154): Der Aufruf LEGT eine Nonce AN. Als GET war
     // er über eine Navigation von einer fremden Seite auslösbar, weil
     // SameSite=lax das Cookie dort mitschickt.
-    const d = await api('POST', '/auth/qr-token');
+    const d = await api('POST', '/v1/auth/qr-token');
     if (!d.success) { hint.textContent = tRaw('toast.error')+': ' + (d.error||t('common.unknown')); btn.disabled=false; btn.textContent=tRaw('qr.generate'); return; }
     // Get current server URL
     // Use the URL from the input field, fallback to window.location.origin
@@ -183,7 +183,7 @@ async function generateQrCode() {
 G('btn-gen-qr').onclick = generateQrCode;
 
 export async function loadProfile() {
-  const d = await api('GET', '/auth/profile');
+  const d = await api('GET', '/v1/auth/profile');
   if (!d.success) return;
   const u = d.user;
   G('prof-first').value = u.first_name || '';
@@ -226,7 +226,7 @@ G('btn-sav-prof').onclick = async () => {
     if (typeof initDefaultCondition === 'function') initDefaultCondition();
 
     // Profil
-    const d = await api('PUT', '/auth/profile', { username, email, first_name, last_name });
+    const d = await api('PUT', '/v1/auth/profile', { username, email, first_name, last_name });
     if (!d.success) { toast(d.error || t('profile.save_error'), 'error'); return; }
     if (d.emailChanged) {
       const hint = G('prof-email-hint');
@@ -237,7 +237,7 @@ G('btn-sav-prof').onclick = async () => {
 
     // Passwort (optional)
     if (wantsPwChange) {
-      const dPw = await api('POST', '/auth/change-password', { current: pwC, newPassword: pwN });
+      const dPw = await api('POST', '/v1/auth/change-password', { current: pwC, newPassword: pwN });
       if (!dPw.success) {
         // Profil & Währung sind gespeichert, nur das Passwort schlug fehl —
         // das dem Nutzer explizit so sagen statt pauschal "Fehler".
@@ -408,7 +408,7 @@ G('btn-dall').onclick=async()=>{
 
 // ── USER MGMT ─────────────────────────────────────────
 async function loadUsers(){
-  const d=await api('GET','/auth/users'); if(!d.success) return;
+  const d=await api('GET','/v1/auth/users'); if(!d.success) return;
   G('users-tbl').innerHTML=`<div class="tw"><table class="dt user-tbl"><thead><tr><th>ID</th><th>${t('users.col.username')}</th><th>${t('users.col.role')}</th><th>${t('users.col.created')}</th><th>${t('users.col.actions')}</th></tr></thead><tbody>${
     d.users.map(u=>`<tr><td>${u.id}</td><td><strong>${esc(u.username)}</strong></td>
       <td><span class="rb ${u.is_admin?'ra':'ru'}">${u.is_admin?t('users.role.admin'):t('users.role.user')}</span></td>
@@ -423,20 +423,20 @@ async function loadUsers(){
 G('btn-cu').onclick=async()=>{
   const n=G('nu-n').value.trim(),p=G('nu-p').value,a=G('nu-a').checked;
   if(!n||!p){toast(tRaw('users.name_pw_req'),'error');return;}
-  const d=await api('POST','/auth/users',{username:n,password:p,is_admin:a});
+  const d=await api('POST','/v1/auth/users',{username:n,password:p,is_admin:a});
   if(d.success){toast(tRaw('users.created',{name:n}),'success');G('nu-n').value=G('nu-p').value='';G('nu-a').checked=false;loadUsers();} else toast(d.error||t('settings.error'),'error');
 };
 function openRpw(uid){ G('rpw-uid').value=uid; G('rpw-v').value=''; G('pw-modal').classList.add('open'); }
 G('btn-rpw').onclick=async()=>{
-  const d=await api('PUT',`/auth/users/${G('rpw-uid').value}/password`,{password:G('rpw-v').value});
+  const d=await api('PUT',`/v1/auth/users/${G('rpw-uid').value}/password`,{password:G('rpw-v').value});
   if(d.success){toast(tRaw('users.pw_reset'),'success');G('pw-modal').classList.remove('open');} else toast(d.error||t('settings.error'),'error');
 };
 async function toggleAdmin(uid,isAdmin){
   // isAdmin kommt seit der data-arg-Umstellung als Zeichenkette. `!"0"` ist
   // false — das Umschalten hätte damit IMMER auf "kein Admin" gesetzt.
   const cur = isAdmin === true || isAdmin === 1 || isAdmin === '1';
-  const d=await api('PUT',`/auth/users/${uid}/admin`,{is_admin:!cur}); if(d.success){toast(tRaw('users.role_changed'),'success');loadUsers();} else toast(d.error||t('settings.error'),'error'); }
-async function delUser(uid,name){ if(!await confirmDelete(tRaw('users.delete.title'),t('users.delete.text'),'👤')) return; const d=await api('DELETE',`/auth/users/${uid}`); if(d.success){toast(name+' '+t('common.updated'),'success');loadUsers();} else toast(d.error||t('settings.error'),'error'); }
+  const d=await api('PUT',`/v1/auth/users/${uid}/admin`,{is_admin:!cur}); if(d.success){toast(tRaw('users.role_changed'),'success');loadUsers();} else toast(d.error||t('settings.error'),'error'); }
+async function delUser(uid,name){ if(!await confirmDelete(tRaw('users.delete.title'),t('users.delete.text'),'👤')) return; const d=await api('DELETE',`/v1/auth/users/${uid}`); if(d.success){toast(name+' '+t('common.updated'),'success');loadUsers();} else toast(d.error||t('settings.error'),'error'); }
 
 
 

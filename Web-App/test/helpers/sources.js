@@ -518,3 +518,26 @@ function routerEinhaengungen() {
   return out;
 }
 module.exports.routerEinhaengungen = routerEinhaengungen;
+
+/**
+ * Der Einhaengepunkt EINES Routers, ueber den Dateinamen gesucht.
+ *
+ * ── Warum es das braucht ────────────────────────────────────────────────────
+ * Vier Pruefungen mit eigenem Pruefstand (auth-sessions, admin-role,
+ * forgot-password, qr-token) haengten routes/auth.js von Hand unter
+ * '/api/auth'. Sie blieben dadurch gruen, als der Router nach /api/v1/auth
+ * umzog — sie pruefen ja ihre eigene Verdrahtung, nicht die des Servers. Grün
+ * heisst dann nur noch „mein Pruefstand ist in sich stimmig".
+ *
+ * Mit dieser Funktion steht die Adresse an EINER Stelle: in server.ts.
+ *
+ * @param {string} name Dateiname ohne routes/ und ohne .ts, z. B. 'auth'.
+ * @returns {string} z. B. '/api/v1/auth'
+ */
+function einhaengung(name) {
+  const treffer = routerEinhaengungen().filter(r => r.name === name);
+  if (treffer.length !== 1)
+    throw new Error(`routes/${name}.ts haengt ${treffer.length}-mal in server.ts — erwartet: genau einmal`);
+  return treffer[0].mount;
+}
+module.exports.einhaengung = einhaengung;
