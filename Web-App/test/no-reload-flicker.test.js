@@ -85,9 +85,18 @@ test('loadGallery zeigt den Spinner nur beim ersten Laden', () => {
                            gallery.indexOf('function renderGallery()'));
   assert.match(fn, /if \(!allSets\.length \|\| !gal\.querySelector\(/,
     'Der Spinner darf bestehende Kacheln nicht ersetzen, solange nur aufgefrischt wird');
-  // Der Spinner muss innerhalb der Bedingung stehen, nicht davor
-  const spinnerAt = fn.indexOf("class=\"loading\"");
+  // Der Spinner muss innerhalb der Bedingung stehen, nicht davor.
+  //
+  // Gesucht wird BEIDE Schreibweisen: Seit die Ladeanzeige ein Baustein ist
+  // (01-bausteine.js), steht an der Stelle `ladeAnzeige(...)` statt des
+  // Markups. Die Regel ist dieselbe geblieben — nur die Fundstelle sieht
+  // anders aus, und ein Test, der auf einer Schreibweise beharrt, meldet den
+  // Umzug als Fehler statt die Regel zu prüfen.
+  const spinnerAt = Math.max(fn.indexOf('class="loading"'), fn.indexOf('ladeAnzeige('));
   const guardAt = fn.indexOf('if (!allSets.length');
+  assert.ok(spinnerAt > 0,
+    'In loadGallery ist keine Ladeanzeige mehr zu finden — weder als Markup ' +
+    'noch als ladeAnzeige(). Ohne sie prüft der Vergleich unten nichts.');
   assert.ok(guardAt > 0 && guardAt < spinnerAt,
     'Die Bedingung muss VOR dem Leeren stehen, sonst ist sie wirkungslos');
 });

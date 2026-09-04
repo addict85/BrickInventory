@@ -1,0 +1,243 @@
+# ═══════════════════════════════════════════════════════════════════════════
+# CI — läuft bei jedem Push und jedem Pull Request
+# ═══════════════════════════════════════════════════════════════════════════
+#
+# ── Warum es das gibt (Nachtrag 150) ────────────────────────────────────────
+# Bis hierher lief die Suite nur, wenn jemand sie von Hand anstiess — mit den
+# richtigen Umgebungsvariablen und auf einem gewachsenen Arbeitsverzeichnis.
+# Genau daran ist in Nachtrag 148 ein Fehler durchgerutscht: Eine Testdatei
+# holte `dist/utils/handlers.js`, das es seit einer Aufteilung nicht mehr gibt.
+# Lokal blieb sie grün, weil in `dist/` noch eine alte Datei aus der Zeit davor
+# lag; die zehn Prüfungen darunter liefen monatelang nicht.
+#
+# Der Lauf hier hat kein gewachsenes Verzeichnis. Er checkt aus, installiert
+# aus dem Lockfile, baut neu und startet ein leeres PostgreSQL. Was hier grün
+# ist, ist grün — nicht bloss auf einem Rechner grün.
+#
+# ── REQUIRE_DB=1 ───────────────────────────────────────────────────────────
+# Ohne diese Variable ÜBERSPRINGEN die Datenbank-Suiten sich selbst, wenn sie
+# keine Verbindung bekommen. Das ist lokal richtig und in CI das Schlimmste,
+# was passieren kann: ein grüner Lauf, der die Hälfte gar nicht geprüft hat.
+# Mit REQUIRE_DB=1 wirft eine unerreichbare Datenbank statt zu überspringen.
+#
+# ── Warum diese Datei UMGEZOGEN ist ────────────────────────────────────────
+#
+# Sie lag in `Web-App/.github/workflows/ci.yml`. GitHub liest Workflows
+# AUSSCHLIESSLICH aus `.github/workflows/` im Wurzelverzeichnis des
+# Repositories; in einem Unterordner ist eine solche Datei nichts als Text.
+#
+# NACHGEMESSEN über die Actions-API: Das Repository kannte drei Workflows —
+# android.yml, android-playstore.yml, docker-publish.yml. Dieser hier war
+# keiner davon. Er ist nie gelaufen, kein einziges Mal.
+#
+# Bitter daran: Der Kopf oben beschreibt genau den Fehler, gegen den er gebaut
+# wurde („die zehn Prüfungen darunter liefen monatelang nicht"), und
+# test/build-tooling.test.js bewacht seinen INHALT seither zuverlässig. Eine
+# Regel, ein Wächter — und beide zeigten auf eine Datei, die niemand ausführt.
+# Genau dieselbe Fehlerklasse, nur eine Ebene höher.
+#
+# ── Warum KEIN paths-Filter ────────────────────────────────────────────────
+#
+# Naheliegend wäre `paths: ['Web-App/**']`, wie android.yml es macht. Das wäre
+# falsch: Die Web-Suite prüft ausdrücklich BEIDE Bäume — app-endpunkte.test.js
+# liest die Retrofit-Schnittstelle der App, setnummer-korpus.test.js die
+# Kotlin-Fassung der Setnummer-Regel. Eine Änderung, die nur `Android-App/**`
+# anfasst, kann sie also rot machen. Ein Filter auf Web-App/** würde genau
+# diese Läufe überspringen.
+name: CI
+
+on:
+  push:
+    branches: ['**']
+  pull_request:
+  # Von Hand anstossbar, etwa um nach einer Änderung an diesem Workflow selbst
+  # einen Lauf zu sehen, ohne einen leeren Commit zu bauen.
+  workflow_dispatch:
+
+# Ein neuer Push auf denselben Zweig bricht den vorherigen Lauf ab. Die Suite
+# braucht rund vier Minuten; zwei parallele Läufe auf demselben Stand sind
+# verschenkte Zeit.
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    # Die Datei lag frueher IN Web-App/ und ging davon aus, dass das das
+    # Wurzelverzeichnis ist. Vom Repositoriums-Wurzelverzeichnis aus muss jeder
+    # Befehl dorthin — sonst findet `npm ci` keine package.json.
+    defaults:
+      run:
+        working-directory: Web-App
+
+    services:
+      postgres:
+        # Dieselbe Hauptversion wie im Betrieb (compose.yaml: postgres:18-alpine).
+        # Eine andere zu nehmen hiesse, gegen eine Datenbank zu prüfen, die
+        # nirgends läuft — Indizes, Sperren und Planerverhalten unterscheiden
+        # sich zwischen Hauptversionen durchaus.
+        image: postgres:18-alpine
+        env:
+          POSTGRES_USER: tester
+          POSTGRES_PASSWORD: tester
+          POSTGRES_DB: cattest
+        ports:
+          - 5432:5432
+        # Ohne den Health-Check startet der erste Test, bevor die Datenbank
+        # Verbindungen annimmt — und scheitert an etwas, das nichts mit dem
+        # Code zu tun hat.
+        options: >-
+          --health-cmd "pg_isready -U tester -d cattest"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 20
+
+    env:
+      TEST_DATABASE_URL: postgres://tester:tester@localhost:5432/cattest
+      REQUIRE_DB: '1'
+      # Einige Suiten bauen eine echte Session auf. Der Wert ist beliebig, muss
+      # aber die Mindestlänge aus server.ts erfüllen (32 Zeichen).
+      SESSION_SECRET: ci-secret-nur-fuer-den-testlauf-lang-genug
+      # Kein Cluster im Test: Die Sperr-Suiten stellen mehrere Worker selbst
+      # nach, indem sie eigene Verbindungen aufmachen.
+      WEB_WORKERS: '1'
+
+    steps:
+      - uses: actions/checkout@v6
+
+      # pg_dump/psql für test/backup-restore-db.test.js. Der Postgres-DIENST
+      # oben ist ein Container — die Klienten laufen auf dem Runner. Ohne sie
+      # überspränge der Test sich selbst, und der Sicherungsweg bliebe genau so
+      # ungeprüft wie vor Nachtrag 152. Auf ubuntu-latest sind sie in aller
+      # Regel vorinstalliert; die Zeile stellt es sicher.
+      - name: PostgreSQL-Klienten bereitstellen
+        run: |
+          command -v pg_dump >/dev/null 2>&1 \
+            || (sudo apt-get update -qq && sudo apt-get install -y -qq postgresql-client)
+          pg_dump --version
+
+      # v4 und v5 nachgesehen statt geraten (dieselbe Methode wie in android.yml):
+      #     actions/setup-node@v4 -> runs.using: node20   (warnt)
+      #     actions/setup-node@v5 -> runs.using: node24    (still)
+      - uses: actions/setup-node@v6
+        with:
+          # Wie im Dockerfile (node:26-alpine) — geprüft werden soll, was auch
+          # ausgeliefert wird. Node 20 stand hier bis Nachtrag 152 und war zu
+          # dem Zeitpunkt bereits seit dem 30.04.2026 ohne Sicherheits-Patches.
+          # test/build-tooling.test.js hält diese Zahl und das Dockerfile
+          # zusammen. Die Begründung für gerade 26 steht im Dockerfile.
+          node-version: '26'
+          cache: npm
+          # Ohne diesen Pfad sucht setup-node die package-lock.json im
+          # Wurzelverzeichnis — `defaults.run.working-directory` gilt nur fuer
+          # `run:`-Schritte, nicht fuer Actions.
+          cache-dependency-path: Web-App/package-lock.json
+
+      # npm ci statt npm install: installiert exakt das Lockfile und scheitert,
+      # wenn package.json und package-lock.json auseinanderlaufen.
+      - name: Abhängigkeiten installieren
+        run: npm ci
+
+      - name: Typprüfung
+        run: npx tsc --noEmit
+
+      # Zweite Front (Nachtrag 150): noImplicitAny ist für alle Dateien scharf
+      # ausser den in scripts/check-noimplicitany.js namentlich aufgeführten.
+      # Der Schritt schlägt fehl, wenn eine saubere Datei neue Schuld aufnimmt
+      # ODER wenn ein Eintrag der Liste verwaist ist.
+      - name: Typprüfung (noImplicitAny, gestaffelt)
+        run: npm run typecheck:strict
+
+      # Vor den Tests bauen. Die Testhelfer bauen zwar bei Bedarf selbst
+      # (test/helpers/sources.js), aber ein eigener Schritt macht sichtbar, WO
+      # es klemmt: ein Build-Fehler soll nicht als "Test rot" erscheinen.
+      - name: Bauen
+        run: npm run build
+
+      # ── Warum das Protokoll umgeleitet wird ─────────────────────────────────
+      #
+      # Ein roter Lauf muss LESBAR sein. GitHub haengt am Ende jedes Jobs das
+      # Protokoll der Dienst-Container an — hier mehrere hundert Zeilen
+      # PostgreSQL. Genau darunter liegen die `not ok`-Zeilen, und das rohe
+      # Protokoll laesst sich nicht ohne weiteres herunterladen (der Ablageort
+      # liegt hinter einer Weiterleitung).
+      #
+      # Nachgemessen an Lauf 33794579113: Die letzten 210 Zeilen waren
+      # ausschliesslich Container-Protokoll. Wer wissen will, WAS rot war,
+      # findet es nicht.
+      #
+      # `set -o pipefail` ist dabei nicht Kosmetik: Ohne diese Zeile ist der
+      # Rueckgabewert der von `tee`, also immer 0 — der Schritt waere bei
+      # gescheiterten Tests GRUEN. Genau die Sorte stiller Fehlschlag, gegen
+      # die dieser ganze Workflow gebaut ist.
+      - name: Tests
+        run: |
+          set -o pipefail
+          npm test 2>&1 | tee "$RUNNER_TEMP/test.log"
+
+      - name: Rote Tests auflisten
+        if: failure()
+        run: |
+          set -eu
+          [ -f "$RUNNER_TEMP/test.log" ] || { echo "Kein Testprotokoll — der Lauf ist vorher gescheitert."; exit 0; }
+          {
+            echo "## Rote Tests"
+            echo ""
+            echo '```'
+            grep -E '^not ok' "$RUNNER_TEMP/test.log" || echo "(keine — der Lauf ist an etwas anderem gescheitert)"
+            echo '```'
+            echo ""
+            grep -E '^# (tests|pass|fail)' "$RUNNER_TEMP/test.log" || true
+          } >> "$GITHUB_STEP_SUMMARY"
+          echo "── Rote Tests samt Begruendung ──"
+          # `-m 20` statt `| head`: Eine Kette, deren letztes Glied nur
+          # durchreicht, verschluckt den Rueckgabewert davor. Hier waere das
+          # harmlos — aber die Regel dagegen (test/build-tooling.test.js) soll
+          # ohne Ausnahmeliste auskommen, und grep kann selbst begrenzen.
+          grep -E -m 20 -A 12 '^not ok' "$RUNNER_TEMP/test.log" || true
+
+          # ── Und den Befund als ANNOTATION ───────────────────────────────────
+          #
+          # Warum zusaetzlich: Die Zusammenfassung oben steht nur auf der
+          # Weboberflaeche, und das rohe Protokoll ist von hier aus nicht zu
+          # holen — der Ablageort liegt hinter einer Weiterleitung, die der
+          # Proxy mit 403 ablehnt. GEMESSEN an Lauf 33799134289: Die einzige
+          # Annotation war „Process completed with exit code 1".
+          #
+          # `::error::`-Zeilen werden zu Annotationen und sind ueber
+          # /check-runs/<id>/annotations abrufbar.
+          #
+          # ── Und warum BEIDE Faelle ──────────────────────────────────────────
+          #
+          # Der erste Entwurf meldete nur `not ok`-Zeilen. GEMESSEN an Lauf
+          # 33804... : Der Schritt lief, fand KEINE einzige — und lieferte
+          # damit genau nichts. Das war selbst der Befund: Der Testlauf
+          # scheitert, OHNE dass ein einzelner Test fehlschlaegt (ein Modul
+          # laedt nicht, eine Ausnahme fliegt ausserhalb eines Tests, der
+          # Prozess stirbt). Eine Diagnose, die nur den erwarteten Ausgang
+          # abdeckt, schweigt genau dann, wenn etwas Unerwartetes passiert.
+          rot=$(grep -E -c '^not ok' "$RUNNER_TEMP/test.log" || true)
+          if [ "${rot:-0}" -gt 0 ]; then
+            while IFS= read -r zeile; do
+              [ -n "$zeile" ] || continue
+              echo "::error title=Roter Test::${zeile#not ok }"
+            done < <(grep -E -m 20 '^not ok' "$RUNNER_TEMP/test.log" || true)
+          else
+            # Kein einziger fehlgeschlagener Test, und trotzdem rot. Dann sagt
+            # das ENDE des Protokolls, was los war — als eine Annotation, damit
+            # sie ueber die API lesbar ist.
+            ende=$(tail -n 40 "$RUNNER_TEMP/test.log" | tr '\n' '~' | sed 's/%/%25/g; s/\r/%0D/g; s/~/%0A/g')
+            echo "::error title=Testlauf ohne einzelnen Fehlschlag::$ende"
+          fi
+          # Die Summenzeile immer — sie sagt, ob ueberhaupt etwas gelaufen ist.
+          summe=$(grep -E '^# (tests|pass|fail)' "$RUNNER_TEMP/test.log" | tr '\n' ' ' || true)
+          echo "::notice title=Testsumme::${summe:-keine Summenzeile — der Lauf ist vor dem ersten Test gescheitert}"
+
+      # npm audit hat einen eigenen Schritt, damit ein neuer Befund nicht in
+      # den Testausgaben untergeht. --omit=dev: Was nur beim Bauen läuft, ist
+      # kein Angriffsweg auf den laufenden Dienst.
+      - name: Sicherheitsprüfung der Abhängigkeiten
+        run: npm audit --omit=dev --audit-level=high

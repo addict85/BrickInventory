@@ -256,9 +256,116 @@ test('tsconfig hat strictNullChecks an und tsc läuft sauber durch', { timeout: 
  * Vorgeschichte. Was hier geprüft wird, sind die drei Eigenschaften, ohne die
  * so ein Lauf wertlos wäre — und jede davon ist eine Zeile, die man beim
  * Umbauen des Workflows versehentlich verliert.
+ *
+ * ── Und wo die Datei liegt, war das Wichtigste ─────────────────────────────
+ * Dieser Test zeigte auf `Web-App/.github/workflows/ci.yml` und war grün.
+ * GitHub liest Workflows aber AUSSCHLIESSLICH aus `.github/workflows/` im
+ * Wurzelverzeichnis; in einem Unterordner ist so eine Datei nur Text.
+ * NACHGEMESSEN über die Actions-API: Das Repository kannte drei Workflows,
+ * dieser war keiner davon — er ist nie gelaufen.
+ *
+ * Der Inhalt war also die ganze Zeit bewacht und der Lauf fand nie statt.
+ * Dass eine Prüfung grün ist, sagt eben nur etwas über das, worauf sie zeigt.
+ * Der Ort selbst wird jetzt in workflow-ort.test.js geprüft.
  */
+/**
+ * Die Adresse der Test-Datenbank wird NIE ohne Rückfallwert gelesen.
+ *
+ * ── Der Befund ──────────────────────────────────────────────────────────────
+ * 79 Testdateien setzen oben
+ *
+ *     process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://…'
+ *
+ * Genau EINE Stelle las die Variable ohne diesen Rückfall: das Kind-Skript in
+ * image-queue-pace-db.test.js, das einen zweiten Prozess startet. Ist
+ * TEST_DATABASE_URL nicht gesetzt — und in der Entwicklungsumgebung ist sie es
+ * nicht —, bekam das Kind `undefined` und die Verbindung scheiterte.
+ *
+ * Der rote Untertest war dabei noch das Harmlose. Mehrfach beobachtet: Der
+ * Lauf der ganzen Datei brach danach ab mit
+ *
+ *     Unable to deserialize cloned data due to invalid or unsupported version.
+ *
+ * Diese Meldung sagt nichts über die Ursache. Sichtbar war nur, dass die Datei
+ * nach dem ersten Untertest aufhörte — 2 statt 13 Tests, und niemand sah,
+ * welche elf fehlten.
+ *
+ * ── Warum als Regel und nicht als einzelne Reparatur ────────────────────────
+ * Der Rückfallwert ist eine Regel, die 79-mal richtig und einmal falsch
+ * dastand. Wer den nächsten Kindprozess baut, schreibt dieselbe Zeile ab.
+ *
+ * Kommentare raus, BEVOR gesucht wird: Die Erklärung an der reparierten Stelle
+ * zitiert die falsche Zeile — ohne das meldete die Regel ihren eigenen
+ * Erklärtext.
+ */
+test('die Adresse der Test-Datenbank hat überall einen Rückfallwert', () => {
+  const { ohneKommentare } = require('./helpers/sources');
+  const dateien = fs.readdirSync(__dirname).filter(f => f.endsWith('.js'));
+  let gelesen = 0;
+  const ohneRueckfall = [];
+  for (const f of dateien) {
+    const src = ohneKommentare(fs.readFileSync(path.join(__dirname, f), 'utf8'));
+    for (const m of src.matchAll(/process\.env\.TEST_DATABASE_URL\s*(\|\|)?/g)) {
+      gelesen++;
+      if (!m[1]) ohneRueckfall.push(`${f}:${src.slice(0, m.index).split('\n').length}`);
+    }
+  }
+  // Selbstbeweis: Findet das Muster nichts, wäre die Liste leer und der Test
+  // grün, ohne etwas geprüft zu haben.
+  assert.ok(gelesen >= 50, `Nur ${gelesen} Zugriffe auf TEST_DATABASE_URL gefunden — Muster veraltet?`);
+  assert.deepEqual(ohneRueckfall, [],
+    'Diese Stellen lesen TEST_DATABASE_URL ohne Rückfallwert:\n  ' + ohneRueckfall.join('\n  ') +
+    '\nIst die Variable nicht gesetzt, kommt dort undefined an. In einem ' +
+    'Kindprozess bricht der ganze Testlauf dann mit einer Meldung ab, die ' +
+    'nichts über die Ursache sagt.');
+});
+
+/**
+ * BEIDE Workflows sagen, was rot war — nicht nur einer.
+ *
+ * ── Der Anlass ──────────────────────────────────────────────────────────────
+ * web-ci.yml schreibt seit Laengerem `::error::`-Annotationen, weil das rohe
+ * Protokoll von aussen nicht zu holen ist (die Ablage liegt hinter einer
+ * Weiterleitung, die der Proxy mit 403 abweist). android.yml tat das nicht.
+ *
+ * GEMESSEN an den Laeufen 80 und 81: Beide waren rot, und die einzige
+ * Annotation lautete „Process completed with exit code 1". Die Ursache — ein
+ * roter Test bzw. ein fehlender Import — war nur zu finden, indem das ganze
+ * Protokoll gelesen wurde, zweimal.
+ *
+ * ── Warum als gemeinsame Regel ──────────────────────────────────────────────
+ * „Zwei Apps, gleich gebaut" heisst auch: gleich diagnostizierbar. Eine Regel,
+ * die nur den Web-Workflow prueft, laesst genau die Haelfte offen, die man
+ * ohnehin schlechter untersuchen kann (Android laesst sich hier nicht bauen).
+ *
+ * Geprueft wird die WIRKUNG, nicht der Wortlaut: ein Mitschnitt, ein Schritt
+ * fuer den Fehlerfall, Annotationen fuer BEIDE Ausgaenge (etwas ist rot / es
+ * ist rot, ohne dass ein einzelner Test rot ist) und die Summenzeile.
+ */
+test('beide Workflows melden, was rot war', () => {
+  const wf = path.join(ROOT, '..', '.github', 'workflows');
+  for (const datei of ['web-ci.yml', 'android.yml']) {
+    const yml = fs.readFileSync(path.join(wf, datei), 'utf8');
+    assert.match(yml, /set -o pipefail/,
+      `${datei}: Ohne pipefail bestimmt tee den Rueckgabewert — ein roter Lauf ginge als Erfolg durch`);
+    assert.match(yml, /tee "\$RUNNER_TEMP\/test\.log"/,
+      `${datei}: kein Mitschnitt des Testprotokolls`);
+    assert.match(yml, /if:\s*failure\(\)/,
+      `${datei}: kein Schritt, der im Fehlerfall laeuft`);
+    // Beide Ausgaenge: der erwartete (etwas ist rot) und der unerwartete
+    // (rot, ohne dass ein einzelner Test rot ist — ein Uebersetzungsfehler,
+    // ein Modul, das nicht laedt). Eine Diagnose, die nur den ersten abdeckt,
+    // schweigt genau dann, wenn etwas Unerwartetes passiert.
+    const fehler = [...yml.matchAll(/::error title=/g)].length;
+    assert.ok(fehler >= 2,
+      `${datei}: nur ${fehler} Fehler-Annotation(en) — beide Ausgaenge muessen gemeldet werden`);
+    assert.match(yml, /::notice title=Testsumme::/,
+      `${datei}: keine Summenzeile — dann sagt nichts, ob ueberhaupt etwas gelaufen ist`);
+  }
+});
+
 test('der CI-Workflow prüft, was er prüfen soll', () => {
-  const p = path.join(ROOT, '.github', 'workflows', 'ci.yml');
+  const p = path.join(ROOT, '..', '.github', 'workflows', 'web-ci.yml');
   assert.ok(fs.existsSync(p), 'Es gibt keinen CI-Workflow mehr');
   const yml = fs.readFileSync(p, 'utf8');
 
@@ -281,19 +388,79 @@ test('der CI-Workflow prüft, was er prüfen soll', () => {
   //    `npm install` gehört dazu: nur ersteres scheitert, wenn package.json
   //    und Lockfile auseinanderlaufen.
   //
-  //    Auf `run:` festgemacht und nicht bloss auf den Befehlsnamen: Die
-  //    Begründungen im Workflow nennen `npm ci` und `npm install` im Fliesstext.
-  //    Ein Muster ohne `run:` wäre allein durch die Kommentare erfüllt gewesen —
-  //    ein Test, der sich an der Erklärung statt an der Sache festhält.
+  //    Gesucht wird im Workflow OHNE seine Kommentarzeilen. Der frühere Anker
+  //    war `run:\s*npm test` — direkt hinter dem Schlüsselwort. Er sollte
+  //    verhindern, dass die Begründungen im Fliesstext („npm ci statt npm
+  //    install") die Prüfung von selbst erfüllen. Er hat aber auch etwas
+  //    anderes festgeschrieben: dass der Befehl in DERSELBEN Zeile steht.
+  //
+  //    Sobald der Testschritt ein mehrzeiliger Block wurde (`set -o pipefail`
+  //    davor, `| tee` dahinter, damit ein roter Lauf lesbar bleibt), fand der
+  //    Anker nichts mehr und meldete „ohne Tests ist der ganze Lauf sinnlos" —
+  //    obwohl die Tests laufen. Kommentare wegzuschneiden erreicht dasselbe
+  //    Ziel, ohne die FORM des Schrittes vorzuschreiben.
+  const code = yml.split('\n').filter(z => !z.trimStart().startsWith('#')).join('\n');
   for (const [muster, warum] of [
-    [/run:\s*npm ci\b/,          'npm install würde ein abweichendes Lockfile stillschweigend hinnehmen'],
-    [/run:\s*npx tsc --noEmit/,  'ohne Typprüfung sagt der Lauf nichts über strictNullChecks'],
-    [/run:\s*npm run build/,     'ohne frischen Build prüft CI womöglich ein altes dist/'],
-    [/run:\s*npm test\b/,        'ohne Tests ist der ganze Lauf sinnlos'],
-    [/run:\s*npm run typecheck:strict/, 'die gestaffelte noImplicitAny-Prüfung fehlt'],
+    [/\bnpm ci\b/,          'npm install würde ein abweichendes Lockfile stillschweigend hinnehmen'],
+    [/\bnpx tsc --noEmit/,  'ohne Typprüfung sagt der Lauf nichts über strictNullChecks'],
+    [/\bnpm run build\b/,   'ohne frischen Build prüft CI womöglich ein altes dist/'],
+    [/\bnpm test\b/,        'ohne Tests ist der ganze Lauf sinnlos'],
+    [/\bnpm run typecheck:strict/, 'die gestaffelte noImplicitAny-Prüfung fehlt'],
   ]) {
-    assert.match(yml, muster, `CI-Workflow: ${warum}`);
+    assert.match(code, muster, `CI-Workflow: ${warum}`);
   }
+  // Gegenprobe zur Kommentar-Regel: `npm install` steht NUR im Fliesstext der
+  // Begründung. Bliebe es nach dem Wegschneiden übrig, schnitte die Funktion
+  // nichts weg — und alles darüber wäre wertlos.
+  assert.doesNotMatch(code, /\bnpm install\b/,
+    'npm install steht im ausführbaren Teil des Workflows — oder die ' +
+    'Kommentarzeilen werden nicht mehr weggeschnitten.');
+});
+
+test('eine Pipe im Workflow verliert den Fehlschlag nicht', () => {
+  // ── Gemessen, nicht vermutet ──────────────────────────────────────────────
+  //
+  //     bash -c 'set -e;               (echo x; exit 1) | tee /dev/null' -> 0
+  //     bash -c 'set -e -o pipefail;   (echo x; exit 1) | tee /dev/null' -> 1
+  //
+  // In einer Kette ist der Rückgabewert der des LETZTEN Gliedes. `npm test |
+  // tee protokoll` meldet also immer Erfolg, egal wie viele Tests rot sind.
+  // GitHub startet `run:`-Blöcke mit `bash -e`, aber OHNE pipefail.
+  //
+  // Der Testschritt benutzt genau diese Kette, damit ein roter Lauf lesbar
+  // bleibt (das Container-Protokoll überdeckt am Ende die `not ok`-Zeilen).
+  // Ohne die eine Zeile davor wäre der Preis dafür ein Workflow, der bei
+  // gescheiterten Tests grün ist — schlimmer als gar keiner.
+  //
+  // ── Wonach genau gesucht wird ─────────────────────────────────────────────
+  //
+  // Nicht nach JEDER Pipe. Der erste Entwurf tat das und meldete sofort einen
+  // Fehlalarm: `[ "$X" = "true" ] || fehlt=…` ist ein logisches ODER, und
+  // `--jq '.assets[] | select(…)'` ist ein Rohr INNERHALB von jq. Beide sind
+  // harmlos, beide enthalten ein `|`.
+  //
+  // Gefährlich ist die Kette, deren LETZTES Glied nur durchreicht: tee, head,
+  // tail, cat. Dort will man den Rückgabewert von LINKS, bekommt aber den von
+  // rechts — und der ist bei einem Durchreicher fast immer 0. Bei allen
+  // anderen Ketten ist das letzte Glied das, worauf es ankommt.
+  const DURCHREICHER = /\|\s*(tee|head|tail|cat)\b/;
+  const wf = path.join(ROOT, '..', '.github', 'workflows');
+  let geprueft = 0;
+  for (const datei of fs.readdirSync(wf).filter(f => /\.ya?ml$/.test(f))) {
+    const roh = fs.readFileSync(path.join(wf, datei), 'utf8');
+    for (const block of roh.split(/^      - /m).slice(1)) {
+      const rumpf = block.split('\n').filter(z => !z.trimStart().startsWith('#')).join('\n');
+      if (!/\brun:/.test(rumpf) || !DURCHREICHER.test(rumpf)) continue;
+      geprueft++;
+      assert.match(rumpf, /set -o pipefail|set -[a-z]*o[a-z]* pipefail/,
+        `${datei}: Ein run-Block leitet in einen Durchreicher (tee/head/tail/cat), ` +
+        'ohne "set -o pipefail". Der Rückgabewert ist dann dessen — ein ' +
+        `Fehlschlag davor geht verloren. Block:\n${rumpf.slice(0, 300)}`);
+    }
+  }
+  // Selbstbeweis: Findet die Suche keinen einzigen solchen Block, prüft die
+  // Schleife nichts und wäre trotzdem grün.
+  assert.ok(geprueft >= 1, 'Kein run-Block mit Durchreicher gefunden — Muster veraltet?');
 });
 
 test('die noImplicitAny-Ausnahmeliste stimmt noch', () => {
@@ -335,7 +502,9 @@ test('die noImplicitAny-Ausnahmeliste stimmt noch', () => {
  */
 test('Dockerfile und CI laufen auf derselben, unterstützten Node-Version', () => {
   const docker = read('Dockerfile');
-  const ci     = read('.github/workflows/ci.yml');
+  // Der Workflow liegt im Wurzelverzeichnis des REPOSITORIES, nicht in
+  // Web-App/ — siehe den Absatz im Test darueber.
+  const ci     = read('../.github/workflows/web-ci.yml');
 
   const imBild = [...docker.matchAll(/^FROM node:(\d+)-/gm)].map(m => m[1]);
   assert.ok(imBild.length >= 2,

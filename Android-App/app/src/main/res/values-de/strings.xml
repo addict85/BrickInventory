@@ -273,6 +273,7 @@
     <string name="nav_monitoring">📊 Monitoring</string>
     <string name="main_barcode_add_partslist">Zur Teileliste hinzufügen?</string>
     <string name="main_barcode_add_set">Set hinzufügen?</string>
+    <string name="main_barcode_unsure">Nicht sicher erkannt — bitte Bild und Namen prüfen</string>
     <string name="main_barcode_year">Jahr</string>
     <string name="main_barcode_pieces">Teile</string>
     <string name="main_barcode_figs">Figuren</string>
@@ -290,6 +291,18 @@
 
     <!-- Nachtrag i18n-Pass: zuvor hartkodierte Strings -->
     <string name="parts_search_placeholder">Teile suchen…</string>
+    <string name="parts_spare_tag">Ersatzteil</string>
+    <string name="setitem_used_in">Verwendet in</string>
+    <string name="setitem_used_in_none">In keinem Set gefunden</string>
+    <string name="setitem_total_qty">Gesamtmenge</string>
+    <string name="setitem_open_set">Set öffnen</string>
+    <string name="setitem_category">Kategorie</string>
+    <string name="setitem_color">Farbe</string>
+    <string name="parts_filter_all">Alle Teile</string>
+    <string name="view_cards">Karten</string>
+    <string name="view_table">Tabelle</string>
+    <string name="parts_filter_no_spare">Ohne Ersatzteile</string>
+    <string name="parts_filter_spare">Nur Ersatzteile</string>
     <string name="common_quantity">Anzahl</string>
     <string name="common_cancel">Abbrechen</string>
     <string name="common_loading">Laden…</string>
@@ -450,4 +463,23 @@
     <string name="pdfview_default_name">Anleitung</string>
     <string name="pdfview_empty_response">Leere Antwort vom Server</string>
     <string name="pdfview_share">PDF teilen</string>
+    <!-- Angemeldete Geraete (Token-Verwaltung) -->
+    <string name="tokens_title">Angemeldete Geräte</string>
+    <string name="tokens_hint">Jede Anmeldung — im Browser, in der App oder per QR-Code — stellt einen Zugang aus. Ein verlorenes oder verkauftes Gerät sperrst du hier aus, ohne dein Passwort zu ändern.</string>
+    <string name="tokens_none">Keine Zugänge.</string>
+    <string name="tokens_reload">Aktualisieren</string>
+    <string name="tokens_current">dieses Gerät</string>
+    <string name="tokens_never">nie</string>
+    <string name="tokens_unused">nie benutzt</string>
+    <string name="tokens_row_hint">Angemeldet %1$s · zuletzt benutzt %2$s · läuft ab %3$s</string>
+    <string name="tokens_revoke_title">Gerät abmelden?</string>
+    <string name="tokens_revoke_text">„%1$s" verliert den Zugang. Wer dieses Gerät benutzt, muss sich neu anmelden.</string>
+    <string name="tokens_revoke_confirm">Abmelden</string>
+    <string name="tokens_revoked">Gerät abgemeldet</string>
+    <string name="tokens_revoke_others">Alle anderen abmelden</string>
+    <string name="tokens_revoke_others_title">Alle anderen abmelden?</string>
+    <string name="tokens_revoke_others_text">%1$d andere Zugänge verlieren ihre Berechtigung. Dieses Gerät bleibt angemeldet.</string>
+    <string name="tokens_revoked_n">%1$d Zugänge abgemeldet</string>
+    <string name="tokens_no_others">Es gibt keine anderen Zugänge.</string>
+    <string name="tokens_self_unknown">Der eigene Zugang ist nicht erkennbar — ohne ihn liesse sich nicht sagen, welche die „anderen" sind.</string>
 </resources>

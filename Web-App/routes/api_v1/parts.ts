@@ -9,6 +9,7 @@ import { addManualPart, getPartColorList, updateManualPart } from '../parts';
 import { getSetting } from '../../utils/settings';
 import { getPartPriceHistory } from '../../utils/priceHistory';
 import { einzelwert } from '../../utils/validate';
+import { verwendendeSets } from '../../utils/handlers/shared';
 const router = express.Router();
 
 // ── PARTS ─────────────────────────────────────────────────────────────────────
@@ -54,7 +55,13 @@ router.post('/parts', requireToken, async (req: AuthedRequest, res) => {
 // ── PUT /api/v1/parts/:partNumber/:colorId — edit quantity / Preis/Stk (same logic as web app)
 router.put('/parts/:partNumber/:colorId', requireToken, async (req: AuthedRequest, res) => {
   try {
-    await updateManualPart(req.apiUser.user_id, String(req.params.partNumber), parseInt(String(req.params.colorId)), req.body);
+    // Wie beim Loeschen: Die Ansicht sagt, wessen Karte gemeint ist.
+    // NACHGEMESSEN — das Hauptkonto setzte auf der Karte des Kindes die Menge
+    // auf 99, und geaendert wurde die EIGENE Zeile: vorher 5|9, nachher 99|9,
+    // Antwort 200 {"success":true}.
+    const besitzer = await resolveWriteTarget(req.apiUser.user_id, req.query.owner);
+    if (besitzer === null) return res.status(403).json({ success: false, error: 'Kein Zugriff auf dieses Konto' });
+    await updateManualPart(besitzer, String(req.params.partNumber), parseInt(String(req.params.colorId)), req.body);
     res.json({ success: true });
   } catch (e) { handleRouteError(res, e); }
 });
@@ -62,9 +69,17 @@ router.put('/parts/:partNumber/:colorId', requireToken, async (req: AuthedReques
 // ── DELETE /api/v1/parts/:partNumber/:colorId — delete a manual part ─────────
 router.delete('/parts/:partNumber/:colorId', requireToken, async (req: AuthedRequest, res) => {
   try {
+    // WESSEN Karte war gemeint? Ohne den Parameter das eigene Konto — also
+    // unverändert für jeden Client, der ihn nicht kennt.
+    //
+    // resolveWriteTarget() ist derselbe Helfer, den das ERFASSEN schon nutzt
+    // (owner_user_id): Die Ansicht sagt, wessen Zeile gemeint ist; ob das
+    // erlaubt ist, entscheidet der Server über canWriteFor() — nie der Client.
+    const besitzer = await resolveWriteTarget(req.apiUser.user_id, req.query.owner);
+    if (besitzer === null) return res.status(403).json({ success: false, error: 'Kein Zugriff auf dieses Konto' });
     const r = await db.run(
       "DELETE FROM parts WHERE user_id=$1 AND part_number=$2 AND color_id=$3 AND source='manual'",
-      [req.apiUser.user_id, String(req.params.partNumber), parseInt(String(req.params.colorId))]
+      [besitzer, String(req.params.partNumber), parseInt(String(req.params.colorId))]
     );
     if (r.changes === 0) return res.status(404).json({ success: false, error: 'Teil nicht gefunden oder nicht manuell hinzugefügt' });
     // Erfassungshistorie mitlöschen — sonst tauchen die alten Preise beim
@@ -73,7 +88,7 @@ router.delete('/parts/:partNumber/:colorId', requireToken, async (req: AuthedReq
     // Finanzsummen lesen die Erfassungen und hätten das gelöschte Teil
     // dauerhaft weitergezählt. Gleiche Änderung in der Session-Route.
     await db.run('DELETE FROM part_acquisitions WHERE user_id=$1 AND part_number=$2 AND color_id=$3',
-      [req.apiUser.user_id, String(req.params.partNumber), parseInt(String(req.params.colorId)) || 0]);
+      [besitzer, String(req.params.partNumber), parseInt(String(req.params.colorId)) || 0]);
     res.json({ success: true });
   } catch (e) { handleRouteError(res, e); }
 });
@@ -130,6 +145,36 @@ router.get('/parts/:partNumber/:colorId/price-history', requireToken, async (req
     const data = await getPartPriceHistory(
       await scopeIds(uid, parseScopeMode(req.query.accounts)), einzelwert(req.params.partNumber), parseInt(String(req.params.colorId)) || 0, currency);
     res.json({ success: true, ...data });
+  } catch (e) { handleRouteError(res, e); }
+});
+
+// ── GET /api/v1/parts/:partNumber/:colorId/sets ──────────────────────────────
+/**
+ * In welchen Sets steckt dieses Teil?
+ *
+ * Marcos Wunsch zum Detail-Dialog automatisch erfasster Teile: „Es soll
+ * angezeigt werden, welche Sets dieses Teil verwenden — inkl. Link, um den
+ * Detail-Dialog des Sets öffnen zu können."
+ *
+ * Die Abfrage steht in utils/handlers/shared.ts, weil die Figuren-Route
+ * daneben WORT FÜR WORT dieselbe ist (nur Tabelle und Schlüssel wechseln).
+ *
+ * Blickfeld, nicht eigenes Konto: Im Haushalt soll auch das Set des
+ * Geschwisterkontos auftauchen, in dem dasselbe Teil steckt — sonst sagt die
+ * Liste etwas anderes als die Teileliste darüber, aus der man kommt.
+ *
+ * Steht UNTER /parts/:partNumber/:colorId/price-history aus demselben Grund
+ * wie diese: Express probiert der Reihe nach, und zwei Platzhalter passen
+ * sonst auch auf feste Pfade.
+ */
+router.get('/parts/:partNumber/:colorId/sets', requireToken, async (req: AuthedRequest, res) => {
+  try {
+    const uids = await scopeIds(req.apiUser.user_id, parseScopeMode(req.query.accounts));
+    const { item, sets } = await verwendendeSets(uids, 'parts', {
+      part_number: einzelwert(req.params.partNumber),
+      color_id: parseInt(String(req.params.colorId)) || 0,
+    });
+    res.json({ success: true, item, sets });
   } catch (e) { handleRouteError(res, e); }
 });
 

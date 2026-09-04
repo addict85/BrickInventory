@@ -10,8 +10,11 @@ import { resolveImageLocal, proxyImageUrl } from '../../utils/images';
 import { getSetting, getGlobalSetting } from '../../utils/settings';
 import { findSetInScope, normalizeSetNumber } from '../../utils/setAdd';
 import { scopeIds, parseScopeMode, writableIds } from '../../utils/household';
+import { istErsatzteil, ersatzteilSql } from '../../utils/validate';
 import { householdMembers, resolveWriteTarget } from '../../utils/household';
 import { moveSetBetweenAccounts } from '../../utils/setMove';
+import { istVermutung } from '../../utils/barcodeQuelle';
+import { setnummerKandidaten } from '../../utils/produkttitel';
 import { withInventoryLock } from '../../utils/txLock';
 import { fetchPrice } from '../../utils/financeCalc';
 import { addSet, updateSet } from '../../utils/setService';
@@ -118,8 +121,14 @@ router.get('/sets/barcode/:barcode', requireToken, async (req: AuthedRequest, re
     const image_url = rbData?.set_img_url || local?.image_url || null;
     const image_local = local?.image_local ? resolveImageLocal(local.image_local) : null;
 
+    // Jede Antwort sagt, WIE sie zustande kam (utils/barcodeQuelle.ts).
+    // Positivliste: Was dort nicht als geprüft steht, gilt als Vermutung — ein
+    // künftiger achter Weg ist damit automatisch als unsicher markiert, statt
+    // still als Treffer durchzugehen.
+    const unsicher = istVermutung(source);
+
     if (local) {
-      return { success:true, set_number:setNumber,
+      return { success:true, unsicher, set_number:setNumber,
         name:  local.name  || rbData?.name  || name,
         year:  local.year  || rbData?.year,
         pieces:local.pieces|| rbData?.num_parts,
@@ -133,7 +142,7 @@ router.get('/sets/barcode/:barcode', requireToken, async (req: AuthedRequest, re
         'INSERT INTO catalog_cache(set_number,name,year,theme,pieces,image_url) VALUES($1,$2,$3,$4,$5,$6) ON CONFLICT(set_number) DO UPDATE SET name=$2,year=$3,theme=$4,pieces=$5,image_url=$6',
         [setNumber, rbData.name, rbData.year, rbData.theme_name, rbData.num_parts, rbData.set_img_url]
       ).catch(()=>{});
-      return { success:true, set_number:setNumber,
+      return { success:true, unsicher, set_number:setNumber,
         name:   rbData.name     || name,
         year:   rbData.year,
         pieces: rbData.num_parts,
@@ -147,12 +156,12 @@ router.get('/sets/barcode/:barcode', requireToken, async (req: AuthedRequest, re
       [setNumber]
     ).catch(()=>null);
     if (cat) {
-      return { success:true, set_number:setNumber, name:cat.name||name,
+      return { success:true, unsicher, set_number:setNumber, name:cat.name||name,
         year:cat.year, pieces:cat.pieces, theme:cat.theme, minifigs,
         image_url:cat.image_url||image_url, source };
     }
 
-    return { success:true, set_number:setNumber, name, minifigs, image_url, source };
+    return { success:true, unsicher, set_number:setNumber, name, minifigs, image_url, source };
   }
 
   try {
@@ -204,7 +213,17 @@ router.get('/sets/barcode/:barcode', requireToken, async (req: AuthedRequest, re
       }
 
       // 2c. UPCitemdb (free, 100/day)
-      const upc = await new Promise<{ set_number: string; name: string } | null>(resolve => {
+      //
+      // Der Titel ist Fliesstext eines Händlers. Hier stand `match(/(\d{4,6})/)`
+      // — also die ERSTE vier- bis sechsstellige Zahl, egal welche. Bei
+      // „LEGO City 2023 Feuerwehrstation 60320" gewann das JAHR, und die
+      // Antwort ging als gültige Setnummer an die App.
+      //
+      // Jetzt liefert utils/produkttitel.ts geordnete Kandidaten (Teilezahlen
+      // und Jahre aussortiert), und der KATALOG entscheidet, welcher davon
+      // wirklich ein Set ist. Nur eine lokale Abfrage je Kandidat — sie kostet
+      // nichts am Tageskontingent.
+      const titel = await new Promise<string | null>(resolve => {
         (require('https') as typeof import('https')).get(
           `https://api.upcitemdb.com/prod/trial/lookup?upc=${ean13}`,
           { family: 4, headers:{ 'User-Agent':'BrickInventoryManager/1.0' } }, r => {
@@ -212,16 +231,34 @@ router.get('/sets/barcode/:barcode', requireToken, async (req: AuthedRequest, re
             r.on('end',()=>{
               try {
                 const d=JSON.parse(b);
-                const item=d?.items?.[0];
-                if(!item?.title) return resolve(null);
-                const m=(item.title||'').match(/(?:#\s*)?(\d{4,6})/i);
-                resolve(m ? {set_number:`${m[1]}-1`,name:item.title} : null);
+                resolve(d?.items?.[0]?.title || null);
               } catch(_){resolve(null);}
             });
           }
         ).on('error',()=>resolve(null)).setTimeout(6000, function (this: import('http').ClientRequest) { this.destroy(); resolve(null); });
       });
-      if (upc) return res.json(await enrichResult(upc.set_number, upc.name, 'upcitemdb'));
+      if (titel) {
+        const kandidaten = setnummerKandidaten(titel);
+        for (const kandidat of kandidaten) {
+          // normalizeSetNumber statt `${kandidat}-1`: Ein Kandidat kann den
+          // Variantenzusatz schon mitbringen („60445-1" im Titel), und daraus
+          // wurde sonst „60445-1-1" — eine Nummer, die es nirgends gibt.
+          const n = normalizeSetNumber(kandidat);
+          const bekannt = await db.get(
+            'SELECT set_number FROM catalog_cache WHERE set_number = $1 OR set_number = $2',
+            [kandidat, n]
+          ).catch(() => null);
+          if (bekannt) return res.json(await enrichResult(bekannt.set_number, titel, 'upcitemdb'));
+        }
+        // Kein Kandidat im Katalog: Der erste bleibt als VERMUTUNG stehen —
+        // Marcos Entscheidung, lieber einen markierten Vorschlag als gar nichts.
+        // enrichResult holt Bild und Namen dazu, und die App weist im Dialog
+        // darauf hin, dass hier hingesehen werden muss.
+        const ersterKandidat = kandidaten[0];
+        if (ersterKandidat) {
+          return res.json(await enrichResult(normalizeSetNumber(ersterKandidat), titel, 'upcitemdb'));
+        }
+      }
     }
 
 
@@ -275,7 +312,12 @@ router.get('/sets/:setNumber/parts-list', requireToken, async (req: AuthedReques
          LEFT JOIN rb_colors     c ON c.id       = ip.color_id
          LEFT JOIN rb_bl_mapping m ON m.part_num = ip.part_num
          WHERE ip.inventory_id = $1
-           AND (ip.is_spare IS NULL OR ip.is_spare IN ('f','false','False','0',''))`,
+           -- „Kein Ersatzteil" als Kehrseite derselben Lesart wie
+           -- istErsatzteil() in utils/validate.ts. Vorher stand hier eine
+           -- eigene Liste ('f','false','False','0',''), die z. B. 'no' oder
+           -- ein grossgeschriebenes 'T' anders eingeordnet haette als der
+           -- Rest des Baums.
+           AND (ip.is_spare IS NULL OR NOT ${ersatzteilSql('ip.is_spare')})`,
         [inv.id]
       );
     }
@@ -295,7 +337,9 @@ router.get('/sets/:setNumber/parts-list', requireToken, async (req: AuthedReques
           color_hex:      r.color.rgb  || null,
           rb_image_url:   r.part.part_img_url || null,
           total_quantity: r.quantity,
-          is_spare:       r.is_spare ? 't' : 'f'
+          // Wahrheitswert statt 't'/'f' — die dritte Darstellung desselben
+          // Merkmals in derselben Datei.
+          is_spare:       !!r.is_spare
         }));
       }
     }
@@ -354,9 +398,10 @@ router.get('/sets/:setNumber/parts-list', requireToken, async (req: AuthedReques
           color_hex:      cat.color_hex   || p.color_hex   || null,
           image_url:      imageUrl,
           total_quantity: qty,
-          is_spare: (p.is_spare === true || p.is_spare === 1 ||
-                     p.is_spare === 't' || p.is_spare === 'true' ||
-                     p.is_spare === 'True') ? '1' : '0'
+          // Ein echter Wahrheitswert ueber den gemeinsamen Helfer. Hier stand
+          // eine eigene Aufzaehlung der Schreibweisen — eine, die 'True'
+          // kannte, waehrend die Teileliste daneben es nicht tat.
+          is_spare: istErsatzteil(p.is_spare)
         });
       }
     }
@@ -619,12 +664,32 @@ router.put('/sets/:setNumber', requireToken, async (req: AuthedRequest, res) => 
   } catch (e) { handleRouteError(res, e); }
 });
 
+/**
+ * Set löschen — standardmässig im ganzen SCHREIB-Blickfeld.
+ *
+ * Im Haushalt fasst die Galerie dieselbe Setnummer zu EINER Kachel zusammen
+ * (utils/handlers/sets.ts gruppiert nach set_number). Wer diese Kachel löscht,
+ * meint alle Exemplare dahinter — deshalb writableIds().
+ *
+ * ── Warum es jetzt eingrenzbar ist ──────────────────────────────────────────
+ * Genau diese Vorgabe war in „Alle meine Sets löschen" falsch. NACHGEMESSEN
+ * in einem Haushalt aus zwei Konten: Der Knopf listete /v1/sets ohne Blickfeld
+ * (also auch die Sets des Unterkontos) und löschte jede Nummer mit dem vollen
+ * Schreib-Blickfeld. Das Unterkonto verlor Sets, Teile und Minifiguren
+ * vollständig — darunter ein Set, das das Hauptkonto nie besass. Versprochen
+ * hatte der Knopf „Alle MEINE Sets löschen".
+ *
+ * `accounts` darf das Blickfeld nur EINSCHRÄNKEN, nie erweitern: Die gewählte
+ * Menge wird gegen writableIds() geschnitten. Damit ist der Parameter eine
+ * Sicherung und kein Zugriffsweg — dieselbe Regel wie bei scopeIds() selbst.
+ */
 router.delete('/sets/:setNumber', requireToken, async (req: AuthedRequest, res) => {
   try {
-    // deleteSet() kann das Blickfeld längst (asIds + ANY) — es bekam bisher
-    // nur eine nackte ID und löschte damit ausschliesslich Eigenes. Also
-    // dasselbe SCHREIB-Blickfeld wie in der Webapp-Route (Nachtrag 53).
-    const ok = await deleteSet(await writableIds(req.apiUser.user_id), pfadParam(req, 'setNumber'));
+    const schreibbar = await writableIds(req.apiUser.user_id);
+    const gewaehlt = req.query.accounts === undefined ? schreibbar
+      : await scopeIds(req.apiUser.user_id, parseScopeMode(req.query.accounts));
+    const ok = await deleteSet(gewaehlt.filter(id => schreibbar.includes(id)),
+                               pfadParam(req, 'setNumber'));
     if (!ok) return res.status(404).json({ success: false, error: 'Set nicht gefunden' });
     res.json({ success: true });
   } catch (e) { handleRouteError(res, e); }

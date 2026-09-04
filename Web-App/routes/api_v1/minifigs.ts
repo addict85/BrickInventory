@@ -7,8 +7,10 @@ import { scopeIds, parseScopeMode, resolveWriteTarget } from '../../utils/househ
 import { getManualMinifigs, getMinifigStats, getMinifigs } from '../../utils/handlers/minifigs';
 import { addManualFig, updateManualFig } from '../minifigs';
 import { getSetting } from '../../utils/settings';
+import { ersatzteilSql } from '../../utils/validate';
 import { getMinifigPriceHistory } from '../../utils/priceHistory';
 import { einzelwert } from '../../utils/validate';
+import { verwendendeSets } from '../../utils/handlers/shared';
 const router = express.Router();
 
 // ── MINIFIGS ─────────────────────────────────────────────────────────────────
@@ -33,7 +35,10 @@ router.post('/minifigs', requireToken, async (req: AuthedRequest, res) => {
 // ── PUT /api/v1/minifigs/:figNumber — edit quantity / Preis/Stk (same logic as web app)
 router.put('/minifigs/:figNumber', requireToken, async (req: AuthedRequest, res) => {
   try {
-    await updateManualFig(req.apiUser.user_id, pfadParam(req, 'figNumber'), req.body);
+    // Wie bei den Teilen: Ohne den Parameter das eigene Konto.
+    const besitzer = await resolveWriteTarget(req.apiUser.user_id, req.query.owner);
+    if (besitzer === null) return res.status(403).json({ success: false, error: 'Kein Zugriff auf dieses Konto' });
+    await updateManualFig(besitzer, pfadParam(req, 'figNumber'), req.body);
     res.json({ success: true });
   } catch (e) { handleRouteError(res, e); }
 });
@@ -41,14 +46,17 @@ router.put('/minifigs/:figNumber', requireToken, async (req: AuthedRequest, res)
 // ── DELETE /api/v1/minifigs/:figNumber — delete a manual minifig ─────────────
 router.delete('/minifigs/:figNumber', requireToken, async (req: AuthedRequest, res) => {
   try {
+    // Wie bei den Teilen: Ohne den Parameter das eigene Konto.
+    const besitzer = await resolveWriteTarget(req.apiUser.user_id, req.query.owner);
+    if (besitzer === null) return res.status(403).json({ success: false, error: 'Kein Zugriff auf dieses Konto' });
     const r = await db.run(
       "DELETE FROM minifigs WHERE user_id=$1 AND fig_number=$2 AND source='manual'",
-      [req.apiUser.user_id, req.params.figNumber]);
+      [besitzer, req.params.figNumber]);
     if (r.changes === 0) return res.status(404).json({ success: false, error: 'Minifigur nicht gefunden oder nicht manuell hinzugefügt' });
     // OHNE .catch(() => {}) — siehe Session-Route: verwaiste Erfassungen
     // zählen in den Finanzsummen weiter, ohne dass eine Ansicht sie zeigt.
     await db.run('DELETE FROM minifig_acquisitions WHERE user_id=$1 AND fig_number=$2',
-      [req.apiUser.user_id, req.params.figNumber]);
+      [besitzer, req.params.figNumber]);
     res.json({ success: true });
   } catch (e) { handleRouteError(res, e); }
 });
@@ -110,7 +118,10 @@ router.get('/minifigs/:figNumber/parts', requireToken, async (req: AuthedRequest
               COALESCE(m.bl_part_num, ip.part_num) AS bl_part_number,
               p.name AS part_name, ip.color_id,
               c.name AS color_name, c.rgb AS color_hex,
-              CASE WHEN ip.is_spare='t' THEN 1 ELSE 0 END AS is_spare,
+              -- Dieselbe Lesart wie istErsatzteil() in utils/validate.ts.
+              -- Vorher nur 't' — ein '1' oder 'true' aus dem Katalog galt hier
+              -- als KEIN Ersatzteil, drei Dateien weiter aber als eines.
+              ${ersatzteilSql('ip.is_spare')} AS is_spare,
               ip.quantity
        FROM rb_inventory_parts ip
        LEFT JOIN rb_parts  p ON p.part_num = ip.part_num
@@ -171,5 +182,28 @@ router.get('/minifigs/:figNumber/parts', requireToken, async (req: AuthedRequest
   } catch (e) { handleRouteError(res, e); }
 });
 
+
+// ── GET /api/v1/minifigs/:figNumber/sets ─────────────────────────────────────
+/**
+ * In welchen Sets steckt diese Figur?
+ *
+ * Gegenstück zu /api/v1/parts/:partNumber/:colorId/sets. Beide rufen dieselbe
+ * Funktion in utils/handlers/shared.ts auf — die Frage ist zweimal dieselbe,
+ * nur Tabelle und Schlüssel wechseln. Zwei getrennte Abfragen waeren genau die
+ * Sorte Doppelung, die in diesem Projekt schon mehrfach auseinandergelaufen
+ * ist (zuletzt routes/minifigs.ts gegen routes/parts.ts).
+ *
+ * Blickfeld, nicht eigenes Konto: Im Haushalt soll auch das Set des
+ * Geschwisterkontos auftauchen, in dem dieselbe Figur steckt.
+ */
+router.get('/minifigs/:figNumber/sets', requireToken, async (req: AuthedRequest, res) => {
+  try {
+    const uids = await scopeIds(req.apiUser.user_id, parseScopeMode(req.query.accounts));
+    const { item, sets } = await verwendendeSets(uids, 'minifigs', {
+      fig_number: einzelwert(req.params.figNumber),
+    });
+    res.json({ success: true, item, sets });
+  } catch (e) { handleRouteError(res, e); }
+});
 
 export default router;

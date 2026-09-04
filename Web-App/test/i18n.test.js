@@ -122,7 +122,18 @@ test('Teile-Kacheln laden das Zoom-Bild über den Server-Proxy, nicht direkt vom
   // durch das Backend laufen. data-orig speiste bisher die rohe (CDN-)Adresse
   // direkt, der Zoom lief damit am Server vorbei.
   const src = fs.readFileSync(path.join(__dirname, '..', 'public', 'js', '03-parts.js'), 'utf8');
-  const fn = src.slice(src.indexOf('function partsCard('), src.indexOf('function partsCard(') + 900);
+  // ── Warum nicht mehr `+ 900` ────────────────────────────────────────────
+  // Hier stand ein festes Fenster von 900 Zeichen ab dem Funktionsanfang.
+  // Es ging kaputt, als die Funktion einen Erklaerabsatz mehr bekam: Die
+  // gesuchte Zeile rutschte hinter das Fenster, und die Pruefung meldete
+  // einen Fehler, den es nicht gab. Eine Zahl, die die LAENGE eines
+  // Kommentars festschreibt, prueft nicht den Code.
+  //
+  // Jetzt bis zur naechsten Funktion — das ist der Rumpf, ohne Magie.
+  const anfang = src.indexOf('function partsCard(');
+  assert.ok(anfang >= 0, 'partsCard() gibt es nicht mehr — umbenannt?');
+  const naechste = src.indexOf('\nfunction ', anfang + 1);
+  const fn = src.slice(anfang, naechste > anfang ? naechste : undefined);
   assert.match(fn, /data-orig="\$\{escUrl\(rawSrc \? imgUrl\(fullUrl\(rawSrc\), false\) : ''\)\}"/,
     'data-orig muss über imgUrl(...) proxy-gewickelt sein, nicht die rohe Adresse');
 });

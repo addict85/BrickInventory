@@ -31,6 +31,7 @@ process.env.WEB_WORKERS = '1';
 
 // Nach dist/ bauen statt in-place — siehe helpers/sources.js.
 const _req = require('./helpers/sources').buildAndRequire();
+const { routerEinhaengungen } = require('./helpers/sources');
 
 const db = _req('db/database.js');
 const express = require(path.join(ROOT, 'node_modules', 'express'));
@@ -114,14 +115,34 @@ async function seed() {
     `INSERT INTO set_acquisitions (user_id, set_number, quantity, purchase_price, condition)
      VALUES ($1,'40567-1',1,35.00,'N'), ($1,'40568-1',1,35.00,'N') ON CONFLICT DO NOTHING`, [USER.id]);
 
-  // Einstellungen (User + global) — Grundlage für den Settings-Vergleich
+  // ── Einstellungen: die Vorlage muss BEIDE Wege abdecken ────────────────────
+  //
+  // Vorher stand price_cache_ttl hier als BENUTZER-Einstellung. Damit lasen
+  // beide APIs dieselbe Tabelle, und der globale Weg wurde nie berührt — die
+  // v1-Route las ausschliesslich user_settings und lieferte sonst ihre fest
+  // verdrahtete 24. Gemessen: global 48 → Webapp 48, App 24. Der Test war
+  // grün, weil seine Vorlage die einzige Zeile schrieb, die den Fehler
+  // verdeckt.
+  //
+  // Jetzt trägt die Vorlage beide Fälle:
+  //   price_cache_ttl  NUR global   → ein globaler Wert muss die App erreichen
+  //   currency         beides       → der Wert des Nutzers muss gewinnen
+  //
+  // DO UPDATE statt DO NOTHING ist hier Bedingung: initSchema() legt
+  // price_cache_ttl bereits global mit '24' an — ausgerechnet dem Wert, den
+  // die v1-Route fest verdrahtet hatte. Mit DO NOTHING bliebe die 24 stehen,
+  // beide APIs lieferten 24, und der Vergleich wäre wieder grün, ohne den
+  // globalen Weg berührt zu haben. Kein Wert der Vorlage darf mit einer
+  // Vorgabe übereinstimmen, sonst prüft die Zusicherung nur die Vorgabe.
   await db.run(
     `INSERT INTO user_settings (user_id, key, value)
-     VALUES ($1,'currency','CHF'), ($1,'price_cache_ttl','48'), ($1,'user_default_condition','U') ON CONFLICT DO NOTHING`,
+     VALUES ($1,'currency','CHF'), ($1,'user_default_condition','U') ON CONFLICT DO NOTHING`,
     [USER.id]);
   await db.run(
     `INSERT INTO global_settings (key, value)
-     VALUES ('default_price_condition','N'), ('app_theme','brick') ON CONFLICT DO NOTHING`);
+     VALUES ('currency','USD'), ('price_cache_ttl','48'),
+            ('default_price_condition','N'), ('app_theme','brick')
+     ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value`);
 
   // Preis-Caches füllen, damit die Bewertungs-Endpunkte OHNE externe
   // Preis-API auskommen (wie in Produktion nach dem Preis-Job)
@@ -187,16 +208,27 @@ test('API-Parität Webapp ↔ Android', async (t) => {
       req.session = { userId: USER.id, username: USER.username, isAdmin: false };
     next();
   });
-  app.use('/api/sets',     _req('routes/sets.js'));
-  app.use('/api/parts',    _req('routes/parts.js'));
-  app.use('/api/finance',  _req('routes/finance.js'));
-  app.use('/api/settings', _req('routes/settings.js'));
-  app.use('/api/minifigs', _req('routes/minifigs.js'));
+  // ── Die Einhaengepunkte kommen aus server.ts ─────────────────────────────
+  //
+  // Sie standen hier als vier feste Zeilen. Beim Zusammenlegen der
+  // API-Oberflaechen sind sie still falsch geworden: Der Pruefstand sprach
+  // weiter /api/settings an, waehrend der Server das laengst unter
+  // /api/v1/settings ausliefert. Ein Pruefstand, der die Verdrahtung
+  // ABSCHREIBT, prueft eine Verdrahtung, die es nicht gibt.
+  // ── Die REIHENFOLGE ist Teil der Verdrahtung ─────────────────────────────
+  //
+  // /api/v1 (der Index) muss ZUERST stehen, genau wie in server.ts. Sonst
+  // faengt der sitzungsgebundene Router unter /api/v1/sets die Anfragen ab,
+  // die eigentlich die Token-Fassung beantworten soll — gemessen: 401
+  // „Nicht angemeldet" auf /api/v1/sets/…/acquisitions mit gueltigem Token.
+  //
   // _req() statt require(ROOT/...): Die kompilierten Dateien liegen seit
   // hardened-59 unter dist/, nicht mehr neben den .ts-Quellen. Diese eine
   // Zeile lud noch aus dem Quellordner und warf MODULE_NOT_FOUND — bemerkt
   // hat es niemand, weil der ganze Test ohne Postgres übersprungen wird.
   app.use('/api/v1',       _req('routes/api_v1/index.js'));
+  for (const r of routerEinhaengungen())
+    app.use(r.mount, _req('routes/' + r.name + '.js'));
 
   const srv = app.listen(0);
   const base = `http://localhost:${srv.address().port}`;
@@ -310,12 +342,16 @@ test('API-Parität Webapp ↔ Android', async (t) => {
   });
 
   await t.test('Einstellungen: kuratierte v1-Felder == Webapp-Werte', async () => {
-    // GET /api/settings ist NICHT zusammengelegt worden, und das mit Absicht:
-    // Es trägt die globalen Schlüssel und die Admin-Felder, die kuratierte
-    // Sicht der App weder braucht noch bekommen soll. Zwei verschiedene
-    // Antworten, nicht zwei Fassungen derselben — geprüft wird deshalb, dass
-    // die GEMEINSAMEN Werte übereinstimmen.
-    const web = (await get('/api/settings/')).body;
+    // Die Webapp-Sicht und die kuratierte Sicht der App sind NICHT
+    // zusammengelegt, und das mit Absicht: Die eine trägt die globalen
+    // Schlüssel und die Admin-Felder, die die App weder braucht noch bekommen
+    // soll. Zwei verschiedene Antworten, nicht zwei Fassungen derselben —
+    // geprüft wird deshalb, dass die GEMEINSAMEN Werte übereinstimmen.
+    //
+    // Gelesen wird über /settings/raw: Die frühere Adresse GET /api/settings/
+    // lieferte dasselbe in einer anderen Hülle und hatte keinen Aufrufer; sie
+    // ist beim Zusammenlegen der API-Oberflächen entfallen.
+    const web = (await get('/api/v1/settings/raw')).body.settings;
     const v1 = (await get('/api/v1/settings')).body.settings;
     assert.equal(v1.currency, web.currency);
     assert.equal(v1.price_cache_ttl, web.price_cache_ttl);
@@ -323,6 +359,16 @@ test('API-Parität Webapp ↔ Android', async (t) => {
     assert.equal(v1.default_price_condition, web.default_price_condition);
     assert.equal(v1.app_theme, web.app_theme);
     assert.equal(v1.effective_condition, 'U');   // User-Wert schlägt global
+
+    // Der Vergleich oben allein reicht nicht: Lieferten BEIDE die fest
+    // verdrahtete Vorgabe, wäre er ebenfalls grün. Deshalb hier die
+    // absoluten Werte aus der Vorlage — 48 kann nur aus global_settings
+    // stammen, CHF nur aus user_settings.
+    assert.equal(v1.price_cache_ttl, '48',
+      'Ein GLOBAL gesetzter Wert erreicht die App nicht — liest die v1-Route ' +
+      'wieder selbst auf user_settings statt über readSettings()?');
+    assert.equal(v1.currency, 'CHF',
+      'Der Wert des Nutzers muss den globalen überschreiben (global steht USD)');
   });
 
   await t.test('v1 valuation: total_value ist Alias von totals.qty_avg', async () => {
@@ -467,11 +513,20 @@ test('API-Parität Webapp ↔ Android', async (t) => {
     assert.deepEqual(core(viaToken.body), core(viaSession.body));
   });
 
-  await t.test('ohne Auth: beide Familien lehnen ab', async () => {
-    const web = await get('/api/sets/', { 'x-no-session': '1' });
-    const v1 = await get('/api/v1/sets', { 'x-no-session': '1' });
-    assert.equal(web.status, 401);
-    assert.equal(v1.status, 401);
+  await t.test('ohne Auth: beide Absicherungen lehnen ab', async () => {
+    // Hier stand `/api/sets/` gegen `/api/v1/sets` — „beide Familien". Seit
+    // dem Zusammenlegen der API-Oberflaechen gibt es nur noch EINEN
+    // Adressraum; die alte Adresse antwortet gar nicht mehr, und der Test
+    // haette einen 404 fuer eine bestandene Abweisung gehalten.
+    //
+    // Was WEITER gilt und hier geprueft wird: Es gibt zwei Absicherungen im
+    // Baum — requireToken (nimmt Sitzung ODER Bearer) und requireLogin (nur
+    // Sitzung). Ohne Ausweis muss JEDE davon mit 401 abweisen, nicht mit 200
+    // und nicht mit einer Weiterleitung auf eine HTML-Seite.
+    const mitToken = await get('/api/v1/sets', { 'x-no-session': '1' });
+    const nurSitzung = await get('/api/v1/settings/raw', { 'x-no-session': '1' });
+    assert.equal(mitToken.status, 401, 'requireToken laesst ohne Ausweis durch');
+    assert.equal(nurSitzung.status, 401, 'requireLogin laesst ohne Sitzung durch');
   });
 
   srv.close();

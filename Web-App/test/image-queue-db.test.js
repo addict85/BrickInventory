@@ -191,7 +191,30 @@ test('die Kachel „Bild-Download (CDN)" zeigt die Katalog-Warteschlange',
     // genügte hier `letzterLauf.zeit = null`; genau das hat mitverdeckt, dass
     // die Kachel eine PROZESSLOKALE Zahl las. Den Nachweis, dass ein anderer
     // Prozess den Stand sieht, führt image-queue-pace-db.test.js.)
+    // ── Die Kachel hat DREI Eingaenge, dieser Test beherrschte einen ──────
+    //
+    // In routes/api_v1/admin.ts steht
+    //
+    //     status: (imgRunning || reDlRunning || (katalogOffen > 0 && jobLaeuft))
+    //
+    // Zurueckgesetzt wurde hier nur das dritte Glied. Die anderen beiden
+    // liegen ebenfalls in der DATENBANK und ueberdauern damit die Grenze
+    // zwischen zwei Testdateien — jede laeuft zwar im eigenen Prozess, aber
+    // alle auf derselben Datenbank.
+    //
+    // Aufgefallen im ALLERERSTEN CI-Lauf dieses Repositories: dort rot, hier
+    // gruen. Nachgestellt und bewiesen — ein hinterlassenes
+    // imgredl_status={running:true} macht genau diese Zeile rot
+    // („'running' !== 'idle'"), und ohne den Schluessel ist sie wieder gruen.
+    //
+    // Der eigentliche Fehler lag daneben und ist behoben: Der Leser beachtete
+    // das Alter des Standes nicht, und der Schreiber wartete sein eigenes
+    // Schreiben nicht ab. Diese Zeilen hier stellen sicher, dass der Test
+    // MISST, was er behauptet, statt auf einen aufgeraeumten Nachbarn zu
+    // hoffen.
     await db.run(`DELETE FROM global_settings WHERE key='imgqueue_last_run'`);
+    await db.run(`DELETE FROM global_settings WHERE key='imgredl_status'`);
+    await _req('utils/jobMonitor.js').imgDlReset().catch(() => {});
     _req('jobs/imageQueue.js').letzterLauf.zeit = null;
     const ohneLauf = await kachel();
     assert.equal(ohneLauf.status, 'idle',
@@ -208,6 +231,50 @@ test('die Kachel „Bild-Download (CDN)" zeigt die Katalog-Warteschlange',
     assert.ok(nachLauf.queueLastRun, 'Der Zeitpunkt des letzten Durchgangs fehlt');
     // Und der Balken darf nicht auf 100 % stehen, während noch etwas aussteht.
     assert.ok(voll.total >= 137, `total=${voll.total} enthält die Warteschlange nicht`);
+
+    // ── Ein STEHENGEBLIEBENES „läuft" ist kein Betrieb ────────────────────
+    //
+    // Der Bilder-Nachlauf (redownloadMissingImages) legt seinen Fortschritt in
+    // `imgredl_status` ab und setzt ihn am Ende auf `running: false`. Wird der
+    // Prozess mittendrin beendet — Neustart, Auslieferung, Container gestoppt
+    // —, kommt er dazu nie mehr. Hier stand `reDl?.running === true`, also der
+    // Wert ohne sein Alter: Die Kachel meldete dann für immer Betrieb.
+    //
+    // Genau dieselbe Regel steht zwölf Zeilen daneben für den Katalog-Job,
+    // begründet mit Marcos Befund „scheint zu laufen, aber im Log steht
+    // nichts". Sie stand nur an einer der beiden Stellen.
+    //
+    // Gemessen wird der UNTERSCHIED: zwei Stände, die sich ausschliesslich im
+    // Zeitstempel unterscheiden, müssen verschieden ausfallen. Ein Test, der
+    // nur den alten Stand prüft, bliebe auch dann grün, wenn die Kachel gar
+    // keinen Betrieb mehr melden könnte.
+    // Die anderen beiden Eingaenge zuerst stilllegen — sonst misst dieser
+    // Abschnitt sie statt des Nachlaufs. (Erster Anlauf tat genau das: Der
+    // Durchgang von eben liess `jobLaeuft` wahr sein, und die Kachel stand
+    // auch mit zehn Minuten altem Nachlauf auf „running". Dieselbe
+    // Fehlerklasse wie der Fehler, um den es hier geht.)
+    await db.run(`DELETE FROM global_settings WHERE key='imgqueue_last_run'`);
+    _req('jobs/imageQueue.js').letzterLauf.zeit = null;
+    await _req('utils/jobMonitor.js').imgDlReset().catch(() => {});
+    assert.notEqual((await kachel()).status, 'running',
+      'Vorbedingung verletzt: Ohne Nachlauf darf hier kein Betrieb stehen');
+
+    const redl = async (at) => db.run(
+      `INSERT INTO global_settings (key,value) VALUES ('imgredl_status',$1)
+         ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value`,
+      [JSON.stringify({ running: true, phase: 'scanning', at })]);
+
+    await redl(Date.now());
+    const frisch = await kachel();
+    assert.equal(frisch.status, 'running',
+      'Ein FRISCHER Nachlauf muss weiterhin als Betrieb gelten');
+
+    await redl(Date.now() - 10 * 60_000);
+    const alt = await kachel();
+    assert.notEqual(alt.status, 'running',
+      'Ein zehn Minuten alter Stand gilt noch als Betrieb — dann bleibt die ' +
+      'Kachel nach einem abgebrochenen Lauf für immer auf „läuft" stehen.');
+    await db.run(`DELETE FROM global_settings WHERE key='imgredl_status'`);
   } finally {
     await db.run(`DELETE FROM image_wanted`).catch(() => {});
     await db.run(`DELETE FROM users WHERE username=$1`, [NUTZER]).catch(() => {});

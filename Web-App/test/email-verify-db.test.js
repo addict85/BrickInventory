@@ -38,7 +38,6 @@ process.env.WEB_WORKERS = '1';
 const _req = require('./helpers/sources').buildAndRequire();
 const db   = _req('db/database.js');
 const { verifiziereEmailToken, hashToken } = _req('utils/auth.js');
-const express = require(path.join(ROOT, 'node_modules', 'express'));
 
 async function dbReachable() {
   try { await db.get('SELECT 1 AS ok'); return true; } catch { return false; }
@@ -68,21 +67,6 @@ async function neuerNutzer(name, { minutenGueltig = 60, schonVerifiziert = false
 const zustand = (id) =>
   db.get('SELECT email_verified, verification_token, token_expires FROM users WHERE id=$1', [id]);
 
-let _srv, _base;
-async function startApi() {
-  const app = express();
-  app.use(express.json());
-  app.use('/api/auth', _req('routes/auth.js'));
-  _srv  = app.listen(0);
-  _base = `http://localhost:${_srv.address().port}`;
-}
-/** redirect: 'manual' — eine Weiterleitung soll als solche sichtbar werden. */
-async function apiVerify(token) {
-  const url = _base + '/api/auth/verify' + (token === undefined ? '' : `?token=${encodeURIComponent(token)}`);
-  const r = await fetch(url, { redirect: 'manual' });
-  return { status: r.status, body: await r.json().catch(() => null) };
-}
-
 test('E-Mail-Verifikation gegen echte Datenbank', async (t) => {
   if (!(await dbReachable())) {
     await db.pool.end().catch(() => {});
@@ -93,7 +77,6 @@ test('E-Mail-Verifikation gegen echte Datenbank', async (t) => {
     return;
   }
   await seed();
-  await startApi();
 
   await t.test('gültiger Token: setzt email_verified und räumt die Felder ab', async () => {
     const u = await neuerNutzer('gueltig');
@@ -147,42 +130,22 @@ test('E-Mail-Verifikation gegen echte Datenbank', async (t) => {
     assert.equal(e.ok, false);
   });
 
-  // ── Dieselben Fälle über die ECHTE API-Route ─────────────────────────────
-  await t.test('API-Route: gültiger Token antwortet mit JSON, nicht mit 302', async () => {
-    const u = await neuerNutzer('api_gueltig');
-    const r = await apiVerify(u.token);
-    assert.equal(r.status, 200, `Erwartet 200 mit JSON, bekam ${r.status}`);
-    assert.equal(r.body?.success, true);
-    assert.equal(Number((await zustand(u.id)).email_verified), 1);
-  });
+  // ── Die fuenf Faelle ueber die API-Route sind ENTFERNT ───────────────────
+  //
+  // GET /api/auth/verify gibt es nicht mehr: Sie hatte keinen Aufrufer — der
+  // Link aus der Verifikationsmail zeigt auf die Frontend-Seite /verify, die
+  // server.ts bedient. Dass sie keinen Aufrufer hat, stand seit Nachtrag 154
+  // als Kommentar in der Route selbst.
+  //
+  // Verloren geht dadurch nichts: Die fuenf Faelle pruefen dieselben Regeln
+  // wie die sechs darueber (gueltig, abgelaufen, unbekannt, fehlend, zweimal),
+  // nur durch eine HTTP-Huelle hindurch. Was die Huelle zusaetzlich sagte —
+  // 400 gegen 410 statt einer Weiterleitung — betraf einen Aufrufer, den es
+  // nie gab.
+  //
+  // Der Weg, den es WIRKLICH gibt, bleibt geprueft: test/email-verify.test.js
+  // haelt fest, dass server.ts dieselbe Funktion ruft und ihre beiden
+  // Ausgaenge auf ?verified=1 bzw. ?verified=invalid abbildet.
 
-  await t.test('API-Route: abgelaufener Token meldet 410 statt weiterzuleiten', async () => {
-    const u = await neuerNutzer('api_abgelaufen', { minutenGueltig: -5 });
-    const r = await apiVerify(u.token);
-    assert.equal(r.status, 410, `Erwartet 410, bekam ${r.status}`);
-    assert.equal(r.body?.success, false);
-    assert.equal(Number((await zustand(u.id)).email_verified), 0);
-  });
-
-  await t.test('API-Route: unbekannter Token meldet 410', async () => {
-    const r = await apiVerify('gibtesnicht');
-    assert.equal(r.status, 410);
-    assert.equal(r.body?.success, false);
-  });
-
-  await t.test('API-Route: fehlender Token meldet 400', async () => {
-    const r = await apiVerify(undefined);
-    assert.equal(r.status, 400, `Erwartet 400, bekam ${r.status}`);
-    assert.equal(r.body?.success, false);
-  });
-
-  await t.test('API-Route: zweiter Aufruf mit demselben Token meldet 410', async () => {
-    const u = await neuerNutzer('api_zweimal');
-    assert.equal((await apiVerify(u.token)).status, 200);
-    assert.equal((await apiVerify(u.token)).status, 410,
-      'Derselbe Token liess sich über die API zweimal einlösen');
-  });
-
-  _srv?.close();
   await db.pool.end().catch(() => {});
 });

@@ -106,6 +106,40 @@ AlertDialog(
     },
     text = {
         Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+            // ── Hinweis bei geratener Nummer ────────────────────────────────
+            //
+            // Marcos Meldung: „Es werden regelmässig falsche Nummern erkannt."
+            //
+            // Der Dialog zeigt Bild und Namen seit jeher — es fehlte nur der
+            // Hinweis, WANN man hinsehen muss. Zwei Fälle setzen das Feld: Der
+            // Server konnte die EAN nicht abgleichen und hat nur einen
+            // plausiblen Kandidaten (utils/barcodeQuelle.ts), oder die Nummer
+            // kam aus der Texterkennung, wo schon das Lesen eine Vermutung ist.
+            //
+            // Bewusst ganz oben und in der Warnfarbe, aber ohne den Vorgang zu
+            // sperren: Der Treffer ist oft richtig, und wer ihn bestätigt,
+            // soll das mit einem Blick tun können statt mit einem Klick mehr.
+            if (barcodeState.unsicher) {
+                Surface(
+                    color = MaterialTheme.colorScheme.errorContainer,
+                    shape = MaterialTheme.shapes.small,
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Row(
+                        Modifier.padding(horizontal = 10.dp, vertical = 8.dp),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text("⚠️", fontSize = 16.sp)
+                        Text(
+                            stringResource(R.string.main_barcode_unsure),
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onErrorContainer,
+                            fontWeight = FontWeight.SemiBold
+                        )
+                    }
+                }
+            }
             val imgUrl = barcodeState.imageLocal?.let { "${state.serverUrl}$it" } ?: barcodeState.imageUrl
             if (imgUrl != null) {
                 coil.compose.AsyncImage(

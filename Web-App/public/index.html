@@ -17,24 +17,24 @@
   <script defer src="/vendor/qrcode/qrcode.min.js"></script>
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>BrickInventory Manager</title>
-  <link rel="stylesheet" href="/vendor/fonts/fonts.css?v=2026.08.28.1937">
-  <link rel="stylesheet" href="/styles.css?v=2026.08.28.1937">
+  <link rel="stylesheet" href="/vendor/fonts/fonts.css?v=2026.09.03.1946">
+  <link rel="stylesheet" href="/styles.css?v=2026.09.03.1946">
   <!-- App-Designs (Stein-Look etc.) — je Theme eine Datei unter /themes/, greift via [data-theme] -->
-  <link rel="stylesheet" href="/themes/brick.css?v=2026.08.28.1937">
+  <link rel="stylesheet" href="/themes/brick.css?v=2026.09.03.1946">
   <!-- Responsive-Regeln, nach beiden Designs geladen: das Layout ist in
        classic und brick identisch, die Regeln gelten daher für beide. -->
-  <link rel="stylesheet" href="/mobile.css?v=2026.08.28.1937">
+  <link rel="stylesheet" href="/mobile.css?v=2026.09.03.1946">
   <!-- Setzt data-theme aus dem localStorage-Cache VOR dem ersten Paint und
-       gleicht danach gegen GET /api/settings/theme ab. Blockierend und im
+       gleicht danach gegen GET /api/v1/settings/theme ab. Blockierend und im
        <head>, sonst blitzt auf Login-/Startup-Screen kurz das falsche Design auf. -->
-  <script src="/js/00-theme-boot.js?v=2026.08.28.1937"></script>
+  <script src="/js/00-theme-boot.js?v=2026.09.03.1946"></script>
   <!-- Aktive Sprachdatei. Blockierend und VOR dem Bündel, weil i18n.js beim
        Auswerten window.I18N_DE / window.I18N_EN erwartet.
        Welche Datei hier steht, entscheidet der Server (utils/indexHtml.ts)
        anhand der gespeicherten Sprache — genauso wie beim Design darüber.
        Der Wechsel zur anderen Sprache lädt sie zur Laufzeit nach
        (loadLang() in i18n.js). -->
-  <script src="/locales/de.js?v=2026.08.28.1937" data-i18n-locale></script>
+  <script src="/locales/de.js?v=2026.09.03.1946" data-i18n-locale></script>
 </head>
 <body>
 
@@ -100,7 +100,7 @@
         <a href="#" id="link-forgot" style="color:var(--b600)" data-i18n="login.forgot">Passwort vergessen?</a>
         <span id="link-register-wrap" style="display:none"><span data-i18n="login.register_prompt">Neu hier?</span> <a href="#" id="link-register" style="color:var(--b600);font-weight:600">Registrieren</a></span>
       </div>
-      <div style="color:var(--mut);font-size:.7rem;margin-top:1.5rem;text-align:center;opacity:.45;letter-spacing:.03em">Build 2026.08.28.1937</div>
+      <div style="color:var(--mut);font-size:.7rem;margin-top:1.5rem;text-align:center;opacity:.45;letter-spacing:.03em">Build 2026.09.03.1946</div>
       <div id="verified-msg" style="display:none;margin-top:.75rem;padding:.65rem .9rem;background:var(--g50);border:1px solid var(--g300);border-radius:7px;font-size:.82rem;color:var(--g700)"><span data-i18n="verify.success">✅ E-Mail erfolgreich bestätigt. Du kannst dich jetzt anmelden.</span></div>
     </div>
 
@@ -506,9 +506,6 @@
            Container anfassen — die IDs darin sind der Vertrag mit dem JS. -->
       <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:1.5rem">
           <input type="text" id="fig-search" placeholder="🔍 Minifiguren suchen…" data-i18n="figs.search" data-i18n-attr="placeholder" style="width:220px" data-input="filterFigs" / aria-label="Minifiguren suchen">
-          <select id="fig-source" aria-label="Quelle" data-i18n="figs.source" data-i18n-attr="aria-label" data-change="filterFigs" style="width:auto">
-            <option value="" data-i18n="figs.source_all">Alle Sets</option>
-          </select>
           <select id="scope-minifigs" class="scope-select" aria-label="Konten" data-i18n="household.scope_label" data-i18n-attr="aria-label" data-change="onScopeChange" data-arg="minifigs" style="width:auto;display:none"></select>
           <select id="figs-view" aria-label="Ansicht" data-i18n="parts.view" data-i18n-attr="aria-label" style="width:auto" data-change="renderFigsAll">
             <option value="grid" data-i18n="parts.view.grid">Karten</option>
@@ -847,14 +844,14 @@
               <span data-i18n="settings.data_zip_hint">Sets, manuell erfasste Teile und Minifiguren als ZIP mit 3 CSV-Dateien exportieren — diese können danach über den entsprechenden CSV-Importer (Reiter Sets/Teile/Minifiguren) wieder importiert werden.</span>
             </p>
             <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-bottom:1rem">
-              <a class="btn bs" href="/api/settings/export/data" data-i18n="settings.data_zip_btn">📦 Sets, Teile &amp; Minifiguren exportieren (ZIP)</a>
+              <a class="btn bs" href="/api/v1/settings/export/data" data-i18n="settings.data_zip_btn">📦 Sets, Teile &amp; Minifiguren exportieren (ZIP)</a>
             </div>
 
             <p style="font-size:.82rem;color:var(--mut);margin:0 0 .5rem 0">
               <span data-i18n="settings.rb_list_hint">Alle Sets im Rebrickable-Listenformat exportieren (Spalten "Set Number,Quantity"), um sie unter „My Sets → Add via List" bei Rebrickable zu importieren.</span>
             </p>
             <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center">
-              <a class="btn bs" href="/api/sets/export/rebrickable" style="display:inline-flex;align-items:center;gap:6px"><svg width="16" height="16" viewBox="0 0 120 120" xmlns="http://www.w3.org/2000/svg" style="flex-shrink:0"><rect x="18" y="38" width="84" height="68" rx="3" fill="#e63329"/><polygon points="18,38 30,20 102,20 102,38" fill="#cc2a21"/><polygon points="102,20 118,30 118,86 102,106" fill="#b5231c"/><ellipse cx="43" cy="20" rx="6" ry="3" fill="#cc2a21"/><rect x="37" y="17" width="12" height="3" fill="#cc2a21"/><ellipse cx="43" cy="17" rx="6" ry="3" fill="#b5231c"/><ellipse cx="58" cy="20" rx="6" ry="3" fill="#cc2a21"/><rect x="52" y="17" width="12" height="3" fill="#cc2a21"/><ellipse cx="58" cy="17" rx="6" ry="3" fill="#b5231c"/><ellipse cx="73" cy="20" rx="6" ry="3" fill="#cc2a21"/><rect x="67" y="17" width="12" height="3" fill="#cc2a21"/><ellipse cx="73" cy="17" rx="6" ry="3" fill="#b5231c"/><ellipse cx="88" cy="20" rx="6" ry="3" fill="#cc2a21"/><rect x="82" y="17" width="12" height="3" fill="#cc2a21"/><ellipse cx="88" cy="17" rx="6" ry="3" fill="#b5231c"/><rect x="24" y="54" width="72" height="40" rx="2" fill="#fff"/><rect x="29" y="58" width="46" height="15" rx="2" fill="#f5a800"/><text x="52" y="69" text-anchor="middle" font-family="Arial,sans-serif" font-weight="800" font-size="11" fill="white">BIM</text></svg> <span data-i18n="settings.export_rb">Sets für Rebrickable exportieren</span></a>
+              <a class="btn bs" href="/api/v1/sets/export/rebrickable" style="display:inline-flex;align-items:center;gap:6px"><svg width="16" height="16" viewBox="0 0 120 120" xmlns="http://www.w3.org/2000/svg" style="flex-shrink:0"><rect x="18" y="38" width="84" height="68" rx="3" fill="#e63329"/><polygon points="18,38 30,20 102,20 102,38" fill="#cc2a21"/><polygon points="102,20 118,30 118,86 102,106" fill="#b5231c"/><ellipse cx="43" cy="20" rx="6" ry="3" fill="#cc2a21"/><rect x="37" y="17" width="12" height="3" fill="#cc2a21"/><ellipse cx="43" cy="17" rx="6" ry="3" fill="#b5231c"/><ellipse cx="58" cy="20" rx="6" ry="3" fill="#cc2a21"/><rect x="52" y="17" width="12" height="3" fill="#cc2a21"/><ellipse cx="58" cy="17" rx="6" ry="3" fill="#b5231c"/><ellipse cx="73" cy="20" rx="6" ry="3" fill="#cc2a21"/><rect x="67" y="17" width="12" height="3" fill="#cc2a21"/><ellipse cx="73" cy="17" rx="6" ry="3" fill="#b5231c"/><ellipse cx="88" cy="20" rx="6" ry="3" fill="#cc2a21"/><rect x="82" y="17" width="12" height="3" fill="#cc2a21"/><ellipse cx="88" cy="17" rx="6" ry="3" fill="#b5231c"/><rect x="24" y="54" width="72" height="40" rx="2" fill="#fff"/><rect x="29" y="58" width="46" height="15" rx="2" fill="#f5a800"/><text x="52" y="69" text-anchor="middle" font-family="Arial,sans-serif" font-weight="800" font-size="11" fill="white">BIM</text></svg> <span data-i18n="settings.export_rb">Sets für Rebrickable exportieren</span></a>
             </div>
           </div>
         </div>
@@ -870,6 +867,17 @@
           <button class="btn bp" id="btn-gen-qr" data-i18n="settings.qr.generate">🔄 QR-Code generieren</button>
           <div id="qr-code" style="background:#fff;padding:12px;border-radius:8px;border:1px solid var(--bdr);display:inline-block"></div>
           <div id="qr-hint" style="font-size:.75rem;color:var(--mut)"></div>
+        </div>
+      </div>
+
+      <!-- Angemeldete Geraete: die ausgestellten Zugaenge sehen und entwerten -->
+      <div class="ssec" style="margin-bottom:1.25rem">
+        <div class="stit" data-i18n="tokens.title">🔑 Angemeldete Geräte</div>
+        <p style="font-size:.82rem;color:var(--mut);margin-bottom:1rem" data-i18n="tokens.hint">Jede Anmeldung — im Browser, in der App oder per QR-Code — stellt einen Zugang aus. Ein verlorenes oder verkauftes Gerät sperrst du hier aus, ohne dein Passwort zu ändern.</p>
+        <div id="tokens-tbl"></div>
+        <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-top:.75rem">
+          <button class="btn bs" data-click="loadTokens" data-i18n="tokens.reload">🔄 Aktualisieren</button>
+          <button class="btn bd" data-click="revokeOtherTokens" data-i18n="tokens.revoke_others">🚪 Alle anderen abmelden</button>
         </div>
       </div>
 
@@ -1020,6 +1028,27 @@
   </div>
 </div>
 
+<!-- Detail-Dialog fuer Teile/Figuren AUS SETS (kein Preis, Menge nur Anzeige) -->
+<div class="ovl" id="setitem-modal" role="dialog" aria-modal="true">
+  <div class="modal" style="max-width:480px">
+    <div class="mhd">
+      <div>
+        <div class="mtit" id="setitem-tit">—</div>
+        <div id="setitem-sub" style="font-size:.78rem;color:var(--mut);margin-top:2px"></div>
+      </div>
+      <button class="btn bs btn-sm" data-click="closeSetItemDetail">✕</button>
+    </div>
+    <!-- data-click="openImageLightboxFromEl" ist der Zoom (11-actions.js);
+         die Adresse dafuer steht in data-orig und wird beim Oeffnen gesetzt. -->
+    <img id="setitem-img" src="" alt="" data-click="openImageLightboxFromEl"
+         style="width:100%;max-height:160px;object-fit:contain;background:var(--s50);border-radius:8px;border:1px solid var(--bdr);margin-bottom:1rem;display:none;cursor:zoom-in" />
+    <div id="setitem-body"></div>
+    <div class="mfooter">
+      <button class="btn bs" data-click="closeSetItemDetail" data-i18n="acq.back">Zurück</button>
+    </div>
+  </div>
+</div>
+
 <!-- PDF-Viewer-Modal (In-App-Anzeige von Anleitungen) -->
 <div class="ovl" id="pdf-viewer-modal" role="dialog" aria-modal="true" style="display:none;z-index:500">
   <div style="background:var(--sur);width:96vw;height:96vh;max-width:1200px;border-radius:12px;display:flex;flex-direction:column;overflow:hidden;box-shadow:var(--sh1)">
@@ -1087,7 +1116,7 @@
 
 <div id="toasts"></div>
 
-<script type="module" src="/js/pdfjs-boot.js?v=2026.08.28.1937"></script>
+<script type="module" src="/js/pdfjs-boot.js?v=2026.09.03.1946"></script>
 <!-- Ein Bündel statt zwölf Einzeldateien.
      i18n.js und js/01-*.js … js/11-*.js werden von scripts/build-frontend.js in
      genau dieser Reihenfolge aneinandergehängt und minifiziert. Die Quellen
@@ -1097,7 +1126,7 @@
      00-theme-boot.js bleibt oben im <head> (muss vor dem ersten Rendern laufen),
      pdfjs-boot.js bleibt separat (ES-Modul), logviewer.js wird bei Bedarf
      zur Laufzeit nachgeladen. -->
-<script src="/js/app.bundle.js?v=2026.08.28.1937"></script>
+<script src="/js/app.bundle.js?v=2026.09.03.1946"></script>
 <!-- app.js ist in Sektions-Dateien aufgeteilt (public/js/) — Ladereihenfolge
      ist relevant, die Dateien teilen sich den globalen Scope. -->
 <!-- Der eigene Scrollbalken (#app-scrollbar) wird von js/01-core.js ERZEUGT,

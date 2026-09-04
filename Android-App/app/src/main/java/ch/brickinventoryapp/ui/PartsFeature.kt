@@ -37,8 +37,15 @@ internal fun MainViewModel.loadParts(page: Int = 1, debounce: Boolean = false) {
         // zuletzt gestartete Auftrag, und der soll den NEUESTEN Text sehen.
         // Leer heisst "kein Filter" — die API erwartet dafuer null, nicht "".
         val suche = _partsState.value.partsQuery.ifBlank { null }
+        // Ebenfalls aus dem Zustand, aus demselben Grund wie der Suchtext:
+        // Als Parameter kaeme er beim Nachladen von Seite 2 nicht mit.
+        val ersatzteile = _partsState.value.partsSpare.ifBlank { null }
+        // „In Sets" nur, wenn die Tabelle es zeigt — die Spalte kostet eine
+        // eigene Abfrage. Dieselbe Bedingung wie in der Webapp.
+        val mitSets = if (_partsState.value.partsView == "table") "1" else null
         when (val r = retryOnNetwork { repo.teile.getParts(search = suche, page = page,
-                                                     accounts = scopeFor(ScopeFilter.View.PARTS)) }) {
+                                                     accounts = scopeFor(ScopeFilter.View.PARTS),
+                                                     spare = ersatzteile, withSets = mitSets) }) {
             is Result.Success -> {
                 _partsState.update {
                     it.copy(
@@ -79,6 +86,42 @@ internal fun MainViewModel.setPartsQuery(q: String) {
     // Kein eigener Auftrag noetig: loadParts bricht partsJob selbst ab, ein
     // zweiter Tastendruck loescht also den entprellten ersten.
     loadParts(page = 1, debounce = true)
+}
+
+/**
+ * Ersatzteil-Filter setzen: "" alle, "0" ohne Ersatzteile, "1" nur
+ * Ersatzteile — dieselben Werte wie das Auswahlfeld der Webapp.
+ *
+ * Nicht entprellt: Anders als beim Tippen ist ein Klick ein fertiger Wunsch,
+ * und 350 ms Warten waeren nur Traegheit.
+ */
+internal fun MainViewModel.setPartsSpare(wert: String) {
+    // Wie beim Suchtext: Die gemerkte Scrollstelle zeigt auf Teile, die in der
+    // neuen Liste woanders oder gar nicht stehen (ScrollMemory.kt).
+    scrollMemory.vergiss("parts")
+    _partsState.update { it.copy(partsSpare = wert) }
+    loadParts(page = 1)
+}
+
+/**
+ * Karten oder Tabelle fuer die Teileliste.
+ *
+ * Laedt neu, weil die Tabelle eine Spalte mehr braucht („In Sets"), die der
+ * Server nur auf Anfrage mitschickt. Ohne Neuladen blieben die Zellen leer,
+ * bis irgendein anderer Weg die Liste erneuert.
+ */
+internal fun MainViewModel.setPartsView(wert: String) {
+    if (_partsState.value.partsView == wert) return
+    _partsState.update { it.copy(partsView = wert) }
+    loadParts(page = 1)
+}
+
+/**
+ * Karten oder Tabelle fuer die Figurenliste. Ohne Neuladen: Die Tabelle zeigt
+ * nur Felder, die schon da sind.
+ */
+internal fun MainViewModel.setMinifigsView(wert: String) {
+    _partsState.update { it.copy(minifigsView = wert) }
 }
 
 internal fun MainViewModel.loadPartsColors() {
@@ -148,9 +191,10 @@ internal fun MainViewModel.addMinifig(figNumber: String, blFigNumber: String? = 
     }
 }
 
-internal fun MainViewModel.updatePart(partNumber: String, colorId: Int, quantity: Int, unitPrice: Double?, condition: String? = null) {
+/** @param owner Besitzer der Karte — siehe [deletePart]. */
+internal fun MainViewModel.updatePart(partNumber: String, colorId: Int, quantity: Int, unitPrice: Double?, condition: String? = null, owner: Int? = null) {
     viewModelScope.launch {
-        when (val r = repo.teile.updatePart(partNumber, colorId, quantity, unitPrice, condition)) {
+        when (val r = repo.teile.updatePart(partNumber, colorId, quantity, unitPrice, condition, owner)) {
             is Result.Success -> {
                 if (r.data.success) {
                     _snackbar.value = text(R.string.vm_saved)
@@ -170,9 +214,16 @@ internal fun MainViewModel.updatePart(partNumber: String, colorId: Int, quantity
     }
 }
 
-internal fun MainViewModel.deletePart(partNumber: String, colorId: Int) {
+/**
+ * Manuelles Teil loeschen.
+ *
+ * @param owner Besitzer der KARTE. Im Haushalt zeigt der manuelle Bereich die
+ *   Eintraege aller Konten; ohne diese Angabe loescht der Server die Zeile des
+ *   Aufrufers — geklickt waere die fremde Karte, weg die eigene.
+ */
+internal fun MainViewModel.deletePart(partNumber: String, colorId: Int, owner: Int? = null) {
     viewModelScope.launch {
-        when (val r = repo.teile.deletePart(partNumber, colorId)) {
+        when (val r = repo.teile.deletePart(partNumber, colorId, owner)) {
             is Result.Success -> {
                 if (r.data.success) { _snackbar.value = text(R.string.vm_part_deleted); reloadItemList("part") }
                 else _snackbar.value = r.data.error ?: text(R.string.err_unknown)
@@ -182,9 +233,10 @@ internal fun MainViewModel.deletePart(partNumber: String, colorId: Int) {
     }
 }
 
-internal fun MainViewModel.updateMinifig(figNumber: String, quantity: Int, unitPrice: Double?, blFigNumber: String? = null, condition: String? = null) {
+/** @param owner Besitzer der Karte — siehe [deletePart]. */
+internal fun MainViewModel.updateMinifig(figNumber: String, quantity: Int, unitPrice: Double?, blFigNumber: String? = null, condition: String? = null, owner: Int? = null) {
     viewModelScope.launch {
-        when (val r = repo.teile.updateMinifig(figNumber, quantity, unitPrice, blFigNumber, condition)) {
+        when (val r = repo.teile.updateMinifig(figNumber, quantity, unitPrice, blFigNumber, condition, owner)) {
             is Result.Success -> {
                 if (r.data.success) {
                     _snackbar.value = text(R.string.vm_saved)
@@ -204,9 +256,10 @@ internal fun MainViewModel.updateMinifig(figNumber: String, quantity: Int, unitP
     }
 }
 
-internal fun MainViewModel.deleteMinifig(figNumber: String) {
+/** @param owner Besitzer der Karte — siehe [deletePart]. */
+internal fun MainViewModel.deleteMinifig(figNumber: String, owner: Int? = null) {
     viewModelScope.launch {
-        when (val r = repo.teile.deleteMinifig(figNumber)) {
+        when (val r = repo.teile.deleteMinifig(figNumber, owner)) {
             is Result.Success -> {
                 if (r.data.success) { _snackbar.value = text(R.string.vm_minifig_deleted); reloadItemList("fig") }
                 else _snackbar.value = r.data.error ?: text(R.string.err_unknown)
@@ -216,29 +269,59 @@ internal fun MainViewModel.deleteMinifig(figNumber: String) {
     }
 }
 
-internal fun MainViewModel.loadMinifigs() {
+/**
+ * Figurenliste laden. Der Suchtext kommt aus dem Zustand, nicht als Parameter —
+ * dieselbe Regel wie bei [loadParts] und der Galerie: Wer als Parameter laedt,
+ * kennt den Filter nur beim Tippen; jeder andere Ladeweg (Aktualisieren,
+ * Erfassen, Kontowechsel) reicht ihn nicht mit und liefert eine ungefilterte
+ * Liste in eine Ansicht, deren Suchfeld weiter den alten Text zeigt.
+ */
+internal fun MainViewModel.loadMinifigs(debounce: Boolean = false) {
     // Kennzahlen NEBENHER holen, nicht aus der Liste rechnen: Die Liste unten
     // ist gefiltert (ohne manuell erfasste), die Kacheln sollen aber den
     // ganzen Bestand nennen — genau wie in der Webapp. Eigener Aufruf, damit
     // die Liste nicht auf die Zählung wartet.
-    viewModelScope.launch {
+    //
+    // Beim Tippen NICHT: Die Kacheln zeigen den ganzen Bestand, den aendert ein
+    // Suchtext nicht. Ohne diese Bedingung schickte jeder Tastendruck eine
+    // eigene Zaehlabfrage los — und die haengt an keinem Auftrag, waere also
+    // auch nicht abgebrochen worden.
+    if (!debounce) viewModelScope.launch {
         when (val r = repo.teile.getMinifigStats(scopeFor(ScopeFilter.View.MINIFIGS))) {
             is Result.Success -> _partsState.update { it.copy(minifigStats = r.data.stats) }
             is Result.Error   -> Unit   // Kacheln behalten den letzten Stand
         }
     }
-    viewModelScope.launch {
+    minifigsJob?.cancel()
+    minifigsJob = viewModelScope.launch {
+        if (debounce) kotlinx.coroutines.delay(350)
         _partsState.update { it.copy(minifigsLoading = true) }
-        when (val r = repo.teile.getMinifigs(scopeFor(ScopeFilter.View.MINIFIGS))) {
+        // Nach dem Entprellen gelesen: Bei schneller Eingabe gewinnt der zuletzt
+        // gestartete Auftrag, und der soll den NEUESTEN Text sehen.
+        val suche = _partsState.value.minifigsQuery.ifBlank { null }
+        when (val r = repo.teile.getMinifigs(scopeFor(ScopeFilter.View.MINIFIGS), suche)) {
+            // Manuell erfasste Figuren schliesst jetzt der SERVER aus
+            // (source=set im Repository) — sie haben ihren eigenen Bereich mit
+            // editierbaren Karten. Vorher stand der Ausschluss hier als
+            // `filter { it.source != "manual" }`, also ein zweites Mal neben
+            // der Regel im Server-Handler.
             is Result.Success -> _partsState.update { it.copy(
-                // Manuell erfasste Minifiguren werden nur noch im eigenen Bereich
-                // (editierbare Karten, siehe manualFigs/FigsValuationResponse) angezeigt,
-                // hier daher ausgeschlossen, um Duplikate zu vermeiden.
-                minifigs = r.data.figs.filter { it.source != "manual" }, minifigsLoading = false) }
+                minifigs = r.data.figs, minifigsLoading = false) }
             is Result.Error   -> {
                 _snackbar.value = meldung(r)
                 _partsState.update { it.copy(minifigsLoading = false) }
             }
         }
     }
+}
+
+/**
+ * Suchtext der Figurenliste setzen: entprellt, damit nicht jeder Tastendruck
+ * eine Abfrage ausloest. Gegenstueck zu [setPartsQuery] und setGalleryQuery.
+ */
+internal fun MainViewModel.setMinifigsQuery(q: String) {
+    _partsState.update { it.copy(minifigsQuery = q) }
+    // Kein eigener Auftrag noetig: loadMinifigs bricht minifigsJob selbst ab,
+    // ein zweiter Tastendruck loescht also den entprellten ersten.
+    loadMinifigs(debounce = true)
 }

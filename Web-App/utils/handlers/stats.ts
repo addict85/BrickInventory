@@ -21,7 +21,29 @@ async function getStats(userId: number | number[]) {
   // normalisiert, damit ältere Aufrufer mit einer nackten ID weiter gehen.
   const uids = asIds(userId as any);
   const [setsRow, instrRow, partsRow, minifigsRow, cur] = await Promise.all([
-    db.get(`SELECT COUNT(*) AS total_sets, COALESCE(SUM(quantity), 0) AS total_quantity FROM sets WHERE user_id = ANY($1)`, [uids]),
+    // COUNT(DISTINCT set_number), nicht COUNT(*).
+    //
+    // ── Der Befund ──────────────────────────────────────────────────────────
+    // Die Galerie gruppiert nach set_number: Besitzen im Haushalt zwei Konten
+    // dasselbe Set, steht dort EINE Kachel mit beiden Besitzer-Plaketten
+    // (utils/handlers/sets.ts). Diese Zeile zaehlte die TABELLENZEILEN.
+    //
+    // NACHGEMESSEN mit zwei Konten — dasselbe Set bei beiden, eines nur beim
+    // Kind:
+    //     Kopfzeile /v1/stats : 3 Sets
+    //     Galerie darunter    : 2 Kacheln, total=2
+    //
+    // Beide Zahlen stehen uebereinander auf demselben Bildschirm. Im
+    // Einzelkonto faellt es nie auf, weil es dort je Setnummer nur eine Zeile
+    // gibt — deshalb hat es niemand gesehen.
+    //
+    // Die andere Lesart ist nicht verloren: total_quantity zaehlt die
+    // Exemplare, und die App zeigt sie direkt daneben als eigene Kachel
+    // („Einheiten", GalleryScreen.kt). Zwei Kacheln, zwei Fragen — mit
+    // COUNT(*) haetten beide dieselbe beantwortet.
+    db.get(`SELECT COUNT(DISTINCT set_number) AS total_sets,
+                   COALESCE(SUM(quantity), 0)  AS total_quantity
+              FROM sets WHERE user_id = ANY($1)`, [uids]),
     db.get(`
       SELECT
         (SELECT COUNT(*) FROM shared_instructions si

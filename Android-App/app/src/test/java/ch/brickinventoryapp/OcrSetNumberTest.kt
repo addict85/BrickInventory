@@ -1,6 +1,5 @@
 package ch.brickinventoryapp
 
-import ch.brickinventoryapp.ui.screens.setNumberCandidates
 import org.junit.Test
 
 /**
@@ -15,9 +14,16 @@ import org.junit.Test
  * Der Filter ist deshalb der Kern der Sache: Die Kamera sieht auf so einer
  * Seite mehrere Zahlen, und ohne Einschränkung käme ständig Unsinn heraus.
  *
- * BEKANNTE GRENZE, bewusst so gelassen: Sind Teilezahl und Setnummer gleich
- * lang, kann die falsche gewinnen. Genau dagegen steht der Bestätigungsdialog
- * mit Bild und Name — er ist Teil des Entwurfs, nicht nur Höflichkeit.
+ * ── Was hier NICHT mehr steht ──────────────────────────────────────────────
+ * Die Auswahlregel selbst (welche Zahl im Text die Setnummer ist) wird gegen
+ * den gemeinsamen Korpus geprüft, damit Web-App und Android-App dieselbe
+ * Antwort geben: SetnummerKorpusTest, shared/setnummer-korpus.json.
+ *
+ * BEKANNTE GRENZE, bewusst so gelassen: Sind zwei Zahlen gleich plausibel,
+ * kann die falsche gewinnen. Dagegen steht der Bestätigungsdialog mit Bild und
+ * Name — und seit Marcos Meldung sagt er ausdrücklich, dass die Nummer geraten
+ * ist (BarcodeUiState.unsicher). Er ist Teil des Entwurfs, nicht nur
+ * Höflichkeit.
  */
 class OcrSetNumberTest {
 
@@ -55,34 +61,10 @@ class OcrSetNumberTest {
         }
     }
 
-    @Test
-    fun `die Setnummer wird aus einer Anleitungsseite gelesen`() {
-        // Wie auf Marcos Beispielbild: Nummer gross, Altersangabe daneben.
-        val k = setNumberCandidates("LEGO 60445-1\n8+\n1215")
-        assert(k.firstOrNull() == "60445-1") {
-            "Erwartet 60445-1 als ersten Kandidaten, bekam: $k"
-        }
-    }
-
-    @Test
-    fun `eine nackte Setnummer wird erkannt`() {
-        assert(setNumberCandidates("31142").firstOrNull() == "31142")
-    }
-
-    @Test
-    fun `zu kurze Zahlen fallen raus`() {
-        // Altersangaben und Seitenzahlen dürfen KEINEN Dialog auslösen —
-        // sonst wird der Scanner auf jeder zweiten Seite zudringlich.
-        assert(setNumberCandidates("8+  Ages  12  Seite 7").isEmpty()) {
-            "drei- und zweistellige Zahlen dürfen nicht als Setnummer gelten"
-        }
-    }
-
-    @Test
-    fun `laengere Zahlen stehen vorn`() {
-        // Die Setnummer ist auf der Seite fast immer die längste Zahl; der
-        // erste Kandidat ist der, den der Scanner nimmt.
-        val k = setNumberCandidates("1215 Teile  75192")
-        assert(k.first() == "75192") { "Reihenfolge falsch: $k" }
-    }
+    // Die Kandidaten-Regel selbst (Suffix, Stellenzahlen, Bestell- und
+    // Elementnummern, Jahre, Mengenangaben, dreistellige Altsets) steht nicht
+    // mehr hier: Sie muss in BEIDEN Apps gleich ausfallen und wird deshalb
+    // gegen den gemeinsamen Korpus geprueft — SetnummerKorpusTest und
+    // shared/setnummer-korpus.json. Hier stand dieselbe Aufzaehlung ein zweites
+    // Mal, und nur die App-Seite war damit gedeckt.
 }

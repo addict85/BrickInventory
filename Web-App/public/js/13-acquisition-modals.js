@@ -13,13 +13,15 @@
 // 07-admin.js herüber (confirmDelete, renderMarketRows, priceChartSVG), und
 // hinaus geht renderAcquisitionSummary. Genau das machte den Schnitt möglich,
 // ohne irgendetwas umzubauen.
+import { detailZeile, ladeAnzeige } from './01-bausteine.js';
 import { registerActions } from './00-registry.js';
 import { locale, t, tRaw } from '../i18n.js';
-import { CURRENCY, G, ME, api, esc, escJs, fmtN, fullUrl, imgUrl, toast } from './01-core.js';
+import { escHex, CURRENCY, G, ME, api, esc, escJs, fmtN, fullUrl, imgUrl, toast } from './01-core.js';
 import { allSets, applySetAggregate, closeModal, curSet, loadGallery, pnlBadge, updateGalleryPrices } from './02-gallery.js';
 import { loadFinance } from './04-finance.js';
 import { deleteManualFig, deleteManualPart, loadManualFigsTable, loadManualParts, manualFigsCache, manualPartsCache, updateManualFig, updateManualPart } from './06-minifigs.js';
-import { confirmDelete, priceChartSVG, renderMarketRows } from './07-admin.js';
+import { confirmDelete, openModal, priceChartSVG, renderMarketRows } from './07-admin.js';
+import { scopeQuery } from './14-scope.js';
 import { blurOnEnter, mQtyDec, mQtyInc, saveManualFigBl } from './11-actions.js';
 
 // ── KAUFPREIS-MODAL ─────────────────────────────────────────────────────────
@@ -304,7 +306,7 @@ export function renderAcquisitionSummary(acqs, sn) {
 }
 
 // ── MANUAL ITEM DETAIL MODAL (Teile + Minifiguren) ─────────────────────────
-let _manItem = null; // { type:'part'|'fig', id:'partNumber|colorId' or 'figNumber', colorId:int }
+let _manItem = null; // { type:'part'|'fig', id, colorId:int, owner:int|undefined }
 
 // Compact acquisition summary for parts/minifigs (uses unit_price, not purchase_price)
 function renderManAcqSummary(acqs, type, id, colorId) {
@@ -347,6 +349,12 @@ export async function openManDetail(type, id, colorId) {
     else                await loadManualParts().catch(() => {});
     item = fromCache();
   }
+  // Besitzer der KARTE merken. Im Haushalt zeigt der manuelle Bereich die
+  // Eintraege aller Konten; ohne diese Angabe schrieb der Server in die Zeile
+  // des Aufrufers. NACHGEMESSEN: Das Hauptkonto setzte auf der Karte des
+  // Kindes die Menge auf 99 — geaendert wurde die eigene (vorher 5|9, nachher
+  // 99|9), und die Antwort sagte „success".
+  _manItem.owner = item?.user_id;
   if (!item) return;
 
   G('man-detail-tit').textContent = item.fig_name || item.part_name || id;
@@ -376,37 +384,37 @@ export async function openManDetail(type, id, colorId) {
   // Summenzeile darunter (`totals`), nicht aus einer eigenen Schleife.
   const totalQty = ad?.totals?.priced_rows !== undefined && acqs.length
     ? ad.totals.quantity : item.quantity;
-  rows.push(`<div class="dr"><span class="dl">${t('detail.qty')}</span><span class="dv" style="display:flex;align-items:center;gap:6px">
+  rows.push(detailZeile(t('detail.qty'), `
     <button class="btn bs btn-sm" data-click="manQtyChange" data-arg="-1" style="font-size:1rem;padding:2px 8px;line-height:1">−</button>
     <input type="number" id="man-det-qty" min="1" value="${totalQty}" style="width:46px;text-align:center;border:1px solid var(--bdr);border-radius:6px;padding:2px;font-weight:600" data-change="manQtySave" />
     <button class="btn bs btn-sm" data-click="manQtyChange" data-arg="1" style="font-size:1rem;padding:2px 8px;line-height:1">+</button>
-  </span></div>`);
+  `, { wertStil: 'display:flex;align-items:center;gap:6px' }));
 
   // BrickLink-Nr (minifigs only, editable)
   if (type === 'fig') {
-    rows.push(`<div class="dr"><span class="dl">BrickLink-Nr.</span><span class="dv">
+    rows.push(detailZeile('BrickLink-Nr.', `
       <input type="text" value="${esc(item.bl_fig_number||'')}" placeholder="z.B. sw0001" style="width:110px;text-align:right;border:1px solid var(--bdr);border-radius:6px;padding:2px 6px"
-        data-blur="saveManualFigBl" data-arg="${esc(id)}" />
-    </span></div>`);
+        data-blur="saveManualFigBl" data-arg="${esc(id)}" data-arg2="${item?.user_id||''}" />
+    `));
   }
 
   // Colour (parts only, read-only)
   if (type === 'part' && item.color_name) {
-    const swatch = item.color_hex ? `<span style="display:inline-block;width:12px;height:12px;border-radius:50%;background:#${item.color_hex};border:1px solid rgba(0,0,0,.15);margin-right:4px;vertical-align:middle"></span>` : '';
-    rows.push(`<div class="dr"><span class="dl">${t('parts.color_label')}</span><span class="dv">${swatch}${esc(item.color_name)}</span></div>`);
+    const swatch = item.color_hex ? `<span style="display:inline-block;width:12px;height:12px;border-radius:50%;background:${escHex(item.color_hex, 'var(--s300)')};border:1px solid rgba(0,0,0,.15);margin-right:4px;vertical-align:middle"></span>` : '';
+    rows.push(detailZeile(t('parts.color_label'), `${swatch}${esc(item.color_name)}`));
   }
 
   // Note
-  if (item.note) rows.push(`<div class="dr"><span class="dl">${t('parts.note_label')}</span><span class="dv" style="color:var(--mut);font-size:.83rem">${esc(item.note)}</span></div>`);
+  if (item.note) rows.push(detailZeile(t('parts.note_label'), esc(item.note),
+    { wertStil: 'color:var(--mut);font-size:.83rem' }));
 
   // Acquisition summary — compact, like set-detail
-  rows.push(`<div class="dr" style="align-items:flex-start">
-    <span class="dl">${t('detail.purchase_price')}</span>
-    <span id="man-acq-summary" class="dv" style="flex-direction:column;align-items:flex-end;gap:3px">
+  rows.push(detailZeile(t('detail.purchase_price'), `
       ${renderManAcqSummary(acqs, type, id, colorId)}
       <button class="btn bs btn-sm" data-click="openManAcqModal" style="margin-top:4px;font-size:.75rem;padding:2px 10px">✏️ ${t('detail.edit_prices')}</button>
-    </span>
-  </div>`);
+    `, { zeilenStil: 'align-items:flex-start',
+         wertId: 'man-acq-summary',
+         wertStil: 'flex-direction:column;align-items:flex-end;gap:3px' }));
 
   // Preisverlauf — wie im Set-Detail, beide Zustände in einem Diagramm.
   //
@@ -459,6 +467,133 @@ export async function openManDetail(type, id, colorId) {
 
 }
 
+// ═══ Detail-Dialog fuer Teile und Figuren AUS SETS ═════════════════════════
+//
+// ── Marcos Wunsch ──────────────────────────────────────────────────────────
+// „Kannst du noch einbauen, dass auch die automatisch erfassten Teile und
+// Minifiguren einen Detail-Dialog inkl. Zoom haben? Der Marktpreis kann
+// weggelassen werden. Die Anzahl soll nicht geändert werden können. Dafür soll
+// angezeigt werden, welche Sets dieses Teil und Minifigur verwenden — inkl.
+// Link, um den Detail-Dialog des Sets öffnen zu können."
+//
+// ── Warum derselbe Rahmen wie openManDetail ────────────────────────────────
+// Es ist dieselbe Frage („was ist das für ein Teil?"), nur eine andere
+// Herkunft. Zwei verschieden aussehende Dialoge für dieselbe Sache wären genau
+// das Gegenteil von „einheitliche Ansichten". Geteilt werden deshalb der
+// Modal-Rahmen, die Kopfzeile, das Bild samt Zoom (data-orig, 11-actions.js)
+// und detailZeile(); unterschiedlich ist nur, WAS darin steht.
+//
+// Der Löschknopf wird ausgeblendet: Ein Teil aus einem Set löscht man nicht
+// einzeln — es verschwindet mit dem Set. Der Knopf säße hier also für eine
+// Handlung, die es nicht gibt.
+//
+// ── Warum EIN Aufruf und keine Daten aus dem DOM ───────────────────────────
+// Die Kacheln der automatischen Liste halten keinen Zwischenspeicher (sie
+// hängt HTML seitenweise an). Die Felder aus der angeklickten Kachel
+// zurückzulesen wäre möglich und brüchig — jede Änderung am Kachel-Aufbau
+// bräche den Dialog still.
+//
+// Stattdessen liefert /v1/parts/:nr/:farbe/sets (bzw. /v1/minifigs/:nr/sets)
+// BEIDES aus derselben Abfrage: das Teil selbst und die Sets, in denen es
+// steckt. Eine zweite Quelle für den Kopf könnte etwas anderes sagen als die
+// Liste darunter.
+export async function openSetItemDetail(type, id, colorId) {
+  const farbe = parseInt(colorId) || 0;
+  _manItem = null;                       // fremder Dialog, fremder Zustand
+  const modal  = G('setitem-modal');
+  const bodyEl = G('setitem-body');
+  const imgEl  = G('setitem-img');
+
+  G('setitem-tit').textContent = id;
+  G('setitem-sub').textContent = '';
+  imgEl.style.display = 'none';
+  bodyEl.innerHTML = ladeAnzeige('', { stil: 'padding:1rem' });
+  modal.classList.add('open');
+
+  // Blickfeld mitgeben wie überall sonst — im Haushalt gehört das Set des
+  // Geschwisterkontos dazu, sonst sagt der Dialog etwas anderes als die Liste,
+  // aus der man kommt.
+  //
+  // scopeQuery() ANGEHAENGT statt in die Zeichenkette hinein: Genau so machen
+  // es die übrigen Aufrufe, und test/frontend-api-paths.test.js liest die
+  // Adresse aus dem Quelltext. Ein `${…}` am Ende las es als Teil des Pfades
+  // („/sets:x — keine passende Route") und meldete den Aufruf als ins Leere
+  // gehend. Der Waechter hatte recht mit seiner Form, nicht mit dem Befund —
+  // die einheitliche Schreibweise löst beides.
+  const url = (type === 'fig'
+    ? `/v1/minifigs/${encodeURIComponent(id)}/sets`
+    : `/v1/parts/${encodeURIComponent(id)}/${farbe}/sets`)
+    + scopeQuery(type === 'fig' ? 'minifigs' : 'parts');
+  const d = await api('GET', url).catch(() => null);
+  // Zwischenzeitlich geschlossen? Dann nichts mehr hineinschreiben.
+  if (!modal.classList.contains('open')) return;
+
+  const item = d?.item || null;
+  const sets = d?.sets || [];
+
+  G('setitem-tit').textContent = item?.name || id;
+  G('setitem-sub').textContent = id + (item?.color_name ? ' · ' + item.color_name : '');
+
+  // Bild wie im manuellen Dialog: über den Server-Proxy in voller Auflösung.
+  // data-orig speist den Zoom (openImageLightboxFromEl in 11-actions.js) —
+  // ohne dieses Attribut gäbe es kein Vergrössern, und genau das war Teil des
+  // Wunsches.
+  const roh = item?.image_local || item?.image_url || '';
+  const voll = roh ? imgUrl(fullUrl(roh), false) : '';
+  if (voll) {
+    imgEl.src = voll;
+    imgEl.dataset.orig = voll;
+    imgEl.style.display = '';
+  } else {
+    imgEl.style.display = 'none';
+  }
+
+  const zeilen = [];
+  // Anzahl: NUR Anzeige. Marcos Vorgabe — eine Menge, die aus den Inventaren
+  // der Sets entsteht, lässt sich hier nicht sinnvoll ändern.
+  zeilen.push(detailZeile(t('setitem.total_qty'),
+    `<span style="font-family:var(--mono);font-weight:600">${fmtN(item?.total_quantity || 0)}×</span>`));
+
+  if (type === 'part' && item?.color_name) {
+    const punkt = item.color_hex
+      ? `<span style="display:inline-block;width:12px;height:12px;border-radius:50%;background:${escHex(item.color_hex, 'var(--s300)')};border:1px solid rgba(0,0,0,.15);margin-right:4px;vertical-align:middle"></span>`
+      : '';
+    zeilen.push(detailZeile(t('parts.color_label'), `${punkt}${esc(item.color_name)}`));
+  }
+  if (item?.category_name) zeilen.push(detailZeile(t('setitem.category'), esc(item.category_name)));
+  if (item?.is_spare) zeilen.push(detailZeile(t('parts.spare_tag'), '✓'));
+
+  // ── Die verwendenden Sets ────────────────────────────────────────────────
+  // Jede Zeile öffnet das Set-Detail. `openSetAusItem` schliesst diesen Dialog
+  // zuerst — zwei offene Fenster übereinander wären nicht mehr zu schliessen.
+  const liste = sets.length
+    ? sets.map(s => `<div data-click="openSetAusItem" data-arg="${escJs(s.set_number)}"
+          title="${esc(t('setitem.open_set'))}"
+          style="display:flex;align-items:center;gap:8px;padding:4px 0;cursor:pointer">
+        <span style="font-family:var(--mono);font-size:.78rem;color:var(--b600)">${esc(s.set_number)}</span>
+        <span style="flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(s.set_name || '')}</span>
+        <span style="color:var(--mut);font-size:.78rem">×${fmtN(s.quantity)}</span>
+      </div>`).join('')
+    : `<span style="color:var(--mut);font-size:.83rem">${esc(t('setitem.used_in_none'))}</span>`;
+  zeilen.push(detailZeile(t('setitem.used_in'), liste,
+    { zeilenStil: 'align-items:flex-start',
+      wertStil: 'flex-direction:column;align-items:stretch;gap:0;flex:1;min-width:0' }));
+
+  bodyEl.innerHTML = zeilen.join('');
+}
+
+function closeSetItemDetail() {
+  G('setitem-modal').classList.remove('open');
+}
+G('setitem-modal').addEventListener('click',
+  e => e.target.id === 'setitem-modal' && closeSetItemDetail());
+
+/** Aus dem Teil-Dialog ins Set-Detail — der eine schliesst, der andere öffnet. */
+function openSetAusItem(setNumber) {
+  closeSetItemDetail();
+  openModal(setNumber);
+}
+
 function closeManDetail() {
   G('man-detail-modal').classList.remove('open');
   _manItem = null;
@@ -478,12 +613,12 @@ function manQtyChange(delta) {
 async function manQtySave() {
   const inp = G('man-det-qty');
   if (!inp || !_manItem) return;
-  const { type, id, colorId } = _manItem;
+  const { type, id, colorId, owner } = _manItem;
   const qty = parseInt(inp.value)||1;
   if (type === 'fig') {
-    await updateManualFig(id, { quantity: qty });
+    await updateManualFig(id, { quantity: qty }, owner);
   } else {
-    await updateManualPart(id, colorId, { quantity: qty });
+    await updateManualPart(id, colorId, { quantity: qty }, owner);
   }
 
   // Erfassungsliste IMMER neu laden — in beide Richtungen.
@@ -746,4 +881,7 @@ registerActions({
   openAcqModal,
   openManAcqModal,
   openManDetail,
+  openSetAusItem,
+  openSetItemDetail,
+  closeSetItemDetail,
 });

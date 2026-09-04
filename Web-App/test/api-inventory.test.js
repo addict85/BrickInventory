@@ -14,11 +14,23 @@
  *                      ist Android-spezifisch (z.B. Barcode)
  *   nur-web          — Webapp-spezifisch (Session-Auth-Flows, Datei-Exporte,
  *                      Uploads, SSE-Streams, Admin-UI der Webapp)
+ *
+ * ── Was dieser Test NICHT prueft ────────────────────────────────────────────
+ * Ob die Kategorie STIMMT. Geprueft wird nur, dass jeder Endpunkt eine hat und
+ * dass kein Eintrag verwaist ist. NACHGEMESSEN: Acht als `nur-v1` beschriftete
+ * Endpunkte werden von keinem der beiden Clients gerufen — die Beschriftung
+ * sagt aber woertlich „wird von BEIDEN Clients genutzt". Eine Beschriftung,
+ * die niemand nachmisst, wird irgendwann falsch.
+ *
+ * Wer wen wirklich ruft, prueft test/api-aufrufer.test.js; dass keine Adresse
+ * unbegruendet auf beiden Oberflaechen steht, test/api-oberflaechen.test.js.
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
+
+const { routerEinhaengungen } = require('./helpers/sources');
 
 const ROOT = path.join(__dirname, '..');
 
@@ -30,9 +42,12 @@ function scan(file) {
 
 function inventory() {
   const eps = new Set();
-  for (const f of ['auth', 'sets', 'parts', 'finance', 'settings', 'minifigs'])
-    for (const [m, p] of scan(path.join(ROOT, 'routes', `${f}.ts`)))
-      eps.add(`${m} /api/${f}${p === '/' ? '' : p}`);
+  // Einhaengepunkte aus server.ts GELESEN statt abgeschrieben — die Liste stand
+  // hier als Literal und wurde beim Zusammenlegen der API-Oberflaechen falsch
+  // (samt „ENOENT: routes/finance.ts"). Siehe routerEinhaengungen().
+  for (const r of routerEinhaengungen())
+    for (const [m, p] of scan(r.datei))
+      eps.add(`${m} ${r.mount}${p === '/' ? '' : p}`);
   for (const f of fs.readdirSync(path.join(ROOT, 'routes', 'api_v1')))
     if (f.endsWith('.ts') && !['index.ts', 'middleware.ts'].includes(f))
       for (const [m, p] of scan(path.join(ROOT, 'routes', 'api_v1', f)))
@@ -57,7 +72,7 @@ const C = {
   'GET /api/v1/parts/manual': 'paritaet',
   'GET /api/v1/minifigs': 'paritaet',
   'GET /api/v1/minifigs/manual': 'paritaet',
-  'GET /api/settings': 'paritaet',                   'GET /api/v1/settings': 'paritaet',
+  'GET /api/v1/settings': 'paritaet',                   'GET /api/v1/settings': 'paritaet',
       'GET /api/v1/sets/:setNumber/acquisitions': 'paritaet',
  'GET /api/v1/parts/:partNumber/:colorId/acquisitions': 'paritaet',
  'GET /api/v1/minifigs/:figNumber/acquisitions': 'paritaet',
@@ -109,11 +124,24 @@ const C = {
   'GET /api/v1/sets/:setNumber/price-history': 'nur-v1',
   'GET /api/v1/parts/:partNumber/:colorId/price-history': 'nur-v1',
   'GET /api/v1/minifigs/:figNumber/price-history': 'nur-v1',
+  // Detail-Dialog fuer Teile/Figuren AUS SETS (Marcos Wunsch): welche Sets
+  // verwenden dieses Teil? Beide gehen durch DIESELBE Funktion
+  // (verwendendeSets in utils/handlers/shared.ts) — die alte Oberflaeche hat
+  // dafuer nie etwas gehabt, es gibt also kein Gegenstueck zu paaren.
+  'GET /api/v1/parts/:partNumber/:colorId/sets': 'nur-v1',
+  'GET /api/v1/minifigs/:figNumber/sets': 'nur-v1',
   'GET /api/v1/': 'nur-v1',
   'GET /api/v1/auth/me': 'nur-v1',
   'POST /api/v1/auth/login': 'nur-v1',
   'POST /api/v1/auth/logout': 'nur-v1',
   'POST /api/v1/auth/token-create': 'nur-v1',
+  'POST /api/v1/auth/qr-login': 'nur-v1',
+  // Angemeldete Geraete: seit der Token-Verwaltung von BEIDEN Apps gerufen.
+  // Standen als 'nur-web' da und waren es nie — es gab ueberhaupt keinen
+  // Aufrufer, und die Routen hingen hinter requireLogin (sitzungsgebunden),
+  // waren fuer die App also gar nicht erreichbar.
+  'GET /api/v1/settings/tokens': 'nur-v1',
+  'DELETE /api/v1/settings/tokens/:tokenId': 'nur-v1',
   'GET /api/v1/catalog/meta': 'nur-v1',
   'GET /api/v1/catalog/sets': 'nur-v1',
   'GET /api/v1/catalog/sets/:setNumber': 'nur-v1',
@@ -125,7 +153,7 @@ const C = {
   // kein Gegenstück in der Webapp-API nötig.
   // Passwort eines anderen Nutzers setzen — Administratorfunktion der Webapp.
   // Die Android-App hat keine Nutzerverwaltung, daher kein v1-Gegenstück.
-  'PUT /api/auth/users/:id/password': 'nur-web',
+  'PUT /api/v1/auth/users/:id/password': 'nur-web',
   'GET /api/v1/admin/img-probe': 'nur-v1',
   // Dasselbe für Preise: Erfassungen, gewählter Zustand, Cache-Zeilen und
   // optional die Live-Antwort von BrickLink.
@@ -158,8 +186,6 @@ const C = {
   'GET /api/v1/admin/jobs': 'nur-v1',
   'POST /api/v1/admin/job-schedule': 'nur-v1',
   'GET /api/v1/admin/logs': 'nur-v1',
-  'GET /api/v1/admin/users': 'nur-v1',
-  'PUT /api/v1/admin/users/:id/role': 'nur-v1',
   // Preisverlauf manueller Teile und Minifiguren. Webapp-seitig; die
   // Android-App zeichnet dort (noch) kein Diagramm — deshalb kein v1-Gegenstück.
   // Seit hardened-96 gibt es beide auch für die Android-App — der
@@ -184,54 +210,52 @@ const C = {
   'POST /api/v1/admin/trigger-price-job': 'nur-v1',
 
   // Nur Webapp
-  'POST /api/auth/login': 'nur-web',
-  'POST /api/auth/logout': 'nur-web',
-  'POST /api/auth/register': 'nur-web',
-  'GET /api/auth/registration-status': 'nur-web',
-  'GET /api/auth/verify': 'nur-web',
-  'GET /api/auth/me': 'nur-web',
-  'GET /api/auth/profile': 'nur-web',
-  'PUT /api/auth/profile': 'nur-web',
-  'POST /api/auth/change-password': 'nur-web',
-  'POST /api/auth/forgot-password': 'nur-web',
-  'POST /api/auth/reset-password': 'nur-web',
-  'GET /api/auth/check-token': 'nur-web',
+  //
+  // Alle Anmelde-Adressen sind von /api/auth nach /api/v1/auth umgezogen; es
+  // gibt nur noch eine API-Oberflaeche. Die Kategorien haben sich dabei
+  // verschoben, und zwar nicht nur formal:
+  //  * login, logout, me und token-create sind jetzt EINE Umsetzung fuer
+  //    beide Clients — also nur-v1 statt zweimal.
+  //  * qr-login stand hier als nur-web und war es nie: Die App ruft es
+  //    (BrickApiService.qrLogin). Beim Umzug aufgefallen, weil beide
+  //    Eintraege danebenlagen.
+  'POST /api/v1/auth/register': 'nur-web',
+  'GET /api/v1/auth/registration-status': 'nur-web',
+  'GET /api/v1/auth/profile': 'nur-web',
+  'PUT /api/v1/auth/profile': 'nur-web',
+  'POST /api/v1/auth/change-password': 'nur-web',
+  'POST /api/v1/auth/forgot-password': 'nur-web',
+  'POST /api/v1/auth/reset-password': 'nur-web',
   // Nachtrag 154: von GET auf POST umgestellt — die Route LEGT eine
   // Anmelde-Nonce AN und war als GET die einzige zustandsaendernde Route,
   // die SameSite=lax durchliess.
-  'POST /api/auth/qr-token': 'nur-web',
-  'POST /api/auth/qr-login': 'nur-web',
-  'GET /api/auth/users': 'nur-web',
-  'POST /api/auth/users': 'nur-web',
-  'DELETE /api/auth/users/:id': 'nur-web',
-  'PUT /api/auth/users/:id/admin': 'nur-web',
-  'GET /api/sets/info/:setNumber': 'nur-web',
-  'POST /api/sets/add-stream': 'nur-web',
-  'GET /api/sets/import/csv/status': 'nur-web',
-  'GET /api/sets/import/csv/stream': 'nur-web',
-  'POST /api/sets/import/csv': 'nur-web',
-  'POST /api/sets/import/csv/cancel': 'nur-web',
-  'GET /api/sets/export/csv': 'nur-web',
-  'GET /api/sets/export/rebrickable': 'nur-web',
-  'POST /api/sets/:setNumber/instructions': 'nur-web',
-  'POST /api/sets/:setNumber/instructions/upload': 'nur-web',
-  'DELETE /api/sets/:setNumber/instructions/:instrId': 'nur-web',
-  'POST /api/sets/:setNumber/parts': 'nur-web',
-  'GET /api/parts/categories': 'nur-web',
-  'GET /api/parts/export/csv': 'nur-web',
-  'POST /api/parts/import/csv': 'nur-web',
-  'GET /api/minifigs/export/csv': 'nur-web',
-  'POST /api/minifigs/import/csv': 'nur-web',
-  'POST /api/settings': 'nur-web',
-  'GET /api/settings/raw': 'nur-web',
-  'GET /api/settings/export': 'nur-web',
-  'GET /api/settings/export/data': 'nur-web',
-  'POST /api/settings/import': 'nur-web',
-  'GET /api/settings/tokens': 'nur-web',
-  'DELETE /api/settings/tokens/:tokenId': 'nur-web',
-  'GET /api/settings/theme': 'nur-web',
-  'POST /api/settings/admin/theme': 'nur-web',
-  'POST /api/settings/smtp-test': 'nur-web',
+  'POST /api/v1/auth/qr-token': 'nur-web',
+  'GET /api/v1/auth/users': 'nur-web',
+  'POST /api/v1/auth/users': 'nur-web',
+  'DELETE /api/v1/auth/users/:id': 'nur-web',
+  'PUT /api/v1/auth/users/:id/admin': 'nur-web',
+  'GET /api/v1/sets/info/:setNumber': 'nur-web',
+  'POST /api/v1/sets/add-stream': 'nur-web',
+  'GET /api/v1/sets/import/csv/status': 'nur-web',
+  'GET /api/v1/sets/import/csv/stream': 'nur-web',
+  'POST /api/v1/sets/import/csv': 'nur-web',
+  'POST /api/v1/sets/import/csv/cancel': 'nur-web',
+  'GET /api/v1/sets/export/rebrickable': 'nur-web',
+  'POST /api/v1/sets/:setNumber/instructions': 'nur-web',
+  'POST /api/v1/sets/:setNumber/instructions/upload': 'nur-web',
+  'DELETE /api/v1/sets/:setNumber/instructions/:instrId': 'nur-web',
+  'POST /api/v1/sets/:setNumber/parts': 'nur-web',
+  'GET /api/v1/parts/categories': 'nur-web',
+  'POST /api/v1/parts/import/csv': 'nur-web',
+  'POST /api/v1/minifigs/import/csv': 'nur-web',
+  'POST /api/v1/settings': 'nur-web',
+  'GET /api/v1/settings/raw': 'nur-web',
+  'GET /api/v1/settings/export': 'nur-web',
+  'GET /api/v1/settings/export/data': 'nur-web',
+  'POST /api/v1/settings/import': 'nur-web',
+  'GET /api/v1/settings/theme': 'nur-web',
+  'POST /api/v1/settings/admin/theme': 'nur-web',
+  'POST /api/v1/settings/smtp-test': 'nur-web',
 };
 
 const VALID = new Set(['paritaet', 'paritaet-schreib', 'paar-extern', 'nur-v1', 'nur-web']);

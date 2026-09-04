@@ -28,7 +28,7 @@ const CSV_BASE = 'https://cdn.rebrickable.com/media/downloads/';
 /** Frist ohne empfangene Daten, nach der ein CSV-Download abgebrochen wird. */
 const DOWNLOAD_IDLE_MS = 60000;
 
-// Global startup status — read by /api/startup-status
+// Global startup status — read by /api/v1/startup-status
 // Only initialize if not already set by server.js
 if (!global.startupStatus) global.startupStatus = { ready: false, step: 'Starte...', progress: 0, total: 8 };
 const monitor = require('../utils/jobMonitor');

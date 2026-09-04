@@ -120,4 +120,76 @@ class ListenfilterImZustandTest {
             "Diese Abrufe der Teileliste lassen etwas weg:\n  " + fehlend.joinToString("\n  ")
         }
     }
+
+    /**
+     * Gesucht wird auf dem Server, nicht im Bildschirm.
+     *
+     * ── Der Befund ──────────────────────────────────────────────────────────
+     * MinifigsScreen hielt seinen Suchtext lokal und filterte die schon
+     * geladene Liste selbst:
+     *
+     *     figs.filter { it.figNumber.contains(search, ignoreCase = true) ||
+     *                   it.figName?.contains(search, ignoreCase = true) == true }
+     *
+     * Damit stand dieselbe Suchregel zweimal im Baum — einmal hier, einmal in
+     * utils/handlers/minifigs.ts. Und sie waren nicht deckungsgleich: Der
+     * Server sucht VOR der Gruppierung ueber jede fig_name-Zeile, der
+     * Bildschirm danach nur ueber die eine, die MAX(fig_name) uebrig laesst.
+     * Dieselbe Figur, die in zwei Sets unter zwei Namen steht, fand die Webapp
+     * und das Telefon nicht.
+     *
+     * ── Was geprueft wird ───────────────────────────────────────────────────
+     * Ein `.filter { … contains(…, ignoreCase = true) … }` unter ui/ ist die
+     * Form einer Suche im Bildschirm. Erlaubt bleibt sie, wo die Liste
+     * VOLLSTAENDIG im Speicher liegt und nicht blaettert — dort waere ein
+     * Serverbesuch nur langsamer. Diese Stellen stehen unten mit Grund.
+     */
+    @Test
+    fun `keine Suche im Bildschirm ueber eine geladene Liste`() {
+        // Vollstaendig geladene, kurze Listen ohne Blaettern und ohne
+        // Gesamtzahl daneben — hier ist oertliches Filtern richtig.
+        val erlaubt = mapOf(
+            "CatalogSections.kt" to
+                "Themenliste des Katalogs: einmal komplett geladen (state.themes), " +
+                "keine Seiten, keine Gesamtzahl. Ein Serverbesuch je Tastendruck " +
+                "waere nur langsamer."
+        )
+
+        val muster = Regex("""\.filter\s*\{[^}]*contains\([^)]*ignoreCase\s*=\s*true""")
+        val gefunden = mutableListOf<Pair<String, Int>>()
+
+        for (datei in Quellen.unter("ui")) {
+            val src = Quellen.ohneKommentare(datei.readText())
+            for (treffer in muster.findAll(src)) {
+                val zeile = src.substring(0, treffer.range.first).count { it == '\n' } + 1
+                gefunden += datei.name to zeile
+            }
+        }
+
+        // Selbstbeweis: Findet das Muster gar nichts, waere die Liste leer und
+        // der Test gruen, ohne etwas geprueft zu haben. Erwartet wird
+        // mindestens die eine begruendete Stelle.
+        assert(gefunden.isNotEmpty()) {
+            "Kein einziges oertliches Filtern gefunden — das Muster passt nicht mehr."
+        }
+
+        val verstoesse = gefunden.filterNot { it.first in erlaubt }
+        assert(verstoesse.isEmpty()) {
+            "Hier wird im Bildschirm ueber eine geladene Liste gesucht:\n  " +
+                verstoesse.joinToString("\n  ") { "${it.first}:${it.second}" } +
+                "\nDann steht die Suchregel zweimal — hier und im Server-Handler — " +
+                "und beide treffen frueher oder spaeter etwas anderes. Der Suchtext " +
+                "gehoert in den UiState, der Lader gibt ihn dem Server mit. Ist die " +
+                "Liste vollstaendig geladen und blaettert nicht, gehoert sie mit " +
+                "Grund in die Liste `erlaubt` oben."
+        }
+
+        // Eine Zeile, die niemand mehr braucht, ist eine Erlaubnis, die niemand
+        // prueft — dieselbe Regel wie in den Waechtern der Webapp.
+        val veraltet = erlaubt.keys.filterNot { name -> gefunden.any { it.first == name } }
+        assert(veraltet.isEmpty()) {
+            "Diese Eintraege beschreiben kein oertliches Filtern mehr — streichen:\n  " +
+                veraltet.joinToString("\n  ")
+        }
+    }
 }

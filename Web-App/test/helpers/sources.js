@@ -487,3 +487,57 @@ function pruefeParameter(src, name, params, hinweis = '') {
   }
 }
 module.exports.pruefeParameter = pruefeParameter;
+
+/**
+ * Wo haengt welcher Router? — aus server.ts GELESEN, nicht abgeschrieben.
+ *
+ * ── Warum das hier steht ────────────────────────────────────────────────────
+ * Drei Pruefungen trugen dieselbe Liste als Literal:
+ *
+ *     const MOUNT = { auth: '/api/auth', sets: '/api/sets', … }
+ *
+ * Beim Zusammenlegen der API-Oberflaechen ist genau das passiert, wogegen
+ * dieses Projekt sonst prueft: Die Einhaengepunkte in server.ts aenderten
+ * sich, die drei Kopien nicht — zwei Pruefungen scheiterten mit „ENOENT:
+ * routes/finance.ts", eine verglich fortan Aepfel mit Birnen.
+ *
+ * Eine Pruefung, die die Verdrahtung ABSCHREIBT, prueft nicht die
+ * Verdrahtung. Sie liest sie jetzt.
+ *
+ * @returns [{ mount: '/api/v1/sets', datei: '<abs>/routes/sets.ts', name: 'sets' }]
+ *          ohne routes/api_v1/* — das ist der Index selbst.
+ */
+function routerEinhaengungen() {
+  const src = ohneKommentare(fs.readFileSync(path.join(ROOT, 'server.ts'), 'utf8'));
+  const out = [];
+  for (const m of src.matchAll(/app\.use\(\s*['"](\/api[^'"]*)['"]\s*,\s*require\(\s*['"]\.\/(routes\/[^'"]+)['"]/g)) {
+    if (m[2].startsWith('routes/api_v1')) continue;
+    out.push({ mount: m[1].replace(/\/+$/, ''), datei: path.join(ROOT, m[2] + '.ts'),
+               name: m[2].replace(/^routes\//, '') });
+  }
+  return out;
+}
+module.exports.routerEinhaengungen = routerEinhaengungen;
+
+/**
+ * Der Einhaengepunkt EINES Routers, ueber den Dateinamen gesucht.
+ *
+ * ── Warum es das braucht ────────────────────────────────────────────────────
+ * Vier Pruefungen mit eigenem Pruefstand (auth-sessions, admin-role,
+ * forgot-password, qr-token) haengten routes/auth.js von Hand unter
+ * '/api/auth'. Sie blieben dadurch gruen, als der Router nach /api/v1/auth
+ * umzog — sie pruefen ja ihre eigene Verdrahtung, nicht die des Servers. Grün
+ * heisst dann nur noch „mein Pruefstand ist in sich stimmig".
+ *
+ * Mit dieser Funktion steht die Adresse an EINER Stelle: in server.ts.
+ *
+ * @param {string} name Dateiname ohne routes/ und ohne .ts, z. B. 'auth'.
+ * @returns {string} z. B. '/api/v1/auth'
+ */
+function einhaengung(name) {
+  const treffer = routerEinhaengungen().filter(r => r.name === name);
+  if (treffer.length !== 1)
+    throw new Error(`routes/${name}.ts haengt ${treffer.length}-mal in server.ts — erwartet: genau einmal`);
+  return treffer[0].mount;
+}
+module.exports.einhaengung = einhaengung;

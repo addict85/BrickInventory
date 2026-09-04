@@ -10,7 +10,7 @@
 // Zwei Stufen, damit es weder blinkt noch veraltet:
 //   1. Sofort: der zuletzt bekannte Wert aus localStorage. Kein Netzwerk, kein
 //      Aufblitzen des falschen Designs.
-//   2. Gleich danach asynchron: GET /api/settings/theme (öffentlich, siehe
+//   2. Gleich danach asynchron: GET /api/v1/settings/theme (öffentlich, siehe
 //      routes/settings.ts). Weicht der Serverwert ab — anderer Browser, anderes
 //      Gerät, Admin hat gerade umgestellt — wird korrigiert und gecacht.
 //
@@ -70,7 +70,7 @@
 
   // 2) Serverwert nachziehen
   function sync() {
-    fetch('/api/settings/theme', { credentials: 'same-origin' })
+    fetch('/api/v1/settings/theme', { credentials: 'same-origin' })
       .then(function (r) { return r.ok ? r.json() : null; })
       .then(function (d) {
         if (!d || !d.success || !d.theme) return;

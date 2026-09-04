@@ -8,7 +8,6 @@ import {  DATA_DIR } from '../../utils/appPaths';
 import * as db from '../../db/database';
 import { handleRouteError, meldeUndWeiter } from '../../utils/httpError';
 import { requireApiAdmin } from './middleware';
-import { strictBool } from '../../utils/validate';
 import { PDF_JOB_DIR } from './pdf';
 import { getLimitForApi, getRateLimitStatus } from '../../utils/financeCalc';
 import { scrapeInstructionsFromFallback } from '../../utils/instructions';
@@ -24,6 +23,20 @@ import { anfragenJeMinute } from '../../jobs/imageQueue';
 import { DAILY_JOBS } from '../../jobs/dailyScheduler';
 import { getGlobalSetting, setGlobalSetting, setGlobalTrigger, deleteGlobalSetting } from '../../utils/settings';
 const router = express.Router();
+
+/**
+ * Wie lange ein gemeldeter Betrieb ohne neues Lebenszeichen gilt.
+ *
+ * Steht an EINER Stelle, weil zwei Kacheln dieselbe Frage beantworten: Ist das
+ * „laeuft" von eben noch aktuell? Vorher stand die Zahl nur beim Katalog-Job;
+ * der Bilder-Nachlauf daneben hatte gar keine Frist und blieb nach einem
+ * abgebrochenen Lauf fuer immer auf „laeuft".
+ *
+ * Drei Minuten: lang genug, dass ein langsamer Durchgang nicht faelschlich als
+ * tot gilt (der Takt schreibt alle zwanzig Sekunden), kurz genug, dass ein
+ * abgestuerzter Lauf nicht den ganzen Tag Betrieb vortaeuscht.
+ */
+const JOB_FRISCH_MS = 3 * 60_000;
 
 // ── POST /api/v1/admin/trigger-csv-sync — manually trigger CSV sync ──────────
 router.post('/admin/trigger-csv-sync', requireApiAdmin, async (_req: AuthedRequest, res) => {
@@ -489,34 +502,20 @@ router.post('/admin/redownload-missing-images', requireApiAdmin, async (_req: Au
   } catch (e) { handleRouteError(res, e); }
 });
 
-// ── GET /api/v1/admin/users — list all users ──────────────────────────────────
-router.get('/admin/users', requireApiAdmin, async (_req: AuthedRequest, res) => {
-  try {
-    const users = await db.all(
-      `SELECT id, username, email, is_admin, is_active, created_at FROM users ORDER BY username ASC`
-    );
-    res.json({ success: true, users });
-  } catch (e) { handleRouteError(res, e); }
-});
-
-// ── PUT /api/v1/admin/users/:id/role — toggle admin role ─────────────────────
-router.put('/admin/users/:id/role', requireApiAdmin, async (req: AuthedRequest, res) => {
-  const { is_admin } = req.body;
-  if (is_admin === undefined) return res.status(400).json({ success: false, error: 'is_admin erforderlich' });
-  try {
-    // strictBool statt `is_admin ? 1 : 0`: Die Zeichenkette "false" ist in
-    // JavaScript WAHR — der Endpunkt meldete dann Erfolg, ohne die Rechte zu
-    // entziehen (siehe utils/validate.ts). Auch der Selbstschutz unten hing an
-    // derselben Prüfung und lief deshalb ins Leere.
-    const soll = strictBool(is_admin, 'is_admin');
-    if (parseInt(String(req.params.id)) === req.apiUser.user_id && !soll)
-      return res.status(400).json({ success: false, error: 'Eigene Admin-Rolle kann nicht entfernt werden' });
-    const r = await db.run(`UPDATE users SET is_admin = $1 WHERE id = $2`, [soll ? 1 : 0, req.params.id]);
-    // Ohne diese Prüfung meldete auch eine unbekannte Benutzer-ID Erfolg.
-    if (r.changes === 0) return res.status(404).json({ success: false, error: 'Benutzer nicht gefunden' });
-    res.json({ success: true });
-  } catch (e) { handleRouteError(res, e); }
-});
+// ── Nutzerverwaltung: NUR unter /api/v1/auth/users ───────────────────────────────
+//
+// Hier standen GET /api/v1/admin/users und PUT /api/v1/admin/users/:id/role.
+// Beide hat kein Client gerufen — nachgemessen ueber den Browser-Code und die
+// Retrofit-Anmerkungen der App (test/api-aufrufer.test.js). Die Webapp
+// verwaltet Konten ueber /api/v1/auth/users, die App hat keine Nutzerverwaltung.
+//
+// Schwerer als das Totliegen wog die Doppelung: Adminrechte liessen sich hier
+// mit dem Feld `is_admin` und dort mit `role` umschalten — zwei Schreibweisen
+// fuer dieselbe Umschaltung, jede mit eigener Pruefung. Bei Rechten ist genau
+// das die Sorte Doppelung, bei der irgendwann eine Seite grosszuegiger ist.
+//
+// Der Selbstschutz („eigene Admin-Rolle kann nicht entfernt werden") und die
+// strictBool-Pruefung stehen weiter in routes/auth.ts, PUT /users/:id/admin.
 
 // ── GET /api/v1/admin/logs?minutes=15 — return recent log entries ─────────────
 router.get('/admin/logs', requireApiAdmin, async (req: AuthedRequest, res) => {
@@ -671,7 +670,31 @@ router.get('/admin/jobs', requireApiAdmin, async (_req: AuthedRequest, res) => {
     const roh = await getGlobalSetting('imgredl_status');
     if (roh) reDl = JSON.parse(roh);
   } catch (_) { reDl = null; }
-  const reDlRunning = reDl?.running === true;
+  // ── „laeuft" heisst auch hier: hat KUERZLICH etwas getan ──────────────────
+  //
+  // Hier stand `reDl?.running === true` — der Wert allein, ohne sein Alter.
+  // Ein Prozess, der mitten im Lauf beendet wird (Neustart, Auslieferung,
+  // Container gestoppt), kommt nie mehr dazu, `false` zu schreiben. Der Stand
+  // blieb dann fuer immer auf „laeuft", und diese Kachel meldete Betrieb, bis
+  // jemand den Schluessel von Hand loeschte.
+  //
+  // Der Zeitstempel dafuer wird laengst mitgeschrieben: _redlSetStatus() in
+  // jobs/partsCatalogEnrich.ts haengt an JEDEN Stand ein `at`. Gelesen wurde
+  // er nie.
+  //
+  // Zwoelf Zeilen weiter unten steht fuer den Katalog-Job dieselbe Regel, und
+  // zwar begruendet mit genau diesem Befund von Marco („Der Job scheint zu
+  // laufen laut Monitoring, aber im Log sind keine Eintraege dazu zu finden").
+  // Sie stand nur an einer der beiden Stellen. Deshalb jetzt EINE Konstante
+  // fuer beide — sonst laufen die zwei Fenster beim naechsten Anfassen
+  // auseinander.
+  //
+  // NACHGEMESSEN: Ein hinterlassenes {running:true} macht
+  // test/image-queue-db.test.js rot („'running' !== 'idle'"). So ist der
+  // Fehler ueberhaupt aufgefallen — im allerersten CI-Lauf dieses Repositories.
+  const seitReDl = typeof reDl?.at === 'number' ? Date.now() - reDl.at : null;
+  const reDlRunning = reDl?.running === true
+    && (seitReDl === null || seitReDl < JOB_FRISCH_MS);
   const reDlSub = reDlRunning
     ? (reDl.phase === 'scanning'
         ? '↻ suche fehlende Bilder…'
@@ -721,7 +744,7 @@ router.get('/admin/jobs', requireApiAdmin, async (_req: AuthedRequest, res) => {
     if (roh) letzterLauf = JSON.parse(roh);
   } catch (_) { letzterLauf = null; }
   const seitLauf = letzterLauf?.zeit ? Date.now() - letzterLauf.zeit : null;
-  const jobLaeuft = seitLauf !== null && seitLauf < 3 * 60_000;
+  const jobLaeuft = seitLauf !== null && seitLauf < JOB_FRISCH_MS;
   const katalogSub = katalogOffen > 0
     ? `${katalogOffen} Katalog-Bilder in Warteschlange` +
       (jobLaeuft ? '' : seitLauf === null ? ' · Job noch nicht gelaufen'

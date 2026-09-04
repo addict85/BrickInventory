@@ -49,14 +49,37 @@ class UiStateFieldsTest {
             .associate { it.groupValues[1] to it.groupValues[2] }
     }
 
-    /** Feldnamen je Zustands-Datenklasse. */
+    /**
+     * Feldnamen je Zustands-Datenklasse — Konstruktor UND Rumpf.
+     *
+     * ── Warum der Rumpf dazugehoert ─────────────────────────────────────────
+     * Hier stand nur der Konstruktor. Eine abgeleitete Eigenschaft
+     *
+     *     data class SetItemUiState(val art: String? = null, …) {
+     *         val offen: Boolean get() = art != null
+     *     }
+     *
+     * ist aber ein Feld, das es GIBT — die Pruefung haette den Zugriff darauf
+     * als „gibt es nicht" gemeldet. Das ist kein Fund, sondern eine Luecke im
+     * Muster: Sie verbot eine gewoehnliche Kotlin-Schreibweise und haette den
+     * Naechsten dazu gebracht, schlechteren Code zu schreiben, um sie ruhig
+     * zu stellen.
+     *
+     * Aufgefallen ist es am oertlichen Spiegel, bevor ein zehnminuetiger Lauf
+     * es gesehen haette.
+     *
+     * Der Rumpf wird BIS ZUR SCHLIESSENDEN KLAMMER AM ZEILENANFANG gelesen —
+     * so kann die Erfassung nicht in die naechste Klasse hineinlaufen.
+     */
     private fun felderJeKlasse(): Map<String, Set<String>> {
         val quelle = java.io.File(wurzel, "ui/UiState.kt").readText()
-        return Regex("""data class (\w+UiState)\((.*?)\n\)""", RegexOption.DOT_MATCHES_ALL)
+        return Regex("""data class (\w+UiState)\((.*?)\n\)(?: \{(.*?)\n\})?""",
+                     RegexOption.DOT_MATCHES_ALL)
             .findAll(quelle)
             .associate { m ->
-                m.groupValues[1] to Regex("""val\s+(\w+)\s*:""")
-                    .findAll(m.groupValues[2]).map { it.groupValues[1] }.toSet()
+                val namen = Regex("""val\s+(\w+)\s*[:=]""")
+                m.groupValues[1] to (namen.findAll(m.groupValues[2]) + namen.findAll(m.groupValues[3]))
+                    .map { it.groupValues[1] }.toSet()
             }
     }
 

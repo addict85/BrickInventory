@@ -1,6 +1,7 @@
 package ch.brickinventoryapp.ui.screens
 
 import ch.brickinventoryapp.ui.theme.Formen
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.grid.*
 import androidx.compose.foundation.rememberScrollState
@@ -22,6 +23,7 @@ import androidx.compose.ui.unit.sp
 import ch.brickinventoryapp.data.model.Minifig
 import ch.brickinventoryapp.util.fmtInt
 import ch.brickinventoryapp.data.model.FigValuationItem
+import ch.brickinventoryapp.util.fmtDatum
 import ch.brickinventoryapp.util.rememberTileImageWithFallback
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
@@ -29,8 +31,6 @@ import coil.compose.AsyncImage
 import coil.ImageLoader
 import coil.request.ImageRequest
 import androidx.compose.ui.platform.LocalContext
-import java.text.SimpleDateFormat
-import java.util.Locale
 import androidx.compose.ui.res.stringResource
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import ch.brickinventoryapp.R
@@ -67,22 +67,28 @@ fun MinifigsScreen(
 
     val onRefresh: () -> Unit = { vm.loadMinifigs(); vm.loadValuation() }
     val onScopeChange: (String) -> Unit = { vm.setScope(ch.brickinventoryapp.data.ScopeFilter.View.MINIFIGS, it) }
-    val onDeleteFig: (String) -> Unit = { figNumber -> vm.deleteMinifig(figNumber) }
+    // Besitzer der Karte mitgeben: Im Haushalt stehen hier die Eintraege aller
+    // Konten. Ohne die Angabe loescht der Server die Zeile des Aufrufers —
+    // geklickt waere die fremde Karte, weg die eigene.
+    val onDeleteFig: (String, Int?) -> Unit = { figNumber, owner -> vm.deleteMinifig(figNumber, owner) }
     val onAddMinifig: (String, String?, Int, String?, Double?, String?, Int?) -> Unit =
         { num, blNum, qty, note, unitPrice, cond, owner ->
             vm.addMinifig(num, blNum, qty, note, unitPrice, cond, owner)
         }
 
-    var search by rememberSaveable { mutableStateOf("") }
+    // Suchtext aus dem Zustand, gefiltert wird auf dem SERVER — wie bei den
+    // Teilen (PartsScreen) und in der Galerie. Hier stand ein eigenes
+    // `filter { contains(search) }` ueber die schon geladene Liste; damit
+    // existierte die Suchregel zweimal, und sie traf etwas anderes als die des
+    // Servers (Begruendung in TeileRepository.getMinifigs).
+    //
+    // remember(partsState.minifigsQuery): Das Feld haelt den Text waehrend des
+    // Tippens selbst, uebernimmt aber einen von aussen gesetzten (Leeren beim
+    // Abmelden, Wiederherstellen). Genau wie in PartsScreen.
+    var search by remember(partsState.minifigsQuery) { mutableStateOf(partsState.minifigsQuery) }
+    val ansicht = partsState.minifigsView
     var showAddDialog by rememberSaveable { mutableStateOf(false) }
     var deletingFig by remember { mutableStateOf<FigValuationItem?>(null) }
-    val filtered = remember(figs, search) {
-        if (search.isBlank()) figs
-        else figs.filter {
-            it.figNumber.contains(search, ignoreCase = true) ||
-            it.figName?.contains(search, ignoreCase = true) == true
-        }
-    }
 
     Box(Modifier.fillMaxSize()) {
     Column(Modifier.fillMaxSize()) {
@@ -116,12 +122,12 @@ fun MinifigsScreen(
         // Search
         OutlinedTextField(
             value = search,
-            onValueChange = { search = it },
+            onValueChange = { search = it; vm.setMinifigsQuery(it) },
             placeholder = { Text(stringResource(R.string.minifigs_search_placeholder)) },
             leadingIcon = { Icon(Icons.Default.Search, null, Modifier.size(20.dp)) },
             trailingIcon = {
                 if (search.isNotEmpty())
-                    IconButton(onClick = { search = "" }) { Icon(Icons.Default.Clear, stringResource(R.string.minifigs_delete)) }
+                    IconButton(onClick = { search = ""; vm.setMinifigsQuery("") }) { Icon(Icons.Default.Clear, stringResource(R.string.minifigs_delete)) }
             },
             modifier = Modifier.fillMaxWidth().padding(horizontal = 14.dp, vertical = 8.dp),
             singleLine = true,
@@ -129,6 +135,13 @@ fun MinifigsScreen(
             colors = OutlinedTextFieldDefaults.colors(
                 unfocusedBorderColor = MaterialTheme.colorScheme.outline.copy(alpha = 0.4f)
             )
+        )
+
+        // Karten oder Tabelle — wie das Auswahlfeld figs-view der Webapp.
+        AnsichtUmschalter(
+            aktuell = ansicht,
+            onWechsel = { vm.setMinifigsView(it) },
+            modifier = Modifier.padding(horizontal = 14.dp).padding(bottom = 8.dp),
         )
 
         when {
@@ -144,7 +157,7 @@ fun MinifigsScreen(
                         color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
             }
-            filtered.isEmpty() && manualFigs.isEmpty() -> Box(Modifier.fillMaxSize(), Alignment.Center) {
+            figs.isEmpty() && manualFigs.isEmpty() -> Box(Modifier.fillMaxSize(), Alignment.Center) {
                 Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     Text("🔍", fontSize = 40.sp)
                     Text(stringResource(R.string.minifigs_no_results), fontWeight = FontWeight.SemiBold)
@@ -173,17 +186,26 @@ fun MinifigsScreen(
                                 onDelete = { deletingFig = fig }
                             )
                         }
-                        if (filtered.isNotEmpty()) {
+                        if (figs.isNotEmpty()) {
                             item(span = { GridItemSpan(maxLineSpan) }, key = "sets-header") {
                                 SectionHeader(stringResource(R.string.minifigs_sets_section))
                             }
                         }
                     }
+                    // Wie bei den Teilen: In der Tabellenansicht nimmt jede
+                    // Zeile die ganze Breite, der Raster-Container bleibt
+                    // derselbe. Die manuellen Figuren bleiben in beiden
+                    // Ansichten Kacheln — dort haengt in der Webapp
+                    // #manual-figs-list ebenfalls nicht an figs-view.
                     itemsIndexed(
-                        filtered,
-                        key = { index, fig -> "${fig.figNumber}_${fig.source}_$index" }
+                        figs,
+                        key = { index, fig -> "${fig.figNumber}_${fig.source}_$index" },
+                        span = { _, _ -> if (ansicht == "table") GridItemSpan(maxLineSpan) else GridItemSpan(1) },
                     ) { _, fig ->
-                        MinifigCard(fig, serverUrl, imageLoader)
+                        // BEIDE Ansichten oeffnen denselben Dialog.
+                        val oeffne = { vm.oeffneSetItem("fig", fig.figNumber) }
+                        if (ansicht == "table") MinifigTableRow(fig, serverUrl, imageLoader, oeffne)
+                        else MinifigCard(fig, serverUrl, imageLoader, oeffne)
                     }
                 }
             }
@@ -218,7 +240,7 @@ fun MinifigsScreen(
             title = { Text(stringResource(R.string.minifigs_delete_title)) },
             text = { Text(stringResource(R.string.minifigs_delete_text, fig.figName ?: fig.figNumber)) },
             confirmButton = {
-                TextButton(onClick = { onDeleteFig(fig.figNumber); deletingFig = null }) {
+                TextButton(onClick = { onDeleteFig(fig.figNumber, fig.userId); deletingFig = null }) {
                     Text(stringResource(R.string.minifigs_delete), color = MaterialTheme.colorScheme.error)
                 }
             },
@@ -382,11 +404,14 @@ fun AddMinifigDialog(
 }
 
 @Composable
-fun MinifigCard(fig: Minifig, serverUrl: String, imageLoader: ImageLoader) {
+fun MinifigCard(fig: Minifig, serverUrl: String, imageLoader: ImageLoader,
+                onClick: (() -> Unit)? = null) {
     val qty = fig.totalQuantity ?: fig.quantity
 
     Card(
-        modifier = Modifier.fillMaxWidth().height(196.dp),
+        // Antippen oeffnet den Detail-Dialog — wie bei den Teilen daneben.
+        modifier = Modifier.fillMaxWidth().height(196.dp)
+            .let { if (onClick != null) it.clickable(onClick = onClick) else it },
         shape = Formen.leiste,
         elevation = CardDefaults.cardElevation(defaultElevation = Formen.karteErhebung),
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
@@ -429,15 +454,24 @@ fun MinifigCard(fig: Minifig, serverUrl: String, imageLoader: ImageLoader) {
                     }
                 }
                 // Zustand nur bei manuell erfassten Minifiguren (automatisch aus
-                // Sets übernommene haben keinen eigenen Zustand).
-                if (fig.source == "manual") {
-                    // Column statt Box: Zwei Plaketten übereinander, nicht
-                    // aufeinander — in einer Box lägen sie am selben Punkt.
-                    Column(Modifier.align(Alignment.BottomStart).padding(4.dp),
-                        verticalArrangement = Arrangement.spacedBy(2.dp)) {
-                        ConditionBadges(fig.conditions, fig.condition)
-                        OwnerBadges(fig.owners)
-                    }
+                // Sets übernommene haben keinen eigenen Zustand). Die
+                // BESITZER-Plakette dagegen unbedingt: Sie beantwortet „wem
+                // gehört das?", und die Frage stellt sich bei einer Figur aus
+                // dem Set eines Kindes genauso. Die Galerie-Kachel zeigt sie
+                // seit jeher.
+                //
+                // Sie stand INNERHALB dieser Bedingung — und diese Liste lädt
+                // ausschliesslich `source=set`. Die Plakette war also
+                // unerreichbar. Ohne Haushalt ist `owners` leer, und
+                // OwnerBadges kehrt dann sofort zurück; im Einzelkonto ändert
+                // sich nichts.
+                //
+                // Column statt Box: Zwei Plaketten übereinander, nicht
+                // aufeinander — in einer Box lägen sie am selben Punkt.
+                Column(Modifier.align(Alignment.BottomStart).padding(4.dp),
+                    verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                    if (fig.source == "manual") ConditionBadges(fig.conditions, fig.condition)
+                    OwnerBadges(fig.owners)
                 }
                 if (fig.source == "manual") {
                     Surface(
@@ -458,14 +492,13 @@ fun MinifigCard(fig: Minifig, serverUrl: String, imageLoader: ImageLoader) {
                     style = MaterialTheme.typography.bodySmall,
                     fontWeight = FontWeight.Medium,
                     maxLines = 2, overflow = TextOverflow.Ellipsis)
-                val dateFmt = remember { SimpleDateFormat("dd.MM.yy", Locale.getDefault()) }
+                // Gemeinsamer Helfer (util/DatumFormat.kt). Hier stand ein
+                // SimpleDateFormat mit dem festen Muster
+                // "yyyy-MM-dd'T'HH:mm:ss.SSS'Z'" — bei einem Zeitstempel OHNE
+                // Millisekunden fiel es still auf null zurueck, und dann stand
+                // gar kein Datum da.
                 val dateLabel = remember(fig.setAddedAt) {
-                    fig.setAddedAt?.let { dateStr ->
-                        runCatching {
-                            val inFmt = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'", Locale.US)
-                            inFmt.parse(dateStr)?.let { dateFmt.format(it) }
-                        }.getOrNull()
-                    }
+                    fmtDatum(fig.setAddedAt, zweistelligesJahr = true)
                 }
                 if (dateLabel != null)
                     Text(dateLabel, style = MaterialTheme.typography.labelSmall,
@@ -473,4 +506,32 @@ fun MinifigCard(fig: Minifig, serverUrl: String, imageLoader: ImageLoader) {
             }
         }
     }
+}
+
+/**
+ * Eine Figur als Tabellenzeile.
+ *
+ * Zeigt, was die Tabelle der Webapp zeigt (renderFigs in 06-minifigs.js):
+ * Bild, Nummer, Name, Menge, Erfassungsdatum.
+ *
+ * Die Spalten „Quelle" und Papierkorb, die dort einmal standen, sind es
+ * nicht — beide waren konstant, weil diese Liste ausschliesslich `source=set`
+ * laedt. Sie sind im selben Zug auch in der Webapp entfernt worden; hier steht
+ * also nicht weniger, sondern in beiden dasselbe.
+ */
+@Composable
+fun MinifigTableRow(fig: Minifig, serverUrl: String, imageLoader: ImageLoader,
+                    onClick: (() -> Unit)? = null) {
+    val (bildUrl, onFehler) = rememberTileImageWithFallback(
+        serverUrl, fig.imageLocal, fig.imageUrl, fullViaProxy = true)
+    TabellenZeile(
+        bildUrl = bildUrl,
+        nummer = fig.figNumber,
+        name = fig.figName,
+        menge = fig.totalQuantity ?: fig.quantity,
+        imageLoader = imageLoader,
+        zweiteZeile = fmtDatum(fig.setAddedAt),
+        onBildFehler = onFehler,
+        onClick = onClick,
+    )
 }

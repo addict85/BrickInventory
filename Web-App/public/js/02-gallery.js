@@ -1,11 +1,12 @@
+import { ladeAnzeige } from './01-bausteine.js';
 import { registerActions } from './00-registry.js';
 import { locale, t, tRaw} from '../i18n.js';
 import { CURRENCY, G, ME, TRASH_ICON_SVG, _gibSse, _gibTimer, _monitorTimer, api, esc, escJs, escUrl, fmtBig, fmtN, gibStart, imgUrl, loadMonitor, observeLazyImages, thumbUrl, toast, set_monitorTimer } from './01-core.js';
-import { SCOPE_VIEWS, addScopeParam, scopeMode, setScopeMode } from './14-scope.js';
+import { SCOPE_VIEWS, addScopeParam, scopeMode, scopeQuery, setScopeMode } from './14-scope.js';
 import { setScrollLabel } from './15-scrollbar.js';
 import { loadParts } from './03-parts.js';
 import { loadFinance } from './04-finance.js';
-import { loadApiLimits, loadCacheStats, loadCacheTtl, loadProfile, loadRateLimitStats, loadSettings } from './05-settings.js';
+import { loadApiLimits, loadCacheStats, loadCacheTtl, loadProfile, loadRateLimitStats, loadSettings, loadTokens } from './05-settings.js';
 import { loadBrickColors, loadManualParts, loadMinifigs } from './06-minifigs.js';
 import { _lastImportAt, confirmDelete, enrichGalleryWithPrices, jobPollTimer, openModal, pollJobStatus, set_jobPollTimer, set_lastImportAt } from './07-admin.js';
 import { openAcqModal, renderAcqModalBody, renderAcquisitionSummary } from './13-acquisition-modals.js';
@@ -64,7 +65,7 @@ export function bindTabs(){
       }
       if(tab==='finance')      { loadFinance(); } // loadFinance already fetches parts+minifigs valuation in parallel
       if(tab==='partslist')    { /* session-only, no server load needed */ }
-      if(tab==='settings')     { loadSettings(); loadProfile(); if(ME?.isAdmin) loadApiLimits(); }
+      if(tab==='settings')     { loadSettings(); loadProfile(); loadTokens(); if(ME?.isAdmin) loadApiLimits(); }
       if(tab==='monitor')      { loadMonitor(); loadCacheStats(); loadRateLimitStats(); loadCacheTtl(); if(jobPollTimer) clearTimeout(jobPollTimer); pollJobStatus(); }
       if(tab!=='monitor' && _monitorTimer) { clearInterval(_monitorTimer); set_monitorTimer(null); if(jobPollTimer){clearTimeout(jobPollTimer);set_jobPollTimer(null);} }
     });
@@ -83,7 +84,17 @@ export function bindTabs(){
 
 // ── STATS ─────────────────────────────────────────────
 export async function loadStats(){
-  const d = await api('GET', '/v1/stats');
+  // Mit Kontofilter. Hier stand `api('GET', '/v1/stats')` ohne ihn — und das
+  // war nachweislich nicht so gemeint: onScopeChange('gallery') ruft
+  // ausgerechnet loadStats() gleich nach loadGallery() auf. Etwas neu zu laden,
+  // das sich nicht ändern kann, ergibt nur einen Sinn, wenn es sich ändern
+  // SOLLTE.
+  //
+  // Die Wirkung: Wer auf „nur meine" stellte, sah darunter eine gefilterte
+  // Liste und darüber weiter die Zahlen des ganzen Haushalts. Am Telefon
+  // stimmten beide — die App schickt accounts an /v1/stats seit jeher
+  // (BrickApiService.getStats).
+  const d = await api('GET', '/v1/stats' + scopeQuery('gallery'));
   if (d.success) {
     G('hs-sets').textContent     = d.stats.total_sets;
     G('hs-parts').textContent    = fmtBig(d.stats.total_parts    || 0);
@@ -425,7 +436,7 @@ export async function loadGallery(opts = {}){
   // Antwort da ist; erst dann wird einmal neu gezeichnet.
   const gal = G('gallery');
   if (!allSets.length || !gal.querySelector('.sgrid, .tw, .empty')) {
-    gal.innerHTML = `<div class="loading"><div class="spin"></div><span>${t('gallery.loading')}</span></div>`;
+    gal.innerHTML = ladeAnzeige(t('gallery.loading'));
   }
   _galGen++; _galPage = 1; _galDone = false; _galLoadingMore = false;
   const gen = _galGen;
@@ -600,7 +611,7 @@ function tableRow(s){
     <td style="font-size:.75rem;color:var(--mut)">${addedFmt}</td>
     <td>${s.instructions?.length?`<span class="ibadge">📋${s.instructions.length}</span>`:'—'}</td>
     <td data-click="stopEvent"><button class="btn bs btn-sm" data-click="reimportParts" data-arg="${escJs(s.set_number)}">${PARTS_ICON_SVG}</button></td>
-    <td data-click="stopEvent"><button class="btn bd btn-sm" data-click="delSet" data-arg="${escJs(s.set_number)}">🗑️</button></td>
+    <td data-click="stopEvent"><button class="btn bd btn-sm" data-click="delSet" data-arg="${escJs(s.set_number)}" title="${esc(t('detail.delete'))}" aria-label="${esc(t('detail.delete'))}">${TRASH_ICON_SVG}</button></td>
   </tr>`;
 }
 
@@ -619,7 +630,7 @@ async function doAddSet(){
   if(!num){toast(tRaw('common.enter_set_number'),'error');return;}
   showProgress(t('gallery.adding_set',{num}), false);
   try{
-    await streamRequest('/api/sets/add-stream', {set_number:num,quantity:qty,purchase_price,condition,owner_user_id}, (ev)=>{
+    await streamRequest('/api/v1/sets/add-stream', {set_number:num,quantity:qty,purchase_price,condition,owner_user_id}, (ev)=>{
       handleSseEvent(ev, num);
       if(ev.step==='done' && ev.action==='exists'){
         // Set steht schon im Blickfeld — der Server hat NICHTS geschrieben
@@ -659,7 +670,7 @@ async function startSetCsvImport(){
   const fd=new FormData(); fd.append('file',fi.files[0]);
   try{
     // Start import job (returns immediately)
-    const start = await fetch('/api/sets/import/csv',{method:'POST',body:fd});
+    const start = await fetch('/api/v1/sets/import/csv',{method:'POST',body:fd});
     const startData = await start.json();
     if(!startData.success){ hideProgress(); toast(startData.error||t('settings.error'),'error'); return; }
     const total = startData.total;
@@ -675,7 +686,7 @@ async function startSetCsvImport(){
     // Fortschritt bevorzugt über SSE; nur bei Ausfall Polling-Fallback.
     const ctx = { total, prevDone:-1, prevResultCount:0 };
     const wt = sessionStorage.getItem('webToken');
-    const url = '/api/sets/import/csv/stream' + (wt ? ('?token=' + encodeURIComponent(wt)) : '');
+    const url = '/api/v1/sets/import/csv/stream' + (wt ? ('?token=' + encodeURIComponent(wt)) : '');
     let usedSse = false;
 
     await new Promise((resolve) => {
@@ -775,7 +786,7 @@ async function csvPollLoop(ctx, fi){
     await new Promise(r=>setTimeout(r,1500));
     if(!_csvPollActive) break;
     try{
-      const s = await api('GET','/sets/import/csv/status');
+      const s = await api('GET','/v1/sets/import/csv/status');
       if(csvApplyOverlayStatus(s, ctx, fi)) break;
     }catch(e){ console.warn('Poll error:',e); }
   }
@@ -787,7 +798,7 @@ export let _csvPollActive = false;
 
 function cancelImport(){
   _csvPollActive = false;
-  api('POST','/sets/import/csv/cancel').catch(()=>{});
+  api('POST','/v1/sets/import/csv/cancel').catch(()=>{});
   G('btn-cancel-import').style.display='none';
   hideProgress();
   toast(tRaw('csv.cancelled'),'info');
@@ -896,7 +907,7 @@ export async function delSet(sn){
   loadGallery(); loadParts(); loadStats();
   return true;
 }
-export async function reimportParts(sn){ toast(tRaw('detail.importing_parts',{sn}),'info'); const d=await api('POST',`/sets/${sn}/parts`); if(d.success){toast(tRaw('detail.parts_imported',{count:d.count}),'success');loadParts();} else toast(d.error,'error'); }
+export async function reimportParts(sn){ toast(tRaw('detail.importing_parts',{sn}),'info'); const d=await api('POST',`/v1/sets/${sn}/parts`); if(d.success){toast(tRaw('detail.parts_imported',{count:d.count}),'success');loadParts();} else toast(d.error,'error'); }
 
 // ── MODAL ─────────────────────────────────────────────
 export let curSet=null;
@@ -948,7 +959,7 @@ export function renderInstructions(instr, sn) {
 
 async function delInstr(sn, instrId) {
   if (!await confirmDelete(tRaw('instr.delete_title'),t('instr.delete_text'),'📄')) return;
-  const d = await api('DELETE', `/sets/${sn}/instructions/${instrId}`);
+  const d = await api('DELETE', `/v1/sets/${sn}/instructions/${instrId}`);
   if (d.success) { toast(tRaw('instr.deleted'), 'success'); openModal(sn); }
   else toast(d.error || t('settings.error'), 'error');
 }
@@ -963,7 +974,7 @@ async function uploadInstr(sn) {
   const desc = G('instr-desc').value.trim();
   if (desc) fd.append('description', desc);
   try {
-    const r = await fetch(`/api/sets/${sn}/instructions/upload`, { method: 'POST', body: fd });
+    const r = await fetch(`/api/v1/sets/${sn}/instructions/upload`, { method: 'POST', body: fd });
     const d = await r.json();
     if (d.success) { toast(tRaw('instr.uploaded'), 'success'); openModal(sn); }
     else { status.textContent = '❌ ' + (d.error || t('settings.error')); status.style.color = 'var(--r500)'; }
@@ -1031,7 +1042,7 @@ export function autosaveSet(){
 // schliesst nur, wenn wirklich gelöscht wurde; sonst stünde er nach einem
 // „Abbrechen" leer da.
 G('btn-md').onclick=async()=>{ if(!curSet) return; if(await delSet(curSet.set_number)) closeModal(); };
-async function redownloadInstr(sn){ toast(tRaw('instr.loading'),'info'); const d=await api('POST',`/sets/${sn}/instructions`); if(d.success){toast(tRaw('instr.loaded',{count:d.instructions.length}),'success');if(curSet){openModal(sn);}loadStats();} else toast(d.error,'error'); }
+async function redownloadInstr(sn){ toast(tRaw('instr.loading'),'info'); const d=await api('POST',`/v1/sets/${sn}/instructions`); if(d.success){toast(tRaw('instr.loaded',{count:d.instructions.length}),'success');if(curSet){openModal(sn);}loadStats();} else toast(d.error,'error'); }
 
 
 

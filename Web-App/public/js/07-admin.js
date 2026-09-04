@@ -1,9 +1,11 @@
 import { registerActions } from './00-registry.js';
+import { detailZeile, oderStrich, textOderStrich } from './01-bausteine.js';
 import { renderAcquisitionSummary } from './13-acquisition-modals.js';
 import { locale, t, tRaw} from '../i18n.js';
 import { CURRENCY, G, ME, _settingsCache, api, esc, escJs, fmtN, fullUrl, imgUrl, toast , set_settingsCache} from './01-core.js';
 import { PARTS_ICON_SVG, _pnlCache, allSets, setAllSets, applySetAggregate, autosaveSet, closeModal, curSet, loadGallery, pnlBadge, reimportParts, renderInstructions, updateGalleryPrices , set_pnlCache, set_curSet} from './02-gallery.js';
 import { loadFinance } from './04-finance.js';
+import { scopeQuery } from './14-scope.js';
 import { loadApiLimits, loadCacheTtl, loadSettings } from './05-settings.js';
 import { deleteManualFig, deleteManualPart, loadManualFigsTable, loadManualParts, manualFigsCache, manualPartsCache, updateManualFig, updateManualPart } from './06-minifigs.js';
 
@@ -42,7 +44,7 @@ export function confirmDelete(title, msg, icon) {
 // ── CONFIG EXPORT / IMPORT ───────────────────────────────────
 G('btn-cfg-export').onclick = async () => {
   const a = document.createElement('a');
-  a.href = '/api/settings/export';
+  a.href = '/api/v1/settings/export';
   a.download = `brickinventory-manager-config-${new Date().toISOString().substring(0,10)}.json`;
   document.body.appendChild(a); a.click(); document.body.removeChild(a);
 };
@@ -54,7 +56,7 @@ async function importConfig() {
   st.textContent = 'Importiere…';
   const fd = new FormData(); fd.append('file', fi.files[0]);
   try {
-    const r = await fetch('/api/settings/import', { method: 'POST', body: fd });
+    const r = await fetch('/api/v1/settings/import', { method: 'POST', body: fd });
     const d = await r.json();
     if (d.success) {
       st.textContent = tRaw('settings.imported_note',{n:d.imported,note:d.note||''});
@@ -78,11 +80,64 @@ async function importConfig() {
 
 
 export async function enrichGalleryWithPrices(){
-  const pnl = await api('GET','/v1/finance/pnl');
+  // Mit Kontofilter — aus demselben Grund wie loadStats(): Diese Funktion
+  // steht am Ende von loadGallery(), und loadGallery() laeuft bei jedem
+  // Wechsel des Kontofilters. Etwas neu zu laden, das sich dadurch nicht
+  // aendern kann, ergibt nur einen Sinn, wenn es sich aendern sollte.
+  //
+  const pnl = await api('GET','/v1/finance/pnl' + scopeQuery('gallery'));
   if(!pnl.success) return;
   set_pnlCache({});
+  // ── Mehrere Zeilen, EINE Kachel ─────────────────────────────────────────
+  //
+  // /finance/pnl liefert eine Zeile JE BESITZER (die Finanztabelle zeigt sie
+  // so, mit Besitzer-Plakette). Die Galerie fasst im Haushalt dieselbe
+  // Setnummer zu EINER Kachel zusammen. Hier stand nur
+  // `_pnlCache[s.set_number] = …` — die zuletzt gelesene Zeile gewann.
+  //
+  // NACHGEMESSEN, und der Fall ist enger als er aussieht: Sind Kaufpreise
+  // ERFASST (der Normalfall), rechnet der Server den mengengewichteten Wert
+  // schon je Zeile aus — zwei Konten mit 600 und 100 ergaben in BEIDEN Zeilen
+  // 350, „letzte gewinnt" traf also zufaellig das Richtige.
+  //
+  // Fehlen die Erfassungen und steht nur noch sets.purchase_price (Altdaten,
+  // oder alle Kaufpreise eines Sets wieder entfernt), fallen die Zeilen
+  // auseinander: 100 mit 750 % und 600 mit 41,7 %, und die Kachel nahm eine
+  // davon.
+  //
+  // Gewichtet nach Menge ergibt in BEIDEN Faellen dasselbe: 350 und 142,9 %.
+  // Gerechnet wird ueber `baseline_price` — das ist der Kaufpreis, wenn er
+  // bekannt ist, und sonst der erste beobachtete Marktpreis (financeCalc.ts).
+  // Nur so bleibt der Rueckfall erhalten, den `baseline_pnl_pct` mitbringt.
+  const jeSet = new Map();
   for(const s of pnl.sets){
-    _pnlCache[s.set_number] = { price: s.current_price, pnl_pct: s.baseline_pnl_pct || s.pnl_pct };
+    if(!jeSet.has(s.set_number)) jeSet.set(s.set_number, []);
+    jeSet.get(s.set_number).push(s);
+  }
+  for(const [nr, zeilen] of jeSet){
+    // Eine Zeile: den Wert des Servers unveraendert nehmen. Alles andere waere
+    // dieselbe Rechnung ein zweites Mal, mit der Chance abzuweichen.
+    if(zeilen.length === 1){
+      const s = zeilen[0];
+      _pnlCache[nr] = { price: s.current_price, pnl_pct: s.baseline_pnl_pct || s.pnl_pct };
+      continue;
+    }
+    let summe = 0, menge = 0;
+    for(const s of zeilen){
+      const m = parseInt(s.quantity) || 1;
+      const b = s.baseline_price == null ? null : parseFloat(s.baseline_price);
+      if(b != null){ summe += b * m; menge += m; }
+    }
+    const markt = parseFloat(zeilen[0].current_price) || 0;
+    const basis = menge > 0 ? summe / menge : null;
+    // Math.max(basis, 0.01) wie PNL_EPS auf dem Server (utils/setValue.ts) —
+    // ohne das ergibt ein Kaufpreis von 0 eine Division durch null.
+    _pnlCache[nr] = {
+      price: zeilen[0].current_price,
+      pnl_pct: (basis != null && markt > 0)
+        ? ((markt - basis) / Math.max(basis, 0.01) * 100).toFixed(1)
+        : null,
+    };
   }
   // Inject price data into cached sets
   setAllSets(allSets.map(s => ({
@@ -201,10 +256,10 @@ export function renderMarketRows(ph, targetId = 'm-market-rows') {
         ? `<span style="font-weight:700;color:var(--b600)">${esc(fmtN(d.market_price, CURRENCY))}</span>`
         : '<span style="color:var(--mut)">—</span>';
       const pnl = d.pnl_pct != null ? pnlBadge(d.pnl_pct) : '';
-      return `<div class="dr">
-        <span class="dl">${esc(t('detail.market_price'))} (${esc(LABEL[c])})</span>
-        <span class="dv" style="display:flex;align-items:center;gap:8px">${price}${pnl}</span>
-      </div>`;
+      return detailZeile(
+        `${esc(t('detail.market_price'))} (${esc(LABEL[c])})`,
+        `${price}${pnl}`,
+        { wertStil: 'display:flex;align-items:center;gap:8px' });
     });
   el.innerHTML = rows.join('');
 }
@@ -392,7 +447,7 @@ export function portfolioChartSVG(data, period, metric, yAxisData){
 // tatsächlich wandert. Wer alles verschieben will, ändert den Eigentümer jeder
 // Zeile — und sieht dabei, wie viele es sind.
 //
-// Der Server erzwingt dieselbe Regel: POST /api/sets/:sn/move ohne
+// Der Server erzwingt dieselbe Regel: POST /api/v1/sets/:sn/move ohne
 // acquisition_ids antwortet mit 400.
 
 export async function openModal(sn){
@@ -418,30 +473,29 @@ export async function openModal(sn){
   // vermischte Entwicklung.
   const priceRow = '<div id="m-market-rows"></div>';
   const pnlRow  = '';
-  const qtyRow = `<div class="dr"><span class="dl">${t('detail.qty')}</span><span class="dv" style="display:flex;align-items:center;gap:6px">
+  const qtyRow = detailZeile(t('detail.qty'), `
       <button class="btn bs btn-sm" data-click="mQtyDec" style="font-size:1rem;padding:2px 8px;line-height:1">−</button>
       <input type="number" id="m-qty" min="1" style="width:46px;text-align:center;border:1px solid var(--bdr);border-radius:6px;padding:2px;font-weight:600" data-change="autosaveSet" />
       <button class="btn bs btn-sm" data-click="mQtyInc" style="font-size:1rem;padding:2px 8px;line-height:1">+</button>
-    </span></div>`;
+    `, { wertStil: 'display:flex;align-items:center;gap:6px' });
 
   // Acquisition summary: compact read-only rows + button to open full editor
   const acqs = ad?.acquisitions || [];
-  const acqRows = `<div class="dr" style="align-items:flex-start">
-    <span class="dl">${t('detail.purchase_price')}</span>
-    <span id="m-acq-summary" class="dv" style="flex-direction:column;align-items:flex-end;gap:3px">
+  const acqRows = detailZeile(t('detail.purchase_price'), `
       ${renderAcquisitionSummary(acqs, sn)}
       <button class="btn bs btn-sm" data-click="openAcqModal" data-arg="${escJs(sn)}" style="margin-top:4px;font-size:.75rem;padding:2px 10px">✏️ ${t('detail.edit_prices')}</button>
-    </span>
-  </div>`;
+    `, { zeilenStil: 'align-items:flex-start',
+         wertId: 'm-acq-summary',
+         wertStil: 'flex-direction:column;align-items:flex-end;gap:3px' });
 
   G('m-det').innerHTML = `
-    <div class="dr"><span class="dl">Name</span><span class="dv">${esc(curSet.name)||'—'}</span></div>
-    <div class="dr"><span class="dl">${t('detail.year')}</span><span class="dv">${curSet.year||'—'}</span></div>
-    <div class="dr"><span class="dl">${t('detail.theme')}</span><span class="dv">${esc(curSet.theme||'—')}</span></div>
+    ${detailZeile('Name', textOderStrich(curSet.name))}
+    ${detailZeile(t('detail.year'), oderStrich(curSet.year))}
+    ${detailZeile(t('detail.theme'), esc(oderStrich(curSet.theme)))}
     ${qtyRow}
-    <div class="dr"><span class="dl">${t('detail.pieces')}</span><span class="dv">${curSet.pieces?curSet.pieces.toLocaleString(locale()):'—'} <button class="btn bs btn-sm" data-click="reimportParts" data-arg="${escJs(sn)}" title="${t('detail.reimport_parts')}" style="padding:1px 6px;font-size:.75rem;margin-left:4px">${PARTS_ICON_SVG}</button></span></div>
-    <div class="dr"><span class="dl">${t('detail.minifigs')}</span><span class="dv" id="m-minifigs-val">${curSet.minifigs||'—'}</span></div>
-    <div class="dr"><span class="dl">${t('detail.added')}</span><span class="dv">📅 ${addedFmt}</span></div>
+    ${detailZeile(t('detail.pieces'), `${curSet.pieces ? curSet.pieces.toLocaleString(locale()) : '—'} <button class="btn bs btn-sm" data-click="reimportParts" data-arg="${escJs(sn)}" title="${t('detail.reimport_parts')}" style="padding:1px 6px;font-size:.75rem;margin-left:4px">${PARTS_ICON_SVG}</button>`)}
+    ${detailZeile(t('detail.minifigs'), oderStrich(curSet.minifigs), { wertId: 'm-minifigs-val' })}
+    ${detailZeile(t('detail.added'), `📅 ${addedFmt}`)}
     ${acqRows}
     ${priceRow}${pnlRow}
     <div id="m-price-chart" style="margin-top:.75rem">

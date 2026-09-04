@@ -1,6 +1,7 @@
 package ch.brickinventoryapp.ui.screens
 
 import ch.brickinventoryapp.ui.theme.Formen
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.grid.*
@@ -99,7 +100,11 @@ fun PartsScreen(
     val onSearch: (String) -> Unit = vm::setPartsQuery
     val onLoadMore: (Int) -> Unit = { vm.loadParts(page = it) }
     val onScopeChange: (String) -> Unit = { vm.setScope(ch.brickinventoryapp.data.ScopeFilter.View.PARTS, it) }
-    val onDeletePart: (String, Int) -> Unit = { partNumber, colorId -> vm.deletePart(partNumber, colorId) }
+    val ansicht = partsState.partsView
+    // Besitzer der Karte mitgeben — Begruendung wie in MinifigsScreen.
+    val onDeletePart: (String, Int, Int?) -> Unit = { partNumber, colorId, owner ->
+        vm.deletePart(partNumber, colorId, owner)
+    }
     val onAddPart: (String, Int, String?, String?, Int, String?, Double?, String?, Int?) -> Unit =
         { num, colorId, colorName, colorHex, qty, note, unitPrice, cond, owner ->
             vm.addPart(num, colorId, colorName, colorHex, qty, note, unitPrice, cond, owner)
@@ -165,6 +170,42 @@ fun PartsScreen(
             )
         )
 
+        // Ersatzteil-Filter — dieselben drei Werte wie das Auswahlfeld der
+        // Webapp (parts-spare). Er fehlte hier ganz: Die App las `is_spare`
+        // aus der Antwort und hatte sogar einen Helfer dafuer, benutzte aber
+        // beides nirgends. Wer am Telefon nachsah, wie viele Teile er wirklich
+        // hat, bekam die Ersatzteile immer mitgezaehlt.
+        //
+        // Gefiltert wird auf dem SERVER (partsSpare im UiState) — clientseitig
+        // ueber die geladene Seite gefiltert koennte eine ganze Seite wegfallen
+        // und die Liste bliebe scheinbar leer.
+        Row(
+            Modifier.fillMaxWidth().padding(horizontal = 14.dp).padding(bottom = 8.dp),
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            val filter = listOf(
+                "" to R.string.parts_filter_all,
+                "0" to R.string.parts_filter_no_spare,
+                "1" to R.string.parts_filter_spare,
+            )
+            for ((wert, text) in filter) {
+                FilterChip(
+                    selected = partsState.partsSpare == wert,
+                    onClick = { vm.setPartsSpare(wert) },
+                    label = { Text(stringResource(text), fontSize = 13.sp) },
+                )
+            }
+        }
+
+        // Karten oder Tabelle — wie das Auswahlfeld parts-view der Webapp.
+        // Eigene Zeile, weil die drei Ersatzteil-Chips darueber die Breite
+        // eines Telefons schon fuellen.
+        AnsichtUmschalter(
+            aktuell = ansicht,
+            onWechsel = { vm.setPartsView(it) },
+            modifier = Modifier.padding(horizontal = 14.dp).padding(bottom = 8.dp),
+        )
+
         if (isLoading && parts.isEmpty() && manualParts.isEmpty()) {
             Box(Modifier.fillMaxSize(), Alignment.Center) { CircularProgressIndicator() }
         } else if (parts.isEmpty() && manualParts.isEmpty()) {
@@ -206,8 +247,23 @@ fun PartsScreen(
                             }
                         }
                     }
-                    items(distinctParts, key = { "${it.partNumber}-${it.colorId}" }) { part ->
-                        PartCard(part, serverUrl, imageLoader)
+                    // In der Tabellenansicht nimmt jede Zeile die ganze Breite
+                    // (span = maxLineSpan). Der Raster-Container bleibt derselbe —
+                    // mit einem zweiten Container waeren Scrollstand,
+                    // Endlos-Nachladen und die manuelle Sektion doppelt zu
+                    // pflegen. Die manuellen Eintraege bleiben in BEIDEN
+                    // Ansichten Kacheln, genau wie in der Webapp: Dort haengt
+                    // #manual-parts-list nicht an parts-view.
+                    items(
+                        distinctParts,
+                        key = { "${it.partNumber}-${it.colorId}" },
+                        span = { if (ansicht == "table") GridItemSpan(maxLineSpan) else GridItemSpan(1) },
+                    ) { part ->
+                        // BEIDE Ansichten oeffnen denselben Dialog — eine
+                        // Ansicht darf nicht koennen, was die andere nicht kann.
+                        val oeffne = { vm.oeffneSetItem("part", part.partNumber, part.colorId) }
+                        if (ansicht == "table") PartTableRow(part, serverUrl, imageLoader, oeffne)
+                        else PartCard(part, serverUrl, imageLoader, oeffne)
                     }
                     if (isLoading) {
                         // Fester Schlüssel wie bei den Kopfzeilen darüber — siehe
@@ -252,7 +308,7 @@ fun PartsScreen(
             title = { Text(stringResource(R.string.parts_delete_title)) },
             text = { Text(stringResource(R.string.parts_delete_text, part.partName ?: part.partNumber)) },
             confirmButton = {
-                TextButton(onClick = { onDeletePart(part.partNumber, part.colorId); deletingPart = null }) {
+                TextButton(onClick = { onDeletePart(part.partNumber, part.colorId, part.userId); deletingPart = null }) {
                     Text(stringResource(R.string.parts_delete), color = MaterialTheme.colorScheme.error)
                 }
             },
@@ -337,7 +393,8 @@ fun ManualPartTile(part: PartValuationItem, serverUrl: String, imageLoader: Imag
 }
 
 @Composable
-fun PartCard(part: Part, serverUrl: String, imageLoader: ImageLoader) {
+fun PartCard(part: Part, serverUrl: String, imageLoader: ImageLoader,
+             onClick: (() -> Unit)? = null) {
     val ctx = LocalContext.current
     val qty = part.totalQuantity.takeIf { it > 0 } ?: 1
     val colorObj = remember(part.colorHex) {
@@ -351,7 +408,11 @@ fun PartCard(part: Part, serverUrl: String, imageLoader: ImageLoader) {
     val (imageUrl, onImageError) = rememberTileImageWithFallback(serverUrl, part.imageLocal, part.imageUrl, fullViaProxy = true)
 
     Card(
-        modifier = Modifier.fillMaxWidth().height(164.dp),
+        // Antippen oeffnet den Detail-Dialog (Marcos Wunsch). Bis dahin war
+        // die Kachel eines Teils aus einem Set tot — anders als bei manuell
+        // erfassten Teilen gab es dazu nichts zu sehen.
+        modifier = Modifier.fillMaxWidth().height(164.dp)
+            .let { if (onClick != null) it.clickable(onClick = onClick) else it },
         shape = Formen.leiste,
         elevation = CardDefaults.cardElevation(defaultElevation = Formen.karteErhebung),
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
@@ -403,6 +464,10 @@ fun PartCard(part: Part, serverUrl: String, imageLoader: ImageLoader) {
                 if (part.colorName != null)
                     Text(part.colorName, style = MaterialTheme.typography.labelSmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1, fontSize = 10.sp)
+                // Ersatzteil — Sets enthalten ein Tuetchen davon. Nur wenn es
+                // eines IST: eine Plakette „kein Ersatzteil" an jeder Kachel
+                // waere Rauschen.
+                if (part.isSpare) ErsatzteilPlakette(Modifier.padding(top = 2.dp))
             }
         }
     }
@@ -417,4 +482,51 @@ fun SectionHeader(text: String) {
         color = MaterialTheme.colorScheme.onSurfaceVariant,
         letterSpacing = 0.8.sp,
         modifier = Modifier.padding(horizontal = 2.dp, vertical = 4.dp))
+}
+
+/**
+ * Ein Teil als Tabellenzeile.
+ *
+ * Zeigt, was die Tabelle der Webapp zeigt (partsTableRow in 03-parts.js):
+ * Bild, Nummer, Name, Farbe, Kategorie, Menge, In Sets. Die beiden breiten
+ * Spalten — Kategorie und Sets — stehen als zweite Zeile darunter statt
+ * daneben; sieben Spalten nebeneinander passen auf kein Telefon.
+ *
+ * „In Sets" ist nur gefuellt, wenn der Lader `with_sets=1` mitgegeben hat, und
+ * das tut er nur in dieser Ansicht (loadParts in PartsFeature.kt).
+ */
+@Composable
+fun PartTableRow(part: Part, serverUrl: String, imageLoader: ImageLoader,
+                 onClick: (() -> Unit)? = null) {
+    val farbe = remember(part.colorHex) {
+        part.colorHex?.let {
+            try { Color(android.graphics.Color.parseColor("#$it")) }
+            catch (_: Exception) { null }
+        }
+    }
+    val (bildUrl, onFehler) = rememberTileImageWithFallback(
+        serverUrl, part.imageLocal, part.imageUrl, fullViaProxy = true)
+    // Kategorie und Sets in einer Zeile, mit „·" getrennt — und nur, was da
+    // ist. Ein leeres „ · " sieht nach einem fehlenden Wert aus.
+    val ersatzteil = stringResource(R.string.parts_spare_tag)
+    val zweite = listOfNotNull(
+        part.categoryName?.takeIf { it.isNotBlank() },
+        part.inSets?.takeIf { it.isNotBlank() }?.replace(",", ", "),
+        // In der Tabellenzeile als Wort statt als Plakette: Die Zeile ist auf
+        // Dichte gebaut, eine Flaeche mit eigenem Hintergrund saehe darin aus
+        // wie ein Knopf.
+        ersatzteil.takeIf { part.isSpare },
+    ).joinToString(" · ").ifBlank { null }
+
+    TabellenZeile(
+        bildUrl = bildUrl,
+        nummer = part.blPartNumber ?: part.partNumber,
+        name = part.partName,
+        menge = part.totalQuantity.takeIf { it > 0 } ?: 1,
+        imageLoader = imageLoader,
+        farbe = farbe,
+        zweiteZeile = zweite,
+        onBildFehler = onFehler,
+        onClick = onClick,
+    )
 }

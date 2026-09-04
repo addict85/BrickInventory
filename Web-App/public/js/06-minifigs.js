@@ -1,6 +1,6 @@
 import { registerActions } from './00-registry.js';
 import { colorName, locale, t, tRaw} from '../i18n.js';
-import { CURRENCY, G, TRASH_ICON_SVG, api, esc, escUrl, fmtN, fullUrl, imgUrl, thumbUrl, toast } from './01-core.js';
+import { escHex, hexZiffern, CURRENCY, G, TRASH_ICON_SVG, api, esc, escJs, escUrl, fmtN, fullUrl, imgUrl, thumbUrl, toast } from './01-core.js';
 import { addScopeParam, scopeQuery } from './14-scope.js';
 import { condBadges, ownerBadges, selectedOwner, PARTS_ICON_SVG } from './02-gallery.js';
 import { loadFinance } from './04-finance.js';
@@ -32,7 +32,17 @@ function figParams(page) {
   // Manuell erfasste Figuren haben oben eine eigene Sektion. Der Ausschluss
   // gehört auf den Server — clientseitig gefiltert könnte eine ganze Seite
   // wegfallen und die Liste bliebe scheinbar leer.
-  p.set('source', G('fig-source')?.value || 'set');
+  // Fest 'set': Manuell erfasste Figuren haben ihren eigenen Bereich mit
+  // editierbaren Karten (manual-figs-list) — in dieser Liste waeren sie
+  // doppelt. Der Ausschluss gehoert auf den Server; clientseitig gefiltert
+  // koennte eine ganze Seite wegfallen und die Liste bliebe scheinbar leer.
+  //
+  // Hier stand `G('fig-source')?.value || 'set'`. Das Auswahlfeld daneben trug
+  // GENAU EINE Option mit dem Wert "" und wurde von nirgends gefuellt — der
+  // Ausdruck ergab also immer 'set', und sein change-Ereignis konnte nie
+  // eintreten. Ein Bedienelement, das eine Wahl verspricht und keine anbietet,
+  // ist raus (die Android-App zeigt an dieser Stelle ebenfalls keines).
+  p.set('source', 'set');
   const q = G('fig-search')?.value?.trim();
   if (q) p.set('search', q);
   addScopeParam(p, 'minifigs');
@@ -173,26 +183,33 @@ export function renderFigs(list, target) {
   const viewMode = G('figs-view')?.value || 'grid';
 
   if (viewMode === 'table') {
+    // Ohne die Spalten „Quelle" und Papierkorb.
+    //
+    // Beide waren KONSTANT: renderFigs() bekommt ausschliesslich
+    // `allFigsCache`, und der wird mit `source=set` geladen (figParams). Die
+    // Quelle stand also in jeder Zeile auf „aus Set", und der Papierkorb —
+    // `f.source==='manual' ? … : ''` — war in jeder Zeile leer. Zwei von
+    // sieben Spalten, die etwas versprachen und nichts zeigten. Manuell
+    // erfasste Figuren haben ihren eigenen Bereich mit editierbaren Karten.
+    //
+    // Aufgefallen beim Uebertragen der Tabelle in die App: Was dort nachgebaut
+    // wird, muss vorher stimmen.
     el.innerHTML = `<div class="tw"><table class="dt">
       <thead><tr>
-        <th>${t('col.image')}</th><th>${t('col.number')}</th><th>Name</th><th>${t('detail.qty')}</th><th>${t('col.source')}</th><th>${t('detail.added')}</th><th></th>
+        <th>${t('col.image')}</th><th>${t('col.number')}</th><th>Name</th><th>${t('detail.qty')}</th><th>${t('detail.added')}</th>
       </tr></thead>
       <tbody>${list.map(f => {
         const imgSrc = imgUrl(thumbUrl(f.image_local || f.image_url) || f.image_local || f.image_url || '', true);
         const dateVal = f.set_added_at || null;
         const erfasst = dateVal ? new Date(dateVal).toLocaleDateString(locale()) : '—';
-        const src = f.source==='manual'
-          ? `<span style="background:var(--b50);color:var(--b600);border-radius:4px;padding:2px 6px;font-size:.72rem;font-weight:600">${t('figs.badge_manual')}</span>`
-          : `<span style="background:var(--s100);color:var(--mut);border-radius:4px;padding:2px 6px;font-size:.72rem">${t('figs.badge_set')}</span>`;
-        const delBtn = f.source==='manual' ? `<button class="btn bd btn-sm" data-click="deleteManualFig" data-arg="${esc(f.fig_number)}" title="${esc(t('figs.delete'))}" aria-label="${esc(t('figs.delete'))}">${TRASH_ICON_SVG}</button>` : '';
-        return `<tr>
+        // Anklickbar wie die Kachel darunter — dieselbe Handlung in beiden
+        // Ansichten (Marcos Detail-Dialog fuer automatisch erfasste Figuren).
+        return `<tr style="cursor:pointer" data-click="${f.source==='manual'?'openManDetail':'openSetItemDetail'}" data-arg="fig" data-arg2="${escJs(f.fig_number)}" data-arg3="0">
           <td>${imgSrc?`<img src="${escUrl(imgSrc)}" loading="lazy" decoding="async" data-onerror="hide" style="width:36px;height:36px;object-fit:contain;background:var(--s50);border-radius:5px" />`:'—'}</td>
           <td><span style="font-family:var(--mono);font-size:.77rem;color:var(--b600)">${esc(f.fig_number)}</span></td>
           <td style="max-width:200px">${esc(f.fig_name)||'—'}</td>
           <td><span style="font-family:var(--mono);font-weight:600;color:var(--b700)">${f.total_quantity||f.quantity}</span></td>
-          <td>${src}</td>
           <td style="font-size:.75rem;color:var(--mut)">${erfasst}</td>
-          <td>${delBtn}</td>
         </tr>`;
       }).join('')}</tbody></table></div>`;
     return;
@@ -219,16 +236,34 @@ export function renderFigs(list, target) {
           // Gleiches Muster wie Set- und Teile-Kacheln: .ca + .delbtn, sichtbar
           // beim Überfahren. Vorher ein dauerhaft sichtbarer roter Knopf (btn bd)
           // in abweichender Grösse — dieselbe Aktion sah in jeder Tabelle anders aus.
-          const delBtn = f.source==='manual' ? `<div class="ca"><button class="delbtn" data-click="deleteManualFigStop" data-arg="${esc(f.fig_number)}" title="${esc(t('figs.delete'))}" aria-label="${esc(t('figs.delete'))}">${TRASH_ICON_SVG}</button></div>` : '';
+          const delBtn = f.source==='manual' ? `<div class="ca"><button class="delbtn" data-click="deleteManualFigStop" data-arg="${esc(f.fig_number)}" data-arg2="${f.user_id||''}" title="${esc(t('figs.delete'))}" aria-label="${esc(t('figs.delete'))}">${TRASH_ICON_SVG}</button></div>` : '';
           // Zustand nur bei manuell erfassten Minifiguren anzeigen (automatisch
           // hinzugefügte aus Sets haben keinen eigenen Zustand).
           // Eine Plakette je erfasstem Zustand — gemeinsame Fassung in
           // 02-gallery.js. Die frühere Inline-Fassung hier trug dieselben
           // Farben noch einmal von Hand ein.
+          // Zustand nur bei manuell erfassten — die Begruendung darueber gilt.
+          // Die BESITZER-Plakette dagegen unbedingt: Sie beantwortet „wem
+          // gehoert das?", und diese Frage stellt sich bei einer Figur aus dem
+          // Set eines Kindes genauso wie bei einer selbst erfassten. Die
+          // Galerie-Kachel daneben zeigt sie seit jeher.
+          //
+          // Sie stand hier INNERHALB der manual-Bedingung — und diese Liste
+          // laedt ausschliesslich `source=set` (figParams). Die Plakette war
+          // also unerreichbar. Ohne Haushalt ist `owners` leer und
+          // ownerBadges() liefert '' — im Einzelkonto aendert sich nichts.
           const condBadge = f.source==='manual'
-            ? `<div style="display:flex;gap:3px;justify-content:center;flex-wrap:wrap;margin-top:3px">${condBadges(f)}${ownerBadges(f)}</div>`
+            ? `<div style="display:flex;gap:3px;justify-content:center;flex-wrap:wrap;margin-top:3px">${condBadges(f)}</div>`
             : '';
-          return `<div class="part-card" style="position:relative">
+          const besitzer = ownerBadges(f)
+            ? `<div style="display:flex;gap:3px;justify-content:center;flex-wrap:wrap;margin-top:3px">${ownerBadges(f)}</div>`
+            : '';
+          // Manuell erfasste Figuren haben ihren eigenen Dialog (Kaufpreise,
+          // Menge aenderbar); die aus Sets den neuen ohne Preis und ohne
+          // Mengenaenderung. Die Kachel entscheidet nach der Quelle, damit
+          // BEIDE Faelle richtig sind — auch wenn diese Liste heute nur
+          // `source=set` laedt.
+          return `<div class="part-card" style="position:relative;cursor:pointer" data-click="${f.source==='manual'?'openManDetail':'openSetItemDetail'}" data-arg="fig" data-arg2="${escJs(f.fig_number)}" data-arg3="0">
             ${delBtn}
             ${imgSrc ? `<img src="${escUrl(imgSrc)}" class="part-img" loading="lazy" decoding="async" data-fade="1" data-orig="${escUrl(fullUrl(imgSrc))}" />` : ''}
             <div class="part-img-ph" style="display:${imgSrc?'none':'flex'}">👷</div>
@@ -236,6 +271,7 @@ export function renderFigs(list, target) {
             <div class="part-name">${esc(f.fig_name)||'—'}</div>
             <div class="part-qty">${f.total_quantity||f.quantity}×</div>
             ${condBadge}
+            ${besitzer}
             ${erfasst ? `<div style="font-size:.65rem;color:var(--mut)">${erfasst}</div>` : ''}
           </div>`;
         }).join('')}
@@ -243,9 +279,10 @@ export function renderFigs(list, target) {
     </div>`).join('');
 }
 
-export async function deleteManualFig(figNumber) {
+/** @param {string} figNumber @param {number|string} [owner] siehe deleteManualPart */
+export async function deleteManualFig(figNumber, owner) {
   if (!await confirmDelete(tRaw('figs.delete.title'), t('gallery.delete.text',{name:figNumber}), '👷')) return false;
-  const d = await api('DELETE', `/v1/minifigs/${encodeURIComponent(figNumber)}`);
+  const d = await api('DELETE', `/v1/minifigs/${encodeURIComponent(figNumber)}${owner ? `?owner=${encodeURIComponent(owner)}` : ''}`);
   if (d.success) { toast(tRaw('figs.deleted'), 'success'); loadMinifigs(); loadManualFigsTable(); return true; }
   else { toast(d.error || t('settings.error'), 'error'); return false; }
 }
@@ -282,7 +319,7 @@ function renderManualFigsTable() {
       const priceStr = figPrice!=null ? fmtN(figPrice, CURRENCY) : '—';
       const condBadge = condBadges(f);
       return `<div class="man-tile" data-click="openManDetail" data-arg="fig" data-arg2="${esc(f.fig_number)}" data-arg3="0" style="cursor:pointer">
-        <div class="ca"><button class="delbtn" data-click="deleteManualFigStop" data-arg="${esc(f.fig_number)}" title="${esc(t('figs.delete'))}" aria-label="${esc(t('figs.delete'))}">${TRASH_ICON_SVG}</button></div>
+        <div class="ca"><button class="delbtn" data-click="deleteManualFigStop" data-arg="${esc(f.fig_number)}" data-arg2="${f.user_id||''}" title="${esc(t('figs.delete'))}" aria-label="${esc(t('figs.delete'))}">${TRASH_ICON_SVG}</button></div>
         ${img}
         <div class="man-tile-num">${esc(f.fig_number)}</div>
         <div class="man-tile-name">${esc(f.fig_name) || '—'}</div>
@@ -296,8 +333,9 @@ function renderManualFigsTable() {
   </div>`;
 }
 
-export async function updateManualFig(figNumber, body) {
-  const d = await api('PUT', `/v1/minifigs/${encodeURIComponent(figNumber)}`, body);
+/** @param {number} [owner] Besitzer der Karte — siehe deleteManualPart. */
+export async function updateManualFig(figNumber, body, owner) {
+  const d = await api('PUT', `/v1/minifigs/${encodeURIComponent(figNumber)}${owner ? `?owner=${encodeURIComponent(owner)}` : ''}`, body);
   if (d.success) { toast(tRaw('settings.saved'),'success'); loadManualFigsTable(); loadMinifigs(); if(document.querySelector('.ntab.active')?.dataset?.tab==='finance') loadFinance(); }
   else toast(d.error||t('settings.error'),'error');
 }
@@ -346,7 +384,7 @@ async function importFigsCsv() {
   const fd = new FormData(); fd.append('file', fi.files[0]);
   csvImportStatus('fig-csv-status', 'running', t('import.running'));
   try {
-    const r = await fetch('/api/minifigs/import/csv', { method: 'POST', body: fd });
+    const r = await fetch('/api/v1/minifigs/import/csv', { method: 'POST', body: fd });
     const d = await r.json();
     fi.value = '';
     if (d.success) {
@@ -432,14 +470,14 @@ function renderManualParts() {
         ? `<img class="man-tile-img" src="${escUrl(imgSrc)}" loading="lazy" decoding="async" data-onerror="hide" />`
         : `<div class="man-tile-img-ph">${PARTS_ICON_SVG.replace('style="width:1em;height:1em;vertical-align:middle"','style="width:1.6em;height:1.6em"')}</div>`;
       const colorRow = p.color_name
-        ? `<div class="man-tile-color">${p.color_hex ? `<span class="man-tile-swatch" style="background:#${p.color_hex}"></span>` : ''}${esc(colorName(p.color_name))}</div>`
+        ? `<div class="man-tile-color">${p.color_hex ? `<span class="man-tile-swatch" style="background:${escHex(p.color_hex, 'var(--s300)')}"></span>` : ''}${esc(colorName(p.color_name))}</div>`
         : '';
       // Wie bei den Minifiguren: mengengewichtet über die Erfassungen.
       const partPrice = p.avg_purchase_price ?? p.unit_price ?? p.purchase_price;
       const priceStr = partPrice!=null ? fmtN(partPrice, CURRENCY) : '—';
       const condBadge = condBadges(p);
       return `<div class="man-tile" data-click="openManDetail" data-arg="part" data-arg2="${esc(p.part_number)}" data-arg3="${p.color_id||0}" style="cursor:pointer">
-        <div class="ca"><button class="delbtn" data-click="deleteManualPartStop" data-arg="${esc(p.part_number)}" data-arg2="${p.color_id||0}" title="${esc(t('parts.delete.title'))}" aria-label="${esc(t('parts.delete.title'))}">${TRASH_ICON_SVG}</button></div>
+        <div class="ca"><button class="delbtn" data-click="deleteManualPartStop" data-arg="${esc(p.part_number)}" data-arg2="${p.color_id||0}" data-arg3="${p.user_id||''}" title="${esc(t('parts.delete.title'))}" aria-label="${esc(t('parts.delete.title'))}">${TRASH_ICON_SVG}</button></div>
         ${img}
         <div class="man-tile-num" title="${esc(p.part_number)}">${esc(p.bl_part_number||p.part_number)}</div>
         <div class="man-tile-name">${esc(p.part_name) || '—'}</div>
@@ -454,15 +492,25 @@ function renderManualParts() {
   </div>`;
 }
 
-export async function updateManualPart(partNumber, colorId, body) {
-  const d = await api('PUT', `/v1/parts/${encodeURIComponent(partNumber)}/${colorId}`, body);
+/** @param {number} [owner] Besitzer der Karte — siehe deleteManualPart. */
+export async function updateManualPart(partNumber, colorId, body, owner) {
+  const d = await api('PUT', `/v1/parts/${encodeURIComponent(partNumber)}/${colorId}${owner ? `?owner=${encodeURIComponent(owner)}` : ''}`, body);
   if (d.success) { toast(tRaw('settings.saved'),'success'); loadManualParts(); if(document.querySelector('.ntab.active')?.dataset?.tab==='finance') loadFinance(); }
   else toast(d.error||t('settings.error'),'error');
 }
 
-export async function deleteManualPart(partNumber, colorId) {
+/**
+ * @param {string} partNumber
+ * @param {number} colorId
+ * @param {number|string} [owner]  Besitzer der KARTE. Im Haushalt zeigt der
+ *   manuelle Bereich die Einträge aller Konten mit Plakette und Papierkorb;
+ *   ohne diese Angabe löschte der Server immer die Zeile des Aufrufers —
+ *   geklickt war die fremde Karte, weg war die eigene, und die Antwort sagte
+ *   „success". Begründung und Messung in utils/household.ts.
+ */
+export async function deleteManualPart(partNumber, colorId, owner) {
   if (!await confirmDelete(tRaw('parts.delete.title'), t('gallery.delete.text',{name:partNumber}), '🔩')) return false;
-  const d = await api('DELETE', `/v1/parts/${encodeURIComponent(partNumber)}/${colorId}`);
+  const d = await api('DELETE', `/v1/parts/${encodeURIComponent(partNumber)}/${colorId}${owner ? `?owner=${encodeURIComponent(owner)}` : ''}`);
   if (d.success) { toast(tRaw('parts.deleted'), 'success'); loadManualParts(); return true; }
   else { toast(d.error || t('settings.error'), 'error'); return false; }
 }
@@ -490,7 +538,7 @@ function renderColorDropdown(){
   // Übersetzt wird nur der sichtbare Text, mit derselben Funktion wie die
   // Farbanzeige und der Filter im Teile-Reiter.
   sel.innerHTML = `<option value="">${t('parts.no_color_dash')}</option>`
-    + _brickColors.map(c=>`<option value="${c.id}" data-name="${esc((c.name||'').replace(/"/g,'&quot;'))}" data-hex="${c.hex||''}">${esc(colorName(c.name))}</option>`).join('');
+    + _brickColors.map(c=>`<option value="${c.id}" data-name="${esc((c.name||'').replace(/"/g,'&quot;'))}" data-hex="${hexZiffern(c.hex)}">${esc(colorName(c.name))}</option>`).join('');
 }
 
 G('btn-add-part')?.addEventListener('click', async () => {
@@ -543,7 +591,7 @@ async function importPartsCsv() {
   const fd = new FormData(); fd.append('file', fi.files[0]);
   csvImportStatus('part-csv-status', 'running', t('import.running'));
   try {
-    const r = await fetch('/api/parts/import/csv', { method: 'POST', body: fd });
+    const r = await fetch('/api/v1/parts/import/csv', { method: 'POST', body: fd });
     const d = await r.json();
     fi.value = '';
     if (d.success) {

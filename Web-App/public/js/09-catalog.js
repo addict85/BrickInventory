@@ -1,3 +1,4 @@
+import { detailZeile, ladeAnzeige } from './01-bausteine.js';
 import { registerActions } from './00-registry.js';
 import { locale, t, tRaw} from '../i18n.js';
 import { G, api, esc, escUrl, fullUrl, imgUrl, thumbUrl, toast } from './01-core.js';
@@ -158,7 +159,7 @@ async function loadCatalogSets(){
   _catLoadedPages = new Set();
   _catLoadingPages = new Set();
   const grid = G('catalog-grid');
-  grid.innerHTML = `<div class="loading"><div class="spin"></div><span>${t('catalog.loading')}</span></div>`;
+  grid.innerHTML = ladeAnzeige(t('catalog.loading'));
   _catState.page = 1;
   const d = await api('GET', '/v1/catalog/sets?' + _catQuery(1));
   if (gen !== _catGen) return;   // inzwischen neuer Filter — Antwort verwerfen
@@ -392,8 +393,7 @@ async function openCatModal(setNumber){
     [t('detail.minifigs'), s.minifigs || '—'],
   ];
   if (s.owned) rows.push([t('catalog.owned'), '✓ ×' + s.owned_quantity]);
-  G('cat-m-det').innerHTML = rows.map(([k,v]) =>
-    `<div class="dr"><span class="dl">${k}</span><span class="dv">${esc(String(v))}</span></div>`).join('');
+  G('cat-m-det').innerHTML = rows.map(([k, v]) => detailZeile(k, esc(String(v)))).join('');
   // Kauf-Link kommt fertig vom Server (utils/bricklinkLink.ts). Vorher wurde er
   // hier aus der Rebrickable-Nummer gebaut und immer als Set verlinkt (S=…) —
   // für alles, was BrickLink als Gear oder Buch führt, war damit sowohl der
@@ -437,7 +437,7 @@ async function addCatalogSetToGallery(){
   closeCatModal();
   showProgress(t('gallery.adding_set', { num }), false);
   try {
-    await streamRequest('/api/sets/add-stream', { set_number: num, quantity: qty, purchase_price, condition, owner_user_id }, (ev)=>{
+    await streamRequest('/api/v1/sets/add-stream', { set_number: num, quantity: qty, purchase_price, condition, owner_user_id }, (ev)=>{
       handleSseEvent(ev, num);
       if (ev.step === 'done') {
         _activeAbort = null; G('btn-cancel-import').style.display = 'none';

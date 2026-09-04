@@ -1,5 +1,6 @@
 package ch.brickinventoryapp.ui.screens
 
+import ch.brickinventoryapp.util.fmtDatum
 import androidx.compose.ui.res.stringResource
 import ch.brickinventoryapp.R
 import androidx.compose.foundation.layout.*
@@ -78,9 +79,9 @@ fun SetDetailScreen(
     fun fmtPrice(v: Double?) = if (v == null) "—"
         else ch.brickinventoryapp.util.fmtMoney(v, currency)
 
-    fun fmtDate(iso: String?) = if (iso == null) "—"
-        else try { iso.take(10).split("-").let { "${it[2]}.${it[1]}.${it[0]}" } }
-        catch (_: Exception) { iso }
+    // Gemeinsamer Helfer (util/DatumFormat.kt) — dieselbe Umwandlung stand in
+    // MinifigsScreen in einer zweiten, abweichenden Fassung.
+    fun fmtDate(iso: String?) = fmtDatum(iso) ?: iso ?: "—"
 
     val isBrick = LocalIsBrickTheme.current
     Scaffold(

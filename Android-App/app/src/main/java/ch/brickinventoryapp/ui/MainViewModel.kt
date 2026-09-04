@@ -149,6 +149,12 @@ class MainViewModel @Inject constructor(
     internal val _barcodeState = MutableStateFlow(BarcodeUiState())
     val barcodeState = _barcodeState.asStateFlow()
 
+    // Detail-Dialog fuer ein Teil/eine Figur aus einem Set (Marcos Wunsch).
+    // Eigener Fluss aus demselben Grund wie der Barcode-Zustand darueber: Er
+    // hat eigene Zwischenstaende und geht sonst jeden Reiter an.
+    internal val _setItemState = MutableStateFlow(SetItemUiState())
+    val setItemState = _setItemState.asStateFlow()
+
     /**
      * Läuft gerade eine Prüfung vor dem Erfassen? Siehe ErfassungUiState.
      *
@@ -195,6 +201,9 @@ class MainViewModel @Inject constructor(
     /** Haushalt: Verknüpfung, Einladungscode, Servermeldung. */
     internal val _householdState = MutableStateFlow(HouseholdUiState())
     val householdState = _householdState.asStateFlow()
+
+    internal val _geraeteState = MutableStateFlow(GeraeteUiState())
+    val geraeteState = _geraeteState.asStateFlow()
 
     /**
      * Nur das App-Design, entkoppelt vom übrigen Zustand.
@@ -274,6 +283,12 @@ class MainViewModel @Inject constructor(
     // Ohne das feuert jeder Tastendruck einen vollen Netzwerk-Request (500er-Page),
     // und eine langsame alte Antwort kann eine neuere überschreiben (Race).
     internal var partsJob: kotlinx.coroutines.Job? = null
+
+    // ── Minifiguren ──────────────────────────────────────────────────────────
+    // Dieselbe Mechanik aus demselben Grund: Seit die Suche zum Server geht
+    // (loadMinifigs), loest jeder Tastendruck sonst eine eigene Abfrage aus,
+    // und eine langsame alte Antwort koennte eine neuere ueberschreiben.
+    internal var minifigsJob: kotlinx.coroutines.Job? = null
 
     // ── Galerie ──────────────────────────────────────────────────────────────
     // Dieselbe Mechanik, und sie gehoert aus demselben Grund hierher: Als

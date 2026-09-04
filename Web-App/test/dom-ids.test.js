@@ -11,6 +11,7 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
+const { ohneKommentare } = require('./helpers/sources');
 
 const PUB = path.join(__dirname, '..', 'public');
 // app.bundle.js ist ein BUILD-ERGEBNIS (scripts/build-frontend.js verkettet die
@@ -37,6 +38,16 @@ const collect = src => {
   // gewöhnte sich an, ihn zu übergehen.
   for (const m of src.matchAll(/\.id\s*=\s*'([^']+)'/g)) knownIds.add(m[1]);
   for (const m of src.matchAll(/\.id\s*=\s*"([^"]+)"/g)) knownIds.add(m[1]);
+  // Und der vierte Weg: Der Ansichts-Baustein setzt die id als OPTION.
+  //
+  //     detailZeile(t('detail.purchase_price'), inhalt, { wertId: 'm-acq-summary' })
+  //
+  // Genau dieselbe Lage wie beim Scrollbalken eine Zeile darüber: Das Element
+  // entsteht wirklich — 01-bausteine.js schreibt ` id="${o.wertId}"` —, nur
+  // steht das id-Literal nicht mehr an der Aufrufstelle. Ohne diese Zeile
+  // meldete der Prüfer drei Modal-IDs als fehlend, obwohl sie da sind.
+  for (const m of src.matchAll(/wertId:\s*'([^']+)'/g)) knownIds.add(m[1]);
+  for (const m of src.matchAll(/wertId:\s*"([^"]+)"/g)) knownIds.add(m[1]);
 };
 collect(fs.readFileSync(path.join(PUB, 'index.html'), 'utf8'));
 for (const f of JS_FILES) collect(fs.readFileSync(path.join(PUB, 'js', f), 'utf8'));
@@ -47,7 +58,13 @@ const ALLOWED_MISSING = new Set(['uname']);
 
 for (const file of JS_FILES) {
   test(`G('...')-IDs aus ${file} existieren in index.html`, () => {
-    const src = fs.readFileSync(path.join(PUB, 'js', file), 'utf8');
+    // ohneKommentare: Gesucht wird nach IDs im CODE. Ein Erklärkommentar, der
+    // beschreibt, welches G('…') hier früher stand und warum es weg ist, ist
+    // keine Verwendung — ohne diesen Schritt meldet der Test eine ID, die
+    // niemand mehr abruft. Dieselbe Falle, gegen die es helpers/sources.js
+    // überhaupt gibt (dort in der Begründung: „der eigene Erklärkommentar
+    // über einer Prüfung enthält den gesuchten Namen").
+    const src = ohneKommentare(fs.readFileSync(path.join(PUB, 'js', file), 'utf8'));
     const ids = [...src.matchAll(/G\(\s*'([^'+]+)'\s*\)/g)].map(m => m[1]);
     const missing = [...new Set(ids)].filter(id => !knownIds.has(id) && !ALLOWED_MISSING.has(id));
     assert.deepEqual(missing, [], `Fehlende IDs: ${missing.join(', ')}`);

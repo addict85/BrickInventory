@@ -282,6 +282,11 @@
     <string name="nav_monitoring">📊 Monitoring</string>
     <string name="main_barcode_add_partslist">Add to parts list?</string>
     <string name="main_barcode_add_set">Add set?</string>
+    <!-- Shown when the set number was guessed, not matched: the EAN could not be
+         resolved and only a plausible candidate remains, or the number was read by
+         text recognition. The dialog already shows image and name — this says when
+         to look. -->
+    <string name="main_barcode_unsure">Not certain — please check image and name</string>
     <string name="main_barcode_year">Year</string>
     <string name="main_barcode_pieces">Pieces</string>
     <string name="main_barcode_figs">Figures</string>
@@ -299,6 +304,20 @@
 
     <!-- Nachtrag i18n-Pass: zuvor hartkodierte Strings -->
     <string name="parts_search_placeholder">Search parts…</string>
+    <string name="parts_spare_tag">Spare</string>
+    <!-- Detail dialog for parts/minifigs FROM SETS: no market price,
+         quantity read-only, instead the sets that use it. -->
+    <string name="setitem_used_in">Used in</string>
+    <string name="setitem_used_in_none">Not found in any set</string>
+    <string name="setitem_total_qty">Total quantity</string>
+    <string name="setitem_open_set">Open set</string>
+    <string name="setitem_category">Category</string>
+    <string name="setitem_color">Colour</string>
+    <string name="parts_filter_all">All parts</string>
+    <string name="view_cards">Cards</string>
+    <string name="view_table">Table</string>
+    <string name="parts_filter_no_spare">Without spare parts</string>
+    <string name="parts_filter_spare">Spare parts only</string>
     <string name="common_quantity">Quantity</string>
     <string name="common_loading">Loading…</string>
     <string name="detail_price_loading">Loading price…</string>
@@ -454,4 +473,23 @@
     <string name="pdfview_default_name">Instructions</string>
     <string name="pdfview_empty_response">Empty response from server</string>
     <string name="pdfview_share">Share PDF</string>
+    <!-- Angemeldete Geraete (Token-Verwaltung) -->
+    <string name="tokens_title">Signed-in devices</string>
+    <string name="tokens_hint">Every sign-in — in the browser, in the app or via QR code — issues an access token. Lock out a lost or sold device here, without changing your password.</string>
+    <string name="tokens_none">No access tokens.</string>
+    <string name="tokens_reload">Refresh</string>
+    <string name="tokens_current">this device</string>
+    <string name="tokens_never">never</string>
+    <string name="tokens_unused">never used</string>
+    <string name="tokens_row_hint">Signed in %1$s · last used %2$s · expires %3$s</string>
+    <string name="tokens_revoke_title">Sign out device?</string>
+    <string name="tokens_revoke_text">“%1$s” loses access. Whoever uses that device has to sign in again.</string>
+    <string name="tokens_revoke_confirm">Sign out</string>
+    <string name="tokens_revoked">Device signed out</string>
+    <string name="tokens_revoke_others">Sign out all others</string>
+    <string name="tokens_revoke_others_title">Sign out all others?</string>
+    <string name="tokens_revoke_others_text">%1$d other tokens lose access. This device stays signed in.</string>
+    <string name="tokens_revoked_n">%1$d tokens signed out</string>
+    <string name="tokens_no_others">There are no other tokens.</string>
+    <string name="tokens_self_unknown">This device\'s own token is not identifiable — without it there is no way to tell which ones are “the others”.</string>
 </resources>

@@ -6,13 +6,15 @@ import * as db from '../db/database';
 import { handleRouteError, logAndContinue, meldeUndWeiter } from '../utils/httpError';
 import { requireLogin, requireAdmin } from './auth';
 
-import { setUserSetting, setGlobalSetting, setGlobalTrigger, getGlobalSetting } from '../utils/settings';
+import { setUserSetting, setGlobalSetting, setGlobalTrigger, getGlobalSetting,
+         SECRET_KEYS, isMaskedValue, readSettings } from '../utils/settings';
 import { getRateLimitStatus } from '../utils/financeCalc';
 import { buildSetsCsv } from '../utils/setService';
 import { buildPartsCsv } from './parts';
 import { buildFigsCsv } from './minifigs';
 import { DAILY_JOBS } from '../jobs/dailyScheduler';
-import { escapeLike } from '../utils/auth';
+import { escapeLike, requireLoginOrToken, hashToken, leereTokenCache } from '../utils/auth';
+import { bearerToken } from './api_v1/middleware';
 import { sendMail, testSmtp } from './mailer';
 
 // ── Öffentlich: aktuelles App-Design ─────────────────────────────────────────
@@ -27,115 +29,101 @@ router.get('/theme', async (_req, res) => {
   res.json({ success: true, theme: theme || 'classic' });
 });
 
-router.use(requireLogin);
-
+// ── Angemeldete Geräte: Sitzung ODER Token ───────────────────────────────────
+//
+// MUSS vor router.use(requireLogin) stehen — aus demselben Grund wie /theme
+// darüber, nur andersherum: Nicht weil gar keine Anmeldung nötig wäre,
+// sondern weil requireLogin NUR die Sitzung kennt. Die App hat keine; sie
+// weist sich mit einem Bearer-Token aus.
+//
+// GEMESSEN: Mit den Routen hinter dem Gatter antwortete /tokens der App mit
+// 401 — die Verwaltung der App-Zugänge war für die App selbst unerreichbar.
+// Die beiden Routen bringen ihre eigene Absicherung mit
+// (requireLoginOrToken), es fällt also nichts weg.
 /**
- * Schlüssel aus global_settings, deren WERT ein Geheimnis ist.
+ * GET /api/v1/settings/tokens — die eigenen Zugänge auflisten.
  *
- * ── Warum das nötig wurde ───────────────────────────────────────────────────
- * GET /api/settings/ hat die komplette global_settings-Tabelle in die Antwort
- * gespreadet — inklusive bricklink_consumer_secret, bricklink_token_secret,
- * brickset_api_key, rebrickable_api_key und smtp_pass. Schreiben durfte nur
- * ein Admin, LESEN aber jedes angemeldete Konto. Ein zweiter Benutzer ohne
- * Admin-Rechte konnte damit sämtliche API-Zugangsdaten der Installation
- * abziehen. Dasselbe galt für GET /api/settings/export.
+ * ── Warum es das jetzt in der Oberfläche gibt ───────────────────────────────
+ * Diese Route und ihr DELETE-Gegenstück gab es schon; einen WEG dorthin nicht.
+ * Damit war ein verlorenes oder verkauftes Telefon nur loszuwerden, indem man
+ * das Passwort ändert (das verwirft seit Nachtrag 3 alle Token). Wer nur EIN
+ * Gerät aussperren will, musste alle anderen mit aussperren.
  *
- * Verschärfend: Die Werte landeten im Frontend-JavaScript und damit im
- * Browser-Speicher — jede XSS-Lücke wäre automatisch ein Schlüsseldiebstahl
- * gewesen.
+ * ── Was herausgegeben wird, und was nicht ───────────────────────────────────
+ * `token_id` sind die ersten 16 Zeichen des SHA-256-HASHES, nicht des Tokens.
+ * Daraus lässt sich der Token nicht zurückrechnen; er reicht aber, um die
+ * Zeile beim Löschen wiederzufinden. Der Klartext-Token existiert auf dem
+ * Server ohnehin nicht mehr — er wurde einmal ausgegeben und nie gespeichert.
  *
- * Jetzt: Geheimnisse gehen nur maskiert raus (Länge + letzte vier Zeichen,
- * damit man im Formular erkennt, OB und WELCHER Wert hinterlegt ist).
- * Geschrieben wird nur, wenn der Client einen echten neuen Wert schickt —
- * die Maske selbst wird beim Speichern ignoriert (siehe isMaskedValue).
+ * `aktuell` markiert den Zugang, mit dem GERADE gefragt wird. Ohne das kann
+ * man sich mit dem eigenen Knopf selbst aussperren, ohne es zu merken. Der
+ * Client schickt dafür seinen Token im Authorization-Header mit; die Sitzung
+ * allein sagt nichts darüber, WELCHE Zeile zu ihr gehört.
  */
-const SECRET_KEYS = new Set([
-  'bricklink_consumer_key', 'bricklink_consumer_secret',
-  'bricklink_token', 'bricklink_token_secret',
-  'brickset_api_key', 'rebrickable_api_key',
-  'smtp_pass',
-]);
-
-/** Erkennungszeichen der Maske — kommt in echten Schlüsseln nicht vor. */
-const MASK_CHAR = '\u2022';
-
-/**
- * Geheimen Wert durch eine Maske ersetzen: 12 Punkte + die letzten vier
- * Zeichen. Leere Werte bleiben leer, damit das Formular "nicht gesetzt"
- * weiterhin von "gesetzt" unterscheiden kann.
- * @param {string|null|undefined} value
- * @returns {string}
- */
-function maskSecret(value: string | null | undefined) {
-  const v = String(value ?? '');
-  if (!v) return '';
-  return MASK_CHAR.repeat(12) + v.slice(-4);
-}
-
-/**
- * Ist der übergebene Wert die von uns ausgelieferte Maske (also unverändert
- * zurückgeschickt) statt eines echten neuen Geheimnisses?
- * @param {unknown} value
- * @returns {boolean}
- */
-function isMaskedValue(value: string | null | undefined) {
-  return typeof value === 'string' && value.includes(MASK_CHAR);
-}
-
-/**
- * global_settings so aufbereiten, wie sie an einen Client gehen dürfen:
- * Nicht-Admins bekommen die globalen Schlüssel gar nicht zu sehen, Admins
- * bekommen Geheimnisse maskiert.
- * @param {Record<string, string>} global
- * @param {boolean} isAdmin
- * @returns {Record<string, string>}
- */
-function sanitizeGlobal(global: any, isAdmin: boolean) {
-  const out: any = {};
-  for (const [k, v] of Object.entries(global)) {
-    if (SECRET_KEYS.has(k)) {
-      // Nicht-Admins sehen den Schlüssel überhaupt nicht — auch nicht maskiert.
-      if (isAdmin) out[k] = maskSecret(v as string | null | undefined);
-      continue;
-    }
-    out[k] = v;
-  }
-  return out;
-}
-
-/**
- * Einstellungen so lesen, wie sie an einen Client gehen dürfen: globale Werte
- * durch sanitizeGlobal(), darüber die Werte des Nutzers.
- *
- * ── Warum als eigener Helfer ────────────────────────────────────────────────
- * Es gibt ZWEI Leserouten mit demselben Inhalt und verschiedener Verpackung:
- * `/` liefert flach, `/raw` unter `settings`. Die Abfrage stand zweimal da —
- * und nur die Fassung in `/` bekam die Maskierung. `/raw` gab die komplette
- * global_settings-Tabelle roh heraus, samt bricklink_*_secret,
- * brickset_api_key, rebrickable_api_key und smtp_pass, an JEDES angemeldete
- * Konto (der Router trägt nur requireLogin). Und ausgerechnet `/raw` ist die
- * Route, die die Einstellungsseite lädt (public/js/05-settings.js,
- * loadSettings) — die Maskierung war damit für ihren eigentlichen Konsumenten
- * wirkungslos.
- *
- * Jetzt lesen beide durch dieselbe Funktion; eine neue Verpackung kann die
- * Maskierung nicht mehr versehentlich umgehen.
- */
-async function readSettings(userId: number, isAdmin: boolean) {
-  const raw: any = {};
-  (await db.all('SELECT key, value FROM global_settings')).forEach(r => { raw[r.key] = r.value; });
-  const global = sanitizeGlobal(raw, !!isAdmin);
-  const user: any = {};
-  (await db.all('SELECT key, value FROM user_settings WHERE user_id = $1', [userId]))
-    .forEach(r => { user[r.key] = r.value; });
-  return { ...global, ...user };
-}
-
-router.get('/', async (req: LoggedInRequest, res) => {
+router.get('/tokens', requireLoginOrToken, async (req: LoggedInRequest, res) => {
   try {
-    res.json({ success: true, ...(await readSettings(req.session.userId, !!req.session.isAdmin)) });
+    const uid = req.session?.userId || req.tokenUserId;
+    const eigener = bearerToken(req);
+    const eigenerHash = eigener ? hashToken(eigener) : null;
+    const tokens = await db.all(
+      'SELECT token, label, created_at, last_used, expires_at FROM api_tokens WHERE user_id = $1 ORDER BY created_at DESC',
+      [uid]);
+    res.json({ success: true, tokens: tokens.map((t: any) => ({
+      token_prefix: t.token.substring(0, 8),
+      token_id:     t.token.substring(0, 16),
+      label:        t.label,
+      created_at:   t.created_at,
+      last_used:    t.last_used,
+      expires_at:   t.expires_at,
+      never_expires: !t.expires_at,
+      aktuell:      t.token === eigenerHash,
+    }))});
   } catch (e) { handleRouteError(res, e); }
 });
+
+/**
+ * DELETE /api/v1/settings/tokens/:tokenId — einen Zugang entwerten.
+ *
+ * ── Zur Wirkungsverzögerung, ehrlich gesagt ─────────────────────────────────
+ * Die Zeile ist sofort weg. Der In-Memory-Cache in utils/auth.ts ist aber
+ * nach dem KLARTEXT-Token indiziert, und den hat der Server nicht — gezielt
+ * entfernen lässt er sich also nicht. Deshalb wird er hier ganz geleert, wie
+ * beim Passwortwechsel (revokeAllTokens). Das wirkt sofort, allerdings nur im
+ * Arbeitsprozess, der die Anfrage bearbeitet: Im Cluster können die übrigen
+ * den Token noch bis zu TOKEN_TTL_MS (eine Minute) bedienen.
+ *
+ * Für „Telefon verloren" ist eine Minute ohne Belang. Wer mehr braucht,
+ * ändert das Passwort — das verwirft zusätzlich alle Sitzungen.
+ */
+router.delete('/tokens/:tokenId', requireLoginOrToken, async (req: LoggedInRequest, res) => {
+  try {
+    const uid = req.session?.userId || req.tokenUserId;
+    // escapeLike: ohne das löscht ein "%" als tokenId ALLE Tokens des Nutzers.
+    const prefix = escapeLike(String(req.params.tokenId || '')).slice(0, 64);
+    if (!prefix) return res.status(400).json({ success: false, error: 'Token-ID fehlt' });
+    const r = await db.run(
+      "DELETE FROM api_tokens WHERE user_id = $1 AND token LIKE $2 ESCAPE '\\'",
+      [uid, prefix + '%']);
+    if (r.changes) leereTokenCache();
+    res.json({ success: true, deleted: r.changes });
+  } catch (e) { handleRouteError(res, e); }
+});
+
+router.use(requireLogin);
+
+// ── GET /api/settings ist ENTFERNT ───────────────────────────────────────────
+//
+// Sie lieferte GENAU DASSELBE wie GET /raw achtzig Zeilen weiter unten —
+// beide riefen readSettings(userId, isAdmin) —, nur in einer anderen Huelle:
+// hier ausgebreitet (`{ success, ...settings }`), dort verschachtelt
+// (`{ success, settings }`). Zwei Adressen, eine Abfrage, zwei Formen.
+//
+// Aufrufer hatte nur die zweite: Die Webapp holt /settings/raw (01-core.js und
+// 05-settings.js), die App /api/v1/settings. Nachgemessen ueber beide Baeume.
+//
+// Nebeneffekt, der den Umzug erst moeglich macht: `GET /api/v1/settings` gibt
+// es bereits — mit der fuer die App kuratierten Auswahl. Waere diese Route
+// mitgezogen, staenden zwei verschiedene Antworten auf derselben Adresse.
 
 router.post('/', async (req: LoggedInRequest, res) => {
   const globalKeys = ['bricklink_consumer_key','bricklink_consumer_secret','bricklink_token',
@@ -329,33 +317,6 @@ router.post('/import', importUpload.single('file'), async (req: LoggedInRequest,
       try { await require('../jobs/dailyScheduler').rescheduleAll(); } catch (e) { meldeUndWeiter('einstellungen:zeitplan-neu-planen', e); }
     }
     res.json({ success: true, imported, note: req.session.isAdmin ? 'Globale + Benutzer-Einstellungen importiert' : 'Nur Benutzer-Einstellungen importiert' });
-  } catch (e) { handleRouteError(res, e); }
-});
-
-router.get('/tokens', async (req, res) => {
-  try {
-    const tokens = await db.all('SELECT token, label, created_at, last_used, expires_at FROM api_tokens WHERE user_id = $1 ORDER BY created_at DESC', [req.session.userId]);
-    res.json({ success: true, tokens: tokens.map(t => ({
-      token_prefix: t.token.substring(0, 8),
-      token_id:     t.token.substring(0, 16),
-      label:        t.label,
-      created_at:   t.created_at,
-      last_used:    t.last_used,
-      expires_at:   t.expires_at,
-      never_expires: !t.expires_at,
-    }))});
-  } catch (e) { handleRouteError(res, e); }
-});
-
-router.delete('/tokens/:tokenId', async (req, res) => {
-  try {
-    // escapeLike: ohne das löscht ein "%" als tokenId ALLE Tokens des Nutzers.
-    const prefix = escapeLike(String(req.params.tokenId || '')).slice(0, 64);
-    if (!prefix) return res.status(400).json({ success: false, error: 'Token-ID fehlt' });
-    const r = await db.run(
-      "DELETE FROM api_tokens WHERE user_id = $1 AND token LIKE $2 ESCAPE '\\'",
-      [req.session.userId, prefix + '%']);
-    res.json({ success: true, deleted: r.changes });
   } catch (e) { handleRouteError(res, e); }
 });
 

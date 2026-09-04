@@ -11,14 +11,45 @@ import { handleRouteError } from '../../utils/httpError';
 import { requireToken } from './middleware';
 import { householdStatus, createInvite, redeemInvite, unlink } from '../../utils/household';
 import { setUserSetting, effectiveCondition, globalDefaultCondition } from '../../utils/settings';
-import { getGlobalSetting } from '../../utils/settings';
+import { getGlobalSetting, readSettings } from '../../utils/settings';
 const router = express.Router();
+
+/**
+ * Was die App aus den Einstellungen liest — ausdrücklich aufgezählt.
+ *
+ * Gegenstück zu `UserSettings` in AuthModels.kt der Android-App. Die Liste
+ * hier IST die Kuratierung: Die Webapp bekommt unter /api/settings zusätzlich
+ * die globalen und die Admin-Felder; die App braucht sie nicht und soll sie
+ * nicht bekommen. Das war schon vor diesem Umbau die Entscheidung (siehe
+ * test/api-parity.test.js) und bleibt es.
+ *
+ * Neu ist nur, WOHER die Werte kommen: aus readSettings(), also aus derselben
+ * Quelle wie die Webapp.
+ */
+const APP_FELDER = ['currency', 'price_condition', 'price_cache_ttl',
+                    'default_price_condition', 'user_default_condition'] as const;
+
+/** Vorgaben, falls weder global noch beim Nutzer etwas steht. */
+const APP_VORGABEN: Record<string, string> = {
+  currency: 'EUR', price_condition: 'N', price_cache_ttl: '24',
+  default_price_condition: 'N', user_default_condition: '',
+};
 
 router.get('/settings', requireToken, async (req: AuthedRequest, res) => {
   const uid = req.apiUser.user_id;
-  const rows = await db.all('SELECT key, value FROM user_settings WHERE user_id = $1', [uid]);
-  const settings: Record<string,string> = { currency:'EUR', price_condition:'N', price_cache_ttl:'24', default_price_condition:'N', user_default_condition:'' };
-  rows.forEach(r => { settings[r.key] = r.value; });
+  // readSettings() statt eigener Abfrage: Hier stand `SELECT … FROM
+  // user_settings` mit einer eigenen Vorgabeliste — und las damit die
+  // GLOBALEN Werte gar nicht. price_cache_ttl und default_price_condition
+  // sind aber global; die App bekam dauerhaft die fest verdrahtete 24 bzw.
+  // 'N', egal was der Verwalter eingestellt hatte.
+  //
+  // isAdmin=false: Die App ist nie die Verwaltungsoberfläche, und
+  // sanitizeGlobal() blendet Geheimnisse für Nicht-Admins vollständig aus.
+  const alle = await readSettings(uid, false);
+  const settings: Record<string, string> = {};
+  for (const feld of APP_FELDER) {
+    settings[feld] = alle[feld] ?? APP_VORGABEN[feld] ?? '';
+  }
   // Effektiver Zustand: eigener Wert → globaler Standard → 'N'. Die Regel
   // steht in utils/settings.ts, damit sie nicht neben dem Webapp-Weg ein
   // zweites Mal existiert (Etappe 6).

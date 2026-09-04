@@ -160,6 +160,13 @@ data class PartValuationItem(
     val condition: String? = null,
     /** Alle erfassten Zustände — je einer eine Plakette (siehe SetItem). */
     val conditions: List<String> = emptyList(),
+    /**
+     * Konto, dem der Eintrag gehoert. Im Haushalt zeigt der manuelle Bereich
+     * die Eintraege ALLER Konten; ohne diese Angabe konnte der Papierkorb dem
+     * Server nicht sagen, welche Karte gemeint war — geloescht wurde dann
+     * immer die eigene Zeile. Begruendung in utils/household.ts der Webapp.
+     */
+    @SerialName("user_id") val userId: Int? = null,
     /** Besitzer im Haushalt — siehe SetItem.owners. */
     val owners: List<HouseholdMember> = emptyList(),
     /**
@@ -201,6 +208,13 @@ data class FigValuationItem(
     val condition: String? = null,
     /** Alle erfassten Zustände — je einer eine Plakette (siehe SetItem). */
     val conditions: List<String> = emptyList(),
+    /**
+     * Konto, dem der Eintrag gehoert. Im Haushalt zeigt der manuelle Bereich
+     * die Eintraege ALLER Konten; ohne diese Angabe konnte der Papierkorb dem
+     * Server nicht sagen, welche Karte gemeint war — geloescht wurde dann
+     * immer die eigene Zeile. Begruendung in utils/household.ts der Webapp.
+     */
+    @SerialName("user_id") val userId: Int? = null,
     /** Besitzer im Haushalt — siehe SetItem.owners. */
     val owners: List<HouseholdMember> = emptyList(),
     /**

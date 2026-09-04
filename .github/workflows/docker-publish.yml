@@ -76,7 +76,7 @@ jobs:
             runner: ubuntu-24.04-arm
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
       # Frueh und mit klarer Meldung scheitern, statt spaeter im Login mit
       # "unauthorized: incorrect username or password".
@@ -133,7 +133,29 @@ jobs:
           mkdir -p /tmp/digests
           touch "/tmp/digests/${DIGEST#sha256:}"
 
-      - uses: actions/upload-artifact@v4
+      # ── Fassungen: nachgesehen, nicht geraten ─────────────────────────────
+      #
+      # Hier standen checkout@v4, upload-artifact@v4 und download-artifact@v4.
+      # In android.yml steht seit laengerem ein Absatz dazu, dass v4 und v5 auf
+      # Node 20 laufen und bei jedem Lauf warnen — die Recherche wurde einmal
+      # gemacht, dort aufgeschrieben, und diese Datei blieb stehen. Dieselbe
+      # Regel an zwei Stellen, eine davon gepflegt.
+      #
+      # Am Tag der Aenderung abgerufen (runs.using aus der action.yml):
+      #
+      #   checkout            v4 node20   v5 node24   v6 node24
+      #   upload-artifact     v4 node20   v5 node20   v6 node24
+      #   download-artifact   v4 node20   v5 node20   v6 node20   v7 node24
+      #
+      # Beachten: Bei download-artifact haette der naheliegende Sprung auf v6 —
+      # gleiche Zahl wie bei den anderen — die Warnung NICHT beseitigt. Erst v7
+      # wechselt die Laufzeit. Wer hier wieder anfasst: nachsehen, nicht die
+      # Nummer der Nachbarzeile abschreiben.
+      #
+      # Geprueft wurde ausserdem, dass die benutzten Eingaben es noch gibt:
+      # `pattern` und `merge-multiple` stehen auch in v7; die Aenderung in v5
+      # betrifft die Ablage EINZELNER Artefakte ohne merge-multiple.
+      - uses: actions/upload-artifact@v6
         with:
           name: digest-${{ env.PAAR }}
           path: /tmp/digests/*
@@ -145,7 +167,7 @@ jobs:
     runs-on: ubuntu-latest
     needs: build
     steps:
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v7
         with:
           path: /tmp/digests
           pattern: digest-*

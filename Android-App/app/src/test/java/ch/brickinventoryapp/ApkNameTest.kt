@@ -132,6 +132,78 @@ class ApkNameTest {
         }
     }
 
+    /**
+     * Der Workflow, zerlegt in seine Schritte.
+     *
+     * Getrennt wird am Einzug: Ein Schritt beginnt mit sechs Leerzeichen und
+     * `- `. In den `run:`-Bloecken steht alles tiefer, dort trifft das Muster
+     * nicht. Kommentarzeilen sind ueber workflow() schon draussen.
+     *
+     * Gezaehlt wird erst AB `steps:` — die `paths:`-Listen unter `on:` haben
+     * denselben Einzug. Der oertliche Spiegel hat das gemeldet: 20 „Schritte"
+     * bei 15. Eine Zahl, die etwas anderes zaehlt als sie behauptet, taugt
+     * auch als Selbstbeweis nichts.
+     */
+    private fun schritte(): List<String> {
+        val ganz = workflow()
+        val ab = ganz.indexOf("\n    steps:")
+        assert(ab >= 0) { "Der Abschnitt `steps:` ist in android.yml nicht mehr zu finden" }
+        val teile = ganz.substring(ab).split(Regex("""^      - """, RegexOption.MULTILINE))
+        assert(teile.size >= 10) {
+            "Nur ${teile.size - 1} Schritte gefunden — Einzug im Workflow geaendert? " +
+                "Ein Muster, das nichts findet, laesst jede Pruefung darunter still bestehen."
+        }
+        return teile.drop(1)
+    }
+
+    @Test
+    fun `das APK wird roh ausgeliefert, nicht als Zip`() {
+        // ── Marcos Wunsch ───────────────────────────────────────────────────
+        // „am Ende kein zip, sondern direkt das BrickInventory.apk".
+        //
+        // Als Artefakt geht das NICHT, und das ist keine Einstellungssache —
+        // nachgelesen in der Anleitung von actions/upload-artifact:
+        //
+        //   "When an Artifact is uploaded, all the files are assembled into an
+        //    immutable Zip archive. There is currently no way to download
+        //    artifacts in a format other than a Zip [...]"
+        //
+        // Wer die APK also wieder an einen upload-artifact-Schritt haengt,
+        // bekommt zwangslaeufig wieder ein Zip — ohne dass irgendwo eine
+        // Fehlermeldung stuende. Genau davor steht diese Pruefung.
+        //
+        // Gesucht, nicht aufgezaehlt: JEDER Artefaktschritt wird angesehen,
+        // auch ein kuenftiger.
+        val ziel = zielname()
+        val alle = schritte()
+
+        val artefakte = alle.filter { it.contains("upload-artifact") }
+        // Selbstbeweis: Ohne Artefaktschritte prueft die Bedingung darunter
+        // nichts und waere immer gruen. Der Workflow hat welche (Testberichte,
+        // Bundle) — findet das Muster keine, ist es veraltet.
+        assert(artefakte.isNotEmpty()) {
+            "Kein einziger upload-artifact-Schritt gefunden — Muster veraltet?"
+        }
+        val gezippt = artefakte.filter { it.contains(ziel) }
+        assert(gezippt.isEmpty()) {
+            "$ziel haengt wieder an einem Artefakt und kommt damit nur als Zip " +
+                "heraus. Als Release-Anhang wird dieselbe Datei roh ausgeliefert."
+        }
+
+        val roh = alle.filter { it.contains("gh release upload") && it.contains(ziel) }
+        assert(roh.size == 1) {
+            "Der Schritt, der $ziel als Release-Anhang bereitstellt, steht " +
+                "${roh.size}-mal im Workflow. Ohne ihn gibt es keinen direkten " +
+                "Download; zweimal waere dieselbe Regel an zwei Stellen."
+        }
+        // Ein Pull-Request darf die Datei hinter dem stabilen Link NICHT
+        // ersetzen — sonst zeigt er auf einen ungeprueften Zweig.
+        assert(roh[0].contains("github.event_name != 'pull_request'")) {
+            "Der Release-Schritt laeuft auch bei Pull-Requests und ueberschreibt " +
+                "damit das APK hinter dem stabilen Link."
+        }
+    }
+
     @Test
     fun `Gradle bevorzugt die signierte APK`() {
         // Warum das hier steht: Die Kopie heisst in beiden Fällen gleich, der

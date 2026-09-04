@@ -18,6 +18,21 @@ data class HouseholdUiState(
     val message: String? = null,
 )
 
+/**
+ * Die ausgestellten Zugänge dieses Kontos — „Angemeldete Geräte".
+ *
+ * Eigener Fluss und nicht Teil von AppUiState: Die Liste wird nur in den
+ * Einstellungen gebraucht, hat eigene Zwischenstände (lädt, Fehler) und würde
+ * sonst jeden Reiter neu zeichnen lassen. Dieselbe Überlegung wie bei
+ * HouseholdUiState darüber.
+ */
+data class GeraeteUiState(
+    val laedt: Boolean = false,
+    val geraete: List<ch.brickinventoryapp.data.model.AppToken> = emptyList(),
+    /** Meldung des Servers oder der Verbindung; null = nichts zu sagen. */
+    val fehler: String? = null,
+)
+
 data class AppUiState(
     /**
      * Läuft gerade eine ANMELDUNG? Und nur das.
@@ -191,12 +206,53 @@ data class PartsUiState(
      * Problem dort nicht.
      */
     val partsQuery: String = "",
+    /**
+     * Ersatzteil-Filter: "" alle, "0" ohne Ersatzteile, "1" nur Ersatzteile.
+     *
+     * Dieselben drei Werte wie das Auswahlfeld der Webapp (parts-spare in
+     * index.html). Die App las `is_spare` bisher zwar aus der Antwort und hatte
+     * sogar einen Helfer dafuer (Part.isSpareFlag) — benutzt hat sie beides
+     * nirgends. Wer am Telefon nachsah, wie viele Teile er wirklich hat, bekam
+     * die Ersatzteile immer mitgezaehlt; am Rechner konnte er sie ausblenden.
+     *
+     * Aus demselben Grund wie partsQuery im Zustand und nicht im Bildschirm:
+     * Sonst kennt ihn nur, wer aus dem Filter heraus laedt, und `onLoadMore`
+     * haengt eine ungefilterte Seite 2 an eine gefilterte Seite 1.
+     */
+    val partsSpare: String = "",
+    /**
+     * Darstellung der Teileliste: "grid" (Karten) oder "table" (Zeilen).
+     *
+     * Wie in der Webapp (Auswahlfeld parts-view). Im Zustand und nicht im
+     * Bildschirm, weil der Ladeweg ihn braucht: Die Spalte „In Sets" kostet
+     * den Server eine eigene Abfrage, deshalb holt die Webapp `with_sets=1`
+     * NUR in der Tabellenansicht — und die App tut es genauso.
+     */
+    val partsView: String = "grid",
     val partsLoading: Boolean = false,
     val minifigs: List<Minifig> = emptyList(),
     /** Kennzahlen der Kacheln — vom Server, nicht aus der (gefilterten) Liste. */
     val minifigStats: ch.brickinventoryapp.data.model.MinifigStats =
         ch.brickinventoryapp.data.model.MinifigStats(),
     val minifigsLoading: Boolean = false,
+    /**
+     * Suchtext der Figurenliste — im Zustand, nicht im Composable.
+     *
+     * Er stand als `var search by rememberSaveable` in MinifigsScreen und
+     * filterte die schon geladene Liste. Damit gab es dieselbe Suchregel
+     * zweimal (hier und im Server-Handler), und sie waren nicht deckungsgleich:
+     * Der Server sucht vor der Gruppierung ueber jede fig_name-Zeile, das
+     * Composable danach ueber die eine, die uebrig bleibt. Aus demselben Grund
+     * steht partsQuery oben im Zustand.
+     */
+    val minifigsQuery: String = "",
+    /**
+     * Darstellung der Figurenliste: "grid" oder "table" — wie figs-view in der
+     * Webapp. Anders als bei den Teilen braucht der Ladeweg ihn nicht (es gibt
+     * keine zusaetzliche Spalte vom Server), er steht aber aus demselben Grund
+     * hier: Beim Zuruecknavigieren soll die Ansicht dieselbe sein.
+     */
+    val minifigsView: String = "grid",
     val partsStats: PartsStats? = null,
     val partsColors: List<BrickColor> = emptyList(),
 )
@@ -353,6 +409,21 @@ data class BarcodeUiState(
     // Läuft gerade ein Hinzufügen aus dem Barcode-Dialog? Sperrt den Knopf
     // gegen den zweiten Klick, der sonst dasselbe Set ein zweites Mal erfasst.
     val adding: Boolean = false,
+    /**
+     * Die angezeigte Nummer ist GERATEN — der Dialog weist darauf hin.
+     *
+     * Zwei Quellen setzen das Feld:
+     *  - Der Server, wenn er die EAN nicht abgleichen konnte und nur einen
+     *    plausiblen Kandidaten hat (BarcodeResponse.unsicher).
+     *  - Die App selbst bei der Texterkennung: Dort ist schon das LESEN eine
+     *    Vermutung. Die gefundene Zahl ergibt zwar ein echtes Set — sonst käme
+     *    der Dialog gar nicht —, aber ob es das Set auf dem Papier ist, weiss
+     *    niemand.
+     *
+     * Der Dialog zeigt Bild und Namen ohnehin. Es fehlte nur der Hinweis,
+     * WANN man hinsehen muss.
+     */
+    val unsicher: Boolean = false,
 )
 
 /**
@@ -480,3 +551,35 @@ data class CatalogUiState(
     val detail: CatalogSetDetail? = null,
     val detailLoading: Boolean = false,
 )
+
+/**
+ * Der Detail-Dialog fuer ein Teil / eine Figur AUS EINEM SET.
+ *
+ * ── Marcos Wunsch ──────────────────────────────────────────────────────────
+ * „Auch die automatisch erfassten Teile und Minifiguren sollen einen
+ * Detail-Dialog inkl. Zoom haben. Der Marktpreis kann weggelassen werden, die
+ * Anzahl soll nicht geaendert werden koennen. Dafuer soll angezeigt werden,
+ * welche Sets dieses Teil und Minifigur verwenden — inkl. Link, um den
+ * Detail-Dialog des Sets oeffnen zu koennen."
+ *
+ * ── Warum ein eigener Fluss ────────────────────────────────────────────────
+ * Dieselbe Ueberlegung wie bei BarcodeUiState: Ein geoeffneter Dialog erzeugt
+ * Zwischenstaende (laedt, da, Fehler), und die gingen als Felder in AppUiState
+ * jeden Reiter an. `offen == null` heisst: kein Dialog.
+ *
+ * EIN Zustand fuer Teile UND Figuren — der Server beantwortet beide Faelle mit
+ * derselben Funktion und liefert dieselbe Form. Zwei Zustaende waeren zwei
+ * Stellen, an denen dasselbe steht.
+ */
+data class SetItemUiState(
+    /** "part" oder "fig"; null heisst: der Dialog ist zu. */
+    val art: String? = null,
+    val nummer: String = "",
+    val colorId: Int = 0,
+    val laedt: Boolean = false,
+    val kopf: BestandteilKopf? = null,
+    val sets: List<VerwendendesSet> = emptyList(),
+    val fehler: String? = null,
+) {
+    val offen: Boolean get() = art != null
+}

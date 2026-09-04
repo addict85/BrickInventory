@@ -71,11 +71,18 @@ test('E-Mail-Verifikation steht nur an einer Stelle', async (t) => {
       'Gefunden in: ' + treffer.join(', '));
   });
 
-  await t.test('beide Routen rufen die gemeinsame Funktion', () => {
-    for (const rel of ['server.ts', 'routes/auth.ts']) {
-      assert.match(lies(rel), /verifiziereEmailToken\s*\(/,
-        `${rel} löst den Token nicht über die gemeinsame Funktion ein`);
-    }
+  await t.test('der eine verbleibende Weg ruft die gemeinsame Funktion', () => {
+    // Hier standen ZWEI Wege: server.ts (der Link aus der Mail) und
+    // GET /api/auth/verify. Die API-Route ist entfernt — sie hatte keinen
+    // Aufrufer, und genau das stand seit Nachtrag 154 als Kommentar in ihr
+    // drin. Damit gibt es nur noch einen Weg, und er muss die gemeinsame
+    // Funktion rufen.
+    assert.match(lies('server.ts'), /verifiziereEmailToken\s*\(/,
+      'server.ts löst den Token nicht über die gemeinsame Funktion ein');
+    // Und die Regel darf nicht zurückkommen: Eine zweite Fassung in
+    // routes/auth.ts waere wieder die Doppelung aus Nachtrag 154.
+    assert.doesNotMatch(lies('routes/auth.ts'), /verifiziereEmailToken\s*\(/,
+      'routes/auth.ts loest wieder selbst Token ein — die Doppelung ist zurück');
   });
 
   await t.test('der Browser-Weg antwortet mit einer Weiterleitung', () => {
@@ -87,21 +94,11 @@ test('E-Mail-Verifikation steht nur an einer Stelle', async (t) => {
     assert.match(s, /verified=invalid/, 'server.ts meldet den Fehlschlag nicht mehr');
   });
 
-  await t.test('der API-Weg antwortet NICHT mit einer Weiterleitung', () => {
-    // ── Warum das hier steht (Nachtrag 154) ───────────────────────────────
-    // Vorher schickte /api/auth/verify auf dem Erfolgs- UND dem
-    // Ungültig-Pfad ein res.redirect('/?verified=…'). Ein fetch() folgt der
-    // Weiterleitung und bekommt die ~189 KB index.html statt einer Antwort —
-    // dieselbe Falle, die für unbekannte /api-Pfade schon einmal als
-    // 404-Regel behoben wurde.
-    const quelle = lies('routes/auth.ts');
-    const i = quelle.indexOf("router.get('/verify'");
-    assert.ok(i > 0, 'Die Route GET /verify gibt es in routes/auth.ts nicht mehr');
-    // Nur der Rumpf dieser einen Route, nicht die ganze Datei.
-    const rumpf = quelle.slice(i, quelle.indexOf('\nrouter.', i + 10));
-    assert.doesNotMatch(rumpf, /res\.redirect/,
-      'Eine Route unter /api darf nicht auf eine HTML-Seite weiterleiten — ' +
-      'ein Programm-Aufrufer bekommt dann index.html statt einer Antwort.');
-    assert.match(rumpf, /res\.json|\.json\(/, 'Die API-Route antwortet nicht mit JSON');
-  });
+  // ── „der API-Weg antwortet NICHT mit einer Weiterleitung" ist entfallen ──
+  //
+  // Der Untertest hielt fest, dass GET /api/auth/verify mit JSON antwortet
+  // statt mit res.redirect — ein Programm-Aufrufer bekaeme sonst die ~189 KB
+  // index.html. Die Route ist entfernt, weil sie keinen Aufrufer hatte; die
+  // Regel darueber, die eine zweite Fassung der Logik verbietet, deckt den
+  // Rueckfall ab.
 });

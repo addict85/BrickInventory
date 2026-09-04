@@ -33,13 +33,13 @@ G('btn-test-smtp')?.addEventListener('click', async()=>{
   const res = G('smtp-test-result');
   btn.disabled = true; btn.textContent = 'Teste…';
   // Save first
-  await api('POST','/settings',{
+  await api('POST','/v1/settings',{
     smtp_host: G('smtp-host').value.trim(), smtp_port: G('smtp-port').value||'587',
     smtp_user: G('smtp-user').value.trim(), smtp_pass: G('smtp-pass').value,
     smtp_from: G('smtp-from').value.trim(), smtp_secure: G('smtp-secure').checked?'1':'0',
     smtp_insecure_tls: G('smtp-insecure')?.checked?'1':'0',
   });
-  const d = await api('POST','/settings/smtp-test', { to: G('smtp-test-email')?.value?.trim() || ME?.email || '' });
+  const d = await api('POST','/v1/settings/smtp-test', { to: G('smtp-test-email')?.value?.trim() || ME?.email || '' });
   btn.disabled = false; btn.textContent = tRaw('smtp.test_btn');
   res.style.display = 'block';
   if(d.success) {
@@ -52,7 +52,7 @@ G('btn-test-smtp')?.addEventListener('click', async()=>{
 });
 
 G('btn-sav-smtp')?.addEventListener('click', async()=>{
-  const d=await api('POST','/settings',{
+  const d=await api('POST','/v1/settings',{
     smtp_host:   G('smtp-host').value.trim(),
     smtp_port:   G('smtp-port').value||'587',
     smtp_user:   G('smtp-user').value.trim(),
@@ -65,7 +65,7 @@ G('btn-sav-smtp')?.addEventListener('click', async()=>{
 });
 
 async function saveRegEnabled(){
-  const d=await api('POST','/settings',{ registration_enabled: G('reg-enabled').checked?'1':'0' });
+  const d=await api('POST','/v1/settings',{ registration_enabled: G('reg-enabled').checked?'1':'0' });
   toast(d.success?t('settings.reg_saved'):t('settings.error'),d.success?'success':'error');
 }
 
@@ -139,7 +139,7 @@ async function generateQrCode() {
     // POST, nicht GET (Nachtrag 154): Der Aufruf LEGT eine Nonce AN. Als GET war
     // er über eine Navigation von einer fremden Seite auslösbar, weil
     // SameSite=lax das Cookie dort mitschickt.
-    const d = await api('POST', '/auth/qr-token');
+    const d = await api('POST', '/v1/auth/qr-token');
     if (!d.success) { hint.textContent = tRaw('toast.error')+': ' + (d.error||t('common.unknown')); btn.disabled=false; btn.textContent=tRaw('qr.generate'); return; }
     // Get current server URL
     // Use the URL from the input field, fallback to window.location.origin
@@ -182,8 +182,92 @@ async function generateQrCode() {
 
 G('btn-gen-qr').onclick = generateQrCode;
 
+// ── ANGEMELDETE GERÄTE ────────────────────────────────────────────────────
+//
+// Die Endpunkte /v1/settings/tokens gab es schon, einen Weg dorthin nicht:
+// Ein verlorenes Telefon war nur loszuwerden, indem man das Passwort ändert
+// (das verwirft ALLE Zugänge). Wer nur eines aussperren wollte, sperrte alle
+// aus.
+//
+// Der eigene Zugang wird MITGESCHICKT — anders kann der Server nicht sagen,
+// welche Zeile zu diesem Browser gehört, und der Knopf „alle anderen
+// abmelden" wüsste nicht, wovon er absehen soll. api() setzt den
+// Authorization-Header nicht (die Webapp arbeitet über die Sitzung), deshalb
+// hier ein eigener fetch — dieselbe Stelle wie beim Abmelden in 01-core.js.
+async function tokenRuf(pfad, method = 'GET') {
+  const wt = sessionStorage.getItem('webToken');
+  const r = await fetch('/api/v1/settings' + pfad, {
+    method,
+    headers: wt ? { 'Authorization': 'Bearer ' + wt } : {},
+  });
+  return r.json().catch(() => ({ success: false, error: 'HTTP ' + r.status }));
+}
+
+/** „—", wenn nie benutzt: `new Date(null)` wäre der 1.1.1970. */
+function tokenDatum(wert) {
+  if (!wert) return '—';
+  return new Date(wert).toLocaleString(locale());
+}
+
+export async function loadTokens() {
+  const ziel = G('tokens-tbl');
+  if (!ziel) return;
+  const d = await tokenRuf('/tokens');
+  if (!d.success) { ziel.innerHTML = `<p style="color:var(--mut)">${esc(d.error || t('settings.error'))}</p>`; return; }
+  if (!d.tokens.length) { ziel.innerHTML = `<p style="color:var(--mut)">${t('tokens.none')}</p>`; return; }
+  ziel.innerHTML = `<div class="tw"><table class="dt"><thead><tr>
+      <th>${t('tokens.col.label')}</th><th>${t('tokens.col.created')}</th>
+      <th>${t('tokens.col.last_used')}</th><th>${t('tokens.col.expires')}</th>
+      <th>${t('users.col.actions')}</th></tr></thead><tbody>${
+    d.tokens.map(tk => `<tr>
+      <td><strong>${esc(tk.label || '—')}</strong>${tk.aktuell ? ` <span class="rb ra">${t('tokens.current')}</span>` : ''}</td>
+      <td>${tokenDatum(tk.created_at)}</td>
+      <td>${tokenDatum(tk.last_used)}</td>
+      <td>${tk.never_expires ? t('tokens.never') : tokenDatum(tk.expires_at)}</td>
+      <td>${tk.aktuell ? '' :
+        `<button class="btn bd btn-sm" data-click="revokeToken" data-arg="${esc(tk.token_id)}" data-arg2="${esc(tk.label || '')}">🗑️</button>`}</td>
+    </tr>`).join('')
+  }</tbody></table></div>`;
+}
+
+async function revokeToken(tokenId, label) {
+  if (!await confirmDelete(tRaw('tokens.revoke.title'), tRaw('tokens.revoke.text', { name: label || '—' }), '🔑')) return;
+  const d = await tokenRuf('/tokens/' + encodeURIComponent(tokenId), 'DELETE');
+  if (d.success) { toast(tRaw('tokens.revoked'), 'success'); loadTokens(); }
+  else toast(d.error || t('settings.error'), 'error');
+}
+
+/**
+ * Alle Zugänge ausser dem eigenen entwerten.
+ *
+ * Nacheinander über den bestehenden Endpunkt, statt dafür einen neuen zu
+ * bauen: Es sind eine Handvoll Zeilen, und eine zweite Adresse für „dasselbe,
+ * nur mehrfach" wäre genau die Art Doppelung, die dieses Projekt sonst
+ * abbaut. Gezählt wird, was WIRKLICH weg ist — nicht, wie oft geklickt wurde.
+ *
+ * Ohne den eigenen Zugang in der Liste (kein webToken im sessionStorage, etwa
+ * weil das INSERT beim Anmelden scheiterte) wäre „alle anderen" nicht
+ * bestimmbar — dann lieber gar nichts tun als den eigenen mit abräumen.
+ */
+async function revokeOtherTokens() {
+  const d = await tokenRuf('/tokens');
+  if (!d.success) { toast(d.error || t('settings.error'), 'error'); return; }
+  const andere = d.tokens.filter(tk => !tk.aktuell);
+  if (!andere.length) { toast(tRaw('tokens.no_others'), 'success'); return; }
+  if (!d.tokens.some(tk => tk.aktuell)) { toast(tRaw('tokens.self_unknown'), 'error'); return; }
+  if (!await confirmDelete(tRaw('tokens.revoke_others.title'),
+                           tRaw('tokens.revoke_others.text', { n: andere.length }), '🚪')) return;
+  let weg = 0;
+  for (const tk of andere) {
+    const r = await tokenRuf('/tokens/' + encodeURIComponent(tk.token_id), 'DELETE');
+    weg += r.deleted || 0;
+  }
+  toast(tRaw('tokens.revoked_n', { n: weg }), weg === andere.length ? 'success' : 'error');
+  loadTokens();
+}
+
 export async function loadProfile() {
-  const d = await api('GET', '/auth/profile');
+  const d = await api('GET', '/v1/auth/profile');
   if (!d.success) return;
   const u = d.user;
   G('prof-first').value = u.first_name || '';
@@ -215,7 +299,7 @@ G('btn-sav-prof').onclick = async () => {
   const btn = G('btn-sav-prof'); btn.disabled = true;
   try {
     // Währung (Sprache speichert setLang() bereits beim Umschalten)
-    const dCur = await api('POST', '/settings', { currency: G('s-cur').value });
+    const dCur = await api('POST', '/v1/settings', { currency: G('s-cur').value });
     if (!dCur.success) { toast(dCur.error || t('settings.error'), 'error'); return; }
     set_CURRENCY(G('s-cur').value);
 
@@ -226,7 +310,7 @@ G('btn-sav-prof').onclick = async () => {
     if (typeof initDefaultCondition === 'function') initDefaultCondition();
 
     // Profil
-    const d = await api('PUT', '/auth/profile', { username, email, first_name, last_name });
+    const d = await api('PUT', '/v1/auth/profile', { username, email, first_name, last_name });
     if (!d.success) { toast(d.error || t('profile.save_error'), 'error'); return; }
     if (d.emailChanged) {
       const hint = G('prof-email-hint');
@@ -237,7 +321,7 @@ G('btn-sav-prof').onclick = async () => {
 
     // Passwort (optional)
     if (wantsPwChange) {
-      const dPw = await api('POST', '/auth/change-password', { current: pwC, newPassword: pwN });
+      const dPw = await api('POST', '/v1/auth/change-password', { current: pwC, newPassword: pwN });
       if (!dPw.success) {
         // Profil & Währung sind gespeichert, nur das Passwort schlug fehl —
         // das dem Nutzer explizit so sagen statt pauschal "Fehler".
@@ -279,7 +363,7 @@ export async function loadSettings(){
   // Show cached data instantly so the tab never appears empty
   if(_settingsCache) applySettings(_settingsCache);
   loadHousehold();
-  const d=await api('GET','/settings/raw'); if(!d.success) return;
+  const d=await api('GET','/v1/settings/raw'); if(!d.success) return;
   set_settingsCache(d.settings);
   applySettings(_settingsCache);
 }
@@ -374,10 +458,10 @@ export async function unlinkHousehold(subUserId){
   toast(tRaw('household.unlink_ok'),'success');
   loadHousehold();
 }
-G('btn-sav-bl').onclick=async()=>{ const d=await api('POST','/settings',{bricklink_consumer_key:G('bl-ck').value,bricklink_consumer_secret:G('bl-cs').value,bricklink_token:G('bl-tok').value,bricklink_token_secret:G('bl-ts').value}); if(d.success) await api('PUT','/v1/admin/api-limits',{bricklink:parseInt(G('lim-bl').value)}); toast(d.success?t('settings.bl_saved'):t('settings.error'),d.success?'success':'error'); if(d.success){loadRateLimitStats();} };
-G('btn-sav-rb').onclick=async()=>{ const d=await api('POST','/settings',{rebrickable_api_key:G('rb-key').value}); if(d.success) await api('PUT','/v1/admin/api-limits',{rebrickable:parseInt(G('lim-rb').value)}); toast(d.success?t('settings.rb_saved'):t('settings.error'),d.success?'success':'error'); if(d.success){loadRateLimitStats();} };
-G('btn-sav-bs').onclick=async()=>{ const d=await api('POST','/settings',{brickset_api_key:G('bs-key').value}); if(d.success) await api('PUT','/v1/admin/api-limits',{brickset:parseInt(G('lim-bs').value)}); toast(d.success?t('settings.bs_saved'):t('settings.error'),d.success?'success':'error'); if(d.success){loadRateLimitStats();} };
-G('btn-save-theme').onclick=async()=>{ const theme=G('mon-app-theme')?.value||'classic'; const d=await api('POST','/settings/admin/theme',{theme}); if(d.success){ if(typeof applyTheme==='function') applyTheme(theme); if(_settingsCache) _settingsCache.app_theme=theme; } toast(d.success?t('settings.theme_saved'):t('settings.error'),d.success?'success':'error'); };
+G('btn-sav-bl').onclick=async()=>{ const d=await api('POST','/v1/settings',{bricklink_consumer_key:G('bl-ck').value,bricklink_consumer_secret:G('bl-cs').value,bricklink_token:G('bl-tok').value,bricklink_token_secret:G('bl-ts').value}); if(d.success) await api('PUT','/v1/admin/api-limits',{bricklink:parseInt(G('lim-bl').value)}); toast(d.success?t('settings.bl_saved'):t('settings.error'),d.success?'success':'error'); if(d.success){loadRateLimitStats();} };
+G('btn-sav-rb').onclick=async()=>{ const d=await api('POST','/v1/settings',{rebrickable_api_key:G('rb-key').value}); if(d.success) await api('PUT','/v1/admin/api-limits',{rebrickable:parseInt(G('lim-rb').value)}); toast(d.success?t('settings.rb_saved'):t('settings.error'),d.success?'success':'error'); if(d.success){loadRateLimitStats();} };
+G('btn-sav-bs').onclick=async()=>{ const d=await api('POST','/v1/settings',{brickset_api_key:G('bs-key').value}); if(d.success) await api('PUT','/v1/admin/api-limits',{brickset:parseInt(G('lim-bs').value)}); toast(d.success?t('settings.bs_saved'):t('settings.error'),d.success?'success':'error'); if(d.success){loadRateLimitStats();} };
+G('btn-save-theme').onclick=async()=>{ const theme=G('mon-app-theme')?.value||'classic'; const d=await api('POST','/v1/settings/admin/theme',{theme}); if(d.success){ if(typeof applyTheme==='function') applyTheme(theme); if(_settingsCache) _settingsCache.app_theme=theme; } toast(d.success?t('settings.theme_saved'):t('settings.error'),d.success?'success':'error'); };
 G('btn-clr-prices').onclick=async()=>{ await api('POST','/v1/admin/cache-clear'); toast(tRaw('settings.cache_cleared'),'success'); loadCacheStats(); };
 G('btn-clr-all-cache').onclick=async()=>{
   if(!await confirmDelete(tRaw('settings.all_cache.clear'),t('settings.all_cache.clear'),'🗄️')) return;
@@ -390,14 +474,25 @@ G('btn-dall').onclick=async()=>{
   const confirm2 = window.prompt(t('settings.delete_all.prompt'));
   if(confirm2 !== t('settings.delete_all.confirm')) { toast(tRaw('settings.delete_all.cancelled'),'info'); return; }
   toast(tRaw('settings.delete_all.deleting'),'info');
-  const s=await api('GET','/v1/sets');
-  for(const set of s.sets||[]) await api('DELETE',`/v1/sets/${esc(set.set_number)}`);
+  // accounts=own, zweimal — beim Auflisten UND beim Löschen.
+  //
+  // Ohne das listete der Knopf im Haushalt auch die Sets der verknüpften
+  // Konten, und DELETE löschte jede Nummer im vollen Schreib-Blickfeld.
+  // NACHGEMESSEN mit zwei Konten: Das Unterkonto verlor Sets, Teile und
+  // Minifiguren vollständig — darunter ein Set, das das Hauptkonto nie besass.
+  // Der Knopf heisst „Alle MEINE Sets löschen" und der Text verspricht
+  // „Deine gesamte Sammlung".
+  //
+  // Fest 'own' und nicht scopeQuery(): Das Versprechen des Knopfes hängt nicht
+  // davon ab, welchen Kontofilter jemand zuletzt in der Galerie stehen hatte.
+  const s=await api('GET','/v1/sets?accounts=own');
+  for(const set of s.sets||[]) await api('DELETE',`/v1/sets/${esc(set.set_number)}?accounts=own`);
   toast(tRaw('settings.delete_all.done'),'success'); loadGallery(); loadParts(); loadMinifigs(); loadStats();
 };
 
 // ── USER MGMT ─────────────────────────────────────────
 async function loadUsers(){
-  const d=await api('GET','/auth/users'); if(!d.success) return;
+  const d=await api('GET','/v1/auth/users'); if(!d.success) return;
   G('users-tbl').innerHTML=`<div class="tw"><table class="dt user-tbl"><thead><tr><th>ID</th><th>${t('users.col.username')}</th><th>${t('users.col.role')}</th><th>${t('users.col.created')}</th><th>${t('users.col.actions')}</th></tr></thead><tbody>${
     d.users.map(u=>`<tr><td>${u.id}</td><td><strong>${esc(u.username)}</strong></td>
       <td><span class="rb ${u.is_admin?'ra':'ru'}">${u.is_admin?t('users.role.admin'):t('users.role.user')}</span></td>
@@ -412,20 +507,20 @@ async function loadUsers(){
 G('btn-cu').onclick=async()=>{
   const n=G('nu-n').value.trim(),p=G('nu-p').value,a=G('nu-a').checked;
   if(!n||!p){toast(tRaw('users.name_pw_req'),'error');return;}
-  const d=await api('POST','/auth/users',{username:n,password:p,is_admin:a});
+  const d=await api('POST','/v1/auth/users',{username:n,password:p,is_admin:a});
   if(d.success){toast(tRaw('users.created',{name:n}),'success');G('nu-n').value=G('nu-p').value='';G('nu-a').checked=false;loadUsers();} else toast(d.error||t('settings.error'),'error');
 };
 function openRpw(uid){ G('rpw-uid').value=uid; G('rpw-v').value=''; G('pw-modal').classList.add('open'); }
 G('btn-rpw').onclick=async()=>{
-  const d=await api('PUT',`/auth/users/${G('rpw-uid').value}/password`,{password:G('rpw-v').value});
+  const d=await api('PUT',`/v1/auth/users/${G('rpw-uid').value}/password`,{password:G('rpw-v').value});
   if(d.success){toast(tRaw('users.pw_reset'),'success');G('pw-modal').classList.remove('open');} else toast(d.error||t('settings.error'),'error');
 };
 async function toggleAdmin(uid,isAdmin){
   // isAdmin kommt seit der data-arg-Umstellung als Zeichenkette. `!"0"` ist
   // false — das Umschalten hätte damit IMMER auf "kein Admin" gesetzt.
   const cur = isAdmin === true || isAdmin === 1 || isAdmin === '1';
-  const d=await api('PUT',`/auth/users/${uid}/admin`,{is_admin:!cur}); if(d.success){toast(tRaw('users.role_changed'),'success');loadUsers();} else toast(d.error||t('settings.error'),'error'); }
-async function delUser(uid,name){ if(!await confirmDelete(tRaw('users.delete.title'),t('users.delete.text'),'👤')) return; const d=await api('DELETE',`/auth/users/${uid}`); if(d.success){toast(name+' '+t('common.updated'),'success');loadUsers();} else toast(d.error||t('settings.error'),'error'); }
+  const d=await api('PUT',`/v1/auth/users/${uid}/admin`,{is_admin:!cur}); if(d.success){toast(tRaw('users.role_changed'),'success');loadUsers();} else toast(d.error||t('settings.error'),'error'); }
+async function delUser(uid,name){ if(!await confirmDelete(tRaw('users.delete.title'),t('users.delete.text'),'👤')) return; const d=await api('DELETE',`/v1/auth/users/${uid}`); if(d.success){toast(name+' '+t('common.updated'),'success');loadUsers();} else toast(d.error||t('settings.error'),'error'); }
 
 
 
@@ -434,8 +529,11 @@ registerActions({
   copyHouseholdInvite,
   createHouseholdInvite,
   delUser,
+  loadTokens,
   openRpw,
   redeemHouseholdInvite,
+  revokeOtherTokens,
+  revokeToken,
   saveRegEnabled,
   toggleAdmin,
   unlinkHousehold,

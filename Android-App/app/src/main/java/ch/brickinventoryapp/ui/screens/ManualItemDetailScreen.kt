@@ -251,8 +251,12 @@ fun ManualItemDetailScreen(
                                 onClick = {
                                     if (qty > 1) {
                                         qty--
-                                        if (isFig) vm.updateMinifig(id, qty, fig?.unitPrice, fig?.blFigNumber)
-                                        else vm.updatePart(id, colorId, qty, part?.unitPrice, part?.condition)
+                                        // owner: Besitzer der KARTE. Im Haushalt zeigt
+                                        // der manuelle Bereich die Eintraege aller
+                                        // Konten; ohne die Angabe schreibt der Server
+                                        // in die Zeile des Aufrufers.
+                                        if (isFig) vm.updateMinifig(id, qty, fig?.unitPrice, fig?.blFigNumber, owner = fig?.userId)
+                                        else vm.updatePart(id, colorId, qty, part?.unitPrice, part?.condition, owner = part?.userId)
                                     }
                                 },
                                 modifier = Modifier.size(32.dp), shape = Formen.etikett
@@ -262,8 +266,8 @@ fun ManualItemDetailScreen(
                             FilledTonalIconButton(
                                 onClick = {
                                     qty++
-                                    if (isFig) vm.updateMinifig(id, qty, fig?.unitPrice, fig?.blFigNumber)
-                                    else vm.updatePart(id, colorId, qty, part?.unitPrice, part?.condition)
+                                    if (isFig) vm.updateMinifig(id, qty, fig?.unitPrice, fig?.blFigNumber, owner = fig?.userId)
+                                    else vm.updatePart(id, colorId, qty, part?.unitPrice, part?.condition, owner = part?.userId)
                                 },
                                 modifier = Modifier.size(32.dp), shape = Formen.etikett
                             ) { Icon(Icons.Default.Add, stringResource(R.string.cd_qty_increase), Modifier.size(14.dp)) }
@@ -333,7 +337,10 @@ fun ManualItemDetailScreen(
                 confirmButton = {
                     TextButton(onClick = {
                         showDeleteConfirm = false
-                        if (isFig) vm.deleteMinifig(id) else vm.deletePart(id, colorId)
+                        // Auch hier der Besitzer der Karte — sonst loescht der
+                        // Server die Zeile des Aufrufers statt der angezeigten.
+                        if (isFig) vm.deleteMinifig(id, fig?.userId)
+                        else vm.deletePart(id, colorId, part?.userId)
                         // Der Eintrag ist weg — dieser Screen zeigte sonst eine
                         // Karteileiche mit Mengenwahl und Kaufpreisen.
                         onBack()

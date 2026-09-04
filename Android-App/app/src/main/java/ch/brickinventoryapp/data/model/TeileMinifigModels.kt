@@ -84,9 +84,20 @@ data class Part(
     @SerialName("image_local") val imageLocal: String? = null,
     @SerialName("total_quantity") val totalQuantity: Int = 0,
     @SerialName("in_sets") val inSets: String? = null,
-    @SerialName("is_spare") val isSpare: String? = null  // can be 'f','false','0' or '1'
+    /**
+     * Ersatzteil? Ein echter Wahrheitswert.
+     *
+     * Stand hier als String? mit dem Vermerk „can be 'f','false','0' or '1'"
+     * — und daneben ein Helfer isSpareFlag, der das deutete. Beides ist weg:
+     * Der Server liest die Schreibweisen jetzt an EINER Stelle
+     * (istErsatzteil() in utils/validate.ts) und liefert true/false.
+     *
+     * Der Helfer war ausserdem gefaehrlich nah an einem Fehler: "0" ist in
+     * JavaScript wahr, und die Webapp haette mit einem naiven Test JEDES Teil
+     * als Ersatzteil markiert.
+     */
+    @SerialName("is_spare") val isSpare: Boolean = false
 )
-val Part.isSpareFlag: Boolean get() = isSpare == "1" || isSpare == "true" || isSpare == "t"
 
 @Serializable
 data class PartsResponse(
@@ -169,3 +180,52 @@ data class BrickColorsResponse(
 
 @Serializable
 data class DefaultConditionResponse(val success: Boolean, val condition: String = "N")
+
+// ── Detail-Dialog fuer Teile und Figuren AUS SETS ───────────────────────────
+//
+// Marcos Wunsch: „Auch die automatisch erfassten Teile und Minifiguren sollen
+// einen Detail-Dialog inkl. Zoom haben. Der Marktpreis kann weggelassen werden,
+// die Anzahl soll nicht geaendert werden koennen. Dafuer soll angezeigt werden,
+// welche Sets dieses Teil und Minifigur verwenden."
+//
+// EIN Modellpaar fuer beide Faelle: Der Server beantwortet die Frage mit
+// derselben Funktion (verwendendeSets in utils/handlers/shared.ts) und liefert
+// deshalb dieselbe Form. Figuren haben keine Farbe und keine Kategorie — die
+// Felder stehen dort als null, nicht als eigene Antwortform. Zwei Formen
+// unterscheiden zu muessen ist genau die Sorte Doppelung, an der hier schon
+// mehrfach etwas auseinandergelaufen ist.
+
+/** Ein Set, in dem dieses Teil / diese Figur steckt. */
+@Serializable
+data class VerwendendesSet(
+    @SerialName("set_number") val setNumber: String,
+    @SerialName("set_name") val setName: String? = null,
+    val quantity: Int = 0,
+    @SerialName("image_local") val imageLocal: String? = null,
+    @SerialName("image_url") val imageUrl: String? = null,
+    @SerialName("owner_user_id") val ownerUserId: Int = 0,
+)
+
+/** Das Teil bzw. die Figur selbst — die Kopfzeile des Dialogs. */
+@Serializable
+data class BestandteilKopf(
+    val nummer: String,
+    val name: String? = null,
+    @SerialName("color_id") val colorId: Int? = null,
+    @SerialName("color_name") val colorName: String? = null,
+    @SerialName("color_hex") val colorHex: String? = null,
+    @SerialName("category_name") val categoryName: String? = null,
+    @SerialName("image_local") val imageLocal: String? = null,
+    @SerialName("image_url") val imageUrl: String? = null,
+    @SerialName("is_spare") val isSpare: Boolean = false,
+    /** Summe ueber ALLE Sets im Blickfeld. */
+    @SerialName("total_quantity") val totalQuantity: Int = 0,
+)
+
+@Serializable
+data class VerwendendeSetsResponse(
+    val success: Boolean = false,
+    val item: BestandteilKopf? = null,
+    val sets: List<VerwendendesSet> = emptyList(),
+    val error: String? = null,
+)

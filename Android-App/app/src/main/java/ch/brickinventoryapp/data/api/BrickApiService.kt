@@ -9,7 +9,10 @@ interface BrickApiService {
     @POST("api/v1/auth/login")
     suspend fun login(@Body request: LoginRequest): Response<LoginResponse>
 
-    @GET("api/sets/import/csv/status")
+    // Umgezogen nach /api/v1: Seit der Zusammenfuehrung gibt es nur noch EINEN
+    // Adressraum. Der Router dahinter ist derselbe wie vorher — nur die Adresse
+    // hat sich geaendert (siehe server.ts).
+    @GET("api/v1/sets/import/csv/status")
     suspend fun getCsvImportStatus(): Response<ch.brickinventoryapp.data.model.CsvImportStatus>
 
     @GET
@@ -18,7 +21,7 @@ interface BrickApiService {
         @Header("Authorization") token: String
     ): Response<ch.brickinventoryapp.data.model.CsvImportStatus>
 
-    @POST("api/auth/qr-login")
+    @POST("api/v1/auth/qr-login")
     suspend fun qrLogin(@Body request: QrLoginRequest): Response<LoginResponse>
 
     @POST("api/v1/auth/logout")
@@ -140,6 +143,29 @@ interface BrickApiService {
         @Path("figNumber") figNumber: String
     ): Response<PriceHistoryResponse>
 
+    // ── In welchen Sets steckt dieses Teil / diese Figur? ────────────────────
+    //
+    // Fuer den Detail-Dialog automatisch erfasster Teile und Figuren (Marcos
+    // Wunsch). Beide Adressen beantwortet auf dem Server DIESELBE Funktion
+    // (verwendendeSets in utils/handlers/shared.ts) — deshalb dieselbe
+    // Antwortform und dasselbe Modell hier.
+    //
+    // `accounts` ist das Blickfeld wie ueberall sonst: Im Haushalt gehoert
+    // auch das Set des Geschwisterkontos dazu, sonst sagte der Dialog etwas
+    // anderes als die Liste, aus der man kommt.
+    @GET("api/v1/parts/{partNumber}/{colorId}/sets")
+    suspend fun getSetsMitTeil(
+        @Path("partNumber") partNumber: String,
+        @Path("colorId") colorId: Int,
+        @Query("accounts") accounts: String? = null,
+    ): Response<VerwendendeSetsResponse>
+
+    @GET("api/v1/minifigs/{figNumber}/sets")
+    suspend fun getSetsMitFigur(
+        @Path("figNumber") figNumber: String,
+        @Query("accounts") accounts: String? = null,
+    ): Response<VerwendendeSetsResponse>
+
     // Parts acquisitions
     @GET("api/v1/parts/{partNumber}/{colorId}/acquisitions")
     suspend fun getPartAcquisitions(
@@ -190,7 +216,15 @@ interface BrickApiService {
         @Query("page_size") pageSize: Int = 500,
         @Query("set_number") setNumber: String? = null,
         @Query("exclude_manual") excludeManual: String? = null,
-        @Query("accounts") accounts: String? = null
+        @Query("accounts") accounts: String? = null,
+        // "0" = ohne Ersatzteile, "1" = nur Ersatzteile, null = alle.
+        // Dieselben drei Werte wie das Auswahlfeld der Webapp (parts-spare);
+        // der Server liest sie in utils/handlers/parts.ts.
+        @Query("spare") spare: String? = null,
+        // "1" holt zusaetzlich, in welchen Sets das Teil steckt. Kostet den
+        // Server eine eigene Abfrage — deshalb nur in der Tabellenansicht,
+        // genau wie in der Webapp (parts-view === 'table').
+        @Query("with_sets") withSets: String? = null
     ): Response<PartsResponse>
 
     @GET("api/v1/parts/stats")
@@ -215,24 +249,33 @@ interface BrickApiService {
     suspend fun updatePart(
         @Path("partNumber") partNumber: String,
         @Path("colorId") colorId: Int,
-        @Body request: UpdateManualItemRequest
+        @Body request: UpdateManualItemRequest,
+        // Wessen Karte gemeint war — siehe deletePart.
+        @Query("owner") owner: Int? = null
     ): Response<GenericResponse>
 
     @DELETE("api/v1/parts/{partNumber}/{colorId}")
     suspend fun deletePart(
         @Path("partNumber") partNumber: String,
-        @Path("colorId") colorId: Int
+        @Path("colorId") colorId: Int,
+        // Wessen Karte gemeint war. null = eigenes Konto (Verhalten wie
+        // bisher); ob ein fremdes erlaubt ist, entscheidet der Server.
+        @Query("owner") owner: Int? = null
     ): Response<GenericResponse>
 
     @PUT("api/v1/minifigs/{figNumber}")
     suspend fun updateMinifig(
         @Path("figNumber") figNumber: String,
-        @Body request: UpdateManualItemRequest
+        @Body request: UpdateManualItemRequest,
+        // Wessen Karte gemeint war — siehe deletePart.
+        @Query("owner") owner: Int? = null
     ): Response<GenericResponse>
 
     @DELETE("api/v1/minifigs/{figNumber}")
     suspend fun deleteMinifig(
-        @Path("figNumber") figNumber: String
+        @Path("figNumber") figNumber: String,
+        // Wie bei deletePart: null = eigenes Konto.
+        @Query("owner") owner: Int? = null
     ): Response<GenericResponse>
 
     @GET("api/v1/finance/parts-valuation")
@@ -308,7 +351,8 @@ interface BrickApiService {
     suspend fun getMinifigs(
         @Query("source") source: String? = null,
         @Query("set_number") setNumber: String? = null,
-        @Query("accounts") accounts: String? = null
+        @Query("accounts") accounts: String? = null,
+        @Query("search") search: String? = null
     ): Response<MinifigsResponse>
 
     @GET("api/v1/sets/barcode/{barcode}")
@@ -375,6 +419,16 @@ interface BrickApiService {
     @GET("api/v1/auth/me")
     suspend fun getMe(): Response<MeResponse>
 
+    // ── Angemeldete Geraete ──────────────────────────────────────────────────
+    // Beide Adressen gab es schon; sie waren nur sitzungsgebunden und damit
+    // fuer die App nicht erreichbar. Seit der Token-Verwaltung nehmen sie
+    // Sitzung ODER Bearer-Token (requireLoginOrToken), wie der Rest von /api/v1.
+    @GET("api/v1/settings/tokens")
+    suspend fun getTokens(): Response<TokensResponse>
+
+    @DELETE("api/v1/settings/tokens/{tokenId}")
+    suspend fun revokeToken(@Path("tokenId") tokenId: String): Response<GenericResponse>
+
     // ── Admin / Monitoring ────────────────────────────────────────────────────
     @GET("api/v1/admin/jobs")
     suspend fun getJobs(): Response<JobsResponse>
@@ -421,8 +475,13 @@ interface BrickApiService {
         @Body body: Map<String, String>
     ): Response<GenericAdminResponse>
 
-    @GET("api/settings/admin/default-condition")
-    suspend fun getDefaultConditionAdmin(): Response<DefaultConditionResponse>
+    // getDefaultConditionAdmin() stand hier und zeigte auf
+    // api/settings/admin/default-condition. Diese Route ist in Etappe 7
+    // geloescht worden; in routes/settings.ts steht an ihrer Stelle nur noch
+    // ein Kommentar. Aufgerufen hat die Methode niemand — sie sah aber aus wie
+    // ein unterstuetzter Aufruf, und der Naechste haette einen 404 im eigenen
+    // Code gesucht. Der globale Standard-Zustand steht unter
+    // getGlobalDefaultCondition() (api/v1/settings/default-condition).
 
     @GET("api/v1/admin/api-limits")
     suspend fun getApiLimits(): Response<ApiLimitsResponse>

@@ -136,6 +136,33 @@ fun ConditionBadge(condition: String) {
     }
 }
 
+/**
+ * Ersatzteil-Plakette — dieselbe Form wie [ConditionBadge] daneben.
+ *
+ * Sets enthalten ein Tuetchen Ersatzteile; Rebrickable kennzeichnet sie. Der
+ * Text dafuer lag in beiden Sprachen bereit und in der App gab es sogar einen
+ * Helfer, der das Kennzeichen deutete — gezeichnet hat die Plakette nie
+ * jemand. Der Grund stand im Feld selbst: `is_spare` kam in vier
+ * verschiedenen Schreibweisen an. Seit der Server sie an einer Stelle liest
+ * (istErsatzteil() in utils/validate.ts), ist es ein Wahrheitswert.
+ *
+ * Zurueckhaltender als die Zustands-Plakette: Ein Ersatzteil ist eine
+ * Nebeninformation, kein Zustand — deshalb der ruhige Flaechenton statt der
+ * Signalfarbe.
+ */
+@Composable
+fun ErsatzteilPlakette(modifier: Modifier = Modifier) {
+    Surface(shape = Formen.etikett, color = MaterialTheme.colorScheme.surfaceVariant, modifier = modifier) {
+        Text(
+            stringResource(R.string.parts_spare_tag),
+            Modifier.padding(horizontal = 6.dp, vertical = 1.dp),
+            style = MaterialTheme.typography.labelSmall,
+            fontWeight = FontWeight.SemiBold,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
+    }
+}
+
 // Der frühere ManualItemDetailDialog steht hier nicht mehr: Die Detailansicht
 // manueller Teile und Minifiguren ist seit hardened-99 ein ganzer Screen
 // (ui/screens/ManualItemDetailScreen.kt), wie bei den Sets. Übrig bleiben hier

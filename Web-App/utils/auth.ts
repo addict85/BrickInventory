@@ -15,8 +15,10 @@
 
 import * as db from '../db/database';
 import crypto from 'crypto';
+import bcrypt from 'bcryptjs';
 import type { Request, Response, NextFunction } from 'express';
 import { vorDem } from '../utils/httpError';
+import { checkLoginAllowed, recordLoginFailure, recordLoginSuccess } from './loginLimiter';
 
 /**
  * ── Warum diese Typen hier stehen (Nachtrag 155) ─────────────────────────────
@@ -222,6 +224,21 @@ function _touchLastUsed(token: string, entry: CacheEintrag): void {
  */
 function invalidateToken(token: string | null | undefined): void { if (token) _tokenCache.delete(token); }
 
+/**
+ * Den ganzen Token-Cache verwerfen.
+ *
+ * Für den Fall, dass eine Zeile ohne ihren KLARTEXT gelöscht wird — etwa aus
+ * der Token-Verwaltung, die nur den Hash-Anfang kennt. Gezielt geht dort
+ * nichts: Der Cache ist nach dem Klartext indiziert, und den hat der Server
+ * nach der Ausgabe nie wieder gesehen.
+ *
+ * Er baut sich innerhalb weniger Anfragen wieder auf. Im Cluster wirkt das
+ * nur im eigenen Arbeitsprozess; die übrigen bedienen den gelöschten Token
+ * noch bis zu TOKEN_TTL_MS. Dieselbe Einschränkung wie bei revokeAllTokens,
+ * und aus demselben Grund vertretbar.
+ */
+function leereTokenCache(): void { _tokenCache.clear(); }
+
 // ── Gemeinsame Login-/Konto-Regeln ────────────────────────────────────────────
 // Vorher existierten diese Regeln nur im Webapp-Login (routes/auth.ts).
 // /api/v1/auth/login hat weder is_active noch email_verified geprüft — ein
@@ -313,6 +330,100 @@ function assertLoginAllowed(user: KontoZustand): { status: number; error: string
   if ((user.email_verified === 0 || user.email_verified === false) && user.email && !user.is_admin)
     return { status: 403, error: 'E-Mail-Adresse noch nicht bestätigt. Bitte prüfe dein Postfach.', unverified: true };
   return null;
+}
+
+/**
+ * Fester bcrypt-Hash für Anmeldeversuche mit unbekanntem Benutzernamen.
+ *
+ * Der Klartext dazu ist bedeutungslos — der Hash wird nur benutzt, damit
+ * bcrypt.compare() im Fehlerfall dieselbe Zeit verbraucht wie bei einem
+ * existierenden Konto. Einmal beim Start erzeugt, mit denselben Runden wie
+ * echte Passwörter, damit die Kosten wirklich gleich sind.
+ */
+const DUMMY_HASH = bcrypt.hashSync('nonexistent-account-placeholder', BCRYPT_ROUNDS);
+
+/** Absage an einen Anmeldeversuch — fertig zum Verschicken. */
+export interface AnmeldeAbsage {
+  status: number;
+  error: string;
+  /** Nur bei unbestätigter E-Mail: Der Client blendet dann das Erneut-senden an. */
+  unverified?: boolean;
+}
+
+/** Ergebnis von pruefeAnmeldedaten(): entweder die Konto-Zeile oder eine Absage. */
+export type AnmeldeErgebnis =
+  | { ok: true; user: Record<string, any> }
+  | { ok: false; absage: AnmeldeAbsage };
+
+/**
+ * Anmeldedaten prüfen — die einzige Stelle im Baum, an der das passiert.
+ *
+ * ── Warum das hier steht und nicht in den Routen ────────────────────────────
+ * Dieselbe Abfolge stand zweimal: einmal im Sitzungs-Login (routes/auth.ts,
+ * Webapp) und einmal im Token-Login (routes/api_v1/auth.ts, Android-App). Sie
+ * ist SCHON EINMAL auseinandergelaufen — der Kommentar an der v1-Route hält
+ * fest, dass dort die Konto-Vorbedingungen komplett fehlten und sich ein
+ * deaktiviertes Konto über die App anmelden konnte.
+ *
+ * Beim Nachmessen war sie ein ZWEITES Mal auseinandergelaufen, diesmal
+ * unbemerkt: Der Sitzungs-Login vergleicht auch bei unbekanntem Namen gegen
+ * einen Dummy-Hash, der Token-Login sprang bei `!user` sofort heraus. Der
+ * Unterschied ist von aussen sauber messbar (eigene Messung, je 5 Versuche mit
+ * verschiedenen Namen, damit die Sperre nicht dazwischenfunkt):
+ *
+ *     /api/v1/auth/login   bekannt 418.5 ms · unbekannt   4.0 ms · Δ  414.6 ms
+ *     /api/auth/login      bekannt 419.3 ms · unbekannt 436.8 ms · Δ  -17.5 ms
+ *
+ * 415 ms Unterschied heisst: Wer eine Namensliste durchprobiert, weiss danach,
+ * welche Konten es gibt — ohne ein einziges Passwort zu erraten. Ein Login
+ * mehr bedeutet also nicht nur doppelte Arbeit, sondern eine Lücke, die nur an
+ * einer der beiden Stellen sichtbar ist.
+ *
+ * ── Reihenfolge, und warum sie so ist ───────────────────────────────────────
+ * 1. Form des Anmeldenamens — hält Unsinn von der Abfrage und vom
+ *    Brute-Force-Zähler fern, der je IP und Anmeldename zählt.
+ * 2. Sperre abfragen — VOR der teuren Passwortprüfung.
+ * 3. Konto suchen und Passwort prüfen, immer mit bcrypt (s. o.).
+ * 4. Fehlversuch/Erfolg beim Zähler melden.
+ * 5. Konto-Vorbedingungen (assertLoginAllowed) NACH dem Passwort — sonst
+ *    verrät die Antwort „Konto deaktiviert" die Existenz des Kontos an jeden,
+ *    der nur den Namen kennt.
+ *
+ * Was NICHT hierher gehört: Sitzung anlegen bzw. Token ausstellen. Genau das
+ * unterscheidet die beiden Aufrufer, und es ist der einzige Unterschied.
+ *
+ * @param req      Für den Brute-Force-Zähler (IP) gebraucht.
+ * @param username Benutzername ODER E-Mail-Adresse.
+ * @param password Klartext-Passwort aus dem Request.
+ */
+async function pruefeAnmeldedaten(req: Request, username: unknown, password: unknown): Promise<AnmeldeErgebnis> {
+  const absage = (status: number, error: string, unverified?: boolean): AnmeldeErgebnis =>
+    ({ ok: false, absage: unverified ? { status, error, unverified } : { status, error } });
+
+  if (!username || !password)
+    return absage(400, 'Benutzername und Passwort erforderlich');
+  if (!isValidLoginIdentifier(username))
+    return absage(400, 'Bitte Benutzername oder E-Mail-Adresse eingeben.');
+
+  const name = String(username);
+  const gesperrt = await checkLoginAllowed(req, name);
+  if (gesperrt) return absage(429, gesperrt);
+
+  // Anmeldung per E-Mail ist erlaubt — so steht es über dem Feld.
+  const user = await db.get(
+    'SELECT * FROM users WHERE LOWER(username) = LOWER($1) OR LOWER(email) = LOWER($1)', [name]);
+  // bcrypt.compare (async) statt compareSync — blockiert den Event-Loop nicht.
+  // Der Vergleich läuft auch ohne Treffer, gegen DUMMY_HASH (s. o.).
+  const passtDasPasswort = await bcrypt.compare(String(password), user?.password_hash || DUMMY_HASH);
+  if (!user || !passtDasPasswort) {
+    await recordLoginFailure(req, name);
+    return absage(401, 'Ungültige Anmeldedaten');
+  }
+  await recordLoginSuccess(req, name);
+
+  const blockiert = assertLoginAllowed(user);
+  if (blockiert) return absage(blockiert.status, blockiert.error, blockiert.unverified);
+  return { ok: true, user };
 }
 
 /**
@@ -409,6 +520,42 @@ function loginOrTokenGuard(opts: { timeoutMs?: number } = {}) {
 }
 
 const requireLoginOrToken = loginOrTokenGuard();
+
+/**
+ * Einen Bearer-Token ausstellen.
+ *
+ * ── Warum das hier steht ────────────────────────────────────────────────────
+ * Dasselbe INSERT stand dreimal, mit drei verschiedenen Laengen und zwei
+ * verschiedenen Laufzeiten: im Token-Login (32 Byte, ohne Ablauf), im
+ * Sitzungs-Login (24 Byte, sieben Tage) und in /qr-login (32 Byte, ohne
+ * Ablauf). Die Laenge war schlicht Zufall; die Laufzeit ist es NICHT — und
+ * genau deshalb ist sie jetzt ein benannter Parameter statt einer Eigenheit
+ * der Kopie, in der man gerade liest.
+ *
+ * ── Warum Browser und App verschiedene Laufzeiten bekommen ──────────────────
+ * Der Token des Browsers liegt im sessionStorage und ist damit per XSS
+ * auslesbar; er existiert nur, damit EventSource sich ausweisen kann (dort
+ * lassen sich keine Kopfzeilen setzen). Sieben Tage sind dafür reichlich.
+ * Der Token der App ist dagegen der einzige Ausweis des Geräts — wer die App
+ * öffnet, soll nicht jedes Mal sein Passwort eintippen. Er bekommt kein
+ * Ablaufdatum und verfällt stattdessen nach TOKEN_IDLE_DAYS ohne Nutzung
+ * (siehe purgeExpiredTokens).
+ *
+ * Die Datenbank speichert nur den SHA-256-Hash; der Aufrufer bekommt den
+ * Klartext.
+ *
+ * @param dauerhaft true = kein Ablaufdatum (App, QR-Anmeldung).
+ */
+async function createToken(userId: number, label = 'Android App', dauerhaft = false): Promise<string> {
+  const token = crypto.randomBytes(32).toString('hex');
+  await db.run(
+    dauerhaft
+      ? 'INSERT INTO api_tokens (token, user_id, label, expires_at) VALUES ($1,$2,$3,NULL) ON CONFLICT DO NOTHING'
+      : "INSERT INTO api_tokens (token, user_id, label, expires_at) VALUES ($1,$2,$3, NOW() + INTERVAL '7 days') ON CONFLICT DO NOTHING",
+    [hashToken(token), userId, label]
+  );
+  return token;
+}
 
 /**
  * Löscht einen Token und invalidiert den Cache.
@@ -548,9 +695,9 @@ async function purgeExpiredTokens() {
 }
 
 export {
-  validateToken, invalidateToken, resolveUserId, requireLoginOrToken, hashToken, deleteToken,
+  validateToken, invalidateToken, leereTokenCache, resolveUserId, requireLoginOrToken, hashToken, deleteToken,
   verifiziereEmailToken,
   revokeAllTokens, revokeAllSessions, purgeExpiredTokens, loginOrTokenGuard, TOKEN_IDLE_DAYS,
-  assertLoginAllowed, escapeLike, establishSession, BCRYPT_ROUNDS, USERNAME_RE,
+  assertLoginAllowed, pruefeAnmeldedaten, createToken, escapeLike, establishSession, BCRYPT_ROUNDS, USERNAME_RE,
   EMAIL_RE, isValidLoginIdentifier,
 };

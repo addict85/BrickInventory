@@ -160,7 +160,14 @@ test('Minifiguren laden seitenweise', () => {
 test('der Ausschluss manueller Figuren passiert auf dem Server', () => {
   assert.doesNotMatch(FIGS, /\.filter\(f => f\.source !== 'manual'\)/,
     'Clientseitig gefiltert könnte eine ganze Seite wegfallen und die Liste bliebe leer');
-  assert.match(FIGS, /p\.set\('source', G\('fig-source'\)\?\.value \|\| 'set'\)/,
+  // Geprüft wird, dass die Quelle ALS PARAMETER an den Server geht — nicht,
+  // wie der Wert zustande kommt. Hier stand die exakte Schreibweise
+  // `G('fig-source')?.value || 'set'` als Zusicherung; damit hielt der Test
+  // ein Auswahlfeld fest, das genau eine Option trug, von nirgends gefüllt
+  // wurde und dessen change-Ereignis nie eintreten konnte. Ein Test, der eine
+  // Schreibweise festnagelt statt einer Regel, verteidigt irgendwann genau das
+  // Falsche.
+  assert.match(FIGS, /p\.set\('source',\s*'set'\)/,
     'Die Quelle gehört als Parameter an den Server');
 });
 

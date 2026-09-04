@@ -10,10 +10,15 @@ on:
     branches: [main]
     paths:
       - 'Android-App/**'
+      # shared/ ist der gemeinsame Pruefkorpus beider Apps (siehe shared/README.md).
+      # SetnummerKorpusTest liest ihn — wer nur dort etwas aendert, muss trotzdem
+      # den Android-Lauf bekommen, sonst prueft ihn nur noch die Web-Seite.
+      - 'shared/**'
       - '.github/workflows/android.yml'
   pull_request:
     paths:
       - 'Android-App/**'
+      - 'shared/**'
   workflow_dispatch:
 
 # Ein neuer Push bricht einen noch laufenden Bau desselben Zweigs ab — sonst
@@ -30,22 +35,18 @@ jobs:
       run:
         working-directory: Android-App
 
+    # Nur so viel, wie der Lauf braucht: `contents: write` fuer den
+    # Release-Anhang unten. Sobald dieser Block da steht, sind ALLE anderen
+    # Bereiche auf `none` — das ist Absicht und der Grund, warum er hier
+    # ausdruecklich und nicht am Anfang der Datei steht.
+    permissions:
+      contents: write
+
     # Der `secrets`-Kontext steht in einem `if:` auf SCHRITTEBENE nicht zur
     # Verfügung — `env` schon. Deshalb wird die Frage "gibt es einen
     # Schlüsselspeicher?" hier einmal beantwortet und unten über env geprüft.
     env:
       HAT_SCHLUESSEL: ${{ secrets.KEYSTORE_BASE64 != '' }}
-      # Aus demselben Grund wie oben: Der Drive-Schritt haengt an einem Secret,
-      # und ein `if:` auf Schrittebene kann `secrets` nicht lesen. Das eigene
-      # `env:` DES SCHRITTES hilft dabei nicht — dessen `if:` wird ausgewertet,
-      # bevor es gilt. Also hier.
-      HAT_DRIVE: ${{ secrets.GDRIVE_REFRESH_TOKEN != '' }}
-      # Die uebrigen drei einzeln, damit der Hinweis unten sagen kann, WELCHES
-      # fehlt. `secrets` ist auf Schrittebene in `if:` nicht lesbar (siehe oben),
-      # in `run:` schon — aber dann stuende das Geheimnis im Protokollbefehl.
-      HAT_DRIVE_ID:     ${{ secrets.GDRIVE_CLIENT_ID != '' }}
-      HAT_DRIVE_SECRET: ${{ secrets.GDRIVE_CLIENT_SECRET != '' }}
-      HAT_DRIVE_ORDNER: ${{ secrets.GDRIVE_ORDNER_ID != '' }}
 
     steps:
       - uses: actions/checkout@v6
@@ -106,7 +107,62 @@ jobs:
       # Zuerst die Tests: rund fünfzig Testdateien, die in Sekunden laufen und
       # das meiste abfangen, bevor der lange Übersetzungslauf beginnt.
       - name: Unit-Tests
-        run: ./gradlew --no-daemon testDebugUnitTest
+        # tee: Gradle schreibt den Namen des roten Tests EINMAL, mitten in
+        # hunderte Zeilen Aufgabenprotokoll. Ohne Mitschnitt ist er hinterher
+        # nur ueber den Testbericht zu finden, und der liegt als Artefakt in
+        # einer Ablage, die von hier aus nicht erreichbar ist.
+        #
+        # set -o pipefail: Ohne das bestimmt tee den Rueckgabewert, und ein
+        # roter Testlauf ginge als Erfolg durch. Dieselbe Falle wie im
+        # Web-Workflow.
+        run: |
+          set -o pipefail
+          ./gradlew --no-daemon testDebugUnitTest 2>&1 | tee "$RUNNER_TEMP/test.log"
+
+      # ── Was rot war, als ANNOTATION ─────────────────────────────────────────
+      #
+      # Warum das noetig ist: Zweimal hintereinander war der Lauf rot, und die
+      # einzige Annotation lautete „Process completed with exit code 1". Der
+      # Testbericht liegt als Artefakt in einer Blob-Ablage, die der Proxy hier
+      # mit 403 abweist — die Ursache war nur zu finden, indem das ganze
+      # Protokoll durchgelesen wurde. GEMESSEN an den Laeufen 80 und 81.
+      #
+      # Der Web-Workflow macht das seit web-ci.yml genauso; hier fehlte es.
+      #
+      # BEIDE Faelle, aus demselben Grund wie dort: Ein Lauf kann rot sein,
+      # OHNE dass ein einzelner Test fehlschlaegt — Lauf 81 scheiterte beim
+      # UEBERSETZEN (ein fehlender Import), da gibt es keine „FAILED"-Zeile.
+      # Eine Diagnose, die nur den erwarteten Ausgang abdeckt, schweigt genau
+      # dann, wenn etwas Unerwartetes passiert.
+      - name: Rote Tests auflisten
+        if: failure()
+        run: |
+          set -eu
+          [ -f "$RUNNER_TEMP/test.log" ] || { echo "Kein Testprotokoll — der Lauf ist vorher gescheitert."; exit 0; }
+          {
+            echo "## Rote Tests"
+            echo ""
+            echo '```'
+            grep -E '(FAILED$|^e: |error:)' "$RUNNER_TEMP/test.log" || echo "(keine — der Lauf ist an etwas anderem gescheitert)"
+            echo '```'
+            echo ""
+            grep -E '[0-9]+ tests completed' "$RUNNER_TEMP/test.log" || true
+          } >> "$GITHUB_STEP_SUMMARY"
+
+          # `FAILED$` trifft die Testzeile („Klasse > Name FAILED"); `^e: ` und
+          # `error:` treffen Uebersetzungsfehler von Kotlin bzw. Gradle.
+          rot=$(grep -E -c '(FAILED$|^e: )' "$RUNNER_TEMP/test.log" || true)
+          if [ "${rot:-0}" -gt 0 ]; then
+            while IFS= read -r zeile; do
+              [ -n "$zeile" ] || continue
+              echo "::error title=Android rot::${zeile}"
+            done < <(grep -E -m 20 '(FAILED$|^e: )' "$RUNNER_TEMP/test.log" || true)
+          else
+            ende=$(tail -n 40 "$RUNNER_TEMP/test.log" | tr '\n' '~' | sed 's/%/%25/g; s/\r/%0D/g; s/~/%0A/g')
+            echo "::error title=Lauf rot ohne einzelnen Fehlschlag::$ende"
+          fi
+          summe=$(grep -E '[0-9]+ tests completed' "$RUNNER_TEMP/test.log" | tr '\n' ' ' || true)
+          echo "::notice title=Testsumme::${summe:-keine Summenzeile — der Lauf ist vor dem ersten Test gescheitert}"
 
       # ── Signatur ────────────────────────────────────────────────────────────
       #
@@ -214,13 +270,85 @@ jobs:
           if-no-files-found: ignore
           retention-days: 14
 
-      - name: BrickInventory.apk sichern
-        if: success()
-        uses: actions/upload-artifact@v6
-        with:
-          name: BrickInventory
-          path: Android-App/app/build/outputs/apk/release/BrickInventory.apk
-          retention-days: 90
+      # ── Warum ein Release und kein Artefakt ─────────────────────────────────
+      #
+      # Marcos Wunsch: am Ende kein Zip, sondern direkt das APK. Als Artefakt
+      # geht das NICHT — nachgelesen in der Anleitung von upload-artifact,
+      # nicht aus dem Gedaechtnis:
+      #
+      #   "When an Artifact is uploaded, all the files are assembled into an
+      #    immutable Zip archive. There is currently no way to download
+      #    artifacts in a format other than a Zip [...]"
+      #
+      # GitHub packt also selbst ein, auch bei einer einzigen Datei, und es gibt
+      # keinen Schalter dagegen. Ein Release-ANHANG wird dagegen roh
+      # ausgeliefert: ein Klick, und es ist das APK.
+      #
+      # Zwei Dinge kommen dazu: Ein Release-Anhang braucht KEIN GitHub-Konto
+      # (das Repository ist oeffentlich), und er verfaellt nicht nach 90 Tagen.
+      # Genau das waren die beiden Gruende fuer die frueher hier angehaengte
+      # Google-Drive-Ablage — sie ist deshalb entfallen (Marcos Entscheidung).
+      #
+      # ── Ein Etikett, nicht eins je Lauf ─────────────────────────────────────
+      #
+      # Die Datei wird ERSETZT, damit der Link stabil bleibt. Sonst braucht
+      # jeder nach jedem Bau einen neuen.
+      #
+      # Das Etikett bleibt auf dem Commit stehen, auf dem es angelegt wurde.
+      # Verschieben hiesse, ein Etikett umzuschreiben, das jemand schon
+      # ausgecheckt haben kann — woher das APK stammt, steht deshalb im TEXT
+      # des Release und wird bei jedem Lauf neu geschrieben.
+      #
+      # NICHT bei Pull-Requests: Sonst ueberschriebe ein ungeprueftes Zweig-APK
+      # die Datei hinter dem stabilen Link.
+      - name: BrickInventory.apk als Release bereitstellen
+        if: success() && github.event_name != 'pull_request'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          ETIKETT=apk-neuste
+          APK=app/build/outputs/apk/release/BrickInventory.apk
+          LINK="https://github.com/$GITHUB_REPOSITORY/releases/download/$ETIKETT/BrickInventory.apk"
+          TEXT="Gebaut aus \`$GITHUB_REF_NAME\` ($GITHUB_SHA) am $(date -u '+%d.%m.%Y %H:%M UTC').
+
+          Direkter Download (immer die neuste Fassung, kein Zip):
+          $LINK"
+
+          if gh release view "$ETIKETT" >/dev/null 2>&1; then
+            gh release edit "$ETIKETT" --notes "$TEXT"
+          else
+            gh release create "$ETIKETT" --title "BrickInventory — neustes APK" --notes "$TEXT"
+          fi
+          # --clobber: Der Anhang heisst immer gleich; ohne das lehnt gh den
+          # zweiten Lauf ab, weil die Datei schon da haengt.
+          gh release upload "$ETIKETT" "$APK" --clobber
+
+          # Gegenprobe: nicht der Ausgabe von `gh` glauben, sondern den Anhang
+          # ZURUECK fragen und die Groesse vergleichen. Ein abgebrochener
+          # Upload liefert sonst eine gueltig aussehende Antwort und einen
+          # Link auf ein halbes APK.
+          LOKAL=$(stat -c%s "$APK")
+          DRAUSSEN=$(gh release view "$ETIKETT" --json assets \
+            --jq '.assets[] | select(.name=="BrickInventory.apk") | .size')
+          if [ "$DRAUSSEN" != "$LOKAL" ]; then
+            echo "::error::Das Release meldet $DRAUSSEN Bytes, lokal sind es $LOKAL. Anhang unvollstaendig."
+            exit 1
+          fi
+
+          {
+            echo "## APK zum direkten Herunterladen"
+            echo ""
+            echo "**$LINK**"
+            echo ""
+            echo "| | |"
+            echo "| --- | --- |"
+            echo "| Groesse | $LOKAL Bytes |"
+            echo "| Gebaut aus | \`$GITHUB_REF_NAME\` ($GITHUB_SHA) |"
+            echo ""
+            echo "> Kein Zip: Ein Release-Anhang wird roh ausgeliefert. Der Link"
+            echo "> bleibt ueber alle Builds derselbe und braucht kein GitHub-Konto."
+          } >> "$GITHUB_STEP_SUMMARY"
 
       # Das Bundle wird hier nur GEBAUT und gesichert, nicht veroeffentlicht.
       # Das Hochladen zu Play steht in einem eigenen Workflow, der von Hand
@@ -238,147 +366,3 @@ jobs:
           path: Android-App/app/build/outputs/bundle/release/app-release.aab
           if-no-files-found: error
           retention-days: 90
-
-      # ── APK nach Google Drive ───────────────────────────────────────────────
-      #
-      # Warum ueberhaupt: Ein Artefakt hier laesst sich nur herunterladen, wer
-      # bei GitHub ANGEMELDET ist, und es verfaellt nach 90 Tagen. Wer die App
-      # jemandem zum Ausprobieren geben will, kann damit nichts anfangen.
-      # Ein Drive-Link geht an jeden.
-      #
-      # ── Warum ein Refresh-Token und KEIN Dienstkonto ────────────────────────
-      #
-      # Der Weg, den fast jede Anleitung im Netz vorschlaegt, funktioniert bei
-      # einem privaten Google-Konto NICHT: Ein Dienstkonto hat in Drive kein
-      # Speicherkontingent und kann keine Dateien besitzen. Der Upload endet in
-      # `storageQuotaExceeded`. Der offizielle Ausweg sind "Geteilte Ablagen",
-      # und die gibt es nur mit Google Workspace.
-      #
-      # Deshalb hier ein Refresh-Token eines echten Kontos: Die Datei gehoert
-      # dann dir und zaehlt gegen deine 15 GB. Einrichtung: Android-App/GDRIVE.md
-      #
-      # ── Warum curl und keine fertige Action ─────────────────────────────────
-      #
-      # Das Token gibt Schreibzugriff auf Drive. Eine Action aus dritter Hand
-      # bekaeme es in die Hand, bei jedem Lauf, mit jeder kuenftigen Fassung.
-      # Zwanzig Zeilen curl sind nachlesbar; ein npm-Buendel ist es nicht.
-      #
-      # Der Scope ist `drive.file`: Damit sieht dieses Token AUSSCHLIESSLICH
-      # Dateien, die es selbst angelegt hat — nicht dein uebriges Drive. Das ist
-      # der Unterschied zwischen "darf ein APK ablegen" und "darf alles lesen".
-      # ── Warum dieser Hinweis ueberhaupt existiert ───────────────────────────
-      #
-      # Der Schritt darunter wird uebersprungen, wenn das Refresh-Token fehlt.
-      # Ein uebersprungener Schritt sieht im Protokoll aus wie einer, der nichts
-      # zu tun hatte — grau, kommentarlos. Genau so ist die Drive-Ablage hier
-      # ueber viele Laeufe hinweg stillschweigend ausgefallen, ohne dass es
-      # jemandem auffiel: Der Lauf war ja gruen.
-      #
-      # Ein Fehlschlag waere falsch — Drive ist eine Bequemlichkeit, das APK
-      # haengt ohnehin als Artefakt am Lauf. Aber sichtbar gehoert es.
-      #
-      # Dasselbe Muster wie die Vorabpruefung in android-playstore.yml: lieber
-      # in Klartext sagen, WELCHES Secret fehlt, als es raten zu lassen.
-      - name: Drive-Ablage uebersprungen?
-        if: success() && env.HAT_DRIVE != 'true'
-        run: |
-          set -eu
-          fehlt=""
-          [ "$HAT_DRIVE"        = "true" ] || fehlt="$fehlt GDRIVE_REFRESH_TOKEN"
-          [ "$HAT_DRIVE_ID"     = "true" ] || fehlt="$fehlt GDRIVE_CLIENT_ID"
-          [ "$HAT_DRIVE_SECRET" = "true" ] || fehlt="$fehlt GDRIVE_CLIENT_SECRET"
-          [ "$HAT_DRIVE_ORDNER" = "true" ] || fehlt="$fehlt GDRIVE_ORDNER_ID"
-          echo "::notice::Die Ablage in Google Drive ist uebersprungen worden. Es fehlen diese Secrets:$fehlt — einzutragen unter Settings -> Secrets and variables -> Actions. Wie man sie bekommt, steht in Android-App/GDRIVE.md. Das APK haengt trotzdem als Artefakt an diesem Lauf."
-
-      - name: APK nach Google Drive
-        if: success() && env.HAT_DRIVE == 'true'
-        env:
-          CLIENT_ID:     ${{ secrets.GDRIVE_CLIENT_ID }}
-          CLIENT_SECRET: ${{ secrets.GDRIVE_CLIENT_SECRET }}
-          REFRESH_TOKEN: ${{ secrets.GDRIVE_REFRESH_TOKEN }}
-          ORDNER_ID:     ${{ secrets.GDRIVE_ORDNER_ID }}
-        run: |
-          set -euo pipefail
-          APK=app/build/outputs/apk/release/BrickInventory.apk
-          NAME=BrickInventory.apk
-
-          # 1) Refresh-Token gegen ein kurzlebiges Zugriffstoken tauschen.
-          #    --fail-with-body: sonst laeuft curl bei HTTP 400 mit Exitcode 0
-          #    weiter und der Fehler faellt erst drei Schritte spaeter auf.
-          ANTWORT=$(curl -sS --fail-with-body -X POST https://oauth2.googleapis.com/token \
-            -d client_id="$CLIENT_ID" \
-            -d client_secret="$CLIENT_SECRET" \
-            -d refresh_token="$REFRESH_TOKEN" \
-            -d grant_type=refresh_token) || {
-              echo "::error::Zugriffstoken nicht erhalten. Haeufigste Ursache: Der"
-              echo "OAuth-Zustimmungsbildschirm steht noch auf 'Testing' — dann"
-              echo "verfaellt das Refresh-Token nach 7 Tagen. Siehe Android-App/GDRIVE.md."
-              exit 1
-            }
-          TOKEN=$(printf '%s' "$ANTWORT" | python3 -c 'import sys,json; print(json.load(sys.stdin)["access_token"])')
-          # Der Wert darf nie im Protokoll landen, auch nicht versehentlich
-          # ueber ein `set -x` weiter unten.
-          echo "::add-mask::$TOKEN"
-
-          # 2) Gibt es die Datei schon? Dann wird sie AKTUALISIERT statt neu
-          #    angelegt. Das ist der Kern: Die Datei-ID bleibt, damit bleibt der
-          #    Freigabe-Link stabil. Sonst braeuchten die Testenden nach jedem
-          #    Bau einen neuen Link.
-          Q="name='$NAME' and trashed=false"
-          [ -n "${ORDNER_ID:-}" ] && Q="$Q and '$ORDNER_ID' in parents"
-          VORHANDEN=$(curl -sS --fail-with-body -G https://www.googleapis.com/drive/v3/files \
-            -H "Authorization: Bearer $TOKEN" \
-            --data-urlencode "q=$Q" \
-            --data-urlencode "fields=files(id)" \
-            | python3 -c 'import sys,json; f=json.load(sys.stdin).get("files",[]); print(f[0]["id"] if f else "")')
-
-          if [ -n "$VORHANDEN" ]; then
-            echo "Datei existiert ($VORHANDEN) — Inhalt wird ersetzt, Link bleibt."
-            ERGEBNIS=$(curl -sS --fail-with-body -X PATCH \
-              "https://www.googleapis.com/upload/drive/v3/files/$VORHANDEN?uploadType=media&fields=id,name,size" \
-              -H "Authorization: Bearer $TOKEN" \
-              -H "Content-Type: application/vnd.android.package-archive" \
-              --data-binary @"$APK")
-          else
-            echo "Datei noch nicht vorhanden — wird angelegt."
-            ELTERN="[]"
-            [ -n "${ORDNER_ID:-}" ] && ELTERN="[\"$ORDNER_ID\"]"
-            printf '{"name":"%s","parents":%s}' "$NAME" "$ELTERN" > "$RUNNER_TEMP/meta.json"
-            ERGEBNIS=$(curl -sS --fail-with-body -X POST \
-              "https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&fields=id,name,size" \
-              -H "Authorization: Bearer $TOKEN" \
-              -F "metadata=@$RUNNER_TEMP/meta.json;type=application/json;charset=UTF-8" \
-              -F "file=@$APK;type=application/vnd.android.package-archive") || {
-                echo "::error::Upload abgelehnt. Steht in der Meldung 'storageQuotaExceeded',"
-                echo "gehoert das Token einem DIENSTKONTO — die haben in Drive kein"
-                echo "Kontingent. Es braucht ein Refresh-Token eines echten Kontos."
-                exit 1
-              }
-          fi
-
-          ID=$(printf '%s' "$ERGEBNIS" | python3 -c 'import sys,json; print(json.load(sys.stdin)["id"])')
-          GROESSE=$(printf '%s' "$ERGEBNIS" | python3 -c 'import sys,json; print(json.load(sys.stdin).get("size","?"))')
-
-          # Gegenprobe: Nicht der Antwort glauben, sondern die Datei ZURUECK
-          # fragen und die Groesse mit der lokalen vergleichen. Ein abgebrochener
-          # Upload liefert sonst eine gueltig aussehende Antwort und einen Link
-          # auf ein halbes APK.
-          LOKAL=$(stat -c%s "$APK")
-          if [ "$GROESSE" != "$LOKAL" ]; then
-            echo "::error::Drive meldet $GROESSE Bytes, lokal sind es $LOKAL. Upload unvollstaendig."
-            exit 1
-          fi
-          echo "Hochgeladen: $GROESSE Bytes, vollstaendig."
-
-          {
-            echo "## APK liegt in Google Drive"
-            echo ""
-            echo "| | |"
-            echo "| --- | --- |"
-            echo "| Datei | \`$NAME\` |"
-            echo "| Groesse | $GROESSE Bytes |"
-            echo "| Link | https://drive.google.com/file/d/$ID/view |"
-            echo ""
-            echo "> Der Link bleibt ueber alle Builds hinweg derselbe — die Datei"
-            echo "> wird ersetzt, nicht neu angelegt. Einmal freigeben genuegt."
-          } >> "$GITHUB_STEP_SUMMARY"

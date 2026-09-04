@@ -21,6 +21,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import ch.brickinventoryapp.R
+import ch.brickinventoryapp.util.fmtDatum
 import ch.brickinventoryapp.ui.MainViewModel
 import ch.brickinventoryapp.ui.*  // Feature-Extensions (saveSettings, setLanguage, …)
 
@@ -50,6 +51,17 @@ fun SettingsScreen(
     // Typ je DATEI und meldete prompt drei angeblich fehlende Felder.
     val appState by vm.state.collectAsStateWithLifecycle()
     val household by vm.householdState.collectAsStateWithLifecycle()
+    // `geraeteZustand`, nicht `geraete`: Sonst haelt UiStateFieldsTest jedes
+    // spaetere `geraete.<x>` fuer einen Feldzugriff auf GeraeteUiState —
+    // dieselbe Falle wie bei `state` im Absatz darueber, nur eine Ebene
+    // tiefer. Der oertliche Spiegel hat prompt acht Stellen gemeldet.
+    val geraeteZustand by vm.geraeteState.collectAsStateWithLifecycle()
+
+    // Einmal beim Betreten laden. LaunchedEffect(Unit) und nicht bei jedem
+    // Neuzeichnen: Die Liste aendert sich nur, wenn sich ein Geraet an- oder
+    // abmeldet, und ein Abruf je Bildaufbau waere eine Anfrage pro Tastendruck
+    // in den Feldern darueber.
+    LaunchedEffect(Unit) { vm.ladeGeraete() }
 
     val currency = appState.currency
     val priceCondition = appState.priceCondition
@@ -200,6 +212,13 @@ fun SettingsScreen(
             onUnlink = onUnlink,
         )
 
+        GeraeteCard(
+            zustand = geraeteZustand,
+            onReload = { vm.ladeGeraete() },
+            onRevoke = { vm.entwerteGeraet(it) },
+            onRevokeOthers = { vm.entwerteAndereGeraete() },
+        )
+
         // Current settings summary
         if (!hasChanges) {
             Surface(
@@ -295,6 +314,140 @@ private fun SettingsCard(
     }
 }
 
+
+/**
+ * Angemeldete Geräte: die ausgestellten Zugänge sehen und aussperren.
+ *
+ * ── Warum der eigene Zugang keinen Knopf hat ────────────────────────────────
+ * Der Server markiert die Zeile, mit der GERADE gefragt wird. Wer sie
+ * entwertet, meldet sich selbst ab — ohne dass ein Mülleimer-Symbol das sagt.
+ * Für „dieses Gerät abmelden" gibt es den Abmelden-Knopf am Ende der Seite;
+ * er benennt, was er tut.
+ *
+ * ── Datumsangaben über fmtDatum(), nicht selbst gebaut ─────────────────────
+ * Der Server liefert ISO-Zeitstempel. `iso.take(10)` wäre die dritte Fassung
+ * derselben Umwandlung im Baum gewesen; die ersten beiden sind in
+ * util/DatumFormat.kt zusammengelegt worden, weil eine davon bei Zeitstempeln
+ * OHNE Millisekunden still null ergab (siehe DatumFormatTest). Genau solche
+ * Zeitstempel liefert api_tokens.
+ *
+ * „Nie benutzt" bekommt einen eigenen Text statt eines leeren Feldes —
+ * `new Date(null)` wäre der 1.1.1970, und ein leeres Feld sieht aus wie ein
+ * Fehler.
+ */
+@Composable
+private fun GeraeteCard(
+    zustand: ch.brickinventoryapp.ui.GeraeteUiState,
+    onReload: () -> Unit,
+    onRevoke: (String) -> Unit,
+    onRevokeOthers: () -> Unit,
+) {
+    var fragt by rememberSaveable { mutableStateOf<String?>(null) }
+    var fragtAlle by rememberSaveable { mutableStateOf(false) }
+
+    SettingsCard(title = stringResource(R.string.tokens_title), icon = Icons.Default.Devices) {
+        Text(stringResource(R.string.tokens_hint),
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.padding(bottom = 12.dp))
+
+        when {
+            zustand.laedt && zustand.geraete.isEmpty() ->
+                CircularProgressIndicator(Modifier.size(22.dp))
+            zustand.fehler != null ->
+                Text(zustand.fehler, color = MaterialTheme.colorScheme.error,
+                     style = MaterialTheme.typography.bodySmall)
+            zustand.geraete.isEmpty() ->
+                Text(stringResource(R.string.tokens_none),
+                     style = MaterialTheme.typography.bodySmall,
+                     color = MaterialTheme.colorScheme.onSurfaceVariant)
+            else -> Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                for (g in zustand.geraete) {
+                    Row(verticalAlignment = Alignment.CenterVertically,
+                        modifier = Modifier.fillMaxWidth()) {
+                        Column(Modifier.weight(1f)) {
+                            Row(verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                                Text(g.label ?: "—", fontWeight = FontWeight.SemiBold)
+                                if (g.aktuell) Surface(
+                                    shape = Formen.chip,
+                                    color = MaterialTheme.colorScheme.primaryContainer,
+                                ) {
+                                    Text(stringResource(R.string.tokens_current),
+                                        style = MaterialTheme.typography.labelSmall,
+                                        color = MaterialTheme.colorScheme.onPrimaryContainer,
+                                        modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp))
+                                }
+                            }
+                            Text(
+                                stringResource(R.string.tokens_row_hint,
+                                    fmtDatum(g.createdAt) ?: "—",
+                                    fmtDatum(g.lastUsed) ?: stringResource(R.string.tokens_unused),
+                                    if (g.neverExpires) stringResource(R.string.tokens_never) else (fmtDatum(g.expiresAt) ?: "—")),
+                                style = MaterialTheme.typography.labelSmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        }
+                        if (!g.aktuell) IconButton(onClick = { fragt = g.tokenId }) {
+                            Icon(Icons.Default.Delete,
+                                stringResource(R.string.tokens_revoke_title),
+                                tint = MaterialTheme.colorScheme.error)
+                        }
+                    }
+                }
+            }
+        }
+
+        Row(Modifier.padding(top = 12.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            OutlinedButton(onClick = onReload, shape = Formen.knopf) {
+                Text(stringResource(R.string.tokens_reload))
+            }
+            // Nur anbieten, wenn es wirklich andere gibt — ein Knopf, der
+            // immer „es gibt keine anderen" meldet, ist schlimmer als keiner.
+            if (zustand.geraete.count { !it.aktuell } > 0) {
+                OutlinedButton(
+                    onClick = { fragtAlle = true },
+                    shape = Formen.knopf,
+                    colors = ButtonDefaults.outlinedButtonColors(contentColor = MaterialTheme.colorScheme.error),
+                ) { Text(stringResource(R.string.tokens_revoke_others)) }
+            }
+        }
+    }
+
+    // Rückfrage: Ein Zugang, der weg ist, kommt nicht wieder — das Gerät
+    // dahinter muss sich neu anmelden.
+    val zuEntwerten = fragt
+    if (zuEntwerten != null) AlertDialog(
+        onDismissRequest = { fragt = null },
+        title = { Text(stringResource(R.string.tokens_revoke_title)) },
+        text = { Text(stringResource(R.string.tokens_revoke_text,
+            zustand.geraete.firstOrNull { it.tokenId == zuEntwerten }?.label ?: "—")) },
+        confirmButton = {
+            TextButton(onClick = { fragt = null; onRevoke(zuEntwerten) }) {
+                Text(stringResource(R.string.tokens_revoke_confirm),
+                     color = MaterialTheme.colorScheme.error)
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = { fragt = null }) { Text(stringResource(R.string.common_cancel)) }
+        },
+    )
+
+    if (fragtAlle) AlertDialog(
+        onDismissRequest = { fragtAlle = false },
+        title = { Text(stringResource(R.string.tokens_revoke_others_title)) },
+        text = { Text(stringResource(R.string.tokens_revoke_others_text,
+            zustand.geraete.count { !it.aktuell })) },
+        confirmButton = {
+            TextButton(onClick = { fragtAlle = false; onRevokeOthers() }) {
+                Text(stringResource(R.string.tokens_revoke_confirm),
+                     color = MaterialTheme.colorScheme.error)
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = { fragtAlle = false }) { Text(stringResource(R.string.common_cancel)) }
+        },
+    )
+}
 
 /**
  * Haushalts-Karte: verknüpfen, Einladungscode erzeugen, Verknüpfung lösen.

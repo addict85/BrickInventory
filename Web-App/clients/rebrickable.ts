@@ -6,6 +6,7 @@
 // Kreise, die daraus entstanden, wurden mit späten `require()` umgangen.
 //
 import { rebrickableLimiter, consumeRebrickableDaily, rebrickableDailyStatus, parseThrottleWait } from '../utils/rateLimiter';
+import { istErsatzteil } from '../utils/validate';
 
 import https from 'https';
 import http from 'http';
@@ -172,7 +173,9 @@ async function getAllSetPartsFromCsv(setNumber: string) {
       rgb:  p.color_rgb || null
     },
     quantity:  p.quantity,
-    is_spare:  p.is_spare === 't' || p.is_spare === true || p.is_spare === 'True' || p.is_spare === '1'
+    // Vorher eine eigene Aufzaehlung — die 'true' KLEINGESCHRIEBEN nicht
+    // kannte, waehrend die Teileliste daneben es tat.
+    is_spare:  istErsatzteil(p.is_spare)
   }));
 }
 
