@@ -95,16 +95,18 @@ function sendCsv(res: ExpressAntwort, filename: string, headers: string[], rows:
   res.send('\uFEFF' + csv); // BOM so Excel opens UTF-8 correctly
 }
 
-// Wie sendCsv, aber für bereits fertig gebaute CSV-Strings (z. B. aus den
-// buildXCsv-Buildern), damit Export-Route und Builder dieselbe Spaltenlogik
-// teilen statt sie zu duplizieren.
-function sendCsvText(res: ExpressAntwort, filename: string, csv: string) {
-  res.setHeader('Content-Type', 'text/csv; charset=utf-8');
-  res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
-  res.send('\uFEFF' + csv);
-}
+// sendCsvText() ist mit seinen drei Aufrufern ENTFERNT.
+//
+// Es schickte einen fertig gebauten CSV-String als Datei — gebraucht von
+// /api/sets|parts|minifigs/export/csv, und die drei Routen hatten keinen
+// Aufrufer mehr. Was die Webapp anbietet, ist der ZIP-Export unter
+// /api/settings/export/data; der legt dieselben Strings ins Archiv und braucht
+// dafuer keine Antwort-Kopfzeilen.
+//
+// Die Builder (buildSetsCsv und die beiden anderen) bleiben — sie SIND die
+// gemeinsame Spaltenlogik, um die es in diesem Kommentar ging.
 
-export { csvField, toCsv, sendCsv, sendCsvText, parseCsvDate, entschaerfe, entschaerfungRueckgaengig, csvZeilenBereinigen };
+export { csvField, toCsv, sendCsv, parseCsvDate, entschaerfe, entschaerfungRueckgaengig, csvZeilenBereinigen };
 
 /**
  * Datumsangabe aus einer CSV-Datei in ISO-Form (YYYY-MM-DD) bringen.

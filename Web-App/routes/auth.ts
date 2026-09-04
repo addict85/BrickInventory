@@ -4,7 +4,7 @@ const router  = express.Router();
 import bcrypt from 'bcryptjs';
 import * as db from '../db/database';
 import { handleRouteError, logAndContinue, meldeUndWeiter, fehlerCode, fehlertext, pfadParam } from '../utils/httpError';
-import { hashToken, verifiziereEmailToken, assertLoginAllowed, establishSession, revokeAllTokens, revokeAllSessions, deleteToken, BCRYPT_ROUNDS, USERNAME_RE, EMAIL_RE, isValidLoginIdentifier } from '../utils/auth';
+import { hashToken, assertLoginAllowed, establishSession, revokeAllTokens, revokeAllSessions, deleteToken, BCRYPT_ROUNDS, USERNAME_RE, EMAIL_RE, isValidLoginIdentifier } from '../utils/auth';
 import { checkLoginAllowed, recordLoginFailure, recordLoginSuccess, ipThrottle } from '../utils/loginLimiter';
 import crypto from 'crypto';
 import { strictBool } from '../utils/validate';
@@ -552,32 +552,18 @@ router.post('/register', ipThrottle('register', 5, 60 * 60 * 1000), async (req, 
   }
 });
 
-// ── GET /api/auth/verify?token=... ────────────────────────────────────────────
-router.get('/verify', async (req, res) => {
-  // Die Logik steht seit Nachtrag 154 in utils/auth.verifiziereEmailToken() —
-  // vorher wortgleich hier UND in server.ts.
-  //
-  // ── Antwortform berichtigt (Nachtrag 154) ─────────────────────────────────
-  // Diese Route hat vorher auf dem Erfolgs- und dem Ungültig-Pfad
-  // `res.redirect('/?verified=…')` geschickt und nur bei fehlendem Token JSON.
-  // Eine Route unter /api, die mit 302 auf eine HTML-Seite verweist, ist für
-  // jeden Programm-Aufrufer unbrauchbar: fetch() folgt der Weiterleitung und
-  // bekommt die ~189 KB index.html statt einer Antwort — dieselbe Falle, die
-  // weiter unten schon einmal als 404-Regel für /api behoben wurde.
-  //
-  // Gefahrlos umzustellen, weil die Route KEINEN Aufrufer hat: Der Link in der
-  // Verifikationsmail zeigt auf /verify (routes/mailer.ts), das Frontend ruft
-  // sie nicht auf und die Android-App auch nicht. Wer sie künftig benutzt,
-  // bekommt jetzt das, was eine API liefern muss.
-  try {
-    const e = await verifiziereEmailToken(req.query.token);
-    if (e.ok) return res.json({ success: true });
-    return res.status(e.grund === 'fehlt' ? 400 : 410).json({
-      success: false,
-      error: e.grund === 'fehlt' ? 'Token fehlt.' : 'Token ungültig oder abgelaufen.',
-    });
-  } catch (e) { handleRouteError(res, e); }
-});
+// ── GET /api/auth/verify ist ENTFERNT ────────────────────────────────────────
+//
+// Sie hatte keinen Aufrufer, und das stand seit Nachtrag 154 als Kommentar
+// genau hier: „Gefahrlos umzustellen, weil die Route KEINEN Aufrufer hat: Der
+// Link in der Verifikationsmail zeigt auf /verify (routes/mailer.ts), das
+// Frontend ruft sie nicht auf und die Android-App auch nicht."
+//
+// Damals wurde ihre Antwortform berichtigt und sie stehengelassen. Das ist
+// genau der Fall, den DeadCodeTest in der App beschreibt: Entweder fehlt die
+// Anzeige dazu — oder sie ist nie gebraucht worden und blieb liegen. Hier das
+// zweite: Die Bestaetigung laeuft ueber die Frontend-Seite /verify, die
+// utils/auth.verifiziereEmailToken() aufruft. Diese Funktion bleibt.
 
 // ── POST /api/auth/forgot-password ───────────────────────────────────────────
 router.post('/forgot-password', ipThrottle('forgot-password', 5, 60 * 60 * 1000), async (req, res) => {
@@ -635,19 +621,13 @@ router.post('/reset-password', ipThrottle('reset-password', 10, 60 * 60 * 1000),
   } catch (e) { handleRouteError(res, e); }
 });
 
-// ── GET /api/auth/check-token ─────────────────────────────────────────────────
-router.get('/check-token', ipThrottle('check-token', 30, 60 * 60 * 1000), async (req, res) => {
-  const { token, type } = req.query;
-  if (!token) return res.json({ valid: false });
-  try {
-    if (type === 'reset') {
-      const u = await db.get("SELECT id FROM users WHERE reset_token=$1 AND reset_token_expires > NOW()", [hashToken(String(token))]);
-      return res.json({ valid: !!u });
-    }
-    const u = await db.get("SELECT id FROM users WHERE verification_token=$1 AND token_expires > NOW()", [hashToken(String(token))]);
-    res.json({ valid: !!u });
-  } catch (_) { res.json({ valid: false }); }
-});
+// ── GET /api/auth/check-token ist ENTFERNT ───────────────────────────────────
+//
+// Sie sagte, ob ein Reset- oder Verifikations-Token noch gilt. Kein Aufrufer:
+// Die Reset-Seite schickt das neue Passwort direkt und wertet die Antwort aus,
+// statt vorher zu fragen. Nachgemessen ueber alle 169 Dateien beider Apps —
+// weder Webapp noch Android nennen sie.
+
 
 // CJS-kompatibler Export: module.exports bleibt der Router selbst,
 // mit den intern/von jobs/ genutzten Funktionen als Properties (wie zuvor).

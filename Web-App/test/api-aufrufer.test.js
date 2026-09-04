@@ -12,9 +12,9 @@
  * ── Was das kostet ──────────────────────────────────────────────────────────
  * Eine Route ohne Aufrufer ist keine Kleinigkeit: Sie wird mitgewartet,
  * mitgetestet, mit umgebaut und bleibt angreifbar. Und sie täuscht — wer
- * `GET /api/sets/export/csv` liest, hält es für den Weg, auf dem die Webapp
- * exportiert. Der Weg ist `/api/settings/export/data` (ZIP), und die drei
- * Einzelrouten sind seither ohne Aufrufer.
+ * `GET /api/sets/export/csv` las, hielt es für den Weg, auf dem die Webapp
+ * exportiert. Der Weg ist `/api/settings/export/data` (ZIP); die drei
+ * Einzelrouten standen seither ohne Aufrufer da und sind inzwischen entfernt.
  *
  * ── Was der Test NICHT tut ──────────────────────────────────────────────────
  * Er löscht nichts und verlangt auch nicht, dass gelöscht wird. Nicht jede
@@ -89,26 +89,29 @@ function clientQuellen() {
  * Wer eine Zeile hinzufügt, schreibt den Grund dazu; wer keinen hat, hat eine
  * Route gefunden, die niemand mehr braucht.
  */
+// ── Fuenf Eintraege sind hier verschwunden, weil die Routen es sind ─────────
+//
+// Und zwei davon trugen einen Grund, der GAR NICHT STIMMTE:
+//
+//   GET /api/auth/verify    „Wird im Browser geöffnet … deshalb antwortet die
+//                            Route auch mit einer Seite und nicht mit JSON."
+//                            Sie antwortete mit JSON — seit Nachtrag 154
+//                            ausdrücklich, und der Link aus der Mail zeigt auf
+//                            die Frontend-Seite /verify, nicht hierher.
+//   GET /api/auth/check-token  „Gerufen von der Seite hinter dem Link."
+//                            Nachgemessen ueber alle 169 Dateien beider Apps:
+//                            von niemandem.
+//
+// Eine Ausnahme mit erfundenem Grund ist schlimmer als keine Ausnahme — sie
+// sieht geprueft aus. Wer hier eine Zeile eintraegt, soll den Aufrufer
+// benennen koennen.
 const OHNE_AUFRUFER = new Map([
-  ['GET /api/auth/verify',
-    'Der Bestätigungslink aus der Registrierungs-E-Mail. Wird im Browser ' +
-    'geöffnet, nicht aus JavaScript gerufen — deshalb antwortet die Route ' +
-    'auch mit einer Seite und nicht mit JSON (siehe test/email-verify.test.js).'],
-  ['GET /api/auth/check-token',
-    'Prüft einen Bestätigungs- oder Zurücksetzen-Token aus einer E-Mail, bevor ' +
-    'das Formular erscheint. Gerufen von der Seite hinter dem Link.'],
   ['GET /api/settings/tokens',
     'Übersicht der ausgegebenen App-Token. Es gibt dafür noch keine Oberfläche — ' +
     'die Token entstehen beim Anmelden der App und beim QR-Weg.'],
   ['DELETE /api/settings/tokens/:tokenId',
     'Gegenstück zur Übersicht: einzelnen App-Token entziehen. Ebenfalls noch ' +
     'ohne Oberfläche.'],
-  ['GET /api/sets/export/csv',
-    'Die Webapp exportiert über /api/settings/export/data (ZIP mit allen drei ' +
-    'CSV-Dateien, gebaut aus DENSELBEN Helfern). Die Einzelroute ist seither ' +
-    'ohne Aufrufer und bleibt als direkter Download-Weg bestehen.'],
-  ['GET /api/parts/export/csv', 'Wie /api/sets/export/csv.'],
-  ['GET /api/minifigs/export/csv', 'Wie /api/sets/export/csv.'],
   ['GET /api/v1/admin/img-probe',
     'Diagnosewerkzeug, von Hand gerufen: zeigt, was der Bild-Proxy vom ' +
     'Ursprungsserver bekommt. Entstanden, weil Minifiguren-Bilder über den ' +

@@ -498,7 +498,7 @@ import { fetchPartPrice } from '../utils/financeCalc';
 import { getSetting } from '../utils/settings';
 import { getBrickColors, getRbKey, httpsGetRobust } from '../clients/rebrickable';
 import { rebrickableBackgroundLimiter } from '../utils/rateLimiter';
-import { csvEinlesen, parseCsvDate, sendCsvText, toCsv, uebersprungenHinweis } from '../utils/csvExport';
+import { csvEinlesen, parseCsvDate, toCsv, uebersprungenHinweis } from '../utils/csvExport';
 const csvUpload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 15 * 1024 * 1024 } });
 
 router.post('/import/csv', csvUpload.single('file'), async (req: LoggedInRequest, res) => {
@@ -629,16 +629,10 @@ async function buildPartsCsv(uid: number) {
   );
 }
 
-// ── GET /api/parts/export/csv — export manually erfasste Teile for re-import with the Teile CSV importer
-// LoggedInRequest statt req: Der ganze Router liegt hinter requireLogin
-// (oben, router.use), und die Augmentierung sichert userId als number zu.
-// Ohne sie waere es number|undefined, und buildPartsCsv bekaeme undefined.
-router.get('/export/csv', async (req: LoggedInRequest, res) => {
-  try {
-    const csv = await buildPartsCsv(req.session.userId);
-    sendCsvText(res, `teile-export-${new Date().toISOString().substring(0,10)}.csv`, csv);
-  } catch (e) { handleRouteError(res, e); }
-});
+// ── GET /api/parts/export/csv ist ENTFERNT ───────────────────────────────────
+//
+// Kein Aufrufer; die Webapp exportiert ueber /api/settings/export/data (ZIP mit
+// drei CSV-Dateien), das dieselbe Funktion benutzt. Siehe routes/sets.ts.
 
 // CJS-kompatibler Export: module.exports bleibt der Router selbst,
 // mit den intern/von jobs/ genutzten Funktionen als Properties (wie zuvor).

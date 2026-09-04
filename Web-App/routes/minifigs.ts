@@ -50,7 +50,7 @@ import { DEFAULT_PRICE_CONDITION } from '../utils/financeCalc';
 import { effectiveCondition as userDefaultCondition, zustandFuerPreis } from '../utils/settings';
 import { fetchMinifigPrice, fetchPartPrice } from '../utils/financeCalc';
 import { getSetting, getGlobalSetting } from '../utils/settings';
-import { csvEinlesen, parseCsvDate, sendCsvText, toCsv, uebersprungenHinweis } from '../utils/csvExport';
+import { csvEinlesen, parseCsvDate, toCsv, uebersprungenHinweis } from '../utils/csvExport';
 import { getMinifigParts } from '../clients/rebrickable';
 
 router.use(requireLogin);
@@ -105,15 +105,10 @@ async function buildFigsCsv(uid: number) {
     acqRows);
 }
 
-// ── GET /api/minifigs/export/csv — export manuell erfasste Minifiguren for re-import with the Minifiguren CSV importer
-// LoggedInRequest wie in routes/parts.ts: Der Router liegt hinter
-// requireLogin (oben), und die Augmentierung sichert userId als number zu.
-router.get('/export/csv', async (req: LoggedInRequest, res) => {
-  try {
-    const csv = await buildFigsCsv(req.session.userId);
-    sendCsvText(res, `minifiguren-export-${new Date().toISOString().substring(0,10)}.csv`, csv);
-  } catch (e) { handleRouteError(res, e); }
-});
+// ── GET /api/minifigs/export/csv ist ENTFERNT ────────────────────────────────
+//
+// Kein Aufrufer; die Webapp exportiert ueber /api/settings/export/data (ZIP mit
+// drei CSV-Dateien), das dieselbe Funktion benutzt. Siehe routes/sets.ts.
 
 // Default the purchase price to the current BrickLink market price for a minifig,
 // when the user did not enter one manually.

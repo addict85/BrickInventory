@@ -51,7 +51,7 @@ import * as db from '../db/database';
 import { handleRouteError, logAndContinue, fehlertext, pfadParam, vorDem } from '../utils/httpError';
 // Der Kern liegt seit Nachtrag 131 in utils/setService.ts; hier bleiben die
 // HTTP-Routen, die ihn rufen.
-import { addSet, buildSetsCsv, addSetWithDate } from '../utils/setService';
+import { addSet, addSetWithDate } from '../utils/setService';
 import { downloadSetInstructions } from '../utils/instructions';
 // Der Standard-Zustand eines Benutzers. Stand hier bis Nachtrag 125 als
 // `getUserDefaultCondition` — eine wortgleiche Zweitfassung von
@@ -124,7 +124,7 @@ if (!fs.existsSync(SET_IMAGES_DIR)) fs.mkdirSync(SET_IMAGES_DIR, { recursive: tr
 // bekommt, versucht es gleich wieder — besser als eine hängende Verbindung.
 import { findSetInScope } from '../utils/setAdd';
 import { loginOrTokenGuard } from '../utils/auth';
-import { csvEinlesen, entschaerfungRueckgaengig, parseCsvDate, sendCsv, sendCsvText, uebersprungenHinweis } from '../utils/csvExport';
+import { csvEinlesen, entschaerfungRueckgaengig, parseCsvDate, sendCsv, uebersprungenHinweis } from '../utils/csvExport';
 import { ausTabelle } from '../utils/validate';
 
 const requireLoginOrToken = loginOrTokenGuard({ timeoutMs: 3000 });
@@ -334,16 +334,13 @@ router.get('/info/:setNumber', requireLogin, async (req, res) => {
 router.use(requireLogin);
 
 
-// ── GET /api/sets/export/csv — export all sets for re-import with the Sets CSV importer
-// LoggedInRequest: Die Route liegt hinter dem router.use(requireLogin) direkt
-// darueber. (Die drei Routen OBERHALB tragen ihre eigene Absicherung —
-// requireLoginOrToken bzw. requireLogin —, die Platzierung ist Absicht.)
-router.get('/export/csv', async (req: LoggedInRequest, res) => {
-  try {
-    const csv = await buildSetsCsv(req.session.userId);
-    sendCsvText(res, `sets-export-${new Date().toISOString().substring(0,10)}.csv`, csv);
-  } catch (e) { handleRouteError(res, e); }
-});
+// ── GET /api/sets/export/csv ist ENTFERNT ────────────────────────────────────
+//
+// Kein Aufrufer — nachgemessen ueber alle 169 Dateien beider Apps. Was die
+// Webapp anbietet, ist der ZIP-Export unter /api/settings/export/data
+// (index.html, „Sets, Teile & Minifiguren exportieren"); er baut dieselbe
+// Datei mit derselben Funktion (buildSetsCsv), die deshalb bleibt. Der
+// Kommentar dort sagt es selbst: „implemented once".
 
 // ── GET /api/sets/export/rebrickable — export all sets in Rebrickable's own
 // "Set Number,Quantity" list-import format (see rebrickable.com/help/lists-sets/)
