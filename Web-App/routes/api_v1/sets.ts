@@ -27,7 +27,7 @@ import { resolveSetCondition } from '../../utils/financeCalc';
 import { getSetPriceHistory } from '../../utils/priceHistory';
 import { einzelwert } from '../../utils/validate';
 import { neuestesInventar } from '../../utils/rbInventar';
-import { mitVersion } from '../../utils/setNummer';
+import { mitVersion, ohneVersion } from '../../utils/setNummer';
 const router = express.Router();
 
 // ── GIBT ES DIESES SET SCHON? ────────────────────────────────────────────────
@@ -289,7 +289,7 @@ router.get('/sets/barcode/:barcode', requireToken, async (req: AuthedRequest, re
 router.get('/sets/:setNumber/parts-list', requireToken, async (req: AuthedRequest, res) => {
   const setNum = String(req.params.setNumber);
   const n    = mitVersion(setNum);
-  const bare = n.replace(/-\d+$/, '');
+  const bare = ohneVersion(n);
   try {
     // ── Step 1: Find inventory in CSV database ─────────────────────────────
     const invId = await neuestesInventar(setNum);
@@ -420,7 +420,7 @@ router.get('/sets/:setNumber/parts-list', requireToken, async (req: AuthedReques
 router.get('/sets/:setNumber/minifigs-list', requireToken, async (req: AuthedRequest, res) => {
   const setNum = String(req.params.setNumber);
   const n    = mitVersion(setNum);
-  const bare = n.replace(/-\d+$/, '');
+  const bare = ohneVersion(n);
   try {
     // 1. Try shared catalog first (fastest, already enriched)
     const catalog = await db.all(

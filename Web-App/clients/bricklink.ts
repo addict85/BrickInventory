@@ -11,7 +11,7 @@ import { hatPreis } from '../utils/preisRegel';
 import https from 'https';
 import * as db from '../db/database';
 import { alsAbrufFehler } from './abrufFehler';
-import { mitVersion, katalogEintrag, ohneBricklinkPreis } from '../utils/setNummer';
+import { mitVersion, katalogEintrag, ohneBricklinkPreis, ohneVersion } from '../utils/setNummer';
 
 const BASE = 'https://api.bricklink.com/api/store/v1';
 
@@ -154,7 +154,7 @@ async function getPriceGuide(setNumber: string, condition = 'N', guideType = 'so
 // GEBRAUCHT-Preis geholt und im Cache abgelegt.
 async function getPriceGuideRaw(setNumber: string, condition = 'N', guideType = 'sold', currencyCode = 'EUR') {
   const n = mitVersion(setNumber);
-  const bare = n.replace(/-[0-9]+$/, '');
+  const bare = ohneVersion(n);
   const params = { guide_type: guideType, new_or_used: condition, currency_code: currencyCode, vat: 'N' };
   const cached = await katalogEintrag(n);
   if (cached?.bl_type === 'GEAR') return await bricklinkRequest('GET', `/items/gear/${bare}/price`, params);

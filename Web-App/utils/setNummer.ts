@@ -29,10 +29,30 @@
  * zählte es als Fehler statt als übersprungen.
  */
 
-/** Die Schreibweise, unter der Kataloge und Zwischenspeicher ein Set führen. */
+/**
+ * Die Schreibweise, unter der Kataloge und Zwischenspeicher ein Set führen.
+ *
+ * Geprüft wird auf einen VERSIONSANHANG (`-` und Ziffern), nicht auf
+ * irgendeinen Bindestrich. Die 24 zusammengeführten Fundstellen schrieben
+ * `includes('-')`, drei weitere (utils/setAdd, utils/setService,
+ * routes/api_v1/catalog) und utils/bricklinkLink schrieben `/-\d+$/`. Die
+ * beiden stimmen auf jeder echten Nummer überein und gehen erst bei einem
+ * Bindestrich OHNE Ziffernanhang auseinander:
+ *
+ *     Eingabe     includes('-')   /-\d+$/
+ *     10179       10179-1         10179-1
+ *     fig-000123  fig-000123      fig-000123
+ *     10179-a     10179-a         10179-a-1   <- verschieden
+ *
+ * NACHGESEHEN im gemeinsamen Prüfkorpus (shared/setnummer-korpus.json): keine
+ * einzige Nummer dieser Art. Genommen wird die genauere Fassung — dann sagen
+ * auch die beiden bewusst doppelten Normalisierer in setAdd/setService (die
+ * ihren eigenen Vergleichstest haben und deshalb nichts importieren dürfen)
+ * dasselbe wie diese Stelle, statt nur beinahe.
+ */
 export function mitVersion(setNumber: string | number): string {
   const s = String(setNumber);
-  return s.includes('-') ? s : `${s}-1`;
+  return /-\d+$/.test(s) ? s : `${s}-1`;
 }
 
 /** Dieselbe Nummer ohne Versionsanhang — „10179" aus „10179-1". */

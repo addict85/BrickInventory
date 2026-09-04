@@ -22,6 +22,7 @@ import { resolveMany, resolveOne, resolveViaApi } from '../../utils/bricklinkLin
 import { downloadSetImage } from '../../utils/setImages';
 import { ausTabelle } from '../../utils/validate';
 import { neuestesInventar } from '../../utils/rbInventar';
+import { mitVersion } from '../../utils/setNummer';
 
 const router = express.Router();
 
@@ -323,7 +324,7 @@ router.get('/catalog/sets/:setNumber', requireToken, async (req: AuthedRequest, 
   try {
     const userId = req.apiUser.user_id;
     const raw = String(req.params.setNumber || '').trim();
-    const n   = /-\d+$/.test(raw) ? raw : `${raw}-1`;
+    const n   = mitVersion(raw);
 
     const set = await db.get(
       `SELECT rb.set_num AS set_number, rb.name, rb.year, rb.theme_id,

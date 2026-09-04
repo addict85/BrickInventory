@@ -12,7 +12,7 @@ import { cdnImageLimiter } from '../utils/rateLimiter';
 import { meldeUndWeiter, fehlertext, vorDem } from '../utils/httpError';
 import { getGlobalSetting, setGlobalSetting } from '../utils/settings';
 import { neuestesInventar, inventarKandidaten } from '../utils/rbInventar';
-import { mitVersion } from '../utils/setNummer';
+import { mitVersion, ohneVersion } from '../utils/setNummer';
 const https = require('https');
 const fs    = require('fs');
 const path  = require('path');
@@ -306,7 +306,7 @@ const _downloadLocks = new Map();
 
 async function downloadSetImages(setNumber: string, waitIfBusy = false) {
   const n   = mitVersion(setNumber);
-  const alt = n.replace(/-\d+$/, '');
+  const alt = ohneVersion(n);
 
   // If already downloading this set, wait for it to finish then return
   if (_downloadLocks.has(n)) {
@@ -484,7 +484,7 @@ async function downloadSetImages(setNumber: string, waitIfBusy = false) {
 // Enrich all minifigs for a set in one batch
 async function enrichSetMinifigs(setNumber: string) {
   const n   = mitVersion(setNumber);
-  const alt = n.replace(/-\d+$/, '');
+  const alt = ohneVersion(n);
   const rbKey = await getRbKey();
   if (!rbKey) return;
 

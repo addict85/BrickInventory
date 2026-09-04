@@ -139,12 +139,42 @@ test('die Schreibweise wird nirgends noch einmal ausgerechnet', () => {
     const code = fs.readFileSync(f, 'utf8')
       .replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/[^\n]*$/gm, '');
     const rel = path.relative(ROOT, f);
-    if (/\.includes\('-'\)\s*\?/.test(code)) eigene.push(rel);
+    // ── Warum drei Muster ──────────────────────────────────────────────
+    // Der erste Entwurf suchte NUR nach `.includes('-') ?`. Damit ging
+    // utils/bricklinkLink.ts durch: Dort stand dieselbe Regel als
+    // `/-\d+$/.test(n) ? n : `${n}-1``, also eine dritte Fassung — und die
+    // Prueflung blieb gruen, obwohl die Regel weiter zweimal dastand.
+    // Eine Suche, die nur EINE Schreibweise kennt, findet nur, was schon
+    // gleich geschrieben ist.
+    for (const m of [/\.includes\('-'\)\s*\?/,             // die haeufigste Fassung
+                     /\/-\\d\+\$\/\.test\(/,                // bricklinkLink, setAdd, setService
+                     /\?\s*[\w.]+\s*:\s*`\$\{[^}]+\}-1`/,     // die Ergaenzung selbst
+                     /\.replace\(\/-(?:\\\\d|\[0-9\])\+\$\//])  // und das Abschneiden
+      if (m.test(code)) { eigene.push(rel); break; }
     if (/SELECT is_gear, bl_type FROM catalog_cache/.test(code)) vorpruefer.push(rel);
   }
-  assert.deepEqual(eigene, ['utils/setNummer.ts'],
+  // Zwei bewusste Ausnahmen, jede mit eigenem Grund und eigenem Test:
+  // utils/setAdd.ts und utils/setService.ts tragen denselben Normalisierer
+  // absichtlich doppelt — ein Import baute einen Kreis, und
+  // set-add-exists-db.test.js fuehrt BEIDE Ruempfe isoliert aus, um sie zu
+  // vergleichen. Ein Aufruf nach aussen waere dort nicht aufloesbar. Sie
+  // schreiben seit der Vereinheitlichung dieselbe Regel wie setNummer.ts —
+  // das prueft der Teilschritt darunter.
+  assert.deepEqual(eigene, ['utils/setAdd.ts', 'utils/setNummer.ts', 'utils/setService.ts'],
     'Die Schreibweise wird woanders noch einmal ausgerechnet — genau so laufen ' +
     'zwei Stellen auseinander, die dasselbe meinen');
+
+  // Und die beiden Ausnahmen sagen WORTGLEICH dasselbe wie die eine Stelle.
+  // Vorher taten sie es nur beinahe: `!/-\d+$/.test(s)` hier gegen
+  // `includes('-')` dort.
+  const regel = /\/-\\d\+\$\/\.test\(/;
+  for (const f of ['utils/setAdd.ts', 'utils/setService.ts', 'utils/setNummer.ts']) {
+    const code = fs.readFileSync(path.join(ROOT, f), 'utf8')
+      .replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/[^\n]*$/gm, '');
+    assert.match(code, regel,
+      `${f}: prueft nicht auf einen Versionsanhang — dann sagt der eine Weg ` +
+      '"10179-a" und der andere "10179-a-1"');
+  }
   assert.deepEqual(vorpruefer, ['utils/setNummer.ts'],
     'Der Katalog wird an mehr als einer Stelle gelesen');
 });
