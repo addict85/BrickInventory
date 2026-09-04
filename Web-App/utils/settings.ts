@@ -344,6 +344,20 @@ function sanitizeGlobal(global: any, isAdmin: boolean) {
  * Jetzt lesen beide durch dieselbe Funktion; eine neue Verpackung kann die
  * Maskierung nicht mehr versehentlich umgehen.
  */
+/**
+ * Die gespeicherten Einstellungen EINES Nutzers, als Schluessel-Wert-Paare.
+ *
+ * Stand zweimal da — hier und in routes/settings.ts (Konfigurations-Export).
+ * Gleich geschrieben, kein gemessener Unterschied; die naechste Aenderung
+ * (etwa eine Spalte dazu) soll trotzdem an einer Stelle stattfinden.
+ */
+export async function nutzerEinstellungen(userId: number): Promise<Record<string, any>> {
+  const werte: Record<string, any> = {};
+  (await db.all('SELECT key, value FROM user_settings WHERE user_id = $1', [userId]))
+    .forEach((r: any) => { werte[r.key] = r.value; });
+  return werte;
+}
+
 async function readSettings(userId: number, isAdmin: boolean) {
   const raw: any = {};
   (await db.all('SELECT key, value FROM global_settings')).forEach(r => { raw[r.key] = r.value; });

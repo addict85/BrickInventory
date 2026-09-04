@@ -9,7 +9,7 @@ import { addManualPart, getPartColorList, updateManualPart } from '../parts';
 import { getSetting } from '../../utils/settings';
 import { getPartPriceHistory } from '../../utils/priceHistory';
 import { einzelwert } from '../../utils/validate';
-import { verwendendeSets } from '../../utils/handlers/shared';
+import { verwendendeSets, loescheManuellesTeil } from '../../utils/handlers/shared';
 const router = express.Router();
 
 // ── PARTS ─────────────────────────────────────────────────────────────────────
@@ -77,10 +77,8 @@ router.delete('/parts/:partNumber/:colorId', requireToken, async (req: AuthedReq
     // erlaubt ist, entscheidet der Server über canWriteFor() — nie der Client.
     const besitzer = await resolveWriteTarget(req.apiUser.user_id, req.query.owner);
     if (besitzer === null) return res.status(403).json({ success: false, error: 'Kein Zugriff auf dieses Konto' });
-    const r = await db.run(
-      "DELETE FROM parts WHERE user_id=$1 AND part_number=$2 AND color_id=$3 AND source='manual'",
-      [besitzer, String(req.params.partNumber), parseInt(String(req.params.colorId))]
-    );
+    const r = await loescheManuellesTeil(
+      db, besitzer, String(req.params.partNumber), parseInt(String(req.params.colorId)));
     if (r.changes === 0) return res.status(404).json({ success: false, error: 'Teil nicht gefunden oder nicht manuell hinzugefügt' });
     // Erfassungshistorie mitlöschen — sonst tauchen die alten Preise beim
     // erneuten Hinzufügen desselben Teils wieder auf.

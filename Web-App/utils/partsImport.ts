@@ -8,6 +8,7 @@ import { generateThumb } from '../routes/thumbs';
 import { meldeUndWeiter } from '../utils/httpError';
 import { getGlobalSetting } from '../utils/settings';
 import { mitVersion } from './setNummer';
+import { merkeBlTeilnummer, merkeBlNummerUnveraendert } from './blZuordnung';
 
 /**
  * Teile eines Sets aus dem Katalog übernehmen.
@@ -233,16 +234,13 @@ const https2 = require('https') as typeof import('https');
       for (const part of (data?.results || [])) {
         const blIds = part.external_ids?.BrickLink;
         const blNum = Array.isArray(blIds) && blIds.length > 0 ? blIds[0] : part.part_num;
-        await db.run(
-          `INSERT INTO rb_bl_mapping (part_num, bl_part_num) VALUES ($1,$2) ON CONFLICT (part_num) DO UPDATE SET bl_part_num=$2, fetched_at=NOW()`,
-          [part.part_num, blNum]
-        ).catch(()=>{});
+        await merkeBlTeilnummer(part.part_num, blNum).catch(() => {});
       }
       // Mark unmatched as checked
       const returned = new Set((data?.results||[]).map((p: { part_num: string }) => p.part_num));
       for (const pn of batch) {
         if (!returned.has(pn)) {
-          await db.run(`INSERT INTO rb_bl_mapping (part_num, bl_part_num) VALUES ($1,$1) ON CONFLICT DO NOTHING`, [pn]).catch(()=>{});
+          await merkeBlNummerUnveraendert(pn).catch(() => {});
         }
       }
     }

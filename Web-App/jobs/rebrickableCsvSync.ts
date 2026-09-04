@@ -19,9 +19,9 @@ import { fetchMissingBlIds } from '../routes/parts';
 import { getRbKey, httpsGetRobust } from '../clients/rebrickable';
 import { fehlertext } from '../utils/httpError';
 import { getGlobalSetting, setGlobalSetting } from '../utils/settings';
+import { merkeBlFarbnummer, blFarbnummerAus } from '../utils/blZuordnung';
 const fs       = require('fs');
 const path     = require('path');
-const db       = require('../db/database');
 
 const CSV_BASE = 'https://cdn.rebrickable.com/media/downloads/';
 
@@ -285,9 +285,9 @@ async function run() {
         if (status !== 200) break;
         const data = JSON.parse(body);
         for (const c of (data.results || [])) {
-          const blId = c.external_ids?.BrickLink?.ext_ids?.[0] ?? c.external_ids?.BrickLink?.[0];
+          const blId = blFarbnummerAus(c);
           if (blId != null) {
-            await db.run(`UPDATE rb_colors SET bl_color_id = $1 WHERE id = $2`, [blId, c.id]).catch(() => {});
+            await merkeBlFarbnummer(c.id, blId).catch(() => {});
             count++;
           }
         }

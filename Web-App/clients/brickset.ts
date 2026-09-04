@@ -135,7 +135,7 @@ async function enqueueRetry(setNumber: string, errorMsg: string | null = null, s
   const attempts = (existing?.attempts || 0) + 1;
 
   if (attempts > MAX_QUOTA_RETRIES) {
-    await db.run(`DELETE FROM brickset_retry_queue WHERE set_number = $1`, [setNumber]).catch(() => {});
+    await ausRetryWarteschlange(setNumber).catch(() => {});
     console.log(`[brickset] ${setNumber}: ${MAX_QUOTA_RETRIES} quota retries exceeded — removed from queue, using fallback`);
     return false;
   }
@@ -163,9 +163,14 @@ async function checkRateLimit(setNumber: string) {
   }
 }
 
+/** Dieses Set aus der Brickset-Wiederholungsliste nehmen. */
+export async function ausRetryWarteschlange(setNumber: string) {
+  return db.run('DELETE FROM brickset_retry_queue WHERE set_number = $1', [setNumber]);
+}
+
 // Remove from queue when a non-quota error occurs — no point retrying
 async function removeFromQueue(setNumber: string) {
-  await db.run(`DELETE FROM brickset_retry_queue WHERE set_number = $1`, [setNumber]).catch(() => {});
+  await ausRetryWarteschlange(setNumber).catch(() => {});
   console.log(`[brickset] ${setNumber}: non-quota error — removed from retry queue, using fallback`);
 }
 
@@ -181,7 +186,7 @@ async function getSetInfo(setNumber: string) {
     const data = parseResponse(body);
     if (!data.sets?.length) return null;
     const s = data.sets[0];
-    await db.run(`DELETE FROM brickset_retry_queue WHERE set_number = $1`, [n]).catch(() => {});
+    await ausRetryWarteschlange(n).catch(() => {});
     return { name:s.name||null, year:s.year||null, theme:s.theme||null, pieces:s.pieces||null, minifigs:s.minifigs||null, image_url:s.image?.imageURL||s.image?.thumbnailURL||null };
   } catch (e) {
     const f = alsAbrufFehler(e);

@@ -11,6 +11,7 @@ import { meldeUndWeiter } from '../../utils/httpError';
 import { getGlobalSetting } from '../../utils/settings';
 import { neuestesInventar, inventarKandidaten } from '../rbInventar';
 import { beideSchreibweisen } from '../setNummer';
+import { merkeBlFarbnummer, blFarbnummerAus } from '../blZuordnung';
 
 /**
  * Leseabfragen für Teile — inklusive der Ausweichebenen (CSV-Zwischenspeicher,
@@ -536,10 +537,10 @@ async function getBlColorMap() {
     if (status !== 200) break;
     const data = JSON.parse(body);
     for (const c of (data.results || [])) {
-      const blId = c.external_ids?.BrickLink?.ext_ids?.[0] ?? c.external_ids?.BrickLink?.[0];
+      const blId = blFarbnummerAus(c);
       if (blId != null) {
         map[c.id] = blId;
-        db.run(`UPDATE rb_colors SET bl_color_id = $1 WHERE id = $2`, [blId, c.id]).catch(() => {});
+        merkeBlFarbnummer(c.id, blId).catch(() => {});
       }
     }
     hasNext = !!data.next;

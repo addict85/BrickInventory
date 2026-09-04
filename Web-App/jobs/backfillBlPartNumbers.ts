@@ -8,6 +8,7 @@ const db      = require('../db/database');
 const https   = require('https');
 const { rebrickableBackgroundLimiter: rebrickableLimiter, consumeRebrickableDaily, parseThrottleWait } = require('../utils/rateLimiter');
 import { getGlobalSetting } from '../utils/settings';
+import { merkeBlTeilnummer } from '../utils/blZuordnung';
 
 /** Ergebnis der handgebauten HTTPS-Aufrufe in dieser Datei. Ohne Typparameter
  *  leitet TypeScript bei `new Promise` `unknown` ab. */
@@ -82,11 +83,8 @@ async function run() {
         `UPDATE parts SET bl_part_number=$1 WHERE part_number=$2 AND bl_part_number IS NULL`,
         [blId, partNum]
       ).catch((e: any) => console.warn(`[bl-backfill] bl_part_number ${partNum}: ${e.message}`));
-      await db.run(
-        `INSERT INTO rb_bl_mapping (part_num, bl_part_num) VALUES ($1,$2)
-         ON CONFLICT (part_num) DO UPDATE SET bl_part_num=$2, fetched_at=NOW()`,
-        [partNum, blId]
-      ).catch((e: any) => console.warn(`[bl-backfill] rb_bl_mapping ${partNum}: ${e.message}`));
+      await merkeBlTeilnummer(partNum, blId)
+        .catch((e: any) => console.warn(`[bl-backfill] rb_bl_mapping ${partNum}: ${e.message}`));
       if (apiMap[partNum]) updated++; else skipped++;
     }
     console.log(`[bl-backfill] ${Math.min(i+BATCH, partNums.length)}/${partNums.length} done (${updated} updated)`);

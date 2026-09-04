@@ -39,7 +39,7 @@
  *      Sperre nicht zur Kenntnis und lief 3 Sekunden später wieder los.
  */
 const db      = require('../db/database');
-import { downloadSetInstructions, letzterAbrufWarExtern } from '../utils/instructions';
+import { downloadSetInstructions, letzterAbrufWarExtern, anzahlAnleitungen } from '../utils/instructions';
 import { meldeUndWeiter, fehlertext } from '../utils/httpError';
 import { alsAbrufFehler } from '../clients/abrufFehler';
 import { getGlobalSetting, setGlobalSetting, setGlobalTrigger, deleteGlobalSetting } from '../utils/settings';
@@ -122,6 +122,12 @@ async function clearBlock() {
     .catch(logAndContinue('instr-queue:block-loeschen'));
 }
 
+/** Wie viele Anleitungs-Auftraege warten noch? */
+export async function offeneAuftraege(): Promise<number> {
+  const r = await db.get("SELECT COUNT(*) as c FROM instruction_queue WHERE status='pending'").catch(() => null);
+  return parseInt(r?.c) || 0;
+}
+
 async function enqueue(setNumber: string) {
   const n = mitVersion(setNumber);
   await db.run(
@@ -164,11 +170,7 @@ async function processNext() {
     );
     if (!row) return;
 
-    const existing = await db.get(
-      'SELECT COUNT(*) as c FROM shared_instructions WHERE set_number = $1',
-      [row.set_number]
-    );
-    if (parseInt(existing?.c) > 0) {
+    if (await anzahlAnleitungen(row.set_number) > 0) {
       await db.run(`UPDATE instruction_queue SET status='done', updated_at=NOW() WHERE id=$1`, [row.id]);
       scheduleNext(100);
       return;

@@ -80,6 +80,37 @@ import { mitVersion, ohneVersion } from './setNummer';
 let _letzterAbrufWarExtern = false;
 function letzterAbrufWarExtern(): boolean { return _letzterAbrufWarExtern; }
 
+// ── shared_instructions: zaehlen, lesen, loeschen ───────────────────────────
+//
+// Diese drei Fragen standen ueber den Baum verstreut — die Zaehlung dreimal
+// (hier zweimal, jobs/bricksetRetry, jobs/instructionQueue), das Lesen zweimal
+// (routes/sets, utils/handlers/sets), das Loeschen zweimal (routes/sets,
+// routes/api_v1/admin). Ein Fehlverhalten ist NICHT gemessen worden: Die
+// Fassungen waren gleich, und die Nummern kamen ueberall normalisiert an
+// (nachgesehen an enqueue() und beiden checkRateLimit-Aufrufern). Der Grund
+// ist die naechste Aenderung — etwa „nur zaehlen, was auch eine Datei hat".
+// Die soll an einer Stelle stehen.
+//
+// mitVersion() gehoert dazu: Geschrieben wird unter der Nummer MIT Anhang.
+
+/** Wie viele Anleitungen sind fuer dieses Set hinterlegt? */
+export async function anzahlAnleitungen(setNumber: string): Promise<number> {
+  const r = await db.get('SELECT COUNT(*) as c FROM shared_instructions WHERE set_number = $1',
+    [mitVersion(setNumber)]).catch(() => null);
+  return parseInt(r?.c) || 0;
+}
+
+/** Die hinterlegten Anleitungen zu einem Set. */
+export async function anleitungenZuSet(setNumber: string) {
+  return db.all('SELECT * FROM shared_instructions WHERE set_number = $1',
+    [mitVersion(setNumber)]).catch(() => []);
+}
+
+/** Alle Anleitungen eines Sets entfernen (vor dem Neuholen). */
+export async function loescheAnleitungen(setNumber: string) {
+  return db.run('DELETE FROM shared_instructions WHERE set_number = $1', [mitVersion(setNumber)]);
+}
+
 /**
  * Wo liegt dieses Set bei brickinstructions.com, und ist dort ueberhaupt etwas?
  *
@@ -114,8 +145,8 @@ async function brickinstructionsFund(n: string) {
 
 async function scrapeInstructionsFromFallback(setNumber: string) {
   const n = mitVersion(setNumber);
-  const existing = (await db.get('SELECT COUNT(*) as c FROM shared_instructions WHERE set_number = $1', [n])).c;
-  if (parseInt(existing) > 0) return parseInt(existing);
+  const existing = await anzahlAnleitungen(n);
+  if (existing > 0) return existing;
   const biAlreadyTried = await db.get("SELECT 1 FROM shared_instructions WHERE set_number = $1 AND url LIKE '%brickinstructions%'", [n]);
   if (biAlreadyTried) return 0;
   try {
@@ -174,8 +205,8 @@ async function downloadSetInstructions(setNumber: string,
   // Minuten für nichts, hier 15 Sekunden je bereits erledigtem Set.
   _letzterAbrufWarExtern = false;
 
-  const existing = (await db.get('SELECT COUNT(*) as c FROM shared_instructions WHERE set_number = $1', [n])).c;
-  if (parseInt(existing) > 0) {  return parseInt(existing); }
+  const existing = await anzahlAnleitungen(n);
+  if (existing > 0) { return existing; }
 
   let instrList: any[] = [];
   let bricksetSucceededEmpty = false;

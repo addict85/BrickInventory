@@ -52,7 +52,7 @@ import { handleRouteError, logAndContinue, fehlertext, pfadParam, vorDem } from 
 // Der Kern liegt seit Nachtrag 131 in utils/setService.ts; hier bleiben die
 // HTTP-Routen, die ihn rufen.
 import { addSet, addSetWithDate } from '../utils/setService';
-import { downloadSetInstructions } from '../utils/instructions';
+import { downloadSetInstructions, anleitungenZuSet, loescheAnleitungen } from '../utils/instructions';
 // Der Standard-Zustand eines Benutzers. Stand hier bis Nachtrag 125 als
 // `getUserDefaultCondition` — eine wortgleiche Zweitfassung von
 // effectiveCondition() in utils/settings.ts.
@@ -716,10 +716,10 @@ router.post('/import/csv/cancel', requireLogin, async (req, res) => {
 router.post('/:setNumber/instructions', async (req, res) => {
   try {
     const sn = req.params.setNumber;
-    await db.run('DELETE FROM shared_instructions WHERE set_number = $1', [sn]);
+    await loescheAnleitungen(sn);
     // Download synchronously so we can return the actual results
     await downloadSetInstructions(sn).catch(() => {});
-    const instrs = await db.all('SELECT * FROM shared_instructions WHERE set_number = $1', [sn]);
+    const instrs = await anleitungenZuSet(sn);
     res.json({ success: true, instructions: instrs, count: instrs.length });
   } catch (e) { handleRouteError(res, e); }
 });

@@ -53,7 +53,7 @@ async function recomputeSetCondition(userId: number, setNumber: string, dbh: any
   // dauerhaft den falschen Zustand — und der Aufrufer erführe nie davon.
   // Innerhalb einer Transaktion (dbh = tx) wäre es zusätzlich fatal: Postgres
   // bricht beim ersten Fehler ab, alle folgenden Statements laufen ins Leere.
-  await dbh.run('UPDATE sets SET condition=$1 WHERE user_id=$2 AND set_number=$3', [cond, userId, setNumber]);
+  await dbh.run(SETS_ZUSTAND_SQL, [cond, userId, setNumber]);
 }
 
 // `unknown`, weil der Rumpf mit String(input) genau das abfaengt — hier
@@ -312,7 +312,7 @@ async function addSet(setNumber: string, quantity: number, userId: number,
       await recordAcquisition(userId, normalized, quantity, reAddPrice, zustand, tx);
       // sets.purchase_price = Preis der letzten Erfassung (editierbar im Detail)
       if (reAddPrice !== null && !isNaN(reAddPrice)) {
-        await tx.run('UPDATE sets SET purchase_price=$1 WHERE user_id=$2 AND set_number=$3',
+        await tx.run(SETS_PREIS_SQL,
           [reAddPrice, userId, normalized]);
       }
     });
@@ -423,6 +423,19 @@ async function addSet(setNumber: string, quantity: number, userId: number,
 // `user_id = $3` damit, und scopeIds(uid) verlangt eine Zahl. Das Blickfeld
 // wird im Rumpf daraus berechnet (_wids, leseFeld).
 /**
+ * Die beiden Anweisungen, die einen Wert in die sets-Zeile spiegeln.
+ *
+ * Als Konstanten, weil routes/api_v1/acquisitions.ts sie ebenfalls braucht:
+ * Der dortige Ablauf ist tabellengesteuert (dieselbe Mechanik fuer Sets, Teile
+ * und Figuren) und bekommt seine Anweisungen als Zeichenketten. Sie standen
+ * deshalb zweimal da — hier und dort.
+ *
+ * $1 = Wert, $2 = Besitzer, $3 = Setnummer.
+ */
+export const SETS_PREIS_SQL   = 'UPDATE sets SET purchase_price=$1 WHERE user_id=$2 AND set_number=$3';
+export const SETS_ZUSTAND_SQL = 'UPDATE sets SET condition=$1 WHERE user_id=$2 AND set_number=$3';
+
+/**
  * Einen Wert auf die sets-Zeile UND die letzte Erfassung schreiben.
  *
  * ── Warum das eine Funktion ist ─────────────────────────────────────────────
@@ -457,8 +470,7 @@ async function addSet(setNumber: string, quantity: number, userId: number,
 async function spiegleAufSetUndLetzteErfassung(
   feld: 'purchase_price' | 'condition', wert: any, ownerId: number, sn: string,
 ) {
-  await db.run(`UPDATE sets SET ${feld} = $1 WHERE user_id = $2 AND set_number = $3`,
-    [wert, ownerId, sn]);
+  await db.run(feld === 'condition' ? SETS_ZUSTAND_SQL : SETS_PREIS_SQL, [wert, ownerId, sn]);
   await db.run(`UPDATE set_acquisitions SET ${feld} = $1
                  WHERE id = (SELECT id FROM set_acquisitions
                               WHERE user_id=$2 AND set_number=$3

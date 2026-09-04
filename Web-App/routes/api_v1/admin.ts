@@ -10,18 +10,19 @@ import { handleRouteError, meldeUndWeiter } from '../../utils/httpError';
 import { requireApiAdmin } from './middleware';
 import { PDF_JOB_DIR } from './pdf';
 import { getLimitForApi, getRateLimitStatus } from '../../utils/financeCalc';
-import { scrapeInstructionsFromFallback } from '../../utils/instructions';
+import { scrapeInstructionsFromFallback, loescheAnleitungen } from '../../utils/instructions';
 import { imgProxyFailures } from '../../utils/imgProxyStats';
 import { getPoolStats } from '../../db/database';
 import { isAllowedImageHost, proxyCachePathFor } from '../imgProxy';
 import { vergissFehlend } from '../../utils/imageMisses';
 import { clearCatalogCache, clearSubsetsCache, getPriceGuide } from '../../clients/bricklink';
-import { enqueue } from '../../jobs/instructionQueue';
+import { enqueue, offeneAuftraege } from '../../jobs/instructionQueue';
 import { getJobStatus, triggerNow } from '../../jobs/priceJob';
 import { SET_IMAGES_DIR } from '../../utils/appPaths';
 import { anfragenJeMinute } from '../../jobs/imageQueue';
 import { DAILY_JOBS } from '../../jobs/dailyScheduler';
 import { getGlobalSetting, setGlobalSetting, setGlobalTrigger, deleteGlobalSetting } from '../../utils/settings';
+import { ausRetryWarteschlange } from '../../clients/brickset';
 const router = express.Router();
 
 /**
@@ -315,7 +316,7 @@ router.post('/admin/reimport-instructions', requireApiAdmin, async (_req: Authed
     // Delete existing queue entries for these sets so they get re-tried fresh
     let enqueued = 0;
     for (const { set_number } of missing) {
-      await db.run(`DELETE FROM shared_instructions WHERE set_number = $1`, [set_number]).catch(() => {});
+      await loescheAnleitungen(set_number).catch(() => {});
       await enqueue(set_number).catch(() => {});
       enqueued++;
     }
@@ -561,12 +562,12 @@ router.post('/admin/brickset-queue/:setNumber/retry', requireApiAdmin, async (re
 
 // ── DELETE /api/v1/admin/brickset-queue/:setNumber — remove + trigger fallback ─
 router.delete('/admin/brickset-queue/:setNumber', requireApiAdmin, async (req: AuthedRequest, res) => {
-  const sn = req.params.setNumber;
-  await db.run(`DELETE FROM brickset_retry_queue WHERE set_number = $1`, [sn]).catch(() => {});
+  const sn = String(req.params.setNumber ?? '');
+  await ausRetryWarteschlange(sn).catch(() => {});
   // Trigger fallback directly — skip Brickset since that's why it was in the queue
   setImmediate(async () => {
     try {
-      await scrapeInstructionsFromFallback(sn ?? '').catch(() => {});
+      await scrapeInstructionsFromFallback(sn).catch(() => {});
     } catch (e) { meldeUndWeiter('admin:anleitungen-nachschlagen', e); }
   });
   res.json({ success: true, set_number: sn });
@@ -578,7 +579,7 @@ router.get('/admin/jobs', requireApiAdmin, async (_req: AuthedRequest, res) => {
 
   // Enrich with live DB counts
   const [pending, done, failed] = await Promise.all([
-    db.get(`SELECT COUNT(*) as c FROM instruction_queue WHERE status='pending'`).catch(()=>null),
+    offeneAuftraege().catch(() => 0),
     db.get(`SELECT COUNT(*) as c FROM instruction_queue WHERE status='done'`).catch(()=>null),
     db.get(`SELECT COUNT(*) as c FROM instruction_queue WHERE status='failed'`).catch(()=>null),
   ]);
@@ -602,7 +603,7 @@ router.get('/admin/jobs', requireApiAdmin, async (_req: AuthedRequest, res) => {
   }
 
   // Enrich instrQueue job with live DB counts
-  const pendingC = parseInt(pending?.c||0);
+  const pendingC = pending ?? 0;
   const doneC    = parseInt(done?.c||0);
   const failedC  = parseInt(failed?.c||0);
   const totalC   = pendingC + doneC + failedC;

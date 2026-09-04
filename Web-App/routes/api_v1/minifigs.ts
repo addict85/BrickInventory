@@ -10,7 +10,7 @@ import { getSetting } from '../../utils/settings';
 import { ersatzteilSql } from '../../utils/validate';
 import { getMinifigPriceHistory } from '../../utils/priceHistory';
 import { einzelwert } from '../../utils/validate';
-import { verwendendeSets } from '../../utils/handlers/shared';
+import { verwendendeSets, loescheManuelleFigur } from '../../utils/handlers/shared';
 import { inventarNachKandidaten } from '../../utils/rbInventar';
 const router = express.Router();
 
@@ -50,9 +50,7 @@ router.delete('/minifigs/:figNumber', requireToken, async (req: AuthedRequest, r
     // Wie bei den Teilen: Ohne den Parameter das eigene Konto.
     const besitzer = await resolveWriteTarget(req.apiUser.user_id, req.query.owner);
     if (besitzer === null) return res.status(403).json({ success: false, error: 'Kein Zugriff auf dieses Konto' });
-    const r = await db.run(
-      "DELETE FROM minifigs WHERE user_id=$1 AND fig_number=$2 AND source='manual'",
-      [besitzer, req.params.figNumber]);
+    const r = await loescheManuelleFigur(db, besitzer, String(req.params.figNumber));
     if (r.changes === 0) return res.status(404).json({ success: false, error: 'Minifigur nicht gefunden oder nicht manuell hinzugefügt' });
     // OHNE .catch(() => {}) — siehe Session-Route: verwaiste Erfassungen
     // zählen in den Finanzsummen weiter, ohne dass eine Ansicht sie zeigt.

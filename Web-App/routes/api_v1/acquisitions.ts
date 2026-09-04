@@ -28,6 +28,8 @@ import { getCurrentMarketPrice } from '../../utils/marketPrice';
 import { deleteSetRows } from '../../utils/handlers/sets';
 import { getPartAcquisitions } from '../parts';
 import { getCurrentFigMarketPrice, getFigAcquisitions } from '../minifigs';
+import { loescheManuellesTeil, loescheManuelleFigur } from '../../utils/handlers/shared';
+import { SETS_PREIS_SQL, SETS_ZUSTAND_SQL } from '../../utils/setService';
 const router = express.Router();
 
 type AcqConfig = {
@@ -399,8 +401,8 @@ registerAcquisitionRoutes({
   // Wieder das Muster „dieselbe Regel fehlt am zweiten Weg". Die Bedingung
   // („nur wenn die geänderte Erfassung die neueste ist") steckt bereits im
   // gemeinsamen Ablauf oben und gilt damit automatisch mit.
-  parentPriceSql: 'UPDATE sets SET purchase_price=$1 WHERE user_id=$2 AND set_number=$3',
-  parentConditionSql: 'UPDATE sets SET condition=$1 WHERE user_id=$2 AND set_number=$3',
+  parentPriceSql: SETS_PREIS_SQL,
+  parentConditionSql: SETS_ZUSTAND_SQL,
   latestSql: 'SELECT id FROM set_acquisitions WHERE user_id=$1 AND set_number=$2 ORDER BY created_at DESC, id DESC LIMIT 1',
   // Dieselben Zeilen wie beim ausdrücklichen Löschen — EINE Liste, in
   // utils/handlers.ts. Ohne die Teile und Minifiguren blieben sie ohne Set
@@ -458,8 +460,7 @@ registerAcquisitionRoutes({
   // Nur die manuelle Position: Teile aus einem Set hängen am Set und werden
   // mit ihm gelöscht, nicht hier.
   cleanupWhenEmpty: async (tx, ownerId, [pn, cid]) => {
-    await tx.run(`DELETE FROM parts WHERE user_id=$1 AND part_number=$2 AND color_id=$3 AND source='manual'`,
-                 [ownerId, pn, cid]);
+    await loescheManuellesTeil(tx, ownerId, pn, cid);
   },
 });
 
@@ -501,8 +502,7 @@ registerAcquisitionRoutes({
   latestSql: 'SELECT id FROM minifig_acquisitions WHERE user_id=$1 AND fig_number=$2 ORDER BY created_at DESC, id DESC LIMIT 1',
   // Nur die manuelle Position — siehe Teile.
   cleanupWhenEmpty: async (tx, ownerId, [fn]) => {
-    await tx.run(`DELETE FROM minifigs WHERE user_id=$1 AND fig_number=$2 AND source='manual'`,
-                 [ownerId, fn]);
+    await loescheManuelleFigur(tx, ownerId, fn);
   },
 });
 
