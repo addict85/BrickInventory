@@ -23,12 +23,12 @@ import org.junit.Test
  *
  * ── Was hier geprüft wird ───────────────────────────────────────────────────
  * Die REGELN, nicht das Aussehen:
- *   • Die Leiste ruft den Sprung auf, nicht den Jahresfilter.
+ *   • Die Leiste rollt die Liste, sie filtert nicht.
  *   • Die Liste zählt über `total`, nicht über die geladene Teilmenge.
  *   • Geladen wird in BEIDE Richtungen.
  *   • Der Platzhalter hat eine feste Höhe — sonst springt die Liste, sobald
  *     die Seite eintrifft, und der Sprung landet daneben.
- *   • Wohin gesprungen wird, rechnet der SERVER.
+ *   • Welches Jahr an einer Stelle liegt, rechnet der SERVER.
  *
  * Der ausdrückliche Jahresfilter (Chip und Auswahlblatt) bleibt: Marco wollte
  * die LEISTE anders, nicht das Filtern abschaffen.
@@ -42,17 +42,25 @@ class CatalogScrubberTest {
         .joinToString("\n") { if (it.trim().startsWith("//") || it.trim().startsWith("*")) "" else it }
 
     @Test
-    fun `die Leiste springt, statt zu filtern`() {
+    fun `die Leiste rollt, statt zu filtern`() {
         val s = code(read("ui/screens/CatalogScreen.kt"))
         val i = s.indexOf("YearScrubber(")
         assert(i > 0) { "die Leiste fehlt ganz" }
-        val aufruf = s.substring(i, minOf(i + 400, s.length))
-        assert(aufruf.contains("onYearSelected = onJumpToYear")) {
-            "Die Leiste ruft weiter den Jahresfilter — dann wirft sie die anderen " +
-                "Jahre weg, statt nur hinzuspringen"
+        val aufruf = s.substring(i, minOf(i + 700, s.length))
+        // Seit Marcos Vorgabe „die gleiche Leiste wie die Webapp" rollt sie an
+        // eine STELLE, statt auf das erste Set eines Jahres zu springen. Der
+        // Unterschied zum Filter bleibt derselbe: Ein Filter wirft die anderen
+        // Jahre weg, ein Rollen laesst sie stehen.
+        assert(aufruf.contains("onScrollTo = ")) {
+            "Die Leiste rollt die Liste nicht — dann ist sie wieder ein Filter " +
+                "oder ein Sprung, aber nicht die Leiste der Webapp"
         }
-        assert(!aufruf.contains("selectedYear")) {
-            "Ein dauerhaft markiertes Jahr gibt es nicht mehr — die Leiste filtert nicht"
+        assert(!aufruf.contains("onYearSelected") && !aufruf.contains("selectedYear")) {
+            "Die Leiste haengt wieder am Jahr statt an der Stelle in der Liste"
+        }
+        // Die Zielseite muss mitgeladen werden, sonst stehen dort Platzhalter.
+        assert(aufruf.contains("onEnsurePage(")) {
+            "Beim Rollen wird die Zielseite nicht mitgeladen"
         }
         // Der ausdrückliche Filter bleibt.
         assert(s.contains("onYearChange")) {
@@ -83,27 +91,33 @@ class CatalogScrubberTest {
     }
 
     @Test
-    fun `das Sprungziel rechnet der Server`() {
+    fun `die Jahresverteilung rechnet der Server`() {
         val f = code(read("ui/viewmodel/CatalogViewModel.kt"))
-        assert(f.contains("repo.admin.getCatalogYearOffset(")) {
-            "Die App rechnet das Sprungziel selbst — sie kennt aber nur die " +
-                "geladenen Seiten und kann es gar nicht wissen"
+        // Die App kennt immer nur die geladenen Seiten. Welches Jahr an einer
+        // Stelle liegt, weiss nur die Datenbank — und beide Oberflaechen sollen
+        // dieselbe Antwort bekommen.
+        assert(f.contains("repo.admin.getCatalogYearVerteilung(")) {
+            "Die App schaetzt die Jahreslage selbst — genau daran stand in der " +
+                "Webapp „1965\", waehrend Sets von 1999 erschienen"
         }
-        // Mit denselben Filtern wie die Liste, sonst zielt der Sprung daneben.
-        val i = f.indexOf("repo.admin.getCatalogYearOffset(")
+        // Mit denselben Filtern wie die Liste, sonst zeigt das Etikett daneben.
+        val i = f.indexOf("repo.admin.getCatalogYearVerteilung(")
         val aufruf = f.substring(i, minOf(i + 300, f.length))
         for (teil in listOf("q =", "themeId =", "sort =")) {
             assert(aufruf.contains(teil)) {
-                "Der Sprung rechnet ohne $teil — mit gesetztem Filter läge er daneben"
+                "Die Verteilung wird ohne $teil geholt — mit gesetztem Filter laege sie daneben"
             }
         }
-        // Zielseite gleich mitladen, sonst stehen an der Sprungstelle Platzhalter.
-        assert(f.contains("ensureCatalogPage(r.data.page)")) {
-            "Die Zielseite wird nicht vorgeladen"
+        // Und zur richtigen Liste: Wechselt der Filter waehrend des Abrufs,
+        // gehoert die Antwort zu einer Liste, die es nicht mehr gibt.
+        val fn = Quellen.funktion(f, "fun ladeJahrVerteilung(")
+        assert(fn.isNotEmpty()) { "ladeJahrVerteilung fehlt" }
+        assert(fn.contains("gen != catalogGeneration")) {
+            "Ohne Filter-Generation landet die Verteilung des ALTEN Filters in der neuen Liste"
         }
-        // Und das Ziel muss wieder zurückgesetzt werden.
+        // Das Rollziel muss wieder zurueckgesetzt werden.
         assert(f.contains("fun catalogScrollConsumed()")) {
-            "Ohne Zurücksetzen liesse sich dasselbe Jahr kein zweites Mal anspringen"
+            "Ohne Zuruecksetzen liesse sich dieselbe Stelle kein zweites Mal anfahren"
         }
     }
 

@@ -431,6 +431,58 @@ test('beide Workflows melden, was rot war', () => {
   }
 });
 
+/**
+ * Den Rumpf eines Workflow-Schritts anhand seines Namens herausschneiden.
+ *
+ * Gefunden statt aufgezaehlt: Die Schritte kommen aus der Datei, und der
+ * Selbstnachweis unten faellt auf, wenn das Zerlegen nicht mehr greift.
+ */
+function schrittRumpf(yml, teilname) {
+  const koepfe = [...yml.matchAll(/^ {6}- name: (.+)$/gm)];
+  assert.ok(koepfe.length >= 8,
+    `Nur ${koepfe.length} Schritte erkannt — das Zerlegen greift nicht mehr`);
+  for (let i = 0; i < koepfe.length; i++) {
+    if (!koepfe[i][1].includes(teilname)) continue;
+    const ende = i + 1 < koepfe.length ? koepfe[i + 1].index : yml.length;
+    return yml.slice(koepfe[i].index, ende);
+  }
+  return null;
+}
+
+test('die Sicherheitsprüfung sagt, was sie gefunden hat', () => {
+  // ── Der Befund ─────────────────────────────────────────────────────────
+  // Hier stand `npm audit --omit=dev --audit-level=high` als eine Zeile.
+  // GEMESSEN an Lauf 33867656667: Der Schritt lief GENAU 5:00 min und fiel
+  // dann um; die einzige Annotation war „Process completed with exit code 1".
+  // Das rohe Protokoll ist von hier aus nicht zu holen (der Ablageort liegt
+  // hinter einer Weiterleitung, die der Proxy mit 403 ablehnt), also war
+  // NICHT zu unterscheiden, ob eine echte Luecke gefunden wurde oder die
+  // Registry nicht geantwortet hat. Lokal meldet derselbe Befehl in Sekunden
+  // 0 vulnerabilities.
+  //
+  // Dieselbe Ueberlegung wie beim Testschritt: Eine Diagnose, die nur den
+  // erwarteten Ausgang abdeckt, schweigt genau dann, wenn etwas Unerwartetes
+  // passiert.
+  const yml = fs.readFileSync(
+    path.join(ROOT, '..', '.github', 'workflows', 'web-ci.yml'), 'utf8');
+  const rumpf = schrittRumpf(yml, 'Sicherheitsprüfung');
+  assert.ok(rumpf, 'Der Schritt heisst anders — diese Regel prueft dann nichts mehr');
+
+  assert.match(rumpf, /--json/,
+    'Der Schritt betrachtet nur den Rueckgabewert. Der sagt nicht, WAS los war');
+  // Beide Ausgaenge: ein Befund UND keine auswertbare Antwort.
+  const fehler = [...rumpf.matchAll(/::error title=/g)].length;
+  assert.ok(fehler >= 2,
+    `nur ${fehler} Fehler-Annotation(en) — beide Ausgaenge muessen gemeldet werden`);
+  // Und der stille Ausgang: „keine Luecke" ist auch ein Ergebnis.
+  assert.match(rumpf, /::notice title=npm audit::/,
+    'Ohne Meldung im Erfolgsfall sagt nichts, ob die Pruefung ueberhaupt gelaufen ist');
+  // npms Vorgabe fuer --fetch-timeout sind 300000 ms — genau die fuenf
+  // Minuten aus Lauf 33867656667.
+  assert.match(rumpf, /--fetch-timeout=/,
+    'Ohne eigenes Zeitlimit haengt eine stumme Registry fuenf Minuten je Versuch');
+});
+
 test('der CI-Workflow prüft, was er prüfen soll', () => {
   const p = path.join(ROOT, '..', '.github', 'workflows', 'web-ci.yml');
   assert.ok(fs.existsSync(p), 'Es gibt keinen CI-Workflow mehr');
