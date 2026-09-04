@@ -559,6 +559,19 @@ async function getManualParts(userId: Blickfeld, { page = 1, page_size = null }:
   return db.all(`
     SELECT id, user_id, part_number, bl_part_number, part_name, color_id, color_name, color_hex,
            category_name, quantity, image_url, image_local, unit_price, purchase_price, note, source,
+           -- condition FEHLTE in dieser Liste. applyManualCondition() unten
+           -- faellt ohne Erfassungen auf genau diesen gespeicherten Wert
+           -- zurueck (stored || 'N') — und bekam undefined. NACHGEMESSEN:
+           -- (Keine Backticks in diesem Kommentar: Er steht INNERHALB eines
+           --  Template-Literals und wuerde es sonst beenden.)
+           -- Ein manuell als „Gebraucht" erfasstes Teil ohne Kaufpreis-Eintrag
+           -- kam als „Neu" heraus.
+           --
+           -- Die Schwesterfunktion getManualMinifigs() macht SELECT * und
+           -- hatte den Fehler deshalb nie. Zwei Fassungen derselben Abfrage,
+           -- eine davon mit Spaltenliste — und in der fehlte die eine Spalte,
+           -- auf die es ankommt.
+           condition,
            created_at
     FROM parts WHERE user_id = ANY($1) AND source = 'manual'
     ORDER BY part_name ASC, part_number ASC${limit}`, params)

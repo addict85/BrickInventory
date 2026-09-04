@@ -776,7 +776,10 @@ async function computeMinifigsValuation(viewerId: number, ids: Blickfeld) {
     getSetting(viewerId, 'currency', 'EUR'),
     getGlobalSetting('price_cache_ttl', '24'),
   ]);
-  const defaultCondition = DEFAULT_PRICE_CONDITION;
+  // Kein defaultCondition mehr: Es stand hier ausschliesslich fuer den
+  // Rueckfall, den effectiveCondition() jetzt richtig macht. Der Compiler hat
+  // das gemeldet, sobald der Rueckfall weg war — ein Wert, den niemand mehr
+  // liest, ist der beste Beleg dafuer, dass er nur den Fehler getragen hat.
   const manualFigs = await db.all(`SELECT *, COALESCE(condition,'N') AS condition FROM minifigs WHERE user_id = ANY($1) AND source='manual'`, [uids]);
   if (!manualFigs.length) return { currency, figs: [], total_value: '0.00' };
 
@@ -792,7 +795,28 @@ async function computeMinifigsValuation(viewerId: number, ids: Blickfeld) {
     // Exemplar mit dem Gebrauchtpreis bewertet.
     const key  = String(fig.fig_number);
     const acqs = acqByFig.get(key) || [];
-    const stored = (fig.condition === 'U') ? 'U' : defaultCondition;
+    // Der Zustand des STUECKS, nicht der Preisabfrage.
+    //
+    // ── Der Fehler, der hier stand ──────────────────────────────────────────
+    //     const stored = (fig.condition === 'U') ? 'U' : defaultCondition;
+    // mit defaultCondition = DEFAULT_PRICE_CONDITION, und das ist fest 'U'.
+    // BEIDE Zweige ergaben also 'U' — eine Fallunterscheidung, die keine war.
+    //
+    // NACHGEMESSEN mit drei manuell erfassten Teilen, alle als „Neu"
+    // gespeichert, eines mit einer Gebraucht-Erfassung:
+    //     /api/v1/parts/manual        3001:U  3002:N  3003:N   (richtig)
+    //     /api/v1/finance/parts-valuation  3001:U  3002:U  3003:U
+    // Die Android-App nimmt ihre Liste der manuellen Teile aus der BEWERTUNG
+    // (PartsScreen.kt: financeState.partsValuation?.parts). Sie zeigte damit
+    // „Gebraucht" an jedem Stueck ohne Kaufpreis-Erfassung — waehrend die
+    // Webapp am selben Stueck „Neu" zeigte — und holte den Marktpreis als
+    // Gebrauchtpreis.
+    //
+    // effectiveCondition() ist die Aufloesung, die der Kopf dieser Datei „DIE
+    // Zustandsaufloesung" nennt; sie stand die ganze Zeit dreissig Zeilen
+    // weiter oben. Ohne Erfassungen liefert sie den gespeicherten Wert —
+    // genau das, was hier gemeint war.
+    const stored = effectiveCondition(fig);
     const conds  = conditionsOf(acqs, stored);
 
     const priceMap = new Map<string, number>();
@@ -886,7 +910,7 @@ async function computePartsValuation(viewerId: number, ids: Blickfeld) {
     getSetting(viewerId, 'currency', 'EUR'),
     getGlobalSetting('price_cache_ttl', '24'),
   ]);
-  const defaultCondition = DEFAULT_PRICE_CONDITION;
+  // Kein defaultCondition mehr — siehe die Figuren-Bewertung darueber.
   const manualParts = await db.all(
     `SELECT *, COALESCE(condition,'N') AS condition FROM parts WHERE user_id = ANY($1) AND source = 'manual'`, [uids]);
 
@@ -904,7 +928,28 @@ async function computePartsValuation(viewerId: number, ids: Blickfeld) {
     // einzelner Zustand über den Wert ALLER Exemplare.
     const key    = `${part.part_number}|${part.color_id || 0}`;
     const acqs   = acqByPart.get(key) || [];
-    const stored = (part.condition === 'U') ? 'U' : defaultCondition;
+    // Der Zustand des STUECKS, nicht der Preisabfrage.
+    //
+    // ── Der Fehler, der hier stand ──────────────────────────────────────────
+    //     const stored = (part.condition === 'U') ? 'U' : defaultCondition;
+    // mit defaultCondition = DEFAULT_PRICE_CONDITION, und das ist fest 'U'.
+    // BEIDE Zweige ergaben also 'U' — eine Fallunterscheidung, die keine war.
+    //
+    // NACHGEMESSEN mit drei manuell erfassten Teilen, alle als „Neu"
+    // gespeichert, eines mit einer Gebraucht-Erfassung:
+    //     /api/v1/parts/manual        3001:U  3002:N  3003:N   (richtig)
+    //     /api/v1/finance/parts-valuation  3001:U  3002:U  3003:U
+    // Die Android-App nimmt ihre Liste der manuellen Teile aus der BEWERTUNG
+    // (PartsScreen.kt: financeState.partsValuation?.parts). Sie zeigte damit
+    // „Gebraucht" an jedem Stueck ohne Kaufpreis-Erfassung — waehrend die
+    // Webapp am selben Stueck „Neu" zeigte — und holte den Marktpreis als
+    // Gebrauchtpreis.
+    //
+    // effectiveCondition() ist die Aufloesung, die der Kopf dieser Datei „DIE
+    // Zustandsaufloesung" nennt; sie stand die ganze Zeit dreissig Zeilen
+    // weiter oben. Ohne Erfassungen liefert sie den gespeicherten Wert —
+    // genau das, was hier gemeint war.
+    const stored = effectiveCondition(part);
     const conds  = conditionsOf(acqs, stored);
 
     const priceMap = new Map<string, number>();
@@ -975,7 +1020,18 @@ async function computePartsValuation(viewerId: number, ids: Blickfeld) {
 
   const results = await withOwnerNames(uids, await parallelLimit(tasks, 5));
   const total = results.reduce((sum, r) => sum + parseFloat(r.total_value || 0), 0);
-  return { currency, condition: defaultCondition, parts: results, total_value: total.toFixed(2) };
+  // `condition` faellt aus der Huelle weg.
+  //
+  // Es trug die PREIS-Vorgabe ('U'), stand aber direkt neben dem `condition`
+  // JE STUECK, das den Zustand des Stuecks meint — genau die Verwechslung, aus
+  // der der Fehler oben entstanden ist. NACHGESEHEN, wer es liest: die Webapp
+  // nicht (04-finance.js und 06-minifigs.js nehmen nur `parts` und
+  // `total_value`), die App nicht (PartsValuationResponse kennt das Feld gar
+  // nicht). Die Figuren-Bewertung hat es noch nie zurueckgegeben — beide sind
+  // damit gleich geformt.
+  //
+  // Die SETS-Bewertung behaelt ihres: ValuationResponse der App deklariert es.
+  return { currency, parts: results, total_value: total.toFixed(2) };
 }
 
 // ── GET /api/finance/parts-valuation ─────────────────────────────────────────────
