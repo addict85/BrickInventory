@@ -88,11 +88,17 @@ type Stunden = string | number;
  * tatsächlichen Zustands. Diese Funktion ist jetzt die EINE Quelle; jeder neue
  * Aufrufer sollte sie benutzen statt die Abfrage zu wiederholen.
  */
-async function resolveSetCondition(uid: number | number[], setNumber: string): Promise<'N' | 'U'> {
+async function resolveSetCondition(
+  uid: number | number[], setNumber: string, dbh: { get: typeof db.get } = db,
+): Promise<'N' | 'U'> {
   // Auch hier das Blickfeld: Der Hauptaccount fragt den Zustand eines Sets ab,
   // das einem Unterkonto gehört — mit einer nackten ID fände er es nicht.
+  //
+  // `dbh`: Wer INNERHALB einer Transaktion fragt, muss auch darin lesen —
+  // sonst sieht er den Stand von vorher. utils/setService.ts →
+  // priceForNewAcquisition() tut genau das.
   const uids = asIds(uid as any);
-  const row = await db.get(
+  const row = await dbh.get(
     `SELECT s.condition,
             COUNT(a.id)                                 AS acq_count,
             COUNT(a.id) FILTER (WHERE a.condition='U')  AS used_count

@@ -89,8 +89,25 @@ function sanitizeSetNumber(input: unknown) {
  * es ist ein Marktpreis, kein Bestandswert.
  */
 async function priceForNewAcquisition(userId: number, setNumber: string, dbh: any = db) {
-  const setRow = await dbh.get('SELECT condition FROM sets WHERE user_id=$1 AND set_number=$2', [userId, setNumber]);
-  const cond = setRow?.condition || 'N';
+  // ── Welcher Zustand? DIESELBE Regel wie ueberall sonst ───────────────────
+  //
+  // Hier stand `SELECT condition FROM sets` — also nur der GESPEICHERTE Wert.
+  // Weicht er von den Erfassungen ab (genau der Fall, fuer den
+  // effectiveCondition() gebaut wurde), bekam das neue Exemplar den falschen
+  // Marktpreis. NACHGEMESSEN an einem Set mit sets.condition='N' und einer
+  // Erfassung 'U', Marktpreis U=20 / N=100:
+  //
+  //     vorhandene Erfassung        U, Kaufpreis 10
+  //     neue Erfassung durch "+1"   N, Kaufpreis 100   <- Neupreis fuer ein
+  //                                                       gebrauchtes Set
+  //
+  // jobs/priceJob.ts (conditionsNeededFor) fragte an derselben Stelle schon
+  // immer zuerst die Erfassungen. Jetzt beide ueber resolveSetCondition().
+  //
+  // Lazy require: utils/financeCalc auf Modulebene ergaebe einen Zyklus —
+  // dasselbe Muster wie in utils/rateLimiter.ts.
+  const { resolveSetCondition } = require('./financeCalc');
+  const cond = await resolveSetCondition(userId, setNumber, dbh);
   const currRow = await dbh.get("SELECT value FROM global_settings WHERE key='currency'").catch(()=>null);
   const currency = currRow?.value || 'EUR';
   const cached = await dbh.get(
