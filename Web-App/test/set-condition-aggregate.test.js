@@ -856,12 +856,29 @@ test('Registrieren und Profil bleiben beim Benutzernamen-Muster', () => {
 test('beide Login-Wege prüfen gleich', () => {
   // Webapp und Android-API müssen dieselbe Regel haben — sonst funktioniert
   // die Anmeldung per E-Mail nur auf einem der beiden Wege.
-  for (const f of ['routes/auth.ts', 'routes/api_v1/auth.ts']) {
-    const src = fs.readFileSync(path.join(ROOT, f), 'utf8');
-    assert.match(src, /if \(!isValidLoginIdentifier\(username\)\)/,
-      `${f}: Login muss den gemeinsamen Prüfer benutzen`);
-    assert.doesNotMatch(src.slice(src.indexOf("/login")),
-      /\/\^\[A-Za-z0-9_\.-\]\{3,32\}\$\/\.test\(username\)/,
-      `${f}: keine eigene Kopie des Benutzernamen-Musters im Login`);
-  }
+  //
+  // Hier standen die beiden Login-Dateien beim Namen. Inzwischen liegt die
+  // Prüfung in pruefeAnmeldedaten() (utils/auth.ts), die BEIDE aufrufen — der
+  // Test verlangte sie danach an Stellen, an denen sie zu Recht nicht mehr
+  // steht. Geprüft wird jetzt die Regel selbst: Der gemeinsame Prüfer nimmt
+  // beide Formen an, und im Baum steht keine zweite Kopie des Musters, die
+  // gegen einen Anmeldenamen läuft.
+  const zentral = fs.readFileSync(path.join(ROOT, 'utils', 'auth.ts'), 'utf8');
+  const rumpf = zentral.slice(zentral.indexOf('async function pruefeAnmeldedaten'));
+  assert.match(rumpf.slice(0, rumpf.indexOf('\n}\n')), /isValidLoginIdentifier\(username\)/,
+    'pruefeAnmeldedaten() prüft die Form des Anmeldenamens nicht');
+
+  const dateien = (dir) => fs.readdirSync(dir, { withFileTypes: true }).flatMap(e => {
+    const p = path.join(dir, e.name);
+    return e.isDirectory() ? dateien(p) : (e.name.endsWith('.ts') ? [p] : []);
+  });
+  const alle = [...dateien(path.join(ROOT, 'routes')), ...dateien(path.join(ROOT, 'utils'))];
+  assert.ok(alle.length >= 30, `nur ${alle.length} Dateien durchsucht — Pfade veraltet?`);
+
+  const kopien = alle
+    .filter(f => /\/\^\[A-Za-z0-9_\.-\]\{3,32\}\$\/\.test\(\s*username\s*\)/
+      .test(fs.readFileSync(f, 'utf8')))
+    .map(f => path.relative(ROOT, f));
+  assert.deepEqual(kopien, [],
+    `eigene Kopie des Benutzernamen-Musters statt USERNAME_RE: ${kopien.join(', ')}`);
 });

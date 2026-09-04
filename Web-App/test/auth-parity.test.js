@@ -26,6 +26,7 @@ const ROOT = path.join(__dirname, '..');
 const _req = require('./helpers/sources').buildAndRequire();
 const { assertLoginAllowed, USERNAME_RE, BCRYPT_ROUNDS, escapeLike } =
   _req('utils/auth.js');
+const { ohneKommentare } = require('./helpers/sources');
 
 test('aktives, bestätigtes Konto darf sich anmelden', () => {
   assert.equal(assertLoginAllowed({ is_active: 1, email_verified: 1, email: 'a@b.c' }), null);
@@ -48,13 +49,88 @@ test('unbestätigte E-Mail wird abgelehnt, Admins ausgenommen', () => {
   assert.equal(assertLoginAllowed({ is_active: 1, email_verified: 0, email: 'a@b.c', is_admin: 1 }), null);
 });
 
-test('beide Login-Handler nutzen dieselbe Vorbedingungsprüfung', () => {
-  const web = fs.readFileSync(path.join(ROOT, 'routes', 'auth.ts'), 'utf8');
-  const api = fs.readFileSync(path.join(ROOT, 'routes', 'api_v1', 'auth.ts'), 'utf8');
-  assert.match(web, /assertLoginAllowed\(user\)/, 'routes/auth.ts prüft die Vorbedingungen nicht mehr');
-  assert.match(api, /assertLoginAllowed\(user\)/, 'routes/api_v1/auth.ts prüft die Vorbedingungen nicht');
-  // Die alte, doppelt gepflegte Inline-Variante darf nicht zurückkommen
-  assert.doesNotMatch(web, /if \(user\.is_active === 0\)/);
+/**
+ * Jeden Anmelde-Handler SUCHEN statt zwei aufzuzählen.
+ *
+ * Die vorige Fassung dieses Tests nannte die beiden Dateien beim Namen und
+ * prüfte, ob dort `assertLoginAllowed(user)` steht. Das hat genau das
+ * abgesichert, was schon dastand — und nichts über den Rest gesagt. Genau in
+ * dieser Lücke lag der zweite Unterschied zwischen den beiden Logins: der
+ * fehlende Vergleich gegen den Dummy-Hash. Eine dritte Anmeldung wäre
+ * ebenfalls unbemerkt geblieben.
+ *
+ * Gefunden wird über den Pfad (`…login…`); geprüft wird nur, was ein PASSWORT
+ * entgegennimmt. `/qr-login` löst eine Nonce ein und hat keins — es fällt
+ * dadurch von selbst heraus, ohne Ausnahmeliste.
+ */
+function anmeldeHandler() {
+  const dateien = (dir) => fs.readdirSync(dir, { withFileTypes: true }).flatMap(e => {
+    const p = path.join(dir, e.name);
+    return e.isDirectory() ? dateien(p) : (e.name.endsWith('.ts') ? [p] : []);
+  });
+  const alle = [...dateien(path.join(ROOT, 'routes')), path.join(ROOT, 'server.ts')];
+  const treffer = [];
+  for (const datei of alle) {
+    const src = ohneKommentare(fs.readFileSync(datei, 'utf8'));
+    for (const m of src.matchAll(/(?:router|app)\.(post|put)\(\s*'([^']*login[^']*)'/g)) {
+      // Der Rumpf reicht bis zur nächsten Routendefinition. Kommentare sind
+      // schon weg — sonst zählte ein Erklärtext, der „password" erwähnt, mit.
+      const rel = src.slice(m.index + 1).search(/\n(?:router|app)\.[a-z]+\(/);
+      const koerper = rel < 0 ? src.slice(m.index) : src.slice(m.index, m.index + 1 + rel);
+      treffer.push({ datei: path.relative(ROOT, datei), pfad: m[2], koerper });
+    }
+  }
+  return treffer;
+}
+
+test('jede Anmeldung mit Passwort läuft über dieselbe Prüfung', () => {
+  const gefunden = anmeldeHandler();
+  // Selbstbeweis: Findet das Muster nichts, wäre die Fehlerliste leer und der
+  // Test grün, ohne etwas geprüft zu haben.
+  assert.ok(gefunden.length >= 3,
+    `Nur ${gefunden.length} Anmelde-Routen gefunden — Muster veraltet?`);
+  const mitPasswort = gefunden.filter(h => /password/.test(h.koerper));
+  assert.ok(mitPasswort.length >= 2,
+    `Nur ${mitPasswort.length} passwortbasierte Anmeldungen gefunden — Muster veraltet?`);
+
+  const abweichler = mitPasswort
+    .filter(h => !/pruefeAnmeldedaten/.test(h.koerper))
+    .map(h => `${h.datei}  ${h.pfad}`);
+  assert.deepEqual(abweichler, [],
+    'Diese Anmeldungen prüfen die Zugangsdaten selbst statt über ' +
+    'pruefeAnmeldedaten() aus utils/auth.ts:\n  ' + abweichler.join('\n  ') +
+    '\nEine zweite Fassung ist schon zweimal auseinandergelaufen: erst fehlten ' +
+    'die Konto-Vorbedingungen, dann der Vergleich gegen den Dummy-Hash ' +
+    '(415 ms Unterschied, siehe test/login-zeitgleich-db.test.js).');
+});
+
+test('der Brute-Force-Zähler wird nur an einer Stelle bedient', () => {
+  // Wer den Zähler selbst hochzählt, hat auch die Passwortprüfung selbst
+  // gebaut — der Aufruf ist damit der zuverlässigste Fingerabdruck einer
+  // zweiten Anmeldefassung, unabhängig davon, wie ihre Route heisst.
+  const zaehler = /\b(checkLoginAllowed|recordLoginFailure|recordLoginSuccess)\s*\(/;
+  const erlaubt = new Set(['utils/auth.ts', 'utils/loginLimiter.ts']);
+
+  const sammle = (dir) => fs.readdirSync(dir, { withFileTypes: true }).flatMap(e => {
+    const p = path.join(dir, e.name);
+    return e.isDirectory() ? sammle(p) : (e.name.endsWith('.ts') ? [p] : []);
+  });
+  const alle = [...sammle(path.join(ROOT, 'routes')), ...sammle(path.join(ROOT, 'utils')),
+                path.join(ROOT, 'server.ts')];
+  assert.ok(alle.length >= 30, `Nur ${alle.length} Dateien durchsucht — Pfade veraltet?`);
+
+  const fremd = alle
+    .map(d => path.relative(ROOT, d))
+    .filter(rel => !erlaubt.has(rel))
+    .filter(rel => zaehler.test(ohneKommentare(fs.readFileSync(path.join(ROOT, rel), 'utf8'))));
+  assert.deepEqual(fremd, [],
+    'Diese Dateien bedienen den Anmelde-Zähler selbst: ' + fremd.join(', ') +
+    ' — die Anmeldung gehört ganz in pruefeAnmeldedaten() (utils/auth.ts).');
+
+  // Gegenprobe zur Regel: Die erlaubte Stelle muss ihn auch wirklich bedienen.
+  const zentral = fs.readFileSync(path.join(ROOT, 'utils', 'auth.ts'), 'utf8');
+  for (const name of ['checkLoginAllowed', 'recordLoginFailure', 'recordLoginSuccess'])
+    assert.match(zentral, new RegExp(`\\b${name}\\(req`), `utils/auth.ts ruft ${name} nicht auf`);
 });
 
 test('Benutzernamen-Regel gilt für Login, Register UND Profil-Update', () => {

@@ -4,23 +4,13 @@ const router  = express.Router();
 import bcrypt from 'bcryptjs';
 import * as db from '../db/database';
 import { handleRouteError, logAndContinue, meldeUndWeiter, fehlerCode, fehlertext, pfadParam } from '../utils/httpError';
-import { hashToken, assertLoginAllowed, establishSession, revokeAllTokens, revokeAllSessions, deleteToken, BCRYPT_ROUNDS, USERNAME_RE, EMAIL_RE, isValidLoginIdentifier } from '../utils/auth';
-import { checkLoginAllowed, recordLoginFailure, recordLoginSuccess, ipThrottle } from '../utils/loginLimiter';
+import { hashToken, pruefeAnmeldedaten, assertLoginAllowed, establishSession, revokeAllTokens, revokeAllSessions, deleteToken, BCRYPT_ROUNDS, USERNAME_RE, EMAIL_RE } from '../utils/auth';
+import { ipThrottle } from '../utils/loginLimiter';
 import crypto from 'crypto';
 import { strictBool } from '../utils/validate';
 import { sendPasswordResetMail, sendVerificationMail } from './mailer';
 import type { Request, Response, NextFunction } from 'express';
 import { getGlobalSetting } from '../utils/settings';
-
-/**
- * Fester bcrypt-Hash für Logins mit unbekanntem Benutzernamen.
- *
- * Der Klartext dazu ist bedeutungslos — der Hash wird nur benutzt, damit
- * bcrypt.compare() im Fehlerfall dieselbe Zeit verbraucht wie bei einem
- * existierenden Konto (siehe POST /login). Einmal beim Start erzeugt, mit
- * denselben Runden wie echte Passwörter.
- */
-const DUMMY_HASH = bcrypt.hashSync('nonexistent-account-placeholder', BCRYPT_ROUNDS);
 
 function requireLogin(req: Request, res: Response, next: NextFunction) {
   if (!req.session?.userId) return res.status(401).json({ success: false, error: 'Nicht angemeldet' });
@@ -34,34 +24,17 @@ function requireAdmin(req: Request, res: Response, next: NextFunction) {
 
 router.post('/login', async (req, res) => {
   const { username, password } = req.body;
-  if (!username || !password) return res.status(400).json({ success: false, error: 'Benutzername und Passwort erforderlich' });
-  // Benutzername ODER E-Mail — so steht es über dem Feld, und so sucht die
-  // Abfrage unten. Der Wächter liess vorher nur das Benutzernamen-Muster zu.
-  if (!isValidLoginIdentifier(username))
-    return res.status(400).json({ success: false, error: 'Bitte Benutzername oder E-Mail-Adresse eingeben.' });
-  // Brute-Force-Schutz: max. 5 Fehlversuche pro IP+Username, dann 15 Min Sperre
-  const locked = await checkLoginAllowed(req, username);
-  if (locked) return res.status(429).json({ success: false, error: locked });
   try {
-    const user = await db.get('SELECT * FROM users WHERE LOWER(username) = LOWER($1) OR LOWER(email) = LOWER($1)', [username]);
-    // bcrypt.compare (async) statt compareSync — blockiert den Event-Loop nicht (~100ms/Login)
-    //
-    // Auch bei UNBEKANNTEM Benutzernamen wird gehasht. Vorher sprang der Code
-    // bei `!user` sofort zur Fehlerantwort — ohne die ~100 ms bcrypt. Der
-    // Laufzeitunterschied zwischen "Benutzer existiert nicht" (schnell) und
-    // "Passwort falsch" (langsam) ist von aussen sauber messbar und verrät,
-    // welche Konten es gibt. Der Vergleich gegen einen festen Dummy-Hash
-    // kostet dieselbe Zeit und macht beide Fälle ununterscheidbar.
-    const compareTarget = user?.password_hash || DUMMY_HASH;
-    const passwordOk = await bcrypt.compare(password, compareTarget);
-    if (!user || !passwordOk) {
-      await recordLoginFailure(req, username);
-      return res.status(401).json({ success: false, error: 'Ungültige Anmeldedaten' });
+    // Form des Namens, Brute-Force-Sperre, Passwortvergleich und die
+    // Konto-Vorbedingungen stehen in utils/auth.ts — dieselbe Funktion nutzt
+    // der Token-Login der App. Hier bleibt nur, was die beiden unterscheidet:
+    // eine Sitzung anlegen statt einen Token ausstellen.
+    const pruefung = await pruefeAnmeldedaten(req, username, password);
+    if (!pruefung.ok) {
+      const { status, error, unverified } = pruefung.absage;
+      return res.status(status).json({ success: false, error, ...(unverified ? { unverified: true } : {}) });
     }
-    await recordLoginSuccess(req, username);
-    // Vorbedingungen zentral (utils/auth.ts) — identisch im v1-Login
-    const blocked = assertLoginAllowed(user);
-    if (blocked) return res.status(blocked.status).json({ success: false, error: blocked.error, ...(blocked.unverified ? { unverified: true } : {}) });
+    const user = pruefung.user;
     // Session-ID erneuern (gegen Session Fixation) und erst dann füllen.
     await establishSession(req, {
       userId:   parseInt(user.id),   // always int

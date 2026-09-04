@@ -24,6 +24,7 @@ const { execFileSync } = require('node:child_process');
 const ROOT = path.join(__dirname, '..');
 // Nach dist/ bauen statt in-place — siehe helpers/sources.js.
 const _req = require('./helpers/sources').buildAndRequire();
+const { ohneKommentare } = require('./helpers/sources');
 const { REBRICKABLE_DEFAULT_DAILY, DailyLimiter } = _req('utils/rateLimiter.js');
 
 const EXPECTED = 25000;
@@ -205,11 +206,39 @@ test('die Tabelle wird beim Schema-Aufbau angelegt', () => {
 test('die Aufrufstellen warten auf das Ergebnis', () => {
   // checkLoginAllowed ist seit der Umstellung asynchron — ein vergessenes
   // await liefert ein Promise, das immer truthy ist und JEDEN Login sperrt.
-  for (const f of ['routes/auth.ts', 'routes/api_v1/auth.ts']) {
-    const src = fs.readFileSync(path.join(ROOT, f), 'utf8');
-    assert.match(src, /await checkLoginAllowed\(/, `${f}: checkLoginAllowed ohne await`);
-    assert.match(src, /await recordLoginFailure\(/, `${f}: recordLoginFailure ohne await`);
+  //
+  // Hier standen zwei Dateinamen. Das ging gut, solange die Anmeldung an genau
+  // diesen zwei Stellen stand; als sie in utils/auth.ts zusammengezogen wurde,
+  // prüfte der Test Dateien, in denen es nichts mehr zu prüfen gab, und
+  // meldete das Zusammenlegen als Fehler. Gesucht wird deshalb im Baum.
+  const dateien = (dir) => fs.readdirSync(dir, { withFileTypes: true }).flatMap(e => {
+    const p = path.join(dir, e.name);
+    return e.isDirectory() ? dateien(p) : (e.name.endsWith('.ts') ? [p] : []);
+  });
+  const alle = [...dateien(path.join(ROOT, 'routes')), ...dateien(path.join(ROOT, 'utils')),
+                path.join(ROOT, 'server.ts')];
+
+  const ohneAwait = [];
+  let gefunden = 0;
+  for (const datei of alle) {
+    const src = ohneKommentare(fs.readFileSync(datei, 'utf8'));
+    for (const m of src.matchAll(/\b(checkLoginAllowed|recordLoginFailure|recordLoginSuccess)\s*\(/g)) {
+      // Die Zeile selbst ansehen — ein `await` davor genügt. Import und
+      // Definition sind keine Aufrufe und zählen nicht mit.
+      const zeilenAnfang = src.lastIndexOf('\n', m.index) + 1;
+      const zeile = src.slice(zeilenAnfang, src.indexOf('\n', m.index));
+      if (/^\s*(import|export)\b/.test(zeile) || /\bfunction\s+\w+\s*\(/.test(zeile)) continue;
+      gefunden++;
+      if (!new RegExp(`await\\s+${m[1]}\\s*\\(`).test(zeile))
+        ohneAwait.push(`${path.relative(ROOT, datei)}: ${zeile.trim()}`);
+    }
   }
+  // Selbstbeweis: Findet das Muster nichts, wäre die Liste leer und der Test
+  // grün, ohne etwas geprüft zu haben.
+  assert.ok(gefunden >= 3, `nur ${gefunden} Aufrufe des Anmelde-Zählers gefunden — Muster veraltet?`);
+  assert.deepEqual(ohneAwait, [],
+    'Diese Aufrufe warten nicht auf den Anmelde-Zähler:\n  ' + ohneAwait.join('\n  ') +
+    '\nEin Promise ist immer truthy — ohne await sperrt checkLoginAllowed JEDEN Login.');
 });
 
 test('Jobs mit externem Kontingent haben eine prozessübergreifende Sperre', () => {
