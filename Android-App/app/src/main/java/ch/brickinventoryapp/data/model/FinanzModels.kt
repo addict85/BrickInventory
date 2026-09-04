@@ -177,7 +177,6 @@ data class PartValuationItem(
     val acquisitions: List<ValuationAcquisition> = emptyList()
 )
 
-@Serializable
 /**
  * Die manuell erfassten Teile — GET /api/v1/parts/manual.
  *
@@ -213,6 +212,7 @@ data class ManualFigsResponse(
     val error: String? = null
 )
 
+@Serializable
 data class PartsValuationResponse(
     val success: Boolean,
     val currency: String = "EUR",
