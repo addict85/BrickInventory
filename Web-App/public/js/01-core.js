@@ -560,7 +560,7 @@ async function waitForStartup() {
   let lastSig = '';
   while (true) {
     try {
-      const r = await fetch('/api/startup-status?_=' + Date.now(), {
+      const r = await fetch('/api/v1/startup-status?_=' + Date.now(), {
         cache: 'no-store', headers: { 'Cache-Control': 'no-cache' }
       });
       const s = await r.json();

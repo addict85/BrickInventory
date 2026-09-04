@@ -107,9 +107,7 @@ import { fehlertext, logAndContinue, meldeUndWeiter } from './utils/httpError';
 import cluster from 'cluster';
 import os from 'os';
 import { starteHintergrundlaeufe } from './startup/backgroundJobs';
-import { bricklinkRequest } from './clients/bricklink';
 import { generateThumb } from './routes/thumbs';
-import { alsAbrufFehler } from './clients/abrufFehler';
 import { getGlobalSetting, deleteGlobalSetting } from './utils/settings';
 
 const WORKERS = parseInt(process.env.WEB_WORKERS || '0') || Math.max(2, os.cpus().length);
@@ -656,8 +654,20 @@ app.use(express.static(PUBLIC_DIR, {
   },
 }));
 
-// Public: startup status (no auth — needed before login)
-app.get('/api/startup-status', async (_req, res) => {
+// ── Die zwei Adressen, die VOR allem anderen antworten muessen ──────────────
+//
+// Sie stehen hier direkt und nicht in einem Router, und das bleibt so: Beide
+// werden gefragt, waehrend Schema und Migrationen noch laufen — zu dem
+// Zeitpunkt ist der /api/v1-Router noch gar nicht eingehaengt. Express nimmt
+// die erste passende Zuordnung, und diese beiden stehen davor.
+//
+// Unter /api/v1 stehen sie trotzdem: Sie sind Teil derselben Oberflaeche wie
+// alles andere, und eine zweite Adressform „nur fuer diese zwei" waere genau
+// die Ausnahme, die die Zusammenfuehrung aufgeraeumt hat. Die frueheren
+// Adressen /api/startup-status und /api/health gibt es nicht mehr.
+
+// Startzustand — ohne Anmeldung, wird VOR dem Login gebraucht.
+app.get('/api/v1/startup-status', async (_req, res) => {
   res.set('Cache-Control', 'no-store, no-cache, must-revalidate');
   res.set('Pragma', 'no-cache');
   res.set('Expires', '0');
@@ -679,8 +689,8 @@ app.get('/api/startup-status', async (_req, res) => {
   res.json(mem || { ready: false, step: 'Starte…', progress: 0, total: 6 });
 });
 
-// Public: health check with DB pool stats
-app.get('/api/health', (_req, res) => {
+// Gesundheitscheck samt Verbindungspool — ohne Anmeldung (compose.yaml).
+app.get('/api/v1/health', (_req, res) => {
   const db = require('./db/database') as typeof import('./db/database');
   const { getPoolStats } = db;
   const pool = getPoolStats ? getPoolStats() : {};
@@ -735,23 +745,6 @@ app.use('/api/v1/parts',    require('./routes/parts') as typeof import('./routes
 app.use('/api/v1/settings', require('./routes/settings') as typeof import('./routes/settings'));
 app.use('/api/v1/minifigs', require('./routes/minifigs') as typeof import('./routes/minifigs'));
 app.use('/api/v1/auth',     require('./routes/auth') as typeof import('./routes/auth'));
-
-// Nur ausserhalb von production erreichbar — der Endpoint feuert echte
-// BrickLink-Calls und gehört nicht in eine laufende Installation.
-app.get('/api/debug/test', async (req, res) => {
-  if (process.env.NODE_ENV === 'production') return res.status(404).json({ success: false, error: 'Endpoint nicht gefunden' });
-  if (!req.session?.userId) return res.json({ error: 'Nicht angemeldet' });
-  try {
-    const data = await bricklinkRequest('GET', '/items/set/75192-1');
-    res.json({ success: true, data });
-  // Diese Diagnoseroute ist ohnehin nur ausserhalb von Produktion erreichbar
-  // (siehe 404 oben), die Detailausgabe ist hier also gewollt und harmlos.
-  } catch (e) {
-    // `detail` traegt die Antwort der Gegenstelle, wenn ein Abruf-Klient sie
-    // angehaengt hat — siehe clients/abrufFehler.ts.
-    res.json({ success: false, error: fehlertext(e), detail: alsAbrufFehler(e).detail || null });
-  }
-});
 
 // ── E-Mail Bestätigung: /verify?token=... ─────────────────────────────────────
 // Der Link in der Bestätigungs-Mail zeigt hierher.

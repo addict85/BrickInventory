@@ -147,7 +147,7 @@ test('keine unbegruendete Route auf beiden API-Oberflaechen', () => {
     'streichen:\n  ' + veraltet.join('\n  '));
 });
 
-test('jeder Router haengt unter /api/v1 — mit genau einer eingetragenen Ausnahme', () => {
+test('jeder Router haengt unter /api/v1', () => {
   // ── Marcos Frage ──────────────────────────────────────────────────────────
   // „Wurde die api zusammengefuehrt, so dass nur noch ein Endpunkt besteht?"
   //
@@ -189,38 +189,37 @@ test('jeder Router haengt unter /api/v1 — mit genau einer eingetragenen Ausnah
  * Auch die Routen, die DIREKT in server.ts stehen.
  *
  * ── Warum das eine eigene Pruefung ist ──────────────────────────────────────
- * Die Regel darueber liest `app.use(...)` — also Router. Drei Adressen stehen
+ * Die Regel darueber liest `app.use(...)` — also Router. Drei Adressen standen
  * aber als `app.get(...)` direkt in server.ts und wurden von ihr nie
  * angesehen. Auf die Frage „ist jetzt alles unter /api/v1?" haette sie
- * deshalb „ja" geantwortet, obwohl es drei Ausnahmen gibt. Eine Regel, die
+ * deshalb „ja" geantwortet, obwohl es drei Ausnahmen gab. Eine Regel, die
  * einen ganzen Bauplatz auslaesst, beantwortet die Frage nicht, die sie
  * beantworten soll.
  *
- * Die drei sind BEGRUENDET ausgenommen, nicht vergessen: Alle drei werden
- * gefragt, BEVOR es eine API-Version geben kann oder ohne sie zu kennen.
+ * ── Die Ausnahmeliste ist LEER, und das ist das Ergebnis ────────────────────
+ * Hier standen kurzzeitig drei begruendete Ausnahmen. Sie sind alle drei
+ * erledigt:
+ *   • GET /api/debug/test ist ERSATZLOS WEG. Ein Diagnosegriff, der echte
+ *     BrickLink-Aufrufe feuert, in der Produktion mit 404 antwortet und den
+ *     niemand ruft, ist kein Endpunkt, sondern eine Altlast.
+ *   • GET /api/health und GET /api/startup-status heissen jetzt
+ *     /api/v1/health und /api/v1/startup-status. Sie stehen weiterhin DIREKT
+ *     in server.ts — sie muessen antworten, waehrend Schema und Migrationen
+ *     laufen und der /api/v1-Router noch nicht eingehaengt ist. Das ist ein
+ *     Grund fuer den ORT, nicht fuer eine zweite Adressform.
+ *
+ * Eine leere Liste heisst: JEDE Adresse gehoert unter /api/v1, ohne Ausnahme.
  */
-test('auch die Routen direkt in server.ts stehen unter /api/v1 — oder begruendet daneben', () => {
-  const OHNE_VERSION = new Map([
-    ['GET /api/health',
-     'Der Gesundheitscheck des Containers (compose.yaml, healthcheck). Wer ' +
-     'ihn abfragt, ist ein Ueberwachungswerkzeug und soll nicht der ' +
-     'API-Version hinterherziehen muessen — eine Adresse, die sich nie ' +
-     'aendert, ist hier der Zweck.'],
-    ['GET /api/startup-status',
-     'Der Startbildschirm fragt das, WAEHREND der Server noch hochfaehrt ' +
-     '(Schema, Migrationen). Zu diesem Zeitpunkt sind die /api/v1-Router ' +
-     'teilweise noch gar nicht eingehaengt.'],
-    ['GET /api/debug/test',
-     'Nur ausserhalb der Produktion erreichbar (NODE_ENV-Wache in der Route ' +
-     'selbst) und feuert echte BrickLink-Aufrufe. Gehoert nicht in die ' +
-     'Oberflaeche, die Clients benutzen.'],
-  ]);
+test('auch die Routen direkt in server.ts stehen unter /api/v1', () => {
+  const OHNE_VERSION = new Map([]);
 
   const src = ohneKommentare(fs.readFileSync(path.join(ROOT, 'server.ts'), 'utf8'));
   const gefunden = [...src.matchAll(/app\.(get|post|put|patch|delete)\(\s*'(\/api\/[^']*)'/g)]
     .map(m => `${m[1].toUpperCase()} ${m[2]}`);
   // Selbstbeweis: Findet das Muster nichts, prueft alles darunter nichts.
-  assert.ok(gefunden.length >= 3,
+  // Zwei ist der Stand nach dem Aufraeumen, keine Wunschzahl — wer eine
+  // dritte direkte Route braucht, hebt die Zahl mit ihr an.
+  assert.ok(gefunden.length >= 2,
     `Nur ${gefunden.length} API-Routen direkt in server.ts gefunden — Muster veraltet?`);
 
   const daneben = gefunden
@@ -238,4 +237,29 @@ test('auch die Routen direkt in server.ts stehen unter /api/v1 — oder begruend
   assert.deepEqual(veraltet, [],
     'Diese Ausnahmen beschreiben keine Route mehr — streichen:\n  ' +
     veraltet.join('\n  '));
+});
+
+/**
+ * Der Gesundheitscheck aus compose.yaml zeigt auf eine Adresse, die es gibt.
+ *
+ * ── Warum das nachgemessen wird ─────────────────────────────────────────────
+ * Der healthcheck steht in compose.yaml als Zeichenkette in einem
+ * node -e-Aufruf. Beim Umzug nach /api/v1 haette man ihn uebersehen koennen,
+ * und das faellt nicht auf: Docker meldet den Container dann als „unhealthy",
+ * die Anwendung selbst laeuft weiter. Ein Neustart-Kreislauf oder ein
+ * Rollout, der nie „bereit" meldet, ist der Preis.
+ */
+test('der Gesundheitscheck aus compose.yaml zeigt auf eine echte Adresse', () => {
+  const compose = fs.readFileSync(path.join(ROOT, 'compose.yaml'), 'utf8');
+  const treffer = compose.match(/http:\/\/localhost:\d+(\/api\/[^'"\s)]*)/);
+  assert.ok(treffer, 'compose.yaml enthaelt keinen Gesundheitscheck auf eine /api-Adresse');
+  const adresse = treffer[1];
+
+  const src = ohneKommentare(fs.readFileSync(path.join(ROOT, 'server.ts'), 'utf8'));
+  const direkt = [...src.matchAll(/app\.get\(\s*'(\/api\/[^']*)'/g)].map(m => m[1]);
+  assert.ok(direkt.length >= 2, `Nur ${direkt.length} direkte GET-Routen gefunden — Muster veraltet?`);
+  assert.ok(direkt.includes(adresse),
+    `compose.yaml prueft ${adresse}; server.ts kennt nur ${direkt.join(', ')}. ` +
+    'Der Container gaelte damit dauerhaft als „unhealthy", ohne dass die ' +
+    'Anwendung selbst etwas davon merkt.');
 });
