@@ -54,21 +54,29 @@ interface BrickApiService {
 
     // ── CSV-Import: dieselben drei Adressen wie in der Webapp ───────────────
     //
+    // `@retrofit2.http.Part` ausgeschrieben, nicht `@Part`: Diese Datei oeffnet
+    // ZWEI Sternpakete, die beide ein `Part` enthalten —
+    // `ch.brickinventoryapp.data.model.Part` (die Datenklasse eines Teils) und
+    // `retrofit2.http.Part` (die Annotation). Kotlin meldet dafuer
+    // „Overload resolution ambiguity" und uebersetzt nicht. Den Sternimport der
+    // Modelle einzuengen waere die andere Loesung — sie kostete hier
+    // vierzig Einzelimporte fuer einen Namen.
+    //
     // Das Feld heisst ueberall `file` und die Grenze liegt ueberall bei 15 MB
     // (utils/dateiEmpfang.ts). Drei Aufrufe statt eines mit Pfadparameter, weil
     // es drei verschiedene Router sind — ein `@Url` waere hier nur eine
     // Verschleierung dessen, was ohnehin dasteht.
     @Multipart
     @POST("api/v1/sets/import/csv")
-    suspend fun importSetsCsv(@Part datei: okhttp3.MultipartBody.Part): Response<CsvImportErgebnis>
+    suspend fun importSetsCsv(@retrofit2.http.Part datei: okhttp3.MultipartBody.Part): Response<CsvImportErgebnis>
 
     @Multipart
     @POST("api/v1/parts/import/csv")
-    suspend fun importPartsCsv(@Part datei: okhttp3.MultipartBody.Part): Response<CsvImportErgebnis>
+    suspend fun importPartsCsv(@retrofit2.http.Part datei: okhttp3.MultipartBody.Part): Response<CsvImportErgebnis>
 
     @Multipart
     @POST("api/v1/minifigs/import/csv")
-    suspend fun importMinifigsCsv(@Part datei: okhttp3.MultipartBody.Part): Response<CsvImportErgebnis>
+    suspend fun importMinifigsCsv(@retrofit2.http.Part datei: okhttp3.MultipartBody.Part): Response<CsvImportErgebnis>
 
     // ── Anleitungen: hinzufuegen und entfernen ──────────────────────────────
     //
@@ -83,8 +91,8 @@ interface BrickApiService {
     @POST("api/v1/sets/{setNumber}/instructions/upload")
     suspend fun uploadAnleitung(
         @Path("setNumber") setNumber: String,
-        @Part datei: okhttp3.MultipartBody.Part,
-        @Part("description") beschreibung: okhttp3.RequestBody,
+        @retrofit2.http.Part datei: okhttp3.MultipartBody.Part,
+        @retrofit2.http.Part("description") beschreibung: okhttp3.RequestBody,
     ): Response<GenericResponse>
 
     @DELETE("api/v1/sets/{setNumber}/instructions/{instrId}")
@@ -109,7 +117,7 @@ interface BrickApiService {
 
     @Multipart
     @POST("api/v1/settings/import")
-    suspend fun importEinstellungen(@Part datei: okhttp3.MultipartBody.Part): Response<GenericResponse>
+    suspend fun importEinstellungen(@retrofit2.http.Part datei: okhttp3.MultipartBody.Part): Response<GenericResponse>
 
     // ── Nutzerverwaltung und Protokoll (nur fuer Verwalter) ─────────────────
     @GET("api/v1/auth/users")

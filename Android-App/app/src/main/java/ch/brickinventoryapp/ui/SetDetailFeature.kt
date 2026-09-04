@@ -7,6 +7,7 @@ import ch.brickinventoryapp.data.repository.Result
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import androidx.core.database.getStringOrNull
 
 
 /**
@@ -236,6 +237,6 @@ private fun MainViewModel.anleitungName(uri: android.net.Uri): String =
     runCatching {
         ctx.contentResolver.query(uri, null, null, null, null)?.use { c ->
             val i = c.getColumnIndex(android.provider.OpenableColumns.DISPLAY_NAME)
-            if (i >= 0 && c.moveToFirst()) androidx.core.database.getStringOrNull(c, i) else null
+            if (i >= 0 && c.moveToFirst()) c.getStringOrNull(i) else null
         }
     }.getOrNull() ?: "anleitung"

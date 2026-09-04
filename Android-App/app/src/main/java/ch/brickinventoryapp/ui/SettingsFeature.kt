@@ -7,6 +7,7 @@ import ch.brickinventoryapp.data.repository.Result
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import androidx.core.database.getStringOrNull
 
 
 /**
@@ -152,7 +153,7 @@ private fun MainViewModel.dateiname(uri: android.net.Uri): String =
             // richtiger, als sie fuer diesen einen Fall aufzuweichen. Der
             // Ausweichweg ist ohnehin der bessere: Er behandelt die leere
             // Spalte, statt sie zu unterstellen.
-            if (i >= 0 && c.moveToFirst()) androidx.core.database.getStringOrNull(c, i) else null
+            if (i >= 0 && c.moveToFirst()) c.getStringOrNull(i) else null
         }
     }.getOrNull() ?: "import.csv"
 
