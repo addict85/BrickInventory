@@ -6,8 +6,7 @@ import * as db from '../db/database';
 import { handleRouteError, logAndContinue, meldeUndWeiter } from '../utils/httpError';
 import { requireLogin, requireAdmin } from './auth';
 
-import { setUserSetting, setGlobalSetting, setGlobalTrigger, getGlobalSetting,
-         SECRET_KEYS, isMaskedValue, readSettings } from '../utils/settings';
+import { setUserSetting, setGlobalSetting, setGlobalTrigger, getGlobalSetting, SECRET_KEYS, isMaskedValue, readSettings, nutzerEinstellungen } from '../utils/settings';
 import { getRateLimitStatus } from '../utils/financeCalc';
 import { buildSetsCsv } from '../utils/setService';
 import { buildPartsCsv } from './parts';
@@ -211,9 +210,7 @@ router.get('/export', async (req, res) => {
       // API-Zugangsdaten trägt man beim Wiederherstellen einmalig neu ein.
       .filter(r => !EXPORT_EXCLUDE_KEYS.has(r.key) && !r.key.startsWith('job_monitor_') && !SECRET_KEYS.has(r.key))
       .forEach(r => { global[r.key] = r.value; });
-    const userSettings: any = {};
-    (await db.all('SELECT key, value FROM user_settings WHERE user_id = $1', [req.session.userId]))
-      .forEach(r => { userSettings[r.key] = r.value; });
+    const userSettings: any = await nutzerEinstellungen(req.session.userId!);
     res.setHeader('Content-Type', 'application/json');
     res.setHeader('Content-Disposition', `attachment; filename="brickinventory-config-${new Date().toISOString().substring(0,10)}.json"`);
     res.json({ exported_at: new Date().toISOString(), exported_by: req.session.username, version: '3.0', global, user_settings: userSettings });

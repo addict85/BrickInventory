@@ -18,6 +18,7 @@ import { valueSet, valueAcquisitionRows, weightedPurchase, pnlPct as calcPnlPct,
 import { REBRICKABLE_DEFAULT_DAILY } from './rateLimiter';
 import { bricklinkRequest, getPriceGuide } from '../clients/bricklink';
 import { fehlertext } from '../utils/httpError';
+import { mitVersion, katalogEintrag, ohneBricklinkPreis } from './setNummer';
 
 /**
  * Zustand eines Sets nach derselben Regel wie die Anzeige
@@ -87,11 +88,17 @@ type Stunden = string | number;
  * tatsächlichen Zustands. Diese Funktion ist jetzt die EINE Quelle; jeder neue
  * Aufrufer sollte sie benutzen statt die Abfrage zu wiederholen.
  */
-async function resolveSetCondition(uid: number | number[], setNumber: string): Promise<'N' | 'U'> {
+async function resolveSetCondition(
+  uid: number | number[], setNumber: string, dbh: { get: typeof db.get } = db,
+): Promise<'N' | 'U'> {
   // Auch hier das Blickfeld: Der Hauptaccount fragt den Zustand eines Sets ab,
   // das einem Unterkonto gehört — mit einer nackten ID fände er es nicht.
+  //
+  // `dbh`: Wer INNERHALB einer Transaktion fragt, muss auch darin lesen —
+  // sonst sieht er den Stand von vorher. utils/setService.ts →
+  // priceForNewAcquisition() tut genau das.
   const uids = asIds(uid as any);
-  const row = await db.get(
+  const row = await dbh.get(
     `SELECT s.condition,
             COUNT(a.id)                                 AS acq_count,
             COUNT(a.id) FILTER (WHERE a.condition='U')  AS used_count
@@ -197,6 +204,21 @@ const PRICE_CACHE_COLS = 'set_number, condition, min_price, avg_price, max_price
  */
 const ZERO_PRICE_TTL_HOURS = 6;
 
+/**
+ * Die Preiszeile aus dem Cache — sofern sie jung genug ist.
+ *
+ * Diese Abfrage stand fuenfmal da: viermal hier, einmal in jobs/priceJob.ts.
+ * Die Spaltenliste (PRICE_CACHE_COLS) war schon zusammengefasst, die Bedingung
+ * nicht — und genau die entscheidet, was „frisch" heisst.
+ */
+async function preisAusCache(setNumber: string, condition: string, currency: string, ttlStunden: number) {
+  return db.get(
+    `SELECT ${PRICE_CACHE_COLS} FROM price_cache
+      WHERE set_number = $1 AND condition = $2 AND currency_code = $3
+        AND fetched_at > NOW() - make_interval(hours => $4)`,
+    [setNumber, condition, currency, ttlStunden]);
+}
+
 /** Ist der Cache-Eintrag brauchbar, oder soll neu geholt werden? */
 function cacheUsable(row: PreisZeile, ttlHours: number) {
   if (!row) return false;
@@ -263,10 +285,12 @@ async function speicherePreis(setNumber: string, condition: string, currency: st
 }
 
 async function fetchPrice(setNumber: string, condition: string, guideType: string, currency: string, ttlHours: Stunden, pre: { catalog: Map<any, any>; cache: Map<string, any> } | null = null) {
+  // mitVersion() auch beim VORGELADENEN Weg: Die Karte wird unten aus
+  // catalog_cache gefuellt, also unter derselben Schreibweise wie die Tabelle.
   const catalogRow = pre?.catalog
-    ? (pre.catalog.get(setNumber) || null)
-    : await db.get('SELECT is_gear, bl_type FROM catalog_cache WHERE set_number = $1', [setNumber]);
-  if (catalogRow?.is_gear === 1 && catalogRow?.bl_type === 'NONE')
+    ? (pre.catalog.get(mitVersion(setNumber)) || null)
+    : await katalogEintrag(setNumber);
+  if (ohneBricklinkPreis(catalogRow))
     return { min_price:0, avg_price:0, max_price:0, qty_avg_price:0, from_cache:true, no_price:true };
 
   const ttl = Math.max(1, parseInt(String(ttlHours)));
@@ -274,9 +298,7 @@ async function fetchPrice(setNumber: string, condition: string, guideType: strin
 
   const cached = pre?.cache
     ? (pre.cache.get(`${setNumber}|${condition}`) || null)
-    : await db.get(
-        `SELECT ${PRICE_CACHE_COLS} FROM price_cache WHERE set_number = $1 AND condition = $2 AND currency_code = $3 AND fetched_at > NOW() - make_interval(hours => $4)`,
-        [setNumber, condition, currency, ttl]);
+    : await preisAusCache(setNumber, condition, currency, ttl);
   if (hatPreis(cached))
     return { min_price: cached.min_price, avg_price: cached.avg_price, max_price: cached.max_price, qty_avg_price: cached.qty_avg_price, from_cache: true };
 
@@ -286,9 +308,7 @@ async function fetchPrice(setNumber: string, condition: string, guideType: strin
   if (cached && !hatPreis(cached) && cacheUsable(cached, ttl)) {
     const cachedFb = pre?.cache
       ? (pre.cache.get(`${setNumber}|${fallbackCondition}`) || null)
-      : await db.get(
-          `SELECT ${PRICE_CACHE_COLS} FROM price_cache WHERE set_number = $1 AND condition = $2 AND currency_code = $3 AND fetched_at > NOW() - make_interval(hours => $4)`,
-          [setNumber, fallbackCondition, currency, ttl]);
+      : await preisAusCache(setNumber, fallbackCondition, currency, ttl);
     // Vorher stand hier `avg > 0 || avg > 0` — derselbe Ausdruck zweimal.
     // Gemeint war ersichtlich qty_avg; richtig ist aber die eine Regel, die
     // auch der Leser anwendet (utils/preisRegel.ts).
@@ -317,9 +337,7 @@ async function fetchPrice(setNumber: string, condition: string, guideType: strin
   // mit avg_price = 0 als "hat einen Preis" durchging und überall 0 ergab.
   if (hatPreis(pd)) return { ...pd, condition_used: condition };
 
-  const cachedFallback = await db.get(
-    `SELECT ${PRICE_CACHE_COLS} FROM price_cache WHERE set_number = $1 AND condition = $2 AND currency_code = $3 AND fetched_at > NOW() - make_interval(hours => $4)`,
-    [setNumber, fallbackCondition, currency, ttl]);
+  const cachedFallback = await preisAusCache(setNumber, fallbackCondition, currency, ttl);
   if (hatPreis(cachedFallback))
     return { min_price: cachedFallback.min_price, avg_price: cachedFallback.avg_price, max_price: cachedFallback.max_price, qty_avg_price: cachedFallback.qty_avg_price, from_cache: true, condition_used: fallbackCondition, is_fallback: true };
 
@@ -374,7 +392,13 @@ async function computeSetsValuation(viewerId: number, ids: Blickfeld) {
   const ttl = Math.max(1, parseInt(String(ttlHours)));
   const setNumbers = sets.map(s => s.set_number);
   const [catRows, cacheRows, acqRows] = await Promise.all([
-    db.all('SELECT set_number, is_gear, bl_type FROM catalog_cache WHERE set_number = ANY($1)', [setNumbers]),
+    // mitVersion(): catalog_cache wird von clients/bricklink.ts unter der
+    // Nummer MIT Anhang gefuellt, price_cache dagegen unter der, die der
+    // Aufrufer mitgibt. Die beiden Tabellen haben also VERSCHIEDENE
+    // Schluesselgewohnheiten — deshalb wird hier normalisiert und in der
+    // Abfrage darunter nicht.
+    db.all('SELECT set_number, is_gear, bl_type FROM catalog_cache WHERE set_number = ANY($1)',
+           [setNumbers.map(mitVersion)]),
     db.all(
       `SELECT ${PRICE_CACHE_COLS} FROM price_cache
        WHERE set_number = ANY($1) AND currency_code = $2 AND fetched_at > NOW() - make_interval(hours => $3)`,
@@ -926,15 +950,16 @@ async function computeMinifigsValuation(viewerId: number, ids: Blickfeld) {
  * Kaufpreis. Ohne die Plakette sähe die Finanztabelle wie eine doppelte Zeile
  * aus.
  */
-async function withOwnerNames(uids: number[], rows: any[]) {
-  if (uids.length < 2 || !rows?.length) return rows;
-  const owners = await db.all('SELECT id, username FROM users WHERE id = ANY($1)', [uids])
-    .catch(() => []);
-  const nameById = new Map<number, any>(owners.map((u: any) => [parseInt(u.id), u.username] as [number, any]));
-  return rows.map(r => r.user_id == null ? r : {
-    ...r,
-    owners: [{ id: parseInt(r.user_id), username: nameById.get(parseInt(r.user_id)) || String(r.user_id) }],
-  });
+async function withOwnerNames(uids: number[], rows: any[]): Promise<any[]> {
+  // Reicht durch: utils/handlers/shared.ts -> withOwners() beantwortet
+  // dieselbe Frage und kann MEHR — dort wird auch `owner_ids` (die Liste aus
+  // array_agg) zu Plaketten, hier stand nur der Einzelfall `user_id`. Zwei
+  // Fassungen derselben Sache, von denen eine weniger konnte.
+  //
+  // Lazy require: utils/handlers/shared zieht die Handler nach sich, ein
+  // Import auf Modulebene ergaebe einen Zyklus.
+  const { withOwners } = require('./handlers/shared');
+  return withOwners(uids, rows);
 }
 
 // ── GET /api/finance/minifigs-valuation ───────────────────────────────────────
@@ -1305,7 +1330,7 @@ async function computePnl(viewerId: number, ids: Blickfeld) {
 
 export {
   DEFAULT_PRICE_CONDITION, PRICE_CACHE_COLS,
-  speicherePreis, cacheUsable,
+  speicherePreis, cacheUsable, preisAusCache,
   checkAndIncrementRateLimit, getLimitForApi, getRateLimitStatus,
   fetchPrice, parallelLimit, resolveBlColorId, resolveBlPartNumber, fetchPartPrice, fetchMinifigPrice,
   computeSetsValuation, computeMinifigsValuation, computePartsValuation, computePnl,

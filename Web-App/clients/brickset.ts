@@ -11,6 +11,7 @@ import * as db from '../db/database';
 import { checkAndIncrementRateLimit } from '../utils/financeCalc';
 import { fehlertext } from '../utils/httpError';
 import { alsAbrufFehler } from './abrufFehler';
+import { mitVersion } from '../utils/setNummer';
 
 const BASE = 'https://brickset.com/api/v3.asmx';
 
@@ -134,7 +135,7 @@ async function enqueueRetry(setNumber: string, errorMsg: string | null = null, s
   const attempts = (existing?.attempts || 0) + 1;
 
   if (attempts > MAX_QUOTA_RETRIES) {
-    await db.run(`DELETE FROM brickset_retry_queue WHERE set_number = $1`, [setNumber]).catch(() => {});
+    await ausRetryWarteschlange(setNumber).catch(() => {});
     console.log(`[brickset] ${setNumber}: ${MAX_QUOTA_RETRIES} quota retries exceeded — removed from queue, using fallback`);
     return false;
   }
@@ -162,16 +163,21 @@ async function checkRateLimit(setNumber: string) {
   }
 }
 
+/** Dieses Set aus der Brickset-Wiederholungsliste nehmen. */
+export async function ausRetryWarteschlange(setNumber: string) {
+  return db.run('DELETE FROM brickset_retry_queue WHERE set_number = $1', [setNumber]);
+}
+
 // Remove from queue when a non-quota error occurs — no point retrying
 async function removeFromQueue(setNumber: string) {
-  await db.run(`DELETE FROM brickset_retry_queue WHERE set_number = $1`, [setNumber]).catch(() => {});
+  await ausRetryWarteschlange(setNumber).catch(() => {});
   console.log(`[brickset] ${setNumber}: non-quota error — removed from retry queue, using fallback`);
 }
 
 async function getSetInfo(setNumber: string) {
   const key = await getApiKey();
   if (!key) return null;
-  const n = setNumber.includes('-') ? setNumber : `${setNumber}-1`;
+  const n = mitVersion(setNumber);
   if (!await checkRateLimit(n)) return null; // limit reached — enqueued for retry
   try {
     const params = encodeURIComponent(JSON.stringify({ setNumber: n, pageSize: 1 }));
@@ -180,7 +186,7 @@ async function getSetInfo(setNumber: string) {
     const data = parseResponse(body);
     if (!data.sets?.length) return null;
     const s = data.sets[0];
-    await db.run(`DELETE FROM brickset_retry_queue WHERE set_number = $1`, [n]).catch(() => {});
+    await ausRetryWarteschlange(n).catch(() => {});
     return { name:s.name||null, year:s.year||null, theme:s.theme||null, pieces:s.pieces||null, minifigs:s.minifigs||null, image_url:s.image?.imageURL||s.image?.thumbnailURL||null };
   } catch (e) {
     const f = alsAbrufFehler(e);
@@ -207,7 +213,7 @@ async function getSetInfo(setNumber: string) {
 async function getInstructions(setNumber: string) {
   const key = await getApiKey();
   if (!key) return { instructions: [], usesFallback: true };
-  const n = setNumber.includes('-') ? setNumber : `${setNumber}-1`;
+  const n = mitVersion(setNumber);
   if (!await checkRateLimit(n)) return { instructions: [], usesFallback: false }; // limit reached — enqueued, wait for retry
   try {
     const { status, body } = await httpsGet(`${BASE}/getInstructions2?apiKey=${encodeURIComponent(key)}&setNumber=${encodeURIComponent(n)}`);

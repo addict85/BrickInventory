@@ -2,6 +2,7 @@ import * as db from '../../db/database';
 import { resolveImageLocal } from '../images';
 import { asIds } from '../household';
 import { clampPageSize, applyManualCondition, withOwners } from './shared';
+import { beideSchreibweisen } from '../setNummer';
 
 /**
  * Leseabfragen für Minifiguren.
@@ -27,9 +28,8 @@ async function getMinifigs(userId: number | number[], { search, source, set_numb
   const params: any[] = [uids]; let pi = 2;
   let where = 'm.user_id = ANY($1)';
   if (set_number) {
-    const alt = set_number.includes('-') ? set_number.replace(/-\d+$/, '') : set_number + '-1';
     where += ` AND (m.set_number = $${pi} OR m.set_number = $${pi+1})`;
-    params.push(set_number, alt); pi += 2;
+    params.push(...beideSchreibweisen(set_number)); pi += 2;
   }
   if (source === 'set')    where += " AND m.source = 'set'";
   if (source === 'manual') where += " AND m.source = 'manual'";

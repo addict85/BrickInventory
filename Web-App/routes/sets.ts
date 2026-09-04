@@ -52,7 +52,7 @@ import { handleRouteError, logAndContinue, fehlertext, pfadParam, vorDem } from 
 // Der Kern liegt seit Nachtrag 131 in utils/setService.ts; hier bleiben die
 // HTTP-Routen, die ihn rufen.
 import { addSet, addSetWithDate } from '../utils/setService';
-import { downloadSetInstructions } from '../utils/instructions';
+import { downloadSetInstructions, anleitungenZuSet, loescheAnleitungen } from '../utils/instructions';
 // Der Standard-Zustand eines Benutzers. Stand hier bis Nachtrag 125 als
 // `getUserDefaultCondition` — eine wortgleiche Zweitfassung von
 // effectiveCondition() in utils/settings.ts.
@@ -126,6 +126,7 @@ import { findSetInScope } from '../utils/setAdd';
 import { loginOrTokenGuard } from '../utils/auth';
 import { csvEinlesen, entschaerfungRueckgaengig, parseCsvDate, sendCsv, uebersprungenHinweis } from '../utils/csvExport';
 import { ausTabelle } from '../utils/validate';
+import { mitVersion } from '../utils/setNummer';
 
 const requireLoginOrToken = loginOrTokenGuard({ timeoutMs: 3000 });
 
@@ -311,9 +312,9 @@ router.get('/import/csv/stream', requireLoginOrToken, async (req, res) => {
 // ── GET /api/sets/info/:setNumber — lightweight name lookup from shared catalog ─
 // Used by the Teileliste to resolve set names without requiring user ownership.
 router.get('/info/:setNumber', requireLogin, async (req, res) => {
-  const n = pfadParam(req, 'setNumber').includes('-')
-    ? req.params.setNumber
-    : req.params.setNumber + '-1';
+  // Die Bedingung sah den GEPRUEFTEN Wert an, beide Zweige gaben aber den
+  // rohen aus req.params zurueck — zwei verschiedene Werte in einer Zeile.
+  const n = mitVersion(pfadParam(req, 'setNumber'));
   try {
     const row = await db.get(
       'SELECT name, year, theme, pieces, image_url, image_local FROM set_catalog WHERE set_number = $1',
@@ -715,10 +716,10 @@ router.post('/import/csv/cancel', requireLogin, async (req, res) => {
 router.post('/:setNumber/instructions', async (req, res) => {
   try {
     const sn = req.params.setNumber;
-    await db.run('DELETE FROM shared_instructions WHERE set_number = $1', [sn]);
+    await loescheAnleitungen(sn);
     // Download synchronously so we can return the actual results
     await downloadSetInstructions(sn).catch(() => {});
-    const instrs = await db.all('SELECT * FROM shared_instructions WHERE set_number = $1', [sn]);
+    const instrs = await anleitungenZuSet(sn);
     res.json({ success: true, instructions: instrs, count: instrs.length });
   } catch (e) { handleRouteError(res, e); }
 });

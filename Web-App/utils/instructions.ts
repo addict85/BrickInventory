@@ -5,6 +5,7 @@ import { INSTRUCTIONS_DIR } from './appPaths';
 import { downloadFile, scrapeInstructions, sleep, httpsGetRobust } from '../clients/rebrickable';
 import * as brickset from '../clients/brickset';
 import { meldeUndWeiter, fehlertext } from './httpError';
+import { mitVersion, ohneVersion } from './setNummer';
 
 /**
  * Bauanleitungen beschaffen: Rebrickable → Brickset → BrickLink-Designer →
@@ -79,20 +80,79 @@ import { meldeUndWeiter, fehlertext } from './httpError';
 let _letzterAbrufWarExtern = false;
 function letzterAbrufWarExtern(): boolean { return _letzterAbrufWarExtern; }
 
+// ── shared_instructions: zaehlen, lesen, loeschen ───────────────────────────
+//
+// Diese drei Fragen standen ueber den Baum verstreut — die Zaehlung dreimal
+// (hier zweimal, jobs/bricksetRetry, jobs/instructionQueue), das Lesen zweimal
+// (routes/sets, utils/handlers/sets), das Loeschen zweimal (routes/sets,
+// routes/api_v1/admin). Ein Fehlverhalten ist NICHT gemessen worden: Die
+// Fassungen waren gleich, und die Nummern kamen ueberall normalisiert an
+// (nachgesehen an enqueue() und beiden checkRateLimit-Aufrufern). Der Grund
+// ist die naechste Aenderung — etwa „nur zaehlen, was auch eine Datei hat".
+// Die soll an einer Stelle stehen.
+//
+// mitVersion() gehoert dazu: Geschrieben wird unter der Nummer MIT Anhang.
+
+/** Wie viele Anleitungen sind fuer dieses Set hinterlegt? */
+export async function anzahlAnleitungen(setNumber: string): Promise<number> {
+  const r = await db.get('SELECT COUNT(*) as c FROM shared_instructions WHERE set_number = $1',
+    [mitVersion(setNumber)]).catch(() => null);
+  return parseInt(r?.c) || 0;
+}
+
+/** Die hinterlegten Anleitungen zu einem Set. */
+export async function anleitungenZuSet(setNumber: string) {
+  return db.all('SELECT * FROM shared_instructions WHERE set_number = $1',
+    [mitVersion(setNumber)]).catch(() => []);
+}
+
+/** Alle Anleitungen eines Sets entfernen (vor dem Neuholen). */
+export async function loescheAnleitungen(setNumber: string) {
+  return db.run('DELETE FROM shared_instructions WHERE set_number = $1', [mitVersion(setNumber)]);
+}
+
+/**
+ * Wo liegt dieses Set bei brickinstructions.com, und ist dort ueberhaupt etwas?
+ *
+ * ── Warum das eine Funktion ist ─────────────────────────────────────────────
+ * Diese sechs Zeilen standen ZWEIMAL in dieser Datei — einmal in
+ * scrapeInstructionsFromFallback(), einmal in downloadSetInstructions(); nur
+ * die Einrueckung war verschieden. Was DANACH damit geschieht, ist
+ * unterschiedlich (die eine legt die Anleitung an, die andere reiht sie in
+ * eine Liste ein), aber die ADRESSE und die Frage „ist da etwas?" muessen
+ * dieselben sein. Laufen sie auseinander, sucht der eine Weg an einer Stelle,
+ * an der der andere nichts findet — und ob eine Anleitung auftaucht, haenge
+ * davon ab, welcher Weg gerade lief.
+ *
+ * Die Ordnerregel (Tausenderblock, fuenfstellig aufgefuellt) ist die Ablage von
+ * brickinstructions.com, nicht unsere: dort liegt 60445 unter 60000/.
+ *
+ * Die Groessenschwelle gehoert dazu: Ein 200 mit ein paar hundert Byte ist die
+ * Fehlerseite, kein Bild.
+ *
+ * @returns null, wenn dort nichts liegt
+ */
+async function brickinstructionsFund(n: string) {
+  const baseNum = ohneVersion(n);
+  const folder  = String(Math.floor(parseInt(baseNum) / 1000) * 1000).padStart(5, '0');
+  const baseUrl = `https://lego.brickinstructions.com/instructions/${folder}/${baseNum}`;
+  const pageUrl = `https://lego.brickinstructions.com/lego_instructions/set/${baseNum}/`;
+  const hdrs    = { 'User-Agent': 'Mozilla/5.0 (compatible; BrickManager/3.0)', 'Referer': pageUrl };
+  const probe   = await httpsGetRobust(`${baseUrl}/001.jpg`, hdrs, 3000);
+  if (probe.status !== 200 || !probe.buffer || probe.buffer.length <= 500) return null;
+  return { baseUrl, pageUrl, hdrs, erstesBild: probe.buffer };
+}
+
 async function scrapeInstructionsFromFallback(setNumber: string) {
-  const n = setNumber.includes('-') ? setNumber : `${setNumber}-1`;
-  const existing = (await db.get('SELECT COUNT(*) as c FROM shared_instructions WHERE set_number = $1', [n])).c;
-  if (parseInt(existing) > 0) return parseInt(existing);
+  const n = mitVersion(setNumber);
+  const existing = await anzahlAnleitungen(n);
+  if (existing > 0) return existing;
   const biAlreadyTried = await db.get("SELECT 1 FROM shared_instructions WHERE set_number = $1 AND url LIKE '%brickinstructions%'", [n]);
   if (biAlreadyTried) return 0;
   try {
-    const baseNum = n.replace(/-[0-9]+$/, '');
-    const folder  = String(Math.floor(parseInt(baseNum) / 1000) * 1000).padStart(5, '0');
-    const baseUrl = `https://lego.brickinstructions.com/instructions/${folder}/${baseNum}`;
-    const pageUrl = `https://lego.brickinstructions.com/lego_instructions/set/${baseNum}/`;
-    const hdrs    = { 'User-Agent': 'Mozilla/5.0 (compatible; BrickManager/3.0)', 'Referer': pageUrl };
-    const probe   = await httpsGetRobust(`${baseUrl}/001.jpg`, hdrs, 3000);
-    if (probe.status === 200 && probe.buffer && probe.buffer.length > 500) {
+    const fund = await brickinstructionsFund(n);
+    if (fund) {
+      const { baseUrl, pageUrl, hdrs } = fund;
       const instrDir = INSTRUCTIONS_DIR;
       fs.mkdirSync(instrDir, { recursive: true });
       const safeBase = n.replace(/[^a-z0-9-]/gi, '_');
@@ -102,7 +162,7 @@ async function scrapeInstructionsFromFallback(setNumber: string) {
       const desc     = `Anleitung ${n} (BrickInstructions)`;
       await db.run('INSERT INTO shared_instructions (set_number,url,description,local_path) VALUES ($1,$2,$3,$4) ON CONFLICT (set_number,url) DO NOTHING',
         [n, pageUrl, desc, null]).catch(() => {});
-      setImmediate(() => { collectAndBuildPDF(baseUrl, hdrs, probe.buffer, pdfDest, relPath, n).catch(() => {}); });
+      setImmediate(() => { collectAndBuildPDF(baseUrl, hdrs, fund.erstesBild, pdfDest, relPath, n).catch(() => {}); });
       console.log(`[brickinstructions] Fallback triggered for ${n}`);
       return 1;
     }
@@ -130,7 +190,7 @@ async function scrapeInstructionsFromFallback(setNumber: string) {
 // null füllt, sagt dem Leser bloss eine Möglichkeit vor, die es nicht gibt.
 async function downloadSetInstructions(setNumber: string,
                                        eigenerTakt = false) {
-  const n = setNumber.includes('-') ? setNumber : `${setNumber}-1`;
+  const n = mitVersion(setNumber);
 
   // ── Wurde für DIESES Set überhaupt ein fremder Server befragt? ────────────
   //
@@ -145,8 +205,8 @@ async function downloadSetInstructions(setNumber: string,
   // Minuten für nichts, hier 15 Sekunden je bereits erledigtem Set.
   _letzterAbrufWarExtern = false;
 
-  const existing = (await db.get('SELECT COUNT(*) as c FROM shared_instructions WHERE set_number = $1', [n])).c;
-  if (parseInt(existing) > 0) {  return parseInt(existing); }
+  const existing = await anzahlAnleitungen(n);
+  if (existing > 0) { return existing; }
 
   let instrList: any[] = [];
   let bricksetSucceededEmpty = false;
@@ -164,7 +224,7 @@ async function downloadSetInstructions(setNumber: string,
   // downloadFile streams directly to disk — no memory buffering for large PDFs
   if (!instrList.length && bricksetSucceededEmpty) {
     try {
-      const baseNum  = n.replace(/-[0-9]+$/, '');
+      const baseNum  = ohneVersion(n);
       const bdpUrl   = `https://bdpinstructions.s3.amazonaws.com/${baseNum}.pdf`;
       const safeBase = n.replace(/[^a-z0-9-]/gi, '_');
       const pdfName  = `${safeBase}_bdp.pdf`;
@@ -189,15 +249,11 @@ async function downloadSetInstructions(setNumber: string,
   const biAlreadyTried = await db.get("SELECT 1 FROM shared_instructions WHERE set_number = $1 AND url LIKE '%brickinstructions%'", [n]);
   if (!instrList.length && bricksetSucceededEmpty && !biAlreadyTried) {
     try {
-      const baseNum = n.replace(/-[0-9]+$/, '');
-      const folder  = String(Math.floor(parseInt(baseNum) / 1000) * 1000).padStart(5, '0');
-      const baseUrl = `https://lego.brickinstructions.com/instructions/${folder}/${baseNum}`;
-      const pageUrl = `https://lego.brickinstructions.com/lego_instructions/set/${baseNum}/`;
-      const hdrs    = { 'User-Agent': 'Mozilla/5.0 (compatible; BrickManager/3.0)', 'Referer': pageUrl };
-      const probe   = await httpsGetRobust(`${baseUrl}/001.jpg`, hdrs, 3000);
-      if (probe.status === 200 && probe.buffer && probe.buffer.length > 500) {
+      const fund = await brickinstructionsFund(n);
+      if (fund) {
+        const { baseUrl, pageUrl, hdrs } = fund;
         instrList.push({ url:pageUrl, description:`Anleitung ${n} (BrickInstructions)`,
-          brickinstructions_base:baseUrl, brickinstructions_hdrs:hdrs, brickinstructions_first:probe.buffer });
+          brickinstructions_base:baseUrl, brickinstructions_hdrs:hdrs, brickinstructions_first:fund.erstesBild });
         
       }
     } catch (e) { console.log(`  BrickInstructions probe failed: ${fehlertext(e)}`); }

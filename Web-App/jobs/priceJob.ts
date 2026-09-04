@@ -1,9 +1,10 @@
 'use strict';
 
 const db      = require('../db/database');
-import { checkAndIncrementRateLimit, PRICE_CACHE_COLS, speicherePreis, cacheUsable } from '../utils/financeCalc';
+import { checkAndIncrementRateLimit, speicherePreis, cacheUsable, preisAusCache } from '../utils/financeCalc';
 import { meldeUndWeiter, fehlertext } from '../utils/httpError';
 import { getSetting, getGlobalSetting } from '../utils/settings';
+import { katalogEintrag, ohneBricklinkPreis } from '../utils/setNummer';
 const monitor = require('../utils/jobMonitor');
 const { getPriceGuide } = require('../clients/bricklink');
 const { DEFAULT_PRICE_CONDITION } = require('../utils/financeCalc');
@@ -121,17 +122,14 @@ async function parallelLimit<T>(tasks: (() => Promise<T>)[], limit: number) {
 // andere Aufrufer eine Zahl.
 async function fetchAndCachePrice(setNumber: string, condition: string, guideType: string,
                                   currency: string, forceTtlHours?: string | number) {
-  const catalog = await db.get('SELECT is_gear, bl_type FROM catalog_cache WHERE set_number = $1', [setNumber]);
-  if (catalog?.is_gear === 1 && catalog?.bl_type === 'NONE') return 'skipped_gear';
+  if (ohneBricklinkPreis(await katalogEintrag(setNumber))) return 'skipped_gear';
 
   const ttl = Math.max(1, parseInt(String(forceTtlHours ?? '')));
   // Dieselbe Frisch-Regel wie im Anfrageweg (utils/financeCalc.ts). Hier stand
   // vorher `SELECT 1 ... fetched_at > ttl` — das erklaerte auch eine
   // Null-Zeile fuer die volle Laufzeit fuer frisch, waehrend der Anfrageweg
   // es nach sechs Stunden erneut versucht. cacheUsable() kennt beide Faelle.
-  const vorhanden = await db.get(
-    `SELECT ${PRICE_CACHE_COLS} FROM price_cache WHERE set_number = $1 AND condition = $2 AND currency_code = $3 AND fetched_at > NOW() - make_interval(hours => $4)`,
-    [setNumber, condition, currency, ttl]);
+  const vorhanden = await preisAusCache(setNumber, condition, currency, ttl);
   if (cacheUsable(vorhanden, ttl)) return 'skipped';
 
   const rl = await checkAndIncrementRateLimit('bricklink');

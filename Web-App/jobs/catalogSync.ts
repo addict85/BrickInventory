@@ -8,6 +8,7 @@ const db   = require('../db/database');
 import { downloadFile } from '../clients/rebrickable';
 import { generateThumb } from '../routes/thumbs';
 import { neuestesInventar } from '../utils/rbInventar';
+import { beideSchreibweisen } from '../utils/setNummer';
 // Pfade zentral auflösen — __dirname zeigt seit dem dist/-Build nicht mehr
 // auf die Wurzel. Siehe utils/appPaths.ts.
 const path = require('path');
@@ -17,8 +18,10 @@ const fs   = require('fs');
 const { PART_IMAGES_DIR: IMG_DIR } = require('../utils/appPaths');
 
 async function syncSetCatalog(setNumber: string) {
-  const n = setNumber.includes('-') ? setNumber : `${setNumber}-1`;
-  const alt = setNumber.includes('-') ? setNumber.replace(/-\d+$/, '') : `${setNumber}-1`;
+  // Ohne Versionsanhang in der Eingabe ergab `alt` denselben Wert wie `n` —
+  // die Abfrage unten fragte dann zweimal dasselbe, und die blanke Nummer
+  // wurde nie geprueft. Dieselbe Fehlbildung wie in utils/handlers/parts.ts.
+  const [n, alt] = beideSchreibweisen(setNumber);
 
   // Check if catalog is already fully populated (has images)
   const existing = await db.get(

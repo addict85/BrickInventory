@@ -1,6 +1,6 @@
 import * as db from '../db/database';
 import { getSetInfo } from '../clients/brickset';
-import { downloadSetInstructions } from '../utils/instructions';
+import { downloadSetInstructions, anzahlAnleitungen } from '../utils/instructions';
 import { getLimitForApi, getRateLimitStatus } from '../utils/financeCalc';
 import { logAndContinue, meldeUndWeiter } from '../utils/httpError';
 
@@ -103,10 +103,7 @@ async function _processRetryQueue(force = false) {
 
     // Retry instructions if none exist yet
     try {
-      const existing = await db.get(
-        `SELECT COUNT(*) as c FROM shared_instructions WHERE set_number = $1`, [set_number]
-      ).catch(() => ({ c: 0 }));
-      if (parseInt(existing?.c || 0) === 0) {
+      if (await anzahlAnleitungen(set_number) === 0) {
         // Echter Import statt spätem require('../routes/sets') samt
         // typeof-Prüfung: Der Kreis brickset → sets → brickset ist mit dem
         // Umzug nach utils/instructions.ts weg (Nachtrag 127).

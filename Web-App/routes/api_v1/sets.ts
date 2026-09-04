@@ -27,6 +27,8 @@ import { resolveSetCondition } from '../../utils/financeCalc';
 import { getSetPriceHistory } from '../../utils/priceHistory';
 import { einzelwert } from '../../utils/validate';
 import { neuestesInventar } from '../../utils/rbInventar';
+import { mitVersion, ohneVersion } from '../../utils/setNummer';
+import { figurenAusKatalog } from '../../utils/minifigsImport';
 const router = express.Router();
 
 // ── GIBT ES DIESES SET SCHON? ────────────────────────────────────────────────
@@ -170,7 +172,7 @@ router.get('/sets/barcode/:barcode', requireToken, async (req: AuthedRequest, re
     // 1. Direct set number match in local DB
     const direct = await db.get(
       'SELECT set_number, name FROM catalog_cache WHERE set_number = $1 OR set_number = $2',
-      [barcode, barcode.includes('-') ? barcode : barcode + '-1']
+      [barcode, mitVersion(barcode)]
     );
     if (direct) { return res.json(await enrichResult(direct.set_number, direct.name, 'catalog_cache')); }
 
@@ -287,8 +289,8 @@ router.get('/sets/barcode/:barcode', requireToken, async (req: AuthedRequest, re
 // GET /api/v1/sets/:setNumber/parts-list — user-independent parts
 router.get('/sets/:setNumber/parts-list', requireToken, async (req: AuthedRequest, res) => {
   const setNum = String(req.params.setNumber);
-  const n    = setNum.includes('-') ? setNum : setNum + '-1';
-  const bare = n.replace(/-\d+$/, '');
+  const n    = mitVersion(setNum);
+  const bare = ohneVersion(n);
   try {
     // ── Step 1: Find inventory in CSV database ─────────────────────────────
     const invId = await neuestesInventar(setNum);
@@ -418,16 +420,11 @@ router.get('/sets/:setNumber/parts-list', requireToken, async (req: AuthedReques
 // GET /api/v1/sets/:setNumber/minifigs-list — user-independent minifigs
 router.get('/sets/:setNumber/minifigs-list', requireToken, async (req: AuthedRequest, res) => {
   const setNum = String(req.params.setNumber);
-  const n    = setNum.includes('-') ? setNum : setNum + '-1';
-  const bare = n.replace(/-\d+$/, '');
+  const n    = mitVersion(setNum);
+  const bare = ohneVersion(n);
   try {
     // 1. Try shared catalog first (fastest, already enriched)
-    const catalog = await db.all(
-      `SELECT fig_number, fig_name, quantity, image_url
-       FROM set_minifigs_catalog
-       WHERE set_number=$1 OR set_number=$2`,
-      [n, bare]
-    );
+    const catalog = await figurenAusKatalog(setNum);
     if (catalog.length > 0) {
       const figs = catalog.map(f => ({
         fig_number:     f.fig_number,
@@ -700,7 +697,7 @@ router.delete('/sets/:setNumber', requireToken, async (req: AuthedRequest, res) 
 router.post('/sets/:sn/move', requireToken, async (req: AuthedRequest, res) => {
   try {
     const raw = String(req.params.sn);
-    const sn  = raw.includes('-') ? raw : raw + '-1';
+    const sn  = mitVersion(raw);
     const uid = req.apiUser.user_id;
     const fromId = await resolveWriteTarget(uid, req.body?.from_user_id ?? uid);
     const toId   = await resolveWriteTarget(uid, req.body?.to_user_id);

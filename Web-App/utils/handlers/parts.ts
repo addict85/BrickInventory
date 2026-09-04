@@ -10,6 +10,8 @@ import { clampPageSize, applyManualCondition, withOwners, MAX_PAGE_SIZE, UNPAGED
 import { meldeUndWeiter } from '../../utils/httpError';
 import { getGlobalSetting } from '../../utils/settings';
 import { neuestesInventar, inventarKandidaten } from '../rbInventar';
+import { beideSchreibweisen } from '../setNummer';
+import { merkeBlFarbnummer, blFarbnummerAus } from '../blZuordnung';
 
 /**
  * Leseabfragen für Teile — inklusive der Ausweichebenen (CSV-Zwischenspeicher,
@@ -96,9 +98,8 @@ function teileFilter(uids: number[], query: any) {
   let pi = 2;
 
   if (set_number) {
-    const alt = set_number.includes('-') ? set_number.replace(/-\d+$/, '') : set_number + '-1';
     where += ` AND (p.set_number = $${pi} OR p.set_number = $${pi+1})`;
-    params.push(set_number, alt); pi += 2;
+    params.push(...beideSchreibweisen(set_number)); pi += 2;
   }
   if (color)    { where += ` AND p.color_name = $${pi++}`;    params.push(color); }
   // Kategorie auch über den Teilekatalog auflösen — parts.category_name steht
@@ -536,10 +537,10 @@ async function getBlColorMap() {
     if (status !== 200) break;
     const data = JSON.parse(body);
     for (const c of (data.results || [])) {
-      const blId = c.external_ids?.BrickLink?.ext_ids?.[0] ?? c.external_ids?.BrickLink?.[0];
+      const blId = blFarbnummerAus(c);
       if (blId != null) {
         map[c.id] = blId;
-        db.run(`UPDATE rb_colors SET bl_color_id = $1 WHERE id = $2`, [blId, c.id]).catch(() => {});
+        merkeBlFarbnummer(c.id, blId).catch(() => {});
       }
     }
     hasNext = !!data.next;

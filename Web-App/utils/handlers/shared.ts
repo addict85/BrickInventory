@@ -406,3 +406,33 @@ async function verwendendeSets(
 }
 
 export { clampPageSize, conditionFromAcquisitions, conditionsFromAcquisitions, applyManualCondition, withOwners, verwendendeSets };
+
+
+/**
+ * Die manuell erfasste Stammzeile eines Teils bzw. einer Figur entfernen.
+ *
+ * Stand je zweimal da — einmal in der Loeschroute, einmal im Aufraeumen der
+ * Erfassungen (routes/api_v1/acquisitions.ts). NACHGEMESSEN ueber HTTP,
+ * dasselbe Teil mit zwei Erfassungen ueber beide Wege: Beide hinterlassen
+ * parts=0, erfassungen=0 — kein Unterschied. Zusammengelegt wird trotzdem,
+ * damit die Bedingung `source='manual'` (Teile AUS SETS haengen am Set und
+ * werden mit ihm geloescht) an einer Stelle steht.
+ *
+ * @param dbh Transaktionsgriff, wo einer gebraucht wird
+ */
+export async function loescheManuellesTeil(
+  dbh: { run: (sql: string, p?: any[]) => Promise<any> }, ownerId: number, partNumber: string, colorId: number,
+) {
+  return dbh.run(
+    "DELETE FROM parts WHERE user_id=$1 AND part_number=$2 AND color_id=$3 AND source='manual'",
+    [ownerId, partNumber, colorId]);
+}
+
+/** Wie loescheManuellesTeil, fuer eine manuell erfasste Figur. */
+export async function loescheManuelleFigur(
+  dbh: { run: (sql: string, p?: any[]) => Promise<any> }, ownerId: number, figNumber: string,
+) {
+  return dbh.run(
+    "DELETE FROM minifigs WHERE user_id=$1 AND fig_number=$2 AND source='manual'",
+    [ownerId, figNumber]);
+}

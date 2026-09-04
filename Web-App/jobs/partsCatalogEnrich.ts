@@ -12,6 +12,8 @@ import { cdnImageLimiter } from '../utils/rateLimiter';
 import { meldeUndWeiter, fehlertext, vorDem } from '../utils/httpError';
 import { getGlobalSetting, setGlobalSetting } from '../utils/settings';
 import { neuestesInventar, inventarKandidaten } from '../utils/rbInventar';
+import { mitVersion, ohneVersion } from '../utils/setNummer';
+import { merkeBlTeilnummer } from '../utils/blZuordnung';
 const https = require('https');
 const fs    = require('fs');
 const path  = require('path');
@@ -220,12 +222,7 @@ async function enrichSetParts(setNumber: string) {
               if (apiParts[key]) apiParts[key].bl_part_num = blId;
             }
             // Also store in rb_bl_mapping for future use
-            await db.run(
-              `INSERT INTO rb_bl_mapping (part_num, bl_part_num)
-               VALUES ($1, $2)
-               ON CONFLICT (part_num) DO UPDATE SET bl_part_num=$2, fetched_at=NOW()`,
-              [part.part_num, blId]
-            ).catch(() => {});
+            await merkeBlTeilnummer(part.part_num, blId).catch(() => {});
           }
         }
       }
@@ -304,8 +301,8 @@ async function enrichSetParts(setNumber: string) {
 const _downloadLocks = new Map();
 
 async function downloadSetImages(setNumber: string, waitIfBusy = false) {
-  const n   = setNumber.includes('-') ? setNumber : `${setNumber}-1`;
-  const alt = n.replace(/-\d+$/, '');
+  const n   = mitVersion(setNumber);
+  const alt = ohneVersion(n);
 
   // If already downloading this set, wait for it to finish then return
   if (_downloadLocks.has(n)) {
@@ -482,8 +479,8 @@ async function downloadSetImages(setNumber: string, waitIfBusy = false) {
 
 // Enrich all minifigs for a set in one batch
 async function enrichSetMinifigs(setNumber: string) {
-  const n   = setNumber.includes('-') ? setNumber : `${setNumber}-1`;
-  const alt = n.replace(/-\d+$/, '');
+  const n   = mitVersion(setNumber);
+  const alt = ohneVersion(n);
   const rbKey = await getRbKey();
   if (!rbKey) return;
 
@@ -571,11 +568,7 @@ async function enrichSetMinifigs(setNumber: string) {
         apiBlMap[p.part_num] = finalId;
         
         // Persist to rb_bl_mapping
-        await db.run(
-          `INSERT INTO rb_bl_mapping (part_num, bl_part_num)
-           VALUES ($1,$2) ON CONFLICT (part_num) DO UPDATE SET bl_part_num=$2, fetched_at=NOW()`,
-          [p.part_num, finalId]
-        ).catch(() => {});
+        await merkeBlTeilnummer(p.part_num, finalId).catch(() => {});
       }
     }
   }

@@ -31,6 +31,7 @@ import _fsSync from 'fs';
 import { EventEmitter } from 'events';
 import { getMinifigInfo } from '../../clients/rebrickable';
 import { downloadImage } from '../../jobs/partsCatalogEnrich';
+import { mitVersion, ohneVersion } from '../../utils/setNummer';
 const router = express.Router();
 
 // Eigenes Body-Limit für die PDF-Routen.
@@ -224,9 +225,9 @@ router.post('/sets/partslist-pdf', requireToken, async (req: AuthedRequest, res)
     for (const s of (sets || [])) {
       const raw = String(s?.set_number || '').trim();
       if (!raw) continue;
-      const n = raw.includes('-') ? raw : `${raw}-1`;
+      const n = mitVersion(raw);
       setKeys.add(n);
-      setKeys.add(n.replace(/-\d+$/, '')); // alt ohne -N (wie downloadSetImages)
+      setKeys.add(ohneVersion(n)); // alt ohne -N (wie downloadSetImages)
     }
     if (setKeys.size) {
       const rows = await db.all(

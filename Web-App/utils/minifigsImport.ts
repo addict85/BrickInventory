@@ -1,6 +1,7 @@
 import * as db from '../db/database';
 import { getSetMinifigs } from '../clients/rebrickable';
 import { fehlertext } from '../utils/httpError';
+import { mitVersion, beideSchreibweisen } from './setNummer';
 
 /**
  * Minifiguren eines Sets aus dem Katalog übernehmen.
@@ -11,13 +12,28 @@ import { fehlertext } from '../utils/httpError';
  */
 
 // ── Import minifigs from a set (called during set import) ─────────────────────
+/**
+ * Die Figuren eines Sets aus dem gemeinsamen Katalog.
+ *
+ * Stand zweimal da — hier und in routes/api_v1/sets.ts. Nicht wortgleich: Der
+ * zweite Kandidat war hier `setNumber` (die ROHE Eingabe) statt der blanken
+ * Nummer. Fuer eine Eingabe MIT Versionsanhang ergab das zweimal denselben
+ * Wert, und die blanke Schreibweise wurde nie geprueft — dieselbe entartete
+ * Paarbildung wie schon in utils/handlers/parts.ts und jobs/catalogSync.ts.
+ * beideSchreibweisen() liefert immer zwei verschiedene.
+ */
+export async function figurenAusKatalog(setNumber: string) {
+  return db.all(
+    `SELECT fig_number, fig_name, quantity, image_url
+       FROM set_minifigs_catalog
+      WHERE set_number=$1 OR set_number=$2`,
+    beideSchreibweisen(setNumber)).catch(() => []);
+}
+
 async function importMinifigsForSet(setNumber: string, userId: number) {
   try {
-    const n = setNumber.includes('-') ? setNumber : setNumber + '-1';
-    const catalogFigs = await db.all(
-      'SELECT fig_number, fig_name, quantity, image_url FROM set_minifigs_catalog WHERE set_number=$1 OR set_number=$2',
-      [n, setNumber]
-    ).catch(() => []);
+    const n = mitVersion(setNumber);
+    const catalogFigs = await figurenAusKatalog(n);
     
     let figs = catalogFigs.map(f => ({
       fig_number: f.fig_number,

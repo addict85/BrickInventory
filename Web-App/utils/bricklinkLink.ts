@@ -35,6 +35,7 @@
 import * as db from '../db/database';
 import { bricklinkRequest } from '../clients/bricklink';
 import { getGlobalSetting } from './settings';
+import { mitVersion, ohneVersion } from './setNummer';
 
 export type BlType = 'SET' | 'GEAR' | 'BOOK' | 'MINIFIG' | 'NONE';
 
@@ -56,14 +57,31 @@ export interface BlLink {
 }
 
 /** Rebrickable-Schreibweise: immer mit Variantensuffix. */
+// ── Die Schreibweise kommt aus utils/setNummer.ts ───────────────────────────
+//
+// Hier stand sie eigenstaendig, mit einer DRITTEN Fassung des Tests:
+// `/-\d+$/.test(n)` statt `includes('-')`. Sie ist mir beim Zusammenfuehren der
+// 24 anderen Fundstellen durchgerutscht, weil meine Suche nur nach
+// `.includes('-') ?` sah — die Regel dort ist jetzt weiter gefasst.
+//
+// Die beiden Fassungen stimmen auf jeder echten Nummer ueberein und gehen erst
+// bei einem Bindestrich OHNE Ziffernanhang auseinander:
+//
+//     Eingabe     includes('-')   /-\d+$/
+//     10179       10179-1         10179-1
+//     fig-000123  fig-000123      fig-000123
+//     10179-a     10179-a         10179-a-1   <- verschieden
+//
+// NACHGESEHEN im gemeinsamen Pruefkorpus (shared/setnummer-korpus.json): keine
+// einzige Nummer dieser Art. Deshalb gilt hier ab jetzt dieselbe Fassung wie
+// ueberall sonst.
 export function withVariant(setNumber: string): string {
-  const n = String(setNumber || '').trim();
-  return /-\d+$/.test(n) ? n : `${n}-1`;
+  return mitVersion(String(setNumber || '').trim());
 }
 
 /** BrickLink-Schreibweise für Gear/Book: ohne Variantensuffix. */
 export function bareNumber(setNumber: string): string {
-  return withVariant(setNumber).replace(/-\d+$/, '');
+  return ohneVersion(String(setNumber || '').trim());
 }
 
 /** Query-Parameter und Tab-Kürzel je Item-Typ. */

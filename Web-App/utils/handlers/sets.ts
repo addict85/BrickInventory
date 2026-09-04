@@ -4,6 +4,7 @@ import { resolveImageLocal } from '../images';
 import { asIds } from '../household';
 import { clampPageSize, conditionFromAcquisitions, conditionsFromAcquisitions, withOwners } from './shared';
 import { ausTabelle } from '../validate';
+import { anleitungenZuSet } from '../instructions';
 
 /**
  * Leseabfragen für Sets, samt der Ableitung des Zustands aus den Erfassungen.
@@ -377,7 +378,7 @@ async function getSet(userId: Blickfeld, setNumber: string) {
         WHERE s.user_id = ANY($1) AND s.set_number = $2
         ORDER BY (s.user_id = $3) DESC, s.id ASC
         LIMIT 1`, [uids, setNumber, uids[0]]),
-    db.all('SELECT * FROM shared_instructions WHERE set_number = $1', [setNumber]),
+    anleitungenZuSet(setNumber),
     db.all('SELECT * FROM instructions WHERE user_id = ANY($1) AND set_number = $2', [uids, setNumber]),
   ]);
   if (!set) return null;
