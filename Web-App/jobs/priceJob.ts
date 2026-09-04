@@ -1,7 +1,7 @@
 'use strict';
 
 const db      = require('../db/database');
-import { checkAndIncrementRateLimit } from '../utils/financeCalc';
+import { checkAndIncrementRateLimit, PRICE_CACHE_COLS, speicherePreis, cacheUsable } from '../utils/financeCalc';
 import { meldeUndWeiter, fehlertext } from '../utils/httpError';
 import { getSetting, getGlobalSetting } from '../utils/settings';
 const monitor = require('../utils/jobMonitor');
@@ -125,45 +125,38 @@ async function fetchAndCachePrice(setNumber: string, condition: string, guideTyp
   if (catalog?.is_gear === 1 && catalog?.bl_type === 'NONE') return 'skipped_gear';
 
   const ttl = Math.max(1, parseInt(String(forceTtlHours ?? '')));
-  const fresh = await db.get(
-    `SELECT 1 FROM price_cache WHERE set_number = $1 AND condition = $2 AND currency_code = $3 AND fetched_at > NOW() - INTERVAL '${ttl} hours'`,
-    [setNumber, condition, currency]);
-  if (fresh) return 'skipped';
+  // Dieselbe Frisch-Regel wie im Anfrageweg (utils/financeCalc.ts). Hier stand
+  // vorher `SELECT 1 ... fetched_at > ttl` — das erklaerte auch eine
+  // Null-Zeile fuer die volle Laufzeit fuer frisch, waehrend der Anfrageweg
+  // es nach sechs Stunden erneut versucht. cacheUsable() kennt beide Faelle.
+  const vorhanden = await db.get(
+    `SELECT ${PRICE_CACHE_COLS} FROM price_cache WHERE set_number = $1 AND condition = $2 AND currency_code = $3 AND fetched_at > NOW() - make_interval(hours => $4)`,
+    [setNumber, condition, currency, ttl]);
+  if (cacheUsable(vorhanden, ttl)) return 'skipped';
 
   const rl = await checkAndIncrementRateLimit('bricklink');
   if (!rl.allowed) { log(`BrickLink Tageslimit erreicht (${rl.limit}/Tag) — Job pausiert`); return 'rate_limited'; }
 
   const fallback = condition === 'N' ? 'U' : 'N';
-  let g, usedCondition = condition;
+  let g;
   try { g = await getPriceGuide(setNumber, condition, guideType, currency); }
   catch (e) { log(`Error ${setNumber} (${condition}): ${fehlertext(e).substring(0,60)}`); return 'error'; }
 
-  const avg = parseFloat(g?.avg_price||0), qavg = parseFloat(g?.qty_avg_price||0);
-  if (avg === 0 && qavg === 0) {
+  // Die Antwort zum ANGEFRAGTEN Zustand immer wegschreiben, auch eine mit
+  // lauter Nullen: Sie ist es, die den naechsten Lauf zurueckhaelt. Vorher
+  // sprang der Rueckfall unten mit `return` heraus, sobald der andere Zustand
+  // einen Preis hatte — die Null-Zeile fehlte, und derselbe Set kostete
+  // jeden Lauf wieder zwei BrickLink-Abrufe.
+  const p = await speicherePreis(setNumber, condition, currency, g);
+
+  if (p.avg === 0 && p.qavg === 0) {
     const rl2 = await checkAndIncrementRateLimit('bricklink');
     if (rl2.allowed) {
       try {
         const g2 = await getPriceGuide(setNumber, fallback, guideType, currency);
-        const avg2 = parseFloat(g2?.avg_price||0), q2 = parseFloat(g2?.qty_avg_price||0);
-        if (avg2 > 0 || q2 > 0) {
-          await db.run(`INSERT INTO price_cache (set_number,condition,currency_code,min_price,avg_price,max_price,qty_avg_price,total_quantity,fetched_at) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,NOW()) ON CONFLICT (set_number,condition,currency_code) DO UPDATE SET min_price=$4,avg_price=$5,max_price=$6,qty_avg_price=$7,total_quantity=$8,fetched_at=NOW()`,
-            [setNumber, fallback, currency, parseFloat(g2.min_price||0), avg2, parseFloat(g2.max_price||0), q2, parseInt(g2.total_quantity||0)]);
-          return 'updated';
-        }
+        await speicherePreis(setNumber, fallback, currency, g2);
       } catch (e) { meldeUndWeiter('preis-job:rueckfall-zustand', e); }
     }
-  }
-
-  const min_p = parseFloat(g?.min_price||0), avg_p = parseFloat(g?.avg_price||0),
-        max_p = parseFloat(g?.max_price||0), qavg_p = parseFloat(g?.qty_avg_price||0);
-  await db.run(`INSERT INTO price_cache (set_number,condition,currency_code,min_price,avg_price,max_price,qty_avg_price,total_quantity,fetched_at) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,NOW()) ON CONFLICT (set_number,condition,currency_code) DO UPDATE SET min_price=$4,avg_price=$5,max_price=$6,qty_avg_price=$7,total_quantity=$8,fetched_at=NOW()`,
-    [setNumber, usedCondition, currency, min_p, avg_p, max_p, qavg_p, parseInt(g?.total_quantity||0)]);
-  // Also write to price_history for chart (only when non-zero)
-  if (avg_p > 0 || qavg_p > 0) {
-    await db.run(
-      'INSERT INTO price_history (set_number, condition, currency_code, avg_price, qty_avg_price, min_price, max_price) VALUES ($1,$2,$3,$4,$5,$6,$7) ON CONFLICT DO NOTHING',
-      [setNumber, usedCondition, currency, avg_p, qavg_p, min_p, max_p]
-    ).catch(()=>{});
   }
   return 'updated';
 }

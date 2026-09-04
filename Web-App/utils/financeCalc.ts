@@ -210,6 +210,58 @@ function cacheUsable(row: PreisZeile, ttlHours: number) {
   return ageH < Math.min(ZERO_PRICE_TTL_HOURS, ttlHours);
 }
 
+/** Rohantwort des BrickLink-Preisfuehrers — alle Felder kommen als Text. */
+interface PreisFuehrer { min_price?: unknown; avg_price?: unknown; max_price?: unknown; qty_avg_price?: unknown; total_quantity?: unknown; }
+
+/**
+ * Eine BrickLink-Antwort wegschreiben: erst in den Cache, dann — nur wenn ein
+ * Preis drinsteht — als Punkt in den Verlauf.
+ *
+ * Dieselbe Regel stand vorher dreimal da: einmal im Anfrageweg (fetchPrice →
+ * tryFetch) und zweimal im Nachtjob (jobs/priceJob.ts, Hauptweg und
+ * Zustands-Rueckfall). Die dritte Fassung war eine gekuerzte: Der Rueckfall
+ * schrieb NUR den Cache und nur den Rueckfall-Zustand.
+ *
+ * Nachgemessen an einem Set, dessen angefragter Zustand keinen Preis hat, der
+ * andere schon — zwei Laeufe, gleiche Ausgangslage:
+ *
+ *                        Job          Anfrageweg
+ *   BrickLink-Abrufe       4               2
+ *   price_cache        nur 'U'      'N'(0) und 'U'
+ *   price_history       leer             'U'
+ *
+ * Die vier Abrufe sind der teure Teil: Ohne die Null-Zeile fuer den
+ * angefragten Zustand findet der naechste Lauf nichts Frisches und fragt
+ * BrickLink wieder — jeden Lauf aufs Neue, auf Kosten des Tageskontingents.
+ *
+ * @returns die gelesenen Zahlen, damit der Aufrufer nicht erneut umwandeln muss
+ */
+async function speicherePreis(setNumber: string, condition: string, currency: string, g: PreisFuehrer | null | undefined) {
+  const min  = parseFloat(String(g?.min_price     ?? 0)) || 0;
+  const avg  = parseFloat(String(g?.avg_price     ?? 0)) || 0;
+  const max  = parseFloat(String(g?.max_price     ?? 0)) || 0;
+  const qavg = parseFloat(String(g?.qty_avg_price ?? 0)) || 0;
+  const qty  = parseInt(String(g?.total_quantity  ?? 0)) || 0;
+
+  // Auch eine Null-Antwort wird geschrieben. Sie ist die Auskunft „BrickLink
+  // kennt hier keinen Preis" und haelt den naechsten Abruf zurueck; wie lange,
+  // entscheidet cacheUsable().
+  await db.run(`INSERT INTO price_cache (set_number,condition,currency_code,min_price,avg_price,max_price,qty_avg_price,total_quantity,fetched_at)
+    VALUES ($1,$2,$3,$4,$5,$6,$7,$8,NOW()) ON CONFLICT (set_number,condition,currency_code) DO UPDATE SET min_price=$4,avg_price=$5,max_price=$6,qty_avg_price=$7,total_quantity=$8,fetched_at=NOW()`,
+    [setNumber, condition, currency, min, avg, max, qavg, qty]);
+
+  // In den Verlauf nur, was auch ein Punkt in der Kurve waere. Die Bedingung
+  // ist weiter als hatPreis() — absichtlich: Der Tages-Schnappschuss am Ende
+  // des Jobs nimmt dieselbe (avg > 0 OR qty_avg > 0), und ein Verlauf mit zwei
+  // Aufnahmeregeln haette Luecken, je nachdem wer geschrieben hat.
+  if (avg > 0 || qavg > 0) {
+    await db.run(
+      'INSERT INTO price_history (set_number, condition, currency_code, avg_price, qty_avg_price, min_price, max_price) VALUES ($1,$2,$3,$4,$5,$6,$7) ON CONFLICT DO NOTHING',
+      [setNumber, condition, currency, avg, qavg, min, max]).catch(() => {});
+  }
+  return { min, avg, max, qavg, qty };
+}
+
 async function fetchPrice(setNumber: string, condition: string, guideType: string, currency: string, ttlHours: Stunden, pre: { catalog: Map<any, any>; cache: Map<string, any> } | null = null) {
   const catalogRow = pre?.catalog
     ? (pre.catalog.get(setNumber) || null)
@@ -250,19 +302,8 @@ async function fetchPrice(setNumber: string, condition: string, guideType: strin
       // Lazy-Require: Top-Level würde einen Require-Zyklus utils ↔ routes
       // erzeugen (bricklink.js nutzt den Rate-Limiter von hier).
       const g = await getPriceGuide(setNumber, cond, guideType, currency);
-      const min = parseFloat(g?.min_price||0), avg = parseFloat(g?.avg_price||0),
-            max = parseFloat(g?.max_price||0), qavg = parseFloat(g?.qty_avg_price||0),
-            qty = parseInt(g?.total_quantity||0);
-      await db.run(`INSERT INTO price_cache (set_number,condition,currency_code,min_price,avg_price,max_price,qty_avg_price,total_quantity,fetched_at)
-        VALUES ($1,$2,$3,$4,$5,$6,$7,$8,NOW()) ON CONFLICT (set_number,condition,currency_code) DO UPDATE SET min_price=$4,avg_price=$5,max_price=$6,qty_avg_price=$7,total_quantity=$8,fetched_at=NOW()`,
-        [setNumber, cond, currency, min, avg, max, qavg, qty]);
+      const { min, avg, max, qavg } = await speicherePreis(setNumber, cond, currency, g);
       console.log(`  Price ${setNumber} cond=${cond}: avg=${avg} qty_avg=${qavg}`);
-      // Record in price history only when we have actual prices
-      if (avg > 0 || qavg > 0) {
-        await db.run(
-          'INSERT INTO price_history (set_number, condition, currency_code, avg_price, qty_avg_price, min_price, max_price) VALUES ($1,$2,$3,$4,$5,$6,$7) ON CONFLICT DO NOTHING',
-          [setNumber, cond, currency, avg, qavg, min, max]).catch(()=>{});
-      }
       return { min_price:min, avg_price:avg, max_price:max, qty_avg_price:qavg, from_cache:false };
     } catch (e) { console.log(`  Price ${setNumber} cond=${cond} error: ${fehlertext(e)}`); return null; }
   }
@@ -1263,7 +1304,8 @@ async function computePnl(viewerId: number, ids: Blickfeld) {
 
 
 export {
-  DEFAULT_PRICE_CONDITION,
+  DEFAULT_PRICE_CONDITION, PRICE_CACHE_COLS,
+  speicherePreis, cacheUsable,
   checkAndIncrementRateLimit, getLimitForApi, getRateLimitStatus,
   fetchPrice, parallelLimit, resolveBlColorId, resolveBlPartNumber, fetchPartPrice, fetchMinifigPrice,
   computeSetsValuation, computeMinifigsValuation, computePartsValuation, computePnl,
