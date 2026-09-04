@@ -457,7 +457,9 @@ internal fun KontenSection(vm: MainViewModel) {
                             Modifier.size(18.dp))
                     }
                     IconButton(onClick = { loeschen = konto.id }) {
-                        Icon(Icons.Default.Delete, null, Modifier.size(18.dp),
+                        Icon(Icons.Default.Delete,
+                            stringResource(R.string.admin_user_delete_title),
+                            Modifier.size(18.dp),
                             tint = MaterialTheme.colorScheme.error)
                     }
                 }
@@ -538,7 +540,12 @@ internal fun ProtokollSection(vm: MainViewModel) {
                         offen = !offen
                         if (offen && verwaltung.protokoll.isEmpty()) vm.ladeProtokoll()
                     }) {
-                        Icon(if (offen) Icons.Default.ExpandLess else Icons.Default.ExpandMore, null)
+                        // Beschreibt die WIRKUNG des Tippens, nicht das
+                        // gezeigte Zeichen — genau das braucht TalkBack.
+                        Icon(
+                            if (offen) Icons.Default.ExpandLess else Icons.Default.ExpandMore,
+                            stringResource(
+                                if (offen) R.string.common_collapse else R.string.common_expand))
                     }
                 }
             }

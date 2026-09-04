@@ -578,4 +578,6 @@
     <string name="admin_log_empty">No entries in this period.</string>
     <string name="admin_log_reload">Reload</string>
 
+    <string name="common_collapse">Collapse</string>
+    <string name="common_expand">Expand</string>
 </resources>

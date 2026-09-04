@@ -564,4 +564,6 @@
     <string name="admin_log_empty">Keine Einträge in diesem Zeitraum.</string>
     <string name="admin_log_reload">Neu laden</string>
 
+    <string name="common_collapse">Zuklappen</string>
+    <string name="common_expand">Aufklappen</string>
 </resources>
