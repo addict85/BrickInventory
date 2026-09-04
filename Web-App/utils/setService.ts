@@ -405,6 +405,50 @@ async function addSet(setNumber: string, quantity: number, userId: number,
 // `uid` ist eine EINZELNE ID, kein Blickfeld: Zeile darunter vergleicht
 // `user_id = $3` damit, und scopeIds(uid) verlangt eine Zahl. Das Blickfeld
 // wird im Rumpf daraus berechnet (_wids, leseFeld).
+/**
+ * Einen Wert auf die sets-Zeile UND die letzte Erfassung schreiben.
+ *
+ * ── Warum das eine Funktion ist ─────────────────────────────────────────────
+ * Kaufpreis und Zustand machen in updateSet dieselbe Bewegung: erst die
+ * sets-Zeile, dann die Erfassung, die der Detail-Dialog definitionsgemaess
+ * bearbeitet (die neueste). Es waren zwei Abschriften — und die zweite hatte
+ * ein anderes Konto eingesetzt.
+ *
+ * NACHGEMESSEN, Set und Erfassung gehoeren dem UNTERKONTO, geaendert wird
+ * vom Hauptkonto:
+ *
+ *     vorher                       sets: N/10   erfassung: N/10
+ *     nach Preis 99 (Hauptkonto)   sets: N/99   erfassung: N/99
+ *     nach Zustand U (Hauptkonto)  sets: N/99   erfassung: N/99
+ *
+ * Der Preis kam an, der Zustand verschwand still: Der Zustands-Zweig schrieb
+ * `WHERE user_id = <Aufrufer>`, und das trifft keine Zeile. Kein Fehler, kein
+ * Hinweis — updateSet meldete Erfolg.
+ *
+ * Das bleibt nicht bei der Plakette: effectiveCondition() entscheidet, zu
+ * welchem Zustand der Marktpreis geholt wird. Ein Set, das der Haushalt als
+ * gebraucht fuehrt, wurde weiter als neu bewertet.
+ *
+ * `ownerId`, nicht der Aufrufer — die Regel steht in updateSet ausdrueckllich
+ * ueber dieser Stelle („ab hier zaehlt der BESITZER der Zeile"). Der
+ * Mengen-Zweig weicht bewusst davon ab (Marcos Vorgabe: angezeigt wird der
+ * Haushalt, geaendert wird das eigene Konto) — deshalb geht der nicht hier
+ * durch.
+ *
+ * @param feld  fester Spaltenname, KEINE Eingabe von aussen
+ */
+async function spiegleAufSetUndLetzteErfassung(
+  feld: 'purchase_price' | 'condition', wert: any, ownerId: number, sn: string,
+) {
+  await db.run(`UPDATE sets SET ${feld} = $1 WHERE user_id = $2 AND set_number = $3`,
+    [wert, ownerId, sn]);
+  await db.run(`UPDATE set_acquisitions SET ${feld} = $1
+                 WHERE id = (SELECT id FROM set_acquisitions
+                              WHERE user_id=$2 AND set_number=$3
+                              ORDER BY created_at DESC, id DESC LIMIT 1)`,
+    [wert, ownerId, sn]);
+}
+
 async function updateSet(uid: number, sn: string, body: any) {
   // SCHREIB-Blickfeld statt eigener ID (Nachtrag 52, Marcos Bericht: „Wenn die
   // Anzahl eines Sets erhöht wird, das einem Unterkonto gehört, funktioniert
@@ -537,25 +581,17 @@ async function updateSet(uid: number, sn: string, body: any) {
       pp = await getCurrentMarketPrice(sn, ownerId, lastCond?.condition || null);
     }
     const val = (pp !== null && !isNaN(pp)) ? pp : null;
-    await db.run('UPDATE sets SET purchase_price = $1 WHERE user_id = $2 AND set_number = $3', [val, ownerId, sn]);
-    // Der Detail-Dialog editiert definitionsgemäss den Preis der LETZTEN Erfassung
-    await db.run(`UPDATE set_acquisitions SET purchase_price = $1
-                  WHERE id = (SELECT id FROM set_acquisitions
-                              WHERE user_id=$2 AND set_number=$3
-                              ORDER BY created_at DESC, id DESC LIMIT 1)`,
-      [val, ownerId, sn]);
+    // Der Detail-Dialog editiert definitionsgemäss die LETZTE Erfassung.
+    await spiegleAufSetUndLetzteErfassung('purchase_price', val, ownerId, sn);
   }
   // condition === null bedeutet "nicht gesetzt" (nicht auf 'N' zwingen), und
   // während einer Mengenänderung ist ein mitgeschicktes condition ein Echo.
   if (body.condition !== undefined && body.condition !== null && !hasQuantity) {
     const cond = ['N','U'].includes(body.condition) ? body.condition : 'N';
     try {
-      await db.run('UPDATE sets SET condition = $1 WHERE user_id = $2 AND set_number = $3', [cond, uid, sn]);
-      await db.run(`UPDATE set_acquisitions SET condition = $1
-                    WHERE id = (SELECT id FROM set_acquisitions
-                                WHERE user_id=$2 AND set_number=$3
-                                ORDER BY created_at DESC, id DESC LIMIT 1)`,
-        [cond, uid, sn]);
+      // ownerId, nicht uid: Hier stand der Aufrufer, und damit traf das
+      // UPDATE bei einem Set des Unterkontos keine Zeile.
+      await spiegleAufSetUndLetzteErfassung('condition', cond, ownerId, sn);
     } catch (e) {
       console.error('[updateSet] condition update skipped (migration pending?):', fehlertext(e));
     }
