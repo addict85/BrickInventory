@@ -228,7 +228,15 @@ test('Admins können das Passwort anderer Nutzer setzen', () => {
 
   // Das eigene Konto ist ausgenommen: Hier wird KEIN altes Passwort verlangt,
   // also könnte eine übernommene Sitzung den Besitzer sonst aussperren.
-  assert.match(fn, /targetId === Number\(req\.session\.userId\)/,
+  //
+  // Geprüft wird der VERGLEICH, nicht mehr die Schreibweise seiner rechten
+  // Seite. Hier stand `Number(req.session.userId)` — genau die Schreibweise,
+  // die es seit Nachtrag 127 nicht mehr gibt: „Wer fragt hier?" stand in vier
+  // Fassungen und heisst jetzt überall nutzerId(req), damit die App mit ihrem
+  // Bearer-Token dieselben Routen erreicht wie die Webapp. Der Test war rot,
+  // obwohl die Regel unverändert galt — ein Test, der die Formulierung
+  // festhält statt die Aussage, verbietet jede Vereinheitlichung.
+  assert.match(fn, /targetId === nutzerId\(req\)/,
     'Für das eigene Konto muss /change-password gelten');
   assert.match(fn, /String\(password\)\.length < 8/, 'Mindestlänge fehlt');
   assert.match(fn, /bcrypt\.hash\(String\(password\), BCRYPT_ROUNDS\)/,

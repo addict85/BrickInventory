@@ -74,11 +74,25 @@ import ch.brickinventoryapp.ui.theme.Petrol
 import ch.brickinventoryapp.ui.theme.SlateBlue
 import androidx.compose.material.icons.filled.*
 
-/** Anleitungen — Liste der PDFs samt Öffnen im Betrachter oder extern. */
-fun LazyListScope.setDetailInstructionsSection(set: SetItem, detailState: SetDetailUiState, authToken: String, serverUrl: String, onOpenPdf: (url: String, title: String) -> Unit) {
+/**
+ * Anleitungen — ansehen, hinzufügen und entfernen.
+ *
+ * ── Warum die Karte jetzt IMMER steht (Nachtrag 128) ────────────────────────
+ *
+ * Sie erschien nur, wenn es schon Anleitungen gab. Das war richtig, solange sie
+ * nichts als eine Liste war — jetzt trägt sie den Weg, eine erste hinzuzufügen,
+ * und der wäre genau dann unerreichbar, wenn man ihn braucht. Die Webapp zeigt
+ * ihr Hinzufügen-Feld ebenfalls bei leerem Set.
+ */
+fun LazyListScope.setDetailInstructionsSection(
+    set: SetItem, detailState: SetDetailUiState, authToken: String, serverUrl: String,
+    onOpenPdf: (url: String, title: String) -> Unit,
+    onAnleitungWaehlen: () -> Unit,
+    onAnleitungLoeschen: (Int) -> Unit,
+) {
         // ── Instructions section ───────────────────────────────────────────
         val instructions = set.instructions
-        if (instructions.isNotEmpty() || detailState.setDetailLoading) {
+        run {
             item {
                 SectionCard(
                     title = if (instructions.isNotEmpty())
@@ -165,7 +179,38 @@ fun LazyListScope.setDetailInstructionsSection(set: SetItem, detailState: SetDet
                                         modifier = Modifier.size(18.dp)
                                     )
                                 }
+                                // Entfernen nur, wo der Server eine Kennung
+                                // mitgeschickt hat: Anleitungen aus der
+                                // automatischen Suche haben keine Zeile in der
+                                // Tabelle, und ein Knopf, der zu einem 404
+                                // fuehrt, ist schlechter als keiner.
+                                val id = instr.id
+                                if (id != null) {
+                                    IconButton(
+                                        onClick = { onAnleitungLoeschen(id) },
+                                        modifier = Modifier.size(36.dp)
+                                    ) {
+                                        Icon(
+                                            Icons.Default.Delete,
+                                            stringResource(R.string.instr_delete),
+                                            tint = MaterialTheme.colorScheme.error,
+                                            modifier = Modifier.size(18.dp)
+                                        )
+                                    }
+                                }
                             }
+                        }
+                        // Der Weg, eine erste Anleitung hinzuzufuegen. Steht
+                        // UNTER der Liste, weil das Ansehen der haeufigere Fall
+                        // ist.
+                        OutlinedButton(
+                            onClick = onAnleitungWaehlen,
+                            modifier = Modifier.fillMaxWidth().padding(top = 8.dp),
+                            shape = Formen.knopf
+                        ) {
+                            Icon(Icons.Default.Add, null, Modifier.size(18.dp))
+                            Spacer(Modifier.width(8.dp))
+                            Text(stringResource(R.string.instr_upload))
                         }
                     }
                 }

@@ -4,23 +4,43 @@ const router  = express.Router();
 import bcrypt from 'bcryptjs';
 import * as db from '../db/database';
 import { handleRouteError, logAndContinue, meldeUndWeiter, fehlerCode, fehlertext, pfadParam } from '../utils/httpError';
-import { hashToken, pruefeAnmeldedaten, createToken, validateToken, assertLoginAllowed, establishSession, revokeAllTokens, revokeAllSessions, deleteToken, BCRYPT_ROUNDS, USERNAME_RE, EMAIL_RE } from '../utils/auth';
+import { hashToken, pruefeAnmeldedaten, createToken, validateToken, assertLoginAllowed, establishSession, revokeAllTokens, revokeAllSessions, deleteToken, BCRYPT_ROUNDS, USERNAME_RE, EMAIL_RE, requireLoginOrToken, nutzerId, angemeldeteNutzerId } from '../utils/auth';
 import { ipThrottle } from '../utils/loginLimiter';
 import crypto from 'crypto';
 import { strictBool } from '../utils/validate';
 import { sendPasswordResetMail, sendVerificationMail } from './mailer';
-import type { Request, Response, NextFunction } from 'express';
+import type { Request } from 'express';
 import { getGlobalSetting } from '../utils/settings';
+import { requireApiAdmin } from './api_v1/middleware';
 
-function requireLogin(req: Request, res: Response, next: NextFunction) {
-  if (!req.session?.userId) return res.status(401).json({ success: false, error: 'Nicht angemeldet' });
-  next();
-}
-function requireAdmin(req: Request, res: Response, next: NextFunction) {
-  if (!req.session?.userId) return res.status(401).json({ success: false, error: 'Nicht angemeldet' });
-  if (!req.session?.isAdmin && req.session?.isAdmin !== true) return res.status(403).json({ success: false, error: 'Nur Admins' });
-  next();
-}
+// ── „Angemeldet" gibt es nur noch in EINER Fassung ──────────────────────────
+//
+// Hier standen zwei eigene Waechter, die AUSSCHLIESSLICH die Sitzung kannten.
+// Die Android-App hat keine Sitzung — sie weist sich mit einem Bearer-Token
+// aus. Sie war damit von einundzwanzig Routen ausgesperrt, und zwar von genau
+// denen, deren Fehlen an der App aufgefallen war:
+//
+//     CSV-Import fuer Teile und Minifiguren   routes/parts.ts, routes/minifigs.ts
+//     Anleitungen hochladen und loeschen      routes/sets.ts
+//     Sicherung exportieren/einspielen        routes/settings.ts
+//     Profil, Passwort aendern                hier
+//     Nutzerverwaltung                        hier
+//
+// Sechs vermeintlich fehlende Funktionen, EINE Ursache: dieselbe Regel in zwei
+// Schreibweisen, und die App konnte nur die eine erfuellen. server.ts sagt an
+// der Stelle, wo diese Router eingehaengt werden, seit jeher voraus, was zu tun
+// ist: „Wer diese Routen auch fuer die App oeffnen will, stellt requireLogin
+// auf requireToken um — ein eigener Schritt." Das ist dieser Schritt.
+//
+// Die Namen bleiben, damit die Aufrufer unveraendert bleiben; was sich aendert,
+// ist die BEDEUTUNG — und die ist jetzt dieselbe wie ueberall sonst im Baum.
+//
+// Kein CSRF-Zuwachs: Der Schutz haengt am Cookie (SameSite=lax, server.ts).
+// Einen Authorization-Header schickt ein Browser NIE von selbst mit; ein
+// zusaetzlich akzeptierter Bearer-Token vergroessert die Angriffsflaeche
+// deshalb nicht.
+const requireLogin = requireLoginOrToken;
+const requireAdmin = requireApiAdmin;
 
 /**
  * POST /api/v1/auth/login — die EINE Anmeldung, fuer Webapp und App.
@@ -177,12 +197,14 @@ router.get('/me', async (req, res) => {
  * Token genuegt als Nachweis — wer schon drin ist, darf sich einen weiteren
  * Schluessel machen.
  */
-router.post('/token-create', async (req, res) => {
+router.post('/token-create', requireLogin, async (req, res) => {
   try {
-    const auth = String(req.headers.authorization || '');
-    const tokenUser = auth.startsWith('Bearer ') ? await validateToken(auth.slice(7)) : null;
-    const userId = req.session?.userId || tokenUser?.user_id;
-    if (!userId) return res.status(401).json({ success: false, error: 'Nicht angemeldet' });
+    // Hier stand die VIERTE Schreibweise von „wer fragt hier": Der Header wurde
+    // von Hand zerlegt, der Token selbst geprueft und das Ergebnis mit der
+    // Sitzung verodert — wortgleich zu dem, was requireLoginOrToken ohnehin
+    // tut. Jetzt steht der Waechter in der Kette und die Antwort kommt aus dem
+    // einen Helfer.
+    const userId = angemeldeteNutzerId(req);
     const label = req.body?.label || 'Android App';
     const neu = await createToken(userId, label, true);
     res.json({ success: true, token: neu, label, never_expires: true });
@@ -190,12 +212,11 @@ router.post('/token-create', async (req, res) => {
 });
 
 // GET /api/v1/auth/profile — get current user profile
-router.get('/profile', async (req, res) => {
-  if (!req.session?.userId) return res.status(401).json({ success: false });
+router.get('/profile', requireLogin, async (req, res) => {
   try {
     const user = await db.get(
       'SELECT id, username, email, first_name, last_name, email_verified FROM users WHERE id=$1',
-      [req.session.userId]
+      [nutzerId(req)]
     );
     if (!user) return res.status(404).json({ success: false });
     res.json({ success: true, user });
@@ -203,11 +224,10 @@ router.get('/profile', async (req, res) => {
 });
 
 // PUT /api/v1/auth/profile — update current user profile
-router.put('/profile', async (req, res) => {
-  if (!req.session?.userId) return res.status(401).json({ success: false });
+router.put('/profile', requireLogin, async (req, res) => {
   const { username, email, first_name, last_name, password, password_current } = req.body;
   try {
-    const user = await db.get('SELECT * FROM users WHERE id=$1', [req.session.userId]);
+    const user = await db.get('SELECT * FROM users WHERE id=$1', [nutzerId(req)]);
     if (!user) return res.status(404).json({ success: false });
 
     // If changing password, verify current password
@@ -321,7 +341,7 @@ router.put('/users/:id/admin', requireAdmin, async (req, res) => {
     // Dieselbe strenge Prüfung wie auf der v1-Route — die Zeichenkette "false"
     // ist in JavaScript wahr und meldete hier Erfolg, ohne Rechte zu entziehen.
     const soll = strictBool(req.body.is_admin, 'is_admin');
-    if (targetId === req.session.userId && !soll)
+    if (targetId === nutzerId(req) && !soll)
       return res.status(400).json({ success: false, error: 'Eigene Admin-Rolle kann nicht entfernt werden' });
     const r = await db.run('UPDATE users SET is_admin = $1 WHERE id = $2', [soll ? 1 : 0, targetId]);
     if (r.changes === 0) return res.status(404).json({ success: false, error: 'Benutzer nicht gefunden' });
@@ -349,7 +369,7 @@ router.put('/users/:id/password', requireAdmin, async (req, res) => {
 
   if (!password || String(password).length < 8)
     return res.status(400).json({ success: false, error: 'Passwort muss mindestens 8 Zeichen lang sein.' });
-  if (!targetId || targetId === Number(req.session.userId))
+  if (!targetId || targetId === nutzerId(req))
     return res.status(400).json({ success: false, error: 'Für das eigene Konto bitte „Passwort ändern" benutzen.' });
 
   try {
@@ -376,7 +396,7 @@ router.put('/users/:id/password', requireAdmin, async (req, res) => {
 router.delete('/users/:id', requireAdmin, async (req, res) => {
   try {
     const r = await db.run('DELETE FROM users WHERE id = $1 AND id != $2',
-      [req.params.id, req.session.userId]);
+      [req.params.id, nutzerId(req)]);
     if (r.changes === 0) return res.status(404).json({ success: false, error: 'Benutzer nicht gefunden oder eigener Account' });
     res.json({ success: true });
   } catch (e) { handleRouteError(res, e); }
@@ -393,16 +413,26 @@ router.delete('/users/:id', requireAdmin, async (req, res) => {
 router.post('/change-password', requireLogin, async (req: LoggedInRequest, res) => {
   const { current, newPassword } = req.body;
   if (!current || !newPassword) return res.status(400).json({ success: false, error: 'Alle Felder erforderlich' });
+  // Die Kennung kommt aus dem gemeinsamen Helfer, nicht mehr aus der Sitzung:
+  // Seit der Waechter beide Ausweise nimmt, kann hier auch die App stehen.
+  const uid = nutzerId(req);
+  if (uid == null) return res.status(401).json({ success: false, error: 'Nicht angemeldet' });
   try {
-    const user = await db.get('SELECT * FROM users WHERE id = $1', [req.session.userId]);
+    const user = await db.get('SELECT * FROM users WHERE id = $1', [uid]);
     if (!(await bcrypt.compare(current, user.password_hash)))
       return res.status(401).json({ success: false, error: 'Aktuelles Passwort falsch' });
     const hash = await bcrypt.hash(newPassword, BCRYPT_ROUNDS);
     // must_change_password mit löschen — sonst fragt der Login nach jedem
     // Login des Default-Admins weiter danach, auch nach der Änderung.
-    await db.run('UPDATE users SET password_hash = $1, must_change_password = 0 WHERE id = $2', [hash, req.session.userId]);
+    await db.run('UPDATE users SET password_hash = $1, must_change_password = 0 WHERE id = $2', [hash, uid]);
     // Alle Bearer-Tokens des Kontos verwerfen — siehe revokeAllTokens().
-    await revokeAllTokens(req.session.userId);
+    //
+    // Fuer die APP heisst das: Sie verwirft mit diesem Aufruf ihren EIGENEN
+    // Zugang und muss sich danach neu anmelden. Das ist die richtige Antwort
+    // und keine Unachtsamkeit — wer sein Passwort aendert, will alle
+    // bestehenden Zugaenge loswerden, und eine Ausnahme fuer den gerade
+    // benutzten waere genau die Luecke. Die App sagt es dem Nutzer vorher.
+    await revokeAllTokens(uid);
     // ── Und die übrigen Browser-Sitzungen ─────────────────────────────────
     //
     // Wer sein Passwort ändert, will in aller Regel einen fremden Zugang
@@ -413,9 +443,16 @@ router.post('/change-password', requireLogin, async (req: LoggedInRequest, res) 
     // frische Sitzung mit neuer ID herstellen, sonst wäre man aus dem eigenen
     // Tab geflogen. Der Nebeneffekt ist erwünscht: neue ID nach einem
     // Passwortwechsel ist ohnehin die richtige Antwort auf Session Fixation.
-    const _self = { userId: req.session.userId, username: req.session.username, isAdmin: req.session.isAdmin };
-    await revokeAllSessions(_self.userId);
-    await establishSession(req, _self);
+    //
+    // NUR wenn es ueberhaupt eine Sitzung gibt: Kommt die Anfrage aus der App,
+    // ist keine da, und `establishSession` legte eine an, die niemand je
+    // benutzt — ein Eintrag im Sitzungsspeicher fuer einen Client, der gar
+    // keine Cookies fuehrt.
+    await revokeAllSessions(uid);
+    if (req.session?.userId) {
+      const _self = { userId: uid, username: req.session.username, isAdmin: req.session.isAdmin };
+      await establishSession(req, _self);
+    }
     res.json({ success: true });
   } catch (e) { handleRouteError(res, e); }
 });
@@ -487,8 +524,9 @@ const QR_TTL_MS = 5 * 60 * 1000;
 // Mit POST ist es unabhängig von jeder CSRF-Entscheidung erledigt: SameSite=lax
 // schickt bei einem fremden POST kein Cookie mit. Einziger Aufrufer war
 // public/js/05-settings.js — dort mitgeändert.
-router.post('/qr-token', async (req, res) => {
-  if (!req.session?.userId) return res.status(401).json({ success: false });
+router.post('/qr-token', requireLogin, async (req, res) => {
+  // Die eigene Sitzungspruefung stand im Rumpf; der Waechter steht jetzt in
+  // der Kette und kennt beide Ausweise — siehe den Block ueber requireLogin.
   try {
     // Abgelaufene/verbrauchte Nonces mitentsorgen — die Tabelle bleibt so klein.
     await db.run(`DELETE FROM qr_login_tokens WHERE expires_at < NOW() - INTERVAL '1 hour'`)
@@ -496,7 +534,7 @@ router.post('/qr-token', async (req, res) => {
     const nonce = crypto.randomBytes(32).toString('base64url');
     await db.run(
       'INSERT INTO qr_login_tokens (token, user_id, expires_at) VALUES ($1,$2,$3)',
-      [hashToken(nonce), req.session.userId, new Date(Date.now() + QR_TTL_MS)]
+      [hashToken(nonce), nutzerId(req), new Date(Date.now() + QR_TTL_MS)]
     );
     res.json({ success: true, token: `bim:${nonce}`, expires_in: QR_TTL_MS / 1000 });
   } catch (e) { handleRouteError(res, e); }

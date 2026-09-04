@@ -55,6 +55,17 @@ class TeileRepository @Inject constructor(
     suspend fun getPartsStats(accounts: String? = null): Result<PartsStatsResponse> =
         safeCall { api.getPartsStats(accounts) }
 
+    /**
+     * Die manuell erfassten Teile bzw. Figuren — dieselbe Quelle wie die
+     * Webapp. Vorher kamen sie aus der BEWERTUNG, also aus einer zweiten
+     * Quelle fuer dieselbe Liste; siehe ManualPartsResponse.
+     */
+    suspend fun getManualParts(accounts: String? = null): Result<ManualPartsResponse> =
+        safeCall { api.getManualParts(accounts) }
+
+    suspend fun getManualMinifigs(accounts: String? = null): Result<ManualFigsResponse> =
+        safeCall { api.getManualMinifigs(accounts) }
+
     // ── In welchen Sets steckt dieses Teil / diese Figur? ────────────────────
     //
     // Fuer den Detail-Dialog automatisch erfasster Teile und Figuren. BEWUSST

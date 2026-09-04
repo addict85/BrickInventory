@@ -30,18 +30,14 @@ class SetsRepository @Inject constructor(
 ) : RepoBasis(api, cache) {
 
     /**
-     * @param accounts Kontofilter des Haushalts (null = Vorgabe „alle").
-     *
-     * Der Ablage-Cache greift nur für die UNGEFILTERTE Sicht: Sonst läge die
-     * Antwort eines Kontos unter demselben Schlüssel wie die des ganzen
-     * Haushalts, und nach einem Neustart erschiene der falsche Bestand.
-     */
-    /**
      * Galerie-Seite vom Server — gefiltert, sortiert, paginiert.
      *
-     * Gecacht wird wie bisher nur die ROHE erste Seite ohne Filter: Eine
-     * gefilterte Antwort unter demselben Schlüssel abzulegen hiesse, nach dem
-     * nächsten Start den falschen Bestand zu zeigen.
+     * Gecacht wird nur die ROHE erste Seite ohne Filter: Eine gefilterte
+     * Antwort unter demselben Schlüssel abzulegen hiesse, dass die Antwort
+     * eines Kontos unter derselben Adresse läge wie die des ganzen Haushalts —
+     * und nach dem nächsten Start der falsche Bestand erschiene.
+     *
+     * @param accounts Kontofilter des Haushalts (null = Vorgabe „alle").
      */
     suspend fun getSets(
         accounts: String? = null,
@@ -163,4 +159,25 @@ class SetsRepository @Inject constructor(
             Result.Error("", art = Fehlerart.UNBEKANNT, technisch = e.message)
         }
     }
+    /**
+     * Eine Anleitung hochladen — PDF, JPG oder PNG.
+     *
+     * Der Typ kommt aus der Dateiauswahl und wird NICHT geraten: Der Server
+     * leitet die Dateiendung aus dem gemeldeten Typ ab und lehnt alles ab, was
+     * nicht in seiner festen Liste steht (routes/sets.ts). Ein pauschales
+     * `application/octet-stream` fuehrte dort zu einer Absage, obwohl die Datei
+     * in Ordnung ist.
+     */
+    suspend fun uploadAnleitung(
+        setNumber: String, dateiname: String, typ: String, inhalt: ByteArray, beschreibung: String,
+    ): Result<GenericResponse> {
+        val koerper = okhttp3.RequestBody.create(typ.toMediaType(), inhalt)
+        val teil = okhttp3.MultipartBody.Part.createFormData("file", dateiname, koerper)
+        val text = okhttp3.RequestBody.create("text/plain".toMediaType(), beschreibung)
+        return safeCall { api.uploadAnleitung(setNumber, teil, text) }
+    }
+
+    suspend fun deleteAnleitung(setNumber: String, instrId: Int): Result<GenericResponse> =
+        safeCall { api.deleteAnleitung(setNumber, instrId) }
+
 }

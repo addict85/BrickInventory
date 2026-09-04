@@ -51,8 +51,7 @@ import { DEFAULT_PRICE_CONDITION } from '../utils/financeCalc';
 // Der Standard-Zustand eines Benutzers. Hiess in routes/sets.ts einmal
 // `getUserDefaultCondition` und war dort eine wortgleiche Zweitfassung dieser
 // Funktion (Nachtrag 125). Der Alias, weil in dieser Datei mehrfach eine lokale
-// Variable `effectiveCondition` steht.
-import { effectiveCondition as userDefaultCondition, zustandFuerPreis } from '../utils/settings';
+import { nutzerStandardZustand as userDefaultCondition, zustandFuerPreis } from '../utils/settings';
 
 router.use(requireLogin);
 
@@ -67,7 +66,7 @@ router.use(requireLogin);
 
 
 router.get('/categories', async (req, res) => {
-  const uid = req.session.userId;
+  const uid = angemeldeteNutzerId(req);
   try {
     const cats = await db.all(`
       -- Kategorie auflösen, notfalls über den Teilekatalog.
@@ -493,17 +492,18 @@ async function updateManualPart(uid: number, partNumber: string, colorId: number
 
 // ── POST /api/parts/import/csv — CSV import of manual parts ──────────────────
 // CSV columns: part_number, color_id (opt), color_name (opt), quantity, unit_price (opt), note (opt)
-import multer from 'multer';
 import { fetchPartPrice } from '../utils/financeCalc';
 import { getSetting } from '../utils/settings';
 import { getBrickColors, getRbKey, httpsGetRobust } from '../clients/rebrickable';
 import { rebrickableBackgroundLimiter } from '../utils/rateLimiter';
 import { csvEinlesen, parseCsvDate, toCsv, uebersprungenHinweis } from '../utils/csvExport';
-const csvUpload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 15 * 1024 * 1024 } });
+import { angemeldeteNutzerId } from '../utils/auth';
+import { csvEmpfang } from '../utils/dateiEmpfang';
 
-router.post('/import/csv', csvUpload.single('file'), async (req: LoggedInRequest, res) => {
+
+router.post('/import/csv', csvEmpfang.single('file'), async (req: LoggedInRequest, res) => {
   if (!req.file) return res.status(400).json({ success: false, error: 'Keine Datei' });
-  const uid = req.session.userId;
+  const uid = angemeldeteNutzerId(req);
   try {
     // Krumme Zeilen überspringen statt abbrechen (utils/csvExport.ts).
     const gelesen   = csvEinlesen(req.file.buffer.toString('utf-8'));

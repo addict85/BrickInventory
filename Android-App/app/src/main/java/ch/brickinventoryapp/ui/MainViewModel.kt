@@ -156,12 +156,6 @@ class MainViewModel @Inject constructor(
     val setItemState = _setItemState.asStateFlow()
 
     /**
-     * Läuft gerade eine Prüfung vor dem Erfassen? Siehe ErfassungUiState.
-     *
-     * Eigener Fluss, weil ihn alle vier Erfassungswege speisen (Barcode,
-     * Texterkennung, Galerie, Katalog) und nur der Anzeige-Dialog ihn liest.
-     */
-    /**
      * Galerie — eigener Fluss (Nachtrag: AppUiState-Aufteilung).
      *
      * Sechzehn Dateien sammeln `state`; die Galerie-Felder lesen davon drei.
@@ -171,6 +165,12 @@ class MainViewModel @Inject constructor(
     internal val _galleryState = MutableStateFlow(GalleryUiState())
     val galleryState = _galleryState.asStateFlow()
 
+    /**
+     * Läuft gerade eine Prüfung vor dem Erfassen? Siehe ErfassungUiState.
+     *
+     * Eigener Fluss, weil ihn alle vier Erfassungswege speisen (Barcode,
+     * Texterkennung, Galerie, Katalog) und nur der Anzeige-Dialog ihn liest.
+     */
     internal val _erfassungState = MutableStateFlow(ErfassungUiState())
     val erfassungState = _erfassungState.asStateFlow()
 
@@ -204,6 +204,26 @@ class MainViewModel @Inject constructor(
 
     internal val _geraeteState = MutableStateFlow(GeraeteUiState())
     val geraeteState = _geraeteState.asStateFlow()
+
+    // Konto anlegen und „Passwort vergessen" — eigener Fluss aus demselben
+    // Grund wie die Geraeteliste darueber: Nur EIN Bildschirm liest ihn, und
+    // in AppUiState laege er sechzehn Dateien im Weg (ZustandsflussBreiteTest).
+    internal val _anmeldeState = MutableStateFlow(AnmeldeUiState())
+    val anmeldeState = _anmeldeState.asStateFlow()
+
+    // Das eigene Konto (Profil, Passwort) — eigener Fluss, siehe KontoUiState.
+    internal val _kontoState = MutableStateFlow(KontoUiState())
+    val kontoState = _kontoState.asStateFlow()
+
+    // Das HOCHLADEN einer CSV-Datei — nicht zu verwechseln mit
+    // _csvImportState, das den Fortschritt des Imports auf dem Server zeigt.
+    // Begruendung in CsvHochladenUiState.
+    internal val _csvHochladenState = MutableStateFlow(CsvHochladenUiState())
+    val csvHochladenState = _csvHochladenState.asStateFlow()
+
+    // Nutzerverwaltung und Server-Protokoll — siehe VerwaltungUiState.
+    internal val _verwaltungState = MutableStateFlow(VerwaltungUiState())
+    val verwaltungState = _verwaltungState.asStateFlow()
 
     /**
      * Nur das App-Design, entkoppelt vom übrigen Zustand.

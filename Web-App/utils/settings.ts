@@ -98,10 +98,28 @@ async function setUserSetting(userId: number, key: string, value: any) {
  * stehen (so leert das Formular den Wert), und die dürfte den globalen
  * Standard nicht verdrängen.
  *
+ * ── Warum der Name nicht mehr nutzerStandardZustand heisst ─────────────────────
+ *
+ * So hiess sie, und so heisst auch utils/financeCalc.ts -> nutzerStandardZustand.
+ * Die beiden beantworten aber VERSCHIEDENE Fragen:
+ *
+ *     financeCalc   Welchen Zustand hat dieses SET?
+ *                   (die Erfassungen schlagen den gespeicherten Wert)
+ *     hier          Welchen Standardzustand hat dieser NUTZER?
+ *                   (die Nutzereinstellung schlaegt den globalen)
+ *
+ * Genau diese Verwechslung — der Zustand eines Stuecks gegen die Vorgabe fuer
+ * den Preis — hat in diesem Baum bisher ACHT Fehler erzeugt. Und der Name
+ * stoerte schon aktiv: DREI Dateien mussten den Import umbenennen, um an
+ * ihrer eigenen lokalen `nutzerStandardZustand` vorbeizukommen
+ * (utils/marketPrice.ts, routes/parts.ts, routes/minifigs.ts, jeweils mit
+ * einem Kommentar „Alias wegen der lokalen effectiveCondition"). Ein Name,
+ * um den herum drei Dateien ausweichen muessen, ist der falsche Name.
+ *
  * @param {number|string} userId
  * @returns {Promise<'N'|'U'>}
  */
-async function effectiveCondition(userId: number): Promise<'N' | 'U'> {
+async function nutzerStandardZustand(userId: number): Promise<'N' | 'U'> {
   const u = await db.get(
     "SELECT value FROM user_settings WHERE user_id=$1 AND key='user_default_condition'", [userId]
   ).catch(() => null);
@@ -152,7 +170,7 @@ async function zustandFuerPreis(
 ): Promise<string> {
   if (eingabe === 'N' || eingabe === 'U') return eingabe;
   if (bisher) return bisher;
-  return await effectiveCondition(userId).catch(() => 'N');
+  return await nutzerStandardZustand(userId).catch(() => 'N');
 }
 
 /**
@@ -222,7 +240,7 @@ async function deleteGlobalSetting(...keys: string[]) {
   await db.run(`DELETE FROM global_settings WHERE key = ANY($1)`, [keys]);
 }
 
-export { getSetting, getGlobalSetting, setGlobalSetting, setGlobalTrigger, deleteGlobalSetting, setUserSetting, effectiveCondition, globalDefaultCondition, zustandFuerPreis };
+export { getSetting, getGlobalSetting, setGlobalSetting, setGlobalTrigger, deleteGlobalSetting, setUserSetting, nutzerStandardZustand, globalDefaultCondition, zustandFuerPreis };
 
 // ═══════════════════════════════════════════════════════════════════════════
 // Einstellungen LESEN — eine Fassung fuer beide Oberflaechen

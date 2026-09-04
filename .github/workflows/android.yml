@@ -1,13 +1,35 @@
 name: Android-App
 
-# Läuft bei jedem Push auf main und bei jedem Pull-Request, der die App
+# Läuft bei jedem Push auf JEDEN Zweig, bei jedem Pull-Request, der die App
 # berührt — und von Hand über den Knopf "Run workflow".
 #
 # Zweck: Der Übersetzungs- und Testbefund kommt automatisch, ohne dass jemand
 # lokal bauen muss. Am Ende steht eine installierbare BrickInventory.apk.
+#
+# ── Warum `'**'` und nicht mehr nur `main` (Nachtrag 125) ───────────────────
+#
+# Hier stand `branches: [main]`. Die Web-CI stand daneben auf `branches: ['**']`
+# — dieselbe Regel in zwei Fassungen, und die App zog den Kürzeren: Ein Zweig
+# ist genau der Ort, an dem man den Befund BRAUCHT, nämlich bevor etwas nach
+# main geht.
+#
+# GEMESSEN an dieser Sitzung: vier Pushes auf einen Zweig, alle mit Änderungen
+# unter Android-App/. Die Web-CI lief viermal von selbst. Der Android-Lauf kein
+# einziges Mal — er musste jedes Mal von Hand angestossen werden. Dreimal wurde
+# er dabei rot (Läufe 88, 89, 90), und jedes dieser drei Male stand der Fehler
+# schon im gepushten Zweig, ohne dass irgendetwas es gesagt hätte.
+#
+# Android übersetzt in der Entwicklungsumgebung dieses Projekts nicht
+# (dl.google.com antwortet mit 403). Diese Action ist damit der EINZIGE Ort, an
+# dem Kotlin überhaupt übersetzt wird. Ein Übersetzer, der nur auf main läuft,
+# sagt es erst, wenn es zu spät ist.
+#
+# Der concurrency-Block unten bricht ältere Läufe desselben Zweigs ab, die
+# `paths`-Filter halten Läufe fern, die die App gar nicht berühren — die Kosten
+# bleiben also da, wo sie hingehören.
 on:
   push:
-    branches: [main]
+    branches: ['**']
     paths:
       - 'Android-App/**'
       # shared/ ist der gemeinsame Pruefkorpus beider Apps (siehe shared/README.md).

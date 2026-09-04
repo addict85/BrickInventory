@@ -27,6 +27,121 @@ interface BrickApiService {
     @POST("api/v1/auth/logout")
     suspend fun logout(): Response<GenericResponse>
 
+    // ── Konto anlegen und Passwort vergessen ────────────────────────────────
+    //
+    // Die drei stehen ABSICHTLICH ohne Anmeldung: Sie werden gebraucht, BEVOR
+    // es einen Token gibt. Der Server laesst sie deshalb vor requireLogin
+    // stehen (routes/auth.ts), und der Interceptor der App haengt bei fehlendem
+    // Token einfach keinen Kopf an.
+    @GET("api/v1/auth/registration-status")
+    suspend fun getRegistrationStatus(): Response<RegistrationStatusResponse>
+
+    @POST("api/v1/auth/register")
+    suspend fun register(@Body request: RegisterRequest): Response<RegisterResponse>
+
+    @POST("api/v1/auth/forgot-password")
+    suspend fun forgotPassword(@Body request: ForgotPasswordRequest): Response<ForgotPasswordResponse>
+
+    // ── Das eigene Konto ────────────────────────────────────────────────────
+    @GET("api/v1/auth/profile")
+    suspend fun getProfil(): Response<ProfilResponse>
+
+    @PUT("api/v1/auth/profile")
+    suspend fun updateProfil(@Body request: ProfilAenderung): Response<GenericResponse>
+
+    @POST("api/v1/auth/change-password")
+    suspend fun changePassword(@Body request: PasswortAenderung): Response<GenericResponse>
+
+    // ── CSV-Import: dieselben drei Adressen wie in der Webapp ───────────────
+    //
+    // `@retrofit2.http.Part` ausgeschrieben, nicht `@Part`: Diese Datei oeffnet
+    // ZWEI Sternpakete, die beide ein `Part` enthalten —
+    // `ch.brickinventoryapp.data.model.Part` (die Datenklasse eines Teils) und
+    // `retrofit2.http.Part` (die Annotation). Kotlin meldet dafuer
+    // „Overload resolution ambiguity" und uebersetzt nicht. Den Sternimport der
+    // Modelle einzuengen waere die andere Loesung — sie kostete hier
+    // vierzig Einzelimporte fuer einen Namen.
+    //
+    // Das Feld heisst ueberall `file` und die Grenze liegt ueberall bei 15 MB
+    // (utils/dateiEmpfang.ts). Drei Aufrufe statt eines mit Pfadparameter, weil
+    // es drei verschiedene Router sind — ein `@Url` waere hier nur eine
+    // Verschleierung dessen, was ohnehin dasteht.
+    @Multipart
+    @POST("api/v1/sets/import/csv")
+    suspend fun importSetsCsv(@retrofit2.http.Part datei: okhttp3.MultipartBody.Part): Response<CsvImportErgebnis>
+
+    @Multipart
+    @POST("api/v1/parts/import/csv")
+    suspend fun importPartsCsv(@retrofit2.http.Part datei: okhttp3.MultipartBody.Part): Response<CsvImportErgebnis>
+
+    @Multipart
+    @POST("api/v1/minifigs/import/csv")
+    suspend fun importMinifigsCsv(@retrofit2.http.Part datei: okhttp3.MultipartBody.Part): Response<CsvImportErgebnis>
+
+    // ── Anleitungen: hinzufuegen und entfernen ──────────────────────────────
+    //
+    // Die App konnte Anleitungen bisher nur ANSEHEN. Beide Routen gab es
+    // laengst; sie lagen hinter dem sitzungsgebundenen Waechter (Nachtrag 127).
+    //
+    // Der Server nimmt NUR PDF, JPG und PNG an und leitet die Dateiendung aus
+    // dem gemeldeten Typ ab (feste Liste in routes/sets.ts). Was die App als
+    // Typ schickt, entscheidet also mit, unter welchem Namen die Datei landet —
+    // deshalb wird er aus der Dateiauswahl uebernommen und nicht geraten.
+    @Multipart
+    @POST("api/v1/sets/{setNumber}/instructions/upload")
+    suspend fun uploadAnleitung(
+        @Path("setNumber") setNumber: String,
+        @retrofit2.http.Part datei: okhttp3.MultipartBody.Part,
+        @retrofit2.http.Part("description") beschreibung: okhttp3.RequestBody,
+    ): Response<GenericResponse>
+
+    @DELETE("api/v1/sets/{setNumber}/instructions/{instrId}")
+    suspend fun deleteAnleitung(
+        @Path("setNumber") setNumber: String,
+        @Path("instrId") instrId: Int,
+    ): Response<GenericResponse>
+
+    // ── Sicherung der Einstellungen ─────────────────────────────────────────
+    //
+    // Als ResponseBody und NICHT als Datenklasse: Die Datei soll unveraendert
+    // beim Nutzer landen. Sie hier zu zerlegen und neu zu schreiben hiesse, dass
+    // eine kuenftige Ergaenzung des Servers beim Sichern durch die App
+    // stillschweigend verlorenginge — dieselbe Sicherung, zwei verschiedene
+    // Inhalte, je nachdem womit man sie gezogen hat.
+    //
+    // Die Datei enthaelt AUSDRUECKLICH keine Zugangsschluessel: Der Server
+    // siebt sie aus (SECRET_KEYS in routes/settings.ts), weil eine Sicherung
+    // weitergeschickt und abgelegt wird.
+    @GET("api/v1/settings/export")
+    suspend fun exportEinstellungen(): Response<okhttp3.ResponseBody>
+
+    @Multipart
+    @POST("api/v1/settings/import")
+    suspend fun importEinstellungen(@retrofit2.http.Part datei: okhttp3.MultipartBody.Part): Response<GenericResponse>
+
+    // ── Nutzerverwaltung und Protokoll (nur fuer Verwalter) ─────────────────
+    @GET("api/v1/auth/users")
+    suspend fun getKonten(): Response<KontenResponse>
+
+    @POST("api/v1/auth/users")
+    suspend fun createKonto(@Body request: NeuesKonto): Response<GenericResponse>
+
+    @PUT("api/v1/auth/users/{id}/admin")
+    suspend fun setzeVerwalter(
+        @Path("id") id: Int, @Body request: VerwalterAenderung,
+    ): Response<GenericResponse>
+
+    @PUT("api/v1/auth/users/{id}/password")
+    suspend fun setzeFremdesPasswort(
+        @Path("id") id: Int, @Body request: FremdesPasswort,
+    ): Response<GenericResponse>
+
+    @DELETE("api/v1/auth/users/{id}")
+    suspend fun loescheKonto(@Path("id") id: Int): Response<GenericResponse>
+
+    @GET("api/v1/admin/logs")
+    suspend fun getProtokoll(@Query("minutes") minuten: Int): Response<ProtokollResponse>
+
     @GET("api/v1/sets/{setNumber}")
     suspend fun getSetDetail(
         @Path("setNumber") setNumber: String
@@ -317,6 +432,16 @@ interface BrickApiService {
     suspend fun getSetMinifigsList(
         @Path("setNumber") setNumber: String
     ): Response<MinifigsResponse>
+
+    @GET("api/v1/parts/manual")
+    suspend fun getManualParts(
+        @Query("accounts") accounts: String? = null
+    ): Response<ch.brickinventoryapp.data.model.ManualPartsResponse>
+
+    @GET("api/v1/minifigs/manual")
+    suspend fun getManualMinifigs(
+        @Query("accounts") accounts: String? = null
+    ): Response<ch.brickinventoryapp.data.model.ManualFigsResponse>
 
     @GET("api/v1/catalog/year-verteilung")
     suspend fun getCatalogYearVerteilung(

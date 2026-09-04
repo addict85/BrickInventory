@@ -129,3 +129,66 @@ test('ein Workflow benutzt jede Action überall in derselben Fassung', () => {
   assert.deepEqual(uneinig, [],
     'Dieselbe Action steht in zwei Fassungen:\n  ' + uneinig.join('\n  '));
 });
+
+test('ein Lauf, der Tests ausführt, läuft auf JEDEM Zweig', () => {
+  // ── Warum (Nachtrag 125) ───────────────────────────────────────────────────
+  //
+  // android.yml stand auf `push: branches: [main]`, web-ci.yml daneben auf
+  // `branches: ['**']`. Dieselbe Regel in zwei Fassungen — und die App zog den
+  // Kürzeren.
+  //
+  // GEMESSEN: In der Sitzung, aus der diese Prüfung stammt, gingen vier Pushes
+  // mit Android-Änderungen auf einen Zweig. Die Web-CI lief viermal von selbst,
+  // der Android-Lauf kein einziges Mal. Dreimal war er rot, als er endlich von
+  // Hand angestossen wurde — der Fehler lag jedes Mal längst im Zweig.
+  //
+  // Der Zweig ist genau der Ort, an dem der Befund gebraucht wird: bevor etwas
+  // nach main geht. Ein Lauf, der erst auf main prüft, sagt es zu spät.
+  //
+  // GESUCHT, nicht aufgezählt: Betroffen ist jeder Workflow, der TESTS
+  // AUSFÜHRT — erkannt am Testbefehl in seinen Schritten, nicht an seinem
+  // Namen. Ein neuer Testlauf ist damit von selbst mitgeprüft.
+  //
+  // Und NUR, wenn er überhaupt auf Push reagiert. Die erste Fassung dieser
+  // Prüfung liess das weg und meldete prompt android-playstore.yml: Der führt
+  // `testDebugUnitTest` aus, wird aber ausschliesslich von Hand angestossen
+  // (`workflow_dispatch` mit der Play-Spur als Eingabe). „Läuft nicht auf
+  // jedem Zweig-Push" ist bei einem Lauf ohne Push-Auslöser keine Aussage —
+  // das wäre eine erfundene Regel gewesen, und die meldet nur Rauschen.
+  // Veröffentlichungsläufe sollen auf ein Etikett oder einen Knopf warten.
+  const TESTBEFEHLE = [/npm\s+test/, /testDebugUnitTest/];
+
+  const pruefend = [];
+  for (const f of fs.readdirSync(ECHTER_ORT).filter(f => /\.ya?ml$/.test(f))) {
+    const roh = fs.readFileSync(path.join(ECHTER_ORT, f), 'utf8');
+    // Kommentarzeilen raus: In den Erklärblöcken dieser Dateien stehen die
+    // Testbefehle als Fliesstext, und ein Workflow wäre sonst allein deswegen
+    // "prüfend", weil er über das Prüfen SCHREIBT.
+    const yml = roh.split('\n').filter(z => !z.trimStart().startsWith('#')).join('\n');
+    if (TESTBEFEHLE.some(r => r.test(yml))) pruefend.push([f, yml]);
+  }
+
+  // Selbstbeweis: Es gibt mindestens die zwei — Web und Android. Fände das
+  // Muster keinen, wäre die Schleife darunter leer und die Prüfung still grün.
+  assert.ok(pruefend.length >= 2,
+    `Nur ${pruefend.length} testausführende Workflows gefunden — Muster veraltet? ` +
+    'Ohne Fund prüft der Rest dieses Tests nichts.');
+
+  const eng = [];
+  for (const [f, yml] of pruefend) {
+    // Der `branches:`-Eintrag UNTER `push:` — nicht der unter `pull_request:`
+    // und nicht irgendeiner weiter unten im Text.
+    const push = yml.match(/\n\s*push:\s*\n((?:\s{4,}.*\n|\s*\n)*)/);
+    if (!push) continue;   // reiner Veröffentlichungslauf — siehe oben
+    const zweige = push[1].match(/branches(?:-ignore)?:\s*(.+)/);
+    // Kein branches-Eintrag heisst bei GitHub: alle Zweige. Das ist erlaubt.
+    if (!zweige) continue;
+    if (!zweige[1].includes('**')) eng.push(`${f}: push nur auf ${zweige[1].trim()}`);
+  }
+
+  assert.deepEqual(eng, [],
+    'Diese Workflows führen Tests aus, laufen aber nicht auf jedem Zweig-Push:\n  ' +
+    eng.join('\n  ') +
+    '\nDamit kommt ihr Befund erst nach dem Zusammenführen — genau so blieben ' +
+    'drei rote Android-Läufe unbemerkt im Zweig stehen.');
+});

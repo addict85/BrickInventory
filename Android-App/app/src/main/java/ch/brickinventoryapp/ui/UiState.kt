@@ -33,6 +33,137 @@ data class GeraeteUiState(
     val fehler: String? = null,
 )
 
+/**
+ * Welches der drei Formulare der Anmeldebildschirm gerade zeigt.
+ *
+ * Dieselben drei wie in der Webapp (`showPanel` in public/js/01-core.js):
+ * anmelden, ein Konto anlegen, einen Link zum Zuruecksetzen anfordern.
+ */
+enum class AnmeldeFormular { ANMELDEN, REGISTRIEREN, PASSWORT_VERGESSEN }
+
+/**
+ * Konto anlegen und „Passwort vergessen" — ein eigener Zustand.
+ *
+ * ── Warum nicht in AppUiState (Nachtrag 126) ────────────────────────────────
+ *
+ * Dort standen diese fuenf Felder zuerst, und ZustandsflussBreiteTest hat es
+ * gemeldet: „AppUiState hat 20 Felder (erlaubt: 15). Gehoert es wirklich allen
+ * — oder ist es der Anfang der naechsten Domaene?" Es ist der Anfang der
+ * naechsten Domaene. Sechzehn Dateien sammeln AppUiState ein; keine davon
+ * ausser dem Anmeldebildschirm liest je, welches Formular gerade offen ist.
+ *
+ * Die Anmeldung SELBST bleibt drueben (`loginLaeuft`, `loginError`,
+ * `isLoggedIn`): An ihr haengt, ob die App ueberhaupt etwas zeigt. Was hier
+ * steht, sind die beiden Wege DANEBEN — ein Konto anlegen und einen Link
+ * anfordern. Beide enden nicht in einer Anmeldung, sondern in einem Satz des
+ * Servers.
+ */
+/**
+ * Das eigene Konto im Einstellungs-Bildschirm — eigener Zustand.
+ *
+ * Aus demselben Grund wie AnmeldeUiState darunter: AppUiState steht bei 14 von
+ * 15 erlaubten Feldern (ZustandsflussBreiteTest), und Profil und
+ * Passwortwechsel liest genau EIN Bildschirm.
+ *
+ * Was hier NICHT steht, ist ein Feld „abgemeldet". Ein erfolgreicher
+ * Passwortwechsel meldet die App ab — der Server verwirft dabei alle Zugaenge
+ * des Kontos, auch den dieser Anfrage. Der erste Entwurf merkte sich das hier;
+ * gelesen haette es nie jemand, weil logout() im selben Zug alle Fluesse
+ * zuruecksetzt und der Anmeldebildschirm erscheint. Die Erklaerung dafuer geht
+ * deshalb in den Snackbar, der das ueberlebt. (Gefunden von der Regel „kein
+ * Feld ohne Leser".)
+ */
+/**
+ * Eine CSV-Datei hochladen — eigener Zustand.
+ *
+ * ── Warum die App das erst jetzt kann (Nachtrag 128) ────────────────────────
+ *
+ * Sie hat CSV-Importe bisher nur BEOBACHTET: Der Fortschrittsbalken
+ * (CsvImportUiState) haengt an einem Ereigniskanal des Servers und zeigt, was
+ * jemand anderes gestartet hat — in aller Regel die Webapp. Starten konnte die
+ * App keinen, und zwar aus zwei Gruenden: Es fehlte die Dateiauswahl, und die
+ * drei Adressen lagen hinter einem Waechter, der nur Browser-Sitzungen kannte
+ * (Nachtrag 127).
+ *
+ * Das hier ist der HOCHLADE-Vorgang, nicht der Import-Fortschritt. Die beiden
+ * sind bewusst getrennt: Das Hochladen dauert Sekunden und endet mit einer
+ * Zahl; der Import danach laeuft auf dem Server weiter und meldet sich ueber
+ * den bestehenden Kanal. Sie in ein Feld zu legen hiesse, zwei Vorgaenge mit
+ * verschiedener Lebensdauer denselben Fortschritt teilen zu lassen.
+ */
+/**
+ * Nutzerverwaltung und Server-Protokoll — eigener Zustand fuer Verwalter.
+ *
+ * Beides liest genau EIN Bildschirm, und beides ist fuer die meisten Nutzer
+ * nie sichtbar. In AppUiState laege es sechzehn Dateien im Weg, die es nie
+ * lesen (ZustandsflussBreiteTest).
+ *
+ * Konten und Protokoll stehen zusammen, weil sie dieselbe Voraussetzung haben
+ * und derselbe Bildschirm sie zeigt — nicht, weil sie dasselbe waeren. Ihre
+ * Ladezustaende sind getrennt: Das Protokoll wird beim Ansehen wiederholt
+ * geholt, die Kontenliste nur bei einer Aenderung.
+ */
+data class VerwaltungUiState(
+    val kontenLaden: Boolean = false,
+    val konten: List<ch.brickinventoryapp.data.model.Konto> = emptyList(),
+    val protokollLaden: Boolean = false,
+    val protokoll: List<ch.brickinventoryapp.data.model.ProtokollZeile> = emptyList(),
+    /** Zeitspanne des Protokolls in Minuten — der Server begrenzt auf 2880. */
+    val protokollMinuten: Int = 15,
+    val fehler: String? = null,
+)
+
+data class CsvHochladenUiState(
+    val laeuft: Boolean = false,
+    /** Welche Art gerade hochgeladen wird — fuer die Anzeige am richtigen Knopf. */
+    val art: ch.brickinventoryapp.data.model.CsvArt? = null,
+    val ergebnis: ch.brickinventoryapp.data.model.CsvImportErgebnis? = null,
+    val fehler: String? = null,
+)
+
+data class KontoUiState(
+    val laedt: Boolean = false,
+    val profil: ch.brickinventoryapp.data.model.Profil? = null,
+    val speichert: Boolean = false,
+    val meldung: String? = null,
+    val fehler: String? = null,
+)
+
+data class AnmeldeUiState(
+    /**
+     * Welches der drei Formulare der Anmeldebildschirm gerade zeigt.
+     *
+     * Genau wie in der Webapp, wo `showPanel('login'|'register'|'forgot')`
+     * zwischen denselben drei umschaltet. Ein eigener Navigationseintrag waere
+     * die zweite Wahrheit: Der Zurueck-Knopf des Geraets muesste dann etwas
+     * anderes bedeuten als das „Zurueck zur Anmeldung" im Formular.
+     */
+    val formular: AnmeldeFormular = AnmeldeFormular.ANMELDEN,
+    /**
+     * Steht die Registrierung offen? `null` = noch nicht gefragt.
+     *
+     * Der Unterschied traegt: Bei `null` zeigt der Bildschirm den Link NICHT —
+     * und bei `false` auch nicht. Ein Knopf, der erst erscheint und beim
+     * Antippen an einem 403 scheitert, ist schlechter als keiner. Der Server
+     * kann Registrierungen global abschalten (registration_enabled), und die
+     * Webapp blendet den Link genau so aus.
+     */
+    val registrierungOffen: Boolean? = null,
+    /**
+     * Die Antwort auf Registrieren oder „Passwort vergessen" — der SATZ DES
+     * SERVERS, nicht ein eigener.
+     *
+     * Bei „Passwort vergessen" ist das wesentlich: Der Server antwortet
+     * absichtlich immer gleich („Falls die E-Mail existiert …"), damit das
+     * Formular nicht verraet, wer hier ein Konto hat. Wuerde die App daraus
+     * eine eigene Erfolgsmeldung machen, waere die Vorsicht des Servers
+     * umsonst.
+     */
+    val meldung: String? = null,
+    val fehler: String? = null,
+    val laeuft: Boolean = false,
+)
+
 data class AppUiState(
     /**
      * Läuft gerade eine ANMELDUNG? Und nur das.
@@ -188,6 +319,22 @@ data class GalleryUiState(
  */
 data class PartsUiState(
     val parts: List<Part> = emptyList(),
+    /**
+     * Die manuell erfassten Teile — aus /api/v1/parts/manual, derselben
+     * Quelle wie die Webapp.
+     *
+     * Sie kamen bisher aus der BEWERTUNG (FinanceUiState.partsValuation).
+     * Zwei Quellen fuer dieselbe Liste, und die App lud dafuer jedes Mal die
+     * ganze Bewertung samt Marktpreis-Abfragen — obwohl die Kachel nur
+     * Nummer, Name, Farbe, Zustand, Bild, Menge und Besitzer zeigt.
+     *
+     * NULL heisst „noch nicht geladen", eine leere Liste „keine vorhanden".
+     * Der Unterschied traegt: Die Wiederherstellung der Rollposition wartet
+     * darauf, dass die Liste DA ist — auf `isNotEmpty()` zu warten hiesse,
+     * dass sie bei jemandem ohne eigene Teile nie wiederhergestellt wuerde
+     * (so stand es schon einmal da, siehe CollectionGraph).
+     */
+    val manualParts: List<ch.brickinventoryapp.data.model.PartValuationItem>? = null,
     val partsTotal: Int = 0,
     val partsPage: Int = 1,
     /**
@@ -231,6 +378,8 @@ data class PartsUiState(
     val partsView: String = "grid",
     val partsLoading: Boolean = false,
     val minifigs: List<Minifig> = emptyList(),
+    /** Die manuell erfassten Figuren — siehe manualParts, null wie dort. */
+    val manualFigs: List<ch.brickinventoryapp.data.model.FigValuationItem>? = null,
     /** Kennzahlen der Kacheln — vom Server, nicht aus der (gefilterten) Liste. */
     val minifigStats: ch.brickinventoryapp.data.model.MinifigStats =
         ch.brickinventoryapp.data.model.MinifigStats(),

@@ -34,7 +34,8 @@ import ch.brickinventoryapp.ui.MainViewModel
 import ch.brickinventoryapp.ui.deleteMinifig
 import ch.brickinventoryapp.ui.deletePart
 import ch.brickinventoryapp.ui.loadManualAcquisitions
-import ch.brickinventoryapp.ui.loadValuation
+import ch.brickinventoryapp.ui.loadMinifigs
+import ch.brickinventoryapp.ui.loadParts
 import ch.brickinventoryapp.ui.updateMinifig
 import ch.brickinventoryapp.ui.updatePart
 import ch.brickinventoryapp.ui.components.ZoomableImageDialog
@@ -85,7 +86,7 @@ fun ManualItemDetailScreen(
     onNavigateToAcqMgmt: (type: String, id: String, colorId: Int, title: String) -> Unit
 ) {
     val state by vm.state.collectAsStateWithLifecycle()
-    val financeState by vm.financeState.collectAsStateWithLifecycle()
+    val partsState by vm.partsState.collectAsStateWithLifecycle()
     val manDetailState by vm.manDetailState.collectAsStateWithLifecycle()
 
     val isFig = type == "fig"
@@ -96,11 +97,18 @@ fun ManualItemDetailScreen(
         // Die Bewertung kann fehlen, wenn der Screen aus einem Tiefenlink oder
         // nach einem Prozessneustart kommt — ohne sie gäbe es weder Name noch
         // Bild.
-        if (financeState.partsValuation == null && financeState.figsValuation == null) vm.loadValuation()
+        // Aus DERSELBEN Quelle wie die Liste (/parts/manual bzw.
+        // /minifigs/manual). Vorher stand hier die Bewertung — also eine
+        // zweite Quelle fuer dieselbe Zeile, und dafuer wurden Marktpreise
+        // fuer den ganzen Bestand geholt, obwohl dieser Dialog nur Name,
+        // Menge und Bild zeigt.
+        if (partsState.manualParts == null && partsState.manualFigs == null) {
+            if (isFig) vm.loadMinifigs() else vm.loadParts()
+        }
     }
 
-    val fig  = if (isFig) financeState.figsValuation?.figs?.find { it.figNumber == id } else null
-    val part = if (!isFig) financeState.partsValuation?.parts?.find {
+    val fig  = if (isFig) partsState.manualFigs?.find { it.figNumber == id } else null
+    val part = if (!isFig) partsState.manualParts?.find {
         it.partNumber == id && it.colorId == colorId
     } else null
 

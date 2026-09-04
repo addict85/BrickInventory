@@ -17,6 +17,7 @@ import { rebrickableBackgroundLimiter } from '../utils/rateLimiter';
 import { fehlertext } from '../utils/httpError';
 import { neuestesInventar } from '../utils/rbInventar';
 import { mitVersion } from '../utils/setNummer';
+import { getGlobalSetting } from '../utils/settings';
 
 const BASE = 'https://rebrickable.com/api/v3';
 
@@ -43,8 +44,20 @@ export type RbSetTeil = {
   is_spare?: boolean;
 };
 
-async function getRbKey() {
-  return (await db.get("SELECT value FROM global_settings WHERE key='rebrickable_api_key'"))?.value || '';
+/**
+ * Der Rebrickable-Schluessel — aus der zentralen Einstellungs-Lesung.
+ *
+ * Diese Funktion stand DREIMAL da (hier, jobs/partsCatalogEnrich,
+ * jobs/backfillBlPartNumbers) und nicht gleich: Hier stand ein eigenes
+ * `SELECT value FROM global_settings`, dort getGlobalSetting(). Der Rueckfall
+ * unterschied sich ebenfalls — '' gegen null. Beides ist an den Aufrufstellen
+ * gleich falsch-artig (`if (!key)`), aber es waren zwei Wege zu derselben
+ * Zeile, und einer ging am Einstellungs-Modul vorbei.
+ *
+ * Jetzt einer. null heisst: nicht eingerichtet.
+ */
+async function getRbKey(): Promise<string | null> {
+  return await getGlobalSetting('rebrickable_api_key') || null;
 }
 
 function httpsGetRobust(url: string, headers: Record<string, string> = {}, timeoutMs = 60000): Promise<{ status: number; body: string; buffer: Buffer }> {

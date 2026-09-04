@@ -157,6 +157,15 @@ fun SetDetailScreen(
         val detailScope = rememberCoroutineScope()
         val zoomImageUrl = imageUrl
 
+        // Die Dateiauswahl fuer eine Anleitung. Hier und nicht im Abschnitt
+        // darunter: Ein `LazyListScope` ist kein Composable-Kontext, und ein
+        // Starter, der bei jedem Scrollen neu entstuende, verloere seine
+        // Rueckmeldung. Die Typenliste kommt aus SetDetailFeature — sie ist
+        // dieselbe, die der Server annimmt.
+        val anleitungAuswahl = androidx.activity.compose.rememberLauncherForActivityResult(
+            androidx.activity.result.contract.ActivityResultContracts.OpenDocument()
+        ) { uri -> if (uri != null) vm.ladeAnleitungHoch(setNumber, uri) }
+
         LazyColumn(
             modifier = Modifier.fillMaxSize().padding(padding),
             contentPadding = PaddingValues(bottom = 24.dp),
@@ -168,7 +177,10 @@ fun SetDetailScreen(
             setDetailValueTiles(set, price, isBrick, ::fmtPrice)
             setDetailDetailsSection(set, setNumber, vm, acquisitions, currency, ::fmtDate, onNavigateToAcqMgmt)
             setDetailPriceSection(set, detailState, price, history, pnlPct, currency, isBrick, ::fmtPrice)
-            setDetailInstructionsSection(set, detailState, authToken, serverUrl, onOpenPdf)
+            setDetailInstructionsSection(
+                set, detailState, authToken, serverUrl, onOpenPdf,
+                onAnleitungWaehlen = { anleitungAuswahl.launch(ch.brickinventoryapp.ui.ANLEITUNG_TYPEN) },
+                onAnleitungLoeschen = { vm.loescheAnleitung(setNumber, it) })
         }
 
         if (showSetDeleteConfirm) {

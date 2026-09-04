@@ -20,6 +20,9 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.input.PasswordVisualTransformation
 import ch.brickinventoryapp.R
 import ch.brickinventoryapp.util.fmtDatum
 import ch.brickinventoryapp.ui.MainViewModel
@@ -56,12 +59,18 @@ fun SettingsScreen(
     // dieselbe Falle wie bei `state` im Absatz darueber, nur eine Ebene
     // tiefer. Der oertliche Spiegel hat prompt acht Stellen gemeldet.
     val geraeteZustand by vm.geraeteState.collectAsStateWithLifecycle()
+    // `kontoZustand`, nicht `konto`: dieselbe Begruendung wie zwei Absaetze
+    // darueber — UiStateFieldsTest bestimmt den Typ je Name und Datei.
+    val kontoZustand by vm.kontoState.collectAsStateWithLifecycle()
+    val csvZustand by vm.csvHochladenState.collectAsStateWithLifecycle()
 
     // Einmal beim Betreten laden. LaunchedEffect(Unit) und nicht bei jedem
     // Neuzeichnen: Die Liste aendert sich nur, wenn sich ein Geraet an- oder
     // abmeldet, und ein Abruf je Bildaufbau waere eine Anfrage pro Tastendruck
     // in den Feldern darueber.
     LaunchedEffect(Unit) { vm.ladeGeraete() }
+    // Und das eigene Konto, aus demselben Grund: einmal, nicht je Neuzeichnen.
+    LaunchedEffect(Unit) { vm.ladeProfil() }
 
     val currency = appState.currency
     val priceCondition = appState.priceCondition
@@ -210,6 +219,24 @@ fun SettingsScreen(
             onCreateInvite = onCreateInvite,
             onRedeemInvite = onRedeemInvite,
             onUnlink = onUnlink,
+        )
+
+        KontoCard(
+            kontoZustand = kontoZustand,
+            onSpeichern = { b, e, v, n -> vm.speichereProfil(b, e, v, n) },
+            onPasswort = { alt, neu -> vm.aenderePasswort(alt, neu) },
+            onMeldungWeg = { vm.kontoMeldungWeg() },
+        )
+
+        CsvImportCard(
+            csvZustand = csvZustand,
+            onDatei = { art, uri -> vm.ladeCsvHoch(art, uri) },
+            onSchliessen = { vm.csvHochladenWeg() },
+        )
+
+        SicherungCard(
+            onSichern = { vm.sichereEinstellungen(it) },
+            onEinspielen = { vm.spieleEinstellungenEin(it) },
         )
 
         GeraeteCard(
@@ -549,6 +576,265 @@ private fun HouseholdCard(
         state.message?.let {
             Text(it, style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.error)
+        }
+    }
+}
+
+/**
+ * Das eigene Konto: Profil und Passwort.
+ *
+ * ── Warum es das in der App erst jetzt gibt (Nachtrag 127) ──────────────────
+ *
+ * Nicht, weil der Server es nicht koennte: /auth/profile und
+ * /auth/change-password gibt es seit jeher. Sie hingen an einem Waechter, der
+ * ausschliesslich die Browser-Sitzung kannte — und die App hat keine, sie
+ * weist sich mit einem Bearer-Token aus. Fuenf weitere „fehlende Funktionen"
+ * der App hatten dieselbe Ursache.
+ */
+@Composable
+private fun KontoCard(
+    // `kontoZustand`, nicht `zustand`: In DIESER Datei ist `zustand` schon
+    // vergeben — GeraeteCard nimmt einen Parameter dieses Namens vom Typ
+    // GeraeteUiState. Fuer den Compiler ist das unproblematisch (getrennte
+    // Gueltigkeitsbereiche), fuer UiStateFieldsTest nicht: Der bestimmt den Typ
+    // je Name und DATEI und meldete prompt sechs angeblich fehlende Felder.
+    // Dieselbe Falle steht zweimal im Kopf dieser Datei beschrieben — und ich
+    // bin trotzdem hineingelaufen.
+    kontoZustand: ch.brickinventoryapp.ui.KontoUiState,
+    onSpeichern: (String, String, String, String) -> Unit,
+    onPasswort: (String, String) -> Unit,
+    onMeldungWeg: () -> Unit,
+) {
+    val profil = kontoZustand.profil
+    // Die Felder werden aus dem Serverstand vorbelegt und danach vom Nutzer
+    // gefuehrt. `remember(profil)` und nicht `remember`: Nach dem Speichern
+    // holt das ViewModel das Profil neu, und die Felder sollen den
+    // NORMALISIERTEN Stand des Servers zeigen, nicht das Getippte.
+    var benutzername by remember(profil) { mutableStateOf(profil?.username.orEmpty()) }
+    var email        by remember(profil) { mutableStateOf(profil?.email.orEmpty()) }
+    var vorname      by remember(profil) { mutableStateOf(profil?.firstName.orEmpty()) }
+    var nachname     by remember(profil) { mutableStateOf(profil?.lastName.orEmpty()) }
+    var pwAktuell    by rememberSaveable { mutableStateOf("") }
+    var pwNeu        by rememberSaveable { mutableStateOf("") }
+
+    val geaendert = profil != null && (
+        benutzername != profil.username.orEmpty() || email != profil.email.orEmpty() ||
+        vorname != profil.firstName.orEmpty() || nachname != profil.lastName.orEmpty())
+
+    SettingsCard(title = stringResource(R.string.konto_title), icon = Icons.Default.AccountCircle) {
+        if (kontoZustand.laedt && profil == null) {
+            LinearProgressIndicator(Modifier.fillMaxWidth())
+        }
+
+        if (kontoZustand.meldung != null) {
+            Text(kontoZustand.meldung, style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.primary)
+        }
+        if (kontoZustand.fehler != null) {
+            Text(kontoZustand.fehler, style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.error)
+        }
+
+        if (profil != null) {
+            val tippen: (String) -> Unit = { onMeldungWeg() }
+            OutlinedTextField(
+                value = benutzername,
+                onValueChange = { benutzername = it; tippen(it) },
+                label = { Text(stringResource(R.string.login_username)) },
+                modifier = Modifier.fillMaxWidth(), singleLine = true, shape = Formen.knopf)
+            OutlinedTextField(
+                value = email,
+                onValueChange = { email = it; tippen(it) },
+                label = { Text(stringResource(R.string.register_email)) },
+                // Der Server setzt die Bestaetigung zurueck, wenn die Adresse
+                // wechselt. Der Hinweis sagt, WARUM hier plotzlich „nicht
+                // bestaetigt" steht, statt es unkommentiert anzuzeigen.
+                supportingText = if (profil.emailVerified != 1) {
+                    { Text(stringResource(R.string.konto_email_unverified)) }
+                } else null,
+                isError = profil.emailVerified != 1,
+                modifier = Modifier.fillMaxWidth(), singleLine = true, shape = Formen.knopf,
+                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email))
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                OutlinedTextField(
+                    value = vorname, onValueChange = { vorname = it; tippen(it) },
+                    label = { Text(stringResource(R.string.register_first_name)) },
+                    modifier = Modifier.weight(1f), singleLine = true, shape = Formen.knopf)
+                OutlinedTextField(
+                    value = nachname, onValueChange = { nachname = it; tippen(it) },
+                    label = { Text(stringResource(R.string.register_last_name)) },
+                    modifier = Modifier.weight(1f), singleLine = true, shape = Formen.knopf)
+            }
+            Button(
+                onClick = { onSpeichern(benutzername, email, vorname, nachname) },
+                enabled = geaendert && !kontoZustand.speichert,
+                modifier = Modifier.fillMaxWidth().height(44.dp), shape = Formen.knopf
+            ) { Text(stringResource(R.string.konto_save), fontWeight = FontWeight.SemiBold) }
+
+            HorizontalDivider(Modifier.padding(vertical = 12.dp),
+                color = MaterialTheme.colorScheme.outlineVariant)
+
+            Text(stringResource(R.string.konto_password_title),
+                style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.SemiBold)
+            // Steht VOR den Feldern, nicht darunter: Wer erst nach dem Tippen
+            // erfaehrt, dass er sich damit abmeldet, hat schon getippt.
+            Text(stringResource(R.string.konto_password_hint),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant)
+            OutlinedTextField(
+                value = pwAktuell, onValueChange = { pwAktuell = it },
+                label = { Text(stringResource(R.string.konto_password_current)) },
+                visualTransformation = PasswordVisualTransformation(),
+                modifier = Modifier.fillMaxWidth(), singleLine = true, shape = Formen.knopf,
+                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password))
+            OutlinedTextField(
+                value = pwNeu, onValueChange = { pwNeu = it },
+                label = { Text(stringResource(R.string.konto_password_new)) },
+                visualTransformation = PasswordVisualTransformation(),
+                // Dieselbe Mindestlaenge wie im Server (routes/auth.ts) und im
+                // Registrierformular. Hier vorweggenommen, damit man dafuer
+                // nicht erst eine Runde ueber das Netz braucht.
+                supportingText = if (pwNeu.isNotEmpty() && pwNeu.length < 8) {
+                    { Text(stringResource(R.string.register_password_short)) }
+                } else null,
+                isError = pwNeu.isNotEmpty() && pwNeu.length < 8,
+                modifier = Modifier.fillMaxWidth(), singleLine = true, shape = Formen.knopf,
+                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password))
+            OutlinedButton(
+                onClick = { onPasswort(pwAktuell, pwNeu) },
+                enabled = !kontoZustand.speichert && pwAktuell.isNotBlank() && pwNeu.length >= 8,
+                modifier = Modifier.fillMaxWidth().height(44.dp), shape = Formen.knopf
+            ) { Text(stringResource(R.string.konto_password_button), fontWeight = FontWeight.SemiBold) }
+        }
+    }
+}
+
+/**
+ * Eine CSV-Datei hochladen — Sets, Teile oder Minifiguren.
+ *
+ * Dieselben drei Adressen, die die Webapp anbietet. Die App konnte Importe
+ * bisher nur beobachten (der Fortschrittsbalken oben in der Galerie); starten
+ * konnte sie keinen, weil die Dateiauswahl fehlte und die Routen an einem
+ * sitzungsgebundenen Waechter hingen (Nachtrag 127/128).
+ *
+ * Der Fortschritt DANACH kommt weiterhin ueber den bestehenden Kanal: Der
+ * Import laeuft auf dem Server weiter, auch wenn die App zugeklappt wird.
+ */
+@Composable
+private fun CsvImportCard(
+    csvZustand: ch.brickinventoryapp.ui.CsvHochladenUiState,
+    onDatei: (ch.brickinventoryapp.data.model.CsvArt, android.net.Uri) -> Unit,
+    onSchliessen: () -> Unit,
+) {
+    // Welche Art beim Antippen gemeint war. Der Dateiauswahl-Vertrag liefert
+    // nur den Uri zurueck, nicht den Knopf — also muss die App es sich merken.
+    //
+    // rememberSaveable und NICHT remember: Die Dateiauswahl ist eine fremde
+    // Anwendung. Waehrend sie oben liegt, darf das System diesen Vorgang
+    // beenden; kommt der Nutzer mit einer Teile-Datei zurueck und der Wert ist
+    // auf SETS zurueckgefallen, landet sie in der falschen Tabelle. Genau
+    // dieser Unterschied ist die Regel von BildschirmZustandTest, und der
+    // oertliche Spiegel hat die Stelle prompt gemeldet.
+    var gewaehlteArt by rememberSaveable { mutableStateOf(ch.brickinventoryapp.data.model.CsvArt.SETS) }
+    val auswahl = androidx.activity.compose.rememberLauncherForActivityResult(
+        androidx.activity.result.contract.ActivityResultContracts.OpenDocument()
+    ) { uri -> if (uri != null) onDatei(gewaehlteArt, uri) }
+
+    // `text/*` UND `text/comma-separated-values`: Manche Dateiverwaltungen
+    // geben einer .csv den Typ `application/vnd.ms-excel`, andere gar keinen.
+    // Zu eng gefiltert waere die Datei in der Auswahl ausgegraut, ohne dass
+    // erkennbar ist, warum.
+    val typen = arrayOf("text/csv", "text/comma-separated-values", "text/plain",
+                        "application/vnd.ms-excel", "application/octet-stream")
+
+    SettingsCard(title = stringResource(R.string.csv_upload_title), icon = Icons.Default.UploadFile) {
+        Text(
+            stringResource(R.string.csv_upload_hint,
+                (ch.brickinventoryapp.ui.CSV_MAX_BYTES / 1024 / 1024).toInt()),
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant)
+
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
+            listOf(
+                ch.brickinventoryapp.data.model.CsvArt.SETS to R.string.csv_upload_sets,
+                ch.brickinventoryapp.data.model.CsvArt.TEILE to R.string.csv_upload_parts,
+                ch.brickinventoryapp.data.model.CsvArt.MINIFIGUREN to R.string.csv_upload_figs,
+            ).forEach { (art, textId) ->
+                OutlinedButton(
+                    onClick = { gewaehlteArt = art; auswahl.launch(typen) },
+                    enabled = !csvZustand.laeuft,
+                    modifier = Modifier.weight(1f), shape = Formen.knopf,
+                    contentPadding = PaddingValues(horizontal = 4.dp)
+                ) {
+                    if (csvZustand.laeuft && csvZustand.art == art) {
+                        CircularProgressIndicator(Modifier.size(16.dp), strokeWidth = 2.dp)
+                    } else {
+                        Text(stringResource(textId), maxLines = 1,
+                            style = MaterialTheme.typography.labelLarge)
+                    }
+                }
+            }
+        }
+
+        val ergebnis = csvZustand.ergebnis
+        if (ergebnis != null) {
+            Text(
+                stringResource(R.string.csv_upload_result,
+                    ergebnis.total, ergebnis.neuAngelegt, ergebnis.updated, ergebnis.errors),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.primary)
+            TextButton(onClick = onSchliessen) { Text(stringResource(R.string.csv_upload_close)) }
+        }
+        if (csvZustand.fehler != null) {
+            Text(csvZustand.fehler, style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.error)
+            TextButton(onClick = onSchliessen) { Text(stringResource(R.string.csv_upload_close)) }
+        }
+    }
+}
+
+/**
+ * Die Einstellungen sichern und wieder einspielen.
+ *
+ * Die Datei ist dieselbe, die die Webapp herunterlaedt — und sie enthaelt
+ * AUSDRUECKLICH keine Zugangsschluessel: Der Server siebt sie aus, weil eine
+ * Sicherung weitergeschickt und abgelegt wird. Der Hinweistext sagt das, damit
+ * niemand sie fuer eine vollstaendige Kopie haelt.
+ */
+@Composable
+private fun SicherungCard(
+    onSichern: (android.net.Uri) -> Unit,
+    onEinspielen: (android.net.Uri) -> Unit,
+) {
+    // CreateDocument statt eines eigenen Ordners: Eine Sicherung, die im
+    // Speicher der App liegt, verschwindet mit ihr — und genau dann braucht man
+    // sie. Der Nutzer waehlt den Ort.
+    val speichern = androidx.activity.compose.rememberLauncherForActivityResult(
+        androidx.activity.result.contract.ActivityResultContracts.CreateDocument("application/json")
+    ) { uri -> if (uri != null) onSichern(uri) }
+    val laden = androidx.activity.compose.rememberLauncherForActivityResult(
+        androidx.activity.result.contract.ActivityResultContracts.OpenDocument()
+    ) { uri -> if (uri != null) onEinspielen(uri) }
+
+    SettingsCard(title = stringResource(R.string.backup_title), icon = Icons.Default.Backup) {
+        Text(stringResource(R.string.backup_hint),
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant)
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
+            OutlinedButton(
+                // Derselbe Name wie in der Webapp, damit die beiden Dateien
+                // nebeneinander erkennbar sind.
+                onClick = { speichern.launch("brickinventory-config.json") },
+                modifier = Modifier.weight(1f), shape = Formen.knopf,
+                contentPadding = PaddingValues(horizontal = 4.dp)
+            ) { Text(stringResource(R.string.backup_save), maxLines = 1,
+                     style = MaterialTheme.typography.labelLarge) }
+            OutlinedButton(
+                onClick = { laden.launch(arrayOf("application/json", "text/plain")) },
+                modifier = Modifier.weight(1f), shape = Formen.knopf,
+                contentPadding = PaddingValues(horizontal = 4.dp)
+            ) { Text(stringResource(R.string.backup_restore), maxLines = 1,
+                     style = MaterialTheme.typography.labelLarge) }
         }
     }
 }

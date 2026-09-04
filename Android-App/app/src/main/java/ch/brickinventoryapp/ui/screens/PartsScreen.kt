@@ -77,7 +77,6 @@ fun PartsScreen(
     // ziehen.
     val state by vm.state.collectAsStateWithLifecycle()
     val partsState by vm.partsState.collectAsStateWithLifecycle()
-    val financeState by vm.financeState.collectAsStateWithLifecycle()
 
     val parts = partsState.parts
     val stats = partsState.partsStats
@@ -90,13 +89,13 @@ fun PartsScreen(
     val householdMembers = state.householdMembers
     val scopeMode = state.scopeModes[ch.brickinventoryapp.data.ScopeFilter.View.PARTS.key]
         ?: ch.brickinventoryapp.data.ScopeFilter.ALL
-    val manualParts = financeState.partsValuation?.parts ?: emptyList()
+    val manualParts = partsState.manualParts ?: emptyList()
 
     // Aktualisieren BEHAELT den Suchtext — frueher stand hier `search = null`,
     // die Liste sprang also auf den ganzen Bestand, waehrend das Suchfeld
     // daneben den Text weiter anzeigte. Die Galerie macht es genauso
     // (onRefresh = loadSets()).
-    val onRefresh: () -> Unit = { vm.loadParts(); vm.loadValuation() }
+    val onRefresh: () -> Unit = { vm.loadParts() }
     val onSearch: (String) -> Unit = vm::setPartsQuery
     val onLoadMore: (Int) -> Unit = { vm.loadParts(page = it) }
     val onScopeChange: (String) -> Unit = { vm.setScope(ch.brickinventoryapp.data.ScopeFilter.View.PARTS, it) }

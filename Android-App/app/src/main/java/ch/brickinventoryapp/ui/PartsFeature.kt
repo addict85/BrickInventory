@@ -56,6 +56,12 @@ internal fun MainViewModel.loadParts(page: Int = 1, debounce: Boolean = false) {
                     )
                 }
                 if (page == 1) {
+                    // Die manuell erfassten Teile aus IHRER Quelle, nicht aus
+                    // der Bewertung — dieselbe wie die Webapp. Nur auf Seite 1:
+                    // Die Liste ist nicht seitenweise, sie steht als Abschnitt
+                    // ueber den Set-Teilen.
+                    (repo.teile.getManualParts(scopeFor(ScopeFilter.View.PARTS)) as? Result.Success)
+                        ?.let { m -> _partsState.update { it.copy(manualParts = m.data.parts) } }
                     when (val s = repo.teile.getPartsStats(scopeFor(ScopeFilter.View.PARTS))) {
                         is Result.Success -> _partsState.update { it.copy(partsStats = s.data.stats) }
                         // Statistik ist Beiwerk: Scheitert sie, bleibt die
@@ -305,8 +311,13 @@ internal fun MainViewModel.loadMinifigs(debounce: Boolean = false) {
             // editierbaren Karten. Vorher stand der Ausschluss hier als
             // `filter { it.source != "manual" }`, also ein zweites Mal neben
             // der Regel im Server-Handler.
-            is Result.Success -> _partsState.update { it.copy(
-                minifigs = r.data.figs, minifigsLoading = false) }
+            is Result.Success -> {
+                _partsState.update { it.copy(minifigs = r.data.figs, minifigsLoading = false) }
+                // Die manuell erfassten Figuren aus IHRER Quelle, nicht aus der
+                // Bewertung — dieselbe wie die Webapp.
+                (repo.teile.getManualMinifigs(scopeFor(ScopeFilter.View.MINIFIGS)) as? Result.Success)
+                    ?.let { m -> _partsState.update { it.copy(manualFigs = m.data.figs) } }
+            }
             is Result.Error   -> {
                 _snackbar.value = meldung(r)
                 _partsState.update { it.copy(minifigsLoading = false) }

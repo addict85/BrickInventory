@@ -93,6 +93,7 @@ fun NavGraphBuilder.toolsGraph(
             // Momentaufnahme vom Aufbau des Graphen (der NavHost-Builder läuft nur einmal).
             val state by vm.state.collectAsStateWithLifecycle()
             val financeState by vm.financeState.collectAsStateWithLifecycle()
+            val partsState by vm.partsState.collectAsStateWithLifecycle()
             LaunchedEffect(state.serverUrl) { if (state.serverUrl.isNotBlank() && financeState.valuation == null) vm.loadValuation() }
             ReiterGeruest(stringResource(R.string.nav_finance), vm, navController, bottomNavItems, snackbarHostState) {
                 LaunchedEffect(state.serverUrl) {
@@ -115,10 +116,13 @@ fun NavGraphBuilder.toolsGraph(
                     // ohnehin geladen hat — sonst stünde dort bis zum ersten
                     // Laden die nackte Nummer.
                     onManualClick = { type, id, colorId ->
+                        // Aus DERSELBEN Quelle wie die Listen. Ist sie noch
+                        // nicht geladen, steht die Nummer da — genau wie
+                        // vorher, wenn die Bewertung noch fehlte.
                         val name = if (type == "fig")
-                            financeState.figsValuation?.figs?.find { it.figNumber == id }?.figName
+                            partsState.manualFigs?.find { it.figNumber == id }?.figName
                         else
-                            financeState.partsValuation?.parts
+                            partsState.manualParts
                                 ?.find { it.partNumber == id && it.colorId == colorId }?.partName
                         navController.navigate(
                             Screen.ManualItemDetail.createRoute(type, id, colorId, name ?: id))
