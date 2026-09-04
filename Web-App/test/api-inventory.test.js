@@ -104,7 +104,6 @@ const C = {
   'GET /api/v1/settings/user/default-condition': 'nur-v1',
   'GET /api/v1/minifigs/stats': 'nur-v1',
   'GET /api/v1/sets/exists/:setNumber': 'nur-v1',
-  'GET /api/v1/catalog/year-offset': 'nur-v1',
   'GET /api/v1/catalog/year-verteilung': 'nur-v1',
   // Etappe 7: die Admin-Familie. Vorher gab es sie zweimal — Cache-Statistik,
   // Cache-Dauer, Preis-Job und der globale Standard-Zustand standen je einmal

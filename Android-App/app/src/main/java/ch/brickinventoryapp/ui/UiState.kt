@@ -543,6 +543,19 @@ data class CatalogUiState(
     val themes: List<CatalogTheme> = emptyList(),
     val yearMin: Int? = null,
     val yearMax: Int? = null,
+    /**
+     * Wie viele Sets je Jahr, MIT den aktuellen Filtern und in der Reihenfolge
+     * der Liste — die Zahlen, aus denen die Leiste rechts ihr Etikett rechnet.
+     *
+     * Ohne sie stand dort eine lineare Schaetzung (siehe CatalogYearMath): Der
+     * Katalog stammt weit ueberwiegend aus den letzten Jahrzehnten, und wer
+     * neun Zehntel hinunterzieht, ist deshalb noch lange nicht bei den
+     * Sechzigern. Die Webapp rechnet seit Marcos Meldung mit dieser
+     * Verteilung; hier steht sie aus demselben Grund.
+     *
+     * Jahrgaenge OHNE Jahr sind schon weggeworfen — genau wie in der Webapp.
+     */
+    val jahrVerteilung: List<ch.brickinventoryapp.data.model.JahrAnzahl> = emptyList(),
     // `yearCounts` (Anzahl Sets je Jahr) stand hier, wurde aus der
     // Katalog-Metaantwort gefuellt und nirgends angezeigt. Der Wert steht
     // weiterhin in CatalogMetaResponse; wer ein Jahres-Histogramm bauen will,

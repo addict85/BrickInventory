@@ -76,8 +76,8 @@ fun CatalogScreen(
     val onSortChange: (String) -> Unit = { srt -> katalog.setCatalogSort(srt) }
     /** Eine Seite laden, die gerade ins Bild kommt (vorwärts wie rückwärts). */
     val onEnsurePage: (Int) -> Unit = { seite -> katalog.ensureCatalogPage(seite) }
-    /** Zum ersten Set eines Jahres springen — ohne zu filtern. */
-    val onJumpToYear: (Int) -> Unit = { jahr -> katalog.jumpToCatalogYear(jahr) }
+    /** Die Leiste rechts rollt die Liste an eine Stelle — ohne zu filtern. */
+    val onScrollTo: (Int) -> Unit = { nummer -> katalog.scrollCatalogTo(nummer) }
     /** Meldet, dass der Sprung ausgeführt wurde. */
     val onScrollConsumed: () -> Unit = { katalog.catalogScrollConsumed() }
     /** Meldet die Rollposition, damit sie den Wechsel zur Detailseite überlebt. */
@@ -167,41 +167,17 @@ fun CatalogScreen(
             .collect { (index, offset) -> onScrollPos(index, offset) }
     }
 
-    // ── Welches Jahr steht gerade oben? (Nachtrag 95) ──────────────────────
+    // ── Woran der Griff der Leiste haengt (Nachtrag 95, neu gefasst) ──────
     //
-    // Marcos Befund: „im Katalog ist sie auf der korrekten Zeile, aber die
-    // Scrollbar zeigt an, dass man sich zuoberst befindet."
+    // Marcos Befund damals: „im Katalog ist sie auf der korrekten Zeile, aber
+    // die Scrollbar zeigt an, dass man sich zuoberst befindet." Der Griff
+    // folgte NIE der Liste, sondern nur dem eigenen Ziehen.
     //
-    // Die Liste stimmte also — das war der Daumen der Jahresleiste. Er folgte
-    // NIE der Liste, sondern nur dem eigenen Ziehen: `previewYear` startet auf
-    // `yearMax`, und `thumbOffset(yearMax)` ist genau null, also ganz oben.
-    // Beim Rollen mit dem Finger blieb er ebenso stehen; aufgefallen ist es
-    // erst nach der Detailseite, weil dort die Komposition neu beginnt und ein
-    // vorher gezogenes Jahr damit verlorengeht.
-    //
-    // `derivedStateOf`, damit nicht jede Rollbewegung den ganzen Bildschirm neu
-    // zusammensetzt — nur ein Wechsel des Jahres zählt.
-    //
-    // Nur bei Sortierung nach Jahr: Steht die Liste nach Name oder Nummer,
-    // springt das Jahr der obersten Kachel wild umher, und ein Daumen, der
-    // zappelt, ist schlechter als einer, der stillsteht.
-    //
-    // `rememberUpdatedState` ist hier nicht schmückend: `state` ist ein
-    // PARAMETER, also ein Wert. Ein remember{} würde den Stand einfrieren, den
-    // es beim Anlegen gesehen hat, und `loadedPages` füllt sich erst danach —
-    // der Daumen bliebe stumm, sobald eine Seite nachlädt.
-    val aktuellerStand by rememberUpdatedState(state)
-    val sichtbaresJahr by remember {
-        derivedStateOf {
-            val st = aktuellerStand
-            if (!st.sort.startsWith("year_")) null
-            else {
-                val i = gridState.firstVisibleItemIndex
-                st.loadedPages[i / CATALOG_PAGE_SIZE + 1]
-                    ?.getOrNull(i % CATALOG_PAGE_SIZE)?.year
-            }
-        }
-    }
+    // Hier stand daraufhin eine Rechnung „Jahr der obersten Kachel", weil die
+    // Leiste am JAHR haengte. Sie haengt jetzt an der STELLE in der Liste —
+    // wie ein Scrollbalken und wie in der Webapp. Damit braucht es die
+    // Rechnung nicht mehr: gridState.firstVisibleItemIndex ist die Stelle,
+    // und das Jahr dazu liefert die Verteilung (CatalogYearMath).
 
     // Sprungziel des Scrubbers ausführen.
     LaunchedEffect(state.scrollTo) {
@@ -279,15 +255,35 @@ fun CatalogScreen(
                         }
                     }
                     // Jahres-Leiste am rechten Rand — SCHNELL-SCROLL, kein
-                    // Filter (Marcos Vorgabe): Ziehen zeigt das Jahr als
-                    // kleines Etikett, Loslassen springt an dessen erste Zeile.
-                    // Alles davor und danach bleibt erreichbar.
-                    if ((state.yearMin ?: 0) > 0 && (state.yearMax ?: 0) > (state.yearMin ?: 0)) {
+                    // Filter (Marcos Vorgabe): Ziehen rollt die Liste, das
+                    // Etikett zeigt das Jahr an der Stelle, an der man gerade
+                    // ist. Alles davor und danach bleibt erreichbar.
+                    //
+                    // Dieselbe Bedingung wie in der Webapp (_initYearRail):
+                    // nur bei Sortierung nach Jahr. Steht die Liste nach Name
+                    // oder Nummer, liegen die Jahre verstreut, und ein Jahr im
+                    // Etikett waere ohne Aussage.
+                    if (state.sort.startsWith("year_") && state.total > 0
+                        && state.jahrVerteilung.isNotEmpty()) {
                         YearScrubber(
-                            listenJahr = sichtbaresJahr,
-                            yearMin = state.yearMin!!,
-                            yearMax = state.yearMax!!,
-                            onYearSelected = onJumpToYear,
+                            listenNummer = gridState.firstVisibleItemIndex,
+                            total = state.total,
+                            verteilung = state.jahrVerteilung,
+                            // Erste Wahl wie in der Webapp: das Jahr der
+                            // Kachel, die an dieser Stelle steht. Genau diese
+                            // Rechnung stand vorher weiter oben im Bildschirm
+                            // und hiess `sichtbaresJahr`.
+                            jahrGeladen = { nummer ->
+                                state.loadedPages[nummer / CATALOG_PAGE_SIZE + 1]
+                                    ?.getOrNull(nummer % CATALOG_PAGE_SIZE)?.year
+                            },
+                            onScrollTo = { nummer ->
+                                // Die Zielseite gleich mitladen, damit an der
+                                // Stelle nicht fuer einen Moment nur
+                                // Platzhalter stehen.
+                                onEnsurePage(nummer / CATALOG_PAGE_SIZE + 1)
+                                onScrollTo(nummer)
+                            },
                             modifier = Modifier.align(Alignment.CenterEnd).fillMaxHeight()
                         )
                     }
@@ -302,54 +298,66 @@ fun CatalogScreen(
 }
 
 /**
- * Vertikaler Jahres-Scrubber wie der Schnell-Scroll in der Foto-Galerie:
- * Am rechten Rand ziehen — eine Bubble zeigt live das Jahr (und die
- * Set-Zahl); beim Loslassen wird auf dieses Jahr gefiltert. Oben = neuestes
- * Jahr, unten = ältestes. Tippen auf die Leiste springt direkt.
+ * Die Jahres-Leiste am rechten Rand — dieselbe wie in der Webapp.
  *
- * Aufbau als Row (Bubble-Spur links, Gesten-Leiste rechts): die Bubble
- * braucht mehr Breite als die 28dp-Leiste — läge sie in derselben Box,
- * würden die Constraints den Text umbrechen. Die Bubble-Spur hat keinen
- * pointerInput und lässt Touches zum Grid durch.
+ * ── Marcos Vorgabe ──────────────────────────────────────────────────────────
+ * „Die App soll die gleiche Leiste wie die Webapp erhalten."
+ *
+ * Der Unterschied zur vorigen Fassung ist nicht das Aussehen, sondern woran
+ * die Leiste haengt:
+ *
+ *   vorher   Position = Jahr, linear zwischen yearMin und yearMax verteilt.
+ *            Der Griff folgte NUR dem Ziehen; wo die Liste stand, wusste er
+ *            nicht. Losgelassen wurde auf das erste Set des Jahres gesprungen
+ *            (GET /catalog/year-offset).
+ *
+ *   jetzt    Position = Stelle in der Liste, wie bei einem Scrollbalken. Der
+ *            Griff folgt der Liste, und das Etikett zeigt das Jahr, das an
+ *            dieser Stelle WIRKLICH liegt — gerechnet aus der Verteilung vom
+ *            Server (CatalogYearMath.jahrAnPosition).
+ *
+ * Das lineare Modell war derselbe Fehler, den Marco in der Webapp gemeldet
+ * hatte: „Es wurden die Sets von 1999 geladen, obwohl rechts 1965 steht."
+ * Der Katalog stammt weit ueberwiegend aus den letzten Jahrzehnten; neun
+ * Zehntel hinuntergezogen ist eben noch lange nicht bei den Sechzigern.
+ *
+ * Aufbau als Row (Etikett-Spur links, Gesten-Leiste rechts): Das Etikett darf
+ * ueber die Kacheln ragen, ohne Beruehrungen abzufangen.
  */
 @Composable
 private fun YearScrubber(
-    /** Jahr der obersten sichtbaren Kachel — `null`, wenn es keins gibt. */
-    listenJahr: Int?,
-    yearMin: Int,
-    yearMax: Int,
-    onYearSelected: (Int) -> Unit,
+    /** Stelle in der Liste, an der die Anzeige gerade steht (0 .. total-1). */
+    listenNummer: Int,
+    total: Int,
+    verteilung: List<ch.brickinventoryapp.data.model.JahrAnzahl>,
+    /** Jahr der Kachel an einer laufenden Nummer — null, wenn nicht geladen. */
+    jahrGeladen: (Int) -> Int?,
+    /** Ziehen: zu dieser Stelle rollen. Laeuft waehrend der Bewegung, nicht erst am Ende. */
+    onScrollTo: (Int) -> Unit,
     modifier: Modifier = Modifier
 ) {
-    // Kein `selectedYear` mehr: Die Leiste filtert nicht, sie springt. Ein
-    // dauerhaft markiertes Jahr gäbe es also gar nicht — der Daumen zeigt
-    // während des Ziehens, wohin es geht, und danach steht die Liste dort.
-    var dragging by rememberSaveable { mutableStateOf(false) }
-    var previewYear by remember(yearMax) { mutableStateOf(yearMax) }
+    var dragging by remember { mutableStateOf(false) }
+    var ziehAnteil by remember { mutableStateOf(0f) }
     var heightPx by rememberSaveable { mutableStateOf(1) }
     val thumbHeightPx = with(LocalDensity.current) { 36.dp.roundToPx() }
 
-    // Mathematik extrahiert nach CatalogYearMath (unit-getestet)
-    fun yearAt(y: Float): Int =
-        CatalogYearMath.yearAt(y, heightPx, thumbHeightPx, yearMin, yearMax)
-    fun offsetOf(year: Int): Int =
-        CatalogYearMath.thumbOffset(year, heightPx, thumbHeightPx, yearMin, yearMax)
+    // Beim Ziehen zeigt der Griff, WOHIN es geht; sonst, WO die Liste steht.
+    // Der zweite Fall fehlte in der vorigen Fassung ganz — der Griff stand
+    // dauerhaft dort, wo zuletzt gezogen worden war.
+    val anteil = if (dragging) ziehAnteil else CatalogYearMath.anteilAusNummer(listenNummer, total)
+    val thumbOffsetY = CatalogYearMath.daumenOffset(anteil, heightPx, thumbHeightPx)
+    val etikett = CatalogYearMath.jahrFuer(anteil, total, verteilung, jahrGeladen)
 
-    // Beim Ziehen zeigt der Daumen, WOHIN es geht; sonst, WO man ist. Vorher
-    // gab es nur den ersten Fall — und ohne Ziehen stand er auf `yearMax`, also
-    // dauerhaft ganz oben, ganz gleich wie weit die Liste gerollt war.
-    val thumbYear = if (dragging) previewYear else (listenJahr ?: previewYear)
-    val thumbOffsetY = offsetOf(thumbYear)
+    /** Beruehrung -> Anteil -> rollen. Wie js/15-scrollbar.js -> rollen(). */
+    fun rollen(y: Float) {
+        ziehAnteil = CatalogYearMath.anteilAus(y, heightPx, thumbHeightPx)
+        onScrollTo(CatalogYearMath.nummerAus(ziehAnteil, total))
+    }
 
     Row(modifier) {
-        // Bubble-Spur — nur sichtbar beim Ziehen, fängt keine Touches
+        // Etikett-Spur — nur sichtbar beim Ziehen, faengt keine Beruehrungen.
         Box(Modifier.fillMaxHeight()) {
-            if (dragging) {
-                // Kleines Etikett statt grosser Blase (Marcos Wunsch, wie in
-                // der Foto-App): heller Grund, eine Zeile, direkt an der
-                // Leiste. Die Zahl der Sets steht nicht mehr dabei — sie war
-                // eine Filter-Auskunft („so viele bekommst du"), und gefiltert
-                // wird hier nicht mehr.
+            if (dragging && etikett != null) {
                 Surface(
                     color = MaterialTheme.colorScheme.surface,
                     contentColor = MaterialTheme.colorScheme.onSurface,
@@ -360,7 +368,7 @@ private fun YearScrubber(
                         .padding(end = 6.dp)
                 ) {
                     Text(
-                        "$previewYear",
+                        "$etikett",
                         fontWeight = FontWeight.SemiBold, fontSize = 13.sp,
                         modifier = Modifier.padding(horizontal = 10.dp, vertical = 3.dp)
                     )
@@ -368,35 +376,24 @@ private fun YearScrubber(
             }
         }
 
-        // Gesten-Leiste (28dp) mit Schiene + Daumen
+        // Gesten-Leiste (28dp) mit Schiene + Griff
         Box(
             Modifier
                 .width(28.dp)
                 .fillMaxHeight()
                 .onSizeChanged { heightPx = it.height }
-                .pointerInput(yearMin, yearMax) {
+                .pointerInput(total) {
                     detectVerticalDragGestures(
-                        onDragStart = { offset ->
-                            dragging = true
-                            previewYear = yearAt(offset.y)
-                        },
-                        onVerticalDrag = { change, _ ->
-                            change.consume()
-                            previewYear = yearAt(change.position.y)
-                        },
-                        onDragEnd = {
-                            dragging = false
-                            onYearSelected(previewYear)
-                        },
+                        onDragStart = { offset -> dragging = true; rollen(offset.y) },
+                        onVerticalDrag = { change, _ -> change.consume(); rollen(change.position.y) },
+                        onDragEnd = { dragging = false },
                         onDragCancel = { dragging = false }
                     )
                 }
-                .pointerInput(yearMin, yearMax) {
-                    detectTapGestures { offset ->
-                        val y = yearAt(offset.y)
-                        previewYear = y
-                        onYearSelected(y)
-                    }
+                .pointerInput(total) {
+                    // Neben den Griff getippt: dorthin springen — wie bei einem
+                    // gewoehnlichen Scrollbalken.
+                    detectTapGestures { offset -> rollen(offset.y) }
                 }
         ) {
             // Schiene
@@ -410,7 +407,7 @@ private fun YearScrubber(
                     .fillMaxHeight()
             ) {}
 
-            // Daumen — immer sichtbar, folgt dem gewählten Jahr
+            // Griff — immer sichtbar, folgt der Liste
             Surface(
                 color = if (dragging) MaterialTheme.colorScheme.primary
                         else MaterialTheme.colorScheme.primary.copy(alpha = 0.55f),
@@ -422,7 +419,7 @@ private fun YearScrubber(
             ) {
                 Box(Modifier.width(18.dp).height(36.dp), Alignment.Center) {
                     if (LocalIsBrickTheme.current) {
-                        // Stein-Design: Daumen als Noppe (heller Stud-Punkt)
+                        // Stein-Design: Griff als Noppe (heller Stud-Punkt)
                         Surface(
                             color = MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.55f),
                             shape = androidx.compose.foundation.shape.CircleShape,

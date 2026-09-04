@@ -30,6 +30,13 @@ import java.io.File
  *     zurück, liefe die Koroutine, die es zurücksetzt, nicht mehr — der
  *     Ladekringel bliebe für immer stehen.
  *
+ *     Dazu gehört auch eine laufende ZIEHGESTE (`dragging`, `ziehAnteil` in
+ *     der Jahres-Leiste des Katalogs). Sie stand bis jetzt an `rememberSaveable`
+ *     und fiel damit unter keine der beiden Sorten. Käme `dragging = true`
+ *     nach einer Drehung zurück, läge kein Finger mehr auf der Leiste — das
+ *     Etikett bliebe stehen, bis jemand das nächste Mal zieht. Dieselbe Falle
+ *     wie beim Ladekringel, deshalb dieselbe Regel.
+ *
  * Dieselbe Falle ist in diesem Baum schon einmal zugeschnappt: ScrollMemory.kt
  * hält in seiner eigenen Erklärung fest, dass der dortige Merker als
  * `rememberSaveable` „die Wiederherstellung nach dem ersten Betreten für immer
@@ -55,7 +62,7 @@ class BildschirmZustandTest {
     private val nameAus = Regex("""\b(?:var|val)\s+(\w+)\s+by\s+remember""")
 
     /** Zustand eines LAUFENDEN VORGANGS — der darf nicht wiederhergestellt werden. */
-    private val fluechtig = Regex("""(?i)lade|loading|busy|running|laeuft|laden|pending|saving|speichert|scanning|scannt|progress|fortschritt""")
+    private val fluechtig = Regex("""(?i)lade|loading|busy|running|laeuft|laden|pending|saving|speichert|scanning|scannt|progress|fortschritt|zieh|drag""")
 
     /**
      * Merker der Rollpositions-Wiederherstellung — dürfen ERST RECHT nicht überleben.

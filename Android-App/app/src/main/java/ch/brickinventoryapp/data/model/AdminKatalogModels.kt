@@ -21,19 +21,30 @@ import kotlinx.serialization.Serializable
  */
 
 /**
- * Antwort auf „an welcher Stelle der Liste beginnt dieses Jahr?"
- * (GET /api/v1/catalog/year-offset) — die Rechnung hinter dem Schnell-Scroll.
+ * Wie viele Sets je Jahr — MIT den aktuellen Filtern und in der Reihenfolge
+ * der Sortierung (GET /api/v1/catalog/year-verteilung).
  *
- * Der Katalog hat rund 25 000 Sets und wird seitenweise geliefert; wohin ein
- * Jahr gehört, weiss nur die Datenbank. `offset` ist die laufende Nummer des
- * ersten Sets dieses Jahres, `page` die Seite, auf der es liegt.
+ * `year` darf null sein: Sets ohne Jahresangabe. Postgres sortiert die bei
+ * absteigender Sortierung nach vorne, und die Antwort gibt sie so heraus, wie
+ * die Liste sie fuehrt.
  */
 @Serializable
-data class CatalogYearOffsetResponse(
+data class JahrAnzahl(
+    val year: Int? = null,
+    val n: Int = 0
+)
+
+/**
+ * Antwort auf „wie verteilen sich die Sets ueber die Jahre?"
+ *
+ * Vom SERVER, weil nur er die Filter kennt — eine Verteilung ueber den ganzen
+ * Katalog laege bei gesetztem Thema oder Suchtext genauso daneben wie eine
+ * lineare Schaetzung.
+ */
+@Serializable
+data class CatalogYearVerteilungResponse(
     val success: Boolean = false,
-    val offset: Int = 0,
-    val page: Int = 1,
-    val total: Int = 0
+    val years: List<JahrAnzahl> = emptyList()
 )
 
 @Serializable

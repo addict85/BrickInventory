@@ -119,18 +119,6 @@ function fakeApi(_method, url) {
       .sort((a, b) => absteigend ? b.year - a.year : a.year - b.year);
     return Promise.resolve({ success: true, years });
   }
-  if (url.startsWith('/v1/catalog/year-offset?')) {
-    // Dieselbe Regel wie der (eigens getestete) Server: Wie viele Sets stehen
-    // VOR dem ersten dieses Jahres — in der Richtung der Sortierung.
-    const p = new w.URLSearchParams(url.split('?')[1]);
-    const jahr = parseInt(p.get('year'));
-    const limit = parseInt(p.get('limit') || '60');
-    const absteigend = p.get('sort') !== 'year_asc';
-    const rows = DATA.slice().sort((a, b) => absteigend ? b.year - a.year : a.year - b.year);
-    const offset = rows.findIndex(x => x.year === jahr);
-    const o = offset < 0 ? rows.length - 1 : offset;
-    return Promise.resolve({ success: true, offset: o, page: Math.floor(o / limit) + 1, total: rows.length });
-  }
   return Promise.resolve({ success: false, error: 'unbekannt: ' + url });
 }
 
@@ -293,6 +281,42 @@ test('Katalog-Frontend: Seitenblöcke, Jahresfilter, eigener Scrollbalken', asyn
     /_catJahrVerteilung/.test(quelle) && /year-verteilung/.test(quelle), null);
   check('keine lineare Schätzung mehr',
     !/_catYearMax - anteil \* spanne/.test(quelle), null);
+
+  // ── Und dasselbe in der App (Marcos Vorgabe: „die gleiche Leiste") ────────
+  //
+  // Die Leiste der Android-App rechnete bis zuletzt LINEAR zwischen yearMin
+  // und yearMax — genau das Modell, das hier oben schon einmal danebenlag.
+  // Die Regel steht deshalb ueber BEIDEN Baeumen: Wer die eine Oberflaeche
+  // wieder auf eine Schaetzung zurueckdreht, faellt hier auf.
+  //
+  // Gefunden, nicht aufgezaehlt: Die App-Quellen werden gesucht, und ein
+  // leerer Fund gilt nicht (Selbstnachweis unten).
+  const kotlin = [];
+  const gehen = (d) => {
+    if (!fs.existsSync(d)) return;
+    for (const e of fs.readdirSync(d, { withFileTypes: true })) {
+      const abs = path.join(d, e.name);
+      if (e.isDirectory()) gehen(abs);
+      else if (e.name.endsWith('.kt')) kotlin.push(abs);
+    }
+  };
+  gehen(path.join(__dirname, '..', '..', 'Android-App', 'app', 'src', 'main'));
+  check('die App-Quellen sind auffindbar', kotlin.length >= 40, kotlin.length);
+  if (kotlin.length >= 40) {
+    const kQuelle = kotlin.map(f => fs.readFileSync(f, 'utf8')).join('\n');
+    const ohneKommentar = kQuelle.replace(/\/\*[\s\S]*?\*\//g, '')
+                                 .replace(/^\s*\/\/[^\n]*$/gm, '');
+    check('die App holt dieselbe Verteilung',
+      /year-verteilung/.test(ohneKommentar), null);
+    check('die App rechnet ueber die Verteilung',
+      /fun jahrAnPosition\(/.test(ohneKommentar), null);
+    // Die alte lineare Rechnung: aus einem Anteil wurde direkt ein Jahr.
+    check('keine lineare Jahresschaetzung mehr in der App',
+      !/yearMax - frac \* \(yearMax - yearMin\)/.test(ohneKommentar), null);
+    // Und die Leiste haengt an der STELLE, nicht mehr am Jahr.
+    check('die App springt nicht mehr auf year-offset',
+      !/year-offset/.test(ohneKommentar), null);
+  }
   check('Etikett ist angemeldet', typeof w.__scrollLabelFn === 'function', typeof w.__scrollLabelFn);
 
   assert.deepEqual(problems, []);

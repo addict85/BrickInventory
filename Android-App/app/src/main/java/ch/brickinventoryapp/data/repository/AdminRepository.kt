@@ -86,10 +86,13 @@ class AdminRepository @Inject constructor(
     suspend fun getCatalogSetDetail(setNumber: String): Result<CatalogSetDetailResponse> =
         safeCall { api.getCatalogSetDetail(setNumber) }
 
-    /** Sprungziel des Jahres-Scrubbers — gerechnet mit denselben Filtern wie die Liste. */
-    suspend fun getCatalogYearOffset(
-        year: Int, q: String? = null, themeId: Int? = null,
-        sort: String = "year_desc", limit: Int = CATALOG_PAGE_SIZE
-    ): Result<ch.brickinventoryapp.data.model.CatalogYearOffsetResponse> =
-        safeCall { api.getCatalogYearOffset(year, q, themeId, sort, limit) }
+    /**
+     * Jahresverteilung zu den aktuellen Filtern — die Zahlen, aus denen die
+     * Leiste ihr Etikett rechnet. Einmal je Listenaufbau, nicht beim Rollen.
+     */
+    suspend fun getCatalogYearVerteilung(
+        q: String? = null, themeId: Int? = null, sort: String = "year_desc"
+    ): Result<ch.brickinventoryapp.data.model.CatalogYearVerteilungResponse> =
+        safeCall { api.getCatalogYearVerteilung(q, themeId, sort) }
+
 }

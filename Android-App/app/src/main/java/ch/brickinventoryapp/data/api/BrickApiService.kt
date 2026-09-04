@@ -318,14 +318,12 @@ interface BrickApiService {
         @Path("setNumber") setNumber: String
     ): Response<MinifigsResponse>
 
-    @GET("api/v1/catalog/year-offset")
-    suspend fun getCatalogYearOffset(
-        @Query("year") year: Int,
+    @GET("api/v1/catalog/year-verteilung")
+    suspend fun getCatalogYearVerteilung(
         @Query("q") q: String? = null,
         @Query("theme_id") themeId: Int? = null,
-        @Query("sort") sort: String? = null,
-        @Query("limit") limit: Int? = null
-    ): Response<ch.brickinventoryapp.data.model.CatalogYearOffsetResponse>
+        @Query("sort") sort: String? = null
+    ): Response<ch.brickinventoryapp.data.model.CatalogYearVerteilungResponse>
 
     @GET("api/v1/sets/exists/{setNumber}")
     suspend fun getSetExists(
