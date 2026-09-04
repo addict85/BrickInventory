@@ -520,4 +520,17 @@
     <string name="forgot_email_required">Please enter your email address.</string>
     <string name="forgot_done">If the address exists, a link has been sent.</string>
 
+
+    <!-- ══════════════ Account card (profile / password) ══════════════ -->
+    <string name="konto_title">Account</string>
+    <string name="konto_email_unverified">Email address not confirmed</string>
+    <string name="konto_save">Save profile</string>
+    <string name="konto_saved">Profile saved</string>
+    <string name="konto_password_title">Change password</string>
+    <string name="konto_password_current">Current password</string>
+    <string name="konto_password_new">New password</string>
+    <string name="konto_password_hint">All access tokens of this account are revoked — including this app. You will have to sign in again.</string>
+    <string name="konto_password_changed">Password changed. Please sign in again.</string>
+    <string name="konto_password_button">Change password</string>
+
 </resources>

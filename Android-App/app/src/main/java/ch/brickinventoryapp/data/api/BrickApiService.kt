@@ -42,6 +42,16 @@ interface BrickApiService {
     @POST("api/v1/auth/forgot-password")
     suspend fun forgotPassword(@Body request: ForgotPasswordRequest): Response<ForgotPasswordResponse>
 
+    // ── Das eigene Konto ────────────────────────────────────────────────────
+    @GET("api/v1/auth/profile")
+    suspend fun getProfil(): Response<ProfilResponse>
+
+    @PUT("api/v1/auth/profile")
+    suspend fun updateProfil(@Body request: ProfilAenderung): Response<GenericResponse>
+
+    @POST("api/v1/auth/change-password")
+    suspend fun changePassword(@Body request: PasswortAenderung): Response<GenericResponse>
+
     @GET("api/v1/sets/{setNumber}")
     suspend fun getSetDetail(
         @Path("setNumber") setNumber: String

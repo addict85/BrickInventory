@@ -86,7 +86,7 @@ internal fun MainViewModel.loginWithQrToken(serverUrl: String, token: String) {
 // ── Konto anlegen und Passwort vergessen ─────────────────────────────────
 //
 // Beides braucht KEINE Anmeldung und laeuft deshalb ueber eigene Felder
-// (kontoLaeuft/kontoFehler/kontoMeldung) statt ueber loginLaeuft/loginError.
+// AnmeldeUiState statt ueber loginLaeuft/loginError im AppUiState.
 // Sonst haetten zwei Formulare denselben Fehlerplatz — genau die Verwechslung,
 // wegen der `error` einmal in `loginError` umbenannt wurde (siehe UiState).
 
@@ -102,7 +102,7 @@ internal fun MainViewModel.loginWithQrToken(serverUrl: String, token: String) {
 internal fun MainViewModel.pruefeRegistrierungOffen() {
     viewModelScope.launch {
         when (val r = repo.admin.getRegistrationStatus()) {
-            is Result.Success -> _state.update { it.copy(registrierungOffen = r.data.enabled) }
+            is Result.Success -> _anmeldeState.update { it.copy(registrierungOffen = r.data.enabled) }
             is Result.Error   -> Unit
         }
     }
@@ -112,14 +112,14 @@ internal fun MainViewModel.pruefeRegistrierungOffen() {
 internal fun MainViewModel.zeigeAnmeldeFormular(formular: AnmeldeFormular) {
     // Meldung UND Fehler gehen mit: Sonst stuende die Erfolgsmeldung der
     // Registrierung noch im Formular „Passwort vergessen".
-    _state.update { it.copy(anmeldeFormular = formular, kontoMeldung = null, kontoFehler = null) }
+    _anmeldeState.update { it.copy(formular = formular, meldung = null, fehler = null) }
 }
 
 internal fun MainViewModel.registriere(
     username: String, email: String, vorname: String, nachname: String, passwort: String,
 ) {
     viewModelScope.launch {
-        _state.update { it.copy(kontoLaeuft = true, kontoFehler = null, kontoMeldung = null) }
+        _anmeldeState.update { it.copy(laeuft = true, fehler = null, meldung = null) }
         val anfrage = RegisterRequest(
             username = username.trim(),
             email = email.trim(),
@@ -141,14 +141,14 @@ internal fun MainViewModel.registriere(
                     // kein Mailversand eingerichtet ist. Ohne den wartet man
                     // auf eine E-Mail, die nie kommt.
                     val hinweis = if (r.data.consoleMode) " " + text(R.string.register_console_hint) else ""
-                    _state.update { it.copy(
-                        kontoLaeuft = false,
-                        kontoMeldung = (r.data.message ?: text(R.string.register_done)) + hinweis) }
+                    _anmeldeState.update { it.copy(
+                        laeuft = false,
+                        meldung = (r.data.message ?: text(R.string.register_done)) + hinweis) }
                 } else {
-                    _state.update { it.copy(kontoLaeuft = false,
-                        kontoFehler = r.data.error ?: text(R.string.err_generic)) }
+                    _anmeldeState.update { it.copy(laeuft = false,
+                        fehler = r.data.error ?: text(R.string.err_generic)) }
                 }
-            is Result.Error -> _state.update { it.copy(kontoLaeuft = false, kontoFehler = meldung(r)) }
+            is Result.Error -> _anmeldeState.update { it.copy(laeuft = false, fehler = meldung(r)) }
         }
     }
 }
@@ -163,12 +163,12 @@ internal fun MainViewModel.registriere(
  */
 internal fun MainViewModel.passwortVergessen(email: String) {
     viewModelScope.launch {
-        _state.update { it.copy(kontoLaeuft = true, kontoFehler = null, kontoMeldung = null) }
+        _anmeldeState.update { it.copy(laeuft = true, fehler = null, meldung = null) }
         when (val r = repo.admin.forgotPassword(email.trim())) {
-            is Result.Success -> _state.update { it.copy(
-                kontoLaeuft = false,
-                kontoMeldung = r.data.message ?: text(R.string.forgot_done)) }
-            is Result.Error -> _state.update { it.copy(kontoLaeuft = false, kontoFehler = meldung(r)) }
+            is Result.Success -> _anmeldeState.update { it.copy(
+                laeuft = false,
+                meldung = r.data.message ?: text(R.string.forgot_done)) }
+            is Result.Error -> _anmeldeState.update { it.copy(laeuft = false, fehler = meldung(r)) }
         }
     }
 }
@@ -213,4 +213,95 @@ internal fun MainViewModel.logout() {
         // abgebrochen, nicht nur ausgeblendet.
         brichPruefungAb()
     }
+}
+
+// ── Das eigene Konto ─────────────────────────────────────────────────────
+//
+// Beides konnte die Webapp seit jeher und die App nicht — nicht weil es
+// fehlte, sondern weil /auth/profile und /auth/change-password an einem
+// sitzungsgebundenen Waechter hingen. Die App hat keine Sitzung. Seit beide
+// Waechter dieselbe Frage stellen (Nachtrag 127), sind es normale Aufrufe.
+
+internal fun MainViewModel.ladeProfil() {
+    viewModelScope.launch {
+        _kontoState.update { it.copy(laedt = true, fehler = null) }
+        when (val r = repo.admin.getProfil()) {
+            is Result.Success -> _kontoState.update {
+                it.copy(laedt = false, profil = r.data.user,
+                        fehler = if (r.data.user == null) r.data.error ?: text(R.string.err_generic) else null) }
+            is Result.Error -> _kontoState.update { it.copy(laedt = false, fehler = meldung(r)) }
+        }
+    }
+}
+
+internal fun MainViewModel.speichereProfil(
+    benutzername: String, email: String, vorname: String, nachname: String,
+) {
+    viewModelScope.launch {
+        _kontoState.update { it.copy(speichert = true, fehler = null, meldung = null) }
+        val aenderung = ProfilAenderung(
+            username = benutzername.trim(),
+            email = email.trim(),
+            // Leer heisst „nicht angegeben", nicht „leerer Vorname".
+            firstName = vorname.trim().ifBlank { null },
+            lastName = nachname.trim().ifBlank { null },
+        )
+        when (val r = repo.admin.updateProfil(aenderung)) {
+            is Result.Success ->
+                if (r.data.success) {
+                    _kontoState.update { it.copy(speichert = false, meldung = text(R.string.konto_saved)) }
+                    // Neu holen statt den eingetippten Stand zu uebernehmen:
+                    // Der Server normalisiert (und koennte die
+                    // E-Mail-Bestaetigung zuruecksetzen, wenn die Adresse
+                    // wechselt). Was die Karte zeigt, soll der Serverstand sein.
+                    ladeProfil()
+                } else {
+                    _kontoState.update { it.copy(speichert = false,
+                        fehler = r.data.error ?: text(R.string.err_generic)) }
+                }
+            is Result.Error -> _kontoState.update { it.copy(speichert = false, fehler = meldung(r)) }
+        }
+    }
+}
+
+/**
+ * Passwort aendern — und danach ist die App abgemeldet.
+ *
+ * Der Server verwirft bei Erfolg ALLE Bearer-Token des Kontos, auch den dieser
+ * Anfrage. Das ist gewollt: Wer sein Passwort aendert, will bestehende Zugaenge
+ * loswerden. Die App raeumt deshalb den gespeicherten Token selbst weg, statt
+ * ihn liegen zu lassen und beim naechsten Abruf kommentarlos an einem 401 zu
+ * scheitern.
+ */
+internal fun MainViewModel.aenderePasswort(aktuell: String, neu: String) {
+    viewModelScope.launch {
+        _kontoState.update { it.copy(speichert = true, fehler = null, meldung = null) }
+        when (val r = repo.admin.changePassword(aktuell, neu)) {
+            is Result.Success ->
+                if (r.data.success) {
+                    // Derselbe Weg wie beim Abmelden von Hand: Token weg,
+                    // Zwischenspeicher weg, alle Fluesse zurueck. Ihn hier
+                    // NICHT zu gehen hiesse, mit einem Token weiterzulaufen,
+                    // den der Server soeben verworfen hat — und die Sets des
+                    // Kontos im Plattenspeicher liegen zu lassen.
+                    logout()
+                    // In den Snackbar und NICHT in _kontoState: logout() setzt
+                    // alle Fluesse zurueck und der Anmeldebildschirm erscheint
+                    // — eine Meldung in der Kontokarte saehe niemand mehr. Sie
+                    // ist aber die Erklaerung dafuer, warum man ploetzlich
+                    // wieder vor der Anmeldung steht, und muss deshalb bleiben.
+                    _snackbar.value = text(R.string.konto_password_changed)
+                    _kontoState.value = KontoUiState()
+                } else {
+                    _kontoState.update { it.copy(speichert = false,
+                        fehler = r.data.error ?: text(R.string.err_generic)) }
+                }
+            is Result.Error -> _kontoState.update { it.copy(speichert = false, fehler = meldung(r)) }
+        }
+    }
+}
+
+/** Meldung/Fehler der Kontokarte wegraeumen, wenn der Nutzer weitertippt. */
+internal fun MainViewModel.kontoMeldungWeg() {
+    _kontoState.update { it.copy(meldung = null, fehler = null) }
 }

@@ -51,6 +51,7 @@ import { fetchMinifigPrice, fetchPartPrice } from '../utils/financeCalc';
 import { getSetting, getGlobalSetting } from '../utils/settings';
 import { csvEinlesen, parseCsvDate, toCsv, uebersprungenHinweis } from '../utils/csvExport';
 import { getMinifigParts } from '../clients/rebrickable';
+import { angemeldeteNutzerId } from '../utils/auth';
 
 router.use(requireLogin);
 
@@ -485,7 +486,7 @@ async function updateManualFig(uid: number, figNumber: string, body: any) {
 const csvUpload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 15 * 1024 * 1024 } });
 router.post('/import/csv', csvUpload.single('file'), async (req: LoggedInRequest, res) => {
   if (!req.file) return res.status(400).json({ success: false, error: 'Keine Datei' });
-  const uid = req.session.userId;
+  const uid = angemeldeteNutzerId(req);
   try {
     // Krumme Zeilen überspringen statt abbrechen (utils/csvExport.ts).
     const gelesen   = csvEinlesen(req.file.buffer.toString('utf-8'));

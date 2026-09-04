@@ -181,3 +181,67 @@ data class ForgotPasswordResponse(
  */
 @Serializable
 data class RegistrationStatusResponse(val enabled: Boolean = false)
+
+// ── Profil und Passwort ─────────────────────────────────────────────────────
+//
+// Die Routen gab es laengst; die App kam nur nicht daran. /auth/profile und
+// /auth/change-password hingen an einem sitzungsgebundenen Waechter, und die
+// App hat keine Sitzung (Nachtrag 127). Seit beide Waechter dieselbe Frage
+// stellen, sind es normale Aufrufe wie jeder andere.
+
+/** Das eigene Konto — GET /api/v1/auth/profile. */
+@Serializable
+data class Profil(
+    val id: Int,
+    val username: String,
+    val email: String? = null,
+    @SerialName("first_name") val firstName: String? = null,
+    @SerialName("last_name") val lastName: String? = null,
+    /**
+     * Ist die E-Mail-Adresse bestaetigt?
+     *
+     * Der Server liefert hier je nach Treiber 0/1 oder true/false, deshalb
+     * `Int`: Als Boolean deserialisiert eine 0 nicht. Gelesen wird sie als
+     * `emailVerified == 1`.
+     */
+    @SerialName("email_verified") val emailVerified: Int = 0,
+)
+
+@Serializable
+data class ProfilResponse(
+    val success: Boolean,
+    val user: Profil? = null,
+    val error: String? = null,
+)
+
+/**
+ * Profil aendern — PUT /api/v1/auth/profile.
+ *
+ * Das Passwort kann hier MITGEAENDERT werden, dann verlangt der Server
+ * `passwordCurrent`. Die App benutzt dafuer trotzdem /change-password: Nur
+ * dieser Weg verwirft anschliessend alle offenen Zugaenge, und genau das will,
+ * wer sein Passwort aendert. Die beiden Felder stehen hier, weil die
+ * Schnittstelle sie kennt — belegt werden sie nicht.
+ */
+@Serializable
+data class ProfilAenderung(
+    val username: String,
+    val email: String,
+    @SerialName("first_name") val firstName: String? = null,
+    @SerialName("last_name") val lastName: String? = null,
+)
+
+/**
+ * Passwort aendern — POST /api/v1/auth/change-password.
+ *
+ * ACHTUNG, und die Oberflaeche sagt es dem Nutzer vorher: Der Server verwirft
+ * danach ALLE Bearer-Token des Kontos — auch den, mit dem diese Anfrage kam.
+ * Die App ist nach einem erfolgreichen Wechsel abgemeldet. Das ist richtig so:
+ * Wer sein Passwort aendert, will bestehende Zugaenge loswerden, und eine
+ * Ausnahme fuer den gerade benutzten waere genau die Luecke.
+ */
+@Serializable
+data class PasswortAenderung(
+    val current: String,
+    @SerialName("newPassword") val neuesPasswort: String,
+)

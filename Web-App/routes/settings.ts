@@ -12,7 +12,7 @@ import { buildSetsCsv } from '../utils/setService';
 import { buildPartsCsv } from './parts';
 import { buildFigsCsv } from './minifigs';
 import { DAILY_JOBS } from '../jobs/dailyScheduler';
-import { escapeLike, requireLoginOrToken, hashToken, leereTokenCache } from '../utils/auth';
+import { escapeLike, requireLoginOrToken, nutzerId, angemeldeteNutzerId, istVerwalter, hashToken, leereTokenCache } from '../utils/auth';
 import { bearerToken } from './api_v1/middleware';
 import { sendMail, testSmtp } from './mailer';
 
@@ -61,7 +61,7 @@ router.get('/theme', async (_req, res) => {
  */
 router.get('/tokens', requireLoginOrToken, async (req: LoggedInRequest, res) => {
   try {
-    const uid = req.session?.userId || req.tokenUserId;
+    const uid = nutzerId(req);
     const eigener = bearerToken(req);
     const eigenerHash = eigener ? hashToken(eigener) : null;
     const tokens = await db.all(
@@ -96,7 +96,7 @@ router.get('/tokens', requireLoginOrToken, async (req: LoggedInRequest, res) => 
  */
 router.delete('/tokens/:tokenId', requireLoginOrToken, async (req: LoggedInRequest, res) => {
   try {
-    const uid = req.session?.userId || req.tokenUserId;
+    const uid = nutzerId(req);
     // escapeLike: ohne das löscht ein "%" als tokenId ALLE Tokens des Nutzers.
     const prefix = escapeLike(String(req.params.tokenId || '')).slice(0, 64);
     if (!prefix) return res.status(400).json({ success: false, error: 'Token-ID fehlt' });
@@ -125,6 +125,7 @@ router.use(requireLogin);
 // mitgezogen, staenden zwei verschiedene Antworten auf derselben Adresse.
 
 router.post('/', async (req: LoggedInRequest, res) => {
+  const uid = angemeldeteNutzerId(req);
   const globalKeys = ['bricklink_consumer_key','bricklink_consumer_secret','bricklink_token',
     'bricklink_token_secret','brickset_api_key','rebrickable_api_key','price_job_interval_minutes',
     'price_cache_ttl','api_limit_rebrickable','api_limit_bricklink','api_limit_brickset',
@@ -133,7 +134,7 @@ router.post('/', async (req: LoggedInRequest, res) => {
   const userKeys = ['currency', 'language', 'user_default_condition'];
 
   try {
-    if (req.session.isAdmin) {
+    if (istVerwalter(req)) {
       // Check if brickset limit is being increased before saving
       const oldBricksetLimit = req.body.api_limit_brickset !== undefined
         ? parseInt(await getGlobalSetting('api_limit_brickset') || '100')
@@ -168,7 +169,7 @@ router.post('/', async (req: LoggedInRequest, res) => {
       if (req.body[key] !== undefined) {
         // Zentrale Stelle — stösst bei einer ECHTEN Währungsänderung den
         // Preis-Job an (Begründung in utils/settings.ts).
-        await setUserSetting(req.session.userId, key, req.body[key]);
+        await setUserSetting(uid, key, req.body[key]);
       }
     }
     res.json({ success: true });
@@ -180,7 +181,7 @@ router.post('/', async (req: LoggedInRequest, res) => {
 // Maskierung nicht an der Verpackung vorbeigeht (siehe dort).
 router.get('/raw', async (req: LoggedInRequest, res) => {
   try {
-    res.json({ success: true, settings: await readSettings(req.session.userId, !!req.session.isAdmin) });
+    res.json({ success: true, settings: await readSettings(angemeldeteNutzerId(req), istVerwalter(req)) });
   } catch (e) { handleRouteError(res, e); }
 });
 
@@ -210,7 +211,7 @@ router.get('/export', async (req, res) => {
       // API-Zugangsdaten trägt man beim Wiederherstellen einmalig neu ein.
       .filter(r => !EXPORT_EXCLUDE_KEYS.has(r.key) && !r.key.startsWith('job_monitor_') && !SECRET_KEYS.has(r.key))
       .forEach(r => { global[r.key] = r.value; });
-    const userSettings: any = await nutzerEinstellungen(req.session.userId!);
+    const userSettings: any = await nutzerEinstellungen(nutzerId(req)!);
     res.setHeader('Content-Type', 'application/json');
     res.setHeader('Content-Disposition', `attachment; filename="brickinventory-config-${new Date().toISOString().substring(0,10)}.json"`);
     res.json({ exported_at: new Date().toISOString(), exported_by: req.session.username, version: '3.0', global, user_settings: userSettings });
@@ -225,7 +226,7 @@ router.get('/export', async (req, res) => {
 router.get('/export/data', async (req: LoggedInRequest, res) => {
   try {
     const archiver = require('archiver');
-    const uid = req.session.userId;
+    const uid = angemeldeteNutzerId(req);
 
     const [setsCsv, partsCsv, figsCsv] = await Promise.all([
       buildSetsCsv(uid), buildPartsCsv(uid), buildFigsCsv(uid),
@@ -260,9 +261,10 @@ router.post('/import', importUpload.single('file'), async (req: LoggedInRequest,
     // konfigurierbare Job-Zeiten aus dem Monitoring (job_time_<name>)
     ...DAILY_JOBS.map((j: any) => `job_time_${j.name}`)];
   const userKeys = ['currency', 'user_default_condition'];
+  const uid = angemeldeteNutzerId(req);
   let imported = 0;
   try {
-    if (config.global && req.session.isAdmin) {
+    if (config.global && istVerwalter(req)) {
       for (const key of globalKeys) {
         if (config.global[key] !== undefined) {
           // Eine Datei aus einem älteren Export kann noch maskierte Werte
@@ -278,7 +280,7 @@ router.post('/import', importUpload.single('file'), async (req: LoggedInRequest,
         if (config.user_settings[key] !== undefined) {
           // Zentrale Stelle — eine importierte Währungsänderung stösst den
           // Preis-Job genauso an wie das Formular (utils/settings.ts).
-          await setUserSetting(req.session.userId, key, config.user_settings[key]);
+          await setUserSetting(uid, key, config.user_settings[key]);
           imported++;
         }
       }
@@ -305,7 +307,7 @@ router.post('/import', importUpload.single('file'), async (req: LoggedInRequest,
     // POST /api/finance/refresh (Admin).
 
     // Importierte Job-Zeiten / Preis-Intervall sofort übernehmen (Scheduler neu planen).
-    if (req.session.isAdmin) {
+    if (istVerwalter(req)) {
       await setGlobalTrigger('job_reschedule_trigger')
         .catch(logAndContinue('settings:job_reschedule_trigger'));
       // Weckt die Scheduler sofort; ohne Signal bliebe der Eintrag bis zum
@@ -313,13 +315,13 @@ router.post('/import', importUpload.single('file'), async (req: LoggedInRequest,
       await require('../utils/pgNotify').notify('job_reschedule_trigger');
       try { await require('../jobs/dailyScheduler').rescheduleAll(); } catch (e) { meldeUndWeiter('einstellungen:zeitplan-neu-planen', e); }
     }
-    res.json({ success: true, imported, note: req.session.isAdmin ? 'Globale + Benutzer-Einstellungen importiert' : 'Nur Benutzer-Einstellungen importiert' });
+    res.json({ success: true, imported, note: istVerwalter(req) ? 'Globale + Benutzer-Einstellungen importiert' : 'Nur Benutzer-Einstellungen importiert' });
   } catch (e) { handleRouteError(res, e); }
 });
 
 // SMTP Test-Endpoint
 router.post('/smtp-test', async (req, res) => {
-  if (!req.session?.isAdmin) return res.status(403).json({ success: false, error: 'Nur Admins' });
+  if (!istVerwalter(req)) return res.status(403).json({ success: false, error: 'Nur Admins' });
   try {
 
     // First verify connection
@@ -329,7 +331,7 @@ router.post('/smtp-test', async (req, res) => {
     // Determine recipient: use provided email, or look up admin's email from DB
     let to = (req.body.to || '').trim();
     if (!to) {
-      const user = await db.get('SELECT email FROM users WHERE id = $1', [req.session.userId]);
+      const user = await db.get('SELECT email FROM users WHERE id = $1', [nutzerId(req)]);
       to = user?.email || '';
     }
     if (!to || !to.includes('@')) {

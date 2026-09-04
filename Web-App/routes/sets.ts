@@ -123,7 +123,7 @@ if (!fs.existsSync(SET_IMAGES_DIR)) fs.mkdirSync(SET_IMAGES_DIR, { recursive: tr
 // eines Imports kann die Datenbank ausgelastet sein, und ein Client, der 503
 // bekommt, versucht es gleich wieder — besser als eine hängende Verbindung.
 import { findSetInScope } from '../utils/setAdd';
-import { loginOrTokenGuard } from '../utils/auth';
+import { loginOrTokenGuard, angemeldeteNutzerId } from '../utils/auth';
 import { csvEinlesen, entschaerfungRueckgaengig, parseCsvDate, sendCsv, uebersprungenHinweis } from '../utils/csvExport';
 import { ausTabelle } from '../utils/validate';
 import { mitVersion } from '../utils/setNummer';
@@ -186,7 +186,7 @@ async function emitJobStatus(userId: number) {
 }
 
 router.get('/import/csv/status', requireLoginOrToken, async (req, res) => {
-  const uid = req.tokenUserId || Number(req.session.userId);
+  const uid = angemeldeteNutzerId(req);
   const job = await jobGet(uid);
   res.json(buildJobStatus(job));
 });
@@ -198,7 +198,7 @@ router.get('/import/csv/status', requireLoginOrToken, async (req, res) => {
 // gestartet wurde; er erfährt es im selben Moment.
 // Gleiches JSON-Schema wie /status.  Heartbeat alle 20s hält Proxies wach.
 router.get('/import/csv/stream', requireLoginOrToken, async (req, res) => {
-  const uid = req.tokenUserId || Number(req.session.userId);
+  const uid = angemeldeteNutzerId(req);
 
   // Obergrenze offener Streams je Nutzer (siehe _sseCounts oben).
   const openNow = _sseCounts.get(uid) || 0;
@@ -324,7 +324,7 @@ router.get('/info/:setNumber', requireLogin, async (req, res) => {
     // Not in catalog yet — try the user's own sets table as fallback
     const own = await db.get(
       'SELECT name, year, theme, pieces, image_url, image_local FROM sets WHERE set_number = $1 AND user_id = $2',
-      [n, req.session.userId]
+      [n, angemeldeteNutzerId(req)]
     );
     if (own) return res.json({ success: true, set_number: n, name: own.name || n, ...own });
     // Unknown set — return the number itself as name
@@ -347,7 +347,7 @@ router.use(requireLogin);
 // "Set Number,Quantity" list-import format (see rebrickable.com/help/lists-sets/)
 router.get('/export/rebrickable', async (req, res) => {
   try {
-    const sets = await db.all('SELECT set_number, quantity FROM sets WHERE user_id=$1 ORDER BY set_number ASC', [req.session.userId]);
+    const sets = await db.all('SELECT set_number, quantity FROM sets WHERE user_id=$1 ORDER BY set_number ASC', [angemeldeteNutzerId(req)]);
     sendCsv(res, `rebrickable-sets-${new Date().toISOString().substring(0,10)}.csv`,
       ['Set Number', 'Quantity'],
       sets.map(s => ({ 'Set Number': s.set_number, 'Quantity': s.quantity })));
@@ -389,13 +389,13 @@ router.get('/export/rebrickable', async (req, res) => {
 router.post('/add-stream', async (req: LoggedInRequest, res) => {
   const { set_number, quantity=1, purchase_price, condition: setCondition, owner_user_id } = req.body;
   if (!set_number) { res.status(400).json({ success:false, error:'set_number erforderlich' }); return; }
-  const streamOwner = await resolveWriteTarget(req.session.userId, owner_user_id);
+  const streamOwner = await resolveWriteTarget(angemeldeteNutzerId(req), owner_user_id);
   if (streamOwner === null) { res.status(403).json({ success:false, error:'Kein Schreibrecht für dieses Konto.' }); return; }
   // Schon im Blickfeld? Dann NICHT die Menge erhöhen (utils/setAdd.ts) — die
   // Oberfläche öffnet die Detailansicht. Die Antwort kommt hier als normales
   // JSON und nicht als Ereignisstrom: Es gibt nichts zu verfolgen, und ein
   // Strom mit genau einem Ereignis wäre für den Client nur Umweg.
-  const vorhanden = await findSetInScope(req.session.userId, set_number);
+  const vorhanden = await findSetInScope(angemeldeteNutzerId(req), set_number);
   if (vorhanden) { res.json({ success:true, action:'exists', ...vorhanden }); return; }
   res.setHeader('Content-Type','text/event-stream'); res.setHeader('Cache-Control','no-cache'); res.setHeader('Connection','keep-alive'); res.flushHeaders();
   const unregisterAddSse = registerSse(res);
@@ -500,7 +500,7 @@ async function jobUpdate(userId: number, fields: Record<string, unknown>) {
 
 router.post('/import/csv', upload.single('file'), async (req, res) => {
   if (!req.file) return res.status(400).json({ success:false, error:'Keine Datei' });
-  const userId = Number(req.session.userId);
+  const userId = Number(angemeldeteNutzerId(req));
 
   // Mark any running job as cancelled
   const existing = await jobGet(userId);
@@ -703,7 +703,7 @@ router.post('/import/csv', upload.single('file'), async (req, res) => {
 
 // ── POST /api/sets/import/csv/cancel — cancel running import ─────────────────
 router.post('/import/csv/cancel', requireLogin, async (req, res) => {
-  const userId = Number(req.session.userId);
+  const userId = Number(angemeldeteNutzerId(req));
   await jobUpdate(userId, { status: 'cancelled' }).catch(logAndContinue('csv-import:abbruch vermerken'));
   emitJobStatus(userId);
   res.json({ success:true });
@@ -726,7 +726,7 @@ router.post('/:setNumber/instructions', async (req, res) => {
 
 // LoggedInRequest: liegt hinter dem router.use(requireLogin) weiter oben.
 router.post('/:setNumber/parts', async (req: LoggedInRequest, res) => {
-  try { const count = await importPartsForSet(pfadParam(req, 'setNumber'), req.session.userId); res.json({ success:true, count }); }
+  try { const count = await importPartsForSet(pfadParam(req, 'setNumber'), angemeldeteNutzerId(req)); res.json({ success:true, count }); }
   catch (e) { handleRouteError(res, e); }
 });
 
@@ -747,7 +747,7 @@ const INSTR_EXT_BY_MIME = { 'application/pdf': '.pdf', 'image/jpeg': '.jpg', 'im
 
 const uploadInstr = multer({
   storage: multer.diskStorage({
-    destination: (req, _file, cb) => { const dir=path.join(DATA_DIR,'uploads',String(req.session.userId)); fs.mkdirSync(dir,{recursive:true}); cb(null,dir); },
+    destination: (req, _file, cb) => { const dir=path.join(DATA_DIR,'uploads',String(angemeldeteNutzerId(req))); fs.mkdirSync(dir,{recursive:true}); cb(null,dir); },
     filename: (req, file, cb) => {
       const safe = String(req.params.setNumber).replace(/[^a-z0-9-]/gi,'_');
       // ausTabelle statt direktem Zugriff: `INSTR_EXT_BY_MIME['constructor']`
@@ -766,7 +766,7 @@ const uploadInstr = multer({
 });
 router.post('/:setNumber/instructions/upload', uploadInstr.single('file'), async (req, res) => {
   if (!req.file) return res.status(400).json({ success:false, error:'Keine Datei' });
-  const uid=req.session.userId, sn=req.params.setNumber;
+  const uid=angemeldeteNutzerId(req), sn=req.params.setNumber;
   const desc=(req.body.description||req.file.originalname).substring(0,200);
   const relPath=`/data/uploads/${uid}/${req.file.filename}`;
   await db.run('INSERT INTO instructions (user_id,set_number,url,description,local_path) VALUES ($1,$2,$3,$4,$5) ON CONFLICT DO NOTHING', [uid,sn,relPath,desc,relPath]);
@@ -775,9 +775,9 @@ router.post('/:setNumber/instructions/upload', uploadInstr.single('file'), async
 
 router.delete('/:setNumber/instructions/:instrId', async (req, res) => {
   try {
-    const instr = await db.get('SELECT * FROM instructions WHERE id = $1 AND user_id = $2', [req.params.instrId, req.session.userId]);
+    const instr = await db.get('SELECT * FROM instructions WHERE id = $1 AND user_id = $2', [req.params.instrId, angemeldeteNutzerId(req)]);
     if (!instr) return res.status(404).json({ success:false, error:'Nicht gefunden' });
-    await db.run('DELETE FROM instructions WHERE id = $1 AND user_id = $2', [req.params.instrId, req.session.userId]);
+    await db.run('DELETE FROM instructions WHERE id = $1 AND user_id = $2', [req.params.instrId, angemeldeteNutzerId(req)]);
     // Die DATEI erst löschen, wenn keine andere Zeile mehr darauf zeigt.
     //
     // Beim Verschieben eines Sets wird die Anleitungs-Zeile KOPIERT, der Pfad

@@ -489,6 +489,17 @@ async function resolveUserId(req: Request): Promise<number | null> {
   // Die Spalte ist INTEGER, der Treiber liefert eine Zahl, und parseInt haette
   // sie erst in einen String verwandelt. Aufgefallen ist es erst, als der Typ
   // dastand.
+  //
+  // Der ganze Nutzer wird abgelegt, nicht nur seine Kennung: Sonst wuesste ein
+  // Handler hinter requireLoginOrToken zwar WER fragt, aber nicht, ob es ein
+  // Verwalter ist — `req.session.isAdmin` ist bei einer Token-Anfrage immer
+  // undefined. Das faellt nicht als Fehler auf, sondern liefert stillschweigend
+  // die Ansicht eines Nicht-Verwalters (siehe istVerwalter). requireApiAdmin
+  // legt dasselbe Feld ab; damit gibt es EINEN Ort, an dem es steht.
+  // `is_admin` kommt je nach Treiber als 0/1 oder als Wahrheitswert; das Feld
+  // auf Express.Request ist als Zahl deklariert. Hier einmal vereinheitlichen
+  // ist richtiger, als jeden Leser beide Formen kennen zu lassen.
+  if (user) req.apiUser = { ...user, is_admin: user.is_admin ? 1 : 0 };
   return user ? user.user_id : null;
 }
 
@@ -520,6 +531,78 @@ function loginOrTokenGuard(opts: { timeoutMs?: number } = {}) {
 }
 
 const requireLoginOrToken = loginOrTokenGuard();
+
+/**
+ * Wer fragt hier? — Sitzung ODER Bearer-Token, EINE Antwort.
+ *
+ * ── Warum es diesen Helfer gibt (Nachtrag 127) ──────────────────────────────
+ *
+ * Dieselbe Frage stand an vier Stellen und in ZWEI Reihenfolgen:
+ *
+ *     routes/settings.ts   req.session?.userId || req.tokenUserId
+ *     routes/sets.ts       req.tokenUserId || Number(req.session.userId)
+ *
+ * Der Unterschied ist nicht bloss Geschmack: Die eine Fassung wandelt in eine
+ * Zahl, die andere nicht — und wer sie falsch herum abschreibt, bekommt bei
+ * einer Anfrage MIT Sitzung UND Token einen anderen Nutzer als der Nachbarcode.
+ *
+ * Und es gibt eine DRITTE Schreibweise: requireApiAdmin in
+ * routes/api_v1/middleware.ts legt `req.apiUser` ab, nicht `req.tokenUserId`.
+ * Dieser Helfer liest alle drei, damit ein Handler nicht wissen muss, welcher
+ * Waechter vor ihm stand.
+ *
+ * Reihenfolge: Die SITZUNG zuerst. Wer im Browser angemeldet ist und dabei
+ * versehentlich einen fremden Token mitschickt, bleibt der, als der er sich
+ * angemeldet hat.
+ *
+ * @returns Die Nutzerkennung als Zahl, oder null wenn niemand angemeldet ist.
+ */
+function nutzerId(req: Request): number | null {
+  const roh = req.session?.userId ?? req.tokenUserId ?? (req as any).apiUser?.user_id;
+  if (roh == null) return null;
+  const n = Number(roh);
+  return Number.isFinite(n) ? n : null;
+}
+
+/**
+ * Ist dieser Anfragende ein Verwalter? — Sitzung ODER Bearer-Token.
+ *
+ * Das Gegenstueck zu [nutzerId] und aus demselben Anlass: `req.session.isAdmin`
+ * stand an sechs Stellen in routes/settings.ts und ist bei einer Anfrage MIT
+ * Token immer `undefined`. Die Folge waere nicht ein Fehler, sondern etwas
+ * Schlimmeres: Die App bekaeme stillschweigend die Ansicht eines Nicht-
+ * Verwalters — beim Sichern der Einstellungen etwa ohne die globalen Werte,
+ * ohne dass irgendwo etwas schiefginge.
+ *
+ * `apiUser.is_admin` ist eine 0/1-Zahl aus der Datenbank, `session.isAdmin` ein
+ * Wahrheitswert. Beides wird hier auf einen Wahrheitswert gebracht, damit der
+ * Aufrufer den Unterschied nicht kennen muss.
+ */
+/**
+ * Wie [nutzerId], aber fuer Handler, die HINTER einem Waechter stehen.
+ *
+ * Dort ist die Kennung zugesichert, und `number | null` zwingt jeden Aufrufer
+ * zu einer Behandlung des Falls, den es nicht gibt. Die naheliegende Antwort
+ * waere ueberall `nutzerId(req)!` — genau die Antwort, die types/augmentations
+ * .d.ts fuer `req.session.userId` schon einmal verworfen hat: Das Ausrufezeichen
+ * beseitigt die Meldung UND die Pruefung; rutscht die Route eines Tages VOR den
+ * Waechter, sagt niemand mehr etwas.
+ *
+ * Hier wirft es stattdessen. Das ist laut, faellt im Test sofort auf und kann
+ * nie stillschweigend mit `undefined` weiterrechnen.
+ */
+function angemeldeteNutzerId(req: Request): number {
+  const id = nutzerId(req);
+  if (id == null) {
+    throw new Error('angemeldeteNutzerId ohne Anmeldung — die Route steht vor ihrem Waechter');
+  }
+  return id;
+}
+
+function istVerwalter(req: Request): boolean {
+  if (req.session?.isAdmin) return true;
+  return !!(req as any).apiUser?.is_admin;
+}
 
 /**
  * Einen Bearer-Token ausstellen.
@@ -695,7 +778,7 @@ async function purgeExpiredTokens() {
 }
 
 export {
-  validateToken, invalidateToken, leereTokenCache, resolveUserId, requireLoginOrToken, hashToken, deleteToken,
+  validateToken, invalidateToken, leereTokenCache, resolveUserId, requireLoginOrToken, nutzerId, angemeldeteNutzerId, istVerwalter, hashToken, deleteToken,
   verifiziereEmailToken,
   revokeAllTokens, revokeAllSessions, purgeExpiredTokens, loginOrTokenGuard, TOKEN_IDLE_DAYS,
   assertLoginAllowed, pruefeAnmeldedaten, createToken, escapeLike, establishSession, BCRYPT_ROUNDS, USERNAME_RE,

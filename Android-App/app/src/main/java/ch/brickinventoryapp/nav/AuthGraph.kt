@@ -72,6 +72,7 @@ fun NavGraphBuilder.authGraph(
             // Zustand INNERHALB des Ziels lesen — als Parameter wäre es eine
             // Momentaufnahme vom Aufbau des Graphen (der NavHost-Builder läuft nur einmal).
             val state by vm.state.collectAsStateWithLifecycle()
+            val anmeldung by vm.anmeldeState.collectAsStateWithLifecycle()
             SetupScreen(
                 currentUrl = state.serverUrl,
                 onSave = { url ->
@@ -104,11 +105,11 @@ fun NavGraphBuilder.authGraph(
                 serverUrl = state.serverUrl,
                 isLoading = state.loginLaeuft,
                 error = state.loginError,
-                formular = state.anmeldeFormular,
-                registrierungOffen = state.registrierungOffen,
-                kontoLaeuft = state.kontoLaeuft,
-                kontoMeldung = state.kontoMeldung,
-                kontoFehler = state.kontoFehler,
+                formular = anmeldung.formular,
+                registrierungOffen = anmeldung.registrierungOffen,
+                kontoLaeuft = anmeldung.laeuft,
+                kontoMeldung = anmeldung.meldung,
+                kontoFehler = anmeldung.fehler,
                 onLogin = { user, pw -> vm.login(user, pw) },
                 onFormular = { vm.zeigeAnmeldeFormular(it) },
                 onRegistrieren = { u, e, v, n, pw -> vm.registriere(u, e, v, n, pw) },

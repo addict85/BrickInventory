@@ -41,6 +41,81 @@ data class GeraeteUiState(
  */
 enum class AnmeldeFormular { ANMELDEN, REGISTRIEREN, PASSWORT_VERGESSEN }
 
+/**
+ * Konto anlegen und „Passwort vergessen" — ein eigener Zustand.
+ *
+ * ── Warum nicht in AppUiState (Nachtrag 126) ────────────────────────────────
+ *
+ * Dort standen diese fuenf Felder zuerst, und ZustandsflussBreiteTest hat es
+ * gemeldet: „AppUiState hat 20 Felder (erlaubt: 15). Gehoert es wirklich allen
+ * — oder ist es der Anfang der naechsten Domaene?" Es ist der Anfang der
+ * naechsten Domaene. Sechzehn Dateien sammeln AppUiState ein; keine davon
+ * ausser dem Anmeldebildschirm liest je, welches Formular gerade offen ist.
+ *
+ * Die Anmeldung SELBST bleibt drueben (`loginLaeuft`, `loginError`,
+ * `isLoggedIn`): An ihr haengt, ob die App ueberhaupt etwas zeigt. Was hier
+ * steht, sind die beiden Wege DANEBEN — ein Konto anlegen und einen Link
+ * anfordern. Beide enden nicht in einer Anmeldung, sondern in einem Satz des
+ * Servers.
+ */
+/**
+ * Das eigene Konto im Einstellungs-Bildschirm — eigener Zustand.
+ *
+ * Aus demselben Grund wie AnmeldeUiState darunter: AppUiState steht bei 14 von
+ * 15 erlaubten Feldern (ZustandsflussBreiteTest), und Profil und
+ * Passwortwechsel liest genau EIN Bildschirm.
+ *
+ * Was hier NICHT steht, ist ein Feld „abgemeldet". Ein erfolgreicher
+ * Passwortwechsel meldet die App ab — der Server verwirft dabei alle Zugaenge
+ * des Kontos, auch den dieser Anfrage. Der erste Entwurf merkte sich das hier;
+ * gelesen haette es nie jemand, weil logout() im selben Zug alle Fluesse
+ * zuruecksetzt und der Anmeldebildschirm erscheint. Die Erklaerung dafuer geht
+ * deshalb in den Snackbar, der das ueberlebt. (Gefunden von der Regel „kein
+ * Feld ohne Leser".)
+ */
+data class KontoUiState(
+    val laedt: Boolean = false,
+    val profil: ch.brickinventoryapp.data.model.Profil? = null,
+    val speichert: Boolean = false,
+    val meldung: String? = null,
+    val fehler: String? = null,
+)
+
+data class AnmeldeUiState(
+    /**
+     * Welches der drei Formulare der Anmeldebildschirm gerade zeigt.
+     *
+     * Genau wie in der Webapp, wo `showPanel('login'|'register'|'forgot')`
+     * zwischen denselben drei umschaltet. Ein eigener Navigationseintrag waere
+     * die zweite Wahrheit: Der Zurueck-Knopf des Geraets muesste dann etwas
+     * anderes bedeuten als das „Zurueck zur Anmeldung" im Formular.
+     */
+    val formular: AnmeldeFormular = AnmeldeFormular.ANMELDEN,
+    /**
+     * Steht die Registrierung offen? `null` = noch nicht gefragt.
+     *
+     * Der Unterschied traegt: Bei `null` zeigt der Bildschirm den Link NICHT —
+     * und bei `false` auch nicht. Ein Knopf, der erst erscheint und beim
+     * Antippen an einem 403 scheitert, ist schlechter als keiner. Der Server
+     * kann Registrierungen global abschalten (registration_enabled), und die
+     * Webapp blendet den Link genau so aus.
+     */
+    val registrierungOffen: Boolean? = null,
+    /**
+     * Die Antwort auf Registrieren oder „Passwort vergessen" — der SATZ DES
+     * SERVERS, nicht ein eigener.
+     *
+     * Bei „Passwort vergessen" ist das wesentlich: Der Server antwortet
+     * absichtlich immer gleich („Falls die E-Mail existiert …"), damit das
+     * Formular nicht verraet, wer hier ein Konto hat. Wuerde die App daraus
+     * eine eigene Erfolgsmeldung machen, waere die Vorsicht des Servers
+     * umsonst.
+     */
+    val meldung: String? = null,
+    val fehler: String? = null,
+    val laeuft: Boolean = false,
+)
+
 data class AppUiState(
     /**
      * Läuft gerade eine ANMELDUNG? Und nur das.
@@ -100,39 +175,6 @@ data class AppUiState(
      * Gesichert durch ErrorChannelTest.
      */
     val loginError: String? = null,
-    /**
-     * Der Anmeldebildschirm zeigt DREI Formulare: Anmelden, Registrieren,
-     * Passwort vergessen. Welches, sagt dieses Feld.
-     *
-     * Genau wie in der Webapp, wo `showPanel('login'|'register'|'forgot')`
-     * zwischen denselben drei umschaltet. Ein eigener Navigationseintrag waere
-     * die zweite Wahrheit: Der Zurueck-Knopf des Geraets muesste dann etwas
-     * anderes bedeuten als das „Zurueck zur Anmeldung" im Formular.
-     */
-    val anmeldeFormular: AnmeldeFormular = AnmeldeFormular.ANMELDEN,
-    /**
-     * Steht die Registrierung offen? `null` = noch nicht gefragt.
-     *
-     * Der Unterschied traegt: Bei `null` zeigt der Bildschirm den Link NICHT —
-     * und bei `false` auch nicht. Ein Knopf, der erst erscheint und beim
-     * Antippen an einem 403 scheitert, ist schlechter als keiner. Der Server
-     * kann Registrierungen global abschalten (registration_enabled), und die
-     * Webapp blendet den Link genau so aus.
-     */
-    val registrierungOffen: Boolean? = null,
-    /**
-     * Die Antwort auf Registrieren oder „Passwort vergessen" — der SATZ DES
-     * SERVERS, nicht ein eigener.
-     *
-     * Bei „Passwort vergessen" ist das wesentlich: Der Server antwortet
-     * absichtlich immer gleich („Falls die E-Mail existiert …"), damit das
-     * Formular nicht verraet, wer hier ein Konto hat. Wuerde die App daraus
-     * eine eigene Erfolgsmeldung machen, waere die Vorsicht des Servers
-     * umsonst.
-     */
-    val kontoMeldung: String? = null,
-    val kontoFehler: String? = null,
-    val kontoLaeuft: Boolean = false,
     val serverUrl: String = "",
     val isLoggedIn: Boolean = false,
     val isAdmin: Boolean = false,

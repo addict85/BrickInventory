@@ -53,6 +53,14 @@ class AdminRepository @Inject constructor(
     suspend fun forgotPassword(email: String): Result<ForgotPasswordResponse> =
         safeCall { api.forgotPassword(ForgotPasswordRequest(email)) }
 
+    suspend fun getProfil(): Result<ProfilResponse> = safeCall { api.getProfil() }
+
+    suspend fun updateProfil(aenderung: ProfilAenderung): Result<GenericResponse> =
+        safeCall { api.updateProfil(aenderung) }
+
+    suspend fun changePassword(aktuell: String, neu: String): Result<GenericResponse> =
+        safeCall { api.changePassword(PasswortAenderung(aktuell, neu)) }
+
     suspend fun getTokens(): Result<TokensResponse> = safeCall { api.getTokens() }
 
     suspend fun revokeToken(tokenId: String): Result<GenericResponse> =

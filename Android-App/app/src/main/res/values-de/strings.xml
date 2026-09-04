@@ -506,4 +506,17 @@
     <string name="forgot_email_required">Bitte gib deine E-Mail-Adresse ein.</string>
     <string name="forgot_done">Falls die Adresse existiert, wurde ein Link gesendet.</string>
 
+
+    <!-- ══════════════ Kontokarte (Profil / Passwort) ══════════════ -->
+    <string name="konto_title">Konto</string>
+    <string name="konto_email_unverified">E-Mail-Adresse nicht bestätigt</string>
+    <string name="konto_save">Profil speichern</string>
+    <string name="konto_saved">Profil gespeichert</string>
+    <string name="konto_password_title">Passwort ändern</string>
+    <string name="konto_password_current">Aktuelles Passwort</string>
+    <string name="konto_password_new">Neues Passwort</string>
+    <string name="konto_password_hint">Alle Zugänge dieses Kontos werden verworfen — auch diese App. Du musst dich danach neu anmelden.</string>
+    <string name="konto_password_changed">Passwort geändert. Bitte melde dich neu an.</string>
+    <string name="konto_password_button">Passwort ändern</string>
+
 </resources>

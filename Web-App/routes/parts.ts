@@ -66,7 +66,7 @@ router.use(requireLogin);
 
 
 router.get('/categories', async (req, res) => {
-  const uid = req.session.userId;
+  const uid = angemeldeteNutzerId(req);
   try {
     const cats = await db.all(`
       -- Kategorie auflösen, notfalls über den Teilekatalog.
@@ -498,11 +498,12 @@ import { getSetting } from '../utils/settings';
 import { getBrickColors, getRbKey, httpsGetRobust } from '../clients/rebrickable';
 import { rebrickableBackgroundLimiter } from '../utils/rateLimiter';
 import { csvEinlesen, parseCsvDate, toCsv, uebersprungenHinweis } from '../utils/csvExport';
+import { angemeldeteNutzerId } from '../utils/auth';
 const csvUpload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 15 * 1024 * 1024 } });
 
 router.post('/import/csv', csvUpload.single('file'), async (req: LoggedInRequest, res) => {
   if (!req.file) return res.status(400).json({ success: false, error: 'Keine Datei' });
-  const uid = req.session.userId;
+  const uid = angemeldeteNutzerId(req);
   try {
     // Krumme Zeilen überspringen statt abbrechen (utils/csvExport.ts).
     const gelesen   = csvEinlesen(req.file.buffer.toString('utf-8'));
