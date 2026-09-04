@@ -107,7 +107,62 @@ jobs:
       # Zuerst die Tests: rund fünfzig Testdateien, die in Sekunden laufen und
       # das meiste abfangen, bevor der lange Übersetzungslauf beginnt.
       - name: Unit-Tests
-        run: ./gradlew --no-daemon testDebugUnitTest
+        # tee: Gradle schreibt den Namen des roten Tests EINMAL, mitten in
+        # hunderte Zeilen Aufgabenprotokoll. Ohne Mitschnitt ist er hinterher
+        # nur ueber den Testbericht zu finden, und der liegt als Artefakt in
+        # einer Ablage, die von hier aus nicht erreichbar ist.
+        #
+        # set -o pipefail: Ohne das bestimmt tee den Rueckgabewert, und ein
+        # roter Testlauf ginge als Erfolg durch. Dieselbe Falle wie im
+        # Web-Workflow.
+        run: |
+          set -o pipefail
+          ./gradlew --no-daemon testDebugUnitTest 2>&1 | tee "$RUNNER_TEMP/test.log"
+
+      # ── Was rot war, als ANNOTATION ─────────────────────────────────────────
+      #
+      # Warum das noetig ist: Zweimal hintereinander war der Lauf rot, und die
+      # einzige Annotation lautete „Process completed with exit code 1". Der
+      # Testbericht liegt als Artefakt in einer Blob-Ablage, die der Proxy hier
+      # mit 403 abweist — die Ursache war nur zu finden, indem das ganze
+      # Protokoll durchgelesen wurde. GEMESSEN an den Laeufen 80 und 81.
+      #
+      # Der Web-Workflow macht das seit web-ci.yml genauso; hier fehlte es.
+      #
+      # BEIDE Faelle, aus demselben Grund wie dort: Ein Lauf kann rot sein,
+      # OHNE dass ein einzelner Test fehlschlaegt — Lauf 81 scheiterte beim
+      # UEBERSETZEN (ein fehlender Import), da gibt es keine „FAILED"-Zeile.
+      # Eine Diagnose, die nur den erwarteten Ausgang abdeckt, schweigt genau
+      # dann, wenn etwas Unerwartetes passiert.
+      - name: Rote Tests auflisten
+        if: failure()
+        run: |
+          set -eu
+          [ -f "$RUNNER_TEMP/test.log" ] || { echo "Kein Testprotokoll — der Lauf ist vorher gescheitert."; exit 0; }
+          {
+            echo "## Rote Tests"
+            echo ""
+            echo '```'
+            grep -E '(FAILED$|^e: |error:)' "$RUNNER_TEMP/test.log" || echo "(keine — der Lauf ist an etwas anderem gescheitert)"
+            echo '```'
+            echo ""
+            grep -E '[0-9]+ tests completed' "$RUNNER_TEMP/test.log" || true
+          } >> "$GITHUB_STEP_SUMMARY"
+
+          # `FAILED$` trifft die Testzeile („Klasse > Name FAILED"); `^e: ` und
+          # `error:` treffen Uebersetzungsfehler von Kotlin bzw. Gradle.
+          rot=$(grep -E -c '(FAILED$|^e: )' "$RUNNER_TEMP/test.log" || true)
+          if [ "${rot:-0}" -gt 0 ]; then
+            while IFS= read -r zeile; do
+              [ -n "$zeile" ] || continue
+              echo "::error title=Android rot::${zeile}"
+            done < <(grep -E -m 20 '(FAILED$|^e: )' "$RUNNER_TEMP/test.log" || true)
+          else
+            ende=$(tail -n 40 "$RUNNER_TEMP/test.log" | tr '\n' '~' | sed 's/%/%25/g; s/\r/%0D/g; s/~/%0A/g')
+            echo "::error title=Lauf rot ohne einzelnen Fehlschlag::$ende"
+          fi
+          summe=$(grep -E '[0-9]+ tests completed' "$RUNNER_TEMP/test.log" | tr '\n' ' ' || true)
+          echo "::notice title=Testsumme::${summe:-keine Summenzeile — der Lauf ist vor dem ersten Test gescheitert}"
 
       # ── Signatur ────────────────────────────────────────────────────────────
       #

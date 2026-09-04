@@ -318,8 +318,24 @@ test('ein ANDERER Prozess sieht, dass der Job gelaufen ist', { concurrency: 1 },
 
   // Der Kindprozess kennt NICHTS aus diesem hier — er baut nicht, sondern nutzt
   // das bereits erzeugte dist/ und legt nur einen Takt hin.
+  // ── Warum das Kind die Adresse NICHT selbst setzt ────────────────────────
+  // Hier stand als erste Zeile des Kind-Skripts
+  //     process.env.DATABASE_URL = process.env.TEST_DATABASE_URL;
+  // und genau das hat diesen Test in einer Umgebung ohne TEST_DATABASE_URL nie
+  // laufen lassen: Der Elternprozess faellt oben auf
+  // 'postgres://tester:test@localhost/cattest' zurueck, das Kind nicht. Es
+  // bekam undefined, die Verbindung scheiterte, execFileSync warf.
+  //
+  // Dass dieser Untertest rot ist, war dabei noch das Harmlose. Mehrfach
+  // beobachtet: Der Lauf der ganzen Datei brach danach ab mit
+  //     Unable to deserialize cloned data due to invalid or unsupported version
+  // — 2 statt 13 Untertests, und die Meldung sagt nichts ueber die Ursache.
+  // Nicht jedes Mal; die Reparatur zielt deshalb auf die Ursache, nicht auf
+  // das Abbruchverhalten.
+  //
+  // DATABASE_URL ist ueber env: process.env ohnehin geerbt, und zwar mit dem
+  // Wert, den der Elternprozess WIRKLICH benutzt. Es gibt also nichts zu setzen.
   execFileSync(process.execPath, ['-e', `
-    process.env.DATABASE_URL = process.env.TEST_DATABASE_URL;
     const db = require(${JSON.stringify(path.join(ROOT, 'dist', 'db', 'database.js'))});
     const IQ = require(${JSON.stringify(path.join(ROOT, 'dist', 'jobs', 'imageQueue.js'))});
     (async () => {
