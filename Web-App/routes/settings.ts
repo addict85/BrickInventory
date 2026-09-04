@@ -13,7 +13,8 @@ import { buildSetsCsv } from '../utils/setService';
 import { buildPartsCsv } from './parts';
 import { buildFigsCsv } from './minifigs';
 import { DAILY_JOBS } from '../jobs/dailyScheduler';
-import { escapeLike } from '../utils/auth';
+import { escapeLike, requireLoginOrToken, hashToken, leereTokenCache } from '../utils/auth';
+import { bearerToken } from './api_v1/middleware';
 import { sendMail, testSmtp } from './mailer';
 
 // ── Öffentlich: aktuelles App-Design ─────────────────────────────────────────
@@ -26,6 +27,86 @@ router.get('/theme', async (_req, res) => {
   const theme = await getGlobalSetting('app_theme');
   res.set('Cache-Control', 'no-cache');
   res.json({ success: true, theme: theme || 'classic' });
+});
+
+// ── Angemeldete Geräte: Sitzung ODER Token ───────────────────────────────────
+//
+// MUSS vor router.use(requireLogin) stehen — aus demselben Grund wie /theme
+// darüber, nur andersherum: Nicht weil gar keine Anmeldung nötig wäre,
+// sondern weil requireLogin NUR die Sitzung kennt. Die App hat keine; sie
+// weist sich mit einem Bearer-Token aus.
+//
+// GEMESSEN: Mit den Routen hinter dem Gatter antwortete /tokens der App mit
+// 401 — die Verwaltung der App-Zugänge war für die App selbst unerreichbar.
+// Die beiden Routen bringen ihre eigene Absicherung mit
+// (requireLoginOrToken), es fällt also nichts weg.
+/**
+ * GET /api/v1/settings/tokens — die eigenen Zugänge auflisten.
+ *
+ * ── Warum es das jetzt in der Oberfläche gibt ───────────────────────────────
+ * Diese Route und ihr DELETE-Gegenstück gab es schon; einen WEG dorthin nicht.
+ * Damit war ein verlorenes oder verkauftes Telefon nur loszuwerden, indem man
+ * das Passwort ändert (das verwirft seit Nachtrag 3 alle Token). Wer nur EIN
+ * Gerät aussperren will, musste alle anderen mit aussperren.
+ *
+ * ── Was herausgegeben wird, und was nicht ───────────────────────────────────
+ * `token_id` sind die ersten 16 Zeichen des SHA-256-HASHES, nicht des Tokens.
+ * Daraus lässt sich der Token nicht zurückrechnen; er reicht aber, um die
+ * Zeile beim Löschen wiederzufinden. Der Klartext-Token existiert auf dem
+ * Server ohnehin nicht mehr — er wurde einmal ausgegeben und nie gespeichert.
+ *
+ * `aktuell` markiert den Zugang, mit dem GERADE gefragt wird. Ohne das kann
+ * man sich mit dem eigenen Knopf selbst aussperren, ohne es zu merken. Der
+ * Client schickt dafür seinen Token im Authorization-Header mit; die Sitzung
+ * allein sagt nichts darüber, WELCHE Zeile zu ihr gehört.
+ */
+router.get('/tokens', requireLoginOrToken, async (req: LoggedInRequest, res) => {
+  try {
+    const uid = req.session?.userId || req.tokenUserId;
+    const eigener = bearerToken(req);
+    const eigenerHash = eigener ? hashToken(eigener) : null;
+    const tokens = await db.all(
+      'SELECT token, label, created_at, last_used, expires_at FROM api_tokens WHERE user_id = $1 ORDER BY created_at DESC',
+      [uid]);
+    res.json({ success: true, tokens: tokens.map((t: any) => ({
+      token_prefix: t.token.substring(0, 8),
+      token_id:     t.token.substring(0, 16),
+      label:        t.label,
+      created_at:   t.created_at,
+      last_used:    t.last_used,
+      expires_at:   t.expires_at,
+      never_expires: !t.expires_at,
+      aktuell:      t.token === eigenerHash,
+    }))});
+  } catch (e) { handleRouteError(res, e); }
+});
+
+/**
+ * DELETE /api/v1/settings/tokens/:tokenId — einen Zugang entwerten.
+ *
+ * ── Zur Wirkungsverzögerung, ehrlich gesagt ─────────────────────────────────
+ * Die Zeile ist sofort weg. Der In-Memory-Cache in utils/auth.ts ist aber
+ * nach dem KLARTEXT-Token indiziert, und den hat der Server nicht — gezielt
+ * entfernen lässt er sich also nicht. Deshalb wird er hier ganz geleert, wie
+ * beim Passwortwechsel (revokeAllTokens). Das wirkt sofort, allerdings nur im
+ * Arbeitsprozess, der die Anfrage bearbeitet: Im Cluster können die übrigen
+ * den Token noch bis zu TOKEN_TTL_MS (eine Minute) bedienen.
+ *
+ * Für „Telefon verloren" ist eine Minute ohne Belang. Wer mehr braucht,
+ * ändert das Passwort — das verwirft zusätzlich alle Sitzungen.
+ */
+router.delete('/tokens/:tokenId', requireLoginOrToken, async (req: LoggedInRequest, res) => {
+  try {
+    const uid = req.session?.userId || req.tokenUserId;
+    // escapeLike: ohne das löscht ein "%" als tokenId ALLE Tokens des Nutzers.
+    const prefix = escapeLike(String(req.params.tokenId || '')).slice(0, 64);
+    if (!prefix) return res.status(400).json({ success: false, error: 'Token-ID fehlt' });
+    const r = await db.run(
+      "DELETE FROM api_tokens WHERE user_id = $1 AND token LIKE $2 ESCAPE '\\'",
+      [uid, prefix + '%']);
+    if (r.changes) leereTokenCache();
+    res.json({ success: true, deleted: r.changes });
+  } catch (e) { handleRouteError(res, e); }
 });
 
 router.use(requireLogin);
@@ -236,33 +317,6 @@ router.post('/import', importUpload.single('file'), async (req: LoggedInRequest,
       try { await require('../jobs/dailyScheduler').rescheduleAll(); } catch (e) { meldeUndWeiter('einstellungen:zeitplan-neu-planen', e); }
     }
     res.json({ success: true, imported, note: req.session.isAdmin ? 'Globale + Benutzer-Einstellungen importiert' : 'Nur Benutzer-Einstellungen importiert' });
-  } catch (e) { handleRouteError(res, e); }
-});
-
-router.get('/tokens', async (req, res) => {
-  try {
-    const tokens = await db.all('SELECT token, label, created_at, last_used, expires_at FROM api_tokens WHERE user_id = $1 ORDER BY created_at DESC', [req.session.userId]);
-    res.json({ success: true, tokens: tokens.map(t => ({
-      token_prefix: t.token.substring(0, 8),
-      token_id:     t.token.substring(0, 16),
-      label:        t.label,
-      created_at:   t.created_at,
-      last_used:    t.last_used,
-      expires_at:   t.expires_at,
-      never_expires: !t.expires_at,
-    }))});
-  } catch (e) { handleRouteError(res, e); }
-});
-
-router.delete('/tokens/:tokenId', async (req, res) => {
-  try {
-    // escapeLike: ohne das löscht ein "%" als tokenId ALLE Tokens des Nutzers.
-    const prefix = escapeLike(String(req.params.tokenId || '')).slice(0, 64);
-    if (!prefix) return res.status(400).json({ success: false, error: 'Token-ID fehlt' });
-    const r = await db.run(
-      "DELETE FROM api_tokens WHERE user_id = $1 AND token LIKE $2 ESCAPE '\\'",
-      [req.session.userId, prefix + '%']);
-    res.json({ success: true, deleted: r.changes });
   } catch (e) { handleRouteError(res, e); }
 });
 

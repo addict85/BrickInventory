@@ -870,6 +870,17 @@
         </div>
       </div>
 
+      <!-- Angemeldete Geraete: die ausgestellten Zugaenge sehen und entwerten -->
+      <div class="ssec" style="margin-bottom:1.25rem">
+        <div class="stit" data-i18n="tokens.title">🔑 Angemeldete Geräte</div>
+        <p style="font-size:.82rem;color:var(--mut);margin-bottom:1rem" data-i18n="tokens.hint">Jede Anmeldung — im Browser, in der App oder per QR-Code — stellt einen Zugang aus. Ein verlorenes oder verkauftes Gerät sperrst du hier aus, ohne dein Passwort zu ändern.</p>
+        <div id="tokens-tbl"></div>
+        <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-top:.75rem">
+          <button class="btn bs" data-click="loadTokens" data-i18n="tokens.reload">🔄 Aktualisieren</button>
+          <button class="btn bd" data-click="revokeOtherTokens" data-i18n="tokens.revoke_others">🚪 Alle anderen abmelden</button>
+        </div>
+      </div>
+
       <!-- Gefahrenzone — für alle Benutzer sichtbar -->
       <div class="sgroup-label" style="color:var(--r500)" data-i18n="settings.danger_zone">⚠️ Gefahrenzone</div>
       <div class="ssec" style="border:1px solid var(--r200);border-radius:var(--rad);padding:1rem;background:var(--r50,#fff5f5)">

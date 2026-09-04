@@ -18,6 +18,21 @@ data class HouseholdUiState(
     val message: String? = null,
 )
 
+/**
+ * Die ausgestellten Zugänge dieses Kontos — „Angemeldete Geräte".
+ *
+ * Eigener Fluss und nicht Teil von AppUiState: Die Liste wird nur in den
+ * Einstellungen gebraucht, hat eigene Zwischenstände (lädt, Fehler) und würde
+ * sonst jeden Reiter neu zeichnen lassen. Dieselbe Überlegung wie bei
+ * HouseholdUiState darüber.
+ */
+data class GeraeteUiState(
+    val laedt: Boolean = false,
+    val geraete: List<ch.brickinventoryapp.data.model.AppToken> = emptyList(),
+    /** Meldung des Servers oder der Verbindung; null = nichts zu sagen. */
+    val fehler: String? = null,
+)
+
 data class AppUiState(
     /**
      * Läuft gerade eine ANMELDUNG? Und nur das.

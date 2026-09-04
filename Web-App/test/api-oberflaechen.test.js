@@ -184,3 +184,58 @@ test('jeder Router haengt unter /api/v1 — mit genau einer eingetragenen Ausnah
     'Diese Ausnahmen beschreiben keinen Einhaengepunkt mehr — streichen:\n  ' +
     erledigt.join('\n  '));
 });
+
+/**
+ * Auch die Routen, die DIREKT in server.ts stehen.
+ *
+ * ── Warum das eine eigene Pruefung ist ──────────────────────────────────────
+ * Die Regel darueber liest `app.use(...)` — also Router. Drei Adressen stehen
+ * aber als `app.get(...)` direkt in server.ts und wurden von ihr nie
+ * angesehen. Auf die Frage „ist jetzt alles unter /api/v1?" haette sie
+ * deshalb „ja" geantwortet, obwohl es drei Ausnahmen gibt. Eine Regel, die
+ * einen ganzen Bauplatz auslaesst, beantwortet die Frage nicht, die sie
+ * beantworten soll.
+ *
+ * Die drei sind BEGRUENDET ausgenommen, nicht vergessen: Alle drei werden
+ * gefragt, BEVOR es eine API-Version geben kann oder ohne sie zu kennen.
+ */
+test('auch die Routen direkt in server.ts stehen unter /api/v1 — oder begruendet daneben', () => {
+  const OHNE_VERSION = new Map([
+    ['GET /api/health',
+     'Der Gesundheitscheck des Containers (compose.yaml, healthcheck). Wer ' +
+     'ihn abfragt, ist ein Ueberwachungswerkzeug und soll nicht der ' +
+     'API-Version hinterherziehen muessen — eine Adresse, die sich nie ' +
+     'aendert, ist hier der Zweck.'],
+    ['GET /api/startup-status',
+     'Der Startbildschirm fragt das, WAEHREND der Server noch hochfaehrt ' +
+     '(Schema, Migrationen). Zu diesem Zeitpunkt sind die /api/v1-Router ' +
+     'teilweise noch gar nicht eingehaengt.'],
+    ['GET /api/debug/test',
+     'Nur ausserhalb der Produktion erreichbar (NODE_ENV-Wache in der Route ' +
+     'selbst) und feuert echte BrickLink-Aufrufe. Gehoert nicht in die ' +
+     'Oberflaeche, die Clients benutzen.'],
+  ]);
+
+  const src = ohneKommentare(fs.readFileSync(path.join(ROOT, 'server.ts'), 'utf8'));
+  const gefunden = [...src.matchAll(/app\.(get|post|put|patch|delete)\(\s*'(\/api\/[^']*)'/g)]
+    .map(m => `${m[1].toUpperCase()} ${m[2]}`);
+  // Selbstbeweis: Findet das Muster nichts, prueft alles darunter nichts.
+  assert.ok(gefunden.length >= 3,
+    `Nur ${gefunden.length} API-Routen direkt in server.ts gefunden — Muster veraltet?`);
+
+  const daneben = gefunden
+    .filter(r => !r.split(' ')[1].startsWith('/api/v1') && !OHNE_VERSION.has(r))
+    .sort();
+  assert.deepEqual(daneben, [],
+    'Diese Adressen stehen direkt in server.ts, nicht unter /api/v1 und ohne ' +
+    'eingetragenen Grund:\n  ' + daneben.join('\n  ') +
+    '\nEntweder umziehen oder in OHNE_VERSION eintragen, WARUM sie ' +
+    'versionslos bleiben muss.');
+
+  // Dieselbe Gegenrichtung wie oben: eine Ausnahme fuer eine Route, die es
+  // nicht mehr gibt, laesst die Umstellung unfertiger aussehen als sie ist.
+  const veraltet = [...OHNE_VERSION.keys()].filter(r => !gefunden.includes(r));
+  assert.deepEqual(veraltet, [],
+    'Diese Ausnahmen beschreiben keine Route mehr — streichen:\n  ' +
+    veraltet.join('\n  '));
+});

@@ -202,6 +202,9 @@ class MainViewModel @Inject constructor(
     internal val _householdState = MutableStateFlow(HouseholdUiState())
     val householdState = _householdState.asStateFlow()
 
+    internal val _geraeteState = MutableStateFlow(GeraeteUiState())
+    val geraeteState = _geraeteState.asStateFlow()
+
     /**
      * Nur das App-Design, entkoppelt vom übrigen Zustand.
      *

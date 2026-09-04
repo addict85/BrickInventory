@@ -6,7 +6,7 @@ import { SCOPE_VIEWS, addScopeParam, scopeMode, scopeQuery, setScopeMode } from 
 import { setScrollLabel } from './15-scrollbar.js';
 import { loadParts } from './03-parts.js';
 import { loadFinance } from './04-finance.js';
-import { loadApiLimits, loadCacheStats, loadCacheTtl, loadProfile, loadRateLimitStats, loadSettings } from './05-settings.js';
+import { loadApiLimits, loadCacheStats, loadCacheTtl, loadProfile, loadRateLimitStats, loadSettings, loadTokens } from './05-settings.js';
 import { loadBrickColors, loadManualParts, loadMinifigs } from './06-minifigs.js';
 import { _lastImportAt, confirmDelete, enrichGalleryWithPrices, jobPollTimer, openModal, pollJobStatus, set_jobPollTimer, set_lastImportAt } from './07-admin.js';
 import { openAcqModal, renderAcqModalBody, renderAcquisitionSummary } from './13-acquisition-modals.js';
@@ -65,7 +65,7 @@ export function bindTabs(){
       }
       if(tab==='finance')      { loadFinance(); } // loadFinance already fetches parts+minifigs valuation in parallel
       if(tab==='partslist')    { /* session-only, no server load needed */ }
-      if(tab==='settings')     { loadSettings(); loadProfile(); if(ME?.isAdmin) loadApiLimits(); }
+      if(tab==='settings')     { loadSettings(); loadProfile(); loadTokens(); if(ME?.isAdmin) loadApiLimits(); }
       if(tab==='monitor')      { loadMonitor(); loadCacheStats(); loadRateLimitStats(); loadCacheTtl(); if(jobPollTimer) clearTimeout(jobPollTimer); pollJobStatus(); }
       if(tab!=='monitor' && _monitorTimer) { clearInterval(_monitorTimer); set_monitorTimer(null); if(jobPollTimer){clearTimeout(jobPollTimer);set_jobPollTimer(null);} }
     });

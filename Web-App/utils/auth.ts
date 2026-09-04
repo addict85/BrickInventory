@@ -224,6 +224,21 @@ function _touchLastUsed(token: string, entry: CacheEintrag): void {
  */
 function invalidateToken(token: string | null | undefined): void { if (token) _tokenCache.delete(token); }
 
+/**
+ * Den ganzen Token-Cache verwerfen.
+ *
+ * Für den Fall, dass eine Zeile ohne ihren KLARTEXT gelöscht wird — etwa aus
+ * der Token-Verwaltung, die nur den Hash-Anfang kennt. Gezielt geht dort
+ * nichts: Der Cache ist nach dem Klartext indiziert, und den hat der Server
+ * nach der Ausgabe nie wieder gesehen.
+ *
+ * Er baut sich innerhalb weniger Anfragen wieder auf. Im Cluster wirkt das
+ * nur im eigenen Arbeitsprozess; die übrigen bedienen den gelöschten Token
+ * noch bis zu TOKEN_TTL_MS. Dieselbe Einschränkung wie bei revokeAllTokens,
+ * und aus demselben Grund vertretbar.
+ */
+function leereTokenCache(): void { _tokenCache.clear(); }
+
 // ── Gemeinsame Login-/Konto-Regeln ────────────────────────────────────────────
 // Vorher existierten diese Regeln nur im Webapp-Login (routes/auth.ts).
 // /api/v1/auth/login hat weder is_active noch email_verified geprüft — ein
@@ -680,7 +695,7 @@ async function purgeExpiredTokens() {
 }
 
 export {
-  validateToken, invalidateToken, resolveUserId, requireLoginOrToken, hashToken, deleteToken,
+  validateToken, invalidateToken, leereTokenCache, resolveUserId, requireLoginOrToken, hashToken, deleteToken,
   verifiziereEmailToken,
   revokeAllTokens, revokeAllSessions, purgeExpiredTokens, loginOrTokenGuard, TOKEN_IDLE_DAYS,
   assertLoginAllowed, pruefeAnmeldedaten, createToken, escapeLike, establishSession, BCRYPT_ROUNDS, USERNAME_RE,

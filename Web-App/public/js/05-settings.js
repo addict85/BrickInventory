@@ -182,6 +182,90 @@ async function generateQrCode() {
 
 G('btn-gen-qr').onclick = generateQrCode;
 
+// ── ANGEMELDETE GERÄTE ────────────────────────────────────────────────────
+//
+// Die Endpunkte /v1/settings/tokens gab es schon, einen Weg dorthin nicht:
+// Ein verlorenes Telefon war nur loszuwerden, indem man das Passwort ändert
+// (das verwirft ALLE Zugänge). Wer nur eines aussperren wollte, sperrte alle
+// aus.
+//
+// Der eigene Zugang wird MITGESCHICKT — anders kann der Server nicht sagen,
+// welche Zeile zu diesem Browser gehört, und der Knopf „alle anderen
+// abmelden" wüsste nicht, wovon er absehen soll. api() setzt den
+// Authorization-Header nicht (die Webapp arbeitet über die Sitzung), deshalb
+// hier ein eigener fetch — dieselbe Stelle wie beim Abmelden in 01-core.js.
+async function tokenRuf(pfad, method = 'GET') {
+  const wt = sessionStorage.getItem('webToken');
+  const r = await fetch('/api/v1/settings' + pfad, {
+    method,
+    headers: wt ? { 'Authorization': 'Bearer ' + wt } : {},
+  });
+  return r.json().catch(() => ({ success: false, error: 'HTTP ' + r.status }));
+}
+
+/** „—", wenn nie benutzt: `new Date(null)` wäre der 1.1.1970. */
+function tokenDatum(wert) {
+  if (!wert) return '—';
+  return new Date(wert).toLocaleString(locale());
+}
+
+export async function loadTokens() {
+  const ziel = G('tokens-tbl');
+  if (!ziel) return;
+  const d = await tokenRuf('/tokens');
+  if (!d.success) { ziel.innerHTML = `<p style="color:var(--mut)">${esc(d.error || t('settings.error'))}</p>`; return; }
+  if (!d.tokens.length) { ziel.innerHTML = `<p style="color:var(--mut)">${t('tokens.none')}</p>`; return; }
+  ziel.innerHTML = `<div class="tw"><table class="dt"><thead><tr>
+      <th>${t('tokens.col.label')}</th><th>${t('tokens.col.created')}</th>
+      <th>${t('tokens.col.last_used')}</th><th>${t('tokens.col.expires')}</th>
+      <th>${t('users.col.actions')}</th></tr></thead><tbody>${
+    d.tokens.map(tk => `<tr>
+      <td><strong>${esc(tk.label || '—')}</strong>${tk.aktuell ? ` <span class="rb ra">${t('tokens.current')}</span>` : ''}</td>
+      <td>${tokenDatum(tk.created_at)}</td>
+      <td>${tokenDatum(tk.last_used)}</td>
+      <td>${tk.never_expires ? t('tokens.never') : tokenDatum(tk.expires_at)}</td>
+      <td>${tk.aktuell ? '' :
+        `<button class="btn bd btn-sm" data-click="revokeToken" data-arg="${esc(tk.token_id)}" data-arg2="${esc(tk.label || '')}">🗑️</button>`}</td>
+    </tr>`).join('')
+  }</tbody></table></div>`;
+}
+
+async function revokeToken(tokenId, label) {
+  if (!await confirmDelete(tRaw('tokens.revoke.title'), tRaw('tokens.revoke.text', { name: label || '—' }), '🔑')) return;
+  const d = await tokenRuf('/tokens/' + encodeURIComponent(tokenId), 'DELETE');
+  if (d.success) { toast(tRaw('tokens.revoked'), 'success'); loadTokens(); }
+  else toast(d.error || t('settings.error'), 'error');
+}
+
+/**
+ * Alle Zugänge ausser dem eigenen entwerten.
+ *
+ * Nacheinander über den bestehenden Endpunkt, statt dafür einen neuen zu
+ * bauen: Es sind eine Handvoll Zeilen, und eine zweite Adresse für „dasselbe,
+ * nur mehrfach" wäre genau die Art Doppelung, die dieses Projekt sonst
+ * abbaut. Gezählt wird, was WIRKLICH weg ist — nicht, wie oft geklickt wurde.
+ *
+ * Ohne den eigenen Zugang in der Liste (kein webToken im sessionStorage, etwa
+ * weil das INSERT beim Anmelden scheiterte) wäre „alle anderen" nicht
+ * bestimmbar — dann lieber gar nichts tun als den eigenen mit abräumen.
+ */
+async function revokeOtherTokens() {
+  const d = await tokenRuf('/tokens');
+  if (!d.success) { toast(d.error || t('settings.error'), 'error'); return; }
+  const andere = d.tokens.filter(tk => !tk.aktuell);
+  if (!andere.length) { toast(tRaw('tokens.no_others'), 'success'); return; }
+  if (!d.tokens.some(tk => tk.aktuell)) { toast(tRaw('tokens.self_unknown'), 'error'); return; }
+  if (!await confirmDelete(tRaw('tokens.revoke_others.title'),
+                           tRaw('tokens.revoke_others.text', { n: andere.length }), '🚪')) return;
+  let weg = 0;
+  for (const tk of andere) {
+    const r = await tokenRuf('/tokens/' + encodeURIComponent(tk.token_id), 'DELETE');
+    weg += r.deleted || 0;
+  }
+  toast(tRaw('tokens.revoked_n', { n: weg }), weg === andere.length ? 'success' : 'error');
+  loadTokens();
+}
+
 export async function loadProfile() {
   const d = await api('GET', '/v1/auth/profile');
   if (!d.success) return;
@@ -445,8 +529,11 @@ registerActions({
   copyHouseholdInvite,
   createHouseholdInvite,
   delUser,
+  loadTokens,
   openRpw,
   redeemHouseholdInvite,
+  revokeOtherTokens,
+  revokeToken,
   saveRegEnabled,
   toggleAdmin,
   unlinkHousehold,

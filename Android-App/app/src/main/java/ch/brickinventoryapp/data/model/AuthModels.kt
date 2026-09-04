@@ -77,6 +77,34 @@ data class SettingsResponse(
     val error: String? = null
 )
 
+/**
+ * Ein ausgestellter Zugang, wie ihn GET /api/v1/settings/tokens auflistet.
+ *
+ * `tokenId` sind die ersten 16 Zeichen des SHA-256-HASHES, nicht des Tokens.
+ * Der Klartext existiert auf dem Server nicht mehr — er wurde einmal
+ * ausgegeben und nie gespeichert. Zum Wiederfinden der Zeile reicht der Hash.
+ *
+ * `aktuell` markiert den Zugang, mit dem GERADE gefragt wird. Ohne das kann
+ * man sich mit dem eigenen Knopf selbst aussperren, ohne es zu merken.
+ */
+@Serializable
+data class AppToken(
+    @SerialName("token_id") val tokenId: String,
+    val label: String? = null,
+    @SerialName("created_at") val createdAt: String? = null,
+    @SerialName("last_used") val lastUsed: String? = null,
+    @SerialName("expires_at") val expiresAt: String? = null,
+    @SerialName("never_expires") val neverExpires: Boolean = false,
+    val aktuell: Boolean = false,
+)
+
+@Serializable
+data class TokensResponse(
+    val success: Boolean,
+    val tokens: List<AppToken> = emptyList(),
+    val error: String? = null,
+)
+
 @Serializable
 data class MeResponse(
     val success: Boolean,

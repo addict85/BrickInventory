@@ -473,4 +473,23 @@
     <string name="pdfview_default_name">Instructions</string>
     <string name="pdfview_empty_response">Empty response from server</string>
     <string name="pdfview_share">Share PDF</string>
+    <!-- Angemeldete Geraete (Token-Verwaltung) -->
+    <string name="tokens_title">Signed-in devices</string>
+    <string name="tokens_hint">Every sign-in — in the browser, in the app or via QR code — issues an access token. Lock out a lost or sold device here, without changing your password.</string>
+    <string name="tokens_none">No access tokens.</string>
+    <string name="tokens_reload">Refresh</string>
+    <string name="tokens_current">this device</string>
+    <string name="tokens_never">never</string>
+    <string name="tokens_unused">never used</string>
+    <string name="tokens_row_hint">Signed in %1$s · last used %2$s · expires %3$s</string>
+    <string name="tokens_revoke_title">Sign out device?</string>
+    <string name="tokens_revoke_text">“%1$s” loses access. Whoever uses that device has to sign in again.</string>
+    <string name="tokens_revoke_confirm">Sign out</string>
+    <string name="tokens_revoked">Device signed out</string>
+    <string name="tokens_revoke_others">Sign out all others</string>
+    <string name="tokens_revoke_others_title">Sign out all others?</string>
+    <string name="tokens_revoke_others_text">%1$d other tokens lose access. This device stays signed in.</string>
+    <string name="tokens_revoked_n">%1$d tokens signed out</string>
+    <string name="tokens_no_others">There are no other tokens.</string>
+    <string name="tokens_self_unknown">This device\'s own token is not identifiable — without it there is no way to tell which ones are “the others”.</string>
 </resources>

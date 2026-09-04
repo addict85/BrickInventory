@@ -419,6 +419,16 @@ interface BrickApiService {
     @GET("api/v1/auth/me")
     suspend fun getMe(): Response<MeResponse>
 
+    // ── Angemeldete Geraete ──────────────────────────────────────────────────
+    // Beide Adressen gab es schon; sie waren nur sitzungsgebunden und damit
+    // fuer die App nicht erreichbar. Seit der Token-Verwaltung nehmen sie
+    // Sitzung ODER Bearer-Token (requireLoginOrToken), wie der Rest von /api/v1.
+    @GET("api/v1/settings/tokens")
+    suspend fun getTokens(): Response<TokensResponse>
+
+    @DELETE("api/v1/settings/tokens/{tokenId}")
+    suspend fun revokeToken(@Path("tokenId") tokenId: String): Response<GenericResponse>
+
     // ── Admin / Monitoring ────────────────────────────────────────────────────
     @GET("api/v1/admin/jobs")
     suspend fun getJobs(): Response<JobsResponse>

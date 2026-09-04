@@ -43,6 +43,11 @@ class AdminRepository @Inject constructor(
 
     suspend fun getMe(): Result<MeResponse> = safeCall { api.getMe() }
 
+    suspend fun getTokens(): Result<TokensResponse> = safeCall { api.getTokens() }
+
+    suspend fun revokeToken(tokenId: String): Result<GenericResponse> =
+        safeCall { api.revokeToken(tokenId) }
+
     suspend fun getSettings(): Result<SettingsResponse> =
         safeCall { api.getSettings() }
 

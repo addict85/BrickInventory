@@ -109,19 +109,12 @@ function clientQuellen() {
 // sieht geprueft aus. Wer hier eine Zeile eintraegt, soll den Aufrufer
 // benennen koennen.
 const OHNE_AUFRUFER = new Map([
-  // ── Diese beiden sind KEINE harmlose Ausnahme ────────────────────────────
-  // Sie listen und widerrufen App-Token. Es gibt dafür keine Oberfläche —
-  // weder Webapp noch App —, und QR-Login wie App-Login vergeben Token OHNE
-  // Ablaufdatum. Wer sein Telefon verliert, kommt an den Zugang nur über die
-  // Datenbank. Das ist der Fall aus DeadCodeTest: „Entweder ist die Anzeige
-  // dazu nie gebaut worden — dann fehlt eine Funktion." Hier fehlt eine.
-  ['GET /api/v1/settings/tokens',
-    'Übersicht der ausgegebenen App-Token. Oberfläche FEHLT (siehe oben) — ' +
-    'die Route bleibt, damit sie gebaut werden kann, statt sie zu löschen und ' +
-    'die Lücke damit unsichtbar zu machen.'],
-  ['DELETE /api/v1/settings/tokens/:tokenId',
-    'Gegenstück zur Übersicht: einzelnen App-Token entziehen. Ebenfalls noch ' +
-    'ohne Oberfläche — der einzige Weg, einen verlorenen Zugang zu sperren.'],
+  // ── Die beiden Token-Routen sind hier RAUS, und das ist der Punkt ────────
+  // Sie standen als ausdrücklich unbequeme Ausnahme da: „Oberfläche FEHLT —
+  // die Route bleibt, damit sie gebaut werden kann, statt sie zu löschen und
+  // die Lücke damit unsichtbar zu machen." Genau so ist es gekommen; die
+  // Oberfläche steht unter „Angemeldete Geräte" in den Einstellungen. Die
+  // Prüfung hat den Eintrag selbst als veraltet gemeldet.
   ['GET /api/v1/admin/img-probe',
     'Diagnosewerkzeug, von Hand gerufen: zeigt, was der Bild-Proxy vom ' +
     'Ursprungsserver bekommt. Entstanden, weil Minifiguren-Bilder über den ' +

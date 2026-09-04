@@ -136,6 +136,12 @@ const C = {
   'POST /api/v1/auth/logout': 'nur-v1',
   'POST /api/v1/auth/token-create': 'nur-v1',
   'POST /api/v1/auth/qr-login': 'nur-v1',
+  // Angemeldete Geraete: seit der Token-Verwaltung von BEIDEN Apps gerufen.
+  // Standen als 'nur-web' da und waren es nie — es gab ueberhaupt keinen
+  // Aufrufer, und die Routen hingen hinter requireLogin (sitzungsgebunden),
+  // waren fuer die App also gar nicht erreichbar.
+  'GET /api/v1/settings/tokens': 'nur-v1',
+  'DELETE /api/v1/settings/tokens/:tokenId': 'nur-v1',
   'GET /api/v1/catalog/meta': 'nur-v1',
   'GET /api/v1/catalog/sets': 'nur-v1',
   'GET /api/v1/catalog/sets/:setNumber': 'nur-v1',
@@ -247,8 +253,6 @@ const C = {
   'GET /api/v1/settings/export': 'nur-web',
   'GET /api/v1/settings/export/data': 'nur-web',
   'POST /api/v1/settings/import': 'nur-web',
-  'GET /api/v1/settings/tokens': 'nur-web',
-  'DELETE /api/v1/settings/tokens/:tokenId': 'nur-web',
   'GET /api/v1/settings/theme': 'nur-web',
   'POST /api/v1/settings/admin/theme': 'nur-web',
   'POST /api/v1/settings/smtp-test': 'nur-web',
