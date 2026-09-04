@@ -1,32 +1,39 @@
 /**
- * Eine Adresse, eine Umsetzung — oder ein eingetragener Grund.
+ * EINE Adresse, eine Umsetzung — und nur noch EINE Oberfläche.
  *
- * ── Der Befund ──────────────────────────────────────────────────────────────
- * Es gibt zwei API-Oberflächen: die Sitzungs-Routen der Webapp unter /api/…
- * und die Token-Routen der Android-App unter /api/v1/…. NACHGEMESSEN: 47 gegen
- * 89 Routen, und die Webapp ruft selbst 88 Adressen unter /v1/ auf — die
- * Trennung verläuft also längst nicht zwischen „Browser" und „Telefon",
- * sondern nur noch zwischen „Cookie" und „Bearer".
+ * ── Der Befund, mit dem dieser Test entstand ────────────────────────────────
+ * Es gab zwei API-Oberflächen: die Sitzungs-Routen der Webapp unter /api/… und
+ * die Token-Routen der App unter /api/v1/…. Wo dieselbe Adresse auf BEIDEN
+ * stand, existierte die Antwort zweimal — und zweimal heisst: Sie driften.
+ * Genau das war passiert: GET /api/v1/settings baute seine Antwort selbst, las
+ * nur user_settings und lieferte für globale Schlüssel eine fest verdrahtete
+ * Vorgabe. Die Webapp zeigte 48, die App zeigte 24.
  *
- * Wo dieselbe Adresse auf BEIDEN Oberflächen steht, existiert die Antwort
- * zweimal. Und zweimal heisst: Sie driften. Genau das ist passiert —
- * GET /api/v1/settings baute seine Antwort selbst, las dabei nur
- * user_settings und lieferte für globale Schlüssel dauerhaft eine fest
- * verdrahtete Vorgabe. Die Webapp zeigte 48, die App zeigte 24.
+ * ── Was sich geändert hat ───────────────────────────────────────────────────
+ * Marcos Frage „wurde die api zusammengeführt, so dass nur noch ein Endpunkt
+ * besteht?" war mit nein zu beantworten. NACHGEMESSEN vor dem Umbau: Von 47
+ * alten Routen hatten nur DREI ein Gegenstück unter /api/v1 — die beiden
+ * Oberflächen waren also kaum doppelt, sondern grossteils disjunkt.
+ * „Zusammenführen" hiess deshalb UMZIEHEN.
  *
- * ── Warum eine Liste mit Gründen und kein Verbot ────────────────────────────
- * Vier Überschneidungen bleiben, und alle vier zu Recht: Anmelden und Abmelden
- * MÜSSEN sich unterscheiden, weil sie verschiedene Ausweise ausstellen bzw.
- * entwerten; /auth/me und /settings beantworten auf den beiden Oberflächen
- * verschiedene Fragen (siehe Begründungen unten). Ein pauschales Verbot wäre
- * also falsch. Was der Test verhindert, ist die FÜNFTE Überschneidung, die
- * niemand begründet hat.
+ * Seither hängen sets, parts, settings und minifigs unter /api/v1/<bereich>;
+ * es sind DIESELBEN Router-Objekte, nur an einer anderen Adresse.
+ *
+ * ── Was dieser Test jetzt festhält ──────────────────────────────────────────
+ *  1. Jeder Router hängt unter /api/v1 — mit genau EINER eingetragenen
+ *     Ausnahme: die Anmeldung. Sie ist der einzige Block mit einer echten
+ *     Kollision (POST /auth/login, /auth/logout, GET /auth/me gibt es unter
+ *     /api/v1 bereits, mit anderer Bedeutung: Bearer-Token statt Sitzung).
+ *     Das zusammenzulegen heisst, zwei Anmeldeverfahren zu vereinen — daran
+ *     hängt, ob man sich überhaupt noch anmelden kann. Eigener Schritt.
+ *  2. Keine Adresse steht zweimal, ausser mit eingetragenem Grund.
  *
  * ── Warum gesucht und nicht aufgezählt ──────────────────────────────────────
  * Die Mountpunkte kommen aus server.ts, die Routen aus den Router-Dateien.
  * Ein neuer Router, eine neue Route, ein neuer Mountpunkt — alles ist von
  * selbst mitgeprüft. Eine Aufzählung wäre am Tag ihrer Entstehung korrekt und
- * danach nie wieder.
+ * danach nie wieder. Genau das ist zwei Nachbardateien passiert: Sie trugen
+ * die Mountpunkte als Literal und wurden beim Umzug still falsch.
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -71,28 +78,37 @@ function webRouter() {
  * geben muss statt einer. Wer eine Zeile hinzufügt, schreibt den Grund dazu;
  * wer keinen hat, hat eine Doppelung gefunden.
  */
+/**
+ * Adressen, die es ZWEIMAL geben darf — mit dem Grund.
+ *
+ * Verglichen wird OHNE Präfix (`/auth/login` statt `/api/v1/auth/login`), weil
+ * genau das die Frage ist: Beantworten zwei Umsetzungen dieselbe Adresse?
+ *
+ * `GET /settings` stand hier und ist entfallen — die Webapp-Fassung war eine
+ * Route ohne Aufrufer, die dasselbe lieferte wie /settings/raw, nur in einer
+ * anderen Hülle. Damit bleibt genau die Anmeldung übrig.
+ */
 const ERLAUBT = new Map([
-  ['POST /api/auth/login',
+  ['POST /auth/login',
     'Stellt den Ausweis aus — die Webapp eine Sitzung im Cookie, die App einen ' +
     'Bearer-Token. Verschiedene Ergebnisse, nicht zwei Fassungen desselben. Die ' +
     'Prüfung der Zugangsdaten selbst steht gemeinsam in utils/auth.ts.'],
-  ['POST /api/auth/logout',
+  ['POST /auth/logout',
     'Entwertet den Ausweis. Sitzung zerstören und Token-Zeile löschen sind ' +
     'verschiedene Vorgänge; die Webapp-Route macht beides, weil ein Browser ' +
     'beides halten kann.'],
-  ['GET /api/auth/me',
+  ['GET /auth/me',
     'Verschiedene Fragen: Die Webapp fragt „bin ich angemeldet?" und bekommt ' +
     'flach { loggedIn, id, username, isAdmin } frisch aus der Datenbank. Die App ' +
     'fragt „wem gehört dieser Token und wie lange gilt er?" und bekommt ' +
     '{ user, token_expires, token_last_used } aus dem Token-Cache.'],
-  ['GET /api/settings',
-    'Verschiedene Sichten auf dieselben Daten: Die Webapp bekommt alles ' +
-    '(inklusive der globalen und — als Admin — der maskierten geheimen ' +
-    'Schlüssel), die App eine ausdrücklich kuratierte Auswahl (APP_FELDER in ' +
-    'routes/api_v1/settings.ts, Gegenstück zu UserSettings in AuthModels.kt). ' +
-    'Gelesen wird seit der Zusammenlegung durch DIESELBE Funktion, ' +
-    'readSettings() in utils/settings.ts — nur die Verpackung unterscheidet sich.'],
 ]);
+
+/** Präfix weg: /api/v1/sets/x und /api/sets/x werden beide zu /sets/x. */
+function ohnePraefix(eintrag) {
+  return eintrag.replace(/ \/api(\/v1)?/, ' ');
+}
+
 
 test('keine unbegruendete Route auf beiden API-Oberflaechen', () => {
   const web = new Set();
@@ -111,7 +127,13 @@ test('keine unbegruendete Route auf beiden API-Oberflaechen', () => {
   assert.ok(web.size >= 40, `Nur ${web.size} Webapp-Routen gefunden — Muster veraltet?`);
   assert.ok(v1.size >= 80, `Nur ${v1.size} v1-Routen gefunden — Muster veraltet?`);
 
-  const doppelt = [...web].filter(r => v1.has(r)).sort();
+  // Beide Seiten ohne Praefix vergleichen: Seit dem Umzug haengen die
+  // Webapp-Router selbst unter /api/v1/<bereich>, und ein Vergleich der rohen
+  // Adressen faende gar keine Ueberschneidung mehr — der Test waere gruen,
+  // ohne etwas zu pruefen.
+  const webN = new Set([...web].map(ohnePraefix));
+  const v1N  = new Set([...v1].map(ohnePraefix));
+  const doppelt = [...webN].filter(r => v1N.has(r)).sort();
   const unbegruendet = doppelt.filter(r => !ERLAUBT.has(r));
   assert.deepEqual(unbegruendet, [],
     'Diese Adressen stehen auf BEIDEN Oberflaechen, ohne dass ein Grund ' +
@@ -127,4 +149,44 @@ test('keine unbegruendete Route auf beiden API-Oberflaechen', () => {
   assert.deepEqual(veraltet, [],
     'Diese Eintraege in ERLAUBT beschreiben keine Ueberschneidung mehr — ' +
     'streichen:\n  ' + veraltet.join('\n  '));
+});
+
+test('jeder Router haengt unter /api/v1 — mit genau einer eingetragenen Ausnahme', () => {
+  // ── Marcos Frage ──────────────────────────────────────────────────────────
+  // „Wurde die api zusammengefuehrt, so dass nur noch ein Endpunkt besteht?"
+  //
+  // Diese Regel ist die Antwort in Form einer Pruefung. Sie zaehlt die
+  // Ausnahmen NICHT auf — sie liest die Einhaengepunkte aus server.ts und
+  // laesst genau eine zu, die hier begruendet steht.
+  const NOCH_NICHT = new Map([
+    ['/api/auth',
+     'Die Anmeldung zieht ZULETZT um: POST /auth/login, POST /auth/logout und ' +
+     'GET /auth/me gibt es unter /api/v1 bereits, mit anderer Bedeutung ' +
+     '(Bearer-Token statt Sitzung). Das zusammenzulegen heisst, zwei ' +
+     'Anmeldeverfahren zu vereinen — daran haengt, ob man sich ueberhaupt noch ' +
+     'anmelden kann. Eigener Schritt, eigener Lauf.'],
+  ]);
+
+  const einhaengungen = webRouter();
+  // Selbstbeweis: Findet das Muster keine Einhaengepunkte, prueft alles
+  // darunter nichts und waere trotzdem gruen.
+  assert.ok(einhaengungen.length >= 4,
+    `Nur ${einhaengungen.length} Router-Einhaengepunkte in server.ts gefunden — Muster veraltet?`);
+
+  const daneben = einhaengungen
+    .map(r => r.mount)
+    .filter(m => !m.startsWith('/api/v1') && !NOCH_NICHT.has(m))
+    .sort();
+  assert.deepEqual(daneben, [],
+    'Diese Router haengen NICHT unter /api/v1 und stehen auch nicht als ' +
+    'begruendete Ausnahme da:\n  ' + daneben.join('\n  ') +
+    '\nEntweder umhaengen oder in NOCH_NICHT eintragen, WARUM noch nicht.');
+
+  // Und die Ausnahme darf nicht liegenbleiben: Steht sie da, obwohl der Router
+  // laengst umgezogen ist, sieht die Umstellung unfertiger aus als sie ist.
+  const erledigt = [...NOCH_NICHT.keys()]
+    .filter(m => !einhaengungen.some(r => r.mount === m));
+  assert.deepEqual(erledigt, [],
+    'Diese Ausnahmen beschreiben keinen Einhaengepunkt mehr — streichen:\n  ' +
+    erledigt.join('\n  '));
 });

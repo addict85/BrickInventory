@@ -686,7 +686,7 @@ async function gibPoll() {
   try {
     const wt = sessionStorage.getItem('webToken');
     const headers = wt ? { 'Authorization': 'Bearer ' + wt } : {};
-    const s = await fetch('/api/sets/import/csv/status', { headers, credentials: 'include' }).then(r=>r.json());
+    const s = await fetch('/api/v1/sets/import/csv/status', { headers, credentials: 'include' }).then(r=>r.json());
     gibApplyStatus(s);
   } catch(_) {}
 }
@@ -738,7 +738,7 @@ export function gibStart() {
   // SSE benötigt den Token in der URL, da EventSource keine Header setzen kann.
   // (Cookie-Session funktioniert ohnehin; der Token deckt den Bearer-Fall ab.)
   const wt = sessionStorage.getItem('webToken');
-  const url = '/api/sets/import/csv/stream' + (wt ? ('?token=' + encodeURIComponent(wt)) : '');
+  const url = '/api/v1/sets/import/csv/stream' + (wt ? ('?token=' + encodeURIComponent(wt)) : '');
 
   if (typeof EventSource !== 'undefined') {
     try {
@@ -780,7 +780,7 @@ async function gibCheckOnLoad() {
     try {
       const wt = sessionStorage.getItem('webToken');
       const headers = wt ? { 'Authorization': 'Bearer ' + wt } : {};
-      const r = await fetch('/api/sets/import/csv/status', { headers, credentials: 'include' });
+      const r = await fetch('/api/v1/sets/import/csv/status', { headers, credentials: 'include' });
 
       // Antwort erst prüfen, dann parsen. Steht ein Reverse-Proxy oder Tunnel
       // davor, liefert der bei Neustart oder Aussetzer eine HTML-Fehlerseite —
@@ -1068,7 +1068,7 @@ function showApp(){ bindTabs(); plInit(); console.log('[showApp] called, schedul
   setLangValue(localStorage.getItem('bim_lang') || LANG);
   applyLang(LANG, false);
   // Load settings — also picks up server-stored language preference
-  api('GET','/settings/raw').then(d=>{
+  api('GET','/v1/settings/raw').then(d=>{
     if(d.success&&d.settings){
       _settingsCache=d.settings;
       CURRENCY=d.settings.currency||'EUR';

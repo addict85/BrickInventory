@@ -51,7 +51,12 @@ test('Theme wird vor dem ersten Paint gesetzt', () => {
 
   const src = fs.readFileSync(boot, 'utf8');
   assert.match(src, /setAttribute\(\s*'data-theme'/, 'Boot-Skript setzt kein data-theme');
-  assert.match(src, /\/api\/settings\/theme/, 'Boot-Skript gleicht nicht gegen den Server ab');
+  // Die Adresse ist mit dem Zusammenlegen der API-Oberflaechen umgezogen:
+  // /api/settings/theme -> /api/v1/settings/theme. Geprueft wird der Pfad und
+  // nicht nur das Wort "theme", weil genau dieser Aufruf VOR dem ersten Paint
+  // laeuft — eine falsche Adresse waere hier ein 404 und ein Aufblitzen des
+  // falschen Designs, ohne Fehlermeldung.
+  assert.match(src, /\/api\/v1\/settings\/theme/, 'Boot-Skript gleicht nicht gegen den Server ab');
   assert.match(src, /localStorage/, 'Ohne Cache blitzt beim Laden das vorige Design auf');
 });
 

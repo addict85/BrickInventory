@@ -24,7 +24,7 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
-const { ohneKommentare } = require('./helpers/sources');
+const { ohneKommentare, routerEinhaengungen } = require('./helpers/sources');
 
 const ROOT = path.join(__dirname, '..');
 const JS = path.join(ROOT, 'public', 'js');
@@ -62,14 +62,15 @@ function pfadForm(roh) {
 
 function serverRouten() {
   const alle = new Set();
-  const MOUNT = { auth: '/api/auth', sets: '/api/sets', parts: '/api/parts',
-                  finance: '/api/finance', settings: '/api/settings', minifigs: '/api/minifigs' };
   const sammle = (datei, mount) => {
     const src = ohneKommentare(fs.readFileSync(datei, 'utf8'));
     for (const m of src.matchAll(/router\.(get|post|put|patch|delete)\(\s*'([^']+)'/g))
       alle.add(`${m[1].toUpperCase()} ${form(mount + '/' + m[2].replace(/^\//, ''))}`);
   };
-  for (const [f, mount] of Object.entries(MOUNT)) sammle(path.join(ROOT, 'routes', `${f}.ts`), mount);
+  // Einhaengepunkte aus server.ts GELESEN statt abgeschrieben. Die Liste stand
+  // hier als Literal und wurde beim Zusammenlegen der API-Oberflaechen still
+  // falsch — samt „ENOENT: routes/finance.ts". Siehe routerEinhaengungen().
+  for (const r of routerEinhaengungen()) sammle(r.datei, r.mount);
   const v1 = path.join(ROOT, 'routes', 'api_v1');
   for (const f of fs.readdirSync(v1)) {
     if (!f.endsWith('.ts') || f === 'index.ts' || f === 'middleware.ts') continue;

@@ -31,6 +31,7 @@ process.env.WEB_WORKERS = '1';
 
 // Nach dist/ bauen statt in-place — siehe helpers/sources.js.
 const _req = require('./helpers/sources').buildAndRequire();
+const { routerEinhaengungen } = require('./helpers/sources');
 
 const db = _req('db/database.js');
 const express = require(path.join(ROOT, 'node_modules', 'express'));
@@ -207,16 +208,27 @@ test('API-Parität Webapp ↔ Android', async (t) => {
       req.session = { userId: USER.id, username: USER.username, isAdmin: false };
     next();
   });
-  app.use('/api/sets',     _req('routes/sets.js'));
-  app.use('/api/parts',    _req('routes/parts.js'));
-  app.use('/api/finance',  _req('routes/finance.js'));
-  app.use('/api/settings', _req('routes/settings.js'));
-  app.use('/api/minifigs', _req('routes/minifigs.js'));
+  // ── Die Einhaengepunkte kommen aus server.ts ─────────────────────────────
+  //
+  // Sie standen hier als vier feste Zeilen. Beim Zusammenlegen der
+  // API-Oberflaechen sind sie still falsch geworden: Der Pruefstand sprach
+  // weiter /api/settings an, waehrend der Server das laengst unter
+  // /api/v1/settings ausliefert. Ein Pruefstand, der die Verdrahtung
+  // ABSCHREIBT, prueft eine Verdrahtung, die es nicht gibt.
+  // ── Die REIHENFOLGE ist Teil der Verdrahtung ─────────────────────────────
+  //
+  // /api/v1 (der Index) muss ZUERST stehen, genau wie in server.ts. Sonst
+  // faengt der sitzungsgebundene Router unter /api/v1/sets die Anfragen ab,
+  // die eigentlich die Token-Fassung beantworten soll — gemessen: 401
+  // „Nicht angemeldet" auf /api/v1/sets/…/acquisitions mit gueltigem Token.
+  //
   // _req() statt require(ROOT/...): Die kompilierten Dateien liegen seit
   // hardened-59 unter dist/, nicht mehr neben den .ts-Quellen. Diese eine
   // Zeile lud noch aus dem Quellordner und warf MODULE_NOT_FOUND — bemerkt
   // hat es niemand, weil der ganze Test ohne Postgres übersprungen wird.
   app.use('/api/v1',       _req('routes/api_v1/index.js'));
+  for (const r of routerEinhaengungen())
+    app.use(r.mount, _req('routes/' + r.name + '.js'));
 
   const srv = app.listen(0);
   const base = `http://localhost:${srv.address().port}`;
@@ -330,12 +342,16 @@ test('API-Parität Webapp ↔ Android', async (t) => {
   });
 
   await t.test('Einstellungen: kuratierte v1-Felder == Webapp-Werte', async () => {
-    // GET /api/settings ist NICHT zusammengelegt worden, und das mit Absicht:
-    // Es trägt die globalen Schlüssel und die Admin-Felder, die kuratierte
-    // Sicht der App weder braucht noch bekommen soll. Zwei verschiedene
-    // Antworten, nicht zwei Fassungen derselben — geprüft wird deshalb, dass
-    // die GEMEINSAMEN Werte übereinstimmen.
-    const web = (await get('/api/settings/')).body;
+    // Die Webapp-Sicht und die kuratierte Sicht der App sind NICHT
+    // zusammengelegt, und das mit Absicht: Die eine trägt die globalen
+    // Schlüssel und die Admin-Felder, die die App weder braucht noch bekommen
+    // soll. Zwei verschiedene Antworten, nicht zwei Fassungen derselben —
+    // geprüft wird deshalb, dass die GEMEINSAMEN Werte übereinstimmen.
+    //
+    // Gelesen wird über /settings/raw: Die frühere Adresse GET /api/settings/
+    // lieferte dasselbe in einer anderen Hülle und hatte keinen Aufrufer; sie
+    // ist beim Zusammenlegen der API-Oberflächen entfallen.
+    const web = (await get('/api/v1/settings/raw')).body.settings;
     const v1 = (await get('/api/v1/settings')).body.settings;
     assert.equal(v1.currency, web.currency);
     assert.equal(v1.price_cache_ttl, web.price_cache_ttl);
@@ -497,11 +513,20 @@ test('API-Parität Webapp ↔ Android', async (t) => {
     assert.deepEqual(core(viaToken.body), core(viaSession.body));
   });
 
-  await t.test('ohne Auth: beide Familien lehnen ab', async () => {
-    const web = await get('/api/sets/', { 'x-no-session': '1' });
-    const v1 = await get('/api/v1/sets', { 'x-no-session': '1' });
-    assert.equal(web.status, 401);
-    assert.equal(v1.status, 401);
+  await t.test('ohne Auth: beide Absicherungen lehnen ab', async () => {
+    // Hier stand `/api/sets/` gegen `/api/v1/sets` — „beide Familien". Seit
+    // dem Zusammenlegen der API-Oberflaechen gibt es nur noch EINEN
+    // Adressraum; die alte Adresse antwortet gar nicht mehr, und der Test
+    // haette einen 404 fuer eine bestandene Abweisung gehalten.
+    //
+    // Was WEITER gilt und hier geprueft wird: Es gibt zwei Absicherungen im
+    // Baum — requireToken (nimmt Sitzung ODER Bearer) und requireLogin (nur
+    // Sitzung). Ohne Ausweis muss JEDE davon mit 401 abweisen, nicht mit 200
+    // und nicht mit einer Weiterleitung auf eine HTML-Seite.
+    const mitToken = await get('/api/v1/sets', { 'x-no-session': '1' });
+    const nurSitzung = await get('/api/v1/settings/raw', { 'x-no-session': '1' });
+    assert.equal(mitToken.status, 401, 'requireToken laesst ohne Ausweis durch');
+    assert.equal(nurSitzung.status, 401, 'requireLogin laesst ohne Sitzung durch');
   });
 
   srv.close();

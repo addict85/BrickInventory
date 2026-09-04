@@ -100,18 +100,16 @@ test('qty_avg_price wird für Set-Preise nirgends mehr gelesen', () => {
   assert.equal((sets.match(/qty_avg_price/g) || []).length, 0,
     'routes/sets.ts: Set-Preise müssen über avg_price laufen');
 
-  // finance.ts liest daneben Teile- und Minifiguren-Preise aus eigenen
-  // Tabellen; dort bleibt qty_avg_price bewusst stehen. Geprüft wird deshalb
-  // gezielt jedes SELECT auf die Set-Tabelle price_cache.
-  const fin = fs.readFileSync(path.join(ROOT, 'routes', 'finance.ts'), 'utf8');
-  for (const m of fin.matchAll(/SELECT([\s\S]{0,200}?)FROM\s+price_cache\b/g)) {
-    assert.doesNotMatch(m[1], /qty_avg_price/,
-      `routes/finance.ts: Set-Preisabfrage liest noch qty_avg_price:\n${m[0].slice(0, 120)}`);
-  }
+  // Der Abschnitt zu routes/finance.ts ist entfallen: Die Datei gibt es nicht
+  // mehr. Ihr Router trug NULL Routen und war trotzdem unter /api/finance
+  // eingehaengt; die Preisrechnung selbst liegt seit Etappe 5 in
+  // utils/financeCalc.ts. Die Regel „Set-Preise ueber avg_price" wird deshalb
+  // dort geprueft, wo die Abfragen heute stehen — utils/ und routes/api_v1/,
+  // siehe die Pruefung „KEINE Abfrage stellt mehr …" weiter unten.
 });
 
 test('die Sortierung "hat einen Preis vor passendem Zustand" ist überall weg', () => {
-  for (const f of ['routes/sets.ts', 'routes/finance.ts']) {
+  for (const f of ['routes/sets.ts']) {
     const src = fs.readFileSync(path.join(ROOT, f), 'utf8');
     assert.doesNotMatch(src, /ORDER BY \(qty_avg_price[^)]*\) DESC, \(condition/,
       `${f}: Diese Sortierung liefert für ein neues Set den Gebraucht-Preis`);
@@ -153,7 +151,7 @@ test('Fallback zwischen den Zuständen bleibt — aber in der richtigen Reihenfo
   // Der angefragte Zustand gewinnt, wenn er einen Preis hat. Der andere kommt
   // nur zum Zug, wenn dort keiner steht. Genau umgekehrt war der gemeldete
   // Fehler: „hat einen Preis" schlug „passender Zustand".
-  for (const f of ['routes/sets.ts', 'routes/finance.ts']) {
+  for (const f of ['routes/sets.ts']) {
     const src = fs.readFileSync(path.join(ROOT, f), 'utf8');
     for (const m of src.matchAll(/SELECT[\s\S]{0,240}?FROM price_cache[\s\S]{0,260}?`/g)) {
       const q = m[0];
@@ -265,7 +263,7 @@ test('KEINE Abfrage stellt mehr "hat einen Preis" vor "passender Zustand"', () =
   // Sie steckte an fünf Stellen; vier waren beim ersten Anlauf behoben, die
   // fünfte (der P&L-Pfad in financeCalc.ts) speist aber genau die Anzeige in
   // Galerie und Detail-Dialog — dort blieb der Gebraucht-Preis stehen.
-  const files = ['routes/sets.ts', 'routes/finance.ts', 'routes/api_v1/sets.ts',
+  const files = ['routes/sets.ts', 'routes/api_v1/sets.ts',
                  'utils/financeCalc.ts', 'utils/portfolioHistory.ts'];
   for (const f of files) {
     const src = fs.readFileSync(path.join(ROOT, f), 'utf8')
@@ -503,8 +501,11 @@ test('die Verlaufs-Endpunkte liefern fertige Diagrammdaten', () => {
   // hätte diese Verbesserung verhindert, ohne etwas Zusätzliches zu sichern.
   const uses = (ph.match(/buildChart\(/g) || []).length;
   assert.equal(uses, 2, `${uses} statt 2 buildChart-Aufrufe in utils/priceHistory.ts`);
-  const fin = fs.readFileSync(path.join(ROOT, 'routes', 'finance.ts'), 'utf8');
-  assert.doesNotMatch(fin, /buildChart\(/,
+  // Die frueher hier geprueste routes/finance.ts gibt es nicht mehr (Router
+  // ohne eine einzige Route). Die Regel gilt weiter, nur fuer die Datei, in der
+  // die Verlaufs-Routen HEUTE stehen: Ein Adapter baut keine Diagrammdaten.
+  const v1fin = fs.readFileSync(path.join(ROOT, 'routes', 'api_v1', 'finance.ts'), 'utf8');
+  assert.doesNotMatch(v1fin, /buildChart\(/,
     'Die Routendatei ist ein Adapter — die Diagrammdaten baut der gemeinsame Helfer');
 
   // Der Renderer darf die aufgefüllten Nullen nicht zeichnen — sonst beginnt

@@ -37,7 +37,6 @@ async function startApi() {
   app.use(express.json());
   app.use((req, _res, next) => { req.session = { userId: _actingAs }; next(); });
   app.use('/api/sets', _req('routes/sets.js'));
-  app.use('/api/finance', _req('routes/finance.js'));
   // Die Erfassungs-Routen liegen seit Nachtrag 70 nur noch in der gemeinsamen
   // Fabrik — eine Adresse für Webapp UND App.
   app.use('/api/v1', _req('routes/api_v1/index.js'));

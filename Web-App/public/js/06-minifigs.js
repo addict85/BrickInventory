@@ -384,7 +384,7 @@ async function importFigsCsv() {
   const fd = new FormData(); fd.append('file', fi.files[0]);
   csvImportStatus('fig-csv-status', 'running', t('import.running'));
   try {
-    const r = await fetch('/api/minifigs/import/csv', { method: 'POST', body: fd });
+    const r = await fetch('/api/v1/minifigs/import/csv', { method: 'POST', body: fd });
     const d = await r.json();
     fi.value = '';
     if (d.success) {
@@ -591,7 +591,7 @@ async function importPartsCsv() {
   const fd = new FormData(); fd.append('file', fi.files[0]);
   csvImportStatus('part-csv-status', 'running', t('import.running'));
   try {
-    const r = await fetch('/api/parts/import/csv', { method: 'POST', body: fd });
+    const r = await fetch('/api/v1/parts/import/csv', { method: 'POST', body: fd });
     const d = await r.json();
     fi.value = '';
     if (d.success) {

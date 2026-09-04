@@ -47,7 +47,7 @@ async function loadPartsStats(){
 }
 
 async function loadPartsFilters(){
-  const [cd,catd]=await Promise.all([api('GET','/v1/parts/colors'+scopeQuery('parts')),api('GET','/parts/categories')]);
+  const [cd,catd]=await Promise.all([api('GET','/v1/parts/colors'+scopeQuery('parts')),api('GET','/v1/parts/categories')]);
   partsColors=cd.colors||[]; partsCats=catd.categories||[];
 
   G('color-filter').innerHTML=`<div class="filter-item ${!activeColor?'active':''}" data-click="setColorFilter" data-arg=""><span>${t('gallery.filter.all')}</span></div>`

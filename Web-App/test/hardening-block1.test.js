@@ -76,7 +76,9 @@ test('Listenansichten fordern Vorschaubilder an', () => {
 
 // ── Punkt 6 ────────────────────────────────────────────────────────────────
 test('Teile- und Minifiguren-Preise lesen avg_price', () => {
-  for (const f of ['routes/finance.ts', 'routes/minifigs.ts', 'routes/parts.ts',
+  // routes/finance.ts ist entfallen: Der Router trug NULL Routen und war
+  // trotzdem unter /api/finance eingehaengt (siehe server.ts).
+  for (const f of ['routes/minifigs.ts', 'routes/parts.ts',
                    'routes/api_v1/sets.ts']) {
     const src = read(f);
     // Lesende Zugriffe: kein qty_avg_price mehr. Schreibende (INSERT/VALUES)
@@ -189,7 +191,7 @@ test('den Preis-Cache leert nur, wer Administrator ist', () => {
   // verbrannte Kontingent). Der Import-Weg wurde übersehen — er sieht ja auch
   // nicht nach „Cache leeren" aus. Genau deshalb prüft dieser Test die REGEL
   // und nicht eine einzelne Route: Wer den Cache leert, braucht requireAdmin.
-  const dateien = ['routes/settings.ts', 'routes/finance.ts', 'routes/sets.ts',
+  const dateien = ['routes/settings.ts', 'routes/sets.ts',
                    'routes/parts.ts', 'routes/minifigs.ts', 'clients/bricklink.ts'];
   const treffer = [];
   for (const datei of dateien) {

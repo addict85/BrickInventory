@@ -30,6 +30,8 @@ const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
 
+const { routerEinhaengungen } = require('./helpers/sources');
+
 const ROOT = path.join(__dirname, '..');
 
 function scan(file) {
@@ -40,9 +42,12 @@ function scan(file) {
 
 function inventory() {
   const eps = new Set();
-  for (const f of ['auth', 'sets', 'parts', 'finance', 'settings', 'minifigs'])
-    for (const [m, p] of scan(path.join(ROOT, 'routes', `${f}.ts`)))
-      eps.add(`${m} /api/${f}${p === '/' ? '' : p}`);
+  // Einhaengepunkte aus server.ts GELESEN statt abgeschrieben — die Liste stand
+  // hier als Literal und wurde beim Zusammenlegen der API-Oberflaechen falsch
+  // (samt „ENOENT: routes/finance.ts"). Siehe routerEinhaengungen().
+  for (const r of routerEinhaengungen())
+    for (const [m, p] of scan(r.datei))
+      eps.add(`${m} ${r.mount}${p === '/' ? '' : p}`);
   for (const f of fs.readdirSync(path.join(ROOT, 'routes', 'api_v1')))
     if (f.endsWith('.ts') && !['index.ts', 'middleware.ts'].includes(f))
       for (const [m, p] of scan(path.join(ROOT, 'routes', 'api_v1', f)))
@@ -67,7 +72,7 @@ const C = {
   'GET /api/v1/parts/manual': 'paritaet',
   'GET /api/v1/minifigs': 'paritaet',
   'GET /api/v1/minifigs/manual': 'paritaet',
-  'GET /api/settings': 'paritaet',                   'GET /api/v1/settings': 'paritaet',
+  'GET /api/v1/settings': 'paritaet',                   'GET /api/v1/settings': 'paritaet',
       'GET /api/v1/sets/:setNumber/acquisitions': 'paritaet',
  'GET /api/v1/parts/:partNumber/:colorId/acquisitions': 'paritaet',
  'GET /api/v1/minifigs/:figNumber/acquisitions': 'paritaet',
@@ -217,30 +222,30 @@ const C = {
   'POST /api/auth/users': 'nur-web',
   'DELETE /api/auth/users/:id': 'nur-web',
   'PUT /api/auth/users/:id/admin': 'nur-web',
-  'GET /api/sets/info/:setNumber': 'nur-web',
-  'POST /api/sets/add-stream': 'nur-web',
-  'GET /api/sets/import/csv/status': 'nur-web',
-  'GET /api/sets/import/csv/stream': 'nur-web',
-  'POST /api/sets/import/csv': 'nur-web',
-  'POST /api/sets/import/csv/cancel': 'nur-web',
-  'GET /api/sets/export/rebrickable': 'nur-web',
-  'POST /api/sets/:setNumber/instructions': 'nur-web',
-  'POST /api/sets/:setNumber/instructions/upload': 'nur-web',
-  'DELETE /api/sets/:setNumber/instructions/:instrId': 'nur-web',
-  'POST /api/sets/:setNumber/parts': 'nur-web',
-  'GET /api/parts/categories': 'nur-web',
-  'POST /api/parts/import/csv': 'nur-web',
-  'POST /api/minifigs/import/csv': 'nur-web',
-  'POST /api/settings': 'nur-web',
-  'GET /api/settings/raw': 'nur-web',
-  'GET /api/settings/export': 'nur-web',
-  'GET /api/settings/export/data': 'nur-web',
-  'POST /api/settings/import': 'nur-web',
-  'GET /api/settings/tokens': 'nur-web',
-  'DELETE /api/settings/tokens/:tokenId': 'nur-web',
-  'GET /api/settings/theme': 'nur-web',
-  'POST /api/settings/admin/theme': 'nur-web',
-  'POST /api/settings/smtp-test': 'nur-web',
+  'GET /api/v1/sets/info/:setNumber': 'nur-web',
+  'POST /api/v1/sets/add-stream': 'nur-web',
+  'GET /api/v1/sets/import/csv/status': 'nur-web',
+  'GET /api/v1/sets/import/csv/stream': 'nur-web',
+  'POST /api/v1/sets/import/csv': 'nur-web',
+  'POST /api/v1/sets/import/csv/cancel': 'nur-web',
+  'GET /api/v1/sets/export/rebrickable': 'nur-web',
+  'POST /api/v1/sets/:setNumber/instructions': 'nur-web',
+  'POST /api/v1/sets/:setNumber/instructions/upload': 'nur-web',
+  'DELETE /api/v1/sets/:setNumber/instructions/:instrId': 'nur-web',
+  'POST /api/v1/sets/:setNumber/parts': 'nur-web',
+  'GET /api/v1/parts/categories': 'nur-web',
+  'POST /api/v1/parts/import/csv': 'nur-web',
+  'POST /api/v1/minifigs/import/csv': 'nur-web',
+  'POST /api/v1/settings': 'nur-web',
+  'GET /api/v1/settings/raw': 'nur-web',
+  'GET /api/v1/settings/export': 'nur-web',
+  'GET /api/v1/settings/export/data': 'nur-web',
+  'POST /api/v1/settings/import': 'nur-web',
+  'GET /api/v1/settings/tokens': 'nur-web',
+  'DELETE /api/v1/settings/tokens/:tokenId': 'nur-web',
+  'GET /api/v1/settings/theme': 'nur-web',
+  'POST /api/v1/settings/admin/theme': 'nur-web',
+  'POST /api/v1/settings/smtp-test': 'nur-web',
 };
 
 const VALID = new Set(['paritaet', 'paritaet-schreib', 'paar-extern', 'nur-v1', 'nur-web']);

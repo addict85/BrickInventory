@@ -30,11 +30,19 @@ router.get('/theme', async (_req, res) => {
 
 router.use(requireLogin);
 
-router.get('/', async (req: LoggedInRequest, res) => {
-  try {
-    res.json({ success: true, ...(await readSettings(req.session.userId, !!req.session.isAdmin)) });
-  } catch (e) { handleRouteError(res, e); }
-});
+// ── GET /api/settings ist ENTFERNT ───────────────────────────────────────────
+//
+// Sie lieferte GENAU DASSELBE wie GET /raw achtzig Zeilen weiter unten —
+// beide riefen readSettings(userId, isAdmin) —, nur in einer anderen Huelle:
+// hier ausgebreitet (`{ success, ...settings }`), dort verschachtelt
+// (`{ success, settings }`). Zwei Adressen, eine Abfrage, zwei Formen.
+//
+// Aufrufer hatte nur die zweite: Die Webapp holt /settings/raw (01-core.js und
+// 05-settings.js), die App /api/v1/settings. Nachgemessen ueber beide Baeume.
+//
+// Nebeneffekt, der den Umzug erst moeglich macht: `GET /api/v1/settings` gibt
+// es bereits — mit der fuer die App kuratierten Auswahl. Waere diese Route
+// mitgezogen, staenden zwei verschiedene Antworten auf derselben Adresse.
 
 router.post('/', async (req: LoggedInRequest, res) => {
   const globalKeys = ['bricklink_consumer_key','bricklink_consumer_secret','bricklink_token',

@@ -692,13 +692,54 @@ app.get('/api/health', (_req, res) => {
   });
 });
 
-app.use('/api/auth',     require('./routes/auth') as typeof import('./routes/auth'));
-app.use('/api/sets',     require('./routes/sets') as typeof import('./routes/sets'));
-app.use('/api/parts',    require('./routes/parts') as typeof import('./routes/parts'));
-app.use('/api/finance',  require('./routes/finance') as typeof import('./routes/finance'));
-app.use('/api/settings', require('./routes/settings') as typeof import('./routes/settings'));
-app.use('/api/minifigs', require('./routes/minifigs') as typeof import('./routes/minifigs'));
-app.use('/api/v1',       require('./routes/api_v1/index') as typeof import('./routes/api_v1/index'));
+// ── EINE Adressraum: alles unter /api/v1 ─────────────────────────────────────
+//
+// Marcos Frage war „wurde die api zusammengefuehrt, so dass nur noch ein
+// Endpunkt besteht?" — die Antwort war nein. Es gab zwei Praefixe:
+// /api/<bereich> fuer die Webapp und /api/v1 fuer beide Clients.
+//
+// NACHGEMESSEN vor dem Umbau: Von 47 alten Routen hatten nur DREI ein
+// Gegenstueck unter /api/v1 (auth/login, auth/logout, auth/me) — und selbst
+// die sind nicht dasselbe, sondern zwei Ausweise (Sitzung gegen Bearer-Token).
+// Die beiden Oberflaechen waren also kaum doppelt, sondern grossteils
+// disjunkt: Anmeldung, CSV-Einlesen, Anleitungen, Einstellungen, Streams gab
+// es nur alt.
+//
+// „Zusammenfuehren" heisst hier deshalb UMZIEHEN, nicht Doppeltes entfernen.
+// Die Router sind DIESELBEN Objekte wie vorher — nur die Adresse aendert sich.
+//
+// ── Warum das ohne Umbau der Anmeldung geht ─────────────────────────────────
+// requireToken in routes/api_v1/middleware.ts nimmt beide Ausweise. Die hier
+// umgehaengten Router bringen ihre eigene Absicherung mit (requireLogin,
+// sitzungsgebunden); der Umzug aendert daran NICHTS. Was sich aendert, ist
+// ausschliesslich die Adresse. Wer diese Routen auch fuer die App oeffnen
+// will, stellt requireLogin auf requireToken um — ein eigener Schritt.
+//
+// ── Reihenfolge ist Absicht ─────────────────────────────────────────────────
+// /api/v1 (der Index) steht ZUERST. Bei den drei Auth-Adressen, die es auf
+// beiden Seiten gibt, gewinnt damit die Token-Fassung — genau das, was
+// /api/v1/auth/login schon immer bedeutet hat. Der sitzungsgebundene Login der
+// Webapp bleibt vorerst unter /api/auth (siehe unten).
+app.use('/api/v1',          require('./routes/api_v1/index') as typeof import('./routes/api_v1/index'));
+app.use('/api/v1/sets',     require('./routes/sets') as typeof import('./routes/sets'));
+app.use('/api/v1/parts',    require('./routes/parts') as typeof import('./routes/parts'));
+app.use('/api/v1/settings', require('./routes/settings') as typeof import('./routes/settings'));
+app.use('/api/v1/minifigs', require('./routes/minifigs') as typeof import('./routes/minifigs'));
+
+// ── Die Anmeldung zieht ZULETZT um ───────────────────────────────────────────
+//
+// Sie ist der einzige Block mit einer echten Kollision: POST /auth/login,
+// POST /auth/logout und GET /auth/me gibt es unter /api/v1 bereits — mit
+// anderer Bedeutung (Bearer-Token statt Sitzung). Das zusammenzulegen heisst,
+// zwei Anmeldeverfahren zu vereinen, und daran haengt, ob man sich ueberhaupt
+// noch anmelden kann. Getrennter Schritt, getrennter Lauf.
+//
+// `/api/finance` ist ersatzlos entfallen: Der Router dort trug NULL Routen
+// (58 Zeilen, nur `router.use(requireLogin)` und der Export). Seine eigene
+// Begruendung — „Die Datei bleibt, weil jobs/ und routes/ die Funktionen
+// weiterhin von hier beziehen" — war im naechsten Absatz derselben Datei
+// bereits widerlegt: Die dreizehn Namen sind seit Nachtrag 126 weg.
+app.use('/api/auth',        require('./routes/auth') as typeof import('./routes/auth'));
 
 // Nur ausserhalb von production erreichbar — der Endpoint feuert echte
 // BrickLink-Calls und gehört nicht in eine laufende Installation.

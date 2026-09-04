@@ -25,7 +25,7 @@
        classic und brick identisch, die Regeln gelten daher für beide. -->
   <link rel="stylesheet" href="/mobile.css?v=2026.09.03.1946">
   <!-- Setzt data-theme aus dem localStorage-Cache VOR dem ersten Paint und
-       gleicht danach gegen GET /api/settings/theme ab. Blockierend und im
+       gleicht danach gegen GET /api/v1/settings/theme ab. Blockierend und im
        <head>, sonst blitzt auf Login-/Startup-Screen kurz das falsche Design auf. -->
   <script src="/js/00-theme-boot.js?v=2026.09.03.1946"></script>
   <!-- Aktive Sprachdatei. Blockierend und VOR dem Bündel, weil i18n.js beim
@@ -844,14 +844,14 @@
               <span data-i18n="settings.data_zip_hint">Sets, manuell erfasste Teile und Minifiguren als ZIP mit 3 CSV-Dateien exportieren — diese können danach über den entsprechenden CSV-Importer (Reiter Sets/Teile/Minifiguren) wieder importiert werden.</span>
             </p>
             <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-bottom:1rem">
-              <a class="btn bs" href="/api/settings/export/data" data-i18n="settings.data_zip_btn">📦 Sets, Teile &amp; Minifiguren exportieren (ZIP)</a>
+              <a class="btn bs" href="/api/v1/settings/export/data" data-i18n="settings.data_zip_btn">📦 Sets, Teile &amp; Minifiguren exportieren (ZIP)</a>
             </div>
 
             <p style="font-size:.82rem;color:var(--mut);margin:0 0 .5rem 0">
               <span data-i18n="settings.rb_list_hint">Alle Sets im Rebrickable-Listenformat exportieren (Spalten "Set Number,Quantity"), um sie unter „My Sets → Add via List" bei Rebrickable zu importieren.</span>
             </p>
             <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center">
-              <a class="btn bs" href="/api/sets/export/rebrickable" style="display:inline-flex;align-items:center;gap:6px"><svg width="16" height="16" viewBox="0 0 120 120" xmlns="http://www.w3.org/2000/svg" style="flex-shrink:0"><rect x="18" y="38" width="84" height="68" rx="3" fill="#e63329"/><polygon points="18,38 30,20 102,20 102,38" fill="#cc2a21"/><polygon points="102,20 118,30 118,86 102,106" fill="#b5231c"/><ellipse cx="43" cy="20" rx="6" ry="3" fill="#cc2a21"/><rect x="37" y="17" width="12" height="3" fill="#cc2a21"/><ellipse cx="43" cy="17" rx="6" ry="3" fill="#b5231c"/><ellipse cx="58" cy="20" rx="6" ry="3" fill="#cc2a21"/><rect x="52" y="17" width="12" height="3" fill="#cc2a21"/><ellipse cx="58" cy="17" rx="6" ry="3" fill="#b5231c"/><ellipse cx="73" cy="20" rx="6" ry="3" fill="#cc2a21"/><rect x="67" y="17" width="12" height="3" fill="#cc2a21"/><ellipse cx="73" cy="17" rx="6" ry="3" fill="#b5231c"/><ellipse cx="88" cy="20" rx="6" ry="3" fill="#cc2a21"/><rect x="82" y="17" width="12" height="3" fill="#cc2a21"/><ellipse cx="88" cy="17" rx="6" ry="3" fill="#b5231c"/><rect x="24" y="54" width="72" height="40" rx="2" fill="#fff"/><rect x="29" y="58" width="46" height="15" rx="2" fill="#f5a800"/><text x="52" y="69" text-anchor="middle" font-family="Arial,sans-serif" font-weight="800" font-size="11" fill="white">BIM</text></svg> <span data-i18n="settings.export_rb">Sets für Rebrickable exportieren</span></a>
+              <a class="btn bs" href="/api/v1/sets/export/rebrickable" style="display:inline-flex;align-items:center;gap:6px"><svg width="16" height="16" viewBox="0 0 120 120" xmlns="http://www.w3.org/2000/svg" style="flex-shrink:0"><rect x="18" y="38" width="84" height="68" rx="3" fill="#e63329"/><polygon points="18,38 30,20 102,20 102,38" fill="#cc2a21"/><polygon points="102,20 118,30 118,86 102,106" fill="#b5231c"/><ellipse cx="43" cy="20" rx="6" ry="3" fill="#cc2a21"/><rect x="37" y="17" width="12" height="3" fill="#cc2a21"/><ellipse cx="43" cy="17" rx="6" ry="3" fill="#b5231c"/><ellipse cx="58" cy="20" rx="6" ry="3" fill="#cc2a21"/><rect x="52" y="17" width="12" height="3" fill="#cc2a21"/><ellipse cx="58" cy="17" rx="6" ry="3" fill="#b5231c"/><ellipse cx="73" cy="20" rx="6" ry="3" fill="#cc2a21"/><rect x="67" y="17" width="12" height="3" fill="#cc2a21"/><ellipse cx="73" cy="17" rx="6" ry="3" fill="#b5231c"/><ellipse cx="88" cy="20" rx="6" ry="3" fill="#cc2a21"/><rect x="82" y="17" width="12" height="3" fill="#cc2a21"/><ellipse cx="88" cy="17" rx="6" ry="3" fill="#b5231c"/><rect x="24" y="54" width="72" height="40" rx="2" fill="#fff"/><rect x="29" y="58" width="46" height="15" rx="2" fill="#f5a800"/><text x="52" y="69" text-anchor="middle" font-family="Arial,sans-serif" font-weight="800" font-size="11" fill="white">BIM</text></svg> <span data-i18n="settings.export_rb">Sets für Rebrickable exportieren</span></a>
             </div>
           </div>
         </div>

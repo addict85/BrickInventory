@@ -34,6 +34,8 @@ const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
 
+const { routerEinhaengungen } = require('./helpers/sources');
+
 const ROOT = path.join(__dirname, '..');
 const ANDROID = path.join(ROOT, '..', 'Android-App', 'app', 'src', 'main');
 
@@ -51,10 +53,11 @@ function routenAus(datei, mount) {
 
 function alleRouten() {
   const out = [];
-  const MOUNT = { auth: '/api/auth', sets: '/api/sets', parts: '/api/parts',
-                  finance: '/api/finance', settings: '/api/settings', minifigs: '/api/minifigs' };
-  for (const [f, mount] of Object.entries(MOUNT))
-    out.push(...routenAus(path.join(ROOT, 'routes', `${f}.ts`), mount));
+  // Einhaengepunkte aus server.ts GELESEN statt abgeschrieben. Die Liste stand
+  // hier als Literal und ist beim Zusammenlegen der API-Oberflaechen falsch
+  // geworden — samt „ENOENT: routes/finance.ts". Siehe routerEinhaengungen().
+  for (const r of routerEinhaengungen())
+    out.push(...routenAus(r.datei, r.mount));
   const v1 = path.join(ROOT, 'routes', 'api_v1');
   for (const f of fs.readdirSync(v1)) {
     if (!f.endsWith('.ts') || f === 'index.ts' || f === 'middleware.ts') continue;
@@ -106,12 +109,19 @@ function clientQuellen() {
 // sieht geprueft aus. Wer hier eine Zeile eintraegt, soll den Aufrufer
 // benennen koennen.
 const OHNE_AUFRUFER = new Map([
-  ['GET /api/settings/tokens',
-    'Übersicht der ausgegebenen App-Token. Es gibt dafür noch keine Oberfläche — ' +
-    'die Token entstehen beim Anmelden der App und beim QR-Weg.'],
-  ['DELETE /api/settings/tokens/:tokenId',
+  // ── Diese beiden sind KEINE harmlose Ausnahme ────────────────────────────
+  // Sie listen und widerrufen App-Token. Es gibt dafür keine Oberfläche —
+  // weder Webapp noch App —, und QR-Login wie App-Login vergeben Token OHNE
+  // Ablaufdatum. Wer sein Telefon verliert, kommt an den Zugang nur über die
+  // Datenbank. Das ist der Fall aus DeadCodeTest: „Entweder ist die Anzeige
+  // dazu nie gebaut worden — dann fehlt eine Funktion." Hier fehlt eine.
+  ['GET /api/v1/settings/tokens',
+    'Übersicht der ausgegebenen App-Token. Oberfläche FEHLT (siehe oben) — ' +
+    'die Route bleibt, damit sie gebaut werden kann, statt sie zu löschen und ' +
+    'die Lücke damit unsichtbar zu machen.'],
+  ['DELETE /api/v1/settings/tokens/:tokenId',
     'Gegenstück zur Übersicht: einzelnen App-Token entziehen. Ebenfalls noch ' +
-    'ohne Oberfläche.'],
+    'ohne Oberfläche — der einzige Weg, einen verlorenen Zugang zu sperren.'],
   ['GET /api/v1/admin/img-probe',
     'Diagnosewerkzeug, von Hand gerufen: zeigt, was der Bild-Proxy vom ' +
     'Ursprungsserver bekommt. Entstanden, weil Minifiguren-Bilder über den ' +

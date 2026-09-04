@@ -9,7 +9,10 @@ interface BrickApiService {
     @POST("api/v1/auth/login")
     suspend fun login(@Body request: LoginRequest): Response<LoginResponse>
 
-    @GET("api/sets/import/csv/status")
+    // Umgezogen nach /api/v1: Seit der Zusammenfuehrung gibt es nur noch EINEN
+    // Adressraum. Der Router dahinter ist derselbe wie vorher — nur die Adresse
+    // hat sich geaendert (siehe server.ts).
+    @GET("api/v1/sets/import/csv/status")
     suspend fun getCsvImportStatus(): Response<ch.brickinventoryapp.data.model.CsvImportStatus>
 
     @GET

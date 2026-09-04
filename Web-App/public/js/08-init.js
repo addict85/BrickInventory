@@ -85,7 +85,7 @@ function plAddSet() {
     const normalized = nr.includes('-') ? nr : nr + '-1';
     _plSets.push({ set_number: normalized, name: normalized });
     // Try to get set name from catalog (works for any set, not just owned ones)
-    api('GET', `/sets/info/${normalized}`).then(d => {
+    api('GET', `/v1/sets/info/${normalized}`).then(d => {
       if (d.success && d.name && d.name !== normalized) {
         for (let i = _plSets.length-1; i >= 0; i--) {
           if (_plSets[i].set_number === normalized && _plSets[i].name === normalized) {

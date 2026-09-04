@@ -48,8 +48,50 @@ const GEHEIM = {
   smtp_pass:                 'GEHEIM-smtp-4715',
 };
 
-/** Leserouten, die global_settings ausliefern. Neue gehören hierher. */
-const LESEROUTEN = ['/api/settings/', '/api/settings/raw'];
+/**
+ * Leserouten, die global_settings ausliefern — GESUCHT, nicht aufgezählt.
+ *
+ * ── Warum das gedreht wurde ─────────────────────────────────────────────────
+ * Hier stand `['/api/settings/', '/api/settings/raw']`. Beim Zusammenlegen der
+ * API-Oberflächen ist die erste weggefallen (sie lieferte dasselbe wie /raw,
+ * nur anders verpackt, und hatte keinen Aufrufer) — übrig geblieben wäre
+ * GENAU DER ZUSTAND, vor dem der Absatz oben warnt: eine Prüfung, die die eine
+ * Stelle sichert, die man gerade repariert hat.
+ *
+ * Jetzt kommen die Kandidaten aus routes/settings.ts selbst: jede GET-Route.
+ * Eine neue Leseroute ist damit von selbst mitgeprüft.
+ *
+ * AUSGENOMMEN sind die Wege, die absichtlich etwas anderes tun — mit Grund.
+ * Wer hier einträgt, muss sagen warum; wer keinen Grund hat, hat eine Route
+ * gefunden, die Geheimnisse herausgibt.
+ */
+const AUSGENOMMEN = new Map([
+  ['/export', 'Die Konfigurations-Sicherung, die der Admin bewusst herunterlädt — ' +
+              'sie MUSS die Schlüssel enthalten, sonst liesse sie sich nicht ' +
+              'zurückspielen. Sie hängt hinter requireAdmin.'],
+  ['/export/data', 'ZIP mit Sets/Teilen/Minifiguren als CSV — enthält gar keine ' +
+                   'Einstellungen und liefert kein JSON.'],
+  ['/theme', 'Gibt genau einen Wert heraus (den Designnamen) und ist bewusst ' +
+             'ohne Login erreichbar, damit der Login-Bildschirm passt.'],
+  ['/tokens', 'Listet App-Token, keine Einstellungen. Die Token selbst stehen ' +
+              'nur als Hash in der Datenbank.'],
+]);
+
+function leserouten() {
+  const quelle = require('node:fs').readFileSync(
+    require('node:path').join(__dirname, '..', 'routes', 'settings.ts'), 'utf8')
+    .replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');
+  const gefunden = [...quelle.matchAll(/router\.get\(\s*'([^']+)'/g)].map(m => m[1]);
+  // Selbstbeweis: Griffe das Muster nicht, wäre die Liste leer und der Test
+  // grün, ohne eine einzige Route angesehen zu haben.
+  assert.ok(gefunden.length >= 4,
+    `Nur ${gefunden.length} GET-Routen in routes/settings.ts gefunden — Muster veraltet?`);
+  const veraltet = [...AUSGENOMMEN.keys()].filter(p => !gefunden.includes(p));
+  assert.deepEqual(veraltet, [],
+    'Diese Ausnahmen beschreiben keine Route mehr — streichen: ' + veraltet.join(', '));
+  return gefunden.filter(p => !AUSGENOMMEN.has(p))
+                 .map(p => '/api/v1/settings' + (p === '/' ? '' : p));
+}
 
 /** Alle Zeichenketten einer Antwort — egal wie tief verpackt. */
 function alleWerte(x, out = []) {
@@ -86,7 +128,7 @@ test('Einstellungen geben Geheimnisse nie im Klartext heraus', { concurrency: 1 
       req.session = { userId: uid, isAdmin };
       next();
     });
-    app.use('/api/settings', _req('routes/settings.js'));
+    app.use('/api/v1/settings', _req('routes/settings.js'));
     return app;
   };
   const srvUser  = appFuer(false).listen(0);
@@ -101,7 +143,7 @@ test('Einstellungen geben Geheimnisse nie im Klartext heraus', { concurrency: 1 
   };
 
   try {
-    for (const pfad of LESEROUTEN) {
+    for (const pfad of leserouten()) {
       // 1. Ein Konto OHNE Adminrechte darf die Schlüssel gar nicht sehen.
       const alsNutzer = await hol(baseUser, pfad);
       for (const [k, v] of Object.entries(GEHEIM)) {

@@ -101,7 +101,8 @@ class SetsRepository @Inject constructor(
 
     suspend fun getCsvImportStatus(serverUrl: String, token: String): Result<ch.brickinventoryapp.data.model.CsvImportStatus> {
         // Use full URL via Retrofit @Url — bypasses localhost rewrite, uses existing SSL client
-        val url = serverUrl.trimEnd('/') + "/api/sets/import/csv/status"
+        // Umgezogen nach /api/v1 — ein Adressraum (siehe server.ts).
+        val url = serverUrl.trimEnd('/') + "/api/v1/sets/import/csv/status"
         return safeCall { api.getCsvImportStatusDirect(url, "Bearer $token") }
     }
 

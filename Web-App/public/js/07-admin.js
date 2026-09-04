@@ -44,7 +44,7 @@ export function confirmDelete(title, msg, icon) {
 // ── CONFIG EXPORT / IMPORT ───────────────────────────────────
 G('btn-cfg-export').onclick = async () => {
   const a = document.createElement('a');
-  a.href = '/api/settings/export';
+  a.href = '/api/v1/settings/export';
   a.download = `brickinventory-manager-config-${new Date().toISOString().substring(0,10)}.json`;
   document.body.appendChild(a); a.click(); document.body.removeChild(a);
 };
@@ -56,7 +56,7 @@ async function importConfig() {
   st.textContent = 'Importiere…';
   const fd = new FormData(); fd.append('file', fi.files[0]);
   try {
-    const r = await fetch('/api/settings/import', { method: 'POST', body: fd });
+    const r = await fetch('/api/v1/settings/import', { method: 'POST', body: fd });
     const d = await r.json();
     if (d.success) {
       st.textContent = tRaw('settings.imported_note',{n:d.imported,note:d.note||''});
@@ -447,7 +447,7 @@ export function portfolioChartSVG(data, period, metric, yAxisData){
 // tatsächlich wandert. Wer alles verschieben will, ändert den Eigentümer jeder
 // Zeile — und sieht dabei, wie viele es sind.
 //
-// Der Server erzwingt dieselbe Regel: POST /api/sets/:sn/move ohne
+// Der Server erzwingt dieselbe Regel: POST /api/v1/sets/:sn/move ohne
 // acquisition_ids antwortet mit 400.
 
 export async function openModal(sn){

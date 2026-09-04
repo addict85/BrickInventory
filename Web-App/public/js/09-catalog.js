@@ -437,7 +437,7 @@ async function addCatalogSetToGallery(){
   closeCatModal();
   showProgress(t('gallery.adding_set', { num }), false);
   try {
-    await streamRequest('/api/sets/add-stream', { set_number: num, quantity: qty, purchase_price, condition, owner_user_id }, (ev)=>{
+    await streamRequest('/api/v1/sets/add-stream', { set_number: num, quantity: qty, purchase_price, condition, owner_user_id }, (ev)=>{
       handleSseEvent(ev, num);
       if (ev.step === 'done') {
         _activeAbort = null; G('btn-cancel-import').style.display = 'none';

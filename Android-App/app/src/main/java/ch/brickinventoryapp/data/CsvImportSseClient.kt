@@ -69,7 +69,8 @@ class CsvImportSseClient @Inject constructor(
         }
 
         val request = Request.Builder()
-            .url("$baseUrl/api/sets/import/csv/stream")
+            // Umgezogen nach /api/v1 — ein Adressraum (siehe server.ts).
+            .url("$baseUrl/api/v1/sets/import/csv/stream")
             .header("Authorization", "Bearer $token")
             .header("Accept", "text/event-stream")
             .build()

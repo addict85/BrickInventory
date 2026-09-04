@@ -29,6 +29,7 @@ const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
 
+const { routerEinhaengungen } = require('./helpers/sources');
 const ROOT = path.join(__dirname, '..');
 const SERVICE = path.join(ROOT, '..', 'Android-App', 'app', 'src', 'main',
   'java', 'ch', 'brickinventoryapp', 'data', 'api', 'BrickApiService.kt');
@@ -59,10 +60,11 @@ function routenAus(datei, mount) {
 
 function serverRouten() {
   const alle = new Set();
-  const MOUNT = { auth: '/api/auth', sets: '/api/sets', parts: '/api/parts',
-                  finance: '/api/finance', settings: '/api/settings', minifigs: '/api/minifigs' };
-  for (const [f, mount] of Object.entries(MOUNT))
-    for (const r of routenAus(path.join(ROOT, 'routes', `${f}.ts`), mount)) alle.add(r);
+  // Einhaengepunkte aus server.ts GELESEN statt abgeschrieben. Die Liste stand
+  // hier als Literal und wurde beim Zusammenlegen der API-Oberflaechen still
+  // falsch — samt „ENOENT: routes/finance.ts". Siehe routerEinhaengungen().
+  for (const r of routerEinhaengungen())
+    for (const x of routenAus(r.datei, r.mount)) alle.add(x);
 
   const v1 = path.join(ROOT, 'routes', 'api_v1');
   for (const f of fs.readdirSync(v1)) {

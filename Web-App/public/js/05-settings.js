@@ -33,13 +33,13 @@ G('btn-test-smtp')?.addEventListener('click', async()=>{
   const res = G('smtp-test-result');
   btn.disabled = true; btn.textContent = 'Teste…';
   // Save first
-  await api('POST','/settings',{
+  await api('POST','/v1/settings',{
     smtp_host: G('smtp-host').value.trim(), smtp_port: G('smtp-port').value||'587',
     smtp_user: G('smtp-user').value.trim(), smtp_pass: G('smtp-pass').value,
     smtp_from: G('smtp-from').value.trim(), smtp_secure: G('smtp-secure').checked?'1':'0',
     smtp_insecure_tls: G('smtp-insecure')?.checked?'1':'0',
   });
-  const d = await api('POST','/settings/smtp-test', { to: G('smtp-test-email')?.value?.trim() || ME?.email || '' });
+  const d = await api('POST','/v1/settings/smtp-test', { to: G('smtp-test-email')?.value?.trim() || ME?.email || '' });
   btn.disabled = false; btn.textContent = tRaw('smtp.test_btn');
   res.style.display = 'block';
   if(d.success) {
@@ -52,7 +52,7 @@ G('btn-test-smtp')?.addEventListener('click', async()=>{
 });
 
 G('btn-sav-smtp')?.addEventListener('click', async()=>{
-  const d=await api('POST','/settings',{
+  const d=await api('POST','/v1/settings',{
     smtp_host:   G('smtp-host').value.trim(),
     smtp_port:   G('smtp-port').value||'587',
     smtp_user:   G('smtp-user').value.trim(),
@@ -65,7 +65,7 @@ G('btn-sav-smtp')?.addEventListener('click', async()=>{
 });
 
 async function saveRegEnabled(){
-  const d=await api('POST','/settings',{ registration_enabled: G('reg-enabled').checked?'1':'0' });
+  const d=await api('POST','/v1/settings',{ registration_enabled: G('reg-enabled').checked?'1':'0' });
   toast(d.success?t('settings.reg_saved'):t('settings.error'),d.success?'success':'error');
 }
 
@@ -215,7 +215,7 @@ G('btn-sav-prof').onclick = async () => {
   const btn = G('btn-sav-prof'); btn.disabled = true;
   try {
     // Währung (Sprache speichert setLang() bereits beim Umschalten)
-    const dCur = await api('POST', '/settings', { currency: G('s-cur').value });
+    const dCur = await api('POST', '/v1/settings', { currency: G('s-cur').value });
     if (!dCur.success) { toast(dCur.error || t('settings.error'), 'error'); return; }
     set_CURRENCY(G('s-cur').value);
 
@@ -279,7 +279,7 @@ export async function loadSettings(){
   // Show cached data instantly so the tab never appears empty
   if(_settingsCache) applySettings(_settingsCache);
   loadHousehold();
-  const d=await api('GET','/settings/raw'); if(!d.success) return;
+  const d=await api('GET','/v1/settings/raw'); if(!d.success) return;
   set_settingsCache(d.settings);
   applySettings(_settingsCache);
 }
@@ -374,10 +374,10 @@ export async function unlinkHousehold(subUserId){
   toast(tRaw('household.unlink_ok'),'success');
   loadHousehold();
 }
-G('btn-sav-bl').onclick=async()=>{ const d=await api('POST','/settings',{bricklink_consumer_key:G('bl-ck').value,bricklink_consumer_secret:G('bl-cs').value,bricklink_token:G('bl-tok').value,bricklink_token_secret:G('bl-ts').value}); if(d.success) await api('PUT','/v1/admin/api-limits',{bricklink:parseInt(G('lim-bl').value)}); toast(d.success?t('settings.bl_saved'):t('settings.error'),d.success?'success':'error'); if(d.success){loadRateLimitStats();} };
-G('btn-sav-rb').onclick=async()=>{ const d=await api('POST','/settings',{rebrickable_api_key:G('rb-key').value}); if(d.success) await api('PUT','/v1/admin/api-limits',{rebrickable:parseInt(G('lim-rb').value)}); toast(d.success?t('settings.rb_saved'):t('settings.error'),d.success?'success':'error'); if(d.success){loadRateLimitStats();} };
-G('btn-sav-bs').onclick=async()=>{ const d=await api('POST','/settings',{brickset_api_key:G('bs-key').value}); if(d.success) await api('PUT','/v1/admin/api-limits',{brickset:parseInt(G('lim-bs').value)}); toast(d.success?t('settings.bs_saved'):t('settings.error'),d.success?'success':'error'); if(d.success){loadRateLimitStats();} };
-G('btn-save-theme').onclick=async()=>{ const theme=G('mon-app-theme')?.value||'classic'; const d=await api('POST','/settings/admin/theme',{theme}); if(d.success){ if(typeof applyTheme==='function') applyTheme(theme); if(_settingsCache) _settingsCache.app_theme=theme; } toast(d.success?t('settings.theme_saved'):t('settings.error'),d.success?'success':'error'); };
+G('btn-sav-bl').onclick=async()=>{ const d=await api('POST','/v1/settings',{bricklink_consumer_key:G('bl-ck').value,bricklink_consumer_secret:G('bl-cs').value,bricklink_token:G('bl-tok').value,bricklink_token_secret:G('bl-ts').value}); if(d.success) await api('PUT','/v1/admin/api-limits',{bricklink:parseInt(G('lim-bl').value)}); toast(d.success?t('settings.bl_saved'):t('settings.error'),d.success?'success':'error'); if(d.success){loadRateLimitStats();} };
+G('btn-sav-rb').onclick=async()=>{ const d=await api('POST','/v1/settings',{rebrickable_api_key:G('rb-key').value}); if(d.success) await api('PUT','/v1/admin/api-limits',{rebrickable:parseInt(G('lim-rb').value)}); toast(d.success?t('settings.rb_saved'):t('settings.error'),d.success?'success':'error'); if(d.success){loadRateLimitStats();} };
+G('btn-sav-bs').onclick=async()=>{ const d=await api('POST','/v1/settings',{brickset_api_key:G('bs-key').value}); if(d.success) await api('PUT','/v1/admin/api-limits',{brickset:parseInt(G('lim-bs').value)}); toast(d.success?t('settings.bs_saved'):t('settings.error'),d.success?'success':'error'); if(d.success){loadRateLimitStats();} };
+G('btn-save-theme').onclick=async()=>{ const theme=G('mon-app-theme')?.value||'classic'; const d=await api('POST','/v1/settings/admin/theme',{theme}); if(d.success){ if(typeof applyTheme==='function') applyTheme(theme); if(_settingsCache) _settingsCache.app_theme=theme; } toast(d.success?t('settings.theme_saved'):t('settings.error'),d.success?'success':'error'); };
 G('btn-clr-prices').onclick=async()=>{ await api('POST','/v1/admin/cache-clear'); toast(tRaw('settings.cache_cleared'),'success'); loadCacheStats(); };
 G('btn-clr-all-cache').onclick=async()=>{
   if(!await confirmDelete(tRaw('settings.all_cache.clear'),t('settings.all_cache.clear'),'🗄️')) return;
