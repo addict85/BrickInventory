@@ -109,15 +109,63 @@ jobs:
       - uses: actions/checkout@v6
 
       # pg_dump/psql für test/backup-restore-db.test.js. Der Postgres-DIENST
-      # oben ist ein Container — die Klienten laufen auf dem Runner. Ohne sie
-      # überspränge der Test sich selbst, und der Sicherungsweg bliebe genau so
-      # ungeprüft wie vor Nachtrag 152. Auf ubuntu-latest sind sie in aller
-      # Regel vorinstalliert; die Zeile stellt es sicher.
-      - name: PostgreSQL-Klienten bereitstellen
+      # oben ist ein Container — die Klienten laufen auf dem Runner.
+      #
+      # ── Warum die VERSION zählt (gemessen an Lauf 15) ────────────────────────
+      # Hier stand `command -v pg_dump || apt-get install postgresql-client`
+      # mit der Begründung, auf ubuntu-latest seien die Klienten „in aller Regel
+      # vorinstalliert; die Zeile stellt es sicher". Beides stimmte — und genau
+      # deshalb griff es daneben: Der vorinstallierte Klient IST da, aber in
+      # Version 16, während der Dienst oben 18 ist. pg_dump verweigert das:
+      #
+      #     pg_dump: error: aborting because of server version mismatch
+      #     pg_dump: detail: server version: 18.6; pg_dump version: 16.15
+      #
+      # Vier rote Tests, alle in backup-restore-db — der Sicherungsweg war
+      # damit genauso ungeprüft wie vorher, nur lauter.
+      #
+      # Die Hauptversion wird aus der Dienstdefinition OBEN GELESEN, nicht
+      # danebengeschrieben: Zwei Zahlen für dieselbe Sache laufen auseinander,
+      # und diese hier tat es schon.
+      - name: PostgreSQL-Klienten in der Version des Dienstes bereitstellen
+        working-directory: ${{ github.workspace }}
         run: |
-          command -v pg_dump >/dev/null 2>&1 \
-            || (sudo apt-get update -qq && sudo apt-get install -y -qq postgresql-client)
-          pg_dump --version
+          set -euo pipefail
+          # awk statt `grep | head`: Eine Kette, deren letztes Glied nur
+          # durchreicht, verliert unter pipefail den Rueckgabewert davor — und
+          # `head` schliesst die Leitung, sobald es genug hat (SIGPIPE fuer
+          # grep). Die Regel dagegen steht in test/build-tooling.test.js; hier
+          # gibt es schlicht keine Kette.
+          haupt=$(awk -F'image: postgres:' '/image: postgres:/ { split($2, a, /[^0-9]/); print a[1]; exit }' .github/workflows/web-ci.yml)
+          [ -n "$haupt" ] || { echo "::error::Hauptversion des Postgres-Dienstes nicht gefunden"; exit 1; }
+          if pg_dump --version 2>/dev/null | grep -qE "\\) ${haupt}\\."; then
+            echo "pg_dump passt bereits: $(pg_dump --version)"
+          else
+            echo "Vorhanden: $(pg_dump --version 2>/dev/null || echo 'kein pg_dump') — gebraucht wird $haupt"
+            sudo install -d /usr/share/postgresql-common/pgdg
+            sudo curl -fsSL -o /usr/share/postgresql-common/pgdg/apt.postgresql.org.asc \
+              https://www.postgresql.org/media/keys/ACCC4CF8.asc
+            echo "deb [signed-by=/usr/share/postgresql-common/pgdg/apt.postgresql.org.asc] https://apt.postgresql.org/pub/repos/apt $(lsb_release -cs)-pgdg main" \
+              | sudo tee /etc/apt/sources.list.d/pgdg.list >/dev/null
+            sudo apt-get update -qq
+            sudo apt-get install -y -qq "postgresql-client-${haupt}"
+            # Der neue Klient liegt neben dem alten; ohne diese Zeile gewinnt
+            # weiterhin /usr/bin/pg_dump aus der Version 16.
+            echo "/usr/lib/postgresql/${haupt}/bin" >> "$GITHUB_PATH"
+          fi
+
+      # Eigener Schritt, damit $GITHUB_PATH von oben schon gilt: Innerhalb des
+      # Schrittes, der ihn schreibt, wirkt er noch nicht.
+      - name: pg_dump passt zum Dienst
+        working-directory: ${{ github.workspace }}
+        run: |
+          set -euo pipefail
+          haupt=$(awk -F'image: postgres:' '/image: postgres:/ { split($2, a, /[^0-9]/); print a[1]; exit }' .github/workflows/web-ci.yml)
+          echo "pg_dump: $(pg_dump --version)"
+          pg_dump --version | grep -qE "\\) ${haupt}\\." || {
+            echo "::error::pg_dump ist nicht Version ${haupt} — backup-restore-db kann nicht laufen"
+            exit 1
+          }
 
       # v4 und v5 nachgesehen statt geraten (dieselbe Methode wie in android.yml):
       #     actions/setup-node@v4 -> runs.using: node20   (warnt)
@@ -183,21 +231,37 @@ jobs:
         run: |
           set -eu
           [ -f "$RUNNER_TEMP/test.log" ] || { echo "Kein Testprotokoll — der Lauf ist vorher gescheitert."; exit 0; }
+
+          # ── Zwei Reporter, ein Muster ──────────────────────────────────────
+          #
+          # `node --test` schreibt TAP („not ok 12 - …"), WENN die Ausgabe kein
+          # Terminal ist — so war es, als dieser Schritt entstand. Node 26
+          # nimmt den spec-Reporter, und der schreibt „✖ Name (12.3ms)".
+          #
+          # GEMESSEN an Lauf 15 (dem ersten, der auf main ueberhaupt lief):
+          # Vier Tests waren rot, `grep '^not ok'` fand KEINEN einzigen, und
+          # die Diagnose fiel in den Rueckfall „rot ohne einzelnen Fehlschlag"
+          # — die vier Namen standen nirgends in einer Annotation.
+          #
+          # Beide Formen, weil beide vorkommen koennen: Die Node-Fassung steht
+          # im Workflow, der Reporter haengt an ihr, und diese Zeile soll nicht
+          # das naechste Mal danebenliegen.
+          ROT_MUSTER='^(not ok|✖ )'
           {
             echo "## Rote Tests"
             echo ""
             echo '```'
-            grep -E '^not ok' "$RUNNER_TEMP/test.log" || echo "(keine — der Lauf ist an etwas anderem gescheitert)"
+            grep -E "$ROT_MUSTER" "$RUNNER_TEMP/test.log" || echo "(keine — der Lauf ist an etwas anderem gescheitert)"
             echo '```'
             echo ""
-            grep -E '^# (tests|pass|fail)' "$RUNNER_TEMP/test.log" || true
+            grep -E '^(#|ℹ) (tests|pass|fail) ' "$RUNNER_TEMP/test.log" || true
           } >> "$GITHUB_STEP_SUMMARY"
           echo "── Rote Tests samt Begruendung ──"
           # `-m 20` statt `| head`: Eine Kette, deren letztes Glied nur
           # durchreicht, verschluckt den Rueckgabewert davor. Hier waere das
           # harmlos — aber die Regel dagegen (test/build-tooling.test.js) soll
           # ohne Ausnahmeliste auskommen, und grep kann selbst begrenzen.
-          grep -E -m 20 -A 12 '^not ok' "$RUNNER_TEMP/test.log" || true
+          grep -E -m 20 -A 12 "$ROT_MUSTER" "$RUNNER_TEMP/test.log" || true
 
           # ── Und den Befund als ANNOTATION ───────────────────────────────────
           #
@@ -219,12 +283,17 @@ jobs:
           # laedt nicht, eine Ausnahme fliegt ausserhalb eines Tests, der
           # Prozess stirbt). Eine Diagnose, die nur den erwarteten Ausgang
           # abdeckt, schweigt genau dann, wenn etwas Unerwartetes passiert.
-          rot=$(grep -E -c '^not ok' "$RUNNER_TEMP/test.log" || true)
+          rot=$(grep -E -c "$ROT_MUSTER" "$RUNNER_TEMP/test.log" || true)
           if [ "${rot:-0}" -gt 0 ]; then
             while IFS= read -r zeile; do
               [ -n "$zeile" ] || continue
-              echo "::error title=Roter Test::${zeile#not ok }"
-            done < <(grep -E -m 20 '^not ok' "$RUNNER_TEMP/test.log" || true)
+              zeile=${zeile#not ok }
+              zeile=${zeile#✖ }
+              # „failing tests:" ist die Ueberschrift des spec-Reporters ueber
+              # der Liste, kein Testname.
+              [ "$zeile" != "failing tests:" ] || continue
+              echo "::error title=Roter Test::${zeile}"
+            done < <(grep -E -m 20 "$ROT_MUSTER" "$RUNNER_TEMP/test.log" || true)
           else
             # Kein einziger fehlgeschlagener Test, und trotzdem rot. Dann sagt
             # das ENDE des Protokolls, was los war — als eine Annotation, damit
@@ -233,7 +302,7 @@ jobs:
             echo "::error title=Testlauf ohne einzelnen Fehlschlag::$ende"
           fi
           # Die Summenzeile immer — sie sagt, ob ueberhaupt etwas gelaufen ist.
-          summe=$(grep -E '^# (tests|pass|fail)' "$RUNNER_TEMP/test.log" | tr '\n' ' ' || true)
+          summe=$(grep -E '^(#|ℹ) (tests|pass|fail) ' "$RUNNER_TEMP/test.log" | tr '\n' ' ' || true)
           echo "::notice title=Testsumme::${summe:-keine Summenzeile — der Lauf ist vor dem ersten Test gescheitert}"
 
       # npm audit hat einen eigenen Schritt, damit ein neuer Befund nicht in

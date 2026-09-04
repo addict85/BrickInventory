@@ -342,6 +342,52 @@ test('die Adresse der Test-Datenbank hat überall einen Rückfallwert', () => {
  * fuer den Fehlerfall, Annotationen fuer BEIDE Ausgaenge (etwas ist rot / es
  * ist rot, ohne dass ein einzelner Test rot ist) und die Summenzeile.
  */
+/**
+ * Der pg-Klient in CI hat die Hauptversion des Dienstes — und sie steht EINMAL.
+ *
+ * ── Der Befund (Lauf 15, der erste, der auf main ueberhaupt lief) ───────────
+ * Der Schritt hiess „PostgreSQL-Klienten bereitstellen" und tat
+ *
+ *     command -v pg_dump || apt-get install postgresql-client
+ *
+ * mit der Begruendung, auf ubuntu-latest seien die Klienten „in aller Regel
+ * vorinstalliert; die Zeile stellt es sicher". Beides stimmte — und genau
+ * deshalb griff es daneben: Der vorinstallierte Klient IST da, in Version 16,
+ * waehrend der Dienst 18 ist. pg_dump verweigert das rundheraus:
+ *
+ *     pg_dump: error: aborting because of server version mismatch
+ *     pg_dump: detail: server version: 18.6; pg_dump version: 16.15
+ *
+ * Vier rote Tests, alle in backup-restore-db. Der Sicherungsweg war damit
+ * genauso ungeprueft wie vor seiner Einfuehrung, nur lauter.
+ *
+ * ── Was die Regel prueft ────────────────────────────────────────────────────
+ * Nicht „steht die 18 da" — sondern dass die Zahl NICHT ZWEIMAL dasteht. Der
+ * Schritt liest sie aus der Dienstdefinition im selben Workflow. Zwei Zahlen
+ * fuer dieselbe Sache laufen auseinander, und diese hier tat es schon.
+ */
+test('der pg-Klient in CI folgt der Version des Dienstes', () => {
+  const yml = fs.readFileSync(path.join(ROOT, '..', '.github', 'workflows', 'web-ci.yml'), 'utf8');
+
+  // Selbstbeweis: Ohne Dienstdefinition prueft alles darunter nichts.
+  const dienst = yml.match(/image:\s*postgres:(\d+)/);
+  assert.ok(dienst, 'Keine Postgres-Dienstdefinition im Workflow gefunden — Muster veraltet?');
+
+  // Keine zweite Fassung derselben Zahl.
+  const festeKlienten = [...yml.matchAll(/postgresql-client-(\d+)/g)].map(m => m[1]);
+  assert.deepEqual(festeKlienten, [],
+    `Die Klientenversion steht als feste Zahl im Workflow (${festeKlienten.join(', ')}). ` +
+    `Der Dienst laeuft auf ${dienst[1]}; zwei Zahlen fuer dieselbe Sache laufen auseinander — ` +
+    'die Version gehoert aus der Dienstdefinition gelesen.');
+  assert.match(yml, /postgresql-client-\$\{haupt\}|postgresql-client-\$\{\{?\s*haupt/,
+    'Der Schritt installiert keinen Klienten, dessen Version aus dem Dienst stammt');
+
+  // Und es muss auch NACHGESEHEN werden: Der Klient liegt neben dem alten,
+  // ohne PATH-Eintrag gewinnt weiterhin der vorinstallierte.
+  assert.match(yml, /pg_dump --version \| grep/,
+    'Nach der Installation wird nicht geprueft, ob pg_dump wirklich die richtige Version ist');
+});
+
 test('beide Workflows melden, was rot war', () => {
   const wf = path.join(ROOT, '..', '.github', 'workflows');
   for (const datei of ['web-ci.yml', 'android.yml']) {
@@ -359,6 +405,27 @@ test('beide Workflows melden, was rot war', () => {
     const fehler = [...yml.matchAll(/::error title=/g)].length;
     assert.ok(fehler >= 2,
       `${datei}: nur ${fehler} Fehler-Annotation(en) — beide Ausgaenge muessen gemeldet werden`);
+    // ── Und der Reporter, den die eingestellte Node-Fassung wirklich nimmt ──
+    // `node --test` schrieb TAP („not ok"), als dieser Schritt entstand. Node
+    // 26 nimmt den spec-Reporter („✖ Name (12.3ms)"). GEMESSEN an Lauf 15:
+    // Vier Tests rot, `grep '^not ok'` fand keinen einzigen, die vier Namen
+    // standen in keiner Annotation. Der Web-Workflow muss deshalb BEIDE
+    // Formen kennen; der Android-Workflow liest Gradle und hat damit nichts
+    // zu tun.
+    //
+    // Geprueft wird die ZUWEISUNG, nicht das blosse Vorkommen: Der Erklaertext
+    // daneben nennt „✖ Name (12.3ms)" als Beispiel, und ein `assert.match(yml,
+    // /✖/)` war damit schon durch seinen eigenen Kommentar erfuellt — beim
+    // Gegenprobieren blieb er gruen. Dieselbe Falle wie mehrfach zuvor in
+    // dieser Suite.
+    if (datei === 'web-ci.yml') {
+      const zuweisung = (yml.match(/^\s*ROT_MUSTER=.*$/m) || [''])[0];
+      assert.ok(zuweisung, `${datei}: kein ROT_MUSTER definiert`);
+      assert.match(zuweisung, /not ok/, `${datei}: ROT_MUSTER kennt den TAP-Reporter nicht`);
+      assert.match(zuweisung, /✖/,
+        `${datei}: ROT_MUSTER kennt den spec-Reporter (Node 26) nicht — ` +
+        'gemessen an Lauf 15: vier rote Tests, kein einziger gemeldet');
+    }
     assert.match(yml, /::notice title=Testsumme::/,
       `${datei}: keine Summenzeile — dann sagt nichts, ob ueberhaupt etwas gelaufen ist`);
   }
