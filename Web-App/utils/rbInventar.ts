@@ -20,6 +20,7 @@
  * sie benutzt.
  */
 import * as db from '../db/database';
+import { beideSchreibweisen } from './setNummer';
 
 /**
  * Unter welchen Namen kann ein Set im Rebrickable-Inventar stehen?
@@ -29,8 +30,7 @@ import * as db from '../db/database';
  * ältere Bestände auch so abgelegt sein können.
  */
 export function inventarKandidaten(setNumber: string): [string, string] {
-  const mitVersion = String(setNumber).includes('-') ? String(setNumber) : `${setNumber}-1`;
-  return [mitVersion, mitVersion.replace(/-\d+$/, '')];
+  return beideSchreibweisen(setNumber);
 }
 
 /**

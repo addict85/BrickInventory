@@ -18,6 +18,7 @@ import { valueSet, valueAcquisitionRows, weightedPurchase, pnlPct as calcPnlPct,
 import { REBRICKABLE_DEFAULT_DAILY } from './rateLimiter';
 import { bricklinkRequest, getPriceGuide } from '../clients/bricklink';
 import { fehlertext } from '../utils/httpError';
+import { mitVersion, katalogEintrag, ohneBricklinkPreis } from './setNummer';
 
 /**
  * Zustand eines Sets nach derselben Regel wie die Anzeige
@@ -263,10 +264,12 @@ async function speicherePreis(setNumber: string, condition: string, currency: st
 }
 
 async function fetchPrice(setNumber: string, condition: string, guideType: string, currency: string, ttlHours: Stunden, pre: { catalog: Map<any, any>; cache: Map<string, any> } | null = null) {
+  // mitVersion() auch beim VORGELADENEN Weg: Die Karte wird unten aus
+  // catalog_cache gefuellt, also unter derselben Schreibweise wie die Tabelle.
   const catalogRow = pre?.catalog
-    ? (pre.catalog.get(setNumber) || null)
-    : await db.get('SELECT is_gear, bl_type FROM catalog_cache WHERE set_number = $1', [setNumber]);
-  if (catalogRow?.is_gear === 1 && catalogRow?.bl_type === 'NONE')
+    ? (pre.catalog.get(mitVersion(setNumber)) || null)
+    : await katalogEintrag(setNumber);
+  if (ohneBricklinkPreis(catalogRow))
     return { min_price:0, avg_price:0, max_price:0, qty_avg_price:0, from_cache:true, no_price:true };
 
   const ttl = Math.max(1, parseInt(String(ttlHours)));
@@ -374,7 +377,13 @@ async function computeSetsValuation(viewerId: number, ids: Blickfeld) {
   const ttl = Math.max(1, parseInt(String(ttlHours)));
   const setNumbers = sets.map(s => s.set_number);
   const [catRows, cacheRows, acqRows] = await Promise.all([
-    db.all('SELECT set_number, is_gear, bl_type FROM catalog_cache WHERE set_number = ANY($1)', [setNumbers]),
+    // mitVersion(): catalog_cache wird von clients/bricklink.ts unter der
+    // Nummer MIT Anhang gefuellt, price_cache dagegen unter der, die der
+    // Aufrufer mitgibt. Die beiden Tabellen haben also VERSCHIEDENE
+    // Schluesselgewohnheiten — deshalb wird hier normalisiert und in der
+    // Abfrage darunter nicht.
+    db.all('SELECT set_number, is_gear, bl_type FROM catalog_cache WHERE set_number = ANY($1)',
+           [setNumbers.map(mitVersion)]),
     db.all(
       `SELECT ${PRICE_CACHE_COLS} FROM price_cache
        WHERE set_number = ANY($1) AND currency_code = $2 AND fetched_at > NOW() - make_interval(hours => $3)`,

@@ -43,6 +43,7 @@ import { downloadSetInstructions, letzterAbrufWarExtern } from '../utils/instruc
 import { meldeUndWeiter, fehlertext } from '../utils/httpError';
 import { alsAbrufFehler } from '../clients/abrufFehler';
 import { getGlobalSetting, setGlobalSetting, setGlobalTrigger, deleteGlobalSetting } from '../utils/settings';
+import { mitVersion } from '../utils/setNummer';
 const monitor  = require('../utils/jobMonitor');
 const { logAndContinue } = require('../utils/httpError');
 
@@ -122,7 +123,7 @@ async function clearBlock() {
 }
 
 async function enqueue(setNumber: string) {
-  const n = setNumber.includes('-') ? setNumber : `${setNumber}-1`;
+  const n = mitVersion(setNumber);
   await db.run(
     `INSERT INTO instruction_queue (set_number, status) VALUES ($1, 'pending')
      ON CONFLICT (set_number) DO UPDATE SET status='pending', updated_at=NOW()`,

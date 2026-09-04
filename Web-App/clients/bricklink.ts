@@ -11,6 +11,7 @@ import { hatPreis } from '../utils/preisRegel';
 import https from 'https';
 import * as db from '../db/database';
 import { alsAbrufFehler } from './abrufFehler';
+import { mitVersion, katalogEintrag, ohneBricklinkPreis } from '../utils/setNummer';
 
 const BASE = 'https://api.bricklink.com/api/store/v1';
 
@@ -108,7 +109,7 @@ async function bricklinkRequest(method: string, path: string,
 }
 
 function getItemImageUrl(setNumber: string) {
-  const n = setNumber.includes('-') ? setNumber : `${setNumber}-1`;
+  const n = mitVersion(setNumber);
   return `https://img.bricklink.com/ItemImage/SN/0/${n}.png`;
 }
 
@@ -152,13 +153,13 @@ async function getPriceGuide(setNumber: string, condition = 'N', guideType = 'so
 // Vorgabe 'N': Ein Aufruf ohne expliziten Zustand hat vorher den
 // GEBRAUCHT-Preis geholt und im Cache abgelegt.
 async function getPriceGuideRaw(setNumber: string, condition = 'N', guideType = 'sold', currencyCode = 'EUR') {
-  const n = setNumber.includes('-') ? setNumber : `${setNumber}-1`;
+  const n = mitVersion(setNumber);
   const bare = n.replace(/-[0-9]+$/, '');
   const params = { guide_type: guideType, new_or_used: condition, currency_code: currencyCode, vat: 'N' };
-  const cached = await db.get('SELECT is_gear, bl_type FROM catalog_cache WHERE set_number = $1', [n]);
+  const cached = await katalogEintrag(n);
   if (cached?.bl_type === 'GEAR') return await bricklinkRequest('GET', `/items/gear/${bare}/price`, params);
   if (cached?.bl_type === 'BOOK') return await bricklinkRequest('GET', `/items/book/${bare}/price`, params);
-  if (cached?.is_gear === 1 && cached?.bl_type === 'NONE') throw new Error(`${n} — kein BrickLink-Preis verfügbar`);
+  if (ohneBricklinkPreis(cached)) throw new Error(`${n} — kein BrickLink-Preis verfügbar`);
   try {
     return await bricklinkRequest('GET', `/items/set/${n}/price`, params);
   } catch (e) {
@@ -200,12 +201,12 @@ async function getPriceGuideRaw(setNumber: string, condition = 'N', guideType = 
  * Import meldete tsc es sofort (Nachtrag 132).
  */
 async function clearSubsetsCache(sn: string | null = null) {
-  if (sn) await db.run('DELETE FROM subsets_cache WHERE set_number = $1', [sn.includes('-') ? sn : `${sn}-1`]);
+  if (sn) await db.run('DELETE FROM subsets_cache WHERE set_number = $1', [mitVersion(sn)]);
   else await db.run('DELETE FROM subsets_cache');
 }
 /** Siehe clearSubsetsCache(): ohne Setnummer der ganze Zwischenspeicher. */
 async function clearCatalogCache(sn: string | null = null) {
-  if (sn) await db.run('DELETE FROM catalog_cache WHERE set_number = $1', [sn.includes('-') ? sn : `${sn}-1`]);
+  if (sn) await db.run('DELETE FROM catalog_cache WHERE set_number = $1', [mitVersion(sn)]);
   else await db.run('DELETE FROM catalog_cache');
 }
 async function getCacheStats() {

@@ -126,6 +126,7 @@ import { findSetInScope } from '../utils/setAdd';
 import { loginOrTokenGuard } from '../utils/auth';
 import { csvEinlesen, entschaerfungRueckgaengig, parseCsvDate, sendCsv, uebersprungenHinweis } from '../utils/csvExport';
 import { ausTabelle } from '../utils/validate';
+import { mitVersion } from '../utils/setNummer';
 
 const requireLoginOrToken = loginOrTokenGuard({ timeoutMs: 3000 });
 
@@ -311,9 +312,9 @@ router.get('/import/csv/stream', requireLoginOrToken, async (req, res) => {
 // ── GET /api/sets/info/:setNumber — lightweight name lookup from shared catalog ─
 // Used by the Teileliste to resolve set names without requiring user ownership.
 router.get('/info/:setNumber', requireLogin, async (req, res) => {
-  const n = pfadParam(req, 'setNumber').includes('-')
-    ? req.params.setNumber
-    : req.params.setNumber + '-1';
+  // Die Bedingung sah den GEPRUEFTEN Wert an, beide Zweige gaben aber den
+  // rohen aus req.params zurueck — zwei verschiedene Werte in einer Zeile.
+  const n = mitVersion(pfadParam(req, 'setNumber'));
   try {
     const row = await db.get(
       'SELECT name, year, theme, pieces, image_url, image_local FROM set_catalog WHERE set_number = $1',

@@ -5,6 +5,7 @@ import { INSTRUCTIONS_DIR } from './appPaths';
 import { downloadFile, scrapeInstructions, sleep, httpsGetRobust } from '../clients/rebrickable';
 import * as brickset from '../clients/brickset';
 import { meldeUndWeiter, fehlertext } from './httpError';
+import { mitVersion } from './setNummer';
 
 /**
  * Bauanleitungen beschaffen: Rebrickable → Brickset → BrickLink-Designer →
@@ -80,7 +81,7 @@ let _letzterAbrufWarExtern = false;
 function letzterAbrufWarExtern(): boolean { return _letzterAbrufWarExtern; }
 
 async function scrapeInstructionsFromFallback(setNumber: string) {
-  const n = setNumber.includes('-') ? setNumber : `${setNumber}-1`;
+  const n = mitVersion(setNumber);
   const existing = (await db.get('SELECT COUNT(*) as c FROM shared_instructions WHERE set_number = $1', [n])).c;
   if (parseInt(existing) > 0) return parseInt(existing);
   const biAlreadyTried = await db.get("SELECT 1 FROM shared_instructions WHERE set_number = $1 AND url LIKE '%brickinstructions%'", [n]);
@@ -130,7 +131,7 @@ async function scrapeInstructionsFromFallback(setNumber: string) {
 // null füllt, sagt dem Leser bloss eine Möglichkeit vor, die es nicht gibt.
 async function downloadSetInstructions(setNumber: string,
                                        eigenerTakt = false) {
-  const n = setNumber.includes('-') ? setNumber : `${setNumber}-1`;
+  const n = mitVersion(setNumber);
 
   // ── Wurde für DIESES Set überhaupt ein fremder Server befragt? ────────────
   //

@@ -10,6 +10,7 @@ import { clampPageSize, applyManualCondition, withOwners, MAX_PAGE_SIZE, UNPAGED
 import { meldeUndWeiter } from '../../utils/httpError';
 import { getGlobalSetting } from '../../utils/settings';
 import { neuestesInventar, inventarKandidaten } from '../rbInventar';
+import { beideSchreibweisen } from '../setNummer';
 
 /**
  * Leseabfragen für Teile — inklusive der Ausweichebenen (CSV-Zwischenspeicher,
@@ -96,9 +97,8 @@ function teileFilter(uids: number[], query: any) {
   let pi = 2;
 
   if (set_number) {
-    const alt = set_number.includes('-') ? set_number.replace(/-\d+$/, '') : set_number + '-1';
     where += ` AND (p.set_number = $${pi} OR p.set_number = $${pi+1})`;
-    params.push(set_number, alt); pi += 2;
+    params.push(...beideSchreibweisen(set_number)); pi += 2;
   }
   if (color)    { where += ` AND p.color_name = $${pi++}`;    params.push(color); }
   // Kategorie auch über den Teilekatalog auflösen — parts.category_name steht

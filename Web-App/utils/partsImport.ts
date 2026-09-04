@@ -7,6 +7,7 @@ import { logAndContinue, fehlertext } from './httpError';
 import { generateThumb } from '../routes/thumbs';
 import { meldeUndWeiter } from '../utils/httpError';
 import { getGlobalSetting } from '../utils/settings';
+import { mitVersion } from './setNummer';
 
 /**
  * Teile eines Sets aus dem Katalog übernehmen.
@@ -92,7 +93,7 @@ async function syncBlPartNumbers() {
 // Ereignisse konnten den Browser also nicht mehr erreichen; der Fortschritts-
 // dialog zeigte trotzdem Punkte dafür an. Beides ist jetzt weg.
 async function importPartsForSet(setNumber: string, userId: number) {
-  const n = setNumber.includes('-') ? setNumber : `${setNumber}-1`;
+  const n = mitVersion(setNumber);
   try {
     const rawParts = await getAllSetParts(n);
     if (!rawParts || rawParts.length === 0) return 0;

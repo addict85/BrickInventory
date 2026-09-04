@@ -16,6 +16,7 @@ import * as db from '../db/database';
 import { rebrickableBackgroundLimiter } from '../utils/rateLimiter';
 import { fehlertext } from '../utils/httpError';
 import { neuestesInventar } from '../utils/rbInventar';
+import { mitVersion } from '../utils/setNummer';
 
 const BASE = 'https://rebrickable.com/api/v3';
 
@@ -120,7 +121,7 @@ async function getThemeName(themeId: number | string) {
 }
 
 async function getSetInfo(setNumber: string) {
-  const n = setNumber.includes('-') ? setNumber : `${setNumber}-1`;
+  const n = mitVersion(setNumber);
   const cached = await db.get('SELECT * FROM catalog_cache WHERE set_number = $1', [n]);
   if (cached?.name) return cached;
   const data = await rbGet(`/lego/sets/${n}/`);
@@ -185,7 +186,7 @@ async function getAllSetParts(setNumber: string) {
 }
 
 async function getAllSetPartsApi(setNumber: string) {
-  const n = setNumber.includes('-') ? setNumber : `${setNumber}-1`;
+  const n = mitVersion(setNumber);
   const cached = await db.get('SELECT data FROM subsets_cache WHERE set_number = $1', [n]);
   if (cached) { try { return JSON.parse(cached.data); } catch (_) {} }
   const key = await getRbKey();
@@ -225,7 +226,7 @@ async function getAllSetPartsApi(setNumber: string) {
 }
 
 async function scrapeInstructions(setNumber: string) {
-  const n = setNumber.includes('-') ? setNumber : `${setNumber}-1`;
+  const n = mitVersion(setNumber);
   try {
     const { status, body } = await httpsGetRobust(`https://rebrickable.com/sets/${n}/`, { 'User-Agent': 'Mozilla/5.0', 'Accept': 'text/html' }, 8000);
     if (status !== 200) return [];
@@ -289,7 +290,7 @@ function sleep(ms: number) { return new Promise(r => setTimeout(r, ms)); }
 
 // ── Minifigs in a set ─────────────────────────────────────────────────────────
 async function getSetMinifigs(setNumber: string) {
-  const n = setNumber.includes('-') ? setNumber : `${setNumber}-1`;
+  const n = mitVersion(setNumber);
   try {
     const key = await getRbKey();
     if (!key) return [];

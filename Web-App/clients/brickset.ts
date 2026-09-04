@@ -11,6 +11,7 @@ import * as db from '../db/database';
 import { checkAndIncrementRateLimit } from '../utils/financeCalc';
 import { fehlertext } from '../utils/httpError';
 import { alsAbrufFehler } from './abrufFehler';
+import { mitVersion } from '../utils/setNummer';
 
 const BASE = 'https://brickset.com/api/v3.asmx';
 
@@ -171,7 +172,7 @@ async function removeFromQueue(setNumber: string) {
 async function getSetInfo(setNumber: string) {
   const key = await getApiKey();
   if (!key) return null;
-  const n = setNumber.includes('-') ? setNumber : `${setNumber}-1`;
+  const n = mitVersion(setNumber);
   if (!await checkRateLimit(n)) return null; // limit reached — enqueued for retry
   try {
     const params = encodeURIComponent(JSON.stringify({ setNumber: n, pageSize: 1 }));
@@ -207,7 +208,7 @@ async function getSetInfo(setNumber: string) {
 async function getInstructions(setNumber: string) {
   const key = await getApiKey();
   if (!key) return { instructions: [], usesFallback: true };
-  const n = setNumber.includes('-') ? setNumber : `${setNumber}-1`;
+  const n = mitVersion(setNumber);
   if (!await checkRateLimit(n)) return { instructions: [], usesFallback: false }; // limit reached — enqueued, wait for retry
   try {
     const { status, body } = await httpsGet(`${BASE}/getInstructions2?apiKey=${encodeURIComponent(key)}&setNumber=${encodeURIComponent(n)}`);
