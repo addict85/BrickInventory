@@ -67,7 +67,13 @@ fun SetItemDetailDialog(
     val zustand by vm.setItemState.collectAsStateWithLifecycle()
     if (!zustand.offen) return
 
-    var zeigeZoom by remember { mutableStateOf(false) }
+    // rememberSaveable, nicht remember: Der geoeffnete Zoom ist eine
+    // Entscheidung des Nutzers und muss eine Drehung ueberstehen — so
+    // halten es die drei uebrigen Zoom-Stellen (SetDetailScreen,
+    // ManualItemDetailScreen, CatalogDetailScreen) auch. Gemeldet hat das
+    // BildschirmZustandTest; hier stand als einziger Stelle im Baum noch
+    // das blosse remember.
+    var zeigeZoom by rememberSaveable { mutableStateOf(false) }
     // stringResource() geht nur ausserhalb des LazyColumn-Rumpfs — dort ist
     // kein Composable-Kontext fuer jedes Element noetig, und einmal lesen
     // reicht.
@@ -113,7 +119,7 @@ fun SetItemDetailDialog(
                             // Dialog fuer manuell erfasste Teile.
                             AsyncImage(
                                 model = bild,
-                                contentDescription = kopf?.name,
+                                contentDescription = kopf.name,
                                 imageLoader = imageLoader,
                                 contentScale = ContentScale.Fit,
                                 modifier = Modifier
@@ -199,7 +205,7 @@ fun SetItemDetailDialog(
     if (zeigeZoom && bild != null) {
         ZoomableImageDialog(
             imageUrl = bild,
-            contentDescription = kopf?.name,
+            contentDescription = kopf.name,
             imageLoader = imageLoader,
             onDismiss = { zeigeZoom = false },
         )
