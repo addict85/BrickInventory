@@ -6,6 +6,7 @@ import ch.brickinventoryapp.data.repository.Result
 import ch.brickinventoryapp.service.PdfExportService
 import ch.brickinventoryapp.service.PdfExportState
 import ch.brickinventoryapp.util.BrickLinkWunschliste
+import ch.brickinventoryapp.util.IMG_PROXY
 import kotlinx.coroutines.flow.*
 
 
@@ -72,7 +73,7 @@ internal suspend fun MainViewModel.resolveSetForPartsList(setNumber: String): Pa
                             // CDN URL not yet proxied — route through our proxy
                             // Adresse aus ch.brickinventoryapp.util.ImageUrls — dort steht
                             // sie einmal, samt der alten Schreibweise fuer Altbestand.
-                            "$serverBase${ch.brickinventoryapp.util.IMG_PROXY}?url=${java.net.URLEncoder.encode(p.imageUrl, "UTF-8")}"
+                            "$serverBase$IMG_PROXY?url=${java.net.URLEncoder.encode(p.imageUrl, "UTF-8")}"
                         else -> "$serverBase${p.imageUrl}"
                     }
                     deduped[key] = ch.brickinventoryapp.ui.screens.PlPart(
