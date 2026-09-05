@@ -143,6 +143,24 @@ export function knopfBesetzt(btn, laeuft = '…') {
  *        ist bereits die richtige Adresse, siehe thumbUrl()).
  */
 /**
+ * Die Adresse des Bild-Proxys — und die alte daneben.
+ *
+ * Der Proxy ist mit der API-Zusammenlegung nach /api/v1 gezogen. Die alte
+ * Schreibweise muss der Browser trotzdem ERKENNEN: `image_url` kommt aus der
+ * Datenbank, und ein Abbild, das aelter ist als die Migration, traegt sie
+ * noch. GEBAUT wird nur die neue.
+ *
+ * Die Begruendung in ganzer Laenge steht serverseitig bei den gleichnamigen
+ * Konstanten in utils/images.ts.
+ */
+const IMG_PROXY = '/api/v1/img-proxy';
+const IMG_PROXY_ALT = '/api/img-proxy';
+/** Traegt diese Adresse eine der beiden Proxy-Formen? */
+function istProxyPfad(src) {
+  return src.startsWith(IMG_PROXY) || src.startsWith(IMG_PROXY_ALT);
+}
+
+/**
  * Adressen auf den EIGENEN Server auf ihren Pfad zurückführen.
  *
  * ── Warum das nötig ist ─────────────────────────────────────────────────────
@@ -188,7 +206,7 @@ export function imgUrl(src, thumb) {
   // gegen Cloudflares Hotlink-Schutz, entpackt komprimierte Antworten, hält
   // einen Plattencache und einen Negativ-Cache. Nichts davon wirkt, wenn der
   // Browser die Adresse selbst aufruft.
-  if (src.startsWith('/data/') || src.startsWith('/images/') || src.startsWith('/api/img-proxy')) {
+  if (src.startsWith('/data/') || src.startsWith('/images/') || istProxyPfad(src)) {
     return src;
   }
   // Sonstige relative Pfade (z. B. /assets/…) unverändert.
@@ -215,7 +233,7 @@ export function imgUrl(src, thumb) {
     // Minifiguren) bleibt bei `true`: Das sind ein paar hundert Bilder, die man
     // täglich wiedersieht, und dort lohnt die Verkleinerung.
     const tp = thumb === 'nur' ? '&thumb=1&gen=0' : (thumb ? '&thumb=1' : '');
-    return '/api/img-proxy?url=' + encodeURIComponent(src) + tp;
+    return IMG_PROXY + '?url=' + encodeURIComponent(src) + tp;
   }
   return src;
 }
@@ -229,11 +247,11 @@ export function imgUrl(src, thumb) {
 export function fullUrl(src) {
   if (!src) return src;
   src = stripOwnOrigin(src);
-  if (src.startsWith('/api/img-proxy')) return src.replace(/&thumb=1\b/, '').replace(/&gen=0\b/, '');
+  if (istProxyPfad(src)) return src.replace(/&thumb=1\b/, '').replace(/&gen=0\b/, '');
   // Absolute Adresse (CDN) auch hier über den Proxy — vorher wurde sie
   // unverändert zurückgegeben, sodass Detailansicht und Zoom direkt beim CDN
   // luden. Siehe die Begründung in imgUrl().
-  if (/^https?:\/\//.test(src)) return '/api/img-proxy?url=' + encodeURIComponent(src);
+  if (/^https?:\/\//.test(src)) return IMG_PROXY + '?url=' + encodeURIComponent(src);
   return src.replace(/_thumb(\.[^.?]+)(\?|$)/, '$1$2');
 }
 

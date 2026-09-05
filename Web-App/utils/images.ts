@@ -64,6 +64,36 @@ function resolveImageLocal(localPath: string | null | undefined) {
 }
 
 /**
+ * Die Adresse des Bild-Proxys — an EINER Stelle.
+ *
+ * ── Warum die alte Schreibweise weiterlebt (Nachtrag 162) ───────────────────
+ *
+ * Der Proxy hiess bis zur Zusammenlegung der API-Oberflächen `/api/img-proxy`
+ * und war damit die letzte Adresse neben `/api/v1`. Der Umzug ist gemacht,
+ * aber er kann nicht ersatzlos sein, und zwar aus zwei Gründen:
+ *
+ *  1. Diese Adresse wird GESPEICHERT, nicht nur gerufen: proxyImageUrl() baut
+ *     sie in `image_url`, und die Werte stehen so in den Tabellen. Für den
+ *     Bestand gibt es eine Migration; ein Abbild, das älter ist als sie,
+ *     trägt weiterhin die alte Form.
+ *  2. Installierte App-Fassungen bauen die Adresse SELBST zusammen
+ *     (ImageUrls.kt). Wer nicht aktualisiert, bekäme sonst überhaupt keine
+ *     Teilebilder mehr.
+ *
+ * Deshalb bedient der Server beide, baut aber nur noch die neue. Der ALTE
+ * Pfad ist eine Auslauf-Adresse, kein zweiter gleichrangiger Weg — das ist
+ * der Unterschied, den die Namen hier festhalten sollen.
+ */
+const IMG_PROXY_PFAD = '/api/v1/img-proxy';
+/** Nur noch für Altbestand und ältere App-Fassungen — siehe oben. */
+const IMG_PROXY_PFAD_ALT = '/api/img-proxy';
+
+/** Trägt diese Adresse eine der beiden Proxy-Formen? */
+function istProxyPfad(src: string): boolean {
+  return src.startsWith(IMG_PROXY_PFAD) || src.startsWith(IMG_PROXY_PFAD_ALT);
+}
+
+/**
  * Externe Bild-URLs ggf. über den Server-Proxy leiten: Nur die Rebrickable-CDN
  * braucht serverseitige Header (Hotlink-Schutz); alles andere lädt direkt.
  */
@@ -71,7 +101,7 @@ function resolveImageLocal(localPath: string | null | undefined) {
 function proxyImageUrl(url: string | null | undefined) {
   if (!url) return null;
   if (url.startsWith('/')) return url;
-  if (url.includes('rebrickable.com')) return `/api/img-proxy?url=${encodeURIComponent(url)}`;
+  if (url.includes('rebrickable.com')) return `${IMG_PROXY_PFAD}?url=${encodeURIComponent(url)}`;
   return url;
 }
 
@@ -115,4 +145,5 @@ function resolveIfExists(publicRelPath: string) {
   return exists ? resolveImageLocal(publicRelPath) : null;
 }
 
-export { resolveImageLocal, proxyImageUrl, resolveIfExists };
+export { resolveImageLocal, proxyImageUrl, resolveIfExists,
+         IMG_PROXY_PFAD, IMG_PROXY_PFAD_ALT, istProxyPfad };

@@ -67,8 +67,18 @@ class NoDirectCdnAccessTest {
         assert(src.contains("fun resolveThumbUrl")) { "resolveThumbUrl fehlt" }
         assert(src.contains("fun resolveFullUrl")) { "resolveFullUrl fehlt" }
         // CDN-Adressen MÜSSEN über den Server-Proxy laufen, nicht direkt.
-        assert(src.contains("/api/img-proxy?url=")) {
+        //
+        // Geprüft wird die KONSTANTE, nicht die Adresse: Sie ist mit der
+        // API-Zusammenlegung nach /api/v1/img-proxy gezogen (Nachtrag 162),
+        // und ein Test, der die Zeichenkette abschreibt, faellt bei jedem
+        // Umzug — oder, schlimmer, bleibt gruen, waehrend er auf eine Adresse
+        // prueft, die es nicht mehr gibt.
+        assert(src.contains("${'$'}IMG_PROXY?url=")) {
             "Die Auflösung muss externe Adressen über den Server-Proxy schicken"
+        }
+        assert(src.contains("const val IMG_PROXY = \"/api/v1/img-proxy\"")) {
+            "Die Proxy-Adresse steht nicht mehr als Konstante da — dann steht sie " +
+                "wieder mehrfach im Baum"
         }
         // Lokale Server-Pfade dürfen NICHT proxy-gewickelt werden (unnötig,
         // sie kommen bereits vom eigenen Server über express.static).
@@ -86,7 +96,7 @@ class NoDirectCdnAccessTest {
         // Fehler, der beim ersten Anlauf dieser Änderung entstand und wieder
         // rückgängig gemacht wurde.
         val feature = code(read("ui/PartsListFeature.kt"))
-        assert(feature.contains("/api/img-proxy?url=")) {
+        assert(feature.contains("${'$'}IMG_PROXY?url=")) {
             "PartsListFeature.kt muss die Auflösung weiterhin selbst übernehmen"
         }
         val screen = code(read("ui/screens/PartsListScreen.kt"))

@@ -156,7 +156,12 @@ test('die Webapp ruft nie direkt ein CDN auf', () => {
                              core.indexOf('export function imgUrl') > core.indexOf('export function fullUrl')
                                ? core.indexOf('export function imgUrl')
                                : core.indexOf('export function fullUrl') + 900);
-  assert.match(fullUrl, /api\/img-proxy\?url=/,
+  // Geprueft wird die KONSTANTE, nicht die Adresse: Der Proxy ist mit der
+  // API-Zusammenlegung nach /api/v1/img-proxy gezogen (Nachtrag 162), und ein
+  // Test, der die Zeichenkette abschreibt, prueft nach dem naechsten Umzug auf
+  // eine Adresse, die es nicht mehr gibt. Wo sie steht, haelt
+  // test/img-proxy-v1.test.js fest.
+  assert.match(fullUrl, /IMG_PROXY \+ '\?url='/,
     'fullUrl() muss absolute Adressen ebenfalls über den Proxy leiten');
 });
 
@@ -240,7 +245,12 @@ test('Adressen auf den eigenen Server gehen nicht durch den Proxy', () => {
   const ctx  = { console, encodeURIComponent, decodeURIComponent,
                  location: { origin: 'https://example.test' } };
   vm.createContext(ctx);
-  vm.runInContext(src.slice(src.indexOf('function stripOwnOrigin'),
+  // Ab den ADRESSHELFERN, nicht erst ab stripOwnOrigin: fullUrl() erkennt
+  // eine Proxy-Adresse ueber istProxyPfad(), und das steht mit den beiden
+  // Konstanten gleich darueber. Vorher endete dieser Pruefstand in
+  // „istProxyPfad is not defined" — die Funktion war da, nur nicht im
+  // ausgeschnittenen Stueck.
+  vm.runInContext(src.slice(src.indexOf('const IMG_PROXY ='),
                             src.indexOf('function escHtmlAttr')), ctx);
   const { imgUrl, fullUrl } = vm.runInContext('({ imgUrl, fullUrl })', ctx);
 
@@ -254,7 +264,7 @@ test('Adressen auf den eigenen Server gehen nicht durch den Proxy', () => {
   // Fremde Hosts laufen weiterhin über den Proxy — das ist der Zweck der
   // Umstellung und darf durch diesen Fix nicht verlorengehen.
   assert.match(fullUrl('https://cdn.rebrickable.com/media/sets/9396-1.jpg'),
-    /^\/api\/img-proxy\?url=/,
+    /^\/api\/v1\/img-proxy\?url=/,
     'CDN-Adressen müssen weiterhin über das Backend laufen');
 });
 

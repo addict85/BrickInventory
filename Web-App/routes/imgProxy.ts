@@ -28,6 +28,7 @@ import { queueThumb } from '../utils/proxyThumbs';
 import { liefereAusCache } from '../utils/imgCacheServe';
 import { imgProxyFailures } from '../utils/imgProxyStats';
 import { istBekanntFehlend, merkeFehlend } from '../utils/imageMisses';
+import { IMG_PROXY_PFAD, IMG_PROXY_PFAD_ALT } from '../utils/images';
 import type { Request, Response, Express } from 'express';
 import type { OutgoingHttpHeaders } from 'http';
 import crypto from 'crypto';
@@ -553,9 +554,19 @@ export async function bildDurchreichen(req: Request, res: Response) {
   });
 }
 
-/** Die Route anmelden. Der Ablauf steht in bildDurchreichen(). */
+/**
+ * Die Route anmelden — unter BEIDEN Adressen. Der Ablauf steht in
+ * bildDurchreichen().
+ *
+ * Die kanonische ist /api/v1/img-proxy; alles, was der Server heute baut, und
+ * beide Oberflächen benutzen sie. Die alte bleibt bedient, weil ihre Adresse
+ * in Datenbankzeilen steht und installierte App-Fassungen sie selbst
+ * zusammenbauen — die Begründung samt Auslauf-Charakter steht bei den
+ * Konstanten in utils/images.ts.
+ */
 function registerImgProxy(app: Express) {
-  app.get('/api/img-proxy', bildDurchreichen);
+  app.get(IMG_PROXY_PFAD, bildDurchreichen);
+  app.get(IMG_PROXY_PFAD_ALT, bildDurchreichen);
 }
 
 /**

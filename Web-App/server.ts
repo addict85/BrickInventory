@@ -385,6 +385,9 @@ app.use(session({
 const { resolveUserId } = require('./utils/auth') as typeof import('./utils/auth');
 // Pfade zentral — NICHT aus __dirname ableiten, siehe utils/appPaths.ts.
 const {  DATA_DIR, PUBLIC_DIR } = require('./utils/appPaths') as typeof import('./utils/appPaths');
+// Die Adresse des Bild-Proxys steht in utils/images.ts — EINMAL, samt der
+// Begruendung, warum es die alte Schreibweise weiterhin gibt.
+const { IMG_PROXY_PFAD } = require('./utils/images') as typeof import('./utils/images');
 
 // Path-Traversal-Schutz: Segmente wie ".." oder absolute Pfade könnten sonst
 // aus dem data/-Verzeichnis ausbrechen (z.B. /data/uploads/..%2f..%2fserver.js).
@@ -618,7 +621,7 @@ app.get('/images/*', async (req: WildcardRequest, res: Response) => {
     const webPath = '/images/' + segments.join('/');
     const cdn = await lookupCdnForMissingImage(webPath).catch(() => null);
     if (cdn && !res.headersSent) {
-      return res.redirect(302, '/api/img-proxy?url=' + encodeURIComponent(cdn));
+      return res.redirect(302, IMG_PROXY_PFAD + '?url=' + encodeURIComponent(cdn));
     }
     if (!res.headersSent) res.status(404).send('Datei nicht gefunden');
   });

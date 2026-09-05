@@ -477,7 +477,9 @@ function escapeLike(s: unknown): string { return String(s ?? '').replace(/([%_\\
  * EventSource fehlt oder abbricht — derselbe Client, dieselbe Einschränkung.
  */
 const TOKEN_QUERY_ALLOWED = [
-  /^\/api\/img-proxy\b/,
+  // Beide Schreibweisen des Bild-Proxys — die alte bedient noch
+  // gespeicherte Zeilen und aeltere App-Fassungen (utils/images.ts).
+  /^\/api\/(?:v1\/)?img-proxy\b/,
   /^\/data\//,
   // ── Der Pfad ist mit umgezogen, dieser Eintrag war es nicht ───────────────
   //
