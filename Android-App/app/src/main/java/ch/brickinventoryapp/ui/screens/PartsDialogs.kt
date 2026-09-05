@@ -135,30 +135,15 @@ fun AddPartDialog(
                         }
                     }
                 }
-                OutlinedTextField(
-                    value = quantity, onValueChange = { quantity = NumericInput.quantity(it) },
-                    label = { Text(stringResource(R.string.parts_quantity)) },
-                    modifier = Modifier.fillMaxWidth(), singleLine = true,
-                    shape = Formen.knopf,
-                    keyboardOptions = NumericInput.ganzzahlTastatur()
+                ErfassungsFelder(
+                    anzahl = quantity, onAnzahl = { quantity = it },
+                    preis = unitPrice, onPreis = { unitPrice = it },
+                    notiz = note, onNotiz = { note = it },
+                    zustand = condition, onZustand = { condition = it },
                 )
-                OutlinedTextField(
-                    value = unitPrice, onValueChange = { unitPrice = NumericInput.price(it) },
-                    label = { Text(stringResource(R.string.parts_unit_price)) }, placeholder = { Text(stringResource(R.string.parts_unit_price_placeholder)) },
-                    modifier = Modifier.fillMaxWidth(), singleLine = true,
-                    shape = Formen.knopf,
-                    keyboardOptions = NumericInput.preisTastatur()
-                )
-                OutlinedTextField(
-                    value = note, onValueChange = { note = it },
-                    label = { Text(stringResource(R.string.parts_note)) },
-                    modifier = Modifier.fillMaxWidth(), singleLine = true,
-                    shape = Formen.knopf
-                )
-                Zustandszeile(zustand = condition, onZustand = { condition = it })
             }
         },
         confirmButton = { TextButton(onClick = { submit(); onDismiss() }) { Text(stringResource(R.string.parts_add_button)) } },
-        dismissButton = { TextButton(onClick = onDismiss) { Text(stringResource(R.string.parts_cancel)) } }
+        dismissButton = { TextButton(onClick = onDismiss) { Text(stringResource(R.string.common_cancel)) } }
     )
 }

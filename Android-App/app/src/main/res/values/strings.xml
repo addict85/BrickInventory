@@ -16,10 +16,10 @@
     <string name="detail_purchase_price">Purchase price</string>
     <string name="detail_price_placeholder">Market price</string>
         <string name="common_back">Back</string>
-    <string name="acq_back">Back</string>
     <string name="acq_delete_title">Delete entry</string>
     <string name="acq_delete_text">Delete this purchase price entry? The total quantity will be adjusted accordingly.</string>
     <string name="common_delete">Delete</string>
+    <string name="common_edit">Edit</string>
     <string name="common_cancel">Cancel</string>
     <string name="settings_default_condition">Default condition</string>
     <string name="settings_default_condition_effective">Currently in effect: %1$s.</string>
@@ -113,7 +113,6 @@
     <string name="gallery_refresh">Refresh</string>
     <string name="gallery_no_results">No results for “%1$s”</string>
     <string name="gallery_quantity_badge">×%1$d</string>
-    <string name="gallery_delete">Delete</string>
     <string name="gallery_delete_title">Delete set?</string>
     <string name="gallery_delete_text">%1$s and all parts will be removed.</string>
     <string name="gallery_pieces_suffix"> parts</string>
@@ -122,11 +121,8 @@
     <string name="gallery_add_set_title">Add set</string>
     <string name="gallery_set_number">Set number</string>
     <string name="gallery_set_number_placeholder">e.g. 75192-1 or 75192</string>
-    <string name="gallery_quantity">Quantity</string>
     <string name="gallery_purchase_price">Purchase price (optional)</string>
-    <string name="gallery_purchase_price_placeholder">Empty = current market price</string>
     <string name="gallery_add">Add</string>
-    <string name="gallery_cancel">Cancel</string>
 
     <!-- ══════════════ Minifigs screen ══════════════ -->
     <string name="minifigs_stat_types">Types</string>
@@ -139,20 +135,13 @@
     <string name="minifigs_loaded_on_import">Minifigures are loaded when sets are imported</string>
     <string name="minifigs_no_results">No results</string>
     <string name="minifigs_add">Add minifigure</string>
-    <string name="minifigs_edit">Edit</string>
-    <string name="minifigs_delete">Delete</string>
     <string name="minifigs_add_title">Add minifigure</string>
     <string name="minifigs_fig_number">Figure number</string>
     <string name="minifigs_fig_number_placeholder">e.g. fig-007357 (Rebrickable)</string>
     <string name="minifigs_bl_number">BrickLink no. (optional)</string>
     <string name="minifigs_bl_number_placeholder">e.g. sw0001 — for market price</string>
     <string name="minifigs_bl_hint">Rebrickable and BrickLink numbers usually differ. Without a BrickLink number, the market price is approximated from the figure\'s individual parts.</string>
-    <string name="minifigs_quantity">Quantity</string>
-    <string name="minifigs_unit_price">Purchase price/pc (optional)</string>
-    <string name="minifigs_unit_price_placeholder">Empty = current market price</string>
-    <string name="minifigs_note">Note (optional)</string>
     <string name="minifigs_add_button">Add</string>
-    <string name="minifigs_cancel">Cancel</string>
     <string name="minifigs_delete_title">Delete minifigure?</string>
     <string name="minifigs_delete_text">%1$s will be removed from your collection.</string>
     <string name="minifigs_manual_badge">Manual</string>
@@ -214,20 +203,13 @@
     <string name="parts_sets_section">From sets</string>
     <string name="parts_none">No parts</string>
     <string name="parts_add">Add part</string>
-    <string name="parts_edit">Edit</string>
-    <string name="parts_delete">Delete</string>
     <string name="parts_delete_title">Delete part?</string>
     <string name="parts_delete_text">%1$s will be removed from your collection.</string>
-    <string name="parts_quantity">Quantity</string>
-    <string name="parts_unit_price">Purchase price/pc (optional)</string>
-    <string name="parts_unit_price_placeholder">Empty = current market price</string>
-    <string name="parts_cancel">Cancel</string>
     <string name="parts_add_title">Add part</string>
     <string name="parts_part_number">Part number</string>
     <string name="parts_part_number_placeholder">e.g. 3001</string>
     <string name="parts_no_color">No color</string>
     <string name="parts_color_label">Color (optional)</string>
-    <string name="parts_note">Note (optional)</string>
     <string name="parts_add_button">Add</string>
 
     <!-- ══════════════ Monitoring screen ══════════════ -->
@@ -239,7 +221,6 @@
     <string name="monitoring_queue_collapse">Collapse queue</string>
     <string name="monitoring_queue_show">Show queue (%1$d)</string>
     <string name="monitoring_icon_retry">Retry</string>
-    <string name="monitoring_icon_delete">Delete</string>
     <string name="monitoring_hide_error">Hide error</string>
     <string name="monitoring_show_error">Show last error</string>
     <string name="monitoring_price_cache">PRICE CACHE</string>
@@ -252,7 +233,6 @@
     <string name="monitoring_cache_clear_all">Clear all</string>
     <string name="monitoring_cache_clear_hint">Cached prices are discarded. Rebuilding them uses requests from the shared daily quota.</string>
     <string name="monitoring_cache_clear_confirm">Clear</string>
-    <string name="monitoring_cache_clear_cancel">Cancel</string>
     <string name="monitoring_cache_cleared">Cache cleared</string>
     <string name="monitoring_cache_saved">Cache duration saved</string>
     <string name="monitoring_api_calls">API CALLS</string>
@@ -263,8 +243,6 @@
     <string name="monitoring_start_error">Error starting</string>
 
     <!-- ══════════════ Set detail screen ══════════════ -->
-    <string name="detail_back">Back</string>
-    <string name="detail_delete">Delete</string>
     <string name="detail_year">Year</string>
     <string name="detail_pieces">Pieces</string>
     <string name="detail_minifigs">Minifigs</string>
@@ -276,7 +254,6 @@
     <string name="detail_section_item">Details</string>
     <string name="detail_set_number">Set number</string>
     <string name="detail_added">Added</string>
-    <string name="detail_quantity">Quantity</string>
     <string name="detail_section_market">Market price</string>
     <string name="detail_instructions_with_count">Instructions (%1$d)</string>
     <string name="detail_instructions">Instructions</string>
@@ -306,7 +283,6 @@
     <string name="main_barcode_year">Year</string>
     <string name="main_barcode_pieces">Pieces</string>
     <string name="main_barcode_figs">Figures</string>
-    <string name="main_barcode_cancel">Cancel</string>
     <string name="main_account">Account</string>
     <string name="main_menu_monitoring">Monitoring</string>
     <string name="main_menu_logout">Log out</string>
@@ -335,6 +311,9 @@
     <string name="parts_filter_no_spare">Without spare parts</string>
     <string name="parts_filter_spare">Spare parts only</string>
     <string name="common_quantity">Quantity</string>
+    <string name="common_unit_price">Purchase price/pc (optional)</string>
+    <string name="common_unit_price_placeholder">Empty = current market price</string>
+    <string name="common_note">Note (optional)</string>
     <string name="common_loading">Loading…</string>
     <string name="detail_price_loading">Loading price…</string>
     <string name="vm_saved">Saved</string>

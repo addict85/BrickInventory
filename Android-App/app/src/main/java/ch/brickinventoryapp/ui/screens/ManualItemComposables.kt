@@ -7,6 +7,16 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.Edit
+import androidx.compose.foundation.background
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
+import coil.ImageLoader
+import coil.compose.AsyncImage
+import coil.request.ImageRequest
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -220,5 +230,180 @@ fun ManuelleKachelFuss(preis: Double?, waehrung: String, notiz: String?) {
             maxLines = 1,
             overflow = TextOverflow.Ellipsis,
         )
+    }
+}
+
+/**
+ * Anzahl, Kaufpreis, Notiz und Zustand — die vier Angaben, die JEDE manuelle
+ * Erfassung hat, ob Teil oder Minifigur.
+ *
+ * ── Warum das zusammengezogen ist ───────────────────────────────────────────
+ *
+ * NACHGEMESSEN: Der Block stand zeichengleich in AddPartDialog (PartsDialogs.kt)
+ * und AddMinifigDialog (MinifigsScreen.kt) — vier Felder, dieselben Formen,
+ * dieselben Tastaturen, und darunter dieselbe Zustandszeile. Nur die Namen der
+ * Textressourcen waren verschieden, und deren INHALT war in beiden Sprachen
+ * wortgleich. Zwei Dialoge, die dasselbe erfassen und gleich aussehen sollen,
+ * sind der Fall, für den es diese Datei gibt.
+ *
+ * Der Zustand bleibt bei den Aufrufern: Dort steht er in `rememberSaveable` und
+ * übersteht damit eine Drehung. Hierher gereicht wird nur, was angezeigt wird —
+ * eine Textfeld-Gruppe, die ihre Werte selbst hielte, wäre in einem Dialog
+ * genau einmal richtig und beim nächsten Aufruf falsch vorbelegt.
+ *
+ * Was NICHT hierher kommt, ist die jeweilige Nummer: Ein Teil hat Nummer und
+ * Farbe, eine Figur ihre Rebrickable- und ihre BrickLink-Nummer. Das ist der
+ * echte Unterschied zwischen den beiden Dialogen, und er soll sichtbar bleiben.
+ */
+@Composable
+fun ErfassungsFelder(
+    anzahl: String,
+    onAnzahl: (String) -> Unit,
+    preis: String,
+    onPreis: (String) -> Unit,
+    notiz: String,
+    onNotiz: (String) -> Unit,
+    zustand: String,
+    onZustand: (String) -> Unit,
+) {
+    OutlinedTextField(
+        value = anzahl, onValueChange = { onAnzahl(NumericInput.quantity(it)) },
+        label = { Text(stringResource(R.string.common_quantity)) },
+        modifier = Modifier.fillMaxWidth(), singleLine = true,
+        shape = Formen.knopf,
+        keyboardOptions = NumericInput.ganzzahlTastatur(),
+    )
+    OutlinedTextField(
+        value = preis, onValueChange = { onPreis(NumericInput.price(it)) },
+        label = { Text(stringResource(R.string.common_unit_price)) },
+        placeholder = { Text(stringResource(R.string.common_unit_price_placeholder)) },
+        modifier = Modifier.fillMaxWidth(), singleLine = true,
+        shape = Formen.knopf,
+        keyboardOptions = NumericInput.preisTastatur(),
+    )
+    OutlinedTextField(
+        value = notiz, onValueChange = onNotiz,
+        label = { Text(stringResource(R.string.common_note)) },
+        modifier = Modifier.fillMaxWidth(), singleLine = true,
+        shape = Formen.knopf,
+    )
+    Zustandszeile(zustand = zustand, onZustand = onZustand)
+}
+
+/**
+ * Die Kachel eines MANUELL erfassten Teils oder einer manuell erfassten
+ * Minifigur.
+ *
+ * ── Warum eine gemeinsame Fassung ───────────────────────────────────────────
+ *
+ * NACHGEMESSEN standen ManualPartTile (PartsScreen.kt) und ManualFigTile
+ * (MinifigsScreen.kt) mit drei sich ueberlappenden Achtzeilern in der
+ * Doppelungsmessung — Rahmen, Bildkasten, Mengen-Plakette, beide Knoepfe und
+ * der Fuss waren zeichengleich. Was die Doppelung kostet, steht schon in
+ * ManualFigTile: Der Figuren-Kachel fehlten Zustands- und Besitzer-Plaketten
+ * MONATELANG, weil sie nur in der Teile-Kachel nachgezogen wurden. Gefunden
+ * wurde das nicht durch Lesen, sondern durch den Vergleich der beiden Dateien.
+ *
+ * Eine gemeinsame Kachel macht diesen Fehler unmoeglich: Was hier steht, steht
+ * fuer beide.
+ *
+ * ── Was Parameter ist und was nicht ─────────────────────────────────────────
+ *
+ * Verschieden sind nur vier Dinge, und die kommen herein: das Ersatzbild (Stein
+ * bzw. Figur), der Farbpunkt und die Farbzeile (beides gibt es nur bei Teilen)
+ * und die Bezeichnung. Alles andere — Groesse, Form, Erhebung, die Stellen der
+ * Plaketten, die Reihenfolge Name/Farbe/Zustand/Besitzer/Preis — gehoert zur
+ * Kachel und nicht zum Aufrufer.
+ *
+ * @param platzhalter Was im Bildkasten steht, wenn es kein Bild gibt.
+ */
+@Composable
+fun ManuelleKachel(
+    bildUrl: String?,
+    onBildFehler: () -> Unit,
+    imageLoader: ImageLoader,
+    name: String,
+    menge: Int,
+    zustaende: List<String>,
+    zustand: String?,
+    besitzer: List<ch.brickinventoryapp.data.model.HouseholdMember>,
+    preis: Double?,
+    waehrung: String,
+    notiz: String?,
+    onEdit: () -> Unit,
+    onDelete: () -> Unit,
+    farbe: Color? = null,
+    farbname: String? = null,
+    platzhalter: @Composable () -> Unit,
+) {
+    val ctx = LocalContext.current
+    Card(
+        onClick = onEdit,  // ganze Karte klickbar — öffnet den Kaufpreis/Anzahl-Dialog, analog Sets
+        modifier = Modifier.width(Formen.kachelBreite).height(Formen.kachelHoehe),
+        shape = Formen.leiste,
+        elevation = CardDefaults.cardElevation(defaultElevation = Formen.karteErhebung),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+    ) {
+        Column {
+            Box(Modifier.fillMaxWidth().height(76.dp)) {
+                if (bildUrl != null) {
+                    AsyncImage(
+                        model = ImageRequest.Builder(ctx).data(bildUrl).crossfade(true).build(),
+                        imageLoader = imageLoader,
+                        contentDescription = name,
+                        onState = { st ->
+                            if (st is coil.compose.AsyncImagePainter.State.Error) onBildFehler()
+                        },
+                        modifier = Modifier.fillMaxSize().clip(Formen.kachelBildEcken),
+                        contentScale = ContentScale.Fit,
+                    )
+                } else {
+                    Box(Modifier.fillMaxSize(), Alignment.Center) { platzhalter() }
+                }
+                Surface(
+                    color = MaterialTheme.colorScheme.primary,
+                    shape = Formen.marke,
+                    modifier = Modifier.align(Alignment.TopEnd).padding(3.dp),
+                ) {
+                    // Die Menge-Plakette: „×N" auf einer MANUELL erfassten Kachel,
+                    // „N×" auf einer Kachel aus einem Set. Das ist keine Laune,
+                    // sondern die Regel der Webapp — `man-tile` traegt dort ein
+                    // `qbadge` mit ×N, `part-card` ein `part-qty` mit N×.
+                    Text("×$menge", Modifier.padding(horizontal = 4.dp, vertical = 1.dp),
+                        color = MaterialTheme.colorScheme.onPrimary,
+                        style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.Bold)
+                }
+                if (farbe != null) {
+                    Box(Modifier.size(12.dp).align(Alignment.BottomStart).padding(3.dp)
+                        .clip(CircleShape).background(farbe))
+                }
+                Row(Modifier.align(Alignment.TopStart).padding(2.dp)) {
+                    IconButton(onClick = onEdit, modifier = Modifier.size(24.dp)) {
+                        Icon(Icons.Default.Edit, stringResource(R.string.common_edit),
+                            Modifier.size(14.dp), tint = MaterialTheme.colorScheme.primary)
+                    }
+                }
+                IconButton(onClick = onDelete,
+                    modifier = Modifier.align(Alignment.BottomEnd).size(24.dp)) {
+                    Icon(Icons.Default.Delete, stringResource(R.string.common_delete),
+                        Modifier.size(14.dp), tint = MaterialTheme.colorScheme.error)
+                }
+            }
+            Column(Modifier.padding(horizontal = 6.dp, vertical = 4.dp)) {
+                Text(name, style = MaterialTheme.typography.labelSmall,
+                    fontWeight = FontWeight.SemiBold, maxLines = 2, overflow = TextOverflow.Ellipsis)
+                if (farbname != null) {
+                    Text(farbname, style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        maxLines = 1, overflow = TextOverflow.Ellipsis)
+                }
+                Box(Modifier.padding(top = 3.dp)) { ConditionBadges(zustaende, zustand) }
+                // Wem gehört der Eintrag? Der Server hängt owners nur an, wenn
+                // mehrere Konten im Blickfeld sind — im Einzelkonto stünde an
+                // jeder Kachel „gehört mir".
+                OwnerBadges(besitzer, Modifier.padding(top = 2.dp))
+                ManuelleKachelFuss(preis = preis, waehrung = waehrung, notiz = notiz)
+            }
+        }
     }
 }

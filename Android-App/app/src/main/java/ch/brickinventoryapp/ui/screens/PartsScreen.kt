@@ -338,10 +338,10 @@ fun PartsScreen(
             text = { Text(stringResource(R.string.parts_delete_text, part.partName ?: part.partNumber)) },
             confirmButton = {
                 TextButton(onClick = { onDeletePart(part.partNumber, part.colorId, part.userId); deletingPart = null }) {
-                    Text(stringResource(R.string.parts_delete), color = MaterialTheme.colorScheme.error)
+                    Text(stringResource(R.string.common_delete), color = MaterialTheme.colorScheme.error)
                 }
             },
-            dismissButton = { TextButton(onClick = { deletingPart = null }) { Text(stringResource(R.string.parts_cancel)) } }
+            dismissButton = { TextButton(onClick = { deletingPart = null }) { Text(stringResource(R.string.common_cancel)) } }
         )
     }
 }
@@ -349,86 +349,37 @@ fun PartsScreen(
 @Composable
 fun ManualPartTile(part: PartValuationItem, serverUrl: String, imageLoader: ImageLoader,
                    waehrung: String, onEdit: () -> Unit, onDelete: () -> Unit) {
-    val ctx = LocalContext.current
-    val colorObj = remember(part.colorHex) {
+    val farbe = remember(part.colorHex) {
         part.colorHex?.let {
             try { Color(android.graphics.Color.parseColor("#$it")) } catch (_: Exception) { null }
         }
     }
     // Auf Nutzerwunsch läuft auch die volle Auflösung (Rückfall) über
     // den Server-Proxy, nicht direkt zum CDN — anders als bei Sets/Katalog.
-    val (imageUrl, onImageError) = rememberTileImageWithFallback(serverUrl, part.imageLocal, part.imageUrl, fullViaProxy = true)
-
-    Card(
-        onClick = onEdit,  // ganze Karte klickbar — öffnet den Kaufpreis/Anzahl-Dialog, analog Sets
-        modifier = Modifier.width(Formen.kachelBreite).height(Formen.kachelHoehe),
-        shape = Formen.leiste,
-        elevation = CardDefaults.cardElevation(defaultElevation = Formen.karteErhebung),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
-    ) {
-        Column {
-            Box(Modifier.fillMaxWidth().height(76.dp)) {
-                if (imageUrl != null) {
-                    AsyncImage(
-                        model = ImageRequest.Builder(ctx).data(imageUrl).crossfade(true).build(),
-                        imageLoader = imageLoader,
-                        contentDescription = part.partName,
-                        onState = { st ->
-                            if (st is coil.compose.AsyncImagePainter.State.Error) onImageError()
-                        },
-                        modifier = Modifier.fillMaxSize().clip(Formen.kachelBildEcken),
-                        contentScale = ContentScale.Fit
-                    )
-                } else {
-                    Box(Modifier.fillMaxSize(), Alignment.Center) {
-                        Icon(ImageVector.vectorResource(R.drawable.ic_parts_bricks), null, Modifier.size(28.dp), tint = Color.Unspecified)
-                    }
-                }
-                Surface(
-                    color = MaterialTheme.colorScheme.primary,
-                    shape = Formen.marke,
-                    modifier = Modifier.align(Alignment.TopEnd).padding(3.dp)
-                ) {
-                    // Die Menge-Plakette: „×N" auf einer MANUELL erfassten Kachel,
-                    // „N×" auf einer Kachel aus einem Set. Das ist keine Laune,
-                    // sondern die Regel der Webapp — `man-tile` traegt dort ein
-                    // `qbadge` mit ×N, `part-card` ein `part-qty` mit N×.
-                    Text("×${part.quantity}", Modifier.padding(horizontal = 4.dp, vertical = 1.dp),
-                        color = MaterialTheme.colorScheme.onPrimary,
-                        style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.Bold)
-                }
-                if (colorObj != null) {
-                    Box(Modifier.size(12.dp).align(Alignment.BottomStart).padding(3.dp).clip(CircleShape).background(colorObj))
-                }
-                Row(Modifier.align(Alignment.TopStart).padding(2.dp)) {
-                    IconButton(onClick = onEdit, modifier = Modifier.size(24.dp)) {
-                        Icon(Icons.Default.Edit, stringResource(R.string.parts_edit), Modifier.size(14.dp), tint = MaterialTheme.colorScheme.primary)
-                    }
-                }
-                IconButton(onClick = onDelete, modifier = Modifier.align(Alignment.BottomEnd).size(24.dp)) {
-                    Icon(Icons.Default.Delete, stringResource(R.string.parts_delete), Modifier.size(14.dp), tint = MaterialTheme.colorScheme.error)
-                }
-            }
-            Column(Modifier.padding(horizontal = 6.dp, vertical = 4.dp)) {
-                Text(part.partName ?: part.partNumber, style = MaterialTheme.typography.labelSmall,
-                    fontWeight = FontWeight.SemiBold, maxLines = 2, overflow = TextOverflow.Ellipsis)
-                if (part.colorName != null) {
-                    Text(part.colorName, style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                }
-                Box(Modifier.padding(top = 3.dp)) { ConditionBadges(part.conditions, part.condition) }
-                // Wem gehört der Eintrag? Der Server hängt owners nur an, wenn
-                // mehrere Konten im Blickfeld sind — im Einzelkonto stünde an
-                // jeder Kachel „gehört mir".
-                OwnerBadges(part.owners, Modifier.padding(top = 2.dp))
-                ManuelleKachelFuss(
-                    preis = part.avgPurchasePrice ?: part.unitPrice ?: part.purchasePrice,
-                    waehrung = waehrung,
-                    notiz = part.note,
-                )
-            }
-        }
-    }
+    val (bild, onBildFehler) =
+        rememberTileImageWithFallback(serverUrl, part.imageLocal, part.imageUrl, fullViaProxy = true)
+    // Gemeinsame Kachel mit den Minifiguren — siehe ManuelleKachel.
+    ManuelleKachel(
+        bildUrl = bild,
+        onBildFehler = onBildFehler,
+        imageLoader = imageLoader,
+        name = part.partName ?: part.partNumber,
+        menge = part.quantity,
+        zustaende = part.conditions,
+        zustand = part.condition,
+        besitzer = part.owners,
+        preis = part.avgPurchasePrice ?: part.unitPrice ?: part.purchasePrice,
+        waehrung = waehrung,
+        notiz = part.note,
+        onEdit = onEdit,
+        onDelete = onDelete,
+        farbe = farbe,
+        farbname = part.colorName,
+        platzhalter = {
+            Icon(ImageVector.vectorResource(R.drawable.ic_parts_bricks), null,
+                Modifier.size(28.dp), tint = Color.Unspecified)
+        },
+    )
 }
 
 @Composable

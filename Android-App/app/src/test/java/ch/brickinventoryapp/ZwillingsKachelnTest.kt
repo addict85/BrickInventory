@@ -31,6 +31,16 @@ import org.junit.Test
  * Jetzt steht die vollstaendige Zeile samt Abstand da; die kommt in dieser Datei
  * genau einmal vor.
  *
+ * ── Nachtrag 138: aus zwei Kacheln wurde eine ──────────────────────────────
+ *
+ * Die beste Antwort auf zwei Zwillinge, die auseinanderlaufen, ist, dass es
+ * keine zwei mehr gibt: `ManualPartTile` und `ManualFigTile` rufen jetzt beide
+ * [ManuelleKachel] in ManualItemComposables.kt. Der Test prueft seither an zwei
+ * Stellen — dass die gemeinsame Kachel die Plaketten zeichnet, und dass jede
+ * der beiden ihre eigenen Felder hineinreicht. Nur das erste zu pruefen waere
+ * zu wenig: Eine Kachel, die `besitzer` nicht weitergibt, zeichnet nichts, und
+ * die gemeinsame Fassung merkt davon nichts.
+ *
  * Der Test liest nur Quelltext: kein Geraet, kein Compose.
  */
 class ZwillingsKachelnTest {
@@ -42,14 +52,20 @@ class ZwillingsKachelnTest {
 
     @Test
     fun `beide Kacheln zeigen die Zustands-Plaketten`() {
-        val teile = code(read("ui/screens/PartsScreen.kt"))
-        assert(teile.contains("Box(Modifier.padding(top = 3.dp)) { ConditionBadges(part.conditions, part.condition) }")) {
-            "ManualPartTile zeigt die Zustaende nicht mehr"
+        val gemeinsam = code(read("ui/screens/ManualItemComposables.kt"))
+        assert(gemeinsam.contains("ConditionBadges(zustaende, zustand)")) {
+            "ManuelleKachel zeigt die Zustaende nicht mehr — dann fehlen sie in " +
+                "BEIDEN Ansichten"
         }
-        val figuren = code(read("ui/screens/MinifigsScreen.kt"))
-        assert(figuren.contains("Box(Modifier.padding(top = 3.dp)) { ConditionBadges(fig.conditions, fig.condition) }")) {
-            "ManualFigTile zeigt die Zustaende nicht — anders als die Teile-Kachel " +
-                "daneben und anders als die Webapp"
+        // Und jede der beiden reicht ihre EIGENEN Felder hinein. Ohne das
+        // koennte eine Kachel die Plakette zwar zeichnen, aber immer mit den
+        // Werten der anderen Seite — oder mit gar keinen.
+        assert(code(read("ui/screens/PartsScreen.kt")).contains("zustaende = part.conditions")) {
+            "ManualPartTile reicht die Zustaende nicht mehr weiter"
+        }
+        assert(code(read("ui/screens/MinifigsScreen.kt")).contains("zustaende = fig.conditions")) {
+            "ManualFigTile reicht die Zustaende nicht weiter — genau die Luecke, " +
+                "die es hier schon einmal gab"
         }
     }
 
@@ -78,14 +94,16 @@ class ZwillingsKachelnTest {
 
     @Test
     fun `beide Kacheln zeigen den Besitzer`() {
-        val teile = code(read("ui/screens/PartsScreen.kt"))
-        assert(teile.contains("OwnerBadges(part.owners, Modifier.padding(top = 2.dp))")) {
-            "ManualPartTile zeigt den Besitzer nicht mehr"
+        val gemeinsam = code(read("ui/screens/ManualItemComposables.kt"))
+        assert(gemeinsam.contains("OwnerBadges(besitzer, Modifier.padding(top = 2.dp))")) {
+            "ManuelleKachel zeigt den Besitzer nicht mehr — im Haushalt ist dann an " +
+                "keiner manuellen Kachel zu sehen, wem der Eintrag gehoert"
         }
-        val figuren = code(read("ui/screens/MinifigsScreen.kt"))
-        assert(figuren.contains("OwnerBadges(fig.owners, Modifier.padding(top = 2.dp))")) {
-            "ManualFigTile zeigt den Besitzer nicht — im Haushalt ist an der Figur " +
-                "dann nicht zu sehen, wem sie gehoert"
+        assert(code(read("ui/screens/PartsScreen.kt")).contains("besitzer = part.owners")) {
+            "ManualPartTile reicht den Besitzer nicht mehr weiter"
+        }
+        assert(code(read("ui/screens/MinifigsScreen.kt")).contains("besitzer = fig.owners")) {
+            "ManualFigTile reicht den Besitzer nicht weiter"
         }
     }
 }

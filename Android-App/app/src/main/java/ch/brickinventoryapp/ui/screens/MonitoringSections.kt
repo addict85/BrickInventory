@@ -90,7 +90,7 @@ internal fun BricksetQueueRow(
                             containerColor = MaterialTheme.colorScheme.errorContainer
                         )
                     ) {
-                        Icon(Icons.Default.Delete, stringResource(R.string.monitoring_icon_delete), Modifier.size(14.dp),
+                        Icon(Icons.Default.Delete, stringResource(R.string.common_delete), Modifier.size(14.dp),
                             tint = MaterialTheme.colorScheme.onErrorContainer)
                     }
                 }
@@ -351,7 +351,7 @@ fun CacheAndLimitsSection(vm: MainViewModel, onSnack: (String) -> Unit = {}) {
             },
             dismissButton = {
                 TextButton(onClick = { zeigeLeerenFrage = false }) {
-                    Text(stringResource(R.string.monitoring_cache_clear_cancel))
+                    Text(stringResource(R.string.common_cancel))
                 }
             }
         )

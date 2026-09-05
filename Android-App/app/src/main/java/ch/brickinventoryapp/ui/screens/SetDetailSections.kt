@@ -348,7 +348,7 @@ fun LazyListScope.setDetailDetailsSection(set: SetItem, setNumber: String, vm: M
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Text(
-                    stringResource(R.string.detail_quantity),
+                    stringResource(R.string.common_quantity),
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )

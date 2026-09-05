@@ -130,13 +130,13 @@ fun ManualItemDetailScreen(
                 },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, stringResource(R.string.detail_back))
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, stringResource(R.string.common_back))
                     }
                 },
                 actions = {
                     IconButton(onClick = { showDeleteConfirm = true }) {
                         Icon(Icons.Default.Delete, stringResource(
-                            if (isFig) R.string.minifigs_delete else R.string.parts_delete))
+                            if (isFig) R.string.common_delete else R.string.common_delete))
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
@@ -250,7 +250,7 @@ fun ManualItemDetailScreen(
                         horizontalArrangement = Arrangement.SpaceBetween,
                         verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Text(stringResource(R.string.detail_quantity),
+                        Text(stringResource(R.string.common_quantity),
                             style = MaterialTheme.typography.bodyMedium,
                             color = MaterialTheme.colorScheme.onSurfaceVariant)
                         Row(verticalAlignment = Alignment.CenterVertically,
@@ -373,13 +373,13 @@ fun ManualItemDetailScreen(
                         // Karteileiche mit Mengenwahl und Kaufpreisen.
                         onBack()
                     }) {
-                        Text(stringResource(if (isFig) R.string.minifigs_delete else R.string.parts_delete),
+                        Text(stringResource(if (isFig) R.string.common_delete else R.string.common_delete),
                             color = MaterialTheme.colorScheme.error)
                     }
                 },
                 dismissButton = {
                     TextButton(onClick = { showDeleteConfirm = false }) {
-                        Text(stringResource(if (isFig) R.string.minifigs_cancel else R.string.parts_cancel))
+                        Text(stringResource(if (isFig) R.string.common_cancel else R.string.common_cancel))
                     }
                 }
             )

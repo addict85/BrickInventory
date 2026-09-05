@@ -97,7 +97,7 @@ fun SetDetailScreen(
                 },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, stringResource(R.string.detail_back))
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, stringResource(R.string.common_back))
                     }
                 },
                 actions = {
@@ -109,7 +109,7 @@ fun SetDetailScreen(
                     // Server erzwingt dieselbe Regel: move ohne
                     // acquisition_ids antwortet mit 400.
                     IconButton(onClick = { showSetDeleteConfirm = true }) {
-                        Icon(Icons.Default.Delete, stringResource(R.string.detail_delete))
+                        Icon(Icons.Default.Delete, stringResource(R.string.common_delete))
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
@@ -191,10 +191,10 @@ fun SetDetailScreen(
                 text = { Text(stringResource(R.string.gallery_delete_text, set.name ?: setNumber)) },
                 confirmButton = {
                     TextButton(onClick = { showSetDeleteConfirm = false; onDelete(setNumber) }) {
-                        Text(stringResource(R.string.gallery_delete), color = MaterialTheme.colorScheme.error)
+                        Text(stringResource(R.string.common_delete), color = MaterialTheme.colorScheme.error)
                     }
                 },
-                dismissButton = { TextButton(onClick = { showSetDeleteConfirm = false }) { Text(stringResource(R.string.gallery_cancel)) } }
+                dismissButton = { TextButton(onClick = { showSetDeleteConfirm = false }) { Text(stringResource(R.string.common_cancel)) } }
             )
         }
 

@@ -271,7 +271,7 @@ AlertDialog(
         TextButton(
             onClick = { vm.cancelBarcode() },
             enabled = !barcodeState.adding
-        ) { Text(stringResource(R.string.main_barcode_cancel)) }
+        ) { Text(stringResource(R.string.common_cancel)) }
     }
 )
 }
