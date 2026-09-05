@@ -99,19 +99,19 @@ fun MonitoringScreen(vm: MainViewModel) {
                 CacheAndLimitsSection(vm, onSnack = { snack = it })
             }
 
-            // Konten und Server-Protokoll — beides konnte bisher nur die
-            // Webapp, nicht weil es fehlte, sondern weil die Routen hinter
-            // einem sitzungsgebundenen Waechter lagen (Nachtrag 127).
+            // Das Server-Protokoll — dieselbe Ansicht wie in der Webapp. Sie
+            // konnte es bisher als einzige, nicht weil die Route fehlte,
+            // sondern weil sie hinter einem sitzungsgebundenen Waechter lag
+            // (Nachtrag 127).
             //
             // KEINE eigene Rechtepruefung hier, und das ist Absicht: Der
             // einzige Weg hierher ist der Menueeintrag in MainScaffold, und
             // der steht nur bei `isAdmin`. Massgeblich ist ohnehin der Server —
-            // beide Routen laufen ueber requireApiAdmin und antworten sonst
-            // mit 403. Eine dritte Stelle, an der „ist das ein Verwalter"
+            // die Route laeuft ueber requireApiAdmin und antwortet sonst mit
+            // 403. Eine dritte Stelle, an der „ist das ein Verwalter"
             // entschieden wird, waere genau die Sorte zweite Wahrheit, die
             // diese Sitzung an anderer Stelle einundzwanzig Routen gekostet
             // hat.
-            item { KontenSection(vm) }
             item { ProtokollSection(vm) }
 
             // Job cards

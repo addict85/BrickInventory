@@ -197,10 +197,35 @@ internal fun MainViewModel.logout() {
         // Die Galerie gehoert dazu, seit sie einen eigenen Fluss hat: Ohne
         // diese Zeile zeigte der naechste Nutzer auf demselben Geraet noch
         // die Sets und Kennzahlen des vorigen.
+        //
+        // ── ALLE, nicht eine Auswahl (Nachtrag 129) ──────────────────────
+        //
+        // Hier standen fuenf von fuenfzehn Fluessen. Die zehn uebrigen trugen
+        // nach dem Abmelden weiter die Daten des vorigen Kontos — und drei
+        // davon sind mehr als eine Unschoenheit:
+        //
+        //     _householdState   die Mitglieder des fremden Haushalts
+        //     _geraeteState     dessen angemeldete Geraete samt Etiketten
+        //     _kontoState       dessen Profil: Benutzername und E-Mail
+        //
+        // Der Kommentar darueber sagt seit jeher, warum das nicht sein darf.
+        // Er galt nur fuer die Haelfte. Gefunden beim Entfernen der
+        // Nutzerverwaltung, nicht von einer Pruefung — deshalb prueft
+        // felder.py das jetzt: Jeder Fluss des MainViewModel muss hier stehen.
         _galleryState.value = GalleryUiState()
         _partsState.value = PartsUiState()
         _financeState.value = FinanceUiState()
         _csvImportState.value = CsvImportUiState()
+        _setDetailState.value = SetDetailUiState()
+        _manDetailState.value = ManualItemDetailUiState()
+        _setItemState.value = SetItemUiState()
+        _erfassungState.value = ErfassungUiState()
+        _householdState.value = HouseholdUiState()
+        _geraeteState.value = GeraeteUiState()
+        _anmeldeState.value = AnmeldeUiState()
+        _kontoState.value = KontoUiState()
+        _csvHochladenState.value = CsvHochladenUiState()
+        _verwaltungState.value = VerwaltungUiState()
         // Auch der Scanner-Zustand (Nachtrag 117): Ein offener Barcode-Dialog
         // trägt Setname, Bild und Nummer des VORIGEN Kontos. Ohne diese Zeile
         // stünde er nach dem Abmelden noch da — genau der Fall, den die drei
