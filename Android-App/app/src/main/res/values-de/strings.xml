@@ -34,6 +34,8 @@
     <string name="csv_stat_success">Erfolg</string>
     <string name="csv_stat_warnings">Warnungen</string>
     <string name="csv_stat_errors">Fehler</string>
+    <string name="csv_cancel">Import abbrechen</string>
+    <string name="csv_cancel_requested">Der Import hört nach dem laufenden Set auf</string>
     <string name="csv_import_done">Import abgeschlossen</string>
 
     <!-- ══════════════ Portfolio chart ══════════════ -->
@@ -46,7 +48,6 @@
 
     <!-- ══════════════ Comparison screen ══════════════ -->
     <string name="comparison_search_placeholder">Suche z.B. Technic, City…</string>
-    <string name="comparison_clear">Löschen</string>
     <string name="comparison_search">Suchen</string>
     <string name="comparison_scan_new">Neu</string>
     <string name="comparison_scan">Scan</string>
@@ -89,7 +90,6 @@
     <string name="gallery_stat_parts">Teile</string>
     <string name="gallery_stat_minifigs">Minifigs</string>
     <string name="gallery_search_placeholder">Sets suchen…</string>
-    <string name="gallery_clear">Löschen</string>
     <string name="gallery_all">Alle</string>
     <string name="gallery_no_sets">Keine Sets vorhanden</string>
     <string name="gallery_pull_to_refresh">Nach unten ziehen zum Neu laden</string>
@@ -247,6 +247,7 @@
     <string name="detail_set_number">Setnummer</string>
     <string name="detail_added">Erfasst</string>
     <string name="detail_quantity">Anzahl</string>
+    <string name="detail_note">Notiz</string>
     <string name="detail_purchase_price">Kaufpreis</string>
     <string name="detail_price_placeholder">Marktpreis</string>
     <string name="detail_section_market">Marktpreis</string>
@@ -293,6 +294,8 @@
     <string name="setitem_open_set">Set öffnen</string>
     <string name="setitem_category">Kategorie</string>
     <string name="setitem_color">Farbe</string>
+    <string name="parts_filter_color">Nach Farbe filtern</string>
+    <string name="parts_filter_category">Nach Kategorie filtern</string>
     <string name="parts_filter_all">Alle Teile</string>
     <string name="view_cards">Karten</string>
     <string name="view_table">Tabelle</string>

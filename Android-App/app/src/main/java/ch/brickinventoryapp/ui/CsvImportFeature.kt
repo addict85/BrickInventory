@@ -1,6 +1,8 @@
 package ch.brickinventoryapp.ui
 
 import androidx.lifecycle.viewModelScope
+import ch.brickinventoryapp.R
+import ch.brickinventoryapp.data.repository.Result
 import ch.brickinventoryapp.data.CsvImportSseClient
 import ch.brickinventoryapp.data.model.*
 import kotlinx.coroutines.flow.*
@@ -56,6 +58,41 @@ internal fun MainViewModel.startCsvImportWatcher() {
             }
             // Server hat Verbindung sauber geschlossen (Neustart/Deploy)
             // → sofort reconnecten, kein Backoff nötig.
+        }
+    }
+}
+
+/**
+ * Einen laufenden CSV-Import abbrechen.
+ *
+ * ── Warum es das jetzt gibt (Nachtrag 134) ──────────────────────────────────
+ *
+ * Die Webapp hat den Knopf seit jeher (02-gallery.js, `cancelImport` am
+ * `btn-cancel-import`). Die App zeigte denselben Fortschrittsbalken — und
+ * keinen Weg heraus. Ein versehentlich gestarteter Import ueber hunderte Sets
+ * holt zu jedem einzelnen die Stammdaten; wer ihn am Telefon anstiess, musste
+ * ihn aussitzen.
+ *
+ * Gefunden durch Messen: Ein Vergleich der Server-Adressen beider Clients
+ * meldete /v1/sets/import/csv/cancel als eine von 21 Adressen, die nur die
+ * Webapp ruft.
+ *
+ * ── Was Abbrechen NICHT tut ─────────────────────────────────────────────────
+ *
+ * Der Server vermerkt `status: 'cancelled'`; die Schleife im Import sieht das
+ * beim naechsten Satz und hoert auf. Schon angelegte Sets BLEIBEN. Das ist in
+ * der Webapp genauso, und es ist die richtige Bedeutung: „ab hier nicht
+ * weiter", nicht „rueckgaengig".
+ *
+ * Der Balken verschwindet nicht hier, sondern beim naechsten Statusereignis —
+ * dieselbe Quelle wie sonst auch. Ihn sofort auszublenden hiesse, den Erfolg
+ * zu behaupten, bevor der Server ihn bestaetigt hat.
+ */
+internal fun MainViewModel.cancelCsvImport() {
+    viewModelScope.launch {
+        when (val r = repo.sets.cancelCsvImport()) {
+            is Result.Success -> _snackbar.value = text(R.string.csv_cancel_requested)
+            is Result.Error -> _snackbar.value = meldung(r)
         }
     }
 }

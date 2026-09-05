@@ -89,8 +89,16 @@ fun ComparisonScreen() {
                     placeholder = { Text(stringResource(R.string.comparison_search_placeholder)) },
                     leadingIcon = { Icon(Icons.Default.Search, null, Modifier.size(20.dp)) },
                     trailingIcon = {
+                        // `cd_search_clear` statt `comparison_clear` (Nachtrag
+                        // 134): Letzteres heisst „Löschen" / „Clear" — derselbe
+                        // Text, den in Nachtrag 132 vier andere Suchfelder
+                        // abgelegt haben, weil TalkBack am Suche-leeren-Knopf
+                        // sonst das Wort fuer „Bestand vernichten" sagt. Dieses
+                        // Feld war beim Zaehlen nicht dabei, weil es die
+                        // Suchtaste der Tastatur braucht und deshalb kein
+                        // `Suchfeld` sein kann.
                         if (searchText.isNotEmpty())
-                            IconButton(onClick = { searchText = "" }) { Icon(Icons.Default.Clear, stringResource(R.string.comparison_clear)) }
+                            IconButton(onClick = { searchText = "" }) { Icon(Icons.Default.Clear, stringResource(R.string.cd_search_clear)) }
                     },
                     modifier = Modifier.fillMaxWidth(),
                     singleLine = true,

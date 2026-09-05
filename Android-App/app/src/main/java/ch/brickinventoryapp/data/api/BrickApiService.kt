@@ -15,6 +15,17 @@ interface BrickApiService {
     @GET("api/v1/sets/import/csv/status")
     suspend fun getCsvImportStatus(): Response<ch.brickinventoryapp.data.model.CsvImportStatus>
 
+    /**
+     * Einen laufenden CSV-Import abbrechen.
+     *
+     * Der Server vermerkt nur `status: 'cancelled'` (routes/sets.ts); die
+     * Schleife im Import sieht das beim naechsten Satz und hoert auf. Schon
+     * angelegte Sets bleiben — abgebrochen heisst „ab hier nicht weiter", nicht
+     * „rueckgaengig". Genauso in der Webapp.
+     */
+    @POST("api/v1/sets/import/csv/cancel")
+    suspend fun cancelCsvImport(): Response<GenericAdminResponse>
+
     @GET
     suspend fun getCsvImportStatusDirect(
         @retrofit2.http.Url url: String,
@@ -316,6 +327,26 @@ interface BrickApiService {
 
     @GET("api/v1/parts/brick-colors")
     suspend fun getBrickColors(): Response<BrickColorsResponse>
+
+    /**
+     * Die FILTERliste Farbe — welche Farben im Bestand vorkommen, mit Anzahl.
+     *
+     * Eine andere Adresse als `brick-colors` darueber, und das ist Absicht:
+     * Dort steht der ganze Farbkatalog fuer die Auswahl beim Erfassen, hier
+     * nur, was der Nutzer wirklich hat. Die Webapp benutzt beide genauso
+     * (03-parts.js: loadPartsFilters gegen /parts/colors, der Erfassungsdialog
+     * gegen /parts/brick-colors).
+     */
+    @GET("api/v1/parts/colors")
+    suspend fun getPartsFilterColors(
+        @Query("accounts") accounts: String? = null
+    ): Response<PartsFilterColorsResponse>
+
+    /** Die Filterliste Kategorie — dieselbe Quelle wie in der Webapp. */
+    @GET("api/v1/parts/categories")
+    suspend fun getPartsCategories(
+        @Query("accounts") accounts: String? = null
+    ): Response<PartsCategoriesResponse>
 
     @POST("api/v1/parts")
     suspend fun addPart(

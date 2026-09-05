@@ -102,6 +102,9 @@ class SetsRepository @Inject constructor(
         return safeCall { api.getCsvImportStatusDirect(url, "Bearer $token") }
     }
 
+    /** Laufenden CSV-Import abbrechen — siehe BrickApiService.cancelCsvImport. */
+    suspend fun cancelCsvImport(): Result<GenericAdminResponse> = safeCall { api.cancelCsvImport() }
+
     suspend fun triggerCsvSync(): Result<GenericAdminResponse> = safeCall { api.triggerCsvSync() }
 
     suspend fun reimportInstructions(): Result<GenericAdminResponse> = safeCall { api.reimportInstructions() }

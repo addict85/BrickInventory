@@ -43,7 +43,13 @@ internal fun MainViewModel.loadParts(page: Int = 1, debounce: Boolean = false) {
         // „In Sets" nur, wenn die Tabelle es zeigt — die Spalte kostet eine
         // eigene Abfrage. Dieselbe Bedingung wie in der Webapp.
         val mitSets = if (_partsState.value.partsView == "table") "1" else null
-        when (val r = retryOnNetwork { repo.teile.getParts(search = suche, page = page,
+        // Aus demselben Grund aus dem Zustand wie Suchtext und Ersatzteilfilter:
+        // Als Parameter kaemen sie beim Nachladen von Seite 2 nicht mit, und
+        // eine ungefilterte Seite 2 haenge sich an eine gefilterte Seite 1.
+        val farbe = _partsState.value.partsColorFilter.ifBlank { null }
+        val kategorie = _partsState.value.partsCategoryFilter.ifBlank { null }
+        when (val r = retryOnNetwork { repo.teile.getParts(search = suche, color = farbe,
+                                                     category = kategorie, page = page,
                                                      accounts = scopeFor(ScopeFilter.View.PARTS),
                                                      spare = ersatzteile, withSets = mitSets) }) {
             is Result.Success -> {
@@ -128,6 +134,56 @@ internal fun MainViewModel.setPartsView(wert: String) {
  */
 internal fun MainViewModel.setMinifigsView(wert: String) {
     _partsState.update { it.copy(minifigsView = wert) }
+}
+
+/**
+ * Farbfilter setzen — "" heisst „alle".
+ *
+ * Wie beim Ersatzteil-Filter daneben: Ein Klick ist ein fertiger Wunsch, also
+ * ohne Entprellen. Und die gemerkte Scrollstelle zeigt auf Teile, die in der
+ * neuen Liste woanders oder gar nicht stehen.
+ */
+internal fun MainViewModel.setPartsColorFilter(wert: String) {
+    if (_partsState.value.partsColorFilter == wert) return
+    scrollMemory.vergiss("parts")
+    _partsState.update { it.copy(partsColorFilter = wert) }
+    loadParts(page = 1)
+    // Die Zaehlwerte der ANDEREN Liste haengen an dieser Auswahl nicht — der
+    // Server filtert die Kategorienliste nicht nach Farbe, und die Webapp laedt
+    // trotzdem beide neu (loadPartsFilters in 03-parts.js). Hier bleibt es
+    // dabei, sie NICHT neu zu holen: zwei Abfragen fuer unveraenderte Zahlen.
+}
+
+/** Kategoriefilter setzen — "" heisst „alle". Siehe [setPartsColorFilter]. */
+internal fun MainViewModel.setPartsCategoryFilter(wert: String) {
+    if (_partsState.value.partsCategoryFilter == wert) return
+    scrollMemory.vergiss("parts")
+    _partsState.update { it.copy(partsCategoryFilter = wert) }
+    loadParts(page = 1)
+}
+
+/**
+ * Die beiden Filterlisten holen — Farbe und Kategorie, mit ihren Zaehlwerten.
+ *
+ * Beide zusammen, weil sie zusammen angezeigt werden. Scheitert eine, bleibt
+ * die andere stehen: Ein fehlender Filter ist unangenehm, aber kein Grund, die
+ * Teileliste selbst zurueckzuhalten. Aus demselben Grund meldet auch keiner der
+ * beiden Faelle einen Fehler — genau wie loadPartsColors darunter.
+ */
+internal fun MainViewModel.loadPartsFilters() {
+    viewModelScope.launch {
+        val blickfeld = scopeFor(ScopeFilter.View.PARTS)
+        when (val r = repo.teile.getPartsFilterColors(blickfeld)) {
+            is Result.Success -> if (r.data.success)
+                _partsState.update { it.copy(partsFilterColors = r.data.colors) }
+            is Result.Error -> {}
+        }
+        when (val r = repo.teile.getPartsCategories(blickfeld)) {
+            is Result.Success -> if (r.data.success)
+                _partsState.update { it.copy(partsCategories = r.data.categories) }
+            is Result.Error -> {}
+        }
+    }
 }
 
 internal fun MainViewModel.loadPartsColors() {

@@ -12,6 +12,7 @@
     <string name="settings_price_condition">Price condition</string>
     <string name="common_condition">Condition</string>
     <string name="detail_edit_prices">Edit prices</string>
+    <string name="detail_note">Note</string>
     <string name="detail_purchase_price">Purchase price</string>
     <string name="detail_price_placeholder">Market price</string>
         <string name="common_back">Back</string>
@@ -50,6 +51,8 @@
     <string name="csv_stat_success">Success</string>
     <string name="csv_stat_warnings">Warnings</string>
     <string name="csv_stat_errors">Errors</string>
+    <string name="csv_cancel">Cancel import</string>
+    <string name="csv_cancel_requested">Import will stop after the current set</string>
     <string name="csv_import_done">Import complete</string>
 
     <!-- ══════════════ Portfolio chart ══════════════ -->
@@ -62,7 +65,6 @@
 
     <!-- ══════════════ Comparison screen ══════════════ -->
     <string name="comparison_search_placeholder">Search e.g. Technic, City…</string>
-    <string name="comparison_clear">Clear</string>
     <string name="comparison_search">Search</string>
     <string name="comparison_scan_new">New</string>
     <string name="comparison_scan">Scan</string>
@@ -105,7 +107,6 @@
     <string name="gallery_stat_parts">Parts</string>
     <string name="gallery_stat_minifigs">Minifigs</string>
     <string name="gallery_search_placeholder">Search sets…</string>
-    <string name="gallery_clear">Clear</string>
     <string name="gallery_all">All</string>
     <string name="gallery_no_sets">No sets yet</string>
     <string name="gallery_pull_to_refresh">Pull down to refresh</string>
@@ -312,6 +313,8 @@
     <string name="setitem_open_set">Open set</string>
     <string name="setitem_category">Category</string>
     <string name="setitem_color">Colour</string>
+    <string name="parts_filter_color">Filter by color</string>
+    <string name="parts_filter_category">Filter by category</string>
     <string name="parts_filter_all">All parts</string>
     <string name="view_cards">Cards</string>
     <string name="view_table">Table</string>

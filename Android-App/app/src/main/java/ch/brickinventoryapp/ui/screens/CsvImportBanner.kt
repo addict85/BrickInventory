@@ -2,6 +2,8 @@ package ch.brickinventoryapp.ui.screens
 
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
@@ -17,7 +19,16 @@ import ch.brickinventoryapp.R
 @Composable
 fun CsvImportBanner(
     done: Int, total: Int, current: String?,
-    ok: Int, warn: Int, err: Int, running: Boolean
+    ok: Int, warn: Int, err: Int, running: Boolean,
+    /**
+     * Abbrechen — nur waehrend der Import laeuft sichtbar.
+     *
+     * Die Webapp hat den Knopf seit jeher (02-gallery.js, btn-cancel-import).
+     * Die App zeigte denselben Balken und keinen Weg heraus: Ein versehentlich
+     * gestarteter Import ueber hunderte Sets holt zu jedem die Stammdaten und
+     * musste ausgesessen werden.
+     */
+    onAbbrechen: () -> Unit,
 ) {
     var expanded by rememberSaveable { mutableStateOf(false) }
     val pct = if (total > 0) done.toFloat() / total else 0f
@@ -48,6 +59,20 @@ fun CsvImportBanner(
                                 else MaterialTheme.colorScheme.onSecondaryContainer,
                         fontWeight = FontWeight.Bold
                     )
+                    // In der KOPFzeile, nicht im aufgeklappten Teil: Wer
+                    // abbrechen will, soll nicht erst herausfinden muessen,
+                    // dass der Balken sich aufklappen laesst. In der Webapp
+                    // steht der Knopf ebenfalls dauerhaft da.
+                    //
+                    // Kein Bestaetigungsdialog: Abbrechen nimmt nichts zurueck,
+                    // es hoert nur auf. Schon angelegte Sets bleiben.
+                    if (running) {
+                        IconButton(onClick = onAbbrechen, modifier = Modifier.size(24.dp)) {
+                            Icon(Icons.Default.Close, stringResource(R.string.csv_cancel),
+                                Modifier.size(16.dp),
+                                tint = MaterialTheme.colorScheme.onPrimary)
+                        }
+                    }
                     Text(
                         if (expanded) "▴" else "▾",
                         color = if (running) MaterialTheme.colorScheme.onPrimary

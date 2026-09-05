@@ -16,6 +16,7 @@ import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
@@ -168,3 +169,56 @@ fun ErsatzteilPlakette(modifier: Modifier = Modifier) {
 // (ui/screens/ManualItemDetailScreen.kt), wie bei den Sets. Übrig bleiben hier
 // die Bausteine, die BEIDE Seiten benutzen — AcquisitionSummarySection,
 // ConditionBadge(s) und der Kaufpreis-Editor.
+
+/**
+ * Der Fuss einer Kachel fuer einen MANUELL erfassten Eintrag: Preis und Notiz.
+ *
+ * ── Warum es das jetzt gibt (Nachtrag 134) ──────────────────────────────────
+ *
+ * Die Webapp zeigt auf ihrer `man-tile` unter den Plaketten zwei weitere
+ * Zeilen (06-minifigs.js Zeilen 328-330 fuer Figuren, 486-488 fuer Teile):
+ *
+ *     <div style="font-weight:700;…">${priceStr}</div>
+ *     ${p.note ? `<div class="man-tile-note">${esc(p.note)}</div>` : ''}
+ *
+ * Die App zeigte beides nicht. Bei der NOTIZ ist das mehr als eine fehlende
+ * Zeile: Der Erfassungsdialog fragt sie ab (`parts_note`, `minifigs_note`),
+ * schickt sie an den Server — und danach war sie in der ganzen App nirgends
+ * mehr zu sehen, weder auf der Kachel noch im Detail. Eine Eingabe, die
+ * nirgends wieder auftaucht, sieht aus, als waere sie verlorengegangen.
+ *
+ * ── Welcher Preis ───────────────────────────────────────────────────────────
+ *
+ * Dieselbe Reihenfolge wie in der Webapp:
+ *
+ *     avg_purchase_price ?? unit_price ?? purchase_price
+ *
+ * Der erste ist der mengengewichtete Kaufpreis ueber alle Erfassungen; der
+ * zweite ist nur der ZULETZT geschriebene Einzelpreis. Wer ein Teil einmal
+ * fuer 2.- und einmal fuer 8.- gekauft hat, saehe sonst 8.- statt 5.-.
+ *
+ * @param preis    Roher Betrag; null = keiner hinterlegt, dann steht „—" da.
+ * @param waehrung Waehrungscode aus den Einstellungen.
+ * @param notiz    Notiz des Eintrags, oder null/leer.
+ */
+@Composable
+fun ManuelleKachelFuss(preis: Double?, waehrung: String, notiz: String?) {
+    Text(
+        if (preis != null) fmtMoney(preis, waehrung) else "—",
+        style = MaterialTheme.typography.labelSmall,
+        fontWeight = FontWeight.Bold,
+        color = MaterialTheme.colorScheme.primary,
+        maxLines = 1,
+        overflow = TextOverflow.Ellipsis,
+        modifier = Modifier.padding(top = 2.dp),
+    )
+    if (!notiz.isNullOrBlank()) {
+        Text(
+            notiz,
+            style = MaterialTheme.typography.labelSmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+        )
+    }
+}

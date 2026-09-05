@@ -85,6 +85,7 @@ fun PartsScreen(
     val currentPage = partsState.partsPage
     val colors = partsState.partsColors
     val serverUrl = state.serverUrl
+    val waehrung = state.currency
     val defaultCondition = state.userDefaultCondition ?: "N"
     val householdMembers = state.householdMembers
     val scopeMode = state.scopeModes[ch.brickinventoryapp.data.ScopeFilter.View.PARTS.key]
@@ -187,6 +188,43 @@ fun PartsScreen(
             }
         }
 
+        // Farbe und Kategorie — die beiden Filterlisten der Webapp
+        // (03-parts.js, loadPartsFilters). Sie fehlten in der App ganz;
+        // gefunden beim Vergleich der Server-Adressen beider Clients.
+        //
+        // Die Umrechnung auf die gemeinsame Form steht hier und nicht im
+        // Bildschirm darunter: Die beiden Antworten tragen verschiedene
+        // Feldnamen, alles andere ist gleich.
+        val farbEintraege = remember(partsState.partsFilterColors) {
+            partsState.partsFilterColors.mapNotNull { f ->
+                f.colorName?.takeIf { it.isNotBlank() }?.let { name ->
+                    TeileFilterEintrag(
+                        wert = name, text = name, anzahl = f.uniqueParts,
+                        farbe = f.colorHex?.let {
+                            try { Color(android.graphics.Color.parseColor("#$it")) }
+                            catch (_: Exception) { null }
+                        },
+                    )
+                }
+            }
+        }
+        val kategorieEintraege = remember(partsState.partsCategories) {
+            partsState.partsCategories.mapNotNull { k ->
+                k.categoryName?.takeIf { it.isNotBlank() }?.let { wert ->
+                    TeileFilterEintrag(wert = wert, text = k.label ?: wert, anzahl = k.uniqueParts)
+                }
+            }
+        }
+        TeileFilterZeile(
+            farben = farbEintraege,
+            kategorien = kategorieEintraege,
+            farbeGewaehlt = partsState.partsColorFilter,
+            kategorieGewaehlt = partsState.partsCategoryFilter,
+            onFarbe = { vm.setPartsColorFilter(it) },
+            onKategorie = { vm.setPartsCategoryFilter(it) },
+            modifier = Modifier.padding(horizontal = 14.dp).padding(bottom = 8.dp),
+        )
+
         // Karten oder Tabelle — wie das Auswahlfeld parts-view der Webapp.
         // Eigene Zeile, weil die drei Ersatzteil-Chips darueber die Breite
         // eines Telefons schon fuellen.
@@ -227,6 +265,7 @@ fun PartsScreen(
                                 part = part,
                                 serverUrl = serverUrl,
                                 imageLoader = imageLoader,
+                                waehrung = waehrung,
                                 onEdit = { onOpenDetail(part.partNumber, part.colorId) },
                                 onDelete = { deletingPart = part }
                             )
@@ -308,7 +347,8 @@ fun PartsScreen(
 }
 
 @Composable
-fun ManualPartTile(part: PartValuationItem, serverUrl: String, imageLoader: ImageLoader, onEdit: () -> Unit, onDelete: () -> Unit) {
+fun ManualPartTile(part: PartValuationItem, serverUrl: String, imageLoader: ImageLoader,
+                   waehrung: String, onEdit: () -> Unit, onDelete: () -> Unit) {
     val ctx = LocalContext.current
     val colorObj = remember(part.colorHex) {
         part.colorHex?.let {
@@ -381,6 +421,11 @@ fun ManualPartTile(part: PartValuationItem, serverUrl: String, imageLoader: Imag
                 // mehrere Konten im Blickfeld sind — im Einzelkonto stünde an
                 // jeder Kachel „gehört mir".
                 OwnerBadges(part.owners, Modifier.padding(top = 2.dp))
+                ManuelleKachelFuss(
+                    preis = part.avgPurchasePrice ?: part.unitPrice ?: part.purchasePrice,
+                    waehrung = waehrung,
+                    notiz = part.note,
+                )
             }
         }
     }

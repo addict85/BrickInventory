@@ -178,7 +178,8 @@ fun MainScaffold(
             if (csvImport.running) {
                 CsvImportBanner(
                     done = csvImport.done, total = csvImport.total, current = csvImport.current,
-                    ok = csvImport.ok, warn = csvImport.warn, err = csvImport.err, running = csvImport.running
+                    ok = csvImport.ok, warn = csvImport.warn, err = csvImport.err, running = csvImport.running,
+                    onAbbrechen = { vm.cancelCsvImport() },
                 )
             }
             Box(Modifier.fillMaxSize()) { content() }

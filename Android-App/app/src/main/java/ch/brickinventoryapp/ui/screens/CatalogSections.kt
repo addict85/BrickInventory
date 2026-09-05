@@ -152,12 +152,15 @@ fun CatalogThemeSheet(state: CatalogUiState, showThemeSheet: androidx.compose.ru
             var themeFilter by rememberSaveable { mutableStateOf("") }
             Column(Modifier.padding(horizontal = 16.dp).padding(bottom = 24.dp)) {
                 Text(stringResource(R.string.catalog_filter_theme), fontWeight = FontWeight.Bold, fontSize = 17.sp)
-                OutlinedTextField(
-                    value = themeFilter, onValueChange = { themeFilter = it },
-                    placeholder = { Text(stringResource(R.string.catalog_theme_search)) },
-                    leadingIcon = { Icon(Icons.Default.Search, null, Modifier.size(18.dp)) },
-                    modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp),
-                    singleLine = true, shape = Formen.knopf
+                // Der gemeinsame Baustein (Nachtrag 134). Vorher stand hier ein
+                // eigenes Feld — das SIEBTE der App und das einzige ganz OHNE
+                // Leeren-Knopf: Wer sich vertippt hatte, musste Zeichen fuer
+                // Zeichen zuruecknehmen, waehrend die sechs anderen Suchfelder
+                // ein Kreuz anbieten.
+                Suchfeld(
+                    wert = themeFilter,
+                    onWert = { themeFilter = it },
+                    platzhalter = stringResource(R.string.catalog_theme_search),
                 )
                 val filteredThemes = remember(state.themes, themeFilter) {
                     if (themeFilter.isBlank()) state.themes

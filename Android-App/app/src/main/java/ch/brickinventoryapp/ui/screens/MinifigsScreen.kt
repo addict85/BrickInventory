@@ -58,6 +58,7 @@ fun MinifigsScreen(
     val minifigStats = partsState.minifigStats
     val isLoading = partsState.minifigsLoading
     val serverUrl = state.serverUrl
+    val waehrung = state.currency
     val defaultCondition = state.userDefaultCondition ?: "N"
     val householdMembers = state.householdMembers
     val scopeMode = state.scopeModes[ch.brickinventoryapp.data.ScopeFilter.View.MINIFIGS.key]
@@ -188,6 +189,7 @@ fun MinifigsScreen(
                                 fig = fig,
                                 serverUrl = serverUrl,
                                 imageLoader = imageLoader,
+                                waehrung = waehrung,
                                 onEdit = { onOpenDetail(fig.figNumber) },
                                 onDelete = { deletingFig = fig }
                             )
@@ -256,7 +258,8 @@ fun MinifigsScreen(
 }
 
 @Composable
-fun ManualFigTile(fig: FigValuationItem, serverUrl: String, imageLoader: ImageLoader, onEdit: () -> Unit, onDelete: () -> Unit) {
+fun ManualFigTile(fig: FigValuationItem, serverUrl: String, imageLoader: ImageLoader,
+                  waehrung: String, onEdit: () -> Unit, onDelete: () -> Unit) {
     val ctx = LocalContext.current
 
     Card(
@@ -328,6 +331,11 @@ fun ManualFigTile(fig: FigValuationItem, serverUrl: String, imageLoader: ImageLo
                 // hat.
                 Box(Modifier.padding(top = 3.dp)) { ConditionBadges(fig.conditions, fig.condition) }
                 OwnerBadges(fig.owners, Modifier.padding(top = 2.dp))
+                ManuelleKachelFuss(
+                    preis = fig.avgPurchasePrice ?: fig.unitPrice ?: fig.purchasePrice,
+                    waehrung = waehrung,
+                    notiz = fig.note,
+                )
             }
         }
     }

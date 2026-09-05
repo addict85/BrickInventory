@@ -255,3 +255,97 @@ test('Minifiguren-Export: dieselbe Regel, dieselbe eine Abfrage',
     await db.run('DELETE FROM users WHERE id = $1', [uid]).catch(() => {});
   }
 });
+
+test('Teile-Export: dieselbe Regel, dieselbe eine Abfrage',
+  { concurrency: 1 }, async (t) => {
+
+  // ── Warum dieser Fall spaeter kam (Nachtrag 134) ──────────────────────────
+  //
+  // Diese Datei pruefte Sets und Minifiguren. buildPartsCsv blieb als einziger
+  // der drei Zwillinge bei der Schleife — eine Abfrage JE TEIL — und faellt
+  // damit unter genau die Ueberschrift, die oben steht. Gefunden nicht durch
+  // Lesen, sondern durch eine Suche nach `await db.` innerhalb einer Schleife.
+  //
+  // Teile haben eine zweite Schluesselspalte, die Sets und Figuren nicht haben:
+  // die FARBE. Derselbe Teiletyp in Rot und in Blau sind zwei Zeilen, und der
+  // JOIN muss beide Spalten vergleichen — sonst erbt die rote Zeile die
+  // Erfassungen der blauen. Dafuer steht der Fall `3001` unten.
+  try { await db.initSchema(); }
+  catch (e) {
+    if (process.env.REQUIRE_DB === '1')
+      throw new Error(`REQUIRE_DB=1, aber die Test-DB ist nicht erreichbar: ${e.message}`);
+    t.skip('Test-DB nicht erreichbar'); return;
+  }
+
+  const nutzer = `teilexp-${process.pid}`;
+  await db.run('DELETE FROM users WHERE username = $1', [nutzer]).catch(() => {});
+  const u = await db.get(
+    'INSERT INTO users (username, password_hash) VALUES ($1, $2) RETURNING id', [nutzer, 'x']);
+  const uid = u.id;
+
+  const echtesQuery = db.pool.query.bind(db.pool);
+  try {
+    // 3001 / Farbe 4   zwei Erfassungen        → zwei Zeilen, aelteste zuerst
+    // 3001 / Farbe 1   KEINE Erfassung         → Teile-Zeile, nicht die von Farbe 4
+    // 3002 / Farbe 0   Erfassung ohne Preis    → leeres Feld, NICHT 42.00
+    for (const [nr, farbe, farbname, menge, preis] of [
+      ['3001', 4, 'Rot',  5, 1.00],
+      ['3001', 1, 'Blau', 7, 2.00],
+      ['3002', 0, '',     1, 42.00],
+    ]) {
+      await db.run(
+        `INSERT INTO parts (user_id, part_number, part_name, color_id, color_name,
+                            quantity, unit_price, condition, note, source)
+         VALUES ($1,$2,$3,$4,$5,$6,$7,'N',$8,'manual')`,
+        [uid, nr, `Teil ${nr}`, farbe, farbname, menge, preis, `Notiz ${nr}-${farbe}`]);
+    }
+    await db.run(
+      `INSERT INTO part_acquisitions (user_id, part_number, color_id, quantity, unit_price, condition, created_at)
+       VALUES ($1,'3001',4,2,0.50,'N', NOW() - INTERVAL '2 days'),
+              ($1,'3001',4,3,1.50,'U', NOW() - INTERVAL '1 day'),
+              ($1,'3002',0,1,NULL,NULL, NOW())`, [uid]);
+
+    let abfragen = 0;
+    db.pool.query = (...args) => { abfragen++; return echtesQuery(...args); };
+    const csv = await _req('routes/parts.js').buildPartsCsv(uid);
+    db.pool.query = echtesQuery;
+
+    const r = zeilen(csv);
+    assert.equal(r.length, 4, `4 Zeilen erwartet (2+1+1), bekommen ${r.length}:\n${csv}`);
+
+    // Der Fall, den nur die Teile haben: gleiche Nummer, andere Farbe.
+    const rot  = r.filter(x => x.part_number === '3001' && x.color_id === '4');
+    const blau = r.filter(x => x.part_number === '3001' && x.color_id === '1');
+    assert.equal(rot.length, 2, 'die rote Zeile hat zwei Erfassungen');
+    assert.equal(blau.length, 1,
+      'die blaue Zeile hat KEINE Erfassung — sie darf die der roten nicht erben');
+    assert.equal(blau[0].quantity, '7', 'ohne Erfassung zaehlt die Teile-Zeile');
+    assert.equal(blau[0].acquired_at, '', 'ohne Erfassung kein Datum');
+
+    assert.equal(rot[0].quantity, '2', 'die aeltere Erfassung steht oben');
+    assert.equal(rot[1].quantity, '3');
+    assert.equal(rot[0].condition, 'N');
+    assert.equal(rot[1].condition, 'U');
+    assert.match(rot[0].acquired_at, /^\d{4}-\d{2}-\d{2}$/, 'Erfassungen tragen ihr Datum');
+
+    // Die Notiz haengt an der TEILE-Zeile, nicht an der Erfassung — beide
+    // Zeilen derselben Farbe tragen sie deshalb gleich.
+    assert.equal(rot[0].note, 'Notiz 3001-4');
+    assert.equal(rot[1].note, 'Notiz 3001-4');
+
+    const ohnePreis = r.find(x => x.part_number === '3002');
+    assert.equal(ohnePreis.unit_price, '',
+      'eine Erfassung ohne Preis erbt NICHT den Preis der Teile-Zeile (42.00)');
+    assert.equal(ohnePreis.condition, 'N', 'fehlender Zustand wird zu N');
+
+    assert.ok(abfragen >= 1, 'der Zaehler hat nichts erfasst — der Patch greift nicht mehr');
+    assert.ok(abfragen <= 2,
+      `${abfragen} Abfragen fuer 3 Teile. Frueher lief eine Abfrage JE TEIL; ` +
+      `PARTS_CSV_SQL macht daraus eine.`);
+  } finally {
+    db.pool.query = echtesQuery;
+    await db.run('DELETE FROM part_acquisitions WHERE user_id = $1', [uid]).catch(() => {});
+    await db.run('DELETE FROM parts WHERE user_id = $1', [uid]).catch(() => {});
+    await db.run('DELETE FROM users WHERE id = $1', [uid]).catch(() => {});
+  }
+});

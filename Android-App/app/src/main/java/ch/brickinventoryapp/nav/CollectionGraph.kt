@@ -153,7 +153,15 @@ fun NavGraphBuilder.collectionGraph(
             val partsState by vm.partsState.collectAsStateWithLifecycle()
             val financeState by vm.financeState.collectAsStateWithLifecycle()
             LaunchedEffect(state.serverUrl) {
-                if (state.serverUrl.isNotBlank()) { vm.loadParts(); vm.loadValuation(); vm.loadPartsColors() }
+                if (state.serverUrl.isNotBlank()) {
+                    vm.loadParts(); vm.loadValuation()
+                    // Farbkatalog fuer den Erfassungsdialog …
+                    vm.loadPartsColors()
+                    // … und die beiden FILTERlisten mit ihren Zaehlwerten
+                    // (Nachtrag 134). Zwei verschiedene Adressen, siehe
+                    // BrickApiService.getPartsFilterColors.
+                    vm.loadPartsFilters()
+                }
             }
             ReiterGeruest(stringResource(R.string.nav_parts), vm, navController, bottomNavItems, snackbarHostState) {
                 ch.brickinventoryapp.ui.ScrollPositionKeeper(

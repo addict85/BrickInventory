@@ -178,6 +178,52 @@ data class BrickColorsResponse(
     val error: String? = null
 )
 
+/**
+ * Ein Eintrag der FILTERliste „Farbe" — mit Zaehlwerten.
+ *
+ * Nicht zu verwechseln mit [BrickColor]: Das ist der Farbkatalog fuer die
+ * Auswahl im Erfassungsdialog (id, name, hex) und kommt von
+ * /parts/brick-colors. Hier geht es um die Farben, die im BESTAND vorkommen,
+ * samt Anzahl — /parts/colors, dieselbe Quelle wie die Filterliste der Webapp
+ * (03-parts.js, loadPartsFilters).
+ */
+@Serializable
+data class PartsFilterColor(
+    @SerialName("color_name") val colorName: String? = null,
+    @SerialName("color_hex") val colorHex: String? = null,
+    @SerialName("unique_parts") val uniqueParts: Int = 0,
+    @SerialName("total_quantity") val totalQuantity: Int = 0,
+)
+
+@Serializable
+data class PartsFilterColorsResponse(
+    val success: Boolean = false,
+    val colors: List<PartsFilterColor> = emptyList(),
+)
+
+/**
+ * Ein Eintrag der Filterliste „Kategorie".
+ *
+ * `categoryName` ist der WERT, den der Server als Filter erwartet (meist eine
+ * Rebrickable-Kategorie-ID als Text), `label` der Name zum Anzeigen. Die
+ * Trennung stammt aus routes/parts.ts: `parts.category_name` traegt die ID,
+ * und fuer Teile, bei denen sie fehlt, holt der Server sie ueber den
+ * Teilekatalog nach.
+ */
+@Serializable
+data class PartsCategory(
+    @SerialName("category_name") val categoryName: String? = null,
+    val label: String? = null,
+    @SerialName("unique_parts") val uniqueParts: Int = 0,
+    @SerialName("total_quantity") val totalQuantity: Int = 0,
+)
+
+@Serializable
+data class PartsCategoriesResponse(
+    val success: Boolean = false,
+    val categories: List<PartsCategory> = emptyList(),
+)
+
 @Serializable
 data class DefaultConditionResponse(val success: Boolean, val condition: String = "N")
 

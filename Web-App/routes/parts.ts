@@ -47,6 +47,8 @@ import { recordAcquisitionForDay } from '../utils/acquisitions';
 // müsste utils/setService.ts (addSet) einen Router importieren.
 import { importPartsForSet, fetchMissingBlIds, syncBlPartNumbers } from '../utils/partsImport';
 import { requireLogin } from './auth';
+// Blickfeld — dieselbe Quelle wie in routes/api_v1/parts.ts.
+import { scopeIds, parseScopeMode } from '../utils/household';
 import { DEFAULT_PRICE_CONDITION } from '../utils/financeCalc';
 // Der Standard-Zustand eines Benutzers. Hiess in routes/sets.ts einmal
 // `getUserDefaultCondition` und war dort eine wortgleiche Zweitfassung dieser
@@ -66,7 +68,17 @@ router.use(requireLogin);
 
 
 router.get('/categories', async (req, res) => {
-  const uid = angemeldeteNutzerId(req);
+  // ── Blickfeld statt eigener ID (Nachtrag 134) ─────────────────────────────
+  //
+  // Hier stand `angemeldeteNutzerId(req)` — die eigene Konto-ID, ohne
+  // `accounts`. Der ZWILLING dieser Route, /parts/colors, liest das Blickfeld
+  // seit jeher (routes/api_v1/parts.ts:115 → scopeIds + parseScopeMode).
+  //
+  // Zwei Filter ueber DERSELBEN Liste mit zwei verschiedenen Blickfeldern: Im
+  // Haushalt zaehlte die Farbliste die Teile aller Konten, die Kategorienliste
+  // nur die eigenen. Wer nach einer Kategorie filterte, bekam eine Liste, die
+  // zu keiner der beiden Zahlen darueber passte.
+  const uids = await scopeIds(angemeldeteNutzerId(req), parseScopeMode(req.query.accounts));
   try {
     const cats = await db.all(`
       -- Kategorie auflösen, notfalls über den Teilekatalog.
@@ -91,10 +103,10 @@ router.get('/categories', async (req, res) => {
              ON rc.id = (CASE WHEN p.category_name ~ '^[0-9]+$' THEN p.category_name::int ELSE NULL END)
       LEFT JOIN rb_parts rp ON rp.part_num = p.part_number
       LEFT JOIN rb_part_categories rp_cat ON rp_cat.id = rp.part_cat_id
-      WHERE p.user_id = $1 AND COALESCE(p.source,'set') <> 'manual'
+      WHERE p.user_id = ANY($1) AND COALESCE(p.source,'set') <> 'manual'
       GROUP BY COALESCE(rc.id::text, rp_cat.id::text, p.category_name),
                COALESCE(rc.name, rp_cat.name, 'Unbekannt')
-      ORDER BY total_quantity DESC`, [uid]);
+      ORDER BY total_quantity DESC`, [uids]);
     res.json({ success:true, categories:cats });
   } catch (e) { handleRouteError(res, e, undefined, req); }
 });
@@ -596,34 +608,50 @@ router.post('/import/csv', csvEmpfang.single('file'), async (req: LoggedInReques
 
 // Shared logic to build the Teile CSV export content (manuell erfasst only).
 // Used by both the standalone CSV download and the combined ZIP export in settings.js.
+//
+// ── EINE Abfrage statt einer je Teil (Nachtrag 134) ──────────────────────────
+//
+// Hier stand `for (const p of parts) { await db.all(...) }` — bei 2000 manuell
+// erfassten Teilen also 2001 Abfragen fuer einen Export. Die beiden
+// ZWILLINGSFUNKTIONEN sind laengst umgestellt: buildFigsCsv (routes/minifigs.ts,
+// FIGS_CSV_SQL) und buildSetsCsv (utils/setService.ts, SETS_CSV_SQL). Ihre
+// Kommentare beschreiben genau diesen Umbau; die Teile blieben als einzige
+// zurueck. Wieder eine Regel, die an zwei von drei Stellen gilt.
+//
+// Der LEFT JOIN erhaelt, was das frueherer `.catch(()=>[])` je Teil leistete:
+// Teile ohne Erfassungen liefern eine Zeile aus der Stammzeile. Der Rueckfall
+// darunter faengt den anderen Fall ab, den das `.catch` abdeckte — die Tabelle
+// part_acquisitions fehlt ganz (Migration noch nicht gelaufen). Ein JOIN wuerde
+// dann die GANZE Abfrage abbrechen und der Export lieferte nichts mehr.
+const PARTS_CSV_SQL = `
+  SELECT p.part_number,
+         CASE WHEN a.id IS NULL THEN p.quantity   ELSE a.quantity   END AS quantity,
+         COALESCE(p.color_id, 0) AS color_id,
+         COALESCE(p.color_name,'') AS color_name,
+         CASE WHEN a.id IS NULL THEN p.unit_price ELSE a.unit_price END AS unit_price,
+         COALESCE(p.note,'') AS note,
+         COALESCE(CASE WHEN a.id IS NULL THEN p.condition ELSE a.condition END, 'N') AS condition,
+         CASE WHEN a.id IS NULL THEN ''
+              ELSE TO_CHAR(a.created_at AT TIME ZONE 'UTC','YYYY-MM-DD') END AS acquired_at
+    FROM parts p
+    LEFT JOIN part_acquisitions a
+           ON a.user_id = p.user_id
+          AND a.part_number = p.part_number
+          AND COALESCE(a.color_id, 0) = COALESCE(p.color_id, 0)
+   WHERE p.user_id = $1 AND p.source = 'manual'
+   ORDER BY p.part_name ASC, p.part_number ASC, a.created_at ASC, a.id ASC`;
+
 async function buildPartsCsv(uid: number) {
-  const parts = await db.all(
-    "SELECT * FROM parts WHERE user_id=$1 AND source='manual' ORDER BY part_name ASC, part_number ASC",
-    [uid]);
-  // Eine Zeile pro Erfassung, damit Zustand, Preis und Datum je Kauf erhalten
-  // bleiben und beim Re-Import 1:1 wiederhergestellt werden können. Teile ohne
-  // Erfassungen fallen auf die Teil-Zeile zurück.
-  const rows: any[] = [];
-  for (const p of parts) {
-    const acqs = await db.all(
-      `SELECT quantity, unit_price, COALESCE(condition,'N') AS condition,
-              TO_CHAR(created_at AT TIME ZONE 'UTC','YYYY-MM-DD') AS acquired_at
-       FROM part_acquisitions WHERE user_id=$1 AND part_number=$2 AND color_id=$3
-       ORDER BY created_at ASC`,
-      [p.user_id, p.part_number, p.color_id || 0]
-    ).catch(()=>[]);
-    if (acqs.length) {
-      for (const a of acqs) {
-        rows.push({ part_number: p.part_number, quantity: a.quantity, color_id: p.color_id || 0,
-          color_name: p.color_name || '', unit_price: a.unit_price ?? '', note: p.note || '',
-          condition: a.condition, acquired_at: a.acquired_at || '' });
-      }
-    } else {
-      rows.push({ part_number: p.part_number, quantity: p.quantity, color_id: p.color_id || 0,
-        color_name: p.color_name || '', unit_price: p.unit_price ?? '', note: p.note || '',
-        condition: p.condition || 'N', acquired_at: '' });
-    }
-  }
+  const rows = (await db.all(PARTS_CSV_SQL, [uid]).catch(() => null)
+    ?? await db.all(
+      `SELECT part_number, quantity, COALESCE(color_id,0) AS color_id,
+              COALESCE(color_name,'') AS color_name, unit_price,
+              COALESCE(note,'') AS note, COALESCE(condition,'N') AS condition,
+              '' AS acquired_at
+         FROM parts WHERE user_id=$1 AND source='manual'
+        ORDER BY part_name ASC, part_number ASC`, [uid])
+  ).map((r: any) => ({ ...r, unit_price: r.unit_price ?? '' }));
+
   return toCsv(
     ['part_number', 'quantity', 'color_id', 'color_name', 'unit_price', 'note', 'condition', 'acquired_at'],
     rows

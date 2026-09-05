@@ -32,6 +32,14 @@ class DeadCodeTest {
         // (derzeit keine)
     )
 
+    /**
+     * `<!-- … -->` heraus, auch ueber mehrere Zeilen.
+     *
+     * Kotlins Zeilenfilter (Quellen.ohneKommentare) hilft in XML nicht: Dort
+     * steht der Kommentar oft in einer Zeile mit Inhalt.
+     */
+    private fun ohneXmlKommentare(s: String) = s.replace(Regex("<!--[\\s\\S]*?-->"), "")
+
     @Test
     fun `jede Textressource wird benutzt`() {
         val en = java.io.File("src/main/res/values/strings.xml").readText()
@@ -41,12 +49,23 @@ class DeadCodeTest {
 
         // Gesucht wird im Kotlin-Code UND in den übrigen XML-Dateien (Themes,
         // Menüs, das Manifest binden Texte ebenfalls ein).
+        //
+        // OHNE KOMMENTARE (Nachtrag 134). Ein Schluessel, der nur in einem
+        // Kommentar VORKOMMT, wird nicht benutzt — er wird erwaehnt. Der
+        // Unterschied ist nicht theoretisch: Beim Umstellen des Vergleich-
+        // Suchfelds auf `cd_search_clear` wurde `comparison_clear` frei, und
+        // der Kommentar, der genau DAS erklaert, nennt den alten Namen. Die
+        // Pruefung sah ihn und meldete den Text als weiter benutzt.
+        //
+        // So haelt sich jeder tote Text am Leben, sobald irgendwo steht, warum
+        // er tot ist — und das ist die Sorte Erklaerung, die man am ehesten
+        // hinschreibt.
         val verwendung = buildString {
-            Quellen.alle().forEach { append(it.readText()).append('\n') }
+            Quellen.alle().forEach { append(Quellen.ohneKommentare(it.readText())).append('\n') }
             java.io.File("src/main/res").walkTopDown()
                 .filter { it.isFile && it.extension == "xml" && !it.name.startsWith("strings") }
-                .forEach { append(it.readText()).append('\n') }
-            append(java.io.File("src/main/AndroidManifest.xml").readText())
+                .forEach { append(ohneXmlKommentare(it.readText())).append('\n') }
+            append(ohneXmlKommentare(java.io.File("src/main/AndroidManifest.xml").readText()))
         }
         assert(verwendung.length > 100_000) { "Zu wenig Quelltext gelesen — Pfad veraltet?" }
 
