@@ -198,7 +198,6 @@
     <string name="finance_grand_total">Total</string>
     <string name="finance_market_avg">Ø Market price</string>
 
-
     <!-- ══════════════ Parts screen ══════════════ -->
     <string name="parts_stat_types">Types</string>
     <string name="parts_stat_colors">Colors</string>
@@ -222,7 +221,6 @@
     <string name="parts_color_label">Color (optional)</string>
     <string name="parts_note">Note (optional)</string>
     <string name="parts_add_button">Add</string>
-
 
     <!-- ══════════════ Monitoring screen ══════════════ -->
     <string name="monitoring_title">Job Monitoring</string>
@@ -274,7 +272,6 @@
     <string name="detail_price_current">Current</string>
     <string name="detail_price_high">High</string>
 
-
     <!-- ══════════════ Navigation & Main ══════════════ -->
     <string name="nav_gallery">Gallery</string>
     <string name="nav_parts">Parts</string>
@@ -302,10 +299,8 @@
     <string name="main_menu_change_server">Change server</string>
     <string name="vm_settings_saved">Settings saved</string>
 
-
     <!-- ══════════════ ViewModel messages ══════════════ -->
     <string name="vm_barcode_not_found">No set found for barcode %1$s</string>
-
 
     <!-- Nachtrag i18n-Pass: zuvor hartkodierte Strings -->
     <string name="parts_search_placeholder">Search parts…</string>
@@ -520,7 +515,6 @@
     <string name="forgot_email_required">Please enter your email address.</string>
     <string name="forgot_done">If the address exists, a link has been sent.</string>
 
-
     <!-- ══════════════ Account card (profile / password) ══════════════ -->
     <string name="konto_title">Account</string>
     <string name="konto_email_unverified">Email address not confirmed</string>
@@ -533,7 +527,6 @@
     <string name="konto_password_changed">Password changed. Please sign in again.</string>
     <string name="konto_password_button">Change password</string>
 
-
     <!-- ══════════════ CSV upload ══════════════ -->
     <string name="csv_upload_title">Import CSV</string>
     <string name="csv_upload_sets">Sets</string>
@@ -545,34 +538,13 @@
     <string name="csv_upload_result">%1$d rows: %2$d new, %3$d updated, %4$d errors</string>
     <string name="csv_upload_close">Close</string>
 
-
     <!-- ══════════════ Instructions upload ══════════════ -->
     <string name="instr_upload">Add instruction</string>
     <string name="instr_upload_wrong_type">Only PDF, JPG or PNG.</string>
     <string name="instr_upload_done">Instruction added</string>
     <string name="instr_delete">Remove instruction</string>
 
-
-    <!-- ══════════════ Settings backup ══════════════ -->
-    <string name="backup_title">Backup</string>
-    <string name="backup_hint">Configuration only — no access keys. The server leaves them out on purpose.</string>
-    <string name="backup_save">Save backup</string>
-    <string name="backup_restore">Restore backup</string>
-    <string name="backup_saved">Backup saved</string>
-    <string name="backup_write_failed">The file could not be written.</string>
-    <string name="backup_restored">Backup restored</string>
-
-
-    <!-- ══════════════ User management / server log ══════════════ -->
-    <string name="admin_users_title">Accounts</string>
-    <string name="admin_user_new">New account</string>
-    <string name="admin_user_created">Account created</string>
-    <string name="admin_user_saved">Account updated</string>
-    <string name="admin_user_deleted">Account deleted</string>
-    <string name="admin_user_is_admin">Administrator</string>
-    <string name="admin_user_set_password">Set password</string>
-    <string name="admin_user_delete_title">Delete account?</string>
-    <string name="admin_user_delete_text">%1$s is removed together with all of their sets, parts and minifigures. This cannot be undone.</string>
+    <!-- ══════════════ Server log ══════════════ -->
     <string name="admin_log_title">Server log</string>
     <string name="admin_log_minutes">Last %1$d min</string>
     <string name="admin_log_empty">No entries in this period.</string>

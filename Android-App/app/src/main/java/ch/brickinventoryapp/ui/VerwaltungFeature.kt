@@ -8,65 +8,26 @@ import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
 
 /**
- * Nutzerverwaltung und Server-Protokoll — was ein Verwalter tun kann.
+ * Das Server-Protokoll — was ein Verwalter nachsehen kann.
  *
  * ── Warum die App das erst jetzt kann (Nachtrag 127) ────────────────────────
  *
- * Nicht, weil es fehlte: /auth/users und /admin/logs gibt es seit jeher, und
- * die Webapp benutzt beide. Sie lagen hinter einem requireAdmin, das
- * ausschliesslich die Browser-Sitzung kannte — die App weist sich mit einem
- * Bearer-Token aus und bekam ein 401. Seit beide Waechter dieselbe Frage
- * stellen, sind es normale Aufrufe.
+ * Nicht, weil es fehlte: /admin/logs gibt es seit jeher, und die Webapp
+ * benutzt es. Die Route lag hinter einem requireAdmin, das ausschliesslich die
+ * Browser-Sitzung kannte — die App weist sich mit einem Bearer-Token aus und
+ * bekam ein 401. Seit beide Waechter dieselbe Frage stellen, ist es ein
+ * normaler Aufruf.
+ *
+ * ── Was hier NICHT steht (Nachtrag 129) ─────────────────────────────────────
+ *
+ * Die Nutzerverwaltung. Sie war gebaut — Konten anlegen, Rolle setzen,
+ * Passwort setzen, Konto entfernen — und ist auf Marcos Entscheidung wieder
+ * entfernt worden: Sie gehoert an den Rechner, nicht auf ein Telefon. Der
+ * Server kann sie weiterhin, die Webapp bietet sie an; die App tut es nicht.
+ * Das ist kein Versehen und keine Luecke, sondern eine Wahl.
  *
  * Feature-Modul des MainViewModel wie die uebrigen *Feature.kt-Dateien.
  */
-
-internal fun MainViewModel.ladeKonten() {
-    viewModelScope.launch {
-        _verwaltungState.update { it.copy(kontenLaden = true, fehler = null) }
-        when (val r = repo.admin.getKonten()) {
-            is Result.Success -> _verwaltungState.update {
-                it.copy(kontenLaden = false, konten = r.data.users,
-                        fehler = if (r.data.success) null else r.data.error) }
-            is Result.Error -> _verwaltungState.update {
-                it.copy(kontenLaden = false, fehler = meldung(r)) }
-        }
-    }
-}
-
-/**
- * Eine Aenderung an einem Konto ausfuehren und die Liste neu holen.
- *
- * Alle vier Wege (anlegen, Rolle setzen, Passwort setzen, loeschen) enden
- * gleich: Die Antwort sagt, ob es geklappt hat, und danach ist die Liste
- * veraltet. Das einmal zu schreiben ist richtiger, als es viermal fast gleich
- * zu haben — genau die Form, die in diesem Baum wiederholt auseinandergelaufen
- * ist.
- */
-private fun MainViewModel.kontoAenderung(
-    erfolgstext: Int, aufruf: suspend () -> Result<GenericResponse>,
-) {
-    viewModelScope.launch {
-        when (val r = aufruf()) {
-            is Result.Success ->
-                if (r.data.success) { _snackbar.value = text(erfolgstext); ladeKonten() }
-                else _snackbar.value = r.data.error ?: text(R.string.err_generic)
-            is Result.Error -> _snackbar.value = meldung(r)
-        }
-    }
-}
-
-internal fun MainViewModel.legeKontoAn(name: String, passwort: String, verwalter: Boolean) =
-    kontoAenderung(R.string.admin_user_created) { repo.admin.createKonto(name, passwort, verwalter) }
-
-internal fun MainViewModel.setzeVerwalterrolle(id: Int, verwalter: Boolean) =
-    kontoAenderung(R.string.admin_user_saved) { repo.admin.setzeVerwalter(id, verwalter) }
-
-internal fun MainViewModel.setzeFremdesPasswort(id: Int, passwort: String) =
-    kontoAenderung(R.string.admin_user_saved) { repo.admin.setzeFremdesPasswort(id, passwort) }
-
-internal fun MainViewModel.loescheKonto(id: Int) =
-    kontoAenderung(R.string.admin_user_deleted) { repo.admin.loescheKonto(id) }
 
 /**
  * Das Server-Protokoll holen.

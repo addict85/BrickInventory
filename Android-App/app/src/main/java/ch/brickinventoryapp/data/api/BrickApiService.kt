@@ -101,44 +101,11 @@ interface BrickApiService {
         @Path("instrId") instrId: Int,
     ): Response<GenericResponse>
 
-    // ── Sicherung der Einstellungen ─────────────────────────────────────────
+    // ── Server-Protokoll (nur fuer Verwalter) ───────────────────────────────
     //
-    // Als ResponseBody und NICHT als Datenklasse: Die Datei soll unveraendert
-    // beim Nutzer landen. Sie hier zu zerlegen und neu zu schreiben hiesse, dass
-    // eine kuenftige Ergaenzung des Servers beim Sichern durch die App
-    // stillschweigend verlorenginge — dieselbe Sicherung, zwei verschiedene
-    // Inhalte, je nachdem womit man sie gezogen hat.
-    //
-    // Die Datei enthaelt AUSDRUECKLICH keine Zugangsschluessel: Der Server
-    // siebt sie aus (SECRET_KEYS in routes/settings.ts), weil eine Sicherung
-    // weitergeschickt und abgelegt wird.
-    @GET("api/v1/settings/export")
-    suspend fun exportEinstellungen(): Response<okhttp3.ResponseBody>
-
-    @Multipart
-    @POST("api/v1/settings/import")
-    suspend fun importEinstellungen(@retrofit2.http.Part datei: okhttp3.MultipartBody.Part): Response<GenericResponse>
-
-    // ── Nutzerverwaltung und Protokoll (nur fuer Verwalter) ─────────────────
-    @GET("api/v1/auth/users")
-    suspend fun getKonten(): Response<KontenResponse>
-
-    @POST("api/v1/auth/users")
-    suspend fun createKonto(@Body request: NeuesKonto): Response<GenericResponse>
-
-    @PUT("api/v1/auth/users/{id}/admin")
-    suspend fun setzeVerwalter(
-        @Path("id") id: Int, @Body request: VerwalterAenderung,
-    ): Response<GenericResponse>
-
-    @PUT("api/v1/auth/users/{id}/password")
-    suspend fun setzeFremdesPasswort(
-        @Path("id") id: Int, @Body request: FremdesPasswort,
-    ): Response<GenericResponse>
-
-    @DELETE("api/v1/auth/users/{id}")
-    suspend fun loescheKonto(@Path("id") id: Int): Response<GenericResponse>
-
+    // Die Nutzerverwaltung des Servers (/auth/users) ist hier ABSICHTLICH nicht
+    // vertreten: Sie gehoert an den Rechner, nicht auf ein Telefon
+    // (Nachtrag 129). Die Webapp bietet sie an.
     @GET("api/v1/admin/logs")
     suspend fun getProtokoll(@Query("minutes") minuten: Int): Response<ProtokollResponse>
 

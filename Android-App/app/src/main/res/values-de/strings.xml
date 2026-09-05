@@ -183,7 +183,6 @@
     <string name="finance_grand_total">Total</string>
     <string name="finance_market_avg">Ø Marktpreis</string>
 
-
     <!-- ══════════════ Parts screen ══════════════ -->
     <string name="parts_stat_types">Typen</string>
     <string name="parts_stat_colors">Farben</string>
@@ -207,7 +206,6 @@
     <string name="parts_color_label">Farbe (optional)</string>
     <string name="parts_note">Notiz (optional)</string>
     <string name="parts_add_button">Hinzufügen</string>
-
 
     <!-- ══════════════ Monitoring screen ══════════════ -->
     <string name="monitoring_title">Job Monitoring</string>
@@ -261,7 +259,6 @@
     <string name="detail_price_current">Aktuell</string>
     <string name="detail_price_high">Hoch</string>
 
-
     <!-- ══════════════ Navigation & Main ══════════════ -->
     <string name="nav_gallery">Galerie</string>
     <string name="nav_parts">Teile</string>
@@ -285,10 +282,8 @@
     <string name="main_menu_change_server">Server ändern</string>
     <string name="vm_settings_saved">Einstellungen gespeichert</string>
 
-
     <!-- ══════════════ ViewModel messages ══════════════ -->
     <string name="vm_barcode_not_found">Kein Set für Barcode %1$s gefunden</string>
-
 
     <!-- Nachtrag i18n-Pass: zuvor hartkodierte Strings -->
     <string name="parts_search_placeholder">Teile suchen…</string>
@@ -506,7 +501,6 @@
     <string name="forgot_email_required">Bitte gib deine E-Mail-Adresse ein.</string>
     <string name="forgot_done">Falls die Adresse existiert, wurde ein Link gesendet.</string>
 
-
     <!-- ══════════════ Kontokarte (Profil / Passwort) ══════════════ -->
     <string name="konto_title">Konto</string>
     <string name="konto_email_unverified">E-Mail-Adresse nicht bestätigt</string>
@@ -519,7 +513,6 @@
     <string name="konto_password_changed">Passwort geändert. Bitte melde dich neu an.</string>
     <string name="konto_password_button">Passwort ändern</string>
 
-
     <!-- ══════════════ CSV hochladen ══════════════ -->
     <string name="csv_upload_title">CSV importieren</string>
     <string name="csv_upload_sets">Sets</string>
@@ -531,34 +524,13 @@
     <string name="csv_upload_result">%1$d Zeilen: %2$d neu, %3$d aktualisiert, %4$d Fehler</string>
     <string name="csv_upload_close">Schliessen</string>
 
-
     <!-- ══════════════ Anleitung hochladen ══════════════ -->
     <string name="instr_upload">Anleitung hinzufügen</string>
     <string name="instr_upload_wrong_type">Nur PDF, JPG oder PNG.</string>
     <string name="instr_upload_done">Anleitung hinzugefügt</string>
     <string name="instr_delete">Anleitung entfernen</string>
 
-
-    <!-- ══════════════ Sicherung der Einstellungen ══════════════ -->
-    <string name="backup_title">Sicherung</string>
-    <string name="backup_hint">Nur die Konfiguration — keine Zugangsschlüssel. Der Server lässt sie bewusst weg.</string>
-    <string name="backup_save">Sicherung speichern</string>
-    <string name="backup_restore">Sicherung einspielen</string>
-    <string name="backup_saved">Sicherung gespeichert</string>
-    <string name="backup_write_failed">Die Datei liess sich nicht schreiben.</string>
-    <string name="backup_restored">Sicherung eingespielt</string>
-
-
-    <!-- ══════════════ Nutzerverwaltung / Server-Protokoll ══════════════ -->
-    <string name="admin_users_title">Konten</string>
-    <string name="admin_user_new">Neues Konto</string>
-    <string name="admin_user_created">Konto angelegt</string>
-    <string name="admin_user_saved">Konto geändert</string>
-    <string name="admin_user_deleted">Konto gelöscht</string>
-    <string name="admin_user_is_admin">Verwalter</string>
-    <string name="admin_user_set_password">Passwort setzen</string>
-    <string name="admin_user_delete_title">Konto löschen?</string>
-    <string name="admin_user_delete_text">%1$s wird samt allen Sets, Teilen und Minifiguren entfernt. Das lässt sich nicht rückgängig machen.</string>
+    <!-- ══════════════ Server-Protokoll ══════════════ -->
     <string name="admin_log_title">Server-Protokoll</string>
     <string name="admin_log_minutes">Letzte %1$d Min</string>
     <string name="admin_log_empty">Keine Einträge in diesem Zeitraum.</string>
