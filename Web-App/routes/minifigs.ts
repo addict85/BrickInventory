@@ -49,7 +49,7 @@ import { nutzerStandardZustand as userDefaultCondition, zustandFuerPreis } from 
 import { kaufpreisAusEingabe, manuellerKaufpreis } from '../utils/preisRegel';
 import { fetchMinifigPrice, fetchPartPrice } from '../utils/financeCalc';
 import { getSetting, getGlobalSetting } from '../utils/settings';
-import { csvEinlesen, parseCsvDate, toCsv, uebersprungenHinweis } from '../utils/csvExport';
+import { csvGemeinsameFelder, csvImportAntwort, csvZeilenAusAnfrage, toCsv } from '../utils/csvExport';
 import { getMinifigParts } from '../clients/rebrickable';
 import { angemeldeteNutzerId } from '../utils/auth';
 import { csvEmpfang } from '../utils/dateiEmpfang';
@@ -487,13 +487,10 @@ router.post('/import/csv', csvEmpfang.single('file'), async (req: LoggedInReques
   if (!req.file) return sendeFehler(req, res, 400, 'keine_datei');
   const uid = angemeldeteNutzerId(req);
   try {
-    // Krumme Zeilen überspringen statt abbrechen (utils/csvExport.ts).
-    const gelesen   = csvEinlesen(req.file.buffer.toString('utf-8'));
-    const records   = gelesen.records;
-    const uebersprungen = gelesen.uebersprungen;
-    // Hochkomma vor Formelzeichen wieder entfernen — der eigene Export setzt es
-    // gegen Formelausführung in Tabellenprogrammen (utils/csvExport.ts).
-    const bereinigt = require('../utils/csvExport').csvZeilenBereinigen(records);
+    // Einlesen, entschaerfen, zaehlen — gemeinsam mit dem anderen Import
+    // (utils/csvExport.ts, csvZeilenAusAnfrage).
+    const { records, bereinigt, uebersprungen } =
+      csvZeilenAusAnfrage(req.file.buffer.toString('utf-8'));
 
     let added = 0, updated = 0, errors = 0;
     const results: any[] = [];
@@ -502,21 +499,22 @@ router.post('/import/csv', csvEmpfang.single('file'), async (req: LoggedInReques
       const figNumber = (row.fig_number || row['Nummer'] || row['fig_num'] || Object.values(row)[0] || '').trim();
       if (!figNumber) continue;
 
-      const qty       = parseInt(String(row.quantity || row['Anzahl'] || '1').replace(/[^0-9]/g, '')) || 1;
-      const rawUnitPrice = row.unit_price ?? row['Preis'] ?? '';
-      let unitPrice = String(rawUnitPrice).trim() !== '' ? parseFloat(String(rawUnitPrice).replace(',', '.')) : null;
-      if (unitPrice !== null && isNaN(unitPrice)) unitPrice = null;
-      const note      = row.note || row['Notiz'] || null;
       const blFigNumber = (row.bl_fig_number || row['BrickLink-Nr'] || '').trim() || null;
+      // Menge, Preis, Notiz, Datum und Zustand aus der gemeinsamen Fassung —
+      // siehe den Absatz unten, warum das hier besonders zaehlt.
+      const { menge: qty, preis: unitPrice, notiz: note,
+              erfasstAm: acquiredAt, zustand: rawCondition } = csvGemeinsameFelder(row);
+      // ── Warum das Datum hier eine eigene Geschichte hat ──────────────────
+      //
       // parseCsvDate statt roher Zeichenkette (siehe test/csv-date.test.js):
       // Postgres liest bei DateStyle MDY "01.02.2026" als 2. Januar, nicht als
       // 1. Februar — stillschweigend, ohne Fehler. Ab Tag 13 bricht es ab und
       // die Erfassung geht verloren.
       //
-      // Der Fehler war bekannt und fuer Sets und Teile behoben; dieser dritte
-      // Aufrufer hat die Behebung nie bekommen.
-      const acquiredAt = parseCsvDate(row.acquired_at || row['erfassungsdatum']);
-      const rawCondition = (row.condition || row['zustand'] || '').trim().toUpperCase();
+      // Der Fehler war bekannt und fuer Sets und Teile behoben; DIESER dritte
+      // Aufrufer hat die Behebung nie bekommen. Seit Nachtrag 144 liest die
+      // Zeile darueber alle fuenf Felder aus csvGemeinsameFelder — es gibt
+      // keinen dritten Aufrufer mehr, der etwas verpassen koennte.
 
       try {
         let figName = row.fig_name || row['Name'] || null;
@@ -560,9 +558,7 @@ router.post('/import/csv', csvEmpfang.single('file'), async (req: LoggedInReques
       }
     }
 
-    res.json({ success: true, added, updated, errors, total: records.length, results,
-      skipped: uebersprungen.length || undefined,
-      skipped_hint: uebersprungenHinweis(uebersprungen) || undefined });
+    csvImportAntwort(res, { added, updated, errors, records, results, uebersprungen });
   } catch (e) { handleRouteError(res, e, undefined, req); }
 });
 

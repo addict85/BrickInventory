@@ -501,7 +501,7 @@ import { fetchPartPrice } from '../utils/financeCalc';
 import { getSetting } from '../utils/settings';
 import { getBrickColors, getRbKey, httpsGetRobust } from '../clients/rebrickable';
 import { rebrickableBackgroundLimiter } from '../utils/rateLimiter';
-import { csvEinlesen, parseCsvDate, toCsv, uebersprungenHinweis } from '../utils/csvExport';
+import { csvGemeinsameFelder, csvImportAntwort, csvZeilenAusAnfrage, toCsv } from '../utils/csvExport';
 import { angemeldeteNutzerId } from '../utils/auth';
 import { csvEmpfang } from '../utils/dateiEmpfang';
 import { sendeFehler } from '../utils/fehlerTexte';
@@ -511,13 +511,10 @@ router.post('/import/csv', csvEmpfang.single('file'), async (req: LoggedInReques
   if (!req.file) return sendeFehler(req, res, 400, 'keine_datei');
   const uid = angemeldeteNutzerId(req);
   try {
-    // Krumme Zeilen überspringen statt abbrechen (utils/csvExport.ts).
-    const gelesen   = csvEinlesen(req.file.buffer.toString('utf-8'));
-    const records   = gelesen.records;
-    const uebersprungen = gelesen.uebersprungen;
-    // Hochkomma vor Formelzeichen wieder entfernen — der eigene Export setzt es
-    // gegen Formelausführung in Tabellenprogrammen (utils/csvExport.ts).
-    const bereinigt = require('../utils/csvExport').csvZeilenBereinigen(records);
+    // Einlesen, entschaerfen, zaehlen — gemeinsam mit dem anderen Import
+    // (utils/csvExport.ts, csvZeilenAusAnfrage).
+    const { records, bereinigt, uebersprungen } =
+      csvZeilenAusAnfrage(req.file.buffer.toString('utf-8'));
 
     let added = 0, updated = 0, errors = 0;
     const results: any[] = [];
@@ -528,14 +525,11 @@ router.post('/import/csv', csvEmpfang.single('file'), async (req: LoggedInReques
 
       const colorId    = parseInt(row.color_id || row['Farb-ID'] || '0') || 0;
       const colorName  = row.color_name  || row['Farbe']     || null;
-      const qty        = parseInt(String(row.quantity || row['Anzahl'] || '1').replace(/[^0-9]/g,'')) || 1;
-      const rawUnitPrice = row.unit_price ?? row['Preis'] ?? '';
-      let unitPrice = String(rawUnitPrice).trim() !== '' ? parseFloat(String(rawUnitPrice).replace(',', '.')) : null;
-      if (unitPrice !== null && isNaN(unitPrice)) unitPrice = null;
-      const note       = row.note || row['Notiz'] || null;
-      // Siehe utils/csvExport.ts: Tag zuerst, nicht Monat.
-      const acquiredAt = parseCsvDate(row.acquired_at || row['erfassungsdatum']);
-      const rawCondition = (row.condition || row['zustand'] || '').trim().toUpperCase();
+      // Menge, Preis, Notiz, Datum und Zustand liest csvGemeinsameFelder — es
+      // sind dieselben Spalten wie beim Minifiguren-Import, und dort ist eine
+      // Behebung schon einmal liegen geblieben (utils/csvExport.ts).
+      const { menge: qty, preis: unitPrice, notiz: note,
+              erfasstAm: acquiredAt, zustand: rawCondition } = csvGemeinsameFelder(row);
 
       try {
         // Lookup from Rebrickable
@@ -591,9 +585,7 @@ router.post('/import/csv', csvEmpfang.single('file'), async (req: LoggedInReques
       }
     }
 
-    res.json({ success: true, added, updated, errors, total: records.length, results,
-      skipped: uebersprungen.length || undefined,
-      skipped_hint: uebersprungenHinweis(uebersprungen) || undefined });
+    csvImportAntwort(res, { added, updated, errors, records, results, uebersprungen });
   } catch (e) { handleRouteError(res, e, undefined, req); }
 });
 

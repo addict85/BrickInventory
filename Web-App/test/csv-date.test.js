@@ -85,10 +85,21 @@ test('leere und unbrauchbare Eingaben ergeben null', () => {
  * dort durch parseCsvDate? Die Liste wird gefunden, nicht aufgezählt.
  */
 test('jeder CSV-Import normalisiert das Datum', () => {
-  const routen = path.join(__dirname, '..', 'routes');
-  const dateien = fs.readdirSync(routen).filter(f => f.endsWith('.ts'));
+  // ── Auch utils/, seit die Zeile dort steht (Nachtrag 144) ────────────────
+  //
+  // Teile- und Minifiguren-Import lasen das Datum bis dahin JE SELBST — und
+  // genau daran hing der Fehler, den dieser Test festhält: Die Behebung war
+  // für Sets und Teile gemacht und beim dritten Aufrufer liegen geblieben.
+  // Jetzt liest csvGemeinsameFelder() in utils/csvExport.ts für beide, und wer
+  // nur `routes/` durchsucht, findet die Stelle nicht mehr.
+  const ROOT = path.join(__dirname, '..');
+  const dateien = [];
+  for (const ordner of ['routes', 'utils']) {
+    for (const f of fs.readdirSync(path.join(ROOT, ordner)))
+      if (f.endsWith('.ts')) dateien.push(path.join(ordner, f));
+  }
   assert.ok(dateien.length >= 3,
-    `nur ${dateien.length} Routendateien gefunden — der Pfad stimmt nicht, und ` +
+    `nur ${dateien.length} Quelldateien gefunden — der Pfad stimmt nicht, und ` +
     'ein leeres Ergebnis würde diesen Test stillschweigend bestehen lassen');
 
   const ohneKommentar = (src) => src.split('\n')
@@ -98,7 +109,7 @@ test('jeder CSV-Import normalisiert das Datum', () => {
   const verstoesse = [];
   let gefunden = 0;
   for (const datei of dateien) {
-    const src = ohneKommentar(fs.readFileSync(path.join(routen, datei), 'utf8'));
+    const src = ohneKommentar(fs.readFileSync(path.join(ROOT, datei), 'utf8'));
     // Jede Zeile, die ein Erfassungsdatum aus einer CSV-ZEILE liest.
     const re = /^.*\brow\b[^\n]*(acquired_at|erfassungsdatum)[^\n]*$/gm;
     for (const treffer of src.match(re) || []) {
@@ -108,10 +119,24 @@ test('jeder CSV-Import normalisiert das Datum', () => {
   }
 
   // Selbstbeweis: Findet das Muster gar keine Lesestelle, sagt ein leeres
-  // Ergebnis nichts. Drei Importe gibt es (Sets, Teile, Minifiguren).
-  assert.ok(gefunden >= 3,
+  // Ergebnis nichts.
+  //
+  // Die Schranke war 3 („drei Importe gibt es") und ist jetzt 2: Es gibt
+  // weiterhin drei Importe, aber nur noch ZWEI Stellen, die das Datum lesen —
+  // routes/sets.ts und die gemeinsame Fassung für Teile und Minifiguren.
+  // Weniger Lesestellen sind hier der Fortschritt, nicht der Verlust.
+  assert.ok(gefunden >= 2,
     `nur ${gefunden} Stelle(n) gefunden, die ein Datum aus einer CSV-Zeile lesen — ` +
     'das Muster ist veraltet');
+
+  // Und: Beide Importe, die nicht mehr selbst lesen, gehen wirklich über die
+  // gemeinsame Fassung. Ohne das könnte einer wieder eine eigene Lesezeile
+  // bekommen, und der Test bliebe still — er fände ja die andere.
+  for (const rel of ['routes/parts.ts', 'routes/minifigs.ts']) {
+    const src = fs.readFileSync(path.join(ROOT, rel), 'utf8');
+    assert.match(src, /csvGemeinsameFelder\(/,
+      `${rel}: liest die Zeilenfelder wieder selbst statt über csvGemeinsameFelder()`);
+  }
 
   assert.deepEqual(verstoesse, [],
     'Diese Stellen lesen ein Datum aus einer CSV-Zeile, ohne es durch ' +

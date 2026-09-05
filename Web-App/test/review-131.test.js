@@ -178,15 +178,22 @@ test('CSV-Export entschärft Formeln, der eigene Import macht es rückgängig', 
 });
 
 test('alle drei CSV-Importwege entschärfen zurück', () => {
+  // Teile und Minifiguren bereinigen seit Nachtrag 144 über
+  // csvZeilenAusAnfrage() — die Funktion ruft csvZeilenBereinigen() für beide.
+  // Der Name am Aufrufer ist ein anderer, die Wirkung dieselbe.
   for (const [datei, marke] of [
     ['routes/sets.ts', 'entschaerfungRueckgaengig'],
-    ['routes/parts.ts', 'csvZeilenBereinigen'],
-    ['routes/minifigs.ts', 'csvZeilenBereinigen'],
+    ['routes/parts.ts', 'csvZeilenBereinigen|csvZeilenAusAnfrage'],
+    ['routes/minifigs.ts', 'csvZeilenBereinigen|csvZeilenAusAnfrage'],
   ]) {
     const src = quelle(...datei.split('/'));
     assert.match(src, new RegExp(marke),
       `${datei}: ein hier erzeugter Export käme mit Hochkomma zurück`);
   }
+  // Und die gemeinsame Fassung bereinigt wirklich.
+  assert.match(quelle('utils', 'csvExport.ts'),
+    /function csvZeilenAusAnfrage[\s\S]*?csvZeilenBereinigen\(/,
+    'csvZeilenAusAnfrage() bereinigt die Zeilen nicht mehr');
 });
 
 test('der CSV-Fortschrittsstrom überlebt Gegendruck beim ersten Schreiben', () => {
