@@ -184,6 +184,33 @@ object AppModule {
     ): OkHttpClient =
         buildInterceptorClient(prefs, isApiClient = true, sessionExpired = sessionExpired, ctx = context)
 
+    /**
+     * Der Client fuer die Selbstaktualisierung — bewusst BLANK.
+     *
+     * Kein buildInterceptorClient: Dessen Interceptor kennt unseren Server,
+     * unseren Bearer-Token und unsere Anzeigesprache. Nichts davon geht GitHub
+     * etwas an. Der Origin-Vergleich (isOurServer) wuerde den Token zwar auch
+     * dort zurueckhalten — aber „haelt zurueck, weil eine Bedingung greift"
+     * ist schwaecher als „hat ihn nie gesehen", und diese Unterscheidung ist
+     * bei einem Weg, ueber den fremder Code aufs Geraet kommt, den eigenen
+     * Anbieter wert.
+     *
+     * Ebenso kein Zwischenspeicher: Ein APK ist zweistellig megabytegross und
+     * wird genau einmal gebraucht. Im Bild-Cache verdraengte es die Vorschauen.
+     *
+     * Das lange Lesezeitlimit ist das eines Downloads, nicht das einer
+     * Abfrage — 46 MB ueber ein langsames Mobilnetz brauchen laenger als die
+     * 60 Sekunden des API-Clients.
+     */
+    @Provides
+    @Singleton
+    @Named("update")
+    fun provideUpdateOkHttpClient(): OkHttpClient =
+        OkHttpClient.Builder()
+            .connectTimeout(15, TimeUnit.SECONDS)
+            .readTimeout(120, TimeUnit.SECONDS)
+            .build()
+
     @Provides
     @Singleton
     @Named("image")

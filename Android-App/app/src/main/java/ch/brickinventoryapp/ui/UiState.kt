@@ -26,6 +26,34 @@ data class HouseholdUiState(
  * sonst jeden Reiter neu zeichnen lassen. Dieselbe Überlegung wie bei
  * HouseholdUiState darüber.
  */
+/**
+ * Selbstaktualisierung aus dem GitHub-Release (util/AppUpdate.kt).
+ *
+ * ── Warum „gefunden" und „geladen" zwei Felder sind ─────────────────────────
+ * Marcos Vorgabe: beim Start still PRUEFEN, aber nie von allein LADEN. Beides
+ * in ein Feld zu legen hiesse, den Unterschied zu verlieren, auf dem diese
+ * Vorgabe beruht — und ein Fortschrittsbalken, der bei jedem Start von selbst
+ * anspringt, waere genau das, was nicht sein soll.
+ *
+ * `geprueft` unterscheidet „noch nicht nachgesehen" von „nachgesehen, nichts
+ * Neues". Ohne das Feld saehe der Knopf in beiden Faellen gleich aus, und wer
+ * ihn drueckt, bekaeme keine Rueckmeldung, dass etwas geschehen ist.
+ */
+data class UpdateUiState(
+    val laedtPruefung: Boolean = false,
+    /** Wurde in dieser Sitzung schon nachgesehen? */
+    val geprueft: Boolean = false,
+    /** Die neuere Fassung, oder null: es gibt keine. */
+    val neuereFassung: ch.brickinventoryapp.util.UpdateBeschreibung? = null,
+    /** 0..100 waehrend des Ladens, null = es laedt nichts. */
+    val fortschritt: Int? = null,
+    /** Das geladene APK wartet auf die Zustimmung des Nutzers. */
+    val bereitZurInstallation: Boolean = false,
+    /** Fehlt die Systemerlaubnis „Apps aus unbekannten Quellen"? */
+    val erlaubnisFehlt: Boolean = false,
+    val fehler: String? = null,
+)
+
 data class GeraeteUiState(
     val laedt: Boolean = false,
     val geraete: List<ch.brickinventoryapp.data.model.AppToken> = emptyList(),

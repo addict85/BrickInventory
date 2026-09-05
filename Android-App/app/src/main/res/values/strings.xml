@@ -578,4 +578,25 @@
     <string name="pdfexp_server_error">The server could not create the PDF</string>
     <string name="pdfexp_http_error">The server answered with %1$d</string>
 
+
+    <!-- ══════════════ Self-update from the GitHub release (util/AppUpdate.kt) ══════════════ -->
+    <string name="update_title">Update</string>
+    <string name="update_check">Check for updates</string>
+    <string name="update_current">Up to date (%1$s)</string>
+    <string name="update_available">Version %1$s is available</string>
+    <string name="update_installed">Installed: %1$s</string>
+    <string name="update_download">Download</string>
+    <string name="update_downloading">Downloading… %1$d%%</string>
+    <string name="update_install">Install</string>
+    <string name="update_permission_needed">Android needs your permission once to install apps from this source. Nothing is installed without your confirmation.</string>
+    <string name="update_permission_grant">Grant permission</string>
+    <string name="update_pruefung_fehlgeschlagen">Could not check for updates — no connection to GitHub.</string>
+    <string name="update_laden_fehlgeschlagen">Download failed. The partially downloaded file was deleted.</string>
+    <string name="update_signatur_falsch">The downloaded app is not signed with the same key as this one and was deleted. It was not installed.</string>
+    <string name="update_fremde_adresse">The update points to an address outside our release. Nothing was downloaded.</string>
+    <string name="update_installer_fehlt">No app on this device can install packages.</string>
+
+    <string name="price_from_other_condition_new">Purchase price taken from the "new" market price — BrickLink has no price for "used".</string>
+    <string name="price_from_other_condition_used">Purchase price taken from the "used" market price — BrickLink has no price for "new".</string>
+
 </resources>

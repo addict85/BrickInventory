@@ -603,9 +603,22 @@ export async function openSetItemDetail(type, id, colorId) {
           <td style="width:1%;white-space:nowrap;padding:4px 0 4px 10px;text-align:right;color:var(--mut);font-size:.78rem">×${(s.quantity || 0).toLocaleString(locale())}</td>
         </tr>`).join('')}</tbody></table>`
     : `<span style="color:var(--mut);font-size:.83rem">${esc(t('setitem.used_in_none'))}</span>`;
+  // ── Warum die Tabelle UNTER der Beschriftung steht ────────────────────────
+  //
+  // Marcos Befund am Bild: „Der Text 'Verwendet in' kommt in das erste Bild
+  // der Sets." Die Zeile ist ein `.dr` und damit ein Flex-Kasten mit
+  // `justify-content:space-between` (styles.css): Beschriftung links, Wert
+  // rechts. Bei EINEM Set ist die Tabelle so schmal, dass sie neben die
+  // Beschriftung rutscht und das Vorschaubild sie beruehrt.
+  //
+  // `flex-direction:column` an der ZEILE stellt beides untereinander — die
+  // Tabelle beginnt damit immer auf einer neuen Zeile, gleich wie viele Sets
+  // es sind. Die Android-App macht das seit jeher so (SetItemDetailDialog.kt:
+  // erst der Text, dann die LazyColumn darunter); hier war die Webapp die
+  // Abweichung.
   zeilen.push(detailZeile(t('setitem.used_in'), liste,
-    { zeilenStil: 'align-items:flex-start',
-      wertStil: 'flex-direction:column;align-items:stretch;gap:0;flex:1;min-width:0' }));
+    { zeilenStil: 'flex-direction:column;align-items:stretch;gap:4px',
+      wertStil: 'flex-direction:column;align-items:stretch;gap:0;min-width:0' }));
 
   bodyEl.innerHTML = zeilen.join('');
 }

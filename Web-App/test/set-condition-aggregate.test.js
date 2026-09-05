@@ -351,8 +351,13 @@ test('der Minifiguren-Marktpreis fragt BrickLink auch ohne separate BL-Nummer', 
   // übersprungen, die Teile-Schätzung übernahm, und die liefert ohne
   // Teile-Zusammensetzung von Rebrickable nichts: gar kein Preis.
   const src = fs.readFileSync(path.join(ROOT, 'routes', 'minifigs.ts'), 'utf8');
-  const fn = src.slice(src.indexOf('async function getCurrentFigMarketPrice'),
+  // Der Abruf heisst seit Nachtrag 167 figMarktpreisMitHerkunft: Er liefert
+  // neben dem Preis den Zustand, aus dem dieser stammt. getCurrentFigMarketPrice
+  // steht als duenne Huelle daneben und gibt nur die Zahl weiter — geprueft
+  // wird hier der Abruf selbst, nicht die Huelle.
+  const fn = src.slice(src.indexOf('async function figMarktpreisMitHerkunft'),
                        src.indexOf('async function resolveManualFigPurchase'));
+  assert.ok(fn.length > 0, 'Der Minifiguren-Preisabruf ist nicht mehr zu finden');
 
   assert.match(fn, /for \(const num of \[blFigNumber, figNumber\]\)/,
     'Beide Nummern müssen versucht werden');

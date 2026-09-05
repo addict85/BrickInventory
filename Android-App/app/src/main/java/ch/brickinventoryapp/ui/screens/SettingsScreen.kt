@@ -54,6 +54,10 @@ fun SettingsScreen(
     // Typ je DATEI und meldete prompt drei angeblich fehlende Felder.
     val appState by vm.state.collectAsStateWithLifecycle()
     val household by vm.householdState.collectAsStateWithLifecycle()
+    // `updateZustand`, nicht `update`: In dieser Datei gilt dieselbe
+    // Namensfalle wie bei `state` und `geraete` weiter oben —
+    // UiStateFieldsTest bestimmt den Typ je Datei ueber den Namen.
+    val updateZustand by vm.updateState.collectAsStateWithLifecycle()
     // `geraeteZustand`, nicht `geraete`: Sonst haelt UiStateFieldsTest jedes
     // spaetere `geraete.<x>` fuer einen Feldzugriff auf GeraeteUiState —
     // dieselbe Falle wie bei `state` im Absatz darueber, nur eine Ebene
@@ -239,6 +243,13 @@ fun SettingsScreen(
             onReload = { vm.ladeGeraete() },
             onRevoke = { vm.entwerteGeraet(it) },
             onRevokeOthers = { vm.entwerteAndereGeraete() },
+        )
+
+        UpdateCard(
+            updateZustand = updateZustand,
+            onPruefen = { vm.pruefeAufUpdate() },
+            onLaden = { vm.ladeUpdate() },
+            onInstallieren = { vm.starteInstallation() },
         )
 
         // Current settings summary
@@ -788,3 +799,114 @@ private fun CsvImportCard(
     }
 }
 
+
+/**
+ * Selbstaktualisierung aus dem GitHub-Release.
+ *
+ * ── Marcos Vorgabe ──────────────────────────────────────────────────────────
+ * Beim Start still pruefen, nie von allein laden — und hier zusaetzlich ein
+ * Knopf, um von Hand nachzusehen. Die Karte zeigt darum IMMER die laufende
+ * Fassung: Ohne sie waere „Aktuell" eine Behauptung ohne Beleg, und wer wissen
+ * will, was gerade installiert ist, muesste in den Anmeldebildschirm
+ * zurueckgehen (dort steht sie seit jeher).
+ *
+ * ── Warum das Herunterladen und das Installieren zwei Knoepfe sind ──────────
+ * Zwischen beiden liegt womoeglich ein Ausflug in die Systemeinstellungen:
+ * Ab Android 8 — und minSdk ist 26, also immer — braucht die App eine eigene
+ * Erlaubnis, Pakete zu installieren. Ein einziger Knopf muesste den Nutzer
+ * mitten im Vorgang wegschicken und danach raten, ob er zurueckkommt.
+ */
+@Composable
+private fun UpdateCard(
+    // `updateZustand`, nicht `zustand`: GeraeteCard in dieser Datei hat einen
+    // Parameter dieses Namens vom Typ GeraeteUiState. Fuer den Compiler sind
+    // das getrennte Gueltigkeitsbereiche, fuer die Pruefung „welcher Name
+    // traegt in DIESER Datei welchen Zustandstyp" nicht — sie meldete prompt
+    // GeraeteUiState.laedt und .fehler als tot. Dieselbe Falle wie bei `state`
+    // und `geraete` weiter oben, dritter Anlauf.
+    updateZustand: ch.brickinventoryapp.ui.UpdateUiState,
+    onPruefen: () -> Unit,
+    onLaden: () -> Unit,
+    onInstallieren: () -> Unit,
+) {
+    val ctx = androidx.compose.ui.platform.LocalContext.current
+    SettingsCard(title = stringResource(R.string.update_title), icon = Icons.Default.SystemUpdate) {
+        Text(
+            stringResource(R.string.update_installed, ch.brickinventoryapp.BuildConfig.VERSION_NAME),
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+        Spacer(Modifier.height(8.dp))
+
+        val neuere = updateZustand.neuereFassung
+        when {
+            neuere != null -> Text(
+                stringResource(R.string.update_available, neuere.versionName),
+                style = MaterialTheme.typography.bodyMedium,
+                fontWeight = FontWeight.SemiBold,
+                color = MaterialTheme.colorScheme.primary,
+            )
+            // Nur nach einer Pruefung: Vorher waere „aktuell" eine Aussage
+            // ueber etwas, das niemand nachgesehen hat.
+            updateZustand.geprueft -> Text(
+                stringResource(R.string.update_current, ch.brickinventoryapp.BuildConfig.VERSION_NAME),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
+
+        updateZustand.fortschritt?.let { p ->
+            Spacer(Modifier.height(8.dp))
+            Text(stringResource(R.string.update_downloading, p),
+                style = MaterialTheme.typography.bodySmall)
+            Spacer(Modifier.height(4.dp))
+            LinearProgressIndicator(
+                progress = { p / 100f },
+                modifier = Modifier.fillMaxWidth(),
+            )
+        }
+
+        if (updateZustand.erlaubnisFehlt) {
+            Spacer(Modifier.height(8.dp))
+            Text(
+                stringResource(R.string.update_permission_needed),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+            Spacer(Modifier.height(4.dp))
+            TextButton(onClick = {
+                ctx.startActivity(ch.brickinventoryapp.util.erlaubnisAbsicht(ctx))
+            }) { Text(stringResource(R.string.update_permission_grant)) }
+        }
+
+        updateZustand.fehler?.let { f ->
+            Spacer(Modifier.height(8.dp))
+            Text(f, style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.error)
+        }
+
+        Spacer(Modifier.height(12.dp))
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp),
+            verticalAlignment = Alignment.CenterVertically) {
+            OutlinedButton(onClick = onPruefen, enabled = !updateZustand.laedtPruefung && updateZustand.fortschritt == null) {
+                if (updateZustand.laedtPruefung) {
+                    CircularProgressIndicator(Modifier.size(16.dp), strokeWidth = 2.dp)
+                    Spacer(Modifier.width(8.dp))
+                }
+                Text(stringResource(R.string.update_check))
+            }
+            // Herunterladen nur, wenn es etwas zu holen gibt; Installieren
+            // nur, wenn es schon auf der Platte liegt.
+            if (neuere != null && !updateZustand.bereitZurInstallation) {
+                Button(onClick = onLaden, enabled = updateZustand.fortschritt == null) {
+                    Text(stringResource(R.string.update_download))
+                }
+            }
+            if (updateZustand.bereitZurInstallation) {
+                Button(onClick = onInstallieren) {
+                    Text(stringResource(R.string.update_install))
+                }
+            }
+        }
+    }
+}

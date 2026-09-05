@@ -564,4 +564,25 @@
     <string name="pdfexp_server_error">Der Server konnte das PDF nicht erstellen</string>
     <string name="pdfexp_http_error">Der Server antwortete mit %1$d</string>
 
+
+    <!-- ══════════════ Selbstaktualisierung aus dem GitHub-Release (util/AppUpdate.kt) ══════════════ -->
+    <string name="update_title">Aktualisierung</string>
+    <string name="update_check">Nach Update suchen</string>
+    <string name="update_current">Aktuell (%1$s)</string>
+    <string name="update_available">Fassung %1$s ist verfuegbar</string>
+    <string name="update_installed">Installiert: %1$s</string>
+    <string name="update_download">Herunterladen</string>
+    <string name="update_downloading">Wird geladen … %1$d%%</string>
+    <string name="update_install">Installieren</string>
+    <string name="update_permission_needed">Android braucht dafuer einmalig deine Erlaubnis, Apps aus dieser Quelle zu installieren. Ohne deine Bestaetigung wird nichts installiert.</string>
+    <string name="update_permission_grant">Erlaubnis erteilen</string>
+    <string name="update_pruefung_fehlgeschlagen">Die Suche nach einem Update ist fehlgeschlagen — keine Verbindung zu GitHub.</string>
+    <string name="update_laden_fehlgeschlagen">Das Herunterladen ist fehlgeschlagen. Die halbe Datei wurde geloescht.</string>
+    <string name="update_signatur_falsch">Die geladene App ist nicht mit demselben Schluessel signiert wie diese und wurde geloescht. Installiert wurde nichts.</string>
+    <string name="update_fremde_adresse">Das Update zeigt auf eine Adresse ausserhalb unseres Release. Es wurde nichts geladen.</string>
+    <string name="update_installer_fehlt">Auf diesem Geraet kann keine App Pakete installieren.</string>
+
+    <string name="price_from_other_condition_new">Kaufpreis aus dem Marktpreis „Neu\" uebernommen — fuer „Gebraucht\" fuehrt BrickLink keinen Preis.</string>
+    <string name="price_from_other_condition_used">Kaufpreis aus dem Marktpreis „Gebraucht\" uebernommen — fuer „Neu\" fuehrt BrickLink keinen Preis.</string>
+
 </resources>

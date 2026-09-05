@@ -212,6 +212,36 @@ internal fun MainViewModel.loadPartsColors() {
  * die Galerie beschäftigt aussehen und blockierte über den Wächter in
  * loadMoreSets() ihr Nachladen. Siehe AppUiState.loginLaeuft.
  */
+/**
+ * Die Erfolgsmeldung nach dem Erfassen — samt Herkunft des Kaufpreises.
+ *
+ * ── Warum es das gibt (Nachtrag 167) ────────────────────────────────────────
+ * Marcos zwei Befunde waren zwei Seiten derselben Tatsache: BrickLink fuehrt
+ * zu vielen Teilen und Figuren nur EINEN Zustand.
+ *
+ *   „Der Zustand hat keinen Einfluss auf den Preis"  → der Rueckfall war unsichtbar
+ *   „Teilweise wird der Kaufpreis nicht geladen"     → ohne Rueckfall blieb es leer
+ *
+ * Seine Entscheidung: uebernehmen und kennzeichnen. Der Server sagt in
+ * `price_from_condition`, aus welchem Zustand der Wert stammt.
+ *
+ * EIN Bauteil fuer Teile UND Figuren: Die beiden Erfolgsbloecke waren schon
+ * vorher zeichengleich bis auf die Nummer, und eine Regel in zwei Kopien wird
+ * in diesem Baum verlaesslich nur in einer nachgezogen. Gegenstueck in der
+ * Webapp: preisHerkunftHinweis() in public/js/06-minifigs.js.
+ */
+internal fun MainViewModel.erfassungsMeldung(
+    angelegt: Boolean, nummer: String?, preisAusZustand: String?,
+): String {
+    val kopf = text(if (angelegt) R.string.vm_added else R.string.vm_updated, nummer)
+    val hinweis = when (preisAusZustand) {
+        "N" -> text(R.string.price_from_other_condition_new)
+        "U" -> text(R.string.price_from_other_condition_used)
+        else -> null
+    }
+    return if (hinweis != null) "$kopf — $hinweis" else kopf
+}
+
 internal fun MainViewModel.addPart(partNumber: String, colorId: Int = 0, colorName: String? = null, colorHex: String? = null,
             quantity: Int = 1, note: String? = null, unitPrice: Double? = null,
             condition: String? = null, ownerUserId: Int? = null) {
@@ -219,7 +249,8 @@ internal fun MainViewModel.addPart(partNumber: String, colorId: Int = 0, colorNa
         when (val r = repo.teile.addPart(partNumber.trim(), colorId, colorName, colorHex, quantity, note, unitPrice, condition, ownerUserId)) {
             is Result.Success -> {
                 if (r.data.success) {
-                    _snackbar.value = text(if (r.data.action == "added") R.string.vm_added else R.string.vm_updated, r.data.partNumber)
+                    _snackbar.value = erfassungsMeldung(
+                        r.data.action == "added", r.data.partNumber, r.data.priceFromCondition)
                     // Liste, Bewertung UND Kennzahlen — siehe reloadItemList().
                     reloadItemList("part")
                 } else {
@@ -239,7 +270,8 @@ internal fun MainViewModel.addMinifig(figNumber: String, blFigNumber: String? = 
         when (val r = repo.teile.addMinifig(figNumber.trim(), blFigNumber, quantity, note, unitPrice, condition, ownerUserId)) {
             is Result.Success -> {
                 if (r.data.success) {
-                    _snackbar.value = text(if (r.data.action == "added") R.string.vm_added else R.string.vm_updated, r.data.figNumber)
+                    _snackbar.value = erfassungsMeldung(
+                        r.data.action == "added", r.data.figNumber, r.data.priceFromCondition)
                     // Liste, Bewertung UND Kennzahlen — siehe reloadItemList().
                     reloadItemList("fig")
                 } else {

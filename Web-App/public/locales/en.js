@@ -615,4 +615,6 @@ window.I18N_EN = {
   'log.search': 'Search text…',
   'log.auto': '⏱ Auto',
   'log.stop': '⏹ Stop',
+  'price.from_other_condition_new': 'Purchase price taken from the "new" market price — BrickLink has no price for "used".',
+  'price.from_other_condition_used': 'Purchase price taken from the "used" market price — BrickLink has no price for "new".',
 };

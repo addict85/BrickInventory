@@ -340,6 +340,31 @@ export async function updateManualFig(figNumber, body, owner) {
   else toast(d.error||t('settings.error'),'error');
 }
 
+/**
+ * Der Hinweis, wenn der Kaufpreis aus dem ANDEREN Zustand stammt.
+ *
+ * ── Warum es ihn gibt (Nachtrag 167) ────────────────────────────────────────
+ * Marcos zwei Befunde waren zwei Seiten derselben Tatsache: BrickLink fuehrt
+ * zu vielen Teilen und Figuren nur EINEN Zustand.
+ *
+ *   „Der Zustand hat keinen Einfluss auf den Preis"   → der Rueckfall war unsichtbar
+ *   „Teilweise wird der Kaufpreis nicht geladen"      → ohne Rueckfall blieb es leer
+ *
+ * Seine Entscheidung: uebernehmen und kennzeichnen. Der Server sagt in
+ * `price_from_condition`, aus welchem Zustand der Wert stammt; hier steht der
+ * Satz dazu.
+ *
+ * EIN Helfer fuer beide Erfassungen: Teile und Figuren hatten denselben
+ * Erfolgsblock in zwei Kopien, und in diesem Baum ist schon mehrfach eine
+ * Regel nur in einer davon nachgezogen worden.
+ *
+ * @param zustand 'N' | 'U' | null — null heisst „nichts zu sagen".
+ */
+function preisHerkunftHinweis(zustand) {
+  if (zustand !== 'N' && zustand !== 'U') return '';
+  return t(zustand === 'N' ? 'price.from_other_condition_new' : 'price.from_other_condition_used');
+}
+
 G('btn-add-fig')?.addEventListener('click', async () => {
   const num = G('af-num-inline')?.value.trim();
   const res = G('af-inline-result');
@@ -356,10 +381,15 @@ G('btn-add-fig')?.addEventListener('click', async () => {
   });
   btn.disabled=false; btn.textContent=tRaw('adding.button');
   if(d.success){
-    res.style.color='var(--g700)'; res.textContent=`✅ ${esc(d.fig_number)} ${d.action==='added'?t('common.added'):t('common.updated')}`;
+    const hinweisF = preisHerkunftHinweis(d.price_from_condition);
+    res.style.color='var(--g700)';
+    res.textContent=`✅ ${esc(d.fig_number)} ${d.action==='added'?t('common.added'):t('common.updated')}`
+      + (hinweisF ? ` — ${hinweisF}` : '');
     G('af-num-inline').value=''; G('af-blnum-inline').value=''; G('af-qty-inline').value='1'; G('af-price-inline').value='';
     loadMinifigs();
-    setTimeout(()=>{ res.textContent=''; },3000);
+    // Mit Hinweis laenger stehen lassen: Drei Sekunden reichen fuer ein
+    // Haekchen, nicht fuer einen Satz, den man lesen soll.
+    setTimeout(()=>{ res.textContent=''; }, hinweisF ? 9000 : 3000);
   } else { res.style.color='var(--r500)'; res.textContent=d.error||t('settings.error'); }
 });
 
@@ -576,11 +606,16 @@ G('btn-add-part')?.addEventListener('click', async () => {
   });
   btn.disabled=false; btn.textContent=tRaw('adding.button');
   if(d.success){
-    res.style.color='var(--g700)'; res.textContent=`✅ ${esc(d.part_number)} ${d.action==='added'?t('common.added'):t('common.updated')}`;
+    const hinweisT = preisHerkunftHinweis(d.price_from_condition);
+    res.style.color='var(--g700)';
+    res.textContent=`✅ ${esc(d.part_number)} ${d.action==='added'?t('common.added'):t('common.updated')}`
+      + (hinweisT ? ` — ${hinweisT}` : '');
     G('ap-num-inline').value=''; G('ap-qty-inline').value='1'; G('ap-price-inline').value=''; G('ap-note-inline').value='';
     if(colorSel) colorSel.selectedIndex=0;
     loadManualParts();
-    setTimeout(()=>{ res.textContent=''; },3000);
+    // Siehe die Figuren-Erfassung darueber: ein Satz braucht laenger als ein
+    // Haekchen.
+    setTimeout(()=>{ res.textContent=''; }, hinweisT ? 9000 : 3000);
   } else { res.style.color='var(--r500)'; res.textContent=d.error||t('settings.error'); }
 });
 
