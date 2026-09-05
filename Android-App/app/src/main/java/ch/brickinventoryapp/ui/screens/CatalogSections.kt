@@ -101,22 +101,13 @@ fun CatalogFilterRow(state: CatalogUiState, selectedThemeName: String?, showThem
 /** Das Suchfeld über der Liste. */
 @Composable
 fun CatalogSearchField(state: CatalogUiState, onQueryChange: (String) -> Unit) {
-    // Suchfeld
-    OutlinedTextField(
-        value = state.query,
-        onValueChange = onQueryChange,
-        placeholder = { Text(stringResource(R.string.catalog_search_placeholder)) },
-        leadingIcon = { Icon(Icons.Default.Search, null, Modifier.size(20.dp)) },
-        trailingIcon = {
-            if (state.query.isNotEmpty())
-                IconButton(onClick = { onQueryChange("") }) { Icon(Icons.Default.Clear, stringResource(R.string.cd_search_clear)) }
-        },
-        modifier = Modifier.fillMaxWidth().padding(horizontal = 14.dp, vertical = 8.dp),
-        singleLine = true,
-        shape = Formen.karte,
-        colors = OutlinedTextFieldDefaults.colors(
-            unfocusedBorderColor = MaterialTheme.colorScheme.outline.copy(alpha = 0.4f)
-        )
+    // Suchfeld — derselbe Baustein wie in Galerie, Teilen und Minifiguren
+    // (TabellenZeile.kt). Er stand hier viermal, mit vier verschiedenen
+    // Beschriftungen des Leeren-Knopfes (Nachtrag 132).
+    Suchfeld(
+        wert = state.query,
+        onWert = onQueryChange,
+        platzhalter = stringResource(R.string.catalog_search_placeholder),
     )
 
 }

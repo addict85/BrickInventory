@@ -164,6 +164,36 @@ fun FinanceScreen(
     }
 }
 
+/**
+ * Das Vorschaubild einer Finanzzeile — 52 dp, Rueckfall auf das Logo.
+ *
+ * Stand zweimal wortgleich da: in der Set-Zeile (FinanceSections.kt) und in der
+ * Zeile fuer manuelle Eintraege darunter. Beide Zeilen sind untereinander in
+ * DERSELBEN Tabelle zu sehen — ein Bild, das dort verschieden gross oder
+ * verschieden beschnitten waere, faellt sofort auf.
+ */
+@Composable
+fun FinanzBild(imageUrl: String?, imageLoader: ImageLoader, beschreibung: String?) {
+    Surface(
+        shape = Formen.kachel,
+        color = MaterialTheme.colorScheme.surfaceVariant,
+        modifier = Modifier.size(52.dp)
+    ) {
+        if (imageUrl != null) {
+            AsyncImage(
+                model = imageUrl, imageLoader = imageLoader,
+                contentDescription = beschreibung,
+                modifier = Modifier.fillMaxSize().clip(Formen.kachel),
+                contentScale = ContentScale.Fit
+            )
+        } else {
+            Box(Modifier.fillMaxSize(), Alignment.Center) {
+                Image(painterResource(R.drawable.ic_logo), null, Modifier.size(36.dp))
+            }
+        }
+    }
+}
+
 @Composable
 fun ManualFinanceRow(
     imageUrl: String?,
@@ -174,6 +204,23 @@ fun ManualFinanceRow(
     blId: String,
     quantity: Int,
     priceStr: String,
+    /**
+     * Kaufpreis dieser Erfassung, schon formatiert; null = keiner hinterlegt.
+     *
+     * ── Warum das Feld dazukam (Nachtrag 133) ───────────────────────────────
+     *
+     * Diese Zeile und die Set-Zeile in FinanceSections.kt waren bis auf zwei
+     * Stellen zeichengleich — aufgefallen beim Messen gleicher Achtzeiler, nicht
+     * beim Lesen. Der Unterschied WAR der Fund: Die Set-Zeile zeigt unter dem
+     * Marktpreis „Kauf: X", diese Zeile zeigte ihn nicht.
+     *
+     * Die Webapp zeigt ihn in BEIDEN Tabellen (public/js/04-finance.js, pmRow,
+     * Spalte `detail.purchase_price`) — die Spalte steht dort sogar VOR dem
+     * Marktpreis. Die App hatte die Zahl die ganze Zeit im Speicher:
+     * PartValuationItem, FigValuationItem und ValuationAcquisition tragen alle
+     * `purchase_price`. Sie kam nur nie auf den Bildschirm.
+     */
+    purchaseStr: String? = null,
     /** Zustand dieser Erfassung; null = Eintrag ohne Erfassungen. */
     condition: String? = null,
     /** Entwicklung gegen den Kaufpreis dieser Erfassung (vom Server). */
@@ -189,24 +236,7 @@ fun ManualFinanceRow(
     val cardElevation = CardDefaults.cardElevation(defaultElevation = Formen.karteErhebung)
     val content: @Composable ColumnScope.() -> Unit = {
         Row(Modifier.padding(12.dp), verticalAlignment = Alignment.CenterVertically) {
-            Surface(
-                shape = Formen.kachel,
-                color = MaterialTheme.colorScheme.surfaceVariant,
-                modifier = Modifier.size(52.dp)
-            ) {
-                if (imageUrl != null) {
-                    AsyncImage(
-                        model = imageUrl, imageLoader = imageLoader,
-                        contentDescription = title,
-                        modifier = Modifier.fillMaxSize().clip(Formen.kachel),
-                        contentScale = ContentScale.Fit
-                    )
-                } else {
-                    Box(Modifier.fillMaxSize(), Alignment.Center) {
-                        Image(painterResource(R.drawable.ic_logo), null, Modifier.size(36.dp))
-                    }
-                }
-            }
+            FinanzBild(imageUrl, imageLoader, title)
             Spacer(Modifier.width(12.dp))
             Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(1.dp)) {
                 Text(title, fontWeight = FontWeight.SemiBold,
@@ -227,6 +257,16 @@ fun ManualFinanceRow(
                 Text(priceStr, fontWeight = FontWeight.Bold,
                     color = MaterialTheme.colorScheme.primary,
                     style = MaterialTheme.typography.bodyMedium)
+                // Dieselbe Stelle und dieselbe Beschriftung wie in der
+                // Set-Zeile (FinanceSections.kt) — beide Tabellen sollen
+                // gleich aussehen, und in der Webapp tun sie es.
+                purchaseStr?.let {
+                    Text(
+                        stringResource(R.string.finance_purchase_short, it),
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
                 // Entwicklung wie bei den Sets — gegen den Kaufpreis dieser
                 // Erfassung, gerechnet auf dem Server.
                 pnlPct?.toDoubleOrNull()?.let {

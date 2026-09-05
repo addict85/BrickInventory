@@ -172,22 +172,11 @@ fun GalleryScreen(
                 )
             }
 
-            // Search field
-            OutlinedTextField(
-                value = searchInput,
-                onValueChange = { searchInput = it; onQueryChange(it) },
-                placeholder = { Text(stringResource(R.string.gallery_search_placeholder)) },
-                leadingIcon = { Icon(Icons.Default.Search, null, Modifier.size(20.dp)) },
-                trailingIcon = {
-                    if (searchInput.isNotEmpty())
-                        IconButton(onClick = { searchInput = ""; onQueryChange("") }) { Icon(Icons.Default.Clear, stringResource(R.string.gallery_clear)) }
-                },
-                modifier = Modifier.fillMaxWidth().padding(horizontal = 14.dp, vertical = 8.dp),
-                singleLine = true,
-                shape = Formen.karte,
-                colors = OutlinedTextFieldDefaults.colors(
-                    unfocusedBorderColor = MaterialTheme.colorScheme.outline.copy(alpha = 0.4f)
-                )
+            // Suchfeld — gemeinsamer Baustein (Nachtrag 132).
+            Suchfeld(
+                wert = searchInput,
+                onWert = { searchInput = it; onQueryChange(it) },
+                platzhalter = stringResource(R.string.gallery_search_placeholder),
             )
 
             // Sortierung und Themen — beides wird auf dem SERVER angewandt.
@@ -602,22 +591,7 @@ fun AddSetDialog(
                     keyboardOptions = NumericInput.preisTastatur(),
                     keyboardActions = KeyboardActions(onDone = { keyboard?.hide(); submit() })
                 )
-                // Condition selector
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    Text(
-                        stringResource(R.string.common_condition),
-                        style = MaterialTheme.typography.bodyMedium,
-                        modifier = Modifier.width(90.dp)
-                    )
-                    Spacer(Modifier.width(8.dp))
-                    ConditionToggle(
-                        selected = condition,
-                        onSelect = { condition = it }
-                    )
-                }
+                Zustandszeile(zustand = condition, onZustand = { condition = it })
             }
         },
         confirmButton = {
@@ -629,30 +603,6 @@ fun AddSetDialog(
     )
 }
 
-/** Shared N/U toggle used in multiple add dialogs */
-@Composable
-fun ConditionToggle(selected: String, onSelect: (String) -> Unit) {
-    Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-        listOf("N" to R.string.condition_new, "U" to R.string.condition_used).forEach { (value, labelRes) ->
-            val isSelected = selected == value
-            Surface(
-                onClick = { onSelect(value) },
-                shape = MaterialTheme.shapes.small,
-                color = if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surfaceVariant,
-                modifier = Modifier.height(34.dp)
-            ) {
-                Box(Modifier.padding(horizontal = 14.dp), contentAlignment = Alignment.Center) {
-                    Text(
-                        stringResource(labelRes),
-                        color = if (isSelected) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurfaceVariant,
-                        style = MaterialTheme.typography.labelMedium,
-                        fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal
-                    )
-                }
-            }
-        }
-    }
-}
 
 
 /**

@@ -82,10 +82,26 @@ class DeadCodeTest {
             // Ein Aufruf ist `name(`, eine Referenz `::name`, ein benanntes
             // Argument `name =`. Weniger Treffer als Deklarationen heisst:
             // ausser der Deklaration steht nichts da.
+            //
+            // ── Die vierte Form: `name { … }` (Nachtrag 133) ────────────────
+            //
+            // Kotlin darf den letzten Parameter als Block HINTER die Klammern
+            // ziehen, und dann faellt die Klammer ganz weg:
+            //
+            //     KameraErlaubnisHinweis { cameraPermission.launchPermissionRequest() }
+            //
+            // Das IST ein Aufruf, nur ohne `(`. Dieser Test hat ihn nicht
+            // gezaehlt und meldete die Funktion als tot — Lauf 105 fiel darueber.
+            //
+            // Die Luecke war schon vorher da und hat nur nie zugeschlagen:
+            // GEMESSEN benutzen genau ZWEI eigene Funktionen diese Form,
+            // `AppKarte` (3 Stellen) und die neue hier (2). `AppKarte` wird
+            // daneben auch mit Klammern gerufen und rutschte deshalb durch.
             val aufrufe = Regex("""\b${Regex.escape(name)}\s*\(""").findAll(alles).count()
+            val alsBlock = Regex("""\b${Regex.escape(name)}\s*\{""").findAll(alles).count()
             val referenzen = Regex("""::${Regex.escape(name)}\b""").findAll(alles).count()
             val benannt = Regex("""\b${Regex.escape(name)}\s*=""").findAll(alles).count()
-            aufrufe <= wo.size && referenzen == 0 && benannt == 0
+            aufrufe <= wo.size && alsBlock == 0 && referenzen == 0 && benannt == 0
         }.map { "${it.key} (${it.value.joinToString()})" }.sorted()
 
         assert(tot.isEmpty()) {

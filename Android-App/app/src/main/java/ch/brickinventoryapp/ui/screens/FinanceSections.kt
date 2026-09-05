@@ -140,6 +140,7 @@ fun LazyListScope.financeFigRows(figsValuation: FigsValuationResponse?, showFigs
                 blId = fig.blFigNumber ?: fig.figNumber,
                 quantity = acq?.quantity ?: fig.quantity,
                 priceStr = fmtPrice(acq?.totalAvg ?: fig.displayValue),
+                purchaseStr = (acq?.purchasePrice ?: fig.purchasePrice)?.let { fmtPrice(it.toString()) },
                 condition = acq?.condition,
                 pnlPct = acq?.pnlPct ?: fig.pnlPct
             )
@@ -186,6 +187,7 @@ fun LazyListScope.financePartRows(partsValuation: PartsValuationResponse?, showP
                 blId = part.blPartNumber ?: part.partNumber,
                 quantity = acq?.quantity ?: part.quantity,
                 priceStr = fmtPrice(acq?.totalAvg ?: part.displayValue),
+                purchaseStr = (acq?.purchasePrice ?: part.purchasePrice)?.let { fmtPrice(it.toString()) },
                 condition = acq?.condition,
                 pnlPct = acq?.pnlPct ?: part.pnlPct
             )
@@ -252,25 +254,7 @@ fun LazyListScope.financeSetRows(valuation: ValuationResponse, showSets: Boolean
             elevation = CardDefaults.cardElevation(defaultElevation = Formen.karteErhebung)
         ) {
             Row(Modifier.padding(12.dp), verticalAlignment = Alignment.CenterVertically) {
-                // Thumbnail
-                Surface(
-                    shape = Formen.kachel,
-                    color = MaterialTheme.colorScheme.surfaceVariant,
-                    modifier = Modifier.size(52.dp)
-                ) {
-                    if (imageUrl != null) {
-                        AsyncImage(
-                            model = imageUrl, imageLoader = imageLoader,
-                            contentDescription = set.name,
-                            modifier = Modifier.fillMaxSize().clip(Formen.kachel),
-                            contentScale = ContentScale.Fit
-                        )
-                    } else {
-                        Box(Modifier.fillMaxSize(), Alignment.Center) {
-                            Image(painterResource(R.drawable.ic_logo), null, Modifier.size(36.dp))
-                        }
-                    }
-                }
+                FinanzBild(imageUrl, imageLoader, set.name)
                 Spacer(Modifier.width(12.dp))
                 Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(1.dp)) {
                     Text(set.name ?: set.setNumber, fontWeight = FontWeight.SemiBold,

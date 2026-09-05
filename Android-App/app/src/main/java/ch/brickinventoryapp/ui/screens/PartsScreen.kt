@@ -151,22 +151,13 @@ fun PartsScreen(
             }
         }
 
-        // Search
-        OutlinedTextField(
-            value = searchQuery,
-            onValueChange = { searchQuery = it; onSearch(it) },
-            placeholder = { Text(stringResource(R.string.parts_search_placeholder)) },
-            leadingIcon = { Icon(Icons.Default.Search, null, Modifier.size(20.dp)) },
-            trailingIcon = {
-                if (searchQuery.isNotEmpty())
-                    IconButton(onClick = { searchQuery = ""; onSearch("") }) { Icon(Icons.Default.Clear, stringResource(R.string.parts_delete)) }
-            },
-            modifier = Modifier.fillMaxWidth().padding(horizontal = 14.dp, vertical = 8.dp),
-            singleLine = true,
-            shape = Formen.karte,
-            colors = OutlinedTextFieldDefaults.colors(
-                unfocusedBorderColor = MaterialTheme.colorScheme.outline.copy(alpha = 0.4f)
-            )
+        // Suchfeld — gemeinsamer Baustein. Der Leeren-Knopf sagte hier
+        // „Löschen" (parts_delete, derselbe Text wie am Loeschknopf des Teils);
+        // jetzt „Suche leeren" (Nachtrag 132).
+        Suchfeld(
+            wert = searchQuery,
+            onWert = { searchQuery = it; onSearch(it) },
+            platzhalter = stringResource(R.string.parts_search_placeholder),
         )
 
         // Ersatzteil-Filter — dieselben drei Werte wie das Auswahlfeld der
@@ -358,7 +349,11 @@ fun ManualPartTile(part: PartValuationItem, serverUrl: String, imageLoader: Imag
                     shape = Formen.marke,
                     modifier = Modifier.align(Alignment.TopEnd).padding(3.dp)
                 ) {
-                    Text("${part.quantity}×", Modifier.padding(horizontal = 4.dp, vertical = 1.dp),
+                    // Die Menge-Plakette: „×N" auf einer MANUELL erfassten Kachel,
+                    // „N×" auf einer Kachel aus einem Set. Das ist keine Laune,
+                    // sondern die Regel der Webapp — `man-tile` traegt dort ein
+                    // `qbadge` mit ×N, `part-card` ein `part-qty` mit N×.
+                    Text("×${part.quantity}", Modifier.padding(horizontal = 4.dp, vertical = 1.dp),
                         color = MaterialTheme.colorScheme.onPrimary,
                         style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.Bold)
                 }

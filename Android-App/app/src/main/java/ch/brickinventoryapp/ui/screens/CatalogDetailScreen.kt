@@ -263,13 +263,7 @@ private fun CatalogAddDialog(
                     label = { Text(stringResource(R.string.gallery_purchase_price)) },
                     singleLine = true, modifier = Modifier.fillMaxWidth()
                 )
-                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Text(stringResource(R.string.common_condition), fontSize = 14.sp)
-                    FilterChip(selected = condition == "N", onClick = { condition = "N" },
-                        label = { Text(stringResource(R.string.condition_new), fontSize = 12.sp) })
-                    FilterChip(selected = condition == "U", onClick = { condition = "U" },
-                        label = { Text(stringResource(R.string.condition_used), fontSize = 12.sp) })
-                }
+                Zustandszeile(zustand = condition, onZustand = { condition = it })
             }
         },
         confirmButton = {

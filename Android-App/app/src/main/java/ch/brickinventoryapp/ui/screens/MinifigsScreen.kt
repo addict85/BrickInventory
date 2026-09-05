@@ -100,8 +100,24 @@ fun MinifigsScreen(
                 modifier = Modifier.padding(start = 14.dp, top = 8.dp)
             )
         }
-        // Stats chips
-        if (figs.isNotEmpty()) {
+        // ── Warum die Bedingung nicht mehr `figs.isNotEmpty()` ist ──────────────
+        //
+        // Hier stand `if (figs.isNotEmpty())`: Die Leiste erschien nur, wenn die
+        // GELADENE Seite Figuren enthielt. Eine Suche ohne Treffer liess sie
+        // also verschwinden — obwohl die drei Zahlen die ganze Sammlung meinen
+        // und weiter stimmen. Genau das sagt der Kommentar darunter seit jeher:
+        // „vom Server, nicht aus der (gefilterten) Liste".
+        //
+        // Die Teile-Ansicht daneben — derselbe Aufbau, dieselbe Leiste — prueft
+        // `stats != null` und laesst sie stehen. Die Webapp auch: Dort ist die
+        // Leiste fester Bestandteil der Seite und wird nur gefuellt
+        // (06-minifigs.js, loadMinifigStats).
+        //
+        // `partsStats` ist im Zustand nullbar, `minifigStats` nicht — deshalb
+        // hier die Frage nach dem Inhalt statt nach null. Wirkung ist dieselbe:
+        // verborgen bleibt die Leiste nur vor dem ersten Laden und bei einer
+        // wirklich leeren Sammlung.
+        if (minifigStats.types > 0 || minifigStats.totalQuantity > 0) {
             Surface(color = MaterialTheme.colorScheme.surface, tonalElevation = 2.dp) {
                 Row(
                     Modifier.fillMaxWidth().padding(horizontal = 14.dp, vertical = 10.dp),
@@ -118,22 +134,13 @@ fun MinifigsScreen(
             }
         }
 
-        // Search
-        OutlinedTextField(
-            value = search,
-            onValueChange = { search = it; vm.setMinifigsQuery(it) },
-            placeholder = { Text(stringResource(R.string.minifigs_search_placeholder)) },
-            leadingIcon = { Icon(Icons.Default.Search, null, Modifier.size(20.dp)) },
-            trailingIcon = {
-                if (search.isNotEmpty())
-                    IconButton(onClick = { search = ""; vm.setMinifigsQuery("") }) { Icon(Icons.Default.Clear, stringResource(R.string.minifigs_delete)) }
-            },
-            modifier = Modifier.fillMaxWidth().padding(horizontal = 14.dp, vertical = 8.dp),
-            singleLine = true,
-            shape = Formen.karte,
-            colors = OutlinedTextFieldDefaults.colors(
-                unfocusedBorderColor = MaterialTheme.colorScheme.outline.copy(alpha = 0.4f)
-            )
+        // Suchfeld — gemeinsamer Baustein. Der Leeren-Knopf sagte hier
+        // „Löschen" (minifigs_delete, derselbe Text wie am Loeschknopf der
+        // Minifigur); jetzt „Suche leeren" (Nachtrag 132).
+        Suchfeld(
+            wert = search,
+            onWert = { search = it; vm.setMinifigsQuery(it) },
+            platzhalter = stringResource(R.string.minifigs_search_placeholder),
         )
 
         // Karten oder Tabelle — wie das Auswahlfeld figs-view der Webapp.
@@ -283,7 +290,11 @@ fun ManualFigTile(fig: FigValuationItem, serverUrl: String, imageLoader: ImageLo
                     shape = Formen.marke,
                     modifier = Modifier.align(Alignment.TopEnd).padding(3.dp)
                 ) {
-                    Text(stringResource(R.string.minifigs_qty_badge, fig.quantity), Modifier.padding(horizontal = 4.dp, vertical = 1.dp),
+                    // Die Menge-Plakette: „×N" auf einer MANUELL erfassten Kachel,
+                    // „N×" auf einer Kachel aus einem Set. Das ist keine Laune,
+                    // sondern die Regel der Webapp — `man-tile` traegt dort ein
+                    // `qbadge` mit ×N, `part-card` ein `part-qty` mit N×.
+                    Text("×${fig.quantity}", Modifier.padding(horizontal = 4.dp, vertical = 1.dp),
                         color = MaterialTheme.colorScheme.onPrimary,
                         style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.Bold)
                 }
@@ -299,6 +310,24 @@ fun ManualFigTile(fig: FigValuationItem, serverUrl: String, imageLoader: ImageLo
             Column(Modifier.padding(horizontal = 6.dp, vertical = 4.dp)) {
                 Text(fig.figName ?: fig.figNumber, style = MaterialTheme.typography.labelSmall,
                     fontWeight = FontWeight.SemiBold, maxLines = 2, overflow = TextOverflow.Ellipsis)
+                // ── Was hier fehlte (Nachtrag 133) ──────────────────────────
+                //
+                // Diese Kachel zeigte NUR den Namen. Ihr Zwilling nebenan,
+                // ManualPartTile in PartsScreen.kt, zeigt beide Plaketten seit
+                // jeher — und die Webapp zeigt sie fuer Figuren genauso
+                // (06-minifigs.js Zeile 327: qbadge, dann condBadge, dann
+                // ownerBadges).
+                //
+                // FigValuationItem traegt `condition`, `conditions` und
+                // `owners` die ganze Zeit; die Felder sind im Modell sogar
+                // kommentiert. Im Haushalt war an einer Figur also nicht zu
+                // sehen, WEM sie gehoert — bei den Teilen daneben schon.
+                //
+                // Gefunden nicht durch Lesen, sondern durch den Vergleich der
+                // beiden Zwillingsdateien, den die Doppelungsmessung angestossen
+                // hat.
+                Box(Modifier.padding(top = 3.dp)) { ConditionBadges(fig.conditions, fig.condition) }
+                OwnerBadges(fig.owners, Modifier.padding(top = 2.dp))
             }
         }
     }
@@ -383,18 +412,7 @@ fun AddMinifigDialog(
                     modifier = Modifier.fillMaxWidth(), singleLine = true,
                     shape = Formen.knopf
                 )
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    Text(
-                        stringResource(R.string.common_condition),
-                        style = MaterialTheme.typography.bodyMedium,
-                        modifier = Modifier.width(90.dp)
-                    )
-                    Spacer(Modifier.width(8.dp))
-                    ConditionToggle(selected = condition, onSelect = { condition = it })
-                }
+                Zustandszeile(zustand = condition, onZustand = { condition = it })
             }
         },
         confirmButton = { TextButton(onClick = { submit(); onDismiss() }) { Text(stringResource(R.string.minifigs_add_button)) } },
@@ -447,7 +465,11 @@ fun MinifigCard(fig: Minifig, serverUrl: String, imageLoader: ImageLoader,
                         shape = Formen.marke,
                         modifier = Modifier.align(Alignment.TopEnd).padding(4.dp)
                     ) {
-                        Text("×$qty", Modifier.padding(horizontal = 5.dp, vertical = 2.dp),
+                        // Die Menge-Plakette: „×N" auf einer MANUELL erfassten Kachel,
+                        // „N×" auf einer Kachel aus einem Set. Das ist keine Laune,
+                        // sondern die Regel der Webapp — `man-tile` traegt dort ein
+                        // `qbadge` mit ×N, `part-card` ein `part-qty` mit N×.
+                        Text("$qty×", Modifier.padding(horizontal = 5.dp, vertical = 2.dp),
                             color = MaterialTheme.colorScheme.onPrimary,
                             style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.Bold)
                     }

@@ -138,7 +138,6 @@
     <string name="minifigs_cancel">Abbrechen</string>
     <string name="minifigs_delete_title">Minifigur löschen?</string>
     <string name="minifigs_delete_text">%1$s wird aus deiner Sammlung entfernt.</string>
-    <string name="minifigs_qty_badge">%1$d×</string>
     <string name="minifigs_manual_badge">Manuell</string>
 
     <!-- ══════════════ Parts list screen ══════════════ -->
