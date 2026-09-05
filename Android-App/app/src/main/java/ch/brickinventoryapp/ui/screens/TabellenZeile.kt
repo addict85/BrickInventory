@@ -55,6 +55,12 @@ import androidx.compose.material.icons.filled.Clear
  * @param onBildFehler Rueckfall auf die volle Auflösung, siehe
  *        rememberTileImageWithFallback
  * @param onClick Antippen der ganzen Zeile, oder null fuer „nicht anklickbar"
+ * @param onClickLabel Was das Antippen TUT — fuer die Sprachausgabe. Ohne das
+ *        liest sie nur den Inhalt der Zeile vor und sagt „Doppeltippen zum
+ *        Aktivieren", ohne zu verraten, was dann geschieht. Vorbelegt mit
+ *        null, weil die Tabellenansichten der Teile und Figuren denselben
+ *        Detail-Dialog oeffnen wie ihre Kacheln und dort bisher keinen Text
+ *        haben; der Dialog fuer Set-Teile bringt einen mit.
  */
 @Composable
 fun TabellenZeile(
@@ -68,6 +74,7 @@ fun TabellenZeile(
     zweiteZeile: String? = null,
     onBildFehler: () -> Unit = {},
     onClick: (() -> Unit)? = null,
+    onClickLabel: String? = null,
 ) {
     val ctx = LocalContext.current
     // ── Warum es onClick jetzt GIBT ─────────────────────────────────────────
@@ -85,7 +92,10 @@ fun TabellenZeile(
     // gilt fuer jeden Aufrufer, der keinen Dialog dahinter hat.
     Surface(
         modifier = modifier.fillMaxWidth()
-            .let { if (onClick != null) it.clickable(onClick = onClick) else it },
+            .let {
+                if (onClick != null) it.clickable(onClickLabel = onClickLabel, onClick = onClick)
+                else it
+            },
         color = MaterialTheme.colorScheme.surface,
     ) {
         Column {

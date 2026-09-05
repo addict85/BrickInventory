@@ -3,12 +3,10 @@ package ch.brickinventoryapp.ui.dialogs
 // Sammel-Importe wie in den Nachbardialogen (BarcodeResultDialog.kt,
 // SetPruefungDialog.kt): `Modifier.size` steckt in foundation.layout, und das
 // `by` vor collectAsStateWithLifecycle braucht runtime.getValue.
-import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 // rememberSaveable liegt im UNTERPAKET runtime.saveable — der Sammelimport
@@ -17,7 +15,6 @@ import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
@@ -30,8 +27,9 @@ import ch.brickinventoryapp.R
 import ch.brickinventoryapp.ui.MainViewModel
 import ch.brickinventoryapp.ui.components.ZoomableImageDialog
 import ch.brickinventoryapp.ui.schliesseSetItem
+import ch.brickinventoryapp.ui.screens.TabellenZeile
 import ch.brickinventoryapp.util.resolveFullUrlViaProxy
-import ch.brickinventoryapp.util.resolveThumbUrl
+import ch.brickinventoryapp.util.rememberTileImageWithFallback
 
 /**
  * Detail-Dialog fuer ein Teil / eine Figur AUS EINEM SET.
@@ -168,64 +166,50 @@ fun SetItemDetailDialog(
                             // nicht mehr schliessen.
                             LazyColumn(Modifier.fillMaxWidth().heightIn(max = 220.dp)) {
                                 items(zustand.sets, key = { it.setNumber + "-" + it.ownerUserId }) { s ->
-                                    Row(
-                                        Modifier
-                                            .fillMaxWidth()
-                                            // onClickLabel sagt der
-                                            // Sprachausgabe, was das Antippen
-                                            // TUT — ohne das liest sie nur die
-                                            // Setnummer vor. In der Webapp
-                                            // steht derselbe Text als
-                                            // title-Attribut.
-                                            .clickable(
-                                                onClickLabel = oeffneLabel,
-                                            ) {
-                                                // Erst schliessen, dann oeffnen:
-                                                // Sonst laege der Dialog ueber
-                                                // dem Set-Detail.
-                                                vm.schliesseSetItem()
-                                                onOpenSet(s.setNumber)
-                                            }
-                                            .padding(vertical = 6.dp),
-                                        verticalAlignment = Alignment.CenterVertically,
-                                    ) {
-                                        // ── Bild, Nummer, Bezeichnung ───
-                                        //
-                                        // Marcos Vorgabe fuer beide
-                                        // Oberflaechen: erst das kleine Bild,
-                                        // dann die Nummer, dann der Name — wie
-                                        // im Reiter Finanzen. Die Adressen
-                                        // liefert der Server je Set schon mit
-                                        // (utils/handlers/shared.ts,
-                                        // verwendendeSets); sie wurden hier
-                                        // nur nie benutzt.
-                                        //
-                                        // Vorschau statt voller Aufloesung:
-                                        // Das Bild ist 34 dp gross, und eine
-                                        // Liste kann Dutzende Zeilen haben.
-                                        AsyncImage(
-                                            model = resolveThumbUrl(serverUrl, s.imageLocal, s.imageUrl),
-                                            contentDescription = null,
-                                            imageLoader = imageLoader,
-                                            modifier = Modifier
-                                                .size(34.dp)
-                                                .clip(RoundedCornerShape(6.dp))
-                                                .background(MaterialTheme.colorScheme.surfaceVariant),
-                                            contentScale = ContentScale.Fit,
-                                        )
-                                        Spacer(Modifier.width(8.dp))
-                                        Text(s.setNumber, fontSize = 13.sp,
-                                            fontWeight = FontWeight.SemiBold)
-                                        Spacer(Modifier.width(8.dp))
-                                        Text(
-                                            s.setName ?: "",
-                                            fontSize = 13.sp,
-                                            maxLines = 1,
-                                            modifier = Modifier.weight(1f),
-                                        )
-                                        Text("×${s.quantity}", fontSize = 13.sp,
-                                            color = MaterialTheme.colorScheme.onSurfaceVariant)
-                                    }
+                                    // ── Bild, Nummer, Bezeichnung, Menge ────
+                                    //
+                                    // Marcos Vorgabe fuer beide Oberflaechen:
+                                    // erst das kleine Bild, dann die Nummer,
+                                    // dann der Name — „so wie im Reiter
+                                    // Finanzen". Genau diese Zeile GIBT es
+                                    // schon: TabellenZeile, die gemeinsame
+                                    // Fassung fuer die Tabellenansicht der
+                                    // Teile und der Figuren.
+                                    //
+                                    // Hier stand zuerst ein eigener Row mit
+                                    // AsyncImage. Er sah nur fast gleich aus
+                                    // und hatte zwei Fehler, die das Bauteil
+                                    // nicht hat: einen festen Eckenradius
+                                    // (DesignTokensTest, Lauf 128 rot) und
+                                    // keinen Rueckfall auf die volle
+                                    // Aufloesung, wenn es kein Vorschaubild
+                                    // gibt — den hat die Webapp ueber
+                                    // data-orig. Zwei Fassungen derselben
+                                    // Zeile sind genau das, wogegen
+                                    // TabellenZeile gebaut wurde.
+                                    val (bildUrl, onBildFehler) =
+                                        rememberTileImageWithFallback(serverUrl, s.imageLocal, s.imageUrl)
+                                    TabellenZeile(
+                                        bildUrl = bildUrl,
+                                        nummer = s.setNumber,
+                                        name = s.setName,
+                                        menge = s.quantity,
+                                        imageLoader = imageLoader,
+                                        onBildFehler = onBildFehler,
+                                        // onClickLabel sagt der Sprachausgabe,
+                                        // was das Antippen TUT — ohne das liest
+                                        // sie nur die Setnummer vor. In der
+                                        // Webapp steht derselbe Text als
+                                        // title-Attribut.
+                                        onClickLabel = oeffneLabel,
+                                        onClick = {
+                                            // Erst schliessen, dann oeffnen:
+                                            // Sonst laege der Dialog ueber dem
+                                            // Set-Detail.
+                                            vm.schliesseSetItem()
+                                            onOpenSet(s.setNumber)
+                                        },
+                                    )
                                 }
                             }
                         }

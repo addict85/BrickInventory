@@ -59,9 +59,46 @@ test('die App zeigt dieselben drei Spalten', () => {
   const datei = path.join(APP, 'ui', 'dialogs', 'SetItemDetailDialog.kt');
   assert.ok(fs.existsSync(datei), `${datei} nicht gefunden`);
   const src = ohneKommentare(fs.readFileSync(datei, 'utf8'));
-  assert.match(src, /resolveThumbUrl\(serverUrl, s\.imageLocal, s\.imageUrl\)/,
-    'Die App löst das Set-Bild nicht als Vorschau auf — die Zeile bliebe ohne Bild, ' +
-    'obwohl der Server es mitschickt');
+
+  // ── Warum hier NICHT resolveThumbUrl steht ────────────────────────────────
+  //
+  // Diese Zusicherung nannte zuerst `resolveThumbUrl(serverUrl, s.imageLocal,
+  // s.imageUrl)` — den blossen Vorschau-Aufloeser. Der App-Lauf 128 hat die
+  // handgeschriebene Zeile daneben verworfen (fester Eckenradius,
+  // DesignTokensTest), und beim Ersetzen kam heraus, dass sie noch etwas
+  // ZWEITES nicht konnte: den Rueckfall auf die volle Aufloesung, wenn es kein
+  // Vorschaubild gibt. Die Webapp hat ihn ueber `data-orig` (11-actions.js,
+  // „nachladen, wenn die Vorschau fehlschlaegt"); in der App heisst er
+  // rememberTileImageWithFallback und loest die Vorschau gleich mit auf.
+  //
+  // Geprueft wird deshalb der staerkere der beiden Wege — sonst waere die
+  // Zusicherung mit dem schwaecheren zufrieden.
+  assert.match(src, /rememberTileImageWithFallback\(serverUrl, s\.imageLocal, s\.imageUrl\)/,
+    'Die App löst das Set-Bild nicht als Vorschau mit Rückfall auf — die Zeile ' +
+    'bliebe ohne Bild, wo die Webapp über data-orig nachlädt');
+
+  // Und dieselbe Zeile wie die Tabellenansicht, nicht eine zweite, die ihr
+  // aehnelt: „so wie im Reiter Finanzen" war die Vorgabe, und zwei Fassungen
+  // derselben Zeile entwickeln sich auseinander.
+  assert.match(src, /TabellenZeile\(/,
+    'Der Dialog baut die Set-Zeile selbst, statt die gemeinsame TabellenZeile ' +
+    'zu nehmen — dann sieht sie nur so lange gleich aus, bis eine der beiden ' +
+    'geändert wird');
+
   for (const feld of ['s.setNumber', 's.setName'])
     assert.ok(src.includes(feld), `${feld} fehlt in der Zeile der App`);
+});
+
+test('die gemeinsame Tabellenzeile sagt der Sprachausgabe, was das Antippen tut', () => {
+  // Die handgeschriebene Zeile hatte ein onClickLabel („Set öffnen"); die
+  // gemeinsame kannte keines. Beim Umstellen waere diese Angabe still
+  // verschwunden — ein Verlust, den kein Bild zeigt und nur hoert, wer die
+  // App nicht sieht.
+  const zeile = ohneKommentare(
+    fs.readFileSync(path.join(APP, 'ui', 'screens', 'TabellenZeile.kt'), 'utf8'));
+  assert.match(zeile, /onClickLabel: String\? = null/,
+    'TabellenZeile nimmt keine Beschriftung für die Sprachausgabe entgegen');
+  assert.match(zeile, /clickable\(onClickLabel = onClickLabel, onClick = onClick\)/,
+    'TabellenZeile nimmt die Beschriftung entgegen, reicht sie aber nicht an ' +
+    'clickable weiter — sie hätte dann keine Wirkung');
 });
