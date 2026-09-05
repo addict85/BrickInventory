@@ -376,6 +376,7 @@
     <string name="monitoring_price_update">Update prices</string>
     <string name="monitoring_schedule_daily">Daily at</string>
     <string name="monitoring_schedule_every">Every</string>
+    <string name="monitoring_schedule_unit">min</string>
     <string name="monitoring_schedule_minutes">%1$d min</string>
     <string name="cd_edit_schedule">Change schedule</string>
     <string name="monitoring_theme">Design</string>

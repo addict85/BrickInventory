@@ -604,7 +604,10 @@ fun ZeitplanZeile(
                         eingabe = if (taeglich) it.filter { z -> z.isDigit() || z == ':' }.take(5)
                                   else NumericInput.quantity(it)
                     },
-                    suffix = { if (!taeglich) Text("min") },
+                    // Aus den Sprachdateien, nicht als Klartext: „Min." und
+                    // „min" sind kurz, aber sie stehen im Bild und werden
+                    // gelesen. StringResourceParityTest hat genau das gemeldet.
+                    suffix = { if (!taeglich) Text(stringResource(R.string.monitoring_schedule_unit)) },
                     modifier = Modifier.width(if (taeglich) 96.dp else 90.dp),
                     singleLine = true,
                     shape = Formen.kachel,
