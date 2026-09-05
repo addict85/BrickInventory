@@ -78,6 +78,16 @@
     label{font-size:.77rem;font-weight:600;color:var(--s600)}
     input[type=text],input[type=number],input[type=password],select,textarea{background:var(--sur);border:1.5px solid var(--bdr);color:var(--txt);padding:9px 13px;border-radius:8px;font-family:var(--font);font-size:.875rem;outline:none;transition:border-color .15s,box-shadow .15s;width:100%}
     input:focus,select:focus{border-color:var(--b400);box-shadow:0 0 0 3px rgba(59,130,246,.12)}
+    /* Die Kontoauswahl (Galerie, Teile, Minifiguren, Finanzen) steht in einer
+       Werkzeugzeile neben anderen Bedienelementen und soll nur so breit sein
+       wie ihr laengster Eintrag — nicht wie die Zeile. Die Regel eine Zeile
+       darueber gibt jedem select width:100%.
+       Stand bis jetzt viermal gleichlautend im style-Attribut; die Klasse gab
+       es schon, sie trug nur nichts. Was DORT bleibt, bleibt mit Grund:
+       display:none schaltet JavaScript um (02-gallery.js setzt style.display
+       leer, was eine CSS-Regel nicht ueberschreiben koennte), margin-left:auto
+       gilt nur fuer die Finanzen-Auswahl. */
+    .scope-select{width:auto}
     input[type=file]{background:var(--b50);border:2px dashed var(--b200);color:var(--mut);padding:14px;border-radius:8px;width:100%;cursor:pointer;font-size:.85rem}
     input[type=file]:hover{border-color:var(--b400)}
 
