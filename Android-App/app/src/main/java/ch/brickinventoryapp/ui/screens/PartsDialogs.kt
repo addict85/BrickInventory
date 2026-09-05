@@ -155,18 +155,7 @@ fun AddPartDialog(
                     modifier = Modifier.fillMaxWidth(), singleLine = true,
                     shape = Formen.knopf
                 )
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    Text(
-                        stringResource(R.string.common_condition),
-                        style = MaterialTheme.typography.bodyMedium,
-                        modifier = Modifier.width(90.dp)
-                    )
-                    Spacer(Modifier.width(8.dp))
-                    ConditionToggle(selected = condition, onSelect = { condition = it })
-                }
+                Zustandszeile(zustand = condition, onZustand = { condition = it })
             }
         },
         confirmButton = { TextButton(onClick = { submit(); onDismiss() }) { Text(stringResource(R.string.parts_add_button)) } },

@@ -21,6 +21,9 @@ import coil.compose.AsyncImage
 import coil.request.ImageRequest
 import ch.brickinventoryapp.R
 import ch.brickinventoryapp.ui.theme.Formen
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Search
+import androidx.compose.material.icons.filled.Clear
 
 /**
  * Eine Zeile der Tabellenansicht — fuer Teile UND Figuren.
@@ -175,6 +178,147 @@ fun AnsichtUmschalter(
                 onClick = { onWechsel(wert) },
                 label = { Text(stringResource(text), fontSize = 13.sp) },
             )
+        }
+    }
+}
+
+/**
+ * Das Suchfeld — eines für Galerie, Teile, Minifiguren und Katalog.
+ *
+ * ── Warum es das jetzt gibt (Nachtrag 132) ──────────────────────────────────
+ *
+ * Es stand VIERMAL da, siebzehn Zeilen lang und bis auf drei Stellen
+ * zeichengleich: Platzhalter, Wert und — hier wird es unangenehm — die
+ * Beschriftung des Leeren-Knopfes. Die vier waren:
+ *
+ *     CatalogSections   cd_search_clear    „Suche leeren"  / „Clear search"
+ *     GalleryScreen     gallery_clear      „Löschen"       / „Clear"
+ *     MinifigsScreen    minifigs_delete    „Löschen"       / „Delete"
+ *     PartsScreen       parts_delete       „Löschen"       / „Delete"
+ *
+ * `minifigs_delete` und `parts_delete` sind die Beschriftung der LÖSCHEN-Knöpfe
+ * — desselben Textes bedient sich der Knopf, der eine Minifigur endgültig
+ * entfernt, und der Bestätigungsknopf im Löschdialog. Mit TalkBack sagte der
+ * Knopf, der nur das Suchfeld leert, in zwei von vier Ansichten also
+ * „Löschen"; auf Englisch sogar „Delete". Wer nicht sieht, was er antippt,
+ * hört dort das Wort für „Bestand vernichten".
+ *
+ * Gefunden nicht durch Nachdenken, sondern durch Messen: Eine Suche nach
+ * gleichen Achtzeilern über den ganzen App-Baum meldete 49 Treffer, und dieser
+ * stand in vier Dateien.
+ *
+ * Die Beschriftung ist jetzt EINE (`cd_search_clear`) und beschreibt die
+ * Wirkung des Tippens — genau das, was ein Bildschirmleser braucht.
+ */
+@Composable
+fun Suchfeld(
+    wert: String,
+    onWert: (String) -> Unit,
+    platzhalter: String,
+    modifier: Modifier = Modifier,
+) {
+    OutlinedTextField(
+        value = wert,
+        onValueChange = onWert,
+        placeholder = { Text(platzhalter) },
+        leadingIcon = { Icon(Icons.Default.Search, null, Modifier.size(20.dp)) },
+        trailingIcon = {
+            if (wert.isNotEmpty()) {
+                IconButton(onClick = { onWert("") }) {
+                    Icon(Icons.Default.Clear, stringResource(R.string.cd_search_clear))
+                }
+            }
+        },
+        modifier = modifier.fillMaxWidth().padding(horizontal = 14.dp, vertical = 8.dp),
+        singleLine = true,
+        shape = Formen.karte,
+        colors = OutlinedTextFieldDefaults.colors(
+            unfocusedBorderColor = MaterialTheme.colorScheme.outline.copy(alpha = 0.4f)
+        )
+    )
+}
+
+/**
+ * Die Zustands-Zeile: Beschriftung „Zustand" und daneben die Wahl Neu/Gebraucht.
+ *
+ * ── Warum es das jetzt gibt (Nachtrag 133) ──────────────────────────────────
+ *
+ * Dieselbe Messung wie beim Suchfeld darueber — gleiche Achtzeiler ueber den
+ * ganzen App-Baum, Importe und Kommentare abgezogen — meldete diesen Block in
+ * DREI Dateien; die vierte Stelle kam beim Nachsehen dazu, weil sie
+ * `androidx.compose.ui.Alignment` ausgeschrieben hatte und der Textvergleich
+ * sie deshalb nicht als gleich erkannte:
+ *
+ *     BarcodeResultDialog   Zustand nach dem Scannen
+ *     GalleryScreen         Set von Hand anlegen
+ *     MinifigsScreen        Minifigur von Hand anlegen
+ *     PartsDialogs          Teil von Hand anlegen
+ *
+ * Diese vier waren untereinander gleich. Die FUENFTE Stelle war es nicht:
+ *
+ *     CatalogDetailScreen   aus dem Katalog uebernehmen
+ *
+ * Dort standen statt des Umschalters zwei `FilterChip` — dieselbe Wahl,
+ * dieselben Werte „N"/„U", aber ein anderes Aussehen: Material-Chips mit
+ * Haekchen statt der gefuellten Flaeche, und die Beschriftung ohne die feste
+ * Spaltenbreite von 90.dp, also links nicht buendig mit den anderen Zeilen des
+ * Dialogs. Dieselbe Entscheidung sah in der App an zwei Orten verschieden aus.
+ *
+ * Auch hier gilt: gefunden durch Messen, nicht durch Lesen. Die Doppelung war
+ * der Anlass; der Unterschied war der Fund.
+ *
+ * @param zustand  „N" oder „U" — dieselben Werte, die der Server kennt
+ */
+@Composable
+fun Zustandszeile(
+    zustand: String,
+    onZustand: (String) -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        modifier = modifier.fillMaxWidth(),
+    ) {
+        Text(
+            stringResource(R.string.common_condition),
+            style = MaterialTheme.typography.bodyMedium,
+            modifier = Modifier.width(90.dp),
+        )
+        Spacer(Modifier.width(8.dp))
+        ConditionToggle(selected = zustand, onSelect = onZustand)
+    }
+}
+
+/**
+ * Neu/Gebraucht als zwei Flaechen.
+ *
+ * Stand bis Nachtrag 133 in GalleryScreen.kt und wurde von dort aus in drei
+ * weiteren Dateien aufgerufen — eine Ansicht als Wohnort fuer ein Bedienelement,
+ * das vier Ansichten benutzen. Jetzt liegt es neben der Zeile, die es einbaut.
+ *
+ * Die Werte „N" und „U" sind die des Servers (utils/validate.ts); uebersetzt
+ * wird nur die Beschriftung.
+ */
+@Composable
+fun ConditionToggle(selected: String, onSelect: (String) -> Unit) {
+    Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+        listOf("N" to R.string.condition_new, "U" to R.string.condition_used).forEach { (value, labelRes) ->
+            val isSelected = selected == value
+            Surface(
+                onClick = { onSelect(value) },
+                shape = MaterialTheme.shapes.small,
+                color = if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surfaceVariant,
+                modifier = Modifier.height(34.dp)
+            ) {
+                Box(Modifier.padding(horizontal = 14.dp), contentAlignment = Alignment.Center) {
+                    Text(
+                        stringResource(labelRes),
+                        color = if (isSelected) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurfaceVariant,
+                        style = MaterialTheme.typography.labelMedium,
+                        fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal
+                    )
+                }
+            }
         }
     }
 }

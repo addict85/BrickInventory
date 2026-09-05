@@ -216,22 +216,10 @@ AlertDialog(
                     keyboardOptions = NumericInput.preisTastatur(),
                     modifier = Modifier.fillMaxWidth()
                 )
-                // Zustand (Neu/Gebraucht)
-                Row(
-                    verticalAlignment = androidx.compose.ui.Alignment.CenterVertically,
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    Text(
-                        stringResource(R.string.common_condition),
-                        style = MaterialTheme.typography.bodyMedium,
-                        modifier = Modifier.width(90.dp)
-                    )
-                    Spacer(Modifier.width(8.dp))
-                    ch.brickinventoryapp.ui.screens.ConditionToggle(
-                        selected = barcodeCondition,
-                        onSelect = { barcodeCondition = it }
-                    )
-                }
+                ch.brickinventoryapp.ui.screens.Zustandszeile(
+                    zustand = barcodeCondition,
+                    onZustand = { barcodeCondition = it }
+                )
             }
         }
     },

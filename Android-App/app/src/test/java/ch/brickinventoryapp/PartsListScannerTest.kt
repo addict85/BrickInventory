@@ -52,7 +52,7 @@ class PartsListScannerTest {
         for ((muster, name) in listOf(
             "OwnerPicker("            to "Eigentümer-Auswahl",
             "barcode_purchase_price"  to "Kaufpreis-Feld",
-            "ConditionToggle("        to "Zustands-Umschalter",
+            "Zustandszeile("           to "Zustands-Umschalter",
         )) {
             val pos = c.indexOf(muster, bedingung)
             assert(pos > bedingung) { "$name steht nicht innerhalb des Erfassungs-Zweigs" }

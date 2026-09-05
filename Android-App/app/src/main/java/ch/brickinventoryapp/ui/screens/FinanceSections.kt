@@ -140,6 +140,7 @@ fun LazyListScope.financeFigRows(figsValuation: FigsValuationResponse?, showFigs
                 blId = fig.blFigNumber ?: fig.figNumber,
                 quantity = acq?.quantity ?: fig.quantity,
                 priceStr = fmtPrice(acq?.totalAvg ?: fig.displayValue),
+                purchaseStr = (acq?.purchasePrice ?: fig.purchasePrice)?.let { fmtPrice(it.toString()) },
                 condition = acq?.condition,
                 pnlPct = acq?.pnlPct ?: fig.pnlPct
             )
@@ -186,6 +187,7 @@ fun LazyListScope.financePartRows(partsValuation: PartsValuationResponse?, showP
                 blId = part.blPartNumber ?: part.partNumber,
                 quantity = acq?.quantity ?: part.quantity,
                 priceStr = fmtPrice(acq?.totalAvg ?: part.displayValue),
+                purchaseStr = (acq?.purchasePrice ?: part.purchasePrice)?.let { fmtPrice(it.toString()) },
                 condition = acq?.condition,
                 pnlPct = acq?.pnlPct ?: part.pnlPct
             )

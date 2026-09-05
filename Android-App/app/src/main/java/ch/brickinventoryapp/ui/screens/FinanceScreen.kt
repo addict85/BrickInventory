@@ -174,6 +174,23 @@ fun ManualFinanceRow(
     blId: String,
     quantity: Int,
     priceStr: String,
+    /**
+     * Kaufpreis dieser Erfassung, schon formatiert; null = keiner hinterlegt.
+     *
+     * ── Warum das Feld dazukam (Nachtrag 133) ───────────────────────────────
+     *
+     * Diese Zeile und die Set-Zeile in FinanceSections.kt waren bis auf zwei
+     * Stellen zeichengleich — aufgefallen beim Messen gleicher Achtzeiler, nicht
+     * beim Lesen. Der Unterschied WAR der Fund: Die Set-Zeile zeigt unter dem
+     * Marktpreis „Kauf: X", diese Zeile zeigte ihn nicht.
+     *
+     * Die Webapp zeigt ihn in BEIDEN Tabellen (public/js/04-finance.js, pmRow,
+     * Spalte `detail.purchase_price`) — die Spalte steht dort sogar VOR dem
+     * Marktpreis. Die App hatte die Zahl die ganze Zeit im Speicher:
+     * PartValuationItem, FigValuationItem und ValuationAcquisition tragen alle
+     * `purchase_price`. Sie kam nur nie auf den Bildschirm.
+     */
+    purchaseStr: String? = null,
     /** Zustand dieser Erfassung; null = Eintrag ohne Erfassungen. */
     condition: String? = null,
     /** Entwicklung gegen den Kaufpreis dieser Erfassung (vom Server). */
@@ -227,6 +244,16 @@ fun ManualFinanceRow(
                 Text(priceStr, fontWeight = FontWeight.Bold,
                     color = MaterialTheme.colorScheme.primary,
                     style = MaterialTheme.typography.bodyMedium)
+                // Dieselbe Stelle und dieselbe Beschriftung wie in der
+                // Set-Zeile (FinanceSections.kt) — beide Tabellen sollen
+                // gleich aussehen, und in der Webapp tun sie es.
+                purchaseStr?.let {
+                    Text(
+                        stringResource(R.string.finance_purchase_short, it),
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
                 // Entwicklung wie bei den Sets — gegen den Kaufpreis dieser
                 // Erfassung, gerechnet auf dem Server.
                 pnlPct?.toDoubleOrNull()?.let {

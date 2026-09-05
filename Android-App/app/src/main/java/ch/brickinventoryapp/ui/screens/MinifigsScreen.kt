@@ -118,22 +118,13 @@ fun MinifigsScreen(
             }
         }
 
-        // Search
-        OutlinedTextField(
-            value = search,
-            onValueChange = { search = it; vm.setMinifigsQuery(it) },
-            placeholder = { Text(stringResource(R.string.minifigs_search_placeholder)) },
-            leadingIcon = { Icon(Icons.Default.Search, null, Modifier.size(20.dp)) },
-            trailingIcon = {
-                if (search.isNotEmpty())
-                    IconButton(onClick = { search = ""; vm.setMinifigsQuery("") }) { Icon(Icons.Default.Clear, stringResource(R.string.minifigs_delete)) }
-            },
-            modifier = Modifier.fillMaxWidth().padding(horizontal = 14.dp, vertical = 8.dp),
-            singleLine = true,
-            shape = Formen.karte,
-            colors = OutlinedTextFieldDefaults.colors(
-                unfocusedBorderColor = MaterialTheme.colorScheme.outline.copy(alpha = 0.4f)
-            )
+        // Suchfeld — gemeinsamer Baustein. Der Leeren-Knopf sagte hier
+        // „Löschen" (minifigs_delete, derselbe Text wie am Loeschknopf der
+        // Minifigur); jetzt „Suche leeren" (Nachtrag 132).
+        Suchfeld(
+            wert = search,
+            onWert = { search = it; vm.setMinifigsQuery(it) },
+            platzhalter = stringResource(R.string.minifigs_search_placeholder),
         )
 
         // Karten oder Tabelle — wie das Auswahlfeld figs-view der Webapp.
@@ -283,7 +274,11 @@ fun ManualFigTile(fig: FigValuationItem, serverUrl: String, imageLoader: ImageLo
                     shape = Formen.marke,
                     modifier = Modifier.align(Alignment.TopEnd).padding(3.dp)
                 ) {
-                    Text(stringResource(R.string.minifigs_qty_badge, fig.quantity), Modifier.padding(horizontal = 4.dp, vertical = 1.dp),
+                    // Die Menge-Plakette: „×N" auf einer MANUELL erfassten Kachel,
+                    // „N×" auf einer Kachel aus einem Set. Das ist keine Laune,
+                    // sondern die Regel der Webapp — `man-tile` traegt dort ein
+                    // `qbadge` mit ×N, `part-card` ein `part-qty` mit N×.
+                    Text("×${fig.quantity}", Modifier.padding(horizontal = 4.dp, vertical = 1.dp),
                         color = MaterialTheme.colorScheme.onPrimary,
                         style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.Bold)
                 }
@@ -383,18 +378,7 @@ fun AddMinifigDialog(
                     modifier = Modifier.fillMaxWidth(), singleLine = true,
                     shape = Formen.knopf
                 )
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    Text(
-                        stringResource(R.string.common_condition),
-                        style = MaterialTheme.typography.bodyMedium,
-                        modifier = Modifier.width(90.dp)
-                    )
-                    Spacer(Modifier.width(8.dp))
-                    ConditionToggle(selected = condition, onSelect = { condition = it })
-                }
+                Zustandszeile(zustand = condition, onZustand = { condition = it })
             }
         },
         confirmButton = { TextButton(onClick = { submit(); onDismiss() }) { Text(stringResource(R.string.minifigs_add_button)) } },
@@ -447,7 +431,11 @@ fun MinifigCard(fig: Minifig, serverUrl: String, imageLoader: ImageLoader,
                         shape = Formen.marke,
                         modifier = Modifier.align(Alignment.TopEnd).padding(4.dp)
                     ) {
-                        Text("×$qty", Modifier.padding(horizontal = 5.dp, vertical = 2.dp),
+                        // Die Menge-Plakette: „×N" auf einer MANUELL erfassten Kachel,
+                        // „N×" auf einer Kachel aus einem Set. Das ist keine Laune,
+                        // sondern die Regel der Webapp — `man-tile` traegt dort ein
+                        // `qbadge` mit ×N, `part-card` ein `part-qty` mit N×.
+                        Text("$qty×", Modifier.padding(horizontal = 5.dp, vertical = 2.dp),
                             color = MaterialTheme.colorScheme.onPrimary,
                             style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.Bold)
                     }
