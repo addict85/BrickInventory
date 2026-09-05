@@ -119,6 +119,7 @@ fun MonitoringScreen(vm: MainViewModel) {
                 JobCard(
                     jobKey   = key,
                     job      = job,
+                    schedule = monState.jobSchedules[key],
                     queueOpen = queueOpen,
                     queueLoading = queueLoading,
                     queue    = queue,
@@ -164,6 +165,8 @@ fun MonitoringScreen(vm: MainViewModel) {
 private fun JobCard(
     jobKey: String,
     job: JobStatus,
+    /** Zeitplan dieses Jobs, oder null — dann steht die Zeile nicht da. */
+    schedule: ch.brickinventoryapp.data.model.JobSchedule?,
     queueOpen: Boolean,
     queueLoading: Boolean,
     queue: List<BricksetQueueEntry>,
@@ -224,6 +227,13 @@ private fun JobCard(
                 Text(it, style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
+
+            // ── Zeitplan (Nachtrag 137) ─────────────────────────────────────
+            //
+            // Der Server schickt ihn seit jeher mit `/admin/jobs` — die App hat
+            // ihn nie eingelesen. Sie zeigte damit, DASS ein Job laeuft, aber
+            // nicht, wann er das naechste Mal laeuft.
+            schedule?.let { ZeitplanZeile(jobKey, it, mon, onSnack) }
 
             // Action buttons
             if (jobKey == "csvImport") {
@@ -292,6 +302,31 @@ private fun JobCard(
                     Icon(Icons.Default.Download, null, Modifier.size(16.dp))
                     Spacer(Modifier.width(6.dp))
                     Text(redlMsg ?: stringResource(R.string.monitoring_redownload_missing), fontSize = 12.sp)
+                }
+                // Der zweite Bilderknopf (Nachtrag 137): Der darueber holt die
+                // Bilder des BESTANDS nach, dieser die des KATALOGS. Die Webapp
+                // hat beide (07-admin.js, queueCatalogImages); die App hatte
+                // bisher nur den ersten — und damit keinen Weg, ein fehlendes
+                // Bild im Katalog nachzuziehen.
+                var katMsg by remember { mutableStateOf<String?>(null) }
+                FilledTonalButton(
+                    onClick = {
+                        scope.launch {
+                            katMsg = startingMsg
+                            if (mon.reiheKatalogbilderEin()) {
+                                katMsg = startedMsg
+                                kotlinx.coroutines.delay(4000)
+                                katMsg = null
+                            } else { katMsg = null; onSnack(startErrorMsg) }
+                        }
+                    },
+                    shape = Formen.kachel,
+                    contentPadding = PaddingValues(horizontal = 12.dp, vertical = 6.dp),
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Icon(Icons.Default.Download, null, Modifier.size(16.dp))
+                    Spacer(Modifier.width(6.dp))
+                    Text(katMsg ?: stringResource(R.string.monitoring_catalog_images), fontSize = 12.sp)
                 }
             }
 

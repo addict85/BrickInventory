@@ -374,6 +374,14 @@
     <string name="monitoring_started">✅ Started</string>
     <string name="monitoring_sync_started_short">✅ Sync started</string>
     <string name="monitoring_price_update">Update prices</string>
+    <string name="monitoring_schedule_daily">Daily at</string>
+    <string name="monitoring_schedule_every">Every</string>
+    <string name="monitoring_schedule_minutes">%1$d min</string>
+    <string name="cd_edit_schedule">Change schedule</string>
+    <string name="monitoring_theme">Design</string>
+    <string name="monitoring_theme_classic">Classic</string>
+    <string name="monitoring_theme_brick">Brick</string>
+    <string name="monitoring_catalog_images">Queue catalogue images</string>
     <string name="monitoring_redownload_missing">Redownload missing images</string>
     <string name="monitoring_import_missing_instr">Import missing instructions</string>
     <string name="monitoring_loading">Loading…</string>

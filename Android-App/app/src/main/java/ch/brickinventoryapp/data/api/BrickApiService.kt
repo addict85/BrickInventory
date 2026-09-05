@@ -576,6 +576,40 @@ interface BrickApiService {
     @GET("api/v1/admin/jobs")
     suspend fun getJobs(): Response<JobsResponse>
 
+    /**
+     * Den Zeitplan eines Jobs aendern.
+     *
+     * Zwei Formen, wie der Server sie liest (routes/api_v1/admin.ts):
+     *   { name: <schluessel>, time: "HH:MM" }   fuer taegliche Jobs
+     *   { name: "priceJob",   minutes: <n> }    fuer den Preis-Job
+     *
+     * Deshalb `Map<String, Any>` statt einer Datenklasse: Zwei Datenklassen
+     * fuer zwei Formen waeren mehr Gerippe als Inhalt, und der Server
+     * unterscheidet ohnehin am Vorhandensein des Feldes.
+     */
+    @POST("api/v1/admin/job-schedule")
+    suspend fun setJobSchedule(@Body body: Map<String, @JvmSuppressWildcards Any>): Response<GenericAdminResponse>
+
+    /**
+     * Fehlende KATALOGbilder einreihen — der fuenfte Werkzeugknopf.
+     *
+     * Nicht zu verwechseln mit `redownloadMissingImages` daneben: Das holt
+     * Bilder des BESTANDS nach, dies die des Katalogs. Die Webapp hat beide
+     * (07-admin.js, queueCatalogImages), die App bisher nur eins.
+     */
+    @POST("api/v1/admin/catalog-images")
+    suspend fun queueCatalogImages(): Response<GenericAdminResponse>
+
+    /**
+     * Das globale Design umstellen — nur fuer Verwalter.
+     *
+     * Die App LIEST das Design seit Nachtrag 135 (zwei Stufen, siehe
+     * getAppTheme). Aendern konnte es nur die Webapp; ein Verwalter mit dem
+     * Telefon in der Hand musste sich an den Rechner setzen.
+     */
+    @POST("api/v1/settings/admin/theme")
+    suspend fun setAppTheme(@Body body: Map<String, String>): Response<GenericAdminResponse>
+
     @GET("api/v1/admin/brickset-queue")
     suspend fun getBricksetQueue(): Response<BricksetQueueResponse>
 

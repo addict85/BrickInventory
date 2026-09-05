@@ -23,6 +23,15 @@ import javax.inject.Inject
  */
 data class MonitoringUiState(
     val jobs: Map<String, JobStatus> = emptyMap(),
+    /**
+     * Zeitplan je Job — kommt mit derselben Antwort wie `jobs`.
+     *
+     * Der Server schickt ihn seit jeher mit (routes/api_v1/admin.ts,
+     * `schedules`); die App hat ihn nie eingelesen. Sie zeigte damit, DASS ein
+     * Job laeuft, aber nicht, wann er das naechste Mal laeuft — und aendern
+     * konnte sie es schon gar nicht (Nachtrag 137).
+     */
+    val jobSchedules: Map<String, ch.brickinventoryapp.data.model.JobSchedule> = emptyMap(),
     val queue: List<BricksetQueueEntry> = emptyList(),
     val queueLoading: Boolean = false,
     val aktualisiert: Boolean = false,
@@ -87,7 +96,8 @@ class MonitoringViewModel @Inject constructor(
         _state.update { it.copy(aktualisiert = true) }
         val r = repo.admin.getJobs()
         _state.update {
-            if (r is Result.Success) it.copy(jobs = r.data.jobs, aktualisiert = false)
+            if (r is Result.Success)
+                it.copy(jobs = r.data.jobs, jobSchedules = r.data.schedules, aktualisiert = false)
             else it.copy(aktualisiert = false)
         }
     }
@@ -177,6 +187,35 @@ class MonitoringViewModel @Inject constructor(
         if (ok) ladeCacheUndGrenzen()
         return ok
     }
+
+    /**
+     * Zeitplan eines Jobs setzen und die Liste neu holen.
+     *
+     * Neu holen, weil der Server den Wert normalisiert: „7:5" wird zu „07:05",
+     * und ein Abstand unter fuenf Minuten wird auf fuenf angehoben. Ohne das
+     * Nachladen stuende in der Oberflaeche, was der Nutzer getippt hat, und
+     * nicht, was gilt.
+     */
+    suspend fun setzeJobZeitplan(name: String, zeit: String? = null, minuten: Int? = null): Boolean {
+        val ok = repo.admin.setJobSchedule(name, zeit, minuten) is Result.Success
+        if (ok) ladeJobs()
+        return ok
+    }
+
+    /** Fehlende KATALOGbilder einreihen — nicht die des Bestands daneben. */
+    suspend fun reiheKatalogbilderEin(): Boolean =
+        repo.admin.queueCatalogImages() is Result.Success
+
+    /**
+     * Das globale Design umstellen.
+     *
+     * Die App liest es seit Nachtrag 135 in zwei Stufen; hier wird es gesetzt.
+     * `loadSettings()` beim Aufrufer zieht den neuen Wert dann in den Zustand
+     * und merkt ihn — die Anzeige wechselt also sofort und ueberlebt den
+     * naechsten Kaltstart.
+     */
+    suspend fun setzeDesign(theme: String): Boolean =
+        repo.admin.setAppTheme(theme) is Result.Success
 
     suspend fun setzeGrenzwerte(rebrickable: Int, bricklink: Int, brickset: Int): Boolean {
         val ok = repo.admin.setApiLimits(rebrickable, bricklink, brickset) is Result.Success

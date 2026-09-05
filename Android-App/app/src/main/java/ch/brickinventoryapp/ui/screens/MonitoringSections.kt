@@ -143,6 +143,9 @@ fun CacheAndLimitsSection(vm: MainViewModel, onSnack: (String) -> Unit = {}) {
     val apiLimits  = monState.apiLimits
     val cacheTtl   = monState.cacheTtl
     val defaultCondition = monState.vorgabeZustand
+    // Das aktuelle Design steht im APP-Zustand, nicht im Ueberwachungs-Zustand:
+    // Es gilt fuer die ganze App und wird dort schon gelesen (Nachtrag 135).
+    val appState by vm.state.collectAsStateWithLifecycle()
 
     // Bedienzustand: was gerade bearbeitet und halb eingetippt ist. Bleibt hier
     // und speicherbar — das ueberlebt auch den Prozesstod, ein ViewModel nicht.
@@ -210,6 +213,44 @@ fun CacheAndLimitsSection(vm: MainViewModel, onSnack: (String) -> Unit = {}) {
                         }
                     }
                 )
+            }
+
+            // ── Design (Nachtrag 137) ───────────────────────────────────────
+            //
+            // Die App LIEST das globale Design seit Nachtrag 135 — aendern
+            // konnte es nur die Webapp, ein Verwalter mit dem Telefon in der
+            // Hand musste sich an den Rechner setzen.
+            //
+            // `loadSettings()` danach zieht den neuen Wert in den Zustand und
+            // merkt ihn: Die Anzeige wechselt sofort und ueberlebt den
+            // naechsten Kaltstart.
+            Row(
+                Modifier.fillMaxWidth(),
+                Arrangement.SpaceBetween,
+                Alignment.CenterVertically
+            ) {
+                Text(stringResource(R.string.monitoring_theme),
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                    for ((wert, text) in listOf(
+                        "classic" to R.string.monitoring_theme_classic,
+                        "brick" to R.string.monitoring_theme_brick,
+                    )) {
+                        FilterChip(
+                            selected = appState.appTheme == wert,
+                            onClick = {
+                                scope.launch {
+                                    if (mon.setzeDesign(wert)) {
+                                        vm.loadSettings()
+                                        onSnack(cacheSavedMsg)
+                                    }
+                                }
+                            },
+                            label = { Text(stringResource(text), fontSize = 13.sp) },
+                        )
+                    }
+                }
             }
 
             // Cache TTL
@@ -500,6 +541,101 @@ internal fun ProtokollSection(vm: MainViewModel) {
                         }
                     }
                 }
+            }
+        }
+    }
+}
+
+/**
+ * Der Zeitplan eines Jobs — anzeigen und aendern.
+ *
+ * ── Warum es das jetzt gibt (Nachtrag 137) ──────────────────────────────────
+ *
+ * `/api/v1/admin/jobs` schickt `schedules` seit jeher mit; die App hat das Feld
+ * nie eingelesen. Sie zeigte damit, DASS ein Job laeuft, aber nicht, wann er
+ * das naechste Mal laeuft — und aendern konnte sie es schon gar nicht. Die
+ * Webapp kann beides (07-admin.js).
+ *
+ * Ein Feld, das ueber die Leitung kommt und niemanden erreicht: dieselbe Sorte
+ * Fund wie „geschrieben und nie gelesen", nur von der anderen Seite.
+ *
+ * ── Zwei Formen, ein Bedienelement ──────────────────────────────────────────
+ *
+ * Taegliche Jobs haben eine Uhrzeit („03:00"), der Preis-Job einen Abstand in
+ * Minuten. Der Server unterscheidet sie am mitgeschickten Feld
+ * (routes/api_v1/admin.ts) und normalisiert beides — „7:5" wird zu „07:05",
+ * ein Abstand unter fuenf Minuten wird auf fuenf angehoben. Deshalb wird nach
+ * dem Speichern neu geladen: Sonst stuende da, was getippt wurde, statt dessen,
+ * was gilt.
+ */
+@Composable
+fun ZeitplanZeile(
+    jobKey: String,
+    plan: ch.brickinventoryapp.data.model.JobSchedule,
+    mon: ch.brickinventoryapp.ui.viewmodel.MonitoringViewModel,
+    onSnack: (String) -> Unit,
+) {
+    val scope = rememberCoroutineScope()
+    val gespeichert = stringResource(R.string.monitoring_cache_saved)
+    val taeglich = plan.type == "daily"
+    var bearbeiten by rememberSaveable(jobKey) { mutableStateOf(false) }
+    val gezeigt = if (taeglich) plan.time.orEmpty() else (plan.minutes ?: 60).toString()
+    var eingabe by rememberSaveable(jobKey, gezeigt) { mutableStateOf(gezeigt) }
+
+    Row(
+        Modifier.fillMaxWidth(),
+        Arrangement.SpaceBetween,
+        Alignment.CenterVertically,
+    ) {
+        Text(
+            stringResource(if (taeglich) R.string.monitoring_schedule_daily
+                           else R.string.monitoring_schedule_every),
+            style = MaterialTheme.typography.labelSmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+        if (bearbeiten) {
+            Row(horizontalArrangement = Arrangement.spacedBy(6.dp),
+                verticalAlignment = Alignment.CenterVertically) {
+                OutlinedTextField(
+                    value = eingabe,
+                    onValueChange = {
+                        // Bei Minuten nur Ziffern; bei der Uhrzeit auch der
+                        // Doppelpunkt — sonst liesse sich „03:00" nicht tippen.
+                        eingabe = if (taeglich) it.filter { z -> z.isDigit() || z == ':' }.take(5)
+                                  else NumericInput.quantity(it)
+                    },
+                    suffix = { if (!taeglich) Text("min") },
+                    modifier = Modifier.width(if (taeglich) 96.dp else 90.dp),
+                    singleLine = true,
+                    shape = Formen.kachel,
+                    keyboardOptions = NumericInput.ganzzahlTastatur(),
+                )
+                FilledTonalButton(
+                    onClick = {
+                        scope.launch {
+                            val ok = if (taeglich) mon.setzeJobZeitplan(jobKey, zeit = eingabe.trim())
+                                     else mon.setzeJobZeitplan(jobKey, minuten = eingabe.toIntOrNull() ?: 60)
+                            if (ok) onSnack(gespeichert)
+                            bearbeiten = false
+                        }
+                    },
+                    shape = Formen.kachel,
+                    contentPadding = PaddingValues(horizontal = 10.dp, vertical = 6.dp),
+                ) { Text("OK", fontSize = 12.sp) }
+                TextButton(onClick = { bearbeiten = false }) { Text("✕") }
+            }
+        } else {
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalAlignment = Alignment.CenterVertically) {
+                Text(
+                    if (taeglich) plan.time.orEmpty()
+                    else stringResource(R.string.monitoring_schedule_minutes, plan.minutes ?: 60),
+                    fontWeight = FontWeight.SemiBold, fontSize = 13.sp,
+                )
+                FilledTonalIconButton(
+                    onClick = { bearbeiten = true },
+                    modifier = Modifier.size(30.dp),
+                ) { Icon(Icons.Default.Edit, stringResource(R.string.cd_edit_schedule), Modifier.size(14.dp)) }
             }
         }
     }
