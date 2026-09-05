@@ -19,6 +19,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import javax.inject.Inject
+import ch.brickinventoryapp.R
 
 // Interaktive Katalog-Calls: schnell scheitern statt still minutenlang
 // weiterversuchen — der Fehlerzustand hat einen Retry-Button.
@@ -306,7 +307,7 @@ class CatalogViewModel @Inject constructor(
                         _catalogState.update { it.copy(detailLoading = false, detail = r.data.set) }
                     else {
                         _catalogState.update { it.copy(detailLoading = false) }
-                        _snackbar.value = r.data.error ?: "Set nicht gefunden"
+                        _snackbar.value = r.data.error ?: text(R.string.err_set_not_found)
                     }
                 }
                 is Result.Error -> {

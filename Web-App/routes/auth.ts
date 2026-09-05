@@ -12,6 +12,7 @@ import { sendPasswordResetMail, sendVerificationMail } from './mailer';
 import type { Request } from 'express';
 import { getGlobalSetting } from '../utils/settings';
 import { requireApiAdmin } from './api_v1/middleware';
+import { sendeFehler, fehlerText, antwortSprache } from '../utils/fehlerTexte';
 
 // ── „Angemeldet" gibt es nur noch in EINER Fassung ──────────────────────────
 //
@@ -68,8 +69,17 @@ router.post('/login', async (req, res) => {
     // Konto-Vorbedingungen stehen in utils/auth.ts.
     const pruefung = await pruefeAnmeldedaten(req, username, password);
     if (!pruefung.ok) {
-      const { status, error, unverified } = pruefung.absage;
-      return res.status(status).json({ success: false, error, ...(unverified ? { unverified: true } : {}) });
+      const { status, code, vars, unverified } = pruefung.absage;
+      // `unverified` haengt zusaetzlich dran — die Oberflaeche blendet daran
+      // das „E-Mail erneut senden?" ein. sendeFehler kennt das Feld nicht, es
+      // gehoert zu genau diesem einen Fall.
+      if (unverified) {
+        return res.status(status).json({
+          success: false, code, unverified: true,
+          error: fehlerText(code, antwortSprache(req), vars),
+        });
+      }
+      return sendeFehler(req, res, status, code, vars);
     }
     const user = pruefung.user;
     // Session-ID erneuern (gegen Session Fixation) und erst dann fuellen.
@@ -94,7 +104,7 @@ router.post('/login', async (req, res) => {
     } catch (e) {
       console.warn('[login] Token konnte nicht gespeichert werden:', fehlertext(e));
       if (dauerhaft)
-        return res.status(500).json({ success: false, error: 'Anmeldung fehlgeschlagen: Token konnte nicht ausgestellt werden.' });
+        return sendeFehler(req, res, 500, 'token_nicht_ausgestellt');
     }
     res.json({ success: true, ...(token ? { token } : {}), never_expires: dauerhaft,
       user: { id: user.id, username: user.username, is_admin: user.is_admin == 1 || user.is_admin === true,
@@ -102,7 +112,7 @@ router.post('/login', async (req, res) => {
       // db/database.ts) — der Client fordert dann zur Passwortaenderung auf.
       // Wird durch POST /change-password wieder geloescht.
       mustChangePassword: !!(user.must_change_password === 1 || user.must_change_password === true) } });
-  } catch (e) { handleRouteError(res, e); }
+  } catch (e) { handleRouteError(res, e, undefined, req); }
 });
 
 /**
@@ -176,7 +186,7 @@ router.get('/me', async (req, res) => {
       user: { id: u.user_id, username: u.username, is_admin: u.is_admin === 1 || u.is_admin === true },
       token_expires: u.expires_at, token_last_used: u.last_used });
     if (token) return res.status(401).json({ success: false, loggedIn: false, user: null,
-      error: 'Ungültiger oder abgelaufener Token' });
+      code: 'token_ungueltig', error: fehlerText('token_ungueltig', antwortSprache(req)) });
     res.json({ success: true, loggedIn: false, user: null });
   } catch (e) {
     // Wer hier scheitert, ist eben nicht angemeldet — die Anmeldemaske ist die
@@ -184,7 +194,7 @@ router.get('/me', async (req, res) => {
     // dasselbe wie oben: Die App soll es merken.
     meldeUndWeiter('auth:me', e);
     if (token) return res.status(401).json({ success: false, loggedIn: false, user: null,
-      error: 'Ungültiger oder abgelaufener Token' });
+      code: 'token_ungueltig', error: fehlerText('token_ungueltig', antwortSprache(req)) });
     res.json({ success: true, loggedIn: false, user: null });
   }
 });
@@ -208,7 +218,7 @@ router.post('/token-create', requireLogin, async (req, res) => {
     const label = req.body?.label || 'Android App';
     const neu = await createToken(userId, label, true);
     res.json({ success: true, token: neu, label, never_expires: true });
-  } catch (e) { handleRouteError(res, e); }
+  } catch (e) { handleRouteError(res, e, undefined, req); }
 });
 
 // GET /api/v1/auth/profile — get current user profile
@@ -220,7 +230,7 @@ router.get('/profile', requireLogin, async (req, res) => {
     );
     if (!user) return res.status(404).json({ success: false });
     res.json({ success: true, user });
-  } catch (e) { handleRouteError(res, e); }
+  } catch (e) { handleRouteError(res, e, undefined, req); }
 });
 
 // PUT /api/v1/auth/profile — update current user profile
@@ -232,9 +242,9 @@ router.put('/profile', requireLogin, async (req, res) => {
 
     // If changing password, verify current password
     if (password) {
-      if (!password_current) return res.status(400).json({ success: false, error: 'Aktuelles Passwort erforderlich' });
+      if (!password_current) return sendeFehler(req, res, 400, 'aktuelles_passwort_erforderlich');
       const valid = await bcrypt.compare(password_current, user.password_hash);
-      if (!valid) return res.status(400).json({ success: false, error: 'Aktuelles Passwort falsch' });
+      if (!valid) return sendeFehler(req, res, 400, 'aktuelles_passwort_falsch');
     }
 
     // Benutzername: dieselbe Regex wie Login/Register — das Profil-Update hat
@@ -242,7 +252,7 @@ router.put('/profile', requireLogin, async (req, res) => {
     // (schlimmer) die E-Mail-Adresse eines anderen Nutzers als Benutzernamen
     // eintragen, weil der Login "username ODER email" case-insensitiv sucht.
     if (username !== undefined && !USERNAME_RE.test(String(username || '')))
-      return res.status(400).json({ success: false, error: 'Benutzername darf nur Buchstaben, Zahlen und _.- enthalten (3–32 Zeichen).' });
+      return sendeFehler(req, res, 400, 'benutzername_ungueltig');
 
     // Eindeutigkeit case-INsensitiv prüfen (der Login vergleicht mit LOWER()) —
     // vorher konnten "Marco" und "marco" nebeneinander existieren und welcher
@@ -252,18 +262,18 @@ router.put('/profile', requireLogin, async (req, res) => {
       const existing = await db.get(
         'SELECT id FROM users WHERE (LOWER(username) = LOWER($1) OR LOWER(email) = LOWER($1)) AND id != $2',
         [username, user.id]);
-      if (existing) return res.status(400).json({ success: false, error: 'Benutzername bereits vergeben' });
+      if (existing) return sendeFehler(req, res, 400, 'benutzername_vergeben');
     }
 
     // Check email uniqueness
     const emailChanged = email && email.toLowerCase() !== String(user.email || '').toLowerCase();
     if (emailChanged) {
       if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email))
-        return res.status(400).json({ success: false, error: 'Ungültige E-Mail-Adresse.' });
+        return sendeFehler(req, res, 400, 'email_ungueltig');
       const existing = await db.get(
         'SELECT id FROM users WHERE (LOWER(email) = LOWER($1) OR LOWER(username) = LOWER($1)) AND id != $2',
         [email, user.id]);
-      if (existing) return res.status(400).json({ success: false, error: 'E-Mail bereits vergeben' });
+      if (existing) return sendeFehler(req, res, 400, 'email_vergeben');
     }
 
     // Build update
@@ -300,7 +310,7 @@ router.put('/profile', requireLogin, async (req, res) => {
     if (!updates.length) return res.json({ success: true });
     await db.run(`UPDATE users SET ${updates.join(',')} WHERE id=$${pi}`, [...params, user.id]);
     res.json({ success: true });
-  } catch (e) { handleRouteError(res, e); }
+  } catch (e) { handleRouteError(res, e, undefined, req); }
 });
 
 // Admin: list users
@@ -308,17 +318,17 @@ router.get('/users', requireAdmin, async (_req, res) => {
   try {
     const users = await db.all('SELECT id, username, is_admin, created_at FROM users ORDER BY id');
     res.json({ success: true, users });
-  } catch (e) { handleRouteError(res, e); }
+  } catch (e) { handleRouteError(res, e, undefined, _req); }
 });
 
 // Admin: create user
 router.post('/users', requireAdmin, async (req, res) => {
   const { username, password, isAdmin = false } = req.body;
-  if (!username || !password) return res.status(400).json({ success: false, error: 'Benutzername und Passwort erforderlich' });
+  if (!username || !password) return sendeFehler(req, res, 400, 'benutzername_passwort');
   if (!USERNAME_RE.test(String(username)))
-    return res.status(400).json({ success: false, error: 'Benutzername darf nur Buchstaben, Zahlen und _.- enthalten (3–32 Zeichen).' });
+    return sendeFehler(req, res, 400, 'benutzername_ungueltig');
   if (String(password).length < 8)
-    return res.status(400).json({ success: false, error: 'Passwort muss mindestens 8 Zeichen lang sein.' });
+    return sendeFehler(req, res, 400, 'passwort_zu_kurz');
   try {
     const hash = await bcrypt.hash(password, BCRYPT_ROUNDS);
     const r = await db.run('INSERT INTO users (username, password_hash, is_admin) VALUES ($1, $2, $3)',
@@ -326,11 +336,11 @@ router.post('/users', requireAdmin, async (req, res) => {
     // Sicherheitsnetz: r.changes === 0 hiesse, das INSERT wurde verschluckt
     // (früher hat die SQL-Kompatschicht genau das global getan und dieser
     //  Endpoint meldete success:true, ohne einen Nutzer anzulegen).
-    if (r.changes === 0) return res.status(409).json({ success: false, error: 'Benutzername bereits vergeben' });
+    if (r.changes === 0) return sendeFehler(req, res, 409, 'benutzername_vergeben');
     res.json({ success: true });
   } catch (e) {
-    if (fehlerCode(e) === '23505') return res.status(409).json({ success: false, error: 'Benutzername bereits vergeben' });
-    handleRouteError(res, e);
+    if (fehlerCode(e) === '23505') return sendeFehler(req, res, 409, 'benutzername_vergeben');
+    handleRouteError(res, e, undefined, req);
   }
 });
 
@@ -342,11 +352,11 @@ router.put('/users/:id/admin', requireAdmin, async (req, res) => {
     // ist in JavaScript wahr und meldete hier Erfolg, ohne Rechte zu entziehen.
     const soll = strictBool(req.body.is_admin, 'is_admin');
     if (targetId === nutzerId(req) && !soll)
-      return res.status(400).json({ success: false, error: 'Eigene Admin-Rolle kann nicht entfernt werden' });
+      return sendeFehler(req, res, 400, 'eigene_adminrolle');
     const r = await db.run('UPDATE users SET is_admin = $1 WHERE id = $2', [soll ? 1 : 0, targetId]);
-    if (r.changes === 0) return res.status(404).json({ success: false, error: 'Benutzer nicht gefunden' });
+    if (r.changes === 0) return sendeFehler(req, res, 404, 'benutzer_nicht_gefunden');
     res.json({ success: true });
-  } catch (e) { handleRouteError(res, e); }
+  } catch (e) { handleRouteError(res, e, undefined, req); }
 });
 
 // Admin: delete user
@@ -368,14 +378,14 @@ router.put('/users/:id/password', requireAdmin, async (req, res) => {
   const targetId = parseInt(pfadParam(req, 'id'));
 
   if (!password || String(password).length < 8)
-    return res.status(400).json({ success: false, error: 'Passwort muss mindestens 8 Zeichen lang sein.' });
+    return sendeFehler(req, res, 400, 'passwort_zu_kurz');
   if (!targetId || targetId === nutzerId(req))
-    return res.status(400).json({ success: false, error: 'Für das eigene Konto bitte „Passwort ändern" benutzen.' });
+    return sendeFehler(req, res, 400, 'eigenes_konto_passwort');
 
   try {
     const hash = await bcrypt.hash(String(password), BCRYPT_ROUNDS);
     const r = await db.run('UPDATE users SET password_hash = $1 WHERE id = $2', [hash, targetId]);
-    if (!r.changes) return res.status(404).json({ success: false, error: 'Benutzer nicht gefunden' });
+    if (!r.changes) return sendeFehler(req, res, 404, 'benutzer_nicht_gefunden');
 
     // Offene Zugänge des Kontos beenden — ein zurückgesetztes Passwort soll
     // auch bestehende Sitzungen und Token schliessen.
@@ -390,16 +400,16 @@ router.put('/users/:id/password', requireAdmin, async (req, res) => {
     await revokeAllTokens(targetId);
 
     res.json({ success: true });
-  } catch (e) { handleRouteError(res, e); }
+  } catch (e) { handleRouteError(res, e, undefined, req); }
 });
 
 router.delete('/users/:id', requireAdmin, async (req, res) => {
   try {
     const r = await db.run('DELETE FROM users WHERE id = $1 AND id != $2',
       [req.params.id, nutzerId(req)]);
-    if (r.changes === 0) return res.status(404).json({ success: false, error: 'Benutzer nicht gefunden oder eigener Account' });
+    if (r.changes === 0) return sendeFehler(req, res, 404, 'benutzer_nicht_gefunden_oder_eigenes');
     res.json({ success: true });
-  } catch (e) { handleRouteError(res, e); }
+  } catch (e) { handleRouteError(res, e, undefined, req); }
 });
 
 // Change password
@@ -412,15 +422,15 @@ router.delete('/users/:id', requireAdmin, async (req, res) => {
 // nicht an die Erinnerung des Naechsten. Begruendung: types/augmentations.d.ts.
 router.post('/change-password', requireLogin, async (req: LoggedInRequest, res) => {
   const { current, newPassword } = req.body;
-  if (!current || !newPassword) return res.status(400).json({ success: false, error: 'Alle Felder erforderlich' });
+  if (!current || !newPassword) return sendeFehler(req, res, 400, 'alle_felder_erforderlich');
   // Die Kennung kommt aus dem gemeinsamen Helfer, nicht mehr aus der Sitzung:
   // Seit der Waechter beide Ausweise nimmt, kann hier auch die App stehen.
   const uid = nutzerId(req);
-  if (uid == null) return res.status(401).json({ success: false, error: 'Nicht angemeldet' });
+  if (uid == null) return sendeFehler(req, res, 401, 'nicht_angemeldet');
   try {
     const user = await db.get('SELECT * FROM users WHERE id = $1', [uid]);
     if (!(await bcrypt.compare(current, user.password_hash)))
-      return res.status(401).json({ success: false, error: 'Aktuelles Passwort falsch' });
+      return sendeFehler(req, res, 401, 'aktuelles_passwort_falsch');
     const hash = await bcrypt.hash(newPassword, BCRYPT_ROUNDS);
     // must_change_password mit löschen — sonst fragt der Login nach jedem
     // Login des Default-Admins weiter danach, auch nach der Änderung.
@@ -454,7 +464,7 @@ router.post('/change-password', requireLogin, async (req: LoggedInRequest, res) 
       await establishSession(req, _self);
     }
     res.json({ success: true });
-  } catch (e) { handleRouteError(res, e); }
+  } catch (e) { handleRouteError(res, e, undefined, req); }
 });
 
 
@@ -537,7 +547,7 @@ router.post('/qr-token', requireLogin, async (req, res) => {
       [hashToken(nonce), nutzerId(req), new Date(Date.now() + QR_TTL_MS)]
     );
     res.json({ success: true, token: `bim:${nonce}`, expires_in: QR_TTL_MS / 1000 });
-  } catch (e) { handleRouteError(res, e); }
+  } catch (e) { handleRouteError(res, e, undefined, req); }
 });
 
 // POST /api/v1/auth/qr-login — Nonce einlösen
@@ -549,7 +559,7 @@ router.post('/qr-token', requireLogin, async (req, res) => {
 router.post('/qr-login', ipThrottle('qr-login', 30, 60 * 60 * 1000), async (req, res) => {
   const { token } = req.body;
   if (typeof token !== 'string' || !token.startsWith('bim:'))
-    return res.status(400).json({ success: false, error: 'Ungültiger Token' });
+    return sendeFehler(req, res, 400, 'token_ungueltig');
   try {
     // Atomar entwerten: Nur die erste Anfrage bekommt eine Zeile zurück, alle
     // weiteren laufen ins Leere — kein Race zwischen zwei Geräten möglich.
@@ -559,12 +569,12 @@ router.post('/qr-login', ipThrottle('qr-login', 30, 60 * 60 * 1000), async (req,
        RETURNING user_id`,
       [hashToken(token.slice(4))]
     );
-    if (!claimed) return res.status(401).json({ success: false, error: 'Ungültiger oder abgelaufener Token' });
+    if (!claimed) return sendeFehler(req, res, 401, 'token_ungueltig');
 
     const user = await db.get('SELECT * FROM users WHERE id=$1', [claimed.user_id]);
-    if (!user) return res.status(401).json({ success: false, error: 'Ungültiger Token' });
+    if (!user) return sendeFehler(req, res, 401, 'token_ungueltig');
     const blocked = assertLoginAllowed(user);
-    if (blocked) return res.status(blocked.status).json({ success: false, error: blocked.error });
+    if (blocked) return sendeFehler(req, res, blocked.status, blocked.code);
 
     await establishSession(req, {
       userId:   parseInt(user.id),
@@ -576,7 +586,7 @@ router.post('/qr-login', ipThrottle('qr-login', 30, 60 * 60 * 1000), async (req,
     const bearerToken = await createToken(user.id, 'qr-login', true);
     res.json({ success: true, token: bearerToken, username: user.username, isAdmin: !!user.is_admin, userId: user.id,
       user: { id: user.id, username: user.username } });
-  } catch (e) { handleRouteError(res, e); }
+  } catch (e) { handleRouteError(res, e, undefined, req); }
 });
 
 // ── GET /api/v1/auth/registration-status — public, no auth required ─────────────
@@ -593,12 +603,12 @@ router.post('/register', ipThrottle('register', 5, 60 * 60 * 1000), async (req, 
 
   // Check if registration is enabled
   const regEnabled = await getGlobalSetting('registration_enabled');
-  if (regEnabled === '0') return res.status(403).json({ success: false, error: 'Registrierung ist deaktiviert.' });
+  if (regEnabled === '0') return sendeFehler(req, res, 403, 'registrierung_deaktiviert');
 
   if (!username || !email || !password)
-    return res.status(400).json({ success: false, error: 'Benutzername, E-Mail und Passwort sind erforderlich.' });
+    return sendeFehler(req, res, 400, 'registrierung_felder');
   if (password.length < 8)
-    return res.status(400).json({ success: false, error: 'Passwort muss mindestens 8 Zeichen lang sein.' });
+    return sendeFehler(req, res, 400, 'passwort_zu_kurz');
   // Dieselben Muster wie überall sonst (utils/auth.ts) — hier standen zwei
   // wortgleiche Kopien, und die E-Mail-Regex gab es damit dreimal im Projekt.
   //
@@ -606,13 +616,13 @@ router.post('/register', ipThrottle('register', 5, 60 * 60 * 1000), async (req, 
   // könnte jemand die E-Mail-Adresse eines anderen als Benutzernamen eintragen
   // und dessen Anmeldung an sich ziehen — der Login sucht in beiden Spalten.
   if (!EMAIL_RE.test(email))
-    return res.status(400).json({ success: false, error: 'Ungültige E-Mail-Adresse.' });
+    return sendeFehler(req, res, 400, 'email_ungueltig');
   if (!USERNAME_RE.test(username))
-    return res.status(400).json({ success: false, error: 'Benutzername darf nur Buchstaben, Zahlen und _.- enthalten (3–32 Zeichen).' });
+    return sendeFehler(req, res, 400, 'benutzername_ungueltig');
 
   try {
     const existing = await db.get('SELECT id FROM users WHERE LOWER(username) = LOWER($1) OR LOWER(email) = LOWER($2)', [username, email]);
-    if (existing) return res.status(409).json({ success: false, error: 'Benutzername oder E-Mail bereits vergeben.' });
+    if (existing) return sendeFehler(req, res, 409, 'benutzername_oder_email_vergeben');
 
     const token  = crypto.randomBytes(32).toString('hex');
     const expires = new Date(Date.now() + 24 * 60 * 60 * 1000);
@@ -650,8 +660,8 @@ router.post('/register', ipThrottle('register', 5, 60 * 60 * 1000), async (req, 
       console_mode: result.mode === 'console',
     });
   } catch (e) {
-    if (fehlerCode(e) === '23505') return res.status(409).json({ success: false, error: 'Benutzername oder E-Mail bereits vergeben.' });
-    handleRouteError(res, e);
+    if (fehlerCode(e) === '23505') return sendeFehler(req, res, 409, 'benutzername_oder_email_vergeben');
+    handleRouteError(res, e, undefined, req);
   }
 });
 
@@ -671,7 +681,7 @@ router.post('/register', ipThrottle('register', 5, 60 * 60 * 1000), async (req, 
 // ── POST /api/v1/auth/forgot-password ───────────────────────────────────────────
 router.post('/forgot-password', ipThrottle('forgot-password', 5, 60 * 60 * 1000), async (req, res) => {
   const { email } = req.body;
-  if (!email) return res.status(400).json({ success: false, error: 'E-Mail erforderlich.' });
+  if (!email) return sendeFehler(req, res, 400, 'email_erforderlich');
   try {
     // LOWER auf beiden Seiten wie an JEDER anderen E-Mail-Suche (Login,
     // Registrierung, Profil). Hier stand der einzige case-SENSITIVE Vergleich:
@@ -699,20 +709,20 @@ router.post('/forgot-password', ipThrottle('forgot-password', 5, 60 * 60 * 1000)
       .catch((e: any) => console.error('[forgot-password] Mailversand fehlgeschlagen:', e?.message));
 
     res.json({ success: true, message: 'Falls die E-Mail existiert, wurde ein Link gesendet.' });
-  } catch (e) { handleRouteError(res, e); }
+  } catch (e) { handleRouteError(res, e, undefined, req); }
 });
 
 // ── POST /api/v1/auth/reset-password ────────────────────────────────────────────
 router.post('/reset-password', ipThrottle('reset-password', 10, 60 * 60 * 1000), async (req, res) => {
   const { token, password } = req.body;
-  if (!token || !password) return res.status(400).json({ success: false, error: 'Token und Passwort erforderlich.' });
-  if (password.length < 8) return res.status(400).json({ success: false, error: 'Passwort muss mindestens 8 Zeichen lang sein.' });
+  if (!token || !password) return sendeFehler(req, res, 400, 'token_passwort_erforderlich');
+  if (password.length < 8) return sendeFehler(req, res, 400, 'passwort_zu_kurz');
   try {
     const user = await db.get(
       "SELECT id FROM users WHERE reset_token = $1 AND reset_token_expires > NOW()",
       [hashToken(token)]
     );
-    if (!user) return res.status(400).json({ success: false, error: 'Ungültiger oder abgelaufener Token.' });
+    if (!user) return sendeFehler(req, res, 400, 'token_ungueltig');
     const hash = await bcrypt.hash(password, BCRYPT_ROUNDS);
     await db.run('UPDATE users SET password_hash=$1, reset_token=NULL, reset_token_expires=NULL WHERE id=$2', [hash, user.id]);
     // Ein Reset ist der Moment, in dem man einen fremden Zugang loswerden will.
@@ -721,7 +731,7 @@ router.post('/reset-password', ipThrottle('reset-password', 10, 60 * 60 * 1000),
     await revokeAllTokens(user.id);
     await revokeAllSessions(user.id);
     res.json({ success: true, message: 'Passwort erfolgreich geändert.' });
-  } catch (e) { handleRouteError(res, e); }
+  } catch (e) { handleRouteError(res, e, undefined, req); }
 });
 
 // ── GET /api/v1/auth/check-token ist ENTFERNT ───────────────────────────────────

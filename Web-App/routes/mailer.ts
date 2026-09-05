@@ -410,7 +410,9 @@ async function sendPasswordResetMail(to: string, username: string, token: string
 // ── SMTP-Verbindung testen ────────────────────────────────────────────────────
 async function testSmtp() {
   const transporter = await getTransporter();
-  if (!transporter) return { success: false, error: 'SMTP nicht konfiguriert (Host oder Benutzername fehlt)' };
+  // Code statt Satz: testSmtp() kennt den Anfragenden nicht — die Route macht
+  // mit sendeFehler() einen Satz daraus (Nachtrag 130).
+  if (!transporter) return { success: false, code: 'smtp_nicht_konfiguriert' as const };
   try {
     await transporter.verify();
     return { success: true, message: 'SMTP-Verbindung erfolgreich' };

@@ -19,6 +19,8 @@ import bcrypt from 'bcryptjs';
 import type { Request, Response, NextFunction } from 'express';
 import { vorDem } from '../utils/httpError';
 import { checkLoginAllowed, recordLoginFailure, recordLoginSuccess } from './loginLimiter';
+import { sendeFehler } from './fehlerTexte';
+import type { FehlerCode } from './fehlerTexte';
 
 /**
  * ── Warum diese Typen hier stehen (Nachtrag 155) ─────────────────────────────
@@ -322,13 +324,17 @@ function isValidLoginIdentifier(value: unknown): boolean {
 
 /**
  * Prüft die Konto-Vorbedingungen NACH erfolgreicher Passwortprüfung.
- * @returns {{status:number, error:string, unverified?:boolean}|null} null = Login erlaubt
+ * Die Absage kommt als CODE zurueck, nicht als Satz (Nachtrag 130): Dieser
+ * Helfer weiss nicht, welche Sprache der Anfragende sieht — die Route weiss es.
+ *
+ * @returns null = Login erlaubt
  */
-function assertLoginAllowed(user: KontoZustand): { status: number; error: string; unverified?: boolean } | null {
+function assertLoginAllowed(user: KontoZustand):
+    { status: number; code: FehlerCode; unverified?: boolean } | null {
   if (user.is_active === 0 || user.is_active === false)
-    return { status: 403, error: 'Konto deaktiviert. Bitte Administrator kontaktieren.' };
+    return { status: 403, code: 'konto_deaktiviert' };
   if ((user.email_verified === 0 || user.email_verified === false) && user.email && !user.is_admin)
-    return { status: 403, error: 'E-Mail-Adresse noch nicht bestätigt. Bitte prüfe dein Postfach.', unverified: true };
+    return { status: 403, code: 'email_nicht_bestaetigt', unverified: true };
   return null;
 }
 
@@ -345,7 +351,16 @@ const DUMMY_HASH = bcrypt.hashSync('nonexistent-account-placeholder', BCRYPT_ROU
 /** Absage an einen Anmeldeversuch — fertig zum Verschicken. */
 export interface AnmeldeAbsage {
   status: number;
-  error: string;
+  /**
+   * Der Grund als SCHLUESSEL, nicht als Satz (Nachtrag 130).
+   *
+   * Diese Funktion laeuft ohne zu wissen, welche Sprache der Anfragende sieht.
+   * Die Route weiss es (Accept-Language) und macht daraus mit sendeFehler()
+   * einen Satz.
+   */
+  code: FehlerCode;
+  /** Werte fuer die Platzhalter des Textes, falls er welche hat. */
+  vars?: Record<string, string | number>;
   /** Nur bei unbestätigter E-Mail: Der Client blendet dann das Erneut-senden an. */
   unverified?: boolean;
 }
@@ -397,17 +412,21 @@ export type AnmeldeErgebnis =
  * @param password Klartext-Passwort aus dem Request.
  */
 async function pruefeAnmeldedaten(req: Request, username: unknown, password: unknown): Promise<AnmeldeErgebnis> {
-  const absage = (status: number, error: string, unverified?: boolean): AnmeldeErgebnis =>
-    ({ ok: false, absage: unverified ? { status, error, unverified } : { status, error } });
+  // Die Absage traegt einen CODE und keinen Satz (Nachtrag 130): Welche
+  // Sprache der Anfragende sieht, weiss die Route.
+  const absage = (status: number, code: FehlerCode,
+                  vars?: Record<string, string | number>, unverified?: boolean): AnmeldeErgebnis =>
+    ({ ok: false, absage: { status, code, ...(vars ? { vars } : {}),
+                            ...(unverified ? { unverified: true } : {}) } });
 
   if (!username || !password)
-    return absage(400, 'Benutzername und Passwort erforderlich');
+    return absage(400, 'benutzername_passwort');
   if (!isValidLoginIdentifier(username))
-    return absage(400, 'Bitte Benutzername oder E-Mail-Adresse eingeben.');
+    return absage(400, 'name_oder_email_eingeben');
 
   const name = String(username);
   const gesperrt = await checkLoginAllowed(req, name);
-  if (gesperrt) return absage(429, gesperrt);
+  if (gesperrt) return absage(429, gesperrt.code, gesperrt.vars);
 
   // Anmeldung per E-Mail ist erlaubt — so steht es über dem Feld.
   const user = await db.get(
@@ -417,12 +436,12 @@ async function pruefeAnmeldedaten(req: Request, username: unknown, password: unk
   const passtDasPasswort = await bcrypt.compare(String(password), user?.password_hash || DUMMY_HASH);
   if (!user || !passtDasPasswort) {
     await recordLoginFailure(req, name);
-    return absage(401, 'Ungültige Anmeldedaten');
+    return absage(401, 'anmeldedaten_ungueltig');
   }
   await recordLoginSuccess(req, name);
 
   const blockiert = assertLoginAllowed(user);
-  if (blockiert) return absage(blockiert.status, blockiert.error, blockiert.unverified);
+  if (blockiert) return absage(blockiert.status, blockiert.code, undefined, blockiert.unverified);
   return { ok: true, user };
 }
 
@@ -518,7 +537,7 @@ function loginOrTokenGuard(opts: { timeoutMs?: number } = {}) {
     if (req.session?.userId) return next();
     const timer = opts.timeoutMs
       ? setTimeout(() => {
-          if (!res.headersSent) res.status(503).json({ success: false, error: 'Server ausgelastet' });
+          if (!res.headersSent) sendeFehler(req, res, 503, 'server_ausgelastet');
         }, opts.timeoutMs)
       : null;
     let uid: number | null = null;
@@ -526,7 +545,7 @@ function loginOrTokenGuard(opts: { timeoutMs?: number } = {}) {
     if (timer) clearTimeout(timer);
     if (res.headersSent) return;               // Zeitlimit war schneller
     if (uid) { req.tokenUserId = uid; return next(); }
-    return res.status(401).json({ success: false, error: 'Nicht angemeldet' });
+    return sendeFehler(req, res, 401, 'nicht_angemeldet');
   };
 }
 

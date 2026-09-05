@@ -8,6 +8,8 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
 import ch.brickinventoryapp.data.ScopeFilter
+import ch.brickinventoryapp.data.SetAnlegenSseClient
+import ch.brickinventoryapp.data.repository.Fehlerart
 
 
 /**
@@ -260,9 +262,45 @@ internal fun MainViewModel.addSet(setNumber: String, quantity: Int = 1, purchase
         // angelegt hat. Deshalb wird `erfassungsJob` hier auch nicht gesetzt —
         // der Abbrechen-Knopf räumt dann nur die Anzeige, und die Erfassung
         // läuft im Hintergrund zu Ende. Genau das ist Marcos Vorgabe.
+        //
+        // ── Und der Weg fuehrt jetzt ueber den Ereignisstrom (Nachtrag 131) ──
+        //
+        // Die Webapp legt seit jeher ueber /sets/add-stream an und zeigt dabei,
+        // WAS gerade passiert. Die App schickte ein gewoehnliches POST und
+        // zeigte einen Kringel, bis alles vorbei war — gleiches Ergebnis,
+        // andere Rueckmeldung. Bei einem grossen Set dauert der Unterschied
+        // lange genug, um aufzufallen.
+        //
+        // Der letzte Schritt ist die Antwort, die vorher das POST lieferte —
+        // die Auswertung darunter bleibt deshalb unveraendert.
         val r = try {
             zeigePruefung(sn, Pruefphase.BESTAND)
-            repo.sets.addSet(eingabe, quantity, purchasePrice, condition, ownerUserId)
+            var letzte: Result<AddSetResponse> =
+                Result.Error("", art = Fehlerart.LEERE_ANTWORT)
+            setAnlegenSse.anlegen(eingabe, quantity, purchasePrice, condition, ownerUserId)
+                .collect { schritt ->
+                    when (schritt) {
+                        is SetAnlegenSseClient.Schritt.Stammdaten ->
+                            zeigePruefung(schritt.name ?: sn, Pruefphase.ANLEGEN_STAMMDATEN)
+                        SetAnlegenSseClient.Schritt.Bild ->
+                            zeigePruefung(sn, Pruefphase.ANLEGEN_BILD)
+                        SetAnlegenSseClient.Schritt.FastFertig ->
+                            zeigePruefung(sn, Pruefphase.ANLEGEN_ABSCHLUSS)
+                        is SetAnlegenSseClient.Schritt.Fertig ->
+                            letzte = Result.Success(schritt.ergebnis)
+                        is SetAnlegenSseClient.Schritt.Fehler ->
+                            // Der Satz kommt schon uebersetzt vom Server
+                            // (utils/fehlerTexte.ts). Leer heisst: Die
+                            // Verbindung kam nicht zustande — dann sagt
+                            // meldung() weiter unten, was los ist.
+                            letzte = if (schritt.meldung.isBlank()) {
+                                Result.Error("", art = Fehlerart.NETZWERK)
+                            } else {
+                                Result.Success(AddSetResponse(success = false, error = schritt.meldung))
+                            }
+                    }
+                }
+            letzte
         } finally {
             pruefungFertig()
         }

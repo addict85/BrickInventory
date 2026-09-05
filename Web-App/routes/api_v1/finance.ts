@@ -28,7 +28,7 @@ router.get('/finance/valuation', requireToken, async (req: AuthedRequest, res) =
     // bei jedem Öffnen des Finanzreiters und nach jedem Erfassen, weil
     // loadValuation() daran hängt.
     res.json({ success:true, total_value: data.totals.qty_avg, ...data });
-  } catch (e) { handleRouteError(res, e); }
+  } catch (e) { handleRouteError(res, e, undefined, req); }
 });
 
 // ── Same computation as the webapp (routes/finance.js) — implemented once ────
@@ -36,21 +36,21 @@ router.get('/finance/parts-valuation', requireToken, async (req: AuthedRequest, 
   try {
     const data = await computePartsValuation(req.apiUser.user_id, await scopeIds(req.apiUser.user_id, parseScopeMode(req.query.accounts)));
     res.json({ success: true, ...data });
-  } catch (e) { handleRouteError(res, e); }
+  } catch (e) { handleRouteError(res, e, undefined, req); }
 });
 
 router.get('/finance/minifigs-valuation', requireToken, async (req: AuthedRequest, res) => {
   try {
     const data = await computeMinifigsValuation(req.apiUser.user_id, await scopeIds(req.apiUser.user_id, parseScopeMode(req.query.accounts)));
     res.json({ success: true, ...data });
-  } catch (e) { handleRouteError(res, e); }
+  } catch (e) { handleRouteError(res, e, undefined, req); }
 });
 
 router.get('/finance/pnl', requireToken, async (req: AuthedRequest, res) => {
   try {
     const data = await computePnl(req.apiUser.user_id, await scopeIds(req.apiUser.user_id, parseScopeMode(req.query.accounts)));
     res.json({ success: true, ...data });
-  } catch (e) { handleRouteError(res, e); }
+  } catch (e) { handleRouteError(res, e, undefined, req); }
 });
 
 // ── PORTFOLIO HISTORY — uses shared util (identical to webapp) ───────────────
@@ -65,7 +65,7 @@ router.get('/finance/portfolio-history', requireToken, async (req: AuthedRequest
   try {
     const result = await getPortfolioHistory(uid, await scopeIds(uid, parseScopeMode(req.query.accounts)), period, db, getSetting);
     res.json(result);
-  } catch (e) { handleRouteError(res, e); }
+  } catch (e) { handleRouteError(res, e, undefined, req); }
 });
 
 

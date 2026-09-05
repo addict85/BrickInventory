@@ -15,6 +15,7 @@ import { DAILY_JOBS } from '../jobs/dailyScheduler';
 import { escapeLike, requireLoginOrToken, nutzerId, angemeldeteNutzerId, istVerwalter, nutzerName, hashToken, leereTokenCache } from '../utils/auth';
 import { bearerToken } from './api_v1/middleware';
 import { sendMail, testSmtp } from './mailer';
+import { sendeFehler } from '../utils/fehlerTexte';
 
 // ── Öffentlich: aktuelles App-Design ─────────────────────────────────────────
 // MUSS vor router.use(requireLogin) stehen. Der Kommentar sagte schon immer
@@ -77,7 +78,7 @@ router.get('/tokens', requireLoginOrToken, async (req: LoggedInRequest, res) => 
       never_expires: !t.expires_at,
       aktuell:      t.token === eigenerHash,
     }))});
-  } catch (e) { handleRouteError(res, e); }
+  } catch (e) { handleRouteError(res, e, undefined, req); }
 });
 
 /**
@@ -99,13 +100,13 @@ router.delete('/tokens/:tokenId', requireLoginOrToken, async (req: LoggedInReque
     const uid = nutzerId(req);
     // escapeLike: ohne das löscht ein "%" als tokenId ALLE Tokens des Nutzers.
     const prefix = escapeLike(String(req.params.tokenId || '')).slice(0, 64);
-    if (!prefix) return res.status(400).json({ success: false, error: 'Token-ID fehlt' });
+    if (!prefix) return sendeFehler(req, res, 400, 'token_id_fehlt');
     const r = await db.run(
       "DELETE FROM api_tokens WHERE user_id = $1 AND token LIKE $2 ESCAPE '\\'",
       [uid, prefix + '%']);
     if (r.changes) leereTokenCache();
     res.json({ success: true, deleted: r.changes });
-  } catch (e) { handleRouteError(res, e); }
+  } catch (e) { handleRouteError(res, e, undefined, req); }
 });
 
 router.use(requireLogin);
@@ -173,7 +174,7 @@ router.post('/', async (req: LoggedInRequest, res) => {
       }
     }
     res.json({ success: true });
-  } catch (e) { handleRouteError(res, e); }
+  } catch (e) { handleRouteError(res, e, undefined, req); }
 });
 
 // /raw — dieselben Werte wie `/`, nur unter `settings` verpackt. Die
@@ -182,7 +183,7 @@ router.post('/', async (req: LoggedInRequest, res) => {
 router.get('/raw', async (req: LoggedInRequest, res) => {
   try {
     res.json({ success: true, settings: await readSettings(angemeldeteNutzerId(req), istVerwalter(req)) });
-  } catch (e) { handleRouteError(res, e); }
+  } catch (e) { handleRouteError(res, e, undefined, req); }
 });
 
 // /cache-stats liegt seit Etappe 7 unter /api/v1/admin/cache-stats.
@@ -215,7 +216,7 @@ router.get('/export', async (req, res) => {
     res.setHeader('Content-Type', 'application/json');
     res.setHeader('Content-Disposition', `attachment; filename="brickinventory-config-${new Date().toISOString().substring(0,10)}.json"`);
     res.json({ exported_at: new Date().toISOString(), exported_by: nutzerName(req), version: '3.0', global, user_settings: userSettings });
-  } catch (e) { handleRouteError(res, e); }
+  } catch (e) { handleRouteError(res, e, undefined, req); }
 });
 
 // ── GET /api/settings/export/data — Sets, Teile und Minifiguren jeweils als CSV,
@@ -243,15 +244,15 @@ router.get('/export/data', async (req: LoggedInRequest, res) => {
     archive.append('\uFEFF' + partsCsv, { name: 'teile.csv' });
     archive.append('\uFEFF' + figsCsv,  { name: 'minifiguren.csv' });
     await archive.finalize();
-  } catch (e) { handleRouteError(res, e); }
+  } catch (e) { handleRouteError(res, e, undefined, req); }
 });
 
 const importUpload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 1024 * 1024 } });
 router.post('/import', importUpload.single('file'), async (req: LoggedInRequest, res) => {
-  if (!req.file) return res.status(400).json({ success: false, error: 'Keine Datei' });
+  if (!req.file) return sendeFehler(req, res, 400, 'keine_datei');
   let config;
   try { config = JSON.parse(req.file.buffer.toString('utf-8')); }
-  catch (e) { return res.status(400).json({ success: false, error: 'Ungültige JSON-Datei' }); }
+  catch (e) { return sendeFehler(req, res, 400, 'json_ungueltig'); }
 
   const globalKeys = ['bricklink_consumer_key','bricklink_consumer_secret','bricklink_token',
     'bricklink_token_secret','brickset_api_key','rebrickable_api_key','price_job_interval_minutes',
@@ -316,17 +317,17 @@ router.post('/import', importUpload.single('file'), async (req: LoggedInRequest,
       try { await require('../jobs/dailyScheduler').rescheduleAll(); } catch (e) { meldeUndWeiter('einstellungen:zeitplan-neu-planen', e); }
     }
     res.json({ success: true, imported, note: istVerwalter(req) ? 'Globale + Benutzer-Einstellungen importiert' : 'Nur Benutzer-Einstellungen importiert' });
-  } catch (e) { handleRouteError(res, e); }
+  } catch (e) { handleRouteError(res, e, undefined, req); }
 });
 
 // SMTP Test-Endpoint
 router.post('/smtp-test', async (req, res) => {
-  if (!istVerwalter(req)) return res.status(403).json({ success: false, error: 'Nur Admins' });
+  if (!istVerwalter(req)) return sendeFehler(req, res, 403, 'nur_admins');
   try {
 
     // First verify connection
     const verify = await testSmtp();
-    if (!verify.success) return res.json({ success: false, error: verify.error });
+    if (!verify.success) return sendeFehler(req, res, 400, (verify as any).code);
 
     // Determine recipient: use provided email, or look up admin's email from DB
     let to = (req.body.to || '').trim();
@@ -335,7 +336,7 @@ router.post('/smtp-test', async (req, res) => {
       to = user?.email || '';
     }
     if (!to || !to.includes('@')) {
-      return res.json({ success: false, error: 'Keine Ziel-E-Mail-Adresse angegeben. Bitte eine E-Mail-Adresse eingeben.' });
+      return sendeFehler(req, res, 400, 'keine_ziel_email');
     }
 
     const result = await sendMail({
@@ -345,7 +346,7 @@ router.post('/smtp-test', async (req, res) => {
       html: '<div style="font-family:Arial,sans-serif;padding:20px"><h2>✅ SMTP-Test erfolgreich</h2><p>Deine SMTP-Konfiguration funktioniert korrekt.</p></div>',
     });
     res.json(result);
-  } catch (e) { handleRouteError(res, e); }
+  } catch (e) { handleRouteError(res, e, undefined, req); }
 });
 
 // GET /api/settings/admin/cache-ttl
@@ -353,7 +354,7 @@ router.post('/smtp-test', async (req, res) => {
 
 router.post('/admin/theme', requireAdmin, async (req, res) => {
   const theme = String(req.body?.theme || 'classic');
-  if (!['classic', 'brick'].includes(theme)) return res.status(400).json({ success: false, error: 'Ungültiges Design' });
+  if (!['classic', 'brick'].includes(theme)) return sendeFehler(req, res, 400, 'design_ungueltig');
   setGlobalSetting('app_theme', theme);
   // Der Wert steckt im serverseitig gerenderten <html data-theme> — Cache
   // verwerfen, sonst liefert der Server bis zum Neustart das alte Design aus.

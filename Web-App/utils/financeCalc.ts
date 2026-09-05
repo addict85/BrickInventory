@@ -684,6 +684,9 @@ async function fetchPartPrice(partNumber: string, rbColorId: number, condition: 
   if (hatPreis(pd2)) return { ...pd2, condition_used: fallbackCondition, is_fallback: true };
   if (pd2) return { ...pd2, condition_used: fallbackCondition };
   if (pd)  return { ...pd, condition_used: condition };
+  // KEINE Nutzermeldung, sondern ein Merkmal des Preisergebnisses: Der
+  // Preis-Job zaehlt daran „uebersprungen" statt „Fehler". Es wird nirgends
+  // angezeigt und bleibt deshalb bewusst unuebersetzt (Nachtrag 130).
   return { avg_price: 0, qty_avg_price: 0, from_cache: false, error: 'kein BrickLink-Preis gefunden' };
 }
 

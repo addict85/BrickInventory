@@ -12,6 +12,7 @@ import { getMinifigPriceHistory } from '../../utils/priceHistory';
 import { einzelwert } from '../../utils/validate';
 import { verwendendeSets, loescheManuelleFigur } from '../../utils/handlers/shared';
 import { inventarNachKandidaten } from '../../utils/rbInventar';
+import { sendeFehler } from '../../utils/fehlerTexte';
 const router = express.Router();
 
 // ── MINIFIGS ─────────────────────────────────────────────────────────────────
@@ -20,17 +21,17 @@ router.get('/minifigs', requireToken, async (req: AuthedRequest, res) => {
     // Ohne page_size unverändertes Verhalten — die Android-App ruft so auf.
     const r = await getMinifigs(await scopeIds(req.apiUser.user_id, parseScopeMode(req.query.accounts)), req.query);
     res.json({ success: true, figs: r.figs, total: r.total });
-  } catch (e) { handleRouteError(res, e); }
+  } catch (e) { handleRouteError(res, e, undefined, req); }
 });
 
 // ── POST /api/v1/minifigs — add a single manual minifig (same logic as web app)
 router.post('/minifigs', requireToken, async (req: AuthedRequest, res) => {
   try {
     const owner = await resolveWriteTarget(req.apiUser.user_id, req.body?.owner_user_id);
-    if (owner === null) return res.status(403).json({ success: false, error: 'Kein Schreibrecht für dieses Konto.' });
+    if (owner === null) return sendeFehler(req, res, 403, 'kein_schreibrecht');
     const result = await addManualFig(owner, req.body);
     res.json({ success: true, ...result });
-  } catch (e) { handleRouteError(res, e); }
+  } catch (e) { handleRouteError(res, e, undefined, req); }
 });
 
 // ── PUT /api/v1/minifigs/:figNumber — edit quantity / Preis/Stk (same logic as web app)
@@ -38,10 +39,10 @@ router.put('/minifigs/:figNumber', requireToken, async (req: AuthedRequest, res)
   try {
     // Wie bei den Teilen: Ohne den Parameter das eigene Konto.
     const besitzer = await resolveWriteTarget(req.apiUser.user_id, req.query.owner);
-    if (besitzer === null) return res.status(403).json({ success: false, error: 'Kein Zugriff auf dieses Konto' });
+    if (besitzer === null) return sendeFehler(req, res, 403, 'kein_zugriff_konto');
     await updateManualFig(besitzer, pfadParam(req, 'figNumber'), req.body);
     res.json({ success: true });
-  } catch (e) { handleRouteError(res, e); }
+  } catch (e) { handleRouteError(res, e, undefined, req); }
 });
 
 // ── DELETE /api/v1/minifigs/:figNumber — delete a manual minifig ─────────────
@@ -49,22 +50,22 @@ router.delete('/minifigs/:figNumber', requireToken, async (req: AuthedRequest, r
   try {
     // Wie bei den Teilen: Ohne den Parameter das eigene Konto.
     const besitzer = await resolveWriteTarget(req.apiUser.user_id, req.query.owner);
-    if (besitzer === null) return res.status(403).json({ success: false, error: 'Kein Zugriff auf dieses Konto' });
+    if (besitzer === null) return sendeFehler(req, res, 403, 'kein_zugriff_konto');
     const r = await loescheManuelleFigur(db, besitzer, String(req.params.figNumber));
-    if (r.changes === 0) return res.status(404).json({ success: false, error: 'Minifigur nicht gefunden oder nicht manuell hinzugefügt' });
+    if (r.changes === 0) return sendeFehler(req, res, 404, 'minifig_nicht_manuell');
     // OHNE .catch(() => {}) — siehe Session-Route: verwaiste Erfassungen
     // zählen in den Finanzsummen weiter, ohne dass eine Ansicht sie zeigt.
     await db.run('DELETE FROM minifig_acquisitions WHERE user_id=$1 AND fig_number=$2',
       [besitzer, req.params.figNumber]);
     res.json({ success: true });
-  } catch (e) { handleRouteError(res, e); }
+  } catch (e) { handleRouteError(res, e, undefined, req); }
 });
 
 // Manuell erfasste Minifiguren — gleicher Handler wie /api/minifigs/manual.
 router.get('/minifigs/manual', requireToken, async (req: AuthedRequest, res) => {
   try {
     res.json({ success: true, figs: await getManualMinifigs(await scopeIds(req.apiUser.user_id, parseScopeMode(req.query.accounts))) });
-  } catch (e) { handleRouteError(res, e); }
+  } catch (e) { handleRouteError(res, e, undefined, req); }
 });
 
 // ── GET /api/v1/minifigs/stats ───────────────────────────────────────────────
@@ -82,7 +83,7 @@ router.get('/minifigs/stats', requireToken, async (req: AuthedRequest, res) => {
     const stats = await getMinifigStats(
       await scopeIds(req.apiUser.user_id, parseScopeMode(req.query.accounts)));
     res.json({ success: true, stats });
-  } catch (e) { handleRouteError(res, e); }
+  } catch (e) { handleRouteError(res, e, undefined, req); }
 });
 
 // ── GET /api/v1/minifigs/:figNumber/price-history ────────────────────────────
@@ -97,7 +98,7 @@ router.get('/minifigs/:figNumber/price-history', requireToken, async (req: Authe
     const data = await getMinifigPriceHistory(
       await scopeIds(uid, parseScopeMode(req.query.accounts)), einzelwert(req.params.figNumber), currency);
     res.json({ success: true, ...data });
-  } catch (e) { handleRouteError(res, e); }
+  } catch (e) { handleRouteError(res, e, undefined, req); }
 });
 
 router.get('/minifigs/:figNumber/parts', requireToken, async (req: AuthedRequest, res) => {
@@ -178,7 +179,7 @@ router.get('/minifigs/:figNumber/parts', requireToken, async (req: AuthedRequest
     res.json({ success: true, parts: enriched, source: catRows.length ? 'enriched' : 'csv_cache' });
     // Download images in background
     setImmediate(() => require('../../jobs/partsCatalogEnrich').downloadSetImages(figNumber).catch(() => {}));
-  } catch (e) { handleRouteError(res, e); }
+  } catch (e) { handleRouteError(res, e, undefined, req); }
 });
 
 
@@ -202,7 +203,7 @@ router.get('/minifigs/:figNumber/sets', requireToken, async (req: AuthedRequest,
       fig_number: einzelwert(req.params.figNumber),
     });
     res.json({ success: true, item, sets });
-  } catch (e) { handleRouteError(res, e); }
+  } catch (e) { handleRouteError(res, e, undefined, req); }
 });
 
 export default router;

@@ -45,6 +45,8 @@ class MainViewModel @Inject constructor(
     internal val repo: BrickRepository,
     internal val prefs: PreferencesManager,
     internal val sseClient: CsvImportSseClient,
+    /** Anlegen mit Fortschritt — siehe GalleryFeature.addSet (Nachtrag 131). */
+    internal val setAnlegenSse: ch.brickinventoryapp.data.SetAnlegenSseClient,
     internal val pdfExport: PdfExportManager,
     internal val sessionExpired: ch.brickinventoryapp.data.SessionExpiredSignal,
     // Der eine Weg zur Snackbar — geteilt mit den uebrigen ViewModels.

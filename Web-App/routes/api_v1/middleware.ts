@@ -7,6 +7,7 @@
  * bei /admin/cache-ttl passiert).
  */
 import { validateToken } from '../../utils/auth';
+import { sendeFehler } from '../../utils/fehlerTexte';
 
 /** Extrahiert den Bearer-Token aus dem Authorization-Header (oder null). */
 export function bearerToken(req: any): string | null {
@@ -22,15 +23,15 @@ export function requireToken(req: any, res: any, next: any) {
   }
   const token = bearerToken(req);
   validateToken(token).then(user => {
-    if (!user) return res.status(401).json({ success:false, error:'Ungültiger oder abgelaufener Token' });
+    if (!user) return sendeFehler(req, res, 401, 'token_ungueltig');
     req.apiUser = user;
     next();
-  }).catch(() => res.status(401).json({ success:false, error:'Auth-Fehler' }));
+  }).catch(() => sendeFehler(req, res, 401, 'auth_fehler'));
 }
 
 export function requireApiAdmin(req: any, res: any, next: any) {
   requireToken(req, res, () => {
-    if (!req.apiUser?.is_admin) return res.status(403).json({ success: false, error: 'Nur für Admins' });
+    if (!req.apiUser?.is_admin) return sendeFehler(req, res, 403, 'nur_admins');
     next();
   });
 }

@@ -155,7 +155,12 @@ internal fun MainViewModel.deleteAcquisition(setNumber: String, acqId: Int) {
                     loadValuation()
                 }
             }
-            is Result.Error -> _snackbar.value = text(R.string.vm_error, "Delete failed")
+            // Der Grund des Fehlschlags stand hier als englischer Text IN einer
+            // sonst uebersetzten Meldung — in der deutschen Oberflaeche also
+            // „Fehler: Delete failed". meldung(r) sagt statt dessen, WAS
+            // schiefging (kein Netz, Zeitlimit, Serverfehler), und zwar in der
+            // Sprache der Oberflaeche.
+            is Result.Error -> _snackbar.value = text(R.string.vm_error, meldung(r))
         }
     }
 }

@@ -10,6 +10,7 @@ import { getSetting } from '../../utils/settings';
 import { getPartPriceHistory } from '../../utils/priceHistory';
 import { einzelwert } from '../../utils/validate';
 import { verwendendeSets, loescheManuellesTeil } from '../../utils/handlers/shared';
+import { sendeFehler } from '../../utils/fehlerTexte';
 const router = express.Router();
 
 // ── PARTS ─────────────────────────────────────────────────────────────────────
@@ -28,7 +29,7 @@ router.get('/parts', requireToken, async (req: AuthedRequest, res) => {
     // stehen zu lassen liest sich, als sicherte die Zeile etwas zu, was in
     // Wahrheit an getParts hängt.
     res.json({ success: true, page: parseInt(String(req.query.page||1)), ...result });
-  } catch (e) { handleRouteError(res, e); }
+  } catch (e) { handleRouteError(res, e, undefined, req); }
 });
 
 // ── GET /api/v1/parts/brick-colors — full brick color list for the add-part color picker (same logic as web app) ───────
@@ -36,7 +37,7 @@ router.get('/parts/brick-colors', requireToken, async (_req: AuthedRequest, res)
   try {
     const colors = await getPartColorList();
     res.json({ success: true, colors });
-  } catch (e) { handleRouteError(res, e); }
+  } catch (e) { handleRouteError(res, e, undefined, _req); }
 });
 
 // ── POST /api/v1/parts — add a single manual part (same logic as web app) ─────
@@ -46,10 +47,10 @@ router.post('/parts', requireToken, async (req: AuthedRequest, res) => {
     // Konto; resolveWriteTarget prüft die RICHTUNG (Hauptkonto → eigenes
     // Unterkonto), nicht bloss die Mitgliedschaft im Blickfeld.
     const owner = await resolveWriteTarget(req.apiUser.user_id, req.body?.owner_user_id);
-    if (owner === null) return res.status(403).json({ success: false, error: 'Kein Schreibrecht für dieses Konto.' });
+    if (owner === null) return sendeFehler(req, res, 403, 'kein_schreibrecht');
     const result = await addManualPart(owner, req.body);
     res.json({ success: true, ...result });
-  } catch (e) { handleRouteError(res, e); }
+  } catch (e) { handleRouteError(res, e, undefined, req); }
 });
 
 // ── PUT /api/v1/parts/:partNumber/:colorId — edit quantity / Preis/Stk (same logic as web app)
@@ -60,10 +61,10 @@ router.put('/parts/:partNumber/:colorId', requireToken, async (req: AuthedReques
     // auf 99, und geaendert wurde die EIGENE Zeile: vorher 5|9, nachher 99|9,
     // Antwort 200 {"success":true}.
     const besitzer = await resolveWriteTarget(req.apiUser.user_id, req.query.owner);
-    if (besitzer === null) return res.status(403).json({ success: false, error: 'Kein Zugriff auf dieses Konto' });
+    if (besitzer === null) return sendeFehler(req, res, 403, 'kein_zugriff_konto');
     await updateManualPart(besitzer, String(req.params.partNumber), parseInt(String(req.params.colorId)), req.body);
     res.json({ success: true });
-  } catch (e) { handleRouteError(res, e); }
+  } catch (e) { handleRouteError(res, e, undefined, req); }
 });
 
 // ── DELETE /api/v1/parts/:partNumber/:colorId — delete a manual part ─────────
@@ -76,10 +77,10 @@ router.delete('/parts/:partNumber/:colorId', requireToken, async (req: AuthedReq
     // (owner_user_id): Die Ansicht sagt, wessen Zeile gemeint ist; ob das
     // erlaubt ist, entscheidet der Server über canWriteFor() — nie der Client.
     const besitzer = await resolveWriteTarget(req.apiUser.user_id, req.query.owner);
-    if (besitzer === null) return res.status(403).json({ success: false, error: 'Kein Zugriff auf dieses Konto' });
+    if (besitzer === null) return sendeFehler(req, res, 403, 'kein_zugriff_konto');
     const r = await loescheManuellesTeil(
       db, besitzer, String(req.params.partNumber), parseInt(String(req.params.colorId)));
-    if (r.changes === 0) return res.status(404).json({ success: false, error: 'Teil nicht gefunden oder nicht manuell hinzugefügt' });
+    if (r.changes === 0) return sendeFehler(req, res, 404, 'teil_nicht_manuell');
     // Erfassungshistorie mitlöschen — sonst tauchen die alten Preise beim
     // erneuten Hinzufügen desselben Teils wieder auf.
     // OHNE .catch(() => {}): Stammzeile weg, Erfassungen bleiben — die
@@ -88,7 +89,7 @@ router.delete('/parts/:partNumber/:colorId', requireToken, async (req: AuthedReq
     await db.run('DELETE FROM part_acquisitions WHERE user_id=$1 AND part_number=$2 AND color_id=$3',
       [besitzer, String(req.params.partNumber), parseInt(String(req.params.colorId)) || 0]);
     res.json({ success: true });
-  } catch (e) { handleRouteError(res, e); }
+  } catch (e) { handleRouteError(res, e, undefined, req); }
 });
 
 // ── GET /api/v1/parts/bl-color-map — Rebrickable color_id → BrickLink color_id
@@ -96,7 +97,7 @@ router.get('/parts/bl-color-map', requireToken, async (_req: AuthedRequest, res)
   try {
     const result = await getBlColorMap();
     res.json({ success: true, ...result });
-  } catch (e) { handleRouteError(res, e); }
+  } catch (e) { handleRouteError(res, e, undefined, _req); }
 });
 
 // Manuell erfasste Teile — gleicher Handler wie /api/parts/manual (Parität;
@@ -104,7 +105,7 @@ router.get('/parts/bl-color-map', requireToken, async (_req: AuthedRequest, res)
 router.get('/parts/manual', requireToken, async (req: AuthedRequest, res) => {
   try {
     res.json({ success: true, parts: await getManualParts(await scopeIds(req.apiUser.user_id, parseScopeMode(req.query.accounts))) });
-  } catch (e) { handleRouteError(res, e); }
+  } catch (e) { handleRouteError(res, e, undefined, req); }
 });
 
 router.get('/parts/colors', requireToken, async (req: AuthedRequest, res) => {
@@ -112,14 +113,14 @@ router.get('/parts/colors', requireToken, async (req: AuthedRequest, res) => {
     // Gemeinsamer Handler (auch /api/parts/colors): ohne manuelle Positionen,
     // mit rb_colors-Hex-Fallback (Parität zur Webapp).
     res.json({ success:true, colors: await getPartsColors(await scopeIds(req.apiUser.user_id, parseScopeMode(req.query.accounts))) });
-  } catch (e) { handleRouteError(res, e); }
+  } catch (e) { handleRouteError(res, e, undefined, req); }
 });
 
 router.get('/parts/stats', requireToken, async (req: AuthedRequest, res) => {
   try {
     const stats = await getPartsStats(await scopeIds(req.apiUser.user_id, parseScopeMode(req.query.accounts)));
     res.json({ success: true, stats });
-  } catch (e) { handleRouteError(res, e); }
+  } catch (e) { handleRouteError(res, e, undefined, req); }
 });
 
 
@@ -143,7 +144,7 @@ router.get('/parts/:partNumber/:colorId/price-history', requireToken, async (req
     const data = await getPartPriceHistory(
       await scopeIds(uid, parseScopeMode(req.query.accounts)), einzelwert(req.params.partNumber), parseInt(String(req.params.colorId)) || 0, currency);
     res.json({ success: true, ...data });
-  } catch (e) { handleRouteError(res, e); }
+  } catch (e) { handleRouteError(res, e, undefined, req); }
 });
 
 // ── GET /api/v1/parts/:partNumber/:colorId/sets ──────────────────────────────
@@ -173,7 +174,7 @@ router.get('/parts/:partNumber/:colorId/sets', requireToken, async (req: AuthedR
       color_id: parseInt(String(req.params.colorId)) || 0,
     });
     res.json({ success: true, item, sets });
-  } catch (e) { handleRouteError(res, e); }
+  } catch (e) { handleRouteError(res, e, undefined, req); }
 });
 
 export default router;

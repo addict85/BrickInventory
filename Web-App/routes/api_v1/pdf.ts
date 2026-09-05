@@ -32,6 +32,7 @@ import { EventEmitter } from 'events';
 import { getMinifigInfo } from '../../clients/rebrickable';
 import { downloadImage } from '../../jobs/partsCatalogEnrich';
 import { mitVersion, ohneVersion } from '../../utils/setNummer';
+import { sendeFehler, fehlerText, antwortSprache } from '../../utils/fehlerTexte';
 const router = express.Router();
 
 // Eigenes Body-Limit für die PDF-Routen.
@@ -194,7 +195,7 @@ async function pdfJobWriteAndEmit(id: string, data: PdfJobStatus) {
 router.post('/sets/partslist-pdf', requireToken, async (req: AuthedRequest, res) => {
   const uid = req.apiUser.user_id;
   const { sets = [], parts = [] } = req.body;
-  if (!parts.length) return res.status(400).json({ success: false, error: 'Keine Teile' });
+  if (!parts.length) return sendeFehler(req, res, 400, 'keine_teile');
 
   await _pdfFs.mkdir(PDF_JOB_DIR, { recursive: true });
 
@@ -205,9 +206,14 @@ router.post('/sets/partslist-pdf', requireToken, async (req: AuthedRequest, res)
   // Aufräumen daran, dass überhaupt jemand ein neues PDF startet.
   const laufend = await laufendeJobs(uid);
   if (laufend >= MAX_JOBS_PRO_BENUTZER) {
-    return res.status(429).json({
-      success: false,
-      error: `Es ${laufend === 1 ? 'läuft' : 'laufen'} bereits ${laufend} PDF-Auftrag${laufend === 1 ? '' : 'e'}. Bitte warten, bis er fertig ist.`,
+    // Die Beugung steht als Platzhalter in der Tabelle, nicht hier: Im
+    // Englischen faellt sie anders aus („there is/are", „job/jobs"), und im
+    // Satz an anderer Stelle.
+    const eins = laufend === 1;
+    return sendeFehler(req, res, 429, 'pdf_auftrag_laeuft', {
+      anzahl: laufend,
+      laufenVerb:  eins ? (antwortSprache(req) === 'en' ? 'is'  : 'läuft')  : (antwortSprache(req) === 'en' ? 'are' : 'laufen'),
+      auftragWort: eins ? (antwortSprache(req) === 'en' ? 'job' : 'Auftrag') : (antwortSprache(req) === 'en' ? 'jobs' : 'Aufträge'),
     });
   }
 
@@ -389,9 +395,9 @@ router.post('/sets/partslist-pdf', requireToken, async (req: AuthedRequest, res)
 
 // ── GET /api/v1/sets/partslist-pdf/status/:jobId ──────────────────────────────
 router.get('/sets/partslist-pdf/status/:jobId', requireToken, async (req: AuthedRequest, res) => {
-  if (!validJobId(String(req.params.jobId))) return res.status(400).json({ success: false, error: 'Ungültige Job-ID' });
+  if (!validJobId(String(req.params.jobId))) return sendeFehler(req, res, 400, 'job_id_ungueltig');
   const job = await pdfJobReadFor(pfadParam(req, 'jobId'), req.apiUser.user_id);
-  if (!job) return res.status(404).json({ success: false, error: 'Job nicht gefunden oder abgelaufen' });
+  if (!job) return sendeFehler(req, res, 404, 'job_nicht_gefunden');
   res.json({ success: true, status: job.status, error: job.error || null, etaSeconds: job.etaSeconds ?? null, missingImages: job.missingImages ?? null });
 });
 
@@ -402,9 +408,9 @@ router.get('/sets/partslist-pdf/status/:jobId', requireToken, async (req: Authed
 // 3s ein redundantes Event mit unverändertem Status.
 router.get('/sets/partslist-pdf/stream/:jobId', requireToken, async (req: AuthedRequest, res) => {
   const jobId = String(req.params.jobId);
-  if (!validJobId(jobId)) return res.status(400).json({ success: false, error: 'Ungültige Job-ID' });
+  if (!validJobId(jobId)) return sendeFehler(req, res, 400, 'job_id_ungueltig');
   const initial = await pdfJobReadFor(jobId, req.apiUser.user_id);
-  if (!initial) return res.status(404).json({ success: false, error: 'Job nicht gefunden oder abgelaufen' });
+  if (!initial) return sendeFehler(req, res, 404, 'job_nicht_gefunden');
 
   res.setHeader('Content-Type', 'text/event-stream');
   res.setHeader('Cache-Control', 'no-cache, no-transform');
@@ -466,12 +472,17 @@ router.get('/sets/partslist-pdf/stream/:jobId', requireToken, async (req: Authed
 // ── GET /api/v1/sets/partslist-pdf/download/:jobId ────────────────────────────
 router.get('/sets/partslist-pdf/download/:jobId', requireToken, async (req: AuthedRequest, res) => {
   const jobId = String(req.params.jobId);
-  if (!validJobId(jobId)) return res.status(400).json({ success: false, error: 'Ungültige Job-ID' });
+  if (!validJobId(jobId)) return sendeFehler(req, res, 400, 'job_id_ungueltig');
   const job = await pdfJobReadFor(jobId, req.apiUser.user_id);
-  if (!job) return res.status(404).json({ success: false, error: 'Job nicht gefunden oder abgelaufen' });
-  if (job.status !== 'done') return res.status(409).json({ success: false, error: 'PDF noch nicht fertig', status: job.status });
+  if (!job) return sendeFehler(req, res, 404, 'job_nicht_gefunden');
+  if (job.status !== 'done') {
+    // `status` haengt zusaetzlich dran — die Oberflaeche zeigt daran, WIE weit
+    // der Auftrag ist. sendeFehler kennt das Feld nicht.
+    return res.status(409).json({ success: false, code: 'pdf_nicht_fertig',
+      error: fehlerText('pdf_nicht_fertig', antwortSprache(req)), status: job.status });
+  }
   const pdfPath = pdfFilePath(jobId);
-  if (!_fsSync.existsSync(pdfPath)) return res.status(410).json({ success: false, error: 'PDF nicht mehr verfügbar' });
+  if (!_fsSync.existsSync(pdfPath)) return sendeFehler(req, res, 410, 'pdf_nicht_verfuegbar');
   res.setHeader('Content-Type', 'application/pdf');
   res.setHeader('Content-Disposition', 'attachment; filename="teileliste.pdf"');
   // streamFileToResponse statt rohem pipe(): Zwischen existsSync oben und dem
@@ -481,7 +492,7 @@ router.get('/sets/partslist-pdf/download/:jobId', requireToken, async (req: Auth
   streamFileToResponse(res, pdfPath, () => {
     _pdfFs.unlink(pdfPath).catch(() => {});
     _pdfFs.unlink(pdfJobPath(jobId)).catch(() => {});
-  });
+  }, req);
 });
 
 async function buildPdf(sets: any, parts: any[]) {
