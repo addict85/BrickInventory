@@ -551,8 +551,12 @@ export async function openSetItemDetail(type, id, colorId) {
   const zeilen = [];
   // Anzahl: NUR Anzeige. Marcos Vorgabe — eine Menge, die aus den Inventaren
   // der Sets entsteht, lässt sich hier nicht sinnvoll ändern.
+  // fmtN() ist der GELDformatierer. Hier stand `fmtN(total_quantity)` ohne
+  // Waehrung — aus der Menge 6 wurde damit „EUR 6.00×". Anzahlen schreibt
+  // dieser Baum als `(n||0).toLocaleString(locale())`; genau so steht es auf
+  // der Teilekachel (03-parts.js), und der Dialog zeigt jetzt dasselbe.
   zeilen.push(detailZeile(t('setitem.total_qty'),
-    `<span style="font-family:var(--mono);font-weight:600">${fmtN(item?.total_quantity || 0)}×</span>`));
+    `<span style="font-family:var(--mono);font-weight:600">${(item?.total_quantity || 0).toLocaleString(locale())}×</span>`));
 
   if (type === 'part' && item?.color_name) {
     const punkt = item.color_hex
@@ -572,7 +576,7 @@ export async function openSetItemDetail(type, id, colorId) {
           style="display:flex;align-items:center;gap:8px;padding:4px 0;cursor:pointer">
         <span style="font-family:var(--mono);font-size:.78rem;color:var(--b600)">${esc(s.set_number)}</span>
         <span style="flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(s.set_name || '')}</span>
-        <span style="color:var(--mut);font-size:.78rem">×${fmtN(s.quantity)}</span>
+        <span style="color:var(--mut);font-size:.78rem">×${(s.quantity || 0).toLocaleString(locale())}</span>
       </div>`).join('')
     : `<span style="color:var(--mut);font-size:.83rem">${esc(t('setitem.used_in_none'))}</span>`;
   zeilen.push(detailZeile(t('setitem.used_in'), liste,
