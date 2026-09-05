@@ -119,7 +119,7 @@ class PdfExportManager @Inject constructor(
             }
             if (!done) {
                 if (_state.value !is PdfExportState.Error)
-                    _state.value = PdfExportState.Error("PDF-Fehler auf dem Server")
+                    _state.value = PdfExportState.Error(s(ch.brickinventoryapp.R.string.pdfexp_server_error))
                 return
             }
 
@@ -209,7 +209,7 @@ class PdfExportManager @Inject constructor(
                         when (obj["status"]?.jsonPrimitive?.content) {
                             "done"    -> { jobRunning = false; _state.value = PdfExportState.Running(s(ch.brickinventoryapp.R.string.pdfexp_finalizing)); settle(true) }
                             "error"   -> { jobRunning = false; _state.value = PdfExportState.Error(
-                                obj["error"]?.jsonPrimitive?.content ?: "PDF-Fehler"); settle(false) }
+                                obj["error"]?.jsonPrimitive?.content ?: s(ch.brickinventoryapp.R.string.pdfexp_server_error)); settle(false) }
                             "running" -> jobRunning = true  // Countdown-Anzeige übernimmt der Ticker.
                         }
                     } catch (_: Exception) {}
@@ -219,7 +219,7 @@ class PdfExportManager @Inject constructor(
                 override fun onFailure(eventSource: EventSource, t: Throwable?, response: Response?) {
                     // 404 = Endpoint nicht vorhanden → Fallback; andere Fehler = echter Fehler
                     if (response != null && response.code != 404 && response.code != 0) {
-                        _state.value = PdfExportState.Error("HTTP ${response.code}")
+                        _state.value = PdfExportState.Error(s(ch.brickinventoryapp.R.string.pdfexp_http_error, response.code))
                         settle(false)
                     } else {
                         settle(null) // Fallback auf Polling

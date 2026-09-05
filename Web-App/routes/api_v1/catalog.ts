@@ -23,6 +23,7 @@ import { downloadSetImage } from '../../utils/setImages';
 import { ausTabelle } from '../../utils/validate';
 import { neuestesInventar } from '../../utils/rbInventar';
 import { mitVersion } from '../../utils/setNummer';
+import { sendeFehler } from '../../utils/fehlerTexte';
 
 const router = express.Router();
 
@@ -146,7 +147,7 @@ router.get('/catalog/meta', requireToken, async (_req: AuthedRequest, res) => {
       year_max: years?.year_max || null,
       year_counts: yearCounts,
     });
-  } catch (e) { handleRouteError(res, e); }
+  } catch (e) { handleRouteError(res, e, undefined, _req); }
 });
 
 // ── GET /catalog/sets ────────────────────────────────────────────────────────
@@ -204,7 +205,7 @@ router.get('/catalog/year-verteilung', requireToken, async (req: AuthedRequest, 
         GROUP BY rb.year
         ORDER BY rb.year ${absteigend ? 'DESC NULLS FIRST' : 'ASC NULLS LAST'}`, params);
     res.json({ success: true, years: rows });
-  } catch (e) { handleRouteError(res, e); }
+  } catch (e) { handleRouteError(res, e, undefined, req); }
 });
 
 router.get('/catalog/sets', requireToken, async (req: AuthedRequest, res) => {
@@ -316,7 +317,7 @@ router.get('/catalog/sets', requireToken, async (req: AuthedRequest, res) => {
       pages: Math.max(1, Math.ceil(total / limit)),
       sets: setsWithLocal,
     });
-  } catch (e) { handleRouteError(res, e); }
+  } catch (e) { handleRouteError(res, e, undefined, req); }
 });
 
 // ── GET /catalog/sets/:setNumber ─────────────────────────────────────────────
@@ -336,7 +337,7 @@ router.get('/catalog/sets/:setNumber', requireToken, async (req: AuthedRequest, 
        WHERE rb.set_num = $2`,
       [userId, n]
     );
-    if (!set) { res.status(404).json({ success: false, error: 'Set nicht im Katalog gefunden' }); return; }
+    if (!set) { sendeFehler(req, res, 404, 'set_nicht_im_katalog'); return; }
 
     // Minifiguren-Zahl aus dem neuesten Inventar (analog catalogSync).
     // Vorher nur EIN Kandidat, obwohl der Kommentar darueber schon auf
@@ -403,7 +404,7 @@ router.get('/catalog/sets/:setNumber', requireToken, async (req: AuthedRequest, 
       success: true,
       set: { ...set, image_local, theme_name: tree.pathName.get(set.theme_id) || null, minifigs: minifigCount, bricklink },
     });
-  } catch (e) { handleRouteError(res, e); }
+  } catch (e) { handleRouteError(res, e, undefined, req); }
 });
 
 // ── GET /api/v1/catalog/bricklink?sets=a,b,c ─────────────────────────────────
@@ -422,7 +423,7 @@ router.get('/catalog/bricklink', requireToken, async (req: AuthedRequest, res) =
     const list = raw.split(',').map(s => s.trim()).filter(Boolean).slice(0, 500);
     const map = await resolveMany(list);
     res.json({ success: true, links: Object.fromEntries(map) });
-  } catch (e) { handleRouteError(res, e); }
+  } catch (e) { handleRouteError(res, e, undefined, req); }
 });
 
 export = router;

@@ -329,7 +329,17 @@ export function toast(msg, type='info') {
  * Stellen, die genauer unterscheiden wollen (z. B. 401 → Anmeldemaske).
  */
 export async function api(method, path, body) {
-  const o={method,headers:{'Content-Type':'application/json'}};
+  // ── Accept-Language: die Sprache, die gerade AUF DEM BILDSCHIRM steht ──────
+  //
+  // Der Server hat seine Fehlermeldungen seit Nachtrag 130 in beiden Sprachen
+  // (utils/fehlerTexte.ts) und antwortet in der, die hier steht. Vorher waren
+  // alle 80 Meldungen deutsch — in einer sonst vollständig englischen
+  // Oberfläche.
+  //
+  // `LANG` und nicht die Spracheinstellung des KONTOS: Wer die Oberfläche
+  // umschaltet, will sofort alles in der neuen Sprache, auch die nächste
+  // Fehlermeldung. Das Konto nachzuziehen ist ein eigener Vorgang.
+  const o={method,headers:{'Content-Type':'application/json','Accept-Language':LANG}};
   if(body) o.body=JSON.stringify(body);
   let res;
   try {

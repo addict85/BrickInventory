@@ -23,6 +23,7 @@ import { anfragenJeMinute } from '../../jobs/imageQueue';
 import { DAILY_JOBS } from '../../jobs/dailyScheduler';
 import { getGlobalSetting, setGlobalSetting, setGlobalTrigger, deleteGlobalSetting } from '../../utils/settings';
 import { ausRetryWarteschlange } from '../../clients/brickset';
+import { sendeFehler } from '../../utils/fehlerTexte';
 const router = express.Router();
 
 /**
@@ -48,7 +49,7 @@ router.post('/admin/trigger-csv-sync', requireApiAdmin, async (_req: AuthedReque
     // Quelle — ohne Signal liefe er erst beim nächsten Verbindungsaufbau an.
     await require('../../utils/pgNotify').notify('csv_sync_trigger');
     res.json({ success: true, message: 'CSV-Sync wird gestartet…' });
-  } catch (e) { handleRouteError(res, e); }
+  } catch (e) { handleRouteError(res, e, undefined, _req); }
 });
 
 // ── GET /api/v1/admin/cache-stats ─────────────────────────────────────────────
@@ -67,7 +68,7 @@ router.get('/admin/cache-stats', requireApiAdmin, async (_req: AuthedRequest, re
     res.json({ success:true, ...stats, price_stale: parseInt(stale?.c||0),
       rate_limits: { bricklink: rlBL, rebrickable: rlRB, brickset: rlBS },
       db_pool: getPoolStats() });
-  } catch (e) { handleRouteError(res, e); }
+  } catch (e) { handleRouteError(res, e, undefined, _req); }
 });
 
 // ── GET /api/v1/admin/image-diag/:setNumber ───────────────────────────────────
@@ -161,7 +162,7 @@ router.get('/admin/image-diag/:setNumber', requireApiAdmin, async (req: AuthedRe
       lokal: { original, vorschau },
       merker: merker ? { seit: merker.checked_at, grund: merker.reason || null } : null,
       proxy, hinweise });
-  } catch (e) { handleRouteError(res, e); }
+  } catch (e) { handleRouteError(res, e, undefined, req); }
 });
 
 // ── POST /api/v1/admin/forget-image-misses ────────────────────────────────────
@@ -201,7 +202,7 @@ router.post('/admin/forget-image-misses', requireApiAdmin, async (req: AuthedReq
     // ihn im Fünf-Minuten-Takt vollständig aus der Tabelle auf — länger dauert
     // es dort also nicht.
     res.json({ success: true, entfernt, hinweis: 'Greift in allen Arbeitsprozessen binnen fünf Minuten.' });
-  } catch (e) { handleRouteError(res, e); }
+  } catch (e) { handleRouteError(res, e, undefined, req); }
 });
 
 /**
@@ -221,7 +222,7 @@ router.post('/admin/cache-clear', requireApiAdmin, async (req: AuthedRequest, re
       await clearSubsetsCache(); await clearCatalogCache();
     }
     res.json({ success: true, message: req.body?.all ? 'Alle Caches geleert' : 'Preis-Cache geleert' });
-  } catch (e) { handleRouteError(res, e); }
+  } catch (e) { handleRouteError(res, e, undefined, req); }
 });
 
 // ── GET /api/v1/admin/cache-ttl ───────────────────────────────────────────────
@@ -229,27 +230,27 @@ router.get('/admin/cache-ttl', requireApiAdmin, async (_req: AuthedRequest, res)
   try {
     const ttl = await getGlobalSetting('price_cache_ttl');
     res.json({ success:true, ttl: ttl || '24' });
-  } catch (e) { handleRouteError(res, e); }
+  } catch (e) { handleRouteError(res, e, undefined, _req); }
 });
 
 // POST /api/v1/admin/cache-ttl
 router.post('/admin/cache-ttl', requireApiAdmin, async (req: AuthedRequest, res) => {
   const ttl = String(req.body?.ttl || '24');
-  if (!['12','24','168'].includes(ttl)) return res.status(400).json({ success:false, error:'Ungültiger Wert' });
+  if (!['12','24','168'].includes(ttl)) return sendeFehler(req, res, 400, 'wert_ungueltig');
   try {
     setGlobalSetting('price_cache_ttl', ttl);
     res.json({ success:true, ttl });
-  } catch (e) { handleRouteError(res, e); }
+  } catch (e) { handleRouteError(res, e, undefined, req); }
 });
 
 // POST /api/v1/admin/default-condition — Standard-Zustand setzen (nur Admin)
 router.post('/admin/default-condition', requireApiAdmin, async (req: AuthedRequest, res) => {
   const condition = String(req.body?.condition || 'N');
-  if (!['N','U'].includes(condition)) return res.status(400).json({ success: false, error: 'N oder U erwartet' });
+  if (!['N','U'].includes(condition)) return sendeFehler(req, res, 400, 'zustand_n_oder_u');
   try {
     setGlobalSetting('default_price_condition', condition);
     res.json({ success: true, condition });
-  } catch (e) { handleRouteError(res, e); }
+  } catch (e) { handleRouteError(res, e, undefined, req); }
 });
 
 // GET /api/v1/admin/api-limits — get current limits
@@ -269,7 +270,7 @@ router.put('/admin/api-limits', requireApiAdmin, async (req: AuthedRequest, res)
       // und der Vergleich gegen NaN liess jeden Aufruf scheitern.
       const n = parseInt(rebrickable, 10);
       if (!Number.isFinite(n) || n < 1 || n > 100000)
-        return res.status(400).json({ success: false, error: 'Tageslimit muss zwischen 1 und 100000 liegen' });
+        return sendeFehler(req, res, 400, 'tageslimit_bereich');
       setGlobalSetting('api_limit_rebrickable', String(n));
       // Kein setMax() mehr nötig: Der Zähler liegt in der Datenbank und liest
       // die Grenze bei jedem Aufruf (getLimitForApi). Der Wert galt vorher nur
@@ -294,7 +295,7 @@ router.put('/admin/api-limits', requireApiAdmin, async (req: AuthedRequest, res)
       }
     }
     res.json({ success:true });
-  } catch (e) { handleRouteError(res, e); }
+  } catch (e) { handleRouteError(res, e, undefined, req); }
 });
 
 // Admin: job monitoring
@@ -327,7 +328,7 @@ router.post('/admin/reimport-instructions', requireApiAdmin, async (_req: Authed
     await require('../../jobs/instructionQueue').requestRun();
     console.log(`[admin] Reimport instructions: ${enqueued} sets enqueued`);
     res.json({ success: true, enqueued });
-  } catch (e) { handleRouteError(res, e); }
+  } catch (e) { handleRouteError(res, e, undefined, _req); }
 });
 
 // ── POST /api/v1/admin/trigger-price-job ──────────────────────────────────────
@@ -346,14 +347,14 @@ router.post('/admin/reimport-instructions', requireApiAdmin, async (_req: Authed
 router.get('/admin/job-status', requireApiAdmin, async (_req: AuthedRequest, res) => {
   try {
     res.json({ success: true, job: getJobStatus(), rate_limit: await getRateLimitStatus('bricklink') });
-  } catch (e) { handleRouteError(res, e); }
+  } catch (e) { handleRouteError(res, e, undefined, _req); }
 });
 
 router.post('/admin/trigger-price-job', requireApiAdmin, async (_req: AuthedRequest, res) => {
   try {
     const started = await triggerNow();
     res.json({ success: true, started });
-  } catch (e) { handleRouteError(res, e); }
+  } catch (e) { handleRouteError(res, e, undefined, _req); }
 });
 
 /**
@@ -487,7 +488,7 @@ router.post('/admin/catalog-images', requireApiAdmin, async (req: AuthedRequest,
       verworfen,
       dauer_minuten: Math.ceil((offen?.n ?? 0) / proMinute),
     });
-  } catch (e) { handleRouteError(res, e); }
+  } catch (e) { handleRouteError(res, e, undefined, req); }
 });
 
 // ── POST /api/v1/admin/redownload-missing-images ──────────────────────────────
@@ -500,7 +501,7 @@ router.post('/admin/redownload-missing-images', requireApiAdmin, async (_req: Au
     // Nicht awaiten — kann je nach Kataloggröße lange dauern.
     enrich.redownloadMissingImages().catch((e: any) => console.error('[admin] redownload-missing-images:', e?.message));
     res.json({ success: true, started: true });
-  } catch (e) { handleRouteError(res, e); }
+  } catch (e) { handleRouteError(res, e, undefined, _req); }
 });
 
 // ── Nutzerverwaltung: NUR unter /api/v1/auth/users ───────────────────────────────
@@ -531,7 +532,7 @@ router.get('/admin/logs', requireApiAdmin, async (req: AuthedRequest, res) => {
       [minutes]
     );
     res.json({ success: true, minutes, count: rows.length, logs: rows });
-  } catch (e) { handleRouteError(res, e); }
+  } catch (e) { handleRouteError(res, e, undefined, req); }
 });
 
 router.get('/admin/brickset-queue', requireApiAdmin, async (_req: AuthedRequest, res) => {
@@ -832,7 +833,7 @@ router.post('/admin/job-schedule', requireApiAdmin, async (req: AuthedRequest, r
     if (daily) {
       const m = /^(\d{1,2}):(\d{2})$/.exec(String(time || '').trim());
       if (!m || +(m[1] ?? '') > 23 || +(m[2] ?? '') > 59) {
-        return res.status(400).json({ success: false, error: 'Ungültige Uhrzeit (HH:MM)' });
+        return sendeFehler(req, res, 400, 'uhrzeit_ungueltig');
       }
       const norm = `${String(+(m[1] ?? '')).padStart(2, '0')}:${String(+(m[2] ?? '')).padStart(2, '0')}`;
       setGlobalSetting(`job_time_${daily.name}`, norm);
@@ -840,14 +841,14 @@ router.post('/admin/job-schedule', requireApiAdmin, async (req: AuthedRequest, r
       const min = Math.max(5, parseInt(minutes) || 60);
       setGlobalSetting('price_job_interval_minutes', String(min));
     } else {
-      return res.status(400).json({ success: false, error: 'Unbekannter Job' });
+      return sendeFehler(req, res, 400, 'unbekannter_job');
     }
     // Sofort anwenden: Flag für den Primary-Worker + direkter Aufruf (falls dieser Prozess der Primary ist).
     await setGlobalTrigger('job_reschedule_trigger').catch(() => {});
     await require('../../utils/pgNotify').notify('job_reschedule_trigger');
     try { await require('../../jobs/dailyScheduler').rescheduleAll(); } catch (e) { meldeUndWeiter('admin:zeitplan-neu-planen', e); }
     res.json({ success: true });
-  } catch (e) { handleRouteError(res, e); }
+  } catch (e) { handleRouteError(res, e, undefined, req); }
 });
 
 /**
@@ -864,7 +865,7 @@ router.post('/admin/job-schedule', requireApiAdmin, async (req: AuthedRequest, r
  */
 router.get('/admin/img-probe', requireApiAdmin, async (req: AuthedRequest, res) => {
   const url = String(req.query.url || '');
-  if (!/^https:\/\//.test(url)) return res.status(400).json({ success: false, error: 'url fehlt oder ist kein https' });
+  if (!/^https:\/\//.test(url)) return sendeFehler(req, res, 400, 'url_fehlt_https');
 
   // Dieselbe Host-Allowlist wie der Bild-Proxy.
   //
@@ -879,10 +880,10 @@ router.get('/admin/img-probe', requireApiAdmin, async (req: AuthedRequest, res) 
   // eine der beiden Stellen nachgezogen.
   try {
     if (!isAllowedImageHost(url)) {
-      return res.status(403).json({ success: false, error: `Host nicht erlaubt: ${new URL(url).hostname}` });
+      return sendeFehler(req, res, 403, 'host_nicht_erlaubt', { host: new URL(url).hostname });
     }
   } catch (_) {
-    return res.status(400).json({ success: false, error: 'Ungültige URL' });
+    return sendeFehler(req, res, 400, 'url_ungueltig');
   }
 
   // Dieselbe Host-Allowlist wie der Bild-Proxy.
@@ -897,10 +898,10 @@ router.get('/admin/img-probe', requireApiAdmin, async (req: AuthedRequest, res) 
   try {
     const host = new URL(url).hostname;
     if (!ALLOWED_PROBE_HOSTS.some(h => host === h || host.endsWith('.' + h))) {
-      return res.status(403).json({ success: false, error: `Host nicht erlaubt: ${host}` });
+      return sendeFehler(req, res, 403, 'host_nicht_erlaubt', { host });
     }
   } catch (_) {
-    return res.status(400).json({ success: false, error: 'Ungültige URL' });
+    return sendeFehler(req, res, 400, 'url_ungueltig');
   }
 
   const https2 = require('https');
@@ -928,6 +929,8 @@ router.get('/admin/img-probe', requireApiAdmin, async (req: AuthedRequest, res) 
       r.on('close', () => done({ status: r.statusCode, content_type: r.headers['content-type'] || null, bytes, truncated: true }));
     });
     rq.on('error', (e: any) => done({ error: e.message, code: e.code }));
+    // Ein Diagnosewert wie ein HTTP-Status, keine Meldung an den Nutzer: Die
+    // Monitoring-Ansicht zeigt ihn als Befund der Erreichbarkeitsprobe.
     rq.setTimeout(10000, () => { rq.destroy(); done({ error: 'timeout' }); });
   });
 
@@ -997,7 +1000,7 @@ router.get('/admin/img-probe', requireApiAdmin, async (req: AuthedRequest, res) 
  */
 router.get('/admin/price-probe', requireApiAdmin, async (req: AuthedRequest, res) => {
   const setNumber = String(req.query.set || '').trim();
-  if (!setNumber) return res.status(400).json({ success: false, error: 'Parameter set fehlt' });
+  if (!setNumber) return sendeFehler(req, res, 400, 'parameter_set_fehlt');
   const uid = req.apiUser.user_id;
 
   const [setRow, acqs, cacheRows, histRows, currRow, ttlRow] = await Promise.all([

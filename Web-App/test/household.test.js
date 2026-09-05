@@ -297,7 +297,7 @@ test('Schreiben in ein fremdes Konto verlangt die richtige Richtung', () => {
   for (const f of ['routes/sets.ts', 'routes/api_v1/parts.ts', 'routes/api_v1/minifigs.ts']) {
     const src = read(f);
     assert.match(src, /resolveWriteTarget\(/, `${f}: Kontoauswahl fehlt`);
-    assert.match(src, /=== null\)[\s\S]{0,80}res\.status\(403\)/,
+    assert.match(src, /=== null\)[\s\S]{0,120}sendeFehler\(req, res, 403/,
       `${f}: Ohne Recht muss die Antwort 403 sein, nicht stillschweigend das eigene Konto`);
   }
 });
@@ -481,7 +481,7 @@ test('Verschieben geht NUR über den Kaufpreis', () => {
   // entfallen, beide Clients nutzen dieselbe. Regel unverändert.
   for (const f of ['routes/api_v1/sets.ts']) {
     const src = read(f);
-    assert.match(src, /if \(!acqIds\.length\)\s*\n\s*return res\.status\(400\)/,
+    assert.match(src, /if \(!acqIds\.length\)\s*\n\s*return sendeFehler\(req, res, 400/,
       `${f}: move ohne acquisition_ids muss abgelehnt werden`);
   }
 
@@ -504,7 +504,7 @@ test('auch manuelle Teile und Minifiguren wandern über den Kaufpreis', () => {
   for (const [f, kind] of [['routes/api_v1/acquisitions.ts', 'part'], ['routes/api_v1/acquisitions.ts', 'fig']]) {
     const src = read(f);
     assert.ok(src.includes(`moveManualAcquisition(tx, '${kind}'`), `${f}: Wechsel fehlt`);
-    assert.match(src, /if \(to === null\)\s*\n\s*return res\.status\(403\)/,
+    assert.match(src, /if \(to === null\)\s*\n\s*return sendeFehler\(req, res, 403/,
       `${f}: ohne Schreibrecht muss 403 kommen`);
   }
 });

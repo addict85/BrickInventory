@@ -12,7 +12,7 @@ router.get('/stats', requireToken, async (req: AuthedRequest, res) => {
     // eigenen (hochgeladenen) Anleitungen mit und filtert Sets nicht mehr
     // auf pieces IS NOT NULL — Parität zur Webapp.
     res.json({ success: true, stats: await getStats(await scopeIds(req.apiUser.user_id, parseScopeMode(req.query.accounts))) });
-  } catch (e) { handleRouteError(res, e); }
+  } catch (e) { handleRouteError(res, e, undefined, req); }
 });
 
 // Hinter requireToken: die Übersicht verrät ohne Auth die komplette API-Fläche.

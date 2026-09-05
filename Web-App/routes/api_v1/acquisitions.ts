@@ -30,6 +30,8 @@ import { getPartAcquisitions } from '../parts';
 import { getCurrentFigMarketPrice, getFigAcquisitions } from '../minifigs';
 import { loescheManuellesTeil, loescheManuelleFigur } from '../../utils/handlers/shared';
 import { SETS_PREIS_SQL, SETS_ZUSTAND_SQL } from '../../utils/setService';
+import { sendeFehler, fehlerWerfen } from '../../utils/fehlerTexte';
+import type { FehlerCode } from '../../utils/fehlerTexte';
 const router = express.Router();
 
 type AcqConfig = {
@@ -47,7 +49,8 @@ type AcqConfig = {
   /** Existenz-/Ownership-Check fürs PUT ($1=id, $2=uid, danach keyVals). */
   existsSql: string;
   existsWithKeys: boolean;
-  notFound: string;
+  /** Der GRUND als Code, nicht als Satz — siehe utils/fehlerTexte.ts. */
+  notFound: FehlerCode;
   /** 404 beim DELETE (Sets) oder stilles Löschen (Teile/Figuren, wie bisher). */
   deleteChecksExistence: boolean;
   /**
@@ -155,7 +158,7 @@ async function withSetAggregate(uid: number, cfgTable: string, keys: any[], payl
         const from = await acquisitionMoveSource(uid, kind, id);
         const to   = await resolveWriteTarget(uid, ownerReq);
         if (to === null)
-          return res.status(403).json({ success: false, error: 'Kein Schreibrecht für dieses Konto.' });
+          return sendeFehler(req, res, 403, 'kein_schreibrecht');
         if (from === to) return res.json({ success: true, unchanged: true });
         // Sperrschlüssel wie in der jeweiligen Session-Route, damit Webapp-
         // und App-Verschiebungen desselben Bestands aufeinander warten.
@@ -200,7 +203,7 @@ async function withSetAggregate(uid: number, cfgTable: string, keys: any[], payl
         // als scopeIds(): ein Unterkonto darf nicht rückwärts schreiben.
         const wids = await writableIds(uid);
         const acq = await tx.get(cfg.existsSql, cfg.existsWithKeys ? [id, wids, ...keys] : [id, wids]);
-        if (!acq) { const e: any = new Error(cfg.notFound); e.status = 404; throw e; }
+        if (!acq) fehlerWerfen(cfg.notFound, 404);
         // Ab hier zählt der BESITZER der Zeile, nicht der Betrachter — sonst
         // schriebe die Aktualisierung in die Daten des falschen Kontos.
         const ownerId = parseInt(String(acq.user_id));
@@ -220,12 +223,11 @@ async function withSetAggregate(uid: number, cfgTable: string, keys: any[], payl
         let _newDate: any = null;
         if (date !== undefined && date !== null && date !== '') {
           if (!/^\d{4}-\d{2}-\d{2}$/.test(String(date))) {
-            const e: any = new Error('Ungültiges Datum'); e.status = 400; throw e;
+            fehlerWerfen('datum_ungueltig', 400);
           }
           const clash = await findSameDayAcquisition(cfg.kind, ownerId, keys, date, id, tx);
           if (clash) {
-            const e: any = new Error('An diesem Datum existiert bereits ein Eintrag.');
-            e.status = 409; throw e;
+            fehlerWerfen('datum_belegt', 409);
           }
           _newDate = date;
         }
@@ -280,7 +282,7 @@ async function withSetAggregate(uid: number, cfgTable: string, keys: any[], payl
       });
 
       res.json(await withSetAggregate(uid, cfg.table, keys, { success: true }));
-    } catch (e) { handleRouteError(res, e); }
+    } catch (e) { handleRouteError(res, e, undefined, req); }
   });
 
   router.delete(put, requireToken, async (req: AuthedRequest, res) => {
@@ -297,7 +299,7 @@ async function withSetAggregate(uid: number, cfgTable: string, keys: any[], payl
         const wids = await writableIds(uid);
         const acq = await tx.get(cfg.existsSql, cfg.existsWithKeys ? [id, wids, ...keys] : [id, wids]);
         if (cfg.deleteChecksExistence && !acq) {
-          const e: any = new Error(cfg.notFound); e.status = 404; throw e;
+          fehlerWerfen(cfg.notFound, 404);
         }
         const ownerId = acq ? parseInt(String(acq.user_id)) : uid;
 
@@ -332,7 +334,7 @@ async function withSetAggregate(uid: number, cfgTable: string, keys: any[], payl
         return row;
       });
       res.json(await withSetAggregate(uid, cfg.table, keys, { success: true, new_quantity: row?.quantity ?? 0 }));
-    } catch (e) { handleRouteError(res, e); }
+    } catch (e) { handleRouteError(res, e, undefined, req); }
   });
 }
 
@@ -371,7 +373,7 @@ registerAcquisitionRoutes({
   keyVals:   req => [req.params.setNumber],
   existsSql: 'SELECT id, user_id FROM set_acquisitions WHERE id=$1 AND user_id = ANY($2) AND set_number=$3',
   existsWithKeys: true,
-  notFound:  'Erfassung nicht gefunden',
+  notFound:  'erfassung_nicht_gefunden',
   deleteChecksExistence: true,
   // Marktpreis nachfüllen, wenn das Feld geleert wird (Nachtrag 68, Marcos Fund:
   // „Kaufpreis löschen → wird nicht von BrickLink abgefüllt").
@@ -419,7 +421,7 @@ router.get('/parts/:partNumber/:colorId/acquisitions', requireToken, async (req:
       await scopeIds(req.apiUser.user_id, parseScopeMode(req.query.accounts)),
       pfadParam(req, 'partNumber'), pfadParam(req, 'colorId'));
     res.json({ success: true, acquisitions: rows, totals: acquisitionTotals(rows), owner_user_id: req.apiUser.user_id });
-  } catch (e) { handleRouteError(res, e); }
+  } catch (e) { handleRouteError(res, e, undefined, req); }
 });
 
 registerAcquisitionRoutes({
@@ -431,7 +433,7 @@ registerAcquisitionRoutes({
   keyVals:   req => [req.params.partNumber, parseInt(req.params.colorId) || 0],
   existsSql: 'SELECT id, user_id FROM part_acquisitions WHERE id=$1 AND user_id = ANY($2)',
   existsWithKeys: false,
-  notFound:  'Not found',
+  notFound:  'nicht_gefunden',
   deleteChecksExistence: false,
   // ── cond MITGEBEN (Nachtrag 146) ──────────────────────────────────────────
   //
@@ -470,7 +472,7 @@ router.get('/minifigs/:figNumber/acquisitions', requireToken, async (req: Authed
     const rows = await getFigAcquisitions(
       await scopeIds(req.apiUser.user_id, parseScopeMode(req.query.accounts)), pfadParam(req, 'figNumber'));
     res.json({ success: true, acquisitions: rows, totals: acquisitionTotals(rows), owner_user_id: req.apiUser.user_id });
-  } catch (e) { handleRouteError(res, e); }
+  } catch (e) { handleRouteError(res, e, undefined, req); }
 });
 
 registerAcquisitionRoutes({
@@ -482,7 +484,7 @@ registerAcquisitionRoutes({
   keyVals:   req => [req.params.figNumber],
   existsSql: 'SELECT id, user_id FROM minifig_acquisitions WHERE id=$1 AND user_id = ANY($2)',
   existsWithKeys: false,
-  notFound:  'Not found',
+  notFound:  'nicht_gefunden',
   deleteChecksExistence: false,
   // cond mitgeben — siehe die Begründung bei den Teilen (Nachtrag 146).
   resolvePrice: async (uid, [fn], cond) => {

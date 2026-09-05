@@ -21,6 +21,7 @@
  */
 import * as db from '../db/database';
 import { getSetting } from './settings';
+import { fehlerWerfen } from './fehlerTexte';
 
 /** Wie lange ein Einladungscode gilt. Lang genug für „später am Abend“,
  *  kurz genug, dass ein liegen gebliebener Code nicht dauerhaft öffnet. */
@@ -129,11 +130,14 @@ function hash(token: string) {
  * bleibt so von selbst klein.
  */
 export async function createInvite(uid: number) {
+  // Absagen kommen als CODE zurueck, nicht als Satz (Nachtrag 130): Dieser
+  // Helfer weiss nicht, welche Sprache der Anfragende sieht — die Route weiss
+  // es, weil sie den Request hat.
   const id = parseInt(String(uid));
   const own = await resolveHousehold(id);
   // Eine Stufe: Wer selbst Unterkonto ist, kann keinen Haushalt aufmachen.
   if (own.linkedToMainId) {
-    return { error: 'Dieses Konto ist bereits mit einem Hauptkonto verknüpft. Konten lassen sich nur über eine Stufe verknüpfen.' };
+    return { code: 'konto_bereits_verknuepft_eine_stufe' as const };
   }
   await db.run(
     `DELETE FROM account_link_invites WHERE expires_at < NOW() OR used_at IS NOT NULL`
@@ -159,7 +163,7 @@ export async function createInvite(uid: number) {
 export async function redeemInvite(uid: number, code: string) {
   const subId = parseInt(String(uid));
   if (typeof code !== 'string' || code.length < 8) {
-    return { error: 'Ungültiger Einladungscode.' };
+    return { code: 'einladungscode_ungueltig' as const };
   }
   const th = hash(code.trim());
 
@@ -169,7 +173,7 @@ export async function redeemInvite(uid: number, code: string) {
       RETURNING main_user_id`,
     [th, subId]
   ).catch(() => null);
-  if (!claimed) return { error: 'Ungültiger oder abgelaufener Einladungscode.' };
+  if (!claimed) return { code: 'einladungscode_abgelaufen' as const };
 
   const mainId = parseInt(claimed.main_user_id);
   const release = async () => {
@@ -180,7 +184,7 @@ export async function redeemInvite(uid: number, code: string) {
 
   if (mainId === subId) {
     await release();
-    return { error: 'Ein Konto kann sich nicht mit sich selbst verknüpfen.' };
+    return { code: 'konto_mit_sich_selbst' as const };
   }
 
   const [subState, mainState] = await Promise.all([
@@ -188,17 +192,17 @@ export async function redeemInvite(uid: number, code: string) {
   ]);
   if (subState.linkedToMainId) {
     await release();
-    return { error: 'Dieses Konto ist bereits mit einem Hauptkonto verknüpft.' };
+    return { code: 'konto_bereits_verknuepft' as const };
   }
   // Eine Stufe, beide Richtungen: Wer selbst Unterkonten hat, kann nicht
   // Unterkonto werden; wer Unterkonto ist, kann keine aufnehmen.
   if (subState.isMain) {
     await release();
-    return { error: 'Dieses Konto hat bereits eigene Unterkonten. Konten lassen sich nur über eine Stufe verknüpfen.' };
+    return { code: 'konto_hat_unterkonten' as const };
   }
   if (mainState.linkedToMainId) {
     await release();
-    return { error: 'Das einladende Konto ist selbst ein Unterkonto. Konten lassen sich nur über eine Stufe verknüpfen.' };
+    return { code: 'einladender_ist_unterkonto' as const };
   }
 
   // ── Währung muss übereinstimmen ───────────────────────────────────────────
@@ -211,7 +215,7 @@ export async function redeemInvite(uid: number, code: string) {
   ]);
   if (String(curMain) !== String(curSub)) {
     await release();
-    return { error: `Beide Konten müssen dieselbe Währung verwenden (Hauptkonto: ${curMain}, dieses Konto: ${curSub}).` };
+    return { code: 'waehrung_ungleich' as const, vars: { haupt: String(curMain), unter: String(curSub) } };
   }
 
   await db.run(
@@ -394,11 +398,11 @@ export async function acquisitionMoveSource(
   const row = await db.get(
     `SELECT user_id FROM ${ACQ_TABLES[kind]} WHERE id = $1`, [acqId]);
   if (!row) {
-    const e: any = new Error('Kaufpreis nicht gefunden'); e.status = 404; throw e;
+    fehlerWerfen('kaufpreis_nicht_gefunden', 404);
   }
   const owner = parseInt(String(row.user_id));
   if (!(await canWriteFor(actorId, owner))) {
-    const e: any = new Error('Kein Schreibrecht für dieses Konto.'); e.status = 403; throw e;
+    fehlerWerfen('kein_schreibrecht', 403);
   }
   return owner;
 }

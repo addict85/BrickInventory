@@ -609,6 +609,19 @@ enum class Pruefphase {
     BARCODE,
     /** Steht das Set schon im Blickfeld? */
     BESTAND,
+    // ── Die Schritte des Anlegens (Nachtrag 131) ────────────────────────────
+    //
+    // Bis hierher zeigte die App waehrend des Anlegens nur BESTAND — einen
+    // Kringel, bis alles vorbei war. Die Webapp meldet unterdessen, was
+    // passiert, und bei einem grossen Set dauert das lange genug, um
+    // aufzufallen. Dieselben drei Schritte, die der Server ohnehin schickt
+    // (routes/sets.ts → add-stream).
+    /** Stammdaten holen — Name, Teilezahl, Jahr. */
+    ANLEGEN_STAMMDATEN,
+    /** Bild herunterladen. */
+    ANLEGEN_BILD,
+    /** Stammdaten und Bild sind durch, es fehlt das Aufraeumen. */
+    ANLEGEN_ABSCHLUSS,
 }
 
 /**

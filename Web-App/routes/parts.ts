@@ -96,7 +96,7 @@ router.get('/categories', async (req, res) => {
                COALESCE(rc.name, rp_cat.name, 'Unbekannt')
       ORDER BY total_quantity DESC`, [uid]);
     res.json({ success:true, categories:cats });
-  } catch (e) { handleRouteError(res, e); }
+  } catch (e) { handleRouteError(res, e, undefined, req); }
 });
 
 
@@ -499,10 +499,11 @@ import { rebrickableBackgroundLimiter } from '../utils/rateLimiter';
 import { csvEinlesen, parseCsvDate, toCsv, uebersprungenHinweis } from '../utils/csvExport';
 import { angemeldeteNutzerId } from '../utils/auth';
 import { csvEmpfang } from '../utils/dateiEmpfang';
+import { sendeFehler } from '../utils/fehlerTexte';
 
 
 router.post('/import/csv', csvEmpfang.single('file'), async (req: LoggedInRequest, res) => {
-  if (!req.file) return res.status(400).json({ success: false, error: 'Keine Datei' });
+  if (!req.file) return sendeFehler(req, res, 400, 'keine_datei');
   const uid = angemeldeteNutzerId(req);
   try {
     // Krumme Zeilen überspringen statt abbrechen (utils/csvExport.ts).
@@ -588,7 +589,7 @@ router.post('/import/csv', csvEmpfang.single('file'), async (req: LoggedInReques
     res.json({ success: true, added, updated, errors, total: records.length, results,
       skipped: uebersprungen.length || undefined,
       skipped_hint: uebersprungenHinweis(uebersprungen) || undefined });
-  } catch (e) { handleRouteError(res, e); }
+  } catch (e) { handleRouteError(res, e, undefined, req); }
 });
 
 // ── GET /api/parts/manual — list only manually added parts ────────────────────

@@ -12,6 +12,7 @@ import { requireToken } from './middleware';
 import { householdStatus, createInvite, redeemInvite, unlink } from '../../utils/household';
 import { setUserSetting, nutzerStandardZustand, globalDefaultCondition } from '../../utils/settings';
 import { getGlobalSetting, readSettings } from '../../utils/settings';
+import { sendeFehler } from '../../utils/fehlerTexte';
 const router = express.Router();
 
 /**
@@ -79,7 +80,7 @@ router.put('/settings', requireToken, async (req: AuthedRequest, res) => {
 router.get('/settings/default-condition', requireToken, async (_req: AuthedRequest, res) => {
   try {
     res.json({ success: true, condition: await globalDefaultCondition() });
-  } catch (e) { handleRouteError(res, e); }
+  } catch (e) { handleRouteError(res, e, undefined, _req); }
 });
 
 /**
@@ -94,7 +95,7 @@ router.get('/settings/default-condition', requireToken, async (_req: AuthedReque
 router.get('/settings/user/default-condition', requireToken, async (req: AuthedRequest, res) => {
   try {
     res.json({ success: true, condition: await nutzerStandardZustand(req.apiUser.user_id) });
-  } catch (e) { handleRouteError(res, e); }
+  } catch (e) { handleRouteError(res, e, undefined, req); }
 });
 
 // POST /api/v1/settings/user/default-condition — benutzerspezifischer Default.
@@ -103,7 +104,7 @@ router.get('/settings/user/default-condition', requireToken, async (req: AuthedR
 // Bearer-Token still an requireLogin.
 router.post('/settings/user/default-condition', requireToken, async (req: AuthedRequest, res) => {
   const condition = String(req.body?.condition ?? '');
-  if (!['N','U',''].includes(condition)) return res.status(400).json({ success: false, error: 'N oder U erwartet' });
+  if (!['N','U',''].includes(condition)) return sendeFehler(req, res, 400, 'zustand_n_oder_u');
   try {
     if (condition === '') {
       // Leeren → auf globalen Standard zurückfallen
@@ -116,7 +117,7 @@ router.post('/settings/user/default-condition', requireToken, async (req: Authed
       await setUserSetting(req.apiUser.user_id, 'user_default_condition', condition);
     }
     res.json({ success: true, condition: condition || null });
-  } catch (e) { handleRouteError(res, e); }
+  } catch (e) { handleRouteError(res, e, undefined, req); }
 });
 
 // ── Haushalt: Konten verknüpfen ──────────────────────────────────────────────
@@ -125,29 +126,29 @@ router.post('/settings/user/default-condition', requireToken, async (req: Authed
 router.get('/settings/household', requireToken, async (req: AuthedRequest, res) => {
   try {
     res.json({ success: true, ...(await householdStatus(req.apiUser.user_id)) });
-  } catch (e) { handleRouteError(res, e); }
+  } catch (e) { handleRouteError(res, e, undefined, req); }
 });
 
 router.post('/settings/household/invite', requireToken, async (req: AuthedRequest, res) => {
   try {
     const r = await createInvite(req.apiUser.user_id);
-    if ((r as any).error) return res.status(409).json({ success: false, error: (r as any).error });
+    if ((r as any).code) return sendeFehler(req, res, 409, (r as any).code, (r as any).vars);
     res.json({ success: true, ...r });
-  } catch (e) { handleRouteError(res, e); }
+  } catch (e) { handleRouteError(res, e, undefined, req); }
 });
 
 router.post('/settings/household/redeem', requireToken, async (req: AuthedRequest, res) => {
   try {
     const r = await redeemInvite(req.apiUser.user_id, String(req.body?.code || ''));
-    if ((r as any).error) return res.status(409).json({ success: false, error: (r as any).error });
+    if ((r as any).code) return sendeFehler(req, res, 409, (r as any).code, (r as any).vars);
     res.json({ success: true, ...r });
-  } catch (e) { handleRouteError(res, e); }
+  } catch (e) { handleRouteError(res, e, undefined, req); }
 });
 
 router.post('/settings/household/unlink', requireToken, async (req: AuthedRequest, res) => {
   try {
     res.json({ success: true, ...(await unlink(req.apiUser.user_id, req.body?.sub_user_id)) });
-  } catch (e) { handleRouteError(res, e); }
+  } catch (e) { handleRouteError(res, e, undefined, req); }
 });
 
 export default router;

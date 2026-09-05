@@ -31,7 +31,7 @@ export async function liefereAusCache(opts: {
   wantThumb: boolean;
   darfErzeugen: boolean;
   notiere: () => void;
-  streamFileToResponse: (res: any, datei: string) => any;
+  streamFileToResponse: (res: any, datei: string, onEnd?: () => void, req?: any) => any;
 }): Promise<boolean> {
   const { res, req, cacheFile, thumbFile, wantThumb, darfErzeugen, notiere, streamFileToResponse } = opts;
 
@@ -78,7 +78,7 @@ export async function liefereAusCache(opts: {
       // Kein rohes pipe(): Die Cache-Pflege kann die Datei zwischen Prüfung
       // und Öffnen entfernen, und ein Lesestrom-Fehler ohne Zuhörer beendet
       // den Prozess (siehe utils/httpError.ts).
-      streamFileToResponse(res, thumbFile); return true;
+      streamFileToResponse(res, thumbFile, undefined, req); return true;
     } catch (_) { /* noch nicht erzeugt */ }
   }
 
@@ -114,7 +114,7 @@ export async function liefereAusCache(opts: {
     res.setHeader('Cache-Control', 'public, max-age=86400, must-revalidate');
     // Wie oben beim Vorschaubild: bekannter Stand → 304 statt Bild.
     if (req.fresh) { res.status(304).end(); return true; }
-    streamFileToResponse(res, cacheFile); return true;
+    streamFileToResponse(res, cacheFile, undefined, req); return true;
   } catch (_) { /* Cache-Miss oder Fehler — normal weiterladen */ }
 
   return false;

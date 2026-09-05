@@ -1,3 +1,6 @@
+import { sendeFehler } from './fehlerTexte';
+import { FEHLER, fehlerText, antwortSprache } from './fehlerTexte';
+import type { FehlerCode } from './fehlerTexte';
 /**
  * Zentrale Fehlerbehandlung für Routen.
  *
@@ -13,12 +16,28 @@
  * @param e      Fehler (Error oder beliebig geworfen)
  * @param status expliziter HTTP-Status, sonst e.status || 500
  */
-function handleRouteError(res: any, e: any, status?: number) {
+function handleRouteError(res: any, e: any, status?: number, req?: any) {
   const code = status || e?.status || 500;
   // Vollständig loggen — inkl. Stack für die Fehlersuche
   console.error(`[route-error] ${code}:`, e?.stack || e?.message || e);
   if (res.headersSent) return;
   const isServerError = code >= 500;
+  // ── Trägt der Fehler einen Code, gilt der (Nachtrag 130) ──────────────────
+  //
+  // Helfer wie utils/household.ts und utils/setMove.ts werfen mit
+  // fehlerWerfen() und geben damit den GRUND mit, nicht den Satz. Erst hier —
+  // wo der Request bekannt ist — wird daraus ein Satz in der Sprache des
+  // Anfragenden.
+  //
+  // Ohne Code bleibt alles wie bisher: Ein technischer Fehler ist keine
+  // Nutzermeldung, und bei 5xx in der Produktion steht ohnehin ein
+  // allgemeiner Satz da.
+  if (e?.code && typeof e.code === 'string' && e.code in FEHLER) {
+    return res.status(code).json({
+      success: false, code: e.code,
+      error: fehlerText(e.code as FehlerCode, antwortSprache(req)),
+    });
+  }
   const message = (isServerError && process.env.NODE_ENV === 'production')
     ? 'Interner Serverfehler'
     : (e?.message || 'Unbekannter Fehler');
@@ -178,7 +197,13 @@ export { handleRouteError, logAndContinue, meldeUndWeiter, fehlertext, fehlerCod
  * onEnd läuft nur bei vollständiger Auslieferung (z.B. Aufräumen nach dem
  * PDF-Download) — bei einem Fehler ausdrücklich nicht.
  */
-function streamFileToResponse(res: any, filePath: string, onEnd?: () => void) {
+/**
+ * @param req Nur fuer die Sprache der Fehlermeldung (Nachtrag 130). Optional,
+ *        weil dieser Helfer auch an einer nackten http-Antwort laeuft, wo es
+ *        keinen Express-Request gibt — dann antwortet er auf Deutsch, wie
+ *        bisher.
+ */
+function streamFileToResponse(res: any, filePath: string, onEnd?: () => void, req?: any) {
   const fs = require('fs');
   const stream = fs.createReadStream(filePath);
   stream.on('error', (e: any) => {
@@ -188,7 +213,7 @@ function streamFileToResponse(res: any, filePath: string, onEnd?: () => void) {
       // einer nackten http-Antwort (und genau daran ist die erste Fassung
       // gescheitert — res.status war dort nicht vorhanden, und der Absturz,
       // den der Helfer verhindern sollte, kam aus dem Helfer selbst).
-      if (typeof res.status === 'function') res.status(404).json({ success: false, error: 'Datei nicht verfügbar' });
+      if (typeof res.status === 'function') sendeFehler(req, res, 404, 'datei_nicht_verfuegbar');
       else { res.statusCode = 404; res.end(); }
     } else {
       res.end();

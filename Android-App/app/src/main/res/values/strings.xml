@@ -330,6 +330,9 @@
     <string name="pruef_titel">Checking…</string>
     <string name="pruef_barcode">Resolving barcode %1$s…</string>
     <string name="pruef_bestand">Checking whether %1$s is already in your collection…</string>
+    <string name="pruef_anlegen_stammdaten">Fetching master data for %1$s…</string>
+    <string name="pruef_anlegen_bild">Downloading the image for %1$s…</string>
+    <string name="pruef_anlegen_abschluss">Finishing %1$s…</string>
     <string name="pruef_hinweis">Adding then happens in the background — just a moment before the next scan.</string>
     <string name="vm_barcode_no_set">❌ No set found for: %1$s</string>
     <string name="vm_set_added">✅ %1$s added!</string>
@@ -552,4 +555,10 @@
 
     <string name="common_collapse">Collapse</string>
     <string name="common_expand">Expand</string>
+
+    <!-- ══════════════ Messages that were hardcoded until Nachtrag 130 ══════════════ -->
+    <string name="err_set_not_found">Set not found</string>
+    <string name="pdfexp_server_error">The server could not create the PDF</string>
+    <string name="pdfexp_http_error">The server answered with %1$d</string>
+
 </resources>

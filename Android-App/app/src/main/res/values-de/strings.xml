@@ -312,6 +312,9 @@
     <string name="pruef_titel">Wird geprüft…</string>
     <string name="pruef_barcode">Barcode %1$s wird aufgelöst…</string>
     <string name="pruef_bestand">Prüfe, ob %1$s schon im Bestand ist…</string>
+    <string name="pruef_anlegen_stammdaten">Stammdaten zu %1$s werden geholt…</string>
+    <string name="pruef_anlegen_bild">Bild zu %1$s wird geladen…</string>
+    <string name="pruef_anlegen_abschluss">%1$s wird abgeschlossen…</string>
     <string name="pruef_hinweis">Das Hinzufügen läuft danach im Hintergrund — kurz warten vor dem nächsten Scan.</string>
     <string name="vm_barcode_no_set">❌ Kein Set gefunden für: %1$s</string>
     <string name="vm_set_added">✅ %1$s hinzugefügt!</string>
@@ -538,4 +541,10 @@
 
     <string name="common_collapse">Zuklappen</string>
     <string name="common_expand">Aufklappen</string>
+
+    <!-- ══════════════ Meldungen, die bis Nachtrag 130 fest verdrahtet waren ══════════════ -->
+    <string name="err_set_not_found">Set nicht gefunden</string>
+    <string name="pdfexp_server_error">Der Server konnte das PDF nicht erstellen</string>
+    <string name="pdfexp_http_error">Der Server antwortete mit %1$d</string>
+
 </resources>

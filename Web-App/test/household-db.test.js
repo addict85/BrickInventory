@@ -133,19 +133,24 @@ test('Haushalt gegen echte Datenbank', async (t) => {
     // Andere Währung → Ablehnung, und der Code bleibt benutzbar.
     await db.run(`UPDATE user_settings SET value='EUR' WHERE user_id=$1 AND key='currency'`, [U.kindA]);
     const bad = await household.redeemInvite(U.kindA, inv.code);
-    assert.match(bad.error || '', /Währung/, 'Währungsprüfung greift nicht');
+    // Auf den CODE statt auf den deutschen Satz (Nachtrag 130): Der Server
+    // antwortet jetzt in der Sprache des Anfragenden, und ein Test, der die
+    // Formulierung festhält, verbietet jede Übersetzung.
+    assert.equal(bad.code, 'waehrung_ungleich', 'Währungsprüfung greift nicht');
 
     await db.run(`UPDATE user_settings SET value='CHF' WHERE user_id=$1 AND key='currency'`, [U.kindA]);
     const ok = await household.redeemInvite(U.kindA, inv.code);
-    assert.equal(ok.error, undefined, `Einlösen scheiterte: ${ok.error}`);
+    assert.equal(ok.code, undefined, `Einlösen scheiterte: ${ok.code}`);
     assert.equal(ok.linked_to.id, U.eltern);
 
     // Zweite Einlösung desselben Codes muss scheitern.
     const again = await household.redeemInvite(U.kindB, inv.code);
-    assert.match(again.error || '', /Ungültig|abgelaufen/i, 'Code war mehrfach einlösbar');
+    // Auf den CODE (Nachtrag 130): redeemInvite liefert den Grund als
+    // Schlüssel, den Satz baut erst die Route in der Sprache des Anfragenden.
+    assert.match(again.code || '', /einladungscode/, 'Code war mehrfach einlösbar');
 
     const inv2 = await household.createInvite(U.eltern);
-    assert.equal((await household.redeemInvite(U.kindB, inv2.code)).error, undefined);
+    assert.equal((await household.redeemInvite(U.kindB, inv2.code)).code, undefined);
   });
 
   await t.test('Blickfeld und Kontofilter', async () => {
@@ -169,10 +174,10 @@ test('Haushalt gegen echte Datenbank', async (t) => {
 
   await t.test('nur eine Stufe', async () => {
     // Ein Kind kann keinen eigenen Haushalt aufmachen …
-    assert.match((await household.createInvite(U.kindA)).error || '', /eine Stufe|Hauptkonto/);
+    assert.match((await household.createInvite(U.kindA)).code || '', /konto_bereits_verknuepft/);
     // … und das Elternkonto kann nicht Unterkonto werden.
     const inv = await household.createInvite(U.fremd);
-    assert.match((await household.redeemInvite(U.eltern, inv.code)).error || '', /Unterkonten|eine Stufe/);
+    assert.match((await household.redeemInvite(U.eltern, inv.code)).code || '', /konto_hat_unterkonten/);
   });
 
   await t.test('dasselbe Set in zwei Konten wird zu EINER Zeile', async () => {
@@ -326,7 +331,7 @@ test('Haushalt gegen echte Datenbank', async (t) => {
     assert.deepEqual(kindA.sets.map(s => s.set_number), ['10290-1']);
     // Und darf sich danach wieder verknüpfen lassen.
     const inv = await household.createInvite(U.eltern);
-    assert.equal((await household.redeemInvite(U.kindA, inv.code)).error, undefined);
+    assert.equal((await household.redeemInvite(U.kindA, inv.code)).code, undefined);
   });
 
   await t.test('einzelner Kaufpreis wechselt den Eigentümer', async () => {
@@ -499,7 +504,7 @@ test('Haushalt gegen echte Datenbank', async (t) => {
     });
     assert.equal(r.status, 400, 'Verschieben ohne Kaufpreise war erlaubt');
     const body = await r.json();
-    assert.match(body.error || '', /acquisition_ids|Kaufpreise/);
+    assert.equal(body.code, 'kaufpreise_angeben');
   });
 
   await t.test('die Migration führt verwaiste Teile zu ihrem Set zurück', async () => {

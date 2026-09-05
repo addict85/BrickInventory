@@ -241,7 +241,10 @@ test('Admins können das Passwort anderer Nutzer setzen', () => {
   assert.match(fn, /String\(password\)\.length < 8/, 'Mindestlänge fehlt');
   assert.match(fn, /bcrypt\.hash\(String\(password\), BCRYPT_ROUNDS\)/,
     'Das Passwort muss mit denselben Parametern gehasht werden wie überall');
-  assert.match(fn, /if \(!r\.changes\) return res\.status\(404\)/,
+  // Der Weg zur Antwort hat sich geändert (Nachtrag 130): Fehler gehen jetzt
+  // über sendeFehler(), damit sie in der Sprache des Anfragenden ankommen.
+  // Geprüft wird weiter die AUSSAGE — 404 bei unbekanntem Nutzer.
+  assert.match(fn, /if \(!r\.changes\) return sendeFehler\(req, res, 404/,
     'Ein unbekannter Nutzer muss 404 ergeben, nicht stillen Erfolg');
 
   // Offene Zugänge schliessen.
@@ -291,7 +294,7 @@ test('Sicherheitsschritte am Konto scheitern nicht mehr stillschweigend', () => 
     'Ohne gespeicherten Token gehört das Feld nicht in die Antwort');
   // Und fuer die App ist ein Login ohne Token gar kein Erfolg: Sie hat keinen
   // zweiten Ausweg (der Browser faellt auf die Cookie-Sitzung zurueck).
-  assert.match(login, /if \(dauerhaft\)[\s\S]{0,200}?status\(500\)/,
+  assert.match(login, /if \(dauerhaft\)[\s\S]{0,200}?sendeFehler\(req, res, 500/,
     'Scheitert der Token, muss die App einen Fehler bekommen statt eines halben Erfolgs');
 
   // Die Löschungen selbst stehen inzwischen nur noch in utils/auth.ts

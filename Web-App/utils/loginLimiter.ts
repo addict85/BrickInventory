@@ -21,6 +21,8 @@
 import * as db from '../db/database';
 import type { Request, Response, NextFunction } from 'express';
 import { einzelwert } from './validate';
+import { sendeFehler } from './fehlerTexte';
+import type { FehlerCode } from './fehlerTexte';
 
 /**
  * ── Warum hier Typen stehen (Nachtrag 155) ───────────────────────────────────
@@ -128,10 +130,14 @@ async function _clear(key: string): Promise<void> {
  * Vor der Passwortprüfung aufrufen.
  * @returns {Promise<string|null>} Sperr-Meldung oder null
  */
-async function checkLoginAllowed(req: Request, username: unknown): Promise<string | null> {
+async function checkLoginAllowed(
+  req: Request, username: unknown,
+): Promise<{ code: FehlerCode; vars: { minuten: number } } | null> {
+  // Code statt Satz (Nachtrag 130): Dieser Helfer weiss nicht, welche Sprache
+  // der Anfragende sieht — die Route weiss es.
   const st = await _read(_key(req, username), WINDOW_MIN);
   if (st && st.count >= MAX_ATTEMPTS)
-    return `Zu viele Fehlversuche — bitte in ${st.waitMin} Min. erneut versuchen`;
+    return { code: 'zu_viele_fehlversuche', vars: { minuten: st.waitMin } };
   return null;
 }
 
@@ -156,7 +162,7 @@ function ipThrottle(bucket: string, max: number, windowMs: number) {
     const key = `${bucket}|${_ipOf(req)}`;
     const st  = await _read(key, windowMin);
     if (st && st.count >= max)
-      return res.status(429).json({ success: false, error: `Zu viele Anfragen — bitte in ${st.waitMin} Min. erneut versuchen` });
+      return sendeFehler(req, res, 429, 'zu_viele_anfragen', { minuten: st.waitMin });
     await _bump(key, windowMin);
     next();
   };

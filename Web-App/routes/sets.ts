@@ -128,6 +128,7 @@ import { csvEinlesen, entschaerfungRueckgaengig, parseCsvDate, sendCsv, ueberspr
 import { ausTabelle } from '../utils/validate';
 import { mitVersion } from '../utils/setNummer';
 import { csvEmpfang } from '../utils/dateiEmpfang';
+import { sendeFehler, fehlerText, antwortSprache } from '../utils/fehlerTexte';
 
 const requireLoginOrToken = loginOrTokenGuard({ timeoutMs: 3000 });
 
@@ -150,8 +151,11 @@ type ImportAuftrag = {
 } | null | undefined;
 
 // /status (Polling-Fallback) und /stream (SSE).
-function buildJobStatus(job: ImportAuftrag) {
-  if (!job || !job.status) return { success: false, error: 'Kein Import läuft' };
+function buildJobStatus(job: ImportAuftrag, req?: any) {
+  if (!job || !job.status) {
+    return { success: false, code: 'kein_import_laeuft',
+             error: fehlerText('kein_import_laeuft', antwortSprache(req)) };
+  }
   const results = Array.isArray(job.results) ? job.results : [];
   const ok   = results.filter((r: ImportErgebnis)=>r.success).length;
   const err  = results.filter((r: ImportErgebnis)=>!r.success && !r.isWarning).length;
@@ -173,6 +177,9 @@ function buildJobStatus(job: ImportAuftrag) {
 async function emitJobStatus(userId: number) {
   try {
     const job = await jobGet(userId);
+    // Ohne Request: Diese Meldung geht an den Ereignisbus, nicht an eine
+    // bestimmte Anfrage — die Sprache des Empfaengers ist hier unbekannt. Sie
+    // traegt aber `code`, und der Client kann daraus selbst etwas machen.
     csvImportBus.emit(`progress:${userId}`, buildJobStatus(job));
   } catch (_) { /* Fortschritt geht notfalls über den Nachzieh-Timer im Stream */ }
   // Über Prozessgrenzen hinweg signalisieren.
@@ -189,7 +196,7 @@ async function emitJobStatus(userId: number) {
 router.get('/import/csv/status', requireLoginOrToken, async (req, res) => {
   const uid = angemeldeteNutzerId(req);
   const job = await jobGet(uid);
-  res.json(buildJobStatus(job));
+  res.json(buildJobStatus(job, req));
 });
 
 // ── GET /api/sets/import/csv/stream — persistenter SSE-Kanal ──────────────────
@@ -205,7 +212,7 @@ router.get('/import/csv/stream', requireLoginOrToken, async (req, res) => {
   const openNow = _sseCounts.get(uid) || 0;
   if (openNow >= MAX_SSE_PER_USER) {
     console.warn(`[csv-stream] Nutzer ${uid} hat bereits ${openNow} offene Streams — abgelehnt`);
-    return res.status(429).json({ success: false, error: 'Zu viele offene Verbindungen' });
+    return sendeFehler(req, res, 429, 'zu_viele_verbindungen');
   }
   _sseCounts.set(uid, openNow + 1);
 
@@ -261,7 +268,7 @@ router.get('/import/csv/stream', requireLoginOrToken, async (req, res) => {
   const pgNotify = require('../utils/pgNotify');
   const onNotify = async (payload: any) => {
     if (String(payload) !== String(uid)) return;
-    send(buildJobStatus(await jobGet(uid).catch(() => null)));
+    send(buildJobStatus(await jobGet(uid).catch(() => null), req));
   };
   pgNotify.listen('csv_import_progress', onNotify);
 
@@ -280,7 +287,7 @@ router.get('/import/csv/stream', requireLoginOrToken, async (req, res) => {
   // vorher rund 26'000 Abfragen pro Tag, dauerhaft, auch wenn nie ein Import
   // läuft. Jetzt sind es gut 2'000.
   const fallbackTimer = setInterval(async () => {
-    const s = buildJobStatus(await jobGet(uid).catch(() => null));
+    const s = buildJobStatus(await jobGet(uid).catch(() => null), req);
     send(s);
   }, 120000);
 
@@ -291,7 +298,7 @@ router.get('/import/csv/stream', requireLoginOrToken, async (req, res) => {
 
   // 5) Jetzt erst den aktuellen Stand schicken — ab hier ist cleanup() sicher.
   // KEIN frühes res.end() wenn kein Import läuft: Die Verbindung bleibt offen.
-  send(buildJobStatus(await jobGet(uid).catch(() => null)));
+  send(buildJobStatus(await jobGet(uid).catch(() => null), req));
 
   function cleanup() {
     if (closed) return;
@@ -330,7 +337,7 @@ router.get('/info/:setNumber', requireLogin, async (req, res) => {
     if (own) return res.json({ success: true, set_number: n, name: own.name || n, ...own });
     // Unknown set — return the number itself as name
     res.json({ success: true, set_number: n, name: n });
-  } catch (e) { handleRouteError(res, e); }
+  } catch (e) { handleRouteError(res, e, undefined, req); }
 });
 
 router.use(requireLogin);
@@ -352,7 +359,7 @@ router.get('/export/rebrickable', async (req, res) => {
     sendCsv(res, `rebrickable-sets-${new Date().toISOString().substring(0,10)}.csv`,
       ['Set Number', 'Quantity'],
       sets.map(s => ({ 'Set Number': s.set_number, 'Quantity': s.quantity })));
-  } catch (e) { handleRouteError(res, e); }
+  } catch (e) { handleRouteError(res, e, undefined, req); }
 });
 
 // ── POST /api/sets/:sn/move — Set in ein anderes Konto des Haushalts ─────────
@@ -389,9 +396,9 @@ router.get('/export/rebrickable', async (req, res) => {
 
 router.post('/add-stream', async (req: LoggedInRequest, res) => {
   const { set_number, quantity=1, purchase_price, condition: setCondition, owner_user_id } = req.body;
-  if (!set_number) { res.status(400).json({ success:false, error:'set_number erforderlich' }); return; }
+  if (!set_number) { sendeFehler(req, res, 400, 'set_number_erforderlich'); return; }
   const streamOwner = await resolveWriteTarget(angemeldeteNutzerId(req), owner_user_id);
-  if (streamOwner === null) { res.status(403).json({ success:false, error:'Kein Schreibrecht für dieses Konto.' }); return; }
+  if (streamOwner === null) { sendeFehler(req, res, 403, 'kein_schreibrecht'); return; }
   // Schon im Blickfeld? Dann NICHT die Menge erhöhen (utils/setAdd.ts) — die
   // Oberfläche öffnet die Detailansicht. Die Antwort kommt hier als normales
   // JSON und nicht als Ereignisstrom: Es gibt nichts zu verfolgen, und ein
@@ -500,7 +507,7 @@ async function jobUpdate(userId: number, fields: Record<string, unknown>) {
 }
 
 router.post('/import/csv', csvEmpfang.single('file'), async (req, res) => {
-  if (!req.file) return res.status(400).json({ success:false, error:'Keine Datei' });
+  if (!req.file) return sendeFehler(req, res, 400, 'keine_datei');
   const userId = Number(angemeldeteNutzerId(req));
 
   // Mark any running job as cancelled
@@ -519,7 +526,7 @@ router.post('/import/csv', csvEmpfang.single('file'), async (req, res) => {
     records = gelesen.records;
     uebersprungen = gelesen.uebersprungen;
   } catch(e) {
-    return res.status(400).json({ success:false, error:'CSV Parse Fehler: ' + fehlertext(e) });
+    return sendeFehler(req, res, 400, 'csv_parse_fehler', { grund: fehlertext(e) });
   }
   if (!records.length) {
     return res.status(400).json({ success:false,
@@ -722,13 +729,13 @@ router.post('/:setNumber/instructions', async (req, res) => {
     await downloadSetInstructions(sn).catch(() => {});
     const instrs = await anleitungenZuSet(sn);
     res.json({ success: true, instructions: instrs, count: instrs.length });
-  } catch (e) { handleRouteError(res, e); }
+  } catch (e) { handleRouteError(res, e, undefined, req); }
 });
 
 // LoggedInRequest: liegt hinter dem router.use(requireLogin) weiter oben.
 router.post('/:setNumber/parts', async (req: LoggedInRequest, res) => {
   try { const count = await importPartsForSet(pfadParam(req, 'setNumber'), angemeldeteNutzerId(req)); res.json({ success:true, count }); }
-  catch (e) { handleRouteError(res, e); }
+  catch (e) { handleRouteError(res, e, undefined, req); }
 });
 
 // Erlaubte Endungen strikt aus dem MIME-Typ ableiten, NIE aus file.originalname.
@@ -766,7 +773,7 @@ const uploadInstr = multer({
   fileFilter: (_req, file, cb) => { if (ausTabelle(INSTR_EXT_BY_MIME, file.mimetype)) cb(null,true); else cb(new Error('Nur PDF, JPG oder PNG')); }
 });
 router.post('/:setNumber/instructions/upload', uploadInstr.single('file'), async (req, res) => {
-  if (!req.file) return res.status(400).json({ success:false, error:'Keine Datei' });
+  if (!req.file) return sendeFehler(req, res, 400, 'keine_datei');
   const uid=angemeldeteNutzerId(req), sn=req.params.setNumber;
   const desc=(req.body.description||req.file.originalname).substring(0,200);
   const relPath=`/data/uploads/${uid}/${req.file.filename}`;
@@ -777,7 +784,7 @@ router.post('/:setNumber/instructions/upload', uploadInstr.single('file'), async
 router.delete('/:setNumber/instructions/:instrId', async (req, res) => {
   try {
     const instr = await db.get('SELECT * FROM instructions WHERE id = $1 AND user_id = $2', [req.params.instrId, angemeldeteNutzerId(req)]);
-    if (!instr) return res.status(404).json({ success:false, error:'Nicht gefunden' });
+    if (!instr) return sendeFehler(req, res, 404, 'nicht_gefunden');
     await db.run('DELETE FROM instructions WHERE id = $1 AND user_id = $2', [req.params.instrId, angemeldeteNutzerId(req)]);
     // Die DATEI erst löschen, wenn keine andere Zeile mehr darauf zeigt.
     //
@@ -798,7 +805,7 @@ router.delete('/:setNumber/instructions/:instrId', async (req, res) => {
       }
     }
     res.json({ success:true });
-  } catch (e) { handleRouteError(res, e); }
+  } catch (e) { handleRouteError(res, e, undefined, req); }
 });
 
 // probeBrickInstructions() stand hier: eine dritte Kopie der

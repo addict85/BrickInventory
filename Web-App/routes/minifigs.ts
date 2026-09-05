@@ -52,6 +52,7 @@ import { csvEinlesen, parseCsvDate, toCsv, uebersprungenHinweis } from '../utils
 import { getMinifigParts } from '../clients/rebrickable';
 import { angemeldeteNutzerId } from '../utils/auth';
 import { csvEmpfang } from '../utils/dateiEmpfang';
+import { sendeFehler } from '../utils/fehlerTexte';
 
 router.use(requireLogin);
 
@@ -485,7 +486,7 @@ async function updateManualFig(uid: number, figNumber: string, body: any) {
 // ── POST CSV import ───────────────────────────────────────────────────────────
 
 router.post('/import/csv', csvEmpfang.single('file'), async (req: LoggedInRequest, res) => {
-  if (!req.file) return res.status(400).json({ success: false, error: 'Keine Datei' });
+  if (!req.file) return sendeFehler(req, res, 400, 'keine_datei');
   const uid = angemeldeteNutzerId(req);
   try {
     // Krumme Zeilen überspringen statt abbrechen (utils/csvExport.ts).
@@ -564,7 +565,7 @@ router.post('/import/csv', csvEmpfang.single('file'), async (req: LoggedInReques
     res.json({ success: true, added, updated, errors, total: records.length, results,
       skipped: uebersprungen.length || undefined,
       skipped_hint: uebersprungenHinweis(uebersprungen) || undefined });
-  } catch (e) { handleRouteError(res, e); }
+  } catch (e) { handleRouteError(res, e, undefined, req); }
 });
 
 // CJS-kompatibler Export: module.exports bleibt der Router selbst,

@@ -65,7 +65,9 @@ object AppModule {
     private fun buildInterceptorClient(
         prefs: PreferencesManager,
         isApiClient: Boolean,
-        sessionExpired: ch.brickinventoryapp.data.SessionExpiredSignal
+        sessionExpired: ch.brickinventoryapp.data.SessionExpiredSignal,
+        /** Nur, um die Anzeigesprache aus den Ressourcen zu lesen (Nachtrag 130). */
+        ctx: android.content.Context,
     ): OkHttpClient {
         return OkHttpClient.Builder()
             .apply {
@@ -118,6 +120,26 @@ object AppModule {
                     reqBuilder.header("Authorization", "Bearer $token")
                 }
 
+                // ── Und in welcher Sprache soll der Server antworten? ────────
+                //
+                // Der Server hat seine Fehlermeldungen seit Nachtrag 130 in
+                // beiden Sprachen (utils/fehlerTexte.ts) und nimmt die aus
+                // diesem Kopf. Vorher waren alle achtzig deutsch — auch in
+                // einer vollstaendig englischen Oberflaeche.
+                //
+                // Die Kennung kommt aus den RESSOURCEN (lang_code), nicht aus
+                // einer eigenen Ermittlung: So sagt sie genau das, was die
+                // Oberflaeche gerade zeigt, samt der per-App-Sprache, die der
+                // Nutzer in den Einstellungen waehlen kann.
+                //
+                // Nur an unseren Server: Ein Bildabruf bei BrickLink hat mit
+                // unserer Anzeigesprache nichts zu tun.
+                if (isOurServer && original.header("Accept-Language") == null) {
+                    val sprache = ch.brickinventoryapp.util.LanguageManager
+                        .localizedContext(ctx).getString(ch.brickinventoryapp.R.string.lang_code)
+                    reqBuilder.header("Accept-Language", sprache)
+                }
+
                 val outgoing = reqBuilder.build()
                 // Kein Klartext zu öffentlichen Hosts: das Manifest erlaubt
                 // cleartext weiterhin (die Server-URL ist frei konfigurierbar
@@ -156,10 +178,11 @@ object AppModule {
     @Singleton
     @Named("api")
     fun provideApiOkHttpClient(
+        @dagger.hilt.android.qualifiers.ApplicationContext context: android.content.Context,
         prefs: PreferencesManager,
         sessionExpired: ch.brickinventoryapp.data.SessionExpiredSignal
     ): OkHttpClient =
-        buildInterceptorClient(prefs, isApiClient = true, sessionExpired = sessionExpired)
+        buildInterceptorClient(prefs, isApiClient = true, sessionExpired = sessionExpired, ctx = context)
 
     @Provides
     @Singleton
@@ -171,7 +194,7 @@ object AppModule {
         prefs: PreferencesManager,
         sessionExpired: ch.brickinventoryapp.data.SessionExpiredSignal
     ): OkHttpClient =
-        buildInterceptorClient(prefs, isApiClient = false, sessionExpired = sessionExpired)
+        buildInterceptorClient(prefs, isApiClient = false, sessionExpired = sessionExpired, ctx = context)
             .newBuilder()
             // Browser-ähnliche Kennung für Bildanfragen an FREMDE Hosts
             // (Rebrickable-CDN & Co.), nicht an den eigenen Server.
@@ -340,10 +363,12 @@ object AppModule {
     @Singleton
     @Named("sse")
     fun provideSseOkHttpClient(
+        @dagger.hilt.android.qualifiers.ApplicationContext context: android.content.Context,
         prefs: PreferencesManager,
         sessionExpired: ch.brickinventoryapp.data.SessionExpiredSignal
     ): OkHttpClient =
-        buildInterceptorClient(prefs, isApiClient = true, sessionExpired = sessionExpired).newBuilder()
+        buildInterceptorClient(prefs, isApiClient = true, sessionExpired = sessionExpired, ctx = context)
+            .newBuilder()
             .readTimeout(0, TimeUnit.SECONDS)
             .pingInterval(20, TimeUnit.SECONDS)
             .build()

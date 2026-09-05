@@ -29,6 +29,7 @@ import { einzelwert } from '../../utils/validate';
 import { neuestesInventar } from '../../utils/rbInventar';
 import { mitVersion, ohneVersion } from '../../utils/setNummer';
 import { figurenAusKatalog } from '../../utils/minifigsImport';
+import { sendeFehler } from '../../utils/fehlerTexte';
 const router = express.Router();
 
 // ── GIBT ES DIESES SET SCHON? ────────────────────────────────────────────────
@@ -60,7 +61,7 @@ router.get('/sets/exists/:setNumber', requireToken, async (req: AuthedRequest, r
     const sn = String(req.params.setNumber);
     const treffer = await findSetInScope(req.apiUser.user_id, sn);
     res.json({ success: true, exists: !!treffer, ...(treffer || { set_number: normalizeSetNumber(sn) }) });
-  } catch (e) { handleRouteError(res, e); }
+  } catch (e) { handleRouteError(res, e, undefined, req); }
 });
 
 // ── BARCODE LOOKUP ───────────────────────────────────────────────────────────
@@ -277,8 +278,8 @@ router.get('/sets/barcode/:barcode', requireToken, async (req: AuthedRequest, re
       }
     }
 
-    res.status(404).json({ success:false, error:`Kein Set für "${barcode}" gefunden. Bitte Set-Nummer manuell eingeben.` });
-  } catch (e) { handleRouteError(res, e); }
+    sendeFehler(req, res, 404, 'barcode_kein_set', { barcode });
+  } catch (e) { handleRouteError(res, e, undefined, req); }
 });
 
 // extractSetFromEan() stand hier: EAN-Präfix abschneiden und daraus eine
@@ -414,7 +415,7 @@ router.get('/sets/:setNumber/parts-list', requireToken, async (req: AuthedReques
       await require('../../jobs/partsCatalogEnrich').downloadSetImages(setNum).catch(() => {});
       await require('../../jobs/partsCatalogEnrich').enrichSetMinifigs(setNum).catch(() => {});
     });
-  } catch (e) { handleRouteError(res, e); }
+  } catch (e) { handleRouteError(res, e, undefined, req); }
 });
 
 // GET /api/v1/sets/:setNumber/minifigs-list — user-independent minifigs
@@ -496,7 +497,7 @@ router.get('/sets/:setNumber/minifigs-list', requireToken, async (req: AuthedReq
         ).catch(() => {});
       }
     });
-  } catch (e) { handleRouteError(res, e); }
+  } catch (e) { handleRouteError(res, e, undefined, req); }
 });
 
 // ── SETS ──────────────────────────────────────────────────────────────────────
@@ -511,7 +512,7 @@ router.get('/sets', requireToken, async (req: AuthedRequest, res) => {
     const r = await getSets(await scopeIds(req.apiUser.user_id, parseScopeMode(req.query.accounts)), { search, theme, sort, page, page_size });
     const sets = r.sets;
     res.json({ success: true, count: sets.length, total: r.total, sets, ...(r.themes ? { themes: r.themes } : {}) });
-  } catch (e) { handleRouteError(res, e); }
+  } catch (e) { handleRouteError(res, e, undefined, req); }
 });
 
 router.get('/sets/:setNumber/price', requireToken, async (req: AuthedRequest, res) => {
@@ -532,7 +533,7 @@ router.get('/sets/:setNumber/price', requireToken, async (req: AuthedRequest, re
     // → Detail 200, Preis 404.
     const uids = await scopeIds(uid, parseScopeMode(req.query.accounts));
     const set = await db.get('SELECT * FROM sets WHERE set_number=$1 AND user_id = ANY($2)', [sn, uids]);
-    if (!set) return res.status(404).json({ success: false, error: 'Set not found' });
+    if (!set) return sendeFehler(req, res, 404, 'set_nicht_gefunden');
     // Die Währung kommt aus der NUTZEREINSTELLUNG — der frühere
     // `req.query.currency ||`-Vorrang ist weg (Nachtrag 31). Die Android-App
     // schickte hier ihren lokal gespeicherten Wert mit, und der startet auf
@@ -568,7 +569,7 @@ router.get('/sets/:setNumber/price', requireToken, async (req: AuthedRequest, re
         min_price: null, avg_price: null, max_price: null, qty_avg_price: null,
         no_price: true });
     }
-  } catch (e) { handleRouteError(res, e); }
+  } catch (e) { handleRouteError(res, e, undefined, req); }
 });
 
 // ── GET /api/v1/sets/:setNumber/price-history ─────────────────────────────────
@@ -592,7 +593,7 @@ router.get('/sets/:setNumber/price-history', requireToken, async (req: AuthedReq
     const currency = await getSetting(uid, 'currency', 'EUR');
     const data = await getSetPriceHistory(await scopeIds(uid, parseScopeMode(req.query.accounts)), sn, currency);
     res.json({ success: true, set_number: sn, ...data });
-  } catch (e) { handleRouteError(res, e); }
+  } catch (e) { handleRouteError(res, e, undefined, req); }
 });
 
 // ── GET /api/v1/sets/household-members ───────────────────────────────────────
@@ -605,7 +606,7 @@ router.get('/sets/:setNumber/price-history', requireToken, async (req: AuthedReq
  */
 router.get('/sets/household-members', requireToken, async (req: AuthedRequest, res) => {
   try { res.json({ success: true, members: await householdMembers(req.apiUser.user_id) }); }
-  catch (e) { handleRouteError(res, e); }
+  catch (e) { handleRouteError(res, e, undefined, req); }
 });
 
 router.get('/sets/:setNumber', requireToken, async (req: AuthedRequest, res) => {
@@ -613,21 +614,21 @@ router.get('/sets/:setNumber', requireToken, async (req: AuthedRequest, res) => 
     // Gemeinsamer Handler (auch /api/sets/:setNumber) — inkl. Zustands-
     // Aggregat über die Erfassungen und aufgelöstem image_local (Parität).
     const set = await getSet(await scopeIds(req.apiUser.user_id, parseScopeMode(req.query.accounts)), pfadParam(req, 'setNumber'));
-    if (!set) return res.status(404).json({ success:false, error:'Set nicht gefunden' });
+    if (!set) return sendeFehler(req, res, 404, 'set_nicht_gefunden');
     res.json({ success:true, set });
-  } catch (e) { handleRouteError(res, e); }
+  } catch (e) { handleRouteError(res, e, undefined, req); }
 });
 
 router.post('/sets', requireToken, async (req: AuthedRequest, res) => {
   const { set_number, quantity=1, purchase_price, condition, owner_user_id } = req.body;
-  if (!set_number) return res.status(400).json({ success:false, error:'set_number erforderlich' });
+  if (!set_number) return sendeFehler(req, res, 400, 'set_number_erforderlich');
   try {
     // Kontoauswahl beim Erfassen — wie in der Webapp: Der Hauptaccount trägt
     // ein Set für eines seiner Unterkonten ein. Ohne Angabe bleibt es beim
     // eigenen Konto; resolveWriteTarget prüft die RICHTUNG, nicht bloss die
     // Mitgliedschaft im Blickfeld.
     const owner = await resolveWriteTarget(req.apiUser.user_id, owner_user_id);
-    if (owner === null) return res.status(403).json({ success:false, error:'Kein Schreibrecht für dieses Konto.' });
+    if (owner === null) return sendeFehler(req, res, 403, 'kein_schreibrecht');
     // Schon im Blickfeld? Dann NICHT die Menge erhöhen — die Oberfläche öffnet
     // die Detailansicht. Die Regel steht in utils/setAdd.ts und gilt für beide
     // Clients und alle drei Erfassungswege (Nummer, Barcode, Texterkennung).
@@ -639,12 +640,12 @@ router.post('/sets', requireToken, async (req: AuthedRequest, res) => {
     const result = await addSet(set_number, V.acquisitionQuantity(quantity), owner, null,
       V.optionalPrice(purchase_price, 'Kaufpreis'), condition);
     res.json({ success:true, ...result });
-  } catch (e) { handleRouteError(res, e); }
+  } catch (e) { handleRouteError(res, e, undefined, req); }
 });
 
 router.put('/sets/:setNumber', requireToken, async (req: AuthedRequest, res) => {
   if (req.body.quantity === undefined && req.body.purchase_price === undefined && req.body.condition === undefined) {
-    return res.status(400).json({ success: false, error: 'quantity, purchase_price oder condition erforderlich' });
+    return sendeFehler(req, res, 400, 'erfassung_felder');
   }
   try {
     // Die Antwort trägt die Gesamtmenge NACH der Änderung: Bei einer
@@ -653,7 +654,7 @@ router.put('/sets/:setNumber', requireToken, async (req: AuthedRequest, res) => 
     // gesendete. Ohne sie zeigte die Oberfläche weiter ihre eigene Annahme.
     const r = await updateSet(req.apiUser.user_id, pfadParam(req, 'setNumber'), req.body);
     res.json({ success: true, ...(r || {}) });
-  } catch (e) { handleRouteError(res, e); }
+  } catch (e) { handleRouteError(res, e, undefined, req); }
 });
 
 /**
@@ -682,9 +683,9 @@ router.delete('/sets/:setNumber', requireToken, async (req: AuthedRequest, res) 
       : await scopeIds(req.apiUser.user_id, parseScopeMode(req.query.accounts));
     const ok = await deleteSet(gewaehlt.filter(id => schreibbar.includes(id)),
                                pfadParam(req, 'setNumber'));
-    if (!ok) return res.status(404).json({ success: false, error: 'Set nicht gefunden' });
+    if (!ok) return sendeFehler(req, res, 404, 'set_nicht_gefunden');
     res.json({ success: true });
-  } catch (e) { handleRouteError(res, e); }
+  } catch (e) { handleRouteError(res, e, undefined, req); }
 });
 
 
@@ -702,9 +703,9 @@ router.post('/sets/:sn/move', requireToken, async (req: AuthedRequest, res) => {
     const fromId = await resolveWriteTarget(uid, req.body?.from_user_id ?? uid);
     const toId   = await resolveWriteTarget(uid, req.body?.to_user_id);
     if (fromId === null || toId === null)
-      return res.status(403).json({ success: false, error: 'Kein Schreibrecht für dieses Konto.' });
+      return sendeFehler(req, res, 403, 'kein_schreibrecht');
     if (fromId === toId)
-      return res.status(400).json({ success: false, error: 'Quell- und Zielkonto sind identisch.' });
+      return sendeFehler(req, res, 400, 'quelle_ziel_identisch');
     // ── Verschoben wird über den KAUFPREIS, nie über das Set ────────────────
     //
     // acquisition_ids ist Pflicht. Ein Set als Ganzes zu verschieben klingt
@@ -716,12 +717,11 @@ router.post('/sets/:sn/move', requireToken, async (req: AuthedRequest, res) => {
       ? req.body.acquisition_ids.map((n: any) => parseInt(String(n))).filter(Number.isFinite)
       : [];
     if (!acqIds.length)
-      return res.status(400).json({ success: false,
-        error: 'Bitte die zu verschiebenden Kaufpreise angeben (acquisition_ids).' });
+      return sendeFehler(req, res, 400, 'kaufpreise_angeben');
     const moved = await withInventoryLock(fromId, sn, (tx) =>
       moveSetBetweenAccounts(tx, sn, fromId, toId, acqIds));
     res.json({ success: true, set_number: sn, from_user_id: fromId, to_user_id: toId, ...moved });
-  } catch (e) { handleRouteError(res, e); }
+  } catch (e) { handleRouteError(res, e, undefined, req); }
 });
 
 export default router;

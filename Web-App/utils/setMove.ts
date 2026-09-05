@@ -29,6 +29,7 @@
  *    kopiert bzw. beim letzten Exemplar mitgenommen.
  */
 import { recordAcquisitionForDay } from './acquisitions';
+import { fehlerWerfen } from './fehlerTexte';
 
 export interface MoveResult {
   quantity: number;
@@ -131,7 +132,7 @@ export async function moveSetBetweenAccounts(
   tx: any, sn: string, fromId: number, toId: number, acquisitionIds?: number[]
 ): Promise<MoveResult> {
   const src = await tx.get('SELECT * FROM sets WHERE user_id=$1 AND set_number=$2', [fromId, sn]);
-  if (!src) { const e: any = new Error('Not found'); e.status = 404; throw e; }
+  if (!src) fehlerWerfen('nicht_gefunden', 404);
 
   const all = await tx.all(
     `SELECT id, quantity, purchase_price, COALESCE(condition,'N') AS condition, created_at
@@ -141,7 +142,7 @@ export async function moveSetBetweenAccounts(
   const wanted = acquisitionIds?.length
     ? all.filter((a: any) => acquisitionIds.includes(parseInt(a.id)))
     : all;
-  if (!wanted.length) { const e: any = new Error('Kaufpreis nicht gefunden'); e.status = 404; throw e; }
+  if (!wanted.length) fehlerWerfen('kaufpreis_nicht_gefunden', 404);
 
   // Wieviele Exemplare wandern? Ohne Erfassungen (Altbestand) das ganze Set.
   const movingQty = all.length
@@ -235,12 +236,12 @@ export async function moveManualAcquisition(
   const acq = await tx.get(
     `SELECT id, quantity, unit_price, COALESCE(condition,'N') AS condition, created_at
        FROM ${acqTab} WHERE id = $1 AND user_id = $2`, [acquisitionId, fromId]);
-  if (!acq) { const e: any = new Error('Kaufpreis nicht gefunden'); e.status = 404; throw e; }
+  if (!acq) fehlerWerfen('kaufpreis_nicht_gefunden', 404);
 
   const src = await tx.get(
     `SELECT * FROM ${table} WHERE user_id = $1 AND ${keySql} AND COALESCE(source,'set') = 'manual'`,
     [fromId, ...keyValues]);
-  if (!src) { const e: any = new Error('Not found'); e.status = 404; throw e; }
+  if (!src) fehlerWerfen('nicht_gefunden', 404);
 
   const movingQty = Math.max(1, parseInt(String(acq.quantity)) || 1);
   const remaining = Math.max(0, (src.quantity || 1) - movingQty);

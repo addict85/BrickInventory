@@ -63,6 +63,15 @@ fun SetPruefungDialog(vm: MainViewModel) {
                     when (schritt.phase) {
                         Pruefphase.BARCODE -> stringResource(R.string.pruef_barcode, schritt.bezeichner)
                         Pruefphase.BESTAND -> stringResource(R.string.pruef_bestand, schritt.bezeichner)
+                        // Kein `else`: Ein neuer Schritt soll den Uebersetzer
+                        // aufwecken und nicht stillschweigend in einem
+                        // Sammelzweig verschwinden.
+                        Pruefphase.ANLEGEN_STAMMDATEN ->
+                            stringResource(R.string.pruef_anlegen_stammdaten, schritt.bezeichner)
+                        Pruefphase.ANLEGEN_BILD ->
+                            stringResource(R.string.pruef_anlegen_bild, schritt.bezeichner)
+                        Pruefphase.ANLEGEN_ABSCHLUSS ->
+                            stringResource(R.string.pruef_anlegen_abschluss, schritt.bezeichner)
                     },
                     style = MaterialTheme.typography.bodyMedium
                 )
