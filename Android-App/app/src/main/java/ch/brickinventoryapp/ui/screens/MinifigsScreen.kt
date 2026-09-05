@@ -100,8 +100,24 @@ fun MinifigsScreen(
                 modifier = Modifier.padding(start = 14.dp, top = 8.dp)
             )
         }
-        // Stats chips
-        if (figs.isNotEmpty()) {
+        // ── Warum die Bedingung nicht mehr `figs.isNotEmpty()` ist ──────────────
+        //
+        // Hier stand `if (figs.isNotEmpty())`: Die Leiste erschien nur, wenn die
+        // GELADENE Seite Figuren enthielt. Eine Suche ohne Treffer liess sie
+        // also verschwinden — obwohl die drei Zahlen die ganze Sammlung meinen
+        // und weiter stimmen. Genau das sagt der Kommentar darunter seit jeher:
+        // „vom Server, nicht aus der (gefilterten) Liste".
+        //
+        // Die Teile-Ansicht daneben — derselbe Aufbau, dieselbe Leiste — prueft
+        // `stats != null` und laesst sie stehen. Die Webapp auch: Dort ist die
+        // Leiste fester Bestandteil der Seite und wird nur gefuellt
+        // (06-minifigs.js, loadMinifigStats).
+        //
+        // `partsStats` ist im Zustand nullbar, `minifigStats` nicht — deshalb
+        // hier die Frage nach dem Inhalt statt nach null. Wirkung ist dieselbe:
+        // verborgen bleibt die Leiste nur vor dem ersten Laden und bei einer
+        // wirklich leeren Sammlung.
+        if (minifigStats.types > 0 || minifigStats.totalQuantity > 0) {
             Surface(color = MaterialTheme.colorScheme.surface, tonalElevation = 2.dp) {
                 Row(
                     Modifier.fillMaxWidth().padding(horizontal = 14.dp, vertical = 10.dp),

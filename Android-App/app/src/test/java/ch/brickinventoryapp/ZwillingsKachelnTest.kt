@@ -54,6 +54,29 @@ class ZwillingsKachelnTest {
     }
 
     @Test
+    fun `die Kennzahlen-Leiste haengt nicht an der geladenen Seite`() {
+        // Sie zeigt Zahlen der GANZEN Sammlung (utils/handlers.ts,
+        // getMinifigStats). An `figs.isNotEmpty()` gehaengt verschwand sie bei
+        // einer Suche ohne Treffer — die Teile-Ansicht daneben und die Webapp
+        // lassen sie stehen.
+        //
+        // Geprueft wird nur, dass die NEUE Bedingung dasteht. Ein „darf nicht
+        // vorkommen" auf `figs.isNotEmpty()` waere falsch: Dieselbe Abfrage
+        // steht 90 Zeilen weiter unten voellig zu Recht — dort entscheidet sie,
+        // ob eine leere Liste den Hinweis „nichts gefunden" zeigt. Der Spiegel
+        // hat das gemeldet, bevor es in einen Lauf ging.
+        val figuren = code(read("ui/screens/MinifigsScreen.kt"))
+        assert(figuren.contains("if (minifigStats.types > 0 || minifigStats.totalQuantity > 0) {")) {
+            "Die Kennzahlen-Leiste prueft nicht mehr die Zahlen des Servers"
+        }
+        val teile = code(read("ui/screens/PartsScreen.kt"))
+        assert(teile.contains("if (stats != null) {")) {
+            "Die Teile-Ansicht hat ihre Bedingung geaendert — dann muss die " +
+                "Figuren-Ansicht nach"
+        }
+    }
+
+    @Test
     fun `beide Kacheln zeigen den Besitzer`() {
         val teile = code(read("ui/screens/PartsScreen.kt"))
         assert(teile.contains("OwnerBadges(part.owners, Modifier.padding(top = 2.dp))")) {
