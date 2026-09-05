@@ -191,6 +191,11 @@ window.I18N_DE = {
   'common.added_cap': 'Hinzugefügt',
   'common.updated_cap': 'Aktualisiert',
   'common.delete_title': 'Löschen?',
+  // Vorlesetexte fuer Knoepfe, die nur ein Symbol tragen (Nachtrag 143).
+  // common.close stand hier schon einmal und ist als tot entfernt worden —
+  // damals zu Recht: Es rief ihn niemand. Jetzt gibt es einen Aufrufer.
+  'common.close': 'Schliessen',
+  'common.delete_item': 'Eintrag löschen',
   'common.delete_text': 'Diese Aktion kann nicht rückgängig gemacht werden.',
   'common.enter_set_number': 'Bitte Set-Nummer eingeben',
   'register.req_fields': 'Benutzername, E-Mail und Passwort erforderlich.',

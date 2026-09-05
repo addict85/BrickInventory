@@ -299,8 +299,8 @@
           </select>
           <select id="scope-gallery" class="scope-select" aria-label="Konten" data-i18n="household.scope_label" data-i18n-attr="aria-label" data-change="onScopeChange" data-arg="gallery" style="width:auto;display:none"></select>
           <div class="vtgl">
-            <button class="vb active" id="vg">⊞</button>
-            <button class="vb" id="vl">☰</button>
+            <button class="vb active" id="vg" aria-label="Karten" data-i18n="parts.view.grid" data-i18n-attr="aria-label">⊞</button>
+            <button class="vb" id="vl" aria-label="Tabelle" data-i18n="parts.view.table" data-i18n-attr="aria-label">☰</button>
           </div>
         </div>
 
@@ -931,7 +931,7 @@
               <option value="168" data-i18n="monitor.cache_week">1 Woche</option>
             </select>
             <span style="margin-left:.5rem;font-size:.78rem;color:var(--mut)" data-i18n="monitor.default_condition">Preiszustand:</span>
-            <select id="mon-default-condition" style="font-size:.78rem;padding:3px 6px;border:1px solid var(--bdr);border-radius:6px;background:var(--sur)" aria-label="mon-default-condition">
+            <select id="mon-default-condition" style="font-size:.78rem;padding:3px 6px;border:1px solid var(--bdr);border-radius:6px;background:var(--sur)" aria-label="Preiszustand" data-i18n="monitor.default_condition" data-i18n-attr="aria-label">
               <option value="N" data-i18n="monitor.condition_new">Neu</option>
               <option value="U" data-i18n="monitor.condition_used">Gebraucht</option>
             </select>
@@ -972,12 +972,12 @@
 <!-- Set Detail Modal -->
 <div class="ovl" id="set-modal" role="dialog" aria-modal="true">
   <div class="modal">
-    <div class="mhd"><div class="mtit" id="m-tit">Set</div><button class="btn bs btn-sm" data-click="closeModal">✕</button></div>
+    <div class="mhd"><div class="mtit" id="m-tit">Set</div><button class="btn bs btn-sm" data-click="closeModal" aria-label="Schliessen" data-i18n="common.close" data-i18n-attr="aria-label">✕</button></div>
     <img id="m-img" src="" alt="" class="mimg" style="cursor:zoom-in" data-orig="/assets/set-placeholder.svg" data-click="openImageLightboxFromEl" />
     <div id="m-det"></div>
     <div id="m-instr" class="il"></div>
     <div class="mfooter">
-      <button class="btn bd" id="btn-md">🗑️</button>
+      <button class="btn bd" id="btn-md" aria-label="Set löschen" data-i18n="detail.delete" data-i18n-attr="aria-label">🗑️</button>
     </div>
   </div>
 </div>
@@ -990,7 +990,7 @@
         <div class="mtit" id="cat-m-tit">—</div>
         <div id="cat-m-sub" style="font-size:.78rem;color:var(--mut);margin-top:2px"></div>
       </div>
-      <button class="btn bs btn-sm" data-click="closeCatModal">✕</button>
+      <button class="btn bs btn-sm" data-click="closeCatModal" aria-label="Schliessen" data-i18n="common.close" data-i18n-attr="aria-label">✕</button>
     </div>
     <img id="cat-m-img" src="" alt="" class="mimg" style="cursor:zoom-in" referrerpolicy="no-referrer" data-orig="/assets/set-placeholder.svg" data-click="openImageLightboxFromEl" />
     <div id="cat-m-det"></div>
@@ -1017,12 +1017,12 @@
         <div class="mtit" id="man-detail-tit">—</div>
         <div id="man-detail-sub" style="font-size:.78rem;color:var(--mut);margin-top:2px"></div>
       </div>
-      <button class="btn bs btn-sm" data-click="closeManDetail">✕</button>
+      <button class="btn bs btn-sm" data-click="closeManDetail" aria-label="Schliessen" data-i18n="common.close" data-i18n-attr="aria-label">✕</button>
     </div>
     <img id="man-detail-img" src="" alt="" style="width:100%;max-height:160px;object-fit:contain;background:var(--s50);border-radius:8px;border:1px solid var(--bdr);margin-bottom:1rem;display:none" />
     <div id="man-detail-body"></div>
     <div class="mfooter" style="justify-content:space-between">
-      <button class="btn bd btn-sm" id="man-detail-del">🗑️</button>
+      <button class="btn bd btn-sm" id="man-detail-del" aria-label="Eintrag löschen" data-i18n="common.delete_item" data-i18n-attr="aria-label">🗑️</button>
       <button class="btn bs" data-click="closeManDetail" data-i18n="acq.back">Zurück</button>
     </div>
   </div>
@@ -1036,7 +1036,7 @@
         <div class="mtit" id="setitem-tit">—</div>
         <div id="setitem-sub" style="font-size:.78rem;color:var(--mut);margin-top:2px"></div>
       </div>
-      <button class="btn bs btn-sm" data-click="closeSetItemDetail">✕</button>
+      <button class="btn bs btn-sm" data-click="closeSetItemDetail" aria-label="Schliessen" data-i18n="common.close" data-i18n-attr="aria-label">✕</button>
     </div>
     <!-- data-click="openImageLightboxFromEl" ist der Zoom (11-actions.js);
          die Adresse dafuer steht in data-orig und wird beim Oeffnen gesetzt. -->
@@ -1057,7 +1057,7 @@
       <div style="display:flex;gap:8px;align-items:center;flex-shrink:0">
         <button id="pdf-viewer-print" class="btn bs btn-sm" data-click="printPdfViewer">🖨️ <span data-i18n="pdf.print">Drucken</span></button>
         <a id="pdf-viewer-download" class="btn bs btn-sm" download href="#" style="text-decoration:none">⬇️ <span data-i18n="pdf.download">Herunterladen</span></a>
-        <button class="btn bs btn-sm" data-click="closePdfViewer" aria-label="Schliessen">✕</button>
+        <button class="btn bs btn-sm" data-click="closePdfViewer" aria-label="Schliessen" data-i18n="common.close" data-i18n-attr="aria-label">✕</button>
       </div>
     </div>
     <div style="flex:1;position:relative;background:#525659;min-height:0">
@@ -1084,7 +1084,7 @@
         <div class="mtit" id="acq-modal-tit" data-i18n="detail.purchase_price">Kaufpreise</div>
         <div id="acq-modal-sub" style="font-size:.78rem;color:var(--mut);margin-top:2px"></div>
       </div>
-      <button class="btn bs btn-sm" data-click="closeAcqModal">✕</button>
+      <button class="btn bs btn-sm" data-click="closeAcqModal" aria-label="Schliessen" data-i18n="common.close" data-i18n-attr="aria-label">✕</button>
     </div>
     <div id="acq-modal-body" style="margin-top:.5rem"></div>
     <div class="mfooter">
@@ -1095,14 +1095,14 @@
 
 <!-- Image Lightbox (vergrösserte Set-Ansicht) -->
 <div class="ovl" id="img-lightbox" style="z-index:300;background:rgba(255,255,255,.97)" data-click="lightboxBackdrop">
-  <button class="btn bs btn-sm" data-click="closeImageLightbox" style="position:absolute;top:20px;right:20px;font-size:1.1rem;padding:6px 14px">✕</button>
+  <button class="btn bs btn-sm" data-click="closeImageLightbox" style="position:absolute;top:20px;right:20px;font-size:1.1rem;padding:6px 14px" aria-label="Schliessen" data-i18n="common.close" data-i18n-attr="aria-label">✕</button>
   <img id="lightbox-img" src="" alt="" data-onerror="keep" style="max-width:92vw;max-height:92vh;object-fit:contain;border-radius:8px" />
 </div>
 
 <!-- Reset PW Modal -->
 <div class="ovl" id="pw-modal" role="dialog" aria-modal="true">
   <div class="modal" style="max-width:360px">
-    <div class="mhd"><div class="mtit" data-i18n="users.pw_reset_title">Passwort zurücksetzen</div><button class="btn bs btn-sm" data-click="closePwModal">✕</button></div>
+    <div class="mhd"><div class="mtit" data-i18n="users.pw_reset_title">Passwort zurücksetzen</div><button class="btn bs btn-sm" data-click="closePwModal" aria-label="Schliessen" data-i18n="common.close" data-i18n-attr="aria-label">✕</button></div>
     <div class="sform">
       <div class="fg"><label for="rpw-v" data-i18n="users.pw_modal.new_password">Neues Passwort</label><input type="password" id="rpw-v" /></div>
       <input type="hidden" id="rpw-uid" />
