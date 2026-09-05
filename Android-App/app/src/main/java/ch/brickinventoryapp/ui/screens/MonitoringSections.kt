@@ -130,6 +130,9 @@ internal fun BricksetQueueRow(
 fun CacheAndLimitsSection(vm: MainViewModel, onSnack: (String) -> Unit = {}) {
     val scope = rememberCoroutineScope()
     val cacheSavedMsg  = stringResource(R.string.monitoring_cache_saved)
+    val cacheGeleertMsg = stringResource(R.string.monitoring_cache_cleared)
+    var zeigeLeerenFrage by rememberSaveable { mutableStateOf(false) }
+    var leerenAlles by rememberSaveable { mutableStateOf(false) }
     val limitsSavedMsg = stringResource(R.string.monitoring_limits_saved)
 
     // Serverdaten aus dem ViewModel; hiltViewModel() liefert im selben
@@ -258,7 +261,59 @@ fun CacheAndLimitsSection(vm: MainViewModel, onSnack: (String) -> Unit = {}) {
                     }
                 }
             }
+
+            // ── Leeren (Nachtrag 135) ──────────────────────────────────────
+            //
+            // Die Zahlen oben standen bisher ohne Handhabe da: Man sah, dass
+            // tausend Preise veraltet sind, und konnte nichts tun. Die Webapp
+            // bietet das Leeren an zwei Stellen an (04-finance.js,
+            // 05-settings.js), einmal nur die Preise, einmal alles.
+            //
+            // MIT Rueckfrage, anders als dort: Jeder Neuaufbau kostet Anfragen
+            // aus dem gemeinsamen Tageskontingent — das steht so im Kommentar
+            // der Serverroute. Ein Fehlgriff ist hier also nicht nur laestig,
+            // er nimmt allen anderen Kontingent weg.
+            Row(
+                Modifier.fillMaxWidth().padding(top = 4.dp),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                OutlinedButton(
+                    onClick = { leerenAlles = false; zeigeLeerenFrage = true },
+                    shape = Formen.kachel,
+                    contentPadding = PaddingValues(horizontal = 12.dp, vertical = 6.dp),
+                ) { Text(stringResource(R.string.monitoring_cache_clear_prices), fontSize = 12.sp) }
+                OutlinedButton(
+                    onClick = { leerenAlles = true; zeigeLeerenFrage = true },
+                    shape = Formen.kachel,
+                    contentPadding = PaddingValues(horizontal = 12.dp, vertical = 6.dp),
+                ) { Text(stringResource(R.string.monitoring_cache_clear_all), fontSize = 12.sp) }
+            }
         }
+    }
+
+    if (zeigeLeerenFrage) {
+        AlertDialog(
+            onDismissRequest = { zeigeLeerenFrage = false },
+            icon = { Icon(Icons.Default.Delete, null, tint = MaterialTheme.colorScheme.error) },
+            title = { Text(stringResource(
+                if (leerenAlles) R.string.monitoring_cache_clear_all
+                else R.string.monitoring_cache_clear_prices)) },
+            text = { Text(stringResource(R.string.monitoring_cache_clear_hint)) },
+            confirmButton = {
+                TextButton(onClick = {
+                    zeigeLeerenFrage = false
+                    scope.launch { if (mon.leereCache(leerenAlles)) onSnack(cacheGeleertMsg) }
+                }) {
+                    Text(stringResource(R.string.monitoring_cache_clear_confirm),
+                        color = MaterialTheme.colorScheme.error)
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { zeigeLeerenFrage = false }) {
+                    Text(stringResource(R.string.monitoring_cache_clear_cancel))
+                }
+            }
+        )
     }
 
     // ── API Rate Limits ───────────────────────────────────────────────────────

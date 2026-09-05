@@ -224,6 +224,12 @@
     <string name="monitoring_cache_subsets">Subsets</string>
     <string name="monitoring_cache_catalog">Katalog</string>
     <string name="monitoring_cache_duration">Cache-Dauer</string>
+    <string name="monitoring_cache_clear_prices">Preise leeren</string>
+    <string name="monitoring_cache_clear_all">Alles leeren</string>
+    <string name="monitoring_cache_clear_hint">Die zwischengespeicherten Preise werden verworfen. Sie neu zu holen kostet Anfragen aus dem gemeinsamen Tageskontingent.</string>
+    <string name="monitoring_cache_clear_confirm">Leeren</string>
+    <string name="monitoring_cache_clear_cancel">Abbrechen</string>
+    <string name="monitoring_cache_cleared">Cache geleert</string>
     <string name="monitoring_cache_saved">Cache-Dauer gespeichert</string>
     <string name="monitoring_api_calls">API-AUFRUFE</string>
     <string name="monitoring_limits_saved">Limits gespeichert</string>

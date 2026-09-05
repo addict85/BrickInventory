@@ -241,6 +241,25 @@ class MainViewModel @Inject constructor(
         .stateIn(viewModelScope, SharingStarted.Eagerly, _state.value.appTheme)
 
     init {
+        // ── Design VOR der Anmeldung (Nachtrag 135) ──────────────────────────
+        //
+        // Zwei Stufen, wie in der Webapp (public/js/00-theme-boot.js):
+        //
+        //   1. Hier: der gemerkte Wert. Kein Netz, kein Aufblitzen des falschen
+        //      Designs. `first()` statt `collect`, weil dieser Fluss danach von
+        //      _state getragen wird — zwei Quellen fuer dasselbe Feld waeren
+        //      wieder eine Stelle, an der sie auseinanderlaufen.
+        //   2. loadAppTheme(): die oeffentliche Adresse des Servers, falls sich
+        //      dort etwas geaendert hat.
+        //
+        // Ohne das erschienen Anmelde- und Einrichtungsbildschirm bei jedem
+        // Kaltstart im Standard-Design und sprangen nach dem Anmelden um.
+        viewModelScope.launch {
+            val gemerkt = prefs.appTheme.first()
+            _state.update { it.copy(appTheme = gemerkt) }
+            loadAppTheme()
+        }
+
         // Session (URL + Token): nur bei *tatsächlicher* Änderung neu laden.
         // Früher hing hier auch currency dran — dadurch löste z. B.
         // loadValuation() (das die Währung speichert) einen kompletten

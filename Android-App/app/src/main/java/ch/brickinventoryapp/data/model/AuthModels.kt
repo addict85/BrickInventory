@@ -70,6 +70,10 @@ data class UserSettings(
     @SerialName("app_theme") val appTheme: String = "classic" // global vom Admin gewähltes Design
 )
 
+/** Antwort von GET /api/v1/settings/theme — die einzige Adresse ohne Anmeldung. */
+@Serializable
+data class AppThemeResponse(val success: Boolean = false, val theme: String = "classic")
+
 @Serializable
 data class SettingsResponse(
     val success: Boolean,

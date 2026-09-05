@@ -48,6 +48,12 @@ class TouchTargetSizeTest {
         "ManualItemDetailScreen.kt" to "Bearbeiten/Löschen je Kaufpreis-Zeile",
         "AcquisitionManagementScreen.kt" to "Löschen in der Zeile eines Kaufpreises",
         "SetDetailSections.kt" to "Bearbeiten/Löschen je Kaufpreis-Zeile",
+        // Nachtrag 135: Der Abbrechen-Knopf im CSV-Fortschrittsbalken. 24 dp
+        // sichtbar, weil der Balken ein schmaler Streifen ueber der ganzen App
+        // ist — ein 48-dp-Knopf wuerde ihn doppelt so hoch machen, und er ist
+        // auf JEDEM Reiter zu sehen, nicht nur waehrend man ihn braucht.
+        // Material3 zieht die Antippflaeche trotzdem auf 48 dp auf.
+        "CsvImportBanner.kt" to "Abbrechen im Fortschrittsbalken (24dp)",
     )
 
     @Test

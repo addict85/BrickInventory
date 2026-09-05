@@ -28,6 +28,45 @@ internal fun MainViewModel.loadSettings() {
             )}
             is Result.Error -> {}
         }
+        // Merken, damit der naechste Kaltstart schon im richtigen Design
+        // anfaengt — siehe PreferencesManager.APP_THEME.
+        (r as? Result.Success)?.let { prefs.saveAppTheme(it.data.settings.appTheme) }
+    }
+}
+
+/**
+ * Das globale Design holen, BEVOR jemand angemeldet ist.
+ *
+ * ── Warum es das gibt (Nachtrag 135) ────────────────────────────────────────
+ *
+ * `app_theme` kam bisher nur mit /settings, also erst nach der Anmeldung.
+ * Anmelde- und Einrichtungsbildschirm erschienen dadurch bei jedem Kaltstart im
+ * Standard-Design und sprangen nach dem Anmelden um.
+ *
+ * Zwei Stufen, wie in der Webapp (00-theme-boot.js):
+ *
+ *   1. Sofort beim Start der gemerkte Wert — kein Netz, kein Aufblitzen.
+ *      Das erledigt MainViewModel beim Anlegen.
+ *   2. Gleich danach diese Abfrage. Weicht der Serverwert ab — ein anderes
+ *      Geraet, der Verwalter hat gerade umgestellt —, wird korrigiert.
+ *
+ * Ohne Servaradresse gar nichts: Vor der Einrichtung gibt es keinen Server,
+ * den man fragen koennte.
+ *
+ * Bewusst ohne Meldung im Fehlerfall: Es bleibt beim gemerkten Design, und das
+ * ist genau das richtige Verhalten. Eine Fehlermeldung ueber ein Design waere
+ * beim Anmelden nur im Weg.
+ */
+internal fun MainViewModel.loadAppTheme() {
+    viewModelScope.launch {
+        if (prefs.serverUrl.first().isBlank()) return@launch
+        when (val r = repo.admin.getAppTheme()) {
+            is Result.Success -> if (r.data.success) {
+                _state.update { it.copy(appTheme = r.data.theme) }
+                prefs.saveAppTheme(r.data.theme)
+            }
+            is Result.Error -> {}
+        }
     }
 }
 

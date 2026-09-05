@@ -164,6 +164,20 @@ class MonitoringViewModel @Inject constructor(
         return ok
     }
 
+    /**
+     * Cache leeren und die Zahlen sofort neu holen.
+     *
+     * Das Nachladen gehoert dazu: Ohne es staenden die alten Zahlen weiter da,
+     * und der Nutzer haette keinen Hinweis, dass etwas passiert ist — bei einer
+     * Handlung, die man genau EINMAL ausloest, ist das der ganze Unterschied
+     * zwischen „hat funktioniert" und „nichts passiert".
+     */
+    suspend fun leereCache(alles: Boolean): Boolean {
+        val ok = repo.admin.clearCache(alles) is Result.Success
+        if (ok) ladeCacheUndGrenzen()
+        return ok
+    }
+
     suspend fun setzeGrenzwerte(rebrickable: Int, bricklink: Int, brickset: Int): Boolean {
         val ok = repo.admin.setApiLimits(rebrickable, bricklink, brickset) is Result.Success
         if (ok) {

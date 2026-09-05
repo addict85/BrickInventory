@@ -240,6 +240,12 @@
     <string name="monitoring_cache_subsets">Subsets</string>
     <string name="monitoring_cache_catalog">Catalog</string>
     <string name="monitoring_cache_duration">Cache duration</string>
+    <string name="monitoring_cache_clear_prices">Clear prices</string>
+    <string name="monitoring_cache_clear_all">Clear all</string>
+    <string name="monitoring_cache_clear_hint">Cached prices are discarded. Rebuilding them uses requests from the shared daily quota.</string>
+    <string name="monitoring_cache_clear_confirm">Clear</string>
+    <string name="monitoring_cache_clear_cancel">Cancel</string>
+    <string name="monitoring_cache_cleared">Cache cleared</string>
     <string name="monitoring_cache_saved">Cache duration saved</string>
     <string name="monitoring_api_calls">API CALLS</string>
     <string name="monitoring_limits_saved">Limits saved</string>

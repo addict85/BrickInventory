@@ -100,6 +100,9 @@ class AdminRepository @Inject constructor(
     suspend fun getSettings(): Result<SettingsResponse> =
         safeCall { api.getSettings() }
 
+    /** Das globale Design — ohne Anmeldung. Siehe BrickApiService.getAppTheme. */
+    suspend fun getAppTheme(): Result<AppThemeResponse> = safeCall { api.getAppTheme() }
+
     suspend fun updateSettings(currency: String, condition: String): Result<GenericResponse> =
         safeCall { api.updateSettings(mapOf("currency" to currency, "price_condition" to condition)) }
 
@@ -110,6 +113,17 @@ class AdminRepository @Inject constructor(
     suspend fun getCacheTtl(): Result<CacheTtlResponse> = safeCall { api.getCacheTtl() }
 
     suspend fun setCacheTtl(hours: Int): Result<GenericAdminResponse> = safeCall { api.setCacheTtl(mapOf("ttl" to hours.toString())) }
+
+    /**
+     * Cache leeren — nur Preise, oder alles.
+     *
+     * `alles = false` schickt einen LEEREN Rumpf und nicht `all=false`: Der
+     * Server prueft `req.body?.all` auf Wahrheit, beides waere also gleich —
+     * aber ein leerer Rumpf sagt dasselbe kuerzer und kann nicht versehentlich
+     * als „alles" gelesen werden.
+     */
+    suspend fun clearCache(alles: Boolean = false): Result<GenericAdminResponse> =
+        safeCall { api.clearCache(if (alles) mapOf("all" to true) else emptyMap()) }
 
     suspend fun getApiLimits(): Result<ApiLimitsResponse> = safeCall { api.getApiLimits() }
 

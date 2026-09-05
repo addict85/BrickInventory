@@ -325,6 +325,17 @@ interface BrickApiService {
         @Query("accounts") accounts: String? = null
     ): Response<PartsStatsResponse>
 
+    /**
+     * Das globale Design des Servers — OHNE Anmeldung.
+     *
+     * Die einzige Adresse, die die App vor der Anmeldung braucht: Anmelde- und
+     * Einrichtungsbildschirm sollen schon im richtigen Design erscheinen. Der
+     * Server laesst sie deshalb vor `requireLogin` stehen (routes/settings.ts),
+     * und die Webapp holt sie aus demselben Grund (00-theme-boot.js).
+     */
+    @GET("api/v1/settings/theme")
+    suspend fun getAppTheme(): Response<ch.brickinventoryapp.data.model.AppThemeResponse>
+
     @GET("api/v1/parts/brick-colors")
     suspend fun getBrickColors(): Response<BrickColorsResponse>
 
@@ -576,6 +587,23 @@ interface BrickApiService {
     @POST("api/v1/admin/cache-ttl")
     suspend fun setCacheTtl(
         @Body body: Map<String, String>
+    ): Response<GenericAdminResponse>
+
+    /**
+     * Den Preis-Cache leeren; mit `all=true` auch Teilmengen und Katalog.
+     *
+     * Die Ueberwachung zeigte die vier Cache-Zahlen und liess die
+     * Gueltigkeitsdauer einstellen — leeren konnte sie nicht. Man sah also,
+     * dass tausend Preise veraltet sind, und konnte nichts tun. Die Webapp
+     * bietet es an zwei Stellen an (04-finance.js und 05-settings.js).
+     *
+     * GLOBAL, nicht je Konto: `price_cache` gehoert niemandem, und jeder
+     * Neuaufbau kostet Anfragen aus dem gemeinsamen Tageskontingent — deshalb
+     * ist es eine Verwalter-Handlung (routes/api_v1/admin.ts).
+     */
+    @POST("api/v1/admin/cache-clear")
+    suspend fun clearCache(
+        @Body body: Map<String, Boolean> = emptyMap()
     ): Response<GenericAdminResponse>
 
     @GET("api/v1/settings/default-condition")

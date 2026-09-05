@@ -357,6 +357,41 @@ class UiStateFieldsTest {
                     if (m.groupValues[1] in felder) gelesen[kls]?.add(m.groupValues[1])
                 }
             }
+            // ── Zwei weitere Formen, in denen ein Fluss gelesen wird ─────
+            //
+            // (Nachtrag 135) Beide stehen im MainViewModel und waren unsichtbar:
+            //
+            //     _state.value.appTheme               Startwert eines stateIn
+            //     _state.map { it.appTheme }          ein abgeleiteter Fluss
+            //
+            // Das sind ECHTE Lesezugriffe — der zweite ist sogar der einzige
+            // Weg, auf dem `appTheme` je auf den Bildschirm kommt (MainActivity
+            // sammelt `vm.appTheme`, nicht den ganzen Zustand; die Begründung
+            // steht dort). Aufgefallen ist es, als das Design vor die Anmeldung
+            // gezogen wurde: Erst dadurch stand irgendwo `(appTheme =`, und die
+            // SCHREIB-Erkennung griff. Das Feld galt damit als geschrieben und
+            // nie gelesen — obwohl sich am Lesen nichts geändert hatte.
+            //
+            // Beide bleiben TYPAUFGELÖST: Die Klasse kommt aus `priv`, also aus
+            // der Deklaration des Flusses in dieser Datei. Die Regel wird damit
+            // genauer, nicht nachsichtiger.
+            Regex("""_(\w+)\.value\.(\w+)""").findAll(s).forEach { m ->
+                val kls = priv[m.groupValues[1]] ?: return@forEach
+                if (m.groupValues[2] in (klassen[kls] ?: emptySet<String>()))
+                    gelesen[kls]?.add(m.groupValues[2])
+            }
+            Regex("""_(\w+)\s*(?:\r?\n\s*)?\.map\s*\{""").findAll(s).forEach { m ->
+                val kls = priv[m.groupValues[1]] ?: return@forEach
+                val felder = klassen[kls] ?: return@forEach
+                var tiefe = 1; var i = m.range.last + 1
+                while (i < s.length && tiefe > 0) {
+                    if (s[i] == '{') tiefe++ else if (s[i] == '}') tiefe--
+                    i++
+                }
+                Regex("""\b(?:it|st|s)\.(\w+)""").findAll(s.substring(m.range.last + 1, i))
+                    .forEach { t -> if (t.groupValues[1] in felder) gelesen[kls]?.add(t.groupValues[1]) }
+            }
+
             // `it.feld` innerhalb eines update-Blocks auf dem zugehörigen Fluss:
             // Dort wird der alte Wert tatsächlich verwendet.
             Regex("""_(\w+)\.update\s*\{""").findAll(s).forEach { m ->
