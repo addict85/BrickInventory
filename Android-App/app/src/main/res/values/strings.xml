@@ -106,6 +106,7 @@
     <string name="gallery_stat_units">Units</string>
     <string name="gallery_stat_parts">Parts</string>
     <string name="gallery_stat_minifigs">Minifigs</string>
+    <string name="gallery_stat_instructions">Instructions</string>
     <string name="gallery_search_placeholder">Search sets…</string>
     <string name="gallery_all">All</string>
     <string name="gallery_no_sets">No sets yet</string>
@@ -557,6 +558,8 @@
     <string name="admin_log_title">Server log</string>
     <string name="admin_log_minutes">Last %1$d min</string>
     <string name="admin_log_empty">No entries in this period.</string>
+    <string name="admin_log_search">Search log</string>
+    <string name="admin_log_no_match">No entries match the filter</string>
     <string name="admin_log_reload">Reload</string>
 
     <string name="common_collapse">Collapse</string>

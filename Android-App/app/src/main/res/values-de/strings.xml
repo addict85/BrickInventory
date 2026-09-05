@@ -89,6 +89,7 @@
     <string name="gallery_stat_units">Einheiten</string>
     <string name="gallery_stat_parts">Teile</string>
     <string name="gallery_stat_minifigs">Minifigs</string>
+    <string name="gallery_stat_instructions">Anleitungen</string>
     <string name="gallery_search_placeholder">Sets suchen…</string>
     <string name="gallery_all">Alle</string>
     <string name="gallery_no_sets">Keine Sets vorhanden</string>
@@ -543,6 +544,8 @@
     <string name="admin_log_title">Server-Protokoll</string>
     <string name="admin_log_minutes">Letzte %1$d Min</string>
     <string name="admin_log_empty">Keine Einträge in diesem Zeitraum.</string>
+    <string name="admin_log_search">Protokoll durchsuchen</string>
+    <string name="admin_log_no_match">Keine Einträge passen zum Filter</string>
     <string name="admin_log_reload">Neu laden</string>
 
     <string name="common_collapse">Zuklappen</string>

@@ -20,6 +20,10 @@ import androidx.compose.ui.unit.sp
 import ch.brickinventoryapp.data.model.*
 import androidx.compose.ui.res.stringResource
 import ch.brickinventoryapp.R
+import ch.brickinventoryapp.util.fmtUhrzeit
+import androidx.compose.ui.text.font.FontFamily
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
 import ch.brickinventoryapp.ui.MainViewModel
 import ch.brickinventoryapp.ui.viewmodel.MonitoringViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -468,6 +472,10 @@ private fun RateLimitRow(
 internal fun ProtokollSection(vm: MainViewModel) {
     val verwaltung by vm.verwaltungState.collectAsStateWithLifecycle()
     var offen by rememberSaveable { mutableStateOf(false) }
+    // Beides gehoert dem Menschen und uebersteht deshalb eine Drehung — die
+    // Zeilen selbst kommen ohnehin vom Server nach.
+    var versteckteStufen by rememberSaveable { mutableStateOf(setOf<String>()) }
+    var protokollSuche by rememberSaveable { mutableStateOf("") }
 
     AppKarte {
         Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -525,8 +533,65 @@ internal fun ProtokollSection(vm: MainViewModel) {
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant)
                     }
-                    verwaltung.protokoll.forEach { zeile ->
+                    // ── Stufen und Suche, wie in der Weboberflaeche ─────────
+                    //
+                    // public/js/logviewer.js hat beides: Schalter je Stufe und
+                    // ein Suchfeld. Die App hatte weder das eine noch das
+                    // andere — bei 1440 Minuten sind das schnell hunderte
+                    // Zeilen, durch die man dann von Hand rollt.
+                    //
+                    // Gefiltert wird HIER und nicht auf dem Server: Die Zeilen
+                    // sind schon geladen, und ein zweiter Abruf je Tastendruck
+                    // waere fuer eine Liste, die vollstaendig vorliegt, nur
+                    // Wartezeit.
+                    val stufen = remember(verwaltung.protokoll) {
+                        verwaltung.protokoll.mapNotNull { it.level?.lowercase() }.distinct().sorted()
+                    }
+                    if (stufen.size > 1) {
+                        @OptIn(ExperimentalLayoutApi::class)
+                        FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                            stufen.forEach { stufe ->
+                                FilterChip(
+                                    selected = stufe !in versteckteStufen,
+                                    onClick = {
+                                        versteckteStufen =
+                                            if (stufe in versteckteStufen) versteckteStufen - stufe
+                                            else versteckteStufen + stufe
+                                    },
+                                    label = { Text(stufe.uppercase(),
+                                                   style = MaterialTheme.typography.labelSmall) },
+                                    shape = Formen.chip)
+                            }
+                        }
+                    }
+                    if (verwaltung.protokoll.isNotEmpty()) {
+                        Suchfeld(protokollSuche, { protokollSuche = it },
+                            stringResource(R.string.admin_log_search))
+                    }
+
+                    val sichtbar = remember(verwaltung.protokoll, versteckteStufen, protokollSuche) {
+                        val suche = protokollSuche.trim().lowercase()
+                        verwaltung.protokoll.filter { z ->
+                            z.level?.lowercase() !in versteckteStufen &&
+                                (suche.isEmpty() || z.message.orEmpty().lowercase().contains(suche))
+                        }
+                    }
+                    if (verwaltung.protokoll.isNotEmpty() && sichtbar.isEmpty()) {
+                        Text(stringResource(R.string.admin_log_no_match),
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    }
+                    sichtbar.forEach { zeile ->
                         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                            // Die Uhrzeit zuerst — wie in der Weboberflaeche.
+                            // `logged_at` kam seit jeher mit und wurde nie
+                            // gezeigt; ohne sie ist eine Protokollzeile kaum zu
+                            // gebrauchen.
+                            Text(fmtUhrzeit(zeile.loggedAt) ?: "",
+                                style = MaterialTheme.typography.labelSmall,
+                                fontFamily = FontFamily.Monospace,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                modifier = Modifier.width(58.dp))
                             Text(zeile.level.orEmpty().uppercase(),
                                 style = MaterialTheme.typography.labelSmall,
                                 fontWeight = FontWeight.Bold,

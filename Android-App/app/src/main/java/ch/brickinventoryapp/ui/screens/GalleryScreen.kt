@@ -158,6 +158,16 @@ fun GalleryScreen(
                         item { GalleryStatChip(fmtInt(stats.totalParts), stringResource(R.string.gallery_stat_parts)) }
                         if (stats.totalMinifigs > 0)
                             item { GalleryStatChip(fmtInt(stats.totalMinifigs), stringResource(R.string.gallery_stat_minifigs)) }
+                        // Anleitungen — die vierte Zahl, die die Webapp im
+                        // Kopf der Galerie zeigt (02-gallery.js, `hs-instr`).
+                        // `total_instructions` kam seit jeher mit und wurde
+                        // nirgends gelesen; gefunden beim Zaehlen der
+                        // Modellfelder, die niemand liest.
+                        //
+                        // Wie bei den Minifiguren nur, wenn es welche gibt: Ein
+                        // Chip mit einer Null ist eine Zahl ohne Aussage.
+                        if (stats.totalInstructions > 0)
+                            item { GalleryStatChip(fmtInt(stats.totalInstructions), stringResource(R.string.gallery_stat_instructions)) }
                     }
                 }
             }

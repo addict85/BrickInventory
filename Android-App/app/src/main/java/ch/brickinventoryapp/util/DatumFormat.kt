@@ -38,3 +38,39 @@ fun fmtDatum(iso: String?, zweistelligesJahr: Boolean = false): String? {
     if (!jahr.all { it.isDigit() } || !monat.all { it.isDigit() } || !tagImMonat.all { it.isDigit() }) return null
     return "$tagImMonat.$monat.${if (zweistelligesJahr) jahr.takeLast(2) else jahr}"
 }
+
+/**
+ * ISO-Zeitstempel aus einer Serverantwort als Uhrzeit — HH:MM:SS.
+ *
+ * ── Warum es das braucht ────────────────────────────────────────────────────
+ * Das Protokoll der Verwaltung zeigte Stufe und Meldung, aber keine Uhrzeit.
+ * Das Feld `logged_at` kommt seit jeher mit; die App hat es nie gelesen. Die
+ * Weboberflaeche zeigt es (public/js/logviewer.js, toLocaleTimeString), und
+ * ohne Zeitangabe ist eine Protokollzeile schwer zu gebrauchen: „Ist das von
+ * eben oder von gestern?" ist die erste Frage, die man an ein Protokoll hat.
+ *
+ * ── Warum HIER umgerechnet wird und in [fmtDatum] nicht ─────────────────────
+ * Das ist kein Widerspruch, sondern der Unterschied zwischen den beiden
+ * Angaben. [fmtDatum] zeigt ein ERFASSUNGSDATUM — einen Kalendertag, den ein
+ * Mensch gewaehlt hat; eine Verschiebung um Stunden koennte daraus den Vortag
+ * machen, und das waere falsch, nicht genauer. Ein Protokolleintrag ist ein
+ * ZEITPUNKT, und der gehoert auf die Uhr dessen, der ihn liest. Die Webapp
+ * macht es genauso.
+ *
+ * Ohne Zeitzonen-Angabe im Text gilt UTC: Der Server speichert `timestamptz`
+ * und schreibt das „Z" mit. Faellt es weg, ist das eine Serveraenderung und
+ * keine lokale Zeit — die Annahme steht hier, damit sie nicht geraten wirkt.
+ *
+ * @return "14:03:07", oder null wenn nichts Brauchbares dasteht
+ */
+fun fmtUhrzeit(iso: String?): String? {
+    if (iso.isNullOrBlank()) return null
+    val zeitpunkt = runCatching { java.time.OffsetDateTime.parse(iso).toInstant() }
+        .recoverCatching {
+            java.time.LocalDateTime.parse(iso).toInstant(java.time.ZoneOffset.UTC)
+        }
+        .getOrNull() ?: return null
+    return java.time.format.DateTimeFormatter.ofPattern("HH:mm:ss")
+        .withZone(java.time.ZoneId.systemDefault())
+        .format(zeitpunkt)
+}
