@@ -78,17 +78,27 @@ test('kein Handler fragt die Sitzung selbst nach der Nutzerkennung', () => {
     `Nur ${dateien.length} Router-Dateien gefunden — dann prüft der Rest nichts.`);
 
   const verstoesse = [];
+  const gebraucht = new Set();
   for (const [rel, voll] of dateien) {
-    if (rel in ERLAUBT) continue;
     const src = fs.readFileSync(voll, 'utf8')
       // Kommentare raus: Ein Erklärtext, der `req.session.userId` NENNT
       // (dieser hier zum Beispiel), ist keine Nutzung.
       .split('\n').filter(z => !z.trimStart().startsWith('//') && !z.trimStart().startsWith('*')).join('\n');
     for (const m of src.matchAll(/req\.session\??\.(userId|isAdmin|username)\b/g)) {
       const zeile = src.slice(0, m.index).split('\n').length;
-      verstoesse.push(`${rel}:${zeile}  ${m[0]}`);
+      // Erlaubte Dateien werden trotzdem DURCHSUCHT: Ihr Treffer belegt, dass
+      // die Ausnahme noch etwas beschreibt. Wer sie stattdessen ueberspringt,
+      // merkt nie, wenn sie gegenstandslos wird — und dann nimmt ein toter
+      // Eintrag eine ganze Datei dauerhaft von der Pruefung aus.
+      if (rel in ERLAUBT) gebraucht.add(rel);
+      else verstoesse.push(`${rel}:${zeile}  ${m[0]}`);
     }
   }
+
+  const veraltet = Object.keys(ERLAUBT).filter(k => !gebraucht.has(k)).sort();
+  assert.deepEqual(veraltet, [],
+    'Diese Eintraege in ERLAUBT beschreiben nichts mehr:\n  ' + veraltet.join('\n  ') +
+    '\nDie Datei liest die Sitzung gar nicht (mehr) direkt — raus damit.');
 
   assert.deepEqual(verstoesse, [],
     'Diese Stellen lesen die Sitzung direkt statt nutzerId()/istVerwalter()/nutzerName():\n  ' +

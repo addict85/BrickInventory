@@ -139,9 +139,13 @@ class StringResourceParityTest {
             Regex("""Toast\.makeText\([^,]+,\s*"([^"]{3,})"""),
         )
         // Eigennamen und Abkürzungen, die in jeder Sprache gleich lauten.
-        // Kurz halten: Jeder Eintrag hier ist eine Ausnahme, die niemand mehr
-        // prüft.
+        // Kurz halten: Jeder Eintrag hier ist eine Ausnahme — und damit sie
+        // nicht, wie es hier stand, „niemand mehr prüft", tut es jetzt der
+        // Test selbst: Am Ende muss jeder Eintrag mindestens einmal gegriffen
+        // haben. Ein Eintrag, der nichts mehr beschreibt, sieht aus wie eine
+        // Entscheidung und ist doch bloss eine Vermutung.
         val erlaubt = setOf("BrickInventory", "Manager", "BrickInventory Manager", "PDF")
+        val erlaubtGesehen = mutableSetOf<String>()
 
         val fehler = mutableListOf<String>()
         for (datei in Quellen.alle()) {
@@ -149,7 +153,7 @@ class StringResourceParityTest {
             for (m in muster) {
                 m.findAll(s).forEach { treffer ->
                     val text = treffer.groupValues[1]
-                    if (text in erlaubt) return@forEach
+                    if (text in erlaubt) { erlaubtGesehen += text; return@forEach }
                     // Eine offene Klammer ohne schliessende heisst: Der
                     // Ausdruck enthält selbst eine Zeichenkette, und der
                     // Treffer bricht an deren Anführungszeichen ab. So ein
@@ -174,6 +178,12 @@ class StringResourceParityTest {
         assert(fehler.isEmpty()) {
             "Oberflächentext als Literal statt aus den Sprachdateien:\n  " +
                 fehler.joinToString("\n  ")
+        }
+        val veraltet = (erlaubt - erlaubtGesehen).sorted()
+        assert(veraltet.isEmpty()) {
+            "Diese Eintraege in `erlaubt` beschreiben nichts mehr: " +
+                veraltet.joinToString(", ") +
+                " — der Text steht nirgends mehr im Quelltext. Raus damit."
         }
     }
 }

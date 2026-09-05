@@ -34,16 +34,32 @@ const ROOT = path.join(__dirname, '..');
  * Alle drei sind keine Meldungen an einen Menschen vor einem Bildschirm.
  */
 const ERLAUBT = {
-  'jobs/csvImportWorker.ts':
-    'Geht per IPC an den Elternprozess und landet im Serverprotokoll, nicht in einer Oberfläche.',
   'utils/financeCalc.ts':
     'Ein Merkmal des Preisergebnisses, an dem der Preis-Job „übersprungen" von „Fehler" ' +
     'unterscheidet — wird nirgends angezeigt.',
-  'routes/api_v1/admin.ts':
-    'Ein Diagnosewert der Erreichbarkeitsprobe wie ein HTTP-Status ("timeout"), kein Satz.',
-  'utils/fehlerTexte.ts':
-    'Die Tabelle selbst.',
 };
+
+// ── Drei Eintraege standen hier und beschrieben nichts mehr ─────────────────
+//
+// Nachgemessen, nicht vermutet: Die neue Pruefung am Ende des Tests belegt
+// fuer jeden Eintrag, dass er wirklich einen Treffer verdeckt. Diese drei
+// taten es nicht:
+//
+//   utils/fehlerTexte.ts       „Die Tabelle selbst." — die Tabelle fuehrt
+//                              ihre Texte als `{ de: '…', en: '…' }`, nie als
+//                              `error: '…'`. Der Eintrag nahm ausgerechnet
+//                              die Datei mit ALLEN Fehlertexten von der
+//                              Pruefung aus, ohne je gebraucht zu werden.
+//   jobs/csvImportWorker.ts    schickt `error: \`Unbekannte Aufgabe: …\`` —
+//                              mit Backtick, und Backticks sieht das Muster
+//                              bewusst nicht (siehe unten).
+//   routes/api_v1/admin.ts     schickt `error: 'timeout'`; das faellt schon
+//                              durch den Filter „nur Kleinbuchstaben ist kein
+//                              Satz".
+//
+// Die Begruendungen waren nicht falsch, sie waren nur gegenstandslos. Und ein
+// gegenstandsloser Eintrag ist gefaehrlicher als keiner: Er nimmt die Datei
+// dauerhaft aus der Pruefung, auch fuer alles, was spaeter dazukommt.
 
 /** Alle .ts unter den angegebenen Ordnern, auch in Unterordnern. */
 function tsDateien(dir, praefix = '') {
@@ -65,10 +81,10 @@ test('keine Route verschickt einen festen Fehlersatz', () => {
     `Nur ${dateien.length} Dateien gefunden — dann prüft der Rest nichts.`);
 
   const verstoesse = [];
+  const gebraucht = new Set();
   for (const [rel, voll] of dateien) {
     // Der Schlüssel in ERLAUBT ist der Pfad ab Web-App/ — hier zusammensetzen.
     const unterOrdner = path.relative(ROOT, voll).split(path.sep).join('/');
-    if (unterOrdner in ERLAUBT) continue;
     const src = fs.readFileSync(voll, 'utf8')
       .split('\n').filter(z => !z.trimStart().startsWith('//') && !z.trimStart().startsWith('*')).join('\n');
     // KEIN Backtick und KEIN Zeilenumbruch im Text: Der erste Entwurf nahm
@@ -83,9 +99,25 @@ test('keine Route verschickt einen festen Fehlersatz', () => {
       if (!text || text.length < 4) continue;
       if (/^[a-z_.]+$/.test(text)) continue;
       const zeile = src.slice(0, m.index).split('\n').length;
-      verstoesse.push(`${unterOrdner}:${zeile}  ${text.slice(0, 60)}`);
+      // Eine erlaubte Datei wird trotzdem DURCHSUCHT — nur landet ihr Treffer
+      // nicht in den Verstoessen, sondern belegt, dass die Ausnahme noch
+      // gebraucht wird. Ueberspringt man sie stattdessen gleich, kann ihr
+      // Eintrag jahrelang stehen bleiben, ohne noch etwas zu beschreiben.
+      if (unterOrdner in ERLAUBT) gebraucht.add(unterOrdner);
+      else verstoesse.push(`${unterOrdner}:${zeile}  ${text.slice(0, 60)}`);
     }
   }
+
+  // Hier stand `utils/fehlerTexte.ts` mit der Begruendung „Die Tabelle
+  // selbst." — und die Datei traf das Muster gar nicht: Sie fuehrt ihre Texte
+  // als `{ de: '…', en: '…' }`, nie als `error: '…'`. Der Eintrag verbarg
+  // also nichts, nahm aber ausgerechnet die Datei, in der ALLE Fehlertexte
+  // stehen, von dieser Pruefung aus. Damit das nicht wiederkommt:
+  const veraltet = Object.keys(ERLAUBT).filter(k => !gebraucht.has(k)).sort();
+  assert.deepEqual(veraltet, [],
+    'Diese Eintraege in ERLAUBT beschreiben nichts mehr:\n  ' + veraltet.join('\n  ') +
+    '\nDie Datei enthaelt keinen festen Fehlersatz (mehr). Der Eintrag nimmt sie ' +
+    'trotzdem von der Pruefung aus — raus damit.');
 
   assert.deepEqual(verstoesse, [],
     'Diese Stellen schicken einen festen Satz statt sendeFehler(req, res, …, code):\n  ' +

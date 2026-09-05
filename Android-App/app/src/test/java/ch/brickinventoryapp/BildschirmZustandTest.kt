@@ -100,23 +100,41 @@ class BildschirmZustandTest {
     private val nichtSpeicherbar = Regex("""Offset|listOf|mapOf|setOf|Bitmap""")
 
     /**
-     * ScrollMemory: siehe KDoc oben — dort ist `remember` die RICHTIGE Wahl.
      * ZoomableImageDialog: Skalierung und Versatz gehören zusammen; der Versatz
      * (Offset) ist nicht speicherbar, also wäre nur die halbe Sache gerettet.
+     *
+     * ── ScrollMemory.kt stand hier und war überflüssig ──────────────────────
+     *
+     * Nachgemessen, nicht vermutet: KEINE Zeile dieser Datei erreicht die
+     * Meldung überhaupt. Ihre vier Merker heissen `wiederhergestellt`,
+     * `hatteGespeicherte` und `nutzerGeste` — allesamt schon von `rollMerker`
+     * erfasst.
+     *
+     * Der Eintrag stammt aus dem ersten Anlauf, als die Prüfung noch am
+     * WOHNORT hing. Nachtrag 155 hat sie auf die ART des Zustands umgestellt
+     * (siehe KDoc am rollMerker) und die alte Ausnahme stehen lassen. Sie
+     * verbarg seither nichts, nahm aber die ganze Datei dauerhaft aus der
+     * Prüfung — auch für jeden Zustand, der später dazukäme.
      */
-    private val ausgenommen = setOf("ScrollMemory.kt", "ZoomableImageDialog.kt")
+    private val ausgenommen = setOf("ZoomableImageDialog.kt")
 
     @Test
     fun `vom Menschen eingegebener Zustand uebersteht eine Drehung`() {
         val versaeumt = mutableListOf<String>()
+        val ausnahmeGebraucht = mutableSetOf<String>()
         for (f in kotlinDateien()) {
-            if (f.name in ausgenommen) continue
             for ((zn, z) in zustandsZeilen(f)) {
                 if ("rememberSaveable" in z) continue
                 val name = nameAus.find(z)?.groupValues?.get(1) ?: continue
                 if (fluechtig.containsMatchIn(name)) continue
                 if (rollMerker.containsMatchIn(name)) continue
                 if (nichtSpeicherbar.containsMatchIn(z)) continue
+                // Eine ausgenommene Datei wird trotzdem DURCHSUCHT: Ihr Treffer
+                // belegt, dass die Ausnahme noch etwas beschreibt. Wird sie
+                // stattdessen gleich uebersprungen, bleibt ein toter Eintrag
+                // jahrelang stehen und sperrt eine ganze Datei — genau das war
+                // mit ScrollMemory.kt passiert.
+                if (f.name in ausgenommen) { ausnahmeGebraucht += f.name; continue }
                 versaeumt += "${f.name}:$zn  $name"
             }
         }
@@ -124,6 +142,13 @@ class BildschirmZustandTest {
             "Diese Zustände gehen bei einer Bildschirmdrehung verloren — " +
                 "rememberSaveable statt remember:\n  " + versaeumt.joinToString("\n  "),
             versaeumt.isEmpty(),
+        )
+        val veraltet = (ausgenommen - ausnahmeGebraucht).sorted()
+        assertTrue(
+            "Diese Ausnahmen beschreiben nichts mehr: " + veraltet.joinToString(", ") +
+                " — die Datei hat keinen Zustand, den diese Pruefung ueberhaupt meldete. " +
+                "Raus damit, sonst sperrt der Eintrag sie auch fuer alles Kuenftige.",
+            veraltet.isEmpty(),
         )
     }
 

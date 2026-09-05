@@ -84,10 +84,19 @@ test('keine SQL-Anweisung steht in mehr als einer Datei', () => {
     `Nur ${gefunden} SQL-Anweisungen gefunden — die Suche greift nicht mehr`);
 
   const doppelt = [];
+  const gebraucht = new Set();
   for (const [k, orte] of wo) {
-    if (orte.size < 2 || ERLAUBT.has(k)) continue;
+    if (orte.size < 2) continue;
+    // Verbuchen statt ueberspringen — sonst faellt nie auf, wenn ein Eintrag
+    // gegenstandslos wird. Die Liste ist heute leer; die Pruefung steht
+    // trotzdem hier, damit der erste Eintrag sie schon vorfindet.
+    if (ERLAUBT.has(k)) { gebraucht.add(k); continue; }
     doppelt.push(`${[...orte].sort().join(' + ')}\n      ${k.slice(0, 130)}`);
   }
+  const veraltet = [...ERLAUBT.keys()].filter(k => !gebraucht.has(k));
+  assert.deepEqual(veraltet, [],
+    'Diese Eintraege in ERLAUBT beschreiben keine Doppelung mehr — raus damit:\n  ' +
+    veraltet.map(k => k.slice(0, 130)).join('\n  '));
   assert.deepEqual(doppelt, [],
     'Diese Anweisungen stehen in mehreren Dateien. Entweder gehoeren sie in ' +
     'eine gemeinsame Funktion, oder es gibt einen Grund — dann in ERLAUBT ' +
