@@ -322,8 +322,25 @@ test('ein manuell erfasstes Teil bekommt Marktpreis und Erfassung', () => {
     `${writes.length} statt 2 Erfassungs-Schreibvorgänge — Neuanlage und Zweiterfassung brauchen je einen`);
   assert.match(fn, /createdAt: acquiredAt/,
     'Das Erfassungsdatum muss übernommen werden');
-  assert.match(fn, /effectivePurchasePrice > 0 \? effectivePurchasePrice : null/,
-    'Ohne Marktpreis gehört NULL in die Erfassung, nicht 0');
+  // ── Die Regel, nicht ihre Schreibweise (Nachtrag 139) ──────────────────
+  //
+  // Hier stand die Umrechnung wörtlich: `effectivePurchasePrice > 0 ? … : null`.
+  // Sie ist inzwischen dorthin gewandert, wo der Preis entsteht
+  // (utils/preisRegel.ts liefert `erfassungsPreis` fertig), und der Test wurde
+  // rot, obwohl die Regel weiter gilt — genau der Fehler, den der Absatz über
+  // getCurrentPartMarketPrice zwanzig Zeilen weiter oben schon einmal
+  // beschreibt. Zweimal dieselbe Lehre in einer Datei.
+  //
+  // Geprüft wird deshalb beides: dass die Erfassung den Wert nimmt, der bei
+  // unbekanntem Preis NULL ist, und dass dieser Wert die Regel wirklich
+  // enthält. Ohne das zweite genügte ein Feld dieses Namens.
+  assert.match(fn, /price: erfassungsPreis/,
+    'Die Erfassung nimmt nicht den Preis, der ohne Marktpreis NULL ist ' +
+    '(utils/preisRegel.ts, erfassungsPreis) — in der Erfassung hiesse eine 0 ' +
+    '„für null Franken gekauft"');
+  const regel = fs.readFileSync(path.join(ROOT, 'utils', 'preisRegel.ts'), 'utf8');
+  assert.match(regel, /erfassungsPreis:\s*kaufpreis > 0 \? kaufpreis : null/,
+    'utils/preisRegel.ts wandelt die 0 der Stammzeile nicht mehr in NULL für die Erfassung');
   assert.match(fn, /condition: effectiveCondition/, 'Die Erfassung braucht den Zustand');
 });
 

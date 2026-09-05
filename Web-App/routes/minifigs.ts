@@ -46,6 +46,7 @@ import { importMinifigsForSet } from '../utils/minifigsImport';
 import { requireLogin } from './auth';
 import { DEFAULT_PRICE_CONDITION } from '../utils/financeCalc';
 import { nutzerStandardZustand as userDefaultCondition, zustandFuerPreis } from '../utils/settings';
+import { kaufpreisAusEingabe, manuellerKaufpreis } from '../utils/preisRegel';
 import { fetchMinifigPrice, fetchPartPrice } from '../utils/financeCalc';
 import { getSetting, getGlobalSetting } from '../utils/settings';
 import { csvEinlesen, parseCsvDate, toCsv, uebersprungenHinweis } from '../utils/csvExport';
@@ -298,18 +299,18 @@ async function getCurrentFigMarketPrice(figNumber: string, userId: number, blFig
 //  • Zustand: N/U falls angegeben, sonst der Standard-Zustand des Nutzers.
 async function resolveManualFigPurchase(uid: number, { figNumber, blFigNumber = null, unitPrice = null, condition = null }:
   { figNumber: string; blFigNumber?: string | null; unitPrice?: any; condition?: string | null }) {
-  const entered = (unitPrice !== undefined && unitPrice !== null && String(unitPrice).trim() !== '')
-    ? parseFloat(String(unitPrice).replace(',', '.')) : null;
-  const effectiveUnitPrice = (entered !== null && !isNaN(entered)) ? entered : null;
-
-  // Eingabe → (kein Bestand) → Standard, siehe utils/settings.ts.
-  const effectiveCondition: string = await zustandFuerPreis(condition, null, uid);
-
-  const effectivePurchasePrice = effectiveUnitPrice !== null
-    ? effectiveUnitPrice
-    : await getCurrentFigMarketPrice(figNumber, uid, blFigNumber || null, effectiveCondition);
-
-  return { effectiveUnitPrice, effectivePurchasePrice, effectiveCondition };
+  // Dieselbe Regel wie bei den Teilen — siehe utils/preisRegel.ts. Vorher
+  // fehlte hier das `?? 0`: Eine Figur ohne ermittelbaren Marktpreis bekam
+  // NULL, ein Teil in derselben Lage eine 0, und utils/financeCalc.ts liest
+  // das als „kein Kaufpreis erfasst" gegen „0 erfasst".
+  const r = await manuellerKaufpreis(uid, { unitPrice, condition },
+    (zustand) => getCurrentFigMarketPrice(figNumber, uid, blFigNumber || null, zustand));
+  return {
+    effectiveUnitPrice: r.unitPrice,
+    effectivePurchasePrice: r.kaufpreis,
+    erfassungsPreis: r.erfassungsPreis,
+    effectiveCondition: r.zustand,
+  };
 }
 
 // body ist `any` wie in routes/parts.ts — so kommt es von Express, und die
@@ -354,14 +355,16 @@ async function addManualFig(uid: number, body: any) {
     // wächst die bestehende Zeile (utils/acquisitions.ts).
     await recordAcquisitionForDay('fig', uid, [num], {
       quantity,
-      price: ((re.effectivePurchasePrice ?? 0) > 0 ? re.effectivePurchasePrice : null),
+      // erfassungsPreis statt der Umrechnung von Hand: In der Stammzeile ist
+      // die 0 ein Anzeigewert, in der Erfassung hiesse sie „fuer null gekauft".
+      price: re.erfassungsPreis,
       condition: re.effectiveCondition, createdAt: acquiredAt,
     }).catch(e => console.error('[addManualFig] Zweiterfassung:', e.message));
 
     return { action: 'updated', fig_number: num };
   }
 
-  const { effectiveUnitPrice, effectivePurchasePrice, effectiveCondition } =
+  const { effectiveUnitPrice, effectivePurchasePrice, erfassungsPreis, effectiveCondition } =
     await resolveManualFigPurchase(uid, { figNumber: num, blFigNumber: blNum, unitPrice: unit_price, condition });
   await db.run(`
     INSERT INTO minifigs (user_id, set_number, fig_number, bl_fig_number, fig_name, quantity, image_url, source, unit_price, purchase_price, note, condition)
@@ -371,7 +374,9 @@ async function addManualFig(uid: number, body: any) {
   // bzw. Teile-Schätzung, falls kein Preis eingegeben wurde), damit die
   // Erfassungshistorie und die PnL-Berechnung stimmen.
   await recordAcquisitionForDay('fig', uid, [num], {
-    quantity, price: effectivePurchasePrice,
+    // erfassungsPreis, nicht effectivePurchasePrice — siehe oben bei der
+    // Zweiterfassung. Hier stand bis Nachtrag 139 der Stammzeilen-Wert.
+    quantity, price: erfassungsPreis,
     condition: effectiveCondition, createdAt: acquiredAt,
   }).catch(logAndContinue(`minifiguren:anlegen ${num}`));
 
@@ -452,20 +457,13 @@ async function updateManualFig(uid: number, figNumber: string, body: any) {
     await db.run('UPDATE minifigs SET bl_fig_number=$1 WHERE id=$2', [newBlNum, existing.id]);
   }
   if (body.unit_price !== undefined) {
-    const raw = body.unit_price;
-    let up = (raw === null || raw === '') ? null : parseFloat(raw);
-    let purchasePrice;
-    if (up !== null && !isNaN(up)) {
-      purchasePrice = up;
-    } else {
-      up = null;
-      // Zustand mitgeben — siehe oben (Nachtrag 147). Steht im Rumpf ein neuer,
-      // gilt dieser; sonst der bisherige der Figur, sonst der Benutzer-Standard.
-      // Die Staffelung selbst steht in utils/settings.ts.
-      const preisCond = await zustandFuerPreis(body.condition, existing.condition, uid);
-      purchasePrice = await getCurrentFigMarketPrice(figNumber, uid, newBlNum, preisCond);
-    }
-    await db.run('UPDATE minifigs SET unit_price=$1, purchase_price=$2 WHERE id=$3', [up, purchasePrice, existing.id]);
+    // Siehe utils/preisRegel.ts — dieselbe Regel wie bei den Teilen.
+    const { unitPrice, purchasePrice } = await kaufpreisAusEingabe(
+      body.unit_price, body.condition, existing.condition, uid,
+      (zustand) => getCurrentFigMarketPrice(figNumber, uid, newBlNum, zustand),
+    );
+    await db.run('UPDATE minifigs SET unit_price=$1, purchase_price=$2 WHERE id=$3',
+      [unitPrice, purchasePrice, existing.id]);
   }
   if (body.condition !== undefined && body.condition !== null) {
     const cond = ['N','U'].includes(body.condition) ? body.condition : 'N';
@@ -530,7 +528,7 @@ router.post('/import/csv', csvEmpfang.single('file'), async (req: LoggedInReques
 
         // Gleiche Preis-/Zustandslogik wie beim Einzel-Hinzufügen (inkl.
         // Teile-Schätzung, wenn die Figur bei BrickLink nicht gefunden wird).
-        const { effectiveUnitPrice, effectivePurchasePrice, effectiveCondition } =
+        const { effectiveUnitPrice, effectivePurchasePrice, erfassungsPreis, effectiveCondition } =
           await resolveManualFigPurchase(uid, { figNumber, blFigNumber, unitPrice, condition: rawCondition });
         const acqDate = acquiredAt || new Date().toISOString().slice(0,10);
 
@@ -542,7 +540,7 @@ router.post('/import/csv', csvEmpfang.single('file'), async (req: LoggedInReques
           await db.run('UPDATE minifigs SET quantity = quantity + $1 WHERE id = $2', [qty, existing.id]);
           // Erfassung auch beim Aufstocken anlegen (Zustand/Preis/Datum erhalten).
           await recordAcquisitionForDay('fig', uid, [figNumber],
-            { quantity: qty, price: effectivePurchasePrice, condition: effectiveCondition||'N', createdAt: acqDate }
+            { quantity: qty, price: erfassungsPreis, condition: effectiveCondition||'N', createdAt: acqDate }
           ).catch(logAndContinue(`minifigs:import ${figNumber} (aufgestockt)`));
           updated++;
           results.push({ fig_number: figNumber, action: 'updated' });
@@ -551,7 +549,7 @@ router.post('/import/csv', csvEmpfang.single('file'), async (req: LoggedInReques
             "INSERT INTO minifigs (user_id, set_number, fig_number, bl_fig_number, fig_name, quantity, image_url, source, unit_price, purchase_price, note, condition) VALUES ($1,NULL,$2,$3,$4,$5,$6,'manual',$7,$8,$9,$10) ON CONFLICT DO NOTHING",
             [uid, figNumber, blFigNumber, figName, qty, imageUrl, effectiveUnitPrice, effectivePurchasePrice, note, effectiveCondition]);
           await recordAcquisitionForDay('fig', uid, [figNumber],
-            { quantity: qty, price: effectivePurchasePrice, condition: effectiveCondition||'N', createdAt: acqDate }
+            { quantity: qty, price: erfassungsPreis, condition: effectiveCondition||'N', createdAt: acqDate }
           ).catch(logAndContinue(`minifigs:import ${figNumber} (neu)`));
           added++;
           results.push({ fig_number: figNumber, action: 'added', fig_name: figName });
