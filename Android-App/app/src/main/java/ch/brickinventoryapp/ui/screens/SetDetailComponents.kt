@@ -333,6 +333,30 @@ fun MarketPriceByCondition(
 }
 
 /** Prozent-Plakette — grün im Plus, Fehlerfarbe im Minus. */
+/**
+ * „Preis wird geladen" — Kringel und Text nebeneinander.
+ *
+ * Stand dreimal wortgleich da: zweimal in SetDetailSections.kt (Marktpreis und
+ * Preisverlauf) und einmal in ManualItemDetailScreen.kt. Gefunden beim Zaehlen
+ * gleicher Achtzeiler, nicht beim Lesen. Hier gab es KEINEN Unterschied
+ * zwischen den Kopien — anders als beim Suchfeld und bei der Zustands-Zeile
+ * war es nur Doppelung. Sie steht trotzdem jetzt einmal: Die naechste
+ * Aenderung an dieser Zeile soll nicht wieder drei Stellen suchen muessen.
+ */
+@Composable
+fun PreisLaedtZeile(modifier: Modifier = Modifier) {
+    Row(
+        modifier,
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        CircularProgressIndicator(Modifier.size(14.dp), strokeWidth = 2.dp)
+        Text(stringResource(R.string.detail_price_loading),
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant)
+    }
+}
+
 @Composable
 fun PnlBadge(pct: Double) {
     val color = when {

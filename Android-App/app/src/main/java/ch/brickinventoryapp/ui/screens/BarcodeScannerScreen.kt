@@ -199,13 +199,7 @@ fun BarcodeScannerScreen(
                 }
             }
             else -> {
-                Box(Modifier.fillMaxSize(), Alignment.Center) {
-                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                        Text(stringResource(R.string.scanner_camera_needed), color = Color.White, fontWeight = FontWeight.Bold)
-                        Spacer(Modifier.height(12.dp))
-                        Button(onClick = { cameraPermission.launchPermissionRequest() }) { Text(stringResource(R.string.scanner_allow)) }
-                    }
-                }
+                KameraErlaubnisHinweis { cameraPermission.launchPermissionRequest() }
             }
         }
         IconButton(onClick = onDismiss, modifier = Modifier.align(Alignment.TopEnd).padding(16.dp)) {

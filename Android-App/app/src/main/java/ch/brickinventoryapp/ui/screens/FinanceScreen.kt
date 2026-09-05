@@ -164,6 +164,36 @@ fun FinanceScreen(
     }
 }
 
+/**
+ * Das Vorschaubild einer Finanzzeile — 52 dp, Rueckfall auf das Logo.
+ *
+ * Stand zweimal wortgleich da: in der Set-Zeile (FinanceSections.kt) und in der
+ * Zeile fuer manuelle Eintraege darunter. Beide Zeilen sind untereinander in
+ * DERSELBEN Tabelle zu sehen — ein Bild, das dort verschieden gross oder
+ * verschieden beschnitten waere, faellt sofort auf.
+ */
+@Composable
+fun FinanzBild(imageUrl: String?, imageLoader: ImageLoader, beschreibung: String?) {
+    Surface(
+        shape = Formen.kachel,
+        color = MaterialTheme.colorScheme.surfaceVariant,
+        modifier = Modifier.size(52.dp)
+    ) {
+        if (imageUrl != null) {
+            AsyncImage(
+                model = imageUrl, imageLoader = imageLoader,
+                contentDescription = beschreibung,
+                modifier = Modifier.fillMaxSize().clip(Formen.kachel),
+                contentScale = ContentScale.Fit
+            )
+        } else {
+            Box(Modifier.fillMaxSize(), Alignment.Center) {
+                Image(painterResource(R.drawable.ic_logo), null, Modifier.size(36.dp))
+            }
+        }
+    }
+}
+
 @Composable
 fun ManualFinanceRow(
     imageUrl: String?,
@@ -206,24 +236,7 @@ fun ManualFinanceRow(
     val cardElevation = CardDefaults.cardElevation(defaultElevation = Formen.karteErhebung)
     val content: @Composable ColumnScope.() -> Unit = {
         Row(Modifier.padding(12.dp), verticalAlignment = Alignment.CenterVertically) {
-            Surface(
-                shape = Formen.kachel,
-                color = MaterialTheme.colorScheme.surfaceVariant,
-                modifier = Modifier.size(52.dp)
-            ) {
-                if (imageUrl != null) {
-                    AsyncImage(
-                        model = imageUrl, imageLoader = imageLoader,
-                        contentDescription = title,
-                        modifier = Modifier.fillMaxSize().clip(Formen.kachel),
-                        contentScale = ContentScale.Fit
-                    )
-                } else {
-                    Box(Modifier.fillMaxSize(), Alignment.Center) {
-                        Image(painterResource(R.drawable.ic_logo), null, Modifier.size(36.dp))
-                    }
-                }
-            }
+            FinanzBild(imageUrl, imageLoader, title)
             Spacer(Modifier.width(12.dp))
             Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(1.dp)) {
                 Text(title, fontWeight = FontWeight.SemiBold,

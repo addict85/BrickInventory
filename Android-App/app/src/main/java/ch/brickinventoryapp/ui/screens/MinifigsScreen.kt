@@ -294,6 +294,24 @@ fun ManualFigTile(fig: FigValuationItem, serverUrl: String, imageLoader: ImageLo
             Column(Modifier.padding(horizontal = 6.dp, vertical = 4.dp)) {
                 Text(fig.figName ?: fig.figNumber, style = MaterialTheme.typography.labelSmall,
                     fontWeight = FontWeight.SemiBold, maxLines = 2, overflow = TextOverflow.Ellipsis)
+                // ── Was hier fehlte (Nachtrag 133) ──────────────────────────
+                //
+                // Diese Kachel zeigte NUR den Namen. Ihr Zwilling nebenan,
+                // ManualPartTile in PartsScreen.kt, zeigt beide Plaketten seit
+                // jeher — und die Webapp zeigt sie fuer Figuren genauso
+                // (06-minifigs.js Zeile 327: qbadge, dann condBadge, dann
+                // ownerBadges).
+                //
+                // FigValuationItem traegt `condition`, `conditions` und
+                // `owners` die ganze Zeit; die Felder sind im Modell sogar
+                // kommentiert. Im Haushalt war an einer Figur also nicht zu
+                // sehen, WEM sie gehoert — bei den Teilen daneben schon.
+                //
+                // Gefunden nicht durch Lesen, sondern durch den Vergleich der
+                // beiden Zwillingsdateien, den die Doppelungsmessung angestossen
+                // hat.
+                Box(Modifier.padding(top = 3.dp)) { ConditionBadges(fig.conditions, fig.condition) }
+                OwnerBadges(fig.owners, Modifier.padding(top = 2.dp))
             }
         }
     }

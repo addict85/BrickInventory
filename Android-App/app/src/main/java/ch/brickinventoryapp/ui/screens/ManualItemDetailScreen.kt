@@ -312,15 +312,7 @@ fun ManualItemDetailScreen(
                 item {
                     SectionCard(title = stringResource(R.string.detail_section_market)) {
                         if (laedt && history == null) {
-                            Row(
-                                horizontalArrangement = Arrangement.spacedBy(8.dp),
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                CircularProgressIndicator(Modifier.size(14.dp), strokeWidth = 2.dp)
-                                Text(stringResource(R.string.detail_price_loading),
-                                    style = MaterialTheme.typography.bodySmall,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant)
-                            }
+                            PreisLaedtZeile()
                         }
                         byCond?.takeIf { it.present().isNotEmpty() }?.let {
                             MarketPriceByCondition(it, currency)

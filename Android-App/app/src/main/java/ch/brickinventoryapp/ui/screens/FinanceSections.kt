@@ -254,25 +254,7 @@ fun LazyListScope.financeSetRows(valuation: ValuationResponse, showSets: Boolean
             elevation = CardDefaults.cardElevation(defaultElevation = Formen.karteErhebung)
         ) {
             Row(Modifier.padding(12.dp), verticalAlignment = Alignment.CenterVertically) {
-                // Thumbnail
-                Surface(
-                    shape = Formen.kachel,
-                    color = MaterialTheme.colorScheme.surfaceVariant,
-                    modifier = Modifier.size(52.dp)
-                ) {
-                    if (imageUrl != null) {
-                        AsyncImage(
-                            model = imageUrl, imageLoader = imageLoader,
-                            contentDescription = set.name,
-                            modifier = Modifier.fillMaxSize().clip(Formen.kachel),
-                            contentScale = ContentScale.Fit
-                        )
-                    } else {
-                        Box(Modifier.fillMaxSize(), Alignment.Center) {
-                            Image(painterResource(R.drawable.ic_logo), null, Modifier.size(36.dp))
-                        }
-                    }
-                }
+                FinanzBild(imageUrl, imageLoader, set.name)
                 Spacer(Modifier.width(12.dp))
                 Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(1.dp)) {
                     Text(set.name ?: set.setNumber, fontWeight = FontWeight.SemiBold,
