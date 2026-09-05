@@ -11,7 +11,6 @@
 window.I18N_EN = {
   // Auth
   'login.submit':          'Sign in',
-  'login.register':        'Register',
   'register.title':        'Register',
   'register.submit':       'Create account',
   'reset.title':           'New password',
@@ -60,7 +59,6 @@ window.I18N_EN = {
   'gallery.sort.price_asc':  'Price ↑',
   'gallery.sort.qty_desc':   'Quantity ↓',
   'gallery.sort.qty_asc':    'Quantity ↑',
-  'gallery.add':           '+ Add set',
   'gallery.empty':         'No sets yet. Add your first set!',
   'gallery.no_results':    'No sets found for "{query}"',
   'gallery.delete.title':  'Delete set?',
@@ -86,9 +84,7 @@ window.I18N_EN = {
 
   // Parts
   'parts.search':          'Search parts…',
-  'parts.add':             '+ Add part',
   'parts.manual_section':  'Manually added parts',
-  'parts.none':            'No parts',
   'parts.stat.types':      'Types',
   'parts.stat.colors':     'Colors',
   'parts.stat.total':      'Total',
@@ -99,10 +95,8 @@ window.I18N_EN = {
 
   // Minifigs
   'figs.search':           'Search minifigures…',
-  'figs.add':              '+ Add minifigure',
   'figs.manual_section':   'Manually added minifigures',
   'figs.none':             'No minifigures',
-  'figs.stat.total':       'Total',
   'figs.delete.title':     'Delete minifigure?',
 
   // Finance
@@ -139,9 +133,6 @@ window.I18N_EN = {
   'settings.cache_cleared':    'Price cache cleared',
   'settings.all_cache.clear':  'Clear all caches',
   'settings.all_cache.cleared':'All caches cleared',
-  'settings.export':       'Export settings',
-  'settings.import':       'Import settings',
-  'settings.imported':     '✅ {n} settings imported.',
   'settings.delete_all.title': 'Delete all sets?',
   'settings.delete_all.text':  'Your entire collection, all parts and minifigures will be permanently deleted!',
   'settings.delete_all.prompt':'Type "DELETE" to confirm:',
@@ -160,7 +151,6 @@ window.I18N_EN = {
   'users.col.actions':     'Actions',
   'users.role.admin':      '👑 Admin',
   'users.role.user':       '👤 User',
-  'users.create':          'Create user',
   'users.name_pw_req':     'Name and password required',
   'users.created':         '{name} created',
   'users.delete.title':    'Delete user?',
@@ -171,8 +161,6 @@ window.I18N_EN = {
 
   // Misc
   'toast.error':           'Error',
-  'confirm.delete':        'Delete',
-  'csv.running':           'Import running',
   'csv.warnings':          'Warnings',
   'csv.errors':            'Errors',
   'rb_key.missing':        'Please add your Rebrickable API key in Settings first.',
@@ -617,4 +605,14 @@ window.I18N_EN = {
   'users.admin_badge': 'Admin',
 
 
+  'settings.importing': 'Importing…',
+  'qr.expired': '⚠️ QR code expired — please generate a new one',
+  'pdf.lib_missing': 'PDF.js not loaded',
+  'log.title': '🗒️ App log',
+  'log.minutes_n': '{n} minutes',
+  'log.hours_n': '{n} hours',
+  'log.hour_1': '1 hour',
+  'log.search': 'Search text…',
+  'log.auto': '⏱ Auto',
+  'log.stop': '⏹ Stop',
 };

@@ -94,6 +94,46 @@ export const escHtml = escJs;
 // dagegen schon beim Instanziieren initialisiert und sofort erreichbar.
 export function G(id) { return document.getElementById(id); }
 
+/**
+ * Einen Knopf für die Dauer eines Aufrufs sperren.
+ *
+ * ── Der Befund (Nachtrag 160) ───────────────────────────────────────────────
+ *
+ * Fünf Stellen taten dasselbe: sperren, „läuft"-Text setzen, danach freigeben
+ * und die Beschriftung ZURÜCKSCHREIBEN. Und alle fünf schrieben sie als
+ * deutsches Literal zurück:
+ *
+ *     btn.textContent = 'Registrieren'    // im HTML: data-i18n="register.submit"
+ *
+ * Zwei Folgen, beide unbemerkt: In einer englischen Oberfläche stand nach dem
+ * ersten Klick ein deutsches Wort auf dem Knopf. Und das Literal stimmte nicht
+ * einmal mit dem Wörterbuch überein — `register.submit` heisst „Konto
+ * erstellen", nicht „Registrieren"; der Knopf beschriftete sich also selbst
+ * bei deutscher Oberfläche um.
+ *
+ * Die Beschriftung wird deshalb nicht mehr NEU GESETZT, sondern GEMERKT. Damit
+ * gibt es keine zweite Fassung, die auseinanderlaufen kann — und der Helfer
+ * braucht keine Sprache zu kennen.
+ *
+ * Der Wartetext ist „…" ohne Wort: Der Knopf ist gesperrt, das sagt genug, und
+ * so bleibt der Vorgang sprachfrei. Genau das machte die Anmeldung schon
+ * richtig, während die vier anderen Stellen es ausformulierten.
+ *
+ * @param {HTMLButtonElement} btn
+ * @param {string} [laeuft] Wartetext. Vorgabe „…". Die PDF-Erzeugung gibt
+ *   einen eigenen mit, weil sie ihn während des Laufs mehrfach wechselt
+ *   (erstellen → Bilder → Restzeit).
+ * @returns {(text?: string) => void} Freigabe. Ohne Argument kommt die
+ *   ursprüngliche Beschriftung zurück; mit Argument eine andere — die
+ *   QR-Erzeugung heisst danach absichtlich „Neu generieren".
+ */
+export function knopfBesetzt(btn, laeuft = '…') {
+  const vorher = btn.textContent;
+  btn.disabled = true;
+  btn.textContent = laeuft;
+  return (text) => { btn.disabled = false; btn.textContent = text ?? vorher; };
+}
+
 // Return thumbnail URL if it would exist, else original
 /**
  * @param {string} src
@@ -452,13 +492,13 @@ G('btn-register')?.addEventListener('click', async () => {
   err.style.display='none';
   if(!u||!e||!p){ err.textContent=tRaw('register.req_fields'); err.style.display='block'; return; }
   if(p!==p2){ err.textContent=tRaw('settings.password.mismatch'); err.style.display='block'; return; }
-  const btn=G('btn-register'); btn.disabled=true; btn.textContent='Registrieren…';
+  const btn=G('btn-register'); const frei=knopfBesetzt(btn);
   const d=await api('POST','/v1/auth/register',{
     username:u, email:e, first_name:G('reg-first').value.trim()||null,
     last_name:G('reg-last').value.trim()||null, password:p,
     language: G('reg-lang')?.value || LANG || 'de'
   });
-  btn.disabled=false; btn.textContent='Registrieren';
+  frei();
   if(d.success){
     G('reg-form').style.display='none';
     G('reg-success').style.display='block';
@@ -473,9 +513,9 @@ G('btn-forgot')?.addEventListener('click', async () => {
   const err=G('forgot-err');
   err.style.display='none';
   if(!email){ err.textContent=tRaw('register.email_required'); err.style.display='block'; return; }
-  const btn=G('btn-forgot'); btn.disabled=true; btn.textContent='Senden…';
+  const btn=G('btn-forgot'); const frei=knopfBesetzt(btn);
   const d=await api('POST','/v1/auth/forgot-password',{email});
-  btn.disabled=false; btn.textContent='Link senden';
+  frei();
   G('forgot-form').style.display='none';
   G('forgot-success').style.display='block';
   G('forgot-success').textContent = d.message || 'Falls die E-Mail existiert, wurde ein Link gesendet.';
@@ -857,8 +897,19 @@ function openLogViewer() {
     '.lvbtn.error-btn.active{background:#3b0f0f;border-color:#f85149;color:#f85149}',
   ].join('\n');
 
-  const html = '<!DOCTYPE html><html lang="de"><head>' +
-    '<meta charset="UTF-8"><title>App Logs</title>' +
+  // Die Zeitspannen als Daten statt als sechs ausgeschriebene <option>: So
+  // steht die Beschriftung EINMAL da, in der Sprache des Nutzers. Vorher
+  // waren es sechs deutsche Literale — in einem Fenster, das ein englischer
+  // Verwalter genauso oeffnet.
+  const spannen = [15, 30, 60, 360, 1440, 2880].map((min) => {
+    const text = min < 60 ? t('log.minutes_n', { n: min })
+      : min === 60 ? t('log.hour_1')
+      : t('log.hours_n', { n: min / 60 });
+    return '<option value="' + min + '">' + text + '</option>';
+  }).join('');
+
+  const html = '<!DOCTYPE html><html lang="' + escHtmlAttr(LANG) + '"><head>' +
+    '<meta charset="UTF-8"><title>' + esc(t('log.title')) + '</title>' +
     '<style>' + css + '</style>' +
     '</head><body' +
       ' data-auth="' + escHtmlAttr(token) + '"' +
@@ -869,27 +920,24 @@ function openLogViewer() {
         'log.none_found':       t('log.none_found'),
         'log.entries':          t('log.entries'),
         'toast.error':          t('toast.error'),
+        // Die beiden Beschriftungen des Auto-Knopfes wechseln zur Laufzeit;
+        // logviewer.js hatte sie deshalb als deutsche Literale.
+        'log.auto':             t('log.auto'),
+        'log.stop':             t('log.stop'),
       })) + '">' +
     '<header>' +
-      '<h1>\uD83D\uDDD2\uFE0F App Logs</h1>' +
+      '<h1>' + esc(t('log.title')) + '</h1>' +
       '<div class="toolbar">' +
-        '<select id="period" data-change="loadLogs">' +
-          '<option value="15">15 Minuten</option>' +
-          '<option value="30">30 Minuten</option>' +
-          '<option value="60">1 Stunde</option>' +
-          '<option value="360">6 Stunden</option>' +
-          '<option value="1440">24 Stunden</option>' +
-          '<option value="2880">48 Stunden</option>' +
-        '</select>' +
+        '<select id="period" data-change="loadLogs">' + spannen + '</select>' +
         '<span class="sep">|</span>' +
         '<button class="lvbtn info-btn" id="btn-info" data-click="toggleLevel" data-arg="info">\u2139 Info</button>' +
         '<button class="lvbtn warn-btn active" id="btn-warn" data-click="toggleLevel" data-arg="warn">\u26A0 Warn</button>' +
         '<button class="lvbtn error-btn active" id="btn-error" data-click="toggleLevel" data-arg="error">\u2716 Error</button>' +
         '<span class="sep">|</span>' +
-        '<input id="search" type="text" placeholder="Text suchen\u2026" data-input="renderLogs">' +
+        '<input id="search" type="text" placeholder="' + escHtmlAttr(t('log.search')) + '" data-input="renderLogs">' +
         '<span class="sep">|</span>' +
         '<button data-click="loadLogs">'+t('log.reload')+'</button>' +
-        '<button data-click="toggleAuto" id="btn-auto">\u23F1 Auto</button>' +
+        '<button data-click="toggleAuto" id="btn-auto">' + esc(t('log.auto')) + '</button>' +
         '<span id="status">\u2013</span>' +
       '</div>' +
     '</header>' +
@@ -1123,9 +1171,9 @@ function showApp(){ bindTabs(); plInit(); console.log('[showApp] called, schedul
 G('btn-login').onclick=doLogin;
 ['lu','lp'].forEach(id=>G(id).addEventListener('keydown',e=>e.key==='Enter'&&doLogin()));
 async function doLogin(){
-  const b=G('btn-login'); b.disabled=true; b.textContent='…';
+  const b=G('btn-login'); const frei=knopfBesetzt(b);
   const d=await api('POST','/v1/auth/login',{username:G('lu').value,password:G('lp').value});
-  b.disabled=false; b.textContent='Anmelden';
+  frei();
   if(d.success){ ME = { ...d, ...(d.user||{}), isAdmin: d.user?.is_admin === true }; if(d.token) sessionStorage.setItem('webToken',d.token);
     // Jede Anmeldung beginnt mit „Alle Konten" (Nachtrag 46) — VOR showApp(),
     // damit die Auswahlfelder gleich mit dem zurückgesetzten Wert entstehen.

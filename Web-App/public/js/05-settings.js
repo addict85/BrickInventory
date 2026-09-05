@@ -1,6 +1,6 @@
 import { registerActions } from './00-registry.js';
 import { I18N, LANG, applyLang, locale, t, tRaw} from '../i18n.js';
-import { CURRENCY, G, ME, _settingsCache, _updateLangSelect, api, applyTheme, esc, initDefaultCondition, toast , set_CURRENCY, set_settingsCache} from './01-core.js';
+import { CURRENCY, G, ME, _settingsCache, _updateLangSelect, api, applyTheme, esc, initDefaultCondition, knopfBesetzt, toast , set_CURRENCY, set_settingsCache} from './01-core.js';
 import { loadGallery, loadStats } from './02-gallery.js';
 import { loadParts } from './03-parts.js';
 import { loadMinifigs } from './06-minifigs.js';
@@ -31,7 +31,7 @@ async function loadSmtpSettings(settings){
 G('btn-test-smtp')?.addEventListener('click', async()=>{
   const btn = G('btn-test-smtp');
   const res = G('smtp-test-result');
-  btn.disabled = true; btn.textContent = 'Teste…';
+  const frei = knopfBesetzt(btn);
   // Save first
   await api('POST','/v1/settings',{
     smtp_host: G('smtp-host').value.trim(), smtp_port: G('smtp-port').value||'587',
@@ -40,7 +40,7 @@ G('btn-test-smtp')?.addEventListener('click', async()=>{
     smtp_insecure_tls: G('smtp-insecure')?.checked?'1':'0',
   });
   const d = await api('POST','/v1/settings/smtp-test', { to: G('smtp-test-email')?.value?.trim() || ME?.email || '' });
-  btn.disabled = false; btn.textContent = tRaw('smtp.test_btn');
+  frei();
   res.style.display = 'block';
   if(d.success) {
     res.style.background = 'var(--g50)'; res.style.color = 'var(--g700)'; res.style.border = '1px solid var(--g300)';
@@ -134,13 +134,13 @@ async function generateQrCode() {
   if (urlInput) urlInput.value = window.location.origin;
   const hint = G('qr-hint');
   const container = G('qr-code');
-  btn.disabled = true; btn.textContent = '⏳ Generiere...';
+  const frei = knopfBesetzt(btn);
   try {
     // POST, nicht GET (Nachtrag 154): Der Aufruf LEGT eine Nonce AN. Als GET war
     // er über eine Navigation von einer fremden Seite auslösbar, weil
     // SameSite=lax das Cookie dort mitschickt.
     const d = await api('POST', '/v1/auth/qr-token');
-    if (!d.success) { hint.textContent = tRaw('toast.error')+': ' + (d.error||t('common.unknown')); btn.disabled=false; btn.textContent=tRaw('qr.generate'); return; }
+    if (!d.success) { hint.textContent = tRaw('toast.error')+': ' + (d.error||t('common.unknown')); frei(); return; }
     // Get current server URL
     // Use the URL from the input field, fallback to window.location.origin
     const inputUrl = G('qr-server-url')?.value?.trim();
@@ -173,11 +173,13 @@ async function generateQrCode() {
     const timer = setInterval(() => {
       secs--;
       hint.textContent = tRaw('qr.valid_for',{t:fmt(secs)});
-      if (secs <= 0) { clearInterval(timer); hint.textContent = '⚠️ QR-Code abgelaufen — bitte neu generieren'; container.innerHTML=''; }
+      if (secs <= 0) { clearInterval(timer); hint.textContent = tRaw('qr.expired'); container.innerHTML=''; }
     }, 1000);
     hint.textContent = tRaw('qr.valid_for',{t:fmt(secs)});
-    btn.disabled = false; btn.textContent = tRaw('qr.regenerate');
-  } catch(e) { hint.textContent = tRaw('toast.error')+': ' + e.message; btn.disabled=false; btn.textContent=tRaw('qr.generate'); }
+    // Nach dem ersten Erzeugen heisst der Knopf „Neu generieren" — die eine
+    // Stelle, an der die Beschriftung sich absichtlich ändert.
+    frei(tRaw('qr.regenerate'));
+  } catch(e) { hint.textContent = tRaw('toast.error')+': ' + e.message; frei(); }
 }
 
 G('btn-gen-qr').onclick = generateQrCode;

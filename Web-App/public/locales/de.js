@@ -11,7 +11,6 @@
 window.I18N_DE = {
   // Auth
   'login.submit':          'Anmelden',
-  'login.register':        'Registrieren',
   'register.title':        'Registrieren',
   'register.submit':       'Konto erstellen',
   'reset.title':           'Neues Passwort',
@@ -60,7 +59,6 @@ window.I18N_DE = {
   'gallery.sort.price_asc':  'Preis ↑',
   'gallery.sort.qty_desc':   'Anzahl ↓',
   'gallery.sort.qty_asc':    'Anzahl ↑',
-  'gallery.add':           '+ Set hinzufügen',
   'gallery.empty':         'Noch keine Sets. Füge dein erstes Set hinzu!',
   'gallery.no_results':    'Keine Sets gefunden für „{query}"',
   'gallery.delete.title':  'Set löschen?',
@@ -86,9 +84,7 @@ window.I18N_DE = {
 
   // Parts
   'parts.search':          'Teile suchen…',
-  'parts.add':             '+ Teil erfassen',
   'parts.manual_section':  'Manuell erfasste Teile',
-  'parts.none':            'Keine Teile',
   'parts.stat.types':      'Typen',
   'parts.stat.colors':     'Farben',
   'parts.stat.total':      'Gesamt',
@@ -99,10 +95,8 @@ window.I18N_DE = {
 
   // Minifigs
   'figs.search':           'Minifiguren suchen…',
-  'figs.add':              '+ Minifigur erfassen',
   'figs.manual_section':   'Manuell erfasste Minifiguren',
   'figs.none':             'Keine Minifiguren',
-  'figs.stat.total':       'Gesamt',
   'figs.delete.title':     'Minifigur löschen?',
 
   // Finance
@@ -139,9 +133,6 @@ window.I18N_DE = {
   'settings.cache_cleared':    'Preis-Cache geleert',
   'settings.all_cache.clear':  'Alle Caches leeren',
   'settings.all_cache.cleared':'Alle Caches geleert',
-  'settings.export':       'Einstellungen exportieren',
-  'settings.import':       'Einstellungen importieren',
-  'settings.imported':     '✅ {n} Einstellungen importiert.',
   'settings.delete_all.title': 'Alle Sets löschen?',
   'settings.delete_all.text':  'Deine gesamte Sammlung, alle Teile und Minifiguren werden unwiderruflich gelöscht!',
   'settings.delete_all.prompt':'Zum Bestätigen bitte "LÖSCHEN" eingeben:',
@@ -160,7 +151,6 @@ window.I18N_DE = {
   'users.col.actions':     'Aktionen',
   'users.role.admin':      '👑 Admin',
   'users.role.user':       '👤 User',
-  'users.create':          'Benutzer erstellen',
   'users.name_pw_req':     'Name und Passwort erforderlich',
   'users.created':         '{name} erstellt',
   'users.delete.title':    'Benutzer loeschen?',
@@ -171,8 +161,6 @@ window.I18N_DE = {
 
   // Misc
   'toast.error':           'Fehler',
-  'confirm.delete':        'Löschen',
-  'csv.running':           'Import läuft',
   'csv.warnings':          'Warnungen',
   'csv.errors':            'Fehler',
   'rb_key.missing':        'Bitte zuerst die Rebrickable API-Key in den Einstellungen hinterlegen.',
@@ -620,4 +608,14 @@ window.I18N_DE = {
   'startup.init': 'Initialisiere...',
   'startup.overall': 'Gesamtfortschritt',
   'users.admin_badge': 'Admin',
+  'settings.importing': 'Importiere…',
+  'qr.expired': '⚠️ QR-Code abgelaufen — bitte neu generieren',
+  'pdf.lib_missing': 'PDF.js nicht geladen',
+  'log.title': '🗒️ App-Protokoll',
+  'log.minutes_n': '{n} Minuten',
+  'log.hours_n': '{n} Stunden',
+  'log.hour_1': '1 Stunde',
+  'log.search': 'Text suchen…',
+  'log.auto': '⏱ Auto',
+  'log.stop': '⏹ Stopp',
 };

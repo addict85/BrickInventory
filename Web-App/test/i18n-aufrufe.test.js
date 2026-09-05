@@ -105,3 +105,54 @@ test('jeder gerufene i18n-Schlüssel steht im Wörterbuch', () => {
     '\nt() gibt dann den Schlüssel selbst aus — im Text sichtbar, im aria-label ' +
     'liest ihn der Bildschirmleser vor.');
 });
+
+/**
+ * ── Und die Form des Aufrufs? ───────────────────────────────────────────────
+ *
+ * Die Prüfung oben fragt, ob es den SCHLÜSSEL gibt. Sie kann nicht fragen, ob
+ * ihn überhaupt jemand liest — und genau daran lag ein zweiter Fall derselben
+ * Sorte:
+ *
+ *     <div … data-i18n-before="finance.market_label">Ø Marktpreis: <span …>
+ *
+ * `applyLang()` kennt vier Formen (data-i18n, -attr, -vars, -tab). `-before`
+ * ist keine davon; das Attribut stand da und tat nichts. Die Beschriftung des
+ * Portfolio-Diagramms blieb deshalb in JEDER Sprache deutsch — und der
+ * Schlüssel lag als „nie gerufen" im Wörterbuch, was ihn wie Ballast aussehen
+ * liess statt wie eine Lücke.
+ *
+ * Warum jemand ihn erfunden hat, ist am Markup ablesbar: Der Text steht neben
+ * einem <span>, und `textContent` würde den span mitsamt Wert überschreiben.
+ * Die Lösung braucht dafür keine fünfte Form — der Text bekommt seinen eigenen
+ * <span data-i18n="…">, und die vorhandene Mechanik greift.
+ *
+ * Die erlaubten Formen werden aus i18n.js GELESEN, nicht abgeschrieben: Eine
+ * Liste, die eine Verdrahtung abschreibt, prüft die Verdrahtung nicht (siehe
+ * test/helpers/sources.js, routerEinhaengungen).
+ */
+test('jede data-i18n-Form wird von applyLang auch ausgewertet', () => {
+  const i18n = fs.readFileSync(path.join(ROOT, 'public', 'i18n.js'), 'utf8')
+    .replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');
+  // dataset.i18nAttr → data-i18n-attr; dataset.i18n → data-i18n.
+  const erlaubt = new Set([...i18n.matchAll(/\bdataset\.(i18n[A-Za-z]*)/g)]
+    .map(m => 'data-' + m[1].replace(/[A-Z]/g, c => '-' + c.toLowerCase())));
+  assert.ok(erlaubt.size >= 3,
+    `Nur ${erlaubt.size} Formen in i18n.js gefunden (${[...erlaubt].join(', ')}) — Muster veraltet?`);
+
+  const benutzt = new Map();
+  for (const [rel, src] of oberflaeche())
+    for (const m of src.matchAll(/\b(data-i18n[a-z-]*)\s*=/g))
+      if (!benutzt.has(m[1])) benutzt.set(m[1], rel);
+  // GEMESSEN sind es vier Formen, 386 Vorkommen.
+  assert.ok(benutzt.size >= 2, `Nur ${benutzt.size} data-i18n-Formen im Markup gefunden`);
+
+  const wirkungslos = [...benutzt]
+    .filter(([f]) => !erlaubt.has(f))
+    .map(([f, rel]) => `${f}   (${rel})`)
+    .sort();
+  assert.deepEqual(wirkungslos, [],
+    'Diese data-i18n-Formen wertet applyLang() nicht aus:\n  ' + wirkungslos.join('\n  ') +
+    `\nAusgewertet werden nur: ${[...erlaubt].sort().join(', ')}. Ein Attribut, das ` +
+    'keine davon ist, sieht nach Übersetzung aus und lässt den Text stehen, wie er ' +
+    'im Quelltext steht — in jeder Sprache.');
+});

@@ -1,7 +1,7 @@
 import { PARTS_ICON_SVG, bindTabs } from './02-gallery.js';
 import { registerActions } from './00-registry.js';
 import { locale, t, tRaw} from '../i18n.js';
-import { escHex, G, api, checkAuth, esc, escUrl, imgUrl, thumbUrl, toast } from './01-core.js';
+import { escHex, G, api, checkAuth, esc, escUrl, imgUrl, knopfBesetzt, thumbUrl, toast } from './01-core.js';
 import { initScrollbalken } from './15-scrollbar.js';
 
 // ═══ App-Initialisierung + temporaere Teileliste ═══
@@ -255,7 +255,10 @@ function plRenderTable() {
 async function plExportPdf() {
   if (!_plParts?.length) return;
   const btn = G('btn-pl-pdf');
-  if (btn) { btn.disabled = true; btn.textContent = tRaw('pdf.creating'); }
+  // Die Freigabe merkt sich die Beschriftung, statt sie am Ende neu zu
+  // setzen: Hier stand '📄 PDF' als Literal, obwohl der Knopf im Markup ein
+  // data-i18n trägt.
+  const frei = btn ? knopfBesetzt(btn, tRaw('pdf.creating')) : () => {};
   try {
     const pdfParts = _plParts.map(p => ({
       part_number:    p.part_number,
@@ -330,7 +333,7 @@ async function plExportPdf() {
     console.error('PDF error:', e);
     toast(tRaw('pdf.error_prefix')+' ' + e.message, 'error');
   } finally {
-    if (btn) { btn.disabled = false; btn.textContent = '📄 PDF'; }
+    frei();
   }
 }
 
