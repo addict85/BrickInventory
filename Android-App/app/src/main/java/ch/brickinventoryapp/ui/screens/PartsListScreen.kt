@@ -91,7 +91,13 @@ fun plSchluessel(typ: String, teil: String, farbe: Int?): String =
 fun plSchluessel(p: PlPart): String =
     plSchluessel(if (p.isFig) "M" else "P", p.blPartNumber ?: p.partNumber, p.blColorId ?: p.colorId)
 
-@OptIn(ExperimentalMaterial3Api::class)
+// ExperimentalLayoutApi kam dazu: Die FlowRow der Set-Chips trug das @OptIn
+// bisher IM RUMPF und mit vollem Paketnamen. Beides zusammen liess sie an der
+// Pruefung vorbei (SplitFileImportsTest sucht die Annotation ueber der
+// Funktion und den Namen ohne Punkt davor) — und es ist genau die Form, die in
+// HouseholdComposables.kt schon einmal „Unresolved reference 'invoke'" ergeben
+// hat.
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
 @Composable
 fun PartsListScreen(
     serverUrl: String,
@@ -265,8 +271,7 @@ fun PartsListScreen(
 
                 // Set chips
                 if (sets.isNotEmpty()) {
-                    @OptIn(ExperimentalLayoutApi::class)
-                    androidx.compose.foundation.layout.FlowRow(
+                    FlowRow(
                         horizontalArrangement = Arrangement.spacedBy(6.dp),
                         verticalArrangement = Arrangement.spacedBy(4.dp)
                     ) {

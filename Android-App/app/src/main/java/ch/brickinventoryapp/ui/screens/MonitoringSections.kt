@@ -468,6 +468,12 @@ private fun RateLimitRow(
  * Monitoring oeffnet, will in aller Regel die Job-Karten sehen. Ein Abruf beim
  * Betreten waere Datenverkehr fuer etwas, das niemand angesehen hat.
  */
+// ExperimentalLayoutApi gilt fuer die FlowRow der Stufenschalter weiter unten.
+// Die Annotation gehoert an die FUNKTION, nicht in den Rumpf — die Begruendung
+// steht in HouseholdComposables.kt: Ein @OptIn mitten im Rumpf hat dort
+// zusammen mit einer nachgestellten Lambda „Unresolved reference 'invoke'"
+// ergeben.
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 internal fun ProtokollSection(vm: MainViewModel) {
     val verwaltung by vm.verwaltungState.collectAsStateWithLifecycle()
@@ -548,7 +554,6 @@ internal fun ProtokollSection(vm: MainViewModel) {
                         verwaltung.protokoll.mapNotNull { it.level?.lowercase() }.distinct().sorted()
                     }
                     if (stufen.size > 1) {
-                        @OptIn(ExperimentalLayoutApi::class)
                         FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                             stufen.forEach { stufe ->
                                 FilterChip(

@@ -240,7 +240,25 @@ class SplitFileImportsTest {
 
                 val rumpf = code.subList(s0, e0).joinToString("\n")
                 for ((api, marker) in noetig) {
-                    if (Regex("""(?<![\w.])$api\s*[({]""").containsMatchIn(rumpf) && marker !in opt) {
+                    // ── Der volle Paketname kam an der Regel vorbei (Nachtrag 141)
+                    //
+                    // `(?<![\w.])` soll verhindern, dass `irgendwas.TopAppBar(`
+                    // als Treffer zaehlt. Es schloss aber auch die vollstaendig
+                    // qualifizierte Schreibweise aus:
+                    //
+                    //     androidx.compose.foundation.layout.FlowRow(
+                    //
+                    // Genau so stand die FlowRow der Set-Chips in
+                    // PartsListScreen.kt — mit dem @OptIn im RUMPF, also in der
+                    // Form, die HouseholdComposables.kt schon einmal
+                    // „Unresolved reference 'invoke'" beschert hat. Die Regel
+                    // sah sie nie. Eine Sache in zwei Schreibweisen, und die
+                    // Suche kennt nur eine — dasselbe Muster wie schon mehrfach.
+                    //
+                    // Der androidx-Vorspann ist jetzt erlaubt; ein beliebiger
+                    // Empfaenger davor weiterhin nicht.
+                    if (Regex("""(?<![\w.])(?:androidx(?:\.\w+)*\.)?$api\s*[({]""")
+                            .containsMatchIn(rumpf) && marker !in opt) {
                         fehler += "${f.name}:${s0 + 1} nutzt $api ohne @OptIn($marker::class)"
                     }
                 }
