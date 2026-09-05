@@ -180,7 +180,8 @@ fun SetDetailScreen(
             setDetailInstructionsSection(
                 set, detailState, authToken, serverUrl, onOpenPdf,
                 onAnleitungWaehlen = { anleitungAuswahl.launch(ch.brickinventoryapp.ui.ANLEITUNG_TYPEN) },
-                onAnleitungLoeschen = { vm.loescheAnleitung(setNumber, it) })
+                onAnleitungLoeschen = { vm.loescheAnleitung(setNumber, it) },
+                onAnleitungenNeuHolen = { vm.anleitungenNeuHolen(setNumber) })
         }
 
         if (showSetDeleteConfirm) {

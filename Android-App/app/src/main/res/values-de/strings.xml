@@ -539,6 +539,14 @@
     <string name="instr_upload_wrong_type">Nur PDF, JPG oder PNG.</string>
     <string name="instr_upload_done">Anleitung hinzugefügt</string>
     <string name="instr_delete">Anleitung entfernen</string>
+    <!-- Neu einlesen: dieselben zwei Aktionen, die die Webapp im Set-Detail hat
+         (02-gallery.js: redownloadInstr, reimportParts). -->
+    <string name="instr_reload">Neu laden</string>
+    <string name="instr_reloading">Anleitungen werden gesucht…</string>
+    <string name="instr_reloaded_n">%1$d Anleitungen geladen</string>
+    <string name="parts_reimport">Teile neu einlesen</string>
+    <string name="parts_reimporting">Teile für %1$s werden eingelesen…</string>
+    <string name="parts_reimported_n">%1$d Teile eingelesen</string>
 
     <!-- ══════════════ Server-Protokoll ══════════════ -->
     <string name="admin_log_title">Server-Protokoll</string>

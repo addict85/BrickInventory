@@ -187,4 +187,12 @@ class SetsRepository @Inject constructor(
     suspend fun deleteAnleitung(setNumber: String, instrId: Int): Result<GenericResponse> =
         safeCall { api.deleteAnleitung(setNumber, instrId) }
 
+    /** Anleitungen dieses Sets verwerfen und neu bei der Quelle suchen. */
+    suspend fun anleitungenNeuHolen(setNumber: String): Result<NachladenResponse> =
+        safeCall { api.anleitungenNeuHolen(setNumber) }
+
+    /** Die Teileliste dieses Sets neu aus dem Katalog einlesen. */
+    suspend fun teileNeuEinlesen(setNumber: String): Result<NachladenResponse> =
+        safeCall { api.teileNeuEinlesen(setNumber) }
+
 }

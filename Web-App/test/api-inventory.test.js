@@ -271,8 +271,13 @@ const C = {
   'DELETE /api/v1/auth/users/:id': 'nur-web',
   'PUT /api/v1/auth/users/:id/admin': 'nur-web',
   'GET /api/v1/sets/export/rebrickable': 'nur-web',
-  'POST /api/v1/sets/:setNumber/instructions': 'nur-web',
-  'POST /api/v1/sets/:setNumber/parts': 'nur-web',
+  // Nachtrag 159: Beide waren „nur-web", weil die App sie nicht kannte — und
+  // das war eine Luecke, keine Entscheidung. Die Webapp bot „Anleitungen neu
+  // suchen" und „Teile neu einlesen" seit jeher im Set-Detail an; ein Set,
+  // das vor seinem Katalogeintrag erfasst wurde, blieb in der App dauerhaft
+  // bei 0 Teilen. Jetzt rufen beide Oberflaechen sie auf.
+  'POST /api/v1/sets/:setNumber/instructions': 'nur-v1',
+  'POST /api/v1/sets/:setNumber/parts': 'nur-v1',
   'POST /api/v1/settings': 'nur-web',
   'GET /api/v1/settings/raw': 'nur-web',
   'GET /api/v1/settings/export': 'nur-web',

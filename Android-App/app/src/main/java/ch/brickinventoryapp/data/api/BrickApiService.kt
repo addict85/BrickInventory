@@ -112,6 +112,33 @@ interface BrickApiService {
         @Path("instrId") instrId: Int,
     ): Response<GenericResponse>
 
+    /**
+     * Anleitungen dieses Sets NEU holen — der Server wirft die vorhandenen weg
+     * und sucht sie wieder bei der Quelle.
+     *
+     * Die Webapp hat den Knopf seit jeher (02-gallery.js, redownloadInstr);
+     * die App konnte Anleitungen nur hinzufuegen und entfernen. Gebraucht wird
+     * er, wenn eine Anleitung nicht gefunden wurde oder ihr Link ins Leere
+     * zeigt — ohne ihn bliebe nur, jede von Hand hochzuladen.
+     */
+    @POST("api/v1/sets/{setNumber}/instructions")
+    suspend fun anleitungenNeuHolen(
+        @Path("setNumber") setNumber: String,
+    ): Response<NachladenResponse>
+
+    /**
+     * Die Teileliste dieses Sets neu einlesen.
+     *
+     * Ebenfalls aus der Webapp (02-gallery.js, reimportParts; der Knopf steht
+     * dort neben der Teilezahl). Noetig, wenn ein Set eingetragen wurde,
+     * bevor der Katalog seine Teile kannte — dann steht die Zahl auf 0 und
+     * bleibt es, bis jemand neu einliest.
+     */
+    @POST("api/v1/sets/{setNumber}/parts")
+    suspend fun teileNeuEinlesen(
+        @Path("setNumber") setNumber: String,
+    ): Response<NachladenResponse>
+
     // ── Server-Protokoll (nur fuer Verwalter) ───────────────────────────────
     //
     // Die Nutzerverwaltung des Servers (/auth/users) ist hier ABSICHTLICH nicht

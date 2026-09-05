@@ -553,6 +553,14 @@
     <string name="instr_upload_wrong_type">Only PDF, JPG or PNG.</string>
     <string name="instr_upload_done">Instruction added</string>
     <string name="instr_delete">Remove instruction</string>
+    <!-- Re-fetch: the same two actions the web app has in the set detail
+         (02-gallery.js: redownloadInstr, reimportParts). -->
+    <string name="instr_reload">Reload</string>
+    <string name="instr_reloading">Looking for instructions…</string>
+    <string name="instr_reloaded_n">%1$d instructions loaded</string>
+    <string name="parts_reimport">Re-import parts</string>
+    <string name="parts_reimporting">Importing parts for %1$s…</string>
+    <string name="parts_reimported_n">%1$d parts imported</string>
 
     <!-- ══════════════ Server log ══════════════ -->
     <string name="admin_log_title">Server log</string>

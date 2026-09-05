@@ -226,6 +226,62 @@ internal fun MainViewModel.ladeAnleitungHoch(setNumber: String, uri: android.net
     }
 }
 
+/**
+ * Anleitungen und Teileliste dieses Sets neu einlesen.
+ *
+ * ── Warum zwei fast gleiche Funktionen und keine gemeinsame ─────────────────
+ *
+ * Sie unterscheiden sich in DREI Dingen: dem Aufruf, dem Erfolgstext und dem,
+ * was danach neu geladen wird. Eine gemeinsame Funktion mit drei Parametern
+ * waere genauso lang und liesse an der Aufrufstelle nicht mehr erkennen, was
+ * passiert. Der gemeinsame Teil — „Ergebnis auswerten, Zahl melden, neu
+ * laden" — ist die eine Zeile `meldeNachladen`.
+ */
+internal fun MainViewModel.anleitungenNeuHolen(setNumber: String) {
+    viewModelScope.launch {
+        _snackbar.value = text(R.string.instr_reloading)
+        meldeNachladen(repo.sets.anleitungenNeuHolen(setNumber), R.string.instr_reloaded_n) {
+            // Die Liste haengt am Set-Detail: Der Server hat die alten Zeilen
+            // verworfen und neue angelegt, samt Kennung und Pfad.
+            loadSetDetail(setNumber)
+        }
+    }
+}
+
+internal fun MainViewModel.teileNeuEinlesen(setNumber: String) {
+    viewModelScope.launch {
+        _snackbar.value = text(R.string.parts_reimporting, setNumber)
+        meldeNachladen(repo.sets.teileNeuEinlesen(setNumber), R.string.parts_reimported_n) {
+            // Die Teilezahl steht im Set-Detail (Kennzahl-Chip), die Teile
+            // selbst im Teile-Reiter — beide sind jetzt veraltet.
+            loadSetDetail(setNumber)
+            loadParts()
+        }
+    }
+}
+
+/**
+ * Das gemeinsame Ende der beiden: Zahl melden oder Fehler zeigen.
+ *
+ * `count` ist die einzige Rueckmeldung, die es gibt. „0 Teile importiert"
+ * heisst, dass der Katalog zu diesem Set nichts weiss — das soll dastehen und
+ * nicht als wirkungsloses „fertig" verschwinden.
+ */
+private fun MainViewModel.meldeNachladen(
+    ergebnis: Result<NachladenResponse>,
+    erfolgsText: Int,
+    danach: () -> Unit,
+) {
+    when (ergebnis) {
+        is Result.Success ->
+            if (ergebnis.data.success) {
+                _snackbar.value = text(erfolgsText, ergebnis.data.count)
+                danach()
+            } else _snackbar.value = ergebnis.data.error ?: text(R.string.err_generic)
+        is Result.Error -> _snackbar.value = meldung(ergebnis)
+    }
+}
+
 internal fun MainViewModel.loescheAnleitung(setNumber: String, instrId: Int) {
     viewModelScope.launch {
         when (val r = repo.sets.deleteAnleitung(setNumber, instrId)) {

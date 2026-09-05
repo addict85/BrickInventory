@@ -106,6 +106,23 @@ data class Instruction(
 data class SetDetailResponse(val success: Boolean, val set: SetItem? = null)
 
 /**
+ * Antwort der beiden „neu einlesen"-Aufrufe: wie viele Zeilen dabei
+ * herauskamen.
+ *
+ * Beide Routen (routes/sets.ts) antworten mit `count` — bei den Teilen die
+ * Zahl der eingelesenen Teile, bei den Anleitungen die der gefundenen. Der
+ * Wert ist die einzige Rueckmeldung, die es gibt: „0 Teile importiert" heisst,
+ * dass der Katalog zu diesem Set nichts weiss, und das soll man sehen statt
+ * nur ein wirkungsloses „fertig".
+ */
+@Serializable
+data class NachladenResponse(
+    val success: Boolean = false,
+    val count: Int = 0,
+    val error: String? = null,
+)
+
+/**
  * Der Name eines Sets aus dem GEMEINSAMEN Katalog — unabhaengig davon, ob es
  * jemandem gehoert.
  *
