@@ -20,7 +20,7 @@
  * Allowlist beschränkt.
  */
 import path from 'path';
-import { APP_ROOT } from '../utils/appPaths';
+import { APP_ROOT, PUBLIC_DIR } from '../utils/appPaths';
 import fs from 'fs';
 import { resolveUserId } from '../utils/auth';
 import { streamFileToResponse, vorDem } from '../utils/httpError';
@@ -175,7 +175,25 @@ const _cdnAgent = new (require('https').Agent)({
 // Verkleinern) liegt seit Nachtrag 129 in utils/proxyThumbs.ts.
 
 /**
- * „Dieses Bild gibt es nicht" — und der Browser darf sich das merken.
+ * „Dieses Bild gibt es nicht" — der Browser bekommt den PLATZHALTER und darf
+ * sich das merken.
+ *
+ * ── Warum 200 mit Platzhalter statt 404 (Nachtrag 165) ─────────────────────
+ *
+ * Marcos Beobachtung: Beim Blaettern durch alte Jahrgaenge steht die Konsole
+ * voller roter 404. Fachlich waren sie richtig — Rebrickable hat zu vielen
+ * alten Sets kein Bild —, aber sie sind nichts, woran jemand etwas aendern
+ * koennte, und sie verdecken echte Fehler.
+ *
+ * Der Platzhalter ist ohnehin das, was der Nutzer danach sieht: Beide
+ * Oberflaechen zeigen ihn, wenn kein Bild kommt. Ihn gleich auszuliefern
+ * spart den Umweg ueber die Fehlerbehandlung und macht die Konsole wieder
+ * lesbar.
+ *
+ * Was NICHT verlorengeht: Der Server merkt sich die Fehlanzeige weiterhin
+ * (utils/imageMisses, sieben Tage), zaehlt sie in imgProxyFailures und zeigt
+ * sie in der Bild-Diagnose. Die Information wandert also nur aus der
+ * Browser-Konsole dorthin, wo man etwas mit ihr anfangen kann.
  *
  * ── Marcos Konsole ────────────────────────────────────────────────────────
  * Dieselbe Adresse mehrfach hintereinander mit 404, etwa
@@ -191,9 +209,26 @@ const _cdnAgent = new (require('https').Agent)({
  * Fehlanzeige länger (utils/imageMisses, sieben Tage) — dort kostet ein
  * erneuter Versuch ja auch mehr.
  */
-function sende404(res: Response) {
+let _platzhalter: Buffer | null = null;
+
+function sendePlatzhalter(res: Response) {
+  // Einmal von Platte, dann aus dem Speicher: Die Datei ist ein paar hundert
+  // Byte und wird beim Blaettern durch alte Jahrgaenge dutzendfach gebraucht.
+  if (_platzhalter === null) {
+    try { _platzhalter = fs.readFileSync(path.join(PUBLIC_DIR, 'assets', 'set-placeholder.svg')); }
+    catch (e: any) {
+      // Ohne Datei bleibt nur die alte Antwort — aber nicht stillschweigend.
+      console.error(`[img-proxy] Platzhalter nicht lesbar: ${e?.message || e}`);
+      _platzhalter = Buffer.alloc(0);
+    }
+  }
+  if (!_platzhalter.length) {
+    res.setHeader('Cache-Control', 'public, max-age=3600');
+    return res.status(404).end();
+  }
+  res.setHeader('Content-Type', 'image/svg+xml');
   res.setHeader('Cache-Control', 'public, max-age=3600');
-  return res.status(404).end();
+  return res.status(200).end(_platzhalter);
 }
 
 
@@ -276,7 +311,7 @@ export async function bildDurchreichen(req: Request, res: Response) {
   // Synchron und ohne Datenbank (Nachtrag 103): Bildanfragen sind der
   // häufigste Vorgang der Anwendung; eine Abfrage je Bild leerte den
   // Verbindungspool und liess ANDERE Routen in den Zeitfehler laufen.
-  if (istBekanntFehlend(cacheKey)) return sende404(res);
+  if (istBekanntFehlend(cacheKey)) return sendePlatzhalter(res);
 
 
   // Zwei Kopfzeilen-Sätze. Der erste imitiert einen Browser auf rebrickable.com;
@@ -349,7 +384,7 @@ export async function bildDurchreichen(req: Request, res: Response) {
       // Bei einer Client-Antwort ist es in der Praxis immer gesetzt; faellt es
       // doch aus, ist "Bad Gateway" die ehrliche Auskunft. Vorher waere hier
       // res.status(undefined) gelaufen — das wirft.
-      return r.statusCode === 404 ? sende404(res) : res.status(r.statusCode ?? 502).end();
+      return r.statusCode === 404 ? sendePlatzhalter(res) : res.status(r.statusCode ?? 502).end();
     }
     const contentType = r.headers['content-type'] || 'image/jpeg';
 

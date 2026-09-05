@@ -3,10 +3,12 @@ package ch.brickinventoryapp.ui.dialogs
 // Sammel-Importe wie in den Nachbardialogen (BarcodeResultDialog.kt,
 // SetPruefungDialog.kt): `Modifier.size` steckt in foundation.layout, und das
 // `by` vor collectAsStateWithLifecycle braucht runtime.getValue.
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 // rememberSaveable liegt im UNTERPAKET runtime.saveable — der Sammelimport
@@ -15,6 +17,7 @@ import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
@@ -28,6 +31,7 @@ import ch.brickinventoryapp.ui.MainViewModel
 import ch.brickinventoryapp.ui.components.ZoomableImageDialog
 import ch.brickinventoryapp.ui.schliesseSetItem
 import ch.brickinventoryapp.util.resolveFullUrlViaProxy
+import ch.brickinventoryapp.util.resolveThumbUrl
 
 /**
  * Detail-Dialog fuer ein Teil / eine Figur AUS EINEM SET.
@@ -185,6 +189,31 @@ fun SetItemDetailDialog(
                                             .padding(vertical = 6.dp),
                                         verticalAlignment = Alignment.CenterVertically,
                                     ) {
+                                        // ── Bild, Nummer, Bezeichnung ───
+                                        //
+                                        // Marcos Vorgabe fuer beide
+                                        // Oberflaechen: erst das kleine Bild,
+                                        // dann die Nummer, dann der Name — wie
+                                        // im Reiter Finanzen. Die Adressen
+                                        // liefert der Server je Set schon mit
+                                        // (utils/handlers/shared.ts,
+                                        // verwendendeSets); sie wurden hier
+                                        // nur nie benutzt.
+                                        //
+                                        // Vorschau statt voller Aufloesung:
+                                        // Das Bild ist 34 dp gross, und eine
+                                        // Liste kann Dutzende Zeilen haben.
+                                        AsyncImage(
+                                            model = resolveThumbUrl(serverUrl, s.imageLocal, s.imageUrl),
+                                            contentDescription = null,
+                                            imageLoader = imageLoader,
+                                            modifier = Modifier
+                                                .size(34.dp)
+                                                .clip(RoundedCornerShape(6.dp))
+                                                .background(MaterialTheme.colorScheme.surfaceVariant),
+                                            contentScale = ContentScale.Fit,
+                                        )
+                                        Spacer(Modifier.width(8.dp))
                                         Text(s.setNumber, fontSize = 13.sp,
                                             fontWeight = FontWeight.SemiBold)
                                         Spacer(Modifier.width(8.dp))

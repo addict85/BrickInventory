@@ -234,6 +234,11 @@ async function getCurrentPartMarketPrice(partNumber: string, colorId: number, us
     const ttlHours  = 24;
     const effCond   = condition || await resolvePartCondition(userId, partNumber, colorId);
     const priceData = await fetchPartPrice(partNumber, colorId || 0, effCond, currency, ttlHours);
+    // Kein Preis aus dem ANDEREN Zustand — dieselbe Regel wie bei den
+    // Minifiguren (Nachtrag 166, Begründung dort). Die beiden Wege sind
+    // Zwillinge; eine Regel nur auf einer Seite nachzuziehen ist in diesem
+    // Baum schon mehrfach schiefgegangen.
+    if (priceData?.is_fallback) return null;
     // avg_price statt qty_avg_price — dieselbe Begründung wie bei den Sets:
     // der mengengewichtete Schnitt liegt unter BrickLinks "Avg Price", und
     // "0.00" aus Postgres ist truthy und hätte avg_price verdeckt.

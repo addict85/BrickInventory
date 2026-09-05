@@ -335,3 +335,49 @@ test('der Cache-Aufräumlauf hängt am Primary-Worker', () => {
   assert.match(jobs, /startImgCacheCleanup\(\)/,
     'Der Aufruf gehört zu den übrigen Hintergrundarbeiten des Primary-Workers');
 });
+
+/**
+ * Ein fehlendes CDN-Bild kommt als PLATZHALTER zurück, nicht als 404.
+ *
+ * ── Marcos Befund ───────────────────────────────────────────────────────────
+ *
+ * Beim Blättern durch alte Jahrgänge stand die Browser-Konsole voller roter
+ * 404. Fachlich waren sie richtig — Rebrickable hat zu vielen alten Sets kein
+ * Bild —, aber sie sind nichts, woran jemand etwas ändern könnte, und sie
+ * verdecken echte Fehler.
+ *
+ * Der Platzhalter ist ohnehin das, was danach zu sehen ist: Beide Oberflächen
+ * zeigen ihn, wenn kein Bild kommt. Ihn gleich auszuliefern spart den Umweg
+ * über die Fehlerbehandlung.
+ *
+ * ── Was NICHT verlorengehen darf ────────────────────────────────────────────
+ *
+ * Der Server muss sich die Fehlanzeige weiterhin merken. Sonst fragt er bei
+ * jedem Aufruf erneut beim CDN nach — genau der Zustand, gegen den
+ * utils/imageMisses gebaut wurde. Deshalb prüft dieser Test BEIDES: dass der
+ * Platzhalter geht UND dass merkeFehlend() weiter gerufen wird.
+ */
+test('ein fehlendes Bild kommt als Platzhalter, und der Server merkt es sich', () => {
+  const proxy = fs.readFileSync(
+    path.join(__dirname, '..', 'routes', 'imgProxy.ts'), 'utf8');
+
+  assert.match(proxy, /function sendePlatzhalter\(/,
+    'Es gibt keinen Platzhalter-Weg mehr — dann steht die Konsole wieder voller 404');
+  assert.match(proxy, /set-placeholder\.svg/,
+    'Der Platzhalter wird nicht aus public/assets geladen');
+  assert.match(proxy, /res\.status\(200\)\.end\(_platzhalter\)/,
+    'Der Platzhalter wird nicht mit 200 ausgeliefert — der Browser meldet dann weiter einen Fehler');
+
+  // Beide Stellen, an denen ein fehlendes Bild endet: der Merker und die
+  // CDN-Antwort. Fällt eine davon auf 404 zurück, ist der halbe Fund weg.
+  const stellen = [...proxy.matchAll(/istBekanntFehlend\(cacheKey\)\s*\)\s*return\s+(\w+)/g)]
+    .map(m => m[1]);
+  assert.deepEqual(stellen, ['sendePlatzhalter'],
+    'Der Negativ-Cache antwortet nicht mit dem Platzhalter');
+  assert.match(proxy, /statusCode === 404 \? sendePlatzhalter\(res\)/,
+    'Ein 404 vom CDN wird nicht in den Platzhalter übersetzt');
+
+  // Und der Merker bleibt: ohne ihn fragt der Server bei JEDEM Aufruf erneut.
+  assert.match(proxy, /merkeFehlend\(/,
+    'Die Fehlanzeige wird nicht mehr gemerkt — dann geht jede Kachel wieder ans CDN');
+});
