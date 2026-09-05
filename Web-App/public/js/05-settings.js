@@ -317,7 +317,11 @@ G('btn-sav-prof').onclick = async () => {
       if (hint) hint.textContent = tRaw('profile.mail_sent_hint');
     }
     await loadProfile();
-    if (ME) { ME.username = username; const uel = G('uname'); if(uel) uel.textContent = username; }
+    // Der Namenszug in der Kopfzeile wird sonst nur EINMAL gesetzt (showApp,
+    // 01-core.js) und truege bis zum naechsten Neuladen den alten Namen.
+    // Das Element heisst `ubadge`; hier stand `uname`, das es im HTML nicht
+    // gibt — die Zeile lief seither ins Leere.
+    if (ME) { ME.username = username; const uel = G('ubadge'); if (uel) uel.textContent = username; }
 
     // Passwort (optional)
     if (wantsPwChange) {
