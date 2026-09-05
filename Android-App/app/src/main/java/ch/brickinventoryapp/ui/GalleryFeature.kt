@@ -294,7 +294,7 @@ internal fun MainViewModel.addSet(setNumber: String, quantity: Int = 1, purchase
                             // Verbindung kam nicht zustande — dann sagt
                             // meldung() weiter unten, was los ist.
                             letzte = if (schritt.meldung.isBlank()) {
-                                Result.Error("", art = Fehlerart.NETZWERK)
+                                Result.Error("", art = Fehlerart.NETZ)
                             } else {
                                 Result.Success(AddSetResponse(success = false, error = schritt.meldung))
                             }
