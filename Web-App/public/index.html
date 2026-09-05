@@ -17,24 +17,24 @@
   <script defer src="/vendor/qrcode/qrcode.min.js"></script>
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>BrickInventory Manager</title>
-  <link rel="stylesheet" href="/vendor/fonts/fonts.css?v=2026.09.03.1946">
-  <link rel="stylesheet" href="/styles.css?v=2026.09.03.1946">
+  <link rel="stylesheet" href="/vendor/fonts/fonts.css?v=2026.09.05.1416">
+  <link rel="stylesheet" href="/styles.css?v=2026.09.05.1416">
   <!-- App-Designs (Stein-Look etc.) — je Theme eine Datei unter /themes/, greift via [data-theme] -->
-  <link rel="stylesheet" href="/themes/brick.css?v=2026.09.03.1946">
+  <link rel="stylesheet" href="/themes/brick.css?v=2026.09.05.1416">
   <!-- Responsive-Regeln, nach beiden Designs geladen: das Layout ist in
        classic und brick identisch, die Regeln gelten daher für beide. -->
-  <link rel="stylesheet" href="/mobile.css?v=2026.09.03.1946">
+  <link rel="stylesheet" href="/mobile.css?v=2026.09.05.1416">
   <!-- Setzt data-theme aus dem localStorage-Cache VOR dem ersten Paint und
        gleicht danach gegen GET /api/v1/settings/theme ab. Blockierend und im
        <head>, sonst blitzt auf Login-/Startup-Screen kurz das falsche Design auf. -->
-  <script src="/js/00-theme-boot.js?v=2026.09.03.1946"></script>
+  <script src="/js/00-theme-boot.js?v=2026.09.05.1416"></script>
   <!-- Aktive Sprachdatei. Blockierend und VOR dem Bündel, weil i18n.js beim
        Auswerten window.I18N_DE / window.I18N_EN erwartet.
        Welche Datei hier steht, entscheidet der Server (utils/indexHtml.ts)
        anhand der gespeicherten Sprache — genauso wie beim Design darüber.
        Der Wechsel zur anderen Sprache lädt sie zur Laufzeit nach
        (loadLang() in i18n.js). -->
-  <script src="/locales/de.js?v=2026.09.03.1946" data-i18n-locale></script>
+  <script src="/locales/de.js?v=2026.09.05.1416" data-i18n-locale></script>
 </head>
 <body>
 
@@ -283,10 +283,10 @@
            Container anfassen — die IDs darin sind der Vertrag mit dem JS. -->
       <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:1.5rem">
           <input type="text" class="si" id="gs" placeholder="🔍 Sets suchen…" data-i18n="gallery.search" data-i18n-attr="placeholder" style="width:220px" / aria-label="Sets suchen">
-          <select id="gtheme" aria-label="Thema filtern" data-i18n="gallery.theme_all" data-i18n-attr="aria-label" style="width:auto" data-change="renderGallery">
+          <select id="gtheme" aria-label="Thema filtern" data-i18n="gallery.theme_label" data-i18n-attr="aria-label" style="width:auto" data-change="renderGallery">
             <option value="" data-i18n="gallery.filter.all">Alle</option>
           </select>
-          <select id="gsort" aria-label="Sortierung" data-i18n="gallery.sort" data-i18n-attr="aria-label" style="width:auto">
+          <select id="gsort" aria-label="Sortierung" data-i18n="gallery.sort_label" data-i18n-attr="aria-label" style="width:auto">
             <option value="added_desc" data-i18n="gallery.sort.added">Neueste zuerst</option>
             <option value="added_asc" data-i18n="gallery.sort.oldest">Älteste zuerst</option>
             <option value="name_asc" data-i18n="gallery.sort.name">Name A–Z</option>
@@ -320,16 +320,16 @@
            Leiste also direkt unter der Überschrift. -->
       <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:1.5rem">
           <input type="text" class="si" id="cat-search" placeholder="🔍 Setnummer / Name…" data-i18n="catalog.search" data-i18n-attr="placeholder" style="width:220px" / aria-label="Setnummer / Name">
-          <select id="cat-theme" aria-label="Thema filtern" data-i18n="gallery.theme_all" data-i18n-attr="aria-label" style="width:auto;max-width:240px">
+          <select id="cat-theme" aria-label="Thema filtern" data-i18n="gallery.theme_label" data-i18n-attr="aria-label" style="width:auto;max-width:240px">
             <option value="" data-i18n="catalog.filter.all_themes">Alle Themen</option>
           </select>
-          <select id="cat-year-from" aria-label="Jahr von" data-i18n="catalog.year_from" data-i18n-attr="aria-label" style="width:auto">
+          <select id="cat-year-from" aria-label="Jahr von" data-i18n="catalog.year_from_label" data-i18n-attr="aria-label" style="width:auto">
             <option value="" data-i18n="catalog.filter.year_from">Von…</option>
           </select>
-          <select id="cat-year-to" aria-label="Jahr bis" data-i18n="catalog.year_to" data-i18n-attr="aria-label" style="width:auto">
+          <select id="cat-year-to" aria-label="Jahr bis" data-i18n="catalog.year_to_label" data-i18n-attr="aria-label" style="width:auto">
             <option value="" data-i18n="catalog.filter.year_to">Bis…</option>
           </select>
-          <select id="cat-sort" aria-label="Sortierung" data-i18n="gallery.sort" data-i18n-attr="aria-label" style="width:auto">
+          <select id="cat-sort" aria-label="Sortierung" data-i18n="gallery.sort_label" data-i18n-attr="aria-label" style="width:auto">
             <option value="year_desc" data-i18n="catalog.sort.year_desc">Jahr ↓</option>
             <option value="year_asc" data-i18n="catalog.sort.year_asc">Jahr ↑</option>
             <option value="name_asc" data-i18n="catalog.sort.name">Name A–Z</option>
@@ -386,7 +386,7 @@
             <div class="fg"><label for="ap-qty-inline" data-i18n="parts.color_label">Farbe</label>
               <div style="display:flex;gap:6px;align-items:center">
                 <div id="ap-color-dot" style="width:20px;height:20px;border-radius:50%;background:var(--s200);border:1px solid var(--bdr);flex-shrink:0"></div>
-                <select id="ap-color-select" aria-label="Farbe" data-i18n="parts.color" data-i18n-attr="aria-label" style="height:38px;padding:.45rem .7rem;flex:1" data-change="updateColorDot">
+                <select id="ap-color-select" aria-label="Farbe" data-i18n="parts.color_label" data-i18n-attr="aria-label" style="height:38px;padding:.45rem .7rem;flex:1" data-change="updateColorDot">
                   <option value="" data-i18n="parts.add.no_color">— Keine Farbe —</option>
                 </select>
               </div>
@@ -408,13 +408,13 @@
            Container anfassen — die IDs darin sind der Vertrag mit dem JS. -->
       <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:1.5rem">
           <input type="text" id="parts-search" placeholder="🔍 Teilenummer / Name…" data-i18n="parts.search" data-i18n-attr="placeholder" style="width:220px" / aria-label="Teilenummer / Name">
-          <select id="parts-spare" aria-label="Ersatzteile" data-i18n="parts.spare" data-i18n-attr="aria-label" style="width:auto">
+          <select id="parts-spare" aria-label="Ersatzteile" data-i18n="parts.spare_label" data-i18n-attr="aria-label" style="width:auto">
             <option value="" data-i18n="parts.filter.all">Alle Teile</option>
             <option value="0" data-i18n="parts.filter.no_spare">Ohne Ersatzteile</option>
             <option value="1" data-i18n="parts.filter.spare">Nur Ersatzteile</option>
           </select>
           <select id="scope-parts" class="scope-select" aria-label="Konten" data-i18n="household.scope_label" data-i18n-attr="aria-label" data-change="onScopeChange" data-arg="parts" style="width:auto;display:none"></select>
-          <select id="parts-view" aria-label="Ansicht" data-i18n="parts.view" data-i18n-attr="aria-label" style="width:auto">
+          <select id="parts-view" aria-label="Ansicht" data-i18n="parts.view_label" data-i18n-attr="aria-label" style="width:auto">
             <option value="grid" data-i18n="parts.view.grid">Karten</option>
             <option value="table" data-i18n="parts.view.table">Tabelle</option>
           </select>
@@ -507,7 +507,7 @@
       <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:1.5rem">
           <input type="text" id="fig-search" placeholder="🔍 Minifiguren suchen…" data-i18n="figs.search" data-i18n-attr="placeholder" style="width:220px" data-input="filterFigs" / aria-label="Minifiguren suchen">
           <select id="scope-minifigs" class="scope-select" aria-label="Konten" data-i18n="household.scope_label" data-i18n-attr="aria-label" data-change="onScopeChange" data-arg="minifigs" style="width:auto;display:none"></select>
-          <select id="figs-view" aria-label="Ansicht" data-i18n="parts.view" data-i18n-attr="aria-label" style="width:auto" data-change="renderFigsAll">
+          <select id="figs-view" aria-label="Ansicht" data-i18n="parts.view_label" data-i18n-attr="aria-label" style="width:auto" data-change="renderFigsAll">
             <option value="grid" data-i18n="parts.view.grid">Karten</option>
             <option value="table" data-i18n="parts.view.table">Tabelle</option>
           </select>
@@ -775,7 +775,7 @@
             <div>
               <!-- Umschliessendes Label (die Checkbox liegt darin) — kein for= nötig. -->
                 <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:.875rem">
-                <input type="checkbox" id="reg-enabled" aria-label="Registrierung erlauben" data-i18n="settings.registration" data-i18n-attr="aria-label" style="width:auto" data-change="saveRegEnabled" />
+                <input type="checkbox" id="reg-enabled" aria-label="Registrierung erlauben" data-i18n="settings.registration_label" data-i18n-attr="aria-label" style="width:auto" data-change="saveRegEnabled" />
                 <span data-i18n="settings.public_reg">Öffentliche Registrierung erlauben</span>
               </label>
               <div style="font-size:.75rem;color:var(--mut);margin-left:24px" data-i18n="settings.public_reg.hint">Wenn deaktiviert, können nur Admins neue Benutzer anlegen.</div>
@@ -807,7 +807,7 @@
             <div class="fg"><label for="smtp-user" data-i18n="settings.smtp.user">Benutzername</label><input type="text" id="smtp-user" autocomplete="off" /></div>
             <div class="fg"><label for="smtp-pass" data-i18n="settings.smtp.pass">Passwort</label><input type="password" id="smtp-pass" autocomplete="off" /></div>
             <div class="fg"><label for="smtp-from" data-i18n="settings.smtp.from">Absender (Von)</label><input type="text" id="smtp-from" placeholder="BrickInventory Manager &lt;noreply@example.com&gt;" /></div>
-            <div class="fg"><label style="display:flex;align-items:center;gap:8px;cursor:pointer"><input type="checkbox" id="smtp-secure" aria-label="SMTP-Verschlüsselung" data-i18n="settings.smtp_secure" data-i18n-attr="aria-label" style="width:auto" /> TLS/SSL (Port 465)</label></div>
+            <div class="fg"><label style="display:flex;align-items:center;gap:8px;cursor:pointer"><input type="checkbox" id="smtp-secure" aria-label="SMTP-Verschlüsselung" data-i18n="settings.smtp.secure_label" data-i18n-attr="aria-label" style="width:auto" /> TLS/SSL (Port 465)</label></div>
             <div class="fg"><label style="display:flex;align-items:center;gap:8px;cursor:pointer"><input type="checkbox" id="smtp-insecure" aria-label="Zertifikat des Mailservers nicht prüfen" data-i18n="settings.smtp.insecure_tls" data-i18n-attr="aria-label" style="width:auto" /> <span data-i18n="settings.smtp.insecure_tls">Zertifikat nicht prüfen (selbst signiert)</span></label></div>
             <div style="display:flex;gap:8px;flex-wrap:wrap">
               <button class="btn bp" id="btn-sav-smtp" data-i18n="settings.smtp.save">💾 SMTP speichern</button>
@@ -1116,7 +1116,7 @@
 
 <div id="toasts"></div>
 
-<script type="module" src="/js/pdfjs-boot.js?v=2026.09.03.1946"></script>
+<script type="module" src="/js/pdfjs-boot.js?v=2026.09.05.1416"></script>
 <!-- Ein Bündel statt zwölf Einzeldateien.
      i18n.js und js/01-*.js … js/11-*.js werden von scripts/build-frontend.js in
      genau dieser Reihenfolge aneinandergehängt und minifiziert. Die Quellen
@@ -1126,7 +1126,7 @@
      00-theme-boot.js bleibt oben im <head> (muss vor dem ersten Rendern laufen),
      pdfjs-boot.js bleibt separat (ES-Modul), logviewer.js wird bei Bedarf
      zur Laufzeit nachgeladen. -->
-<script src="/js/app.bundle.js?v=2026.09.03.1946"></script>
+<script src="/js/app.bundle.js?v=2026.09.05.1416"></script>
 <!-- app.js ist in Sektions-Dateien aufgeteilt (public/js/) — Ladereihenfolge
      ist relevant, die Dateien teilen sich den globalen Scope. -->
 <!-- Der eigene Scrollbalken (#app-scrollbar) wird von js/01-core.js ERZEUGT,

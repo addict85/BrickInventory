@@ -550,6 +550,19 @@ window.I18N_DE = {
   'parts.new_section': 'Neues Teil erfassen',
   'parts.num_label': 'Teilenummer *',
   'parts.color_label': 'Farbe',
+  // ── Vorlesetexte (aria-label) der Auswahlfelder ──────────────────────────
+  // Nachtrag 142: Diese neun standen als data-i18n im HTML und fehlten in
+  // BEIDEN Woerterbuechern. t() faellt auf den SCHLUESSEL zurueck — der
+  // Bildschirmleser las danach „catalog.year_from" vor, in beiden Sprachen.
+  'import.csv_file': 'CSV-Datei',
+  'gallery.theme_label': 'Thema filtern',
+  'gallery.sort_label': 'Sortierung',
+  'catalog.year_from_label': 'Jahr von',
+  'catalog.year_to_label': 'Jahr bis',
+  'parts.spare_label': 'Ersatzteile',
+  'parts.view_label': 'Ansicht',
+  'settings.registration_label': 'Registrierung erlauben',
+  'settings.smtp.secure_label': 'SMTP-Verschlüsselung',
   'parts.note_label': 'Notiz',
   'parts.note_placeholder': 'Optional',
   'parts.filter.color': 'Nach Farbe filtern',
