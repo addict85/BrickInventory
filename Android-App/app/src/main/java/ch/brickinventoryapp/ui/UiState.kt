@@ -249,6 +249,23 @@ data class AppUiState(
     val defaultPriceCondition: String = "N", // server-side default condition for new items (N=New, U=Used)
     val userDefaultCondition: String? = null, // null = use global default
     val appTheme: String = "classic", // global vom Admin gewähltes App-Design
+    /**
+     * Startzustand des Servers, solange er nicht `ready` meldet; sonst null.
+     *
+     * ── Warum das im Zustand steht (Nachtrag 136) ───────────────────────────
+     *
+     * Der erste Start einer Neuinstallation dauert viele Minuten — der Server
+     * holt den Katalog. Die App zeigte in dieser Zeit ihre allgemeine
+     * Netzmeldung; wer seinen Server frisch aufsetzt, haelt dann App oder
+     * Server fuer kaputt. Die Webapp zeigt seit jeher einen Fortschrittsbalken
+     * (public/js/01-core.js).
+     *
+     * `null` heisst „nichts Besonderes" — entweder ist der Server durch, oder
+     * er ist gar nicht erreichbar. Nur wenn er ANTWORTET und `ready` falsch
+     * meldet, steht hier etwas, und nur dann zeigt die Anmeldung den Balken
+     * statt des Formulars.
+     */
+    val startupStatus: ch.brickinventoryapp.data.model.StartupStatus? = null,
     val language: String = "system",
 )
 

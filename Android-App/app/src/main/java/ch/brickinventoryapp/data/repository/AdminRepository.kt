@@ -100,6 +100,9 @@ class AdminRepository @Inject constructor(
     suspend fun getSettings(): Result<SettingsResponse> =
         safeCall { api.getSettings() }
 
+    /** Startzustand des Servers — ohne Anmeldung. */
+    suspend fun getStartupStatus(): Result<StartupStatus> = safeCall { api.getStartupStatus() }
+
     /** Das globale Design — ohne Anmeldung. Siehe BrickApiService.getAppTheme. */
     suspend fun getAppTheme(): Result<AppThemeResponse> = safeCall { api.getAppTheme() }
 

@@ -507,6 +507,8 @@
 
     <!-- ══════════════ Create account / forgot password ══════════════ -->
     <string name="login_no_account">No account yet? Register</string>
+    <string name="startup_title">The server is starting</string>
+    <string name="startup_hint">The first start after an installation imports the catalogue and can take several minutes. You can leave the app open.</string>
     <string name="login_forgot">Forgot password?</string>
     <string name="login_back">Back to sign-in</string>
     <string name="register_title">Create account</string>

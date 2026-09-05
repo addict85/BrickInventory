@@ -326,12 +326,23 @@ interface BrickApiService {
     ): Response<PartsStatsResponse>
 
     /**
+     * Startzustand des Servers — ohne Anmeldung.
+     *
+     * Steht in server.ts absichtlich vor allen Waechtern: Er wird gebraucht,
+     * BEVOR sich jemand anmelden kann. Die Webapp fragt ihn im Sekundentakt ab,
+     * solange `ready` falsch ist.
+     */
+    @GET("api/v1/startup-status")
+    suspend fun getStartupStatus(): Response<ch.brickinventoryapp.data.model.StartupStatus>
+
+    /**
      * Das globale Design des Servers — OHNE Anmeldung.
      *
-     * Die einzige Adresse, die die App vor der Anmeldung braucht: Anmelde- und
-     * Einrichtungsbildschirm sollen schon im richtigen Design erscheinen. Der
-     * Server laesst sie deshalb vor `requireLogin` stehen (routes/settings.ts),
-     * und die Webapp holt sie aus demselben Grund (00-theme-boot.js).
+     * Eine von ZWEI Adressen, die die App vor der Anmeldung braucht (die andere
+     * ist der Startzustand darueber): Anmelde- und Einrichtungsbildschirm
+     * sollen schon im richtigen Design erscheinen. Der Server laesst sie
+     * deshalb vor `requireLogin` stehen (routes/settings.ts), und die Webapp
+     * holt sie aus demselben Grund (00-theme-boot.js).
      */
     @GET("api/v1/settings/theme")
     suspend fun getAppTheme(): Response<ch.brickinventoryapp.data.model.AppThemeResponse>

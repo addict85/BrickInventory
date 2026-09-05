@@ -258,6 +258,11 @@ class MainViewModel @Inject constructor(
             val gemerkt = prefs.appTheme.first()
             _state.update { it.copy(appTheme = gemerkt) }
             loadAppTheme()
+            // Und ob der Server ueberhaupt schon so weit ist (Nachtrag 136).
+            // Beim ersten Start einer Neuinstallation holt er den Katalog, was
+            // viele Minuten dauert; ohne diese Abfrage zeigte die App in der
+            // ganzen Zeit nur „keine Verbindung".
+            verfolgeServerstart()
         }
 
         // Session (URL + Token): nur bei *tatsächlicher* Änderung neu laden.

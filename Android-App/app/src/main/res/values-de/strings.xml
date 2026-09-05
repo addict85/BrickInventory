@@ -493,6 +493,8 @@
 
     <!-- ══════════════ Konto anlegen / Passwort vergessen ══════════════ -->
     <string name="login_no_account">Noch kein Konto? Registrieren</string>
+    <string name="startup_title">Der Server startet</string>
+    <string name="startup_hint">Der erste Start nach einer Installation holt den Katalog und dauert einige Minuten. Die App kann offen bleiben.</string>
     <string name="login_forgot">Passwort vergessen?</string>
     <string name="login_back">Zurück zur Anmeldung</string>
     <string name="register_title">Konto erstellen</string>

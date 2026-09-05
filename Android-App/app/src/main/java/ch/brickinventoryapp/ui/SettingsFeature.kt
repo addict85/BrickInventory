@@ -64,6 +64,51 @@ internal fun MainViewModel.loadSettings() {
  * ist genau das richtige Verhalten. Eine Fehlermeldung ueber ein Design waere
  * beim Anmelden nur im Weg.
  */
+/**
+ * Den Startzustand des Servers verfolgen, bis er fertig ist.
+ *
+ * ── Warum eine Schleife und kein Zeitlimit (Nachtrag 136) ───────────────────
+ *
+ * Der erste Start einer Neuinstallation kann viele Minuten dauern. Ein
+ * Zeitlimit waere deshalb falsch — die Webapp sagt das in ihrem eigenen
+ * Kommentar (01-core.js) und bricht nur ab, wenn sich der Fortschritt lange
+ * gar nicht mehr aendert.
+ *
+ * Hier einfacher, weil die App die Anzeige nicht blockiert: Solange der Server
+ * ANTWORTET und `ready` falsch meldet, wird weiter gefragt. Antwortet er gar
+ * nicht — kein Server, falsche Adresse, kein Netz —, hoert die Schleife auf und
+ * es bleibt bei der gewoehnlichen Netzmeldung. Genau die ist dann ja richtig.
+ *
+ * Zwei Sekunden statt der 600 ms der Webapp: Ein Telefon soll dabei nicht
+ * unnoetig funken, und der Balken bewegt sich in Minuten, nicht in Sekunden.
+ */
+internal fun MainViewModel.verfolgeServerstart() {
+    viewModelScope.launch {
+        if (prefs.serverUrl.first().isBlank()) return@launch
+        while (true) {
+            when (val r = repo.admin.getStartupStatus()) {
+                is Result.Success -> {
+                    if (r.data.ready) {
+                        // Fertig: Feld leeren, damit die Anmeldung wieder das
+                        // Formular zeigt, und aufhoeren.
+                        _state.update { it.copy(startupStatus = null) }
+                        return@launch
+                    }
+                    _state.update { it.copy(startupStatus = r.data) }
+                }
+                // Keine Antwort heisst NICHT „startet gerade": Dann ist der
+                // Server nicht erreichbar, und die gewoehnliche Meldung ist die
+                // richtige. Feld leeren und aufhoeren.
+                is Result.Error -> {
+                    _state.update { it.copy(startupStatus = null) }
+                    return@launch
+                }
+            }
+            kotlinx.coroutines.delay(2000)
+        }
+    }
+}
+
 internal fun MainViewModel.loadAppTheme() {
     viewModelScope.launch {
         if (prefs.serverUrl.first().isBlank()) return@launch
