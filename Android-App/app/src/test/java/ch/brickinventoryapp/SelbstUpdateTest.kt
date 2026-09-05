@@ -155,9 +155,10 @@ class SelbstUpdateTest {
 
     @Test
     fun `der Workflow legt die Beschreibung neben das APK`() {
-        val wf = java.io.File("../.github/workflows/android.yml")
-        assert(wf.isFile) { "android.yml nicht gefunden unter ${wf.absolutePath}" }
-        val text = wf.readLines().filterNot { it.trimStart().startsWith("#") }.joinToString("\n")
+        // Ueber Quellen.workflow(), nicht mit eigener Pfadangabe: Genau daran
+        // ist dieser Test in Lauf 131 gescheitert — `../.github/…` statt
+        // `../../.github/…`. Gradle-Tests laufen aus Android-App/app.
+        val text = Quellen.workflow()
         assert(text.contains("""gh release upload "${'$'}ETIKETT" version.json --clobber""")) {
             "Der Workflow laedt keine version.json mehr hoch — ohne sie findet die App " +
                 "kein Update, ohne dass irgendwo etwas scheitert"

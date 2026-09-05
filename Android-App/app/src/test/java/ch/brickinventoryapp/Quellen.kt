@@ -32,6 +32,33 @@ object Quellen {
 
     val wurzel: File = File("src/main/java/ch/brickinventoryapp")
 
+    /**
+     * Der Android-Workflow, ohne Kommentarzeilen.
+     *
+     * ── Warum das hier steht und nicht zweimal daneben ───────────────────────
+     * ApkNameTest las ihn ueber `../../.github/…`, SelbstUpdateTest ueber
+     * `../.github/…` — eine Ebene zu wenig. Der Lauf hat es gemeldet (Lauf 131),
+     * aber erst nach neun Minuten, und die oertliche Gegenprobe war blind
+     * dafuer: Sie lief aus `Android-App/`, wo der kuerzere Pfad zufaellig
+     * stimmt. Gradle-Tests laufen aus `Android-App/app`.
+     *
+     * Eine Pfadangabe in zwei Schreibweisen ist dieselbe Fehlerart wie eine
+     * Regel in zwei Kopien: Sie faellt nicht auf, solange beide zufaellig
+     * dasselbe treffen.
+     *
+     * Kommentarzeilen sind draussen, weil ein Absatz, der eine alte
+     * Schreibweise ERKLAERT, sie zwangslaeufig nennt — und damit selbst zum
+     * vermeintlichen Verstoss wuerde.
+     */
+    fun workflow(): String {
+        val f = File("../../.github/workflows/android.yml")
+        check(f.isFile) {
+            "android.yml nicht gefunden unter ${f.absolutePath}. Ohne die Datei " +
+                "pruefen die Tests darauf nichts und waeren trotzdem gruen."
+        }
+        return f.readLines().filterNot { it.trimStart().startsWith("#") }.joinToString("\n")
+    }
+
     /** Eine Quelldatei, relativ zu ch/brickinventoryapp/. */
     fun lies(rel: String): String = File(wurzel, rel).readText()
 

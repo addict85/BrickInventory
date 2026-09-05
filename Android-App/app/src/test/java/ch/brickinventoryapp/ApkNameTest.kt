@@ -61,18 +61,12 @@ class ApkNameTest {
      * geprüft, nicht angenommen: Eine fehlende Datei würde die Prüfungen unten
      * sonst stillschweigend bestehen lassen — dieselbe Falle wie bei einem
      * Dateilauf, der nichts findet (Nachtrag 118).
+     *
+     * Er steht seit Lauf 131 in Quellen.workflow() statt hier: SelbstUpdateTest
+     * schrieb ihn ein zweites Mal aus, eine Ebene zu kurz. Eine Pfadangabe in
+     * zwei Schreibweisen ist dieselbe Fehlerart wie eine Regel in zwei Kopien.
      */
-    private fun workflow(): String {
-        val f = java.io.File("../../.github/workflows/android.yml")
-        assert(f.isFile) {
-            "android.yml nicht gefunden unter ${f.absolutePath}. Ohne die Datei " +
-                "prüft dieser Test nichts und wäre trotzdem grün."
-        }
-        // Kommentarzeilen raus: Der Absatz, der die alte Schreibweise ERKLÄRT,
-        // nennt sie zwangsläufig — und wäre sonst selbst der Verstoss. Genau
-        // darüber ist der erste Entwurf dieses Tests gestolpert.
-        return f.readLines().filterNot { it.trimStart().startsWith("#") }.joinToString("\n")
-    }
+    private fun workflow(): String = Quellen.workflow()
 
     /**
      * Der Zielname, den `build.gradle.kts` vergibt.
