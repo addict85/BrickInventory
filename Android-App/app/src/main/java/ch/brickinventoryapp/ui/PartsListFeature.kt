@@ -5,6 +5,7 @@ import ch.brickinventoryapp.data.model.*
 import ch.brickinventoryapp.data.repository.Result
 import ch.brickinventoryapp.service.PdfExportService
 import ch.brickinventoryapp.service.PdfExportState
+import ch.brickinventoryapp.util.BrickLinkWunschliste
 import kotlinx.coroutines.flow.*
 
 
@@ -28,9 +29,20 @@ internal suspend fun MainViewModel.resolveSetForPartsList(setNumber: String): Pa
         // Use user-independent CSV endpoints (work for all users)
         val partsResult = repo.sets.getSetPartsList(setNumber)
         val figsResult  = repo.sets.getSetMinifigsList(setNumber)
-        // Set-Name über das Detail-Endpoint statt alle Sets zu laden
-        val setName = (repo.sets.getSetDetail(setNumber) as? Result.Success)
-            ?.data?.set?.name ?: setNumber
+        // ── Der Name kommt aus dem KATALOG, nicht aus dem eigenen Bestand ───
+        //
+        // Hier stand getSetDetail — /api/v1/sets/{nr}. Das sucht im Blickfeld
+        // des Nutzers und antwortet 404, wenn das Set niemandem im Haushalt
+        // gehoert. In der temporaeren Teileliste ist genau das der Regelfall:
+        // Man traegt dort Sets ein, die man NICHT hat, um zu sehen, welche
+        // Teile fehlen. Der Name fiel deshalb auf die Nummer zurueck, und die
+        // Liste zeigte „75192-1" statt „Millennium Falcon" — die Webapp zeigt
+        // den Namen, weil sie /v1/sets/info ruft (08-init.js, plAddSet).
+        //
+        // Der Server sucht dort erst im gemeinsamen Katalog, dann in den
+        // eigenen Sets; der Rueckfall auf die Nummer passiert also schon dort.
+        val setName = (repo.sets.getSetInfo(setNumber) as? Result.Success)
+            ?.data?.name?.takeIf { it.isNotBlank() } ?: setNumber
         // Deduplicate by blPartNumber + colorId (same as webapp)
         val deduped = mutableMapOf<String, ch.brickinventoryapp.ui.screens.PlPart>()
         if (partsResult is Result.Success) {
@@ -164,5 +176,137 @@ internal suspend fun MainViewModel.exportPartsPdf(
         // aber genau das soll sichtbar bleiben.
         is PdfExportState.Idle,
         is PdfExportState.Running -> text(ch.brickinventoryapp.R.string.pdfexp_unknown_error)
+    }
+}
+
+/**
+ * Die fehlenden Teile als BrickLink-Wunschliste (XML) ausgeben.
+ *
+ * ── Was die Webapp hier tut, und warum das nachgezogen wird ─────────────────
+ *
+ * In der Webapp hat jede Zeile der Teileliste ein Feld „vorhanden"; der Knopf
+ * daneben exportiert die Differenz als XML, das BrickLink direkt als
+ * Wunschliste einliest (08-init.js, plExportBricklink). Die App hatte die
+ * Teileliste und den PDF-Export, aber nicht diesen Weg — man konnte unterwegs
+ * ein Set durchgehen und trotzdem nichts bestellen.
+ *
+ * ── Warum Minifiguren aufgeloest werden ─────────────────────────────────────
+ *
+ * In der Teileliste steht eine Minifigur als EIN Posten. Wer sie nicht
+ * vollstaendig hat, will aber die fehlenden EINZELTEILE bestellen, nicht die
+ * ganze Figur — die gibt es oft gar nicht einzeln zu kaufen. Deshalb fragt
+ * dieser Export je fehlender Figur ihre Teile beim Server nach und traegt
+ * diese ein. Antwortet der Server nicht oder kennt die Figur nicht, bleibt
+ * die Figur als Ganzes stehen: lieber ein Posten, den es vielleicht nicht
+ * gibt, als ein stillschweigend fehlender.
+ *
+ * ── Warum die Farbe dreifach abgesichert ist ────────────────────────────────
+ *
+ * BrickLink kennt eigene Farbnummern. Der Server liefert `bl_color_id` je
+ * Teil meist mit; fehlt sie, hilft die Farbkarte /parts/bl-color-map; fehlt
+ * auch die, bleibt die Rebrickable-Nummer stehen. Dieselbe Reihenfolge wie in
+ * der Webapp — eine falsche Farbe ist dort ein Posten, den man von Hand
+ * korrigiert, eine fehlende waere ein Posten, den BrickLink zurueckweist.
+ *
+ * @param vorhanden Was der Nutzer laut Eingabefeldern schon hat, je
+ *                  [ch.brickinventoryapp.ui.screens.plSchluessel].
+ * @param zustand   "X", "N" oder "U" — siehe BrickLinkWunschliste.
+ * @return Meldung fuer den Nutzer, oder null wenn der Teilen-Dialog aufging.
+ */
+internal suspend fun MainViewModel.exportPartsBricklink(
+    context: android.content.Context,
+    parts: List<ch.brickinventoryapp.ui.screens.PlPart>,
+    vorhanden: Map<String, Int>,
+    zustand: String,
+): String? {
+    return try {
+        val gebraucht = parts.map { p ->
+            BrickLinkWunschliste.Posten(
+                typ   = if (p.isFig) "M" else "P",
+                teil  = p.blPartNumber ?: p.partNumber,
+                farbe = p.blColorId ?: p.colorId,
+                menge = p.quantity,
+            )
+        }
+        val fehlend = BrickLinkWunschliste.ausBestand(gebraucht, vorhanden) { posten ->
+            ch.brickinventoryapp.ui.screens.plSchluessel(posten.typ, posten.teil, posten.farbe)
+        }
+        if (fehlend.isEmpty()) return text(R.string.partslist_bl_nothing_missing)
+
+        // Die Farbkarte nur holen, wenn ueberhaupt eine Farbe offen ist. Sie
+        // umfasst den ganzen Farbkatalog; fuer eine Liste, in der jeder Posten
+        // seine BrickLink-Farbe schon mitbringt, waere das eine Anfrage ohne
+        // Wirkung.
+        val ohneBlFarbe = parts.any { !it.isFig && it.blColorId == null }
+        val farbkarte: Map<Int, Int> =
+            if (!ohneBlFarbe) emptyMap()
+            else (repo.teile.getBlColorMap() as? Result.Success)
+                ?.data?.map.orEmpty()
+                .mapNotNull { (rb, bl) -> rb.toIntOrNull()?.let { it to bl } }
+                .toMap()
+
+        // Ueber den SCHLUESSEL zurueck zur Zeile, nicht ueber die Teilenummer
+        // allein: Dieselbe Nummer steht in der Liste einmal je Farbe. Ein
+        // firstOrNull auf die Nummer haette fuer alle Farben die Angaben der
+        // ERSTEN genommen — und damit rote Steine in blau bestellt.
+        val jeSchluessel = parts.associateBy { ch.brickinventoryapp.ui.screens.plSchluessel(it) }
+
+        val ausgepackt = mutableListOf<BrickLinkWunschliste.Posten>()
+        for (p in fehlend) {
+            if (p.typ != "M") {
+                // Farbkarte NUR als Rueckfall: Kam die BrickLink-Farbe schon
+                // vom Server, bleibt sie stehen. `p.farbe` kann null sein —
+                // dann gibt es auch nichts nachzuschlagen.
+                val zeile = jeSchluessel[
+                    ch.brickinventoryapp.ui.screens.plSchluessel(p.typ, p.teil, p.farbe)]
+                val farbe = zeile?.blColorId ?: p.farbe?.let { farbkarte[it] } ?: p.farbe
+                ausgepackt += p.copy(farbe = farbe)
+                continue
+            }
+            val figTeile = (repo.teile.getMinifigParts(p.teil) as? Result.Success)?.data?.parts
+            if (figTeile.isNullOrEmpty()) { ausgepackt += p; continue }
+            for (ft in figTeile) {
+                ausgepackt += BrickLinkWunschliste.Posten(
+                    typ   = "P",
+                    teil  = ft.blPartNumber ?: ft.partNumber,
+                    farbe = ft.blColorId ?: farbkarte[ft.colorId] ?: ft.colorId,
+                    // Menge je Figur mal Anzahl fehlender Figuren.
+                    menge = (ft.totalQuantity.takeIf { it > 0 } ?: 1) * p.menge,
+                )
+            }
+        }
+
+        val posten = BrickLinkWunschliste.zusammenfassen(ausgepackt)
+        val xml = BrickLinkWunschliste.xml(posten, zustand)
+
+        // Genau das Verzeichnis, das der FileProvider freigibt — siehe
+        // res/xml/file_paths.xml. Ein anderer Ordner liesse den Teilen-Dialog
+        // mit "Failed to find configured root" abbrechen.
+        val basis = context.getExternalFilesDir(null) ?: context.filesDir
+        val dir = java.io.File(basis, "export").apply { mkdirs() }
+        val datei = java.io.File(dir, "bricklink-wanted.xml")
+        datei.writeText(xml)
+
+        val uri = androidx.core.content.FileProvider.getUriForFile(
+            context, context.packageName + ".provider", datei)
+        context.startActivity(
+            android.content.Intent.createChooser(
+                android.content.Intent(android.content.Intent.ACTION_SEND).apply {
+                    type = "text/xml"
+                    putExtra(android.content.Intent.EXTRA_STREAM, uri)
+                    addFlags(android.content.Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                // text() und NICHT context.getString(): Die App hat eine
+                // eigene Sprachwahl, die nicht die des Geraets sein muss.
+                // context.getString naehme die des Geraets — der Titel des
+                // Teilen-Dialogs stuende dann als einziger in einer anderen
+                // Sprache als alles daneben.
+                }, text(R.string.partslist_bl_share)
+            ).addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK)
+        )
+        null
+    } catch (e: Exception) {
+        // Gemeldet statt verschluckt: Ein Export, der nichts tut und nichts
+        // sagt, sieht aus wie ein kaputter Knopf.
+        e.message ?: text(R.string.partslist_bl_failed)
     }
 }

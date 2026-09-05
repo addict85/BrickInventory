@@ -105,6 +105,26 @@ data class Instruction(
 @Serializable
 data class SetDetailResponse(val success: Boolean, val set: SetItem? = null)
 
+/**
+ * Der Name eines Sets aus dem GEMEINSAMEN Katalog — unabhaengig davon, ob es
+ * jemandem gehoert.
+ *
+ * Der Unterschied zu [SetDetailResponse] ist genau dieser Punkt:
+ * /api/v1/sets/{nr} sucht im Blickfeld des Nutzers und antwortet mit 404, wenn
+ * das Set niemandem im Haushalt gehoert. Fuer die temporaere Teileliste ist
+ * das der Regelfall — dort traegt man Sets ein, die man NICHT hat, um zu
+ * sehen, welche Teile fehlen. Die App zeigte dort bisher nur die Nummer, die
+ * Webapp den Namen.
+ *
+ * Der Server sucht erst im Katalog, dann in den eigenen Sets, und gibt zuletzt
+ * die Nummer selbst als Namen zurueck — es gibt also immer eine Antwort.
+ */
+@Serializable
+data class SetInfoResponse(
+    val success: Boolean = false,
+    val name: String? = null,
+)
+
 @Serializable
 data class SetResponse(
     val success: Boolean,

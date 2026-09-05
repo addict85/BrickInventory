@@ -120,6 +120,18 @@ interface BrickApiService {
     @GET("api/v1/admin/logs")
     suspend fun getProtokoll(@Query("minutes") minuten: Int): Response<ProtokollResponse>
 
+    /**
+     * Nur der Name, aus dem gemeinsamen Katalog — siehe SetInfoResponse.
+     *
+     * Getrennt von getSetDetail darunter, weil die beiden verschiedene Fragen
+     * beantworten: „wie heisst dieses Set?" gegen „was habe ICH von diesem
+     * Set?". Die zweite gibt es fuer ein fremdes Set nicht, die erste schon.
+     */
+    @GET("api/v1/sets/info/{setNumber}")
+    suspend fun getSetInfo(
+        @Path("setNumber") setNumber: String
+    ): Response<ch.brickinventoryapp.data.model.SetInfoResponse>
+
     @GET("api/v1/sets/{setNumber}")
     suspend fun getSetDetail(
         @Path("setNumber") setNumber: String
@@ -349,6 +361,17 @@ interface BrickApiService {
 
     @GET("api/v1/parts/brick-colors")
     suspend fun getBrickColors(): Response<BrickColorsResponse>
+
+    /**
+     * Rebrickable-Farbnummer → BrickLink-Farbnummer, fuer die Wunschliste.
+     *
+     * Die Teileliste zeigt Rebrickable-Farben; BrickLink liest beim Import
+     * einer Wunschliste nur seine eigenen Nummern. Meist liefert der Server
+     * `bl_color_id` schon je Teil mit — diese Karte ist der Rueckfall fuer
+     * alles, wo sie fehlt, und dieselbe Adresse, die die Webapp dafuer ruft.
+     */
+    @GET("api/v1/parts/bl-color-map")
+    suspend fun getBlColorMap(): Response<ch.brickinventoryapp.data.model.BlColorMapResponse>
 
     /**
      * Die FILTERliste Farbe — welche Farben im Bestand vorkommen, mit Anzahl.

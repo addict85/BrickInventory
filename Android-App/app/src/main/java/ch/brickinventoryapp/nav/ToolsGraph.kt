@@ -164,6 +164,9 @@ fun NavGraphBuilder.toolsGraph(
                     serverUrl = state.serverUrl,
                     authToken = state.authToken,
                     onExportPdf = { sets, parts -> vm.exportPartsPdf(activity, sets, parts) },
+                    onExportBricklink = { parts, vorhanden, zustand ->
+                        vm.exportPartsBricklink(activity, parts, vorhanden, zustand)
+                    },
                     pdfStatus = vm.pdfExportStatus,
                     imageLoader = imageLoader,
                     onScanBarcode = { vm.setScannerSource("partslist"); navController.navigate(Screen.BarcodeScanner.route) },

@@ -1,6 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!--
-  FileProvider-Freigabe — bewusst NUR das pdf/-Unterverzeichnis.
+  FileProvider-Freigabe — bewusst NUR die zwei Ausgabe-Unterverzeichnisse
+  pdf/ und export/.
 
   Vorher standen hier cache-path, files-path und external-files-path jeweils
   mit path=".": die kompletten Wurzelverzeichnisse waren über die
@@ -12,8 +13,16 @@
 
   Beide Wurzeln (extern + intern), weil der Manager auf filesDir
   zurückfällt, wenn getExternalFilesDir(null) null liefert.
+
+  export/ kam mit der BrickLink-Wunschliste dazu (PartsListFeature.
+  exportPartsBricklink legt bricklink-wanted.xml dort ab und reicht sie per
+  ACTION_SEND weiter). Ein EIGENES Verzeichnis und nicht pdf/, damit an der
+  Freigabe ablesbar bleibt, was sie hergibt — und damit ein künftiger Export
+  nicht stillschweigend im PDF-Ordner landet.
 -->
 <paths>
     <external-files-path name="pdf_external" path="pdf/" />
     <files-path name="pdf_internal" path="pdf/" />
+    <external-files-path name="export_external" path="export/" />
+    <files-path name="export_internal" path="export/" />
 </paths>

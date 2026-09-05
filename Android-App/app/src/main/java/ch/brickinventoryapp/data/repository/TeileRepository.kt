@@ -68,6 +68,9 @@ class TeileRepository @Inject constructor(
     suspend fun getPartsCategories(accounts: String? = null): Result<PartsCategoriesResponse> =
         safeCall { api.getPartsCategories(accounts) }
 
+    /** Rebrickable-Farbnummer → BrickLink-Farbnummer; siehe BlColorMapResponse. */
+    suspend fun getBlColorMap(): Result<BlColorMapResponse> = safeCall { api.getBlColorMap() }
+
     /**
      * Die manuell erfassten Teile bzw. Figuren — dieselbe Quelle wie die
      * Webapp. Vorher kamen sie aus der BEWERTUNG, also aus einer zweiten

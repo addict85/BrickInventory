@@ -202,6 +202,30 @@ data class PartsFilterColorsResponse(
 )
 
 /**
+ * Rebrickable-Farbnummer → BrickLink-Farbnummer.
+ *
+ * Der Server liefert die Zuordnung als Objekt (`{"4": 5, "15": 1, …}`), also
+ * mit den Rebrickable-Nummern als Schluessel; JSON kennt keine Zahlen als
+ * Schluessel, deshalb steht links `String`. Umgerechnet wird erst dort, wo
+ * die Farbe gebraucht wird.
+ *
+ * Gebraucht fuer die BrickLink-Wunschliste: In der Teileliste stehen
+ * Rebrickable-Farben, BrickLink kennt aber nur seine eigenen. Fuer die
+ * meisten Teile liefert der Server `bl_color_id` schon mit; diese Karte ist
+ * der Rueckfall fuer alles, wo sie fehlt — genau wie in der Webapp
+ * (08-init.js, `_rbToBlColor`).
+ *
+ * Das Feld `source` des Servers ("db", "api" oder "empty") steht bewusst NICHT
+ * hier: Der Leser ist auf ignoreUnknownKeys eingestellt (AppModule.kt), ein
+ * Feld, das niemand liest, waere also nur eine Zeile, die mitgepflegt wird.
+ */
+@Serializable
+data class BlColorMapResponse(
+    val success: Boolean = false,
+    val map: Map<String, Int> = emptyMap(),
+)
+
+/**
  * Ein Eintrag der Filterliste „Kategorie".
  *
  * `categoryName` ist der WERT, den der Server als Filter erwartet (meist eine

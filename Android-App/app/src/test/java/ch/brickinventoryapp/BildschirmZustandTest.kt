@@ -61,8 +61,21 @@ class BildschirmZustandTest {
 
     private val nameAus = Regex("""\b(?:var|val)\s+(\w+)\s+by\s+remember""")
 
-    /** Zustand eines LAUFENDEN VORGANGS — der darf nicht wiederhergestellt werden. */
-    private val fluechtig = Regex("""(?i)lade|loading|busy|running|laeuft|laden|pending|saving|speichert|scanning|scannt|progress|fortschritt|zieh|drag""")
+    /**
+     * Zustand eines LAUFENDEN VORGANGS — der darf nicht wiederhergestellt werden.
+     *
+     * `export` kam nachtraeglich dazu (BrickLink-Wunschliste): Die Liste kannte
+     * „laeuft", „loading", „saving" — aber nicht die Schreibweise, die im Baum
+     * tatsaechlich stand. `isExporting` im PDF-Knopf war deshalb seit jeher
+     * `rememberSaveable` und ist der Fall, gegen den diese Regel gebaut ist:
+     * Nach einer Drehung waehrend des Exports kaeme `true` zurueck, die
+     * Koroutine dazu ist aber tot — der Knopf bliebe fuer immer gesperrt und
+     * zeigte einen Kreisel, der sich nie aufloest.
+     *
+     * Die Lehre ist die dieser ganzen Reihe: eine Sache in zwei Schreibweisen,
+     * und die Suche kennt nur eine.
+     */
+    private val fluechtig = Regex("""(?i)lade|loading|busy|running|laeuft|laden|pending|saving|speichert|scanning|scannt|progress|fortschritt|zieh|drag|export""")
 
     /**
      * Merker der Rollpositions-Wiederherstellung — dürfen ERST RECHT nicht überleben.

@@ -274,6 +274,8 @@ fun Zustandszeile(
     zustand: String,
     onZustand: (String) -> Unit,
     modifier: Modifier = Modifier,
+    /** Durchgereicht an [ConditionToggle] — siehe dort. */
+    optionen: List<Pair<String, Int>> = ZUSTAND_NEU_GEBRAUCHT,
 ) {
     Row(
         verticalAlignment = Alignment.CenterVertically,
@@ -285,7 +287,7 @@ fun Zustandszeile(
             modifier = Modifier.width(90.dp),
         )
         Spacer(Modifier.width(8.dp))
-        ConditionToggle(selected = zustand, onSelect = onZustand)
+        ConditionToggle(selected = zustand, onSelect = onZustand, optionen = optionen)
     }
 }
 
@@ -299,10 +301,31 @@ fun Zustandszeile(
  * Die Werte „N" und „U" sind die des Servers (utils/validate.ts); uebersetzt
  * wird nur die Beschriftung.
  */
+/**
+ * Die Vorbelegung von [ConditionToggle] und [Zustandszeile] — an einer Stelle,
+ * damit die beiden nicht mit verschiedenen Listen dastehen.
+ */
+val ZUSTAND_NEU_GEBRAUCHT: List<Pair<String, Int>> =
+    listOf("N" to R.string.condition_new, "U" to R.string.condition_used)
+
 @Composable
-fun ConditionToggle(selected: String, onSelect: (String) -> Unit) {
+fun ConditionToggle(
+    selected: String,
+    onSelect: (String) -> Unit,
+    /**
+     * Wert → Beschriftung. Vorbelegt mit „neu / gebraucht", weil das an fast
+     * jeder Stelle gemeint ist.
+     *
+     * Als Parameter und nicht als zweite, eigene Umschaltleiste: Die
+     * BrickLink-Wunschliste kennt einen dritten Wert („egal"), sieht sonst
+     * aber genauso aus. Eine zweite Bauform daneben waere derselbe Knopf in
+     * zwei Gestalten — genau das, was in dieser Reihe schon bei Suchfeld und
+     * Zustandszeile zusammengefuehrt wurde.
+     */
+    optionen: List<Pair<String, Int>> = ZUSTAND_NEU_GEBRAUCHT,
+) {
     Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-        listOf("N" to R.string.condition_new, "U" to R.string.condition_used).forEach { (value, labelRes) ->
+        optionen.forEach { (value, labelRes) ->
             val isSelected = selected == value
             Surface(
                 onClick = { onSelect(value) },

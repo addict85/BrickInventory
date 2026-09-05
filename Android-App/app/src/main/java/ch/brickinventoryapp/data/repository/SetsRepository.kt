@@ -66,6 +66,10 @@ class SetsRepository @Inject constructor(
     suspend fun getSetDetail(setNumber: String): Result<SetDetailResponse> =
         safeCall { api.getSetDetail(setNumber) }
 
+    /** Setname aus dem gemeinsamen Katalog, auch fuer fremde Sets. */
+    suspend fun getSetInfo(setNumber: String): Result<SetInfoResponse> =
+        safeCall { api.getSetInfo(setNumber) }
+
     suspend fun addSet(setNumber: String, quantity: Int = 1, purchasePrice: Double? = null,
                        condition: String? = null, ownerUserId: Int? = null): Result<AddSetResponse> =
         safeCall { api.addSet(AddSetRequest(setNumber, quantity, purchasePrice, condition, ownerUserId)) }

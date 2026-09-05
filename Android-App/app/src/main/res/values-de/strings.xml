@@ -152,6 +152,14 @@
     <string name="partslist_pdf_error_title">PDF Fehler</string>
     <string name="partslist_ok">OK</string>
     <string name="partslist_reset">Zurücksetzen</string>
+    <string name="condition_any">Egal</string>
+    <string name="partslist_have">Habe</string>
+    <string name="partslist_bl_title">BrickLink-Wunschliste</string>
+    <string name="partslist_bl_hint">Trage ein, wie viele Teile du schon hast — der Rest wird als BrickLink-Wunschliste ausgegeben.</string>
+    <string name="partslist_bl_export">BrickLink-Wunschliste</string>
+    <string name="partslist_bl_share">Wunschliste teilen</string>
+    <string name="partslist_bl_nothing_missing">Es fehlt nichts — du hast jedes Teil der Liste.</string>
+    <string name="partslist_bl_failed">Die Wunschliste konnte nicht erstellt werden.</string>
     <string name="partslist_empty_hint">Sets hinzufügen und Teileliste erstellen</string>
     <string name="partslist_no_color">(Keine Farbe)</string>
     <string name="partslist_group_summary">%1$d×  ·  %2$d Typen</string>
