@@ -479,7 +479,24 @@ function escapeLike(s: unknown): string { return String(s ?? '').replace(/([%_\\
 const TOKEN_QUERY_ALLOWED = [
   /^\/api\/img-proxy\b/,
   /^\/data\//,
-  /^\/api\/sets\/import\/csv\/(stream|status)\b/,
+  // ── Der Pfad ist mit umgezogen, dieser Eintrag war es nicht ───────────────
+  //
+  // Hier stand `/api/sets/import/csv/…`. Die Route haengt seit der
+  // Zusammenlegung der API-Oberflaechen unter `/api/v1/sets/…` — der Eintrag
+  // traf also nichts mehr, und der Rueckfall, den dieser Kommentarblock
+  // beschreibt, war wirkungslos.
+  //
+  // Aufgefallen ist es NICHT, weil das Sitzungs-Cookie einspringt: Die Webapp
+  // oeffnet den Kanal mit `withCredentials: true`, und EventSource schickt das
+  // Cookie mit. Der `?token=`-Teil daneben ist der Rueckfall fuer den Fall,
+  // dass nur ein Bearer-Token da ist — genau der Fall, der still nicht mehr
+  // funktionierte.
+  //
+  // Wieder eine Sache in zwei Schreibweisen: Die Pruefung daneben
+  // (test/hardening-block1.test.js) suchte den Namen als TEILZEICHENKETTE und
+  // konnte den Praefix gar nicht sehen. Sie vergleicht jetzt mit dem
+  // WIRKLICHEN Einhaengepunkt aus server.ts.
+  /^\/api\/v1\/sets\/import\/csv\/(stream|status)\b/,
 ];
 
 /**

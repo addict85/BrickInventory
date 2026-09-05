@@ -208,26 +208,60 @@ test('jeder Router haengt unter /api/v1', () => {
  *     laufen und der /api/v1-Router noch nicht eingehaengt ist. Das ist ein
  *     Grund fuer den ORT, nicht fuer eine zweite Adressform.
  *
- * Eine leere Liste heisst: JEDE Adresse gehoert unter /api/v1, ohne Ausnahme.
+ * ── Und die Pruefung sah nur server.ts (Nachtrag 161) ──────────────────────
+ * Auf Marcos Frage „laeuft jetzt alles unter v1?" antwortete sie „ja" — und
+ * uebersah dabei GET /api/img-proxy. Der Grund: Die Route wird nicht in
+ * server.ts angemeldet, sondern in routes/imgProxy.ts, per
+ * `registerImgProxy(app)`. Wieder eine Sache in zwei Schreibweisen und eine
+ * Suche, die nur eine kennt — diesmal in der Pruefung selbst. Gesucht wird
+ * jetzt im ganzen Serverbaum.
  */
-test('auch die Routen direkt in server.ts stehen unter /api/v1', () => {
-  const OHNE_VERSION = new Map([]);
+test('auch die direkt angemeldeten Routen stehen unter /api/v1', () => {
+  // Die EINE Ausnahme, und sie ist keine Nachlaessigkeit:
+  const OHNE_VERSION = new Map([
+    ['GET /api/img-proxy',
+     'Diese Adresse wird GESPEICHERT, nicht nur gerufen: utils/images.ts baut ' +
+     'sie in `image_url`, und die Werte stehen so in den Tabellen (siehe ' +
+     'jobs/partsCatalogEnrich.ts, das sie wieder herausliest). Eine gespeicherte ' +
+     'Adresse zu versionieren ist das Gegenteil dessen, wofuer Versionierung da ' +
+     'ist: Ein spaeteres /v2 liesse jede vorhandene Zeile ins Leere zeigen. ' +
+     'Dazu bauen installierte App-Fassungen sie selbst zusammen (ImageUrls.kt). ' +
+     'Sie gehoert damit zur Familie von /images/ und /data/uploads/ — ' +
+     'Auslieferung von Dateien, auf die gespeicherte Pfade zeigen —, nicht zur ' +
+     'JSON-Schnittstelle.'],
+  ]);
 
-  const src = ohneKommentare(fs.readFileSync(path.join(ROOT, 'server.ts'), 'utf8'));
-  const gefunden = [...src.matchAll(/app\.(get|post|put|patch|delete)\(\s*'(\/api\/[^']*)'/g)]
-    .map(m => `${m[1].toUpperCase()} ${m[2]}`);
+  // Alle .ts des Serverbaums, nicht nur server.ts.
+  const dateien = [path.join(ROOT, 'server.ts')];
+  const lauf = (d) => {
+    for (const e of fs.readdirSync(d, { withFileTypes: true })) {
+      const p = path.join(d, e.name);
+      if (e.isDirectory()) { lauf(p); continue; }
+      if (e.name.endsWith('.ts')) dateien.push(p);
+    }
+  };
+  for (const ordner of ['routes', 'utils', 'jobs'])
+    lauf(path.join(ROOT, ordner));
+  assert.ok(dateien.length >= 30, `Nur ${dateien.length} Serverdateien gefunden`);
+
+  const gefunden = [];
+  for (const datei of dateien) {
+    const src = ohneKommentare(fs.readFileSync(datei, 'utf8'));
+    for (const m of src.matchAll(/\bapp\.(get|post|put|patch|delete)\(\s*'(\/api\/[^']*)'/g))
+      gefunden.push(`${m[1].toUpperCase()} ${m[2]}`);
+  }
   // Selbstbeweis: Findet das Muster nichts, prueft alles darunter nichts.
-  // Zwei ist der Stand nach dem Aufraeumen, keine Wunschzahl — wer eine
-  // dritte direkte Route braucht, hebt die Zahl mit ihr an.
-  assert.ok(gefunden.length >= 2,
-    `Nur ${gefunden.length} API-Routen direkt in server.ts gefunden — Muster veraltet?`);
+  // Drei ist der GEMESSENE Stand (health, startup-status, img-proxy), keine
+  // Wunschzahl — wer eine vierte direkte Route braucht, hebt die Zahl mit ihr an.
+  assert.ok(gefunden.length >= 3,
+    `Nur ${gefunden.length} direkt angemeldete API-Routen gefunden — Muster veraltet?`);
 
   const daneben = gefunden
     .filter(r => !r.split(' ')[1].startsWith('/api/v1') && !OHNE_VERSION.has(r))
     .sort();
   assert.deepEqual(daneben, [],
-    'Diese Adressen stehen direkt in server.ts, nicht unter /api/v1 und ohne ' +
-    'eingetragenen Grund:\n  ' + daneben.join('\n  ') +
+    'Diese Adressen sind direkt an der App angemeldet, stehen nicht unter ' +
+    '/api/v1 und haben keinen eingetragenen Grund:\n  ' + daneben.join('\n  ') +
     '\nEntweder umziehen oder in OHNE_VERSION eintragen, WARUM sie ' +
     'versionslos bleiben muss.');
 
