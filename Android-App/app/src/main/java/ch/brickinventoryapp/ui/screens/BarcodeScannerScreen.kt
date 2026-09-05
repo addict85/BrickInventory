@@ -139,13 +139,24 @@ fun BarcodeScannerScreen(
                     onCamera   = { cameraCtrl = it }
                 )
 
-                Column(
-                    Modifier.fillMaxSize(),
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                    verticalArrangement = Arrangement.Center
+                // Rahmen, Schild und Gewichtung in der gemeinsamen
+                // Ueberlagerung — siehe KameraErlaubnis.kt. Eigen bleiben hier
+                // das breite Rechteck mit den Eckwinkeln und der Lampenknopf.
+                KameraUeberlagerung(
+                    hinweis = statusText,
+                    unten = {
+                        Spacer(Modifier.height(16.dp))
+                        FilledTonalButton(
+                            onClick = { torchOn = !torchOn },
+                            colors = ButtonDefaults.filledTonalButtonColors(
+                                containerColor = if (torchOn) LocalStatusFarben.current.warnung else Color.White.copy(alpha = 0.15f),
+                                contentColor   = if (torchOn) Color.Black else Color.White
+                            )
+                        ) {
+                            Text(if (torchOn) stringResource(R.string.scanner_torch_off) else stringResource(R.string.scanner_torch_on), fontSize = 13.sp)
+                        }
+                    },
                 ) {
-                    Spacer(Modifier.weight(0.2f))
-
                     // Scanning frame
                     Box(
                         Modifier
@@ -171,31 +182,6 @@ fun BarcodeScannerScreen(
                         Box(Modifier.size(ct, cs).align(Alignment.BottomEnd).background(accent))
                     }
 
-                    Spacer(Modifier.height(16.dp))
-
-                    Surface(color = Color.Black.copy(alpha = 0.72f), shape = Formen.kachel) {
-                        Text(
-                            statusText,
-                            Modifier.padding(horizontal = 18.dp, vertical = 10.dp),
-                            color = Color.White, fontSize = 13.sp,
-                            textAlign = TextAlign.Center
-                        )
-                    }
-
-                    Spacer(Modifier.height(16.dp))
-
-                    // Torch button
-                    FilledTonalButton(
-                        onClick = { torchOn = !torchOn },
-                        colors = ButtonDefaults.filledTonalButtonColors(
-                            containerColor = if (torchOn) LocalStatusFarben.current.warnung else Color.White.copy(alpha = 0.15f),
-                            contentColor   = if (torchOn) Color.Black else Color.White
-                        )
-                    ) {
-                        Text(if (torchOn) stringResource(R.string.scanner_torch_off) else stringResource(R.string.scanner_torch_on), fontSize = 13.sp)
-                    }
-
-                    Spacer(Modifier.weight(0.8f))
                 }
             }
             else -> {

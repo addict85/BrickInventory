@@ -92,15 +92,7 @@ fun MinifigsScreen(
 
     Box(Modifier.fillMaxSize()) {
     Column(Modifier.fillMaxSize()) {
-        // Kontofilter — erscheint nur bei einem Hauptkonto mit Unterkonten.
-        if (householdMembers.size > 1) {
-            ScopeFilterChip(
-                members = householdMembers,
-                current = scopeMode,
-                onSelect = onScopeChange,
-                modifier = Modifier.padding(start = 14.dp, top = 8.dp)
-            )
-        }
+        ScopeFilterZeile(householdMembers, scopeMode, onScopeChange)
         // ── Warum die Bedingung nicht mehr `figs.isNotEmpty()` ist ──────────────
         //
         // Hier stand `if (figs.isNotEmpty())`: Die Leiste erschien nur, wenn die
@@ -309,14 +301,12 @@ fun AddMinifigDialog(
 
     fun submit() {
         if (figNumber.isNotBlank()) {
+            // Siehe erfassungsWerte() — dieselbe Umrechnung wie im Teile-Dialog.
+            val w = erfassungsWerte(quantity, unitPrice, note, condition, owner, householdMembers)
             onAdd(
                 figNumber,
                 blFigNumber.trim().ifBlank { null },
-                quantity.toIntOrNull() ?: 1,
-                note.ifBlank { null },
-                unitPrice.replace(',', '.').toDoubleOrNull(),
-                condition,
-                if (householdMembers.size > 1) owner else null
+                w.anzahl, w.notiz, w.preis, w.zustand, w.besitzer
             )
         }
     }

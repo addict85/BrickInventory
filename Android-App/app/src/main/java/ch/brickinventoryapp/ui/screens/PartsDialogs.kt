@@ -65,15 +65,13 @@ fun AddPartDialog(
 
     fun submit() {
         if (partNumber.isNotBlank()) {
+            // Die Umrechnung steht in erfassungsWerte() — dieselbe wie im
+            // Figuren-Dialog. Was ein leeres Feld bedeutet, ist eine
+            // Entscheidung und keine Formalie; sie gehoert an eine Stelle.
+            val w = erfassungsWerte(quantity, unitPrice, note, condition, owner, householdMembers)
             onAdd(
                 partNumber, selectedColor?.id ?: 0, selectedColor?.name, selectedColor?.hex,
-                quantity.toIntOrNull() ?: 1,
-                note.ifBlank { null },
-                unitPrice.replace(',', '.').toDoubleOrNull(),
-                condition,
-                // Ohne Haushalt gar nichts mitschicken — der Server bleibt
-                // dann beim eigenen Konto.
-                if (householdMembers.size > 1) owner else null
+                w.anzahl, w.notiz, w.preis, w.zustand, w.besitzer
             )
         }
     }

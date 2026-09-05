@@ -162,15 +162,7 @@ fun GalleryScreen(
                 }
             }
 
-            // Kontofilter — erscheint nur bei einem Hauptkonto mit Unterkonten.
-            if (householdMembers.size > 1) {
-                ScopeFilterChip(
-                    members = householdMembers,
-                    current = scopeMode,
-                    onSelect = onScopeChange,
-                    modifier = Modifier.padding(start = 14.dp, top = 8.dp)
-                )
-            }
+            ScopeFilterZeile(householdMembers, scopeMode, onScopeChange)
 
             // Suchfeld — gemeinsamer Baustein (Nachtrag 132).
             Suchfeld(

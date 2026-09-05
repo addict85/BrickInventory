@@ -129,15 +129,7 @@ fun PartsScreen(
 
     Box(Modifier.fillMaxSize()) {
     Column(Modifier.fillMaxSize()) {
-        // Kontofilter — erscheint nur bei einem Hauptkonto mit Unterkonten.
-        if (householdMembers.size > 1) {
-            ScopeFilterChip(
-                members = householdMembers,
-                current = scopeMode,
-                onSelect = onScopeChange,
-                modifier = Modifier.padding(start = 14.dp, top = 8.dp)
-            )
-        }
+        ScopeFilterZeile(householdMembers, scopeMode, onScopeChange)
         // Stats chips
         if (stats != null) {
             Surface(color = MaterialTheme.colorScheme.surface, tonalElevation = 2.dp) {

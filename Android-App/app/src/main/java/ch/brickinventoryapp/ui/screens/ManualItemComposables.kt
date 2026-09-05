@@ -234,6 +234,55 @@ fun ManuelleKachelFuss(preis: Double?, waehrung: String, notiz: String?) {
 }
 
 /**
+ * Die vier Eingaben, so wie der Server sie braucht.
+ *
+ * ── Warum das eine eigene Funktion ist ──────────────────────────────────────
+ *
+ * Die UMRECHNUNG stand zeichengleich in AddPartDialog und AddMinifigDialog:
+ *
+ *     anzahl.toIntOrNull() ?: 1
+ *     notiz.ifBlank { null }
+ *     preis.replace(',', '.').toDoubleOrNull()
+ *     if (householdMembers.size > 1) besitzer else null
+ *
+ * Jede Zeile ist eine Entscheidung, keine Formalie: Eine leere Anzahl heisst
+ * eins und nicht null; eine leere Notiz heisst „keine" und nicht „leerer Text";
+ * das Komma der deutschen Tastatur muss zum Punkt werden, sonst kommt beim
+ * Server nichts an; und ohne Haushalt darf gar kein Besitzer mitgehen, damit
+ * der Server beim eigenen Konto bleibt.
+ *
+ * Vier Entscheidungen mal zwei Dialoge sind acht Stellen, an denen genau eine
+ * geaendert werden koennte. Die Felder selbst stehen schon gemeinsam da
+ * ([ErfassungsFelder]) — die Bedeutung ihrer Werte gehoert daneben.
+ */
+data class ErfassungsWerte(
+    val anzahl: Int,
+    val notiz: String?,
+    val preis: Double?,
+    val zustand: String,
+    val besitzer: Int?,
+)
+
+/**
+ * @param haushalt Die Konten des Haushalts — bei hoechstens einem geht KEIN
+ *                 Besitzer mit.
+ */
+fun erfassungsWerte(
+    anzahl: String,
+    preis: String,
+    notiz: String,
+    zustand: String,
+    besitzer: Int?,
+    haushalt: List<ch.brickinventoryapp.data.model.HouseholdMember>,
+): ErfassungsWerte = ErfassungsWerte(
+    anzahl = anzahl.toIntOrNull() ?: 1,
+    notiz = notiz.ifBlank { null },
+    preis = preis.replace(',', '.').toDoubleOrNull(),
+    zustand = zustand,
+    besitzer = if (haushalt.size > 1) besitzer else null,
+)
+
+/**
  * Anzahl, Kaufpreis, Notiz und Zustand — die vier Angaben, die JEDE manuelle
  * Erfassung hat, ob Teil oder Minifigur.
  *

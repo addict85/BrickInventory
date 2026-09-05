@@ -33,6 +33,42 @@ import ch.brickinventoryapp.data.model.HouseholdMember
  * Eine Kachelwand liesse sich filtern, die Gesamtzahl darunter und die
  * Bewertung im Finanzreiter nicht.
  */
+/**
+ * Der Kontofilter, wie ihn eine BESTANDSANSICHT zeigt: links oben, mit dem
+ * ueblichen Abstand, und nur wenn es ueberhaupt etwas zu waehlen gibt.
+ *
+ * ── Warum es diese Zeile gibt ───────────────────────────────────────────────
+ *
+ * Teile, Minifiguren und Galerie schrieben denselben Block hin — dieselbe
+ * Bedingung, derselbe Abstand, dieselben drei Werte. Die Doppelungsmessung
+ * fuehrt ihn; wichtiger ist, was er kostet: Ein anderer Abstand in einer der
+ * drei faellt niemandem auf, ausser dem Nutzer, der zwischen den Reitern
+ * wechselt. „Einheitliche Ansichten" ist genau das.
+ *
+ * ── Warum der Finanz-Reiter NICHT hierher gehoert ───────────────────────────
+ *
+ * Dort steht der Filter rechtsbuendig (Nachtrag 77, Marcos Wunsch fuer DIESEN
+ * Reiter) und als Eintrag einer LazyColumn — die Bedingung muss dort den
+ * ganzen `item{}` umschliessen, sonst bleibt eine leere Zeile stehen. Eine
+ * bewusste Ausnahme, die im Quelltext dort begruendet ist.
+ */
+@Composable
+fun ScopeFilterZeile(
+    members: List<HouseholdMember>,
+    current: String,
+    onSelect: (String) -> Unit,
+) {
+    // Erscheint nur bei einem Hauptkonto mit Unterkonten — siehe
+    // ScopeFilterChip darunter; fuer alle anderen ist die Wahl keine.
+    if (members.size <= 1) return
+    ScopeFilterChip(
+        members = members,
+        current = current,
+        onSelect = onSelect,
+        modifier = Modifier.padding(start = 14.dp, top = 8.dp),
+    )
+}
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ScopeFilterChip(

@@ -84,4 +84,39 @@ class AddPathOwnerTest {
             }
         }
     }
+
+    /**
+     * ── Nachtrag 140: die Regel steht jetzt an einer Stelle ─────────────────
+     *
+     * „Ohne Haushalt geht KEIN Eigentümer mit" stand in beiden manuellen
+     * Dialogen wörtlich als `if (householdMembers.size > 1) owner else null` —
+     * zusammen mit drei weiteren Umrechnungen, die dort ebenfalls doppelt
+     * standen. Sie sind nach `erfassungsWerte()` gewandert
+     * (ManualItemComposables.kt).
+     *
+     * Geprüft wird deshalb beides: dass die Dialoge die Umrechnung benutzen,
+     * und dass sie die Regel enthält. Nur das erste wäre zu wenig — eine
+     * Funktion dieses Namens könnte alles Mögliche tun.
+     */
+    @Test
+    fun `ohne Haushalt geht kein Eigentuemer mit`() {
+        for (datei in listOf("ui/screens/PartsDialogs.kt", "ui/screens/MinifigsScreen.kt")) {
+            assert(code(read(datei)).contains("erfassungsWerte(")) {
+                "$datei rechnet die Eingaben wieder selbst um statt über erfassungsWerte()"
+            }
+        }
+        val gemeinsam = code(read("ui/screens/ManualItemComposables.kt"))
+        assert(gemeinsam.contains("if (haushalt.size > 1) besitzer else null")) {
+            "erfassungsWerte() schickt den Eigentümer auch ohne Haushalt mit — dann " +
+                "überschreibt die App eine Server-Vorgabe mit einer ID, die niemand gewählt hat"
+        }
+        // Und die drei anderen Entscheidungen derselben Umrechnung, jede eine
+        // eigene Aussage über eine leere Eingabe.
+        assert(gemeinsam.contains("anzahl.toIntOrNull() ?: 1")) { "leere Anzahl heisst 1, nicht 0" }
+        assert(gemeinsam.contains("notiz.ifBlank { null }")) { "leere Notiz heisst „keine\"" }
+        assert(gemeinsam.contains("preis.replace(',', '.')")) {
+            "das Komma der deutschen Tastatur muss zum Punkt werden, sonst kommt beim " +
+                "Server keine Zahl an"
+        }
+    }
 }
