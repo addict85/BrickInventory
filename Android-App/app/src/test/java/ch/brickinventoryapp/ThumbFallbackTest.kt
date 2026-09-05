@@ -164,7 +164,8 @@ class ImageClientLoggingTest {
  * Cloudflares Bot-Erkennung. Browser-Kennung, Referer-Kopfzeile, Drosselung
  * und AVIF-Vermeidung in dieser App behandelten allesamt Symptome davon.
  *
- * Jetzt gilt einheitlich: Vorschau UND volle Auflösung über /api/img-proxy.
+ * Jetzt gilt einheitlich: Vorschau UND volle Auflösung über den Server-Proxy
+ * (ImageUrls.kt, IMG_PROXY).
  * Der Server bringt dort Plattencache, Negativ-Cache und Entpacken mit —
  * Arbeit, die bei einem Direktzugriff wirkungslos bliebe.
  *
@@ -201,7 +202,11 @@ class FullResolutionBypassesProxyTest {
         // ein Symptom davon. Ausserdem bringt der Server Plattencache,
         // Negativ-Cache und Entpacken mit — Arbeit, die bei einem
         // Direktzugriff wirkungslos bleibt.
-        assert(branch.contains("/api/img-proxy")) {
+        // Geprueft wird die KONSTANTE, nicht die abgeschriebene Adresse: Der
+        // Proxy ist nach /api/v1/img-proxy gezogen (Nachtrag 162), und ein
+        // Test, der die Zeichenkette woertlich sucht, faellt bei jedem Umzug —
+        // oder bleibt gruen und prueft auf eine Adresse, die es nicht gibt.
+        assert(branch.contains("${'$'}IMG_PROXY")) {
             "Volle Auflösung muss über den Server-Proxy laufen — kein Gerät spricht direkt mit dem CDN"
         }
         assert(!branch.contains("&thumb=1")) {
@@ -213,7 +218,7 @@ class FullResolutionBypassesProxyTest {
     fun `Vorschaubild laeuft weiterhin ueber den Proxy mit thumb=1`() {
         val src = read("util/ImageUrls.kt")
         val fn = src.substring(src.indexOf("private fun resolveImageUrl"))
-        assert(fn.contains("\"\$base/api/img-proxy?url=\$encoded&thumb=1\"")) {
+        assert(fn.contains("\"${'$'}base${'$'}IMG_PROXY?url=${'$'}encoded&thumb=1\"")) {
             "Das Vorschaubild muss weiterhin über den Server-Proxy laufen"
         }
     }
@@ -240,7 +245,7 @@ class PartsMinifigsFullResBypassProxyTest {
         // die Länge des Erklärtexts über das Ergebnis.
         val code = src.lines().joinToString("\n") { if (it.trim().startsWith("//")) "" else it }
         val fn = code.substring(code.indexOf("fun resolveFullUrlViaProxy("), code.indexOf("fun resolveFullUrlViaProxy(") + 500)
-        assert(fn.contains("/api/img-proxy?url=")) { "Muss über den Proxy laufen" }
+        assert(fn.contains("${'$'}IMG_PROXY?url=")) { "Muss über den Proxy laufen" }
         assert(!fn.contains("&thumb=1")) { "Volle Auflösung darf kein &thumb=1 haben" }
     }
 

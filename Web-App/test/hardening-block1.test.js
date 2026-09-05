@@ -125,8 +125,36 @@ test('nur eine Stelle entscheidet, wo ein Token in der URL reiten darf', () => {
   const auth = read('utils/auth.ts');
   const sets = require('./helpers/sources').setKernQuelle();
 
-  assert.ok(auth.includes("import\\/csv\\/(stream|status)"),
-    'Die CSV-Pfade gehören in TOKEN_QUERY_ALLOWED');
+  // ── Nicht der NAME, sondern der PFAD ─────────────────────────────────────
+  //
+  // Hier stand `auth.includes("import\\/csv\\/(stream|status)")` — eine
+  // Teilzeichenkette. Der Eintrag lautete `/api/sets/import/csv/…`, die Route
+  // war laengst nach `/api/v1/sets/…` umgezogen, und dieser Vergleich sah den
+  // Praefix gar nicht. Der Rueckfall auf `?token=` war damit wirkungslos, und
+  // die Pruefung blieb gruen.
+  //
+  // Jetzt wird die Liste AUSGEWERTET und gegen den WIRKLICHEN Einhaengepunkt
+  // aus server.ts gehalten. Zieht die Route wieder um, faellt der Test.
+  const { einhaengung } = require('./helpers/sources');
+  const listeRoh = auth.slice(auth.indexOf('const TOKEN_QUERY_ALLOWED'),
+                              auth.indexOf('];', auth.indexOf('const TOKEN_QUERY_ALLOWED')));
+  const muster = [...listeRoh.matchAll(/^\s*\/(\^[^\n]*?)\/[gimsuy]*\s*,\s*$/gm)]
+    .map(m => new RegExp(m[1]));
+  assert.ok(muster.length >= 3,
+    `Nur ${muster.length} Muster aus TOKEN_QUERY_ALLOWED gelesen — Format veraltet?`);
+  for (const pfad of ['/import/csv/stream', '/import/csv/status']) {
+    const voll = einhaengung('sets') + pfad;
+    assert.ok(muster.some(re => re.test(voll)),
+      `${voll} steht nicht in TOKEN_QUERY_ALLOWED. EventSource kann keine ` +
+      'Kopfzeilen setzen; ohne diesen Eintrag faellt der Fortschritt eines ' +
+      'Imports still auf 401, sobald nur ein Bearer-Token da ist.');
+  }
+  // Und die Gegenrichtung: Die Liste bleibt eng. Eine normale Adresse darf
+  // NICHT durchrutschen — sonst reicht ein Token in der URL ueberall, und
+  // Adressen landen in Server-Protokollen und im Verlauf des Browsers.
+  for (const voll of [einhaengung('sets') + '/1234-1', einhaengung('auth') + '/login'])
+    assert.ok(!muster.some(re => re.test(voll)),
+      `${voll} akzeptiert ein Token in der URL — die Liste ist zu weit.`);
   assert.doesNotMatch(sets, /function requireLoginOrToken/,
     'Keine zweite Fassung — sie umgeht die Liste in utils/auth.ts');
   assert.match(sets, /loginOrTokenGuard\(\{ timeoutMs: 3000 \}\)/,

@@ -31,6 +31,25 @@ import java.net.URLEncoder
  */
 
 /**
+ * Die Adresse des Bild-Proxys — an EINER Stelle, dreimal gebraucht.
+ *
+ * ── Der Umzug nach /api/v1 (Nachtrag 162) ───────────────────────────────────
+ *
+ * Der Proxy war die letzte Adresse neben /api/v1. Sie ist umgezogen; der
+ * Server bedient die alte Schreibweise weiter, weil sie in Datenbankzeilen
+ * steht und weil installierte App-Fassungen sie selbst zusammenbauen — genau
+ * diese Stelle hier ist gemeint. Eine App, die nicht aktualisiert wird,
+ * bekaeme sonst ueberhaupt keine Teilebilder mehr.
+ *
+ * Diese Fassung baut nur noch die neue. Die alte muss sie NICHT erkennen: Ein
+ * gespeicherter Wert beginnt mit „/" und laeuft damit ohnehin ueber den Zweig
+ * „server-relativer Pfad" — er wird nur um die Serveradresse ergaenzt, egal
+ * welche der beiden Formen er traegt. Eine eigene Erkennung waere hier toter
+ * Code, und der ist schlechter als keiner.
+ */
+const val IMG_PROXY = "/api/v1/img-proxy"
+
+/**
  * Bildadresse für eine Kachel/Liste (klein, mit Vorschaubild wo möglich).
  *
  * @param serverUrl Basis-URL des Servers, ohne abschliessenden Schrägstrich
@@ -100,7 +119,7 @@ private fun resolveImageUrl(serverUrl: String, imageLocal: String?, imageUrl: St
                 // ausnahmslos über /api/img-proxy. Der Server bringt dort
                 // Plattencache, Negativ-Cache und Entpacken mit — Arbeit, die
                 // bei einem Direktzugriff wirkungslos bleibt.
-                "$base/api/img-proxy?url=${URLEncoder.encode(imageUrl, "UTF-8")}"
+                "$base$IMG_PROXY?url=${URLEncoder.encode(imageUrl, "UTF-8")}"
             } else {
                 // Vorschaubild: über den Server-Proxy, nicht direkt vom
                 // Gerät. Derselbe Endpunkt wie die Webapp. &thumb=1 ist hier
@@ -108,7 +127,7 @@ private fun resolveImageUrl(serverUrl: String, imageLocal: String?, imageUrl: St
                 // serverseitige Vorab-Entscheidung wie image_local, das
                 // Vorschaubild wird bei Bedarf on-the-fly erzeugt.
                 val encoded = URLEncoder.encode(imageUrl, "UTF-8")
-                "$base/api/img-proxy?url=$encoded&thumb=1"
+                "$base$IMG_PROXY?url=$encoded&thumb=1"
             }
         }
         else -> null
@@ -142,7 +161,7 @@ fun resolveFullUrlViaProxy(serverUrl: String, imageLocal: String?, imageUrl: Str
         imageLocal != null -> "$base${imageLocal.replace(Regex("""_thumb(\.[^.?]+)(\?|$)"""), "$1$2")}"
         imageUrl != null -> {
             if (imageUrl.startsWith("/")) "$base$imageUrl"
-            else "$base/api/img-proxy?url=${URLEncoder.encode(imageUrl, "UTF-8")}"
+            else "$base$IMG_PROXY?url=${URLEncoder.encode(imageUrl, "UTF-8")}"
         }
         else -> null
     }

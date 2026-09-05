@@ -380,7 +380,10 @@ async function downloadSetImages(setNumber: string, waitIfBusy = false) {
     async function processOne(p: { part_number: string; image_url?: string | null; [k: string]: any }) {
       const rawUrl = p.image_url || '';
       let cdnUrl = rawUrl;
-      const m = rawUrl.match(/\/api\/img-proxy\?url=(.+)/);
+      // Beide Schreibweisen: Zeilen aus der Zeit vor dem Umzug tragen noch
+      // /api/img-proxy (siehe utils/images.ts). Ein Muster, das nur die neue
+      // kennt, liesse den Altbestand als „ungueltige Adresse" liegen.
+      const m = rawUrl.match(/\/api\/(?:v1\/)?img-proxy\?url=(.+)/);
       if (m) cdnUrl = decodeURIComponent((m[1] ?? ''));
       if (!cdnUrl.startsWith('http')) {
         console.warn(`[img-dl] skipping invalid URL for ${p.id}: ${rawUrl.substring(0, 80)}`);

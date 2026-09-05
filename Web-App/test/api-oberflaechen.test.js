@@ -208,26 +208,82 @@ test('jeder Router haengt unter /api/v1', () => {
  *     laufen und der /api/v1-Router noch nicht eingehaengt ist. Das ist ein
  *     Grund fuer den ORT, nicht fuer eine zweite Adressform.
  *
- * Eine leere Liste heisst: JEDE Adresse gehoert unter /api/v1, ohne Ausnahme.
+ * ── Und die Pruefung sah nur server.ts (Nachtrag 161) ──────────────────────
+ * Auf Marcos Frage „laeuft jetzt alles unter v1?" antwortete sie „ja" — und
+ * uebersah dabei GET /api/img-proxy. Der Grund: Die Route wird nicht in
+ * server.ts angemeldet, sondern in routes/imgProxy.ts, per
+ * `registerImgProxy(app)`. Wieder eine Sache in zwei Schreibweisen und eine
+ * Suche, die nur eine kennt — diesmal in der Pruefung selbst. Gesucht wird
+ * jetzt im ganzen Serverbaum.
  */
-test('auch die Routen direkt in server.ts stehen unter /api/v1', () => {
-  const OHNE_VERSION = new Map([]);
+test('auch die direkt angemeldeten Routen stehen unter /api/v1', () => {
+  // Die EINE Ausnahme, und sie ist keine Nachlaessigkeit:
+  // Die EINE Ausnahme — und sie ist eine Auslauf-Adresse, keine zweite
+  // gleichrangige (Nachtrag 162).
+  const OHNE_VERSION = new Map([
+    ['GET /api/img-proxy',
+     'Auslauf-Adresse. Die kanonische ist /api/v1/img-proxy; alles, was der ' +
+     'Server heute baut, beide Oberflaechen und die gespeicherten Zeilen ' +
+     '(Migration 0014) benutzen sie. Bedient bleibt die alte, weil ' +
+     'INSTALLIERTE App-Fassungen sie selbst zusammenbauen (ImageUrls.kt) — ' +
+     'wer nicht aktualisiert, bekaeme sonst gar keine Teilebilder mehr. Dass ' +
+     'nur noch die neue GEBAUT wird, haelt test/img-proxy-v1.test.js fest.'],
+  ]);
 
-  const src = ohneKommentare(fs.readFileSync(path.join(ROOT, 'server.ts'), 'utf8'));
-  const gefunden = [...src.matchAll(/app\.(get|post|put|patch|delete)\(\s*'(\/api\/[^']*)'/g)]
-    .map(m => `${m[1].toUpperCase()} ${m[2]}`);
+
+  // Alle .ts des Serverbaums, nicht nur server.ts.
+  const dateien = [path.join(ROOT, 'server.ts')];
+  const lauf = (d) => {
+    for (const e of fs.readdirSync(d, { withFileTypes: true })) {
+      const p = path.join(d, e.name);
+      if (e.isDirectory()) { lauf(p); continue; }
+      if (e.name.endsWith('.ts')) dateien.push(p);
+    }
+  };
+  for (const ordner of ['routes', 'utils', 'jobs'])
+    lauf(path.join(ROOT, ordner));
+  assert.ok(dateien.length >= 30, `Nur ${dateien.length} Serverdateien gefunden`);
+
+  // ── Auch Anmeldungen ueber eine KONSTANTE ────────────────────────────────
+  //
+  // `app.get('/api/…')` war einmal die einzige Form. Seit der Bild-Proxy seine
+  // Adresse aus utils/images.ts bezieht (`app.get(IMG_PROXY_PFAD, …)`), findet
+  // ein Muster, das nur Zeichenketten kennt, sie nicht mehr — und die Zahl
+  // faellt von drei auf zwei, ohne dass eine Route verschwunden waere. Genau
+  // dieselbe Blindheit, gegen die dieser Test geschrieben wurde, eine Ebene
+  // tiefer. Bezeichner werden deshalb aufgeloest.
+  const quellen = dateien.map(d => ohneKommentare(fs.readFileSync(d, 'utf8')));
+  const konstanten = new Map();
+  for (const src of quellen)
+    for (const m of src.matchAll(/\b(?:const|let|var)\s+([A-Z][A-Z0-9_]*)\s*=\s*'(\/api\/[^']*)'/g))
+      konstanten.set(m[1], m[2]);
+
+  const gefunden = [];
+  for (const src of quellen) {
+    for (const m of src.matchAll(/\bapp\.(get|post|put|patch|delete)\(\s*'(\/api\/[^']*)'/g))
+      gefunden.push(`${m[1].toUpperCase()} ${m[2]}`);
+    for (const m of src.matchAll(/\bapp\.(get|post|put|patch|delete)\(\s*([A-Z][A-Z0-9_]*)\s*,/g)) {
+      const pfad = konstanten.get(m[2]);
+      assert.ok(pfad,
+        `app.${m[1]}(${m[2]}, …) meldet eine Route unter einem Bezeichner an, ` +
+        'dessen Wert hier nicht auffindbar ist. Ohne ihn kann diese Pruefung ' +
+        'nicht sagen, ob die Adresse unter /api/v1 liegt.');
+      gefunden.push(`${m[1].toUpperCase()} ${pfad}`);
+    }
+  }
   // Selbstbeweis: Findet das Muster nichts, prueft alles darunter nichts.
-  // Zwei ist der Stand nach dem Aufraeumen, keine Wunschzahl — wer eine
-  // dritte direkte Route braucht, hebt die Zahl mit ihr an.
-  assert.ok(gefunden.length >= 2,
-    `Nur ${gefunden.length} API-Routen direkt in server.ts gefunden — Muster veraltet?`);
+  // VIER ist der GEMESSENE Stand (health, startup-status und die beiden
+  // Adressen des Bild-Proxys), keine Wunschzahl — wer eine fuenfte direkte
+  // Route braucht, hebt die Zahl mit ihr an.
+  assert.ok(gefunden.length >= 4,
+    `Nur ${gefunden.length} direkt angemeldete API-Routen gefunden — Muster veraltet?`);
 
   const daneben = gefunden
     .filter(r => !r.split(' ')[1].startsWith('/api/v1') && !OHNE_VERSION.has(r))
     .sort();
   assert.deepEqual(daneben, [],
-    'Diese Adressen stehen direkt in server.ts, nicht unter /api/v1 und ohne ' +
-    'eingetragenen Grund:\n  ' + daneben.join('\n  ') +
+    'Diese Adressen sind direkt an der App angemeldet, stehen nicht unter ' +
+    '/api/v1 und haben keinen eingetragenen Grund:\n  ' + daneben.join('\n  ') +
     '\nEntweder umziehen oder in OHNE_VERSION eintragen, WARUM sie ' +
     'versionslos bleiben muss.');
 
