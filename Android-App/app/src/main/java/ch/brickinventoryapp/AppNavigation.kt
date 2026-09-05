@@ -87,6 +87,18 @@ fun BrickInventoryManagerApp(
     LaunchedEffect(state.isLoggedIn) {
         if (state.isLoggedIn) {
             vm.startCsvImportWatcher()
+            // ── Still nach einem Update sehen ───────────────────────────────
+            //
+            // Marcos Vorgabe: beim Start PRUEFEN, aber nie von allein laden.
+            // Genau das tut `still = true` — ein kleiner HTTPS-Abruf ohne
+            // Ladebalken, und im Fehlerfall ohne Meldung. Wer ohne Netz
+            // startet, soll keine rote Zeile sehen; wer den Knopf in den
+            // Einstellungen drueckt, sehr wohl (ui/UpdateFeature.kt).
+            //
+            // Hier und nicht im Einstellungs-Bildschirm: Die Frage „gibt es
+            // etwas Neueres?" gilt der ganzen App. Im Bildschirm gestellt,
+            // bekaeme sie nur, wer ohnehin schon in den Einstellungen sitzt.
+            vm.pruefeAufUpdate(still = true)
         }
     }
 

@@ -226,6 +226,12 @@ internal fun MainViewModel.logout() {
         _kontoState.value = KontoUiState()
         _csvHochladenState.value = CsvHochladenUiState()
         _verwaltungState.value = VerwaltungUiState()
+        // Auch der Update-Zustand: Er traegt zwar keine Kontodaten, aber einen
+        // Fortschritt und ein „bereit zur Installation" — beides wuerde dem
+        // naechsten Nutzer auf demselben Geraet als sein eigener Vorgang
+        // erscheinen. Der oertliche Spiegel hat den fehlenden Eintrag gemeldet,
+        // bevor es jemand gesehen haette.
+        _updateState.value = UpdateUiState()
         // Auch der Scanner-Zustand (Nachtrag 117): Ein offener Barcode-Dialog
         // trägt Setname, Bild und Nummer des VORIGEN Kontos. Ohne diese Zeile
         // stünde er nach dem Abmelden noch da — genau der Fall, den die drei

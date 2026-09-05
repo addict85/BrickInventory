@@ -26,6 +26,36 @@ import { resolveSetCondition, resolveBlColorId, resolveBlPartNumber } from './fi
 import { asIds } from './household';
 import { buildChart } from './chartData';
 
+/**
+ * Welche Zustaende gehoeren ins Diagramm?
+ *
+ * ── Marcos Befund ───────────────────────────────────────────────────────────
+ * „Das gezeigte Teil hat nur einen Kaufpreis mit dem Zustand gebraucht.
+ * Trotzdem wird im Preisverlauf auch eine Linie mit 'neu' angezeigt. Es muss
+ * mindestens ein Zustand unter Kaufpreis vorhanden sein, damit der
+ * Preisverlauf des Zustandes angezeigt wird."
+ *
+ * ── Warum das hier steht und nicht zweimal daneben ──────────────────────────
+ * Die Regel GAB es schon — fuer Sets, in getSetPriceHistory, mit ausfuehrlicher
+ * Begruendung: An den Diagrammwerten haengen in der App auch „Tief",
+ * „Aktuell" und „Hoch", und bei einem nur gebraucht vorhandenen Set standen
+ * dort die Neupreise. Fuer manuell erfasste Teile und Minifiguren war
+ * derselbe Aufbau eine Zeile weiter unten ohne diese Regel geschrieben
+ * (manualPriceHistory) — dieselbe Regel an zwei Orten, und nur einer kannte
+ * sie.
+ *
+ * Jetzt kennt sie EINER, und beide fragen ihn.
+ *
+ * @param belegt    Zustaende mit Erfassung — die Schluessel von by_condition.
+ * @param rueckfall Was gilt, wenn es GAR KEINE Erfassung gibt. Sonst verschwaende
+ *   der Verlauf ganz, und ein Gegenstand ohne erfassten Kaufpreis hat trotzdem
+ *   einen Marktwert. Bei Sets ist das der Zustand des Bestandes; bei manuellen
+ *   Teilen beide, weil es dort keinen dritten Ort gibt, der es besser wuesste.
+ */
+export function zustaendeFuerVerlauf(belegt: string[], rueckfall: string[]): string[] {
+  return belegt.length ? belegt : rueckfall;
+}
+
 /** Ein Punkt im Verlauf. */
 export interface PricePoint {
   avg_price: number | null;
@@ -207,8 +237,7 @@ export async function getSetPriceHistory(uid: number | number[], setNumber: stri
   // Ohne JEDE Erfassung (Set ohne erfassten Kaufpreis) bleibt der Zustand des
   // Bestandes übrig — sonst verschwände der Verlauf ganz, und ein Set ohne
   // Kaufpreis hat trotzdem einen Marktwert.
-  const belegteZustaende = Object.keys(byCondition);
-  const zustaendeFuerChart = belegteZustaende.length ? belegteZustaende : [condition];
+  const zustaendeFuerChart = zustaendeFuerVerlauf(Object.keys(byCondition), [condition]);
   const chart = buildChart(
     zustaendeFuerChart.map(c => ({ name: c, rows: c === 'U' ? historyUsed : historyNew }))
   );
@@ -337,10 +366,19 @@ async function manualPriceHistory(
     manualSeries(historyTable, keySql, keyVals, currency, 'U'),
     conditionRows(cacheTable, acqTable, keySql, keyVals, uid, currency, acqKeySql, acqKeyVals),
   ]);
+  // Nur Zustaende mit Erfassung ins Diagramm — dieselbe Regel wie bei den
+  // Sets, und seit Marcos Befund an EINER Stelle (zustaendeFuerVerlauf).
+  // Ohne sie zeichnete ein nur gebraucht gekauftes Teil auch eine Linie
+  // „neu", die gegen keinen Kaufpreis steht.
+  //
+  // history_new/history_used bleiben VOLLSTAENDIG in der Antwort: Sie sind die
+  // Rohdaten, und wer sie auswertet (nicht das Diagramm) soll nicht
+  // stillschweigend weniger bekommen. Gefiltert wird, was GEZEICHNET wird.
+  const zustaende = zustaendeFuerVerlauf(Object.keys(by_condition), ['N', 'U']);
   return {
     currency, by_condition,
     history_new: historyNew, history_used: historyUsed,
-    chart: buildChart([{ name: 'N', rows: historyNew }, { name: 'U', rows: historyUsed }]),
+    chart: buildChart(zustaende.map(c => ({ name: c, rows: c === 'U' ? historyUsed : historyNew }))),
   };
 }
 

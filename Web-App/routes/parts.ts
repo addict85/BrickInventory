@@ -228,23 +228,50 @@ async function resolvePartCondition(userId: number, partNumber: string, colorId:
   catch (_) { return DEFAULT_PRICE_CONDITION; }
 }
 
-async function getCurrentPartMarketPrice(partNumber: string, colorId: number, userId: number, condition: string | null = null) {
+/**
+ * Marktpreis eines Teils SAMT Herkunft.
+ *
+ * Zwei Funktionen statt einer: Die allermeisten Aufrufer (Bewertung,
+ * Nachtrag-Job, Erfassungs-Route) wollen eine Zahl und nichts weiter — ihnen
+ * eine Herkunft aufzuzwingen, die sie wegwerfen, machte sechs Aufrufstellen
+ * umstaendlicher, damit eine es bequemer hat. Nur der Weg „von Hand erfassen"
+ * kennzeichnet den Rueckfall, und nur er fragt hier.
+ */
+async function marktpreisMitHerkunft(partNumber: string, colorId: number, userId: number, condition: string | null = null) {
   try {
     const currency  = await getSetting(userId, 'currency', 'EUR');
     const ttlHours  = 24;
     const effCond   = condition || await resolvePartCondition(userId, partNumber, colorId);
     const priceData = await fetchPartPrice(partNumber, colorId || 0, effCond, currency, ttlHours);
-    // Kein Preis aus dem ANDEREN Zustand — dieselbe Regel wie bei den
-    // Minifiguren (Nachtrag 166, Begründung dort). Die beiden Wege sind
-    // Zwillinge; eine Regel nur auf einer Seite nachzuziehen ist in diesem
-    // Baum schon mehrfach schiefgegangen.
-    if (priceData?.is_fallback) return null;
     // avg_price statt qty_avg_price — dieselbe Begründung wie bei den Sets:
     // der mengengewichtete Schnitt liegt unter BrickLinks "Avg Price", und
     // "0.00" aus Postgres ist truthy und hätte avg_price verdeckt.
     const price = parseFloat(priceData?.avg_price || 0);
-    return price > 0 ? price : null;
-  } catch (_) { return null; }
+    if (!(price > 0)) return { preis: null, ausZustand: null };
+    // ── Der Rückfall wird übernommen, aber benannt (Nachtrag 167) ───────────
+    //
+    // In Nachtrag 166 stand hier `if (priceData?.is_fallback) return null` —
+    // als Antwort auf Marcos Befund, dass der Zustand keinen Einfluss auf den
+    // Preis hat. Der Befund stimmte, die Folge war zu scharf: Marco meldete
+    // darauf „teilweise wird der Kaufpreis nicht direkt geladen", weil
+    // BrickLink zu vielen Teilen nur einen der beiden Zustände führt.
+    //
+    // Seine Entscheidung: übernehmen und kennzeichnen. `ausZustand` trägt
+    // deshalb den Zustand, aus dem der Wert wirklich stammt — die Oberfläche
+    // sagt es dann dazu, statt dass eine Zahl unkommentiert dasteht.
+    return {
+      preis: price,
+      ausZustand: priceData?.is_fallback ? (priceData.condition_used || null) : null,
+    };
+  } catch (_) { return { preis: null, ausZustand: null }; }
+}
+
+/**
+ * Marktpreis eines Teils als blosse Zahl — der Weg fuer alle, die die
+ * Herkunft nicht brauchen. EINE Rechnung, zwei Sichten darauf.
+ */
+async function getCurrentPartMarketPrice(partNumber: string, colorId: number, userId: number, condition: string | null = null) {
+  return (await marktpreisMitHerkunft(partNumber, colorId, userId, condition)).preis;
 }
 
 /**
@@ -276,12 +303,15 @@ async function resolveManualPartPurchase(uid: number, { partNumber, colorId, uni
   // eine 0 in der Stammzeile steht und NULL in der Erfassung. Hier bleibt nur,
   // was ein TEIL anders macht als eine Figur: der Schluessel der Abfrage.
   const r = await manuellerKaufpreis(uid, { unitPrice, condition },
-    (zustand) => getCurrentPartMarketPrice(partNumber, colorId, uid, zustand));
+    (zustand) => marktpreisMitHerkunft(partNumber, colorId, uid, zustand));
   return {
     effectiveUnitPrice: r.unitPrice,
     effectivePurchasePrice: r.kaufpreis,
     erfassungsPreis: r.erfassungsPreis,
     effectiveCondition: r.zustand,
+    // Aus welchem Zustand der uebernommene Marktpreis stammt (Nachtrag 167) —
+    // null, wenn es nichts zu kennzeichnen gibt.
+    preisAusZustand: r.preisAusZustand,
   };
 }
 
@@ -380,7 +410,7 @@ async function addManualPart(uid: number, rawBody: any) {
   // und die kennt beim Anlegen noch keine Erfassung — sie lieferte also
   // ebenfalls den Standardzustand des Kontos. Nur steht die Staffelung jetzt
   // sichtbar da, statt zweimal auf verschiedenen Wegen berechnet zu werden.
-  const { effectiveUnitPrice, effectivePurchasePrice, erfassungsPreis, effectiveCondition } =
+  const { effectiveUnitPrice, effectivePurchasePrice, erfassungsPreis, effectiveCondition, preisAusZustand } =
     await resolveManualPartPurchase(uid, { partNumber: part_number, colorId: color_id, unitPrice: unit_price, condition });
   // Farbcode möglichst füllen: vom Client übergeben, sonst aus rb_colors ableiten
   // (sonst bleibt der Farbpunkt in der Oberfläche grau).
@@ -408,7 +438,11 @@ async function addManualPart(uid: number, rawBody: any) {
     condition: effectiveCondition, createdAt: acquiredAt,
   }).catch(e => console.error('[addManualPart] Erfassung:', e.message));
 
-  return { action: 'added', part_number, part_name };
+  // `price_from_condition` sagt der Oberflaeche, dass der uebernommene
+  // Marktpreis aus dem ANDEREN Zustand stammt (Nachtrag 167, Marcos
+  // Entscheidung „uebernehmen, aber kennzeichnen"). Null, wenn es nichts zu
+  // sagen gibt — dann zeigt keine der beiden Oberflaechen einen Hinweis.
+  return { action: 'added', part_number, part_name, price_from_condition: preisAusZustand };
 }
 
 // Shared logic to update quantity and/or Preis/Stk (unit_price, which doubles

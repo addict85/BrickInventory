@@ -618,4 +618,6 @@ window.I18N_DE = {
   'log.search': 'Text suchen…',
   'log.auto': '⏱ Auto',
   'log.stop': '⏹ Stopp',
+  'price.from_other_condition_new': 'Kaufpreis aus dem Marktpreis „Neu" übernommen — für „Gebraucht" führt BrickLink keinen Preis.',
+  'price.from_other_condition_used': 'Kaufpreis aus dem Marktpreis „Gebraucht" übernommen — für „Neu" führt BrickLink keinen Preis.',
 };

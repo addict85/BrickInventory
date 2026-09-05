@@ -43,6 +43,18 @@ data class AddPartResponse(
     val action: String? = null,
     @SerialName("part_number") val partNumber: String? = null,
     @SerialName("part_name") val partName: String? = null,
+    /**
+     * Aus welchem Zustand der uebernommene Marktpreis stammt ('N'/'U') — null,
+     * wenn er aus dem angefragten stammt oder der Mensch selbst einen Preis
+     * eingetippt hat.
+     *
+     * BrickLink fuehrt zu vielen Teilen und Figuren nur EINEN Zustand. Der
+     * Server uebernimmt den Preis des anderen (sonst bliebe der Kaufpreis
+     * leer) und sagt hier, woher er kam — die Oberflaeche schreibt es dazu,
+     * statt eine Zahl unkommentiert stehen zu lassen. Gegenstueck zur Webapp:
+     * preisHerkunftHinweis() in public/js/06-minifigs.js.
+     */
+    @SerialName("price_from_condition") val priceFromCondition: String? = null,
     val error: String? = null
 )
 
@@ -67,6 +79,18 @@ data class AddMinifigResponse(
     val action: String? = null,
     @SerialName("fig_number") val figNumber: String? = null,
     @SerialName("fig_name") val figName: String? = null,
+    /**
+     * Aus welchem Zustand der uebernommene Marktpreis stammt ('N'/'U') — null,
+     * wenn er aus dem angefragten stammt oder der Mensch selbst einen Preis
+     * eingetippt hat.
+     *
+     * BrickLink fuehrt zu vielen Teilen und Figuren nur EINEN Zustand. Der
+     * Server uebernimmt den Preis des anderen (sonst bliebe der Kaufpreis
+     * leer) und sagt hier, woher er kam — die Oberflaeche schreibt es dazu,
+     * statt eine Zahl unkommentiert stehen zu lassen. Gegenstueck zur Webapp:
+     * preisHerkunftHinweis() in public/js/06-minifigs.js.
+     */
+    @SerialName("price_from_condition") val priceFromCondition: String? = null,
     val error: String? = null
 )
 

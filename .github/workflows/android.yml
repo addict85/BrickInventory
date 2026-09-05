@@ -346,6 +346,51 @@ jobs:
           # zweiten Lauf ab, weil die Datei schon da haengt.
           gh release upload "$ETIKETT" "$APK" --clobber
 
+          # ── version.json: damit die App das Update FINDEN kann ─────────────
+          #
+          # Der Release-Text oben nennt Zweig und Commit, aber als Fliesstext.
+          # Eine App, die wissen will „gibt es etwas Neueres als mich?", braucht
+          # eine Zahl zum Vergleichen — den versionCode.
+          #
+          # Die Werte werden aus AGPs eigener output-metadata.json GELESEN, nicht
+          # hier nochmal aus dem Datum erzeugt. Eine zweite Rechnung waere eine
+          # zweite Wahrheit: Sie liefe Minuten spaeter als die im Build und
+          # koennte einen Wert melden, den kein APK traegt — die App boete dann
+          # ein Update an, das nach der Installation immer noch „veraltet" ist.
+          META=app/build/outputs/apk/release/output-metadata.json
+          if [ ! -f "$META" ]; then
+            echo "::error::$META fehlt — ohne die Werte von AGP koennte hier nur geraten werden."
+            exit 1
+          fi
+          V_CODE=$(jq -r '.elements[0].versionCode' "$META")
+          V_NAME=$(jq -r '.elements[0].versionName' "$META")
+          if ! printf '%s' "$V_CODE" | grep -Eq '^[0-9]+$'; then
+            echo "::error::versionCode aus $META ist \"$V_CODE\" — keine Zahl."
+            exit 1
+          fi
+          if [ -z "$V_NAME" ] || [ "$V_NAME" = null ]; then
+            echo "::error::versionName aus $META ist leer."
+            exit 1
+          fi
+
+          jq -n --argjson code "$V_CODE" --arg name "$V_NAME" \
+                --arg sha "$GITHUB_SHA" --arg url "$LINK" \
+                --argjson size "$(stat -c%s "$APK")" \
+                '{versionCode:$code, versionName:$name, sha:$sha, apkUrl:$url, apkSize:$size}' \
+                > version.json
+          gh release upload "$ETIKETT" version.json --clobber
+
+          # Dieselbe Gegenprobe wie beim APK darunter: zurueckfragen statt der
+          # Ausgabe von `gh` glauben. Eine halbe version.json waere schlimmer als
+          # gar keine — die App bekaeme kaputtes JSON und meldete einen Fehler,
+          # wo nur der Upload abgebrochen ist.
+          ZURUECK=$(gh release view "$ETIKETT" --json assets \
+            --jq '.assets[] | select(.name=="version.json") | .size')
+          if [ "$ZURUECK" != "$(stat -c%s version.json)" ]; then
+            echo "::error::version.json unvollstaendig hochgeladen ($ZURUECK Bytes draussen)."
+            exit 1
+          fi
+
           # Gegenprobe: nicht der Ausgabe von `gh` glauben, sondern den Anhang
           # ZURUECK fragen und die Groesse vergleichen. Ein abgebrochener
           # Upload liefert sonst eine gueltig aussehende Antwort und einen

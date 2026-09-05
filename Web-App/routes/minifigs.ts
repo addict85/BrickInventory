@@ -243,7 +243,11 @@ async function estimateFigPriceFromParts(figNumber: string, userId: number, cond
   }
 }
 
-async function getCurrentFigMarketPrice(figNumber: string, userId: number, blFigNumber?: string | null, condition: string | null = null) {
+/**
+ * Marktpreis einer Minifigur SAMT Herkunft — Zwilling zu
+ * marktpreisMitHerkunft in routes/parts.ts, gleiche Begruendung dort.
+ */
+async function figMarktpreisMitHerkunft(figNumber: string, userId: number, blFigNumber?: string | null, condition: string | null = null) {
   try {
     const currency = await getSetting(userId, 'currency', 'EUR');
     // Effektiver Zustand: eine "Gebraucht"-Erfassung genügt → 'U', sonst 'N';
@@ -273,34 +277,44 @@ async function getCurrentFigMarketPrice(figNumber: string, userId: number, blFig
     for (const num of [blFigNumber, figNumber]) {
       if (!num) continue;
       const priceData = await fetchMinifigPrice(num, effCond, currency, 24).catch(() => null);
-      // ── Kein Preis aus dem ANDEREN Zustand (Nachtrag 166) ─────────────────
+      // ── Der Rueckfall wird uebernommen, aber benannt (Nachtrag 167) ───────
       //
-      // Marcos Befund: „Wenn ich eine Minifigur mit dem Zustand neu oder
-      // gebraucht erfasse, erhaelt diese denselben Preis." Genau so war es.
+      // Marcos Befund aus Nachtrag 166: „Wenn ich eine Minifigur mit dem
+      // Zustand neu oder gebraucht erfasse, erhaelt diese denselben Preis."
+      // Er stimmte — fetchMinifigPrice faellt bei leerem Price Guide auf den
+      // anderen Zustand zurueck und markiert das mit `is_fallback`, und diese
+      // Stelle warf die Markierung weg.
       //
-      // fetchMinifigPrice faellt bei leerem Price Guide auf den jeweils
-      // anderen Zustand zurueck und markiert das (`is_fallback`). Diese
-      // Stelle las nur `avg_price` und warf die Markierung weg. Bei
-      // Minifiguren hat BrickLink meist nur zu EINEM Zustand Verkaeufe —
-      // also lieferten beide Erfassungen denselben Wert, und der Zustand
-      // sah aus wie eine Angabe ohne Wirkung.
+      // Die Antwort damals war `continue` — also gar kein Preis. Darauf kam
+      // Marcos naechster Befund: „Teilweise wird der Kaufpreis nicht direkt
+      // geladen." Beides ist dieselbe Tatsache von zwei Seiten: BrickLink
+      // fuehrt zu vielen Figuren nur EINEN Zustand.
       //
-      // Fuer die BEWERTUNG ist der Rueckfall richtig: ein Naeherungswert ist
-      // besser als eine Luecke. Fuer den KAUFPREIS nicht — der wird
-      // gespeichert und steht danach als Tatsache da. Lieber kein Vorschlag
-      // als ein falscher; eintragen kann man ihn immer noch von Hand.
-      //
-      // Nebeneffekt, der Marcos zweitem Wunsch entgegenkommt: Der zweite
-      // BrickLink-Aufruf des Rueckfalls entfaellt hier.
-      if (priceData?.is_fallback) continue;
+      // Seine Entscheidung: uebernehmen und kennzeichnen. Der Wert kommt
+      // zurueck, und mit ihm der Zustand, aus dem er wirklich stammt.
       const price = parseFloat(priceData?.avg_price || 0);
-      if (price > 0) return price;
+      if (price > 0) return {
+        preis: price,
+        ausZustand: priceData?.is_fallback ? (priceData.condition_used || null) : null,
+      };
       if (num === blFigNumber && blFigNumber === figNumber) break;   // nicht doppelt fragen
     }
     // Bei BrickLink nichts gefunden: über die Teile der Minifigur schätzen —
     // im ERMITTELTEN Zustand, nicht im Standardzustand.
-    return await estimateFigPriceFromParts(figNumber, userId, effCond);
-  } catch (_) { return null; }
+    //
+    // Ohne Herkunft: Die Schätzung rechnet mit den Teilepreisen DIESES
+    // Zustands. Sie ist eine Näherung, aber keine aus dem anderen Zustand —
+    // und nur die wäre zu kennzeichnen.
+    return { preis: await estimateFigPriceFromParts(figNumber, userId, effCond), ausZustand: null };
+  } catch (_) { return { preis: null, ausZustand: null }; }
+}
+
+/**
+ * Marktpreis einer Minifigur als blosse Zahl — für alle, die die Herkunft
+ * nicht brauchen. Zwilling zu getCurrentPartMarketPrice in routes/parts.ts.
+ */
+async function getCurrentFigMarketPrice(figNumber: string, userId: number, blFigNumber?: string | null, condition: string | null = null) {
+  return (await figMarktpreisMitHerkunft(figNumber, userId, blFigNumber, condition)).preis;
 }
 
 // Shared logic to add/update a single manual minifig. Used by both the
@@ -324,12 +338,14 @@ async function resolveManualFigPurchase(uid: number, { figNumber, blFigNumber = 
   // NULL, ein Teil in derselben Lage eine 0, und utils/financeCalc.ts liest
   // das als „kein Kaufpreis erfasst" gegen „0 erfasst".
   const r = await manuellerKaufpreis(uid, { unitPrice, condition },
-    (zustand) => getCurrentFigMarketPrice(figNumber, uid, blFigNumber || null, zustand));
+    (zustand) => figMarktpreisMitHerkunft(figNumber, uid, blFigNumber || null, zustand));
   return {
     effectiveUnitPrice: r.unitPrice,
     effectivePurchasePrice: r.kaufpreis,
     erfassungsPreis: r.erfassungsPreis,
     effectiveCondition: r.zustand,
+    // Aus welchem Zustand der uebernommene Marktpreis stammt (Nachtrag 167).
+    preisAusZustand: r.preisAusZustand,
   };
 }
 
@@ -384,7 +400,7 @@ async function addManualFig(uid: number, body: any) {
     return { action: 'updated', fig_number: num };
   }
 
-  const { effectiveUnitPrice, effectivePurchasePrice, erfassungsPreis, effectiveCondition } =
+  const { effectiveUnitPrice, effectivePurchasePrice, erfassungsPreis, effectiveCondition, preisAusZustand } =
     await resolveManualFigPurchase(uid, { figNumber: num, blFigNumber: blNum, unitPrice: unit_price, condition });
   await db.run(`
     INSERT INTO minifigs (user_id, set_number, fig_number, bl_fig_number, fig_name, quantity, image_url, source, unit_price, purchase_price, note, condition)
@@ -400,7 +416,8 @@ async function addManualFig(uid: number, body: any) {
     condition: effectiveCondition, createdAt: acquiredAt,
   }).catch(logAndContinue(`minifiguren:anlegen ${num}`));
 
-  return { action: 'added', fig_number: num, fig_name };
+  // Zwilling zu addManualPart — siehe die Begruendung dort (Nachtrag 167).
+  return { action: 'added', fig_number: num, fig_name, price_from_condition: preisAusZustand };
 }
 
 // Shared logic to update quantity and/or Preis/Stk (unit_price, which doubles

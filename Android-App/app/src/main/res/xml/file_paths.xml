@@ -25,4 +25,17 @@
     <files-path name="pdf_internal" path="pdf/" />
     <external-files-path name="export_external" path="export/" />
     <files-path name="export_internal" path="export/" />
+    <!--
+      update/ ist das dritte EIGENE Verzeichnis, aus demselben Grund wie
+      export/: An der Freigabe soll ablesbar bleiben, was sie hergibt. Hier
+      liegt das heruntergeladene APK, und nur der Installer bekommt es zu
+      sehen (ACTION_VIEW mit FLAG_GRANT_READ_URI_PERMISSION).
+
+      Nur INTERN, ohne external-files-path: Ein APK im externen Bereich waere
+      fuer jede App mit Speicherzugriff lesbar UND beschreibbar — und ein
+      beschreibbares APK, das wir gleich zur Installation weiterreichen, ist
+      genau die Luecke, die ein Selbst-Updater nicht haben darf. filesDir ist
+      der App vorbehalten.
+    -->
+    <files-path name="update_internal" path="update/" />
 </paths>

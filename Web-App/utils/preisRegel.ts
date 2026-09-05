@@ -150,14 +150,32 @@ export async function kaufpreisAusEingabe(
  * Beide Bedeutungen bekommen deshalb hier verschiedene Namen und kommen fertig
  * zurück. Wer sie benutzt, kann die Umwandlung nicht mehr vergessen.
  *
+ * ── Und woher der Marktpreis stammt (Nachtrag 167) ─────────────────────────
+ *
+ * Marcos zwei Befunde widersprachen sich, weil sie zwei Seiten derselben
+ * Tatsache sind: BrickLink hat oft nur zu EINEM Zustand Verkäufe.
+ *
+ *   1. „Der Zustand hat keinen Einfluss auf den Preis" — der Rückfall auf den
+ *      anderen Zustand lieferte für neu und gebraucht denselben Wert.
+ *   2. „Teilweise wird der Kaufpreis nicht direkt geladen" — nachdem ich den
+ *      Rückfall verworfen hatte, blieb das Feld leer.
+ *
+ * Seine Entscheidung: den Preis übernehmen, aber sichtbar kennzeichnen. Dafür
+ * muss die Herkunft mitreisen — darum gibt der `marktpreis`-Rückruf jetzt
+ * nicht mehr eine blosse Zahl zurück, sondern auch den Zustand, aus dem sie
+ * stammt. Ein Feld, das man ignorieren KANN, wäre hier zu wenig: Die beiden
+ * Aufrufer sind Zwillinge, und in diesem Baum ist schon mehrfach eine Regel
+ * nur auf einer Seite nachgezogen worden.
+ *
  * @param marktpreis Holt den Marktpreis für den aufgelösten Zustand — bleibt
  *                   beim Aufrufer, weil Teil und Figur verschiedene Schlüssel
- *                   haben.
+ *                   haben. `ausZustand` ist gesetzt, WENN der Preis aus dem
+ *                   anderen Zustand stammt, sonst null.
  */
 export async function manuellerKaufpreis(
   nutzerId: number,
   eingabe: { unitPrice?: unknown; condition?: string | null },
-  marktpreis: (zustand: string) => Promise<number | null>,
+  marktpreis: (zustand: string) => Promise<{ preis: number | null; ausZustand: string | null }>,
 ): Promise<{
   /** Was der Mensch als Preis/Stk eingegeben hat, oder null. */
   unitPrice: number | null;
@@ -167,6 +185,12 @@ export async function manuellerKaufpreis(
   erfassungsPreis: number | null;
   /** Eingabe → (kein Bestand) → Benutzer-Standard, siehe utils/settings.ts. */
   zustand: string;
+  /**
+   * Aus welchem Zustand der übernommene Marktpreis stammt — null, wenn er
+   * aus dem angefragten stammt oder der Mensch selbst einen Preis eingetippt
+   * hat. Nur dann gibt es etwas zu kennzeichnen.
+   */
+  preisAusZustand: string | null;
 }> {
   const roh = eingabe.unitPrice;
   const getippt = (roh !== undefined && roh !== null && String(roh).trim() !== '')
@@ -177,6 +201,16 @@ export async function manuellerKaufpreis(
   const { zustandFuerPreis } = require('./settings') as typeof import('./settings');
   const zustand = await zustandFuerPreis(eingabe.condition ?? null, null, nutzerId);
 
-  const kaufpreis = unitPrice !== null ? unitPrice : ((await marktpreis(zustand)) ?? 0);
-  return { unitPrice, kaufpreis, erfassungsPreis: kaufpreis > 0 ? kaufpreis : null, zustand };
+  // Ein selbst eingetippter Preis fragt gar nicht erst nach dem Markt — und
+  // hat damit auch keine Herkunft zu kennzeichnen.
+  const markt = unitPrice !== null ? null : await marktpreis(zustand);
+  const kaufpreis = unitPrice !== null ? unitPrice : (markt?.preis ?? 0);
+  return {
+    unitPrice, kaufpreis,
+    erfassungsPreis: kaufpreis > 0 ? kaufpreis : null,
+    zustand,
+    // Nur wenn tatsächlich ein Preis übernommen wurde: Eine Herkunft ohne
+    // Wert wäre ein Hinweis auf etwas, das nirgends steht.
+    preisAusZustand: (kaufpreis > 0 && markt?.ausZustand) ? markt.ausZustand : null,
+  };
 }

@@ -55,6 +55,29 @@ test('die Webapp zeigt die Sets als Tabelle mit Bild', () => {
     assert.ok(block.includes(feld), `${feld} fehlt in der Tabelle`);
 });
 
+test('die Tabelle beginnt auf einer eigenen Zeile', () => {
+  // ── Marcos Befund am Bild ─────────────────────────────────────────────────
+  // „Der Text 'Verwendet in' kommt in das erste Bild der Sets."
+  //
+  // Die Zeile ist ein `.dr` — ein Flex-Kasten mit
+  // `justify-content:space-between` (styles.css). Bei EINEM Set ist die
+  // Tabelle so schmal, dass sie neben die Beschriftung rutscht und das
+  // Vorschaubild sie beruehrt. `flex-direction:column` an der ZEILE stellt
+  // beides untereinander.
+  //
+  // Die Android-App macht das seit jeher so (erst der Text, dann die
+  // LazyColumn darunter); hier war die Webapp die Abweichung.
+  // Gemessen wird an der detailZeile SELBST, nicht am Aufbau darueber: Der
+  // erste Test schneidet bis zum `t('setitem.used_in')` und hoert damit genau
+  // vor der Stelle auf, um die es hier geht.
+  const src = ohneKommentare(
+    fs.readFileSync(path.join(ROOT, 'public', 'js', '13-acquisition-modals.js'), 'utf8'));
+  assert.match(src,
+    /detailZeile\(t\('setitem\.used_in'\), liste,\s*\{\s*zeilenStil: 'flex-direction:column/,
+    'Die Set-Tabelle steht wieder NEBEN der Beschriftung „Verwendet in" — bei ' +
+    'einem einzelnen Set schiebt sie sich dann in das erste Vorschaubild');
+});
+
 test('die App zeigt dieselben drei Spalten', () => {
   const datei = path.join(APP, 'ui', 'dialogs', 'SetItemDetailDialog.kt');
   assert.ok(fs.existsSync(datei), `${datei} nicht gefunden`);
