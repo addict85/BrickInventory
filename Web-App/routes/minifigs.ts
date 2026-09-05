@@ -273,6 +273,26 @@ async function getCurrentFigMarketPrice(figNumber: string, userId: number, blFig
     for (const num of [blFigNumber, figNumber]) {
       if (!num) continue;
       const priceData = await fetchMinifigPrice(num, effCond, currency, 24).catch(() => null);
+      // ── Kein Preis aus dem ANDEREN Zustand (Nachtrag 166) ─────────────────
+      //
+      // Marcos Befund: „Wenn ich eine Minifigur mit dem Zustand neu oder
+      // gebraucht erfasse, erhaelt diese denselben Preis." Genau so war es.
+      //
+      // fetchMinifigPrice faellt bei leerem Price Guide auf den jeweils
+      // anderen Zustand zurueck und markiert das (`is_fallback`). Diese
+      // Stelle las nur `avg_price` und warf die Markierung weg. Bei
+      // Minifiguren hat BrickLink meist nur zu EINEM Zustand Verkaeufe —
+      // also lieferten beide Erfassungen denselben Wert, und der Zustand
+      // sah aus wie eine Angabe ohne Wirkung.
+      //
+      // Fuer die BEWERTUNG ist der Rueckfall richtig: ein Naeherungswert ist
+      // besser als eine Luecke. Fuer den KAUFPREIS nicht — der wird
+      // gespeichert und steht danach als Tatsache da. Lieber kein Vorschlag
+      // als ein falscher; eintragen kann man ihn immer noch von Hand.
+      //
+      // Nebeneffekt, der Marcos zweitem Wunsch entgegenkommt: Der zweite
+      // BrickLink-Aufruf des Rueckfalls entfaellt hier.
+      if (priceData?.is_fallback) continue;
       const price = parseFloat(priceData?.avg_price || 0);
       if (price > 0) return price;
       if (num === blFigNumber && blFigNumber === figNumber) break;   // nicht doppelt fragen

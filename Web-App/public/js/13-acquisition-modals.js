@@ -16,7 +16,7 @@
 import { detailZeile, ladeAnzeige } from './01-bausteine.js';
 import { registerActions } from './00-registry.js';
 import { locale, t, tRaw } from '../i18n.js';
-import { escHex, CURRENCY, G, ME, api, esc, escJs, fmtN, fullUrl, imgUrl, toast } from './01-core.js';
+import { escHex, CURRENCY, G, ME, api, esc, escJs, escUrl, fmtN, fullUrl, imgUrl, thumbUrl, toast } from './01-core.js';
 import { allSets, applySetAggregate, closeModal, curSet, loadGallery, pnlBadge, updateGalleryPrices } from './02-gallery.js';
 import { loadFinance } from './04-finance.js';
 import { deleteManualFig, deleteManualPart, loadManualFigsTable, loadManualParts, manualFigsCache, manualPartsCache, updateManualFig, updateManualPart } from './06-minifigs.js';
@@ -551,8 +551,12 @@ export async function openSetItemDetail(type, id, colorId) {
   const zeilen = [];
   // Anzahl: NUR Anzeige. Marcos Vorgabe — eine Menge, die aus den Inventaren
   // der Sets entsteht, lässt sich hier nicht sinnvoll ändern.
+  // fmtN() ist der GELDformatierer. Hier stand `fmtN(total_quantity)` ohne
+  // Waehrung — aus der Menge 6 wurde damit „EUR 6.00×". Anzahlen schreibt
+  // dieser Baum als `(n||0).toLocaleString(locale())`; genau so steht es auf
+  // der Teilekachel (03-parts.js), und der Dialog zeigt jetzt dasselbe.
   zeilen.push(detailZeile(t('setitem.total_qty'),
-    `<span style="font-family:var(--mono);font-weight:600">${fmtN(item?.total_quantity || 0)}×</span>`));
+    `<span style="font-family:var(--mono);font-weight:600">${(item?.total_quantity || 0).toLocaleString(locale())}×</span>`));
 
   if (type === 'part' && item?.color_name) {
     const punkt = item.color_hex
@@ -566,14 +570,38 @@ export async function openSetItemDetail(type, id, colorId) {
   // ── Die verwendenden Sets ────────────────────────────────────────────────
   // Jede Zeile öffnet das Set-Detail. `openSetAusItem` schliesst diesen Dialog
   // zuerst — zwei offene Fenster übereinander wären nicht mehr zu schliessen.
+  // ── Eine Tabelle, wie im Reiter Finanzen ─────────────────────────────────
+  //
+  // Marcos Vorgabe: Bild, Nummer, Bezeichnung — in Spalten, nicht als Fliesstext.
+  // Vorher standen Nummer und Name direkt nebeneinander („8480-1 Space
+  // Shuttle"), ohne Bild und ohne gemeinsame Kante; bei mehreren Sets stand
+  // jeder Name woanders.
+  //
+  // Die Bilder liefert der Server je Set bereits mit (utils/handlers/shared.ts,
+  // verwendendeSets → image_local/image_url) — sie wurden hier nur nie
+  // benutzt. Die Adresse entsteht genauso wie in 04-finance.js: Vorschau, wenn
+  // es eine gibt, sonst das Original; `data-orig` traegt die volle Aufloesung
+  // fuer den Zoom.
+  //
+  // Die Menge bleibt als vierte Spalte stehen — sie beantwortet „wie oft steckt
+  // das Teil in DIESEM Set?", und diese Zahl gibt es sonst nirgends.
+  const setBild = (s) => {
+    const klein = thumbUrl(s.image_local || s.image_url) || s.image_local || s.image_url || '';
+    return klein
+      ? `<img src="${escUrl(imgUrl(klein, true))}" loading="lazy" decoding="async"
+              data-orig="${escUrl(imgUrl(s.image_url || ''))}" alt=""
+              style="width:34px;height:34px;object-fit:contain;background:var(--s100);border-radius:6px;display:block">`
+      : `<span style="display:block;width:34px;height:34px;border-radius:6px;background:var(--s100)"></span>`;
+  };
   const liste = sets.length
-    ? sets.map(s => `<div data-click="openSetAusItem" data-arg="${escJs(s.set_number)}"
-          title="${esc(t('setitem.open_set'))}"
-          style="display:flex;align-items:center;gap:8px;padding:4px 0;cursor:pointer">
-        <span style="font-family:var(--mono);font-size:.78rem;color:var(--b600)">${esc(s.set_number)}</span>
-        <span style="flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(s.set_name || '')}</span>
-        <span style="color:var(--mut);font-size:.78rem">×${fmtN(s.quantity)}</span>
-      </div>`).join('')
+    ? `<table style="width:100%;border-collapse:collapse"><tbody>${sets.map(s => `
+        <tr data-click="openSetAusItem" data-arg="${escJs(s.set_number)}"
+            title="${esc(t('setitem.open_set'))}" style="cursor:pointer">
+          <td style="width:34px;padding:4px 8px 4px 0">${setBild(s)}</td>
+          <td style="width:1%;white-space:nowrap;padding:4px 10px 4px 0;font-family:var(--mono);font-size:.78rem;color:var(--b600)">${esc(s.set_number)}</td>
+          <td style="padding:4px 0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:0">${esc(s.set_name || '')}</td>
+          <td style="width:1%;white-space:nowrap;padding:4px 0 4px 10px;text-align:right;color:var(--mut);font-size:.78rem">×${(s.quantity || 0).toLocaleString(locale())}</td>
+        </tr>`).join('')}</tbody></table>`
     : `<span style="color:var(--mut);font-size:.83rem">${esc(t('setitem.used_in_none'))}</span>`;
   zeilen.push(detailZeile(t('setitem.used_in'), liste,
     { zeilenStil: 'align-items:flex-start',

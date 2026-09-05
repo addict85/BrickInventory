@@ -27,7 +27,9 @@ import ch.brickinventoryapp.R
 import ch.brickinventoryapp.ui.MainViewModel
 import ch.brickinventoryapp.ui.components.ZoomableImageDialog
 import ch.brickinventoryapp.ui.schliesseSetItem
+import ch.brickinventoryapp.ui.screens.TabellenZeile
 import ch.brickinventoryapp.util.resolveFullUrlViaProxy
+import ch.brickinventoryapp.util.rememberTileImageWithFallback
 
 /**
  * Detail-Dialog fuer ein Teil / eine Figur AUS EINEM SET.
@@ -164,39 +166,50 @@ fun SetItemDetailDialog(
                             // nicht mehr schliessen.
                             LazyColumn(Modifier.fillMaxWidth().heightIn(max = 220.dp)) {
                                 items(zustand.sets, key = { it.setNumber + "-" + it.ownerUserId }) { s ->
-                                    Row(
-                                        Modifier
-                                            .fillMaxWidth()
-                                            // onClickLabel sagt der
-                                            // Sprachausgabe, was das Antippen
-                                            // TUT — ohne das liest sie nur die
-                                            // Setnummer vor. In der Webapp
-                                            // steht derselbe Text als
-                                            // title-Attribut.
-                                            .clickable(
-                                                onClickLabel = oeffneLabel,
-                                            ) {
-                                                // Erst schliessen, dann oeffnen:
-                                                // Sonst laege der Dialog ueber
-                                                // dem Set-Detail.
-                                                vm.schliesseSetItem()
-                                                onOpenSet(s.setNumber)
-                                            }
-                                            .padding(vertical = 6.dp),
-                                        verticalAlignment = Alignment.CenterVertically,
-                                    ) {
-                                        Text(s.setNumber, fontSize = 13.sp,
-                                            fontWeight = FontWeight.SemiBold)
-                                        Spacer(Modifier.width(8.dp))
-                                        Text(
-                                            s.setName ?: "",
-                                            fontSize = 13.sp,
-                                            maxLines = 1,
-                                            modifier = Modifier.weight(1f),
-                                        )
-                                        Text("×${s.quantity}", fontSize = 13.sp,
-                                            color = MaterialTheme.colorScheme.onSurfaceVariant)
-                                    }
+                                    // ── Bild, Nummer, Bezeichnung, Menge ────
+                                    //
+                                    // Marcos Vorgabe fuer beide Oberflaechen:
+                                    // erst das kleine Bild, dann die Nummer,
+                                    // dann der Name — „so wie im Reiter
+                                    // Finanzen". Genau diese Zeile GIBT es
+                                    // schon: TabellenZeile, die gemeinsame
+                                    // Fassung fuer die Tabellenansicht der
+                                    // Teile und der Figuren.
+                                    //
+                                    // Hier stand zuerst ein eigener Row mit
+                                    // AsyncImage. Er sah nur fast gleich aus
+                                    // und hatte zwei Fehler, die das Bauteil
+                                    // nicht hat: einen festen Eckenradius
+                                    // (DesignTokensTest, Lauf 128 rot) und
+                                    // keinen Rueckfall auf die volle
+                                    // Aufloesung, wenn es kein Vorschaubild
+                                    // gibt — den hat die Webapp ueber
+                                    // data-orig. Zwei Fassungen derselben
+                                    // Zeile sind genau das, wogegen
+                                    // TabellenZeile gebaut wurde.
+                                    val (bildUrl, onBildFehler) =
+                                        rememberTileImageWithFallback(serverUrl, s.imageLocal, s.imageUrl)
+                                    TabellenZeile(
+                                        bildUrl = bildUrl,
+                                        nummer = s.setNumber,
+                                        name = s.setName,
+                                        menge = s.quantity,
+                                        imageLoader = imageLoader,
+                                        onBildFehler = onBildFehler,
+                                        // onClickLabel sagt der Sprachausgabe,
+                                        // was das Antippen TUT — ohne das liest
+                                        // sie nur die Setnummer vor. In der
+                                        // Webapp steht derselbe Text als
+                                        // title-Attribut.
+                                        onClickLabel = oeffneLabel,
+                                        onClick = {
+                                            // Erst schliessen, dann oeffnen:
+                                            // Sonst laege der Dialog ueber dem
+                                            // Set-Detail.
+                                            vm.schliesseSetItem()
+                                            onOpenSet(s.setNumber)
+                                        },
+                                    )
                                 }
                             }
                         }

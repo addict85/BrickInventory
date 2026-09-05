@@ -152,20 +152,26 @@ test('ein 404 darf der Browser sich merken', () => {
   // Jahrgänge, wo fast jedes Bild fehlt, ist das ein voller Satz Anfragen je
   // Bildschirm — bis zum Server, dort in den Merker und wieder zurück.
   const px = require('./helpers/sources').proxyThumbQuelle();
-  // Typangabe zugelassen (Nachtrag 155): Die Signatur heisst jetzt
-  // `sende404(res: Response)`. Gemeint war nie die Schreibweise, sondern dass
-  // es EINEN gemeinsamen 404-Weg gibt.
-  assert.match(px, /function sende404\(res(: \w+)?\)/, 'Kein gemeinsamer 404-Weg');
-  assert.match(px, /sende404[\s\S]{0,200}Cache-Control', 'public, max-age=3600/,
-    'Der 404 trägt keinen Cache-Hinweis — der Browser fragt jedes Mal neu');
+  // ── Der Weg heisst jetzt sendePlatzhalter (Nachtrag 165) ─────────────────
+  //
+  // Typangabe zugelassen (Nachtrag 155), und seit Nachtrag 165 ein anderer
+  // Name: Ein fehlendes Bild kommt als PLATZHALTER mit 200 zurück, damit die
+  // Browser-Konsole beim Blättern durch alte Jahrgänge nicht voller roter 404
+  // steht. Gemeint war hier nie die Schreibweise, sondern dass es EINEN
+  // gemeinsamen Weg für „dieses Bild gibt es nicht" gibt und dass der Browser
+  // sich die Antwort merken darf — beides gilt unverändert.
+  assert.match(px, /function sendePlatzhalter\(res(: \w+)?\)/,
+    'Kein gemeinsamer Weg für ein fehlendes Bild');
+  assert.match(px, /sendePlatzhalter[\s\S]{0,600}Cache-Control', 'public, max-age=3600/,
+    'Die Antwort trägt keinen Cache-Hinweis — der Browser fragt jedes Mal neu');
   // Beide Wege müssen ihn benutzen: der Treffer im Merker und die Absage vom CDN.
-  assert.match(px, /istBekanntFehlend\(cacheKey\)\) return sende404\(res\)/,
+  assert.match(px, /istBekanntFehlend\(cacheKey\)\) return sendePlatzhalter\(res\)/,
     'Der Merker-Treffer antwortet ohne Cache-Hinweis');
-  assert.match(px, /statusCode === 404 \? sende404\(res\)/,
+  assert.match(px, /statusCode === 404 \? sendePlatzhalter\(res\)/,
     'Die Absage vom CDN antwortet ohne Cache-Hinweis');
   // 403 (Drosselung) darf NICHT zwischengespeichert werden — dasselbe Argument
   // wie beim serverseitigen Merker.
-  assert.doesNotMatch(px, /403[\s\S]{0,80}sende404/,
+  assert.doesNotMatch(px, /403[\s\S]{0,80}sendePlatzhalter/,
     'Ein 403 ist eine Drosselung, kein fehlendes Bild');
 });
 
