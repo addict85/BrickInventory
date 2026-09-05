@@ -44,16 +44,33 @@ class MengePlaketteTest {
     private fun code(s: String) = s.lines()
         .joinToString("\n") { if (it.trim().startsWith("//") || it.trim().startsWith("*")) "" else it }
 
+    /**
+     * ── Nachtrag 138: eine Stelle statt zwei ────────────────────────────────
+     *
+     * Hier standen zwei Pruefungen, eine je Zwillingsdatei. Seit die beiden
+     * manuellen Kacheln ueber [ManuelleKachel] laufen, gibt es die Plakette nur
+     * noch EINMAL — die alte Fassung suchte in PartsScreen.kt und
+     * MinifigsScreen.kt und fand nichts mehr.
+     *
+     * Geprueft wird jetzt beides: dass die gemeinsame Kachel die Plakette in
+     * der Schreibweise der Webapp traegt, UND dass die beiden Zwillinge sie
+     * wirklich benutzen. Ohne das zweite koennte eine der beiden wieder eine
+     * eigene Kachel bauen, und der Test bliebe still.
+     */
     @Test
     fun `manuell erfasste Kacheln schreiben das Zeichen VOR die Zahl`() {
-        val teile = code(read("ui/screens/PartsScreen.kt"))
-        assert(teile.contains("Text(\"×\${part.quantity}\"")) {
-            "ManualPartTile schreibt die Menge nicht wie das qbadge der Webapp (×N)"
+        val gemeinsam = code(read("ui/screens/ManualItemComposables.kt"))
+        assert(gemeinsam.contains("Text(\"×\$menge\"")) {
+            "ManuelleKachel schreibt die Menge nicht wie das qbadge der Webapp (×N)"
         }
-        val figuren = code(read("ui/screens/MinifigsScreen.kt"))
-        assert(figuren.contains("Text(\"×\${fig.quantity}\"")) {
-            "ManualFigTile schreibt die Menge nicht wie das qbadge der Webapp (×N) — " +
-                "und damit anders als die Teile-Kachel daneben"
+        for ((datei, wer) in listOf(
+            "ui/screens/PartsScreen.kt" to "ManualPartTile",
+            "ui/screens/MinifigsScreen.kt" to "ManualFigTile",
+        )) {
+            assert(code(read(datei)).contains("ManuelleKachel(")) {
+                "$wer baut seine Kachel wieder selbst statt ManuelleKachel zu rufen — " +
+                    "dann laufen die beiden Ansichten wieder auseinander"
+            }
         }
     }
 

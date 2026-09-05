@@ -16,11 +16,21 @@
  *                      Uploads, SSE-Streams, Admin-UI der Webapp)
  *
  * ── Was dieser Test NICHT prueft ────────────────────────────────────────────
- * Ob die Kategorie STIMMT. Geprueft wird nur, dass jeder Endpunkt eine hat und
- * dass kein Eintrag verwaist ist. NACHGEMESSEN: Acht als `nur-v1` beschriftete
- * Endpunkte werden von keinem der beiden Clients gerufen — die Beschriftung
- * sagt aber woertlich „wird von BEIDEN Clients genutzt". Eine Beschriftung,
- * die niemand nachmisst, wird irgendwann falsch.
+ * Ob die Kategorie in JEDE Richtung stimmt. Geprueft wird, dass jeder Endpunkt
+ * eine hat, dass kein Eintrag verwaist ist — und seit Nachtrag 137, dass kein
+ * `nur-web` in Wahrheit von der Android-App gerufen wird.
+ *
+ * Diese eine Richtung ist die, die messbar falsch WAR: NACHGEMESSEN trugen
+ * NEUNZEHN Eintraege die Beschriftung `nur-web`, obwohl BrickApiService.kt sie
+ * aufruft — Registrieren, Profil, Passwort aendern, alle drei CSV-Importe, die
+ * Anleitungen, die Farb- und Kategoriefilter, das Design. Jeder einzelne war
+ * einmal richtig und ist es geworden, als die App die Funktion bekam; niemand
+ * ist danach hierher zurueckgegangen. Genau das ist die Bauart, gegen die
+ * dieser Baum seine Pruefungen baut: eine Wahrheit, die an zwei Stellen steht,
+ * und nur eine wird gepflegt.
+ *
+ * Die andere Richtung — ein `nur-v1`, das gar niemand ruft — bleibt
+ * ungeprueft; dafuer gibt es test/api-aufrufer.test.js.
  *
  * Wer wen wirklich ruft, prueft test/api-aufrufer.test.js; dass keine Adresse
  * unbegruendet auf beiden Oberflaechen steht, test/api-oberflaechen.test.js.
@@ -208,6 +218,39 @@ const C = {
   'POST /api/v1/admin/trigger-csv-sync': 'nur-v1',
   'POST /api/v1/admin/trigger-price-job': 'nur-v1',
 
+  // ── Beide Clients, frueher nur die Webapp (Nachtrag 137) ──────────────────
+  //
+  // Diese neunzehn standen als `nur-web` unten und waren es einmal auch. Sie
+  // sind es nicht mehr, seit die Android-App Registrieren, Profil, Passwort,
+  // die drei CSV-Importe, die Anleitungen, die Farb- und Kategoriefilter und
+  // das Design bekommen hat — jeder Umzug hat die Beschriftung hier
+  // zurueckgelassen. Aufgefallen ist es erst, als die Beschriftung selbst
+  // geprueft wurde (Test „kein nur-web wird in Wahrheit von der Android-App
+  // gerufen"); vorher war sie eine Behauptung, die niemand nachmisst.
+  'DELETE /api/v1/sets/:setNumber/instructions/:instrId': 'nur-v1',
+  'GET /api/v1/auth/profile': 'nur-v1',
+  'GET /api/v1/auth/registration-status': 'nur-v1',
+  'GET /api/v1/parts/categories': 'nur-v1',
+  'GET /api/v1/sets/import/csv/status': 'nur-v1',
+  'GET /api/v1/sets/import/csv/stream': 'nur-v1',
+  'GET /api/v1/settings/theme': 'nur-v1',
+  'POST /api/v1/auth/change-password': 'nur-v1',
+  'POST /api/v1/auth/forgot-password': 'nur-v1',
+  'POST /api/v1/auth/register': 'nur-v1',
+  'POST /api/v1/minifigs/import/csv': 'nur-v1',
+  'POST /api/v1/parts/import/csv': 'nur-v1',
+  'POST /api/v1/sets/:setNumber/instructions/upload': 'nur-v1',
+  'POST /api/v1/sets/add-stream': 'nur-v1',
+  'POST /api/v1/sets/import/csv': 'nur-v1',
+  'POST /api/v1/sets/import/csv/cancel': 'nur-v1',
+  'POST /api/v1/settings/admin/theme': 'nur-v1',
+  'PUT /api/v1/auth/profile': 'nur-v1',
+  // Und seit Nachtrag 137 auch diese: Die Teileliste der App holt den Setnamen
+  // jetzt hier statt ueber /sets/{nr}. Der Unterschied ist nicht formal — das
+  // Detail sucht im eigenen Blickfeld und antwortet 404 fuer ein fremdes Set,
+  // und in der Teileliste sind fremde Sets der Regelfall.
+  'GET /api/v1/sets/info/:setNumber': 'nur-v1',
+
   // Nur Webapp
   //
   // Alle Anmelde-Adressen sind von /api/auth nach /api/v1/auth umgezogen; es
@@ -218,12 +261,6 @@ const C = {
   //  * qr-login stand hier als nur-web und war es nie: Die App ruft es
   //    (BrickApiService.qrLogin). Beim Umzug aufgefallen, weil beide
   //    Eintraege danebenlagen.
-  'POST /api/v1/auth/register': 'nur-web',
-  'GET /api/v1/auth/registration-status': 'nur-web',
-  'GET /api/v1/auth/profile': 'nur-web',
-  'PUT /api/v1/auth/profile': 'nur-web',
-  'POST /api/v1/auth/change-password': 'nur-web',
-  'POST /api/v1/auth/forgot-password': 'nur-web',
   'POST /api/v1/auth/reset-password': 'nur-web',
   // Nachtrag 154: von GET auf POST umgestellt — die Route LEGT eine
   // Anmelde-Nonce AN und war als GET die einzige zustandsaendernde Route,
@@ -233,27 +270,19 @@ const C = {
   'POST /api/v1/auth/users': 'nur-web',
   'DELETE /api/v1/auth/users/:id': 'nur-web',
   'PUT /api/v1/auth/users/:id/admin': 'nur-web',
-  'GET /api/v1/sets/info/:setNumber': 'nur-web',
-  'POST /api/v1/sets/add-stream': 'nur-web',
-  'GET /api/v1/sets/import/csv/status': 'nur-web',
-  'GET /api/v1/sets/import/csv/stream': 'nur-web',
-  'POST /api/v1/sets/import/csv': 'nur-web',
-  'POST /api/v1/sets/import/csv/cancel': 'nur-web',
   'GET /api/v1/sets/export/rebrickable': 'nur-web',
-  'POST /api/v1/sets/:setNumber/instructions': 'nur-web',
-  'POST /api/v1/sets/:setNumber/instructions/upload': 'nur-web',
-  'DELETE /api/v1/sets/:setNumber/instructions/:instrId': 'nur-web',
-  'POST /api/v1/sets/:setNumber/parts': 'nur-web',
-  'GET /api/v1/parts/categories': 'nur-web',
-  'POST /api/v1/parts/import/csv': 'nur-web',
-  'POST /api/v1/minifigs/import/csv': 'nur-web',
+  // Nachtrag 159: Beide waren „nur-web", weil die App sie nicht kannte — und
+  // das war eine Luecke, keine Entscheidung. Die Webapp bot „Anleitungen neu
+  // suchen" und „Teile neu einlesen" seit jeher im Set-Detail an; ein Set,
+  // das vor seinem Katalogeintrag erfasst wurde, blieb in der App dauerhaft
+  // bei 0 Teilen. Jetzt rufen beide Oberflaechen sie auf.
+  'POST /api/v1/sets/:setNumber/instructions': 'nur-v1',
+  'POST /api/v1/sets/:setNumber/parts': 'nur-v1',
   'POST /api/v1/settings': 'nur-web',
   'GET /api/v1/settings/raw': 'nur-web',
   'GET /api/v1/settings/export': 'nur-web',
   'GET /api/v1/settings/export/data': 'nur-web',
   'POST /api/v1/settings/import': 'nur-web',
-  'GET /api/v1/settings/theme': 'nur-web',
-  'POST /api/v1/settings/admin/theme': 'nur-web',
   'POST /api/v1/settings/smtp-test': 'nur-web',
 };
 
@@ -272,6 +301,68 @@ test('keine verwaisten Klassifikations-Einträge', () => {
   const stale = Object.keys(C).filter(e => !eps.has(e)).sort();
   assert.deepEqual(stale, [],
     `Klassifizierte Endpunkte existieren nicht mehr:\n  ${stale.join('\n  ')}`);
+});
+
+/**
+ * Jede Adresse, die die Android-App ruft.
+ *
+ * Zwei Schreibweisen, weil es zwei gibt: die Retrofit-Anmerkungen im
+ * Dienst-Interface und die von Hand gebauten Adressen fuer SSE, Bilder und
+ * PDF (`"${baseUrl}/api/v1/…"`). Nur die erste zu lesen hiesse, den halben
+ * Client zu kennen — und ein `nur-web` fuer eine Adresse, die die App per SSE
+ * ruft, waere weiterhin unbemerkt falsch.
+ */
+function androidAdressen() {
+  const wurzel = path.join(ROOT, '..', 'Android-App', 'app', 'src', 'main', 'java');
+  assert.ok(fs.existsSync(wurzel), `Android-Quellbaum nicht gefunden unter ${wurzel}`);
+  const gefunden = new Set();
+  const lauf = (d) => {
+    for (const e of fs.readdirSync(d, { withFileTypes: true })) {
+      const voll = path.join(d, e.name);
+      if (e.isDirectory()) { lauf(voll); continue; }
+      if (!e.name.endsWith('.kt')) continue;
+      const src = fs.readFileSync(voll, 'utf8')
+        .replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');
+      for (const m of src.matchAll(/@(GET|POST|PUT|PATCH|DELETE)\(\s*"([^"]+)"\s*\)/g))
+        gefunden.add(`${m[1]} ${vergleichbar(m[2])}`);
+      // Von Hand gebaut: die Methode steht dort nicht daneben, also unter
+      // ALLEN Verben eintragen. Das kann eine Adresse zu viel entlasten —
+      // aber niemals eine zu Unrecht anklagen, und darum geht es hier.
+      for (const m of src.matchAll(/\$baseUrl(\/api\/[^"$?]+)/g))
+        for (const v of ['GET', 'POST', 'PUT', 'PATCH', 'DELETE'])
+          gefunden.add(`${v} ${vergleichbar(m[1])}`);
+    }
+  };
+  lauf(wurzel);
+  return gefunden;
+}
+
+/** Retrofit schreibt `{x}` und laesst den Schraegstrich weg, Express nimmt `:x`. */
+function vergleichbar(p) {
+  return ('/' + p.trim().replace(/^\/+|\/+$/g, ''))
+    .replace(/\{[^}]+\}/g, ':X')
+    .replace(/:[A-Za-z_]\w*/g, ':X');
+}
+
+test('kein „nur-web" wird in Wahrheit von der Android-App gerufen', () => {
+  const app = androidAdressen();
+  // Selbstbeweis: Greift das Muster nicht mehr, waere die Menge leer und der
+  // Test gruen, ohne etwas geprueft zu haben. GEMESSEN sind es ueber 90.
+  assert.ok(app.size >= 80, `Nur ${app.size} Android-Adressen gefunden — Muster veraltet?`);
+
+  const falsch = Object.entries(C)
+    .filter(([e, k]) => k === 'nur-web')
+    .map(([e]) => {
+      const [verb, pfad] = e.split(' ');
+      return app.has(`${verb} ${vergleichbar(pfad)}`) ? e : null;
+    })
+    .filter(Boolean).sort();
+
+  assert.deepEqual(falsch, [],
+    'Diese Endpunkte sind als „nur-web" eingetragen, die Android-App ruft sie aber:\n  ' +
+    falsch.join('\n  ') +
+    '\nEntweder die Beschriftung ist veraltet (dann auf nur-v1 setzen), oder der ' +
+    'Aufruf in der App gehoert dort nicht hin.');
 });
 
 test('nur gültige Kategorien', () => {

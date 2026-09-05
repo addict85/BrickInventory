@@ -39,13 +39,40 @@ function exportSpalten(rel) {
   return m[1].split(",").map(s => s.trim().replace(/^['"]|['"]$/g, "")).filter(Boolean);
 }
 
-/** Die aus einer CSV-Zeile gelesenen Schlüssel im Importrumpf. */
+/**
+ * Die aus einer CSV-Zeile gelesenen Schlüssel im Importrumpf.
+ *
+ * ── Seit Nachtrag 144 auch die gemeinsame Fassung ───────────────────────────
+ *
+ * Menge, Preis, Notiz, Erfassungsdatum und Zustand liest für Teile und
+ * Minifiguren jetzt `csvGemeinsameFelder()` in utils/csvExport.ts. Wer nur den
+ * Routenrumpf ansieht, findet diese fünf Spalten nicht mehr und hielte den
+ * Export für unvollständig gelesen — obwohl das Gegenteil der Fall ist: Sie
+ * werden für BEIDE Importe an einer Stelle gelesen.
+ *
+ * Deshalb wird der Rumpf der gemeinsamen Funktion mitgelesen, wenn die Route
+ * sie ruft. Nicht pauschal: Ruft eine Route sie nicht, zählt auch nichts aus
+ * ihr — sonst deckte die gemeinsame Fassung einen Import mit ab, der sie gar
+ * nicht benutzt.
+ */
 function importSchluessel(rel) {
   const src = ohneKommentare(fs.readFileSync(path.join(ROOT, rel), 'utf8'));
   const i = src.indexOf("router.post('/import/csv'");
   assert.ok(i > 0, `${rel}: keine CSV-Importroute gefunden`);
   const j = src.indexOf('\n});', i);
-  const blk = src.slice(i, j > i ? j : undefined);
+  let blk = src.slice(i, j > i ? j : undefined);
+  if (blk.includes('csvGemeinsameFelder(')) {
+    const geteilt = ohneKommentare(fs.readFileSync(path.join(ROOT, 'utils/csvExport.ts'), 'utf8'));
+    const k = geteilt.indexOf('function csvGemeinsameFelder(');
+    assert.ok(k > 0, 'csvGemeinsameFelder() gibt es nicht mehr — utils/csvExport.ts umgebaut?');
+    // Bis zur NAECHSTEN Deklaration, nicht bis zum ersten `\n}`: Die Funktion
+    // traegt ihren Rueckgabetyp als `{ … }` in der Signatur, und das erste
+    // `\n}` schliesst deshalb den TYP, nicht den Rumpf. Der erste Entwurf las
+    // dadurch 153 Zeichen Typdeklaration statt der Zeilen darunter — und
+    // meldete vier Spalten als ungelesen, die sehr wohl gelesen werden.
+    const naechste = geteilt.slice(k + 1).search(/\n(?:\/\*\*|function |export )/);
+    blk += geteilt.slice(k, naechste < 0 ? undefined : k + 1 + naechste);
+  }
   const keys = new Set();
   for (const m of blk.matchAll(/row\.(\w+)/g)) keys.add(m[1]);
   for (const m of blk.matchAll(/row\[['"]([^'"]+)['"]\]/g)) keys.add(m[1]);

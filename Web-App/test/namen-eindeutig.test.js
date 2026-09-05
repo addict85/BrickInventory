@@ -88,10 +88,20 @@ test('ein Funktionsname bedeutet eine Sache', () => {
     `Nur ${gefunden} Funktionen gefunden — die Suche greift nicht mehr`);
 
   const doppelt = [];
+  const gebraucht = new Set();
   for (const [name, orte] of wo) {
-    if (orte.size < 2 || ERLAUBT.has(name)) continue;
+    if (orte.size < 2) continue;
+    // Ein erlaubter Name wird nicht uebersprungen, sondern VERBUCHT: Nur so
+    // faellt auf, wenn er laengst nur noch an einer Stelle steht und der
+    // Eintrag nichts mehr beschreibt. Ein toter Eintrag sieht aus wie eine
+    // Entscheidung und ist doch bloss eine Vermutung, sobald keiner nachsieht.
+    if (ERLAUBT.has(name)) { gebraucht.add(name); continue; }
     doppelt.push(`${name}: ${[...orte].sort().join(', ')}`);
   }
+  const veraltet = [...ERLAUBT.keys()].filter(k => !gebraucht.has(k)).sort();
+  assert.deepEqual(veraltet, [],
+    'Diese Eintraege in ERLAUBT beschreiben keine Doppelung mehr:\n  ' +
+    veraltet.join('\n  ') + '\nDer Name steht nur noch an einer Stelle — raus damit.');
   assert.deepEqual(doppelt.sort(), [],
     'Diese Namen stehen in mehreren Dateien. Entweder meinen sie dasselbe — dann ' +
     'gehoeren sie in eine gemeinsame Funktion —, oder sie meinen VERSCHIEDENES, ' +

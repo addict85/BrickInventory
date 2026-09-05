@@ -34,6 +34,8 @@
     <string name="csv_stat_success">Erfolg</string>
     <string name="csv_stat_warnings">Warnungen</string>
     <string name="csv_stat_errors">Fehler</string>
+    <string name="csv_cancel">Import abbrechen</string>
+    <string name="csv_cancel_requested">Der Import hört nach dem laufenden Set auf</string>
     <string name="csv_import_done">Import abgeschlossen</string>
 
     <!-- ══════════════ Portfolio chart ══════════════ -->
@@ -46,7 +48,6 @@
 
     <!-- ══════════════ Comparison screen ══════════════ -->
     <string name="comparison_search_placeholder">Suche z.B. Technic, City…</string>
-    <string name="comparison_clear">Löschen</string>
     <string name="comparison_search">Suchen</string>
     <string name="comparison_scan_new">Neu</string>
     <string name="comparison_scan">Scan</string>
@@ -88,15 +89,14 @@
     <string name="gallery_stat_units">Einheiten</string>
     <string name="gallery_stat_parts">Teile</string>
     <string name="gallery_stat_minifigs">Minifigs</string>
+    <string name="gallery_stat_instructions">Anleitungen</string>
     <string name="gallery_search_placeholder">Sets suchen…</string>
-    <string name="gallery_clear">Löschen</string>
     <string name="gallery_all">Alle</string>
     <string name="gallery_no_sets">Keine Sets vorhanden</string>
     <string name="gallery_pull_to_refresh">Nach unten ziehen zum Neu laden</string>
     <string name="gallery_refresh">Neu laden</string>
     <string name="gallery_no_results">Keine Treffer für „%1$s“</string>
     <string name="gallery_quantity_badge">×%1$d</string>
-    <string name="gallery_delete">Löschen</string>
     <string name="gallery_delete_title">Set löschen?</string>
     <string name="gallery_delete_text">%1$s und alle Teile werden entfernt.</string>
     <string name="gallery_pieces_suffix"> Teile</string>
@@ -105,11 +105,8 @@
     <string name="gallery_add_set_title">Set hinzufügen</string>
     <string name="gallery_set_number">Set-Nummer</string>
     <string name="gallery_set_number_placeholder">z.B. 75192-1 oder 75192</string>
-    <string name="gallery_quantity">Anzahl</string>
     <string name="gallery_purchase_price">Kaufpreis (optional)</string>
-    <string name="gallery_purchase_price_placeholder">Leer = aktueller Marktpreis</string>
     <string name="gallery_add">Hinzufügen</string>
-    <string name="gallery_cancel">Abbrechen</string>
 
     <!-- ══════════════ Minifigs screen ══════════════ -->
     <string name="minifigs_stat_types">Typen</string>
@@ -122,20 +119,13 @@
     <string name="minifigs_loaded_on_import">Minifiguren werden beim Set-Import geladen</string>
     <string name="minifigs_no_results">Keine Treffer</string>
     <string name="minifigs_add">Minifigur hinzufügen</string>
-    <string name="minifigs_edit">Bearbeiten</string>
-    <string name="minifigs_delete">Löschen</string>
     <string name="minifigs_add_title">Minifigur erfassen</string>
     <string name="minifigs_fig_number">Figur-Nummer</string>
     <string name="minifigs_fig_number_placeholder">z.B. fig-007357 (Rebrickable)</string>
     <string name="minifigs_bl_number">BrickLink-Nr. (optional)</string>
     <string name="minifigs_bl_number_placeholder">z.B. sw0001 — für Marktpreis</string>
     <string name="minifigs_bl_hint">Rebrickable- und BrickLink-Nummern unterscheiden sich meist. Ohne BrickLink-Nr. wird der Marktpreis näherungsweise aus den einzelnen Teilen der Figur berechnet.</string>
-    <string name="minifigs_quantity">Anzahl</string>
-    <string name="minifigs_unit_price">Kaufpreis/Stk (optional)</string>
-    <string name="minifigs_unit_price_placeholder">Leer = aktueller Marktpreis</string>
-    <string name="minifigs_note">Notiz (optional)</string>
     <string name="minifigs_add_button">Hinzufügen</string>
-    <string name="minifigs_cancel">Abbrechen</string>
     <string name="minifigs_delete_title">Minifigur löschen?</string>
     <string name="minifigs_delete_text">%1$s wird aus deiner Sammlung entfernt.</string>
     <string name="minifigs_manual_badge">Manuell</string>
@@ -152,6 +142,14 @@
     <string name="partslist_pdf_error_title">PDF Fehler</string>
     <string name="partslist_ok">OK</string>
     <string name="partslist_reset">Zurücksetzen</string>
+    <string name="condition_any">Egal</string>
+    <string name="partslist_have">Habe</string>
+    <string name="partslist_bl_title">BrickLink-Wunschliste</string>
+    <string name="partslist_bl_hint">Trage ein, wie viele Teile du schon hast — der Rest wird als BrickLink-Wunschliste ausgegeben.</string>
+    <string name="partslist_bl_export">BrickLink-Wunschliste</string>
+    <string name="partslist_bl_share">Wunschliste teilen</string>
+    <string name="partslist_bl_nothing_missing">Es fehlt nichts — du hast jedes Teil der Liste.</string>
+    <string name="partslist_bl_failed">Die Wunschliste konnte nicht erstellt werden.</string>
     <string name="partslist_empty_hint">Sets hinzufügen und Teileliste erstellen</string>
     <string name="partslist_no_color">(Keine Farbe)</string>
     <string name="partslist_group_summary">%1$d×  ·  %2$d Typen</string>
@@ -190,20 +188,13 @@
     <string name="parts_sets_section">Aus Sets</string>
     <string name="parts_none">Keine Teile</string>
     <string name="parts_add">Teil hinzufügen</string>
-    <string name="parts_edit">Bearbeiten</string>
-    <string name="parts_delete">Löschen</string>
     <string name="parts_delete_title">Teil löschen?</string>
     <string name="parts_delete_text">%1$s wird aus deiner Sammlung entfernt.</string>
-    <string name="parts_quantity">Anzahl</string>
-    <string name="parts_unit_price">Kaufpreis/Stk (optional)</string>
-    <string name="parts_unit_price_placeholder">Leer = aktueller Marktpreis</string>
-    <string name="parts_cancel">Abbrechen</string>
     <string name="parts_add_title">Teil erfassen</string>
     <string name="parts_part_number">Teilenummer</string>
     <string name="parts_part_number_placeholder">z.B. 3001</string>
     <string name="parts_no_color">Keine Farbe</string>
     <string name="parts_color_label">Farbe (optional)</string>
-    <string name="parts_note">Notiz (optional)</string>
     <string name="parts_add_button">Hinzufügen</string>
 
     <!-- ══════════════ Monitoring screen ══════════════ -->
@@ -215,7 +206,6 @@
     <string name="monitoring_queue_collapse">Queue zuklappen</string>
     <string name="monitoring_queue_show">Queue anzeigen (%1$d)</string>
     <string name="monitoring_icon_retry">Retry</string>
-    <string name="monitoring_icon_delete">Löschen</string>
     <string name="monitoring_hide_error">Fehler ausblenden</string>
     <string name="monitoring_show_error">Letzter Fehler anzeigen</string>
     <string name="monitoring_price_cache">PREIS-CACHE</string>
@@ -224,6 +214,11 @@
     <string name="monitoring_cache_subsets">Subsets</string>
     <string name="monitoring_cache_catalog">Katalog</string>
     <string name="monitoring_cache_duration">Cache-Dauer</string>
+    <string name="monitoring_cache_clear_prices">Preise leeren</string>
+    <string name="monitoring_cache_clear_all">Alles leeren</string>
+    <string name="monitoring_cache_clear_hint">Die zwischengespeicherten Preise werden verworfen. Sie neu zu holen kostet Anfragen aus dem gemeinsamen Tageskontingent.</string>
+    <string name="monitoring_cache_clear_confirm">Leeren</string>
+    <string name="monitoring_cache_cleared">Cache geleert</string>
     <string name="monitoring_cache_saved">Cache-Dauer gespeichert</string>
     <string name="monitoring_api_calls">API-AUFRUFE</string>
     <string name="monitoring_limits_saved">Limits gespeichert</string>
@@ -233,8 +228,6 @@
     <string name="monitoring_start_error">Fehler beim Starten</string>
 
     <!-- ══════════════ Set detail screen ══════════════ -->
-    <string name="detail_back">Zurück</string>
-    <string name="detail_delete">Löschen</string>
     <string name="detail_year">Jahr</string>
     <string name="detail_pieces">Steine</string>
     <string name="detail_minifigs">Minifigs</string>
@@ -246,7 +239,7 @@
     <string name="detail_section_item">Details</string>
     <string name="detail_set_number">Setnummer</string>
     <string name="detail_added">Erfasst</string>
-    <string name="detail_quantity">Anzahl</string>
+    <string name="detail_note">Notiz</string>
     <string name="detail_purchase_price">Kaufpreis</string>
     <string name="detail_price_placeholder">Marktpreis</string>
     <string name="detail_section_market">Marktpreis</string>
@@ -274,7 +267,6 @@
     <string name="main_barcode_year">Jahr</string>
     <string name="main_barcode_pieces">Teile</string>
     <string name="main_barcode_figs">Figuren</string>
-    <string name="main_barcode_cancel">Abbrechen</string>
     <string name="main_account">Konto</string>
     <string name="main_menu_monitoring">Monitoring</string>
     <string name="main_menu_logout">Abmelden</string>
@@ -293,12 +285,17 @@
     <string name="setitem_open_set">Set öffnen</string>
     <string name="setitem_category">Kategorie</string>
     <string name="setitem_color">Farbe</string>
+    <string name="parts_filter_color">Nach Farbe filtern</string>
+    <string name="parts_filter_category">Nach Kategorie filtern</string>
     <string name="parts_filter_all">Alle Teile</string>
     <string name="view_cards">Karten</string>
     <string name="view_table">Tabelle</string>
     <string name="parts_filter_no_spare">Ohne Ersatzteile</string>
     <string name="parts_filter_spare">Nur Ersatzteile</string>
     <string name="common_quantity">Anzahl</string>
+    <string name="common_unit_price">Kaufpreis/Stk (optional)</string>
+    <string name="common_unit_price_placeholder">Leer = aktueller Marktpreis</string>
+    <string name="common_note">Notiz (optional)</string>
     <string name="common_cancel">Abbrechen</string>
     <string name="common_loading">Laden…</string>
     <string name="detail_price_loading">Preis wird geladen…</string>
@@ -345,17 +342,26 @@
     <string name="pdfexp_finalizing">PDF wird finalisiert…</string>
     <string name="condition_new">Neu</string>
     <string name="condition_used">Gebraucht</string>
-    <string name="acq_back">Zurück</string>
     <string name="acq_delete_title">Erfassung löschen</string>
     <string name="acq_delete_text">Diese Kaufpreis-Erfassung wirklich löschen? Die Gesamtanzahl wird angepasst.</string>
     <string name="common_back">Zurück</string>
     <string name="common_delete">Löschen</string>
+    <string name="common_edit">Bearbeiten</string>
     <string name="detail_edit_prices">Kaufpreise bearbeiten</string>
     <string name="common_condition">Zustand</string>
     <string name="monitoring_starting">Wird gestartet…</string>
     <string name="monitoring_started">✅ Gestartet</string>
     <string name="monitoring_sync_started_short">✅ Sync gestartet</string>
     <string name="monitoring_price_update">Preise aktualisieren</string>
+    <string name="monitoring_schedule_daily">Täglich um</string>
+    <string name="monitoring_schedule_every">Alle</string>
+    <string name="monitoring_schedule_unit">Min.</string>
+    <string name="monitoring_schedule_minutes">%1$d Min.</string>
+    <string name="cd_edit_schedule">Zeitplan ändern</string>
+    <string name="monitoring_theme">Design</string>
+    <string name="monitoring_theme_classic">Klassisch</string>
+    <string name="monitoring_theme_brick">Stein</string>
+    <string name="monitoring_catalog_images">Katalogbilder einreihen</string>
     <string name="monitoring_redownload_missing">Fehlende Bilder neu laden</string>
     <string name="monitoring_import_missing_instr">Fehlende Anleitungen importieren</string>
     <string name="monitoring_loading">Lädt…</string>
@@ -484,6 +490,8 @@
 
     <!-- ══════════════ Konto anlegen / Passwort vergessen ══════════════ -->
     <string name="login_no_account">Noch kein Konto? Registrieren</string>
+    <string name="startup_title">Der Server startet</string>
+    <string name="startup_hint">Der erste Start nach einer Installation holt den Katalog und dauert einige Minuten. Die App kann offen bleiben.</string>
     <string name="login_forgot">Passwort vergessen?</string>
     <string name="login_back">Zurück zur Anmeldung</string>
     <string name="register_title">Konto erstellen</string>
@@ -531,11 +539,21 @@
     <string name="instr_upload_wrong_type">Nur PDF, JPG oder PNG.</string>
     <string name="instr_upload_done">Anleitung hinzugefügt</string>
     <string name="instr_delete">Anleitung entfernen</string>
+    <!-- Neu einlesen: dieselben zwei Aktionen, die die Webapp im Set-Detail hat
+         (02-gallery.js: redownloadInstr, reimportParts). -->
+    <string name="instr_reload">Neu laden</string>
+    <string name="instr_reloading">Anleitungen werden gesucht…</string>
+    <string name="instr_reloaded_n">%1$d Anleitungen geladen</string>
+    <string name="parts_reimport">Teile neu einlesen</string>
+    <string name="parts_reimporting">Teile für %1$s werden eingelesen…</string>
+    <string name="parts_reimported_n">%1$d Teile eingelesen</string>
 
     <!-- ══════════════ Server-Protokoll ══════════════ -->
     <string name="admin_log_title">Server-Protokoll</string>
     <string name="admin_log_minutes">Letzte %1$d Min</string>
     <string name="admin_log_empty">Keine Einträge in diesem Zeitraum.</string>
+    <string name="admin_log_search">Protokoll durchsuchen</string>
+    <string name="admin_log_no_match">Keine Einträge passen zum Filter</string>
     <string name="admin_log_reload">Neu laden</string>
 
     <string name="common_collapse">Zuklappen</string>

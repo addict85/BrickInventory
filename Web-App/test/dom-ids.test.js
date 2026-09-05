@@ -52,9 +52,21 @@ const collect = src => {
 collect(fs.readFileSync(path.join(PUB, 'index.html'), 'utf8'));
 for (const f of JS_FILES) collect(fs.readFileSync(path.join(PUB, 'js', f), 'utf8'));
 
-// Bewusst tolerierte Altlasten: Referenz ist im Code null-geprüft (if(uel)),
-// das Element wurde aus dem Header entfernt. Neue Einträge hier nur mit Grund.
-const ALLOWED_MISSING = new Set(['uname']);
+// Ausnahmen — und die Liste ist LEER, mit Absicht.
+//
+// Hier stand `uname`, mit der Begründung „Referenz ist im Code null-geprüft
+// (if(uel)), das Element wurde aus dem Header entfernt". Der zweite Halbsatz
+// war falsch: Der Namenszug im Kopf steht sehr wohl noch da, er heisst nur
+// `ubadge` (index.html). Gesetzt wurde er ausserdem nur ein einziges Mal —
+// in showApp() beim Anmelden. Wer seinen Benutzernamen änderte, sah bis zum
+// nächsten Neuladen weiter den alten; die Zeile, die das hätte richten
+// sollen, schlug ins Leere.
+//
+// Daran liegt der Reiz dieser Liste: Ein Eintrag hier sieht aus wie eine
+// Entscheidung und ist doch nur eine Vermutung, sobald niemand mehr
+// nachsieht. Wer hier etwas einträgt, muss NACHGESEHEN haben, dass es das
+// Element wirklich nicht mehr gibt — und den Fundort nennen.
+const ALLOWED_MISSING = new Set();
 
 for (const file of JS_FILES) {
   test(`G('...')-IDs aus ${file} existieren in index.html`, () => {

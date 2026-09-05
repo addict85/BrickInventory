@@ -163,3 +163,95 @@ test('jede Adresse der Webapp existiert auf dem Server', () => {
     '\nIm Browser scheitert das erst zur Laufzeit — und wo der Aufruf auf ' +
     '.catch(() => null) endet, fehlt danach still ein Teil der Anzeige.');
 });
+
+/**
+ * ── Und die Gegenrichtung: Was kann nur die Webapp? ─────────────────────────
+ *
+ * Die Prüfung oben und app-endpunkte.test.js fragen beide „gibt es die Route?".
+ * Die Frage, die dieses Projekt seit Nachtrag 129 begleitet, ist eine andere:
+ * WELCHE Adresse ruft nur die eine Oberfläche auf — und ist das Absicht?
+ *
+ * Sie wurde bisher von Hand beantwortet, bei jeder Messung neu. Genau das ist
+ * die Form, die sich als brüchig erwiesen hat: eine Liste im Kopf, die
+ * niemand nachprüft (siehe die vier toten Ausnahmeeinträge in Nachtrag 158).
+ * Deshalb steht sie jetzt hier, mit Begründung je Eintrag — und der Test
+ * besteht darauf, dass jede Begründung noch einen Gegenstand hat.
+ *
+ * NACHGEMESSEN sind es genau diese sieben. Jede ist geprüft worden, nicht
+ * vermutet:
+ */
+const NUR_WEB = new Map([
+  ['/api/v1/admin/job-status',
+   'Stand des Preis-Jobs samt BrickLink-Kontingent. Die App zeigt BEIDES ' +
+   'schon: den Fortschritt über /admin/jobs (jobMonitor, mit progress/total) ' +
+   'und das Kontingent über /admin/cache-stats (rate_limits, ' +
+   'MonitoringSections.kt). Ein zweiter Abruf für dieselben zwei Zahlen wäre ' +
+   'die Doppelung, gegen die dieser Baum sonst prüft.'],
+  ['/api/v1/auth/qr-token',
+   'Erzeugt den Nonce für die QR-Anmeldung — das ist die Seite, die den Code ' +
+   'ZEIGT. Die App ist die andere Seite und liest ihn (/auth/qr-login). Ein ' +
+   'Telefon, das sich selbst einen Code zum Abscannen anzeigt, hat niemand.'],
+  ['/api/v1/auth/reset-password',
+   'Setzt das Passwort mit dem Token aus der E-Mail. Der Link darin zeigt auf ' +
+   'die WEBSEITE (routes/mailer.ts: `${baseUrl}/reset-password?token=`), also ' +
+   'landet auch ein App-Nutzer dort. Was die App braucht, hat sie: ' +
+   '/auth/forgot-password löst die Mail aus.'],
+  ['/api/v1/auth/users',
+   'Nutzerverwaltung. ABSICHTLICH nicht in der App — die Begründung steht in ' +
+   'BrickApiService.kt: sie gehört an den Rechner, nicht auf ein Telefon.'],
+  ['/api/v1/auth/users/:X',        'Nutzer löschen — siehe /auth/users.'],
+  ['/api/v1/auth/users/:X/admin',  'Verwalterrecht umschalten — siehe /auth/users.'],
+  ['/api/v1/auth/users/:X/password', 'Fremdes Passwort zurücksetzen — siehe /auth/users.'],
+  ['/api/v1/settings/import',
+   'Spielt eine gesicherte Verwaltungs-Konfiguration aus einer JSON-Datei ' +
+   'zurück. Dasselbe Urteil wie bei der Nutzerverwaltung: eine Aufgabe für ' +
+   'den Rechner, an dem die Sicherung liegt.'],
+  ['/api/v1/settings/raw',
+   'Alle Einstellungen für die Einstellungsseite, mit Verwalter-Sicht und ' +
+   'maskierten Geheimnissen. Die App holt über /v1/settings bewusst eine ' +
+   'ENGERE Auswahl (sechs Felder, isAdmin=false) — nicht dieselbe Antwort ' +
+   'unter anderem Namen, sondern eine andere Frage.'],
+  ['/api/v1/settings/smtp-test',
+   'Verschickt eine Probe-Mail zum Prüfen der SMTP-Angaben. Die App richtet ' +
+   'kein SMTP ein; ohne die Formularfelder daneben hätte der Knopf nichts zu ' +
+   'prüfen.'],
+]);
+
+test('nur die Webapp kann diese sieben Dinge — und zwar mit Grund', () => {
+  const SERVICE = path.join(ROOT, '..', 'Android-App', 'app', 'src', 'main',
+    'java', 'ch', 'brickinventoryapp', 'data', 'api', 'BrickApiService.kt');
+  assert.ok(fs.existsSync(SERVICE), `BrickApiService.kt nicht gefunden unter ${SERVICE}`);
+
+  const appPfade = new Set([...ohneKommentare(fs.readFileSync(SERVICE, 'utf8'))
+    .matchAll(/@(?:GET|POST|PUT|DELETE|PATCH)\(\s*"([^"]+)"\s*\)/g)]
+    // Retrofit schreibt `{setNumber}`, Express `:setNumber` — beides wird zu
+    // `:X`. form() oben kennt nur die Express-Form; ohne diesen Schritt galten
+    // sechs Adressen als „nur Webapp", die die App sehr wohl aufruft.
+    .map(m => form('/' + m[1].replace(/^\/+/, '').replace(/\{[^}]+\}/g, ':X'))));
+  // GEMESSEN sind es 94 Adressen.
+  assert.ok(appPfade.size >= 60, `Nur ${appPfade.size} App-Adressen — Muster veraltet?`);
+
+  const webPfade = new Set(webAufrufe().map(a => a.pfad));
+  // GEMESSEN sind es 68.
+  assert.ok(webPfade.size >= 50, `Nur ${webPfade.size} Webapp-Adressen — Muster veraltet?`);
+
+  const nurWeb = [...webPfade].filter(p => !appPfade.has(p)).sort();
+
+  const unbegruendet = nurWeb.filter(p => !NUR_WEB.has(p));
+  assert.deepEqual(unbegruendet, [],
+    'Diese Adressen ruft nur die Webapp auf, und es steht kein Grund dabei:\n  ' +
+    unbegruendet.join('\n  ') +
+    '\nEntweder die App zieht nach — dann sind die beiden Oberflächen wieder ' +
+    'gleich viel wert —, oder es gibt einen Grund; der gehört dann in NUR_WEB, ' +
+    'damit ihn der Nächste nicht neu herleiten muss.');
+
+  // Dieselbe Regel wie bei jeder Ausnahmeliste in diesem Baum: Ein Eintrag,
+  // der nichts mehr beschreibt, sieht aus wie eine Entscheidung und ist doch
+  // bloss eine Vermutung. Zieht die App eine dieser Adressen nach, muss der
+  // Eintrag WEG — sonst deckt er still die nächste Lücke mit ab.
+  const veraltet = [...NUR_WEB.keys()].filter(p => !nurWeb.includes(p)).sort();
+  assert.deepEqual(veraltet, [],
+    'Diese Einträge in NUR_WEB beschreiben nichts mehr:\n  ' + veraltet.join('\n  ') +
+    '\nEntweder ruft die App die Adresse inzwischen auch auf (dann Eintrag ' +
+    'streichen), oder die Webapp ruft sie nicht mehr auf (dann ebenfalls).');
+});

@@ -87,7 +87,27 @@ object Formen {
      * Geschmack.
      */
     val kachelBreite = 112.dp
-    val kachelHoehe  = 178.dp
+    /**
+     * 178 -> 208 dp (Nachtrag 134): Preis und Notiz kamen dazu.
+     *
+     * Nachgerechnet statt geschaetzt. Unter dem 76 dp hohen Bild stehen im
+     * schlimmsten Fall, bei labelSmall mit 16 dp Zeilenhoehe:
+     *
+     *     Name             2 Zeilen   32
+     *     Farbe (Teile)    1 Zeile    16
+     *     Preis            1 Zeile    16
+     *     Notiz            1 Zeile    16
+     *     Zustand          3 + 18     21
+     *     Besitzer         2 + 16     18
+     *     Innenabstand     4 + 4       8
+     *                                ---
+     *                                127  + 76 Bild = 203
+     *
+     * 208 laesst fuenf Punkte Luft. Mehr Reserve waere kein Gewinn: Die Kachel
+     * ist 112 dp breit, und je hoeher sie wird, desto weniger Reihen passen
+     * auf den Bildschirm.
+     */
+    val kachelHoehe  = 208.dp
 
     /** Erhebung einer flachen Karte (Listen, Abschnitte). */
     val karteErhebung = 1.dp

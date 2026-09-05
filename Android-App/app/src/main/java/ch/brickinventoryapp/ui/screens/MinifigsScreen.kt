@@ -58,6 +58,7 @@ fun MinifigsScreen(
     val minifigStats = partsState.minifigStats
     val isLoading = partsState.minifigsLoading
     val serverUrl = state.serverUrl
+    val waehrung = state.currency
     val defaultCondition = state.userDefaultCondition ?: "N"
     val householdMembers = state.householdMembers
     val scopeMode = state.scopeModes[ch.brickinventoryapp.data.ScopeFilter.View.MINIFIGS.key]
@@ -91,15 +92,7 @@ fun MinifigsScreen(
 
     Box(Modifier.fillMaxSize()) {
     Column(Modifier.fillMaxSize()) {
-        // Kontofilter — erscheint nur bei einem Hauptkonto mit Unterkonten.
-        if (householdMembers.size > 1) {
-            ScopeFilterChip(
-                members = householdMembers,
-                current = scopeMode,
-                onSelect = onScopeChange,
-                modifier = Modifier.padding(start = 14.dp, top = 8.dp)
-            )
-        }
+        ScopeFilterZeile(householdMembers, scopeMode, onScopeChange)
         // ── Warum die Bedingung nicht mehr `figs.isNotEmpty()` ist ──────────────
         //
         // Hier stand `if (figs.isNotEmpty())`: Die Leiste erschien nur, wenn die
@@ -188,6 +181,7 @@ fun MinifigsScreen(
                                 fig = fig,
                                 serverUrl = serverUrl,
                                 imageLoader = imageLoader,
+                                waehrung = waehrung,
                                 onEdit = { onOpenDetail(fig.figNumber) },
                                 onDelete = { deletingFig = fig }
                             )
@@ -247,90 +241,41 @@ fun MinifigsScreen(
             text = { Text(stringResource(R.string.minifigs_delete_text, fig.figName ?: fig.figNumber)) },
             confirmButton = {
                 TextButton(onClick = { onDeleteFig(fig.figNumber, fig.userId); deletingFig = null }) {
-                    Text(stringResource(R.string.minifigs_delete), color = MaterialTheme.colorScheme.error)
+                    Text(stringResource(R.string.common_delete), color = MaterialTheme.colorScheme.error)
                 }
             },
-            dismissButton = { TextButton(onClick = { deletingFig = null }) { Text(stringResource(R.string.minifigs_cancel)) } }
+            dismissButton = { TextButton(onClick = { deletingFig = null }) { Text(stringResource(R.string.common_cancel)) } }
         )
     }
 }
 
 @Composable
-fun ManualFigTile(fig: FigValuationItem, serverUrl: String, imageLoader: ImageLoader, onEdit: () -> Unit, onDelete: () -> Unit) {
-    val ctx = LocalContext.current
-
-    Card(
-        onClick = onEdit,  // ganze Karte klickbar — öffnet den Kaufpreis/Anzahl-Dialog, analog Sets
-        modifier = Modifier.width(Formen.kachelBreite).height(Formen.kachelHoehe),
-        shape = Formen.leiste,
-        elevation = CardDefaults.cardElevation(defaultElevation = Formen.karteErhebung),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
-    ) {
-        Column {
-            Box(Modifier.fillMaxWidth().height(76.dp)) {
-                // Vorschaubild mit Rückfall auf volle Auflösung — siehe
-                // util/ImageUrls.kt, rememberTileImageWithFallback().
-                val (tileImg, onImgError) = rememberTileImageWithFallback(serverUrl, fig.imageLocal, fig.imageUrl, fullViaProxy = true)
-                if (tileImg != null) {
-                    AsyncImage(
-                        model = ImageRequest.Builder(ctx).data(tileImg).crossfade(true).build(),
-                        imageLoader = imageLoader,
-                        contentDescription = fig.figName,
-                        onState = { st ->
-                            if (st is coil.compose.AsyncImagePainter.State.Error) onImgError()
-                        },
-                        modifier = Modifier.fillMaxSize().clip(Formen.kachelBildEcken),
-                        contentScale = ContentScale.Fit
-                    )
-                } else {
-                    Box(Modifier.fillMaxSize(), Alignment.Center) { Text("👷", fontSize = 24.sp) }
-                }
-                Surface(
-                    color = MaterialTheme.colorScheme.primary,
-                    shape = Formen.marke,
-                    modifier = Modifier.align(Alignment.TopEnd).padding(3.dp)
-                ) {
-                    // Die Menge-Plakette: „×N" auf einer MANUELL erfassten Kachel,
-                    // „N×" auf einer Kachel aus einem Set. Das ist keine Laune,
-                    // sondern die Regel der Webapp — `man-tile` traegt dort ein
-                    // `qbadge` mit ×N, `part-card` ein `part-qty` mit N×.
-                    Text("×${fig.quantity}", Modifier.padding(horizontal = 4.dp, vertical = 1.dp),
-                        color = MaterialTheme.colorScheme.onPrimary,
-                        style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.Bold)
-                }
-                Row(Modifier.align(Alignment.TopStart).padding(2.dp)) {
-                    IconButton(onClick = onEdit, modifier = Modifier.size(24.dp)) {
-                        Icon(Icons.Default.Edit, stringResource(R.string.minifigs_edit), Modifier.size(14.dp), tint = MaterialTheme.colorScheme.primary)
-                    }
-                }
-                IconButton(onClick = onDelete, modifier = Modifier.align(Alignment.BottomEnd).size(24.dp)) {
-                    Icon(Icons.Default.Delete, stringResource(R.string.minifigs_delete), Modifier.size(14.dp), tint = MaterialTheme.colorScheme.error)
-                }
-            }
-            Column(Modifier.padding(horizontal = 6.dp, vertical = 4.dp)) {
-                Text(fig.figName ?: fig.figNumber, style = MaterialTheme.typography.labelSmall,
-                    fontWeight = FontWeight.SemiBold, maxLines = 2, overflow = TextOverflow.Ellipsis)
-                // ── Was hier fehlte (Nachtrag 133) ──────────────────────────
-                //
-                // Diese Kachel zeigte NUR den Namen. Ihr Zwilling nebenan,
-                // ManualPartTile in PartsScreen.kt, zeigt beide Plaketten seit
-                // jeher — und die Webapp zeigt sie fuer Figuren genauso
-                // (06-minifigs.js Zeile 327: qbadge, dann condBadge, dann
-                // ownerBadges).
-                //
-                // FigValuationItem traegt `condition`, `conditions` und
-                // `owners` die ganze Zeit; die Felder sind im Modell sogar
-                // kommentiert. Im Haushalt war an einer Figur also nicht zu
-                // sehen, WEM sie gehoert — bei den Teilen daneben schon.
-                //
-                // Gefunden nicht durch Lesen, sondern durch den Vergleich der
-                // beiden Zwillingsdateien, den die Doppelungsmessung angestossen
-                // hat.
-                Box(Modifier.padding(top = 3.dp)) { ConditionBadges(fig.conditions, fig.condition) }
-                OwnerBadges(fig.owners, Modifier.padding(top = 2.dp))
-            }
-        }
-    }
+fun ManualFigTile(fig: FigValuationItem, serverUrl: String, imageLoader: ImageLoader,
+                  waehrung: String, onEdit: () -> Unit, onDelete: () -> Unit) {
+    // Vorschaubild mit Rückfall auf volle Auflösung — siehe
+    // util/ImageUrls.kt, rememberTileImageWithFallback().
+    val (bild, onBildFehler) =
+        rememberTileImageWithFallback(serverUrl, fig.imageLocal, fig.imageUrl, fullViaProxy = true)
+    // Alles Weitere steht in ManuelleKachel (ManualItemComposables.kt) — die
+    // Kachel der Teile daneben benutzt dieselbe. Warum: Dieser Kachel fehlten
+    // Zustands- und Besitzer-Plaketten monatelang, weil sie nur im Zwilling
+    // nachgezogen wurden.
+    ManuelleKachel(
+        bildUrl = bild,
+        onBildFehler = onBildFehler,
+        imageLoader = imageLoader,
+        name = fig.figName ?: fig.figNumber,
+        menge = fig.quantity,
+        zustaende = fig.conditions,
+        zustand = fig.condition,
+        besitzer = fig.owners,
+        preis = fig.avgPurchasePrice ?: fig.unitPrice ?: fig.purchasePrice,
+        waehrung = waehrung,
+        notiz = fig.note,
+        onEdit = onEdit,
+        onDelete = onDelete,
+        platzhalter = { Text("👷", fontSize = 24.sp) },
+    )
 }
 
 @Composable
@@ -356,14 +301,12 @@ fun AddMinifigDialog(
 
     fun submit() {
         if (figNumber.isNotBlank()) {
+            // Siehe erfassungsWerte() — dieselbe Umrechnung wie im Teile-Dialog.
+            val w = erfassungsWerte(quantity, unitPrice, note, condition, owner, householdMembers)
             onAdd(
                 figNumber,
                 blFigNumber.trim().ifBlank { null },
-                quantity.toIntOrNull() ?: 1,
-                note.ifBlank { null },
-                unitPrice.replace(',', '.').toDoubleOrNull(),
-                condition,
-                if (householdMembers.size > 1) owner else null
+                w.anzahl, w.notiz, w.preis, w.zustand, w.besitzer
             )
         }
     }
@@ -392,31 +335,16 @@ fun AddMinifigDialog(
                     style = MaterialTheme.typography.labelSmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
-                OutlinedTextField(
-                    value = quantity, onValueChange = { quantity = NumericInput.quantity(it) },
-                    label = { Text(stringResource(R.string.minifigs_quantity)) },
-                    modifier = Modifier.fillMaxWidth(), singleLine = true,
-                    shape = Formen.knopf,
-                    keyboardOptions = NumericInput.ganzzahlTastatur()
+                ErfassungsFelder(
+                    anzahl = quantity, onAnzahl = { quantity = it },
+                    preis = unitPrice, onPreis = { unitPrice = it },
+                    notiz = note, onNotiz = { note = it },
+                    zustand = condition, onZustand = { condition = it },
                 )
-                OutlinedTextField(
-                    value = unitPrice, onValueChange = { unitPrice = NumericInput.price(it) },
-                    label = { Text(stringResource(R.string.minifigs_unit_price)) }, placeholder = { Text(stringResource(R.string.minifigs_unit_price_placeholder)) },
-                    modifier = Modifier.fillMaxWidth(), singleLine = true,
-                    shape = Formen.knopf,
-                    keyboardOptions = NumericInput.preisTastatur()
-                )
-                OutlinedTextField(
-                    value = note, onValueChange = { note = it },
-                    label = { Text(stringResource(R.string.minifigs_note)) },
-                    modifier = Modifier.fillMaxWidth(), singleLine = true,
-                    shape = Formen.knopf
-                )
-                Zustandszeile(zustand = condition, onZustand = { condition = it })
             }
         },
         confirmButton = { TextButton(onClick = { submit(); onDismiss() }) { Text(stringResource(R.string.minifigs_add_button)) } },
-        dismissButton = { TextButton(onClick = onDismiss) { Text(stringResource(R.string.minifigs_cancel)) } }
+        dismissButton = { TextButton(onClick = onDismiss) { Text(stringResource(R.string.common_cancel)) } }
     )
 }
 

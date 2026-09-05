@@ -23,6 +23,15 @@ type ExpressAntwort = {
 };
 
 /**
+ * Derselbe Gedanke fuer die JSON-Antwort des Imports: nur `json`, weil nur das
+ * gebraucht wird. Ein gemeinsamer Typ mit ExpressAntwort haette jeder der
+ * beiden Funktionen Faehigkeiten angedichtet, die sie nicht benutzen.
+ */
+type ExpressJsonAntwort = {
+  json(body: unknown): unknown;
+};
+
+/**
  * Ein Feld gegen Formelausführung entschärfen.
  *
  * Öffnet jemand den Export in Excel, LibreOffice oder Google Sheets, wird ein
@@ -225,3 +234,87 @@ function uebersprungenHinweis(zeilen: number[]): string | null {
 }
 
 export { csvEinlesen, uebersprungenHinweis };
+
+/**
+ * Die Felder, die JEDE Import-Zeile hat — mit allen Spaltennamen, die gelten.
+ *
+ * ── Warum das eine eigene Funktion ist ──────────────────────────────────────
+ *
+ * Der CSV-Import fuer Teile und der fuer Minifiguren lasen dieselben fuenf
+ * Angaben aus derselben Zeile, jeder mit seiner eigenen Abschrift derselben
+ * Spaltennamen. Was das kostet, steht seit Nachtrag 128 im Quelltext von
+ * routes/minifigs.ts:
+ *
+ *     „parseCsvDate statt roher Zeichenkette: Postgres liest bei DateStyle MDY
+ *      ‚01.02.2026' als 2. Januar … Der Fehler war bekannt und fuer Sets und
+ *      Teile behoben; dieser dritte Aufrufer hat die Behebung nie bekommen."
+ *
+ * Eine Regel in drei Abschriften, nachgezogen in zweien. Genau die Bauart, die
+ * dieser Baum an einem Dutzend Stellen bekaempft — hier steht sie jetzt einmal.
+ *
+ * ── Was die einzelnen Entscheidungen bedeuten ───────────────────────────────
+ *
+ *  menge     Ziffern aus dem Feld; nichts Brauchbares heisst EINS, nicht null —
+ *            eine importierte Zeile ohne Menge ist ein Stueck, kein Nichts.
+ *  preis     Leer heisst NULL (nicht 0): „kein Preis eingegeben". Was daraus
+ *            wird, entscheidet utils/preisRegel.ts.
+ *  erfasstAm Ueber parseCsvDate — siehe oben.
+ *  zustand   Grossgeschrieben, damit „n" wie „N" gilt.
+ */
+function csvGemeinsameFelder(row: any): {
+  menge: number;
+  preis: number | null;
+  notiz: string | null;
+  erfasstAm: string | null;
+  zustand: string;
+} {
+  const rohPreis = row.unit_price ?? row['Preis'] ?? '';
+  let preis: number | null = String(rohPreis).trim() !== ''
+    ? parseFloat(String(rohPreis).replace(',', '.')) : null;
+  if (preis !== null && isNaN(preis)) preis = null;
+  return {
+    menge: parseInt(String(row.quantity || row['Anzahl'] || '1').replace(/[^0-9]/g, '')) || 1,
+    preis,
+    notiz: row.note || row['Notiz'] || null,
+    erfasstAm: parseCsvDate(row.acquired_at || row['erfassungsdatum']),
+    zustand: (row.condition || row['zustand'] || '').trim().toUpperCase(),
+  };
+}
+
+/**
+ * Datei einlesen, entschaerfen, zaehlen — der gleiche Anfang beider Importe.
+ *
+ * `records` bleibt getrennt von `bereinigt`, weil die Antwort `total` aus der
+ * UNGEFILTERTEN Zahl bildet: Wie viele Zeilen standen in der Datei.
+ */
+function csvZeilenAusAnfrage(text: string): {
+  records: any[]; bereinigt: any[]; uebersprungen: number[];
+} {
+  // Krumme Zeilen ueberspringen statt abbrechen (csvEinlesen).
+  const gelesen = csvEinlesen(text);
+  return {
+    records: gelesen.records,
+    // Hochkomma vor Formelzeichen wieder entfernen — der eigene Export setzt es
+    // gegen Formelausfuehrung in Tabellenprogrammen.
+    bereinigt: csvZeilenBereinigen(gelesen.records),
+    uebersprungen: gelesen.uebersprungen,
+  };
+}
+
+/**
+ * Die Antwort beider Importe — an einer Stelle, damit beide Oberflaechen
+ * dieselben Felder bekommen.
+ */
+function csvImportAntwort(res: ExpressJsonAntwort, d: {
+  added: number; updated: number; errors: number;
+  records: any[]; results: any[]; uebersprungen: number[];
+}) {
+  res.json({
+    success: true, added: d.added, updated: d.updated, errors: d.errors,
+    total: d.records.length, results: d.results,
+    skipped: d.uebersprungen.length || undefined,
+    skipped_hint: uebersprungenHinweis(d.uebersprungen) || undefined,
+  });
+}
+
+export { csvGemeinsameFelder, csvZeilenAusAnfrage, csvImportAntwort };

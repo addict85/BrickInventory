@@ -15,6 +15,17 @@ interface BrickApiService {
     @GET("api/v1/sets/import/csv/status")
     suspend fun getCsvImportStatus(): Response<ch.brickinventoryapp.data.model.CsvImportStatus>
 
+    /**
+     * Einen laufenden CSV-Import abbrechen.
+     *
+     * Der Server vermerkt nur `status: 'cancelled'` (routes/sets.ts); die
+     * Schleife im Import sieht das beim naechsten Satz und hoert auf. Schon
+     * angelegte Sets bleiben — abgebrochen heisst „ab hier nicht weiter", nicht
+     * „rueckgaengig". Genauso in der Webapp.
+     */
+    @POST("api/v1/sets/import/csv/cancel")
+    suspend fun cancelCsvImport(): Response<GenericAdminResponse>
+
     @GET
     suspend fun getCsvImportStatusDirect(
         @retrofit2.http.Url url: String,
@@ -101,6 +112,33 @@ interface BrickApiService {
         @Path("instrId") instrId: Int,
     ): Response<GenericResponse>
 
+    /**
+     * Anleitungen dieses Sets NEU holen — der Server wirft die vorhandenen weg
+     * und sucht sie wieder bei der Quelle.
+     *
+     * Die Webapp hat den Knopf seit jeher (02-gallery.js, redownloadInstr);
+     * die App konnte Anleitungen nur hinzufuegen und entfernen. Gebraucht wird
+     * er, wenn eine Anleitung nicht gefunden wurde oder ihr Link ins Leere
+     * zeigt — ohne ihn bliebe nur, jede von Hand hochzuladen.
+     */
+    @POST("api/v1/sets/{setNumber}/instructions")
+    suspend fun anleitungenNeuHolen(
+        @Path("setNumber") setNumber: String,
+    ): Response<NachladenResponse>
+
+    /**
+     * Die Teileliste dieses Sets neu einlesen.
+     *
+     * Ebenfalls aus der Webapp (02-gallery.js, reimportParts; der Knopf steht
+     * dort neben der Teilezahl). Noetig, wenn ein Set eingetragen wurde,
+     * bevor der Katalog seine Teile kannte — dann steht die Zahl auf 0 und
+     * bleibt es, bis jemand neu einliest.
+     */
+    @POST("api/v1/sets/{setNumber}/parts")
+    suspend fun teileNeuEinlesen(
+        @Path("setNumber") setNumber: String,
+    ): Response<NachladenResponse>
+
     // ── Server-Protokoll (nur fuer Verwalter) ───────────────────────────────
     //
     // Die Nutzerverwaltung des Servers (/auth/users) ist hier ABSICHTLICH nicht
@@ -108,6 +146,18 @@ interface BrickApiService {
     // (Nachtrag 129). Die Webapp bietet sie an.
     @GET("api/v1/admin/logs")
     suspend fun getProtokoll(@Query("minutes") minuten: Int): Response<ProtokollResponse>
+
+    /**
+     * Nur der Name, aus dem gemeinsamen Katalog — siehe SetInfoResponse.
+     *
+     * Getrennt von getSetDetail darunter, weil die beiden verschiedene Fragen
+     * beantworten: „wie heisst dieses Set?" gegen „was habe ICH von diesem
+     * Set?". Die zweite gibt es fuer ein fremdes Set nicht, die erste schon.
+     */
+    @GET("api/v1/sets/info/{setNumber}")
+    suspend fun getSetInfo(
+        @Path("setNumber") setNumber: String
+    ): Response<ch.brickinventoryapp.data.model.SetInfoResponse>
 
     @GET("api/v1/sets/{setNumber}")
     suspend fun getSetDetail(
@@ -314,8 +364,61 @@ interface BrickApiService {
         @Query("accounts") accounts: String? = null
     ): Response<PartsStatsResponse>
 
+    /**
+     * Startzustand des Servers — ohne Anmeldung.
+     *
+     * Steht in server.ts absichtlich vor allen Waechtern: Er wird gebraucht,
+     * BEVOR sich jemand anmelden kann. Die Webapp fragt ihn im Sekundentakt ab,
+     * solange `ready` falsch ist.
+     */
+    @GET("api/v1/startup-status")
+    suspend fun getStartupStatus(): Response<ch.brickinventoryapp.data.model.StartupStatus>
+
+    /**
+     * Das globale Design des Servers — OHNE Anmeldung.
+     *
+     * Eine von ZWEI Adressen, die die App vor der Anmeldung braucht (die andere
+     * ist der Startzustand darueber): Anmelde- und Einrichtungsbildschirm
+     * sollen schon im richtigen Design erscheinen. Der Server laesst sie
+     * deshalb vor `requireLogin` stehen (routes/settings.ts), und die Webapp
+     * holt sie aus demselben Grund (00-theme-boot.js).
+     */
+    @GET("api/v1/settings/theme")
+    suspend fun getAppTheme(): Response<ch.brickinventoryapp.data.model.AppThemeResponse>
+
     @GET("api/v1/parts/brick-colors")
     suspend fun getBrickColors(): Response<BrickColorsResponse>
+
+    /**
+     * Rebrickable-Farbnummer → BrickLink-Farbnummer, fuer die Wunschliste.
+     *
+     * Die Teileliste zeigt Rebrickable-Farben; BrickLink liest beim Import
+     * einer Wunschliste nur seine eigenen Nummern. Meist liefert der Server
+     * `bl_color_id` schon je Teil mit — diese Karte ist der Rueckfall fuer
+     * alles, wo sie fehlt, und dieselbe Adresse, die die Webapp dafuer ruft.
+     */
+    @GET("api/v1/parts/bl-color-map")
+    suspend fun getBlColorMap(): Response<ch.brickinventoryapp.data.model.BlColorMapResponse>
+
+    /**
+     * Die FILTERliste Farbe — welche Farben im Bestand vorkommen, mit Anzahl.
+     *
+     * Eine andere Adresse als `brick-colors` darueber, und das ist Absicht:
+     * Dort steht der ganze Farbkatalog fuer die Auswahl beim Erfassen, hier
+     * nur, was der Nutzer wirklich hat. Die Webapp benutzt beide genauso
+     * (03-parts.js: loadPartsFilters gegen /parts/colors, der Erfassungsdialog
+     * gegen /parts/brick-colors).
+     */
+    @GET("api/v1/parts/colors")
+    suspend fun getPartsFilterColors(
+        @Query("accounts") accounts: String? = null
+    ): Response<PartsFilterColorsResponse>
+
+    /** Die Filterliste Kategorie — dieselbe Quelle wie in der Webapp. */
+    @GET("api/v1/parts/categories")
+    suspend fun getPartsCategories(
+        @Query("accounts") accounts: String? = null
+    ): Response<PartsCategoriesResponse>
 
     @POST("api/v1/parts")
     suspend fun addPart(
@@ -523,6 +626,40 @@ interface BrickApiService {
     @GET("api/v1/admin/jobs")
     suspend fun getJobs(): Response<JobsResponse>
 
+    /**
+     * Den Zeitplan eines Jobs aendern.
+     *
+     * Zwei Formen, wie der Server sie liest (routes/api_v1/admin.ts):
+     *   { name: <schluessel>, time: "HH:MM" }   fuer taegliche Jobs
+     *   { name: "priceJob",   minutes: <n> }    fuer den Preis-Job
+     *
+     * Deshalb `Map<String, Any>` statt einer Datenklasse: Zwei Datenklassen
+     * fuer zwei Formen waeren mehr Gerippe als Inhalt, und der Server
+     * unterscheidet ohnehin am Vorhandensein des Feldes.
+     */
+    @POST("api/v1/admin/job-schedule")
+    suspend fun setJobSchedule(@Body body: Map<String, @JvmSuppressWildcards Any>): Response<GenericAdminResponse>
+
+    /**
+     * Fehlende KATALOGbilder einreihen — der fuenfte Werkzeugknopf.
+     *
+     * Nicht zu verwechseln mit `redownloadMissingImages` daneben: Das holt
+     * Bilder des BESTANDS nach, dies die des Katalogs. Die Webapp hat beide
+     * (07-admin.js, queueCatalogImages), die App bisher nur eins.
+     */
+    @POST("api/v1/admin/catalog-images")
+    suspend fun queueCatalogImages(): Response<GenericAdminResponse>
+
+    /**
+     * Das globale Design umstellen — nur fuer Verwalter.
+     *
+     * Die App LIEST das Design seit Nachtrag 135 (zwei Stufen, siehe
+     * getAppTheme). Aendern konnte es nur die Webapp; ein Verwalter mit dem
+     * Telefon in der Hand musste sich an den Rechner setzen.
+     */
+    @POST("api/v1/settings/admin/theme")
+    suspend fun setAppTheme(@Body body: Map<String, String>): Response<GenericAdminResponse>
+
     @GET("api/v1/admin/brickset-queue")
     suspend fun getBricksetQueue(): Response<BricksetQueueResponse>
 
@@ -545,6 +682,23 @@ interface BrickApiService {
     @POST("api/v1/admin/cache-ttl")
     suspend fun setCacheTtl(
         @Body body: Map<String, String>
+    ): Response<GenericAdminResponse>
+
+    /**
+     * Den Preis-Cache leeren; mit `all=true` auch Teilmengen und Katalog.
+     *
+     * Die Ueberwachung zeigte die vier Cache-Zahlen und liess die
+     * Gueltigkeitsdauer einstellen — leeren konnte sie nicht. Man sah also,
+     * dass tausend Preise veraltet sind, und konnte nichts tun. Die Webapp
+     * bietet es an zwei Stellen an (04-finance.js und 05-settings.js).
+     *
+     * GLOBAL, nicht je Konto: `price_cache` gehoert niemandem, und jeder
+     * Neuaufbau kostet Anfragen aus dem gemeinsamen Tageskontingent — deshalb
+     * ist es eine Verwalter-Handlung (routes/api_v1/admin.ts).
+     */
+    @POST("api/v1/admin/cache-clear")
+    suspend fun clearCache(
+        @Body body: Map<String, Boolean> = emptyMap()
     ): Response<GenericAdminResponse>
 
     @GET("api/v1/settings/default-condition")

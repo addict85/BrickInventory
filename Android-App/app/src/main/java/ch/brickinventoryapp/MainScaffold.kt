@@ -46,6 +46,15 @@ fun MainScaffold(
     bottomNavItems: List<Triple<Screen, @Composable () -> Unit, String>>,
     snackbarHostState: SnackbarHostState,
     csvImportState: kotlinx.coroutines.flow.StateFlow<CsvImportUiState>,
+    /**
+     * Laufenden CSV-Import abbrechen — der Knopf im Fortschrittsbalken.
+     *
+     * Als Rueckruf und nicht ueber ein ViewModel: Dieses Geruest bekommt
+     * Zustand und Rueckrufe, sonst nichts. Mein erster Entwurf schrieb
+     * `vm.cancelCsvImport()` direkt in den Rumpf — die Datei hat gar kein `vm`,
+     * und der Uebersetzer hat es sofort gesagt (Lauf 108).
+     */
+    onCsvAbbrechen: () -> Unit,
     onLogout: () -> Unit,
     @Suppress("UNUSED_PARAMETER") serverUrl: String,
     isAdmin: Boolean = false,
@@ -178,7 +187,8 @@ fun MainScaffold(
             if (csvImport.running) {
                 CsvImportBanner(
                     done = csvImport.done, total = csvImport.total, current = csvImport.current,
-                    ok = csvImport.ok, warn = csvImport.warn, err = csvImport.err, running = csvImport.running
+                    ok = csvImport.ok, warn = csvImport.warn, err = csvImport.err, running = csvImport.running,
+                    onAbbrechen = onCsvAbbrechen,
                 )
             }
             Box(Modifier.fillMaxSize()) { content() }
@@ -227,6 +237,7 @@ fun ReiterGeruest(
         bottomNavItems = bottomNavItems,
         snackbarHostState = snackbarHostState,
         csvImportState = vm.csvImportState,
+        onCsvAbbrechen = { vm.cancelCsvImport() },
         // Reiter angetippt → oben anfangen (Nachtrag 114).
         onTabAngetippt = { ziel -> vm.scrollMemory.vergissReiter(ziel.route) },
         onLogout = {

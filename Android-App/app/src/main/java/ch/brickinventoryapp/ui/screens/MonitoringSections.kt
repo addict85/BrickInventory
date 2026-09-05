@@ -20,6 +20,10 @@ import androidx.compose.ui.unit.sp
 import ch.brickinventoryapp.data.model.*
 import androidx.compose.ui.res.stringResource
 import ch.brickinventoryapp.R
+import ch.brickinventoryapp.util.fmtUhrzeit
+import androidx.compose.ui.text.font.FontFamily
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
 import ch.brickinventoryapp.ui.MainViewModel
 import ch.brickinventoryapp.ui.viewmodel.MonitoringViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -90,7 +94,7 @@ internal fun BricksetQueueRow(
                             containerColor = MaterialTheme.colorScheme.errorContainer
                         )
                     ) {
-                        Icon(Icons.Default.Delete, stringResource(R.string.monitoring_icon_delete), Modifier.size(14.dp),
+                        Icon(Icons.Default.Delete, stringResource(R.string.common_delete), Modifier.size(14.dp),
                             tint = MaterialTheme.colorScheme.onErrorContainer)
                     }
                 }
@@ -130,6 +134,9 @@ internal fun BricksetQueueRow(
 fun CacheAndLimitsSection(vm: MainViewModel, onSnack: (String) -> Unit = {}) {
     val scope = rememberCoroutineScope()
     val cacheSavedMsg  = stringResource(R.string.monitoring_cache_saved)
+    val cacheGeleertMsg = stringResource(R.string.monitoring_cache_cleared)
+    var zeigeLeerenFrage by rememberSaveable { mutableStateOf(false) }
+    var leerenAlles by rememberSaveable { mutableStateOf(false) }
     val limitsSavedMsg = stringResource(R.string.monitoring_limits_saved)
 
     // Serverdaten aus dem ViewModel; hiltViewModel() liefert im selben
@@ -140,6 +147,9 @@ fun CacheAndLimitsSection(vm: MainViewModel, onSnack: (String) -> Unit = {}) {
     val apiLimits  = monState.apiLimits
     val cacheTtl   = monState.cacheTtl
     val defaultCondition = monState.vorgabeZustand
+    // Das aktuelle Design steht im APP-Zustand, nicht im Ueberwachungs-Zustand:
+    // Es gilt fuer die ganze App und wird dort schon gelesen (Nachtrag 135).
+    val appState by vm.state.collectAsStateWithLifecycle()
 
     // Bedienzustand: was gerade bearbeitet und halb eingetippt ist. Bleibt hier
     // und speicherbar — das ueberlebt auch den Prozesstod, ein ViewModel nicht.
@@ -209,6 +219,44 @@ fun CacheAndLimitsSection(vm: MainViewModel, onSnack: (String) -> Unit = {}) {
                 )
             }
 
+            // ── Design (Nachtrag 137) ───────────────────────────────────────
+            //
+            // Die App LIEST das globale Design seit Nachtrag 135 — aendern
+            // konnte es nur die Webapp, ein Verwalter mit dem Telefon in der
+            // Hand musste sich an den Rechner setzen.
+            //
+            // `loadSettings()` danach zieht den neuen Wert in den Zustand und
+            // merkt ihn: Die Anzeige wechselt sofort und ueberlebt den
+            // naechsten Kaltstart.
+            Row(
+                Modifier.fillMaxWidth(),
+                Arrangement.SpaceBetween,
+                Alignment.CenterVertically
+            ) {
+                Text(stringResource(R.string.monitoring_theme),
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                    for ((wert, text) in listOf(
+                        "classic" to R.string.monitoring_theme_classic,
+                        "brick" to R.string.monitoring_theme_brick,
+                    )) {
+                        FilterChip(
+                            selected = appState.appTheme == wert,
+                            onClick = {
+                                scope.launch {
+                                    if (mon.setzeDesign(wert)) {
+                                        vm.loadSettings()
+                                        onSnack(cacheSavedMsg)
+                                    }
+                                }
+                            },
+                            label = { Text(stringResource(text), fontSize = 13.sp) },
+                        )
+                    }
+                }
+            }
+
             // Cache TTL
             Row(
                 Modifier.fillMaxWidth(),
@@ -258,7 +306,59 @@ fun CacheAndLimitsSection(vm: MainViewModel, onSnack: (String) -> Unit = {}) {
                     }
                 }
             }
+
+            // ── Leeren (Nachtrag 135) ──────────────────────────────────────
+            //
+            // Die Zahlen oben standen bisher ohne Handhabe da: Man sah, dass
+            // tausend Preise veraltet sind, und konnte nichts tun. Die Webapp
+            // bietet das Leeren an zwei Stellen an (04-finance.js,
+            // 05-settings.js), einmal nur die Preise, einmal alles.
+            //
+            // MIT Rueckfrage, anders als dort: Jeder Neuaufbau kostet Anfragen
+            // aus dem gemeinsamen Tageskontingent — das steht so im Kommentar
+            // der Serverroute. Ein Fehlgriff ist hier also nicht nur laestig,
+            // er nimmt allen anderen Kontingent weg.
+            Row(
+                Modifier.fillMaxWidth().padding(top = 4.dp),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                OutlinedButton(
+                    onClick = { leerenAlles = false; zeigeLeerenFrage = true },
+                    shape = Formen.kachel,
+                    contentPadding = PaddingValues(horizontal = 12.dp, vertical = 6.dp),
+                ) { Text(stringResource(R.string.monitoring_cache_clear_prices), fontSize = 12.sp) }
+                OutlinedButton(
+                    onClick = { leerenAlles = true; zeigeLeerenFrage = true },
+                    shape = Formen.kachel,
+                    contentPadding = PaddingValues(horizontal = 12.dp, vertical = 6.dp),
+                ) { Text(stringResource(R.string.monitoring_cache_clear_all), fontSize = 12.sp) }
+            }
         }
+    }
+
+    if (zeigeLeerenFrage) {
+        AlertDialog(
+            onDismissRequest = { zeigeLeerenFrage = false },
+            icon = { Icon(Icons.Default.Delete, null, tint = MaterialTheme.colorScheme.error) },
+            title = { Text(stringResource(
+                if (leerenAlles) R.string.monitoring_cache_clear_all
+                else R.string.monitoring_cache_clear_prices)) },
+            text = { Text(stringResource(R.string.monitoring_cache_clear_hint)) },
+            confirmButton = {
+                TextButton(onClick = {
+                    zeigeLeerenFrage = false
+                    scope.launch { if (mon.leereCache(leerenAlles)) onSnack(cacheGeleertMsg) }
+                }) {
+                    Text(stringResource(R.string.monitoring_cache_clear_confirm),
+                        color = MaterialTheme.colorScheme.error)
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { zeigeLeerenFrage = false }) {
+                    Text(stringResource(R.string.common_cancel))
+                }
+            }
+        )
     }
 
     // ── API Rate Limits ───────────────────────────────────────────────────────
@@ -368,10 +468,20 @@ private fun RateLimitRow(
  * Monitoring oeffnet, will in aller Regel die Job-Karten sehen. Ein Abruf beim
  * Betreten waere Datenverkehr fuer etwas, das niemand angesehen hat.
  */
+// ExperimentalLayoutApi gilt fuer die FlowRow der Stufenschalter weiter unten.
+// Die Annotation gehoert an die FUNKTION, nicht in den Rumpf — die Begruendung
+// steht in HouseholdComposables.kt: Ein @OptIn mitten im Rumpf hat dort
+// zusammen mit einer nachgestellten Lambda „Unresolved reference 'invoke'"
+// ergeben.
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 internal fun ProtokollSection(vm: MainViewModel) {
     val verwaltung by vm.verwaltungState.collectAsStateWithLifecycle()
     var offen by rememberSaveable { mutableStateOf(false) }
+    // Beides gehoert dem Menschen und uebersteht deshalb eine Drehung — die
+    // Zeilen selbst kommen ohnehin vom Server nach.
+    var versteckteStufen by rememberSaveable { mutableStateOf(setOf<String>()) }
+    var protokollSuche by rememberSaveable { mutableStateOf("") }
 
     AppKarte {
         Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -429,8 +539,64 @@ internal fun ProtokollSection(vm: MainViewModel) {
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant)
                     }
-                    verwaltung.protokoll.forEach { zeile ->
+                    // ── Stufen und Suche, wie in der Weboberflaeche ─────────
+                    //
+                    // public/js/logviewer.js hat beides: Schalter je Stufe und
+                    // ein Suchfeld. Die App hatte weder das eine noch das
+                    // andere — bei 1440 Minuten sind das schnell hunderte
+                    // Zeilen, durch die man dann von Hand rollt.
+                    //
+                    // Gefiltert wird HIER und nicht auf dem Server: Die Zeilen
+                    // sind schon geladen, und ein zweiter Abruf je Tastendruck
+                    // waere fuer eine Liste, die vollstaendig vorliegt, nur
+                    // Wartezeit.
+                    val stufen = remember(verwaltung.protokoll) {
+                        verwaltung.protokoll.mapNotNull { it.level?.lowercase() }.distinct().sorted()
+                    }
+                    if (stufen.size > 1) {
+                        FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                            stufen.forEach { stufe ->
+                                FilterChip(
+                                    selected = stufe !in versteckteStufen,
+                                    onClick = {
+                                        versteckteStufen =
+                                            if (stufe in versteckteStufen) versteckteStufen - stufe
+                                            else versteckteStufen + stufe
+                                    },
+                                    label = { Text(stufe.uppercase(),
+                                                   style = MaterialTheme.typography.labelSmall) },
+                                    shape = Formen.chip)
+                            }
+                        }
+                    }
+                    if (verwaltung.protokoll.isNotEmpty()) {
+                        Suchfeld(protokollSuche, { protokollSuche = it },
+                            stringResource(R.string.admin_log_search))
+                    }
+
+                    val sichtbar = remember(verwaltung.protokoll, versteckteStufen, protokollSuche) {
+                        val suche = protokollSuche.trim().lowercase()
+                        verwaltung.protokoll.filter { z ->
+                            z.level?.lowercase() !in versteckteStufen &&
+                                (suche.isEmpty() || z.message.orEmpty().lowercase().contains(suche))
+                        }
+                    }
+                    if (verwaltung.protokoll.isNotEmpty() && sichtbar.isEmpty()) {
+                        Text(stringResource(R.string.admin_log_no_match),
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    }
+                    sichtbar.forEach { zeile ->
                         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                            // Die Uhrzeit zuerst — wie in der Weboberflaeche.
+                            // `logged_at` kam seit jeher mit und wurde nie
+                            // gezeigt; ohne sie ist eine Protokollzeile kaum zu
+                            // gebrauchen.
+                            Text(fmtUhrzeit(zeile.loggedAt) ?: "",
+                                style = MaterialTheme.typography.labelSmall,
+                                fontFamily = FontFamily.Monospace,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                modifier = Modifier.width(58.dp))
                             Text(zeile.level.orEmpty().uppercase(),
                                 style = MaterialTheme.typography.labelSmall,
                                 fontWeight = FontWeight.Bold,
@@ -445,6 +611,104 @@ internal fun ProtokollSection(vm: MainViewModel) {
                         }
                     }
                 }
+            }
+        }
+    }
+}
+
+/**
+ * Der Zeitplan eines Jobs — anzeigen und aendern.
+ *
+ * ── Warum es das jetzt gibt (Nachtrag 137) ──────────────────────────────────
+ *
+ * `/api/v1/admin/jobs` schickt `schedules` seit jeher mit; die App hat das Feld
+ * nie eingelesen. Sie zeigte damit, DASS ein Job laeuft, aber nicht, wann er
+ * das naechste Mal laeuft — und aendern konnte sie es schon gar nicht. Die
+ * Webapp kann beides (07-admin.js).
+ *
+ * Ein Feld, das ueber die Leitung kommt und niemanden erreicht: dieselbe Sorte
+ * Fund wie „geschrieben und nie gelesen", nur von der anderen Seite.
+ *
+ * ── Zwei Formen, ein Bedienelement ──────────────────────────────────────────
+ *
+ * Taegliche Jobs haben eine Uhrzeit („03:00"), der Preis-Job einen Abstand in
+ * Minuten. Der Server unterscheidet sie am mitgeschickten Feld
+ * (routes/api_v1/admin.ts) und normalisiert beides — „7:5" wird zu „07:05",
+ * ein Abstand unter fuenf Minuten wird auf fuenf angehoben. Deshalb wird nach
+ * dem Speichern neu geladen: Sonst stuende da, was getippt wurde, statt dessen,
+ * was gilt.
+ */
+@Composable
+fun ZeitplanZeile(
+    jobKey: String,
+    plan: ch.brickinventoryapp.data.model.JobSchedule,
+    mon: ch.brickinventoryapp.ui.viewmodel.MonitoringViewModel,
+    onSnack: (String) -> Unit,
+) {
+    val scope = rememberCoroutineScope()
+    val gespeichert = stringResource(R.string.monitoring_cache_saved)
+    val taeglich = plan.type == "daily"
+    var bearbeiten by rememberSaveable(jobKey) { mutableStateOf(false) }
+    val gezeigt = if (taeglich) plan.time.orEmpty() else (plan.minutes ?: 60).toString()
+    var eingabe by rememberSaveable(jobKey, gezeigt) { mutableStateOf(gezeigt) }
+
+    Row(
+        Modifier.fillMaxWidth(),
+        Arrangement.SpaceBetween,
+        Alignment.CenterVertically,
+    ) {
+        Text(
+            stringResource(if (taeglich) R.string.monitoring_schedule_daily
+                           else R.string.monitoring_schedule_every),
+            style = MaterialTheme.typography.labelSmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+        if (bearbeiten) {
+            Row(horizontalArrangement = Arrangement.spacedBy(6.dp),
+                verticalAlignment = Alignment.CenterVertically) {
+                OutlinedTextField(
+                    value = eingabe,
+                    onValueChange = {
+                        // Bei Minuten nur Ziffern; bei der Uhrzeit auch der
+                        // Doppelpunkt — sonst liesse sich „03:00" nicht tippen.
+                        eingabe = if (taeglich) it.filter { z -> z.isDigit() || z == ':' }.take(5)
+                                  else NumericInput.quantity(it)
+                    },
+                    // Aus den Sprachdateien, nicht als Klartext: „Min." und
+                    // „min" sind kurz, aber sie stehen im Bild und werden
+                    // gelesen. StringResourceParityTest hat genau das gemeldet.
+                    suffix = { if (!taeglich) Text(stringResource(R.string.monitoring_schedule_unit)) },
+                    modifier = Modifier.width(if (taeglich) 96.dp else 90.dp),
+                    singleLine = true,
+                    shape = Formen.kachel,
+                    keyboardOptions = NumericInput.ganzzahlTastatur(),
+                )
+                FilledTonalButton(
+                    onClick = {
+                        scope.launch {
+                            val ok = if (taeglich) mon.setzeJobZeitplan(jobKey, zeit = eingabe.trim())
+                                     else mon.setzeJobZeitplan(jobKey, minuten = eingabe.toIntOrNull() ?: 60)
+                            if (ok) onSnack(gespeichert)
+                            bearbeiten = false
+                        }
+                    },
+                    shape = Formen.kachel,
+                    contentPadding = PaddingValues(horizontal = 10.dp, vertical = 6.dp),
+                ) { Text("OK", fontSize = 12.sp) }
+                TextButton(onClick = { bearbeiten = false }) { Text("✕") }
+            }
+        } else {
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalAlignment = Alignment.CenterVertically) {
+                Text(
+                    if (taeglich) plan.time.orEmpty()
+                    else stringResource(R.string.monitoring_schedule_minutes, plan.minutes ?: 60),
+                    fontWeight = FontWeight.SemiBold, fontSize = 13.sp,
+                )
+                FilledTonalIconButton(
+                    onClick = { bearbeiten = true },
+                    modifier = Modifier.size(30.dp),
+                ) { Icon(Icons.Default.Edit, stringResource(R.string.cd_edit_schedule), Modifier.size(14.dp)) }
             }
         }
     }

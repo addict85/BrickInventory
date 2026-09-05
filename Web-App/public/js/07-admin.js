@@ -53,7 +53,7 @@ async function importConfig() {
   const fi = G('cfg-import-file');
   if (!fi.files[0]) return;
   const st = G('cfg-import-status');
-  st.textContent = 'Importiere…';
+  st.textContent = tRaw('settings.importing');
   const fd = new FormData(); fd.append('file', fi.files[0]);
   try {
     const r = await fetch('/api/v1/settings/import', { method: 'POST', body: fd });
@@ -69,7 +69,7 @@ async function importConfig() {
       st.textContent = '❌ ' + (d.error || t('settings.error'));
       st.style.color = 'var(--r500)';
     }
-  } catch(e) { st.textContent = '❌ Netzwerkfehler'; }
+  } catch(e) { st.textContent = '❌ ' + tRaw('common.network_error'); }
   fi.value = '';
 }
 

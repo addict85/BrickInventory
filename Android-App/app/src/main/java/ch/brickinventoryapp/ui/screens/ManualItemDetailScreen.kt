@@ -130,13 +130,13 @@ fun ManualItemDetailScreen(
                 },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, stringResource(R.string.detail_back))
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, stringResource(R.string.common_back))
                     }
                 },
                 actions = {
                     IconButton(onClick = { showDeleteConfirm = true }) {
                         Icon(Icons.Default.Delete, stringResource(
-                            if (isFig) R.string.minifigs_delete else R.string.parts_delete))
+                            if (isFig) R.string.common_delete else R.string.common_delete))
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
@@ -250,7 +250,7 @@ fun ManualItemDetailScreen(
                         horizontalArrangement = Arrangement.SpaceBetween,
                         verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Text(stringResource(R.string.detail_quantity),
+                        Text(stringResource(R.string.common_quantity),
                             style = MaterialTheme.typography.bodyMedium,
                             color = MaterialTheme.colorScheme.onSurfaceVariant)
                         Row(verticalAlignment = Alignment.CenterVertically,
@@ -284,6 +284,34 @@ fun ManualItemDetailScreen(
 
                     HorizontalDivider(Modifier.padding(vertical = 4.dp),
                         color = MaterialTheme.colorScheme.outlineVariant)
+
+                    // ── Die Notiz (Nachtrag 134) ────────────────────────
+                    //
+                    // Der Erfassungsdialog fragt sie ab (`parts_note`,
+                    // `minifigs_note`) und schickt sie an den Server. Danach war
+                    // sie in der ganzen App nirgends mehr zu sehen — weder hier
+                    // noch auf der Kachel. Die Webapp zeigt sie an beiden Orten
+                    // (13-acquisition-modals.js: `if (item.note) rows.push(...)`).
+                    //
+                    // Eine Eingabe, die nirgends wieder auftaucht, sieht aus, als
+                    // waere sie verlorengegangen.
+                    val notiz = (if (isFig) fig?.note else part?.note)?.takeIf { it.isNotBlank() }
+                    notiz?.let {
+                        Row(
+                            Modifier.fillMaxWidth().padding(vertical = 4.dp),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                        ) {
+                            Text(stringResource(R.string.detail_note),
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            Text(it,
+                                style = MaterialTheme.typography.bodyMedium,
+                                textAlign = TextAlign.End,
+                                modifier = Modifier.padding(start = 16.dp))
+                        }
+                        HorizontalDivider(Modifier.padding(vertical = 6.dp),
+                            color = MaterialTheme.colorScheme.outlineVariant)
+                    }
 
                     // Dieselbe Zusammenfassung wie im Set-Detail — eine Zeile je
                     // Kaufpreis, Bearbeiten führt auf den Kaufpreis-Screen.
@@ -345,13 +373,13 @@ fun ManualItemDetailScreen(
                         // Karteileiche mit Mengenwahl und Kaufpreisen.
                         onBack()
                     }) {
-                        Text(stringResource(if (isFig) R.string.minifigs_delete else R.string.parts_delete),
+                        Text(stringResource(if (isFig) R.string.common_delete else R.string.common_delete),
                             color = MaterialTheme.colorScheme.error)
                     }
                 },
                 dismissButton = {
                     TextButton(onClick = { showDeleteConfirm = false }) {
-                        Text(stringResource(if (isFig) R.string.minifigs_cancel else R.string.parts_cancel))
+                        Text(stringResource(if (isFig) R.string.common_cancel else R.string.common_cancel))
                     }
                 }
             )

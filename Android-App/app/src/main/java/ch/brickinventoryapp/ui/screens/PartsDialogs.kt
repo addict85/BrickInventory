@@ -65,15 +65,13 @@ fun AddPartDialog(
 
     fun submit() {
         if (partNumber.isNotBlank()) {
+            // Die Umrechnung steht in erfassungsWerte() — dieselbe wie im
+            // Figuren-Dialog. Was ein leeres Feld bedeutet, ist eine
+            // Entscheidung und keine Formalie; sie gehoert an eine Stelle.
+            val w = erfassungsWerte(quantity, unitPrice, note, condition, owner, householdMembers)
             onAdd(
                 partNumber, selectedColor?.id ?: 0, selectedColor?.name, selectedColor?.hex,
-                quantity.toIntOrNull() ?: 1,
-                note.ifBlank { null },
-                unitPrice.replace(',', '.').toDoubleOrNull(),
-                condition,
-                // Ohne Haushalt gar nichts mitschicken — der Server bleibt
-                // dann beim eigenen Konto.
-                if (householdMembers.size > 1) owner else null
+                w.anzahl, w.notiz, w.preis, w.zustand, w.besitzer
             )
         }
     }
@@ -135,30 +133,15 @@ fun AddPartDialog(
                         }
                     }
                 }
-                OutlinedTextField(
-                    value = quantity, onValueChange = { quantity = NumericInput.quantity(it) },
-                    label = { Text(stringResource(R.string.parts_quantity)) },
-                    modifier = Modifier.fillMaxWidth(), singleLine = true,
-                    shape = Formen.knopf,
-                    keyboardOptions = NumericInput.ganzzahlTastatur()
+                ErfassungsFelder(
+                    anzahl = quantity, onAnzahl = { quantity = it },
+                    preis = unitPrice, onPreis = { unitPrice = it },
+                    notiz = note, onNotiz = { note = it },
+                    zustand = condition, onZustand = { condition = it },
                 )
-                OutlinedTextField(
-                    value = unitPrice, onValueChange = { unitPrice = NumericInput.price(it) },
-                    label = { Text(stringResource(R.string.parts_unit_price)) }, placeholder = { Text(stringResource(R.string.parts_unit_price_placeholder)) },
-                    modifier = Modifier.fillMaxWidth(), singleLine = true,
-                    shape = Formen.knopf,
-                    keyboardOptions = NumericInput.preisTastatur()
-                )
-                OutlinedTextField(
-                    value = note, onValueChange = { note = it },
-                    label = { Text(stringResource(R.string.parts_note)) },
-                    modifier = Modifier.fillMaxWidth(), singleLine = true,
-                    shape = Formen.knopf
-                )
-                Zustandszeile(zustand = condition, onZustand = { condition = it })
             }
         },
         confirmButton = { TextButton(onClick = { submit(); onDismiss() }) { Text(stringResource(R.string.parts_add_button)) } },
-        dismissButton = { TextButton(onClick = onDismiss) { Text(stringResource(R.string.parts_cancel)) } }
+        dismissButton = { TextButton(onClick = onDismiss) { Text(stringResource(R.string.common_cancel)) } }
     )
 }

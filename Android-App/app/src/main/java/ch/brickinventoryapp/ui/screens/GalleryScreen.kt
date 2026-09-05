@@ -158,19 +158,21 @@ fun GalleryScreen(
                         item { GalleryStatChip(fmtInt(stats.totalParts), stringResource(R.string.gallery_stat_parts)) }
                         if (stats.totalMinifigs > 0)
                             item { GalleryStatChip(fmtInt(stats.totalMinifigs), stringResource(R.string.gallery_stat_minifigs)) }
+                        // Anleitungen — die vierte Zahl, die die Webapp im
+                        // Kopf der Galerie zeigt (02-gallery.js, `hs-instr`).
+                        // `total_instructions` kam seit jeher mit und wurde
+                        // nirgends gelesen; gefunden beim Zaehlen der
+                        // Modellfelder, die niemand liest.
+                        //
+                        // Wie bei den Minifiguren nur, wenn es welche gibt: Ein
+                        // Chip mit einer Null ist eine Zahl ohne Aussage.
+                        if (stats.totalInstructions > 0)
+                            item { GalleryStatChip(fmtInt(stats.totalInstructions), stringResource(R.string.gallery_stat_instructions)) }
                     }
                 }
             }
 
-            // Kontofilter — erscheint nur bei einem Hauptkonto mit Unterkonten.
-            if (householdMembers.size > 1) {
-                ScopeFilterChip(
-                    members = householdMembers,
-                    current = scopeMode,
-                    onSelect = onScopeChange,
-                    modifier = Modifier.padding(start = 14.dp, top = 8.dp)
-                )
-            }
+            ScopeFilterZeile(householdMembers, scopeMode, onScopeChange)
 
             // Suchfeld — gemeinsamer Baustein (Nachtrag 132).
             Suchfeld(
@@ -473,7 +475,7 @@ fun SetCard(
                     }
                     DropdownMenu(showMenu, { showMenu = false }) {
                         DropdownMenuItem(
-                            text = { Text(stringResource(R.string.gallery_delete), color = MaterialTheme.colorScheme.error) },
+                            text = { Text(stringResource(R.string.common_delete), color = MaterialTheme.colorScheme.error) },
                             onClick = { showMenu = false; deleting = true },
                             leadingIcon = { Icon(Icons.Default.Delete, null, tint = MaterialTheme.colorScheme.error) }
                         )
@@ -504,10 +506,10 @@ fun SetCard(
             text = { Text(stringResource(R.string.gallery_delete_text, set.name ?: set.setNumber)) },
             confirmButton = {
                 TextButton(onClick = { deleting = false; onDelete(set.setNumber) }) {
-                    Text(stringResource(R.string.gallery_delete), color = MaterialTheme.colorScheme.error)
+                    Text(stringResource(R.string.common_delete), color = MaterialTheme.colorScheme.error)
                 }
             },
-            dismissButton = { TextButton(onClick = { deleting = false }) { Text(stringResource(R.string.gallery_cancel)) } }
+            dismissButton = { TextButton(onClick = { deleting = false }) { Text(stringResource(R.string.common_cancel)) } }
         )
     }
 }
@@ -576,7 +578,7 @@ fun AddSetDialog(
                 OutlinedTextField(
                     value = quantity,
                     onValueChange = { quantity = NumericInput.quantity(it) },
-                    label = { Text(stringResource(R.string.gallery_quantity)) },
+                    label = { Text(stringResource(R.string.common_quantity)) },
                     modifier = Modifier.fillMaxWidth(), singleLine = true,
                     shape = Formen.knopf,
                     keyboardOptions = NumericInput.ganzzahlTastatur()
@@ -585,7 +587,7 @@ fun AddSetDialog(
                     value = purchasePrice,
                     onValueChange = { purchasePrice = NumericInput.price(it) },
                     label = { Text(stringResource(R.string.gallery_purchase_price)) },
-                    placeholder = { Text(stringResource(R.string.gallery_purchase_price_placeholder)) },
+                    placeholder = { Text(stringResource(R.string.common_unit_price_placeholder)) },
                     modifier = Modifier.fillMaxWidth(), singleLine = true,
                     shape = Formen.knopf,
                     keyboardOptions = NumericInput.preisTastatur(),
@@ -598,7 +600,7 @@ fun AddSetDialog(
             Button(onClick = { submit() },
                 enabled = setNumber.isNotBlank(), shape = Formen.knopf) { Text(stringResource(R.string.gallery_add)) }
         },
-        dismissButton = { TextButton(onClick = onDismiss) { Text(stringResource(R.string.gallery_cancel)) } },
+        dismissButton = { TextButton(onClick = onDismiss) { Text(stringResource(R.string.common_cancel)) } },
         shape = Formen.chip
     )
 }

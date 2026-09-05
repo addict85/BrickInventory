@@ -172,11 +172,28 @@ test('alle drei Importwege melden übersprungene Zeilen', () => {
   const fs = require('node:fs');
   const path = require('node:path');
   const { ROOT, ohneKommentare } = require('./helpers/sources');
+  // ── Zwei Wege zum selben Ziel (Nachtrag 144) ────────────────────────────
+  //
+  // routes/sets.ts liest und antwortet selbst; Teile und Minifiguren gehen
+  // seit dem Zusammenlegen über csvZeilenAusAnfrage() und csvImportAntwort()
+  // in utils/csvExport.ts — die tun beides für beide. Geprüft wird deshalb
+  // „einer der beiden Wege", nicht mehr der eine Name.
+  //
+  // Die AUSSAGE bleibt unverändert: Jeder Importweg überspringt krumme Zeilen
+  // und sagt es dem Nutzer.
   for (const rel of ['routes/sets.ts', 'routes/parts.ts', 'routes/minifigs.ts']) {
     const src = ohneKommentare(fs.readFileSync(path.join(ROOT, rel), 'utf8'));
-    assert.match(src, /csvEinlesen\(/, `${rel}: liest noch selbst`);
-    assert.match(src, /skipped_hint/,  `${rel}: sagt dem Nutzer nichts über übersprungene Zeilen`);
+    assert.match(src, /csvEinlesen\(|csvZeilenAusAnfrage\(/, `${rel}: liest noch selbst`);
+    assert.match(src, /skipped_hint|csvImportAntwort\(/,
+      `${rel}: sagt dem Nutzer nichts über übersprungene Zeilen`);
   }
+  // Und die gemeinsame Fassung tut wirklich beides — sonst genügte oben der
+  // blosse Name.
+  const geteilt = ohneKommentare(fs.readFileSync(path.join(ROOT, 'utils/csvExport.ts'), 'utf8'));
+  assert.match(geteilt, /function csvZeilenAusAnfrage[\s\S]*?csvEinlesen\(/,
+    'csvZeilenAusAnfrage() liest die Datei nicht mehr ein');
+  assert.match(geteilt, /function csvImportAntwort[\s\S]*?skipped_hint/,
+    'csvImportAntwort() meldet die übersprungenen Zeilen nicht mehr');
   // Und die Oberfläche zeigt den Hinweis auch an.
   for (const rel of ['public/js/02-gallery.js', 'public/js/06-minifigs.js']) {
     const src = ohneKommentare(fs.readFileSync(path.join(ROOT, rel), 'utf8'));

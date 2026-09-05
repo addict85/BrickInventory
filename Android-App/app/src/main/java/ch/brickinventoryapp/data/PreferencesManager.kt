@@ -42,6 +42,25 @@ class PreferencesManager @Inject constructor(
         val CURRENCY     = stringPreferencesKey("currency")
         // "system" (folgt der OS-Sprache), "en" oder "de"
         val LANGUAGE     = stringPreferencesKey("language")
+        /**
+         * Das zuletzt bekannte Design des Servers — "classic" oder "brick".
+         *
+         * ── Warum es gemerkt wird (Nachtrag 135) ─────────────────────────────
+         *
+         * `app_theme` ist eine GLOBALE Einstellung des Servers und kam bisher
+         * nur mit /settings, also erst NACH der Anmeldung. Anmelde- und
+         * Einrichtungsbildschirm erschienen dadurch bei jedem Kaltstart im
+         * Standard-Design und sprangen nach dem Anmelden um.
+         *
+         * Die Webapp hat genau dieses Flackern in zwei Stufen behoben
+         * (public/js/00-theme-boot.js): erst der gemerkte Wert ohne Netz, dann
+         * asynchron die oeffentliche Adresse /api/v1/settings/theme. Hier
+         * dasselbe — dies ist Stufe eins.
+         *
+         * Nicht nutzerbezogen: Das Design gilt fuer alle, es ist keine
+         * persoenliche Einstellung. Deshalb ueberlebt es auch das Abmelden.
+         */
+        val APP_THEME    = stringPreferencesKey("app_theme")
     }
 
     val serverUrl: Flow<String> = context.dataStore.data.map { prefs ->
@@ -74,6 +93,7 @@ class PreferencesManager @Inject constructor(
     val username:  Flow<String> = context.dataStore.data.map { it[USERNAME]   ?: "" }
     val currency:  Flow<String> = context.dataStore.data.map { it[CURRENCY]   ?: "EUR" }
     val language:  Flow<String> = context.dataStore.data.map { it[LANGUAGE]   ?: "system" }
+    val appTheme:  Flow<String> = context.dataStore.data.map { it[APP_THEME]  ?: "classic" }
 
     // ── In-Memory-Cache für den OkHttp-Interceptor ────────────────────────────
     // Der Interceptor läuft auf OkHttp-Dispatcher-Threads und darf dort nicht
@@ -145,6 +165,14 @@ class PreferencesManager @Inject constructor(
     }
     suspend fun saveLanguage(lang: String) {
         context.dataStore.edit { it[LANGUAGE] = lang }
+    }
+    suspend fun saveAppTheme(theme: String) {
+        // Unbekannte Werte NICHT schreiben: "" oder null heisst „keine
+        // Information" und darf den gemerkten Wert nicht loeschen — dieselbe
+        // Regel wie applyTheme() in 00-theme-boot.js.
+        if (theme == "classic" || theme == "brick") {
+            context.dataStore.edit { it[APP_THEME] = theme }
+        }
     }
     suspend fun clearSession() {
         context.dataStore.edit {

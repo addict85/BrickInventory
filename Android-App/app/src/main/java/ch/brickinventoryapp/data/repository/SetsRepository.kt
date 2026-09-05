@@ -66,6 +66,10 @@ class SetsRepository @Inject constructor(
     suspend fun getSetDetail(setNumber: String): Result<SetDetailResponse> =
         safeCall { api.getSetDetail(setNumber) }
 
+    /** Setname aus dem gemeinsamen Katalog, auch fuer fremde Sets. */
+    suspend fun getSetInfo(setNumber: String): Result<SetInfoResponse> =
+        safeCall { api.getSetInfo(setNumber) }
+
     suspend fun addSet(setNumber: String, quantity: Int = 1, purchasePrice: Double? = null,
                        condition: String? = null, ownerUserId: Int? = null): Result<AddSetResponse> =
         safeCall { api.addSet(AddSetRequest(setNumber, quantity, purchasePrice, condition, ownerUserId)) }
@@ -101,6 +105,9 @@ class SetsRepository @Inject constructor(
         val url = serverUrl.trimEnd('/') + "/api/v1/sets/import/csv/status"
         return safeCall { api.getCsvImportStatusDirect(url, "Bearer $token") }
     }
+
+    /** Laufenden CSV-Import abbrechen — siehe BrickApiService.cancelCsvImport. */
+    suspend fun cancelCsvImport(): Result<GenericAdminResponse> = safeCall { api.cancelCsvImport() }
 
     suspend fun triggerCsvSync(): Result<GenericAdminResponse> = safeCall { api.triggerCsvSync() }
 
@@ -179,5 +186,13 @@ class SetsRepository @Inject constructor(
 
     suspend fun deleteAnleitung(setNumber: String, instrId: Int): Result<GenericResponse> =
         safeCall { api.deleteAnleitung(setNumber, instrId) }
+
+    /** Anleitungen dieses Sets verwerfen und neu bei der Quelle suchen. */
+    suspend fun anleitungenNeuHolen(setNumber: String): Result<NachladenResponse> =
+        safeCall { api.anleitungenNeuHolen(setNumber) }
+
+    /** Die Teileliste dieses Sets neu aus dem Katalog einlesen. */
+    suspend fun teileNeuEinlesen(setNumber: String): Result<NachladenResponse> =
+        safeCall { api.teileNeuEinlesen(setNumber) }
 
 }

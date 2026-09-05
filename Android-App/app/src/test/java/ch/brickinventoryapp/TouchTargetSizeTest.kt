@@ -41,13 +41,23 @@ class TouchTargetSizeTest {
     // AcquisitionRow — beides Funktionen ohne Aufrufer, die dabei entfernt
     // wurden. Gemeldet hat es die zweite Behauptung dieses Tests, nicht ich.
     private val bekannt = mapOf(
-        "MinifigsScreen.kt" to "Bearbeiten und Löschen in den Ecken der Kachel (24dp)",
-        "PartsScreen.kt" to "Bearbeiten in der Ecke der Kachel (24dp)",
+        // Nachtrag 138: Die beiden Eintraege standen bis hier auf
+        // MinifigsScreen.kt und PartsScreen.kt. Die Knoepfe sind dieselben
+        // geblieben, nur stehen sie jetzt EINMAL in der gemeinsamen
+        // ManuelleKachel statt zweimal. Gemeldet hat den Umzug die zweite
+        // Behauptung dieses Tests (ueberzaehlige Eintraege) — nicht ich.
+        "ManualItemComposables.kt" to "Bearbeiten und Löschen in den Ecken der manuellen Kachel (24dp)",
         "GalleryScreen.kt" to "Menge +/- auf der Kachel (28dp)",
         "MonitoringSections.kt" to "Aufklappen und Neustart in dichten Tabellenzeilen",
         "ManualItemDetailScreen.kt" to "Bearbeiten/Löschen je Kaufpreis-Zeile",
         "AcquisitionManagementScreen.kt" to "Löschen in der Zeile eines Kaufpreises",
         "SetDetailSections.kt" to "Bearbeiten/Löschen je Kaufpreis-Zeile",
+        // Nachtrag 135: Der Abbrechen-Knopf im CSV-Fortschrittsbalken. 24 dp
+        // sichtbar, weil der Balken ein schmaler Streifen ueber der ganzen App
+        // ist — ein 48-dp-Knopf wuerde ihn doppelt so hoch machen, und er ist
+        // auf JEDEM Reiter zu sehen, nicht nur waehrend man ihn braucht.
+        // Material3 zieht die Antippflaeche trotzdem auf 48 dp auf.
+        "CsvImportBanner.kt" to "Abbrechen im Fortschrittsbalken (24dp)",
     )
 
     @Test

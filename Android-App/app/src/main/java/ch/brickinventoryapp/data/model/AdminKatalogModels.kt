@@ -86,8 +86,37 @@ data class JobStatus(
     val sub: String? = null
 )
 
+/**
+ * Der Zeitplan eines Jobs — taeglich zu einer Uhrzeit, oder alle N Minuten.
+ *
+ * ── Warum das Feld erst jetzt gelesen wird (Nachtrag 137) ───────────────────
+ *
+ * `/api/v1/admin/jobs` schickt `schedules` seit jeher mit (routes/api_v1/
+ * admin.ts) — die App hat es nie eingelesen. Sie zeigte also, DASS ein Job
+ * laeuft, aber nicht WANN er das naechste Mal laeuft, und aendern konnte sie
+ * es schon gar nicht. Die Webapp zeigt beides.
+ *
+ * Wieder ein Feld, das ueber die Leitung kommt und niemanden erreicht — nur
+ * diesmal von der anderen Seite als sonst: nicht geschrieben und nie gelesen,
+ * sondern GESCHICKT und nie ausgepackt.
+ *
+ * @param type    "daily" (dann zaehlt `time`) oder "interval" (dann `minutes`)
+ * @param time    "HH:MM" — Ortszeit des Servers
+ * @param minutes Abstand in Minuten; der Server erzwingt mindestens 5
+ */
 @Serializable
-data class JobsResponse(val success: Boolean, val jobs: Map<String, JobStatus> = emptyMap())
+data class JobSchedule(
+    val type: String = "daily",
+    val time: String? = null,
+    val minutes: Int? = null,
+)
+
+@Serializable
+data class JobsResponse(
+    val success: Boolean,
+    val jobs: Map<String, JobStatus> = emptyMap(),
+    val schedules: Map<String, JobSchedule> = emptyMap(),
+)
 
 @Serializable
 data class BricksetQueueEntry(

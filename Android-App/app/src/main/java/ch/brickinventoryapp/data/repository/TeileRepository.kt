@@ -56,6 +56,22 @@ class TeileRepository @Inject constructor(
         safeCall { api.getPartsStats(accounts) }
 
     /**
+     * Die beiden Filterlisten des Teile-Reiters — Farbe und Kategorie.
+     *
+     * Ohne Zwischenspeicher: Beide Listen tragen ZAEHLWERTE und aendern sich
+     * mit jedem erfassten Teil. Ein Cache zeigte dem Nutzer Zahlen, die nicht
+     * zu der Liste passen, die er gerade vor sich hat.
+     */
+    suspend fun getPartsFilterColors(accounts: String? = null): Result<PartsFilterColorsResponse> =
+        safeCall { api.getPartsFilterColors(accounts) }
+
+    suspend fun getPartsCategories(accounts: String? = null): Result<PartsCategoriesResponse> =
+        safeCall { api.getPartsCategories(accounts) }
+
+    /** Rebrickable-Farbnummer → BrickLink-Farbnummer; siehe BlColorMapResponse. */
+    suspend fun getBlColorMap(): Result<BlColorMapResponse> = safeCall { api.getBlColorMap() }
+
+    /**
      * Die manuell erfassten Teile bzw. Figuren — dieselbe Quelle wie die
      * Webapp. Vorher kamen sie aus der BEWERTUNG, also aus einer zweiten
      * Quelle fuer dieselbe Liste; siehe ManualPartsResponse.

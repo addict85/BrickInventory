@@ -100,6 +100,36 @@ class AdminRepository @Inject constructor(
     suspend fun getSettings(): Result<SettingsResponse> =
         safeCall { api.getSettings() }
 
+    /**
+     * Zeitplan eines Jobs setzen — taeglich (HH:MM) oder als Abstand (Minuten).
+     *
+     * Genau EINES von beidem: Der Server liest `time` fuer taegliche Jobs und
+     * `minutes` fuer den Preis-Job und weist alles andere ab. Deshalb hier zwei
+     * benannte Parameter statt eines freien Rumpfes — welcher gilt, entscheidet
+     * der Aufrufer sichtbar.
+     */
+    suspend fun setJobSchedule(name: String, zeit: String? = null, minuten: Int? = null): Result<GenericAdminResponse> =
+        safeCall {
+            api.setJobSchedule(buildMap {
+                put("name", name)
+                zeit?.let { put("time", it) }
+                minuten?.let { put("minutes", it) }
+            })
+        }
+
+    /** Fehlende Katalogbilder einreihen — siehe BrickApiService.queueCatalogImages. */
+    suspend fun queueCatalogImages(): Result<GenericAdminResponse> = safeCall { api.queueCatalogImages() }
+
+    /** Das globale Design umstellen (nur Verwalter). */
+    suspend fun setAppTheme(theme: String): Result<GenericAdminResponse> =
+        safeCall { api.setAppTheme(mapOf("theme" to theme)) }
+
+    /** Startzustand des Servers — ohne Anmeldung. */
+    suspend fun getStartupStatus(): Result<StartupStatus> = safeCall { api.getStartupStatus() }
+
+    /** Das globale Design — ohne Anmeldung. Siehe BrickApiService.getAppTheme. */
+    suspend fun getAppTheme(): Result<AppThemeResponse> = safeCall { api.getAppTheme() }
+
     suspend fun updateSettings(currency: String, condition: String): Result<GenericResponse> =
         safeCall { api.updateSettings(mapOf("currency" to currency, "price_condition" to condition)) }
 
@@ -110,6 +140,17 @@ class AdminRepository @Inject constructor(
     suspend fun getCacheTtl(): Result<CacheTtlResponse> = safeCall { api.getCacheTtl() }
 
     suspend fun setCacheTtl(hours: Int): Result<GenericAdminResponse> = safeCall { api.setCacheTtl(mapOf("ttl" to hours.toString())) }
+
+    /**
+     * Cache leeren — nur Preise, oder alles.
+     *
+     * `alles = false` schickt einen LEEREN Rumpf und nicht `all=false`: Der
+     * Server prueft `req.body?.all` auf Wahrheit, beides waere also gleich —
+     * aber ein leerer Rumpf sagt dasselbe kuerzer und kann nicht versehentlich
+     * als „alles" gelesen werden.
+     */
+    suspend fun clearCache(alles: Boolean = false): Result<GenericAdminResponse> =
+        safeCall { api.clearCache(if (alles) mapOf("all" to true) else emptyMap()) }
 
     suspend fun getApiLimits(): Result<ApiLimitsResponse> = safeCall { api.getApiLimits() }
 

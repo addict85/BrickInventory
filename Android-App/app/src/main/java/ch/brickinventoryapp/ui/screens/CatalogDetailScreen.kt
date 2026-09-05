@@ -66,7 +66,7 @@ fun CatalogDetailScreen(
             TopAppBar(
                 title = { Text(detail?.name ?: setNumber, maxLines = 1) },
                 navigationIcon = {
-                    IconButton(onClick = onBack) { Icon(Icons.AutoMirrored.Filled.ArrowBack, stringResource(R.string.acq_back)) }
+                    IconButton(onClick = onBack) { Icon(Icons.AutoMirrored.Filled.ArrowBack, stringResource(R.string.common_back)) }
                 }
             )
         }
@@ -255,7 +255,7 @@ private fun CatalogAddDialog(
                 OwnerPicker(householdMembers, owner, { owner = it })
                 OutlinedTextField(
                     value = quantity, onValueChange = { quantity = it },
-                    label = { Text(stringResource(R.string.gallery_quantity)) },
+                    label = { Text(stringResource(R.string.common_quantity)) },
                     singleLine = true, modifier = Modifier.fillMaxWidth()
                 )
                 OutlinedTextField(

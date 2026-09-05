@@ -132,9 +132,9 @@ export function t(key, vars) {
  * Wie t(), aber OHNE Maskierung der Variablen.
  *
  * Nur benutzen, wenn das Ergebnis nachweislich nicht in innerHTML landet oder
- * die Werte selbst schon maskiert sind. Aktuell gibt es keine Aufrufstelle —
- * die Funktion existiert, damit ein künftiger Sonderfall nicht dazu verleitet,
- * die Maskierung in t() wieder auszubauen.
+ * die Werte selbst schon maskiert sind — in der Praxis heisst das:
+ * textContent-Zuweisungen und toast(). Hier stand „Aktuell gibt es keine
+ * Aufrufstelle"; das war einmal richtig und ist es seit langem nicht mehr.
  *
  * @param {string} key
  * @param {Record<string, unknown>} [vars]

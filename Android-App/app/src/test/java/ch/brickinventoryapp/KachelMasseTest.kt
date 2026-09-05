@@ -50,18 +50,33 @@ class KachelMasseTest {
         }
     }
 
+    /**
+     * ── Nachtrag 138: aus zwei Kacheln wurde eine ───────────────────────────
+     *
+     * Hier stand `nutzer >= 2` mit der Begruendung „erwartet werden die Teile-
+     * und die Minifiguren-Kachel". Das war richtig, solange es zwei gab. Seit
+     * beide ueber `ManuelleKachel` laufen, traegt genau EINE Datei die
+     * Geometrie — und der Lauf wurde rot, obwohl das Zusammenlegen genau das
+     * Ziel dieses Tests weiterfuehrt.
+     *
+     * Die Untergrenze ist deshalb keine Zahl mehr, sondern eine Aussage: Die
+     * Masse stehen genau einmal, und zwar in der gemeinsamen Kachel. Ein
+     * Selbstbeweis bleibt es trotzdem — findet der Dateilauf nichts, ist
+     * `nutzer` null und der Test rot.
+     */
     @Test
-    fun `beide Bestandskacheln holen ihre Masse dort`() {
-        var nutzer = 0
-        for (datei in Quellen.unter("ui")) {
+    fun `die gemeinsame Kachel holt ihre Masse dort`() {
+        val nutzer = Quellen.unter("ui").filter { datei ->
             val src = Quellen.ohneKommentare(datei.readText())
-            if (src.contains("Formen.kachelBreite") && src.contains("Formen.kachelHoehe")) nutzer++
+            src.contains("Formen.kachelBreite") && src.contains("Formen.kachelHoehe")
         }
-        // Selbstbeweis: Ohne Fundstellen sagt die Pruefung oben nichts — sie
-        // waere auch dann gruen, wenn es die Kacheln gar nicht mehr gaebe.
-        assert(nutzer >= 2) {
-            "Nur $nutzer Bildschirm(e) benutzen Formen.kachelBreite/-Hoehe — erwartet " +
-                "werden die Teile- und die Minifiguren-Kachel. Umbenannt oder entfernt?"
+        assert(nutzer.size == 1) {
+            "Die Kachelmasse stehen in ${nutzer.size} Dateien (${nutzer.joinToString { it.name }}) " +
+                "— erwartet wird genau eine: die gemeinsame ManuelleKachel. Mehr heisst, " +
+                "es gibt wieder zwei Kacheln; keine heisst, sie ist weg oder umbenannt."
+        }
+        assert(nutzer.single().name == "ManualItemComposables.kt") {
+            "Die Masse stehen in ${nutzer.single().name} statt in ManualItemComposables.kt"
         }
     }
 

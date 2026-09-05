@@ -220,12 +220,12 @@ fun QrSetupScannerScreen(onResult: (String) -> Unit, onDismiss: () -> Unit) {
                         if (!frozen) { frozen = true; onResult(value) }
                     }
                 )
-                Column(
-                    Modifier.fillMaxSize(),
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                    verticalArrangement = Arrangement.Center
+                // Rahmen und Hinweis in der gemeinsamen Ueberlagerung — siehe
+                // KameraErlaubnis.kt. Eigen bleibt nur das Quadrat.
+                KameraUeberlagerung(
+                    hinweis = if (frozen) stringResource(R.string.setup_qr_detected)
+                              else stringResource(R.string.setup_qr_scan_hint),
                 ) {
-                    Spacer(Modifier.weight(0.2f))
                     Box(
                         Modifier
                             .fillMaxWidth(0.75f)
@@ -234,19 +234,6 @@ fun QrSetupScannerScreen(onResult: (String) -> Unit, onDismiss: () -> Unit) {
                                 if (frozen) LocalStatusFarben.current.erfolg else MaterialTheme.colorScheme.primary,
                                 Formen.knopf)
                     )
-                    Spacer(Modifier.height(20.dp))
-                    Surface(
-                        color = Color.Black.copy(alpha = 0.72f),
-                        shape = Formen.kachel
-                    ) {
-                        Text(
-                            if (frozen) stringResource(R.string.setup_qr_detected) else stringResource(R.string.setup_qr_scan_hint),
-                            Modifier.padding(horizontal = 18.dp, vertical = 10.dp),
-                            color = Color.White, fontSize = 13.sp,
-                            textAlign = androidx.compose.ui.text.style.TextAlign.Center
-                        )
-                    }
-                    Spacer(Modifier.weight(0.8f))
                 }
             }
             else -> {

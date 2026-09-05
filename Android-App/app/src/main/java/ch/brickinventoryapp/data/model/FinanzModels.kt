@@ -153,6 +153,19 @@ data class PartValuationItem(
     val note: String? = null,
     @SerialName("unit_price") val unitPrice: Double? = null,
     @SerialName("purchase_price") val purchasePrice: Double? = null,
+    /**
+     * Mengengewichteter Kaufpreis ueber alle Erfassungen.
+     *
+     * Rechnet der Server in utils/handlers/shared.ts:
+     *   SUM(unit_price * quantity) / SUM(quantity)
+     *
+     * `unit_price` in der Stammzeile ist dagegen der ZULETZT geschriebene
+     * Einzelpreis — wer ein Teil einmal fuer 2.- und einmal fuer 8.- gekauft
+     * hat, saehe dort 8.- statt 5.-. Die Webapp nimmt deshalb seit jeher
+     * `avg_purchase_price ?? unit_price ?? purchase_price` (06-minifigs.js
+     * und 03-parts.js, man-tile), und die App las das Feld gar nicht ein.
+     */
+    @SerialName("avg_purchase_price") val avgPurchasePrice: Double? = null,
     @SerialName("qty_avg_price") val qtyAvgPrice: Double? = null,
     @SerialName("avg_price") val avgPrice: Double? = null,
     @SerialName("pnl_pct") val pnlPct: String? = null,
@@ -236,6 +249,19 @@ data class FigValuationItem(
     val note: String? = null,
     @SerialName("unit_price") val unitPrice: Double? = null,
     @SerialName("purchase_price") val purchasePrice: Double? = null,
+    /**
+     * Mengengewichteter Kaufpreis ueber alle Erfassungen.
+     *
+     * Rechnet der Server in utils/handlers/shared.ts:
+     *   SUM(unit_price * quantity) / SUM(quantity)
+     *
+     * `unit_price` in der Stammzeile ist dagegen der ZULETZT geschriebene
+     * Einzelpreis — wer ein Teil einmal fuer 2.- und einmal fuer 8.- gekauft
+     * hat, saehe dort 8.- statt 5.-. Die Webapp nimmt deshalb seit jeher
+     * `avg_purchase_price ?? unit_price ?? purchase_price` (06-minifigs.js
+     * und 03-parts.js, man-tile), und die App las das Feld gar nicht ein.
+     */
+    @SerialName("avg_purchase_price") val avgPurchasePrice: Double? = null,
     @SerialName("qty_avg_price") val qtyAvgPrice: Double? = null,
     @SerialName("avg_price") val avgPrice: Double? = null,
     @SerialName("pnl_pct") val pnlPct: String? = null,

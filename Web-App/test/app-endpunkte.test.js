@@ -72,6 +72,27 @@ function serverRouten() {
     for (const r of routenAus(path.join(v1, f), '/api/v1')) alle.add(r);
   }
 
+  // ── Routen, die DIREKT an der App haengen (Nachtrag 136) ──────────────────
+  //
+  // `serverRouten()` las nur `router.<verb>('<pfad>')` aus den Router-Dateien.
+  // Zwei Adressen stehen aber in server.ts unmittelbar an der App:
+  //
+  //     app.get('/api/v1/startup-status', …)
+  //     app.get('/api/v1/health', …)
+  //
+  // Beide absichtlich dort und absichtlich vor allen Waechtern — sie werden
+  // gebraucht, BEVOR sich jemand anmelden kann. Dieselbe Sorte Luecke, die
+  // dieser Baum immer wieder hat: eine Sache in zwei Schreibweisen und eine
+  // Suche, die nur eine kennt.
+  //
+  // Aufgefallen, als die App den Startzustand zu rufen begann: Der Test meldete
+  // „der Server hat sie nicht", obwohl die Route seit jeher da ist.
+  {
+    const srv = fs.readFileSync(path.join(ROOT, 'server.ts'), 'utf8');
+    for (const m of srv.matchAll(/\bapp\.(get|post|put|patch|delete)\(\s*['"](\/api\/[^'"]+)['"]/g))
+      alle.add(`${m[1].toUpperCase()} ${m[2]}`);
+  }
+
   // registerAcquisitionRoutes() baut diese Routen zur Laufzeit zusammen — der
   // Parser oben sieht sie nicht, weil kein Pfad-Literal dasteht.
   for (const basis of ['/sets/:X/acquisitions', '/parts/:X/:X/acquisitions', '/minifigs/:X/acquisitions'])

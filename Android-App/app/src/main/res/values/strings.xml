@@ -12,13 +12,14 @@
     <string name="settings_price_condition">Price condition</string>
     <string name="common_condition">Condition</string>
     <string name="detail_edit_prices">Edit prices</string>
+    <string name="detail_note">Note</string>
     <string name="detail_purchase_price">Purchase price</string>
     <string name="detail_price_placeholder">Market price</string>
         <string name="common_back">Back</string>
-    <string name="acq_back">Back</string>
     <string name="acq_delete_title">Delete entry</string>
     <string name="acq_delete_text">Delete this purchase price entry? The total quantity will be adjusted accordingly.</string>
     <string name="common_delete">Delete</string>
+    <string name="common_edit">Edit</string>
     <string name="common_cancel">Cancel</string>
     <string name="settings_default_condition">Default condition</string>
     <string name="settings_default_condition_effective">Currently in effect: %1$s.</string>
@@ -50,6 +51,8 @@
     <string name="csv_stat_success">Success</string>
     <string name="csv_stat_warnings">Warnings</string>
     <string name="csv_stat_errors">Errors</string>
+    <string name="csv_cancel">Cancel import</string>
+    <string name="csv_cancel_requested">Import will stop after the current set</string>
     <string name="csv_import_done">Import complete</string>
 
     <!-- ══════════════ Portfolio chart ══════════════ -->
@@ -62,7 +65,6 @@
 
     <!-- ══════════════ Comparison screen ══════════════ -->
     <string name="comparison_search_placeholder">Search e.g. Technic, City…</string>
-    <string name="comparison_clear">Clear</string>
     <string name="comparison_search">Search</string>
     <string name="comparison_scan_new">New</string>
     <string name="comparison_scan">Scan</string>
@@ -104,15 +106,14 @@
     <string name="gallery_stat_units">Units</string>
     <string name="gallery_stat_parts">Parts</string>
     <string name="gallery_stat_minifigs">Minifigs</string>
+    <string name="gallery_stat_instructions">Instructions</string>
     <string name="gallery_search_placeholder">Search sets…</string>
-    <string name="gallery_clear">Clear</string>
     <string name="gallery_all">All</string>
     <string name="gallery_no_sets">No sets yet</string>
     <string name="gallery_pull_to_refresh">Pull down to refresh</string>
     <string name="gallery_refresh">Refresh</string>
     <string name="gallery_no_results">No results for “%1$s”</string>
     <string name="gallery_quantity_badge">×%1$d</string>
-    <string name="gallery_delete">Delete</string>
     <string name="gallery_delete_title">Delete set?</string>
     <string name="gallery_delete_text">%1$s and all parts will be removed.</string>
     <string name="gallery_pieces_suffix"> parts</string>
@@ -121,11 +122,8 @@
     <string name="gallery_add_set_title">Add set</string>
     <string name="gallery_set_number">Set number</string>
     <string name="gallery_set_number_placeholder">e.g. 75192-1 or 75192</string>
-    <string name="gallery_quantity">Quantity</string>
     <string name="gallery_purchase_price">Purchase price (optional)</string>
-    <string name="gallery_purchase_price_placeholder">Empty = current market price</string>
     <string name="gallery_add">Add</string>
-    <string name="gallery_cancel">Cancel</string>
 
     <!-- ══════════════ Minifigs screen ══════════════ -->
     <string name="minifigs_stat_types">Types</string>
@@ -138,20 +136,13 @@
     <string name="minifigs_loaded_on_import">Minifigures are loaded when sets are imported</string>
     <string name="minifigs_no_results">No results</string>
     <string name="minifigs_add">Add minifigure</string>
-    <string name="minifigs_edit">Edit</string>
-    <string name="minifigs_delete">Delete</string>
     <string name="minifigs_add_title">Add minifigure</string>
     <string name="minifigs_fig_number">Figure number</string>
     <string name="minifigs_fig_number_placeholder">e.g. fig-007357 (Rebrickable)</string>
     <string name="minifigs_bl_number">BrickLink no. (optional)</string>
     <string name="minifigs_bl_number_placeholder">e.g. sw0001 — for market price</string>
     <string name="minifigs_bl_hint">Rebrickable and BrickLink numbers usually differ. Without a BrickLink number, the market price is approximated from the figure\'s individual parts.</string>
-    <string name="minifigs_quantity">Quantity</string>
-    <string name="minifigs_unit_price">Purchase price/pc (optional)</string>
-    <string name="minifigs_unit_price_placeholder">Empty = current market price</string>
-    <string name="minifigs_note">Note (optional)</string>
     <string name="minifigs_add_button">Add</string>
-    <string name="minifigs_cancel">Cancel</string>
     <string name="minifigs_delete_title">Delete minifigure?</string>
     <string name="minifigs_delete_text">%1$s will be removed from your collection.</string>
     <string name="minifigs_manual_badge">Manual</string>
@@ -168,6 +159,14 @@
     <string name="partslist_pdf_error_title">PDF error</string>
     <string name="partslist_ok">OK</string>
     <string name="partslist_reset">Reset</string>
+    <string name="condition_any">Any</string>
+    <string name="partslist_have">Have</string>
+    <string name="partslist_bl_title">BrickLink wanted list</string>
+    <string name="partslist_bl_hint">Enter how many of each part you already have — the rest is exported as a BrickLink wanted list.</string>
+    <string name="partslist_bl_export">BrickLink wanted list</string>
+    <string name="partslist_bl_share">Share wanted list</string>
+    <string name="partslist_bl_nothing_missing">Nothing missing — you have every part on the list.</string>
+    <string name="partslist_bl_failed">The wanted list could not be created.</string>
     <string name="partslist_empty_hint">Add sets and generate a parts list</string>
     <string name="partslist_no_color">(No color)</string>
     <string name="partslist_group_summary">%1$d×  ·  %2$d types</string>
@@ -205,20 +204,13 @@
     <string name="parts_sets_section">From sets</string>
     <string name="parts_none">No parts</string>
     <string name="parts_add">Add part</string>
-    <string name="parts_edit">Edit</string>
-    <string name="parts_delete">Delete</string>
     <string name="parts_delete_title">Delete part?</string>
     <string name="parts_delete_text">%1$s will be removed from your collection.</string>
-    <string name="parts_quantity">Quantity</string>
-    <string name="parts_unit_price">Purchase price/pc (optional)</string>
-    <string name="parts_unit_price_placeholder">Empty = current market price</string>
-    <string name="parts_cancel">Cancel</string>
     <string name="parts_add_title">Add part</string>
     <string name="parts_part_number">Part number</string>
     <string name="parts_part_number_placeholder">e.g. 3001</string>
     <string name="parts_no_color">No color</string>
     <string name="parts_color_label">Color (optional)</string>
-    <string name="parts_note">Note (optional)</string>
     <string name="parts_add_button">Add</string>
 
     <!-- ══════════════ Monitoring screen ══════════════ -->
@@ -230,7 +222,6 @@
     <string name="monitoring_queue_collapse">Collapse queue</string>
     <string name="monitoring_queue_show">Show queue (%1$d)</string>
     <string name="monitoring_icon_retry">Retry</string>
-    <string name="monitoring_icon_delete">Delete</string>
     <string name="monitoring_hide_error">Hide error</string>
     <string name="monitoring_show_error">Show last error</string>
     <string name="monitoring_price_cache">PRICE CACHE</string>
@@ -239,6 +230,11 @@
     <string name="monitoring_cache_subsets">Subsets</string>
     <string name="monitoring_cache_catalog">Catalog</string>
     <string name="monitoring_cache_duration">Cache duration</string>
+    <string name="monitoring_cache_clear_prices">Clear prices</string>
+    <string name="monitoring_cache_clear_all">Clear all</string>
+    <string name="monitoring_cache_clear_hint">Cached prices are discarded. Rebuilding them uses requests from the shared daily quota.</string>
+    <string name="monitoring_cache_clear_confirm">Clear</string>
+    <string name="monitoring_cache_cleared">Cache cleared</string>
     <string name="monitoring_cache_saved">Cache duration saved</string>
     <string name="monitoring_api_calls">API CALLS</string>
     <string name="monitoring_limits_saved">Limits saved</string>
@@ -248,8 +244,6 @@
     <string name="monitoring_start_error">Error starting</string>
 
     <!-- ══════════════ Set detail screen ══════════════ -->
-    <string name="detail_back">Back</string>
-    <string name="detail_delete">Delete</string>
     <string name="detail_year">Year</string>
     <string name="detail_pieces">Pieces</string>
     <string name="detail_minifigs">Minifigs</string>
@@ -261,7 +255,6 @@
     <string name="detail_section_item">Details</string>
     <string name="detail_set_number">Set number</string>
     <string name="detail_added">Added</string>
-    <string name="detail_quantity">Quantity</string>
     <string name="detail_section_market">Market price</string>
     <string name="detail_instructions_with_count">Instructions (%1$d)</string>
     <string name="detail_instructions">Instructions</string>
@@ -291,7 +284,6 @@
     <string name="main_barcode_year">Year</string>
     <string name="main_barcode_pieces">Pieces</string>
     <string name="main_barcode_figs">Figures</string>
-    <string name="main_barcode_cancel">Cancel</string>
     <string name="main_account">Account</string>
     <string name="main_menu_monitoring">Monitoring</string>
     <string name="main_menu_logout">Log out</string>
@@ -312,12 +304,17 @@
     <string name="setitem_open_set">Open set</string>
     <string name="setitem_category">Category</string>
     <string name="setitem_color">Colour</string>
+    <string name="parts_filter_color">Filter by color</string>
+    <string name="parts_filter_category">Filter by category</string>
     <string name="parts_filter_all">All parts</string>
     <string name="view_cards">Cards</string>
     <string name="view_table">Table</string>
     <string name="parts_filter_no_spare">Without spare parts</string>
     <string name="parts_filter_spare">Spare parts only</string>
     <string name="common_quantity">Quantity</string>
+    <string name="common_unit_price">Purchase price/pc (optional)</string>
+    <string name="common_unit_price_placeholder">Empty = current market price</string>
+    <string name="common_note">Note (optional)</string>
     <string name="common_loading">Loading…</string>
     <string name="detail_price_loading">Loading price…</string>
     <string name="vm_saved">Saved</string>
@@ -365,6 +362,15 @@
     <string name="monitoring_started">✅ Started</string>
     <string name="monitoring_sync_started_short">✅ Sync started</string>
     <string name="monitoring_price_update">Update prices</string>
+    <string name="monitoring_schedule_daily">Daily at</string>
+    <string name="monitoring_schedule_every">Every</string>
+    <string name="monitoring_schedule_unit">min</string>
+    <string name="monitoring_schedule_minutes">%1$d min</string>
+    <string name="cd_edit_schedule">Change schedule</string>
+    <string name="monitoring_theme">Design</string>
+    <string name="monitoring_theme_classic">Classic</string>
+    <string name="monitoring_theme_brick">Brick</string>
+    <string name="monitoring_catalog_images">Queue catalogue images</string>
     <string name="monitoring_redownload_missing">Redownload missing images</string>
     <string name="monitoring_import_missing_instr">Import missing instructions</string>
     <string name="monitoring_loading">Loading…</string>
@@ -498,6 +504,8 @@
 
     <!-- ══════════════ Create account / forgot password ══════════════ -->
     <string name="login_no_account">No account yet? Register</string>
+    <string name="startup_title">The server is starting</string>
+    <string name="startup_hint">The first start after an installation imports the catalogue and can take several minutes. You can leave the app open.</string>
     <string name="login_forgot">Forgot password?</string>
     <string name="login_back">Back to sign-in</string>
     <string name="register_title">Create account</string>
@@ -545,11 +553,21 @@
     <string name="instr_upload_wrong_type">Only PDF, JPG or PNG.</string>
     <string name="instr_upload_done">Instruction added</string>
     <string name="instr_delete">Remove instruction</string>
+    <!-- Re-fetch: the same two actions the web app has in the set detail
+         (02-gallery.js: redownloadInstr, reimportParts). -->
+    <string name="instr_reload">Reload</string>
+    <string name="instr_reloading">Looking for instructions…</string>
+    <string name="instr_reloaded_n">%1$d instructions loaded</string>
+    <string name="parts_reimport">Re-import parts</string>
+    <string name="parts_reimporting">Importing parts for %1$s…</string>
+    <string name="parts_reimported_n">%1$d parts imported</string>
 
     <!-- ══════════════ Server log ══════════════ -->
     <string name="admin_log_title">Server log</string>
     <string name="admin_log_minutes">Last %1$d min</string>
     <string name="admin_log_empty">No entries in this period.</string>
+    <string name="admin_log_search">Search log</string>
+    <string name="admin_log_no_match">No entries match the filter</string>
     <string name="admin_log_reload">Reload</string>
 
     <string name="common_collapse">Collapse</string>

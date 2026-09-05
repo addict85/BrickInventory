@@ -39,7 +39,8 @@ export async function openPdfViewer(url, title) {
   while (!window.pdfjsLib && _tries < 50) { await new Promise(r => setTimeout(r, 100)); _tries++; }
   const pdfjsLib = window.pdfjsLib;
   if (!pdfjsLib) {
-    if (loading) loading.innerHTML = '<span style="color:#f88;padding:20px">PDF.js nicht geladen</span>';
+    if (loading) loading.innerHTML =
+      `<span style="color:#f88;padding:20px">${t('pdf.lib_missing')}</span>`;
     return;
   }
   try {

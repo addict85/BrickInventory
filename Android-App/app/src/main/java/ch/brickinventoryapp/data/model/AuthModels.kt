@@ -70,6 +70,38 @@ data class UserSettings(
     @SerialName("app_theme") val appTheme: String = "classic" // global vom Admin gewähltes Design
 )
 
+/**
+ * Startzustand des Servers — GET /api/v1/startup-status, ohne Anmeldung.
+ *
+ * ── Warum die App das braucht (Nachtrag 136) ────────────────────────────────
+ *
+ * Der erste Start einer Neuinstallation kann VIELE MINUTEN dauern: Der Server
+ * holt den Rebrickable-Katalog und legt ihn an. Die Webapp zeigt in dieser Zeit
+ * einen Fortschrittsbalken mit Schritt und Prozent (public/js/01-core.js); der
+ * Kommentar dort sagt ausdruecklich, dass ein Zeitlimit hier falsch waere.
+ *
+ * Die App kannte die Adresse nicht und zeigte ihre allgemeine Netzmeldung. Wer
+ * seinen Server frisch aufsetzt und die App oeffnet, sieht dann „keine
+ * Verbindung" — und haelt das eine oder das andere fuer kaputt.
+ *
+ * @param ready    Server ist durch; ab hier ist alles wie immer.
+ * @param step     Was gerade laeuft, schon uebersetzt vom Server.
+ * @param progress Erledigte Schritte, `total` insgesamt. 0/0 = unbekannt.
+ * @param sub      Feinfortschritt innerhalb eines Schritts, z. B. „40%".
+ */
+@Serializable
+data class StartupStatus(
+    val ready: Boolean = false,
+    val step: String? = null,
+    val progress: Int = 0,
+    val total: Int = 0,
+    val sub: String? = null,
+)
+
+/** Antwort von GET /api/v1/settings/theme — die einzige Adresse ohne Anmeldung. */
+@Serializable
+data class AppThemeResponse(val success: Boolean = false, val theme: String = "classic")
+
 @Serializable
 data class SettingsResponse(
     val success: Boolean,

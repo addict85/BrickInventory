@@ -65,6 +65,64 @@ class StringResourceParityTest {
         }
     }
 
+    /**
+     * Name → Text. Anders als [schluessel] verlangt das Muster hier ein `">`
+     * direkt hinter dem Namen und überspringt damit den einen Eintrag mit
+     * Zusatz (`lang_code translatable="false"`). Das ist richtig so: Der
+     * Sprachcode ist kein Oberflächentext, und für den Vergleich unten wäre er
+     * nur Rauschen.
+     */
+    private fun texte(datei: String): Map<String, String> =
+        Regex("""<string name="([^"]+)">(.*?)</string>""", RegexOption.DOT_MATCHES_ALL)
+            .findAll(java.io.File("src/main/res/$datei").readText())
+            .associate { it.groupValues[1] to it.groupValues[2] }
+
+    /**
+     * Was einen `common_`-Namen hat, steht nicht noch einmal unter einem zweiten.
+     *
+     * ── Warum das keine erfundene Regel ist ─────────────────────────────────
+     *
+     * Die `common_`-Namen gibt es bereits — `common_delete`, `common_cancel`,
+     * `common_quantity`, `common_back`, `common_condition`. Wer sie angelegt
+     * hat, hat die Entscheidung „das ist EIN Text" schon getroffen. Nur
+     * durchgezogen wurde sie nicht: NACHGEMESSEN standen sechzehn weitere
+     * Namen mit demselben Wort in BEIDEN Sprachen daneben — fünfmal „Löschen",
+     * fünfmal „Abbrechen", viermal „Anzahl", zweimal „Zurück".
+     *
+     * Was das kostet, ist nicht der Platz, sondern das Auseinanderlaufen: Wer
+     * „Anzahl" in „Menge" ändert, ändert es an einer Stelle, und danach heisst
+     * dasselbe Feld im Teile-Reiter anders als im Figuren-Reiter. Genau das
+     * soll bei zwei Oberflächen, die gleich aussehen sollen, nicht passieren.
+     *
+     * Bewusst NUR gegen `common_`: „Zwei Namen mit gleichem Wert" allein wäre
+     * zu grob — `login_title` und `login_button` heissen beide „Anmelden" und
+     * dürfen sich unabhängig ändern. Der `common_`-Name ist das Zeichen, dass
+     * jemand die Gemeinsamkeit ausdrücklich gewollt hat.
+     */
+    @Test
+    fun `kein zweiter Name fuer einen common-Text`() {
+        val en = texte("values/strings.xml")
+        val de = texte("values-de/strings.xml")
+        assert(en.size > 300) { "Zu wenige Texte gefunden (${en.size}) — Muster veraltet?" }
+        val gemeinsam = en.keys.filter { it.startsWith("common_") }
+        assert(gemeinsam.size >= 3) { "Nur ${gemeinsam.size} common_-Namen — Konvention aufgegeben?" }
+
+        val doppelt = mutableListOf<String>()
+        for (g in gemeinsam.sorted()) {
+            for (k in en.keys.sorted()) {
+                if (k == g || k.startsWith("common_")) continue
+                // In BEIDEN Sprachen gleich. Nur Englisch zu vergleichen
+                // fände zufällige Gleichklänge („Sets"/„Sets"), die auf
+                // Deutsch verschieden sind.
+                if (en[k] == en[g] && de[k] == de[g]) doppelt += "$k = $g (\"${en[g]}\")"
+            }
+        }
+        assert(doppelt.isEmpty()) {
+            "Diese Namen tragen denselben Text wie ein common_-Name; nimm den common_-Namen:\n  " +
+                doppelt.joinToString("\n  ")
+        }
+    }
+
     @Test
     fun `kein Klartext in Text, contentDescription oder Toast`() {
         // Was gesucht wird, ist ein LITERAL an einer Stelle, die der Nutzer
@@ -81,9 +139,13 @@ class StringResourceParityTest {
             Regex("""Toast\.makeText\([^,]+,\s*"([^"]{3,})"""),
         )
         // Eigennamen und Abkürzungen, die in jeder Sprache gleich lauten.
-        // Kurz halten: Jeder Eintrag hier ist eine Ausnahme, die niemand mehr
-        // prüft.
+        // Kurz halten: Jeder Eintrag hier ist eine Ausnahme — und damit sie
+        // nicht, wie es hier stand, „niemand mehr prüft", tut es jetzt der
+        // Test selbst: Am Ende muss jeder Eintrag mindestens einmal gegriffen
+        // haben. Ein Eintrag, der nichts mehr beschreibt, sieht aus wie eine
+        // Entscheidung und ist doch bloss eine Vermutung.
         val erlaubt = setOf("BrickInventory", "Manager", "BrickInventory Manager", "PDF")
+        val erlaubtGesehen = mutableSetOf<String>()
 
         val fehler = mutableListOf<String>()
         for (datei in Quellen.alle()) {
@@ -91,7 +153,7 @@ class StringResourceParityTest {
             for (m in muster) {
                 m.findAll(s).forEach { treffer ->
                     val text = treffer.groupValues[1]
-                    if (text in erlaubt) return@forEach
+                    if (text in erlaubt) { erlaubtGesehen += text; return@forEach }
                     // Eine offene Klammer ohne schliessende heisst: Der
                     // Ausdruck enthält selbst eine Zeichenkette, und der
                     // Treffer bricht an deren Anführungszeichen ab. So ein
@@ -116,6 +178,12 @@ class StringResourceParityTest {
         assert(fehler.isEmpty()) {
             "Oberflächentext als Literal statt aus den Sprachdateien:\n  " +
                 fehler.joinToString("\n  ")
+        }
+        val veraltet = (erlaubt - erlaubtGesehen).sorted()
+        assert(veraltet.isEmpty()) {
+            "Diese Eintraege in `erlaubt` beschreiben nichts mehr: " +
+                veraltet.joinToString(", ") +
+                " — der Text steht nirgends mehr im Quelltext. Raus damit."
         }
     }
 }

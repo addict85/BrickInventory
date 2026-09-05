@@ -249,6 +249,23 @@ data class AppUiState(
     val defaultPriceCondition: String = "N", // server-side default condition for new items (N=New, U=Used)
     val userDefaultCondition: String? = null, // null = use global default
     val appTheme: String = "classic", // global vom Admin gewähltes App-Design
+    /**
+     * Startzustand des Servers, solange er nicht `ready` meldet; sonst null.
+     *
+     * ── Warum das im Zustand steht (Nachtrag 136) ───────────────────────────
+     *
+     * Der erste Start einer Neuinstallation dauert viele Minuten — der Server
+     * holt den Katalog. Die App zeigte in dieser Zeit ihre allgemeine
+     * Netzmeldung; wer seinen Server frisch aufsetzt, haelt dann App oder
+     * Server fuer kaputt. Die Webapp zeigt seit jeher einen Fortschrittsbalken
+     * (public/js/01-core.js).
+     *
+     * `null` heisst „nichts Besonderes" — entweder ist der Server durch, oder
+     * er ist gar nicht erreichbar. Nur wenn er ANTWORTET und `ready` falsch
+     * meldet, steht hier etwas, und nur dann zeigt die Anmeldung den Balken
+     * statt des Formulars.
+     */
+    val startupStatus: ch.brickinventoryapp.data.model.StartupStatus? = null,
     val language: String = "system",
 )
 
@@ -374,6 +391,33 @@ data class PartsUiState(
      * NUR in der Tabellenansicht — und die App tut es genauso.
      */
     val partsView: String = "grid",
+    /**
+     * Die beiden Filterlisten des Reiters — Farbe und Kategorie, mit Anzahl.
+     *
+     * ── Warum sie fehlten (Nachtrag 134) ────────────────────────────────────
+     *
+     * Gemessen, nicht gelesen: Ein Vergleich der Server-Adressen beider
+     * Clients zeigte 21 Adressen, die nur die Webapp ruft — darunter
+     * /parts/colors und /parts/categories. Die App bot im Teile-Reiter
+     * ausschliesslich die Suche.
+     *
+     * Bemerkenswert war der Zustand der Leitung: `BrickApiService.getParts`
+     * deklariert `@Query("color")` und `@Query("category")` seit jeher, und
+     * `TeileRepository.getParts` reicht beide durch. Nur gesetzt hat sie nie
+     * jemand — eine halbfertige Funktion, die in keiner Pruefung auffiel, weil
+     * Vorgabewerte kein toter Code sind.
+     */
+    val partsFilterColors: List<ch.brickinventoryapp.data.model.PartsFilterColor> = emptyList(),
+    val partsCategories: List<ch.brickinventoryapp.data.model.PartsCategory> = emptyList(),
+    /** Gewaehlte Farbe; "" = alle. Der Wert reist als `color=` mit. */
+    val partsColorFilter: String = "",
+    /**
+     * Gewaehlte Kategorie; "" = alle.
+     *
+     * Gespeichert wird der WERT (`category_name`, meist eine Katalog-ID als
+     * Text), nicht die Beschriftung — der Server filtert danach.
+     */
+    val partsCategoryFilter: String = "",
     val partsLoading: Boolean = false,
     val minifigs: List<Minifig> = emptyList(),
     /** Die manuell erfassten Figuren — siehe manualParts, null wie dort. */
