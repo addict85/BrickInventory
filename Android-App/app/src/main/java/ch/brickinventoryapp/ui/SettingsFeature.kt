@@ -19,18 +19,25 @@ import androidx.core.database.getStringOrNull
 internal fun MainViewModel.loadSettings() {
     viewModelScope.launch {
         when (val r = repo.admin.getSettings()) {
-            is Result.Success -> _state.update { it.copy(
-                currency = r.data.settings.currency,
-                priceCondition = r.data.settings.priceCondition,
-                defaultPriceCondition = r.data.settings.defaultPriceCondition,
-                userDefaultCondition = r.data.settings.effectiveCondition, // server-resolved effective value
-                appTheme = r.data.settings.appTheme
-            )}
+            is Result.Success -> {
+                _state.update { it.copy(
+                    currency = r.data.settings.currency,
+                    priceCondition = r.data.settings.priceCondition,
+                    defaultPriceCondition = r.data.settings.defaultPriceCondition,
+                    userDefaultCondition = r.data.settings.effectiveCondition, // server-resolved effective value
+                    appTheme = r.data.settings.appTheme
+                )}
+                // Merken, damit der naechste Kaltstart schon im richtigen
+                // Design anfaengt — siehe PreferencesManager.APP_THEME.
+                //
+                // IM Zweig und nicht dahinter: `r` gehoert zum `when` und ist
+                // danach nicht mehr da (Lauf 110). Ausserdem ist Result.Success
+                // generisch — ein `as? Result.Success` ohne Typargument
+                // uebersetzt gar nicht.
+                prefs.saveAppTheme(r.data.settings.appTheme)
+            }
             is Result.Error -> {}
         }
-        // Merken, damit der naechste Kaltstart schon im richtigen Design
-        // anfaengt — siehe PreferencesManager.APP_THEME.
-        (r as? Result.Success)?.let { prefs.saveAppTheme(it.data.settings.appTheme) }
     }
 }
 
