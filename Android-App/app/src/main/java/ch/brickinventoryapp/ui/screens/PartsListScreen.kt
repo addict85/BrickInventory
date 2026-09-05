@@ -199,6 +199,21 @@ fun PartsListScreen(
     }
 
 
+    // ── Nach einer Drehung passen `generated` und `parts` nicht mehr zusammen ─
+    //
+    // `parts` ist bewusst nur `remember`: Eine Teileliste aus mehreren Sets
+    // hat leicht tausend Eintraege und gehoert nicht ins Bundle (dort endet
+    // sie in einer TransactionTooLargeException). `generated` dagegen ist
+    // gespeichert — nach einer Drehung stand also „erzeugt" da, waehrend die
+    // Liste leer war, und der Bildschirm zeigte den Hinweis fuer den leeren
+    // Zustand UNTER den Knoepfen fuer eine fertige Liste.
+    //
+    // Aufgefallen mit den neuen Eingabefeldern: Wer „vorhanden" ausfuellt und
+    // dabei das Telefon dreht, stand vor genau diesem halben Bildschirm. Die
+    // Sets bleiben erhalten (die sind gespeichert), ein Druck auf „Erzeugen"
+    // stellt alles wieder her.
+    LaunchedEffect(Unit) { if (parts.isEmpty()) generated = false }
+
     fun reset() {
         sets = listOf(); parts = listOf(); status = ""; generated = false
         vorhanden.clear()
