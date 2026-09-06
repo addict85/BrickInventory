@@ -92,7 +92,7 @@ test('die Bild-Diagnose beschreibt jede Lage im Klartext',
       `die Diagnose muss „nichts anzeigbar" benennen, bekam: ${d.hinweise.join(' | ')}`);
 
     // C) Nach der Erzeugung ist alles beisammen — und die Grössen stimmen.
-    await _req('routes/thumbs.js').generateThumb(`/images/sets/${MIT}.jpg`);
+    await _req('utils/thumbs.js').generateThumb(`/images/sets/${MIT}.jpg`);
     d = await frag(MIT);
     assert.ok(d.hinweise.some(h => /Alles vorhanden/.test(h)),
       `nach der Erzeugung darf nichts mehr bemängelt werden, bekam: ${d.hinweise.join(' | ')}`);

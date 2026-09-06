@@ -39,9 +39,9 @@ const ohneKommentare = s => s
 
 test('beide Vorschau-Erzeuger schreiben über eine temporäre Datei', () => {
   // Fundort seit Nachtrag 129: utils/proxyThumbs.ts.
-  for (const datei of ['utils/proxyThumbs.ts', 'routes/thumbs.ts']) {
+  for (const datei of ['utils/proxyThumbs.ts', 'utils/thumbs.ts']) {
     const src = ohneKommentare(lies(datei));
-    // Seit Nachtrag 118 schreibt routes/thumbs.ts über verkleinern() (sharp,
+    // Seit Nachtrag 118 schreibt utils/thumbs.ts über verkleinern() (sharp,
     // mit Jimp als Rückfall); der Bild-Proxy hat weiterhin seinen eigenen
     // Jimp-Aufruf. Geprüft wird deshalb die AUSSAGE — geschrieben wird auf den
     // temporären Namen — statt einer bestimmten Bibliothek.

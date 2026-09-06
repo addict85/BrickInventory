@@ -3,7 +3,7 @@ const db = require('../db/database');
 // utils/setImages.ts und nicht mehr im Router — damit prüft tsc den Namen mit.
 import { downloadSetImage } from '../utils/setImages';
 import { grundFuer, istBekanntFehlend, merkeFehlend } from '../utils/imageMisses';
-import { generateThumb } from '../routes/thumbs';
+import { generateThumb } from '../utils/thumbs';
 import { SET_IMAGES_DIR } from '../utils/appPaths';
 
 /**

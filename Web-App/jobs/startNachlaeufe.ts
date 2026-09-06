@@ -24,7 +24,7 @@
  */
 import * as db from '../db/database';
 import { downloadSetImage } from '../utils/setImages';
-import { generateThumb } from '../routes/thumbs';
+import { generateThumb } from '../utils/thumbs';
 import { enqueue, processNext } from './instructionQueue';
 import { APP_ROOT, IMAGES_DIR } from '../utils/appPaths';
 import { fehlertext, logAndContinue } from '../utils/httpError';

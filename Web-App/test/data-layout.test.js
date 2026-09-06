@@ -27,7 +27,7 @@ const read  = f => fs.readFileSync(path.join(ROOT, f), 'utf8');
 const strip = s => s.replace(/\/\*[\s\S]*?\*\//g, '').replace(/(^|[^:])\/\/[^\n]*/g, '$1');
 
 /** Alle Quelldateien, die Pfade schreiben könnten. */
-const SOURCES = ['server.ts', 'routes/parts.ts', 'routes/sets.ts', 'routes/thumbs.ts',
+const SOURCES = ['server.ts', 'routes/parts.ts', 'routes/sets.ts', 'utils/thumbs.ts',
                  'routes/api_v1/pdf.ts', 'jobs/partsCatalogEnrich.ts', 'jobs/catalogSync.ts'];
 
 test('keine Quelle schreibt mehr die alten Pfade', () => {

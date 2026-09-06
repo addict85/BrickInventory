@@ -6,7 +6,7 @@
  */
 const db   = require('../db/database');
 import { downloadFile } from '../clients/rebrickable';
-import { generateThumb } from '../routes/thumbs';
+import { generateThumb } from '../utils/thumbs';
 import { neuestesInventar } from '../utils/rbInventar';
 import { beideSchreibweisen } from '../utils/setNummer';
 // Pfade zentral auflösen — __dirname zeigt seit dem dist/-Build nicht mehr

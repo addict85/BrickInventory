@@ -88,7 +88,7 @@ import { ERLAUBTE_BILD_HOSTS, hostErlaubt } from '../utils/fremdeAdressen';
 // Proxy CDN images to avoid hotlink protection
 /**
  * Verkleinerte Fassung eines bereits zwischengespeicherten Proxy-Bildes.
- * Gleiche Grösse und Qualität wie routes/thumbs.ts, damit lokale und
+ * Gleiche Grösse und Qualität wie utils/thumbs.ts, damit lokale und
  * proxied Bilder gleich aussehen. Transparente PNGs bekommen weissen Grund.
  */
 /**

@@ -178,7 +178,7 @@ async function makeProxyThumb(srcFile: string, thumbFile: string) {
         merkeFehlend('thumb:' + thumbFile);
         return false;
       }
-      // Jimp 1.x — geänderte API, siehe ausführlichen Hinweis in routes/thumbs.ts.
+      // Jimp 1.x — geänderte API, siehe ausführlichen Hinweis in utils/thumbs.ts.
       const { Jimp } = require('jimp');
       const img  = await Jimp.read(srcFile);
       const bg   = new Jimp({ width: img.bitmap.width, height: img.bitmap.height, color: 0xffffffff });
@@ -216,7 +216,7 @@ async function makeProxyThumb(srcFile: string, thumbFile: string) {
       await fs.promises.rename(tmpThumb, thumbFile);
       return true;
     } catch (e: any) {
-      // Wie in routes/thumbs.ts (Nachtrag 49): kein stilles false mehr — ein
+      // Wie in utils/thumbs.ts (Nachtrag 49): kein stilles false mehr — ein
       // dauerhaft scheiternder Erzeuger blieb sonst unsichtbar.
       console.error(`[img-proxy] Vorschau fehlgeschlagen für ${srcFile}: ${e?.message || e}`);
       merkeFehlend('thumb:' + thumbFile);

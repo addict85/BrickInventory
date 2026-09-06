@@ -750,7 +750,7 @@ test('der Hintergrund-Job für Teile und Minifiguren erzeugt jetzt Vorschaubilde
   const partsLoop = src.slice(src.indexOf('for (const p of manualParts) {'),
                               src.indexOf('for (const f of figsToFetch) {'));
   // UMFORMULIERT in Nachtrag 132: Geprüft wurde der WORTLAUT der Zeile
-  //     const { generateThumb } = require('./routes/thumbs');
+  //     const { generateThumb } = require('./utils/thumbs');
   // Beim Umbau der späten require() auf echte import-Anweisungen wurde daraus
   // ein Import am Dateikopf — die Prüfung wurde rot, ohne dass sich ihre
   // Aussage geändert hätte. Es zählt, DASS die Schleife verkleinert, und dass
