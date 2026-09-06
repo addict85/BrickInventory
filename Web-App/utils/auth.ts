@@ -17,7 +17,6 @@ import * as db from '../db/database';
 import crypto from 'crypto';
 import bcrypt from 'bcryptjs';
 import type { Request, Response, NextFunction } from 'express';
-import { vorDem } from '../utils/httpError';
 import { checkLoginAllowed, recordLoginFailure, recordLoginSuccess } from './loginLimiter';
 import { sendeFehler } from './fehlerTexte';
 import type { FehlerCode } from './fehlerTexte';
@@ -183,7 +182,7 @@ async function validateToken(token: string | null | undefined): Promise<TokenBen
 
   const hashed = hashToken(token);
   const SQL = `
-    SELECT t.user_id, t.expires_at, t.last_used, u.username, u.is_admin
+    SELECT t.user_id, t.expires_at, t.last_used, t.sliding, u.username, u.is_admin
     FROM api_tokens t JOIN users u ON u.id = t.user_id
     WHERE t.token = $1 AND (t.expires_at IS NULL OR t.expires_at > NOW())`;
   // Nur noch der Hash-Pfad.
@@ -216,7 +215,42 @@ function _touchLastUsed(token: string, entry: CacheEintrag): void {
   const now = Date.now();
   if (now - entry.lastUsedWritten < LAST_USED_THROTTLE) return;
   entry.lastUsedWritten = now;
-  db.run('UPDATE api_tokens SET last_used = NOW() WHERE token = $1', [entry.dbKey || hashToken(token)])
+  // ── Die stille Erneuerung ─────────────────────────────────────────────────
+  //
+  // Hier wird nicht nur vermerkt, DASS der Token benutzt wurde, sondern die
+  // Frist gleich mit nach vorn geschoben. Genau das macht sie zur gleitenden:
+  // Ein Telefon, das taeglich synchronisiert, laeuft nie ab; eines, das in
+  // einer Schublade liegt, nach TOKEN_IDLE_DAYS.
+  //
+  // Die App merkt davon nichts und muss nichts dafuer tun — kein zweiter
+  // Endpunkt, kein Erneuerungstanz, keine Fassung der App, die das koennen
+  // muss. Der Aufruf laeuft ohnehin schon bei jeder Anfrage (gedrosselt auf
+  // alle fuenf Minuten, ohne await im Anfrageweg).
+  //
+  // `sliding AND expires_at IS NOT NULL` im CASE: Der Sieben-Tage-Token des
+  // Browsers darf nicht mitgleiten (siehe createToken), und eine Zeile ohne
+  // Ablauf soll auch keinen bekommen, nur weil sie benutzt wird.
+  const gleitet = TOKEN_IDLE_DAYS > 0;
+  const sql = gleitet
+    ? `UPDATE api_tokens
+          SET last_used = NOW(),
+              expires_at = CASE WHEN sliding AND expires_at IS NOT NULL
+                                THEN NOW() + make_interval(days => $2)
+                                ELSE expires_at END
+        WHERE token = $1`
+    : 'UPDATE api_tokens SET last_used = NOW() WHERE token = $1';
+  const params = gleitet
+    ? [entry.dbKey || hashToken(token), TOKEN_IDLE_DAYS]
+    : [entry.dbKey || hashToken(token)];
+  db.run(sql, params)
+    .then(() => {
+      // Den Cache mitziehen. Ohne das haelt er bis zu TOKEN_TTL_MS (eine
+      // Minute) das ALTE Datum und wuerde einen gerade erneuerten Token am
+      // Fristende einmal faelschlich abweisen — der Treffer-Zweig oben prueft
+      // `hit.user.expires_at` selbst.
+      if (gleitet && entry.user?.sliding && entry.user.expires_at)
+        entry.user.expires_at = new Date(now + TOKEN_IDLE_DAYS * 86400_000);
+    })
     .catch(e => console.warn('[auth] last_used konnte nicht geschrieben werden:', e?.message || e));
 }
 
@@ -240,6 +274,29 @@ function invalidateToken(token: string | null | undefined): void { if (token) _t
  * und aus demselben Grund vertretbar.
  */
 function leereTokenCache(): void { _tokenCache.clear(); }
+
+/**
+ * Ist diese Datenbank-Flagge gesetzt?
+ *
+ * ── Warum es das braucht ────────────────────────────────────────────────────
+ * `is_admin` kam in routes/auth.ts in DREI Schreibweisen vor —
+ * `== 1 || === true`, `=== 1 || === true` und `!!wert` —, sechsmal insgesamt.
+ * Alle drei bedeuten dasselbe; die Vielfalt entstand, weil die Spalte je nach
+ * Alter der Installation INTEGER (0/1) oder BOOLEAN ist und jeder Autor sich
+ * eigens dagegen gewappnet hat.
+ *
+ * Gebraucht wird sie jetzt an einer siebten Stelle: Beim Rechtewechsel muss
+ * der ALTE Wert mit dem neuen verglichen werden. Eine siebte Schreibweise
+ * dafuer waere die Fortsetzung genau des Musters, das in dieser Reihe schon
+ * mehrfach zu auseinanderlaufendem Verhalten gefuehrt hat.
+ *
+ * `== 1` statt `=== 1`: Ein Treiber, der die Spalte als Zeichenkette liefert
+ * ('1'), soll nicht als „nicht gesetzt" gelten — das war der Grund fuer die
+ * lose Gleichheit in der aeltesten der drei Fassungen, und er gilt weiter.
+ */
+function flaggeGesetzt(wert: unknown): boolean {
+  return wert === true || wert == 1;
+}
 
 // ── Gemeinsame Login-/Konto-Regeln ────────────────────────────────────────────
 // Vorher existierten diese Regeln nur im Webapp-Login (routes/auth.ts).
@@ -286,6 +343,46 @@ function establishSession(req: Request, data: { userId: number; username: string
 
 /** Kostenfaktor für bcrypt.hash — überall derselbe (vorher 10 bzw. 12 gemischt). */
 const BCRYPT_ROUNDS = 12;
+
+/**
+ * Wie kurz ein Passwort hoechstens sein darf.
+ *
+ * ── Warum das eine Konstante ist ────────────────────────────────────────────
+ * Sechs Routen setzen ein Passwort. VIER pruefen die Laenge, und zwar in zwei
+ * Schreibweisen (`password.length < 8` und `String(password).length < 8`),
+ * jede von Hand hingeschrieben:
+ *
+ *   POST /register                    prueft
+ *   POST /reset-password              prueft
+ *   POST /users                       prueft
+ *   PUT  /users/:id/password          prueft
+ *   PUT  /profile                     PRUEFTE NICHT
+ *   POST /change-password             PRUEFTE NICHT
+ *
+ * Ausgefallen war sie also genau an den zwei Wegen, die einem BEREITS
+ * ANGEMELDETEN Konto offenstehen — und damit war die Regel wirkungslos: Man
+ * meldet sich mit acht Zeichen an und aendert danach auf eines.
+ *
+ * Der Grund fuer die Luecke ist die fehlende Konstante. Wo eine Regel an jeder
+ * Stelle neu getippt wird, gibt es keine Stelle, die man vergessen KOENNTE —
+ * es gibt nur Stellen, an denen sie nie stand.
+ */
+const PASSWORT_MIN_ZEICHEN = 8;
+
+/**
+ * Ist dieses Passwort zu kurz?
+ *
+ * `String(...)` statt eines Typs: Der Rumpf einer Anfrage kann alles
+ * enthalten, auch eine Zahl oder `null`. Zwei der vier alten Pruefungen
+ * schrieben deshalb `String(password).length`, die anderen zwei nicht —
+ * `(123456789).length` ist `undefined`, und `undefined < 8` ist FALSCH. Ein
+ * Passwort als JSON-Zahl kam damit an der kuerzeren Fassung vorbei.
+ *
+ * @param passwort  der Rohwert aus dem Anfragerumpf
+ */
+function passwortZuKurz(passwort: unknown): boolean {
+  return String(passwort ?? '').length < PASSWORT_MIN_ZEICHEN;
+}
 
 /** Erlaubte Benutzernamen. Login und Register erzwangen das bereits, das Profil-Update nicht. */
 const USERNAME_RE = /^[A-Za-z0-9_.-]{3,32}$/;
@@ -453,60 +550,56 @@ async function pruefeAnmeldedaten(req: Request, username: unknown, password: unk
 function escapeLike(s: unknown): string { return String(s ?? '').replace(/([%_\\])/g, '\\$1'); }
 
 /**
- * Pfade, auf denen ?token=… als Authentifizierung zulässig bleibt.
+ * Warum es hier KEINE Liste mehr gibt: ?token= zaehlt nirgends.
  *
- * Ein Token in der Query-Zeichenkette landet im Referer fremder Seiten, in der
- * Browser-History, in Reverse-Proxy-Logs und in jedem Fehlerbericht, der die
- * URL mitschickt. Als allgemeiner Auth-Weg ist das deshalb keine Option.
+ * Ein Token in der Adresszeile landet im Referer fremder Seiten, im
+ * Browserverlauf, in Reverse-Proxy-Protokollen und in jedem Fehlerbericht, der
+ * die URL mitschickt. Er verschwindet dort auch nicht wieder. Bis hierher war
+ * es der SITZUNGSTOKEN, der das ganze Konto oeffnet — bei der App einer ohne
+ * Ablauf.
  *
- * Es gibt aber Fälle, in denen kein Header gesetzt werden kann: <img src>,
- * <iframe src>, window.open() und EventSource erlauben keine eigenen
- * Kopfzeilen. Genau diese bleiben offen; alles andere verlangt einen
- * Authorization-Header.
+ * An dieser Stelle stand deshalb eine kurze Ausnahmeliste mit der Begruendung,
+ * <img src>, <iframe src>, window.open() und EventSource koennten keine
+ * Kopfzeilen setzen. Das stimmt — nur hatte KEINER der drei Eintraege noch
+ * einen Nutzer. Nachgezaehlt im Baum, alle drei Erzeuger von `?token=`:
  *
- * ── Warum der CSV-Import hier steht ─────────────────────────────────────────
- * routes/sets.ts hatte eine ZWEITE, eigene Fassung von requireLoginOrToken,
- * die ?token= bedingungslos akzeptierte — für den SSE-Fortschritt des
- * CSV-Imports, weil EventSource keine Header setzen kann. Der Bedarf ist echt,
- * die zweite Fassung war es nicht: Sie machte den Absatz oben unwahr („alles
- * andere verlangt einen Header"), ohne dass man es dieser Datei ansieht. Wer
- * hier nachliest, wo ein Token in der URL reiten darf, soll die vollständige
- * Antwort bekommen.
+ *   • public/js/01-core.js und public/js/02-gallery.js haengten ihn an den
+ *     SSE-Strom des CSV-Imports. Beide oeffnen den Kanal mit
+ *     `withCredentials: true`, und `webToken` entsteht ueberhaupt erst NACH
+ *     einer erfolgreichen Anmeldung — die das Sitzungs-Cookie setzt. Einen
+ *     Browser, der den Token hat und das Cookie nicht, gibt es nicht. Der
+ *     Kommentar an der Aufrufstelle sagte das selbst: „Cookie-Session
+ *     funktioniert ohnehin".
+ *   • Die App haengte ihn an die Anleitung (SetDetailSections.kt). Die Datei
+ *     holt aber der In-App-Betrachter ueber den geteilten OkHttp-Client, und
+ *     dessen Interceptor setzt den Authorization-Kopf fuer JEDE Adresse
+ *     unseres Servers (di/AppModule.kt). Der Token in der Adresse war doppelt
+ *     gemoppelt — und wurde nebenbei als Text unter der Anleitung ANGEZEIGT
+ *     und als Navigationsargument im Backstack abgelegt.
+ *   • Der Polling-Rueckfall (/import/csv/status) und die Token-Verwaltung
+ *     benutzen `fetch` und setzen den Kopf richtig. Der Bild-Proxy hatte gar
+ *     keinen Aufrufer; imgUrl() liefert nackte Pfade, Bilder weisen sich im
+ *     Browser ueber das Cookie aus.
  *
- * /status steht mit in der Liste, weil der Polling-Rückfall greift, sobald
- * EventSource fehlt oder abbricht — derselbe Client, dieselbe Einschränkung.
+ * Es blieb also eine Erlaubnis ohne Nutzen — und eine Erlaubnis ohne Nutzen
+ * ist reine Angriffsflaeche. Sie ist ersatzlos weg; das ist strenger als
+ * kurzlebige Ersatztoken und braucht keine zweite Tabelle.
+ *
+ * Rueckwaerts vertraeglich: Wer eine aeltere App oder altes, zwischengespeichertes
+ * Javascript benutzt, haengt den Token weiter an. Der Server sieht ihn nicht mehr
+ * an — aber Kopfzeile bzw. Cookie tragen die Anfrage ohnehin, wie oben gezeigt.
+ *
+ * Kommt je eine Stelle dazu, die WIRKLICH keine Kopfzeile setzen kann, gehoert
+ * dorthin ein eigener, kurzlebiger Token — nicht der Sitzungstoken und nicht
+ * wieder eine Ausnahme fuer diesen hier.
  */
-const TOKEN_QUERY_ALLOWED = [
-  // Beide Schreibweisen des Bild-Proxys — die alte bedient noch
-  // gespeicherte Zeilen und aeltere App-Fassungen (utils/images.ts).
-  /^\/api\/(?:v1\/)?img-proxy\b/,
-  /^\/data\//,
-  // ── Der Pfad ist mit umgezogen, dieser Eintrag war es nicht ───────────────
-  //
-  // Hier stand `/api/sets/import/csv/…`. Die Route haengt seit der
-  // Zusammenlegung der API-Oberflaechen unter `/api/v1/sets/…` — der Eintrag
-  // traf also nichts mehr, und der Rueckfall, den dieser Kommentarblock
-  // beschreibt, war wirkungslos.
-  //
-  // Aufgefallen ist es NICHT, weil das Sitzungs-Cookie einspringt: Die Webapp
-  // oeffnet den Kanal mit `withCredentials: true`, und EventSource schickt das
-  // Cookie mit. Der `?token=`-Teil daneben ist der Rueckfall fuer den Fall,
-  // dass nur ein Bearer-Token da ist — genau der Fall, der still nicht mehr
-  // funktionierte.
-  //
-  // Wieder eine Sache in zwei Schreibweisen: Die Pruefung daneben
-  // (test/hardening-block1.test.js) suchte den Namen als TEILZEICHENKETTE und
-  // konnte den Praefix gar nicht sehen. Sie vergleicht jetzt mit dem
-  // WIRKLICHEN Einhaengepunkt aus server.ts.
-  /^\/api\/v1\/sets\/import\/csv\/(stream|status)\b/,
-];
 
 /**
  * Ermittelt die userId aus Session oder Bearer-Token.
  *
- * ?token= wird nur auf den Pfaden aus TOKEN_QUERY_ALLOWED akzeptiert (siehe
- * dort). Auf allen anderen Routen zählt ausschliesslich der
- * Authorization-Header.
+ * ?token= wird NICHT mehr ausgewertet — auf jeder Route zählt ausschliesslich
+ * der Authorization-Header (oder die Sitzung). Warum die Ausnahmeliste weg
+ * ist, steht im Block darüber.
  *
  * @param req Express-Request
  * @returns {Promise<number|null>} null wenn nicht authentifiziert
@@ -514,13 +607,7 @@ const TOKEN_QUERY_ALLOWED = [
 async function resolveUserId(req: Request): Promise<number | null> {
   if (req.session?.userId) return req.session.userId;
   const auth = req.headers.authorization || '';
-  let token: string | null = auth.startsWith('Bearer ') ? auth.slice(7) : null;
-  if (!token && req.query?.token) {
-    // req.path ist bei Sub-Routern relativ — für die Prüfung zählt der volle
-    // Pfad, deshalb originalUrl ohne Query-Teil.
-    const fullPath = vorDem(String(req.originalUrl || req.url || ''), '?');
-    if (TOKEN_QUERY_ALLOWED.some(re => re.test(fullPath))) token = String(req.query.token);
-  }
+  const token: string | null = auth.startsWith('Bearer ') ? auth.slice(7) : null;
   if (!token) return null;
   const user = await validateToken(token).catch(() => null);
   // Vorher stand hier parseInt(user.user_id). Das war schon immer wirkungslos:
@@ -685,14 +772,51 @@ function istVerwalter(req: Request): boolean {
  */
 async function createToken(userId: number, label = 'Android App', dauerhaft = false): Promise<string> {
   const token = crypto.randomBytes(32).toString('hex');
-  await db.run(
-    dauerhaft
-      ? 'INSERT INTO api_tokens (token, user_id, label, expires_at) VALUES ($1,$2,$3,NULL) ON CONFLICT DO NOTHING'
-      : "INSERT INTO api_tokens (token, user_id, label, expires_at) VALUES ($1,$2,$3, NOW() + INTERVAL '7 days') ON CONFLICT DO NOTHING",
-    [hashToken(token), userId, label]
-  );
+  if (dauerhaft) {
+    // Gleitende Frist statt gar keiner. Bis hierher stand hier NULL, und die
+    // 90 Tage aus TOKEN_IDLE_DAYS setzte allein der stuendliche Aufraeumjob
+    // durch — per DELETE. Lief der Job nicht (kein Primary-Worker, Absturz,
+    // ein Neustart zur falschen Stunde), galt der Token weiter, denn die
+    // WHERE-Klausel in validateToken() laesst `expires_at IS NULL` immer
+    // durch. Die Frist stand im Job, nicht im Anfrageweg.
+    //
+    // Jetzt steht sie in der Zeile. `sliding` merkt sich, dass dieses Datum
+    // bei jeder Benutzung nachrueckt (_touchLastUsed) — dieselbe Bedeutung
+    // wie vorher („90 Tage ohne Nutzung"), nur an der Stelle durchgesetzt, an
+    // der jede Anfrage ohnehin vorbeikommt.
+    //
+    // TOKEN_IDLE_DAYS === 0 schaltet die Regel ab; dann bleibt es bei NULL,
+    // wie es die Beschreibung der Variablen zusagt.
+    await db.run(
+      TOKEN_IDLE_DAYS > 0
+        ? `INSERT INTO api_tokens (token, user_id, label, expires_at, sliding)
+           VALUES ($1,$2,$3, NOW() + make_interval(days => $4), TRUE) ON CONFLICT DO NOTHING`
+        : 'INSERT INTO api_tokens (token, user_id, label, expires_at, sliding) VALUES ($1,$2,$3,NULL,TRUE) ON CONFLICT DO NOTHING',
+      TOKEN_IDLE_DAYS > 0
+        ? [hashToken(token), userId, label, TOKEN_IDLE_DAYS]
+        : [hashToken(token), userId, label]
+    );
+  } else {
+    // Der Token des Browsers gleitet NICHT: Er liegt im sessionStorage und ist
+    // damit per XSS auslesbar. Sieben feste Tage sind hier Absicht — eine
+    // gleitende Frist wuerde ihn genau so lange am Leben halten, wie ein
+    // Angreifer ihn benutzt.
+    await db.run(
+      "INSERT INTO api_tokens (token, user_id, label, expires_at, sliding) VALUES ($1,$2,$3, NOW() + INTERVAL '7 days', FALSE) ON CONFLICT DO NOTHING",
+      [hashToken(token), userId, label]
+    );
+  }
   return token;
 }
+
+/**
+ * Bekommt ein App-Token ueberhaupt ein Ablaufdatum?
+ *
+ * Genau dann nicht, wenn die Gleitfrist abgeschaltet ist. Die Antwort steht
+ * hier statt an den drei Routen, die sie als `never_expires` weitergeben —
+ * sonst waere die Regel wieder an mehreren Stellen buchstabiert.
+ */
+function appTokenOhneAblauf(): boolean { return TOKEN_IDLE_DAYS === 0; }
 
 /**
  * Löscht einen Token und invalidiert den Cache.
@@ -812,11 +936,49 @@ const TOKEN_IDLE_DAYS = (() => {
  */
 async function purgeExpiredTokens() {
   let entfernt = 0;
+
+  // ── Altzeilen nachziehen, BEVOR geloescht wird ────────────────────────────
+  //
+  // Auf einer gewachsenen Datenbank stehen App- und QR-Token noch ohne
+  // Ablaufdatum. Ihre Frist lief bisher ueber COALESCE(last_used, created_at)
+  // — genau diese Rechnung wird hier einmal in die Spalte geschrieben. Damit
+  // gilt fuer sie ab sofort dieselbe Pruefung wie fuer neue Zeilen, ohne dass
+  // sich an ihrer LAUFZEIT irgendetwas aendert.
+  //
+  // Vor dem Loeschen, nicht danach: Sonst traegt dieser Lauf Daten ein, die
+  // teils schon in der Vergangenheit liegen, und erst der naechste raeumt sie
+  // weg — eine Stunde spaeter. Gueltig sind sie in der Zwischenzeit ohnehin
+  // nicht mehr (validateToken prueft das Datum), aber die Tabelle soll nicht
+  // eine Runde lang Zeilen tragen, die dieser Lauf haette entfernen koennen.
+  //
+  // Steht in dieser Datei und nicht in db/database.ts: Die Frist heisst
+  // TOKEN_IDLE_DAYS und wird hier gelesen. Ein zweiter Ort mit derselben
+  // Rechnung waere die naechste Stelle, an der eine Regel still auseinander
+  // laeuft.
+  if (TOKEN_IDLE_DAYS > 0) {
+    const nachgezogen = await db.run(
+      `UPDATE api_tokens
+          SET sliding = TRUE,
+              expires_at = COALESCE(last_used, created_at) + make_interval(days => $1)
+        WHERE expires_at IS NULL`,
+      [TOKEN_IDLE_DAYS]
+    ).catch(e => { console.warn('[tokens] Altzeilen nachziehen:', e?.message || e); return null; });
+    const m = nachgezogen?.changes || 0;
+    if (m) console.log(`[tokens] ${m} Token ohne Ablaufdatum auf die Gleitfrist von ${TOKEN_IDLE_DAYS} Tagen gesetzt`);
+  }
+
   const abgelaufen = await db.run(
     'DELETE FROM api_tokens WHERE expires_at IS NOT NULL AND expires_at < NOW()'
   ).catch(e => { console.warn('[tokens] Aufräumen abgelaufener Tokens:', e?.message || e); return null; });
   entfernt += abgelaufen?.changes || 0;
 
+  // Diese zweite Regel trifft seit der Umstellung oben kaum noch etwas: Nach
+  // dem Nachziehen hat jede Zeile ein Ablaufdatum. Sie bleibt trotzdem stehen
+  // — fuer den Server, der eine Weile mit TOKEN_IDLE_DAYS=0 lief (dort
+  // entstehen weiter Zeilen ohne Datum) und die Regel dann einschaltet. Der
+  // Lauf davor zieht sie zwar schon nach; diese Zeile ist der Rueckhalt, falls
+  // das UPDATE scheitert. Zwei billige DELETEs auf einer kleinen Tabelle sind
+  // der Preis dafuer, dass kein Token durchrutscht.
   if (TOKEN_IDLE_DAYS > 0) {
     const ungenutzt = await db.run(
       `DELETE FROM api_tokens
@@ -832,9 +994,10 @@ async function purgeExpiredTokens() {
 }
 
 export {
-  validateToken, invalidateToken, leereTokenCache, resolveUserId, requireLoginOrToken, nutzerId, angemeldeteNutzerId, istVerwalter, nutzerName, hashToken, deleteToken,
+  validateToken, invalidateToken, leereTokenCache, flaggeGesetzt, resolveUserId, requireLoginOrToken, nutzerId, angemeldeteNutzerId, istVerwalter, nutzerName, hashToken, deleteToken,
   verifiziereEmailToken,
-  revokeAllTokens, revokeAllSessions, purgeExpiredTokens, loginOrTokenGuard, TOKEN_IDLE_DAYS,
+  revokeAllTokens, revokeAllSessions, purgeExpiredTokens, loginOrTokenGuard, TOKEN_IDLE_DAYS, appTokenOhneAblauf,
   assertLoginAllowed, pruefeAnmeldedaten, createToken, escapeLike, establishSession, BCRYPT_ROUNDS, USERNAME_RE,
+  PASSWORT_MIN_ZEICHEN, passwortZuKurz,
   EMAIL_RE, isValidLoginIdentifier,
 };

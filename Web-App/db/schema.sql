@@ -462,12 +462,27 @@ CREATE TABLE IF NOT EXISTS schema_migrations (
   run_at TIMESTAMPTZ DEFAULT NOW()
 );
 
+-- sliding: Gleitet das Ablaufdatum bei Benutzung mit?
+--
+-- Der Token der App und der des Browsers haben verschiedene Laufzeitregeln.
+-- Bis hierher war der Unterschied daran zu erkennen, ob expires_at NULL ist:
+-- App = kein Ablauf, Browser = sieben Tage. Der App-Token verfiel trotzdem
+-- irgendwann — aber nur, weil ein stuendlicher Aufraeumjob ihn nach 90 Tagen
+-- ohne Nutzung LOESCHTE. Durchgesetzt wurde die Frist also von einem
+-- Hintergrundjob, nicht von der Pruefung im Anfrageweg.
+--
+-- Jetzt traegt auch der App-Token ein echtes Ablaufdatum, das bei jeder
+-- Benutzung nachrueckt (siehe _touchLastUsed in utils/auth.ts). Damit
+-- entscheidet die WHERE-Klausel in validateToken() — und die laeuft bei jeder
+-- Anfrage, egal ob ein Job lebt. Dieses Feld sagt, welcher der beiden
+-- Token-Sorten eine Zeile angehoert.
 CREATE TABLE IF NOT EXISTS api_tokens (
   token      TEXT PRIMARY KEY,
   user_id    INTEGER NOT NULL,
   created_at TIMESTAMPTZ DEFAULT NOW(),
   last_used  TIMESTAMPTZ DEFAULT NOW(),
   expires_at TIMESTAMPTZ,
+  sliding    BOOLEAN NOT NULL DEFAULT FALSE,
   label      TEXT,
   FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE
 );

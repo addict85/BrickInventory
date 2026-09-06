@@ -4,7 +4,7 @@ const router  = express.Router();
 import bcrypt from 'bcryptjs';
 import * as db from '../db/database';
 import { handleRouteError, logAndContinue, meldeUndWeiter, fehlerCode, fehlertext, pfadParam } from '../utils/httpError';
-import { hashToken, pruefeAnmeldedaten, createToken, validateToken, assertLoginAllowed, establishSession, revokeAllTokens, revokeAllSessions, deleteToken, BCRYPT_ROUNDS, USERNAME_RE, EMAIL_RE, requireLoginOrToken, nutzerId, angemeldeteNutzerId } from '../utils/auth';
+import { hashToken, pruefeAnmeldedaten, createToken, validateToken, assertLoginAllowed, establishSession, revokeAllTokens, revokeAllSessions, deleteToken, BCRYPT_ROUNDS, USERNAME_RE, EMAIL_RE, requireLoginOrToken, nutzerId, angemeldeteNutzerId, appTokenOhneAblauf, passwortZuKurz, flaggeGesetzt, leereTokenCache } from '../utils/auth';
 import { ipThrottle } from '../utils/loginLimiter';
 import crypto from 'crypto';
 import { strictBool } from '../utils/validate';
@@ -88,7 +88,7 @@ router.post('/login', async (req, res) => {
     await establishSession(req, {
       userId:   parseInt(user.id),   // always int
       username: user.username,
-      isAdmin:  user.is_admin == 1 || user.is_admin === true,
+      isAdmin:  flaggeGesetzt(user.is_admin),
     });
     // Scheitert das INSERT, wird der Token NICHT mitgeschickt. Vorher stand
     // hier .catch(() => {}) — die Anmeldung galt als erfolgreich, der Client
@@ -106,8 +106,13 @@ router.post('/login', async (req, res) => {
       if (dauerhaft)
         return sendeFehler(req, res, 500, 'token_nicht_ausgestellt');
     }
-    res.json({ success: true, ...(token ? { token } : {}), never_expires: dauerhaft,
-      user: { id: user.id, username: user.username, is_admin: user.is_admin == 1 || user.is_admin === true,
+    // `never_expires` sagt jetzt die Wahrheit statt der Absicht. Hier stand
+    // schlicht `dauerhaft` — also das, was der Client VERLANGT hatte. Seit der
+    // App-Token eine gleitende Frist traegt, ist das nur noch dann ein Token
+    // ohne Ablauf, wenn die Frist ganz abgeschaltet ist. Die Regel dafuer
+    // steht in utils/auth.ts, nicht hier.
+    res.json({ success: true, ...(token ? { token } : {}), never_expires: dauerhaft && appTokenOhneAblauf(),
+      user: { id: user.id, username: user.username, is_admin: flaggeGesetzt(user.is_admin),
       // Nur beim automatisch generierten Default-Admin-Passwort gesetzt (siehe
       // db/database.ts) — der Client fordert dann zur Passwortaenderung auf.
       // Wird durch POST /change-password wieder geloescht.
@@ -179,11 +184,11 @@ router.get('/me', async (req, res) => {
     if (req.session?.userId) {
       const user = await db.get('SELECT id, username, is_admin FROM users WHERE id = $1', [req.session.userId]);
       if (user) return res.json({ success: true, loggedIn: true,
-        user: { id: user.id, username: user.username, is_admin: user.is_admin == 1 || user.is_admin === true } });
+        user: { id: user.id, username: user.username, is_admin: flaggeGesetzt(user.is_admin) } });
     }
     const u = token ? await validateToken(token) : null;
     if (u) return res.json({ success: true, loggedIn: true,
-      user: { id: u.user_id, username: u.username, is_admin: u.is_admin === 1 || u.is_admin === true },
+      user: { id: u.user_id, username: u.username, is_admin: flaggeGesetzt(u.is_admin) },
       token_expires: u.expires_at, token_last_used: u.last_used });
     if (token) return res.status(401).json({ success: false, loggedIn: false, user: null,
       code: 'token_ungueltig', error: fehlerText('token_ungueltig', antwortSprache(req)) });
@@ -217,7 +222,7 @@ router.post('/token-create', requireLogin, async (req, res) => {
     const userId = angemeldeteNutzerId(req);
     const label = req.body?.label || 'Android App';
     const neu = await createToken(userId, label, true);
-    res.json({ success: true, token: neu, label, never_expires: true });
+    res.json({ success: true, token: neu, label, never_expires: appTokenOhneAblauf() });
   } catch (e) { handleRouteError(res, e, undefined, req); }
 });
 
@@ -284,6 +289,10 @@ router.put('/profile', requireLogin, async (req, res) => {
     if (first_name !== undefined) { updates.push(`first_name=$${pi++}`); params.push(first_name || null); }
     if (last_name  !== undefined) { updates.push(`last_name=$${pi++}`);  params.push(last_name  || null); }
     if (password) {
+      // Hier fehlte die Laengenpruefung. Register, Reset und die beiden
+      // Verwalter-Routen verlangten acht Zeichen, dieser Weg nicht — und damit
+      // war die Regel wirkungslos: acht Zeichen bei der Anmeldung, danach eines.
+      if (passwortZuKurz(password)) return sendeFehler(req, res, 400, 'passwort_zu_kurz');
       const hash = await bcrypt.hash(password, BCRYPT_ROUNDS);
       updates.push(`password_hash=$${pi++}`); params.push(hash);
     }
@@ -327,7 +336,7 @@ router.post('/users', requireAdmin, async (req, res) => {
   if (!username || !password) return sendeFehler(req, res, 400, 'benutzername_passwort');
   if (!USERNAME_RE.test(String(username)))
     return sendeFehler(req, res, 400, 'benutzername_ungueltig');
-  if (String(password).length < 8)
+  if (passwortZuKurz(password))
     return sendeFehler(req, res, 400, 'passwort_zu_kurz');
   try {
     const hash = await bcrypt.hash(password, BCRYPT_ROUNDS);
@@ -353,8 +362,48 @@ router.put('/users/:id/admin', requireAdmin, async (req, res) => {
     const soll = strictBool(req.body.is_admin, 'is_admin');
     if (targetId === nutzerId(req) && !soll)
       return sendeFehler(req, res, 400, 'eigene_adminrolle');
-    const r = await db.run('UPDATE users SET is_admin = $1 WHERE id = $2', [soll ? 1 : 0, targetId]);
-    if (r.changes === 0) return sendeFehler(req, res, 404, 'benutzer_nicht_gefunden');
+    // Den ALTEN Wert holen — daran haengt unten, ob Sitzungen enden muessen.
+    //
+    // Die Existenzpruefung wandert damit vom UPDATE hierher. Das ist eine
+    // Aufraeumung, keine Behebung: Hier stand zuerst als Begruendung, ein
+    // wertgleiches UPDATE melde „je nach Treiber 0 Aenderungen". Nachgemessen
+    // stimmt das fuer PostgreSQL NICHT — rowCount zaehlt BETROFFENE Zeilen,
+    // nicht geaenderte, und die Gegenprobe zur alten Reihenfolge blieb prompt
+    // gruen. Der einzige echte Grund fuer das vorgezogene SELECT ist, dass der
+    // alte Wert gebraucht wird; dass die 404-Antwort dabei frueher faellt, ist
+    // die Folge und nicht der Anlass.
+    const vorher = await db.get('SELECT is_admin FROM users WHERE id = $1', [targetId]);
+    if (!vorher) return sendeFehler(req, res, 404, 'benutzer_nicht_gefunden');
+    const warAdmin = flaggeGesetzt(vorher.is_admin);
+    await db.run('UPDATE users SET is_admin = $1 WHERE id = $2', [soll ? 1 : 0, targetId]);
+
+    // ── Warum die Sitzungen enden muessen ──────────────────────────────────
+    //
+    // istVerwalter() (utils/auth.ts) fragt ZUERST `req.session.isAdmin`. Das
+    // steht seit dem Anmelden fest und wird nie nachgefuehrt. Ein Entzug wirkte
+    // damit auf den BROWSER gar nicht: Wer sein Fenster offen liess, blieb
+    // Verwalter — das Sitzungs-Cookie hat kein maxAge, gilt also bis zum
+    // Schliessen des Browsers.
+    //
+    // Fuer die APP griff der Entzug, weil validateToken() `u.is_admin` per JOIN
+    // frisch liest; nur der Cache hielt bis zu 60 Sekunden am alten Wert fest.
+    // Also dieselbe Regel, die an zwei Ausweisen verschieden wirkte — und die
+    // Haelfte, an der sie nicht wirkte, war die gefaehrlichere.
+    //
+    // In BEIDE Richtungen und nicht nur beim Entzug: Eine fremde Sitzung laesst
+    // sich nicht umschreiben, nur beenden. Wer Rechte BEKOMMT, saehe sie sonst
+    // bis zur naechsten Anmeldung nicht — eine Vergabe, die aussieht, als haette
+    // sie nicht gewirkt. Eine Regel ohne Fallunterscheidung.
+    //
+    // Nur bei echter AENDERUNG: Sonst wuerde ein Verwalter, der sich selbst
+    // erneut zum Verwalter macht, seine eigene Sitzung beenden.
+    if (warAdmin !== soll) {
+      await revokeAllSessions(targetId);
+      // Der Token-Cache haelt is_admin bis zu 60 Sekunden. Geleert, nicht
+      // verworfen: revokeAllTokens() wuerde die App ABMELDEN, und das ist bei
+      // einem Rollenwechsel zu viel — sie soll nur die neue Rolle sehen.
+      leereTokenCache();
+    }
     res.json({ success: true });
   } catch (e) { handleRouteError(res, e, undefined, req); }
 });
@@ -377,7 +426,7 @@ router.put('/users/:id/password', requireAdmin, async (req, res) => {
   const { password } = req.body || {};
   const targetId = parseInt(pfadParam(req, 'id'));
 
-  if (!password || String(password).length < 8)
+  if (!password || passwortZuKurz(password))
     return sendeFehler(req, res, 400, 'passwort_zu_kurz');
   if (!targetId || targetId === nutzerId(req))
     return sendeFehler(req, res, 400, 'eigenes_konto_passwort');
@@ -405,9 +454,24 @@ router.put('/users/:id/password', requireAdmin, async (req, res) => {
 
 router.delete('/users/:id', requireAdmin, async (req, res) => {
   try {
+    const targetId = parseInt(pfadParam(req, 'id'));
     const r = await db.run('DELETE FROM users WHERE id = $1 AND id != $2',
-      [req.params.id, nutzerId(req)]);
+      [targetId, nutzerId(req)]);
     if (r.changes === 0) return sendeFehler(req, res, 404, 'benutzer_nicht_gefunden_oder_eigenes');
+    // ── Die Zeile ist weg, der Zugang war es nicht ─────────────────────────
+    //
+    // Die Bearer-Tokens gehen per ON DELETE CASCADE mit (siehe db/schema.sql).
+    // user_sessions dagegen ist der Tabellenraum des Session-Stores und hat
+    // KEINEN Fremdschluessel auf users — die offene Sitzung des geloeschten
+    // Kontos lief weiter, und war es ein Verwalter, blieb es einer.
+    //
+    // Derselbe Aufruf steht schon beim Admin-Passwortreset, bei
+    // /change-password und bei /reset-password. Er fehlte ausgerechnet dort,
+    // wo das Konto ganz verschwindet.
+    await revokeAllSessions(targetId);
+    // Und der Token-Cache, der die geloeschten Zeilen sonst noch bis zu 60
+    // Sekunden bedient.
+    leereTokenCache();
     res.json({ success: true });
   } catch (e) { handleRouteError(res, e, undefined, req); }
 });
@@ -431,6 +495,14 @@ router.post('/change-password', requireLogin, async (req: LoggedInRequest, res) 
     const user = await db.get('SELECT * FROM users WHERE id = $1', [uid]);
     if (!(await bcrypt.compare(current, user.password_hash)))
       return sendeFehler(req, res, 401, 'aktuelles_passwort_falsch');
+    // NACH der Pruefung des alten Passworts: Wer das aktuelle nicht kennt, soll
+    // ueber das neue auch nichts erfahren — die Antwort fuer einen Fremden
+    // bleibt dieselbe.
+    //
+    // Auch hier fehlte die Pruefung ganz. Zusammen mit PUT /profile waren das
+    // die zwei Wege eines ANGEMELDETEN Kontos — also genau die, auf denen ein
+    // uebernommenes Konto dauerhaft schwach gemacht werden kann.
+    if (passwortZuKurz(newPassword)) return sendeFehler(req, res, 400, 'passwort_zu_kurz');
     const hash = await bcrypt.hash(newPassword, BCRYPT_ROUNDS);
     // must_change_password mit löschen — sonst fragt der Login nach jedem
     // Login des Default-Admins weiter danach, auch nach der Änderung.
@@ -579,12 +651,12 @@ router.post('/qr-login', ipThrottle('qr-login', 30, 60 * 60 * 1000), async (req,
     await establishSession(req, {
       userId:   parseInt(user.id),
       username: user.username,
-      isAdmin:  !!user.is_admin,
+      isAdmin:  flaggeGesetzt(user.is_admin),
     });
     // Bearer-Token für die Android-App — dauerhaft, wie bei der Anmeldung
     // per Passwort aus der App. Dasselbe INSERT stand hier von Hand.
     const bearerToken = await createToken(user.id, 'qr-login', true);
-    res.json({ success: true, token: bearerToken, username: user.username, isAdmin: !!user.is_admin, userId: user.id,
+    res.json({ success: true, token: bearerToken, username: user.username, isAdmin: flaggeGesetzt(user.is_admin), userId: user.id,
       user: { id: user.id, username: user.username } });
   } catch (e) { handleRouteError(res, e, undefined, req); }
 });
@@ -607,7 +679,7 @@ router.post('/register', ipThrottle('register', 5, 60 * 60 * 1000), async (req, 
 
   if (!username || !email || !password)
     return sendeFehler(req, res, 400, 'registrierung_felder');
-  if (password.length < 8)
+  if (passwortZuKurz(password))
     return sendeFehler(req, res, 400, 'passwort_zu_kurz');
   // Dieselben Muster wie überall sonst (utils/auth.ts) — hier standen zwei
   // wortgleiche Kopien, und die E-Mail-Regex gab es damit dreimal im Projekt.
@@ -716,7 +788,7 @@ router.post('/forgot-password', ipThrottle('forgot-password', 5, 60 * 60 * 1000)
 router.post('/reset-password', ipThrottle('reset-password', 10, 60 * 60 * 1000), async (req, res) => {
   const { token, password } = req.body;
   if (!token || !password) return sendeFehler(req, res, 400, 'token_passwort_erforderlich');
-  if (password.length < 8) return sendeFehler(req, res, 400, 'passwort_zu_kurz');
+  if (passwortZuKurz(password)) return sendeFehler(req, res, 400, 'passwort_zu_kurz');
   try {
     const user = await db.get(
       "SELECT id FROM users WHERE reset_token = $1 AND reset_token_expires > NOW()",

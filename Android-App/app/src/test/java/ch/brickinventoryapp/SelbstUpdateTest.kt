@@ -259,4 +259,36 @@ class SelbstUpdateTest {
             "version.json traegt nicht beide Versionsangaben"
         }
     }
+
+    @Test
+    fun `kein Feld verspricht eine Pruefung, die es nicht gibt`() {
+        // ── Woher diese Pruefung kommt ──────────────────────────────────────
+        // Das Feld hiess `sha` und stand zwischen `apkUrl` und `apkSize`. Drin
+        // war immer $GITHUB_SHA — der Git-Commit, aus dem gebaut wurde. Neben
+        // einer Adresse und einer Groesse liest sich `sha` aber unweigerlich
+        // als PRUEFSUMME DES APK, und geprueft wurde nichts dergleichen.
+        //
+        // Eine echte Pruefsumme kaeme hier auch nicht in Frage: Sie stuende in
+        // derselben Datei wie die Adresse — wer version.json faelscht,
+        // faelscht sie mit. Die Integritaet traegt signaturPasst() gegen die
+        // INSTALLIERTE App, zusammen mit HTTPS.
+        //
+        // Geprueft werden BEIDE Seiten: der Workflow, der das Feld schreibt,
+        // und das Datenmodell, das es liest. Nur eine Seite zu pruefen laesst
+        // genau die Sorte Auseinanderlaufen zu, gegen die dieser Baum sonst
+        // ueberall angeht.
+        val workflow = Quellen.workflow()
+        assert(workflow.contains("commit:${'$'}commit")) {
+            "version.json traegt das Herkunftsfeld nicht mehr als `commit`"
+        }
+        assert(!workflow.contains("sha:${'$'}sha")) {
+            "Das Feld heisst wieder `sha` — neben apkUrl und apkSize liest sich das " +
+                "als Pruefsumme des APK, und eine solche Pruefung gibt es nicht"
+        }
+        // Quellen.lies() ist relativ zu ch/brickinventoryapp/ — siehe dort.
+        val modell = Quellen.lies("util/AppUpdate.kt")
+        assert(modell.contains("@SerialName(\"commit\")")) {
+            "Das Datenmodell liest das Feld nicht als `commit` — dann bleibt es leer"
+        }
+    }
 }

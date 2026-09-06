@@ -35,6 +35,7 @@ import crypto from 'crypto';
 import https from 'https';
 import zlib from 'zlib';
 import { merkeGebraucht } from '../jobs/imageQueue';
+import { ERLAUBTE_BILD_HOSTS, hostErlaubt } from '../utils/fremdeAdressen';
 
 // ── Warum diese vier jetzt oben stehen (Nachtrag 155) ────────────────────────
 //
@@ -248,8 +249,15 @@ export async function bildDurchreichen(req: Request, res: Response) {
   if (!url || !url.startsWith('https://')) return res.status(400).end();
   // Rebrickable API sometimes returns pre-encoded URLs — decode once to fix double-encoding
   try { const decoded = decodeURIComponent(url); if (decoded.startsWith('https://')) url = decoded; } catch(_) {}
-  // Nur bekannte Bild-CDNs — Liste und Prüfung siehe unten (isAllowedImageHost).
-  try { if (!isAllowedImageHost(url)) return res.status(403).end(); } catch(_) { return res.status(400).end(); }
+  // Nur bekannte Bild-CDNs. Liste und Prüfung stehen seit dem Umbau der
+  // Umleitungen in utils/fremdeAdressen.ts — dieselbe Stelle, die auch der
+  // Dateidownload in clients/rebrickable.ts benutzt.
+  //
+  // hostErlaubt() antwortet bei einer unparsebaren Adresse mit false statt zu
+  // werfen. Der frühere try/catch unterschied 403 und 400 — ein Unterschied,
+  // den der Aufrufer nicht auseinanderhalten muss: Beides heisst „diese
+  // Adresse holt der Server nicht".
+  if (!hostErlaubt(url, ERLAUBTE_BILD_HOSTS)) return res.status(403).end();
   // Disk-Cache: jedes CDN-Bild wird serverseitig nur einmal geholt.
   // Schlüssel = SHA1 der URL; Content-Type als Sidecar-Datei (.ct).
   const cacheDir  = path.join(APP_ROOT, 'data', 'img_proxy_cache');
@@ -643,36 +651,6 @@ export function startImgCacheCleanup() {
 }
 
 /**
- * Hosts, von denen der Server Bilder holen darf.
- *
- * Wird an ZWEI Stellen gebraucht: vom Bild-Proxy selbst und von der
- * Diagnoseroute GET /api/v1/admin/img-probe. Dort stand bisher eine Kopie
- * derselben Liste — die Sorte Duplikat, die beim nächsten hinzugefügten CDN
- * genau an einer der beiden Stellen nachgezogen wird. Deshalb hier einmal,
- * exportiert.
- */
-const ALLOWED_IMAGE_HOSTS = [
-  'cdn.rebrickable.com', 'rebrickable.com',
-  'images.brickset.com',
-  'www.bricklink.com', 'img.bricklink.com',
-];
-
-/**
- * Darf diese URL vom Server abgerufen werden?
- *
- * Exakter Host-Treffer oder echte Subdomain. Ein blosses host.endsWith(h)
- * würde auch "evil-rebrickable.com" durchlassen — daher der Punkt davor.
- *
- * @param {string} url
- * @returns {boolean}
- * @throws wenn die URL nicht parsebar ist (Aufrufer entscheidet: 400)
- */
-function isAllowedImageHost(url: string): boolean {
-  const host = new URL(url).hostname;
-  return ALLOWED_IMAGE_HOSTS.some(h => host === h || host.endsWith('.' + h));
-}
-
-/**
  * Wo läge das Bild dieser CDN-Adresse im Proxy-Cache?
  *
  * Die Regel (SHA1 der Adresse, Ablage unter data/img_proxy_cache) stand bisher
@@ -687,4 +665,4 @@ function proxyCachePathFor(url: string): string | null {
     crypto.createHash('sha1').update(url).digest('hex'));
 }
 
-export { registerImgProxy, isAllowedImageHost, ALLOWED_IMAGE_HOSTS, proxyCachePathFor };
+export { registerImgProxy, proxyCachePathFor };

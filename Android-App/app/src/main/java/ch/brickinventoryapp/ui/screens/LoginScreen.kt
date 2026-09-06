@@ -24,6 +24,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import ch.brickinventoryapp.R
 import ch.brickinventoryapp.ui.AnmeldeFormular
+import ch.brickinventoryapp.util.passwortZuKurz
 
 /**
  * Anmelden, ein Konto anlegen, einen Link zum Zuruecksetzen anfordern.
@@ -357,7 +358,7 @@ private fun RegistrierFelder(
             // nicht erst eine Runde ueber das Netz braucht.
             eigenerFehler = when {
                 nutzer.isBlank() || email.isBlank() || pw1.isBlank() -> reqFields
-                pw1.length < 8 -> zuKurz
+                passwortZuKurz(pw1) -> zuKurz
                 pw1 != pw2     -> ungleich
                 else           -> null
             }

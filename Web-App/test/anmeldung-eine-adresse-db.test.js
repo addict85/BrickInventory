@@ -95,15 +95,34 @@ test('eine Adresse, zwei Ausweise — durchgespielt', { concurrency: 1 }, async 
     assert.ok((await ablauf(webToken))?.expires_at,
       'Der Token des Browsers muss ein Ablaufdatum haben — er liegt im sessionStorage');
 
-    // ── 2. Die App: never_expires ───────────────────────────────────────────
+    // ── 2. Die App: gleitende Frist statt gar keiner ────────────────────────
+    //
+    // Hier stand `never_expires === true` und `expires_at === null`. Das war
+    // bis zur Gleitfrist richtig — und war zugleich die Luecke: Die 90 Tage
+    // aus TOKEN_IDLE_DAYS setzte allein der stuendliche Aufraeumjob durch, die
+    // Pruefung im Anfrageweg liess `expires_at IS NULL` immer passieren.
+    //
+    // Das Feld heisst weiter `never_expires` — die App SCHICKT es so, und ein
+    // umbenanntes Feld wuerde jede aeltere Fassung woechentlich abmelden. Es
+    // antwortet jetzt nur ehrlich: „ohne Ablauf" ist der Token nur noch, wenn
+    // die Frist ganz abgeschaltet ist (TOKEN_IDLE_DAYS=0).
     const app1 = await ruf('/login', { method: 'POST',
       body: { username: NAME, password: PASS, label: 'Android App', never_expires: true } });
     assert.equal(app1.status, 200, `Anmeldung der App scheiterte: ${JSON.stringify(app1.body)}`);
-    assert.equal(app1.body.never_expires, true,
-      'Die Antwort muss bestaetigen, dass der Token dauerhaft ist — die App verlangt das mit never_expires');
+    assert.equal(app1.body.never_expires, false,
+      'Bei eingeschalteter Gleitfrist ist kein Token „ohne Ablauf" — die Antwort darf das nicht behaupten');
     const appToken = app1.body.token;
-    assert.equal((await ablauf(appToken)).expires_at, null,
-      'Der Token der App darf kein Ablaufdatum haben — sonst muss man wöchentlich neu tippen');
+    const appZeile = await db.get(
+      'SELECT expires_at, sliding FROM api_tokens WHERE token = $1',
+      [_req('utils/auth.js').hashToken(appToken)]);
+    assert.ok(appZeile.expires_at,
+      'Der Token der App braucht ein echtes Ablaufdatum — sonst haengt die Frist an einem Hintergrundjob');
+    assert.equal(appZeile.sliding, true,
+      'Ohne sliding rueckt das Datum bei Benutzung nicht nach — dann muesste man alle 90 Tage neu tippen');
+    // Und er ist deutlich laenger gueltig als der des Browsers: Wer die App
+    // oeffnet, soll nicht woechentlich sein Passwort eintippen.
+    assert.ok(new Date(appZeile.expires_at) > new Date((await ablauf(webToken)).expires_at),
+      'Der App-Token muss laenger laufen als die sieben Tage des Browsers');
     // Vorbedingung: Es sind zwei VERSCHIEDENE Token, sonst prüft der Rest nichts.
     assert.notEqual(webToken, appToken);
 

@@ -114,8 +114,24 @@ test('Zugänge auflisten und aussperren — über Sitzung UND über Token',
     assert.equal(perToken.body.tokens.length, 3);
     assert.equal(perToken.body.tokens.find(x => x.aktuell)?.label, 'Pixel 8');
     // Und die Laufzeiten stehen richtig drin — daran hängt die Anzeige.
-    assert.equal(perToken.body.tokens.find(x => x.label === 'Pixel 8').never_expires, true);
-    assert.equal(perToken.body.tokens.find(x => x.label === 'webapp-session').never_expires, false);
+    //
+    // Beide Zeilen tragen jetzt ein Datum: Auch der App-Token hat seit der
+    // Gleitfrist ein echtes Ablaufdatum (utils/auth.ts), es rueckt bei jeder
+    // Benutzung nur nach. Fuer die Anzeige heisst das: Webapp und App zeigen
+    // in der Spalte „Laeuft ab" ein Datum statt „nie" — und das ist genau die
+    // Auskunft, die vorher fehlte. „nie" war ein Versprechen, das der
+    // Aufraeumjob nach 90 Tagen gebrochen hat.
+    for (const label of ['Pixel 8', 'webapp-session']) {
+      const zeile = perToken.body.tokens.find(x => x.label === label);
+      assert.equal(zeile.never_expires, false, `${label}: kein Token laeuft mehr „nie" ab`);
+      assert.ok(zeile.expires_at, `${label}: ohne Datum hat die Anzeige nichts zu zeigen`);
+    }
+    // Der des Telefons laeuft laenger als der des Browsers — sonst waere die
+    // Gleitfrist keine Erleichterung, sondern eine Verschaerfung.
+    assert.ok(
+      new Date(perToken.body.tokens.find(x => x.label === 'Pixel 8').expires_at) >
+      new Date(perToken.body.tokens.find(x => x.label === 'webapp-session').expires_at),
+      'Der App-Token muss laenger laufen als die sieben Tage des Browsers');
 
     // ── 3. Ein fremdes Gerät aussperren ─────────────────────────────────────
     //

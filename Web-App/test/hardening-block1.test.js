@@ -15,6 +15,8 @@ const path = require('node:path');
 
 const ROOT = path.join(__dirname, '..');
 const read = f => fs.readFileSync(path.join(ROOT, f), 'utf8');
+const KOTLIN_SCREENS = path.join(ROOT, '..', 'Android-App', 'app', 'src', 'main',
+                                 'java', 'ch', 'brickinventoryapp', 'ui', 'screens');
 
 // ── Punkt 1 ────────────────────────────────────────────────────────────────
 test('die Session-ID wird beim Anmelden erneuert', () => {
@@ -113,59 +115,84 @@ test('Preis-Vorhandensein hängt an avg_price', () => {
     'und zwar über die eine, die auch clients/bricklink.ts anwendet');
 });
 
-test('nur eine Stelle entscheidet, wo ein Token in der URL reiten darf', () => {
+test('kein Token reitet mehr in der Adresszeile', () => {
   // ── Woher dieser Test kommt ─────────────────────────────────────────────
-  // utils/auth.ts führt eine Liste der Pfade, auf denen ?token= zählt, und
-  // schreibt dazu: „alles andere verlangt einen Authorization-Header". Das
-  // stimmte nicht — routes/sets.ts hatte eine ZWEITE Fassung von
-  // requireLoginOrToken, die ?token= bedingungslos akzeptierte (für den
-  // SSE-Fortschritt des CSV-Imports; EventSource kann keine Kopfzeilen
-  // setzen). Der Bedarf ist echt, die zweite Fassung war es nicht: Wer in
-  // utils/auth.ts nachliest, bekam eine unvollständige Antwort.
-  const auth = read('utils/auth.ts');
-  const sets = require('./helpers/sources').setKernQuelle();
+  // utils/auth.ts fuehrte eine Liste TOKEN_QUERY_ALLOWED: drei Pfade, auf
+  // denen `?token=` als Ausweis zaehlte. Begruendung war, dass <img src>,
+  // EventSource und window.open() keine Kopfzeilen setzen koennen. Das stimmt
+  // — nur hatte im ganzen Baum KEINER der drei Eintraege noch einen Nutzer:
+  // der Browser oeffnet den SSE-Kanal mit Cookie, der Polling-Rueckfall setzt
+  // eine echte Kopfzeile, und die Anleitung holt die App ueber ihren OkHttp-
+  // Client, dessen Interceptor den Authorization-Kopf ohnehin anhaengt.
+  // Uebrig blieb eine Erlaubnis, ueber die der SITZUNGSTOKEN in
+  // Proxy-Protokolle und Browserverlauf wandern konnte.
+  //
+  // Dieser Test haelt beide Haelften fest: den Server, der `?token=` nicht
+  // mehr ansieht, und die Aufrufer, die keinen mehr anhaengen. Nur eine der
+  // beiden zu pruefen reichte nicht — die Ausnahmeliste hier war jahrelang
+  // gruen, WEIL nur ihr Vorhandensein geprueft wurde und nie ihr Nutzen.
+  const { ohneKommentare, einhaengung, setKernQuelle } = require('./helpers/sources');
+  const auth = ohneKommentare(read('utils/auth.ts'));
 
-  // ── Nicht der NAME, sondern der PFAD ─────────────────────────────────────
+  assert.doesNotMatch(auth, /TOKEN_QUERY_ALLOWED/,
+    'Die Ausnahmeliste ist zurueck — damit auch der Sitzungstoken in der Adresszeile');
+  assert.doesNotMatch(auth, /req\.query[.?]*[.[]\s*'?token/,
+    'resolveUserId liest wieder aus der Query. Auf jeder Route zaehlt der ' +
+    'Authorization-Kopf oder die Sitzung, sonst nichts.');
+
+  // ── Und die Aufrufer ──────────────────────────────────────────────────────
   //
-  // Hier stand `auth.includes("import\\/csv\\/(stream|status)")` — eine
-  // Teilzeichenkette. Der Eintrag lautete `/api/sets/import/csv/…`, die Route
-  // war laengst nach `/api/v1/sets/…` umgezogen, und dieser Vergleich sah den
-  // Praefix gar nicht. Der Rueckfall auf `?token=` war damit wirkungslos, und
-  // die Pruefung blieb gruen.
-  //
-  // Jetzt wird die Liste AUSGEWERTET und gegen den WIRKLICHEN Einhaengepunkt
-  // aus server.ts gehalten. Zieht die Route wieder um, faellt der Test.
-  const { einhaengung } = require('./helpers/sources');
-  const listeRoh = auth.slice(auth.indexOf('const TOKEN_QUERY_ALLOWED'),
-                              auth.indexOf('];', auth.indexOf('const TOKEN_QUERY_ALLOWED')));
-  const muster = [...listeRoh.matchAll(/^\s*\/(\^[^\n]*?)\/[gimsuy]*\s*,\s*$/gm)]
-    .map(m => new RegExp(m[1]));
-  assert.ok(muster.length >= 3,
-    `Nur ${muster.length} Muster aus TOKEN_QUERY_ALLOWED gelesen — Format veraltet?`);
-  for (const pfad of ['/import/csv/stream', '/import/csv/status']) {
-    const voll = einhaengung('sets') + pfad;
-    assert.ok(muster.some(re => re.test(voll)),
-      `${voll} steht nicht in TOKEN_QUERY_ALLOWED. EventSource kann keine ` +
-      'Kopfzeilen setzen; ohne diesen Eintrag faellt der Fortschritt eines ' +
-      'Imports still auf 401, sobald nur ein Bearer-Token da ist.');
+  // Nicht nach der blossen Zeichenkette `?token=` gesucht: routes/mailer.ts
+  // baut damit die Links `/verify?token=` und `/reset-password?token=` fuer
+  // die E-Mail. Das sind EIGENE, kurzlebige Token mit eigenen Handlern in
+  // server.ts — kein Sitzungsausweis. Gesucht wird deshalb das Anhaengen
+  // eines gespeicherten Zugangs an eine Adresse.
+  const anhaengen = [
+    // Javascript:  '?token=' + irgendwas
+    { re: /'\?token='\s*\+/, wo: 'Javascript' },
+    // Kotlin:      "…?token=$feld"
+    { re: /\?token=\$/,      wo: 'Kotlin' },
+  ];
+  const quellen = [
+    ...['public/js/01-core.js', 'public/js/02-gallery.js', 'public/js/05-settings.js']
+      .map(f => [f, read(f)]),
+    // Jeder Dateiname AUSGESCHRIEBEN, nicht ueber eine Schleifenvariable
+    // zusammengesetzt: test/baumbruecken.test.js loest die Bruecken in den
+    // Android-Baum statisch auf und kann ein variables Segment nicht sehen.
+    // Der erste Entwurf dieser Stelle hatte genau das — und wurde von jener
+    // Pruefung prompt als „nicht aufloesbar" gemeldet.
+    ...[path.join(KOTLIN_SCREENS, 'SetDetailSections.kt'),
+        path.join(KOTLIN_SCREENS, 'SetDetailScreen.kt'),
+        path.join(KOTLIN_SCREENS, 'PdfViewerScreen.kt')]
+      .map(voll => {
+        assert.ok(fs.existsSync(voll),
+          `${path.basename(voll)} steht nicht mehr dort — Pfad im Test veraltet`);
+        return [path.basename(voll), fs.readFileSync(voll, 'utf8')];
+      }),
+  ];
+  for (const [name, roh] of quellen) {
+    const src = ohneKommentare(roh);
+    for (const { re, wo } of anhaengen)
+      assert.doesNotMatch(src, re,
+        `${name} haengt wieder einen Token an eine Adresse (${wo}-Form). Der ` +
+        'Server sieht ihn nicht mehr an; er stuende nur im Protokoll.');
   }
-  // Und die Gegenrichtung: Die Liste bleibt eng. Eine normale Adresse darf
-  // NICHT durchrutschen — sonst reicht ein Token in der URL ueberall, und
-  // Adressen landen in Server-Protokollen und im Verlauf des Browsers.
-  for (const voll of [einhaengung('sets') + '/1234-1', einhaengung('auth') + '/login'])
-    assert.ok(!muster.some(re => re.test(voll)),
-      `${voll} akzeptiert ein Token in der URL — die Liste ist zu weit.`);
+
+  // ── Was von der alten Pruefung bleibt ─────────────────────────────────────
+  // Die zweite Fassung von requireLoginOrToken in routes/sets.ts war der
+  // eigentliche Ausloeser des alten Tests. Sie darf nicht zurueckkommen —
+  // jetzt umso weniger, da es gar keine Query-Auswertung mehr gibt, die sie
+  // umgehen koennte.
+  const sets = setKernQuelle();
   assert.doesNotMatch(sets, /function requireLoginOrToken/,
-    'Keine zweite Fassung — sie umgeht die Liste in utils/auth.ts');
+    'Keine zweite Fassung — sie umgeht die eine Regel in utils/auth.ts');
   assert.match(sets, /loginOrTokenGuard\(\{ timeoutMs: 3000 \}\)/,
     'Das 3s-Zeitlimit muss bleiben: Während eines Imports ist 503 besser als eine hängende Verbindung');
 
-  // Die Liste bleibt eng: Wer sie erweitert, soll darüber stolpern.
-  const liste = auth.slice(auth.indexOf('const TOKEN_QUERY_ALLOWED'),
-                           auth.indexOf('];', auth.indexOf('const TOKEN_QUERY_ALLOWED')));
-  const eintraege = (liste.match(/\/\^/g) || []).length;
-  assert.equal(eintraege, 3,
-    'Erlaubte Pfade: img-proxy, /data/, CSV-Fortschritt — mehr braucht es nicht');
+  // Der Kanal selbst muss es weiterhin geben — sonst prueft der Absatz oben
+  // die Abwesenheit eines Tokens an einer Adresse, die es nicht mehr gibt.
+  assert.ok(read('public/js/01-core.js').includes(einhaengung('sets') + '/import/csv/stream'),
+    'Der SSE-Kanal des CSV-Imports fehlt in 01-core.js — Route umgezogen?');
 });
 
 test('offene Ereignis-Ströme halten das Herunterfahren nicht auf', () => {

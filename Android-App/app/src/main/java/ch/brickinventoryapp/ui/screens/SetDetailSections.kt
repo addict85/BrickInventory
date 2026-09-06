@@ -85,7 +85,7 @@ import androidx.compose.material.icons.filled.*
  * ihr Hinzufügen-Feld ebenfalls bei leerem Set.
  */
 fun LazyListScope.setDetailInstructionsSection(
-    set: SetItem, detailState: SetDetailUiState, authToken: String, serverUrl: String,
+    set: SetItem, detailState: SetDetailUiState, serverUrl: String,
     onOpenPdf: (url: String, title: String) -> Unit,
     onAnleitungWaehlen: () -> Unit,
     onAnleitungLoeschen: (Int) -> Unit,
@@ -112,10 +112,23 @@ fun LazyListScope.setDetailInstructionsSection(
                     } else {
                         val ctx = LocalContext.current
                         instructions.forEachIndexed { idx, instr ->
-                            val openUrl = instr.localPath?.let {
-                                val base = "$serverUrl$it"
-                                if (authToken.isNotBlank()) "$base?token=$authToken" else base
-                            } ?: instr.url
+                            // Kein `?token=` mehr an der Adresse.
+                            //
+                            // Hier stand der Sitzungstoken der App — der, der
+                            // nicht ablaeuft. Er wurde damit gleich dreifach
+                            // abgelegt: als Navigationsargument im Backstack
+                            // (Screen.PdfViewer.createRoute), als sichtbarer
+                            // Text unter der Anleitung (siehe das Text() weiter
+                            // unten) und im Zugriffsprotokoll des Servers.
+                            //
+                            // Gebraucht wurde er an keiner Stelle: Die Datei
+                            // holt der In-App-Betrachter ueber den geteilten
+                            // OkHttp-Client, und dessen Interceptor setzt den
+                            // Authorization-Kopf fuer jede Adresse unseres
+                            // Servers (di/AppModule.kt). Der zweite Zweig
+                            // (instr.url) zeigt ohnehin nach draussen und hatte
+                            // nie einen Token.
+                            val openUrl = instr.localPath?.let { "$serverUrl$it" } ?: instr.url
 
                             if (idx > 0) HorizontalDivider(
                                 Modifier.padding(vertical = 4.dp),

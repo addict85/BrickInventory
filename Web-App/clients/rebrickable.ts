@@ -18,6 +18,8 @@ import { fehlertext } from '../utils/httpError';
 import { neuestesInventar } from '../utils/rbInventar';
 import { mitVersion } from '../utils/setNummer';
 import { getGlobalSetting } from '../utils/settings';
+import { ERLAUBTE_DOWNLOAD_HOSTS, hostErlaubt, naechsteUmleitung,
+         UMLEITUNGS_GRENZE } from '../utils/fremdeAdressen';
 
 const BASE = 'https://rebrickable.com/api/v3';
 
@@ -63,24 +65,49 @@ async function getRbKey(): Promise<string | null> {
 function httpsGetRobust(url: string, headers: Record<string, string> = {}, timeoutMs = 60000): Promise<{ status: number; body: string; buffer: Buffer }> {
   return new Promise((resolve, reject) => {
     let attempts = 0;
-    const attempt = (u: string) => {
+    // Umleitungen zaehlen EIGENS, nicht ueber `attempts`.
+    //
+    // `attempts` zaehlt jeden Anlauf mit und wird nur bei 429, Timeout und
+    // ECONNRESET geprueft — beim Umleiten sah es niemand an. Eine Schleife
+    // A -> B -> A lief damit unbegrenzt weiter, und ausloesen konnte das der
+    // fremde Server ganz allein.
+    let umleitungen = 0;
+    const attempt = (u: string, kopf: Record<string, string>) => {
       attempts++;
       let parsed; try { parsed = new URL(u); } catch (e) { return reject(new Error('Invalid URL: ' + u)); }
       const lib = parsed.protocol === 'https:' ? https : http;
       const req = lib.get({ hostname: parsed.hostname, path: parsed.pathname + parsed.search,
-        headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36', ...headers } }, res => {
+        headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36', ...kopf } }, res => {
         req.setTimeout(0);
         if (res.statusCode === 301 || res.statusCode === 302) {
           res.resume();
-          const ziel = res.headers.location;
-          // Eine Umleitung OHNE Location-Kopfzeile ist nicht befolgbar. Vorher
-          // lief `undefined` in attempt(), und das kam als
-          // "Invalid URL: undefined" heraus — richtig abgewiesen, aber mit
-          // einer Meldung, die auf die falsche Ursache zeigt. Der Typ
-          // (string | undefined) hat die Stelle sichtbar gemacht.
-          if (!ziel) return reject(new Error(
-            `Umleitung ${res.statusCode} ohne Location-Kopfzeile: ${u.substring(0, 120)}`));
-          return attempt(ziel);
+          // Neun der zwoelf Aufrufer dieser Funktion schicken
+          // `Authorization: key <REBRICKABLE_API_KEY>`. Bis hierher wurde der
+          // Kopf beim Folgen unveraendert weitergereicht — eine Umleitung auf
+          // einen fremden Host bekam damit den Schluessel, und eine Umleitung
+          // von https auf http gab ihn im Klartext preis (die
+          // Bibliothekswahl eine Zeile hoeher liess beides zu).
+          //
+          // Die Regel dafuer steht in utils/fremdeAdressen.ts, gemeinsam mit
+          // der des Dateidownloads darunter: Obergrenze, kein Downgrade,
+          // Geheimnisse beim Hostwechsel abwerfen.
+          //
+          // OHNE Host-Allowlist: Die Ausgangsadressen dieser Funktion sind
+          // fest (rebrickable.com und lego.brickinstructions.com), und eine
+          // Liste aus geratenen Hosts waere schlechter als keine — sie sperrte
+          // Anleitungen aus, ohne dass jemand die Ursache saehe. Der
+          // Dateidownload prueft den Host, WEIL er das Geholte ausliefert.
+          if (++umleitungen > UMLEITUNGS_GRENZE) return reject(new Error(
+            `Mehr als ${UMLEITUNGS_GRENZE} Umleitungen: ${u.substring(0, 120)}`));
+          const weiter = naechsteUmleitung(u, res.headers.location, kopf);
+          // Eine Umleitung ohne Location-Kopfzeile, auf http oder auf ein
+          // anderes Schema ist nicht befolgbar. Vorher lief `undefined` in
+          // attempt() und kam als "Invalid URL: undefined" heraus — richtig
+          // abgewiesen, aber mit einer Meldung, die auf die falsche Ursache
+          // zeigt.
+          if (!weiter) return reject(new Error(
+            `Umleitung ${res.statusCode} nicht befolgbar (fehlend, kein https, oder unlesbar): ${u.substring(0, 120)}`));
+          return attempt(weiter.url, weiter.kopfzeilen);
         }
         if (res.statusCode === 429) {
           let body429 = '';
@@ -89,7 +116,7 @@ function httpsGetRobust(url: string, headers: Record<string, string> = {}, timeo
             const wait = parseThrottleWait(body429);
             console.log(`[rebrickable] 429 throttled, waiting ${wait}ms...`);
             rebrickableLimiter.throttle(wait);
-            if (attempts < 3) return setTimeout(() => attempt(u), wait);
+            if (attempts < 3) return setTimeout(() => attempt(u, kopf), wait);
             resolve({ status:429, body:'', buffer:Buffer.alloc(0) });
           });
           return;
@@ -98,12 +125,12 @@ function httpsGetRobust(url: string, headers: Record<string, string> = {}, timeo
         const chunks: any[] = [];
         res.on('data', d => chunks.push(d));
         res.on('end', () => { const buffer = Buffer.concat(chunks); resolve({ status: res.statusCode ?? 0, body: buffer.toString('utf-8'), buffer }); });
-        res.on('error', err => { if (attempts < 3) setTimeout(() => attempt(u), 1000); else reject(err); });
+        res.on('error', err => { if (attempts < 3) setTimeout(() => attempt(u, kopf), 1000); else reject(err); });
       });
-      req.setTimeout(timeoutMs, () => { req.destroy(); if (attempts < 2) { setTimeout(() => attempt(u), 1000); } else reject(new Error(`Timeout: ${u.substring(0,120)}`)); });
-      req.on('error', (err: NodeJS.ErrnoException) => { if (err.code === 'ECONNRESET' && attempts < 3) setTimeout(() => attempt(u), 1500); else reject(err); });
+      req.setTimeout(timeoutMs, () => { req.destroy(); if (attempts < 2) { setTimeout(() => attempt(u, kopf), 1000); } else reject(new Error(`Timeout: ${u.substring(0,120)}`)); });
+      req.on('error', (err: NodeJS.ErrnoException) => { if (err.code === 'ECONNRESET' && attempts < 3) setTimeout(() => attempt(u, kopf), 1500); else reject(err); });
     };
-    attempt(url);
+    attempt(url, headers);
   });
 }
 
@@ -264,19 +291,40 @@ async function scrapeInstructions(setNumber: string) {
 async function downloadFile(url: string, destPath: string) {
   if (fs.existsSync(destPath)) return true;
   fs.mkdirSync(path.dirname(destPath), { recursive: true });
+  // ── Warum der Host hier geprueft wird, und zwar bei JEDEM Sprung ──────────
+  //
+  // Was diese Funktion holt, landet unter data/instructions/ bzw. im
+  // Bild-Cache — und von dort liefert der Server es an jeden angemeldeten
+  // Nutzer aus. Ein ungeprueftes Umleitungsziel wie http://127.0.0.1:5432/
+  // waere damit nicht nur abgerufen, sondern auch zurueckgegeben worden.
+  //
+  // Die Ausgangsadresse allein zu pruefen reicht nicht: Sie stammt teils aus
+  // scrapeInstructions(), und dessen Muster
+  // `https?://[^"]*lego\.com[^"]*\.pdf` trifft eine TEILZEICHENKETTE, also
+  // auch `https://lego.com.angreifer.tld/x.pdf`. Die Pruefung am holenden Ende
+  // faengt das mit ab — unabhaengig davon, wie die Adresse hierher kam.
+  if (!hostErlaubt(url, ERLAUBTE_DOWNLOAD_HOSTS)) {
+    console.warn(`[download] Adresse nicht in der Liste erlaubter Hosts: ${url.substring(0, 120)}`);
+    return false;
+  }
   return new Promise(resolve => {
-    const attempt = (u: string, redirects = 0) => {
-      if (redirects > 5) return resolve(false);
+    const kopfBasis: Record<string, string> = {
+      'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+      'Referer':    'https://rebrickable.com/',
+      'Accept':     'image/avif,image/webp,image/apng,image/*,*/*;q=0.8',
+    };
+    const attempt = (u: string, kopf: Record<string, string>, redirects = 0) => {
+      if (redirects > UMLEITUNGS_GRENZE) return resolve(false);
       let parsed; try { parsed = new URL(u); } catch (_) { return resolve(false); }
       const lib = parsed.protocol === 'https:' ? https : http;
-      const req = lib.get(u, { headers: {
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-        'Referer':    'https://rebrickable.com/',
-        'Accept':     'image/avif,image/webp,image/apng,image/*,*/*;q=0.8',
-      } }, res => {
-        if ((res.statusCode===301||res.statusCode===302) && res.headers.location) {
+      const req = lib.get(u, { headers: kopf }, res => {
+        if (res.statusCode===301||res.statusCode===302) {
           res.resume();
-          return attempt(res.headers.location, redirects + 1);
+          // Dieselbe Regel wie in httpsGetRobust — hier zusaetzlich mit der
+          // Host-Liste, aus dem Grund im Block ueber dieser Funktion.
+          const weiter = naechsteUmleitung(u, res.headers.location, kopf, ERLAUBTE_DOWNLOAD_HOSTS);
+          if (!weiter) return resolve(false);
+          return attempt(weiter.url, weiter.kopfzeilen, redirects + 1);
         }
         if (res.statusCode !== 200) { res.resume(); return resolve(false); }
         // Stream directly to file — avoids buffering large PDFs in memory
@@ -294,7 +342,7 @@ async function downloadFile(url: string, destPath: string) {
       req.setTimeout(60000, () => { req.destroy(); resolve(false); });
       req.on('error', () => resolve(false));
     };
-    attempt(url);
+    attempt(url, kopfBasis);
   });
 }
 

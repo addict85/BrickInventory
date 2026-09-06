@@ -26,6 +26,36 @@ import { clickJobTrigger, saveJobMinutes, saveJobTime } from './11-actions.js';
 //   Farbwert in style=""                         → escHex()
 
 /** HTML-Escape für Textinhalte und doppelt-gequotete Attributwerte. */
+/**
+ * Wie kurz ein Passwort hoechstens sein darf — dieselbe Zahl wie im Server
+ * (PASSWORT_MIN_ZEICHEN in utils/auth.ts) und in der App.
+ *
+ * Sie steht hier ZUSAETZLICH und nicht statt dessen: Der Server ist die
+ * Instanz, die es durchsetzt, der Browser der, der es dem Nutzer sagt, bevor
+ * er auf Speichern drueckt. Dass sie damit an drei Orten steht, ist
+ * unvermeidbar (drei Laufzeiten) — test/passwortlaenge.test.js haelt sie
+ * zusammen, damit aus „unvermeidbar" nicht „auseinandergelaufen" wird.
+ */
+export const PASSWORT_MIN_ZEICHEN = 8;
+
+/**
+ * Ist dieses Passwort zu kurz?
+ *
+ * ── Warum es das hier ueberhaupt gibt ───────────────────────────────────────
+ * Nachgemessen: Die Webapp prueft die Laenge an KEINER ihrer fuenf Stellen,
+ * die ein Passwort setzen (Registrieren, Zuruecksetzen, Aendern, Konto
+ * anlegen, Konto-Passwort zuruecksetzen). Die Android-App prueft sie in ihrer
+ * Oberflaeche sehr wohl (SettingsScreen, LoginScreen) — die beiden
+ * Oberflaechen verhielten sich also unterschiedlich, und die Webapp lief in
+ * einen Serverfehler, wo die App den Knopf gar nicht erst freigibt.
+ */
+export function passwortZuKurz(p){ return String(p ?? '').length < PASSWORT_MIN_ZEICHEN; }
+
+/** Die Meldung dazu — an fuenf Stellen dieselbe. */
+export function passwortZuKurzText(){
+  return tRaw('settings.password.too_short', { n: PASSWORT_MIN_ZEICHEN });
+}
+
 export function esc(s){
   return String(s ?? '')
     .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
@@ -530,6 +560,12 @@ G('btn-register')?.addEventListener('click', async () => {
   const err=G('reg-err');
   err.style.display='none';
   if(!u||!e||!p){ err.textContent=tRaw('register.req_fields'); err.style.display='block'; return; }
+  // Reihenfolge: zu kurz VOR ungleich — dieselbe wie in der App
+  // (LoginScreen.kt). Deren Kommentar behauptete schon vorher „dieselben drei
+  // Pruefungen wie im Web-Formular, und in derselben Reihenfolge"; wahr war
+  // daran bis hierher weder das eine noch das andere, weil die Webapp die
+  // Laenge gar nicht prueft.
+  if(passwortZuKurz(p)){ err.textContent=passwortZuKurzText(); err.style.display='block'; return; }
   if(p!==p2){ err.textContent=tRaw('settings.password.mismatch'); err.style.display='block'; return; }
   const btn=G('btn-register'); const frei=knopfBesetzt(btn);
   const d=await api('POST','/v1/auth/register',{
@@ -566,6 +602,7 @@ G('btn-reset')?.addEventListener('click', async () => {
   const err=G('reset-err');
   err.style.display='none';
   if(!p||p!==p2){ err.textContent=tRaw('settings.password.mismatch'); err.style.display='block'; return; }
+  if(passwortZuKurz(p)){ err.textContent=passwortZuKurzText(); err.style.display='block'; return; }
   if(!_resetToken){ err.textContent=tRaw('reset.invalid_token'); err.style.display='block'; return; }
   const btn=G('btn-reset'); btn.disabled=true; btn.textContent=tRaw('reset.saving');
   const d=await api('POST','/v1/auth/reset-password',{token:_resetToken,password:p});
@@ -829,10 +866,14 @@ export function gibStart() {
   G('gib-text').textContent = tRaw('csv.running_text');
   G('gib-fill').style.width = '0%';
 
-  // SSE benötigt den Token in der URL, da EventSource keine Header setzen kann.
-  // (Cookie-Session funktioniert ohnehin; der Token deckt den Bearer-Fall ab.)
-  const wt = sessionStorage.getItem('webToken');
-  const url = '/api/v1/sets/import/csv/stream' + (wt ? ('?token=' + encodeURIComponent(wt)) : '');
+  // Kein Token in der Adresse. EventSource kann zwar keine Kopfzeile setzen,
+  // schickt mit `withCredentials: true` aber das Sitzungs-Cookie — und genau
+  // das war schon vorher der Weg, auf dem dieser Kanal wirklich lief. Der
+  // angehängte `?token=` war der Sitzungstoken selbst; er hätte im
+  // Reverse-Proxy-Protokoll und im Browserverlauf gestanden. Den „Bearer-Fall"
+  // ohne Cookie gibt es hier nicht: `webToken` entsteht erst nach der
+  // Anmeldung, die das Cookie setzt. Siehe utils/auth.ts.
+  const url = '/api/v1/sets/import/csv/stream';
 
   if (typeof EventSource !== 'undefined') {
     try {

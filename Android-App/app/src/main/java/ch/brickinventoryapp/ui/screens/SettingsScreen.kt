@@ -27,6 +27,7 @@ import ch.brickinventoryapp.R
 import ch.brickinventoryapp.util.fmtDatum
 import ch.brickinventoryapp.ui.MainViewModel
 import ch.brickinventoryapp.ui.*  // Feature-Extensions (saveSettings, setLanguage, …)
+import ch.brickinventoryapp.util.passwortZuKurz
 
 @Composable
 fun SettingsScreen(
@@ -697,18 +698,21 @@ private fun KontoCard(
                 value = pwNeu, onValueChange = { pwNeu = it },
                 label = { Text(stringResource(R.string.konto_password_new)) },
                 visualTransformation = PasswordVisualTransformation(),
-                // Dieselbe Mindestlaenge wie im Server (routes/auth.ts) und im
-                // Registrierformular. Hier vorweggenommen, damit man dafuer
-                // nicht erst eine Runde ueber das Netz braucht.
-                supportingText = if (pwNeu.isNotEmpty() && pwNeu.length < 8) {
+                // Dieselbe Mindestlaenge wie im Server (PASSWORT_MIN_ZEICHEN in
+                // utils/auth.ts) und in der Webapp. Hier vorweggenommen, damit
+                // man dafuer nicht erst eine Runde ueber das Netz braucht.
+                //
+                // Die Zahl stand in dieser Ansicht dreimal und im
+                // Registrierformular ein viertes Mal — jetzt in util/Passwort.kt.
+                supportingText = if (pwNeu.isNotEmpty() && passwortZuKurz(pwNeu)) {
                     { Text(stringResource(R.string.register_password_short)) }
                 } else null,
-                isError = pwNeu.isNotEmpty() && pwNeu.length < 8,
+                isError = pwNeu.isNotEmpty() && passwortZuKurz(pwNeu),
                 modifier = Modifier.fillMaxWidth(), singleLine = true, shape = Formen.knopf,
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password))
             OutlinedButton(
                 onClick = { onPasswort(pwAktuell, pwNeu) },
-                enabled = !kontoZustand.speichert && pwAktuell.isNotBlank() && pwNeu.length >= 8,
+                enabled = !kontoZustand.speichert && pwAktuell.isNotBlank() && !passwortZuKurz(pwNeu),
                 modifier = Modifier.fillMaxWidth().height(44.dp), shape = Formen.knopf
             ) { Text(stringResource(R.string.konto_password_button), fontWeight = FontWeight.SemiBold) }
         }
