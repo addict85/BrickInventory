@@ -423,15 +423,29 @@ async function plExportBricklink() {
   let xml = '<?xml version="1.0" encoding="UTF-8"?>\n<INVENTORY>\n';
   for (const m of expanded) {
     xml += '  <ITEM>\n';
-    xml += `    <ITEMTYPE>${m.type}</ITEMTYPE>\n`;
-    xml += `    <ITEMID>${m.part}</ITEMID>\n`;
+    // ── Warum hier esc() steht ────────────────────────────────────────────
+    //
+    // Der Wert kommt aus dem Bestand, und bei einem MANUELL erfassten Teil
+    // hat ihn der Mensch getippt. Ein `&` im Teil ist dann kein Sonderfall,
+    // sondern ein gueltiges Zeichen — und macht aus der Wunschliste eine
+    // XML-Datei, die BrickLink nicht liest. Ein `<` kann Elemente einfuegen,
+    // die niemand geschrieben hat.
+    //
+    // esc() und kein eigener XML-Maskierer: Es ersetzt genau die fuenf
+    // Entitaeten, um die es geht (& < > " '). Ein zweiter Escaper daneben
+    // waere eine zweite Wahrheit — und die Android-App hat schon eine
+    // (BrickLinkWunschliste.kt, maskiert()). Genau deren Fehlen auf DIESER
+    // Seite ist der Befund gewesen: dieselbe Regel, zwei Orte, nur einer
+    // kannte sie.
+    xml += `    <ITEMTYPE>${esc(m.type)}</ITEMTYPE>\n`;
+    xml += `    <ITEMID>${esc(m.part)}</ITEMID>\n`;
     // m.color is the BL color ID — only omit for minifigs (type M) where color is N/A
     // For parts, always include color (even 0 = "(Not Applicable)" for uncolored parts)
     if (m.type !== 'M' && m.color !== null && m.color !== undefined) {
       xml += `    <COLOR>${m.color}</COLOR>\n`;
     }
     xml += `    <MINQTY>${m.qty}</MINQTY>\n`;
-    xml += `    <CONDITION>${condition}</CONDITION>\n`;
+    xml += `    <CONDITION>${esc(condition)}</CONDITION>\n`;
     xml += '  </ITEM>\n';
   }
   xml += '</INVENTORY>';
