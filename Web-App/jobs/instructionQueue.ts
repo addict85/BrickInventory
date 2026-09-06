@@ -25,8 +25,8 @@
  * kannte den Primary gar nicht.
  *
  * Jetzt gilt:
- *   1. Request-Handler rufen `requestRun()` — das setzt nur das Flag
- *      `instr_queue_trigger`, das der Primary ohnehin schon pollt.
+ *   1. Request-Handler rufen `requestRun()` — das setzt das Flag
+ *      `instr_queue_trigger` und weckt den Primary per NOTIFY.
  *   2. `processNext()` hält für die Dauer EINES Eintrags eine
  *      prozessübergreifende Sperre (pg_try_advisory_lock). Wer sie nicht
  *      bekommt, geht wieder — ein künftiger Direktaufruf kann also nichts
@@ -138,15 +138,32 @@ async function enqueue(setNumber: string) {
 }
 
 /**
+ * Schlüssel UND Kanalname des Anstosses.
+ *
+ * Beides ist derselbe Name, und das ist Absicht: Der gespeicherte Auslöser und
+ * das NOTIFY darauf gehören zusammen — zwei Schreibweisen wären zwei Stellen,
+ * an denen sich ein Tippfehler still versteckt, denn ein NOTIFY auf einen
+ * Kanal, dem niemand zuhört, meldet nichts.
+ */
+const AUSLOESER = 'instr_queue_trigger';
+
+/**
  * Abarbeitung ANSTOSSEN — für alles ausserhalb des Primary-Workers.
  *
- * Setzt nur das Flag, das der Primary alle 3 Sekunden abfragt (siehe start()).
+ * Setzt das Flag, das der Primary liest, und weckt ihn (siehe start()).
  * Kein direkter processNext(): Der Zeitgeber-Faden gehört in genau einen
  * Prozess, sonst laufen zwei Ketten mit eigener Drossel nebeneinander.
+ *
+ * Zwei Schritte, und die Reihenfolge zählt: erst der Eintrag, dann das
+ * Signal. Umgekehrt könnte der Primary aufwachen, bevor der Eintrag steht,
+ * nichts finden und wieder einschlafen — und das Signal ist flüchtig, es
+ * kommt kein zweites.
  */
 async function requestRun() {
-  await setGlobalTrigger('instr_queue_trigger')
+  await setGlobalTrigger(AUSLOESER)
     .catch(logAndContinue('instr-queue:trigger'));
+  await require('../utils/pgNotify').notify(AUSLOESER)
+    .catch(logAndContinue('instr-queue:trigger-signal'));
 }
 
 async function processNext() {
@@ -326,17 +343,33 @@ function start() {
     })
     .catch(() => {});
 
-  // Poll every 3s for trigger signals from other workers (e.g. admin reimport)
-  setInterval(async () => {
+  // ── Auf Zuruf statt im Dreisekundentakt ──────────────────────────────────
+  //
+  // Hier stand ein setInterval(…, 3000), das `instr_queue_trigger` abfragte.
+  // NACHGEMESSEN im Leerlauf: 9 Abfragen in 30 Sekunden, also rund 28'800 am
+  // Tag, die praktisch immer nichts finden.
+  //
+  // Genau diese Zahl steht im Kopf von utils/pgNotify.ts als Begründung
+  // dafür, dass es das Modul gibt — es hat zwei solche Schleifen abgelöst
+  // (csv_sync_trigger, job_reschedule_trigger). Diese dritte war übrig
+  // geblieben. Nebenbei wirkt der Auslöser jetzt sofort statt bis zu drei
+  // Sekunden später.
+  //
+  // Der gespeicherte EINTRAG bleibt die belastbare Quelle, das Signal ist nur
+  // das Weckmittel: NOTIFY ist flüchtig, wer im Moment des Signals
+  // nicht verbunden ist, bekommt es nie. Deshalb ruft pgNotify den Handler
+  // auch beim (Wieder-)Verbinden einmal ohne Signal auf — ein währenddessen
+  // verpasster Anstoss wird dann nachgeholt, und kein Poller ist nötig.
+  const aufwecken = async () => {
     try {
-      const ausloeser = await getGlobalSetting('instr_queue_trigger');
-      if (ausloeser) {
-        await deleteGlobalSetting('instr_queue_trigger').catch(() => {});
-        console.log('[instr-queue] Trigger received — starting queue processing');
-        if (!_running) processNext().catch(() => {});
-      }
+      const ausloeser = await getGlobalSetting(AUSLOESER);
+      if (!ausloeser) return;
+      await deleteGlobalSetting(AUSLOESER).catch(() => {});
+      console.log('[instr-queue] Trigger received — starting queue processing');
+      if (!_running) processNext().catch(() => {});
     } catch (e) { meldeUndWeiter('instr-queue:ausloeser', e); }
-  }, 3000);
+  };
+  require('../utils/pgNotify').listen(AUSLOESER, aufwecken);
 }
 
 export { enqueue, start, processNext, requestRun };

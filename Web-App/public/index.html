@@ -17,24 +17,24 @@
   <script defer src="/vendor/qrcode/qrcode.min.js"></script>
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>BrickInventory Manager</title>
-  <link rel="stylesheet" href="/vendor/fonts/fonts.css?v=2026.09.06.1925">
-  <link rel="stylesheet" href="/styles.css?v=2026.09.06.1925">
+  <link rel="stylesheet" href="/vendor/fonts/fonts.css?v=2026.09.06.1953">
+  <link rel="stylesheet" href="/styles.css?v=2026.09.06.1953">
   <!-- App-Designs (Stein-Look etc.) — je Theme eine Datei unter /themes/, greift via [data-theme] -->
-  <link rel="stylesheet" href="/themes/brick.css?v=2026.09.06.1925">
+  <link rel="stylesheet" href="/themes/brick.css?v=2026.09.06.1953">
   <!-- Responsive-Regeln, nach beiden Designs geladen: das Layout ist in
        classic und brick identisch, die Regeln gelten daher für beide. -->
-  <link rel="stylesheet" href="/mobile.css?v=2026.09.06.1925">
+  <link rel="stylesheet" href="/mobile.css?v=2026.09.06.1953">
   <!-- Setzt data-theme aus dem localStorage-Cache VOR dem ersten Paint und
        gleicht danach gegen GET /api/v1/settings/theme ab. Blockierend und im
        <head>, sonst blitzt auf Login-/Startup-Screen kurz das falsche Design auf. -->
-  <script src="/js/00-theme-boot.js?v=2026.09.06.1925"></script>
+  <script src="/js/00-theme-boot.js?v=2026.09.06.1953"></script>
   <!-- Aktive Sprachdatei. Blockierend und VOR dem Bündel, weil i18n.js beim
        Auswerten window.I18N_DE / window.I18N_EN erwartet.
        Welche Datei hier steht, entscheidet der Server (utils/indexHtml.ts)
        anhand der gespeicherten Sprache — genauso wie beim Design darüber.
        Der Wechsel zur anderen Sprache lädt sie zur Laufzeit nach
        (loadLang() in i18n.js). -->
-  <script src="/locales/de.js?v=2026.09.06.1925" data-i18n-locale></script>
+  <script src="/locales/de.js?v=2026.09.06.1953" data-i18n-locale></script>
 </head>
 <body>
 
@@ -100,7 +100,7 @@
         <a href="#" id="link-forgot" style="color:var(--b600)" data-i18n="login.forgot">Passwort vergessen?</a>
         <span id="link-register-wrap" style="display:none"><span data-i18n="login.register_prompt">Neu hier?</span> <a href="#" id="link-register" style="color:var(--b600);font-weight:600">Registrieren</a></span>
       </div>
-      <div style="color:var(--mut);font-size:.7rem;margin-top:1.5rem;text-align:center;opacity:.45;letter-spacing:.03em">Build 2026.09.06.1925</div>
+      <div style="color:var(--mut);font-size:.7rem;margin-top:1.5rem;text-align:center;opacity:.45;letter-spacing:.03em">Build 2026.09.06.1953</div>
       <div id="verified-msg" style="display:none;margin-top:.75rem;padding:.65rem .9rem;background:var(--g50);border:1px solid var(--g300);border-radius:7px;font-size:.82rem;color:var(--g700)"><span data-i18n="verify.success">✅ E-Mail erfolgreich bestätigt. Du kannst dich jetzt anmelden.</span></div>
     </div>
 
@@ -1116,7 +1116,7 @@
 
 <div id="toasts"></div>
 
-<script type="module" src="/js/pdfjs-boot.js?v=2026.09.06.1925"></script>
+<script type="module" src="/js/pdfjs-boot.js?v=2026.09.06.1953"></script>
 <!-- Ein Bündel statt zwölf Einzeldateien.
      i18n.js und js/01-*.js … js/11-*.js werden von scripts/build-frontend.js in
      genau dieser Reihenfolge aneinandergehängt und minifiziert. Die Quellen
@@ -1126,7 +1126,7 @@
      00-theme-boot.js bleibt oben im <head> (muss vor dem ersten Rendern laufen),
      pdfjs-boot.js bleibt separat (ES-Modul), logviewer.js wird bei Bedarf
      zur Laufzeit nachgeladen. -->
-<script src="/js/app.bundle.js?v=2026.09.06.1925"></script>
+<script src="/js/app.bundle.js?v=2026.09.06.1953"></script>
 <!-- app.js ist in Sektions-Dateien aufgeteilt (public/js/) — Ladereihenfolge
      ist relevant, die Dateien teilen sich den globalen Scope. -->
 <!-- Der eigene Scrollbalken (#app-scrollbar) wird von js/01-core.js ERZEUGT,
