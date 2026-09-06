@@ -47,6 +47,29 @@ const val UPDATE_RELEASE_BASIS =
 /** Die Beschreibung der neusten Fassung; geschrieben vom Android-Workflow. */
 const val UPDATE_VERSION_URL = "$UPDATE_RELEASE_BASIS/version.json"
 
+/**
+ * Obergrenze fuer das geladene APK.
+ *
+ * ── Warum es eine ABSOLUTE Grenze braucht ───────────────────────────────────
+ * Die erwartete Groesse steht in version.json — aber genau die ist der Teil,
+ * dem hier nicht blind vertraut wird. Eine manipulierte Beschreibung koennte
+ * eine beliebige Zahl nennen, und ohne feste Obergrenze liefe der Speicher
+ * voll, BEVOR die Signaturpruefung ueberhaupt an die Reihe kommt.
+ *
+ * 300 MB ist grosszuegig gewaehlt: Das APK liegt bei rund 46 MB. Die Grenze
+ * soll ein Fass ohne Boden fangen, nicht ein gewachsenes APK verbieten.
+ */
+const val UPDATE_MAX_BYTES: Long = 300L * 1024 * 1024
+
+/**
+ * Obergrenze fuer version.json — die Datei traegt fuenf Felder.
+ *
+ * Sie wird als Zeichenkette in den Speicher gelesen; ohne Grenze waere schon
+ * das eine Stelle, an der eine manipulierte Antwort die App umbringt, ohne je
+ * ein APK anfassen zu muessen.
+ */
+const val UPDATE_JSON_MAX_BYTES: Long = 64L * 1024
+
 /** Wohin das geladene APK kommt — siehe res/xml/file_paths.xml, update_internal. */
 const val UPDATE_ORDNER = "update"
 

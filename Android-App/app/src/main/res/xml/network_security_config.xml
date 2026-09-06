@@ -17,6 +17,41 @@
   installiert hat — der saubere Weg raus aus dem Klartext-Betrieb.
 -->
 <network-security-config>
+    <!--
+      ── Die Selbstaktualisierung vertraut NUR System-Zertifikaten ────────────
+
+      Die base-config darunter erlaubt bewusst nutzerinstallierte CAs: Der
+      Nutzer traegt seine eigene Server-Adresse ein, oft mit selbst
+      ausgestelltem Zertifikat. Fuer den EIGENEN Server ist das die richtige
+      Entscheidung — er weiss, welchem Zertifikat er da vertraut.
+
+      Fuer GitHub ist es die falsche. Von dort laedt die App seit der
+      Selbstaktualisierung ein APK (util/AppUpdate.kt). Wer eine CA auf das
+      Geraet bringt — ein Geraeteverwalter, ein untergeschobenes Profil, jemand
+      mit kurzem Zugriff —, saesse sonst zwischen der App und ihrer eigenen
+      Aktualisierung.
+
+      Die Signaturpruefung faengt das Schlimmste ohnehin ab: Ein fremd
+      signiertes APK wird nicht installiert. Was ohne diesen Block bliebe, ist
+      trotzdem unangenehm — Updates unterdruecken oder ein Downgrade
+      vortaeuschen. Hier kostet das Schliessen sechs Zeilen.
+
+      Zwei Hosts, weil der Release-Anhang umgeleitet wird: github.com stellt
+      die Anfrage, ausgeliefert wird von *.githubusercontent.com.
+
+      cleartextTrafficPermitted="false": Zu diesen beiden Hosts gibt es keinen
+      Grund fuer Klartext. Die zweite Haelfte derselben Regel steht im
+      Update-Client selbst (AppModule: followSslRedirects(false)) — eine
+      Umleitung von https auf http bricht dort ab, statt still zu folgen.
+    -->
+    <domain-config cleartextTrafficPermitted="false">
+        <domain includeSubdomains="true">github.com</domain>
+        <domain includeSubdomains="true">githubusercontent.com</domain>
+        <trust-anchors>
+            <certificates src="system" />
+        </trust-anchors>
+    </domain-config>
+
     <base-config cleartextTrafficPermitted="true">
         <trust-anchors>
             <certificates src="system" />
