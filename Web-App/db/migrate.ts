@@ -100,14 +100,4 @@ async function runMigrations(client: any): Promise<string[]> {
   return applied;
 }
 
-/**
- * Welche Migrationen sind angewandt? Für Diagnose und die Admin-Oberfläche.
- * @param {any} db Modul db/database
- * @returns {Promise<{name: string, applied_at: string}[]>}
- */
-async function listMigrations(db: any): Promise<any[]> {
-  return db.all('SELECT name, applied_at FROM schema_migrations ORDER BY name')
-    .catch(() => []);
-}
-
-export { runMigrations, listMigrations };
+export { runMigrations };

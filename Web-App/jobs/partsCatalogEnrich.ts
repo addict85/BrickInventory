@@ -806,6 +806,5 @@ async function _redownloadMissingImages() {
 }
 
 /** Anzahl laufender Bild-Downloads — für die Monitoring-Ansicht. */
-const activeDownloads = () => _downloadLocks.size;
 
-export { enrichSetParts, downloadSetImages, enrichSetMinifigs, downloadImage, redownloadMissingImages, activeDownloads };
+export { enrichSetParts, downloadSetImages, enrichSetMinifigs, downloadImage, redownloadMissingImages };

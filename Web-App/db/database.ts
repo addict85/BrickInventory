@@ -834,34 +834,6 @@ async function indizesUndZusammenfassung() {
 }
 
 // ── Upsert helpers ────────────────────────────────────────────────────────────
-// Replaces INSERT OR REPLACE patterns with proper PostgreSQL upserts
-
-/**
- * Upsert a row.
- * upsert(table, { col: val, ... }, conflictCols, updateCols)
- */
-async function upsert(
-  table: string,
-  data: Record<string, any>,
-  conflictCols: string[],
-  updateCols?: string[] | null,
-): Promise<{ changes: number | null }> {
-  const keys   = Object.keys(data);
-  const vals   = Object.values(data);
-  const nums   = keys.map((_, i) => `$${i + 1}`);
-  const update = (updateCols || keys.filter(k => !conflictCols.includes(k)))
-    .map((k: string) => `${k} = EXCLUDED.${k}`)
-    .join(', ');
-
-  const sql = `
-    INSERT INTO ${table} (${keys.join(', ')})
-    VALUES (${nums.join(', ')})
-    ON CONFLICT (${conflictCols.join(', ')})
-    ${update ? `DO UPDATE SET ${update}` : 'DO NOTHING'}
-  `;
-  const result = await pool.query(sql, vals);
-  return { changes: result.rowCount };
-}
 
 // initSchemaOnce: wraps initSchema with a PostgreSQL advisory lock (55667788)
 // so only one cluster worker runs migrations at a time.
@@ -976,4 +948,4 @@ async function eigeneVerbindung() {
   return c;
 }
 
-export { pool, all, get, run, exec, transaction, upsert, initSchema, initSchemaOnce, getPoolStats, eigeneVerbindung };
+export { pool, all, get, run, exec, transaction, initSchema, initSchemaOnce, getPoolStats, eigeneVerbindung };

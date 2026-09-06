@@ -150,14 +150,5 @@ async function generateThumb(localPath: string) {
 /**
  * Generate thumbnails for a batch of local paths (background, non-blocking).
  */
-function generateThumbsBackground(localPaths: string[]) {
-  setImmediate(async () => {
-    for (const p of localPaths) {
-      if (p) await generateThumb(p).catch(() => {});
-      // Small delay between images to avoid blocking event loop
-      await new Promise(r => setTimeout(r, 50));
-    }
-  });
-}
 
-export { generateThumb, generateThumbsBackground };
+export { generateThumb };
