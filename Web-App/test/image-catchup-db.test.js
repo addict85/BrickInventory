@@ -101,7 +101,7 @@ test('der Pfad-Auflöser kennt alle drei Bildarten', () => {
 });
 
 test('beide Vorschau-Erzeuger melden Fehlschläge', () => {
-  for (const [datei, muster] of [['routes/thumbs.ts', /\[thumb\]/], ['utils/proxyThumbs.ts', /\[img-proxy\] Vorschau fehlgeschlagen/]]) {
+  for (const [datei, muster] of [['utils/thumbs.ts', /\[thumb\]/], ['utils/proxyThumbs.ts', /\[img-proxy\] Vorschau fehlgeschlagen/]]) {
     const src = fs.readFileSync(path.join(ROOT, datei), 'utf8');
     assert.ok(muster.test(src),
       `${datei}: ein Fehlschlag der Vorschau-Erzeugung bleibt still. Genau das hat den ` +

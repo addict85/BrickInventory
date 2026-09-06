@@ -112,7 +112,7 @@ async function downloadImage(
       const out = fs.createWriteStream(dest);
       r.pipe(out);
       out.on('finish', async () => {
-        try { await require('../routes/thumbs').generateThumb(rel).catch(() => {}); } catch (e) { meldeUndWeiter('teile-enrich:vorschau', e); }
+        try { await require('../utils/thumbs').generateThumb(rel).catch(() => {}); } catch (e) { meldeUndWeiter('teile-enrich:vorschau', e); }
         resolve(rel);
       });
       out.on('error', () => resolve(null));
@@ -701,7 +701,7 @@ async function redownloadMissingImages() {
 
 async function _redownloadMissingImages() {
   const { downloadFile }    = require('../clients/rebrickable');
-  const { generateThumb }   = require('../routes/thumbs');
+  const { generateThumb }   = require('../utils/thumbs');
   try {
     fs.mkdirSync(PART_IMAGES_DIR, { recursive: true });
     await _redlSetStatus({ running: true, phase: 'scanning', total: 0, done: 0, redownloaded: 0, cleared: 0 });
@@ -744,7 +744,7 @@ async function _redownloadMissingImages() {
     let thumbsErzeugt = 0;
     if (ohneVorschau.length) {
       await _redlSetStatus({ running: true, phase: 'thumbs', total: ohneVorschau.length, done: 0, redownloaded: 0, cleared: 0 });
-      const { generateThumb: _gen } = require('../routes/thumbs');
+      const { generateThumb: _gen } = require('../utils/thumbs');
       for (const web of ohneVorschau) {
         if (await _gen(web).catch(() => null)) thumbsErzeugt++;
       }
@@ -806,6 +806,5 @@ async function _redownloadMissingImages() {
 }
 
 /** Anzahl laufender Bild-Downloads — für die Monitoring-Ansicht. */
-const activeDownloads = () => _downloadLocks.size;
 
-export { enrichSetParts, downloadSetImages, enrichSetMinifigs, downloadImage, redownloadMissingImages, activeDownloads };
+export { enrichSetParts, downloadSetImages, enrichSetMinifigs, downloadImage, redownloadMissingImages };

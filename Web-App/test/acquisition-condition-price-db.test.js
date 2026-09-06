@@ -52,8 +52,8 @@ test('alle drei Erfassungsarten reichen den Zustand an resolvePrice durch', () =
 
 test('die Preisermittler nehmen einen Zustand entgegen', () => {
   // Sonst wäre das Durchreichen oben wirkungslos.
-  const mf = fs.readFileSync(path.join(__dirname, '..', 'routes', 'minifigs.ts'), 'utf8');
-  const pt = fs.readFileSync(path.join(__dirname, '..', 'routes', 'parts.ts'), 'utf8');
+  const mf = fs.readFileSync(path.join(__dirname, '..', 'utils', 'marketPrice.ts'), 'utf8');
+  const pt = fs.readFileSync(path.join(__dirname, '..', 'utils', 'marketPrice.ts'), 'utf8');
 
   // Auf den PARAMETER geprüft, nicht auf seine Schreibweise: Ob dort
   // `condition = null` oder `condition: string | null = null` steht, ist eine
@@ -85,7 +85,7 @@ test('die Schätzung legt je Zustand einen eigenen Eintrag ab', () => {
   // Zwei Zustände = zwei Marktpreise. Lägen sie unter demselben Schlüssel,
   // überschriebe der eine den anderen und die zweite Zeile bliebe für immer
   // leer — genau Marcos Bild.
-  const mf = fs.readFileSync(path.join(__dirname, '..', 'routes', 'minifigs.ts'), 'utf8');
+  const mf = fs.readFileSync(path.join(__dirname, '..', 'utils', 'marketPrice.ts'), 'utf8');
   const i = mf.indexOf('async function estimateFigPriceFromParts');
   const fn = mf.slice(i, mf.indexOf('\n}', i));
 

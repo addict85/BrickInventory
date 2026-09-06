@@ -15,7 +15,9 @@
 // Pfade zentral auflösen — __dirname zeigt seit dem dist/-Build nicht mehr
 // auf die Wurzel. Siehe utils/appPaths.ts.
 const {  DATA_DIR } = require('../utils/appPaths');
-import { fetchMissingBlIds } from '../routes/parts';
+// Direkt aus utils/partsImport — siehe die Begruendung in
+// utils/handlers/parts.ts: routes/parts reicht die Funktion nur weiter.
+import { fetchMissingBlIds } from '../utils/partsImport';
 import { getRbKey, httpsGetRobust } from '../clients/rebrickable';
 import { fehlertext } from '../utils/httpError';
 import { getGlobalSetting, setGlobalSetting } from '../utils/settings';

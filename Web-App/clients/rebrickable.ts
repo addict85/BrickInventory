@@ -451,5 +451,63 @@ async function getMinifigParts(figNumber: string) {
   } catch (_) { return []; }
 }
 
-export { getSetInfo, getAllSetParts, downloadFile, scrapeInstructions,
+
+/**
+ * ── Warum lookupPart hier steht und nicht mehr in routes/parts.ts ───────────
+ * Es ist eine reine Rebrickable-Abfrage: getRbKey(), httpsGetRobust() und die
+ * Hintergrunddrossel — alles aus dieser Datei bzw. utils/rateLimiter, nichts
+ * aus der Route. Es lag dort, weil die HTTP-Route dort steht, die es ausloest;
+ * gebraucht wurde es aber auch von jobs/purchasePriceBackfill.ts, und der
+ * musste dafuer aus einer ROUTE importieren.
+ */
+async function lookupPart(partNumber: string, colorId?: number | null) {
+  const key = await getRbKey();
+  if (!key) return null;
+  try {
+    // Use batch endpoint ?part_nums= instead of single /parts/{num}/
+    await rebrickableBackgroundLimiter.waitForSlot();
+    const { status, body } = await httpsGetRobust(
+      `https://rebrickable.com/api/v3/lego/parts/?part_nums=${encodeURIComponent(partNumber)}&page_size=1`,
+      { Authorization: `key ${key}` }, 15000
+    );
+    if (status !== 200) return null;
+    const d = JSON.parse(body);
+    const part = d.results?.[0];
+    if (!part) return null;
+    let image_url = part.part_img_url || null;
+
+    // Bild soll den Stein immer in der gewählten Farbe zeigen: Rebrickable
+    // liefert dafür ein eigenes Farb-Bild über den Parts/Colors-Endpoint.
+    // (Der lokale set_parts_catalog-Cache ist meist leer, da er nur Farben
+    // enthält, die bereits über ein importiertes Set gesehen wurden.)
+    // 0 IST eine Farbe — Schwarz.
+    //
+    // Die Bedingung lautete `colorId && colorId !== 0` und schloss damit
+    // ausgerechnet Schwarz aus: Das Farbbild wurde nie geholt, und es blieb
+    // beim allgemeinen part_img_url (bei vielen Teilen die weisse Fassung).
+    // "Keine Farbe" kommt jetzt als null herein (siehe public/js/06-minifigs.js),
+    // ist also unterscheidbar.
+    if (colorId !== null && colorId !== undefined) {
+      try {
+        await rebrickableBackgroundLimiter.waitForSlot();
+        const colorResp = await httpsGetRobust(
+          `https://rebrickable.com/api/v3/lego/parts/${encodeURIComponent(partNumber)}/colors/${colorId}/`,
+          { Authorization: `key ${key}` }, 15000
+        );
+        if (colorResp.status === 200) {
+          const cd = JSON.parse(colorResp.body);
+          if (cd?.part_img_url) image_url = cd.part_img_url;
+        }
+      } catch (_) { /* fall back to generic part image */ }
+    }
+
+    return {
+      part_name:     part.name || null,
+      category_name: part.part_cat_id ? String(part.part_cat_id) : null,
+      image_url,
+    };
+  } catch (_) { return null; }
+}
+
+export { lookupPart, getSetInfo, getAllSetParts, downloadFile, scrapeInstructions,
   getSetMinifigs, getMinifigInfo, getBrickColors, getRbKey, sleep, httpsGetRobust, getMinifigParts };

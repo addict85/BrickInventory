@@ -28,7 +28,7 @@ const WURZEL = path.join(__dirname, '..');
 const ohneKommentare = (s) => s.replace(/\/\*[\s\S]*?\*\//g, '')
   .split('\n').filter(z => !z.trim().startsWith('//') && !z.trim().startsWith('*')).join('\n');
 
-const src = ohneKommentare(fs.readFileSync(path.join(WURZEL, 'routes', 'minifigs.ts'), 'utf8'));
+const src = ohneKommentare(fs.readFileSync(path.join(WURZEL, 'utils', 'marketPrice.ts'), 'utf8'));
 
 /** Der Abruf selbst, nicht die duenne Zahl-Huelle daneben. */
 function abruf() {

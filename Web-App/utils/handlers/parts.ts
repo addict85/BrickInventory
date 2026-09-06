@@ -3,7 +3,12 @@ import { resolveImageLocal } from '../images';
 import { asIds } from '../household';
 import { istErsatzteil, ersatzteilSql } from '../validate';
 import { ensureFresh } from '../partsSummary';
-import { fetchMissingBlIds } from '../../routes/parts';
+// Direkt aus utils/partsImport, nicht ueber routes/parts: Die Route hat die
+// Funktion selbst nur importiert und weiterexportiert (Object.assign am
+// Dateiende). Der Umweg sah wie Fachlogik in einer Route aus und war doch
+// nur ein Durchreichen — er zog aber eine echte Abhaengigkeit von dieser
+// Datei auf die aeusserste Schicht.
+import { fetchMissingBlIds } from '../partsImport';
 import type { RbSetTeil } from '../../clients/rebrickable';
 import { getAllSetParts, getRbKey, httpsGetRobust } from '../../clients/rebrickable';
 import { clampPageSize, applyManualCondition, withOwners, MAX_PAGE_SIZE, UNPAGED_LIMIT, SET_PARTS_MAX_PAGE_SIZE } from './shared';

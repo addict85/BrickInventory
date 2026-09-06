@@ -53,7 +53,7 @@ test('generateThumb() legt tatsächlich eine kleinere Datei an', async () => {
   await bild.write(original);
 
   try {
-    const { generateThumb } = _req('routes/thumbs.js');
+    const { generateThumb } = _req('utils/thumbs.js');
     const web = await generateThumb(`/images/sets/${name}.jpg`);
 
     assert.ok(web, 'generateThumb lieferte null — der Fehler wird im catch verschluckt, ' +
@@ -73,7 +73,7 @@ test('beide Erzeuger schreiben temporär auf eine BILDendung', () => {
   // Die Quelltextregel zum Verhaltenstest oben: Jimp entscheidet über die
   // Endung, deshalb muss der temporäre Name auf .jpg enden.
   // Fundort seit Nachtrag 129: utils/proxyThumbs.ts.
-  for (const datei of ['routes/thumbs.ts', 'utils/proxyThumbs.ts']) {
+  for (const datei of ['utils/thumbs.ts', 'utils/proxyThumbs.ts']) {
     const src = fs.readFileSync(path.join(ROOT, datei), 'utf8')
       .split('\n').filter(l => !l.trim().startsWith('//')).join('\n');
     assert.ok(/tmpThumb = .*\.tmp\.jpg`/.test(src),

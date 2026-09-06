@@ -71,7 +71,7 @@ test('sharp lässt sich laden und kann webp', async () => {
 });
 
 test('der Code nutzt sharp und behält Jimp als Rückfall', () => {
-  const src = fs.readFileSync(path.join(ROOT, 'routes', 'thumbs.ts'), 'utf8');
+  const src = fs.readFileSync(path.join(ROOT, 'utils', 'thumbs.ts'), 'utf8');
   const i = src.indexOf('async function verkleinern(');
   assert.ok(i > 0, 'Die gemeinsame Verkleinerungs-Funktion fehlt');
   const fn = src.slice(i, src.indexOf('\n}\n', i));

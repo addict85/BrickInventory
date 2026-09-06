@@ -63,5 +63,11 @@ export const LOCKS = {
  * ein Streuwert über den Vorgangsnamen und trifft die 0 bzw. hashtext(set) der
  * Einträge oben nicht. Es steht hier, damit die nächste Person das nicht neu
  * herleiten muss.
+ *
+ * ── Warum hier kein `export const … = true` mehr steht ──────────────────────
+ * Der Absatz oben hing an einer Konstanten (TXLOCK_NAMENSRAUM_IST_DIE_USER_ID),
+ * die niemand las — sie war eine Anmerkung in der Form eines Wertes. Das ist
+ * nicht bloss ueberfluessig: Ein exportierter Wert sieht aus wie eine
+ * Zusicherung, die jemand pruefen koennte, und diese hier prueft nichts. Die
+ * Auskunft ist der Kommentar; der braucht nichts, woran er haengt.
  */
-export const TXLOCK_NAMENSRAUM_IST_DIE_USER_ID = true;

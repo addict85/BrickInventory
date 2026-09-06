@@ -107,7 +107,7 @@ import { fehlertext, logAndContinue, meldeUndWeiter } from './utils/httpError';
 import cluster from 'cluster';
 import os from 'os';
 import { starteHintergrundlaeufe } from './startup/backgroundJobs';
-import { generateThumb } from './routes/thumbs';
+import { generateThumb } from './utils/thumbs';
 import { getGlobalSetting, deleteGlobalSetting } from './utils/settings';
 
 const WORKERS = parseInt(process.env.WEB_WORKERS || '0') || Math.max(2, os.cpus().length);
@@ -639,7 +639,7 @@ app.get('/images/*', async (req: WildcardRequest, res: Response) => {
         const webPfadOriginal = '/images/' + originalSegs.join('/');
         setImmediate(() => {
           try {
-            (require('./routes/thumbs') as typeof import('./routes/thumbs')).generateThumb(webPfadOriginal).catch(() => {});
+            (require('./utils/thumbs') as typeof import('./utils/thumbs')).generateThumb(webPfadOriginal).catch(() => {});
           } catch (e) { meldeUndWeiter('server:vorschau-erzeugen', e); }
         });
         return res.sendFile(originalPfad, err2 => {

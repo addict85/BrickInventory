@@ -1,6 +1,9 @@
 import { getCurrentMarketPrice } from '../utils/marketPrice';
-import { getCurrentFigMarketPrice } from '../routes/minifigs';
-import { getCurrentPartMarketPrice, lookupPart } from '../routes/parts';
+// Die Marktpreise stehen seit dem Schichtumbau in utils/marketPrice.ts, bei
+// dem fuer Sets. Vorher musste dieser Job aus zwei ROUTEN importieren, um an
+// zwei Zahlen zu kommen.
+import { getCurrentFigMarketPrice, getCurrentPartMarketPrice } from '../utils/marketPrice';
+import { lookupPart } from '../clients/rebrickable';
 import { fehlertext, logAndContinue, meldeUndWeiter } from '../utils/httpError';
 import { sleep } from '../clients/rebrickable';
 'use strict';

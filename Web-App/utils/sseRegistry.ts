@@ -42,10 +42,6 @@ export function registerSse(res: any): () => void {
   return () => { _offen.delete(res); };
 }
 
-/** Anzahl offener Ströme — für Diagnose und Tests. */
-export function openSseCount(): number {
-  return _offen.size;
-}
 
 /**
  * Alle offenen Ströme beenden. Aus dem Shutdown aufgerufen, BEVOR auf

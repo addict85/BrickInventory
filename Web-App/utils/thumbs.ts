@@ -17,6 +17,21 @@
  * daran scheiterten in Marcos Log immer dieselben Sets („Mime type image/webp
  * does not support decoding"). sharp kann es.
  *
+ * ── Warum die Datei in utils/ liegt und nicht in routes/ ────────────────────
+ * Sie lag in routes/, obwohl sie KEINE Route enthaelt — kein `router.get`,
+ * kein `app.get`, nur drei Funktionen und einen Export. Der Ordnername sagte
+ * damit etwas Falsches ueber ihren Inhalt.
+ *
+ * Das blieb nicht folgenlos: generateThumb() wird an NEUN Stellen gebraucht,
+ * verteilt auf jobs/catalogSync, jobs/imageQueue, jobs/partsCatalogEnrich,
+ * jobs/startNachlaeufe, utils/partsImport, utils/setService und server.ts.
+ * Alle sechs Nicht-Route-Dateien mussten also aus der aeussersten Schicht
+ * importieren, um an eine Bildfunktion zu kommen. Die Abhaengigkeit zeigte
+ * nach aussen statt nach innen, und zwar oefter als jede andere im Baum
+ * (nachgemessen: der zweithaeufigste Fall hat zwei Nutzer).
+ *
+ * Verschoben, nicht umgeschrieben: Der Inhalt ist derselbe.
+ *
  * ── Jimp bleibt als Rückfall ────────────────────────────────────────────────
  * sharp bringt eine native Bibliothek mit. Lässt sie sich auf einer Plattform
  * nicht laden, wäre der Ausfall sonst total — keine Vorschau mehr, nirgends.
@@ -26,8 +41,8 @@
 
 import path from 'path';
 import fs from 'fs';
-import { resolveWebPath } from '../utils/appPaths';
-import { isDecodable } from '../utils/imageGuard';
+import { resolveWebPath } from './appPaths';
+import { isDecodable } from './imageGuard';
 
 const THUMB_SIZE = 200;
 
@@ -135,14 +150,5 @@ async function generateThumb(localPath: string) {
 /**
  * Generate thumbnails for a batch of local paths (background, non-blocking).
  */
-function generateThumbsBackground(localPaths: string[]) {
-  setImmediate(async () => {
-    for (const p of localPaths) {
-      if (p) await generateThumb(p).catch(() => {});
-      // Small delay between images to avoid blocking event loop
-      await new Promise(r => setTimeout(r, 50));
-    }
-  });
-}
 
-export { generateThumb, generateThumbsBackground };
+export { generateThumb };

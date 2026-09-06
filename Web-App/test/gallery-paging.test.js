@@ -13,6 +13,7 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
+const { abschnitt } = require('./helpers/sources');
 
 /**
  * import-/export-Syntax aus einer Moduldatei entfernen.
@@ -98,7 +99,10 @@ test('die Themenliste kommt vom Server und nur auf Seite 1', () => {
 });
 
 test('renderGallery filtert und sortiert nicht mehr selbst', () => {
-  const fn = GAL.slice(GAL.indexOf('function renderGallery()'), GAL.indexOf('function updateGalleryPrices'));
+  // abschnitt(): Hier stehen nur doesNotMatch-Zusicherungen — auf leerem
+  // Ausschnitt waeren sie gruen. Siehe die Begruendung an abschnitt().
+  const fn = abschnitt(GAL, 'function renderGallery()', 'function updateGalleryPrices',
+                       'Galerie zeichnet ohne Clientfilter');
   assert.doesNotMatch(fn, /allSets\.filter/, 'ein Clientfilter sähe nur die geladene Seite');
   assert.doesNotMatch(fn, /list\.sort\(/, 'Sortieren über eine Teilmenge ergibt eine falsche Reihenfolge');
 });

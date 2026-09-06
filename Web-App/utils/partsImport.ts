@@ -4,7 +4,7 @@ import * as db from '../db/database';
 import { PART_IMAGES_DIR } from './appPaths';
 import { getAllSetParts, downloadFile, sleep } from '../clients/rebrickable';
 import { logAndContinue, fehlertext } from './httpError';
-import { generateThumb } from '../routes/thumbs';
+import { generateThumb } from './thumbs';
 import { meldeUndWeiter } from '../utils/httpError';
 import { getGlobalSetting } from '../utils/settings';
 import { mitVersion } from './setNummer';

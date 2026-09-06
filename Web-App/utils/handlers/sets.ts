@@ -429,20 +429,5 @@ async function deleteSet(userId: Blickfeld, setNumber: string) {
   });
 }
 
-async function updateSetQuantity(userId: Blickfeld, setNumber: string, quantity: number) {
-  // Blickfeld statt einer einzelnen ID: Ein Hauptkonto sieht (und ändert)
-  // auch die Daten seiner Unterkonten, alle anderen nur ihre eigenen. Die
-  // Liste kommt von scopeIds() in utils/household.ts — hier wird sie nur
-  // normalisiert, damit ältere Aufrufer mit einer nackten ID weiter gehen.
-  const uids = asIds(userId);
-  // `uids` statt `userId`: Die normalisierte Liste wurde oben berechnet und
-  // dann nicht benutzt — ANY() bekam den rohen Parameter. Mit einer nackten
-  // Zahl statt eines Feldes bricht die Abfrage ab, und die Mengenänderung fiel
-  // still aus.
-  await db.run(
-    'UPDATE sets SET quantity = $1 WHERE user_id = ANY($2) AND set_number = $3',
-    [quantity, uids, setNumber]
-  );
-}
 
-export { getSets, getSetConditionAggregate, withSetAggregate, getSet, deleteSetRows, deleteSet, updateSetQuantity };
+export { getSets, getSetConditionAggregate, withSetAggregate, getSet, deleteSetRows, deleteSet };

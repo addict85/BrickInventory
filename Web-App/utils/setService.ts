@@ -12,7 +12,7 @@ import { toCsv } from './csvExport';
 import { getSetInfo } from '../clients/rebrickable';
 import * as brickset from '../clients/brickset';
 import { getItemImageUrl } from '../clients/bricklink';
-import { generateThumb } from '../routes/thumbs';
+import { generateThumb } from './thumbs';
 import * as nachErfassung from '../jobs/nachErfassung';
 import { normalisiereSetNummer } from './setNummer';
 
