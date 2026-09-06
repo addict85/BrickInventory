@@ -96,8 +96,20 @@ test('Server, Webapp und App nennen dieselbe Zahl', () => {
 
   const kotlinDatei = path.join(KOTLIN, 'util', 'Passwort.kt');
   assert.ok(fs.existsSync(kotlinDatei), 'util/Passwort.kt fehlt — Pfad im Test veraltet?');
-  const appZahl = /PASSWORT_MIN_ZEICHEN = (\d+)/.exec(fs.readFileSync(kotlinDatei, 'utf8'));
-  assert.ok(appZahl, 'Die App fuehrt keine Konstante mehr');
+  // `const val`, nicht bloss der Name: Der erste Entwurf dieser Datei schrieb
+  // `const PASSWORT_MIN_ZEICHEN = 8` — ohne `val`, und das ist kein gueltiges
+  // Kotlin. Dieser Regex traf die Zeichenkette trotzdem, der Test blieb gruen,
+  // und der Fehler fiel erst im Android-Lauf auf (Lauf 140, nach 83 Sekunden
+  // Abbruch). Eine Pruefung, die eine Zeichenkette sucht statt die Sache,
+  // findet auch eine kaputte Sache.
+  //
+  // Der Android-Compiler laeuft in dieser Umgebung nicht (dl.google.com
+  // antwortet mit 403); der Lauf in CI ist der einzige Uebersetzer. Umso mehr
+  // muss das, was hier ohne ihn pruefbar ist, genau pruefen.
+  const appZahl = /const val PASSWORT_MIN_ZEICHEN = (\d+)\b/.exec(fs.readFileSync(kotlinDatei, 'utf8'));
+  assert.ok(appZahl,
+    'Die App fuehrt keine Konstante mehr — oder nicht als `const val` (ohne `val` ' +
+    'uebersetzt Kotlin die Datei nicht)');
   assert.equal(Number(appZahl[1]), PASSWORT_MIN_ZEICHEN,
     'App und Server verlangen verschiedene Laengen');
 });

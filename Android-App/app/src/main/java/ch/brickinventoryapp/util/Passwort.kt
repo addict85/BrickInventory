@@ -22,7 +22,7 @@ package ch.brickinventoryapp.util
  * sie dem Nutzer, bevor er auf Speichern drueckt — sonst kostet ein Tippfehler
  * eine Runde ueber das Netz.
  */
-const PASSWORT_MIN_ZEICHEN = 8
+const val PASSWORT_MIN_ZEICHEN = 8
 
 /** Ist dieses Passwort zu kurz? */
 fun passwortZuKurz(passwort: String): Boolean = passwort.length < PASSWORT_MIN_ZEICHEN
