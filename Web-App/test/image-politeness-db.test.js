@@ -25,6 +25,7 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const path = require('node:path');
+const { abschnitt } = require('./helpers/sources');
 const fs = require('node:fs');
 const Module = require('node:module');
 
@@ -214,7 +215,10 @@ test('der User-Agent nennt Ross und Reiter', () => {
     'Ohne Umgebungsvariable liesse sich eine Fehlentscheidung nur durch einen ' +
     'neuen Build zurücknehmen');
   // Und die alte Tarnung darf nicht zurückkommen.
-  const dl = src.slice(src.indexOf('async function downloadSetImage'));
+  // abschnitt(): einzige Zusicherung ist ein doesNotMatch — auf leerem
+  // Ausschnitt gruen. Siehe die Begruendung an abschnitt().
+  const dl = abschnitt(src, 'async function downloadSetImage', undefined,
+                       'Bildabruf ohne vorgetaeuschte Browserkennung');
   assert.doesNotMatch(dl.slice(0, 2000), /Mozilla\/5\.0 \(Windows NT/,
     'Die vorgetäuschte Chrome-Kennung ist zurück');
 });

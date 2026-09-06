@@ -541,3 +541,42 @@ function einhaengung(name) {
   return treffer[0].mount;
 }
 module.exports.einhaengung = einhaengung;
+
+/**
+ * Einen Ausschnitt aus einer Quelle schneiden — und WERFEN, wenn der Anker
+ * fehlt.
+ *
+ * ── Woher das kommt ─────────────────────────────────────────────────────────
+ * Die Tests schneiden 106-mal mit `src.slice(src.indexOf('…'), …)`. Fehlt der
+ * gesuchte Text, liefert indexOf -1, und `slice(-1)` gibt das letzte Zeichen:
+ * ein praktisch leerer Ausschnitt.
+ *
+ * Bei 101 dieser Stellen faellt das von selbst auf, weil eine positive
+ * Zusicherung folgt (`assert.match`, `assert.ok`) — die wird auf leerem Text
+ * rot. Bei vier Stellen standen NUR `assert.doesNotMatch`, und die sind auf
+ * leerem Text GRUEN. Dort prueft der Test dann nichts mehr und sagt nichts.
+ *
+ * Genau so ist es in dieser Sitzung passiert: Beim Verschieben von
+ * estimateFigPriceFromParts nach utils/marketPrice.ts zeigten mehrere Schnitte
+ * ins Leere. Es fiel auf, WEIL dort `assert.match` stand. Mit `doesNotMatch`
+ * waeren sie gruen geblieben.
+ *
+ * @param {string} quelle  der ganze Dateiinhalt
+ * @param {string} ab      Text, ab dem geschnitten wird (muss vorkommen)
+ * @param {string} [bis]   Text, bis zu dem geschnitten wird (muss vorkommen,
+ *                         wenn angegeben) — sonst bis zum Ende
+ * @param {string} [wozu]  wofuer der Ausschnitt gebraucht wird, fuer die Meldung
+ */
+function abschnitt(quelle, ab, bis, wozu = '') {
+  const i = String(quelle).indexOf(ab);
+  if (i < 0) throw new Error(
+    `Ankertext nicht gefunden${wozu ? ` (${wozu})` : ''}: ${JSON.stringify(ab).slice(0, 90)}\n` +
+    'Der Ausschnitt waere leer, und Zusicherungen darauf pruefen nichts mehr.');
+  if (bis === undefined) return String(quelle).slice(i);
+  const j = String(quelle).indexOf(bis, i);
+  if (j < 0) throw new Error(
+    `Endanker nicht gefunden${wozu ? ` (${wozu})` : ''}: ${JSON.stringify(bis).slice(0, 90)}`);
+  return String(quelle).slice(i, j);
+}
+
+module.exports.abschnitt = abschnitt;

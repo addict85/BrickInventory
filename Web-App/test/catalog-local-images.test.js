@@ -20,7 +20,7 @@ const fs = require('node:fs');
 const path = require('node:path');
 
 const ROOT = path.join(__dirname, '..');
-const { pruefeParameter } = require('./helpers/sources');
+const { pruefeParameter , abschnitt } = require('./helpers/sources');
 const SRC = fs.readFileSync(path.join(ROOT, 'routes', 'api_v1', 'catalog.ts'), 'utf8');
 const CODE = SRC.replace(/\/\/[^\n]*/g, '').replace(/\/\*[\s\S]*?\*\//g, '');
 
@@ -57,8 +57,12 @@ test('die Existenzprüfung flutet nicht mehr den Thread-Pool', () => {
   // TLS-Handshakes neuer Datenbank-Verbindungen. resolveIfExists() ist
   // synchron UND gecacht — kein Promise.all mit vielen gleichzeitigen
   // fs-Zugriffen mehr nötig.
-  const fn = CODE.slice(CODE.indexOf("router.get('/catalog/sets', requireToken"),
-                        CODE.indexOf("router.get('/catalog/sets/:setNumber'"));
+  // abschnitt() statt slice/indexOf: Auf diesem Ausschnitt stehen NUR
+  // doesNotMatch-Zusicherungen, und die sind auf leerem Text gruen. Zieht die
+  // Route um oder aendert sich ihre Signatur, soll der Test das sagen statt
+  // stillzuschweigen. Siehe die Begruendung an abschnitt().
+  const fn = abschnitt(CODE, "router.get('/catalog/sets', requireToken",
+                       "router.get('/catalog/sets/:setNumber'", 'Katalogliste ohne Promise.all');
   assert.doesNotMatch(fn, /await Promise\.all\(sets\.map/,
     'Kein Promise.all mit vielen gleichzeitigen fs-Zugriffen mehr');
   assert.doesNotMatch(fn, /fs\.promises\.access/,

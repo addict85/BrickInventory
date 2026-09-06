@@ -11,6 +11,7 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
+const { abschnitt } = require('./helpers/sources');
 
 const ROOT = path.join(__dirname, '..');
 // Der Bild-Proxy ist aus server.ts nach routes/imgProxy.ts gewandert (server.ts
@@ -321,8 +322,11 @@ test('der Cache-Aufräumlauf hängt am Primary-Worker', () => {
   // Log-Bereinigung) hängen längst hinter isPrimaryWorker.
   assert.match(SERVER, /export function startImgCacheCleanup/,
     'Der Lauf muss von aussen startbar sein, statt beim Registrieren loszulaufen');
-  const reg = SERVER.slice(SERVER.indexOf('function registerImgProxy'),
-                           SERVER.indexOf('export function startImgCacheCleanup'));
+  // abschnitt(): nur doesNotMatch auf diesem Ausschnitt — auf leerem Text
+  // gruen. Siehe die Begruendung an abschnitt().
+  const reg = abschnitt(SERVER, 'function registerImgProxy',
+                        'export function startImgCacheCleanup',
+                        'Registrierung ohne tagesweites Intervall');
   assert.doesNotMatch(reg, /24 \* 60 \* 60 \* 1000/,
     'Kein tägliches Intervall mehr im Teil, den jeder Worker ausführt');
 
