@@ -109,6 +109,7 @@ import os from 'os';
 import { starteHintergrundlaeufe } from './startup/backgroundJobs';
 import { generateThumb } from './utils/thumbs';
 import { getGlobalSetting, deleteGlobalSetting } from './utils/settings';
+import { HAUSHALT_KANAL, leereHaushaltCache } from './utils/household';
 
 const WORKERS = parseInt(process.env.WEB_WORKERS || '0') || Math.max(2, os.cpus().length);
 
@@ -1033,6 +1034,20 @@ db.initSchemaOnce().then(async () => {
       .then(() => csvSync.run())
       .catch(e => console.error('[rb-csv-sync daily]', e.message)));
   scheduler.startTriggerPoll();
+
+  // Das Blickfeld eines Kontos wird gemerkt (utils/household.ts) — hier kommt
+  // die Nachricht an, dass es sich geaendert hat.
+  //
+  // Ohne dieses Signal saehe ein anderer Cluster-Worker die neue Verknuepfung
+  // erst nach Ablauf der Frist: Der Nutzer loest eine Einladung ein und findet
+  // sein Unterkonto je nach Worker mal vor und mal nicht.
+  //
+  // Der Handler laeuft auch beim (Wieder-)Verbinden ohne Signal — dann mit
+  // undefined als Payload (siehe utils/pgNotify.ts). Genau richtig: Was
+  // waehrend einer Trennung passiert ist, weiss dieser Worker nicht, also
+  // faengt er ohne gemerkten Stand neu an.
+  (require('./utils/pgNotify') as typeof import('./utils/pgNotify'))
+    .listen(HAUSHALT_KANAL, () => leereHaushaltCache());
 
   // CSV-Sync auf Zuruf statt im 5-Sekunden-Takt.
   // Der Eintrag in global_settings bleibt die belastbare Quelle; das

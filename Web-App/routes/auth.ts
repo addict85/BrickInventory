@@ -3,6 +3,7 @@ import express from 'express';
 const router  = express.Router();
 import bcrypt from 'bcryptjs';
 import * as db from '../db/database';
+import { meldeHaushaltsaenderung } from '../utils/household';
 import { handleRouteError, logAndContinue, meldeUndWeiter, fehlerCode, fehlertext, pfadParam } from '../utils/httpError';
 import { hashToken, pruefeAnmeldedaten, createToken, validateToken, assertLoginAllowed, establishSession, revokeAllTokens, revokeAllSessions, deleteToken, BCRYPT_ROUNDS, USERNAME_RE, EMAIL_RE, requireLoginOrToken, nutzerId, angemeldeteNutzerId, appTokenOhneAblauf, passwortZuKurz, flaggeGesetzt, leereTokenCache } from '../utils/auth';
 import { ipThrottle } from '../utils/loginLimiter';
@@ -472,6 +473,12 @@ router.delete('/users/:id', requireAdmin, async (req, res) => {
     // Und der Token-Cache, der die geloeschten Zeilen sonst noch bis zu 60
     // Sekunden bedient.
     leereTokenCache();
+    // Dasselbe fuer das Blickfeld: account_links haengt per ON DELETE CASCADE
+    // an users, die Zeilen sind also mit dem Konto verschwunden — OHNE dass
+    // utils/household.ts davon erfaehrt, denn hier laeuft kein unlink().
+    // Ohne diesen Aufruf zeigte ein Hauptkonto sein geloeschtes Unterkonto
+    // noch bis zu fuenf Minuten im Blickfeld.
+    meldeHaushaltsaenderung();
     res.json({ success: true });
   } catch (e) { handleRouteError(res, e, undefined, req); }
 });
