@@ -110,6 +110,7 @@ import { starteHintergrundlaeufe } from './startup/backgroundJobs';
 import { generateThumb } from './utils/thumbs';
 import { getGlobalSetting, deleteGlobalSetting } from './utils/settings';
 import { HAUSHALT_KANAL, leereHaushaltCache } from './utils/household';
+import { drossleBeruehren } from './utils/sitzungsBeruehrung';
 
 const WORKERS = parseInt(process.env.WEB_WORKERS || '0') || Math.max(2, os.cpus().length);
 
@@ -350,20 +351,26 @@ app.use((req, res, next) => {
   _reqContext.run({ rid }, () => next());
 });
 
+// PostgreSQL session store — required for cluster mode so all workers share sessions.
+// Falls back gracefully if the session table doesn't exist yet (initSchema creates it).
+const sitzungsSpeicher = new pgSession({
+  pool,
+  tableName: 'user_sessions',
+  createTableIfMissing: false,  // table created in initSchema to avoid race condition
+  pruneSessionInterval: 60 * 15,
+  errorLog: (err) => {
+    if (!err.message?.includes('timeout') && !err.message?.includes('terminated')) {
+      console.error('[session-store]', err.message);
+    }
+  },
+});
+
+// Die Ablaufzeit der Sitzung wird gedrosselt geschrieben — die Messung und die
+// Begruendung stehen in utils/sitzungsBeruehrung.ts.
+drossleBeruehren(sitzungsSpeicher);
+
 app.use(session({
-  // PostgreSQL session store — required for cluster mode so all workers share sessions.
-  // Falls back gracefully if the session table doesn't exist yet (initSchema creates it).
-  store: new pgSession({
-    pool,
-    tableName: 'user_sessions',
-    createTableIfMissing: false,  // table created in initSchema to avoid race condition
-    pruneSessionInterval: 60 * 15,
-    errorLog: (err) => {
-      if (!err.message?.includes('timeout') && !err.message?.includes('terminated')) {
-        console.error('[session-store]', err.message);
-      }
-    },
-  }),
+  store: sitzungsSpeicher,
   secret: (() => {
     // Aus compose.yaml/README bekannte Platzhalter. Sie sind öffentlich — ein
     // damit signiertes Session-Cookie kann jeder selbst erzeugen und sich als
