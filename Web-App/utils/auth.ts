@@ -275,6 +275,29 @@ function invalidateToken(token: string | null | undefined): void { if (token) _t
  */
 function leereTokenCache(): void { _tokenCache.clear(); }
 
+/**
+ * Ist diese Datenbank-Flagge gesetzt?
+ *
+ * ── Warum es das braucht ────────────────────────────────────────────────────
+ * `is_admin` kam in routes/auth.ts in DREI Schreibweisen vor —
+ * `== 1 || === true`, `=== 1 || === true` und `!!wert` —, sechsmal insgesamt.
+ * Alle drei bedeuten dasselbe; die Vielfalt entstand, weil die Spalte je nach
+ * Alter der Installation INTEGER (0/1) oder BOOLEAN ist und jeder Autor sich
+ * eigens dagegen gewappnet hat.
+ *
+ * Gebraucht wird sie jetzt an einer siebten Stelle: Beim Rechtewechsel muss
+ * der ALTE Wert mit dem neuen verglichen werden. Eine siebte Schreibweise
+ * dafuer waere die Fortsetzung genau des Musters, das in dieser Reihe schon
+ * mehrfach zu auseinanderlaufendem Verhalten gefuehrt hat.
+ *
+ * `== 1` statt `=== 1`: Ein Treiber, der die Spalte als Zeichenkette liefert
+ * ('1'), soll nicht als „nicht gesetzt" gelten — das war der Grund fuer die
+ * lose Gleichheit in der aeltesten der drei Fassungen, und er gilt weiter.
+ */
+function flaggeGesetzt(wert: unknown): boolean {
+  return wert === true || wert == 1;
+}
+
 // ── Gemeinsame Login-/Konto-Regeln ────────────────────────────────────────────
 // Vorher existierten diese Regeln nur im Webapp-Login (routes/auth.ts).
 // /api/v1/auth/login hat weder is_active noch email_verified geprüft — ein
@@ -971,7 +994,7 @@ async function purgeExpiredTokens() {
 }
 
 export {
-  validateToken, invalidateToken, leereTokenCache, resolveUserId, requireLoginOrToken, nutzerId, angemeldeteNutzerId, istVerwalter, nutzerName, hashToken, deleteToken,
+  validateToken, invalidateToken, leereTokenCache, flaggeGesetzt, resolveUserId, requireLoginOrToken, nutzerId, angemeldeteNutzerId, istVerwalter, nutzerName, hashToken, deleteToken,
   verifiziereEmailToken,
   revokeAllTokens, revokeAllSessions, purgeExpiredTokens, loginOrTokenGuard, TOKEN_IDLE_DAYS, appTokenOhneAblauf,
   assertLoginAllowed, pruefeAnmeldedaten, createToken, escapeLike, establishSession, BCRYPT_ROUNDS, USERNAME_RE,
