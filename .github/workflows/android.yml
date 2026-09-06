@@ -373,10 +373,23 @@ jobs:
             exit 1
           fi
 
+          # Das Feld heisst `commit` und nicht mehr `sha`.
+          #
+          # Drin stand immer schon $GITHUB_SHA — der Git-Commit, aus dem gebaut
+          # wurde. Neben `apkUrl` und `apkSize` liest sich `sha` aber
+          # unweigerlich als PRUEFSUMME DES APK, und die App prueft nichts
+          # dergleichen. Ein Name, der eine Sicherung verspricht, die es nicht
+          # gibt, ist in diesem Baum ein eigener Defekt.
+          #
+          # Und eine echte Pruefsumme kaeme hier auch nicht in Frage: Sie
+          # stuende in derselben Datei wie die Adresse. Wer version.json
+          # faelschen kann, faelscht die Pruefsumme mit. Die Integritaet traegt
+          # die Signaturpruefung gegen die INSTALLIERTE App (util/AppUpdate.kt)
+          # zusammen mit HTTPS — nicht eine Zahl aus der Datei selbst.
           jq -n --argjson code "$V_CODE" --arg name "$V_NAME" \
-                --arg sha "$GITHUB_SHA" --arg url "$LINK" \
+                --arg commit "$GITHUB_SHA" --arg url "$LINK" \
                 --argjson size "$(stat -c%s "$APK")" \
-                '{versionCode:$code, versionName:$name, sha:$sha, apkUrl:$url, apkSize:$size}' \
+                '{versionCode:$code, versionName:$name, commit:$commit, apkUrl:$url, apkSize:$size}' \
                 > version.json
           gh release upload "$ETIKETT" version.json --clobber
 

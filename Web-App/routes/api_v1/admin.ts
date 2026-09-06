@@ -13,7 +13,8 @@ import { getLimitForApi, getRateLimitStatus } from '../../utils/financeCalc';
 import { scrapeInstructionsFromFallback, loescheAnleitungen } from '../../utils/instructions';
 import { imgProxyFailures } from '../../utils/imgProxyStats';
 import { getPoolStats } from '../../db/database';
-import { isAllowedImageHost, proxyCachePathFor } from '../imgProxy';
+import { proxyCachePathFor } from '../imgProxy';
+import { ERLAUBTE_BILD_HOSTS, hostErlaubt } from '../../utils/fremdeAdressen';
 import { vergissFehlend } from '../../utils/imageMisses';
 import { clearCatalogCache, clearSubsetsCache, getPriceGuide } from '../../clients/bricklink';
 import { enqueue, offeneAuftraege } from '../../jobs/instructionQueue';
@@ -879,7 +880,7 @@ router.get('/admin/img-probe', requireApiAdmin, async (req: AuthedRequest, res) 
   // aus routes/imgProxy.ts ersetzt — sonst wird beim nächsten neuen CDN genau
   // eine der beiden Stellen nachgezogen.
   try {
-    if (!isAllowedImageHost(url)) {
+    if (!hostErlaubt(url, ERLAUBTE_BILD_HOSTS)) {
       return sendeFehler(req, res, 403, 'host_nicht_erlaubt', { host: new URL(url).hostname });
     }
   } catch (_) {

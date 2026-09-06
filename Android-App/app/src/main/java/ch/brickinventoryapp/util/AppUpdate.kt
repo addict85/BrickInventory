@@ -86,7 +86,19 @@ data class UpdateBeschreibung(
     @SerialName("versionCode") val versionCode: Int,
     @SerialName("versionName") val versionName: String,
     @SerialName("apkUrl") val apkUrl: String,
-    @SerialName("sha") val sha: String = "",
+    /**
+     * Der Git-Commit, aus dem gebaut wurde — eine HERKUNFTSANGABE.
+     *
+     * Hiess `sha` und stand damit neben `apkUrl` und `apkSize` wie eine
+     * Pruefsumme des APK. Ist es nicht, war es nie, und eine waere hier auch
+     * wertlos: Sie kaeme aus derselben Datei wie die Adresse. Was das APK
+     * wirklich absichert, ist die Signaturpruefung gegen die installierte App
+     * ([signaturPasst]) und HTTPS.
+     *
+     * Mit Standardwert, wie alle optionalen Felder hier: Eine App, die neben
+     * einer aelteren version.json steht, soll daran nicht scheitern.
+     */
+    @SerialName("commit") val commit: String = "",
     @SerialName("apkSize") val apkSize: Long = 0,
 )
 
