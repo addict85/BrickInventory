@@ -213,11 +213,45 @@ app.use(compression({
 // die Header schützen trotzdem gegen fremdes Framing (Clickjacking durch andere
 // Seiten; same-origin ist für den eigenen PDF-Viewer erlaubt), MIME-Sniffing
 // und fremde Ressourcen-Quellen.
-app.use((_req, res, next) => {
+app.use((req, res, next) => {
   res.setHeader('X-Frame-Options', 'SAMEORIGIN');
   res.setHeader('X-Content-Type-Options', 'nosniff');
   res.setHeader('Referrer-Policy', 'same-origin');
   res.setHeader('Permissions-Policy', 'camera=(), microphone=(), geolocation=()');
+
+  // ── HSTS, aber NUR über eine verschlüsselte Verbindung ────────────────────
+  //
+  // Ohne diesen Kopf geht die allererste Anfrage nach einem getippten
+  // "lego.bigolin.online" im Klartext hinaus — samt Cookie, wenn
+  // COOKIE_SECURE nicht gesetzt ist. Die Umleitung auf https kommt erst als
+  // ANTWORT darauf; da war die Anfrage schon unterwegs.
+  //
+  // ── Warum die Bedingung nicht wegdarf ────────────────────────────────────
+  //
+  // Derselbe Server läuft bei vielen im LAN unter http://192.168.x.x:3000 —
+  // die Server-Adresse gibt der Nutzer selbst ein (siehe die Begründung in
+  // Android-App/.../network_security_config.xml). Ein Browser IGNORIERT HSTS
+  // zwar über Klartext, aber sobald derselbe Host je einmal über https
+  // erreichbar war, merkt er sich die Regel und verweigert danach jeden
+  // http-Zugriff — ein Jahr lang, ohne Weg zurück ausser über die
+  // Browsereinstellungen. Deshalb nur, wenn die Verbindung TATSÄCHLICH
+  // verschlüsselt ist.
+  //
+  // Beide Wege werden geprüft: `req.secure` greift hinter dem Reverse-Proxy
+  // nur mit `trust proxy` (weiter unten, und nur in Produktion gesetzt), der
+  // Kopf `x-forwarded-proto` auch ohne. Einer allein wäre eine Regel mit
+  // einer Lücke, die niemand sieht.
+  //
+  // HSTS_MAX_AGE=0 schaltet den Kopf ab. Nicht als Bequemlichkeit, sondern
+  // weil HSTS im Browser klebt: Wer eine Fehlkonfiguration bemerkt, muss sie
+  // abstellen können, ohne auf den Ablauf zu warten.
+  const ueberTls = req.secure || req.headers['x-forwarded-proto'] === 'https';
+  const hstsAlter = process.env.HSTS_MAX_AGE ?? '31536000';   // ein Jahr
+  if (ueberTls && hstsAlter !== '0') {
+    res.setHeader('Strict-Transport-Security',
+      `max-age=${parseInt(hstsAlter) || 31536000}; includeSubDomains`);
+  }
+
   res.setHeader('Content-Security-Policy', [
     "default-src 'self'",
     // 'unsafe-inline' ist entfallen: Sämtliche Inline-Handler sind durch den

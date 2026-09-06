@@ -2,8 +2,24 @@
 <!--
   Cloud-Backup ist über android:allowBackup="false" ohnehin aus. Diese Regeln
   greifen für den Geräte-zu-Geräte-Transfer (Android 12+), der davon unabhängig
-  läuft: app_prefs enthält den Bearer-Token im Klartext. Er darf das Gerät
-  nicht verlassen.
+  läuft: Der Datastore enthält den Bearer-Token. Er darf das Gerät nicht
+  verlassen.
+
+  ── Hier stand „im Klartext". Das stimmt seit Nachtrag 155 nicht mehr ──────
+  Der Token liegt AES/GCM-verschlüsselt im Datastore (util/TokenTresor.kt,
+  benutzt von data/PreferencesManager.kt). Die REGEL bleibt trotzdem richtig,
+  und zwar aus einem anderen Grund als dem alten:
+
+  Der Schlüssel liegt im Android-Keystore und wandert bei einem Transfer NICHT
+  mit — ein mitgenommener Geheimtext wäre auf dem neuen Gerät also wertlos.
+  Genau darauf zu bauen hiesse aber, die Ausnahme von einer zweiten Zusicherung
+  abhängig zu machen, die woanders steht. Zwei Schlösser, von denen eines
+  reicht, sind besser als eines, das reichen MUSS.
+
+  Warum die alte Begründung trotzdem nicht einfach stehenbleiben durfte: Wer
+  hier künftig etwas ändert, entscheidet sonst auf einer Grundlage, die es
+  nicht mehr gibt — und käme zum Beispiel zum Schluss, die Ausnahme sei seit
+  der Verschlüsselung überflüssig.
 
   Der Token trug früher gar kein Ablaufdatum. Seit TOKEN_IDLE_DAYS (Vorgabe
   90 Tage) räumt der Server ihn auf, wenn er so lange ungenutzt bleibt — auf
