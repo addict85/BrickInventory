@@ -193,6 +193,7 @@ fun NavGraphBuilder.toolsGraph(
                 SettingsScreen(
                     vm = vm,
                     onLogout = { vm.logout(); navController.navigate(Screen.Login.route) { popUpTo(0) { inclusive = true } } },
+                    onServerWechseln = { navController.navigate(Screen.Setup.route) },
                 )
             }
         }

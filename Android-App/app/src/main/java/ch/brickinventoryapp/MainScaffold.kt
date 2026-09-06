@@ -59,6 +59,31 @@ fun MainScaffold(
     @Suppress("UNUSED_PARAMETER") serverUrl: String,
     isAdmin: Boolean = false,
     /**
+     * Liegt eine neuere Fassung bereit?
+     *
+     * ── Warum es diesen Parameter braucht ────────────────────────────────────
+     *
+     * Marcos Befund: „obwohl der Bau durch ist erhalte ich beim Starten der
+     * Android-App keine Update-Meldung."
+     *
+     * Die Pruefung LIEF — AppNavigation.kt stoesst sie beim Start an
+     * (`pruefeAufUpdate(still = true)`), und der Kommentar dort sagt sogar
+     * ausdruecklich: „Hier und nicht im Einstellungs-Bildschirm: Die Frage
+     * ‚gibt es etwas Neueres?' gilt der ganzen App."
+     *
+     * Die ANTWORT gilt seither aber nur dem Einstellungs-Bildschirm: `updateState`
+     * wurde im ganzen Hauptbaum an genau einer Stelle gelesen, in
+     * SettingsScreen.kt. Die Pruefung fand also etwas, legte es ins ViewModel —
+     * und niemand zeichnete es. Der Weg wurde app-weit gemacht, die Anzeige
+     * nicht mitgenommen.
+     *
+     * Ein Punkt am Konto-Symbol und am Menuepunkt, mehr nicht: Marcos Vorgabe
+     * war „beim Start still pruefen, nie von allein laden". Ein Dialog beim
+     * Start waere das Gegenteil davon; ein Punkt sagt es, ohne zu draengen,
+     * und fuehrt genau dorthin, wo der Knopf steht.
+     */
+    updateVerfuegbar: Boolean = false,
+    /**
      * Ein Reiter wurde unten angetippt — seine gemerkte Rollposition verwerfen.
      *
      * ── Marcos Vorgabe (Nachtrag 114) ────────────────────────────────────────
@@ -119,9 +144,54 @@ fun MainScaffold(
                 ),
                 actions = {
                     IconButton(onClick = { showLogoutMenu = true }) {
-                        Icon(Icons.Default.AccountCircle, stringResource(R.string.main_account), tint = if (isBrick) MaterialTheme.colorScheme.onPrimary else ch.brickinventoryapp.ui.theme.ChartNewClassic)
+                        BadgedBox(badge = { if (updateVerfuegbar) Badge() }) {
+                            Icon(Icons.Default.AccountCircle, stringResource(R.string.main_account), tint = if (isBrick) MaterialTheme.colorScheme.onPrimary else ch.brickinventoryapp.ui.theme.ChartNewClassic)
+                        }
                     }
                     DropdownMenu(showLogoutMenu, { showLogoutMenu = false }) {
+                        // ── Der Weg zu den Einstellungen ──────────────────────
+                        //
+                        // Marcos Befund: „wo finde ich die Einstellungen in der
+                        // Android-App?" — Antwort war: nirgends. Der Bildschirm
+                        // stand seit dem ersten Commit im Navigationsgraphen
+                        // (nav/ToolsGraph.kt), aber NIEMAND navigierte dorthin:
+                        // `Screen.Settings` kam im ganzen Hauptbaum genau einmal
+                        // vor, naemlich in seiner eigenen Registrierung.
+                        //
+                        // Unerreichbar waren damit Waehrung, Standard-Zustand,
+                        // Preis-Zustand, Sprache, Haushalt, Konto, CSV-Import,
+                        // angemeldete Geraete UND die Update-Pruefung.
+                        //
+                        // HIER und nicht als achter Reiter unten: Die untere
+                        // Leiste traegt sieben Reiter, die alle BESTAENDE
+                        // zeigen (Galerie, Teile, Minifiguren, Teileliste,
+                        // Finanzen, Katalog, Vergleich). Einstellungen sind
+                        // keine Bestandsansicht, und die Webapp fuehrt sie
+                        // ebenfalls nicht in der Hauptnavigation. Das
+                        // Konto-Menue ist der Ort fuer alles, was kein Reiter
+                        // ist — die Ueberwachung steht schon hier.
+                        //
+                        // Der Text ist R.string.nav_settings, derselbe wie die
+                        // Ueberschrift des Bildschirms: Ein zweiter Schluessel
+                        // mit demselben Wort waere eine Stelle, an der Menue
+                        // und Ziel auseinanderlaufen koennen.
+                        DropdownMenuItem(
+                            text = { Text(stringResource(R.string.nav_settings)) },
+                            onClick = {
+                                showLogoutMenu = false
+                                navController.navigate(Screen.Settings.route) {
+                                    popUpTo(navController.graph.findStartDestination().id) {
+                                        saveState = true
+                                    }
+                                    launchSingleTop = true
+                                    restoreState = false
+                                }
+                            },
+                            leadingIcon = { Icon(Icons.Default.Settings, null) },
+                            // Der Punkt wiederholt sich hier: Wer das Menue
+                            // oeffnet, sieht das Symbol darueber nicht mehr.
+                            trailingIcon = { if (updateVerfuegbar) Badge() },
+                        )
                         if (isAdmin) {
                             DropdownMenuItem(
                                 text = { Text(stringResource(R.string.main_menu_monitoring)) },
@@ -137,14 +207,20 @@ fun MainScaffold(
                                 },
                                 leadingIcon = { Icon(Icons.Default.Assessment, null) }
                             )
-                            HorizontalDivider()
                         }
+                        // Der Trenner steht jetzt AUSSERHALB der Verwalter-Bedingung:
+                        // Ueber ihm die Wege zu einem Ziel, unter ihm die Handlungen
+                        // an der Sitzung. Die obere Gruppe ist nie mehr leer, seit
+                        // die Einstellungen darin stehen — vorher haette ein Trenner
+                        // ohne Verwalterrechte am Anfang des Menues gestanden.
+                        HorizontalDivider()
+                        // „Server aendern" ist in die Einstellungen gewandert
+                        // (Marcos Wunsch). Es passt dorthin: Der Server ist
+                        // eine EINSTELLUNG wie Waehrung und Sprache, keine
+                        // Handlung an der laufenden Sitzung. Im Menue bleibt
+                        // damit nur, was die Sitzung beendet.
                         DropdownMenuItem(text = { Text(stringResource(R.string.main_menu_logout)) }, onClick = { showLogoutMenu = false; onLogout() },
                             leadingIcon = { Icon(Icons.AutoMirrored.Filled.Logout, null) })
-                        DropdownMenuItem(text = { Text(stringResource(R.string.main_menu_change_server)) }, onClick = {
-                            showLogoutMenu = false
-                            navController.navigate(Screen.Setup.route)
-                        }, leadingIcon = { Icon(Icons.Default.Cloud, null) })
                     }
                 }
             )
@@ -231,6 +307,7 @@ fun ReiterGeruest(
     content: @Composable () -> Unit
 ) {
     val state by vm.state.collectAsStateWithLifecycle()
+    val updateZustand by vm.updateState.collectAsStateWithLifecycle()
     MainScaffold(
         title = titel,
         navController = navController,
@@ -246,6 +323,8 @@ fun ReiterGeruest(
         },
         serverUrl = state.serverUrl,
         isAdmin = state.isAdmin,
+        // Der stille Start-Test hat ein Ergebnis — hier bekommt es einen Ort.
+        updateVerfuegbar = updateZustand.neuereFassung != null,
         content = content
     )
 }

@@ -26,6 +26,52 @@ class SelbstUpdateTest {
 
     // ── Die reinen Regeln, ausgefuehrt ──────────────────────────────────────
 
+    /**
+     * Ein Befund, den niemand zu sehen bekommt, ist kein Befund.
+     *
+     * ── Woher diese Regel kommt ──────────────────────────────────────────────
+     *
+     * Marcos Befund: „obwohl der Bau durch ist erhalte ich beim Starten der
+     * Android-App keine Update-Meldung."
+     *
+     * Die Pruefung lief. AppNavigation.kt stoesst sie beim Start an
+     * (`pruefeAufUpdate(still = true)`), und der Kommentar dort sagt
+     * ausdruecklich, die Frage „gibt es etwas Neueres?" gelte DER GANZEN APP.
+     *
+     * NACHGEMESSEN war die Antwort trotzdem nur einem Bildschirm bekannt:
+     * `updateState` wurde im ganzen Hauptbaum an GENAU EINER Stelle gelesen,
+     * in ui/screens/SettingsScreen.kt — und der Bildschirm war damals von
+     * nirgendwo erreichbar (siehe ErreichbareRoutenTest). Die Pruefung fand
+     * also etwas, legte es ins ViewModel, und niemand zeichnete es.
+     *
+     * Der Weg wurde app-weit gemacht, die Anzeige nicht mitgenommen. Genau
+     * diese Luecke soll hier auffallen, bevor sie wieder jemand meldet.
+     */
+    @Test
+    fun `das Ergebnis der stillen Pruefung wird auch ausserhalb der Einstellungen gezeigt`() {
+        // Gesucht wird das ABONNIEREN, nicht das blosse Vorkommen des Namens.
+        //
+        // Mein erster Entwurf suchte nur „updateState". Damit waere die Regel
+        // erfuellt gewesen, ohne dass irgendetwas angezeigt wird: UpdateFeature.kt
+        // SETZT den Zustand (`_updateState.update { … }`) und MainViewModel HAELT
+        // ihn — beide nennen den Namen und zeichnen nichts. Die oertliche
+        // Gegenprobe hat es gemeldet: Ohne die Anzeige blieb die Liste bei
+        // [UpdateFeature.kt] und der Test gruen.
+        //
+        // `collectAsStateWithLifecycle` kann nur ein Composable, und ein
+        // Composable, das ihn abonniert, zeichnet ihn auch.
+        val leser = Quellen.alle()
+            .filter { Quellen.ohneKommentare(it.readText()).contains("updateState.collectAsStateWithLifecycle") }
+            .map { it.name }
+            .toSet()
+        val anzeigen = leser - setOf("SettingsScreen.kt")
+        assert(anzeigen.isNotEmpty()) {
+            "Ausser SettingsScreen.kt liest niemand updateState. Die Pruefung beim Start " +
+                "(AppNavigation.kt, pruefeAufUpdate(still = true)) findet dann zwar etwas, " +
+                "aber es ist nirgends zu sehen — genau der Zustand, den Marco gemeldet hat."
+        }
+    }
+
     @Test
     fun `nur eine echt hoehere Fassung gilt als neuer`() {
         assert(istNeuer(100, 101)) { "Eine hoehere Fassung wird nicht erkannt" }

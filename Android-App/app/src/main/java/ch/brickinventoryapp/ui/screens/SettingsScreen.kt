@@ -34,6 +34,16 @@ fun SettingsScreen(
     vm: MainViewModel,
     /** Abmelden — nur der Graph kennt den NavController. */
     onLogout: () -> Unit,
+    /**
+     * Zur Server-Einrichtung wechseln — wie [onLogout] ein Rueckruf, weil nur
+     * der Graph den NavController kennt.
+     *
+     * OHNE Vorgabewert, und das ist Absicht: Mit `= {}` haette eine vergessene
+     * Weitergabe einen Knopf ergeben, der nichts tut — und niemand haette es
+     * gemeldet. Dieselbe Ueberlegung wie bei `onTabAngetippt` in
+     * MainScaffold.kt (Nachtrag 114).
+     */
+    onServerWechseln: () -> Unit,
 ) {
     // Zustand und Aktionen vom ViewModel statt über zwölf Parameter — dasselbe
     // Muster wie in Galerie/Finanzen/Teile/Minifiguren (Nachtrag 96). Die Namen
@@ -244,6 +254,17 @@ fun SettingsScreen(
             onReload = { vm.ladeGeraete() },
             onRevoke = { vm.entwerteGeraet(it) },
             onRevokeOthers = { vm.entwerteAndereGeraete() },
+        )
+
+        // ── Der Server steht bei den Einstellungen, nicht im Konto-Menue ──
+        //
+        // Marcos Wunsch. Er passt hierher: Die Serveradresse ist eine
+        // Einstellung wie Waehrung und Sprache — etwas, das man einmal setzt
+        // und selten aendert. Im Konto-Menue stand sie neben „Abmelden", also
+        // neben einer Handlung an der laufenden Sitzung.
+        ServerCard(
+            serverUrl = appState.serverUrl,
+            onWechseln = onServerWechseln,
         )
 
         UpdateCard(
@@ -820,6 +841,31 @@ private fun CsvImportCard(
  * Erlaubnis, Pakete zu installieren. Ein einziger Knopf muesste den Nutzer
  * mitten im Vorgang wegschicken und danach raten, ob er zurueckkommt.
  */
+/**
+ * Mit welchem Server die App spricht — und der Weg, ihn zu wechseln.
+ *
+ * Die Adresse steht mit dabei und ist nicht nur Zierde: „Server aendern" ohne
+ * zu sagen, welcher gerade gilt, laesst genau die Frage offen, wegen der man
+ * hinsieht. In einem Haushalt mit zwei Installationen (Test und Betrieb) ist
+ * das der Unterschied zwischen „stimmt schon" und „falsche Daten".
+ */
+@Composable
+private fun ServerCard(serverUrl: String, onWechseln: () -> Unit) {
+    SettingsCard(title = stringResource(R.string.main_menu_change_server), icon = Icons.Default.Cloud) {
+        Text(
+            serverUrl.ifBlank { "—" },
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+        Spacer(Modifier.height(8.dp))
+        OutlinedButton(onClick = onWechseln) {
+            Icon(Icons.Default.Cloud, null, modifier = Modifier.size(18.dp))
+            Spacer(Modifier.width(8.dp))
+            Text(stringResource(R.string.main_menu_change_server))
+        }
+    }
+}
+
 @Composable
 private fun UpdateCard(
     // `updateZustand`, nicht `zustand`: GeraeteCard in dieser Datei hat einen
