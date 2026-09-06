@@ -238,7 +238,12 @@ test('Admins können das Passwort anderer Nutzer setzen', () => {
   // festhält statt die Aussage, verbietet jede Vereinheitlichung.
   assert.match(fn, /targetId === nutzerId\(req\)/,
     'Für das eigene Konto muss /change-password gelten');
-  assert.match(fn, /String\(password\)\.length < 8/, 'Mindestlänge fehlt');
+  // Die AUSSAGE bleibt, der Beleg wechselt: Die Mindestlaenge stand hier als
+  // handgetippte Bedingung, an vier von sechs passwortsetzenden Routen und in
+  // zwei Schreibweisen. Genau daran fehlte sie an den anderen zwei. Sie liegt
+  // jetzt in passwortZuKurz() (utils/auth.ts); test/passwortlaenge.test.js
+  // haelt fest, dass ALLE sechs Stellen sie benutzen.
+  assert.match(fn, /passwortZuKurz\(password\)/, 'Mindestlänge fehlt');
   assert.match(fn, /bcrypt\.hash\(String\(password\), BCRYPT_ROUNDS\)/,
     'Das Passwort muss mit denselben Parametern gehasht werden wie überall');
   // Der Weg zur Antwort hat sich geändert (Nachtrag 130): Fehler gehen jetzt

@@ -1,6 +1,6 @@
 import { registerActions } from './00-registry.js';
 import { I18N, LANG, applyLang, locale, t, tRaw} from '../i18n.js';
-import { CURRENCY, G, ME, _settingsCache, _updateLangSelect, api, applyTheme, esc, initDefaultCondition, knopfBesetzt, toast , set_CURRENCY, set_settingsCache} from './01-core.js';
+import { CURRENCY, G, ME, _settingsCache, _updateLangSelect, api, applyTheme, esc, initDefaultCondition, knopfBesetzt, toast , set_CURRENCY, set_settingsCache, passwortZuKurz, passwortZuKurzText} from './01-core.js';
 import { loadGallery, loadStats } from './02-gallery.js';
 import { loadParts } from './03-parts.js';
 import { loadMinifigs } from './06-minifigs.js';
@@ -327,6 +327,10 @@ G('btn-sav-prof').onclick = async () => {
 
     // Passwort (optional)
     if (wantsPwChange) {
+      // Vor dem Absenden pruefen — die App tut das in ihrer Oberflaeche
+      // laengst (SettingsScreen sperrt den Knopf), die Webapp lief bis
+      // hierher in den Serverfehler.
+      if (passwortZuKurz(pwN)) { toast(passwortZuKurzText(), 'error'); return; }
       const dPw = await api('POST', '/v1/auth/change-password', { current: pwC, newPassword: pwN });
       if (!dPw.success) {
         // Profil & Währung sind gespeichert, nur das Passwort schlug fehl —
@@ -513,12 +517,15 @@ async function loadUsers(){
 G('btn-cu').onclick=async()=>{
   const n=G('nu-n').value.trim(),p=G('nu-p').value,a=G('nu-a').checked;
   if(!n||!p){toast(tRaw('users.name_pw_req'),'error');return;}
+  if(passwortZuKurz(p)){toast(passwortZuKurzText(),'error');return;}
   const d=await api('POST','/v1/auth/users',{username:n,password:p,is_admin:a});
   if(d.success){toast(tRaw('users.created',{name:n}),'success');G('nu-n').value=G('nu-p').value='';G('nu-a').checked=false;loadUsers();} else toast(d.error||t('settings.error'),'error');
 };
 function openRpw(uid){ G('rpw-uid').value=uid; G('rpw-v').value=''; G('pw-modal').classList.add('open'); }
 G('btn-rpw').onclick=async()=>{
-  const d=await api('PUT',`/v1/auth/users/${G('rpw-uid').value}/password`,{password:G('rpw-v').value});
+  const neuesPw = G('rpw-v').value;
+  if(passwortZuKurz(neuesPw)){toast(passwortZuKurzText(),'error');return;}
+  const d=await api('PUT',`/v1/auth/users/${G('rpw-uid').value}/password`,{password:neuesPw});
   if(d.success){toast(tRaw('users.pw_reset'),'success');G('pw-modal').classList.remove('open');} else toast(d.error||t('settings.error'),'error');
 };
 async function toggleAdmin(uid,isAdmin){

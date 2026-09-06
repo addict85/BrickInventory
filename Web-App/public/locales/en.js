@@ -130,6 +130,7 @@ window.I18N_EN = {
   'settings.password.repeat':  'Repeat password',
   'settings.password.change':  'Change password',
   'settings.password.mismatch':'Passwords do not match',
+  'settings.password.too_short':'The password must be at least {n} characters long',
   'settings.cache_cleared':    'Price cache cleared',
   'settings.all_cache.clear':  'Clear all caches',
   'settings.all_cache.cleared':'All caches cleared',

@@ -4,7 +4,7 @@ const router  = express.Router();
 import bcrypt from 'bcryptjs';
 import * as db from '../db/database';
 import { handleRouteError, logAndContinue, meldeUndWeiter, fehlerCode, fehlertext, pfadParam } from '../utils/httpError';
-import { hashToken, pruefeAnmeldedaten, createToken, validateToken, assertLoginAllowed, establishSession, revokeAllTokens, revokeAllSessions, deleteToken, BCRYPT_ROUNDS, USERNAME_RE, EMAIL_RE, requireLoginOrToken, nutzerId, angemeldeteNutzerId, appTokenOhneAblauf } from '../utils/auth';
+import { hashToken, pruefeAnmeldedaten, createToken, validateToken, assertLoginAllowed, establishSession, revokeAllTokens, revokeAllSessions, deleteToken, BCRYPT_ROUNDS, USERNAME_RE, EMAIL_RE, requireLoginOrToken, nutzerId, angemeldeteNutzerId, appTokenOhneAblauf, passwortZuKurz } from '../utils/auth';
 import { ipThrottle } from '../utils/loginLimiter';
 import crypto from 'crypto';
 import { strictBool } from '../utils/validate';
@@ -289,6 +289,10 @@ router.put('/profile', requireLogin, async (req, res) => {
     if (first_name !== undefined) { updates.push(`first_name=$${pi++}`); params.push(first_name || null); }
     if (last_name  !== undefined) { updates.push(`last_name=$${pi++}`);  params.push(last_name  || null); }
     if (password) {
+      // Hier fehlte die Laengenpruefung. Register, Reset und die beiden
+      // Verwalter-Routen verlangten acht Zeichen, dieser Weg nicht — und damit
+      // war die Regel wirkungslos: acht Zeichen bei der Anmeldung, danach eines.
+      if (passwortZuKurz(password)) return sendeFehler(req, res, 400, 'passwort_zu_kurz');
       const hash = await bcrypt.hash(password, BCRYPT_ROUNDS);
       updates.push(`password_hash=$${pi++}`); params.push(hash);
     }
@@ -332,7 +336,7 @@ router.post('/users', requireAdmin, async (req, res) => {
   if (!username || !password) return sendeFehler(req, res, 400, 'benutzername_passwort');
   if (!USERNAME_RE.test(String(username)))
     return sendeFehler(req, res, 400, 'benutzername_ungueltig');
-  if (String(password).length < 8)
+  if (passwortZuKurz(password))
     return sendeFehler(req, res, 400, 'passwort_zu_kurz');
   try {
     const hash = await bcrypt.hash(password, BCRYPT_ROUNDS);
@@ -382,7 +386,7 @@ router.put('/users/:id/password', requireAdmin, async (req, res) => {
   const { password } = req.body || {};
   const targetId = parseInt(pfadParam(req, 'id'));
 
-  if (!password || String(password).length < 8)
+  if (!password || passwortZuKurz(password))
     return sendeFehler(req, res, 400, 'passwort_zu_kurz');
   if (!targetId || targetId === nutzerId(req))
     return sendeFehler(req, res, 400, 'eigenes_konto_passwort');
@@ -436,6 +440,14 @@ router.post('/change-password', requireLogin, async (req: LoggedInRequest, res) 
     const user = await db.get('SELECT * FROM users WHERE id = $1', [uid]);
     if (!(await bcrypt.compare(current, user.password_hash)))
       return sendeFehler(req, res, 401, 'aktuelles_passwort_falsch');
+    // NACH der Pruefung des alten Passworts: Wer das aktuelle nicht kennt, soll
+    // ueber das neue auch nichts erfahren — die Antwort fuer einen Fremden
+    // bleibt dieselbe.
+    //
+    // Auch hier fehlte die Pruefung ganz. Zusammen mit PUT /profile waren das
+    // die zwei Wege eines ANGEMELDETEN Kontos — also genau die, auf denen ein
+    // uebernommenes Konto dauerhaft schwach gemacht werden kann.
+    if (passwortZuKurz(newPassword)) return sendeFehler(req, res, 400, 'passwort_zu_kurz');
     const hash = await bcrypt.hash(newPassword, BCRYPT_ROUNDS);
     // must_change_password mit löschen — sonst fragt der Login nach jedem
     // Login des Default-Admins weiter danach, auch nach der Änderung.
@@ -612,7 +624,7 @@ router.post('/register', ipThrottle('register', 5, 60 * 60 * 1000), async (req, 
 
   if (!username || !email || !password)
     return sendeFehler(req, res, 400, 'registrierung_felder');
-  if (password.length < 8)
+  if (passwortZuKurz(password))
     return sendeFehler(req, res, 400, 'passwort_zu_kurz');
   // Dieselben Muster wie überall sonst (utils/auth.ts) — hier standen zwei
   // wortgleiche Kopien, und die E-Mail-Regex gab es damit dreimal im Projekt.
@@ -721,7 +733,7 @@ router.post('/forgot-password', ipThrottle('forgot-password', 5, 60 * 60 * 1000)
 router.post('/reset-password', ipThrottle('reset-password', 10, 60 * 60 * 1000), async (req, res) => {
   const { token, password } = req.body;
   if (!token || !password) return sendeFehler(req, res, 400, 'token_passwort_erforderlich');
-  if (password.length < 8) return sendeFehler(req, res, 400, 'passwort_zu_kurz');
+  if (passwortZuKurz(password)) return sendeFehler(req, res, 400, 'passwort_zu_kurz');
   try {
     const user = await db.get(
       "SELECT id FROM users WHERE reset_token = $1 AND reset_token_expires > NOW()",

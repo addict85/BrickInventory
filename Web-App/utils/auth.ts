@@ -321,6 +321,46 @@ function establishSession(req: Request, data: { userId: number; username: string
 /** Kostenfaktor für bcrypt.hash — überall derselbe (vorher 10 bzw. 12 gemischt). */
 const BCRYPT_ROUNDS = 12;
 
+/**
+ * Wie kurz ein Passwort hoechstens sein darf.
+ *
+ * ── Warum das eine Konstante ist ────────────────────────────────────────────
+ * Sechs Routen setzen ein Passwort. VIER pruefen die Laenge, und zwar in zwei
+ * Schreibweisen (`password.length < 8` und `String(password).length < 8`),
+ * jede von Hand hingeschrieben:
+ *
+ *   POST /register                    prueft
+ *   POST /reset-password              prueft
+ *   POST /users                       prueft
+ *   PUT  /users/:id/password          prueft
+ *   PUT  /profile                     PRUEFTE NICHT
+ *   POST /change-password             PRUEFTE NICHT
+ *
+ * Ausgefallen war sie also genau an den zwei Wegen, die einem BEREITS
+ * ANGEMELDETEN Konto offenstehen — und damit war die Regel wirkungslos: Man
+ * meldet sich mit acht Zeichen an und aendert danach auf eines.
+ *
+ * Der Grund fuer die Luecke ist die fehlende Konstante. Wo eine Regel an jeder
+ * Stelle neu getippt wird, gibt es keine Stelle, die man vergessen KOENNTE —
+ * es gibt nur Stellen, an denen sie nie stand.
+ */
+const PASSWORT_MIN_ZEICHEN = 8;
+
+/**
+ * Ist dieses Passwort zu kurz?
+ *
+ * `String(...)` statt eines Typs: Der Rumpf einer Anfrage kann alles
+ * enthalten, auch eine Zahl oder `null`. Zwei der vier alten Pruefungen
+ * schrieben deshalb `String(password).length`, die anderen zwei nicht —
+ * `(123456789).length` ist `undefined`, und `undefined < 8` ist FALSCH. Ein
+ * Passwort als JSON-Zahl kam damit an der kuerzeren Fassung vorbei.
+ *
+ * @param passwort  der Rohwert aus dem Anfragerumpf
+ */
+function passwortZuKurz(passwort: unknown): boolean {
+  return String(passwort ?? '').length < PASSWORT_MIN_ZEICHEN;
+}
+
 /** Erlaubte Benutzernamen. Login und Register erzwangen das bereits, das Profil-Update nicht. */
 const USERNAME_RE = /^[A-Za-z0-9_.-]{3,32}$/;
 
@@ -935,5 +975,6 @@ export {
   verifiziereEmailToken,
   revokeAllTokens, revokeAllSessions, purgeExpiredTokens, loginOrTokenGuard, TOKEN_IDLE_DAYS, appTokenOhneAblauf,
   assertLoginAllowed, pruefeAnmeldedaten, createToken, escapeLike, establishSession, BCRYPT_ROUNDS, USERNAME_RE,
+  PASSWORT_MIN_ZEICHEN, passwortZuKurz,
   EMAIL_RE, isValidLoginIdentifier,
 };
