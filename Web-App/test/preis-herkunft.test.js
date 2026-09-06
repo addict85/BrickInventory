@@ -116,10 +116,19 @@ test('die Texte gibt es in beiden Sprachen und beiden Oberflaechen', () => {
     for (const schluessel of ['price.from_other_condition_new', 'price.from_other_condition_used'])
       assert.ok(loc.includes(schluessel), `${schluessel} fehlt in locales/${sprache}.js`);
   }
-  for (const ordner of ['values', 'values-de']) {
-    const xml = fs.readFileSync(path.join(
-      WURZEL, '..', 'Android-App', 'app', 'src', 'main', 'res', ordner, 'strings.xml'), 'utf8');
+  // Beide Pfade ausgeschrieben statt `…, 'res', ordner, 'strings.xml'`: Ein
+  // variables Segment nimmt test/baumbruecken.test.js die Sicht — die Pruefung
+  // kann dann nicht mehr sagen, ob der Pfad ueberhaupt noch existiert. Der
+  // Gewinn an Kuerze war einer, den niemand sieht; der Verlust ist eine
+  // Bruecke in den Android-Baum, die still ins Leere zeigen koennte.
+  const STRINGS = [
+    path.join(WURZEL, '..', 'Android-App', 'app', 'src', 'main', 'res', 'values', 'strings.xml'),
+    path.join(WURZEL, '..', 'Android-App', 'app', 'src', 'main', 'res', 'values-de', 'strings.xml'),
+  ];
+  for (const datei of STRINGS) {
+    const xml = fs.readFileSync(datei, 'utf8');
     for (const schluessel of ['price_from_other_condition_new', 'price_from_other_condition_used'])
-      assert.ok(xml.includes(`name="${schluessel}"`), `${schluessel} fehlt in ${ordner}/strings.xml`);
+      assert.ok(xml.includes(`name="${schluessel}"`),
+        `${schluessel} fehlt in ${path.basename(path.dirname(datei))}/strings.xml`);
   }
 });
