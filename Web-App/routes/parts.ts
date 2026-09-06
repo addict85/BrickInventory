@@ -41,7 +41,7 @@ import express from 'express';
 
 const router  = express.Router();
 import * as db from '../db/database';
-import { fehlertext, handleRouteError, logAndContinue, meldeUndWeiter } from '../utils/httpError';
+import { fehlertext, handleRouteError, logAndContinue } from '../utils/httpError';
 import { recordAcquisitionForDay } from '../utils/acquisitions';
 // Die Katalogarbeit liegt seit Nachtrag 131 in utils/partsImport.ts — sonst
 // müsste utils/setService.ts (addSet) einen Router importieren.
@@ -50,11 +50,15 @@ import { requireLogin } from './auth';
 // Blickfeld — dieselbe Quelle wie in routes/api_v1/parts.ts.
 import { scopeIds, parseScopeMode } from '../utils/household';
 import { kaufpreisAusEingabe, manuellerKaufpreis } from '../utils/preisRegel';
-import { DEFAULT_PRICE_CONDITION } from '../utils/financeCalc';
 // Der Standard-Zustand eines Benutzers. Hiess in routes/sets.ts einmal
 // `getUserDefaultCondition` und war dort eine wortgleiche Zweitfassung dieser
 // Funktion (Nachtrag 125). Der Alias, weil in dieser Datei mehrfach eine lokale
-import { nutzerStandardZustand as userDefaultCondition, zustandFuerPreis } from '../utils/settings';
+import { zustandFuerPreis } from '../utils/settings';
+// Marktpreis und Zustandsermittlung eines Teils stehen seit dem
+// Schichtumbau in utils/marketPrice.ts — dort, wo schon der Set-Preis
+// wohnt. Zuvor lagen sie hier, und jobs/ sowie utils/ mussten aus dieser
+// ROUTE importieren, um an einen Preis zu kommen.
+import { resolvePartCondition, marktpreisMitHerkunft, getCurrentPartMarketPrice } from '../utils/marketPrice';
 
 router.use(requireLogin);
 
@@ -116,54 +120,7 @@ router.get('/categories', async (req, res) => {
 
 
 // ── Manual part lookup via Rebrickable ────────────────────────────────────────
-async function lookupPart(partNumber: string, colorId?: number | null) {
-  const key = await getRbKey();
-  if (!key) return null;
-  try {
-    // Use batch endpoint ?part_nums= instead of single /parts/{num}/
-    await rebrickableBackgroundLimiter.waitForSlot();
-    const { status, body } = await httpsGetRobust(
-      `https://rebrickable.com/api/v3/lego/parts/?part_nums=${encodeURIComponent(partNumber)}&page_size=1`,
-      { Authorization: `key ${key}` }, 15000
-    );
-    if (status !== 200) return null;
-    const d = JSON.parse(body);
-    const part = d.results?.[0];
-    if (!part) return null;
-    let image_url = part.part_img_url || null;
 
-    // Bild soll den Stein immer in der gewählten Farbe zeigen: Rebrickable
-    // liefert dafür ein eigenes Farb-Bild über den Parts/Colors-Endpoint.
-    // (Der lokale set_parts_catalog-Cache ist meist leer, da er nur Farben
-    // enthält, die bereits über ein importiertes Set gesehen wurden.)
-    // 0 IST eine Farbe — Schwarz.
-    //
-    // Die Bedingung lautete `colorId && colorId !== 0` und schloss damit
-    // ausgerechnet Schwarz aus: Das Farbbild wurde nie geholt, und es blieb
-    // beim allgemeinen part_img_url (bei vielen Teilen die weisse Fassung).
-    // "Keine Farbe" kommt jetzt als null herein (siehe public/js/06-minifigs.js),
-    // ist also unterscheidbar.
-    if (colorId !== null && colorId !== undefined) {
-      try {
-        await rebrickableBackgroundLimiter.waitForSlot();
-        const colorResp = await httpsGetRobust(
-          `https://rebrickable.com/api/v3/lego/parts/${encodeURIComponent(partNumber)}/colors/${colorId}/`,
-          { Authorization: `key ${key}` }, 15000
-        );
-        if (colorResp.status === 200) {
-          const cd = JSON.parse(colorResp.body);
-          if (cd?.part_img_url) image_url = cd.part_img_url;
-        }
-      } catch (_) { /* fall back to generic part image */ }
-    }
-
-    return {
-      part_name:     part.name || null,
-      category_name: part.part_cat_id ? String(part.part_cat_id) : null,
-      image_url,
-    };
-  } catch (_) { return null; }
-}
 
 // ── GET /api/parts/brick-colors — brick color list for dropdown ───────────────
 
@@ -208,71 +165,6 @@ async function getPartColorList() {
   ];
 }
 
-
-// Default the purchase price to the current BrickLink market price for a part,
-// when the user did not enter one manually.
-// Effektiver Zustand eines Teils für die Preisabfrage: sobald eine Erfassung
-// "Gebraucht" ist → 'U', sonst 'N'; ohne Erfassungen der User-Default. Der
-// eigentliche Preis-Fallback (gewünschter Zustand → jeweils anderer) steckt in
-// fetchPartPrice.
-async function resolvePartCondition(userId: number, partNumber: string, colorId: number) {
-  try {
-    const row = await db.get(
-      "SELECT MAX(CASE WHEN condition='U' THEN 1 ELSE 0 END) AS any_used, COUNT(*) AS cnt FROM part_acquisitions WHERE user_id=$1 AND part_number=$2 AND color_id=$3",
-      // parseInt entfaellt: colorId ist bereits eine Zahl (V.colorId gibt
-      // number zurueck). parseInt(5) ging nur ueber den Umweg ueber "5".
-      [userId, partNumber, colorId || 0]);
-    if (row && parseInt(row.cnt) > 0) return parseInt(row.any_used) > 0 ? 'U' : 'N';
-  } catch (e) { meldeUndWeiter('teile:zustand-ermitteln', e); }
-  try { return await userDefaultCondition(userId); }
-  catch (_) { return DEFAULT_PRICE_CONDITION; }
-}
-
-/**
- * Marktpreis eines Teils SAMT Herkunft.
- *
- * Zwei Funktionen statt einer: Die allermeisten Aufrufer (Bewertung,
- * Nachtrag-Job, Erfassungs-Route) wollen eine Zahl und nichts weiter — ihnen
- * eine Herkunft aufzuzwingen, die sie wegwerfen, machte sechs Aufrufstellen
- * umstaendlicher, damit eine es bequemer hat. Nur der Weg „von Hand erfassen"
- * kennzeichnet den Rueckfall, und nur er fragt hier.
- */
-async function marktpreisMitHerkunft(partNumber: string, colorId: number, userId: number, condition: string | null = null) {
-  try {
-    const currency  = await getSetting(userId, 'currency', 'EUR');
-    const ttlHours  = 24;
-    const effCond   = condition || await resolvePartCondition(userId, partNumber, colorId);
-    const priceData = await fetchPartPrice(partNumber, colorId || 0, effCond, currency, ttlHours);
-    // avg_price statt qty_avg_price — dieselbe Begründung wie bei den Sets:
-    // der mengengewichtete Schnitt liegt unter BrickLinks "Avg Price", und
-    // "0.00" aus Postgres ist truthy und hätte avg_price verdeckt.
-    const price = parseFloat(priceData?.avg_price || 0);
-    if (!(price > 0)) return { preis: null, ausZustand: null };
-    // ── Der Rückfall wird übernommen, aber benannt (Nachtrag 167) ───────────
-    //
-    // In Nachtrag 166 stand hier `if (priceData?.is_fallback) return null` —
-    // als Antwort auf Marcos Befund, dass der Zustand keinen Einfluss auf den
-    // Preis hat. Der Befund stimmte, die Folge war zu scharf: Marco meldete
-    // darauf „teilweise wird der Kaufpreis nicht direkt geladen", weil
-    // BrickLink zu vielen Teilen nur einen der beiden Zustände führt.
-    //
-    // Seine Entscheidung: übernehmen und kennzeichnen. `ausZustand` trägt
-    // deshalb den Zustand, aus dem der Wert wirklich stammt — die Oberfläche
-    // sagt es dann dazu, statt dass eine Zahl unkommentiert dasteht.
-    return {
-      preis: price,
-      ausZustand: priceData?.is_fallback ? (priceData.condition_used || null) : null,
-    };
-  } catch (_) { return { preis: null, ausZustand: null }; }
-}
-
-/**
- * Marktpreis eines Teils als blosse Zahl — der Weg fuer alle, die die
- * Herkunft nicht brauchen. EINE Rechnung, zwei Sichten darauf.
- */
-async function getCurrentPartMarketPrice(partNumber: string, colorId: number, userId: number, condition: string | null = null) {
-  return (await marktpreisMitHerkunft(partNumber, colorId, userId, condition)).preis;
-}
 
 /**
  * Preis/Stk, Kaufpreis und Zustand fuer ein manuell erfasstes Teil.
@@ -536,10 +428,7 @@ async function updateManualPart(uid: number, partNumber: string, colorId: number
 
 // ── POST /api/parts/import/csv — CSV import of manual parts ──────────────────
 // CSV columns: part_number, color_id (opt), color_name (opt), quantity, unit_price (opt), note (opt)
-import { fetchPartPrice } from '../utils/financeCalc';
-import { getSetting } from '../utils/settings';
-import { getBrickColors, getRbKey, httpsGetRobust } from '../clients/rebrickable';
-import { rebrickableBackgroundLimiter } from '../utils/rateLimiter';
+import { getBrickColors, lookupPart } from '../clients/rebrickable';
 import { csvGemeinsameFelder, csvImportAntwort, csvZeilenAusAnfrage, toCsv } from '../utils/csvExport';
 import { angemeldeteNutzerId } from '../utils/auth';
 import { csvEmpfang } from '../utils/dateiEmpfang';

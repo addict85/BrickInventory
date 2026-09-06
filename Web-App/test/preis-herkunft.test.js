@@ -39,13 +39,20 @@ test('der Rueckfall wird nicht mehr verworfen', () => {
 });
 
 test('beide Preisabrufe geben die Herkunft mit', () => {
-  for (const datei of ['parts.ts', 'minifigs.ts']) {
-    const src = lies('routes', datei);
-    assert.match(src, /ausZustand: priceData\?\.is_fallback \? \(priceData\.condition_used \|\| null\) : null/,
-      `routes/${datei} meldet nicht, aus welchem Zustand der Preis stammt — ` +
-      'dann steht die Zahl unkommentiert da, und der Zustand sieht wieder ' +
-      'aus wie eine Angabe ohne Wirkung');
-  }
+  // ── Ein Fundort statt zwei ───────────────────────────────────────────────
+  // Die beiden Preisabrufe standen in routes/parts.ts und routes/minifigs.ts —
+  // dieselbe Frage, zweimal beantwortet, und dieser Test las folgerichtig
+  // zweimal. Seit dem Schichtumbau stehen BEIDE in utils/marketPrice.ts, beim
+  // Marktpreis der Sets. Zwei Vorkommen in EINER Datei sind jetzt der richtige
+  // Nachweis; ihre Zahl steht ausdruecklich da, damit das Verschwinden eines
+  // der beiden auffaellt.
+  const src = lies('utils', 'marketPrice.ts');
+  const treffer = [...src.matchAll(
+    /ausZustand: priceData\?\.is_fallback \? \(priceData\.condition_used \|\| null\) : null/g)];
+  assert.equal(treffer.length, 2,
+    `${treffer.length} statt 2 Preisabrufe melden, aus welchem Zustand der Preis ` +
+    'stammt (Teile und Minifiguren) — sonst steht die Zahl unkommentiert da, und ' +
+    'der Zustand sieht wieder aus wie eine Angabe ohne Wirkung');
 });
 
 test('der Rueckfall wird in beiden Preisabrufen markiert', () => {

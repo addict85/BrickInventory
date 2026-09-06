@@ -39,18 +39,18 @@ import express from 'express';
 
 const router  = express.Router();
 import * as db from '../db/database';
-import { handleRouteError, logAndContinue, meldeUndWeiter, fehlertext } from '../utils/httpError';
+import { handleRouteError, logAndContinue, fehlertext } from '../utils/httpError';
 import { recordAcquisitionForDay } from '../utils/acquisitions';
 import {  getMinifigInfo } from '../clients/rebrickable';
 import { importMinifigsForSet } from '../utils/minifigsImport';
 import { requireLogin } from './auth';
-import { DEFAULT_PRICE_CONDITION } from '../utils/financeCalc';
-import { nutzerStandardZustand as userDefaultCondition, zustandFuerPreis } from '../utils/settings';
+import { zustandFuerPreis } from '../utils/settings';
+// Marktpreis und Preisschaetzung einer Figur stehen seit dem Schichtumbau in
+// utils/marketPrice.ts, zusammen mit denen fuer Sets und Teile — dieselbe
+// Frage wurde vorher an drei Orten in zwei Schichten beantwortet.
+import { estimateFigPriceFromParts, figMarktpreisMitHerkunft, getCurrentFigMarketPrice } from '../utils/marketPrice';
 import { kaufpreisAusEingabe, manuellerKaufpreis } from '../utils/preisRegel';
-import { fetchMinifigPrice, fetchPartPrice } from '../utils/financeCalc';
-import { getSetting, getGlobalSetting } from '../utils/settings';
 import { csvGemeinsameFelder, csvImportAntwort, csvZeilenAusAnfrage, toCsv } from '../utils/csvExport';
-import { getMinifigParts } from '../clients/rebrickable';
 import { angemeldeteNutzerId } from '../utils/auth';
 import { csvEmpfang } from '../utils/dateiEmpfang';
 import { sendeFehler } from '../utils/fehlerTexte';
@@ -141,181 +141,7 @@ function resolveBlFigNumber(fig: { bl_fig_number?: string | null; fig_number?: s
 // muss nur durchgereicht werden.
 //
 // @param {'N'|'U'} condition Zustand, in dem die Teile bepreist werden.
-async function estimateFigPriceFromParts(figNumber: string, userId: number, condition = DEFAULT_PRICE_CONDITION) {
-  try {
-    const currency = await getSetting(userId, 'currency', 'EUR');
-    const cond0 = ['N','U'].includes(condition) ? condition : DEFAULT_PRICE_CONDITION;
 
-    // ── Erst im Cache nachsehen (Nachtrag 144) ────────────────────────────────
-    //
-    // Marcos Auftrag: „Der geschätzte Marktpreis soll ebenfalls im Cache
-    // gespeichert werden, damit er nicht jedes Mal neu geholt werden muss."
-    //
-    // GESCHRIEBEN wurde er schon (unten, samt Verlaufspunkt) — GELESEN nie. Jeder
-    // Aufruf holte deshalb erneut die Teile-Zusammensetzung von Rebrickable und
-    // danach den BrickLink-Preis JE TEIL. Eine Minifigur mit fünfzehn Teilen
-    // kostete fünfzehn Preisabfragen, bei jedem Öffnen der Finanzseite.
-    //
-    // Dieselbe Frist wie beim echten Abruf (price_cache_ttl, Vorgabe 24 h): Der
-    // Wert ist derselbe Marktpreis, nur anders ermittelt — er soll nicht länger
-    // gelten als ein von BrickLink geholter.
-    const ttl = Math.max(1, parseInt(await getGlobalSetting('price_cache_ttl', '24')));
-    const cached = await db.get(
-      `SELECT avg_price FROM minifig_price_cache
-        WHERE fig_number = $1 AND condition = $2 AND currency_code = $3
-          AND fetched_at > NOW() - make_interval(hours => $4)`,
-      [figNumber, cond0, currency, ttl]
-    ).catch(() => null);
-    const zwischengespeichert = parseFloat(String(cached?.avg_price || 0));
-    if (zwischengespeichert > 0) return zwischengespeichert;
-
-    const parts = await getMinifigParts(figNumber);
-    if (!parts.length) {
-      console.log(`[minifig-price-estimate] ${figNumber}: keine Teile-Zusammensetzung von Rebrickable erhalten`);
-      return null;
-    }
-
-    // BrickLink-Nummern für Teile ohne external_ids in EINER Abfrage vorladen
-    // (statt pro Teil eine eigene Query — vermeidet N+1).
-    const needLookup = [...new Set(parts
-      .filter((p: { bl_part_num?: string | null }) => !p.bl_part_num)
-      .map((p: { part_num: string }) => p.part_num))];
-    const blMap = new Map();
-    if (needLookup.length) {
-      const rows = await db.all(
-        'SELECT part_num, bl_part_num FROM rb_bl_mapping WHERE part_num = ANY($1)',
-        [needLookup]
-      ).catch(() => []);
-      for (const r of rows) blMap.set(r.part_num, r.bl_part_num);
-    }
-
-    const cond = cond0;
-
-    let total = 0, priced = 0;
-    for (const p of parts) {
-      // BrickLink-Nummer bevorzugt aus Rebrickables external_ids, sonst aus dem
-      // rb_bl_mapping-Cache, sonst die Rebrickable-Nummer selbst.
-      const blPartNum = p.bl_part_num || blMap.get(p.part_num) || p.part_num;
-      try {
-        const priceData = await fetchPartPrice(blPartNum, p.color_id || 0, cond, currency, 24);
-        const unitPrice = parseFloat(priceData?.avg_price || 0);
-        if (unitPrice > 0) { total += unitPrice * (p.quantity || 1); priced++; }
-      } catch (_) { /* Teil ohne Preis — überspringen */ }
-    }
-    console.log(`[minifig-price-estimate] ${figNumber} (${cond}): ${priced}/${parts.length} Teile bepreist, geschätzt=${priced>0?total.toFixed(2):'—'}`);
-    if (priced === 0) return null;
-
-    // ── Die Schätzung gehört in Cache UND Verlauf ─────────────────────────────
-    //
-    // Gemeldet: Im Detail-Dialog einer Minifigur OHNE BrickLink-Nummer standen
-    // bei „Marktpreis (Neu)" und „Marktpreis (Gebraucht)" nur Striche, und der
-    // Preisverlauf blieb leer — obwohl Kaufpreise in beiden Zuständen erfasst
-    // waren und die Finanzliste einen Wert zeigte.
-    //
-    // Ursache: Die Schätzung wurde bei jedem Aufruf frisch gerechnet und
-    // nirgends abgelegt. Marktpreis-Zeile und Diagramm lesen aber
-    // minifig_price_cache bzw. minifig_price_history (utils/priceHistory.ts) —
-    // und genau für diese Figuren blieb dort für immer alles leer. Ein echter
-    // BrickLink-Abruf schreibt beide Tabellen seit jeher (fetchMinifigPrice);
-    // der Schätzpfad war der einzige, der es nicht tat.
-    //
-    // Beide Tabellen sind benutzerunabhängig — das passt: Die Schätzung stammt
-    // aus BrickLink-Teilepreisen, nicht aus dem Bestand des Nutzers. Nur die
-    // Währung kommt aus seinen Einstellungen und steht deshalb im Schlüssel.
-    await db.run(
-      `INSERT INTO minifig_price_cache (fig_number, condition, currency_code, avg_price, qty_avg_price)
-       VALUES ($1,$2,$3,$4,$4) ON CONFLICT (fig_number,condition,currency_code)
-       DO UPDATE SET avg_price=$4, qty_avg_price=$4, fetched_at=NOW()`,
-      [figNumber, cond, currency, total]
-    ).catch(e => console.warn(`[minifig-price-estimate] Cache ${figNumber}: ${e.message}`));
-    // Wie beim echten Abruf: ON CONFLICT DO NOTHING, und nur mit echtem Preis —
-    // ein Nullpunkt sähe im Diagramm aus wie ein Kurssturz.
-    await db.run(
-      `INSERT INTO minifig_price_history (fig_number, condition, currency_code, avg_price, qty_avg_price)
-       VALUES ($1,$2,$3,$4,$4) ON CONFLICT DO NOTHING`,
-      [figNumber, cond, currency, total]
-    ).catch(() => {});
-
-    return total;
-  } catch (e) {
-    console.warn(`[minifig-price-estimate] ${figNumber}: ${fehlertext(e)}`);
-    return null;
-  }
-}
-
-/**
- * Marktpreis einer Minifigur SAMT Herkunft — Zwilling zu
- * marktpreisMitHerkunft in routes/parts.ts, gleiche Begruendung dort.
- */
-async function figMarktpreisMitHerkunft(figNumber: string, userId: number, blFigNumber?: string | null, condition: string | null = null) {
-  try {
-    const currency = await getSetting(userId, 'currency', 'EUR');
-    // Effektiver Zustand: eine "Gebraucht"-Erfassung genügt → 'U', sonst 'N';
-    // ohne Erfassungen der User-Default. fetchMinifigPrice fällt bei leerem
-    // Price Guide selbst auf den jeweils anderen Zustand zurück.
-    let effCond = condition;
-    if (!effCond) {
-      try {
-        const row = await db.get(
-          "SELECT MAX(CASE WHEN condition='U' THEN 1 ELSE 0 END) AS any_used, COUNT(*) AS cnt FROM minifig_acquisitions WHERE user_id=$1 AND fig_number=$2",
-          [userId, figNumber]);
-        if (row && parseInt(row.cnt) > 0) effCond = parseInt(row.any_used) > 0 ? 'U' : 'N';
-      } catch (e) { meldeUndWeiter('minifiguren:zustand-ermitteln', e); }
-      if (!effCond) { try { effCond = await userDefaultCondition(userId); } catch (_) { effCond = DEFAULT_PRICE_CONDITION; } }
-    }
-    // BrickLink zuerst — und zwar auch OHNE separate bl_fig_number.
-    //
-    // Vorher lief der Abruf nur, wenn eine abweichende BrickLink-Nummer
-    // hinterlegt war. Bei einer manuell erfassten Figur ist das der Ausnahme-
-    // und nicht der Regelfall: Meist stimmt die eigene Nummer (sw0001 &c.)
-    // mit der BrickLink-Nummer überein. Der Abruf wurde dadurch übersprungen,
-    // die Teile-Schätzung übernahm — und die liefert ohne
-    // Teile-Zusammensetzung von Rebrickable nichts. Ergebnis: gar kein Preis.
-    //
-    // Reihenfolge wie gewünscht: BrickLink, und nur wenn dort nichts zu holen
-    // ist, die Schätzung über die Einzelteile.
-    for (const num of [blFigNumber, figNumber]) {
-      if (!num) continue;
-      const priceData = await fetchMinifigPrice(num, effCond, currency, 24).catch(() => null);
-      // ── Der Rueckfall wird uebernommen, aber benannt (Nachtrag 167) ───────
-      //
-      // Marcos Befund aus Nachtrag 166: „Wenn ich eine Minifigur mit dem
-      // Zustand neu oder gebraucht erfasse, erhaelt diese denselben Preis."
-      // Er stimmte — fetchMinifigPrice faellt bei leerem Price Guide auf den
-      // anderen Zustand zurueck und markiert das mit `is_fallback`, und diese
-      // Stelle warf die Markierung weg.
-      //
-      // Die Antwort damals war `continue` — also gar kein Preis. Darauf kam
-      // Marcos naechster Befund: „Teilweise wird der Kaufpreis nicht direkt
-      // geladen." Beides ist dieselbe Tatsache von zwei Seiten: BrickLink
-      // fuehrt zu vielen Figuren nur EINEN Zustand.
-      //
-      // Seine Entscheidung: uebernehmen und kennzeichnen. Der Wert kommt
-      // zurueck, und mit ihm der Zustand, aus dem er wirklich stammt.
-      const price = parseFloat(priceData?.avg_price || 0);
-      if (price > 0) return {
-        preis: price,
-        ausZustand: priceData?.is_fallback ? (priceData.condition_used || null) : null,
-      };
-      if (num === blFigNumber && blFigNumber === figNumber) break;   // nicht doppelt fragen
-    }
-    // Bei BrickLink nichts gefunden: über die Teile der Minifigur schätzen —
-    // im ERMITTELTEN Zustand, nicht im Standardzustand.
-    //
-    // Ohne Herkunft: Die Schätzung rechnet mit den Teilepreisen DIESES
-    // Zustands. Sie ist eine Näherung, aber keine aus dem anderen Zustand —
-    // und nur die wäre zu kennzeichnen.
-    return { preis: await estimateFigPriceFromParts(figNumber, userId, effCond), ausZustand: null };
-  } catch (_) { return { preis: null, ausZustand: null }; }
-}
-
-/**
- * Marktpreis einer Minifigur als blosse Zahl — für alle, die die Herkunft
- * nicht brauchen. Zwilling zu getCurrentPartMarketPrice in routes/parts.ts.
- */
-async function getCurrentFigMarketPrice(figNumber: string, userId: number, blFigNumber?: string | null, condition: string | null = null) {
-  return (await figMarktpreisMitHerkunft(figNumber, userId, blFigNumber, condition)).preis;
-}
 
 // Shared logic to add/update a single manual minifig. Used by both the
 // session-based web route (POST /api/minifigs) and the token-based API

@@ -285,7 +285,14 @@ test('ein manuell erfasstes Teil bekommt Marktpreis und Erfassung', () => {
   // auch bei „Gebraucht"), und es entstand gar keine Zeile in
   // part_acquisitions — der Kaufpreis stand nur in der Stammtabelle, während
   // Detailansicht und Zustandsregel mit den Erfassungen arbeiten.
-  const src = fs.readFileSync(path.join(ROOT, 'routes', 'parts.ts'), 'utf8');
+  // ── Zwei Dateien, ein Korpus ─────────────────────────────────────────────
+  // Seit dem Schichtumbau steht die DEFINITION von getCurrentPartMarketPrice in
+  // utils/marketPrice.ts, waehrend die AUFRUFER in routes/parts.ts geblieben
+  // sind. Die Regel „jeder Aufruf traegt den Zustand" gilt fuer die Aufrufer —
+  // sie muss also ueber beide Dateien gehen. Nur eine zu lesen hiesse, die
+  // Haelfte der Aufrufstellen nicht anzusehen.
+  const src = fs.readFileSync(path.join(ROOT, 'utils', 'marketPrice.ts'), 'utf8')
+            + '\n' + fs.readFileSync(path.join(ROOT, 'routes', 'parts.ts'), 'utf8');
   const fn = src.slice(src.indexOf('async function addManualPart'),
                        src.indexOf('async function updateManualPart'));
 
@@ -350,7 +357,7 @@ test('der Minifiguren-Marktpreis fragt BrickLink auch ohne separate BL-Nummer', 
   // eigene Nummer mit der BrickLink-Nummer überein. Der Abruf wurde
   // übersprungen, die Teile-Schätzung übernahm, und die liefert ohne
   // Teile-Zusammensetzung von Rebrickable nichts: gar kein Preis.
-  const src = fs.readFileSync(path.join(ROOT, 'routes', 'minifigs.ts'), 'utf8');
+  const src = fs.readFileSync(path.join(ROOT, 'utils', 'marketPrice.ts'), 'utf8');
   // Der Abruf heisst seit Nachtrag 167 figMarktpreisMitHerkunft: Er liefert
   // neben dem Preis den Zustand, aus dem dieser stammt. getCurrentFigMarketPrice
   // steht als duenne Huelle daneben und gibt nur die Zahl weiter — geprueft
@@ -405,7 +412,11 @@ test('die Teile-Schätzung landet in Cache und Verlauf', () => {
   // minifig_price_history (utils/priceHistory.ts). Ein echter BrickLink-Abruf
   // schreibt beide (fetchMinifigPrice); der Schätzpfad rechnete nur und legte
   // nichts ab — für genau diese Figuren blieb dort für immer alles leer.
-  const src = fs.readFileSync(path.join(ROOT, 'routes', 'minifigs.ts'), 'utf8');
+  // Zwei Dateien, ein Korpus — dieselbe Begruendung wie weiter oben: Die
+  // Schaetzung steht seit dem Schichtumbau in utils/marketPrice.ts, der
+  // Erfassungsweg (recordAcquisitionForDay) ist in der Route geblieben.
+  const src = fs.readFileSync(path.join(ROOT, 'utils', 'marketPrice.ts'), 'utf8')
+            + '\n' + fs.readFileSync(path.join(ROOT, 'routes', 'minifigs.ts'), 'utf8');
   const est = src.slice(src.indexOf('async function estimateFigPriceFromParts'),
                         src.indexOf('async function getCurrentFigMarketPrice'));
 

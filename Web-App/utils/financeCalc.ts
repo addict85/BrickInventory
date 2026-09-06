@@ -904,7 +904,10 @@ async function computeMinifigsValuation(viewerId: number, ids: Blickfeld) {
         // für beide — eine gebraucht erfasste Figur bekam den Neupreis ihrer
         // Teile, und zwei Zeilen mit verschiedenen Zuständen zeigten
         // denselben Marktpreis.
-        const { estimateFigPriceFromParts } = require('../routes/minifigs');
+        // Frueher ein spaetes require('../routes/minifigs') — noetig, weil ein
+        // Top-Level-Import auf eine ROUTE hier einen Zyklus ergeben haette.
+        // Seit die Schaetzung in utils/marketPrice.ts steht, ist der Umweg weg.
+        const { estimateFigPriceFromParts } = require('./marketPrice');
         const estimated = await estimateFigPriceFromParts(fig.fig_number, viewerId, cond).catch(() => null);
         pd = estimated != null
           ? { avg_price: estimated, qty_avg_price: estimated, from_cache: false, estimated_from_parts: true }

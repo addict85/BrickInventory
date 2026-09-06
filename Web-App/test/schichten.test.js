@@ -36,21 +36,26 @@ const ROOT = path.join(__dirname, '..');
 /**
  * Was noch aus einer Route nach innen geholt wird — und warum es noch steht.
  *
- * Alle verbliebenen Faelle sind FACHLOGIK, die in einer Routendatei wohnt:
- * Marktpreise, Katalogabfragen, Aufraeumjob-Starter. Sie herauszuloesen ist
- * kein Verschieben, sondern ein Umbau — die Funktionen greifen auf
- * modul-lokale Helfer ihrer Datei zu. Deshalb hier benannt statt still
- * geduldet.
+ * Die Liste ist LEER — und das ist das Ergebnis eines Durchgangs, nicht der
+ * Ausgangszustand. Sie hatte acht Eintraege, und beim Aufloesen zeigte sich,
+ * dass sie aus DREI verschiedenen Gruenden dort standen:
+ *
+ *   • Zwei UMWEGE: jobs/rebrickableCsvSync und utils/handlers/parts holten
+ *     fetchMissingBlIds ueber routes/parts — die Route hatte sie selbst nur
+ *     importiert und weiterexportiert. Kein Code am falschen Ort, nur ein
+ *     Import am falschen Ort. Sie holen sie jetzt direkt aus utils/partsImport.
+ *   • Zwei FEHLER IN DIESER REGEL: startup/ zaehlte hier zu den inneren
+ *     Schichten, obwohl es nur von server.ts benutzt wird und damit
+ *     ausgelagerter Serverstart ist. Siehe die Ordnerliste unten.
+ *   • Vier ECHTE Faelle: die Marktpreise fuer Teile und Figuren, die
+ *     Preisschaetzung aus Einzelteilen und die Rebrickable-Teileabfrage. Sie
+ *     stehen jetzt in utils/marketPrice.ts (bei dem fuer Sets, wo sie
+ *     hingehoerten) bzw. in clients/rebrickable.ts.
+ *
+ * Bleibt die Liste leer, ist das die Aussage. Wird ein Eintrag noetig, gehoert
+ * er hierher — mit Grund, nicht als stille Duldung.
  */
-const AUSNAHMEN = new Set([
-  'jobs/rebrickableCsvSync.ts -> routes/parts',
-  'utils/handlers/parts.ts -> routes/parts',
-  'jobs/purchasePriceBackfill.ts -> routes/parts',
-  'jobs/purchasePriceBackfill.ts -> routes/minifigs',
-  'utils/financeCalc.ts -> routes/minifigs',
-  'startup/backgroundJobs.ts -> routes/imgProxy',
-  'startup/backgroundJobs.ts -> routes/api_v1/pdf',
-]);
+const AUSNAHMEN = new Set([]);
 
 /** Quelltext ohne Kommentare — zeilenweise, siehe test/baumbruecken.test.js. */
 function ohneKommentare(s) {
@@ -77,7 +82,19 @@ function innereDateien() {
       else if (e.name.endsWith('.ts')) gefunden.push(kind);
     }
   };
-  ['utils', 'jobs', 'clients', 'db', 'startup'].forEach(lauf);
+  // startup/ steht NICHT in dieser Liste — und das ist eine Berichtigung.
+  //
+  // Der erste Entwurf zaehlte es zu den inneren Schichten, weil es kein
+  // „routes" im Namen traegt. Nachgemessen: startup/backgroundJobs.ts wird von
+  // GENAU EINER Datei benutzt, naemlich server.ts. Es ist ausgelagerter
+  // Serverstart, also dieselbe Schicht wie server.ts selbst — dass es Routen
+  // anfasst (startImgCacheCleanup, startPdfJobCleanup), ist sein Zweck und
+  // kein Verstoss.
+  //
+  // Eine Regel, die Gesundes als Verstoss fuehrt, ist schlimmer als keine: Sie
+  // erzieht dazu, die Ausnahmeliste fuer normal zu halten. Zwei der acht
+  // Eintraege standen nur wegen dieses Fehlers dort.
+  ['utils', 'jobs', 'clients', 'db'].forEach(lauf);
   return gefunden;
 }
 

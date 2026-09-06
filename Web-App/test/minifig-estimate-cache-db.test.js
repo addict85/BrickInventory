@@ -106,7 +106,7 @@ test('Cache und Verlauf werden beide beschrieben', () => {
   // UNIQUE nur den letzten Wert, der Verlauf die Vergangenheit fürs Diagramm.
   const fs = require('node:fs');
   const path = require('node:path');
-  const src = fs.readFileSync(path.join(__dirname, '..', 'routes', 'minifigs.ts'), 'utf8');
+  const src = fs.readFileSync(path.join(__dirname, '..', 'utils', 'marketPrice.ts'), 'utf8');
   const i = src.indexOf('async function estimateFigPriceFromParts');
   const fn = src.slice(i, src.indexOf('\n}', i));
 
