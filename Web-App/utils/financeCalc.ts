@@ -524,11 +524,141 @@ async function computeSetsValuation(viewerId: number, ids: Blickfeld) {
   };
 }
 
+// ═══════════════════════════════════════════════════════════════════════════
+// Nachschlagewerk — zwei Übersetzungstabellen, die sich während einer
+// Bewertung nicht ändern
+// ═══════════════════════════════════════════════════════════════════════════
+//
+// ── Was gemessen wurde ──────────────────────────────────────────────────────
+//
+// Datenbank-Abfragen JE STÜCK, bei warmem Preis-Cache, 50 Stück je Art:
+//
+//     Sets           10 Abfragen   0,2 je Stück    6 ms
+//     Minifiguren    55 Abfragen   1,1 je Stück   20 ms
+//     Teile         205 Abfragen   4,1 je Stück   81 ms
+//
+// Die Set-Bewertung lädt alles mit `= ANY($1)` vor und rechnet dann aus Maps
+// (computeSetsValuation). Die Teile-Bewertung fragt statt dessen JE TEIL vier
+// Mal nach — und zwei dieser vier Fragen haben für alle Teile dieselbe
+// Antwort:
+//
+//     50x SELECT bl_color_id FROM rb_colors WHERE id=$1     ← 50x Farbe 4
+//     50x SELECT bl_part_num FROM rb_bl_mapping WHERE …
+//     50x SELECT bl_part_number FROM parts WHERE …          ← siehe Index
+//     50x SELECT … FROM part_price_cache WHERE …            ← die eigentliche
+//                                                             Arbeit, je Teil
+//
+// ── Warum ein Gedächtnis und keine Vorablade-Abfrage ────────────────────────
+//
+// Vorladen wie bei den Sets ginge nur in computePartsValuation. Die beiden
+// Übersetzungen stecken aber in fetchPartPrice, und das rufen ausserdem
+// routes/parts.ts, utils/marketPrice.ts und die Schätzung über die Einzelteile
+// einer Minifigur auf — jeweils für EIN Stück. Ein Vorrat, den nur ein
+// Aufrufer füllt, hilft den anderen dreien nicht; ein Gedächtnis hilft allen.
+//
+// ── Warum das gefahrlos ist ─────────────────────────────────────────────────
+//
+// rb_colors und rb_bl_mapping sind Nachschlagewerke: geschrieben werden sie
+// vom Rebrickable-CSV-Abgleich und vom Nachtrag-Job, nicht im Anfragepfad.
+// Eine LEGO-Farbnummer ändert ihre BrickLink-Entsprechung nicht.
+//
+// FEHLSCHLÄGE werden bewusst NICHT gemerkt. Sonst hielte ein Start vor dem
+// ersten CSV-Abgleich für zehn Minuten fest, dass es keine Übersetzung gibt —
+// und der Nachtrag-Job, der genau diese Lücken füllt, bliebe so lange
+// wirkungslos. Ein Fehlschlag kostet nach dem Teilindex auf parts (siehe
+// db/database.ts) ohnehin nur noch Mikrosekunden.
+const NACHSCHLAG_TTL_MS = 10 * 60 * 1000;
+// Deckel gegen unbegrenztes Wachstum: Beim Überschreiten wird geleert statt
+// einzeln aufgeräumt — dieselbe Entscheidung wie bei _tokenCache in
+// utils/auth.ts, aus demselben Grund (eine Handvoll Nutzer, kleine Tabellen).
+const NACHSCHLAG_MAX = 5000;
+
+/**
+ * Baut eine gemerkte Fassung von `hole`.
+ *
+ * `hole` gibt `null` zurück, wenn es nichts gefunden hat — dieser Fall wird
+ * NICHT gemerkt (siehe oben). Der Aufrufer setzt seinen eigenen Rückfall ein.
+ */
+function nachschlagwerk<S, W>(hole: (schluessel: S) => Promise<W | null>) {
+  const karte = new Map<S, { wert: W; zeit: number }>();
+  const frage = async (schluessel: S): Promise<W | null> => {
+    const jetzt = Date.now();
+    const treffer = karte.get(schluessel);
+    if (treffer && jetzt - treffer.zeit < NACHSCHLAG_TTL_MS) return treffer.wert;
+    const wert = await hole(schluessel);
+    if (wert == null) { karte.delete(schluessel); return null; }
+    if (karte.size >= NACHSCHLAG_MAX) karte.clear();
+    karte.set(schluessel, { wert, zeit: jetzt });
+    return wert;
+  };
+  // Kein leeren()-Griff: Beide Tabellen werden nur ergänzt, nie geleert
+  // (nachgesehen — es gibt kein TRUNCATE/DELETE auf rb_colors oder
+  // rb_bl_mapping). Ein einmal gemerkter Treffer kann also nicht falsch
+  // werden, und ein Griff, den niemand zieht, wäre toter Code.
+  //
+  // kennt()/merken() gibt es, damit ein Aufrufer VIELE Antworten auf einmal
+  // holen und hier ablegen kann — siehe ladeBlNummernVor().
+  frage.kennt = (schluessel: S) => {
+    const treffer = karte.get(schluessel);
+    return !!treffer && Date.now() - treffer.zeit < NACHSCHLAG_TTL_MS;
+  };
+  frage.merken = (schluessel: S, wert: W) => {
+    if (karte.size >= NACHSCHLAG_MAX) karte.clear();
+    karte.set(schluessel, { wert, zeit: Date.now() });
+  };
+  return frage;
+}
+
+/**
+ * Die Farbtabelle als GANZES merken, nicht Zeile für Zeile.
+ *
+ * rb_colors hat rund 200 Zeilen. Ein Gedächtnis je Schlüssel hätte hier eine
+ * unangenehme Lücke: Ein FEHLSCHLAG wird bewusst nicht gemerkt (siehe oben) —
+ * und eine Farbnummer, die BrickLink nicht kennt, wäre damit weiterhin je Teil
+ * eine eigene Abfrage. Die ganze Tabelle zu halten macht den Fehlschlag
+ * genauso billig wie den Treffer: Wer nicht in der Karte steht, steht nicht in
+ * der Tabelle.
+ *
+ * Kosten: eine Abfrage je zehn Minuten, für alle Farben zusammen.
+ */
+let _farbkarte: { karte: Map<number, any>; zeit: number } | null = null;
+// Der LADEVORGANG wird geteilt, nicht nur sein Ergebnis.
+//
+// NACHGEMESSEN: Ohne das blieben von 50 Abfragen fünf übrig statt einer. Die
+// Bewertung läuft über parallelLimit(tasks, 5) — fünf Arbeiter treffen den
+// kalten Speicher gleichzeitig, jeder sieht „noch nichts da" und lädt selbst.
+// Wer die laufende Zusage findet, wartet auf sie, statt eine zweite zu starten.
+let _farbladung: Promise<Map<number, any>> | null = null;
+/**
+ * Die Farbzuordnung als Map — auch fuer utils/handlers/parts.ts.
+ *
+ * Die Abfrage stand dort ein zweites Mal (getBlColorMap). test/sql-kerne.test.js
+ * hat es gemeldet: dieselbe SQL-Anweisung in zwei Dateien. Jetzt liest sie
+ * einer, und beide Wege bekommen dasselbe Gedaechtnis dazu.
+ */
+async function farbkarte(): Promise<Map<number, any>> {
+  const jetzt = Date.now();
+  if (_farbkarte && jetzt - _farbkarte.zeit < NACHSCHLAG_TTL_MS) return _farbkarte.karte;
+  if (_farbladung) return _farbladung;
+  _farbladung = (async () => {
+    const rows = await db.all('SELECT id, bl_color_id FROM rb_colors WHERE bl_color_id IS NOT NULL');
+    const karte = new Map<number, any>();
+    for (const r of rows) karte.set(Number(r.id), r.bl_color_id);
+    // Eine LEERE Tabelle wird NICHT gemerkt: Vor dem ersten Rebrickable-Abgleich
+    // ist sie leer, und zehn Minuten lang jede Übersetzung zu verweigern hiesse,
+    // dem Abgleich beim Nachfüllen zuzusehen und ihn zu ignorieren.
+    if (karte.size) _farbkarte = { karte, zeit: jetzt };
+    return karte;
+  })();
+  try { return await _farbladung; }
+  finally { _farbladung = null; }
+}
+
 async function resolveBlColorId(rbColorId: number) {
   if (rbColorId == null || rbColorId === 0) return rbColorId;
   try {
-    const row = await db.get('SELECT bl_color_id FROM rb_colors WHERE id=$1', [rbColorId]);
-    return (row?.bl_color_id != null) ? row.bl_color_id : rbColorId;
+    const treffer = (await farbkarte()).get(Number(rbColorId));
+    return treffer != null ? treffer : rbColorId;
   } catch (_) { return rbColorId; }
 }
 
@@ -537,26 +667,75 @@ async function resolveBlColorId(rbColorId: number) {
 // Übersetzung antwortet BrickLink für RB-Nummern mit 404 RESOURCE_NOT_FOUND —
 // analog zu resolveBlColorId für die Farben. Unbekannte Nummern (oder bereits
 // BL-Nummern) laufen unverändert durch.
+const _blTeil = nachschlagwerk(async (partNumber: string) => {
+  const row = await db.get('SELECT bl_part_num FROM rb_bl_mapping WHERE part_num=$1', [partNumber]);
+  if (row?.bl_part_num) return row.bl_part_num;
+  // Zweite Quelle: parts.bl_part_number.
+  //
+  // jobs/backfillBlPartNumbers.ts schreibt beide im selben Durchlauf mit
+  // demselben Wert — sie stimmen also normalerweise überein. Scheitert dort
+  // aber ausgerechnet das INSERT in rb_bl_mapping (es wird protokolliert und
+  // übergangen), bleibt die Lücke FÜR IMMER: Der Job wählt beim nächsten Mal
+  // nur noch Teile mit leerem bl_part_number, und dieses hat ja eines.
+  //
+  // Beim LESEN kostet der Rückfall genau einen Indexzugriff — seit
+  // idx_parts_blnum (db/database.ts) auch wirklich einen und keinen
+  // Tabellenscan: nachgemessen 10,1 ms → 0,012 ms an 100'000 Zeilen.
+  const teil = await db.get(
+    `SELECT bl_part_number FROM parts
+      WHERE part_number=$1 AND bl_part_number IS NOT NULL AND bl_part_number <> ''
+      LIMIT 1`, [partNumber]);
+  return teil?.bl_part_number || null;
+});
+
 async function resolveBlPartNumber(partNumber: string) {
   try {
-    const row = await db.get('SELECT bl_part_num FROM rb_bl_mapping WHERE part_num=$1', [partNumber]);
-    if (row?.bl_part_num) return row.bl_part_num;
-    // Zweite Quelle: parts.bl_part_number.
-    //
-    // jobs/backfillBlPartNumbers.ts schreibt beide im selben Durchlauf mit
-    // demselben Wert — sie stimmen also normalerweise überein. Scheitert dort
-    // aber ausgerechnet das INSERT in rb_bl_mapping (es wird protokolliert und
-    // übergangen), bleibt die Lücke FÜR IMMER: Der Job wählt beim nächsten Mal
-    // nur noch Teile mit leerem bl_part_number, und dieses hat ja eines.
-    //
-    // Beim LESEN kostet der Rückfall einen Indexzugriff und macht die Frage
-    // unabhängig davon, welcher der beiden Schreibvorgänge durchkam.
-    const teil = await db.get(
-      `SELECT bl_part_number FROM parts
-        WHERE part_number=$1 AND bl_part_number IS NOT NULL AND bl_part_number <> ''
-        LIMIT 1`, [partNumber]);
-    return teil?.bl_part_number || partNumber;
+    return (await _blTeil(partNumber)) ?? partNumber;
   } catch (_) { return partNumber; }
+}
+
+/**
+ * Die BrickLink-Nummern EINER Bewertung in zwei Abfragen vorladen.
+ *
+ * ── Warum ──────────────────────────────────────────────────────────────────
+ * resolveBlPartNumber() fragt je Teil einzeln — und anders als bei den Farben
+ * hilft das Gedächtnis innerhalb einer Bewertung nicht, weil jedes Teil eine
+ * ANDERE Nummer hat. NACHGEMESSEN an 50 Teilen: 50 Abfragen auf rb_bl_mapping
+ * plus 50 auf parts. Dieselben Antworten passen in zwei Abfragen.
+ *
+ * Das ist genau das Muster, das computeSetsValuation seit jeher benutzt:
+ * alles mit `= ANY($1)` vorladen, dann aus Maps rechnen (0,2 Abfragen je Set
+ * gegenüber 4,1 je Teil, gemessen bei warmem Preis-Cache).
+ *
+ * Gefüllt wird das GEMEINSAME Gedächtnis, nicht ein eigener Vorrat: So findet
+ * fetchPartPrice die Antwort auf seinem gewohnten Weg, und die Reihenfolge der
+ * beiden Quellen bleibt die von resolveBlPartNumber — erst rb_bl_mapping, dann
+ * der Rückfall über parts.
+ *
+ * FEHLSCHLÄGE bleiben ungemerkt (siehe nachschlagwerk): Ein Teil ohne
+ * Übersetzung fragt weiterhin zweimal nach. Beide Fragen sind seit
+ * idx_parts_blnum reine Indexzugriffe; sie zu merken hiesse, den Nachtrag-Job
+ * zehn Minuten lang zu übersehen.
+ */
+async function ladeBlNummernVor(teilnummern: string[]): Promise<void> {
+  const offen = [...new Set(teilnummern.filter(Boolean).map(String))].filter(n => !_blTeil.kennt(n));
+  if (!offen.length) return;
+  const abbildung = await db.all(
+    'SELECT part_num, bl_part_num FROM rb_bl_mapping WHERE part_num = ANY($1)', [offen],
+  ).catch(() => []);
+  for (const r of abbildung) if (r.bl_part_num) _blTeil.merken(String(r.part_num), r.bl_part_num);
+
+  const rest = offen.filter(n => !_blTeil.kennt(n));
+  if (!rest.length) return;
+  // DISTINCT ON: parts kann dieselbe Nummer vielfach führen (mehrere Konten,
+  // mehrere Farben). Der Einzelweg nahm mit LIMIT 1 irgendeine davon; hier
+  // steht die mit der kleinsten id — dieselbe Antwort bei jedem Durchlauf.
+  const ausTeilen = await db.all(
+    `SELECT DISTINCT ON (part_number) part_number, bl_part_number FROM parts
+      WHERE part_number = ANY($1) AND bl_part_number IS NOT NULL AND bl_part_number <> ''
+      ORDER BY part_number, id`, [rest],
+  ).catch(() => []);
+  for (const r of ausTeilen) _blTeil.merken(String(r.part_number), r.bl_part_number);
 }
 
 // ── Fetch price for a single part from BrickLink ─────────────────────────────
@@ -988,6 +1167,11 @@ async function computePartsValuation(viewerId: number, ids: Blickfeld) {
 
   if (!manualParts.length) return { currency, parts: [], total_value: '0.00' };
 
+  // Die BrickLink-Nummern aller Teile in zwei Abfragen statt in 2×N — siehe
+  // ladeBlNummernVor(). Der Schlüssel muss zeichengleich der sein, mit dem
+  // fetchPartPrice unten aufgerufen wird, sonst greift das Gedächtnis daneben.
+  await ladeBlNummernVor(manualParts.map(p => String(p.bl_part_number || p.part_number)));
+
   const acqByPart = await loadManualAcquisitions(uids, 'part');
 
   const tasks = manualParts.map(part => async () => {
@@ -1339,6 +1523,7 @@ export {
   speicherePreis, cacheUsable, preisAusCache,
   checkAndIncrementRateLimit, getLimitForApi, getRateLimitStatus,
   fetchPrice, parallelLimit, resolveBlColorId, resolveBlPartNumber, fetchPartPrice, fetchMinifigPrice,
+  farbkarte, ladeBlNummernVor,
   computeSetsValuation, computeMinifigsValuation, computePartsValuation, computePnl,
   resolveSetCondition,
 };

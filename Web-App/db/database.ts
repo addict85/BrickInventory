@@ -792,6 +792,36 @@ async function indizesUndZusammenfassung() {
   await pool.query(`CREATE INDEX IF NOT EXISTS idx_part_acq_user_part ON part_acquisitions(user_id, part_number, color_id)`).catch(e => console.error('[db] idx_part_acq:', e.message));
   await pool.query(`CREATE INDEX IF NOT EXISTS idx_minifig_acq_user_fig ON minifig_acquisitions(user_id, fig_number)`).catch(e => console.error('[db] idx_minifig_acq:', e.message));
   await pool.query(`CREATE INDEX IF NOT EXISTS idx_rb_inv_setnum ON rb_inventories(set_num)`).catch(e => console.error('[db] idx_rb_inv_setnum:', e.message));
+
+  // ── Drei Nachschläge im Anfragepfad, die keinen passenden Index hatten ─────
+  //
+  // Alle drei mit EXPLAIN (ANALYZE, BUFFERS) an je 100'000 Zeilen nachgemessen.
+  //
+  //  1. parts — der BrickLink-Rückfall in resolveBlPartNumber
+  //     (utils/financeCalc.ts). Er läuft EINMAL JE TEIL der Bewertung:
+  //         ohne Index   Seq Scan,   2479 Buffer, 10,1   ms
+  //         mit  Index   Index Scan,    2 Buffer,  0,012 ms
+  //     Bei 500 manuellen Teilen sind das rund fünf Sekunden allein hier.
+  //     TEILINDEX: Kandidat ist nur, wer überhaupt eine BrickLink-Nummer hat,
+  //     und genau danach fragt die Abfrage. Deshalb 8 KB statt Megabyte — das
+  //     Prädikat muss zeichengleich zur WHERE-Bedingung sein, sonst nimmt der
+  //     Planer den Index nicht.
+  //
+  //  2. set_minifigs_catalog nach fig_number (routes/api_v1/minifigs.ts):
+  //         ohne Index   Seq Scan,    572 Buffer, 5,19  ms
+  //         mit  Index   Index Scan,    4 Buffer, 0,041 ms   (Index 3 MB)
+  //     Vorhanden waren (set_number) und (set_number, fig_number). Beide haben
+  //     set_number als FÜHRENDE Spalte und können eine Suche allein nach
+  //     fig_number nicht bedienen — ein zusammengesetzter Index hilft nur von
+  //     links.
+  //
+  //  3. sets nach set_number OHNE user_id (routes/api_v1/admin.ts, „welche
+  //     Konten besitzen dieses Set?"). Derselbe Grund: idx_sets_user_setnum
+  //     beginnt mit user_id, das die Abfrage nicht nennt — sie liest sonst die
+  //     Sets aller Konten.
+  await pool.query(`CREATE INDEX IF NOT EXISTS idx_parts_blnum ON parts(part_number) WHERE bl_part_number IS NOT NULL AND bl_part_number <> ''`).catch(e => console.error('[db] idx_parts_blnum:', e.message));
+  await pool.query(`CREATE INDEX IF NOT EXISTS idx_set_minifigs_fig ON set_minifigs_catalog(fig_number)`).catch(e => console.error('[db] idx_set_minifigs_fig:', e.message));
+  await pool.query(`CREATE INDEX IF NOT EXISTS idx_sets_setnum ON sets(set_number)`).catch(e => console.error('[db] idx_sets_setnum:', e.message));
   // Kategorie-Filter/-Aggregation: beschleunigt GROUP BY category_name im
   // /categories-Endpoint und den Kategorie-Filter der Teileliste (beide je User).
   // rb_part_categories selbst braucht keinen Extra-Index: die Auflösung läuft über

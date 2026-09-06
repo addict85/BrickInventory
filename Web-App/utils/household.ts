@@ -45,8 +45,75 @@ export interface Household {
  * Geschwister geht es nichts an, und der Hauptaccount ist kein gemeinsamer
  * Topf, sondern eine Sicht.
  */
+// ═══════════════════════════════════════════════════════════════════════════
+// Das Blickfeld wird auf JEDER Anfrage gebraucht
+// ═══════════════════════════════════════════════════════════════════════════
+//
+// ── Was gemessen wurde ──────────────────────────────────────────────────────
+//
+// resolveHousehold() steht am Anfang praktisch jedes Lese-Endpunkts und macht
+// zwei Abfragen. Ueber die echten Routen gezaehlt:
+//
+//     /api/v1/sets          5 Abfragen, davon 2 auf account_links
+//     /api/v1/parts         6 Abfragen, davon 2
+//     /api/v1/minifigs      5 Abfragen, davon 2
+//     /api/v1/stats         9 Abfragen, davon 2
+//     /api/v1/parts/stats   5 Abfragen, davon 2
+//
+// Immer GENAU einmal je Anfrage — kein N+1, sondern ein fester Aufschlag:
+// 0,438 ms je Aufruf (500 Aufrufe in 219 ms, lokaler Socket). Im Betrieb
+// liegt Postgres in einem eigenen Container, der Umlauf kostet dort mehr.
+//
+// ── Warum ein Gedaechtnis vertretbar ist ────────────────────────────────────
+//
+// Ein Haushalt aendert sich, wenn jemand eine Einladung einloest oder eine
+// Verknuepfung loest — also alle paar Monate, nicht alle paar Sekunden.
+//
+// ── Warum NOTIFY und nicht nur eine kurze Frist ─────────────────────────────
+//
+// Der Server laeuft im Cluster. Loest Worker A die Einladung ein, wuesste
+// Worker B ohne Signal bis zum Ablauf der Frist nichts davon — der Nutzer
+// klickt „einloesen" und sieht sein Unterkonto je nach Worker mal ja, mal
+// nein. Genau dafuer gibt es utils/pgNotify.ts schon; hier wird es benutzt
+// statt die Frist so kurz zu waehlen, dass sie den Gewinn wieder auffrisst.
+//
+// Die Frist bleibt als NETZ darunter: NOTIFY ist fluechtig (siehe pgNotify),
+// ein Worker ohne Verbindung im Moment des Signals bekommt es nie.
+//
+// Jede Aenderung leert ALLES, nicht nur die betroffenen Konten. Eine
+// Verknuepfung beruehrt immer zwei Konten, das Loeschen eines Kontos raeumt
+// per ON DELETE CASCADE weitere Zeilen ab — und die Karte hat einen Eintrag
+// je aktivem Nutzer, ist also winzig. Gezielt zu leeren waere mehr Code mit
+// mehr Moeglichkeiten, einen Fall zu uebersehen.
+export const HAUSHALT_KANAL = 'haushalt_geaendert';
+const HAUSHALT_TTL_MS = 5 * 60 * 1000;
+// Deckel wie bei _tokenCache in utils/auth.ts, aus demselben Grund.
+const HAUSHALT_MAX = 500;
+const _haushalte = new Map<number, { wert: Household; zeit: number }>();
+
+/** Das Gedaechtnis leeren — vom Signal und von den Schreibwegen aus. */
+export function leereHaushaltCache(): void { _haushalte.clear(); }
+
+/**
+ * Eine Haushaltsaenderung bekanntmachen: hier sofort, in den anderen Workern
+ * ueber NOTIFY. Fehler werden verschluckt — das Signal ist die Beschleunigung,
+ * die Frist ist die Zusicherung.
+ */
+export function meldeHaushaltsaenderung(): void {
+  leereHaushaltCache();
+  require('./pgNotify').notify(HAUSHALT_KANAL).catch(() => {});
+}
+
 export async function resolveHousehold(uid: number): Promise<Household> {
   const id = parseInt(String(uid));
+  const treffer = _haushalte.get(id);
+  // Die Listen werden bei JEDER Rueckgabe frisch gebaut. scopeIds() gibt
+  // memberIds teilweise unveraendert weiter; wuerde ein Aufrufer die Liste
+  // anfassen, veraenderte er sonst den gemerkten Stand fuer alle folgenden
+  // Anfragen — ein Fehler, den man an der Fundstelle nie sehen wuerde.
+  if (treffer && Date.now() - treffer.zeit < HAUSHALT_TTL_MS)
+    return { ...treffer.wert, memberIds: [...treffer.wert.memberIds] };
+
   const [subs, parent] = await Promise.all([
     db.all('SELECT sub_user_id FROM account_links WHERE main_user_id = $1 ORDER BY sub_user_id', [id])
       .catch(() => []),
@@ -54,12 +121,15 @@ export async function resolveHousehold(uid: number): Promise<Household> {
       .catch(() => null),
   ]);
   const subIds = (subs || []).map((r: any) => parseInt(r.sub_user_id));
-  return {
+  const haushalt: Household = {
     mainId: parent ? parseInt(parent.main_user_id) : id,
     memberIds: [id, ...subIds],
     isMain: subIds.length > 0,
     linkedToMainId: parent ? parseInt(parent.main_user_id) : null,
   };
+  if (_haushalte.size >= HAUSHALT_MAX) _haushalte.clear();
+  _haushalte.set(id, { wert: haushalt, zeit: Date.now() });
+  return { ...haushalt, memberIds: [...haushalt.memberIds] };
 }
 
 /**
@@ -222,6 +292,7 @@ export async function redeemInvite(uid: number, code: string) {
     'INSERT INTO account_links (main_user_id, sub_user_id) VALUES ($1,$2) ON CONFLICT DO NOTHING',
     [mainId, subId]
   );
+  meldeHaushaltsaenderung();
   const main = await db.get('SELECT username FROM users WHERE id = $1', [mainId]).catch(() => null);
   return { linked_to: { id: mainId, username: main?.username || String(mainId) } };
 }
@@ -242,9 +313,11 @@ export async function unlink(uid: number, subUserId?: number | null) {
     const sub = parseInt(String(subUserId));
     const r = await db.run(
       'DELETE FROM account_links WHERE main_user_id = $1 AND sub_user_id = $2', [id, sub]);
+    meldeHaushaltsaenderung();
     return { removed: (r as any)?.changes ?? 1 };
   }
   const r = await db.run('DELETE FROM account_links WHERE sub_user_id = $1', [id]);
+  meldeHaushaltsaenderung();
   return { removed: (r as any)?.changes ?? 1 };
 }
 
