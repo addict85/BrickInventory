@@ -829,10 +829,14 @@ export function gibStart() {
   G('gib-text').textContent = tRaw('csv.running_text');
   G('gib-fill').style.width = '0%';
 
-  // SSE benötigt den Token in der URL, da EventSource keine Header setzen kann.
-  // (Cookie-Session funktioniert ohnehin; der Token deckt den Bearer-Fall ab.)
-  const wt = sessionStorage.getItem('webToken');
-  const url = '/api/v1/sets/import/csv/stream' + (wt ? ('?token=' + encodeURIComponent(wt)) : '');
+  // Kein Token in der Adresse. EventSource kann zwar keine Kopfzeile setzen,
+  // schickt mit `withCredentials: true` aber das Sitzungs-Cookie — und genau
+  // das war schon vorher der Weg, auf dem dieser Kanal wirklich lief. Der
+  // angehängte `?token=` war der Sitzungstoken selbst; er hätte im
+  // Reverse-Proxy-Protokoll und im Browserverlauf gestanden. Den „Bearer-Fall"
+  // ohne Cookie gibt es hier nicht: `webToken` entsteht erst nach der
+  // Anmeldung, die das Cookie setzt. Siehe utils/auth.ts.
+  const url = '/api/v1/sets/import/csv/stream';
 
   if (typeof EventSource !== 'undefined') {
     try {

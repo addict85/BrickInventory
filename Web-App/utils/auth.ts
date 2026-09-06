@@ -17,7 +17,6 @@ import * as db from '../db/database';
 import crypto from 'crypto';
 import bcrypt from 'bcryptjs';
 import type { Request, Response, NextFunction } from 'express';
-import { vorDem } from '../utils/httpError';
 import { checkLoginAllowed, recordLoginFailure, recordLoginSuccess } from './loginLimiter';
 import { sendeFehler } from './fehlerTexte';
 import type { FehlerCode } from './fehlerTexte';
@@ -453,60 +452,56 @@ async function pruefeAnmeldedaten(req: Request, username: unknown, password: unk
 function escapeLike(s: unknown): string { return String(s ?? '').replace(/([%_\\])/g, '\\$1'); }
 
 /**
- * Pfade, auf denen ?token=… als Authentifizierung zulässig bleibt.
+ * Warum es hier KEINE Liste mehr gibt: ?token= zaehlt nirgends.
  *
- * Ein Token in der Query-Zeichenkette landet im Referer fremder Seiten, in der
- * Browser-History, in Reverse-Proxy-Logs und in jedem Fehlerbericht, der die
- * URL mitschickt. Als allgemeiner Auth-Weg ist das deshalb keine Option.
+ * Ein Token in der Adresszeile landet im Referer fremder Seiten, im
+ * Browserverlauf, in Reverse-Proxy-Protokollen und in jedem Fehlerbericht, der
+ * die URL mitschickt. Er verschwindet dort auch nicht wieder. Bis hierher war
+ * es der SITZUNGSTOKEN, der das ganze Konto oeffnet — bei der App einer ohne
+ * Ablauf.
  *
- * Es gibt aber Fälle, in denen kein Header gesetzt werden kann: <img src>,
- * <iframe src>, window.open() und EventSource erlauben keine eigenen
- * Kopfzeilen. Genau diese bleiben offen; alles andere verlangt einen
- * Authorization-Header.
+ * An dieser Stelle stand deshalb eine kurze Ausnahmeliste mit der Begruendung,
+ * <img src>, <iframe src>, window.open() und EventSource koennten keine
+ * Kopfzeilen setzen. Das stimmt — nur hatte KEINER der drei Eintraege noch
+ * einen Nutzer. Nachgezaehlt im Baum, alle drei Erzeuger von `?token=`:
  *
- * ── Warum der CSV-Import hier steht ─────────────────────────────────────────
- * routes/sets.ts hatte eine ZWEITE, eigene Fassung von requireLoginOrToken,
- * die ?token= bedingungslos akzeptierte — für den SSE-Fortschritt des
- * CSV-Imports, weil EventSource keine Header setzen kann. Der Bedarf ist echt,
- * die zweite Fassung war es nicht: Sie machte den Absatz oben unwahr („alles
- * andere verlangt einen Header"), ohne dass man es dieser Datei ansieht. Wer
- * hier nachliest, wo ein Token in der URL reiten darf, soll die vollständige
- * Antwort bekommen.
+ *   • public/js/01-core.js und public/js/02-gallery.js haengten ihn an den
+ *     SSE-Strom des CSV-Imports. Beide oeffnen den Kanal mit
+ *     `withCredentials: true`, und `webToken` entsteht ueberhaupt erst NACH
+ *     einer erfolgreichen Anmeldung — die das Sitzungs-Cookie setzt. Einen
+ *     Browser, der den Token hat und das Cookie nicht, gibt es nicht. Der
+ *     Kommentar an der Aufrufstelle sagte das selbst: „Cookie-Session
+ *     funktioniert ohnehin".
+ *   • Die App haengte ihn an die Anleitung (SetDetailSections.kt). Die Datei
+ *     holt aber der In-App-Betrachter ueber den geteilten OkHttp-Client, und
+ *     dessen Interceptor setzt den Authorization-Kopf fuer JEDE Adresse
+ *     unseres Servers (di/AppModule.kt). Der Token in der Adresse war doppelt
+ *     gemoppelt — und wurde nebenbei als Text unter der Anleitung ANGEZEIGT
+ *     und als Navigationsargument im Backstack abgelegt.
+ *   • Der Polling-Rueckfall (/import/csv/status) und die Token-Verwaltung
+ *     benutzen `fetch` und setzen den Kopf richtig. Der Bild-Proxy hatte gar
+ *     keinen Aufrufer; imgUrl() liefert nackte Pfade, Bilder weisen sich im
+ *     Browser ueber das Cookie aus.
  *
- * /status steht mit in der Liste, weil der Polling-Rückfall greift, sobald
- * EventSource fehlt oder abbricht — derselbe Client, dieselbe Einschränkung.
+ * Es blieb also eine Erlaubnis ohne Nutzen — und eine Erlaubnis ohne Nutzen
+ * ist reine Angriffsflaeche. Sie ist ersatzlos weg; das ist strenger als
+ * kurzlebige Ersatztoken und braucht keine zweite Tabelle.
+ *
+ * Rueckwaerts vertraeglich: Wer eine aeltere App oder altes, zwischengespeichertes
+ * Javascript benutzt, haengt den Token weiter an. Der Server sieht ihn nicht mehr
+ * an — aber Kopfzeile bzw. Cookie tragen die Anfrage ohnehin, wie oben gezeigt.
+ *
+ * Kommt je eine Stelle dazu, die WIRKLICH keine Kopfzeile setzen kann, gehoert
+ * dorthin ein eigener, kurzlebiger Token — nicht der Sitzungstoken und nicht
+ * wieder eine Ausnahme fuer diesen hier.
  */
-const TOKEN_QUERY_ALLOWED = [
-  // Beide Schreibweisen des Bild-Proxys — die alte bedient noch
-  // gespeicherte Zeilen und aeltere App-Fassungen (utils/images.ts).
-  /^\/api\/(?:v1\/)?img-proxy\b/,
-  /^\/data\//,
-  // ── Der Pfad ist mit umgezogen, dieser Eintrag war es nicht ───────────────
-  //
-  // Hier stand `/api/sets/import/csv/…`. Die Route haengt seit der
-  // Zusammenlegung der API-Oberflaechen unter `/api/v1/sets/…` — der Eintrag
-  // traf also nichts mehr, und der Rueckfall, den dieser Kommentarblock
-  // beschreibt, war wirkungslos.
-  //
-  // Aufgefallen ist es NICHT, weil das Sitzungs-Cookie einspringt: Die Webapp
-  // oeffnet den Kanal mit `withCredentials: true`, und EventSource schickt das
-  // Cookie mit. Der `?token=`-Teil daneben ist der Rueckfall fuer den Fall,
-  // dass nur ein Bearer-Token da ist — genau der Fall, der still nicht mehr
-  // funktionierte.
-  //
-  // Wieder eine Sache in zwei Schreibweisen: Die Pruefung daneben
-  // (test/hardening-block1.test.js) suchte den Namen als TEILZEICHENKETTE und
-  // konnte den Praefix gar nicht sehen. Sie vergleicht jetzt mit dem
-  // WIRKLICHEN Einhaengepunkt aus server.ts.
-  /^\/api\/v1\/sets\/import\/csv\/(stream|status)\b/,
-];
 
 /**
  * Ermittelt die userId aus Session oder Bearer-Token.
  *
- * ?token= wird nur auf den Pfaden aus TOKEN_QUERY_ALLOWED akzeptiert (siehe
- * dort). Auf allen anderen Routen zählt ausschliesslich der
- * Authorization-Header.
+ * ?token= wird NICHT mehr ausgewertet — auf jeder Route zählt ausschliesslich
+ * der Authorization-Header (oder die Sitzung). Warum die Ausnahmeliste weg
+ * ist, steht im Block darüber.
  *
  * @param req Express-Request
  * @returns {Promise<number|null>} null wenn nicht authentifiziert
@@ -514,13 +509,7 @@ const TOKEN_QUERY_ALLOWED = [
 async function resolveUserId(req: Request): Promise<number | null> {
   if (req.session?.userId) return req.session.userId;
   const auth = req.headers.authorization || '';
-  let token: string | null = auth.startsWith('Bearer ') ? auth.slice(7) : null;
-  if (!token && req.query?.token) {
-    // req.path ist bei Sub-Routern relativ — für die Prüfung zählt der volle
-    // Pfad, deshalb originalUrl ohne Query-Teil.
-    const fullPath = vorDem(String(req.originalUrl || req.url || ''), '?');
-    if (TOKEN_QUERY_ALLOWED.some(re => re.test(fullPath))) token = String(req.query.token);
-  }
+  const token: string | null = auth.startsWith('Bearer ') ? auth.slice(7) : null;
   if (!token) return null;
   const user = await validateToken(token).catch(() => null);
   // Vorher stand hier parseInt(user.user_id). Das war schon immer wirkungslos:

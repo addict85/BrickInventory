@@ -685,8 +685,10 @@ async function startSetCsvImport(){
 
     // Fortschritt bevorzugt über SSE; nur bei Ausfall Polling-Fallback.
     const ctx = { total, prevDone:-1, prevResultCount:0 };
-    const wt = sessionStorage.getItem('webToken');
-    const url = '/api/v1/sets/import/csv/stream' + (wt ? ('?token=' + encodeURIComponent(wt)) : '');
+    // Ohne `?token=` — dieselbe Begründung wie an der Zwillingsstelle in
+    // 01-core.js: das Cookie trägt den Kanal, der Token in der Adresse wäre
+    // nur der Sitzungstoken im Protokoll.
+    const url = '/api/v1/sets/import/csv/stream';
     let usedSse = false;
 
     await new Promise((resolve) => {

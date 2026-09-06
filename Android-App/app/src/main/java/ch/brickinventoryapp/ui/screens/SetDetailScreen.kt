@@ -56,7 +56,6 @@ fun SetDetailScreen(
     // Die Galerie-Liste dient hier nur als Rueckfall, solange das Detail noch
     // laedt — deshalb der eigene Fluss statt des ganzen App-Zustands.
     val galerie by vm.galleryState.collectAsStateWithLifecycle()
-    val authToken = state.authToken
     val set       = detailState.setDetail?.takeIf { it.setNumber == setNumber }
                  ?: galerie.sets.find { it.setNumber == setNumber }
     val price     = detailState.setPrice?.takeIf { it.setNumber == setNumber }
@@ -178,7 +177,7 @@ fun SetDetailScreen(
             setDetailDetailsSection(set, setNumber, vm, acquisitions, currency, ::fmtDate, onNavigateToAcqMgmt)
             setDetailPriceSection(set, detailState, price, history, pnlPct, currency, isBrick, ::fmtPrice)
             setDetailInstructionsSection(
-                set, detailState, authToken, serverUrl, onOpenPdf,
+                set, detailState, serverUrl, onOpenPdf,
                 onAnleitungWaehlen = { anleitungAuswahl.launch(ch.brickinventoryapp.ui.ANLEITUNG_TYPEN) },
                 onAnleitungLoeschen = { vm.loescheAnleitung(setNumber, it) },
                 onAnleitungenNeuHolen = { vm.anleitungenNeuHolen(setNumber) })
