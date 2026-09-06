@@ -3,7 +3,7 @@ import { refreshPriceForSet } from '../jobs/priceJob';
 import { getSetValue } from './setValue';
 import { nutzerStandardZustand as userDefaultCondition } from './settings';
 import { getGlobalSetting } from './settings';
-import { DEFAULT_PRICE_CONDITION, fetchPartPrice, fetchMinifigPrice } from './financeCalc';
+import { DEFAULT_PRICE_CONDITION, fetchPartPrice, fetchMinifigPrice, ladeBlNummernVor } from './financeCalc';
 import { getSetting } from './settings';
 import { meldeUndWeiter, fehlertext } from './httpError';
 import { getMinifigParts } from '../clients/rebrickable';
@@ -179,25 +179,28 @@ async function estimateFigPriceFromParts(figNumber: string, userId: number, cond
 
     // BrickLink-Nummern für Teile ohne external_ids in EINER Abfrage vorladen
     // (statt pro Teil eine eigene Query — vermeidet N+1).
-    const needLookup = [...new Set(parts
+    //
+    // Die Abfrage stand hier zeichengleich ein zweites Mal (jetzt
+    // ladeBlNummernVor in utils/financeCalc.ts); test/sql-kerne.test.js hat es
+    // gemeldet. Uebersetzt wird seither nicht mehr HIER, sondern unten in
+    // fetchPartPrice — die Antwort liegt dann im gemeinsamen Gedaechtnis.
+    //
+    // Ein Unterschied bleibt und ist gewollt: ladeBlNummernVor kennt neben
+    // rb_bl_mapping auch den Rueckfall ueber parts.bl_part_number. Ein Teil,
+    // dessen Zuordnung nur dort steht, wurde vorher NICHT uebersetzt — genau
+    // die Luecke, die resolveBlPartNumber ueberall sonst schliesst.
+    await ladeBlNummernVor(parts
       .filter((p: { bl_part_num?: string | null }) => !p.bl_part_num)
-      .map((p: { part_num: string }) => p.part_num))];
-    const blMap = new Map();
-    if (needLookup.length) {
-      const rows = await db.all(
-        'SELECT part_num, bl_part_num FROM rb_bl_mapping WHERE part_num = ANY($1)',
-        [needLookup]
-      ).catch(() => []);
-      for (const r of rows) blMap.set(r.part_num, r.bl_part_num);
-    }
+      .map((p: { part_num: string }) => p.part_num));
 
     const cond = cond0;
 
     let total = 0, priced = 0;
     for (const p of parts) {
-      // BrickLink-Nummer bevorzugt aus Rebrickables external_ids, sonst aus dem
-      // rb_bl_mapping-Cache, sonst die Rebrickable-Nummer selbst.
-      const blPartNum = p.bl_part_num || blMap.get(p.part_num) || p.part_num;
+      // BrickLink-Nummer bevorzugt aus Rebrickables external_ids; sonst
+      // uebersetzt fetchPartPrice selbst (resolveBlPartNumber) und findet die
+      // Antwort im eben gefuellten Gedaechtnis.
+      const blPartNum = p.bl_part_num || p.part_num;
       try {
         const priceData = await fetchPartPrice(blPartNum, p.color_id || 0, cond, currency, 24);
         const unitPrice = parseFloat(priceData?.avg_price || 0);

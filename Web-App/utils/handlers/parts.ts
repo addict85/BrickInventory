@@ -13,6 +13,7 @@ import type { RbSetTeil } from '../../clients/rebrickable';
 import { getAllSetParts, getRbKey, httpsGetRobust } from '../../clients/rebrickable';
 import { clampPageSize, applyManualCondition, withOwners, MAX_PAGE_SIZE, UNPAGED_LIMIT, SET_PARTS_MAX_PAGE_SIZE } from './shared';
 import { meldeUndWeiter } from '../../utils/httpError';
+import { farbkarte as blFarbkarte } from '../financeCalc';
 import { getGlobalSetting } from '../../utils/settings';
 import { neuestesInventar, inventarKandidaten } from '../rbInventar';
 import { beideSchreibweisen } from '../setNummer';
@@ -520,11 +521,16 @@ async function getPartsStats(userId: Blickfeld) {
 }
 
 async function getBlColorMap() {
-  // Try DB first (populated after CSV sync + API fetch)
-  const rows = await db.all(`SELECT id, bl_color_id FROM rb_colors WHERE bl_color_id IS NOT NULL`);
-  if (rows.length > 0) {
+  // Try DB first (populated after CSV sync + API fetch).
+  //
+  // Gelesen wird ueber farbkarte() in utils/financeCalc.ts — dieselbe Abfrage
+  // stand hier ein zweites Mal, und test/sql-kerne.test.js hat genau das
+  // gemeldet. Der Nebeneffekt ist erwuenscht: Die Karte wird dort zehn Minuten
+  // gemerkt, statt bei jedem Aufruf neu gelesen zu werden.
+  const karte = await blFarbkarte();
+  if (karte.size > 0) {
     const map: any = {};
-    for (const r of rows) map[r.id] = r.bl_color_id;
+    for (const [id, blId] of karte) map[id] = blId;
     return { map, source: 'db' };
   }
   // Fallback: fetch from Rebrickable API and cache in DB
