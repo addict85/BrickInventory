@@ -554,6 +554,14 @@ async function frueherZurLaufzeitAngelegt() {
     )`);
   await pool.query('CREATE INDEX IF NOT EXISTS idx_qr_login_expires ON qr_login_tokens(expires_at)');
 
+  // api_tokens.sliding auf gewachsenen Datenbanken nachziehen — siehe die
+  // Begruendung an der Tabelle in db/schema.sql. Die BEFUELLUNG der Spalte
+  // (welche Altzeile gleitet und mit welchem Datum) steht nicht hier, sondern
+  // in purgeExpiredTokens(): Dort liegt die Frist TOKEN_IDLE_DAYS, und die
+  // Regel soll an einer Stelle stehen statt an zweien.
+  await pool.query('ALTER TABLE api_tokens ADD COLUMN IF NOT EXISTS sliding BOOLEAN NOT NULL DEFAULT FALSE')
+    .catch(e => console.warn('[db] api_tokens.sliding:', e.message));
+
   // api_tokens: Ablaufdatum indizieren — purgeExpiredTokens() räumt darüber auf.
   await pool.query('CREATE INDEX IF NOT EXISTS idx_api_tokens_expires ON api_tokens(expires_at) WHERE expires_at IS NOT NULL')
     .catch(e => console.warn('[db] idx_api_tokens_expires:', e.message));

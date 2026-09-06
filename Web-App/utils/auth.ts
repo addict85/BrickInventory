@@ -182,7 +182,7 @@ async function validateToken(token: string | null | undefined): Promise<TokenBen
 
   const hashed = hashToken(token);
   const SQL = `
-    SELECT t.user_id, t.expires_at, t.last_used, u.username, u.is_admin
+    SELECT t.user_id, t.expires_at, t.last_used, t.sliding, u.username, u.is_admin
     FROM api_tokens t JOIN users u ON u.id = t.user_id
     WHERE t.token = $1 AND (t.expires_at IS NULL OR t.expires_at > NOW())`;
   // Nur noch der Hash-Pfad.
@@ -215,7 +215,42 @@ function _touchLastUsed(token: string, entry: CacheEintrag): void {
   const now = Date.now();
   if (now - entry.lastUsedWritten < LAST_USED_THROTTLE) return;
   entry.lastUsedWritten = now;
-  db.run('UPDATE api_tokens SET last_used = NOW() WHERE token = $1', [entry.dbKey || hashToken(token)])
+  // ── Die stille Erneuerung ─────────────────────────────────────────────────
+  //
+  // Hier wird nicht nur vermerkt, DASS der Token benutzt wurde, sondern die
+  // Frist gleich mit nach vorn geschoben. Genau das macht sie zur gleitenden:
+  // Ein Telefon, das taeglich synchronisiert, laeuft nie ab; eines, das in
+  // einer Schublade liegt, nach TOKEN_IDLE_DAYS.
+  //
+  // Die App merkt davon nichts und muss nichts dafuer tun — kein zweiter
+  // Endpunkt, kein Erneuerungstanz, keine Fassung der App, die das koennen
+  // muss. Der Aufruf laeuft ohnehin schon bei jeder Anfrage (gedrosselt auf
+  // alle fuenf Minuten, ohne await im Anfrageweg).
+  //
+  // `sliding AND expires_at IS NOT NULL` im CASE: Der Sieben-Tage-Token des
+  // Browsers darf nicht mitgleiten (siehe createToken), und eine Zeile ohne
+  // Ablauf soll auch keinen bekommen, nur weil sie benutzt wird.
+  const gleitet = TOKEN_IDLE_DAYS > 0;
+  const sql = gleitet
+    ? `UPDATE api_tokens
+          SET last_used = NOW(),
+              expires_at = CASE WHEN sliding AND expires_at IS NOT NULL
+                                THEN NOW() + make_interval(days => $2)
+                                ELSE expires_at END
+        WHERE token = $1`
+    : 'UPDATE api_tokens SET last_used = NOW() WHERE token = $1';
+  const params = gleitet
+    ? [entry.dbKey || hashToken(token), TOKEN_IDLE_DAYS]
+    : [entry.dbKey || hashToken(token)];
+  db.run(sql, params)
+    .then(() => {
+      // Den Cache mitziehen. Ohne das haelt er bis zu TOKEN_TTL_MS (eine
+      // Minute) das ALTE Datum und wuerde einen gerade erneuerten Token am
+      // Fristende einmal faelschlich abweisen — der Treffer-Zweig oben prueft
+      // `hit.user.expires_at` selbst.
+      if (gleitet && entry.user?.sliding && entry.user.expires_at)
+        entry.user.expires_at = new Date(now + TOKEN_IDLE_DAYS * 86400_000);
+    })
     .catch(e => console.warn('[auth] last_used konnte nicht geschrieben werden:', e?.message || e));
 }
 
@@ -674,14 +709,51 @@ function istVerwalter(req: Request): boolean {
  */
 async function createToken(userId: number, label = 'Android App', dauerhaft = false): Promise<string> {
   const token = crypto.randomBytes(32).toString('hex');
-  await db.run(
-    dauerhaft
-      ? 'INSERT INTO api_tokens (token, user_id, label, expires_at) VALUES ($1,$2,$3,NULL) ON CONFLICT DO NOTHING'
-      : "INSERT INTO api_tokens (token, user_id, label, expires_at) VALUES ($1,$2,$3, NOW() + INTERVAL '7 days') ON CONFLICT DO NOTHING",
-    [hashToken(token), userId, label]
-  );
+  if (dauerhaft) {
+    // Gleitende Frist statt gar keiner. Bis hierher stand hier NULL, und die
+    // 90 Tage aus TOKEN_IDLE_DAYS setzte allein der stuendliche Aufraeumjob
+    // durch — per DELETE. Lief der Job nicht (kein Primary-Worker, Absturz,
+    // ein Neustart zur falschen Stunde), galt der Token weiter, denn die
+    // WHERE-Klausel in validateToken() laesst `expires_at IS NULL` immer
+    // durch. Die Frist stand im Job, nicht im Anfrageweg.
+    //
+    // Jetzt steht sie in der Zeile. `sliding` merkt sich, dass dieses Datum
+    // bei jeder Benutzung nachrueckt (_touchLastUsed) — dieselbe Bedeutung
+    // wie vorher („90 Tage ohne Nutzung"), nur an der Stelle durchgesetzt, an
+    // der jede Anfrage ohnehin vorbeikommt.
+    //
+    // TOKEN_IDLE_DAYS === 0 schaltet die Regel ab; dann bleibt es bei NULL,
+    // wie es die Beschreibung der Variablen zusagt.
+    await db.run(
+      TOKEN_IDLE_DAYS > 0
+        ? `INSERT INTO api_tokens (token, user_id, label, expires_at, sliding)
+           VALUES ($1,$2,$3, NOW() + make_interval(days => $4), TRUE) ON CONFLICT DO NOTHING`
+        : 'INSERT INTO api_tokens (token, user_id, label, expires_at, sliding) VALUES ($1,$2,$3,NULL,TRUE) ON CONFLICT DO NOTHING',
+      TOKEN_IDLE_DAYS > 0
+        ? [hashToken(token), userId, label, TOKEN_IDLE_DAYS]
+        : [hashToken(token), userId, label]
+    );
+  } else {
+    // Der Token des Browsers gleitet NICHT: Er liegt im sessionStorage und ist
+    // damit per XSS auslesbar. Sieben feste Tage sind hier Absicht — eine
+    // gleitende Frist wuerde ihn genau so lange am Leben halten, wie ein
+    // Angreifer ihn benutzt.
+    await db.run(
+      "INSERT INTO api_tokens (token, user_id, label, expires_at, sliding) VALUES ($1,$2,$3, NOW() + INTERVAL '7 days', FALSE) ON CONFLICT DO NOTHING",
+      [hashToken(token), userId, label]
+    );
+  }
   return token;
 }
+
+/**
+ * Bekommt ein App-Token ueberhaupt ein Ablaufdatum?
+ *
+ * Genau dann nicht, wenn die Gleitfrist abgeschaltet ist. Die Antwort steht
+ * hier statt an den drei Routen, die sie als `never_expires` weitergeben —
+ * sonst waere die Regel wieder an mehreren Stellen buchstabiert.
+ */
+function appTokenOhneAblauf(): boolean { return TOKEN_IDLE_DAYS === 0; }
 
 /**
  * Löscht einen Token und invalidiert den Cache.
@@ -801,11 +873,49 @@ const TOKEN_IDLE_DAYS = (() => {
  */
 async function purgeExpiredTokens() {
   let entfernt = 0;
+
+  // ── Altzeilen nachziehen, BEVOR geloescht wird ────────────────────────────
+  //
+  // Auf einer gewachsenen Datenbank stehen App- und QR-Token noch ohne
+  // Ablaufdatum. Ihre Frist lief bisher ueber COALESCE(last_used, created_at)
+  // — genau diese Rechnung wird hier einmal in die Spalte geschrieben. Damit
+  // gilt fuer sie ab sofort dieselbe Pruefung wie fuer neue Zeilen, ohne dass
+  // sich an ihrer LAUFZEIT irgendetwas aendert.
+  //
+  // Vor dem Loeschen, nicht danach: Sonst traegt dieser Lauf Daten ein, die
+  // teils schon in der Vergangenheit liegen, und erst der naechste raeumt sie
+  // weg — eine Stunde spaeter. Gueltig sind sie in der Zwischenzeit ohnehin
+  // nicht mehr (validateToken prueft das Datum), aber die Tabelle soll nicht
+  // eine Runde lang Zeilen tragen, die dieser Lauf haette entfernen koennen.
+  //
+  // Steht in dieser Datei und nicht in db/database.ts: Die Frist heisst
+  // TOKEN_IDLE_DAYS und wird hier gelesen. Ein zweiter Ort mit derselben
+  // Rechnung waere die naechste Stelle, an der eine Regel still auseinander
+  // laeuft.
+  if (TOKEN_IDLE_DAYS > 0) {
+    const nachgezogen = await db.run(
+      `UPDATE api_tokens
+          SET sliding = TRUE,
+              expires_at = COALESCE(last_used, created_at) + make_interval(days => $1)
+        WHERE expires_at IS NULL`,
+      [TOKEN_IDLE_DAYS]
+    ).catch(e => { console.warn('[tokens] Altzeilen nachziehen:', e?.message || e); return null; });
+    const m = nachgezogen?.changes || 0;
+    if (m) console.log(`[tokens] ${m} Token ohne Ablaufdatum auf die Gleitfrist von ${TOKEN_IDLE_DAYS} Tagen gesetzt`);
+  }
+
   const abgelaufen = await db.run(
     'DELETE FROM api_tokens WHERE expires_at IS NOT NULL AND expires_at < NOW()'
   ).catch(e => { console.warn('[tokens] Aufräumen abgelaufener Tokens:', e?.message || e); return null; });
   entfernt += abgelaufen?.changes || 0;
 
+  // Diese zweite Regel trifft seit der Umstellung oben kaum noch etwas: Nach
+  // dem Nachziehen hat jede Zeile ein Ablaufdatum. Sie bleibt trotzdem stehen
+  // — fuer den Server, der eine Weile mit TOKEN_IDLE_DAYS=0 lief (dort
+  // entstehen weiter Zeilen ohne Datum) und die Regel dann einschaltet. Der
+  // Lauf davor zieht sie zwar schon nach; diese Zeile ist der Rueckhalt, falls
+  // das UPDATE scheitert. Zwei billige DELETEs auf einer kleinen Tabelle sind
+  // der Preis dafuer, dass kein Token durchrutscht.
   if (TOKEN_IDLE_DAYS > 0) {
     const ungenutzt = await db.run(
       `DELETE FROM api_tokens
@@ -823,7 +933,7 @@ async function purgeExpiredTokens() {
 export {
   validateToken, invalidateToken, leereTokenCache, resolveUserId, requireLoginOrToken, nutzerId, angemeldeteNutzerId, istVerwalter, nutzerName, hashToken, deleteToken,
   verifiziereEmailToken,
-  revokeAllTokens, revokeAllSessions, purgeExpiredTokens, loginOrTokenGuard, TOKEN_IDLE_DAYS,
+  revokeAllTokens, revokeAllSessions, purgeExpiredTokens, loginOrTokenGuard, TOKEN_IDLE_DAYS, appTokenOhneAblauf,
   assertLoginAllowed, pruefeAnmeldedaten, createToken, escapeLike, establishSession, BCRYPT_ROUNDS, USERNAME_RE,
   EMAIL_RE, isValidLoginIdentifier,
 };

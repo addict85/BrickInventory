@@ -4,7 +4,7 @@ const router  = express.Router();
 import bcrypt from 'bcryptjs';
 import * as db from '../db/database';
 import { handleRouteError, logAndContinue, meldeUndWeiter, fehlerCode, fehlertext, pfadParam } from '../utils/httpError';
-import { hashToken, pruefeAnmeldedaten, createToken, validateToken, assertLoginAllowed, establishSession, revokeAllTokens, revokeAllSessions, deleteToken, BCRYPT_ROUNDS, USERNAME_RE, EMAIL_RE, requireLoginOrToken, nutzerId, angemeldeteNutzerId } from '../utils/auth';
+import { hashToken, pruefeAnmeldedaten, createToken, validateToken, assertLoginAllowed, establishSession, revokeAllTokens, revokeAllSessions, deleteToken, BCRYPT_ROUNDS, USERNAME_RE, EMAIL_RE, requireLoginOrToken, nutzerId, angemeldeteNutzerId, appTokenOhneAblauf } from '../utils/auth';
 import { ipThrottle } from '../utils/loginLimiter';
 import crypto from 'crypto';
 import { strictBool } from '../utils/validate';
@@ -106,7 +106,12 @@ router.post('/login', async (req, res) => {
       if (dauerhaft)
         return sendeFehler(req, res, 500, 'token_nicht_ausgestellt');
     }
-    res.json({ success: true, ...(token ? { token } : {}), never_expires: dauerhaft,
+    // `never_expires` sagt jetzt die Wahrheit statt der Absicht. Hier stand
+    // schlicht `dauerhaft` — also das, was der Client VERLANGT hatte. Seit der
+    // App-Token eine gleitende Frist traegt, ist das nur noch dann ein Token
+    // ohne Ablauf, wenn die Frist ganz abgeschaltet ist. Die Regel dafuer
+    // steht in utils/auth.ts, nicht hier.
+    res.json({ success: true, ...(token ? { token } : {}), never_expires: dauerhaft && appTokenOhneAblauf(),
       user: { id: user.id, username: user.username, is_admin: user.is_admin == 1 || user.is_admin === true,
       // Nur beim automatisch generierten Default-Admin-Passwort gesetzt (siehe
       // db/database.ts) — der Client fordert dann zur Passwortaenderung auf.
@@ -217,7 +222,7 @@ router.post('/token-create', requireLogin, async (req, res) => {
     const userId = angemeldeteNutzerId(req);
     const label = req.body?.label || 'Android App';
     const neu = await createToken(userId, label, true);
-    res.json({ success: true, token: neu, label, never_expires: true });
+    res.json({ success: true, token: neu, label, never_expires: appTokenOhneAblauf() });
   } catch (e) { handleRouteError(res, e, undefined, req); }
 });
 
