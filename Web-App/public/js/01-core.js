@@ -1029,14 +1029,25 @@ export async function loadMonitor() {
     if (_ae && _ae.classList && _ae.classList.contains('job-sched-input')) return;
     const { jobs, db: dbStats, schedules } = d;
     // Zeitplan-Control je Job: tägliche Jobs -> Uhrzeit (HH:MM), Preis-Job -> Intervall (min).
+    // ── Warum die Werte durch esc() gehen ─────────────────────────────────
+    //
+    // Der Server prueft den Zeitplan (routes/api_v1/admin.ts: /^(\d{1,2}):(\d{2})$/
+    // fuer die Uhrzeit, parseInt fuer die Minuten) — heute kann hier also
+    // nichts Boesartiges ankommen.
+    //
+    // Trotzdem: `data-arg="${esc(k)}"` in derselben Zeile geht durch esc(),
+    // diese beiden gingen es nicht. Eine Zeile, die dieselbe Regel zweimal
+    // verschieden anwendet, ist der Anfang der naechsten Luecke — und die
+    // Absicherung laege sonst in einer anderen Datei, die niemand mitliest,
+    // wenn er hier etwas aendert.
     const schedInput = (k) => {
       const sc = schedules?.[k];
       if (!sc) return '';
       if (sc.type === 'daily') {
-        return `<input type="time" class="job-sched-input" value="${sc.time}" title="${t('monitor.sched.daily_hint')}" data-change="saveJobTime" data-arg="${esc(k)}" style="font-size:.75rem;padding:2px 5px;border:1px solid var(--bdr);border-radius:6px;background:var(--sur);color:var(--txt)">`;
+        return `<input type="time" class="job-sched-input" value="${esc(sc.time)}" title="${t('monitor.sched.daily_hint')}" data-change="saveJobTime" data-arg="${esc(k)}" style="font-size:.75rem;padding:2px 5px;border:1px solid var(--bdr);border-radius:6px;background:var(--sur);color:var(--txt)">`;
       }
       if (sc.type === 'interval') {
-        return `<span style="display:inline-flex;align-items:center;gap:3px;font-size:.72rem;color:var(--mut)" title="${t('monitor.sched.interval_hint')}"><input type="number" min="5" class="job-sched-input" value="${sc.minutes}" data-change="saveJobMinutes" data-arg="${esc(k)}" style="width:54px;font-size:.75rem;padding:2px 5px;border:1px solid var(--bdr);border-radius:6px;background:var(--sur);color:var(--txt)"> ${t('monitor.sched.min')}</span>`;
+        return `<span style="display:inline-flex;align-items:center;gap:3px;font-size:.72rem;color:var(--mut)" title="${t('monitor.sched.interval_hint')}"><input type="number" min="5" class="job-sched-input" value="${esc(sc.minutes)}" data-change="saveJobMinutes" data-arg="${esc(k)}" style="width:54px;font-size:.75rem;padding:2px 5px;border:1px solid var(--bdr);border-radius:6px;background:var(--sur);color:var(--txt)"> ${t('monitor.sched.min')}</span>`;
       }
       return '';
     };
