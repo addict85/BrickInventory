@@ -207,6 +207,19 @@ object AppModule {
     @Named("update")
     fun provideUpdateOkHttpClient(): OkHttpClient =
         OkHttpClient.Builder()
+            // ── Keine Umleitung von https auf http ──────────────────────────
+            //
+            // Der Release-Anhang WIRD umgeleitet: github.com nimmt die Anfrage
+            // an, ausgeliefert wird von *.githubusercontent.com. Das muss
+            // weiter gehen — followSslRedirects betrifft nur den Wechsel des
+            // SCHEMAS, nicht den des Hosts. Auf `false` bricht eine Umleitung
+            // nach http ab, statt ihr still zu folgen.
+            //
+            // Zweite Haelfte derselben Regel: res/xml/network_security_config
+            // erlaubt fuer diese beiden Hosts ohnehin keinen Klartext und nur
+            // System-Zertifikate. Beide zusammen, weil die eine Seite die
+            // Verbindung verbietet und die andere den Weg dorthin.
+            .followSslRedirects(false)
             .connectTimeout(15, TimeUnit.SECONDS)
             .readTimeout(120, TimeUnit.SECONDS)
             .build()

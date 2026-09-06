@@ -134,6 +134,90 @@ class SelbstUpdateTest {
     }
 
     @Test
+    fun `die Aktualisierung vertraut nur System-Zertifikaten`() {
+        // ── Warum das eine eigene Regel braucht ─────────────────────────────
+        //
+        // Die base-config erlaubt bewusst nutzerinstallierte CAs: Der Nutzer
+        // traegt seine eigene Server-Adresse ein, oft mit selbst
+        // ausgestelltem Zertifikat. Fuer den EIGENEN Server ist das richtig.
+        //
+        // Fuer GitHub nicht — von dort kommt ein APK. Wer eine CA auf das
+        // Geraet bringt, saesse sonst zwischen der App und ihrer eigenen
+        // Aktualisierung. Die Signaturpruefung faengt das Schlimmste ab; was
+        // bliebe, ist Updates unterdruecken oder ein Downgrade vortaeuschen.
+        val cfg = java.io.File("src/main/res/xml/network_security_config.xml").readText()
+        val ab = cfg.indexOf("<domain-config")
+        assert(ab > 0) {
+            "Es gibt keinen eigenen domain-config-Block mehr — dann gilt fuer GitHub " +
+                "die base-config, und die vertraut nutzerinstallierten Zertifikaten."
+        }
+        val block = cfg.substring(ab, cfg.indexOf("</domain-config>", ab))
+        for (host in listOf("github.com", "githubusercontent.com")) {
+            assert(block.contains(host)) {
+                "$host steht nicht im eigenen Block. Der Release-Anhang wird umgeleitet — " +
+                    "beide Hosts werden gebraucht."
+            }
+        }
+        assert(!block.contains("""src="user"""")) {
+            "Der GitHub-Block vertraut wieder nutzerinstallierten Zertifikaten"
+        }
+        assert(block.contains("""cleartextTrafficPermitted="false"""")) {
+            "Zu GitHub waere wieder Klartext erlaubt"
+        }
+        // Und die base-config behaelt ihre Ausnahme — sonst kaeme niemand mehr
+        // an seinen eigenen Server mit selbst ausgestelltem Zertifikat.
+        val basis = cfg.substring(cfg.indexOf("<base-config"))
+        assert(basis.contains("""src="user"""")) {
+            "Die base-config vertraut keinen eigenen Zertifikaten mehr — dann ist der " +
+                "eigene Server mit selbst ausgestelltem Zertifikat nicht mehr erreichbar."
+        }
+    }
+
+    @Test
+    fun `der Update-Client folgt keiner Umleitung von https auf http`() {
+        val di = quelle("di/AppModule.kt")
+        val ab = di.indexOf("fun provideUpdateOkHttpClient()")
+        assert(ab > 0) { "Es gibt keinen eigenen Client fuer die Aktualisierung mehr" }
+        val bis = di.indexOf("@Provides", ab + 10).let { if (it < 0) di.length else it }
+        assert(di.substring(ab, bis).contains("followSslRedirects(false)")) {
+            "Der Update-Client folgt wieder einer Umleitung von https auf http. " +
+                "Der Wechsel des HOSTS bleibt erlaubt (github.com -> " +
+                "githubusercontent.com) — verboten ist nur der Wechsel des Schemas."
+        }
+    }
+
+    @Test
+    fun `beide Abrufe haben eine Obergrenze`() {
+        val hilfe = quelle("util/AppUpdate.kt")
+        assert(hilfe.contains("const val UPDATE_MAX_BYTES") &&
+               hilfe.contains("const val UPDATE_JSON_MAX_BYTES")) {
+            "Die Obergrenzen sind nicht mehr benannt"
+        }
+        val feature = quelle("ui/UpdateFeature.kt")
+        // version.json: peekBody liest HOECHSTENS so viele Bytes.
+        assert(feature.contains("peekBody(UPDATE_JSON_MAX_BYTES)")) {
+            "version.json wird wieder unbegrenzt gelesen — dann bringt eine manipulierte " +
+                "Antwort die App um, ohne je ein APK anfassen zu muessen."
+        }
+        // Das APK: die feste Grenze UND die angekuendigte Groesse. Die
+        // Ankuendigung allein genuegt nicht — sie stammt aus version.json und
+        // ist genau das, dem hier nicht vertraut wird.
+        assert(feature.contains("UPDATE_MAX_BYTES")) {
+            "Der APK-Download kennt keine feste Obergrenze mehr"
+        }
+        assert(feature.contains("if (geladen > obergrenze)")) {
+            "Der Download bricht nicht mehr ab, wenn mehr kommt als erlaubt"
+        }
+        // Abbruch VOR dem Schreiben — sonst liegt das Zuviel schon auf der Platte.
+        val schreiben = feature.indexOf("aus.write(puffer, 0, n)")
+        val pruefen = feature.indexOf("if (geladen > obergrenze)")
+        assert(pruefen in 1 until schreiben) {
+            "Die Grenze wird erst NACH dem Schreiben geprueft — dann liegt das Zuviel " +
+                "bereits auf der Platte."
+        }
+    }
+
+    @Test
     fun `das Manifest erlaubt das Installieren und gibt nur update-- frei`() {
         val manifest = java.io.File("src/main/AndroidManifest.xml").readText()
         assert(manifest.contains("android.permission.REQUEST_INSTALL_PACKAGES")) {

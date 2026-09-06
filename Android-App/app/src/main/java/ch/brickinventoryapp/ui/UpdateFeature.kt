@@ -2,6 +2,8 @@ package ch.brickinventoryapp.ui
 
 import androidx.lifecycle.viewModelScope
 import ch.brickinventoryapp.R
+import ch.brickinventoryapp.util.UPDATE_JSON_MAX_BYTES
+import ch.brickinventoryapp.util.UPDATE_MAX_BYTES
 import ch.brickinventoryapp.util.UPDATE_VERSION_URL
 import ch.brickinventoryapp.util.UpdateBeschreibung
 import ch.brickinventoryapp.util.darfInstallieren
@@ -50,7 +52,11 @@ internal fun MainViewModel.pruefeAufUpdate(still: Boolean = false) {
                 updateHttpClient.newCall(Request.Builder().url(UPDATE_VERSION_URL).build())
                     .execute().use { antwort ->
                         if (!antwort.isSuccessful) throw java.io.IOException("HTTP ${antwort.code}")
-                        antwort.body?.string() ?: throw java.io.IOException("leere Antwort")
+                        // peekBody statt body.string(): liest HOECHSTENS so viele
+                        // Bytes. Ohne die Grenze koennte eine manipulierte
+                        // Antwort die App umbringen, ohne je ein APK anfassen zu
+                        // muessen — version.json traegt fuenf Felder.
+                        antwort.peekBody(UPDATE_JSON_MAX_BYTES).string()
                     }
             }
             val beschreibung = updateJson.decodeFromString<UpdateBeschreibung>(roh)
@@ -110,6 +116,17 @@ internal fun MainViewModel.ladeUpdate() {
                         // Fortschritt, sondern nur einen wachsenden Zaehler.
                         val gesamt = if (fassung.apkSize > 0) fassung.apkSize
                         else koerper.contentLength()
+                        // ── Wieviel darf hoechstens kommen? ─────────────────
+                        //
+                        // Die angekuendigte Groesse (plus ein Megabyte Luft)
+                        // ODER die feste Obergrenze — was kleiner ist. Beide
+                        // braucht es: Die Ankuendigung stammt aus version.json
+                        // und ist damit genau das, dem hier nicht blind
+                        // vertraut wird; die feste Grenze allein liesse eine
+                        // Antwort durch, die 46 MB verspricht und 300 liefert.
+                        val obergrenze =
+                            if (gesamt in 1..UPDATE_MAX_BYTES) minOf(gesamt + 1024 * 1024, UPDATE_MAX_BYTES)
+                            else UPDATE_MAX_BYTES
                         koerper.byteStream().use { ein ->
                             ziel.outputStream().use { aus ->
                                 val puffer = ByteArray(64 * 1024)
@@ -118,8 +135,13 @@ internal fun MainViewModel.ladeUpdate() {
                                 while (true) {
                                     val n = ein.read(puffer)
                                     if (n < 0) break
-                                    aus.write(puffer, 0, n)
                                     geladen += n
+                                    // Abbrechen, BEVOR geschrieben wird: Sonst
+                                    // liegt das Zuviel schon auf der Platte.
+                                    if (geladen > obergrenze)
+                                        throw java.io.IOException(
+                                            "Update groesser als erlaubt ($geladen > $obergrenze)")
+                                    aus.write(puffer, 0, n)
                                     if (gesamt > 0) {
                                         val p = ((geladen * 100) / gesamt).toInt().coerceIn(0, 100)
                                         // Nur bei Aenderung melden: sonst
