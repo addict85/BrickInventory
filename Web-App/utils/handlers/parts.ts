@@ -584,7 +584,11 @@ async function getBlColorMap() {
   return { map, source: 'api' };
 }
 
-async function getManualParts(userId: Blickfeld, { page = 1, page_size = null }: any = {}) {
+/**
+ * @param viewerId Wessen EINSTELLUNGEN gelten (Waehrung fuer den Marktpreis) —
+ *   getrennt von `userId`, das sagt, wessen DATEN gelesen werden.
+ */
+async function getManualParts(userId: Blickfeld, viewerId: number, { page = 1, page_size = null }: any = {}) {
   // Blickfeld statt einer einzelnen ID: Ein Hauptkonto sieht (und ändert)
   // auch die Daten seiner Unterkonten, alle anderen nur ihre eigenen. Die
   // Liste kommt von scopeIds() in utils/household.ts — hier wird sie nur
@@ -616,7 +620,19 @@ async function getManualParts(userId: Blickfeld, { page = 1, page_size = null }:
            created_at
     FROM parts WHERE user_id = ANY($1) AND source = 'manual'
     ORDER BY part_name ASC, part_number ASC${limit}`, params)
-    .then(async (rows) => withOwners(uids, await applyManualCondition(uids, rows, 'part')));
+    .then(async (rows) => {
+      const mitZustand = await applyManualCondition(uids, rows, 'part');
+      // Der Marktpreis gehoert dazu — dieselbe Luecke wie bei den manuellen
+      // Figuren, dieselbe Begruendung: Der Detailbildschirm der App liest ihn
+      // aus `avg_price`, diese Liste fuehrt nur Bestandsspalten. Nur aus dem
+      // Cache, EINE Abfrage fuer die ganze Liste (utils/marketPrice.ts).
+      const { marktpreiseAusCacheFuerTeile } = require('../marketPrice');
+      const preise: Map<string, number> = await marktpreiseAusCacheFuerTeile(mitZustand, viewerId)
+        .catch(() => new Map<string, number>());
+      const mitPreis = mitZustand.map((t: any) =>
+        ({ ...t, avg_price: preise.get(`${t.part_number}|${t.color_id ?? 0}`) ?? null }));
+      return withOwners(uids, mitPreis);
+    });
 }
 
 export { getPartsColors, tryPartsSummary, getParts, getPartsStats, getBlColorMap, getManualParts };

@@ -104,7 +104,7 @@ router.get('/parts/bl-color-map', requireToken, async (_req: AuthedRequest, res)
 // bisher fehlte diese Information in der Android-API komplett).
 router.get('/parts/manual', requireToken, async (req: AuthedRequest, res) => {
   try {
-    res.json({ success: true, parts: await getManualParts(await scopeIds(req.apiUser.user_id, parseScopeMode(req.query.accounts))) });
+    res.json({ success: true, parts: await getManualParts(await scopeIds(req.apiUser.user_id, parseScopeMode(req.query.accounts)), req.apiUser.user_id) });
   } catch (e) { handleRouteError(res, e, undefined, req); }
 });
 

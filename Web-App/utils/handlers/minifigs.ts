@@ -3,6 +3,7 @@ import { resolveImageLocal } from '../images';
 import { asIds } from '../household';
 import { clampPageSize, applyManualCondition, withOwners } from './shared';
 import { beideSchreibweisen } from '../setNummer';
+import { marktpreiseAusCacheFuerFiguren } from '../marketPrice';
 
 /**
  * Leseabfragen für Minifiguren.
@@ -177,7 +178,12 @@ async function getMinifigStats(userId: number | number[]) {
 
 /** Manuell erfasste Minifiguren.
  *  Von /api/minifigs/manual UND /api/v1/minifigs/manual genutzt (Parität). */
-async function getManualMinifigs(userId: number | number[], { page = 1, page_size = null }: any = {}) {
+/**
+ * @param viewerId Wessen EINSTELLUNGEN gelten (Waehrung fuer den Marktpreis).
+ *   Getrennt von `userId`, das sagt, WESSEN DATEN gelesen werden — dieselbe
+ *   Unterscheidung wie in computeMinifigsValuation.
+ */
+async function getManualMinifigs(userId: number | number[], viewerId: number, { page = 1, page_size = null }: any = {}) {
   // Blickfeld statt einer einzelnen ID: Ein Hauptkonto sieht (und ändert)
   // auch die Daten seiner Unterkonten, alle anderen nur ihre eigenen. Die
   // Liste kommt von scopeIds() in utils/household.ts — hier wird sie nur
@@ -194,7 +200,30 @@ async function getManualMinifigs(userId: number | number[], { page = 1, page_siz
     `SELECT * FROM minifigs WHERE user_id = ANY($1) AND source = 'manual' ORDER BY fig_name ASC, fig_number ASC${limit}`,
     params);
   const mapped = figs.map(f => ({ ...f, image_local: resolveImageLocal(f.image_local) }));
-  return withOwners(uids, await applyManualCondition(uids, mapped, 'fig'));
+  const mitZustand = await applyManualCondition(uids, mapped, 'fig');
+
+  // ── Der Marktpreis gehoert dazu ──────────────────────────────────────────
+  //
+  // Marcos Befund: „Bei den manuell erfassten Minifiguren wird kein Marktpreis
+  // angezeigt." Der Detailbildschirm der App liest ihn aus `avg_price`
+  // (ManualItemDetailScreen.kt); diese Liste ist ein `SELECT * FROM minifigs`
+  // und fuehrt ihn nicht — die Bestandszeile kennt unit_price und
+  // purchase_price, der Marktpreis liegt in minifig_price_cache.
+  //
+  // NUR aus dem Cache, in EINER Abfrage fuer die ganze Liste: Ein Live-Abruf
+  // je Eintrag waere genau der Zustand, von dem der Umzug weg von der
+  // Bewertung wegfuehren sollte. Siehe utils/marketPrice.ts.
+  //
+  // `viewerId` und nicht uids[0]: Die Waehrung ist die Einstellung des
+  // FRAGENDEN. Im Haushalt mit Kontofilter „Unterkonten" enthaelt uids das
+  // fragende Konto gar nicht — dieselbe Unterscheidung, die auch die
+  // Bewertung trifft (computeMinifigsValuation).
+  const preise = await marktpreiseAusCacheFuerFiguren(mitZustand, viewerId)
+    .catch(() => new Map<string, number>());
+  const mitPreis = mitZustand.map((f: any) =>
+    ({ ...f, avg_price: preise.get(String(f.fig_number)) ?? null }));
+
+  return withOwners(uids, mitPreis);
 }
 
 export { getMinifigs, getMinifigStats, getManualMinifigs };

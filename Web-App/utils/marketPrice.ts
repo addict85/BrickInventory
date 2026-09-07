@@ -3,7 +3,8 @@ import { refreshPriceForSet } from '../jobs/priceJob';
 import { getSetValue } from './setValue';
 import { nutzerStandardZustand as userDefaultCondition } from './settings';
 import { getGlobalSetting } from './settings';
-import { DEFAULT_PRICE_CONDITION, fetchPartPrice, fetchMinifigPrice, ladeBlNummernVor } from './financeCalc';
+import { DEFAULT_PRICE_CONDITION, fetchPartPrice, fetchMinifigPrice, ladeBlNummernVor,
+         resolveBlPartNumber, resolveBlColorId } from './financeCalc';
 import { getSetting } from './settings';
 import { meldeUndWeiter, fehlertext } from './httpError';
 import { getMinifigParts } from '../clients/rebrickable';
@@ -94,6 +95,156 @@ async function resolvePartCondition(userId: number, partNumber: string, colorId:
   } catch (e) { meldeUndWeiter('teile:zustand-ermitteln', e); }
   try { return await userDefaultCondition(userId); }
   catch (_) { return DEFAULT_PRICE_CONDITION; }
+}
+
+/**
+ * Marktpreise fuer eine ganze LISTE — nur aus dem Cache, ohne einen einzigen
+ * Abruf bei BrickLink.
+ *
+ * ── Warum es das gibt ───────────────────────────────────────────────────────
+ *
+ * Marcos Befund: „Bei den manuell erfassten Minifiguren wird kein Marktpreis
+ * angezeigt."
+ *
+ * Der Detailbildschirm der App liest ihn aus `avgPrice`
+ * (ManualItemDetailScreen.kt), und diese Liste kommt aus
+ * /api/v1/minifigs/manual — einem `SELECT * FROM minifigs`. Die Bestandszeile
+ * fuehrt unit_price und purchase_price, aber KEINEN Marktpreis; der liegt in
+ * minifig_price_cache. Das Feld war also immer leer.
+ *
+ * Das ist die Folge einer frueheren, richtigen Entscheidung: Die App holte
+ * diese Listen einmal aus der BEWERTUNG und lud dabei jedes Mal alle
+ * Marktpreis-Abfragen mit. Beim Umzug auf die schlanke Quelle ist uebersehen
+ * worden, dass der Detailbildschirm mehr zeigt als die Kachel.
+ *
+ * ── Warum NUR aus dem Cache ─────────────────────────────────────────────────
+ *
+ * Genau deshalb. Ein Live-Abruf je Eintrag waere der Zustand, von dem der
+ * Umzug wegfuehren sollte — und er ginge auf das Tageskontingent bei
+ * BrickLink. Was im Cache liegt, ist umsonst; was nicht drinsteht, bleibt
+ * leer, bis die Bewertung es das naechste Mal holt. Eine Zeile ohne Preis ist
+ * besser als eine Liste, die auf zwanzig Netzabrufe wartet.
+ *
+ * EINE Abfrage je Liste, unabhaengig von ihrer Laenge.
+ */
+async function marktpreiseAusCacheFuerFiguren(
+  figuren: Array<{ fig_number?: string | null; bl_fig_number?: string | null; condition?: string | null }>,
+  viewerId: number,
+): Promise<Map<string, number>> {
+  const treffer = new Map<string, number>();
+  if (!figuren.length) return treffer;
+
+  const [currency, ttlRoh] = await Promise.all([
+    getSetting(viewerId, 'currency', 'EUR'),
+    getGlobalSetting('price_cache_ttl', '24'),
+  ]);
+  const ttl = Math.max(1, parseInt(String(ttlRoh)));
+
+  // Beide Schreibweisen abfragen: fetchMinifigPrice() legt unter der
+  // BrickLink-Nummer ab, estimateFigPriceFromParts() unter der
+  // Rebrickable-Nummer. Welche eine Figur hat, weiss man erst an der Zeile.
+  const schluessel = [...new Set(figuren.flatMap(f =>
+    [f.bl_fig_number, f.fig_number].filter(Boolean).map(String)))];
+  if (!schluessel.length) return treffer;
+
+  const zeilen = await db.all(
+    `SELECT fig_number, condition, avg_price, qty_avg_price FROM minifig_price_cache
+      WHERE fig_number = ANY($1) AND currency_code = $2
+        AND fetched_at > NOW() - make_interval(hours => $3)`,
+    [schluessel, currency, ttl],
+  ).catch(() => []);
+
+  const cache = new Map<string, number>();
+  for (const z of zeilen) {
+    const wert = parseFloat(String(z.avg_price || 0)) || parseFloat(String(z.qty_avg_price || 0)) || 0;
+    if (wert > 0) cache.set(`${z.fig_number}|${z.condition}`, wert);
+  }
+
+  for (const f of figuren) {
+    const nummer = String(f.fig_number ?? '');
+    if (!nummer) continue;
+    const zustand = f.condition === 'U' ? 'U' : 'N';
+    const anders  = zustand === 'N' ? 'U' : 'N';
+    // Reihenfolge wie in der Bewertung: BrickLink-Nummer vor
+    // Rebrickable-Nummer, eigener Zustand vor dem anderen. Der Rueckfall auf
+    // den anderen Zustand ist derselbe wie in fetchMinifigPrice — BrickLink
+    // fuehrt zu vielen aelteren Figuren nur einen von beiden.
+    for (const k of [f.bl_fig_number, f.fig_number].filter(Boolean).map(String))
+      for (const c of [zustand, anders]) {
+        const wert = cache.get(`${k}|${c}`);
+        if (wert != null) { treffer.set(nummer, wert); break; }
+      }
+    if (treffer.has(nummer)) continue;
+  }
+  return treffer;
+}
+
+/**
+ * Dasselbe fuer manuell erfasste TEILE — siehe die Begruendung oben.
+ *
+ * Ein Unterschied zu den Figuren: Der Teile-Cache ist ueber die
+ * BRICKLINK-Nummer UND die BrickLink-Farbnummer verschluesselt (fetchPartPrice
+ * uebersetzt beides, bevor es liest oder schreibt). Beide Uebersetzungen sind
+ * seit dem Performance-Durchgang billig — die Farbtabelle wird als Ganzes
+ * gemerkt, die Teilenummern holt ladeBlNummernVor() in zwei Abfragen fuer die
+ * ganze Liste.
+ */
+async function marktpreiseAusCacheFuerTeile(
+  teile: Array<{ part_number?: string | null; bl_part_number?: string | null;
+                 color_id?: number | null; condition?: string | null }>,
+  viewerId: number,
+): Promise<Map<string, number>> {
+  const treffer = new Map<string, number>();
+  if (!teile.length) return treffer;
+
+  const [currency, ttlRoh] = await Promise.all([
+    getSetting(viewerId, 'currency', 'EUR'),
+    getGlobalSetting('price_cache_ttl', '24'),
+  ]);
+  const ttl = Math.max(1, parseInt(String(ttlRoh)));
+
+  await ladeBlNummernVor(teile.map(t => String(t.bl_part_number || t.part_number || '')));
+
+  // Je Teil die Schluessel bestimmen, mit denen fetchPartPrice geschrieben
+  // haette: uebersetzte Nummer, uebersetzte Farbe.
+  const auflösung = new Map<string, { nummer: string; farbe: number }>();
+  for (const t of teile) {
+    const roh = String(t.bl_part_number || t.part_number || '');
+    if (!roh) continue;
+    const schluessel = `${t.part_number}|${t.color_id ?? 0}`;
+    if (auflösung.has(schluessel)) continue;
+    auflösung.set(schluessel, {
+      nummer: await resolveBlPartNumber(roh),
+      farbe:  Number(await resolveBlColorId(Number(t.color_id ?? 0))) || 0,
+    });
+  }
+
+  const nummern = [...new Set([...auflösung.values()].map(a => a.nummer))];
+  if (!nummern.length) return treffer;
+  const zeilen = await db.all(
+    `SELECT part_number, color_id, condition, avg_price, qty_avg_price FROM part_price_cache
+      WHERE part_number = ANY($1) AND currency_code = $2
+        AND fetched_at > NOW() - make_interval(hours => $3)`,
+    [nummern, currency, ttl],
+  ).catch(() => []);
+
+  const cache = new Map<string, number>();
+  for (const z of zeilen) {
+    const wert = parseFloat(String(z.avg_price || 0)) || parseFloat(String(z.qty_avg_price || 0)) || 0;
+    if (wert > 0) cache.set(`${z.part_number}|${z.color_id}|${z.condition}`, wert);
+  }
+
+  for (const t of teile) {
+    const schluessel = `${t.part_number}|${t.color_id ?? 0}`;
+    const a = auflösung.get(schluessel);
+    if (!a) continue;
+    const zustand = t.condition === 'U' ? 'U' : 'N';
+    for (const c of [zustand, zustand === 'N' ? 'U' : 'N']) {
+      const wert = cache.get(`${a.nummer}|${a.farbe}|${c}`);
+      if (wert != null) { treffer.set(schluessel, wert); break; }
+    }
+  }
+  return treffer;
 }
 
 /**
@@ -325,5 +476,6 @@ async function getCurrentFigMarketPrice(figNumber: string, userId: number, blFig
 export {
   getCurrentMarketPrice,
   resolvePartCondition, marktpreisMitHerkunft, getCurrentPartMarketPrice,
+  marktpreiseAusCacheFuerFiguren, marktpreiseAusCacheFuerTeile,
   estimateFigPriceFromParts, figMarktpreisMitHerkunft, getCurrentFigMarketPrice,
 };
