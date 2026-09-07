@@ -193,13 +193,25 @@ fun LazyListScope.setDetailInstructionsSection(
                                         modifier = Modifier.size(18.dp)
                                     )
                                 }
-                                // Entfernen nur, wo der Server eine Kennung
-                                // mitgeschickt hat: Anleitungen aus der
-                                // automatischen Suche haben keine Zeile in der
-                                // Tabelle, und ein Knopf, der zu einem 404
-                                // fuehrt, ist schlechter als keiner.
+                                // Entfernen nur bei SELBST hochgeladenen
+                                // Anleitungen.
+                                //
+                                // Die Annahme hier war, `id != null` genuege:
+                                // Anleitungen aus der automatischen Suche
+                                // haetten keine Kennung. Das stimmte nicht —
+                                // der Server legt zwei Tabellen zusammen, und
+                                // beide bringen eine `id` mit. Der Papierkorb
+                                // stand deshalb an JEDER Zeile, obwohl die
+                                // Loeschroute nur die eigene Tabelle kennt.
+                                // Schlimmer als der zu erwartende 404: Die
+                                // beiden Zaehler laufen unabhaengig, ein Klick
+                                // konnte also die gleichnamige EIGENE
+                                // Anleitung treffen.
+                                //
+                                // `isManual` beantwortet die Frage jetzt dort,
+                                // wo sie entsteht (siehe Instruction).
                                 val id = instr.id
-                                if (id != null) {
+                                if (id != null && instr.isManual) {
                                     IconButton(
                                         onClick = { onAnleitungLoeschen(id) },
                                         modifier = Modifier.size(36.dp)

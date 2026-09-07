@@ -99,7 +99,22 @@ data class Instruction(
     val id: Int? = null,
     val url: String,
     val description: String? = null,
-    @SerialName("local_path") val localPath: String? = null
+    @SerialName("local_path") val localPath: String? = null,
+    /**
+     * Selbst hochgeladen (true) oder automatisch importiert (false)?
+     *
+     * Der Server legt zwei Quellen zusammen: `shared_instructions` (die Suche
+     * bei Rebrickable, Brickset & Co., fuer alle Konten dieselbe) und
+     * `instructions` (was ein Konto selbst hochgeladen hat). Nur die zweite
+     * laesst sich wieder loeschen — die Route dafuer sucht ausschliesslich
+     * dort. Beide Tabellen haben eine `id`, die Zaehler laufen unabhaengig;
+     * am `id != null` allein ist die Herkunft also NICHT zu erkennen.
+     *
+     * Der Standard `false` ist die vorsichtige Seite: Ein Server, der das Feld
+     * noch nicht mitschickt, fuehrt zu einem fehlenden Papierkorb — nicht zu
+     * einem, der die falsche Zeile trifft.
+     */
+    @SerialName("is_manual") val isManual: Boolean = false
 )
 
 @Serializable

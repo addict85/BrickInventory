@@ -106,6 +106,34 @@ export async function anleitungenZuSet(setNumber: string) {
     [mitVersion(setNumber)]).catch(() => []);
 }
 
+/**
+ * Die Anleitungen eines Sets, wie ein Client sie sieht: erst die automatisch
+ * importierten (shared_instructions), dann die selbst hochgeladenen
+ * (instructions).
+ *
+ * `is_manual` ist der einzige Weg, die beiden Herkuenfte am fertigen Objekt
+ * noch auseinanderzuhalten — und damit die Antwort auf die Frage, ob
+ * DELETE /api/v1/sets/:sn/instructions/:id diese Zeile ueberhaupt treffen
+ * kann: Die Route sucht ausschliesslich in `instructions`.
+ *
+ * Ohne die Angabe konnten die Clients das nicht unterscheiden. Beide Tabellen
+ * haben eine Spalte `id`, beide Zaehler laufen unabhaengig voneinander, und
+ * das Zusammenlegen wirft die Herkunft weg. Ein Papierkorb an einer
+ * automatisch importierten Anleitung traf deshalb im guenstigen Fall nichts
+ * (404) — und im unguenstigen die EIGENE hochgeladene Anleitung, die zufaellig
+ * dieselbe Nummer trug.
+ *
+ * Der Pfad taugt als Ersatz nicht: `local_path` ist bei geteilten Anleitungen
+ * auch `null` (Eintrag ohne Datei), und die Regel „faengt mit /data/uploads/
+ * an" muesste dann in jedem Client noch einmal stehen.
+ */
+export function anleitungenZusammenlegen(geteilt: any[], eigene: any[]): any[] {
+  return [
+    ...geteilt.map(i => ({ ...i, is_manual: false })),
+    ...eigene.map(i => ({ ...i, is_manual: true })),
+  ];
+}
+
 /** Alle Anleitungen eines Sets entfernen (vor dem Neuholen). */
 export async function loescheAnleitungen(setNumber: string) {
   return db.run('DELETE FROM shared_instructions WHERE set_number = $1', [mitVersion(setNumber)]);
