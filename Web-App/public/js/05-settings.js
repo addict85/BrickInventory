@@ -186,10 +186,16 @@ async function generateQrCode() {
     // Auswahl daneben: Kennt er den Wert nicht, hat er nichts vermerkt, und
     // dann gilt die Gleitfrist. Eigene Zeile, weil die darueber im
     // Sekundentakt neu geschrieben wird (der Zaehler des Codes).
+    //
+    // Drei Faelle, nicht zwei: `0` heisst „unbegrenzt" und ist nicht dasselbe
+    // wie „nichts gewaehlt" (null). Ein `d.token_days ? … : …` wuerde beide
+    // in denselben Zweig werfen und bei „unbegrenzt" die Gleitfrist ansagen —
+    // also genau das Gegenteil.
     const zugang = G('qr-access-hint');
-    if (zugang) zugang.textContent = d.token_days
-      ? tRaw('qr.access_days', { n: d.token_days })
-      : tRaw('qr.access_default');
+    if (zugang) zugang.textContent =
+      d.token_days === 0    ? tRaw('qr.access_unlimited')
+      : d.token_days > 0    ? tRaw('qr.access_days', { n: d.token_days })
+                            : tRaw('qr.access_default');
     // Nach dem ersten Erzeugen heisst der Knopf „Neu generieren" — die eine
     // Stelle, an der die Beschriftung sich absichtlich ändert.
     frei(tRaw('qr.regenerate'));

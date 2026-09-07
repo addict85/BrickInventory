@@ -610,6 +610,8 @@ window.I18N_EN = {
   'settings.importing': 'Importing…',
   'qr.access_days': 'The access is then valid for {n} days.',
   'qr.access_default': 'The access stays valid while the device is used (90 days unused).',
+  'qr.validity_unlimited': 'Unlimited',
+  'qr.access_unlimited': 'The access never expires. You can revoke it under “Signed-in devices”.',
   'qr.validity_label': 'Access valid for',
   'qr.validity_default': 'Default (90 days unused)',
   'qr.validity_1m': '1 month',

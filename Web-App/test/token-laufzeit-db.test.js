@@ -126,11 +126,46 @@ test('QR-Zugang: die Laufzeit waehlt der Erzeuger, nicht der Einloeser',
     const ohne = await ruf('/qr-token', { method: 'POST', headers: { cookie: keks }, body: {} });
     assert.equal(ohne.body.token_days, null, 'Ohne Wahl gibt es keine feste Frist');
     const versuch = await ruf('/qr-login', { method: 'POST',
-      body: { token: ohne.body.token, gueltigkeit: '12m', token_days: 3650 } });
+      body: { token: ohne.body.token, gueltigkeit: 'unbegrenzt', token_days: 3650 } });
     assert.equal(versuch.status, 200, JSON.stringify(versuch.body));
     const zv = await zeile(versuch.body.token);
     assert.equal(zv.hard_expires_at, null,
       'Das einloesende Geraet darf sich keine Laufzeit erteilen — sonst reicht ein abfotografierter Code');
+    assert.ok(zv.expires_at,
+      'Und erst recht keine unbegrenzte: Der Zugang muss die gewoehnliche Gleitfrist tragen');
+
+    // ── 3b. „Unbegrenzt" heisst wirklich unbegrenzt ───────────────────────
+    //
+    // Und zwar dauerhaft: Die eigentliche Falle ist nicht das Anlegen, sondern
+    // der stuendliche Aufraeumjob. Der zieht Zeilen OHNE Ablaufdatum
+    // absichtlich auf die Gleitfrist nach und loescht sie nach 90 ungenutzten
+    // Tagen — er wuerde die Wahl also still rueckgaengig machen, ohne dass
+    // irgendetwas scheitert. Deshalb wird hier nicht nur die frische Zeile
+    // geprueft, sondern purgeExpiredTokens() TATSAECHLICH ausgefuehrt, mit
+    // einem Zugang, der seit einem Jahr unbenutzt daliegt.
+    const ewig = await ruf('/qr-token', { method: 'POST', headers: { cookie: keks },
+      body: { gueltigkeit: 'unbegrenzt' } });
+    assert.equal(ewig.body.token_days, 0,
+      '„unbegrenzt" reist als 0 mit — null hiesse „nichts gewaehlt"');
+    const zugangEwig = await ruf('/qr-login', { method: 'POST', body: { token: ewig.body.token } });
+    const rohEwig = zugangEwig.body.token;
+    const ze = await zeile(rohEwig);
+    assert.equal(ze.expires_at, null, 'Unbegrenzt heisst: keine gleitende Frist');
+    assert.equal(ze.hard_expires_at, null, 'Unbegrenzt heisst: auch keine feste Frist');
+    assert.equal(ze.sliding, false, 'Ohne Datum darf die Zeile auch nicht gleiten');
+
+    await db.run(
+      `UPDATE api_tokens SET last_used = NOW() - INTERVAL '400 days',
+                             created_at = NOW() - INTERVAL '400 days'
+        WHERE token = $1`, [auth.hashToken(rohEwig)]);
+    await auth.purgeExpiredTokens();
+    const nachher = await zeile(rohEwig);
+    assert.ok(nachher, 'Der unbegrenzte Zugang darf vom Aufraeumjob nicht geloescht werden');
+    assert.equal(nachher.expires_at, null,
+      'Der Aufraeumjob darf ihm auch kein Ablaufdatum verpassen — sonst waere die Wahl still weg');
+    auth.invalidateToken(rohEwig);
+    assert.ok(await auth.validateToken(rohEwig),
+      'Und er muss nach dem Aufraeumen noch gelten');
 
     // ── 4. Ein Wert ausserhalb der Liste weist nicht ab, er waehlt nichts ──
     //
@@ -195,5 +230,6 @@ test('QR-Zugang: die Oberflaeche waehlt beim ERZEUGEN, nicht beim Einloesen', ()
     .map(m => m[1]);
   assert.deepEqual(markupListe, serverListe,
     'Die Auswahl im Markup und die Liste in TOKEN_LAUFZEITEN laufen auseinander');
-  assert.ok(serverListe.length >= 4, 'Die Liste wurde nicht gefunden — Muster veraltet?');
+  assert.ok(serverListe.length >= 5, 'Die Liste wurde nicht gefunden — Muster veraltet?');
+  assert.ok(serverListe.includes('unbegrenzt'), 'Die Wahl „unbegrenzt" fehlt auf der Serverseite');
 });

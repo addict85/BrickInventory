@@ -613,6 +613,8 @@ window.I18N_DE = {
   'settings.importing': 'Importiere…',
   'qr.access_days': 'Der Zugang gilt danach {n} Tage.',
   'qr.access_default': 'Der Zugang gilt, solange das Gerät benutzt wird (90 Tage ungenutzt).',
+  'qr.validity_unlimited': 'Unbegrenzt',
+  'qr.access_unlimited': 'Der Zugang läuft nie ab. Entziehen kannst du ihn unter „Angemeldete Geräte“.',
   'qr.validity_label': 'Zugang gültig für',
   'qr.validity_default': 'Standard (90 Tage ungenutzt)',
   'qr.validity_1m': '1 Monat',

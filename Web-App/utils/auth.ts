@@ -796,6 +796,23 @@ function istVerwalter(req: Request): boolean {
  * @param dauerhaft true = kein Ablaufdatum (App, QR-Anmeldung).
  */
 /**
+ * Der Wert, mit dem „unbegrenzt" in der Tageszahl steht.
+ *
+ * Drei Zustaende muessen sich in EINEM Feld unterscheiden lassen, weil sie so
+ * mit der Nonce reisen (qr_login_tokens.token_days):
+ *
+ *   null  — nichts gewaehlt, es bleibt bei der Gleitfrist (der Bestand)
+ *   0     — ausdruecklich unbegrenzt: keine Frist, gar keine
+ *   > 0   — eine feste Frist, in Tagen
+ *
+ * `0` und nicht `-1`: Eine Spalte, in der eine Tageszahl steht, soll keine
+ * negativen Werte tragen. Und `null` ist bereits vergeben — es bedeutet
+ * „keine Angabe", nicht „keine Grenze". Die beiden auseinanderzuhalten ist
+ * der ganze Punkt: Das eine ist der Bestand, das andere eine Entscheidung.
+ */
+const UNBEGRENZT = 0;
+
+/**
  * Die WAEHLBAREN festen Laufzeiten eines QR-Zugangs, in Tagen.
  *
  * ── Warum eine feste Liste und keine freie Tageszahl ────────────────────────
@@ -804,17 +821,23 @@ function istVerwalter(req: Request): boolean {
  * ist keine Frist. Die Liste steht hier und nicht in der Route, weil sie zur
  * FRIST gehoert, so wie TOKEN_IDLE_DAYS ein paar Zeilen weiter unten.
  *
- * „Unbegrenzt" fehlt mit Absicht. Es waere die einzige Wahl, die etwas
- * WEGNIMMT: die einzige selbsttaetige Reissleine fuer ein verlorenes,
- * verkauftes oder gestohlenes Geraet. Wer keine feste Frist waehlt, bekommt
- * weiterhin die Gleitfrist (TOKEN_IDLE_DAYS) — das ist der Bestand, nicht
- * „ewig".
+ * „Unbegrenzt" steht mit drin, auf Marcos ausdrueckliche Ansage. Es ist die
+ * einzige Wahl, die etwas WEGNIMMT — die einzige selbsttaetige Reissleine fuer
+ * ein verlorenes, verkauftes oder gestohlenes Geraet. Sie ist deshalb nicht
+ * die Vorgabe: Wer nichts waehlt, bekommt weiterhin die Gleitfrist
+ * (TOKEN_IDLE_DAYS). Entwerten laesst sich so ein Zugang nur noch von Hand,
+ * ueber „Angemeldete Geraete" oder einen Passwortwechsel.
  */
 const TOKEN_LAUFZEITEN: Record<string, number> = {
   '1m':  30,
   '2m':  60,
   '6m':  180,
   '12m': 365,
+  // Marcos ausdrueckliche Wahl. Sie nimmt die einzige selbsttaetige Reissleine
+  // fuer ein verlorenes Geraet weg — was das heisst, steht in
+  // db/migrations/0017-token-unbegrenzt.sql. Sie ist deshalb nicht die
+  // Vorgabe: Wer nichts waehlt, bekommt weiterhin die Gleitfrist.
+  'unbegrenzt': UNBEGRENZT,
 };
 
 /**
@@ -863,6 +886,22 @@ async function createToken(userId: number, label = 'Android App', dauerhaft = fa
     // `make_interval(days => $N)` und nicht eine zusammengesetzte Zeichenkette:
     // Der Wert kommt am Ende aus einer Anfrage (ueber laufzeitTage(), also aus
     // einer festen Liste), und er gehoert trotzdem als Parameter uebergeben.
+    //
+    // ── „Unbegrenzt" ist ein eigener Zweig, kein Sonderfall der Rechnung ───
+    //
+    // Hier faellt BEIDES weg: die gleitende Frist und die feste. `sliding`
+    // steht auf FALSE, damit _touchLastUsed() der Zeile nicht doch noch ein
+    // Datum verpasst, und `never_expires` sagt dem Aufraeumjob, dass diese
+    // Zeile ohne Datum so gemeint ist — sonst zoege er sie beim naechsten
+    // Lauf still auf die Gleitfrist (siehe Migration 0017).
+    if (festeTage === UNBEGRENZT) {
+      await db.run(
+        `INSERT INTO api_tokens (token, user_id, label, expires_at, sliding, hard_expires_at, never_expires)
+         VALUES ($1,$2,$3,NULL,FALSE,NULL,TRUE) ON CONFLICT DO NOTHING`,
+        [hashToken(token), userId, label]
+      );
+      return token;
+    }
     const fest = festeTage && festeTage > 0 ? festeTage : null;
     await db.run(
       TOKEN_IDLE_DAYS > 0
@@ -1042,7 +1081,7 @@ async function purgeExpiredTokens() {
       `UPDATE api_tokens
           SET sliding = TRUE,
               expires_at = COALESCE(last_used, created_at) + make_interval(days => $1)
-        WHERE expires_at IS NULL`,
+        WHERE expires_at IS NULL AND NOT never_expires`,
       [TOKEN_IDLE_DAYS]
     ).catch(e => { console.warn('[tokens] Altzeilen nachziehen:', e?.message || e); return null; });
     const m = nachgezogen?.changes || 0;
@@ -1061,6 +1100,13 @@ async function purgeExpiredTokens() {
   entfernt += abgelaufen?.changes || 0;
 
   // Diese zweite Regel trifft seit der Umstellung oben kaum noch etwas: Nach
+  // `AND NOT never_expires` in beiden Abfragen: Eine Zeile ohne Datum ist
+  // entweder eine ALTZEILE (die soll nachgezogen und irgendwann geraeumt
+  // werden) oder eine ausdrueckliche Wahl „unbegrenzt" (die soll genau das
+  // bleiben). Ohne die Bedingung machte dieser Job die Wahl beim naechsten
+  // Lauf still rueckgaengig — nichts waere gescheitert, und trotzdem waere
+  // nichts wie versprochen.
+  //
   // dem Nachziehen hat jede Zeile ein Ablaufdatum. Sie bleibt trotzdem stehen
   // — fuer den Server, der eine Weile mit TOKEN_IDLE_DAYS=0 lief (dort
   // entstehen weiter Zeilen ohne Datum) und die Regel dann einschaltet. Der
@@ -1070,7 +1116,7 @@ async function purgeExpiredTokens() {
   if (TOKEN_IDLE_DAYS > 0) {
     const ungenutzt = await db.run(
       `DELETE FROM api_tokens
-        WHERE expires_at IS NULL
+        WHERE expires_at IS NULL AND NOT never_expires
           AND COALESCE(last_used, created_at) < NOW() - make_interval(days => $1)`,
       [TOKEN_IDLE_DAYS]
     ).catch(e => { console.warn('[tokens] Aufräumen ungenutzter Tokens:', e?.message || e); return null; });
