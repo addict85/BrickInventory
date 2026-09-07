@@ -550,7 +550,13 @@ async function frueherZurLaufzeitAngelegt() {
       token      TEXT PRIMARY KEY,
       user_id    INTEGER NOT NULL,
       expires_at TIMESTAMPTZ NOT NULL,
-      used_at    TIMESTAMPTZ
+      used_at    TIMESTAMPTZ,
+      -- Die vom Erzeuger gewaehlte Laufzeit des SPAETEREN Geraete-Tokens, in
+      -- Tagen. Sie reist mit der Nonce, weil POST /qr-login unangemeldet
+      -- erreichbar ist — siehe db/migrations/0016-token-laufzeit.sql.
+      -- Auf gewachsenen Datenbanken zieht die Migration sie nach; dieses
+      -- CREATE TABLE IF NOT EXISTS tut dort naemlich nichts.
+      token_days INTEGER
     )`);
   await pool.query('CREATE INDEX IF NOT EXISTS idx_qr_login_expires ON qr_login_tokens(expires_at)');
 

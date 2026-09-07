@@ -195,6 +195,52 @@ object Quellen {
     }
 
     /**
+     * Was bietet eine `…UiState`-Datenklasse an — Felder UND abgeleitete
+     * Mitglieder?
+     *
+     * ── Warum das hier steht und nicht zweimal in den Tests ─────────────────
+     * Zwei Prüfungen ersetzen den fehlenden Compiler und halten jeden Zugriff
+     * `zustand.name` gegen das, was die Klasse hat: UiStateFieldsTest und
+     * ScreenViewModelWiringTest. Beide hatten ihre EIGENE Fassung dieser
+     * Erfassung, und die eine kannte den Klassenrumpf, die andere nur den
+     * Konstruktor. Genau das ist die Form, aus der still auseinanderlaufende
+     * Regeln entstehen.
+     *
+     * ── Warum auch Funktionen dazugehoeren ──────────────────────────────────
+     * Der Kommentar bei der frueheren Fassung hat das schon einmal fuer
+     * abgeleitete EIGENSCHAFTEN festgehalten: Eine Luecke im Muster, die
+     * gewoehnliches Kotlin verbietet, ist kein Fund — sie bringt den Naechsten
+     * dazu, schlechteren Code zu schreiben, um sie ruhig zu stellen. Fuer eine
+     * Methode gilt dasselbe:
+     *
+     *     data class FinanceUiState(val kategorien: Set<String> = emptySet()) {
+     *         fun zeigt(art: String) = kategorien.isEmpty() || art in kategorien
+     *     }
+     *
+     * `financeState.zeigt("sets")` ist ein gueltiger Aufruf. Die Pruefung
+     * verliert dadurch nichts: Ein VERTIPPTER Name steht ebenso wenig in der
+     * Menge wie vorher.
+     *
+     * Der Rumpf wird bis zur schliessenden Klammer AM ZEILENANFANG gelesen —
+     * so kann die Erfassung nicht in die naechste Klasse hineinlaufen.
+     */
+    fun mitgliederJeUiState(): Map<String, Set<String>> {
+        val quelle = java.io.File(wurzel, "ui/UiState.kt").readText()
+        val namen = Regex("""val\s+(\w+)\s*[:=]""")
+        val methoden = Regex("""fun\s+(\w+)\s*\(""")
+        return Regex("""data class (\w+UiState)\((.*?)\n\)(?: \{(.*?)\n\})?""",
+                     RegexOption.DOT_MATCHES_ALL)
+            .findAll(quelle)
+            .associate { m ->
+                val rumpf = m.groupValues[3]
+                m.groupValues[1] to (namen.findAll(m.groupValues[2]) +
+                                     namen.findAll(rumpf) +
+                                     methoden.findAll(rumpf))
+                    .map { it.groupValues[1] }.toSet()
+            }
+    }
+
+    /**
      * Welchen Zustandstyp trägt ein Name in DIESER Datei?
      *
      * Zwei Quellen, in dieser Reihenfolge: ein Parameter `name: XyzUiState`,

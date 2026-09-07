@@ -922,7 +922,11 @@ export function renderInstructions(instr, sn) {
   const items = instr.map(i => {
     const href = i.local_path || i.url;
     const isLocal = !!i.local_path;
-    const isUpload = i.local_path && i.local_path.startsWith('/data/uploads/');
+    // Selbst hochgeladen oder automatisch importiert? Das sagt der Server
+    // (is_manual, siehe utils/instructions.anleitungenZusammenlegen). Vorher
+    // stand die Regel hier als Pfadvergleich — eine zweite Fassung derselben
+    // Frage, die die Android-App gar nicht erst nachbauen konnte.
+    const isUpload = !!i.is_manual;
     const label = esc(i.description) || t('instr.label');
     // Lokale Dateien (PDF/Bild) im In-App-Viewer öffnen; externe URLs im neuen Tab.
     const link = isLocal
@@ -931,7 +935,7 @@ export function renderInstructions(instr, sn) {
     return `<div class="ii" id="instr-${i.id}">
       ${link}
       ${isUpload ? `<span class="lv" style="background:var(--p100);color:var(--p600)">${t('instr.badge_manual')}</span>` : isLocal ? '<span class="lc">💾</span>' : '<span class="lv">🌐</span>'}
-      <button data-click="delInstr" data-arg="${esc(sn)}" data-arg2="${i.id}" title="${t('instr.delete_tooltip')}" style="background:none;border:none;cursor:pointer;color:var(--s400);font-size:.85rem;padding:0 2px">✕</button>
+      ${isUpload ? `<button data-click="delInstr" data-arg="${esc(sn)}" data-arg2="${i.id}" title="${t('instr.delete_tooltip')}" style="background:none;border:none;cursor:pointer;color:var(--s400);font-size:.85rem;padding:0 2px">✕</button>` : ''}
     </div>`;
   }).join('');
 

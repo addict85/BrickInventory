@@ -19,6 +19,7 @@ import bcrypt from 'bcryptjs';
 import type { Request, Response, NextFunction } from 'express';
 import { checkLoginAllowed, recordLoginFailure, recordLoginSuccess } from './loginLimiter';
 import { sendeFehler } from './fehlerTexte';
+import { ausTabelle } from './validate';
 import type { FehlerCode } from './fehlerTexte';
 
 /**
@@ -45,7 +46,10 @@ export interface TokenBenutzer {
   user_id: number;
   username?: string;
   is_admin?: number | boolean;
+  /** Die GLEITENDE Frist: „so lange ungenutzt" (siehe _touchLastUsed). */
   expires_at?: string | Date | null;
+  /** Die FESTE Frist, falls beim QR-Code eine gewaehlt wurde. `null` = keine. */
+  hard_expires_at?: string | Date | null;
   last_used?: string | Date | null;
   [k: string]: unknown;
 }
@@ -165,14 +169,32 @@ function _pruneCache() {
  * @param {string|null|undefined} token
  * @returns {Promise<TokenUser|null>}
  */
+/**
+ * Ist dieser Zeitpunkt erreicht? `null`/leer heisst „keine Frist", also nein.
+ *
+ * Steht als Funktion da, weil die Frage seit der festen Laufzeit ZWEIMAL im
+ * selben Zweig gestellt wird (gleitende und feste Frist) — und weil `null`
+ * hier „unbegrenzt" bedeutet und nicht „sofort abgelaufen".
+ */
+function fristErreicht(zeitpunkt: string | Date | null | undefined, jetzt: number): boolean {
+  return !!zeitpunkt && new Date(zeitpunkt).getTime() <= jetzt;
+}
+
 async function validateToken(token: string | null | undefined): Promise<TokenBenutzer | null> {
   if (!token) return null;
   const now = Date.now();
 
   const hit = _tokenCache.get(token);
   if (hit && now - hit.cachedAt < TOKEN_TTL_MS) {
-    // Ablauf auch bei Cache-Treffern respektieren
-    if (hit.user.expires_at && new Date(hit.user.expires_at).getTime() <= now) {
+    // Ablauf auch bei Cache-Treffern respektieren — BEIDE Fristen.
+    //
+    // `hard_expires_at` muss hier eigens stehen und nicht bloss in der
+    // WHERE-Klausel unten: Dieser Zweig fragt die Datenbank gar nicht. Ohne
+    // die zweite Bedingung bediente der Cache einen Token noch bis zu
+    // TOKEN_TTL_MS ueber seinen festen Termin hinaus — bei einer Frist, die
+    // der Nutzer AUSDRUECKLICH gesetzt hat, ist das die falsche Seite zum
+    // Irren.
+    if (fristErreicht(hit.user.expires_at, now) || fristErreicht(hit.user.hard_expires_at, now)) {
       _tokenCache.delete(token);
       return null;
     }
@@ -182,9 +204,12 @@ async function validateToken(token: string | null | undefined): Promise<TokenBen
 
   const hashed = hashToken(token);
   const SQL = `
-    SELECT t.user_id, t.expires_at, t.last_used, t.sliding, u.username, u.is_admin
+    SELECT t.user_id, t.expires_at, t.hard_expires_at, t.last_used, t.sliding,
+           u.username, u.is_admin
     FROM api_tokens t JOIN users u ON u.id = t.user_id
-    WHERE t.token = $1 AND (t.expires_at IS NULL OR t.expires_at > NOW())`;
+    WHERE t.token = $1
+      AND (t.expires_at      IS NULL OR t.expires_at      > NOW())
+      AND (t.hard_expires_at IS NULL OR t.hard_expires_at > NOW())`;
   // Nur noch der Hash-Pfad.
   //
   // VORHER stand hier ein Legacy-Fallback, der bei einem Fehlschlag ein
@@ -770,7 +795,69 @@ function istVerwalter(req: Request): boolean {
  *
  * @param dauerhaft true = kein Ablaufdatum (App, QR-Anmeldung).
  */
-async function createToken(userId: number, label = 'Android App', dauerhaft = false): Promise<string> {
+/**
+ * Der Wert, mit dem „unbegrenzt" in der Tageszahl steht.
+ *
+ * Drei Zustaende muessen sich in EINEM Feld unterscheiden lassen, weil sie so
+ * mit der Nonce reisen (qr_login_tokens.token_days):
+ *
+ *   null  — nichts gewaehlt, es bleibt bei der Gleitfrist (der Bestand)
+ *   0     — ausdruecklich unbegrenzt: keine Frist, gar keine
+ *   > 0   — eine feste Frist, in Tagen
+ *
+ * `0` und nicht `-1`: Eine Spalte, in der eine Tageszahl steht, soll keine
+ * negativen Werte tragen. Und `null` ist bereits vergeben — es bedeutet
+ * „keine Angabe", nicht „keine Grenze". Die beiden auseinanderzuhalten ist
+ * der ganze Punkt: Das eine ist der Bestand, das andere eine Entscheidung.
+ */
+const UNBEGRENZT = 0;
+
+/**
+ * Die WAEHLBAREN festen Laufzeiten eines QR-Zugangs, in Tagen.
+ *
+ * ── Warum eine feste Liste und keine freie Tageszahl ────────────────────────
+ * Der Wert kommt aus einer Anfrage. Eine freie Zahl hiesse, dass irgendwann
+ * jemand 999999 schickt — und eine Frist, die laenger ist als das Geraet,
+ * ist keine Frist. Die Liste steht hier und nicht in der Route, weil sie zur
+ * FRIST gehoert, so wie TOKEN_IDLE_DAYS ein paar Zeilen weiter unten.
+ *
+ * „Unbegrenzt" steht mit drin, auf Marcos ausdrueckliche Ansage. Es ist die
+ * einzige Wahl, die etwas WEGNIMMT — die einzige selbsttaetige Reissleine fuer
+ * ein verlorenes, verkauftes oder gestohlenes Geraet. Sie ist deshalb nicht
+ * die Vorgabe: Wer nichts waehlt, bekommt weiterhin die Gleitfrist
+ * (TOKEN_IDLE_DAYS). Entwerten laesst sich so ein Zugang nur noch von Hand,
+ * ueber „Angemeldete Geraete" oder einen Passwortwechsel.
+ */
+const TOKEN_LAUFZEITEN: Record<string, number> = {
+  '1m':  30,
+  '2m':  60,
+  '6m':  180,
+  '12m': 365,
+  // Marcos ausdrueckliche Wahl. Sie nimmt die einzige selbsttaetige Reissleine
+  // fuer ein verlorenes Geraet weg — was das heisst, steht in
+  // db/migrations/0017-token-unbegrenzt.sql. Sie ist deshalb nicht die
+  // Vorgabe: Wer nichts waehlt, bekommt weiterhin die Gleitfrist.
+  'unbegrenzt': UNBEGRENZT,
+};
+
+/**
+ * Eine Laufzeit-Angabe aus einer Anfrage in Tage uebersetzen.
+ *
+ * @returns Tage, oder null fuer „keine feste Frist" (nichts gewaehlt, oder
+ *   etwas, das nicht in der Liste steht).
+ *
+ * ausTabelle statt eines direkten Zugriffs: `TOKEN_LAUFZEITEN['constructor']`
+ * lieferte die geerbte Object-Funktion — wahrheitswertig, und damit waere
+ * `make_interval(days => [Function])` an die Datenbank gegangen. Dieselbe
+ * Falle wie beim Anleitungs-Upload (routes/sets.ts).
+ */
+function laufzeitTage(wahl: unknown): number | null {
+  if (wahl === undefined || wahl === null || wahl === '') return null;
+  return ausTabelle(TOKEN_LAUFZEITEN, String(wahl)) ?? null;
+}
+
+async function createToken(userId: number, label = 'Android App', dauerhaft = false,
+                           festeTage: number | null = null): Promise<string> {
   const token = crypto.randomBytes(32).toString('hex');
   if (dauerhaft) {
     // Gleitende Frist statt gar keiner. Bis hierher stand hier NULL, und die
@@ -787,14 +874,48 @@ async function createToken(userId: number, label = 'Android App', dauerhaft = fa
     //
     // TOKEN_IDLE_DAYS === 0 schaltet die Regel ab; dann bleibt es bei NULL,
     // wie es die Beschreibung der Variablen zusagt.
+    //
+    // ── Und daneben die FESTE Frist, falls eine gewaehlt wurde ─────────────
+    //
+    // Sie steht in einer eigenen Spalte, weil sie etwas anderes bedeutet als
+    // expires_at: „so lange ueberhaupt" statt „so lange ungenutzt". Gueltig
+    // ist der Token, bis der FRUEHERE der beiden Termine erreicht ist —
+    // validateToken() prueft beide. Die ausfuehrliche Begruendung steht in
+    // db/migrations/0016-token-laufzeit.sql.
+    //
+    // `make_interval(days => $N)` und nicht eine zusammengesetzte Zeichenkette:
+    // Der Wert kommt am Ende aus einer Anfrage (ueber laufzeitTage(), also aus
+    // einer festen Liste), und er gehoert trotzdem als Parameter uebergeben.
+    //
+    // ── „Unbegrenzt" ist ein eigener Zweig, kein Sonderfall der Rechnung ───
+    //
+    // Hier faellt BEIDES weg: die gleitende Frist und die feste. `sliding`
+    // steht auf FALSE, damit _touchLastUsed() der Zeile nicht doch noch ein
+    // Datum verpasst, und `never_expires` sagt dem Aufraeumjob, dass diese
+    // Zeile ohne Datum so gemeint ist — sonst zoege er sie beim naechsten
+    // Lauf still auf die Gleitfrist (siehe Migration 0017).
+    if (festeTage === UNBEGRENZT) {
+      await db.run(
+        `INSERT INTO api_tokens (token, user_id, label, expires_at, sliding, hard_expires_at, never_expires)
+         VALUES ($1,$2,$3,NULL,FALSE,NULL,TRUE) ON CONFLICT DO NOTHING`,
+        [hashToken(token), userId, label]
+      );
+      return token;
+    }
+    const fest = festeTage && festeTage > 0 ? festeTage : null;
     await db.run(
       TOKEN_IDLE_DAYS > 0
-        ? `INSERT INTO api_tokens (token, user_id, label, expires_at, sliding)
-           VALUES ($1,$2,$3, NOW() + make_interval(days => $4), TRUE) ON CONFLICT DO NOTHING`
-        : 'INSERT INTO api_tokens (token, user_id, label, expires_at, sliding) VALUES ($1,$2,$3,NULL,TRUE) ON CONFLICT DO NOTHING',
+        ? `INSERT INTO api_tokens (token, user_id, label, expires_at, sliding, hard_expires_at)
+           VALUES ($1,$2,$3, NOW() + make_interval(days => $4), TRUE,
+                   CASE WHEN $5::int IS NULL THEN NULL ELSE NOW() + make_interval(days => $5::int) END)
+           ON CONFLICT DO NOTHING`
+        : `INSERT INTO api_tokens (token, user_id, label, expires_at, sliding, hard_expires_at)
+           VALUES ($1,$2,$3,NULL,TRUE,
+                   CASE WHEN $4::int IS NULL THEN NULL ELSE NOW() + make_interval(days => $4::int) END)
+           ON CONFLICT DO NOTHING`,
       TOKEN_IDLE_DAYS > 0
-        ? [hashToken(token), userId, label, TOKEN_IDLE_DAYS]
-        : [hashToken(token), userId, label]
+        ? [hashToken(token), userId, label, TOKEN_IDLE_DAYS, fest]
+        : [hashToken(token), userId, label, fest]
     );
   } else {
     // Der Token des Browsers gleitet NICHT: Er liegt im sessionStorage und ist
@@ -960,19 +1081,32 @@ async function purgeExpiredTokens() {
       `UPDATE api_tokens
           SET sliding = TRUE,
               expires_at = COALESCE(last_used, created_at) + make_interval(days => $1)
-        WHERE expires_at IS NULL`,
+        WHERE expires_at IS NULL AND NOT never_expires`,
       [TOKEN_IDLE_DAYS]
     ).catch(e => { console.warn('[tokens] Altzeilen nachziehen:', e?.message || e); return null; });
     const m = nachgezogen?.changes || 0;
     if (m) console.log(`[tokens] ${m} Token ohne Ablaufdatum auf die Gleitfrist von ${TOKEN_IDLE_DAYS} Tagen gesetzt`);
   }
 
+  // Beide Fristen in EINEM DELETE: die gleitende (expires_at) und die feste,
+  // die der Nutzer beim QR-Code gewaehlt hat (hard_expires_at). Ein zweites
+  // DELETE daneben waere die naechste Stelle, an der jemand nur eine der
+  // beiden Regeln nachzieht.
   const abgelaufen = await db.run(
-    'DELETE FROM api_tokens WHERE expires_at IS NOT NULL AND expires_at < NOW()'
+    `DELETE FROM api_tokens
+      WHERE (expires_at      IS NOT NULL AND expires_at      < NOW())
+         OR (hard_expires_at IS NOT NULL AND hard_expires_at < NOW())`
   ).catch(e => { console.warn('[tokens] Aufräumen abgelaufener Tokens:', e?.message || e); return null; });
   entfernt += abgelaufen?.changes || 0;
 
   // Diese zweite Regel trifft seit der Umstellung oben kaum noch etwas: Nach
+  // `AND NOT never_expires` in beiden Abfragen: Eine Zeile ohne Datum ist
+  // entweder eine ALTZEILE (die soll nachgezogen und irgendwann geraeumt
+  // werden) oder eine ausdrueckliche Wahl „unbegrenzt" (die soll genau das
+  // bleiben). Ohne die Bedingung machte dieser Job die Wahl beim naechsten
+  // Lauf still rueckgaengig — nichts waere gescheitert, und trotzdem waere
+  // nichts wie versprochen.
+  //
   // dem Nachziehen hat jede Zeile ein Ablaufdatum. Sie bleibt trotzdem stehen
   // — fuer den Server, der eine Weile mit TOKEN_IDLE_DAYS=0 lief (dort
   // entstehen weiter Zeilen ohne Datum) und die Regel dann einschaltet. Der
@@ -982,7 +1116,7 @@ async function purgeExpiredTokens() {
   if (TOKEN_IDLE_DAYS > 0) {
     const ungenutzt = await db.run(
       `DELETE FROM api_tokens
-        WHERE expires_at IS NULL
+        WHERE expires_at IS NULL AND NOT never_expires
           AND COALESCE(last_used, created_at) < NOW() - make_interval(days => $1)`,
       [TOKEN_IDLE_DAYS]
     ).catch(e => { console.warn('[tokens] Aufräumen ungenutzter Tokens:', e?.message || e); return null; });
@@ -997,6 +1131,7 @@ export {
   validateToken, invalidateToken, leereTokenCache, flaggeGesetzt, resolveUserId, requireLoginOrToken, nutzerId, angemeldeteNutzerId, istVerwalter, nutzerName, hashToken, deleteToken,
   verifiziereEmailToken,
   revokeAllTokens, revokeAllSessions, purgeExpiredTokens, loginOrTokenGuard, TOKEN_IDLE_DAYS, appTokenOhneAblauf,
+  laufzeitTage,
   assertLoginAllowed, pruefeAnmeldedaten, createToken, escapeLike, establishSession, BCRYPT_ROUNDS, USERNAME_RE,
   PASSWORT_MIN_ZEICHEN, passwortZuKurz,
   EMAIL_RE, isValidLoginIdentifier,

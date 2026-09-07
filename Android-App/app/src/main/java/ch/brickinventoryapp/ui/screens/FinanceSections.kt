@@ -309,8 +309,22 @@ fun LazyListScope.financeSetRows(valuation: ValuationResponse, showSets: Boolean
 
 }
 
-/** Der Kategoriefilter (alle / Sets / Teile / Minifiguren). */
-fun LazyListScope.financeCategoryFilter(activeCategory: androidx.compose.runtime.MutableState<String>) {
+/**
+ * Die Filterleiste des Reiters — additiv.
+ *
+ * „Alle" ist kein vierter Zustand neben den drei anderen, sondern die LEERE
+ * Auswahl: Der Chip ist genau dann gewaehlt, wenn nichts eingeschraenkt ist,
+ * und ein Klick darauf raeumt die Auswahl weg. Die drei uebrigen schalten ihre
+ * Zeilenart einzeln zu und wieder ab.
+ *
+ * Die Menge kommt von aussen und liegt im FinanceUiState — nicht mehr in einem
+ * `remember` dieses Bildschirms. Warum, steht dort.
+ */
+fun LazyListScope.financeCategoryFilter(
+    aktive: Set<String>,
+    onUmschalten: (String) -> Unit,
+    onAlle: () -> Unit,
+) {
     item {
         LazyRow(
             contentPadding = PaddingValues(horizontal = 0.dp),
@@ -319,39 +333,37 @@ fun LazyListScope.financeCategoryFilter(activeCategory: androidx.compose.runtime
         ) {
             item {
                 FilterChip(
-                    selected = activeCategory.value == "alle",
-                    onClick = { activeCategory.value = "alle" },
+                    selected = aktive.isEmpty(),
+                    onClick = onAlle,
                     label = { Text(stringResource(R.string.finance_filter_all), fontSize = 12.sp) },
                     shape = Formen.chip
                 )
             }
-            item {
-                FilterChip(
-                    selected = activeCategory.value == "sets",
-                    onClick = { activeCategory.value = if (activeCategory.value == "sets") "alle" else "sets" },
-                    label = { Text(stringResource(R.string.finance_filter_sets), fontSize = 12.sp) },
-                    shape = Formen.chip
-                )
-            }
-            item {
-                FilterChip(
-                    selected = activeCategory.value == "parts",
-                    onClick = { activeCategory.value = if (activeCategory.value == "parts") "alle" else "parts" },
-                    label = { Text(stringResource(R.string.finance_filter_parts), fontSize = 12.sp) },
-                    shape = Formen.chip
-                )
-            }
-            item {
-                FilterChip(
-                    selected = activeCategory.value == "figs",
-                    onClick = { activeCategory.value = if (activeCategory.value == "figs") "alle" else "figs" },
-                    label = { Text(stringResource(R.string.finance_filter_minifigs), fontSize = 12.sp) },
-                    shape = Formen.chip
-                )
-            }
+            item { KategorieChip("sets",  R.string.finance_filter_sets,     aktive, onUmschalten) }
+            item { KategorieChip("parts", R.string.finance_filter_parts,    aktive, onUmschalten) }
+            item { KategorieChip("figs",  R.string.finance_filter_minifigs, aktive, onUmschalten) }
         }
     }
+}
 
+/**
+ * Ein Chip der Filterleiste. Drei Aufrufer, ein Aussehen — vorher stand
+ * derselbe FilterChip dreimal wortgleich da, nur der Schluessel und der Text
+ * waren verschieden.
+ */
+@Composable
+private fun KategorieChip(
+    schluessel: String,
+    @androidx.annotation.StringRes text: Int,
+    aktive: Set<String>,
+    onUmschalten: (String) -> Unit,
+) {
+    FilterChip(
+        selected = schluessel in aktive,
+        onClick = { onUmschalten(schluessel) },
+        label = { Text(stringResource(text), fontSize = 12.sp) },
+        shape = Formen.chip
+    )
 }
 
 /** Die Kennzahl-Karten über der Liste. */

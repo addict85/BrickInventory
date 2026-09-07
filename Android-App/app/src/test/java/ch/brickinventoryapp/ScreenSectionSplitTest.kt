@@ -107,14 +107,21 @@ class ScreenSectionSplitTest {
 
     @Test
     fun `veraenderlicher Zustand wird als MutableState uebergeben`() {
-        // Drei Abschnitte SETZEN Zustand, der im Bildschirm lebt
-        // (Nachladeversuch des Bildes, Kategoriefilter, die drei Katalog-Blätter).
+        // Zwei Abschnitte SETZEN Zustand, der im Bildschirm lebt
+        // (Nachladeversuch des Bildes, die drei Katalog-Blätter).
         // Als Wert übergeben wäre es eine Kopie — die Zuweisung ginge ins Leere.
         // Deshalb halten die Bildschirme sie als `val x = remember { mutableStateOf(…) }`
         // statt per `by`.
+        //
+        // Der Kategoriefilter der Finanzen stand hier als dritter Fall. Er ist
+        // ausgezogen: Ein `remember` überlebt zwar eine Rekomposition, aber
+        // nicht das Verlassen der Komposition — nach einem Ausflug in einen
+        // Detail-Bildschirm stand wieder „alle" da (Marcos Befund). Er liegt
+        // jetzt in FinanceUiState.kategorien, und der Abschnitt meldet den
+        // Klick nach oben, statt selbst zu setzen. Damit gibt es dort nichts
+        // mehr, wovon eine Kopie schaden könnte.
         val faelle = listOf(
             "ui/screens/SetDetailScreen.kt" to "detailRetryState",
-            "ui/screens/FinanceScreen.kt" to "activeCategory",
             "ui/screens/CatalogScreen.kt" to "showThemeSheet",
         )
         for ((datei, name) in faelle) {

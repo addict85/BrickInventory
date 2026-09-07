@@ -1,0 +1,42 @@
+-- ── „Unbegrenzt" als vierte, ausdrueckliche Wahl ────────────────────────────
+--
+-- Marcos Wunsch, nachgereicht: „bitte auch das unbegrenzt umsetzen."
+--
+-- Damit ist es das, was es ist — eine Wahl OHNE Ablauf. Beide Fristen aus
+-- 0016 entfallen fuer diese Zeile: keine gleitende (expires_at), keine feste
+-- (hard_expires_at).
+--
+-- ── Warum das eine EIGENE Spalte braucht ────────────────────────────────────
+--
+-- „Kein Ablaufdatum" liesse sich auch als `expires_at IS NULL` schreiben. Das
+-- ist aber schon belegt, und zwar von genau dem Gegenteil: Auf gewachsenen
+-- Datenbanken stehen Altzeilen ohne Datum, und purgeExpiredTokens() zieht sie
+-- ABSICHTLICH auf die Gleitfrist nach:
+--
+--   UPDATE api_tokens SET sliding = TRUE, expires_at = … WHERE expires_at IS NULL
+--   DELETE FROM api_tokens WHERE expires_at IS NULL AND last_used < …
+--
+-- Ohne ein Unterscheidungsmerkmal wuerde der stuendliche Aufraeumjob jeden
+-- unbegrenzten Zugang beim naechsten Lauf still in einen befristeten
+-- verwandeln — und nach 90 ungenutzten Tagen loeschen. Die Wahl waere
+-- wirkungslos, ohne dass irgendetwas scheitert. Genau diese Sorte stiller
+-- Umdeutung ist in diesem Baum schon einmal teuer geworden (0015).
+--
+-- Die Spalte sagt deshalb ausdruecklich: Diese Zeile ist so gemeint.
+ALTER TABLE api_tokens ADD COLUMN IF NOT EXISTS never_expires BOOLEAN NOT NULL DEFAULT FALSE;
+
+-- ── Was das sicherheitstechnisch bedeutet, unverstellt ──────────────────────
+--
+-- Es nimmt etwas weg. Die Gleitfrist ist die einzige SELBSTTAETIGE Reissleine
+-- fuer ein verlorenes, verkauftes oder gestohlenes Geraet: Wer es nicht mehr
+-- benutzt, verliert nach 90 Tagen den Zugang, ohne dass jemand etwas tun
+-- muss. Bei „unbegrenzt" faellt das weg — der Zugang endet dann nur noch,
+-- wenn ihn jemand ausdruecklich entwertet.
+--
+-- Dafuer gibt es zwei Wege, und beide stehen: die Liste „Angemeldete Geraete"
+-- (GET/DELETE /api/v1/settings/tokens, in Webapp UND App erreichbar) und das
+-- Aendern des Passworts, das alle Zugaenge verwirft. Der Unterschied ist,
+-- dass beide voraussetzen, dass man es MERKT.
+--
+-- Die Wahl ist bewusst nicht die Vorgabe: Wer nichts auswaehlt, bekommt
+-- weiterhin die Gleitfrist.

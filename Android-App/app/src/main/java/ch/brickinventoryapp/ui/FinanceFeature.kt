@@ -88,3 +88,23 @@ internal fun MainViewModel.loadFigsValuationOnly() {
             ?.let { r -> _financeState.update { it.copy(figsValuation = r.data) } }
     }
 }
+
+/**
+ * Eine Zeilenart im Finanzen-Reiter dazunehmen oder wegnehmen.
+ *
+ * Additiv auf Marcos Wunsch: Vorher ersetzte jede Auswahl die vorige, „Sets und
+ * Minifiguren, aber keine Teile" liess sich nicht ausdruecken.
+ *
+ * Die letzte gewaehlte Art wieder abzuwaehlen fuehrt auf die leere Menge — und
+ * die heisst ALLE (siehe FinanceUiState.kategorien). Das ist die einzige
+ * sinnvolle Auslegung: Eine Ansicht, die nichts zeigt, waere kein Filter,
+ * sondern eine leere Seite.
+ */
+internal fun MainViewModel.finanzKategorieUmschalten(kategorie: String) {
+    _financeState.update { it.mitUmgeschalteterKategorie(kategorie) }
+}
+
+/** Der Chip „Alle": jede Einschraenkung faellt weg. */
+internal fun MainViewModel.finanzKategorienZuruecksetzen() {
+    _financeState.update { it.copy(kategorien = emptySet()) }
+}

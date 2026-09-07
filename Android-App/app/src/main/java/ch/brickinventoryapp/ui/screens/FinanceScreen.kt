@@ -98,14 +98,14 @@ fun FinanceScreen(
         return
     }
 
-    // "alle", "sets", "parts", "figs" — Galerie-Stil: Single-Select, Alle = kein Filter
-    // Als State-Objekt statt per `by`: financeCategoryFilter() SETZT den Wert,
-    // und dafür muss es dasselbe Objekt sein, keine Kopie (Nachtrag 98).
-    val activeCategory = remember { mutableStateOf("alle") }
-
-    val showSets  = activeCategory.value == "alle" || activeCategory.value == "sets"
-    val showParts = activeCategory.value == "alle" || activeCategory.value == "parts"
-    val showFigs  = activeCategory.value == "alle" || activeCategory.value == "figs"
+    // Der Kategoriefilter kommt aus dem Zustand des Reiters, nicht aus einem
+    // `remember` dieses Bildschirms — sonst stuende er nach jedem Ausflug in
+    // einen Detail-Bildschirm wieder auf „alle" (Marcos Befund, siehe
+    // FinanceUiState.kategorien). Leere Menge heisst: keine Einschraenkung.
+    val kategorien = financeState.kategorien
+    val showSets  = financeState.zeigt("sets")
+    val showParts = financeState.zeigt("parts")
+    val showFigs  = financeState.zeigt("figs")
 
     PullToRefreshBox(isRefreshing = isLoading, onRefresh = onRefresh) {
         LazyColumn(
@@ -155,7 +155,11 @@ fun FinanceScreen(
 
             // Totals hero card
             financeSummaryCards(valuation, partsValuation, figsValuation, pnl, ::fmtPrice)
-            financeCategoryFilter(activeCategory)
+            financeCategoryFilter(
+                aktive = kategorien,
+                onUmschalten = { vm.finanzKategorieUmschalten(it) },
+                onAlle = { vm.finanzKategorienZuruecksetzen() },
+            )
             financeSetRows(valuation, showSets, serverUrl, imageLoader, ::fmtPrice, onSetClick)
             financePartRows(partsValuation, showParts, serverUrl, imageLoader, ::fmtPrice, onManualClick)
             financeFigRows(figsValuation, showFigs, serverUrl, imageLoader, ::fmtPrice, onManualClick)

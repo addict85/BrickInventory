@@ -4,7 +4,7 @@ import { resolveImageLocal } from '../images';
 import { asIds } from '../household';
 import { clampPageSize, conditionFromAcquisitions, conditionsFromAcquisitions, withOwners } from './shared';
 import { ausTabelle } from '../validate';
-import { anleitungenZuSet } from '../instructions';
+import { anleitungenZuSet, anleitungenZusammenlegen } from '../instructions';
 
 /**
  * Leseabfragen für Sets, samt der Ableitung des Zustands aus den Erfassungen.
@@ -233,7 +233,15 @@ async function getSets(userId: Blickfeld, query: any = {}) {
                 WHERE si.set_number = ANY($1)
                   AND EXISTS (SELECT 1 FROM sets s
                               WHERE s.set_number = si.set_number AND s.user_id = ANY($2))`,
-               [pageSetNumbers, userId]),
+               // uids, nicht userId: asIds() ist genau dafuer da, dass ein
+               // Aufrufer auch eine nackte Kennung schicken darf. Diese eine
+               // Stelle nahm den Rohwert und uebergab ihn an `= ANY($2)` —
+               // Postgres antwortete darauf mit „malformed array literal: 6",
+               // und die ganze Galerie fiel aus. Gemessen beim Schreiben von
+               // test/anleitungen-herkunft-db.test.js; im Betrieb blieb es
+               // verborgen, weil beide Routen scopeIds() vorschalten und damit
+               // ohnehin eine Liste schicken.
+               [pageSetNumbers, uids]),
         db.all('SELECT * FROM instructions WHERE user_id = ANY($1) AND set_number = ANY($2)',
                [uids, pageSetNumbers]),
       ])
@@ -269,10 +277,10 @@ async function getSets(userId: Blickfeld, query: any = {}) {
     // besitzt). withOwners() unten macht daraus eine leere Plakettenliste —
     // wie die frueher hier stehende Schleife.
     ...(uids.length > 1 ? { owner_ids: (s.owner_ids || []).map((n: any) => parseInt(n)) } : {}),
-    instructions: [
-      ...(sharedBySet.get(s.set_number) || []),
-      ...(userBySet.get(s.set_number) || []),
-    ],
+    instructions: anleitungenZusammenlegen(
+      sharedBySet.get(s.set_number) || [],
+      userBySet.get(s.set_number) || [],
+    ),
   }));
 
   // Namen zu den Besitzer-IDs steht in withOwners() (handlers/shared.ts) —
@@ -389,7 +397,7 @@ async function getSet(userId: Blickfeld, setNumber: string) {
   const agg = await getSetConditionAggregate(uids, setNumber, set.condition);
   return { ...set, ...agg,
     image_local: resolveImageLocal(set.image_local),
-    instructions: [...shared, ...uploaded] };
+    instructions: anleitungenZusammenlegen(shared, uploaded) };
 }
 
 /**

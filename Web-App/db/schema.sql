@@ -483,6 +483,17 @@ CREATE TABLE IF NOT EXISTS api_tokens (
   last_used  TIMESTAMPTZ DEFAULT NOW(),
   expires_at TIMESTAMPTZ,
   sliding    BOOLEAN NOT NULL DEFAULT FALSE,
+  -- Der FESTE Termin, den der Nutzer beim Erzeugen des QR-Codes gewaehlt hat.
+  -- expires_at daneben ist die GLEITENDE Frist („so lange ungenutzt");
+  -- gueltig ist der Token, bis der fruehere der beiden Termine erreicht ist.
+  -- NULL = keine feste Frist. Siehe db/migrations/0016-token-laufzeit.sql.
+  hard_expires_at TIMESTAMPTZ,
+  -- „Unbegrenzt" als ausdrueckliche Wahl: keine der beiden Fristen gilt.
+  -- Eigene Spalte und nicht bloss `expires_at IS NULL`, weil der Aufraeumjob
+  -- Zeilen ohne Datum absichtlich auf die Gleitfrist nachzieht — er wuerde die
+  -- Wahl sonst still rueckgaengig machen. Siehe
+  -- db/migrations/0017-token-unbegrenzt.sql.
+  never_expires BOOLEAN NOT NULL DEFAULT FALSE,
   label      TEXT,
   FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE
 );
