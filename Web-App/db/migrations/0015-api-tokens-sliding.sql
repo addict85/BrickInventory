@@ -1,0 +1,71 @@
+-- ── Die Spalte api_tokens.sliding nachziehen — diesmal an der richtigen Stelle
+--
+-- ── Was im Betrieb passiert ist ─────────────────────────────────────────────
+--
+-- Marcos Serverprotokoll:
+--
+--   [login] Token konnte nicht gespeichert werden:
+--           column "sliding" of relation "api_tokens" does not exist
+--   [auth:me] column t.sliding does not exist
+--   [route-error] 500: at async createToken (dist/utils/auth.js:267)
+--
+-- Damit war die ANMELDUNG kaputt: createToken() schreibt beim Login und beim
+-- QR-Login eine Zeile mit `sliding`, und die Spalte gab es nicht. Marco konnte
+-- sich mit dem QR-Code in der App nicht anmelden — das war kein Fehler des
+-- QR-Wegs, sondern dieser hier.
+--
+-- ── Warum die Spalte fehlte ─────────────────────────────────────────────────
+--
+-- Sie stand in db/database.ts, in frueherZurLaufzeitAngelegt(), als
+--
+--   ALTER TABLE api_tokens ADD COLUMN IF NOT EXISTS sliding …
+--     .catch(e => console.warn('[db] api_tokens.sliding:', e.message));
+--
+-- Das ist an ZWEI Stellen falsch, und beide stehen als Warnung schon im Baum:
+--
+--  1. initSchema() laeuft NUR bei einer Versionsaenderung. Steht in
+--     schema_meta bereits die Fassung dieses Deployments, wird der ganze Block
+--     uebersprungen. Genau deshalb sagt der Kommentar am Ende von initSchema()
+--     ueber die Bild-Tabellen: „Die Tabellen dazu legt db/migrations/0009 an —
+--     nicht hier: initSchema() laeuft nur bei einer Versionsaenderung, und ein
+--     stiller Fehlschlag haette den Bild-Job dauerhaft abgeschaltet."
+--
+--  2. Der `.catch(warn)` macht den Fehlschlag still. Faellt das ALTER einmal
+--     aus, wird die Version anschliessend TROTZDEM als angewandt vermerkt —
+--     und beim naechsten Start ist nichts mehr zu tun. Ein dauerhafter Zustand
+--     aus einer einmaligen Stoerung.
+--
+-- initSchemaOnce() sagt es unmissverstaendlich: nummerierte Migrationen
+-- „laufen IMMER, auch wenn initSchema() uebersprungen wurde … und sind die
+-- Stelle, an der ab jetzt jede Schemaaenderung landet". Genau das war die
+-- Regel, an die ich mich nicht gehalten habe.
+--
+-- Hier gilt sie: runMigrations() fuehrt jede Datei genau einmal aus, in einer
+-- Transaktion, mit eigener Buchfuehrung in schema_migrations — und wirft bei
+-- einem Fehlschlag, statt ihn zu schlucken. Ein halb migrierter Server startet
+-- gar nicht erst.
+--
+-- ── Auf einer frischen Installation ─────────────────────────────────────────
+-- Dort legt db/schema.sql die Spalte schon an; `IF NOT EXISTS` macht das hier
+-- zu einem stillen Nichts. Die Migration ist fuer die GEWACHSENEN Datenbanken.
+--
+-- Die BEFUELLUNG (welche Altzeile gleitet, mit welchem Datum) bleibt wie
+-- bisher in purgeExpiredTokens(): Dort liegt die Frist TOKEN_IDLE_DAYS, und
+-- die Regel gehoert an eine Stelle, nicht an zwei.
+ALTER TABLE api_tokens ADD COLUMN IF NOT EXISTS sliding BOOLEAN NOT NULL DEFAULT FALSE;
+
+-- ── Und die Indizes, die aus demselben Grund ausbleiben konnten ─────────────
+--
+-- Dieselbe Falle, nur ohne Absturz: Diese fuenf stehen ebenfalls in
+-- initSchema() und entstehen auf einer Datenbank, deren schema_meta schon die
+-- laufende Fassung traegt, nie. Der Server laeuft dann korrekt, aber langsam —
+-- und niemand sieht es, weil nichts scheitert.
+--
+-- Die drei letzten sind die aus dem Performance-Durchgang; ohne sie liest
+-- resolveBlPartNumber() je Teil die ganze parts-Tabelle (nachgemessen 10,1 ms
+-- statt 0,012 ms an 100'000 Zeilen).
+CREATE INDEX IF NOT EXISTS idx_api_tokens_expires ON api_tokens(expires_at) WHERE expires_at IS NOT NULL;
+CREATE INDEX IF NOT EXISTS idx_api_tokens_idle    ON api_tokens(last_used)  WHERE expires_at IS NULL;
+CREATE INDEX IF NOT EXISTS idx_parts_blnum        ON parts(part_number) WHERE bl_part_number IS NOT NULL AND bl_part_number <> '';
+CREATE INDEX IF NOT EXISTS idx_set_minifigs_fig   ON set_minifigs_catalog(fig_number);
+CREATE INDEX IF NOT EXISTS idx_sets_setnum        ON sets(set_number);

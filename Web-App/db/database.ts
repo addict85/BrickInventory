@@ -554,22 +554,27 @@ async function frueherZurLaufzeitAngelegt() {
     )`);
   await pool.query('CREATE INDEX IF NOT EXISTS idx_qr_login_expires ON qr_login_tokens(expires_at)');
 
-  // api_tokens.sliding auf gewachsenen Datenbanken nachziehen — siehe die
-  // Begruendung an der Tabelle in db/schema.sql. Die BEFUELLUNG der Spalte
-  // (welche Altzeile gleitet und mit welchem Datum) steht nicht hier, sondern
-  // in purgeExpiredTokens(): Dort liegt die Frist TOKEN_IDLE_DAYS, und die
-  // Regel soll an einer Stelle stehen statt an zweien.
-  await pool.query('ALTER TABLE api_tokens ADD COLUMN IF NOT EXISTS sliding BOOLEAN NOT NULL DEFAULT FALSE')
-    .catch(e => console.warn('[db] api_tokens.sliding:', e.message));
-
-  // api_tokens: Ablaufdatum indizieren — purgeExpiredTokens() räumt darüber auf.
-  await pool.query('CREATE INDEX IF NOT EXISTS idx_api_tokens_expires ON api_tokens(expires_at) WHERE expires_at IS NOT NULL')
-    .catch(e => console.warn('[db] idx_api_tokens_expires:', e.message));
-  // Gegenstück für die zweite Aufräumregel: Tokens OHNE Ablaufdatum (App und
-  // QR-Login), die seit TOKEN_IDLE_DAYS ungenutzt sind. Die Tabelle ist klein,
-  // aber die beiden Regeln sollen dieselbe Unterstützung haben.
-  await pool.query('CREATE INDEX IF NOT EXISTS idx_api_tokens_idle ON api_tokens(last_used) WHERE expires_at IS NULL')
-    .catch(e => console.warn('[db] idx_api_tokens_idle:', e.message));
+  // ── api_tokens.sliding und die beiden Indizes stehen in einer MIGRATION ───
+  //
+  // Hier stand ein `ALTER TABLE api_tokens ADD COLUMN IF NOT EXISTS sliding`
+  // mit einem `.catch(warn)` daneben. Im Betrieb hat das die ANMELDUNG
+  // zerlegt: createToken() schreibt die Spalte beim Login und beim QR-Login,
+  // und auf Marcos Server gab es sie nicht.
+  //
+  // Zwei Gruende, beide stehen als Warnung schon in dieser Datei:
+  //   1. initSchema() laeuft NUR bei einer Versionsaenderung — steht in
+  //      schema_meta bereits die Fassung dieses Deployments, wird der ganze
+  //      Block uebersprungen.
+  //   2. Der `.catch(warn)` machte einen einmaligen Fehlschlag dauerhaft: Die
+  //      Version wird anschliessend trotzdem als angewandt vermerkt.
+  //
+  // Genau davor warnt der Absatz am Ende dieser Funktion ueber die
+  // Bild-Tabellen, und initSchemaOnce() sagt es ausdruecklich: nummerierte
+  // Migrationen „laufen IMMER … und sind die Stelle, an der ab jetzt jede
+  // Schemaaenderung landet". Sie stehen deshalb in
+  // db/migrations/0015-api-tokens-sliding.sql — dort laufen sie in einer
+  // Transaktion, mit eigener Buchfuehrung, und ein Fehlschlag bricht den Start
+  // ab, statt still zu bleiben.
 
   // Einmalige Bereinigung: Klartext-Tokens aus der Zeit vor dem Hashing.
   //
@@ -819,9 +824,12 @@ async function indizesUndZusammenfassung() {
   //     Konten besitzen dieses Set?"). Derselbe Grund: idx_sets_user_setnum
   //     beginnt mit user_id, das die Abfrage nicht nennt — sie liest sonst die
   //     Sets aller Konten.
-  await pool.query(`CREATE INDEX IF NOT EXISTS idx_parts_blnum ON parts(part_number) WHERE bl_part_number IS NOT NULL AND bl_part_number <> ''`).catch(e => console.error('[db] idx_parts_blnum:', e.message));
-  await pool.query(`CREATE INDEX IF NOT EXISTS idx_set_minifigs_fig ON set_minifigs_catalog(fig_number)`).catch(e => console.error('[db] idx_set_minifigs_fig:', e.message));
-  await pool.query(`CREATE INDEX IF NOT EXISTS idx_sets_setnum ON sets(set_number)`).catch(e => console.error('[db] idx_sets_setnum:', e.message));
+  // Angelegt werden sie in db/migrations/0015-api-tokens-sliding.sql, aus
+  // demselben Grund wie die Spalte dort: Auf einer Datenbank, deren
+  // schema_meta schon die laufende Fassung traegt, laeuft initSchema() gar
+  // nicht — die Indizes waeren nie entstanden, und niemand haette es gemerkt,
+  // weil nichts scheitert. Nur die Messung oben bleibt hier stehen; sie
+  // begruendet, WARUM es sie gibt.
   // Kategorie-Filter/-Aggregation: beschleunigt GROUP BY category_name im
   // /categories-Endpoint und den Kategorie-Filter der Teileliste (beide je User).
   // rb_part_categories selbst braucht keinen Extra-Index: die Auflösung läuft über

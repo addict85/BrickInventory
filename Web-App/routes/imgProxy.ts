@@ -386,7 +386,21 @@ export async function bildDurchreichen(req: Request, res: Response) {
       }
       if (r.statusCode === 404) imgProxyFailures.notFound++; else imgProxyFailures.other++;
       imgProxyFailures.lastError = `HTTP ${r.statusCode} — ${url}`;
-      console.error(`[img-proxy] CDN antwortete ${r.statusCode} (auch ohne Referer): ${url}`);
+      // ── 404 ist kein Fehler, sondern eine Auskunft ─────────────────────
+      //
+      // Marcos Befund aus dem Betriebsprotokoll: elf rote Zeilen
+      // hintereinander, alle „CDN antwortete 404" zu alten Katalogsets
+      // (9180-1, 9190-1, 9883-1 …). Zu diesen Sets hat Rebrickable schlicht
+      // kein Bild. Das ist der NORMALFALL fuer alte Jahrgaenge, kein Vorfall:
+      // Der Aufruf ging durch, die Antwort war eindeutig, und merkeFehlend()
+      // oben sorgt dafuer, dass dasselbe Bild nicht wieder geholt wird.
+      //
+      // Als `error` gemeldet, verstopft es das Protokoll genau dort, wo man
+      // nach echten Stoerungen sucht — und gewoehnt einen daran, rote Zeilen
+      // zu ueberblaettern. Alles ANDERE (403, 5xx, Zeitueberschreitung) bleibt
+      // ein Fehler: Dort ist der Abruf wirklich schiefgegangen.
+      const meldung = `[img-proxy] CDN antwortete ${r.statusCode} (auch ohne Referer): ${url}`;
+      if (r.statusCode === 404) console.info(meldung); else console.error(meldung);
       // ?? 502: r.statusCode ist auf Nodes IncomingMessage `number | undefined`
       // — dieselbe Schnittstelle dient auch eingehenden Anfragen, wo es fehlt.
       // Bei einer Client-Antwort ist es in der Praxis immer gesetzt; faellt es
