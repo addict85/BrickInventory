@@ -115,21 +115,15 @@ class ScreenViewModelWiringTest {
         // sehe. Diese Prüfung hält jeden Zugriff gegen die Datenklassen in
         // UiState.kt — genau die Fehlerart, die der Umbau hätte einschleppen
         // können.
-        val uiState = read("ui/UiState.kt")
+        // Die Erfassung stand hier ausformuliert und las NUR den Konstruktor.
+        // Eine abgeleitete Eigenschaft oder eine Methode der Zustandsklasse —
+        // beides gewoehnliches Kotlin — meldete sie als „gibt es nicht".
+        // UiStateFieldsTest hatte dieselbe Frage schon einmal beantwortet, und
+        // zwar anders. Jetzt beide aus Quellen.mitgliederJeUiState().
+        val mitglieder = Quellen.mitgliederJeUiState()
 
-        fun felder(klasse: String): Set<String> {
-            val i = uiState.indexOf("data class $klasse(")
-            assert(i >= 0) { "$klasse nicht in UiState.kt" }
-            var tiefe = 0
-            var j = i
-            while (j < uiState.length) {
-                if (uiState[j] == '(') tiefe++
-                else if (uiState[j] == ')') { tiefe--; if (tiefe == 0) break }
-                j++
-            }
-            return Regex("val (\\w+)\\s*:").findAll(uiState.substring(i, j))
-                .map { it.groupValues[1] }.toSet()
-        }
+        fun felder(klasse: String): Set<String> =
+            mitglieder[klasse] ?: error("$klasse nicht in UiState.kt")
 
         // Die Zuordnung Name -> Zustandstyp wird JE DATEI abgeleitet, nicht
         // hier aufgezählt: In CatalogScreen heisst der Katalogzustand schlicht
