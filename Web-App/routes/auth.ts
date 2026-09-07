@@ -5,7 +5,7 @@ import bcrypt from 'bcryptjs';
 import * as db from '../db/database';
 import { meldeHaushaltsaenderung } from '../utils/household';
 import { handleRouteError, logAndContinue, meldeUndWeiter, fehlerCode, fehlertext, pfadParam } from '../utils/httpError';
-import { hashToken, pruefeAnmeldedaten, createToken, validateToken, assertLoginAllowed, establishSession, revokeAllTokens, revokeAllSessions, deleteToken, BCRYPT_ROUNDS, USERNAME_RE, EMAIL_RE, requireLoginOrToken, nutzerId, angemeldeteNutzerId, appTokenOhneAblauf, passwortZuKurz, flaggeGesetzt, leereTokenCache } from '../utils/auth';
+import { hashToken, pruefeAnmeldedaten, createToken, validateToken, assertLoginAllowed, establishSession, revokeAllTokens, revokeAllSessions, deleteToken, BCRYPT_ROUNDS, USERNAME_RE, EMAIL_RE, requireLoginOrToken, nutzerId, angemeldeteNutzerId, appTokenOhneAblauf, passwortZuKurz, flaggeGesetzt, leereTokenCache, laufzeitTage } from '../utils/auth';
 import { ipThrottle } from '../utils/loginLimiter';
 import crypto from 'crypto';
 import { strictBool } from '../utils/validate';
@@ -620,12 +620,36 @@ router.post('/qr-token', requireLogin, async (req, res) => {
     // Abgelaufene/verbrauchte Nonces mitentsorgen — die Tabelle bleibt so klein.
     await db.run(`DELETE FROM qr_login_tokens WHERE expires_at < NOW() - INTERVAL '1 hour'`)
       .catch(logAndContinue('qr-token:aufräumen'));
+    // ── Wie lange soll der ZUGANG gelten, den dieser Code eroeffnet? ──────
+    //
+    // Marcos Wunsch, pro QR-Code waehlbar. Die Wahl wird HIER getroffen — von
+    // der angemeldeten Sitzung — und wandert mit der Nonce in die Tabelle.
+    // Nicht in POST /qr-login: Der ist unangemeldet erreichbar, und wer einen
+    // Code abfotografiert, duerfte sich sonst selbst die laengste Laufzeit
+    // aussuchen. Die ganze Ueberlegung steht in
+    // db/migrations/0016-token-laufzeit.sql.
+    //
+    // Ein unbekannter Wert wird nicht abgewiesen, sondern zu „keine feste
+    // Frist" — dann gilt wie bisher allein die Gleitfrist. Ein aelterer
+    // Client, der das Feld gar nicht kennt, verhaelt sich damit unveraendert.
+    const tage = laufzeitTage(req.body?.gueltigkeit);
     const nonce = crypto.randomBytes(32).toString('base64url');
     await db.run(
-      'INSERT INTO qr_login_tokens (token, user_id, expires_at) VALUES ($1,$2,$3)',
-      [hashToken(nonce), nutzerId(req), new Date(Date.now() + QR_TTL_MS)]
+      'INSERT INTO qr_login_tokens (token, user_id, expires_at, token_days) VALUES ($1,$2,$3,$4)',
+      [hashToken(nonce), nutzerId(req), new Date(Date.now() + QR_TTL_MS), tage]
     );
-    res.json({ success: true, token: `bim:${nonce}`, expires_in: QR_TTL_MS / 1000 });
+    // `token_days`: was tatsaechlich gespeichert wurde, nicht was gewuenscht
+    // war. Ein unbekannter Wert wird zu null, und die Oberflaeche soll die
+    // Frist nennen koennen, die wirklich gilt.
+    //
+    // Die LISTE der Auswahlmoeglichkeiten steht hier bewusst NICHT mit in der
+    // Antwort: Sie wird gebraucht, BEVOR dieser Aufruf geschieht — das
+    // Auswahlfeld steht ja neben dem Knopf. Ein zweiter Abruf beim Laden der
+    // Seite nur dafuer waere Aufwand fuer nichts. Dass die vier Werte im
+    // Markup zu TOKEN_LAUFZEITEN passen, haelt test/token-laufzeit-db.test.js
+    // fest.
+    res.json({ success: true, token: `bim:${nonce}`, expires_in: QR_TTL_MS / 1000,
+      token_days: tage });
   } catch (e) { handleRouteError(res, e, undefined, req); }
 });
 
@@ -645,7 +669,7 @@ router.post('/qr-login', ipThrottle('qr-login', 30, 60 * 60 * 1000), async (req,
     const claimed = await db.get(
       `UPDATE qr_login_tokens SET used_at = NOW()
        WHERE token = $1 AND used_at IS NULL AND expires_at > NOW()
-       RETURNING user_id`,
+       RETURNING user_id, token_days`,
       [hashToken(token.slice(4))]
     );
     if (!claimed) return sendeFehler(req, res, 401, 'token_ungueltig');
@@ -662,7 +686,11 @@ router.post('/qr-login', ipThrottle('qr-login', 30, 60 * 60 * 1000), async (req,
     });
     // Bearer-Token für die Android-App — dauerhaft, wie bei der Anmeldung
     // per Passwort aus der App. Dasselbe INSERT stand hier von Hand.
-    const bearerToken = await createToken(user.id, 'qr-login', true);
+    // Die Laufzeit kommt aus der ZEILE, nicht aus der Anfrage — siehe
+    // /qr-token oben. `token_days` ist NULL, wenn nichts gewaehlt wurde oder
+    // die Nonce von einem aelteren Stand stammt; dann bleibt es bei der
+    // Gleitfrist.
+    const bearerToken = await createToken(user.id, 'qr-login', true, claimed.token_days ?? null);
     res.json({ success: true, token: bearerToken, username: user.username, isAdmin: flaggeGesetzt(user.is_admin), userId: user.id,
       user: { id: user.id, username: user.username } });
   } catch (e) { handleRouteError(res, e, undefined, req); }

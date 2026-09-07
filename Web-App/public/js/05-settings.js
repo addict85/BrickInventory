@@ -139,7 +139,13 @@ async function generateQrCode() {
     // POST, nicht GET (Nachtrag 154): Der Aufruf LEGT eine Nonce AN. Als GET war
     // er über eine Navigation von einer fremden Seite auslösbar, weil
     // SameSite=lax das Cookie dort mitschickt.
-    const d = await api('POST', '/v1/auth/qr-token');
+    // Die gewaehlte Laufzeit des SPAETEREN Geraete-Tokens reist mit der
+    // Erzeugung, nicht mit dem Einloesen: POST /v1/auth/qr-login ist
+    // unangemeldet erreichbar, und wer einen Code abfotografiert, duerfte sich
+    // sonst selbst die laengste Frist aussuchen (Begruendung ausfuehrlich in
+    // db/migrations/0016-token-laufzeit.sql).
+    const gueltigkeit = G('qr-validity')?.value || '';
+    const d = await api('POST', '/v1/auth/qr-token', { gueltigkeit });
     if (!d.success) { hint.textContent = tRaw('toast.error')+': ' + (d.error||t('common.unknown')); frei(); return; }
     // Get current server URL
     // Use the URL from the input field, fallback to window.location.origin
@@ -176,6 +182,14 @@ async function generateQrCode() {
       if (secs <= 0) { clearInterval(timer); hint.textContent = tRaw('qr.expired'); container.innerHTML=''; }
     }, 1000);
     hint.textContent = tRaw('qr.valid_for',{t:fmt(secs)});
+    // Wie lange der ZUGANG danach gilt — die Antwort des Servers, nicht die
+    // Auswahl daneben: Kennt er den Wert nicht, hat er nichts vermerkt, und
+    // dann gilt die Gleitfrist. Eigene Zeile, weil die darueber im
+    // Sekundentakt neu geschrieben wird (der Zaehler des Codes).
+    const zugang = G('qr-access-hint');
+    if (zugang) zugang.textContent = d.token_days
+      ? tRaw('qr.access_days', { n: d.token_days })
+      : tRaw('qr.access_default');
     // Nach dem ersten Erzeugen heisst der Knopf „Neu generieren" — die eine
     // Stelle, an der die Beschriftung sich absichtlich ändert.
     frei(tRaw('qr.regenerate'));
@@ -225,7 +239,11 @@ export async function loadTokens() {
       <td><strong>${esc(tk.label || '—')}</strong>${tk.aktuell ? ` <span class="rb ra">${t('tokens.current')}</span>` : ''}</td>
       <td>${tokenDatum(tk.created_at)}</td>
       <td>${tokenDatum(tk.last_used)}</td>
-      <td>${tk.never_expires ? t('tokens.never') : tokenDatum(tk.expires_at)}</td>
+      <td>${tk.never_expires ? t('tokens.never') : tokenDatum(tk.expires_at)}${
+        // Plakette „fest": Ohne sie stuenden beide Fristen als dasselbe Datum
+        // da, und sie bedeuten Verschiedenes. Die gleitende rueckt bei jeder
+        // Benutzung nach; die feste, die beim QR-Code gewaehlt wurde, nicht.
+        tk.hard_expires_at ? ` <span class="rb ra" title="${esc(tokenDatum(tk.hard_expires_at))}">${t('tokens.fixed')}</span>` : ''}</td>
       <td>${tk.aktuell ? '' :
         `<button class="btn bd btn-sm" data-click="revokeToken" data-arg="${esc(tk.token_id)}" data-arg2="${esc(tk.label || '')}">🗑️</button>`}</td>
     </tr>`).join('')

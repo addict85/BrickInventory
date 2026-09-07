@@ -65,8 +65,24 @@ router.get('/tokens', requireLoginOrToken, async (req: LoggedInRequest, res) => 
     const uid = nutzerId(req);
     const eigener = bearerToken(req);
     const eigenerHash = eigener ? hashToken(eigener) : null;
+    // LEAST ueber beide Fristen: `expires_at` ist die gleitende („so lange
+    // ungenutzt"), `hard_expires_at` die feste, die beim QR-Code gewaehlt
+    // wurde. Was den Nutzer interessiert, ist der FRUEHERE der beiden — der
+    // Tag, an dem dieses Geraet ausgesperrt wird.
+    //
+    // LEAST ist dafuer der richtige Griff und nicht bloss der kuerzere: Es
+    // uebergeht NULL-Werte, statt selbst NULL zu werden (anders als eine
+    // Addition oder ein CASE, den man von Hand schreiben muesste). Ohne feste
+    // Frist kommt also weiterhin genau `expires_at` heraus.
+    //
+    // `hard_expires_at` steht zusaetzlich in der Antwort, damit die
+    // Oberflaeche „laeuft am … endgueltig ab" von „laeuft ab, wenn 90 Tage
+    // lang ungenutzt" unterscheiden kann. Beides ist derselbe Balken, aber
+    // nicht dieselbe Aussage.
     const tokens = await db.all(
-      'SELECT token, label, created_at, last_used, expires_at FROM api_tokens WHERE user_id = $1 ORDER BY created_at DESC',
+      `SELECT token, label, created_at, last_used, hard_expires_at,
+              LEAST(expires_at, hard_expires_at) AS expires_at
+         FROM api_tokens WHERE user_id = $1 ORDER BY created_at DESC`,
       [uid]);
     res.json({ success: true, tokens: tokens.map((t: any) => ({
       token_prefix: t.token.substring(0, 8),
@@ -75,6 +91,7 @@ router.get('/tokens', requireLoginOrToken, async (req: LoggedInRequest, res) => 
       created_at:   t.created_at,
       last_used:    t.last_used,
       expires_at:   t.expires_at,
+      hard_expires_at: t.hard_expires_at,
       never_expires: !t.expires_at,
       aktuell:      t.token === eigenerHash,
     }))});

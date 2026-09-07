@@ -864,9 +864,26 @@
         <div id="qr-container" style="display:flex;flex-direction:column;align-items:flex-start;gap:.75rem">
           <!-- Hidden URL field — auto-filled from window.location -->
           <input type="hidden" id="qr-server-url" />
+          <!-- Wie lange soll der Zugang gelten, den DIESER Code eroeffnet?
+               Die Wahl trifft die angemeldete Sitzung hier; sie wandert mit der
+               Nonce zum Server. Siehe db/migrations/0016-token-laufzeit.sql. -->
+          <div style="display:flex;align-items:center;gap:.5rem;font-size:.82rem">
+            <label for="qr-validity" data-i18n="qr.validity_label">Zugang gültig für</label>
+            <select id="qr-validity" style="font-size:.82rem;padding:4px 8px">
+              <option value="" data-i18n="qr.validity_default">Standard (90 Tage ungenutzt)</option>
+              <option value="1m" data-i18n="qr.validity_1m">1 Monat</option>
+              <option value="2m" data-i18n="qr.validity_2m">2 Monate</option>
+              <option value="6m" data-i18n="qr.validity_6m">6 Monate</option>
+              <option value="12m" data-i18n="qr.validity_12m">12 Monate</option>
+            </select>
+          </div>
           <button class="btn bp" id="btn-gen-qr" data-i18n="settings.qr.generate">🔄 QR-Code generieren</button>
           <div id="qr-code" style="background:#fff;padding:12px;border-radius:8px;border:1px solid var(--bdr);display:inline-block"></div>
           <div id="qr-hint" style="font-size:.75rem;color:var(--mut)"></div>
+          <!-- Was der Server tatsaechlich vermerkt hat — nicht, was oben
+               gewaehlt wurde. Kennt er die Wahl nicht, gilt die Gleitfrist,
+               und dann soll hier das stehen und nicht die Wunschangabe. -->
+          <div id="qr-access-hint" style="font-size:.75rem;color:var(--mut)"></div>
         </div>
       </div>
 

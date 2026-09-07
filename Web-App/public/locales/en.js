@@ -228,6 +228,7 @@ window.I18N_EN = {
   'tokens.col.last_used': 'Last used',
   'tokens.col.expires': 'Expires',
   'tokens.current': 'this device',
+  'tokens.fixed': 'fixed',
   'tokens.never': 'never',
   'tokens.revoke.title': 'Sign out device?',
   'tokens.revoke.text': '“{name}” loses access. Whoever uses that device has to sign in again.',
@@ -607,6 +608,14 @@ window.I18N_EN = {
 
 
   'settings.importing': 'Importing…',
+  'qr.access_days': 'The access is then valid for {n} days.',
+  'qr.access_default': 'The access stays valid while the device is used (90 days unused).',
+  'qr.validity_label': 'Access valid for',
+  'qr.validity_default': 'Default (90 days unused)',
+  'qr.validity_1m': '1 month',
+  'qr.validity_2m': '2 months',
+  'qr.validity_6m': '6 months',
+  'qr.validity_12m': '12 months',
   'qr.expired': '⚠️ QR code expired — please generate a new one',
   'pdf.lib_missing': 'PDF.js not loaded',
   'log.title': '🗒️ App log',
