@@ -64,7 +64,7 @@ router.delete('/minifigs/:figNumber', requireToken, async (req: AuthedRequest, r
 // Manuell erfasste Minifiguren — gleicher Handler wie /api/minifigs/manual.
 router.get('/minifigs/manual', requireToken, async (req: AuthedRequest, res) => {
   try {
-    res.json({ success: true, figs: await getManualMinifigs(await scopeIds(req.apiUser.user_id, parseScopeMode(req.query.accounts))) });
+    res.json({ success: true, figs: await getManualMinifigs(await scopeIds(req.apiUser.user_id, parseScopeMode(req.query.accounts)), req.apiUser.user_id) });
   } catch (e) { handleRouteError(res, e, undefined, req); }
 });
 

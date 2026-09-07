@@ -67,13 +67,46 @@ internal fun MainViewModel.loginWithQrToken(serverUrl: String, token: String) {
                     _state.update { it.copy(loginLaeuft = false, isLoggedIn = true, isAdmin = r.data.user?.isAdmin == true) }
                     loadDashboard()
                 } else {
-                    _state.update { it.copy(loginLaeuft = false, loginError = r.data.error ?: text(R.string.err_qr_login_failed)) }
+                    _state.update { it.copy(loginLaeuft = false, loginError = qrFehler(it.isLoggedIn, r.data.error ?: text(R.string.err_qr_login_failed))) }
                 }
             }
-            is Result.Error -> _state.update { it.copy(loginLaeuft = false, loginError = meldung(r)) }
+            is Result.Error -> _state.update { it.copy(loginLaeuft = false, loginError = qrFehler(it.isLoggedIn, meldung(r))) }
         }
     }
 }
+
+/**
+ * Ein gescheiterter QR-Anlauf, waehrend die App schon angemeldet ist, ist
+ * KEIN Fehler.
+ *
+ * ── Marcos Befund ───────────────────────────────────────────────────────────
+ * „Wenn ich mich mit dem QR-Code in der App einloggen will, erscheint
+ * ‚Ungültiges oder abgelaufenes Token'. Ich werde aber trotzdem eingeloggt."
+ *
+ * Beides zugleich kann nur heissen: Der Aufruf ging ZWEIMAL raus. Der QR-Token
+ * ist einmalig und fuenf Minuten gueltig — der Server loest ihn mit
+ * `UPDATE … SET used_at = NOW() WHERE used_at IS NULL AND expires_at > NOW()`
+ * ein (routes/auth.ts). Der erste Anlauf hat ihn verbraucht und die Anmeldung
+ * hergestellt; der zweite fand ihn benutzt und meldete den Fehler.
+ *
+ * Der Scanner hat gegen das doppelte Ausloesen eine Sperre (`frozen` in
+ * SetupScreen.kt) — sie greift offenbar nicht in jedem Fall. Diese Funktion
+ * behebt nicht die Ursache, sondern die FOLGE, und das ist hier das Richtige:
+ * Ob der Anlauf doppelt kam, ist eine Frage der Kamera und des Zeitpunkts;
+ * dass eine bereits gelungene Anmeldung nicht als Fehler gemeldet werden darf,
+ * ist eine Regel. Regeln gehoeren an die Stelle, die sie durchsetzen kann.
+ *
+ * @return die Meldung, oder null wenn die App bereits angemeldet ist
+ *
+ * `internal` und mit einem BOOLEAN statt dem ganzen Zustand — aus demselben
+ * Grund, aus dem fehlerTextId() in FehlerTexte.kt eine eigene reine Funktion
+ * ist (Nachtrag 117): So braucht die Regel keinen UI-Zustand und keine
+ * Android-Laufzeit und ist damit wirklich pruefbar. Was schwer pruefbar ist,
+ * ist meistens nicht zu kompliziert, sondern nur mit etwas verwoben, das es
+ * nicht braucht.
+ */
+internal fun qrFehler(bereitsAngemeldet: Boolean, meldung: String): String? =
+    if (bereitsAngemeldet) null else meldung
 
 /**
  * @OptIn für ImageLoader.diskCache: Coil markiert den Plattencache-Zugriff als

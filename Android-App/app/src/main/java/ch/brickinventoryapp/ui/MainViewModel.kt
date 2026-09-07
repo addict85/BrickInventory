@@ -383,8 +383,12 @@ class MainViewModel @Inject constructor(
         // Welcher Text zu welcher Ursache gehört, steht in FehlerTexte.kt —
         // als reine Funktion ohne Context, damit sie prüfbar ist (Nachtrag 117).
         val id = fehlerTextId(fehler.art)
-        return if (fehlerTextBrauchtCode(fehler.art)) text(id, fehler.httpCode ?: 0)
+        val satz = if (fehlerTextBrauchtCode(fehler.art)) text(id, fehler.httpCode ?: 0)
         else text(id)
+        // Bei „Etwas ist schiefgelaufen" die technische Ursache dazu — siehe
+        // mitTechnischerUrsache() in FehlerTexte.kt. Ohne sie war das Feld
+        // `technisch` totes Gewicht, und jede Ausnahme sah gleich aus.
+        return mitTechnischerUrsache(satz, fehler.art, fehler.technisch)
     }
 
 

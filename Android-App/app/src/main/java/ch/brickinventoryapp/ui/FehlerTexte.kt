@@ -41,3 +41,35 @@ internal fun fehlerTextId(art: Fehlerart?): Int = when (art) {
  * nicht, sondern liefert stillschweigend denselben Text.
  */
 internal fun fehlerTextBrauchtCode(art: Fehlerart?): Boolean = art == Fehlerart.SERVER
+
+/**
+ * Die technische Ursache anhaengen — aber nur, wo der Satz allein nichts sagt.
+ *
+ * ── Woher das kommt ─────────────────────────────────────────────────────────
+ *
+ * Marcos Befund: „In der Android-App werden die Teile nicht angezeigt", dazu
+ * die Meldung „Etwas ist schiefgelaufen". Das ist [Fehlerart.UNBEKANNT], der
+ * Auffangzweig in RepoBasis fuer JEDE geworfene Ausnahme. Ihre Meldung wird
+ * dort in `Result.Error(technisch = e.message)` gelegt — und NACHGEMESSEN von
+ * niemandem gelesen: `grep -rn "\.technisch"` ueber den Hauptbaum ergab null
+ * Treffer. Der Kommentar daneben sagt, sie stehe „jetzt im Log-Feld statt im
+ * Satz"; das Feld gibt es, den Leser nicht.
+ *
+ * Die Folge war eine Fehlersuche ueber mehrere Runden, in der die App wusste,
+ * was schiefging, und es niemandem sagte.
+ *
+ * ── Warum NUR bei UNBEKANNT ─────────────────────────────────────────────────
+ *
+ * Nachtrag 116 hat englischen Bibliothekstext bewusst aus den Meldungen
+ * verbannt: „Socket closed" ist als Satz an einen Menschen nicht sinnvoll. Das
+ * gilt weiter — fuer alle Ursachen, die einen eigenen, verstaendlichen Satz
+ * haben (kein Netz, Zeitueberschreitung, Sitzung abgelaufen, Serverfehler mit
+ * Code).
+ *
+ * „Etwas ist schiefgelaufen" ist kein solcher Satz. Er benennt nichts, und
+ * ohne den technischen Zusatz bleibt dem Nutzer wie dem Entwickler nur Raten.
+ * Hier ist der Bibliothekstext das Einzige, was ueberhaupt etwas aussagt.
+ */
+internal fun mitTechnischerUrsache(satz: String, art: Fehlerart?, technisch: String?): String =
+    if ((art == Fehlerart.UNBEKANNT || art == null) && !technisch.isNullOrBlank()) "$satz ($technisch)"
+    else satz

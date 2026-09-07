@@ -320,8 +320,32 @@ async function tryPartsSummary(userId: Blickfeld, o: any) {
             ORDER BY ${orderSql}${limit}`, params),
   ]);
 
+  // ── is_spare als echter Wahrheitswert — wie im Live-Zweig ────────────────
+  //
+  // Marcos Befund, mit der genauen Meldung aus der App:
+  //
+  //     Expected valid boolean literal prefix, but had '0'
+  //     at path: $.parts[0].is_spare     →   "is_spare":0
+  //
+  // Die Teileliste der Android-App blieb LEER. Ein einziger solcher Wert
+  // laesst die ganze Seite scheitern; das Kotlin-Modell fuehrt is_spare als
+  // Boolean, und `coerceInputValues` faengt nur null, keinen Typwechsel.
+  //
+  // Der Live-Zweig macht es seit jeher richtig (`istErsatzteil(p.is_spare)`,
+  // getParts weiter unten) — parts_summary fuehrt die Spalte aber als INTEGER,
+  // und hier ging sie ROH hinaus. Welcher Zweig antwortet, haengt allein davon
+  // ab, ob die Zusammenfassung frisch ist: Ein neues Konto bekam den
+  // Live-Zweig und korrektes JSON, ein gewachsenes den Zusammenfassungs-Zweig
+  // und eine Zahl. Genau deshalb war der Fehler auf keiner Testinstallation zu
+  // sehen und trat beim ersten Neuaufbau der Zusammenfassung ploetzlich auf.
+  //
+  // Die Regel steht schon zwei Funktionen weiter unten, angewandt auf ein
+  // anderes Feld: „Der JSON-Typ von total_quantity darf nicht vom Zweig
+  // abhaengen." Genau das gilt fuer JEDES Feld — hier war es fuer eines
+  // vergessen worden.
   return {
     parts: rows.map(r => ({ ...r, total_quantity: parseInt(r.total_quantity) || 0,
+                            is_spare: istErsatzteil(r.is_spare),
                             image_local: resolveImageLocal(r.image_local) })),
     total: parseInt(countRow?.c || 0),
     source: 'summary',
@@ -560,7 +584,11 @@ async function getBlColorMap() {
   return { map, source: 'api' };
 }
 
-async function getManualParts(userId: Blickfeld, { page = 1, page_size = null }: any = {}) {
+/**
+ * @param viewerId Wessen EINSTELLUNGEN gelten (Waehrung fuer den Marktpreis) —
+ *   getrennt von `userId`, das sagt, wessen DATEN gelesen werden.
+ */
+async function getManualParts(userId: Blickfeld, viewerId: number, { page = 1, page_size = null }: any = {}) {
   // Blickfeld statt einer einzelnen ID: Ein Hauptkonto sieht (und ändert)
   // auch die Daten seiner Unterkonten, alle anderen nur ihre eigenen. Die
   // Liste kommt von scopeIds() in utils/household.ts — hier wird sie nur
@@ -592,7 +620,19 @@ async function getManualParts(userId: Blickfeld, { page = 1, page_size = null }:
            created_at
     FROM parts WHERE user_id = ANY($1) AND source = 'manual'
     ORDER BY part_name ASC, part_number ASC${limit}`, params)
-    .then(async (rows) => withOwners(uids, await applyManualCondition(uids, rows, 'part')));
+    .then(async (rows) => {
+      const mitZustand = await applyManualCondition(uids, rows, 'part');
+      // Der Marktpreis gehoert dazu — dieselbe Luecke wie bei den manuellen
+      // Figuren, dieselbe Begruendung: Der Detailbildschirm der App liest ihn
+      // aus `avg_price`, diese Liste fuehrt nur Bestandsspalten. Nur aus dem
+      // Cache, EINE Abfrage fuer die ganze Liste (utils/marketPrice.ts).
+      const { marktpreiseAusCacheFuerTeile } = require('../marketPrice');
+      const preise: Map<string, number> = await marktpreiseAusCacheFuerTeile(mitZustand, viewerId)
+        .catch(() => new Map<string, number>());
+      const mitPreis = mitZustand.map((t: any) =>
+        ({ ...t, avg_price: preise.get(`${t.part_number}|${t.color_id ?? 0}`) ?? null }));
+      return withOwners(uids, mitPreis);
+    });
 }
 
 export { getPartsColors, tryPartsSummary, getParts, getPartsStats, getBlColorMap, getManualParts };
