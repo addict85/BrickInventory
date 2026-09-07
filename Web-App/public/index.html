@@ -574,6 +574,17 @@
         <div class="fstat"><div class="flbl" data-i18n="finance.stat.max">Maximalwert</div><div><span class="fval" id="fmax">—</span><span class="fcur" id="fc4">EUR</span></div></div>
         <div class="fstat" id="fin-stat-pnl" style="display:none"><div class="flbl" data-i18n="finance.stat.pnl">Gesamt G&amp;V</div><div><span class="fval" id="fin-total-pnl">—</span></div></div>
       </div>
+      <!-- Kategoriefilter — dieselben vier Chips wie im Finanzen-Reiter der
+           Android-App (FinanceSections.financeCategoryFilter). Additiv, und
+           „Alle" ist kein vierter Zustand, sondern die LEERE Auswahl: Der Chip
+           ist genau dann gewaehlt, wenn nichts eingeschraenkt ist. Die Regel
+           steht ausformuliert in FinanceUiState.kategorien. -->
+      <div id="fin-filter" style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:.75rem">
+        <button class="period-btn active" data-art=""      data-click="finFilter" data-arg="alle"  data-i18n="finance.filter.all">Alle</button>
+        <button class="period-btn"        data-art="sets"  data-click="finFilter" data-arg="sets"  data-i18n="finance.filter.sets">Sets</button>
+        <button class="period-btn"        data-art="parts" data-click="finFilter" data-arg="parts" data-i18n="finance.filter.parts">Teile</button>
+        <button class="period-btn"        data-art="figs"  data-click="finFilter" data-arg="figs"  data-i18n="finance.filter.minifigs">Minifiguren</button>
+      </div>
       <div id="fin-tbl"><div class="empty"><div class="icon">💰</div><h3 data-i18n="finance.not_loaded">Preise noch nicht geladen</h3><p>Klicke auf «Preise laden»</p></div></div>
     </div>
 
