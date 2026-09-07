@@ -500,7 +500,47 @@ data class FinanceUiState(
     val historyPoints: List<ChartPoint> = emptyList(),
     val historyYAxis: List<ChartYAxis> = emptyList(),
     val historyPeriod: String = "week",
-)
+    /**
+     * Welche Zeilenarten der Reiter zeigt: "sets", "parts", "figs".
+     *
+     * ── Warum das hier steht und nicht im Bildschirm (Marcos Befund) ────────
+     * „Wird in der Android-App im Reiter Finanzen ein Filter gesetzt und dann
+     * ein Eintrag abgewaehlt und den Detail Dialog wieder verlassen ist der
+     * Filter weg."
+     *
+     * Der Filter lag als `remember { mutableStateOf("alle") }` im
+     * FinanceScreen. `remember` ueberlebt eine Rekomposition, aber NICHT das
+     * Verlassen der Komposition — und genau das passiert beim Wechsel in einen
+     * Detail-Bildschirm. Zurueck stand wieder „alle" da. Dieselbe Regel wie
+     * bei den Listenfiltern (ListenfilterImZustandTest): Ein Filter, der eine
+     * Ansicht einschraenkt, gehoert in den Zustand dieser Ansicht.
+     *
+     * ── Warum eine Menge und kein einzelner Wert (Marcos zweite Frage) ──────
+     * „Kann der Filter zudem aditiv sein?" — ja. Vorher schloss jede Auswahl
+     * die vorige aus, „Sets + Minifiguren ohne Teile" war nicht ausdrueckbar.
+     *
+     * LEER heisst ALLE. Das ist kein Sonderfall, sondern der Normalfall: Wer
+     * nichts einschraenkt, sieht alles, und der Chip „Alle" ist genau dann
+     * gewaehlt. Die Gegenrichtung — alle drei Kategorien einzeln eintragen —
+     * saehe gleich aus, muesste aber jedes Mal mitgepflegt werden, sobald eine
+     * vierte Zeilenart dazukaeme.
+     */
+    val kategorien: Set<String> = emptySet(),
+) {
+    /** Zeigt der Reiter diese Zeilenart? Leere Auswahl heisst: alle. */
+    fun zeigt(kategorie: String): Boolean = kategorien.isEmpty() || kategorie in kategorien
+
+    /**
+     * Eine Zeilenart dazunehmen oder wegnehmen.
+     *
+     * Steht hier und nicht im ViewModel, damit die Regel ohne Android-Laufzeit
+     * pruefbar ist — das ViewModel braucht Hilt und ein Repository, diese
+     * Datenklasse nichts.
+     */
+    fun mitUmgeschalteterKategorie(kategorie: String): FinanceUiState =
+        copy(kategorien = if (kategorie in kategorien) kategorien - kategorie
+                          else kategorien + kategorie)
+}
 
 /**
  * CSV-Import-Fortschritt — bewusst vom Haupt-State getrennt: Während eines
