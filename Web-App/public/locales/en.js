@@ -100,6 +100,10 @@ window.I18N_EN = {
   'figs.delete.title':     'Delete minifigure?',
 
   // Finance
+  'finance.filter.all': 'All',
+  'finance.filter.sets': 'Sets',
+  'finance.filter.parts': 'Parts',
+  'finance.filter.minifigs': 'Minifigures',
   'finance.total_pnl':     'Total P&L',
   'finance.grand.parts':   'Manually added parts',
   'finance.grand.total':   'Total',

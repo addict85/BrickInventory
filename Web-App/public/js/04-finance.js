@@ -210,12 +210,12 @@ export async function loadFinance(){
   const figsTotal  = parseFloat(figsVal?.total_value || 0);
   const pmFoot = total => `<tfoot><tr><td colspan="6" style="text-align:right;padding:11px 13px;font-weight:600">Total:</td><td class="price-total" style="font-size:.95rem;padding:11px 13px">${fmtN(total,cur)}</td><td colspan="2"></td></tr></tfoot>`;
   const partsSectionHtml = partsItems.length ? `
-    <div class="tw" style="margin-top:1.25rem">
+    <div class="tw" data-fin-art="parts" style="margin-top:1.25rem">
       <div style="font-size:.75rem;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--mut);margin-bottom:6px;display:flex;align-items:center;gap:5px">${PARTS_ICON_SVG} ${t('parts.manual_section')}</div>
       <table class="dt" style="table-layout:fixed;width:1065px">${pmColgroup}${pmTableHead}<tbody>${partsRows}</tbody>${pmFoot(partsTotal)}</table>
     </div>` : '';
   const figsSectionHtml = figsItems.length ? `
-    <div class="tw" style="margin-top:1.25rem">
+    <div class="tw" data-fin-art="figs" style="margin-top:1.25rem">
       <div style="font-size:.75rem;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--mut);margin-bottom:6px">${t('finance.figs_section')}</div>
       <table class="dt" style="table-layout:fixed;width:1065px">${pmColgroup}${pmTableHead}<tbody>${figsRows}</tbody>${pmFoot(figsTotal)}</table>
     </div>` : '';
@@ -301,7 +301,60 @@ export async function loadFinance(){
         <tfoot><tr><td style="font-weight:700;padding:11px 13px">Total</td><td class="price-total" style="font-size:1.05rem;padding:11px 13px">${fmtN(grandTotal,cur)}</td><td></td></tr></tfoot>
       </table>
     </div>`;
-  G('fin-tbl').innerHTML=`<div class="tw"><table class="dt" style="table-layout:fixed;width:1065px"><colgroup><col style="width:60px"><col style="width:90px"><col style="width:250px"><col style="width:55px"><col style="width:70px"><col style="width:90px"><col style="width:110px"><col style="width:110px"><col style="width:110px"><col style="width:80px"><col style="width:40px"></colgroup><thead><tr><th></th><th>Nr.</th><th>${t('gallery.sort.name')}</th><th>${t('detail.year')}</th><th>${t('detail.qty')}</th><th>${t('detail.added')}</th><th>${t('detail.purchase_price')}</th><th>${t('detail.market_price')}</th><th>${t('finance.grand.total')}</th><th>${t('finance.total_pnl')}</th><th title="${esc(t('finance.price_status'))}"><span class="vh">${esc(t('finance.price_status'))}</span></th></tr></thead><tbody>${rows}</tbody><tfoot><tr><td colspan="8" style="text-align:right;padding:11px 13px;font-weight:600">${t('finance.total_sets_avg')}</td><td class="price-total" style="font-size:.95rem;padding:11px 13px">${fmtN(setsQtyAvg,cur)}</td><td colspan="2"></td></tr></tfoot></table></div>${partsSectionHtml}${figsSectionHtml}${grandTotalHtml}`;
+  G('fin-tbl').innerHTML=`<div class="tw" data-fin-art="sets"><table class="dt" style="table-layout:fixed;width:1065px"><colgroup><col style="width:60px"><col style="width:90px"><col style="width:250px"><col style="width:55px"><col style="width:70px"><col style="width:90px"><col style="width:110px"><col style="width:110px"><col style="width:110px"><col style="width:80px"><col style="width:40px"></colgroup><thead><tr><th></th><th>Nr.</th><th>${t('gallery.sort.name')}</th><th>${t('detail.year')}</th><th>${t('detail.qty')}</th><th>${t('detail.added')}</th><th>${t('detail.purchase_price')}</th><th>${t('detail.market_price')}</th><th>${t('finance.grand.total')}</th><th>${t('finance.total_pnl')}</th><th title="${esc(t('finance.price_status'))}"><span class="vh">${esc(t('finance.price_status'))}</span></th></tr></thead><tbody>${rows}</tbody><tfoot><tr><td colspan="8" style="text-align:right;padding:11px 13px;font-weight:600">${t('finance.total_sets_avg')}</td><td class="price-total" style="font-size:.95rem;padding:11px 13px">${fmtN(setsQtyAvg,cur)}</td><td colspan="2"></td></tr></tfoot></table></div>${partsSectionHtml}${figsSectionHtml}${grandTotalHtml}`;
+  // Der Filter ueberlebt das Neuzeichnen. Ohne diesen Aufruf stuenden nach
+  // jedem „Preise laden" wieder alle drei Abschnitte da, waehrend die Chips
+  // daneben weiter eine Auswahl anzeigen — die Anzeige waere dann eine
+  // Behauptung.
+  finFilterAnwenden();
+}
+
+// ── Kategoriefilter: dieselbe Regel wie in der Android-App ──────────────────
+//
+// Marcos Vorgabe, dass die Funktionen in beiden Apps dieselben sein sollen.
+// Der Reiter hatte den Filter bisher nur in der App.
+//
+// LEERE Auswahl heisst ALLE — das ist kein Sonderfall, sondern der Normalfall:
+// Wer nichts einschraenkt, sieht alles, und der Chip „Alle" ist genau dann
+// gewaehlt. Ausformuliert steht die Ueberlegung in FinanceUiState.kategorien
+// (Android-App); hier steht sie absichtlich NICHT noch einmal aus.
+//
+// Gefiltert wird durch Ein- und Ausblenden, nicht durch Neuzeichnen: Die
+// Summen unten sollen sich NICHT aendern — sie beschreiben den Bestand, nicht
+// die Auswahl. Genau so haelt es die App auch (die Kacheln ueber der Liste
+// bleiben dort ebenfalls stehen).
+const finKategorien = new Set();
+
+/** Zeigt der Reiter diese Zeilenart? Leere Auswahl heisst: alle. */
+function finZeigt(art){ return finKategorien.size === 0 || finKategorien.has(art); }
+
+/** Abschnitte ein-/ausblenden und die Chips nachziehen. */
+function finFilterAnwenden(){
+  // style.display statt des hidden-Attributs: `.tw` setzt in styles.css eine
+  // eigene Darstellung, und eine Autoren-Regel schlaegt das `[hidden]` des
+  // Browsers. Der Abschnitt bliebe sichtbar, ohne dass etwas scheitert.
+  document.querySelectorAll('#fin-tbl [data-fin-art]').forEach(el => {
+    el.style.display = finZeigt(el.dataset.finArt) ? '' : 'none';
+  });
+  document.querySelectorAll('#fin-filter button').forEach(b => {
+    const art = b.dataset.art;
+    b.classList.toggle('active', art ? finKategorien.has(art) : finKategorien.size === 0);
+  });
+}
+
+/**
+ * Ein Chip wurde geklickt.
+ *
+ * „alle" raeumt die Auswahl weg; die drei uebrigen schalten ihre Zeilenart
+ * einzeln zu und wieder ab. Die letzte Art abzuwaehlen fuehrt auf die leere
+ * Menge — und die heisst wieder ALLE. Eine Ansicht, die nach dem Abwaehlen
+ * leer bliebe, waere kein Filter, sondern eine leere Seite.
+ */
+function finFilter(art){
+  if (art === 'alle') finKategorien.clear();
+  else if (finKategorien.has(art)) finKategorien.delete(art);
+  else finKategorien.add(art);
+  finFilterAnwenden();
 }
 
 
@@ -309,4 +362,5 @@ export async function loadFinance(){
 // ── Handler beim Dispatcher anmelden (siehe js/00-registry.js) ──────────────
 registerActions({
   setChartPeriod,
+  finFilter,
 });
