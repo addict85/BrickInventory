@@ -148,6 +148,9 @@ fun CatalogScreen(
     // ab, sobald sich der Wert aendert — waehrend des Ziehens kommt es also
     // gar nicht bis zum `onEnsurePage`, und erst wenn der Finger zur Ruhe
     // kommt, wird EINE Seite geholt.
+    // `remember`, nicht `rememberSaveable`: Nach einer Drehung braucht es die
+    // Zielseite nicht — der Sichtfenster-Lader holt ohnehin, was dann sichtbar
+    // ist, und ein nachlaufender Abruf waere doppelt.
     var zielSeite by remember { mutableStateOf<Int?>(null) }
     LaunchedEffect(zielSeite) {
         zielSeite?.let { seite ->

@@ -58,9 +58,23 @@ class CatalogScrubberTest {
         assert(!aufruf.contains("onYearSelected") && !aufruf.contains("selectedYear")) {
             "Die Leiste haengt wieder am Jahr statt an der Stelle in der Liste"
         }
-        // Die Zielseite muss mitgeladen werden, sonst stehen dort Platzhalter.
-        assert(aufruf.contains("onEnsurePage(")) {
-            "Beim Rollen wird die Zielseite nicht mitgeladen"
+        // Die Zielseite muss weitergegeben werden, sonst stehen dort
+        // Platzhalter.
+        //
+        // Hier stand `onEnsurePage(` — der Abruf also unmittelbar im Rueckruf
+        // der Leiste. Das war die Ursache von Marcos „beim Sprung dauert es
+        // einige Sekunden": Der Rueckruf laeuft bei JEDEM Beruehrungspunkt,
+        // und ein Zug ueber die Leiste beruehrt jede Seite des Katalogs.
+        //
+        // Die Absicht dieser Zusicherung bleibt und ist richtig; nur ihr
+        // Mechanismus war es nicht mehr. Geladen wird jetzt entprellt, und die
+        // Regel dazu steht MIT der Messung in KatalogSprungEntprelltTest —
+        // nicht hier noch einmal. Zwei Fassungen einer Regel laufen
+        // auseinander; an dieser Stelle bleibt nur, dass der Rueckruf die
+        // Zielseite ueberhaupt weiterreicht.
+        assert(aufruf.contains("zielSeite =")) {
+            "Beim Rollen wird die Zielseite nicht weitergegeben — dann bleiben " +
+                "dort Platzhalter stehen"
         }
         // Der ausdrückliche Filter bleibt.
         assert(s.contains("onYearChange")) {
