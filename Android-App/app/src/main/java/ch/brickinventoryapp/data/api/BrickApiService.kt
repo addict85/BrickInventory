@@ -112,33 +112,6 @@ interface BrickApiService {
         @Path("instrId") instrId: Int,
     ): Response<GenericResponse>
 
-    /**
-     * Anleitungen dieses Sets NEU holen — der Server wirft die vorhandenen weg
-     * und sucht sie wieder bei der Quelle.
-     *
-     * Die Webapp hat den Knopf seit jeher (02-gallery.js, redownloadInstr);
-     * die App konnte Anleitungen nur hinzufuegen und entfernen. Gebraucht wird
-     * er, wenn eine Anleitung nicht gefunden wurde oder ihr Link ins Leere
-     * zeigt — ohne ihn bliebe nur, jede von Hand hochzuladen.
-     */
-    @POST("api/v1/sets/{setNumber}/instructions")
-    suspend fun anleitungenNeuHolen(
-        @Path("setNumber") setNumber: String,
-    ): Response<NachladenResponse>
-
-    /**
-     * Die Teileliste dieses Sets neu einlesen.
-     *
-     * Ebenfalls aus der Webapp (02-gallery.js, reimportParts; der Knopf steht
-     * dort neben der Teilezahl). Noetig, wenn ein Set eingetragen wurde,
-     * bevor der Katalog seine Teile kannte — dann steht die Zahl auf 0 und
-     * bleibt es, bis jemand neu einliest.
-     */
-    @POST("api/v1/sets/{setNumber}/parts")
-    suspend fun teileNeuEinlesen(
-        @Path("setNumber") setNumber: String,
-    ): Response<NachladenResponse>
-
     // ── Server-Protokoll (nur fuer Verwalter) ───────────────────────────────
     //
     // Die Nutzerverwaltung des Servers (/auth/users) ist hier ABSICHTLICH nicht
@@ -390,17 +363,6 @@ interface BrickApiService {
     suspend fun getBrickColors(): Response<BrickColorsResponse>
 
     /**
-     * Rebrickable-Farbnummer → BrickLink-Farbnummer, fuer die Wunschliste.
-     *
-     * Die Teileliste zeigt Rebrickable-Farben; BrickLink liest beim Import
-     * einer Wunschliste nur seine eigenen Nummern. Meist liefert der Server
-     * `bl_color_id` schon je Teil mit — diese Karte ist der Rueckfall fuer
-     * alles, wo sie fehlt, und dieselbe Adresse, die die Webapp dafuer ruft.
-     */
-    @GET("api/v1/parts/bl-color-map")
-    suspend fun getBlColorMap(): Response<ch.brickinventoryapp.data.model.BlColorMapResponse>
-
-    /**
      * Die FILTERliste Farbe — welche Farben im Bestand vorkommen, mit Anzahl.
      *
      * Eine andere Adresse als `brick-colors` darueber, und das ist Absicht:
@@ -529,11 +491,6 @@ interface BrickApiService {
     suspend fun getMinifigStats(
         @Query("accounts") accounts: String? = null
     ): Response<ch.brickinventoryapp.data.model.MinifigStatsResponse>
-
-    @GET("api/v1/minifigs/{figNumber}/parts")
-    suspend fun getMinifigParts(
-        @Path("figNumber") figNumber: String
-    ): Response<PartsResponse>
 
     @GET("api/v1/finance/valuation")
     suspend fun getValuation(

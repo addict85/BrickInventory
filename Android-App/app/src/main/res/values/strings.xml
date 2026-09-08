@@ -159,14 +159,6 @@
     <string name="partslist_pdf_error_title">PDF error</string>
     <string name="partslist_ok">OK</string>
     <string name="partslist_reset">Reset</string>
-    <string name="condition_any">Any</string>
-    <string name="partslist_have">Have</string>
-    <string name="partslist_bl_title">BrickLink wanted list</string>
-    <string name="partslist_bl_hint">Enter how many of each part you already have — the rest is exported as a BrickLink wanted list.</string>
-    <string name="partslist_bl_export">BrickLink wanted list</string>
-    <string name="partslist_bl_share">Share wanted list</string>
-    <string name="partslist_bl_nothing_missing">Nothing missing — you have every part on the list.</string>
-    <string name="partslist_bl_failed">The wanted list could not be created.</string>
     <string name="partslist_empty_hint">Add sets and generate a parts list</string>
     <string name="partslist_no_color">(No color)</string>
     <string name="partslist_group_summary">%1$d×  ·  %2$d types</string>
@@ -555,12 +547,6 @@
     <string name="instr_delete">Remove instruction</string>
     <!-- Re-fetch: the same two actions the web app has in the set detail
          (02-gallery.js: redownloadInstr, reimportParts). -->
-    <string name="instr_reload">Reload</string>
-    <string name="instr_reloading">Looking for instructions…</string>
-    <string name="instr_reloaded_n">%1$d instructions loaded</string>
-    <string name="parts_reimport">Re-import parts</string>
-    <string name="parts_reimporting">Importing parts for %1$s…</string>
-    <string name="parts_reimported_n">%1$d parts imported</string>
 
     <!-- ══════════════ Server log ══════════════ -->
     <string name="admin_log_title">Server log</string>

@@ -89,7 +89,6 @@ fun LazyListScope.setDetailInstructionsSection(
     onOpenPdf: (url: String, title: String) -> Unit,
     onAnleitungWaehlen: () -> Unit,
     onAnleitungLoeschen: (Int) -> Unit,
-    onAnleitungenNeuHolen: () -> Unit,
 ) {
         // ── Instructions section ───────────────────────────────────────────
         val instructions = set.instructions
@@ -229,32 +228,22 @@ fun LazyListScope.setDetailInstructionsSection(
                         // Der Weg, eine erste Anleitung hinzuzufuegen. Steht
                         // UNTER der Liste, weil das Ansehen der haeufigere Fall
                         // ist.
-                        Row(
-                            Modifier.fillMaxWidth().padding(top = 8.dp),
-                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        //
+                        // Daneben stand „Neu laden" — der Aufruf, der die
+                        // hinterlegten Anleitungen verwirft und die
+                        // automatische Suche noch einmal laufen laesst. Auf
+                        // Marcos Wunsch entfernt. Ohne den zweiten Knopf
+                        // braucht es auch die Zeile nicht mehr: Ein einzelner
+                        // Knopf nimmt die volle Breite, wie die uebrigen
+                        // Aktionen dieser Karte.
+                        OutlinedButton(
+                            onClick = onAnleitungWaehlen,
+                            modifier = Modifier.fillMaxWidth().padding(top = 8.dp),
+                            shape = Formen.knopf
                         ) {
-                            OutlinedButton(
-                                onClick = onAnleitungWaehlen,
-                                modifier = Modifier.weight(1f),
-                                shape = Formen.knopf
-                            ) {
-                                Icon(Icons.Default.Add, null, Modifier.size(18.dp))
-                                Spacer(Modifier.width(8.dp))
-                                Text(stringResource(R.string.instr_upload))
-                            }
-                            // Neu suchen statt von Hand hochladen — der Weg,
-                            // den die Webapp seit jeher anbietet. Er wirft die
-                            // vorhandenen Anleitungen weg, deshalb steht er
-                            // NEBEN dem Hinzufuegen und nicht davor.
-                            OutlinedButton(
-                                onClick = onAnleitungenNeuHolen,
-                                modifier = Modifier.weight(1f),
-                                shape = Formen.knopf
-                            ) {
-                                Icon(Icons.Default.Refresh, null, Modifier.size(18.dp))
-                                Spacer(Modifier.width(8.dp))
-                                Text(stringResource(R.string.instr_reload))
-                            }
+                            Icon(Icons.Default.Add, null, Modifier.size(18.dp))
+                            Spacer(Modifier.width(8.dp))
+                            Text(stringResource(R.string.instr_upload))
                         }
                     }
                 }
@@ -435,23 +424,8 @@ fun LazyListScope.setDetailDetailsSection(set: SetItem, setNumber: String, vm: M
                 }
             )
 
-            // ── Teile neu einlesen ──────────────────────────────────
-            //
-            // Die Webapp haengt diesen Knopf an die Teilezahl im Detail
-            // (07-admin.js, neben detail.pieces). In der App steht die
-            // Zahl in einem Kennzahl-Chip weiter oben, und ein Knopf im
-            // Chip waere weder zu treffen noch zu beschriften — deshalb
-            // hier, unter den Stammdaten, wo die anderen aendernden
-            // Aktionen dieses Sets auch stehen.
-            OutlinedButton(
-                onClick = { vm.teileNeuEinlesen(capturedSetNumber) },
-                modifier = Modifier.fillMaxWidth().padding(top = 8.dp),
-                shape = Formen.knopf
-            ) {
-                Icon(Icons.Default.Refresh, null, Modifier.size(18.dp))
-                Spacer(Modifier.width(8.dp))
-                Text(stringResource(R.string.parts_reimport))
-            }
+            // Hier stand „Teile neu einlesen" — der Aufruf, der die Teileliste
+            // des Sets aus dem Katalog neu holt. Auf Marcos Wunsch entfernt.
         }
     }
 

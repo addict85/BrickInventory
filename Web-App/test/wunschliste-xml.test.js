@@ -5,12 +5,11 @@ const fs = require('node:fs');
 const path = require('node:path');
 
 /**
- * Die BrickLink-Wunschliste wird in BEIDEN Oberflaechen maskiert.
+ * Die BrickLink-Wunschliste der Webapp wird maskiert.
  *
- * ── Der Befund ──────────────────────────────────────────────────────────────
+ * ── Der Befund, aus dem dieser Test kam ─────────────────────────────────────
  * Die Android-App hatte einen XML-Maskierer und wandte ihn auf alle drei
- * Textfelder an (BrickLinkWunschliste.kt, maskiert()). Die Webapp setzte
- * dieselben Felder roh ein.
+ * Textfelder an; die Webapp setzte dieselben Felder roh ein.
  *
  * Bei einem MANUELL erfassten Teil tippt der Mensch die Nummer. Ein `&` darin
  * macht aus der Wunschliste eine Datei, die BrickLink nicht liest; ein `<`
@@ -19,15 +18,23 @@ const path = require('node:path');
  * Fehlerart: Zwei Fassungen einer Regel fallen nicht auf, solange die Daten
  * zufaellig mitspielen.
  *
+ * ── Was sich geaendert hat ──────────────────────────────────────────────────
+ * Die App hat die Wunschliste nicht mehr: Marco hat die BrickLink-Funktion
+ * aus dem Teile-Reiter entfernen lassen, und mit ihr fiel
+ * BrickLinkWunschliste.kt weg. Die dritte Pruefung dieses Tests — „die App
+ * maskiert dieselben Felder" — ist damit gegenstandslos und ENTFERNT statt
+ * uebersprungen: Ein Test, der auf eine geloeschte Datei zeigt, stuerzt ab
+ * oder schweigt, und beides ist schlechter als seine Abwesenheit.
+ *
+ * Die Regel selbst bleibt und gilt weiter — fuer die Oberflaeche, die den
+ * Export noch hat.
+ *
  * ── Warum kein zweiter Escaper in der Webapp ────────────────────────────────
  * esc() ersetzt genau die fuenf Entitaeten, um die es geht (& < > " ').
- * Ein eigener XML-Maskierer daneben waere die dritte Fassung derselben Regel.
+ * Ein eigener XML-Maskierer daneben waere eine zweite Fassung derselben Regel.
  */
 
 const WURZEL = path.join(__dirname, '..');
-const APP = path.join(WURZEL, '..', 'Android-App', 'app', 'src', 'main', 'java',
-  'ch', 'brickinventoryapp');
-
 const ohneKommentare = (s) => s
   .replace(/\/\*[\s\S]*?\*\//g, (m) => '\n'.repeat((m.match(/\n/g) || []).length))
   .split('\n').filter(z => !z.trim().startsWith('//') && !z.trim().startsWith('*')).join('\n');
@@ -46,21 +53,6 @@ test('die Webapp maskiert jedes Textfeld der Wunschliste', () => {
       `<${feld}> setzt „${m[1]}" ROH ein. Bei einem manuell erfassten Teil hat der ` +
       'Mensch den Wert getippt; ein & oder < macht die Wunschliste kaputt oder ' +
       'schiebt Elemente hinein.');
-  }
-});
-
-test('die App maskiert dieselben Felder', () => {
-  // Die Gegenprobe zur Regel oben: Faellt sie auf EINER Seite weg, laufen die
-  // beiden Oberflaechen wieder auseinander — genau das war der Befund.
-  const kt = ohneKommentare(fs.readFileSync(
-    path.join(APP, 'util', 'BrickLinkWunschliste.kt'), 'utf8'));
-  assert.match(kt, /private fun maskiert\(/,
-    'Der XML-Maskierer der App ist weg');
-  for (const feld of ['ITEMTYPE', 'ITEMID', 'CONDITION']) {
-    const m = new RegExp(`<${feld}>"\\)\\.append\\(([^)]+\\)?)\\)`).exec(kt);
-    assert.ok(m, `<${feld}> steht nicht mehr im Aufbau der App`);
-    assert.ok(m[1].startsWith('maskiert('),
-      `<${feld}> setzt „${m[1]}" in der App roh ein`);
   }
 });
 
