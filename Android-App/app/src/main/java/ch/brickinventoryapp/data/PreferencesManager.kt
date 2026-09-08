@@ -12,10 +12,11 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.map
-import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.launch
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -102,10 +103,53 @@ class PreferencesManager @Inject constructor(
     // null = DataStore noch nicht gelesen (nur ganz kurz beim Kaltstart).
     private val prefsScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
 
-    val serverUrlState: StateFlow<String?> =
-        serverUrl.stateIn(prefsScope, SharingStarted.Eagerly, null)
-    val authTokenState: StateFlow<String?> =
-        authToken.stateIn(prefsScope, SharingStarted.Eagerly, null)
+    // ── Warum diese beiden nicht mehr blosse stateIn() sind (Marcos Befund) ──
+    //
+    // „Wenn ich mich neu in der Android-App einlogge erscheint: ‚Ungültiges
+    // oder abgelaufenes Token'. Ich werde aber trotzdem eingeloggt."
+    //
+    // Beides zugleich hat einen Grund, und er steht hier. `stateIn()` spiegelt
+    // den DataStore — die Spiegelung folgt der Schreibung aber ERST, wenn der
+    // DataStore geschrieben hat und sein Fluss ausgegeben hat. Das ist eine
+    // Plattenschreibung auf Dispatchers.IO, also Millisekunden bis
+    // Zehntelsekunden.
+    //
+    // login() macht in genau diesem Fenster weiter:
+    //
+    //     prefs.saveAuthToken(neu)      // DataStore-Schreibung angestossen
+    //     _state.update { isLoggedIn = true }
+    //     loadDashboard()               // feuert SOFORT Anfragen
+    //
+    // Der Interceptor (AppModule.kt) liest `authTokenState.value` — und das
+    // trug in diesem Moment noch den ALTEN Wert. Bei einer frischen Anmeldung
+    // ist der leer, also ging die Anfrage OHNE Authorization-Kopf raus.
+    // requireToken beantwortet das mit 401 und `token_ungueltig`, und
+    // loadSets() zeigt den Text des Servers als Meldung an. Angemeldet war man
+    // trotzdem — die Anmeldung selbst war ja gelungen.
+    //
+    // Deshalb ist der Speicherwert jetzt die FUEHRENDE Fassung: saveAuthToken()
+    // und saveServerUrl() setzen ihn, bevor sie schreiben, und der DataStore
+    // fuellt ihn beim Start und bei Aenderungen von aussen nach. Damit sieht
+    // der Interceptor den neuen Wert in derselben Anweisungsfolge, in der er
+    // gesetzt wurde.
+    //
+    // Dasselbe galt fuer die Server-Adresse: loginWithQrToken() speichert sie
+    // und loest den QR-Code unmittelbar danach ein — der Aufruf ging bis
+    // hierher an den VORHERIGEN Server, der die Nonce nicht kennt.
+    //
+    // null = DataStore noch nicht gelesen (nur ganz kurz beim Kaltstart).
+    private val _serverUrlState = MutableStateFlow<String?>(null)
+    val serverUrlState: StateFlow<String?> = _serverUrlState.asStateFlow()
+    private val _authTokenState = MutableStateFlow<String?>(null)
+    val authTokenState: StateFlow<String?> = _authTokenState.asStateFlow()
+
+    init {
+        // Der Nachlauf aus dem DataStore: fuer den Kaltstart und fuer
+        // Aenderungen, die NICHT ueber die beiden save-Funktionen kamen (etwa
+        // die einmalige Uebernahme eines alten Klartext-Tokens).
+        prefsScope.launch { serverUrl.collect { _serverUrlState.value = it } }
+        prefsScope.launch { authToken.collect { _authTokenState.value = it } }
+    }
 
     suspend fun saveServerUrl(url: String) {
         // Normalize: lowercase scheme (http/https), trim trailing slash
@@ -115,6 +159,10 @@ class PreferencesManager @Inject constructor(
                 u.substring(0, idx).lowercase() + u.substring(idx)
             } else u
         }
+        // ZUERST in den Speicher, dann auf die Platte — siehe der Block ueber
+        // serverUrlState. Umgekehrt liest der Interceptor waehrend der
+        // Schreibung noch die alte Adresse.
+        _serverUrlState.value = normalized
         context.dataStore.edit { it[SERVER_URL] = normalized }
     }
     /**
@@ -125,6 +173,10 @@ class PreferencesManager @Inject constructor(
      * Verschlüsselung wäre dann Zierde.
      */
     suspend fun saveAuthToken(token: String) {
+        // ZUERST in den Speicher: Der Aufrufer feuert unmittelbar nach dieser
+        // Funktion die ersten Anfragen, und der Interceptor liest den Wert
+        // synchron. Die ausfuehrliche Begruendung steht ueber authTokenState.
+        _authTokenState.value = token
         val geheim = tresor.verschluessle(token)
         context.dataStore.edit {
             it[AUTH_TOKEN_ENC] = geheim
