@@ -337,4 +337,81 @@ class SelbstUpdateTest {
             "Das Datenmodell liest das Feld nicht als `commit` — dann bleibt es leer"
         }
     }
+
+    // ── Der Hinweis beim Start (Marcos Nachtrag) ────────────────────────────
+    //
+    // „Kannst du noch umsetzen, dass direkt beim Start ein Popup erscheint
+    // (mit Updaten, Ja/Nein), wenn es eine neue Version gibt? Aktuell wird nur
+    // eine Kugel in den Einstellungen angezeigt was oft übersehen wird."
+    //
+    // Der Punkt am Konto-Symbol war die vorige Antwort auf dieselbe Frage
+    // („ich sehe kein Update") und hat sie nur halb beantwortet. Diese drei
+    // Regeln halten fest, was der Dialog leisten muss und was er NICHT tun
+    // darf — der zweite Teil ist der wichtigere.
+
+    @Test
+    fun `der Dialog haengt ueber der ganzen App, nicht an einem Bildschirm`() {
+        val nav = Quellen.ohneKommentare(Quellen.lies("AppNavigation.kt"))
+        assert(nav.contains("dialogs.UpdateDialog(vm)")) {
+            "Der Update-Hinweis wird nirgends gezeigt. In einem einzelnen Bildschirm " +
+                "aufgerufen bekaeme ihn nur, wer ohnehin dort sitzt — genau der Fehler, " +
+                "den der Punkt in den Einstellungen schon einmal hatte."
+        }
+    }
+
+    /**
+     * Geladen wird NIE von allein.
+     *
+     * Marcos urspruengliche Vorgabe („beim Start still pruefen, nie von allein
+     * laden") gilt weiter; der Dialog ersetzt nur den Teil „nicht draengen".
+     * Ein Aufruf von ladeUpdate() ausserhalb eines Klicks waere die
+     * Verletzung, die sich am leichtesten einschleicht — etwa in einem
+     * LaunchedEffect, der es „bequemer" macht.
+     */
+    @Test
+    fun `nur ein Klick loest das Laden aus`() {
+        val dialog = Quellen.ohneKommentare(Quellen.lies("ui/dialogs/UpdateDialog.kt"))
+        assert(dialog.contains("onClick = { vm.ladeUpdate() }")) {
+            "Der Dialog bietet das Laden nicht als Klick an"
+        }
+        assert(!dialog.contains("LaunchedEffect")) {
+            "Im Update-Dialog steht ein LaunchedEffect. Von dort ist es ein Schritt " +
+                "zum Laden ohne Zutun — und genau das war nie erlaubt."
+        }
+        // Und der Start stoesst weiterhin nur die PRUEFUNG an.
+        val nav = Quellen.ohneKommentare(Quellen.lies("AppNavigation.kt"))
+        assert(nav.contains("vm.pruefeAufUpdate(still = true)")) {
+            "Die stille Pruefung beim Start ist weg"
+        }
+        assert(!nav.contains("ladeUpdate")) {
+            "AppNavigation.kt laedt das Update selbst — beim Start wird gefragt, nicht geladen"
+        }
+    }
+
+    /**
+     * „Spaeter" wirkt, und zwar genau so weit wie versprochen.
+     *
+     * Ohne das Merken erschiene der Dialog bei jedem Reiterwechsel neu — aus
+     * einem Hinweis wuerde eine Sperre. Gemerkt wird im Zustand und damit fuer
+     * diesen App-Lauf; beim naechsten Start fragt er wieder, sonst waere er so
+     * leicht zu uebersehen wie der Punkt, den er ergaenzt.
+     */
+    @Test
+    fun `Spaeter wird gemerkt, aber nicht dauerhaft`() {
+        val zustand = Quellen.ohneKommentare(Quellen.lies("ui/UiState.kt"))
+        assert(zustand.contains("val dialogAbgelehnt: Boolean = false")) {
+            "UpdateUiState merkt sich das Wegklicken nicht"
+        }
+        val dialog = Quellen.ohneKommentare(Quellen.lies("ui/dialogs/UpdateDialog.kt"))
+        assert(dialog.contains("if (zustand.dialogAbgelehnt) return")) {
+            "Der Dialog fragt trotz „Spaeter\" weiter"
+        }
+        // Nicht auf die Platte: Der Merker gehoert in den Zustand, nicht in die
+        // Einstellungen. Ein dauerhaftes „nein" waere nicht mehr rueckgaengig
+        // zu machen, ohne die App neu einzurichten.
+        val feature = Quellen.ohneKommentare(Quellen.lies("ui/UpdateFeature.kt"))
+        assert(!feature.contains("prefs.save")) {
+            "Das Wegklicken wird dauerhaft gespeichert — dann fragt die App nie wieder"
+        }
+    }
 }

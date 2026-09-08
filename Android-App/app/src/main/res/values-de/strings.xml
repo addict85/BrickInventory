@@ -555,6 +555,10 @@
     <string name="update_title">Aktualisierung</string>
     <string name="update_check">Nach Update suchen</string>
     <string name="update_current">Aktuell (%1$s)</string>
+    <string name="update_dialog_title">Neue Fassung verfügbar</string>
+    <string name="update_dialog_text">Fassung %1$s liegt bereit. Installiert ist %2$s.</string>
+    <string name="update_dialog_now">Jetzt aktualisieren</string>
+    <string name="update_dialog_later">Später</string>
     <string name="update_available">Fassung %1$s ist verfuegbar</string>
     <string name="update_installed">Installiert: %1$s</string>
     <string name="update_download">Herunterladen</string>

@@ -51,6 +51,16 @@ data class UpdateUiState(
     val bereitZurInstallation: Boolean = false,
     /** Fehlt die Systemerlaubnis „Apps aus unbekannten Quellen"? */
     val erlaubnisFehlt: Boolean = false,
+    /**
+     * Hat der Nutzer den Hinweis beim Start weggeklickt?
+     *
+     * Gilt fuer DIESEN App-Lauf, nicht dauerhaft. Wer „Spaeter" waehlt, soll
+     * nicht beim naechsten Reiterwechsel dieselbe Frage bekommen — beim
+     * naechsten START aber schon wieder, sonst waere die Meldung genauso leicht
+     * zu uebersehen wie der Punkt, den sie ersetzt. Der Punkt am Konto-Symbol
+     * bleibt in der Zwischenzeit stehen.
+     */
+    val dialogAbgelehnt: Boolean = false,
     val fehler: String? = null,
 )
 

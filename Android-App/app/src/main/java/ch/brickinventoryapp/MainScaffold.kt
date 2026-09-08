@@ -77,10 +77,23 @@ fun MainScaffold(
      * und niemand zeichnete es. Der Weg wurde app-weit gemacht, die Anzeige
      * nicht mitgenommen.
      *
-     * Ein Punkt am Konto-Symbol und am Menuepunkt, mehr nicht: Marcos Vorgabe
-     * war „beim Start still pruefen, nie von allein laden". Ein Dialog beim
-     * Start waere das Gegenteil davon; ein Punkt sagt es, ohne zu draengen,
-     * und fuehrt genau dorthin, wo der Knopf steht.
+     * Ein Punkt am Konto-Symbol und am Menuepunkt. Er stand hier zuerst
+     * ALLEIN, mit der Begruendung, ein Dialog beim Start waere das Gegenteil
+     * von „beim Start still pruefen, nie von allein laden".
+     *
+     * Diese Begruendung war zur Haelfte falsch, und Marco hat es gemeldet:
+     * „Aktuell wird nur eine Kugel in den Einstellungen angezeigt was oft
+     * übersehen wird." Der Punkt erfuellte das Nicht-Draengen und verfehlte
+     * das Bemerktwerden — und bemerkt zu werden war der ganze Zweck.
+     *
+     * Seither fragt zusaetzlich ein Dialog beim Start
+     * (ui/dialogs/UpdateDialog.kt). Die alte Vorgabe gilt weiter, wo sie
+     * gemeint war: GELADEN wird nach wie vor nie von allein, sondern erst auf
+     * „Jetzt aktualisieren".
+     *
+     * Der Punkt bleibt trotzdem, und zwar nicht aus Gewohnheit: Wer im Dialog
+     * „Spaeter" waehlt, soll den Befund weiterhin sehen koennen — und den Weg
+     * dorthin, wo der Knopf steht.
      */
     updateVerfuegbar: Boolean = false,
     /**
