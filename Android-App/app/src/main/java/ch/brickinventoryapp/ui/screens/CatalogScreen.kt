@@ -48,6 +48,17 @@ import androidx.compose.ui.graphics.Color
 import ch.brickinventoryapp.data.repository.CATALOG_PAGE_SIZE
 
 /**
+ * Wie lange die Jahresleiste ruhig sein muss, bis ihre Seite geholt wird.
+ *
+ * 200 ms: kuerzer als das, was man als Warten wahrnimmt, und laenger als der
+ * Abstand zweier Beruehrungspunkte (bei 60 Hz sind das 17 ms, bei 120 Hz
+ * 8 ms). Ein Zug ueber die ganze Leiste faellt damit auf EINEN Abruf zusammen
+ * statt auf bis zu hundert; wer nur antippt, wartet ein Fuenftel einer
+ * Sekunde laenger als vorher.
+ */
+private const val SPRUNG_ENTPRELLUNG_MS = 200L
+
+/**
  * Katalog-Screen: gesamter Rebrickable-Set-Katalog, serverseitig paginiert.
  * Aufbau analog GalleryScreen (Suche oben, Filter-Chips, Grid) — Filter
  * laufen aber serverseitig, das Grid lädt beim Scrollen seitenweise nach.
@@ -109,6 +120,42 @@ fun CatalogScreen(
             ersteSeite to letzteSeite
         }.collect { (von, bis) ->
             for (seite in (von - 1)..(bis + 1)) if (seite >= 1) onEnsurePage(seite)
+        }
+    }
+
+    // ── Die Zielseite der Jahresleiste — ENTPRELLT ──────────────────────────
+    //
+    // Marcos Befund: „wenn ich im Katalog zu einem Jahr springe dauert es
+    // einige Sekunden bis die Bilder angezeigt werden. wenn ich sonst scrolle
+    // kommen sie fluessig."
+    //
+    // Die Leiste ruft `rollen()` bei JEDEM Beruehrungspunkt auf — 60 bis 120
+    // mal je Sekunde —, und dort stand bis hierher ein `onEnsurePage(...)`.
+    // Bei 60 Sets je Seite und rund 25'000 Sets deckt die Leiste ungefaehr
+    // 420 Seiten ab; ein einziger Zug ueber ihre volle Hoehe stiess damit bis
+    // zu hundert verschiedene Seitenabrufe an. Jeder holt 60 Sets, jeder mit
+    // bis zu zwei Wiederholungen (CATALOG_RETRIES), und ABGEBROCHEN wird
+    // keiner — ensureCatalogPage() kennt kein Zurueck.
+    //
+    // Die Seite, auf der man landet, war danach eine von hundert, und ihre 60
+    // Bilder standen hinter dem ganzen Rest. Beim gewoehnlichen Scrollen
+    // passiert nichts davon: Dort laedt der Sichtfenster-Lader eine Seite
+    // Vorlauf, mehr nicht.
+    //
+    // Die Absicht des alten Aufrufs war richtig und bleibt: An der Stelle, an
+    // der man landet, sollen nicht erst Platzhalter stehen. Nur die Dosis war
+    // falsch. `LaunchedEffect` auf die Zielseite bricht den vorigen Durchlauf
+    // ab, sobald sich der Wert aendert — waehrend des Ziehens kommt es also
+    // gar nicht bis zum `onEnsurePage`, und erst wenn der Finger zur Ruhe
+    // kommt, wird EINE Seite geholt.
+    // `remember`, nicht `rememberSaveable`: Nach einer Drehung braucht es die
+    // Zielseite nicht — der Sichtfenster-Lader holt ohnehin, was dann sichtbar
+    // ist, und ein nachlaufender Abruf waere doppelt.
+    var zielSeite by remember { mutableStateOf<Int?>(null) }
+    LaunchedEffect(zielSeite) {
+        zielSeite?.let { seite ->
+            kotlinx.coroutines.delay(SPRUNG_ENTPRELLUNG_MS)
+            onEnsurePage(seite)
         }
     }
 
@@ -278,10 +325,9 @@ fun CatalogScreen(
                                     ?.getOrNull(nummer % CATALOG_PAGE_SIZE)?.year
                             },
                             onScrollTo = { nummer ->
-                                // Die Zielseite gleich mitladen, damit an der
-                                // Stelle nicht fuer einen Moment nur
-                                // Platzhalter stehen.
-                                onEnsurePage(nummer / CATALOG_PAGE_SIZE + 1)
+                                // Nur MERKEN, nicht laden — der Abruf steht
+                                // entprellt weiter oben. Warum, siehe dort.
+                                zielSeite = nummer / CATALOG_PAGE_SIZE + 1
                                 onScrollTo(nummer)
                             },
                             modifier = Modifier.align(Alignment.CenterEnd).fillMaxHeight()
