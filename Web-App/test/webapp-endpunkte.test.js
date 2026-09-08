@@ -215,9 +215,37 @@ const NUR_WEB = new Map([
    'Verschickt eine Probe-Mail zum Prüfen der SMTP-Angaben. Die App richtet ' +
    'kein SMTP ein; ohne die Formularfelder daneben hätte der Knopf nichts zu ' +
    'prüfen.'],
+
+  // ── Vier Adressen, die die App KANNTE und nicht mehr aufruft ──────────────
+  //
+  // Marcos Ansage: „bitte entferne folgende Punkte aus der Android App:
+  // bricklink.xml Funktionalität aus dem Reiter Teileliste, Teile neu einlesen
+  // auf dem Detail Dialog der Sets, neu laden bei den Anleitungen auf dem
+  // Detail Dialog der Sets."
+  //
+  // Das ist ein anderer Grund als bei den zehn darüber: Dort ist die App nie
+  // hingekommen und es gab jeweils ein Argument dafür. Hier war sie schon da,
+  // und der Eigentümer hat sich dagegen entschieden. Der Unterschied gehört
+  // festgehalten — sonst liest der Nächste diese vier als „hat noch niemand
+  // nachgezogen" und baut sie wieder ein.
+  ['/api/v1/sets/:X/instructions',
+   'Verwirft die hinterlegten Anleitungen eines Sets und lässt die ' +
+   'automatische Suche noch einmal laufen. War im Set-Detail der App und ist ' +
+   'auf Marcos ausdrücklichen Wunsch entfernt.'],
+  ['/api/v1/sets/:X/parts',
+   'Liest die Teileliste eines Sets neu aus dem Katalog ein. Ebenfalls im ' +
+   'Set-Detail der App gewesen, auf Marcos Wunsch entfernt.'],
+  ['/api/v1/parts/bl-color-map',
+   'Rebrickable-Farbnummer → BrickLink-Farbnummer. Wurde in der App NUR vom ' +
+   'BrickLink-Export der Teileliste gebraucht; der ist auf Marcos Wunsch ' +
+   'entfernt, und damit hat die Karte dort keinen Leser mehr.'],
+  ['/api/v1/minifigs/:X/parts',
+   'Die Einzelteile einer Minifigur. Dieselbe Herkunft: Der Export löste ' +
+   'fehlende Figuren in ihre Teile auf, weil man die Figur oft nicht als ' +
+   'Ganzes kaufen kann. Mit dem Export entfiel der einzige Aufrufer.'],
 ]);
 
-test('nur die Webapp kann diese sieben Dinge — und zwar mit Grund', () => {
+test('was nur die Webapp kann, hat einen Grund', () => {
   const SERVICE = path.join(ROOT, '..', 'Android-App', 'app', 'src', 'main',
     'java', 'ch', 'brickinventoryapp', 'data', 'api', 'BrickApiService.kt');
   assert.ok(fs.existsSync(SERVICE), `BrickApiService.kt nicht gefunden unter ${SERVICE}`);
