@@ -31,6 +31,7 @@ import androidx.compose.ui.unit.sp
 import ch.brickinventoryapp.R
 import ch.brickinventoryapp.data.model.CatalogSetItem
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import kotlinx.coroutines.flow.collectLatest
 import ch.brickinventoryapp.ui.CatalogUiState
 import ch.brickinventoryapp.ui.MainViewModel
 import ch.brickinventoryapp.ui.viewmodel.CatalogViewModel
@@ -48,15 +49,18 @@ import androidx.compose.ui.graphics.Color
 import ch.brickinventoryapp.data.repository.CATALOG_PAGE_SIZE
 
 /**
- * Wie lange die Jahresleiste ruhig sein muss, bis ihre Seite geholt wird.
+ * Wie lange die Liste ruhig stehen muss, bevor ihre sichtbaren Seiten geholt
+ * werden.
  *
- * 200 ms: kuerzer als das, was man als Warten wahrnimmt, und laenger als der
- * Abstand zweier Beruehrungspunkte (bei 60 Hz sind das 17 ms, bei 120 Hz
- * 8 ms). Ein Zug ueber die ganze Leiste faellt damit auf EINEN Abruf zusammen
- * statt auf bis zu hundert; wer nur antippt, wartet ein Fuenftel einer
- * Sekunde laenger als vorher.
+ * 150 ms, dieselbe Zahl wie in der Webapp (js/09-catalog.js,
+ * `_ladeSichtbareSeiten`) — dort hat sie sich im Betrieb bewaehrt: Beim
+ * gewoehnlichen Scrollen merkt man sie nicht, ein Zug ueber die ganze Leiste
+ * faellt auf EINEN Abruf zusammen.
+ *
+ * Laenger als der Abstand zweier Beruehrungspunkte (17 ms bei 60 Hz, 8 ms bei
+ * 120 Hz) muss sie sein, sonst entprellt sie waehrend eines Zuges gar nichts.
  */
-private const val SPRUNG_ENTPRELLUNG_MS = 200L
+private const val SICHTFENSTER_RUHE_MS = 150L
 
 /**
  * Katalog-Screen: gesamter Rebrickable-Set-Katalog, serverseitig paginiert.
@@ -112,52 +116,60 @@ fun CatalogScreen(
     //
     // Eine Seite Vorlauf in beide Richtungen, damit beim Scrollen keine
     // Platzhalter aufblitzen.
+    //
+    // ── Und zwar ERST, wenn die Liste zur Ruhe kommt (Marcos zweite Meldung) ─
+    //
+    // „In der Android-App dauert es im Katalog noch immer 3-5 Sek. bis die
+    // Bilder geladen werden wenn ich auf ein bestimmtes Jahr springe." Dazu
+    // seine zwei entscheidenden Beobachtungen: Der Bereich ist in dieser Zeit
+    // GANZ LEER (es fehlen also die Seitendaten, nicht die Bilder), es dauert
+    // beim ZWEITEN Besuch desselben Jahres genauso lange (also kein Cache),
+    // und in der Webapp geht dasselbe sofort.
+    //
+    // Die Jahresleiste rollt die Liste WIRKLICH an jede Zwischenposition —
+    // ihr Rueckruf laeuft bei jedem Beruehrungspunkt und setzt ueber
+    // `state.scrollTo` ein `gridState.scrollToItem(...)`. Damit sieht dieser
+    // Lader hier bei jedem dieser Punkte ein neues Sichtfenster und forderte
+    // drei Seiten an. Ein Zug ueber die volle Hoehe deckt rund 420 Seiten ab;
+    // abgebrochen wird keine (ensureCatalogPage kennt kein Zurueck), und der
+    // API-Client laesst nur eine Handvoll gleichzeitig zu. Die Seite, auf der
+    // man landet, steht dann hinter allen anderen in der Schlange — das sind
+    // Marcos 3 bis 5 Sekunden mit leeren Platzhaltern.
+    //
+    // Beim gewoehnlichen Scrollen aendert sich das Sichtfenster langsam, und
+    // 150 ms Ruhe fallen dort nicht auf. Genau diese Unterscheidung macht die
+    // Webapp seit jeher, und zwar an DIESER Stelle (`_ladeSichtbareSeiten`) —
+    // nicht im Rueckruf der Leiste.
     LaunchedEffect(gridState, state.total, state.loadedPages.size) {
         snapshotFlow {
             val sichtbar = gridState.layoutInfo.visibleItemsInfo
             val ersteSeite = ((sichtbar.firstOrNull()?.index ?: 0) / CATALOG_PAGE_SIZE) + 1
             val letzteSeite = ((sichtbar.lastOrNull()?.index ?: 0) / CATALOG_PAGE_SIZE) + 1
             ersteSeite to letzteSeite
-        }.collect { (von, bis) ->
+        }.collectLatest { (von, bis) ->
+            // `collectLatest`, nicht `collect`: Trifft waehrend der Wartezeit
+            // ein neues Sichtfenster ein, bricht Kotlin diesen Durchlauf ab.
+            // Mit `collect` wuerde jeder Punkt des Zuges nur VERZOEGERT
+            // geladen statt gar nicht — die Abrufe blieben dieselben.
+            kotlinx.coroutines.delay(SICHTFENSTER_RUHE_MS)
             for (seite in (von - 1)..(bis + 1)) if (seite >= 1) onEnsurePage(seite)
         }
     }
 
-    // ── Die Zielseite der Jahresleiste — ENTPRELLT ──────────────────────────
+    // ── Warum es hier KEINEN zweiten, eigenen Sprung-Abruf mehr gibt ───────
     //
-    // Marcos Befund: „wenn ich im Katalog zu einem Jahr springe dauert es
-    // einige Sekunden bis die Bilder angezeigt werden. wenn ich sonst scrolle
-    // kommen sie fluessig."
+    // Genau der stand hier: Der Rueckruf der Leiste merkte sich die Zielseite,
+    // und ein eigener `LaunchedEffect` holte sie nach 200 ms. Das war die
+    // falsche Schicht. Er nahm dem Rueckruf zwar seinen unmittelbaren Abruf,
+    // aber die Leiste ROLLT die Liste ja auch — der Sichtfenster-Lader oben
+    // sah jede Zwischenposition und forderte weiter drei Seiten je
+    // Beruehrungspunkt an. Die Zahl der Abrufe blieb damit, wie sie war.
     //
-    // Die Leiste ruft `rollen()` bei JEDEM Beruehrungspunkt auf — 60 bis 120
-    // mal je Sekunde —, und dort stand bis hierher ein `onEnsurePage(...)`.
-    // Bei 60 Sets je Seite und rund 25'000 Sets deckt die Leiste ungefaehr
-    // 420 Seiten ab; ein einziger Zug ueber ihre volle Hoehe stiess damit bis
-    // zu hundert verschiedene Seitenabrufe an. Jeder holt 60 Sets, jeder mit
-    // bis zu zwei Wiederholungen (CATALOG_RETRIES), und ABGEBROCHEN wird
-    // keiner — ensureCatalogPage() kennt kein Zurueck.
-    //
-    // Die Seite, auf der man landet, war danach eine von hundert, und ihre 60
-    // Bilder standen hinter dem ganzen Rest. Beim gewoehnlichen Scrollen
-    // passiert nichts davon: Dort laedt der Sichtfenster-Lader eine Seite
-    // Vorlauf, mehr nicht.
-    //
-    // Die Absicht des alten Aufrufs war richtig und bleibt: An der Stelle, an
-    // der man landet, sollen nicht erst Platzhalter stehen. Nur die Dosis war
-    // falsch. `LaunchedEffect` auf die Zielseite bricht den vorigen Durchlauf
-    // ab, sobald sich der Wert aendert — waehrend des Ziehens kommt es also
-    // gar nicht bis zum `onEnsurePage`, und erst wenn der Finger zur Ruhe
-    // kommt, wird EINE Seite geholt.
-    // `remember`, nicht `rememberSaveable`: Nach einer Drehung braucht es die
-    // Zielseite nicht — der Sichtfenster-Lader holt ohnehin, was dann sichtbar
-    // ist, und ein nachlaufender Abruf waere doppelt.
-    var zielSeite by remember { mutableStateOf<Int?>(null) }
-    LaunchedEffect(zielSeite) {
-        zielSeite?.let { seite ->
-            kotlinx.coroutines.delay(SPRUNG_ENTPRELLUNG_MS)
-            onEnsurePage(seite)
-        }
-    }
+    // Steht die Ruhe im Sichtfenster-Lader, deckt sie beide Wege ab, denn
+    // BEIDE enden dort. Ein zweiter Mechanismus daneben braucht es nicht —
+    // die Webapp hat ihn auch nie gehabt, und zwei Fassungen derselben Regel
+    // laufen mit der Zeit auseinander.
+
 
     // ── Die Rollposition überlebt den Wechsel zur Detailseite ───────────────
     //
@@ -324,12 +336,11 @@ fun CatalogScreen(
                                 state.loadedPages[nummer / CATALOG_PAGE_SIZE + 1]
                                     ?.getOrNull(nummer % CATALOG_PAGE_SIZE)?.year
                             },
-                            onScrollTo = { nummer ->
-                                // Nur MERKEN, nicht laden — der Abruf steht
-                                // entprellt weiter oben. Warum, siehe dort.
-                                zielSeite = nummer / CATALOG_PAGE_SIZE + 1
-                                onScrollTo(nummer)
-                            },
+                            // Nur ROLLEN, nicht laden: Was an der neuen Stelle
+                            // gebraucht wird, holt der Sichtfenster-Lader —
+                            // entprellt, siehe oben. Ein Abruf an dieser Stelle
+                            // liefe bei JEDEM Beruehrungspunkt.
+                            onScrollTo = onScrollTo,
                             modifier = Modifier.align(Alignment.CenterEnd).fillMaxHeight()
                         )
                     }

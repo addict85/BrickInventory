@@ -267,6 +267,12 @@ test('Katalog-Frontend: Seitenblöcke, Jahresfilter, eigener Scrollbalken', asyn
     !/requestAnimationFrame\([\s\S]{0,160}_messeBloecke/.test(quelle), null);
   // 2. Geladen wird erst, wenn das Rollen zur Ruhe kommt. Sonst fordert ein Zug
   //    über die Leiste hunderte Seiten an, von denen nur die letzte zählt.
+  //
+  //    Das hier ist eine Aussage über den TEXT: die Zeile steht da. Dass sie
+  //    auch WIRKT, misst katalog-zug-entprellt.test.js — dort fährt ein
+  //    wirklicher Zug über die Leiste, und die Gegenprobe nimmt genau diese
+  //    Ruhe heraus (2 Abrufe gegen 48). Beide sagen dasselbe, keine
+  //    widerspricht der anderen; wer die Zeile umbenennt, muss dort nachziehen.
   check('Laden wartet auf Ruhe',
     /_catLadeTimer = setTimeout\(tun, \d+\)/.test(quelle), null);
   // Der Beobachter ist entfallen — ein Weg, der immer greift, statt zweier,
