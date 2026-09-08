@@ -158,6 +158,17 @@ fun BrickInventoryManagerApp(
     // weiter — je nachdem, wo man gerade steht.
     ch.brickinventoryapp.ui.dialogs.SetPruefungDialog(vm)
 
+    // ── „Es gibt eine neue Fassung" — ebenfalls ueber allem ─────────────────
+    //
+    // Marcos Wunsch: „direkt beim Start ein Popup (mit Updaten, Ja/Nein), wenn
+    // es eine neue Version gibt. Aktuell wird nur eine Kugel in den
+    // Einstellungen angezeigt was oft übersehen wird."
+    //
+    // Hier und nicht in einem Bildschirm, aus demselben Grund wie bei den
+    // beiden darueber: Die Frage gilt der ganzen App. Die Pruefung, die ihn
+    // ausloest, steht ein paar Zeilen weiter oben.
+    ch.brickinventoryapp.ui.dialogs.UpdateDialog(vm)
+
 
     val activity = androidx.compose.ui.platform.LocalContext.current
     NavHost(navController, startDestination = startDest) {

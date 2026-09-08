@@ -84,6 +84,17 @@ internal fun MainViewModel.pruefeAufUpdate(still: Boolean = false) {
 }
 
 /**
+ * „Spaeter" im Start-Hinweis: fuer diesen App-Lauf nicht mehr fragen.
+ *
+ * Der Zustand bleibt unveraendert — es gibt weiterhin eine neuere Fassung, und
+ * der Punkt am Konto-Symbol sagt das auch weiterhin. Weggeklickt ist nur die
+ * FRAGE, nicht der Befund.
+ */
+internal fun MainViewModel.updateHinweisSchliessen() {
+    _updateState.update { it.copy(dialogAbgelehnt = true) }
+}
+
+/**
  * Laedt das APK und bietet es zur Installation an.
  *
  * ── Drei Bedingungen, bevor irgendetwas installiert wird ────────────────────

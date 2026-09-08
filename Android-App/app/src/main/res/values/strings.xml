@@ -569,6 +569,10 @@
     <string name="update_title">Update</string>
     <string name="update_check">Check for updates</string>
     <string name="update_current">Up to date (%1$s)</string>
+    <string name="update_dialog_title">Update available</string>
+    <string name="update_dialog_text">Version %1$s is ready. You are running %2$s.</string>
+    <string name="update_dialog_now">Update now</string>
+    <string name="update_dialog_later">Later</string>
     <string name="update_available">Version %1$s is available</string>
     <string name="update_installed">Installed: %1$s</string>
     <string name="update_download">Download</string>
