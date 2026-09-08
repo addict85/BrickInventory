@@ -58,23 +58,22 @@ class CatalogScrubberTest {
         assert(!aufruf.contains("onYearSelected") && !aufruf.contains("selectedYear")) {
             "Die Leiste haengt wieder am Jahr statt an der Stelle in der Liste"
         }
-        // Die Zielseite muss weitergegeben werden, sonst stehen dort
-        // Platzhalter.
+        // Was an der neuen Stelle gebraucht wird, holt der Sichtfenster-Lader.
         //
-        // Hier stand `onEnsurePage(` — der Abruf also unmittelbar im Rueckruf
-        // der Leiste. Das war die Ursache von Marcos „beim Sprung dauert es
-        // einige Sekunden": Der Rueckruf laeuft bei JEDEM Beruehrungspunkt,
-        // und ein Zug ueber die Leiste beruehrt jede Seite des Katalogs.
+        // Hier stand zuerst `onEnsurePage(` — der Abruf also unmittelbar im
+        // Rueckruf der Leiste, der bei JEDEM Beruehrungspunkt laeuft. Danach
+        // stand hier `zielSeite =`, ein gemerktes Sprungziel mit eigenem,
+        // entprelltem Abruf. Auch das war die falsche Schicht: Die Leiste
+        // rollt die Liste wirklich an jede Zwischenposition, und der
+        // Sichtfenster-Lader forderte dort unveraendert weiter Seiten an.
         //
-        // Die Absicht dieser Zusicherung bleibt und ist richtig; nur ihr
-        // Mechanismus war es nicht mehr. Geladen wird jetzt entprellt, und die
-        // Regel dazu steht MIT der Messung in KatalogSprungEntprelltTest —
-        // nicht hier noch einmal. Zwei Fassungen einer Regel laufen
-        // auseinander; an dieser Stelle bleibt nur, dass der Rueckruf die
-        // Zielseite ueberhaupt weiterreicht.
-        assert(aufruf.contains("zielSeite =")) {
-            "Beim Rollen wird die Zielseite nicht weitergegeben — dann bleiben " +
-                "dort Platzhalter stehen"
+        // Jetzt reicht der Rueckruf nur noch die Stelle weiter, und die Ruhe
+        // steht im Sichtfenster-Lader — dort enden beide Wege. Die Regel dazu
+        // steht MIT der Messung in KatalogSprungEntprelltTest, nicht hier noch
+        // einmal; an dieser Stelle bleibt nur, dass hier NICHT geladen wird.
+        assert(!aufruf.contains("onEnsurePage")) {
+            "Die Leiste laedt wieder selbst — das ist ein Abruf je " +
+                "Beruehrungspunkt, siehe KatalogSprungEntprelltTest"
         }
         // Der ausdrückliche Filter bleibt.
         assert(s.contains("onYearChange")) {
