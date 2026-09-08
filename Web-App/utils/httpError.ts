@@ -18,8 +18,32 @@ import type { FehlerCode } from './fehlerTexte';
  */
 function handleRouteError(res: any, e: any, status?: number, req?: any) {
   const code = status || e?.status || 500;
-  // Vollständig loggen — inkl. Stack für die Fehlersuche
-  console.error(`[route-error] ${code}:`, e?.stack || e?.message || e);
+  // ── Vollständig loggen — inkl. Methode, Pfad und Stack ────────────────────
+  //
+  // Marcos Befund: Im Protokoll stand
+  //
+  //     [route-error] 404: Error: Nicht gefunden
+  //         at fehlerWerfen (…/fehlerTexte.js:243:13)
+  //         at …/routes/api_v1/acquisitions.js:93:55
+  //
+  // Der Stack sagte, WELCHE Zeile geworfen hat — aber nicht, welche Anfrage
+  // dort ankam. Bei acquisitions.js ist das entscheidend: Dieselbe Zeile
+  // bedient Teile UND Minifiguren (eine gemeinsame Fabrik), und die
+  // gesuchte Kennung steht im Pfad. Ohne sie liess sich „die Zeile war schon
+  // weg" nicht von „die Oberflaeche schickt die falsche Nummer" trennen.
+  //
+  // `req` liegt an dieser Stelle laengst vor — GEMESSEN reichen es alle 102
+  // Aufrufer durch. Es fehlte nur in der Ausgabe.
+  //
+  // ── Warum ohne Fragezeichen-Teil ─────────────────────────────────────────
+  //
+  // Der Pfad wird am `?` abgeschnitten. Was gesucht wird, steht bei diesen
+  // Routen im Pfad selbst; die Abfrage traegt dagegen Filter und, je nach
+  // Aufrufer, auch schon einmal etwas, das nicht ins Protokoll gehoert. Ein
+  // Protokoll ist der falsche Ort, um das im Einzelfall zu entscheiden.
+  const wo = req?.originalUrl || req?.url;
+  const anfrage = wo ? `${req.method || '?'} ${String(wo).split('?')[0]} ` : '';
+  console.error(`[route-error] ${anfrage}${code}:`, e?.stack || e?.message || e);
   if (res.headersSent) return;
   const isServerError = code >= 500;
   // ── Trägt der Fehler einen Code, gilt der (Nachtrag 130) ──────────────────
