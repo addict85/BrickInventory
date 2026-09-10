@@ -10,11 +10,10 @@ import androidx.compose.ui.graphics.Color
 // um strukturelle Stein-Elemente (Noppen-Deckel, Salbei-Badges …) nur dort zu zeigen.
 val LocalIsBrickTheme = staticCompositionLocalOf { false }
 
-// Webapp brand colors (#2563eb = --b600)
-val BrandBlue      = Color(0xFF2563EB)
-val BrandBlueDark  = Color(0xFF1D4ED8)
-val BrandBlueLight = Color(0xFFEFF6FF)
-val BrandBlue50    = Color(0xFFDBEAFE)
+// BrandBlue, BrandBlueDark, BrandBlueLight und BrandBlue50 stehen in
+// DesignTokens.kt — erzeugt aus shared/design-tokens.json, damit sie mit der
+// Webapp nicht auseinanderlaufen koennen. Gleiche Datei, gleiches Paket, also
+// hier ohne Import nutzbar.
 
 // Keep BrandRed for accents / G&V
 val BrandRed        = Color(0xFFE63329)
@@ -53,10 +52,8 @@ private val LightColors = lightColorScheme(
 )
 
 // ── Stein-Design (blau) — gedämpftes Schieferblau, passend zur Webapp ──────────
-val SlateBlue        = Color(0xFF3D5A80)  // Primär (wie Webapp --b600 im brick-Theme)
-val SlateBlueDark    = Color(0xFF2F4763)
-val SlateBlueLight   = Color(0xFFD9E4F0)
-val Petrol           = Color(0xFF3D7A8C)  // Aktionen / Werte
+// SlateBlue, SlateBlueDark, SlateBlueLight und Petrol stehen in
+// DesignTokens.kt (erzeugt, siehe oben).
 val PetrolLight      = Color(0xFFCFE3E8)
 val BrickSand        = Color(0xFFE9DED0)  // "Gebraucht"-Akzent (Container)
 val BrickSandText    = Color(0xFF5C4A2E)
@@ -115,10 +112,8 @@ data class ChartColors(
     val gedaempft: Color = Color(0xFF94A3B8),
 )
 
-val ChartNewClassic  = Color(0xFF2563EB)
-val ChartUsedClassic = Color(0xFFD97706)
-val ChartNewBrick    = Color(0xFF5F8468)  // Salbeigrün — wie .cond-new
-val ChartUsedBrick   = Color(0xFF9A7A45)  // Sand — wie .cond-used
+// Die vier Chart*-Farben stehen in DesignTokens.kt (erzeugt, siehe oben) —
+// samt der Begruendung, warum die Gebraucht-Linie im Stein-Design Sand ist.
 
 val LocalChartColors = staticCompositionLocalOf {
     ChartColors(new = ChartNewClassic, used = ChartUsedClassic)

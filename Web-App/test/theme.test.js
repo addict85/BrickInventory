@@ -153,24 +153,44 @@ test('die Diagrammfarben stimmen mit den Zustands-Plaketten überein', () => {
   //
   // Kommentare werden entfernt: Der Erklärtext daneben nennt die frühere Farbe
   // (#3d5a80), und ein einfacher Regex-Treffer landete zuerst dort.
-  const brick = fs.readFileSync(path.join(PUB, 'themes', 'brick.css'), 'utf8')
-    .replace(/\/\*[\s\S]*?\*\//g, '');
+  // ── Zwei Dateien, seit die Tokens erzeugt werden ────────────────────────
+  // Die WERTE (--chart-new/--chart-used) stehen seit dem Zusammenlegen in
+  // public/tokens.css, erzeugt aus shared/design-tokens.json, damit die
+  // Android-App dieselben fuehrt. Die PLAKETTEN (.cond-new/.cond-used) sind
+  // reine Web-Gestaltung und blieben in themes/brick.css.
+  //
+  // Die Regel ueberspannt damit beide Dateien — und das ist ihr Punkt: Sie
+  // haelt Wert und Plakette zusammen, ganz gleich, wo beide wohnen.
+  // Nur der STEIN-Block von tokens.css: Die Datei fuehrt beide Designs
+  // untereinander, und ein blosses match() nimmt den ersten Treffer — das
+  // waere der klassische Wert, waehrend die Plakette daneben die des
+  // Stein-Designs ist. Genau so ist diese Pruefung beim Umbau einmal
+  // fehlgeschlagen, und zwar mit der richtigen Meldung.
+  const tokens = fs.readFileSync(path.join(PUB, 'tokens.css'), 'utf8');
+  const steinTeil = tokens.slice(tokens.indexOf('[data-theme="brick"]'));
+  assert.ok(steinTeil, 'tokens.css fuehrt kein Stein-Design mehr');
+  const brick = [
+    steinTeil,
+    fs.readFileSync(path.join(PUB, 'themes', 'brick.css'), 'utf8'),
+  ].join('\n').replace(/\/\*[\s\S]*?\*\//g, '');
 
   const grab = (re, what) => {
     const m = brick.match(re);
     assert.ok(m, `${what} nicht gefunden`);
     return m[1].toLowerCase();
   };
-  assert.equal(grab(/--chart-new:(#[0-9a-f]{6})/i, '--chart-new'),
+  assert.equal(grab(/--chart-new:\s*(#[0-9a-f]{6})/i, '--chart-new'),
                grab(/\.cond-new\{background:#[0-9a-f]{6};color:(#[0-9a-f]{6})\}/i, '.cond-new'),
                'Neu-Linie und Neu-Plakette müssen dieselbe Farbe haben');
-  assert.equal(grab(/--chart-used:(#[0-9a-f]{6})/i, '--chart-used'),
+  assert.equal(grab(/--chart-used:\s*(#[0-9a-f]{6})/i, '--chart-used'),
                grab(/\.cond-used\{background:#[0-9a-f]{6};color:(#[0-9a-f]{6})\}/i, '.cond-used'),
                'Gebraucht-Linie und Gebraucht-Plakette müssen dieselbe Farbe haben');
 
   // Das Standard-Design behält Blau/Bernstein — das Paar bleibt auch bei
   // Rot-Grün-Sehschwäche unterscheidbar, weil es auf der anderen Farbachse liegt.
-  const base = fs.readFileSync(path.join(PUB, 'styles.css'), 'utf8');
-  assert.match(base, /--chart-new:#2563eb;--chart-used:#d97706;/,
-    'Die Vorgabewerte für die Diagrammfarben fehlen');
+  const base = fs.readFileSync(path.join(PUB, 'tokens.css'), 'utf8').split('[data-theme=')[0];
+  assert.match(base, /--chart-new:\s*#2563eb;/,
+    'Der Vorgabewert der Neu-Linie fehlt');
+  assert.match(base, /--chart-used:\s*#d97706;/,
+    'Der Vorgabewert der Gebraucht-Linie fehlt');
 });

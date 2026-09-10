@@ -6,7 +6,7 @@
   "scripts": {
     "start": "node dist/server.js",
     "dev": "node scripts/build-frontend.js && tsx watch server.ts",
-    "build": "node scripts/build-ts.js --outdir dist && node scripts/build-frontend.js",
+    "build": "node scripts/generate-design-tokens.js && node scripts/build-ts.js --outdir dist && node scripts/build-frontend.js",
     "typecheck": "tsc --noEmit",
     "typecheck:strict": "node scripts/check-noimplicitany.js",
     "coverage": "node scripts/coverage-map.js",
@@ -17,7 +17,8 @@
     "diagnose-image": "node scripts/diagnose-image.js",
     "test": "node --test --test-concurrency=1 --test-timeout=60000 \"test/*.test.js\"",
     "test:api": "node --test --test-concurrency=1 test/catalog-api.test.js test/api-parity.test.js",
-    "build:frontend": "node scripts/build-frontend.js"
+    "build:frontend": "node scripts/build-frontend.js",
+    "design:tokens": "node scripts/generate-design-tokens.js"
   },
   "dependencies": {
     "archiver": "^7.0.1",

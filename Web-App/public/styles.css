@@ -1,11 +1,8 @@
     :root {
-      --b50:#eff6ff;--b100:#dbeafe;--b200:#bfdbfe;--b300:#93c5fd;--b400:#60a5fa;
-      --b500:#3b82f6;--b600:#2563eb;--b700:#1d4ed8;
-      /* Diagrammfarben — je Design überschreibbar (siehe themes/brick.css).
-         Vorher standen sie fest im JavaScript; damit konnte kein Design sie
-         anpassen, und im Stein-Look stach das Bernstein der Gebraucht-Linie
-         aus der ansonsten blauen Palette heraus. */
-      --chart-new:#2563eb;--chart-used:#d97706;
+      /* Die gemeinsame Palette und die Diagrammfarben stehen in
+         /tokens.css — erzeugt aus shared/design-tokens.json, damit die
+         Android-App dieselben Werte fuehrt. Hier bleibt, was nur das
+         Web kennt. */
       --s50:#f8fafc;--s100:#f1f5f9;--s200:#e2e8f0;--s300:#cbd5e1;
       --s400:#94a3b8;--s500:#64748b;--s600:#475569;--s700:#334155;--s800:#1e293b;
       --r100:#fee2e2;--r500:#ef4444;

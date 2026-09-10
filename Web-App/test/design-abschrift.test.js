@@ -1,85 +1,103 @@
 /**
- * Die App schreibt die Farben der Webapp ab — diese Pruefung haelt sie fest.
+ * Die Farben, die BEIDE Oberflaechen gleich fuehren muessen, stehen EINMAL.
  *
  * ── Der Befund ──────────────────────────────────────────────────────────────
  *
  * Beide Oberflaechen sollen gleich aussehen; das ist Marcos stehende Vorgabe.
  * Technisch geht das nicht ueber eine gemeinsame Datei: Das Web liest
- * CSS-Custom-Properties (`--b600` in public/styles.css), die App braucht
- * Compose-Farben (`Color(0xFF2563EB)` in ui/theme/Theme.kt). Derselbe Wert,
- * zwei Sprachen.
+ * CSS-Custom-Properties, die App braucht Compose-Farben. Derselbe Wert, zwei
+ * Sprachen.
  *
- * Also steht er zweimal da. Nachgezaehlt: 46 Farben in Theme.kt, und genau
- * VIER Zeilen nennen ueberhaupt, woher ihr Wert stammt. Der Rest ist eine
+ * Also stand er zweimal da. Nachgezaehlt: 46 Farben in Theme.kt, und genau
+ * VIER Zeilen nannten ueberhaupt, woher ihr Wert stammt. Der Rest war eine
  * stille Abschrift — und eine stille Abschrift laeuft irgendwann weg, ohne
- * dass ein Test rot wird. Genau dieselbe Fehlerklasse, wegen der es
+ * dass ein Test rot wird. Dieselbe Fehlerklasse, wegen der es
  * shared/setnummer-korpus.json gibt (siehe shared/README.md).
  *
- * Beim Anlegen dieser Pruefung stimmten alle zwoelf Marken- und
- * Diagrammpaare noch ueberein. Sie ist also keine Reparatur, sondern die
- * Absicherung eines Zustands, den bisher nur Sorgfalt getragen hat.
+ * Jetzt steht der Wert einmal, in shared/design-tokens.json, und beide Seiten
+ * werden daraus erzeugt: public/tokens.css und ui/theme/DesignTokens.kt.
  *
- * ── Was hier NICHT geprueft wird, und warum ─────────────────────────────────
+ * ── Was hier NICHT mehr steht, und warum ────────────────────────────────────
  *
- * Nicht jede Farbe der App hat ein Gegenstueck im Web, und das ist richtig so:
+ * Die erste Fassung dieser Datei verglich zwoelf Paare "Kotlin-Konstante gegen
+ * CSS-Token" einzeln. Diese Pruefung ist mit der Erzeugung UEBERFLUESSIG
+ * geworden: Beide Werte kommen jetzt aus derselben Zeile derselben Datei, sie
+ * KOENNEN nicht mehr auseinanderlaufen. Eine Zusicherung, die nicht mehr
+ * fehlschlagen kann, ist keine Absicherung, sondern Zierrat — und sie
+ * verdeckt, wo die echte Gefahr jetzt liegt. Sie ist deshalb ersetzt, nicht
+ * ergaenzt.
  *
- *   * Compose fuehrt mit `background`, `surface` und `surfaceVariant` DREI
- *     Ebenen, wo das Web mit `--bg` und `--sur` zwei fuehrt. Die dritte muss
- *     sich von den anderen unterscheiden, sonst verschwinden Flaechen, die
- *     darauf liegen (etwa die Platzhalter-Kacheln des Katalogs). Sie kann
- *     deshalb nicht einfach denselben Wert tragen.
- *   * Im Stein-Design hat das Web eine "Grundplatte" hinter der Seite, die
- *     die App gar nicht hat.
+ * Die echte Gefahr ist neu und liegt woanders:
  *
- * Geprueft wird deshalb, was gleich sein MUSS: die Markenfarben und die
- * Diagrammfarben. Die Markenfarbe ist das, was beide Oberflaechen als
- * dieselbe Anwendung erkennbar macht; die Diagrammfarben tragen in beiden
- * dieselbe Bedeutung (Neu gegen Gebraucht), und wer sie wiedererkennt, muss
- * die Legende nicht lesen — so steht es in themes/brick.css begruendet.
+ *   1. Jemand aendert eine erzeugte Datei von Hand. Dann steht der Wert wieder
+ *      zweimal, und beim naechsten `npm run build` ist die Aenderung weg.
+ *   2. Jemand definiert einen erzeugten Token in einem handgeschriebenen
+ *      Stylesheet NEU. Dann gewinnt dort das handgeschriebene, die App folgt
+ *      aber weiter der gemeinsamen Quelle — genau das Auseinanderlaufen, gegen
+ *      das der ganze Umbau gebaut ist, nur eine Ebene hoeher.
+ *   3. index.html laedt tokens.css nicht mehr. Dann faellt im Web JEDE dieser
+ *      Farben aus, und `var(--b600)` liefert nichts.
+ *
+ * Gegen alle drei steht je eine Pruefung unten. Die vierte Pruefung
+ * ("Herkunftsangabe") bleibt aus der ersten Fassung: Sie gilt den Farben, die
+ * WEITERHIN von Hand in Theme.kt stehen und kein Gegenstueck im Web haben.
+ *
+ * ── Was bewusst NICHT gemeinsam ist ─────────────────────────────────────────
+ *
+ * Compose fuehrt mit background/surface/surfaceVariant drei Ebenen, wo das Web
+ * mit --bg/--sur zwei fuehrt; die dritte muss sich unterscheiden, sonst
+ * verschwinden Flaechen, die darauf liegen. Und im Stein-Design hat das Web
+ * eine "Grundplatte" hinter der Seite, die die App gar nicht hat. Solche Werte
+ * gehoeren nicht in die gemeinsame Quelle — shared/README.md sagt es
+ * ausdruecklich: Ein Fall, der nur auf einer Seite gelten kann, gehoert nicht
+ * dorthin.
  *
  * ── Warum diese Pruefung im WEB-Baum liegt ──────────────────────────────────
  *
  * Sie muss laufen, sobald sich EINE der beiden Seiten aendert. Der
- * Android-Arbeitsablauf hat einen Pfadfilter (Android-App/**, shared/**), der
- * Web-Ablauf hat keinen — er laeuft bei jedem Push. Hier liegt sie also
- * richtig, und zwar nur hier: Zwei Fassungen derselben Regel laufen
- * auseinander.
+ * Android-Ablauf hat einen Pfadfilter, der Web-Ablauf hat keinen — er laeuft
+ * bei jedem Push.
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
+const { baueCss, baueKotlin, QUELLE, ZIEL_CSS, ZIEL_KT } =
+  require('../scripts/generate-design-tokens.js');
 
-const ROOT = path.join(__dirname, '..', '..');
-const CSS_BASIS = path.join(ROOT, 'Web-App', 'public', 'styles.css');
-const CSS_BRICK = path.join(ROOT, 'Web-App', 'public', 'themes', 'brick.css');
-const KT_THEME = path.join(ROOT, 'Android-App', 'app', 'src', 'main', 'java',
+// BAUM, nicht ROOT: In jeder anderen Testdatei dieses Ordners heisst `ROOT`
+// die Wurzel der WEB-APP. eigenbruecken.test.js prueft darauf gestuetzt jeden
+// `path.join(BAUM, ...)` gegen den Web-Baum — und meldete diese Datei prompt
+// als kaputt, weil hier die Wurzel des REPOSITORYS gemeint ist. Derselbe Name
+// fuer zwei verschiedene Dinge; der Name wechselt, nicht die Regel.
+const BAUM = path.join(__dirname, '..', '..');
+const CSS_BASIS = path.join(BAUM, 'Web-App', 'public', 'styles.css');
+const CSS_BRICK = path.join(BAUM, 'Web-App', 'public', 'themes', 'brick.css');
+const CSS_MOBIL = path.join(BAUM, 'Web-App', 'public', 'mobile.css');
+const INDEX = path.join(BAUM, 'Web-App', 'public', 'index.html');
+const KT_THEME = path.join(BAUM, 'Android-App', 'app', 'src', 'main', 'java',
   'ch', 'brickinventoryapp', 'ui', 'theme', 'Theme.kt');
+
+const DATEN = JSON.parse(fs.readFileSync(QUELLE, 'utf8'));
 
 /**
  * `--name: #wert` aus einer CSS-Datei lesen und `var(--x)` einmal aufloesen.
  *
- * Die Aufloesung braucht es, weil `--bg` im Grunddesign auf `var(--s50)`
- * zeigt statt auf einen Wert. Ohne sie faende die Pruefung dort nichts und
- * bliebe still gruen.
+ * Kommentare ZUERST weg — sonst liest die Suche die Erklaerung statt der
+ * Regel. Genau das ist beim Anlegen passiert: In themes/brick.css stand im
+ * Kommentar "Vorher stand hier --chart-used:#3d5a80", und die erste Fassung
+ * nahm diesen ALTEN Wert fuer den gueltigen. Dieselbe Falle, wegen der es
+ * Quellen.ohneKommentare gibt; CSS-Kommentare schachteln nicht, deshalb
+ * genuegt der einfache Schnitt.
+ *
+ * Die Aufloesung von `var(--x)` braucht es, weil --bg auf var(--s50) zeigt
+ * statt auf einen Wert.
  */
 function tokenTabelle(datei) {
-  // Kommentare ZUERST weg — sonst liest die Suche die Erklaerung statt der
-  // Regel. Genau das ist hier beim Anlegen passiert: In themes/brick.css
-  // steht im Kommentar
-  //
-  //     Vorher stand hier --chart-used:#3d5a80 (die Primaerfarbe des Designs)
-  //
-  // und die erste Fassung dieser Funktion nahm diesen ALTEN Wert fuer den
-  // gueltigen. Die Pruefung meldete daraufhin eine Abweichung, die es gar
-  // nicht gab. Dieselbe Falle, wegen der es Quellen.ohneKommentare gibt;
-  // CSS-Kommentare koennen sich nicht schachteln, deshalb genuegt hier der
-  // einfache Schnitt.
   const src = fs.readFileSync(datei, 'utf8').replace(/\/\*[\s\S]*?\*\//g, '');
   const roh = {};
   for (const m of src.matchAll(/--([a-z0-9-]+)\s*:\s*(#[0-9a-fA-F]{3,8}|var\(--[a-z0-9-]+\))/g)) {
-    // Die LETZTE Zuweisung gilt — so rechnet auch der Browser.
-    roh[m[1]] = m[2].toLowerCase();
+    roh[m[1]] = m[2].toLowerCase();   // die LETZTE Zuweisung gilt, wie im Browser
   }
   const fertig = {};
   for (const [name, wert] of Object.entries(roh)) {
@@ -89,93 +107,97 @@ function tokenTabelle(datei) {
   return fertig;
 }
 
-const BASIS = tokenTabelle(CSS_BASIS);
-// Das Stein-Design ueberschreibt nur EINEN TEIL der Tokens; alles andere erbt
-// es aus :root. Der Rueckfall bildet genau das ab — ohne ihn wuerde ein
-// geerbtes Token hier als "gibt es nicht" gelten.
-const BRICK = { ...BASIS, ...tokenTabelle(CSS_BRICK) };
-const TABELLE = { classic: BASIS, brick: BRICK };
-
-const KT = fs.readFileSync(KT_THEME, 'utf8');
-
-/** `val Name = Color(0xFFRRGGBB)` → '#rrggbb' */
-function ktFarbe(name) {
-  const m = KT.match(new RegExp(`\\bval\\s+${name}\\s*=\\s*Color\\(0x(?:FF)?([0-9A-Fa-f]{6})\\)`));
-  return m ? '#' + m[1].toLowerCase() : null;
-}
-
-/**
- * Die Paare, die in BEIDEN Oberflaechen denselben Wert tragen muessen.
- *
- * Hier steht die ZUORDNUNG, nicht der Wert — beide Werte werden aus ihrem
- * jeweiligen Baum gelesen. Eine Liste von Werten waere eine dritte Wahrheit
- * und damit genau das Problem, gegen das diese Pruefung gebaut ist.
- */
-const PAARE = [
-  // Markenfarben: Was beide Oberflaechen als dieselbe Anwendung erkennbar macht.
-  ['classic', 'BrandBlue', 'b600'],
-  ['classic', 'BrandBlueDark', 'b700'],
-  ['classic', 'BrandBlueLight', 'b50'],
-  ['classic', 'BrandBlue50', 'b100'],
-  ['brick', 'SlateBlue', 'b600'],
-  ['brick', 'SlateBlueDark', 'b700'],
-  ['brick', 'SlateBlueLight', 'b100'],
-  ['brick', 'Petrol', 'brick-petrol'],
-  // Diagrammfarben: Sie tragen in beiden Oberflaechen dieselbe BEDEUTUNG
-  // (Neu gegen Gebraucht). Laufen sie auseinander, heisst dasselbe Blau in
-  // der App etwas anderes als im Web.
-  ['classic', 'ChartNewClassic', 'chart-new'],
-  ['classic', 'ChartUsedClassic', 'chart-used'],
-  ['brick', 'ChartNewBrick', 'chart-new'],
-  ['brick', 'ChartUsedBrick', 'chart-used'],
-];
-
-test('Marke und Diagramm tragen in App und Webapp denselben Wert', () => {
-  const abweichungen = [];
-  for (const [design, ktName, token] of PAARE) {
-    const web = TABELLE[design][token];
-    const app = ktFarbe(ktName);
-    // Selbstnachweis, beide Richtungen: Ein Paar, dessen eine Seite gar nicht
-    // gefunden wird, prueft nichts — und faellt ohne diese Zeilen still durch.
-    assert.ok(web, `--${token} gibt es im Design "${design}" nicht (mehr). ` +
-      `Wurde es umbenannt, muss diese Zuordnung nachgezogen werden.`);
-    assert.ok(app, `val ${ktName} steht nicht mehr in Theme.kt. ` +
-      `Wurde es umbenannt, muss diese Zuordnung nachgezogen werden.`);
-    if (web !== app) abweichungen.push(`${design}: ${ktName}=${app} gegen --${token}=${web}`);
+test('die erzeugten Dateien stimmen mit shared/design-tokens.json ueberein', () => {
+  // Beide Erzeugnisse liegen mit im Baum — sie MUESSEN das, weil der
+  // Android-Build kein Node kennt und DesignTokens.kt sonst gar nicht haette.
+  // Damit sie trotzdem nicht von Hand gepflegt werden, wird hier dieselbe
+  // Rechnung nochmals angestellt und verglichen.
+  for (const [datei, erwartet] of [[ZIEL_CSS, baueCss(DATEN)], [ZIEL_KT, baueKotlin(DATEN)]]) {
+    const ist = fs.readFileSync(datei, 'utf8');
+    assert.equal(ist, erwartet,
+      `${path.relative(BAUM, datei)} weicht von shared/design-tokens.json ab.\n` +
+      `Entweder wurde die Datei von Hand geaendert — dann gehoert der Wert in ` +
+      `die JSON —, oder es fehlt ein Lauf von "npm run design:tokens".`);
   }
-  assert.deepEqual(abweichungen, [],
-    'Die App zeigt andere Farben als die Webapp:\n  ' + abweichungen.join('\n  ') +
-    '\nBeide Oberflaechen sollen gleich aussehen. Wurde der Wert im Web ' +
-    'geaendert, gehoert er auch nach Theme.kt (und umgekehrt).');
+});
+
+test('kein handgeschriebenes Stylesheet definiert einen erzeugten Token neu', () => {
+  // ── Die Gefahr, die dieser Umbau NEU schafft ────────────────────────────
+  //
+  // Definiert styles.css wieder ein eigenes --b600, gewinnt dort das
+  // handgeschriebene (gleiche Spezifitaet, spaeter geladen). Die App folgt
+  // aber weiter der gemeinsamen Quelle. Ergebnis: dasselbe Auseinanderlaufen
+  // wie vorher, nur eine Ebene hoeher und schlechter zu sehen.
+  const erzeugt = new Set(Object.values(DATEN.designs).flatMap(t => Object.keys(t)));
+  assert.ok(erzeugt.size >= 10, `Nur ${erzeugt.size} erzeugte Tokens — greift die Suche noch?`);
+
+  const doppelt = [];
+  for (const datei of [CSS_BASIS, CSS_BRICK, CSS_MOBIL]) {
+    const src = fs.readFileSync(datei, 'utf8').replace(/\/\*[\s\S]*?\*\//g, '');
+    for (const m of src.matchAll(/--([a-z0-9-]+)\s*:/g)) {
+      if (erzeugt.has(m[1])) doppelt.push(`${path.basename(datei)}: --${m[1]}`);
+    }
+  }
+  assert.deepEqual(doppelt, [],
+    'Diese Tokens werden erzeugt UND von Hand gesetzt:\n  ' + doppelt.join('\n  ') +
+    '\nDamit gilt im Web der handgeschriebene Wert und in der App der erzeugte. ' +
+    'Der Wert gehoert nach shared/design-tokens.json.');
+});
+
+test('index.html laedt die erzeugten Tokens', () => {
+  // Ohne diese Zeile liefert jedes var(--b600) im Web nichts — und zwar still:
+  // Die Seite baut sich auf, nur farblos.
+  const html = fs.readFileSync(INDEX, 'utf8');
+  const stelle = html.indexOf('/tokens.css');
+  assert.ok(stelle > 0, 'index.html laedt /tokens.css nicht — im Web fehlt dann ' +
+    'jede gemeinsame Farbe, ohne dass irgendwo ein Fehler erscheint.');
+  // Und zwar VOR styles.css: Die Tokens sind die Grundlage, alles andere baut
+  // darauf auf. (Fuer die Aufloesung von var() waere die Reihenfolge egal —
+  // fuer den Menschen, der die Datei liest, nicht.)
+  assert.ok(stelle < html.indexOf('/styles.css'),
+    'tokens.css wird nach styles.css geladen — die Grundlage gehoert nach oben.');
 });
 
 test('jede Herkunftsangabe in Theme.kt stimmt', () => {
-  // ── Warum das eine eigene Pruefung ist ──────────────────────────────────
+  // ── Was hier noch geprueft wird ─────────────────────────────────────────
   //
-  // Die Liste oben sagt, was gleich sein MUSS. Diese hier sagt: Was der
-  // Quelltext ueber sich selbst BEHAUPTET, muss wahr sein. Sie erfindet
-  // nichts — sie liest die Behauptung aus der Datei.
+  // In Theme.kt stehen weiterhin Farben von Hand: die, die kein Gegenstueck im
+  // Web haben (siehe Kopf dieser Datei). Nennt eine davon ein CSS-Token als
+  // Herkunft, muss die Angabe stimmen. Diese Pruefung erfindet nichts — sie
+  // liest die Behauptung aus der Datei.
   //
-  // Sie ist nicht ueberfluessig neben der Liste: Sie erfasst auch Zeilen, die
-  // dort nicht stehen, und sie hat beim Anlegen sofort etwas gefunden. In
-  // Zeile 36 stand
+  // Sie hat beim Anlegen sofort etwas gefunden. Dort stand
   //
   //     background = Color(0xFFF1F5F9),  // --s50 equivalent
   //
   // waehrend --s50 den Wert #f8fafc traegt; #f1f5f9 ist --s100. Der Kommentar
-  // widersprach seinem eigenen Wert. Richtig ist hier der WERT, nicht der
-  // Kommentar — warum, steht an der Zeile selbst.
-  //
-  // Welches Design gilt, entscheidet der Abschnitt: Alles ab der Ueberschrift
-  // des Stein-Designs gehoert zu "brick".
+  // widersprach seinem eigenen Wert. Richtig war der WERT — warum, steht an
+  // der Zeile selbst.
+  const KT = fs.readFileSync(KT_THEME, 'utf8');
+  const BASIS = tokenTabelle(CSS_BASIS);
+  // Das Stein-Design ueberschreibt nur einen TEIL der Tokens; alles andere
+  // erbt es aus :root. Und beide Designs erben jetzt die erzeugten aus
+  // tokens.css — ohne die waere die Tabelle unvollstaendig.
+  const ERZEUGT = tokenTabelle(ZIEL_CSS);
+  const TABELLE = {
+    classic: { ...BASIS, ...ERZEUGT },
+    brick: { ...BASIS, ...ERZEUGT, ...tokenTabelle(CSS_BRICK) },
+  };
+  // tokenTabelle() liest tokens.css als EINE Datei, die beide Designs
+  // enthaelt — die spaetere (brick) Zuweisung gewinnt dabei. Fuer "classic"
+  // muss deshalb der :root-Teil allein gelesen werden.
+  const nurRoot = fs.readFileSync(ZIEL_CSS, 'utf8').split('[data-theme=')[0];
+  for (const m of nurRoot.replace(/\/\*[\s\S]*?\*\//g, '').matchAll(/--([a-z0-9-]+)\s*:\s*(#[0-9a-fA-F]{3,8})/g)) {
+    TABELLE.classic[m[1]] = m[2].toLowerCase();
+  }
+
   const marke = KT.indexOf('// ── Stein-Design');
-  assert.ok(marke > 0, 'Die Abschnittsmarke des Stein-Designs fehlt — ' +
-    'ohne sie kann diese Pruefung Klassisch und Stein nicht unterscheiden.');
+  assert.ok(marke > 0, 'Die Abschnittsmarke des Stein-Designs fehlt — ohne sie ' +
+    'kann diese Pruefung Klassisch und Stein nicht unterscheiden.');
 
   const behauptungen = [];
-  const zeilen = KT.split('\n');
   let pos = 0;
-  for (const z of zeilen) {
+  for (const z of KT.split('\n')) {
     const design = pos < marke ? 'classic' : 'brick';
     pos += z.length + 1;
     const token = z.match(/--([a-z0-9-]+)/);
@@ -191,10 +213,9 @@ test('jede Herkunftsangabe in Theme.kt stimmt', () => {
   }
 
   // Selbstnachweis: Findet die Suche nichts, meldet sie auch nichts.
-  assert.ok(behauptungen.length >= 3,
-    `Nur ${behauptungen.length} Herkunftsangaben gefunden — die Suche greift ` +
-    `nicht mehr. Vor dem Anpassen dieser Zahl nachsehen, ob die Angaben ` +
-    `wirklich verschwunden sind.`);
+  assert.ok(behauptungen.length >= 1,
+    'Keine einzige Herkunftsangabe gefunden — greift die Suche noch? Vor dem ' +
+    'Anpassen dieser Zahl nachsehen, ob die Angaben wirklich verschwunden sind.');
 
   const falsch = [];
   for (const b of behauptungen) {
@@ -205,7 +226,7 @@ test('jede Herkunftsangabe in Theme.kt stimmt', () => {
   assert.deepEqual(falsch, [],
     'Diese Zeilen in Theme.kt behaupten eine Herkunft, die nicht stimmt:\n  ' +
     falsch.join('\n  ') +
-    '\nEntweder ist der Wert falsch abgeschrieben, oder der Kommentar nennt ' +
-    'das falsche Token. Ein Kommentar, der seinem Wert widerspricht, ist ' +
-    'schlimmer als keiner.');
+    '\nEntweder ist der Wert falsch abgeschrieben, oder der Kommentar nennt das ' +
+    'falsche Token. Ein Kommentar, der seinem Wert widerspricht, ist schlimmer ' +
+    'als keiner.');
 });

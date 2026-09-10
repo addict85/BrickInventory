@@ -1,0 +1,86 @@
+{
+  "_warum": "Farben, die BEIDE Oberflaechen gleich fuehren muessen. Aus dieser Datei werden Web-App/public/tokens.css und Android-App/.../ui/theme/DesignTokens.kt ERZEUGT — beide Dateien nicht von Hand bearbeiten. Siehe shared/README.md.",
+  "designs": {
+    "classic": {
+      "b50": "#eff6ff",
+      "b100": "#dbeafe",
+      "b200": "#bfdbfe",
+      "b300": "#93c5fd",
+      "b400": "#60a5fa",
+      "b500": "#3b82f6",
+      "b600": "#2563eb",
+      "b700": "#1d4ed8",
+      "chart-new": "#2563eb",
+      "chart-used": "#d97706"
+    },
+    "brick": {
+      "b50": "#eef3f8",
+      "b100": "#d9e4f0",
+      "b200": "#b7cbe0",
+      "b300": "#8fabcb",
+      "b400": "#6d94b8",
+      "b500": "#4a6f97",
+      "b600": "#3d5a80",
+      "b700": "#2f4763",
+      "chart-new": "#5f8468",
+      "chart-used": "#9a7a45",
+      "brick-petrol": "#3d7a8c"
+    }
+  },
+  "_notizen": {
+    "chart-new": "Diagrammfarben — je Design ueberschreibbar. Vorher standen sie fest im JavaScript; damit konnte kein Design sie anpassen, und im Stein-Look stach das Bernstein der Gebraucht-Linie aus der ansonsten blauen Palette heraus.",
+    "chart-used": "Im Stein-Design Salbeigruen und Sand — dieselben Werte wie die Zustands-Plaketten .cond-new und .cond-used. Der Grund ist nicht Geschmack: Diese Farben stehen ueberall in der Oberflaeche fuer genau diese Unterscheidung; wer sie im Diagramm wiedererkennt, muss die Legende nicht lesen. Vorher stand dort --chart-used:#3d5a80 (die Primaerfarbe des Designs) — zusammen mit dem hellen Blau der Neu-Linie ergab das ZWEI Blautoene, die sich nur in der Helligkeit unterschieden, und verkleinert oder gedruckt verschwindet so ein Unterschied als Erstes.",
+    "brick-petrol": "Aktions- und Wertfarbe des Stein-Designs. Gibt es nur dort — im Grunddesign existiert kein Gegenstueck."
+  },
+  "_app_warum": "Welche Konstante der App welchen Token spiegelt. Die Werte stehen NICHT hier — sie kommen aus 'designs' oben. Diese Zuordnung erzeugt DesignTokens.kt.",
+  "app": {
+    "BrandBlue": {
+      "design": "classic",
+      "token": "b600"
+    },
+    "BrandBlueDark": {
+      "design": "classic",
+      "token": "b700"
+    },
+    "BrandBlueLight": {
+      "design": "classic",
+      "token": "b50"
+    },
+    "BrandBlue50": {
+      "design": "classic",
+      "token": "b100"
+    },
+    "ChartNewClassic": {
+      "design": "classic",
+      "token": "chart-new"
+    },
+    "ChartUsedClassic": {
+      "design": "classic",
+      "token": "chart-used"
+    },
+    "SlateBlue": {
+      "design": "brick",
+      "token": "b600"
+    },
+    "SlateBlueDark": {
+      "design": "brick",
+      "token": "b700"
+    },
+    "SlateBlueLight": {
+      "design": "brick",
+      "token": "b100"
+    },
+    "Petrol": {
+      "design": "brick",
+      "token": "brick-petrol"
+    },
+    "ChartNewBrick": {
+      "design": "brick",
+      "token": "chart-new"
+    },
+    "ChartUsedBrick": {
+      "design": "brick",
+      "token": "chart-used"
+    }
+  }
+}

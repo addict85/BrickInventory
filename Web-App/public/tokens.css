@@ -1,0 +1,63 @@
+/* ERZEUGT aus shared/design-tokens.json — NICHT von Hand aendern.
+
+   Farben, die BEIDE Oberflaechen gleich fuehren muessen. Aus dieser Datei werden Web-App/public/tokens.css und Android-App/.../ui/theme/DesignTokens.kt ERZEUGT — beide Dateien nicht von Hand bearbeiten. Siehe shared/README.md. */
+
+:root {
+  --b50: #eff6ff;
+  --b100: #dbeafe;
+  --b200: #bfdbfe;
+  --b300: #93c5fd;
+  --b400: #60a5fa;
+  --b500: #3b82f6;
+  --b600: #2563eb;
+  --b700: #1d4ed8;
+
+  /* Diagrammfarben — je Design ueberschreibbar. Vorher standen sie fest im
+     JavaScript; damit konnte kein Design sie anpassen, und im Stein-Look
+     stach das Bernstein der Gebraucht-Linie aus der ansonsten blauen Palette
+     heraus. */
+  --chart-new: #2563eb;
+
+  /* Im Stein-Design Salbeigruen und Sand — dieselben Werte wie die
+     Zustands-Plaketten .cond-new und .cond-used. Der Grund ist nicht
+     Geschmack: Diese Farben stehen ueberall in der Oberflaeche fuer genau
+     diese Unterscheidung; wer sie im Diagramm wiedererkennt, muss die
+     Legende nicht lesen. Vorher stand dort --chart-used:#3d5a80 (die
+     Primaerfarbe des Designs) — zusammen mit dem hellen Blau der Neu-Linie
+     ergab das ZWEI Blautoene, die sich nur in der Helligkeit unterschieden,
+     und verkleinert oder gedruckt verschwindet so ein Unterschied als
+     Erstes. */
+  --chart-used: #d97706;
+}
+
+[data-theme="brick"] {
+  --b50: #eef3f8;
+  --b100: #d9e4f0;
+  --b200: #b7cbe0;
+  --b300: #8fabcb;
+  --b400: #6d94b8;
+  --b500: #4a6f97;
+  --b600: #3d5a80;
+  --b700: #2f4763;
+
+  /* Diagrammfarben — je Design ueberschreibbar. Vorher standen sie fest im
+     JavaScript; damit konnte kein Design sie anpassen, und im Stein-Look
+     stach das Bernstein der Gebraucht-Linie aus der ansonsten blauen Palette
+     heraus. */
+  --chart-new: #5f8468;
+
+  /* Im Stein-Design Salbeigruen und Sand — dieselben Werte wie die
+     Zustands-Plaketten .cond-new und .cond-used. Der Grund ist nicht
+     Geschmack: Diese Farben stehen ueberall in der Oberflaeche fuer genau
+     diese Unterscheidung; wer sie im Diagramm wiedererkennt, muss die
+     Legende nicht lesen. Vorher stand dort --chart-used:#3d5a80 (die
+     Primaerfarbe des Designs) — zusammen mit dem hellen Blau der Neu-Linie
+     ergab das ZWEI Blautoene, die sich nur in der Helligkeit unterschieden,
+     und verkleinert oder gedruckt verschwindet so ein Unterschied als
+     Erstes. */
+  --chart-used: #9a7a45;
+
+  /* Aktions- und Wertfarbe des Stein-Designs. Gibt es nur dort — im
+     Grunddesign existiert kein Gegenstueck. */
+  --brick-petrol: #3d7a8c;
+}
