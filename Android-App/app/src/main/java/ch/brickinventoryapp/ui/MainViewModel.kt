@@ -133,7 +133,24 @@ class MainViewModel @Inject constructor(
         return if (args.isEmpty()) c.getString(id) else c.getString(id, *args)
     }
 
-    internal val _state = MutableStateFlow(AppUiState())
+    // ── Der Zustand wird MIT dem gemerkten Design geboren ───────────────────
+    //
+    // Nicht `AppUiState()` und dann nachtraeglich korrigieren: `appTheme` wird
+    // weiter unten als `stateIn(..., _state.value.appTheme)` abgeleitet, und
+    // Kotlin wertet diese Eigenschaft VOR dem init-Block aus. Ein Startwert,
+    // der erst dort gesetzt wird, kaeme also zu spaet — MainActivity haette
+    // schon mit "classic" komponiert.
+    //
+    // Das ist Marcos Befund: „Beim Starten der App sieht man teilweise das
+    // andere Design." Der gemerkte Wert lag nur im DataStore und war damit nur
+    // asynchron zu haben; die ersten Bilder entstanden immer im Standard.
+    //
+    // gemerktesDesign() liest synchron (siehe dort). Bleibt der Server
+    // unerreichbar, bleibt es einfach beim gemerkten Design — genau das
+    // Verhalten, das Marco wollte: „wenn sich das Design geaendert hat ist es
+    // in Ordnung wenn beim ersten Starten kurz das alte Design noch sichtbar
+    // ist."
+    internal val _state = MutableStateFlow(AppUiState(appTheme = prefs.gemerktesDesign()))
     val state = _state.asStateFlow()
 
     // Live-Status des laufenden PDF-Exports (z. B. Countdown-Text „…noch ~Xs"),
@@ -272,6 +289,9 @@ class MainViewModel @Inject constructor(
         // Ohne das erschienen Anmelde- und Einrichtungsbildschirm bei jedem
         // Kaltstart im Standard-Design und sprangen nach dem Anmelden um.
         viewModelScope.launch {
+            // Der Spiegel oben hat den Zustand bereits gesetzt. Dieser Griff
+            // bleibt als zweite Quelle: Bei einer App, die schon vor dem
+            // Spiegel installiert war, steht der Wert nur im DataStore.
             val gemerkt = prefs.appTheme.first()
             _state.update { it.copy(appTheme = gemerkt) }
             loadAppTheme()

@@ -215,6 +215,12 @@ class PreferencesManager @Inject constructor(
     suspend fun saveCurrency(cur: String) {
         context.dataStore.edit { it[CURRENCY] = cur }
     }
+    private companion object {
+        /** Eigene Datei, damit der Spiegel nichts anderes beruehrt. */
+        const val DESIGN_SPIEGEL_DATEI = "design_spiegel"
+        const val APP_THEME_SPIEGEL = "app_theme"
+    }
+
     suspend fun saveLanguage(lang: String) {
         context.dataStore.edit { it[LANGUAGE] = lang }
     }
@@ -224,8 +230,50 @@ class PreferencesManager @Inject constructor(
         // Regel wie applyTheme() in 00-theme-boot.js.
         if (theme == "classic" || theme == "brick") {
             context.dataStore.edit { it[APP_THEME] = theme }
+            // Und in den synchron lesbaren Spiegel, siehe gemerktesDesign().
+            // Beides an EINER Stelle, damit die zwei Ablagen nicht
+            // auseinanderlaufen koennen.
+            designSpiegel.edit().putString(APP_THEME_SPIEGEL, theme).apply()
         }
     }
+
+    // ── Der synchron lesbare Spiegel des Designs (Marcos Befund) ─────────────
+    //
+    // „Beim Starten der App sieht man teilweise das andere Design, insbesondere
+    // wenn die Internetverbindung schlecht ist."
+    //
+    // Der gemerkte Wert lag nur im DataStore, und der laesst sich ausschliesslich
+    // ASYNCHRON lesen. MainActivity.setContent() laeuft aber sofort — die ersten
+    // Bilder entstanden deshalb immer im Vorgabewert "classic", und erst danach
+    // traf der gemerkte Wert ein. Bei schlechtem Netz dauert der Kaltstart
+    // laenger, konkurriert mehr um Haupt-Thread und Platte, und das Fenster
+    // wird sichtbar.
+    //
+    // Die Webapp hat dasselbe Problem laengst geloest: js/00-theme-boot.js ist
+    // ein BLOCKIERENDES Skript im <head>, das den zuletzt bekannten Wert aus
+    // localStorage holt, bevor irgendetwas gezeichnet wird. SharedPreferences
+    // ist das Gegenstueck dazu — sie lassen sich synchron lesen, und genau dafuer
+    // benutzt sie auch Android selbst (AppCompatDelegate merkt sich so den
+    // Nachtmodus).
+    //
+    // Der erste Zugriff liest eine winzige Datei vom Hauptthread. Das ist der
+    // Preis fuer „kein falsches Bild", und es ist derselbe Handel, den das
+    // Boot-Skript der Webapp eingeht.
+    //
+    // DataStore bleibt die fuehrende Ablage: Der Spiegel wird nur geschrieben,
+    // wenn dort geschrieben wird, und nur gelesen, wenn es synchron sein muss.
+    private val designSpiegel by lazy {
+        context.getSharedPreferences(DESIGN_SPIEGEL_DATEI, Context.MODE_PRIVATE)
+    }
+
+    /**
+     * Das zuletzt bekannte Design — SYNCHRON, fuer den allerersten Bildaufbau.
+     *
+     * Kennt der Spiegel nichts (Neuinstallation), bleibt es beim Standard;
+     * dann gibt es auch kein „anderes Design", das aufblitzen koennte.
+     */
+    fun gemerktesDesign(): String =
+        designSpiegel.getString(APP_THEME_SPIEGEL, null) ?: "classic"
     suspend fun clearSession() {
         context.dataStore.edit {
             // BEIDE Schlüssel: Bliebe der alte stehen, wäre man nach dem
