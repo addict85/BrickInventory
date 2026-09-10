@@ -7,15 +7,28 @@ angekommen.
 
 ## Was hier steht
 
-| Datei | Richtung |
-|---|---|
-| `Main.dc.html`, `WerkbankTelefon.dc.html` | **A · Werkbank** — anthrazit mit Bernstein |
-| `PapierWeb.dc.html`, `PapierTelefon.dc.html` | **B · Papier** — Katalogseite, Serifen, Haarlinien |
-| `KontrastWeb.dc.html`, `KontrastTelefon.dc.html` | **C · Kontrast** — harte Kanten, ein Signalgrün, dicht |
-| `canvas.json` | Anordnung der sechs Flächen und die Notizen daneben |
+| Datei | Richtung | Achse |
+|---|---|---|
+| `Main.dc.html`, `WerkbankTelefon.dc.html` | **A · Werkbank** — anthrazit mit Bernstein | Stimmung (dunkel) |
+| `PapierWeb.dc.html`, `PapierTelefon.dc.html` | **B · Papier** — Katalogseite, Serifen, Haarlinien | Medium (Druck) |
+| `KontrastWeb.dc.html`, `KontrastTelefon.dc.html` | **C · Kontrast** — harte Kanten, ein Signalgrün | Dichte |
+| `VitrineWeb.dc.html`, `VitrineTelefon.dc.html` | **D · Vitrine** — vier Spalten, 4:3-Bild, viel Luft | Bildgrösse |
+| `BlaupauseWeb.dc.html`, `BlaupauseTelefon.dc.html` | **E · Blaupause** — Millimeterraster, Schriftfeld, Mono | Metapher |
+| `FarbfaecherWeb.dc.html`, `FarbfaecherTelefon.dc.html` | **F · Farbfächer** — Thema=Farbton, Bedienung grau | Farbe als Auskunft |
+| `canvas.json` | Anordnung der zwölf Flächen und die Notizen daneben | |
 
 Je Richtung eine Web- und eine Telefonansicht, damit sich beide Oberflächen
 vergleichen lassen — dieselbe Vorgabe wie überall in diesem Projekt.
+
+Die Richtungen sind bewusst über verschiedene ACHSEN verteilt und nicht über
+Farbvarianten desselben Gedankens: Sechs Abstufungen einer Idee sind keine
+Auswahl. Zu jeder steht in `canvas.json` eine Notiz mit ihrem Haken — eine
+Sammlung, in der nur der Favorit eine Begründung bekommt, ist eine gelenkte
+Abstimmung.
+
+**A bis F behalten ihre Namen und Plätze.** Kommt eine Richtung dazu, wird sie
+angehängt; nummeriert oder umbenannt wird nichts, sonst zeigt eine spätere
+Rückfrage („nimm B") auf etwas anderes als beim ersten Mal.
 
 ## Woher die Masse stammen
 
