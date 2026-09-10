@@ -95,7 +95,18 @@ class ZwillingsKachelnTest {
     @Test
     fun `beide Kacheln zeigen den Besitzer`() {
         val gemeinsam = code(read("ui/screens/ManualItemComposables.kt"))
-        assert(gemeinsam.contains("OwnerBadges(besitzer, Modifier.padding(top = 2.dp))")) {
+        // Der Anker hing am ganzen Aufruf samt Innenabstand:
+        //
+        //     OwnerBadges(besitzer, Modifier.padding(top = 2.dp))
+        //
+        // Der Abstand steht seit der Abstandsskala als `Abstaende.haar` da, und
+        // der Test fiel darueber — obwohl an der Sache nichts falsch war.
+        //
+        // Die Absicht dieser Zusicherung ist "die Kachel zeigt den Besitzer",
+        // nicht "sie tut es mit zwei Punkt Abstand". Der Anker steht deshalb
+        // jetzt auf dem, was gemeint ist. Wie gross der Abstand ist, gehoert
+        // zur Gestaltung und hat hier nie etwas geprueft.
+        assert(gemeinsam.contains("OwnerBadges(besitzer,")) {
             "ManuelleKachel zeigt den Besitzer nicht mehr — im Haushalt ist dann an " +
                 "keiner manuellen Kachel zu sehen, wem der Eintrag gehoert"
         }

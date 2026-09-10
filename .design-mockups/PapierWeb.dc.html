@@ -1,0 +1,108 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,500;0,6..72,600;1,6..72,400&family=Plus+Jakarta+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap">
+  <style>
+    body { margin: 0; font-family: 'Plus Jakarta Sans', system-ui, sans-serif; }
+    a { color: #a8443a; } a:hover { color: #86342c; }
+  </style>
+</helmet>
+
+<div style="width: 1440px; height: 900px; background: #faf7f1; color: #26221c; display: flex; flex-direction: column; overflow: hidden">
+
+  <!-- Kopf: Zeitungskopf statt Werkzeugleiste -->
+  <div style="padding: 26px 48px 0; flex-shrink: 0">
+    <div style="display: flex; align-items: baseline; justify-content: space-between; border-bottom: 2px solid #26221c; padding-bottom: 14px">
+      <div style="display: flex; align-items: baseline; gap: 14px">
+        <span style="font-family: 'Newsreader', Georgia, serif; font-size: 30px; font-weight: 500; letter-spacing: -.01em">BrickInventory</span>
+        <span style="font-family: 'JetBrains Mono', monospace; font-size: 11px; color: #7c7466; letter-spacing: .1em; text-transform: uppercase">Sammlung Bigolin</span>
+      </div>
+      <div style="display: flex; align-items: center; gap: 26px">
+        <span style="font-size: 13.5px; font-weight: 600; border-bottom: 2px solid #a8443a; padding-bottom: 3px">Galerie</span>
+        <span style="font-size: 13.5px; color: #7c7466">Katalog</span>
+        <span style="font-size: 13.5px; color: #7c7466">Teile</span>
+        <span style="font-size: 13.5px; color: #7c7466">Minifiguren</span>
+        <span style="font-size: 13.5px; color: #7c7466">Finanzen</span>
+      </div>
+    </div>
+
+    <!-- Impressumszeile: Kennzahlen als Lauftext, nicht als Kacheln -->
+    <div style="display: flex; gap: 34px; padding: 13px 0 0; font-family: 'JetBrains Mono', monospace; font-size: 11.5px; color: #7c7466; letter-spacing: .02em">
+      <span>312 Sets</span>
+      <span>148 902 Teile</span>
+      <span>571 Minifiguren</span>
+      <span style="color: #a8443a">Marktwert CHF 41 280</span>
+      <span style="flex-grow: 1"></span>
+      <span>Stand 10.09.2026</span>
+    </div>
+  </div>
+
+  <!-- Suche und Filter, als Formularzeile auf Linien -->
+  <div style="display: flex; align-items: center; gap: 22px; padding: 20px 48px 16px">
+    <div style="display: flex; align-items: center; gap: 9px; border-bottom: 1.5px solid #d6cfc0; padding: 4px 2px 7px; width: 300px">
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#9c9384" stroke-width="1.8" stroke-linecap="round"><circle cx="11" cy="11" r="7"></circle><path d="m20 20-3.5-3.5"></path></svg>
+      <span style="color: #9c9384; font-size: 14px; font-family: 'Newsreader', Georgia, serif; font-style: italic">Set, Nummer oder Thema …</span>
+    </div>
+    <div style="display: flex; gap: 18px; align-items: center">
+      <span style="font-size: 12.5px; font-weight: 700; border-bottom: 2px solid #a8443a; padding-bottom: 2px">Alle</span>
+      <span style="font-size: 12.5px; color: #7c7466">Star Wars</span>
+      <span style="font-size: 12.5px; color: #7c7466">Creator Expert</span>
+      <span style="font-size: 12.5px; color: #7c7466">Technic</span>
+      <span style="font-size: 12.5px; color: #7c7466">Architecture</span>
+    </div>
+    <div style="flex-grow: 1"></div>
+    <div style="padding: 9px 17px; border: 1.5px solid #26221c; border-radius: 2px; font-size: 13px; font-weight: 600">Set aufnehmen</div>
+  </div>
+
+  <!-- Raster: keine Karten, sondern Katalogeintraege auf Haarlinien -->
+  <div style="display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 30px 26px; padding: 8px 48px 28px; border-top: 1px solid #e3ddd1">
+    <sc-for list="{{sets}}" as="s" hint-placeholder-count="6">
+      <div style="display: flex; flex-direction: column; gap: 9px; padding-top: 20px">
+        <div style="aspect-ratio: 1; background: #f2ede3; display: flex; align-items: center; justify-content: center; border: 1px solid #e3ddd1">
+          <svg width="64" height="64" viewBox="0 0 48 48" fill="none" stroke="{{s.strich}}" stroke-width="1.2" stroke-linejoin="round">
+            <rect x="7" y="18" width="34" height="20" rx="1"></rect>
+            <path d="M14 18v-3.2a1.6 1.6 0 0 1 1.6-1.6h2.4a1.6 1.6 0 0 1 1.6 1.6V18"></path>
+            <path d="M28 18v-3.2a1.6 1.6 0 0 1 1.6-1.6h2.4a1.6 1.6 0 0 1 1.6 1.6V18"></path>
+            <path d="M7 27h34"></path>
+          </svg>
+        </div>
+        <div style="display: flex; align-items: baseline; justify-content: space-between">
+          <span style="font-family: 'JetBrains Mono', monospace; font-size: 11px; color: #a8443a; letter-spacing: .02em">{{s.nummer}}</span>
+          <sc-if value="{{s.besitz}}" hint-placeholder-val="{{ true }}">
+            <span style="font-family: 'JetBrains Mono', monospace; font-size: 10.5px; color: #5b7a52">×{{s.anzahl}} im Bestand</span>
+          </sc-if>
+        </div>
+        <div style="font-family: 'Newsreader', Georgia, serif; font-size: 17px; font-weight: 500; line-height: 1.22; letter-spacing: -.005em">{{s.name}}</div>
+        <div style="font-size: 11.5px; color: #7c7466; line-height: 1.45">{{s.jahr}} · {{s.thema}}<br>{{s.teile}} Teile</div>
+      </div>
+    </sc-for>
+  </div>
+</div>
+</x-dc>
+
+<script data-dc-script data-props='{"$preview":{"width":1440,"height":900}}'>
+class Component extends DCLogic {
+  renderVals() {
+    const S = (nummer, name, jahr, thema, teile, besitz, anzahl, strich) =>
+      ({ nummer, name, jahr, thema, teile, besitz, anzahl, strich });
+    return {
+      sets: [
+        S('10276-1', 'Kolosseum', 2020, 'Creator Expert', '9036', true, 1, '#a8443a'),
+        S('75192-1', 'Millennium Falcon', 2017, 'Star Wars', '7541', true, 2, '#8a8172'),
+        S('21058-1', 'Cheops-Pyramide', 2022, 'Architecture', '1476', false, 0, '#b07a4e'),
+        S('42115-1', 'Lamborghini Sián', 2020, 'Technic', '3696', true, 1, '#6f6858'),
+        S('10497-1', 'Galaxy Explorer', 2022, 'Icons', '1254', false, 0, '#9c9384'),
+        S('71043-1', 'Schloss Hogwarts', 2018, 'Harry Potter', '6020', true, 1, '#8a5a3f'),
+      ],
+    };
+  }
+}
+</script>
+</body>
+</html>

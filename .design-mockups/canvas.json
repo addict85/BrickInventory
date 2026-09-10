@@ -1,0 +1,21 @@
+{
+  "artboards": [
+    { "file": "Main.dc.html",            "x": 0,    "y": 0,    "w": 1440, "h": 900, "title": "A · Werkbank — Web" },
+    { "file": "WerkbankTelefon.dc.html", "x": 1560, "y": 0,    "w": 390,  "h": 844, "title": "A · Werkbank — Telefon" },
+    { "file": "PapierWeb.dc.html",       "x": 0,    "y": 1080, "w": 1440, "h": 900, "title": "B · Papier — Web" },
+    { "file": "PapierTelefon.dc.html",   "x": 1560, "y": 1080, "w": 390,  "h": 844, "title": "B · Papier — Telefon" },
+    { "file": "KontrastWeb.dc.html",     "x": 0,    "y": 2160, "w": 1440, "h": 900, "title": "C · Kontrast — Web" },
+    { "file": "KontrastTelefon.dc.html", "x": 1560, "y": 2160, "w": 390,  "h": 844, "title": "C · Kontrast — Telefon" }
+  ],
+  "annotations": [
+    { "id": "brief", "x": 2060, "y": 0, "w": 300,
+      "text": "Drei Richtungen für ein drittes Design\n\nAnatomie aus dem Quelltext übernommen: Raster minmax(185px), Kartenrumpf 11px, .snum in JetBrains Mono 11.2px, .sname 13.1px/600, Plaketten 999px. Telefon: Kachel 212dp, Bild 118dp.\n\nZahlen sind Beispieldaten." },
+    { "id": "a-werkbank", "x": 2060, "y": 300, "w": 300,
+      "text": "A · Werkbank (dunkel)\n\nAnthrazit mit Bernstein. Die Set-Bilder stehen im Vordergrund, weil der Grund zurücktritt — eine Sammlung sieht man abends an.\n\nHaken: Finanztabellen und Ausdrucke lesen sich auf Dunkel schlechter; es braucht eine vollständige dunkle Palette, nicht nur getauschte Farben." },
+    { "id": "b-papier", "x": 2060, "y": 640, "w": 300,
+      "text": "B · Papier (Katalog)\n\nWarmes Papier, Serifen-Namen, Haarlinien statt Karten, keine Schatten. Liest sich wie ein gedruckter Sammlungskatalog.\n\nHaken: Weniger „App\": Ohne Karten und Schatten ist schwerer zu sehen, was anklickbar ist. Braucht klare Hover- und Fokuszustände." },
+    { "id": "c-kontrast", "x": 2060, "y": 980, "w": 300,
+      "text": "C · Kontrast (dicht)\n\nHarte Kanten, kein Radius, ein einziges Signalgrün. Acht statt sechs Spalten — deutlich mehr Bestand je Bildschirm, Zahlen durchgehend in Mono.\n\nHaken: Nüchtern bis kühl, und die Bilder werden kleiner. Für grosse Bestände stark, für Stöbern weniger einladend." }
+  ],
+  "launch": { "view": "canvas" }
+}

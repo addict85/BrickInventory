@@ -1,0 +1,119 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;700&display=swap">
+  <style>
+    body { margin: 0; font-family: 'Plus Jakarta Sans', system-ui, sans-serif; }
+    a { color: #1f6f5c; } a:hover { color: #175647; }
+  </style>
+</helmet>
+
+<div style="width: 1440px; height: 900px; background: #eceef0; color: #111417; display: flex; flex-direction: column; overflow: hidden">
+
+  <!-- Kopfleiste: flach, hart, ohne Radius -->
+  <div style="display: flex; align-items: stretch; background: #111417; color: #fff; flex-shrink: 0">
+    <div style="display: flex; align-items: center; gap: 9px; padding: 0 20px; border-right: 1px solid #2a2f35">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#3fbf9a" stroke-width="2" stroke-linejoin="round">
+        <rect x="3" y="8" width="18" height="12" rx="1"></rect><path d="M7 8V6h3v2M14 8V6h3v2"></path>
+      </svg>
+      <span style="font-weight: 800; font-size: 13.5px; letter-spacing: .01em">BRICKINVENTORY</span>
+    </div>
+    <sc-for list="{{reiter}}" as="r" hint-placeholder-count="5">
+      <div style="display: flex; align-items: center; padding: 0 18px; font-size: 13px; font-weight: {{r.gewicht}}; color: {{r.farbe}}; background: {{r.grund}}; border-right: 1px solid #2a2f35; min-height: 44px">{{r.name}}</div>
+    </sc-for>
+    <div style="flex-grow: 1"></div>
+    <div style="display: flex; align-items: center; padding: 0 18px; font-family: 'JetBrains Mono', monospace; font-size: 12px; color: #9aa3ab; border-left: 1px solid #2a2f35">marco.bigolin</div>
+  </div>
+
+  <!-- Werkzeugzeile -->
+  <div style="display: flex; align-items: stretch; background: #fff; border-bottom: 1px solid #c9ced4; flex-shrink: 0">
+    <div style="display: flex; align-items: center; gap: 8px; padding: 0 14px; border-right: 1px solid #dfe3e7; width: 320px; min-height: 44px">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#7a838c" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"></circle><path d="m20 20-3.5-3.5"></path></svg>
+      <span style="color: #7a838c; font-size: 13px; font-family: 'JetBrains Mono', monospace">suchen …</span>
+    </div>
+    <sc-for list="{{filter}}" as="f" hint-placeholder-count="5">
+      <div style="display: flex; align-items: center; padding: 0 14px; font-size: 12.5px; font-weight: {{f.gewicht}}; color: {{f.farbe}}; border-right: 1px solid #dfe3e7; border-bottom: {{f.linie}}">{{f.name}}</div>
+    </sc-for>
+    <div style="flex-grow: 1"></div>
+    <div style="display: flex; align-items: center; gap: 22px; padding: 0 16px; font-family: 'JetBrains Mono', monospace; font-size: 12px">
+      <span><span style="color: #7a838c">SETS</span> 312</span>
+      <span><span style="color: #7a838c">TEILE</span> 148 902</span>
+      <span><span style="color: #7a838c">FIG</span> 571</span>
+      <span style="color: #1f6f5c; font-weight: 700">CHF 41 280</span>
+    </div>
+    <div style="display: flex; align-items: center; padding: 0 18px; background: #1f6f5c; color: #fff; font-size: 12.5px; font-weight: 700; min-height: 44px">+ SET</div>
+  </div>
+
+  <!-- Dichtes Raster: acht Spalten, harte Kanten, kein Schatten -->
+  <div style="display: grid; grid-template-columns: repeat(8, minmax(0, 1fr)); gap: 1px; background: #c9ced4; border-bottom: 1px solid #c9ced4">
+    <sc-for list="{{sets}}" as="s" hint-placeholder-count="16">
+      <div style="background: #fff; padding: 0; position: relative">
+        <div style="aspect-ratio: 1; background: #f6f7f8; display: flex; align-items: center; justify-content: center; border-bottom: 1px solid #dfe3e7">
+          <svg width="46" height="46" viewBox="0 0 48 48" fill="none" stroke="{{s.strich}}" stroke-width="1.5" stroke-linejoin="round">
+            <rect x="7" y="18" width="34" height="20" rx="1"></rect>
+            <path d="M14 18v-3.2h5.6V18M28 18v-3.2h5.6V18"></path><path d="M7 27h34"></path>
+          </svg>
+        </div>
+        <div style="padding: 8px 9px 9px">
+          <div style="font-family: 'JetBrains Mono', monospace; font-size: 10.5px; color: #1f6f5c; font-weight: 500">{{s.nummer}}</div>
+          <div style="font-size: 12px; font-weight: 600; line-height: 1.25; margin: 2px 0 5px; height: 30px; overflow: hidden">{{s.name}}</div>
+          <div style="display: flex; justify-content: space-between; align-items: center; font-family: 'JetBrains Mono', monospace; font-size: 10px; color: #7a838c">
+            <span>{{s.jahr}}</span>
+            <span style="color: #111417; font-weight: 700">{{s.teile}}</span>
+          </div>
+        </div>
+        <sc-if value="{{s.besitz}}" hint-placeholder-val="{{ true }}">
+          <div style="position: absolute; top: 0; left: 0; background: #1f6f5c; color: #fff; font-family: 'JetBrains Mono', monospace; font-weight: 700; font-size: 9.5px; padding: 2px 6px">×{{s.anzahl}}</div>
+        </sc-if>
+      </div>
+    </sc-for>
+  </div>
+</div>
+</x-dc>
+
+<script data-dc-script data-props='{"$preview":{"width":1440,"height":900}}'>
+class Component extends DCLogic {
+  renderVals() {
+    const S = (nummer, name, jahr, teile, besitz, anzahl, strich) =>
+      ({ nummer, name, jahr, teile, besitz, anzahl, strich });
+    const R = (name, aktiv) => ({
+      name, gewicht: aktiv ? 700 : 500,
+      farbe: aktiv ? '#fff' : '#9aa3ab', grund: aktiv ? '#1f6f5c' : 'transparent',
+    });
+    const F = (name, aktiv) => ({
+      name, gewicht: aktiv ? 700 : 500, farbe: aktiv ? '#111417' : '#7a838c',
+      linie: aktiv ? '2px solid #1f6f5c' : '2px solid transparent',
+    });
+    return {
+      reiter: [R('Galerie', true), R('Katalog', false), R('Teile', false), R('Minifiguren', false), R('Finanzen', false)],
+      filter: [F('Alle', true), F('Star Wars', false), F('Creator Expert', false), F('Technic', false), F('Architecture', false)],
+      sets: [
+        S('10276-1', 'Kolosseum', 2020, '9036', true, 1, '#1f6f5c'),
+        S('75192-1', 'Millennium Falcon', 2017, '7541', true, 2, '#7a838c'),
+        S('21058-1', 'Cheops-Pyramide', 2022, '1476', false, 0, '#a4acb4'),
+        S('42115-1', 'Lamborghini Sián', 2020, '3696', true, 1, '#7a838c'),
+        S('10497-1', 'Galaxy Explorer', 2022, '1254', false, 0, '#a4acb4'),
+        S('71043-1', 'Schloss Hogwarts', 2018, '6020', true, 1, '#1f6f5c'),
+        S('10294-1', 'Titanic', 2021, '9090', true, 1, '#7a838c'),
+        S('31203-1', 'Weltkarte', 2021, '11695', false, 0, '#a4acb4'),
+        S('75331-1', 'Razor Crest', 2022, '6187', true, 1, '#1f6f5c'),
+        S('10305-1', 'Ritterburg', 2022, '4514', false, 0, '#a4acb4'),
+        S('42143-1', 'Ferrari Daytona SP3', 2022, '3778', true, 1, '#7a838c'),
+        S('21330-1', 'Home Alone', 2021, '3955', false, 0, '#a4acb4'),
+        S('10307-1', 'Eiffelturm', 2022, '10001', true, 1, '#1f6f5c'),
+        S('76989-1', 'Horizon Forbidden West', 2023, '1222', false, 0, '#a4acb4'),
+        S('10316-1', 'Bruchtal', 2023, '6167', true, 1, '#7a838c'),
+        S('21327-1', 'Schreibmaschine', 2021, '2079', false, 0, '#a4acb4'),
+      ],
+    };
+  }
+}
+</script>
+</body>
+</html>
