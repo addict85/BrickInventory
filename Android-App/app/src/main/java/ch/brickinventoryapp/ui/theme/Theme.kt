@@ -33,7 +33,17 @@ private val LightColors = lightColorScheme(
     tertiary            = BrandRed,
     onTertiary          = Color.White,
     tertiaryContainer   = Color(0xFFFFDAD6),
-    background          = Color(0xFFF1F5F9),  // --s50 equivalent
+    // --s100 der Webapp, NICHT --s50 (dort steht der Seitenhintergrund --bg).
+    // Hier stand jahrelang "// --s50 equivalent", waehrend der Wert --s100 war —
+    // ein Kommentar, der seinem eigenen Wert widersprach.
+    //
+    // Richtig ist der WERT: Compose fuehrt mit background, surface und
+    // surfaceVariant drei Ebenen, wo das Web mit --bg und --sur zwei fuehrt.
+    // surfaceVariant traegt unten bereits --s50 (#f8fafc). Bekaeme background
+    // denselben Wert, waeren beide identisch — und die Flaechen, die mit
+    // surfaceVariant auf dem Hintergrund liegen (Etiketten, Fortschrittsspur,
+    // ausgewaehlte Zeile, die Platzhalter-Kacheln des Katalogs), verschwaenden.
+    background          = Color(0xFFF1F5F9),  // --s100
     surface             = Color.White,
     surfaceVariant      = Color(0xFFF8FAFC),
     onSurface           = Color(0xFF1E293B),
