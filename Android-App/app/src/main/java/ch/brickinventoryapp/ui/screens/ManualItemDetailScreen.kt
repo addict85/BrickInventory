@@ -46,6 +46,8 @@ import ch.brickinventoryapp.ui.theme.SlateBlue
 import ch.brickinventoryapp.util.resolveFullUrlViaProxy
 import coil.ImageLoader
 import coil.compose.AsyncImage
+import ch.brickinventoryapp.ui.theme.Abstaende
+import ch.brickinventoryapp.ui.theme.Schrift
 
 /**
  * Detailansicht eines manuell erfassten Teils / einer manuell erfassten
@@ -152,14 +154,14 @@ fun ManualItemDetailScreen(
 
         LazyColumn(
             modifier = Modifier.fillMaxSize().padding(padding),
-            contentPadding = PaddingValues(bottom = 24.dp),
+            contentPadding = PaddingValues(bottom = Abstaende.sehrGross),
             verticalArrangement = Arrangement.spacedBy(0.dp)
         ) {
 
             // ── Bildkarte ──────────────────────────────────────────────────────
             item {
                 Card(
-                    modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 12.dp),
+                    modifier = Modifier.fillMaxWidth().padding(horizontal = Abstaende.gross, vertical = Abstaende.mittel),
                     shape = Formen.chip,
                     elevation = CardDefaults.cardElevation(defaultElevation = Formen.karteErhebungHoch),
                     colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
@@ -174,7 +176,7 @@ fun ManualItemDetailScreen(
                                 .height(200.dp)
                                 .clip(Formen.chip)
                                 .clickable { showImageZoom = true }
-                                .padding(12.dp),
+                                .padding(Abstaende.mittel),
                             contentScale = ContentScale.Fit
                         )
                     } else {
@@ -197,9 +199,9 @@ fun ManualItemDetailScreen(
                     if (isFig) R.string.detail_fig_number else R.string.detail_part_number)
                 val labelColor  = stringResource(R.string.detail_color)
                 LazyRow(
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                    contentPadding = PaddingValues(horizontal = 16.dp),
-                    modifier = Modifier.padding(bottom = 12.dp)
+                    horizontalArrangement = Arrangement.spacedBy(Abstaende.klein),
+                    contentPadding = PaddingValues(horizontal = Abstaende.gross),
+                    modifier = Modifier.padding(bottom = Abstaende.mittel)
                 ) {
                     val chips = buildList {
                         add(labelNumber to id)
@@ -216,7 +218,7 @@ fun ManualItemDetailScreen(
                     fun fmt(v: Double?) = if (v == null) "—"
                         else ch.brickinventoryapp.util.fmtMoney(v, currency)
                     Row(
-                        Modifier.fillMaxWidth().padding(horizontal = 16.dp).padding(bottom = 12.dp),
+                        Modifier.fillMaxWidth().padding(horizontal = Abstaende.gross).padding(bottom = Abstaende.mittel),
                         horizontalArrangement = Arrangement.spacedBy(10.dp)
                     ) {
                         BrickStatTile(
@@ -246,7 +248,7 @@ fun ManualItemDetailScreen(
                     var qty by remember(acqTotal) { mutableIntStateOf(acqTotal) }
 
                     Row(
-                        Modifier.fillMaxWidth().padding(vertical = 4.dp),
+                        Modifier.fillMaxWidth().padding(vertical = Abstaende.winzig),
                         horizontalArrangement = Arrangement.SpaceBetween,
                         verticalAlignment = Alignment.CenterVertically
                     ) {
@@ -254,7 +256,7 @@ fun ManualItemDetailScreen(
                             style = MaterialTheme.typography.bodyMedium,
                             color = MaterialTheme.colorScheme.onSurfaceVariant)
                         Row(verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                            horizontalArrangement = Arrangement.spacedBy(Abstaende.mittel)) {
                             FilledTonalIconButton(
                                 onClick = {
                                     if (qty > 1) {
@@ -269,7 +271,7 @@ fun ManualItemDetailScreen(
                                 },
                                 modifier = Modifier.size(32.dp), shape = Formen.etikett
                             ) { Icon(Icons.Default.Remove, stringResource(R.string.cd_qty_decrease), Modifier.size(14.dp)) }
-                            Text("$qty", fontWeight = FontWeight.Bold, fontSize = 16.sp,
+                            Text("$qty", fontWeight = FontWeight.Bold, fontSize = Schrift.gross,
                                 modifier = Modifier.widthIn(min = 24.dp), textAlign = TextAlign.Center)
                             FilledTonalIconButton(
                                 onClick = {
@@ -282,7 +284,7 @@ fun ManualItemDetailScreen(
                         }
                     }
 
-                    HorizontalDivider(Modifier.padding(vertical = 4.dp),
+                    HorizontalDivider(Modifier.padding(vertical = Abstaende.winzig),
                         color = MaterialTheme.colorScheme.outlineVariant)
 
                     // ── Die Notiz (Nachtrag 134) ────────────────────────
@@ -298,7 +300,7 @@ fun ManualItemDetailScreen(
                     val notiz = (if (isFig) fig?.note else part?.note)?.takeIf { it.isNotBlank() }
                     notiz?.let {
                         Row(
-                            Modifier.fillMaxWidth().padding(vertical = 4.dp),
+                            Modifier.fillMaxWidth().padding(vertical = Abstaende.winzig),
                             horizontalArrangement = Arrangement.SpaceBetween,
                         ) {
                             Text(stringResource(R.string.detail_note),
@@ -307,7 +309,7 @@ fun ManualItemDetailScreen(
                             Text(it,
                                 style = MaterialTheme.typography.bodyMedium,
                                 textAlign = TextAlign.End,
-                                modifier = Modifier.padding(start = 16.dp))
+                                modifier = Modifier.padding(start = Abstaende.gross))
                         }
                         HorizontalDivider(Modifier.padding(vertical = 6.dp),
                             color = MaterialTheme.colorScheme.outlineVariant)
@@ -346,7 +348,7 @@ fun ManualItemDetailScreen(
                             MarketPriceByCondition(it, currency)
                         }
                         chart?.takeIf { it.values.isNotEmpty() }?.let {
-                            Spacer(Modifier.height(8.dp))
+                            Spacer(Modifier.height(Abstaende.klein))
                             PriceChart(it)
                         }
                     }

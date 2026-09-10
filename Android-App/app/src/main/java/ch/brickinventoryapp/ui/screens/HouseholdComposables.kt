@@ -18,6 +18,8 @@ import androidx.compose.ui.unit.sp
 import ch.brickinventoryapp.R
 import ch.brickinventoryapp.data.ScopeFilter
 import ch.brickinventoryapp.data.model.HouseholdMember
+import ch.brickinventoryapp.ui.theme.Abstaende
+import ch.brickinventoryapp.ui.theme.Schrift
 
 /**
  * Kontofilter einer Ansicht — Alle Konten, Eigene, dann jedes Unterkonto
@@ -65,7 +67,7 @@ fun ScopeFilterZeile(
         members = members,
         current = current,
         onSelect = onSelect,
-        modifier = Modifier.padding(start = 14.dp, top = 8.dp),
+        modifier = Modifier.padding(start = 14.dp, top = Abstaende.klein),
     )
 }
 
@@ -140,7 +142,7 @@ fun OwnerBadges(owners: List<HouseholdMember>, modifier: Modifier = Modifier) {
     FlowRow(
         modifier,
         horizontalArrangement = Arrangement.spacedBy(3.dp),
-        verticalArrangement = Arrangement.spacedBy(2.dp),
+        verticalArrangement = Arrangement.spacedBy(Abstaende.haar),
     ) {
         owners.forEach { o ->
             Surface(
@@ -150,9 +152,9 @@ fun OwnerBadges(owners: List<HouseholdMember>, modifier: Modifier = Modifier) {
                 Text(
                     o.username,
                     color = MaterialTheme.colorScheme.onSecondaryContainer,
-                    fontSize = 10.sp, fontWeight = FontWeight.SemiBold,
+                    fontSize = Schrift.winzig, fontWeight = FontWeight.SemiBold,
                     maxLines = 1, overflow = TextOverflow.Ellipsis,
-                    modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+                    modifier = Modifier.padding(horizontal = 6.dp, vertical = Abstaende.haar)
                 )
             }
         }

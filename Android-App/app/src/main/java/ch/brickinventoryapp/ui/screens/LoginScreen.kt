@@ -25,6 +25,8 @@ import androidx.compose.ui.unit.sp
 import ch.brickinventoryapp.R
 import ch.brickinventoryapp.ui.AnmeldeFormular
 import ch.brickinventoryapp.util.passwortZuKurz
+import ch.brickinventoryapp.ui.theme.Abstaende
+import ch.brickinventoryapp.ui.theme.Schrift
 
 /**
  * Anmelden, ein Konto anlegen, einen Link zum Zuruecksetzen anfordern.
@@ -89,7 +91,7 @@ fun LoginScreen(
             Text(
                 "BrickInventory",
                 fontWeight = FontWeight.ExtraBold,
-                fontSize = 24.sp,
+                fontSize = Schrift.riesig,
                 letterSpacing = (-0.5).sp
             )
             Text(
@@ -98,12 +100,12 @@ fun LoginScreen(
                 fontSize = 18.sp,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
-            Spacer(Modifier.height(8.dp))
+            Spacer(Modifier.height(Abstaende.klein))
 
             // Server chip
             AssistChip(
                 onClick = onChangeServer,
-                label = { Text(serverUrl, maxLines = 1, fontSize = 12.sp) },
+                label = { Text(serverUrl, maxLines = 1, fontSize = Schrift.klein) },
                 leadingIcon = { Icon(Icons.Default.Cloud, null, Modifier.size(14.dp)) },
                 trailingIcon = { Icon(Icons.Default.Edit, null, Modifier.size(12.dp)) },
                 shape = Formen.chip
@@ -119,7 +121,7 @@ fun LoginScreen(
             ) {
                 Column(
                     Modifier.padding(horizontal = 20.dp, vertical = 22.dp),
-                    verticalArrangement = Arrangement.spacedBy(12.dp)
+                    verticalArrangement = Arrangement.spacedBy(Abstaende.mittel)
                 ) {
                     when (formular) {
                         AnmeldeFormular.ANMELDEN -> AnmeldeFelder(
@@ -162,7 +164,7 @@ private fun FormularMeldung(text: String, fehler: Boolean) {
     ) {
         Row(
             Modifier.fillMaxWidth().padding(10.dp),
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            horizontalArrangement = Arrangement.spacedBy(Abstaende.klein),
             verticalAlignment = Alignment.CenterVertically
         ) {
             Icon(

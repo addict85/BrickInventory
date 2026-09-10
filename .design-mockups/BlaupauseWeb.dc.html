@@ -1,0 +1,116 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&family=Plus+Jakarta+Sans:wght@400;500;600&display=swap">
+  <style>
+    body { margin: 0; font-family: 'JetBrains Mono', ui-monospace, monospace; }
+    a { color: #63d2f5; } a:hover { color: #9ae4fa; }
+  </style>
+</helmet>
+
+<div style="width: 1440px; height: 900px; background: #0d1b2a; color: #cfe6f2; display: flex; flex-direction: column; overflow: hidden; position: relative">
+
+  <!-- Millimeterpapier als Grund: das Raster IST das Design -->
+  <div style="position: absolute; inset: 0; background-image: linear-gradient(rgba(99,210,245,.055) 1px, transparent 1px), linear-gradient(90deg, rgba(99,210,245,.055) 1px, transparent 1px); background-size: 24px 24px"></div>
+  <div style="position: absolute; inset: 0; background-image: linear-gradient(rgba(99,210,245,.09) 1px, transparent 1px), linear-gradient(90deg, rgba(99,210,245,.09) 1px, transparent 1px); background-size: 120px 120px"></div>
+
+  <div style="position: relative; display: flex; flex-direction: column; height: 100%">
+
+    <!-- Schriftfeld wie auf einer technischen Zeichnung -->
+    <div style="display: flex; align-items: stretch; border-bottom: 1px solid #234156; flex-shrink: 0">
+      <div style="display: flex; align-items: center; gap: 10px; padding: 0 22px; border-right: 1px solid #234156; min-height: 52px">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#63d2f5" stroke-width="1.2" stroke-linejoin="round">
+          <rect x="3" y="8" width="18" height="12"></rect><path d="M7 8V6h3v2M14 8V6h3v2M3 14h18"></path>
+        </svg>
+        <span style="font-size: 13px; font-weight: 700; letter-spacing: .06em">BRICKINVENTORY</span>
+      </div>
+      <sc-for list="{{reiter}}" as="r" hint-placeholder-count="5">
+        <div style="display: flex; align-items: center; padding: 0 20px; font-size: 12px; letter-spacing: .05em; color: {{r.farbe}}; border-right: 1px solid #234156; border-bottom: {{r.linie}}; min-height: 52px">{{r.name}}</div>
+      </sc-for>
+      <div style="flex-grow: 1"></div>
+      <div style="display: flex; align-items: center; gap: 26px; padding: 0 22px; border-left: 1px solid #234156; font-size: 11.5px; color: #6f93aa">
+        <span>BL. 1/4</span><span>M 1:1</span><span>10.09.2026</span>
+      </div>
+    </div>
+
+    <!-- Masszeile: Kennzahlen als Beschriftung, nicht als Kachel -->
+    <div style="display: flex; gap: 0; border-bottom: 1px solid #234156; flex-shrink: 0">
+      <sc-for list="{{masse}}" as="m" hint-placeholder-count="4">
+        <div style="padding: 13px 22px; border-right: 1px solid #234156; min-width: 168px">
+          <div style="font-size: 10.5px; color: #6f93aa; letter-spacing: .1em">{{m.k}}</div>
+          <div style="font-size: 19px; font-weight: 700; color: {{m.farbe}}; margin-top: 3px">{{m.v}}</div>
+        </div>
+      </sc-for>
+      <div style="flex-grow: 1"></div>
+      <div style="display: flex; align-items: center; gap: 9px; padding: 0 22px; border-left: 1px solid #234156">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#6f93aa" stroke-width="1.5"><circle cx="11" cy="11" r="7"></circle><path d="m20 20-3.5-3.5"></path></svg>
+        <span style="font-size: 12px; color: #6f93aa">suchen …</span>
+      </div>
+    </div>
+
+    <!-- Kacheln als bemasste Risse -->
+    <div style="display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 22px; padding: 24px 22px">
+      <sc-for list="{{sets}}" as="s" hint-placeholder-count="5">
+        <div style="border: 1px solid #2c5570; background: rgba(13,27,42,.72); position: relative">
+          <div style="aspect-ratio: 1; display: flex; align-items: center; justify-content: center; border-bottom: 1px dashed #2c5570; position: relative">
+            <svg width="78" height="78" viewBox="0 0 48 48" fill="none" stroke="{{s.strich}}" stroke-width="0.8" stroke-linejoin="round">
+              <rect x="7" y="18" width="34" height="20"></rect>
+              <path d="M14 18v-4h5.6v4M28 18v-4h5.6v4"></path>
+              <path d="M7 27h34"></path>
+              <path d="M7 42h34M7 40.5v3M41 40.5v3" stroke-dasharray="0" opacity=".55"></path>
+            </svg>
+            <span style="position: absolute; bottom: 6px; right: 8px; font-size: 9.5px; color: #4d7f9c">{{s.teile}} TL</span>
+          </div>
+          <div style="padding: 10px 11px 11px">
+            <div style="font-size: 11px; color: #63d2f5; letter-spacing: .04em">{{s.nummer}}</div>
+            <div style="font-family: 'Plus Jakarta Sans', sans-serif; font-size: 13px; font-weight: 600; line-height: 1.25; margin: 4px 0 7px; color: #e2f1f8">{{s.name}}</div>
+            <div style="display: flex; justify-content: space-between; font-size: 10.5px; color: #6f93aa">
+              <span>{{s.jahr}}</span><span>{{s.thema}}</span>
+            </div>
+          </div>
+          <sc-if value="{{s.besitz}}" hint-placeholder-val="{{ true }}">
+            <div style="position: absolute; top: -1px; right: -1px; border: 1px solid #63d2f5; color: #63d2f5; font-size: 9.5px; font-weight: 700; padding: 2px 6px; background: #0d1b2a">×{{s.anzahl}}</div>
+          </sc-if>
+        </div>
+      </sc-for>
+    </div>
+  </div>
+</div>
+</x-dc>
+
+<script data-dc-script data-props='{"$preview":{"width":1440,"height":900}}'>
+class Component extends DCLogic {
+  renderVals() {
+    const S = (nummer, name, jahr, thema, teile, besitz, anzahl, strich) =>
+      ({ nummer, name, jahr, thema, teile, besitz, anzahl, strich });
+    const R = (name, aktiv) => ({
+      name, farbe: aktiv ? '#63d2f5' : '#6f93aa',
+      linie: aktiv ? '2px solid #63d2f5' : '2px solid transparent',
+    });
+    return {
+      reiter: [R('GALERIE', true), R('KATALOG', false), R('TEILE', false), R('MINIFIGUREN', false), R('FINANZEN', false)],
+      masse: [
+        { k: 'SETS', v: '312', farbe: '#cfe6f2' },
+        { k: 'TEILE', v: '148 902', farbe: '#cfe6f2' },
+        { k: 'MINIFIGUREN', v: '571', farbe: '#cfe6f2' },
+        { k: 'MARKTWERT', v: 'CHF 41 280', farbe: '#63d2f5' },
+      ],
+      sets: [
+        S('10276-1', 'Kolosseum', 2020, 'CREATOR', '9036', true, 1, '#63d2f5'),
+        S('75192-1', 'Millennium Falcon', 2017, 'STAR WARS', '7541', true, 2, '#4d7f9c'),
+        S('21058-1', 'Cheops-Pyramide', 2022, 'ARCHITECTURE', '1476', false, 0, '#3d6a85'),
+        S('42115-1', 'Lamborghini Sián', 2020, 'TECHNIC', '3696', true, 1, '#4d7f9c'),
+        S('10497-1', 'Galaxy Explorer', 2022, 'ICONS', '1254', false, 0, '#3d6a85'),
+      ],
+    };
+  }
+}
+</script>
+</body>
+</html>

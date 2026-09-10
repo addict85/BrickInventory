@@ -20,6 +20,27 @@ import org.junit.Test
  *   2. Gleich danach asynchron GET /api/v1/settings/theme. Diese Adresse steht
  *      auf dem Server ABSICHTLICH vor dem Anmelde-Waechter (routes/settings.ts).
  *
+ * ── Stufe NULL kam nach (Marcos zweiter Befund) ─────────────────────────────
+ *
+ * „Beim Starten der App sieht man teilweise das andere Design, insbesondere
+ * dann wenn die Internetverbindung schlecht ist."
+ *
+ * Stufe eins war da — aber nur im DataStore, und der laesst sich ausschliesslich
+ * ASYNCHRON lesen. MainActivity.setContent() laeuft sofort; die ersten Bilder
+ * entstanden deshalb immer im Vorgabewert, und erst danach traf der gemerkte
+ * Wert ein. Bei schlechtem Netz dauert der Kaltstart laenger und das Fenster
+ * wird sichtbar.
+ *
+ * Die Webapp hatte das nie: 00-theme-boot.js ist ein BLOCKIERENDES Skript im
+ * <head> und liest localStorage, bevor irgendetwas gezeichnet wird. Das
+ * Gegenstueck sind SharedPreferences — synchron lesbar, und genau dafuer
+ * benutzt Android sie selbst.
+ *
+ * Entscheidend ist, WO der Wert landet: im Startwert des Zustands, nicht in
+ * einer Korrektur danach. `appTheme` wird als
+ * `stateIn(..., _state.value.appTheme)` abgeleitet, und Kotlin wertet diese
+ * Eigenschaft VOR dem init-Block aus.
+ *
  * Gefunden durch Messen: Ein Vergleich der Server-Adressen beider Clients
  * meldete /v1/settings/theme als eine der Adressen, die nur die Webapp ruft.
  *
@@ -33,6 +54,49 @@ class DesignVorAnmeldungTest {
         .joinToString("\n") { if (it.trim().startsWith("//") || it.trim().startsWith("*")) "" else it }
 
     @Test
+    fun `Stufe null - der gemerkte Wert ist SYNCHRON zu haben`() {
+        val prefs = code(read("data/PreferencesManager.kt"))
+        // Synchron heisst hier: SharedPreferences. DataStore kann es nicht,
+        // und `runBlocking` auf dem Hauptthread waere die Wiederholung des
+        // Fehlers, den der Bild-Interceptor schon einmal hatte.
+        assert(prefs.contains("fun gemerktesDesign()")) {
+            "Es gibt keinen synchron lesbaren Weg zum gemerkten Design — dann " +
+                "entstehen die ersten Bilder wieder im Vorgabewert"
+        }
+        assert(prefs.contains("getSharedPreferences(")) {
+            "gemerktesDesign() liest nicht aus SharedPreferences — DataStore " +
+                "gibt den Wert nur asynchron her, und genau das war die Ursache"
+        }
+        assert(!prefs.contains("runBlocking")) {
+            "Der Wert wird mit runBlocking geholt. Auf dem Hauptthread ist das " +
+                "genau der Fehler, den der Bild-Interceptor schon einmal hatte"
+        }
+
+        // Und der Spiegel muss MIT dem DataStore geschrieben werden, sonst
+        // laufen zwei Ablagen desselben Werts auseinander.
+        val schreiben = Quellen.funktion(prefs, "suspend fun saveAppTheme(")
+        assert(schreiben.isNotEmpty()) { "saveAppTheme fehlt" }
+        assert(schreiben.contains("dataStore.edit") && schreiben.contains("designSpiegel")) {
+            "saveAppTheme schreibt nur eine der beiden Ablagen — dann zeigt der " +
+                "naechste Kaltstart das vorletzte Design"
+        }
+    }
+
+    @Test
+    fun `Stufe null - der Zustand wird MIT dem Design geboren`() {
+        val vm = code(read("ui/MainViewModel.kt"))
+        // Der Startwert, nicht eine Korrektur danach: `appTheme` leitet sich
+        // ueber `stateIn(..., _state.value.appTheme)` ab, und diese Eigenschaft
+        // wird VOR dem init-Block ausgewertet. Ein erst dort gesetzter Wert
+        // kaeme zu spaet — MainActivity haette schon komponiert.
+        assert(vm.contains("MutableStateFlow(AppUiState(appTheme = prefs.gemerktesDesign()))")) {
+            "Der Zustand startet wieder im Vorgabe-Design. Ein Wert, der erst im " +
+                "init-Block gesetzt wird, kommt nach der ersten Komposition — " +
+                "genau das war Marcos aufblitzendes Design."
+        }
+    }
+
+    @Test
     fun `Stufe eins - das Design wird gemerkt`() {
         val prefs = code(read("data/PreferencesManager.kt"))
         assert(prefs.contains("stringPreferencesKey(\"app_theme\")")) {
@@ -41,8 +105,16 @@ class DesignVorAnmeldungTest {
         // Unbekannte Werte duerfen den gemerkten Wert NICHT loeschen: "" oder
         // null heisst „keine Information", nicht „classic". Dieselbe Regel wie
         // applyTheme() in 00-theme-boot.js.
-        assert(prefs.contains("if (theme == \"classic\" || theme == \"brick\")")) {
+        // Hier stand die Liste woertlich ("classic" || "brick"). Seit es vier
+        // Designs gibt, steht sie als ERLAUBTE_DESIGNS an einer Stelle — und
+        // eine Pruefung im Web-Baum (theme.test.js) haelt sie mit den drei
+        // anderen Listen zusammen. Hier bleibt nur: Es WIRD gefiltert.
+        assert(prefs.contains("if (theme in ERLAUBTE_DESIGNS)")) {
             "saveAppTheme schreibt auch unbekannte Werte — ein leerer Wert loescht dann das Design"
+        }
+        assert(prefs.contains("val ERLAUBTE_DESIGNS = setOf(")) {
+            "Die Liste der Designs ist verschwunden oder heisst anders — dann " +
+                "kann theme.test.js sie nicht mehr mit den anderen dreien vergleichen"
         }
     }
 

@@ -41,6 +41,8 @@ import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import coil.compose.AsyncImage
 import coil.ImageLoader
 import coil.request.ImageRequest
+import ch.brickinventoryapp.ui.theme.Abstaende
+import ch.brickinventoryapp.ui.theme.Schrift
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
 @Composable
@@ -135,7 +137,7 @@ fun PartsScreen(
             Surface(color = MaterialTheme.colorScheme.surface, tonalElevation = 2.dp) {
                 Row(
                     Modifier.fillMaxWidth().padding(horizontal = 14.dp, vertical = 10.dp),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    horizontalArrangement = Arrangement.spacedBy(Abstaende.klein)
                 ) {
                     GalleryStatChip("${stats.uniqueParts}", stringResource(R.string.parts_stat_types))
                     GalleryStatChip("${stats.uniqueColors}", stringResource(R.string.parts_stat_colors))
@@ -163,8 +165,8 @@ fun PartsScreen(
         // ueber die geladene Seite gefiltert koennte eine ganze Seite wegfallen
         // und die Liste bliebe scheinbar leer.
         Row(
-            Modifier.fillMaxWidth().padding(horizontal = 14.dp).padding(bottom = 8.dp),
-            horizontalArrangement = Arrangement.spacedBy(8.dp)
+            Modifier.fillMaxWidth().padding(horizontal = 14.dp).padding(bottom = Abstaende.klein),
+            horizontalArrangement = Arrangement.spacedBy(Abstaende.klein)
         ) {
             val filter = listOf(
                 "" to R.string.parts_filter_all,
@@ -214,7 +216,7 @@ fun PartsScreen(
             kategorieGewaehlt = partsState.partsCategoryFilter,
             onFarbe = { vm.setPartsColorFilter(it) },
             onKategorie = { vm.setPartsCategoryFilter(it) },
-            modifier = Modifier.padding(horizontal = 14.dp).padding(bottom = 8.dp),
+            modifier = Modifier.padding(horizontal = 14.dp).padding(bottom = Abstaende.klein),
         )
 
         // Karten oder Tabelle — wie das Auswahlfeld parts-view der Webapp.
@@ -223,14 +225,14 @@ fun PartsScreen(
         AnsichtUmschalter(
             aktuell = ansicht,
             onWechsel = { vm.setPartsView(it) },
-            modifier = Modifier.padding(horizontal = 14.dp).padding(bottom = 8.dp),
+            modifier = Modifier.padding(horizontal = 14.dp).padding(bottom = Abstaende.klein),
         )
 
         if (isLoading && parts.isEmpty() && manualParts.isEmpty()) {
             Box(Modifier.fillMaxSize(), Alignment.Center) { CircularProgressIndicator() }
         } else if (parts.isEmpty() && manualParts.isEmpty()) {
             Box(Modifier.fillMaxSize(), Alignment.Center) {
-                Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(Abstaende.klein)) {
                     Icon(ImageVector.vectorResource(R.drawable.ic_parts_bricks), null, Modifier.size(40.dp), tint = Color.Unspecified)
                     Text(stringResource(R.string.parts_none), fontWeight = FontWeight.SemiBold)
                 }
@@ -240,9 +242,9 @@ fun PartsScreen(
                 LazyVerticalGrid(
                     state = gridState,
                     columns = GridCells.Adaptive(110.dp),
-                    contentPadding = PaddingValues(12.dp),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                    contentPadding = PaddingValues(Abstaende.mittel),
+                    horizontalArrangement = Arrangement.spacedBy(Abstaende.klein),
+                    verticalArrangement = Arrangement.spacedBy(Abstaende.klein)
                 ) {
                     // Manuell erfasste Teile als Grid-Sektion: vorher sassen sie
                     // in einer fixen FlowRow ÜBER dem Grid (eigener Scroll-
@@ -290,7 +292,7 @@ fun PartsScreen(
                         // Fester Schlüssel wie bei den Kopfzeilen darüber — siehe
                         // die Begründung in GalleryScreen.kt (Nachtrag 108).
                         item(key = "parts-loading-more", span = { GridItemSpan(maxLineSpan) }) {
-                            Box(Modifier.fillMaxWidth().padding(16.dp), Alignment.Center) {
+                            Box(Modifier.fillMaxWidth().padding(Abstaende.gross), Alignment.Center) {
                                 CircularProgressIndicator(Modifier.size(24.dp))
                             }
                         }
@@ -420,9 +422,9 @@ fun PartCard(part: Part, serverUrl: String, imageLoader: ImageLoader,
                 Surface(
                     color = MaterialTheme.colorScheme.primary,
                     shape = Formen.marke,
-                    modifier = Modifier.align(Alignment.TopEnd).padding(4.dp)
+                    modifier = Modifier.align(Alignment.TopEnd).padding(Abstaende.winzig)
                 ) {
-                    Text("${qty}×", Modifier.padding(horizontal = 4.dp, vertical = 1.dp),
+                    Text("${qty}×", Modifier.padding(horizontal = Abstaende.winzig, vertical = 1.dp),
                         color = MaterialTheme.colorScheme.onPrimary,
                         style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.Bold)
                 }
@@ -445,11 +447,11 @@ fun PartCard(part: Part, serverUrl: String, imageLoader: ImageLoader,
                     maxLines = 2, overflow = TextOverflow.Ellipsis)
                 if (part.colorName != null)
                     Text(part.colorName, style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1, fontSize = 10.sp)
+                        color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1, fontSize = Schrift.winzig)
                 // Ersatzteil — Sets enthalten ein Tuetchen davon. Nur wenn es
                 // eines IST: eine Plakette „kein Ersatzteil" an jeder Kachel
                 // waere Rauschen.
-                if (part.isSpare) ErsatzteilPlakette(Modifier.padding(top = 2.dp))
+                if (part.isSpare) ErsatzteilPlakette(Modifier.padding(top = Abstaende.haar))
             }
         }
     }
@@ -463,7 +465,7 @@ fun SectionHeader(text: String) {
         fontWeight = FontWeight.Bold,
         color = MaterialTheme.colorScheme.onSurfaceVariant,
         letterSpacing = 0.8.sp,
-        modifier = Modifier.padding(horizontal = 2.dp, vertical = 4.dp))
+        modifier = Modifier.padding(horizontal = Abstaende.haar, vertical = Abstaende.winzig))
 }
 
 /**

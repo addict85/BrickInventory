@@ -89,6 +89,39 @@ test('Startup-Screen setzt keine Farben mehr per Inline-Style', () => {
     `Inline-Styles überstimmen jede Theme-Regel: ${inlineColours.join(', ')}`);
 });
 
+test('vier Listen nennen dieselben Designs', () => {
+  // ── Warum das eine eigene Pruefung ist ──────────────────────────────────
+  //
+  // Ein Design steht an VIER Stellen: als Datei unter public/themes/, in der
+  // Whitelist des Servers, in ALLOWED des Boot-Skripts und in der App
+  // (PreferencesManager.ERLAUBTE_DESIGNS). Fehlt es an einer davon, faellt
+  // das nicht auf, sondern wirkt teilweise: Der Admin kann es waehlen, der
+  // Server nimmt es an, und das Boot-Skript verwirft es beim naechsten Start
+  // stillschweigend — genau die Sorte Fehler, die man erst im Betrieb sieht.
+  const alsDatei = fs.readdirSync(path.join(PUB, 'themes'))
+    .filter(f => f.endsWith('.css')).map(f => path.basename(f, '.css')).sort();
+  // "classic" hat keine eigene Datei: Es IST das Grunddesign in styles.css.
+  const erwartet = ['classic', ...alsDatei].sort();
+  assert.ok(alsDatei.length >= 2, `Nur ${alsDatei.length} Design-Datei(en) — greift die Suche noch?`);
+
+  const liste = (src, re, wo) => {
+    const m = src.match(re);
+    assert.ok(m, `${wo}: die Liste der Designs ist nicht mehr zu finden`);
+    return [...m[1].matchAll(/['"]([a-z]+)['"]/g)].map(x => x[1]).sort();
+  };
+  const boot = liste(fs.readFileSync(path.join(PUB, 'js', '00-theme-boot.js'), 'utf8'),
+    /var ALLOWED = \[([^\]]*)\]/, 'js/00-theme-boot.js');
+  const server = liste(fs.readFileSync(path.join(__dirname, '..', 'routes', 'settings.ts'), 'utf8'),
+    /if \(!\[([^\]]*)\]\.includes\(theme\)\)/, 'routes/settings.ts');
+  const app = liste(fs.readFileSync(path.join(__dirname, '..', '..', 'Android-App', 'app', 'src',
+    'main', 'java', 'ch', 'brickinventoryapp', 'data', 'PreferencesManager.kt'), 'utf8'),
+    /ERLAUBTE_DESIGNS = setOf\(([^)]*)\)/, 'PreferencesManager.kt');
+
+  assert.deepEqual(boot, erwartet, 'ALLOWED im Boot-Skript weicht von den Dateien ab');
+  assert.deepEqual(server, erwartet, 'Die Whitelist des Servers weicht von den Dateien ab');
+  assert.deepEqual(app, erwartet, 'ERLAUBTE_DESIGNS der App weicht von den Dateien ab');
+});
+
 test('jedes Theme unter public/themes/ deckt die Screens vor dem Login ab', () => {
   const dir = path.join(PUB, 'themes');
   for (const f of fs.readdirSync(dir).filter(f => f.endsWith('.css'))) {
@@ -153,24 +186,44 @@ test('die Diagrammfarben stimmen mit den Zustands-Plaketten überein', () => {
   //
   // Kommentare werden entfernt: Der Erklärtext daneben nennt die frühere Farbe
   // (#3d5a80), und ein einfacher Regex-Treffer landete zuerst dort.
-  const brick = fs.readFileSync(path.join(PUB, 'themes', 'brick.css'), 'utf8')
-    .replace(/\/\*[\s\S]*?\*\//g, '');
+  // ── Zwei Dateien, seit die Tokens erzeugt werden ────────────────────────
+  // Die WERTE (--chart-new/--chart-used) stehen seit dem Zusammenlegen in
+  // public/tokens.css, erzeugt aus shared/design-tokens.json, damit die
+  // Android-App dieselben fuehrt. Die PLAKETTEN (.cond-new/.cond-used) sind
+  // reine Web-Gestaltung und blieben in themes/brick.css.
+  //
+  // Die Regel ueberspannt damit beide Dateien — und das ist ihr Punkt: Sie
+  // haelt Wert und Plakette zusammen, ganz gleich, wo beide wohnen.
+  // Nur der STEIN-Block von tokens.css: Die Datei fuehrt beide Designs
+  // untereinander, und ein blosses match() nimmt den ersten Treffer — das
+  // waere der klassische Wert, waehrend die Plakette daneben die des
+  // Stein-Designs ist. Genau so ist diese Pruefung beim Umbau einmal
+  // fehlgeschlagen, und zwar mit der richtigen Meldung.
+  const tokens = fs.readFileSync(path.join(PUB, 'tokens.css'), 'utf8');
+  const steinTeil = tokens.slice(tokens.indexOf('[data-theme="brick"]'));
+  assert.ok(steinTeil, 'tokens.css fuehrt kein Stein-Design mehr');
+  const brick = [
+    steinTeil,
+    fs.readFileSync(path.join(PUB, 'themes', 'brick.css'), 'utf8'),
+  ].join('\n').replace(/\/\*[\s\S]*?\*\//g, '');
 
   const grab = (re, what) => {
     const m = brick.match(re);
     assert.ok(m, `${what} nicht gefunden`);
     return m[1].toLowerCase();
   };
-  assert.equal(grab(/--chart-new:(#[0-9a-f]{6})/i, '--chart-new'),
+  assert.equal(grab(/--chart-new:\s*(#[0-9a-f]{6})/i, '--chart-new'),
                grab(/\.cond-new\{background:#[0-9a-f]{6};color:(#[0-9a-f]{6})\}/i, '.cond-new'),
                'Neu-Linie und Neu-Plakette müssen dieselbe Farbe haben');
-  assert.equal(grab(/--chart-used:(#[0-9a-f]{6})/i, '--chart-used'),
+  assert.equal(grab(/--chart-used:\s*(#[0-9a-f]{6})/i, '--chart-used'),
                grab(/\.cond-used\{background:#[0-9a-f]{6};color:(#[0-9a-f]{6})\}/i, '.cond-used'),
                'Gebraucht-Linie und Gebraucht-Plakette müssen dieselbe Farbe haben');
 
   // Das Standard-Design behält Blau/Bernstein — das Paar bleibt auch bei
   // Rot-Grün-Sehschwäche unterscheidbar, weil es auf der anderen Farbachse liegt.
-  const base = fs.readFileSync(path.join(PUB, 'styles.css'), 'utf8');
-  assert.match(base, /--chart-new:#2563eb;--chart-used:#d97706;/,
-    'Die Vorgabewerte für die Diagrammfarben fehlen');
+  const base = fs.readFileSync(path.join(PUB, 'tokens.css'), 'utf8').split('[data-theme=')[0];
+  assert.match(base, /--chart-new:\s*#2563eb;/,
+    'Der Vorgabewert der Neu-Linie fehlt');
+  assert.match(base, /--chart-used:\s*#d97706;/,
+    'Der Vorgabewert der Gebraucht-Linie fehlt');
 });

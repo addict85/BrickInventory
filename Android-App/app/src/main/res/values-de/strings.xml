@@ -353,6 +353,8 @@
     <string name="monitoring_theme">Design</string>
     <string name="monitoring_theme_classic">Klassisch</string>
     <string name="monitoring_theme_brick">Stein</string>
+    <string name="monitoring_theme_werkbank">Werkbank (dunkel)</string>
+    <string name="monitoring_theme_farbfaecher">Farbfächer</string>
     <string name="monitoring_catalog_images">Katalogbilder einreihen</string>
     <string name="monitoring_redownload_missing">Fehlende Bilder neu laden</string>
     <string name="monitoring_import_missing_instr">Fehlende Anleitungen importieren</string>

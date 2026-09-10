@@ -1,0 +1,165 @@
+{
+  "_warum": "Farben, die BEIDE Oberflaechen gleich fuehren muessen. Aus dieser Datei werden Web-App/public/tokens.css und Android-App/.../ui/theme/DesignTokens.kt ERZEUGT — beide Dateien nicht von Hand bearbeiten. Siehe shared/README.md.",
+  "designs": {
+    "classic": {
+      "b50": "#eff6ff",
+      "b100": "#dbeafe",
+      "b200": "#bfdbfe",
+      "b300": "#93c5fd",
+      "b400": "#60a5fa",
+      "b500": "#3b82f6",
+      "b600": "#2563eb",
+      "b700": "#1d4ed8",
+      "chart-new": "#2563eb",
+      "chart-used": "#d97706"
+    },
+    "brick": {
+      "b50": "#eef3f8",
+      "b100": "#d9e4f0",
+      "b200": "#b7cbe0",
+      "b300": "#8fabcb",
+      "b400": "#6d94b8",
+      "b500": "#4a6f97",
+      "b600": "#3d5a80",
+      "b700": "#2f4763",
+      "chart-new": "#5f8468",
+      "chart-used": "#9a7a45",
+      "brick-petrol": "#3d7a8c"
+    },
+    "werkbank": {
+      "b50": "#16243a",
+      "b100": "#1b2f4d",
+      "b200": "#24405f",
+      "b300": "#305478",
+      "b400": "#3f6f9e",
+      "b500": "#4489d4",
+      "b600": "#4d9fff",
+      "b700": "#8cc2ff",
+      "chart-new": "#4d9fff",
+      "chart-used": "#d99a4e"
+    },
+    "farbfaecher": {
+      "b50": "#f4f4f4",
+      "b100": "#e8e8e8",
+      "b200": "#d6d6d6",
+      "b300": "#b8b8b8",
+      "b400": "#8a8a8a",
+      "b500": "#5a5a5a",
+      "b600": "#2b2b2b",
+      "b700": "#111111",
+      "chart-new": "#2563eb",
+      "chart-used": "#d97706"
+    }
+  },
+  "_notizen": {
+    "chart-new": "Diagrammfarben — je Design ueberschreibbar. Vorher standen sie fest im JavaScript; damit konnte kein Design sie anpassen, und im Stein-Look stach das Bernstein der Gebraucht-Linie aus der ansonsten blauen Palette heraus.",
+    "chart-used": "Im Stein-Design Salbeigruen und Sand — dieselben Werte wie die Zustands-Plaketten .cond-new und .cond-used. Der Grund ist nicht Geschmack: Diese Farben stehen ueberall in der Oberflaeche fuer genau diese Unterscheidung; wer sie im Diagramm wiedererkennt, muss die Legende nicht lesen. Vorher stand dort --chart-used:#3d5a80 (die Primaerfarbe des Designs) — zusammen mit dem hellen Blau der Neu-Linie ergab das ZWEI Blautoene, die sich nur in der Helligkeit unterschieden, und verkleinert oder gedruckt verschwindet so ein Unterschied als Erstes.",
+    "brick-petrol": "Aktions- und Wertfarbe des Stein-Designs. Gibt es nur dort — im Grunddesign existiert kein Gegenstueck."
+  },
+  "_app_warum": "Welche Konstante der App welchen Token spiegelt. Die Werte stehen NICHT hier — sie kommen aus 'designs' oben. Diese Zuordnung erzeugt DesignTokens.kt.",
+  "app": {
+    "BrandBlue": {
+      "design": "classic",
+      "token": "b600"
+    },
+    "BrandBlueDark": {
+      "design": "classic",
+      "token": "b700"
+    },
+    "BrandBlueLight": {
+      "design": "classic",
+      "token": "b50"
+    },
+    "BrandBlue50": {
+      "design": "classic",
+      "token": "b100"
+    },
+    "ChartNewClassic": {
+      "design": "classic",
+      "token": "chart-new"
+    },
+    "ChartUsedClassic": {
+      "design": "classic",
+      "token": "chart-used"
+    },
+    "SlateBlue": {
+      "design": "brick",
+      "token": "b600"
+    },
+    "SlateBlueDark": {
+      "design": "brick",
+      "token": "b700"
+    },
+    "SlateBlueLight": {
+      "design": "brick",
+      "token": "b100"
+    },
+    "Petrol": {
+      "design": "brick",
+      "token": "brick-petrol"
+    },
+    "ChartNewBrick": {
+      "design": "brick",
+      "token": "chart-new"
+    },
+    "ChartUsedBrick": {
+      "design": "brick",
+      "token": "chart-used"
+    },
+    "WerkbankAzur": {
+      "design": "werkbank",
+      "token": "b600"
+    },
+    "WerkbankAzurDunkel": {
+      "design": "werkbank",
+      "token": "b50"
+    },
+    "WerkbankAzurHell": {
+      "design": "werkbank",
+      "token": "b700"
+    },
+    "ChartNewWerkbank": {
+      "design": "werkbank",
+      "token": "chart-new"
+    },
+    "ChartUsedWerkbank": {
+      "design": "werkbank",
+      "token": "chart-used"
+    },
+    "FaecherTinte": {
+      "design": "farbfaecher",
+      "token": "b600"
+    },
+    "FaecherTinteHell": {
+      "design": "farbfaecher",
+      "token": "b50"
+    },
+    "FaecherTinteDunkel": {
+      "design": "farbfaecher",
+      "token": "b700"
+    },
+    "ChartNewFarbfaecher": {
+      "design": "farbfaecher",
+      "token": "chart-new"
+    },
+    "ChartUsedFarbfaecher": {
+      "design": "farbfaecher",
+      "token": "chart-used"
+    }
+  },
+  "_faecher_warum": "Der Themenfaecher des Designs \"farbfaecher\": zwoelf Toene gleicher Helligkeit und Buntheit, nur der Farbton wechselt — so steht kein Thema lauter da als ein anderes. Die Zuordnung ist Thema-Nummer modulo zwoelf. BEWUSST eine feste Liste statt einer Rechnung: Eine Farbformel muesste in CSS und in Kotlin identisch nachgebaut werden, und genau solche Paare laufen auseinander. Eine Liste laesst sich erzeugen.",
+  "faecher": [
+    "#c0392b",
+    "#c0682b",
+    "#b08c1e",
+    "#7d9b2a",
+    "#3f9142",
+    "#1f8a75",
+    "#1f8a92",
+    "#2f6fc6",
+    "#4a4fc0",
+    "#7a3fa0",
+    "#a8348a",
+    "#bb2f5e"
+  ]
+}

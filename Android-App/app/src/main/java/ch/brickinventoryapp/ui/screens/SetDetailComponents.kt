@@ -64,6 +64,8 @@ import coil.compose.AsyncImage
 import coil.ImageLoader
 import java.util.Locale
 import ch.brickinventoryapp.util.NumericInput
+import ch.brickinventoryapp.ui.theme.Abstaende
+import ch.brickinventoryapp.ui.theme.Schrift
 
 // Aus SetDetailScreen.kt ausgelagert (Lesbarkeit): geteilte Detail-Composables,
 // Preis-Chart und Kaufpreis-Erfassungszeile. private→internal, damit der
@@ -80,19 +82,19 @@ internal fun StatChipV2(label: String, value: String) {
     ) {
         Column(
             horizontalAlignment = Alignment.CenterHorizontally,
-            modifier = Modifier.padding(horizontal = 14.dp, vertical = 8.dp)
+            modifier = Modifier.padding(horizontal = 14.dp, vertical = Abstaende.klein)
         ) {
             Text(
                 value,
                 fontWeight = FontWeight.Bold,
-                fontSize = 14.sp,
+                fontSize = Schrift.normal,
                 color = MaterialTheme.colorScheme.onSurface
             )
             Text(
                 label,
                 style = MaterialTheme.typography.labelSmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
-                fontSize = 10.sp
+                fontSize = Schrift.winzig
             )
         }
     }
@@ -100,8 +102,8 @@ internal fun StatChipV2(label: String, value: String) {
 
 @Composable
 internal fun SectionCard(title: String, content: @Composable ColumnScope.() -> Unit) {
-    AppKarte(Modifier.padding(horizontal = 16.dp, vertical = 5.dp)) {
-        Column(Modifier.padding(horizontal = 16.dp, vertical = 14.dp)) {
+    AppKarte(Modifier.padding(horizontal = Abstaende.gross, vertical = 5.dp)) {
+        Column(Modifier.padding(horizontal = Abstaende.gross, vertical = 14.dp)) {
             Text(
                 title.uppercase(),
                 style = MaterialTheme.typography.labelSmall,
@@ -180,7 +182,7 @@ fun PriceChart(chart: PriceChartData) {
     val allValues = allPoints.map { it.value }
     val latest    = allPoints.maxByOrNull { it.day }?.value ?: return
     Row(
-        Modifier.fillMaxWidth().padding(bottom = 8.dp),
+        Modifier.fillMaxWidth().padding(bottom = Abstaende.klein),
         horizontalArrangement = Arrangement.SpaceEvenly
     ) {
         // Ohne Währung: Die drei Kennzahlen stehen als Gruppe unter dem
@@ -246,8 +248,8 @@ fun PriceChart(chart: PriceChartData) {
     // Nur die Zustände, die tatsächlich eine Linie haben: Ein Eintrag ohne
     // Linie im Diagramm liest sich wie fehlende Daten.
     Row(
-        Modifier.fillMaxWidth().padding(top = 8.dp),
-        horizontalArrangement = Arrangement.spacedBy(16.dp)
+        Modifier.fillMaxWidth().padding(top = Abstaende.klein),
+        horizontalArrangement = Arrangement.spacedBy(Abstaende.gross)
     ) {
         lines.forEach { line ->
             Row(verticalAlignment = Alignment.CenterVertically,
@@ -268,15 +270,15 @@ fun PriceChart(chart: PriceChartData) {
     // Randbeschriftung der Zeitachse — die gemeinsame Achse des Servers.
     PriceChartMath.axisRange(chart)?.let { (first, last) ->
         Row(
-            Modifier.fillMaxWidth().padding(top = 2.dp),
+            Modifier.fillMaxWidth().padding(top = Abstaende.haar),
             horizontalArrangement = Arrangement.SpaceBetween
         ) {
             Text(PriceChartMath.formatDay(first),
                 style = MaterialTheme.typography.labelSmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 10.sp)
+                color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = Schrift.winzig)
             Text(PriceChartMath.formatDay(last),
                 style = MaterialTheme.typography.labelSmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 10.sp)
+                color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = Schrift.winzig)
         }
     }
 }
@@ -307,7 +309,7 @@ fun MarketPriceByCondition(
         rows.forEach { (cond, data) ->
             val label = if (cond == "U") labelUsed else labelNew
             Row(
-                Modifier.fillMaxWidth().padding(vertical = 4.dp),
+                Modifier.fillMaxWidth().padding(vertical = Abstaende.winzig),
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
@@ -315,7 +317,7 @@ fun MarketPriceByCondition(
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant)
                 Row(verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    horizontalArrangement = Arrangement.spacedBy(Abstaende.klein)) {
                     Text(
                         data.marketPrice?.let {
                             ch.brickinventoryapp.util.fmtMoney(it, currency)
@@ -347,7 +349,7 @@ fun MarketPriceByCondition(
 fun PreisLaedtZeile(modifier: Modifier = Modifier) {
     Row(
         modifier,
-        horizontalArrangement = Arrangement.spacedBy(8.dp),
+        horizontalArrangement = Arrangement.spacedBy(Abstaende.klein),
         verticalAlignment = Alignment.CenterVertically
     ) {
         CircularProgressIndicator(Modifier.size(14.dp), strokeWidth = 2.dp)
@@ -368,7 +370,7 @@ fun PnlBadge(pct: Double) {
     Surface(shape = Formen.chip, color = color.copy(alpha = 0.12f)) {
         Text(
             "$sign${String.format(Locale.US, "%.1f", pct)} %",
-            color = color, fontWeight = FontWeight.Bold, fontSize = 12.sp,
+            color = color, fontWeight = FontWeight.Bold, fontSize = Schrift.klein,
             modifier = Modifier.padding(horizontal = 9.dp, vertical = 3.dp)
         )
     }
@@ -379,6 +381,6 @@ internal fun PriceStatCell(label: String, value: String) {
     Column(horizontalAlignment = Alignment.CenterHorizontally) {
         Text(value, fontWeight = FontWeight.Bold, fontSize = 13.sp)
         Text(label, style = MaterialTheme.typography.labelSmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 10.sp)
+            color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = Schrift.winzig)
     }
 }

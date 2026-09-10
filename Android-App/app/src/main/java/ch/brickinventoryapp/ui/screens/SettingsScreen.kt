@@ -28,6 +28,8 @@ import ch.brickinventoryapp.util.fmtDatum
 import ch.brickinventoryapp.ui.MainViewModel
 import ch.brickinventoryapp.ui.*  // Feature-Extensions (saveSettings, setLanguage, …)
 import ch.brickinventoryapp.util.passwortZuKurz
+import ch.brickinventoryapp.ui.theme.Abstaende
+import ch.brickinventoryapp.ui.theme.Schrift
 
 @Composable
 fun SettingsScreen(
@@ -127,12 +129,12 @@ fun SettingsScreen(
         Modifier
             .fillMaxSize()
             .verticalScroll(rememberScrollState())
-            .padding(horizontal = 16.dp, vertical = 12.dp),
+            .padding(horizontal = Abstaende.gross, vertical = Abstaende.mittel),
         verticalArrangement = Arrangement.spacedBy(10.dp)
     ) {
         // Currency
         SettingsCard(title = stringResource(R.string.settings_currency), icon = Icons.Default.Euro) {
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
+            Row(horizontalArrangement = Arrangement.spacedBy(Abstaende.klein), modifier = Modifier.fillMaxWidth()) {
                 listOf("CHF", "EUR", "USD", "GBP").forEach { cur ->
                     FilterChip(
                         selected = selectedCurrency == cur,
@@ -165,8 +167,8 @@ fun SettingsScreen(
                     stringResource(R.string.settings_default_condition_effective, wirkt),
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.padding(bottom = 8.dp))
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                modifier = Modifier.padding(bottom = Abstaende.klein))
+            Row(horizontalArrangement = Arrangement.spacedBy(Abstaende.klein)) {
                 FilterChip(
                     selected = selectedUserDefault == null,
                     onClick = { selectedUserDefault = null },
@@ -193,8 +195,8 @@ fun SettingsScreen(
             Text(stringResource(R.string.settings_price_basis),
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.padding(bottom = 8.dp))
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                modifier = Modifier.padding(bottom = Abstaende.klein))
+            Row(horizontalArrangement = Arrangement.spacedBy(Abstaende.klein)) {
                 FilterChip(
                     selected = selectedCondition == "N",
                     onClick = { selectedCondition = "N" },
@@ -212,7 +214,7 @@ fun SettingsScreen(
 
         // Language
         SettingsCard(title = stringResource(R.string.settings_language), icon = Icons.Default.Language) {
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
+            Row(horizontalArrangement = Arrangement.spacedBy(Abstaende.klein), modifier = Modifier.fillMaxWidth()) {
                 val options = listOf(
                     "system" to stringResource(R.string.settings_language_system),
                     "en"     to stringResource(R.string.settings_language_en),
@@ -283,7 +285,7 @@ fun SettingsScreen(
             ) {
                 Row(
                     Modifier.padding(14.dp),
-                    horizontalArrangement = Arrangement.spacedBy(12.dp),
+                    horizontalArrangement = Arrangement.spacedBy(Abstaende.mittel),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Icon(Icons.Default.CheckCircle, null,
@@ -301,7 +303,7 @@ fun SettingsScreen(
                             ),
                             fontWeight = FontWeight.Bold,
                             color = MaterialTheme.colorScheme.onPrimaryContainer,
-                            fontSize = 14.sp)
+                            fontSize = Schrift.normal)
                     }
                 }
             }
@@ -320,12 +322,12 @@ fun SettingsScreen(
             shape = Formen.knopf
         ) {
             Icon(Icons.Default.Save, null, Modifier.size(18.dp))
-            Spacer(Modifier.width(8.dp))
+            Spacer(Modifier.width(Abstaende.klein))
             Text(stringResource(R.string.settings_save), fontWeight = FontWeight.SemiBold)
         }
 
         Spacer(Modifier.weight(1f, fill = false))
-        Spacer(Modifier.height(24.dp))
+        Spacer(Modifier.height(Abstaende.sehrGross))
 
         HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
 
@@ -338,7 +340,7 @@ fun SettingsScreen(
             border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.error.copy(alpha = 0.5f))
         ) {
             Icon(Icons.AutoMirrored.Filled.Logout, null, Modifier.size(18.dp))
-            Spacer(Modifier.width(8.dp))
+            Spacer(Modifier.width(Abstaende.klein))
             Text(stringResource(R.string.settings_logout), fontWeight = FontWeight.SemiBold)
         }
     }
@@ -351,11 +353,11 @@ private fun SettingsCard(
     content: @Composable ColumnScope.() -> Unit
 ) {
     AppKarte {
-        Column(Modifier.padding(16.dp)) {
+        Column(Modifier.padding(Abstaende.gross)) {
             Row(
                 verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
-                modifier = Modifier.padding(bottom = 12.dp)
+                horizontalArrangement = Arrangement.spacedBy(Abstaende.klein),
+                modifier = Modifier.padding(bottom = Abstaende.mittel)
             ) {
                 Icon(icon, null, Modifier.size(18.dp), tint = MaterialTheme.colorScheme.primary)
                 Text(title.uppercase(),
@@ -404,7 +406,7 @@ private fun GeraeteCard(
         Text(stringResource(R.string.tokens_hint),
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
-            modifier = Modifier.padding(bottom = 12.dp))
+            modifier = Modifier.padding(bottom = Abstaende.mittel))
 
         when {
             zustand.laedt && zustand.geraete.isEmpty() ->
@@ -416,7 +418,7 @@ private fun GeraeteCard(
                 Text(stringResource(R.string.tokens_none),
                      style = MaterialTheme.typography.bodySmall,
                      color = MaterialTheme.colorScheme.onSurfaceVariant)
-            else -> Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            else -> Column(verticalArrangement = Arrangement.spacedBy(Abstaende.klein)) {
                 for (g in zustand.geraete) {
                     Row(verticalAlignment = Alignment.CenterVertically,
                         modifier = Modifier.fillMaxWidth()) {
@@ -431,7 +433,7 @@ private fun GeraeteCard(
                                     Text(stringResource(R.string.tokens_current),
                                         style = MaterialTheme.typography.labelSmall,
                                         color = MaterialTheme.colorScheme.onPrimaryContainer,
-                                        modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp))
+                                        modifier = Modifier.padding(horizontal = 6.dp, vertical = Abstaende.haar))
                                 }
                             }
                             Text(
@@ -452,7 +454,7 @@ private fun GeraeteCard(
             }
         }
 
-        Row(Modifier.padding(top = 12.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        Row(Modifier.padding(top = Abstaende.mittel), horizontalArrangement = Arrangement.spacedBy(Abstaende.klein)) {
             OutlinedButton(onClick = onReload, shape = Formen.knopf) {
                 Text(stringResource(R.string.tokens_reload))
             }
@@ -533,7 +535,7 @@ private fun HouseholdCard(
             st == null -> {}
             st.isSub -> {
                 Row(verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    horizontalArrangement = Arrangement.spacedBy(Abstaende.klein)) {
                     Text(stringResource(R.string.household_state_sub, st.linkedTo?.username ?: ""),
                         style = MaterialTheme.typography.bodyMedium, modifier = Modifier.weight(1f))
                     TextButton(onClick = { onUnlink(null) }) {
@@ -546,7 +548,7 @@ private fun HouseholdCard(
                     style = MaterialTheme.typography.labelLarge)
                 st.subAccounts.forEach { m ->
                     Row(verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        horizontalArrangement = Arrangement.spacedBy(Abstaende.klein)) {
                         Text(m.username, modifier = Modifier.weight(1f),
                             fontWeight = FontWeight.SemiBold)
                         TextButton(onClick = { onUnlink(m.id) }) {
@@ -683,7 +685,7 @@ private fun KontoCard(
                 isError = profil.emailVerified != 1,
                 modifier = Modifier.fillMaxWidth(), singleLine = true, shape = Formen.knopf,
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email))
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            Row(horizontalArrangement = Arrangement.spacedBy(Abstaende.klein)) {
                 OutlinedTextField(
                     value = vorname, onValueChange = { vorname = it; tippen(it) },
                     label = { Text(stringResource(R.string.register_first_name)) },
@@ -699,7 +701,7 @@ private fun KontoCard(
                 modifier = Modifier.fillMaxWidth().height(44.dp), shape = Formen.knopf
             ) { Text(stringResource(R.string.konto_save), fontWeight = FontWeight.SemiBold) }
 
-            HorizontalDivider(Modifier.padding(vertical = 12.dp),
+            HorizontalDivider(Modifier.padding(vertical = Abstaende.mittel),
                 color = MaterialTheme.colorScheme.outlineVariant)
 
             Text(stringResource(R.string.konto_password_title),
@@ -785,7 +787,7 @@ private fun CsvImportCard(
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant)
 
-        Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
+        Row(horizontalArrangement = Arrangement.spacedBy(Abstaende.klein), modifier = Modifier.fillMaxWidth()) {
             listOf(
                 ch.brickinventoryapp.data.model.CsvArt.SETS to R.string.csv_upload_sets,
                 ch.brickinventoryapp.data.model.CsvArt.TEILE to R.string.csv_upload_parts,
@@ -795,7 +797,7 @@ private fun CsvImportCard(
                     onClick = { gewaehlteArt = art; auswahl.launch(typen) },
                     enabled = !csvZustand.laeuft,
                     modifier = Modifier.weight(1f), shape = Formen.knopf,
-                    contentPadding = PaddingValues(horizontal = 4.dp)
+                    contentPadding = PaddingValues(horizontal = Abstaende.winzig)
                 ) {
                     if (csvZustand.laeuft && csvZustand.art == art) {
                         CircularProgressIndicator(Modifier.size(16.dp), strokeWidth = 2.dp)
@@ -857,10 +859,10 @@ private fun ServerCard(serverUrl: String, onWechseln: () -> Unit) {
             style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
-        Spacer(Modifier.height(8.dp))
+        Spacer(Modifier.height(Abstaende.klein))
         OutlinedButton(onClick = onWechseln) {
             Icon(Icons.Default.Cloud, null, modifier = Modifier.size(18.dp))
-            Spacer(Modifier.width(8.dp))
+            Spacer(Modifier.width(Abstaende.klein))
             Text(stringResource(R.string.main_menu_change_server))
         }
     }
@@ -886,7 +888,7 @@ private fun UpdateCard(
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
-        Spacer(Modifier.height(8.dp))
+        Spacer(Modifier.height(Abstaende.klein))
 
         val neuere = updateZustand.neuereFassung
         when {
@@ -906,10 +908,10 @@ private fun UpdateCard(
         }
 
         updateZustand.fortschritt?.let { p ->
-            Spacer(Modifier.height(8.dp))
+            Spacer(Modifier.height(Abstaende.klein))
             Text(stringResource(R.string.update_downloading, p),
                 style = MaterialTheme.typography.bodySmall)
-            Spacer(Modifier.height(4.dp))
+            Spacer(Modifier.height(Abstaende.winzig))
             LinearProgressIndicator(
                 progress = { p / 100f },
                 modifier = Modifier.fillMaxWidth(),
@@ -917,31 +919,31 @@ private fun UpdateCard(
         }
 
         if (updateZustand.erlaubnisFehlt) {
-            Spacer(Modifier.height(8.dp))
+            Spacer(Modifier.height(Abstaende.klein))
             Text(
                 stringResource(R.string.update_permission_needed),
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
-            Spacer(Modifier.height(4.dp))
+            Spacer(Modifier.height(Abstaende.winzig))
             TextButton(onClick = {
                 ctx.startActivity(ch.brickinventoryapp.util.erlaubnisAbsicht(ctx))
             }) { Text(stringResource(R.string.update_permission_grant)) }
         }
 
         updateZustand.fehler?.let { f ->
-            Spacer(Modifier.height(8.dp))
+            Spacer(Modifier.height(Abstaende.klein))
             Text(f, style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.error)
         }
 
-        Spacer(Modifier.height(12.dp))
-        Row(horizontalArrangement = Arrangement.spacedBy(8.dp),
+        Spacer(Modifier.height(Abstaende.mittel))
+        Row(horizontalArrangement = Arrangement.spacedBy(Abstaende.klein),
             verticalAlignment = Alignment.CenterVertically) {
             OutlinedButton(onClick = onPruefen, enabled = !updateZustand.laedtPruefung && updateZustand.fortschritt == null) {
                 if (updateZustand.laedtPruefung) {
                     CircularProgressIndicator(Modifier.size(16.dp), strokeWidth = 2.dp)
-                    Spacer(Modifier.width(8.dp))
+                    Spacer(Modifier.width(Abstaende.klein))
                 }
                 Text(stringResource(R.string.update_check))
             }

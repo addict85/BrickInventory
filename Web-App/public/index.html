@@ -18,9 +18,15 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>BrickInventory Manager</title>
   <link rel="stylesheet" href="/vendor/fonts/fonts.css?v=2026.09.07.1820">
+  <!-- Gemeinsame Farbtokens, ERZEUGT aus shared/design-tokens.json. Zuerst
+       geladen: Sie sind die Grundlage, styles.css und die Designs bauen
+       darauf auf. -->
+  <link rel="stylesheet" href="/tokens.css?v=2026.09.07.1820">
   <link rel="stylesheet" href="/styles.css?v=2026.09.07.1820">
   <!-- App-Designs (Stein-Look etc.) — je Theme eine Datei unter /themes/, greift via [data-theme] -->
   <link rel="stylesheet" href="/themes/brick.css?v=2026.09.07.1820">
+  <link rel="stylesheet" href="/themes/werkbank.css?v=2026.09.07.1820">
+  <link rel="stylesheet" href="/themes/farbfaecher.css?v=2026.09.07.1820">
   <!-- Responsive-Regeln, nach beiden Designs geladen: das Layout ist in
        classic und brick identisch, die Regeln gelten daher für beide. -->
   <link rel="stylesheet" href="/mobile.css?v=2026.09.07.1820">
@@ -745,6 +751,8 @@
               <select id="mon-app-theme">
                 <option value="classic" data-i18n="settings.theme_classic">Klassisch</option>
                 <option value="brick" data-i18n="settings.theme_brick">Stein (Blau)</option>
+                <option value="werkbank" data-i18n="settings.theme_werkbank">Werkbank (dunkel)</option>
+                <option value="farbfaecher" data-i18n="settings.theme_farbfaecher">Farbfächer</option>
               </select>
             </div>
             <div style="font-size:.75rem;color:var(--mut);margin-top:-4px" data-i18n="settings.app_theme_hint">Gilt global für alle Benutzer (Web &amp; App).</div>

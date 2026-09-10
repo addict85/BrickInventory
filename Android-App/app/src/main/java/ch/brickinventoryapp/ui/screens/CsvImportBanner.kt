@@ -15,6 +15,8 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import ch.brickinventoryapp.R
+import ch.brickinventoryapp.ui.theme.Abstaende
+import ch.brickinventoryapp.ui.theme.Schrift
 
 @Composable
 fun CsvImportBanner(
@@ -39,12 +41,12 @@ fun CsvImportBanner(
             color = bg,
             modifier = Modifier.fillMaxWidth().clickable { expanded = !expanded }
         ) {
-            Column(Modifier.padding(horizontal = 16.dp, vertical = 8.dp)) {
+            Column(Modifier.padding(horizontal = Abstaende.gross, vertical = Abstaende.klein)) {
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    horizontalArrangement = Arrangement.spacedBy(Abstaende.klein)
                 ) {
-                    Text("📦", fontSize = 14.sp)
+                    Text("📦", fontSize = Schrift.normal)
                     LinearProgressIndicator(
                         progress = { pct },
                         modifier = Modifier.weight(1f).height(6.dp).clip(MaterialTheme.shapes.small),
@@ -84,7 +86,7 @@ fun CsvImportBanner(
                         current,
                         style = MaterialTheme.typography.labelSmall,
                         color = MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.8f),
-                        modifier = Modifier.padding(top = 2.dp)
+                        modifier = Modifier.padding(top = Abstaende.haar)
                     )
                 }
             }
@@ -95,8 +97,8 @@ fun CsvImportBanner(
                 modifier = Modifier.fillMaxWidth()
             ) {
                 Row(
-                    Modifier.padding(horizontal = 16.dp, vertical = 10.dp),
-                    horizontalArrangement = Arrangement.spacedBy(16.dp)
+                    Modifier.padding(horizontal = Abstaende.gross, vertical = 10.dp),
+                    horizontalArrangement = Arrangement.spacedBy(Abstaende.gross)
                 ) {
                     listOf(
                         "✅ $ok" to stringResource(R.string.csv_stat_success),
@@ -104,7 +106,7 @@ fun CsvImportBanner(
                         "❌ $err" to stringResource(R.string.csv_stat_errors)
                     ).forEach { (v, l) ->
                         Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                            Text(v, fontWeight = FontWeight.Bold, fontSize = 14.sp)
+                            Text(v, fontWeight = FontWeight.Bold, fontSize = Schrift.normal)
                             Text(l, style = MaterialTheme.typography.labelSmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant)
                         }

@@ -22,6 +22,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import ch.brickinventoryapp.R
+import ch.brickinventoryapp.ui.theme.Abstaende
 
 /**
  * „Die Kamera wird gebraucht" — der Rueckfall, wenn die Erlaubnis fehlt.
@@ -46,7 +47,7 @@ fun KameraErlaubnisHinweis(onErlauben: () -> Unit) {
         Column(horizontalAlignment = Alignment.CenterHorizontally) {
             Text(stringResource(R.string.scanner_camera_needed),
                 color = Color.White, fontWeight = FontWeight.Bold)
-            Spacer(Modifier.height(12.dp))
+            Spacer(Modifier.height(Abstaende.mittel))
             Button(onClick = onErlauben) { Text(stringResource(R.string.scanner_allow)) }
         }
     }
@@ -94,7 +95,7 @@ fun KameraUeberlagerung(
     ) {
         Spacer(Modifier.weight(0.2f))
         rahmen()
-        Spacer(Modifier.height(16.dp))
+        Spacer(Modifier.height(Abstaende.gross))
         Surface(color = Color.Black.copy(alpha = 0.72f), shape = Formen.kachel) {
             Text(
                 hinweis,

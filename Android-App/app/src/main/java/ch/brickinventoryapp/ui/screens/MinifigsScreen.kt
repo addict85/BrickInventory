@@ -37,6 +37,8 @@ import ch.brickinventoryapp.R
 import ch.brickinventoryapp.ui.MainViewModel
 import ch.brickinventoryapp.ui.*  // Feature-Extensions (loadSets, setScope, …)
 import ch.brickinventoryapp.util.NumericInput
+import ch.brickinventoryapp.ui.theme.Abstaende
+import ch.brickinventoryapp.ui.theme.Schrift
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
 @Composable
@@ -114,7 +116,7 @@ fun MinifigsScreen(
             Surface(color = MaterialTheme.colorScheme.surface, tonalElevation = 2.dp) {
                 Row(
                     Modifier.fillMaxWidth().padding(horizontal = 14.dp, vertical = 10.dp),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    horizontalArrangement = Arrangement.spacedBy(Abstaende.klein)
                 ) {
                     // Zahlen vom Server (utils/handlers.ts, getMinifigStats) — aus der
                     // Liste gerechnet zählten sie die manuell erfassten Figuren nicht
@@ -140,7 +142,7 @@ fun MinifigsScreen(
         AnsichtUmschalter(
             aktuell = ansicht,
             onWechsel = { vm.setMinifigsView(it) },
-            modifier = Modifier.padding(horizontal = 14.dp).padding(bottom = 8.dp),
+            modifier = Modifier.padding(horizontal = 14.dp).padding(bottom = Abstaende.klein),
         )
 
         when {
@@ -148,7 +150,7 @@ fun MinifigsScreen(
                 CircularProgressIndicator()
             }
             figs.isEmpty() && manualFigs.isEmpty() -> Box(Modifier.fillMaxSize(), Alignment.Center) {
-                Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(Abstaende.klein)) {
                     Text("👷", fontSize = 40.sp)
                     Text(stringResource(R.string.minifigs_none), fontWeight = FontWeight.SemiBold)
                     Text(stringResource(R.string.minifigs_loaded_on_import),
@@ -157,7 +159,7 @@ fun MinifigsScreen(
                 }
             }
             figs.isEmpty() && manualFigs.isEmpty() -> Box(Modifier.fillMaxSize(), Alignment.Center) {
-                Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(Abstaende.klein)) {
                     Text("🔍", fontSize = 40.sp)
                     Text(stringResource(R.string.minifigs_no_results), fontWeight = FontWeight.SemiBold)
                 }
@@ -166,7 +168,7 @@ fun MinifigsScreen(
                 LazyVerticalGrid(
                     columns = GridCells.Adaptive(140.dp),
                     state = gridState,
-                    contentPadding = PaddingValues(12.dp),
+                    contentPadding = PaddingValues(Abstaende.mittel),
                     horizontalArrangement = Arrangement.spacedBy(10.dp),
                     verticalArrangement = Arrangement.spacedBy(10.dp)
                 ) {
@@ -274,7 +276,7 @@ fun ManualFigTile(fig: FigValuationItem, serverUrl: String, imageLoader: ImageLo
         notiz = fig.note,
         onEdit = onEdit,
         onDelete = onDelete,
-        platzhalter = { Text("👷", fontSize = 24.sp) },
+        platzhalter = { Text("👷", fontSize = Schrift.riesig) },
     )
 }
 
@@ -391,13 +393,13 @@ fun MinifigCard(fig: Minifig, serverUrl: String, imageLoader: ImageLoader,
                     Surface(
                         color = MaterialTheme.colorScheme.primary,
                         shape = Formen.marke,
-                        modifier = Modifier.align(Alignment.TopEnd).padding(4.dp)
+                        modifier = Modifier.align(Alignment.TopEnd).padding(Abstaende.winzig)
                     ) {
                         // Die Menge-Plakette: „×N" auf einer MANUELL erfassten Kachel,
                         // „N×" auf einer Kachel aus einem Set. Das ist keine Laune,
                         // sondern die Regel der Webapp — `man-tile` traegt dort ein
                         // `qbadge` mit ×N, `part-card` ein `part-qty` mit N×.
-                        Text("$qty×", Modifier.padding(horizontal = 5.dp, vertical = 2.dp),
+                        Text("$qty×", Modifier.padding(horizontal = 5.dp, vertical = Abstaende.haar),
                             color = MaterialTheme.colorScheme.onPrimary,
                             style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.Bold)
                     }
@@ -417,8 +419,8 @@ fun MinifigCard(fig: Minifig, serverUrl: String, imageLoader: ImageLoader,
                 //
                 // Column statt Box: Zwei Plaketten übereinander, nicht
                 // aufeinander — in einer Box lägen sie am selben Punkt.
-                Column(Modifier.align(Alignment.BottomStart).padding(4.dp),
-                    verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                Column(Modifier.align(Alignment.BottomStart).padding(Abstaende.winzig),
+                    verticalArrangement = Arrangement.spacedBy(Abstaende.haar)) {
                     if (fig.source == "manual") ConditionBadges(fig.conditions, fig.condition)
                     OwnerBadges(fig.owners)
                 }
@@ -426,15 +428,15 @@ fun MinifigCard(fig: Minifig, serverUrl: String, imageLoader: ImageLoader,
                     Surface(
                         color = MaterialTheme.colorScheme.tertiaryContainer,
                         shape = Formen.marke,
-                        modifier = Modifier.align(Alignment.TopStart).padding(4.dp)
+                        modifier = Modifier.align(Alignment.TopStart).padding(Abstaende.winzig)
                     ) {
-                        Text(stringResource(R.string.minifigs_manual_badge), Modifier.padding(horizontal = 5.dp, vertical = 2.dp),
+                        Text(stringResource(R.string.minifigs_manual_badge), Modifier.padding(horizontal = 5.dp, vertical = Abstaende.haar),
                             color = MaterialTheme.colorScheme.onTertiaryContainer,
                             style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.Bold)
                     }
                 }
             }
-            Column(Modifier.padding(8.dp), verticalArrangement = Arrangement.spacedBy(1.dp)) {
+            Column(Modifier.padding(Abstaende.klein), verticalArrangement = Arrangement.spacedBy(1.dp)) {
                 Text(fig.figNumber, style = MaterialTheme.typography.labelSmall,
                     color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.SemiBold)
                 Text(fig.figName ?: fig.figNumber,

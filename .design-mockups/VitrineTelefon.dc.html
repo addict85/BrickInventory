@@ -1,0 +1,85 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600&family=JetBrains+Mono:wght@400&display=swap">
+  <style>
+    body { margin: 0; font-family: 'Plus Jakarta Sans', system-ui, sans-serif; }
+    a { color: #1a1a1a; } a:hover { color: #666; }
+  </style>
+</helmet>
+
+<div style="width: 390px; height: 844px; background: #f7f6f4; color: #1a1a1a; display: flex; flex-direction: column; overflow: hidden">
+
+  <div style="padding: 22px 22px 0; flex-shrink: 0">
+    <div style="display: flex; align-items: center; justify-content: space-between">
+      <span style="font-family: 'JetBrains Mono', monospace; font-size: 11px; color: #8c8781">312 · 148 902 · 571</span>
+      <div style="width: 34px; height: 34px; border-radius: 999px; border: 1px solid #d8d4ce; display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 500">MB</div>
+    </div>
+    <div style="font-size: 32px; font-weight: 300; letter-spacing: -.025em; margin-top: 22px">Sammlung</div>
+    <div style="display: flex; gap: 20px; align-items: center; padding: 20px 0 22px">
+      <span style="font-size: 13px; font-weight: 500; border-bottom: 1px solid #1a1a1a; padding-bottom: 2px">Alle</span>
+      <span style="font-size: 13px; font-weight: 300; color: #8c8781">Star Wars</span>
+      <span style="font-size: 13px; font-weight: 300; color: #8c8781">Technic</span>
+    </div>
+  </div>
+
+  <!-- EINE Spalte: das Bild bekommt die volle Breite -->
+  <div style="flex-grow: 1; overflow: hidden; padding: 0 22px">
+    <div style="display: flex; flex-direction: column; gap: 30px">
+      <sc-for list="{{sets}}" as="s" hint-placeholder-count="3">
+        <div style="display: flex; flex-direction: column; gap: 13px">
+          <div style="aspect-ratio: 4 / 3; background: #efedea; display: flex; align-items: center; justify-content: center; box-shadow: 0 1px 2px rgba(26,26,26,.05), 0 10px 24px rgba(26,26,26,.06)">
+            <svg width="92" height="92" viewBox="0 0 48 48" fill="none" stroke="{{s.strich}}" stroke-width="0.9" stroke-linejoin="round">
+              <rect x="7" y="18" width="34" height="20" rx="1.5"></rect>
+              <path d="M14 18v-3.2a1.6 1.6 0 0 1 1.6-1.6h2.4a1.6 1.6 0 0 1 1.6 1.6V18"></path>
+              <path d="M28 18v-3.2a1.6 1.6 0 0 1 1.6-1.6h2.4a1.6 1.6 0 0 1 1.6 1.6V18"></path>
+              <path d="M7 27h34"></path>
+            </svg>
+          </div>
+          <div style="display: flex; align-items: flex-end; justify-content: space-between; gap: 12px">
+            <div>
+              <div style="font-size: 18px; font-weight: 500; letter-spacing: -.01em; line-height: 1.2">{{s.name}}</div>
+              <div style="font-family: 'JetBrains Mono', monospace; font-size: 11px; color: #8c8781; margin-top: 5px">{{s.nummer}} · {{s.jahr}} · {{s.teile}} Teile</div>
+            </div>
+            <sc-if value="{{s.besitz}}" hint-placeholder-val="{{ true }}">
+              <span style="font-size: 11.5px; font-weight: 500; white-space: nowrap">×{{s.anzahl}}</span>
+            </sc-if>
+          </div>
+        </div>
+      </sc-for>
+    </div>
+  </div>
+
+  <div style="display: flex; border-top: 1px solid #e4e1dc; padding: 0 10px 22px; flex-shrink: 0; background: #f7f6f4">
+    <sc-for list="{{reiter}}" as="r" hint-placeholder-count="5">
+      <div style="flex-grow: 1; display: flex; align-items: center; justify-content: center; min-height: 48px; font-size: 11.5px; font-weight: {{r.gewicht}}; color: {{r.farbe}}">{{r.name}}</div>
+    </sc-for>
+  </div>
+</div>
+</x-dc>
+
+<script data-dc-script data-props='{"$preview":{"width":390,"height":844}}'>
+class Component extends DCLogic {
+  renderVals() {
+    const S = (nummer, name, jahr, teile, besitz, anzahl, strich) =>
+      ({ nummer, name, jahr, teile, besitz, anzahl, strich });
+    const R = (name, aktiv) => ({ name, gewicht: aktiv ? 600 : 300, farbe: aktiv ? '#1a1a1a' : '#8c8781' });
+    return {
+      sets: [
+        S('10276-1', 'Kolosseum', 2020, '9036', true, 1, '#5a5550'),
+        S('75192-1', 'Millennium Falcon', 2017, '7541', true, 2, '#8c8781'),
+        S('21058-1', 'Cheops-Pyramide', 2022, '1476', false, 0, '#a8a39d'),
+      ],
+      reiter: [R('Galerie', true), R('Katalog', false), R('Teile', false), R('Figuren', false), R('Finanzen', false)],
+    };
+  }
+}
+</script>
+</body>
+</html>

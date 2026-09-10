@@ -1,0 +1,90 @@
+/* ═══════════════════════════════════════════════════════════════════════════
+   APP-DESIGN "werkbank" (dunkel) — Anthrazit mit Azur, vom Admin waehlbar.
+   ---------------------------------------------------------------------------
+   Aktiv, sobald <html data-theme="werkbank"> gesetzt ist (siehe applyTheme()
+   in js/00-theme-boot.js). Alle Regeln sind unter [data-theme="werkbank"]
+   gescoped; die Datei wird immer geladen, greift aber nur beim aktiven Design.
+
+   Die PALETTE steht nicht hier, sondern in /tokens.css — erzeugt aus
+   shared/design-tokens.json, damit die Android-App dieselben Werte fuehrt.
+   Hier steht nur, was das Web allein betrifft.
+
+   ── Warum ein dunkles Design mehr ist als getauschte Farben ────────────────
+   Das Grunddesign hat eine Grau-Skala (--s50 hell bis --s800 dunkel) und
+   benutzt sie als "je hoeher die Zahl, desto dunkler". Auf dunklem Grund muss
+   diese Achse sich umkehren, sonst ist heller Text auf hellem Grund. Die
+   Skala wird deshalb hier komplett neu belegt statt einzelne Stellen
+   ueberschrieben — es sind dieselben Rollen, nur andere Werte.
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+[data-theme="werkbank"]{
+  /* Die Grau-Achse, umgedreht: 50 ist jetzt der DUNKELSTE Ton. */
+  --s50:#11151a;--s100:#161b21;--s200:#262d36;--s300:#2f3843;
+  --s400:#6f7986;--s500:#8d96a3;--s600:#b6bec9;--s700:#cfd6de;--s800:#e6e9ed;
+
+  --bg:#14181d;
+  --sur:#191e25;
+  --bdr:#262d36;
+  --txt:#e6e9ed;
+  --mut:#8d96a3;
+  --screen-bg:#14181d;      /* Login-/Startup-Screen, vor dem Login */
+  --rad:12px;
+
+  /* Zustands- und Meldefarben: auf dunklem Grund gedaempft, sonst leuchten
+     sie staerker als die Markenfarbe und ziehen den Blick von ihr weg. */
+  --g100:#1d2a20;--g500:#6fbf7f;
+  --r100:#2c1c1c;--r500:#e07a72;
+  --a100:#2a2418;--a500:#d9a84e;
+  --p100:#241d2e;--p600:#b087d6;
+
+  /* Schatten sind auf Dunkel fast unsichtbar — die Trennung macht der
+     Rahmen. Sie bleiben schwach gesetzt, damit nichts flach wirkt. */
+  --sh0:0 1px 2px rgba(0,0,0,.34);
+  --sh1:0 3px 10px rgba(0,0,0,.40);
+  --sh2:0 10px 28px rgba(0,0,0,.48);
+}
+
+/* ── Vor dem Login ──────────────────────────────────────────────────────────
+   Muss hier stehen: Login- und Startup-Screen erscheinen, bevor irgendeine
+   Nutzereinstellung gelesen ist (siehe --screen-bg oben und theme.test.js). */
+[data-theme="werkbank"] #login-screen,
+[data-theme="werkbank"] #startup-screen{
+  background:var(--screen-bg);color:var(--txt);
+}
+[data-theme="werkbank"] #login-screen .card,
+[data-theme="werkbank"] #startup-screen .card{
+  background:var(--sur);border:1px solid var(--bdr);
+}
+
+/* ── Flaechen ───────────────────────────────────────────────────────────── */
+[data-theme="werkbank"] body{background:var(--bg)}
+[data-theme="werkbank"] header{
+  background:var(--sur);border-bottom:1px solid var(--bdr);
+}
+[data-theme="werkbank"] nav{
+  background:var(--sur);border-bottom:1px solid var(--bdr);
+}
+[data-theme="werkbank"] .card,
+[data-theme="werkbank"] .sc,
+[data-theme="werkbank"] .modal-content{
+  background:var(--sur);border-color:var(--bdr);
+}
+/* Das Bildfeld dunkler als die Karte: Ein Set-Foto mit weissem Rand steht
+   sonst als heller Block im Dunkeln. */
+[data-theme="werkbank"] .sci{background:#11151a;border-bottom-color:var(--bdr)}
+
+/* ── Eingaben ───────────────────────────────────────────────────────────── */
+[data-theme="werkbank"] input,
+[data-theme="werkbank"] select,
+[data-theme="werkbank"] textarea{
+  background:#232a33;color:var(--txt);border-color:var(--s300);
+}
+[data-theme="werkbank"] input::placeholder,
+[data-theme="werkbank"] textarea::placeholder{color:var(--s400)}
+
+/* ── Zustands-Plaketten ─────────────────────────────────────────────────────
+   Dieselbe Bedeutung wie ueberall: Neu gegen Gebraucht. Die Werte sind die
+   gedaempften Varianten der Diagrammfarben, damit Plakette und Linie
+   zusammengehoeren — dieselbe Ueberlegung wie in themes/brick.css. */
+[data-theme="werkbank"] .cond-new{background:#16243a;color:#8cc2ff}
+[data-theme="werkbank"] .cond-used{background:#2a2418;color:#d9a84e}

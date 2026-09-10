@@ -62,6 +62,8 @@ import com.google.accompanist.permissions.rememberPermissionState
 import com.google.mlkit.vision.common.InputImage
 import androidx.compose.ui.res.stringResource
 import ch.brickinventoryapp.R
+import ch.brickinventoryapp.ui.theme.Abstaende
+import ch.brickinventoryapp.ui.theme.Schrift
 
 
 data class QrLoginPayload(val url: String, val token: String)
@@ -111,7 +113,7 @@ fun SetupScreen(
     }
 
     Column(
-        modifier = Modifier.fillMaxSize().padding(32.dp),
+        modifier = Modifier.fillMaxSize().padding(Abstaende.riesig),
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center
     ) {
@@ -126,11 +128,11 @@ fun SetupScreen(
             }
         }
         Spacer(Modifier.height(20.dp))
-        Text(stringResource(R.string.app_name), fontWeight = FontWeight.ExtraBold, fontSize = 24.sp)
+        Text(stringResource(R.string.app_name), fontWeight = FontWeight.ExtraBold, fontSize = Schrift.riesig)
         Text(stringResource(R.string.setup_subtitle), style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant)
 
-        Spacer(Modifier.height(32.dp))
+        Spacer(Modifier.height(Abstaende.riesig))
 
         // QR scan option
         FilledTonalButton(
@@ -138,17 +140,17 @@ fun SetupScreen(
             modifier = Modifier.fillMaxWidth()
         ) {
             Icon(Icons.Default.QrCodeScanner, null, Modifier.size(20.dp))
-            Spacer(Modifier.width(8.dp))
+            Spacer(Modifier.width(Abstaende.klein))
             Text(stringResource(R.string.setup_scan_qr), fontWeight = FontWeight.SemiBold)
         }
 
         if (scanError != null) {
-            Spacer(Modifier.height(8.dp))
+            Spacer(Modifier.height(Abstaende.klein))
             Text(scanError!!, color = MaterialTheme.colorScheme.error,
                 style = MaterialTheme.typography.bodySmall)
         }
 
-        Spacer(Modifier.height(16.dp))
+        Spacer(Modifier.height(Abstaende.gross))
 
         Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
             HorizontalDivider(Modifier.weight(1f))
@@ -157,16 +159,16 @@ fun SetupScreen(
             HorizontalDivider(Modifier.weight(1f))
         }
 
-        Spacer(Modifier.height(16.dp))
+        Spacer(Modifier.height(Abstaende.gross))
 
         Card(modifier = Modifier.fillMaxWidth()) {
             Column(Modifier.padding(20.dp)) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Icon(Icons.Default.Cloud, null, tint = MaterialTheme.colorScheme.primary)
-                    Spacer(Modifier.width(8.dp))
+                    Spacer(Modifier.width(Abstaende.klein))
                     Text(stringResource(R.string.setup_server_url), fontWeight = FontWeight.SemiBold)
                 }
-                Spacer(Modifier.height(12.dp))
+                Spacer(Modifier.height(Abstaende.mittel))
                 OutlinedTextField(
                     value = url,
                     onValueChange = { url = it },
@@ -178,14 +180,14 @@ fun SetupScreen(
                     keyboardActions = KeyboardActions(onDone = { save() }),
                     supportingText = { Text(stringResource(R.string.setup_url_supporting)) }
                 )
-                Spacer(Modifier.height(16.dp))
+                Spacer(Modifier.height(Abstaende.gross))
                 Button(
                     onClick = ::save, modifier = Modifier.fillMaxWidth(), enabled = url.isNotBlank(),
                     colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary)
                 ) { Text(stringResource(R.string.setup_continue), fontWeight = FontWeight.Bold) }
             }
         }
-        Spacer(Modifier.height(16.dp))
+        Spacer(Modifier.height(Abstaende.gross))
         Text(
             // Aus BuildConfig statt als Literal: Das fest eingetragene Datum
             // stammte vom Juni 2026 und wurde bei keinem Build seither
@@ -240,7 +242,7 @@ fun QrSetupScannerScreen(onResult: (String) -> Unit, onDismiss: () -> Unit) {
                 KameraErlaubnisHinweis { cameraPermission.launchPermissionRequest() }
             }
         }
-        IconButton(onClick = onDismiss, Modifier.align(Alignment.TopEnd).padding(16.dp)) {
+        IconButton(onClick = onDismiss, Modifier.align(Alignment.TopEnd).padding(Abstaende.gross)) {
             Icon(Icons.Default.Close, stringResource(R.string.scanner_close), tint = Color.White)
         }
     }

@@ -15,6 +15,7 @@ import ch.brickinventoryapp.R
 import ch.brickinventoryapp.ui.MainViewModel
 import ch.brickinventoryapp.ui.Pruefphase
 import ch.brickinventoryapp.ui.brichPruefungAb
+import ch.brickinventoryapp.ui.theme.Abstaende
 
 /**
  * „Wird geprüft" — die Anzeige zwischen Scan und Zwischendialog.
@@ -58,7 +59,7 @@ fun SetPruefungDialog(vm: MainViewModel) {
         title = { Text(stringResource(R.string.pruef_titel), fontWeight = FontWeight.Bold) },
         icon = { CircularProgressIndicator(Modifier.size(24.dp)) },
         text = {
-            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            Column(verticalArrangement = Arrangement.spacedBy(Abstaende.klein)) {
                 Text(
                     when (schritt.phase) {
                         Pruefphase.BARCODE -> stringResource(R.string.pruef_barcode, schritt.bezeichner)

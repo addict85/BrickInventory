@@ -20,6 +20,8 @@ import androidx.compose.ui.unit.*
 import ch.brickinventoryapp.data.model.ChartPoint
 import ch.brickinventoryapp.data.model.ChartYAxis
 import ch.brickinventoryapp.R
+import ch.brickinventoryapp.ui.theme.Abstaende
+import ch.brickinventoryapp.ui.theme.Schrift
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -43,7 +45,7 @@ fun PortfolioChart(
     val measurer   = rememberTextMeasurer()
 
     Card(Modifier.fillMaxWidth()) {
-        Column(Modifier.padding(16.dp)) {
+        Column(Modifier.padding(Abstaende.gross)) {
 
             // Header
             Row(Modifier.fillMaxWidth(),
@@ -57,13 +59,13 @@ fun PortfolioChart(
                     val bg  = if (pos) LocalStatusFarben.current.erfolg else LocalStatusFarben.current.fehler
                     val lbl = if (pos) "+%.1f%%".format(periodChangePct) else "%.1f%%".format(periodChangePct)
                     Surface(shape = Formen.chip, color = bg.copy(alpha = 0.12f)) {
-                        Text(lbl, Modifier.padding(horizontal = 8.dp, vertical = 3.dp),
-                            color = bg, fontWeight = FontWeight.Bold, fontSize = 12.sp)
+                        Text(lbl, Modifier.padding(horizontal = Abstaende.klein, vertical = 3.dp),
+                            color = bg, fontWeight = FontWeight.Bold, fontSize = Schrift.klein)
                     }
                 }
             }
 
-            Spacer(Modifier.height(12.dp))
+            Spacer(Modifier.height(Abstaende.mittel))
 
             when {
                 isLoading -> Box(Modifier.fillMaxWidth().height(160.dp), Alignment.Center) {

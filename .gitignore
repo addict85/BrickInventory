@@ -1,0 +1,7 @@
+
+
+# Die zusammengebaute Entwurfsflaeche der Design-Mockups (rund 2,5 MB, enthaelt
+# den Editor). Ein Erzeugnis aus .design-mockups/*.dc.html — die Quellen liegen
+# im Baum, das Erzeugnis nicht.
+.design-mockups/*.html
+!.design-mockups/*.dc.html

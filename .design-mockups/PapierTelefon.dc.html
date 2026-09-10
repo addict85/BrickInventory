@@ -1,0 +1,100 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,500;0,6..72,600;1,6..72,400&family=Plus+Jakarta+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap">
+  <style>
+    body { margin: 0; font-family: 'Plus Jakarta Sans', system-ui, sans-serif; }
+    a { color: #a8443a; } a:hover { color: #86342c; }
+  </style>
+</helmet>
+
+<div style="width: 390px; height: 844px; background: #faf7f1; color: #26221c; display: flex; flex-direction: column; overflow: hidden">
+
+  <div style="padding: 20px 20px 0; flex-shrink: 0">
+    <div style="display: flex; align-items: baseline; justify-content: space-between; border-bottom: 2px solid #26221c; padding-bottom: 11px">
+      <span style="font-family: 'Newsreader', Georgia, serif; font-size: 25px; font-weight: 500">Galerie</span>
+      <span style="font-family: 'JetBrains Mono', monospace; font-size: 10.5px; color: #7c7466; letter-spacing: .08em">312 SETS</span>
+    </div>
+    <div style="font-family: 'JetBrains Mono', monospace; font-size: 11px; color: #7c7466; padding: 10px 0 0">
+      148 902 Teile · 571 Figuren · <span style="color: #a8443a">CHF 41 280</span>
+    </div>
+
+    <div style="display: flex; align-items: center; gap: 9px; border-bottom: 1.5px solid #d6cfc0; padding: 12px 2px 9px; margin-top: 8px">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#9c9384" stroke-width="1.8" stroke-linecap="round"><circle cx="11" cy="11" r="7"></circle><path d="m20 20-3.5-3.5"></path></svg>
+      <span style="color: #9c9384; font-size: 14.5px; font-family: 'Newsreader', Georgia, serif; font-style: italic">Set, Nummer oder Thema …</span>
+    </div>
+
+    <div style="display: flex; gap: 16px; align-items: center; padding: 13px 2px 14px">
+      <span style="font-size: 12.5px; font-weight: 700; border-bottom: 2px solid #a8443a; padding-bottom: 2px">Alle</span>
+      <span style="font-size: 12.5px; color: #7c7466">Star Wars</span>
+      <span style="font-size: 12.5px; color: #7c7466">Technic</span>
+      <span style="font-size: 12.5px; color: #7c7466">Icons</span>
+    </div>
+  </div>
+
+  <div style="flex-grow: 1; overflow: hidden; padding: 0 20px; border-top: 1px solid #e3ddd1">
+    <div style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 22px 16px; padding-top: 18px">
+      <sc-for list="{{sets}}" as="s" hint-placeholder-count="4">
+        <div style="display: flex; flex-direction: column; gap: 7px">
+          <div style="height: 118px; background: #f2ede3; display: flex; align-items: center; justify-content: center; border: 1px solid #e3ddd1">
+            <svg width="56" height="56" viewBox="0 0 48 48" fill="none" stroke="{{s.strich}}" stroke-width="1.2" stroke-linejoin="round">
+              <rect x="7" y="18" width="34" height="20" rx="1"></rect>
+              <path d="M14 18v-3.2a1.6 1.6 0 0 1 1.6-1.6h2.4a1.6 1.6 0 0 1 1.6 1.6V18"></path>
+              <path d="M28 18v-3.2a1.6 1.6 0 0 1 1.6-1.6h2.4a1.6 1.6 0 0 1 1.6 1.6V18"></path>
+              <path d="M7 27h34"></path>
+            </svg>
+          </div>
+          <div style="display: flex; align-items: baseline; justify-content: space-between">
+            <span style="font-family: 'JetBrains Mono', monospace; font-size: 10.5px; color: #a8443a">{{s.nummer}}</span>
+            <sc-if value="{{s.besitz}}" hint-placeholder-val="{{ true }}">
+              <span style="font-family: 'JetBrains Mono', monospace; font-size: 10px; color: #5b7a52">×{{s.anzahl}}</span>
+            </sc-if>
+          </div>
+          <div style="font-family: 'Newsreader', Georgia, serif; font-size: 16px; font-weight: 500; line-height: 1.2">{{s.name}}</div>
+          <div style="font-size: 11px; color: #7c7466">{{s.jahr}} · {{s.teile}} Teile</div>
+        </div>
+      </sc-for>
+    </div>
+  </div>
+
+  <div style="display: flex; background: #faf7f1; border-top: 2px solid #26221c; padding: 6px 8px 22px; flex-shrink: 0">
+    <sc-for list="{{reiter}}" as="r" hint-placeholder-count="5">
+      <div style="flex-grow: 1; display: flex; align-items: center; justify-content: center; min-height: 44px">
+        <span style="font-size: 11.5px; font-weight: {{r.gewicht}}; color: {{r.farbe}}; border-bottom: {{r.linie}}; padding-bottom: 3px">{{r.name}}</span>
+      </div>
+    </sc-for>
+  </div>
+</div>
+</x-dc>
+
+<script data-dc-script data-props='{"$preview":{"width":390,"height":844}}'>
+class Component extends DCLogic {
+  renderVals() {
+    const S = (nummer, name, jahr, teile, besitz, anzahl, strich) =>
+      ({ nummer, name, jahr, teile, besitz, anzahl, strich });
+    const R = (name, aktiv) => ({
+      name,
+      farbe: aktiv ? '#a8443a' : '#7c7466',
+      gewicht: aktiv ? 700 : 500,
+      linie: aktiv ? '2px solid #a8443a' : '2px solid transparent',
+    });
+    return {
+      sets: [
+        S('10276-1', 'Kolosseum', 2020, '9036', true, 1, '#a8443a'),
+        S('75192-1', 'Millennium Falcon', 2017, '7541', true, 2, '#8a8172'),
+        S('21058-1', 'Cheops-Pyramide', 2022, '1476', false, 0, '#b07a4e'),
+        S('42115-1', 'Lamborghini Sián', 2020, '3696', true, 1, '#6f6858'),
+      ],
+      reiter: [R('Galerie', true), R('Katalog', false), R('Teile', false), R('Figuren', false), R('Finanzen', false)],
+    };
+  }
+}
+</script>
+</body>
+</html>

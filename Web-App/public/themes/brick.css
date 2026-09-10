@@ -17,20 +17,11 @@
 
 [data-theme="brick"]{
   /* Gedämpfte Schieferblau-Primärpalette */
-  --b50:#eef3f8;--b100:#d9e4f0;--b200:#b7cbe0;--b300:#8fabcb;--b400:#6d94b8;
-  --b500:#4a6f97;--b600:#3d5a80;--b700:#2f4763;
-  /* Diagrammlinien in den Farben der Zustands-Plaketten.
-     Salbeigrün = Neu, Sand = Gebraucht — dieselben Werte wie .cond-new und
-     .cond-used weiter unten in dieser Datei.
-     Der Grund ist nicht Geschmack: Diese beiden Farben stehen überall in der
-     Oberfläche für genau diese Unterscheidung. Wer sie im Diagramm
-     wiedererkennt, muss die Legende nicht lesen.
-     Vorher stand hier --chart-used:#3d5a80 (die Primärfarbe des Designs). Das
-     passte zur Palette, ergab aber zusammen mit dem hellen Blau der
-     Neu-Linie ZWEI Blautöne, die sich nur in der Helligkeit unterschieden —
-     verkleinert oder gedruckt verschwindet so ein Unterschied als Erstes. */
-  --chart-new:#5f8468;--chart-used:#9a7a45;
-  --brick-petrol:#3d7a8c;--brick-petrol-dk:#316775;
+  /* Palette, Diagrammfarben und --brick-petrol stehen in /tokens.css —
+     erzeugt aus shared/design-tokens.json, damit die Android-App dieselben
+     Werte fuehrt. Die Begruendungen dazu sind mit umgezogen. Hier bleibt,
+     was nur das Web kennt. */
+  --brick-petrol-dk:#316775;
   --brick-slate-lt:#8199b3;
   --bg:#c9d5e2;                 /* Seitenhintergrund hinter der Grundplatte */
   --screen-bg:#c9d5e2;          /* Login-/Startup-Screen (vor dem Login) */

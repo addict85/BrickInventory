@@ -34,6 +34,8 @@ import ch.brickinventoryapp.util.resolveFullUrl
 import coil.ImageLoader
 import coil.compose.AsyncImage
 import coil.request.ImageRequest
+import ch.brickinventoryapp.ui.theme.Abstaende
+import ch.brickinventoryapp.ui.theme.Schrift
 
 /**
  * Katalog-Detail: Bild, Metadaten (Jahr, Thema, Teile, Minifiguren) und
@@ -76,7 +78,7 @@ fun CatalogDetailScreen(
                 CircularProgressIndicator()
             }
             else -> Column(
-                Modifier.fillMaxSize().padding(padding).verticalScroll(rememberScrollState()).padding(16.dp),
+                Modifier.fillMaxSize().padding(padding).verticalScroll(rememberScrollState()).padding(Abstaende.gross),
                 verticalArrangement = Arrangement.spacedBy(14.dp)
             ) {
                 // Bild
@@ -112,14 +114,14 @@ fun CatalogDetailScreen(
 
                 // Titel + Nummer
                 Column {
-                    Text(detail.name ?: "—", fontWeight = FontWeight.Bold, fontSize = 20.sp)
+                    Text(detail.name ?: "—", fontWeight = FontWeight.Bold, fontSize = Schrift.sehrGross)
                     Text(detail.setNumber, color = MaterialTheme.colorScheme.primary,
-                        fontWeight = FontWeight.SemiBold, fontSize = 14.sp)
+                        fontWeight = FontWeight.SemiBold, fontSize = Schrift.normal)
                 }
 
                 // Metadaten
                 Card(shape = Formen.karte, colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f))) {
-                    Column(Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Column(Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(Abstaende.klein)) {
                         CatalogDetailRow(stringResource(R.string.catalog_detail_year),   detail.year?.toString() ?: "—")
                         CatalogDetailRow(stringResource(R.string.catalog_detail_theme),  detail.themeName ?: "—")
                         CatalogDetailRow(stringResource(R.string.catalog_detail_parts),  detail.numParts?.takeIf { it > 0 }?.toString() ?: "—")
@@ -222,9 +224,9 @@ fun CatalogDetailScreen(
 @Composable
 private fun CatalogDetailRow(label: String, value: String) {
     Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-        Text(label, color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 14.sp)
-        Text(value, fontWeight = FontWeight.SemiBold, fontSize = 14.sp,
-            modifier = Modifier.padding(start = 16.dp))
+        Text(label, color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = Schrift.normal)
+        Text(value, fontWeight = FontWeight.SemiBold, fontSize = Schrift.normal,
+            modifier = Modifier.padding(start = Abstaende.gross))
     }
 }
 

@@ -27,6 +27,8 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import ch.brickinventoryapp.R
+import ch.brickinventoryapp.ui.theme.Abstaende
+import ch.brickinventoryapp.ui.theme.Schrift
 
 @Composable
 fun ComparisonScreen() {
@@ -77,7 +79,7 @@ fun ComparisonScreen() {
         ) {
             Column(
                 Modifier.fillMaxWidth().padding(horizontal = 14.dp, vertical = 10.dp),
-                verticalArrangement = Arrangement.spacedBy(8.dp)
+                verticalArrangement = Arrangement.spacedBy(Abstaende.klein)
             ) {
                 // Search field
                 OutlinedTextField(
@@ -113,7 +115,7 @@ fun ComparisonScreen() {
                 // Action row
                 Row(
                     Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    horizontalArrangement = Arrangement.spacedBy(Abstaende.klein),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Button(
@@ -129,7 +131,7 @@ fun ComparisonScreen() {
                     FilledTonalButton(
                         onClick = { showScanner = true },
                         shape = Formen.knopf,
-                        contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp)
+                        contentPadding = PaddingValues(horizontal = Abstaende.gross, vertical = Abstaende.klein)
                     ) {
                         Icon(Icons.Default.QrCodeScanner, null, Modifier.size(16.dp))
                         Spacer(Modifier.width(6.dp))
@@ -147,7 +149,7 @@ fun ComparisonScreen() {
                             stringResource(R.string.comparison_barcode_label, scannedBarcode ?: ""),
                             style = MaterialTheme.typography.labelSmall,
                             color = MaterialTheme.colorScheme.onPrimaryContainer,
-                            modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp)
+                            modifier = Modifier.padding(horizontal = 10.dp, vertical = Abstaende.winzig)
                         )
                     }
                 }
@@ -159,7 +161,7 @@ fun ComparisonScreen() {
             Column(
                 horizontalAlignment = Alignment.CenterHorizontally,
                 verticalArrangement = Arrangement.spacedBy(14.dp),
-                modifier = Modifier.padding(32.dp)
+                modifier = Modifier.padding(Abstaende.riesig)
             ) {
                 Surface(
                     shape = Formen.chip,
@@ -172,7 +174,7 @@ fun ComparisonScreen() {
                     }
                 }
                 Text(stringResource(R.string.comparison_title),
-                    fontWeight = FontWeight.SemiBold, fontSize = 16.sp)
+                    fontWeight = FontWeight.SemiBold, fontSize = Schrift.gross)
                 Text(
                     stringResource(R.string.comparison_hint),
                     style = MaterialTheme.typography.bodySmall,

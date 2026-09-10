@@ -28,6 +28,7 @@ import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import coil.compose.AsyncImage
 import coil.ImageLoader
 import androidx.compose.ui.res.stringResource
+import ch.brickinventoryapp.ui.theme.Abstaende
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -75,7 +76,7 @@ fun FinanceScreen(
 
     if (isLoading && valuation == null) {
         Box(Modifier.fillMaxSize(), Alignment.Center) {
-            Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(12.dp)) {
+            Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(Abstaende.mittel)) {
                 CircularProgressIndicator()
                 Text(stringResource(R.string.finance_loading), style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant)
@@ -85,7 +86,7 @@ fun FinanceScreen(
     }
     if (valuation == null) {
         Box(Modifier.fillMaxSize(), Alignment.Center) {
-            Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(16.dp)) {
+            Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(Abstaende.gross)) {
                 Text("💰", fontSize = 48.sp)
                 Text(stringResource(R.string.finance_no_data), fontWeight = FontWeight.SemiBold)
                 Button(onClick = onRefresh, shape = Formen.knopf) {
@@ -110,7 +111,7 @@ fun FinanceScreen(
     PullToRefreshBox(isRefreshing = isLoading, onRefresh = onRefresh) {
         LazyColumn(
             state = listState,
-            contentPadding = PaddingValues(horizontal = 16.dp, vertical = 12.dp),
+            contentPadding = PaddingValues(horizontal = Abstaende.gross, vertical = Abstaende.mittel),
             verticalArrangement = Arrangement.spacedBy(10.dp)
         ) {
             // Kontofilter — erscheint nur bei einem Hauptkonto mit Unterkonten.
@@ -239,9 +240,9 @@ fun ManualFinanceRow(
     val cardColors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
     val cardElevation = CardDefaults.cardElevation(defaultElevation = Formen.karteErhebung)
     val content: @Composable ColumnScope.() -> Unit = {
-        Row(Modifier.padding(12.dp), verticalAlignment = Alignment.CenterVertically) {
+        Row(Modifier.padding(Abstaende.mittel), verticalAlignment = Alignment.CenterVertically) {
             FinanzBild(imageUrl, imageLoader, title)
-            Spacer(Modifier.width(12.dp))
+            Spacer(Modifier.width(Abstaende.mittel))
             Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(1.dp)) {
                 Text(title, fontWeight = FontWeight.SemiBold,
                     maxLines = 2, style = MaterialTheme.typography.bodyMedium)
@@ -253,10 +254,10 @@ fun ManualFinanceRow(
                 // Bei mehreren Zeilen desselben Eintrags ist die Plakette das
                 // einzige Unterscheidungsmerkmal.
                 condition?.let {
-                    Box(Modifier.padding(top = 2.dp)) { ConditionBadges(listOf(it)) }
+                    Box(Modifier.padding(top = Abstaende.haar)) { ConditionBadges(listOf(it)) }
                 }
             }
-            Spacer(Modifier.width(8.dp))
+            Spacer(Modifier.width(Abstaende.klein))
             Column(horizontalAlignment = Alignment.End) {
                 Text(priceStr, fontWeight = FontWeight.Bold,
                     color = MaterialTheme.colorScheme.primary,
@@ -274,7 +275,7 @@ fun ManualFinanceRow(
                 // Entwicklung wie bei den Sets — gegen den Kaufpreis dieser
                 // Erfassung, gerechnet auf dem Server.
                 pnlPct?.toDoubleOrNull()?.let {
-                    Box(Modifier.padding(top = 2.dp)) { PnlBadge(it) }
+                    Box(Modifier.padding(top = Abstaende.haar)) { PnlBadge(it) }
                 }
             }
         }
@@ -292,7 +293,7 @@ fun ManualFinanceRow(
 @Composable
 fun SubtotalRow(label: String, value: String) {
     Row(
-        Modifier.fillMaxWidth().padding(horizontal = 4.dp, vertical = 4.dp),
+        Modifier.fillMaxWidth().padding(horizontal = Abstaende.winzig, vertical = Abstaende.winzig),
         horizontalArrangement = Arrangement.SpaceBetween
     ) {
         Text(label, style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.SemiBold,

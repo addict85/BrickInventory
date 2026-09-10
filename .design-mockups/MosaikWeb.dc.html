@@ -1,0 +1,134 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@500;600;700;800&family=JetBrains+Mono:wght@500;700&display=swap">
+  <style>
+    body { margin: 0; font-family: 'Plus Jakarta Sans', system-ui, sans-serif; }
+    a { color: #1c1c1a; } a:hover { color: #5a5a55; }
+    /* Die Noppen der Grundplatte — reines CSS, kein Bild. */
+    .platte {
+      background-color: #cfcfc8;
+      background-image:
+        radial-gradient(circle at 12px 12px, rgba(255,255,255,.55) 4.5px, transparent 5px),
+        radial-gradient(circle at 12px 12px, rgba(0,0,0,.10) 6px, transparent 6.5px);
+      background-size: 24px 24px, 24px 24px;
+    }
+  </style>
+</helmet>
+
+<div class="platte" style="width: 1440px; height: 900px; color: #1c1c1a; display: flex; flex-direction: column; overflow: hidden">
+
+  <div style="display: flex; align-items: center; gap: 22px; padding: 0 24px; min-height: 58px; background: #1c1c1a; color: #f2f2ee; flex-shrink: 0">
+    <span style="font-weight: 800; font-size: 15px; letter-spacing: -.01em">BrickInventory</span>
+    <div style="display: flex; gap: 4px">
+      <sc-for list="{{reiter}}" as="r" hint-placeholder-count="5">
+        <div style="padding: 7px 13px; border-radius: 6px; font-size: 13px; font-weight: {{r.gewicht}}; color: {{r.farbe}}; background: {{r.grund}}">{{r.name}}</div>
+      </sc-for>
+    </div>
+    <div style="flex-grow: 1"></div>
+    <div style="font-family: 'JetBrains Mono', monospace; font-size: 12px; color: #a5a59d">312 Sets · 148 902 Teile · CHF 41 280</div>
+  </div>
+
+  <div style="display: flex; align-items: center; justify-content: space-between; padding: 16px 24px 12px; flex-shrink: 0">
+    <div style="font-size: 13px; font-weight: 600">
+      Kachelgrösse = Teilezahl · Farbe = Thema
+    </div>
+    <div style="display: flex; gap: 14px; align-items: center">
+      <sc-for list="{{legende}}" as="l" hint-placeholder-count="5">
+        <div style="display: flex; align-items: center; gap: 6px">
+          <span style="width: 12px; height: 12px; border-radius: 2px; background: {{l.farbe}}; box-shadow: inset 0 -2px 0 rgba(0,0,0,.18)"></span>
+          <span style="font-size: 11.5px; font-weight: 600">{{l.name}}</span>
+        </div>
+      </sc-for>
+    </div>
+  </div>
+
+  <!-- Kein gleichfoermiges Raster mehr: jede Kachel so gross wie ihr Set -->
+  <div style="display: grid; grid-template-columns: repeat(12, 1fr); grid-auto-rows: 96px; gap: 8px; padding: 0 24px 24px">
+    <sc-for list="{{sets}}" as="s" hint-placeholder-count="14">
+      <div style="grid-column: span {{s.breit}}; grid-row: span {{s.hoch}}; background: {{s.farbe}}; border-radius: 5px; box-shadow: inset 0 -5px 0 rgba(0,0,0,.16), 0 1px 2px rgba(0,0,0,.18); padding: 10px 11px; display: flex; flex-direction: column; justify-content: space-between; overflow: hidden; position: relative">
+        <div style="font-family: 'JetBrains Mono', monospace; font-size: 10.5px; font-weight: 700; color: {{s.tinte}}; opacity: .82">{{s.nummer}}</div>
+        <div>
+          <div style="font-size: {{s.schrift}}; font-weight: 700; line-height: 1.15; color: {{s.tinte}}; letter-spacing: -.01em">{{s.name}}</div>
+          <sc-if value="{{s.zeigtTeile}}" hint-placeholder-val="{{ true }}">
+            <div style="font-family: 'JetBrains Mono', monospace; font-size: 10.5px; color: {{s.tinte}}; opacity: .75; margin-top: 4px">{{s.teile}} Teile</div>
+          </sc-if>
+        </div>
+        <sc-if value="{{s.besitz}}" hint-placeholder-val="{{ true }}">
+          <div style="position: absolute; top: 9px; right: 10px; width: 15px; height: 15px; border-radius: 999px; background: {{s.tinte}}; opacity: .22"></div>
+        </sc-if>
+      </div>
+    </sc-for>
+  </div>
+</div>
+</x-dc>
+
+<script data-dc-script data-props='{"$preview":{"width":1440,"height":900}}'>
+class Component extends DCLogic {
+  renderVals() {
+    // Dieselben sechs Themen wie im Farbfaecher, aber saturiert: Auf einer
+    // Grundplatte wirken gedeckte Toene wie Schmutz, nicht wie Steine.
+    const F = {
+      creator: '#c62f2f', starwars: '#2f5bc6', arch: '#1f8a92',
+      technic: '#e08a1e', icons: '#3f9142', potter: '#7a3fa0',
+    };
+    // Kachelgroesse aus der Teilezahl — die Sprungstellen sind bewusst grob:
+    // Es geht um "gross gegen klein", nicht um eine Skala zum Ablesen.
+    const mass = (teile) =>
+      teile >= 8000 ? [4, 2] : teile >= 5000 ? [3, 2] : teile >= 3000 ? [3, 1]
+      : teile >= 1500 ? [2, 1] : [2, 1];
+    const dunkel = (hex) => {
+      const c = [1, 3, 5].map(i => parseInt(hex.slice(i, i + 2), 16) / 255)
+        .map(x => x <= 0.04045 ? x / 12.92 : ((x + 0.055) / 1.055) ** 2.4);
+      return 0.2126 * c[0] + 0.7152 * c[1] + 0.0722 * c[2] < 0.38;
+    };
+    const S = (nummer, name, farbe, teile, besitz) => {
+      const [breit, hoch] = mass(teile);
+      return {
+        nummer, name, farbe, besitz,
+        teile: teile.toLocaleString('de-CH'),
+        breit, hoch,
+        tinte: dunkel(farbe) ? '#ffffff' : '#1c1c1a',
+        schrift: hoch > 1 ? '17px' : '13px',
+        zeigtTeile: hoch > 1,
+      };
+    };
+    const R = (name, aktiv) => ({
+      name, gewicht: aktiv ? 700 : 500,
+      farbe: aktiv ? '#1c1c1a' : '#a5a59d', grund: aktiv ? '#f2f2ee' : 'transparent',
+    });
+    return {
+      reiter: [R('Galerie', true), R('Katalog', false), R('Teile', false), R('Minifiguren', false), R('Finanzen', false)],
+      legende: [
+        { name: 'Star Wars', farbe: F.starwars }, { name: 'Creator', farbe: F.creator },
+        { name: 'Architecture', farbe: F.arch }, { name: 'Technic', farbe: F.technic },
+        { name: 'Icons', farbe: F.icons },
+      ],
+      sets: [
+        S('10276-1', 'Kolosseum', F.creator, 9036, true),
+        S('75192-1', 'Millennium Falcon', F.starwars, 7541, true),
+        S('42115-1', 'Lamborghini Sián', F.technic, 3696, true),
+        S('21058-1', 'Cheops-Pyramide', F.arch, 1476, false),
+        S('71043-1', 'Schloss Hogwarts', F.potter, 6020, true),
+        S('10294-1', 'Titanic', F.icons, 9090, true),
+        S('10497-1', 'Galaxy Explorer', F.icons, 1254, false),
+        S('75331-1', 'Razor Crest', F.starwars, 6187, true),
+        S('10307-1', 'Eiffelturm', F.arch, 10001, true),
+        S('42143-1', 'Ferrari Daytona', F.technic, 3778, true),
+        S('10305-1', 'Ritterburg', F.creator, 4514, false),
+        S('21327-1', 'Schreibmaschine', F.icons, 2079, false),
+        S('76989-1', 'Horizon', F.potter, 1222, false),
+        S('31203-1', 'Weltkarte', F.arch, 11695, false),
+      ],
+    };
+  }
+}
+</script>
+</body>
+</html>

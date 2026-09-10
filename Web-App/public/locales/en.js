@@ -525,6 +525,8 @@ window.I18N_EN = {
   'settings.theme_saved': 'App design saved',
   'settings.theme_classic': 'Classic',
   'settings.theme_brick': 'Brick (blue)',
+  'settings.theme_werkbank': 'Workbench (dark)',
+  'settings.theme_farbfaecher': 'Colour fan',
   'monitor.condition_new': 'New',
   'monitor.condition_used': 'Used',
   'common.condition': 'Condition',

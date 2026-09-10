@@ -40,6 +40,7 @@ import ch.brickinventoryapp.ui.updateAcquisition
 import ch.brickinventoryapp.ui.updateManualAcquisition
 import ch.brickinventoryapp.util.fmtMoney
 import ch.brickinventoryapp.util.NumericInput
+import ch.brickinventoryapp.ui.theme.Abstaende
 
 /**
  * Dedizierter Screen für die Kaufpreis-Verwaltung — analog zum acq-modal in der Webapp.
@@ -114,14 +115,14 @@ fun AcquisitionManagementScreen(
 
         LazyColumn(
             Modifier.fillMaxSize().padding(innerPadding),
-            contentPadding = PaddingValues(16.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp)
+            contentPadding = PaddingValues(Abstaende.gross),
+            verticalArrangement = Arrangement.spacedBy(Abstaende.mittel)
         ) {
             // Header row
             item {
                 Row(
                     Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    horizontalArrangement = Arrangement.spacedBy(Abstaende.klein),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Text(stringResource(R.string.common_quantity),
@@ -141,16 +142,16 @@ fun AcquisitionManagementScreen(
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         fontWeight = FontWeight.Bold,
                         textAlign = TextAlign.End)
-                    Spacer(Modifier.width(32.dp))
+                    Spacer(Modifier.width(Abstaende.riesig))
                 }
-                HorizontalDivider(Modifier.padding(top = 4.dp), thickness = 2.dp)
+                HorizontalDivider(Modifier.padding(top = Abstaende.winzig), thickness = 2.dp)
             }
 
             moveMessage?.let { msg ->
                 item {
                     Text(msg, style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        modifier = Modifier.padding(vertical = 4.dp))
+                        modifier = Modifier.padding(vertical = Abstaende.winzig))
                 }
             }
 
@@ -208,7 +209,7 @@ fun AcquisitionManagementScreen(
                                     R.string.household_move_ok, teile, figuren)
                             }
                         },
-                        modifier = Modifier.padding(top = 4.dp)
+                        modifier = Modifier.padding(top = Abstaende.winzig)
                     )
                 }
                 HorizontalDivider()
@@ -218,7 +219,7 @@ fun AcquisitionManagementScreen(
             if (acquisitions.size > 1) {
                 item {
                     Row(
-                        Modifier.fillMaxWidth().padding(top = 4.dp),
+                        Modifier.fillMaxWidth().padding(top = Abstaende.winzig),
                         horizontalArrangement = Arrangement.SpaceBetween,
                         verticalAlignment = Alignment.CenterVertically
                     ) {
@@ -338,7 +339,7 @@ private fun AcquisitionManagementRow(
         style = MaterialTheme.typography.labelSmall,
         color = MaterialTheme.colorScheme.primary,
         modifier = Modifier
-            .padding(top = 8.dp, bottom = 2.dp)
+            .padding(top = Abstaende.klein, bottom = Abstaende.haar)
             .clickable { showDatePicker = true }
     )
     if (showDatePicker) {
@@ -369,8 +370,8 @@ private fun AcquisitionManagementRow(
     }
 
     Row(
-        Modifier.fillMaxWidth().padding(bottom = 4.dp),
-        horizontalArrangement = Arrangement.spacedBy(8.dp),
+        Modifier.fillMaxWidth().padding(bottom = Abstaende.winzig),
+        horizontalArrangement = Arrangement.spacedBy(Abstaende.klein),
         verticalAlignment = Alignment.CenterVertically
     ) {
         // Qty

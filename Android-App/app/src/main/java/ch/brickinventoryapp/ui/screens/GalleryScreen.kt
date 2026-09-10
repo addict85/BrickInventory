@@ -49,6 +49,8 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.flow.debounce
 import androidx.compose.ui.res.stringResource
 import ch.brickinventoryapp.util.NumericInput
+import ch.brickinventoryapp.ui.theme.Abstaende
+import ch.brickinventoryapp.ui.theme.Schrift
 
 @OptIn(ExperimentalMaterial3Api::class, FlowPreview::class)
 @Composable
@@ -144,7 +146,7 @@ fun GalleryScreen(
                 ) {
                     LazyRow(
                         contentPadding = PaddingValues(horizontal = 14.dp, vertical = 10.dp),
-                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        horizontalArrangement = Arrangement.spacedBy(Abstaende.klein),
                         modifier = Modifier.fillMaxWidth()
                     ) {
                         // fmtInt() statt "%,d" mit anschliessendem Ersetzen des
@@ -195,7 +197,7 @@ fun GalleryScreen(
                             FilterChip(
                                 selected = sort != ch.brickinventoryapp.data.repository.GALLERY_DEFAULT_SORT,
                                 onClick = { showSortMenu = true },
-                                label = { Text(gallerySortLabel(sort), fontSize = 12.sp) },
+                                label = { Text(gallerySortLabel(sort), fontSize = Schrift.klein) },
                                 leadingIcon = { Icon(Icons.AutoMirrored.Filled.Sort, null, Modifier.size(16.dp)) },
                                 shape = Formen.chip
                             )
@@ -221,7 +223,7 @@ fun GalleryScreen(
                         FilterChip(
                             selected = theme.isEmpty(),
                             onClick = { onThemeChange("") },
-                            label = { Text(stringResource(R.string.gallery_all), fontSize = 12.sp) },
+                            label = { Text(stringResource(R.string.gallery_all), fontSize = Schrift.klein) },
                             shape = Formen.chip
                         )
                     }
@@ -229,7 +231,7 @@ fun GalleryScreen(
                         FilterChip(
                             selected = theme == t,
                             onClick = { onThemeChange(if (theme == t) "" else t) },
-                            label = { Text(t, fontSize = 12.sp, maxLines = 1, overflow = TextOverflow.Ellipsis) },
+                            label = { Text(t, fontSize = Schrift.klein, maxLines = 1, overflow = TextOverflow.Ellipsis) },
                             modifier = Modifier.widthIn(max = 140.dp),
                             shape = Formen.chip
                         )
@@ -242,7 +244,7 @@ fun GalleryScreen(
                         CircularProgressIndicator()
                     }
                     sets.isEmpty() -> Box(Modifier.fillMaxSize(), Alignment.Center) {
-                        Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                        Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(Abstaende.klein)) {
                             if (searchInput.isBlank() && theme.isEmpty()) {
                                 Image(painterResource(R.drawable.ic_logo), null, Modifier.size(64.dp))
                                 Text(stringResource(R.string.gallery_no_sets), fontWeight = FontWeight.SemiBold)
@@ -259,7 +261,7 @@ fun GalleryScreen(
                     else -> LazyVerticalGrid(
                         columns = GridCells.Adaptive(160.dp),
                         state = gridState,
-                        contentPadding = PaddingValues(12.dp),
+                        contentPadding = PaddingValues(Abstaende.mittel),
                         horizontalArrangement = Arrangement.spacedBy(10.dp),
                         verticalArrangement = Arrangement.spacedBy(10.dp)
                     ) {
@@ -280,7 +282,7 @@ fun GalleryScreen(
                             // Ein fester Schlüssel macht ihn zu dem, was er ist:
                             // EIN Eintrag, der mal da ist und mal nicht.
                             item(key = "gallery-loading-more", span = { GridItemSpan(maxLineSpan) }) {
-                                Box(Modifier.fillMaxWidth().padding(16.dp), Alignment.Center) {
+                                Box(Modifier.fillMaxWidth().padding(Abstaende.gross), Alignment.Center) {
                                     CircularProgressIndicator(Modifier.size(24.dp), strokeWidth = 2.dp)
                                 }
                             }
@@ -294,7 +296,7 @@ fun GalleryScreen(
         Column(
             modifier = Modifier
                 .align(Alignment.BottomEnd)
-                .padding(end = 16.dp, bottom = 16.dp),
+                .padding(end = Abstaende.gross, bottom = Abstaende.gross),
             horizontalAlignment = Alignment.End,
             verticalArrangement = Arrangement.spacedBy(10.dp)
         ) {
@@ -336,7 +338,7 @@ fun GalleryStatChip(value: String, label: String) {
         ) {
             Text(value, fontWeight = FontWeight.ExtraBold, fontSize = 15.sp,
                 color = MaterialTheme.colorScheme.onPrimaryContainer)
-            Text(label, style = MaterialTheme.typography.labelSmall, fontSize = 10.sp,
+            Text(label, style = MaterialTheme.typography.labelSmall, fontSize = Schrift.winzig,
                 color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.7f))
         }
     }
@@ -452,7 +454,7 @@ fun SetCard(
                         shape = Formen.etikett,
                         modifier = Modifier.align(Alignment.TopEnd).padding(6.dp)
                     ) {
-                        Text(stringResource(R.string.gallery_quantity_badge, set.quantity), Modifier.padding(horizontal = 6.dp, vertical = 2.dp),
+                        Text(stringResource(R.string.gallery_quantity_badge, set.quantity), Modifier.padding(horizontal = 6.dp, vertical = Abstaende.haar),
                             color = MaterialTheme.colorScheme.onPrimary,
                             style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.Bold)
                     }
@@ -462,13 +464,13 @@ fun SetCard(
                 // Marcos Screenshot lugte das verdeckte „N/G" zwischen den
                 // Namen hervor. Untereinander bleibt beides lesbar.
                 Column(Modifier.align(Alignment.BottomStart).padding(6.dp),
-                       verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                       verticalArrangement = Arrangement.spacedBy(Abstaende.haar)) {
                     ConditionBadges(set.conditions, set.condition)
                     // Wem gehört dieses Exemplar? Ohne die Angabe verschiebt
                     // man im Haushalt das falsche.
                     OwnerBadges(set.owners)
                 }
-                Box(Modifier.align(Alignment.TopStart).padding(2.dp)) {
+                Box(Modifier.align(Alignment.TopStart).padding(Abstaende.haar)) {
                     IconButton(onClick = { showMenu = true }, Modifier.size(28.dp)) {
                         Icon(Icons.Default.MoreVert, stringResource(R.string.cd_set_menu), Modifier.size(16.dp),
                             tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f))
@@ -482,7 +484,7 @@ fun SetCard(
                     }
                 }
             }
-            Column(Modifier.padding(horizontal = 10.dp, vertical = 8.dp), verticalArrangement = Arrangement.spacedBy(1.dp)) {
+            Column(Modifier.padding(horizontal = 10.dp, vertical = Abstaende.klein), verticalArrangement = Arrangement.spacedBy(1.dp)) {
                 Text(set.setNumber, style = MaterialTheme.typography.labelSmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant)
                 Text(set.name ?: set.setNumber, fontWeight = FontWeight.SemiBold,

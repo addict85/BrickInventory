@@ -353,7 +353,14 @@ function catCard(s){
   const ownedBadge = s.owned
     ? `<span class="ibadge" title="${t('catalog.owned')}">✓${s.owned_quantity>1?'×'+s.owned_quantity:''}</span>`
     : '';
-  return `<div class="sc" data-sn="${esc(s.set_number)}" data-year="${s.year||''}" data-click="openCatModal" data-arg="${esc(s.set_number)}">
+  // Der Thementon fuer das Design "farbfaecher" (themes/farbfaecher.css liest
+  // ihn als --faecher-ton). Immer gesetzt, nicht nur bei aktivem Design: Die
+  // Variable kostet nichts, und eine Abfrage des aktiven Designs hier waere
+  // eine zweite Stelle, die es kennen muss. Ohne Thema-Nummer bleibt sie weg —
+  // dann zeigt der Streifen nichts statt etwas Falsches.
+  const ton = Number.isInteger(s.theme_id)
+    ? ` style="--faecher-ton:var(--faecher-${((s.theme_id % 12) + 12) % 12})"` : '';
+  return `<div class="sc"${ton} data-sn="${esc(s.set_number)}" data-year="${s.year||''}" data-click="openCatModal" data-arg="${esc(s.set_number)}">
     <div class="sci">${img}</div>
     <div class="scb">
       <div class="snum">${esc(s.set_number)}</div>

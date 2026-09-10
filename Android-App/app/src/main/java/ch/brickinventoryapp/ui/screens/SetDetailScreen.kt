@@ -25,6 +25,7 @@ import ch.brickinventoryapp.ui.theme.LocalIsBrickTheme
 import ch.brickinventoryapp.ui.components.ZoomableImageDialog
 import ch.brickinventoryapp.util.resolveFullUrl
 import coil.ImageLoader
+import ch.brickinventoryapp.ui.theme.Abstaende
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -167,7 +168,7 @@ fun SetDetailScreen(
 
         LazyColumn(
             modifier = Modifier.fillMaxSize().padding(padding),
-            contentPadding = PaddingValues(bottom = 24.dp),
+            contentPadding = PaddingValues(bottom = Abstaende.sehrGross),
             verticalArrangement = Arrangement.spacedBy(0.dp)
         ) {
 
