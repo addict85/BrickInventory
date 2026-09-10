@@ -28,6 +28,14 @@ class PreferencesManager @Inject constructor(
     private val tresor: TokenVerschluesselung,
 ) {
     companion object {
+        /**
+         * Der synchron lesbare Spiegel des Designs — eigene Datei, damit er
+         * nichts anderes beruehrt. Warum es ihn gibt, steht bei
+         * gemerktesDesign() weiter unten.
+         */
+        const val DESIGN_SPIEGEL_DATEI = "design_spiegel"
+        const val APP_THEME_SPIEGEL = "app_theme"
+
         val SERVER_URL   = stringPreferencesKey("server_url")
         /**
          * Der ALTE Klartext-Schlüssel. Bleibt bestehen, weil auf jedem Gerät,
@@ -215,12 +223,6 @@ class PreferencesManager @Inject constructor(
     suspend fun saveCurrency(cur: String) {
         context.dataStore.edit { it[CURRENCY] = cur }
     }
-    private companion object {
-        /** Eigene Datei, damit der Spiegel nichts anderes beruehrt. */
-        const val DESIGN_SPIEGEL_DATEI = "design_spiegel"
-        const val APP_THEME_SPIEGEL = "app_theme"
-    }
-
     suspend fun saveLanguage(lang: String) {
         context.dataStore.edit { it[LANGUAGE] = lang }
     }
