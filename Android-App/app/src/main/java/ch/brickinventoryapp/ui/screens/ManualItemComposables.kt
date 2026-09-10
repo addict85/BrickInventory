@@ -38,6 +38,8 @@ import ch.brickinventoryapp.ui.theme.LocalIsBrickTheme
 import ch.brickinventoryapp.ui.theme.BrickSage
 import ch.brickinventoryapp.ui.theme.BrickSageText
 import ch.brickinventoryapp.util.NumericInput
+import ch.brickinventoryapp.ui.theme.Abstaende
+import ch.brickinventoryapp.ui.theme.Schrift
 
 /**
  * Gemeinsame Composables für manuell erfasste Teile UND Minifiguren.
@@ -52,7 +54,7 @@ fun AcquisitionSummarySection(
     currency: String,
     onEditPrices: () -> Unit
 ) {
-    Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+    Column(verticalArrangement = Arrangement.spacedBy(Abstaende.winzig)) {
         Row(
             Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.SpaceBetween,
@@ -62,7 +64,7 @@ fun AcquisitionSummarySection(
                 stringResource(R.string.detail_purchase_price),
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.padding(top = 2.dp)
+                modifier = Modifier.padding(top = Abstaende.haar)
             )
             Column(horizontalAlignment = Alignment.End) {
                 if (acquisitions.isEmpty()) {
@@ -85,11 +87,11 @@ fun AcquisitionSummarySection(
                         }
                     }
                 }
-                Spacer(Modifier.height(4.dp))
+                Spacer(Modifier.height(Abstaende.winzig))
                 OutlinedButton(onClick = onEditPrices,
-                    contentPadding = PaddingValues(horizontal = 10.dp, vertical = 2.dp),
+                    contentPadding = PaddingValues(horizontal = 10.dp, vertical = Abstaende.haar),
                     modifier = Modifier.height(28.dp)) {
-                    Text("✏️ ${stringResource(R.string.detail_edit_prices)}", fontSize = 12.sp)
+                    Text("✏️ ${stringResource(R.string.detail_edit_prices)}", fontSize = Schrift.klein)
                 }
             }
         }
@@ -220,7 +222,7 @@ fun ManuelleKachelFuss(preis: Double?, waehrung: String, notiz: String?) {
         color = MaterialTheme.colorScheme.primary,
         maxLines = 1,
         overflow = TextOverflow.Ellipsis,
-        modifier = Modifier.padding(top = 2.dp),
+        modifier = Modifier.padding(top = Abstaende.haar),
     )
     if (!notiz.isNullOrBlank()) {
         Text(
@@ -418,7 +420,7 @@ fun ManuelleKachel(
                     // „N×" auf einer Kachel aus einem Set. Das ist keine Laune,
                     // sondern die Regel der Webapp — `man-tile` traegt dort ein
                     // `qbadge` mit ×N, `part-card` ein `part-qty` mit N×.
-                    Text("×$menge", Modifier.padding(horizontal = 4.dp, vertical = 1.dp),
+                    Text("×$menge", Modifier.padding(horizontal = Abstaende.winzig, vertical = 1.dp),
                         color = MaterialTheme.colorScheme.onPrimary,
                         style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.Bold)
                 }
@@ -426,7 +428,7 @@ fun ManuelleKachel(
                     Box(Modifier.size(12.dp).align(Alignment.BottomStart).padding(3.dp)
                         .clip(CircleShape).background(farbe))
                 }
-                Row(Modifier.align(Alignment.TopStart).padding(2.dp)) {
+                Row(Modifier.align(Alignment.TopStart).padding(Abstaende.haar)) {
                     IconButton(onClick = onEdit, modifier = Modifier.size(24.dp)) {
                         Icon(Icons.Default.Edit, stringResource(R.string.common_edit),
                             Modifier.size(14.dp), tint = MaterialTheme.colorScheme.primary)
@@ -438,7 +440,7 @@ fun ManuelleKachel(
                         Modifier.size(14.dp), tint = MaterialTheme.colorScheme.error)
                 }
             }
-            Column(Modifier.padding(horizontal = 6.dp, vertical = 4.dp)) {
+            Column(Modifier.padding(horizontal = 6.dp, vertical = Abstaende.winzig)) {
                 Text(name, style = MaterialTheme.typography.labelSmall,
                     fontWeight = FontWeight.SemiBold, maxLines = 2, overflow = TextOverflow.Ellipsis)
                 if (farbname != null) {
@@ -450,7 +452,7 @@ fun ManuelleKachel(
                 // Wem gehört der Eintrag? Der Server hängt owners nur an, wenn
                 // mehrere Konten im Blickfeld sind — im Einzelkonto stünde an
                 // jeder Kachel „gehört mir".
-                OwnerBadges(besitzer, Modifier.padding(top = 2.dp))
+                OwnerBadges(besitzer, Modifier.padding(top = Abstaende.haar))
                 ManuelleKachelFuss(preis = preis, waehrung = waehrung, notiz = notiz)
             }
         }

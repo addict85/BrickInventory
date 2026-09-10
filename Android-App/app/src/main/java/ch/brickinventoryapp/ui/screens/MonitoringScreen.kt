@@ -30,6 +30,8 @@ import ch.brickinventoryapp.ui.*  // Feature-Extensions (loadSetDetail, updateQu
 import androidx.lifecycle.repeatOnLifecycle
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import ch.brickinventoryapp.ui.theme.Abstaende
+import ch.brickinventoryapp.ui.theme.Schrift
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun MonitoringScreen(vm: MainViewModel) {
@@ -80,7 +82,7 @@ fun MonitoringScreen(vm: MainViewModel) {
 
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
-            contentPadding = PaddingValues(horizontal = 16.dp, vertical = 12.dp),
+            contentPadding = PaddingValues(horizontal = Abstaende.gross, vertical = Abstaende.mittel),
             verticalArrangement = Arrangement.spacedBy(10.dp)
         ) {
             // Header
@@ -201,10 +203,10 @@ private fun JobCard(
     val pct = if (job.total > 0) (job.progress.toFloat() / job.total).coerceIn(0f, 1f) else 0f
 
     AppKarte {
-        Column(Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        Column(Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(Abstaende.klein)) {
             // Title row
             Row(Modifier.fillMaxWidth(), Arrangement.SpaceBetween, Alignment.CenterVertically) {
-                Text(job.label.ifBlank { jobKey }, fontWeight = FontWeight.SemiBold, fontSize = 14.sp,
+                Text(job.label.ifBlank { jobKey }, fontWeight = FontWeight.SemiBold, fontSize = Schrift.normal,
                     modifier = Modifier.weight(1f))
                 Text("$statusIcon ${job.status}", color = statusColor,
                     style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.Bold)
@@ -250,12 +252,12 @@ private fun JobCard(
                         }
                     },
                     shape = Formen.kachel,
-                    contentPadding = PaddingValues(horizontal = 12.dp, vertical = 6.dp),
+                    contentPadding = PaddingValues(horizontal = Abstaende.mittel, vertical = 6.dp),
                     modifier = Modifier.fillMaxWidth()
                 ) {
                     Icon(Icons.Default.Sync, null, Modifier.size(16.dp))
                     Spacer(Modifier.width(6.dp))
-                    Text(csvMsg ?: stringResource(R.string.monitoring_sync_now), fontSize = 12.sp)
+                    Text(csvMsg ?: stringResource(R.string.monitoring_sync_now), fontSize = Schrift.klein)
                 }
             }
 
@@ -273,12 +275,12 @@ private fun JobCard(
                         }
                     },
                     shape = Formen.kachel,
-                    contentPadding = PaddingValues(horizontal = 12.dp, vertical = 6.dp),
+                    contentPadding = PaddingValues(horizontal = Abstaende.mittel, vertical = 6.dp),
                     modifier = Modifier.fillMaxWidth()
                 ) {
                     Icon(Icons.Default.Refresh, null, Modifier.size(16.dp))
                     Spacer(Modifier.width(6.dp))
-                    Text(priceMsg ?: stringResource(R.string.monitoring_price_update), fontSize = 12.sp)
+                    Text(priceMsg ?: stringResource(R.string.monitoring_price_update), fontSize = Schrift.klein)
                 }
             }
 
@@ -296,12 +298,12 @@ private fun JobCard(
                         }
                     },
                     shape = Formen.kachel,
-                    contentPadding = PaddingValues(horizontal = 12.dp, vertical = 6.dp),
+                    contentPadding = PaddingValues(horizontal = Abstaende.mittel, vertical = 6.dp),
                     modifier = Modifier.fillMaxWidth()
                 ) {
                     Icon(Icons.Default.Download, null, Modifier.size(16.dp))
                     Spacer(Modifier.width(6.dp))
-                    Text(redlMsg ?: stringResource(R.string.monitoring_redownload_missing), fontSize = 12.sp)
+                    Text(redlMsg ?: stringResource(R.string.monitoring_redownload_missing), fontSize = Schrift.klein)
                 }
                 // Der zweite Bilderknopf (Nachtrag 137): Der darueber holt die
                 // Bilder des BESTANDS nach, dieser die des KATALOGS. Die Webapp
@@ -321,12 +323,12 @@ private fun JobCard(
                         }
                     },
                     shape = Formen.kachel,
-                    contentPadding = PaddingValues(horizontal = 12.dp, vertical = 6.dp),
+                    contentPadding = PaddingValues(horizontal = Abstaende.mittel, vertical = 6.dp),
                     modifier = Modifier.fillMaxWidth()
                 ) {
                     Icon(Icons.Default.Download, null, Modifier.size(16.dp))
                     Spacer(Modifier.width(6.dp))
-                    Text(katMsg ?: stringResource(R.string.monitoring_catalog_images), fontSize = 12.sp)
+                    Text(katMsg ?: stringResource(R.string.monitoring_catalog_images), fontSize = Schrift.klein)
                 }
             }
 
@@ -334,12 +336,12 @@ private fun JobCard(
                 FilledTonalButton(
                     onClick = onReimport,
                     shape = Formen.kachel,
-                    contentPadding = PaddingValues(horizontal = 12.dp, vertical = 6.dp),
+                    contentPadding = PaddingValues(horizontal = Abstaende.mittel, vertical = 6.dp),
                     modifier = Modifier.fillMaxWidth()
                 ) {
                     Icon(Icons.Default.Download, null, Modifier.size(16.dp))
                     Spacer(Modifier.width(6.dp))
-                    Text(reimportMsg ?: stringResource(R.string.monitoring_import_missing_instr), fontSize = 12.sp)
+                    Text(reimportMsg ?: stringResource(R.string.monitoring_import_missing_instr), fontSize = Schrift.klein)
                 }
             }
 
@@ -347,23 +349,23 @@ private fun JobCard(
                 FilledTonalButton(
                     onClick = onToggleQueue,
                     shape = Formen.kachel,
-                    contentPadding = PaddingValues(horizontal = 12.dp, vertical = 6.dp),
+                    contentPadding = PaddingValues(horizontal = Abstaende.mittel, vertical = 6.dp),
                     modifier = Modifier.fillMaxWidth()
                 ) {
                     Icon(if (queueOpen) Icons.Default.ExpandLess else Icons.Default.ExpandMore,
                         null, Modifier.size(16.dp))
                     Spacer(Modifier.width(6.dp))
-                    Text(if (queueOpen) stringResource(R.string.monitoring_queue_collapse) else String.format(queueShowFmt, job.total), fontSize = 12.sp)
+                    Text(if (queueOpen) stringResource(R.string.monitoring_queue_collapse) else String.format(queueShowFmt, job.total), fontSize = Schrift.klein)
                 }
 
                 AnimatedVisibility(queueOpen) {
                     if (queueLoading) {
-                        Box(Modifier.fillMaxWidth().padding(8.dp), Alignment.Center) {
+                        Box(Modifier.fillMaxWidth().padding(Abstaende.klein), Alignment.Center) {
                             CircularProgressIndicator(Modifier.size(20.dp), strokeWidth = 2.dp)
                         }
                     } else {
                         Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                            Spacer(Modifier.height(4.dp))
+                            Spacer(Modifier.height(Abstaende.winzig))
                             queue.forEach { entry ->
                                 BricksetQueueRow(entry, onRetry, onDelete)
                             }

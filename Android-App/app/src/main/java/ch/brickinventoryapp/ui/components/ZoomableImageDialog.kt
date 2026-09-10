@@ -34,6 +34,7 @@ import androidx.compose.ui.window.DialogProperties
 import ch.brickinventoryapp.R
 import coil.ImageLoader
 import coil.compose.AsyncImage
+import ch.brickinventoryapp.ui.theme.Abstaende
 
 /**
  * Bild bildschirmfuellend anzeigen, mit Zoom und Verschieben.
@@ -96,7 +97,7 @@ fun ZoomableImageDialog(
                 modifier = Modifier
                     .fillMaxWidth()
                     .align(Alignment.Center)
-                    .padding(24.dp)
+                    .padding(Abstaende.sehrGross)
                     .graphicsLayer(
                         scaleX = zoomScale, scaleY = zoomScale,
                         translationX = zoomOffset.x, translationY = zoomOffset.y
@@ -119,9 +120,9 @@ fun ZoomableImageDialog(
                     style = MaterialTheme.typography.labelMedium,
                     modifier = Modifier
                         .align(Alignment.BottomCenter)
-                        .padding(bottom = 24.dp)
+                        .padding(bottom = Abstaende.sehrGross)
                         .background(Color.Black.copy(alpha = 0.08f), shape = Formen.chip)
-                        .padding(horizontal = 12.dp, vertical = 4.dp)
+                        .padding(horizontal = Abstaende.mittel, vertical = Abstaende.winzig)
                 )
             }
         }

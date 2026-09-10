@@ -21,6 +21,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import ch.brickinventoryapp.R
 import ch.brickinventoryapp.data.model.StartupStatus
+import ch.brickinventoryapp.ui.theme.Abstaende
 
 /**
  * „Der Server startet gerade" — mit Fortschritt statt einer Fehlermeldung.
@@ -50,9 +51,9 @@ import ch.brickinventoryapp.data.model.StartupStatus
 fun ServerStartAnzeige(status: StartupStatus, modifier: Modifier = Modifier) {
     Box(modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
         Column(
-            Modifier.padding(32.dp),
+            Modifier.padding(Abstaende.riesig),
             horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.spacedBy(12.dp),
+            verticalArrangement = Arrangement.spacedBy(Abstaende.mittel),
         ) {
             Text(
                 stringResource(R.string.startup_title),
@@ -86,7 +87,7 @@ fun ServerStartAnzeige(status: StartupStatus, modifier: Modifier = Modifier) {
                 Text(it, style = MaterialTheme.typography.labelSmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
-            Spacer(Modifier.height(4.dp))
+            Spacer(Modifier.height(Abstaende.winzig))
             // Der Satz, der die Geduld erklaert. Ohne ihn sieht ein Balken, der
             // sich minutenlang kaum bewegt, wie ein Haenger aus.
             Text(

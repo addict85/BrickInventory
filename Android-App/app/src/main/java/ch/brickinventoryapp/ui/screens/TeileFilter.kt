@@ -40,6 +40,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import ch.brickinventoryapp.R
+import ch.brickinventoryapp.ui.theme.Abstaende
 
 /**
  * Ein Filtereintrag der Teileliste: Wert, Beschriftung, Anzahl, Farbpunkt.
@@ -101,7 +102,7 @@ fun TeileFilterZeile(
     var offenKategorie by rememberSaveable { mutableStateOf(false) }
 
     val alle = stringResource(R.string.parts_filter_all)
-    Row(modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+    Row(modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(Abstaende.klein)) {
         if (farben.isNotEmpty()) {
             FilterChip(
                 selected = farbeGewaehlt.isNotBlank(),
@@ -163,7 +164,7 @@ private fun FilterBlatt(
     onSchliessen: () -> Unit,
 ) {
     ModalBottomSheet(onDismissRequest = onSchliessen) {
-        Column(Modifier.padding(horizontal = 16.dp).padding(bottom = 24.dp)) {
+        Column(Modifier.padding(horizontal = Abstaende.gross).padding(bottom = Abstaende.sehrGross)) {
             Text(titel, fontWeight = FontWeight.Bold, fontSize = 17.sp)
             LazyColumn(Modifier.heightIn(max = 420.dp)) {
                 item {
@@ -194,12 +195,12 @@ private fun FilterZeile(
         modifier = Modifier.fillMaxWidth(),
     ) {
         Row(
-            Modifier.padding(horizontal = 8.dp, vertical = 12.dp),
+            Modifier.padding(horizontal = Abstaende.klein, vertical = Abstaende.mittel),
             verticalAlignment = Alignment.CenterVertically,
         ) {
             if (farbe != null) {
                 Box(Modifier.size(14.dp).clip(CircleShape).background(farbe))
-                Spacer(Modifier.width(8.dp))
+                Spacer(Modifier.width(Abstaende.klein))
             }
             Text(text, Modifier.weight(1f), maxLines = 1, overflow = TextOverflow.Ellipsis,
                 fontWeight = if (gewaehlt) FontWeight.Bold else FontWeight.Normal)

@@ -15,6 +15,7 @@ import ch.brickinventoryapp.ui.MainViewModel
 import ch.brickinventoryapp.ui.ladeUpdate
 import ch.brickinventoryapp.ui.starteInstallation
 import ch.brickinventoryapp.ui.updateHinweisSchliessen
+import ch.brickinventoryapp.ui.theme.Abstaende
 
 /**
  * „Es gibt eine neue Fassung — jetzt aktualisieren?"
@@ -71,23 +72,23 @@ fun UpdateDialog(vm: MainViewModel) {
                 Text(stringResource(R.string.update_dialog_text,
                     neuere.versionName, ch.brickinventoryapp.BuildConfig.VERSION_NAME))
                 zustand.fortschritt?.let { p ->
-                    Spacer(Modifier.height(12.dp))
+                    Spacer(Modifier.height(Abstaende.mittel))
                     Text(stringResource(R.string.update_downloading, p),
                         style = MaterialTheme.typography.bodySmall)
-                    Spacer(Modifier.height(4.dp))
+                    Spacer(Modifier.height(Abstaende.winzig))
                     LinearProgressIndicator(
                         progress = { p / 100f },
                         modifier = Modifier.fillMaxWidth(),
                     )
                 }
                 if (zustand.erlaubnisFehlt) {
-                    Spacer(Modifier.height(12.dp))
+                    Spacer(Modifier.height(Abstaende.mittel))
                     Text(stringResource(R.string.update_permission_needed),
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
                 zustand.fehler?.let { f ->
-                    Spacer(Modifier.height(12.dp))
+                    Spacer(Modifier.height(Abstaende.mittel))
                     Text(f, style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.error)
                 }

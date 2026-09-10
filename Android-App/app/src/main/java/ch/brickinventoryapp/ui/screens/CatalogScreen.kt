@@ -47,6 +47,8 @@ import androidx.compose.ui.res.vectorResource
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.graphics.Color
 import ch.brickinventoryapp.data.repository.CATALOG_PAGE_SIZE
+import ch.brickinventoryapp.ui.theme.Abstaende
+import ch.brickinventoryapp.ui.theme.Schrift
 
 /**
  * Wie lange die Liste ruhig stehen muss, bevor ihre sichtbaren Seiten geholt
@@ -258,7 +260,7 @@ fun CatalogScreen(
             stringResource(R.string.catalog_result_count, state.total),
             style = MaterialTheme.typography.labelSmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
-            modifier = Modifier.padding(horizontal = 16.dp, vertical = 2.dp)
+            modifier = Modifier.padding(horizontal = Abstaende.gross, vertical = Abstaende.haar)
         )
 
         androidx.compose.material3.pulltorefresh.PullToRefreshBox(
@@ -282,14 +284,14 @@ fun CatalogScreen(
                     CircularProgressIndicator()
                 }
                 fehlertext != null && state.total == 0 -> Box(Modifier.fillMaxSize(), Alignment.Center) {
-                    Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(Abstaende.klein)) {
                         Text("⚠️", fontSize = 40.sp)
                         Text(fehlertext, fontWeight = FontWeight.SemiBold)
                         Button(onClick = onRefresh, shape = Formen.knopf) { Text(stringResource(R.string.gallery_refresh)) }
                     }
                 }
                 state.total == 0 -> Box(Modifier.fillMaxSize(), Alignment.Center) {
-                    Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(Abstaende.klein)) {
                         Text("🔍", fontSize = 40.sp)
                         Text(stringResource(R.string.catalog_no_results), fontWeight = FontWeight.SemiBold)
                     }
@@ -298,7 +300,7 @@ fun CatalogScreen(
                     LazyVerticalGrid(
                         state = gridState,
                         columns = GridCells.Adaptive(160.dp),
-                        contentPadding = PaddingValues(start = 12.dp, top = 12.dp, bottom = 12.dp, end = 30.dp),
+                        contentPadding = PaddingValues(start = Abstaende.mittel, top = Abstaende.mittel, bottom = Abstaende.mittel, end = 30.dp),
                         horizontalArrangement = Arrangement.spacedBy(10.dp),
                         verticalArrangement = Arrangement.spacedBy(10.dp)
                     ) {
@@ -512,10 +514,10 @@ internal fun ThemeRow(label: String, id: Int?, selected: Boolean, onClick: () ->
         modifier = Modifier.fillMaxWidth()
     ) {
         Row(
-            Modifier.padding(horizontal = 12.dp, vertical = 11.dp),
+            Modifier.padding(horizontal = Abstaende.mittel, vertical = 11.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Text(label, fontSize = 14.sp, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f))
+            Text(label, fontSize = Schrift.normal, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f))
             if (selected) Icon(Icons.Default.Check, null, Modifier.size(18.dp), tint = MaterialTheme.colorScheme.primary)
         }
     }

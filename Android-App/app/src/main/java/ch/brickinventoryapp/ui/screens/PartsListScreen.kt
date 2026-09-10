@@ -38,6 +38,8 @@ import androidx.compose.ui.focus.focusRequester
 import ch.brickinventoryapp.R
 import androidx.compose.ui.res.vectorResource
 import androidx.compose.ui.graphics.vector.ImageVector
+import ch.brickinventoryapp.ui.theme.Abstaende
+import ch.brickinventoryapp.ui.theme.Schrift
 
 data class PlSet(val setNumber: String, var name: String = "")
 
@@ -203,8 +205,8 @@ fun PartsListScreen(
 
         // Input row
         Surface(tonalElevation = 2.dp) {
-            Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
+            Column(Modifier.padding(Abstaende.mittel), verticalArrangement = Arrangement.spacedBy(Abstaende.klein)) {
+                Row(horizontalArrangement = Arrangement.spacedBy(Abstaende.klein), verticalAlignment = Alignment.CenterVertically) {
                     OutlinedTextField(
                         value = setInput,
                         onValueChange = { setInput = it },
@@ -234,7 +236,7 @@ fun PartsListScreen(
                 if (sets.isNotEmpty()) {
                     FlowRow(
                         horizontalArrangement = Arrangement.spacedBy(6.dp),
-                        verticalArrangement = Arrangement.spacedBy(4.dp)
+                        verticalArrangement = Arrangement.spacedBy(Abstaende.winzig)
                     ) {
                         sets.forEachIndexed { i, s ->
                             AssistChip(
@@ -248,7 +250,7 @@ fun PartsListScreen(
                 }
 
                 // Action buttons
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                Row(horizontalArrangement = Arrangement.spacedBy(Abstaende.klein)) {
                     Button(
                         onClick = {
                             isLoading = true; generated = false; parts = listOf()
@@ -284,7 +286,7 @@ fun PartsListScreen(
                     ) {
                         if (isLoading) CircularProgressIndicator(Modifier.size(16.dp),
                             color = MaterialTheme.colorScheme.onPrimary, strokeWidth = 2.dp)
-                        else { Icon(Icons.Default.Build, null, Modifier.size(16.dp)); Spacer(Modifier.width(4.dp)); Text(stringResource(R.string.partslist_generate)) }
+                        else { Icon(Icons.Default.Build, null, Modifier.size(16.dp)); Spacer(Modifier.width(Abstaende.winzig)); Text(stringResource(R.string.partslist_generate)) }
                     }
                     val ctx = LocalContext.current
                     if (generated && parts.isNotEmpty()) {
@@ -317,7 +319,7 @@ fun PartsListScreen(
                         ) {
                             if (isExporting) CircularProgressIndicator(Modifier.size(16.dp),
                                 color = MaterialTheme.colorScheme.onTertiary, strokeWidth = 2.dp)
-                            else { Icon(Icons.Default.PictureAsPdf, null, Modifier.size(16.dp)); Spacer(Modifier.width(4.dp)); Text("PDF") }
+                            else { Icon(Icons.Default.PictureAsPdf, null, Modifier.size(16.dp)); Spacer(Modifier.width(Abstaende.winzig)); Text("PDF") }
                         }
                     }
                     OutlinedButton(
@@ -348,7 +350,7 @@ fun PartsListScreen(
             if (!isLoading) Box(Modifier.fillMaxSize(), Alignment.Center) {
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
                     Text("📋", fontSize = 48.sp)
-                    Spacer(Modifier.height(8.dp))
+                    Spacer(Modifier.height(Abstaende.klein))
                     Text(stringResource(R.string.partslist_empty_hint),
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant)
@@ -369,7 +371,7 @@ fun PartsListScreen(
                     }
                 }
         }
-        LazyColumn(state = listState, contentPadding = PaddingValues(12.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
+        LazyColumn(state = listState, contentPadding = PaddingValues(Abstaende.mittel), verticalArrangement = Arrangement.spacedBy(Abstaende.gross)) {
             colorGroups.forEachIndexed { groupIdx, (colorName, colorParts) ->
                 item(key = "header_${groupIdx}_$colorName") {
                     Row(verticalAlignment = Alignment.CenterVertically) {
@@ -384,12 +386,12 @@ fun PartsListScreen(
                         Text(displayName, fontWeight = FontWeight.Bold,
                             style = MaterialTheme.typography.titleSmall,
                             color = MaterialTheme.colorScheme.primary)
-                        Spacer(Modifier.width(8.dp))
+                        Spacer(Modifier.width(Abstaende.klein))
                         Text(String.format(groupSummaryFmt, colorParts.sumOf { it.quantity }, colorParts.size),
                             style = MaterialTheme.typography.labelSmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant)
                     }
-                    HorizontalDivider(Modifier.padding(top = 4.dp), color = MaterialTheme.colorScheme.primaryContainer)
+                    HorizontalDivider(Modifier.padding(top = Abstaende.winzig), color = MaterialTheme.colorScheme.primaryContainer)
                 }
                 items(
                     colorParts,
@@ -422,7 +424,7 @@ fun PartListRow(
         }
     }
     Row(
-        Modifier.fillMaxWidth().padding(vertical = 4.dp),
+        Modifier.fillMaxWidth().padding(vertical = Abstaende.winzig),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(10.dp)
     ) {
@@ -442,7 +444,7 @@ fun PartListRow(
                     Box(Modifier.fillMaxSize(), Alignment.Center) {
                         // Figur weiter als Emoji, Teile mit dem gemeinsamen
                         // Teile-Symbol (wie Reiter und Webapp).
-                        if (part.isFig) Text("🧍", fontSize = 20.sp)
+                        if (part.isFig) Text("🧍", fontSize = Schrift.sehrGross)
                         else Icon(
                             ImageVector.vectorResource(R.drawable.ic_parts_bricks),
                             contentDescription = null,
@@ -470,7 +472,7 @@ fun PartListRow(
         Surface(color = if (part.isFig) MaterialTheme.colorScheme.tertiaryContainer
                         else MaterialTheme.colorScheme.primaryContainer,
                 shape = MaterialTheme.shapes.small) {
-            Text("${part.quantity}×", Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
+            Text("${part.quantity}×", Modifier.padding(horizontal = Abstaende.klein, vertical = Abstaende.winzig),
                 fontWeight = FontWeight.Bold,
                 color = if (part.isFig) MaterialTheme.colorScheme.onTertiaryContainer
                         else MaterialTheme.colorScheme.onPrimaryContainer)

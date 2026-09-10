@@ -31,6 +31,8 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import ch.brickinventoryapp.ui.*  // Feature-Extensions (loadSetDetail, updateQuantity, …)
 import kotlinx.coroutines.launch
 import ch.brickinventoryapp.util.NumericInput
+import ch.brickinventoryapp.ui.theme.Abstaende
+import ch.brickinventoryapp.ui.theme.Schrift
 
 /**
  * Die Abschnitte der Überwachungsseite unterhalb der Job-Liste.
@@ -70,7 +72,7 @@ internal fun BricksetQueueRow(
         color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
         modifier = Modifier.fillMaxWidth()
     ) {
-        Column(Modifier.padding(10.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+        Column(Modifier.padding(10.dp), verticalArrangement = Arrangement.spacedBy(Abstaende.winzig)) {
             Row(Modifier.fillMaxWidth(), Arrangement.SpaceBetween, Alignment.CenterVertically) {
                 Column(Modifier.weight(1f)) {
                     Text(entry.setNumber, fontWeight = FontWeight.Bold, fontSize = 13.sp)
@@ -82,7 +84,7 @@ internal fun BricksetQueueRow(
                         style = MaterialTheme.typography.labelSmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
-                Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                Row(horizontalArrangement = Arrangement.spacedBy(Abstaende.winzig)) {
                     FilledTonalIconButton(onClick = { onRetry(entry.setNumber) },
                         modifier = Modifier.size(32.dp)) {
                         Icon(Icons.Default.Refresh, stringResource(R.string.monitoring_icon_retry), Modifier.size(14.dp))
@@ -121,7 +123,7 @@ internal fun BricksetQueueRow(
                             style = MaterialTheme.typography.labelSmall,
                             fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace,
                             color = MaterialTheme.colorScheme.error,
-                            modifier = Modifier.padding(8.dp)
+                            modifier = Modifier.padding(Abstaende.klein)
                         )
                     }
                 }
@@ -180,7 +182,7 @@ fun CacheAndLimitsSection(vm: MainViewModel, onSnack: (String) -> Unit = {}) {
     }
 
     // ── Price Cache ───────────────────────────────────────────────────────────
-    AppKarte(Modifier.padding(horizontal = 16.dp, vertical = 5.dp)) {
+    AppKarte(Modifier.padding(horizontal = Abstaende.gross, vertical = 5.dp)) {
         Column(Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
             Text(stringResource(R.string.monitoring_price_cache).uppercase(),
                 style = MaterialTheme.typography.labelSmall,
@@ -290,15 +292,15 @@ fun CacheAndLimitsSection(vm: MainViewModel, onSnack: (String) -> Unit = {}) {
                             },
                             shape = Formen.kachel,
                             contentPadding = PaddingValues(horizontal = 10.dp, vertical = 6.dp)
-                        ) { Text("OK", fontSize = 12.sp) }
+                        ) { Text("OK", fontSize = Schrift.klein) }
                         TextButton(onClick = { editingTtl = false }) { Text("✕") }
                     }
                 } else {
                     Row(
-                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        horizontalArrangement = Arrangement.spacedBy(Abstaende.klein),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Text(stringResource(R.string.monitoring_cache_ttl_hours, cacheTtl), fontWeight = FontWeight.SemiBold, fontSize = 14.sp)
+                        Text(stringResource(R.string.monitoring_cache_ttl_hours, cacheTtl), fontWeight = FontWeight.SemiBold, fontSize = Schrift.normal)
                         FilledTonalIconButton(
                             onClick = { editingTtl = true },
                             modifier = Modifier.size(30.dp)
@@ -319,19 +321,19 @@ fun CacheAndLimitsSection(vm: MainViewModel, onSnack: (String) -> Unit = {}) {
             // der Serverroute. Ein Fehlgriff ist hier also nicht nur laestig,
             // er nimmt allen anderen Kontingent weg.
             Row(
-                Modifier.fillMaxWidth().padding(top = 4.dp),
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                Modifier.fillMaxWidth().padding(top = Abstaende.winzig),
+                horizontalArrangement = Arrangement.spacedBy(Abstaende.klein),
             ) {
                 OutlinedButton(
                     onClick = { leerenAlles = false; zeigeLeerenFrage = true },
                     shape = Formen.kachel,
-                    contentPadding = PaddingValues(horizontal = 12.dp, vertical = 6.dp),
-                ) { Text(stringResource(R.string.monitoring_cache_clear_prices), fontSize = 12.sp) }
+                    contentPadding = PaddingValues(horizontal = Abstaende.mittel, vertical = 6.dp),
+                ) { Text(stringResource(R.string.monitoring_cache_clear_prices), fontSize = Schrift.klein) }
                 OutlinedButton(
                     onClick = { leerenAlles = true; zeigeLeerenFrage = true },
                     shape = Formen.kachel,
-                    contentPadding = PaddingValues(horizontal = 12.dp, vertical = 6.dp),
-                ) { Text(stringResource(R.string.monitoring_cache_clear_all), fontSize = 12.sp) }
+                    contentPadding = PaddingValues(horizontal = Abstaende.mittel, vertical = 6.dp),
+                ) { Text(stringResource(R.string.monitoring_cache_clear_all), fontSize = Schrift.klein) }
             }
         }
     }
@@ -362,8 +364,8 @@ fun CacheAndLimitsSection(vm: MainViewModel, onSnack: (String) -> Unit = {}) {
     }
 
     // ── API Rate Limits ───────────────────────────────────────────────────────
-    AppKarte(Modifier.padding(horizontal = 16.dp, vertical = 5.dp)) {
-        Column(Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+    AppKarte(Modifier.padding(horizontal = Abstaende.gross, vertical = 5.dp)) {
+        Column(Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(Abstaende.klein)) {
             Row(Modifier.fillMaxWidth(), Arrangement.SpaceBetween, Alignment.CenterVertically) {
                 Text(stringResource(R.string.monitoring_api_calls).uppercase(),
                     style = MaterialTheme.typography.labelSmall,
@@ -396,7 +398,7 @@ fun CacheAndLimitsSection(vm: MainViewModel, onSnack: (String) -> Unit = {}) {
                     },
                     modifier = Modifier.fillMaxWidth(),
                     shape = Formen.kachel,
-                    contentPadding = PaddingValues(vertical = 8.dp)
+                    contentPadding = PaddingValues(vertical = Abstaende.klein)
                 ) {
                     Icon(Icons.Default.Save, null, Modifier.size(16.dp))
                     Spacer(Modifier.width(6.dp))
@@ -412,7 +414,7 @@ private fun CacheStatCell(label: String, value: String) {
     Column(horizontalAlignment = Alignment.CenterHorizontally) {
         Text(value, fontWeight = FontWeight.Bold, fontSize = 15.sp)
         Text(label, style = MaterialTheme.typography.labelSmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 10.sp)
+            color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = Schrift.winzig)
     }
 }
 
@@ -433,7 +435,7 @@ private fun RateLimitRow(
         Row(Modifier.fillMaxWidth(), Arrangement.SpaceBetween, Alignment.CenterVertically) {
             Text(label, style = MaterialTheme.typography.bodyMedium)
             if (editValue != null) {
-                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(Abstaende.winzig)) {
                     Text("${rl.count} /", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                     OutlinedTextField(
                         value = editValue,
@@ -484,7 +486,7 @@ internal fun ProtokollSection(vm: MainViewModel) {
     var protokollSuche by rememberSaveable { mutableStateOf("") }
 
     AppKarte {
-        Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        Column(Modifier.padding(Abstaende.gross), verticalArrangement = Arrangement.spacedBy(Abstaende.klein)) {
             Row(Modifier.fillMaxWidth(), Arrangement.SpaceBetween, Alignment.CenterVertically) {
                 Text(stringResource(R.string.admin_log_title),
                     fontWeight = FontWeight.Bold, fontSize = 15.sp)
@@ -587,7 +589,7 @@ internal fun ProtokollSection(vm: MainViewModel) {
                             color = MaterialTheme.colorScheme.onSurfaceVariant)
                     }
                     sichtbar.forEach { zeile ->
-                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        Row(horizontalArrangement = Arrangement.spacedBy(Abstaende.klein)) {
                             // Die Uhrzeit zuerst — wie in der Weboberflaeche.
                             // `logged_at` kam seit jeher mit und wurde nie
                             // gezeigt; ohne sie ist eine Protokollzeile kaum zu
@@ -694,11 +696,11 @@ fun ZeitplanZeile(
                     },
                     shape = Formen.kachel,
                     contentPadding = PaddingValues(horizontal = 10.dp, vertical = 6.dp),
-                ) { Text("OK", fontSize = 12.sp) }
+                ) { Text("OK", fontSize = Schrift.klein) }
                 TextButton(onClick = { bearbeiten = false }) { Text("✕") }
             }
         } else {
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp),
+            Row(horizontalArrangement = Arrangement.spacedBy(Abstaende.klein),
                 verticalAlignment = Alignment.CenterVertically) {
                 Text(
                     if (taeglich) plan.time.orEmpty()

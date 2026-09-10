@@ -44,6 +44,8 @@ import ch.brickinventoryapp.R
 import ch.brickinventoryapp.util.resolveThumbUrl
 import coil.compose.AsyncImage
 import androidx.compose.material.icons.filled.*
+import ch.brickinventoryapp.ui.theme.Abstaende
+import ch.brickinventoryapp.ui.theme.Schrift
 
 /** Gesamt-Total: Sets + manuell erfasste Teile + Minifiguren. */
 /**
@@ -75,7 +77,7 @@ fun LazyListScope.financeGrandTotal(valuation: ValuationResponse, partsValuation
             // eigene Addition bleibt für ältere Serverstände.
             val grandTotal = pnl?.totals?.grandTotal?.toDoubleOrNull()
                 ?: (setsTotal + partsTotal + figsTotal)
-            Spacer(Modifier.height(4.dp))
+            Spacer(Modifier.height(Abstaende.winzig))
             Card(
                 modifier = Modifier.fillMaxWidth(),
                 shape = Formen.leiste,
@@ -116,7 +118,7 @@ fun LazyListScope.financeFigRows(figsValuation: FigsValuationResponse?, showFigs
                 fontWeight = FontWeight.Bold,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 letterSpacing = 0.8.sp,
-                modifier = Modifier.padding(top = 8.dp, bottom = 2.dp, start = 4.dp))
+                modifier = Modifier.padding(top = Abstaende.klein, bottom = Abstaende.haar, start = Abstaende.winzig))
         }
         val figRows = figsItems.flatMap { f ->
             if (f.acquisitions.size > 1) f.acquisitions.map { f to it }
@@ -165,7 +167,7 @@ fun LazyListScope.financePartRows(partsValuation: PartsValuationResponse?, showP
                 fontWeight = FontWeight.Bold,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 letterSpacing = 0.8.sp,
-                modifier = Modifier.padding(top = 8.dp, bottom = 2.dp, start = 4.dp))
+                modifier = Modifier.padding(top = Abstaende.klein, bottom = Abstaende.haar, start = Abstaende.winzig))
         }
         // Wie bei den Sets: eine vollständige Zeile je Kaufpreis. Ein
         // Teil, das einmal neu und einmal gebraucht gekauft wurde,
@@ -215,7 +217,7 @@ fun LazyListScope.financeSetRows(valuation: ValuationResponse, showSets: Boolean
             fontWeight = FontWeight.Bold,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
             letterSpacing = 0.8.sp,
-            modifier = Modifier.padding(top = 4.dp, bottom = 2.dp, start = 4.dp))
+            modifier = Modifier.padding(top = Abstaende.winzig, bottom = Abstaende.haar, start = Abstaende.winzig))
     }
 
     // ── Eine VOLLSTÄNDIGE Karte JE KAUFPREIS ────────────────────────
@@ -253,9 +255,9 @@ fun LazyListScope.financeSetRows(valuation: ValuationResponse, showSets: Boolean
             colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
             elevation = CardDefaults.cardElevation(defaultElevation = Formen.karteErhebung)
         ) {
-            Row(Modifier.padding(12.dp), verticalAlignment = Alignment.CenterVertically) {
+            Row(Modifier.padding(Abstaende.mittel), verticalAlignment = Alignment.CenterVertically) {
                 FinanzBild(imageUrl, imageLoader, set.name)
-                Spacer(Modifier.width(12.dp))
+                Spacer(Modifier.width(Abstaende.mittel))
                 Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(1.dp)) {
                     Text(set.name ?: set.setNumber, fontWeight = FontWeight.SemiBold,
                         maxLines = 2, style = MaterialTheme.typography.bodyMedium)
@@ -267,12 +269,12 @@ fun LazyListScope.financeSetRows(valuation: ValuationResponse, showSets: Boolean
                     // Zustand dieser Erfassung — bei mehreren Karten
                     // desselben Sets das einzige Unterscheidungsmerkmal.
                     acq?.let {
-                        Box(Modifier.padding(top = 2.dp)) {
+                        Box(Modifier.padding(top = Abstaende.haar)) {
                             ConditionBadges(listOf(it.condition))
                         }
                     }
                 }
-                Spacer(Modifier.width(8.dp))
+                Spacer(Modifier.width(Abstaende.klein))
                 // Kaufpreis und Marktpreis untereinander — dieselbe
                 // Gegenüberstellung wie in der Webapp.
                 //
@@ -299,7 +301,7 @@ fun LazyListScope.financeSetRows(valuation: ValuationResponse, showSets: Boolean
                     // Entwicklung gegen den Kaufpreis DIESER Erfassung —
                     // vom Server, hier wird nichts nachgerechnet.
                     rowPnl?.toDoubleOrNull()?.let {
-                        Box(Modifier.padding(top = 2.dp)) { PnlBadge(it) }
+                        Box(Modifier.padding(top = Abstaende.haar)) { PnlBadge(it) }
                     }
                 }
             }
@@ -335,7 +337,7 @@ fun LazyListScope.financeCategoryFilter(
                 FilterChip(
                     selected = aktive.isEmpty(),
                     onClick = onAlle,
-                    label = { Text(stringResource(R.string.finance_filter_all), fontSize = 12.sp) },
+                    label = { Text(stringResource(R.string.finance_filter_all), fontSize = Schrift.klein) },
                     shape = Formen.chip
                 )
             }
@@ -361,7 +363,7 @@ private fun KategorieChip(
     FilterChip(
         selected = schluessel in aktive,
         onClick = { onUmschalten(schluessel) },
-        label = { Text(stringResource(text), fontSize = 12.sp) },
+        label = { Text(stringResource(text), fontSize = Schrift.klein) },
         shape = Formen.chip
     )
 }
@@ -418,16 +420,16 @@ fun LazyListScope.financeSummaryCards(valuation: ValuationResponse, partsValuati
                     }
                 }
                 if (partsExtra > 0 || figsExtra > 0) {
-                    Spacer(Modifier.height(4.dp))
+                    Spacer(Modifier.height(Abstaende.winzig))
                     Text(
                         stringResource(R.string.finance_parts_extra, fmtPrice((partsExtra + figsExtra).toString())),
                         color = MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.75f),
                         style = MaterialTheme.typography.labelSmall
                     )
                 }
-                Spacer(Modifier.height(16.dp))
+                Spacer(Modifier.height(Abstaende.gross))
                 HorizontalDivider(color = MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.2f))
-                Spacer(Modifier.height(12.dp))
+                Spacer(Modifier.height(Abstaende.mittel))
                 Row(Modifier.fillMaxWidth(), Arrangement.SpaceAround) {
                     PriceColumn("Min", fmtPrice(valuation.totals.min))
                     PriceColumn(stringResource(R.string.finance_avg_label), fmtPrice(valuation.totals.avg))

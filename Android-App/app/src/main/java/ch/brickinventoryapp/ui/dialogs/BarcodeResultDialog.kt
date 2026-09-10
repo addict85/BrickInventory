@@ -53,6 +53,8 @@ import javax.inject.Inject
 import ch.brickinventoryapp.util.NumericInput
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import ch.brickinventoryapp.ui.MainViewModel
+import ch.brickinventoryapp.ui.theme.Abstaende
+import ch.brickinventoryapp.ui.theme.Schrift
 
 /**
  * Der Dialog nach einem erfolgreichen Barcode-Scan: Set (oder Teileliste)
@@ -126,11 +128,11 @@ AlertDialog(
                     modifier = Modifier.fillMaxWidth()
                 ) {
                     Row(
-                        Modifier.padding(horizontal = 10.dp, vertical = 8.dp),
-                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        Modifier.padding(horizontal = 10.dp, vertical = Abstaende.klein),
+                        horizontalArrangement = Arrangement.spacedBy(Abstaende.klein),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Text("⚠️", fontSize = 16.sp)
+                        Text("⚠️", fontSize = Schrift.gross)
                         Text(
                             stringResource(R.string.main_barcode_unsure),
                             style = MaterialTheme.typography.bodySmall,
@@ -154,7 +156,7 @@ AlertDialog(
             if (barcodeState.setName != null)
                 Text(barcodeState.setName!!, fontWeight = FontWeight.Bold,
                     style = MaterialTheme.typography.titleMedium)
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
+            Row(horizontalArrangement = Arrangement.spacedBy(Abstaende.klein), verticalAlignment = Alignment.CenterVertically) {
                 Text(barcodeState.result!!, style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.SemiBold)
                 if (barcodeState.theme != null)
@@ -260,7 +262,7 @@ AlertDialog(
                     color = MaterialTheme.colorScheme.onPrimary,
                     strokeWidth = 2.dp
                 )
-                Spacer(Modifier.width(8.dp))
+                Spacer(Modifier.width(Abstaende.klein))
                 Text(stringResource(R.string.barcode_add))
             } else {
                 Text("✅ " + stringResource(R.string.barcode_add))

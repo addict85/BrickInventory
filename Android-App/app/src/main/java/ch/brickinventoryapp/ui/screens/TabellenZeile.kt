@@ -24,6 +24,8 @@ import ch.brickinventoryapp.ui.theme.Formen
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Clear
+import ch.brickinventoryapp.ui.theme.Abstaende
+import ch.brickinventoryapp.ui.theme.Schrift
 
 /**
  * Eine Zeile der Tabellenansicht — fuer Teile UND Figuren.
@@ -100,7 +102,7 @@ fun TabellenZeile(
     ) {
         Column {
             Row(
-                Modifier.fillMaxWidth().padding(horizontal = 14.dp, vertical = 8.dp),
+                Modifier.fillMaxWidth().padding(horizontal = 14.dp, vertical = Abstaende.klein),
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(10.dp),
             ) {
@@ -132,7 +134,7 @@ fun TabellenZeile(
                         Text(
                             nummer,
                             fontFamily = FontFamily.Monospace,
-                            fontSize = 12.sp,
+                            fontSize = Schrift.klein,
                             fontWeight = FontWeight.Medium,
                             color = MaterialTheme.colorScheme.primary,
                             maxLines = 1,
@@ -181,7 +183,7 @@ fun AnsichtUmschalter(
     onWechsel: (String) -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    Row(modifier, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+    Row(modifier, horizontalArrangement = Arrangement.spacedBy(Abstaende.klein)) {
         for ((wert, text) in listOf("grid" to R.string.view_cards, "table" to R.string.view_table)) {
             FilterChip(
                 selected = aktuell == wert,
@@ -239,7 +241,7 @@ fun Suchfeld(
                 }
             }
         },
-        modifier = modifier.fillMaxWidth().padding(horizontal = 14.dp, vertical = 8.dp),
+        modifier = modifier.fillMaxWidth().padding(horizontal = 14.dp, vertical = Abstaende.klein),
         singleLine = true,
         shape = Formen.karte,
         colors = OutlinedTextFieldDefaults.colors(
@@ -296,7 +298,7 @@ fun Zustandszeile(
             style = MaterialTheme.typography.bodyMedium,
             modifier = Modifier.width(90.dp),
         )
-        Spacer(Modifier.width(8.dp))
+        Spacer(Modifier.width(Abstaende.klein))
         ConditionToggle(selected = zustand, onSelect = onZustand, optionen = optionen)
     }
 }

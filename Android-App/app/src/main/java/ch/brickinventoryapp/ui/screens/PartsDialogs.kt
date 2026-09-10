@@ -38,6 +38,7 @@ import coil.compose.AsyncImage
 import coil.ImageLoader
 import coil.request.ImageRequest
 import ch.brickinventoryapp.util.NumericInput
+import ch.brickinventoryapp.ui.theme.Abstaende
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -103,7 +104,7 @@ fun AddPartDialog(
                                 try { Color(android.graphics.Color.parseColor("#$it")) } catch (_: Exception) { null }
                             }
                             if (swatch != null) {
-                                Box(Modifier.padding(start = 12.dp).size(14.dp)
+                                Box(Modifier.padding(start = Abstaende.mittel).size(14.dp)
                                     .clip(androidx.compose.foundation.shape.CircleShape).background(swatch))
                             }
                         },

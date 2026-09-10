@@ -55,6 +55,7 @@ import androidx.compose.foundation.background
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import ch.brickinventoryapp.ui.theme.Abstaende
 
 @OptIn(ExperimentalPermissionsApi::class)
 @Composable
@@ -145,7 +146,7 @@ fun BarcodeScannerScreen(
                 KameraUeberlagerung(
                     hinweis = statusText,
                     unten = {
-                        Spacer(Modifier.height(16.dp))
+                        Spacer(Modifier.height(Abstaende.gross))
                         FilledTonalButton(
                             onClick = { torchOn = !torchOn },
                             colors = ButtonDefaults.filledTonalButtonColors(
@@ -188,7 +189,7 @@ fun BarcodeScannerScreen(
                 KameraErlaubnisHinweis { cameraPermission.launchPermissionRequest() }
             }
         }
-        IconButton(onClick = onDismiss, modifier = Modifier.align(Alignment.TopEnd).padding(16.dp)) {
+        IconButton(onClick = onDismiss, modifier = Modifier.align(Alignment.TopEnd).padding(Abstaende.gross)) {
             Icon(Icons.Default.Close, stringResource(R.string.scanner_close), tint = Color.White)
         }
     }

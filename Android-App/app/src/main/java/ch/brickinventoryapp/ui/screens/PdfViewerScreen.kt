@@ -54,6 +54,7 @@ import java.io.FileOutputStream
 import java.io.IOException
 import java.io.RandomAccessFile
 import java.util.concurrent.TimeUnit
+import ch.brickinventoryapp.ui.theme.Abstaende
 
 /**
  * In-App PDF-Viewer.
@@ -181,7 +182,7 @@ fun PdfViewerScreen(
                     Text(
                         stringResource(R.string.pdfview_load_failed, s.message),
                         color = MaterialTheme.colorScheme.error,
-                        modifier = Modifier.padding(24.dp)
+                        modifier = Modifier.padding(Abstaende.sehrGross)
                     )
                 }
             }
@@ -194,8 +195,8 @@ private fun DownloadProgress(s: PdfLoadState.Downloading) {
     Box(Modifier.fillMaxSize(), Alignment.Center) {
         Column(
             horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.spacedBy(12.dp),
-            modifier = Modifier.padding(24.dp)
+            verticalArrangement = Arrangement.spacedBy(Abstaende.mittel),
+            modifier = Modifier.padding(Abstaende.sehrGross)
         ) {
             if (s.total > 0) {
                 CircularProgressIndicator(progress = { s.pct / 100f })
@@ -218,7 +219,7 @@ private fun CenteredLoading(text: String) {
     Box(Modifier.fillMaxSize(), Alignment.Center) {
         Column(
             horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.spacedBy(12.dp)
+            verticalArrangement = Arrangement.spacedBy(Abstaende.mittel)
         ) {
             CircularProgressIndicator()
             Text(text)
@@ -230,8 +231,8 @@ private fun CenteredLoading(text: String) {
 private fun PdfPages(file: File, pageCount: Int) {
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
-        contentPadding = PaddingValues(8.dp),
-        verticalArrangement = Arrangement.spacedBy(8.dp)
+        contentPadding = PaddingValues(Abstaende.klein),
+        verticalArrangement = Arrangement.spacedBy(Abstaende.klein)
     ) {
         items((0 until pageCount).toList()) { index ->
             PdfPage(file, index)

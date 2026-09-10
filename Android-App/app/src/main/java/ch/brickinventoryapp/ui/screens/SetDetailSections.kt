@@ -73,6 +73,8 @@ import ch.brickinventoryapp.ui.theme.BrickStatTile
 import ch.brickinventoryapp.ui.theme.Petrol
 import ch.brickinventoryapp.ui.theme.SlateBlue
 import androidx.compose.material.icons.filled.*
+import ch.brickinventoryapp.ui.theme.Abstaende
+import ch.brickinventoryapp.ui.theme.Schrift
 
 /**
  * Anleitungen — ansehen, hinzufügen und entfernen.
@@ -100,7 +102,7 @@ fun LazyListScope.setDetailInstructionsSection(
                 ) {
                     if (detailState.setDetailLoading && instructions.isEmpty()) {
                         Row(
-                            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                            horizontalArrangement = Arrangement.spacedBy(Abstaende.klein),
                             verticalAlignment = Alignment.CenterVertically
                         ) {
                             CircularProgressIndicator(Modifier.size(14.dp), strokeWidth = 2.dp)
@@ -130,15 +132,15 @@ fun LazyListScope.setDetailInstructionsSection(
                             val openUrl = instr.localPath?.let { "$serverUrl$it" } ?: instr.url
 
                             if (idx > 0) HorizontalDivider(
-                                Modifier.padding(vertical = 4.dp),
+                                Modifier.padding(vertical = Abstaende.winzig),
                                 color = MaterialTheme.colorScheme.outlineVariant
                             )
                             Row(
                                 Modifier
                                     .fillMaxWidth()
-                                    .padding(vertical = 4.dp),
+                                    .padding(vertical = Abstaende.winzig),
                                 verticalAlignment = Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.spacedBy(12.dp)
+                                horizontalArrangement = Arrangement.spacedBy(Abstaende.mittel)
                             ) {
                                 Surface(
                                     shape = Formen.kachel,
@@ -238,11 +240,11 @@ fun LazyListScope.setDetailInstructionsSection(
                         // Aktionen dieser Karte.
                         OutlinedButton(
                             onClick = onAnleitungWaehlen,
-                            modifier = Modifier.fillMaxWidth().padding(top = 8.dp),
+                            modifier = Modifier.fillMaxWidth().padding(top = Abstaende.klein),
                             shape = Formen.knopf
                         ) {
                             Icon(Icons.Default.Add, null, Modifier.size(18.dp))
-                            Spacer(Modifier.width(8.dp))
+                            Spacer(Modifier.width(Abstaende.klein))
                             Text(stringResource(R.string.instr_upload))
                         }
                     }
@@ -295,8 +297,8 @@ fun LazyListScope.setDetailPriceSection(set: SetItem, detailState: SetDetailUiSt
                         )
                         val pct = pnlPct?.toDoubleOrNull()
                         if (pct != null) {
-                            Spacer(Modifier.height(4.dp))
-                            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                            Spacer(Modifier.height(Abstaende.winzig))
+                            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(Abstaende.klein)) {
                                 PnlBadge(pct)
                                 // Mengengewichtet über die Erfassungen;
                                 // set.purchasePrice ist nur der
@@ -326,9 +328,9 @@ fun LazyListScope.setDetailPriceSection(set: SetItem, detailState: SetDetailUiSt
                             // Trennlinie nur, wenn oben etwas steht,
                             // von dem zu trennen wäre.
                             if (zeigeGrossePreiszeile) {
-                                Spacer(Modifier.height(8.dp))
+                                Spacer(Modifier.height(Abstaende.klein))
                                 HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
-                                Spacer(Modifier.height(4.dp))
+                                Spacer(Modifier.height(Abstaende.winzig))
                             }
                             MarketPriceByCondition(byCond, currency)
                         }
@@ -343,10 +345,10 @@ fun LazyListScope.setDetailPriceSection(set: SetItem, detailState: SetDetailUiSt
                     // nirgends gelesen.
                     val chart = history?.chart
                     if (chart != null && chart.values.isNotEmpty()) {
-                        Spacer(Modifier.height(8.dp))
+                        Spacer(Modifier.height(Abstaende.klein))
                         PriceChart(chart)
                     } else if (detailState.priceHistoryLoading) {
-                        Spacer(Modifier.height(8.dp))
+                        Spacer(Modifier.height(Abstaende.klein))
                         PreisLaedtZeile()
                     }
                 }
@@ -364,7 +366,7 @@ fun LazyListScope.setDetailDetailsSection(set: SetItem, setNumber: String, vm: M
             DetailRow2(stringResource(R.string.detail_set_number), setNumber)
             DetailRow2(stringResource(R.string.detail_added), "📅 ${fmtDate(set.addedAt)}")
             HorizontalDivider(
-                Modifier.padding(vertical = 4.dp),
+                Modifier.padding(vertical = Abstaende.winzig),
                 color = MaterialTheme.colorScheme.outlineVariant
             )
             // Quantity stepper
@@ -376,7 +378,7 @@ fun LazyListScope.setDetailDetailsSection(set: SetItem, setNumber: String, vm: M
             // verlässt und neu öffnet.
             var qty by remember(set.setNumber, set.quantity) { mutableIntStateOf(set.quantity) }
             Row(
-                Modifier.fillMaxWidth().padding(vertical = 4.dp),
+                Modifier.fillMaxWidth().padding(vertical = Abstaende.winzig),
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
@@ -387,7 +389,7 @@ fun LazyListScope.setDetailDetailsSection(set: SetItem, setNumber: String, vm: M
                 )
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(12.dp)
+                    horizontalArrangement = Arrangement.spacedBy(Abstaende.mittel)
                 ) {
                     FilledTonalIconButton(
                         onClick = { if (qty > 1) { qty--; vm.updateQuantity(set.setNumber, qty) } },
@@ -399,7 +401,7 @@ fun LazyListScope.setDetailDetailsSection(set: SetItem, setNumber: String, vm: M
                     Text(
                         "$qty",
                         fontWeight = FontWeight.Bold,
-                        fontSize = 16.sp,
+                        fontSize = Schrift.gross,
                         modifier = Modifier.widthIn(min = 24.dp),
                         textAlign = TextAlign.Center
                     )
@@ -437,7 +439,7 @@ fun LazyListScope.setDetailValueTiles(set: SetItem, price: SetPriceResponse?, is
     if (isBrick) {
         item {
             Row(
-                Modifier.fillMaxWidth().padding(horizontal = 16.dp).padding(bottom = 12.dp),
+                Modifier.fillMaxWidth().padding(horizontal = Abstaende.gross).padding(bottom = Abstaende.mittel),
                 horizontalArrangement = Arrangement.spacedBy(10.dp)
             ) {
                 BrickStatTile(
@@ -472,9 +474,9 @@ fun LazyListScope.setDetailStatChips(set: SetItem) {
         val labelMinifigs = stringResource(R.string.detail_minifigs)
         val labelTheme    = stringResource(R.string.detail_theme)
         LazyRow(
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
-            contentPadding = PaddingValues(horizontal = 16.dp),
-            modifier = Modifier.padding(bottom = 12.dp)
+            horizontalArrangement = Arrangement.spacedBy(Abstaende.klein),
+            contentPadding = PaddingValues(horizontal = Abstaende.gross),
+            modifier = Modifier.padding(bottom = Abstaende.mittel)
         ) {
             val chips = buildList {
                 set.year?.let     { add(labelYear     to "$it")  }
@@ -509,7 +511,7 @@ fun LazyListScope.setDetailHeroImage(
         Card(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 16.dp, vertical = 12.dp),
+                .padding(horizontal = Abstaende.gross, vertical = Abstaende.mittel),
             shape = Formen.chip,
             elevation = CardDefaults.cardElevation(defaultElevation = Formen.karteErhebungHoch),
             colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)

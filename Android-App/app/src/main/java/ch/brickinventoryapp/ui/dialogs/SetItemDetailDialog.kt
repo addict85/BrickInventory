@@ -30,6 +30,8 @@ import ch.brickinventoryapp.ui.schliesseSetItem
 import ch.brickinventoryapp.ui.screens.TabellenZeile
 import ch.brickinventoryapp.util.resolveFullUrlViaProxy
 import ch.brickinventoryapp.util.rememberTileImageWithFallback
+import ch.brickinventoryapp.ui.theme.Abstaende
+import ch.brickinventoryapp.ui.theme.Schrift
 
 /**
  * Detail-Dialog fuer ein Teil / eine Figur AUS EINEM SET.
@@ -103,7 +105,7 @@ fun SetItemDetailDialog(
                 Text(kopf?.name ?: zustand.nummer, fontWeight = FontWeight.SemiBold)
                 Text(
                     zustand.nummer + (kopf?.colorName?.let { " · $it" } ?: ""),
-                    fontSize = 12.sp,
+                    fontSize = Schrift.klein,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
             }
@@ -111,7 +113,7 @@ fun SetItemDetailDialog(
         text = {
             Column(Modifier.fillMaxWidth()) {
                 when {
-                    zustand.laedt -> Box(Modifier.fillMaxWidth().padding(24.dp), Alignment.Center) {
+                    zustand.laedt -> Box(Modifier.fillMaxWidth().padding(Abstaende.sehrGross), Alignment.Center) {
                         CircularProgressIndicator(Modifier.size(28.dp))
                     }
                     zustand.fehler != null -> Text(
@@ -133,7 +135,7 @@ fun SetItemDetailDialog(
                                     .height(140.dp)
                                     .clickable { zeigeZoom = true },
                             )
-                            Spacer(Modifier.height(12.dp))
+                            Spacer(Modifier.height(Abstaende.mittel))
                         }
                         SetItemZeile(
                             stringResource(R.string.setitem_total_qty),
@@ -147,11 +149,11 @@ fun SetItemDetailDialog(
                         if (kopf?.isSpare == true) {
                             SetItemZeile(stringResource(R.string.parts_spare_tag), "✓")
                         }
-                        Spacer(Modifier.height(12.dp))
+                        Spacer(Modifier.height(Abstaende.mittel))
                         Text(
                             stringResource(R.string.setitem_used_in),
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            fontSize = 14.sp,
+                            fontSize = Schrift.normal,
                         )
                         if (zustand.sets.isEmpty()) {
                             Text(
@@ -232,10 +234,10 @@ fun SetItemDetailDialog(
 /** Beschriftung links, Wert rechts — wie CatalogDetailRow im Katalog-Detail. */
 @Composable
 private fun SetItemZeile(label: String, wert: String) {
-    Row(Modifier.fillMaxWidth().padding(vertical = 2.dp),
+    Row(Modifier.fillMaxWidth().padding(vertical = Abstaende.haar),
         horizontalArrangement = Arrangement.SpaceBetween) {
-        Text(label, color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 14.sp)
-        Text(wert, fontWeight = FontWeight.SemiBold, fontSize = 14.sp,
-            modifier = Modifier.padding(start = 16.dp))
+        Text(label, color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = Schrift.normal)
+        Text(wert, fontWeight = FontWeight.SemiBold, fontSize = Schrift.normal,
+            modifier = Modifier.padding(start = Abstaende.gross))
     }
 }
