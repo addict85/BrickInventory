@@ -1,0 +1,101 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;700&display=swap">
+  <style>
+    body { margin: 0; font-family: 'Plus Jakarta Sans', system-ui, sans-serif; }
+    a { color: #4d9fff; } a:hover { color: #8cc2ff; }
+  </style>
+</helmet>
+
+<div style="width: 1100px; height: 760px; background: #14181d; color: #e6e9ed; display: flex; overflow: hidden">
+
+  <!-- Bild links, Angaben rechts — wie im heutigen Detaildialog -->
+  <div style="width: 430px; background: #11151a; display: flex; flex-direction: column; border-right: 1px solid #262d36; flex-shrink: 0">
+    <div style="flex-grow: 1; display: flex; align-items: center; justify-content: center">
+      <svg width="200" height="200" viewBox="0 0 48 48" fill="none" stroke="#4d9fff" stroke-width="0.9" stroke-linejoin="round" opacity="0.9">
+        <rect x="7" y="18" width="34" height="20" rx="2"></rect>
+        <path d="M14 18v-3.2a1.6 1.6 0 0 1 1.6-1.6h2.4a1.6 1.6 0 0 1 1.6 1.6V18"></path>
+        <path d="M28 18v-3.2a1.6 1.6 0 0 1 1.6-1.6h2.4a1.6 1.6 0 0 1 1.6 1.6V18"></path>
+        <path d="M7 27h34"></path>
+      </svg>
+    </div>
+    <div style="display: flex; gap: 8px; padding: 16px; border-top: 1px solid #262d36">
+      <div style="flex-grow: 1; padding: 11px; border-radius: 9px; background: #4d9fff; color: #0e1620; font-size: 13px; font-weight: 700; text-align: center">In Galerie aufnehmen</div>
+      <div style="padding: 11px 15px; border-radius: 9px; border: 1px solid #2f3843; color: #b6bec9; font-size: 13px; font-weight: 600">BrickLink</div>
+    </div>
+  </div>
+
+  <div style="flex-grow: 1; display: flex; flex-direction: column; overflow: hidden">
+    <div style="padding: 26px 28px 20px; border-bottom: 1px solid #262d36">
+      <div style="font-family: 'JetBrains Mono', monospace; font-size: 12px; color: #4d9fff; letter-spacing: .04em">10276-1</div>
+      <div style="font-size: 26px; font-weight: 700; letter-spacing: -.02em; margin-top: 6px">Kolosseum</div>
+      <div style="display: flex; gap: 8px; margin-top: 13px">
+        <span style="background: #1d2a20; color: #6fbf7f; border: 1px solid #263a2b; font-size: 11px; font-weight: 600; padding: 3px 9px; border-radius: 999px">✓ 1× im Bestand</span>
+        <span style="background: #16243a; color: #4d9fff; font-size: 11px; font-weight: 700; padding: 3px 9px; border-radius: 999px; font-family: 'JetBrains Mono', monospace">9036 Teile</span>
+        <span style="border: 1px solid #2f3843; color: #b6bec9; font-size: 11px; font-weight: 500; padding: 3px 9px; border-radius: 999px">Neu</span>
+      </div>
+    </div>
+
+    <!-- Angabenzeilen -->
+    <div style="padding: 4px 28px">
+      <sc-for list="{{zeilen}}" as="z" hint-placeholder-count="6">
+        <div style="display: flex; justify-content: space-between; align-items: baseline; padding: 12px 0; border-bottom: 1px solid #1f252d">
+          <span style="font-size: 13px; color: #8d96a3">{{z.k}}</span>
+          <span style="font-size: 13.5px; font-weight: 600; font-family: {{z.schrift}}">{{z.v}}</span>
+        </div>
+      </sc-for>
+    </div>
+
+    <!-- Preisverlauf: hier zeigt sich, ob ein Design auch Diagramme traegt -->
+    <div style="padding: 18px 28px 0">
+      <div style="display: flex; align-items: baseline; justify-content: space-between; margin-bottom: 12px">
+        <span style="font-size: 13px; font-weight: 600">Preisverlauf</span>
+        <div style="display: flex; gap: 16px; font-size: 11.5px">
+          <span style="display: flex; align-items: center; gap: 6px"><span style="width: 14px; height: 2.5px; background: #4d9fff; display: inline-block"></span><span style="color: #8d96a3">Neu</span></span>
+          <span style="display: flex; align-items: center; gap: 6px"><span style="width: 14px; height: 2.5px; background: #d99a4e; display: inline-block"></span><span style="color: #8d96a3">Gebraucht</span></span>
+        </div>
+      </div>
+      <div style="background: #191e25; border: 1px solid #262d36; border-radius: 11px; padding: 14px 12px 10px">
+        <svg width="100%" height="120" viewBox="0 0 560 120" preserveAspectRatio="none">
+          <line x1="0" y1="30" x2="560" y2="30" stroke="#262d36" stroke-width="1"></line>
+          <line x1="0" y1="60" x2="560" y2="60" stroke="#262d36" stroke-width="1"></line>
+          <line x1="0" y1="90" x2="560" y2="90" stroke="#262d36" stroke-width="1"></line>
+          <polyline points="0,88 70,82 140,84 210,70 280,64 350,58 420,44 490,38 560,26" fill="none" stroke="#4d9fff" stroke-width="2.2"></polyline>
+          <polyline points="0,104 70,101 140,99 210,96 280,92 350,88 420,84 490,79 560,74" fill="none" stroke="#d99a4e" stroke-width="2.2"></polyline>
+        </svg>
+        <div style="display: flex; justify-content: space-between; font-family: 'JetBrains Mono', monospace; font-size: 10.5px; color: #6f7986; padding-top: 6px">
+          <span>Sep 25</span><span>Dez 25</span><span>Mär 26</span><span>Jun 26</span><span>Sep 26</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+</x-dc>
+
+<script data-dc-script data-props='{"$preview":{"width":1100,"height":760}}'>
+class Component extends DCLogic {
+  renderVals() {
+    const M = "'JetBrains Mono', monospace";
+    const T = "'Plus Jakarta Sans', sans-serif";
+    return {
+      zeilen: [
+        { k: 'Jahr', v: '2020', schrift: M },
+        { k: 'Thema', v: 'Creator Expert', schrift: T },
+        { k: 'Minifiguren', v: '0', schrift: M },
+        { k: 'Kaufpreis', v: 'CHF 449.00', schrift: M },
+        { k: 'Marktwert (neu)', v: 'CHF 612.00', schrift: M },
+        { k: 'Aufgenommen am', v: '14.03.2021', schrift: M },
+      ],
+    };
+  }
+}
+</script>
+</body>
+</html>

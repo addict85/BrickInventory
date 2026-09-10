@@ -10,7 +10,7 @@
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;700&display=swap">
   <style>
     body { margin: 0; font-family: 'Plus Jakarta Sans', system-ui, sans-serif; }
-    a { color: #e8a33d; } a:hover { color: #f4bb63; }
+    a { color: #4d9fff; } a:hover { color: #8cc2ff; }
   </style>
 </helmet>
 
@@ -22,7 +22,7 @@
         <div style="font-size: 21px; font-weight: 800; letter-spacing: -.015em">Galerie</div>
         <div style="font-size: 12.5px; color: #8d96a3; margin-top: 2px">312 Sets · CHF 41 280</div>
       </div>
-      <div style="width: 40px; height: 40px; border-radius: 999px; background: #e8a33d; color: #14181d; display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 14px">MB</div>
+      <div style="width: 40px; height: 40px; border-radius: 999px; background: #4d9fff; color: #14181d; display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 14px">MB</div>
     </div>
 
     <div style="display: flex; align-items: center; gap: 9px; background: #232a33; border: 1px solid #2f3843; border-radius: 11px; padding: 12px 13px; margin-bottom: 12px">
@@ -31,7 +31,7 @@
     </div>
 
     <div style="display: flex; gap: 7px; margin-bottom: 14px">
-      <div style="padding: 8px 14px; border-radius: 999px; background: #e8a33d; color: #14181d; font-size: 12.5px; font-weight: 700">Alle</div>
+      <div style="padding: 8px 14px; border-radius: 999px; background: #4d9fff; color: #14181d; font-size: 12.5px; font-weight: 700">Alle</div>
       <div style="padding: 8px 14px; border-radius: 999px; border: 1px solid #2f3843; color: #b6bec9; font-size: 12.5px; font-weight: 500">Star Wars</div>
       <div style="padding: 8px 14px; border-radius: 999px; border: 1px solid #2f3843; color: #b6bec9; font-size: 12.5px; font-weight: 500">Technic</div>
     </div>
@@ -50,11 +50,11 @@
             </svg>
           </div>
           <div style="padding: 11px">
-            <div style="font-family: 'JetBrains Mono', monospace; font-size: 11.2px; color: #e8a33d; font-weight: 500; margin-bottom: 3px">{{s.nummer}}</div>
+            <div style="font-family: 'JetBrains Mono', monospace; font-size: 11.2px; color: #4d9fff; font-weight: 500; margin-bottom: 3px">{{s.nummer}}</div>
             <div style="font-size: 13.1px; font-weight: 600; line-height: 1.3; margin-bottom: 7px">{{s.name}}</div>
             <div style="display: flex; justify-content: space-between; align-items: center">
               <span style="font-size: 11.2px; color: #8d96a3">{{s.jahr}}</span>
-              <span style="background: #2a2418; color: #e8a33d; font-weight: 700; font-size: 10.7px; padding: 2px 7px; border-radius: 999px; font-family: 'JetBrains Mono', monospace">{{s.teile}}</span>
+              <span style="background: #16243a; color: #4d9fff; font-weight: 700; font-size: 10.7px; padding: 2px 7px; border-radius: 999px; font-family: 'JetBrains Mono', monospace">{{s.teile}}</span>
             </div>
           </div>
           <sc-if value="{{s.besitz}}" hint-placeholder-val="{{ true }}">
@@ -84,15 +84,15 @@ class Component extends DCLogic {
       ({ nummer, name, jahr, teile, besitz, anzahl, strich });
     return {
       sets: [
-        S('10276-1', 'Kolosseum', 2020, '9036', true, 1, '#e8a33d'),
+        S('10276-1', 'Kolosseum', 2020, '9036', true, 1, '#4d9fff'),
         S('75192-1', 'Millennium Falcon', 2017, '7541', true, 2, '#8d96a3'),
-        S('21058-1', 'Cheops-Pyramide', 2022, '1476', false, 0, '#c98f4a'),
+        S('21058-1', 'Cheops-Pyramide', 2022, '1476', false, 0, '#7fa6cc'),
         S('42115-1', 'Lamborghini Sián', 2020, '3696', true, 1, '#6f7986'),
         S('10497-1', 'Galaxy Explorer', 2022, '1254', false, 0, '#9aa4b1'),
-        S('71043-1', 'Schloss Hogwarts', 2018, '6020', true, 1, '#d8a05f'),
+        S('71043-1', 'Schloss Hogwarts', 2018, '6020', true, 1, '#5b93cf'),
       ],
       reiter: [
-        { name: 'Galerie', farbe: '#e8a33d' },
+        { name: 'Galerie', farbe: '#4d9fff' },
         { name: 'Katalog', farbe: '#6f7986' },
         { name: 'Teile', farbe: '#6f7986' },
         { name: 'Figuren', farbe: '#6f7986' },

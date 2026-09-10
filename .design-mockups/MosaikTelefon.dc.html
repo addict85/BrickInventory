@@ -1,0 +1,110 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@500;600;700;800&family=JetBrains+Mono:wght@500;700&display=swap">
+  <style>
+    body { margin: 0; font-family: 'Plus Jakarta Sans', system-ui, sans-serif; }
+    a { color: #1c1c1a; } a:hover { color: #5a5a55; }
+    .platte {
+      background-color: #cfcfc8;
+      background-image:
+        radial-gradient(circle at 11px 11px, rgba(255,255,255,.55) 4px, transparent 4.5px),
+        radial-gradient(circle at 11px 11px, rgba(0,0,0,.10) 5.5px, transparent 6px);
+      background-size: 22px 22px, 22px 22px;
+    }
+  </style>
+</helmet>
+
+<div class="platte" style="width: 390px; height: 844px; color: #1c1c1a; display: flex; flex-direction: column; overflow: hidden">
+
+  <div style="background: #1c1c1a; color: #f2f2ee; padding: 16px 16px 14px; flex-shrink: 0">
+    <div style="display: flex; align-items: baseline; justify-content: space-between">
+      <span style="font-size: 19px; font-weight: 800; letter-spacing: -.015em">Galerie</span>
+      <span style="font-family: 'JetBrains Mono', monospace; font-size: 11px; color: #a5a59d">312 · CHF 41 280</span>
+    </div>
+    <div style="font-size: 11.5px; color: #a5a59d; margin-top: 7px">Kachelgrösse = Teilezahl · Farbe = Thema</div>
+  </div>
+
+  <div style="display: flex; gap: 10px; padding: 12px 14px 10px; flex-wrap: wrap; flex-shrink: 0">
+    <sc-for list="{{legende}}" as="l" hint-placeholder-count="5">
+      <div style="display: flex; align-items: center; gap: 5px">
+        <span style="width: 11px; height: 11px; border-radius: 2px; background: {{l.farbe}}; box-shadow: inset 0 -2px 0 rgba(0,0,0,.18)"></span>
+        <span style="font-size: 10.5px; font-weight: 600">{{l.name}}</span>
+      </div>
+    </sc-for>
+  </div>
+
+  <div style="flex-grow: 1; overflow: hidden; padding: 0 14px">
+    <div style="display: grid; grid-template-columns: repeat(6, 1fr); grid-auto-rows: 84px; gap: 7px">
+      <sc-for list="{{sets}}" as="s" hint-placeholder-count="9">
+        <div style="grid-column: span {{s.breit}}; grid-row: span {{s.hoch}}; background: {{s.farbe}}; border-radius: 5px; box-shadow: inset 0 -4px 0 rgba(0,0,0,.16), 0 1px 2px rgba(0,0,0,.18); padding: 9px 10px; display: flex; flex-direction: column; justify-content: space-between; overflow: hidden">
+          <div style="font-family: 'JetBrains Mono', monospace; font-size: 9.5px; font-weight: 700; color: {{s.tinte}}; opacity: .82">{{s.nummer}}</div>
+          <div style="font-size: {{s.schrift}}; font-weight: 700; line-height: 1.15; color: {{s.tinte}}; letter-spacing: -.01em">{{s.name}}</div>
+        </div>
+      </sc-for>
+    </div>
+  </div>
+
+  <div style="display: flex; background: #1c1c1a; padding: 0 6px 22px; flex-shrink: 0">
+    <sc-for list="{{reiter}}" as="r" hint-placeholder-count="5">
+      <div style="flex-grow: 1; display: flex; align-items: center; justify-content: center; min-height: 48px; font-size: 11px; font-weight: {{r.gewicht}}; color: {{r.farbe}}">{{r.name}}</div>
+    </sc-for>
+  </div>
+</div>
+</x-dc>
+
+<script data-dc-script data-props='{"$preview":{"width":390,"height":844}}'>
+class Component extends DCLogic {
+  renderVals() {
+    const F = {
+      creator: '#c62f2f', starwars: '#2f5bc6', arch: '#1f8a92',
+      technic: '#e08a1e', icons: '#3f9142', potter: '#7a3fa0',
+    };
+    // Auf dem Telefon ist die Platte sechs Noppen breit — dieselbe Idee,
+    // gröbere Stufen, sonst wird die kleinste Kachel unlesbar.
+    const mass = (teile) =>
+      teile >= 8000 ? [6, 2] : teile >= 5000 ? [4, 2] : teile >= 3000 ? [3, 1] : [3, 1];
+    const dunkel = (hex) => {
+      const c = [1, 3, 5].map(i => parseInt(hex.slice(i, i + 2), 16) / 255)
+        .map(x => x <= 0.04045 ? x / 12.92 : ((x + 0.055) / 1.055) ** 2.4);
+      return 0.2126 * c[0] + 0.7152 * c[1] + 0.0722 * c[2] < 0.38;
+    };
+    const S = (nummer, name, farbe, teile) => {
+      const [breit, hoch] = mass(teile);
+      return {
+        nummer, name, farbe, breit, hoch,
+        tinte: dunkel(farbe) ? '#ffffff' : '#1c1c1a',
+        schrift: hoch > 1 ? '15px' : '12px',
+      };
+    };
+    const R = (name, aktiv) => ({ name, gewicht: aktiv ? 700 : 500, farbe: aktiv ? '#f2f2ee' : '#a5a59d' });
+    return {
+      reiter: [R('Galerie', true), R('Katalog', false), R('Teile', false), R('Figuren', false), R('Finanzen', false)],
+      legende: [
+        { name: 'Star Wars', farbe: F.starwars }, { name: 'Creator', farbe: F.creator },
+        { name: 'Architecture', farbe: F.arch }, { name: 'Technic', farbe: F.technic },
+        { name: 'Icons', farbe: F.icons },
+      ],
+      sets: [
+        S('10307-1', 'Eiffelturm', F.arch, 10001),
+        S('10276-1', 'Kolosseum', F.creator, 9036),
+        S('75192-1', 'Millennium Falcon', F.starwars, 7541),
+        S('71043-1', 'Schloss Hogwarts', F.potter, 6020),
+        S('42115-1', 'Lamborghini', F.technic, 3696),
+        S('10305-1', 'Ritterburg', F.creator, 4514),
+        S('21327-1', 'Schreibmaschine', F.icons, 2079),
+        S('10497-1', 'Galaxy Explorer', F.icons, 1254),
+        S('21058-1', 'Cheops-Pyramide', F.arch, 1476),
+      ],
+    };
+  }
+}
+</script>
+</body>
+</html>

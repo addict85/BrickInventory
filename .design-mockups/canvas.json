@@ -95,6 +95,38 @@
       "w": 390,
       "h": 844,
       "title": "F · Farbfächer — Telefon"
+    },
+    {
+      "file": "WerkbankDetail.dc.html",
+      "x": 2500,
+      "y": 0,
+      "w": 1100,
+      "h": 760,
+      "title": "A · Werkbank — Set-Detail"
+    },
+    {
+      "file": "FarbfaecherDetail.dc.html",
+      "x": 2500,
+      "y": 5400,
+      "w": 1100,
+      "h": 760,
+      "title": "F · Farbfächer — Set-Detail"
+    },
+    {
+      "file": "MosaikWeb.dc.html",
+      "x": 0,
+      "y": 6480,
+      "w": 1440,
+      "h": 900,
+      "title": "G · Mosaik — Web"
+    },
+    {
+      "file": "MosaikTelefon.dc.html",
+      "x": 1560,
+      "y": 6480,
+      "w": 390,
+      "h": 844,
+      "title": "G · Mosaik — Telefon"
     }
   ],
   "annotations": [
@@ -153,6 +185,27 @@
       "y": 3000,
       "w": 300,
       "text": "Zweite Runde — D, E, F\n\nAndere Achsen als A/B/C: nicht Stimmung, Medium oder Dichte, sondern Bildgrösse, Metapher und Farbe als Information.\n\nA, B und C behalten ihre Namen und Plätze."
+    },
+    {
+      "id": "a-blau",
+      "x": 3700,
+      "y": 0,
+      "w": 300,
+      "text": "A · Werkbank — jetzt blau\n\nBernstein durch ein klares Azur ersetzt (#4d9fff). Kontrast nachgemessen: 6.16 zum Kartengrund, Text 13.75 — beides deutlich über der Schwelle.\n\nDazu der Set-Detail: erst dort zeigt sich, ob ein Design auch Tabellen und Diagramme trägt. Die Gebraucht-Linie bleibt warm — sonst stünden zwei Blautöne nebeneinander, die sich nur in der Helligkeit unterscheiden."
+    },
+    {
+      "id": "f-detail",
+      "x": 3700,
+      "y": 5400,
+      "w": 300,
+      "text": "F · Farbfächer — Set-Detail\n\nDer Themenstreifen läuft bis in den Dialog. Wichtig ist, was er NICHT tut: Die Verlaufslinien bleiben Blau und Bernstein, weil Zustand (neu/gebraucht) etwas anderes bedeutet als Thema.\n\nGenau das ist die Probe für dieses Design: Zwei Farbsysteme nebeneinander, die sich nicht verwechseln lassen dürfen."
+    },
+    {
+      "id": "g-mosaik",
+      "x": 2060,
+      "y": 6480,
+      "w": 300,
+      "text": "G · Mosaik — das Ausgefallene\n\nKein gleichförmiges Raster mehr: Die Sammlung liegt auf einer Grundplatte, jede Kachel so gross wie ihr Set (Teilezahl), eingefärbt nach Thema. Man sieht die FORM der Sammlung, bevor man ein Wort liest.\n\nHaken, und zwar ein grosser: Ohne Set-Bilder erkennt man die Sets nur am Namen — für eine Galerie ein echter Verlust. Sortieren nach Name oder Jahr ergibt in einem Mosaik wenig Sinn, und lange Namen brauchen grosse Kacheln. Das wäre eher eine zweite ANSICHT neben der Galerie als deren Ersatz."
     }
   ],
   "launch": {

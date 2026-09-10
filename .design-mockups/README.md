@@ -9,13 +9,16 @@ angekommen.
 
 | Datei | Richtung | Achse |
 |---|---|---|
-| `Main.dc.html`, `WerkbankTelefon.dc.html` | **A · Werkbank** — anthrazit mit Bernstein | Stimmung (dunkel) |
+| `Main.dc.html`, `WerkbankTelefon.dc.html` | **A · Werkbank** — anthrazit mit Azur `#4d9fff` | Stimmung (dunkel) |
 | `PapierWeb.dc.html`, `PapierTelefon.dc.html` | **B · Papier** — Katalogseite, Serifen, Haarlinien | Medium (Druck) |
 | `KontrastWeb.dc.html`, `KontrastTelefon.dc.html` | **C · Kontrast** — harte Kanten, ein Signalgrün | Dichte |
 | `VitrineWeb.dc.html`, `VitrineTelefon.dc.html` | **D · Vitrine** — vier Spalten, 4:3-Bild, viel Luft | Bildgrösse |
 | `BlaupauseWeb.dc.html`, `BlaupauseTelefon.dc.html` | **E · Blaupause** — Millimeterraster, Schriftfeld, Mono | Metapher |
 | `FarbfaecherWeb.dc.html`, `FarbfaecherTelefon.dc.html` | **F · Farbfächer** — Thema=Farbton, Bedienung grau | Farbe als Auskunft |
-| `canvas.json` | Anordnung der zwölf Flächen und die Notizen daneben | |
+| `MosaikWeb.dc.html`, `MosaikTelefon.dc.html` | **G · Mosaik** — Grundplatte, Kachelgrösse = Teilezahl | Raster aufgeben |
+| `WerkbankDetail.dc.html` | A, zweiter Bildschirm: Set-Detail mit Preisverlauf | |
+| `FarbfaecherDetail.dc.html` | F, zweiter Bildschirm: Set-Detail mit Preisverlauf | |
+| `canvas.json` | Anordnung der sechzehn Flächen und die Notizen daneben | |
 
 Je Richtung eine Web- und eine Telefonansicht, damit sich beide Oberflächen
 vergleichen lassen — dieselbe Vorgabe wie überall in diesem Projekt.
@@ -57,3 +60,19 @@ sie braucht, baut sie mit dem `design`-Ablauf erneut.
 Setnamen, Stückzahlen und Beträge sind **Beispieldaten**. Statt Set-Fotos steht
 ein gezeichneter Platzhalter — ein schlechter Nachbau echter Bilder hätte den
 Vergleich der Entwürfe verfälscht.
+
+## Zweiter Bildschirm für A und F
+
+Eine Galerie zeigt nur Kacheln. Ob ein Design trägt, entscheidet sich am
+Set-Detail: Dort stehen Tabellenzeilen, Plaketten, Knöpfe und ein
+Preisverlaufs-Diagramm nebeneinander.
+
+Für **F · Farbfächer** ist dieser Bildschirm die eigentliche Probe: Der
+Themenstreifen läuft bis in den Dialog, aber die Verlaufslinien bleiben Blau
+und Bernstein — *Zustand* (neu/gebraucht) bedeutet etwas anderes als *Thema*,
+und zwei Farbsysteme nebeneinander dürfen sich nicht verwechseln lassen.
+
+Für **A · Werkbank** gilt dasselbe eine Nummer kleiner: Die Gebraucht-Linie
+bleibt warm, sonst stünden zwei Blautöne nebeneinander, die sich nur in der
+Helligkeit unterscheiden — genau der Fehler, den `themes/brick.css` schon
+einmal hatte und in seinem Kommentar festhält.
