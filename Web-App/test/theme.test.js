@@ -89,6 +89,39 @@ test('Startup-Screen setzt keine Farben mehr per Inline-Style', () => {
     `Inline-Styles überstimmen jede Theme-Regel: ${inlineColours.join(', ')}`);
 });
 
+test('vier Listen nennen dieselben Designs', () => {
+  // ── Warum das eine eigene Pruefung ist ──────────────────────────────────
+  //
+  // Ein Design steht an VIER Stellen: als Datei unter public/themes/, in der
+  // Whitelist des Servers, in ALLOWED des Boot-Skripts und in der App
+  // (PreferencesManager.ERLAUBTE_DESIGNS). Fehlt es an einer davon, faellt
+  // das nicht auf, sondern wirkt teilweise: Der Admin kann es waehlen, der
+  // Server nimmt es an, und das Boot-Skript verwirft es beim naechsten Start
+  // stillschweigend — genau die Sorte Fehler, die man erst im Betrieb sieht.
+  const alsDatei = fs.readdirSync(path.join(PUB, 'themes'))
+    .filter(f => f.endsWith('.css')).map(f => path.basename(f, '.css')).sort();
+  // "classic" hat keine eigene Datei: Es IST das Grunddesign in styles.css.
+  const erwartet = ['classic', ...alsDatei].sort();
+  assert.ok(alsDatei.length >= 2, `Nur ${alsDatei.length} Design-Datei(en) — greift die Suche noch?`);
+
+  const liste = (src, re, wo) => {
+    const m = src.match(re);
+    assert.ok(m, `${wo}: die Liste der Designs ist nicht mehr zu finden`);
+    return [...m[1].matchAll(/['"]([a-z]+)['"]/g)].map(x => x[1]).sort();
+  };
+  const boot = liste(fs.readFileSync(path.join(PUB, 'js', '00-theme-boot.js'), 'utf8'),
+    /var ALLOWED = \[([^\]]*)\]/, 'js/00-theme-boot.js');
+  const server = liste(fs.readFileSync(path.join(__dirname, '..', 'routes', 'settings.ts'), 'utf8'),
+    /if \(!\[([^\]]*)\]\.includes\(theme\)\)/, 'routes/settings.ts');
+  const app = liste(fs.readFileSync(path.join(__dirname, '..', '..', 'Android-App', 'app', 'src',
+    'main', 'java', 'ch', 'brickinventoryapp', 'data', 'PreferencesManager.kt'), 'utf8'),
+    /ERLAUBTE_DESIGNS = setOf\(([^)]*)\)/, 'PreferencesManager.kt');
+
+  assert.deepEqual(boot, erwartet, 'ALLOWED im Boot-Skript weicht von den Dateien ab');
+  assert.deepEqual(server, erwartet, 'Die Whitelist des Servers weicht von den Dateien ab');
+  assert.deepEqual(app, erwartet, 'ERLAUBTE_DESIGNS der App weicht von den Dateien ab');
+});
+
 test('jedes Theme unter public/themes/ deckt die Screens vor dem Login ab', () => {
   const dir = path.join(PUB, 'themes');
   for (const f of fs.readdirSync(dir).filter(f => f.endsWith('.css'))) {

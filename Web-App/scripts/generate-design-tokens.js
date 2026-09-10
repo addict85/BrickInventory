@@ -80,6 +80,14 @@ function baueCss(daten) {
     // Reihenfolge in der Datei spielt daher keine Rolle.
     teile.push(block(design === 'classic' ? ':root' : `[data-theme="${design}"]`, tokens));
   }
+  if (daten.faecher) {
+    const zeilen = daten.faecher
+      .map((/** @type {string} */ wert, /** @type {number} */ i) => `  --faecher-${i}: ${wert};`).join('\n');
+    teile.push([
+      '/* Themenfaecher — siehe _faecher_warum in shared/design-tokens.json. */',
+      ':root {', zeilen, '}',
+    ].join('\n'));
+  }
   return `/* ${HINWEIS}\n\n   ${daten._warum} */\n\n${teile.join('\n\n')}\n`;
 }
 
@@ -100,6 +108,20 @@ function baueKotlin(daten) {
       : `/** --${token} im Design "${design}". */`;
     return `${kdoc}\nval ${name} = Color(0xFF${hex})`;
   });
+  const faecher = (daten.faecher || [])
+    .map((/** @type {string} */ w) => `    Color(0xFF${w.replace('#', '').toUpperCase()}),`).join('\n');
+  const faecherBlock = daten.faecher ? `
+
+/**
+ * Der Themenfaecher des Designs "farbfaecher".
+ *
+${umbruch(daten._faecher_warum, 68).map(z => ` * ${z}`).join('\n')}
+ */
+val FaecherFarben = listOf(
+${faecher}
+)
+` : '';
+
   return `package ch.brickinventoryapp.ui.theme
 
 import androidx.compose.ui.graphics.Color
@@ -115,7 +137,7 @@ import androidx.compose.ui.graphics.Color
  */
 
 ${zeilen.join('\n\n')}
-`;
+${faecherBlock}`;
 }
 
 // Erst beim Aufruf rechnen, nicht beim Laden: Die Pruefung importiert dieses

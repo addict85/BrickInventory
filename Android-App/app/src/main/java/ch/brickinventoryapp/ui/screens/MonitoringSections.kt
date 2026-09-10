@@ -132,6 +132,9 @@ internal fun BricksetQueueRow(
     }
 }
 
+// ExperimentalLayoutApi: fuer die FlowRow der Design-Auswahl weiter unten.
+// Seit es vier Designs gibt, passen die Chips nicht mehr in eine Zeile.
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 fun CacheAndLimitsSection(vm: MainViewModel, onSnack: (String) -> Unit = {}) {
     val scope = rememberCoroutineScope()
@@ -238,10 +241,23 @@ fun CacheAndLimitsSection(vm: MainViewModel, onSnack: (String) -> Unit = {}) {
                 Text(stringResource(R.string.monitoring_theme),
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant)
-                Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                // Vier Designs passen nicht mehr in eine Zeile — FlowRow bricht
+                // um, statt die letzten Chips abzuschneiden.
+                androidx.compose.foundation.layout.FlowRow(
+                    // Aus der Skala, nicht als Zahl: Die vorige Zeile stand auf
+                    // 6.dp — einem Wert, den es auf der Skala nicht gibt. Die
+                    // Ratsche in AbstandsskalaTest hat das gemeldet, als hier
+                    // eine zweite Zahl dazukam. 8 statt 6 verschiebt die Chips
+                    // um zwei Punkte; in einer Verwaltungszeile ist das der
+                    // richtige Preis dafuer, dass neuer Code die Skala benutzt.
+                    horizontalArrangement = Arrangement.spacedBy(Abstaende.klein),
+                    verticalArrangement = Arrangement.spacedBy(Abstaende.klein),
+                ) {
                     for ((wert, text) in listOf(
                         "classic" to R.string.monitoring_theme_classic,
                         "brick" to R.string.monitoring_theme_brick,
+                        "werkbank" to R.string.monitoring_theme_werkbank,
+                        "farbfaecher" to R.string.monitoring_theme_farbfaecher,
                     )) {
                         FilterChip(
                             selected = appState.appTheme == wert,

@@ -530,6 +530,8 @@ window.I18N_DE = {
   'settings.theme_saved': 'App-Design gespeichert',
   'settings.theme_classic': 'Klassisch',
   'settings.theme_brick': 'Stein (Blau)',
+  'settings.theme_werkbank': 'Werkbank (dunkel)',
+  'settings.theme_farbfaecher': 'Farbfächer',
   'monitor.condition_new': 'Neu',
   'monitor.condition_used': 'Gebraucht',
   'common.condition': 'Zustand',

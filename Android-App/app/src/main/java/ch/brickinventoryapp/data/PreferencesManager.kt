@@ -33,6 +33,16 @@ class PreferencesManager @Inject constructor(
          * nichts anderes beruehrt. Warum es ihn gibt, steht bei
          * gemerktesDesign() weiter unten.
          */
+        /**
+         * Welche Designs es gibt. Dieselbe Liste wie ALLOWED in
+         * js/00-theme-boot.js, die Whitelist in routes/settings.ts und die
+         * Dateien unter public/themes/ — theme.test.js haelt sie zusammen.
+         *
+         * Unbekannte Werte werden NICHT gemerkt: "" oder null heisst „keine
+         * Information" und darf den gemerkten Wert nicht loeschen.
+         */
+        val ERLAUBTE_DESIGNS = setOf("classic", "brick", "werkbank", "farbfaecher")
+
         const val DESIGN_SPIEGEL_DATEI = "design_spiegel"
         const val APP_THEME_SPIEGEL = "app_theme"
 
@@ -230,7 +240,7 @@ class PreferencesManager @Inject constructor(
         // Unbekannte Werte NICHT schreiben: "" oder null heisst „keine
         // Information" und darf den gemerkten Wert nicht loeschen — dieselbe
         // Regel wie applyTheme() in 00-theme-boot.js.
-        if (theme == "classic" || theme == "brick") {
+        if (theme in ERLAUBTE_DESIGNS) {
             context.dataStore.edit { it[APP_THEME] = theme }
             // Und in den synchron lesbaren Spiegel, siehe gemerktesDesign().
             // Beides an EINER Stelle, damit die zwei Ablagen nicht

@@ -19,7 +19,9 @@
 
 (function () {
   var KEY = 'bim_theme';
-  var ALLOWED = ['classic', 'brick'];
+  // Muss mit der Whitelist in routes/settings.ts uebereinstimmen — eine
+  // Pruefung haelt beide zusammen (theme.test.js).
+  var ALLOWED = ['classic', 'brick', 'werkbank', 'farbfaecher'];
 
   /**
    * Wendet ein Design an. Unbekannte Werte (null, '', undefined) bedeuten

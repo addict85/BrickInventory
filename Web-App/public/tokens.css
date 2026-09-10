@@ -61,3 +61,75 @@
      Grunddesign existiert kein Gegenstueck. */
   --brick-petrol: #3d7a8c;
 }
+
+[data-theme="werkbank"] {
+  --b50: #16243a;
+  --b100: #1b2f4d;
+  --b200: #24405f;
+  --b300: #305478;
+  --b400: #3f6f9e;
+  --b500: #4489d4;
+  --b600: #4d9fff;
+  --b700: #8cc2ff;
+
+  /* Diagrammfarben — je Design ueberschreibbar. Vorher standen sie fest im
+     JavaScript; damit konnte kein Design sie anpassen, und im Stein-Look
+     stach das Bernstein der Gebraucht-Linie aus der ansonsten blauen Palette
+     heraus. */
+  --chart-new: #4d9fff;
+
+  /* Im Stein-Design Salbeigruen und Sand — dieselben Werte wie die
+     Zustands-Plaketten .cond-new und .cond-used. Der Grund ist nicht
+     Geschmack: Diese Farben stehen ueberall in der Oberflaeche fuer genau
+     diese Unterscheidung; wer sie im Diagramm wiedererkennt, muss die
+     Legende nicht lesen. Vorher stand dort --chart-used:#3d5a80 (die
+     Primaerfarbe des Designs) — zusammen mit dem hellen Blau der Neu-Linie
+     ergab das ZWEI Blautoene, die sich nur in der Helligkeit unterschieden,
+     und verkleinert oder gedruckt verschwindet so ein Unterschied als
+     Erstes. */
+  --chart-used: #d99a4e;
+}
+
+[data-theme="farbfaecher"] {
+  --b50: #f4f4f4;
+  --b100: #e8e8e8;
+  --b200: #d6d6d6;
+  --b300: #b8b8b8;
+  --b400: #8a8a8a;
+  --b500: #5a5a5a;
+  --b600: #2b2b2b;
+  --b700: #111111;
+
+  /* Diagrammfarben — je Design ueberschreibbar. Vorher standen sie fest im
+     JavaScript; damit konnte kein Design sie anpassen, und im Stein-Look
+     stach das Bernstein der Gebraucht-Linie aus der ansonsten blauen Palette
+     heraus. */
+  --chart-new: #2563eb;
+
+  /* Im Stein-Design Salbeigruen und Sand — dieselben Werte wie die
+     Zustands-Plaketten .cond-new und .cond-used. Der Grund ist nicht
+     Geschmack: Diese Farben stehen ueberall in der Oberflaeche fuer genau
+     diese Unterscheidung; wer sie im Diagramm wiedererkennt, muss die
+     Legende nicht lesen. Vorher stand dort --chart-used:#3d5a80 (die
+     Primaerfarbe des Designs) — zusammen mit dem hellen Blau der Neu-Linie
+     ergab das ZWEI Blautoene, die sich nur in der Helligkeit unterschieden,
+     und verkleinert oder gedruckt verschwindet so ein Unterschied als
+     Erstes. */
+  --chart-used: #d97706;
+}
+
+/* Themenfaecher — siehe _faecher_warum in shared/design-tokens.json. */
+:root {
+  --faecher-0: #c0392b;
+  --faecher-1: #c0682b;
+  --faecher-2: #b08c1e;
+  --faecher-3: #7d9b2a;
+  --faecher-4: #3f9142;
+  --faecher-5: #1f8a75;
+  --faecher-6: #1f8a92;
+  --faecher-7: #2f6fc6;
+  --faecher-8: #4a4fc0;
+  --faecher-9: #7a3fa0;
+  --faecher-10: #a8348a;
+  --faecher-11: #bb2f5e;
+}

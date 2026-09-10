@@ -102,7 +102,9 @@ class AbstandsskalaTest {
 
     @Test
     fun `die Zahl der Abstaende, die noch als Zahl dastehen, sinkt nur`() {
-        // GEMESSEN beim Anlegen: 181. Ganz oben stehen 6 (60-mal), 10 (41) und
+        // GEMESSEN beim Anlegen: 181, inzwischen 180 (die Design-Auswahl in
+        // MonitoringSections ist auf die Skala gewandert). Ganz oben stehen
+        // 6 (59-mal), 10 (41) und
         // 14 (26) — die drei Werte, die es auf einer Zweier-Skala nicht gibt.
         //
         // Diese Zahl darf SINKEN, wenn jemand bewusst entscheidet, eine dieser
@@ -110,8 +112,8 @@ class AbstandsskalaTest {
         // Bildschirm hat keinen Grund, einen Abstand zu erfinden, den es noch
         // nicht gibt.
         val ist = zaehle(abstandsMuster)
-        assert(ist <= 181) {
-            "$ist Abstaende stehen noch als Zahl da, gemessen waren es 181. " +
+        assert(ist <= 180) {
+            "$ist Abstaende stehen noch als Zahl da, gemessen waren es 180. " +
                 "Ein neuer Wert ausserhalb von Abstaende gehoert begruendet — oder " +
                 "in die Skala. Sinkt die Zahl, gehoert sie hier nachgezogen."
         }

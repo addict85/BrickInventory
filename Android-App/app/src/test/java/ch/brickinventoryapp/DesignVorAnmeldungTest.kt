@@ -105,8 +105,16 @@ class DesignVorAnmeldungTest {
         // Unbekannte Werte duerfen den gemerkten Wert NICHT loeschen: "" oder
         // null heisst „keine Information", nicht „classic". Dieselbe Regel wie
         // applyTheme() in 00-theme-boot.js.
-        assert(prefs.contains("if (theme == \"classic\" || theme == \"brick\")")) {
+        // Hier stand die Liste woertlich ("classic" || "brick"). Seit es vier
+        // Designs gibt, steht sie als ERLAUBTE_DESIGNS an einer Stelle — und
+        // eine Pruefung im Web-Baum (theme.test.js) haelt sie mit den drei
+        // anderen Listen zusammen. Hier bleibt nur: Es WIRD gefiltert.
+        assert(prefs.contains("if (theme in ERLAUBTE_DESIGNS)")) {
             "saveAppTheme schreibt auch unbekannte Werte — ein leerer Wert loescht dann das Design"
+        }
+        assert(prefs.contains("val ERLAUBTE_DESIGNS = setOf(")) {
+            "Die Liste der Designs ist verschwunden oder heisst anders — dann " +
+                "kann theme.test.js sie nicht mehr mit den anderen dreien vergleichen"
         }
     }
 

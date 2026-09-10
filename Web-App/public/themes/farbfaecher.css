@@ -1,0 +1,61 @@
+/* ═══════════════════════════════════════════════════════════════════════════
+   APP-DESIGN "farbfaecher" — graue Bedienung, Farbe gehoert den Themen.
+   ---------------------------------------------------------------------------
+   Aktiv, sobald <html data-theme="farbfaecher"> gesetzt ist. Palette in
+   /tokens.css (erzeugt aus shared/design-tokens.json).
+
+   ── Der Gedanke ───────────────────────────────────────────────────────────
+   In den anderen Designs traegt Farbe Schmuck. Hier traegt sie AUSKUNFT:
+   Jedes LEGO-Thema bekommt einen eigenen Ton aus dem Faecher
+   (--faecher-0 .. --faecher-11 in tokens.css, Zuordnung Thema-Nummer modulo
+   zwoelf). Die Bedienung selbst bleibt grau, damit die Themenfarben die
+   einzigen bunten Flaechen sind und deshalb etwas bedeuten.
+
+   ── Was NICHT eingefaerbt wird, und warum ─────────────────────────────────
+   Die Zustandsfarben (neu/gebraucht) und die Verlaufslinien bleiben Blau und
+   Bernstein. Zustand bedeutet etwas anderes als Thema; zwei Farbsysteme
+   nebeneinander duerfen sich nicht verwechseln lassen. Genau daran misst sich
+   dieses Design.
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+[data-theme="farbfaecher"]{
+  --bg:#fafafa;
+  --sur:#ffffff;
+  --bdr:#e6e6e6;
+  --txt:#2b2b2b;
+  --mut:#8a8a8a;
+  --screen-bg:#fafafa;
+  --rad:10px;
+  /* Flacher als das Grunddesign: Wo Farbe Auskunft traegt, soll kein Schatten
+     zusaetzlich um Aufmerksamkeit werben. */
+  --sh0:0 1px 2px rgba(0,0,0,.05);
+  --sh1:0 2px 6px rgba(0,0,0,.06);
+  --sh2:0 8px 20px rgba(0,0,0,.08);
+}
+
+[data-theme="farbfaecher"] #login-screen,
+[data-theme="farbfaecher"] #startup-screen{
+  background:var(--screen-bg);color:var(--txt);
+}
+
+[data-theme="farbfaecher"] body{background:var(--bg)}
+[data-theme="farbfaecher"] .sc{border-radius:10px;overflow:hidden}
+
+/* Der Themenstreifen: eine Kachel traegt ihn oben, der Detaildialog ebenso.
+   Die Farbe setzt die Oberflaeche je Eintrag (--faecher-ton), weil nur sie
+   die Thema-Nummer kennt. Fehlt sie, bleibt der Streifen unsichtbar statt
+   falsch — dieselbe Regel wie bei applyTheme(): keine Information aendert
+   nichts. */
+[data-theme="farbfaecher"] .sc::before{
+  content:"";display:block;height:5px;
+  background:var(--faecher-ton, transparent);
+}
+[data-theme="farbfaecher"] .sc .snum{color:var(--mut)}
+
+/* Die Bedienung bleibt grau — auch der Hauptknopf. */
+[data-theme="farbfaecher"] .btn.bp{background:var(--b600);box-shadow:none}
+[data-theme="farbfaecher"] nav .ntab.active{color:var(--b600)}
+
+/* Und die Zustandsfarben bleiben, was sie ueberall sind. */
+[data-theme="farbfaecher"] .cond-new{background:#dcfce7;color:#15803d}
+[data-theme="farbfaecher"] .cond-used{background:#fef3c7;color:#a16207}

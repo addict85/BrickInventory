@@ -3,6 +3,7 @@ package ch.brickinventoryapp.ui.screens
 import ch.brickinventoryapp.ui.theme.Formen
 import ch.brickinventoryapp.ui.theme.AppKarte
 import androidx.compose.foundation.Image
+import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.gestures.detectVerticalDragGestures
 import androidx.compose.foundation.layout.*
@@ -39,6 +40,8 @@ import ch.brickinventoryapp.ui.*  // Feature-Extensions (setCatalogQuery, loadCa
 import ch.brickinventoryapp.ui.CatalogYearMath
 import ch.brickinventoryapp.ui.theme.BrickStudCap
 import ch.brickinventoryapp.ui.theme.LocalIsBrickTheme
+import ch.brickinventoryapp.ui.theme.LocalIsFarbfaecherTheme
+import ch.brickinventoryapp.ui.theme.faecherTon
 import ch.brickinventoryapp.util.rememberTileImageWithFallback
 import coil.ImageLoader
 import coil.compose.AsyncImage
@@ -548,12 +551,19 @@ fun CatalogSetCard(
 ) {
     val ctx = LocalContext.current
     val isBrick = LocalIsBrickTheme.current
+    // Der Thementon des Designs "farbfaecher" — dieselbe Rechnung wie
+    // --faecher-ton in js/09-catalog.js. Ohne Thema-Nummer gibt es keinen
+    // Streifen, statt eines falschen.
+    val ton = if (LocalIsFarbfaecherTheme.current) faecherTon(set.themeId) else null
     AppKarte(
         modifier = Modifier.height(212.dp),
         onClick = { onClick(set.setNumber) }
     ) {
         Column {
             if (isBrick) BrickStudCap()
+            if (ton != null) {
+                Box(Modifier.fillMaxWidth().height(5.dp).background(ton))
+            }
             Box(Modifier.fillMaxWidth().height(if (isBrick) 104.dp else 118.dp)) {
                 // Über den Server auflösen statt roher CDN-Adresse. Der
                 // Server prüft dabei, ob irgendein Nutzer dieses Katalog-Set
