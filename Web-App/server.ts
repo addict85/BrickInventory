@@ -584,22 +584,38 @@ app.get('/images/*', async (req: WildcardRequest, res: Response) => {
   // Privat, nicht public: Die Antwort hängt an einer Anmeldung und darf nicht
   // in einem geteilten Zwischenspeicher (Reverse-Proxy, CDN) landen.
   //
-  // no-cache statt max-age=604800 (Nachtrag 37, Marcos Anforderung: „wenn ein
-  // falsches Bild heruntergeladen wurde, soll geprüft werden, ob ein neues auf
-  // dem Server vorhanden ist"). „no-cache" heisst NICHT „nicht
-  // zwischenspeichern", sondern „vor jeder Verwendung rückfragen" — der Client
-  // behält seine Kopie und stellt eine BEDINGTE Anfrage.
+  // ── max-age=0 statt no-cache: ZWEI Anforderungen, die sich nicht widersprechen
   //
-  // Vorher galt eine Woche ohne jede Rückfrage: Ein einmal geladenes falsches
-  // oder veraltetes Bild blieb sieben Tage stehen, auch wenn der Server längst
-  // ein neues hatte (Bild-Nachlauf, erneuter Katalog-Download, ausgetauschte
-  // Datei). Genau das war beobachtet worden.
+  // Marcos Anforderung von damals (Nachtrag 37): „wenn ein falsches Bild
+  // heruntergeladen wurde, soll geprüft werden, ob ein neues auf dem Server
+  // vorhanden ist." Vorher galt max-age=604800 — eine Woche ohne jede
+  // Rückfrage, und ein einmal geladenes falsches Bild blieb sieben Tage
+  // stehen. Das war beobachtet worden.
+  //
+  // Marcos Anforderung von jetzt: „Die Android-App soll auch ohne Internet
+  // funktionieren."
+  //
+  // `no-cache` erfüllte die erste und verhinderte die zweite. Es heisst nicht
+  // „nicht zwischenspeichern", sondern „vor JEDER Verwendung rückfragen" — und
+  // genau das geht ohne Netz nicht. Die App behielt ihre Kopie, durfte sie aber
+  // nicht benutzen; ihr Offline-Rückfall (AppModule.kt, IOException →
+  // FORCE_CACHE) konnte die Anfrage deshalb nicht erfüllen, und in den Tabellen
+  // stand der Platzhalter statt des Bildes.
+  //
+  // `max-age=0` erfüllt beide. Die Antwort ist sofort veraltet, also stellt der
+  // Client bei JEDER Verwendung dieselbe bedingte Anfrage wie vorher — online
+  // ändert sich nichts. Der Unterschied zeigt sich nur dort, wo es darauf
+  // ankommt: Eine veraltete Kopie DARF ausgeliefert werden, wenn die Rückfrage
+  // nicht möglich ist. Genau darauf baut der Offline-Rückfall.
+  //
+  // Bewusst OHNE `must-revalidate`: Das verbietet die Auslieferung einer
+  // veralteten Kopie ausdrücklich und nähme die Zeile wieder zurück.
   //
   // Teuer wird das nicht: express beantwortet die bedingte Anfrage über den
   // ETag mit 304 und ohne Rumpf, solange sich die Datei nicht geändert hat.
   // Der ETag von sendFile leitet sich aus Grösse und Änderungszeit ab und
   // wechselt damit genau dann, wenn die Datei neu geschrieben wurde.
-  res.setHeader('Cache-Control', 'private, no-cache');
+  res.setHeader('Cache-Control', 'private, max-age=0');
 
   res.sendFile(filePath, async err => {
     if (!err || res.headersSent) return;
