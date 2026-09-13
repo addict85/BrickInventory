@@ -351,6 +351,8 @@
     <string name="monitoring_schedule_minutes">%1$d Min.</string>
     <string name="cd_edit_schedule">Zeitplan ändern</string>
     <string name="monitoring_theme">Design</string>
+    <string name="monitoring_vorschau_ablage">Vorschau-Ablage: %1$d MB</string>
+    <string name="monitoring_vorschau_leeren">Leeren</string>
     <string name="monitoring_theme_classic">Klassisch</string>
     <string name="monitoring_theme_brick">Stein</string>
     <string name="monitoring_theme_werkbank">Werkbank (dunkel)</string>

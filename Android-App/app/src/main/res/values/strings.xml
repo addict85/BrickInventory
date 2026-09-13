@@ -360,6 +360,8 @@
     <string name="monitoring_schedule_minutes">%1$d min</string>
     <string name="cd_edit_schedule">Change schedule</string>
     <string name="monitoring_theme">Design</string>
+    <string name="monitoring_vorschau_ablage">Preview store: %1$d MB</string>
+    <string name="monitoring_vorschau_leeren">Clear</string>
     <string name="monitoring_theme_classic">Classic</string>
     <string name="monitoring_theme_brick">Brick</string>
     <string name="monitoring_theme_werkbank">Workbench (dark)</string>

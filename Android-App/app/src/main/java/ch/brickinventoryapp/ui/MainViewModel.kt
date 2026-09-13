@@ -44,6 +44,8 @@ class MainViewModel @Inject constructor(
     @param:ApplicationContext internal val ctx: Context,
     internal val repo: BrickRepository,
     internal val prefs: PreferencesManager,
+    /** Die dauerhafte Ablage der Vorschaubilder — siehe VorschauSpeicher. */
+    private val vorschau: ch.brickinventoryapp.data.cache.VorschauSpeicher,
     internal val sseClient: CsvImportSseClient,
     /** Anlegen mit Fortschritt — siehe GalleryFeature.addSet (Nachtrag 131). */
     internal val setAnlegenSse: ch.brickinventoryapp.data.SetAnlegenSseClient,
@@ -273,6 +275,18 @@ class MainViewModel @Inject constructor(
         .map { it.appTheme }
         .distinctUntilChanged()
         .stateIn(viewModelScope, SharingStarted.Eagerly, _state.value.appTheme)
+
+    /**
+     * Wie viel belegt die Vorschau-Ablage? Fuer die Anzeige in den
+     * Einstellungen — 150 MB auf einem Telefon soll man sehen koennen.
+     */
+    fun vorschauAblageBytes(): Long = vorschau.belegt()
+
+    /**
+     * Die Ablage leeren. Sie fuellt sich beim naechsten Blaettern von selbst
+     * wieder; offline ist danach allerdings nichts mehr da.
+     */
+    fun vorschauAblageLeeren() = vorschau.leeren()
 
     init {
         // ── Design VOR der Anmeldung (Nachtrag 135) ──────────────────────────
