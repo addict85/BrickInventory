@@ -19,7 +19,7 @@ import java.io.File
  *
  * ── Warum NICHT pauschal ────────────────────────────────────────────────────
  *
- * Es gibt zwei Sorten Zustand, und die Unterscheidung ist der eigentliche
+ * Es gibt drei Sorten Zustand, und die Unterscheidung ist der eigentliche
  * Inhalt dieser Prüfung:
  *
  *  1. Was der Mensch eingegeben oder gewählt hat — Suchbegriff, Filter,
@@ -36,6 +36,13 @@ import java.io.File
  *     nach einer Drehung zurück, läge kein Finger mehr auf der Leiste — das
  *     Etikett bliebe stehen, bis jemand das nächste Mal zieht. Dieselbe Falle
  *     wie beim Ladekringel, deshalb dieselbe Regel.
+ *
+ *  3. Was EINMALIG gemessen wurde — die Belegung der Vorschau-Ablage auf der
+ *     Platte. Das darf ebenfalls NICHT überleben, aber aus dem umgekehrten
+ *     Grund: Nicht weil der Erzeuger noch liefe, sondern weil ihn NIEMAND mehr
+ *     anstösst — die wiederhergestellte Zahl stünde dauerhaft falsch da. Siehe
+ *     den Ausdruck `gemessen` weiter unten; dort steht auch, warum eine
+ *     Layout-Messung ausdrücklich NICHT dazugehört.
  *
  * Dieselbe Falle ist in diesem Baum schon einmal zugeschnappt: ScrollMemory.kt
  * hält in seiner eigenen Erklärung fest, dass der dortige Merker als
@@ -96,6 +103,37 @@ class BildschirmZustandTest {
      */
     private val rollMerker = Regex("""(?i)wiederhergestellt|nutzerGeste|hatteGespeicherte""")
 
+    /**
+     * EINMALIG GEMESSENE WERTE — die muessen neu gelesen, nicht wiederhergestellt
+     * werden (Nachtrag 158).
+     *
+     * Der Fall: `ablageBytes` in MonitoringSections.kt haelt fest, wie viele
+     * Bytes die Vorschau-Ablage unter filesDir belegt. Der Wert wird EINMAL
+     * beim Aufbau der Zeile gelesen und danach nur noch vom Leeren-Knopf
+     * nachgefuehrt.
+     *
+     * Stuende er an `rememberSaveable`, kaeme nach einem Prozesstod die Zahl
+     * aus dem Bundle zurueck — die Ablage auf der Platte kann sich in der
+     * Zwischenzeit aber geaendert haben (ein anderer Bildschirm hat sie
+     * gefuellt, Android hat den Prozess zwischen zwei Sitzungen beendet). Es
+     * stuende dann dauerhaft eine falsche Zahl da, denn NICHTS liest sie
+     * nochmals nach. Dieselbe Falle wie beim Ladekringel: ein Wert ueberlebt,
+     * die Seite, die ihn erzeugt, laeuft nicht mehr.
+     *
+     * ── Die Abgrenzung, und warum sie nicht „jede Messung" heisst ──────────
+     *
+     * `heightPx` in CatalogScreen.kt ist AUCH eine Messung und steht zu Recht
+     * an `rememberSaveable`: Sie kommt aus `onSizeChanged`, und dieser Erzeuger
+     * laeuft nach einer Drehung sofort wieder — der wiederhergestellte Wert
+     * wird im naechsten Layout-Durchgang ohnehin ueberschrieben und
+     * ueberbrueckt nur das eine Bild dazwischen.
+     *
+     * Entscheidend ist also nicht, DASS gemessen wurde, sondern ob der
+     * Erzeuger nach der Drehung noch laeuft. Deshalb fasst dieser Ausdruck
+     * nur Messungen einer Ablage-Belegung und nicht Layout-Groessen.
+     */
+    private val gemessen = Regex("""(?i)bytes|belegt|belegung""")
+
     /** Werte, die das Bundle nicht aufnehmen kann. */
     private val nichtSpeicherbar = Regex("""Offset|listOf|mapOf|setOf|Bitmap""")
 
@@ -128,6 +166,7 @@ class BildschirmZustandTest {
                 val name = nameAus.find(z)?.groupValues?.get(1) ?: continue
                 if (fluechtig.containsMatchIn(name)) continue
                 if (rollMerker.containsMatchIn(name)) continue
+                if (gemessen.containsMatchIn(name)) continue
                 if (nichtSpeicherbar.containsMatchIn(z)) continue
                 // Eine ausgenommene Datei wird trotzdem DURCHSUCHT: Ihr Treffer
                 // belegt, dass die Ausnahme noch etwas beschreibt. Wird sie
@@ -159,15 +198,17 @@ class BildschirmZustandTest {
             for ((zn, z) in zustandsZeilen(f)) {
                 if ("rememberSaveable" !in z) continue
                 val name = nameAus.find(z)?.groupValues?.get(1) ?: continue
-                if (fluechtig.containsMatchIn(name) || rollMerker.containsMatchIn(name))
-                    falsch += "${f.name}:$zn  $name"
+                if (fluechtig.containsMatchIn(name) || rollMerker.containsMatchIn(name) ||
+                    gemessen.containsMatchIn(name)
+                ) falsch += "${f.name}:$zn  $name"
             }
         }
         assertTrue(
-            "Ein laufender Vorgang oder ein Merker der Rollpositions-" +
-                "Wiederherstellung darf NICHT wiederhergestellt werden — der " +
-                "Ladekringel bliebe für immer stehen bzw. die Rückkehr aus der " +
-                "Detailseite spränge nie mehr zurück:\n  " +
+            "Ein laufender Vorgang, ein Merker der Rollpositions-" +
+                "Wiederherstellung oder eine einmalig gemessene Belegung darf " +
+                "NICHT wiederhergestellt werden — der Ladekringel bliebe für " +
+                "immer stehen, die Rückkehr aus der Detailseite spränge nie " +
+                "mehr zurück, bzw. es stünde dauerhaft eine falsche Zahl da:\n  " +
                 falsch.joinToString("\n  "),
             falsch.isEmpty(),
         )

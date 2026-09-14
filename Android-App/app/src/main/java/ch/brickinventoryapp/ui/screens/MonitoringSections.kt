@@ -238,6 +238,39 @@ fun CacheAndLimitsSection(vm: MainViewModel, onSnack: (String) -> Unit = {}) {
                 Arrangement.SpaceBetween,
                 Alignment.CenterVertically
             ) {
+                // ── Vorschau-Ablage ──────────────────────────────────────
+                //
+                // Sie liegt unter filesDir und wird von Android NICHT geraeumt
+                // (das ist ihr Zweck). Also muss man sie hier sehen und leeren
+                // koennen — sonst waechst auf dem Telefon etwas, das niemand
+                // findet.
+                //
+                // `remember`, nicht `rememberSaveable`: Die Zahl ist eine
+                // Messung der Platte, kein Eingabewert. Aus dem Bundle
+                // wiederhergestellt stuende sie nach einem Prozesstod dauerhaft
+                // falsch da, denn nachgelesen wird sie nur hier und beim
+                // Leeren. BildschirmZustandTest fuehrt das als dritte Sorte
+                // Zustand (`gemessen`) und verbietet dort ausdruecklich die
+                // speichernde Variante.
+                var ablageBytes by remember { mutableStateOf(vm.vorschauAblageBytes()) }
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(Abstaende.klein),
+                ) {
+                    Text(
+                        stringResource(R.string.monitoring_vorschau_ablage,
+                            ablageBytes / (1024 * 1024)),
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.weight(1f),
+                    )
+                    TextButton(onClick = {
+                        vm.vorschauAblageLeeren()
+                        ablageBytes = vm.vorschauAblageBytes()
+                        onSnack(cacheSavedMsg)
+                    }) { Text(stringResource(R.string.monitoring_vorschau_leeren), fontSize = Schrift.klein) }
+                }
+
                 Text(stringResource(R.string.monitoring_theme),
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant)

@@ -17,6 +17,8 @@ import kotlinx.serialization.json.Json
 import okhttp3.HttpUrl.Companion.toHttpUrl
 import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.Dispatcher
+import okhttp3.ResponseBody.Companion.toResponseBody
+import okhttp3.MediaType.Companion.toMediaTypeOrNull
 import okhttp3.OkHttpClient
 import okhttp3.logging.HttpLoggingInterceptor
 import retrofit2.Retrofit
@@ -224,6 +226,31 @@ object AppModule {
             .readTimeout(120, TimeUnit.SECONDS)
             .build()
 
+    /**
+     * Aus abgelegten Bytes eine Antwort bauen — oder null, wenn nichts da ist.
+     *
+     * Bewusst mit Status 200 und einer eigenen Kopfzeile: Coil und der
+     * HTTP-Zwischenspeicher sollen sie behandeln wie jede andere Antwort. Die
+     * Kopfzeile `X-Vorschau-Ablage` steht nicht zur Zierde da — an ihr laesst
+     * sich im Protokoll ablesen, dass ein Bild aus der Ablage kam und nicht
+     * vom Server.
+     */
+    private fun vorschauAntwort(anfrage: okhttp3.Request, bytes: ByteArray?): okhttp3.Response? {
+        if (bytes == null || bytes.isEmpty()) return null
+        return okhttp3.Response.Builder()
+            .request(anfrage)
+            .protocol(okhttp3.Protocol.HTTP_1_1)
+            .code(200)
+            .message("aus der Vorschau-Ablage")
+            .header("X-Vorschau-Ablage", "1")
+            // no-store: Diese Antwort stammt bereits aus einer dauerhaften
+            // Ablage. Sie ein zweites Mal in den HTTP-Zwischenspeicher zu
+            // legen brauchte Platz fuer dieselben Bytes.
+            .header("Cache-Control", "no-store")
+            .body(bytes.toResponseBody("image/jpeg".toMediaTypeOrNull()))
+            .build()
+    }
+
     @Provides
     @Singleton
     @Named("image")
@@ -232,10 +259,73 @@ object AppModule {
         // wie bei provideImageLoader in dieser Datei.
         @dagger.hilt.android.qualifiers.ApplicationContext context: android.content.Context,
         prefs: PreferencesManager,
-        sessionExpired: ch.brickinventoryapp.data.SessionExpiredSignal
+        sessionExpired: ch.brickinventoryapp.data.SessionExpiredSignal,
+        vorschau: ch.brickinventoryapp.data.cache.VorschauSpeicher,
     ): OkHttpClient =
         buildInterceptorClient(prefs, isApiClient = false, sessionExpired = sessionExpired, ctx = context)
             .newBuilder()
+            // ── Dauerhafte Ablage der Vorschaubilder ─────────────────────────
+            //
+            // Marcos Anforderung: „Die Android-App soll auch ohne Internet
+            // funktionieren", Umfang „nur fuer Vorschau Bilder".
+            //
+            // ZUERST in der Kette, damit dieser Abgriff das ENDERGEBNIS sieht:
+            // Anwendungs-Interceptoren laufen in der Reihenfolge, in der sie
+            // gesetzt werden, und der Offline-Rueckfall weiter unten ist
+            // dadurch der innere. Was er nicht mehr retten kann, landet hier.
+            //
+            // Warum es den Rueckfall nicht ersetzt, sondern ergaenzt: Beide
+            // Zwischenspeicher der App liegen unter `cacheDir` und sind LRU.
+            // Android darf sie jederzeit leeren, und wer durch den Katalog
+            // blaettert, verdraengt damit die Bilder der eigenen Sammlung.
+            // Diese Ablage liegt unter `filesDir` und wird nur von ihr selbst
+            // geraeumt (siehe VorschauSpeicher).
+            .addInterceptor { chain ->
+                val anfrage = chain.request()
+                val adresse = anfrage.url.toString()
+                if (!vorschau.istVorschau(adresse)) {
+                    chain.proceed(anfrage)
+                } else {
+                    // KEIN eigenes If-None-Match: Der HTTP-Zwischenspeicher von
+                    // OkHttp fuehrt die bedingte Anfrage laengst selbst und
+                    // kennt den ETag der gespeicherten Antwort. Setzt der
+                    // Aufrufer die Kopfzeile von Hand, haelt OkHttp die Anfrage
+                    // fuer bereits bedingt und UEBERGEHT seinen Cache — damit
+                    // haette dieser Abgriff ausgerechnet den Zwischenspeicher
+                    // abgeschaltet, den er ergaenzen soll.
+                    //
+                    // Diese Ablage ist deshalb genau zweierlei: Sie fuellt sich
+                    // bei erfolgreichen Antworten, und sie springt ein, wenn
+                    // gar nichts mehr geht.
+                    val antwort = try {
+                        chain.proceed(anfrage)
+                    } catch (e: java.io.IOException) {
+                        vorschauAntwort(anfrage, vorschau.lies(adresse)) ?: throw e
+                    }
+                    when {
+                        antwort.isSuccessful -> {
+                            // peekBody statt body.bytes(): Der Rumpf darf nur
+                            // EINMAL gelesen werden, und der Aufrufer braucht
+                            // ihn noch. Eine Vorschau ist klein genug, um sie
+                            // nebenbei mitzunehmen.
+                            val bytes = runCatching {
+                                antwort.peekBody(2L * 1024 * 1024).bytes()
+                            }.getOrNull()
+                            if (bytes != null && bytes.isNotEmpty()) {
+                                vorschau.schreibe(adresse, bytes)
+                            }
+                            antwort
+                        }
+                        // 504 kommt vom erzwungenen Zwischenspeicher weiter
+                        // unten, wenn dort nichts lag. Auch das ist ein Fall
+                        // fuer die Ablage.
+                        antwort.code == 504 ->
+                            vorschauAntwort(anfrage, vorschau.lies(adresse))
+                                ?.also { antwort.close() } ?: antwort
+                        else -> antwort
+                    }
+                }
+            }
             // Browser-ähnliche Kennung für Bildanfragen an FREMDE Hosts
             // (Rebrickable-CDN & Co.), nicht an den eigenen Server.
             //
