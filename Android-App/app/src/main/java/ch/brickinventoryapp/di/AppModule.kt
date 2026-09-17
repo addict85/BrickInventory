@@ -312,7 +312,19 @@ object AppModule {
                                 antwort.peekBody(2L * 1024 * 1024).bytes()
                             }.getOrNull()
                             if (bytes != null && bytes.isNotEmpty()) {
-                                vorschau.schreibe(adresse, bytes)
+                                // Spekulativ oder wirklich gebraucht? Der
+                                // Vorwaermer markiert seine Anfragen mit einem
+                                // OkHttp-Tag (siehe VorschauVorwaermer). Nur
+                                // daran haengt, ob das Bild beim Aufraeumen
+                                // zuerst oder zuletzt fliegt — und weil der
+                                // Vorwaermer NICHT markiert, was jemand
+                                // ansieht, wird ein vorgewaermtes Bild beim
+                                // ersten echten Aufruf von selbst zu einem
+                                // gebrauchten.
+                                val spekulativ = anfrage.tag(
+                                    ch.brickinventoryapp.data.cache.Vorwaermung::class.java
+                                ) != null
+                                vorschau.schreibe(adresse, bytes, spekulativ)
                             }
                             antwort
                         }

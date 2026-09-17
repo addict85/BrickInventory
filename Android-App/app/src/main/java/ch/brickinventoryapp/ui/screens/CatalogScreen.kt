@@ -40,6 +40,10 @@ import ch.brickinventoryapp.ui.*  // Feature-Extensions (setCatalogQuery, loadCa
 import ch.brickinventoryapp.ui.CatalogYearMath
 import ch.brickinventoryapp.ui.theme.BrickStudCap
 import ch.brickinventoryapp.ui.theme.LocalIsBrickTheme
+import ch.brickinventoryapp.ui.theme.LocalIsNoppeTheme
+import ch.brickinventoryapp.ui.theme.LocalIstGlanz
+import ch.brickinventoryapp.ui.theme.LichtStreifen
+import ch.brickinventoryapp.ui.theme.steinTon
 import ch.brickinventoryapp.ui.theme.LocalIsFarbfaecherTheme
 import ch.brickinventoryapp.ui.theme.faecherTon
 import ch.brickinventoryapp.util.rememberTileImageWithFallback
@@ -314,7 +318,7 @@ fun CatalogScreen(
                         items(count = state.total, key = { it }) { index ->
                             val seite = index / CATALOG_PAGE_SIZE + 1
                             val set = state.loadedPages[seite]?.getOrNull(index % CATALOG_PAGE_SIZE)
-                            if (set != null) CatalogSetCard(set, imageLoader, serverUrl, onSetClick)
+                            if (set != null) CatalogSetCard(set, imageLoader, serverUrl, onSetClick, index)
                             else CatalogPlaceholderCard()
                         }
                     }
@@ -547,10 +551,14 @@ fun CatalogSetCard(
     set: CatalogSetItem,
     imageLoader: ImageLoader,
     serverUrl: String,
-    onClick: (String) -> Unit
+    onClick: (String) -> Unit,
+    /** Position in der Kachelwand — nur fuer die Deckelfarbe des Designs "noppe". */
+    position: Int = 0
 ) {
     val ctx = LocalContext.current
     val isBrick = LocalIsBrickTheme.current
+    val istNoppe = LocalIsNoppeTheme.current
+    val istGlanz = LocalIstGlanz.current
     // Der Thementon des Designs "farbfaecher" — dieselbe Rechnung wie
     // --faecher-ton in js/09-catalog.js. Ohne Thema-Nummer gibt es keinen
     // Streifen, statt eines falschen.
@@ -561,6 +569,11 @@ fun CatalogSetCard(
     ) {
         Column {
             if (isBrick) BrickStudCap()
+            // Der Steindeckel des Designs "noppe" — Position modulo sechs,
+            // genau wie `.sc:nth-child(6n+…)` in themes/noppe.css. Dieselbe
+            // Bauform wie beim Stein-Design, nur hoeher und in wechselnder
+            // Farbe; deshalb derselbe Baustein statt eines zweiten.
+            if (istNoppe) BrickStudCap(color = steinTon(position), height = Abstaende.gross, glanz = istGlanz)
             if (ton != null) {
                 Box(Modifier.fillMaxWidth().height(5.dp).background(ton))
             }
@@ -608,6 +621,11 @@ fun CatalogSetCard(
                         )
                     }
                 }
+                // Die Spiegelung auf der Glasscheibe. ZULETZT im Box, damit sie
+                // ueber dem Bild liegt — und nur hier, nicht ueber der ganzen
+                // Kachel: Ein weisser Schleier ueber weissem Text ist kein
+                // Glanz, sondern Grau (siehe LichtStreifen in BrickDecor.kt).
+                if (istGlanz) Box(Modifier.matchParentSize().background(LichtStreifen))
             }
             Column(Modifier.padding(horizontal = 10.dp, vertical = 7.dp)) {
                 Text(set.setNumber, style = MaterialTheme.typography.labelSmall,

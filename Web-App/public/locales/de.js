@@ -532,6 +532,8 @@ window.I18N_DE = {
   'settings.theme_brick': 'Stein (Blau)',
   'settings.theme_werkbank': 'Werkbank (dunkel)',
   'settings.theme_farbfaecher': 'Farbfächer',
+  'settings.theme_noppe': 'Noppe (poppig)',
+  'settings.theme_hochglanz': 'Hochglanz',
   'monitor.condition_new': 'Neu',
   'monitor.condition_used': 'Gebraucht',
   'common.condition': 'Zustand',

@@ -1,0 +1,129 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800;900&family=JetBrains+Mono:wght@400;500;700&display=swap">
+  <style>
+    body { margin: 0; font-family: 'Nunito', system-ui, sans-serif; }
+    /* HOCHGLANZ — H als lackierte Broschuere. Der Lichtabfall auf der
+       Grundplatte, die Woelbung auf jedem Steindeckel, die Lichtkuppen auf den
+       Noppen und der Streifen auf dem Bildfeld sind die SCHICHTEN, die zu H
+       dazukommen; die Anatomie darunter ist unveraendert. Warum der Streifen
+       nicht ueber der ganzen Karte liegt, steht in HochglanzWeb.dc.html. */
+    .np-platte {
+      background-color: #e7ecf3;
+      background-image:
+        linear-gradient(180deg,rgba(255,255,255,.85) 0%,rgba(255,255,255,0) 22%,rgba(0,0,0,.05) 100%),
+        radial-gradient(circle at 10px 10px, rgba(20,24,33,.05) 4px, transparent 4.6px);
+      background-size: 100% 100%, 20px 20px;
+    }
+  </style>
+</helmet>
+
+<div style="width: 1100px; height: 760px; background: #fff; color: #161a21; display: flex; overflow: hidden; border: 3px solid #161a21">
+
+  <!-- Bild links, Angaben rechts — wie im heutigen Detaildialog -->
+  <div class="np-platte" style="width: 430px; display: flex; flex-direction: column; border-right: 3px solid #161a21; flex-shrink: 0">
+    <div style="position: relative; background: linear-gradient(180deg,rgba(255,255,255,.55) 0%,rgba(255,255,255,.12) 42%,rgba(0,0,0,.10) 62%,rgba(0,0,0,.20) 100%),#d91f26; border-bottom: 3px solid #161a21"><div style="position:absolute;inset:0;pointer-events:none;background:linear-gradient(104deg,rgba(255,255,255,0) 38%,rgba(255,255,255,.34) 50%,rgba(255,255,255,0) 62%)"></div>
+      <div style="display: flex; gap: 9px; padding: 5px 18px 0">
+        <sc-for list="{{noppen}}" as="n" hint-placeholder-count="9">
+          <div style="width: 15px; height: 7px; border-radius: 4px 4px 0 0; background: radial-gradient(ellipse at 50% 20%,#ffd7d9 0%,#f4575d 60%,#c8161d 100%)"></div>
+        </sc-for>
+      </div>
+      <div style="height: 10px"></div>
+    </div>
+    <div style="position: relative; flex-grow: 1; display: flex; align-items: center; justify-content: center">
+      <svg width="200" height="200" viewBox="0 0 48 48" fill="none" stroke="#d91f26" stroke-width="1.6" stroke-linejoin="round">
+        <rect x="7" y="18" width="34" height="20" rx="2"></rect>
+        <path d="M14 18v-3.2a1.6 1.6 0 0 1 1.6-1.6h2.4a1.6 1.6 0 0 1 1.6 1.6V18"></path>
+        <path d="M28 18v-3.2a1.6 1.6 0 0 1 1.6-1.6h2.4a1.6 1.6 0 0 1 1.6 1.6V18"></path>
+        <path d="M7 27h34"></path>
+      </svg>
+      <div style="position:absolute;inset:0;pointer-events:none;background:linear-gradient(118deg,rgba(255,255,255,0) 20%,rgba(255,255,255,.85) 36%,rgba(255,255,255,.25) 44%,rgba(255,255,255,0) 56%)"></div>
+    </div>
+    <!-- Knöpfe: der Versatzschatten macht sie greifbar, ohne dass es noch
+         eine zweite laute Farbe braucht. -->
+    <div style="display: flex; gap: 10px; padding: 18px; border-top: 3px solid #161a21; background: #fff">
+      <div style="flex-grow: 1; padding: 12px; border-radius: 11px; background: linear-gradient(180deg,rgba(255,255,255,.55) 0%,rgba(255,255,255,.12) 42%,rgba(0,0,0,.10) 62%,rgba(0,0,0,.20) 100%),#00a94f; color: #fff; border: 2.5px solid #161a21; box-shadow: 0 3px 0 #161a21, inset 0 1px 0 rgba(255,255,255,.9); font-size: 14px; font-weight: 900; text-align: center">In Galerie aufnehmen</div>
+      <div style="padding: 12px 16px; border-radius: 11px; background: #fff; border: 2.5px solid #161a21; box-shadow: 0 3px 0 #161a21, inset 0 1px 0 rgba(255,255,255,.9); font-size: 14px; font-weight: 800">BrickLink</div>
+    </div>
+  </div>
+
+  <div style="flex-grow: 1; display: flex; flex-direction: column; overflow: hidden">
+    <div style="padding: 24px 28px 20px; border-bottom: 3px solid #161a21">
+      <div style="font-family: 'JetBrains Mono', monospace; font-size: 12px; font-weight: 700; color: #6a7280; letter-spacing: .04em">10276-1</div>
+      <div style="font-size: 28px; font-weight: 900; letter-spacing: -.02em; margin-top: 5px">Kolosseum</div>
+      <div style="display: flex; gap: 9px; margin-top: 13px">
+        <span style="background: linear-gradient(180deg,rgba(255,255,255,.55) 0%,rgba(255,255,255,.12) 42%,rgba(0,0,0,.10) 62%,rgba(0,0,0,.20) 100%),#00a94f; color: #fff; border: 2px solid #161a21; font-size: 11.5px; font-weight: 900; padding: 3px 10px; border-radius: 999px">✓ 1× im Bestand</span>
+        <span style="background: linear-gradient(180deg,rgba(255,255,255,.55) 0%,rgba(255,255,255,.12) 42%,rgba(0,0,0,.10) 62%,rgba(0,0,0,.20) 100%),#f5c400; color: #161a21; border: 2px solid #161a21; font-size: 11.5px; font-weight: 800; padding: 3px 10px; border-radius: 999px; font-family: 'JetBrains Mono', monospace">9036 Teile</span>
+        <span style="background: #fff; border: 2px solid #161a21; font-size: 11.5px; font-weight: 800; padding: 3px 10px; border-radius: 999px">Neu</span>
+      </div>
+    </div>
+
+    <!-- Angabenzeilen: hier wird es RUHIG. Eine Tabelle mit Steinfarben
+         waere unlesbar — das Laute gehoert an die Raender, nicht zwischen
+         die Zahlen. -->
+    <div style="padding: 4px 28px">
+      <sc-for list="{{zeilen}}" as="z" hint-placeholder-count="6">
+        <div style="display: flex; justify-content: space-between; align-items: baseline; padding: 12px 0; border-bottom: 2px solid #e4e8ef">
+          <span style="font-size: 13.5px; font-weight: 700; color: #5a6270">{{z.k}}</span>
+          <span style="font-size: 14px; font-weight: 800; font-family: {{z.schrift}}">{{z.v}}</span>
+        </div>
+      </sc-for>
+    </div>
+
+    <!-- Preisverlauf: hier zeigt sich, ob ein Design auch Diagramme traegt.
+         Neu bleibt Blau, Gebraucht bleibt warm — dieselbe Regel wie bei A und
+         F. ZUSTAND bedeutet etwas anderes als die Steinfarbe der Kacheln, und
+         zwei Farbsysteme duerfen sich nicht verwechseln lassen. -->
+    <div style="padding: 18px 28px 0">
+      <div style="display: flex; align-items: baseline; justify-content: space-between; margin-bottom: 11px">
+        <span style="font-size: 14px; font-weight: 900">Preisverlauf</span>
+        <div style="display: flex; gap: 16px; font-size: 12px; font-weight: 700">
+          <span style="display: flex; align-items: center; gap: 6px"><span style="width: 16px; height: 3.5px; background: linear-gradient(180deg,rgba(255,255,255,.55) 0%,rgba(255,255,255,.12) 42%,rgba(0,0,0,.10) 62%,rgba(0,0,0,.20) 100%),#1a6fd4; display: inline-block; border-radius: 2px"></span><span style="color: #5a6270">Neu</span></span>
+          <span style="display: flex; align-items: center; gap: 6px"><span style="width: 16px; height: 3.5px; background: linear-gradient(180deg,rgba(255,255,255,.55) 0%,rgba(255,255,255,.12) 42%,rgba(0,0,0,.10) 62%,rgba(0,0,0,.20) 100%),#ff7a00; display: inline-block; border-radius: 2px"></span><span style="color: #5a6270">Gebraucht</span></span>
+        </div>
+      </div>
+      <div style="background: #fff; border: 2.5px solid #161a21; border-radius: 12px; box-shadow: 0 3px 0 #161a21, inset 0 1px 0 rgba(255,255,255,.9); padding: 14px 12px 10px">
+        <svg width="100%" height="118" viewBox="0 0 560 118" preserveAspectRatio="none">
+          <line x1="0" y1="30" x2="560" y2="30" stroke="#e4e8ef" stroke-width="2"></line>
+          <line x1="0" y1="60" x2="560" y2="60" stroke="#e4e8ef" stroke-width="2"></line>
+          <line x1="0" y1="90" x2="560" y2="90" stroke="#e4e8ef" stroke-width="2"></line>
+          <polyline points="0,88 70,82 140,84 210,70 280,64 350,58 420,44 490,38 560,26" fill="none" stroke="#1a6fd4" stroke-width="3" stroke-linejoin="round" stroke-linecap="round"></polyline>
+          <polyline points="0,104 70,101 140,99 210,96 280,92 350,88 420,84 490,79 560,74" fill="none" stroke="#ff7a00" stroke-width="3" stroke-linejoin="round" stroke-linecap="round"></polyline>
+        </svg>
+        <div style="display: flex; justify-content: space-between; font-family: 'JetBrains Mono', monospace; font-size: 11px; font-weight: 700; color: #6a7280; padding-top: 6px">
+          <span>Sep 25</span><span>Dez 25</span><span>Mär 26</span><span>Jun 26</span><span>Sep 26</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+</x-dc>
+
+<script data-dc-script data-props='{"$preview":{"width":1100,"height":760}}'>
+class Component extends DCLogic {
+  renderVals() {
+    const M = "'JetBrains Mono', monospace";
+    const T = "'Nunito', sans-serif";
+    return {
+      zeilen: [
+        { k: 'Jahr',             v: '2020',           schrift: M },
+        { k: 'Thema',            v: 'Creator Expert', schrift: T },
+        { k: 'Minifiguren',      v: '0',              schrift: M },
+        { k: 'Kaufpreis',        v: 'CHF 449.00',     schrift: M },
+        { k: 'Marktwert (neu)',  v: 'CHF 612.00',     schrift: M },
+        { k: 'Aufgenommen am',   v: '14.03.2021',     schrift: M },
+      ],
+      noppen: Array.from({ length: 9 }, (_, i) => i),
+    };
+  }
+}
+</script>
+</body>
+</html>

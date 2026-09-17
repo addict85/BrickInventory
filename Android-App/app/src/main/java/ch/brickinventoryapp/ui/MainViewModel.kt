@@ -46,6 +46,12 @@ class MainViewModel @Inject constructor(
     internal val prefs: PreferencesManager,
     /** Die dauerhafte Ablage der Vorschaubilder — siehe VorschauSpeicher. */
     private val vorschau: ch.brickinventoryapp.data.cache.VorschauSpeicher,
+    /**
+     * Holt die Bilder der Sammlung im Hintergrund — siehe VorschauVorwaermer.
+     * `internal`, weil ui/VorwaermenFeature.kt als Erweiterung darauf zugreift,
+     * wie die uebrigen Feature-Module auf repo und prefs.
+     */
+    internal val vorwaermer: ch.brickinventoryapp.data.cache.VorschauVorwaermer,
     internal val sseClient: CsvImportSseClient,
     /** Anlegen mit Fortschritt — siehe GalleryFeature.addSet (Nachtrag 131). */
     internal val setAnlegenSse: ch.brickinventoryapp.data.SetAnlegenSseClient,
@@ -288,6 +294,19 @@ class MainViewModel @Inject constructor(
      */
     fun vorschauAblageLeeren() = vorschau.leeren()
 
+    /**
+     * Merker, dass die Vorwaermung schon laeuft.
+     *
+     * Der Zweig, der sie anstoesst, haengt an (Serveradresse + Token). Der
+     * feuert nicht nur beim Anmelden, sondern bei jeder Aenderung daran — ein
+     * Serverwechsel, eine Token-Erneuerung. Ohne diesen Merker liefen dann
+     * mehrere Durchlaeufe nebeneinander durch dieselbe Liste und holten
+     * dieselben Bilder doppelt.
+     *
+     * Gesetzt wird er in ui/VorwaermenFeature.kt, deshalb `internal`.
+     */
+    internal var vorwaermenLaeuft = false
+
     init {
         // ── Design VOR der Anmeldung (Nachtrag 135) ──────────────────────────
         //
@@ -342,6 +361,7 @@ class MainViewModel @Inject constructor(
                         }
                         loadDashboard()
                         loadSettings()
+                        vorwaermenAnstossen()
                     }
                 }
         }

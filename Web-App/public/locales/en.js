@@ -527,6 +527,8 @@ window.I18N_EN = {
   'settings.theme_brick': 'Brick (blue)',
   'settings.theme_werkbank': 'Workbench (dark)',
   'settings.theme_farbfaecher': 'Colour fan',
+  'settings.theme_noppe': 'Noppe (poppy)',
+  'settings.theme_hochglanz': 'High gloss',
   'monitor.condition_new': 'New',
   'monitor.condition_used': 'Used',
   'common.condition': 'Condition',

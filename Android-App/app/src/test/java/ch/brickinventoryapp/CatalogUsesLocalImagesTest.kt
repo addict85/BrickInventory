@@ -107,8 +107,21 @@ class CatalogUsesLocalImagesTest {
     fun `CatalogSetCard wird mit serverUrl aufgerufen`() {
         // Die generische Prüfung oben deckt die SIGNATUR ab; hier zusätzlich
         // der konkrete Aufruf, der beim gemeldeten Fehler tatsächlich fehlte.
+        //
+        // ── Auf die REGEL geprüft, nicht auf den Wortlaut (Nachtrag 161) ────
+        //
+        // Vorher stand hier ein contains() auf den ganzen Aufruf, schliessende
+        // Klammer inbegriffen. Diese Zusicherung ist gefallen, als das Design
+        // "noppe" ein fünftes Argument brauchte (die Position der Kachel für
+        // die Deckelfarbe) — obwohl serverUrl unverändert an dritter Stelle
+        // stand und die Sache, um die es hier geht, gar nicht berührt war.
+        //
+        // Die Aussage ist „serverUrl steht an dritter Stelle", nicht „der
+        // Aufruf hat genau vier Argumente". Das Zeichen danach darf deshalb
+        // ein Komma sein.
         val src = read("ui/screens/CatalogScreen.kt")
-        assert(src.contains("CatalogSetCard(set, imageLoader, serverUrl, onSetClick)")) {
+        assert(Regex("""CatalogSetCard\(set, imageLoader, serverUrl, onSetClick[,)]""")
+                .containsMatchIn(src)) {
             "Der Aufruf muss serverUrl an dritter Stelle übergeben"
         }
         assert(!src.contains("CatalogSetCard(set, imageLoader, onSetClick)")) {

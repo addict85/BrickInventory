@@ -125,9 +125,16 @@ class AbstandsskalaTest {
         // direkt neben 12.sp (24-mal). Zwei Groessen, die sich um einen Punkt
         // unterscheiden, sind nebeneinander nicht als Unterschied lesbar; das
         // ist der Kandidat, den man als Erstes zusammenlegen wuerde.
+        //
+        // 55 -> 54 (Nachtrag 160): Genau dieser Kandidat ist zweimal gefallen.
+        // In MonitoringSections standen zwei Chip-Reihen direkt uebereinander,
+        // die eine auf 13.sp; als die zweite dazukam, hat diese Ratsche das
+        // gemeldet. Beide stehen jetzt auf Schrift.klein — ein Punkt kleiner,
+        // dafuer gleich. Die Ratsche zieht nach, sonst waere der gewonnene
+        // Platz sofort wieder frei fuer die naechste rohe Zahl.
         val ist = zaehle(listOf(schriftMuster))
-        assert(ist <= 55) {
-            "$ist Schriftgroessen stehen noch als Zahl da, gemessen waren es 55. " +
+        assert(ist <= 54) {
+            "$ist Schriftgroessen stehen noch als Zahl da, zuletzt waren es 54. " +
                 "Siehe die Abstandsregel daneben."
         }
     }

@@ -5,6 +5,10 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.font.Font
+import androidx.compose.ui.text.font.FontFamily
+import androidx.compose.ui.text.font.FontWeight
+import ch.brickinventoryapp.R
 
 // Ermöglicht Composables zu erkennen, ob das "Stein (Blau)"-Design aktiv ist,
 // um strukturelle Stein-Elemente (Noppen-Deckel, Salbei-Badges …) nur dort zu zeigen.
@@ -15,6 +19,26 @@ val LocalIsBrickTheme = staticCompositionLocalOf { false }
 // Design-Namen quer durch die Bildschirme — sonst muesste jede Stelle den
 // Namen kennen.
 val LocalIsFarbfaecherTheme = staticCompositionLocalOf { false }
+
+/**
+ * Traegt die Kachel im Design "noppe" einen Steindeckel?
+ *
+ * Wie [LocalIsFarbfaecherTheme]: Die Kachel selbst soll in allen Designs
+ * dieselbe Auszeichnung behalten, und nur dieses Local entscheidet, ob der
+ * Deckel dazukommt.
+ */
+val LocalIsNoppeTheme = staticCompositionLocalOf { false }
+
+/**
+ * Traegt die Oberflaeche den LACK des Designs "hochglanz"?
+ *
+ * Getrennt von [LocalIsNoppeTheme] und nicht statt seiner: "hochglanz" IST
+ * "noppe" — dieselbe Anatomie, dieselbe Palette —, nur in einem anderen
+ * Material. Wer die Kachel baut, fragt deshalb beides: [LocalIsNoppeTheme] fuer
+ * den Deckel, dieses hier fuer den Glanz darauf. Ein einziges Local mit drei
+ * Zustaenden haette an jeder Abfrage eine Fallunterscheidung erzwungen.
+ */
+val LocalIstGlanz = staticCompositionLocalOf { false }
 
 // BrandBlue, BrandBlueDark, BrandBlueLight und BrandBlue50 stehen in
 // DesignTokens.kt — erzeugt aus shared/design-tokens.json, damit sie mit der
@@ -182,6 +206,96 @@ private val FarbfaecherColors = lightColorScheme(
     error                = Color(0xFFDC2626),
 )
 
+// ── Noppe ──────────────────────────────────────────────────────────────────
+//
+// Der Klemmbaustein als Bauteil: weisse Flaechen, Tintenkante, roter Kopf.
+// Die Werte stehen in DesignTokens.kt und kommen aus shared/design-tokens.json
+// — dieselbe Quelle wie themes/noppe.css im Web.
+//
+// `outline` ist hier ausdruecklich die TINTE und kein helles Grau: In diesem
+// Design ist der Rahmen das tragende Element, nicht der Schatten. Kunststoff
+// wirft keine Wolke, er liegt auf.
+private val NoppeColors = lightColorScheme(
+    primary              = NoppeRot,
+    onPrimary            = Color.White,
+    primaryContainer     = NoppeRotHell,
+    onPrimaryContainer   = NoppeTinte,
+    secondary            = NoppeTinte,
+    onSecondary          = Color.White,
+    secondaryContainer   = Color(0xFFEEF1F6),
+    onSecondaryContainer = NoppeTinte,
+    tertiary             = NoppeTinte,
+    onTertiary           = Color.White,
+    background           = Color(0xFFEEF1F6),
+    surface              = Color.White,
+    surfaceVariant       = Color(0xFFF7F9FC),
+    onSurface            = NoppeTinte,
+    onSurfaceVariant     = Color(0xFF5A6270),
+    outline              = NoppeTinte,
+    error                = Color(0xFFDC2626),
+)
+
+/**
+ * Nunito — die Schrift des Designs "noppe".
+ *
+ * ── Warum eine eigene Familie ──────────────────────────────────────────────
+ *
+ * "noppe" lebt von fetten, runden Buchstaben. Die Systemschrift bleibt auch
+ * bei 900 kantig, und ein Design, das seine Typografie nicht mitbringt, ist
+ * nur eine Farbvariante.
+ *
+ * Drei statische Schnitte (400/700/900) und nicht der variable Schnitt:
+ * Variable Schriften brauchen in Compose FontVariation, und das ist genau die
+ * Sorte Abhaengigkeit von einer API-Stufe, die auf minSdk 26 erst im Betrieb
+ * auffaellt. Drei Dateien zu 39 kB sind der ehrlichere Preis. Was dazwischen
+ * liegt, rechnet Compose selbst.
+ *
+ * Dieselben Buchstabenformen fuehrt die Webapp unter public/vendor/fonts/ —
+ * sonst waere dasselbe Design auf beiden Oberflaechen verschieden.
+ */
+private val NunitoFamilie = FontFamily(
+    Font(R.font.nunito_regular, FontWeight.Normal),
+    Font(R.font.nunito_bold, FontWeight.Bold),
+    Font(R.font.nunito_black, FontWeight.Black),
+)
+
+/**
+ * Die Typografie des Designs "noppe": dieselbe Skala, andere Schrift.
+ *
+ * Nur die Familie wird getauscht, keine Groesse und kein Gewicht — sonst
+ * verschoebe ein Designwechsel die ganze Oberflaeche, und AbstandsskalaTest
+ * haette recht damit, das zu melden.
+ */
+private val NoppeTypografie: Typography = Typography().let { t ->
+    Typography(
+        displayLarge = t.displayLarge.copy(fontFamily = NunitoFamilie),
+        displayMedium = t.displayMedium.copy(fontFamily = NunitoFamilie),
+        displaySmall = t.displaySmall.copy(fontFamily = NunitoFamilie),
+        headlineLarge = t.headlineLarge.copy(fontFamily = NunitoFamilie),
+        headlineMedium = t.headlineMedium.copy(fontFamily = NunitoFamilie),
+        headlineSmall = t.headlineSmall.copy(fontFamily = NunitoFamilie),
+        titleLarge = t.titleLarge.copy(fontFamily = NunitoFamilie),
+        titleMedium = t.titleMedium.copy(fontFamily = NunitoFamilie),
+        titleSmall = t.titleSmall.copy(fontFamily = NunitoFamilie),
+        bodyLarge = t.bodyLarge.copy(fontFamily = NunitoFamilie),
+        bodyMedium = t.bodyMedium.copy(fontFamily = NunitoFamilie),
+        bodySmall = t.bodySmall.copy(fontFamily = NunitoFamilie),
+        labelLarge = t.labelLarge.copy(fontFamily = NunitoFamilie),
+        labelMedium = t.labelMedium.copy(fontFamily = NunitoFamilie),
+        labelSmall = t.labelSmall.copy(fontFamily = NunitoFamilie),
+    )
+}
+
+/**
+ * Die Deckelfarbe einer Kachel im Design "noppe".
+ *
+ * Position modulo sechs, genau wie `.sc:nth-child(6n+…)` in themes/noppe.css.
+ * Sie bedeutet NICHTS und gibt nur Takt — der ausdrueckliche Unterschied zu
+ * [faecherTon] darunter, wo die Farbe das Thema IST.
+ */
+fun steinTon(position: Int): Color =
+    SteinFarben[((position % SteinFarben.size) + SteinFarben.size) % SteinFarben.size]
+
 /**
  * Der Ton eines LEGO-Themas im Design "farbfaecher".
  *
@@ -206,6 +320,10 @@ fun BrickInventoryManagerTheme(theme: String = "classic", content: @Composable (
         "brick" -> BrickBlueColors
         "werkbank" -> WerkbankColors
         "farbfaecher" -> FarbfaecherColors
+        // Dieselbe Palette: "hochglanz" ist "noppe" in einem anderen
+        // Material, nicht in anderen Farben. Dieselbe Regel wie `erbt` in
+        // shared/design-tokens.json.
+        "noppe", "hochglanz" -> NoppeColors
         else -> LightColors
     }
     val chartColors = when (theme) {
@@ -219,6 +337,11 @@ fun BrickInventoryManagerTheme(theme: String = "classic", content: @Composable (
         // Gebraucht bernstein. Zwei Farbsysteme nebeneinander duerfen sich
         // nicht verwechseln lassen.
         "farbfaecher" -> ChartColors(ChartNewFarbfaecher, ChartUsedFarbfaecher)
+        // Dieselbe Regel wie beim Faecher: Der Steindeckel faerbt die KACHEL,
+        // nicht den Zustand. Neu bleibt blau, Gebraucht orange — zwei
+        // Farbsysteme nebeneinander duerfen sich nicht verwechseln lassen.
+        "noppe", "hochglanz" -> ChartColors(ChartNewNoppe, ChartUsedNoppe,
+            raster = Color(0xFFE4E8EF), gedaempft = Color(0xFF6A7280))
         else -> ChartColors(ChartNewClassic, ChartUsedClassic)
     }
     // Statusfarben je Design (Nachtrag 120). Im Stein-Design gedeckter, damit
@@ -232,12 +355,14 @@ fun BrickInventoryManagerTheme(theme: String = "classic", content: @Composable (
     CompositionLocalProvider(
         LocalIsBrickTheme provides isBrick,
         LocalIsFarbfaecherTheme provides (theme == "farbfaecher"),
+        LocalIsNoppeTheme provides (theme == "noppe" || theme == "hochglanz"),
+        LocalIstGlanz provides (theme == "hochglanz"),
         LocalChartColors  provides chartColors,
         LocalStatusFarben provides statusFarben,
     ) {
         MaterialTheme(
             colorScheme = colors,
-            typography  = Typography(),
+            typography  = if (theme == "noppe" || theme == "hochglanz") NoppeTypografie else Typography(),
             content     = content
         )
     }

@@ -69,6 +69,50 @@ class VorschauSpeicher @Inject constructor(
         /** Beim Aufraeumen auf vier Fuenftel hinunter, statt jedes Mal knapp an der Grenze zu arbeiten. */
         private const val ZIEL_ANTEIL = 0.8
 
+        /**
+         * So weit darf das VORWAERMEN die Ablage fuellen — Marcos Vorgabe:
+         * „Dabei soll nicht mehr als 80% des Speichercaches genutzt werden."
+         *
+         * Dieselbe Zahl wie [ZIEL_ANTEIL], aber eine ANDERE Sache, und sie
+         * darf nicht dafuer gehalten werden: [ZIEL_ANTEIL] sagt, wie tief das
+         * Aufraeumen hinunter geht, wenn die Ablage voll ist. Diese Grenze
+         * hier sagt, ab wann das Vorwaermen aufhoert, Neues zu holen.
+         *
+         * Das letzte Fuenftel bleibt dem vorbehalten, was jemand WIRKLICH
+         * ansieht. Ohne diese Grenze fuellte die Spekulation die Ablage bis an
+         * den Rand, und der naechste echte Aufruf loeste sofort ein Aufraeumen
+         * aus — die Vorwaermung haette sich gegenseitig und die Sammlung
+         * gleich mit weggeworfen.
+         */
+        const val GRENZE_VORWAERMEN = MAX_BYTES / 5 * 4
+
+        /**
+         * Zeitstempel fuer spekulativ geholte Bilder: der 1. Januar 1970.
+         *
+         * ── Warum ueberhaupt gemogelt wird ──────────────────────────────────
+         *
+         * [aufraeumenFallsNoetig] wirft die AELTESTEN zuerst weg. Ohne diesen
+         * Kniff waere ein soeben vorgewaermtes Bild das JUENGSTE und damit
+         * sicherer als ein Bild, das jemand vor zwei Wochen wirklich
+         * angesehen hat. Die Spekulation verdraengte also die Sammlung —
+         * genau verkehrt herum.
+         *
+         * Mit dem Zeitstempel ganz unten steht jede Vorwaermung am Anfang der
+         * Schlange und fliegt zuerst. Wird so ein Bild spaeter TATSAECHLICH
+         * angesehen, schreibt der Abgriff in AppModule es mit `spekulativ =
+         * false` neu — und damit rueckt es mit einem echten Zeitstempel ans
+         * Ende der Schlange. Der Uebergang „geraten" -> „gebraucht" passiert
+         * also von selbst, ohne eigene Buchfuehrung.
+         *
+         * Nicht 0: Manche Dateisysteme nehmen die Null nicht an. Eine Sekunde
+         * nach der Epoche ist ebenso alt und unverfaenglich.
+         *
+         * Ganzzahlig gerechnet (`/ 5 * 4`) und nicht `* 0.8`: `const val`
+         * vertraegt in Kotlin nur Konstantenausdruecke, und `.toLong()` auf
+         * einem Fliesskommawert ist keiner.
+         */
+        private const val SPEKULATIV_ZEIT = 1000L
+
         /** Nur Vorschaubilder. Die volle Aufloesung gehoert nicht hierher — siehe [istVorschau]. */
         private const val VORSCHAU_MERKMAL = "thumb"
     }
@@ -105,6 +149,15 @@ class VorschauSpeicher @Inject constructor(
 
     private fun datei(adresse: String) = File(ordner, schluessel(adresse))
 
+    /**
+     * Liegt diese Adresse schon hier?
+     *
+     * Fuer das Vorwaermen, das sonst Zehntausende bereits vorhandener Bilder
+     * neu holte. Bewusst OHNE die Bytes zu lesen: Es geht um die Frage
+     * „brauche ich das Netz?", nicht um den Inhalt.
+     */
+    fun hat(adresse: String): Boolean = datei(adresse).let { it.isFile && it.length() > 0 }
+
     /** Die abgelegten Bytes — oder null, wenn es sie nicht gibt. */
     fun lies(adresse: String): ByteArray? {
         val f = datei(adresse)
@@ -118,13 +171,15 @@ class VorschauSpeicher @Inject constructor(
      * Dieselbe Vorsicht wie im Bild-Proxy des Servers, wo genau das schon
      * einmal passiert ist.
      */
-    fun schreibe(adresse: String, bytes: ByteArray) {
+    fun schreibe(adresse: String, bytes: ByteArray, spekulativ: Boolean = false) {
         if (bytes.isEmpty()) return
         runCatching {
             val ziel = datei(adresse)
             val temp = File(ordner, "${ziel.name}.tmp")
             temp.writeBytes(bytes)
             if (!temp.renameTo(ziel)) temp.delete()
+            // Vorgewaermtes altert sofort — Begruendung an SPEKULATIV_ZEIT.
+            else if (spekulativ) ziel.setLastModified(SPEKULATIV_ZEIT)
         }
         aufraeumenFallsNoetig()
     }

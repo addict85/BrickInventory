@@ -1,0 +1,105 @@
+/* ═══════════════════════════════════════════════════════════════════════════
+   APP-DESIGN "hochglanz" — "noppe" als lackierte Hochglanzbroschuere.
+   ---------------------------------------------------------------------------
+   Hier steht NUR, was zu "noppe" dazukommt. Anatomie, Abstaende und Palette
+   liegen in themes/noppe.css bzw. /tokens.css, und jede Regel dort nennt
+   beide Designs. Wer hier eine Regel sucht, die "noppe" auch hat, sucht am
+   falschen Ort — sie steht dort einmal, nicht hier ein zweites Mal.
+
+   ── Was "Glanz" technisch heisst ───────────────────────────────────────────
+
+   Nicht andere Werte, sondern SCHICHTEN, die es vorher nicht gab:
+
+     WOELBUNG      ein senkrechter Verlauf ueber jedem Steindeckel — Licht
+                   oben, Schatten unten. Flach wird gewoelbt.
+     LICHTKUPPEN   die Noppen bekommen einen Lichtpunkt statt einer hellen
+                   Flaeche.
+     LICHTSTREIFEN ein schraeger heller Streifen. Er liegt auf dem BILDFELD
+                   und der Kopfleiste, NICHT auf der ganzen Kachel: Ein
+                   weisser Schleier ueber weissem Text ist kein Glanz,
+                   sondern Grau. Der erste Entwurf hatte genau das, und man
+                   sah es erst im Browser.
+     LACKSAUM      innen oben ein Lichtrand, innen unten ein weicher Abfall.
+     SPIEGEL       unter jeder Kachel ein farbiger Schein in der Deckelfarbe.
+                   Das ist der eigentliche Spiegel: Nicht die Kachel glaenzt,
+                   der GRUND wirft zurueck.
+
+   Der harte Versatzschatten aus "noppe" BLEIBT. Die Kante traegt, auch wenn
+   sie glaenzt — sonst waere es eine andere Anatomie und nicht dasselbe Design
+   in einem anderen Material.
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+/* ── Die Grundplatte: der Lichtabfall einer beschichteten Seite ───────────── */
+[data-theme="hochglanz"]{
+  --screen-bg:#e7ecf3;
+  /* Die eine Schicht, die es zweimal braucht: einmal fuer den Seitengrund und
+     einmal fuer die Anmeldung davor. Als Variable, damit sie nicht an zwei
+     Stellen steht und auseinanderlaeuft. */
+  --lack:linear-gradient(180deg,rgba(255,255,255,.85) 0%,rgba(255,255,255,0) 22%,rgba(0,0,0,.05) 100%);
+  --noppenraster:radial-gradient(circle at 10px 10px,rgba(22,26,33,.05) 4px,transparent 4.6px);
+}
+[data-theme="hochglanz"] body,
+[data-theme="hochglanz"] #login-screen,
+[data-theme="hochglanz"] #startup-screen{
+  background-color:var(--screen-bg);
+  background-image:var(--lack),var(--noppenraster);
+  background-size:100% 100%,20px 20px;
+}
+
+/* ── Kopf- und Reiterleiste: Woelbung plus Querstreifen ──────────────────── */
+[data-theme="hochglanz"] header,
+[data-theme="hochglanz"] nav{
+  background-image:
+    linear-gradient(104deg,rgba(255,255,255,0) 38%,rgba(255,255,255,.34) 50%,rgba(255,255,255,0) 62%),
+    linear-gradient(180deg,rgba(255,255,255,.55) 0%,rgba(255,255,255,.12) 42%,rgba(0,0,0,.10) 62%,rgba(0,0,0,.20) 100%);
+}
+/* Die Noppen auf der Kopfleiste bekommen einen Lichtsaum: eine hellere Schicht
+   ueber derselben Wiederholung, die noppe.css schon zeichnet. */
+[data-theme="hochglanz"] header::before{
+  background-image:
+    repeating-linear-gradient(90deg,rgba(255,255,255,.5) 0 4px,transparent 4px 24px),
+    repeating-linear-gradient(90deg,var(--b300) 0 15px,transparent 15px 24px);
+}
+
+/* ── Die Kachel: Lacksaum, gewoelbter Deckel, Spiegel darunter ───────────── */
+[data-theme="hochglanz"] .card,
+[data-theme="hochglanz"] .sc,
+[data-theme="hochglanz"] .modal-content{
+  box-shadow:
+    0 4px 0 var(--ink),
+    0 10px 16px -8px rgba(22,26,33,.35),
+    inset 0 1px 0 rgba(255,255,255,.9),
+    inset 0 -10px 18px -12px rgba(0,0,0,.18);
+}
+/* Der Deckel woelbt sich: derselbe Verlauf ueber der Steinfarbe, die aus
+   noppe.css kommt. `background-image` statt `background`, damit die Farbe
+   darunter stehen bleibt. */
+[data-theme="hochglanz"] .sc::before{
+  background-image:linear-gradient(180deg,
+    rgba(255,255,255,.55) 0%,rgba(255,255,255,.12) 42%,
+    rgba(0,0,0,.10) 62%,rgba(0,0,0,.20) 100%);
+}
+/* Die Noppen auf dem Deckel werden Kuppen. */
+[data-theme="hochglanz"] .sc::after{
+  background:repeating-linear-gradient(90deg,
+    rgba(255,255,255,.92) 0 3px,
+    rgba(255,255,255,.5) 3px 14px,
+    transparent 14px 22px);
+}
+/* Das Bildfeld ist die Glasscheibe — hier liegt der Lichtstreifen, und nur
+   hier. Siehe die Erklaerung oben. */
+[data-theme="hochglanz"] .sci{
+  background-image:
+    linear-gradient(118deg,rgba(255,255,255,0) 20%,rgba(255,255,255,.85) 36%,
+      rgba(255,255,255,.25) 44%,rgba(255,255,255,0) 56%),
+    linear-gradient(160deg,#ffffff 0%,#eef2f8 48%,#dde5ef 100%);
+}
+
+/* ── Knoepfe und Plaketten: derselbe Lichtabfall wie die Deckel ──────────── */
+[data-theme="hochglanz"] .btn.bp,
+[data-theme="hochglanz"] .cond-new,
+[data-theme="hochglanz"] .cond-used{
+  background-image:linear-gradient(180deg,
+    rgba(255,255,255,.45) 0%,rgba(255,255,255,.10) 42%,
+    rgba(0,0,0,.08) 62%,rgba(0,0,0,.16) 100%);
+}
