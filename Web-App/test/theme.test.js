@@ -89,15 +89,28 @@ test('Startup-Screen setzt keine Farben mehr per Inline-Style', () => {
     `Inline-Styles überstimmen jede Theme-Regel: ${inlineColours.join(', ')}`);
 });
 
-test('vier Listen nennen dieselben Designs', () => {
+test('fuenf Listen nennen dieselben Designs', () => {
   // ── Warum das eine eigene Pruefung ist ──────────────────────────────────
   //
-  // Ein Design steht an VIER Stellen: als Datei unter public/themes/, in der
-  // Whitelist des Servers, in ALLOWED des Boot-Skripts und in der App
-  // (PreferencesManager.ERLAUBTE_DESIGNS). Fehlt es an einer davon, faellt
-  // das nicht auf, sondern wirkt teilweise: Der Admin kann es waehlen, der
-  // Server nimmt es an, und das Boot-Skript verwirft es beim naechsten Start
-  // stillschweigend — genau die Sorte Fehler, die man erst im Betrieb sieht.
+  // Ein Design steht an FUENF Stellen: als Datei unter public/themes/, als
+  // <link> in index.html, in der Whitelist des Servers, in ALLOWED des
+  // Boot-Skripts und in der App (PreferencesManager.ERLAUBTE_DESIGNS). Fehlt
+  // es an einer davon, faellt das nicht auf, sondern wirkt teilweise: Der
+  // Admin kann es waehlen, der Server nimmt es an, und das Boot-Skript
+  // verwirft es beim naechsten Start stillschweigend — genau die Sorte
+  // Fehler, die man erst im Betrieb sieht.
+  //
+  // ── Die fuenfte Liste kam dazu, nachdem sie gefehlt hat ─────────────────
+  //
+  // "noppe" und "hochglanz" wurden ausgeliefert, ohne dass index.html ihre
+  // Stylesheets lud. Diese Pruefung war damals gruen: Die Datei lag da, die
+  // drei Listen nannten das Design, und der Server lieferte es aus. Im
+  // Browser kamen dann NUR die Farben an — die stehen in tokens.css, EINER
+  // Datei fuer alle Designs — und keine einzige Struktur. Das Design sah
+  // aus wie das Grunddesign mit roten Knoepfen.
+  //
+  // Der <link> ist damit die fuenfte Stelle, und sie ist die einzige, an der
+  // ein Fehlen nicht zum Verwerfen fuehrt, sondern zu einer halben Anzeige.
   const alsDatei = fs.readdirSync(path.join(PUB, 'themes'))
     .filter(f => f.endsWith('.css')).map(f => path.basename(f, '.css')).sort();
   // "classic" hat keine eigene Datei: Es IST das Grunddesign in styles.css.
@@ -109,6 +122,16 @@ test('vier Listen nennen dieselben Designs', () => {
     assert.ok(m, `${wo}: die Liste der Designs ist nicht mehr zu finden`);
     return [...m[1].matchAll(/['"]([a-z]+)['"]/g)].map(x => x[1]).sort();
   };
+  // Die <link>-Zeilen in index.html. Nicht ueber `liste()`: Dort steht der
+  // Dateiname, nicht der Designname in Anfuehrungszeichen.
+  const verlinkt = [...html.matchAll(/<link[^>]+href="\/themes\/([a-z]+)\.css/g)]
+    .map(m => m[1]).sort();
+  assert.deepEqual(verlinkt, alsDatei,
+    'index.html laedt nicht genau die Stylesheets, die unter public/themes/ liegen. ' +
+    'Fehlt eines, kommen im Browser nur die Farben aus tokens.css an und keine ' +
+    'einzige Struktur — das Design sieht dann aus wie das Grunddesign mit anderer ' +
+    'Akzentfarbe.');
+
   const boot = liste(fs.readFileSync(path.join(PUB, 'js', '00-theme-boot.js'), 'utf8'),
     /var ALLOWED = \[([^\]]*)\]/, 'js/00-theme-boot.js');
   const server = liste(fs.readFileSync(path.join(__dirname, '..', 'routes', 'settings.ts'), 'utf8'),
