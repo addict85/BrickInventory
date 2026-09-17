@@ -17,32 +17,32 @@
   <script defer src="/vendor/qrcode/qrcode.min.js"></script>
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>BrickInventory Manager</title>
-  <link rel="stylesheet" href="/vendor/fonts/fonts.css?v=2026.09.07.1820">
+  <link rel="stylesheet" href="/vendor/fonts/fonts.css?v=2026.09.17.1000">
   <!-- Gemeinsame Farbtokens, ERZEUGT aus shared/design-tokens.json. Zuerst
        geladen: Sie sind die Grundlage, styles.css und die Designs bauen
        darauf auf. -->
-  <link rel="stylesheet" href="/tokens.css?v=2026.09.07.1820">
-  <link rel="stylesheet" href="/styles.css?v=2026.09.07.1820">
+  <link rel="stylesheet" href="/tokens.css?v=2026.09.17.1000">
+  <link rel="stylesheet" href="/styles.css?v=2026.09.17.1000">
   <!-- App-Designs (Stein-Look etc.) — je Theme eine Datei unter /themes/, greift via [data-theme] -->
-  <link rel="stylesheet" href="/themes/brick.css?v=2026.09.07.1820">
-  <link rel="stylesheet" href="/themes/werkbank.css?v=2026.09.07.1820">
-  <link rel="stylesheet" href="/themes/farbfaecher.css?v=2026.09.07.1820">
-  <link rel="stylesheet" href="/themes/noppe.css?v=2026.09.07.1820">
-  <link rel="stylesheet" href="/themes/hochglanz.css?v=2026.09.07.1820">
+  <link rel="stylesheet" href="/themes/brick.css?v=2026.09.17.1000">
+  <link rel="stylesheet" href="/themes/werkbank.css?v=2026.09.17.1000">
+  <link rel="stylesheet" href="/themes/farbfaecher.css?v=2026.09.17.1000">
+  <link rel="stylesheet" href="/themes/noppe.css?v=2026.09.17.1000">
+  <link rel="stylesheet" href="/themes/hochglanz.css?v=2026.09.17.1000">
   <!-- Responsive-Regeln, nach beiden Designs geladen: das Layout ist in
        classic und brick identisch, die Regeln gelten daher für beide. -->
-  <link rel="stylesheet" href="/mobile.css?v=2026.09.07.1820">
+  <link rel="stylesheet" href="/mobile.css?v=2026.09.17.1000">
   <!-- Setzt data-theme aus dem localStorage-Cache VOR dem ersten Paint und
        gleicht danach gegen GET /api/v1/settings/theme ab. Blockierend und im
        <head>, sonst blitzt auf Login-/Startup-Screen kurz das falsche Design auf. -->
-  <script src="/js/00-theme-boot.js?v=2026.09.07.1820"></script>
+  <script src="/js/00-theme-boot.js?v=2026.09.17.1000"></script>
   <!-- Aktive Sprachdatei. Blockierend und VOR dem Bündel, weil i18n.js beim
        Auswerten window.I18N_DE / window.I18N_EN erwartet.
        Welche Datei hier steht, entscheidet der Server (utils/indexHtml.ts)
        anhand der gespeicherten Sprache — genauso wie beim Design darüber.
        Der Wechsel zur anderen Sprache lädt sie zur Laufzeit nach
        (loadLang() in i18n.js). -->
-  <script src="/locales/de.js?v=2026.09.07.1820" data-i18n-locale></script>
+  <script src="/locales/de.js?v=2026.09.17.1000" data-i18n-locale></script>
 </head>
 <body>
 
@@ -1014,7 +1014,7 @@
 <div class="ovl" id="set-modal" role="dialog" aria-modal="true">
   <div class="modal">
     <div class="mhd"><div class="mtit" id="m-tit">Set</div><button class="btn bs btn-sm" data-click="closeModal" aria-label="Schliessen" data-i18n="common.close" data-i18n-attr="aria-label">✕</button></div>
-    <img id="m-img" src="" alt="" class="mimg" style="cursor:zoom-in" data-orig="/assets/set-placeholder.svg" data-click="openImageLightboxFromEl" />
+    <img id="m-img" alt="" class="mimg" style="cursor:zoom-in" data-orig="/assets/set-placeholder.svg" data-click="openImageLightboxFromEl" />
     <div id="m-det"></div>
     <div id="m-instr" class="il"></div>
     <div class="mfooter">
@@ -1033,7 +1033,7 @@
       </div>
       <button class="btn bs btn-sm" data-click="closeCatModal" aria-label="Schliessen" data-i18n="common.close" data-i18n-attr="aria-label">✕</button>
     </div>
-    <img id="cat-m-img" src="" alt="" class="mimg" style="cursor:zoom-in" referrerpolicy="no-referrer" data-orig="/assets/set-placeholder.svg" data-click="openImageLightboxFromEl" />
+    <img id="cat-m-img" alt="" class="mimg" style="cursor:zoom-in" referrerpolicy="no-referrer" data-orig="/assets/set-placeholder.svg" data-click="openImageLightboxFromEl" />
     <div id="cat-m-det"></div>
     <div class="mfooter" style="justify-content:space-between;flex-wrap:wrap;gap:8px">
       <div style="display:flex;gap:8px;align-items:flex-end;flex-wrap:wrap">
@@ -1060,7 +1060,7 @@
       </div>
       <button class="btn bs btn-sm" data-click="closeManDetail" aria-label="Schliessen" data-i18n="common.close" data-i18n-attr="aria-label">✕</button>
     </div>
-    <img id="man-detail-img" src="" alt="" style="width:100%;max-height:160px;object-fit:contain;background:var(--s50);border-radius:8px;border:1px solid var(--bdr);margin-bottom:1rem;display:none" />
+    <img id="man-detail-img" alt="" style="width:100%;max-height:160px;object-fit:contain;background:var(--s50);border-radius:8px;border:1px solid var(--bdr);margin-bottom:1rem;display:none" />
     <div id="man-detail-body"></div>
     <div class="mfooter" style="justify-content:space-between">
       <button class="btn bd btn-sm" id="man-detail-del" aria-label="Eintrag löschen" data-i18n="common.delete_item" data-i18n-attr="aria-label">🗑️</button>
@@ -1081,7 +1081,7 @@
     </div>
     <!-- data-click="openImageLightboxFromEl" ist der Zoom (11-actions.js);
          die Adresse dafuer steht in data-orig und wird beim Oeffnen gesetzt. -->
-    <img id="setitem-img" src="" alt="" data-click="openImageLightboxFromEl"
+    <img id="setitem-img" alt="" data-click="openImageLightboxFromEl"
          style="width:100%;max-height:160px;object-fit:contain;background:var(--s50);border-radius:8px;border:1px solid var(--bdr);margin-bottom:1rem;display:none;cursor:zoom-in" />
     <div id="setitem-body"></div>
     <div class="mfooter">
@@ -1137,7 +1137,7 @@
 <!-- Image Lightbox (vergrösserte Set-Ansicht) -->
 <div class="ovl" id="img-lightbox" style="z-index:300;background:rgba(255,255,255,.97)" data-click="lightboxBackdrop">
   <button class="btn bs btn-sm" data-click="closeImageLightbox" style="position:absolute;top:20px;right:20px;font-size:1.1rem;padding:6px 14px" aria-label="Schliessen" data-i18n="common.close" data-i18n-attr="aria-label">✕</button>
-  <img id="lightbox-img" src="" alt="" data-onerror="keep" style="max-width:92vw;max-height:92vh;object-fit:contain;border-radius:8px" />
+  <img id="lightbox-img" alt="" data-onerror="keep" style="max-width:92vw;max-height:92vh;object-fit:contain;border-radius:8px" />
 </div>
 
 <!-- Reset PW Modal -->
@@ -1157,7 +1157,7 @@
 
 <div id="toasts"></div>
 
-<script type="module" src="/js/pdfjs-boot.js?v=2026.09.07.1820"></script>
+<script type="module" src="/js/pdfjs-boot.js?v=2026.09.17.1000"></script>
 <!-- Ein Bündel statt zwölf Einzeldateien.
      i18n.js und js/01-*.js … js/11-*.js werden von scripts/build-frontend.js in
      genau dieser Reihenfolge aneinandergehängt und minifiziert. Die Quellen
@@ -1167,7 +1167,7 @@
      00-theme-boot.js bleibt oben im <head> (muss vor dem ersten Rendern laufen),
      pdfjs-boot.js bleibt separat (ES-Modul), logviewer.js wird bei Bedarf
      zur Laufzeit nachgeladen. -->
-<script src="/js/app.bundle.js?v=2026.09.07.1820"></script>
+<script src="/js/app.bundle.js?v=2026.09.17.1000"></script>
 <!-- app.js ist in Sektions-Dateien aufgeteilt (public/js/) — Ladereihenfolge
      ist relevant, die Dateien teilen sich den globalen Scope. -->
 <!-- Der eigene Scrollbalken (#app-scrollbar) wird von js/01-core.js ERZEUGT,

@@ -53,12 +53,18 @@
     linear-gradient(104deg,rgba(255,255,255,0) 38%,rgba(255,255,255,.34) 50%,rgba(255,255,255,0) 62%),
     linear-gradient(180deg,rgba(255,255,255,.55) 0%,rgba(255,255,255,.12) 42%,rgba(0,0,0,.10) 62%,rgba(0,0,0,.20) 100%);
 }
-/* Die Noppen auf der Kopfleiste bekommen einen Lichtsaum: eine hellere Schicht
-   ueber derselben Wiederholung, die noppe.css schon zeichnet. */
+/* Die Noppen auf der Kopfleiste werden Kuppen: ein Lichtpunkt oben statt einer
+   gleichmaessig hellen Flaeche.
+
+   Die FORM kommt weiter aus der Maske in noppe.css und steht hier nicht noch
+   einmal — dieser Aufsatz taucht sie nur in ein anderes Material. Der Verlauf
+   wiederholt sich im Takt der Maske (24px), damit jede Noppe ihr eigenes Licht
+   bekommt und nicht die ganze Reihe einen einzigen Bogen. */
 [data-theme="hochglanz"] header::before{
-  background-image:
-    repeating-linear-gradient(90deg,rgba(255,255,255,.5) 0 4px,transparent 4px 24px),
-    repeating-linear-gradient(90deg,var(--b300) 0 15px,transparent 15px 24px);
+  background-image:radial-gradient(ellipse at 50% 20%,
+    var(--b100) 0%,var(--b300) 60%,var(--b700) 100%);
+  background-size:24px 7px;
+  background-repeat:repeat-x;
 }
 
 /* ── Die Kachel: Lacksaum, gewoelbter Deckel, Spiegel darunter ───────────── */
@@ -79,12 +85,14 @@
     rgba(255,255,255,.55) 0%,rgba(255,255,255,.12) 42%,
     rgba(0,0,0,.10) 62%,rgba(0,0,0,.20) 100%);
 }
-/* Die Noppen auf dem Deckel werden Kuppen. */
+/* Dieselben Kuppen auf dem Kacheldeckel — hier aus Weissanteilen, weil die
+   Deckelfarbe darunter jede der sechs Steinfarben sein kann. Takt 22px wie die
+   Maske dort. */
 [data-theme="hochglanz"] .sc::after{
-  background:repeating-linear-gradient(90deg,
-    rgba(255,255,255,.92) 0 3px,
-    rgba(255,255,255,.5) 3px 14px,
-    transparent 14px 22px);
+  background-image:radial-gradient(ellipse at 50% 20%,
+    rgba(255,255,255,.95) 0%,rgba(255,255,255,.55) 45%,rgba(255,255,255,.18) 100%);
+  background-size:22px 7px;
+  background-repeat:repeat-x;
 }
 /* Das Bildfeld ist die Glasscheibe — hier liegt der Lichtstreifen, und nur
    hier. Siehe die Erklaerung oben. */

@@ -999,7 +999,12 @@ export function openImageLightbox(src){
   G('lightbox-img').src = src;
   G('img-lightbox').classList.add('open');
 }
-export function closeImageLightbox(){ G('img-lightbox').classList.remove('open'); G('lightbox-img').src=''; }
+// `removeAttribute` und NICHT `src=''`: Ein leeres src ist keine leere
+// Adresse, sondern die Adresse der SEITE. Der Browser laedt sie als Bild,
+// scheitert daran, und der Fehlerlauscher in 11-actions.js meldete bei jedem
+// Schliessen des Zooms `[img] konnte nicht geladen werden: https://<host>/`.
+// Ohne Attribut laedt der Browser gar nichts.
+export function closeImageLightbox(){ G('img-lightbox').classList.remove('open'); G('lightbox-img').removeAttribute('src'); }
 document.addEventListener('keydown', e => { if(e.key==='Escape' && G('img-lightbox').classList.contains('open')) closeImageLightbox(); });
 G('set-modal').addEventListener('click',e=>e.target.id==='set-modal'&&closeModal());
 
