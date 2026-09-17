@@ -8,6 +8,14 @@
       --r100:#fee2e2;--r500:#ef4444;
       --g100:#dcfce7;--g500:#22c55e;
       --a100:#fef3c7;--a500:#f59e0b;
+      /* Der Ton, den SCHRIFT auf --a100 traegt. --a500 ist dafuer zu hell:
+         GEMESSEN steht #f59e0b auf #fef3c7 bei 1.93:1, noetig sind 4.5.
+         #92400e stand fuer genau diesen Zweck schon zweimal im Baum
+         (.spare-tag und .ra) — ausgeschrieben statt benannt, und die
+         Admin-Plakette daneben benutzte den hellen Ton. Jetzt einer,
+         benannt, GEMESSEN bei 6.37:1. Ein Design mit dunkler
+         Bernsteinflaeche setzt ihn um (siehe themes/werkbank.css). */
+      --a-schrift:#92400e;
       --p100:#f3e8ff;--p600:#9333ea;
       --bg:var(--s50);--sur:#fff;--bdr:var(--s200);--txt:var(--s800);--mut:var(--s500);
       /* Hintergrund von Login- und Startup-Screen. Eigene Variable, weil beide
@@ -47,7 +55,7 @@
     .hs .l{font-size:.62rem;color:var(--mut);text-transform:uppercase;letter-spacing:.4px}
     .umenu{display:flex;align-items:center;gap:8px;font-size:.85rem}
     .ubadge{background:var(--b100);color:var(--b700);padding:3px 10px;border-radius:999px;font-weight:600;font-size:.75rem}
-    .abadge{background:var(--a100);color:var(--a500);padding:2px 7px;border-radius:999px;font-weight:600;font-size:.68rem}
+    .abadge{background:var(--a100);color:var(--a-schrift);padding:2px 7px;border-radius:999px;font-weight:600;font-size:.68rem}
 
     nav{background:var(--sur);border-bottom:1px solid var(--bdr);display:flex;padding:0 1rem;overflow-x:auto;position:sticky;top:58px;z-index:99;scrollbar-width:none;-ms-overflow-style:none}
     nav::-webkit-scrollbar{display:none}
@@ -228,7 +236,7 @@
     .part-name{font-size:.75rem;font-weight:600;line-height:1.3;margin-bottom:6px;color:var(--txt)}
     .part-color{display:flex;align-items:center;justify-content:center;gap:5px;font-size:.7rem;color:var(--mut)}
     .part-qty{font-family:var(--mono);font-weight:700;font-size:.85rem;color:var(--b700);margin-top:5px}
-    .spare-tag{font-size:.62rem;background:var(--a100);color:#92400e;padding:1px 5px;border-radius:4px;margin-top:3px;display:inline-block}
+    .spare-tag{font-size:.62rem;background:var(--a100);color:var(--a-schrift);padding:1px 5px;border-radius:4px;margin-top:3px;display:inline-block}
     .parts-group{margin-bottom:1.75rem}
     /* Manuell erfasste Teile/Minifiguren — einheitliche editierbare Tiles */
     .man-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:.85rem}
@@ -310,7 +318,7 @@
     .vh{position:absolute;width:1px;height:1px;margin:-1px;padding:0;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap;border:0}
     .user-tbl td,.user-tbl th{vertical-align:middle}
     .rb{display:inline-flex;padding:2px 8px;border-radius:999px;font-size:.7rem;font-weight:600}
-    .ra{background:var(--a100);color:#92400e}.ru{background:var(--s100);color:var(--s600)}
+    .ra{background:var(--a100);color:var(--a-schrift)}.ru{background:var(--s100);color:var(--s600)}
     .cond-badge{font-size:.6rem;padding:1px 5px;border-radius:10px;font-weight:600;display:inline-block}
     .cond-new{background:var(--g100);color:var(--g600)}
     .cond-used{background:var(--s100);color:var(--s600)}

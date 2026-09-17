@@ -1210,7 +1210,7 @@ async function checkRegistrationEnabled(){
 
 
 
-function showApp(){ bindTabs(); plInit(); console.log('[showApp] called, scheduling gibCheckOnLoad'); setTimeout(()=>{ console.log('[gibCheckOnLoad] firing'); gibCheckOnLoad(); }, 1000);
+function showApp(){ bindTabs(); plInit(); setTimeout(()=>{ gibCheckOnLoad(); }, 1000);
   G('login-screen').style.display='none'; G('app').style.display='block';
   G('ubadge').textContent=ME.username;
   initDefaultCondition();

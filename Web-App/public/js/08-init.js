@@ -54,11 +54,51 @@ function meldeUnerwartet(quelle, fehler) {
   toast(tRaw('api.unexpected'), 'error');
 }
 
+/**
+ * Stammt der Fehler aus UNSEREM Code?
+ *
+ * ── Der Befund aus dem Betrieb ──────────────────────────────────────────────
+ *
+ * Marcos Konsole zeigte (rot, aus app.bundle.js):
+ *
+ *     [promise] i: Failed to connect to MetaMask
+ *     Caused by: Error: MetaMask extension not found
+ *       at inpage.js:4:42708
+ *
+ * Das Auffangnetz unten hoert am FENSTER, und dort landet jede unbehandelte
+ * Ablehnung der Seite — auch die einer Browser-Erweiterung, die mit
+ * BrickInventory nichts zu tun hat. Wir haben sie als unsere protokolliert
+ * und Marco dazu eine Meldung „Unerwarteter Fehler" angezeigt. Er sollte also
+ * einen Fehler unserer Anwendung sehen, weil seine MetaMask-Erweiterung ihre
+ * eigene Wallet nicht fand.
+ *
+ * ── Woran man es unterscheidet ──────────────────────────────────────────────
+ *
+ * Am Aufrufstapel. Unsere Bilder liegen alle unter unserem Ursprung; eine
+ * Erweiterung bringt `chrome-extension://…` oder `moz-extension://…` mit.
+ * Traegt der Stapel KEINE einzige Adresse von uns, ist es nicht unserer.
+ *
+ * Im Zweifel unserer: Ohne Stapel (etwa `Promise.reject('kaputt')`) und ohne
+ * erkennbare Adresse wird weiter gemeldet. Ein verschwiegener eigener Fehler
+ * waere der teurere der beiden Irrtuemer — genau darum gibt es dieses Netz.
+ */
+function vonUns(fehler) {
+  const stapel = typeof fehler?.stack === 'string' ? fehler.stack : '';
+  const adressen = stapel.match(/\b[a-z][\w.+-]*:\/\/[^\s)]+/gi) || [];
+  if (!adressen.length) return true;
+  return adressen.some(a => a.startsWith(location.origin + '/'));
+}
+
 function bindGlobalErrorHandlers() {
-  window.addEventListener('unhandledrejection', (ev) => meldeUnerwartet('promise', ev.reason));
+  window.addEventListener('unhandledrejection', (ev) => {
+    if (vonUns(ev.reason)) meldeUnerwartet('promise', ev.reason);
+  });
   // Ressourcenfehler (Bilder) laufen ebenfalls über 'error', blubbern aber
   // nicht bis window hoch — hier kommen nur echte Skriptfehler an.
-  window.addEventListener('error', (ev) => meldeUnerwartet('script', ev.error || ev.message));
+  window.addEventListener('error', (ev) => {
+    const fehler = ev.error || ev.message;
+    if (vonUns(ev.error)) meldeUnerwartet('script', fehler);
+  });
 }
 
 /** Startet die Anwendung. Aufruf ausschliesslich aus js/main.js. */
