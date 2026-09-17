@@ -343,6 +343,7 @@ fun CacheAndLimitsSection(vm: MainViewModel, onSnack: (String) -> Unit = {}) {
                         "werkbank" to R.string.monitoring_theme_werkbank,
                         "farbfaecher" to R.string.monitoring_theme_farbfaecher,
                         "noppe" to R.string.monitoring_theme_noppe,
+                        "hochglanz" to R.string.monitoring_theme_hochglanz,
                     )) {
                         FilterChip(
                             selected = appState.appTheme == wert,

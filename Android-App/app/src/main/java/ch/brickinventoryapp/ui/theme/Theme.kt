@@ -29,6 +29,17 @@ val LocalIsFarbfaecherTheme = staticCompositionLocalOf { false }
  */
 val LocalIsNoppeTheme = staticCompositionLocalOf { false }
 
+/**
+ * Traegt die Oberflaeche den LACK des Designs "hochglanz"?
+ *
+ * Getrennt von [LocalIsNoppeTheme] und nicht statt seiner: "hochglanz" IST
+ * "noppe" — dieselbe Anatomie, dieselbe Palette —, nur in einem anderen
+ * Material. Wer die Kachel baut, fragt deshalb beides: [LocalIsNoppeTheme] fuer
+ * den Deckel, dieses hier fuer den Glanz darauf. Ein einziges Local mit drei
+ * Zustaenden haette an jeder Abfrage eine Fallunterscheidung erzwungen.
+ */
+val LocalIstGlanz = staticCompositionLocalOf { false }
+
 // BrandBlue, BrandBlueDark, BrandBlueLight und BrandBlue50 stehen in
 // DesignTokens.kt — erzeugt aus shared/design-tokens.json, damit sie mit der
 // Webapp nicht auseinanderlaufen koennen. Gleiche Datei, gleiches Paket, also
@@ -309,7 +320,10 @@ fun BrickInventoryManagerTheme(theme: String = "classic", content: @Composable (
         "brick" -> BrickBlueColors
         "werkbank" -> WerkbankColors
         "farbfaecher" -> FarbfaecherColors
-        "noppe" -> NoppeColors
+        // Dieselbe Palette: "hochglanz" ist "noppe" in einem anderen
+        // Material, nicht in anderen Farben. Dieselbe Regel wie `erbt` in
+        // shared/design-tokens.json.
+        "noppe", "hochglanz" -> NoppeColors
         else -> LightColors
     }
     val chartColors = when (theme) {
@@ -326,7 +340,7 @@ fun BrickInventoryManagerTheme(theme: String = "classic", content: @Composable (
         // Dieselbe Regel wie beim Faecher: Der Steindeckel faerbt die KACHEL,
         // nicht den Zustand. Neu bleibt blau, Gebraucht orange — zwei
         // Farbsysteme nebeneinander duerfen sich nicht verwechseln lassen.
-        "noppe" -> ChartColors(ChartNewNoppe, ChartUsedNoppe,
+        "noppe", "hochglanz" -> ChartColors(ChartNewNoppe, ChartUsedNoppe,
             raster = Color(0xFFE4E8EF), gedaempft = Color(0xFF6A7280))
         else -> ChartColors(ChartNewClassic, ChartUsedClassic)
     }
@@ -341,13 +355,14 @@ fun BrickInventoryManagerTheme(theme: String = "classic", content: @Composable (
     CompositionLocalProvider(
         LocalIsBrickTheme provides isBrick,
         LocalIsFarbfaecherTheme provides (theme == "farbfaecher"),
-        LocalIsNoppeTheme provides (theme == "noppe"),
+        LocalIsNoppeTheme provides (theme == "noppe" || theme == "hochglanz"),
+        LocalIstGlanz provides (theme == "hochglanz"),
         LocalChartColors  provides chartColors,
         LocalStatusFarben provides statusFarben,
     ) {
         MaterialTheme(
             colorScheme = colors,
-            typography  = if (theme == "noppe") NoppeTypografie else Typography(),
+            typography  = if (theme == "noppe" || theme == "hochglanz") NoppeTypografie else Typography(),
             content     = content
         )
     }

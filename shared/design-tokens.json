@@ -62,6 +62,9 @@
       "chart-new": "#1a6fd4",
       "chart-used": "#ff7a00",
       "ink": "#161a21"
+    },
+    "hochglanz": {
+      "erbt": "noppe"
     }
   },
   "_notizen": {
@@ -215,5 +218,6 @@
         "#8a4fbf"
       ]
     }
-  }
+  },
+  "_erbt_warum": "Ein Design kann die Palette eines anderen ERBEN. Gebraucht wird das von \"hochglanz\": Es ist \"noppe\" als lackierte Broschuere — dieselben Farben, dazu Schichten (Woelbung, Lichtkuppen, Lichtstreifen), die kein Farbwert sind. Die elf Werte ein zweites Mal hinzuschreiben waere eine Abschrift, und eine Abschrift zieht beim naechsten Mal nicht mit."
 }

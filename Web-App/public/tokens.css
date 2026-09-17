@@ -152,6 +152,40 @@
   --ink: #161a21;
 }
 
+[data-theme="hochglanz"] {
+  --b50: #fdecec;
+  --b100: #fbd5d7;
+  --b200: #f7adb0;
+  --b300: #f1848a;
+  --b400: #e8585f;
+  --b500: #e13139;
+  --b600: #d91f26;
+  --b700: #a8141a;
+
+  /* Diagrammfarben — je Design ueberschreibbar. Vorher standen sie fest im
+     JavaScript; damit konnte kein Design sie anpassen, und im Stein-Look
+     stach das Bernstein der Gebraucht-Linie aus der ansonsten blauen Palette
+     heraus. */
+  --chart-new: #1a6fd4;
+
+  /* Im Stein-Design Salbeigruen und Sand — dieselben Werte wie die
+     Zustands-Plaketten .cond-new und .cond-used. Der Grund ist nicht
+     Geschmack: Diese Farben stehen ueberall in der Oberflaeche fuer genau
+     diese Unterscheidung; wer sie im Diagramm wiedererkennt, muss die
+     Legende nicht lesen. Vorher stand dort --chart-used:#3d5a80 (die
+     Primaerfarbe des Designs) — zusammen mit dem hellen Blau der Neu-Linie
+     ergab das ZWEI Blautoene, die sich nur in der Helligkeit unterschieden,
+     und verkleinert oder gedruckt verschwindet so ein Unterschied als
+     Erstes. */
+  --chart-used: #ff7a00;
+
+  /* Die Kante des Designs "noppe" — Rahmen, Versatzschatten und Text stehen
+     alle auf demselben Ton. Kunststoff wirft keine Wolke, er liegt auf: Der
+     Schatten ist derselbe Ton wie der Rahmen, nur versetzt. Waeren es zwei
+     Toene, sieht die Kante aus wie ein Druckfehler. */
+  --ink: #161a21;
+}
+
 /* faecher — siehe listen.faecher.warum in shared/design-tokens.json. */
 :root {
   --faecher-0: #c0392b;

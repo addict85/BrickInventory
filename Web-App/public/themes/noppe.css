@@ -2,8 +2,20 @@
    APP-DESIGN "noppe" (poppig) — der Klemmbaustein als Bauteil der Oberflaeche.
    ---------------------------------------------------------------------------
    Aktiv, sobald <html data-theme="noppe"> gesetzt ist (siehe applyTheme() in
-   js/00-theme-boot.js). Alle Regeln sind unter [data-theme="noppe"] gescoped;
-   die Datei wird immer geladen, greift aber nur beim aktiven Design.
+   js/00-theme-boot.js); die Datei wird immer geladen, greift aber nur beim
+   aktiven Design.
+
+   ── Warum jede Regel ZWEI Designs nennt ────────────────────────────────────
+
+   "hochglanz" ist dasselbe Design als lackierte Broschuere: dieselbe Anatomie,
+   dieselben Abstaende, dieselbe Palette — dazu Schichten (Woelbung,
+   Lichtkuppen, Lichtstreifen), die kein Farbwert sind. Diese Datei ist deshalb
+   die GEMEINSAME Grundlage; themes/hochglanz.css traegt nur noch die
+   Schichten.
+
+   Die Alternative waere ein zweites Stylesheet mit denselben achtzig Zeilen
+   gewesen. Genau daran ist in diesem Projekt schon mehrmals eine Haelfte
+   stehen geblieben, waehrend die andere weiterging.
 
    Die PALETTE steht nicht hier, sondern in /tokens.css — erzeugt aus
    shared/design-tokens.json, damit die Android-App dieselben Werte fuehrt.
@@ -32,7 +44,7 @@
    die Zahlen. Ein Bestand ist nichts, was man einmal anschaut.
    ═══════════════════════════════════════════════════════════════════════════ */
 
-[data-theme="noppe"]{
+[data-theme="noppe"],[data-theme="hochglanz"]{
   --font:'Nunito','Plus Jakarta Sans',system-ui,sans-serif;
 
   --bg:#eef1f6;
@@ -52,7 +64,7 @@
 /* ── Die Grundplatte ────────────────────────────────────────────────────────
    Der Verlauf sitzt auf dem BODY und nicht auf einem eigenen Element: So
    scrollt er mit dem Inhalt und braucht kein zusaetzliches Kaestchen. */
-[data-theme="noppe"] body{
+[data-theme="noppe"] body,[data-theme="hochglanz"] body{
   background-color:var(--bg);
   background-image:radial-gradient(circle at 10px 10px,rgba(22,26,33,.055) 4px,transparent 4.6px);
   background-size:20px 20px;
@@ -61,49 +73,49 @@
 /* ── Vor dem Login ──────────────────────────────────────────────────────────
    Muss hier stehen: Login- und Startup-Screen erscheinen, bevor irgendeine
    Nutzereinstellung gelesen ist (siehe --screen-bg oben und theme.test.js). */
-[data-theme="noppe"] #login-screen,
-[data-theme="noppe"] #startup-screen{
+[data-theme="noppe"] #login-screen,[data-theme="hochglanz"] #login-screen,
+[data-theme="noppe"] #startup-screen,[data-theme="hochglanz"] #startup-screen{
   background-color:var(--screen-bg);
   background-image:radial-gradient(circle at 10px 10px,rgba(22,26,33,.055) 4px,transparent 4.6px);
   background-size:20px 20px;
   color:var(--txt);
 }
-[data-theme="noppe"] #login-screen .card,
-[data-theme="noppe"] #startup-screen .card{
+[data-theme="noppe"] #login-screen .card,[data-theme="hochglanz"] #login-screen .card,
+[data-theme="noppe"] #startup-screen .card,[data-theme="hochglanz"] #startup-screen .card{
   background:var(--sur);border:2.5px solid var(--ink);box-shadow:0 4px 0 var(--ink);
 }
 
 /* ── Kopf- und Reiterleiste: der Stein ──────────────────────────────────────
    Die Noppen sind ein wiederholter Verlauf und keine sechzehn <div>: Die Zahl
    der Noppen soll sich mit der Fensterbreite ergeben, nicht im HTML stehen. */
-[data-theme="noppe"] header{
+[data-theme="noppe"] header,[data-theme="hochglanz"] header{
   background:var(--b600);
   border-bottom:3px solid var(--ink);
   position:relative;
   padding-top:7px;
 }
-[data-theme="noppe"] header::before{
+[data-theme="noppe"] header::before,[data-theme="hochglanz"] header::before{
   content:"";position:absolute;top:0;left:28px;right:28px;height:7px;
   background:repeating-linear-gradient(90deg,
     var(--b300) 0 15px,transparent 15px 24px);
   border-radius:4px 4px 0 0;
 }
-[data-theme="noppe"] header,
-[data-theme="noppe"] header a,
-[data-theme="noppe"] header .brand{color:#fff}
+[data-theme="noppe"] header,[data-theme="hochglanz"] header,
+[data-theme="noppe"] header a,[data-theme="hochglanz"] header a,
+[data-theme="noppe"] header .brand,[data-theme="hochglanz"] header .brand{color:#fff}
 
-[data-theme="noppe"] nav{
+[data-theme="noppe"] nav,[data-theme="hochglanz"] nav{
   background:var(--b600);border-bottom:3px solid var(--ink);
 }
-[data-theme="noppe"] nav .ntab{color:var(--b100);font-weight:700}
-[data-theme="noppe"] nav .ntab.active{
+[data-theme="noppe"] nav .ntab,[data-theme="hochglanz"] nav .ntab{color:var(--b100);font-weight:700}
+[data-theme="noppe"] nav .ntab.active,[data-theme="hochglanz"] nav .ntab.active{
   background:var(--sur);color:var(--ink);font-weight:900;
   border:2.5px solid var(--ink);border-radius:9px;
 }
 
 /* ── Flaechen ───────────────────────────────────────────────────────────── */
-[data-theme="noppe"] .card,
-[data-theme="noppe"] .modal-content{
+[data-theme="noppe"] .card,[data-theme="hochglanz"] .card,
+[data-theme="noppe"] .modal-content,[data-theme="hochglanz"] .modal-content{
   background:var(--sur);border:2.5px solid var(--ink);box-shadow:0 4px 0 var(--ink);
 }
 
@@ -111,16 +123,16 @@
    ::before ist der Deckel, ::after die Noppen darauf. Beides am
    Pseudo-Element und nicht im HTML: Die Kachel selbst soll in allen Designs
    dieselbe Auszeichnung behalten. */
-[data-theme="noppe"] .sc{
+[data-theme="noppe"] .sc,[data-theme="hochglanz"] .sc{
   background:var(--sur);border:2.5px solid var(--ink);border-radius:14px;
   box-shadow:0 4px 0 var(--ink);overflow:hidden;position:relative;
   padding-top:26px;
 }
-[data-theme="noppe"] .sc::before{
+[data-theme="noppe"] .sc::before,[data-theme="hochglanz"] .sc::before{
   content:"";position:absolute;top:0;left:0;right:0;height:26px;
   background:var(--stein-0);border-bottom:2.5px solid var(--ink);
 }
-[data-theme="noppe"] .sc::after{
+[data-theme="noppe"] .sc::after,[data-theme="hochglanz"] .sc::after{
   content:"";position:absolute;top:6px;left:12px;height:7px;width:80px;
   background:repeating-linear-gradient(90deg,
     rgba(255,255,255,.5) 0 14px,transparent 14px 22px);
@@ -128,50 +140,50 @@
 }
 /* Der Takt: sechs Deckelfarben, dann von vorn. Die Werte kommen aus
    tokens.css, damit die App dieselben fuehrt. */
-[data-theme="noppe"] .sc:nth-child(6n+2)::before{background:var(--stein-1)}
-[data-theme="noppe"] .sc:nth-child(6n+3)::before{background:var(--stein-2)}
-[data-theme="noppe"] .sc:nth-child(6n+4)::before{background:var(--stein-3)}
-[data-theme="noppe"] .sc:nth-child(6n+5)::before{background:var(--stein-4)}
-[data-theme="noppe"] .sc:nth-child(6n)::before{background:var(--stein-5)}
+[data-theme="noppe"] .sc:nth-child(6n+2)::before,[data-theme="hochglanz"] .sc:nth-child(6n+2)::before{background:var(--stein-1)}
+[data-theme="noppe"] .sc:nth-child(6n+3)::before,[data-theme="hochglanz"] .sc:nth-child(6n+3)::before{background:var(--stein-2)}
+[data-theme="noppe"] .sc:nth-child(6n+4)::before,[data-theme="hochglanz"] .sc:nth-child(6n+4)::before{background:var(--stein-3)}
+[data-theme="noppe"] .sc:nth-child(6n+5)::before,[data-theme="hochglanz"] .sc:nth-child(6n+5)::before{background:var(--stein-4)}
+[data-theme="noppe"] .sc:nth-child(6n)::before,[data-theme="hochglanz"] .sc:nth-child(6n)::before{background:var(--stein-5)}
 
-[data-theme="noppe"] .sci{background:#f7f9fc;border-bottom:2.5px solid var(--ink)}
-[data-theme="noppe"] .sc .snum{color:var(--mut);font-weight:700}
-[data-theme="noppe"] .sc .sname{font-weight:800}
+[data-theme="noppe"] .sci,[data-theme="hochglanz"] .sci{background:#f7f9fc;border-bottom:2.5px solid var(--ink)}
+[data-theme="noppe"] .sc .snum,[data-theme="hochglanz"] .sc .snum{color:var(--mut);font-weight:700}
+[data-theme="noppe"] .sc .sname,[data-theme="hochglanz"] .sc .sname{font-weight:800}
 
 /* ── Knoepfe und Eingaben ──────────────────────────────────────────────────
    Der Versatzschatten macht sie greifbar, ohne dass es eine zweite laute
    Farbe braucht. Beim Druecken wandert der Knopf auf den Schatten — dieselbe
    Bewegung wie bei einem Stein, den man aufsetzt. */
-[data-theme="noppe"] .btn{
+[data-theme="noppe"] .btn,[data-theme="hochglanz"] .btn{
   border:2.5px solid var(--ink);border-radius:10px;
   box-shadow:0 3px 0 var(--ink);font-weight:800;
 }
-[data-theme="noppe"] .btn:active{transform:translateY(3px);box-shadow:none}
-[data-theme="noppe"] .btn.bp{background:var(--b600);color:#fff}
+[data-theme="noppe"] .btn:active,[data-theme="hochglanz"] .btn:active{transform:translateY(3px);box-shadow:none}
+[data-theme="noppe"] .btn.bp,[data-theme="hochglanz"] .btn.bp{background:var(--b600);color:#fff}
 
-[data-theme="noppe"] input,
-[data-theme="noppe"] select,
-[data-theme="noppe"] textarea{
+[data-theme="noppe"] input,[data-theme="hochglanz"] input,
+[data-theme="noppe"] select,[data-theme="hochglanz"] select,
+[data-theme="noppe"] textarea,[data-theme="hochglanz"] textarea{
   background:var(--sur);color:var(--txt);
   border:2.5px solid var(--ink);border-radius:10px;
 }
-[data-theme="noppe"] input::placeholder,
-[data-theme="noppe"] textarea::placeholder{color:var(--mut)}
+[data-theme="noppe"] input::placeholder,[data-theme="hochglanz"] input::placeholder,
+[data-theme="noppe"] textarea::placeholder,[data-theme="hochglanz"] textarea::placeholder{color:var(--mut)}
 
 /* ── Wo es leise wird: Tabellen ─────────────────────────────────────────────
    Graue Trennlinien statt der Tinte. Eine Tabelle mit 2,5px schwarzen Kanten
    je Zeile waere ein Gitter und kein Text. */
-[data-theme="noppe"] table td,
-[data-theme="noppe"] table th{border-bottom:2px solid #e4e8ef}
+[data-theme="noppe"] table td,[data-theme="hochglanz"] table td,
+[data-theme="noppe"] table th,[data-theme="hochglanz"] table th{border-bottom:2px solid #e4e8ef}
 
 /* ── Zustands-Plaketten ─────────────────────────────────────────────────────
    Dieselbe Bedeutung wie ueberall: Neu gegen Gebraucht. Sie bekommen die
    Tintenkante wie alles andere, tragen aber die Diagrammfarben — damit
    Plakette und Linie zusammengehoeren, dieselbe Ueberlegung wie in
    themes/brick.css und themes/werkbank.css. */
-[data-theme="noppe"] .cond-new{
+[data-theme="noppe"] .cond-new,[data-theme="hochglanz"] .cond-new{
   background:var(--chart-new);color:#fff;border:2px solid var(--ink);font-weight:800;
 }
-[data-theme="noppe"] .cond-used{
+[data-theme="noppe"] .cond-used,[data-theme="hochglanz"] .cond-used{
   background:var(--chart-used);color:var(--ink);border:2px solid var(--ink);font-weight:800;
 }

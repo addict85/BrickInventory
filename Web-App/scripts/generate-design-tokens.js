@@ -74,7 +74,8 @@ function baueCss(daten) {
     return `${wahl} {\n${zeilen}\n}`;
   };
   const teile = [];
-  for (const [design, tokens] of Object.entries(daten.designs)) {
+  for (const [design, roh] of Object.entries(daten.designs)) {
+    const tokens = aufgeloest(daten, design, roh);
     // Das Grunddesign gilt immer, ein benanntes Design nur bei gesetztem
     // data-theme. Dessen hoehere Spezifitaet gewinnt gegen :root — die
     // Reihenfolge in der Datei spielt daher keine Rolle.
@@ -96,13 +97,42 @@ function baueCss(daten) {
 }
 
 /**
+ * Die Tokens eines Designs — mit `erbt` aufgeloest.
+ *
+ * ── Warum es das gibt ───────────────────────────────────────────────────────
+ *
+ * "hochglanz" ist "noppe" als lackierte Broschuere: dieselben Farben, dazu
+ * Schichten (Woelbung, Lichtkuppen, Lichtstreifen), die gar kein Farbwert
+ * sind. Die elf Werte ein zweites Mal hinzuschreiben waere eine Abschrift,
+ * und eine Abschrift zieht beim naechsten Mal nicht mit.
+ *
+ * Genau EINE Stufe: `erbt` auf ein Design, das selbst erbt, waere eine Kette,
+ * und bei einer Kette muss man beim Lesen rueckwaerts suchen, wo ein Wert
+ * herkommt. Das meldet diese Funktion lieber, als es zuzulassen.
+ *
+ * @param {any} daten Inhalt von shared/design-tokens.json
+ * @param {string} name Name des Designs
+ * @param {Record<string,string>} roh Der Eintrag, wie er in der Datei steht
+ * @returns {Record<string,string>}
+ */
+function aufgeloest(daten, name, roh) {
+  const quelle = roh.erbt;
+  if (!quelle) return roh;
+  const geerbt = daten.designs[quelle];
+  if (!geerbt) throw new Error(`design-tokens.json: "${name}" erbt von "${quelle}", das es nicht gibt`);
+  if (geerbt.erbt) throw new Error(`design-tokens.json: "${name}" erbt von "${quelle}", das selbst erbt — eine Stufe, keine Kette`);
+  const { erbt, ...eigene } = roh;
+  return { ...geerbt, ...eigene };
+}
+
+/**
  * Aus der App-Zuordnung die Kotlin-Datei bauen.
  * @param {any} daten Inhalt von shared/design-tokens.json
  * @returns {string}
  */
 function baueKotlin(daten) {
   const zeilen = Object.entries(daten.app).map(([name, { design, token }]) => {
-    const wert = daten.designs[design][token];
+    const wert = aufgeloest(daten, design, daten.designs[design])[token];
     if (!wert) throw new Error(`design-tokens.json: --${token} gibt es im Design "${design}" nicht`);
     const hex = wert.replace('#', '').toUpperCase();
     const notiz = (daten._notizen || {})[token];

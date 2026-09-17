@@ -8,6 +8,9 @@ const path = require('node:path');
 // dieser Sitzung schon einmal eine Stunde gekostet.
 const BAUM = path.join(__dirname, '..', '..');
 const css = fs.readFileSync(path.join(BAUM, 'Web-App', 'public', 'themes', 'noppe.css'), 'utf8');
+const glanz = fs.readFileSync(path.join(BAUM, 'Web-App', 'public', 'themes', 'hochglanz.css'), 'utf8');
+const decor = fs.readFileSync(path.join(BAUM, 'Android-App', 'app', 'src', 'main', 'java',
+  'ch', 'brickinventoryapp', 'ui', 'theme', 'BrickDecor.kt'), 'utf8');
 const theme = fs.readFileSync(path.join(BAUM, 'Android-App', 'app', 'src', 'main', 'java',
   'ch', 'brickinventoryapp', 'ui', 'theme', 'Theme.kt'), 'utf8');
 const quelle = JSON.parse(fs.readFileSync(path.join(BAUM, 'shared', 'design-tokens.json'), 'utf8'));
@@ -56,9 +59,14 @@ test('die Steinfarbe laeuft in beiden Oberflaechen im selben Takt', () => {
   // die App durch vier, zeigt dasselbe Set auf Telefon und Rechner einen
   // anderen Deckel — und niemand kaeme auf die Idee, das fuer einen Fehler zu
   // halten, weil die Farbe ja nichts bedeutet.
-  const webTakt = [...css.matchAll(/nth-child\(6n\+?(\d*)\)/g)].length;
+  // Die UNTERSCHIEDLICHEN Positionen zaehlen, nicht die Treffer: Seit
+  // "hochglanz" nennt jede Regel in noppe.css zwei Designs, und damit steht
+  // jedes nth-child zweimal da. Ein Zaehlen der Treffer haette das gemeldet,
+  // obwohl sich am Takt nichts geaendert hat — genau der Fehlalarm, gegen den
+  // CatalogUsesLocalImagesTest eine Runde vorher geschaerft wurde.
+  const webTakt = new Set([...css.matchAll(/nth-child\(6n\+?(\d*)\)/g)].map(m => m[1])).size;
   assert.equal(webTakt, 5,
-    `themes/noppe.css zaehlt an ${webTakt} Stellen durch, erwartet fuenf ` +
+    `themes/noppe.css zaehlt an ${webTakt} verschiedenen Positionen durch, erwartet fuenf ` +
     '(--stein-0 steht als Vorgabe schon in der Grundregel)');
   assert.match(theme, /position % SteinFarben\.size/,
     'Theme.kt rechnet die Deckelfarbe nicht mehr modulo der Listenlaenge');
@@ -93,8 +101,13 @@ test('die Steinfarbe bleibt Takt und wird nie Auskunft', () => {
     'steinTon() bekommt etwas anderes als die Position — dann bedeutet die ' +
     'Deckelfarbe doch etwas, und sie widerspricht dem Farbfaecher');
   // Der Zustand bleibt beim Zustand: Neu blau, Gebraucht orange.
-  assert.match(theme, /"noppe" -> ChartColors\(ChartNewNoppe, ChartUsedNoppe/,
-    'Die Verlaufsfarben des Designs fehlen — dann erbt es die des Grunddesigns');
+  // Beide Designs, EIN Zweig: "hochglanz" ist "noppe" in einem anderen
+  // Material und hat deshalb dieselben Verlaufsfarben. Stuende es in einem
+  // eigenen Zweig, waere das die erste Stelle, an der die beiden auseinander
+  // laufen koennten.
+  assert.match(theme, /"noppe", "hochglanz" -> ChartColors\(ChartNewNoppe, ChartUsedNoppe/,
+    'Die Verlaufsfarben des Designs fehlen oder gelten nicht mehr fuer beide — ' +
+    'dann erbt eines davon die des Grunddesigns');
 });
 
 test('die Tabelle bleibt leise', () => {
@@ -128,4 +141,104 @@ test('beide Oberflaechen fuehren dieselbe Schrift', () => {
     `Diese Schnitte fehlen unter res/font/: ${fehlt.join(', ')} — dann zeigt die ` +
     'App dasselbe Design in einer anderen Schrift als das Web');
   assert.match(theme, /NunitoFamilie/, 'Theme.kt benutzt die Schrift nicht');
+});
+
+// ────────────────────────────────────────────────────────────────────────────
+// "hochglanz" — dasselbe Design in einem anderen Material (Nachtrag 162)
+//
+// Marcos Wunsch: „so wie eine hochglanzproschuerr". Es ist NICHT ein sechstes
+// Design neben "noppe", sondern "noppe" mit Lack: dieselbe Anatomie, dieselbe
+// Palette, dazu Schichten, die kein Farbwert sind.
+//
+// Genau daran kann es scheitern: Ein zweites Stylesheet mit denselben achtzig
+// Zeilen, eine zweite Farbtabelle, ein zweiter Deckel-Baustein — und beim
+// naechsten Nachbessern zieht eine Haelfte nicht mit. Dagegen sind diese
+// Pruefungen gebaut.
+// ────────────────────────────────────────────────────────────────────────────
+
+test('hochglanz erbt die Palette, statt sie abzuschreiben', () => {
+  assert.equal(quelle.designs.hochglanz.erbt, 'noppe',
+    'hochglanz fuehrt eine eigene Palette. Es ist dieselbe wie die von noppe — ' +
+    'eine Abschrift zieht beim naechsten Mal nicht mit.');
+  // Und der Generator muss daraus wirklich Werte machen, sonst faellt das
+  // Design auf das Grunddesign zurueck und ist blau statt rot.
+  const tokens = fs.readFileSync(path.join(BAUM, 'Web-App', 'public', 'tokens.css'), 'utf8');
+  const block = tokens.slice(tokens.indexOf('[data-theme="hochglanz"]'));
+  assert.match(block.slice(0, 400), /--b600: #d91f26;/,
+    'tokens.css traegt fuer hochglanz keine aufgeloeste Palette — dann greift :root, und ' +
+    'das Design waere blau statt rot');
+});
+
+test('hochglanz traegt nur die Schichten, nicht die Anatomie', () => {
+  // Jede Regel in noppe.css gilt fuer BEIDE Designs — das ist die gemeinsame
+  // Grundlage. hochglanz.css darf sie nicht ein zweites Mal aufstellen.
+  const noppeRegeln = [...css.matchAll(/\[data-theme="noppe"\][^{]*\{/g)].length;
+  assert.ok(noppeRegeln >= 10, `Nur ${noppeRegeln} Regeln in noppe.css — greift die Suche noch?`);
+  assert.ok(!/\[data-theme="noppe"\]/.test(glanz),
+    'hochglanz.css nennt noppe — die gemeinsamen Regeln gehoeren in noppe.css, einmal');
+
+  // Die Anatomie darf hier nicht noch einmal stehen. Diese vier Eigenschaften
+  // bestimmen sie; taucht eine davon hier auf, ist die Datei kein Aufsatz mehr,
+  // sondern ein zweites Design.
+  for (const eigenschaft of ['--rad:', '--font:', 'border-radius:14px', 'padding-top:26px']) {
+    assert.ok(!glanz.includes(eigenschaft),
+      `hochglanz.css setzt ${eigenschaft} — das ist Anatomie und steht in noppe.css`);
+  }
+});
+
+test('der harte Versatzschatten ueberlebt den Lack', () => {
+  // Die Kante traegt, auch wenn sie glaenzt. Faellt sie weg, ist es eine
+  // andere Anatomie und nicht dasselbe Design in einem anderen Material.
+  const karte = glanz.slice(glanz.indexOf('[data-theme="hochglanz"] .card'));
+  assert.match(karte, /0 4px 0 var\(--ink\)/,
+    'Der harte Versatzschatten ist im Lack verschwunden. Dann glaenzt etwas ' +
+    'anderes als noppe, und es ist nicht mehr dasselbe Design.');
+});
+
+test('der Lichtstreifen liegt nicht ueber der ganzen Kachel', () => {
+  // ── Der Fehler, den diese Zusicherung verhindert ──────────────────────────
+  //
+  // Die erste Fassung legte den Streifen ueber die ganze Karte. Ein weisser
+  // Schleier ueber weissem Text ist aber kein Glanz, sondern Grau: Die Kacheln
+  // sahen blasser aus als OHNE Glanz, und der Setname litt mit. Sichtbar wurde
+  // das erst im Browser, nicht an den Werten.
+  const streifen = '118deg';
+  assert.ok(glanz.includes(streifen), 'Der Lichtstreifen fehlt ganz');
+  // Er darf auf dem Bildfeld (.sci) liegen, nicht auf der Kachel (.sc) selbst.
+  for (const regel of glanz.split('}')) {
+    if (!regel.includes(streifen)) continue;
+    const kopf = regel.slice(0, regel.indexOf('{'));
+    assert.ok(/\.sci\b/.test(kopf) && !/\.sc\s*[,{]/.test(kopf),
+      `Der Lichtstreifen steht in einer Regel fuer "${kopf.trim()}". Er gehoert ` +
+      'auf das Bildfeld (.sci) — ueber weissem Text ist er Grau, nicht Glanz.');
+  }
+  // Und in der App dieselbe Regel, als Erklaerung am Pinsel selbst.
+  assert.match(decor, /val LichtStreifen = Brush\.linearGradient/,
+    'Der Lichtstreifen fehlt in der App — dann glaenzt dasselbe Design nur im Web');
+});
+
+test('beide Oberflaechen bauen den Glanz aus denselben Haltepunkten', () => {
+  // Der Lichtabfall ist in CSS ein linear-gradient und in Compose ein
+  // Brush.verticalGradient. Verschiedene Sprachen, dieselben vier Haltepunkte —
+  // laufen sie auseinander, sieht dasselbe Design auf Telefon und Rechner
+  // anders aus, und niemand sucht den Grund in einer Zahl.
+  const ausCss = [...glanz.matchAll(/rgba\((?:255,255,255|0,0,0),\.(\d+)\) (\d+)%/g)]
+    .map(m => `${m[2]}/${m[1]}`);
+  assert.ok(ausCss.length >= 4, `Nur ${ausCss.length} Haltepunkte im CSS — greift die Suche noch?`);
+  for (const [anteil, deckkraft] of [['0.00f', '0.55f'], ['0.42f', '0.12f'],
+                                     ['0.62f', '0.10f'], ['1.00f', '0.20f']]) {
+    assert.ok(decor.includes(`${anteil} to Color.`) && decor.includes(`alpha = ${deckkraft}`),
+      `Der Haltepunkt ${anteil}/${deckkraft} fehlt in BrickDecor.kt — der ` +
+      'Lichtabfall waere dann in der App ein anderer als im Web');
+  }
+});
+
+test('der Deckel ist EIN Baustein, nicht zwei', () => {
+  // Es ist derselbe Deckel in einem anderen Material. Ein zweiter Baustein
+  // daneben liefe beim naechsten Nachbessern auseinander — deshalb ein
+  // Parameter.
+  assert.match(decor, /glanz: Boolean = false/,
+    'BrickStudCap kennt den Glanz nicht mehr als Parameter');
+  assert.ok(!/fun \w*GlanzStudCap|fun BrickStudCapGlanz/.test(decor),
+    'Es gibt einen zweiten Deckel-Baustein fuer den Glanz. Einer reicht, mit Parameter.');
 });

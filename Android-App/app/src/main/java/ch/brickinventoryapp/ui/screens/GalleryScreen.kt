@@ -3,6 +3,7 @@ package ch.brickinventoryapp.ui.screens
 import ch.brickinventoryapp.ui.theme.Formen
 import ch.brickinventoryapp.ui.theme.AppKarte
 import androidx.compose.foundation.Image
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.grid.*
@@ -37,6 +38,8 @@ import ch.brickinventoryapp.ui.*  // Feature-Extensions (loadSets, setScope, …
 import ch.brickinventoryapp.data.model.SetItem
 import ch.brickinventoryapp.ui.theme.LocalIsBrickTheme
 import ch.brickinventoryapp.ui.theme.LocalIsNoppeTheme
+import ch.brickinventoryapp.ui.theme.LocalIstGlanz
+import ch.brickinventoryapp.ui.theme.LichtStreifen
 import ch.brickinventoryapp.ui.theme.steinTon
 import ch.brickinventoryapp.ui.theme.BrickStudCap
 import ch.brickinventoryapp.util.fmtInt
@@ -402,6 +405,7 @@ fun SetCard(
 
     val isBrick = LocalIsBrickTheme.current
     val istNoppe = LocalIsNoppeTheme.current
+    val istGlanz = LocalIstGlanz.current
 
     AppKarte(
         // Höher als vorher (232.dp) — Nachtrag 52, Marcos Wunsch: Die
@@ -417,7 +421,7 @@ fun SetCard(
             // genau wie `.sc:nth-child(6n+…)` in themes/noppe.css. Dieselbe
             // Bauform wie beim Stein-Design, nur hoeher und in wechselnder
             // Farbe; deshalb derselbe Baustein statt eines zweiten.
-            if (istNoppe) BrickStudCap(color = steinTon(position), height = Abstaende.gross)
+            if (istNoppe) BrickStudCap(color = steinTon(position), height = Abstaende.gross, glanz = istGlanz)
             Box(Modifier.fillMaxWidth().height(if (isBrick) 154.dp else 170.dp)) {
                 if (imageUrl != null) {
                     AsyncImage(
@@ -493,6 +497,11 @@ fun SetCard(
                         )
                     }
                 }
+                // Die Spiegelung auf der Glasscheibe. ZULETZT im Box, damit sie
+                // ueber dem Bild liegt — und nur hier, nicht ueber der ganzen
+                // Kachel: Ein weisser Schleier ueber weissem Text ist kein
+                // Glanz, sondern Grau (siehe LichtStreifen in BrickDecor.kt).
+                if (istGlanz) Box(Modifier.matchParentSize().background(LichtStreifen))
             }
             Column(Modifier.padding(horizontal = 10.dp, vertical = Abstaende.klein), verticalArrangement = Arrangement.spacedBy(1.dp)) {
                 Text(set.setNumber, style = MaterialTheme.typography.labelSmall,
