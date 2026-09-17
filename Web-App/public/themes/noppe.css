@@ -123,9 +123,32 @@
   -webkit-mask-size:24px 7px;mask-size:24px 7px;
   -webkit-mask-repeat:repeat-x;mask-repeat:repeat-x;
 }
+/* ── Was auf dem Stein steht, ist weiss ──────────────────────────────
+   ALLES, nicht nur Titel und Verweise. styles.css faerbt die Kennzahlen mit
+   `color:var(--b600)` und ihre Beschriftungen mit `var(--mut)` — Werte, die
+   fuer eine WEISSE Kopfleiste gedacht sind. Dieses Design streicht die
+   Kopfleiste aber mit genau diesem --b600.
+
+   GEMESSEN im Browser: Die Zahlen standen bei Kontrast 1.00 zum Untergrund,
+   also in exakt derselben Farbe; das "Manager" im Titel ebenso; die
+   Beschriftungen bei 1.22. Marco hat es gemeldet, und man sieht auf seinem
+   Bild nur einen roten Balken, wo vier Zahlen stehen sollten.
+
+   themes/brick.css hatte dieselben drei Stellen laengst behandelt — ich habe
+   hier nur Titel, Verweise und .brand aufgezaehlt und den Rest vergessen. Die
+   Lehre steht als Pruefung in test/kopfleiste-lesbar.test.js.
+
+   Beschriftung ebenfalls WEISS und nicht gedaempft: Auf diesem Rot gibt es
+   keinen Weissanteil unter 100%, der noch auf die geforderten 4.5 kommt
+   (rgba(255,255,255,.85) liegt GEMESSEN bei 3.8). Der Unterschied zwischen
+   Zahl und Beschriftung kommt hier aus Groesse, Gewicht und Sperrung — die
+   stehen schon in styles.css. */
 [data-theme="noppe"] header,[data-theme="hochglanz"] header,
 [data-theme="noppe"] header a,[data-theme="hochglanz"] header a,
-[data-theme="noppe"] header .brand,[data-theme="hochglanz"] header .brand{color:#fff}
+[data-theme="noppe"] header .brand,[data-theme="hochglanz"] header .brand,
+[data-theme="noppe"] header .logo h1 span,[data-theme="hochglanz"] header .logo h1 span,
+[data-theme="noppe"] header .hs .v,[data-theme="hochglanz"] header .hs .v,
+[data-theme="noppe"] header .hs .l,[data-theme="hochglanz"] header .hs .l{color:#fff}
 
 [data-theme="noppe"] nav,[data-theme="hochglanz"] nav{
   background:var(--b600);border-bottom:3px solid var(--ink);
