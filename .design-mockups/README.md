@@ -19,9 +19,9 @@ angekommen.
 | `NoppeWeb.dc.html`, `NoppeTelefon.dc.html` | **H · Noppe** — Klemmbaustein, Grundplatte, harte Kanten | Ton (poppig) |
 | `WerkbankDetail.dc.html` | A, zweiter Bildschirm: Set-Detail mit Preisverlauf | |
 | `FarbfaecherDetail.dc.html` | F, zweiter Bildschirm: Set-Detail mit Preisverlauf | |
-| `KreideWeb.dc.html`, `KreideTelefon.dc.html` | **I · Kreide** — H verblasst: halbe Sättigung, graue Tinte | Lautstärke |
+| `HochglanzWeb.dc.html`, `HochglanzTelefon.dc.html` | **I · Hochglanz** — H lackiert: gewölbte Deckel, Lichtstreifen | Material |
 | `NoppeDetail.dc.html` | H, zweiter Bildschirm: Set-Detail mit Preisverlauf | |
-| `KreideDetail.dc.html` | I, zweiter Bildschirm: Set-Detail mit Preisverlauf | |
+| `HochglanzDetail.dc.html` | I, zweiter Bildschirm: Set-Detail mit Preisverlauf | |
 | `canvas.json` | Anordnung der zweiundzwanzig Flächen und die Notizen daneben | |
 
 Je Richtung eine Web- und eine Telefonansicht, damit sich beide Oberflächen
@@ -90,9 +90,14 @@ folgen derselben Regel wie bei A und F: *Zustand* (neu/gebraucht) bleibt Blau
 und Orange und darf nicht mit der Steinfarbe der Kacheln verwechselt werden,
 die gar nichts bedeutet.
 
-**I · Kreide** ist aus H ABGELEITET, nicht neben ihm entstanden: dieselbe
-Anatomie, dieselben Abstände, nur die Werte verblasst. Das ist Absicht — die
-Frage, die diese Richtung stellt, ist ausschliesslich die nach der Lautstärke.
-Zwei Dinge sind dabei ausdrücklich NICHT mitverblasst: die Verlaufslinien und
-die Besitz-Plakette. Ein Design darf verblassen, eine Auskunft nicht; bei einem
-reinen Herunterrechnen wären beide unlesbar geworden.
+**I · Hochglanz** ist aus H ABGELEITET, nicht neben ihm entstanden: dieselbe
+Anatomie, dieselben Abstände. Anders als beim zuvor hier stehenden Entwurf
+*Kreide* ist es aber keine reine Wertänderung — ein Spiegel braucht SCHICHTEN,
+die es vorher nicht gab: ein Verlauf über jedem Steindeckel, eine Lichtkuppe auf
+jeder Noppe, ein diagonaler Streifen über Karte und Kopfleiste, der Lichtabfall
+einer beschichteten Seite auf der Grundplatte. Die Anatomie bleibt, das Material
+kommt dazu.
+
+Das steht so auch in der Notiz auf der Fläche, weil es die Frage ändert: Bei
+*Kreide* ging es nur um die Lautstärke; hier geht es darum, aus welchem Stoff
+die Oberfläche sein soll.
