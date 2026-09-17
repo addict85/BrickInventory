@@ -51,7 +51,7 @@
 [data-theme="hochglanz"] nav{
   background-image:
     linear-gradient(104deg,rgba(255,255,255,0) 38%,rgba(255,255,255,.34) 50%,rgba(255,255,255,0) 62%),
-    linear-gradient(180deg,rgba(255,255,255,.55) 0%,rgba(255,255,255,.12) 42%,rgba(0,0,0,.10) 62%,rgba(0,0,0,.20) 100%);
+    linear-gradient(180deg,rgba(255,255,255,.34) 0%,rgba(255,255,255,.10) 30%,rgba(0,0,0,.10) 62%,rgba(0,0,0,.20) 100%);
 }
 /* Die Noppen auf der Kopfleiste werden Kuppen: ein Lichtpunkt oben statt einer
    gleichmaessig hellen Flaeche.
@@ -82,7 +82,7 @@
    darunter stehen bleibt. */
 [data-theme="hochglanz"] .sc::before{
   background-image:linear-gradient(180deg,
-    rgba(255,255,255,.55) 0%,rgba(255,255,255,.12) 42%,
+    rgba(255,255,255,.34) 0%,rgba(255,255,255,.10) 30%,
     rgba(0,0,0,.10) 62%,rgba(0,0,0,.20) 100%);
 }
 /* Dieselben Kuppen auf dem Kacheldeckel — hier aus Weissanteilen, weil die

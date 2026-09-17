@@ -176,7 +176,7 @@
 }
 [data-theme="noppe"] .sc::before,[data-theme="hochglanz"] .sc::before{
   content:"";position:absolute;top:0;left:0;right:0;height:26px;
-  background:var(--stein-0);border-bottom:2.5px solid var(--ink);
+  background-color:var(--stein-0);border-bottom:2.5px solid var(--ink);
 }
 /* Vier Noppen auf dem Deckel: dieselbe Form, nur im Takt von 22 statt 24
    (mask-size staucht die Form mit). 3×22+14 = 80 — daher die Breite. */
@@ -188,12 +188,26 @@
   -webkit-mask-repeat:repeat-x;mask-repeat:repeat-x;
 }
 /* Der Takt: sechs Deckelfarben, dann von vorn. Die Werte kommen aus
-   tokens.css, damit die App dieselben fuehrt. */
-[data-theme="noppe"] .sc:nth-child(6n+2)::before,[data-theme="hochglanz"] .sc:nth-child(6n+2)::before{background:var(--stein-1)}
-[data-theme="noppe"] .sc:nth-child(6n+3)::before,[data-theme="hochglanz"] .sc:nth-child(6n+3)::before{background:var(--stein-2)}
-[data-theme="noppe"] .sc:nth-child(6n+4)::before,[data-theme="hochglanz"] .sc:nth-child(6n+4)::before{background:var(--stein-3)}
-[data-theme="noppe"] .sc:nth-child(6n+5)::before,[data-theme="hochglanz"] .sc:nth-child(6n+5)::before{background:var(--stein-4)}
-[data-theme="noppe"] .sc:nth-child(6n)::before,[data-theme="hochglanz"] .sc:nth-child(6n)::before{background:var(--stein-5)}
+   tokens.css, damit die App dieselben fuehrt.
+
+   `background-color` und NICHT die Kurzform `background`. Der Unterschied ist
+   hier nicht Geschmack, sondern war ein Fehler:
+
+   Die Kurzform setzt ALLE Hintergrund-Eigenschaften zurueck, `background-image`
+   eingeschlossen. Und `:nth-child()` zaehlt wie eine Klasse — diese Regeln sind
+   damit eine Stufe spezifischer als die Glanzschicht in hochglanz.css. Ergebnis
+   GEMESSEN: Bei fuenf von sechs Kacheln stand am Deckel `background-image: none`,
+   der Lack war weg. Nur die erste je Sechsergruppe hatte ihn.
+
+   Marco hat es als „in der Webapp ist der Glanz gar nicht sichtbar" gemeldet —
+   und in der App gleichzeitig als „zu stark". Dieselbe Wurzel: Die beiden
+   Oberflaechen haben nicht dasselbe gezeichnet, und eine Pruefung, die nur die
+   Haltepunkte im Quelltext vergleicht, sieht das nicht. */
+[data-theme="noppe"] .sc:nth-child(6n+2)::before,[data-theme="hochglanz"] .sc:nth-child(6n+2)::before{background-color:var(--stein-1)}
+[data-theme="noppe"] .sc:nth-child(6n+3)::before,[data-theme="hochglanz"] .sc:nth-child(6n+3)::before{background-color:var(--stein-2)}
+[data-theme="noppe"] .sc:nth-child(6n+4)::before,[data-theme="hochglanz"] .sc:nth-child(6n+4)::before{background-color:var(--stein-3)}
+[data-theme="noppe"] .sc:nth-child(6n+5)::before,[data-theme="hochglanz"] .sc:nth-child(6n+5)::before{background-color:var(--stein-4)}
+[data-theme="noppe"] .sc:nth-child(6n)::before,[data-theme="hochglanz"] .sc:nth-child(6n)::before{background-color:var(--stein-5)}
 
 [data-theme="noppe"] .sci,[data-theme="hochglanz"] .sci{background:#f7f9fc;border-bottom:2.5px solid var(--ink)}
 [data-theme="noppe"] .sc .snum,[data-theme="hochglanz"] .sc .snum{color:var(--mut);font-weight:700}
