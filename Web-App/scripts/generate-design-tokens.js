@@ -80,11 +80,15 @@ function baueCss(daten) {
     // Reihenfolge in der Datei spielt daher keine Rolle.
     teile.push(block(design === 'classic' ? ':root' : `[data-theme="${design}"]`, tokens));
   }
-  if (daten.faecher) {
-    const zeilen = daten.faecher
-      .map((/** @type {string} */ wert, /** @type {number} */ i) => `  --faecher-${i}: ${wert};`).join('\n');
+  // Durchgezaehlte Farbreihen. Frueher stand hier EIN fest verdrahteter
+  // Block fuer den Themenfaecher; mit den Steinfarben des Designs "noppe"
+  // waere daneben eine zweite Kopie derselben acht Zeilen entstanden. Jetzt
+  // zaehlt die Schleife auf, was in `listen` steht.
+  for (const [name, liste] of Object.entries(daten.listen || {})) {
+    const zeilen = liste.werte
+      .map((/** @type {string} */ wert, /** @type {number} */ i) => `  --${liste.praefix}-${i}: ${wert};`).join('\n');
     teile.push([
-      '/* Themenfaecher — siehe _faecher_warum in shared/design-tokens.json. */',
+      `/* ${name} — siehe listen.${name}.warum in shared/design-tokens.json. */`,
       ':root {', zeilen, '}',
     ].join('\n'));
   }
@@ -108,19 +112,20 @@ function baueKotlin(daten) {
       : `/** --${token} im Design "${design}". */`;
     return `${kdoc}\nval ${name} = Color(0xFF${hex})`;
   });
-  const faecher = (daten.faecher || [])
-    .map((/** @type {string} */ w) => `    Color(0xFF${w.replace('#', '').toUpperCase()}),`).join('\n');
-  const faecherBlock = daten.faecher ? `
+  // Dieselbe Verallgemeinerung wie im CSS darueber.
+  const faecherBlock = Object.values(daten.listen || {}).map((/** @type {any} */ liste) => {
+    const farben = liste.werte
+      .map((/** @type {string} */ w) => `    Color(0xFF${w.replace('#', '').toUpperCase()}),`).join('\n');
+    return `
 
 /**
- * Der Themenfaecher des Designs "farbfaecher".
- *
-${umbruch(daten._faecher_warum, 68).map(z => ` * ${z}`).join('\n')}
+${umbruch(liste.warum, 68).map((/** @type {string} */ z) => ` * ${z}`).join('\n')}
  */
-val FaecherFarben = listOf(
-${faecher}
+val ${liste.kotlin} = listOf(
+${farben}
 )
-` : '';
+`;
+  }).join('');
 
   return `package ch.brickinventoryapp.ui.theme
 

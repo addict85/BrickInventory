@@ -159,10 +159,50 @@ val ChartNewFarbfaecher = Color(0xFF2563EB)
  */
 val ChartUsedFarbfaecher = Color(0xFFD97706)
 
+/** --b600 im Design "noppe". */
+val NoppeRot = Color(0xFFD91F26)
+
+/** --b50 im Design "noppe". */
+val NoppeRotHell = Color(0xFFFDECEC)
 
 /**
- * Der Themenfaecher des Designs "farbfaecher".
+ * --ink im Design "noppe".
  *
+ * Die Kante des Designs "noppe" — Rahmen, Versatzschatten und Text
+ * stehen alle auf demselben Ton. Kunststoff wirft keine Wolke, er
+ * liegt auf: Der Schatten ist derselbe Ton wie der Rahmen, nur
+ * versetzt. Waeren es zwei Toene, sieht die Kante aus wie ein
+ * Druckfehler.
+ */
+val NoppeTinte = Color(0xFF161A21)
+
+/**
+ * --chart-new im Design "noppe".
+ *
+ * Diagrammfarben — je Design ueberschreibbar. Vorher standen sie fest
+ * im JavaScript; damit konnte kein Design sie anpassen, und im
+ * Stein-Look stach das Bernstein der Gebraucht-Linie aus der ansonsten
+ * blauen Palette heraus.
+ */
+val ChartNewNoppe = Color(0xFF1A6FD4)
+
+/**
+ * --chart-used im Design "noppe".
+ *
+ * Im Stein-Design Salbeigruen und Sand — dieselben Werte wie die
+ * Zustands-Plaketten .cond-new und .cond-used. Der Grund ist nicht
+ * Geschmack: Diese Farben stehen ueberall in der Oberflaeche fuer
+ * genau diese Unterscheidung; wer sie im Diagramm wiedererkennt, muss
+ * die Legende nicht lesen. Vorher stand dort --chart-used:#3d5a80 (die
+ * Primaerfarbe des Designs) — zusammen mit dem hellen Blau der
+ * Neu-Linie ergab das ZWEI Blautoene, die sich nur in der Helligkeit
+ * unterschieden, und verkleinert oder gedruckt verschwindet so ein
+ * Unterschied als Erstes.
+ */
+val ChartUsedNoppe = Color(0xFFFF7A00)
+
+
+/**
  * Der Themenfaecher des Designs "farbfaecher": zwoelf Toene gleicher
  * Helligkeit und Buntheit, nur der Farbton wechselt — so steht kein
  * Thema lauter da als ein anderes. Die Zuordnung ist Thema-Nummer
@@ -184,4 +224,23 @@ val FaecherFarben = listOf(
     Color(0xFF7A3FA0),
     Color(0xFFA8348A),
     Color(0xFFBB2F5E),
+)
+
+
+/**
+ * Die Deckelfarben des Designs "noppe": sechs Klemmbaustein-Toene, die
+ * die Kachelwand durchlaeuft. Sie bedeuten NICHTS — anders als der
+ * Faecher darueber, wo die Farbe das Thema ist. Hier gibt sie Takt,
+ * und genau das ist der Haken dieses Designs: Wer den Faecher kennt,
+ * sucht hier eine Auskunft, die es nicht gibt. Sechs und nicht zwoelf,
+ * damit die Wiederholung als Rhythmus lesbar bleibt statt als Zufall.
+ * Die Zuordnung ist die Position in der Liste modulo sechs.
+ */
+val SteinFarben = listOf(
+    Color(0xFFD91F26),
+    Color(0xFFF5C400),
+    Color(0xFF1A6FD4),
+    Color(0xFF00A94F),
+    Color(0xFFFF7A00),
+    Color(0xFF8A4FBF),
 )

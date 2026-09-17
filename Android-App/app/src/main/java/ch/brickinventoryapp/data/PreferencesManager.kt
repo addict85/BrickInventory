@@ -42,7 +42,7 @@ class PreferencesManager @Inject constructor(
          * Unbekannte Werte werden NICHT gemerkt: "" oder null heisst „keine
          * Information" und darf den gemerkten Wert nicht loeschen.
          */
-        val ERLAUBTE_DESIGNS = setOf("classic", "brick", "werkbank", "farbfaecher")
+        val ERLAUBTE_DESIGNS = setOf("classic", "brick", "werkbank", "farbfaecher", "noppe")
 
         const val DESIGN_SPIEGEL_DATEI = "design_spiegel"
         const val APP_THEME_SPIEGEL = "app_theme"

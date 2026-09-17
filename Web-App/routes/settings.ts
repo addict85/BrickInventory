@@ -373,7 +373,7 @@ router.post('/admin/theme', requireAdmin, async (req, res) => {
   const theme = String(req.body?.theme || 'classic');
   // Dieselbe Liste wie ALLOWED in public/js/00-theme-boot.js und wie die
   // Dateien unter public/themes/ — theme.test.js haelt die drei zusammen.
-  if (!['classic', 'brick', 'werkbank', 'farbfaecher'].includes(theme)) {
+  if (!['classic', 'brick', 'werkbank', 'farbfaecher', 'noppe'].includes(theme)) {
     return sendeFehler(req, res, 400, 'design_ungueltig');
   }
   setGlobalSetting('app_theme', theme);

@@ -371,6 +371,7 @@
     <string name="monitoring_theme_brick">Brick</string>
     <string name="monitoring_theme_werkbank">Workbench (dark)</string>
     <string name="monitoring_theme_farbfaecher">Colour fan</string>
+    <string name="monitoring_theme_noppe">Noppe</string>
     <string name="monitoring_catalog_images">Queue catalogue images</string>
     <string name="monitoring_redownload_missing">Redownload missing images</string>
     <string name="monitoring_import_missing_instr">Import missing instructions</string>

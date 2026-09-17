@@ -1,0 +1,177 @@
+/* ═══════════════════════════════════════════════════════════════════════════
+   APP-DESIGN "noppe" (poppig) — der Klemmbaustein als Bauteil der Oberflaeche.
+   ---------------------------------------------------------------------------
+   Aktiv, sobald <html data-theme="noppe"> gesetzt ist (siehe applyTheme() in
+   js/00-theme-boot.js). Alle Regeln sind unter [data-theme="noppe"] gescoped;
+   die Datei wird immer geladen, greift aber nur beim aktiven Design.
+
+   Die PALETTE steht nicht hier, sondern in /tokens.css — erzeugt aus
+   shared/design-tokens.json, damit die Android-App dieselben Werte fuehrt.
+   Das gilt auch fuer --ink (die Kante) und --stein-0..5 (die Deckelfarben).
+   Hier steht nur, was das Web allein betrifft.
+
+   ── Die drei Gedanken dieses Designs ───────────────────────────────────────
+
+   1. GRUNDPLATTE. Der Seitengrund traegt ein Noppenraster — so schwach, dass
+      es Textur ist und kein Muster, ueber das man lesen muss.
+
+   2. KANTE STATT WOLKE. Kunststoff wirft keinen weichen Schatten, er liegt
+      auf. Rahmen und Versatzschatten stehen deshalb auf DEMSELBEN Ton
+      (--ink); waeren es zwei, saehe die Kante aus wie ein Druckfehler.
+
+   3. DER DECKEL GIBT TAKT, KEINE AUSKUNFT. Jede Kachel bekommt einen farbigen
+      Steindeckel mit Noppen, die Farbe laeuft im Kreis durch --stein-0..5.
+      Sie bedeutet NICHTS. Das ist der ausdrueckliche Unterschied zum Design
+      "farbfaecher", wo die Farbe das Thema IST — und der bekannte Haken
+      dieses Designs: Wer den Faecher kennt, sucht hier eine Auskunft, die es
+      nicht gibt.
+
+   ── Wo es LEISE wird ───────────────────────────────────────────────────────
+   Tabellen und Angabenzeilen bleiben weiss mit grauen Trennlinien. Das Laute
+   gehoert an die Raender — Kopfleiste, Knoepfe, Plaketten —, nicht zwischen
+   die Zahlen. Ein Bestand ist nichts, was man einmal anschaut.
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+[data-theme="noppe"]{
+  --font:'Nunito','Plus Jakarta Sans',system-ui,sans-serif;
+
+  --bg:#eef1f6;
+  --sur:#ffffff;
+  --bdr:var(--ink);
+  --txt:var(--ink);
+  --mut:#5a6270;
+  --screen-bg:#eef1f6;      /* Login-/Startup-Screen, vor dem Login */
+  --rad:14px;
+
+  /* Kante statt Wolke: derselbe Ton wie der Rahmen, nur versetzt. */
+  --sh0:0 3px 0 var(--ink);
+  --sh1:0 4px 0 var(--ink);
+  --sh2:0 6px 0 var(--ink);
+}
+
+/* ── Die Grundplatte ────────────────────────────────────────────────────────
+   Der Verlauf sitzt auf dem BODY und nicht auf einem eigenen Element: So
+   scrollt er mit dem Inhalt und braucht kein zusaetzliches Kaestchen. */
+[data-theme="noppe"] body{
+  background-color:var(--bg);
+  background-image:radial-gradient(circle at 10px 10px,rgba(22,26,33,.055) 4px,transparent 4.6px);
+  background-size:20px 20px;
+}
+
+/* ── Vor dem Login ──────────────────────────────────────────────────────────
+   Muss hier stehen: Login- und Startup-Screen erscheinen, bevor irgendeine
+   Nutzereinstellung gelesen ist (siehe --screen-bg oben und theme.test.js). */
+[data-theme="noppe"] #login-screen,
+[data-theme="noppe"] #startup-screen{
+  background-color:var(--screen-bg);
+  background-image:radial-gradient(circle at 10px 10px,rgba(22,26,33,.055) 4px,transparent 4.6px);
+  background-size:20px 20px;
+  color:var(--txt);
+}
+[data-theme="noppe"] #login-screen .card,
+[data-theme="noppe"] #startup-screen .card{
+  background:var(--sur);border:2.5px solid var(--ink);box-shadow:0 4px 0 var(--ink);
+}
+
+/* ── Kopf- und Reiterleiste: der Stein ──────────────────────────────────────
+   Die Noppen sind ein wiederholter Verlauf und keine sechzehn <div>: Die Zahl
+   der Noppen soll sich mit der Fensterbreite ergeben, nicht im HTML stehen. */
+[data-theme="noppe"] header{
+  background:var(--b600);
+  border-bottom:3px solid var(--ink);
+  position:relative;
+  padding-top:7px;
+}
+[data-theme="noppe"] header::before{
+  content:"";position:absolute;top:0;left:28px;right:28px;height:7px;
+  background:repeating-linear-gradient(90deg,
+    var(--b300) 0 15px,transparent 15px 24px);
+  border-radius:4px 4px 0 0;
+}
+[data-theme="noppe"] header,
+[data-theme="noppe"] header a,
+[data-theme="noppe"] header .brand{color:#fff}
+
+[data-theme="noppe"] nav{
+  background:var(--b600);border-bottom:3px solid var(--ink);
+}
+[data-theme="noppe"] nav .ntab{color:var(--b100);font-weight:700}
+[data-theme="noppe"] nav .ntab.active{
+  background:var(--sur);color:var(--ink);font-weight:900;
+  border:2.5px solid var(--ink);border-radius:9px;
+}
+
+/* ── Flaechen ───────────────────────────────────────────────────────────── */
+[data-theme="noppe"] .card,
+[data-theme="noppe"] .modal-content{
+  background:var(--sur);border:2.5px solid var(--ink);box-shadow:0 4px 0 var(--ink);
+}
+
+/* ── Die Kachel mit ihrem Deckel ────────────────────────────────────────────
+   ::before ist der Deckel, ::after die Noppen darauf. Beides am
+   Pseudo-Element und nicht im HTML: Die Kachel selbst soll in allen Designs
+   dieselbe Auszeichnung behalten. */
+[data-theme="noppe"] .sc{
+  background:var(--sur);border:2.5px solid var(--ink);border-radius:14px;
+  box-shadow:0 4px 0 var(--ink);overflow:hidden;position:relative;
+  padding-top:26px;
+}
+[data-theme="noppe"] .sc::before{
+  content:"";position:absolute;top:0;left:0;right:0;height:26px;
+  background:var(--stein-0);border-bottom:2.5px solid var(--ink);
+}
+[data-theme="noppe"] .sc::after{
+  content:"";position:absolute;top:6px;left:12px;height:7px;width:80px;
+  background:repeating-linear-gradient(90deg,
+    rgba(255,255,255,.5) 0 14px,transparent 14px 22px);
+  border-radius:4px 4px 0 0;
+}
+/* Der Takt: sechs Deckelfarben, dann von vorn. Die Werte kommen aus
+   tokens.css, damit die App dieselben fuehrt. */
+[data-theme="noppe"] .sc:nth-child(6n+2)::before{background:var(--stein-1)}
+[data-theme="noppe"] .sc:nth-child(6n+3)::before{background:var(--stein-2)}
+[data-theme="noppe"] .sc:nth-child(6n+4)::before{background:var(--stein-3)}
+[data-theme="noppe"] .sc:nth-child(6n+5)::before{background:var(--stein-4)}
+[data-theme="noppe"] .sc:nth-child(6n)::before{background:var(--stein-5)}
+
+[data-theme="noppe"] .sci{background:#f7f9fc;border-bottom:2.5px solid var(--ink)}
+[data-theme="noppe"] .sc .snum{color:var(--mut);font-weight:700}
+[data-theme="noppe"] .sc .sname{font-weight:800}
+
+/* ── Knoepfe und Eingaben ──────────────────────────────────────────────────
+   Der Versatzschatten macht sie greifbar, ohne dass es eine zweite laute
+   Farbe braucht. Beim Druecken wandert der Knopf auf den Schatten — dieselbe
+   Bewegung wie bei einem Stein, den man aufsetzt. */
+[data-theme="noppe"] .btn{
+  border:2.5px solid var(--ink);border-radius:10px;
+  box-shadow:0 3px 0 var(--ink);font-weight:800;
+}
+[data-theme="noppe"] .btn:active{transform:translateY(3px);box-shadow:none}
+[data-theme="noppe"] .btn.bp{background:var(--b600);color:#fff}
+
+[data-theme="noppe"] input,
+[data-theme="noppe"] select,
+[data-theme="noppe"] textarea{
+  background:var(--sur);color:var(--txt);
+  border:2.5px solid var(--ink);border-radius:10px;
+}
+[data-theme="noppe"] input::placeholder,
+[data-theme="noppe"] textarea::placeholder{color:var(--mut)}
+
+/* ── Wo es leise wird: Tabellen ─────────────────────────────────────────────
+   Graue Trennlinien statt der Tinte. Eine Tabelle mit 2,5px schwarzen Kanten
+   je Zeile waere ein Gitter und kein Text. */
+[data-theme="noppe"] table td,
+[data-theme="noppe"] table th{border-bottom:2px solid #e4e8ef}
+
+/* ── Zustands-Plaketten ─────────────────────────────────────────────────────
+   Dieselbe Bedeutung wie ueberall: Neu gegen Gebraucht. Sie bekommen die
+   Tintenkante wie alles andere, tragen aber die Diagrammfarben — damit
+   Plakette und Linie zusammengehoeren, dieselbe Ueberlegung wie in
+   themes/brick.css und themes/werkbank.css. */
+[data-theme="noppe"] .cond-new{
+  background:var(--chart-new);color:#fff;border:2px solid var(--ink);font-weight:800;
+}
+[data-theme="noppe"] .cond-used{
+  background:var(--chart-used);color:var(--ink);border:2px solid var(--ink);font-weight:800;
+}
