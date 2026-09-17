@@ -35,6 +35,11 @@
   --g100:#1d2a20;--g500:#6fbf7f;
   --r100:#2c1c1c;--r500:#e07a72;
   --a100:#2a2418;--a500:#d9a84e;
+  /* Auf dunklem Bernstein muss die Schrift HELLER werden, nicht dunkler.
+     Ohne diese Zeile stuende hier #92400e aus :root — dunkelbraun auf
+     dunkelbraun, GEMESSEN 2.17:1. Genau so stand es bisher fest in
+     .spare-tag und .ra; mit dem Token wird es hier mitbehoben. */
+  --a-schrift:#d9a84e;
   --p100:#241d2e;--p600:#b087d6;
 
   /* Schatten sind auf Dunkel fast unsichtbar — die Trennung macht der

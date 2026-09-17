@@ -68,17 +68,33 @@ function kopfKlassen() {
   return [...drin].filter(k => !draussen.has(k));
 }
 
-/** Stellen in der Kopfleiste, die ihren Grund von ihr erben. */
-function erbendeStellen() {
+/**
+ * Stellen in der Kopfleiste mit ihrer Textfarbe — und mit dem Grund, auf dem
+ * sie steht.
+ *
+ * Zwei Arten, und BEIDE zaehlen:
+ *
+ *   erbt  — kein eigener Hintergrund, steht also auf der Kopfleiste
+ *           (.logo h1 span, .hs .v, .hs .l)
+ *   eigen — bringt seinen Grund mit (.ubadge, .abadge)
+ *
+ * Die erste Fassung liess die zweite Art weg, weil der gemeldete Fehler in der
+ * ersten lag. Das war zu eng: Die Admin-Plakette stand GEMESSEN bei 1.93:1 —
+ * bernsteinfarben auf bernstein —, direkt neben den Kennzahlen, und diese
+ * Pruefung sah daran vorbei. Eine eigene Flaeche schuetzt nicht vor zu
+ * schwachem Text; sie verschiebt nur, wogegen man misst.
+ */
+function kopfStellen() {
   const nurKopf = kopfKlassen();
   const treffer = [];
   for (const [sels, rumpf] of regeln(fs.readFileSync(P('public', 'styles.css'), 'utf8'))) {
     const farbe = rumpf.match(/(?:^|[;\s])color:\s*([^;]+)/);
     if (!farbe) continue;
-    if (/(?:^|[;\s])background/.test(rumpf)) continue;   // bringt seinen Grund mit
+    const eigen = rumpf.match(/(?:^|[;\s])background(?:-color)?:\s*([^;]+)/);
     for (const sel of sels) {
       const klassen = [...sel.matchAll(/\.([\w-]+)/g)].map(m => m[1]);
-      if (klassen.some(k => nurKopf.includes(k))) treffer.push([sel, farbe[1].trim()]);
+      if (!klassen.some(k => nurKopf.includes(k))) continue;
+      treffer.push({ sel, farbe: farbe[1].trim(), eigenerGrund: eigen ? eigen[1].trim() : null });
     }
   }
   return treffer;
@@ -197,9 +213,22 @@ function kopfGrund(css, design) {
   return wert;
 }
 
-/** Was gilt fuer `stelle` in diesem Design — Ueberschreibung oder Grundwert? */
-function textFarbe(css, design, stelle, grundwert) {
+/**
+ * Was gilt fuer `stelle` in diesem Design — die Ueberschreibung oder der Wert
+ * aus styles.css? `eigenschaft` ist `color` oder `background`.
+ *
+ * Auch der GRUND muss so gesucht werden, nicht nur die Schrift: themes/brick.css
+ * gibt den Plaketten eigene Flaechen (`rgba(255,255,255,.16)` und
+ * `var(--brick-petrol)`). Die erste Fassung las nur die Schrift nach und mass
+ * sie gegen den Grund aus styles.css — und meldete brick mit 1.29 und 1.11,
+ * obwohl dort weiss auf Petrol steht. Wieder ein Design, das die Sache richtig
+ * macht, und wieder haette die Pruefung es als Fehler ausgegeben.
+ */
+function eigenschaftFuer(css, design, stelle, grundwert, eigenschaft) {
   let wert = grundwert;
+  const muster = eigenschaft === 'color'
+    ? /(?:^|[;\s])color:\s*([^;]+)/
+    : /(?:^|[;\s])background(?:-color)?:\s*([^;]+)/;
   for (const [sels, rumpf] of regeln(css)) {
     // `endsWith` und kein Gleichheitszeichen: themes/brick.css schreibt
     // `header .hstats .hs .v`, die Grundregel `.hs .v`. Ein Vergleich auf
@@ -213,19 +242,22 @@ function textFarbe(css, design, stelle, grundwert) {
       return rein === stelle || rein.endsWith(' ' + stelle);
     });
     if (!trifft) continue;
-    const t = rumpf.match(/(?:^|[;\s])color:\s*([^;]+)/);
+    const t = rumpf.match(muster);
     if (t) wert = t[1].trim();
   }
   return wert;
 }
 
-test('jeder Text auf einer gestrichenen Kopfleiste ist lesbar', () => {
-  const stellen = erbendeStellen();
-  // Selbstbeweis: GEMESSEN sind es drei — .logo h1 span, .hs .v, .hs .l.
-  // Findet die Ableitung nichts, waere die Schleife darunter still gruen.
-  assert.equal(stellen.length, 3,
-    `${stellen.length} erbende Stellen abgeleitet statt drei: ` +
-    stellen.map(s => s[0]).join(', ') + ' — greift die Ableitung noch?');
+test('jeder Text in einer gestrichenen Kopfleiste ist lesbar', () => {
+  const stellen = kopfStellen();
+  // Selbstbeweis: GEMESSEN sind es fuenf — .logo h1 span, .hs .v und .hs .l
+  // auf der Leiste, dazu .ubadge und .abadge auf eigenem Grund. Findet die
+  // Ableitung nichts, waere die Schleife darunter still gruen.
+  assert.equal(stellen.length, 5,
+    `${stellen.length} Stellen abgeleitet statt fuenf: ` +
+    stellen.map(s => s.sel).join(', ') + ' — greift die Ableitung noch?');
+  assert.equal(stellen.filter(s => s.eigenerGrund).length, 2,
+    'Die Stellen mit eigenem Grund sind nicht mehr zwei — greift die Ableitung noch?');
 
   const alle = designs();
   assert.ok(alle.length >= 4, `Nur ${alle.length} Designs — greift die Suche noch?`);
@@ -236,10 +268,17 @@ test('jeder Text auf einer gestrichenen Kopfleiste ist lesbar', () => {
     const grundName = kopfGrund(css, design);
     if (!grundName) continue;              // streicht die Kopfleiste nicht
     const loese = werte(css, design);
-    const grund = loese(grundName);
-    if (!grund) continue;                  // z. B. `transparent` — kein Farbwert
-    for (const [stelle, grundfarbe] of stellen) {
-      const farbe = loese(textFarbe(css, design, stelle, grundfarbe), grund);
+    const leiste = loese(grundName);
+    if (!leiste) continue;                 // z. B. `transparent` — kein Farbwert
+    for (const { sel: stelle, farbe: grundfarbe, eigenerGrund } of stellen) {
+      // Gemessen wird gegen den Grund, auf dem der Text WIRKLICH steht: die
+      // eigene Flaeche, wenn es eine gibt, sonst die Leiste. Eine
+      // halbdurchsichtige eigene Flaeche wird ueber die Leiste gerechnet.
+      const grund = eigenerGrund
+        ? loese(eigenschaftFuer(css, design, stelle, eigenerGrund, 'background'), leiste)
+        : leiste;
+      if (!grund) continue;
+      const farbe = loese(eigenschaftFuer(css, design, stelle, grundfarbe, 'color'), grund);
       if (!farbe) continue;
       geprueft++;
       const v = verhaeltnis(farbe, grund);
@@ -248,10 +287,10 @@ test('jeder Text auf einer gestrichenen Kopfleiste ist lesbar', () => {
       if (v < 4.5) schwach.push(`${design}: "${stelle}" steht bei ${v.toFixed(2)}:1`);
     }
   }
-  assert.ok(geprueft >= 6,
+  assert.ok(geprueft >= 10,
     `Nur ${geprueft} Paare geprueft — loesen die Farbwerte noch auf?`);
   assert.deepEqual(schwach, [],
-    'Diese Texte stehen auf der gestrichenen Kopfleiste zu schwach (noetig 4.5:1). ' +
+    'Diese Texte in der Kopfleiste stehen zu schwach (noetig 4.5:1). ' +
     'Bei 1.00 ist es exakt dieselbe Farbe — genau so standen die Kennzahlen im ' +
     'Steindesign. Das Design muss ihnen eine eigene Farbe geben.');
 });
