@@ -20,14 +20,25 @@ import androidx.compose.ui.unit.sp
  * Der Lichtabfall einer lackierten Flaeche — Licht oben, Schatten unten.
  *
  * Dieselben vier Haltepunkte wie `linear-gradient(180deg, …)` in
- * themes/hochglanz.css. Sie stehen hier als Zahlen und nicht in
+ * themes/hochglanz.css.
+ *
+ * ── Warum der Lichtsaum schmaler wurde (Nachtrag 165) ─────────────────────
+ *
+ * Aus dem Entwurf kamen 0.55 auf 42% der Hoehe. Marco: „In der Android App ist
+ * der Glanz zu stark." Er hat recht — auf dem Telefon frisst der breite
+ * Weissanteil die Deckelfarbe weg, und die Deckelfarbe IST der Takt dieses
+ * Designs (siehe themes/noppe.css). Jetzt 0.34 auf 30%: ein Lichtsaum statt
+ * einer Waesche.
+ *
+ * Die dunkle Haelfte bleibt unveraendert. Sie gibt dem Deckel seine Woelbung
+ * und war nie das Problem. Sie stehen hier als Zahlen und nicht in
  * design-tokens.json, weil sie keine FARBE sind: Ein Verlauf aus Weiss- und
  * Schwarzanteilen liegt ueber jeder beliebigen Grundfarbe und gehoert damit
  * nicht in eine Palette.
  */
 val LackVerlauf = Brush.verticalGradient(
-    0.00f to Color.White.copy(alpha = 0.55f),
-    0.42f to Color.White.copy(alpha = 0.12f),
+    0.00f to Color.White.copy(alpha = 0.34f),
+    0.30f to Color.White.copy(alpha = 0.10f),
     0.62f to Color.Black.copy(alpha = 0.10f),
     1.00f to Color.Black.copy(alpha = 0.20f),
 )

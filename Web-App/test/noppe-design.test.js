@@ -225,7 +225,7 @@ test('beide Oberflaechen bauen den Glanz aus denselben Haltepunkten', () => {
   const ausCss = [...glanz.matchAll(/rgba\((?:255,255,255|0,0,0),\.(\d+)\) (\d+)%/g)]
     .map(m => `${m[2]}/${m[1]}`);
   assert.ok(ausCss.length >= 4, `Nur ${ausCss.length} Haltepunkte im CSS — greift die Suche noch?`);
-  for (const [anteil, deckkraft] of [['0.00f', '0.55f'], ['0.42f', '0.12f'],
+  for (const [anteil, deckkraft] of [['0.00f', '0.34f'], ['0.30f', '0.10f'],
                                      ['0.62f', '0.10f'], ['1.00f', '0.20f']]) {
     assert.ok(decor.includes(`${anteil} to Color.`) && decor.includes(`alpha = ${deckkraft}`),
       `Der Haltepunkt ${anteil}/${deckkraft} fehlt in BrickDecor.kt — der ` +
@@ -321,4 +321,42 @@ test('die Noppe hat in beiden Oberflaechen dieselbe Form', () => {
     'Die Noppe ist in der App wieder ein Kreis. Im Web ist sie ein Rechteck ' +
     'mit runder Oberkante — dann zeigen Telefon und Rechner dasselbe Design ' +
     'in zwei Formen.');
+});
+
+test('die Deckelfarbe loescht den Lack nicht', () => {
+  // ── Der Fehler, den diese Zusicherung verhindert (Nachtrag 165) ───────────
+  //
+  // Marco: „In der Android App ist der Glanz zu stark. In der Webapp ist
+  // dieser gar nicht sichtbar." Der zweite Teil war woertlich wahr, und der
+  // Grund stand zwei Zeilen weiter oben in dieser Datei:
+  //
+  //   `background:var(--stein-1)`   — die KURZFORM
+  //
+  // Die Kurzform setzt alle Hintergrund-Eigenschaften zurueck,
+  // `background-image` eingeschlossen. Und `:nth-child()` zaehlt wie eine
+  // Klasse: Die Farbregeln sind damit eine Stufe spezifischer als die
+  // Glanzschicht in hochglanz.css. GEMESSEN im Browser stand bei fuenf von
+  // sechs Kacheln `background-image: none` am Deckel.
+  //
+  // Die Pruefung „beide Oberflaechen bauen den Glanz aus denselben
+  // Haltepunkten" war dabei die ganze Zeit gruen: Sie vergleicht die ZAHLEN im
+  // Quelltext und nicht, ob der Verlauf am Ende ankommt. Genau diese Luecke
+  // schliesst die Regel hier.
+  // Kommentare zuerst weg: Der Kopf dieser Datei ERKLAERT die Deckelfarben und
+  // nennt --stein-0 dabei im Fliesstext. Ohne diesen Schritt zaehlte die
+  // Selbstpruefung sieben statt sechs — gemerkt, weil sie angeschlagen hat.
+  const farbregeln = css.replace(/\/\*[\s\S]*?\*\//g, '').split('}')
+    .filter(r => /--stein-\d/.test(r));
+  // Selbstbeweis: GEMESSEN sind es sechs — die Grundregel und fuenf Positionen.
+  assert.equal(farbregeln.length, 6,
+    `${farbregeln.length} Regeln mit einer Deckelfarbe statt sechs — greift die Suche noch?`);
+
+  const kurzform = farbregeln
+    .filter(r => /(?:^|[;{\s])background:\s*var\(--stein-/.test(r))
+    .map(r => r.slice(0, r.indexOf('{')).trim().split(',')[0]);
+  assert.deepEqual(kurzform, [],
+    'Diese Regeln setzen die Deckelfarbe mit der Kurzform `background:`. Sie ' +
+    'loescht damit den `background-image` des Lacks — und weil :nth-child wie ' +
+    'eine Klasse zaehlt, gewinnt sie gegen hochglanz.css. `background-color:` ' +
+    'setzt nur die Farbe und laesst den Lack stehen.');
 });
