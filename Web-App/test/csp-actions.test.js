@@ -218,7 +218,20 @@ test('ein einzelner Bildfehler blendet die Kachel nicht dauerhaft aus', () => {
   // oder blendete das Bild aus, und fallbackDone verhinderte jeden weiteren
   // Versuch — obwohl das Bild in Ordnung war.
   assert.match(ACT, /if \(!el\.dataset\.retried && el\.src\)/, 'Kein erneuter Versuch');
-  assert.match(ACT, /setTimeout\(\(\) => \{ el\.src = ''; el\.src = src; \}, 1000\)/,
+  // ── Die Absicht statt des Wortlauts ──────────────────────────────────────
+  //
+  // Hier stand der Aufruf ausgeschrieben, `el.src = ''` eingeschlossen. Genau
+  // dieses leere src war aber selbst ein Fehler: Der Browser loest es gegen
+  // die SEITENadresse auf und laedt die Startseite als Bild (siehe
+  // leeres-bildquell.test.js). Beim Berichtigen schlug diese Zusicherung an —
+  // obwohl die Absicht unveraendert war und der Fehler damit gerade
+  // verschwand. Geprueft wird deshalb die Absicht: Adresse merken, Attribut
+  // abraeumen, nach einer Sekunde dieselbe Adresse erneut setzen.
+  const versuch = ACT.match(/setTimeout\(\(\) => \{([^}]*)\}, 1000\)/);
+  assert.ok(versuch, 'Der zweite Versuch nach einer Sekunde fehlt');
+  assert.match(versuch[1], /el\.removeAttribute\('src'\)/,
+    "Der zweite Versuch muss das Attribut abraeumen — `el.src = ''` zeigt auf die Seite");
+  assert.match(versuch[1], /el\.src = src/,
     'Der zweite Versuch muss dieselbe Adresse erneut anfordern');
   // Und erst danach greift der bisherige Rückfall
   const iRetry = ACT.indexOf('el.dataset.retried');

@@ -2,7 +2,6 @@ package ch.brickinventoryapp.ui.theme
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -34,9 +33,26 @@ val LackVerlauf = Brush.verticalGradient(
 )
 
 /**
+ * Die Form EINER Noppe: unten bündig am Deckel, oben rund.
+ *
+ * Dieselbe Form, die themes/noppe.css als Maske führt (`--noppen-form`). Sie
+ * steht hier als eigener Wert und nicht dreimal im Baustein, damit beide
+ * Oberflächen sie an genau einer Stelle führen.
+ */
+val NoppenForm = RoundedCornerShape(topStart = 4.dp, topEnd = 4.dp)
+
+/**
  * Noppen-„Deckel" für Stein-Karten: eine schmale, farbige Leiste mit hellen
- * Noppen (Kreisen) links. Wird oben in Karten platziert und über das
- * Karten-Clipping automatisch oben abgerundet.
+ * Noppen links. Wird oben in Karten platziert und über das Karten-Clipping
+ * automatisch oben abgerundet.
+ *
+ * ── Die Form der Noppe (Nachtrag 163) ────────────────────────────────
+ *
+ * Ein Rechteck mit RUNDER OBERKANTE, oben am Deckel angesetzt — die Noppe von
+ * vorn gesehen, so wie sie im Entwurf steht und wie themes/noppe.css sie
+ * zeichnet. Vorher standen hier Kreise: Marcos Vorgabe sind einheitliche
+ * Ansichten, und ein Kreis in der App neben einer Noppe im Web sind zwei
+ * Designs. Die Masse (13 × 6, Radius 4, Abstand 7) sind dieselben wie dort.
  *
  * ── Der Glanz (Nachtrag 162) ────────────────────────────────────────────────
  *
@@ -61,12 +77,14 @@ fun BrickStudCap(
             .then(if (glanz) Modifier.background(LackVerlauf) else Modifier)
     ) {
         Row(
-            Modifier.align(Alignment.CenterStart).padding(start = 10.dp),
-            horizontalArrangement = Arrangement.spacedBy(6.dp)
+            Modifier.align(Alignment.TopStart).padding(top = 5.dp, start = 11.dp),
+            horizontalArrangement = Arrangement.spacedBy(7.dp)
         ) {
             repeat(studCount) {
                 Box(
-                    Modifier.size(6.dp).clip(CircleShape)
+                    Modifier
+                        .size(width = 13.dp, height = 6.dp)
+                        .clip(NoppenForm)
                         // Die Kuppe: ein Lichtpunkt oben statt einer gleichmaessig
                         // hellen Scheibe. Derselbe radiale Verlauf wie
                         // `radial-gradient(ellipse at 50% 20%, …)` im Web.

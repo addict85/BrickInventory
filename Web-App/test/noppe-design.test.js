@@ -242,3 +242,83 @@ test('der Deckel ist EIN Baustein, nicht zwei', () => {
   assert.ok(!/fun \w*GlanzStudCap|fun BrickStudCapGlanz/.test(decor),
     'Es gibt einen zweiten Deckel-Baustein fuer den Glanz. Einer reicht, mit Parameter.');
 });
+
+// ────────────────────────────────────────────────────────────────────────────
+// Die Form der Noppe (Nachtrag 163)
+//
+// Marco: „Die Noppen sehen noch komisch aus." Sie waren ein
+// repeating-linear-gradient — ein Verlauf kennt keine runden Ecken, und das
+// `border-radius` daneben rundete den BALKEN statt der einzelnen Noppe. In der
+// laufenden App standen deshalb scharfkantige Striche, obwohl im Entwurf
+// Noppen mit runder Oberkante stehen.
+//
+// Der Ersatz ist eine Maske: Sie traegt die FORM, der Hintergrund die FARBE.
+// Damit bleibt die Farbe in den Token — und die Form an genau einer Stelle.
+// ────────────────────────────────────────────────────────────────────────────
+
+/** Die beiden Regeln, die eine Noppenreihe zeichnen. */
+const noppenReihen = () => css.split('}')
+  .filter(r => /header::before|\.sc::after/.test(r.slice(0, r.indexOf('{') + 1)));
+
+test('die Noppen haben eine runde Oberkante, keine Verlaufskante', () => {
+  const reihen = noppenReihen();
+  // Selbstbeweis: GEMESSEN sind es zwei — die Kopfleiste und der Kacheldeckel.
+  assert.equal(reihen.length, 2,
+    `${reihen.length} Noppenreihen gefunden statt zwei — greift die Suche noch?`);
+
+  for (const reihe of reihen) {
+    const kopf = reihe.slice(0, reihe.indexOf('{')).trim();
+    assert.ok(reihe.includes('var(--noppen-form)'),
+      `"${kopf}" benutzt die Noppenform nicht`);
+    assert.ok(!/repeating-linear-gradient/.test(reihe),
+      `"${kopf}" zeichnet die Noppen wieder als Verlauf. Ein Verlauf kann keine ` +
+      'runden Ecken — genau daran sahen sie aus wie Striche.');
+    assert.ok(!/border-radius/.test(reihe),
+      `"${kopf}" rundet mit border-radius. Das rundet den BALKEN, nicht die ` +
+      'einzelne Noppe — der Unterschied war in der laufenden App zu sehen.');
+  }
+});
+
+test('Leiste und Deckel teilen sich EINE Noppenform', () => {
+  // Zwei Formen liefen beim naechsten Nachbessern auseinander: Die eine Reihe
+  // bekaeme runde Noppen, die andere behielte ihre alten — und beides steht
+  // auf demselben Bildschirm untereinander.
+  const erklaerungen = [...css.matchAll(/--noppen-form:/g)].length;
+  assert.equal(erklaerungen, 1,
+    `Die Noppenform steht ${erklaerungen}-mal in noppe.css. Einmal reicht; die ` +
+    'zweite Reihe nimmt dieselbe Form in einem anderen Takt (mask-size).');
+  assert.match(css, /--noppen-form:url\("data:image\/svg\+xml,/,
+    'Die Noppenform ist keine Maske mehr');
+});
+
+test('der Glanz liegt im Takt der Maske', () => {
+  // ── Die Stelle, an der es still falsch wird ──────────────────────────────
+  //
+  // hochglanz.css legt je Noppe einen radialen Verlauf darueber. Der
+  // wiederholt sich ueber `background-size`, die Form ueber `mask-size` in
+  // noppe.css. Das sind ZWEI Zahlen fuer denselben Takt: Laufen sie
+  // auseinander, wandert der Lichtpunkt von Noppe zu Noppe aus der Mitte —
+  // und im Quelltext sieht jede der beiden Zahlen fuer sich richtig aus.
+  const maskenTakte = [...css.matchAll(/\bmask-size:(\d+)px \d+px/g)].map(m => m[1]);
+  const glanzTakte = [...glanz.matchAll(/\bbackground-size:(\d+)px \d+px/g)].map(m => m[1]);
+  // Selbstbeweis: GEMESSEN sind es vier Masken-Takte (je Reihe einmal mit und
+  // einmal ohne -webkit-) und zwei Glanz-Takte.
+  assert.deepEqual([...new Set(maskenTakte)].sort(), ['22', '24'],
+    `Die Masken-Takte sind ${maskenTakte.join(', ')} — greift die Suche noch?`);
+  assert.deepEqual([...new Set(glanzTakte)].sort(), ['22', '24'],
+    `Der Glanz wiederholt sich im Takt ${glanzTakte.join(', ')}, die Maske aber ` +
+    `im Takt ${[...new Set(maskenTakte)].join(', ')}. Dann sitzt der Lichtpunkt ` +
+    'nicht mehr auf der Noppe.');
+});
+
+test('die Noppe hat in beiden Oberflaechen dieselbe Form', () => {
+  // Marcos Vorgabe sind einheitliche Ansichten. Hier stand ein Kreis in der
+  // App neben einer Noppe im Web — das sind zwei Designs, nicht eines.
+  assert.match(decor, /RoundedCornerShape\(topStart = 4\.dp, topEnd = 4\.dp\)/,
+    'BrickDecor.kt zeichnet die Noppe nicht mehr als Rechteck mit runder ' +
+    'Oberkante (Radius 4 wie die Maske im Web)');
+  assert.ok(!/CircleShape/.test(decor),
+    'Die Noppe ist in der App wieder ein Kreis. Im Web ist sie ein Rechteck ' +
+    'mit runder Oberkante — dann zeigen Telefon und Rechner dasselbe Design ' +
+    'in zwei Formen.');
+});

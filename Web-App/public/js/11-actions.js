@@ -106,7 +106,9 @@ import { allFigsCache, deleteManualFig, renderFigs, updateManualFig, deleteManua
     if (!el.dataset.retried && el.src) {
       el.dataset.retried = '1';
       const src = el.src;
-      setTimeout(() => { el.src = ''; el.src = src; }, 1000);
+      // removeAttribute statt src='': Ein leeres src zeigt auf die SEITE, und
+      // der Browser wuerde sie als Bild zu laden versuchen.
+      setTimeout(() => { el.removeAttribute('src'); el.src = src; }, 1000);
       return;
     }
 
