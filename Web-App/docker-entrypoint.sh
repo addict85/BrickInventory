@@ -67,19 +67,68 @@ chown brickinv:brickinv \
   /app/data/images/parts \
   /app/data/images/minifigs 2>/dev/null || true
 
+# ── Die Marke: warum auch die SUCHE nicht bei jedem Start laufen soll ────────
+#
+# Marcos Rueckfrage: „Kann dieser Schritt mit den Dateien nicht erfolgen
+# nachdem der Server gestartet ist?"
+#
+# Kann er nicht — jedenfalls nicht durch den Server: Der laeuft via su-exec als
+# brickinv und darf gar nicht chownen. Moeglich waere nur, den Lauf PARALLEL
+# als root weiterlaufen zu lassen. Das ist bewusst nicht gemacht (siehe unten).
+#
+# Die Frage dahinter — „warum kostet ein normaler Start ueberhaupt etwas?" —
+# ist aber die richtige, und sie hat eine bessere Antwort als Nebenlaeufigkeit:
+# gar nicht erst suchen. Die Suche schreibt zwar nichts, laeuft aber ueber jede
+# Datei. Auf einem Netzlaufwerk ist schon das Durchgehen teuer — dort ist jede
+# einzelne Abfrage ein Paket ueber das Netz.
+#
+# Deshalb eine Marke: Nach einem erfolgreichen Durchgang steht die Ziel-UID in
+# einer Datei. Stimmt sie beim naechsten Start noch, ist nichts zu tun — ein
+# Lesevorgang statt eines Durchlaufs.
+#
+# Was die Marke NICHT kann: Sie merkt nicht, wenn jemand von Hand fremde
+# Dateien hineinlegt. Dafuer gibt es BRICKINV_CHOWN=always, und das ist der
+# ehrlichere Handel als eine Suche, die bei jedem Start ueber zehntausende
+# Dateien laeuft, um einen Fall abzudecken, den es im Betrieb nicht gibt.
+MARKE=/app/data/.eigentuemer
+
+berichtige() {
+  echo "[entrypoint] Eigentuemer wird gesetzt — das kann bei vielen Bildern einige Minuten dauern."
+  chown -R brickinv:brickinv /app/data
+  echo "[entrypoint] Eigentuemer berichtigt."
+}
+
+# Die Marke schreiben. `|| true`, weil `set -e` sonst bei einem nur lesbar
+# eingehaengten Datentraeger den ganzen Start abbraeche — die Marke ist eine
+# Abkuerzung, kein Muss.
+setzeMarke() {
+  { printf '%s' "$ZIEL_UID" > "$MARKE" && chown brickinv:brickinv "$MARKE"; } 2>/dev/null || true
+}
+
 case "${BRICKINV_CHOWN:-auto}" in
   never)
     echo "[entrypoint] Eigentuemerpruefung uebersprungen (BRICKINV_CHOWN=never)"
     ;;
   always)
-    echo "[entrypoint] Eigentuemer wird vollstaendig gesetzt (BRICKINV_CHOWN=always) — das kann bei vielen Bildern dauern."
-    chown -R brickinv:brickinv /app/data
+    echo "[entrypoint] Vollstaendiger Lauf erzwungen (BRICKINV_CHOWN=always)."
+    berichtige
+    setzeMarke
     ;;
   *)
-    if [ -n "$(find /app/data ! -uid "$ZIEL_UID" -print -quit 2>/dev/null)" ]; then
-      echo "[entrypoint] Fremde Eigentuemer gefunden — wird einmalig berichtigt. Das kann bei vielen Bildern einige Minuten dauern."
-      chown -R brickinv:brickinv /app/data
-      echo "[entrypoint] Eigentuemer berichtigt."
+    if [ "$(cat "$MARKE" 2>/dev/null)" = "$ZIEL_UID" ]; then
+      # Der Normalfall nach dem ersten Start: nichts. Kein Durchlauf, kein
+      # Schreibvorgang.
+      :
+    elif [ -n "$(find /app/data ! -uid "$ZIEL_UID" -print -quit 2>/dev/null)" ]; then
+      # `-print -quit` haelt beim ERSTEN Treffer an — die Suche ist hier also
+      # kurz, der Lauf danach lang.
+      echo "[entrypoint] Fremde Eigentuemer gefunden."
+      berichtige
+      setzeMarke
+    else
+      # Nichts Fremdes da, aber noch keine Marke: einmalig setzen, damit auch
+      # der naechste Start den Durchlauf spart.
+      setzeMarke
     fi
     ;;
 esac

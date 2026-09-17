@@ -85,3 +85,42 @@ test('die angelegten Verzeichnisse gehoeren trotzdem immer dem Dienst', () => {
       'koennte der Dienst dort nicht schreiben');
   }
 });
+
+test('ein normaler Start geht gar nicht erst durch die Dateien', () => {
+  // ── Marcos Rueckfrage ────────────────────────────────────────────────────
+  // „Kann dieser Schritt mit den Dateien nicht erfolgen nachdem der Server
+  // gestartet ist?"
+  //
+  // Durch den Server nicht: Er laeuft via su-exec als brickinv und darf nicht
+  // chownen. Die Frage DAHINTER — warum kostet ein normaler Start ueberhaupt
+  // etwas? — hat aber eine bessere Antwort als Nebenlaeufigkeit: gar nicht
+  // erst suchen.
+  //
+  // Die Suche schreibt zwar nichts, laeuft aber ueber jede Datei. Auf einem
+  // Netzlaufwerk ist schon das Durchgehen teuer: jede Abfrage ein Paket.
+  // Deshalb eine Marke — nach einem erfolgreichen Durchgang steht die Ziel-UID
+  // in einer Datei, und der naechste Start liest sie statt zu suchen.
+  assert.match(ep, /MARKE=\/app\/data\/\.\w+/,
+    'Die Marke fehlt — dann laeuft bei JEDEM Start die Suche ueber den ganzen ' +
+    'Datenbestand, auch wenn nichts zu tun ist');
+  // Sie muss VOR der Suche gelesen werden, sonst spart sie nichts.
+  const markeGelesen = ep.indexOf('cat "$MARKE"');
+  const gesucht = ep.indexOf('find /app/data ! -uid');
+  assert.ok(markeGelesen > 0 && markeGelesen < gesucht,
+    'Die Marke wird erst nach der Suche gelesen. Dann ist die Suche schon ' +
+    'gelaufen, und die Marke spart nichts.');
+  // Und sie muss die UID tragen, nicht bloss existieren: Ein Wechsel der UID
+  // ist genau der Fall, fuer den es den Reparaturschritt gibt.
+  assert.match(ep, /= "\$ZIEL_UID"/,
+    'Die Marke wird nicht gegen die Ziel-UID geprueft — nach einem Wechsel der ' +
+    'UID bliebe der Bestand dann fremd, und der Dienst koennte nicht schreiben');
+});
+
+test('die Marke bricht keinen Start ab', () => {
+  // Ein nur lesbar eingehaengter Datentraeger kann sie nicht aufnehmen. Mit
+  // `set -e` waere das sonst das Ende des Starts — wegen einer Abkuerzung.
+  const fn = ep.slice(ep.indexOf('setzeMarke() {'), ep.indexOf('case "${BRICKINV_CHOWN'));
+  assert.match(fn, /\|\| true/,
+    'setzeMarke() faengt den Fehlschlag nicht ab. Auf einem nur lesbaren ' +
+    'Datentraeger bricht `set -e` damit den ganzen Start ab.');
+});
