@@ -1,14 +1,9 @@
 package ch.brickinventoryapp.data.cache
 
-import ch.brickinventoryapp.data.PreferencesManager
-import ch.brickinventoryapp.data.repository.BrickRepository
-import ch.brickinventoryapp.data.repository.Result
-import ch.brickinventoryapp.util.resolveThumbUrl
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.delay
-import kotlinx.coroutines.flow.first
 import okhttp3.OkHttpClient
 import okhttp3.Request
 import javax.inject.Inject
@@ -38,24 +33,20 @@ object Vorwaermung
  * Die Ablage fuellte sich bisher NUR als Nebenwirkung des Hinsehens: Was
  * einmal auf dem Bildschirm war, lag danach auch offline vor. Wer die App
  * online nie geoeffnet hat, hatte offline nichts — und genau dann braucht man
- * sie. Diese Klasse dreht das um: Sie laeuft einmal je App-Start durch die
- * eigene Sammlung und holt, was noch fehlt.
+ * sie. Diese Klasse dreht das um.
  *
- * ── Welche Reiter, und warum der Katalog NICHT dabei ist ────────────────────
+ * ── Was hier NICHT entschieden wird ─────────────────────────────────────────
  *
- * Vorgewaermt wird die EIGENE Sammlung, ueber alle Reiter, die Kacheln zeigen:
- * Galerie (Sets), Teile, Minifiguren und die manuell erfassten Teile und
- * Figuren — letztere erscheinen auch im Finanzen-Reiter, es sind dieselben
- * Bilder.
+ * WELCHE Bilder — das steht in ui/VorwaermenFeature.kt und gehoert dorthin:
+ * Die Auswahl haengt am Kontofilter des Haushalts (`scopeFor`), und der lebt
+ * im Zustand des MainViewModel. Die erste Fassung fragte die Reiter hier
+ * unten selbst ab und liess den Filter dabei weg; GalerieLaedtGefiltertTest
+ * und ListenfilterImZustandTest haben genau das gemeldet. Zu Recht: Ein
+ * zweiter Ladeweg, der den Filter nicht kennt, ist der Fehler, gegen den
+ * beide Regeln gebaut sind.
  *
- * Der Katalog bleibt draussen, und das ist eine Entscheidung und kein
- * Versehen: Er ist nicht die Sammlung, sondern das Verzeichnis ALLER Sets, die
- * es gibt — rund 25'000. Bei etwa 15 kB je Vorschau waeren das ueber 350 MB,
- * also mehr als das Doppelte der ganzen Ablage und ein Vielfaches der Grenze
- * in [VorschauSpeicher.GRENZE_VORWAERMEN]. Das Vorwaermen wuerde also
- * mittendrin abbrechen, haette dabei das Mobilfunkvolumen aufgebraucht und
- * ausgerechnet die eigene Sammlung verdraengt. Der Katalog bedient sich
- * weiterhin beim Blaettern, wie bisher.
+ * Hier unten bleibt, was wirklich Datenschicht ist: holen, drosseln, und die
+ * Grenze einhalten.
  *
  * ── Warum ohne Coil ─────────────────────────────────────────────────────────
  *
@@ -67,8 +58,6 @@ object Vorwaermung
  */
 @Singleton
 class VorschauVorwaermer @Inject constructor(
-    private val repo: BrickRepository,
-    private val prefs: PreferencesManager,
     private val vorschau: VorschauSpeicher,
     @param:Named("image") private val bildClient: OkHttpClient,
 ) {
@@ -94,53 +83,33 @@ class VorschauVorwaermer @Inject constructor(
          * als Einzige nicht eilig.
          */
         const val ANLAUF_MS = 5_000L
-
-        /**
-         * Seitengroesse der Galerie-Abfrage — bewusst GENAU die der Galerie.
-         *
-         * ── Warum keine eigene, groessere Zahl ──────────────────────────────
-         *
-         * `getSets()` legt die ungefilterte ERSTE SEITE unter dem Schluessel
-         * „sets" im ResponseCache ab, und daraus bedient sich die Galerie nach
-         * einem Neustart. Die Bedingung dafuer prueft Konto, Suche, Thema,
-         * Sortierung und Seitennummer — die Seitengroesse aber NICHT.
-         *
-         * Mit einer eigenen Zahl haette das Vorwaermen der Galerie also ihren
-         * eigenen Cache-Eintrag unter dem Ruecken weggeschrieben, gefuellt mit
-         * einer anders grossen Seite. Mit derselben Zahl ist der Aufruf
-         * Byte fuer Byte derselbe, den die Galerie ohnehin macht — er kann
-         * dort nichts kaputt machen.
-         */
-        private const val SEITE = ch.brickinventoryapp.data.repository.GALLERY_PAGE_SIZE
-
-        /**
-         * Die Seitengroesse, mit der [ch.brickinventoryapp.data.repository.TeileRepository.getParts]
-         * FEST abfragt — sie laesst sich von aussen nicht setzen. Steht hier,
-         * damit „kuerzere Antwort = letzte Seite" nicht an einer nackten Zahl
-         * haengt, die niemand mit ihrer Quelle verbindet.
-         */
-        private const val TEILE_SEITE = 500
-
-        /** Notbremse gegen eine Sammlung, die es so nicht geben sollte. */
-        private const val MAX_SEITEN = 50
     }
 
     /**
-     * Einmal durch die Sammlung. Laeuft still: Faellt etwas aus, ist die Ablage
-     * eben weniger voll — es gibt nichts zu melden und niemanden zu stoeren.
+     * Ist ueberhaupt noch Platz unter der Grenze?
      *
-     * Der Aufrufer sorgt fuer den Hintergrund-Dispatcher (MainViewModel).
+     * Vor dem Sammeln gefragt, damit ein voller Speicher nicht bei jedem
+     * App-Start vier Listenabrufe kostet, um danach nichts zu tun.
      */
-    suspend fun vorwaermen() {
-        val basis = runCatching { prefs.serverUrl.first() }.getOrNull().orEmpty()
-        if (basis.isBlank()) return
-        // Die Grenze GILT SCHON HIER: Ist die Ablage bereits voll genug, wird
-        // gar nicht erst die Sammlung abgefragt. Sonst kostete jeder App-Start
-        // vier Listenabrufe, um danach nichts zu tun.
-        if (vorschau.belegt() >= VorschauSpeicher.GRENZE_VORWAERMEN) return
+    fun nochPlatz(): Boolean = vorschau.belegt() < VorschauSpeicher.GRENZE_VORWAERMEN
 
-        val adressen = sammleAdressen(basis)
-        for (schub in adressen.chunked(GLEICHZEITIG)) {
+    /**
+     * Die uebergebenen Adressen holen, bis die Grenze erreicht ist.
+     *
+     * Laeuft still: Faellt etwas aus, ist die Ablage eben weniger voll — es
+     * gibt nichts zu melden und niemanden zu stoeren. Der Aufrufer sorgt fuer
+     * den Hintergrund-Dispatcher.
+     */
+    suspend fun vorwaermen(adressen: List<String>) {
+        val offen = adressen
+            .distinct()
+            // Nur was die Ablage auch behaelt: Was `istVorschau` verneint,
+            // wuerde der Abgriff gar nicht erst schreiben — es zu holen waere
+            // reines Datenvolumen ohne Ertrag. Und was schon daliegt, braucht
+            // das Netz nicht noch einmal.
+            .filter { vorschau.istVorschau(it) && !vorschau.hat(it) }
+
+        for (schub in offen.chunked(GLEICHZEITIG)) {
             // Je Schub neu messen statt einmal am Anfang: Waehrenddessen legt
             // auch der normale Betrieb Bilder ab, und ein Zaehler, der das
             // nicht sieht, liefe an der Grenze vorbei.
@@ -148,66 +117,6 @@ class VorschauVorwaermer @Inject constructor(
             coroutineScope { schub.map { async { hole(it) } }.awaitAll() }
             delay(PAUSE_MS)
         }
-    }
-
-    /**
-     * Die Adressen aller Kacheln der eigenen Sammlung — ohne die, die schon
-     * hier liegen.
-     *
-     * `distinct()` ist nicht kosmetisch: Dasselbe Teil in zwei Farben teilt
-     * sich dieselbe Bildadresse, und in einer grossen Sammlung sind das
-     * Tausende doppelter Abrufe.
-     */
-    private suspend fun sammleAdressen(basis: String): List<String> {
-        val roh = mutableListOf<String?>()
-
-        var seite = 1
-        while (seite <= MAX_SEITEN) {
-            val liste = daten(repo.sets.getSets(page = seite, pageSize = SEITE))?.sets.orEmpty()
-            liste.mapTo(roh) { resolveThumbUrl(basis, it.imageLocal, it.imageUrl) }
-            if (liste.size < SEITE) break
-            seite++
-        }
-
-        seite = 1
-        while (seite <= MAX_SEITEN) {
-            val liste = daten(repo.teile.getParts(page = seite))?.parts.orEmpty()
-            liste.mapTo(roh) { resolveThumbUrl(basis, it.imageLocal, it.imageUrl) }
-            // getParts() fragt fest mit pageSize = 500 — eine kuerzere Antwort
-            // ist damit die letzte Seite.
-            if (liste.size < TEILE_SEITE) break
-            seite++
-        }
-
-        daten(repo.teile.getMinifigs())?.figs.orEmpty()
-            .mapTo(roh) { resolveThumbUrl(basis, it.imageLocal, it.imageUrl) }
-
-        daten(repo.teile.getManualParts())?.parts.orEmpty()
-            .mapTo(roh) { resolveThumbUrl(basis, it.imageLocal, it.imageUrl) }
-
-        daten(repo.teile.getManualMinifigs())?.figs.orEmpty()
-            .mapTo(roh) { resolveThumbUrl(basis, it.imageLocal, it.imageUrl) }
-
-        return roh.filterNotNull()
-            .distinct()
-            // Nur was die Ablage auch behaelt: Was `istVorschau` verneint,
-            // wuerde der Abgriff gar nicht erst schreiben — es zu holen waere
-            // reines Datenvolumen ohne Ertrag.
-            .filter { vorschau.istVorschau(it) && !vorschau.hat(it) }
-    }
-
-    /**
-     * Der Inhalt einer geglueckten Antwort, sonst null.
-     *
-     * Fuenfmal gebraucht, und bewusst mit `when` statt `as? Result.Success`:
-     * Ohne Typargument haengt die Umwandlung an der Typinferenz, und
-     * SettingsFeature.kt haelt in einem Kommentar fest, dass sie dort nicht
-     * getragen hat. Ein `when` auf der versiegelten Klasse kommt ohne
-     * Umwandlung aus und kann diese Frage gar nicht erst stellen.
-     */
-    private fun <T> daten(a: Result<T>): T? = when (a) {
-        is Result.Success -> a.data
-        else -> null
     }
 
     /**

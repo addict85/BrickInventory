@@ -46,8 +46,12 @@ class MainViewModel @Inject constructor(
     internal val prefs: PreferencesManager,
     /** Die dauerhafte Ablage der Vorschaubilder — siehe VorschauSpeicher. */
     private val vorschau: ch.brickinventoryapp.data.cache.VorschauSpeicher,
-    /** Holt die Bilder der Sammlung im Hintergrund — siehe VorschauVorwaermer. */
-    private val vorwaermer: ch.brickinventoryapp.data.cache.VorschauVorwaermer,
+    /**
+     * Holt die Bilder der Sammlung im Hintergrund — siehe VorschauVorwaermer.
+     * `internal`, weil ui/VorwaermenFeature.kt als Erweiterung darauf zugreift,
+     * wie die uebrigen Feature-Module auf repo und prefs.
+     */
+    internal val vorwaermer: ch.brickinventoryapp.data.cache.VorschauVorwaermer,
     internal val sseClient: CsvImportSseClient,
     /** Anlegen mit Fortschritt — siehe GalleryFeature.addSet (Nachtrag 131). */
     internal val setAnlegenSse: ch.brickinventoryapp.data.SetAnlegenSseClient,
@@ -298,26 +302,10 @@ class MainViewModel @Inject constructor(
      * Serverwechsel, eine Token-Erneuerung. Ohne diesen Merker liefen dann
      * mehrere Durchlaeufe nebeneinander durch dieselbe Liste und holten
      * dieselben Bilder doppelt.
-     */
-    private var vorwaermenLaeuft = false
-
-    /**
-     * Die Vorwaermung anstossen — einmal je App-Start.
      *
-     * Auf dem IO-Dispatcher, weil [ch.brickinventoryapp.data.cache.VorschauVorwaermer.hole]
-     * den OkHttp-Aufruf blockierend fuehrt: Das gehoert nicht auf einen
-     * Dispatcher, der auch die Oberflaeche bedient.
+     * Gesetzt wird er in ui/VorwaermenFeature.kt, deshalb `internal`.
      */
-    private fun vorwaermenAnstossen() {
-        if (vorwaermenLaeuft) return
-        vorwaermenLaeuft = true
-        viewModelScope.launch(kotlinx.coroutines.Dispatchers.IO) {
-            kotlinx.coroutines.delay(
-                ch.brickinventoryapp.data.cache.VorschauVorwaermer.ANLAUF_MS
-            )
-            vorwaermer.vorwaermen()
-        }
-    }
+    internal var vorwaermenLaeuft = false
 
     init {
         // ── Design VOR der Anmeldung (Nachtrag 135) ──────────────────────────

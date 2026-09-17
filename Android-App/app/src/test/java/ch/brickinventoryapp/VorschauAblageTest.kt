@@ -191,6 +191,15 @@ class VorschauAblageTest {
     // Bis dahin fuellte sich die Ablage NUR als Nebenwirkung des Hinsehens.
     // Wer die App online nie geoeffnet hatte, hatte offline nichts — und genau
     // dann braucht man sie.
+    //
+    // ── Die Aufteilung auf zwei Dateien ─────────────────────────────────────
+    //
+    // Die erste Fassung fragte die Reiter unten in der Datenschicht ab und
+    // liess dabei den Kontofilter des Haushalts weg. GalerieLaedtGefiltertTest
+    // und ListenfilterImZustandTest haben genau das gemeldet. Seither sammelt
+    // ui/VorwaermenFeature.kt die Adressen (dort lebt scopeFor), und
+    // data/cache/VorschauVorwaermer.kt holt, drosselt und haelt die Grenze.
+    // Diese Pruefungen folgen der Aufteilung.
     // ────────────────────────────────────────────────────────────────────────
 
     @Test
@@ -207,16 +216,23 @@ class VorschauAblageTest {
         }
 
         val vw = quelle("data/cache/VorschauVorwaermer.kt")
-        // ZWEIMAL geprueft, und das ist der Punkt: einmal vor dem Sammeln,
-        // damit ein voller Speicher nicht bei jedem App-Start vier
-        // Listenabrufe kostet, und einmal je Schub, weil waehrenddessen auch
-        // der normale Betrieb Bilder ablegt.
-        val stellen = Regex("""belegt\(\) >= VorschauSpeicher\.GRENZE_VORWAERMEN""")
-            .findAll(vw).count()
-        assert(stellen >= 2) {
-            "Die Grenze wird nur an $stellen Stelle(n) geprueft. Noetig sind " +
-                "zwei: vor dem Sammeln und je Schub — sonst laeuft ein " +
-                "begonnener Durchlauf ueber die Grenze hinaus weiter."
+        val fe = quelle("ui/VorwaermenFeature.kt")
+
+        // Erste Stelle: VOR dem Sammeln. Ohne sie kostet ein voller Speicher
+        // bei jedem App-Start vier Listenabrufe, um danach nichts zu tun.
+        assert(vw.contains("fun nochPlatz(): Boolean = vorschau.belegt() < VorschauSpeicher.GRENZE_VORWAERMEN")) {
+            "nochPlatz() fehlt oder fragt etwas anderes"
+        }
+        assert(fe.contains("if (!vorwaermer.nochPlatz()) return@launch")) {
+            "Das Sammeln fragt nicht mehr vorher, ob ueberhaupt Platz ist"
+        }
+
+        // Zweite Stelle: JE SCHUB. Waehrend des Durchlaufs legt auch der
+        // normale Betrieb Bilder ab — ein Zaehler, der das nicht sieht, liefe
+        // an der Grenze vorbei.
+        assert(vw.contains("if (vorschau.belegt() >= VorschauSpeicher.GRENZE_VORWAERMEN) return")) {
+            "Die Grenze wird waehrend des Durchlaufs nicht mehr geprueft. Dann " +
+                "laeuft ein begonnener Durchlauf ueber sie hinaus weiter."
         }
     }
 
@@ -263,10 +279,11 @@ class VorschauAblageTest {
 
     @Test
     fun `vorgewaermt wird die Sammlung, nicht der Katalog`() {
-        val vw = quelle("data/cache/VorschauVorwaermer.kt")
+        val fe = quelle("ui/VorwaermenFeature.kt")
         // Alle Reiter, die Kacheln der EIGENEN Sammlung zeigen. Die manuell
         // erfassten Teile und Figuren erscheinen auch im Finanzen-Reiter — es
         // sind dieselben Bilder, deshalb steht Finanzen hier nicht eigens.
+        //
         // `ruf` und nicht `quelle`: Der Name waere sonst die Methode dieser
         // Klasse, und eine Schleifenvariable, die eine Methode verdeckt, ist
         // die Sorte Stolperstein, die erst beim naechsten Bearbeiten zubeisst.
@@ -274,10 +291,19 @@ class VorschauAblageTest {
             "repo.sets.getSets(", "repo.teile.getParts(", "repo.teile.getMinifigs(",
             "repo.teile.getManualParts(", "repo.teile.getManualMinifigs(",
         )) {
-            assert(vw.contains(ruf)) {
+            assert(fe.contains(ruf)) {
                 "Der Reiter hinter $ruf wird nicht mehr vorgewaermt — " +
                     "Marcos Vorgabe war „aus allen Reiter\""
             }
+        }
+        // Der Kontofilter des Haushalts MUSS mit: Sonst waermte die App eine
+        // andere Sammlung vor als die, die man zu sehen bekommt. Genau diese
+        // Form — ein zweiter Ladeweg ohne Filter — hat GalerieLaedtGefiltert-
+        // Test an der ersten Fassung gemeldet.
+        assert(fe.contains("scopeFor(ScopeFilter.View.GALLERY)") &&
+               fe.contains("scopeFor(ScopeFilter.View.PARTS)") &&
+               fe.contains("scopeFor(ScopeFilter.View.MINIFIGS)")) {
+            "Das Vorwaermen fuehrt das Blickfeld nicht mehr mit"
         }
         // ── Warum der Katalog NICHT ──────────────────────────────────────────
         //
@@ -287,7 +313,7 @@ class VorschauAblageTest {
         // der Grenze. Das Vorwaermen braeche mittendrin ab, haette dabei das
         // Mobilfunkvolumen aufgebraucht und ausgerechnet die eigene Sammlung
         // verdraengt.
-        assert(!vw.contains("getCatalog") && !vw.contains("katalog") && !vw.contains("Katalog(")) {
+        assert(!fe.contains("getCatalog") && !fe.contains("katalog") && !fe.contains("Katalog")) {
             "Der Katalog wird vorgewaermt. 25'000 Sets sprengen die Grenze um " +
                 "ein Vielfaches und verdraengen dabei die eigene Sammlung."
         }
@@ -327,13 +353,16 @@ class VorschauAblageTest {
         // Anzeige funktionieren." Ein Vorwaermer, der unterwegs etwas
         // schriebe, waere der erste Bruch dieser Zusage — und er faellt nicht
         // auf, weil er im Hintergrund laeuft.
+        //
+        // BEIDE Haelften geprueft: Das Holen steht unten, das Sammeln oben.
         val vw = quelle("data/cache/VorschauVorwaermer.kt")
+        val fe = quelle("ui/VorwaermenFeature.kt")
         for (verb in listOf(".post(", ".put(", ".patch(", ".delete(")) {
-            assert(!vw.contains(verb)) {
-                "Der Vorwaermer benutzt $verb. Er darf ausschliesslich lesen."
+            assert(!vw.contains(verb) && !fe.contains(verb)) {
+                "Das Vorwaermen benutzt $verb. Es darf ausschliesslich lesen."
             }
         }
-        // Und er holt nur, was die Ablage auch behaelt: Was istVorschau()
+        // Und es holt nur, was die Ablage auch behaelt: Was istVorschau()
         // verneint, wuerde der Abgriff gar nicht erst schreiben — es zu holen
         // waere reines Datenvolumen ohne Ertrag.
         assert(vw.contains("vorschau.istVorschau(it)") && vw.contains("!vorschau.hat(it)")) {
