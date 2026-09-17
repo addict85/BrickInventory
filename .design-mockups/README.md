@@ -19,8 +19,10 @@ angekommen.
 | `NoppeWeb.dc.html`, `NoppeTelefon.dc.html` | **H · Noppe** — Klemmbaustein, Grundplatte, harte Kanten | Ton (poppig) |
 | `WerkbankDetail.dc.html` | A, zweiter Bildschirm: Set-Detail mit Preisverlauf | |
 | `FarbfaecherDetail.dc.html` | F, zweiter Bildschirm: Set-Detail mit Preisverlauf | |
+| `KreideWeb.dc.html`, `KreideTelefon.dc.html` | **I · Kreide** — H verblasst: halbe Sättigung, graue Tinte | Lautstärke |
 | `NoppeDetail.dc.html` | H, zweiter Bildschirm: Set-Detail mit Preisverlauf | |
-| `canvas.json` | Anordnung der neunzehn Flächen und die Notizen daneben | |
+| `KreideDetail.dc.html` | I, zweiter Bildschirm: Set-Detail mit Preisverlauf | |
+| `canvas.json` | Anordnung der zweiundzwanzig Flächen und die Notizen daneben | |
 
 Je Richtung eine Web- und eine Telefonansicht, damit sich beide Oberflächen
 vergleichen lassen — dieselbe Vorgabe wie überall in diesem Projekt.
@@ -63,7 +65,7 @@ Setnamen, Stückzahlen und Beträge sind **Beispieldaten**. Statt Set-Fotos steh
 ein gezeichneter Platzhalter — ein schlechter Nachbau echter Bilder hätte den
 Vergleich der Entwürfe verfälscht.
 
-## Zweiter Bildschirm für A, F und H
+## Zweiter Bildschirm für A, F, H und I
 
 Eine Galerie zeigt nur Kacheln. Ob ein Design trägt, entscheidet sich am
 Set-Detail: Dort stehen Tabellenzeilen, Plaketten, Knöpfe und ein
@@ -87,3 +89,10 @@ bleibt sie dort weiss mit grauen Trennlinien — das Laute sitzt an den Rändern
 folgen derselben Regel wie bei A und F: *Zustand* (neu/gebraucht) bleibt Blau
 und Orange und darf nicht mit der Steinfarbe der Kacheln verwechselt werden,
 die gar nichts bedeutet.
+
+**I · Kreide** ist aus H ABGELEITET, nicht neben ihm entstanden: dieselbe
+Anatomie, dieselben Abstände, nur die Werte verblasst. Das ist Absicht — die
+Frage, die diese Richtung stellt, ist ausschliesslich die nach der Lautstärke.
+Zwei Dinge sind dabei ausdrücklich NICHT mitverblasst: die Verlaufslinien und
+die Besitz-Plakette. Ein Design darf verblassen, eine Auskunft nicht; bei einem
+reinen Herunterrechnen wären beide unlesbar geworden.

@@ -151,6 +151,30 @@
       "w": 1100,
       "h": 760,
       "title": "H · Noppe — Set-Detail"
+    },
+    {
+      "file": "KreideWeb.dc.html",
+      "x": 0,
+      "y": 8640,
+      "w": 1440,
+      "h": 900,
+      "title": "I · Kreide — Web"
+    },
+    {
+      "file": "KreideTelefon.dc.html",
+      "x": 1560,
+      "y": 8640,
+      "w": 390,
+      "h": 844,
+      "title": "I · Kreide — Telefon"
+    },
+    {
+      "file": "KreideDetail.dc.html",
+      "x": 2500,
+      "y": 8640,
+      "w": 1100,
+      "h": 760,
+      "title": "I · Kreide — Set-Detail"
     }
   ],
   "annotations": [
@@ -237,6 +261,13 @@
       "y": 7560,
       "w": 300,
       "text": "H · Noppe (poppig)\n\nDer Klemmbaustein als Bauteil der Oberfläche: Kopf- und Reiterleiste sind Steine mit Noppen, der Grund ist eine Grundplatte, jede Karte hat einen farbigen Deckel. Harte Versatzschatten statt weicher — Kunststoff wirft keine Wolke, er liegt auf. Nunito 900 und dicke schwarze Kanten.\n\nHaken 1: Die Steinfarbe bedeutet NICHTS, sie gibt nur Takt. Wer F · Farbfächer kennt, sucht hier eine Auskunft, die es nicht gibt — zwei Designs, in denen dieselbe Sache Gegensätzliches heisst.\n\nHaken 2: Poppig nutzt sich ab. Ein Bestand ist nichts, was man einmal anschaut; was beim ersten Mal Freude macht, kann beim hundertsten Nachschlagen laut sein. Deshalb bleibt die Angabentabelle im Set-Detail bewusst ruhig — das Laute gehört an die Ränder, nicht zwischen die Zahlen.\n\nHaken 3: Die 2,5px-Kanten und Versatzschatten sind in Compose teurer nachzubauen als in CSS; die Noppenleisten brauchen je Oberfläche eine eigene Lösung."
+    },
+    {
+      "id": "i-kreide",
+      "x": 2060,
+      "y": 8640,
+      "w": 300,
+      "text": "I · Kreide (H verblasst)\n\nDieselbe Anatomie wie H, nur ausgeblichen: Steinfarben auf halber Sättigung, die Tinte ein warmes Grau statt Schwarz, Kanten 1,5 statt 2,5 px, der Versatzschatten heller als die Kante. Die Gewichte gehen eine Stufe zurück (900→700, 800→600), der Grund wird wärmer.\n\nWas NICHT verblasst: die Verlaufslinien und die Besitz-Plakette. Ein Design darf verblassen, eine Auskunft nicht — bei einem reinen Herunterrechnen wären beide unlesbar geworden.\n\nHaken 1: Es ist ein Zwischenzustand. Wer H zu laut fand, bekommt hier weniger Lautstärke — aber auch weniger Grund, es H vorzuziehen: Die Metapher trägt nur noch halb, die Ruhe von B · Papier erreicht es nicht.\n\nHaken 2: Der helle Versatzschatten ist der Punkt, an dem sich entscheidet, ob das noch ein Klemmbaustein ist oder schon Papier. Das sollte man am Bildschirm ansehen, nicht am Wert.\n\nHaken 3: Kontrast. Graue Tinte auf warmem Grund liegt näher an der Untergrenze als Schwarz auf Weiss — vor einer Umsetzung gehört das gegen WCAG geprüft, nicht nach Augenmass."
     }
   ],
   "launch": {
