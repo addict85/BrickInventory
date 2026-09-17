@@ -8,6 +8,7 @@ import ch.brickinventoryapp.data.repository.Result
 import ch.brickinventoryapp.util.resolveThumbUrl
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 
 /**
@@ -62,7 +63,13 @@ internal fun MainViewModel.vorwaermenAnstossen() {
         // Vor dem Sammeln fragen: Ist die Ablage schon voll genug, kostet ein
         // App-Start sonst vier Listenabrufe, um danach nichts zu tun.
         if (!vorwaermer.nochPlatz()) return@launch
-        val basis = _state.value.serverUrl
+        // Aus den Einstellungen, NICHT aus `_state.value.serverUrl`:
+        // StateDomainBoundaryTest hat die zweite Form gemeldet, und zu Recht —
+        // das Feld gehoert der Sitzung, und eine Ausnahme dafuer waere die
+        // dritte in dieser Liste gewesen. `prefs.serverUrl` ist ohnehin die
+        // Quelle; das Zustandsfeld ist nur ihr Spiegel, gesetzt im selben
+        // combine-Zweig, der diese Vorwaermung anstoesst.
+        val basis = runCatching { prefs.serverUrl.first() }.getOrNull().orEmpty()
         if (basis.isBlank()) return@launch
         vorwaermer.vorwaermen(bildAdressenDerSammlung(basis))
     }
