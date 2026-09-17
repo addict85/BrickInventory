@@ -127,6 +127,30 @@
       "w": 390,
       "h": 844,
       "title": "G · Mosaik — Telefon"
+    },
+    {
+      "file": "NoppeWeb.dc.html",
+      "x": 0,
+      "y": 7560,
+      "w": 1440,
+      "h": 900,
+      "title": "H · Noppe — Web"
+    },
+    {
+      "file": "NoppeTelefon.dc.html",
+      "x": 1560,
+      "y": 7560,
+      "w": 390,
+      "h": 844,
+      "title": "H · Noppe — Telefon"
+    },
+    {
+      "file": "NoppeDetail.dc.html",
+      "x": 2500,
+      "y": 7560,
+      "w": 1100,
+      "h": 760,
+      "title": "H · Noppe — Set-Detail"
     }
   ],
   "annotations": [
@@ -206,6 +230,13 @@
       "y": 6480,
       "w": 300,
       "text": "G · Mosaik — das Ausgefallene\n\nKein gleichförmiges Raster mehr: Die Sammlung liegt auf einer Grundplatte, jede Kachel so gross wie ihr Set (Teilezahl), eingefärbt nach Thema. Man sieht die FORM der Sammlung, bevor man ein Wort liest.\n\nHaken, und zwar ein grosser: Ohne Set-Bilder erkennt man die Sets nur am Namen — für eine Galerie ein echter Verlust. Sortieren nach Name oder Jahr ergibt in einem Mosaik wenig Sinn, und lange Namen brauchen grosse Kacheln. Das wäre eher eine zweite ANSICHT neben der Galerie als deren Ersatz."
+    },
+    {
+      "id": "h-noppe",
+      "x": 2060,
+      "y": 7560,
+      "w": 300,
+      "text": "H · Noppe (poppig)\n\nDer Klemmbaustein als Bauteil der Oberfläche: Kopf- und Reiterleiste sind Steine mit Noppen, der Grund ist eine Grundplatte, jede Karte hat einen farbigen Deckel. Harte Versatzschatten statt weicher — Kunststoff wirft keine Wolke, er liegt auf. Nunito 900 und dicke schwarze Kanten.\n\nHaken 1: Die Steinfarbe bedeutet NICHTS, sie gibt nur Takt. Wer F · Farbfächer kennt, sucht hier eine Auskunft, die es nicht gibt — zwei Designs, in denen dieselbe Sache Gegensätzliches heisst.\n\nHaken 2: Poppig nutzt sich ab. Ein Bestand ist nichts, was man einmal anschaut; was beim ersten Mal Freude macht, kann beim hundertsten Nachschlagen laut sein. Deshalb bleibt die Angabentabelle im Set-Detail bewusst ruhig — das Laute gehört an die Ränder, nicht zwischen die Zahlen.\n\nHaken 3: Die 2,5px-Kanten und Versatzschatten sind in Compose teurer nachzubauen als in CSS; die Noppenleisten brauchen je Oberfläche eine eigene Lösung."
     }
   ],
   "launch": {

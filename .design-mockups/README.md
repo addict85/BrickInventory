@@ -16,9 +16,11 @@ angekommen.
 | `BlaupauseWeb.dc.html`, `BlaupauseTelefon.dc.html` | **E · Blaupause** — Millimeterraster, Schriftfeld, Mono | Metapher |
 | `FarbfaecherWeb.dc.html`, `FarbfaecherTelefon.dc.html` | **F · Farbfächer** — Thema=Farbton, Bedienung grau | Farbe als Auskunft |
 | `MosaikWeb.dc.html`, `MosaikTelefon.dc.html` | **G · Mosaik** — Grundplatte, Kachelgrösse = Teilezahl | Raster aufgeben |
+| `NoppeWeb.dc.html`, `NoppeTelefon.dc.html` | **H · Noppe** — Klemmbaustein, Grundplatte, harte Kanten | Ton (poppig) |
 | `WerkbankDetail.dc.html` | A, zweiter Bildschirm: Set-Detail mit Preisverlauf | |
 | `FarbfaecherDetail.dc.html` | F, zweiter Bildschirm: Set-Detail mit Preisverlauf | |
-| `canvas.json` | Anordnung der sechzehn Flächen und die Notizen daneben | |
+| `NoppeDetail.dc.html` | H, zweiter Bildschirm: Set-Detail mit Preisverlauf | |
+| `canvas.json` | Anordnung der neunzehn Flächen und die Notizen daneben | |
 
 Je Richtung eine Web- und eine Telefonansicht, damit sich beide Oberflächen
 vergleichen lassen — dieselbe Vorgabe wie überall in diesem Projekt.
@@ -61,7 +63,7 @@ Setnamen, Stückzahlen und Beträge sind **Beispieldaten**. Statt Set-Fotos steh
 ein gezeichneter Platzhalter — ein schlechter Nachbau echter Bilder hätte den
 Vergleich der Entwürfe verfälscht.
 
-## Zweiter Bildschirm für A und F
+## Zweiter Bildschirm für A, F und H
 
 Eine Galerie zeigt nur Kacheln. Ob ein Design trägt, entscheidet sich am
 Set-Detail: Dort stehen Tabellenzeilen, Plaketten, Knöpfe und ein
@@ -76,3 +78,12 @@ Für **A · Werkbank** gilt dasselbe eine Nummer kleiner: Die Gebraucht-Linie
 bleibt warm, sonst stünden zwei Blautöne nebeneinander, die sich nur in der
 Helligkeit unterscheiden — genau der Fehler, den `themes/brick.css` schon
 einmal hatte und in seinem Kommentar festhält.
+
+Für **H · Noppe** ist er die härteste Probe der drei, und zwar aus dem
+umgekehrten Grund: Nicht ob genug Farbe da ist, sondern ob sie sich
+zurücknehmen kann. Eine Angabentabelle in Steinfarben wäre unlesbar, deshalb
+bleibt sie dort weiss mit grauen Trennlinien — das Laute sitzt an den Rändern
+(Kopfleiste, Knöpfe, Plaketten), nicht zwischen den Zahlen. Die Verlaufslinien
+folgen derselben Regel wie bei A und F: *Zustand* (neu/gebraucht) bleibt Blau
+und Orange und darf nicht mit der Steinfarbe der Kacheln verwechselt werden,
+die gar nichts bedeutet.
