@@ -362,6 +362,11 @@
     <string name="monitoring_theme">Design</string>
     <string name="monitoring_vorschau_ablage">Preview store: %1$d MB</string>
     <string name="monitoring_vorschau_leeren">Clear</string>
+    <string name="monitoring_vorwaermen_netz">Preload images in</string>
+    <string name="monitoring_vorwaermen_wlan">Wi-Fi</string>
+    <string name="monitoring_vorwaermen_mobil">Mobile data</string>
+    <string name="monitoring_vorwaermen_roaming">Roaming</string>
+    <string name="monitoring_vorwaermen_hinweis">A metered Wi-Fi network — a hotspot from another phone — counts as mobile data.</string>
     <string name="monitoring_theme_classic">Classic</string>
     <string name="monitoring_theme_brick">Brick</string>
     <string name="monitoring_theme_werkbank">Workbench (dark)</string>

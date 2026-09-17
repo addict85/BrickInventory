@@ -4,6 +4,7 @@ import android.content.Context
 import androidx.datastore.core.DataStore
 import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.core.edit
+import androidx.datastore.preferences.core.booleanPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
 import ch.brickinventoryapp.util.TokenVerschluesselung
@@ -45,6 +46,32 @@ class PreferencesManager @Inject constructor(
 
         const val DESIGN_SPIEGEL_DATEI = "design_spiegel"
         const val APP_THEME_SPIEGEL = "app_theme"
+
+        /**
+         * In welchen Netzen darf das Vorwaermen der Vorschaubilder holen?
+         *
+         * ── Marcos Vorgabe ──────────────────────────────────────────────────
+         * „Bitte nur im WLAN vorwaermen oder noch besser in den Optionen
+         * einstellbar. Insbesondere auch ob WLAN, Mobilfunk und oder Roaming
+         * erlaubt ist. Standard auf WLAN."
+         *
+         * ── Warum auf dem Geraet und nicht beim Konto ────────────────────────
+         *
+         * Dieselbe Begruendung wie beim Kontofilter (ScopeFilter): Es ist eine
+         * Eigenschaft des GERAETS, nicht des Kontos. Am Telefon mit einem
+         * knappen Tarif will man das anders als am Tablet, das das WLAN nie
+         * verlaesst — und der Server hat damit nichts zu tun.
+         *
+         * Die drei sind UNABHAENGIG, nicht gestuft: Jeder Schalter beantwortet
+         * eine Lage („im WLAN", „im Mobilfunknetz", „im Ausland"). Wer nur
+         * Roaming erlaubt und Mobilfunk nicht, bekommt genau das — ungewoehnlich,
+         * aber es steht so da. Eine verdeckte Kopplung („Roaming wirkt nur mit
+         * Mobilfunk") waere der schlechtere Fehler: Sie sieht aus wie ein
+         * kaputter Schalter.
+         */
+        val VORWAERMEN_WLAN    = booleanPreferencesKey("vorwaermen_wlan")
+        val VORWAERMEN_MOBIL   = booleanPreferencesKey("vorwaermen_mobil")
+        val VORWAERMEN_ROAMING = booleanPreferencesKey("vorwaermen_roaming")
 
         val SERVER_URL   = stringPreferencesKey("server_url")
         /**
@@ -112,6 +139,13 @@ class PreferencesManager @Inject constructor(
     val username:  Flow<String> = context.dataStore.data.map { it[USERNAME]   ?: "" }
     val currency:  Flow<String> = context.dataStore.data.map { it[CURRENCY]   ?: "EUR" }
     val language:  Flow<String> = context.dataStore.data.map { it[LANGUAGE]   ?: "system" }
+
+    // Vorgabe: nur WLAN. Begruendung an den Schluesseln oben. `?: true` bzw.
+    // `?: false` ist hier die ganze Vorgabe — ein noch nie gesetzter Wert ist
+    // in DataStore schlicht nicht da.
+    val vorwaermenWlan:    Flow<Boolean> = context.dataStore.data.map { it[VORWAERMEN_WLAN]    ?: true }
+    val vorwaermenMobil:   Flow<Boolean> = context.dataStore.data.map { it[VORWAERMEN_MOBIL]   ?: false }
+    val vorwaermenRoaming: Flow<Boolean> = context.dataStore.data.map { it[VORWAERMEN_ROAMING] ?: false }
     val appTheme:  Flow<String> = context.dataStore.data.map { it[APP_THEME]  ?: "classic" }
 
     // ── In-Memory-Cache für den OkHttp-Interceptor ────────────────────────────
@@ -233,6 +267,18 @@ class PreferencesManager @Inject constructor(
     suspend fun saveCurrency(cur: String) {
         context.dataStore.edit { it[CURRENCY] = cur }
     }
+    /**
+     * Eine der drei Netzerlaubnisse setzen.
+     *
+     * EINE Funktion mit dem Schluessel als Argument statt dreier fast gleicher:
+     * Die Oberflaeche zaehlt die drei ohnehin in einer Liste auf, und drei
+     * Kopien derselben Zeile sind genau die Sorte Doppelung, an der in diesem
+     * Projekt schon mehrmals eine Haelfte stehen geblieben ist.
+     */
+    suspend fun saveVorwaermenNetz(schluessel: Preferences.Key<Boolean>, erlaubt: Boolean) {
+        context.dataStore.edit { it[schluessel] = erlaubt }
+    }
+
     suspend fun saveLanguage(lang: String) {
         context.dataStore.edit { it[LANGUAGE] = lang }
     }

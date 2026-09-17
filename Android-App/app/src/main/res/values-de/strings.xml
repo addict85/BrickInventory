@@ -353,6 +353,11 @@
     <string name="monitoring_theme">Design</string>
     <string name="monitoring_vorschau_ablage">Vorschau-Ablage: %1$d MB</string>
     <string name="monitoring_vorschau_leeren">Leeren</string>
+    <string name="monitoring_vorwaermen_netz">Bilder vorladen im</string>
+    <string name="monitoring_vorwaermen_wlan">WLAN</string>
+    <string name="monitoring_vorwaermen_mobil">Mobilfunk</string>
+    <string name="monitoring_vorwaermen_roaming">Roaming</string>
+    <string name="monitoring_vorwaermen_hinweis">Ein gemessenes WLAN — der Hotspot eines anderen Telefons — zählt als Mobilfunk.</string>
     <string name="monitoring_theme_classic">Klassisch</string>
     <string name="monitoring_theme_brick">Stein</string>
     <string name="monitoring_theme_werkbank">Werkbank (dunkel)</string>

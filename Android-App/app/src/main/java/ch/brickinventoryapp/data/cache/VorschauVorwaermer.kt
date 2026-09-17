@@ -1,9 +1,12 @@
 package ch.brickinventoryapp.data.cache
 
+import ch.brickinventoryapp.data.Netzlage
+import ch.brickinventoryapp.data.PreferencesManager
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.first
 import okhttp3.OkHttpClient
 import okhttp3.Request
 import javax.inject.Inject
@@ -59,6 +62,8 @@ object Vorwaermung
 @Singleton
 class VorschauVorwaermer @Inject constructor(
     private val vorschau: VorschauSpeicher,
+    private val netz: Netzlage,
+    private val prefs: PreferencesManager,
     @param:Named("image") private val bildClient: OkHttpClient,
 ) {
     companion object {
@@ -86,12 +91,41 @@ class VorschauVorwaermer @Inject constructor(
     }
 
     /**
+     * Darf in der aktuellen Netzlage geholt werden?
+     *
+     * Marcos Vorgabe: „Bitte nur im WLAN vorwaermen oder noch besser in den
+     * Optionen einstellbar. Insbesondere auch ob WLAN, Mobilfunk und oder
+     * Roaming erlaubt ist. Standard auf WLAN."
+     *
+     * Erschoepfend ueber die Aufzaehlung, ohne `else`: Kaeme eine fuenfte Lage
+     * dazu, soll der Uebersetzer sie hier melden, statt dass sie stillschweigend
+     * unter „erlaubt" oder „verboten" faellt.
+     */
+    private suspend fun netzErlaubt(): Boolean = when (netz.aktuell()) {
+        Netzlage.Art.KEIN_NETZ -> false
+        Netzlage.Art.WLAN      -> prefs.vorwaermenWlan.first()
+        Netzlage.Art.MOBIL     -> prefs.vorwaermenMobil.first()
+        Netzlage.Art.ROAMING   -> prefs.vorwaermenRoaming.first()
+    }
+
+    /**
      * Ist ueberhaupt noch Platz unter der Grenze?
      *
      * Vor dem Sammeln gefragt, damit ein voller Speicher nicht bei jedem
      * App-Start vier Listenabrufe kostet, um danach nichts zu tun.
      */
-    fun nochPlatz(): Boolean = vorschau.belegt() < VorschauSpeicher.GRENZE_VORWAERMEN
+    private fun nochPlatz(): Boolean =
+        vorschau.belegt() < VorschauSpeicher.GRENZE_VORWAERMEN
+
+    /**
+     * Lohnt sich ein Durchlauf ueberhaupt? Beides zusammen, VOR dem Sammeln.
+     *
+     * Zwei getrennte Fragen hinter einem Tor, und jede hat ihren eigenen Grund:
+     * Ohne Platz gaebe es nichts abzulegen, im falschen Netz duerfte man nicht.
+     * Beide hier zu stellen erspart bei jedem App-Start vier Listenabrufe, die
+     * sonst umsonst liefen.
+     */
+    suspend fun darfStarten(): Boolean = netzErlaubt() && nochPlatz()
 
     /**
      * Die uebergebenen Adressen holen, bis die Grenze erreicht ist.
@@ -113,7 +147,12 @@ class VorschauVorwaermer @Inject constructor(
             // Je Schub neu messen statt einmal am Anfang: Waehrenddessen legt
             // auch der normale Betrieb Bilder ab, und ein Zaehler, der das
             // nicht sieht, liefe an der Grenze vorbei.
-            if (vorschau.belegt() >= VorschauSpeicher.GRENZE_VORWAERMEN) return
+            if (!nochPlatz()) return
+            // Die Netzlage AUCH je Schub, nicht nur am Anfang: Ein Durchlauf
+            // dauert Minuten, und wer dabei aus dem WLAN geht, soll nicht den
+            // Rest der Sammlung ueber den Datentarif bekommen. Dasselbe
+            // Argument wie bei der Grenze eine Zeile darueber.
+            if (!netzErlaubt()) return
             coroutineScope { schub.map { async { hole(it) } }.awaitAll() }
             delay(PAUSE_MS)
         }

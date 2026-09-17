@@ -17,6 +17,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import ch.brickinventoryapp.data.PreferencesManager
 import ch.brickinventoryapp.data.model.*
 import androidx.compose.ui.res.stringResource
 import ch.brickinventoryapp.R
@@ -146,6 +147,14 @@ fun CacheAndLimitsSection(vm: MainViewModel, onSnack: (String) -> Unit = {}) {
 
     // Serverdaten aus dem ViewModel; hiltViewModel() liefert im selben
     // NavHost-Ziel dieselbe Instanz wie in MonitoringScreen.
+    // Die drei Netzerlaubnisse direkt aus den Einstellungen, nicht ueber
+    // AppUiState: Es sind Geraete-Einstellungen wie der Kontofilter, und drei
+    // weitere Felder im gemeinsamen Zustand haetten nur eine zweite Fassung
+    // derselben Wahrheit ergeben.
+    val netzWlan    by vm.prefs.vorwaermenWlan.collectAsStateWithLifecycle(initialValue = true)
+    val netzMobil   by vm.prefs.vorwaermenMobil.collectAsStateWithLifecycle(initialValue = false)
+    val netzRoaming by vm.prefs.vorwaermenRoaming.collectAsStateWithLifecycle(initialValue = false)
+
     val mon: MonitoringViewModel = hiltViewModel()
     val monState by mon.state.collectAsStateWithLifecycle()
     val cacheStats = monState.cacheStats
@@ -271,6 +280,48 @@ fun CacheAndLimitsSection(vm: MainViewModel, onSnack: (String) -> Unit = {}) {
                     }) { Text(stringResource(R.string.monitoring_vorschau_leeren), fontSize = Schrift.klein) }
                 }
 
+                // ── In welchen Netzen darf vorgewaermt werden ────────────
+                //
+                // Marcos Vorgabe: „Bitte nur im WLAN vorwaermen oder noch
+                // besser in den Optionen einstellbar. Insbesondere auch ob
+                // WLAN, Mobilfunk und oder Roaming erlaubt ist. Standard auf
+                // WLAN."
+                //
+                // Die drei sind unabhaengig — jeder Chip beantwortet EINE Lage.
+                // Begruendung an den Schluesseln in PreferencesManager.
+                Text(stringResource(R.string.monitoring_vorwaermen_netz),
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant)
+                androidx.compose.foundation.layout.FlowRow(
+                    horizontalArrangement = Arrangement.spacedBy(Abstaende.klein),
+                    verticalArrangement = Arrangement.spacedBy(Abstaende.klein),
+                ) {
+                    for ((erlaubt, schluessel, text) in listOf(
+                        Triple(netzWlan, PreferencesManager.VORWAERMEN_WLAN,
+                            R.string.monitoring_vorwaermen_wlan),
+                        Triple(netzMobil, PreferencesManager.VORWAERMEN_MOBIL,
+                            R.string.monitoring_vorwaermen_mobil),
+                        Triple(netzRoaming, PreferencesManager.VORWAERMEN_ROAMING,
+                            R.string.monitoring_vorwaermen_roaming),
+                    )) {
+                        FilterChip(
+                            selected = erlaubt,
+                            onClick = {
+                                scope.launch {
+                                    vm.prefs.saveVorwaermenNetz(schluessel, !erlaubt)
+                                }
+                            },
+                            label = { Text(stringResource(text), fontSize = Schrift.klein) },
+                        )
+                    }
+                }
+                // Ein gemessenes WLAN — der Hotspot eines anderen Telefons —
+                // zaehlt als Mobilfunk. Das steht hier, weil es sonst wie ein
+                // kaputter Schalter aussieht: „Ich bin doch im WLAN."
+                Text(stringResource(R.string.monitoring_vorwaermen_hinweis),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant)
+
                 Text(stringResource(R.string.monitoring_theme),
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant)
@@ -302,10 +353,16 @@ fun CacheAndLimitsSection(vm: MainViewModel, onSnack: (String) -> Unit = {}) {
                                     }
                                 }
                             },
-                            label = { Text(stringResource(text), fontSize = 13.sp) },
+                            label = { Text(stringResource(text), fontSize = Schrift.klein) },
                         )
                     }
                 }
+                // Beide Chip-Reihen dieses Blocks stehen auf der Skala
+                // (Schrift.klein = 12.sp) statt auf rohen 13.sp. Die Ratsche in
+                // AbstandsskalaTest hat gemeldet, dass mit den Netz-Chips eine
+                // WEITERE rohe Zahl dazukam. Zwei Chip-Reihen direkt
+                // uebereinander mit einem Punkt Unterschied waeren die
+                // schlechtere Antwort gewesen als ein Punkt weniger bei beiden.
             }
 
             // Cache TTL

@@ -60,9 +60,9 @@ internal fun MainViewModel.vorwaermenAnstossen() {
     vorwaermenLaeuft = true
     viewModelScope.launch(Dispatchers.IO) {
         delay(VorschauVorwaermer.ANLAUF_MS)
-        // Vor dem Sammeln fragen: Ist die Ablage schon voll genug, kostet ein
-        // App-Start sonst vier Listenabrufe, um danach nichts zu tun.
-        if (!vorwaermer.nochPlatz()) return@launch
+        // Vor dem Sammeln fragen — Netzlage UND Platz. Sonst kostet jeder
+        // App-Start vier Listenabrufe, um danach nichts zu tun.
+        if (!vorwaermer.darfStarten()) return@launch
         // Aus den Einstellungen, NICHT aus `_state.value.serverUrl`:
         // StateDomainBoundaryTest hat die zweite Form gemeldet, und zu Recht —
         // das Feld gehoert der Sitzung, und eine Ausnahme dafuer waere die

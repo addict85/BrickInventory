@@ -13,6 +13,13 @@
     -->
 
     <uses-permission android:name="android.permission.INTERNET" />
+    <!--
+      Nur um zu ERKENNEN, ob das Geraet im WLAN, im Mobilfunknetz oder im
+      Roaming haengt (data/Netzlage.kt). Das Vorwaermen der Vorschaubilder
+      richtet sich danach; ohne diese Erlaubnis wuesste es nicht, wann es
+      Datenvolumen kostet. Eine normale Erlaubnis — sie fragt niemanden.
+    -->
+    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
     <uses-permission android:name="android.permission.CAMERA" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_DATA_SYNC" />
