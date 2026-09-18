@@ -55,7 +55,7 @@ type ApiName = 'bricklink' | 'rebrickable' | 'brickset';
  * EINSTELLUNGEN gelten — die beiden fallen auseinander, sobald der Kontofilter
  * auf „Unterkonten" steht (siehe computeSetsValuation).
  */
-export type Blickfeld = number[];
+export type { Blickfeld } from '../household';
 
 /** Eine Preis-Cache-Zeile, soweit hier gelesen. */
 type PreisZeile = { avg_price?: number | string | null; fetched_at?: string | Date | null } | null | undefined;

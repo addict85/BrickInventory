@@ -49,7 +49,7 @@ const SET_SORTS = {
  * Der Typ macht die Casts `asIds(userId)` ueberfluessig — die standen
  * nur da, weil der Parameter gar keinen Typ hatte.
  */
-type Blickfeld = number | number[];
+import type { BlickfeldEingabe as Blickfeld } from '../household';
 
 /**
  * @param {number} userId

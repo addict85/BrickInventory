@@ -88,3 +88,39 @@ test('die Fassade reicht nur durch', () => {
     'In der Fassade steht wieder Logik. Sie gehoert in die Schicht, zu der sie ' +
     'passt — dafuer gibt es utils/finance/.');
 });
+
+test('Blickfeld ist an einer Stelle erklaert', () => {
+  // ── Ein Name, zwei Bedeutungen (Nachtrag 172) ────────────────────────────
+  //
+  // `type Blickfeld` stand DREIMAL im Baum — zweimal als `number | number[]`
+  // (utils/handlers/), einmal als `number[]` (Finanzteil). Beide Fassungen
+  // waren richtig und beschrieben doch Verschiedenes: vor `asIds()` darf es
+  // eine einzelne ID sein, danach ist es immer eine Liste.
+  //
+  // Derselbe Name fuer beides heisst, dass eine Signatur nicht mehr sagt, in
+  // welchem der beiden Momente sie steht. Dasselbe Muster wie bei `code` als
+  // Einladungstoken UND Fehlercode — das hat den Einladungscode unbrauchbar
+  // gemacht, und zwar unbemerkt ueber Monate.
+  //
+  // Jetzt zwei Namen, beide dort, wo `asIds()` zwischen ihnen uebersetzt.
+  const wurzel = path.join(__dirname, '..');
+  const treffer = [];
+  (function lauf(d) {
+    for (const n of fs.readdirSync(d)) {
+      const p = path.join(d, n);
+      if (fs.statSync(p).isDirectory()) {
+        if (['node_modules', 'dist', '.git', 'test'].includes(n)) continue;
+        lauf(p);
+      } else if (n.endsWith('.ts')) {
+        const s = fs.readFileSync(p, 'utf8');
+        if (/^\s*(export )?type Blickfeld\w* =/m.test(s)) {
+          treffer.push(path.relative(wurzel, p).split(path.sep).join('/'));
+        }
+      }
+    }
+  })(wurzel);
+  assert.deepEqual(treffer, ['utils/household.ts'],
+    'Der Typ Blickfeld wird an mehr als einer Stelle erklaert. Er gehoert dort ' +
+    'hin, wo asIds() steht — sonst driften die Fassungen auseinander, und eine ' +
+    'Signatur sagt nicht mehr, ob sie vor oder nach der Normalisierung steht.');
+});
