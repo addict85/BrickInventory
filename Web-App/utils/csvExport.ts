@@ -192,6 +192,12 @@ function parseCsvDate(raw: unknown) {
  * @returns { records, delimiter, uebersprungen } — uebersprungen sind
  *          Zeilennummern der Datei, 1-basiert wie in jedem Editor
  */
+/**
+ * Spaltennamen, die kein Datenfeld sein koennen, sondern die Prototypenkette
+ * treffen. Siehe die Begruendung an `columns:` unten.
+ */
+const GEFAEHRLICHE_SPALTEN = new Set(['__proto__', 'constructor', 'prototype']);
+
 function csvEinlesen(csvText: string): { records: any[]; delimiter: string; uebersprungen: number[] } {
   const { parse } = require('csv-parse/sync');
   const text = String(csvText || '').replace(/^\uFEFF/, '');
@@ -200,7 +206,23 @@ function csvEinlesen(csvText: string): { records: any[]; delimiter: string; uebe
 
   const uebersprungen: number[] = [];
   const records = parse(text, {
-    columns: true,
+    // ── Warum die Kopfzeile gefiltert wird (Nachtrag 170) ──────────────────
+    //
+    // `columns: true` macht aus jeder Kopfspalte einen Objektschluessel. Heisst
+    // eine Spalte `__proto__`, `constructor` oder `prototype`, schreibt das
+    // Ergebnis in die Prototypenkette statt in den Datensatz — genau der Pfad,
+    // den `npm audit` fuer csv-parse meldet („Prototype replacement still
+    // reachable via columns path"). Die CSV kommt vom Benutzer; der Import ist
+    // damit erreichbar.
+    //
+    // Die Bibliothek behebt es erst in Hauptversion 7. Das hier ist von der
+    // Version unabhaengig und kostet nichts: Eine Spalte mit einem dieser drei
+    // Namen ist in einer Bestandsliste ohnehin keine Angabe, sondern ein
+    // Angriff — sie wird verworfen (`false` laesst csv-parse die Spalte weg).
+    columns: (kopf: string[]) => kopf.map(name => {
+      const rein = String(name || '').trim();
+      return GEFAEHRLICHE_SPALTEN.has(rein) ? false : rein;
+    }),
     skip_empty_lines: true,
     trim: true,
     delimiter,
