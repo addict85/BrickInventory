@@ -111,6 +111,10 @@
       "design": "brick",
       "token": "b100"
     },
+    "SlateBlueNoppe": {
+      "design": "brick",
+      "token": "b400"
+    },
     "Petrol": {
       "design": "brick",
       "token": "brick-petrol"

@@ -46,11 +46,65 @@ val LackVerlauf = Brush.verticalGradient(
 /**
  * Die Form EINER Noppe: unten bündig am Deckel, oben rund.
  *
- * Dieselbe Form, die themes/noppe.css als Maske führt (`--noppen-form`). Sie
- * steht hier als eigener Wert und nicht dreimal im Baustein, damit beide
+ * Dieselbe Form, die styles.css als Maske führt (`--noppen-form`). Sie steht
+ * hier als eigener Wert und nicht dreimal im Baustein, damit beide
  * Oberflächen sie an genau einer Stelle führen.
  */
 val NoppenForm = RoundedCornerShape(topStart = 4.dp, topEnd = 4.dp)
+
+/**
+ * Der Lichtabfall auf der Steinkante — Licht oben, Kante unten.
+ *
+ * Dieselben Haltepunkte wie `linear-gradient(180deg, …)` fuer `.sc::before` in
+ * themes/brick.css. Viel schwaecher als LackVerlauf: Das Stein-Design ist
+ * mattes Plastik, kein Lack. Ohne ihn ist die Kante eine Flaeche, mit ihm ein
+ * Koerper — und ohne ihn saehe die App wieder anders aus als das Web.
+ */
+val SteinKantenVerlauf = Brush.verticalGradient(
+    0.00f to Color.White.copy(alpha = 0.20f),
+    0.40f to Color.White.copy(alpha = 0.05f),
+    1.00f to Color.Black.copy(alpha = 0.12f),
+)
+
+/**
+ * Die MASSE einer Noppenreihe — dieselben Zahlen wie im CSS.
+ *
+ * ── Warum als ein Satz und nicht als fünf Parameter ───────────────────────
+ *
+ * Die beiden Designs unterscheiden sich in genau diesen Zahlen und in sonst
+ * nichts. Einzeln übergeben würden sie an der Aufrufstelle stehen — verteilt
+ * über drei Bildschirme, und beim nächsten Nachbessern zieht eine Stelle nicht
+ * mit. Als benannter Satz stehen sie einmal, neben der CSS-Datei, aus der sie
+ * kommen.
+ *
+ * Marcos Befund, der dazu geführt hat: Im Stein-Design zeichnete das Web flache
+ * KREISE über die ganze Breite, die App vier abgerundete Noppen links. Zwei
+ * Oberflächen, zwei Formen, zwei Zahlenreihen.
+ */
+data class NoppenMass(
+    /** Hoehe der Kante insgesamt — `height` der ::before-Regel im CSS. */
+    val kanteHoehe: Dp,
+    /** Abstand von Noppenmitte zu Noppenmitte — `mask-size` im CSS. */
+    val takt: Dp,
+    val breite: Dp,
+    val hoehe: Dp,
+    /** Einzug links und rechts — `left`/`right` im CSS. */
+    val rand: Dp,
+    /** Abstand von der Oberkante — `top` im CSS. */
+    val oben: Dp,
+    /** Füllt die Reihe die ganze Breite, oder sind es feste `studCount`? */
+    val fuellend: Boolean,
+) {
+    companion object {
+        /** themes/brick.css: eine Reihe über die ganze Kante, Takt 17. */
+        val Stein = NoppenMass(kanteHoehe = 22.dp, takt = 17.dp, breite = 10.dp,
+                               hoehe = 6.dp, rand = 10.dp, oben = 0.dp, fuellend = true)
+
+        /** themes/noppe.css: vier Noppen auf dem Deckel, Takt 22. */
+        val Deckel = NoppenMass(kanteHoehe = 16.dp, takt = 22.dp, breite = 14.dp,
+                                hoehe = 7.dp, rand = 12.dp, oben = 6.dp, fuellend = false)
+    }
+}
 
 /**
  * Noppen-„Deckel" für Stein-Karten: eine schmale, farbige Leiste mit hellen
@@ -76,25 +130,37 @@ val NoppenForm = RoundedCornerShape(topStart = 4.dp, topEnd = 4.dp)
 fun BrickStudCap(
     modifier: Modifier = Modifier,
     color: Color = MaterialTheme.colorScheme.primary,
-    height: Dp = 16.dp,
+    /** Ohne Angabe die Hoehe aus `mass` — dann steht keine Zahl am Aufruf. */
+    height: Dp? = null,
     studCount: Int = 4,
-    glanz: Boolean = false
+    glanz: Boolean = false,
+    mass: NoppenMass = NoppenMass.Deckel,
+    noppenFarbe: Color? = null,
+    /** Lichtabfall ueber der Grundfarbe — siehe SteinKantenVerlauf. */
+    verlauf: Brush? = null,
 ) {
-    Box(
+    BoxWithConstraints(
         modifier
             .fillMaxWidth()
-            .height(height)
+            .height(height ?: mass.kanteHoehe)
             .background(color)
+            .then(if (verlauf != null) Modifier.background(verlauf) else Modifier)
             .then(if (glanz) Modifier.background(LackVerlauf) else Modifier)
     ) {
+        // Wie viele Noppen passen auf die Kante? Im CSS rechnet das
+        // `mask-repeat:repeat-x` von selbst aus; hier braucht es die Breite,
+        // und die gibt es erst beim Messen. Genau dafuer BoxWithConstraints.
+        val anzahl =
+            if (mass.fuellend) (((maxWidth - mass.rand * 2) / mass.takt).toInt()).coerceAtLeast(1)
+            else studCount
         Row(
-            Modifier.align(Alignment.TopStart).padding(top = 5.dp, start = 11.dp),
-            horizontalArrangement = Arrangement.spacedBy(7.dp)
+            Modifier.align(Alignment.TopStart).padding(top = mass.oben, start = mass.rand),
+            horizontalArrangement = Arrangement.spacedBy(mass.takt - mass.breite)
         ) {
-            repeat(studCount) {
+            repeat(anzahl) {
                 Box(
                     Modifier
-                        .size(width = 13.dp, height = 6.dp)
+                        .size(width = mass.breite, height = mass.hoehe)
                         .clip(NoppenForm)
                         // Die Kuppe: ein Lichtpunkt oben statt einer gleichmaessig
                         // hellen Scheibe. Derselbe radiale Verlauf wie
@@ -106,7 +172,9 @@ fun BrickStudCap(
                                     0.45f to Color.White.copy(alpha = 0.55f),
                                     1.00f to Color.White.copy(alpha = 0.18f),
                                 )
-                            ) else Modifier.background(Color.White.copy(alpha = 0.55f))
+                            ) else Modifier.background(
+                                noppenFarbe ?: Color.White.copy(alpha = 0.55f)
+                            )
                         )
                 )
             }

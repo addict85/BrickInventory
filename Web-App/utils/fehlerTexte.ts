@@ -245,6 +245,22 @@ export function fehlerText(
   code: FehlerCode, sprache: Sprache = 'de', vars?: Record<string, string | number>,
 ): string {
   const eintrag = FEHLER[code];
+  // ── Warum hier gefragt wird, ob es den Eintrag gibt ─────────────────────
+  //
+  // Vorher stand hier `eintrag[sprache]` ohne Pruefung. Ein Code, den die
+  // Tabelle nicht kennt, endete damit als `TypeError: Cannot read properties
+  // of undefined (reading 'de')` — und weil das IM Fehlerpfad passiert, sah
+  // der Benutzer statt der Absage ein HTTP 500. Genau so ist Marcos
+  // Einladungscode gescheitert (Nachtrag 167): Dort ging ein Zufallstoken als
+  // Fehlercode herein.
+  //
+  // Eine Fehlermeldung ist das Letzte, was selbst noch abstuerzen darf. Der
+  // Code wird deshalb notfalls im Klartext durchgereicht: unschoen, aber
+  // lesbar — und er sagt dem Protokoll, welcher Eintrag fehlt.
+  if (!eintrag) {
+    console.error(`[fehlerTexte] Unbekannter Fehlercode: ${String(code)}`);
+    return String(code);
+  }
   let text: string = eintrag[sprache] || eintrag.de;
   if (vars) {
     for (const [k, v] of Object.entries(vars)) text = text.split(`{${k}}`).join(String(v));

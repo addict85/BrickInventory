@@ -283,11 +283,12 @@ test('Leiste und Deckel teilen sich EINE Noppenform', () => {
   // Zwei Formen liefen beim naechsten Nachbessern auseinander: Die eine Reihe
   // bekaeme runde Noppen, die andere behielte ihre alten — und beides steht
   // auf demselben Bildschirm untereinander.
-  const erklaerungen = [...css.matchAll(/--noppen-form:/g)].length;
+  const grund = fs.readFileSync(path.join(BAUM, 'Web-App', 'public', 'styles.css'), 'utf8');
+  const erklaerungen = [...(css + grund).matchAll(/--noppen-form:/g)].length;
   assert.equal(erklaerungen, 1,
-    `Die Noppenform steht ${erklaerungen}-mal in noppe.css. Einmal reicht; die ` +
-    'zweite Reihe nimmt dieselbe Form in einem anderen Takt (mask-size).');
-  assert.match(css, /--noppen-form:url\("data:image\/svg\+xml,/,
+    `Die Noppenform steht ${erklaerungen}-mal im Baum. Einmal reicht; jede ` +
+    'weitere Reihe nimmt dieselbe Form in einem anderen Takt (mask-size).');
+  assert.match(grund, /--noppen-form:url\("data:image\/svg\+xml,/,
     'Die Noppenform ist keine Maske mehr');
 });
 
@@ -359,4 +360,88 @@ test('die Deckelfarbe loescht den Lack nicht', () => {
     'loescht damit den `background-image` des Lacks — und weil :nth-child wie ' +
     'eine Klasse zaehlt, gewinnt sie gegen hochglanz.css. `background-color:` ' +
     'setzt nur die Farbe und laesst den Lack stehen.');
+});
+
+// ────────────────────────────────────────────────────────────────────────────
+// Die Steinkante — EIN Satz Masse fuer beide Oberflaechen (Nachtrag 166)
+//
+// Marco: „Kannst du beim Design Stein (Blau) die Kante noch so anpassen, dass
+// es mehr nach Lego aussieht? Aktuell sieht man einfach oberhalb einen blauen
+// Balken mit Punkten. […] In der Android-App sieht es ebenfalls nicht gleich
+// aus. Es soll in beiden Apps gleich aussehen."
+//
+// Beides stimmte: Das Web zeichnete flache KREISE aus einem radialen Verlauf
+// ueber die ganze Breite, die App vier abgerundete Noppen links. Zwei
+// Oberflaechen, zwei Formen, zwei Zahlenreihen — und nichts, was sie
+// aneinander gebunden haette.
+// ────────────────────────────────────────────────────────────────────────────
+
+const stein = fs.readFileSync(path.join(BAUM, 'Web-App', 'public', 'themes', 'brick.css'), 'utf8');
+const grundCss = fs.readFileSync(path.join(BAUM, 'Web-App', 'public', 'styles.css'), 'utf8');
+
+test('die Noppenform gehoert allen Designs, nicht einem', () => {
+  // Sie stand in themes/noppe.css. Solange nur ein Design Noppen zeichnete,
+  // war das richtig; seit es zwei sind, ist es die Stelle, an der sie
+  // auseinanderlaufen.
+  assert.match(grundCss, /--noppen-form:url\("data:image\/svg\+xml,/,
+    'Die Noppenform steht nicht mehr in styles.css unter :root');
+  assert.ok(!/--noppen-form:/.test(css),
+    'themes/noppe.css fuehrt wieder eine eigene Noppenform — dann hat das ' +
+    'Stein-Design seine eigene, und genau so ist der Unterschied entstanden.');
+  assert.match(stein, /var\(--noppen-form\)/,
+    'Das Stein-Design benutzt die gemeinsame Noppenform nicht');
+  // Nur die REIHE, nicht jeder Kreis: Die Griffe der Jahres-Schieberegler sind
+  // runde Knoepfe mit einem Glanzpunkt (`circle at 35% 32%`) und sollen das
+  // bleiben. Eine Noppenreihe erkennt man an der Verankerung in Pixeln —
+  // `circle at 8px center`, alle 16px wiederholt. Die erste Fassung verbot
+  // beides und haette zwei richtige Regeln mitgerissen.
+  const reihen = [...stein.matchAll(/radial-gradient\(circle at \d+px center/g)];
+  assert.deepEqual(reihen.map(m => m[0]), [],
+    'Das Stein-Design zeichnet eine Noppenreihe wieder als Kreise. Von vorn ist ' +
+    'eine Noppe ein Rechteck mit runder Oberkante — das war der Grund, aus dem ' +
+    'die Kante wie „ein Balken mit Punkten" aussah.');
+});
+
+test('Web und App fuehren dieselben Masse fuer die Steinkante', () => {
+  // ── Die eigentliche Zusicherung ──────────────────────────────────────────
+  //
+  // Die Zahlen stehen zwangslaeufig zweimal — einmal in CSS, einmal in
+  // Compose. Dass sie GLEICH sind, kann keine Sprache erzwingen; nur diese
+  // Pruefung. Sie liest beide Seiten und vergleicht sie Zahl fuer Zahl.
+  const regel = stein.split('}').find(r => /\.sc::after/.test(r.slice(0, r.indexOf('{') + 1)));
+  assert.ok(regel, 'Die Noppenreihe des Stein-Designs ist nicht mehr zu finden');
+  // `(?:px)?`, weil CSS bei der Null keine Einheit verlangt: `top:0` steht ohne.
+  // Die erste Fassung forderte sie und lief in einen TypeError — ausgerechnet
+  // bei dem Wert, der am seltensten etwas anderes als Null ist.
+  const zahl = (quelle, name) => {
+    const t = quelle.match(new RegExp(`(?:^|[;{\\s])${name}:(\\d+)(?:px)?`));
+    assert.ok(t, `"${name}" steht nicht mehr in der Regel — greift die Suche noch?`);
+    return Number(t[1]);
+  };
+  const ausCss = {
+    takt:  zahl(regel, 'mask-size'),
+    hoehe: zahl(regel, 'height'),
+    rand:  zahl(regel, 'left'),
+    oben:  zahl(regel, 'top'),
+  };
+  const kante = stein.split('}').find(r => /\.sc::before/.test(r.slice(0, r.indexOf('{') + 1)));
+  ausCss.kanteHoehe = zahl(kante, 'height');
+
+  const satz = decor.slice(decor.indexOf('val Stein = NoppenMass('));
+  const ausApp = {};
+  for (const [name, feld] of [['kanteHoehe', 'kanteHoehe'], ['takt', 'takt'],
+                              ['hoehe', 'hoehe'], ['rand', 'rand'], ['oben', 'oben']]) {
+    const t = satz.match(new RegExp(`${feld} = (\\d+)\\.dp`));
+    assert.ok(t, `NoppenMass.Stein nennt ${feld} nicht mehr`);
+    ausApp[name] = Number(t[1]);
+  }
+  assert.deepEqual(ausApp, ausCss,
+    'Die Steinkante hat in App und Web verschiedene Masse. Sie muss in beiden ' +
+    'gleich aussehen — das war Marcos ausdrueckliche Vorgabe.');
+
+  // Und die Reihe muss die Breite fuellen, nicht vier Stueck zaehlen: Im CSS
+  // macht das `mask-repeat:repeat-x`, in Compose das Feld `fuellend`.
+  assert.match(regel, /mask-repeat:repeat-x/, 'Die Reihe wiederholt sich im CSS nicht mehr');
+  assert.match(satz.slice(0, 260), /fuellend = true/,
+    'NoppenMass.Stein zaehlt wieder feste Noppen statt die Kante zu fuellen');
 });

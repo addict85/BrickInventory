@@ -42,6 +42,9 @@ import ch.brickinventoryapp.ui.theme.LocalIstGlanz
 import ch.brickinventoryapp.ui.theme.LichtStreifen
 import ch.brickinventoryapp.ui.theme.steinTon
 import ch.brickinventoryapp.ui.theme.BrickStudCap
+import ch.brickinventoryapp.ui.theme.SteinKantenVerlauf
+import ch.brickinventoryapp.ui.theme.SlateBlueNoppe
+import ch.brickinventoryapp.ui.theme.NoppenMass
 import ch.brickinventoryapp.util.fmtInt
 import ch.brickinventoryapp.util.rememberTileImageWithFallback
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -416,13 +419,22 @@ fun SetCard(
         onClick = { onClick(set.setNumber) }
     ) {
         Column {
-            if (isBrick) BrickStudCap()
+            // Die Steinkante: Noppen ueber die ganze Breite, genau die Masse
+            // aus themes/brick.css (NoppenMass.Stein). Vorher stand hier der
+            // nackte Aufruf und damit der DECKEL des Noppe-Designs — vier
+            // Noppen links. Im Web waren es flache Kreise ueber die ganze
+            // Breite; dasselbe Design sah auf Telefon und Rechner anders aus.
+            if (isBrick) BrickStudCap(
+                mass = NoppenMass.Stein,
+                noppenFarbe = SlateBlueNoppe,
+                verlauf = SteinKantenVerlauf,
+            )
             // Der Steindeckel des Designs "noppe" — Position modulo sechs,
             // genau wie `.sc:nth-child(6n+…)` in themes/noppe.css. Dieselbe
             // Bauform wie beim Stein-Design, nur hoeher und in wechselnder
             // Farbe; deshalb derselbe Baustein statt eines zweiten.
-            if (istNoppe) BrickStudCap(color = steinTon(position), height = Abstaende.gross, glanz = istGlanz)
-            Box(Modifier.fillMaxWidth().height(if (isBrick) 154.dp else 170.dp)) {
+            if (istNoppe) BrickStudCap(color = steinTon(position), glanz = istGlanz)
+            Box(Modifier.fillMaxWidth().height(if (isBrick) 148.dp else 170.dp)) {
                 if (imageUrl != null) {
                     AsyncImage(
                         model = ImageRequest.Builder(ctx).data(imageUrl)
