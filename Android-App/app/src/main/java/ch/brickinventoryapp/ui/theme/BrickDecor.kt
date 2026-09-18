@@ -90,19 +90,27 @@ data class NoppenMass(
     val hoehe: Dp,
     /** Einzug links und rechts — `left`/`right` im CSS. */
     val rand: Dp,
-    /** Abstand von der Oberkante — `top` im CSS. */
+    /**
+     * Abstand von der Oberkante der Kante — `top` im CSS. NEGATIV heisst: Die
+     * Noppen stehen über, wie an einem echten Stein. Dann muss die Reihe
+     * AUSSERHALB der Karte gezeichnet werden (siehe NoppenReihe).
+     */
     val oben: Dp,
-    /** Füllt die Reihe die ganze Breite, oder sind es feste `studCount`? */
+    /** Füllt die Reihe die ganze Breite? Sonst gelten `anzahl` Stück. */
     val fuellend: Boolean,
+    val anzahl: Int = 4,
 ) {
+    /** Steht die Reihe über der Kante? Dann gehört sie nicht in die Karte. */
+    val ueberstehend: Boolean get() = oben < 0.dp
+
     companion object {
         /** themes/brick.css: eine Reihe über die ganze Kante, Takt 17. */
         val Stein = NoppenMass(kanteHoehe = 22.dp, takt = 17.dp, breite = 10.dp,
-                               hoehe = 6.dp, rand = 10.dp, oben = 0.dp, fuellend = true)
+                               hoehe = 6.dp, rand = 10.dp, oben = (-6).dp, fuellend = true)
 
         /** themes/noppe.css: vier Noppen auf dem Deckel, Takt 22. */
         val Deckel = NoppenMass(kanteHoehe = 16.dp, takt = 22.dp, breite = 14.dp,
-                                hoehe = 7.dp, rand = 12.dp, oben = 6.dp, fuellend = false)
+                                hoehe = 7.dp, rand = 12.dp, oben = 6.dp, fuellend = false, anzahl = 4)
     }
 }
 
@@ -132,14 +140,13 @@ fun BrickStudCap(
     color: Color = MaterialTheme.colorScheme.primary,
     /** Ohne Angabe die Hoehe aus `mass` — dann steht keine Zahl am Aufruf. */
     height: Dp? = null,
-    studCount: Int = 4,
     glanz: Boolean = false,
     mass: NoppenMass = NoppenMass.Deckel,
     noppenFarbe: Color? = null,
     /** Lichtabfall ueber der Grundfarbe — siehe SteinKantenVerlauf. */
     verlauf: Brush? = null,
 ) {
-    BoxWithConstraints(
+    Box(
         modifier
             .fillMaxWidth()
             .height(height ?: mass.kanteHoehe)
@@ -147,14 +154,50 @@ fun BrickStudCap(
             .then(if (verlauf != null) Modifier.background(verlauf) else Modifier)
             .then(if (glanz) Modifier.background(LackVerlauf) else Modifier)
     ) {
+        // Steht die Reihe ueber der Kante, gehoert sie nicht hierher: Eine
+        // Material-Card klippt auf ihre Form, und die Noppen waeren weg. Die
+        // Aufrufstelle zeichnet sie dann neben der Karte (siehe GalleryScreen).
+        if (!mass.ueberstehend) {
+            NoppenReihe(
+                mass = mass,
+                modifier = Modifier.align(Alignment.TopStart).offset(y = mass.oben),
+                farbe = noppenFarbe,
+                glanz = glanz,
+            )
+        }
+    }
+}
+
+/**
+ * Nur die Noppen — ohne die Kante darunter.
+ *
+ * ── Warum das ein eigener Baustein ist (Nachtrag 169) ───────────────────────
+ *
+ * Marco: „Geht es nicht, dass die Noppen oberhalb des Bereichs sind?" Im Web
+ * loest das ein `top:-6px` zusammen mit `overflow:visible` an der Kachel. In
+ * Compose gibt es kein `overflow:visible`: Die Material-Card klippt auf ihre
+ * Form, und was ueber ihren Rand ragt, ist weg.
+ *
+ * Deshalb wird die Reihe fuer das Stein-Design NEBEN der Karte gezeichnet und
+ * per Offset darueber geschoben. Sie ist damit kein zweiter Deckel, sondern
+ * der Teil des einen Deckels, der ausserhalb liegen muss.
+ */
+@Composable
+fun NoppenReihe(
+    mass: NoppenMass,
+    modifier: Modifier = Modifier,
+    farbe: Color? = null,
+    glanz: Boolean = false,
+) {
+    BoxWithConstraints(modifier.fillMaxWidth().height(mass.hoehe)) {
         // Wie viele Noppen passen auf die Kante? Im CSS rechnet das
         // `mask-repeat:repeat-x` von selbst aus; hier braucht es die Breite,
         // und die gibt es erst beim Messen. Genau dafuer BoxWithConstraints.
         val anzahl =
             if (mass.fuellend) (((maxWidth - mass.rand * 2) / mass.takt).toInt()).coerceAtLeast(1)
-            else studCount
+            else mass.anzahl
         Row(
-            Modifier.align(Alignment.TopStart).padding(top = mass.oben, start = mass.rand),
+            Modifier.align(Alignment.TopStart).padding(start = mass.rand),
             horizontalArrangement = Arrangement.spacedBy(mass.takt - mass.breite)
         ) {
             repeat(anzahl) {
@@ -173,7 +216,7 @@ fun BrickStudCap(
                                     1.00f to Color.White.copy(alpha = 0.18f),
                                 )
                             ) else Modifier.background(
-                                noppenFarbe ?: Color.White.copy(alpha = 0.55f)
+                                farbe ?: Color.White.copy(alpha = 0.55f)
                             )
                         )
                 )

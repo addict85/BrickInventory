@@ -53,7 +53,7 @@
 [data-theme="brick"] .sc::after,
 [data-theme="brick"] .bstat::before,
 [data-theme="brick"] .lcard::after{
-  content:'';position:absolute;top:0;left:10px;right:10px;height:6px;z-index:4;
+  content:'';position:absolute;top:-6px;left:10px;right:10px;height:6px;z-index:4;
   background-color:var(--b400);
   -webkit-mask-image:var(--noppen-form);mask-image:var(--noppen-form);
   -webkit-mask-size:17px 6px;mask-size:17px 6px;
@@ -124,7 +124,22 @@
 [data-theme="brick"] .gctrl{border-width:1.5px;border-radius:14px}
 
 /* ── Set-Karten: blauer Noppen-„Deckel" über dem Bild + Badges ──────────── */
-[data-theme="brick"] .sc{border-width:2px;border-radius:16px}
+/* ── Warum die Kachel oben offen ist ─────────────────────────────────────────
+   Die Noppen sitzen bei `top:-6px`, also UEBER der Kachel — so, wie sie an
+   einem echten Stein ueber der Deckflaeche stehen. Dafuer darf die Kachel sie
+   nicht abschneiden, und `overflow:hidden` aus styles.css taete genau das.
+
+   Das kostet nichts: Das Bildfeld (.sci) bringt sein eigenes `overflow:hidden`
+   mit, die Rundung des Bildes bleibt also. Nur die farbige Kante haette ohne
+   die Kachel keine runden Ecken mehr — deshalb bekommt sie ihre eigenen
+   (16px Kachel minus 2px Rahmen = 14px).
+
+   Der Platz fuer die ueberstehenden Noppen kommt aus dem Gitter: Ohne ihn
+   raegten sie in die Zeile darueber. */
+[data-theme="brick"] .sc{border-width:2px;border-radius:16px;overflow:visible}
+[data-theme="brick"] .sgrid{padding-top:6px}
+[data-theme="brick"] .bstat{overflow:visible}
+[data-theme="brick"] .brick-stats{padding-top:6px}
 /* Die Kante: die Deckflaeche des Steins. Die Noppen (oben, ::after) sitzen in
    ihren ersten sechs Pixeln — deshalb ist sie hoeher als vorher. Der helle
    Saum oben und die dunkle Kante unten machen aus der Flaeche einen Koerper. */
@@ -134,6 +149,9 @@
   background-image:linear-gradient(180deg,
     rgba(255,255,255,.20) 0%,rgba(255,255,255,.05) 40%,rgba(0,0,0,.12) 100%);
   border-bottom:1px solid rgba(0,0,0,.18);
+  /* Eigene Rundung, weil die Kachel oben offen ist und nicht mehr
+     zuschneidet: 16px Kachel minus 2px Rahmen. */
+  border-radius:14px 14px 0 0;
 }
 [data-theme="brick"] .sc .sci{margin-top:22px}
 /* Löschen-Knopf in der Galerie über den Stein-Deckel heben (sonst verdeckt der Deckel es) */
@@ -167,7 +185,7 @@
   display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin:0 0 16px;
 }
 [data-theme="brick"] .bstat{
-  position:relative;border-radius:14px;padding:20px 16px 14px;color:#fff;overflow:hidden;
+  position:relative;border-radius:14px;padding:14px 16px;color:#fff;
 }
 [data-theme="brick"] .bstat .bstat-l{font-size:.82rem;opacity:.86}
 [data-theme="brick"] .bstat .bstat-v{font-size:1.7rem;font-weight:800;margin-top:2px;line-height:1.1}

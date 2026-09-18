@@ -42,6 +42,7 @@ import ch.brickinventoryapp.ui.theme.LocalIstGlanz
 import ch.brickinventoryapp.ui.theme.LichtStreifen
 import ch.brickinventoryapp.ui.theme.steinTon
 import ch.brickinventoryapp.ui.theme.BrickStudCap
+import ch.brickinventoryapp.ui.theme.NoppenReihe
 import ch.brickinventoryapp.ui.theme.SteinKantenVerlauf
 import ch.brickinventoryapp.ui.theme.SlateBlueNoppe
 import ch.brickinventoryapp.ui.theme.NoppenMass
@@ -410,125 +411,145 @@ fun SetCard(
     val istNoppe = LocalIsNoppeTheme.current
     val istGlanz = LocalIstGlanz.current
 
-    AppKarte(
-        // Höher als vorher (232.dp) — Nachtrag 52, Marcos Wunsch: Die
-        // Etiketten sollen das Vorschaubild nicht mehr überdecken. Die zusätzliche
-        // Höhe geht vollständig an den Bildbereich; die Textzeilen darunter
-        // bleiben unverändert.
-        modifier = Modifier.height(272.dp),
-        onClick = { onClick(set.setNumber) }
-    ) {
-        Column {
-            // Die Steinkante: Noppen ueber die ganze Breite, genau die Masse
-            // aus themes/brick.css (NoppenMass.Stein). Vorher stand hier der
-            // nackte Aufruf und damit der DECKEL des Noppe-Designs — vier
-            // Noppen links. Im Web waren es flache Kreise ueber die ganze
-            // Breite; dasselbe Design sah auf Telefon und Rechner anders aus.
-            if (isBrick) BrickStudCap(
-                mass = NoppenMass.Stein,
-                noppenFarbe = SlateBlueNoppe,
-                verlauf = SteinKantenVerlauf,
-            )
-            // Der Steindeckel des Designs "noppe" — Position modulo sechs,
-            // genau wie `.sc:nth-child(6n+…)` in themes/noppe.css. Dieselbe
-            // Bauform wie beim Stein-Design, nur hoeher und in wechselnder
-            // Farbe; deshalb derselbe Baustein statt eines zweiten.
-            if (istNoppe) BrickStudCap(color = steinTon(position), glanz = istGlanz)
-            Box(Modifier.fillMaxWidth().height(if (isBrick) 148.dp else 170.dp)) {
-                if (imageUrl != null) {
-                    AsyncImage(
-                        model = ImageRequest.Builder(ctx).data(imageUrl)
-                            .setParameter("retry", retryNonce)
-                            .crossfade(true).build(),
-                        imageLoader = imageLoader,
-                        contentDescription = set.name,
-                        onState = { st ->
-                            if (st is coil.compose.AsyncImagePainter.State.Error && retryNonce == 0) {
-                                // Verzögert, nicht im selben Moment: Direkt nach
-                                // dem Erfassen erzeugt der Server die Vorschau
-                                // erst noch.
-                                scope.launch {
-                                    kotlinx.coroutines.delay(1000)
-                                    retryNonce = 1
+    // ── Die Noppen stehen UEBER der Karte ───────────────────────────────────
+    //
+    // Marco: „Geht es nicht, dass die Noppen oberhalb des Bereichs sind?" Im
+    // Web macht das ein `top:-6px` an der Kachel, die dafuer `overflow:visible`
+    // bekommt. In Compose gibt es das nicht: Eine Material-Card klippt auf ihre
+    // Form, und was ueber ihren Rand ragt, waere weg.
+    //
+    // Deshalb die Box: Die Karte rueckt um die Noppenhoehe nach unten, und die
+    // Reihe wird DANEBEN gezeichnet und darueber gelegt. Dieselbe Anordnung wie
+    // im CSS, nur mit den Mitteln von Compose.
+    Box {
+        AppKarte(
+            // Höher als vorher (232.dp) — Nachtrag 52, Marcos Wunsch: Die
+            // Etiketten sollen das Vorschaubild nicht mehr überdecken. Die zusätzliche
+            // Höhe geht vollständig an den Bildbereich; die Textzeilen darunter
+            // bleiben unverändert.
+            modifier = Modifier.height(272.dp)
+                .then(if (isBrick) Modifier.padding(top = NoppenMass.Stein.hoehe) else Modifier),
+            onClick = { onClick(set.setNumber) }
+        ) {
+            Column {
+                // Die Steinkante: Noppen ueber die ganze Breite, genau die Masse
+                // aus themes/brick.css (NoppenMass.Stein). Vorher stand hier der
+                // nackte Aufruf und damit der DECKEL des Noppe-Designs — vier
+                // Noppen links. Im Web waren es flache Kreise ueber die ganze
+                // Breite; dasselbe Design sah auf Telefon und Rechner anders aus.
+                // Nur die KANTE liegt in der Karte. Die Noppen stehen darueber und
+                // werden neben der Karte gezeichnet (siehe unten) — eine Card
+                // klippt auf ihre Form und wuerde sie abschneiden.
+                if (isBrick) BrickStudCap(
+                    mass = NoppenMass.Stein,
+                    verlauf = SteinKantenVerlauf,
+                )
+                // Der Steindeckel des Designs "noppe" — Position modulo sechs,
+                // genau wie `.sc:nth-child(6n+…)` in themes/noppe.css. Dieselbe
+                // Bauform wie beim Stein-Design, nur hoeher und in wechselnder
+                // Farbe; deshalb derselbe Baustein statt eines zweiten.
+                if (istNoppe) BrickStudCap(color = steinTon(position), glanz = istGlanz)
+                Box(Modifier.fillMaxWidth().height(if (isBrick) 142.dp else 170.dp)) {
+                    if (imageUrl != null) {
+                        AsyncImage(
+                            model = ImageRequest.Builder(ctx).data(imageUrl)
+                                .setParameter("retry", retryNonce)
+                                .crossfade(true).build(),
+                            imageLoader = imageLoader,
+                            contentDescription = set.name,
+                            onState = { st ->
+                                if (st is coil.compose.AsyncImagePainter.State.Error && retryNonce == 0) {
+                                    // Verzögert, nicht im selben Moment: Direkt nach
+                                    // dem Erfassen erzeugt der Server die Vorschau
+                                    // erst noch.
+                                    scope.launch {
+                                        kotlinx.coroutines.delay(1000)
+                                        retryNonce = 1
+                                    }
+                                } else if (st is coil.compose.AsyncImagePainter.State.Error) {
+                                    // Auch der zweite Versuch scheiterte — jetzt auf
+                                    // die volle Auflösung ausweichen (fehlende
+                                    // _thumb-Datei ist der häufigste Grund).
+                                    onImageError()
                                 }
-                            } else if (st is coil.compose.AsyncImagePainter.State.Error) {
-                                // Auch der zweite Versuch scheiterte — jetzt auf
-                                // die volle Auflösung ausweichen (fehlende
-                                // _thumb-Datei ist der häufigste Grund).
-                                onImageError()
-                            }
-                        },
-                        // Unten Platz lassen: Genau dort sitzen Zustands- und
-                        // Besitzer-Etiketten (BottomStart). Ohne diesen Streifen
-                        // liegen sie ÜBER dem Bild — bei einem Foto, das die
-                        // Fläche ausfüllt, verdecken sie es (Nachtrag 52).
-                        // ContentScale.Fit skaliert in den verbleibenden Raum,
-                        // das Bild wird also nicht beschnitten, sondern rückt
-                        // nach oben.
-                        modifier = Modifier.fillMaxSize().padding(bottom = 44.dp)
-                            .then(if (isBrick) Modifier else Modifier.clip(RoundedCornerShape(topStart = 16.dp, topEnd = 16.dp))),
-                        contentScale = ContentScale.Fit
-                    )
-                } else {
-                    Box(Modifier.fillMaxSize(), Alignment.Center) {
-                        Image(painterResource(R.drawable.ic_logo), null, Modifier.size(56.dp))
-                    }
-                }
-                if (set.quantity > 1) {
-                    Surface(
-                        color = MaterialTheme.colorScheme.primary,
-                        shape = Formen.etikett,
-                        modifier = Modifier.align(Alignment.TopEnd).padding(6.dp)
-                    ) {
-                        Text(stringResource(R.string.gallery_quantity_badge, set.quantity), Modifier.padding(horizontal = 6.dp, vertical = Abstaende.haar),
-                            color = MaterialTheme.colorScheme.onPrimary,
-                            style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.Bold)
-                    }
-                }
-                // Column statt Box (Nachtrag 33): Eine Box STAPELT ihre Kinder —
-                // die Besitzer-Etiketten lagen über den Zustandsplaketten, auf
-                // Marcos Screenshot lugte das verdeckte „N/G" zwischen den
-                // Namen hervor. Untereinander bleibt beides lesbar.
-                Column(Modifier.align(Alignment.BottomStart).padding(6.dp),
-                       verticalArrangement = Arrangement.spacedBy(Abstaende.haar)) {
-                    ConditionBadges(set.conditions, set.condition)
-                    // Wem gehört dieses Exemplar? Ohne die Angabe verschiebt
-                    // man im Haushalt das falsche.
-                    OwnerBadges(set.owners)
-                }
-                Box(Modifier.align(Alignment.TopStart).padding(Abstaende.haar)) {
-                    IconButton(onClick = { showMenu = true }, Modifier.size(28.dp)) {
-                        Icon(Icons.Default.MoreVert, stringResource(R.string.cd_set_menu), Modifier.size(16.dp),
-                            tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f))
-                    }
-                    DropdownMenu(showMenu, { showMenu = false }) {
-                        DropdownMenuItem(
-                            text = { Text(stringResource(R.string.common_delete), color = MaterialTheme.colorScheme.error) },
-                            onClick = { showMenu = false; deleting = true },
-                            leadingIcon = { Icon(Icons.Default.Delete, null, tint = MaterialTheme.colorScheme.error) }
+                            },
+                            // Unten Platz lassen: Genau dort sitzen Zustands- und
+                            // Besitzer-Etiketten (BottomStart). Ohne diesen Streifen
+                            // liegen sie ÜBER dem Bild — bei einem Foto, das die
+                            // Fläche ausfüllt, verdecken sie es (Nachtrag 52).
+                            // ContentScale.Fit skaliert in den verbleibenden Raum,
+                            // das Bild wird also nicht beschnitten, sondern rückt
+                            // nach oben.
+                            modifier = Modifier.fillMaxSize().padding(bottom = 44.dp)
+                                .then(if (isBrick) Modifier else Modifier.clip(RoundedCornerShape(topStart = 16.dp, topEnd = 16.dp))),
+                            contentScale = ContentScale.Fit
                         )
+                    } else {
+                        Box(Modifier.fillMaxSize(), Alignment.Center) {
+                            Image(painterResource(R.drawable.ic_logo), null, Modifier.size(56.dp))
+                        }
                     }
+                    if (set.quantity > 1) {
+                        Surface(
+                            color = MaterialTheme.colorScheme.primary,
+                            shape = Formen.etikett,
+                            modifier = Modifier.align(Alignment.TopEnd).padding(6.dp)
+                        ) {
+                            Text(stringResource(R.string.gallery_quantity_badge, set.quantity), Modifier.padding(horizontal = 6.dp, vertical = Abstaende.haar),
+                                color = MaterialTheme.colorScheme.onPrimary,
+                                style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.Bold)
+                        }
+                    }
+                    // Column statt Box (Nachtrag 33): Eine Box STAPELT ihre Kinder —
+                    // die Besitzer-Etiketten lagen über den Zustandsplaketten, auf
+                    // Marcos Screenshot lugte das verdeckte „N/G" zwischen den
+                    // Namen hervor. Untereinander bleibt beides lesbar.
+                    Column(Modifier.align(Alignment.BottomStart).padding(6.dp),
+                           verticalArrangement = Arrangement.spacedBy(Abstaende.haar)) {
+                        ConditionBadges(set.conditions, set.condition)
+                        // Wem gehört dieses Exemplar? Ohne die Angabe verschiebt
+                        // man im Haushalt das falsche.
+                        OwnerBadges(set.owners)
+                    }
+                    Box(Modifier.align(Alignment.TopStart).padding(Abstaende.haar)) {
+                        IconButton(onClick = { showMenu = true }, Modifier.size(28.dp)) {
+                            Icon(Icons.Default.MoreVert, stringResource(R.string.cd_set_menu), Modifier.size(16.dp),
+                                tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f))
+                        }
+                        DropdownMenu(showMenu, { showMenu = false }) {
+                            DropdownMenuItem(
+                                text = { Text(stringResource(R.string.common_delete), color = MaterialTheme.colorScheme.error) },
+                                onClick = { showMenu = false; deleting = true },
+                                leadingIcon = { Icon(Icons.Default.Delete, null, tint = MaterialTheme.colorScheme.error) }
+                            )
+                        }
+                    }
+                    // Die Spiegelung auf der Glasscheibe. ZULETZT im Box, damit sie
+                    // ueber dem Bild liegt — und nur hier, nicht ueber der ganzen
+                    // Kachel: Ein weisser Schleier ueber weissem Text ist kein
+                    // Glanz, sondern Grau (siehe LichtStreifen in BrickDecor.kt).
+                    if (istGlanz) Box(Modifier.matchParentSize().background(LichtStreifen))
                 }
-                // Die Spiegelung auf der Glasscheibe. ZULETZT im Box, damit sie
-                // ueber dem Bild liegt — und nur hier, nicht ueber der ganzen
-                // Kachel: Ein weisser Schleier ueber weissem Text ist kein
-                // Glanz, sondern Grau (siehe LichtStreifen in BrickDecor.kt).
-                if (istGlanz) Box(Modifier.matchParentSize().background(LichtStreifen))
-            }
-            Column(Modifier.padding(horizontal = 10.dp, vertical = Abstaende.klein), verticalArrangement = Arrangement.spacedBy(1.dp)) {
-                Text(set.setNumber, style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant)
-                Text(set.name ?: set.setNumber, fontWeight = FontWeight.SemiBold,
-                    maxLines = 2, overflow = TextOverflow.Ellipsis, fontSize = 13.sp,
-                    lineHeight = 16.sp)
-                if (set.theme != null) Text(set.theme,
-                    style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.primary.copy(alpha = 0.8f), maxLines = 1)
-                if (set.pieces != null) Text(fmtInt(set.pieces) + stringResource(R.string.gallery_pieces_suffix),
-                    style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Column(Modifier.padding(horizontal = 10.dp, vertical = Abstaende.klein), verticalArrangement = Arrangement.spacedBy(1.dp)) {
+                    Text(set.setNumber, style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Text(set.name ?: set.setNumber, fontWeight = FontWeight.SemiBold,
+                        maxLines = 2, overflow = TextOverflow.Ellipsis, fontSize = 13.sp,
+                        lineHeight = 16.sp)
+                    if (set.theme != null) Text(set.theme,
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.primary.copy(alpha = 0.8f), maxLines = 1)
+                    if (set.pieces != null) Text(fmtInt(set.pieces) + stringResource(R.string.gallery_pieces_suffix),
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant)
+                }
             }
         }
+        if (isBrick) NoppenReihe(
+            mass = NoppenMass.Stein,
+            modifier = Modifier.align(Alignment.TopStart),
+            farbe = SlateBlueNoppe,
+        )
     }
 
     if (deleting) {

@@ -414,7 +414,10 @@ test('Web und App fuehren dieselben Masse fuer die Steinkante', () => {
   // Die erste Fassung forderte sie und lief in einen TypeError — ausgerechnet
   // bei dem Wert, der am seltensten etwas anderes als Null ist.
   const zahl = (quelle, name) => {
-    const t = quelle.match(new RegExp(`(?:^|[;{\\s])${name}:(\\d+)(?:px)?`));
+    // `-?`, seit die Noppen UEBERstehen: `top:-6px` im CSS, `(-6).dp` in
+    // Compose. Ohne das Vorzeichen fand die Suche nichts und lief in einen
+    // TypeError — an genau der Zahl, die den Ueberstand ausmacht.
+    const t = quelle.match(new RegExp(`(?:^|[;{\\s])${name}:(-?\\d+)(?:px)?`));
     assert.ok(t, `"${name}" steht nicht mehr in der Regel — greift die Suche noch?`);
     return Number(t[1]);
   };
@@ -431,7 +434,8 @@ test('Web und App fuehren dieselben Masse fuer die Steinkante', () => {
   const ausApp = {};
   for (const [name, feld] of [['kanteHoehe', 'kanteHoehe'], ['takt', 'takt'],
                               ['hoehe', 'hoehe'], ['rand', 'rand'], ['oben', 'oben']]) {
-    const t = satz.match(new RegExp(`${feld} = (\\d+)\\.dp`));
+    // Kotlin schreibt einen negativen Dp-Wert als `(-6).dp`.
+    const t = satz.match(new RegExp(`${feld} = \\(?(-?\\d+)\\)?\\.dp`));
     assert.ok(t, `NoppenMass.Stein nennt ${feld} nicht mehr`);
     ausApp[name] = Number(t[1]);
   }
