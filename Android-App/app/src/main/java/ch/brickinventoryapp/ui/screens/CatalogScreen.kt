@@ -39,6 +39,10 @@ import ch.brickinventoryapp.ui.viewmodel.CatalogViewModel
 import ch.brickinventoryapp.ui.*  // Feature-Extensions (setCatalogQuery, loadCatalogSets, …)
 import ch.brickinventoryapp.ui.CatalogYearMath
 import ch.brickinventoryapp.ui.theme.BrickStudCap
+import ch.brickinventoryapp.ui.theme.NoppenReihe
+import ch.brickinventoryapp.ui.theme.SteinKantenVerlauf
+import ch.brickinventoryapp.ui.theme.SlateBlueNoppe
+import ch.brickinventoryapp.ui.theme.NoppenMass
 import ch.brickinventoryapp.ui.theme.LocalIsBrickTheme
 import ch.brickinventoryapp.ui.theme.LocalIsNoppeTheme
 import ch.brickinventoryapp.ui.theme.LocalIstGlanz
@@ -563,94 +567,123 @@ fun CatalogSetCard(
     // --faecher-ton in js/09-catalog.js. Ohne Thema-Nummer gibt es keinen
     // Streifen, statt eines falschen.
     val ton = if (LocalIsFarbfaecherTheme.current) faecherTon(set.themeId) else null
-    AppKarte(
-        modifier = Modifier.height(212.dp),
-        onClick = { onClick(set.setNumber) }
-    ) {
-        Column {
-            if (isBrick) BrickStudCap()
-            // Der Steindeckel des Designs "noppe" — Position modulo sechs,
-            // genau wie `.sc:nth-child(6n+…)` in themes/noppe.css. Dieselbe
-            // Bauform wie beim Stein-Design, nur hoeher und in wechselnder
-            // Farbe; deshalb derselbe Baustein statt eines zweiten.
-            if (istNoppe) BrickStudCap(color = steinTon(position), height = Abstaende.gross, glanz = istGlanz)
-            if (ton != null) {
-                Box(Modifier.fillMaxWidth().height(5.dp).background(ton))
-            }
-            Box(Modifier.fillMaxWidth().height(if (isBrick) 104.dp else 118.dp)) {
-                // Über den Server auflösen statt roher CDN-Adresse. Der
-                // Server prüft dabei, ob irgendein Nutzer dieses Katalog-Set
-                // bereits heruntergeladen hat (eine nutzerunabhängige Datei,
-                // benannt nach der Setnummer allein) — dann kommt das Bild
-                // direkt von dort statt über den Proxy vom CDN. Schlägt auch
-                // die Vorschau fehl, Rückfall auf die volle Auflösung, bevor
-                // der Logo-Platzhalter greift.
-                val (thumbUrl, onThumbError) = rememberTileImageWithFallback(serverUrl, set.imageLocal, set.imageUrl)
-                if (thumbUrl != null) {
-                    AsyncImage(
-                        model = ImageRequest.Builder(ctx).data(thumbUrl).crossfade(true).build(),
-                        imageLoader = imageLoader,
-                        contentDescription = set.name,
-                        // onError statt onState: mit "imageLoader" UND "error"
-                        // (Platzhalter-Painter) gehört der Aufruf zur
-                        // Painter-Überladung von AsyncImage, die "onState"
-                        // nicht kennt — nur "onError" als eigener Parameter.
-                        onError = { onThumbError() },
-                        // Kaputte/fehlende CDN-Bilder -> Logo-Platzhalter statt leerer Fläche
-                        error = painterResource(R.drawable.ic_logo),
-                        modifier = Modifier.fillMaxSize()
-                            .then(if (isBrick) Modifier else Modifier.clip(RoundedCornerShape(topStart = 16.dp, topEnd = 16.dp))),
-                        contentScale = ContentScale.Fit
-                    )
-                } else {
-                    Box(Modifier.fillMaxSize(), Alignment.Center) {
-                        Image(painterResource(R.drawable.ic_logo), null, Modifier.size(48.dp))
-                    }
+    // ── Die Noppen stehen UEBER der Karte ───────────────────────────────────
+    //
+    // Marco: „Geht es nicht, dass die Noppen oberhalb des Bereichs sind?" Im
+    // Web macht das ein `top:-6px` an der Kachel, die dafuer `overflow:visible`
+    // bekommt. In Compose gibt es das nicht: Eine Material-Card klippt auf ihre
+    // Form, und was ueber ihren Rand ragt, waere weg.
+    //
+    // Deshalb die Box: Die Karte rueckt um die Noppenhoehe nach unten, und die
+    // Reihe wird DANEBEN gezeichnet und darueber gelegt. Dieselbe Anordnung wie
+    // im CSS, nur mit den Mitteln von Compose.
+    Box {
+        AppKarte(
+            modifier = Modifier.height(212.dp)
+                .then(if (isBrick) Modifier.padding(top = NoppenMass.Stein.hoehe) else Modifier),
+            onClick = { onClick(set.setNumber) }
+        ) {
+            Column {
+                // Die Steinkante: Noppen ueber die ganze Breite, genau die Masse
+                // aus themes/brick.css (NoppenMass.Stein). Vorher stand hier der
+                // nackte Aufruf und damit der DECKEL des Noppe-Designs — vier
+                // Noppen links. Im Web waren es flache Kreise ueber die ganze
+                // Breite; dasselbe Design sah auf Telefon und Rechner anders aus.
+                // Nur die KANTE liegt in der Karte. Die Noppen stehen darueber und
+                // werden neben der Karte gezeichnet (siehe unten) — eine Card
+                // klippt auf ihre Form und wuerde sie abschneiden.
+                if (isBrick) BrickStudCap(
+                    mass = NoppenMass.Stein,
+                    verlauf = SteinKantenVerlauf,
+                )
+                // Der Steindeckel des Designs "noppe" — Position modulo sechs,
+                // genau wie `.sc:nth-child(6n+…)` in themes/noppe.css. Dieselbe
+                // Bauform wie beim Stein-Design, nur hoeher und in wechselnder
+                // Farbe; deshalb derselbe Baustein statt eines zweiten.
+                if (istNoppe) BrickStudCap(color = steinTon(position), glanz = istGlanz)
+                if (ton != null) {
+                    Box(Modifier.fillMaxWidth().height(5.dp).background(ton))
                 }
-                if (set.owned) {
-                    Surface(
-                        color = MaterialTheme.colorScheme.primary,
-                        shape = RoundedCornerShape(bottomStart = 10.dp),
-                        modifier = Modifier.align(Alignment.TopEnd)
-                    ) {
-                        Text(
-                            if (set.ownedQuantity > 1) "✓ ×${set.ownedQuantity}" else "✓",
-                            color = MaterialTheme.colorScheme.onPrimary,
-                            fontSize = 11.sp, fontWeight = FontWeight.Bold,
-                            modifier = Modifier.padding(horizontal = 7.dp, vertical = 3.dp)
+                Box(Modifier.fillMaxWidth().height(if (isBrick) 92.dp else 118.dp)) {
+                    // Über den Server auflösen statt roher CDN-Adresse. Der
+                    // Server prüft dabei, ob irgendein Nutzer dieses Katalog-Set
+                    // bereits heruntergeladen hat (eine nutzerunabhängige Datei,
+                    // benannt nach der Setnummer allein) — dann kommt das Bild
+                    // direkt von dort statt über den Proxy vom CDN. Schlägt auch
+                    // die Vorschau fehl, Rückfall auf die volle Auflösung, bevor
+                    // der Logo-Platzhalter greift.
+                    val (thumbUrl, onThumbError) = rememberTileImageWithFallback(serverUrl, set.imageLocal, set.imageUrl)
+                    if (thumbUrl != null) {
+                        AsyncImage(
+                            model = ImageRequest.Builder(ctx).data(thumbUrl).crossfade(true).build(),
+                            imageLoader = imageLoader,
+                            contentDescription = set.name,
+                            // onError statt onState: mit "imageLoader" UND "error"
+                            // (Platzhalter-Painter) gehört der Aufruf zur
+                            // Painter-Überladung von AsyncImage, die "onState"
+                            // nicht kennt — nur "onError" als eigener Parameter.
+                            onError = { onThumbError() },
+                            // Kaputte/fehlende CDN-Bilder -> Logo-Platzhalter statt leerer Fläche
+                            error = painterResource(R.drawable.ic_logo),
+                            modifier = Modifier.fillMaxSize()
+                                .then(if (isBrick) Modifier else Modifier.clip(RoundedCornerShape(topStart = 16.dp, topEnd = 16.dp))),
+                            contentScale = ContentScale.Fit
                         )
+                    } else {
+                        Box(Modifier.fillMaxSize(), Alignment.Center) {
+                            Image(painterResource(R.drawable.ic_logo), null, Modifier.size(48.dp))
+                        }
                     }
+                    if (set.owned) {
+                        Surface(
+                            color = MaterialTheme.colorScheme.primary,
+                            shape = RoundedCornerShape(bottomStart = 10.dp),
+                            modifier = Modifier.align(Alignment.TopEnd)
+                        ) {
+                            Text(
+                                if (set.ownedQuantity > 1) "✓ ×${set.ownedQuantity}" else "✓",
+                                color = MaterialTheme.colorScheme.onPrimary,
+                                fontSize = 11.sp, fontWeight = FontWeight.Bold,
+                                modifier = Modifier.padding(horizontal = 7.dp, vertical = 3.dp)
+                            )
+                        }
+                    }
+                    // Die Spiegelung auf der Glasscheibe. ZULETZT im Box, damit sie
+                    // ueber dem Bild liegt — und nur hier, nicht ueber der ganzen
+                    // Kachel: Ein weisser Schleier ueber weissem Text ist kein
+                    // Glanz, sondern Grau (siehe LichtStreifen in BrickDecor.kt).
+                    if (istGlanz) Box(Modifier.matchParentSize().background(LichtStreifen))
                 }
-                // Die Spiegelung auf der Glasscheibe. ZULETZT im Box, damit sie
-                // ueber dem Bild liegt — und nur hier, nicht ueber der ganzen
-                // Kachel: Ein weisser Schleier ueber weissem Text ist kein
-                // Glanz, sondern Grau (siehe LichtStreifen in BrickDecor.kt).
-                if (istGlanz) Box(Modifier.matchParentSize().background(LichtStreifen))
-            }
-            Column(Modifier.padding(horizontal = 10.dp, vertical = 7.dp)) {
-                Text(set.setNumber, style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold)
-                Text(set.name ?: "—", fontSize = 13.sp, fontWeight = FontWeight.SemiBold,
-                    maxLines = 2, overflow = TextOverflow.Ellipsis, lineHeight = 16.sp)
-                Spacer(Modifier.weight(1f))
-                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                    Text("${set.year ?: "—"}", fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                    if ((set.numParts ?: 0) > 0) {
-                        // Dasselbe Teile-Symbol wie im Reiter „Teile" und in der
-                        // Webapp, statt des Puzzleteil-Emojis: Ein Puzzleteil hat
-                        // mit LEGO nichts zu tun, und die Darstellung eines Emojis
-                        // hängt an der Schriftart des Geräts.
-                        Icon(
-                            ImageVector.vectorResource(R.drawable.ic_parts_bricks),
-                            contentDescription = null,
-                            tint = Color.Unspecified,
-                            modifier = Modifier.size(13.dp)
-                        )
-                        Text("${set.numParts}", fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Column(Modifier.padding(horizontal = 10.dp, vertical = 7.dp)) {
+                    Text(set.setNumber, style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold)
+                    Text(set.name ?: "—", fontSize = 13.sp, fontWeight = FontWeight.SemiBold,
+                        maxLines = 2, overflow = TextOverflow.Ellipsis, lineHeight = 16.sp)
+                    Spacer(Modifier.weight(1f))
+                    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                        Text("${set.year ?: "—"}", fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        if ((set.numParts ?: 0) > 0) {
+                            // Dasselbe Teile-Symbol wie im Reiter „Teile" und in der
+                            // Webapp, statt des Puzzleteil-Emojis: Ein Puzzleteil hat
+                            // mit LEGO nichts zu tun, und die Darstellung eines Emojis
+                            // hängt an der Schriftart des Geräts.
+                            Icon(
+                                ImageVector.vectorResource(R.drawable.ic_parts_bricks),
+                                contentDescription = null,
+                                tint = Color.Unspecified,
+                                modifier = Modifier.size(13.dp)
+                            )
+                            Text("${set.numParts}", fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        }
                     }
                 }
             }
         }
+        if (isBrick) NoppenReihe(
+            mass = NoppenMass.Stein,
+            modifier = Modifier.align(Alignment.TopStart),
+            farbe = SlateBlueNoppe,
+        )
     }
 }
 

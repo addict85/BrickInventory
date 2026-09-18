@@ -60,21 +60,8 @@
   --sh1:0 4px 0 var(--ink);
   --sh2:0 6px 0 var(--ink);
 
-  /* ── Die Form EINER Noppe ───────────────────────────────────────
-     Ein Rechteck mit runder Oberkante: 15 breit, 7 hoch, Radius 4 oben, im
-     Takt von 24 — genau die Masse aus dem Entwurf.
-
-     Warum eine MASKE und kein Verlauf: Die erste Fassung zeichnete die Reihe
-     mit repeating-linear-gradient. Ein Verlauf kennt aber keine runden Ecken,
-     und `border-radius` am Balken rundet den BALKEN, nicht die einzelne
-     Noppe — in der laufenden App standen deshalb scharfkantige Striche statt
-     Noppen. Die Maske traegt die FORM, der Hintergrund die FARBE: So bleibt
-     die Farbe in den Token, statt in einer Grafik zu stecken.
-
-     Und nur EINE Form fuer Leiste und Kacheldeckel: Der Deckel nimmt dieselbe
-     Maske in einem kleineren Takt (mask-size). Zwei Formen liefen beim
-     naechsten Nachbessern auseinander. */
-  --noppen-form:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 7'%3E%3Cpath d='M0 7V4a4 4 0 0 1 4-4h7a4 4 0 0 1 4 4v3z' fill='%23000'/%3E%3C/svg%3E");
+  /* Die Noppenform steht in styles.css unter :root — seit auch das
+     Stein-Design sie benutzt, gehoert sie keinem Design mehr allein. */
 }
 
 /* ── Die Grundplatte ────────────────────────────────────────────────────────

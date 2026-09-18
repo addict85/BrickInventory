@@ -203,11 +203,24 @@ export async function createInvite(uid: number) {
   // Absagen kommen als CODE zurueck, nicht als Satz (Nachtrag 130): Dieser
   // Helfer weiss nicht, welche Sprache der Anfragende sieht — die Route weiss
   // es, weil sie den Request hat.
+  //
+  // ── Und sie heissen `fehler`, nicht `code` (Nachtrag 167) ─────────────────
+  //
+  // Der Erfolgsfall dieser Funktion liefert selbst ein Feld `code` — den
+  // EINLADUNGSCODE. Die Absage hiess frueher ebenfalls `code`, und die Route
+  // entschied mit `if (r.code)`, ob etwas schiefging. Damit war JEDE
+  // erfolgreiche Einladung ein Fehler: Der Zufallstoken ging als Fehlercode in
+  // fehlerText(), stand dort in keiner Tabelle, und der Aufruf endete mit
+  // „Cannot read properties of undefined (reading 'de')" — HTTP 500.
+  //
+  // Marco hat das aus dem Betrieb gemeldet. Die Funktion hat seit dem Umbau
+  // kein einziges Mal funktioniert; die Tests pruefen die beiden Rueckgaben
+  // einzeln und kamen an der Entscheidung der Route nie vorbei.
   const id = parseInt(String(uid));
   const own = await resolveHousehold(id);
   // Eine Stufe: Wer selbst Unterkonto ist, kann keinen Haushalt aufmachen.
   if (own.linkedToMainId) {
-    return { code: 'konto_bereits_verknuepft_eine_stufe' as const };
+    return { fehler: 'konto_bereits_verknuepft_eine_stufe' as const };
   }
   await db.run(
     `DELETE FROM account_link_invites WHERE expires_at < NOW() OR used_at IS NOT NULL`
@@ -233,7 +246,7 @@ export async function createInvite(uid: number) {
 export async function redeemInvite(uid: number, code: string) {
   const subId = parseInt(String(uid));
   if (typeof code !== 'string' || code.length < 8) {
-    return { code: 'einladungscode_ungueltig' as const };
+    return { fehler: 'einladungscode_ungueltig' as const };
   }
   const th = hash(code.trim());
 
@@ -243,7 +256,7 @@ export async function redeemInvite(uid: number, code: string) {
       RETURNING main_user_id`,
     [th, subId]
   ).catch(() => null);
-  if (!claimed) return { code: 'einladungscode_abgelaufen' as const };
+  if (!claimed) return { fehler: 'einladungscode_abgelaufen' as const };
 
   const mainId = parseInt(claimed.main_user_id);
   const release = async () => {
@@ -254,7 +267,7 @@ export async function redeemInvite(uid: number, code: string) {
 
   if (mainId === subId) {
     await release();
-    return { code: 'konto_mit_sich_selbst' as const };
+    return { fehler: 'konto_mit_sich_selbst' as const };
   }
 
   const [subState, mainState] = await Promise.all([
@@ -262,17 +275,17 @@ export async function redeemInvite(uid: number, code: string) {
   ]);
   if (subState.linkedToMainId) {
     await release();
-    return { code: 'konto_bereits_verknuepft' as const };
+    return { fehler: 'konto_bereits_verknuepft' as const };
   }
   // Eine Stufe, beide Richtungen: Wer selbst Unterkonten hat, kann nicht
   // Unterkonto werden; wer Unterkonto ist, kann keine aufnehmen.
   if (subState.isMain) {
     await release();
-    return { code: 'konto_hat_unterkonten' as const };
+    return { fehler: 'konto_hat_unterkonten' as const };
   }
   if (mainState.linkedToMainId) {
     await release();
-    return { code: 'einladender_ist_unterkonto' as const };
+    return { fehler: 'einladender_ist_unterkonto' as const };
   }
 
   // ── Währung muss übereinstimmen ───────────────────────────────────────────
@@ -285,7 +298,7 @@ export async function redeemInvite(uid: number, code: string) {
   ]);
   if (String(curMain) !== String(curSub)) {
     await release();
-    return { code: 'waehrung_ungleich' as const, vars: { haupt: String(curMain), unter: String(curSub) } };
+    return { fehler: 'waehrung_ungleich' as const, vars: { haupt: String(curMain), unter: String(curSub) } };
   }
 
   await db.run(

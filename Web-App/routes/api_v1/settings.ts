@@ -132,7 +132,7 @@ router.get('/settings/household', requireToken, async (req: AuthedRequest, res) 
 router.post('/settings/household/invite', requireToken, async (req: AuthedRequest, res) => {
   try {
     const r = await createInvite(req.apiUser.user_id);
-    if ((r as any).code) return sendeFehler(req, res, 409, (r as any).code, (r as any).vars);
+    if ((r as any).fehler) return sendeFehler(req, res, 409, (r as any).fehler, (r as any).vars);
     res.json({ success: true, ...r });
   } catch (e) { handleRouteError(res, e, undefined, req); }
 });
@@ -140,7 +140,7 @@ router.post('/settings/household/invite', requireToken, async (req: AuthedReques
 router.post('/settings/household/redeem', requireToken, async (req: AuthedRequest, res) => {
   try {
     const r = await redeemInvite(req.apiUser.user_id, String(req.body?.code || ''));
-    if ((r as any).code) return sendeFehler(req, res, 409, (r as any).code, (r as any).vars);
+    if ((r as any).fehler) return sendeFehler(req, res, 409, (r as any).fehler, (r as any).vars);
     res.json({ success: true, ...r });
   } catch (e) { handleRouteError(res, e, undefined, req); }
 });

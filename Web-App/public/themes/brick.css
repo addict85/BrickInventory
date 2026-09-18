@@ -31,13 +31,37 @@
   --sh2:0 8px 24px rgba(45,71,99,.16);
 }
 
-/* Wiederverwendbare Noppenreihe (helle Kreise auf farbiger Fläche) */
-[data-theme="brick"] .brick-studs,
-[data-theme="brick"] .sc::before,
-[data-theme="brick"] .bstat::before{
-  background-image:radial-gradient(circle at 8px center, rgba(255,255,255,.42) 3px, transparent 3.6px);
-  background-size:16px 100%;background-repeat:repeat-x;
+/* ── Die Noppenreihe ─────────────────────────────────────────────────────────
+   Marco: „Aktuell sieht man einfach oberhalb einen blauen Balken mit Punkten.
+   Schoen waere es wenn die Kante eher nach einem Lego-Stein aussehen wuerde."
+
+   Hier stand ein radialer Verlauf: flache helle KREISE, ueber die ganze Breite
+   wiederholt. Ein Kreis ist aber nicht, was man von einer Noppe sieht — von
+   vorn ist sie ein Rechteck mit runder Oberkante, und sie sitzt OBEN AUF der
+   Kante statt darin. Die App zeichnete derweil vier abgerundete Noppen links:
+   zwei Oberflaechen, zwei Formen.
+
+   Jetzt dieselbe Maske wie im Noppe-Design (--noppen-form in styles.css), nur
+   im eigenen Takt. Die Reihe ist ein eigenes Element und nicht mehr eine
+   Fuellung der Kante — nur so kann sie ueber ihr liegen.
+
+   Die alte Regel nannte ausserdem `.brick-studs` und `.bstat::before`. Beide
+   waren WIRKUNGSLOS: Sie setzte nur Farbe, kein `content` und keine Groesse,
+   und `.brick-studs` kommt im ganzen Baum sonst nicht vor. Die Kennzahlen-
+   Kacheln bekommen ihre Noppen jetzt wirklich. */
+
+[data-theme="brick"] .sc::after,
+[data-theme="brick"] .bstat::before,
+[data-theme="brick"] .lcard::after{
+  content:'';position:absolute;top:-6px;left:10px;right:10px;height:6px;z-index:4;
+  background-color:var(--b400);
+  -webkit-mask-image:var(--noppen-form);mask-image:var(--noppen-form);
+  -webkit-mask-size:17px 6px;mask-size:17px 6px;
+  -webkit-mask-repeat:repeat-x;mask-repeat:repeat-x;
 }
+/* Auf der hellen Kachel waere ein helleres Blau nicht zu sehen. */
+[data-theme="brick"] .bstat-light::before{background-color:#8fa8c0}
+[data-theme="brick"] .bstat-petrol::before{background-color:#7fbccb}
 
 /* ── Grundplatte: der gesamte App-Inhalt sitzt in einem hellen, runden Panel ── */
 [data-theme="brick"] #app{
@@ -100,12 +124,36 @@
 [data-theme="brick"] .gctrl{border-width:1.5px;border-radius:14px}
 
 /* ── Set-Karten: blauer Noppen-„Deckel" über dem Bild + Badges ──────────── */
-[data-theme="brick"] .sc{border-width:2px;border-radius:16px}
+/* ── Warum die Kachel oben offen ist ─────────────────────────────────────────
+   Die Noppen sitzen bei `top:-6px`, also UEBER der Kachel — so, wie sie an
+   einem echten Stein ueber der Deckflaeche stehen. Dafuer darf die Kachel sie
+   nicht abschneiden, und `overflow:hidden` aus styles.css taete genau das.
+
+   Das kostet nichts: Das Bildfeld (.sci) bringt sein eigenes `overflow:hidden`
+   mit, die Rundung des Bildes bleibt also. Nur die farbige Kante haette ohne
+   die Kachel keine runden Ecken mehr — deshalb bekommt sie ihre eigenen
+   (16px Kachel minus 2px Rahmen = 14px).
+
+   Der Platz fuer die ueberstehenden Noppen kommt aus dem Gitter: Ohne ihn
+   raegten sie in die Zeile darueber. */
+[data-theme="brick"] .sc{border-width:2px;border-radius:16px;overflow:visible}
+[data-theme="brick"] .sgrid{padding-top:6px}
+[data-theme="brick"] .bstat{overflow:visible}
+[data-theme="brick"] .brick-stats{padding-top:6px}
+/* Die Kante: die Deckflaeche des Steins. Die Noppen (oben, ::after) sitzen in
+   ihren ersten sechs Pixeln — deshalb ist sie hoeher als vorher. Der helle
+   Saum oben und die dunkle Kante unten machen aus der Flaeche einen Koerper. */
 [data-theme="brick"] .sc::before{
-  content:'';position:absolute;top:0;left:0;right:0;height:18px;z-index:3;
-  background-color:var(--b600);border-bottom:1px solid rgba(0,0,0,.12);
+  content:'';position:absolute;top:0;left:0;right:0;height:22px;z-index:3;
+  background-color:var(--b600);
+  background-image:linear-gradient(180deg,
+    rgba(255,255,255,.20) 0%,rgba(255,255,255,.05) 40%,rgba(0,0,0,.12) 100%);
+  border-bottom:1px solid rgba(0,0,0,.18);
+  /* Eigene Rundung, weil die Kachel oben offen ist und nicht mehr
+     zuschneidet: 16px Kachel minus 2px Rahmen. */
+  border-radius:14px 14px 0 0;
 }
-[data-theme="brick"] .sc .sci{margin-top:18px}
+[data-theme="brick"] .sc .sci{margin-top:22px}
 /* Löschen-Knopf in der Galerie über den Stein-Deckel heben (sonst verdeckt der Deckel es) */
 [data-theme="brick"] .sc .ca{z-index:5}
 /* Der Knopf sitzt auf der dunkelblauen Noppenleiste (--b600, 18px hoch).
@@ -137,7 +185,7 @@
   display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin:0 0 16px;
 }
 [data-theme="brick"] .bstat{
-  position:relative;border-radius:14px;padding:14px 16px;color:#fff;overflow:hidden;
+  position:relative;border-radius:14px;padding:14px 16px;color:#fff;
 }
 [data-theme="brick"] .bstat .bstat-l{font-size:.82rem;opacity:.86}
 [data-theme="brick"] .bstat .bstat-v{font-size:1.7rem;font-weight:800;margin-top:2px;line-height:1.1}
@@ -197,12 +245,7 @@
   position:absolute;top:0;left:0;right:0;height:14px;
   background:var(--b600);
 }
-[data-theme="brick"] .lcard::after{
-  content:"";
-  position:absolute;top:0;left:0;right:0;height:14px;
-  background-image:radial-gradient(circle at 8px center, rgba(255,255,255,.42) 3px, transparent 3.6px);
-  background-size:16px 100%;background-repeat:repeat-x;
-}
+
 
 [data-theme="brick"] .llogo{margin-bottom:1.6rem}
 [data-theme="brick"] .llogo .icon{background:var(--b600);border-radius:8px}

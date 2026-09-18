@@ -328,6 +328,12 @@ G('btn-sav-prof').onclick = async () => {
     const dCur = await api('POST', '/v1/settings', { currency: G('s-cur').value });
     if (!dCur.success) { toast(dCur.error || t('settings.error'), 'error'); return; }
     set_CURRENCY(G('s-cur').value);
+    // Die Haushaltskarte nennt die Waehrung im Klartext
+    // („… verknuepft. Waehrung: CHF") und wurde nach dem Speichern nie neu
+    // gezeichnet — sie zeigte den alten Wert bis zum naechsten Seitenaufruf.
+    // Marco hat das gemeldet. Dieselbe Ueberlegung wie beim Standard-Zustand
+    // zwei Zeilen tiefer: sofort umstellen, ohne Reload.
+    await loadHousehold().catch(() => {});
 
     // Benutzerspezifischer Standard-Zustand (immer N oder U, nie leer)
     const condVal = G('s-default-condition')?.value || 'N';

@@ -16,6 +16,20 @@
          benannt, GEMESSEN bei 6.37:1. Ein Design mit dunkler
          Bernsteinflaeche setzt ihn um (siehe themes/werkbank.css). */
       --a-schrift:#92400e;
+
+      /* ── Die Form EINER Noppe ──────────────────────────────────────────
+         Ein Rechteck mit runder Oberkante: 15 breit, 7 hoch, Radius 4 oben,
+         im Takt von 24. Ein Verlauf kann keine runden Ecken; deshalb steht
+         die FORM in einer Maske und die FARBE im Hintergrund.
+
+         Sie steht hier in :root und nicht mehr in themes/noppe.css, weil
+         inzwischen ZWEI Designs Noppen zeichnen. Das Stein-Design hatte
+         sich seine eigenen gebaut — flache Kreise aus einem radialen
+         Verlauf — und sah damit aus wie „ein blauer Balken mit Punkten"
+         (Marcos Worte), waehrend die App vier abgerundete Noppen zeigte.
+         Zwei Formen fuer dieselbe Sache in zwei Oberflaechen: genau das,
+         was die Vorgabe „einheitliche Ansichten" ausschliesst. */
+      --noppen-form:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 7'%3E%3Cpath d='M0 7V4a4 4 0 0 1 4-4h7a4 4 0 0 1 4 4v3z' fill='%23000'/%3E%3C/svg%3E");
       --p100:#f3e8ff;--p600:#9333ea;
       --bg:var(--s50);--sur:#fff;--bdr:var(--s200);--txt:var(--s800);--mut:var(--s500);
       /* Hintergrund von Login- und Startup-Screen. Eigene Variable, weil beide

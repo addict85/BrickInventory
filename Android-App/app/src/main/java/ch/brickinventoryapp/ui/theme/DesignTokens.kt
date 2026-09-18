@@ -58,6 +58,9 @@ val SlateBlueDark = Color(0xFF2F4763)
 /** --b100 im Design "brick". */
 val SlateBlueLight = Color(0xFFD9E4F0)
 
+/** --b400 im Design "brick". */
+val SlateBlueNoppe = Color(0xFF6D94B8)
+
 /**
  * --brick-petrol im Design "brick".
  *
