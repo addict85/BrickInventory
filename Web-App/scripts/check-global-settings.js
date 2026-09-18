@@ -42,7 +42,7 @@ const ERLAUBT = new Map([
  *
  * Beim Einfuehren der Pruefung standen hier 22 Dateien mit 92 Fundstellen. Was
  * jetzt noch uebrig ist, ist ueberwiegend KEIN einfacher Schluesselzugriff mehr:
- *   - utils/financeCalc.ts: Der Kontingentzaehler laeuft in einer Transaktion
+ *   - utils/finance/preise.ts: Der Kontingentzaehler laeuft in einer Transaktion
  *     mit SELECT ... FOR UPDATE. Ein Helfer mit eigener Verbindung wuerde
  *     gerade die Sperre aufgeben, fuer die es die Transaktion gibt.
  *   - utils/jobMonitor.ts: ein atomares UPDATE mit GREATEST/COALESCE und eine
@@ -67,7 +67,7 @@ const OFFEN = new Map([
   ['routes/mailer.ts', 1],
   ['routes/settings.ts', 1],
   ['server.ts', 1],
-  ['utils/financeCalc.ts', 5],
+  ['utils/finance/preise.ts', 5],
   ['utils/jobMonitor.ts', 3],
   ['utils/pgNotify.ts', 3],
   ['utils/rateLimiter.ts', 1],

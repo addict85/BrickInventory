@@ -96,7 +96,7 @@ test('Teile- und Minifiguren-Preise lesen avg_price', () => {
 });
 
 test('Preis-Vorhandensein hängt an avg_price', () => {
-  const fc = read('utils/financeCalc.ts');
+  const fc = require('./helpers/sources').finanzQuelle();
   // Die Aussage ist unverändert: Ein Datensatz mit avg_price = 0 darf nicht
   // als „hat einen Preis" durchgehen, sonst steht überall 0.
   //
@@ -111,7 +111,11 @@ test('Preis-Vorhandensein hängt an avg_price', () => {
     'Ein Datensatz mit avg_price = 0 ginge sonst als "hat einen Preis" durch und ergäbe überall 0');
   assert.ok((fc.match(/\bhatPreis\(/g) || []).length >= 5,
     'Alle Preis-Vorhandensein-Prüfungen müssen über dieselbe Regel laufen');
-  assert.match(fc, /from '\.\/preisRegel'/,
+  // `\.\.?/` statt `\./`: Seit die Finanzschicht unter utils/finance/ liegt,
+  // heisst derselbe Import '../preisRegel'. Die Regel meint die HERKUNFT, nicht
+  // die Verzeichnistiefe — auf die Tiefe zu prüfen hiesse, beim naechsten
+  // Verschieben eine richtige Sache als falsch zu melden.
+  assert.match(fc, /from '\.\.?\/preisRegel'/,
     'und zwar über die eine, die auch clients/bricklink.ts anwendet');
 });
 
@@ -273,7 +277,7 @@ test('ein Währungswechsel braucht keine Cache-Leerung', () => {
   //
   // Bricht jemand diese Eigenschaft (eine Abfrage ohne currency_code), wäre
   // die Zeile plötzlich wieder nötig — dann soll hier etwas rot werden.
-  const leser = ['utils/financeCalc.ts', 'utils/portfolioHistory.ts',
+  const leser = ['utils/finance/preise.ts', 'utils/portfolioHistory.ts',
                  'utils/priceHistory.ts', 'utils/setValue.ts', 'routes/sets.ts'];
   for (const datei of leser) {
     const src = read(datei);

@@ -34,7 +34,7 @@ const ROOT = path.join(__dirname, '..');
  * Alle drei sind keine Meldungen an einen Menschen vor einem Bildschirm.
  */
 const ERLAUBT = {
-  'utils/financeCalc.ts':
+  'utils/finance/preise.ts':
     'Ein Merkmal des Preisergebnisses, an dem der Preis-Job „übersprungen" von „Fehler" ' +
     'unterscheidet — wird nirgends angezeigt.',
 };

@@ -395,7 +395,7 @@ test('der Minifiguren-Marktpreis fragt BrickLink auch ohne separate BL-Nummer', 
 
   // Und die Bewertung ruft sie je Zustand auf — sonst zeigten zwei Zeilen mit
   // verschiedenen Zuständen denselben Marktpreis.
-  const fc = fs.readFileSync(path.join(ROOT, 'utils', 'financeCalc.ts'), 'utf8');
+  const fc = require('./helpers/sources').finanzQuelle();
   // viewerId statt uid: Seit der Haushaltssicht sind „wessen Einstellungen"
   // und „wessen Daten" zwei Grössen. Die Schätzung braucht die EINSTELLUNGEN
   // (Währung) des fragenden Kontos — und weiterhin den Zustand.
@@ -534,7 +534,7 @@ test('computePnl liest acq_count/used_count — sonst gewinnt immer sets.conditi
   // sagten. Bei einem veralteten sets.condition oder gemischten Erfassungen
   // (1× Neu, 1× Gebraucht) zeigte der P&L-Pfad einen anderen Marktpreis als
   // computeSetsValuation() (Finanzen-Reiter), die das schon korrekt machte.
-  const src = fs.readFileSync(path.join(ROOT, 'utils', 'financeCalc.ts'), 'utf8');
+  const src = require('./helpers/sources').finanzQuelle();
   // Fenster grosszügiger: Der Blickfeld-Kommentar (Haushalt) steht am
   // Funktionsanfang und hat die geprüften Zeilen nach hinten geschoben. Ein
   // knapp bemessener Ausschnitt macht die Prüfung von jeder eingefügten Zeile
@@ -614,7 +614,7 @@ test('genau EINE Zustandsauflösung für Einzelsets — resolveSetCondition', ()
   // getCurrentMarketPrice, computePnl, die Webapp-Verlaufsroute und jetzt die
   // Android-API hatten je eine eigene Fassung. Ab jetzt genau eine Funktion für
   // Aufrufer ohne bereits geladene acq_count/used_count-Felder.
-  const fc = fs.readFileSync(path.join(ROOT, 'utils', 'financeCalc.ts'), 'utf8');
+  const fc = require('./helpers/sources').finanzQuelle();
   // Nimmt seit der Haushaltssicht auch eine Liste von Konten entgegen — der
   // Hauptaccount fragt den Zustand eines Sets ab, das einem Unterkonto gehört.
   pruefeParameter(fc, 'resolveSetCondition', ['uid', 'setNumber'],

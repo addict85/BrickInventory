@@ -66,7 +66,7 @@ test('der Rueckfall wird in beiden Preisabrufen markiert', () => {
   // `is_fallback` wuesste niemand, dass der Preis aus dem anderen Zustand
   // stammt, und die Kennzeichnung fiele lautlos weg. Aus einer Bedingung des
   // Verwerfens ist die Grundlage des Benennens geworden.
-  const fc = lies('utils', 'financeCalc.ts');
+  const fc = require('./helpers/sources').finanzQuelle();
   for (const name of ['async function fetchMinifigPrice', 'async function fetchPartPrice']) {
     const i = fc.indexOf(name);
     assert.ok(i > 0, `${name} ist nicht mehr zu finden`);

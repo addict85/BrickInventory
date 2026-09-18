@@ -70,7 +70,7 @@ test('die Webapp summiert keine Geldbeträge selbst', () => {
 test('der Server liefert den Gesamtwert', () => {
   // Ohne dieses Feld bliebe den Clients nichts anderes übrig, als selbst zu
   // addieren — die Prüfung oben wäre dann nicht erfüllbar.
-  const fc = fs.readFileSync(path.join(ROOT, 'utils', 'financeCalc.ts'), 'utf8');
+  const fc = require('./helpers/sources').finanzQuelle();
   assert.match(fc, /grand_total: totalCurrent\.toFixed\(2\)/,
     'utils/financeCalc.ts liefert keinen Gesamtwert mehr — dann rechnen ihn ' +
     'beide Clients wieder selbst, jeder auf seine Art.');

@@ -317,7 +317,7 @@ test('manuelle Teile und Minifiguren tragen den Besitzer', () => {
   assert.match(h, /SELECT id, user_id, part_number/,
     'Ohne user_id in der Abfrage gibt es keinen Besitzer');
 
-  const fc = read('utils/financeCalc.ts');
+  const fc = require('./helpers/sources').finanzQuelle();
   pruefeParameter(fc, 'withOwnerNames', ['uids', 'rows']);
   const uses = (fc.match(/await withOwnerNames\(uids, await parallelLimit\(tasks, 5\)\)/g) || []).length;
   assert.equal(uses, 2, 'Teile- und Minifiguren-Bewertung brauchen beide den Besitzer');
