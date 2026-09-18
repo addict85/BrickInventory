@@ -250,3 +250,53 @@ test('die Diagrammfarben stimmen mit den Zustands-Plaketten überein', () => {
   assert.match(base, /--chart-used:\s*#d97706;/,
     'Der Vorgabewert der Gebraucht-Linie fehlt');
 });
+
+test('nur das Boot-Skript kennt die Liste der Designs', () => {
+  // ── Der Fehler, den diese Regel verhindert (Nachtrag 168) ────────────────
+  //
+  // Marco: „Teilweise (nicht bei allen Designs) muss beim Aendern die Seite
+  // neu geladen werden."
+  //
+  // js/01-core.js fuehrte in applyTheme() eine ZWEITE Liste:
+  //
+  //     if (theme !== 'brick' && theme !== 'classic') return null;
+  //
+  // geschrieben, als es zwei Designs gab. Inzwischen sind es sechs. Die vier
+  // neueren wurden dort abgewiesen, BEVOR der Aufruf das Boot-Skript
+  // erreichte — sie wirkten erst beim naechsten Seitenaufruf.
+  //
+  // Die Pruefung „applyTheme laeuft ueber den Boot-Helfer" daneben war die
+  // ganze Zeit gruen: Sie sieht nach, ob `__bimApplyTheme` im Quelltext
+  // VORKOMMT, nicht ob der Aufruf dort ankommt. Zwischen Erwaehnung und
+  // Erreichbarkeit lag ein `return null`.
+  //
+  // Deshalb hier die Regel dahinter: Die Liste steht an genau einer Stelle.
+  // Die Designs aus den Dateien ableiten, nicht aufzaehlen — sonst haette
+  // diese Regel selbst die Liste, gegen die sie gebaut ist.
+  const DESIGNS = ['classic', ...fs.readdirSync(path.join(PUB, 'themes'))
+    .filter(f => f.endsWith('.css')).map(f => path.basename(f, '.css'))];
+  assert.ok(DESIGNS.length >= 3, `Nur ${DESIGNS.length} Designs — greift die Suche noch?`);
+
+  const ordner = path.join(PUB, 'js');
+  const dateien = fs.readdirSync(ordner)
+    .filter(n => n.endsWith('.js') && n !== 'app.bundle.js' && n !== '00-theme-boot.js');
+  assert.ok(dateien.length >= 10, `Nur ${dateien.length} Skripte — greift die Suche noch?`);
+
+  // Kommentare zuerst weg: Die Begruendung oben nennt die Designs im
+  // Fliesstext, und die Erklaerung in 01-core.js ebenso. Ohne diesen Schritt
+  // meldete die Regel genau den Text, der sie erklaert.
+  const ohneKommentare = js => js
+    .replace(/\/\*[\s\S]*?\*\//g, '')
+    .split('\n').filter(z => !/^\s*\/\//.test(z)).join('\n');
+
+  const treffer = [];
+  for (const name of dateien) {
+    const code = ohneKommentare(fs.readFileSync(path.join(ordner, name), 'utf8'));
+    const genannt = new Set(DESIGNS.filter(d => new RegExp(`['"\`]${d}['"\`]`).test(code)));
+    if (genannt.size >= 2) treffer.push(`${name}: ${[...genannt].sort().join(', ')}`);
+  }
+  assert.deepEqual(treffer, [],
+    'Diese Dateien fuehren eine eigene Liste der Designs. Es gibt genau eine, ' +
+    'in js/00-theme-boot.js — jede weitere waechst beim naechsten Design nicht ' +
+    'mit, und der Wechsel wirkt dann erst nach einem Neuladen.');
+});

@@ -627,13 +627,27 @@ export let _settingsCache=null;
 // Hier wird nur noch durchgereicht, damit der localStorage-Cache mitgeführt
 // wird und ein Design-Wechsel des Admins beim nächsten Laden sofort greift.
 export function applyTheme(theme){
-  // Unbekannter Wert = keine Information. NICHT auf 'classic' zurückfallen:
-  // /settings/raw liefert app_theme nicht garantiert, und ein Reset an dieser
-  // Stelle liess die Seite beim Login sichtbar umspringen.
-  if (theme !== 'brick' && theme !== 'classic') return null;
-  if (typeof window.__bimApplyTheme === 'function') return window.__bimApplyTheme(theme);
-  document.documentElement.setAttribute('data-theme', theme);
-  return theme;
+  // ── Keine zweite Liste hier (Nachtrag 168) ────────────────────────────────
+  //
+  // Hier stand `if (theme !== 'brick' && theme !== 'classic') return null;` —
+  // eine EIGENE Liste der gueltigen Designs, geschrieben, als es zwei gab.
+  // Inzwischen sind es sechs. Die vier neueren wurden hier abgewiesen und
+  // NIE angewendet: Der Wechsel wirkte erst beim naechsten Seitenaufruf,
+  // wenn js/00-theme-boot.js den Serverwert aus dem <html>-Attribut liest.
+  //
+  // Marco: „Teilweise (nicht bei allen Designs) muss beim Aendern die Seite
+  // neu geladen werden." Genau die zwei aus der alten Liste schalteten
+  // sofort um, die vier danach nicht.
+  //
+  // Dieselbe Bauart wie der fehlende <link> eine Runde vorher: eine
+  // handgepflegte Aufzaehlung von Designs, die beim Hinzufuegen des
+  // naechsten nicht mitwaechst. Die Pruefung dazu steht in theme.test.js.
+  //
+  // Die gueltigen Werte kennt ausschliesslich js/00-theme-boot.js. Ohne
+  // dieses Skript wird NICHTS gesetzt — lieber kein Design als ein
+  // ungeprueftes Attribut.
+  if (typeof window.__bimApplyTheme !== 'function') return null;
+  return window.__bimApplyTheme(theme);
 }
 
 export async function initDefaultCondition(){
