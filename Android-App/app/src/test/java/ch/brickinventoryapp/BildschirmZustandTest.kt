@@ -82,7 +82,20 @@ class BildschirmZustandTest {
      * Die Lehre ist die dieser ganzen Reihe: eine Sache in zwei Schreibweisen,
      * und die Suche kennt nur eine.
      */
-    private val fluechtig = Regex("""(?i)lade|loading|busy|running|laeuft|laden|pending|saving|speichert|scanning|scannt|progress|fortschritt|zieh|drag|export""")
+    private val fluechtig = Regex("""(?i)lade|loading|busy|running|laeuft|laden|pending|saving|speichert|scanning|scannt|progress|fortschritt|zieh|drag|export|fokus|focus""")
+
+    // ── „fokus" kam mit Nachtrag 175 dazu ───────────────────────────────────
+    //
+    // Zwei Eingabefelder (Lagerort in SetDetailSections.kt und
+    // SetItemDetailDialog.kt) merken sich, ob sie den Fokus SCHON EINMAL
+    // hatten — nur so laesst sich „beim Verlassen speichern" von „beim
+    // ersten Zeichnen" unterscheiden.
+    //
+    // Er darf eine Drehung ausdruecklich NICHT ueberleben: Nach einer Drehung
+    // baut Compose das Feld neu auf und der Fokus ist weg. Ein
+    // wiederhergestelltes „hatte Fokus" liesse den naechsten Aufbau als
+    // Fokusverlust gelten — und schickte eine Speicheranfrage, die niemand
+    // ausgeloest hat.
 
     /**
      * Merker der Rollpositions-Wiederherstellung — dürfen ERST RECHT nicht überleben.

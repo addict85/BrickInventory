@@ -350,13 +350,17 @@ fun PartsListScreen(
                     if (generated && parts.isNotEmpty()) {
                         // remember, NICHT rememberSaveable — dieselbe
                         // Begruendung wie beim PDF-Export darueber.
-                        var laedtBestand by remember { mutableStateOf(false) }
+                        // `…Laeuft`, nicht `laedt…`: BildschirmZustandTest
+                        // ordnet Zustaende nach dem NAMEN ein, und nur die
+                        // erste Form sagt ihm „laufender Vorgang, darf eine
+                        // Drehung nicht ueberleben".
+                        var bestandLaeuft by remember { mutableStateOf(false) }
                         Button(
                             onClick = {
-                                laedtBestand = true
+                                bestandLaeuft = true
                                 scope.launch {
                                     val neu = onLadeBestand(parts.toList(), nurLose)
-                                    laedtBestand = false
+                                    bestandLaeuft = false
                                     if (neu == null) { status = bestandFehlerText; return@launch }
                                     parts = neu
                                     val fehlen = neu.filter { (it.vorhanden ?: 0) < it.quantity }
@@ -365,11 +369,11 @@ fun PartsListScreen(
                                         fehlen.sumOf { it.quantity - (it.vorhanden ?: 0) }, fehlen.size)
                                 }
                             },
-                            enabled = !laedtBestand,
+                            enabled = !bestandLaeuft,
                             colors = ButtonDefaults.buttonColors(
                                 containerColor = MaterialTheme.colorScheme.secondary)
                         ) {
-                            if (laedtBestand) CircularProgressIndicator(Modifier.size(16.dp),
+                            if (bestandLaeuft) CircularProgressIndicator(Modifier.size(16.dp),
                                 color = MaterialTheme.colorScheme.onSecondary, strokeWidth = 2.dp)
                             else { Icon(Icons.Default.Inventory2, null, Modifier.size(16.dp)); Spacer(Modifier.width(Abstaende.winzig)); Text(stringResource(R.string.partslist_fill_owned)) }
                         }
