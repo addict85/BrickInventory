@@ -234,6 +234,8 @@ fun SettingsScreen(
 
         PreisalarmCard(vm)
 
+        LagerorteCard(vm)
+
         HouseholdCard(
             state = household,
             onCreateInvite = onCreateInvite,
@@ -374,6 +376,94 @@ private fun SettingsCard(
     }
 }
 
+
+/**
+ * Die eigenen Lagerorte verwalten.
+ *
+ * ── Marcos Vorgabe ──────────────────────────────────────────────────────────
+ *
+ * „Die Werte sollen pro User verwaltet werden koennen und sollen in den
+ * Einstellungen bearbeitbar sein."
+ *
+ * ── Warum hier nur die EIGENEN stehen ───────────────────────────────────────
+ *
+ * Ein Lagerort ist ein Regal in der eigenen Wohnung. Beim Set des Enkels
+ * waehlt der Grossvater aus dessen Liste — aber fremde Regale UMZUBENENNEN
+ * ist keine Einstellung, sondern ein Versehen. Lesen weit, Schreiben eng,
+ * dieselbe Trennung wie ueberall im Baum.
+ *
+ * ── Warum Loeschen nur bei einem leeren Ort geht ────────────────────────────
+ *
+ * Der Server sagt Nein, solange etwas darin liegt (lagerort_in_benutzung).
+ * Die Alternative — stilles Leeren — verloere die Zuordnung von Sets, die der
+ * Loeschende gar nicht im Blick hatte, und zwar ohne Weg zurueck.
+ */
+@Composable
+private fun LagerorteCard(vm: MainViewModel) {
+    val lager by vm.lagerState.collectAsStateWithLifecycle()
+    var neuerOrt by rememberSaveable { mutableStateOf("") }
+
+    LaunchedEffect(Unit) { vm.ladeEigeneLagerorte() }
+
+    SettingsCard(
+        title = stringResource(R.string.storage_manage),
+        icon = Icons.Default.Inventory2,
+    ) {
+        Text(stringResource(R.string.storage_manage_hint),
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.padding(bottom = Abstaende.klein))
+
+        if (lager.eigene.isEmpty()) {
+            Text(stringResource(R.string.storage_empty),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant)
+        }
+        for (ort in lager.eigene) {
+            // Schluessel ist der Name: Kommt er nach dem Umbenennen anders vom
+            // Server zurueck (getrimmt), soll das Feld ihn zeigen.
+            var name by rememberSaveable(ort.name) { mutableStateOf(ort.name) }
+            Row(verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(Abstaende.klein),
+                modifier = Modifier.fillMaxWidth()) {
+                OutlinedTextField(
+                    value = name,
+                    onValueChange = { if (it.length <= 60) name = it },
+                    singleLine = true,
+                    modifier = Modifier.weight(1f),
+                )
+                // Umbenennen auf Knopfdruck, NICHT beim Tippen: Anders als beim
+                // Lagerort am Set schreibt ein Umbenennen hier alle Zuordnungen
+                // mit um. Das nebenbei zu tun, waehrend jemand einen Buchstaben
+                // aendert, waere zu viel Wirkung fuer zu wenig Geste.
+                IconButton(
+                    onClick = { vm.benenneLagerortUm(ort.id, name) },
+                    enabled = name.isNotBlank() && name != ort.name,
+                ) { Icon(Icons.Default.Save, stringResource(R.string.settings_save)) }
+                IconButton(
+                    onClick = { vm.loescheLagerort(ort.id) },
+                ) { Icon(Icons.Default.Delete, stringResource(R.string.storage_delete)) }
+            }
+        }
+
+        Row(verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(Abstaende.klein),
+            modifier = Modifier.fillMaxWidth().padding(top = Abstaende.klein)) {
+            OutlinedTextField(
+                value = neuerOrt,
+                onValueChange = { if (it.length <= 60) neuerOrt = it },
+                singleLine = true,
+                placeholder = { Text(stringResource(R.string.storage_new), fontSize = Schrift.klein) },
+                modifier = Modifier.weight(1f),
+            )
+            Button(
+                onClick = { val n = neuerOrt.trim(); neuerOrt = ""; vm.legeLagerortAn(n) },
+                enabled = neuerOrt.isNotBlank(),
+                shape = Formen.knopf,
+            ) { Text(stringResource(R.string.storage_add), fontSize = Schrift.klein) }
+        }
+    }
+}
 
 /**
  * Der Schalter fuer die Preisalarm-Meldungen auf DIESEM Geraet.

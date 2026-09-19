@@ -23,6 +23,8 @@ const KT_SECT   = lies(path.join(APP, 'java', 'ch', 'brickinventoryapp', 'ui', '
 const KT_ABHOL  = lies(path.join(APP, 'java', 'ch', 'brickinventoryapp', 'alarm', 'Alarmabholung.kt'));
 const KT_WORKER = lies(path.join(APP, 'java', 'ch', 'brickinventoryapp', 'alarm', 'PreisalarmWorker.kt'));
 const KT_START  = lies(path.join(APP, 'java', 'ch', 'brickinventoryapp', 'BrickInventoryApp.kt'));
+const KT_ALARMEINGABE = lies(path.join(APP, 'java', 'ch', 'brickinventoryapp', 'alarm', 'Alarmeingabe.kt'));
+const KT_VM     = lies(path.join(APP, 'java', 'ch', 'brickinventoryapp', 'ui', 'MainViewModel.kt'));
 const KT_EINST  = lies(path.join(APP, 'java', 'ch', 'brickinventoryapp', 'ui', 'screens', 'SettingsScreen.kt'));
 const XML_EN    = lies(path.join(APP, 'res', 'values', 'strings.xml'));
 const XML_DE    = lies(path.join(APP, 'res', 'values-de', 'strings.xml'));
@@ -54,7 +56,11 @@ test('ein Alarm gehört EINEM Konto — kein Blickfeld, nirgends', () => {
   // ein vergessener Filter aus, und jemand „repariert" sie.
   const route = web('routes/api_v1/sets.ts');
   const i = route.indexOf("router.get('/sets/:setNumber/alert'");
-  const j = route.indexOf("router.get('/storage'");
+  // Bis zur NAECHSTEN Route nach den Alarmen, nicht bis zu /storage: Zwischen
+  // beiden stehen seit dem Lagerort-Vorrat vier weitere Routen, und die
+  // filtern sehr wohl nach Konto. Der erste Entwurf schnitt bis /storage und
+  // meldete deshalb genau die Zeilen, die richtig sind.
+  const j = route.indexOf("router.get('/alerts/pending'");
   assert.ok(i > 0 && j > i, 'Die Alarm-Routen stehen nicht, wo erwartet');
   const block = route.slice(i, j);
   assert.doesNotMatch(block, /scopeIds|writableIds|parseScopeMode/,
@@ -71,10 +77,61 @@ test('ein leeres Feld löscht — in beiden', () => {
   // Die natürliche Geste, einen Alarm loszuwerden, ist das Feld zu leeren.
   // Ein eigener Knopf daneben wäre ein zweiter Weg für dieselbe Absicht, und
   // eine „Schwelle 0" wäre ein Alarm, der nie oder immer meldet.
-  assert.match(web('public/js/07-admin.js'), /roh === ''\s*\n?\s*\? await api\('DELETE'/,
+  //
+  // Beide entscheiden es an derselben Stelle: „ist das eine Zahl > 0?". Die
+  // Webapp misst es zusätzlich am Verhalten (test/alarm-entprellt.test.js),
+  // die App an der Umrechnung (AlarmeingabeTest).
+  assert.match(web('public/js/07-admin.js'), /const loeschen = !\(zahl > 0\);/,
     'Die Webapp löscht bei leerem Feld nicht');
-  assert.match(KT_FEAT, /schwelle == null \|\| schwelle <= 0\.0\)\s*\n?\s*repo\.sets\.deletePreisalarm/,
+  assert.match(KT_ALARMEINGABE, /return if \(z > 0\.0\) z else null/,
     'Die App löscht bei leerem Feld nicht');
+  assert.match(KT_FEAT, /if \(schwelle == null\)\s*\n?\s*repo\.sets\.deletePreisalarm/,
+    'Die App löscht bei leerem Feld nicht');
+});
+
+test('beide speichern beim TIPPEN, entprellt, mit derselben Ruhezeit', () => {
+  // ── Marcos Befund ─────────────────────────────────────────────────────────
+  //
+  // „Der Preisalarm wird nicht gespeichert … soll gespeichert werden, wenn
+  // man was einträgt. Analog dem Kaufpreis."
+  //
+  // Beide hingen am Verlassen des Feldes. Am Telefon tippt man die Zahl,
+  // schliesst die Tastatur und geht zurück — dieser Fokuswechsel kommt nie.
+  const js = require('./helpers/sources').ohneKommentare(web('public/js/07-admin.js'));
+  assert.match(js, /data-input="alarmGetippt"/,
+    'Das Schwellenfeld der Webapp hängt nicht am Tippen');
+  assert.doesNotMatch(js, /id="m-alert-val"[^>]*data-change/,
+    'Das Schwellenfeld hängt wieder am Fokuswechsel');
+  assert.match(KT_SECT, /onValueChange = \{ schwelle = it; vm\.setzePreisalarm\(setNumber, richtung, it\) \}/,
+    'Das Schwellenfeld der App hängt nicht am Tippen');
+  assert.doesNotMatch(require('./helpers/sources').ohneKommentare(KT_SECT),
+    /alarmFokus/, 'Die App speichert noch am Fokuswechsel');
+
+  // Dieselbe Ruhezeit in beiden: Laufen sie auseinander, verhält sich
+  // dasselbe Feld an zwei Stellen verschieden, ohne dass es jemandem auffiele.
+  const webRuhe = /const ALARM_RUHE = (\d+);/.exec(js);
+  const appRuhe = /const val RUHE_MS = (\d+)L/.exec(KT_ALARMEINGABE);
+  assert.ok(webRuhe && appRuhe, 'Eine der beiden Ruhezeiten steht nicht mehr da');
+  assert.equal(webRuhe[1], appRuhe[1],
+    `Webapp ${webRuhe[1]} ms, App ${appRuhe[1]} ms — dasselbe Feld, zwei Takte`);
+});
+
+test('die Ruhezeit der App überlebt das Verlassen des Bildschirms', () => {
+  // Ein LaunchedEffect mit delay() wäre die naheliegende Lösung und hätte
+  // denselben Fehler nur verschoben: Er hängt an der Komposition. Wer während
+  // der Ruhezeit zurückgeht, löst sie auf und bricht den Auftrag ab — wieder
+  // nichts gespeichert, nur seltener.
+  assert.match(KT_VM, /internal var alarmJob/,
+    'Der Auftrag hängt nicht mehr am ViewModel');
+  const f = require('./helpers/sources').ohneKommentare(KT_FEAT);
+  assert.match(f, /alarmJob\?\.cancel\(\)\s*\n\s*alarmJob = viewModelScope\.launch/,
+    'Die Ruhezeit läuft nicht im viewModelScope');
+  assert.doesNotMatch(require('./helpers/sources').ohneKommentare(KT_SECT),
+    /LaunchedEffect\([^)]*schwelle/,
+    'Die Ruhezeit steht wieder in einem LaunchedEffect — sie stirbt mit dem Bildschirm');
+  // Und die späte Antwort darf nicht im Zustand eines ANDEREN Sets landen.
+  assert.match(f, /setDetail\?\.setNumber == setNumber/,
+    'Eine späte Antwort schreibt die Alarme des vorigen Sets in den neuen Zustand');
 });
 
 test('beide zeigen, ob schon gemeldet wurde', () => {

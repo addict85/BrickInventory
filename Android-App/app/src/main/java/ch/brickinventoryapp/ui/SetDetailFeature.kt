@@ -274,23 +274,50 @@ internal fun MainViewModel.loadPreisalarme(setNumber: String) {
 }
 
 /**
- * Alarm setzen oder loeschen.
+ * Alarm setzen oder loeschen — ENTPRELLT, waehrend getippt wird.
+ *
+ * ── Marcos Befund und was daran wirklich kaputt war ─────────────────────────
+ *
+ * „Der Preisalarm wird nicht gespeichert … soll gespeichert werden, wenn man
+ * was eintraegt. Analog dem Kaufpreis."
+ *
+ * Bis hierher speicherte der Bildschirm erst, wenn das Schwellenfeld den
+ * Fokus VERLIERT. Am Telefon tippt man die Zahl, schliesst die Tastatur und
+ * geht zurueck — dieser Fokuswechsel kommt nie, und die Eingabe war weg. Der
+ * Kaufpreis hat das Problem nicht, weil er einen eigenen Abschluss hat.
+ *
+ * ── Warum die Ruhezeit NICHT im Bildschirm steht ────────────────────────────
+ *
+ * Ein `LaunchedEffect` mit `delay()` waere die naheliegende Loesung und haette
+ * denselben Fehler nur verschoben: Er haengt an der Komposition. Wer waehrend
+ * der Ruhezeit zurueckgeht, loest sie auf, und der Auftrag wird abgebrochen —
+ * wieder nichts gespeichert, nur seltener.
+ *
+ * `alarmJob` liegt deshalb im ViewModel und laeuft im viewModelScope. Der
+ * ueberlebt den Bildschirm.
  *
  * Eine leere Schwelle heisst LOESCHEN, nicht „Schwelle 0": Die natuerliche
  * Geste, einen Alarm loszuwerden, ist das Feld zu leeren — ein eigener Knopf
  * daneben waere ein zweiter Weg fuer dieselbe Absicht. Genau so verhaelt sich
- * die Webapp (speichereAlarm in public/js/07-admin.js).
+ * die Webapp (alarmGetippt in public/js/07-admin.js).
  */
-internal fun MainViewModel.setzePreisalarm(setNumber: String, richtung: String, schwelle: Double?) {
-    viewModelScope.launch {
-        val r = if (schwelle == null || schwelle <= 0.0)
+internal fun MainViewModel.setzePreisalarm(setNumber: String, richtung: String, roh: String) {
+    alarmJob?.cancel()
+    alarmJob = viewModelScope.launch {
+        kotlinx.coroutines.delay(ch.brickinventoryapp.alarm.Alarmeingabe.RUHE_MS)
+        val schwelle = ch.brickinventoryapp.alarm.Alarmeingabe.zahl(roh)
+        val r = if (schwelle == null)
             repo.sets.deletePreisalarm(setNumber, ALARM_ZUSTAND)
         else
             repo.sets.setPreisalarm(setNumber, richtung, schwelle, ALARM_ZUSTAND)
         when (r) {
             is Result.Success -> {
                 if (!r.data.success) { _snackbar.emit(r.data.error ?: ""); return@launch }
-                loadPreisalarme(setNumber)
+                // Nur nachladen, wenn noch DIESES Set offen ist. Die Ruhezeit
+                // ueberlebt den Bildschirm — ohne diese Bedingung schriebe eine
+                // spaete Antwort die Alarme des vorigen Sets in den Zustand des
+                // neuen.
+                if (_setDetailState.value.setDetail?.setNumber == setNumber) loadPreisalarme(setNumber)
             }
             is Result.Error -> _snackbar.emit(meldung(r))
         }

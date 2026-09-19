@@ -85,7 +85,17 @@ internal fun MainViewModel.schliesseSetItem() {
  * steht, und beim naechsten Oeffnen spraenge der Wert.
  */
 internal fun MainViewModel.setzeTeilLagerort(nummer: String, farbe: Int, ort: String) {
-    viewModelScope.launch {
+    // Entprellt und im viewModelScope — dieselbe Mechanik und derselbe Grund
+    // wie beim Set (setzeSetLagerort) und beim Preisalarm: Wer tippt, die
+    // Tastatur schliesst und zurueckgeht, soll die Eingabe nicht verlieren;
+    // und „Kiste 3" soll nicht fuenf halbe Orte im Vorrat hinterlassen.
+    //
+    // DERSELBE Auftrag wie beim Set: Es ist immer nur ein Lagerortfeld
+    // sichtbar — entweder das des Sets oder das des Teils. Zwei Auftraege
+    // waeren zwei Wege fuer dieselbe Sache.
+    lagerJob?.cancel()
+    lagerJob = viewModelScope.launch {
+        kotlinx.coroutines.delay(ch.brickinventoryapp.alarm.Alarmeingabe.RUHE_MS)
         when (val r = repo.teile.setPartStorage(nummer, farbe, ort)) {
             is Result.Success -> {
                 if (!r.data.success) { _snackbar.emit(r.data.error ?: ""); return@launch }

@@ -86,6 +86,94 @@ internal fun MainViewModel.loadLagerorte() {
     }
 }
 
+/**
+ * Den VORRAT fuer ein Detail holen — die Orte des BESITZERS.
+ *
+ * ── Marcos Festlegung ───────────────────────────────────────────────────────
+ *
+ * „Der Grossvater soll die Werte der Enkel fuer die entsprechenden Sets sehen
+ * und waehlen koennen."
+ *
+ * Ein Lagerort ist ein Regal in einer Wohnung. Beim Set des Enkels gehoeren
+ * die Regale des ENKELS zur Wahl — ein Set des Enkels in „Grossvaters Keller"
+ * waere eine Aussage ueber die falsche Wohnung.
+ *
+ * Ohne Besitzer (Einzelkonto) bleibt der Parameter leer, und der Server
+ * antwortet mit der eigenen Liste. Genau das ist dann auch richtig.
+ */
+internal fun MainViewModel.loadLagerortVorrat(besitzer: List<Int>) {
+    viewModelScope.launch {
+        val r = repo.teile.getLagerortVorrat(besitzer.takeIf { it.isNotEmpty() }?.joinToString(","))
+        val orte = (r as? Result.Success)?.data?.takeIf { it.success }?.orte ?: return@launch
+        _lagerState.update { it.copy(vorrat = orte) }
+    }
+}
+
+/** Die EIGENEN Orte — fuer die Verwaltung in den Einstellungen. */
+internal fun MainViewModel.ladeEigeneLagerorte() {
+    viewModelScope.launch {
+        val r = repo.teile.getLagerortVorrat(null)
+        val orte = (r as? Result.Success)?.data?.takeIf { it.success }?.orte ?: return@launch
+        _lagerState.update { it.copy(eigene = orte) }
+    }
+}
+
+/**
+ * Anlegen, umbenennen, loeschen — alle drei durch dieselbe Schleuse.
+ *
+ * ── Warum drei duenne Funktionen und EIN Rumpf ──────────────────────────────
+ *
+ * Der Rumpf waere dreimal derselbe (rufen, Fehler melden, Liste neu laden),
+ * und genau bei solchen Paaren ist in diesem Baum schon mehrmals eine Haelfte
+ * stehen geblieben.
+ *
+ * Der Bildschirm ruft trotzdem drei benannte Funktionen und reicht KEINEN
+ * Repository-Aufruf herein — ein Composable, das `repo.teile.…` aufruft,
+ * liesse sich nur mit Compose-Laufzeit pruefen, also gar nicht
+ * (BildschirmHoltDatenNichtSelbstTest).
+ *
+ * Nach dem Umbenennen wird auch die GALERIE neu geladen: Der Server schreibt
+ * die Zuordnungen mit um (benenneOrtUm in utils/lagerort.ts), und die Kacheln
+ * zeigten sonst weiter den alten Namen. Ueber loadSets() und nicht ueber einen
+ * eigenen Aufruf — es gibt genau einen Weg, die Galerie zu laden (siehe die
+ * Begruendung am Ende von GalleryFeature.kt).
+ */
+private fun MainViewModel.lagerortSchleuse(
+    galerieNeu: Boolean, tun: suspend () -> Pair<Boolean, String?>,
+) {
+    viewModelScope.launch {
+        val (gelungen, fehler) = tun()
+        if (!gelungen) { _snackbar.emit(fehler ?: ""); return@launch }
+        ladeEigeneLagerorte()
+        if (galerieNeu) loadSets()
+    }
+}
+
+// Die zwei Antwortformen auf dieselbe Frage bringen: „gelungen?" und „warum
+// nicht?". ZWEI Namen und nicht zweimal derselbe: Generische Typen sind auf
+// der JVM geloescht, beide hiessen nach der Uebersetzung `auswerten(Result)`
+// — ein Zusammenstoss, den erst der Compiler meldet.
+private fun Result<ch.brickinventoryapp.data.model.LagerortEintragResponse>.eintragAuswerten() =
+    when (this) {
+        is Result.Success -> data.success to data.error
+        is Result.Error   -> false to message
+    }
+
+private fun Result<ch.brickinventoryapp.data.model.LagerortResponse>.lagerAuswerten() =
+    when (this) {
+        is Result.Success -> data.success to data.error
+        is Result.Error   -> false to message
+    }
+
+internal fun MainViewModel.legeLagerortAn(name: String) =
+    lagerortSchleuse(false) { repo.teile.legeLagerortAn(name).eintragAuswerten() }
+
+internal fun MainViewModel.benenneLagerortUm(id: Int, name: String) =
+    lagerortSchleuse(true) { repo.teile.benenneLagerortUm(id, name).eintragAuswerten() }
+
+internal fun MainViewModel.loescheLagerort(id: Int) =
+    lagerortSchleuse(false) { repo.teile.loescheLagerort(id).lagerAuswerten() }
+
 /** Gespeicherte Filterwerte beim Start einlesen. */
 internal fun MainViewModel.loadScopeModes() {
     viewModelScope.launch {

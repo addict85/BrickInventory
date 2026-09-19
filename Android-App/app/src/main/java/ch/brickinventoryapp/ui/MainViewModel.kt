@@ -418,6 +418,20 @@ class MainViewModel @Inject constructor(
     // statt je Instanz. Die Filter-Generation verwirft Antworten eines alten
     // Filters — eine geteilte Generation liesse zwei Instanzen einander die
     // Ergebnisse wegwerfen.
+    // ── Preisalarm ───────────────────────────────────────────────────────────
+    // Dieselbe Mechanik, aber aus einem zusaetzlichen Grund: Der Auftrag muss
+    // das VERLASSEN des Bildschirms ueberleben. Stuende die Ruhezeit in einem
+    // LaunchedEffect, verwuerfe das Aufloesen der Komposition sie — und genau
+    // das war Marcos Befund: tippen, Tastatur zu, zurueck, nichts gespeichert.
+    // Hier laeuft sie im viewModelScope und ueberlebt den Bildschirm.
+    internal var alarmJob: kotlinx.coroutines.Job? = null
+
+    // ── Lagerort ─────────────────────────────────────────────────────────────
+    // Dieselbe Mechanik und derselbe Grund wie beim Preisalarm: Wer den Ort
+    // tippt und zurueckgeht, soll ihn nicht verlieren — und „Kiste 3" soll
+    // nicht fuenf halbe Orte im Vorrat hinterlassen.
+    internal var lagerJob: kotlinx.coroutines.Job? = null
+
     internal var gallerySearchJob: kotlinx.coroutines.Job? = null
     internal var galleryListJob: kotlinx.coroutines.Job? = null
     internal var galleryGeneration = 0

@@ -253,6 +253,13 @@ const C = {
   'PUT /api/v1/sets/:setNumber/alert': 'nur-v1',
   'DELETE /api/v1/sets/:setNumber/alert': 'nur-v1',
   'GET /api/v1/storage': 'nur-v1',
+  // Der VORRAT an Lagerorten (Nachtrag 178) — Marcos Auswahlfeld. Getrennt
+  // von GET /storage darueber: Das eine sagt, was BELEGT ist (Filter), das
+  // andere, was zur WAHL steht (Auswahlfeld und Einstellungen).
+  'GET /api/v1/storage/locations': 'nur-v1',
+  'POST /api/v1/storage/locations': 'nur-v1',
+  'PUT /api/v1/storage/locations/:id': 'nur-v1',
+  'DELETE /api/v1/storage/locations/:id': 'nur-v1',
   'PUT /api/v1/parts/:partNumber/:colorId/storage': 'nur-v1',
   'PUT /api/v1/sets/:setNumber/storage': 'nur-v1',
   'POST /api/v1/parts/import/csv': 'nur-v1',

@@ -49,7 +49,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.runtime.saveable.rememberSaveable
-import androidx.compose.ui.focus.onFocusChanged
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.ui.unit.sp
 import coil.ImageLoader
 import coil.compose.AsyncImage
@@ -371,37 +371,28 @@ fun LazyListScope.setDetailDetailsSection(set: SetItem, setNumber: String, vm: M
             DetailRow2(stringResource(R.string.detail_added), "📅 ${fmtDate(set.addedAt)}")
             // ── Lagerort ────────────────────────────────────────────────────
             //
-            // Bearbeitbar, genau wie in der Webapp (public/js/07-admin.js,
-            // openModal): Gespeichert wird beim Verlassen des Feldes — ein
-            // Speichern je Zeichen erzeugte sechs Anfragen fuer „Kiste 3" und
-            // hinterliesse dabei fuenf Zwischenstaende in der Datenbank.
+            // Marcos Vorgabe: „Der Lagerort soll ein Auswahlfeld mit einem
+            // Dropdown sein, bei dem man auch gleich neue Auswahlwerte
+            // erfassen kann."
             //
-            // rememberSaveable auf set.storage als Schluessel: Kommt ein
-            // anderer Wert von aussen (anderes Set, oder der normalisierte
-            // Wert nach dem Speichern), soll das Feld ihn zeigen statt den
-            // alten Text zu behalten.
-            var lagerort by rememberSaveable(set.storage) { mutableStateOf(set.storage ?: "") }
-            var lagerFokus by remember { mutableStateOf(false) }
+            // Die Liste gehoert dem BESITZER des Sets, nicht dem Betrachter —
+            // der Grossvater sieht beim Set des Enkels dessen Regale.
+            // Begruendung an loadLagerortVorrat().
+            val lagerZustand by vm.lagerState.collectAsStateWithLifecycle()
+            LaunchedEffect(setNumber, set.owners) {
+                vm.loadLagerortVorrat(set.owners.map { it.id })
+            }
             Row(Modifier.fillMaxWidth().padding(vertical = Abstaende.haar),
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically) {
                 Text(stringResource(R.string.detail_storage),
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     fontSize = Schrift.normal)
-                OutlinedTextField(
-                    value = lagerort,
-                    onValueChange = { if (it.length <= 60) lagerort = it },
-                    singleLine = true,
-                    placeholder = { Text(stringResource(R.string.detail_storage_ph), fontSize = Schrift.klein) },
-                    modifier = Modifier
-                        .padding(start = Abstaende.gross)
-                        .widthIn(max = 180.dp)
-                        .onFocusChanged { f ->
-                            // Nur beim VERLIEREN des Fokus speichern — sonst
-                            // loeste schon das erste Zeichnen eine Anfrage aus.
-                            if (f.isFocused) lagerFokus = true
-                            else if (lagerFokus) { lagerFokus = false; vm.setzeSetLagerort(setNumber, lagerort) }
-                        },
+                LagerortFeld(
+                    wert = set.storage ?: "",
+                    vorrat = lagerZustand.vorrat.map { it.name },
+                    onWert = { vm.setzeSetLagerort(setNumber, it) },
+                    modifier = Modifier.padding(start = Abstaende.gross).widthIn(max = 180.dp),
                 )
             }
             HorizontalDivider(
@@ -616,11 +607,18 @@ fun LazyListScope.setDetailHeroImage(
  * Verschieben in ein anderes Konto fragte man sich, ob er mitwandert (er tut
  * es nicht).
  *
- * ── Warum die Schwelle beim Verlassen des Feldes gespeichert wird ───────────
+ * ── Warum die Schwelle beim TIPPEN gespeichert wird ─────────────────────────
  *
- * Wie ueberall sonst in diesem Bildschirm: Ein Betrag wird getippt. Ein
- * Speichern je Zeichen erzeugte fuer „249.90" sechs Anfragen und legte dabei
- * fuenf Schwellen an, die niemand wollte — eine davon bei 2.
+ * Bis hierher wurde beim Verlassen des Feldes gespeichert. Marcos Befund:
+ * „Der Preisalarm wird nicht gespeichert … soll gespeichert werden, wenn man
+ * was eintraegt. Analog dem Kaufpreis." Am Telefon tippt man die Zahl,
+ * schliesst die Tastatur und geht zurueck — der Fokuswechsel kommt nie.
+ *
+ * Ein Speichern je Zeichen waere die andere Uebertreibung: „249.90" ergaebe
+ * sechs Anfragen und fuenf Schwellen, die niemand wollte, eine davon bei 2.
+ * Deshalb die Ruhezeit in Alarmeingabe.RUHE_MS — und sie liegt im ViewModel,
+ * nicht in einem LaunchedEffect, damit sie das Verlassen des Bildschirms
+ * ueberlebt. Die ausfuehrliche Begruendung steht an setzePreisalarm().
  */
 fun LazyListScope.setDetailAlarmSection(
     setNumber: String,
@@ -640,39 +638,38 @@ fun LazyListScope.setDetailAlarmSection(
             var schwelle by rememberSaveable(alarm?.schwelle) {
                 mutableStateOf(alarm?.let { if (it.schwelle > 0) it.schwelle.toString() else "" } ?: "")
             }
-            var alarmFokus by remember { mutableStateOf(false) }
-
-            fun speichern() {
-                val zahl = schwelle.replace(',', '.').trim().toDoubleOrNull()
-                vm.setzePreisalarm(setNumber, richtung, zahl)
-            }
 
             Row(verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(Abstaende.klein)) {
                 // Zwei Chips statt eines Auswahlfelds: Es sind genau zwei
                 // Moeglichkeiten, und beide sollen ohne Aufklappen lesbar sein.
+                // Die Richtung schickt nur mit, wenn schon eine Schwelle
+                // dasteht: Ohne Zahl gaebe es nichts zu speichern, und der
+                // Aufruf liefe auf ein Loeschen dessen hinaus, was es noch
+                // gar nicht gibt.
                 FilterChip(
                     selected = richtung == "unter",
-                    onClick = { richtung = "unter"; if (schwelle.isNotBlank()) speichern() },
+                    onClick = { richtung = "unter"
+                        if (schwelle.isNotBlank()) vm.setzePreisalarm(setNumber, "unter", schwelle) },
                     label = { Text(stringResource(R.string.detail_alert_below), fontSize = Schrift.klein) },
                 )
                 FilterChip(
                     selected = richtung == "ueber",
-                    onClick = { richtung = "ueber"; if (schwelle.isNotBlank()) speichern() },
+                    onClick = { richtung = "ueber"
+                        if (schwelle.isNotBlank()) vm.setzePreisalarm(setNumber, "ueber", schwelle) },
                     label = { Text(stringResource(R.string.detail_alert_above), fontSize = Schrift.klein) },
                 )
                 OutlinedTextField(
                     value = schwelle,
-                    onValueChange = { schwelle = it },
+                    // Der getippte Text geht UNVERAENDERT weiter; die Ruhezeit
+                    // und die Umrechnung stecken hinter setzePreisalarm().
+                    // Haette der Bildschirm hier schon in eine Zahl umgerechnet,
+                    // waere ein halb getipptes „249." ein Loeschen gewesen.
+                    onValueChange = { schwelle = it; vm.setzePreisalarm(setNumber, richtung, it) },
                     singleLine = true,
                     placeholder = { Text(currency, fontSize = Schrift.klein) },
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
-                    modifier = Modifier
-                        .weight(1f)
-                        .onFocusChanged { f ->
-                            if (f.isFocused) alarmFokus = true
-                            else if (alarmFokus) { alarmFokus = false; speichern() }
-                        },
+                    modifier = Modifier.weight(1f),
                 )
             }
             // Der Merker sagt, ob schon gemeldet wurde. Ihn zu zeigen ist der

@@ -237,7 +237,17 @@ test('Preisalarm gegen echte Datenbank', async (t) => {
     assert.equal(erste.alerts[0].zuletzt_preis, 100);
 
     const zweite = await A.ausgeloesteSeit(U.ich, erste.now);
-    assert.deepEqual(zweite.alerts, [], 'dieselbe Meldung kam ein zweites Mal');
+    // Die Zeitstempel stehen in der Meldung, und das hat einen Grund: Genau
+    // diese Zusicherung ist mir EINMAL in einem vollen Lauf rot geworden und
+    // in vier Wiederholungen nicht mehr. Ohne die drei Werte bliebe im
+    // Fehlerbericht nur „kam ein zweites Mal" — und damit wieder nichts zu
+    // untersuchen. Sie beantworten die einzige offene Frage: Lag `now` vor
+    // oder nach `zuletzt_am`?
+    assert.deepEqual(zweite.alerts, [],
+      'dieselbe Meldung kam ein zweites Mal. ' +
+      `vorher=${vorher?.toISOString?.() ?? vorher}, ` +
+      `zuletzt_am=${erste.alerts[0]?.zuletzt_am?.toISOString?.() ?? erste.alerts[0]?.zuletzt_am}, ` +
+      `erste.now=${erste.now?.toISOString?.() ?? erste.now}`);
   });
 
   await t.test('Abholen: jedes Konto sieht nur seine eigenen Alarme', async () => {

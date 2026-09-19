@@ -13,7 +13,8 @@ import { scopeIds, parseScopeMode, writableIds } from '../../utils/household';
 import { istErsatzteil, ersatzteilSql } from '../../utils/validate';
 import { householdMembers, resolveWriteTarget } from '../../utils/household';
 import { moveSetBetweenAccounts } from '../../utils/setMove';
-import { normalisiereLagerort, setzeLagerort, lagerorte } from '../../utils/lagerort';
+import { normalisiereLagerort, setzeLagerort, lagerorte,
+         orteVon, legeOrtAn, benenneOrtUm, loescheOrt } from '../../utils/lagerort';
 import { alarmeFuer, ausgeloesteSeit, loescheAlarm, setzeAlarm } from '../../utils/preisalarm';
 import { istVermutung } from '../../utils/barcodeQuelle';
 import { setnummerKandidaten } from '../../utils/produkttitel';
@@ -359,6 +360,86 @@ router.get('/alerts/pending', requireToken, async (req: AuthedRequest, res) => {
   try {
     const r = await ausgeloesteSeit(req.apiUser.user_id, req.query.since);
     res.json({ success: true, alerts: r.alerts, now: r.now });
+  } catch (e) { handleRouteError(res, e, undefined, req); }
+});
+
+/**
+ * /api/v1/storage/locations — der VORRAT an Lagerorten, je Konto.
+ *
+ * ── Wessen Liste man sieht ──────────────────────────────────────────────────
+ *
+ * Marcos Festlegung: „Der Grossvater soll die Werte der Enkel fuer die
+ * entsprechenden Sets sehen und waehlen koennen."
+ *
+ * Ein Lagerort ist ein Regal in einer Wohnung. Beim Set des Enkels gehoeren
+ * die Regale des ENKELS zur Wahl, nicht die eigenen — ein Set des Enkels in
+ * „Grossvaters Keller" waere eine Aussage ueber die falsche Wohnung.
+ *
+ * Deshalb sagt der Aufrufer mit `owner`, wessen Liste er will. Beide
+ * Oberflaechen wissen das: Eine Set-Kachel traegt ihre `owners` schon.
+ *
+ * ── Lesen weit, Schreiben eng ───────────────────────────────────────────────
+ *
+ * Lesen gegen scopeIds() (alles, was im Blickfeld liegt), Schreiben gegen
+ * writableIds() (alles, wofuer man verantwortlich ist). Dieselbe Trennung wie
+ * ueberall im Baum — und sie ist hier nicht theoretisch: Ein Enkel sieht
+ * seinen Grossvater nicht, der Grossvater aber den Enkel.
+ */
+async function lagerKonten(req: AuthedRequest, schreiben: boolean): Promise<number[]> {
+  // Ohne parseScopeMode(req.query.accounts) — KEIN Ansichtsfilter, und das ist
+  // Absicht: Diese Zeile beantwortet nicht „was soll ich zeigen?", sondern
+  // „darf ich das ueberhaupt?". Stuende die Galerie gerade auf „nur eigene",
+  // bekaeme der Grossvater beim Set des Enkels eine leere Auswahlliste — fuer
+  // eine Einstellung, die mit der Frage nichts zu tun hat.
+  // test/household.test.js kennt diese Ausnahme unter genau diesem Namen.
+  const erlaubt = schreiben
+    ? await writableIds(req.apiUser.user_id)
+    : await scopeIds(req.apiUser.user_id);  // KEIN Ansichtsfilter, Begruendung darueber
+  const roh = String((req.query.owner ?? req.body?.owner) ?? '').trim();
+  if (!roh) return [req.apiUser.user_id];
+  const gewuenscht = roh.split(',').map(x => parseInt(x.trim(), 10)).filter(Number.isFinite);
+  if (!gewuenscht.length) return [req.apiUser.user_id];
+  // Die Schnittmenge, nicht eine Absage: Wer mehrere Besitzer eines Sets
+  // mitschickt und einen davon nicht sehen darf, soll die Liste der uebrigen
+  // bekommen. Eine leere Schnittmenge beantwortet die Frage trotzdem — mit
+  // einer leeren Liste, nicht mit fremden Daten.
+  return gewuenscht.filter(id => erlaubt.includes(id));
+}
+
+router.get('/storage/locations', requireToken, async (req: AuthedRequest, res) => {
+  try {
+    res.json({ success: true, orte: await orteVon(await lagerKonten(req, false)) });
+  } catch (e) { handleRouteError(res, e, undefined, req); }
+});
+
+router.post('/storage/locations', requireToken, async (req: AuthedRequest, res) => {
+  try {
+    const konto = (await lagerKonten(req, true))[0];
+    if (konto === undefined) return sendeFehler(req, res, 403, 'kein_schreibrecht');
+    // EIN Konto beim Anlegen, Umbenennen und Loeschen: „Lege denselben Ort in
+    // drei Wohnungen an" ist keine Absicht, die jemand hat — und waere sie es,
+    // gehoerte sie in drei Aufrufe, damit jeder fuer sich scheitern kann.
+    const { ort, war_neu } = await legeOrtAn(konto, req.body?.name);
+    if (!war_neu) return sendeFehler(req, res, 409, 'lagerort_doppelt');
+    res.json({ success: true, ort });
+  } catch (e) { handleRouteError(res, e, undefined, req); }
+});
+
+router.put('/storage/locations/:id', requireToken, async (req: AuthedRequest, res) => {
+  try {
+    const konto = (await lagerKonten(req, true))[0];
+    if (konto === undefined) return sendeFehler(req, res, 403, 'kein_schreibrecht');
+    res.json({ success: true,
+      ort: await benenneOrtUm(konto, parseInt(pfadParam(req, 'id'), 10), req.body?.name) });
+  } catch (e) { handleRouteError(res, e, undefined, req); }
+});
+
+router.delete('/storage/locations/:id', requireToken, async (req: AuthedRequest, res) => {
+  try {
+    const konto = (await lagerKonten(req, true))[0];
+    if (konto === undefined) return sendeFehler(req, res, 403, 'kein_schreibrecht');
+    await loescheOrt(konto, parseInt(pfadParam(req, 'id'), 10));
+    res.json({ success: true });
   } catch (e) { handleRouteError(res, e, undefined, req); }
 });
 

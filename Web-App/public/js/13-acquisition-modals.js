@@ -20,7 +20,7 @@ import { escHex, CURRENCY, G, ME, api, esc, escJs, escUrl, fmtN, fullUrl, imgUrl
 import { allSets, applySetAggregate, closeModal, curSet, loadGallery, pnlBadge, updateGalleryPrices } from './02-gallery.js';
 import { loadFinance } from './04-finance.js';
 import { deleteManualFig, deleteManualPart, loadManualFigsTable, loadManualParts, manualFigsCache, manualPartsCache, updateManualFig, updateManualPart } from './06-minifigs.js';
-import { confirmDelete, ladeLagerorte, openModal, priceChartSVG, renderMarketRows } from './07-admin.js';
+import { confirmDelete, ladeLagerorte, openModal, priceChartSVG, renderMarketRows, ladeOrtAuswahl } from './07-admin.js';
 import { scopeQuery } from './14-scope.js';
 import { blurOnEnter, mQtyDec, mQtyInc, saveManualFigBl } from './11-actions.js';
 
@@ -577,12 +577,16 @@ export async function openSetItemDetail(type, id, colorId) {
   // Route): Dasselbe Teil steckt in mehreren Sets, und wer hier „Kiste 3"
   // einträgt, meint das Teil — nicht eine seiner Zeilen.
   if (type === 'part') {
+    // Die Auswahlliste gehört dem BESITZER des Teils, nicht dem Betrachter —
+    // dieselbe Regel wie beim Set, Begründung an ladeOrtAuswahl().
+    ladeOrtAuswahl(item?.owners).catch(() => {});
     zeilen.push(detailZeile(t('detail.storage'), `
       <input type="text" id="setitem-storage" list="lagerorte" maxlength="60"
              placeholder="${esc(tRaw('detail.storage_ph'))}"
              value="${esc(item?.storage || '')}"
              data-change="speichereTeilLagerort"
              data-part="${escJs(id)}" data-color="${farbe}"
+             data-owners="${esc((item?.owners || []).map(o => o.id).join(','))}"
              style="width:150px;text-align:right;border:1px solid var(--bdr);border-radius:6px;padding:2px 6px;font-size:.85rem" />
     `, { wertStil: 'display:flex;align-items:center;gap:6px' }));
   }
@@ -659,6 +663,9 @@ async function speichereTeilLagerort() {
     `/v1/parts/${encodeURIComponent(nummer)}/${farbe}/storage`, { storage: el.value });
   if (!d?.success) { toast(d?.error || tRaw('settings.error'), 'error'); return; }
   await ladeLagerorte();
+  // Ein frisch getippter Ort ist jetzt im Vorrat — ohne das stünde er am Teil,
+  // fehlte aber in der Liste, aus der er beim nächsten Mal gewählt wird.
+  await ladeOrtAuswahl(el.dataset.owners ? el.dataset.owners.split(',') : []);
 }
 
 function closeSetItemDetail() {

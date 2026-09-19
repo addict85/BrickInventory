@@ -699,6 +699,33 @@
         </div>
       </div>
 
+      <!-- ── LAGERORTE: DER VORRAT, AUS DEM GEWÄHLT WIRD ─────────────────── -->
+      <div class="sgroup-label" data-i18n="storage.group">📦 Lagerorte</div>
+
+      <div class="ssec" style="margin-bottom:1.25rem" id="storage-card">
+        <div class="sform">
+          <div style="font-size:.8rem;color:var(--mut)" data-i18n="storage.intro">
+            Die Orte, die beim Set und beim Teil zur Auswahl stehen. Neue Orte lassen sich
+            auch direkt dort eintragen; hier kannst du sie umbenennen oder entfernen.
+          </div>
+
+          <!-- Gefüllt von ladeLagerortVerwaltung() -->
+          <div id="storage-list" style="font-size:.85rem"></div>
+
+          <div class="sgrid2" style="gap:.5rem;grid-template-columns:1fr auto">
+            <div class="fg">
+              <label for="storage-new" data-i18n="storage.new_ph">Neuer Lagerort</label>
+              <input type="text" id="storage-new" maxlength="60"
+                     data-i18n="storage.new_ph" data-i18n-attr="placeholder"
+                     placeholder="Neuer Lagerort" data-keydown="lagerortTaste" />
+            </div>
+            <button class="btn bp" data-click="legeLagerortAn" style="align-self:end">
+              ➕ <span data-i18n="storage.add">Hinzufügen</span>
+            </button>
+          </div>
+        </div>
+      </div>
+
       <!-- ── HAUSHALT: KONTEN VERKNÜPFEN ─────────────────────────────────── -->
       <div class="sgroup-label" data-i18n="household.group">👪 Haushalt</div>
 

@@ -911,6 +911,17 @@ data class SetItemUiState(
 data class LagerUiState(
     /** Gewaehlter Lagerort JE ANSICHT — leer heisst „nicht gefiltert". */
     val modi: Map<String, String> = emptyMap(),
-    /** Die belegten Lagerorte im Blickfeld — speist die Auswahl. */
+    /** Die belegten Lagerorte im Blickfeld — speist den FILTER. */
     val orte: List<ch.brickinventoryapp.data.model.Lagerort> = emptyList(),
+    /**
+     * Der VORRAT fuer das gerade offene Detail — was zur WAHL steht.
+     *
+     * Nicht dasselbe wie [orte]: Dort stehen die belegten Orte des Blickfelds,
+     * hier die waehlbaren Orte des BESITZERS. Ein frisch angelegter Ort ist
+     * waehlbar und leer, und beim Set des Enkels gehoeren die Regale des
+     * Enkels zur Wahl (Marcos Festlegung).
+     */
+    val vorrat: List<ch.brickinventoryapp.data.model.LagerortEintrag> = emptyList(),
+    /** Die EIGENEN Orte — fuer die Verwaltung in den Einstellungen. */
+    val eigene: List<ch.brickinventoryapp.data.model.LagerortEintrag> = emptyList(),
 )

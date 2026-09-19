@@ -440,6 +440,37 @@ interface BrickApiService {
         @Body request: LagerortRequest,
     ): Response<LagerortResponse>
 
+    // ── Der VORRAT an Lagerorten (Marcos Auswahlfeld) ────────────────────────
+    //
+    // Getrennt von getLagerorte(): Das eine sagt, was BELEGT ist (fuer den
+    // Filter), das andere, was zur WAHL steht (fuer das Auswahlfeld). Das ist
+    // nicht dasselbe — ein frisch angelegter Ort ist waehlbar und leer.
+    //
+    // `owner` sagt, WESSEN Liste. Beim Set des Enkels gehoeren die Regale des
+    // Enkels zur Wahl; ohne den Parameter antwortet der Server mit der
+    // eigenen Liste. Begruendung im Server (routes/api_v1/sets.ts).
+
+    @GET("api/v1/storage/locations")
+    suspend fun getLagerortVorrat(
+        @Query("owner") owner: String? = null,
+    ): Response<LagerortVorratResponse>
+
+    @POST("api/v1/storage/locations")
+    suspend fun legeLagerortAn(
+        @Body request: LagerortNameRequest,
+    ): Response<LagerortEintragResponse>
+
+    @PUT("api/v1/storage/locations/{id}")
+    suspend fun benenneLagerortUm(
+        @Path("id") id: Int,
+        @Body request: LagerortNameRequest,
+    ): Response<LagerortEintragResponse>
+
+    @DELETE("api/v1/storage/locations/{id}")
+    suspend fun loescheLagerort(
+        @Path("id") id: Int,
+    ): Response<LagerortResponse>
+
     /** Welche Lagerorte es gibt und was darin liegt — Sets UND Teile. */
     @GET("api/v1/storage")
     suspend fun getLagerorte(

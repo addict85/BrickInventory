@@ -387,3 +387,37 @@ data class LagerorteResponse(
     val orte: List<Lagerort> = emptyList(),
     val error: String? = null,
 )
+
+/**
+ * Ein Eintrag im VORRAT — das, was zur Wahl steht.
+ *
+ * Nicht zu verwechseln mit [Lagerort] darueber: Das ist ein BELEGTER Ort mit
+ * Anzahl, fuer den Filter. Dieser hier ist ein waehlbarer Name, und er darf
+ * leer sein („Kiste 4 ist gekauft, aber noch nichts drin").
+ *
+ * `userId` steht mit drin, weil eine Liste ueber mehrere Konten spannen kann
+ * — der Grossvater sieht beim Set des Enkels dessen Orte.
+ */
+@Serializable
+data class LagerortEintrag(
+    val id: Int = 0,
+    @SerialName("user_id") val userId: Int = 0,
+    val name: String = "",
+)
+
+@Serializable
+data class LagerortVorratResponse(
+    val success: Boolean = false,
+    val orte: List<LagerortEintrag> = emptyList(),
+    val error: String? = null,
+)
+
+@Serializable
+data class LagerortNameRequest(val name: String)
+
+@Serializable
+data class LagerortEintragResponse(
+    val success: Boolean = false,
+    val ort: LagerortEintrag? = null,
+    val error: String? = null,
+)

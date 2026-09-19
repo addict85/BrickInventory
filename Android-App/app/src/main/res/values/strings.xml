@@ -160,6 +160,12 @@
     <string name="partslist_ok">OK</string>
     <string name="partslist_reset">Reset</string>
     <string name="partslist_fill_owned">My parts</string>
+    <string name="storage_manage">Storage locations</string>
+    <string name="storage_manage_hint">The places offered when you file a set or a part. You can also add new ones right there.</string>
+    <string name="storage_new">New storage location</string>
+    <string name="storage_add">Add</string>
+    <string name="storage_empty">No storage locations yet.</string>
+    <string name="storage_delete">Delete storage location</string>
     <string name="detail_storage">Storage</string>
     <string name="detail_alert">Price alert</string>
     <string name="alert_channel_name">Price alerts</string>

@@ -143,6 +143,12 @@
     <string name="partslist_ok">OK</string>
     <string name="partslist_reset">Zurücksetzen</string>
     <string name="partslist_fill_owned">Mein Bestand</string>
+    <string name="storage_manage">Lagerorte</string>
+    <string name="storage_manage_hint">Die Orte, die beim Set und beim Teil zur Auswahl stehen. Neue lassen sich auch direkt dort eintragen.</string>
+    <string name="storage_new">Neuer Lagerort</string>
+    <string name="storage_add">Hinzufügen</string>
+    <string name="storage_empty">Noch keine Lagerorte angelegt.</string>
+    <string name="storage_delete">Lagerort löschen</string>
     <string name="detail_storage">Lagerort</string>
     <string name="detail_alert">Preisalarm</string>
     <string name="alert_channel_name">Preisalarme</string>
