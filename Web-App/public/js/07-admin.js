@@ -528,6 +528,59 @@ export async function speichereAlarm(sn) {
   await ladeAlarm(sn);
 }
 
+/**
+ * Beim Oeffnen zeigen, welche Alarme seit dem letzten Besuch ausgeloest haben.
+ *
+ * ── Warum die Webapp das auch tut ───────────────────────────────────────────
+ *
+ * Die Android-App fragt stuendlich im Hintergrund nach und meldet es als
+ * Benachrichtigung (alarm/PreisalarmWorker.kt). Ohne dieses Gegenstueck waere
+ * der Preisalarm die erste Funktion, die in der App mehr kann als hier — und
+ * genau das soll nicht passieren.
+ *
+ * Ein Hintergrundlauf ist im Browser nicht das Gegenstueck: Eine
+ * geschlossene Seite fragt nichts ab, und ein Service Worker mit Web-Push
+ * waere derselbe schwere Apparat, den die App mit Firebase bewusst vermeidet.
+ * Das ehrliche Gegenstueck ist: beim Oeffnen nachfragen.
+ *
+ * ── Die Marke kommt vom SERVER ──────────────────────────────────────────────
+ *
+ * Dieselbe Begruendung wie in Alarmabholung.kt: Naehme die Seite ihre eigene
+ * Uhr, entschiede die Gangabweichung zum Server darueber, ob eine Meldung
+ * doppelt kommt oder ausfaellt.
+ *
+ * Je Konto eine eigene Marke: An einem Rechner melden sich durchaus zwei
+ * Leute an, und die Marke des einen darf die Meldungen des anderen nicht
+ * verschlucken.
+ */
+export async function zeigeOffeneAlarme() {
+  if (!ME?.id) return;
+  const schluessel = 'bim_alarm_marke_' + ME.id;
+  let marke = null;
+  try { marke = localStorage.getItem(schluessel); } catch (_) {}
+  const d = await api('GET', '/v1/alerts/pending' + (marke ? '?since=' + encodeURIComponent(marke) : ''))
+    .catch(() => null);
+  // Ohne `now` keine neue Marke — und ohne neue Marke lieber gar nichts
+  // speichern als eine falsche.
+  if (!d?.success || !d.now) return;
+  try { localStorage.setItem(schluessel, String(d.now)); } catch (_) {}
+  // Erster Besuch: nur merken, nichts melden. Sonst schlaegt ein frisch
+  // angemeldetes Konto mit Schwellen auf, die vor Wochen gerissen sind.
+  if (!marke) return;
+  const unter = tRaw('detail.alert_below'), ueber = tRaw('detail.alert_above');
+  for (const a of (d.alerts || [])) {
+    const richtung = a.richtung === 'unter' ? unter : ueber;
+    const schwelle = Number(a.schwelle).toFixed(2);
+    // Derselbe Aufbau wie Alarmabholung.text() in der App — wer beides
+    // benutzt, soll nicht zwei Formulierungen derselben Meldung lesen.
+    const txt = a.zuletzt_preis == null
+      ? `${a.set_number}: ${richtung} ${a.currency_code} ${schwelle}`
+      : `${a.set_number}: ${a.currency_code} ${Number(a.zuletzt_preis).toFixed(2)} ` +
+        `(${richtung} ${a.currency_code} ${schwelle})`;
+    toast(txt, 'info');
+  }
+}
+
 export async function ladeLagerorte() {
   const d = await api('GET', '/v1/storage' + scopeQuery('gallery')).catch(() => null);
   if (!d?.success) return;

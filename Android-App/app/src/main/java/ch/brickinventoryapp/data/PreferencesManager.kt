@@ -107,6 +107,35 @@ class PreferencesManager @Inject constructor(
          * persoenliche Einstellung. Deshalb ueberlebt es auch das Abmelden.
          */
         val APP_THEME    = stringPreferencesKey("app_theme")
+
+        /**
+         * Sollen ausgeloeste Preisalarme als Benachrichtigung erscheinen?
+         *
+         * Auf dem GERAET, nicht beim Konto — dieselbe Begruendung wie beim
+         * Vorwaermen und beim Kontofilter: Wer dasselbe Konto am Telefon und
+         * am Tablet benutzt, will die Meldung in der Regel nur an einem der
+         * beiden. Der Mailversand des Servers bleibt davon unberuehrt; er ist
+         * die kontobezogene Haelfte derselben Sache.
+         *
+         * Vorgabe AUS: Eine App, die ungefragt zu benachrichtigen beginnt,
+         * waere eine Ueberraschung — und ab Android 13 braucht es ohnehin
+         * erst die Erlaubnis des Nutzers.
+         */
+        val ALARM_MELDUNGEN = booleanPreferencesKey("alarm_meldungen")
+
+        /**
+         * Der Zeitpunkt des letzten erfolgreichen Abrufs, als ISO-Text vom
+         * SERVER.
+         *
+         * Warum nicht die Uhr des Telefons: siehe Alarmabholung — die
+         * Gangabweichung zwischen beiden entschiede sonst darueber, ob eine
+         * Meldung doppelt kommt oder ausfaellt.
+         *
+         * Warum Text und keine Zahl: Es wird nie gerechnet, nur
+         * weitergereicht. Ein Zeitstempel, der durch eine Umwandlung in
+         * Millisekunden und zurueck laeuft, verliert unterwegs die Zeitzone.
+         */
+        val ALARM_MARKE = stringPreferencesKey("alarm_marke")
     }
 
     val serverUrl: Flow<String> = context.dataStore.data.map { prefs ->
@@ -147,6 +176,16 @@ class PreferencesManager @Inject constructor(
     val vorwaermenMobil:   Flow<Boolean> = context.dataStore.data.map { it[VORWAERMEN_MOBIL]   ?: false }
     val vorwaermenRoaming: Flow<Boolean> = context.dataStore.data.map { it[VORWAERMEN_ROAMING] ?: false }
     val appTheme:  Flow<String> = context.dataStore.data.map { it[APP_THEME]  ?: "classic" }
+
+    // Vorgabe AUS — Begruendung am Schluessel oben.
+    val alarmMeldungenAn: Flow<Boolean> = context.dataStore.data.map { it[ALARM_MELDUNGEN] ?: false }
+    /**
+     * null = noch nie abgerufen. Genau diese Unterscheidung braucht
+     * Alarmabholung: Beim allerersten Durchgang wird nur markiert und nichts
+     * gemeldet. Ein leerer Text traete hier als „schon abgerufen, aber ab
+     * Anbeginn" auf und brachte alles Alte auf einmal.
+     */
+    val alarmMarke: Flow<String?> = context.dataStore.data.map { it[ALARM_MARKE] }
 
     // ── In-Memory-Cache für den OkHttp-Interceptor ────────────────────────────
     // Der Interceptor läuft auf OkHttp-Dispatcher-Threads und darf dort nicht
@@ -277,6 +316,21 @@ class PreferencesManager @Inject constructor(
      */
     suspend fun saveVorwaermenNetz(schluessel: Preferences.Key<Boolean>, erlaubt: Boolean) {
         context.dataStore.edit { it[schluessel] = erlaubt }
+    }
+
+    /**
+     * Die Marke fortschreiben.
+     *
+     * Leere Werte werden nicht geschrieben: Der Aufrufer wuerde damit die
+     * Unterscheidung „noch nie abgerufen" zerstoeren, ohne etwas zu gewinnen.
+     */
+    suspend fun setzeAlarmMarke(marke: String) {
+        if (marke.isBlank()) return
+        context.dataStore.edit { it[ALARM_MARKE] = marke }
+    }
+
+    suspend fun setzeAlarmMeldungen(an: Boolean) {
+        context.dataStore.edit { it[ALARM_MELDUNGEN] = an }
     }
 
     suspend fun saveLanguage(lang: String) {

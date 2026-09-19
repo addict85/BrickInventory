@@ -135,6 +135,76 @@ export async function alarmeFuer(userId: number, setNumber: string): Promise<Pre
 }
 
 /**
+ * Was seit einem Zeitpunkt ausgelöst hat — für die Abholung durch die Clients.
+ *
+ * ── Warum die App fragt und der Server nicht schiebt ────────────────────────
+ *
+ * Die Alternative wäre echtes Push (Firebase). Das hiesse: ein Google-Projekt,
+ * eine Konfigurationsdatei im Baum, und jede Meldung — welches Set, welcher
+ * Preis — liefe über fremde Server. Für eine selbstgehostete Sammlung ist das
+ * eine schwere Abhängigkeit für eine leichte Nachricht.
+ *
+ * Und sie kauft hier fast nichts: Der Preislauf läuft stündlich
+ * (price_job_interval_minutes, Vorgabe 60). Eine Meldung kann gar nicht
+ * schneller entstehen, als ein stündliches Nachfragen sie abholt.
+ *
+ * ── Warum `now` mit zurückkommt ─────────────────────────────────────────────
+ *
+ * Der Aufrufer merkt sich, bis wann er schon gefragt hat, und schickt das
+ * beim nächsten Mal als `seit`. Nähme er dafür seine EIGENE Uhr, entschiede
+ * die Gangabweichung zwischen Telefon und Server darüber, ob eine Meldung
+ * doppelt kommt (Telefonuhr geht nach) oder verloren geht (sie geht vor).
+ * Beides fiele niemandem als Uhrenproblem auf.
+ *
+ * Deshalb liefert der Server den Zeitpunkt, den der Klient beim nächsten Mal
+ * einsetzen soll — aus derselben Uhr, aus der auch `zuletzt_am` stammt.
+ *
+ * ── Ohne `seit` kommt NICHTS ────────────────────────────────────────────────
+ *
+ * Eine frisch installierte App soll nicht mit Meldungen über Kursschwellen
+ * von vor drei Wochen aufschlagen. Der erste Aufruf setzt nur die Marke.
+ */
+export async function ausgeloesteSeit(userId: number, seit: unknown) {
+  const jetztRow = await db.get('SELECT NOW() AS jetzt');
+  const jetzt = jetztRow?.jetzt ?? new Date();
+
+  // `seit instanceof Date` ZUERST, und das ist kein Schoenheitsfehler: Ein
+  // Date laeuft durch String() als "Fri Sep 19 2026 17:53:56 GMT+0000" — OHNE
+  // Millisekunden. Zurueckgelesen ergibt das einen bis zu 999 ms frueheren
+  // Zeitpunkt, und eine Meldung aus derselben Sekunde kommt ein zweites Mal.
+  // Ueber HTTP faellt das nicht auf (res.json() schreibt ISO-8601 mit
+  // Millisekunden), ein Aufrufer im selben Prozess reicht aber das Date durch.
+  const marke = seit instanceof Date ? seit
+    : seit === undefined || seit === null || String(seit).trim() === ''
+      ? null : new Date(String(seit));
+  // Ein unlesbares Datum wie eine fehlende Marke behandeln — und NICHT wie
+  // „seit Anbeginn". Ein Tippfehler im Parameter darf keine Flut auslösen.
+  if (!marke || Number.isNaN(marke.getTime())) return { alerts: [], now: jetzt };
+
+  const rows = await db.all(
+    `SELECT set_number, condition, richtung, schwelle, currency_code,
+            zuletzt_am, zuletzt_preis
+       FROM price_alerts
+      WHERE user_id = $1 AND ausgeloest = TRUE
+        AND zuletzt_am IS NOT NULL AND zuletzt_am > $2
+      ORDER BY zuletzt_am`,
+    [userId, marke])
+    .catch(e => { require('./httpError').meldeUndWeiter('preisalarm:abholen', e); return []; });
+
+  type Zeile = { set_number: string; condition: string; richtung: Richtung;
+                 schwelle: string | number; currency_code: string;
+                 zuletzt_am: string; zuletzt_preis: string | number | null };
+  return {
+    alerts: (rows as Zeile[] || []).map(r => ({
+      ...r,
+      schwelle: parseFloat(String(r.schwelle)),
+      zuletzt_preis: r.zuletzt_preis == null ? null : parseFloat(String(r.zuletzt_preis)),
+    })),
+    now: jetzt,
+  };
+}
+
+/**
  * Ist die Schwelle gerissen?
  *
  * Eigene Funktion, obwohl es eine Zeile ist: Sie ist die einzige Stelle, an

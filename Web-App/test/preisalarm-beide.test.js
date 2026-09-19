@@ -20,6 +20,10 @@ const web  = rel => lies(path.join(WEB, rel));
 const KT_API    = lies(path.join(APP, 'java', 'ch', 'brickinventoryapp', 'data', 'api', 'BrickApiService.kt'));
 const KT_FEAT   = lies(path.join(APP, 'java', 'ch', 'brickinventoryapp', 'ui', 'SetDetailFeature.kt'));
 const KT_SECT   = lies(path.join(APP, 'java', 'ch', 'brickinventoryapp', 'ui', 'screens', 'SetDetailSections.kt'));
+const KT_ABHOL  = lies(path.join(APP, 'java', 'ch', 'brickinventoryapp', 'alarm', 'Alarmabholung.kt'));
+const KT_WORKER = lies(path.join(APP, 'java', 'ch', 'brickinventoryapp', 'alarm', 'PreisalarmWorker.kt'));
+const KT_START  = lies(path.join(APP, 'java', 'ch', 'brickinventoryapp', 'BrickInventoryApp.kt'));
+const KT_EINST  = lies(path.join(APP, 'java', 'ch', 'brickinventoryapp', 'ui', 'screens', 'SettingsScreen.kt'));
 const XML_EN    = lies(path.join(APP, 'res', 'values', 'strings.xml'));
 const XML_DE    = lies(path.join(APP, 'res', 'values-de', 'strings.xml'));
 
@@ -118,4 +122,127 @@ test('die Prüfung hängt am Ende des Preislaufs, nicht an jedem Preisabruf', ()
     'Die Prüfung hängt am einzelnen Preisabruf — dann meldet sie mehrfach je Lauf');
   assert.match(job, /SELECT DISTINCT set_number FROM price_alerts/,
     'Es müssen nur die Sets geprüft werden, auf die jemand wartet');
+});
+
+// ═══ Das Melden: die App fragt stündlich nach, die Webapp beim Öffnen ═══════
+//
+// Marcos Auftrag: „Ja gerne. Das Intervall aber bitte auf Stunde setzen."
+//
+// Echtes Push hiesse Firebase — ein Google-Projekt, eine Konfigurationsdatei
+// im Baum, und jede Meldung liefe über fremde Server. Für eine selbst
+// gehostete Sammlung ist das eine schwere Abhängigkeit für eine leichte
+// Nachricht, und sie kauft fast nichts: Der Preislauf läuft selbst stündlich.
+
+test('beide holen dieselbe Liste beim selben Endpunkt ab', () => {
+  assert.match(web('routes/api_v1/sets.ts'), /router\.get\('\/alerts\/pending'/,
+    'Der Endpunkt fehlt');
+  assert.match(web('public/js/07-admin.js'), /'\/v1\/alerts\/pending'/,
+    'Die Webapp fragt nicht nach');
+  assert.match(KT_API, /@GET\("api\/v1\/alerts\/pending"\)/,
+    'Die App fragt nicht nach');
+  // Und die Webapp fragt auch TATSÄCHLICH — ein Aufruf, den niemand aufruft,
+  // ist genau die Sorte Halbfertiges, die hier schon zweimal stehen blieb.
+  //
+  // ohneKommentare(): Die Gegenprobe zu dieser Zeile blieb GRÜN. Über dem
+  // Aufruf in showApp() steht seine Begründung, und darin kommt der Name
+  // vor — die Prüfung fand also ihre eigene Erklärung und hätte auch einen
+  // gelöschten Aufruf durchgehen lassen. Dieselbe Falle wie in
+  // household.test.js und ratschen.test.js.
+  assert.match(require('./helpers/sources').ohneKommentare(web('public/js/01-core.js')),
+    /zeigeOffeneAlarme/,
+    'zeigeOffeneAlarme() wird beim Anmelden nicht aufgerufen');
+});
+
+test('die Marke kommt vom SERVER, nicht von der eigenen Uhr', () => {
+  // Nähme jede Seite ihre eigene Uhr, entschiede die Gangabweichung zum
+  // Server darüber, ob eine Meldung doppelt kommt (Uhr geht nach) oder
+  // verloren geht (sie geht vor). Beides fällt niemandem als Uhrenproblem
+  // auf — man sieht nur eine Meldung zu viel oder keine.
+  assert.match(web('utils/preisalarm.ts'), /SELECT NOW\(\) AS jetzt/,
+    'Der Server reicht seinen Zeitpunkt nicht mit');
+
+  const js = require('./helpers/sources').ohneKommentare(web('public/js/07-admin.js'));
+  const i = js.indexOf('export async function zeigeOffeneAlarme');
+  assert.ok(i > 0, 'zeigeOffeneAlarme() nicht gefunden');
+  const block = js.slice(i, js.indexOf('\nexport ', i + 10));
+  assert.match(block, /localStorage\.setItem\(schluessel, String\(d\.now\)\)/,
+    'Die Webapp merkt sich nicht den Zeitpunkt des Servers');
+  assert.doesNotMatch(block, /Date\.now\(\)|new Date\(\)/,
+    'Die Webapp nimmt ihre eigene Uhr');
+
+  assert.match(KT_ABHOL, /antwort\.now\?\.takeIf/,
+    'Die App nimmt nicht den Zeitpunkt des Servers als neue Marke');
+  assert.doesNotMatch(KT_ABHOL, /System\.currentTimeMillis|Instant\.now/,
+    'Die App nimmt ihre eigene Uhr');
+});
+
+test('der erste Durchgang meldet NICHTS — in beiden', () => {
+  // Eine frisch eingerichtete App (oder ein frisch angemeldetes Konto am
+  // Browser) soll nicht mit Schwellen aufschlagen, die vor Wochen gerissen
+  // sind. Der Server liefert ohne `since` schon eine leere Liste; beide
+  // Oberflächen sagen es trotzdem selbst, damit es im Code steht und nicht
+  // nur als Nebenwirkung einer Serverantwort existiert.
+  const js = require('./helpers/sources').ohneKommentare(web('public/js/07-admin.js'));
+  const i = js.indexOf('export async function zeigeOffeneAlarme');
+  assert.match(js.slice(i, js.indexOf('\nexport ', i + 10)), /if \(!marke\) return;/,
+    'Die Webapp meldet beim ersten Besuch');
+  assert.match(KT_ABHOL, /if \(marke\.isNullOrBlank\(\)\) return Ergebnis\.Markiert/,
+    'Die App meldet beim ersten Durchgang');
+});
+
+test('der Abruf der App steht auf einer Stunde und ist abschaltbar', () => {
+  assert.match(KT_WORKER, /PeriodicWorkRequestBuilder<PreisalarmWorker>\(1, TimeUnit\.HOURS\)/,
+    'Das Intervall ist nicht eine Stunde — Marcos ausdrückliche Vorgabe');
+  // Ohne Netz gar nicht erst anlaufen, statt vergeblich das Funkmodem zu
+  // wecken. Das ist der grösste Einzelposten am Akkuverbrauch.
+  assert.match(KT_WORKER, /setRequiredNetworkType\(NetworkType\.CONNECTED\)/,
+    'Der Auftrag läuft auch ohne Netz an');
+  // KEEP, nicht UPDATE: Sonst schöbe jeder App-Start den nächsten Lauf nach
+  // hinten, und bei häufiger Benutzung fände der Abruf nie statt.
+  assert.match(KT_WORKER, /ExistingPeriodicWorkPolicy\.KEEP/,
+    'Ein häufig geöffneter App verschiebt den Abruf endlos');
+  // Der Schalter muss den Auftrag SOFORT einplanen und abbestellen — sonst
+  // wäre „eingeschaltet" eine Stunde lang eine Behauptung ohne Wirkung.
+  assert.match(KT_EINST, /PreisalarmWorker\.einplanen\(context, neu\)/,
+    'Der Schalter plant den Auftrag nicht ein');
+  assert.match(KT_WORKER, /if \(!an\) \{ wm\.cancelUniqueWork\(NAME\); return \}/,
+    'Ausschalten bestellt den Auftrag nicht ab');
+  // Und beim Start wieder einplanen: WorkManager überlebt Neustarts, aber
+  // nicht ein Zurücksetzen der App-Daten oder ein „Force Stop", nach dem
+  // manche Hersteller die Aufträge verwerfen.
+  assert.match(KT_START, /PreisalarmWorker\.einplanen\(this@BrickInventoryApp, true\)/,
+    'Nach einem Zurücksetzen käme nie wieder eine Meldung');
+});
+
+test('beide formulieren die Meldung gleich', () => {
+  // Wer beide benutzt, soll nicht zwei Formulierungen derselben Nachricht
+  // lesen. Die Zahlen stehen mit zwei Nachkommastellen und in der Währung
+  // des ALARMS, nicht der aktuellen Kontowährung: Die Schwelle wurde in
+  // jener Währung gesetzt, und 200 CHF sind nicht 200 EUR.
+  assert.match(KT_ABHOL, /a\.currencyCode/, 'Die App nimmt nicht die Währung des Alarms');
+  assert.match(KT_ABHOL, /"%\.2f"/, 'Die App rundet nicht auf zwei Stellen');
+  const js = web('public/js/07-admin.js');
+  assert.match(js, /a\.currency_code/, 'Die Webapp nimmt nicht die Währung des Alarms');
+  assert.match(js, /toFixed\(2\)/, 'Die Webapp rundet nicht auf zwei Stellen');
+  // Dieselben zwei Richtungstexte wie im Detailfenster, nicht zwei neue.
+  assert.match(js, /tRaw\('detail\.alert_below'\), ueber = tRaw\('detail\.alert_above'\)/,
+    'Die Webapp erfindet eigene Richtungstexte');
+  assert.match(KT_WORKER, /R\.string\.detail_alert_below/,
+    'Die App erfindet eigene Richtungstexte');
+});
+
+test('die Benachrichtigung der App ist gepflegt und erklärt sich', () => {
+  for (const [datei, s] of [['res/values/strings.xml', XML_EN],
+                            ['res/values-de/strings.xml', XML_DE]]) {
+    for (const k of ['alert_channel_name', 'alert_channel_desc',
+                     'alert_notify', 'alert_notify_hint']) {
+      assert.ok(s.includes(`name="${k}"`), `${datei}: ${k} fehlt`);
+    }
+  }
+  // Ab Android 13 ist POST_NOTIFICATIONS eine Laufzeitberechtigung. Ohne sie
+  // wirft notify() nicht — es passiert schlicht nichts.
+  assert.match(lies(path.join(APP, 'AndroidManifest.xml')),
+    /android\.permission\.POST_NOTIFICATIONS/, 'Die Berechtigung fehlt im Manifest');
+  assert.match(KT_WORKER, /checkSelfPermission/,
+    'Der Worker prüft die Berechtigung nicht — die Meldung verschwände lautlos');
 });

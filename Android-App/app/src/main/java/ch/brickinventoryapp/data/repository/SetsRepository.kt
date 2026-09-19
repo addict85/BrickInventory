@@ -96,6 +96,16 @@ class SetsRepository @Inject constructor(
     // Oeffnen des Detailbildschirms) und aendert sich durch den Preislauf auch
     // ohne Zutun der App — der Merker `ausgeloest` springt dort um. Ein
     // Speicher zeigte danach „scharf", waehrend die Mail schon unterwegs ist.
+    /**
+     * Was seit `since` ausgeloest hat.
+     *
+     * Ohne Zwischenspeicher, und zwar besonders deutlich: Diese Antwort ist
+     * genau EINMAL gueltig — beim zweiten Lesen derselben Antwort kaeme
+     * dieselbe Meldung ein zweites Mal.
+     */
+    suspend fun getPendingAlerts(since: String?): Result<PendingAlertsResponse> =
+        safeCall { api.getPendingAlerts(since) }
+
     suspend fun getPreisalarme(setNumber: String): Result<PreisalarmeResponse> =
         safeCall { api.getPreisalarme(setNumber) }
 

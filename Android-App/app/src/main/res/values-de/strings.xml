@@ -145,6 +145,10 @@
     <string name="partslist_fill_owned">Mein Bestand</string>
     <string name="detail_storage">Lagerort</string>
     <string name="detail_alert">Preisalarm</string>
+    <string name="alert_channel_name">Preisalarme</string>
+    <string name="alert_channel_desc">Meldet, wenn ein Set eine deiner Schwellen reisst.</string>
+    <string name="alert_notify">Auf diesem Gerät melden</string>
+    <string name="alert_notify_hint">Fragt stündlich im Hintergrund nach. Ohne ihn kommt nur die E-Mail.</string>
     <string name="detail_alert_below">fällt unter</string>
     <string name="detail_alert_above">steigt über</string>
     <string name="detail_alert_armed">scharf</string>

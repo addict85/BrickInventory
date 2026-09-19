@@ -14,7 +14,7 @@ import { istErsatzteil, ersatzteilSql } from '../../utils/validate';
 import { householdMembers, resolveWriteTarget } from '../../utils/household';
 import { moveSetBetweenAccounts } from '../../utils/setMove';
 import { normalisiereLagerort, setzeLagerort, lagerorte } from '../../utils/lagerort';
-import { alarmeFuer, loescheAlarm, setzeAlarm } from '../../utils/preisalarm';
+import { alarmeFuer, ausgeloesteSeit, loescheAlarm, setzeAlarm } from '../../utils/preisalarm';
 import { istVermutung } from '../../utils/barcodeQuelle';
 import { setnummerKandidaten } from '../../utils/produkttitel';
 import { withInventoryLock } from '../../utils/txLock';
@@ -341,6 +341,24 @@ router.delete('/sets/:setNumber/alert', requireToken, async (req: AuthedRequest,
     const n = await loescheAlarm(req.apiUser.user_id,
       normalizeSetNumber(String(req.params.setNumber)), String(req.query.condition || 'N'));
     res.json({ success: true, removed: n });
+  } catch (e) { handleRouteError(res, e, undefined, req); }
+});
+
+/**
+ * GET /api/v1/alerts/pending?since=<ISO> — was seit dann ausgeloest hat.
+ *
+ * Der Weg, auf dem beide Oberflaechen von einer Meldung erfahren, ohne dass
+ * der Server schieben muss. Die Begruendung — warum kein Firebase, warum `now`
+ * mitkommt, warum ein erster Aufruf ohne `since` nichts liefert — steht an
+ * ausgeloesteSeit() in utils/preisalarm.ts.
+ *
+ * Ohne Kontofilter, wie die uebrigen Alarm-Routen: Ein Alarm gehoert genau
+ * EINEM Konto.
+ */
+router.get('/alerts/pending', requireToken, async (req: AuthedRequest, res) => {
+  try {
+    const r = await ausgeloesteSeit(req.apiUser.user_id, req.query.since);
+    res.json({ success: true, alerts: r.alerts, now: r.now });
   } catch (e) { handleRouteError(res, e, undefined, req); }
 });
 

@@ -162,6 +162,10 @@
     <string name="partslist_fill_owned">My parts</string>
     <string name="detail_storage">Storage</string>
     <string name="detail_alert">Price alert</string>
+    <string name="alert_channel_name">Price alerts</string>
+    <string name="alert_channel_desc">Tells you when a set crosses one of your thresholds.</string>
+    <string name="alert_notify">Notify me on this device</string>
+    <string name="alert_notify_hint">Checks hourly in the background. Without it you only get the e-mail.</string>
     <string name="detail_alert_below">falls below</string>
     <string name="detail_alert_above">rises above</string>
     <string name="detail_alert_armed">armed</string>

@@ -395,6 +395,15 @@ interface BrickApiService {
     //
     // Ohne `accounts=`: Ein Alarm gehoert genau EINEM Konto (siehe Preisalarm).
 
+    /**
+     * Was seit `since` ausgeloest hat. Ohne `since` liefert der Server nichts
+     * und nur den Zeitpunkt — der erste Aufruf setzt die Marke.
+     */
+    @GET("api/v1/alerts/pending")
+    suspend fun getPendingAlerts(
+        @Query("since") since: String? = null,
+    ): Response<PendingAlertsResponse>
+
     @GET("api/v1/sets/{setNumber}/alert")
     suspend fun getPreisalarme(
         @Path("setNumber") setNumber: String,

@@ -195,6 +195,68 @@ test('Preisalarm gegen echte Datenbank', async (t) => {
     assert.equal(await pruefe(SN), 1, 'der zweite Versuch blieb aus');
   });
 
+  await t.test('Abholen: ohne Marke kommt nichts zurück, nur der Zeitpunkt', async () => {
+    // Das ist der erste Start eines Geräts. Käme hier alles Ausgelöste, würde
+    // eine frisch eingerichtete App mit Schwellen aufschlagen, die vor Wochen
+    // gerissen sind.
+    await db.run('DELETE FROM price_alerts', []);
+    await db.run('DELETE FROM price_cache WHERE set_number=$1', [SN]);
+    await A.setzeAlarm(U.ich, SN, 'EUR', { richtung: 'unter', schwelle: 200, condition: 'N' });
+    await setzePreis(100, 'N');
+    assert.equal(await pruefe(SN), 1);
+
+    for (const ohne of [undefined, null, '', '   ', 'kein Datum']) {
+      const r = await A.ausgeloesteSeit(U.ich, ohne);
+      assert.deepEqual(r.alerts, [], `since=${JSON.stringify(ohne)} lieferte Meldungen`);
+      assert.ok(r.now instanceof Date, 'der Zeitpunkt des Servers fehlt');
+    }
+  });
+
+  await t.test('Abholen: die Marke des Servers holt genau einmal ab', async () => {
+    // Der Ablauf eines Geräts: merken, abholen, wieder merken. Die zweite
+    // Abholung mit der zurückgegebenen Marke muss LEER sein — sonst käme
+    // dieselbe Meldung bei jedem stündlichen Lauf erneut.
+    await db.run('DELETE FROM price_alerts', []);
+    await db.run('DELETE FROM price_cache WHERE set_number=$1', [SN]);
+    const vorher = (await A.ausgeloesteSeit(U.ich, null)).now;
+
+    await A.setzeAlarm(U.ich, SN, 'EUR', { richtung: 'unter', schwelle: 200, condition: 'N' });
+    await setzePreis(100, 'N');
+    assert.equal(await pruefe(SN), 1);
+
+    const erste = await A.ausgeloesteSeit(U.ich, vorher);
+    assert.equal(erste.alerts.length, 1, 'die ausgelöste Schwelle fehlt');
+    assert.equal(erste.alerts[0].set_number, SN);
+    assert.equal(erste.alerts[0].richtung, 'unter');
+    // numeric kommt als Zeichenkette aus dem Treiber — käme sie so durch,
+    // stünde in der Meldung "200.00" statt einer Zahl, und die App rechnete
+    // auf einer Zeichenkette.
+    assert.equal(typeof erste.alerts[0].schwelle, 'number');
+    assert.equal(erste.alerts[0].schwelle, 200);
+    assert.equal(typeof erste.alerts[0].zuletzt_preis, 'number');
+    assert.equal(erste.alerts[0].zuletzt_preis, 100);
+
+    const zweite = await A.ausgeloesteSeit(U.ich, erste.now);
+    assert.deepEqual(zweite.alerts, [], 'dieselbe Meldung kam ein zweites Mal');
+  });
+
+  await t.test('Abholen: jedes Konto sieht nur seine eigenen Alarme', async () => {
+    // Die Abfrage steht auf user_id, nicht auf scopeIds() — und das ist
+    // Absicht: Eine Meldung gehört dem, der die Schwelle gesetzt hat. Ein
+    // Hauptkonto bekäme sonst die Meldungen aller Unterkonten, ohne je einen
+    // Alarm gesetzt zu haben.
+    await db.run('DELETE FROM price_alerts', []);
+    await db.run('DELETE FROM price_cache WHERE set_number=$1', [SN]);
+    const vorher = (await A.ausgeloesteSeit(U.ich, null)).now;
+    await A.setzeAlarm(U.ich, SN, 'EUR', { richtung: 'unter', schwelle: 200, condition: 'N' });
+    await setzePreis(100, 'N');
+    assert.equal(await pruefe(SN), 1);
+
+    assert.equal((await A.ausgeloesteSeit(U.ich, vorher)).alerts.length, 1);
+    assert.deepEqual((await A.ausgeloesteSeit(U.ohnemail, vorher)).alerts, [],
+      'ein fremdes Konto sah die Meldung');
+  });
+
   await t.test('Löschen ist ohne Alarm kein Fehler', async () => {
     assert.equal(await A.loescheAlarm(U.ich, SN, 'N'), 1);
     assert.equal(await A.loescheAlarm(U.ich, SN, 'N'), 0, 'der zweite Aufruf darf nicht werfen');

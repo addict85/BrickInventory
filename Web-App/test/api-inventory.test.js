@@ -247,6 +247,8 @@ const C = {
   // keiner der beiden Familien allein.
   // Preisalarm (Nachtrag 176) — beide Oberflaechen. Ohne Kontofilter: Ein
   // Alarm gehoert genau EINEM Konto (siehe utils/preisalarm.ts).
+  // Abholung der ausgeloesten Alarme (Nachtrag 177) — beide Oberflaechen.
+  'GET /api/v1/alerts/pending': 'nur-v1',
   'GET /api/v1/sets/:setNumber/alert': 'nur-v1',
   'PUT /api/v1/sets/:setNumber/alert': 'nur-v1',
   'DELETE /api/v1/sets/:setNumber/alert': 'nur-v1',
