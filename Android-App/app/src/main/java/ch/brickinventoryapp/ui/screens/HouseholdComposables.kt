@@ -18,6 +18,7 @@ import androidx.compose.ui.unit.sp
 import ch.brickinventoryapp.R
 import ch.brickinventoryapp.data.ScopeFilter
 import ch.brickinventoryapp.data.model.HouseholdMember
+import ch.brickinventoryapp.data.model.Lagerort
 import ch.brickinventoryapp.ui.theme.Abstaende
 import ch.brickinventoryapp.ui.theme.Schrift
 
@@ -59,16 +60,93 @@ fun ScopeFilterZeile(
     members: List<HouseholdMember>,
     current: String,
     onSelect: (String) -> Unit,
+    // ── Der Lagerortfilter steht daneben, nicht darunter ────────────────────
+    //
+    // Es sind zwei Fragen an dieselbe Liste („wessen" und „wo"), die sich frei
+    // kombinieren lassen. Nebeneinander sieht man beide Antworten auf einen
+    // Blick; untereinander sucht man die zweite. Genau so steht es in der
+    // Webapp (public/index.html, scope-* und storage-* in derselben Zeile).
+    //
+    // Vorgaben, damit die Bildschirme, die nur den Kontofilter brauchen
+    // (Minifiguren), unveraendert aufrufen koennen.
+    lagerorte: List<Lagerort> = emptyList(),
+    lagerAktuell: String = "",
+    onLagerSelect: (String) -> Unit = {},
 ) {
-    // Erscheint nur bei einem Hauptkonto mit Unterkonten — siehe
-    // ScopeFilterChip darunter; fuer alle anderen ist die Wahl keine.
-    if (members.size <= 1) return
-    ScopeFilterChip(
-        members = members,
-        current = current,
-        onSelect = onSelect,
-        modifier = Modifier.padding(start = 14.dp, top = Abstaende.klein),
-    )
+    // Beide koennen einzeln entfallen: der Kontofilter ohne Unterkonten, der
+    // Lagerortfilter, solange nirgends ein Ort erfasst ist. Sind beide leer,
+    // entsteht keine Zeile — sonst staende dort ein leerer Streifen.
+    val zeigeKonten = members.size > 1
+    val zeigeLager  = lagerorte.isNotEmpty()
+    if (!zeigeKonten && !zeigeLager) return
+    Row(
+        Modifier.padding(start = 14.dp, top = Abstaende.klein),
+        horizontalArrangement = Arrangement.spacedBy(Abstaende.klein),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        if (zeigeKonten) {
+            ScopeFilterChip(members = members, current = current, onSelect = onSelect)
+        }
+        if (zeigeLager) {
+            LagerortFilterChip(orte = lagerorte, current = lagerAktuell, onSelect = onLagerSelect)
+        }
+    }
+}
+
+/**
+ * Lagerortfilter — dieselbe Form wie der Kontofilter daneben.
+ *
+ * Bewusst als eigene Funktion und nicht als zweiter Aufruf von
+ * ScopeFilterChip mit anderen Daten: Die Eintraege sind etwas anderes (Orte
+ * statt Konten), und der erste Eintrag heisst „Alle Lagerorte" statt „Alle
+ * Konten". Eine gemeinsame Funktion haette zwei Sorten Eintraege und zwei
+ * Beschriftungen unterscheiden muessen — mehr Bedingungen als Ersparnis.
+ */
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun LagerortFilterChip(
+    orte: List<Lagerort>,
+    current: String,
+    onSelect: (String) -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    if (orte.isEmpty()) return
+    val alle = stringResource(R.string.filter_storage_all)
+    // Zeigt die gespeicherte Wahl auf einen inzwischen leeren Ort, steht hier
+    // sonst eine leere Beschriftung ueber einer gefilterten Liste — dieselbe
+    // Falle wie beim Kontofilter.
+    val wert = if (orte.any { it.ort == current }) current else ""
+    var open by rememberSaveable { mutableStateOf(false) }
+
+    Box(modifier) {
+        AssistChip(
+            onClick = { open = true },
+            label = {
+                Text(if (wert.isBlank()) alle else wert,
+                    maxLines = 1, overflow = TextOverflow.Ellipsis,
+                    fontSize = 13.sp, fontWeight = FontWeight.Medium)
+            },
+            trailingIcon = {
+                Icon(Icons.Default.ArrowDropDown, alle, Modifier.size(18.dp))
+            },
+            shape = Formen.kachel,
+        )
+        DropdownMenu(expanded = open, onDismissRequest = { open = false }) {
+            DropdownMenuItem(
+                text = { Text(alle, fontWeight = if (wert.isBlank()) FontWeight.Bold else FontWeight.Normal) },
+                onClick = { open = false; if (wert.isNotBlank()) onSelect("") }
+            )
+            orte.forEach { o ->
+                DropdownMenuItem(
+                    text = {
+                        Text("${o.ort}  (${o.sets + o.teile})",
+                            fontWeight = if (o.ort == wert) FontWeight.Bold else FontWeight.Normal)
+                    },
+                    onClick = { open = false; if (o.ort != wert) onSelect(o.ort) }
+                )
+            }
+        }
+    }
 }
 
 @OptIn(ExperimentalMaterial3Api::class)

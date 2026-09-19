@@ -49,6 +49,43 @@ internal fun MainViewModel.setScope(view: ScopeFilter.View, value: String) {
     }
 }
 
+/** Der gewaehlte Lagerort als Anfrageparameter — null, solange nicht gefiltert wird. */
+internal fun MainViewModel.lagerFor(view: ScopeFilter.View): String? =
+    ScopeFilter.lagerAsQuery(_state.value.lagerModi[view.key])
+
+/**
+ * Lagerortfilter setzen und NUR die betroffene Ansicht neu laden.
+ *
+ * Dieselbe Aufteilung wie setScope() darueber, aus demselben Grund — und
+ * dieselbe wie in der Webapp (onStorageChange in public/js/02-gallery.js).
+ */
+internal fun MainViewModel.setLagerFilter(view: ScopeFilter.View, value: String) {
+    viewModelScope.launch {
+        ScopeFilter.setLager(ctx, view, value)
+        _state.update { it.copy(lagerModi = it.lagerModi + (view.key to value)) }
+        when (view) {
+            ScopeFilter.View.GALLERY -> loadSets()
+            ScopeFilter.View.PARTS   -> loadParts()
+            else -> {}
+        }
+    }
+}
+
+/**
+ * Die belegten Lagerorte holen.
+ *
+ * Eine Abfrage fuer beide Ansichten: Die Liste spannt Sets UND Teile (siehe
+ * utils/lagerort.ts). Sie je Reiter zu holen hiesse, dass Galerie und Teile
+ * kurzzeitig zwei Staende zeigen.
+ */
+internal fun MainViewModel.loadLagerorte() {
+    viewModelScope.launch {
+        val r = repo.teile.getLagerorte(scopeFor(ScopeFilter.View.GALLERY))
+        val orte = (r as? Result.Success)?.data?.takeIf { it.success }?.orte ?: return@launch
+        _state.update { it.copy(lagerorte = orte) }
+    }
+}
+
 /** Gespeicherte Filterwerte beim Start einlesen. */
 internal fun MainViewModel.loadScopeModes() {
     viewModelScope.launch {
@@ -59,7 +96,14 @@ internal fun MainViewModel.loadScopeModes() {
                 value
             })
         }
-        _state.update { it.copy(scopeModes = modes) }
+        val lager = ScopeFilter.View.entries.associate { v ->
+            v.key to (ScopeFilter.lagerFlow(ctx, v).let { f ->
+                var value = ""
+                f.collect { value = it; return@collect }
+                value
+            })
+        }
+        _state.update { it.copy(scopeModes = modes, lagerModi = lager) }
     }
 }
 

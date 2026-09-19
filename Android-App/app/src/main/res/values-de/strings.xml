@@ -143,6 +143,9 @@
     <string name="partslist_ok">OK</string>
     <string name="partslist_reset">Zurücksetzen</string>
     <string name="partslist_fill_owned">Mein Bestand</string>
+    <string name="detail_storage">Lagerort</string>
+    <string name="detail_storage_ph">z. B. Kiste 3</string>
+    <string name="filter_storage_all">Alle Lagerorte</string>
     <string name="partslist_only_loose">nur lose Teile</string>
     <string name="partslist_owned_complete">Alles vorhanden — das lässt sich bauen.</string>
     <string name="partslist_owned_missing">Es fehlen %1$d Teile (%2$d verschiedene).</string>

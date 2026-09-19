@@ -13,6 +13,7 @@ import { scopeIds, parseScopeMode, writableIds } from '../../utils/household';
 import { istErsatzteil, ersatzteilSql } from '../../utils/validate';
 import { householdMembers, resolveWriteTarget } from '../../utils/household';
 import { moveSetBetweenAccounts } from '../../utils/setMove';
+import { normalisiereLagerort, setzeLagerort, lagerorte } from '../../utils/lagerort';
 import { istVermutung } from '../../utils/barcodeQuelle';
 import { setnummerKandidaten } from '../../utils/produkttitel';
 import { withInventoryLock } from '../../utils/txLock';
@@ -286,6 +287,39 @@ router.get('/sets/barcode/:barcode', requireToken, async (req: AuthedRequest, re
 // Setnummer raten. Aufgerufen wurde die Funktion nie — die Barcode-Route geht
 // über Katalog, Brickset und Rebrickable. Entfallen.
 
+
+/**
+ * PUT /api/v1/sets/:setNumber/storage — Lagerort setzen.
+ *
+ * Trifft alle Zeilen dieses Sets im Schreibbereich. Im Haushalt heisst das:
+ * Traegt das Hauptkonto einen Ort ein, gilt er auch fuer das Exemplar des
+ * Kindes. Das ist Absicht — wer die Kiste packt, packt sie fuer alle, die
+ * darin nachsehen.
+ */
+router.put('/sets/:setNumber/storage', requireToken, async (req: AuthedRequest, res) => {
+  try {
+    const ort = normalisiereLagerort(req.body?.storage);
+    const n = await setzeLagerort('set', await writableIds(req.apiUser.user_id),
+      [normalizeSetNumber(String(req.params.setNumber))], ort);
+    res.json({ success: true, storage: ort, changed: n });
+  } catch (e) { handleRouteError(res, e, undefined, req); }
+});
+
+/**
+ * GET /api/v1/storage — welche Lagerorte es gibt und was darin liegt.
+ *
+ * Liegt in dieser Datei und nicht in einer eigenen: Die Antwort spannt Sets
+ * UND Teile, gehoert also zu keiner der beiden Familien allein. Sie hier
+ * anzuhaengen ist die kleinere Unsauberkeit, als eine Routendatei fuer einen
+ * einzigen Endpunkt aufzumachen — und utils/lagerort.ts traegt die Regeln
+ * ohnehin.
+ */
+router.get('/storage', requireToken, async (req: AuthedRequest, res) => {
+  try {
+    const ids = await scopeIds(req.apiUser.user_id, parseScopeMode(req.query.accounts));
+    res.json({ success: true, orte: await lagerorte(ids) });
+  } catch (e) { handleRouteError(res, e, undefined, req); }
+});
 
 // GET /api/v1/sets/:setNumber/parts-list — user-independent parts
 router.get('/sets/:setNumber/parts-list', requireToken, async (req: AuthedRequest, res) => {

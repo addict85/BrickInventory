@@ -46,6 +46,8 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.unit.sp
 import coil.ImageLoader
 import coil.compose.AsyncImage
@@ -365,6 +367,41 @@ fun LazyListScope.setDetailDetailsSection(set: SetItem, setNumber: String, vm: M
         SectionCard(title = stringResource(R.string.detail_section_details)) {
             DetailRow2(stringResource(R.string.detail_set_number), setNumber)
             DetailRow2(stringResource(R.string.detail_added), "📅 ${fmtDate(set.addedAt)}")
+            // ── Lagerort ────────────────────────────────────────────────────
+            //
+            // Bearbeitbar, genau wie in der Webapp (public/js/07-admin.js,
+            // openModal): Gespeichert wird beim Verlassen des Feldes — ein
+            // Speichern je Zeichen erzeugte sechs Anfragen fuer „Kiste 3" und
+            // hinterliesse dabei fuenf Zwischenstaende in der Datenbank.
+            //
+            // rememberSaveable auf set.storage als Schluessel: Kommt ein
+            // anderer Wert von aussen (anderes Set, oder der normalisierte
+            // Wert nach dem Speichern), soll das Feld ihn zeigen statt den
+            // alten Text zu behalten.
+            var lagerort by rememberSaveable(set.storage) { mutableStateOf(set.storage ?: "") }
+            var lagerFokus by remember { mutableStateOf(false) }
+            Row(Modifier.fillMaxWidth().padding(vertical = Abstaende.haar),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically) {
+                Text(stringResource(R.string.detail_storage),
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    fontSize = Schrift.normal)
+                OutlinedTextField(
+                    value = lagerort,
+                    onValueChange = { if (it.length <= 60) lagerort = it },
+                    singleLine = true,
+                    placeholder = { Text(stringResource(R.string.detail_storage_ph), fontSize = 13.sp) },
+                    modifier = Modifier
+                        .padding(start = Abstaende.gross)
+                        .widthIn(max = 180.dp)
+                        .onFocusChanged { f ->
+                            // Nur beim VERLIEREN des Fokus speichern — sonst
+                            // loeste schon das erste Zeichnen eine Anfrage aus.
+                            if (f.isFocused) lagerFokus = true
+                            else if (lagerFokus) { lagerFokus = false; vm.setzeSetLagerort(setNumber, lagerort) }
+                        },
+                )
+            }
             HorizontalDivider(
                 Modifier.padding(vertical = Abstaende.winzig),
                 color = MaterialTheme.colorScheme.outlineVariant

@@ -51,7 +51,8 @@ internal fun MainViewModel.loadParts(page: Int = 1, debounce: Boolean = false) {
         when (val r = retryOnNetwork { repo.teile.getParts(search = suche, color = farbe,
                                                      category = kategorie, page = page,
                                                      accounts = scopeFor(ScopeFilter.View.PARTS),
-                                                     spare = ersatzteile, withSets = mitSets) }) {
+                                                     spare = ersatzteile, withSets = mitSets,
+                                                     storage = lagerFor(ScopeFilter.View.PARTS)) }) {
             is Result.Success -> {
                 _partsState.update {
                     it.copy(

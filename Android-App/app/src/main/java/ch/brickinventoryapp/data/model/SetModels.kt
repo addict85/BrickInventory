@@ -50,6 +50,15 @@ data class SetItem(
     @SerialName("purchase_price") val purchasePrice: Double? = null,
     val condition: String? = null, // "N" = New/Neu, "U" = Used/Gebraucht
     /**
+     * Lagerort — wo liegt dieses Set.
+     *
+     * Im Haushalt kann es MEHRERE sein („Kiste 3, Regal B"): Besitzen zwei
+     * Kinder dasselbe Set, liegt es in zwei Kisten, und der Server fasst die
+     * Orte zusammen statt einen davon zu zeigen. Deshalb ein Text und keine
+     * Liste — die Oberflaeche zeigt ihn, sie rechnet nicht damit.
+     */
+    val storage: String? = null,
+    /**
      * ALLE erfassten Zustände — je einer bekommt auf der Kachel eine Plakette.
      *
      * `condition` oben ist ein Aggregat und liefert genau einen Wert

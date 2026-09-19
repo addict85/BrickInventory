@@ -61,10 +61,27 @@ const STILLE_FAENGE = [
   /\.catch\(\(\)\s*=>\s*(null|undefined|0|false)\)/g,
 ];
 
+/**
+ * Treffer zaehlen — im CODE, nicht in den Erklaerungen darueber.
+ *
+ * ── Warum ohneKommentare() (Nachtrag 175) ───────────────────────────────────
+ *
+ * Diese Ratsche schlug an, als jemand in einem Kommentar BEGRUENDETE, warum er
+ * an einer Stelle KEIN `as any` schreibt. Der Zaehler stieg um zwei, obwohl im
+ * Code eines weniger stand.
+ *
+ * Das ist kein Randfall, sondern die Regel, die sich selbst im Weg steht: Eine
+ * Ratsche, die Erklaerungen mitzaehlt, bestraft genau das Verhalten, das sie
+ * erreichen will — sie macht das Aufschreiben der Begruendung teurer als das
+ * stille Hinnehmen. Derselbe Fehler steckte in diesem Baum schon in
+ * design-haftung, noppe-design und csv-prototyp; er faellt jedes Mal erst auf,
+ * wenn jemand die Regel dokumentiert.
+ */
 function zaehle(muster) {
+  const { ohneKommentare } = require('./helpers/sources');
   let n = 0;
   for (const f of quellen()) {
-    const s = fs.readFileSync(f, 'utf8');
+    const s = ohneKommentare(fs.readFileSync(f, 'utf8'));
     for (const m of muster) n += (s.match(m) || []).length;
   }
   return n;
@@ -82,7 +99,9 @@ test('die Suche findet die Quellen ueberhaupt', () => {
 
 test('stille Faenge werden weniger, nie mehr', () => {
   // GEMESSEN am 18.09.2026: 340 Stellen in 97 Dateien.
-  const SCHRANKE = 340;
+  // GEMESSEN am 19.09.2026 nach Nachtrag 175: 325. Die Schranke stand auf
+  // 340, solange der Zaehler auch Kommentare las.
+  const SCHRANKE = 325;
   const ist = zaehle(STILLE_FAENGE);
   assert.ok(ist <= SCHRANKE,
     `${ist} stille Faenge, erlaubt sind ${SCHRANKE}. Ein neuer \`catch {}\` ` +
@@ -95,8 +114,9 @@ test('stille Faenge werden weniger, nie mehr', () => {
 });
 
 test('any wird weniger, nie mehr', () => {
-  // GEMESSEN am 18.09.2026: 402 Stellen.
-  const SCHRANKE = 402;
+  // GEMESSEN am 19.09.2026 nach Nachtrag 175: 398 Stellen. Es waren 402,
+  // solange der Zaehler auch Kommentare las.
+  const SCHRANKE = 398;
   const ist = zaehle([/\bas any\b/g, /:\s*any\b/g]);
   assert.ok(ist <= SCHRANKE,
     `${ist}-mal \`any\`, erlaubt sind ${SCHRANKE}. Jedes davon schaltet den ` +

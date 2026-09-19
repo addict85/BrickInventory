@@ -160,6 +160,9 @@
     <string name="partslist_ok">OK</string>
     <string name="partslist_reset">Reset</string>
     <string name="partslist_fill_owned">My parts</string>
+    <string name="detail_storage">Storage</string>
+    <string name="detail_storage_ph">e.g. box 3</string>
+    <string name="filter_storage_all">All locations</string>
     <string name="partslist_only_loose">loose parts only</string>
     <string name="partslist_owned_complete">All parts present — this can be built.</string>
     <string name="partslist_owned_missing">%1$d parts missing (%2$d distinct).</string>

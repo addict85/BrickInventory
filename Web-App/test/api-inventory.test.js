@@ -242,6 +242,12 @@ const C = {
   // „Kann ich das bauen?“ (Nachtrag 174) — beide Oberflaechen rufen ihn,
   // eine Zweitfassung unter /api gab es nie.
   'POST /api/v1/parts/owned': 'nur-v1',
+  // Lagerort (Nachtrag 175) — beide Oberflaechen, nie eine Zweitfassung
+  // unter /api. GET /storage spannt Sets UND Teile und gehoert deshalb zu
+  // keiner der beiden Familien allein.
+  'GET /api/v1/storage': 'nur-v1',
+  'PUT /api/v1/parts/:partNumber/:colorId/storage': 'nur-v1',
+  'PUT /api/v1/sets/:setNumber/storage': 'nur-v1',
   'POST /api/v1/parts/import/csv': 'nur-v1',
   'POST /api/v1/sets/:setNumber/instructions/upload': 'nur-v1',
   'POST /api/v1/sets/add-stream': 'nur-v1',

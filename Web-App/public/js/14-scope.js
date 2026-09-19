@@ -51,6 +51,9 @@ export function setScopeMode(view, mode) {
  */
 export function resetScopeModes() {
   for (const view of SCOPE_VIEWS) localStorage.removeItem('bim_scope_' + view);
+  // Der Lagerortfilter hängt an derselben Begründung und wird deshalb hier
+  // mit zurückgesetzt — nicht in einem zweiten Aufruf, den jemand vergisst.
+  resetLagerModi();
 }
 
 /** `accounts=` an eine URLSearchParams hängen — nur wenn nötig. */
@@ -66,4 +69,53 @@ export function addScopeParam(p, view) {
 export function scopeQuery(view) {
   const m = scopeMode(view);
   return (m && m !== 'all') ? `?accounts=${m}` : '';
+}
+// ═══ Lagerortfilter — je Ansicht, genau wie der Kontofilter ═══════════════════
+//
+// ── Warum in DIESER Datei ───────────────────────────────────────────────────
+//
+// Der Lagerortfilter ist derselbe Gegenstand wie der Kontofilter: eine Wahl je
+// Ansicht, die als Anfrageparameter mitreist und am Server in die Abfrage
+// eingeht. Er teilt sogar die Begründungen — gefiltert wird am Server, weil
+// sich die Gesamtzahl darunter clientseitig nicht aussieben lässt, und die
+// Wahl wird beim Anmelden zurückgesetzt, weil sie sonst wie eine verschwundene
+// Sammlung aussieht.
+//
+// Zwei Dateien für dieselbe Sache hätten zwei Fassungen dieser Regeln
+// bedeutet, und eine davon wäre irgendwann die ältere.
+
+/** Ansichten mit einem Lagerortfilter. Sets und Teile — nur die haben einen. */
+export const LAGER_VIEWS = ['gallery', 'parts'];
+
+export function lagerModus(view) {
+  return localStorage.getItem('bim_lager_' + view) || '';
+}
+
+export function setLagerModus(view, wert) {
+  if (wert) localStorage.setItem('bim_lager_' + view, wert);
+  else      localStorage.removeItem('bim_lager_' + view);
+}
+
+/** Beim Anmelden zurücksetzen — dieselbe Begründung wie bei resetScopeModes(). */
+export function resetLagerModi() {
+  for (const view of LAGER_VIEWS) localStorage.removeItem('bim_lager_' + view);
+}
+
+/**
+ * `storage=` anhängen — nur wenn gefiltert wird.
+ *
+ * Kein Sonderwert für „ohne Lagerort": Wer danach sucht, sucht in Wahrheit
+ * „was muss ich noch einräumen", und das ist eine andere Frage als „wo liegt
+ * X". Sie bekäme eine eigene Antwort, keinen Eintrag in diesem Filter.
+ */
+export function addLagerParam(p, view) {
+  const m = lagerModus(view);
+  if (m) p.set('storage', m);
+  return p;
+}
+
+/** Fertiges Suffix für Aufrufe ohne URLSearchParams. */
+export function lagerQuery(view, trenner = '&') {
+  const m = lagerModus(view);
+  return m ? `${trenner}storage=${encodeURIComponent(m)}` : '';
 }

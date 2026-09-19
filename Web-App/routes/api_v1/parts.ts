@@ -11,6 +11,8 @@ import { getPartPriceHistory } from '../../utils/priceHistory';
 import { einzelwert } from '../../utils/validate';
 import { verwendendeSets, loescheManuellesTeil } from '../../utils/handlers/shared';
 import { sendeFehler } from '../../utils/fehlerTexte';
+import { normalisiereLagerort, setzeLagerort } from '../../utils/lagerort';
+import { writableIds } from '../../utils/household';
 const router = express.Router();
 
 // ── PARTS ─────────────────────────────────────────────────────────────────────
@@ -120,6 +122,23 @@ router.post('/parts/owned', requireToken, async (req: AuthedRequest, res) => {
     const teile = Array.isArray(req.body?.teile) ? req.body.teile : [];
     const ids = await scopeIds(req.apiUser.user_id, parseScopeMode(req.query.accounts));
     res.json({ success: true, bestand: await getOwnedQuantities(ids, teile) });
+  } catch (e) { handleRouteError(res, e, undefined, req); }
+});
+
+/**
+ * PUT /api/v1/parts/:partNumber/:colorId/storage — Lagerort setzen.
+ *
+ * Trifft ALLE Zeilen des Teil-Farb-Paares im Schreibbereich: Dasselbe Teil
+ * steckt in mehreren Sets und damit in mehreren Zeilen. Wer in der Ansicht
+ * „Kiste 3" eintraegt, meint das Teil, nicht eine seiner Zeilen — und haette
+ * sonst je Set einen eigenen Ort zu pflegen.
+ */
+router.put('/parts/:partNumber/:colorId/storage', requireToken, async (req: AuthedRequest, res) => {
+  try {
+    const ort = normalisiereLagerort(req.body?.storage);
+    const n = await setzeLagerort('part', await writableIds(req.apiUser.user_id),
+      [String(req.params.partNumber), String(parseInt(String(req.params.colorId)) || 0)], ort);
+    res.json({ success: true, storage: ort, changed: n });
   } catch (e) { handleRouteError(res, e, undefined, req); }
 });
 

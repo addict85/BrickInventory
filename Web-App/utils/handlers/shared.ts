@@ -301,6 +301,16 @@ export interface BestandteilKopf {
   image_local: string | null;
   image_url: string | null;
   is_spare: boolean;
+  /**
+   * Lagerort — verdichtet über alle Zeilen dieses Teils.
+   *
+   * `string_agg` statt eines stellvertretenden Werts: Dasselbe Teil steckt in
+   * mehreren Sets und kann in mehreren Kisten liegen. Ein einzelner Wert
+   * zeigte eine davon und verschwiege die andere, so dass es wie eine
+   * vollständige Antwort aussieht. Figuren führen hier NULL — sie stecken in
+   * ihrem Set, und dessen Ort steht im Set-Detail.
+   */
+  storage: string | null;
   /** Summe über ALLE Sets im Blickfeld. */
   total_quantity: number;
 }
@@ -326,12 +336,13 @@ const KOPFFELDER = {
           MAX(x.color_id) AS color_id, MAX(x.color_name) AS color_name,
           MAX(x.color_hex) AS color_hex, MAX(x.category_name) AS category_name,
           MAX(x.image_local) AS teil_image_local, MAX(x.image_url) AS teil_image_url,
-          MAX(x.is_spare) AS is_spare`,
+          MAX(x.is_spare) AS is_spare,
+          NULLIF(STRING_AGG(DISTINCT x.storage, ', '), '') AS storage`,
   minifigs: `x.fig_number AS nummer, MAX(x.fig_name) AS name,
           NULL::int AS color_id, NULL::text AS color_name,
           NULL::text AS color_hex, NULL::text AS category_name,
           MAX(x.image_local) AS teil_image_local, MAX(x.image_url) AS teil_image_url,
-          0 AS is_spare`,
+          0 AS is_spare, NULL::text AS storage`,
 } as const;
 
 const SCHLUESSELSPALTE = { parts: 'x.part_number', minifigs: 'x.fig_number' } as const;
@@ -399,6 +410,7 @@ async function verwendendeSets(
     // Aggregate als ZEICHENKETTE, und "0" ist in JavaScript WAHR. Deshalb
     // ausdrücklich über istErsatzteil() — dieselbe Lesart wie überall sonst.
     is_spare:       istErsatzteil(erste.is_spare),
+    storage:        erste.storage ?? null,
     total_quantity: sets.reduce((n, s) => n + s.quantity, 0),
   } : null;
 

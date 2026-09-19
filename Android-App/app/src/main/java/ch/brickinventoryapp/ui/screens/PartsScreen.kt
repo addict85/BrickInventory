@@ -102,6 +102,9 @@ fun PartsScreen(
     val onSearch: (String) -> Unit = vm::setPartsQuery
     val onLoadMore: (Int) -> Unit = { vm.loadParts(page = it) }
     val onScopeChange: (String) -> Unit = { vm.setScope(ch.brickinventoryapp.data.ScopeFilter.View.PARTS, it) }
+    val lagerorte = state.lagerorte
+    val lagerModus = state.lagerModi[ch.brickinventoryapp.data.ScopeFilter.View.PARTS.key] ?: ""
+    val onLagerChange: (String) -> Unit = { vm.setLagerFilter(ch.brickinventoryapp.data.ScopeFilter.View.PARTS, it) }
     val ansicht = partsState.partsView
     // Besitzer der Karte mitgeben — Begruendung wie in MinifigsScreen.
     val onDeletePart: (String, Int, Int?) -> Unit = { partNumber, colorId, owner ->
@@ -131,7 +134,8 @@ fun PartsScreen(
 
     Box(Modifier.fillMaxSize()) {
     Column(Modifier.fillMaxSize()) {
-        ScopeFilterZeile(householdMembers, scopeMode, onScopeChange)
+        ScopeFilterZeile(householdMembers, scopeMode, onScopeChange,
+            lagerorte = lagerorte, lagerAktuell = lagerModus, onLagerSelect = onLagerChange)
         // Stats chips
         if (stats != null) {
             Surface(color = MaterialTheme.colorScheme.surface, tonalElevation = 2.dp) {

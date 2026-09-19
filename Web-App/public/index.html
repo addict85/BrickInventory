@@ -306,6 +306,10 @@
             <option value="qty_asc" data-i18n="gallery.sort.qty_asc">Anzahl ↑</option>
           </select>
           <select id="scope-gallery" class="scope-select" aria-label="Konten" data-i18n="household.scope_label" data-i18n-attr="aria-label" data-change="onScopeChange" data-arg="gallery" style="display:none"></select>
+          <!-- Lagerort: dieselbe Form wie der Kontofilter daneben. Bleibt
+               verborgen, solange nirgends ein Ort erfasst ist — ein Feld
+               mit genau einem Eintrag („Alle“) ist nur Rauschen. -->
+          <select id="storage-gallery" class="scope-select" aria-label="Lagerort" data-i18n="detail.storage" data-i18n-attr="aria-label" data-change="onStorageChange" data-arg="gallery" style="display:none"></select>
           <div class="vtgl">
             <button class="vb active" id="vg" aria-label="Karten" data-i18n="parts.view.grid" data-i18n-attr="aria-label">⊞</button>
             <button class="vb" id="vl" aria-label="Tabelle" data-i18n="parts.view.table" data-i18n-attr="aria-label">☰</button>
@@ -422,6 +426,10 @@
             <option value="1" data-i18n="parts.filter.spare">Nur Ersatzteile</option>
           </select>
           <select id="scope-parts" class="scope-select" aria-label="Konten" data-i18n="household.scope_label" data-i18n-attr="aria-label" data-change="onScopeChange" data-arg="parts" style="display:none"></select>
+          <!-- Lagerort: dieselbe Form wie der Kontofilter daneben. Bleibt
+               verborgen, solange nirgends ein Ort erfasst ist — ein Feld
+               mit genau einem Eintrag („Alle“) ist nur Rauschen. -->
+          <select id="storage-parts" class="scope-select" aria-label="Lagerort" data-i18n="detail.storage" data-i18n-attr="aria-label" data-change="onStorageChange" data-arg="parts" style="display:none"></select>
           <select id="parts-view" aria-label="Ansicht" data-i18n="parts.view_label" data-i18n-attr="aria-label" style="width:auto">
             <option value="grid" data-i18n="parts.view.grid">Karten</option>
             <option value="table" data-i18n="parts.view.table">Tabelle</option>
@@ -1173,6 +1181,11 @@
 <script src="/js/app.bundle.js?v=2026.09.17.1000"></script>
 <!-- app.js ist in Sektions-Dateien aufgeteilt (public/js/) — Ladereihenfolge
      ist relevant, die Dateien teilen sich den globalen Scope. -->
+<!-- Bekannte Lagerorte — EINE Liste für alle Eingabefelder (Set-Detail,
+     Teil-Detail, Filter). Der Ortsname ist frei; der Vorschlag verhindert,
+     dass „Kiste 3“ und „kiste 3“ nebeneinander entstehen. -->
+<datalist id="lagerorte"></datalist>
+
 <!-- Der eigene Scrollbalken (#app-scrollbar) wird von js/01-core.js ERZEUGT,
      nicht hier ausgezeichnet. Grund: app.bundle.js ist ein klassisches Skript
      und läuft, sobald es geparst ist — also VOR allem, was danach im Markup

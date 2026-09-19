@@ -58,7 +58,13 @@ object ScopeFilter {
      */
     suspend fun resetAll(context: Context) {
         context.dataStore.edit { prefs ->
-            for (view in View.values()) prefs.remove(prefKey(view))
+            for (view in View.values()) {
+                prefs.remove(prefKey(view))
+                // Der Lagerortfilter haengt an derselben Begruendung und wird
+                // deshalb hier mit zurueckgesetzt — nicht in einem zweiten
+                // Aufruf, den jemand vergisst.
+                prefs.remove(lagerKey(view))
+            }
         }
     }
 
@@ -110,6 +116,47 @@ object ScopeFilter {
             }
         }
     }
+
+    // ═══════════════════════════════════════════════════════════════════════
+    // Lagerortfilter — je Ansicht, genau wie der Kontofilter
+    // ═══════════════════════════════════════════════════════════════════════
+    //
+    // ── Warum in DIESER Datei ───────────────────────────────────────────────
+    //
+    // Der Lagerortfilter ist derselbe Gegenstand wie der Kontofilter: eine Wahl
+    // je Ansicht, die als Anfrageparameter mitreist und am Server in die
+    // Abfrage eingeht. Er teilt sogar die Begruendungen — gefiltert wird am
+    // Server, weil sich die Gesamtzahl darunter nicht am Geraet aussieben
+    // laesst, und die Wahl wird beim Anmelden zurueckgesetzt, weil sie sonst
+    // wie eine verschwundene Sammlung aussieht.
+    //
+    // Genau dieselbe Entscheidung wie in der Webapp (public/js/14-scope.js):
+    // Zwei Dateien fuer dieselbe Sache waeren zwei Fassungen dieser Regeln, und
+    // eine davon waere irgendwann die aeltere.
+
+    /** Ansichten mit einem Lagerortfilter. Nur Sets und Teile haben einen. */
+    private fun lagerKey(view: View) = stringPreferencesKey("lager_${view.key}")
+
+    /** Leerer Text = nicht gefiltert. */
+    fun lagerFlow(context: Context, view: View): Flow<String> =
+        context.dataStore.data.map { it[lagerKey(view)] ?: "" }
+
+    suspend fun setLager(context: Context, view: View, value: String) {
+        context.dataStore.edit {
+            if (value.isBlank()) it.remove(lagerKey(view)) else it[lagerKey(view)] = value
+        }
+    }
+
+    /**
+     * Wert fuer die Anfrage — `null`, solange nicht gefiltert wird.
+     *
+     * Kein Sonderwert fuer „ohne Lagerort": Wer danach sucht, sucht in Wahrheit
+     * „was muss ich noch einraeumen", und das ist eine andere Frage als „wo
+     * liegt X". Sie bekaeme eine eigene Antwort, keinen Eintrag in diesem
+     * Filter. (Dieselbe Festlegung wie in der Webapp.)
+     */
+    fun lagerAsQuery(value: String?): String? =
+        if (value.isNullOrBlank()) null else value
 
     /**
      * Zeigt eine gespeicherte Wahl auf ein Konto, das es nicht mehr gibt

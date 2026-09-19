@@ -134,6 +134,14 @@ export const FEHLER = {
   waehrung_ungleich:           {
     de: 'Beide Konten müssen dieselbe Währung verwenden (Hauptkonto: {haupt}, dieses Konto: {unter}).',
     en: 'Both accounts must use the same currency (main account: {haupt}, this account: {unter}).' },
+  // Die 60 steht hier AUSGESCHRIEBEN, weil fehlerWerfen() keine Platzhalter
+  // füllt. Sie ist damit die zweite Stelle neben LAGERORT_MAX_ZEICHEN in
+  // utils/lagerort.ts — test/lagerort.test.js hält beide zusammen, damit aus
+  // „unvermeidbar“ nicht „auseinandergelaufen“ wird (dasselbe Vorgehen wie
+  // bei PASSWORT_MIN_ZEICHEN).
+  lagerort_zu_lang:            {
+    de: 'Der Lagerort ist zu lang (höchstens 60 Zeichen).',
+    en: 'Storage location is too long (at most 60 characters).' },
   quelle_ziel_identisch:       { de: 'Quell- und Zielkonto sind identisch.',
                                  en: 'Source and target account are the same.' },
   kaufpreise_angeben:          { de: 'Bitte die zu verschiebenden Kaufpreise angeben (acquisition_ids).',

@@ -59,10 +59,27 @@ test('die Live-Abfrage bleibt als Rückfallebene erhalten', () => {
   assert.match(src, /return false;/, 'ensureFresh muss Misserfolg melden können');
 });
 
-test('der set_number-Filter geht bewusst an der Zusammenfassung vorbei', () => {
+test('set_number und storage gehen bewusst an der Zusammenfassung vorbei', () => {
+  // Zwei Filter, ein Grund: Die Zusammenfassung ist nach Teil und Farbe
+  // verdichtet und kann nach nichts filtern, was INNERHALB einer Gruppe
+  // verschieden ist.
+  //
+  //   set_number  — die Teile EINES Sets sind ein anderer Anwendungsfall
+  //   storage     — der Lagerort steht dort nur verdichtet („Kiste 3, Regal B"
+  //                 für ein Teil aus zwei Sets); ein Vergleich darauf träfe die
+  //                 Gruppe falsch
+  //
+  // In beiden Fällen macht der Filter die Menge klein, die Live-Abfrage ist
+  // also passend UND schnell genug.
+  //
+  // Geprüft wird auf beide Namen einzeln statt auf die ganze Zeile: Kommt ein
+  // dritter Filter dazu, soll dieser Test nicht an der Reihenfolge scheitern.
   const h = require('./helpers/sources').handlerQuelle();
-  assert.match(h, /if \(excludesManual && !set_number\)/,
+  const zeile = /if \(excludesManual && ([^)]*)\)/.exec(h)?.[1] || '';
+  assert.ok(zeile.includes('!set_number'),
     'Die Teile EINES Sets sind ein anderer Anwendungsfall — dort ist die Live-Abfrage passend und schnell genug');
+  assert.ok(zeile.includes('!query.storage'),
+    'Der Lagerort steht in der Zusammenfassung nur verdichtet — ein Filter darauf träfe die Gruppe falsch');
 });
 
 // ── Integrationstest (nur mit DB) ──────────────────────────────────────────

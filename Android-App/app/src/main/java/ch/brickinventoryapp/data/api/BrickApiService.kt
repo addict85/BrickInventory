@@ -186,7 +186,9 @@ interface BrickApiService {
         @Query("theme") theme: String? = null,
         @Query("sort") sort: String? = null,
         @Query("page") page: Int? = null,
-        @Query("page_size") pageSize: Int? = null
+        @Query("page_size") pageSize: Int? = null,
+        /** Lagerort — eigener Parameter, nicht Teil der Suche (siehe Server). */
+        @Query("storage") storage: String? = null
     ): Response<SetsResponse>
 
     @GET("api/v1/sets/{setNumber}")
@@ -329,7 +331,9 @@ interface BrickApiService {
         // "1" holt zusaetzlich, in welchen Sets das Teil steckt. Kostet den
         // Server eine eigene Abfrage — deshalb nur in der Tabellenansicht,
         // genau wie in der Webapp (parts-view === 'table').
-        @Query("with_sets") withSets: String? = null
+        @Query("with_sets") withSets: String? = null,
+        /** Lagerort — eigener Parameter, nicht Teil der Suche (siehe Server). */
+        @Query("storage") storage: String? = null
     ): Response<PartsResponse>
 
     @GET("api/v1/parts/stats")
@@ -387,6 +391,31 @@ interface BrickApiService {
      *
      * Siehe die Begruendung fuer POST an BestandRequest (TeileMinifigModels.kt).
      */
+    // ── Lagerort ────────────────────────────────────────────────────────────
+    //
+    // Setzen trifft ALLE Zeilen des Teil-Farb-Paares bzw. des Sets im
+    // Schreibbereich: Dasselbe Teil steckt in mehreren Sets, und wer „Kiste 3"
+    // eintraegt, meint das Teil, nicht eine seiner Zeilen.
+
+    @PUT("api/v1/parts/{partNumber}/{colorId}/storage")
+    suspend fun setPartStorage(
+        @Path("partNumber") partNumber: String,
+        @Path("colorId") colorId: Int,
+        @Body request: LagerortRequest,
+    ): Response<LagerortResponse>
+
+    @PUT("api/v1/sets/{setNumber}/storage")
+    suspend fun setSetStorage(
+        @Path("setNumber") setNumber: String,
+        @Body request: LagerortRequest,
+    ): Response<LagerortResponse>
+
+    /** Welche Lagerorte es gibt und was darin liegt — Sets UND Teile. */
+    @GET("api/v1/storage")
+    suspend fun getLagerorte(
+        @Query("accounts") accounts: String? = null,
+    ): Response<LagerorteResponse>
+
     @POST("api/v1/parts/owned")
     suspend fun getOwnedParts(
         @Body request: BestandRequest,

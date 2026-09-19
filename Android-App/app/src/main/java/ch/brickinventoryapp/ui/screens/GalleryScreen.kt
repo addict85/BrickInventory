@@ -105,6 +105,9 @@ fun GalleryScreen(
     val onLoadMore: () -> Unit = vm::loadMoreSets
     val onDeleteSet: (String) -> Unit = vm::deleteSet
     val onScopeChange: (String) -> Unit = { vm.setScope(ch.brickinventoryapp.data.ScopeFilter.View.GALLERY, it) }
+    val lagerorte = state.lagerorte
+    val lagerModus = state.lagerModi[ch.brickinventoryapp.data.ScopeFilter.View.GALLERY.key] ?: ""
+    val onLagerChange: (String) -> Unit = { vm.setLagerFilter(ch.brickinventoryapp.data.ScopeFilter.View.GALLERY, it) }
     val onRefresh: () -> Unit = { vm.loadSets(); vm.loadStats() }
     val onAddSet: (String, Int, Double?, String?, Int?) -> Unit =
         { sn, qty, price, cond, owner -> vm.addSet(sn, qty, price, cond, owner) }
@@ -183,7 +186,8 @@ fun GalleryScreen(
                 }
             }
 
-            ScopeFilterZeile(householdMembers, scopeMode, onScopeChange)
+            ScopeFilterZeile(householdMembers, scopeMode, onScopeChange,
+            lagerorte = lagerorte, lagerAktuell = lagerModus, onLagerSelect = onLagerChange)
 
             // Suchfeld — gemeinsamer Baustein (Nachtrag 132).
             Suchfeld(

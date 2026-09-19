@@ -35,22 +35,30 @@ class TeileRepository @Inject constructor(
                          /** "0" ohne, "1" nur Ersatzteile, null alle — wie parts-spare in der Webapp. */
                          spare: String? = null,
                          /** "1" nur in der Tabellenansicht — siehe BrickApiService.getParts. */
-                         withSets: String? = null): Result<PartsResponse> =
+                         withSets: String? = null,
+                         /** Lagerort — eigener Parameter, nicht Teil der Suche. */
+                         storage: String? = null): Result<PartsResponse> =
         // Manuell erfasste Teile haben ihren eigenen Bereich — die Set-Teileliste
         // schließt sie aus (wie in der Webapp).
         // Nur die ungefilterte erste Seite wird gecacht — sie ist das, was nach
         // einem Neustart gebraucht wird. Für Suchergebnisse wäre ein Cache
         // wertlos und würde nur Platz belegen.
         // Auch hier: gecacht wird nur die ungefilterte Sicht (siehe getSets).
+        // `storage` gehoert in diese Bedingung: Ohne das landete eine nach
+        // Lagerort gefilterte Antwort unter demselben Schluessel wie die volle
+        // Liste — und der Reiter zeigte danach je nach Cache-Zustand mal
+        // alles, mal eine Kiste. Dieselbe Falle wie in getSets().
         if (search.isNullOrBlank() && color == null && category == null && page == 1 &&
-            accounts == null && spare.isNullOrBlank() && withSets.isNullOrBlank())
+            accounts == null && spare.isNullOrBlank() && withSets.isNullOrBlank() &&
+            storage.isNullOrBlank())
             cached("parts", PartsResponse.serializer()) {
                 safeCall { api.getParts(null, null, null, 1, pageSize = 500, excludeManual = "1") }
             }
         else safeCall { api.getParts(search, color, category, page, pageSize = 500,
                                      excludeManual = "1", accounts = accounts,
                                      spare = spare?.ifBlank { null },
-                                     withSets = withSets?.ifBlank { null }) }
+                                     withSets = withSets?.ifBlank { null },
+                                     storage = storage?.ifBlank { null }) }
 
     suspend fun getPartsStats(accounts: String? = null): Result<PartsStatsResponse> =
         safeCall { api.getPartsStats(accounts) }
@@ -90,6 +98,21 @@ class TeileRepository @Inject constructor(
     suspend fun getOwnedParts(teile: List<BestandTeil>,
                               accounts: String? = null): Result<BestandResponse> =
         safeCall { api.getOwnedParts(BestandRequest(teile), accounts) }
+
+    /** Lagerort eines Teils setzen. Leerer Text loescht ihn. */
+    suspend fun setPartStorage(partNumber: String, colorId: Int, ort: String):
+        Result<LagerortResponse> =
+        safeCall { api.setPartStorage(partNumber, colorId, LagerortRequest(ort)) }
+
+    /**
+     * Welche Lagerorte es gibt.
+     *
+     * BEWUSST ohne Zwischenspeicher: Die Liste aendert sich bei jedem
+     * Eintragen, und sie ist klein. Ein Speicher haette hier genau einen
+     * Effekt — dass der gerade angelegte Ort im Vorschlag fehlt.
+     */
+    suspend fun getLagerorte(accounts: String? = null): Result<LagerorteResponse> =
+        safeCall { api.getLagerorte(accounts) }
 
     // ── In welchen Sets steckt dieses Teil / diese Figur? ────────────────────
     //

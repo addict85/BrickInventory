@@ -278,6 +278,17 @@ data class AppUiState(
      */
     val scopeModes: Map<String, String> = emptyMap(),
     /**
+     * Gewaehlter Lagerort JE ANSICHT — leer heisst „nicht gefiltert".
+     *
+     * Getrennt von scopeModes, obwohl beide dieselbe Form haben: Es sind
+     * zwei Fragen („wessen" und „wo"), die sich frei kombinieren lassen.
+     * In eine Karte gepresst waere jede Kombination ein eigener
+     * Schluessel.
+     */
+    val lagerModi: Map<String, String> = emptyMap(),
+    /** Die belegten Lagerorte im Blickfeld — speist die Auswahl. */
+    val lagerorte: List<ch.brickinventoryapp.data.model.Lagerort> = emptyList(),
+    /**
      * Konten des Haushalts, eigenes zuerst. Mehr als einer heisst: Hauptkonto
      * mit Unterkonten — erst dann erscheinen Kontofilter, Kontoauswahl beim
      * Erfassen und der Verschieben-Weg.

@@ -133,6 +133,13 @@ function teileFilter(uids: number[], query: any) {
     where += ` AND (LOWER(p.part_number) LIKE $${pi} OR LOWER(p.part_name) LIKE $${pi})`;
     params.push(`%${search.toLowerCase()}%`); pi++;
   }
+  // Lagerort als eigener Filter, nicht als Teil der Volltextsuche: „Kiste 3"
+  // soll genau die Teile in Kiste 3 zeigen und nicht zusaetzlich jedes Teil,
+  // dessen Name zufaellig „Kiste" enthaelt.
+  if (query.storage) {
+    where += ` AND p.storage = $${pi++}`;
+    params.push(String(query.storage));
+  }
 
 
   return { where, params, pi };
@@ -303,10 +310,11 @@ async function tryPartsSummary(userId: Blickfeld, o: any) {
        MIN(part_name) AS part_name, MIN(color_name) AS color_name, MIN(color_hex) AS color_hex,
        MIN(category_name) AS category_name, MIN(image_url) AS image_url,
        MIN(image_local) AS image_local, MAX(COALESCE(is_spare,0)) AS is_spare,
-       SUM(total_quantity)::int AS total_quantity` +
+       SUM(total_quantity)::int AS total_quantity,
+       NULLIF(STRING_AGG(DISTINCT storage, ', '), '') AS storage` +
       (o.withSets ? ", STRING_AGG(DISTINCT in_sets, ',') AS in_sets" : '')
     : `part_number, bl_part_number, color_id, part_name, color_name, color_hex,
-       category_name, image_url, image_local, is_spare, total_quantity::int` +
+       category_name, image_url, image_local, is_spare, total_quantity::int, storage` +
       (o.withSets ? ', in_sets' : '');
   const groupSql = multi ? ' GROUP BY part_key, color_id' : '';
   const orderSql = multi ? 'MIN(color_name) ASC, MIN(part_name) ASC' : 'color_name ASC, part_name ASC';
@@ -390,7 +398,13 @@ async function getParts(userId: Blickfeld, query: any = {}) {
   // es um die Teile EINES Sets, nicht um die Sammlung — dafür ist die
   // Live-Abfrage sowohl passend als auch schnell genug.
   const excludesManual = query.exclude_manual === '1' || query.exclude_manual === true;
-  if (excludesManual && !set_number) {
+  // `storage` ist wie `set_number` ausgenommen: Die Zusammenfassung kennt den
+  // Lagerort nur VERDICHTET („Kiste 3, Regal B" fuer ein Teil aus zwei Sets)
+  // und koennte danach nicht filtern, ohne die Gruppe falsch zu treffen. Wer
+  // nach einem Ort filtert, will die Zeilen dieses Ortes — dafuer ist die
+  // Live-Abfrage sowohl passend als auch schnell genug, denn der Filter macht
+  // die Menge klein.
+  if (excludesManual && !set_number && !query.storage) {
     const summary = await tryPartsSummary(uids, { color, category, search, spare, page, page_size, withSets });
     if (summary) return summary;
   }
@@ -440,6 +454,15 @@ async function getParts(userId: Blickfeld, query: any = {}) {
       MIN(p.image_local)  AS image_local,
       MAX(p.is_spare)     AS is_spare,
       MAX(p.condition)    AS stored_condition,
+      -- Lagerort: string_agg statt MIN, und das ist kein Zierrat. Diese
+      -- Abfrage fasst je Teil-Farb-Paar MEHRERE Zeilen zusammen (dasselbe
+      -- Teil aus verschiedenen Sets, im Haushalt zusaetzlich aus verschiedenen
+      -- Konten). Die anderen Aggregate greifen dabei einen stellvertretenden
+      -- Wert, weil Name und Bild fuer alle gleich sind. Der Lagerort ist das
+      -- nicht: Dasselbe Teil liegt in zwei Kisten, und MIN() haette eine davon
+      -- gezeigt und die andere verschwiegen — so, dass es wie eine
+      -- vollstaendige Antwort aussieht.
+      NULLIF(STRING_AGG(DISTINCT p.storage, ', '), '') AS storage,
       -- Sum quantities across all RB part numbers that map to the same BL ID
       ${qtyExpr}          AS total_quantity${withSets ? `,
       STRING_AGG(DISTINCT p.set_number, ',') AS in_sets` : ''}

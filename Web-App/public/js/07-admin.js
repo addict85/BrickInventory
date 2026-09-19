@@ -3,6 +3,7 @@ import { detailZeile, oderStrich, textOderStrich } from './01-bausteine.js';
 import { renderAcquisitionSummary } from './13-acquisition-modals.js';
 import { locale, t, tRaw} from '../i18n.js';
 import { CURRENCY, G, ME, _settingsCache, api, esc, escJs, fmtN, fullUrl, imgUrl, toast , set_settingsCache} from './01-core.js';
+import { initStorageSelects } from './02-gallery.js';
 import { PARTS_ICON_SVG, _pnlCache, allSets, setAllSets, applySetAggregate, autosaveSet, closeModal, curSet, loadGallery, pnlBadge, reimportParts, renderInstructions, updateGalleryPrices , set_pnlCache, set_curSet} from './02-gallery.js';
 import { loadFinance } from './04-finance.js';
 import { scopeQuery } from './14-scope.js';
@@ -450,6 +451,47 @@ export function portfolioChartSVG(data, period, metric, yAxisData){
 // Der Server erzwingt dieselbe Regel: POST /api/v1/sets/:sn/move ohne
 // acquisition_ids antwortet mit 400.
 
+/**
+ * Lagerort eines Sets speichern.
+ *
+ * ── Warum beim Verlassen des Feldes und nicht auf Tastendruck ──────────────
+ *
+ * Wie die Menge daneben (`autosaveSet`): Ein Lagerort wird getippt, nicht
+ * gewählt. Ein Speichern je Zeichen erzeugte sechs Anfragen für „Kiste 3" und
+ * hinterliesse dabei fünf Zwischenstände in der Datenbank.
+ */
+export async function speichereSetLagerort(sn) {
+  const el = G('m-storage');
+  if (!el) return;
+  const d = await api('PUT', `/v1/sets/${encodeURIComponent(sn)}/storage`, { storage: el.value });
+  if (!d?.success) { toast(d?.error || tRaw('settings.error'), 'error'); return; }
+  // Die Liste im Hintergrund trägt den Ort ebenfalls — ohne Nachziehen zeigte
+  // die Kachel den alten, bis jemand neu lädt.
+  const eintrag = (allSets || []).find(x => x.set_number === sn);
+  if (eintrag) eintrag.storage = d.storage;
+  if (curSet && curSet.set_number === sn) curSet.storage = d.storage;
+  await ladeLagerorte();
+}
+
+/**
+ * Die bekannten Lagerorte in die gemeinsame <datalist> schreiben.
+ *
+ * EINE Liste für alle Eingabefelder (Set-Detail, Teil-Detail, Filter): Der
+ * Ortsname ist frei, aber wer „Kiste 3" schon einmal getippt hat, soll ihn
+ * beim nächsten Mal vorgeschlagen bekommen — sonst stehen „Kiste 3" und
+ * „kiste 3" nebeneinander und die Übersicht zählt sie getrennt.
+ */
+export async function ladeLagerorte() {
+  const d = await api('GET', '/v1/storage' + scopeQuery('gallery')).catch(() => null);
+  if (!d?.success) return;
+  const orte = d.orte || [];
+  const dl = G('lagerorte');
+  if (dl) dl.innerHTML = orte.map(o => `<option value="${esc(o.ort)}"></option>`).join('');
+  // Dieselbe Liste speist die Filter-Auswahlfelder. Sie getrennt zu holen
+  // hiesse, dass Vorschlag und Filter kurzzeitig zwei Staende zeigen.
+  initStorageSelects(orte);
+}
+
 export async function openModal(sn){
   const [d, ad] = await Promise.all([
     api('GET',`/v1/sets/${sn}`),
@@ -496,6 +538,13 @@ export async function openModal(sn){
     ${detailZeile(t('detail.pieces'), `${curSet.pieces ? curSet.pieces.toLocaleString(locale()) : '—'} <button class="btn bs btn-sm" data-click="reimportParts" data-arg="${escJs(sn)}" title="${t('detail.reimport_parts')}" style="padding:1px 6px;font-size:.75rem;margin-left:4px">${PARTS_ICON_SVG}</button>`)}
     ${detailZeile(t('detail.minifigs'), oderStrich(curSet.minifigs), { wertId: 'm-minifigs-val' })}
     ${detailZeile(t('detail.added'), `📅 ${addedFmt}`)}
+    ${detailZeile(t('detail.storage'), `
+      <input type="text" id="m-storage" list="lagerorte" maxlength="60"
+             placeholder="${esc(tRaw('detail.storage_ph'))}"
+             value="${esc(curSet.storage || '')}"
+             data-change="speichereSetLagerort" data-arg="${escJs(sn)}"
+             style="width:150px;text-align:right;border:1px solid var(--bdr);border-radius:6px;padding:2px 6px;font-size:.85rem" />
+    `, { wertStil: 'display:flex;align-items:center;gap:6px' })}
     ${acqRows}
     ${priceRow}${pnlRow}
     <div id="m-price-chart" style="margin-top:.75rem">
@@ -808,6 +857,7 @@ registerActions({
   queueCatalogImages,
   reimportMissingInstructions,
   retryBricksetQueueEntry,
+  speichereSetLagerort,
   toggleBricksetQueue,
   triggerCsvSync,
 });
