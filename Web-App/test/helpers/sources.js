@@ -43,7 +43,40 @@ const imgProxy = () => fs.readFileSync(path.join(ROOT, 'routes', 'imgProxy.ts'),
 const serverAll = () => serverOnly() + '\n' + imgProxy() + '\n' + proxyThumbQuelle()
   + '\n' + startQuelle();
 
-module.exports = { ROOT, serverOnly, imgProxy, serverAll };
+/**
+ * Die FINANZSCHICHT als eine Quelle — Fassade plus alle Module darunter.
+ *
+ * ── Warum es diesen Helfer gibt (Nachtrag 171) ──────────────────────────────
+ *
+ * utils/financeCalc.ts trug 1529 Zeilen und drei Aufgaben. Seit der Trennung
+ * liegen sie unter utils/finance/ (zustand, preise, bewertung, gewinnVerlust),
+ * und financeCalc.ts reicht nur noch durch.
+ *
+ * Neunzehn Pruefungen lasen die eine Datei und stellten Regeln ueber ihren
+ * Inhalt auf — „die Schreibregel steht nur an EINER Stelle", „genau EINE
+ * Zustandsaufloesung". Diese Regeln gelten der SCHICHT, nicht der Datei. Sie
+ * auf financeCalc.ts zu lassen haette sie stillschweigend entwertet: Die
+ * Fassade ist zweiunddreissig Zeilen lang, in denen nichts zweimal stehen
+ * kann.
+ *
+ * Deshalb hier die ganze Schicht, aneinandergehaengt. Jede Regel zaehlt damit
+ * weiter ueber denselben Stoff wie vorher — nur ist er jetzt sortiert.
+ */
+const finanzQuelle = () => {
+  const ordner = path.join(ROOT, 'utils', 'finance');
+  const teile = [fs.readFileSync(path.join(ROOT, 'utils', 'financeCalc.ts'), 'utf8')];
+  for (const n of fs.readdirSync(ordner).filter(x => x.endsWith('.ts')).sort()) {
+    teile.push(fs.readFileSync(path.join(ordner, n), 'utf8'));
+  }
+  // Selbstbeweis an der Quelle: Findet der Helfer die Module nicht mehr,
+  // pruefen neunzehn Regeln nur noch die Fassade — und waeren still gruen.
+  if (teile.length < 4) {
+    throw new Error(`finanzQuelle(): nur ${teile.length} Dateien gefunden — liegt utils/finance/ noch da?`);
+  }
+  return teile.join('\n');
+};
+
+module.exports = { ROOT, serverOnly, imgProxy, serverAll, finanzQuelle };
 
 /**
  * Baut die .ts-Quellen nach dist/ und liefert einen require-Helfer darauf.
@@ -351,7 +384,9 @@ module.exports.portfolioQuelle = portfolioQuelle;
  * ── Warum ein Helfer (Nachtrag 136) ─────────────────────────────────────────
  *
  * Kontofilter und eigener Scrollbalken liegen seit Nachtrag 136 in
- * js/14-scope.js bzw. js/15-scrollbar.js. Ein Dutzend Prüfungen las
+ * js/14-scope.js bzw. js/15-scrollbar.js, der Fortschrittsbalken und die
+ * Überwachung seit Nachtrag 141 in js/01-fortschritt.js bzw.
+ * js/01-monitor.js. Ein Dutzend Prüfungen las
  * `public/js/01-core.js` und meinte „irgendwo in der Grundausstattung des
  * Frontends".
  *
@@ -361,7 +396,7 @@ module.exports.portfolioQuelle = portfolioQuelle;
 function coreQuelle() {
   const path = require('path'), fs = require('fs');
   const dir = path.join(__dirname, '..', '..', 'public', 'js');
-  return ['01-core.js', '14-scope.js', '15-scrollbar.js']
+  return ['01-core.js', '01-fortschritt.js', '01-monitor.js', '14-scope.js', '15-scrollbar.js']
     .map(f => fs.readFileSync(path.join(dir, f), 'utf8')).join('\n');
 }
 module.exports.coreQuelle = coreQuelle;

@@ -1,5 +1,6 @@
 import { registerActions, resolveAction } from './00-registry.js';
-import { G, fullUrl, saveJobSchedule, setLang } from './01-core.js';
+import { G, fullUrl, setLang } from './01-core.js';
+import { saveJobSchedule } from './01-monitor.js';
 import { openPdfViewer } from './12-pdfviewer.js';
 import { autosaveSet, closeImageLightbox, delSet, hideProgress, openImageLightbox } from './02-gallery.js';
 import { allFigsCache, deleteManualFig, renderFigs, updateManualFig, deleteManualPart} from './06-minifigs.js';

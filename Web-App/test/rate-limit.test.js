@@ -36,7 +36,7 @@ test('Standard-Tageslimit ist 25000 — an EINER Stelle', () => {
   // beide über checkAndIncrementRateLimit laufen, wäre es eine stille Kürzung
   // auf ein Sechstel gewesen. Zwei Konstanten mit derselben Bedeutung driften
   // auseinander; hier wird festgehalten, dass es nur noch eine gibt.
-  const fc = fs.readFileSync(path.join(ROOT, 'utils', 'financeCalc.ts'), 'utf8');
+  const fc = require('./helpers/sources').finanzQuelle();
   assert.match(fc, /rebrickable: REBRICKABLE_DEFAULT_DAILY/,
     'Der Rückfallwert muss aus rateLimiter kommen, nicht als eigene Zahl danebenstehen');
   assert.doesNotMatch(fc, /rebrickable: \d+/, 'Keine zweite Zahl für dasselbe Limit');
@@ -117,7 +117,7 @@ test('ein geändertes Limit gilt sofort in ALLEN Workern', () => {
   // Kommentare raus, bevor die Spanne gemessen wird: Der Erklärblock in
   // getLimitForApi ist länger als jedes vernünftige Zeichenfenster, und ein
   // Test, der an einem wachsenden Kommentar scheitert, prüft die falsche Sache.
-  const fc = fs.readFileSync(path.join(ROOT, 'utils', 'financeCalc.ts'), 'utf8')
+  const fc = require('./helpers/sources').finanzQuelle()
     .replace(/\/\/[^\n]*/g, '');
   const fn = fc.slice(fc.indexOf('async function getLimitForApi'),
                       fc.indexOf('async function getRateLimitStatus'));

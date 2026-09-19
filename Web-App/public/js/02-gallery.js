@@ -1,7 +1,9 @@
 import { ladeAnzeige } from './01-bausteine.js';
 import { registerActions } from './00-registry.js';
 import { locale, t, tRaw} from '../i18n.js';
-import { CURRENCY, G, ME, TRASH_ICON_SVG, _gibSse, _gibTimer, _monitorTimer, api, esc, escJs, escUrl, fmtBig, fmtN, gibStart, imgUrl, loadMonitor, observeLazyImages, thumbUrl, toast, set_monitorTimer } from './01-core.js';
+import { CURRENCY, G, ME, TRASH_ICON_SVG, api, esc, escJs, escUrl, fmtBig, fmtN, imgUrl, observeLazyImages, thumbUrl, toast } from './01-core.js';
+import { _gibSse, _gibTimer, gibStart } from './01-fortschritt.js';
+import { _monitorTimer, loadMonitor, set_monitorTimer } from './01-monitor.js';
 import { SCOPE_VIEWS, addScopeParam, scopeMode, scopeQuery, setScopeMode } from './14-scope.js';
 import { setScrollLabel } from './15-scrollbar.js';
 import { loadParts } from './03-parts.js';

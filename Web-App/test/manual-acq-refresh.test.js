@@ -160,7 +160,7 @@ test('der Altbestand wird einmalig auf eine Zeile je Tag zusammengefasst', () =>
 });
 
 test('Teile und Minifiguren stehen in den Finanzen je Kaufpreis in einer Zeile', () => {
-  const fc = read('utils/financeCalc.ts');
+  const fc = require('./helpers/sources').finanzQuelle();
   // Drei: Sets, manuelle Teile, manuelle Minifiguren — alle drei Tabellen im
   // Finanzen-Reiter zeigen dieselbe Form.
   const acqLines = [...fc.matchAll(/acquisitions: rows,/g)];

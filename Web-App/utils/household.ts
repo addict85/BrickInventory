@@ -423,8 +423,32 @@ export async function scopeIds(uid: number, mode: ScopeMode = 'all'): Promise<nu
   return h.memberIds;
 }
 
+/**
+ * Das BLICKFELD — wessen Daten gerechnet werden.
+ *
+ * ── Warum der Typ hier steht (Nachtrag 172) ─────────────────────────────────
+ *
+ * Er stand DREIMAL im Baum, unter demselben Namen, mit ZWEI Bedeutungen:
+ *
+ *   utils/handlers/parts.ts   type Blickfeld = number | number[]
+ *   utils/handlers/sets.ts    type Blickfeld = number | number[]
+ *   utils/finance/…           type Blickfeld = number[]
+ *
+ * Beide Fassungen waren richtig — nur beschrieben sie verschiedene Momente:
+ * Vor `asIds()` darf es eine einzelne ID oder eine Liste sein, danach ist es
+ * immer eine Liste. Derselbe Name fuer beides heisst, dass eine Signatur nicht
+ * mehr sagt, in welchem der beiden Momente sie steht.
+ *
+ * Jetzt zwei Namen an einer Stelle — dort, wo `asIds()` lebt, das zwischen
+ * ihnen uebersetzt.
+ */
+export type BlickfeldEingabe = number | number[];
+
+/** Nach `asIds()`: immer eine Liste. */
+export type Blickfeld = number[];
+
 /** Eine ID oder eine Liste zu einer Liste normalisieren. */
-export function asIds(v: number | number[]): number[] {
+export function asIds(v: BlickfeldEingabe): Blickfeld {
   return Array.isArray(v) ? v.map(x => parseInt(String(x))) : [parseInt(String(v))];
 }
 

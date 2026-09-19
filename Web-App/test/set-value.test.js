@@ -224,7 +224,7 @@ test("ohne Verkauf in sechs Monaten wird auf 'stock' ausgewichen", () => {
   assert.match(bl, /if \(hasUsablePrice\(first\) \|\| guideType !== 'sold'\)/,
     "'sold' muss Vorrang behalten, wenn dort ein Preis steht");
 
-  const fc = fs.readFileSync(path.join(ROOT, 'utils', 'financeCalc.ts'), 'utf8');
+  const fc = require('./helpers/sources').finanzQuelle();
   const fallbacks = [...fc.matchAll(/guide_type: 'stock'/g)];
   assert.equal(fallbacks.length, 2,
     'Teile- und Minifiguren-Pfad gehen nicht über getPriceGuide und brauchen den Rückfall selbst');
@@ -235,7 +235,7 @@ test('ein gecachter Null-Preis blockiert den Rückfall nicht dauerhaft', () => {
   // das volle TTL-Fenster als endgültige Antwort, es wurde nie neu geholt —
   // und die Logik wich stattdessen auf den ANDEREN Zustand aus. Ein neues Set
   // zeigte damit den Gebraucht-Preis.
-  const fc = fs.readFileSync(path.join(ROOT, 'utils', 'financeCalc.ts'), 'utf8');
+  const fc = require('./helpers/sources').finanzQuelle();
   assert.match(fc, /const ZERO_PRICE_TTL_HOURS/,
     '0-Einträge brauchen ein kürzeres Fenster als Einträge mit Preis');
   assert.match(fc, /function cacheUsable/, 'Prüffunktion fehlt');
@@ -278,7 +278,7 @@ test('der P&L-Pfad wählt je Set nach dessen eigenem Zustand', () => {
   // mehr EINEN Zustand fürs ganze Set, sondern lässt valueSet() jede Erfassung
   // mit dem Preis ihres Zustands bewerten. Der geschützte Fehler bleibt
   // derselbe: Der Marktpreis darf nicht aus dem falschen Zustand stammen.
-  const fc = fs.readFileSync(path.join(ROOT, 'utils', 'financeCalc.ts'), 'utf8');
+  const fc = require('./helpers/sources').finanzQuelle();
   assert.match(fc, /valueSet\(set\.set_number, acqs, asPriceMap\(cacheByKey\)/,
     'Der P&L-Pfad muss dieselbe Bewertungsregel benutzen wie die Anzeige');
   assert.match(fc, /effectiveCondition\(set\)/,
@@ -335,7 +335,7 @@ test('Finanzen: Kaufpreis statt zweiter Marktpreis-Spalte', () => {
   assert.match(sv, /r\.purchase_price != null/,
     'Erfassungen ohne Kaufpreis dürfen den Nenner nicht aufblähen');
 
-  const fc = fs.readFileSync(path.join(ROOT, 'utils', 'financeCalc.ts'), 'utf8');
+  const fc = require('./helpers/sources').finanzQuelle();
   assert.match(fc, /set\.purchase_price != null \? parseFloat\(set\.purchase_price\) : null/,
     'Ohne Erfassungen zählt sets.purchase_price');
 });
@@ -452,7 +452,7 @@ test('Bewertung und Anzeige benutzen dieselbe Zustandsregel', () => {
   // las stur sets.condition. Weichen die voneinander ab — etwa weil ein Set
   // nachträglich auf „Neu" korrigiert wurde — zeigte die Kachel „Neu", der
   // Preis stammte aber aus dem Gebraucht-Eintrag.
-  const fc = fs.readFileSync(path.join(ROOT, 'utils', 'financeCalc.ts'), 'utf8');
+  const fc = require('./helpers/sources').finanzQuelle();
   assert.match(fc, /function effectiveCondition/, 'Gemeinsame Regel fehlt');
   assert.doesNotMatch(fc.replace(/\/\/[^\n]*/g, '').replace(/\/\*[\s\S]*?\*\//g, ''),
     /set\.condition === 'U'\) \? 'U' :/,

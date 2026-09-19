@@ -37,7 +37,7 @@ import { merkeBlFarbnummer, blFarbnummerAus } from '../blZuordnung';
  * Typ entfaellt der Cast `asIds(userId)`, der nur da stand, weil der
  * Parameter keinen hatte. Dieselbe Erklaerung wie in handlers/sets.ts.
  */
-type Blickfeld = number | number[];
+import type { BlickfeldEingabe as Blickfeld } from '../household';
 
 /** Farbliste des Teilebestands (ohne manuelle Positionen — die haben eine
  *  eigene Ansicht). Hex-Fallback aus rb_colors für Teile ohne eigenen Wert.
