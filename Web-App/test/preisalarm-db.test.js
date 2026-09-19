@@ -225,7 +225,13 @@ test('Preisalarm gegen echte Datenbank', async (t) => {
     assert.equal(await pruefe(SN), 1);
 
     const erste = await A.ausgeloesteSeit(U.ich, vorher);
-    assert.equal(erste.alerts.length, 1, 'die ausgelöste Schwelle fehlt');
+    // Auch hier die Zeitstempel: Ein voller CI-Lauf ist an diesem Subtest
+    // einmal gescheitert, und aus dem Bericht war nicht zu erkennen, WELCHE
+    // der beiden Zusicherungen gerissen ist. Beide nennen deshalb ihre Werte.
+    assert.equal(erste.alerts.length, 1,
+      'die ausgelöste Schwelle fehlt. ' +
+      `vorher=${vorher?.toISOString?.() ?? vorher}, ` +
+      `zuletzt_am=${(await db.get('SELECT zuletzt_am FROM price_alerts'))?.zuletzt_am}`);
     assert.equal(erste.alerts[0].set_number, SN);
     assert.equal(erste.alerts[0].richtung, 'unter');
     // numeric kommt als Zeichenkette aus dem Treiber — käme sie so durch,

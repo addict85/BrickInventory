@@ -27,6 +27,7 @@ import ch.brickinventoryapp.R
 import ch.brickinventoryapp.ui.MainViewModel
 import ch.brickinventoryapp.ui.components.ZoomableImageDialog
 import ch.brickinventoryapp.ui.schliesseSetItem
+import ch.brickinventoryapp.ui.loadLagerortVorrat
 import ch.brickinventoryapp.ui.setzeTeilLagerort
 import ch.brickinventoryapp.ui.screens.TabellenZeile
 import ch.brickinventoryapp.util.resolveFullUrlViaProxy
