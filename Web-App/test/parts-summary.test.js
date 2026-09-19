@@ -247,6 +247,74 @@ test('Kennzahlen benutzen keinen veralteten Stand', () => {
   assert.match(h, /tryPartsSummary\(userId/, 'Der Listenpfad bleibt unverändert');
 });
 
+test('beide Pfade der Kennzahlen zählen DASSELBE — auch mit manuellen Teilen',
+  { skip: skip || undefined }, async (t) => {
+  // ── Der Befund ───────────────────────────────────────────────────────────
+  //
+  // getPartsStats hat zwei Wege: die Zusammenfassung (schnell) und eine
+  // Live-Abfrage (Rückfall). Die Zusammenfassung lässt manuell erfasste Teile
+  // WEG — so ist sie gebaut, und der Kommentar an getPartsStats sagt es auch:
+  // „Die Kennzahlen beziehen sich wie die Liste auf Set-Teile."
+  //
+  // Die Live-Abfrage tat es nicht. Damit gab es zwei Antworten auf dieselbe
+  // Frage, und welche man bekam, hing davon ab, ob die Zusammenfassung gerade
+  // frisch war.
+  //
+  // ── Warum `strict` das nicht abgedeckt hat ───────────────────────────────
+  //
+  // Der Test darüber („Kennzahlen benutzen keinen veralteten Stand") kommt aus
+  // genau diesem Problem und hat es zur Hälfte gelöst: `strict` sorgt dafür,
+  // dass beide Aufrufer GEMEINSAM ausweichen, wenn der Stand veraltet ist. Es
+  // sorgt nicht dafür, dass die beiden Abfragen dasselbe LIEFERN. Wechselt die
+  // Zusammenfassung zwischen zwei Aufrufen von „gibt es nicht" auf „frisch",
+  // greift strict nicht — und genau so ist es in der CI aufgefallen
+  // (api-parity, Lauf 213: derselbe Endpunkt, Sitzung gegen Token).
+  //
+  // Diese Prüfung hängt deshalb nicht am Zeitpunkt, sondern am INHALT: beide
+  // Wege, dieselben Daten, ein Vergleich.
+  try { await db.initSchema(); }
+  catch (e) {
+    if (process.env.REQUIRE_DB === '1') {
+      throw new Error('REQUIRE_DB=1, aber die Test-Datenbank ist nicht erreichbar.');
+    }
+    t.skip('Test-DB nicht erreichbar'); return;
+  }
+
+  const U = 990502;
+  await db.run('DELETE FROM parts WHERE user_id=$1', [U]);
+  await db.run('DELETE FROM sets WHERE user_id=$1', [U]);
+  await db.run('DELETE FROM parts_summary WHERE user_id=$1', [U]);
+  await db.run('DELETE FROM parts_summary_state WHERE user_id=$1', [U]);
+  await db.run(
+    "INSERT INTO users (id,username,password_hash,is_admin) VALUES ($1,'psum2','x',0) ON CONFLICT DO NOTHING", [U]);
+  await db.run("INSERT INTO sets (user_id,set_number,quantity,condition) VALUES ($1,'A-1',1,'N')", [U]);
+  await db.run(`INSERT INTO parts (user_id,set_number,part_number,color_id,color_name,part_name,quantity,source)
+    VALUES ($1,'A-1','3001',5,'Rot','Brick',3,'set'),
+           ($1,NULL,'9999',7,'Gruen','Handerfasst',11,'manual')`, [U]);
+
+  // Weg 1: aus der Zusammenfassung.
+  await PS.rebuildNow(U);
+  const ausSummary = await H.getPartsStats([U]);
+
+  // Weg 2: der Rückfall. Die Zusammenfassung wird dafür entfernt — dann
+  // liefert ensureFresh(strict) false, und getPartsStats geht live.
+  await db.run('DELETE FROM parts_summary WHERE user_id=$1', [U]);
+  await db.run('DELETE FROM parts_summary_state WHERE user_id=$1', [U]);
+  const ausLive = await H.getPartsStats([U]);
+
+  assert.deepEqual(ausLive, ausSummary,
+    'Die beiden Wege zählen Verschiedenes. Aus der Zusammenfassung: ' +
+    `${JSON.stringify(ausSummary)}, live: ${JSON.stringify(ausLive)}. ` +
+    'Das manuell erfasste Teil (Menge 11) gehört in keine der beiden Zahlen.');
+
+  // Und der Inhalt stimmt auch: EIN Set-Teil, Menge 3 — das manuelle zählt nicht.
+  assert.equal(ausSummary.unique_parts, 1, 'Das manuelle Teil wurde mitgezählt');
+  assert.equal(ausSummary.total_parts, 3, 'Die Menge des manuellen Teils steckt in der Summe');
+
+  await db.run('DELETE FROM parts WHERE user_id=$1', [U]);
+  await db.run('DELETE FROM sets WHERE user_id=$1', [U]);
+});
+
 // Verbindungspool schliessen — sonst bleibt der Testprozess nach dem letzten
 // Test hängen und der Läufer meldet die Datei als fehlgeschlagen, obwohl jede
 // Prüfung grün war. Ohne erreichbare Datenbank fiel das nie auf: Dann wurde

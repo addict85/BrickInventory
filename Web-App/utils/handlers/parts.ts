@@ -554,13 +554,26 @@ async function getPartsStats(userId: Blickfeld) {
       total_parts:   parseInt(r.total_parts   || 0),
     };
   }
+  // ── Derselbe Filter wie in der Zusammenfassung, und warum er gefehlt hat ──
+  //
+  // Der Kommentar oben sagt es schon: „Die Kennzahlen beziehen sich wie die
+  // Liste auf Set-Teile; manuell erfasste haben ihren eigenen Bereich." Die
+  // Zusammenfassung setzt das um (`COALESCE(p.source, 'set') <> 'manual'` in
+  // utils/partsSummary.ts) — dieser Rückfall tat es nicht und zählte die
+  // manuellen mit.
+  //
+  // Damit gab es ZWEI Antworten auf dieselbe Frage, und welche man bekam,
+  // hing davon ab, ob die Zusammenfassung gerade frisch war. Genau so ist es
+  // aufgefallen: api-parity vergleicht denselben Endpunkt mit Sitzung und mit
+  // Token; der erste Aufruf baute die Zusammenfassung, der zweite benutzte
+  // sie — zwei verschiedene Zahlen, sporadisch, ohne erkennbaren Grund.
   const row = await db.get(`
     SELECT COUNT(DISTINCT p.part_number) AS unique_parts,
            COUNT(DISTINCT p.color_id)    AS unique_colors,
            SUM(p.quantity * COALESCE(s.quantity, 1)) AS total_parts
     FROM parts p
     LEFT JOIN sets s ON s.user_id = p.user_id AND s.set_number = p.set_number
-    WHERE p.user_id = ANY($1)`, [uids]);
+    WHERE p.user_id = ANY($1) AND COALESCE(p.source, 'set') <> 'manual'`, [uids]);
   return {
     unique_parts:  parseInt(row?.unique_parts  || 0),
     unique_colors: parseInt(row?.unique_colors || 0),
