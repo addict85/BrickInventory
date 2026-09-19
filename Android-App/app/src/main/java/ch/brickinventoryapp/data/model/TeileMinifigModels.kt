@@ -299,3 +299,45 @@ data class VerwendendeSetsResponse(
     val sets: List<VerwendendesSet> = emptyList(),
     val error: String? = null,
 )
+
+// ═══════════════════════════════════════════════════════════════════════════
+// „Kann ich das bauen?" — der eigene Bestand zu einer Teileliste
+// ═══════════════════════════════════════════════════════════════════════════
+//
+// POST, obwohl nichts geaendert wird: Eine Teileliste hat weit ueber tausend
+// Teil-Farb-Paare; als Abfrageparameter waere die Adresse laenger, als jeder
+// Proxy durchlaesst. Der Kontofilter reist trotzdem als `accounts=` mit — er
+// gehoert zur Ansicht, nicht zur Nutzlast.
+
+/** Ein angefragtes Teil-Farb-Paar in der REBRICKABLE-Schreibweise. */
+@Serializable
+data class BestandTeil(
+    @SerialName("part_number") val partNumber: String,
+    @SerialName("color_id")    val colorId: Int,
+)
+
+@Serializable
+data class BestandRequest(val teile: List<BestandTeil>)
+
+/**
+ * Zwei Zahlen je Teil-Farb-Paar.
+ *
+ * `gesamt` zaehlt alles im Blickfeld, `lose` nur, was nicht in einem Set
+ * steckt. Der Unterschied ist die eigentliche Antwort: Ein Teil in einem
+ * aufgebauten Set besitzt man zwar, muesste dafuer aber ein anderes Set
+ * zerlegen. Welche Zahl gilt, entscheidet der Mensch — deshalb liefert der
+ * Server beide.
+ */
+@Serializable
+data class BestandEintrag(
+    val gesamt: Int = 0,
+    val lose: Int = 0,
+)
+
+@Serializable
+data class BestandResponse(
+    val success: Boolean = false,
+    /** Schluessel: "<partNumber>|<colorId>". */
+    val bestand: Map<String, BestandEintrag> = emptyMap(),
+    val error: String? = null,
+)

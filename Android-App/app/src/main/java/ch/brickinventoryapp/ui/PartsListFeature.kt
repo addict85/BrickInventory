@@ -185,3 +185,38 @@ internal suspend fun MainViewModel.exportPartsPdf(
 // BrickLink-XML. Auf Marcos Wunsch entfernt. Mit ihm entfielen die einzigen
 // Aufrufer von /parts/bl-color-map und /minifigs/{nr}/parts in dieser App;
 // die Begruendung dafuer steht in Web-App/test/webapp-endpunkte.test.js.
+
+/**
+ * „Kann ich das bauen?" — den eigenen Bestand zu einer Teileliste holen.
+ *
+ * ── Warum das Ergebnis zurueckgegeben und nicht in _state gelegt wird ───────
+ *
+ * Die Teileliste ist der einzige Bildschirm, dessen Daten NICHT im ViewModel
+ * leben: Sets und Teile stehen dort in `remember`-Zustaenden, weil die Liste
+ * bewusst fluechtig ist (sie wird zusammengestellt, benutzt, verworfen). Diese
+ * Funktion fuegt sich dem ein und reicht die angereicherte Liste zurueck,
+ * statt einen zweiten Ort fuer dieselben Teile aufzumachen.
+ *
+ * @param nurLose true = nur Teile zaehlen, die in keinem Set stecken. Der
+ *        Unterschied ist die eigentliche Antwort: Ein Teil in einem
+ *        aufgebauten Set besitzt man zwar, muesste dafuer aber ein anderes Set
+ *        zerlegen.
+ * @return dieselbe Liste mit gesetztem `vorhanden`, oder null bei einem Fehler
+ *         (der Aufrufer zeigt dann eine Meldung).
+ */
+internal suspend fun MainViewModel.ladeTeilelisteBestand(
+    teile: List<ch.brickinventoryapp.ui.screens.PlPart>,
+    nurLose: Boolean,
+): List<ch.brickinventoryapp.ui.screens.PlPart>? {
+    if (teile.isEmpty()) return teile
+    // Gefragt wird in der REBRICKABLE-Schreibweise: Genau die steht auch in
+    // der eigenen Teile-Tabelle. Die BrickLink-Nummer daneben ist fuer den
+    // Export da und taugt fuer den Abgleich nicht.
+    val anfrage = teile.map { BestandTeil(partNumber = it.partNumber, colorId = it.colorId) }
+    val antwort = repo.teile.getOwnedParts(anfrage, scopeFor(ch.brickinventoryapp.data.ScopeFilter.View.PARTS))
+    val bestand = (antwort as? Result.Success)?.data?.takeIf { it.success }?.bestand ?: return null
+    return teile.map { p ->
+        val eintrag = bestand["${p.partNumber}|${p.colorId}"]
+        p.copy(vorhanden = if (eintrag == null) 0 else if (nurLose) eintrag.lose else eintrag.gesamt)
+    }
+}

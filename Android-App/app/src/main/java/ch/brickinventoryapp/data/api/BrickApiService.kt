@@ -382,6 +382,17 @@ interface BrickApiService {
         @Query("accounts") accounts: String? = null
     ): Response<PartsCategoriesResponse>
 
+    /**
+     * „Kann ich das bauen?" — welche Teile einer Liste schon da sind.
+     *
+     * Siehe die Begruendung fuer POST an BestandRequest (TeileMinifigModels.kt).
+     */
+    @POST("api/v1/parts/owned")
+    suspend fun getOwnedParts(
+        @Body request: BestandRequest,
+        @Query("accounts") accounts: String? = null,
+    ): Response<BestandResponse>
+
     @POST("api/v1/parts")
     suspend fun addPart(
         @Body request: AddPartRequest

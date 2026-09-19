@@ -1,6 +1,7 @@
 import * as db from '../../db/database';
 import { resolveImageLocal } from '../images';
 import { asIds } from '../household';
+import type { BlickfeldEingabe } from '../household';
 import { istErsatzteil, ersatzteilSql } from '../validate';
 import { ensureFresh } from '../partsSummary';
 // Direkt aus utils/partsImport, nicht ueber routes/parts: Die Route hat die
@@ -636,3 +637,82 @@ async function getManualParts(userId: Blickfeld, viewerId: number, { page = 1, p
 }
 
 export { getPartsColors, tryPartsSummary, getParts, getPartsStats, getBlColorMap, getManualParts };
+
+/**
+ * Wie viele der angefragten Teile im Blickfeld tatsächlich vorhanden sind.
+ *
+ * ── Wofür (Nachtrag 174, „Kann ich das bauen?") ─────────────────────────────
+ *
+ * Die Teileliste eines Sets zeigt seit jeher eine Spalte „Habe" — bisher ein
+ * leeres Zahlenfeld, in das man von Hand eintrug, was man schon besitzt. Die
+ * BrickLink-Wunschliste zieht diese Zahl vom Bedarf ab. Das funktionierte,
+ * nur musste man dafür seine eigene Sammlung im Kopf haben.
+ *
+ * Diese Funktion füllt die Spalte. Sie speichert nichts und ändert nichts —
+ * sie ist eine Frage an den bestehenden Bestand.
+ *
+ * ── Warum zwei Zahlen ───────────────────────────────────────────────────────
+ *
+ * `gesamt` zählt alles, `lose` nur, was nicht in einem Set steckt
+ * (source='manual'). Der Unterschied ist für die Antwort entscheidend: Ein
+ * Teil, das in einem aufgebauten Set sitzt, besitzt man zwar, aber man müsste
+ * dafür ein anderes Set zerlegen. Welche der beiden Zahlen gilt, entscheidet
+ * der Mensch vor dem Bildschirm — deshalb liefert der Server beide, statt sich
+ * für eine zu entscheiden.
+ *
+ * ── Warum POST und keine Liste im Pfad ──────────────────────────────────────
+ *
+ * Gefragt wird nach den Teilen EINER Teileliste; ein grosses Set hat weit über
+ * tausend Teil-Farb-Paare. Als Abfrageparameter gäbe das eine Adresse, die
+ * jeder Proxy abschneidet.
+ */
+export const BESTAND_MAX_TEILE = 5000;
+
+export async function getOwnedQuantities(
+  blickfeld: BlickfeldEingabe,
+  teile: Array<{ part_number?: string; color_id?: number | string }>,
+): Promise<Record<string, { gesamt: number; lose: number }>> {
+  const uids = asIds(blickfeld);
+  // Doppelte Schlüssel fallen hier weg: Eine Teileliste über mehrere Sets
+  // fragt dasselbe Teil sonst mehrfach, und die Abfrage würde unnötig gross.
+  const gesehen = new Set<string>();
+  const nums: string[] = [];
+  const farben: number[] = [];
+  for (const t of teile || []) {
+    const num = String(t?.part_number ?? '').trim();
+    if (!num) continue;
+    const farbe = parseInt(String(t?.color_id ?? 0)) || 0;
+    const key = `${num}|${farbe}`;
+    if (gesehen.has(key)) continue;
+    gesehen.add(key);
+    nums.push(num);
+    farben.push(farbe);
+    if (nums.length >= BESTAND_MAX_TEILE) break;
+  }
+  if (!nums.length) return {};
+
+  // Ersatzteile zählen MIT: Ein Ersatzteil, das dem Set beilag, liegt in der
+  // Schachtel und lässt sich verbauen. Die Bedarfsseite schliesst sie aus
+  // (parts-list), die Bestandsseite nicht — das ist kein Widerspruch, sondern
+  // genau der Unterschied zwischen „braucht man" und „hat man".
+  const rows = await db.all(
+    `SELECT p.part_number,
+            COALESCE(p.color_id, 0)                                   AS color_id,
+            COALESCE(SUM(p.quantity), 0)::int                         AS gesamt,
+            COALESCE(SUM(CASE WHEN COALESCE(p.source,'set') = 'manual'
+                              THEN p.quantity ELSE 0 END), 0)::int    AS lose
+       FROM parts p
+       JOIN unnest($2::text[], $3::int[]) AS g(part_number, color_id)
+         ON g.part_number = p.part_number AND g.color_id = COALESCE(p.color_id, 0)
+      WHERE p.user_id = ANY($1)
+      GROUP BY p.part_number, COALESCE(p.color_id, 0)`,
+    [uids, nums, farben]
+  ).catch(() => []);
+
+  const out: Record<string, { gesamt: number; lose: number }> = {};
+  for (const r of rows || []) {
+    out[`${r.part_number}|${parseInt(r.color_id) || 0}`] =
+      { gesamt: parseInt(r.gesamt) || 0, lose: parseInt(r.lose) || 0 };
+  }
+  return out;
+}

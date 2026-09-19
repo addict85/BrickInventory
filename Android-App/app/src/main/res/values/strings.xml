@@ -159,6 +159,11 @@
     <string name="partslist_pdf_error_title">PDF error</string>
     <string name="partslist_ok">OK</string>
     <string name="partslist_reset">Reset</string>
+    <string name="partslist_fill_owned">My parts</string>
+    <string name="partslist_only_loose">loose parts only</string>
+    <string name="partslist_owned_complete">All parts present — this can be built.</string>
+    <string name="partslist_owned_missing">%1$d parts missing (%2$d distinct).</string>
+    <string name="partslist_owned_error">Could not load your inventory.</string>
     <string name="partslist_empty_hint">Add sets and generate a parts list</string>
     <string name="partslist_no_color">(No color)</string>
     <string name="partslist_group_summary">%1$d×  ·  %2$d types</string>

@@ -207,8 +207,9 @@ const C = {
   
   'POST /api/v1/sets/:sn/move': 'paritaet',
   // Haushalt: Konten verknüpfen. Beide Wege, damit die App dieselben Regeln
-  // bekommt — die Grenzen (eine Stufe, gleiche Währung) stehen in
-  // utils/household.ts, nicht in den Routen.
+  // bekommt — die Grenzen (kein Kreis, gleiche Währung im ganzen
+  // einziehenden Teilbaum) stehen in utils/household.ts, nicht in den
+  // Routen. „Nur eine Stufe“ stand hier bis Nachtrag 173.
   'GET /api/v1/settings/household': 'nur-v1',
   'POST /api/v1/settings/household/invite': 'nur-v1',
   'POST /api/v1/settings/household/redeem': 'nur-v1',
@@ -238,6 +239,9 @@ const C = {
   'POST /api/v1/auth/forgot-password': 'nur-v1',
   'POST /api/v1/auth/register': 'nur-v1',
   'POST /api/v1/minifigs/import/csv': 'nur-v1',
+  // „Kann ich das bauen?“ (Nachtrag 174) — beide Oberflaechen rufen ihn,
+  // eine Zweitfassung unter /api gab es nie.
+  'POST /api/v1/parts/owned': 'nur-v1',
   'POST /api/v1/parts/import/csv': 'nur-v1',
   'POST /api/v1/sets/:setNumber/instructions/upload': 'nur-v1',
   'POST /api/v1/sets/add-stream': 'nur-v1',

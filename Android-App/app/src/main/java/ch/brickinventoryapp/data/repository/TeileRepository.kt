@@ -79,6 +79,18 @@ class TeileRepository @Inject constructor(
     suspend fun getManualMinifigs(accounts: String? = null): Result<ManualFigsResponse> =
         safeCall { api.getManualMinifigs(accounts) }
 
+    /**
+     * „Kann ich das bauen?" — welche Teile einer Liste schon da sind.
+     *
+     * BEWUSST ohne Zwischenspeicher, aus demselben Grund wie getSetsMitTeil()
+     * darunter: Die Antwort haengt an einer frei zusammengestellten Liste und
+     * wird auf Tastendruck geholt. Ein Eintrag je Liste waere ein Speicher,
+     * den niemand mehr ungueltig macht, wenn ein Teil dazukommt.
+     */
+    suspend fun getOwnedParts(teile: List<BestandTeil>,
+                              accounts: String? = null): Result<BestandResponse> =
+        safeCall { api.getOwnedParts(BestandRequest(teile), accounts) }
+
     // ── In welchen Sets steckt dieses Teil / diese Figur? ────────────────────
     //
     // Fuer den Detail-Dialog automatisch erfasster Teile und Figuren. BEWUSST

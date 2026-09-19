@@ -3,6 +3,7 @@ import { registerActions } from './00-registry.js';
 import { locale, t, tRaw} from '../i18n.js';
 import { escHex, G, api, checkAuth, esc, escUrl, imgUrl, knopfBesetzt, thumbUrl, toast } from './01-core.js';
 import { initScrollbalken } from './15-scrollbar.js';
+import { scopeQuery } from './14-scope.js';
 
 // ═══ App-Initialisierung + temporaere Teileliste ═══
 //
@@ -252,6 +253,64 @@ async function plGenerate() {
   G('btn-pl-pdf').style.display = '';
   G('btn-pl-bl').style.display = '';
   G('pl-bl-condition').style.display = '';
+  G('btn-pl-bestand').style.display = '';
+  G('pl-bestand-lose-box').style.display = 'inline-flex';
+}
+
+/**
+ * „Kann ich das bauen?" — die Spalte „Vorhanden" aus dem eigenen Bestand füllen.
+ *
+ * ── Warum das hier und nicht als eigene Ansicht steht (Nachtrag 174) ────────
+ *
+ * Die Teileliste hatte die Spalte schon, nur als leeres Feld: Man trug von
+ * Hand ein, was man besitzt, und die BrickLink-Wunschliste zog es vom Bedarf
+ * ab. Es fehlte also nicht die Ansicht, sondern nur die Antwort auf „was davon
+ * habe ich schon?". Eine zweite Ansicht daneben hätte dieselbe Tabelle noch
+ * einmal gebaut — und zwei Orte geschaffen, an denen sich die Rechnung
+ * unterscheiden kann.
+ *
+ * ── Die Zahl überschreibt, was von Hand dasteht ─────────────────────────────
+ *
+ * Absicht: Der Knopf heisst „eintragen", nicht „ergänzen". Wer ihn drückt,
+ * will den gemessenen Stand, nicht eine Summe aus Schätzung und Messung. Die
+ * Eingabefelder bleiben danach von Hand änderbar.
+ */
+async function plFuelleBestand() {
+  const felder = [...document.querySelectorAll('.pl-have-input')];
+  if (!felder.length) return;
+  const nurLose = !!G('pl-bestand-lose')?.checked;
+
+  // `data-key` ist `<rbPartNum>__<rbColorId>` — die Rebrickable-Schreibweise.
+  // Genau die steht auch in der eigenen Teile-Tabelle; die BrickLink-Nummer
+  // daneben ist nur für den Export da und taugt für den Abgleich nicht.
+  const teile = felder.map(el => {
+    const [num, farbe] = String(el.dataset.key || '').split('__');
+    return { part_number: num, color_id: parseInt(farbe) || 0 };
+  }).filter(t => t.part_number);
+
+  const b = G('btn-pl-bestand');
+  const frei = knopfBesetzt(b);
+  const d = await api('POST', '/v1/parts/owned' + scopeQuery('parts'), { teile }).catch(() => null);
+  frei();
+  if (!d?.success) { toast(d?.error || t('settings.error'), 'error'); return; }
+
+  let getroffen = 0, fehlend = 0, fehlendeArten = 0;
+  for (const el of felder) {
+    const [num, farbe] = String(el.dataset.key || '').split('__');
+    const eintrag = d.bestand[`${num}|${parseInt(farbe) || 0}`];
+    const habe = eintrag ? (nurLose ? eintrag.lose : eintrag.gesamt) : 0;
+    el.value = String(habe);
+    if (habe > 0) getroffen++;
+    const braucht = parseInt(el.dataset.need) || 0;
+    if (habe < braucht) { fehlend += braucht - habe; fehlendeArten++; }
+  }
+
+  const status = G('pl-status');
+  if (!status) return;
+  if (!getroffen)      status.textContent = tRaw('pl.owned_none');
+  else if (!fehlendeArten) status.textContent = tRaw('pl.owned_complete');
+  else status.textContent = tRaw('pl.owned_filled', { n: getroffen, m: felder.length })
+                          + ' ' + tRaw('pl.owned_missing', { n: fehlend, m: fehlendeArten });
 }
 
 function plRenderTable() {
@@ -506,6 +565,8 @@ async function plExportBricklink() {
 }
 
 function plReset() {
+  const bb = G('btn-pl-bestand'); if (bb) bb.style.display = 'none';
+  const lb = G('pl-bestand-lose-box'); if (lb) lb.style.display = 'none';
   _plSets = []; _plParts = null;
   G('pl-result').innerHTML = '';
   G('pl-status').textContent = '';
@@ -525,6 +586,7 @@ registerActions({
   plAddSet,
   plExportBricklink,
   plExportPdf,
+  plFuelleBestand,
   plGenerate,
   plRemoveSet,
   plReset,
