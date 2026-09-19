@@ -74,6 +74,7 @@ fun SetDetailScreen(
         vm.loadSetPrice(setNumber)
         vm.loadSetPriceHistory(setNumber)
         vm.loadAcquisitions(setNumber)
+        vm.loadPreisalarme(setNumber)
     }
 
     fun fmtPrice(v: Double?) = if (v == null) "—"
@@ -176,6 +177,7 @@ fun SetDetailScreen(
             setDetailStatChips(set)
             setDetailValueTiles(set, price, isBrick, ::fmtPrice)
             setDetailDetailsSection(set, setNumber, vm, acquisitions, currency, ::fmtDate, onNavigateToAcqMgmt)
+            setDetailAlarmSection(setNumber, detailState.preisalarme, currency, vm)
             setDetailPriceSection(set, detailState, price, history, pnlPct, currency, isBrick, ::fmtPrice)
             setDetailInstructionsSection(
                 set, detailState, serverUrl, onOpenPdf,

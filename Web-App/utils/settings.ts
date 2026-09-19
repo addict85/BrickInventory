@@ -2,7 +2,7 @@
  * Settings-Helfer — zentrale Implementierung.
  *
  * Vorher als Kopien in routes/finance.js, routes/api_v1.js (User-Fallback-
- * Variante) und routes/mailer.js (nur global) vorhanden.
+ * Variante) und utils/mailer.js (nur global) vorhanden.
  */
 
 import * as db from '../db/database';

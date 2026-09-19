@@ -142,6 +142,15 @@ export const FEHLER = {
   lagerort_zu_lang:            {
     de: 'Der Lagerort ist zu lang (höchstens 60 Zeichen).',
     en: 'Storage location is too long (at most 60 characters).' },
+  alarm_richtung_ungueltig:    {
+    de: 'Die Richtung muss „unter“ oder „über“ sein.',
+    en: 'Direction must be “unter” or “ueber”.' },
+  alarm_schwelle_ungueltig:    {
+    de: 'Die Schwelle muss eine Zahl grösser als null sein.',
+    en: 'The threshold must be a number greater than zero.' },
+  alarm_zustand_ungueltig:     {
+    de: 'Der Zustand muss „N“ (neu) oder „U“ (gebraucht) sein.',
+    en: 'Condition must be “N” (new) or “U” (used).' },
   quelle_ziel_identisch:       { de: 'Quell- und Zielkonto sind identisch.',
                                  en: 'Source and target account are the same.' },
   kaufpreise_angeben:          { de: 'Bitte die zu verschiebenden Kaufpreise angeben (acquisition_ids).',

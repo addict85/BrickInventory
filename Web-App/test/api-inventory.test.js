@@ -245,6 +245,11 @@ const C = {
   // Lagerort (Nachtrag 175) — beide Oberflaechen, nie eine Zweitfassung
   // unter /api. GET /storage spannt Sets UND Teile und gehoert deshalb zu
   // keiner der beiden Familien allein.
+  // Preisalarm (Nachtrag 176) — beide Oberflaechen. Ohne Kontofilter: Ein
+  // Alarm gehoert genau EINEM Konto (siehe utils/preisalarm.ts).
+  'GET /api/v1/sets/:setNumber/alert': 'nur-v1',
+  'PUT /api/v1/sets/:setNumber/alert': 'nur-v1',
+  'DELETE /api/v1/sets/:setNumber/alert': 'nur-v1',
   'GET /api/v1/storage': 'nur-v1',
   'PUT /api/v1/parts/:partNumber/:colorId/storage': 'nur-v1',
   'PUT /api/v1/sets/:setNumber/storage': 'nur-v1',

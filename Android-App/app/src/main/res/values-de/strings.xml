@@ -144,6 +144,11 @@
     <string name="partslist_reset">Zurücksetzen</string>
     <string name="partslist_fill_owned">Mein Bestand</string>
     <string name="detail_storage">Lagerort</string>
+    <string name="detail_alert">Preisalarm</string>
+    <string name="detail_alert_below">fällt unter</string>
+    <string name="detail_alert_above">steigt über</string>
+    <string name="detail_alert_armed">scharf</string>
+    <string name="detail_alert_fired">gemeldet — wieder scharf, sobald der Preis zurückkehrt</string>
     <string name="detail_storage_ph">z. B. Kiste 3</string>
     <string name="filter_storage_all">Alle Lagerorte</string>
     <string name="partslist_only_loose">nur lose Teile</string>

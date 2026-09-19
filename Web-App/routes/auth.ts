@@ -9,7 +9,7 @@ import { hashToken, pruefeAnmeldedaten, createToken, validateToken, assertLoginA
 import { ipThrottle } from '../utils/loginLimiter';
 import crypto from 'crypto';
 import { strictBool } from '../utils/validate';
-import { sendPasswordResetMail, sendVerificationMail } from './mailer';
+import { sendPasswordResetMail, sendVerificationMail } from '../utils/mailer';
 import type { Request } from 'express';
 import { getGlobalSetting } from '../utils/settings';
 import { requireApiAdmin } from './api_v1/middleware';
@@ -776,7 +776,7 @@ router.post('/register', ipThrottle('register', 5, 60 * 60 * 1000), async (req, 
 //
 // Sie hatte keinen Aufrufer, und das stand seit Nachtrag 154 als Kommentar
 // genau hier: „Gefahrlos umzustellen, weil die Route KEINEN Aufrufer hat: Der
-// Link in der Verifikationsmail zeigt auf /verify (routes/mailer.ts), das
+// Link in der Verifikationsmail zeigt auf /verify (utils/mailer.ts), das
 // Frontend ruft sie nicht auf und die Android-App auch nicht."
 //
 // Damals wurde ihre Antwortform berichtigt und sie stehengelassen. Das ist

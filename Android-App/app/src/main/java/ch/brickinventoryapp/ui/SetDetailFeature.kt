@@ -253,3 +253,46 @@ private fun MainViewModel.anleitungName(uri: android.net.Uri): String =
             if (i >= 0 && c.moveToFirst()) c.getStringOrNull(i) else null
         }
     }.getOrNull() ?: "anleitung"
+
+// ═══════════════════════════════════════════════════════════════════════════
+// Preisalarm
+// ═══════════════════════════════════════════════════════════════════════════
+//
+// Die Oberflaeche bietet vorerst den Alarm fuer NEU an — der Fall, nach dem
+// gefragt wurde. Die Trennung nach Zustand steckt trotzdem schon im Server und
+// in der Tabelle: Sie nachtraeglich einzuziehen hiesse, bestehende Alarme
+// zuordnen zu muessen, und das geht nicht ohne Raten. Ein zweites Auswahlfeld
+// hier ist dagegen eine Zeile. Dieselbe Festlegung wie in der Webapp.
+internal const val ALARM_ZUSTAND = "N"
+
+internal fun MainViewModel.loadPreisalarme(setNumber: String) {
+    viewModelScope.launch {
+        val r = repo.sets.getPreisalarme(setNumber)
+        val alarme = (r as? Result.Success)?.data?.takeIf { it.success }?.alerts ?: emptyList()
+        _setDetailState.update { it.copy(preisalarme = alarme) }
+    }
+}
+
+/**
+ * Alarm setzen oder loeschen.
+ *
+ * Eine leere Schwelle heisst LOESCHEN, nicht „Schwelle 0": Die natuerliche
+ * Geste, einen Alarm loszuwerden, ist das Feld zu leeren — ein eigener Knopf
+ * daneben waere ein zweiter Weg fuer dieselbe Absicht. Genau so verhaelt sich
+ * die Webapp (speichereAlarm in public/js/07-admin.js).
+ */
+internal fun MainViewModel.setzePreisalarm(setNumber: String, richtung: String, schwelle: Double?) {
+    viewModelScope.launch {
+        val r = if (schwelle == null || schwelle <= 0.0)
+            repo.sets.deletePreisalarm(setNumber, ALARM_ZUSTAND)
+        else
+            repo.sets.setPreisalarm(setNumber, richtung, schwelle, ALARM_ZUSTAND)
+        when (r) {
+            is Result.Success -> {
+                if (!r.data.success) { _snackbar.emit(r.data.error ?: ""); return@launch }
+                loadPreisalarme(setNumber)
+            }
+            is Result.Error -> _snackbar.emit(meldung(r))
+        }
+    }
+}

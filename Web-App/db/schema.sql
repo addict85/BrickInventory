@@ -411,6 +411,20 @@ CREATE TABLE IF NOT EXISTS price_history (
 );
 CREATE INDEX IF NOT EXISTS idx_price_history_set ON price_history(set_number, recorded_at);
 
+-- ── Preisalarm ──────────────────────────────────────────────────────────────
+--
+-- price_alerts steht BEWUSST nur in db/migrations/0019-preisalarm.sql — wie
+-- account_links und die fuenf anderen Tabellen oben. Eine ganze TABELLE an
+-- zwei Orten anzulegen ist etwas anderes als ein ALTER … ADD COLUMN IF NOT
+-- EXISTS: Die Spaltendefinition beschreibt dieselbe Zielform, die
+-- Tabellendefinition beschreibt alle Spalten, Schluessel und CHECKs — und die
+-- liefen auseinander, sobald jemand einen davon nur an einem Ort aendert.
+-- test/schema-am-start.test.js meldet es.
+--
+-- Folge: Ein Testaufbau, der nur initSchema() ruft, hat die Tabelle nicht.
+-- Der Preisalarm faengt das ab (utils/preisalarm.ts fragt, jobs/priceJob.ts
+-- kapselt den ganzen Block) — ohne Alarme gibt es nichts zu melden.
+
 -- Meistgenutzte Query der App: SELECT ... FROM sets WHERE user_id = $1.
 -- UNIQUE(user_id, set_number) deckt das zwar theoretisch ab, ein
 -- expliziter Index dokumentiert die Absicht und bleibt bei Schema-

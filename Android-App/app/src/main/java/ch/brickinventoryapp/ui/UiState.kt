@@ -597,6 +597,14 @@ data class SetDetailUiState(
     // werden — die Antwort ist bereits das Modell.
     val priceHistory: PriceHistoryResponse? = null,
     val priceHistoryLoading: Boolean = false,
+    /**
+     * Preisalarme dieses Sets — hoechstens zwei (neu und gebraucht).
+     *
+     * Getrennt vom setDetail geladen, weil sie NICHT zum Set gehoeren,
+     * sondern zum Konto: Zwei Personen mit demselben Set haben
+     * verschiedene Alarme.
+     */
+    val preisalarme: List<ch.brickinventoryapp.data.model.Preisalarm> = emptyList(),
     val acquisitions: List<ch.brickinventoryapp.data.model.Acquisition> = emptyList(),
     /**
      * Summenzeile der Erfassungen — vom Server gerechnet, nicht hier.

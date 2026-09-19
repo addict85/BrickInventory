@@ -90,6 +90,23 @@ class SetsRepository @Inject constructor(
                         acquisitionIds: List<Int>? = null): Result<MoveSetResponse> =
         safeCall { api.moveSet(setNumber, MoveSetRequest(fromUserId, toUserId, acquisitionIds)) }
 
+    // ── Preisalarm ──────────────────────────────────────────────────────────
+    //
+    // BEWUSST ohne Zwischenspeicher: Ein Alarm wird selten gelesen (nur beim
+    // Oeffnen des Detailbildschirms) und aendert sich durch den Preislauf auch
+    // ohne Zutun der App — der Merker `ausgeloest` springt dort um. Ein
+    // Speicher zeigte danach „scharf", waehrend die Mail schon unterwegs ist.
+    suspend fun getPreisalarme(setNumber: String): Result<PreisalarmeResponse> =
+        safeCall { api.getPreisalarme(setNumber) }
+
+    suspend fun setPreisalarm(setNumber: String, richtung: String, schwelle: Double,
+                              condition: String = "N"): Result<PreisalarmResponse> =
+        safeCall { api.setPreisalarm(setNumber, PreisalarmRequest(richtung, schwelle, condition)) }
+
+    suspend fun deletePreisalarm(setNumber: String, condition: String = "N"):
+        Result<PreisalarmResponse> =
+        safeCall { api.deletePreisalarm(setNumber, condition) }
+
     /** Lagerort eines Sets setzen. Leerer Text loescht ihn. */
     suspend fun setSetStorage(setNumber: String, ort: String): Result<LagerortResponse> =
         safeCall { api.setSetStorage(setNumber, LagerortRequest(ort)) }

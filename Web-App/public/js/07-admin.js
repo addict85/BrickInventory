@@ -481,6 +481,53 @@ export async function speichereSetLagerort(sn) {
  * beim nächsten Mal vorgeschlagen bekommen — sonst stehen „Kiste 3" und
  * „kiste 3" nebeneinander und die Übersicht zählt sie getrennt.
  */
+/**
+ * Preisalarm des offenen Sets laden und anzeigen.
+ *
+ * ── Warum nur der Zustand „neu" im Dialog steht ─────────────────────────────
+ *
+ * Der Server kann je Zustand einen Alarm — die Oberfläche bietet vorerst den
+ * für NEU an, weil das der Fall ist, nach dem gefragt wurde. Die Trennung
+ * steckt trotzdem schon im Server und in der Tabelle: Sie nachträglich
+ * einzuziehen hiesse, bestehende Alarme zuordnen zu müssen, und das geht nicht
+ * ohne Raten. Ein zweites Auswahlfeld hier ist dagegen eine Zeile.
+ */
+const ALARM_ZUSTAND = 'N';
+
+export async function ladeAlarm(sn) {
+  const d = await api('GET', `/v1/sets/${encodeURIComponent(sn)}/alert`).catch(() => null);
+  const dir = G('m-alert-dir'), val = G('m-alert-val'), st = G('m-alert-state');
+  if (!dir || !val) return;
+  const a = (d?.alerts || []).find(x => x.condition === ALARM_ZUSTAND);
+  dir.value = a?.richtung || 'unter';
+  val.value = a ? String(a.schwelle) : '';
+  if (!st) return;
+  // Der Merker sagt, ob schon gemeldet wurde. Ihn zu zeigen ist der
+  // Unterschied zwischen „der Alarm steht" und „der Alarm hat gefeuert" —
+  // sonst fragt man sich, warum keine Mail mehr kommt.
+  st.textContent = !a ? ''
+    : a.ausgeloest ? tRaw('detail.alert_fired') : tRaw('detail.alert_armed');
+}
+
+/**
+ * Preisalarm speichern oder löschen.
+ *
+ * Ein leeres Feld heisst LÖSCHEN, nicht „Schwelle 0": Die natürliche Geste,
+ * einen Alarm loszuwerden, ist das Feld zu leeren — ein eigener Knopf daneben
+ * wäre ein zweiter Weg für dieselbe Absicht.
+ */
+export async function speichereAlarm(sn) {
+  const dir = G('m-alert-dir'), val = G('m-alert-val');
+  if (!dir || !val) return;
+  const roh = String(val.value || '').trim();
+  const d = roh === ''
+    ? await api('DELETE', `/v1/sets/${encodeURIComponent(sn)}/alert?condition=${ALARM_ZUSTAND}`)
+    : await api('PUT', `/v1/sets/${encodeURIComponent(sn)}/alert`,
+                { richtung: dir.value, schwelle: parseFloat(roh), condition: ALARM_ZUSTAND });
+  if (!d?.success) { toast(d?.error || tRaw('settings.error'), 'error'); return; }
+  await ladeAlarm(sn);
+}
+
 export async function ladeLagerorte() {
   const d = await api('GET', '/v1/storage' + scopeQuery('gallery')).catch(() => null);
   if (!d?.success) return;
@@ -538,6 +585,17 @@ export async function openModal(sn){
     ${detailZeile(t('detail.pieces'), `${curSet.pieces ? curSet.pieces.toLocaleString(locale()) : '—'} <button class="btn bs btn-sm" data-click="reimportParts" data-arg="${escJs(sn)}" title="${t('detail.reimport_parts')}" style="padding:1px 6px;font-size:.75rem;margin-left:4px">${PARTS_ICON_SVG}</button>`)}
     ${detailZeile(t('detail.minifigs'), oderStrich(curSet.minifigs), { wertId: 'm-minifigs-val' })}
     ${detailZeile(t('detail.added'), `📅 ${addedFmt}`)}
+    ${detailZeile(t('detail.alert'), `
+      <select id="m-alert-dir" style="height:26px;border:1px solid var(--bdr);border-radius:6px;font-size:.8rem;background:var(--sur);color:var(--txt)" data-change="speichereAlarm" data-arg="${escJs(sn)}">
+        <option value="unter">${esc(tRaw('detail.alert_below'))}</option>
+        <option value="ueber">${esc(tRaw('detail.alert_above'))}</option>
+      </select>
+      <input type="number" id="m-alert-val" min="0" step="0.01" placeholder="—"
+             style="width:80px;text-align:right;border:1px solid var(--bdr);border-radius:6px;padding:2px 6px;font-size:.85rem"
+             data-change="speichereAlarm" data-arg="${escJs(sn)}" />
+      <span id="m-alert-state" style="font-size:.72rem;color:var(--mut)"></span>
+    `, { zeilenStil: 'align-items:flex-start',
+         wertStil: 'display:flex;align-items:center;gap:6px;flex-wrap:wrap;justify-content:flex-end' })}
     ${detailZeile(t('detail.storage'), `
       <input type="text" id="m-storage" list="lagerorte" maxlength="60"
              placeholder="${esc(tRaw('detail.storage_ph'))}"
@@ -556,6 +614,7 @@ export async function openModal(sn){
 
   renderInstructions(curSet.instructions||[], sn);
   G('set-modal').classList.add('open');
+  ladeAlarm(sn).catch(() => {});
 
   // Load actual minifig count from minifigs table (more reliable than sets.minifigs)
   //
@@ -857,6 +916,7 @@ registerActions({
   queueCatalogImages,
   reimportMissingInstructions,
   retryBricksetQueueEntry,
+  speichereAlarm,
   speichereSetLagerort,
   toggleBricksetQueue,
   triggerCsvSync,

@@ -391,6 +391,27 @@ interface BrickApiService {
      *
      * Siehe die Begruendung fuer POST an BestandRequest (TeileMinifigModels.kt).
      */
+    // ── Preisalarm ──────────────────────────────────────────────────────────
+    //
+    // Ohne `accounts=`: Ein Alarm gehoert genau EINEM Konto (siehe Preisalarm).
+
+    @GET("api/v1/sets/{setNumber}/alert")
+    suspend fun getPreisalarme(
+        @Path("setNumber") setNumber: String,
+    ): Response<PreisalarmeResponse>
+
+    @PUT("api/v1/sets/{setNumber}/alert")
+    suspend fun setPreisalarm(
+        @Path("setNumber") setNumber: String,
+        @Body request: PreisalarmRequest,
+    ): Response<PreisalarmResponse>
+
+    @DELETE("api/v1/sets/{setNumber}/alert")
+    suspend fun deletePreisalarm(
+        @Path("setNumber") setNumber: String,
+        @Query("condition") condition: String = "N",
+    ): Response<PreisalarmResponse>
+
     // ── Lagerort ────────────────────────────────────────────────────────────
     //
     // Setzen trifft ALLE Zeilen des Teil-Farb-Paares bzw. des Sets im

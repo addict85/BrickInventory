@@ -14,6 +14,7 @@ import { istErsatzteil, ersatzteilSql } from '../../utils/validate';
 import { householdMembers, resolveWriteTarget } from '../../utils/household';
 import { moveSetBetweenAccounts } from '../../utils/setMove';
 import { normalisiereLagerort, setzeLagerort, lagerorte } from '../../utils/lagerort';
+import { alarmeFuer, loescheAlarm, setzeAlarm } from '../../utils/preisalarm';
 import { istVermutung } from '../../utils/barcodeQuelle';
 import { setnummerKandidaten } from '../../utils/produkttitel';
 import { withInventoryLock } from '../../utils/txLock';
@@ -302,6 +303,44 @@ router.put('/sets/:setNumber/storage', requireToken, async (req: AuthedRequest, 
     const n = await setzeLagerort('set', await writableIds(req.apiUser.user_id),
       [normalizeSetNumber(String(req.params.setNumber))], ort);
     res.json({ success: true, storage: ort, changed: n });
+  } catch (e) { handleRouteError(res, e, undefined, req); }
+});
+
+/**
+ * Preisalarm — GET/PUT/DELETE zu EINEM Set.
+ *
+ * ── Warum hier kein Blickfeld steht ─────────────────────────────────────────
+ *
+ * Ein Alarm gehoert genau EINEM Konto: Wer eine Schwelle setzt, will selbst
+ * benachrichtigt werden. Das Elternkonto hat nichts davon, die Wuensche seiner
+ * Kinder per Mail zu bekommen — und duerfte sie schon gar nicht loeschen.
+ * Deshalb `req.apiUser.user_id` und nicht scopeIds()/writableIds(); im ganzen
+ * uebrigen Baum waere das ein Versehen, hier ist es die Regel.
+ */
+router.get('/sets/:setNumber/alert', requireToken, async (req: AuthedRequest, res) => {
+  try {
+    res.json({ success: true,
+      alerts: await alarmeFuer(req.apiUser.user_id, normalizeSetNumber(String(req.params.setNumber))) });
+  } catch (e) { handleRouteError(res, e, undefined, req); }
+});
+
+router.put('/sets/:setNumber/alert', requireToken, async (req: AuthedRequest, res) => {
+  try {
+    // Die Waehrung kommt aus den Einstellungen, NICHT aus der Anfrage: Eine
+    // vom Klienten geschickte Waehrung waere eine zweite Quelle fuer dieselbe
+    // Angabe, und die beiden liefen beim naechsten Wechsel auseinander.
+    const waehrung = String(await getSetting(req.apiUser.user_id, 'currency', 'EUR'));
+    const alarm = await setzeAlarm(req.apiUser.user_id,
+      normalizeSetNumber(String(req.params.setNumber)), waehrung, req.body || {});
+    res.json({ success: true, alert: alarm });
+  } catch (e) { handleRouteError(res, e, undefined, req); }
+});
+
+router.delete('/sets/:setNumber/alert', requireToken, async (req: AuthedRequest, res) => {
+  try {
+    const n = await loescheAlarm(req.apiUser.user_id,
+      normalizeSetNumber(String(req.params.setNumber)), String(req.query.condition || 'N'));
+    res.json({ success: true, removed: n });
   } catch (e) { handleRouteError(res, e, undefined, req); }
 });
 

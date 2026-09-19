@@ -45,7 +45,7 @@ import { effectiveCondition } from './zustand';
  * dieser drei Literale, nie einen Wert von aussen. Damit prueft der Uebersetzer
  * `defaults[apiName]` selbst — der Indexzugriff braucht hier weder ausTabelle()
  * noch einen Rueckfall gegen geerbte Mitglieder, weil gar kein fremder
- * Schluessel hineinkommen kann. (Anders als in routes/mailer.ts, wo der
+ * Schluessel hineinkommen kann. (Anders als in utils/mailer.ts, wo der
  * Schluessel aus der Datenbank stammt.)
  */
 type ApiName = 'bricklink' | 'rebrickable' | 'brickset';

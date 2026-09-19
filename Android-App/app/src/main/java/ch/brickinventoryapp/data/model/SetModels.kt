@@ -374,3 +374,57 @@ data class CsvImportErgebnis(
  * Aufrufwegen durch die ganze Anwendung. Die Webapp bietet genau diese drei an.
  */
 enum class CsvArt { SETS, TEILE, MINIFIGUREN }
+
+// ═══════════════════════════════════════════════════════════════════════════
+// Preisalarm — sag Bescheid, wenn ein Set eine Schwelle reisst
+// ═══════════════════════════════════════════════════════════════════════════
+
+/**
+ * Ein Alarm gehoert genau EINEM Konto — anders als alles andere in diesem
+ * Modell kennt er kein Blickfeld. Wer eine Schwelle setzt, will selbst
+ * benachrichtigt werden; das Elternkonto haette nichts davon, die Wuensche
+ * seiner Kinder per Mail zu bekommen.
+ */
+@Serializable
+data class Preisalarm(
+    @SerialName("set_number") val setNumber: String = "",
+    /** "N" = neu, "U" = gebraucht. Neu und gebraucht liegen oft um ein Vielfaches auseinander. */
+    val condition: String = "N",
+    /** "unter" oder "ueber". */
+    val richtung: String = "unter",
+    val schwelle: Double = 0.0,
+    @SerialName("currency_code") val currencyCode: String = "",
+    /**
+     * Schon gemeldet?
+     *
+     * Der Alarm meldet den UEBERGANG, nicht den Zustand: Bleibt der Preis
+     * unter der Schwelle, bleibt es bei der einen Meldung. Erst wenn er auf
+     * die andere Seite zurueckkehrt, wird der Merker geloescht und die
+     * naechste Unterschreitung meldet wieder.
+     */
+    val ausgeloest: Boolean = false,
+    @SerialName("zuletzt_am") val zuletztAm: String? = null,
+    @SerialName("zuletzt_preis") val zuletztPreis: Double? = null,
+)
+
+@Serializable
+data class PreisalarmRequest(
+    val richtung: String,
+    val schwelle: Double,
+    val condition: String = "N",
+)
+
+@Serializable
+data class PreisalarmeResponse(
+    val success: Boolean = false,
+    val alerts: List<Preisalarm> = emptyList(),
+    val error: String? = null,
+)
+
+@Serializable
+data class PreisalarmResponse(
+    val success: Boolean = false,
+    val alert: Preisalarm? = null,
+    val removed: Int = 0,
+    val error: String? = null,
+)

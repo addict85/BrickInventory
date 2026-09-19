@@ -46,6 +46,8 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.unit.sp
@@ -598,6 +600,93 @@ fun LazyListScope.setDetailHeroImage(
                         tint = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.4f)
                     )
                 }
+            }
+        }
+    }
+}
+
+/**
+ * Preisalarm — „sag Bescheid, wenn das Set unter X faellt".
+ *
+ * ── Warum eine eigene Karte und nicht eine Zeile in den Stammdaten ──────────
+ *
+ * Der Alarm gehoert nicht zum SET, sondern zum KONTO: Zwei Personen mit
+ * demselben Set haben verschiedene Alarme. Zwischen Nummer, Menge und
+ * Erfassungsdatum stuende er wie eine Eigenschaft des Sets da — und beim
+ * Verschieben in ein anderes Konto fragte man sich, ob er mitwandert (er tut
+ * es nicht).
+ *
+ * ── Warum die Schwelle beim Verlassen des Feldes gespeichert wird ───────────
+ *
+ * Wie ueberall sonst in diesem Bildschirm: Ein Betrag wird getippt. Ein
+ * Speichern je Zeichen erzeugte fuer „249.90" sechs Anfragen und legte dabei
+ * fuenf Schwellen an, die niemand wollte — eine davon bei 2.
+ */
+fun LazyListScope.setDetailAlarmSection(
+    setNumber: String,
+    alarme: List<ch.brickinventoryapp.data.model.Preisalarm>,
+    currency: String,
+    vm: MainViewModel,
+) {
+    item {
+        val alarm = alarme.firstOrNull { it.condition == ch.brickinventoryapp.ui.ALARM_ZUSTAND }
+        SectionCard(title = stringResource(R.string.detail_alert)) {
+            // Schluessel ist der Alarm selbst: Kommt einer vom Server (geladen
+            // oder gerade gespeichert), soll das Feld ihn zeigen statt den
+            // alten Text zu behalten.
+            var richtung by rememberSaveable(alarm?.richtung) {
+                mutableStateOf(alarm?.richtung ?: "unter")
+            }
+            var schwelle by rememberSaveable(alarm?.schwelle) {
+                mutableStateOf(alarm?.let { if (it.schwelle > 0) it.schwelle.toString() else "" } ?: "")
+            }
+            var alarmFokus by remember { mutableStateOf(false) }
+
+            fun speichern() {
+                val zahl = schwelle.replace(',', '.').trim().toDoubleOrNull()
+                vm.setzePreisalarm(setNumber, richtung, zahl)
+            }
+
+            Row(verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(Abstaende.klein)) {
+                // Zwei Chips statt eines Auswahlfelds: Es sind genau zwei
+                // Moeglichkeiten, und beide sollen ohne Aufklappen lesbar sein.
+                FilterChip(
+                    selected = richtung == "unter",
+                    onClick = { richtung = "unter"; if (schwelle.isNotBlank()) speichern() },
+                    label = { Text(stringResource(R.string.detail_alert_below), fontSize = 13.sp) },
+                )
+                FilterChip(
+                    selected = richtung == "ueber",
+                    onClick = { richtung = "ueber"; if (schwelle.isNotBlank()) speichern() },
+                    label = { Text(stringResource(R.string.detail_alert_above), fontSize = 13.sp) },
+                )
+                OutlinedTextField(
+                    value = schwelle,
+                    onValueChange = { schwelle = it },
+                    singleLine = true,
+                    placeholder = { Text(currency, fontSize = 13.sp) },
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+                    modifier = Modifier
+                        .weight(1f)
+                        .onFocusChanged { f ->
+                            if (f.isFocused) alarmFokus = true
+                            else if (alarmFokus) { alarmFokus = false; speichern() }
+                        },
+                )
+            }
+            // Der Merker sagt, ob schon gemeldet wurde. Ihn zu zeigen ist der
+            // Unterschied zwischen „der Alarm steht" und „der Alarm hat
+            // gefeuert" — sonst fragt man sich, warum keine Mail mehr kommt.
+            if (alarm != null) {
+                Text(
+                    stringResource(
+                        if (alarm.ausgeloest) R.string.detail_alert_fired
+                        else R.string.detail_alert_armed
+                    ),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
             }
         }
     }
