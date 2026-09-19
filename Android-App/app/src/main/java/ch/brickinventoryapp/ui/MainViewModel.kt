@@ -199,6 +199,11 @@ class MainViewModel @Inject constructor(
     internal val _setItemState = MutableStateFlow(SetItemUiState())
     val setItemState = _setItemState.asStateFlow()
 
+    // Lagerortfilter — eigener Fluss statt zweier Felder in AppUiState; die
+    // Begruendung steht an LagerUiState (UiState.kt).
+    internal val _lagerState = MutableStateFlow(LagerUiState())
+    val lagerState = _lagerState.asStateFlow()
+
     /**
      * Galerie — eigener Fluss (Nachtrag: AppUiState-Aufteilung).
      *

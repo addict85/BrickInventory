@@ -179,7 +179,7 @@ fun SetItemDetailDialog(
                             Text(
                                 stringResource(R.string.setitem_used_in_none),
                                 color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                fontSize = 13.sp,
+                                fontSize = Schrift.klein,
                             )
                         } else {
                             // LazyColumn mit Hoehenbegrenzung: Ein Teil kann in
@@ -281,7 +281,7 @@ private fun LagerortFeld(wert: String?, onSpeichern: (String) -> Unit) {
             value = text,
             onValueChange = { if (it.length <= 60) text = it },
             singleLine = true,
-            placeholder = { Text(stringResource(R.string.detail_storage_ph), fontSize = 13.sp) },
+            placeholder = { Text(stringResource(R.string.detail_storage_ph), fontSize = Schrift.klein) },
             textStyle = LocalTextStyle.current.copy(fontSize = Schrift.normal),
             modifier = Modifier
                 .padding(start = Abstaende.gross)

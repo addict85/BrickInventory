@@ -79,6 +79,9 @@ fun PartsScreen(
     // ziehen.
     val state by vm.state.collectAsStateWithLifecycle()
     val partsState by vm.partsState.collectAsStateWithLifecycle()
+    // Eigener Fluss: Der Lagerortfilter gehoert nicht in AppUiState, das
+    // sechzehn Dateien sammeln (siehe LagerUiState).
+    val lagerState by vm.lagerState.collectAsStateWithLifecycle()
 
     val parts = partsState.parts
     val stats = partsState.partsStats
@@ -102,8 +105,8 @@ fun PartsScreen(
     val onSearch: (String) -> Unit = vm::setPartsQuery
     val onLoadMore: (Int) -> Unit = { vm.loadParts(page = it) }
     val onScopeChange: (String) -> Unit = { vm.setScope(ch.brickinventoryapp.data.ScopeFilter.View.PARTS, it) }
-    val lagerorte = state.lagerorte
-    val lagerModus = state.lagerModi[ch.brickinventoryapp.data.ScopeFilter.View.PARTS.key] ?: ""
+    val lagerorte = lagerState.orte
+    val lagerModus = lagerState.modi[ch.brickinventoryapp.data.ScopeFilter.View.PARTS.key] ?: ""
     val onLagerChange: (String) -> Unit = { vm.setLagerFilter(ch.brickinventoryapp.data.ScopeFilter.View.PARTS, it) }
     val ansicht = partsState.partsView
     // Besitzer der Karte mitgeben — Begruendung wie in MinifigsScreen.

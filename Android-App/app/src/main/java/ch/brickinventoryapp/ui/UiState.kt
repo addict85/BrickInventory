@@ -278,17 +278,6 @@ data class AppUiState(
      */
     val scopeModes: Map<String, String> = emptyMap(),
     /**
-     * Gewaehlter Lagerort JE ANSICHT — leer heisst „nicht gefiltert".
-     *
-     * Getrennt von scopeModes, obwohl beide dieselbe Form haben: Es sind
-     * zwei Fragen („wessen" und „wo"), die sich frei kombinieren lassen.
-     * In eine Karte gepresst waere jede Kombination ein eigener
-     * Schluessel.
-     */
-    val lagerModi: Map<String, String> = emptyMap(),
-    /** Die belegten Lagerorte im Blickfeld — speist die Auswahl. */
-    val lagerorte: List<ch.brickinventoryapp.data.model.Lagerort> = emptyList(),
-    /**
      * Konten des Haushalts, eigenes zuerst. Mehr als einer heisst: Hauptkonto
      * mit Unterkonten — erst dann erscheinen Kontofilter, Kontoauswahl beim
      * Erfassen und der Verschieben-Weg.
@@ -897,3 +886,31 @@ data class SetItemUiState(
 ) {
     val offen: Boolean get() = art != null
 }
+
+/**
+ * Lagerortfilter — eigener Fluss, nicht Teil von AppUiState.
+ *
+ * ── Warum nicht neben scopeModes (Nachtrag 176) ─────────────────────────────
+ *
+ * Der erste Entwurf legte beide Felder in AppUiState, direkt neben
+ * `scopeModes`. ZustandsflussBreiteTest hat das abgelehnt, und zwar mit der
+ * richtigen Frage: „Gehoert es wirklich allen — oder ist es der Anfang der
+ * naechsten Domaene?"
+ *
+ * Die Antwort ist: der naechsten Domaene. AppUiState wird von SECHZEHN
+ * Dateien gesammelt, und in Compose rekomponiert ein Sammler bei JEDER
+ * Aenderung seines Flusses — egal welches Feld sich geaendert hat. Die Liste
+ * der Lagerorte laedt bei jeder Anmeldung und nach jedem Eintragen neu; sie
+ * wird von ZWEIEN gelesen (Galerie und Teile). Vierzehn Bildschirme
+ * mitzuziehen, die den Lagerort nie anfassen, waere genau der Fehler, gegen
+ * den jene Pruefung gebaut ist.
+ *
+ * `scopeModes` steht weiterhin in AppUiState — der Kontofilter wird von vier
+ * Ansichten gelesen UND beim Erfassen gebraucht. Das ist der Unterschied.
+ */
+data class LagerUiState(
+    /** Gewaehlter Lagerort JE ANSICHT — leer heisst „nicht gefiltert". */
+    val modi: Map<String, String> = emptyMap(),
+    /** Die belegten Lagerorte im Blickfeld — speist die Auswahl. */
+    val orte: List<ch.brickinventoryapp.data.model.Lagerort> = emptyList(),
+)

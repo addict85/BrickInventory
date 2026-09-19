@@ -51,7 +51,7 @@ internal fun MainViewModel.setScope(view: ScopeFilter.View, value: String) {
 
 /** Der gewaehlte Lagerort als Anfrageparameter — null, solange nicht gefiltert wird. */
 internal fun MainViewModel.lagerFor(view: ScopeFilter.View): String? =
-    ScopeFilter.lagerAsQuery(_state.value.lagerModi[view.key])
+    ScopeFilter.lagerAsQuery(_lagerState.value.modi[view.key])
 
 /**
  * Lagerortfilter setzen und NUR die betroffene Ansicht neu laden.
@@ -62,7 +62,7 @@ internal fun MainViewModel.lagerFor(view: ScopeFilter.View): String? =
 internal fun MainViewModel.setLagerFilter(view: ScopeFilter.View, value: String) {
     viewModelScope.launch {
         ScopeFilter.setLager(ctx, view, value)
-        _state.update { it.copy(lagerModi = it.lagerModi + (view.key to value)) }
+        _lagerState.update { it.copy(modi = it.modi + (view.key to value)) }
         when (view) {
             ScopeFilter.View.GALLERY -> loadSets()
             ScopeFilter.View.PARTS   -> loadParts()
@@ -82,7 +82,7 @@ internal fun MainViewModel.loadLagerorte() {
     viewModelScope.launch {
         val r = repo.teile.getLagerorte(scopeFor(ScopeFilter.View.GALLERY))
         val orte = (r as? Result.Success)?.data?.takeIf { it.success }?.orte ?: return@launch
-        _state.update { it.copy(lagerorte = orte) }
+        _lagerState.update { it.copy(orte = orte) }
     }
 }
 
@@ -103,7 +103,8 @@ internal fun MainViewModel.loadScopeModes() {
                 value
             })
         }
-        _state.update { it.copy(scopeModes = modes, lagerModi = lager) }
+        _state.update { it.copy(scopeModes = modes) }
+        _lagerState.update { it.copy(modi = lager) }
     }
 }
 

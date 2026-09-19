@@ -392,7 +392,7 @@ fun LazyListScope.setDetailDetailsSection(set: SetItem, setNumber: String, vm: M
                     value = lagerort,
                     onValueChange = { if (it.length <= 60) lagerort = it },
                     singleLine = true,
-                    placeholder = { Text(stringResource(R.string.detail_storage_ph), fontSize = 13.sp) },
+                    placeholder = { Text(stringResource(R.string.detail_storage_ph), fontSize = Schrift.klein) },
                     modifier = Modifier
                         .padding(start = Abstaende.gross)
                         .widthIn(max = 180.dp)
@@ -654,18 +654,18 @@ fun LazyListScope.setDetailAlarmSection(
                 FilterChip(
                     selected = richtung == "unter",
                     onClick = { richtung = "unter"; if (schwelle.isNotBlank()) speichern() },
-                    label = { Text(stringResource(R.string.detail_alert_below), fontSize = 13.sp) },
+                    label = { Text(stringResource(R.string.detail_alert_below), fontSize = Schrift.klein) },
                 )
                 FilterChip(
                     selected = richtung == "ueber",
                     onClick = { richtung = "ueber"; if (schwelle.isNotBlank()) speichern() },
-                    label = { Text(stringResource(R.string.detail_alert_above), fontSize = 13.sp) },
+                    label = { Text(stringResource(R.string.detail_alert_above), fontSize = Schrift.klein) },
                 )
                 OutlinedTextField(
                     value = schwelle,
                     onValueChange = { schwelle = it },
                     singleLine = true,
-                    placeholder = { Text(currency, fontSize = 13.sp) },
+                    placeholder = { Text(currency, fontSize = Schrift.klein) },
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
                     modifier = Modifier
                         .weight(1f)

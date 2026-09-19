@@ -124,7 +124,7 @@ fun LagerortFilterChip(
             label = {
                 Text(if (wert.isBlank()) alle else wert,
                     maxLines = 1, overflow = TextOverflow.Ellipsis,
-                    fontSize = 13.sp, fontWeight = FontWeight.Medium)
+                    fontSize = Schrift.klein, fontWeight = FontWeight.Medium)
             },
             trailingIcon = {
                 Icon(Icons.Default.ArrowDropDown, alle, Modifier.size(18.dp))
@@ -175,7 +175,7 @@ fun ScopeFilterChip(
             onClick = { open = true },
             label = {
                 Text(label, maxLines = 1, overflow = TextOverflow.Ellipsis,
-                    fontSize = 13.sp, fontWeight = FontWeight.Medium)
+                    fontSize = Schrift.klein, fontWeight = FontWeight.Medium)
             },
             trailingIcon = {
                 Icon(Icons.Default.ArrowDropDown,
@@ -261,7 +261,7 @@ fun OwnerPicker(
     Box(modifier) {
         OutlinedButton(onClick = { open = true }, shape = Formen.kachel) {
             Text(stringResource(R.string.household_for_account) + ": " + current.username,
-                fontSize = 13.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                fontSize = Schrift.klein, maxLines = 1, overflow = TextOverflow.Ellipsis)
             Icon(Icons.Default.ArrowDropDown, null, Modifier.size(18.dp))
         }
         DropdownMenu(expanded = open, onDismissRequest = { open = false }) {
