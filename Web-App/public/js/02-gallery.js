@@ -335,11 +335,22 @@ export function initScopeSelects(members) {
   //
   // Der Server versteht `accounts=subs` weiterhin (utils/household.ts) — eine
   // ältere App-Fassung auf einem Gerät schickt es sonst ins Leere.
+  //
+  // Seit Nachtrag 173 stehen hier ALLE Nachfahren, nicht nur die direkten
+  // Unterkonten — Marcos Festlegung: Ein Eintrag meint immer genau EIN Konto,
+  // nie dessen Unterkonten mit. Ein Enkel, der hier fehlte, waere ausser ueber
+  // „Alle Konten" gar nicht einzeln zu sehen.
+  //
+  // Die Einrueckung macht die Stufen sichtbar (geschuetzte Leerzeichen, weil
+  // ein <option> fuehrende gewoehnliche Leerzeichen zusammenfaellt). Ohne sie
+  // stuenden Kind und Enkel gleichrangig untereinander, und die Liste sagte
+  // nicht mehr, wer zu wem gehoert.
   const subs = members.filter(m => !m.is_self);
+  const einzug = m => '\u00a0\u00a0\u00a0'.repeat(Math.max(0, (m.tiefe || 1) - 1));
   const opts = [
     `<option value="all">${esc(tRaw('household.scope_all'))}</option>`,
     `<option value="own">${esc(tRaw('household.scope_own'))}</option>`,
-    ...subs.map(m => `<option value="${m.id}">${esc(m.username)}</option>`),
+    ...subs.map(m => `<option value="${m.id}">${einzug(m)}${esc(m.username)}</option>`),
   ].join('');
 
   for (const view of SCOPE_VIEWS) {

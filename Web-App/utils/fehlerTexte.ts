@@ -125,15 +125,12 @@ export const FEHLER = {
                                  en: 'An account cannot be linked to itself.' },
   konto_bereits_verknuepft:    { de: 'Dieses Konto ist bereits mit einem Hauptkonto verknüpft.',
                                  en: 'This account is already linked to a main account.' },
-  konto_bereits_verknuepft_eine_stufe: {
-    de: 'Dieses Konto ist bereits mit einem Hauptkonto verknüpft. Konten lassen sich nur über eine Stufe verknüpfen.',
-    en: 'This account is already linked to a main account. Accounts can only be linked one level deep.' },
-  konto_hat_unterkonten:       {
-    de: 'Dieses Konto hat bereits eigene Unterkonten. Konten lassen sich nur über eine Stufe verknüpfen.',
-    en: 'This account already has sub-accounts of its own. Accounts can only be linked one level deep.' },
-  einladender_ist_unterkonto:  {
-    de: 'Das einladende Konto ist selbst ein Unterkonto. Konten lassen sich nur über eine Stufe verknüpfen.',
-    en: 'The inviting account is itself a sub-account. Accounts can only be linked one level deep.' },
+  // Die drei Absagen „nur eine Stufe" sind mit Nachtrag 173 entfallen —
+  // Konten lassen sich jetzt über mehrere Stufen verknüpfen. Geblieben ist
+  // die eine Grenze, die bleiben MUSS:
+  verknuepfung_erzeugt_kreis:  {
+    de: 'Dieses Konto ist bereits ein Unterkonto des einladenden Kontos — die Verknüpfung liefe im Kreis.',
+    en: 'This account is already a sub-account of the inviting account — the link would form a cycle.' },
   waehrung_ungleich:           {
     de: 'Beide Konten müssen dieselbe Währung verwenden (Hauptkonto: {haupt}, dieses Konto: {unter}).',
     en: 'Both accounts must use the same currency (main account: {haupt}, this account: {unter}).' },

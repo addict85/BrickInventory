@@ -83,6 +83,15 @@ object ScopeFilter {
      * Der Server versteht `accounts=subs` weiterhin — eine ältere Fassung
      * dieser App auf einem Gerät schickt es sonst ins Leere.
      *
+     * ── Alle Stufen, eingerueckt (Nachtrag 173) ─────────────────────────────
+     *
+     * Die Liste enthaelt seit dem Kontenbaum JEDEN Nachfahren, nicht nur die
+     * direkten Unterkonten — ein Eintrag meint dabei immer genau EIN Konto,
+     * nie dessen Unterkonten mit. Ohne Einrueckung stuenden Kind und Enkel
+     * gleichrangig untereinander, und die Auswahl sagte nicht mehr, wer zu
+     * wem gehoert. Genau dieselbe Darstellung wie in der Webapp
+     * (public/js/02-gallery.js, initScopeSelects).
+     *
      * @return Paare aus (Wert, Beschriftung); leer, wenn es nichts zu wählen
      *         gibt (Konto ohne Unterkonten) — dann bleibt die Auswahl verborgen.
      */
@@ -95,7 +104,10 @@ object ScopeFilter {
         return buildList {
             add(ALL to labelAll)
             add("own" to labelOwn)
-            subs.forEach { add(it.id.toString() to it.username) }
+            subs.forEach {
+                val einzug = "   ".repeat((it.tiefe - 1).coerceAtLeast(0))
+                add(it.id.toString() to (einzug + it.username))
+            }
         }
     }
 
