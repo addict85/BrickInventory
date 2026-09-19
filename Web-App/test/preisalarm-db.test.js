@@ -256,6 +256,51 @@ test('Preisalarm gegen echte Datenbank', async (t) => {
       `erste.now=${erste.now?.toISOString?.() ?? erste.now}`);
   });
 
+  await t.test('Abholen: eine Meldung aus derselben Millisekunde kommt NICHT doppelt', async () => {
+    // ── Der Befund, und warum er zweimal die CI rot gemacht hat ───────────
+    //
+    // Postgres speichert MIKROsekunden, JavaScript kennt nur MILLIsekunden.
+    // Gemessen:
+    //
+    //     Postgres  : 2026-09-19 20:33:04.996699+00
+    //     JavaScript: 2026-09-19T20:33:04.996Z
+    //
+    // Die Marke verliert auf dem Weg zum Klienten die letzten drei Stellen
+    // und ist damit KLEINER als der Wert in der Datenbank. Fällt eine Meldung
+    // in dieselbe Millisekunde, gilt `zuletzt_am > marke` weiterhin — und sie
+    // kommt ein zweites Mal.
+    //
+    // ── Warum die Kollision hier ERZWUNGEN wird ───────────────────────────
+    //
+    // Der Nachbartest darüber hat sie in der CI zweimal getroffen und lokal
+    // in keinem von fünf Läufen. Ein Test, der auf diesen Zufall wartet, ist
+    // kein Test: Er meldet den Fehler irgendwann und bei irgendwem, und
+    // dazwischen sieht er aus wie ein Flake. Hier steht der Zeitstempel von
+    // Hand, mit Mikrosekunden, und die Marke ist genau seine
+    // Millisekunden-Fassung — also exakt der Fall, der schiefging.
+    await db.run('DELETE FROM price_alerts', []);
+    await db.run('DELETE FROM price_cache WHERE set_number=$1', [SN]);
+    await A.setzeAlarm(U.ich, SN, 'EUR', { richtung: 'unter', schwelle: 200, condition: 'N' });
+
+    const MIT_MIKRO = '2026-09-19 20:29:58.527431+00';
+    const NUR_MILLI = new Date('2026-09-19T20:29:58.527Z');
+    await db.run(
+      `UPDATE price_alerts SET ausgeloest = TRUE, zuletzt_am = $1::timestamptz,
+              zuletzt_preis = 100 WHERE user_id = $2`, [MIT_MIKRO, U.ich]);
+
+    const r = await A.ausgeloesteSeit(U.ich, NUR_MILLI);
+    assert.deepEqual(r.alerts, [],
+      'Die Meldung kam ein zweites Mal: in der Datenbank steht ' +
+      `${MIT_MIKRO}, die Marke trägt ${NUR_MILLI.toISOString()}. ` +
+      'Die Mikrosekunden entscheiden — sie dürfen es nicht.');
+
+    // Und die Gegenrichtung muss weiter funktionieren: Eine Meldung aus der
+    // NÄCHSTEN Millisekunde ist wirklich neu und gehört geliefert.
+    const r2 = await A.ausgeloesteSeit(U.ich, new Date('2026-09-19T20:29:58.526Z'));
+    assert.equal(r2.alerts.length, 1,
+      'Eine Meldung nach der Marke wurde verschluckt — die Kürzung geht zu weit');
+  });
+
   await t.test('Abholen: jedes Konto sieht nur seine eigenen Alarme', async () => {
     // Die Abfrage steht auf user_id, nicht auf scopeIds() — und das ist
     // Absicht: Eine Meldung gehört dem, der die Schwelle gesetzt hat. Ein

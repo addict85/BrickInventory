@@ -165,6 +165,41 @@ export async function alarmeFuer(userId: number, setNumber: string): Promise<Pre
  * von vor drei Wochen aufschlagen. Der erste Aufruf setzt nur die Marke.
  */
 export async function ausgeloesteSeit(userId: number, seit: unknown) {
+  // ── Mikrosekunden gegen Millisekunden: der Grund fuer zwei rote Laeufe ───
+  //
+  // Postgres speichert MIKROsekunden, JavaScript kennt nur MILLIsekunden.
+  // Gemessen:
+  //
+  //     Postgres  : 2026-09-19 20:33:04.996699+00
+  //     JavaScript: 2026-09-19T20:33:04.996Z
+  //
+  // Der Zeitpunkt, den diese Funktion zurueckgibt, geht als ISO-Text zum
+  // Klienten — drei Nachkommastellen — und kommt so zurueck. Er ist damit
+  // KLEINER als der Wert in der Datenbank, und eine Meldung aus derselben
+  // Millisekunde erfuellt `zuletzt_am > marke` weiterhin. Sie kommt ein
+  // zweites Mal.
+  //
+  // Das war kein Randfall: CI-Laeufe 208 und 211/212 sind daran gescheitert
+  // und liessen sich lokal nicht nachstellen — auf dem Laeufer liegen
+  // Schreiben und Lesen dichter beieinander. Der Fehler traf nicht nur den
+  // Test, sondern jeden Klienten.
+  //
+  // ── Behoben wird es an EINER Stelle, dem Vergleich ───────────────────────
+  //
+  // Der erste Entwurf rechnete an drei Stellen auf Millisekunden: hier beim
+  // Lesen, unten beim Vergleich und beim Schreiben des Merkers. Die
+  // Gegenprobe hat gezeigt, dass nur der VERGLEICH etwas bewirkt — die
+  // beiden anderen liessen sich zurueckdrehen, ohne dass ein Test rot wurde.
+  //
+  // Sie sind deshalb draussen. Eine Zeile, deren Wirkung sich nicht zeigen
+  // laesst, sieht beim naechsten Lesen aus wie eine Vorsichtsmassnahme und
+  // ist in Wahrheit Ballast.
+  //
+  // Der Vergleich kuerzt die SPALTE und nicht nur den neuen Wert, weil
+  // Zeilen, die vor dieser Aenderung geschrieben wurden, noch Mikrosekunden
+  // tragen — Marcos laufende Datenbank ist voll davon. Das kostet die
+  // Indexnutzung auf zuletzt_am; bei hoechstens zwei Zeilen je Konto und Set
+  // ist das kein Preis.
   const jetztRow = await db.get('SELECT NOW() AS jetzt');
   const jetzt = jetztRow?.jetzt ?? new Date();
 
@@ -186,7 +221,9 @@ export async function ausgeloesteSeit(userId: number, seit: unknown) {
             zuletzt_am, zuletzt_preis
        FROM price_alerts
       WHERE user_id = $1 AND ausgeloest = TRUE
-        AND zuletzt_am IS NOT NULL AND zuletzt_am > $2
+        -- Auch die SPALTE auf Millisekunden: Zeilen, die vor dieser Aenderung
+        -- geschrieben wurden, tragen noch Mikrosekunden.
+        AND zuletzt_am IS NOT NULL AND date_trunc('milliseconds', zuletzt_am) > $2
       ORDER BY zuletzt_am`,
     [userId, marke])
     .catch(e => { require('./httpError').meldeUndWeiter('preisalarm:abholen', e); return []; });
