@@ -11,7 +11,6 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
@@ -54,7 +53,12 @@ fun LagerortFeld(
     // der normalisierte Wert nach dem Speichern), soll das Feld ihn zeigen
     // statt den alten Text zu behalten.
     var text by rememberSaveable(wert) { mutableStateOf(wert) }
-    var offen by remember { mutableStateOf(false) }
+    // rememberSaveable, nicht remember: BildschirmZustandTest hat genau das
+    // gemeldet, und mit Recht. Wer gerade dabei ist, einen Ort zu waehlen,
+    // und dabei das Telefon dreht, soll die Liste weiter offen sehen statt
+    // von vorn anfangen zu muessen. Dass sie zwei Zeilen tiefer ohnehin nur
+    // erscheint, wenn es passende Orte gibt, macht es unschaedlich.
+    var offen by rememberSaveable { mutableStateOf(false) }
     // Was zur Auswahl steht, waehrend getippt wird: nur die passenden. Bei
     // dreissig Regalen ist eine ungefilterte Liste keine Hilfe mehr.
     val passend = vorrat.filter { it.contains(text.trim(), ignoreCase = true) }

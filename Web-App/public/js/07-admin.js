@@ -583,10 +583,14 @@ export function speichereAlarm(sn) {
  * einen Alarm loszuwerden, ist das Feld zu leeren — ein eigener Knopf daneben
  * wäre ein zweiter Weg für dieselbe Absicht.
  *
- * Eine halb getippte Zahl („249." oder „-") ist keine Zahl und damit ein
- * Löschen. Genau deshalb darf ALARM_RUHE nicht kürzer sein: Mit einer sehr
- * kurzen Ruhezeit träfe der Zwischenstand den Server und löschte, was gerade
- * entsteht. Dieselbe Überlegung steht in Alarmeingabe.zahl().
+ * Ein halber Anfang („-", "abc") ist keine Zahl und damit ein Löschen.
+ * „249." dagegen NICHT: `parseFloat("249.")` ist 249 — das hatte ich zuerst
+ * falsch behauptet und erst gemessen, als der Android-Lauf meinen Test dazu
+ * rot meldete. Dieselbe Lesart wie in Alarmeingabe.zahl().
+ *
+ * Der Grund für ALARM_RUHE ist damit ein anderer und ein besserer: Wer „249"
+ * tippen will, tippt unterwegs „2" und „24". Ohne Ruhezeit stünde am Ende
+ * eine Schwelle bei 2 — und die meldet sofort.
  */
 async function sendeAlarm(sn, richtung, roh) {
   const zahl = parseFloat(String(roh).replace(',', '.'));

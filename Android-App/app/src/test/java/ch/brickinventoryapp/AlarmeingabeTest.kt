@@ -37,13 +37,30 @@ class AlarmeingabeTest {
 
     @Test
     fun `leer und halb getippt heissen loeschen`() {
-        // Leer ist die natuerliche Geste, einen Alarm loszuwerden.
-        // „249." und „-" sind Zwischenstaende; dass sie ebenfalls loeschen,
-        // ist der Grund, warum die Ruhezeit nicht kurz sein darf.
-        for (roh in listOf("", "   ", "249.", "-", "abc", ",")) {
+        // Leer ist die natuerliche Geste, einen Alarm loszuwerden. Ein halber
+        // Anfang ist keine Zahl und damit dasselbe.
+        for (roh in listOf("", "   ", "-", "abc", ",")) {
             assert(Alarmeingabe.zahl(roh) == null) {
                 "\"$roh\" ergab ${Alarmeingabe.zahl(roh)} statt null"
             }
+        }
+    }
+
+    @Test
+    fun `ein Punkt am Ende ist eine Zahl, kein Loeschen`() {
+        // ── Was ich zuerst falsch behauptet habe ─────────────────────────
+        //
+        // Hier stand „249." in der Loesch-Liste, und der Erklaertext in
+        // Alarmeingabe.kt stuetzte darauf die Begruendung fuer die Ruhezeit.
+        // Der CI-Lauf hat es gemeldet, und nachgemessen stimmt es nicht:
+        // Double.parseDouble("249.") ist 249.0 — Java nimmt den Punkt am
+        // Ende an. Die Webapp ebenso (parseFloat("249.") ist 249).
+        //
+        // Diese Pruefung steht jetzt hier, damit die richtige Antwort
+        // festgehalten ist und nicht wieder jemand (ich) die plausible
+        // annimmt.
+        assert(Alarmeingabe.zahl("249.") == 249.0) {
+            "249. ergab ${Alarmeingabe.zahl("249.")}"
         }
     }
 
@@ -61,13 +78,17 @@ class AlarmeingabeTest {
 
     @Test
     fun `die Ruhezeit ist lang genug fuer einen Zwischenstand`() {
-        // Sie muss laenger sein als eine Tippbewegung von „249" nach „249.90",
-        // sonst traefe „249." den Server und loeschte, was gerade entsteht.
-        // 350 ms ist die Ruhe der Suche; ein Alarm LEGT ETWAS AN und bekommt
-        // mehr.
+        // Der Zwischenstand, auf den es ankommt, ist nicht „249." (das ist
+        // eine gueltige Zahl, siehe oben), sondern „2" und „24": Wer „249"
+        // tippen will, laeuft dort vorbei. Ohne Ruhezeit bliebe am Ende eine
+        // Schwelle bei 2 stehen — und die meldet sofort, weil fast jedes Set
+        // darueber liegt.
+        //
+        // 350 ms ist die Ruhe der Suche; eine Suche ZEIGT nur an, ein Alarm
+        // LEGT ETWAS AN und bekommt deshalb mehr.
         assert(Alarmeingabe.RUHE_MS >= 500L) {
-            "RUHE_MS steht auf ${Alarmeingabe.RUHE_MS} ms — zu kurz, um einen " +
-                "Zwischenstand wie \"249.\" zu ueberleben."
+            "RUHE_MS steht auf ${Alarmeingabe.RUHE_MS} ms — zu kurz, um eine " +
+                "Tippbewegung von \"2\" ueber \"24\" nach \"249\" zu ueberdauern."
         }
     }
 }

@@ -663,8 +663,11 @@ fun LazyListScope.setDetailAlarmSection(
                     value = schwelle,
                     // Der getippte Text geht UNVERAENDERT weiter; die Ruhezeit
                     // und die Umrechnung stecken hinter setzePreisalarm().
-                    // Haette der Bildschirm hier schon in eine Zahl umgerechnet,
-                    // waere ein halb getipptes „249." ein Loeschen gewesen.
+                    // Der Bildschirm rechnet hier bewusst NICHT selbst um: Dann
+                    // gaebe es die Umrechnung zweimal, und die eine Fassung
+                    // koennte die Zwischenstaende anders beurteilen als die
+                    // andere. Was ein Zwischenstand bedeutet, steht an genau
+                    // einer Stelle (Alarmeingabe.zahl).
                     onValueChange = { schwelle = it; vm.setzePreisalarm(setNumber, richtung, it) },
                     singleLine = true,
                     placeholder = { Text(currency, fontSize = Schrift.klein) },

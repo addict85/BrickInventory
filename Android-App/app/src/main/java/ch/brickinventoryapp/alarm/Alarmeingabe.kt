@@ -37,8 +37,9 @@ object Alarmeingabe {
      * Stellen verschieden, ohne dass es jemandem auffiele.
      *
      * 800 ms und nicht 350 wie bei der Suche: Eine Suche zeigt nur an, ein
-     * Alarm legt etwas an. Wer zwischen „24" und „249.90" eine halbe Sekunde
-     * ueberlegt, soll keine Schwelle bei 24 bekommen.
+     * Alarm LEGT ETWAS AN. Wer zwischen „24" und „249.90" eine halbe Sekunde
+     * ueberlegt, soll keine Schwelle bei 24 bekommen — und eine Schwelle bei
+     * 24 meldet sofort, weil fast jedes Set darueber liegt.
      */
     const val RUHE_MS = 800L
 
@@ -54,10 +55,17 @@ object Alarmeingabe {
      * „249,90". Ohne diese Zeile waere das keine Zahl, also ein Loeschen —
      * der Alarm verschwaende beim Eintippen.
      *
-     * Eine halb getippte Zahl („249." oder „-") ergibt ebenfalls `null`. Das
-     * ist der Grund, warum [RUHE_MS] nicht kuerzer sein darf: Mit einer sehr
-     * kurzen Ruhezeit traefe der Zwischenstand den Server und loeschte, was
-     * gerade entsteht.
+     * Ein halber Anfang („-", "abc", ",") ergibt `null` und loescht damit.
+     *
+     * „249." dagegen NICHT — und das habe ich zuerst falsch behauptet. Java
+     * nimmt den Punkt am Ende an: `Double.parseDouble("249.")` ist 249.0.
+     * Gemessen, nachdem der CI-Lauf meinen Test dazu rot gemeldet hat. Die
+     * Webapp verhaelt sich gleich (`parseFloat("249.")` ist 249), beide also
+     * setzen dort eine Schwelle statt zu loeschen.
+     *
+     * Der Grund fuer [RUHE_MS] ist damit ein anderer und ein besserer: Wer
+     * „249" tippen will, tippt unterwegs „2" und „24". Ohne Ruhezeit stuende
+     * am Ende eine Schwelle bei 2 — und die meldet sofort.
      */
     fun zahl(roh: String): Double? {
         val z = roh.replace(',', '.').trim().toDoubleOrNull() ?: return null

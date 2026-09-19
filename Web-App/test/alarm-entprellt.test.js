@@ -140,8 +140,9 @@ test('Tippen speichert — und die Ruhezeit macht daraus EINE Anfrage', async ()
   assert.equal(schnell.rufe.length, 1,
     `Schnelles Tippen ergab ${schnell.rufe.length} Anfragen: ${schnell.rufe.join(' | ')}`);
 
-  // 3. Die letzte Zahl gewinnt — nicht der Zwischenstand „249." (keine Zahl,
-  //    also ein Löschen) und nicht „2".
+  // 3. Die letzte Zahl gewinnt — nicht die Zwischenstände „2" oder „24".
+  //    Genau die wären ohne Ruhezeit übrig geblieben, und eine Schwelle bei 2
+  //    meldet sofort.
   assert.match(schnell.rufe[0], /^PUT .*\/sets\/10179-1\/alert$/,
     `Gespeichert wurde nicht per PUT: ${schnell.rufe[0]}`);
   schnell.schliesse(); langsam.schliesse();
