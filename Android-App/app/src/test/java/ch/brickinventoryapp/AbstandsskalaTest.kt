@@ -126,6 +126,14 @@ class AbstandsskalaTest {
         // unterscheiden, sind nebeneinander nicht als Unterschied lesbar; das
         // ist der Kandidat, den man als Erstes zusammenlegen wuerde.
         //
+        // 54 -> 51 (Nachtrag 176): Die drei Chips der Filterzeile
+        // (HouseholdComposables) standen auf 13.sp und stehen jetzt auf
+        // Schrift.klein. Anlass war ein vierter Chip daneben — der
+        // Lagerortfilter. Zwei Groessen nebeneinander, die sich um einen
+        // Punkt unterscheiden, sind genau der Fall, den der Absatz darueber
+        // beschreibt; ihn beim Hinzufuegen des vierten stehen zu lassen
+        // haette die Zahl auf 55 gehoben.
+        //
         // 55 -> 54 (Nachtrag 160): Genau dieser Kandidat ist zweimal gefallen.
         // In MonitoringSections standen zwei Chip-Reihen direkt uebereinander,
         // die eine auf 13.sp; als die zweite dazukam, hat diese Ratsche das
@@ -133,7 +141,7 @@ class AbstandsskalaTest {
         // dafuer gleich. Die Ratsche zieht nach, sonst waere der gewonnene
         // Platz sofort wieder frei fuer die naechste rohe Zahl.
         val ist = zaehle(listOf(schriftMuster))
-        assert(ist <= 54) {
+        assert(ist <= 51) {
             "$ist Schriftgroessen stehen noch als Zahl da, zuletzt waren es 54. " +
                 "Siehe die Abstandsregel daneben."
         }

@@ -171,6 +171,7 @@ fun NavGraphBuilder.toolsGraph(
                     manuelleErfassungAnfordern = barcodeState.manuelleErfassungAnfordern,
                     onManuelleErfassungQuittiert = { vm.manuelleErfassungQuittieren() },
                     onResolveSet = { setNumber -> vm.resolveSetForPartsList(setNumber) },
+                    onLadeBestand = { teile, nurLose -> vm.ladeTeilelisteBestand(teile, nurLose) },
                     barcodeSetNumber = barcodeState.fuerTeileliste,
                     onBarcodeConsumed = { vm.clearBarcodeForPartsList() },
                     listState = partsListState

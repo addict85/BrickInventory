@@ -61,6 +61,13 @@ export async function initPartsSummary(pool: any) {
       PRIMARY KEY (user_id, part_key, color_id)
     )`);
 
+  // Nachtraeglich hinzugekommene Spalten: Die Tabelle entsteht per
+  // CREATE TABLE IF NOT EXISTS und wuerde auf einer bestehenden Datenbank
+  // sonst still ohne die neue Spalte weiterlaufen — der Neuaufbau schluege
+  // dann bei jedem Lauf fehl, und die Ansicht faellt lautlos auf die
+  // Live-Abfrage zurueck.
+  await pool.query(`ALTER TABLE parts_summary ADD COLUMN IF NOT EXISTS storage TEXT`);
+
   // Genau die Sortierung der Ansicht — damit ist die Seitenabfrage ein
   // Index-Scan mit LIMIT statt einer Sortierung über alle Gruppen.
   await pool.query(`CREATE INDEX IF NOT EXISTS idx_parts_summary_sort
@@ -204,7 +211,7 @@ export async function rebuild(userId: number, version?: number): Promise<void> {
     await tx.run(`
       INSERT INTO parts_summary (user_id, part_key, color_id, part_number, bl_part_number,
         part_name, color_name, color_hex, category_name, image_url, image_local,
-        is_spare, total_quantity, in_sets)
+        is_spare, total_quantity, in_sets, storage)
       SELECT p.user_id,
              COALESCE(p.bl_part_number, p.part_number),
              p.color_id,
@@ -213,7 +220,13 @@ export async function rebuild(userId: number, version?: number): Promise<void> {
              MIN(p.image_url), MIN(p.image_local),
              MAX(COALESCE(p.is_spare, 0)),
              SUM(p.quantity * COALESCE(s.quantity, 1)),
-             STRING_AGG(DISTINCT p.set_number, ',')
+             STRING_AGG(DISTINCT p.set_number, ','),
+             -- Lagerort: STRING_AGG statt MIN, wie in der Live-Abfrage
+             -- (utils/handlers/parts.ts). Dieselbe Gruppe fasst dasselbe Teil
+             -- aus mehreren Sets zusammen, und die koennen in verschiedenen
+             -- Kisten liegen. MIN() zeigte eine davon und verschwiege die
+             -- andere — so, dass es wie eine vollstaendige Antwort aussieht.
+             NULLIF(STRING_AGG(DISTINCT p.storage, ', '), '')
         FROM parts p
         LEFT JOIN sets s ON s.user_id = p.user_id AND s.set_number = p.set_number
        WHERE p.user_id = $1 AND COALESCE(p.source, 'set') <> 'manual'

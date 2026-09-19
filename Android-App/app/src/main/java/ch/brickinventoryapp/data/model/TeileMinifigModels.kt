@@ -288,6 +288,15 @@ data class BestandteilKopf(
     @SerialName("image_local") val imageLocal: String? = null,
     @SerialName("image_url") val imageUrl: String? = null,
     @SerialName("is_spare") val isSpare: Boolean = false,
+    /**
+     * Lagerort — verdichtet ueber alle Zeilen dieses Teils.
+     *
+     * Dasselbe Teil steckt in mehreren Sets und kann in mehreren Kisten
+     * liegen; der Server fasst die Orte zusammen, statt einen davon zu
+     * zeigen. Figuren fuehren hier null — sie stecken in ihrem Set, und
+     * dessen Ort steht im Set-Detail.
+     */
+    val storage: String? = null,
     /** Summe ueber ALLE Sets im Blickfeld. */
     @SerialName("total_quantity") val totalQuantity: Int = 0,
 )
@@ -297,5 +306,84 @@ data class VerwendendeSetsResponse(
     val success: Boolean = false,
     val item: BestandteilKopf? = null,
     val sets: List<VerwendendesSet> = emptyList(),
+    val error: String? = null,
+)
+
+// ═══════════════════════════════════════════════════════════════════════════
+// „Kann ich das bauen?" — der eigene Bestand zu einer Teileliste
+// ═══════════════════════════════════════════════════════════════════════════
+//
+// POST, obwohl nichts geaendert wird: Eine Teileliste hat weit ueber tausend
+// Teil-Farb-Paare; als Abfrageparameter waere die Adresse laenger, als jeder
+// Proxy durchlaesst. Der Kontofilter reist trotzdem als `accounts=` mit — er
+// gehoert zur Ansicht, nicht zur Nutzlast.
+
+/** Ein angefragtes Teil-Farb-Paar in der REBRICKABLE-Schreibweise. */
+@Serializable
+data class BestandTeil(
+    @SerialName("part_number") val partNumber: String,
+    @SerialName("color_id")    val colorId: Int,
+)
+
+@Serializable
+data class BestandRequest(val teile: List<BestandTeil>)
+
+/**
+ * Zwei Zahlen je Teil-Farb-Paar.
+ *
+ * `gesamt` zaehlt alles im Blickfeld, `lose` nur, was nicht in einem Set
+ * steckt. Der Unterschied ist die eigentliche Antwort: Ein Teil in einem
+ * aufgebauten Set besitzt man zwar, muesste dafuer aber ein anderes Set
+ * zerlegen. Welche Zahl gilt, entscheidet der Mensch — deshalb liefert der
+ * Server beide.
+ */
+@Serializable
+data class BestandEintrag(
+    val gesamt: Int = 0,
+    val lose: Int = 0,
+)
+
+@Serializable
+data class BestandResponse(
+    val success: Boolean = false,
+    /** Schluessel: "<partNumber>|<colorId>". */
+    val bestand: Map<String, BestandEintrag> = emptyMap(),
+    val error: String? = null,
+)
+
+// ═══════════════════════════════════════════════════════════════════════════
+// Lagerort — wo liegt das eigentlich?
+// ═══════════════════════════════════════════════════════════════════════════
+
+/** Leerer Text loescht den Ort — der Server macht daraus NULL. */
+@Serializable
+data class LagerortRequest(val storage: String)
+
+@Serializable
+data class LagerortResponse(
+    val success: Boolean = false,
+    val storage: String? = null,
+    val changed: Int = 0,
+    val error: String? = null,
+)
+
+/**
+ * Ein belegter Lagerort mit Anzahl.
+ *
+ * Gezaehlt wird nach ZEILEN, nicht nach Stueckzahl: „In Kiste 3 liegen 4 Sets
+ * und 120 Teilesorten" beantwortet „lohnt sich das Nachsehen?"; die Summe der
+ * Einzelstuecke beantwortet gar nichts.
+ */
+@Serializable
+data class Lagerort(
+    val ort: String,
+    val sets: Int = 0,
+    val teile: Int = 0,
+)
+
+@Serializable
+data class LagerorteResponse(
+    val success: Boolean = false,
+    val orte: List<Lagerort> = emptyList(),
     val error: String? = null,
 )

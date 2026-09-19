@@ -586,6 +586,14 @@ data class SetDetailUiState(
     // werden — die Antwort ist bereits das Modell.
     val priceHistory: PriceHistoryResponse? = null,
     val priceHistoryLoading: Boolean = false,
+    /**
+     * Preisalarme dieses Sets — hoechstens zwei (neu und gebraucht).
+     *
+     * Getrennt vom setDetail geladen, weil sie NICHT zum Set gehoeren,
+     * sondern zum Konto: Zwei Personen mit demselben Set haben
+     * verschiedene Alarme.
+     */
+    val preisalarme: List<ch.brickinventoryapp.data.model.Preisalarm> = emptyList(),
     val acquisitions: List<ch.brickinventoryapp.data.model.Acquisition> = emptyList(),
     /**
      * Summenzeile der Erfassungen — vom Server gerechnet, nicht hier.
@@ -878,3 +886,31 @@ data class SetItemUiState(
 ) {
     val offen: Boolean get() = art != null
 }
+
+/**
+ * Lagerortfilter — eigener Fluss, nicht Teil von AppUiState.
+ *
+ * ── Warum nicht neben scopeModes (Nachtrag 176) ─────────────────────────────
+ *
+ * Der erste Entwurf legte beide Felder in AppUiState, direkt neben
+ * `scopeModes`. ZustandsflussBreiteTest hat das abgelehnt, und zwar mit der
+ * richtigen Frage: „Gehoert es wirklich allen — oder ist es der Anfang der
+ * naechsten Domaene?"
+ *
+ * Die Antwort ist: der naechsten Domaene. AppUiState wird von SECHZEHN
+ * Dateien gesammelt, und in Compose rekomponiert ein Sammler bei JEDER
+ * Aenderung seines Flusses — egal welches Feld sich geaendert hat. Die Liste
+ * der Lagerorte laedt bei jeder Anmeldung und nach jedem Eintragen neu; sie
+ * wird von ZWEIEN gelesen (Galerie und Teile). Vierzehn Bildschirme
+ * mitzuziehen, die den Lagerort nie anfassen, waere genau der Fehler, gegen
+ * den jene Pruefung gebaut ist.
+ *
+ * `scopeModes` steht weiterhin in AppUiState — der Kontofilter wird von vier
+ * Ansichten gelesen UND beim Erfassen gebraucht. Das ist der Unterschied.
+ */
+data class LagerUiState(
+    /** Gewaehlter Lagerort JE ANSICHT — leer heisst „nicht gefiltert". */
+    val modi: Map<String, String> = emptyMap(),
+    /** Die belegten Lagerorte im Blickfeld — speist die Auswahl. */
+    val orte: List<ch.brickinventoryapp.data.model.Lagerort> = emptyList(),
+)

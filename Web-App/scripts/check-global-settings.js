@@ -64,7 +64,7 @@ const OFFEN = new Map([
   ['jobs/partsCatalogEnrich.ts', 1],
   ['jobs/priceJob.ts', 1],
   ['routes/api_v1/admin.ts', 3],
-  ['routes/mailer.ts', 1],
+  ['utils/mailer.ts', 1],
   ['routes/settings.ts', 1],
   ['server.ts', 1],
   ['utils/finance/preise.ts', 5],

@@ -1,12 +1,32 @@
 /**
- * Mailer — sends emails via nodemailer.
- * Design: blue/white, matching the webapp (--b600: #2563eb).
+ * Mailversand — SMTP, Vorlagen, Themes.
+ *
+ * ── Warum die Datei aus routes/ hierher gezogen ist (Nachtrag 176) ──────────
+ *
+ * Sie lag als routes/mailer.ts dort, hatte aber nie eine Route: kein
+ * express.Router(), kein req, kein res. Sie ist der Mailversand, und der ist
+ * Werkzeug, keine Schnittstelle.
+ *
+ * Aufgefallen ist es, als der Preisalarm sie brauchte — test/schichten.test.js
+ * meldete „Neue Abhaengigkeit von einer Fachdatei auf eine ROUTE" und bot an,
+ * das in die Ausnahmeliste zu schreiben. Die Liste ist leer, und sie sollte es
+ * bleiben: Die Regel hatte recht, nur nicht ueber den Preisalarm, sondern
+ * ueber den Ablageort dieser Datei.
+ *
+ * Fuer die beiden bisherigen Nutzer (routes/auth.ts, routes/settings.ts)
+ * aendert sich nur der Importpfad.
  */
+//
+// Design: blau/weiss, wie die Webapp (--b600: #2563eb).
 
-// Zentraler Settings-Helfer — lokale Kopie entfernt
-import { getGlobalSetting } from '../utils/settings';
-import { ausTabelle } from '../utils/validate';
-import { fehlertext } from '../utils/httpError';
+// Zentraler Settings-Helfer — lokale Kopie entfernt.
+//
+// Jetzt direkt aus utils/settings statt ueber routes/settings: Der Umweg war
+// ein Durchreichen (routes/settings exportiert den Helfer nur weiter) und
+// genau die Kante, die test/schichten.test.js meldete.
+import { getGlobalSetting } from './settings';
+import { ausTabelle } from './validate';
+import { fehlertext } from './httpError';
 const getSetting = (key: string) => getGlobalSetting(key, '');
 
 /**

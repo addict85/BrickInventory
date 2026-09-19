@@ -1,0 +1,44 @@
+-- ── Lagerort: wo liegt das eigentlich? ───────────────────────────────────────
+--
+-- Hintergrund: Die Sammlung ist körperlich. Die App beantwortet bisher „habe
+-- ich das?" — die Frage davor, „und wo?", beantwortete sie nicht. Bei ein paar
+-- Dutzend Kisten ist das die Frage, die tatsächlich Zeit kostet.
+--
+-- ── Warum eine Spalte und keine Tabelle ─────────────────────────────────────
+--
+-- Ein Lagerort ist ein NAME, den sich jemand ausdenkt: „Kiste 3", „Regal
+-- Keller", „blaue Tonne". Er hat keine Eigenschaften, keine Hierarchie und
+-- keinen Lebenslauf — eine eigene Tabelle hätte eine ID, einen Fremdschlüssel
+-- und eine Verwaltungsoberfläche gebraucht, und alles davon wäre Ballast um
+-- eine Zeichenkette herum.
+--
+-- Die Liste der bekannten Orte entsteht deshalb aus den Daten selbst
+-- (SELECT DISTINCT), nicht aus einer gepflegten Tabelle. Damit gibt es auch
+-- keinen Ort ohne Inhalt, der niemandem auffällt, und keinen verwaisten
+-- Fremdschlüssel.
+--
+-- ── Warum auf BEIDEN Tabellen ───────────────────────────────────────────────
+--
+-- Ein Set liegt in einer Schachtel, lose Teile liegen in einer Kiste. Beide
+-- Fragen sind dieselbe Frage, und wer sie nur für eine der beiden beantworten
+-- kann, sucht die andere Hälfte weiterhin von Hand.
+--
+-- ── NULL heisst „nicht erfasst", nicht „nirgends" ───────────────────────────
+--
+-- Deshalb kein DEFAULT '': Ein leerer Text wäre ein Ort namens „nichts" und
+-- stünde in jeder Auswahlliste. NULL fällt aus DISTINCT heraus, und genau das
+-- ist richtig.
+ALTER TABLE sets  ADD COLUMN IF NOT EXISTS storage TEXT;
+ALTER TABLE parts ADD COLUMN IF NOT EXISTS storage TEXT;
+
+-- ── Die INDIZES stehen nicht hier, sondern in db/schema.sql ─────────────────
+--
+-- Diese Datei läuft genau einmal, db/schema.sql bei JEDEM Start (alles darin
+-- ist idempotent). Ein Index an beiden Orten liefe damit auseinander, sobald
+-- ihn jemand an einem davon ändert — test/schema-am-start.test.js meldet
+-- genau das und hat den ersten Entwurf dieser Datei prompt abgelehnt.
+--
+-- Die Spalten stehen trotzdem doppelt, und das ist kein Widerspruch: Ein
+-- ALTER … ADD COLUMN IF NOT EXISTS beschreibt dieselbe Zielform, ein
+-- CREATE INDEX beschreibt eine Entscheidung (welche Spalten, welche
+-- Bedingung), die genau einen Ort haben soll.

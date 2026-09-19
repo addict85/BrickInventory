@@ -17,7 +17,8 @@ import org.junit.Test
  */
 class ScopeFilterTest {
 
-    private fun m(id: Int, name: String, self: Boolean = false) = HouseholdMember(id, name, self)
+    private fun m(id: Int, name: String, self: Boolean = false, tiefe: Int = 1) =
+        HouseholdMember(id, name, self, tiefe)
 
     @Test
     fun `ohne Unterkonten gibt es nichts zu waehlen`() {
@@ -46,6 +47,39 @@ class ScopeFilterTest {
             listOf(m(1, "eltern", true), m(2, "lea"), m(3, "nino")), "Alle", "Eigene")
         assertTrue(opts.none { it.first == "subs" })
         assertEquals(4, opts.size)
+    }
+
+    @Test
+    fun `jede Stufe steht drin, eingerueckt nach Tiefe`() {
+        // Seit dem Kontenbaum (Nachtrag 173) enthaelt die Liste JEDEN
+        // Nachfahren, nicht nur die direkten Unterkonten — Marcos Festlegung:
+        // Ein Eintrag meint immer genau EIN Konto, nie dessen Unterkonten mit.
+        // Ein Enkel, der hier fehlte, waere ausser ueber „Alle Konten" gar
+        // nicht einzeln zu sehen.
+        //
+        // Ohne Einrueckung stuenden Kind und Enkel gleichrangig untereinander,
+        // und die Auswahl sagte nicht mehr, wer zu wem gehoert.
+        val opts = ScopeFilter.options(
+            listOf(m(1, "grossvater", self = true, tiefe = 0),
+                   m(2, "kind", tiefe = 1),
+                   m(3, "enkel", tiefe = 2)),
+            "Alle", "Eigene")
+        assertEquals(
+            listOf("all" to "Alle", "own" to "Eigene",
+                   "2" to "kind", "3" to "   enkel"),
+            opts)
+    }
+
+    @Test
+    fun `eine fehlende Stufe rueckt nicht ins Nichts`() {
+        // Die Vorgabe von `tiefe` ist 1 — eine aeltere Serverfassung ohne das
+        // Feld zeigt die Liste damit flach, aber vollstaendig. Ein Wert von 0
+        // oder negativ (kaputte Antwort) darf keine negative Wiederholung
+        // ergeben; coerceAtLeast(0) faengt das ab.
+        val opts = ScopeFilter.options(
+            listOf(m(1, "ich", self = true, tiefe = 0), m(2, "lea", tiefe = 0)),
+            "Alle", "Eigene")
+        assertEquals("lea", opts.last().second)
     }
 
     @Test

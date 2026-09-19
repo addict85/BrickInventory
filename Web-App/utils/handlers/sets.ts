@@ -76,7 +76,7 @@ async function getSets(userId: Blickfeld, query: any = {}) {
   // Mit "s." qualifiziert: die angehängte Aggregat-Subquery führt set_number
   // ebenfalls, unqualifiziert wäre die Spalte ab jetzt mehrdeutig.
   const SET_COLS = ['set_number','name','year','theme','pieces','minifigs','quantity',
-                    'image_local','added_at','purchase_price','condition']
+                    'image_local','added_at','purchase_price','condition','storage']
                    .map(c => `s.${c}`).join(', ') +
     // image_url mit Rückfall auf den GEMEINSAMEN Katalog (Nachtrag 36, Marcos
     // Bericht: „wenn das Bild lokal noch nicht vorhanden ist, soll es direkt
@@ -120,6 +120,16 @@ async function getSets(userId: Blickfeld, query: any = {}) {
                MIN(s.image_url) AS image_url, MIN(s.image_local) AS image_local,
                MIN(s.added_at) AS added_at,
                MIN(s.purchase_price) AS purchase_price, MIN(s.condition) AS condition,
+               -- Lagerort: string_agg statt MIN, und das ist kein Zierrat.
+               --
+               -- Alle anderen Spalten hier beschreiben DAS SET (Name, Jahr,
+               -- Thema) und sind ueber die Konten hinweg gleich — MIN() greift
+               -- dort irgendeinen und trifft immer denselben Wert. Der
+               -- Lagerort beschreibt das EXEMPLAR: Besitzen zwei Kinder
+               -- dasselbe Set, liegt es in zwei Kisten. MIN() haette eine
+               -- davon gezeigt und die andere verschwiegen — und zwar so, dass
+               -- es wie eine vollstaendige Antwort aussieht.
+               NULLIF(string_agg(DISTINCT s.storage, ', '), '') AS storage,
                -- Nur Konten, die auch wirklich ein Exemplar halten.
                --
                -- Marcos Befund: „Ich habe den Kaufpreis für den Marco
@@ -141,6 +151,13 @@ async function getSets(userId: Blickfeld, query: any = {}) {
   const where = uids.length > 1 ? [] : ['s.user_id = ANY($1)'];
   const params: any[] = [uids];
   if (theme) { params.push(theme); where.push(`s.theme = $${params.length}`); }
+  // Lagerort als eigener Filter, nicht als Teil der Volltextsuche: „Kiste 3"
+  // soll genau die Sets in Kiste 3 zeigen und nicht zusaetzlich jedes Set,
+  // dessen Name zufaellig „Kiste" enthaelt.
+  if (query.storage) {
+    params.push(String(query.storage));
+    where.push(`s.storage = $${params.length}`);
+  }
   if (search) {
     params.push(`%${String(search).toLowerCase()}%`);
     const i = params.length;

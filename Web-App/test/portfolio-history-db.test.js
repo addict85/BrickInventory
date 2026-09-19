@@ -232,7 +232,7 @@ test('der Mailer prüft Zertifikate, sofern es niemand ausdrücklich abschaltet'
   const fs = require('node:fs');
   const path = require('node:path');
   const { ROOT, ohneKommentare } = require('./helpers/sources');
-  const src = ohneKommentare(fs.readFileSync(path.join(ROOT, 'routes', 'mailer.ts'), 'utf8'));
+  const src = ohneKommentare(fs.readFileSync(path.join(ROOT, 'utils', 'mailer.ts'), 'utf8'));
 
   assert.doesNotMatch(src, /rejectUnauthorized:\s*false/,
     'Zertifikatsprüfung fest abgeschaltet — SMTP-Zugangsdaten und Rücksetz-Links gehen über eine ungeprüfte Verbindung');

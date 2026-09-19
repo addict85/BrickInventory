@@ -2,7 +2,7 @@ import { ladeAnzeige } from './01-bausteine.js';
 import { registerActions } from './00-registry.js';
 import { colorName, locale, t } from '../i18n.js';
 import { G, api, esc, escHex, escHtml, escJs, escUrl, fmtBig, fullUrl, imgUrl, observeLazyImages, thumbUrl } from './01-core.js';
-import { addScopeParam, scopeQuery } from './14-scope.js';
+import { addScopeParam, addLagerParam, scopeQuery } from './14-scope.js';
 import { PARTS_ICON_SVG, allSets } from './02-gallery.js';
 
 /**
@@ -115,6 +115,7 @@ function partsParams(page){
   p.set('page', page);
   p.set('page_size', PARTS_PAGE_SIZE);
   addScopeParam(p, 'parts');
+  addLagerParam(p, 'parts');
   return p;
 }
 

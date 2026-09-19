@@ -32,6 +32,9 @@ internal fun MainViewModel.loadDashboard() {
     // einem Konto ohne Unterkonten ändert sich dadurch nichts.
     loadScopeModes()
     loadHouseholdMembers()
+    // Die Lagerorte in EINEM Zug mit den Mitgliedern: Beide speisen Filter,
+    // die nebeneinander stehen.
+    loadLagerorte()
     loadSets()
     loadStats()
 }
@@ -69,7 +72,8 @@ internal fun MainViewModel.loadSets() {
         val g = _galleryState.value
         val r = retryOnNetwork {
             repo.sets.getSets(scopeFor(ScopeFilter.View.GALLERY),
-                search = g.galleryQuery, theme = g.galleryTheme, sort = g.gallerySort, page = 1)
+                search = g.galleryQuery, theme = g.galleryTheme, sort = g.gallerySort, page = 1,
+                storage = lagerFor(ScopeFilter.View.GALLERY))
         }
         if (gen != galleryGeneration) return@launch   // inzwischen neuer Filter
         when (r) {
@@ -134,7 +138,8 @@ internal fun MainViewModel.loadMoreSets() {
         val next = g.galleryPage + 1
         val r = retryOnNetwork {
             repo.sets.getSets(scopeFor(ScopeFilter.View.GALLERY),
-                search = g.galleryQuery, theme = g.galleryTheme, sort = g.gallerySort, page = next)
+                search = g.galleryQuery, theme = g.galleryTheme, sort = g.gallerySort, page = next,
+                storage = lagerFor(ScopeFilter.View.GALLERY))
         }
         if (gen != galleryGeneration) {
             // Sperre lösen, sonst bleibt der Endlos-Scroll für immer blockiert:
@@ -482,3 +487,29 @@ internal fun MainViewModel.loadStats() {
 // Nachladen mehr oder gefilterte Seiten, an eine ungefilterte Liste gehaengt.
 //
 // Es gibt genau einen Weg, die Galerie zu laden, und das ist loadSets().
+
+/**
+ * Lagerort eines Sets setzen.
+ *
+ * ── Warum die Liste danach neu geladen wird ─────────────────────────────────
+ *
+ * Der Detailbildschirm liest sein `SetItem` aus derselben Liste wie die
+ * Galerie. Ohne Neuladen zeigte er nach dem Speichern weiter den alten Ort —
+ * der Server hat ihn zwar, aber niemand fragt danach.
+ *
+ * Genau wie in der Webapp (public/js/07-admin.js, speichereSetLagerort) wird
+ * dabei der NORMALISIERTE Ort aus der Antwort massgeblich: getrimmt, leer wird
+ * null. Sonst zeigte die Ansicht „ Kiste 3 " mit Leerzeichen, waehrend in der
+ * Datenbank „Kiste 3" steht, und beim naechsten Oeffnen spraenge der Wert.
+ */
+internal fun MainViewModel.setzeSetLagerort(setNumber: String, ort: String) {
+    viewModelScope.launch {
+        when (val r = repo.sets.setSetStorage(setNumber, ort)) {
+            is Result.Success -> {
+                if (!r.data.success) { _snackbar.emit(r.data.error ?: ""); return@launch }
+                loadSets()
+            }
+            is Result.Error -> _snackbar.emit(meldung(r))
+        }
+    }
+}

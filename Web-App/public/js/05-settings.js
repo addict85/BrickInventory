@@ -428,32 +428,51 @@ export async function loadHousehold(){
   renderHousehold(d);
 }
 
+/**
+ * Die Haushaltskarte.
+ *
+ * ── Warum das kein if/else-if mehr ist (Nachtrag 173) ───────────────────────
+ *
+ * Vorher schlossen sich die drei Zustaende aus: entweder Unterkonto ODER
+ * Hauptkonto ODER unverknuepft. Seit Konten ueber mehrere Stufen verknuepfbar
+ * sind, ist ein Zwischenkonto BEIDES — Kind seines Elternkontos und Elternteil
+ * seiner eigenen Unterkonten. Die alte Kette zeigte ihm nur die obere Haelfte
+ * und verschwieg ihm seine eigenen Unterkonten samt Loesen-Knopf.
+ */
 function renderHousehold(d){
   const stateEl  = G('household-state');
   const inviteEl = G('household-invite-box');
   const redeemEl = G('household-redeem-box');
   if(!stateEl) return;
 
+  const teile = [];
   if(d.is_sub){
-    stateEl.innerHTML = `<div style="padding:.55rem .8rem;border-radius:8px;background:var(--b100);color:var(--b600)">
+    teile.push(`<div style="padding:.55rem .8rem;border-radius:8px;background:var(--b100);color:var(--b600)">
       ${t('household.state_sub', { name: esc(d.linked_to?.username || '') })}
       <button class="btn" style="margin-left:.6rem" data-click="unlinkHousehold">${t('household.unlink_self')}</button>
-    </div>`;
-  } else if(d.sub_accounts?.length){
+    </div>`);
+  }
+  if(d.sub_accounts?.length){
+    // Nur die DIREKTEN Unterkonten stehen hier — nur deren Verknuepfung haengt
+    // am eigenen Konto und laesst sich von hier loesen (utils/household.ts,
+    // unlink()). Wer den ganzen Blick sehen will, hat dafuer den Kontofilter.
     const rows = d.sub_accounts.map(a => `<li style="display:flex;align-items:center;gap:.6rem;padding:.3rem 0">
       <span style="font-weight:600">${esc(a.username)}</span>
       <button class="btn" data-click="unlinkHousehold" data-arg="${a.id}">${t('household.unlink_sub')}</button>
     </li>`).join('');
-    stateEl.innerHTML = `<div>${t('household.state_main', { n: d.sub_accounts.length })}
-      <ul style="list-style:none;padding:0;margin:.4rem 0 0">${rows}</ul></div>`;
-  } else {
-    stateEl.innerHTML = `<div style="color:var(--mut)">${t('household.state_none', { cur: esc(d.currency||'') })}</div>`;
+    teile.push(`<div style="margin-top:${d.is_sub ? '.6rem' : '0'}">${t('household.state_main', { n: d.sub_accounts.length })}
+      <ul style="list-style:none;padding:0;margin:.4rem 0 0">${rows}</ul></div>`);
   }
+  if(!teile.length){
+    teile.push(`<div style="color:var(--mut)">${t('household.state_none', { cur: esc(d.currency||'') })}</div>`);
+  }
+  stateEl.innerHTML = teile.join('');
 
-  // Einladen kann, wer nicht selbst Unterkonto ist; einlösen, wer weder
-  // Unterkonto noch Hauptkonto ist.
-  if(inviteEl) inviteEl.style.display = d.is_sub ? 'none' : '';
-  if(redeemEl) redeemEl.style.display = (d.is_sub || d.is_main) ? 'none' : '';
+  // Einladen darf JEDES Konto — auch eines, das selbst Unterkonto ist
+  // (Nachtrag 173). Einloesen kann nur, wer noch kein Elternkonto hat: Das
+  // Schema laesst hoechstens eines zu (UNIQUE auf sub_user_id).
+  if(inviteEl) inviteEl.style.display = '';
+  if(redeemEl) redeemEl.style.display = d.is_sub ? 'none' : '';
 }
 
 export async function createHouseholdInvite(){

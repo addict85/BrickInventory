@@ -1,6 +1,7 @@
 import * as db from '../../db/database';
 import { resolveImageLocal } from '../images';
 import { asIds } from '../household';
+import type { BlickfeldEingabe } from '../household';
 import { istErsatzteil, ersatzteilSql } from '../validate';
 import { ensureFresh } from '../partsSummary';
 // Direkt aus utils/partsImport, nicht ueber routes/parts: Die Route hat die
@@ -131,6 +132,13 @@ function teileFilter(uids: number[], query: any) {
   if (search) {
     where += ` AND (LOWER(p.part_number) LIKE $${pi} OR LOWER(p.part_name) LIKE $${pi})`;
     params.push(`%${search.toLowerCase()}%`); pi++;
+  }
+  // Lagerort als eigener Filter, nicht als Teil der Volltextsuche: „Kiste 3"
+  // soll genau die Teile in Kiste 3 zeigen und nicht zusaetzlich jedes Teil,
+  // dessen Name zufaellig „Kiste" enthaelt.
+  if (query.storage) {
+    where += ` AND p.storage = $${pi++}`;
+    params.push(String(query.storage));
   }
 
 
@@ -302,10 +310,11 @@ async function tryPartsSummary(userId: Blickfeld, o: any) {
        MIN(part_name) AS part_name, MIN(color_name) AS color_name, MIN(color_hex) AS color_hex,
        MIN(category_name) AS category_name, MIN(image_url) AS image_url,
        MIN(image_local) AS image_local, MAX(COALESCE(is_spare,0)) AS is_spare,
-       SUM(total_quantity)::int AS total_quantity` +
+       SUM(total_quantity)::int AS total_quantity,
+       NULLIF(STRING_AGG(DISTINCT storage, ', '), '') AS storage` +
       (o.withSets ? ", STRING_AGG(DISTINCT in_sets, ',') AS in_sets" : '')
     : `part_number, bl_part_number, color_id, part_name, color_name, color_hex,
-       category_name, image_url, image_local, is_spare, total_quantity::int` +
+       category_name, image_url, image_local, is_spare, total_quantity::int, storage` +
       (o.withSets ? ', in_sets' : '');
   const groupSql = multi ? ' GROUP BY part_key, color_id' : '';
   const orderSql = multi ? 'MIN(color_name) ASC, MIN(part_name) ASC' : 'color_name ASC, part_name ASC';
@@ -389,7 +398,13 @@ async function getParts(userId: Blickfeld, query: any = {}) {
   // es um die Teile EINES Sets, nicht um die Sammlung — dafür ist die
   // Live-Abfrage sowohl passend als auch schnell genug.
   const excludesManual = query.exclude_manual === '1' || query.exclude_manual === true;
-  if (excludesManual && !set_number) {
+  // `storage` ist wie `set_number` ausgenommen: Die Zusammenfassung kennt den
+  // Lagerort nur VERDICHTET („Kiste 3, Regal B" fuer ein Teil aus zwei Sets)
+  // und koennte danach nicht filtern, ohne die Gruppe falsch zu treffen. Wer
+  // nach einem Ort filtert, will die Zeilen dieses Ortes — dafuer ist die
+  // Live-Abfrage sowohl passend als auch schnell genug, denn der Filter macht
+  // die Menge klein.
+  if (excludesManual && !set_number && !query.storage) {
     const summary = await tryPartsSummary(uids, { color, category, search, spare, page, page_size, withSets });
     if (summary) return summary;
   }
@@ -439,6 +454,15 @@ async function getParts(userId: Blickfeld, query: any = {}) {
       MIN(p.image_local)  AS image_local,
       MAX(p.is_spare)     AS is_spare,
       MAX(p.condition)    AS stored_condition,
+      -- Lagerort: string_agg statt MIN, und das ist kein Zierrat. Diese
+      -- Abfrage fasst je Teil-Farb-Paar MEHRERE Zeilen zusammen (dasselbe
+      -- Teil aus verschiedenen Sets, im Haushalt zusaetzlich aus verschiedenen
+      -- Konten). Die anderen Aggregate greifen dabei einen stellvertretenden
+      -- Wert, weil Name und Bild fuer alle gleich sind. Der Lagerort ist das
+      -- nicht: Dasselbe Teil liegt in zwei Kisten, und MIN() haette eine davon
+      -- gezeigt und die andere verschwiegen — so, dass es wie eine
+      -- vollstaendige Antwort aussieht.
+      NULLIF(STRING_AGG(DISTINCT p.storage, ', '), '') AS storage,
       -- Sum quantities across all RB part numbers that map to the same BL ID
       ${qtyExpr}          AS total_quantity${withSets ? `,
       STRING_AGG(DISTINCT p.set_number, ',') AS in_sets` : ''}
@@ -636,3 +660,82 @@ async function getManualParts(userId: Blickfeld, viewerId: number, { page = 1, p
 }
 
 export { getPartsColors, tryPartsSummary, getParts, getPartsStats, getBlColorMap, getManualParts };
+
+/**
+ * Wie viele der angefragten Teile im Blickfeld tatsächlich vorhanden sind.
+ *
+ * ── Wofür (Nachtrag 174, „Kann ich das bauen?") ─────────────────────────────
+ *
+ * Die Teileliste eines Sets zeigt seit jeher eine Spalte „Habe" — bisher ein
+ * leeres Zahlenfeld, in das man von Hand eintrug, was man schon besitzt. Die
+ * BrickLink-Wunschliste zieht diese Zahl vom Bedarf ab. Das funktionierte,
+ * nur musste man dafür seine eigene Sammlung im Kopf haben.
+ *
+ * Diese Funktion füllt die Spalte. Sie speichert nichts und ändert nichts —
+ * sie ist eine Frage an den bestehenden Bestand.
+ *
+ * ── Warum zwei Zahlen ───────────────────────────────────────────────────────
+ *
+ * `gesamt` zählt alles, `lose` nur, was nicht in einem Set steckt
+ * (source='manual'). Der Unterschied ist für die Antwort entscheidend: Ein
+ * Teil, das in einem aufgebauten Set sitzt, besitzt man zwar, aber man müsste
+ * dafür ein anderes Set zerlegen. Welche der beiden Zahlen gilt, entscheidet
+ * der Mensch vor dem Bildschirm — deshalb liefert der Server beide, statt sich
+ * für eine zu entscheiden.
+ *
+ * ── Warum POST und keine Liste im Pfad ──────────────────────────────────────
+ *
+ * Gefragt wird nach den Teilen EINER Teileliste; ein grosses Set hat weit über
+ * tausend Teil-Farb-Paare. Als Abfrageparameter gäbe das eine Adresse, die
+ * jeder Proxy abschneidet.
+ */
+export const BESTAND_MAX_TEILE = 5000;
+
+export async function getOwnedQuantities(
+  blickfeld: BlickfeldEingabe,
+  teile: Array<{ part_number?: string; color_id?: number | string }>,
+): Promise<Record<string, { gesamt: number; lose: number }>> {
+  const uids = asIds(blickfeld);
+  // Doppelte Schlüssel fallen hier weg: Eine Teileliste über mehrere Sets
+  // fragt dasselbe Teil sonst mehrfach, und die Abfrage würde unnötig gross.
+  const gesehen = new Set<string>();
+  const nums: string[] = [];
+  const farben: number[] = [];
+  for (const t of teile || []) {
+    const num = String(t?.part_number ?? '').trim();
+    if (!num) continue;
+    const farbe = parseInt(String(t?.color_id ?? 0)) || 0;
+    const key = `${num}|${farbe}`;
+    if (gesehen.has(key)) continue;
+    gesehen.add(key);
+    nums.push(num);
+    farben.push(farbe);
+    if (nums.length >= BESTAND_MAX_TEILE) break;
+  }
+  if (!nums.length) return {};
+
+  // Ersatzteile zählen MIT: Ein Ersatzteil, das dem Set beilag, liegt in der
+  // Schachtel und lässt sich verbauen. Die Bedarfsseite schliesst sie aus
+  // (parts-list), die Bestandsseite nicht — das ist kein Widerspruch, sondern
+  // genau der Unterschied zwischen „braucht man" und „hat man".
+  const rows = await db.all(
+    `SELECT p.part_number,
+            COALESCE(p.color_id, 0)                                   AS color_id,
+            COALESCE(SUM(p.quantity), 0)::int                         AS gesamt,
+            COALESCE(SUM(CASE WHEN COALESCE(p.source,'set') = 'manual'
+                              THEN p.quantity ELSE 0 END), 0)::int    AS lose
+       FROM parts p
+       JOIN unnest($2::text[], $3::int[]) AS g(part_number, color_id)
+         ON g.part_number = p.part_number AND g.color_id = COALESCE(p.color_id, 0)
+      WHERE p.user_id = ANY($1)
+      GROUP BY p.part_number, COALESCE(p.color_id, 0)`,
+    [uids, nums, farben]
+  ).catch(() => []);
+
+  const out: Record<string, { gesamt: number; lose: number }> = {};
+  for (const r of rows || []) {
+    out[`${r.part_number}|${parseInt(r.color_id) || 0}`] =
+      { gesamt: parseInt(r.gesamt) || 0, lose: parseInt(r.lose) || 0 };
+  }
+  return out;
+}

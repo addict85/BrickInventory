@@ -13,6 +13,8 @@ import { scopeIds, parseScopeMode, writableIds } from '../../utils/household';
 import { istErsatzteil, ersatzteilSql } from '../../utils/validate';
 import { householdMembers, resolveWriteTarget } from '../../utils/household';
 import { moveSetBetweenAccounts } from '../../utils/setMove';
+import { normalisiereLagerort, setzeLagerort, lagerorte } from '../../utils/lagerort';
+import { alarmeFuer, loescheAlarm, setzeAlarm } from '../../utils/preisalarm';
 import { istVermutung } from '../../utils/barcodeQuelle';
 import { setnummerKandidaten } from '../../utils/produkttitel';
 import { withInventoryLock } from '../../utils/txLock';
@@ -286,6 +288,77 @@ router.get('/sets/barcode/:barcode', requireToken, async (req: AuthedRequest, re
 // Setnummer raten. Aufgerufen wurde die Funktion nie — die Barcode-Route geht
 // über Katalog, Brickset und Rebrickable. Entfallen.
 
+
+/**
+ * PUT /api/v1/sets/:setNumber/storage — Lagerort setzen.
+ *
+ * Trifft alle Zeilen dieses Sets im Schreibbereich. Im Haushalt heisst das:
+ * Traegt das Hauptkonto einen Ort ein, gilt er auch fuer das Exemplar des
+ * Kindes. Das ist Absicht — wer die Kiste packt, packt sie fuer alle, die
+ * darin nachsehen.
+ */
+router.put('/sets/:setNumber/storage', requireToken, async (req: AuthedRequest, res) => {
+  try {
+    const ort = normalisiereLagerort(req.body?.storage);
+    const n = await setzeLagerort('set', await writableIds(req.apiUser.user_id),
+      [normalizeSetNumber(String(req.params.setNumber))], ort);
+    res.json({ success: true, storage: ort, changed: n });
+  } catch (e) { handleRouteError(res, e, undefined, req); }
+});
+
+/**
+ * Preisalarm — GET/PUT/DELETE zu EINEM Set.
+ *
+ * ── Warum hier kein Blickfeld steht ─────────────────────────────────────────
+ *
+ * Ein Alarm gehoert genau EINEM Konto: Wer eine Schwelle setzt, will selbst
+ * benachrichtigt werden. Das Elternkonto hat nichts davon, die Wuensche seiner
+ * Kinder per Mail zu bekommen — und duerfte sie schon gar nicht loeschen.
+ * Deshalb `req.apiUser.user_id` und nicht scopeIds()/writableIds(); im ganzen
+ * uebrigen Baum waere das ein Versehen, hier ist es die Regel.
+ */
+router.get('/sets/:setNumber/alert', requireToken, async (req: AuthedRequest, res) => {
+  try {
+    res.json({ success: true,
+      alerts: await alarmeFuer(req.apiUser.user_id, normalizeSetNumber(String(req.params.setNumber))) });
+  } catch (e) { handleRouteError(res, e, undefined, req); }
+});
+
+router.put('/sets/:setNumber/alert', requireToken, async (req: AuthedRequest, res) => {
+  try {
+    // Die Waehrung kommt aus den Einstellungen, NICHT aus der Anfrage: Eine
+    // vom Klienten geschickte Waehrung waere eine zweite Quelle fuer dieselbe
+    // Angabe, und die beiden liefen beim naechsten Wechsel auseinander.
+    const waehrung = String(await getSetting(req.apiUser.user_id, 'currency', 'EUR'));
+    const alarm = await setzeAlarm(req.apiUser.user_id,
+      normalizeSetNumber(String(req.params.setNumber)), waehrung, req.body || {});
+    res.json({ success: true, alert: alarm });
+  } catch (e) { handleRouteError(res, e, undefined, req); }
+});
+
+router.delete('/sets/:setNumber/alert', requireToken, async (req: AuthedRequest, res) => {
+  try {
+    const n = await loescheAlarm(req.apiUser.user_id,
+      normalizeSetNumber(String(req.params.setNumber)), String(req.query.condition || 'N'));
+    res.json({ success: true, removed: n });
+  } catch (e) { handleRouteError(res, e, undefined, req); }
+});
+
+/**
+ * GET /api/v1/storage — welche Lagerorte es gibt und was darin liegt.
+ *
+ * Liegt in dieser Datei und nicht in einer eigenen: Die Antwort spannt Sets
+ * UND Teile, gehoert also zu keiner der beiden Familien allein. Sie hier
+ * anzuhaengen ist die kleinere Unsauberkeit, als eine Routendatei fuer einen
+ * einzigen Endpunkt aufzumachen — und utils/lagerort.ts traegt die Regeln
+ * ohnehin.
+ */
+router.get('/storage', requireToken, async (req: AuthedRequest, res) => {
+  try {
+    const ids = await scopeIds(req.apiUser.user_id, parseScopeMode(req.query.accounts));
+    res.json({ success: true, orte: await lagerorte(ids) });
+  } catch (e) { handleRouteError(res, e, undefined, req); }
+});
 
 // GET /api/v1/sets/:setNumber/parts-list — user-independent parts
 router.get('/sets/:setNumber/parts-list', requireToken, async (req: AuthedRequest, res) => {

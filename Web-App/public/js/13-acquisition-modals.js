@@ -20,7 +20,7 @@ import { escHex, CURRENCY, G, ME, api, esc, escJs, escUrl, fmtN, fullUrl, imgUrl
 import { allSets, applySetAggregate, closeModal, curSet, loadGallery, pnlBadge, updateGalleryPrices } from './02-gallery.js';
 import { loadFinance } from './04-finance.js';
 import { deleteManualFig, deleteManualPart, loadManualFigsTable, loadManualParts, manualFigsCache, manualPartsCache, updateManualFig, updateManualPart } from './06-minifigs.js';
-import { confirmDelete, openModal, priceChartSVG, renderMarketRows } from './07-admin.js';
+import { confirmDelete, ladeLagerorte, openModal, priceChartSVG, renderMarketRows } from './07-admin.js';
 import { scopeQuery } from './14-scope.js';
 import { blurOnEnter, mQtyDec, mQtyInc, saveManualFigBl } from './11-actions.js';
 
@@ -567,6 +567,26 @@ export async function openSetItemDetail(type, id, colorId) {
   if (item?.category_name) zeilen.push(detailZeile(t('setitem.category'), esc(item.category_name)));
   if (item?.is_spare) zeilen.push(detailZeile(t('parts.spare_tag'), '✓'));
 
+  // ── Lagerort ──────────────────────────────────────────────────────────────
+  //
+  // Nur für Teile, nicht für Figuren: Eine Minifigur steckt in ihrem Set, und
+  // dessen Lagerort steht im Set-Detail. Ein zweiter Ort für dieselbe Sache
+  // wäre eine Stelle, an der zwei Antworten auseinanderlaufen können.
+  //
+  // Das Feld schreibt auf ALLE Zeilen dieses Teil-Farb-Paares (siehe die
+  // Route): Dasselbe Teil steckt in mehreren Sets, und wer hier „Kiste 3"
+  // einträgt, meint das Teil — nicht eine seiner Zeilen.
+  if (type === 'part') {
+    zeilen.push(detailZeile(t('detail.storage'), `
+      <input type="text" id="setitem-storage" list="lagerorte" maxlength="60"
+             placeholder="${esc(tRaw('detail.storage_ph'))}"
+             value="${esc(item?.storage || '')}"
+             data-change="speichereTeilLagerort"
+             data-part="${escJs(id)}" data-color="${farbe}"
+             style="width:150px;text-align:right;border:1px solid var(--bdr);border-radius:6px;padding:2px 6px;font-size:.85rem" />
+    `, { wertStil: 'display:flex;align-items:center;gap:6px' }));
+  }
+
   // ── Die verwendenden Sets ────────────────────────────────────────────────
   // Jede Zeile öffnet das Set-Detail. `openSetAusItem` schliesst diesen Dialog
   // zuerst — zwei offene Fenster übereinander wären nicht mehr zu schliessen.
@@ -621,6 +641,24 @@ export async function openSetItemDetail(type, id, colorId) {
       wertStil: 'flex-direction:column;align-items:stretch;gap:0;min-width:0' }));
 
   bodyEl.innerHTML = zeilen.join('');
+}
+
+/**
+ * Lagerort eines Teils speichern.
+ *
+ * Beim Verlassen des Feldes, aus demselben Grund wie beim Set (07-admin.js):
+ * Ein Ortsname wird getippt, und ein Speichern je Zeichen hinterliesse für
+ * „Kiste 3" fünf Zwischenstände in der Datenbank.
+ */
+async function speichereTeilLagerort() {
+  const el = G('setitem-storage');
+  if (!el) return;
+  const nummer = el.dataset.part;
+  const farbe  = parseInt(el.dataset.color) || 0;
+  const d = await api('PUT',
+    `/v1/parts/${encodeURIComponent(nummer)}/${farbe}/storage`, { storage: el.value });
+  if (!d?.success) { toast(d?.error || tRaw('settings.error'), 'error'); return; }
+  await ladeLagerorte();
 }
 
 function closeSetItemDetail() {
@@ -925,4 +963,5 @@ registerActions({
   openSetAusItem,
   openSetItemDetail,
   closeSetItemDetail,
+  speichereTeilLagerort,
 });

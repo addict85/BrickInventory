@@ -82,6 +82,9 @@ fun GalleryScreen(
     // sammeln, werden dadurch nicht mehr mit rekomponiert (siehe GalleryUiState).
     val galerie by vm.galleryState.collectAsStateWithLifecycle()
     val barcodeState by vm.barcodeState.collectAsStateWithLifecycle()
+    // Eigener Fluss: Der Lagerortfilter gehoert nicht in AppUiState, das
+    // sechzehn Dateien sammeln (siehe LagerUiState).
+    val lagerState by vm.lagerState.collectAsStateWithLifecycle()
 
     val sets = galerie.sets
     val query = galerie.galleryQuery
@@ -105,6 +108,9 @@ fun GalleryScreen(
     val onLoadMore: () -> Unit = vm::loadMoreSets
     val onDeleteSet: (String) -> Unit = vm::deleteSet
     val onScopeChange: (String) -> Unit = { vm.setScope(ch.brickinventoryapp.data.ScopeFilter.View.GALLERY, it) }
+    val lagerorte = lagerState.orte
+    val lagerModus = lagerState.modi[ch.brickinventoryapp.data.ScopeFilter.View.GALLERY.key] ?: ""
+    val onLagerChange: (String) -> Unit = { vm.setLagerFilter(ch.brickinventoryapp.data.ScopeFilter.View.GALLERY, it) }
     val onRefresh: () -> Unit = { vm.loadSets(); vm.loadStats() }
     val onAddSet: (String, Int, Double?, String?, Int?) -> Unit =
         { sn, qty, price, cond, owner -> vm.addSet(sn, qty, price, cond, owner) }
@@ -183,7 +189,8 @@ fun GalleryScreen(
                 }
             }
 
-            ScopeFilterZeile(householdMembers, scopeMode, onScopeChange)
+            ScopeFilterZeile(householdMembers, scopeMode, onScopeChange,
+            lagerorte = lagerorte, lagerAktuell = lagerModus, onLagerSelect = onLagerChange)
 
             // Suchfeld — gemeinsamer Baustein (Nachtrag 132).
             Suchfeld(

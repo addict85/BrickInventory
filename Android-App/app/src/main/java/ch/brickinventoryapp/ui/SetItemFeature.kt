@@ -68,3 +68,34 @@ internal fun MainViewModel.oeffneSetItem(art: String, nummer: String, colorId: I
 internal fun MainViewModel.schliesseSetItem() {
     _setItemState.value = SetItemUiState()
 }
+
+/**
+ * Lagerort eines Teils setzen.
+ *
+ * ── Warum der Zustand danach von Hand nachgezogen wird ──────────────────────
+ *
+ * Der Dialog liest `kopf.storage` aus `_setItemState`. Ohne das Nachziehen
+ * zeigte er nach dem Speichern weiter den alten Ort — der Server hat ihn zwar,
+ * aber niemand fragt danach. Den ganzen Dialog neu zu laden waere der zweite
+ * Weg: eine Abfrage mehr fuer eine Zahl, die schon in der Antwort steht.
+ *
+ * Der Server liefert den NORMALISIERTEN Ort zurueck (getrimmt, leer wird
+ * null). Genau der wird uebernommen, nicht der getippte Text — sonst zeigte
+ * der Dialog „ Kiste 3 " mit Leerzeichen, waehrend in der Datenbank „Kiste 3"
+ * steht, und beim naechsten Oeffnen spraenge der Wert.
+ */
+internal fun MainViewModel.setzeTeilLagerort(nummer: String, farbe: Int, ort: String) {
+    viewModelScope.launch {
+        when (val r = repo.teile.setPartStorage(nummer, farbe, ort)) {
+            is Result.Success -> {
+                if (!r.data.success) { _snackbar.emit(r.data.error ?: ""); return@launch }
+                _setItemState.update { z ->
+                    z.copy(kopf = z.kopf?.copy(storage = r.data.storage))
+                }
+                // Die Teileliste im Hintergrund traegt den Ort ebenfalls.
+                loadParts()
+            }
+            is Result.Error -> _snackbar.emit(meldung(r))
+        }
+    }
+}

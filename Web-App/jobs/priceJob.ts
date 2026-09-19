@@ -287,6 +287,29 @@ async function runPriceRefresh(vorhandeneSperre?: (() => Promise<void>) | null) 
       log(`Daily snapshot: ${inserted.changes} price history entries inserted`);
     } catch(e) { log(`Daily snapshot error: ${fehlertext(e)}`); }
 
+    // ── Preisalarme (Nachtrag 176) ──────────────────────────────────────────
+    //
+    // Hier und nicht in fetchAndCachePrice(): Dort wird JE SET UND ZUSTAND
+    // geholt, oft auch ohne dass sich etwas geaendert hat (Cache-Treffer).
+    // Eine Pruefung dort liefe pro Lauf tausendfach und meldete dieselbe
+    // Schwelle mehrfach je Durchgang.
+    //
+    // Am Ende des Laufs steht dagegen fest, was heute gilt — und die Pruefung
+    // geht nur noch die Sets durch, auf die ueberhaupt jemand wartet.
+    //
+    // Der ganze Block ist gekapselt: Ein nicht erreichbarer SMTP-Server oder
+    // eine fehlende Tabelle darf den Preislauf nicht abbrechen. Die Preise
+    // sind dann geholt, nur die Meldung fehlt — und sie wird beim naechsten
+    // Lauf erneut versucht, weil der Merker ungesetzt bleibt.
+    try {
+      const { pruefeSet } = require('../utils/preisalarm');
+      const wartende = await db.all(
+        'SELECT DISTINCT set_number FROM price_alerts').catch(() => []);
+      let gemeldet = 0;
+      for (const z of wartende || []) gemeldet += await pruefeSet(String(z.set_number));
+      if (wartende?.length) log(`Preisalarm: ${wartende.length} Sets geprueft, ${gemeldet} gemeldet`);
+    } catch (e) { log(`Preisalarm error: ${fehlertext(e)}`); }
+
     // Der Portfolio-Schnappschuss je Konto ist entfallen (Nachtrag 82).
     //
     // Er legte täglich einen Gesamtwert unter dem Pseudo-Set

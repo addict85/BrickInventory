@@ -288,6 +288,29 @@ CREATE TABLE IF NOT EXISTS parts (
 );
 
 ALTER TABLE parts ADD COLUMN IF NOT EXISTS bl_part_number TEXT;
+
+-- ── Lagerort ────────────────────────────────────────────────────────────────
+--
+-- Steht ZUSAETZLICH hier, obwohl db/migrations/0018-lagerort.sql dieselben
+-- beiden Spalten anlegt — und das ist kein Versehen: Diese Datei ist der
+-- Ausgangszustand fuer eine NEUE Datenbank, die Migration holt eine BESTEHENDE
+-- nach. Ohne den Eintrag hier faengt jede frische Installation (und jeder
+-- Testaufbau, der nur initSchema() ruft) ohne die Spalte an und faellt erst
+-- auf, wenn eine Abfrage sie liest. Genau das ist beim ersten Entwurf
+-- passiert: „column s.storage does not exist" aus der Paritaetspruefung.
+--
+-- Beide Wege sind idempotent (IF NOT EXISTS), die Reihenfolge spielt keine
+-- Rolle. Dieselbe Doppelung steht eine Zeile darueber fuer bl_part_number.
+--
+-- Die Begruendung der Sache selbst — warum eine Spalte und keine Tabelle,
+-- warum auf beiden Tabellen, warum NULL statt '' — steht in der Migration.
+ALTER TABLE sets  ADD COLUMN IF NOT EXISTS storage TEXT;
+ALTER TABLE parts ADD COLUMN IF NOT EXISTS storage TEXT;
+CREATE INDEX IF NOT EXISTS idx_sets_storage
+  ON sets (user_id, storage) WHERE storage IS NOT NULL;
+CREATE INDEX IF NOT EXISTS idx_parts_storage
+  ON parts (user_id, storage) WHERE storage IS NOT NULL;
+
 CREATE INDEX IF NOT EXISTS idx_parts_user  ON parts(user_id);
 CREATE INDEX IF NOT EXISTS idx_parts_color ON parts(user_id, color_name);
 CREATE INDEX IF NOT EXISTS idx_parts_set   ON parts(user_id, set_number);
@@ -387,6 +410,20 @@ CREATE TABLE IF NOT EXISTS price_history (
   recorded_at   TIMESTAMPTZ DEFAULT NOW()
 );
 CREATE INDEX IF NOT EXISTS idx_price_history_set ON price_history(set_number, recorded_at);
+
+-- ── Preisalarm ──────────────────────────────────────────────────────────────
+--
+-- price_alerts steht BEWUSST nur in db/migrations/0019-preisalarm.sql — wie
+-- account_links und die fuenf anderen Tabellen oben. Eine ganze TABELLE an
+-- zwei Orten anzulegen ist etwas anderes als ein ALTER … ADD COLUMN IF NOT
+-- EXISTS: Die Spaltendefinition beschreibt dieselbe Zielform, die
+-- Tabellendefinition beschreibt alle Spalten, Schluessel und CHECKs — und die
+-- liefen auseinander, sobald jemand einen davon nur an einem Ort aendert.
+-- test/schema-am-start.test.js meldet es.
+--
+-- Folge: Ein Testaufbau, der nur initSchema() ruft, hat die Tabelle nicht.
+-- Der Preisalarm faengt das ab (utils/preisalarm.ts fragt, jobs/priceJob.ts
+-- kapselt den ganzen Block) — ohne Alarme gibt es nichts zu melden.
 
 -- Meistgenutzte Query der App: SELECT ... FROM sets WHERE user_id = $1.
 -- UNIQUE(user_id, set_number) deckt das zwar theoretisch ab, ein

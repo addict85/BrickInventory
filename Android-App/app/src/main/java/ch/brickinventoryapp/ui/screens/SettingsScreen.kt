@@ -531,39 +531,46 @@ private fun HouseholdCard(
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant)
 
-        when {
-            st == null -> {}
-            st.isSub -> {
+        // Kein when-Block mehr, sondern zwei unabhaengige Abschnitte: Seit
+        // Konten ueber mehrere Stufen verknuepfbar sind, ist ein
+        // Zwischenkonto BEIDES — Kind seines Elternkontos und Elternteil
+        // seiner eigenen Unterkonten. Die frueheren Zweige schlossen sich
+        // gegenseitig aus und zeigten ihm nur die obere Haelfte.
+        if (st != null && st.isSub) {
+            Row(verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(Abstaende.klein)) {
+                Text(stringResource(R.string.household_state_sub, st.linkedTo?.username ?: ""),
+                    style = MaterialTheme.typography.bodyMedium, modifier = Modifier.weight(1f))
+                TextButton(onClick = { onUnlink(null) }) {
+                    Text(stringResource(R.string.household_unlink))
+                }
+            }
+        }
+        if (st != null && st.subAccounts.isNotEmpty()) {
+            // Nur die DIREKTEN Unterkonten — nur deren Verknuepfung haengt am
+            // eigenen Konto und laesst sich von hier loesen. Das ganze
+            // Blickfeld zeigt der Kontofilter.
+            Text(stringResource(R.string.household_state_main),
+                style = MaterialTheme.typography.labelLarge)
+            st.subAccounts.forEach { m ->
                 Row(verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(Abstaende.klein)) {
-                    Text(stringResource(R.string.household_state_sub, st.linkedTo?.username ?: ""),
-                        style = MaterialTheme.typography.bodyMedium, modifier = Modifier.weight(1f))
-                    TextButton(onClick = { onUnlink(null) }) {
-                        Text(stringResource(R.string.household_unlink))
+                    Text(m.username, modifier = Modifier.weight(1f),
+                        fontWeight = FontWeight.SemiBold)
+                    TextButton(onClick = { onUnlink(m.id) }) {
+                        Text(stringResource(R.string.household_remove))
                     }
                 }
             }
-            st.subAccounts.isNotEmpty() -> {
-                Text(stringResource(R.string.household_state_main),
-                    style = MaterialTheme.typography.labelLarge)
-                st.subAccounts.forEach { m ->
-                    Row(verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(Abstaende.klein)) {
-                        Text(m.username, modifier = Modifier.weight(1f),
-                            fontWeight = FontWeight.SemiBold)
-                        TextButton(onClick = { onUnlink(m.id) }) {
-                            Text(stringResource(R.string.household_remove))
-                        }
-                    }
-                }
-            }
-            else -> Text(stringResource(R.string.household_state_none),
+        }
+        if (st != null && !st.isSub && st.subAccounts.isEmpty()) {
+            Text(stringResource(R.string.household_state_none),
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
 
-        // Einladen kann, wer nicht selbst Unterkonto ist.
-        if (st != null && !st.isSub) {
+        // Einladen darf JEDES Konto — auch eines, das selbst Unterkonto ist.
+        if (st != null) {
             HorizontalDivider()
             Text(stringResource(R.string.household_invite_hint),
                 style = MaterialTheme.typography.bodySmall,
@@ -584,8 +591,10 @@ private fun HouseholdCard(
             }
         }
 
-        // Einlösen kann, wer weder Unterkonto noch Hauptkonto ist.
-        if (st != null && !st.isSub && st.subAccounts.isEmpty()) {
+        // Einloesen kann, wer noch kein Elternkonto hat: Das Schema laesst
+        // hoechstens eines zu (UNIQUE auf sub_user_id). Eigene Unterkonten
+        // stehen dem nicht mehr im Weg.
+        if (st != null && !st.isSub) {
             HorizontalDivider()
             Text(stringResource(R.string.household_redeem_hint),
                 style = MaterialTheme.typography.bodySmall,

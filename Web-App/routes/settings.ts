@@ -14,7 +14,7 @@ import { buildFigsCsv } from './minifigs';
 import { DAILY_JOBS } from '../jobs/dailyScheduler';
 import { escapeLike, requireLoginOrToken, nutzerId, angemeldeteNutzerId, istVerwalter, nutzerName, hashToken, leereTokenCache } from '../utils/auth';
 import { bearerToken } from './api_v1/middleware';
-import { sendMail, testSmtp } from './mailer';
+import { sendMail, testSmtp } from '../utils/mailer';
 import { sendeFehler } from '../utils/fehlerTexte';
 
 // ── Öffentlich: aktuelles App-Design ─────────────────────────────────────────

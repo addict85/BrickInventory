@@ -4,13 +4,15 @@ import * as db from '../../db/database';
 import { handleRouteError } from '../../utils/httpError';
 import { requireToken } from './middleware';
 import { scopeIds, parseScopeMode, resolveWriteTarget } from '../../utils/household';
-import { getBlColorMap, getManualParts, getParts, getPartsColors, getPartsStats } from '../../utils/handlers/parts';
+import { getBlColorMap, getManualParts, getOwnedQuantities, getParts, getPartsColors, getPartsStats } from '../../utils/handlers/parts';
 import { addManualPart, getPartColorList, updateManualPart } from '../parts';
 import { getSetting } from '../../utils/settings';
 import { getPartPriceHistory } from '../../utils/priceHistory';
 import { einzelwert } from '../../utils/validate';
 import { verwendendeSets, loescheManuellesTeil } from '../../utils/handlers/shared';
 import { sendeFehler } from '../../utils/fehlerTexte';
+import { normalisiereLagerort, setzeLagerort } from '../../utils/lagerort';
+import { writableIds } from '../../utils/household';
 const router = express.Router();
 
 // ── PARTS ─────────────────────────────────────────────────────────────────────
@@ -102,6 +104,44 @@ router.get('/parts/bl-color-map', requireToken, async (_req: AuthedRequest, res)
 
 // Manuell erfasste Teile — gleicher Handler wie /api/parts/manual (Parität;
 // bisher fehlte diese Information in der Android-API komplett).
+/**
+ * POST /api/v1/parts/owned — „was davon habe ich schon?"
+ *
+ * Nimmt die Teile EINER Teileliste entgegen und antwortet je Teil-Farb-Paar
+ * mit zwei Zahlen: `gesamt` (alles im Blickfeld) und `lose` (nur, was nicht in
+ * einem Set steckt). Welche gilt, entscheidet der Mensch — siehe die
+ * Begruendung an getOwnedQuantities().
+ *
+ * POST, obwohl nichts geaendert wird: Eine Teileliste hat weit ueber tausend
+ * Paare, als Abfrageparameter waere die Adresse laenger als jeder Proxy
+ * durchlaesst. Der Kontofilter reist trotzdem als `accounts=` mit — er gehoert
+ * zur Ansicht, nicht zur Nutzlast.
+ */
+router.post('/parts/owned', requireToken, async (req: AuthedRequest, res) => {
+  try {
+    const teile = Array.isArray(req.body?.teile) ? req.body.teile : [];
+    const ids = await scopeIds(req.apiUser.user_id, parseScopeMode(req.query.accounts));
+    res.json({ success: true, bestand: await getOwnedQuantities(ids, teile) });
+  } catch (e) { handleRouteError(res, e, undefined, req); }
+});
+
+/**
+ * PUT /api/v1/parts/:partNumber/:colorId/storage — Lagerort setzen.
+ *
+ * Trifft ALLE Zeilen des Teil-Farb-Paares im Schreibbereich: Dasselbe Teil
+ * steckt in mehreren Sets und damit in mehreren Zeilen. Wer in der Ansicht
+ * „Kiste 3" eintraegt, meint das Teil, nicht eine seiner Zeilen — und haette
+ * sonst je Set einen eigenen Ort zu pflegen.
+ */
+router.put('/parts/:partNumber/:colorId/storage', requireToken, async (req: AuthedRequest, res) => {
+  try {
+    const ort = normalisiereLagerort(req.body?.storage);
+    const n = await setzeLagerort('part', await writableIds(req.apiUser.user_id),
+      [String(req.params.partNumber), String(parseInt(String(req.params.colorId)) || 0)], ort);
+    res.json({ success: true, storage: ort, changed: n });
+  } catch (e) { handleRouteError(res, e, undefined, req); }
+});
+
 router.get('/parts/manual', requireToken, async (req: AuthedRequest, res) => {
   try {
     res.json({ success: true, parts: await getManualParts(await scopeIds(req.apiUser.user_id, parseScopeMode(req.query.accounts)), req.apiUser.user_id) });

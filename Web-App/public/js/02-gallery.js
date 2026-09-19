@@ -4,13 +4,14 @@ import { locale, t, tRaw} from '../i18n.js';
 import { CURRENCY, G, ME, TRASH_ICON_SVG, api, esc, escJs, escUrl, fmtBig, fmtN, imgUrl, observeLazyImages, thumbUrl, toast } from './01-core.js';
 import { _gibSse, _gibTimer, gibStart } from './01-fortschritt.js';
 import { _monitorTimer, loadMonitor, set_monitorTimer } from './01-monitor.js';
-import { SCOPE_VIEWS, addScopeParam, scopeMode, scopeQuery, setScopeMode } from './14-scope.js';
+import { SCOPE_VIEWS, addScopeParam, scopeMode, scopeQuery, setScopeMode,
+         LAGER_VIEWS, addLagerParam, lagerModus, setLagerModus } from './14-scope.js';
 import { setScrollLabel } from './15-scrollbar.js';
 import { loadParts } from './03-parts.js';
 import { loadFinance } from './04-finance.js';
 import { loadApiLimits, loadCacheStats, loadCacheTtl, loadProfile, loadRateLimitStats, loadSettings, loadTokens } from './05-settings.js';
 import { loadBrickColors, loadManualParts, loadMinifigs } from './06-minifigs.js';
-import { _lastImportAt, confirmDelete, enrichGalleryWithPrices, jobPollTimer, openModal, pollJobStatus, set_jobPollTimer, set_lastImportAt } from './07-admin.js';
+import { _lastImportAt, confirmDelete, enrichGalleryWithPrices, jobPollTimer, ladeLagerorte, openModal, pollJobStatus, set_jobPollTimer, set_lastImportAt } from './07-admin.js';
 import { openAcqModal, renderAcqModalBody, renderAcquisitionSummary } from './13-acquisition-modals.js';
 import { initCatalog } from './09-catalog.js';
 import { delSetStop, openPdfViewerLink, stopEvent } from './11-actions.js';
@@ -235,6 +236,7 @@ function galleryParams(page, pageSize = GAL_PAGE_SIZE){
   const th = G('gtheme')?.value;         if (th)    p.set('theme', th);
   const so = G('gsort')?.value;          if (so)    p.set('sort', so);
   addScopeParam(p, 'gallery');
+  addLagerParam(p, 'gallery');
   return p.toString();
 }
 
@@ -335,11 +337,22 @@ export function initScopeSelects(members) {
   //
   // Der Server versteht `accounts=subs` weiterhin (utils/household.ts) — eine
   // ältere App-Fassung auf einem Gerät schickt es sonst ins Leere.
+  //
+  // Seit Nachtrag 173 stehen hier ALLE Nachfahren, nicht nur die direkten
+  // Unterkonten — Marcos Festlegung: Ein Eintrag meint immer genau EIN Konto,
+  // nie dessen Unterkonten mit. Ein Enkel, der hier fehlte, waere ausser ueber
+  // „Alle Konten" gar nicht einzeln zu sehen.
+  //
+  // Die Einrueckung macht die Stufen sichtbar (geschuetzte Leerzeichen, weil
+  // ein <option> fuehrende gewoehnliche Leerzeichen zusammenfaellt). Ohne sie
+  // stuenden Kind und Enkel gleichrangig untereinander, und die Liste sagte
+  // nicht mehr, wer zu wem gehoert.
   const subs = members.filter(m => !m.is_self);
+  const einzug = m => '\u00a0\u00a0\u00a0'.repeat(Math.max(0, (m.tiefe || 1) - 1));
   const opts = [
     `<option value="all">${esc(tRaw('household.scope_all'))}</option>`,
     `<option value="own">${esc(tRaw('household.scope_own'))}</option>`,
-    ...subs.map(m => `<option value="${m.id}">${esc(m.username)}</option>`),
+    ...subs.map(m => `<option value="${m.id}">${einzug(m)}${esc(m.username)}</option>`),
   ].join('');
 
   for (const view of SCOPE_VIEWS) {
@@ -354,6 +367,43 @@ export function initScopeSelects(members) {
     if (el.value !== saved) setScopeMode(view, el.value);
     el.style.display = '';
   }
+}
+
+/**
+ * Die Lagerort-Auswahlfelder füllen.
+ *
+ * ── Warum sie verborgen bleiben, solange es keine Orte gibt ────────────────
+ *
+ * Ein Auswahlfeld mit genau einem Eintrag („Alle Lagerorte") beantwortet
+ * nichts und steht trotzdem in der Filterzeile. Genau so verhält sich der
+ * Kontofilter daneben, wenn es keine Unterkonten gibt — dieselbe Regel, weil
+ * es dieselbe Art von Wahl ist.
+ */
+export function initStorageSelects(orte) {
+  const opts = [`<option value="">${esc(tRaw('filter.storage_all'))}</option>`,
+    ...orte.map(o => `<option value="${esc(o.ort)}">${esc(o.ort)}</option>`)].join('');
+  for (const view of LAGER_VIEWS) {
+    const el = G('storage-' + view);
+    if (!el) continue;
+    if (!orte.length) { el.style.display = 'none'; continue; }
+    el.innerHTML = opts;
+    // Zeigt die gespeicherte Wahl auf einen inzwischen leeren Ort, steht hier
+    // sonst eine leere Beschriftung über einer gefilterten Liste — dieselbe
+    // Falle wie beim Kontofilter.
+    const gespeichert = lagerModus(view);
+    el.value = [...el.options].some(o => o.value === gespeichert) ? gespeichert : '';
+    if (el.value !== gespeichert) setLagerModus(view, el.value);
+    el.style.display = '';
+  }
+}
+
+/** Umschalten — lädt NUR die betroffene Ansicht neu, wie beim Kontofilter. */
+export function onStorageChange(view) {
+  const el = G('storage-' + view);
+  if (!el) return;
+  setLagerModus(view, el.value);
+  if (view === 'gallery') loadGallery();
+  if (view === 'parts')   loadParts();
 }
 
 /**
@@ -382,6 +432,10 @@ export async function loadHouseholdMembers() {
   // Dieselbe Antwort entscheidet über den Kontofilter: mehr als ein Konto
   // heisst Hauptkonto mit Unterkonten.
   initScopeSelects(members);
+  // Die Lagerorte in EINEM Zug: Sie fuellen die Auswahlfelder der Filter UND
+  // die gemeinsame <datalist> der Eingabefelder. Zwei Aufrufe waeren zwei
+  // Staende derselben Liste.
+  ladeLagerorte().catch(() => {});
   const html = members.map(m =>
     `<option value="${m.id}"${m.is_self ? ' selected' : ''}>${esc(m.username)}${m.is_self ? ' (ich)' : ''}</option>`
   ).join('');
@@ -1062,6 +1116,7 @@ async function redownloadInstr(sn){ toast(tRaw('instr.loading'),'info'); const d
 // ── Handler beim Dispatcher anmelden (siehe js/00-registry.js) ──────────────
 registerActions({
   onScopeChange,
+  onStorageChange,
   autosaveSet,
   closeImageLightbox,
   closeModal,

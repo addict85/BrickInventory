@@ -16,7 +16,7 @@ const lies = rel => fs.readFileSync(path.join(WEB, rel), 'utf8');
  * properties of undefined (reading 'de')".
  *
  * createInvite() lieferte im ERFOLGSFALL `{ code: <Einladungstoken> }` und im
- * FEHLERFALL `{ code: 'konto_bereits_verknuepft_eine_stufe' }`. Die Route
+ * FEHLERFALL `{ code: 'konto_bereits_verknuepft' }`. Die Route
  * entschied mit `if (r.code)`, ob etwas schiefgegangen war — und hielt damit
  * jede erfolgreiche Einladung fuer einen Fehler. Der Zufallstoken ging als
  * Fehlercode in fehlerText(), stand dort in keiner Tabelle, und der Zugriff
@@ -40,10 +40,13 @@ test('Absagen aus utils/household.ts heissen fehler, nicht code', () => {
   // `code` ist in dieser Datei ein NUTZLAST-Name: der Einladungscode selbst.
   // Eine Absage darf ihn deshalb nicht belegen.
   const absagen = [...quelle.matchAll(/return \{ (\w+): '([a-z_]+)' as const/g)];
-  // Selbstbeweis: GEMESSEN sind es acht Absagen. Findet die Suche keine, waere
+  // Selbstbeweis: GEMESSEN sind es sechs Absagen. Findet die Suche keine, waere
   // die Zusicherung darunter still gruen.
-  assert.equal(absagen.length, 8,
-    `${absagen.length} Absagen gefunden statt acht — greift die Suche noch?`);
+  //
+  // Es waren acht, bis Nachtrag 173 die drei Absagen „nur eine Stufe" durch
+  // die eine Kreispruefung ersetzt hat.
+  assert.equal(absagen.length, 6,
+    `${absagen.length} Absagen gefunden statt sechs — greift die Suche noch?`);
   const falsch = absagen.filter(m => m[1] !== 'fehler').map(m => `${m[1]}: '${m[2]}'`);
   assert.deepEqual(falsch, [],
     'Diese Absagen benutzen einen anderen Schluessel als `fehler`. Heisst er ' +

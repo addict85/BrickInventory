@@ -38,6 +38,16 @@ data class HouseholdMember(
     val id: Int = 0,
     val username: String = "",
     @SerialName("is_self") val isSelf: Boolean = false,
+    /**
+     * Stufe im Kontenbaum: 0 = eigenes Konto, 1 = direktes Unterkonto,
+     * 2 = dessen Unterkonto, …
+     *
+     * Nur fuer die Einrueckung im Kontofilter. Fuer die Berechtigung spielt
+     * sie keine Rolle — wer im Blickfeld steht, steht drin. Vorgabe 1, damit
+     * eine aeltere Serverfassung ohne dieses Feld die Liste flach, aber
+     * vollstaendig anzeigt.
+     */
+    val tiefe: Int = 1,
 )
 
 @Serializable

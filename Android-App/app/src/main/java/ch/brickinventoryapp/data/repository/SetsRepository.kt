@@ -45,15 +45,21 @@ class SetsRepository @Inject constructor(
         theme: String? = null,
         sort: String? = null,
         page: Int = 1,
-        pageSize: Int = GALLERY_PAGE_SIZE
+        pageSize: Int = GALLERY_PAGE_SIZE,
+        storage: String? = null
     ): Result<SetsResponse> {
+        // `storage` gehoert in die Bedingung fuer „ungefiltert": Ohne das
+        // landete eine nach Lagerort gefilterte Antwort im Zwischenspeicher
+        // unter demselben Schluessel wie die volle Liste — und die Galerie
+        // zeigte danach je nach Cache-Zustand mal alles, mal eine Kiste.
         val ungefiltert = accounts == null && search.isNullOrBlank() && theme.isNullOrBlank() &&
+            storage.isNullOrBlank() &&
             (sort == null || sort == GALLERY_DEFAULT_SORT) && page == 1
         return if (ungefiltert)
             cached("sets", SetsResponse.serializer()) {
                 safeCall { api.getSets(null, null, null, sort, 1, pageSize) }
             }
-        else safeCall { api.getSets(accounts, search?.ifBlank { null }, theme?.ifBlank { null }, sort, page, pageSize) }
+        else safeCall { api.getSets(accounts, search?.ifBlank { null }, theme?.ifBlank { null }, sort, page, pageSize, storage?.ifBlank { null }) }
     }
 
     /**
@@ -83,6 +89,27 @@ class SetsRepository @Inject constructor(
     suspend fun moveSet(setNumber: String, fromUserId: Int?, toUserId: Int,
                         acquisitionIds: List<Int>? = null): Result<MoveSetResponse> =
         safeCall { api.moveSet(setNumber, MoveSetRequest(fromUserId, toUserId, acquisitionIds)) }
+
+    // ── Preisalarm ──────────────────────────────────────────────────────────
+    //
+    // BEWUSST ohne Zwischenspeicher: Ein Alarm wird selten gelesen (nur beim
+    // Oeffnen des Detailbildschirms) und aendert sich durch den Preislauf auch
+    // ohne Zutun der App — der Merker `ausgeloest` springt dort um. Ein
+    // Speicher zeigte danach „scharf", waehrend die Mail schon unterwegs ist.
+    suspend fun getPreisalarme(setNumber: String): Result<PreisalarmeResponse> =
+        safeCall { api.getPreisalarme(setNumber) }
+
+    suspend fun setPreisalarm(setNumber: String, richtung: String, schwelle: Double,
+                              condition: String = "N"): Result<PreisalarmResponse> =
+        safeCall { api.setPreisalarm(setNumber, PreisalarmRequest(richtung, schwelle, condition)) }
+
+    suspend fun deletePreisalarm(setNumber: String, condition: String = "N"):
+        Result<PreisalarmResponse> =
+        safeCall { api.deletePreisalarm(setNumber, condition) }
+
+    /** Lagerort eines Sets setzen. Leerer Text loescht ihn. */
+    suspend fun setSetStorage(setNumber: String, ort: String): Result<LagerortResponse> =
+        safeCall { api.setSetStorage(setNumber, LagerortRequest(ort)) }
 
     suspend fun getSetPartsList(setNumber: String): Result<PartsResponse> =
         safeCall { api.getSetPartsList(setNumber) }
