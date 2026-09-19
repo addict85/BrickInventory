@@ -135,7 +135,7 @@ test('kein Token reitet mehr in der Adresszeile', () => {
   // mehr ansieht, und die Aufrufer, die keinen mehr anhaengen. Nur eine der
   // beiden zu pruefen reichte nicht — die Ausnahmeliste hier war jahrelang
   // gruen, WEIL nur ihr Vorhandensein geprueft wurde und nie ihr Nutzen.
-  const { ohneKommentare, einhaengung, setKernQuelle } = require('./helpers/sources');
+  const { ohneKommentare, einhaengung, setKernQuelle, coreQuelle } = require('./helpers/sources');
   const auth = ohneKommentare(read('utils/auth.ts'));
 
   assert.doesNotMatch(auth, /TOKEN_QUERY_ALLOWED/,
@@ -158,7 +158,8 @@ test('kein Token reitet mehr in der Adresszeile', () => {
     { re: /\?token=\$/,      wo: 'Kotlin' },
   ];
   const quellen = [
-    ...['public/js/01-core.js', 'public/js/02-gallery.js', 'public/js/05-settings.js']
+    ...['public/js/01-core.js', 'public/js/01-fortschritt.js', 'public/js/01-monitor.js',
+        'public/js/02-gallery.js', 'public/js/05-settings.js']
       .map(f => [f, read(f)]),
     // Jeder Dateiname AUSGESCHRIEBEN, nicht ueber eine Schleifenvariable
     // zusammengesetzt: test/baumbruecken.test.js loest die Bruecken in den
@@ -195,8 +196,11 @@ test('kein Token reitet mehr in der Adresszeile', () => {
 
   // Der Kanal selbst muss es weiterhin geben — sonst prueft der Absatz oben
   // die Abwesenheit eines Tokens an einer Adresse, die es nicht mehr gibt.
-  assert.ok(read('public/js/01-core.js').includes(einhaengung('sets') + '/import/csv/stream'),
-    'Der SSE-Kanal des CSV-Imports fehlt in 01-core.js — Route umgezogen?');
+  // coreQuelle() statt eines Dateinamens: Der Balken zog in Nachtrag 141 nach
+  // js/01-fortschritt.js um, und dieser Satz prüfte danach eine Datei, in der
+  // der Kanal gar nicht mehr stand. Gesucht ist der KANAL, nicht sein Ablageort.
+  assert.ok(coreQuelle().includes(einhaengung('sets') + '/import/csv/stream'),
+    'Der SSE-Kanal des CSV-Imports fehlt — Route umgezogen?');
 });
 
 test('offene Ereignis-Ströme halten das Herunterfahren nicht auf', () => {

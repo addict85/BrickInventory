@@ -77,8 +77,11 @@ test('der Zeitplan im Monitor geht durch denselben Escaper wie sein Nachbar', ()
   // derselben Zeile ging `data-arg` durch esc() und `value` nicht. Eine Zeile,
   // die dieselbe Regel zweimal verschieden anwendet, ist der Anfang der
   // naechsten Luecke.
-  const core = ohneKommentare(
-    fs.readFileSync(path.join(WURZEL, 'public', 'js', '01-core.js'), 'utf8'));
+  // coreQuelle() statt eines Dateinamens: Die Jobliste zog in Nachtrag 141 nach
+  // js/01-monitor.js um. Ein Test, der den Ablageort nennt, wird davon grün,
+  // dass sein Gegenstand weg ist — hier fiel er nur auf, weil er die Anzahl
+  // der Treffer prüft und nicht bloß deren Form.
+  const core = ohneKommentare(require('./helpers/sources').coreQuelle());
   const treffer = [...core.matchAll(/class="job-sched-input"[^`]*?value="\$\{([^}]+)\}"/g)];
   assert.strictEqual(treffer.length, 2,
     `${treffer.length} Zeitplan-Eingabefelder gefunden, erwartet 2 — Muster veraltet?`);

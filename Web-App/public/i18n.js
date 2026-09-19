@@ -1,4 +1,5 @@
-import { api, loadMonitor } from './js/01-core.js';
+import { api } from './js/01-core.js';
+import { loadMonitor } from './js/01-monitor.js';
 import { renderGallery } from './js/02-gallery.js';
 import { loadParts } from './js/03-parts.js';
 import { loadFinance } from './js/04-finance.js';

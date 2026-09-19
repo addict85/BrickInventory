@@ -384,7 +384,9 @@ module.exports.portfolioQuelle = portfolioQuelle;
  * ── Warum ein Helfer (Nachtrag 136) ─────────────────────────────────────────
  *
  * Kontofilter und eigener Scrollbalken liegen seit Nachtrag 136 in
- * js/14-scope.js bzw. js/15-scrollbar.js. Ein Dutzend Prüfungen las
+ * js/14-scope.js bzw. js/15-scrollbar.js, der Fortschrittsbalken und die
+ * Überwachung seit Nachtrag 141 in js/01-fortschritt.js bzw.
+ * js/01-monitor.js. Ein Dutzend Prüfungen las
  * `public/js/01-core.js` und meinte „irgendwo in der Grundausstattung des
  * Frontends".
  *
@@ -394,7 +396,7 @@ module.exports.portfolioQuelle = portfolioQuelle;
 function coreQuelle() {
   const path = require('path'), fs = require('fs');
   const dir = path.join(__dirname, '..', '..', 'public', 'js');
-  return ['01-core.js', '14-scope.js', '15-scrollbar.js']
+  return ['01-core.js', '01-fortschritt.js', '01-monitor.js', '14-scope.js', '15-scrollbar.js']
     .map(f => fs.readFileSync(path.join(dir, f), 'utf8')).join('\n');
 }
 module.exports.coreQuelle = coreQuelle;
