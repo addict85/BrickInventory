@@ -297,6 +297,18 @@ data class BestandteilKopf(
      * dessen Ort steht im Set-Detail.
      */
     val storage: String? = null,
+    /**
+     * Wem dieses Teil gehoert — fuer die Lagerort-Auswahl im Dialog.
+     *
+     * Marcos Regel: Beim Set des Enkels gehoeren die Regale des ENKELS zur
+     * Wahl. Ohne diese Liste zeigte der Teil-Dialog als einziger Ort im Baum
+     * die EIGENE Auswahl — nicht aus Absicht, sondern weil der Kopf die
+     * Besitzer nicht kannte.
+     *
+     * MEHRERE, nicht einer: Dasselbe Teil steckt in mehreren Sets, und die
+     * koennen verschiedenen Konten gehoeren.
+     */
+    @SerialName("owner_ids") val ownerIds: List<Int> = emptyList(),
     /** Summe ueber ALLE Sets im Blickfeld. */
     @SerialName("total_quantity") val totalQuantity: Int = 0,
 )

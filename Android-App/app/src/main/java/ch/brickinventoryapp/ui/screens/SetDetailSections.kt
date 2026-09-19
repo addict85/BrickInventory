@@ -627,8 +627,32 @@ fun LazyListScope.setDetailAlarmSection(
     vm: MainViewModel,
 ) {
     item {
-        val alarm = alarme.firstOrNull { it.condition == ch.brickinventoryapp.ui.ALARM_ZUSTAND }
+        // Fuer WELCHEN Zustand der Alarm gilt. Neu und gebraucht liegen oft
+        // um ein Vielfaches auseinander; wer ein gebrauchtes Exemplar sucht,
+        // hatte bisher keine Moeglichkeit, darauf zu warten.
+        var zustand by rememberSaveable {
+            mutableStateOf(ch.brickinventoryapp.ui.ALARM_ZUSTAND_VORGABE)
+        }
+        val alarm = alarme.firstOrNull { it.condition == zustand }
         SectionCard(title = stringResource(R.string.detail_alert)) {
+            // Der Zustandswechsel LAEDT nur — er speichert nicht. Ein Wechsel
+            // ist die Frage „was steht fuer gebraucht?", keine Eingabe. Wuerde
+            // hier gespeichert, legte schon das Umschalten einen Alarm im
+            // neuen Zustand an. Dass `alarm` oben am Zustand haengt, erledigt
+            // das Laden von selbst: Die Liste traegt beide.
+            Row(verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(Abstaende.klein)) {
+                FilterChip(
+                    selected = zustand == "N",
+                    onClick = { zustand = "N" },
+                    label = { Text(stringResource(R.string.condition_new), fontSize = Schrift.klein) },
+                )
+                FilterChip(
+                    selected = zustand == "U",
+                    onClick = { zustand = "U" },
+                    label = { Text(stringResource(R.string.condition_used), fontSize = Schrift.klein) },
+                )
+            }
             // Schluessel ist der Alarm selbst: Kommt einer vom Server (geladen
             // oder gerade gespeichert), soll das Feld ihn zeigen statt den
             // alten Text zu behalten.
@@ -650,13 +674,13 @@ fun LazyListScope.setDetailAlarmSection(
                 FilterChip(
                     selected = richtung == "unter",
                     onClick = { richtung = "unter"
-                        if (schwelle.isNotBlank()) vm.setzePreisalarm(setNumber, "unter", schwelle) },
+                        if (schwelle.isNotBlank()) vm.setzePreisalarm(setNumber, "unter", schwelle, zustand) },
                     label = { Text(stringResource(R.string.detail_alert_below), fontSize = Schrift.klein) },
                 )
                 FilterChip(
                     selected = richtung == "ueber",
                     onClick = { richtung = "ueber"
-                        if (schwelle.isNotBlank()) vm.setzePreisalarm(setNumber, "ueber", schwelle) },
+                        if (schwelle.isNotBlank()) vm.setzePreisalarm(setNumber, "ueber", schwelle, zustand) },
                     label = { Text(stringResource(R.string.detail_alert_above), fontSize = Schrift.klein) },
                 )
                 OutlinedTextField(
@@ -668,7 +692,7 @@ fun LazyListScope.setDetailAlarmSection(
                     // koennte die Zwischenstaende anders beurteilen als die
                     // andere. Was ein Zwischenstand bedeutet, steht an genau
                     // einer Stelle (Alarmeingabe.zahl).
-                    onValueChange = { schwelle = it; vm.setzePreisalarm(setNumber, richtung, it) },
+                    onValueChange = { schwelle = it; vm.setzePreisalarm(setNumber, richtung, it, zustand) },
                     singleLine = true,
                     placeholder = { Text(currency, fontSize = Schrift.klein) },
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),

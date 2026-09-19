@@ -209,6 +209,31 @@ test('beim Set gilt die Liste des BESITZERS, nicht die des Betrachters', () => {
     'Die App fragt nicht nach der Liste des Besitzers');
 });
 
+test('auch das TEIL kennt seine Besitzer — es war die letzte Lücke', () => {
+  // ── Was hier fehlte ──────────────────────────────────────────────────────
+  //
+  // Der Teil-Dialog zeigte als EINZIGE Stelle im Baum die eigene Liste statt
+  // der des Besitzers. Nicht aus Absicht: Der Kopf des Dialogs kannte die
+  // Besitzer nicht. Eine gruppierte Teilezeile trägt keine Besitzerplakette
+  // (withOwners lässt sie bewusst in Ruhe), und niemandem war aufgefallen,
+  // dass der Dialog sie trotzdem braucht.
+  //
+  // Sie kostet nichts: Die Set-Zeilen darunter tragen `owner_user_id` längst;
+  // der Kopf verdichtet sie. Eine zweite Abfrage wäre eine zweite Wahrheit.
+  const geteilt = web('utils/handlers/shared.ts');
+  assert.match(geteilt, /owner_ids: number\[\];/,
+    'Der Teil-Kopf führt keine Besitzer');
+  assert.match(geteilt, /owner_ids:\s+\[\.\.\.new Set\(sets\.map\(s => s\.owner_user_id\)\)\]/,
+    'Die Besitzer kommen nicht aus denselben Zeilen wie die Set-Liste');
+
+  assert.match(web('public/js/13-acquisition-modals.js'), /ladeOrtAuswahl\(item\?\.owner_ids\)/,
+    'Die Webapp fragt beim Teil nicht nach der Liste des Besitzers');
+  assert.match(lies(path.join(APP, 'java', 'ch', 'brickinventoryapp', 'ui', 'dialogs',
+                              'SetItemDetailDialog.kt')),
+    /vm\.loadLagerortVorrat\(zustand\.kopf\?\.ownerIds \?: emptyList\(\)\)/,
+    'Die App fragt beim Teil nicht nach der Liste des Besitzers');
+});
+
 test('beide bieten auswählen UND neu eintippen in EINEM Feld', () => {
   // Ein reines Auswahlfeld kann nur das erste, ein reines Textfeld nur das
   // zweite. Die Webapp nimmt eine datalist, die App einen

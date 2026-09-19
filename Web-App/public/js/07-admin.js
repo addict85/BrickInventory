@@ -492,13 +492,29 @@ export async function speichereSetLagerort(sn) {
  * einzuziehen hiesse, bestehende Alarme zuordnen zu müssen, und das geht nicht
  * ohne Raten. Ein zweites Auswahlfeld hier ist dagegen eine Zeile.
  */
-const ALARM_ZUSTAND = 'N';
+/**
+ * Für WELCHEN Zustand der Alarm gilt — neu oder gebraucht.
+ *
+ * ── Warum das jetzt eine Wahl ist und keine Konstante ───────────────────────
+ *
+ * Hier stand `const ALARM_ZUSTAND = 'N'` mit der Begründung: „Die Oberfläche
+ * bietet vorerst den für NEU an, weil das der Fall ist, nach dem gefragt
+ * wurde. Ein zweites Auswahlfeld hier ist dagegen eine Zeile."
+ *
+ * Server und Tabelle konnten es die ganze Zeit — `price_alerts` hat den
+ * Zustand im Schlüssel. Neu und gebraucht liegen oft um ein Vielfaches
+ * auseinander; wer ein gebrauchtes Exemplar sucht, hatte bisher keine
+ * Möglichkeit, darauf zu warten.
+ */
+function alarmZustand() {
+  return G('m-alert-cond')?.value === 'U' ? 'U' : 'N';
+}
 
 export async function ladeAlarm(sn) {
   const d = await api('GET', `/v1/sets/${encodeURIComponent(sn)}/alert`).catch(() => null);
   const dir = G('m-alert-dir'), val = G('m-alert-val');
   if (!dir || !val) return;
-  const a = (d?.alerts || []).find(x => x.condition === ALARM_ZUSTAND);
+  const a = (d?.alerts || []).find(x => x.condition === alarmZustand());
   dir.value = a?.richtung || 'unter';
   val.value = a ? String(a.schwelle) : '';
   zeigeAlarmMerker(a);
@@ -521,6 +537,20 @@ function zeigeAlarmMerker(a) {
   // sonst fragt man sich, warum keine Mail mehr kommt.
   st.textContent = !a ? ''
     : a.ausgeloest ? tRaw('detail.alert_fired') : tRaw('detail.alert_armed');
+}
+
+/**
+ * Auf den anderen Zustand umschalten.
+ *
+ * LÄDT, speichert NICHT — und das ist der Punkt: Ein Wechsel ist die Frage
+ * „was steht für gebraucht?", keine Eingabe. Würde hier gespeichert, legte
+ * schon das Umschalten einen Alarm im neuen Zustand an (oder löschte ihn,
+ * wenn das Feld leer ist). Eine noch laufende Ruhezeit wird verworfen, damit
+ * nicht kurz darauf die Schwelle des ALTEN Zustands beim neuen landet.
+ */
+export function wechsleAlarmZustand(sn) {
+  clearTimeout(_alarmRuhe); _alarmRuhe = null;
+  return ladeAlarm(sn);
 }
 
 /**
@@ -595,10 +625,11 @@ export function speichereAlarm(sn) {
 async function sendeAlarm(sn, richtung, roh) {
   const zahl = parseFloat(String(roh).replace(',', '.'));
   const loeschen = !(zahl > 0);
+  const cond = alarmZustand();
   const d = loeschen
-    ? await api('DELETE', `/v1/sets/${encodeURIComponent(sn)}/alert?condition=${ALARM_ZUSTAND}`)
+    ? await api('DELETE', `/v1/sets/${encodeURIComponent(sn)}/alert?condition=${cond}`)
     : await api('PUT', `/v1/sets/${encodeURIComponent(sn)}/alert`,
-                { richtung, schwelle: zahl, condition: ALARM_ZUSTAND });
+                { richtung, schwelle: zahl, condition: cond });
   if (!d?.success) { toast(d?.error || tRaw('settings.error'), 'error'); return; }
   // Nur den Merker, nicht das Feld — die Begründung steht an zeigeAlarmMerker().
   zeigeAlarmMerker(loeschen ? null : d.alert);
@@ -748,6 +779,10 @@ export async function openModal(sn){
     ${detailZeile(t('detail.minifigs'), oderStrich(curSet.minifigs), { wertId: 'm-minifigs-val' })}
     ${detailZeile(t('detail.added'), `📅 ${addedFmt}`)}
     ${detailZeile(t('detail.alert'), `
+      <select id="m-alert-cond" style="height:26px;border:1px solid var(--bdr);border-radius:6px;font-size:.8rem;background:var(--sur);color:var(--txt)" data-change="wechsleAlarmZustand" data-arg="${escJs(sn)}">
+        <option value="N">${esc(tRaw('common.condition_new'))}</option>
+        <option value="U">${esc(tRaw('common.condition_used'))}</option>
+      </select>
       <select id="m-alert-dir" style="height:26px;border:1px solid var(--bdr);border-radius:6px;font-size:.8rem;background:var(--sur);color:var(--txt)" data-change="speichereAlarm" data-arg="${escJs(sn)}">
         <option value="unter">${esc(tRaw('detail.alert_below'))}</option>
         <option value="ueber">${esc(tRaw('detail.alert_above'))}</option>
@@ -1083,6 +1118,7 @@ registerActions({
   retryBricksetQueueEntry,
   speichereAlarm,
   alarmGetippt,
+  wechsleAlarmZustand,
   speichereSetLagerort,
   toggleBricksetQueue,
   triggerCsvSync,

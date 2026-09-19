@@ -311,6 +311,26 @@ export interface BestandteilKopf {
    * ihrem Set, und dessen Ort steht im Set-Detail.
    */
   storage: string | null;
+  /**
+   * Wem dieses Teil gehört — die Konten, in deren Sets es steckt.
+   *
+   * ── Wozu ────────────────────────────────────────────────────────────────
+   *
+   * Für die Lagerort-Auswahl im Dialog. Marcos Regel: „Der Grossvater soll
+   * die Werte der Enkel für die entsprechenden Sets sehen und wählen
+   * können." Ohne diese Liste zeigte der Teil-Dialog als einziger Ort im
+   * Baum die EIGENE Auswahl statt der des Besitzers — nicht aus Absicht,
+   * sondern weil der Kopf die Besitzer nicht kannte.
+   *
+   * Sie kostet nichts: Die Zeilen darunter tragen `owner_user_id` längst,
+   * hier werden sie nur verdichtet. Eine zweite Abfrage wäre eine zweite
+   * Wahrheit.
+   *
+   * MEHRERE, nicht einer: Dasselbe Teil steckt in mehreren Sets, und die
+   * können verschiedenen Konten gehören. Einen davon auszuwählen hiesse
+   * raten.
+   */
+  owner_ids: number[];
   /** Summe über ALLE Sets im Blickfeld. */
   total_quantity: number;
 }
@@ -411,6 +431,8 @@ async function verwendendeSets(
     // ausdrücklich über istErsatzteil() — dieselbe Lesart wie überall sonst.
     is_spare:       istErsatzteil(erste.is_spare),
     storage:        erste.storage ?? null,
+    // Aus DENSELBEN Zeilen wie die Liste darunter — siehe owner_ids.
+    owner_ids:      [...new Set(sets.map(s => s.owner_user_id))].filter(Number.isFinite),
     total_quantity: sets.reduce((n, s) => n + s.quantity, 0),
   } : null;
 

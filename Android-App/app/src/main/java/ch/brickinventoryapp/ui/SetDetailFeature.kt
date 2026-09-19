@@ -258,12 +258,19 @@ private fun MainViewModel.anleitungName(uri: android.net.Uri): String =
 // Preisalarm
 // ═══════════════════════════════════════════════════════════════════════════
 //
-// Die Oberflaeche bietet vorerst den Alarm fuer NEU an — der Fall, nach dem
-// gefragt wurde. Die Trennung nach Zustand steckt trotzdem schon im Server und
-// in der Tabelle: Sie nachtraeglich einzuziehen hiesse, bestehende Alarme
-// zuordnen zu muessen, und das geht nicht ohne Raten. Ein zweites Auswahlfeld
-// hier ist dagegen eine Zeile. Dieselbe Festlegung wie in der Webapp.
-internal const val ALARM_ZUSTAND = "N"
+// Hier stand `ALARM_ZUSTAND = "N"` mit der Begruendung: „Die Oberflaeche
+// bietet vorerst den Alarm fuer NEU an … ein zweites Auswahlfeld hier ist
+// dagegen eine Zeile."
+//
+// Server und Tabelle konnten es die ganze Zeit — price_alerts fuehrt den
+// Zustand im Schluessel. Neu und gebraucht liegen oft um ein Vielfaches
+// auseinander; wer ein gebrauchtes Exemplar sucht, hatte bisher keine
+// Moeglichkeit, darauf zu warten. Jetzt waehlt die Oberflaeche, in beiden
+// Apps gleich.
+//
+// Der Vorgabewert bleibt "N": Er ist der haeufigere Fall, und eine bestehende
+// Anzeige soll beim Oeffnen dasselbe zeigen wie vorher.
+internal const val ALARM_ZUSTAND_VORGABE = "N"
 
 internal fun MainViewModel.loadPreisalarme(setNumber: String) {
     viewModelScope.launch {
@@ -301,15 +308,17 @@ internal fun MainViewModel.loadPreisalarme(setNumber: String) {
  * daneben waere ein zweiter Weg fuer dieselbe Absicht. Genau so verhaelt sich
  * die Webapp (alarmGetippt in public/js/07-admin.js).
  */
-internal fun MainViewModel.setzePreisalarm(setNumber: String, richtung: String, roh: String) {
+internal fun MainViewModel.setzePreisalarm(
+    setNumber: String, richtung: String, roh: String, zustand: String,
+) {
     alarmJob?.cancel()
     alarmJob = viewModelScope.launch {
         kotlinx.coroutines.delay(ch.brickinventoryapp.alarm.Alarmeingabe.RUHE_MS)
         val schwelle = ch.brickinventoryapp.alarm.Alarmeingabe.zahl(roh)
         val r = if (schwelle == null)
-            repo.sets.deletePreisalarm(setNumber, ALARM_ZUSTAND)
+            repo.sets.deletePreisalarm(setNumber, zustand)
         else
-            repo.sets.setPreisalarm(setNumber, richtung, schwelle, ALARM_ZUSTAND)
+            repo.sets.setPreisalarm(setNumber, richtung, schwelle, zustand)
         when (r) {
             is Result.Success -> {
                 if (!r.data.success) { _snackbar.emit(r.data.error ?: ""); return@launch }

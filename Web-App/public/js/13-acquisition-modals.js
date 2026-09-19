@@ -579,14 +579,19 @@ export async function openSetItemDetail(type, id, colorId) {
   if (type === 'part') {
     // Die Auswahlliste gehört dem BESITZER des Teils, nicht dem Betrachter —
     // dieselbe Regel wie beim Set, Begründung an ladeOrtAuswahl().
-    ladeOrtAuswahl(item?.owners).catch(() => {});
+    //
+    // `owner_ids` und nicht `owners`: Eine gruppierte Teilezeile trägt keine
+    // Besitzerplakette (withOwners lässt sie bewusst in Ruhe). Der Kopf des
+    // Dialogs führt die Konten deshalb selbst — verdichtet aus denselben
+    // Zeilen, aus denen die Set-Liste darunter entsteht.
+    ladeOrtAuswahl(item?.owner_ids).catch(() => {});
     zeilen.push(detailZeile(t('detail.storage'), `
       <input type="text" id="setitem-storage" list="lagerorte" maxlength="60"
              placeholder="${esc(tRaw('detail.storage_ph'))}"
              value="${esc(item?.storage || '')}"
              data-change="speichereTeilLagerort"
              data-part="${escJs(id)}" data-color="${farbe}"
-             data-owners="${esc((item?.owners || []).map(o => o.id).join(','))}"
+             data-owners="${esc((item?.owner_ids || []).join(','))}"
              style="width:150px;text-align:right;border:1px solid var(--bdr);border-radius:6px;padding:2px 6px;font-size:.85rem" />
     `, { wertStil: 'display:flex;align-items:center;gap:6px' }));
   }

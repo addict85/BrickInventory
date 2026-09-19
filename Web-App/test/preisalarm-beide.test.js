@@ -102,7 +102,7 @@ test('beide speichern beim TIPPEN, entprellt, mit derselben Ruhezeit', () => {
     'Das Schwellenfeld der Webapp hängt nicht am Tippen');
   assert.doesNotMatch(js, /id="m-alert-val"[^>]*data-change/,
     'Das Schwellenfeld hängt wieder am Fokuswechsel');
-  assert.match(KT_SECT, /onValueChange = \{ schwelle = it; vm\.setzePreisalarm\(setNumber, richtung, it\) \}/,
+  assert.match(KT_SECT, /onValueChange = \{ schwelle = it; vm\.setzePreisalarm\(setNumber, richtung, it, zustand\) \}/,
     'Das Schwellenfeld der App hängt nicht am Tippen');
   assert.doesNotMatch(require('./helpers/sources').ohneKommentare(KT_SECT),
     /alarmFokus/, 'Die App speichert noch am Fokuswechsel');
@@ -302,4 +302,44 @@ test('die Benachrichtigung der App ist gepflegt und erklärt sich', () => {
     /android\.permission\.POST_NOTIFICATIONS/, 'Die Berechtigung fehlt im Manifest');
   assert.match(KT_WORKER, /checkSelfPermission/,
     'Der Worker prüft die Berechtigung nicht — die Meldung verschwände lautlos');
+});
+
+test('der Alarm gilt für einen ZUSTAND, und der ist wählbar — in beiden', () => {
+  // ── Was hier vorher stand ─────────────────────────────────────────────────
+  //
+  // `const ALARM_ZUSTAND = 'N'` in beiden Oberflächen, mit der Begründung:
+  // „Die Oberfläche bietet vorerst den für NEU an … ein zweites Auswahlfeld
+  // hier ist dagegen eine Zeile."
+  //
+  // Server und Tabelle konnten es die ganze Zeit: `price_alerts` führt den
+  // Zustand im Schlüssel, und test/preisalarm-db.test.js prüft seit jeher
+  // „der Zustand trennt die Alarme". Nur wählen liess er sich nicht. Neu und
+  // gebraucht liegen oft um ein Vielfaches auseinander.
+  const js = require('./helpers/sources').ohneKommentare(web('public/js/07-admin.js'));
+  assert.doesNotMatch(js, /const ALARM_ZUSTAND = /,
+    'Die Webapp hat den Zustand wieder festgenagelt');
+  assert.match(js, /id="m-alert-cond"/, 'Der Webapp fehlt die Zustandswahl');
+  assert.match(js, /function alarmZustand\(\)/,
+    'Die Webapp liest den gewählten Zustand nicht');
+
+  const kt = require('./helpers/sources').ohneKommentare(KT_SECT);
+  assert.match(kt, /var zustand by rememberSaveable/,
+    'Der App fehlt die Zustandswahl — oder sie übersteht keine Drehung');
+  assert.match(kt, /R\.string\.condition_used/,
+    'Der App fehlt der Knopf für „gebraucht"');
+
+  // ── Ein Wechsel LÄDT, er speichert nicht ─────────────────────────────────
+  //
+  // Ein Wechsel ist die Frage „was steht für gebraucht?", keine Eingabe.
+  // Würde dabei gespeichert, legte schon das Umschalten einen Alarm im neuen
+  // Zustand an — oder löschte ihn, wenn das Feld gerade leer ist.
+  assert.match(js, /data-change="wechsleAlarmZustand"/,
+    'Die Zustandswahl der Webapp hängt am Speichern statt am Laden');
+  const i = js.indexOf('export function wechsleAlarmZustand');
+  assert.ok(i > 0, 'wechsleAlarmZustand fehlt');
+  const block = js.slice(i, js.indexOf('\n}', i));
+  assert.doesNotMatch(block, /sendeAlarm|api\('PUT'|api\('DELETE'/,
+    'Ein Zustandswechsel der Webapp schreibt');
+  assert.match(kt, /onClick = \{ zustand = "U" \}/,
+    'Der Zustandswechsel der App tut mehr als umschalten');
 });

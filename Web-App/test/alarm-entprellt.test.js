@@ -67,7 +67,11 @@ const ADMIN  = fs.readFileSync(path.join(ROOT, 'public', 'js', '07-admin.js'), '
  * Setnummer ersetzt, sonst stünde `${escJs(sn)}` wörtlich im Attribut.
  */
 function alarmMarkup(sn) {
-  const i = ADMIN.indexOf("<select id=\"m-alert-dir\"");
+  // Ab dem ZUSTANDSFELD, nicht ab der Richtung: Seit der Alarm auch für
+  // „gebraucht" gilt, steht `m-alert-cond` davor, und alarmZustand() liest
+  // es. Ohne das Feld fiele der Prüfstand still auf „neu" zurück und prüfte
+  // eine Oberfläche, die es so nicht gibt.
+  const i = ADMIN.indexOf("<select id=\"m-alert-cond\"");
   const j = ADMIN.indexOf('id="m-alert-state"');
   assert.ok(i > 0 && j > i, 'Das Alarm-Markup steht nicht mehr, wo erwartet');
   const roh = ADMIN.slice(i, ADMIN.indexOf('</span>', j) + 7);

@@ -78,7 +78,13 @@ fun SetItemDetailDialog(
     // `lagerZustand`, nicht `lager`: UiStateFieldsTest bestimmt den Typ je NAME
     // und Datei — dieselbe Namensfalle wie bei `state` in SettingsScreen.kt.
     val lagerZustand by vm.lagerState.collectAsStateWithLifecycle()
-    LaunchedEffect(zustand.offen) { if (zustand.offen) vm.loadLagerortVorrat(emptyList()) }
+    // Die Auswahlliste gehoert dem BESITZER des Teils, nicht dem Betrachter —
+    // dieselbe Regel wie beim Set. Ohne `kopf` (Dialog gerade erst geoeffnet)
+    // bleibt die Liste leer, und der Server antwortet mit der eigenen; der
+    // naechste Durchlauf holt die richtige nach.
+    LaunchedEffect(zustand.offen, zustand.kopf?.ownerIds) {
+        if (zustand.offen) vm.loadLagerortVorrat(zustand.kopf?.ownerIds ?: emptyList())
+    }
     if (!zustand.offen) return
 
     // rememberSaveable, nicht remember: Der geoeffnete Zoom ist eine
@@ -166,14 +172,13 @@ fun SetItemDetailDialog(
                         // Bearbeitbar wie in der Webapp: Das Feld schreibt auf
                         // ALLE Zeilen dieses Teil-Farb-Paares.
                         //
-                        // Die Auswahlliste ist hier die EIGENE, nicht die des
-                        // Besitzers wie beim Set — und das ist keine Nachlaessigkeit,
-                        // sondern eine Grenze der Daten: Ein Teil-Kopf traegt
-                        // keine Besitzer (BestandteilKopf), weil die Teileliste
-                        // nach Teil-Farb-Paar gruppiert und damit ueber Konten
-                        // hinweg zusammenfasst. Die Webapp steht an derselben
-                        // Stelle und verhaelt sich gleich. Einen Besitzer zu
-                        // RATEN waere schlechter als die eigene Liste zu zeigen.
+                        // Die Auswahlliste gehoert dem BESITZER, wie beim Set:
+                        // Der Kopf fuehrt seine Konten jetzt selbst mit
+                        // (owner_ids), verdichtet aus denselben Zeilen wie die
+                        // Set-Liste darunter. Hier stand einmal die eigene
+                        // Liste — als einzige Stelle im Baum, und nicht aus
+                        // Absicht, sondern weil der Kopf die Besitzer nicht
+                        // kannte.
                         if (kopf != null && kopf.colorId != null) {
                             Row(Modifier.fillMaxWidth().padding(vertical = Abstaende.haar),
                                 horizontalArrangement = Arrangement.SpaceBetween,
