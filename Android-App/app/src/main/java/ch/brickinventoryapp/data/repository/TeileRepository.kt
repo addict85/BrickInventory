@@ -114,6 +114,29 @@ class TeileRepository @Inject constructor(
     suspend fun getLagerorte(accounts: String? = null): Result<LagerorteResponse> =
         safeCall { api.getLagerorte(accounts) }
 
+    // ── Der VORRAT an Lagerorten ─────────────────────────────────────────────
+    //
+    // Getrennt von getLagerorte() darueber: Das eine ist die Liste der
+    // BELEGTEN Orte (fuer den Filter), das hier die Liste der WAEHLBAREN
+    // (fuer das Auswahlfeld und die Einstellungen). Ein frisch angelegter Ort
+    // steht nur in der zweiten.
+    //
+    // Ebenfalls ohne Zwischenspeicher, und aus demselben Grund wie oben: Die
+    // Liste aendert sich genau dann, wenn jemand hier etwas eintraegt.
+
+    /** @param owner Komma-Liste von Konto-IDs; leer = das eigene Konto. */
+    suspend fun getLagerortVorrat(owner: String? = null): Result<LagerortVorratResponse> =
+        safeCall { api.getLagerortVorrat(owner) }
+
+    suspend fun legeLagerortAn(name: String): Result<LagerortEintragResponse> =
+        safeCall { api.legeLagerortAn(LagerortNameRequest(name)) }
+
+    suspend fun benenneLagerortUm(id: Int, name: String): Result<LagerortEintragResponse> =
+        safeCall { api.benenneLagerortUm(id, LagerortNameRequest(name)) }
+
+    suspend fun loescheLagerort(id: Int): Result<LagerortResponse> =
+        safeCall { api.loescheLagerort(id) }
+
     // ── In welchen Sets steckt dieses Teil / diese Figur? ────────────────────
     //
     // Fuer den Detail-Dialog automatisch erfasster Teile und Figuren. BEWUSST

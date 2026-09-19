@@ -142,6 +142,22 @@ export const FEHLER = {
   lagerort_zu_lang:            {
     de: 'Der Lagerort ist zu lang (höchstens 60 Zeichen).',
     en: 'Storage location is too long (at most 60 characters).' },
+  lagerort_leer:               {
+    de: 'Der Lagerort braucht einen Namen.',
+    en: 'A storage location needs a name.' },
+  lagerort_doppelt:            {
+    de: 'Diesen Lagerort gibt es schon.',
+    en: 'That storage location already exists.' },
+  lagerort_unbekannt:          {
+    de: 'Diesen Lagerort gibt es nicht (mehr).',
+    en: 'That storage location does not exist (any more).' },
+  // Absichtlich eine ABSAGE statt eines stillen Leerens: Wer einen Ort
+  // loescht, in dem noch etwas liegt, wuerde sonst die Zuordnung von Sets
+  // verlieren, die er gar nicht im Blick hatte. Die Oberflaeche nennt die
+  // Anzahl und laesst ihn erst raeumen.
+  lagerort_in_benutzung:       {
+    de: 'In diesem Lagerort liegt noch etwas — erst umräumen, dann löschen.',
+    en: 'Something is still stored there — move it out before deleting.' },
   alarm_richtung_ungueltig:    {
     de: 'Die Richtung muss „unter“ oder „über“ sein.',
     en: 'Direction must be “unter” or “ueber”.' },

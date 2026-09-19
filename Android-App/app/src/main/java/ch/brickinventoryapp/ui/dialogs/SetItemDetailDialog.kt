@@ -15,7 +15,6 @@ import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
@@ -28,6 +27,7 @@ import ch.brickinventoryapp.R
 import ch.brickinventoryapp.ui.MainViewModel
 import ch.brickinventoryapp.ui.components.ZoomableImageDialog
 import ch.brickinventoryapp.ui.schliesseSetItem
+import ch.brickinventoryapp.ui.loadLagerortVorrat
 import ch.brickinventoryapp.ui.setzeTeilLagerort
 import ch.brickinventoryapp.ui.screens.TabellenZeile
 import ch.brickinventoryapp.util.resolveFullUrlViaProxy
@@ -75,6 +75,16 @@ fun SetItemDetailDialog(
     onOpenSet: (String) -> Unit,
 ) {
     val zustand by vm.setItemState.collectAsStateWithLifecycle()
+    // `lagerZustand`, nicht `lager`: UiStateFieldsTest bestimmt den Typ je NAME
+    // und Datei — dieselbe Namensfalle wie bei `state` in SettingsScreen.kt.
+    val lagerZustand by vm.lagerState.collectAsStateWithLifecycle()
+    // Die Auswahlliste gehoert dem BESITZER des Teils, nicht dem Betrachter —
+    // dieselbe Regel wie beim Set. Ohne `kopf` (Dialog gerade erst geoeffnet)
+    // bleibt die Liste leer, und der Server antwortet mit der eigenen; der
+    // naechste Durchlauf holt die richtige nach.
+    LaunchedEffect(zustand.offen, zustand.kopf?.ownerIds) {
+        if (zustand.offen) vm.loadLagerortVorrat(zustand.kopf?.ownerIds ?: emptyList())
+    }
     if (!zustand.offen) return
 
     // rememberSaveable, nicht remember: Der geoeffnete Zoom ist eine
@@ -160,14 +170,30 @@ fun SetItemDetailDialog(
                         // an der zwei Antworten auseinanderlaufen koennen.
                         //
                         // Bearbeitbar wie in der Webapp: Das Feld schreibt auf
-                        // ALLE Zeilen dieses Teil-Farb-Paares, gespeichert
-                        // wird beim Verlassen — ein Speichern je Zeichen
-                        // hinterliesse fuer „Kiste 3" fuenf Zwischenstaende.
+                        // ALLE Zeilen dieses Teil-Farb-Paares.
+                        //
+                        // Die Auswahlliste gehoert dem BESITZER, wie beim Set:
+                        // Der Kopf fuehrt seine Konten jetzt selbst mit
+                        // (owner_ids), verdichtet aus denselben Zeilen wie die
+                        // Set-Liste darunter. Hier stand einmal die eigene
+                        // Liste — als einzige Stelle im Baum, und nicht aus
+                        // Absicht, sondern weil der Kopf die Besitzer nicht
+                        // kannte.
                         if (kopf != null && kopf.colorId != null) {
-                            LagerortFeld(
-                                wert = kopf.storage,
-                                onSpeichern = { vm.setzeTeilLagerort(kopf.nummer, kopf.colorId, it) },
-                            )
+                            Row(Modifier.fillMaxWidth().padding(vertical = Abstaende.haar),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically) {
+                                Text(stringResource(R.string.detail_storage),
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    fontSize = Schrift.normal)
+                                ch.brickinventoryapp.ui.screens.LagerortFeld(
+                                    wert = kopf.storage ?: "",
+                                    vorrat = lagerZustand.vorrat.map { it.name },
+                                    onWert = { vm.setzeTeilLagerort(kopf.nummer, kopf.colorId, it) },
+                                    modifier = Modifier.padding(start = Abstaende.gross)
+                                        .widthIn(max = 180.dp),
+                                )
+                            }
                         }
                         Spacer(Modifier.height(Abstaende.mittel))
                         Text(
@@ -247,51 +273,6 @@ fun SetItemDetailDialog(
             contentDescription = kopf.name,
             imageLoader = imageLoader,
             onDismiss = { zeigeZoom = false },
-        )
-    }
-}
-
-/**
- * Lagerort — Beschriftung links, Eingabefeld rechts.
- *
- * ── Warum beim Verlassen des Feldes gespeichert wird ────────────────────────
- *
- * Genau wie in der Webapp (public/js/13-acquisition-modals.js): Ein Ortsname
- * wird getippt, nicht gewaehlt. Ein Speichern je Zeichen erzeugte sechs
- * Anfragen fuer „Kiste 3" und hinterliesse dabei fuenf Zwischenstaende in der
- * Datenbank.
- *
- * `onFocusChanged` statt eines Speichern-Knopfs: Ein Knopf neben einem
- * einzelnen Feld ist ein Klick, den niemand vergisst — aber auch einer, den
- * jeder vergisst.
- */
-@Composable
-private fun LagerortFeld(wert: String?, onSpeichern: (String) -> Unit) {
-    // rememberSaveable auf dem Schluessel des Werts: Kommt ein anderer Wert
-    // von aussen (anderes Teil im selben Dialog), soll das Feld ihn zeigen und
-    // nicht den alten Text behalten.
-    var text by rememberSaveable(wert) { mutableStateOf(wert ?: "") }
-    var hatteFokus by remember { mutableStateOf(false) }
-    Row(Modifier.fillMaxWidth().padding(vertical = Abstaende.haar),
-        horizontalArrangement = Arrangement.SpaceBetween,
-        verticalAlignment = Alignment.CenterVertically) {
-        Text(stringResource(R.string.detail_storage),
-            color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = Schrift.normal)
-        OutlinedTextField(
-            value = text,
-            onValueChange = { if (it.length <= 60) text = it },
-            singleLine = true,
-            placeholder = { Text(stringResource(R.string.detail_storage_ph), fontSize = Schrift.klein) },
-            textStyle = LocalTextStyle.current.copy(fontSize = Schrift.normal),
-            modifier = Modifier
-                .padding(start = Abstaende.gross)
-                .widthIn(max = 180.dp)
-                .onFocusChanged { f ->
-                    // Nur speichern, wenn das Feld den Fokus WIEDER verliert —
-                    // sonst loeste schon das erste Zeichnen eine Anfrage aus.
-                    if (f.isFocused) hatteFokus = true
-                    else if (hatteFokus) { hatteFokus = false; onSpeichern(text) }
-                },
         )
     }
 }

@@ -791,6 +791,11 @@ function showApp(){ bindTabs(); plInit(); setTimeout(()=>{ gibCheckOnLoad(); }, 
   // gibt. Import aus 02-gallery.js gäbe einen Zyklus (dort wird api() aus
   // dieser Datei geholt), deshalb der späte dynamische Import.
   import('./02-gallery.js').then(m => m.loadHouseholdMembers?.()).catch(() => {});
+  // Ausgeloeste Preisalarme seit dem letzten Besuch — das Gegenstueck zum
+  // stuendlichen Abruf der Android-App. Begruendung bei zeigeOffeneAlarme()
+  // in 07-admin.js; der spaete dynamische Import aus demselben Grund wie eine
+  // Zeile darueber (07-admin.js holt api() aus dieser Datei).
+  import('./07-admin.js').then(m => m.zeigeOffeneAlarme?.()).catch(() => {});
   // Apply saved language immediately (from localStorage) so static elements translate before server responds
   setLangValue(localStorage.getItem('bim_lang') || LANG);
   applyLang(LANG, false);

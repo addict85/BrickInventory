@@ -428,3 +428,19 @@ data class PreisalarmResponse(
     val removed: Int = 0,
     val error: String? = null,
 )
+
+/**
+ * Antwort auf „was hat seit <marke> ausgeloest?".
+ *
+ * `now` ist der Zeitpunkt des SERVERS und wird zur naechsten Marke — siehe
+ * die Begruendung an Alarmabholung. Nullable, damit eine aeltere Serverfassung
+ * ohne dieses Feld als „nicht verwertbar" erkannt wird statt still eine leere
+ * Marke zu setzen.
+ */
+@Serializable
+data class PendingAlertsResponse(
+    val success: Boolean = false,
+    val alerts: List<Preisalarm> = emptyList(),
+    val now: String? = null,
+    val error: String? = null,
+)

@@ -28,6 +28,8 @@ const KT_HAUS   = lies(path.join(APP, 'java', 'ch', 'brickinventoryapp', 'ui', '
 const KT_DIALOG = lies(path.join(APP, 'java', 'ch', 'brickinventoryapp', 'ui', 'dialogs', 'SetItemDetailDialog.kt'));
 const KT_SETDET = lies(path.join(APP, 'java', 'ch', 'brickinventoryapp', 'ui', 'screens', 'SetDetailSections.kt'));
 const KT_CHIPS  = lies(path.join(APP, 'java', 'ch', 'brickinventoryapp', 'ui', 'screens', 'HouseholdComposables.kt'));
+const KT_FELD   = lies(path.join(APP, 'java', 'ch', 'brickinventoryapp', 'ui', 'screens', 'LagerortFeld.kt'));
+const KT_EINST  = lies(path.join(APP, 'java', 'ch', 'brickinventoryapp', 'ui', 'screens', 'SettingsScreen.kt'));
 const XML_EN    = lies(path.join(APP, 'res', 'values', 'strings.xml'));
 const XML_DE    = lies(path.join(APP, 'res', 'values-de', 'strings.xml'));
 
@@ -140,7 +142,7 @@ test('die Längengrenze steht in beiden Fassungen gleich', () => {
   assert.ok(web('public/index.html').includes(`maxlength="${max}"`) ||
             web('public/js/07-admin.js').includes(`maxlength="${max}"`),
     `Das Eingabefeld der Webapp begrenzt nicht auf ${max}`);
-  assert.ok(KT_DIALOG.includes(`it.length <= ${max}`),
+  assert.ok(KT_FELD.includes(`it.length <= ${max}`),
     `Das Eingabefeld der App begrenzt nicht auf ${max}`);
 });
 
@@ -159,4 +161,126 @@ test('der Filter steht neben dem Kontofilter, nicht darunter', () => {
     'Der App fehlt der Lagerortfilter in der Filterzeile');
   assert.match(KT_HAUS, /fun MainViewModel\.setLagerFilter/,
     'Der App fehlt das Umschalten');
+});
+
+// ═══ Der VORRAT: auswählen ODER neu eintippen ═══════════════════════════════
+//
+// Marcos Vorgabe: „Der Lagerort soll ein Auswahlfeld mit einem Dropdown sein,
+// bei dem man auch gleich neue Auswahlwerte erfassen kann. Die Werte sollen
+// pro User verwaltet werden können und sollen in den Einstellungen bearbeitbar
+// sein. Der Grossvater soll die Werte der Enkel für die entsprechenden Sets
+// sehen und wählen können."
+
+test('beide sprechen dieselben vier Endpunkte des Vorrats an', () => {
+  const route = web('routes/api_v1/sets.ts');
+  assert.match(route, /router\.get\('\/storage\/locations'/);
+  assert.match(route, /router\.post\('\/storage\/locations'/);
+  assert.match(route, /router\.put\('\/storage\/locations\/:id'/);
+  assert.match(route, /router\.delete\('\/storage\/locations\/:id'/);
+
+  const js = web('public/js/07-admin.js') + web('public/js/05-settings.js');
+  assert.match(js, /'\/v1\/storage\/locations'/, 'Die Webapp liest den Vorrat nicht');
+  assert.match(js, /'POST', '\/v1\/storage\/locations'/, 'Die Webapp legt nichts an');
+  assert.match(js, /'PUT', `\/v1\/storage\/locations\/\$\{encodeURIComponent\(id\)\}`/,
+    'Die Webapp benennt nichts um');
+  assert.match(js, /'DELETE', `\/v1\/storage\/locations\/\$\{encodeURIComponent\(id\)\}`/,
+    'Die Webapp löscht nichts');
+
+  assert.match(KT_API, /@GET\("api\/v1\/storage\/locations"\)/);
+  assert.match(KT_API, /@POST\("api\/v1\/storage\/locations"\)/);
+  assert.match(KT_API, /@PUT\("api\/v1\/storage\/locations\/\{id\}"\)/);
+  assert.match(KT_API, /@DELETE\("api\/v1\/storage\/locations\/\{id\}"\)/);
+});
+
+test('beim Set gilt die Liste des BESITZERS, nicht die des Betrachters', () => {
+  // Marcos Festlegung. Ein Lagerort ist ein Regal in einer Wohnung: Beim Set
+  // des Enkels gehören die Regale des Enkels zur Wahl — ein Set des Enkels in
+  // „Grossvaters Keller" wäre eine Aussage über die falsche Wohnung.
+  assert.match(web('routes/api_v1/sets.ts'), /req\.query\.owner \?\? req\.body\?\.owner/,
+    'Der Server nimmt gar keinen Besitzer entgegen');
+  // Lesen weit, Schreiben eng — dieselbe Trennung wie überall im Baum.
+  assert.match(web('routes/api_v1/sets.ts'),
+    /schreiben\s*\n?\s*\? await writableIds\(req\.apiUser\.user_id\)\s*\n?\s*: await scopeIds\(req\.apiUser\.user_id\)/,
+    'Lesen und Schreiben verwenden dieselbe Menge');
+
+  assert.match(web('public/js/07-admin.js'), /ladeOrtAuswahl\(curSet\.owners\)/,
+    'Die Webapp fragt nicht nach der Liste des Besitzers');
+  assert.match(KT_SETDET, /vm\.loadLagerortVorrat\(set\.owners\.map \{ it\.id \}\)/,
+    'Die App fragt nicht nach der Liste des Besitzers');
+});
+
+test('auch das TEIL kennt seine Besitzer — es war die letzte Lücke', () => {
+  // ── Was hier fehlte ──────────────────────────────────────────────────────
+  //
+  // Der Teil-Dialog zeigte als EINZIGE Stelle im Baum die eigene Liste statt
+  // der des Besitzers. Nicht aus Absicht: Der Kopf des Dialogs kannte die
+  // Besitzer nicht. Eine gruppierte Teilezeile trägt keine Besitzerplakette
+  // (withOwners lässt sie bewusst in Ruhe), und niemandem war aufgefallen,
+  // dass der Dialog sie trotzdem braucht.
+  //
+  // Sie kostet nichts: Die Set-Zeilen darunter tragen `owner_user_id` längst;
+  // der Kopf verdichtet sie. Eine zweite Abfrage wäre eine zweite Wahrheit.
+  const geteilt = web('utils/handlers/shared.ts');
+  assert.match(geteilt, /owner_ids: number\[\];/,
+    'Der Teil-Kopf führt keine Besitzer');
+  assert.match(geteilt, /owner_ids:\s+\[\.\.\.new Set\(sets\.map\(s => s\.owner_user_id\)\)\]/,
+    'Die Besitzer kommen nicht aus denselben Zeilen wie die Set-Liste');
+
+  assert.match(web('public/js/13-acquisition-modals.js'), /ladeOrtAuswahl\(item\?\.owner_ids\)/,
+    'Die Webapp fragt beim Teil nicht nach der Liste des Besitzers');
+  assert.match(lies(path.join(APP, 'java', 'ch', 'brickinventoryapp', 'ui', 'dialogs',
+                              'SetItemDetailDialog.kt')),
+    /vm\.loadLagerortVorrat\(zustand\.kopf\?\.ownerIds \?: emptyList\(\)\)/,
+    'Die App fragt beim Teil nicht nach der Liste des Besitzers');
+});
+
+test('beide bieten auswählen UND neu eintippen in EINEM Feld', () => {
+  // Ein reines Auswahlfeld kann nur das erste, ein reines Textfeld nur das
+  // zweite. Die Webapp nimmt eine datalist, die App einen
+  // ExposedDropdownMenuBox — dasselbe Verhalten, die jeweils übliche Form.
+  assert.match(web('public/js/07-admin.js'), /list="lagerorte"/,
+    'Das Feld der Webapp klappt nicht auf');
+  assert.match(KT_FELD, /ExposedDropdownMenuBox/,
+    'Das Feld der App klappt nicht auf');
+  // Und getippte Werte landen im Vorrat — sonst stünde der Ort am Set und
+  // fehlte in der Liste, aus der er gewählt werden soll.
+  assert.match(web('utils/lagerort.ts'), /await stelleOrteSicher\(besitzerIds, ort\)/,
+    'Ein frisch getippter Ort landet nicht im Vorrat');
+});
+
+test('beide verwalten die Orte in den Einstellungen', () => {
+  const html = web('public/index.html');
+  assert.match(html, /id="storage-list"/, 'Der Webapp fehlt die Liste');
+  assert.match(html, /data-click="legeLagerortAn"/, 'Der Webapp fehlt das Anlegen');
+  assert.match(web('public/js/05-settings.js'), /function benenneLagerortUm/,
+    'Der Webapp fehlt das Umbenennen');
+  assert.match(web('public/js/05-settings.js'), /function loescheLagerort/,
+    'Der Webapp fehlt das Löschen');
+
+  assert.match(KT_EINST, /LagerorteCard\(vm\)/, 'Der App fehlt die Karte');
+  for (const fn of ['legeLagerortAn', 'benenneLagerortUm', 'loescheLagerort']) {
+    assert.match(KT_HAUS, new RegExp(`fun MainViewModel\\.${fn}\\(`),
+      `Der App fehlt ${fn}`);
+  }
+  // Nur die EIGENEN: Fremde Regale umzubenennen ist keine Einstellung,
+  // sondern ein Versehen.
+  assert.match(KT_HAUS, /getLagerortVorrat\(null\)/,
+    'Die App holt für die Einstellungen nicht die eigene Liste');
+  assert.match(web('public/js/05-settings.js'), /'\/v1\/storage\/locations'\)/,
+    'Die Webapp holt für die Einstellungen nicht die eigene Liste');
+});
+
+test('beide speichern den Lagerort beim Tippen, nicht beim Fokuswechsel', () => {
+  // Dieselbe Falle wie beim Preisalarm (Marcos Befund): Am Telefon tippt man,
+  // schliesst die Tastatur und geht zurück — der Fokuswechsel kommt nie. Für
+  // den Lagerort galt dasselbe, es hat nur noch niemand gemeldet.
+  const ohneK = require('./helpers/sources').ohneKommentare;
+  assert.doesNotMatch(ohneK(KT_FELD), /onFocusChanged/,
+    'Das Feld der App hängt wieder am Fokuswechsel');
+  assert.match(ohneK(KT_HAUS) + ohneK(KT_SETDET), /onWert = \{/,
+    'Das Feld gibt den getippten Wert nicht weiter');
+  // Und die Ruhezeit liegt im ViewModel, damit sie den Bildschirm überlebt.
+  const gal = ohneK(lies(path.join(APP, 'java', 'ch', 'brickinventoryapp', 'ui', 'GalleryFeature.kt')));
+  assert.match(gal, /lagerJob\?\.cancel\(\)\s*\n\s*lagerJob = viewModelScope\.launch/,
+    'Die Ruhezeit des Lagerorts läuft nicht im viewModelScope');
 });

@@ -30,6 +30,7 @@ import ch.brickinventoryapp.ui.*  // Feature-Extensions (saveSettings, setLangua
 import ch.brickinventoryapp.util.passwortZuKurz
 import ch.brickinventoryapp.ui.theme.Abstaende
 import ch.brickinventoryapp.ui.theme.Schrift
+import kotlinx.coroutines.launch
 
 @Composable
 fun SettingsScreen(
@@ -231,6 +232,10 @@ fun SettingsScreen(
             }
         }
 
+        PreisalarmCard(vm)
+
+        LagerorteCard(vm)
+
         HouseholdCard(
             state = household,
             onCreateInvite = onCreateInvite,
@@ -371,6 +376,165 @@ private fun SettingsCard(
     }
 }
 
+
+/**
+ * Die eigenen Lagerorte verwalten.
+ *
+ * ── Marcos Vorgabe ──────────────────────────────────────────────────────────
+ *
+ * „Die Werte sollen pro User verwaltet werden koennen und sollen in den
+ * Einstellungen bearbeitbar sein."
+ *
+ * ── Warum hier nur die EIGENEN stehen ───────────────────────────────────────
+ *
+ * Ein Lagerort ist ein Regal in der eigenen Wohnung. Beim Set des Enkels
+ * waehlt der Grossvater aus dessen Liste — aber fremde Regale UMZUBENENNEN
+ * ist keine Einstellung, sondern ein Versehen. Lesen weit, Schreiben eng,
+ * dieselbe Trennung wie ueberall im Baum.
+ *
+ * ── Warum Loeschen nur bei einem leeren Ort geht ────────────────────────────
+ *
+ * Der Server sagt Nein, solange etwas darin liegt (lagerort_in_benutzung).
+ * Die Alternative — stilles Leeren — verloere die Zuordnung von Sets, die der
+ * Loeschende gar nicht im Blick hatte, und zwar ohne Weg zurueck.
+ */
+@Composable
+private fun LagerorteCard(vm: MainViewModel) {
+    val lager by vm.lagerState.collectAsStateWithLifecycle()
+    var neuerOrt by rememberSaveable { mutableStateOf("") }
+
+    LaunchedEffect(Unit) { vm.ladeEigeneLagerorte() }
+
+    SettingsCard(
+        title = stringResource(R.string.storage_manage),
+        icon = Icons.Default.Inventory2,
+    ) {
+        Text(stringResource(R.string.storage_manage_hint),
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.padding(bottom = Abstaende.klein))
+
+        if (lager.eigene.isEmpty()) {
+            Text(stringResource(R.string.storage_empty),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant)
+        }
+        for (ort in lager.eigene) {
+            // Schluessel ist der Name: Kommt er nach dem Umbenennen anders vom
+            // Server zurueck (getrimmt), soll das Feld ihn zeigen.
+            var name by rememberSaveable(ort.name) { mutableStateOf(ort.name) }
+            Row(verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(Abstaende.klein),
+                modifier = Modifier.fillMaxWidth()) {
+                OutlinedTextField(
+                    value = name,
+                    onValueChange = { if (it.length <= 60) name = it },
+                    singleLine = true,
+                    modifier = Modifier.weight(1f),
+                )
+                // Umbenennen auf Knopfdruck, NICHT beim Tippen: Anders als beim
+                // Lagerort am Set schreibt ein Umbenennen hier alle Zuordnungen
+                // mit um. Das nebenbei zu tun, waehrend jemand einen Buchstaben
+                // aendert, waere zu viel Wirkung fuer zu wenig Geste.
+                IconButton(
+                    onClick = { vm.benenneLagerortUm(ort.id, name) },
+                    enabled = name.isNotBlank() && name != ort.name,
+                ) { Icon(Icons.Default.Save, stringResource(R.string.settings_save)) }
+                IconButton(
+                    onClick = { vm.loescheLagerort(ort.id) },
+                ) { Icon(Icons.Default.Delete, stringResource(R.string.storage_delete)) }
+            }
+        }
+
+        Row(verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(Abstaende.klein),
+            modifier = Modifier.fillMaxWidth().padding(top = Abstaende.klein)) {
+            OutlinedTextField(
+                value = neuerOrt,
+                onValueChange = { if (it.length <= 60) neuerOrt = it },
+                singleLine = true,
+                placeholder = { Text(stringResource(R.string.storage_new), fontSize = Schrift.klein) },
+                modifier = Modifier.weight(1f),
+            )
+            Button(
+                onClick = { val n = neuerOrt.trim(); neuerOrt = ""; vm.legeLagerortAn(n) },
+                enabled = neuerOrt.isNotBlank(),
+                shape = Formen.knopf,
+            ) { Text(stringResource(R.string.storage_add), fontSize = Schrift.klein) }
+        }
+    }
+}
+
+/**
+ * Der Schalter fuer die Preisalarm-Meldungen auf DIESEM Geraet.
+ *
+ * ── Warum er nicht im Konto steht ───────────────────────────────────────────
+ *
+ * Der Server verschickt bei jedem gerissenen Alarm eine E-Mail — das ist die
+ * kontobezogene Haelfte. Diese hier ist die geraetebezogene: Wer dasselbe
+ * Konto am Telefon und am Tablet benutzt, will die Meldung in aller Regel nur
+ * an einem der beiden. Genau dieselbe Ueberlegung wie beim Vorwaermen und beim
+ * Kontofilter.
+ *
+ * ── Warum die Berechtigung erst hier erfragt wird ───────────────────────────
+ *
+ * Ab Android 13 ist POST_NOTIFICATIONS eine Laufzeitberechtigung. Sie gleich
+ * beim ersten Start zu erfragen waere die uebliche und die schlechtere
+ * Loesung: Die Frage kaeme, bevor irgendetwas sie erklaert, und ein Nein ist
+ * danach nur noch ueber die Systemeinstellungen zu widerrufen. Hier steht
+ * unmittelbar daneben, wofuer sie ist.
+ *
+ * Der Schalter wird auch dann umgelegt, wenn die Erlaubnis verweigert wird.
+ * Das ist Absicht: Die Einstellung sagt „ich will das", die Berechtigung sagt
+ * „das System laesst es zu" — zwei verschiedene Dinge. Wer die Erlaubnis
+ * spaeter in den Systemeinstellungen nachreicht, bekommt seine Meldungen, ohne
+ * hier noch einmal etwas tun zu muessen.
+ */
+@Composable
+private fun PreisalarmCard(vm: MainViewModel) {
+    val context = androidx.compose.ui.platform.LocalContext.current
+    val bereich = rememberCoroutineScope()
+    // Direkt aus den Einstellungen, nicht ueber AppUiState: eine
+    // Geraete-Einstellung, genau wie die drei Netzerlaubnisse in
+    // MonitoringSections. Ein weiteres Feld im gemeinsamen Zustand waere nur
+    // eine zweite Fassung derselben Wahrheit.
+    val an by vm.prefs.alarmMeldungenAn.collectAsStateWithLifecycle(initialValue = false)
+
+    val frage = androidx.activity.compose.rememberLauncherForActivityResult(
+        androidx.activity.result.contract.ActivityResultContracts.RequestPermission()
+    ) { /* Antwort egal — Begruendung im Kommentar ueber dieser Funktion. */ }
+
+    SettingsCard(
+        title = stringResource(R.string.detail_alert),
+        icon = Icons.Default.Notifications,
+    ) {
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(Abstaende.mittel),
+            modifier = Modifier.fillMaxWidth(),
+        ) {
+            Column(Modifier.weight(1f)) {
+                Text(stringResource(R.string.alert_notify), fontSize = Schrift.normal)
+                Text(stringResource(R.string.alert_notify_hint),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant)
+            }
+            Switch(
+                checked = an,
+                onCheckedChange = { neu ->
+                    bereich.launch { vm.prefs.setzeAlarmMeldungen(neu) }
+                    // Der Auftrag folgt dem Schalter sofort und nicht erst beim
+                    // naechsten App-Start: Sonst waere „eingeschaltet" eine
+                    // Stunde lang eine Behauptung ohne Wirkung.
+                    ch.brickinventoryapp.alarm.PreisalarmWorker.einplanen(context, neu)
+                    if (neu && android.os.Build.VERSION.SDK_INT >= 33) {
+                        frage.launch(android.Manifest.permission.POST_NOTIFICATIONS)
+                    }
+                },
+            )
+        }
+    }
+}
 
 /**
  * Angemeldete Geräte: die ausgestellten Zugänge sehen und aussperren.

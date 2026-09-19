@@ -263,6 +263,24 @@ jobs:
           # ohne Ausnahmeliste auskommen, und grep kann selbst begrenzen.
           grep -E -m 20 -A 12 "$ROT_MUSTER" "$RUNNER_TEMP/test.log" || true
 
+          # ── Und dasselbe noch einmal als ANNOTATION ────────────────────────
+          #
+          # Klartext im Protokoll reicht NICHT, und das ist gemessen: Der
+          # Runner haengt beim Aufraeumen das Postgres-Containerprotokoll an,
+          # und das sind mehrere hundert Zeilen. Wer das Joblog vom Ende her
+          # liest — die API tut genau das —, kommt an dieser Stelle nicht mehr
+          # vorbei. Zweimal (Laeufe 208 und 211) liess sich ein roter Lauf
+          # deshalb nicht diagnostizieren: Dass er rot war, stand fest, WELCHER
+          # Test nicht.
+          #
+          # `::error::` macht daraus eine Annotation. Die steht im Joblog ganz
+          # oben, erscheint in der Oberfläche über dem Lauf und ist einzeln
+          # abrufbar. Genau so macht es der Android-Workflow seit jeher, und
+          # genau deshalb war dort jeder rote Lauf in einem Blick erklaert.
+          grep -E -m 20 "$ROT_MUSTER" "$RUNNER_TEMP/test.log" | while IFS= read -r zeile; do
+            echo "::error title=Roter Test::${zeile}"
+          done
+
           # ── Und den Befund als ANNOTATION ───────────────────────────────────
           #
           # Warum zusaetzlich: Die Zusammenfassung oben steht nur auf der

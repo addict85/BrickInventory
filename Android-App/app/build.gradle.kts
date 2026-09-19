@@ -357,6 +357,9 @@ dependencies {
 
     // Storage & async
     implementation(libs.androidx.datastore)
+    // WorkManager: der stuendliche Abruf der ausgeloesten Preisalarme.
+    // Keine native Bibliothek — die 16-KB-Ausrichtung bleibt unberuehrt.
+    implementation(libs.androidx.work)
     // Per-app language switching (AppCompatDelegate.setApplicationLocales)
     implementation(libs.androidx.appcompat)
     implementation(libs.kotlinx.coroutines.android)

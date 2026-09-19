@@ -297,6 +297,18 @@ data class BestandteilKopf(
      * dessen Ort steht im Set-Detail.
      */
     val storage: String? = null,
+    /**
+     * Wem dieses Teil gehoert — fuer die Lagerort-Auswahl im Dialog.
+     *
+     * Marcos Regel: Beim Set des Enkels gehoeren die Regale des ENKELS zur
+     * Wahl. Ohne diese Liste zeigte der Teil-Dialog als einziger Ort im Baum
+     * die EIGENE Auswahl — nicht aus Absicht, sondern weil der Kopf die
+     * Besitzer nicht kannte.
+     *
+     * MEHRERE, nicht einer: Dasselbe Teil steckt in mehreren Sets, und die
+     * koennen verschiedenen Konten gehoeren.
+     */
+    @SerialName("owner_ids") val ownerIds: List<Int> = emptyList(),
     /** Summe ueber ALLE Sets im Blickfeld. */
     @SerialName("total_quantity") val totalQuantity: Int = 0,
 )
@@ -385,5 +397,39 @@ data class Lagerort(
 data class LagerorteResponse(
     val success: Boolean = false,
     val orte: List<Lagerort> = emptyList(),
+    val error: String? = null,
+)
+
+/**
+ * Ein Eintrag im VORRAT — das, was zur Wahl steht.
+ *
+ * Nicht zu verwechseln mit [Lagerort] darueber: Das ist ein BELEGTER Ort mit
+ * Anzahl, fuer den Filter. Dieser hier ist ein waehlbarer Name, und er darf
+ * leer sein („Kiste 4 ist gekauft, aber noch nichts drin").
+ *
+ * `userId` steht mit drin, weil eine Liste ueber mehrere Konten spannen kann
+ * — der Grossvater sieht beim Set des Enkels dessen Orte.
+ */
+@Serializable
+data class LagerortEintrag(
+    val id: Int = 0,
+    @SerialName("user_id") val userId: Int = 0,
+    val name: String = "",
+)
+
+@Serializable
+data class LagerortVorratResponse(
+    val success: Boolean = false,
+    val orte: List<LagerortEintrag> = emptyList(),
+    val error: String? = null,
+)
+
+@Serializable
+data class LagerortNameRequest(val name: String)
+
+@Serializable
+data class LagerortEintragResponse(
+    val success: Boolean = false,
+    val ort: LagerortEintrag? = null,
     val error: String? = null,
 )

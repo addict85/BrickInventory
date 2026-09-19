@@ -492,15 +492,45 @@ export async function speichereSetLagerort(sn) {
  * einzuziehen hiesse, bestehende Alarme zuordnen zu müssen, und das geht nicht
  * ohne Raten. Ein zweites Auswahlfeld hier ist dagegen eine Zeile.
  */
-const ALARM_ZUSTAND = 'N';
+/**
+ * Für WELCHEN Zustand der Alarm gilt — neu oder gebraucht.
+ *
+ * ── Warum das jetzt eine Wahl ist und keine Konstante ───────────────────────
+ *
+ * Hier stand `const ALARM_ZUSTAND = 'N'` mit der Begründung: „Die Oberfläche
+ * bietet vorerst den für NEU an, weil das der Fall ist, nach dem gefragt
+ * wurde. Ein zweites Auswahlfeld hier ist dagegen eine Zeile."
+ *
+ * Server und Tabelle konnten es die ganze Zeit — `price_alerts` hat den
+ * Zustand im Schlüssel. Neu und gebraucht liegen oft um ein Vielfaches
+ * auseinander; wer ein gebrauchtes Exemplar sucht, hatte bisher keine
+ * Möglichkeit, darauf zu warten.
+ */
+function alarmZustand() {
+  return G('m-alert-cond')?.value === 'U' ? 'U' : 'N';
+}
 
 export async function ladeAlarm(sn) {
   const d = await api('GET', `/v1/sets/${encodeURIComponent(sn)}/alert`).catch(() => null);
-  const dir = G('m-alert-dir'), val = G('m-alert-val'), st = G('m-alert-state');
+  const dir = G('m-alert-dir'), val = G('m-alert-val');
   if (!dir || !val) return;
-  const a = (d?.alerts || []).find(x => x.condition === ALARM_ZUSTAND);
+  const a = (d?.alerts || []).find(x => x.condition === alarmZustand());
   dir.value = a?.richtung || 'unter';
   val.value = a ? String(a.schwelle) : '';
+  zeigeAlarmMerker(a);
+}
+
+/**
+ * Nur den Merker nachführen — OHNE das Eingabefeld anzufassen.
+ *
+ * Getrennt von ladeAlarm(), und das ist der Kern der Entprellung: Während
+ * getippt wird, darf die Antwort des Servers nicht ins Feld zurückschreiben.
+ * Wer „249.90" tippt, hat nach der Ruhezeit hinter „249.9" vielleicht schon
+ * die letzte Null gesetzt — ladeAlarm() machte daraus wieder „249.9" und
+ * fräse dem Tippenden das Zeichen weg.
+ */
+function zeigeAlarmMerker(a) {
+  const st = G('m-alert-state');
   if (!st) return;
   // Der Merker sagt, ob schon gemeldet wurde. Ihn zu zeigen ist der
   // Unterschied zwischen „der Alarm steht" und „der Alarm hat gefeuert" —
@@ -510,22 +540,185 @@ export async function ladeAlarm(sn) {
 }
 
 /**
- * Preisalarm speichern oder löschen.
+ * Auf den anderen Zustand umschalten.
+ *
+ * LÄDT, speichert NICHT — und das ist der Punkt: Ein Wechsel ist die Frage
+ * „was steht für gebraucht?", keine Eingabe. Würde hier gespeichert, legte
+ * schon das Umschalten einen Alarm im neuen Zustand an (oder löschte ihn,
+ * wenn das Feld leer ist). Eine noch laufende Ruhezeit wird verworfen, damit
+ * nicht kurz darauf die Schwelle des ALTEN Zustands beim neuen landet.
+ */
+export function wechsleAlarmZustand(sn) {
+  clearTimeout(_alarmRuhe); _alarmRuhe = null;
+  return ladeAlarm(sn);
+}
+
+/**
+ * Wie lange Ruhe herrschen muss, bevor beim Tippen gespeichert wird.
+ *
+ * Dieselbe Zahl wie in der App (Alarmeingabe.RUHE_MS) — laufen die beiden
+ * auseinander, verhält sich dasselbe Feld an zwei Stellen verschieden, ohne
+ * dass es jemandem auffiele.
+ */
+const ALARM_RUHE = 800;
+let _alarmRuhe = null;
+
+/**
+ * Beim Tippen speichern — entprellt.
+ *
+ * ── Marcos Befund ───────────────────────────────────────────────────────────
+ *
+ * „Der Preisalarm wird nicht gespeichert … soll gespeichert werden, wenn man
+ * was einträgt. Analog dem Kaufpreis."
+ *
+ * Bis hierher hing das Feld an `change`, also am Verlassen des Feldes. Wer
+ * tippt und das Fenster schliesst, ohne vorher woanders hinzuklicken, verlor
+ * die Eingabe.
+ *
+ * ── Warum die Werte JETZT festgehalten werden ───────────────────────────────
+ *
+ * Der Zeitgeber feuert bis zu ALARM_RUHE später. Läse er die Felder erst
+ * dann, wären sie womöglich gar nicht mehr da — das Detailfenster ist
+ * inzwischen zu, G() liefert null, und die Eingabe wäre wieder verloren. Das
+ * ist genau der Fehler, den diese Änderung beheben soll; deshalb steht hier
+ * eine Kopie und kein zweiter Blick in den Baum.
+ */
+export function alarmGetippt(sn) {
+  const dir = G('m-alert-dir'), val = G('m-alert-val');
+  if (!dir || !val) return;
+  const richtung = dir.value, roh = String(val.value || '').trim();
+  clearTimeout(_alarmRuhe);
+  _alarmRuhe = setTimeout(() => { _alarmRuhe = null; sendeAlarm(sn, richtung, roh); }, ALARM_RUHE);
+}
+
+/**
+ * Preisalarm speichern oder löschen — SOFORT.
+ *
+ * Für die Richtung: Sie wird gewählt, nicht getippt, und eine Ruhezeit auf
+ * eine einzelne Wahl wäre nur eine Verzögerung ohne Gewinn. Eine noch
+ * laufende Ruhezeit wird dabei verworfen, damit nicht kurz darauf die alte
+ * Richtung hinterherkommt.
+ */
+export function speichereAlarm(sn) {
+  const dir = G('m-alert-dir'), val = G('m-alert-val');
+  if (!dir || !val) return;
+  clearTimeout(_alarmRuhe); _alarmRuhe = null;
+  return sendeAlarm(sn, dir.value, String(val.value || '').trim());
+}
+
+/**
+ * Der eine Weg zum Server.
  *
  * Ein leeres Feld heisst LÖSCHEN, nicht „Schwelle 0": Die natürliche Geste,
  * einen Alarm loszuwerden, ist das Feld zu leeren — ein eigener Knopf daneben
  * wäre ein zweiter Weg für dieselbe Absicht.
+ *
+ * Ein halber Anfang („-", "abc") ist keine Zahl und damit ein Löschen.
+ * „249." dagegen NICHT: `parseFloat("249.")` ist 249 — das hatte ich zuerst
+ * falsch behauptet und erst gemessen, als der Android-Lauf meinen Test dazu
+ * rot meldete. Dieselbe Lesart wie in Alarmeingabe.zahl().
+ *
+ * Der Grund für ALARM_RUHE ist damit ein anderer und ein besserer: Wer „249"
+ * tippen will, tippt unterwegs „2" und „24". Ohne Ruhezeit stünde am Ende
+ * eine Schwelle bei 2 — und die meldet sofort.
  */
-export async function speichereAlarm(sn) {
-  const dir = G('m-alert-dir'), val = G('m-alert-val');
-  if (!dir || !val) return;
-  const roh = String(val.value || '').trim();
-  const d = roh === ''
-    ? await api('DELETE', `/v1/sets/${encodeURIComponent(sn)}/alert?condition=${ALARM_ZUSTAND}`)
+async function sendeAlarm(sn, richtung, roh) {
+  const zahl = parseFloat(String(roh).replace(',', '.'));
+  const loeschen = !(zahl > 0);
+  const cond = alarmZustand();
+  const d = loeschen
+    ? await api('DELETE', `/v1/sets/${encodeURIComponent(sn)}/alert?condition=${cond}`)
     : await api('PUT', `/v1/sets/${encodeURIComponent(sn)}/alert`,
-                { richtung: dir.value, schwelle: parseFloat(roh), condition: ALARM_ZUSTAND });
+                { richtung, schwelle: zahl, condition: cond });
   if (!d?.success) { toast(d?.error || tRaw('settings.error'), 'error'); return; }
-  await ladeAlarm(sn);
+  // Nur den Merker, nicht das Feld — die Begründung steht an zeigeAlarmMerker().
+  zeigeAlarmMerker(loeschen ? null : d.alert);
+}
+
+/**
+ * Beim Oeffnen zeigen, welche Alarme seit dem letzten Besuch ausgeloest haben.
+ *
+ * ── Warum die Webapp das auch tut ───────────────────────────────────────────
+ *
+ * Die Android-App fragt stuendlich im Hintergrund nach und meldet es als
+ * Benachrichtigung (alarm/PreisalarmWorker.kt). Ohne dieses Gegenstueck waere
+ * der Preisalarm die erste Funktion, die in der App mehr kann als hier — und
+ * genau das soll nicht passieren.
+ *
+ * Ein Hintergrundlauf ist im Browser nicht das Gegenstueck: Eine
+ * geschlossene Seite fragt nichts ab, und ein Service Worker mit Web-Push
+ * waere derselbe schwere Apparat, den die App mit Firebase bewusst vermeidet.
+ * Das ehrliche Gegenstueck ist: beim Oeffnen nachfragen.
+ *
+ * ── Die Marke kommt vom SERVER ──────────────────────────────────────────────
+ *
+ * Dieselbe Begruendung wie in Alarmabholung.kt: Naehme die Seite ihre eigene
+ * Uhr, entschiede die Gangabweichung zum Server darueber, ob eine Meldung
+ * doppelt kommt oder ausfaellt.
+ *
+ * Je Konto eine eigene Marke: An einem Rechner melden sich durchaus zwei
+ * Leute an, und die Marke des einen darf die Meldungen des anderen nicht
+ * verschlucken.
+ */
+export async function zeigeOffeneAlarme() {
+  if (!ME?.id) return;
+  const schluessel = 'bim_alarm_marke_' + ME.id;
+  let marke = null;
+  try { marke = localStorage.getItem(schluessel); } catch (_) {}
+  const d = await api('GET', '/v1/alerts/pending' + (marke ? '?since=' + encodeURIComponent(marke) : ''))
+    .catch(() => null);
+  // Ohne `now` keine neue Marke — und ohne neue Marke lieber gar nichts
+  // speichern als eine falsche.
+  if (!d?.success || !d.now) return;
+  try { localStorage.setItem(schluessel, String(d.now)); } catch (_) {}
+  // Erster Besuch: nur merken, nichts melden. Sonst schlaegt ein frisch
+  // angemeldetes Konto mit Schwellen auf, die vor Wochen gerissen sind.
+  if (!marke) return;
+  const unter = tRaw('detail.alert_below'), ueber = tRaw('detail.alert_above');
+  for (const a of (d.alerts || [])) {
+    const richtung = a.richtung === 'unter' ? unter : ueber;
+    const schwelle = Number(a.schwelle).toFixed(2);
+    // Derselbe Aufbau wie Alarmabholung.text() in der App — wer beides
+    // benutzt, soll nicht zwei Formulierungen derselben Meldung lesen.
+    const txt = a.zuletzt_preis == null
+      ? `${a.set_number}: ${richtung} ${a.currency_code} ${schwelle}`
+      : `${a.set_number}: ${a.currency_code} ${Number(a.zuletzt_preis).toFixed(2)} ` +
+        `(${richtung} ${a.currency_code} ${schwelle})`;
+    toast(txt, 'info');
+  }
+}
+
+/**
+ * Die Auswahlliste im Detailfenster — der VORRAT des Besitzers.
+ *
+ * ── Marcos Festlegung ───────────────────────────────────────────────────────
+ *
+ * „Der Grossvater soll die Werte der Enkel für die entsprechenden Sets sehen
+ * und wählen können."
+ *
+ * Ein Lagerort ist ein Regal in einer Wohnung. Beim Set des Enkels gehören
+ * die Regale des ENKELS zur Wahl — ein Set des Enkels in „Grossvaters Keller"
+ * wäre eine Aussage über die falsche Wohnung.
+ *
+ * Ohne `owners` (Einzelkonto, oder eine Zeile ohne Besitzerplakette) bleibt
+ * der Parameter weg, und der Server antwortet mit der eigenen Liste. Genau
+ * das ist dann auch richtig.
+ *
+ * ── Warum eine datalist und kein select ─────────────────────────────────────
+ *
+ * Marco will beides: auswählen UND neue Werte gleich erfassen. Ein `select`
+ * kann nur das erste, ein Textfeld nur das zweite. Eine `datalist` klappt auf
+ * wie ein Auswahlfeld und nimmt trotzdem Getipptes an — und was getippt wird,
+ * landet im Vorrat (setzeLagerort in utils/lagerort.ts).
+ */
+export async function ladeOrtAuswahl(besitzer) {
+  const dl = G('lagerorte');
+  if (!dl) return;
+  const ids = (besitzer || []).map(o => o?.id ?? o).filter(n => Number.isFinite(Number(n)));
+  const frage = ids.length ? '?owner=' + encodeURIComponent(ids.join(',')) : '';
+  const d = await api('GET', '/v1/storage/locations' + frage).catch(() => null);
+  if (!d?.success) return;
+  dl.innerHTML = (d.orte || []).map(o => `<option value="${esc(o.name)}"></option>`).join('');
 }
 
 export async function ladeLagerorte() {
@@ -586,13 +779,17 @@ export async function openModal(sn){
     ${detailZeile(t('detail.minifigs'), oderStrich(curSet.minifigs), { wertId: 'm-minifigs-val' })}
     ${detailZeile(t('detail.added'), `📅 ${addedFmt}`)}
     ${detailZeile(t('detail.alert'), `
+      <select id="m-alert-cond" style="height:26px;border:1px solid var(--bdr);border-radius:6px;font-size:.8rem;background:var(--sur);color:var(--txt)" data-change="wechsleAlarmZustand" data-arg="${escJs(sn)}">
+        <option value="N">${esc(tRaw('common.condition_new'))}</option>
+        <option value="U">${esc(tRaw('common.condition_used'))}</option>
+      </select>
       <select id="m-alert-dir" style="height:26px;border:1px solid var(--bdr);border-radius:6px;font-size:.8rem;background:var(--sur);color:var(--txt)" data-change="speichereAlarm" data-arg="${escJs(sn)}">
         <option value="unter">${esc(tRaw('detail.alert_below'))}</option>
         <option value="ueber">${esc(tRaw('detail.alert_above'))}</option>
       </select>
       <input type="number" id="m-alert-val" min="0" step="0.01" placeholder="—"
              style="width:80px;text-align:right;border:1px solid var(--bdr);border-radius:6px;padding:2px 6px;font-size:.85rem"
-             data-change="speichereAlarm" data-arg="${escJs(sn)}" />
+             data-input="alarmGetippt" data-arg="${escJs(sn)}" />
       <span id="m-alert-state" style="font-size:.72rem;color:var(--mut)"></span>
     `, { zeilenStil: 'align-items:flex-start',
          wertStil: 'display:flex;align-items:center;gap:6px;flex-wrap:wrap;justify-content:flex-end' })}
@@ -615,6 +812,9 @@ export async function openModal(sn){
   renderInstructions(curSet.instructions||[], sn);
   G('set-modal').classList.add('open');
   ladeAlarm(sn).catch(() => {});
+  // Die Auswahlliste gehört dem BESITZER des Sets, nicht dem Betrachter —
+  // Begründung an ladeOrtAuswahl().
+  ladeOrtAuswahl(curSet.owners).catch(() => {});
 
   // Load actual minifig count from minifigs table (more reliable than sets.minifigs)
   //
@@ -917,6 +1117,8 @@ registerActions({
   reimportMissingInstructions,
   retryBricksetQueueEntry,
   speichereAlarm,
+  alarmGetippt,
+  wechsleAlarmZustand,
   speichereSetLagerort,
   toggleBricksetQueue,
   triggerCsvSync,

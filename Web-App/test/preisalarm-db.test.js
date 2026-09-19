@@ -195,6 +195,129 @@ test('Preisalarm gegen echte Datenbank', async (t) => {
     assert.equal(await pruefe(SN), 1, 'der zweite Versuch blieb aus');
   });
 
+  await t.test('Abholen: ohne Marke kommt nichts zurück, nur der Zeitpunkt', async () => {
+    // Das ist der erste Start eines Geräts. Käme hier alles Ausgelöste, würde
+    // eine frisch eingerichtete App mit Schwellen aufschlagen, die vor Wochen
+    // gerissen sind.
+    await db.run('DELETE FROM price_alerts', []);
+    await db.run('DELETE FROM price_cache WHERE set_number=$1', [SN]);
+    await A.setzeAlarm(U.ich, SN, 'EUR', { richtung: 'unter', schwelle: 200, condition: 'N' });
+    await setzePreis(100, 'N');
+    assert.equal(await pruefe(SN), 1);
+
+    for (const ohne of [undefined, null, '', '   ', 'kein Datum']) {
+      const r = await A.ausgeloesteSeit(U.ich, ohne);
+      assert.deepEqual(r.alerts, [], `since=${JSON.stringify(ohne)} lieferte Meldungen`);
+      assert.ok(r.now instanceof Date, 'der Zeitpunkt des Servers fehlt');
+    }
+  });
+
+  await t.test('Abholen: die Marke des Servers holt genau einmal ab', async () => {
+    // Der Ablauf eines Geräts: merken, abholen, wieder merken. Die zweite
+    // Abholung mit der zurückgegebenen Marke muss LEER sein — sonst käme
+    // dieselbe Meldung bei jedem stündlichen Lauf erneut.
+    await db.run('DELETE FROM price_alerts', []);
+    await db.run('DELETE FROM price_cache WHERE set_number=$1', [SN]);
+    const vorher = (await A.ausgeloesteSeit(U.ich, null)).now;
+
+    await A.setzeAlarm(U.ich, SN, 'EUR', { richtung: 'unter', schwelle: 200, condition: 'N' });
+    await setzePreis(100, 'N');
+    assert.equal(await pruefe(SN), 1);
+
+    const erste = await A.ausgeloesteSeit(U.ich, vorher);
+    // Auch hier die Zeitstempel: Ein voller CI-Lauf ist an diesem Subtest
+    // einmal gescheitert, und aus dem Bericht war nicht zu erkennen, WELCHE
+    // der beiden Zusicherungen gerissen ist. Beide nennen deshalb ihre Werte.
+    assert.equal(erste.alerts.length, 1,
+      'die ausgelöste Schwelle fehlt. ' +
+      `vorher=${vorher?.toISOString?.() ?? vorher}, ` +
+      `zuletzt_am=${(await db.get('SELECT zuletzt_am FROM price_alerts'))?.zuletzt_am}`);
+    assert.equal(erste.alerts[0].set_number, SN);
+    assert.equal(erste.alerts[0].richtung, 'unter');
+    // numeric kommt als Zeichenkette aus dem Treiber — käme sie so durch,
+    // stünde in der Meldung "200.00" statt einer Zahl, und die App rechnete
+    // auf einer Zeichenkette.
+    assert.equal(typeof erste.alerts[0].schwelle, 'number');
+    assert.equal(erste.alerts[0].schwelle, 200);
+    assert.equal(typeof erste.alerts[0].zuletzt_preis, 'number');
+    assert.equal(erste.alerts[0].zuletzt_preis, 100);
+
+    const zweite = await A.ausgeloesteSeit(U.ich, erste.now);
+    // Die Zeitstempel stehen in der Meldung, und das hat einen Grund: Genau
+    // diese Zusicherung ist mir EINMAL in einem vollen Lauf rot geworden und
+    // in vier Wiederholungen nicht mehr. Ohne die drei Werte bliebe im
+    // Fehlerbericht nur „kam ein zweites Mal" — und damit wieder nichts zu
+    // untersuchen. Sie beantworten die einzige offene Frage: Lag `now` vor
+    // oder nach `zuletzt_am`?
+    assert.deepEqual(zweite.alerts, [],
+      'dieselbe Meldung kam ein zweites Mal. ' +
+      `vorher=${vorher?.toISOString?.() ?? vorher}, ` +
+      `zuletzt_am=${erste.alerts[0]?.zuletzt_am?.toISOString?.() ?? erste.alerts[0]?.zuletzt_am}, ` +
+      `erste.now=${erste.now?.toISOString?.() ?? erste.now}`);
+  });
+
+  await t.test('Abholen: eine Meldung aus derselben Millisekunde kommt NICHT doppelt', async () => {
+    // ── Der Befund, und warum er zweimal die CI rot gemacht hat ───────────
+    //
+    // Postgres speichert MIKROsekunden, JavaScript kennt nur MILLIsekunden.
+    // Gemessen:
+    //
+    //     Postgres  : 2026-09-19 20:33:04.996699+00
+    //     JavaScript: 2026-09-19T20:33:04.996Z
+    //
+    // Die Marke verliert auf dem Weg zum Klienten die letzten drei Stellen
+    // und ist damit KLEINER als der Wert in der Datenbank. Fällt eine Meldung
+    // in dieselbe Millisekunde, gilt `zuletzt_am > marke` weiterhin — und sie
+    // kommt ein zweites Mal.
+    //
+    // ── Warum die Kollision hier ERZWUNGEN wird ───────────────────────────
+    //
+    // Der Nachbartest darüber hat sie in der CI zweimal getroffen und lokal
+    // in keinem von fünf Läufen. Ein Test, der auf diesen Zufall wartet, ist
+    // kein Test: Er meldet den Fehler irgendwann und bei irgendwem, und
+    // dazwischen sieht er aus wie ein Flake. Hier steht der Zeitstempel von
+    // Hand, mit Mikrosekunden, und die Marke ist genau seine
+    // Millisekunden-Fassung — also exakt der Fall, der schiefging.
+    await db.run('DELETE FROM price_alerts', []);
+    await db.run('DELETE FROM price_cache WHERE set_number=$1', [SN]);
+    await A.setzeAlarm(U.ich, SN, 'EUR', { richtung: 'unter', schwelle: 200, condition: 'N' });
+
+    const MIT_MIKRO = '2026-09-19 20:29:58.527431+00';
+    const NUR_MILLI = new Date('2026-09-19T20:29:58.527Z');
+    await db.run(
+      `UPDATE price_alerts SET ausgeloest = TRUE, zuletzt_am = $1::timestamptz,
+              zuletzt_preis = 100 WHERE user_id = $2`, [MIT_MIKRO, U.ich]);
+
+    const r = await A.ausgeloesteSeit(U.ich, NUR_MILLI);
+    assert.deepEqual(r.alerts, [],
+      'Die Meldung kam ein zweites Mal: in der Datenbank steht ' +
+      `${MIT_MIKRO}, die Marke trägt ${NUR_MILLI.toISOString()}. ` +
+      'Die Mikrosekunden entscheiden — sie dürfen es nicht.');
+
+    // Und die Gegenrichtung muss weiter funktionieren: Eine Meldung aus der
+    // NÄCHSTEN Millisekunde ist wirklich neu und gehört geliefert.
+    const r2 = await A.ausgeloesteSeit(U.ich, new Date('2026-09-19T20:29:58.526Z'));
+    assert.equal(r2.alerts.length, 1,
+      'Eine Meldung nach der Marke wurde verschluckt — die Kürzung geht zu weit');
+  });
+
+  await t.test('Abholen: jedes Konto sieht nur seine eigenen Alarme', async () => {
+    // Die Abfrage steht auf user_id, nicht auf scopeIds() — und das ist
+    // Absicht: Eine Meldung gehört dem, der die Schwelle gesetzt hat. Ein
+    // Hauptkonto bekäme sonst die Meldungen aller Unterkonten, ohne je einen
+    // Alarm gesetzt zu haben.
+    await db.run('DELETE FROM price_alerts', []);
+    await db.run('DELETE FROM price_cache WHERE set_number=$1', [SN]);
+    const vorher = (await A.ausgeloesteSeit(U.ich, null)).now;
+    await A.setzeAlarm(U.ich, SN, 'EUR', { richtung: 'unter', schwelle: 200, condition: 'N' });
+    await setzePreis(100, 'N');
+    assert.equal(await pruefe(SN), 1);
+
+    assert.equal((await A.ausgeloesteSeit(U.ich, vorher)).alerts.length, 1);
+    assert.deepEqual((await A.ausgeloesteSeit(U.ohnemail, vorher)).alerts, [],
+      'ein fremdes Konto sah die Meldung');
+  });
+
   await t.test('Löschen ist ohne Alarm kein Fehler', async () => {
     assert.equal(await A.loescheAlarm(U.ich, SN, 'N'), 1);
     assert.equal(await A.loescheAlarm(U.ich, SN, 'N'), 0, 'der zweite Aufruf darf nicht werfen');

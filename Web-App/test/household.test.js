@@ -296,6 +296,23 @@ test('der Kontofilter wird am Server in IDs übersetzt, nicht in der Oberfläche
     const lines = src.split('\n').filter(l => l.includes('await scopeIds('));
     assert.ok(lines.length > 0, `${f}: kein scopeIds-Aufruf`);
     for (const l of lines) {
+      // ── Die eine Ausnahme, und warum sie eine ist ───────────────────────
+      //
+      // Die Regel sichert LESEPFADE: Wer eine Liste zeigt und den Filter
+      // vergisst, zeigt stumm den ganzen Haushalt, während die Ansicht
+      // daneben gefiltert ist.
+      //
+      // Es gibt einen Aufruf, der keine Liste zeigt, sondern eine BERECHTIGUNG
+      // prüft: lagerKonten() in routes/api_v1/sets.ts beantwortet „darf dieses
+      // Konto die Lagerorte jenes Kontos sehen?". Den Ansichtsfilter dort
+      // anzuwenden wäre nicht strenger, sondern FALSCH: Steht die Galerie
+      // gerade auf „nur eigene", bekäme der Grossvater beim Set des Enkels
+      // eine leere Auswahlliste — für eine Einstellung, die mit der Frage
+      // nichts zu tun hat.
+      //
+      // Die Ausnahme trägt ihren Namen im Quelltext und ist damit auffindbar;
+      // eine stumme Ausnahmeliste hier wäre der schlechtere Weg.
+      if (l.includes('KEIN Ansichtsfilter')) continue;
       assert.ok(l.includes('parseScopeMode(req.query.accounts)'),
         `${f}: scopeIds ohne Kontofilter — ${l.trim()}`);
     }

@@ -503,7 +503,22 @@ internal fun MainViewModel.loadStats() {
  * Datenbank „Kiste 3" steht, und beim naechsten Oeffnen spraenge der Wert.
  */
 internal fun MainViewModel.setzeSetLagerort(setNumber: String, ort: String) {
-    viewModelScope.launch {
+    // ── Entprellt, und die Ruhezeit liegt im ViewModel ───────────────────────
+    //
+    // Bis hierher speicherte der Bildschirm beim Verlassen des Feldes. Genau
+    // das war Marcos Befund beim Preisalarm: Am Telefon tippt man, schliesst
+    // die Tastatur und geht zurueck — dieser Fokuswechsel kommt nie. Fuer den
+    // Lagerort galt dasselbe, es hat nur noch niemand gemeldet.
+    //
+    // Dieselbe Ruhezeit wie dort (Alarmeingabe.RUHE_MS): Ein Speichern je
+    // Zeichen erzeugte sechs Anfragen fuer „Kiste 3" und legte dabei fuenf
+    // Orte im Vorrat an, die niemand wollte — „K", „Ki", „Kis" …
+    //
+    // Im viewModelScope und nicht in einem LaunchedEffect, damit die Ruhezeit
+    // das Verlassen des Bildschirms ueberlebt.
+    lagerJob?.cancel()
+    lagerJob = viewModelScope.launch {
+        kotlinx.coroutines.delay(ch.brickinventoryapp.alarm.Alarmeingabe.RUHE_MS)
         when (val r = repo.sets.setSetStorage(setNumber, ort)) {
             is Result.Success -> {
                 if (!r.data.success) { _snackbar.emit(r.data.error ?: ""); return@launch }

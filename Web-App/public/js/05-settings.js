@@ -587,7 +587,94 @@ async function delUser(uid,name){ if(!await confirmDelete(tRaw('users.delete.tit
 
 
 // ── Handler beim Dispatcher anmelden (siehe js/00-registry.js) ──────────────
+// ═══ LAGERORTE VERWALTEN ════════════════════════════════════════════════════
+//
+// ── Marcos Vorgabe ──────────────────────────────────────────────────────────
+//
+// „Der Lagerort soll ein Auswahlfeld mit einem Dropdown sein, bei dem man auch
+// gleich neue Auswahlwerte erfassen kann. Die Werte sollen pro User verwaltet
+// werden können und sollen in den Einstellungen bearbeitbar sein."
+//
+// Hier ist die Verwaltung; die Auswahl selbst steckt im Detailfenster
+// (ladeOrtAuswahl in js/07-admin.js). Diese Seite zeigt NUR die eigenen Orte:
+// Ein Lagerort ist ein Regal in der eigenen Wohnung, und fremde Regale
+// umzubenennen ist keine Einstellung, sondern ein Versehen.
+
+/** Die eigenen Orte samt Belegung. */
+export async function ladeLagerortVerwaltung() {
+  const el = G('storage-list');
+  if (!el) return;
+  // Beide Listen zusammen: `locations` sagt, was zur WAHL steht, `storage`,
+  // was wirklich DRIN liegt. Ohne die zweite stünde neben jedem Ort nichts,
+  // und die Absage beim Löschen („da liegt noch was") käme aus dem Nichts.
+  const [v, b] = await Promise.all([
+    api('GET', '/v1/storage/locations'),
+    api('GET', '/v1/storage?accounts=own'),
+  ]);
+  if (!v?.success) return;
+  const belegung = new Map((b?.orte || []).map(o => [o.ort, o]));
+  const orte = v.orte || [];
+  if (!orte.length) {
+    el.innerHTML = `<div style="color:var(--mut)">${esc(tRaw('storage.empty'))}</div>`;
+    return;
+  }
+  el.innerHTML = orte.map(o => {
+    const n = belegung.get(o.name);
+    const wie = n ? t('storage.belegt', { sets: n.sets, teile: n.teile }) : esc(tRaw('storage.leer'));
+    return `<div style="display:flex;align-items:center;gap:8px;padding:4px 0;border-bottom:1px solid var(--bdr)">
+      <input type="text" maxlength="60" value="${esc(o.name)}"
+             data-change="benenneLagerortUm" data-arg="${o.id}" data-val="1"
+             style="flex:1;border:1px solid var(--bdr);border-radius:6px;padding:3px 7px;font-size:.85rem;background:var(--sur);color:var(--txt)" />
+      <span style="font-size:.72rem;color:var(--mut);white-space:nowrap">${wie}</span>
+      <button class="btn bs btn-sm" data-click="loescheLagerort" data-arg="${o.id}"
+              data-arg2="${esc(o.name)}" style="padding:2px 8px">🗑️</button>
+    </div>`;
+  }).join('');
+}
+
+async function legeLagerortAn() {
+  const feld = G('storage-new');
+  const name = String(feld?.value || '').trim();
+  if (!name) return;
+  const d = await api('POST', '/v1/storage/locations', { name });
+  if (!d?.success) { toast(d?.error || tRaw('settings.error'), 'error'); return; }
+  feld.value = '';
+  await ladeLagerortVerwaltung();
+}
+
+/** Enter im Eingabefeld legt an — dieselbe Geste wie überall sonst im Baum. */
+function lagerortTaste(id, ev) {
+  if (ev?.key === 'Enter') { ev.preventDefault(); legeLagerortAn(); }
+}
+
+async function benenneLagerortUm(id, wert) {
+  const name = String(wert || '').trim();
+  // Leer heisst hier NICHT löschen: Beim Umbenennen ist ein leergeräumtes Feld
+  // fast immer ein Versehen, und das Löschen hat seinen eigenen Knopf daneben.
+  // (Beim Lagerort AM SET ist es umgekehrt — dort ist Leeren die natürliche
+  // Geste, um die Zuordnung loszuwerden.)
+  if (!name) { await ladeLagerortVerwaltung(); return; }
+  const d = await api('PUT', `/v1/storage/locations/${encodeURIComponent(id)}`, { name });
+  if (!d?.success) { toast(d?.error || tRaw('settings.error'), 'error'); }
+  await ladeLagerortVerwaltung();
+  // Die Zuordnungen sind mitgewandert (benenneOrtUm im Server) — die Galerie
+  // zeigt sonst weiter den alten Namen.
+  loadGallery();
+}
+
+async function loescheLagerort(id, name) {
+  if (!await confirmDelete(tRaw('storage.delete_title'),
+                           `${name} — ${tRaw('storage.delete_text')}`, '📦')) return;
+  const d = await api('DELETE', `/v1/storage/locations/${encodeURIComponent(id)}`);
+  if (!d?.success) { toast(d?.error || tRaw('settings.error'), 'error'); return; }
+  await ladeLagerortVerwaltung();
+}
+
 registerActions({
+  legeLagerortAn,
+  lagerortTaste,
+  benenneLagerortUm,
+  loescheLagerort,
   copyHouseholdInvite,
   createHouseholdInvite,
   delUser,

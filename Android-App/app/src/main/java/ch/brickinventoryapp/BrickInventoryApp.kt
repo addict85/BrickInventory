@@ -25,6 +25,23 @@ class BrickInventoryApp : Application() {
         // wegen eines Absturzes nicht durch, passiert sie beim nächsten Start.
         kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.Dispatchers.IO).launch {
             runCatching { preferencesManager.uebernehmeAltesToken() }
+            // ── Den Preisalarm-Abruf wieder einplanen ────────────────────────
+            //
+            // WorkManager ueberlebt Neustarts von sich aus. Was er NICHT
+            // ueberlebt, ist ein Zuruecksetzen der App-Daten, eine
+            // Neuinstallation ueber ein Backup oder ein „Force Stop", nach dem
+            // manche Hersteller die Auftraege verwerfen. Dann stuende der
+            // Schalter auf „an" und es kaeme nie wieder eine Meldung — ein
+            // Fehler, den niemand meldet, weil nichts passiert.
+            //
+            // KEEP (siehe einplanen()) macht den Aufruf im Normalfall zu einem
+            // Nichts: Ein bereits eingeplanter Auftrag laeuft unveraendert
+            // weiter und wird nicht bei jedem Start nach hinten geschoben.
+            runCatching {
+                if (preferencesManager.alarmMeldungenAn.first()) {
+                    ch.brickinventoryapp.alarm.PreisalarmWorker.einplanen(this@BrickInventoryApp, true)
+                }
+            }
         }
         // Ab Android 13 (API 33) persistiert das System die per-App-Sprache
         // selbst (LocaleManager) und wendet sie vor Activity-Start an — der
