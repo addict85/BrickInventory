@@ -1,6 +1,6 @@
 import { registerActions } from './00-registry.js';
 import { locale, t, tRaw } from '../i18n.js';
-import { CURRENCY, G, api, esc, escJs, fmtN, fullUrl, knopfBesetzt, thumbUrl, toast } from './01-core.js';
+import { CURRENCY, G, api, esc, escJs, escUrl, fmtN, fullUrl, imgUrl, knopfBesetzt, thumbUrl, toast } from './01-core.js';
 import { detailZeile } from './01-bausteine.js';
 import { alarmBlock, ladeAlarm, priceChartSVG, renderMarketRows, setzeAlarmFeld } from './07-admin.js';
 import { selectedOwner, loadGallery, loadStats } from './02-gallery.js';
@@ -44,8 +44,28 @@ function zustandText(c) {
  * Platz.
  */
 function zeile(w) {
-  const bild = w.image_url
-    ? `<img src="${esc(thumbUrl(w.image_url))}" alt="" loading="lazy" referrerpolicy="no-referrer"
+  // ── Warum imgUrl() und nicht die Adresse selbst ─────────────────────────
+  //
+  // Marcos Befund: „Die Bilder in der Wunschliste werden nicht geladen.
+  // Anscheinend wird direkt das CDN aufgerufen." Genau so war es: Hier stand
+  // `thumbUrl(w.image_url)`, und thumbUrl() reicht seine Eingabe unveraendert
+  // durch (01-core.js) — gedacht fuer LOKALE Pfade. Fuer eine CDN-Adresse
+  // kommt sie unveraendert wieder heraus, der Browser ruft cdn.rebrickable.com
+  // direkt auf, und die Sicherheitsrichtlinie der Seite blockt das:
+  //
+  //     img-src 'self' data: blob:
+  //
+  // Jede andere Liste schreibt deshalb imgUrl(thumbUrl(lokal || cdn), …) —
+  // erst das nimmt den Weg ueber den eigenen Server.
+  //
+  // 'nur' und nicht `true`: Dieselbe Wahl wie im Katalog. Sie NUTZT eine
+  // Vorschau, laesst aber keine erzeugen — und hinterlaesst dabei die Notiz,
+  // an der jobs/imageQueue.ts das Bild ueberhaupt erst lokal ablegt
+  // (routes/imgProxy.ts, notiere()). Sobald es liegt, kommt es als
+  // image_local mit und der Proxy ist ganz aus dem Weg.
+  const roh = w.image_local || w.image_url;
+  const bild = roh
+    ? `<img src="${escUrl(imgUrl(thumbUrl(roh) || roh, 'nur'))}" alt="" loading="lazy" decoding="async"
             style="width:56px;height:56px;object-fit:contain;border-radius:6px;background:var(--bg)" />`
     : `<div style="width:56px;height:56px;border-radius:6px;background:var(--bg)"></div>`;
 
@@ -285,7 +305,11 @@ export async function oeffneWunschDetail(arg) {
 
   G('wl-m-tit').textContent = w.name || w.set_number;
   G('wl-m-sub').textContent = [w.set_number, zustandText(w.condition)].join(' · ');
-  const bild = w.image_url ? fullUrl(w.image_url) : '/assets/set-placeholder.svg';
+  // Volle Aufloesung, aber ebenfalls ueber den eigenen Server: fullUrl()
+  // schickt eine absolute CDN-Adresse durch den Bild-Proxy (01-core.js).
+  // Das lokale Bild hat Vorrang — es liegt schon da.
+  const bild = (w.image_local || w.image_url)
+    ? fullUrl(w.image_local || w.image_url) : '/assets/set-placeholder.svg';
   G('wl-m-img').src = bild;
   G('wl-m-img').dataset.orig = bild;
   G('wl-m-sparkline-content').innerHTML =

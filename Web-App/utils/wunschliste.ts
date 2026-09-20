@@ -33,6 +33,7 @@ import * as V from './validate';
 import { nutzerStandardZustand } from './settings';
 import { meldeUndWeiter } from './httpError';
 import { fuerSet } from './preisvergleich';
+import { resolveIfExists } from './images';
 
 /** Ein Eintrag, wie ihn beide Oberflächen sehen. */
 export interface Wunsch {
@@ -47,6 +48,25 @@ export interface Wunsch {
   theme_id: number | null;
   num_parts: number | null;
   image_url: string | null;
+  /**
+   * Die lokal abgelegte Bilddatei — wenn es sie gibt.
+   *
+   * ── Warum das hier dazugehoert ──────────────────────────────────────────
+   *
+   * Marcos Befund: „Die Bilder in der Wunschliste werden nicht geladen …
+   * anscheinend wird direkt das CDN aufgerufen." Genau so war es, und die
+   * Sicherheitsrichtlinie der Seite (img-src 'self' data: blob:) hat es
+   * geblockt — richtigerweise.
+   *
+   * Jede andere Liste im Baum fuehrt image_local MIT und zieht es dem
+   * CDN-Pfad vor: Die Datei liegt schon auf der Platte, und eine
+   * Proxy-Anfrage waere ein Umweg ueber das Netz fuer etwas, das danebenliegt.
+   * Der Katalog macht es mit derselben Zeile (routes/api_v1/catalog.ts).
+   *
+   * null heisst „noch nicht heruntergeladen" — dann laedt die Oberflaeche
+   * ueber den Bild-Proxy, der die Datei nebenbei anlegt.
+   */
+  image_local: string | null;
   /** Liegt das Set schon in der Galerie eines Kontos im Blickfeld? */
   owned: boolean;
   /**
@@ -174,22 +194,58 @@ export async function wuenscheVon(userIds: number[], nurSet?: string): Promise<W
   // Die Zahlenspalten kommen als Zeichenkette aus dem Treiber — dieselbe
   // Stelle, an der in diesem Baum schon einmal ein Vergleich still falsch
   // wurde (siehe utils/preisalarm.ts).
-  type Zeile = Omit<Wunsch, 'year' | 'num_parts' | 'owned' | 'alarm' | 'preisvergleich_url'> &
+  type Zeile = Omit<Wunsch, 'year' | 'num_parts' | 'owned' | 'alarm' | 'preisvergleich_url' | 'image_local'> &
                { year: string | number | null; num_parts: string | number | null; owned: unknown;
                  alarm_richtung: string | null; alarm_schwelle: string | number | null;
                  alarm_ausgeloest: unknown };
-  return ((rows ?? []) as Zeile[]).map(({ alarm_richtung, alarm_schwelle, alarm_ausgeloest, ...r }) => ({
-    ...r,
-    year:      r.year      == null ? null : Number(r.year),
-    num_parts: r.num_parts == null ? null : Number(r.num_parts),
-    owned:     !!r.owned,
-    preisvergleich_url: fuerSet(r.set_number, r.name),
-    alarm: alarm_richtung == null ? null : {
-      richtung:   alarm_richtung,
-      schwelle:   parseFloat(String(alarm_schwelle)),
-      ausgeloest: !!alarm_ausgeloest,
-    },
-  }));
+  // ── Fehlt das Bild noch, wird es hier bestellt ───────────────────────────
+  //
+  // Marcos zweiter Befund: „Leider wird es auch nach ein paar Minuten noch
+  // ueber den Proxy geladen. Scheint so, als wuerde der Pfad nicht dazu
+  // fuehren, dass das Bild im Hintergrund heruntergeladen wird."
+  //
+  // Er hat recht, und der Grund steht im Proxy: Eine Notiz fuer den Bild-Job
+  // entsteht dort NUR, wenn eine Vorschau angefragt wurde (routes/imgProxy.ts:
+  // `if (wantThumb) { … } else notiere();`). Das Wunsch-Detail fragt die volle
+  // Aufloesung — also keine Notiz, also kein Download, also auf Dauer der
+  // Umweg ueber den Proxy.
+  //
+  // Ein Wunsch ist ein Set, das man NICHT besitzt: Niemand hat sein Bild je
+  // heruntergeladen, und ohne diese Zeile geschieht es auch nie. Bewusst
+  // anders als im Katalog, der „keine Bildarbeit aus der Liste" anstoesst —
+  // der zeigt 25 000 fremde Sets, eine Wunschliste ein paar Dutzend.
+  //
+  // merkeGebraucht() ist gepuffert und dedupliziert (ON CONFLICT DO NOTHING,
+  // Wegschreiben alle zehn Sekunden); ein erneuter Aufruf fuer dasselbe Bild
+  // kostet nichts. Spaetes require wie in routes/api_v1/catalog.ts:
+  // utils/ -> jobs/ -> utils/ waere am Dateikopf ein Ladezyklus.
+  const { merkeGebraucht } = require('../jobs/imageQueue');
+
+  return ((rows ?? []) as Zeile[]).map(({ alarm_richtung, alarm_schwelle, alarm_ausgeloest, ...r }) => {
+    // Synchron und gecacht (utils/images.ts) — kein Dateisystemzugriff je
+    // Zeile und Aufruf. Dieselbe Namensregel wie beim Ablegen
+    // (utils/setImages.ts: /images/sets/<setnummer>.jpg).
+    //
+    // ?? null: resolveIfExists() ist als „string | null | undefined"
+    // typisiert; ein fehlendes Bild steht in der Antwort als NULL und nicht
+    // als fehlendes Feld, sonst muessten beide Oberflaechen zwei Faelle kennen.
+    const lokal = resolveIfExists(
+      `/images/sets/${String(r.set_number).replace(/[^a-z0-9-]/gi, '_')}.jpg`) ?? null;
+    if (!lokal && r.image_url) merkeGebraucht(String(r.image_url), String(r.set_number));
+    return {
+      ...r,
+      year:      r.year      == null ? null : Number(r.year),
+      num_parts: r.num_parts == null ? null : Number(r.num_parts),
+      owned:     !!r.owned,
+      preisvergleich_url: fuerSet(r.set_number, r.name),
+      image_local: lokal,
+      alarm: alarm_richtung == null ? null : {
+        richtung:   alarm_richtung,
+        schwelle:   parseFloat(String(alarm_schwelle)),
+        ausgeloest: !!alarm_ausgeloest,
+      },
+    };
+  });
 }
 
 /**

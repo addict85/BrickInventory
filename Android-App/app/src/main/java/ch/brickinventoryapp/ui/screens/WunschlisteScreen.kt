@@ -333,7 +333,7 @@ private fun WunschZeile(
             Row(horizontalArrangement = Arrangement.spacedBy(Abstaende.klein),
                 verticalAlignment = Alignment.CenterVertically) {
                 coil.compose.AsyncImage(
-                    model = resolveThumbUrl(serverUrl, null, w.imageUrl),
+                    model = resolveThumbUrl(serverUrl, w.imageLocal, w.imageUrl),
                     contentDescription = null,
                     imageLoader = imageLoader,
                     modifier = Modifier.size(Abstaende.riesig + Abstaende.sehrGross),
