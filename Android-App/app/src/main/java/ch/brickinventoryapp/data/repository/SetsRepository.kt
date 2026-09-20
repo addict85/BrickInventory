@@ -100,6 +100,9 @@ class SetsRepository @Inject constructor(
                               ownerUserId: Int? = null): Result<GenericResponse> =
         safeCall { api.loescheWunsch(setNumber, condition, ownerUserId) }
 
+    suspend fun getWunschPreise(setNumber: String): Result<WunschPreiseResponse> =
+        safeCall { api.getWunschPreise(setNumber) }
+
     suspend fun uebernimmWunsch(setNumber: String, condition: String, quantity: Int = 1,
                                 purchasePrice: Double? = null, erfasstAls: String? = null,
                                 ownerUserId: Int? = null): Result<WunschUebernahmeResponse> =

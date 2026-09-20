@@ -19,6 +19,7 @@ import { handleRouteError } from '../../utils/httpError';
 import { resolveIfExists } from '../../utils/images';
 import { requireToken } from './middleware';
 import { resolveMany, resolveOne, resolveViaApi } from '../../utils/bricklinkLink';
+import { fuerSet } from '../../utils/preisvergleich';
 import { downloadSetImage } from '../../utils/setImages';
 import { ausTabelle } from '../../utils/validate';
 import { neuestesInventar } from '../../utils/rbInventar';
@@ -357,6 +358,11 @@ router.get('/catalog/sets/:setNumber', requireToken, async (req: AuthedRequest, 
     // dort ein Set, Gear oder ein Buch ist, weiss nur catalog_cache — und die
     // Regel darf nicht in zwei Clients dupliziert werden (siehe
     // utils/bricklinkLink.ts).
+    // Die Preisvergleich-Adresse gehoert hierher wie die von BrickLink: Sie
+    // wird aus Nummer und Namen gebaut, und diese Regel steht genau einmal im
+    // Baum (utils/preisvergleich.ts). Verbraucher ist das Wunsch-Detail —
+    // dort ist der Griff „was kostet das anderswo?" der wichtigste ueberhaupt.
+    const preisvergleichUrl = fuerSet(set.set_number, set.name);
     let bricklink = await resolveOne(set.set_number);
     // Noch nie aufgelöst? Einmalig gegen BrickLink prüfen und dauerhaft cachen.
     // Nur hier, auf einer bewusst geöffneten Detailseite — in Listen bleibt es
@@ -402,7 +408,8 @@ router.get('/catalog/sets/:setNumber', requireToken, async (req: AuthedRequest, 
 
     res.json({
       success: true,
-      set: { ...set, image_local, theme_name: tree.pathName.get(set.theme_id) || null, minifigs: minifigCount, bricklink },
+      set: { ...set, image_local, theme_name: tree.pathName.get(set.theme_id) || null,
+             minifigs: minifigCount, bricklink, preisvergleich_url: preisvergleichUrl },
     });
   } catch (e) { handleRouteError(res, e, undefined, req); }
 });

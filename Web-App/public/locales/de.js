@@ -38,6 +38,8 @@ window.I18N_DE = {
   'catalog.add_to_gallery':    '➕ In Galerie aufnehmen',
   'nav.wishlist': 'Wunschliste',
   'wishlist.title': 'Wunschliste',
+  'wishlist.since': 'Auf der Liste seit',
+  'wishlist.remove': 'Wunsch entfernen',
   'wishlist.add.title': 'Wunsch hinzufügen',
   'wishlist.add.submit': 'Auf die Wunschliste',
   'wishlist.note': 'Notiz (optional)',

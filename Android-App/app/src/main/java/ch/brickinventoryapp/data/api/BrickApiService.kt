@@ -493,6 +493,18 @@ interface BrickApiService {
         @Query("owner_user_id") ownerUserId: Int? = null,
     ): Response<GenericResponse>
 
+    /**
+     * Marktpreise eines Wunsches, frisch geholt.
+     *
+     * NICHT /sets/{sn}/price: Die antwortet mit 404, wenn einem das Set nicht
+     * gehoert — fuer einen Wunsch also ausgeschlossen. Die Begruendung steht
+     * ausfuehrlich an der Route (routes/api_v1/wishlist.ts).
+     */
+    @GET("api/v1/wishlist/{setNumber}/preise")
+    suspend fun getWunschPreise(
+        @Path("setNumber") setNumber: String,
+    ): Response<WunschPreiseResponse>
+
     @POST("api/v1/wishlist/{setNumber}/{condition}/uebernehmen")
     suspend fun uebernimmWunsch(
         @Path("setNumber") setNumber: String,

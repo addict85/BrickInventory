@@ -625,4 +625,5 @@
     <string name="wishlist_need_number">Bitte Set-Nummer eingeben</string>
     <string name="wishlist_threshold">Schwelle (optional)</string>
     <string name="detail_compare">📊 Preisvergleich</string>
+    <string name="wishlist_since">Auf der Liste seit</string>
 </resources>

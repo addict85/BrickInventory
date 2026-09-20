@@ -939,6 +939,32 @@ data class WunschUiState(
     val laedt: Boolean = false,
 )
 
+/**
+ * Was das Detail EINES Wunsches zusaetzlich braucht.
+ *
+ * Eigener Zustand wie beim Set-Detail (_setDetailState) und aus demselben
+ * Grund: Er aendert sich nur, solange genau ein Detail offen ist.
+ *
+ * Der Wunsch selbst steht NICHT hier — er liegt in der geladenen Liste, und
+ * eine zweite Kopie liefe beim Loeschen oder Uebernehmen auseinander.
+ */
+data class WunschDetailUiState(
+    /** Thema, Teile, Minifiguren, BrickLink, Preisvergleich. */
+    val katalog: ch.brickinventoryapp.data.model.CatalogSetDetail? = null,
+    /** Der VERLAUF. Die aktuellen Preise stehen in [preise] — siehe dort. */
+    val historie: ch.brickinventoryapp.data.model.PriceHistoryResponse? = null,
+    /**
+     * Die aktuellen Marktpreise, frisch geholt.
+     *
+     * Getrennt von [historie], weil sie aus einer anderen Quelle kommen und
+     * frueher da sind: Der Verlauf LIEST nur price_cache, diese Antwort FUELLT
+     * ihn. Marcos Frage „wieso werden die Preise nicht sofort angezeigt" hatte
+     * genau hier ihre Ursache.
+     */
+    val preise: ch.brickinventoryapp.data.model.WunschPreiseResponse? = null,
+    val laedt: Boolean = false,
+)
+
 // Hier standen `eingabe`, `zustand` und `notiz` — der Zustand des
 // Erfassungskastens, den es nicht mehr gibt. Seit die Erfassung ein Dialog
 // ist (Marcos „gleich wie bei den Sets"), haelt sie ihren Zustand selbst,

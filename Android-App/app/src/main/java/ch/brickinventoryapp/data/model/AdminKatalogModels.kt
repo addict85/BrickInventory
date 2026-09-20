@@ -224,7 +224,15 @@ data class CatalogSetDetail(
     val minifigs: Int = 0,
     val owned: Boolean = false,
     @SerialName("owned_quantity") val ownedQuantity: Int = 0,
-    val bricklink: BrickLinkRef? = null
+    val bricklink: BrickLinkRef? = null,
+    /**
+     * Preisvergleich, fertig vom Server (utils/preisvergleich.ts).
+     *
+     * Dieselbe Begruendung wie beim Set-Detail: Die Adresse steht genau einmal
+     * im Baum. Verbraucher ist das Wunsch-Detail — dort ist „was kostet das
+     * anderswo?" der wichtigste Griff ueberhaupt.
+     */
+    @SerialName("preisvergleich_url") val preisvergleichUrl: String? = null
 )
 
 @Serializable

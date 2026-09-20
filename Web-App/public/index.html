@@ -1099,8 +1099,59 @@
     <div class="mfooter" style="justify-content:space-between;flex-wrap:wrap;gap:8px">
       <button class="btn bd" id="btn-md" aria-label="Set löschen" data-i18n="detail.delete" data-i18n-attr="aria-label">🗑️</button>
       <div style="display:flex;gap:8px;flex-wrap:wrap">
-        <a class="btn bs" id="m-vergleich" href="#" target="_blank" rel="noopener" style="display:none" data-i18n="detail.compare">📊 Preisvergleich</a>
         <a class="btn bs" id="m-bricklink" href="#" target="_blank" rel="noopener" style="display:none" data-i18n="catalog.buy_bricklink">🛒 Auf BrickLink kaufen</a>
+        <a class="btn bs" id="m-vergleich" href="#" target="_blank" rel="noopener" style="display:none" data-i18n="detail.compare">📊 Preisvergleich</a>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!--
+  Detail eines Wunschlisten-Eintrags.
+
+  Marcos Vorgabe: „gleich wie der Detail Dialog der Sets aussehen. Ausser dem
+  Kaufpreis."
+
+  Derselbe Aufbau wie #set-modal: Kopf, Bild, Zeilenblock, Fusszeile. Was
+  fehlt, fehlt aus einem Grund:
+
+    Kaufpreis    ausdruecklich ausgenommen
+    Anzahl       ein Wunsch hat keine
+    Lagerort     man kann nichts einlagern, was man nicht hat
+    Hinzugefuegt ersetzt durch „auf der Liste seit"
+    Anleitungen  gehoeren zum Besitz; hier waere die Liste immer leer
+
+  Was bleibt, bleibt ebenfalls aus einem Grund: Marktpreis und Preisverlauf
+  sind fuer einen WUNSCH das Wichtigste ueberhaupt — man wartet ja auf einen
+  Preis. Beide werden von denselben Funktionen gezeichnet wie im Set-Dialog
+  (renderMarketRows, priceChartSVG).
+-->
+<div class="ovl" id="wl-detail-modal" role="dialog" aria-modal="true">
+  <div class="modal" style="max-width:520px">
+    <div class="mhd">
+      <div>
+        <div class="mtit" id="wl-m-tit">—</div>
+        <div id="wl-m-sub" style="font-size:.78rem;color:var(--mut);margin-top:2px"></div>
+      </div>
+      <button class="btn bs btn-sm" data-click="schliesseWunschDetail" aria-label="Schliessen" data-i18n="common.close" data-i18n-attr="aria-label">✕</button>
+    </div>
+    <img id="wl-m-img" alt="" class="mimg" style="cursor:zoom-in" referrerpolicy="no-referrer" data-orig="/assets/set-placeholder.svg" data-click="openImageLightboxFromEl" />
+    <div id="wl-m-det"></div>
+    <div id="wl-m-market-rows"></div>
+    <div id="wl-m-price-chart" style="margin-top:.75rem">
+      <div style="font-size:.73rem;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--mut);margin-bottom:4px" data-i18n="detail.price_history">Preisverlauf</div>
+      <div class="sparkline-wrap" id="wl-m-sparkline-content"></div>
+    </div>
+    <div class="mfooter" style="justify-content:space-between;flex-wrap:wrap;gap:8px">
+      <button class="btn bd" id="wl-m-del" data-click="wunschDetailLoeschen" aria-label="Wunsch entfernen" data-i18n="wishlist.remove" data-i18n-attr="aria-label">🗑️</button>
+      <!-- Marcos Vorgabe: der Preisvergleich UNTERHALB von BrickLink. Deshalb
+           eine Spalte statt einer Reihe — „unterhalb" soll auch auf einem
+           schmalen Telefon unterhalb bleiben und nicht je nach Breite
+           danebenrutschen. -->
+      <div style="display:flex;flex-direction:column;gap:8px;align-items:stretch">
+        <a class="btn bs" id="wl-m-bricklink" href="#" target="_blank" rel="noopener" style="display:none" data-i18n="catalog.buy_bricklink">🛒 Auf BrickLink kaufen</a>
+        <a class="btn bs" id="wl-m-vergleich" href="#" target="_blank" rel="noopener" style="display:none" data-i18n="detail.compare">📊 Preisvergleich</a>
+        <button class="btn bp" id="wl-m-take" data-click="wunschDetailUebernehmen" data-i18n="wishlist.take">➕ In die Galerie</button>
       </div>
     </div>
   </div>

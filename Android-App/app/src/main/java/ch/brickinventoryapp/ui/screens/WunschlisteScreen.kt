@@ -1,5 +1,6 @@
 package ch.brickinventoryapp.ui.screens
 
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -61,6 +62,7 @@ fun WunschlisteScreen(
     vm: MainViewModel,
     imageLoader: coil.ImageLoader,
     onScan: () -> Unit,
+    onOeffnen: (String, String) -> Unit,
 ) {
     val zustand by vm.wunschState.collectAsStateWithLifecycle()
     // Die Bildadressen zeigen auf den eigenen Server (Proxy), nicht roh aufs
@@ -100,6 +102,7 @@ fun WunschlisteScreen(
                 ) {
                     items(zustand.wuensche, key = ::wunschSchluessel) { w ->
                         WunschZeile(w, appState.serverUrl, imageLoader,
+                            onOeffnen     = { onOeffnen(w.setNumber, w.condition) },
                             onUebernehmen = { uebernahmeSchluessel = wunschSchluessel(w) },
                             onLoeschen    = { vm.loescheWunsch(w.setNumber, w.condition, w.userId) })
                     }
@@ -179,7 +182,7 @@ fun WunschlisteScreen(
  * unberuehrt; das entscheidet der Server.
  */
 @Composable
-private fun UebernahmeDialog(
+internal fun UebernahmeDialog(
     wunsch: Wunsch,
     onDismiss: () -> Unit,
     onUebernehmen: (Int, String, String) -> Unit,
@@ -318,7 +321,7 @@ private fun WunschErfassenDialog(
 
 /** Neu oder gebraucht — zwei Knoepfe statt einer Auswahlliste, wie im Baum ueblich. */
 @Composable
-private fun ZustandsWahl(gewaehlt: String, onWahl: (String) -> Unit) {
+internal fun ZustandsWahl(gewaehlt: String, onWahl: (String) -> Unit) {
     Row(horizontalArrangement = Arrangement.spacedBy(Abstaende.klein)) {
         FilterChip(selected = gewaehlt == "N", onClick = { onWahl("N") },
                    label = { Text(stringResource(R.string.condition_new)) })
@@ -330,9 +333,11 @@ private fun ZustandsWahl(gewaehlt: String, onWahl: (String) -> Unit) {
 @Composable
 private fun WunschZeile(
     w: Wunsch, serverUrl: String, imageLoader: coil.ImageLoader,
-    onUebernehmen: () -> Unit, onLoeschen: () -> Unit,
+    onOeffnen: () -> Unit, onUebernehmen: () -> Unit, onLoeschen: () -> Unit,
 ) {
-    Card(Modifier.fillMaxWidth()) {
+    // Die ganze Karte oeffnet das Detail — wie die Kachel in der Galerie. Die
+    // zwei Knoepfe darin fangen ihre eigenen Klicks ab.
+    Card(Modifier.fillMaxWidth().clickable(onClick = onOeffnen)) {
         Column(Modifier.padding(Abstaende.mittel), verticalArrangement = Arrangement.spacedBy(Abstaende.winzig)) {
             Row(horizontalArrangement = Arrangement.spacedBy(Abstaende.klein),
                 verticalAlignment = Alignment.CenterVertically) {

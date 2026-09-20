@@ -256,7 +256,7 @@ fun CatalogDetailScreen(
 }
 
 @Composable
-private fun CatalogDetailRow(label: String, value: String) {
+internal fun CatalogDetailRow(label: String, value: String) {
     Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
         Text(label, color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = Schrift.normal)
         Text(value, fontWeight = FontWeight.SemiBold, fontSize = Schrift.normal,

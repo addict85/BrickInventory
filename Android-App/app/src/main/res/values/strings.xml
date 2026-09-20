@@ -639,4 +639,5 @@
     <string name="wishlist_need_number">Please enter a set number</string>
     <string name="wishlist_threshold">Threshold (optional)</string>
     <string name="detail_compare">📊 Compare prices</string>
+    <string name="wishlist_since">On the list since</string>
 </resources>

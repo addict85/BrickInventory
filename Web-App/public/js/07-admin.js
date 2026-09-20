@@ -506,13 +506,58 @@ export async function speichereSetLagerort(sn) {
  * auseinander; wer ein gebrauchtes Exemplar sucht, hatte bisher keine
  * Möglichkeit, darauf zu warten.
  */
+/**
+ * Welcher Alarmblock gerade gemeint ist: 'm' (Set-Detail) oder 'wl-m'
+ * (Wunsch-Detail).
+ *
+ * ── Warum eine Modulvariable und kein Parameter ─────────────────────────────
+ *
+ * Die Handler werden vom Ereignis-Dispatcher über data-click/data-change
+ * gerufen und bekommen genau EIN Argument: die Setnummer. Ein zweites
+ * hiesse, sie in data-arg zu kodieren und überall wieder zu zerlegen.
+ *
+ * Eine Modulvariable ist hier gefahrlos, weil immer höchstens EIN Dialog
+ * offen ist — beide setzen sie beim Öffnen. Stünden je zwei gleichzeitig
+ * offen, wäre das falsch; dann gäbe es aber auch zwei gleiche IDs im
+ * Dokument, und das ginge ohnehin schief.
+ */
+let _alarmFeld = 'm';
+export function setzeAlarmFeld(praefix) { _alarmFeld = praefix === 'wl-m' ? 'wl-m' : 'm'; }
+const alarmId = (teil) => `${_alarmFeld}-alert-${teil}`;
+
+/**
+ * Der Alarmblock — EINMAL formuliert, von beiden Dialogen benutzt.
+ *
+ * Das Wunsch-Detail zeigt denselben Alarm: Es ist derselbe Eintrag in
+ * price_alerts, am selben Schlüssel. Eine zweite Maske dafür wäre die
+ * nächste Stelle, an der eine Regel nur an einem der beiden Wege nachgezogen
+ * wird — das ist in diesem Baum schon mehrfach passiert.
+ */
+export function alarmBlock(sn, praefix = 'm') {
+  const p = praefix === 'wl-m' ? 'wl-m' : 'm';
+  return `
+      <select id="${p}-alert-cond" style="height:26px;border:1px solid var(--bdr);border-radius:6px;font-size:.8rem;background:var(--sur);color:var(--txt)" data-change="wechsleAlarmZustand" data-arg="${escJs(sn)}">
+        <option value="N">${esc(tRaw('common.condition_new'))}</option>
+        <option value="U">${esc(tRaw('common.condition_used'))}</option>
+      </select>
+      <select id="${p}-alert-dir" style="height:26px;border:1px solid var(--bdr);border-radius:6px;font-size:.8rem;background:var(--sur);color:var(--txt)" data-change="speichereAlarm" data-arg="${escJs(sn)}">
+        <option value="unter">${esc(tRaw('detail.alert_below'))}</option>
+        <option value="ueber">${esc(tRaw('detail.alert_above'))}</option>
+      </select>
+      <input type="number" id="${p}-alert-val" min="0" step="0.01" placeholder="—"
+             style="width:80px;text-align:right;border:1px solid var(--bdr);border-radius:6px;padding:2px 6px;font-size:.85rem"
+             data-input="alarmGetippt" data-arg="${escJs(sn)}" />
+      <span id="${p}-alert-state" style="font-size:.72rem;color:var(--mut)"></span>
+    `;
+}
+
 function alarmZustand() {
-  return G('m-alert-cond')?.value === 'U' ? 'U' : 'N';
+  return G(alarmId('cond'))?.value === 'U' ? 'U' : 'N';
 }
 
 export async function ladeAlarm(sn) {
   const d = await api('GET', `/v1/sets/${encodeURIComponent(sn)}/alert`).catch(() => null);
-  const dir = G('m-alert-dir'), val = G('m-alert-val');
+  const dir = G(alarmId('dir')), val = G(alarmId('val'));
   if (!dir || !val) return;
   const a = (d?.alerts || []).find(x => x.condition === alarmZustand());
   dir.value = a?.richtung || 'unter';
@@ -530,7 +575,7 @@ export async function ladeAlarm(sn) {
  * fräse dem Tippenden das Zeichen weg.
  */
 function zeigeAlarmMerker(a) {
-  const st = G('m-alert-state');
+  const st = G(alarmId('state'));
   if (!st) return;
   // Der Merker sagt, ob schon gemeldet wurde. Ihn zu zeigen ist der
   // Unterschied zwischen „der Alarm steht" und „der Alarm hat gefeuert" —
@@ -584,7 +629,7 @@ let _alarmRuhe = null;
  * eine Kopie und kein zweiter Blick in den Baum.
  */
 export function alarmGetippt(sn) {
-  const dir = G('m-alert-dir'), val = G('m-alert-val');
+  const dir = G(alarmId('dir')), val = G(alarmId('val'));
   if (!dir || !val) return;
   const richtung = dir.value, roh = String(val.value || '').trim();
   clearTimeout(_alarmRuhe);
@@ -600,7 +645,7 @@ export function alarmGetippt(sn) {
  * Richtung hinterherkommt.
  */
 export function speichereAlarm(sn) {
-  const dir = G('m-alert-dir'), val = G('m-alert-val');
+  const dir = G(alarmId('dir')), val = G(alarmId('val'));
   if (!dir || !val) return;
   clearTimeout(_alarmRuhe); _alarmRuhe = null;
   return sendeAlarm(sn, dir.value, String(val.value || '').trim());
@@ -778,20 +823,8 @@ export async function openModal(sn){
     ${detailZeile(t('detail.pieces'), `${curSet.pieces ? curSet.pieces.toLocaleString(locale()) : '—'} <button class="btn bs btn-sm" data-click="reimportParts" data-arg="${escJs(sn)}" title="${t('detail.reimport_parts')}" style="padding:1px 6px;font-size:.75rem;margin-left:4px">${PARTS_ICON_SVG}</button>`)}
     ${detailZeile(t('detail.minifigs'), oderStrich(curSet.minifigs), { wertId: 'm-minifigs-val' })}
     ${detailZeile(t('detail.added'), `📅 ${addedFmt}`)}
-    ${detailZeile(t('detail.alert'), `
-      <select id="m-alert-cond" style="height:26px;border:1px solid var(--bdr);border-radius:6px;font-size:.8rem;background:var(--sur);color:var(--txt)" data-change="wechsleAlarmZustand" data-arg="${escJs(sn)}">
-        <option value="N">${esc(tRaw('common.condition_new'))}</option>
-        <option value="U">${esc(tRaw('common.condition_used'))}</option>
-      </select>
-      <select id="m-alert-dir" style="height:26px;border:1px solid var(--bdr);border-radius:6px;font-size:.8rem;background:var(--sur);color:var(--txt)" data-change="speichereAlarm" data-arg="${escJs(sn)}">
-        <option value="unter">${esc(tRaw('detail.alert_below'))}</option>
-        <option value="ueber">${esc(tRaw('detail.alert_above'))}</option>
-      </select>
-      <input type="number" id="m-alert-val" min="0" step="0.01" placeholder="—"
-             style="width:80px;text-align:right;border:1px solid var(--bdr);border-radius:6px;padding:2px 6px;font-size:.85rem"
-             data-input="alarmGetippt" data-arg="${escJs(sn)}" />
-      <span id="m-alert-state" style="font-size:.72rem;color:var(--mut)"></span>
-    `, { zeilenStil: 'align-items:flex-start',
+    ${detailZeile(t('detail.alert'), alarmBlock(sn), {
+         zeilenStil: 'align-items:flex-start',
          wertStil: 'display:flex;align-items:center;gap:6px;flex-wrap:wrap;justify-content:flex-end' })}
     ${detailZeile(t('detail.storage'), `
       <input type="text" id="m-storage" list="lagerorte" maxlength="60"
@@ -811,6 +844,8 @@ export async function openModal(sn){
 
   renderInstructions(curSet.instructions||[], sn);
   zeigeKaufadressen(curSet);
+  // Ab hier meinen die Alarm-Handler DIESEN Dialog.
+  setzeAlarmFeld('m');
   G('set-modal').classList.add('open');
   ladeAlarm(sn).catch(() => {});
   // Die Auswahlliste gehört dem BESITZER des Sets, nicht dem Betrachter —
