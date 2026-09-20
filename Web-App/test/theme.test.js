@@ -300,3 +300,49 @@ test('nur das Boot-Skript kennt die Liste der Designs', () => {
     'in js/00-theme-boot.js — jede weitere waechst beim naechsten Design nicht ' +
     'mit, und der Wechsel wirkt dann erst nach einem Neuladen.');
 });
+
+/**
+ * Ein Design, dessen Reiterleiste UMBRECHEN darf, muss die Reiter auch
+ * schmaler machen koennen.
+ *
+ * ── Marcos Befund ───────────────────────────────────────────────────────────
+ *
+ * „Monitoring sollte auf der gleichen Zeile sein wie die restlichen Tabs."
+ *
+ * Die Reiterleiste steht normalerweise in EINER Zeile und scrollt seitlich
+ * (styles.css: nav{display:flex;overflow-x:auto}, kein flex-wrap). Genau ein
+ * Design setzt flex-wrap und laesst sie stattdessen umbrechen — und dort
+ * rutschte der neunte Reiter, den nur ein Verwalter sieht, in eine zweite
+ * Zeile. Im Browser gemessen (Chromium): 1144px noetig, 1030px da.
+ *
+ * Die Regel ist nicht „Design X braucht Regel Y" (das waere eine Aufzaehlung),
+ * sondern: WER umbrechen laesst, muss fuer mittlere Fenster verschmaelern.
+ * Sonst faellt es beim naechsten Design wieder auf.
+ *
+ * ── Gegenprobe (durchgefuehrt, Ergebnis im Commit) ─────────────────────────
+ *   Den @media-Block in themes/brick.css entfernt → rot.
+ */
+test('wer die Reiterleiste umbrechen laesst, verschmaelert sie auch', () => {
+  const ordner = path.join(PUB, 'themes');
+  const dateien = fs.readdirSync(ordner).filter(f => f.endsWith('.css'));
+  assert.ok(dateien.length >= 4, `Nur ${dateien.length} Designs — greift die Suche noch?`);
+
+  const ohneUmbau = [];
+  let mitUmbruch = 0;
+  for (const name of dateien) {
+    const css = fs.readFileSync(path.join(ordner, name), 'utf8')
+      .replace(/\/\*[\s\S]*?\*\//g, '');
+    // nav-Regelblock mit flex-wrap: nur dort stellt sich die Frage.
+    if (!/nav\s*\{[^}]*flex-wrap\s*:\s*wrap/.test(css)) continue;
+    mitUmbruch++;
+    // Und dann muss es einen Medienblock geben, der die Reiter kleiner macht.
+    const schmal = /@media[^{]+\{[\s\S]*?\.ntab\s*\{[^}]*padding[^}]*\}/.test(css);
+    if (!schmal) ohneUmbau.push(name);
+  }
+  assert.ok(mitUmbruch >= 1,
+    'Kein Design laesst die Reiterleiste mehr umbrechen — dann ist diese Regel leer wahr');
+  assert.deepEqual(ohneUmbau, [],
+    'Diese Designs lassen die Reiterleiste umbrechen, ohne die Reiter fuer ' +
+    'mittlere Fenster zu verschmaelern. Genau daran ist Monitoring in eine ' +
+    'zweite Zeile gerutscht.');
+});
