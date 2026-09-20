@@ -73,9 +73,6 @@ function zeile(w) {
     ? `<span style="background:var(--ok-bg,var(--bg));border:1px solid var(--bdr)">${esc(tRaw('wishlist.owned'))}</span>`
     : '';
 
-  const notiz = w.notiz
-    ? `<div style="font-size:.78rem;color:var(--mut);margin-top:2px">${esc(w.notiz)}</div>` : '';
-
   const arg = escJs(`${w.set_number}|${w.condition}|${w.user_id}`);
   return `
     <div style="display:flex;gap:12px;align-items:center;padding:10px;border:1px solid var(--bdr);
@@ -87,7 +84,6 @@ function zeile(w) {
       <div style="flex:1;min-width:0;cursor:pointer" data-click="oeffneWunschDetail" data-arg="${arg}">
         <div style="font-weight:600">${titel}</div>
         <div style="font-size:.78rem;color:var(--mut)">${unter}</div>
-        ${notiz}
       </div>
       <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap">
         ${alarm}${schon}
@@ -121,7 +117,6 @@ export async function wunschHinzufuegen() {
     const d = await api('POST', '/v1/wishlist', {
       set_number: num,
       condition:  G('wl-cond')?.value || 'N',
-      notiz:      G('wl-note')?.value || '',
       owner_user_id: selectedOwner('wl-owner'),
     });
     if (!d?.success) return;
@@ -129,7 +124,6 @@ export async function wunschHinzufuegen() {
     // wer zweimal auf denselben Knopf drückt, soll den Unterschied sehen.
     toast(tRaw(d.war_neu ? 'wishlist.added' : 'wishlist.already'), 'ok');
     G('wl-num').value = '';
-    G('wl-note').value = '';
     await ladeWunschliste();
   });
 }
@@ -294,7 +288,7 @@ export async function oeffneWunschDetail(arg) {
   G('wl-m-sparkline-content').innerHTML =
     `<span style="color:var(--mut);font-size:.78rem">${esc(tRaw('common.loading'))}</span>`;
   G('wl-m-market-rows').innerHTML = '';
-  G('wl-m-det').innerHTML = zeilen(w, null);
+  G('wl-m-det').innerHTML = zeilen(w);
   G('wl-m-bricklink').style.display = 'none';
   // Der Preisvergleich ist SOFORT da: Er hängt am Wunsch, nicht am Katalog
   // (utils/wunschliste.ts). Ein Set, das rb_sets nicht kennt, beantwortet
@@ -324,7 +318,7 @@ export async function oeffneWunschDetail(arg) {
   // Angaben aus der Zeile sind dann alles, was es gibt.
   api('GET', `/v1/catalog/sets/${encodeURIComponent(set_number)}`).then(d => {
     if (_detail !== arg || !d?.success) return;
-    G('wl-m-det').innerHTML = zeilen(w, d.set);
+    katalogNachtragen(d.set, w);
     zeigeAdresse('wl-m-bricklink', d.set?.bricklink?.url);
     // Mit dem Katalognamen wird die Suche besser („LEGO 75192 Millennium
     // Falcon" statt nur der Nummer) — aber nur, wenn wirklich einer kam.
@@ -352,29 +346,53 @@ function zeigeAdresse(id, url) {
   else     { el.removeAttribute('href'); el.style.display = 'none'; }
 }
 
+const STRICH = '—';
+const zahl = (n) => (n == null ? STRICH : Number(n).toLocaleString(locale()));
+
 /**
  * Die Zeilen — dieselbe Auswahl und Reihenfolge wie im Set-Dialog, abzüglich
  * dessen, was einen Besitz voraussetzt.
  *
- * `katalog` darf null sein: Dann steht das Detail schon da, während der
- * Katalogabruf noch läuft, statt den Dialog leer zu zeigen.
+ * Sie werden GENAU EINMAL je Öffnen gebaut. Die drei Angaben, die erst der
+ * Katalog liefert, tragen eine eigene Kennung und werden später an Ort und
+ * Stelle nachgetragen (katalogNachtragen).
+ *
+ * ── Warum nicht einfach neu zeichnen ───────────────────────────────────────
+ *
+ * Genau das stand hier, und es war Marcos Befund „die Werte werden nicht
+ * gespeichert": In dieser Zeilenliste steckt der ALARMBLOCK. Beim Öffnen lief
+ * ladeAlarm() und füllte Richtung und Schwelle; kurz darauf kam die
+ * Katalogantwort, zeichnete die Zeilen neu — und damit ein frisches, leeres
+ * Alarmfeld. Der gespeicherte Wert war weg, und wer in dieser Sekunde schon
+ * getippt hatte, verlor die Eingabe gleich mit.
  */
-function zeilen(w, katalog) {
-  const strich = '—';
-  const zahl = (n) => (n == null ? strich : Number(n).toLocaleString(locale()));
+function zeilen(w) {
   return [
-    ['detail.year',     w.year != null ? String(w.year) : strich],
-    ['detail.theme',    esc(katalog?.theme_name || strich)],
-    ['detail.pieces',   zahl(katalog?.num_parts ?? w.num_parts)],
-    ['detail.minifigs', zahl(katalog?.minifigs)],
-    ['common.condition', esc(zustandText(w.condition))],
-    ['wishlist.since',  w.created_at ? `📅 ${esc(new Date(w.created_at).toLocaleDateString(locale()))}` : strich],
+    ['detail.year',     w.year != null ? String(w.year) : STRICH, null],
+    ['detail.theme',    STRICH, 'wl-m-theme'],
+    ['detail.pieces',   zahl(w.num_parts), 'wl-m-pieces'],
+    ['detail.minifigs', STRICH, 'wl-m-minifigs'],
+    ['common.condition', esc(zustandText(w.condition)), null],
+    ['wishlist.since',  w.created_at ? `📅 ${esc(new Date(w.created_at).toLocaleDateString(locale()))}` : STRICH, null],
     // Derselbe Block wie im Set-Dialog, nicht ein zweiter: Es ist derselbe
     // Eintrag in price_alerts, am selben Schlüssel (Konto, Set, Zustand).
     // Gefüllt wird er von ladeAlarm() beim Öffnen.
-    ['detail.alert',    alarmBlock(w.set_number, 'wl-m')],
-    ['parts.note_label', esc(w.notiz || strich)],
-  ].map(([k, v]) => detailZeile(t(k), v)).join('');
+    ['detail.alert',    alarmBlock(w.set_number, 'wl-m'), null],
+  ].map(([k, v, id]) => detailZeile(t(k), v, id ? { wertId: id } : {})).join('');
+}
+
+/**
+ * Thema, Teile und Minifiguren nachtragen — als TEXT, nicht als neues Markup.
+ *
+ * textContent und nicht innerHTML: Der Themenname kommt aus dem Katalog und
+ * ist damit fremder Text. So kann er gar nicht erst als Auszeichnung gelesen
+ * werden, und es braucht kein esc() an einer weiteren Stelle.
+ */
+function katalogNachtragen(katalog, w) {
+  const setze = (id, wert) => { const el = G(id); if (el) el.textContent = wert; };
+  setze('wl-m-theme',    katalog?.theme_name || STRICH);
+  setze('wl-m-pieces',   zahl(katalog?.num_parts ?? w.num_parts));
+  setze('wl-m-minifigs', zahl(katalog?.minifigs));
 }
 
 export function schliesseWunschDetail() {

@@ -38,7 +38,6 @@ import { fuerSet } from './preisvergleich';
 export interface Wunsch {
   set_number: string;
   condition: string;
-  notiz: string | null;
   created_at: string;
   /** Wem der Wunsch gehört — im Kontenbaum sieht man fremde mit. */
   user_id: number;
@@ -93,36 +92,32 @@ export async function zustandOder(condition: unknown, userId: number): Promise<s
   return await nutzerStandardZustand(userId);
 }
 
-/** Notiz säubern — leer und NULL sind dasselbe, wie beim Lagerort. */
-export function notizOder(roh: unknown): string | null {
-  const t = String(roh ?? '').trim();
-  if (!t) return null;
-  // 500 Zeichen: dieselbe Grössenordnung wie die übrigen Freitexte im Baum.
-  // Abschneiden statt ablehnen — eine zu lange Notiz ist kein Fehler, den
-  // jemand beheben will, sondern ein Versehen beim Einfügen.
-  return t.slice(0, 500);
-}
-
 /**
- * Einen Wunsch anlegen oder seine Notiz ändern.
+ * Einen Wunsch anlegen.
  *
  * ON CONFLICT statt vorher fragen: Zwei Geräte, die denselben Wunsch
  * gleichzeitig eintragen, sollen nicht einer davon einen Fehler sehen. Das
  * Ergebnis sagt, ob es neu war — die Oberfläche meldet sonst „ist schon
  * drauf" statt „hinzugefügt".
+ *
+ * DO UPDATE SET condition = wishlist.condition ist eine Zuweisung ohne
+ * Wirkung, und sie steht mit Absicht da: Ohne UPDATE-Zweig liefert
+ * RETURNING für eine bestehende Zeile gar nichts, und `war_neu` wäre dann
+ * nicht false, sondern unbekannt. Hier stand vorher die Notiz; seit sie
+ * ausgebaut ist (Migration 0022), gibt es nichts mehr zu ändern.
  */
 export async function legeWunschAn(
-  userId: number, setNumber: string, condition: unknown, notiz: unknown,
+  userId: number, setNumber: string, condition: unknown,
 ): Promise<{ wunsch: Wunsch | null; war_neu: boolean }> {
   const sn = sanitizeSetNumber(setNumber);
   const c  = await zustandOder(condition, userId);
   const r = await db.get(
-    `INSERT INTO wishlist (user_id, set_number, condition, notiz)
-     VALUES ($1,$2,$3,$4)
+    `INSERT INTO wishlist (user_id, set_number, condition)
+     VALUES ($1,$2,$3)
      ON CONFLICT (user_id, set_number, condition) DO UPDATE
-        SET notiz = COALESCE(EXCLUDED.notiz, wishlist.notiz)
+        SET condition = wishlist.condition
      RETURNING (xmax = 0) AS war_neu`,
-    [userId, sn, c, notizOder(notiz)]);
+    [userId, sn, c]);
   const liste = await wuenscheVon([userId], sn);
   return { wunsch: liste.find(w => w.condition === c) ?? null, war_neu: !!r?.war_neu };
 }
@@ -157,7 +152,7 @@ export async function wuenscheVon(userIds: number[], nurSet?: string): Promise<W
   let filter = '';
   if (nurSet) { params.push(sanitizeSetNumber(nurSet)); filter = ' AND w.set_number = $2'; }
   const rows = await db.all(
-    `SELECT w.set_number, w.condition, w.notiz, w.created_at, w.user_id,
+    `SELECT w.set_number, w.condition, w.created_at, w.user_id,
             rb.name, rb.year, rb.theme_id, rb.num_parts,
             rb.set_img_url AS image_url,
             pa.richtung AS alarm_richtung, pa.schwelle AS alarm_schwelle,

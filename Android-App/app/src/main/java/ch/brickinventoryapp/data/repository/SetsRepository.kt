@@ -92,9 +92,9 @@ class SetsRepository @Inject constructor(
     suspend fun getWunschliste(): Result<WunschlisteResponse> =
         safeCall { api.getWunschliste() }
 
-    suspend fun legeWunschAn(setNumber: String, condition: String, notiz: String?,
+    suspend fun legeWunschAn(setNumber: String, condition: String,
                              ownerUserId: Int? = null): Result<WunschAntwort> =
-        safeCall { api.legeWunschAn(WunschRequest(setNumber, condition, notiz, ownerUserId)) }
+        safeCall { api.legeWunschAn(WunschRequest(setNumber, condition, ownerUserId)) }
 
     suspend fun loescheWunsch(setNumber: String, condition: String,
                               ownerUserId: Int? = null): Result<GenericResponse> =

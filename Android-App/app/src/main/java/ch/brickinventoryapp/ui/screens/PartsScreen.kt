@@ -113,9 +113,9 @@ fun PartsScreen(
     val onDeletePart: (String, Int, Int?) -> Unit = { partNumber, colorId, owner ->
         vm.deletePart(partNumber, colorId, owner)
     }
-    val onAddPart: (String, Int, String?, String?, Int, String?, Double?, String?, Int?) -> Unit =
-        { num, colorId, colorName, colorHex, qty, note, unitPrice, cond, owner ->
-            vm.addPart(num, colorId, colorName, colorHex, qty, note, unitPrice, cond, owner)
+    val onAddPart: (String, Int, String?, String?, Int, Double?, String?, Int?) -> Unit =
+        { num, colorId, colorName, colorHex, qty, unitPrice, cond, owner ->
+            vm.addPart(num, colorId, colorName, colorHex, qty, unitPrice, cond, owner)
         }
 
     // Das Feld zeigt, was im Zustand steht. `remember(...)` darauf geschluesselt
@@ -323,9 +323,9 @@ fun PartsScreen(
             householdMembers = householdMembers,
             colors = colors,
             onDismiss = { showAddDialog = false },
-            onAdd = { num, colorId, colorName, colorHex, qty, note, unitPrice, cond, owner ->
+            onAdd = { num, colorId, colorName, colorHex, qty, unitPrice, cond, owner ->
                 showAddDialog = false
-                onAddPart(num, colorId, colorName, colorHex, qty, note, unitPrice, cond, owner)
+                onAddPart(num, colorId, colorName, colorHex, qty, unitPrice, cond, owner)
             },
             defaultCondition = defaultCondition
         )
@@ -371,7 +371,6 @@ fun ManualPartTile(part: PartValuationItem, serverUrl: String, imageLoader: Imag
         besitzer = part.owners,
         preis = part.avgPurchasePrice ?: part.unitPrice ?: part.purchasePrice,
         waehrung = waehrung,
-        notiz = part.note,
         onEdit = onEdit,
         onDelete = onDelete,
         farbe = farbe,

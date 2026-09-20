@@ -535,20 +535,161 @@ const alarmId = (teil) => `${_alarmFeld}-alert-${teil}`;
  */
 export function alarmBlock(sn, praefix = 'm') {
   const p = praefix === 'wl-m' ? 'wl-m' : 'm';
+  // Das Aussehen steht in styles.css unter .alarm-feld, nicht hier: Die feste
+  // Hoehe im style-Attribut hat den gewaehlten Eintrag auf sechs Pixel
+  // zusammengeschnitten (im Browser gemessen, Begruendung dort).
   return `
-      <select id="${p}-alert-cond" style="height:26px;border:1px solid var(--bdr);border-radius:6px;font-size:.8rem;background:var(--sur);color:var(--txt)" data-change="wechsleAlarmZustand" data-arg="${escJs(sn)}">
+      <select id="${p}-alert-cond" class="alarm-feld" data-change="wechsleAlarmZustand" data-arg="${escJs(sn)}">
         <option value="N">${esc(tRaw('common.condition_new'))}</option>
         <option value="U">${esc(tRaw('common.condition_used'))}</option>
       </select>
-      <select id="${p}-alert-dir" style="height:26px;border:1px solid var(--bdr);border-radius:6px;font-size:.8rem;background:var(--sur);color:var(--txt)" data-change="speichereAlarm" data-arg="${escJs(sn)}">
+      <select id="${p}-alert-dir" class="alarm-feld" data-change="speichereAlarm" data-arg="${escJs(sn)}">
         <option value="unter">${esc(tRaw('detail.alert_below'))}</option>
         <option value="ueber">${esc(tRaw('detail.alert_above'))}</option>
       </select>
-      <input type="number" id="${p}-alert-val" min="0" step="0.01" placeholder="—"
-             style="width:80px;text-align:right;border:1px solid var(--bdr);border-radius:6px;padding:2px 6px;font-size:.85rem"
-             data-input="alarmGetippt" data-arg="${escJs(sn)}" />
+      <input type="number" id="${p}-alert-val" class="alarm-feld" min="0" step="0.01" placeholder="—"
+             data-input="alarmGetippt" data-arg="${escJs(sn)}"
+             data-change="speichereAlarm" />
       <span id="${p}-alert-state" style="font-size:.72rem;color:var(--mut)"></span>
     `;
+}
+
+/**
+ * Der Lagerort: ein AUSWAHLFELD, das auch neue Werte annimmt.
+ *
+ * ── Marcos Vorgabe ─────────────────────────────────────────────────────────
+ *
+ * „Das Feld Lagerort soll ein Auswahlfeld sein (analog den Feldern beim
+ * Preisalarm), zusaetzlich sollen dort aber auch neue Werte erfasst werden
+ * koennen."
+ *
+ * ── Warum die datalist das nicht war ───────────────────────────────────────
+ *
+ * Hier stand ein `<input list="lagerorte">`. Das nimmt Getipptes an und kennt
+ * die Vorschlaege — aber es SIEHT aus wie ein Textfeld: kein Pfeil, und in
+ * Chrome klappt die Liste auf einen Klick nicht auf. Wer sie nicht kennt,
+ * findet sie nicht. Die App hat dafuer laengst ein richtiges Aufklappfeld
+ * (ui/screens/LagerortFeld.kt) — die Webapp zieht hiermit nach.
+ *
+ * ── Wie beides zusammengeht ────────────────────────────────────────────────
+ *
+ * Ein `select` mit den bekannten Orten und einem letzten Eintrag „neuer Ort".
+ * Wird der gewaehlt, erscheint das Textfeld daneben. Das Textfeld traegt die
+ * urspruengliche Kennung und die urspruenglichen data-Attribute weiter — es
+ * ist nach wie vor DAS Feld, das gespeichert wird. Eine Wahl aus der Liste
+ * schreibt nur hinein und loest sein change-Ereignis aus; damit laeuft das
+ * Speichern durch DENSELBEN Weg wie eine Eingabe von Hand, und es gibt keine
+ * zweite Fassung der Speicherregel.
+ *
+ * @param id     Kennung des TEXTFELDES (m-storage, setitem-storage) — die
+ *               Auswahl bekommt dieselbe mit dem Zusatz "-sel".
+ * @param wert   Aktueller Lagerort, oder leer.
+ * @param attrs  Weitere Attribute fuers Textfeld (data-change, data-part, …).
+ */
+/**
+ * Wie der Eintrag „neuer Ort" erkannt wird.
+ *
+ * Als data-Attribut und NICHT ueber einen abgemachten Wert: Jeder Wert, den
+ * man sich ausdenkt, kann jemand als Lagerort eintippen — und ein
+ * Steuerzeichen als Notloesung waere schlimmer, HTML ersetzt U+0000 beim
+ * Einlesen durch U+FFFD, der Vergleich ginge still schief. Das Attribut kann
+ * mit keinem Ortsnamen kollidieren.
+ */
+const ORT_NEU_MARKE = 'data-neu="1"';
+const istNeuEintrag = (sel) => sel?.selectedOptions?.[0]?.dataset?.neu === '1';
+let _orte = [];
+
+/**
+ * Den Vorrat merken und bereits gezeichnete Auswahlfelder nachziehen.
+ *
+ * Die Orte kommen ueber das Netz, der Dialog steht aber schon. Ohne das
+ * Nachziehen zeigte die erste Anzeige eine leere Auswahl — und genau dann
+ * schaut man hin.
+ */
+export function setzeOrtVorrat(namen) {
+  _orte = [...new Set((namen || []).filter(Boolean).map(String))]
+    .sort((a, b) => a.localeCompare(b));
+  for (const sel of document.querySelectorAll('select[data-ortauswahl]')) {
+    // Steht die Auswahl gerade auf „neuer Ort", soll sie dort stehen bleiben —
+    // sonst spraenge sie jemandem beim Tippen unter der Hand weg.
+    const warNeu = istNeuEintrag(sel);
+    const vorher = sel.value;
+    sel.innerHTML = ortOptionen(vorher);
+    if (warNeu) sel.selectedIndex = sel.options.length - 1;
+    else if ([...sel.options].some(o => o.value === vorher)) sel.value = vorher;
+  }
+}
+
+function ortOptionen(wert) {
+  const bekannt = _orte.includes(wert);
+  return [
+    `<option value="">${esc(tRaw('detail.storage_none'))}</option>`,
+    // Ein Ort, den der Vorrat (noch) nicht kennt — etwa weil er gerade erst
+    // eingetippt wurde —, muss trotzdem dastehen, sonst spraenge die Anzeige
+    // auf „—" zurueck.
+    ...(wert && !bekannt ? [`<option value="${esc(wert)}" selected>${esc(wert)}</option>`] : []),
+    ..._orte.map(o => `<option value="${esc(o)}"${o === wert ? ' selected' : ''}>${esc(o)}</option>`),
+    // IMMER zuletzt: setzeOrtVorrat() greift ihn ueber options.length - 1 ab.
+    `<option value="" ${ORT_NEU_MARKE}>${esc(tRaw('detail.storage_new'))}</option>`,
+  ].join('');
+}
+
+export function lagerortBlock(id, wert, attrs = '') {
+  const ort = String(wert || '');
+  return `
+      <select id="${id}-sel" class="alarm-feld" data-ortauswahl="1"
+              data-change="lagerortGewaehlt" data-arg="${id}">${ortOptionen(ort)}</select>
+      <input type="text" id="${id}" class="alarm-feld" maxlength="60" style="display:none"
+             placeholder="${esc(tRaw('detail.storage_ph'))}" value="${esc(ort)}"
+             data-blur="lagerortGetippt" ${attrs} />
+    `;
+}
+
+/**
+ * Aus der Liste gewaehlt — oder „neuer Ort".
+ *
+ * @param id Kennung des Textfeldes; die Auswahl heisst id + "-sel".
+ */
+export function lagerortGewaehlt(id) {
+  const sel = G(`${id}-sel`), feld = G(id);
+  if (!sel || !feld) return;
+  if (istNeuEintrag(sel)) {
+    // Leeren, zeigen, Fokus: Wer „neuer Ort" waehlt, will tippen — nicht erst
+    // den alten Namen wegloeschen.
+    feld.value = '';
+    feld.style.display = '';
+    feld.focus();
+    return;
+  }
+  feld.style.display = 'none';
+  feld.value = sel.value;
+  // Das change-Ereignis von Hand: Ein programmatisch gesetzter Wert loest
+  // keines aus. Ueber die Ereignis-Delegation (11-actions.js) landet es bei
+  // genau dem Handler, der auch eine Eingabe von Hand speichert.
+  feld.dispatchEvent(new Event('change', { bubbles: true }));
+}
+
+/**
+ * Ein neuer Ort ist fertig getippt (das Feld wurde verlassen).
+ *
+ * Gespeichert hat das change-Ereignis des Feldes selbst — hier wird nur die
+ * Auswahl daneben nachgezogen, damit der neue Name darin steht und nicht
+ * weiter „neuer Ort" angezeigt wird.
+ *
+ * `this` ist das Feld: Die Delegation ruft den Handler mit dem Element als
+ * Empfaenger auf (11-actions.js, fn.apply(el, args)). Ein data-self="1" waere
+ * hier falsch — dasselbe Attribut gaelte auch fuer das change-Ereignis und
+ * schoebe dem Speichern ein Argument unter.
+ */
+export function lagerortGetippt() {
+  const feld = this;
+  const sel = G(`${feld?.id}-sel`);
+  if (!sel) return;
+  const ort = String(feld.value || '').trim();
+  if (!_orte.includes(ort) && ort) _orte = [..._orte, ort].sort((a, b) => a.localeCompare(b));
+  sel.innerHTML = ortOptionen(ort);
+  sel.value = ort;
+  if (ort) feld.style.display = 'none';
 }
 
 function alarmZustand() {
@@ -764,6 +905,8 @@ export async function ladeOrtAuswahl(besitzer) {
   const d = await api('GET', '/v1/storage/locations' + frage).catch(() => null);
   if (!d?.success) return;
   dl.innerHTML = (d.orte || []).map(o => `<option value="${esc(o.name)}"></option>`).join('');
+  // Dieselbe Liste speist das Auswahlfeld im Detail (lagerortBlock).
+  setzeOrtVorrat((d.orte || []).map(o => o.name));
 }
 
 export async function ladeLagerorte() {
@@ -772,6 +915,7 @@ export async function ladeLagerorte() {
   const orte = d.orte || [];
   const dl = G('lagerorte');
   if (dl) dl.innerHTML = orte.map(o => `<option value="${esc(o.ort)}"></option>`).join('');
+  setzeOrtVorrat(orte.map(o => o.ort));
   // Dieselbe Liste speist die Filter-Auswahlfelder. Sie getrennt zu holen
   // hiesse, dass Vorschlag und Filter kurzzeitig zwei Staende zeigen.
   initStorageSelects(orte);
@@ -826,13 +970,10 @@ export async function openModal(sn){
     ${detailZeile(t('detail.alert'), alarmBlock(sn), {
          zeilenStil: 'align-items:flex-start',
          wertStil: 'display:flex;align-items:center;gap:6px;flex-wrap:wrap;justify-content:flex-end' })}
-    ${detailZeile(t('detail.storage'), `
-      <input type="text" id="m-storage" list="lagerorte" maxlength="60"
-             placeholder="${esc(tRaw('detail.storage_ph'))}"
-             value="${esc(curSet.storage || '')}"
-             data-change="speichereSetLagerort" data-arg="${escJs(sn)}"
-             style="width:150px;text-align:right;border:1px solid var(--bdr);border-radius:6px;padding:2px 6px;font-size:.85rem" />
-    `, { wertStil: 'display:flex;align-items:center;gap:6px' })}
+    ${detailZeile(t('detail.storage'),
+        lagerortBlock('m-storage', curSet.storage,
+                      `data-change="speichereSetLagerort" data-arg="${escJs(sn)}"`),
+        { wertStil: 'display:flex;align-items:center;gap:6px;flex-wrap:wrap;justify-content:flex-end' })}
     ${acqRows}
     ${priceRow}${pnlRow}
     <div id="m-price-chart" style="margin-top:.75rem">
@@ -1156,6 +1297,8 @@ registerActions({
   alarmGetippt,
   wechsleAlarmZustand,
   speichereSetLagerort,
+  lagerortGewaehlt,
+  lagerortGetippt,
   toggleBricksetQueue,
   triggerCsvSync,
 });

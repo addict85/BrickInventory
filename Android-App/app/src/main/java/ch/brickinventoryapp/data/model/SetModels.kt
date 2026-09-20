@@ -477,7 +477,6 @@ data class PendingAlertsResponse(
 data class Wunsch(
     @SerialName("set_number") val setNumber: String = "",
     val condition: String = "N",
-    val notiz: String? = null,
     @SerialName("created_at") val createdAt: String? = null,
     /** Wem der Wunsch gehoert — im Kontenbaum sieht man fremde mit. */
     @SerialName("user_id") val userId: Int = 0,
@@ -524,7 +523,6 @@ data class WunschlisteResponse(
 data class WunschRequest(
     @SerialName("set_number") val setNumber: String,
     val condition: String = "N",
-    val notiz: String? = null,
     @SerialName("owner_user_id") val ownerUserId: Int? = null,
 )
 

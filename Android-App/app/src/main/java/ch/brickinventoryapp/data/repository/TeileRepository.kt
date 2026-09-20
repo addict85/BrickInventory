@@ -156,9 +156,9 @@ class TeileRepository @Inject constructor(
         safeCall { api.getBrickColors() }
 
     suspend fun addPart(partNumber: String, colorId: Int = 0, colorName: String? = null, colorHex: String? = null,
-                         quantity: Int = 1, note: String? = null, unitPrice: Double? = null,
+                         quantity: Int = 1, unitPrice: Double? = null,
                          condition: String? = null, ownerUserId: Int? = null): Result<AddPartResponse> =
-        safeCall { api.addPart(AddPartRequest(partNumber, colorId, colorName, colorHex, quantity, note, unitPrice, condition, ownerUserId)) }
+        safeCall { api.addPart(AddPartRequest(partNumber, colorId, colorName, colorHex, quantity, unitPrice, condition, ownerUserId)) }
 
     /** @param owner Besitzer der Karte; null = eigenes Konto. */
     suspend fun updatePart(partNumber: String, colorId: Int, quantity: Int, unitPrice: Double?, condition: String? = null, owner: Int? = null): Result<GenericResponse> =
@@ -168,10 +168,10 @@ class TeileRepository @Inject constructor(
     suspend fun deletePart(partNumber: String, colorId: Int, owner: Int? = null): Result<GenericResponse> =
         safeCall { api.deletePart(partNumber, colorId, owner) }
 
-    suspend fun addMinifig(figNumber: String, blFigNumber: String? = null, quantity: Int = 1, note: String? = null,
+    suspend fun addMinifig(figNumber: String, blFigNumber: String? = null, quantity: Int = 1,
                            unitPrice: Double? = null, condition: String? = null,
                            ownerUserId: Int? = null): Result<AddMinifigResponse> =
-        safeCall { api.addMinifig(AddMinifigRequest(figNumber, blFigNumber, quantity, note, unitPrice, condition, ownerUserId)) }
+        safeCall { api.addMinifig(AddMinifigRequest(figNumber, blFigNumber, quantity, unitPrice, condition, ownerUserId)) }
 
     /** @param owner Besitzer der Karte; null = eigenes Konto. */
     suspend fun updateMinifig(figNumber: String, quantity: Int, unitPrice: Double?, blFigNumber: String? = null, condition: String? = null, owner: Int? = null): Result<GenericResponse> =

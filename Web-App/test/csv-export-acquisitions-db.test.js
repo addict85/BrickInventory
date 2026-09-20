@@ -295,9 +295,9 @@ test('Teile-Export: dieselbe Regel, dieselbe eine Abfrage',
     ]) {
       await db.run(
         `INSERT INTO parts (user_id, part_number, part_name, color_id, color_name,
-                            quantity, unit_price, condition, note, source)
-         VALUES ($1,$2,$3,$4,$5,$6,$7,'N',$8,'manual')`,
-        [uid, nr, `Teil ${nr}`, farbe, farbname, menge, preis, `Notiz ${nr}-${farbe}`]);
+                            quantity, unit_price, condition, source)
+         VALUES ($1,$2,$3,$4,$5,$6,$7,'N','manual')`,
+        [uid, nr, `Teil ${nr}`, farbe, farbname, menge, preis]);
     }
     await db.run(
       `INSERT INTO part_acquisitions (user_id, part_number, color_id, quantity, unit_price, condition, created_at)
@@ -327,11 +327,6 @@ test('Teile-Export: dieselbe Regel, dieselbe eine Abfrage',
     assert.equal(rot[0].condition, 'N');
     assert.equal(rot[1].condition, 'U');
     assert.match(rot[0].acquired_at, /^\d{4}-\d{2}-\d{2}$/, 'Erfassungen tragen ihr Datum');
-
-    // Die Notiz haengt an der TEILE-Zeile, nicht an der Erfassung — beide
-    // Zeilen derselben Farbe tragen sie deshalb gleich.
-    assert.equal(rot[0].note, 'Notiz 3001-4');
-    assert.equal(rot[1].note, 'Notiz 3001-4');
 
     const ohnePreis = r.find(x => x.part_number === '3002');
     assert.equal(ohnePreis.unit_price, '',

@@ -37,18 +37,18 @@ class ManuelleKachelTest {
         .joinToString("\n") { if (it.trim().startsWith("//") || it.trim().startsWith("*")) "" else it }
 
     @Test
-    fun `beide Kacheln zeigen Preis und Notiz`() {
+    fun `beide Kacheln zeigen den Kaufpreis`() {
+        // Die Notiz stand hier als zweite Zusicherung; sie ist mit Migration
+        // 0022 ausgebaut — Masken und Spalten.
         val teile = code(read("ui/screens/PartsScreen.kt"))
         assert(teile.contains("preis = part.avgPurchasePrice ?: part.unitPrice ?: part.purchasePrice")) {
             "Die Teile-Kachel zeigt den Kaufpreis nicht in der Reihenfolge der Webapp"
         }
-        assert(teile.contains("notiz = part.note")) { "Die Teile-Kachel zeigt die Notiz nicht" }
 
         val figuren = code(read("ui/screens/MinifigsScreen.kt"))
         assert(figuren.contains("preis = fig.avgPurchasePrice ?: fig.unitPrice ?: fig.purchasePrice")) {
             "Die Figuren-Kachel zeigt den Kaufpreis nicht in der Reihenfolge der Webapp"
         }
-        assert(figuren.contains("notiz = fig.note")) { "Die Figuren-Kachel zeigt die Notiz nicht" }
     }
 
     @Test
@@ -61,15 +61,6 @@ class ManuelleKachelTest {
         val treffer = Regex("""@SerialName\("avg_purchase_price"\)""").findAll(modelle).count()
         assert(treffer == 2) {
             "Erwartet: das Feld in PartValuationItem UND FigValuationItem, gefunden $treffer"
-        }
-    }
-
-    @Test
-    fun `die Detailansicht zeigt die Notiz`() {
-        val s = code(read("ui/screens/ManualItemDetailScreen.kt"))
-        assert(s.contains("R.string.detail_note")) {
-            "Die Detailansicht zeigt die Notiz nicht — die Webapp tut es " +
-                "(13-acquisition-modals.js, `if (item.note)`)"
         }
     }
 

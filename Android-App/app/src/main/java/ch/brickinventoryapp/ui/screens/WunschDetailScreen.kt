@@ -132,7 +132,6 @@ fun WunschDetailScreen(
                                            else R.string.condition_new))
                         CatalogDetailRow(stringResource(R.string.wishlist_since),
                             ch.brickinventoryapp.util.fmtDatum(wunsch.createdAt) ?: "—")
-                        CatalogDetailRow(stringResource(R.string.common_note), wunsch.notiz ?: "—")
                     }
                 }
             }

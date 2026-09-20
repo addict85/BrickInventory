@@ -254,7 +254,6 @@
     <string name="detail_section_item">Details</string>
     <string name="detail_set_number">Setnummer</string>
     <string name="detail_added">Erfasst</string>
-    <string name="detail_note">Notiz</string>
     <string name="detail_purchase_price">Kaufpreis</string>
     <string name="detail_price_placeholder">Marktpreis</string>
     <string name="detail_section_market">Marktpreis</string>
@@ -310,7 +309,6 @@
     <string name="common_quantity">Anzahl</string>
     <string name="common_unit_price">Kaufpreis/Stk (optional)</string>
     <string name="common_unit_price_placeholder">Leer = aktueller Marktpreis</string>
-    <string name="common_note">Notiz (optional)</string>
     <string name="common_cancel">Abbrechen</string>
     <string name="common_loading">Laden…</string>
     <string name="detail_price_loading">Preis wird geladen…</string>

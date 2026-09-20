@@ -12,7 +12,6 @@
     <string name="settings_price_condition">Price condition</string>
     <string name="common_condition">Condition</string>
     <string name="detail_edit_prices">Edit prices</string>
-    <string name="detail_note">Note</string>
     <string name="detail_purchase_price">Purchase price</string>
     <string name="detail_price_placeholder">Market price</string>
         <string name="common_back">Back</string>
@@ -329,7 +328,6 @@
     <string name="common_quantity">Quantity</string>
     <string name="common_unit_price">Purchase price/pc (optional)</string>
     <string name="common_unit_price_placeholder">Empty = current market price</string>
-    <string name="common_note">Note (optional)</string>
     <string name="common_loading">Loading…</string>
     <string name="detail_price_loading">Loading price…</string>
     <string name="vm_saved">Saved</string>

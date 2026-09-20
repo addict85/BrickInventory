@@ -20,7 +20,7 @@ import { escHex, CURRENCY, G, ME, api, esc, escJs, escUrl, fmtN, fullUrl, imgUrl
 import { allSets, applySetAggregate, closeModal, curSet, loadGallery, pnlBadge, updateGalleryPrices } from './02-gallery.js';
 import { loadFinance } from './04-finance.js';
 import { deleteManualFig, deleteManualPart, loadManualFigsTable, loadManualParts, manualFigsCache, manualPartsCache, updateManualFig, updateManualPart } from './06-minifigs.js';
-import { confirmDelete, ladeLagerorte, openModal, priceChartSVG, renderMarketRows, ladeOrtAuswahl } from './07-admin.js';
+import { confirmDelete, ladeLagerorte, lagerortBlock, openModal, priceChartSVG, renderMarketRows, ladeOrtAuswahl } from './07-admin.js';
 import { scopeQuery } from './14-scope.js';
 import { blurOnEnter, mQtyDec, mQtyInc, saveManualFigBl } from './11-actions.js';
 
@@ -404,10 +404,6 @@ export async function openManDetail(type, id, colorId) {
     rows.push(detailZeile(t('parts.color_label'), `${swatch}${esc(item.color_name)}`));
   }
 
-  // Note
-  if (item.note) rows.push(detailZeile(t('parts.note_label'), esc(item.note),
-    { wertStil: 'color:var(--mut);font-size:.83rem' }));
-
   // Acquisition summary — compact, like set-detail
   rows.push(detailZeile(t('detail.purchase_price'), `
       ${renderManAcqSummary(acqs, type, id, colorId)}
@@ -585,15 +581,11 @@ export async function openSetItemDetail(type, id, colorId) {
     // Dialogs führt die Konten deshalb selbst — verdichtet aus denselben
     // Zeilen, aus denen die Set-Liste darunter entsteht.
     ladeOrtAuswahl(item?.owner_ids).catch(() => {});
-    zeilen.push(detailZeile(t('detail.storage'), `
-      <input type="text" id="setitem-storage" list="lagerorte" maxlength="60"
-             placeholder="${esc(tRaw('detail.storage_ph'))}"
-             value="${esc(item?.storage || '')}"
-             data-change="speichereTeilLagerort"
-             data-part="${escJs(id)}" data-color="${farbe}"
-             data-owners="${esc((item?.owner_ids || []).join(','))}"
-             style="width:150px;text-align:right;border:1px solid var(--bdr);border-radius:6px;padding:2px 6px;font-size:.85rem" />
-    `, { wertStil: 'display:flex;align-items:center;gap:6px' }));
+    zeilen.push(detailZeile(t('detail.storage'),
+      lagerortBlock('setitem-storage', item?.storage,
+        `data-change="speichereTeilLagerort" data-part="${escJs(id)}" data-color="${farbe}" ` +
+        `data-owners="${esc((item?.owner_ids || []).join(','))}"`),
+      { wertStil: 'display:flex;align-items:center;gap:6px;flex-wrap:wrap;justify-content:flex-end' }));
   }
 
   // ── Die verwendenden Sets ────────────────────────────────────────────────

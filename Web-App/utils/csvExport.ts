@@ -286,7 +286,6 @@ export { csvEinlesen, uebersprungenHinweis };
 function csvGemeinsameFelder(row: any): {
   menge: number;
   preis: number | null;
-  notiz: string | null;
   erfasstAm: string | null;
   zustand: string;
 } {
@@ -297,7 +296,6 @@ function csvGemeinsameFelder(row: any): {
   return {
     menge: parseInt(String(row.quantity || row['Anzahl'] || '1').replace(/[^0-9]/g, '')) || 1,
     preis,
-    notiz: row.note || row['Notiz'] || null,
     erfasstAm: parseCsvDate(row.acquired_at || row['erfassungsdatum']),
     zustand: (row.condition || row['zustand'] || '').trim().toUpperCase(),
   };

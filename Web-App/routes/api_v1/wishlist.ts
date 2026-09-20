@@ -42,12 +42,12 @@ router.get('/wishlist', requireToken, async (req: AuthedRequest, res) => {
  * schreiben.
  */
 router.post('/wishlist', requireToken, async (req: AuthedRequest, res) => {
-  const { set_number, condition, notiz, owner_user_id } = req.body;
+  const { set_number, condition, owner_user_id } = req.body;
   if (!set_number) return sendeFehler(req, res, 400, 'set_number_erforderlich');
   try {
     const owner = await resolveWriteTarget(req.apiUser.user_id, owner_user_id);
     if (owner === null) return sendeFehler(req, res, 403, 'kein_schreibrecht');
-    const { wunsch, war_neu } = await legeWunschAn(owner, set_number, condition, notiz);
+    const { wunsch, war_neu } = await legeWunschAn(owner, set_number, condition);
     res.json({ success: true, war_neu, wunsch });
   } catch (e) { handleRouteError(res, e, undefined, req); }
 });

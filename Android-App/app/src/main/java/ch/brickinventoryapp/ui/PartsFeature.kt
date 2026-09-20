@@ -244,10 +244,10 @@ internal fun MainViewModel.erfassungsMeldung(
 }
 
 internal fun MainViewModel.addPart(partNumber: String, colorId: Int = 0, colorName: String? = null, colorHex: String? = null,
-            quantity: Int = 1, note: String? = null, unitPrice: Double? = null,
+            quantity: Int = 1, unitPrice: Double? = null,
             condition: String? = null, ownerUserId: Int? = null) {
     viewModelScope.launch {
-        when (val r = repo.teile.addPart(partNumber.trim(), colorId, colorName, colorHex, quantity, note, unitPrice, condition, ownerUserId)) {
+        when (val r = repo.teile.addPart(partNumber.trim(), colorId, colorName, colorHex, quantity, unitPrice, condition, ownerUserId)) {
             is Result.Success -> {
                 if (r.data.success) {
                     _snackbar.value = erfassungsMeldung(
@@ -265,10 +265,10 @@ internal fun MainViewModel.addPart(partNumber: String, colorId: Int = 0, colorNa
     }
 }
 
-internal fun MainViewModel.addMinifig(figNumber: String, blFigNumber: String? = null, quantity: Int = 1, note: String? = null,
+internal fun MainViewModel.addMinifig(figNumber: String, blFigNumber: String? = null, quantity: Int = 1,
                unitPrice: Double? = null, condition: String? = null, ownerUserId: Int? = null) {
     viewModelScope.launch {
-        when (val r = repo.teile.addMinifig(figNumber.trim(), blFigNumber, quantity, note, unitPrice, condition, ownerUserId)) {
+        when (val r = repo.teile.addMinifig(figNumber.trim(), blFigNumber, quantity, unitPrice, condition, ownerUserId)) {
             is Result.Success -> {
                 if (r.data.success) {
                     _snackbar.value = erfassungsMeldung(

@@ -223,7 +223,7 @@ async function resolveManualPartPurchase(uid: number, { partNumber, colorId, uni
 // einzeln eingeengt werden, bevor der Validierer ihn ueberhaupt sieht.
 async function addManualPart(uid: number, rawBody: any) {
   // Eingangsvalidierung (utils/validate.ts): vorher wurden part_number,
-  // part_name, color_name, category_name, note und image_url völlig ungeprüft
+  // part_name, color_name, category_name und image_url völlig ungeprüft
   // gespeichert und später per innerHTML gerendert — das war die Server-Hälfte
   // der Stored-XSS-Kette. image_url ist jetzt zwingend https.
   const V = require('../utils/validate');
@@ -232,7 +232,6 @@ async function addManualPart(uid: number, rawBody: any) {
   const color_name  = V.optionalText(rawBody?.color_name, 100);
   const color_hex   = V.optionalHex(rawBody?.color_hex);
   const quantity    = V.acquisitionQuantity(rawBody?.quantity, 1);
-  const note        = V.optionalText(rawBody?.note, 500);
   const condition   = V.optionalCondition(rawBody?.condition);
   // Negative Beträge gingen bis hardened-137 durch und wanderten unverändert
   // in die Summen des Finanzreiters.
@@ -311,9 +310,9 @@ async function addManualPart(uid: number, rawBody: any) {
     || null;
 
   await db.run(`
-    INSERT INTO parts (user_id, set_number, part_number, part_name, color_id, color_name, color_hex, category_name, quantity, image_url, source, unit_price, purchase_price, note, condition)
-    VALUES ($1, NULL, $2, $3, $4, $5, $6, $7, $8, $9, 'manual', $10, $11, $12, $13) ON CONFLICT DO NOTHING`,
-    [uid, part_number, part_name, color_id, color_name, effectiveColorHex, category_name, quantity, image_url, effectiveUnitPrice, effectivePurchasePrice, note, effectiveCondition]
+    INSERT INTO parts (user_id, set_number, part_number, part_name, color_id, color_name, color_hex, category_name, quantity, image_url, source, unit_price, purchase_price, condition)
+    VALUES ($1, NULL, $2, $3, $4, $5, $6, $7, $8, $9, 'manual', $10, $11, $12) ON CONFLICT DO NOTHING`,
+    [uid, part_number, part_name, color_id, color_name, effectiveColorHex, category_name, quantity, image_url, effectiveUnitPrice, effectivePurchasePrice, effectiveCondition]
   );
 
   // Gibt es das Teil schon, hat das INSERT oben nichts getan (ON CONFLICT DO
@@ -420,14 +419,14 @@ async function updateManualPart(uid: number, partNumber: string, colorId: number
 }
 
 // ── POST /api/parts — add a single manual part ────────────────────────────────
-// Body: { part_number, color_id?, color_name?, quantity, note?, unit_price? }
+// Body: { part_number, color_id?, color_name?, quantity, unit_price? }
 
 // ── PUT /api/parts/:partNumber/:colorId — edit quantity / Preis/Stk ──────────
 
 // ── DELETE /api/parts/:partNumber/:colorId — delete a manual part ─────────────
 
 // ── POST /api/parts/import/csv — CSV import of manual parts ──────────────────
-// CSV columns: part_number, color_id (opt), color_name (opt), quantity, unit_price (opt), note (opt)
+// CSV columns: part_number, color_id (opt), color_name (opt), quantity, unit_price (opt)
 import { getBrickColors, lookupPart } from '../clients/rebrickable';
 import { csvGemeinsameFelder, csvImportAntwort, csvZeilenAusAnfrage, toCsv } from '../utils/csvExport';
 import { angemeldeteNutzerId } from '../utils/auth';
@@ -453,10 +452,10 @@ router.post('/import/csv', csvEmpfang.single('file'), async (req: LoggedInReques
 
       const colorId    = parseInt(row.color_id || row['Farb-ID'] || '0') || 0;
       const colorName  = row.color_name  || row['Farbe']     || null;
-      // Menge, Preis, Notiz, Datum und Zustand liest csvGemeinsameFelder — es
-      // sind dieselben Spalten wie beim Minifiguren-Import, und dort ist eine
+      // Menge, Preis, Datum und Zustand liest csvGemeinsameFelder — es sind
+      // dieselben Spalten wie beim Minifiguren-Import, und dort ist eine
       // Behebung schon einmal liegen geblieben (utils/csvExport.ts).
-      const { menge: qty, preis: unitPrice, notiz: note,
+      const { menge: qty, preis: unitPrice,
               erfasstAm: acquiredAt, zustand: rawCondition } = csvGemeinsameFelder(row);
 
       try {
@@ -495,9 +494,9 @@ router.post('/import/csv', csvEmpfang.single('file'), async (req: LoggedInReques
           results.push({ part_number: partNumber, action: 'updated' });
         } else {
           const colorHex = (await db.get('SELECT rgb FROM rb_colors WHERE id=$1', [colorId]).catch(() => null))?.rgb || null;
-          await db.run(`INSERT INTO parts (user_id, set_number, part_number, part_name, color_id, color_name, color_hex, category_name, quantity, image_url, source, unit_price, purchase_price, note, condition)
-            VALUES ($1, NULL, $2, $3, $4, $5, $6, $7, $8, $9, 'manual', $10, $11, $12, $13) ON CONFLICT DO NOTHING`,
-            [uid, partNumber, partName, colorId, colorName, colorHex, categoryName, qty, imageUrl, effectiveUnitPrice, effectivePurchasePrice, note, csvCondition]);
+          await db.run(`INSERT INTO parts (user_id, set_number, part_number, part_name, color_id, color_name, color_hex, category_name, quantity, image_url, source, unit_price, purchase_price, condition)
+            VALUES ($1, NULL, $2, $3, $4, $5, $6, $7, $8, $9, 'manual', $10, $11, $12) ON CONFLICT DO NOTHING`,
+            [uid, partNumber, partName, colorId, colorName, colorHex, categoryName, qty, imageUrl, effectiveUnitPrice, effectivePurchasePrice, csvCondition]);
           await recordAcquisitionForDay('part', uid, [partNumber, colorId],
             // > 0 wie beim Anlegen von Hand: Die 0 ist ein Anzeigewert fuer
             // die Stammzeile, in der Erfassung steht dafuer NULL.
@@ -542,7 +541,6 @@ const PARTS_CSV_SQL = `
          COALESCE(p.color_id, 0) AS color_id,
          COALESCE(p.color_name,'') AS color_name,
          CASE WHEN a.id IS NULL THEN p.unit_price ELSE a.unit_price END AS unit_price,
-         COALESCE(p.note,'') AS note,
          COALESCE(CASE WHEN a.id IS NULL THEN p.condition ELSE a.condition END, 'N') AS condition,
          CASE WHEN a.id IS NULL THEN ''
               ELSE TO_CHAR(a.created_at AT TIME ZONE 'UTC','YYYY-MM-DD') END AS acquired_at
@@ -559,14 +557,14 @@ async function buildPartsCsv(uid: number) {
     ?? await db.all(
       `SELECT part_number, quantity, COALESCE(color_id,0) AS color_id,
               COALESCE(color_name,'') AS color_name, unit_price,
-              COALESCE(note,'') AS note, COALESCE(condition,'N') AS condition,
+              COALESCE(condition,'N') AS condition,
               '' AS acquired_at
          FROM parts WHERE user_id=$1 AND source='manual'
         ORDER BY part_name ASC, part_number ASC`, [uid])
   ).map((r: any) => ({ ...r, unit_price: r.unit_price ?? '' }));
 
   return toCsv(
-    ['part_number', 'quantity', 'color_id', 'color_name', 'unit_price', 'note', 'condition', 'acquired_at'],
+    ['part_number', 'quantity', 'color_id', 'color_name', 'unit_price', 'condition', 'acquired_at'],
     rows
   );
 }

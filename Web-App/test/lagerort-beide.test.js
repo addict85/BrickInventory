@@ -54,8 +54,28 @@ test('beide zeigen den Lagerort dort, wo er hingehört', () => {
   // Eine Minifigur steckt in ihrem Set, und dessen Ort steht im Set-Detail —
   // ein zweiter Ort für dieselbe Sache wäre eine Stelle, an der zwei
   // Antworten auseinanderlaufen können.
-  assert.match(web('public/js/07-admin.js'), /id="m-storage"/, 'Webapp: Set-Detail');
-  assert.match(web('public/js/13-acquisition-modals.js'), /id="setitem-storage"/, 'Webapp: Teil-Detail');
+  // Beide Oberflaechen bauen das Feld aus EINEM Baustein (07-admin.js,
+  // lagerortBlock) — vorher stand die Auszeichnung an jeder Stelle einzeln.
+  assert.match(web('public/js/07-admin.js'), /lagerortBlock\('m-storage'/, 'Webapp: Set-Detail');
+  assert.match(web('public/js/13-acquisition-modals.js'), /lagerortBlock\('setitem-storage'/,
+    'Webapp: Teil-Detail');
+
+  // Marcos Vorgabe: „Das Feld Lagerort soll ein Auswahlfeld sein (analog den
+  // Feldern beim Preisalarm), zusaetzlich sollen dort aber auch neue Werte
+  // erfasst werden koennen." Ein blosses Textfeld mit datalist war genau das
+  // nicht — es sieht aus wie ein Textfeld und klappt in Chrome nicht auf.
+  const baustein = web('public/js/07-admin.js');
+  const block = baustein.slice(baustein.indexOf('export function lagerortBlock'),
+                               baustein.indexOf('export function lagerortGewaehlt'));
+  assert.match(block, /<select/, 'Der Lagerort ist kein Auswahlfeld mehr');
+  assert.match(block, /<input type="text"/, 'Ohne Textfeld lassen sich keine neuen Orte erfassen');
+  assert.match(baustein, /ORT_NEU/, 'Der Eintrag fuer einen NEUEN Ort fehlt in der Auswahl');
+  // Und es gibt genau EINEN Speicherweg: Die Auswahl schreibt ins Textfeld und
+  // loest dessen change-Ereignis aus, statt selbst zum Server zu gehen. Sonst
+  // gaebe es die Speicherregel zweimal — einmal fuer „gewaehlt", einmal fuer
+  // „getippt".
+  assert.match(baustein, /dispatchEvent\(new Event\('change'/,
+    'Die Auswahl speichert an der Eingabe vorbei');
   assert.match(KT_SETDET, /R\.string\.detail_storage/, 'App: Set-Detail');
   assert.match(KT_DIALOG, /LagerortFeld\(/, 'App: Teil-Detail');
 

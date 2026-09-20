@@ -27,7 +27,6 @@ data class AddPartRequest(
     @SerialName("color_name") val colorName: String? = null,
     @SerialName("color_hex") val colorHex: String? = null,
     val quantity: Int = 1,
-    val note: String? = null,
     @SerialName("unit_price") val unitPrice: Double? = null,
     val condition: String? = null, // "N" = New/Neu, "U" = Used/Gebraucht
     /**
@@ -63,7 +62,6 @@ data class AddMinifigRequest(
     @SerialName("fig_number") val figNumber: String,
     @SerialName("bl_fig_number") val blFigNumber: String? = null,
     val quantity: Int = 1,
-    val note: String? = null,
     @SerialName("unit_price") val unitPrice: Double? = null,
     val condition: String? = null, // "N" = New/Neu, "U" = Used/Gebraucht
     /**

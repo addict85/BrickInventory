@@ -327,7 +327,6 @@ function renderManualFigsTable() {
           <span class="qbadge">×${f.quantity}</span>${condBadge}${ownerBadges(f)}
         </div>
         <div style="font-weight:700;font-size:.82rem;color:var(--b600);margin-top:3px">${priceStr}</div>
-        ${f.note ? `<div class="man-tile-note">${esc(f.note)}</div>` : ''}
       </div>`;
     }).join('')}
   </div>`;
@@ -437,7 +436,7 @@ async function importFigsCsv() {
 
 G('btn-fig-csv-template').onclick = (e) => {
   e.preventDefault();
-  const csv = 'fig_number,bl_fig_number,quantity,unit_price,note,condition,acquired_at\nfig-007357,sw0001,1,12.50,Luke Skywalker,N,2024-01-15\nfig-009314,,2,,,U,\n';
+  const csv = 'fig_number,bl_fig_number,quantity,unit_price,condition,acquired_at\nfig-007357,sw0001,1,12.50,N,2024-01-15\nfig-009314,,2,,U,\n';
   const a = document.createElement('a');
   a.href = 'data:text/csv;charset=utf-8,' + encodeURIComponent(csv);
   a.download = 'minifigs-template.csv';
@@ -516,7 +515,6 @@ function renderManualParts() {
           <span class="qbadge">×${p.quantity}</span>${condBadge}${ownerBadges(p)}
         </div>
         <div style="font-weight:700;font-size:.82rem;color:var(--b600);margin-top:3px">${priceStr}</div>
-        ${p.note ? `<div class="man-tile-note">${esc(p.note)}</div>` : ''}
       </div>`;
     }).join('')}
   </div>`;
@@ -600,7 +598,6 @@ G('btn-add-part')?.addEventListener('click', async () => {
     part_number: num, color_id: colorId, color_name: colorName, color_hex: colorHex,
     quantity: parseInt(G('ap-qty-inline')?.value)||1,
     unit_price: (v => { const n = parseFloat(v); return String(v).trim() !== '' && !isNaN(n) ? n : null; })(G('ap-price-inline')?.value ?? ''),
-    note: G('ap-note-inline')?.value||null,
     condition: G('ap-condition')?.value || 'N',
     owner_user_id: selectedOwner('ap-owner'),
   });
@@ -610,7 +607,7 @@ G('btn-add-part')?.addEventListener('click', async () => {
     res.style.color='var(--g700)';
     res.textContent=`✅ ${esc(d.part_number)} ${d.action==='added'?t('common.added'):t('common.updated')}`
       + (hinweisT ? ` — ${hinweisT}` : '');
-    G('ap-num-inline').value=''; G('ap-qty-inline').value='1'; G('ap-price-inline').value=''; G('ap-note-inline').value='';
+    G('ap-num-inline').value=''; G('ap-qty-inline').value='1'; G('ap-price-inline').value='';
     if(colorSel) colorSel.selectedIndex=0;
     loadManualParts();
     // Siehe die Figuren-Erfassung darueber: ein Satz braucht laenger als ein
@@ -659,7 +656,7 @@ G('btn-set-csv-template').onclick = (e) => {
 
 G('btn-csv-template').onclick = (e) => {
   e.preventDefault();
-  const csv = 'part_number,quantity,color_id,color_name,unit_price,note,condition,acquired_at\n3001,5,4,Red,,Spare parts,N,2024-01-15\n3003,2,0,White,0.15,,U,\n';
+  const csv = 'part_number,quantity,color_id,color_name,unit_price,condition,acquired_at\n3001,5,4,Red,,N,2024-01-15\n3003,2,0,White,0.15,U,\n';
   const a = document.createElement('a');
   a.href = 'data:text/csv;charset=utf-8,' + encodeURIComponent(csv);
   a.download = 'parts-template.csv';

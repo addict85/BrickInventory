@@ -77,7 +77,6 @@ const FIGS_CSV_SQL = `
          COALESCE(f.bl_fig_number,'') AS bl_fig_number,
          CASE WHEN a.id IS NULL THEN f.quantity   ELSE a.quantity   END AS quantity,
          CASE WHEN a.id IS NULL THEN f.unit_price ELSE a.unit_price END AS unit_price,
-         COALESCE(f.note,'') AS note,
          COALESCE(CASE WHEN a.id IS NULL THEN f.condition ELSE a.condition END, 'N') AS condition,
          CASE WHEN a.id IS NULL THEN ''
               ELSE TO_CHAR(a.created_at AT TIME ZONE 'UTC','YYYY-MM-DD') END AS acquired_at
@@ -94,7 +93,7 @@ async function buildFigsCsv(uid: number) {
   const acqRows = (await db.all(FIGS_CSV_SQL, [uid]).catch(() => null)
     ?? await db.all(
       `SELECT fig_number, COALESCE(bl_fig_number,'') AS bl_fig_number, quantity, unit_price,
-              COALESCE(note,'') AS note, COALESCE(condition,'N') AS condition, '' AS acquired_at
+              COALESCE(condition,'N') AS condition, '' AS acquired_at
          FROM minifigs WHERE user_id=$1 AND source='manual'
         ORDER BY fig_name ASC, fig_number ASC`, [uid])
   ).map((r: any) => ({ ...r, unit_price: r.unit_price ?? '' }));
@@ -103,7 +102,7 @@ async function buildFigsCsv(uid: number) {
   // (COALESCE auf '' beziehungsweise 'N' steht oben im SQL) — das frueher hier
   // stehende zweite Mapping war damit eine zweite Fassung derselben Regel.
   return toCsv(
-    ['fig_number', 'bl_fig_number', 'quantity', 'unit_price', 'note', 'condition', 'acquired_at'],
+    ['fig_number', 'bl_fig_number', 'quantity', 'unit_price', 'condition', 'acquired_at'],
     acqRows);
 }
 
@@ -183,7 +182,6 @@ async function addManualFig(uid: number, body: any) {
   const num       = V.requireItemNumber(body?.fig_number, 'fig_number');
   const blNum     = body?.bl_fig_number ? V.requireItemNumber(body.bl_fig_number, 'bl_fig_number') : null;
   const quantity  = V.acquisitionQuantity(body?.quantity, 1);
-  const note      = V.optionalText(body?.note, 500);
   const condition = V.optionalCondition(body?.condition);
   const unit_price = V.optionalPrice(body?.unit_price, 'Stückpreis');
   // Erfassungsdatum — erlaubt mehrere Erfassungen derselben Figur zu
@@ -229,9 +227,9 @@ async function addManualFig(uid: number, body: any) {
   const { effectiveUnitPrice, effectivePurchasePrice, erfassungsPreis, effectiveCondition, preisAusZustand } =
     await resolveManualFigPurchase(uid, { figNumber: num, blFigNumber: blNum, unitPrice: unit_price, condition });
   await db.run(`
-    INSERT INTO minifigs (user_id, set_number, fig_number, bl_fig_number, fig_name, quantity, image_url, source, unit_price, purchase_price, note, condition)
-    VALUES ($1, NULL, $2, $3, $4, $5, $6, 'manual', $7, $8, $9, $10) ON CONFLICT DO NOTHING`,
-    [uid, num, blNum, fig_name, quantity, image_url, effectiveUnitPrice, effectivePurchasePrice, note, effectiveCondition]);
+    INSERT INTO minifigs (user_id, set_number, fig_number, bl_fig_number, fig_name, quantity, image_url, source, unit_price, purchase_price, condition)
+    VALUES ($1, NULL, $2, $3, $4, $5, $6, 'manual', $7, $8, $9) ON CONFLICT DO NOTHING`,
+    [uid, num, blNum, fig_name, quantity, image_url, effectiveUnitPrice, effectivePurchasePrice, effectiveCondition]);
   // Record acquisition — mit dem tatsächlich verwendeten Kaufpreis (Marktpreis
   // bzw. Teile-Schätzung, falls kein Preis eingegeben wurde), damit die
   // Erfassungshistorie und die PnL-Berechnung stimmen.
@@ -363,9 +361,9 @@ router.post('/import/csv', csvEmpfang.single('file'), async (req: LoggedInReques
       if (!figNumber) continue;
 
       const blFigNumber = (row.bl_fig_number || row['BrickLink-Nr'] || '').trim() || null;
-      // Menge, Preis, Notiz, Datum und Zustand aus der gemeinsamen Fassung —
-      // siehe den Absatz unten, warum das hier besonders zaehlt.
-      const { menge: qty, preis: unitPrice, notiz: note,
+      // Menge, Preis, Datum und Zustand aus der gemeinsamen Fassung — siehe
+      // den Absatz unten, warum das hier besonders zaehlt.
+      const { menge: qty, preis: unitPrice,
               erfasstAm: acquiredAt, zustand: rawCondition } = csvGemeinsameFelder(row);
       // ── Warum das Datum hier eine eigene Geschichte hat ──────────────────
       //
@@ -407,8 +405,8 @@ router.post('/import/csv', csvEmpfang.single('file'), async (req: LoggedInReques
           results.push({ fig_number: figNumber, action: 'updated' });
         } else {
           await db.run(
-            "INSERT INTO minifigs (user_id, set_number, fig_number, bl_fig_number, fig_name, quantity, image_url, source, unit_price, purchase_price, note, condition) VALUES ($1,NULL,$2,$3,$4,$5,$6,'manual',$7,$8,$9,$10) ON CONFLICT DO NOTHING",
-            [uid, figNumber, blFigNumber, figName, qty, imageUrl, effectiveUnitPrice, effectivePurchasePrice, note, effectiveCondition]);
+            "INSERT INTO minifigs (user_id, set_number, fig_number, bl_fig_number, fig_name, quantity, image_url, source, unit_price, purchase_price, condition) VALUES ($1,NULL,$2,$3,$4,$5,$6,'manual',$7,$8,$9) ON CONFLICT DO NOTHING",
+            [uid, figNumber, blFigNumber, figName, qty, imageUrl, effectiveUnitPrice, effectivePurchasePrice, effectiveCondition]);
           await recordAcquisitionForDay('fig', uid, [figNumber],
             { quantity: qty, price: erfassungsPreis, condition: effectiveCondition||'N', createdAt: acqDate }
           ).catch(logAndContinue(`minifigs:import ${figNumber} (neu)`));
