@@ -279,7 +279,13 @@ private fun WunschErfassenDialog(
                     value = nummer,
                     onValueChange = { nummer = NumericInput.setNumber(it) },
                     label = { Text(stringResource(R.string.gallery_set_number)) },
+                    placeholder = { Text(stringResource(R.string.gallery_set_number_placeholder)) },
                     singleLine = true,
+                    shape = Formen.knopf,
+                    // Dieselbe Tastatur wie im AddSetDialog. Ein Zahlenfeld
+                    // ohne Tastaturwahl oeffnet die Buchstabentastatur — die
+                    // Regel dazu steht in NumericInputTest.
+                    keyboardOptions = NumericInput.ganzzahlTastatur(),
                     modifier = Modifier.fillMaxWidth().focusRequester(nummerFokus),
                 )
                 ZustandsWahl(zustand) { zustand = it }
