@@ -103,9 +103,17 @@ internal fun MainViewModel.loescheWunsch(setNumber: String, zustand: String, bes
  * Danach wird auch die Galerie neu geladen: Das Set ist jetzt dort, und wer
  * hinueberwechselt, soll es sehen und nicht eine Ansicht von vorhin.
  */
-internal fun MainViewModel.uebernimmWunsch(setNumber: String, zustand: String, besitzer: Int?) {
+internal fun MainViewModel.uebernimmWunsch(
+    setNumber: String, zustand: String, besitzer: Int?,
+    anzahl: Int = 1, kaufpreisRoh: String = "", erfasstAls: String? = null,
+) {
     viewModelScope.launch {
-        when (val r = repo.sets.uebernimmWunsch(setNumber, zustand, besitzer)) {
+        // Dieselbe Zahlenerkennung wie beim Preisalarm: Komma wie Punkt, und
+        // leer heisst „kein Kaufpreis" — der Server setzt dann den Marktpreis
+        // ein, genau wie auf dem normalen Erfassungsweg.
+        val preis = ch.brickinventoryapp.alarm.Alarmeingabe.zahl(kaufpreisRoh)
+        when (val r = repo.sets.uebernimmWunsch(setNumber, zustand, anzahl, preis,
+                                                erfasstAls, besitzer)) {
             is Result.Success -> {
                 _snackbar.value = text(
                     if (r.data.action == "exists") R.string.wishlist_taken_existing

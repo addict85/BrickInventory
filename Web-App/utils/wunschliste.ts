@@ -203,10 +203,29 @@ export async function wuenscheVon(userIds: number[], nurSet?: string): Promise<W
  */
 export async function uebernimm(
   leserId: number, besitzerId: number, setNumber: string, condition: unknown,
-  eingabe: { quantity?: unknown; purchase_price?: unknown } = {},
+  eingabe: { quantity?: unknown; purchase_price?: unknown; condition?: unknown } = {},
 ): Promise<{ action: string; set_number: string }> {
   const sn = sanitizeSetNumber(setNumber);
-  const zustand = await zustandOder(condition, besitzerId);
+
+  // ── ZWEI Zustaende, und sie sind nicht dasselbe ──────────────────────────
+  //
+  // `condition` (Pfad) ist der Zustand des WUNSCHES — der Schluessel der
+  // Zeile, die verschwindet. `eingabe.condition` ist der Zustand, in dem das
+  // Set tatsaechlich ERFASST wird.
+  //
+  // Sie fallen auseinander, sobald jemand etwas anderes kauft, als er sich
+  // gewuenscht hat: Wunsch „gebraucht", gefunden wurde ein neues. Dann muss
+  // der gebrauchte Wunsch weg (den hat man erfuellt) und das Set als neu in
+  // die Galerie (das hat man gekauft).
+  //
+  // Vorher gab es nur einen Wert fuer beides. Das war stillschweigend falsch:
+  // In der Finanzansicht stuende die Erfassung in der falschen Gruppe —
+  // dieselbe Verwechslung, die in addSet() schon einmal einen Gebrauchtpreis
+  // als Neuzugang verbucht hat.
+  const wunschZustand = await zustandOder(condition, besitzerId);
+  const zustand = eingabe.condition == null
+    ? wunschZustand
+    : await zustandOder(eingabe.condition, besitzerId);
 
   // Schon im Blickfeld? Dann NICHT die Menge erhoehen — dieselbe Regel wie
   // beim Erfassen (utils/setAdd.ts), damit sie nicht davon abhaengt, ueber
@@ -218,7 +237,9 @@ export async function uebernimm(
     : await addSet(sn, V.acquisitionQuantity(eingabe.quantity ?? 1), besitzerId, null,
                    V.optionalPrice(eingabe.purchase_price, 'Kaufpreis'), zustand);
 
-  await loescheWunsch(besitzerId, sn, zustand);
-  await loescheAlarm(besitzerId, sn, zustand);
+  // Geraeumt wird nach dem WUNSCH-Zustand, nicht nach dem erfassten: Es geht
+  // um die Zeile, die man erfuellt hat.
+  await loescheWunsch(besitzerId, sn, wunschZustand);
+  await loescheAlarm(besitzerId, sn, wunschZustand);
   return ergebnis as { action: string; set_number: string };
 }

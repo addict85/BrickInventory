@@ -100,10 +100,12 @@ class SetsRepository @Inject constructor(
                               ownerUserId: Int? = null): Result<GenericResponse> =
         safeCall { api.loescheWunsch(setNumber, condition, ownerUserId) }
 
-    suspend fun uebernimmWunsch(setNumber: String, condition: String,
+    suspend fun uebernimmWunsch(setNumber: String, condition: String, quantity: Int = 1,
+                                purchasePrice: Double? = null, erfasstAls: String? = null,
                                 ownerUserId: Int? = null): Result<WunschUebernahmeResponse> =
         safeCall { api.uebernimmWunsch(setNumber, condition,
-                                       WunschUebernahmeRequest(ownerUserId = ownerUserId)) }
+                                       WunschUebernahmeRequest(quantity, purchasePrice,
+                                                               erfasstAls, ownerUserId)) }
 
     suspend fun deleteSet(setNumber: String): Result<GenericResponse> =
         safeCall { api.deleteSet(setNumber) }

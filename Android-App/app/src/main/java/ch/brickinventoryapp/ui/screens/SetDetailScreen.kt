@@ -179,6 +179,7 @@ fun SetDetailScreen(
             setDetailDetailsSection(set, setNumber, vm, acquisitions, currency, ::fmtDate, onNavigateToAcqMgmt)
             setDetailAlarmSection(setNumber, detailState.preisalarme, currency, vm)
             setDetailPriceSection(set, detailState, price, history, pnlPct, currency, isBrick, ::fmtPrice)
+            setDetailKaufSection(set)
             setDetailInstructionsSection(
                 set, detailState, serverUrl, onOpenPdf,
                 onAnleitungWaehlen = { anleitungAuswahl.launch(ch.brickinventoryapp.ui.ANLEITUNG_TYPEN) },

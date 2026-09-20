@@ -9,7 +9,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import ch.brickinventoryapp.R
 import ch.brickinventoryapp.data.model.Wunsch
@@ -22,6 +21,7 @@ import ch.brickinventoryapp.ui.setzeWunschEingabe
 import ch.brickinventoryapp.ui.setzeWunschNotiz
 import ch.brickinventoryapp.ui.setzeWunschZustand
 import ch.brickinventoryapp.ui.uebernimmWunsch
+import ch.brickinventoryapp.ui.theme.Abstaende
 import ch.brickinventoryapp.util.resolveThumbUrl
 
 /**
@@ -51,33 +51,112 @@ fun WunschlisteScreen(
     // CDN — dieselbe Regel wie in Galerie, Teilen und Finanzen.
     val appState by vm.state.collectAsStateWithLifecycle()
 
+    // Der Wunsch, ueber dem der Uebernahme-Dialog gerade steht.
+    var uebernahme by remember { mutableStateOf<Wunsch?>(null) }
+
     LaunchedEffect(Unit) { vm.ladeWunschliste() }
 
-    Column(Modifier.fillMaxSize().padding(horizontal = 12.dp)) {
+    Column(Modifier.fillMaxSize().padding(horizontal = Abstaende.mittel)) {
         WunschErfassen(vm, zustand.eingabe, zustand.zustand, zustand.notiz, onScan)
 
         when {
             zustand.laedt && zustand.wuensche.isEmpty() ->
-                Box(Modifier.fillMaxWidth().padding(32.dp), Alignment.Center) { CircularProgressIndicator() }
+                Box(Modifier.fillMaxWidth().padding(Abstaende.riesig), Alignment.Center) { CircularProgressIndicator() }
 
             zustand.wuensche.isEmpty() ->
-                Box(Modifier.fillMaxWidth().padding(32.dp), Alignment.Center) {
+                Box(Modifier.fillMaxWidth().padding(Abstaende.riesig), Alignment.Center) {
                     Text(stringResource(R.string.wishlist_empty),
                          color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
 
-            else -> LazyColumn(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            else -> LazyColumn(verticalArrangement = Arrangement.spacedBy(Abstaende.klein)) {
                 // Schluessel aus Nummer UND Zustand: Dasselbe Set kann zweimal
                 // dastehen (neu und gebraucht). Nur die Nummer waere doppelt
                 // und Compose verloere die Zuordnung beim Neuzeichnen.
                 items(zustand.wuensche, key = { "${it.setNumber}|${it.condition}|${it.userId}" }) { w ->
                     WunschZeile(w, appState.serverUrl, imageLoader,
-                        onUebernehmen = { vm.uebernimmWunsch(w.setNumber, w.condition, w.userId) },
+                        onUebernehmen = { uebernahme = w },
                         onLoeschen    = { vm.loescheWunsch(w.setNumber, w.condition, w.userId) })
                 }
             }
         }
     }
+
+    uebernahme?.let { w ->
+        UebernahmeDialog(
+            wunsch = w,
+            onDismiss = { uebernahme = null },
+            onUebernehmen = { anzahl, preis, zustandWahl ->
+                vm.uebernimmWunsch(w.setNumber, w.condition, w.userId, anzahl, preis, zustandWahl)
+                uebernahme = null
+            },
+        )
+    }
+}
+
+/**
+ * Anzahl, Kaufpreis und Zustand vor der Uebernahme.
+ *
+ * ── Marcos Nachtrag ─────────────────────────────────────────────────────────
+ *
+ * „gewisse Inhalte wie zB. Preis und Zustand, Anzahl muessen beim Uebernehmen
+ * angepasst werden." Vorher ging die Uebernahme wortlos mit Anzahl 1, ohne
+ * Kaufpreis und im Zustand des Wunsches durch — fuer ein Set, das man gerade
+ * gekauft hat, ist keins davon zuverlaessig richtig.
+ *
+ * Dieselben drei Felder in derselben Reihenfolge wie im Katalog-Dialog
+ * (CatalogAddDialog): Wer das eine kennt, kennt das andere.
+ *
+ * Der Zustand ist mit dem des WUNSCHES vorbelegt — der haeufigste Fall —,
+ * laesst sich aber aendern. Welcher Wunsch dadurch erfuellt ist, bleibt davon
+ * unberuehrt; das entscheidet der Server.
+ */
+@Composable
+private fun UebernahmeDialog(
+    wunsch: Wunsch,
+    onDismiss: () -> Unit,
+    onUebernehmen: (Int, String, String) -> Unit,
+) {
+    var anzahl  by rememberSaveable { mutableStateOf("1") }
+    var preis   by rememberSaveable { mutableStateOf("") }
+    var zustand by rememberSaveable { mutableStateOf(wunsch.condition) }
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text(stringResource(R.string.wishlist_take), fontWeight = FontWeight.Bold) },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(Abstaende.mittel)) {
+                Text(wunsch.name ?: wunsch.setNumber, style = MaterialTheme.typography.bodyMedium)
+                Row(horizontalArrangement = Arrangement.spacedBy(Abstaende.klein)) {
+                    OutlinedTextField(
+                        value = anzahl,
+                        onValueChange = { anzahl = it.filter(Char::isDigit) },
+                        label = { Text(stringResource(R.string.common_quantity)) },
+                        singleLine = true,
+                        keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(
+                            keyboardType = androidx.compose.ui.text.input.KeyboardType.Number),
+                        modifier = Modifier.weight(1f),
+                    )
+                    OutlinedTextField(
+                        value = preis,
+                        onValueChange = { preis = it },
+                        label = { Text(stringResource(R.string.gallery_purchase_price)) },
+                        singleLine = true,
+                        keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(
+                            keyboardType = androidx.compose.ui.text.input.KeyboardType.Decimal),
+                        modifier = Modifier.weight(1f),
+                    )
+                }
+                ZustandsWahl(zustand) { zustand = it }
+            }
+        },
+        confirmButton = {
+            Button(onClick = { onUebernehmen(anzahl.toIntOrNull() ?: 1, preis, zustand) }) {
+                Text(stringResource(R.string.wishlist_take))
+            }
+        },
+        dismissButton = { TextButton(onClick = onDismiss) { Text(stringResource(R.string.common_cancel)) } },
+    )
 }
 
 /**
@@ -91,10 +170,10 @@ fun WunschlisteScreen(
 private fun WunschErfassen(
     vm: MainViewModel, eingabe: String, zustandWahl: String, notiz: String, onScan: () -> Unit,
 ) {
-    Card(Modifier.fillMaxWidth().padding(vertical = 8.dp)) {
-        Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+    Card(Modifier.fillMaxWidth().padding(vertical = Abstaende.klein)) {
+        Column(Modifier.padding(Abstaende.mittel), verticalArrangement = Arrangement.spacedBy(Abstaende.klein)) {
             Text(stringResource(R.string.wishlist_add_title), fontWeight = FontWeight.Bold)
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp),
+            Row(horizontalArrangement = Arrangement.spacedBy(Abstaende.klein),
                 verticalAlignment = Alignment.CenterVertically) {
                 OutlinedTextField(
                     value = eingabe,
@@ -110,14 +189,14 @@ private fun WunschErfassen(
                     Text("📷")
                 }
             }
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp),
+            Row(horizontalArrangement = Arrangement.spacedBy(Abstaende.klein),
                 verticalAlignment = Alignment.CenterVertically) {
                 ZustandsWahl(zustandWahl) { vm.setzeWunschZustand(it) }
             }
             OutlinedTextField(
                 value = notiz,
                 onValueChange = { vm.setzeWunschNotiz(it) },
-                label = { Text(stringResource(R.string.wishlist_note)) },
+                label = { Text(stringResource(R.string.common_note)) },
                 singleLine = true,
                 modifier = Modifier.fillMaxWidth(),
             )
@@ -132,7 +211,7 @@ private fun WunschErfassen(
 /** Neu oder gebraucht — zwei Knoepfe statt einer Auswahlliste, wie im Baum ueblich. */
 @Composable
 private fun ZustandsWahl(gewaehlt: String, onWahl: (String) -> Unit) {
-    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+    Row(horizontalArrangement = Arrangement.spacedBy(Abstaende.klein)) {
         FilterChip(selected = gewaehlt == "N", onClick = { onWahl("N") },
                    label = { Text(stringResource(R.string.condition_new)) })
         FilterChip(selected = gewaehlt == "U", onClick = { onWahl("U") },
@@ -146,14 +225,14 @@ private fun WunschZeile(
     onUebernehmen: () -> Unit, onLoeschen: () -> Unit,
 ) {
     Card(Modifier.fillMaxWidth()) {
-        Column(Modifier.padding(10.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-            Row(horizontalArrangement = Arrangement.spacedBy(10.dp),
+        Column(Modifier.padding(Abstaende.mittel), verticalArrangement = Arrangement.spacedBy(Abstaende.winzig)) {
+            Row(horizontalArrangement = Arrangement.spacedBy(Abstaende.klein),
                 verticalAlignment = Alignment.CenterVertically) {
                 coil.compose.AsyncImage(
                     model = resolveThumbUrl(serverUrl, null, w.imageUrl),
                     contentDescription = null,
                     imageLoader = imageLoader,
-                    modifier = Modifier.size(56.dp),
+                    modifier = Modifier.size(Abstaende.riesig + Abstaende.sehrGross),
                 )
                 Column(Modifier.weight(1f)) {
                     // Kein Name heisst: Der Katalog kennt das Set nicht. Der
@@ -176,7 +255,7 @@ private fun WunschZeile(
                     }
                 }
             }
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp),
+            Row(horizontalArrangement = Arrangement.spacedBy(Abstaende.klein),
                 verticalAlignment = Alignment.CenterVertically) {
                 w.alarm?.let { a ->
                     AssistChip(onClick = {}, label = {

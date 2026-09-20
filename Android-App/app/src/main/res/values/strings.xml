@@ -628,7 +628,6 @@
     <string name="nav_wishlist">Wishlist</string>
     <string name="wishlist_add_title">Add a wish</string>
     <string name="wishlist_add_submit">Add to wishlist</string>
-    <string name="wishlist_note">Note (optional)</string>
     <string name="wishlist_empty">No wishes yet.</string>
     <string name="wishlist_owned">already owned</string>
     <string name="wishlist_added">Added to the wishlist</string>
@@ -639,4 +638,5 @@
     <string name="wishlist_taken_existing">Was already in the gallery — wish fulfilled</string>
     <string name="wishlist_need_number">Please enter a set number</string>
     <string name="wishlist_threshold">Threshold (optional)</string>
+    <string name="detail_compare">📊 Compare prices</string>
 </resources>

@@ -23,6 +23,9 @@ import { selectedOwner, loadGallery, loadStats } from './02-gallery.js';
 /** Die zuletzt geladene Liste — für die Knöpfe, die auf eine Zeile zeigen. */
 let _wuensche = [];
 
+/** Der Eintrag, ueber den der Uebernahme-Dialog gerade steht. */
+let _uebernahme = null;
+
 function zustandText(c) {
   return t(c === 'U' ? 'common.condition_used' : 'common.condition_new');
 }
@@ -177,28 +180,75 @@ export async function wunschLoeschen(arg) {
 }
 
 /**
- * In die Galerie übernehmen.
+ * In die Galerie übernehmen — Schritt 1: fragen.
+ *
+ * Marcos Nachtrag: „gewisse Inhalte wie zB. Preis und Zustand, Anzahl müssen
+ * beim Übernehmen angepasst werden." Vorher ging die Übernahme wortlos mit
+ * Anzahl 1, ohne Kaufpreis und im Zustand des Wunsches durch — für ein Set,
+ * das man gerade gekauft hat, ist keins davon zuverlässig richtig.
+ *
+ * Der Zustand ist mit dem des WUNSCHES vorbelegt, weil das der häufigste
+ * Fall ist; änderbar, weil der zweithäufigste ist, dass man etwas anderes
+ * gefunden hat.
+ */
+export function wunschUebernehmen(arg) {
+  const { set_number, condition } = zerlege(arg);
+  if (!set_number) return;
+  _uebernahme = arg;
+  const w = _wuensche.find(x => x.set_number === set_number && x.condition === condition);
+  G('wl-take-tit').textContent = w?.name || set_number;
+  G('wl-take-qty').value   = '1';
+  G('wl-take-price').value = '';
+  G('wl-take-cond').value  = condition === 'U' ? 'U' : 'N';
+  G('wl-take-modal').classList.add('open');
+}
+
+export function schliesseUebernahme() {
+  G('wl-take-modal').classList.remove('open');
+  _uebernahme = null;
+}
+
+/**
+ * Schritt 2: tun.
  *
  * Die Regel steht am Server (utils/wunschliste.ts): Er ruft addSet() — die
  * eine Wahrheit fürs Erfassen — und räumt danach Eintrag UND Preisalarm weg.
  *
+ * Der ZUSTAND geht zweimal mit, und das ist Absicht: Im Pfad steht der des
+ * Wunsches (die Zeile, die verschwindet), im Rumpf der, in dem erfasst wird.
+ * Sie fallen auseinander, sobald jemand etwas anderes kauft, als er sich
+ * gewünscht hat.
+ *
  * Danach werden Galerie und Kennzahlen neu geladen: Das Set ist jetzt dort,
- * und wer nach der Übernahme hinüberwechselt, soll es sehen und nicht eine
- * Ansicht von vorhin.
+ * und wer hinüberwechselt, soll es sehen und nicht eine Ansicht von vorhin.
  */
-export async function wunschUebernehmen(arg) {
-  const { set_number, condition, owner_user_id } = zerlege(arg);
-  if (!set_number) return;
-  const d = await api('POST',
-    `/v1/wishlist/${encodeURIComponent(set_number)}/${encodeURIComponent(condition)}/uebernehmen`,
-    { owner_user_id });
-  if (!d?.success) return;
-  // 'exists' heisst: Das Set war schon im Blickfeld. Der Wunsch ist trotzdem
-  // erfüllt und verschwindet — er stünde sonst für etwas, das man längst hat.
-  toast(tRaw(d.action === 'exists' ? 'wishlist.taken_existing' : 'wishlist.taken'), 'ok');
-  await ladeWunschliste();
-  await loadGallery();
-  await loadStats();
+export async function bestaetigeUebernahme() {
+  if (!_uebernahme) return;
+  const { set_number, condition, owner_user_id } = zerlege(_uebernahme);
+  const roh = (G('wl-take-price').value || '').trim();
+  const preis = parseFloat(roh.replace(',', '.'));
+  await knopfBesetzt(G('wl-take-ok'), async () => {
+    const d = await api('POST',
+      `/v1/wishlist/${encodeURIComponent(set_number)}/${encodeURIComponent(condition)}/uebernehmen`,
+      {
+        owner_user_id,
+        quantity:  parseInt(G('wl-take-qty').value) || 1,
+        // Leer heisst „kein Kaufpreis" — der Server setzt dann den
+        // Marktpreis ein, genau wie auf dem normalen Erfassungsweg.
+        purchase_price: roh && !isNaN(preis) ? preis : undefined,
+        condition: G('wl-take-cond').value,
+      });
+    if (!d?.success) return;
+    schliesseUebernahme();
+    // 'exists' heisst: Das Set war schon im Blickfeld. Der Wunsch ist
+    // trotzdem erfüllt und verschwindet — er stünde sonst für etwas, das man
+    // längst hat.
+    toast(tRaw(d.action === 'exists' ? 'wishlist.taken_existing' : 'wishlist.taken'), 'ok');
+    await ladeWunschliste();
+    await loadGallery();
+    await loadStats();
+  });
 }
 
-registerActions({ wunschHinzufuegen, katalogAufWunschliste, wunschLoeschen, wunschUebernehmen });
+registerActions({ wunschHinzufuegen, katalogAufWunschliste, wunschLoeschen,
+                  wunschUebernehmen, schliesseUebernahme, bestaetigeUebernahme });

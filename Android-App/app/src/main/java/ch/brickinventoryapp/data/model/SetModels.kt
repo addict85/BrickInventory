@@ -81,7 +81,28 @@ data class SetItem(
     /** Mengengewichteter Kaufpreis über die Erfassungen (Server rechnet ihn). */
     @SerialName("avg_purchase_price") val avgPurchasePrice: Double? = null,
     @SerialName("used_count") val usedCount: Int? = null,
-    val instructions: List<Instruction> = emptyList()
+    val instructions: List<Instruction> = emptyList(),
+    /**
+     * BrickLink-Verweis, FERTIG vom Server aufgeloest (utils/bricklinkLink.ts).
+     *
+     * Dieselbe Begruendung wie beim Katalog (BrickLinkRef dort): Die Adresse
+     * laesst sich NICHT aus der Setnummer herleiten — Gear und Buecher liegen
+     * unter einem anderen Parameter, Sammelminifiguren unter einer ganz
+     * anderen Nummer. Eine im Klienten gebaute Adresse waere fuer diese Faelle
+     * still falsch.
+     */
+    val bricklink: BrickLinkRef? = null,
+    /**
+     * Preisvergleich, ebenfalls fertig vom Server (utils/preisvergleich.ts).
+     *
+     * Nicht hier gebaut, obwohl es „nur eine Suchadresse" ist: Sie stand
+     * bisher an genau EINER Stelle im Baum (ComparisonScreen), und vier
+     * daraus zu machen waere der Anfang von vier Wahrheiten.
+     *
+     * Leer heisst „keine Adresse" — dann faellt der Knopf weg, statt ins
+     * Leere zu fuehren.
+     */
+    @SerialName("preisvergleich_url") val preisvergleichUrl: String? = null
 ) {
     /**
      * Der Kaufpreis, der ANGEZEIGT wird — mengengewichtet (Nachtrag 76).
@@ -537,5 +558,16 @@ data class WunschUebernahmeResponse(
 data class WunschUebernahmeRequest(
     val quantity: Int = 1,
     @SerialName("purchase_price") val purchasePrice: Double? = null,
+    /**
+     * Der Zustand, in dem ERFASST wird — nicht der des Wunsches.
+     *
+     * Die beiden sind nicht dasselbe: Wer sich ein gebrauchtes gewuenscht und
+     * ein neues gefunden hat, erfasst ein neues, und erfuellt ist trotzdem der
+     * gebrauchte Wunsch. Welcher Wunsch verschwindet, entscheidet der Pfad;
+     * dieses Feld entscheidet nur, was in der Galerie steht.
+     *
+     * null = so lassen wie der Wunsch.
+     */
+    val condition: String? = null,
     @SerialName("owner_user_id") val ownerUserId: Int? = null,
 )

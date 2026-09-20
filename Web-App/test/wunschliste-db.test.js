@@ -228,5 +228,39 @@ test('Wunschliste gegen echte Datenbank', { concurrency: 1 }, async (t) => {
     assert.equal((await W.wuenscheVon([U.opa], '75192-1')).length, 0);
   });
 
+  await t.test('Anzahl, Kaufpreis und Zustand lassen sich bei der Übernahme setzen', async () => {
+    // Marcos Nachtrag: „gewisse Inhalte wie zB. Preis und Zustand, Anzahl
+    // müssen beim Übernehmen angepasst werden."
+    await W.legeWunschAn(U.opa, '10497-1', 'N', null);
+    await W.uebernimm(U.opa, U.opa, '10497-1', 'N',
+      { quantity: 3, purchase_price: 88.5, condition: 'U' });
+
+    const set = await db.get(
+      'SELECT quantity, purchase_price FROM sets WHERE user_id=$1 AND set_number=$2',
+      [U.opa, '10497-1']);
+    assert.equal(set.quantity, 3, 'Die Anzahl wurde nicht übernommen');
+    assert.equal(parseFloat(set.purchase_price), 88.5, 'Der Kaufpreis wurde nicht übernommen');
+
+    const erf = await db.get(
+      `SELECT condition FROM set_acquisitions WHERE user_id=$1 AND set_number=$2`,
+      [U.opa, '10497-1']);
+    assert.equal(erf.condition, 'U',
+      'Die Erfassung steht im Zustand des WUNSCHES statt in dem, was gekauft wurde');
+  });
+
+  await t.test('der Wunsch verschwindet nach SEINEM Zustand, nicht nach dem gekauften', async () => {
+    // Der Fall, der vorher still falsch war: Wunsch „gebraucht", gekauft
+    // wurde ein neues. Dann muss der GEBRAUCHTE Wunsch weg — den hat man
+    // erfuellt — und das Set als neu in die Galerie.
+    await W.legeWunschAn(U.enkel, '21034-1', 'U', null);
+    await W.legeWunschAn(U.enkel, '21034-1', 'N', 'der andere Wunsch');
+
+    await W.uebernimm(U.enkel, U.enkel, '21034-1', 'U', { condition: 'N' });
+
+    const uebrig = (await W.wuenscheVon([U.enkel], '21034-1')).map(w => w.condition);
+    assert.deepEqual(uebrig, ['N'],
+      'Geräumt wurde nach dem GEKAUFTEN Zustand — damit trifft es den falschen Wunsch');
+  });
+
   await t.test('Verbindungen schliessen', async () => { await db.pool.end(); });
 });

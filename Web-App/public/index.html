@@ -1085,8 +1085,52 @@
     <img id="m-img" alt="" class="mimg" style="cursor:zoom-in" data-orig="/assets/set-placeholder.svg" data-click="openImageLightboxFromEl" />
     <div id="m-det"></div>
     <div id="m-instr" class="il"></div>
-    <div class="mfooter">
+    <!--
+      Die zwei Kaufadressen (Marcos Nachtrag). Beide kommen als fertige
+      Adresse vom Server (utils/bricklinkLink.ts, utils/preisvergleich.ts) —
+      genau wie im Katalog-Dialog, und aus demselben Grund: Die
+      BrickLink-Adresse laesst sich NICHT aus der Setnummer herleiten (Gear,
+      Buecher und Sammelminifiguren liegen anders), und der Preisvergleich
+      stuende sonst an vier Stellen im Baum.
+
+      Beide sind versteckt, bis das Detail sie fuellt: Ein Knopf, der ins
+      Leere fuehrt, ist schlechter als keiner.
+    -->
+    <div class="mfooter" style="justify-content:space-between;flex-wrap:wrap;gap:8px">
       <button class="btn bd" id="btn-md" aria-label="Set löschen" data-i18n="detail.delete" data-i18n-attr="aria-label">🗑️</button>
+      <div style="display:flex;gap:8px;flex-wrap:wrap">
+        <a class="btn bs" id="m-vergleich" href="#" target="_blank" rel="noopener" style="display:none" data-i18n="detail.compare">📊 Preisvergleich</a>
+        <a class="btn bs" id="m-bricklink" href="#" target="_blank" rel="noopener" style="display:none" data-i18n="catalog.buy_bricklink">🛒 Auf BrickLink kaufen</a>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!--
+  Uebernahme eines Wunsches in die Galerie.
+
+  Marcos Nachtrag: „gewisse Inhalte wie zB. Preis und Zustand, Anzahl muessen
+  beim Uebernehmen angepasst werden." Dieselben drei Felder wie beim Erfassen
+  eines Sets, in derselben Reihenfolge — wer das eine kennt, kennt das andere.
+
+  Der Zustand ist mit dem des WUNSCHES vorbelegt, laesst sich aber aendern:
+  Wer sich ein gebrauchtes gewuenscht und ein neues gefunden hat, erfasst ein
+  neues. Der Wunsch, der dadurch erfuellt ist, bleibt der gebrauchte — das
+  entscheidet der Server (utils/wunschliste.ts).
+-->
+<div class="ovl" id="wl-take-modal" role="dialog" aria-modal="true">
+  <div class="modal" style="max-width:420px">
+    <div class="mhd">
+      <div class="mtit" id="wl-take-tit">—</div>
+      <button class="btn bs btn-sm" data-click="schliesseUebernahme" aria-label="Schliessen" data-i18n="common.close" data-i18n-attr="aria-label">✕</button>
+    </div>
+    <div style="display:flex;gap:8px;align-items:flex-end;flex-wrap:wrap;padding:12px">
+      <div class="fg" style="max-width:82px"><label for="wl-take-qty" data-i18n="gallery.add.qty">Anzahl</label><input type="number" id="wl-take-qty" value="1" min="1" /></div>
+      <div class="fg" style="max-width:120px"><label for="wl-take-price" data-i18n="gallery.add.price">Kaufpreis (opt.)</label><input type="number" id="wl-take-price" step="0.01" min="0" placeholder="—" /></div>
+      <div class="fg" style="max-width:110px"><label for="wl-take-cond" data-i18n="common.condition">Zustand</label><select id="wl-take-cond" style="padding:.45rem .7rem;border:1px solid var(--bdr);border-radius:var(--rad);background:var(--sur);color:var(--txt);font-size:.875rem"><option value="N" data-i18n="common.condition_new">Neu</option><option value="U" data-i18n="common.condition_used">Gebraucht</option></select></div>
+    </div>
+    <div class="mfooter">
+      <button class="btn bp" id="wl-take-ok" data-click="bestaetigeUebernahme" data-i18n="wishlist.take">➕ In die Galerie</button>
     </div>
   </div>
 </div>

@@ -53,6 +53,7 @@ window.I18N_EN = {
   'wishlist.taken_existing': 'Was already in the gallery — wish fulfilled',
   'catalog.add_again':         '➕ Add again',
   'catalog.buy_bricklink':     '🛒 Buy on BrickLink',
+  'detail.compare':            '📊 Compare prices',
   'catalog.search_bricklink':  '🔍 Search on BrickLink',
   'catalog.search_bricklink_hint': 'BrickLink lists this item under a different number (e.g. collectible minifigures) — the search shows the matches.',
   'nav.parts':             'Parts',

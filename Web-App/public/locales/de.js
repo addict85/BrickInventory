@@ -53,6 +53,7 @@ window.I18N_DE = {
   'wishlist.taken_existing': 'War schon in der Galerie — Wunsch erfüllt',
   'catalog.add_again':         '➕ Erneut aufnehmen',
   'catalog.buy_bricklink':     '🛒 Auf BrickLink kaufen',
+  'detail.compare':            '📊 Preisvergleich',
   'catalog.search_bricklink':  '🔍 Auf BrickLink suchen',
   'catalog.search_bricklink_hint': 'BrickLink führt diesen Artikel unter einer anderen Nummer (z. B. Sammelminifiguren) — die Suche zeigt die Treffer.',
   'nav.parts':             'Teile',

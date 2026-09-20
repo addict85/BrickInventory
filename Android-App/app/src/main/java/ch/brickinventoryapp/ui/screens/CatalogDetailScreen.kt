@@ -172,7 +172,7 @@ fun CatalogDetailScreen(
                     shape = Formen.leiste
                 ) {
                     Text("⭐")
-                    Spacer(Modifier.width(6.dp))
+                    Spacer(Modifier.width(Abstaende.winzig))
                     Text(stringResource(R.string.wishlist_add_submit))
                 }
                 val bl = detail.bricklink
@@ -344,13 +344,13 @@ private fun WunschDialog(
         onDismissRequest = onDismiss,
         title = { Text(stringResource(R.string.wishlist_add_submit), fontWeight = FontWeight.Bold) },
         text = {
-            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+            Column(verticalArrangement = Arrangement.spacedBy(Abstaende.mittel)) {
                 Text(setName, style = MaterialTheme.typography.bodyMedium)
                 Zustandszeile(zustand = zustand, onZustand = { zustand = it })
                 HorizontalDivider()
                 Text(stringResource(R.string.detail_alert),
                      style = MaterialTheme.typography.labelLarge)
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp),
+                Row(horizontalArrangement = Arrangement.spacedBy(Abstaende.klein),
                     verticalAlignment = Alignment.CenterVertically) {
                     FilterChip(selected = richtung == "unter", onClick = { richtung = "unter" },
                                label = { Text(stringResource(R.string.detail_alert_below)) })

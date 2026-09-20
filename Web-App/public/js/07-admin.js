@@ -810,6 +810,7 @@ export async function openModal(sn){
   G('m-qty').value=curSet.quantity;
 
   renderInstructions(curSet.instructions||[], sn);
+  zeigeKaufadressen(curSet);
   G('set-modal').classList.add('open');
   ladeAlarm(sn).catch(() => {});
   // Die Auswahlliste gehört dem BESITZER des Sets, nicht dem Betrachter —
@@ -1139,3 +1140,43 @@ export function set_jobPollTimer(v) { jobPollTimer = v; }
  * @param {any} v
  */
 export function set_lastImportAt(v) { _lastImportAt = v; }
+
+/**
+ * Die zwei Kaufadressen im Set-Detail: BrickLink und Preisvergleich.
+ *
+ * ── Marcos Nachtrag ─────────────────────────────────────────────────────────
+ *
+ * „Bitte auf dem Detail-Dialog sowohl den BrickLink-Link analog dem Katalog
+ * als auch die URL des Preisvergleichs als Buttons einbauen."
+ *
+ * ── Warum hier nichts gebaut wird ───────────────────────────────────────────
+ *
+ * Beide Adressen kommen FERTIG vom Server. „Analog dem Katalog" ist wörtlich
+ * zu nehmen: Der Katalog lässt die BrickLink-Adresse seit jeher auflösen,
+ * weil sie sich NICHT aus der Setnummer herleiten lässt — Gear und Bücher
+ * liegen unter einem anderen Parameter, Sammelminifiguren unter einer ganz
+ * anderen Nummer. Eine hier gebaute Adresse wäre für diese Fälle falsch, und
+ * zwar stillschweigend.
+ *
+ * Der Preisvergleich kommt aus demselben Grund von dort: Seine Adresse stand
+ * bisher an genau einer Stelle im Baum; vier daraus zu machen wäre der Anfang
+ * von vier Wahrheiten. test/kaufadressen.test.js wacht darüber.
+ *
+ * ── Warum sie sich verstecken können ────────────────────────────────────────
+ *
+ * Ein älterer Server liefert die Felder nicht, und für eine Sammelminifigur
+ * gibt es unter Umständen keine BrickLink-Adresse. Ein Knopf, der ins Leere
+ * führt, ist schlechter als keiner.
+ */
+function zeigeKaufadressen(set) {
+  const paare = [
+    ['m-bricklink', set?.bricklink?.url],
+    ['m-vergleich', set?.preisvergleich_url],
+  ];
+  for (const [id, url] of paare) {
+    const el = G(id);
+    if (!el) continue;
+    if (url) { el.href = url; el.style.display = ''; }
+    else     { el.removeAttribute('href'); el.style.display = 'none'; }
+  }
+}
