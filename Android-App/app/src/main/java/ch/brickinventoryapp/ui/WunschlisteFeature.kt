@@ -142,7 +142,7 @@ internal fun MainViewModel.wuenscheMitAlarm(
     besitzer: Int? = null,
 ) {
     viewModelScope.launch {
-        when (val r = repo.sets.legeWunschAn(setNumber, zustand, null, besitzer)) {
+        when (val r = repo.sets.legeWunschAn(setNumber, zustand, besitzer)) {
             is Result.Error -> { _snackbar.value = text(R.string.vm_error, meldung(r)); return@launch }
             is Result.Success -> {
                 // Dieselbe Zahlenerkennung wie beim Preisalarm im Set-Detail:

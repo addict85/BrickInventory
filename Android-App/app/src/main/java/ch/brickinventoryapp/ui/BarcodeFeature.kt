@@ -284,7 +284,7 @@ internal fun MainViewModel.confirmAddBarcode(setNum: String, purchasePrice: Doub
         // Der Zustand kommt aus dem Dialog (condition), nicht aus dem
         // Wunschlisten-Kasten: Wer gerade einen Karton abscannt, entscheidet
         // dort, ob es der neue oder der gebrauchte sein soll.
-        legeWunschAn(setNum, if (condition == "U") "U" else "N", null, ownerUserId)
+        legeWunschAn(setNum, if (condition == "U") "U" else "N", ownerUserId)
         cancelBarcode()
         return
     }
