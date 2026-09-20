@@ -3,11 +3,16 @@ package ch.brickinventoryapp.ui.screens
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.QrCodeScanner
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -18,11 +23,10 @@ import ch.brickinventoryapp.ui.ladeWunschliste
 import ch.brickinventoryapp.ui.legeWunschAn
 import ch.brickinventoryapp.ui.loescheWunsch
 import ch.brickinventoryapp.ui.setScannerSource
-import ch.brickinventoryapp.ui.setzeWunschEingabe
-import ch.brickinventoryapp.ui.setzeWunschNotiz
-import ch.brickinventoryapp.ui.setzeWunschZustand
 import ch.brickinventoryapp.ui.uebernimmWunsch
 import ch.brickinventoryapp.ui.theme.Abstaende
+import ch.brickinventoryapp.ui.theme.Formen
+import ch.brickinventoryapp.ui.theme.LocalIsBrickTheme
 import ch.brickinventoryapp.util.NumericInput
 import ch.brickinventoryapp.util.resolveThumbUrl
 
@@ -71,34 +75,78 @@ fun WunschlisteScreen(
     // passt dort nicht hinein (nicht Parcelable), eine Zeichenkette schon —
     // und die Zeile dazu steht ohnehin in der geladenen Liste.
     var uebernahmeSchluessel by rememberSaveable { mutableStateOf<String?>(null) }
+    var maskeOffen by rememberSaveable { mutableStateOf(false) }
     val uebernahme = zustand.wuensche.firstOrNull { wunschSchluessel(it) == uebernahmeSchluessel }
 
     LaunchedEffect(Unit) { vm.ladeWunschliste() }
 
-    Column(Modifier.fillMaxSize().padding(horizontal = Abstaende.mittel)) {
-        WunschErfassen(vm, zustand.eingabe, zustand.zustand, zustand.notiz, onScan)
+    Box(Modifier.fillMaxSize()) {
+        Column(Modifier.fillMaxSize().padding(horizontal = Abstaende.mittel)) {
+            when {
+                zustand.laedt && zustand.wuensche.isEmpty() ->
+                    Box(Modifier.fillMaxWidth().padding(Abstaende.riesig), Alignment.Center) { CircularProgressIndicator() }
 
-        when {
-            zustand.laedt && zustand.wuensche.isEmpty() ->
-                Box(Modifier.fillMaxWidth().padding(Abstaende.riesig), Alignment.Center) { CircularProgressIndicator() }
+                zustand.wuensche.isEmpty() ->
+                    Box(Modifier.fillMaxWidth().padding(Abstaende.riesig), Alignment.Center) {
+                        Text(stringResource(R.string.wishlist_empty),
+                             color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    }
 
-            zustand.wuensche.isEmpty() ->
-                Box(Modifier.fillMaxWidth().padding(Abstaende.riesig), Alignment.Center) {
-                    Text(stringResource(R.string.wishlist_empty),
-                         color = MaterialTheme.colorScheme.onSurfaceVariant)
-                }
-
-            else -> LazyColumn(verticalArrangement = Arrangement.spacedBy(Abstaende.klein)) {
-                // Schluessel aus Nummer UND Zustand: Dasselbe Set kann zweimal
-                // dastehen (neu und gebraucht). Nur die Nummer waere doppelt
-                // und Compose verloere die Zuordnung beim Neuzeichnen.
-                items(zustand.wuensche, key = ::wunschSchluessel) { w ->
-                    WunschZeile(w, appState.serverUrl, imageLoader,
-                        onUebernehmen = { uebernahmeSchluessel = wunschSchluessel(w) },
-                        onLoeschen    = { vm.loescheWunsch(w.setNumber, w.condition, w.userId) })
+                else -> LazyColumn(
+                    verticalArrangement = Arrangement.spacedBy(Abstaende.klein),
+                    // Platz fuer die Knoepfe: Ohne ihn verdeckt der grosse die
+                    // letzte Zeile — dieselbe Vorsorge wie in der Galerie.
+                    contentPadding = PaddingValues(bottom = Abstaende.riesig + Abstaende.riesig),
+                ) {
+                    items(zustand.wuensche, key = ::wunschSchluessel) { w ->
+                        WunschZeile(w, appState.serverUrl, imageLoader,
+                            onUebernehmen = { uebernahmeSchluessel = wunschSchluessel(w) },
+                            onLoeschen    = { vm.loescheWunsch(w.setNumber, w.condition, w.userId) })
+                    }
                 }
             }
         }
+
+        // ── Zwei Knoepfe, genau wie in der Galerie ───────────────────────────
+        //
+        // Marcos Vorgabe: „2 Buttons in der Liste, die die Erfassungsmaske
+        // entweder mit Barcode oder Setnummern oeffnet."
+        //
+        // Dieselbe Anordnung, dieselben Symbole, dieselbe Groessenstaffelung
+        // wie in GalleryScreen — der kleine scannt, der grosse oeffnet die
+        // Maske. Wer das eine kennt, kennt das andere; genau darum geht es bei
+        // „gleich wie bei den Sets".
+        Column(
+            modifier = Modifier.align(Alignment.BottomEnd)
+                .padding(end = Abstaende.gross, bottom = Abstaende.gross),
+            horizontalAlignment = Alignment.End,
+            verticalArrangement = Arrangement.spacedBy(Abstaende.klein),
+        ) {
+            SmallFloatingActionButton(
+                onClick = { vm.setScannerSource("wishlist"); onScan() },
+                containerColor = MaterialTheme.colorScheme.secondaryContainer,
+                contentColor = MaterialTheme.colorScheme.onSecondaryContainer,
+                shape = Formen.leiste,
+            ) { Icon(Icons.Default.QrCodeScanner, stringResource(R.string.gallery_scan_barcode)) }
+            FloatingActionButton(
+                onClick = { maskeOffen = true },
+                containerColor = if (LocalIsBrickTheme.current) MaterialTheme.colorScheme.secondary else MaterialTheme.colorScheme.primary,
+                contentColor = if (LocalIsBrickTheme.current) MaterialTheme.colorScheme.onSecondary else MaterialTheme.colorScheme.onPrimary,
+                shape = Formen.fab,
+            ) { Icon(Icons.Default.Add, stringResource(R.string.wishlist_add_title)) }
+        }
+    }
+
+    if (maskeOffen) {
+        WunschErfassenDialog(
+            householdMembers = appState.householdMembers,
+            defaultCondition = appState.userDefaultCondition ?: "N",
+            onDismiss = { maskeOffen = false },
+            onAnlegen = { nummer, zustandWahl, notiz, besitzer ->
+                vm.legeWunschAn(nummer, zustandWahl, notiz, besitzer)
+                maskeOffen = false
+            },
+        )
     }
 
     uebernahme?.let { w ->
@@ -182,52 +230,84 @@ private fun UebernahmeDialog(
 }
 
 /**
- * Der Erfassungskasten — „analog den Sets".
+ * Die Erfassungsmaske — dieselbe Rolle wie AddSetDialog in der Galerie.
  *
- * Nummer, Zustand, Notiz und der Scanner. Anzahl und Kaufpreis fehlen
- * bewusst: Ein Wunsch hat weder das eine noch das andere; beides wird erst
- * bei der Uebernahme in die Galerie gefragt.
+ * ── Warum ein Dialog und keine Karte mehr ───────────────────────────────────
+ *
+ * Marcos Vorgabe: „gleich wie bei den Sets". Dort steht kein Formular
+ * dauerhaft ueber der Liste; es oeffnet sich auf Knopfdruck und ist danach
+ * wieder weg. Die Karte kostete auf jedem Bildschirm Platz, auch wenn gerade
+ * niemand etwas erfassen wollte.
+ *
+ * ── Was drin steht und was nicht ────────────────────────────────────────────
+ *
+ * Nummer, Zustand, Notiz, Konto — Anzahl und Kaufpreis fehlen bewusst: Ein
+ * Wunsch hat weder das eine noch das andere. Beides wird erst bei der
+ * Uebernahme in die Galerie gefragt.
+ *
+ * Der Cursor steht sofort im Nummernfeld, wie im AddSetDialog seit Nachtrag
+ * 113 — und aus demselben Grund die kurze Pause davor: Beim ersten Durchlauf
+ * ist das Feld noch nicht angeordnet, ein requestFocus() liefe ins Leere.
  */
 @Composable
-private fun WunschErfassen(
-    vm: MainViewModel, eingabe: String, zustandWahl: String, notiz: String, onScan: () -> Unit,
+private fun WunschErfassenDialog(
+    householdMembers: List<ch.brickinventoryapp.data.model.HouseholdMember>,
+    defaultCondition: String,
+    onDismiss: () -> Unit,
+    onAnlegen: (String, String, String, Int?) -> Unit,
 ) {
-    Card(Modifier.fillMaxWidth().padding(vertical = Abstaende.klein)) {
-        Column(Modifier.padding(Abstaende.mittel), verticalArrangement = Arrangement.spacedBy(Abstaende.klein)) {
-            Text(stringResource(R.string.wishlist_add_title), fontWeight = FontWeight.Bold)
-            Row(horizontalArrangement = Arrangement.spacedBy(Abstaende.klein),
-                verticalAlignment = Alignment.CenterVertically) {
+    var nummer  by rememberSaveable { mutableStateOf("") }
+    var zustand by rememberSaveable { mutableStateOf(defaultCondition) }
+    var notiz   by rememberSaveable { mutableStateOf("") }
+    // Vorbelegt mit dem eigenen Konto — wer nichts waehlt, wuenscht fuer sich.
+    var besitzer by remember(householdMembers) {
+        mutableStateOf(householdMembers.firstOrNull { it.isSelf }?.id)
+    }
+
+    val nummerFokus = remember { FocusRequester() }
+    LaunchedEffect(Unit) {
+        kotlinx.coroutines.delay(120)
+        try { nummerFokus.requestFocus() } catch (_: Exception) { /* Dialog schon zu */ }
+    }
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text(stringResource(R.string.wishlist_add_title), fontWeight = FontWeight.Bold) },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(Abstaende.mittel)) {
                 OutlinedTextField(
-                    value = eingabe,
-                    onValueChange = { vm.setzeWunschEingabe(it) },
+                    value = nummer,
+                    onValueChange = { nummer = NumericInput.setNumber(it) },
                     label = { Text(stringResource(R.string.gallery_set_number)) },
                     singleLine = true,
-                    modifier = Modifier.weight(1f),
+                    modifier = Modifier.fillMaxWidth().focusRequester(nummerFokus),
                 )
-                // Der Scanner ist derselbe wie in der Galerie — nur die
-                // Herkunft unterscheidet sich, und die entscheidet am Ende,
-                // wohin die Nummer geht (ui/BarcodeFeature.kt).
-                IconButton(onClick = { vm.setScannerSource("wishlist"); onScan() }) {
-                    Text("📷")
-                }
+                ZustandsWahl(zustand) { zustand = it }
+                OutlinedTextField(
+                    value = notiz,
+                    onValueChange = { notiz = it },
+                    label = { Text(stringResource(R.string.common_note)) },
+                    singleLine = true,
+                    modifier = Modifier.fillMaxWidth(),
+                )
+                // Derselbe Waehler wie beim Erfassen eines Sets. Bei einem
+                // Einzelkonto blendet er sich selbst aus (members.size < 2).
+                OwnerPicker(householdMembers, besitzer, { besitzer = it })
             }
-            Row(horizontalArrangement = Arrangement.spacedBy(Abstaende.klein),
-                verticalAlignment = Alignment.CenterVertically) {
-                ZustandsWahl(zustandWahl) { vm.setzeWunschZustand(it) }
-            }
-            OutlinedTextField(
-                value = notiz,
-                onValueChange = { vm.setzeWunschNotiz(it) },
-                label = { Text(stringResource(R.string.common_note)) },
-                singleLine = true,
-                modifier = Modifier.fillMaxWidth(),
-            )
+        },
+        confirmButton = {
             Button(
-                onClick = { vm.legeWunschAn(eingabe, zustandWahl, notiz) },
-                modifier = Modifier.align(Alignment.End),
+                onClick = {
+                    // Nur mitschicken, wenn es ueberhaupt eine Wahl gab —
+                    // sonst schreibt der Server auf das eigene Konto.
+                    onAnlegen(nummer, zustand, notiz,
+                              if (householdMembers.size > 1) besitzer else null)
+                },
+                enabled = nummer.isNotBlank(),
             ) { Text(stringResource(R.string.wishlist_add_submit)) }
-        }
-    }
+        },
+        dismissButton = { TextButton(onClick = onDismiss) { Text(stringResource(R.string.common_cancel)) } },
+    )
 }
 
 /** Neu oder gebraucht — zwei Knoepfe statt einer Auswahlliste, wie im Baum ueblich. */
