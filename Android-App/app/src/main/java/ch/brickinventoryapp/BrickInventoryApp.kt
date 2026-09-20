@@ -1,14 +1,34 @@
 package ch.brickinventoryapp
 
 import android.app.Application
+import androidx.work.Configuration
 import dagger.hilt.android.HiltAndroidApp
 import javax.inject.Inject
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 
 @HiltAndroidApp
-class BrickInventoryApp : Application() {
+class BrickInventoryApp : Application(), Configuration.Provider {
     @Inject lateinit var preferencesManager: ch.brickinventoryapp.data.PreferencesManager
+
+    /**
+     * WorkManager auf Abruf statt beim Start.
+     *
+     * Das Gegenstueck zum tools:node="remove" im Manifest: Ohne den Eintrag
+     * in androidx.startup faehrt WorkManager nicht mehr von selbst hoch,
+     * sondern beim ersten WorkManager.getInstance() — und holt sich seine
+     * Einstellungen dann HIER.
+     *
+     * Fehlt diese Schnittstelle, wirft genau dieser erste Zugriff
+     * "WorkManager is not initialized properly". Die beiden Aenderungen
+     * gehoeren zusammen; eine allein ist ein Fehler.
+     *
+     * Die Vorgaben genuegen: Der einzige Auftrag ist ein stuendlicher Abruf
+     * ohne eigene WorkerFactory (siehe die Begruendung fuer EntryPoint statt
+     * @HiltWorker in PreisalarmWorker).
+     */
+    override val workManagerConfiguration: Configuration
+        get() = Configuration.Builder().build()
 
     override fun onCreate() {
         super.onCreate()
