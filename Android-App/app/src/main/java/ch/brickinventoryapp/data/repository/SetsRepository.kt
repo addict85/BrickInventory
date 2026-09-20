@@ -83,6 +83,30 @@ class SetsRepository @Inject constructor(
     suspend fun updateQuantity(setNumber: String, quantity: Int, purchasePrice: Double? = null, condition: String? = null): Result<GenericResponse> =
         safeCall { api.updateSetQuantity(setNumber, UpdateQuantityRequest(quantity, purchasePrice, condition)) }
 
+    // ── Wunschliste ─────────────────────────────────────────────────────────
+    //
+    // Hier und nicht in einem eigenen Repository: Ein Wunsch ist ein Set, das
+    // man noch nicht hat — dieselbe Sache, andere Tabelle. Ein sechstes
+    // Repository fuer vier Aufrufe waere mehr Apparat als Nutzen.
+
+    suspend fun getWunschliste(): Result<WunschlisteResponse> =
+        safeCall { api.getWunschliste() }
+
+    suspend fun legeWunschAn(setNumber: String, condition: String, notiz: String?,
+                             ownerUserId: Int? = null): Result<WunschAntwort> =
+        safeCall { api.legeWunschAn(WunschRequest(setNumber, condition, notiz, ownerUserId)) }
+
+    suspend fun loescheWunsch(setNumber: String, condition: String,
+                              ownerUserId: Int? = null): Result<GenericResponse> =
+        safeCall { api.loescheWunsch(setNumber, condition, ownerUserId) }
+
+    suspend fun uebernimmWunsch(setNumber: String, condition: String, quantity: Int = 1,
+                                purchasePrice: Double? = null, erfasstAls: String? = null,
+                                ownerUserId: Int? = null): Result<WunschUebernahmeResponse> =
+        safeCall { api.uebernimmWunsch(setNumber, condition,
+                                       WunschUebernahmeRequest(quantity, purchasePrice,
+                                                               erfasstAls, ownerUserId)) }
+
     suspend fun deleteSet(setNumber: String): Result<GenericResponse> =
         safeCall { api.deleteSet(setNumber) }
 

@@ -130,8 +130,9 @@ fun BrickInventoryManagerApp(
     val labelPartslist  = stringResource(R.string.nav_partslist)
     val labelFinance    = stringResource(R.string.nav_finance)
     val labelComparison = stringResource(R.string.nav_comparison)
+    val labelWishlist   = stringResource(R.string.nav_wishlist)
 
-    val bottomNavItems = remember(labelGallery, labelCatalog, labelParts, labelMinifigs, labelPartslist, labelFinance, labelComparison) {
+    val bottomNavItems = remember(labelGallery, labelCatalog, labelParts, labelMinifigs, labelPartslist, labelFinance, labelComparison, labelWishlist) {
         buildList<Triple<Screen, @Composable () -> Unit, String>> {
             add(Triple(Screen.Gallery,    { Icon(ImageVector.vectorResource(R.drawable.ic_brand_brick), labelGallery, tint = Color.Unspecified) },    labelGallery))
             add(Triple(Screen.Parts,      { Icon(ImageVector.vectorResource(R.drawable.ic_parts_bricks), labelParts, tint = Color.Unspecified) },     labelParts))
@@ -139,6 +140,7 @@ fun BrickInventoryManagerApp(
             add(Triple(Screen.PartsList,  { Text("📋", fontSize = 20.sp) },        labelPartslist))
             add(Triple(Screen.Finance,    { Text("💰", fontSize = 20.sp) },        labelFinance))
             add(Triple(Screen.Catalog,    { Text("📚", fontSize = 20.sp) },        labelCatalog))
+            add(Triple(Screen.Wishlist,   { Text("⭐", fontSize = 20.sp) },        labelWishlist))
             add(Triple(Screen.Comparison, { Icon(ImageVector.vectorResource(R.drawable.ic_compare_scale), labelComparison, tint = Color.Unspecified) }, labelComparison))
         }
     }

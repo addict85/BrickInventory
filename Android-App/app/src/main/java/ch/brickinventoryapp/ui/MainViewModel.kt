@@ -204,6 +204,9 @@ class MainViewModel @Inject constructor(
     internal val _lagerState = MutableStateFlow(LagerUiState())
     val lagerState = _lagerState.asStateFlow()
 
+    internal val _wunschState = MutableStateFlow(WunschUiState())
+    val wunschState = _wunschState.asStateFlow()
+
     /**
      * Galerie — eigener Fluss (Nachtrag: AppUiState-Aufteilung).
      *

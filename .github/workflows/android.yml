@@ -260,6 +260,23 @@ jobs:
             echo "::warning::APK ist UNSIGNIERT und lässt sich nicht installieren. Die vier Secrets KEYSTORE_BASE64, KEYSTORE_PASSWORT, KEY_ALIAS und KEY_PASSWORT fehlen oder sind unvollständig."
           fi
 
+      # ── Das fertige APK gegen R8 prüfen ─────────────────────────────────────
+      #
+      # Der Unit-Test-Lauf oben ist `testDebugUnitTest` — auf der JVM, ohne R8.
+      # Zwischen "470 Tests grün" und "auf dem Gerät passiert etwas" lag damit
+      # niemand, und genau dort ging es schief: Im APK von main (120c998) hatte
+      # PreisalarmWorker nur noch seinen Konstruktor, doWork() war weg. Der
+      # Preisalarm konnte nie laufen, und kein Test hat es gemerkt.
+      #
+      # Diese Prüfung liest das APK, das gleich hochgeladen wird — nicht den
+      # Quelltext, aus dem es entstanden ist. Das ist der Punkt: Was R8 gemacht
+      # hat, steht nur im Ergebnis.
+      - name: APK gegen R8-Verluste prüfen
+        run: |
+          python3 tools/apk-pruefen.py \
+            app/build/outputs/apk/release/BrickInventory.apk \
+            app/src/main/java
+
       # `always()`: Die Berichte sind gerade dann interessant, wenn der Lauf rot
       # ist. Ohne das lädt GitHub sie bei einem Fehlschlag nicht hoch.
       # upload-artifact auf v6 (vorher v4).

@@ -22,6 +22,7 @@ import settingsRouter from './settings';
 import adminRouter from './admin';
 import miscRouter from './misc';
 import catalogRouter from './catalog';
+import wishlistRouter from './wishlist';
 
 const router = express.Router();
 
@@ -34,6 +35,7 @@ router.use(financeRouter);
 router.use(settingsRouter);
 router.use(adminRouter);
 router.use(catalogRouter);      // /catalog/* — Rebrickable-Katalog (Browsen/Suchen)
+router.use(wishlistRouter);     // /wishlist — Wunschliste (eigene Tabelle, siehe 0021)
 router.use(miscRouter);         // /stats + Endpoint-Übersicht unter /
 
 export = router;

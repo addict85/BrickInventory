@@ -246,6 +246,7 @@
     <div class="ntab" data-tab="partslist" data-i18n-tab="nav.partslist">📋 <span class="tab-label">Teileliste</span></div>
     <div class="ntab" data-tab="finance" data-i18n-tab="nav.finance">💰 <span class="tab-label">Finanzen</span></div>
     <div class="ntab" data-tab="catalog" data-i18n-tab="nav.catalog">📚 <span class="tab-label">Katalog</span></div>
+    <div class="ntab" data-tab="wishlist" data-i18n-tab="nav.wishlist">⭐ <span class="tab-label">Wunschliste</span></div>
     <div class="ntab" data-tab="settings" data-i18n-tab="nav.settings">⚙️ <span class="tab-label">Einstellungen</span></div>
     <div class="ntab" id="ntab-monitor" data-tab="monitor" data-i18n-tab="nav.monitoring" style="display:none">📊 <span class="tab-label">Monitoring</span></div>
   </nav>
@@ -367,6 +368,35 @@
     </div>
 
     <!-- ══ TEILE ══ -->
+    <div class="tab" id="tab-wishlist">
+      <div class="ph">
+        <h2 class="ptitle" data-tab-title="wishlist"><span class="ptitle-icon"></span><span data-i18n="wishlist.title">Wunschliste</span></h2>
+      </div>
+
+      <!--
+        Erfassen „analog den Sets": dieselben Felder in derselben Reihenfolge
+        wie im Galerie-Kasten (Nummer, Zustand, Für Konto), damit die beiden
+        Ansichten sich gleich anfühlen. Anzahl und Kaufpreis fehlen bewusst —
+        ein Wunsch hat weder das eine noch das andere; beides wird erst bei
+        der Übernahme in die Galerie gefragt.
+      -->
+      <div style="background:var(--sur);border:1px solid var(--bdr);border-radius:var(--rad);padding:1.25rem;margin-bottom:1.25rem;box-shadow:var(--sh0)">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:.75rem">
+          <h3 style="margin:0;font-size:1rem;font-weight:700" data-i18n="wishlist.add.title">Wunsch hinzufügen</h3>
+        </div>
+        <div style="display:flex;gap:8px;align-items:flex-end;flex-wrap:wrap">
+          <div class="fg"><label for="wl-num" data-i18n="gallery.add.number">Setnummer</label><input type="text" id="wl-num" placeholder="z.B. 75192" data-i18n="gallery.add.number" data-i18n-attr="placeholder" /></div>
+          <div class="fg" style="max-width:110px"><label for="wl-cond" data-i18n="common.condition">Zustand</label><select id="wl-cond" style="padding:.45rem .7rem;border:1px solid var(--bdr);border-radius:var(--rad);background:var(--sur);color:var(--txt);font-size:.875rem"><option value="N" data-i18n="common.condition_new">Neu</option><option value="U" data-i18n="common.condition_used">Gebraucht</option></select></div>
+          <div class="fg" style="min-width:160px"><label for="wl-note" data-i18n="wishlist.note">Notiz (opt.)</label><input type="text" id="wl-note" placeholder="z.B. Geschenk" data-i18n="wishlist.note_hint" data-i18n-attr="placeholder" /></div>
+          <div class="fg" id="wl-owner-box" style="max-width:150px;display:none"><label for="wl-owner" data-i18n="household.for_account">Für Konto</label><select id="wl-owner" style="padding:.45rem .7rem;border:1px solid var(--bdr);border-radius:var(--rad);background:var(--sur);color:var(--txt);font-size:.875rem"></select></div>
+          <button class="btn bp" id="wl-add" data-click="wunschHinzufuegen" data-i18n="wishlist.add.submit">Auf die Wunschliste</button>
+        </div>
+        <div id="wl-status" style="margin-top:8px;font-size:.8rem"></div>
+      </div>
+
+      <div id="wl-list"></div>
+    </div>
+
     <div class="tab" id="tab-parts">
       <div class="ph">
         <h2 class="ptitle" data-tab-title="parts"><span class="ptitle-icon"></span><span data-i18n="nav.parts">Teile</span></h2>
@@ -1055,8 +1085,52 @@
     <img id="m-img" alt="" class="mimg" style="cursor:zoom-in" data-orig="/assets/set-placeholder.svg" data-click="openImageLightboxFromEl" />
     <div id="m-det"></div>
     <div id="m-instr" class="il"></div>
-    <div class="mfooter">
+    <!--
+      Die zwei Kaufadressen (Marcos Nachtrag). Beide kommen als fertige
+      Adresse vom Server (utils/bricklinkLink.ts, utils/preisvergleich.ts) —
+      genau wie im Katalog-Dialog, und aus demselben Grund: Die
+      BrickLink-Adresse laesst sich NICHT aus der Setnummer herleiten (Gear,
+      Buecher und Sammelminifiguren liegen anders), und der Preisvergleich
+      stuende sonst an vier Stellen im Baum.
+
+      Beide sind versteckt, bis das Detail sie fuellt: Ein Knopf, der ins
+      Leere fuehrt, ist schlechter als keiner.
+    -->
+    <div class="mfooter" style="justify-content:space-between;flex-wrap:wrap;gap:8px">
       <button class="btn bd" id="btn-md" aria-label="Set löschen" data-i18n="detail.delete" data-i18n-attr="aria-label">🗑️</button>
+      <div style="display:flex;gap:8px;flex-wrap:wrap">
+        <a class="btn bs" id="m-vergleich" href="#" target="_blank" rel="noopener" style="display:none" data-i18n="detail.compare">📊 Preisvergleich</a>
+        <a class="btn bs" id="m-bricklink" href="#" target="_blank" rel="noopener" style="display:none" data-i18n="catalog.buy_bricklink">🛒 Auf BrickLink kaufen</a>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!--
+  Uebernahme eines Wunsches in die Galerie.
+
+  Marcos Nachtrag: „gewisse Inhalte wie zB. Preis und Zustand, Anzahl muessen
+  beim Uebernehmen angepasst werden." Dieselben drei Felder wie beim Erfassen
+  eines Sets, in derselben Reihenfolge — wer das eine kennt, kennt das andere.
+
+  Der Zustand ist mit dem des WUNSCHES vorbelegt, laesst sich aber aendern:
+  Wer sich ein gebrauchtes gewuenscht und ein neues gefunden hat, erfasst ein
+  neues. Der Wunsch, der dadurch erfuellt ist, bleibt der gebrauchte — das
+  entscheidet der Server (utils/wunschliste.ts).
+-->
+<div class="ovl" id="wl-take-modal" role="dialog" aria-modal="true">
+  <div class="modal" style="max-width:420px">
+    <div class="mhd">
+      <div class="mtit" id="wl-take-tit">—</div>
+      <button class="btn bs btn-sm" data-click="schliesseUebernahme" aria-label="Schliessen" data-i18n="common.close" data-i18n-attr="aria-label">✕</button>
+    </div>
+    <div style="display:flex;gap:8px;align-items:flex-end;flex-wrap:wrap;padding:12px">
+      <div class="fg" style="max-width:82px"><label for="wl-take-qty" data-i18n="gallery.add.qty">Anzahl</label><input type="number" id="wl-take-qty" value="1" min="1" /></div>
+      <div class="fg" style="max-width:120px"><label for="wl-take-price" data-i18n="gallery.add.price">Kaufpreis (opt.)</label><input type="number" id="wl-take-price" step="0.01" min="0" placeholder="—" /></div>
+      <div class="fg" style="max-width:110px"><label for="wl-take-cond" data-i18n="common.condition">Zustand</label><select id="wl-take-cond" style="padding:.45rem .7rem;border:1px solid var(--bdr);border-radius:var(--rad);background:var(--sur);color:var(--txt);font-size:.875rem"><option value="N" data-i18n="common.condition_new">Neu</option><option value="U" data-i18n="common.condition_used">Gebraucht</option></select></div>
+    </div>
+    <div class="mfooter">
+      <button class="btn bp" id="wl-take-ok" data-click="bestaetigeUebernahme" data-i18n="wishlist.take">➕ In die Galerie</button>
     </div>
   </div>
 </div>
@@ -1080,8 +1154,22 @@
         <div class="fg" style="max-width:110px"><label for="cat-m-price" data-i18n="gallery.add.price">Kaufpreis (opt.)</label><input type="number" id="cat-m-price" step="0.01" min="0" placeholder="—" /></div>
         <div class="fg" style="max-width:110px"><label for="cat-m-cond" data-i18n="common.condition">Zustand</label><select id="cat-m-cond" style="padding:.45rem .7rem;border:1px solid var(--bdr);border-radius:var(--rad);background:var(--sur);color:var(--txt);font-size:.875rem"><option value="N" data-i18n="common.condition_new">Neu</option><option value="U" data-i18n="common.condition_used">Gebraucht</option></select></div>
       </div>
+      <!--
+        Preisalarm beim Wünschen — Marcos „inkl. Zustand und einem
+        Preisalarm". Der Zustand steht schon oben (cat-m-cond) und gilt für
+        BEIDE Knöpfe; ein zweiter Zustandswähler nur für den Alarm wäre eine
+        Wahl, bei der man sich widersprechen kann.
+
+        Die Schwelle ist optional: Ein Wunsch ohne Alarm ist ein gültiger
+        Wunsch. Leer heisst „kein Alarm", nicht „Schwelle 0".
+      -->
+      <div style="display:flex;gap:8px;align-items:flex-end;flex-wrap:wrap">
+        <div class="fg" style="max-width:120px"><label for="cat-m-alert-dir" data-i18n="detail.alert">Preisalarm</label><select id="cat-m-alert-dir" style="padding:.45rem .7rem;border:1px solid var(--bdr);border-radius:var(--rad);background:var(--sur);color:var(--txt);font-size:.875rem"><option value="unter" data-i18n="detail.alert_below">fällt unter</option><option value="ueber" data-i18n="detail.alert_above">steigt über</option></select></div>
+        <div class="fg" style="max-width:110px"><label for="cat-m-alert-val" data-i18n="wishlist.threshold">Schwelle (opt.)</label><input type="number" id="cat-m-alert-val" step="0.01" min="0" placeholder="—" /></div>
+      </div>
       <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
         <a class="btn bs" id="cat-m-bricklink" href="#" target="_blank" rel="noopener" data-i18n="catalog.buy_bricklink">🛒 Auf BrickLink kaufen</a>
+        <button class="btn bs" id="cat-m-wish" data-click="katalogAufWunschliste" data-i18n="wishlist.add.submit">⭐ Auf die Wunschliste</button>
         <button class="btn bp" id="cat-m-add" data-i18n="catalog.add_to_gallery">➕ In Galerie aufnehmen</button>
       </div>
     </div>

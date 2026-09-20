@@ -1,3 +1,6 @@
+import { resolveOne } from '../bricklinkLink';
+import { meldeUndWeiter } from '../httpError';
+import { fuerSet } from '../preisvergleich';
 import * as db from '../../db/database';
 import type { DbSchnittstelle } from '../../db/database';
 import { resolveImageLocal } from '../images';
@@ -412,7 +415,36 @@ async function getSet(userId: Blickfeld, setNumber: string) {
   // Listen-Kachel nicht einfach mit dem Detail-Objekt überschreiben konnte,
   // ohne genau diese Werte zu verlieren.
   const agg = await getSetConditionAggregate(uids, setNumber, set.condition);
+  // ── Zwei Kaufadressen, vom Server aufgeloest ────────────────────────────
+  //
+  // Marcos Wunsch: „auf dem Detail-Dialog sowohl den BrickLink-Link analog
+  // dem Katalog als auch die URL des Preisvergleichs als Buttons".
+  //
+  // „Analog dem Katalog" ist woertlich zu nehmen: Der Katalog laesst die
+  // BrickLink-Adresse seit jeher vom Server aufloesen (resolveOne), weil sie
+  // sich NICHT aus der Setnummer herleiten laesst — Gear und Buecher liegen
+  // unter einem anderen Parameter, Sammelminifiguren unter einer ganz anderen
+  // Nummer. Eine im Klienten gebaute Adresse waere fuer diese Faelle falsch,
+  // und zwar stillschweigend.
+  //
+  // Der Preisvergleich kommt aus demselben Grund von hier: Bisher stand seine
+  // Adresse an genau einer Stelle (dem Vergleichsbildschirm der App); vier
+  // Stellen daraus zu machen waere der Anfang von vier Wahrheiten.
+  //
+  // Der Fang meldet und macht weiter: Eine nicht aufloesbare BrickLink-Adresse
+  // darf das Set-Detail nicht kosten (es zeigt dann nur den einen Knopf), aber
+  // sie soll auch nicht stillschweigend verschwinden — sonst sucht der
+  // Naechste den fehlenden Knopf im Klienten.
+  const [bricklink, preisvergleich] = await Promise.all([
+    resolveOne(setNumber).catch((e: unknown) => {
+      meldeUndWeiter('setdetail:bricklink', e);
+      return null;
+    }),
+    Promise.resolve(fuerSet(setNumber, set.name)),
+  ]);
   return { ...set, ...agg,
+    bricklink,
+    preisvergleich_url: preisvergleich,
     image_local: resolveImageLocal(set.image_local),
     instructions: anleitungenZusammenlegen(shared, uploaded) };
 }

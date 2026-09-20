@@ -188,7 +188,12 @@ internal fun MainViewModel.useScannedSetNumber(raw: String) {
         // unten in den gemeinsamen Katalog-Zweig, der den Dialog füllt. Beim
         // Bestätigen reicht confirmAddBarcode() die Nummer an die Liste weiter
         // — der Weg, den der Barcode seit jeher nimmt.
-        val ausTeileliste = _barcodeState.value.source == "partslist"
+        // Die Wunschliste ueberspringt die Bestandspruefung aus demselben
+        // Grund wie die Teileliste, nur mit anderer Begruendung: Sich ein Set
+        // zu wuenschen, das man schon hat, ist legitim — ein zweites
+        // Exemplar, ein Geschenk. Die Detailansicht zu oeffnen waere hier
+        // genauso falsch wie dort.
+        val ausTeileliste = _barcodeState.value.source in setOf("partslist", "wishlist")
 
         // Schon vorhanden? Dann Detailansicht statt Erfassen (Nachträge 57–59),
         // inklusive derselben Trennung von Netzfehler und "nicht gefunden".
@@ -271,6 +276,18 @@ internal fun MainViewModel.gallerySearchFoundConsumed() {
 internal fun MainViewModel.confirmAddBarcode(setNum: String, purchasePrice: Double? = null, condition: String? = null,
                                              ownerUserId: Int? = null) {
     if (_barcodeState.value.adding) return
+    if (_barcodeState.value.source == "wishlist") {
+        // Der vierte Scan-Weg (Nachtrag 179): Dieselbe Kamera, dasselbe
+        // Erkennen, derselbe Bestaetigungsdialog — nur landet die Nummer in
+        // der Wunschliste statt in der Galerie.
+        //
+        // Der Zustand kommt aus dem Dialog (condition), nicht aus dem
+        // Wunschlisten-Kasten: Wer gerade einen Karton abscannt, entscheidet
+        // dort, ob es der neue oder der gebrauchte sein soll.
+        legeWunschAn(setNum, if (condition == "U") "U" else "N", null, ownerUserId)
+        cancelBarcode()
+        return
+    }
     if (_barcodeState.value.source == "partslist") {
         // Route to PartsListScreen instead of gallery
         _barcodeState.update { it.copy(

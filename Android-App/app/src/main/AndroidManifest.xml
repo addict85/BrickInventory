@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
-<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools">
 
     <!--
       enableOnBackInvokedCallback: Unter targetSdk 36 ist das der Standardwert,
@@ -73,6 +74,39 @@
             android:name=".service.PdfExportService"
             android:foregroundServiceType="dataSync"
             android:exported="false" />
+
+        <!--
+          ── WorkManager NICHT beim Start hochfahren ───────────────────────────
+
+          WorkManager meldet sich normalerweise ueber androidx.startup an. Das
+          laeuft in einem ContentProvider, und ContentProvider laufen VOR
+          Application.onCreate(). Scheitert dort etwas, stirbt die App, bevor
+          eine einzige eigene Zeile gelaufen ist — kein runCatching der Welt
+          kommt da noch hin, und auf dem Geraet steht nur "App wurde beendet".
+
+          Der stuendliche Preisalarm ist eine ABSCHALTBARE Nebensache, in der
+          Vorgabe sogar aus. Etwas, das die meisten Nutzer nie einschalten,
+          gehoert nicht in den Pfad, den jeder Start durchlaufen muss.
+
+          Stattdessen faehrt WorkManager beim ERSTEN Zugriff hoch (siehe
+          Configuration.Provider in BrickInventoryApp). Der erste Zugriff ist
+          PreisalarmWorker.einplanen(), und der steht in einem runCatching.
+          Scheitert er jetzt, faellt der Alarm aus — die App startet.
+
+          tools:node="remove" am meta-data nimmt genau diesen einen Eintrag
+          aus dem zusammengefuehrten Manifest; der Provider selbst bleibt, denn
+          emoji2, lifecycle und profileinstaller haengen ebenfalls daran.
+        -->
+        <provider
+            android:name="androidx.startup.InitializationProvider"
+            android:authorities="${applicationId}.androidx-startup"
+            android:exported="false"
+            tools:node="merge">
+            <meta-data
+                android:name="androidx.work.WorkManagerInitializer"
+                android:value="androidx.startup"
+                tools:node="remove" />
+        </provider>
 
         <activity
             android:name=".MainActivity"

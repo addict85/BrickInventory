@@ -73,6 +73,20 @@ fun NavGraphBuilder.catalogGraph(
     bottomNavItems: List<Triple<Screen, @Composable () -> Unit, String>>,
     snackbarHostState: SnackbarHostState,
 ) {
+        // ── Wunschliste (Nachtrag 179) ──────────────────────────────────────
+        //
+        // Hier und nicht im CollectionGraph: Eine Wunschliste ist kein Bestand.
+        // Sie steht dem Katalog naeher — von dort kommt der haeufigste Weg
+        // hinein, und wie er zeigt sie Sets, die einem NICHT gehoeren.
+        composable(Screen.Wishlist.route) {
+            ReiterGeruest(stringResource(R.string.nav_wishlist), vm, navController, bottomNavItems, snackbarHostState) {
+                ch.brickinventoryapp.ui.screens.WunschlisteScreen(
+                    vm = vm,
+                    imageLoader = imageLoader,
+                    onScan = { navController.navigate(Screen.BarcodeScanner.route) },
+                )
+            }
+        }
         composable(Screen.Catalog.route) {
             // Zustand INNERHALB des Ziels lesen — als Parameter wäre es eine
             // Momentaufnahme vom Aufbau des Graphen (der NavHost-Builder läuft nur einmal).
@@ -126,6 +140,11 @@ fun NavGraphBuilder.catalogGraph(
                     // hier statt versteckt dort.
                     vm.addSet(sn, qty, price, cond, owner)
                     katalog.markiereAufgenommen(sn, qty)
+                },
+                // Wunsch UND Preisalarm in einem Griff — die Regel dahinter
+                // steht in ui/WunschlisteFeature.kt, nicht hier.
+                onWish = { sn, zustand, richtung, schwelle ->
+                    vm.wuenscheMitAlarm(sn, zustand, richtung, schwelle)
                 },
                 onOpenInGallery = { sn -> navController.navigate(Screen.SetDetail.createRoute(sn)) },
                 onBack = { navController.popBackStack() }

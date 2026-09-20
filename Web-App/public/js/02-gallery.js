@@ -13,6 +13,7 @@ import { loadApiLimits, loadCacheStats, loadCacheTtl, loadProfile, loadRateLimit
 import { loadBrickColors, loadManualParts, loadMinifigs } from './06-minifigs.js';
 import { _lastImportAt, confirmDelete, enrichGalleryWithPrices, jobPollTimer, ladeLagerorte, openModal, pollJobStatus, set_jobPollTimer, set_lastImportAt } from './07-admin.js';
 import { openAcqModal, renderAcqModalBody, renderAcquisitionSummary } from './13-acquisition-modals.js';
+import { ladeWunschliste } from './16-wunschliste.js';
 import { initCatalog } from './09-catalog.js';
 import { delSetStop, openPdfViewerLink, stopEvent } from './11-actions.js';
 
@@ -57,6 +58,7 @@ export function bindTabs(){
       if (tab !== 'catalog') setScrollLabel(null);
       if(tab==='gallery')      { loadGallery(); loadStats(); }
       if(tab==='catalog')      { initCatalog(); }
+      if(tab==='wishlist')     { ladeWunschliste(); }
       if(tab==='parts')        {
         loadParts(); loadManualParts(); loadBrickColors();
         // If import was recent, reload again after background job completes
@@ -444,7 +446,9 @@ export async function loadHouseholdMembers() {
   // soll für alle drei gleich gehen.
   // cat-m-owner seit Nachtrag 66 dabei — der Katalog-Dialog ist der vierte
   // Erfassungsweg und war als einziger nicht angeschlossen.
-  for (const id of ['add-owner', 'ap-owner', 'af-owner', 'cat-m-owner']) {
+  // wl-owner ist der fuenfte Erfassungsweg (Wunschliste) — dieselbe Liste,
+  // dieselbe Regel. Der Grossvater traegt einen Wunsch fuer den Enkel ein.
+  for (const id of ['add-owner', 'ap-owner', 'af-owner', 'cat-m-owner', 'wl-owner']) {
     const box = G(`${id}-box`), sel = G(id);
     if (!box || !sel) continue;
     if (members.length < 2) { box.style.display = 'none'; continue; }

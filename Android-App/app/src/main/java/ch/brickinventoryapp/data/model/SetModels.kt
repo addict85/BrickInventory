@@ -81,7 +81,28 @@ data class SetItem(
     /** Mengengewichteter Kaufpreis über die Erfassungen (Server rechnet ihn). */
     @SerialName("avg_purchase_price") val avgPurchasePrice: Double? = null,
     @SerialName("used_count") val usedCount: Int? = null,
-    val instructions: List<Instruction> = emptyList()
+    val instructions: List<Instruction> = emptyList(),
+    /**
+     * BrickLink-Verweis, FERTIG vom Server aufgeloest (utils/bricklinkLink.ts).
+     *
+     * Dieselbe Begruendung wie beim Katalog (BrickLinkRef dort): Die Adresse
+     * laesst sich NICHT aus der Setnummer herleiten — Gear und Buecher liegen
+     * unter einem anderen Parameter, Sammelminifiguren unter einer ganz
+     * anderen Nummer. Eine im Klienten gebaute Adresse waere fuer diese Faelle
+     * still falsch.
+     */
+    val bricklink: BrickLinkRef? = null,
+    /**
+     * Preisvergleich, ebenfalls fertig vom Server (utils/preisvergleich.ts).
+     *
+     * Nicht hier gebaut, obwohl es „nur eine Suchadresse" ist: Sie stand
+     * bisher an genau EINER Stelle im Baum (ComparisonScreen), und vier
+     * daraus zu machen waere der Anfang von vier Wahrheiten.
+     *
+     * Leer heisst „keine Adresse" — dann faellt der Knopf weg, statt ins
+     * Leere zu fuehren.
+     */
+    @SerialName("preisvergleich_url") val preisvergleichUrl: String? = null
 ) {
     /**
      * Der Kaufpreis, der ANGEZEIGT wird — mengengewichtet (Nachtrag 76).
@@ -443,4 +464,110 @@ data class PendingAlertsResponse(
     val alerts: List<Preisalarm> = emptyList(),
     val now: String? = null,
     val error: String? = null,
+)
+
+/**
+ * Ein Eintrag der Wunschliste.
+ *
+ * Die Stammdaten (name, year, …) kommen aus dem Katalog und sind NICHT
+ * mitgespeichert — die Begruendung steht in der Migration 0021. Ein Set, das
+ * der Katalog nicht kennt, hat hier `name == null` und zeigt seine Nummer.
+ */
+@Serializable
+data class Wunsch(
+    @SerialName("set_number") val setNumber: String = "",
+    val condition: String = "N",
+    val notiz: String? = null,
+    @SerialName("created_at") val createdAt: String? = null,
+    /** Wem der Wunsch gehoert — im Kontenbaum sieht man fremde mit. */
+    @SerialName("user_id") val userId: Int = 0,
+    val name: String? = null,
+    val year: Int? = null,
+    @SerialName("num_parts") val numParts: Int? = null,
+    @SerialName("image_url") val imageUrl: String? = null,
+    /** Liegt das Set schon in der Galerie eines Kontos im Blickfeld? */
+    val owned: Boolean = false,
+    /**
+     * Der Preisalarm zu GENAU diesem Wunsch — oder null.
+     *
+     * Er reist mit, statt je Zeile einzeln geholt zu werden: Wer einen Alarm
+     * setzt und ihn danach nirgends mehr sieht, hat ihn verloren, und ein
+     * Aufruf je Zeile waere N+1 fuer eine Liste, die auch lang sein kann.
+     */
+    val alarm: WunschAlarm? = null,
+)
+
+@Serializable
+data class WunschAlarm(
+    val richtung: String = "unter",
+    val schwelle: Double = 0.0,
+    val ausgeloest: Boolean = false,
+)
+
+@Serializable
+data class WunschlisteResponse(
+    val success: Boolean = false,
+    val wuensche: List<Wunsch> = emptyList(),
+    val error: String? = null,
+)
+
+@Serializable
+data class WunschRequest(
+    @SerialName("set_number") val setNumber: String,
+    val condition: String = "N",
+    val notiz: String? = null,
+    @SerialName("owner_user_id") val ownerUserId: Int? = null,
+)
+
+/**
+ * Antwort auf das Eintragen.
+ *
+ * `war_neu` unterscheidet „hinzugefuegt" von „stand schon drauf". Ohne das
+ * saehe der zweite Druck auf denselben Knopf aus wie der erste.
+ */
+@Serializable
+data class WunschAntwort(
+    val success: Boolean = false,
+    @SerialName("war_neu") val warNeu: Boolean = false,
+    val wunsch: Wunsch? = null,
+    val error: String? = null,
+)
+
+/**
+ * Antwort auf die Uebernahme in die Galerie.
+ *
+ * `action` ist 'added' oder 'exists' — dasselbe Vokabular wie beim Erfassen
+ * eines Sets, weil der Server dafuer dieselbe Funktion ruft (addSet).
+ */
+@Serializable
+data class WunschUebernahmeResponse(
+    val success: Boolean = false,
+    val action: String? = null,
+    @SerialName("set_number") val setNumber: String? = null,
+    val error: String? = null,
+)
+
+/**
+ * Was bei der Uebernahme mitgeht.
+ *
+ * Menge und Kaufpreis wie beim Erfassen eines Sets — der Server reicht sie an
+ * addSet() weiter. Beide optional: Ohne Kaufpreis setzt der Server den
+ * Marktpreis ein, genau wie auf dem normalen Erfassungsweg.
+ */
+@Serializable
+data class WunschUebernahmeRequest(
+    val quantity: Int = 1,
+    @SerialName("purchase_price") val purchasePrice: Double? = null,
+    /**
+     * Der Zustand, in dem ERFASST wird — nicht der des Wunsches.
+     *
+     * Die beiden sind nicht dasselbe: Wer sich ein gebrauchtes gewuenscht und
+     * ein neues gefunden hat, erfasst ein neues, und erfuellt ist trotzdem der
+     * gebrauchte Wunsch. Welcher Wunsch verschwindet, entscheidet der Pfad;
+     * dieses Feld entscheidet nur, was in der Galerie steht.
+     *
+     * null = so lassen wie der Wunsch.
+     */
+    val condition: String? = null,
+    @SerialName("owner_user_id") val ownerUserId: Int? = null,
 )
