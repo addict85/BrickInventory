@@ -357,13 +357,14 @@ private fun WunschDialog(
                     FilterChip(selected = richtung == "ueber", onClick = { richtung = "ueber" },
                                label = { Text(stringResource(R.string.detail_alert_above)) })
                 }
+                // Eine Schwelle ist ein Preis — dieselbe Eingaberegel und
+                // dieselbe Tastatur wie ueberall (util/NumericInput.kt).
                 OutlinedTextField(
                     value = schwelle,
-                    onValueChange = { schwelle = it },
+                    onValueChange = { schwelle = ch.brickinventoryapp.util.NumericInput.price(it) },
                     label = { Text(stringResource(R.string.wishlist_threshold)) },
                     singleLine = true,
-                    keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(
-                        keyboardType = androidx.compose.ui.text.input.KeyboardType.Decimal),
+                    keyboardOptions = ch.brickinventoryapp.util.NumericInput.preisTastatur(),
                     modifier = Modifier.fillMaxWidth(),
                 )
             }

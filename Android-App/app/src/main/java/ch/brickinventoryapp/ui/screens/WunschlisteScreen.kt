@@ -23,6 +23,7 @@ import ch.brickinventoryapp.ui.setzeWunschNotiz
 import ch.brickinventoryapp.ui.setzeWunschZustand
 import ch.brickinventoryapp.ui.uebernimmWunsch
 import ch.brickinventoryapp.ui.theme.Abstaende
+import ch.brickinventoryapp.util.NumericInput
 import ch.brickinventoryapp.util.resolveThumbUrl
 
 /**
@@ -41,6 +42,16 @@ import ch.brickinventoryapp.util.resolveThumbUrl
  * Alle Regeln stehen am Server (utils/wunschliste.ts). Dieser Bildschirm
  * zeigt und ruft.
  */
+/**
+ * Der Schluessel einer Zeile: Nummer, Zustand UND Konto.
+ *
+ * Dasselbe Set kann zweimal dastehen (neu und gebraucht), und im Kontenbaum
+ * auch bei zwei Konten. Nur die Nummer waere mehrdeutig — Compose verloere
+ * beim Neuzeichnen die Zuordnung, und der Uebernahme-Dialog stuende nach
+ * einer Drehung ueber der falschen Zeile.
+ */
+private fun schluessel(w: Wunsch) = "${w.setNumber}|${w.condition}|${w.userId}"
+
 @Composable
 fun WunschlisteScreen(
     vm: MainViewModel,
@@ -52,8 +63,15 @@ fun WunschlisteScreen(
     // CDN — dieselbe Regel wie in Galerie, Teilen und Finanzen.
     val appState by vm.state.collectAsStateWithLifecycle()
 
-    // Der Wunsch, ueber dem der Uebernahme-Dialog gerade steht.
-    var uebernahme by remember { mutableStateOf<Wunsch?>(null) }
+    // Der Wunsch, ueber dem der Uebernahme-Dialog gerade steht — als
+    // SCHLUESSEL, nicht als Objekt.
+    //
+    // Wer den Dialog offen hat und das Telefon dreht, soll ihn offen
+    // wiederfinden; der Zustand muss also ins Bundle. Ein ganzes Wunsch-Objekt
+    // passt dort nicht hinein (nicht Parcelable), eine Zeichenkette schon —
+    // und die Zeile dazu steht ohnehin in der geladenen Liste.
+    var uebernahmeSchluessel by rememberSaveable { mutableStateOf<String?>(null) }
+    val uebernahme = zustand.wuensche.firstOrNull { schluessel(it) == uebernahmeSchluessel }
 
     LaunchedEffect(Unit) { vm.ladeWunschliste() }
 
@@ -74,9 +92,9 @@ fun WunschlisteScreen(
                 // Schluessel aus Nummer UND Zustand: Dasselbe Set kann zweimal
                 // dastehen (neu und gebraucht). Nur die Nummer waere doppelt
                 // und Compose verloere die Zuordnung beim Neuzeichnen.
-                items(zustand.wuensche, key = { "${it.setNumber}|${it.condition}|${it.userId}" }) { w ->
+                items(zustand.wuensche, key = ::schluessel) { w ->
                     WunschZeile(w, appState.serverUrl, imageLoader,
-                        onUebernehmen = { uebernahme = w },
+                        onUebernehmen = { uebernahmeSchluessel = schluessel(w) },
                         onLoeschen    = { vm.loescheWunsch(w.setNumber, w.condition, w.userId) })
                 }
             }
@@ -86,10 +104,10 @@ fun WunschlisteScreen(
     uebernahme?.let { w ->
         UebernahmeDialog(
             wunsch = w,
-            onDismiss = { uebernahme = null },
+            onDismiss = { uebernahmeSchluessel = null },
             onUebernehmen = { anzahl, preis, zustandWahl ->
                 vm.uebernimmWunsch(w.setNumber, w.condition, w.userId, anzahl, preis, zustandWahl)
-                uebernahme = null
+                uebernahmeSchluessel = null
             },
         )
     }
@@ -129,22 +147,25 @@ private fun UebernahmeDialog(
             Column(verticalArrangement = Arrangement.spacedBy(Abstaende.mittel)) {
                 Text(wunsch.name ?: wunsch.setNumber, style = MaterialTheme.typography.bodyMedium)
                 Row(horizontalArrangement = Arrangement.spacedBy(Abstaende.klein)) {
+                    // NumericInput und keine eigene Filterung: Die Regel, was
+                    // eine Zahl ist, steht genau einmal im Baum
+                    // (util/NumericInput.kt). Die Preis-Fassung laesst GENAU
+                    // ein Trennzeichen zu — das haette eine hier
+                    // hingeschriebene Filterung nicht gewusst.
                     OutlinedTextField(
                         value = anzahl,
-                        onValueChange = { anzahl = it.filter(Char::isDigit) },
+                        onValueChange = { anzahl = NumericInput.quantity(it) },
                         label = { Text(stringResource(R.string.common_quantity)) },
                         singleLine = true,
-                        keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(
-                            keyboardType = androidx.compose.ui.text.input.KeyboardType.Number),
+                        keyboardOptions = NumericInput.ganzzahlTastatur(),
                         modifier = Modifier.weight(1f),
                     )
                     OutlinedTextField(
                         value = preis,
-                        onValueChange = { preis = it },
+                        onValueChange = { preis = NumericInput.price(it) },
                         label = { Text(stringResource(R.string.gallery_purchase_price)) },
                         singleLine = true,
-                        keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(
-                            keyboardType = androidx.compose.ui.text.input.KeyboardType.Decimal),
+                        keyboardOptions = NumericInput.preisTastatur(),
                         modifier = Modifier.weight(1f),
                     )
                 }
