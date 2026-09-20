@@ -657,7 +657,7 @@ data class ManualItemDetailUiState(
  */
 data class BarcodeUiState(
     val result: String? = null,
-    /** "gallery", "gallery_search" oder "partslist". */
+    /** "gallery", "gallery_search", "partslist" oder "wishlist". */
     val source: String = "gallery",
     /**
      * Der Scan blieb ohne Setnummer → die manuelle Erfassung soll aufgehen.
@@ -924,4 +924,22 @@ data class LagerUiState(
     val vorrat: List<ch.brickinventoryapp.data.model.LagerortEintrag> = emptyList(),
     /** Die EIGENEN Orte — fuer die Verwaltung in den Einstellungen. */
     val eigene: List<ch.brickinventoryapp.data.model.LagerortEintrag> = emptyList(),
+)
+
+/**
+ * Die Wunschliste — was man haben MOECHTE, getrennt vom Besitz.
+ *
+ * Eigener Zustand und nicht ein Feld in AppUiState: Er aendert sich nur auf
+ * diesem einen Bildschirm, und ein Feld im Haupt-Zustand rekomponierte bei
+ * jedem Laden den ganzen Baum — dieselbe Begruendung wie bei der Snackbar und
+ * beim Set-Detail.
+ */
+data class WunschUiState(
+    val wuensche: List<ch.brickinventoryapp.data.model.Wunsch> = emptyList(),
+    val laedt: Boolean = false,
+    /** Setnummer im Eingabefeld — ueberlebt das Drehen ueber den Zustand. */
+    val eingabe: String = "",
+    /** 'N' oder 'U' — der Zustand des naechsten Wunsches. */
+    val zustand: String = "N",
+    val notiz: String = "",
 )

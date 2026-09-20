@@ -246,6 +246,7 @@
     <div class="ntab" data-tab="partslist" data-i18n-tab="nav.partslist">📋 <span class="tab-label">Teileliste</span></div>
     <div class="ntab" data-tab="finance" data-i18n-tab="nav.finance">💰 <span class="tab-label">Finanzen</span></div>
     <div class="ntab" data-tab="catalog" data-i18n-tab="nav.catalog">📚 <span class="tab-label">Katalog</span></div>
+    <div class="ntab" data-tab="wishlist" data-i18n-tab="nav.wishlist">⭐ <span class="tab-label">Wunschliste</span></div>
     <div class="ntab" data-tab="settings" data-i18n-tab="nav.settings">⚙️ <span class="tab-label">Einstellungen</span></div>
     <div class="ntab" id="ntab-monitor" data-tab="monitor" data-i18n-tab="nav.monitoring" style="display:none">📊 <span class="tab-label">Monitoring</span></div>
   </nav>
@@ -367,6 +368,35 @@
     </div>
 
     <!-- ══ TEILE ══ -->
+    <div class="tab" id="tab-wishlist">
+      <div class="ph">
+        <h2 class="ptitle" data-tab-title="wishlist"><span class="ptitle-icon"></span><span data-i18n="wishlist.title">Wunschliste</span></h2>
+      </div>
+
+      <!--
+        Erfassen „analog den Sets": dieselben Felder in derselben Reihenfolge
+        wie im Galerie-Kasten (Nummer, Zustand, Für Konto), damit die beiden
+        Ansichten sich gleich anfühlen. Anzahl und Kaufpreis fehlen bewusst —
+        ein Wunsch hat weder das eine noch das andere; beides wird erst bei
+        der Übernahme in die Galerie gefragt.
+      -->
+      <div style="background:var(--sur);border:1px solid var(--bdr);border-radius:var(--rad);padding:1.25rem;margin-bottom:1.25rem;box-shadow:var(--sh0)">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:.75rem">
+          <h3 style="margin:0;font-size:1rem;font-weight:700" data-i18n="wishlist.add.title">Wunsch hinzufügen</h3>
+        </div>
+        <div style="display:flex;gap:8px;align-items:flex-end;flex-wrap:wrap">
+          <div class="fg"><label for="wl-num" data-i18n="gallery.add.number">Setnummer</label><input type="text" id="wl-num" placeholder="z.B. 75192" data-i18n="gallery.add.number" data-i18n-attr="placeholder" /></div>
+          <div class="fg" style="max-width:110px"><label for="wl-cond" data-i18n="common.condition">Zustand</label><select id="wl-cond" style="padding:.45rem .7rem;border:1px solid var(--bdr);border-radius:var(--rad);background:var(--sur);color:var(--txt);font-size:.875rem"><option value="N" data-i18n="common.condition_new">Neu</option><option value="U" data-i18n="common.condition_used">Gebraucht</option></select></div>
+          <div class="fg" style="min-width:160px"><label for="wl-note" data-i18n="wishlist.note">Notiz (opt.)</label><input type="text" id="wl-note" placeholder="z.B. Geschenk" data-i18n="wishlist.note_hint" data-i18n-attr="placeholder" /></div>
+          <div class="fg" id="wl-owner-box" style="max-width:150px;display:none"><label for="wl-owner" data-i18n="household.for_account">Für Konto</label><select id="wl-owner" style="padding:.45rem .7rem;border:1px solid var(--bdr);border-radius:var(--rad);background:var(--sur);color:var(--txt);font-size:.875rem"></select></div>
+          <button class="btn bp" id="wl-add" data-click="wunschHinzufuegen" data-i18n="wishlist.add.submit">Auf die Wunschliste</button>
+        </div>
+        <div id="wl-status" style="margin-top:8px;font-size:.8rem"></div>
+      </div>
+
+      <div id="wl-list"></div>
+    </div>
+
     <div class="tab" id="tab-parts">
       <div class="ph">
         <h2 class="ptitle" data-tab-title="parts"><span class="ptitle-icon"></span><span data-i18n="nav.parts">Teile</span></h2>
@@ -1080,8 +1110,22 @@
         <div class="fg" style="max-width:110px"><label for="cat-m-price" data-i18n="gallery.add.price">Kaufpreis (opt.)</label><input type="number" id="cat-m-price" step="0.01" min="0" placeholder="—" /></div>
         <div class="fg" style="max-width:110px"><label for="cat-m-cond" data-i18n="common.condition">Zustand</label><select id="cat-m-cond" style="padding:.45rem .7rem;border:1px solid var(--bdr);border-radius:var(--rad);background:var(--sur);color:var(--txt);font-size:.875rem"><option value="N" data-i18n="common.condition_new">Neu</option><option value="U" data-i18n="common.condition_used">Gebraucht</option></select></div>
       </div>
+      <!--
+        Preisalarm beim Wünschen — Marcos „inkl. Zustand und einem
+        Preisalarm". Der Zustand steht schon oben (cat-m-cond) und gilt für
+        BEIDE Knöpfe; ein zweiter Zustandswähler nur für den Alarm wäre eine
+        Wahl, bei der man sich widersprechen kann.
+
+        Die Schwelle ist optional: Ein Wunsch ohne Alarm ist ein gültiger
+        Wunsch. Leer heisst „kein Alarm", nicht „Schwelle 0".
+      -->
+      <div style="display:flex;gap:8px;align-items:flex-end;flex-wrap:wrap">
+        <div class="fg" style="max-width:120px"><label for="cat-m-alert-dir" data-i18n="detail.alert">Preisalarm</label><select id="cat-m-alert-dir" style="padding:.45rem .7rem;border:1px solid var(--bdr);border-radius:var(--rad);background:var(--sur);color:var(--txt);font-size:.875rem"><option value="unter" data-i18n="detail.alert_below">fällt unter</option><option value="ueber" data-i18n="detail.alert_above">steigt über</option></select></div>
+        <div class="fg" style="max-width:110px"><label for="cat-m-alert-val" data-i18n="wishlist.threshold">Schwelle (opt.)</label><input type="number" id="cat-m-alert-val" step="0.01" min="0" placeholder="—" /></div>
+      </div>
       <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
         <a class="btn bs" id="cat-m-bricklink" href="#" target="_blank" rel="noopener" data-i18n="catalog.buy_bricklink">🛒 Auf BrickLink kaufen</a>
+        <button class="btn bs" id="cat-m-wish" data-click="katalogAufWunschliste" data-i18n="wishlist.add.submit">⭐ Auf die Wunschliste</button>
         <button class="btn bp" id="cat-m-add" data-i18n="catalog.add_to_gallery">➕ In Galerie aufnehmen</button>
       </div>
     </div>

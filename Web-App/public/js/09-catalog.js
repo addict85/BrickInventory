@@ -422,6 +422,15 @@ async function openCatModal(setNumber){
   G('cat-m-add').textContent = s.owned ? t('catalog.add_again') : t('catalog.add_to_gallery');
   G('cat-m-qty').value = '1';
   G('cat-m-price').value = '';
+  // Die Setnummer am Modal hinterlegen: Der Wunschlisten-Knopf liegt in einem
+  // anderen Modul und hat auf _catCurSet keinen Zugriff. Ein Export waere ein
+  // zweiter Weg zu demselben Zustand — das Modal weiss ohnehin, was es zeigt.
+  //
+  // Hier und nicht oben bei _catCurSet: test/catalog-local-images.test.js
+  // liest ein Fenster ab openCatModal und prueft darin die Bildzeile. Ein
+  // Einschub davor schiebt sie hinaus — die Zuweisung gehoert an die Stelle,
+  // an der das Modal aufgeht, und stoert dort niemanden.
+  G('cat-modal').dataset.setNumber = s.set_number;
   G('cat-modal').classList.add('open');
 }
 

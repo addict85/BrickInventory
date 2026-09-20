@@ -260,6 +260,14 @@ const C = {
   'POST /api/v1/storage/locations': 'nur-v1',
   'PUT /api/v1/storage/locations/:id': 'nur-v1',
   'DELETE /api/v1/storage/locations/:id': 'nur-v1',
+  // Die Wunschliste (Nachtrag 179) — Marcos „was man haben moechte", getrennt
+  // vom Besitz. nur-v1 und nicht paritaet: Beide Oberflaechen rufen dieselben
+  // vier Adressen, es gibt also gar kein zweites Gegenstueck zu vergleichen.
+  // Die Regeln dahinter pruefet test/wunschliste-db.test.js gegen die DB.
+  'GET /api/v1/wishlist': 'nur-v1',
+  'POST /api/v1/wishlist': 'nur-v1',
+  'DELETE /api/v1/wishlist/:setNumber/:condition': 'nur-v1',
+  'POST /api/v1/wishlist/:setNumber/:condition/uebernehmen': 'nur-v1',
   'PUT /api/v1/parts/:partNumber/:colorId/storage': 'nur-v1',
   'PUT /api/v1/sets/:setNumber/storage': 'nur-v1',
   'POST /api/v1/parts/import/csv': 'nur-v1',

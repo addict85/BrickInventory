@@ -471,6 +471,35 @@ interface BrickApiService {
         @Path("id") id: Int,
     ): Response<LagerortResponse>
 
+    // ── Wunschliste ─────────────────────────────────────────────────────────
+    //
+    // Vier Adressen, dieselben wie in der Webapp. Der Zustand steht im PFAD
+    // und nicht im Rumpf, weil er zum Schluessel gehoert: Wer sich dasselbe
+    // Set neu UND gebraucht wuenscht, hat zwei Eintraege, und „loesch den
+    // Wunsch auf 75192" waere mehrdeutig.
+
+    @GET("api/v1/wishlist")
+    suspend fun getWunschliste(): Response<WunschlisteResponse>
+
+    @POST("api/v1/wishlist")
+    suspend fun legeWunschAn(
+        @Body request: WunschRequest,
+    ): Response<WunschAntwort>
+
+    @DELETE("api/v1/wishlist/{setNumber}/{condition}")
+    suspend fun loescheWunsch(
+        @Path("setNumber") setNumber: String,
+        @Path("condition") condition: String,
+        @Query("owner_user_id") ownerUserId: Int? = null,
+    ): Response<GenericResponse>
+
+    @POST("api/v1/wishlist/{setNumber}/{condition}/uebernehmen")
+    suspend fun uebernimmWunsch(
+        @Path("setNumber") setNumber: String,
+        @Path("condition") condition: String,
+        @Body request: WunschUebernahmeRequest,
+    ): Response<WunschUebernahmeResponse>
+
     /** Welche Lagerorte es gibt und was darin liegt — Sets UND Teile. */
     @GET("api/v1/storage")
     suspend fun getLagerorte(

@@ -609,4 +609,20 @@
     <string name="price_from_other_condition_new">Kaufpreis aus dem Marktpreis „Neu\" uebernommen — fuer „Gebraucht\" fuehrt BrickLink keinen Preis.</string>
     <string name="price_from_other_condition_used">Kaufpreis aus dem Marktpreis „Gebraucht\" uebernommen — fuer „Neu\" fuehrt BrickLink keinen Preis.</string>
 
+
+    <!-- Wunschliste (Nachtrag 179) -->
+    <string name="nav_wishlist">Wunschliste</string>
+    <string name="wishlist_add_title">Wunsch hinzufügen</string>
+    <string name="wishlist_add_submit">Auf die Wunschliste</string>
+    <string name="wishlist_note">Notiz (optional)</string>
+    <string name="wishlist_empty">Noch keine Wünsche.</string>
+    <string name="wishlist_owned">schon vorhanden</string>
+    <string name="wishlist_added">Auf die Wunschliste gesetzt</string>
+    <string name="wishlist_already">Stand schon auf der Wunschliste</string>
+    <string name="wishlist_deleted">Vom Wunschzettel genommen</string>
+    <string name="wishlist_take">In die Galerie</string>
+    <string name="wishlist_taken">In die Galerie übernommen</string>
+    <string name="wishlist_taken_existing">War schon in der Galerie — Wunsch erfüllt</string>
+    <string name="wishlist_need_number">Bitte Set-Nummer eingeben</string>
+    <string name="wishlist_threshold">Schwelle (optional)</string>
 </resources>

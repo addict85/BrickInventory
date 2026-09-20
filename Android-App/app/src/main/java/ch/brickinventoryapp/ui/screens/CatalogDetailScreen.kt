@@ -54,11 +54,20 @@ fun CatalogDetailScreen(
     householdMembers: List<ch.brickinventoryapp.data.model.HouseholdMember> = emptyList(),
     onLoad: (String) -> Unit,
     onAddToGallery: (String, Int, Double?, String?, Int?) -> Unit,
+    /**
+     * Auf die Wunschliste — Setnummer, Zustand, Alarmrichtung, Schwelle (roh).
+     *
+     * Die Schwelle kommt als TEXT und nicht als Double: Leer heisst „kein
+     * Alarm", nicht „Schwelle 0", und die Umwandlung gehoert an die eine
+     * Stelle, die sie schon kann (alarm/Alarmeingabe.kt).
+     */
+    onWish: (String, String, String, String) -> Unit,
     onOpenInGallery: (String) -> Unit,
     onBack: () -> Unit
 ) {
     LaunchedEffect(setNumber) { onLoad(setNumber) }
     var showAddDialog by rememberSaveable { mutableStateOf(false) }
+    var showWishDialog by rememberSaveable { mutableStateOf(false) }
     // Bildschirmfüllender Zoom wie im Set-Detail — auf Nutzerwunsch auch hier.
     var showImageZoom by rememberSaveable { mutableStateOf(false) }
     val ctx = LocalContext.current
@@ -153,6 +162,19 @@ fun CatalogDetailScreen(
                 // 71021-1 → BrickLink col325), die sich aus keiner der beiden
                 // Datenquellen herleiten lässt. Statt den Button zu verstecken,
                 // liefert der Server dann eine Such-URL und exact = false.
+                // Auf die Wunschliste — Marcos „inkl. Zustand und einem
+                // Preisalarm". Zweitrangig gestaltet (OutlinedButton): Der
+                // haeufigere Griff ist das Aufnehmen, und zwei gleich starke
+                // Knoepfe nebeneinander sind eine Frage, keine Fuehrung.
+                OutlinedButton(
+                    onClick = { showWishDialog = true },
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = Formen.leiste
+                ) {
+                    Text("⭐")
+                    Spacer(Modifier.width(6.dp))
+                    Text(stringResource(R.string.wishlist_add_submit))
+                }
                 val bl = detail.bricklink
                 val blUrl = bl?.url ?: BrickLinkUrls.searchFor(detail.setNumber)
                 val blLabel = if (bl != null && !bl.exact) R.string.catalog_search_bricklink
@@ -190,6 +212,18 @@ fun CatalogDetailScreen(
                 }
             }
         }
+    }
+
+    if (showWishDialog && detail != null) {
+        WunschDialog(
+            setName = detail.name ?: detail.setNumber,
+            defaultCondition = defaultCondition,
+            onDismiss = { showWishDialog = false },
+            onWish = { zustand, richtung, schwelle ->
+                onWish(detail.setNumber, zustand, richtung, schwelle)
+                showWishDialog = false
+            },
+        )
     }
 
     if (showAddDialog && detail != null) {
@@ -283,4 +317,62 @@ private fun CatalogAddDialog(
         dismissButton = { TextButton(onClick = onDismiss) { Text(stringResource(R.string.common_cancel)) } }
     )
 
+}
+
+/**
+ * Zustand und Preisalarm fuer einen Wunsch.
+ *
+ * Bewusst KEINE Anzahl und kein Kaufpreis — anders als beim Aufnehmen in die
+ * Galerie. Ein Wunsch hat weder das eine noch das andere; beides wird erst
+ * bei der Uebernahme gefragt.
+ *
+ * Der Alarm ist optional und steht deshalb unter einer eigenen Ueberschrift:
+ * Wer nur wuenschen will, laesst das Feld leer und drueckt zu.
+ */
+@Composable
+private fun WunschDialog(
+    setName: String,
+    defaultCondition: String,
+    onDismiss: () -> Unit,
+    onWish: (String, String, String) -> Unit,
+) {
+    var zustand  by rememberSaveable { mutableStateOf(defaultCondition) }
+    var richtung by rememberSaveable { mutableStateOf("unter") }
+    var schwelle by rememberSaveable { mutableStateOf("") }
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text(stringResource(R.string.wishlist_add_submit), fontWeight = FontWeight.Bold) },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                Text(setName, style = MaterialTheme.typography.bodyMedium)
+                Zustandszeile(zustand = zustand, onZustand = { zustand = it })
+                HorizontalDivider()
+                Text(stringResource(R.string.detail_alert),
+                     style = MaterialTheme.typography.labelLarge)
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalAlignment = Alignment.CenterVertically) {
+                    FilterChip(selected = richtung == "unter", onClick = { richtung = "unter" },
+                               label = { Text(stringResource(R.string.detail_alert_below)) })
+                    FilterChip(selected = richtung == "ueber", onClick = { richtung = "ueber" },
+                               label = { Text(stringResource(R.string.detail_alert_above)) })
+                }
+                OutlinedTextField(
+                    value = schwelle,
+                    onValueChange = { schwelle = it },
+                    label = { Text(stringResource(R.string.wishlist_threshold)) },
+                    singleLine = true,
+                    keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(
+                        keyboardType = androidx.compose.ui.text.input.KeyboardType.Decimal),
+                    modifier = Modifier.fillMaxWidth(),
+                )
+            }
+        },
+        confirmButton = {
+            Button(onClick = { onWish(zustand, richtung, schwelle) }) {
+                Text(stringResource(R.string.wishlist_add_submit))
+            }
+        },
+        dismissButton = { TextButton(onClick = onDismiss) { Text(stringResource(R.string.common_cancel)) } },
+    )
 }
