@@ -2,7 +2,7 @@
  * Eingangsvalidierung für frei erfassbare Katalogfelder.
  *
  * Vorher gab es KEINE: addManualPart()/addManualMinifig() haben part_number,
- * part_name, color_name, category_name, note und vor allem image_url genau so
+ * part_name, color_name, category_name und vor allem image_url genau so
  * übernommen, wie sie ankamen — beliebige Länge, beliebige Zeichen, beliebiges
  * URL-Schema. Zusammen mit den innerHTML-Templates im Frontend war das der
  * Einstiegspunkt für Stored XSS (`image_url` mit einem " brach aus dem

@@ -640,7 +640,7 @@ async function getManualParts(userId: Blickfeld, viewerId: number, { page = 1, p
   }
   return db.all(`
     SELECT id, user_id, part_number, bl_part_number, part_name, color_id, color_name, color_hex,
-           category_name, quantity, image_url, image_local, unit_price, purchase_price, note, source,
+           category_name, quantity, image_url, image_local, unit_price, purchase_price, source,
            -- condition FEHLTE in dieser Liste. applyManualCondition() unten
            -- faellt ohne Erfassungen auf genau diesen gespeicherten Wert
            -- zurueck (stored || 'N') — und bekam undefined. NACHGEMESSEN:

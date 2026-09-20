@@ -444,7 +444,6 @@ async function computePartsValuation(viewerId: number, ids: Blickfeld) {
       quantity:     qty,
       image_url:    part.image_url,
       image_local:  part.image_local,
-      note:         part.note,
       unit_price:   part.unit_price,
       purchase_price: hasCost ? purchasePrice : null,
       condition:    valued.by_condition.some(b => b.condition === 'U') ? 'U' : 'N',

@@ -72,7 +72,7 @@ test('Wunschliste gegen echte Datenbank', { concurrency: 1 }, async (t) => {
   const W = _req('utils/wunschliste.js');
 
   await t.test('ein Wunsch ist KEIN Besitz', async () => {
-    const a = await W.legeWunschAn(U.opa, '75192-1', 'N', null);
+    const a = await W.legeWunschAn(U.opa, '75192-1', 'N');
     assert.equal(a.war_neu, true);
 
     // Die Kernaussage der ganzen Änderung. Stünde der Wunsch in `sets`, zählte
@@ -100,7 +100,7 @@ test('Wunschliste gegen echte Datenbank', { concurrency: 1 }, async (t) => {
   await t.test('ein Set, das der Katalog nicht kennt, zeigt seine Nummer', async () => {
     // Der benannte Preis dafür, dass hier keine Stammdaten liegen (0021).
     // Er soll SICHTBAR sein und nicht als Absturz auftreten.
-    await W.legeWunschAn(U.opa, '99999-1', 'N', null);
+    await W.legeWunschAn(U.opa, '99999-1', 'N');
     const w = (await W.wuenscheVon([U.opa])).find(x => x.set_number === '99999-1');
     assert.ok(w, 'Der Wunsch fehlt ganz — der LEFT JOIN ist ein INNER JOIN');
     assert.equal(w.name, null);
@@ -111,14 +111,14 @@ test('Wunschliste gegen echte Datenbank', { concurrency: 1 }, async (t) => {
     // Wer ein gebrauchtes zum Bauen und ein verpacktes zum Aufheben sucht, hat
     // zwei Wünsche mit zwei Schwellen. price_alerts führt den Zustand seit
     // 0019 genauso im Schlüssel.
-    const b = await W.legeWunschAn(U.opa, '75192-1', 'U', 'zum Bauen');
+    const b = await W.legeWunschAn(U.opa, '75192-1', 'U');
     assert.equal(b.war_neu, true, 'Der gebrauchte Wunsch hat den neuen überschrieben');
     const beide = (await W.wuenscheVon([U.opa], '75192-1')).map(w => w.condition).sort();
     assert.deepEqual(beide, ['N', 'U']);
   });
 
   await t.test('denselben Wunsch zweimal eintragen ist kein zweiter Eintrag', async () => {
-    const wieder = await W.legeWunschAn(U.opa, '75192-1', 'N', null);
+    const wieder = await W.legeWunschAn(U.opa, '75192-1', 'N');
     assert.equal(wieder.war_neu, false, 'war_neu meldet einen Neuzugang, den es nicht gab');
     const n = await db.get(
       `SELECT COUNT(*)::int AS n FROM wishlist WHERE user_id=$1 AND set_number='75192-1'`, [U.opa]);
@@ -128,14 +128,14 @@ test('Wunschliste gegen echte Datenbank', { concurrency: 1 }, async (t) => {
   await t.test('der Grossvater sieht die Wünsche des Enkels', async () => {
     // Marcos Festlegung. Hier ist der Kontenbaum nicht nur konsequent,
     // sondern der Zweck: Wer ein Geschenk sucht, schaut genau dort nach.
-    await W.legeWunschAn(U.enkel, '75192-1', 'N', 'bitte zu Weihnachten');
+    await W.legeWunschAn(U.enkel, '75192-1', 'N');
     const nurOpa = await W.wuenscheVon([U.opa]);
     assert.ok(!nurOpa.some(w => w.user_id === U.enkel), 'Ohne Blickfeld kommen fremde Wünsche mit');
 
     const zusammen = await W.wuenscheVon([U.opa, U.enkel]);
     const vomEnkel = zusammen.find(w => w.user_id === U.enkel);
     assert.ok(vomEnkel, 'Der Wunsch des Enkels fehlt im gemeinsamen Blickfeld');
-    assert.equal(vomEnkel.notiz, 'bitte zu Weihnachten');
+    assert.equal(vomEnkel.set_number, '75192-1');
   });
 
   await t.test('owned prüft das BLICKFELD, nicht nur das eigene Konto', async () => {
@@ -159,22 +159,12 @@ test('Wunschliste gegen echte Datenbank', { concurrency: 1 }, async (t) => {
     assert.equal(await W.loescheWunsch(U.opa, '75192-1', 'U'), 0);
   });
 
-  await t.test('die Notiz wird beschnitten, nicht abgelehnt', async () => {
-    const lang = 'x'.repeat(600);
-    await W.legeWunschAn(U.opa, '10276-1', 'N', lang);
-    const w = (await W.wuenscheVon([U.opa], '10276-1'))[0];
-    assert.equal(w.notiz.length, 500);
-    // Und leer heisst NULL, wie beim Lagerort.
-    await W.legeWunschAn(U.enkel, '10276-1', 'N', '   ');
-    assert.equal((await W.wuenscheVon([U.enkel], '10276-1'))[0].notiz, null);
-  });
-
   await t.test('die Übernahme legt das Set über addSet() an — mit Erfassungszeile', async () => {
     // „Direkt in die Galerie übernehmen" muss dasselbe sein wie eine
     // Setnummer erfassen. Ein eigenes INSERT INTO sets hätte weder die
     // Erfassungszeile noch den Zustand noch die Anreicherung — und genau
     // daran würde man es erst in der Finanzansicht merken.
-    await W.legeWunschAn(U.opa, '75192-1', 'N', null);
+    await W.legeWunschAn(U.opa, '75192-1', 'N');
     const r = await W.uebernimm(U.opa, U.opa, '75192-1', 'N', { quantity: 2 });
     assert.equal(r.action, 'added');
 
@@ -191,7 +181,11 @@ test('Wunschliste gegen echte Datenbank', { concurrency: 1 }, async (t) => {
 
   await t.test('nach der Übernahme sind Wunsch UND Alarm weg', async () => {
     // Marcos Festlegung auf die Rückfrage: „Eintrag weg, Alarm auch."
-    await W.legeWunschAn(U.enkel, '10276-1', 'U', null);
+    await W.legeWunschAn(U.enkel, '10276-1', 'U');
+    // Der zweite Wunsch auf dasselbe Set, im anderen Zustand — er ist die
+    // eigentliche Aussage unten. Er stand frueher im Notiz-Test, den es seit
+    // dem Ausbau des Feldes (Migration 0022) nicht mehr gibt.
+    await W.legeWunschAn(U.enkel, '10276-1', 'N');
     const P = _req('utils/preisalarm.js');
     await P.setzeAlarm(U.enkel, '10276-1', 'EUR',
       { richtung: 'unter', schwelle: 249, condition: 'U' });
@@ -199,9 +193,9 @@ test('Wunschliste gegen echte Datenbank', { concurrency: 1 }, async (t) => {
 
     await W.uebernimm(U.enkel, U.enkel, '10276-1', 'U', {});
 
-    // Genau der U-Wunsch ist weg. Der N-Wunsch auf dasselbe Set (aus dem
-    // Notiz-Test oben) bleibt stehen — er ist ein ANDERER Wunsch, und genau
-    // dafuer steht der Zustand im Schluessel.
+    // Genau der U-Wunsch ist weg. Der N-Wunsch auf dasselbe Set bleibt
+    // stehen — er ist ein ANDERER Wunsch, und genau dafuer steht der Zustand
+    // im Schluessel.
     //
     // Die erste Fassung dieser Zusicherung zaehlte stumpf auf 0 und war rot,
     // obwohl der Code recht hatte: Sie hat den N-Wunsch mitgezaehlt. Eine
@@ -217,7 +211,7 @@ test('Wunschliste gegen echte Datenbank', { concurrency: 1 }, async (t) => {
     // abhängen, über welchen der vier Wege jemand kommt.
     const vorher = await db.get(
       'SELECT quantity FROM sets WHERE user_id=$1 AND set_number=$2', [U.opa, '75192-1']);
-    await W.legeWunschAn(U.opa, '75192-1', 'N', null);
+    await W.legeWunschAn(U.opa, '75192-1', 'N');
     const r = await W.uebernimm(U.opa, U.opa, '75192-1', 'N', { quantity: 5 });
     assert.equal(r.action, 'exists');
     const nachher = await db.get(
@@ -231,7 +225,7 @@ test('Wunschliste gegen echte Datenbank', { concurrency: 1 }, async (t) => {
   await t.test('Anzahl, Kaufpreis und Zustand lassen sich bei der Übernahme setzen', async () => {
     // Marcos Nachtrag: „gewisse Inhalte wie zB. Preis und Zustand, Anzahl
     // müssen beim Übernehmen angepasst werden."
-    await W.legeWunschAn(U.opa, '10497-1', 'N', null);
+    await W.legeWunschAn(U.opa, '10497-1', 'N');
     await W.uebernimm(U.opa, U.opa, '10497-1', 'N',
       { quantity: 3, purchase_price: 88.5, condition: 'U' });
 
@@ -252,8 +246,8 @@ test('Wunschliste gegen echte Datenbank', { concurrency: 1 }, async (t) => {
     // Der Fall, der vorher still falsch war: Wunsch „gebraucht", gekauft
     // wurde ein neues. Dann muss der GEBRAUCHTE Wunsch weg — den hat man
     // erfuellt — und das Set als neu in die Galerie.
-    await W.legeWunschAn(U.enkel, '21034-1', 'U', null);
-    await W.legeWunschAn(U.enkel, '21034-1', 'N', 'der andere Wunsch');
+    await W.legeWunschAn(U.enkel, '21034-1', 'U');
+    await W.legeWunschAn(U.enkel, '21034-1', 'N');
 
     await W.uebernimm(U.enkel, U.enkel, '21034-1', 'U', { condition: 'N' });
 
@@ -276,7 +270,7 @@ test('Wunschliste gegen echte Datenbank', { concurrency: 1 }, async (t) => {
     //      Name macht die Suche brauchbar" wird rot.
     // Frisch angelegt: Die Subtests davor löschen und übernehmen, der Wunsch
     // von oben muss hier nicht mehr stehen.
-    await W.legeWunschAn(U.opa, '75192-1', 'N', null);
+    await W.legeWunschAn(U.opa, '75192-1', 'N');
     const [mitKatalog] = await W.wuenscheVon([U.opa], '75192-1');
     const url = decodeURIComponent(mitKatalog.preisvergleich_url || '');
     assert.ok(url.startsWith('http'), 'Ohne Adresse führt der Knopf ins Leere');
@@ -287,7 +281,7 @@ test('Wunschliste gegen echte Datenbank', { concurrency: 1 }, async (t) => {
 
     // Und der Fall, der den Knopf bisher verschwinden liess: ein Set, das im
     // Katalog gar nicht steht. Der Name fehlt dann — die Adresse nicht.
-    await W.legeWunschAn(U.opa, '99999-1', 'N', null);
+    await W.legeWunschAn(U.opa, '99999-1', 'N');
     const [ohneKatalog] = await W.wuenscheVon([U.opa], '99999-1');
     assert.equal(ohneKatalog.name, null, 'Vorbedingung: dieses Set kennt der Katalog nicht');
     const url2 = decodeURIComponent(ohneKatalog.preisvergleich_url || '');

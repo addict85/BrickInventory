@@ -1,0 +1,33 @@
+-- ════════════════════════════════════════════════════════════════════════════
+-- Das Notizfeld wird ausgebaut — ueberall.
+-- ════════════════════════════════════════════════════════════════════════════
+--
+-- ── Marcos Vorgabe ──────────────────────────────────────────────────────────
+--
+-- „Das Feld Notizen kann ueberall ausgebaut werden (sowohl bei den Sets, als
+-- auch bei der Wunschliste, etc.)" — auf Rueckfrage ausdruecklich: Masken UND
+-- Spalten, der Verlust der erfassten Notizen in Kauf genommen.
+--
+-- ── Was hier verschwindet ───────────────────────────────────────────────────
+--
+--     parts.note        Freitext an einem manuell erfassten Teil
+--     minifigs.note     dasselbe an einer manuell erfassten Figur
+--     wishlist.notiz    „wofuer" ein Wunsch da ist (Migration 0021)
+--
+-- Das ist ein DATENVERLUST und nicht rueckgaengig zu machen: Was in diesen
+-- drei Spalten stand, ist nach dieser Migration weg. Es gibt keine Kopie und
+-- keinen Weg zurueck — genau so bestellt.
+--
+-- ── Warum DROP und nicht nur ausblenden ─────────────────────────────────────
+--
+-- Eine Spalte, die niemand mehr liest, ist eine Falle: Der naechste CSV-Import
+-- schreibt wieder hinein, die naechste Abfrage nimmt sie versehentlich mit,
+-- und in einem Jahr steht die Frage im Raum, ob das Feld nun gilt oder nicht.
+-- Marcos Entscheid ist eindeutig, also weg damit.
+--
+-- IF EXISTS an jeder Zeile: Diese Migration muss auch auf einem Aufbau
+-- durchlaufen, der die wishlist-Tabelle noch gar nicht hat oder auf dem eine
+-- der Spalten nie angelegt wurde.
+ALTER TABLE IF EXISTS parts    DROP COLUMN IF EXISTS note;
+ALTER TABLE IF EXISTS minifigs DROP COLUMN IF EXISTS note;
+ALTER TABLE IF EXISTS wishlist DROP COLUMN IF EXISTS notiz;

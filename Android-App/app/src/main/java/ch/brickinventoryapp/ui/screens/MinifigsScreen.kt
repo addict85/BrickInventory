@@ -73,9 +73,9 @@ fun MinifigsScreen(
     // Konten. Ohne die Angabe loescht der Server die Zeile des Aufrufers —
     // geklickt waere die fremde Karte, weg die eigene.
     val onDeleteFig: (String, Int?) -> Unit = { figNumber, owner -> vm.deleteMinifig(figNumber, owner) }
-    val onAddMinifig: (String, String?, Int, String?, Double?, String?, Int?) -> Unit =
-        { num, blNum, qty, note, unitPrice, cond, owner ->
-            vm.addMinifig(num, blNum, qty, note, unitPrice, cond, owner)
+    val onAddMinifig: (String, String?, Int, Double?, String?, Int?) -> Unit =
+        { num, blNum, qty, unitPrice, cond, owner ->
+            vm.addMinifig(num, blNum, qty, unitPrice, cond, owner)
         }
 
     // Suchtext aus dem Zustand, gefiltert wird auf dem SERVER — wie bei den
@@ -228,9 +228,9 @@ fun MinifigsScreen(
             householdMembers = householdMembers,
             defaultCondition = defaultCondition,
             onDismiss = { showAddDialog = false },
-            onAdd = { num, blNum, qty, note, unitPrice, cond, owner ->
+            onAdd = { num, blNum, qty, unitPrice, cond, owner ->
                 showAddDialog = false
-                onAddMinifig(num, blNum, qty, note, unitPrice, cond, owner)
+                onAddMinifig(num, blNum, qty, unitPrice, cond, owner)
             }
         )
     }
@@ -273,7 +273,6 @@ fun ManualFigTile(fig: FigValuationItem, serverUrl: String, imageLoader: ImageLo
         besitzer = fig.owners,
         preis = fig.avgPurchasePrice ?: fig.unitPrice ?: fig.purchasePrice,
         waehrung = waehrung,
-        notiz = fig.note,
         onEdit = onEdit,
         onDelete = onDelete,
         platzhalter = { Text("👷", fontSize = Schrift.riesig) },
@@ -283,7 +282,7 @@ fun ManualFigTile(fig: FigValuationItem, serverUrl: String, imageLoader: ImageLo
 @Composable
 fun AddMinifigDialog(
     onDismiss: () -> Unit,
-    onAdd: (String, String?, Int, String?, Double?, String?, Int?) -> Unit,
+    onAdd: (String, String?, Int, Double?, String?, Int?) -> Unit,
     defaultCondition: String = "N",
     /** Konten des Haushalts — ohne Unterkonten bleibt die Auswahl verborgen. */
     householdMembers: List<ch.brickinventoryapp.data.model.HouseholdMember> = emptyList()
@@ -292,7 +291,6 @@ fun AddMinifigDialog(
     var blFigNumber by rememberSaveable { mutableStateOf("") }
     var quantity   by rememberSaveable { mutableStateOf("1") }
     var unitPrice  by rememberSaveable { mutableStateOf("") }
-    var note       by rememberSaveable { mutableStateOf("") }
     var condition  by rememberSaveable { mutableStateOf(defaultCondition) }
     // Vorbelegt mit dem eigenen Konto: Wer nichts wählt, erfasst für sich —
     // dasselbe Verhalten wie vor der Haushaltssicht.
@@ -304,11 +302,11 @@ fun AddMinifigDialog(
     fun submit() {
         if (figNumber.isNotBlank()) {
             // Siehe erfassungsWerte() — dieselbe Umrechnung wie im Teile-Dialog.
-            val w = erfassungsWerte(quantity, unitPrice, note, condition, owner, householdMembers)
+            val w = erfassungsWerte(quantity, unitPrice, condition, owner, householdMembers)
             onAdd(
                 figNumber,
                 blFigNumber.trim().ifBlank { null },
-                w.anzahl, w.notiz, w.preis, w.zustand, w.besitzer
+                w.anzahl, w.preis, w.zustand, w.besitzer
             )
         }
     }
@@ -340,7 +338,6 @@ fun AddMinifigDialog(
                 ErfassungsFelder(
                     anzahl = quantity, onAnzahl = { quantity = it },
                     preis = unitPrice, onPreis = { unitPrice = it },
-                    notiz = note, onNotiz = { note = it },
                     zustand = condition, onZustand = { condition = it },
                 )
             }

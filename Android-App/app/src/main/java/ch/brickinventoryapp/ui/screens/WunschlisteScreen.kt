@@ -37,10 +37,9 @@ import ch.brickinventoryapp.util.resolveThumbUrl
  * ── Warum eine Liste und keine Kachelwand ───────────────────────────────────
  *
  * Die Galerie zeigt Kacheln, weil man seine Sammlung ansieht. Eine
- * Wunschliste wird GELESEN und abgearbeitet, und die Notiz („Geschenk Enkel")
- * ist dabei so wichtig wie das Bild — auf einer Kachel haette sie keinen
- * Platz. Dieselbe Entscheidung wie in der Webapp; die beiden Oberflaechen
- * sollen sich gleich anfuehlen.
+ * Wunschliste wird GELESEN und abgearbeitet — Nummer, Jahr und Zustand
+ * nebeneinander, dazu der Preisalarm. Dieselbe Entscheidung wie in der
+ * Webapp; die beiden Oberflaechen sollen sich gleich anfuehlen.
  *
  * ── Was hier NICHT entschieden wird ─────────────────────────────────────────
  *
@@ -145,8 +144,8 @@ fun WunschlisteScreen(
             householdMembers = appState.householdMembers,
             defaultCondition = appState.userDefaultCondition ?: "N",
             onDismiss = { maskeOffen = false },
-            onAnlegen = { nummer, zustandWahl, notiz, besitzer ->
-                vm.legeWunschAn(nummer, zustandWahl, notiz, besitzer)
+            onAnlegen = { nummer, zustandWahl, besitzer ->
+                vm.legeWunschAn(nummer, zustandWahl, besitzer)
                 maskeOffen = false
             },
         )
@@ -244,7 +243,7 @@ internal fun UebernahmeDialog(
  *
  * ── Was drin steht und was nicht ────────────────────────────────────────────
  *
- * Nummer, Zustand, Notiz, Konto — Anzahl und Kaufpreis fehlen bewusst: Ein
+ * Nummer, Zustand, Konto — Anzahl und Kaufpreis fehlen bewusst: Ein
  * Wunsch hat weder das eine noch das andere. Beides wird erst bei der
  * Uebernahme in die Galerie gefragt.
  *
@@ -257,11 +256,10 @@ private fun WunschErfassenDialog(
     householdMembers: List<ch.brickinventoryapp.data.model.HouseholdMember>,
     defaultCondition: String,
     onDismiss: () -> Unit,
-    onAnlegen: (String, String, String, Int?) -> Unit,
+    onAnlegen: (String, String, Int?) -> Unit,
 ) {
     var nummer  by rememberSaveable { mutableStateOf("") }
     var zustand by rememberSaveable { mutableStateOf(defaultCondition) }
-    var notiz   by rememberSaveable { mutableStateOf("") }
     // Vorbelegt mit dem eigenen Konto — wer nichts waehlt, wuenscht fuer sich.
     var besitzer by remember(householdMembers) {
         mutableStateOf(householdMembers.firstOrNull { it.isSelf }?.id)
@@ -292,13 +290,6 @@ private fun WunschErfassenDialog(
                     modifier = Modifier.fillMaxWidth().focusRequester(nummerFokus),
                 )
                 ZustandsWahl(zustand) { zustand = it }
-                OutlinedTextField(
-                    value = notiz,
-                    onValueChange = { notiz = it },
-                    label = { Text(stringResource(R.string.common_note)) },
-                    singleLine = true,
-                    modifier = Modifier.fillMaxWidth(),
-                )
                 // Derselbe Waehler wie beim Erfassen eines Sets. Bei einem
                 // Einzelkonto blendet er sich selbst aus (members.size < 2).
                 OwnerPicker(householdMembers, besitzer, { besitzer = it })
@@ -309,7 +300,7 @@ private fun WunschErfassenDialog(
                 onClick = {
                     // Nur mitschicken, wenn es ueberhaupt eine Wahl gab —
                     // sonst schreibt der Server auf das eigene Konto.
-                    onAnlegen(nummer, zustand, notiz,
+                    onAnlegen(nummer, zustand,
                               if (householdMembers.size > 1) besitzer else null)
                 },
                 enabled = nummer.isNotBlank(),
@@ -362,10 +353,6 @@ private fun WunschZeile(
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
-                    if (!w.notiz.isNullOrBlank()) {
-                        Text(w.notiz, style = MaterialTheme.typography.bodySmall,
-                             color = MaterialTheme.colorScheme.onSurfaceVariant)
-                    }
                 }
             }
             Row(horizontalArrangement = Arrangement.spacedBy(Abstaende.klein),

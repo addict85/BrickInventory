@@ -282,7 +282,6 @@ CREATE TABLE IF NOT EXISTS parts (
   source          TEXT DEFAULT 'set',
   unit_price      NUMERIC(12,4),
   purchase_price  NUMERIC(12,4),
-  note            TEXT,
   created_at      TIMESTAMPTZ DEFAULT NOW(),
   FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE
 );
@@ -368,7 +367,6 @@ CREATE TABLE IF NOT EXISTS minifigs (
   source          TEXT DEFAULT 'set',
   unit_price      NUMERIC(12,4),
   purchase_price  NUMERIC(12,4),
-  note            TEXT,
   FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE
 );
 CREATE INDEX IF NOT EXISTS idx_minifigs_user ON minifigs(user_id);

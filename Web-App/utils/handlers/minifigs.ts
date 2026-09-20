@@ -78,7 +78,6 @@ async function getMinifigs(userId: number | number[], { search, source, set_numb
            m.source,
            MAX(m.unit_price) AS unit_price,
            MAX(m.condition) AS stored_condition,
-           MAX(m.note) AS note,
            MIN(m.set_number) AS set_number,
            SUM(m.quantity * COALESCE(s.quantity, 1)) AS total_quantity,
            STRING_AGG(DISTINCT m.set_number, ',') FILTER (WHERE m.set_number IS NOT NULL) AS in_sets,

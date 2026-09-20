@@ -76,8 +76,23 @@
     .ntab{padding:12px 13px;cursor:pointer;font-size:.875rem;font-weight:600;color:var(--mut);border-bottom:2px solid transparent;transition:all .15s;display:flex;align-items:center;gap:6px;white-space:nowrap;margin-bottom:-1px}
     .ntab:hover{color:var(--txt)}
     .ntab.active{color:var(--b600);border-bottom-color:var(--b600)}
+    /* Mittlere Fenster: schmalere Reiter, damit alle neun auf EINE Zeile
+       passen, statt seitlich wegzuscrollen. Unterhalb von 640px uebernimmt
+       mobile.css — dort ist Scrollen richtig, weil dann ohnehin nichts mehr
+       nebeneinander passt. */
+    @media (min-width:641px) and (max-width:1200px){.ntab{padding:12px 7px;gap:4px}}
 
-    main{max-width:1400px;margin:0 auto;padding:1.75rem}
+    /* Marcos Vorgabe: „Bitte die Webseite etwas breiter machen, damit alle
+       Reiter auf einer Zeile Platz haben."
+
+       Die Reiterleiste selbst ist NICHT auf diese Breite begrenzt — sie sitzt
+       ausserhalb von <main> und laeuft ueber die ganze Fensterbreite. Im
+       Browser gemessen: Die neun Reiter (mit Monitoring, das nur Verwalter
+       sehen) brauchen 1050px. Auf einem 1280er Fenster passt das; mit
+       125-Prozent-Zoom sind davon noch 1024 nutzbare Pixel uebrig, und dann
+       passt es nicht mehr. Deshalb ZWEI Aenderungen: hier die Inhaltsbreite,
+       und weiter unten schmalere Reiter fuer mittlere Fenster. */
+    main{max-width:1720px;margin:0 auto;padding:1.75rem}
     .tab{display:none}.tab.active{display:block}
     .ph{margin-bottom:1.5rem;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:.75rem}
     .ptitle{font-size:1.4rem;font-weight:800;letter-spacing:-.3px;display:inline-flex;align-items:center;gap:.4rem}
@@ -107,6 +122,26 @@
        leer, was eine CSS-Regel nicht ueberschreiben koennte), margin-left:auto
        gilt nur fuer die Finanzen-Auswahl. */
     .scope-select{width:auto}
+    /* Die drei Preisalarm-Felder (Zustand, Richtung, Schwelle) im Set- und im
+       Wunsch-Detail.
+
+       Sie standen bis jetzt als style-Attribut im Markup, mit height:26px —
+       und genau daran sind sie zerbrochen: Die Regel zwei Zeilen weiter oben
+       gibt JEDEM select padding:9px 13px, und *{box-sizing:border-box} (ganz
+       oben) rechnet die Polsterung in die Hoehe hinein. Im Browser gemessen
+       (Chromium, 700px breit): aussen 26px, innen 6px — bei 12.8px Schrift.
+       Vom gewaehlten Eintrag blieb ein Streifen von sechs Pixeln stehen, der
+       Rest war abgeschnitten. Dazu machte width:100% aus der Zeile drei.
+
+       Deshalb KEINE feste Hoehe: Die Polsterung bestimmt sie. Und width:auto,
+       damit die drei Felder nebeneinander stehen statt untereinander.
+
+       Mit Elementnamen davor, nicht blosses .alarm-feld: Die allgemeine Regel
+       oben trifft `input[type=number]` und waere damit GENAUER als eine blosse
+       Klasse — das Zahlenfeld behielt so seine 9px-Polsterung und stand elf
+       Pixel hoeher als die beiden Auswahlfelder daneben (gemessen). */
+    select.alarm-feld,input.alarm-feld{width:auto;padding:3px 8px;font-size:.8rem;border:1px solid var(--bdr);border-radius:6px;background:var(--sur);color:var(--txt)}
+    input.alarm-feld[type=number]{width:84px;text-align:right}
     input[type=file]{background:var(--b50);border:2px dashed var(--b200);color:var(--mut);padding:14px;border-radius:8px;width:100%;cursor:pointer;font-size:.85rem}
     input[type=file]:hover{border-color:var(--b400)}
 
@@ -266,7 +301,6 @@
     .man-tile-row label{color:var(--mut)}
     .man-tile-row input{width:64px;text-align:right;border:1px solid var(--bdr);border-radius:6px;padding:2px 6px;font-size:.78rem;font-weight:600;background:var(--sur);color:var(--txt)}
     .man-tile-kp{font-size:.72rem;color:var(--mut);text-align:center;margin-top:4px;padding-top:6px;border-top:1px dashed var(--bdr)}
-    .man-tile-note{font-size:.7rem;color:var(--mut);text-align:center;margin-top:4px;font-style:italic}
     .group-hd{display:flex;align-items:center;gap:10px;margin-bottom:.75rem;padding-bottom:.5rem;border-bottom:1.5px solid var(--bdr)}
     .group-title{font-size:.9rem;font-weight:700;color:var(--s800)}
     .group-sub{font-size:.77rem;color:var(--mut)}

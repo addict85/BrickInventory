@@ -949,6 +949,21 @@ data class WunschUiState(
  * eine zweite Kopie liefe beim Loeschen oder Uebernehmen auseinander.
  */
 data class WunschDetailUiState(
+    /**
+     * Welches Set dieses Detail zeigt.
+     *
+     * Gesetzt, SOBALD geladen wird — vor jeder Antwort. Daran erkennt
+     * setzePreisalarm(), dass der Bildschirm noch offen ist und die Alarme
+     * nachgeladen werden duerfen. Vorher fragte die Stelle nur
+     * _setDetailState.setDetail ab; das Wunsch-Detail laedt aber gar kein
+     * SetDetail, also traf die Bedingung dort NIE zu. Der Alarm wurde
+     * gespeichert, die Anzeige erfuhr es nur nicht — aus Marcos Sicht war er
+     * damit nicht gespeichert.
+     *
+     * Nicht `katalog?.setNumber`: Ein Set, das rb_sets nicht kennt, hat
+     * keinen Katalogeintrag, und gerade dort waere die Anzeige dann stumm.
+     */
+    val setNumber: String? = null,
     /** Thema, Teile, Minifiguren, BrickLink, Preisvergleich. */
     val katalog: ch.brickinventoryapp.data.model.CatalogSetDetail? = null,
     /** Der VERLAUF. Die aktuellen Preise stehen in [preise] — siehe dort. */

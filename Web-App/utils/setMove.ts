@@ -92,7 +92,7 @@ async function copyContents(tx: any, sn: string, fromId: number, toId: number) {
   //
   // Es fehlte hier, und das war die einzige Spalte, die beide Zweige
   // verschieden behandelten: Die Teile nehmen 14 Spalten mit, die Minifiguren
-  // nahmen 7. Von den fehlenden sind unit_price, purchase_price, note,
+  // nahmen 7. Von den fehlenden sind unit_price, purchase_price,
   // condition und bl_fig_number ausschliesslich bei MANUELL erfassten Figuren
   // gefüllt — hier werden aber nur Set-Figuren kopiert, dort steht überall
   // NULL. image_local nicht: Der Bild-Job setzt es „über Nutzer und Quellen
@@ -257,18 +257,18 @@ export async function moveManualAcquisition(
     // das Exemplar; ein erneuter Katalogabruf wäre unnötig.
     await tx.run(
       `INSERT INTO parts (user_id, part_number, part_name, color_id, color_name, color_hex,
-                          category_name, quantity, image_url, image_local, note, unit_price,
+                          category_name, quantity, image_url, image_local, unit_price,
                           condition, source, bl_part_number)
-       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,'manual',$14)`,
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,'manual',$13)`,
       [toId, src.part_number, src.part_name, src.color_id, src.color_name, src.color_hex,
-       src.category_name, movingQty, src.image_url, src.image_local, src.note, src.unit_price,
+       src.category_name, movingQty, src.image_url, src.image_local, src.unit_price,
        src.condition, src.bl_part_number]);
   } else {
     await tx.run(
-      `INSERT INTO minifigs (user_id, fig_number, fig_name, quantity, image_url, note,
+      `INSERT INTO minifigs (user_id, fig_number, fig_name, quantity, image_url,
                              unit_price, condition, source, bl_fig_number)
-       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,'manual',$9)`,
-      [toId, src.fig_number, src.fig_name, movingQty, src.image_url, src.note,
+       VALUES ($1,$2,$3,$4,$5,$6,$7,'manual',$8)`,
+      [toId, src.fig_number, src.fig_name, movingQty, src.image_url,
        src.unit_price, src.condition, src.bl_fig_number]);
   }
 

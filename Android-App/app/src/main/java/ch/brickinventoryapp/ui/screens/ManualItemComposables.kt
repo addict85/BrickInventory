@@ -183,21 +183,13 @@ fun ErsatzteilPlakette(modifier: Modifier = Modifier) {
 // ConditionBadge(s) und der Kaufpreis-Editor.
 
 /**
- * Der Fuss einer Kachel fuer einen MANUELL erfassten Eintrag: Preis und Notiz.
+ * Der Fuss einer Kachel fuer einen MANUELL erfassten Eintrag: der Preis.
  *
- * ── Warum es das jetzt gibt (Nachtrag 134) ──────────────────────────────────
+ * ── Warum es das gibt (Nachtrag 134) ────────────────────────────────────────
  *
- * Die Webapp zeigt auf ihrer `man-tile` unter den Plaketten zwei weitere
- * Zeilen (06-minifigs.js Zeilen 328-330 fuer Figuren, 486-488 fuer Teile):
- *
- *     <div style="font-weight:700;…">${priceStr}</div>
- *     ${p.note ? `<div class="man-tile-note">${esc(p.note)}</div>` : ''}
- *
- * Die App zeigte beides nicht. Bei der NOTIZ ist das mehr als eine fehlende
- * Zeile: Der Erfassungsdialog fragt sie ab (`parts_note`, `minifigs_note`),
- * schickt sie an den Server — und danach war sie in der ganzen App nirgends
- * mehr zu sehen, weder auf der Kachel noch im Detail. Eine Eingabe, die
- * nirgends wieder auftaucht, sieht aus, als waere sie verlorengegangen.
+ * Die Webapp zeigt auf ihrer `man-tile` unter den Plaketten den Preis, die App
+ * zeigte ihn nicht. Hier stand bis zum Ausbau des Notizfeldes (Migration 0022)
+ * auch die Notiz.
  *
  * ── Welcher Preis ───────────────────────────────────────────────────────────
  *
@@ -211,10 +203,9 @@ fun ErsatzteilPlakette(modifier: Modifier = Modifier) {
  *
  * @param preis    Roher Betrag; null = keiner hinterlegt, dann steht „—" da.
  * @param waehrung Waehrungscode aus den Einstellungen.
- * @param notiz    Notiz des Eintrags, oder null/leer.
  */
 @Composable
-fun ManuelleKachelFuss(preis: Double?, waehrung: String, notiz: String?) {
+fun ManuelleKachelFuss(preis: Double?, waehrung: String) {
     Text(
         if (preis != null) fmtMoney(preis, waehrung) else "—",
         style = MaterialTheme.typography.labelSmall,
@@ -224,15 +215,6 @@ fun ManuelleKachelFuss(preis: Double?, waehrung: String, notiz: String?) {
         overflow = TextOverflow.Ellipsis,
         modifier = Modifier.padding(top = Abstaende.haar),
     )
-    if (!notiz.isNullOrBlank()) {
-        Text(
-            notiz,
-            style = MaterialTheme.typography.labelSmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-            maxLines = 1,
-            overflow = TextOverflow.Ellipsis,
-        )
-    }
 }
 
 /**
@@ -243,23 +225,20 @@ fun ManuelleKachelFuss(preis: Double?, waehrung: String, notiz: String?) {
  * Die UMRECHNUNG stand zeichengleich in AddPartDialog und AddMinifigDialog:
  *
  *     anzahl.toIntOrNull() ?: 1
- *     notiz.ifBlank { null }
  *     preis.replace(',', '.').toDoubleOrNull()
  *     if (householdMembers.size > 1) besitzer else null
  *
  * Jede Zeile ist eine Entscheidung, keine Formalie: Eine leere Anzahl heisst
- * eins und nicht null; eine leere Notiz heisst „keine" und nicht „leerer Text";
- * das Komma der deutschen Tastatur muss zum Punkt werden, sonst kommt beim
- * Server nichts an; und ohne Haushalt darf gar kein Besitzer mitgehen, damit
- * der Server beim eigenen Konto bleibt.
+ * eins und nicht null; das Komma der deutschen Tastatur muss zum Punkt werden,
+ * sonst kommt beim Server nichts an; und ohne Haushalt darf gar kein Besitzer
+ * mitgehen, damit der Server beim eigenen Konto bleibt.
  *
- * Vier Entscheidungen mal zwei Dialoge sind acht Stellen, an denen genau eine
+ * Drei Entscheidungen mal zwei Dialoge sind sechs Stellen, an denen genau eine
  * geaendert werden koennte. Die Felder selbst stehen schon gemeinsam da
  * ([ErfassungsFelder]) — die Bedeutung ihrer Werte gehoert daneben.
  */
 data class ErfassungsWerte(
     val anzahl: Int,
-    val notiz: String?,
     val preis: Double?,
     val zustand: String,
     val besitzer: Int?,
@@ -272,26 +251,24 @@ data class ErfassungsWerte(
 fun erfassungsWerte(
     anzahl: String,
     preis: String,
-    notiz: String,
     zustand: String,
     besitzer: Int?,
     haushalt: List<ch.brickinventoryapp.data.model.HouseholdMember>,
 ): ErfassungsWerte = ErfassungsWerte(
     anzahl = anzahl.toIntOrNull() ?: 1,
-    notiz = notiz.ifBlank { null },
     preis = preis.replace(',', '.').toDoubleOrNull(),
     zustand = zustand,
     besitzer = if (haushalt.size > 1) besitzer else null,
 )
 
 /**
- * Anzahl, Kaufpreis, Notiz und Zustand — die vier Angaben, die JEDE manuelle
+ * Anzahl, Kaufpreis und Zustand — die drei Angaben, die JEDE manuelle
  * Erfassung hat, ob Teil oder Minifigur.
  *
  * ── Warum das zusammengezogen ist ───────────────────────────────────────────
  *
  * NACHGEMESSEN: Der Block stand zeichengleich in AddPartDialog (PartsDialogs.kt)
- * und AddMinifigDialog (MinifigsScreen.kt) — vier Felder, dieselben Formen,
+ * und AddMinifigDialog (MinifigsScreen.kt) — dieselben Felder, dieselben Formen,
  * dieselben Tastaturen, und darunter dieselbe Zustandszeile. Nur die Namen der
  * Textressourcen waren verschieden, und deren INHALT war in beiden Sprachen
  * wortgleich. Zwei Dialoge, die dasselbe erfassen und gleich aussehen sollen,
@@ -312,8 +289,6 @@ fun ErfassungsFelder(
     onAnzahl: (String) -> Unit,
     preis: String,
     onPreis: (String) -> Unit,
-    notiz: String,
-    onNotiz: (String) -> Unit,
     zustand: String,
     onZustand: (String) -> Unit,
 ) {
@@ -331,12 +306,6 @@ fun ErfassungsFelder(
         modifier = Modifier.fillMaxWidth(), singleLine = true,
         shape = Formen.knopf,
         keyboardOptions = NumericInput.preisTastatur(),
-    )
-    OutlinedTextField(
-        value = notiz, onValueChange = onNotiz,
-        label = { Text(stringResource(R.string.common_note)) },
-        modifier = Modifier.fillMaxWidth(), singleLine = true,
-        shape = Formen.knopf,
     )
     Zustandszeile(zustand = zustand, onZustand = onZustand)
 }
@@ -380,7 +349,6 @@ fun ManuelleKachel(
     besitzer: List<ch.brickinventoryapp.data.model.HouseholdMember>,
     preis: Double?,
     waehrung: String,
-    notiz: String?,
     onEdit: () -> Unit,
     onDelete: () -> Unit,
     farbe: Color? = null,
@@ -453,7 +421,7 @@ fun ManuelleKachel(
                 // mehrere Konten im Blickfeld sind — im Einzelkonto stünde an
                 // jeder Kachel „gehört mir".
                 OwnerBadges(besitzer, Modifier.padding(top = Abstaende.haar))
-                ManuelleKachelFuss(preis = preis, waehrung = waehrung, notiz = notiz)
+                ManuelleKachelFuss(preis = preis, waehrung = waehrung)
             }
         }
     }

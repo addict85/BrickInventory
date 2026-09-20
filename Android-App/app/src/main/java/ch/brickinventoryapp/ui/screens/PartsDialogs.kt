@@ -45,7 +45,7 @@ import ch.brickinventoryapp.ui.theme.Abstaende
 fun AddPartDialog(
     colors: List<BrickColor> = emptyList(),
     onDismiss: () -> Unit,
-    onAdd: (String, Int, String?, String?, Int, String?, Double?, String?, Int?) -> Unit,
+    onAdd: (String, Int, String?, String?, Int, Double?, String?, Int?) -> Unit,
     defaultCondition: String = "N",
     /** Konten des Haushalts — ohne Unterkonten bleibt die Auswahl verborgen. */
     householdMembers: List<ch.brickinventoryapp.data.model.HouseholdMember> = emptyList()
@@ -53,7 +53,6 @@ fun AddPartDialog(
     var partNumber by rememberSaveable { mutableStateOf("") }
     var quantity   by rememberSaveable { mutableStateOf("1") }
     var unitPrice  by rememberSaveable { mutableStateOf("") }
-    var note       by rememberSaveable { mutableStateOf("") }
     var selectedColor by remember { mutableStateOf<BrickColor?>(null) }
     var colorMenuExpanded by rememberSaveable { mutableStateOf(false) }
     var condition  by rememberSaveable { mutableStateOf(defaultCondition) }
@@ -69,10 +68,10 @@ fun AddPartDialog(
             // Die Umrechnung steht in erfassungsWerte() — dieselbe wie im
             // Figuren-Dialog. Was ein leeres Feld bedeutet, ist eine
             // Entscheidung und keine Formalie; sie gehoert an eine Stelle.
-            val w = erfassungsWerte(quantity, unitPrice, note, condition, owner, householdMembers)
+            val w = erfassungsWerte(quantity, unitPrice, condition, owner, householdMembers)
             onAdd(
                 partNumber, selectedColor?.id ?: 0, selectedColor?.name, selectedColor?.hex,
-                w.anzahl, w.notiz, w.preis, w.zustand, w.besitzer
+                w.anzahl, w.preis, w.zustand, w.besitzer
             )
         }
     }
@@ -137,7 +136,6 @@ fun AddPartDialog(
                 ErfassungsFelder(
                     anzahl = quantity, onAnzahl = { quantity = it },
                     preis = unitPrice, onPreis = { unitPrice = it },
-                    notiz = note, onNotiz = { note = it },
                     zustand = condition, onZustand = { condition = it },
                 )
             }

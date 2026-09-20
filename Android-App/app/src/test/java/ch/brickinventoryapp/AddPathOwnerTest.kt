@@ -110,10 +110,10 @@ class AddPathOwnerTest {
             "erfassungsWerte() schickt den Eigentümer auch ohne Haushalt mit — dann " +
                 "überschreibt die App eine Server-Vorgabe mit einer ID, die niemand gewählt hat"
         }
-        // Und die drei anderen Entscheidungen derselben Umrechnung, jede eine
-        // eigene Aussage über eine leere Eingabe.
+        // Und die beiden anderen Entscheidungen derselben Umrechnung, jede eine
+        // eigene Aussage über eine leere Eingabe. Die Notiz stand hier als
+        // dritte; sie ist mit Migration 0022 ausgebaut.
         assert(gemeinsam.contains("anzahl.toIntOrNull() ?: 1")) { "leere Anzahl heisst 1, nicht 0" }
-        assert(gemeinsam.contains("notiz.ifBlank { null }")) { "leere Notiz heisst „keine\"" }
         assert(gemeinsam.contains("preis.replace(',', '.')")) {
             "das Komma der deutschen Tastatur muss zum Punkt werden, sonst kommt beim " +
                 "Server keine Zahl an"

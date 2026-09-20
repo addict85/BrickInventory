@@ -51,12 +51,12 @@ internal fun MainViewModel.ladeWunschliste() {
  * jemand den Bildschirm wechselt.
  */
 internal fun MainViewModel.legeWunschAn(
-    setNumber: String, zustand: String, notiz: String?, besitzer: Int? = null,
+    setNumber: String, zustand: String, besitzer: Int? = null,
 ) {
     val nummer = setNumber.trim()
     if (nummer.isBlank()) { _snackbar.value = text(R.string.wishlist_need_number); return }
     viewModelScope.launch {
-        when (val r = repo.sets.legeWunschAn(nummer, zustand, notiz?.takeIf { it.isNotBlank() }, besitzer)) {
+        when (val r = repo.sets.legeWunschAn(nummer, zustand, besitzer)) {
             is Result.Success -> {
                 // „stand schon drauf" ist kein Fehler, aber auch kein Neuzugang
                 // — wer zweimal auf denselben Knopf drueckt, soll den
@@ -142,7 +142,7 @@ internal fun MainViewModel.wuenscheMitAlarm(
     besitzer: Int? = null,
 ) {
     viewModelScope.launch {
-        when (val r = repo.sets.legeWunschAn(setNumber, zustand, null, besitzer)) {
+        when (val r = repo.sets.legeWunschAn(setNumber, zustand, besitzer)) {
             is Result.Error -> { _snackbar.value = text(R.string.vm_error, meldung(r)); return@launch }
             is Result.Success -> {
                 // Dieselbe Zahlenerkennung wie beim Preisalarm im Set-Detail:
@@ -187,7 +187,7 @@ internal fun MainViewModel.wuenscheMitAlarm(
  */
 internal fun MainViewModel.ladeWunschDetail(setNumber: String) {
     viewModelScope.launch {
-        _wunschDetailState.value = WunschDetailUiState(laedt = true)
+        _wunschDetailState.value = WunschDetailUiState(setNumber = setNumber, laedt = true)
 
         // Der Alarm gehoert dem Set-Detail-Zustand, und das ist Absicht: Der
         // Abschnitt, der ihn zeigt (setDetailAlarmSection), schreibt nach dem

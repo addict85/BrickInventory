@@ -48,6 +48,16 @@ const collect = src => {
   // meldete der Prüfer drei Modal-IDs als fehlend, obwohl sie da sind.
   for (const m of src.matchAll(/wertId:\s*'([^']+)'/g)) knownIds.add(m[1]);
   for (const m of src.matchAll(/wertId:\s*"([^"]+)"/g)) knownIds.add(m[1]);
+  // Und der fuenfte Weg: Der Lagerort-Baustein erzeugt ZWEI Elemente aus
+  // einer Kennung — das Textfeld `id` und die Auswahl `id-sel`
+  // (07-admin.js, lagerortBlock). Seit das Feld ein Auswahlfeld mit
+  // Neuerfassung ist, steht das id-Literal nicht mehr an der Aufrufstelle,
+  // sondern als `id="${id}"` im Baustein. Ohne diese Zeile meldete der
+  // Pruefer m-storage und setitem-storage als fehlend, obwohl beide entstehen.
+  for (const m of src.matchAll(/lagerortBlock\(\s*'([^']+)'/g)) {
+    knownIds.add(m[1]);
+    knownIds.add(m[1] + '-sel');
+  }
 };
 collect(fs.readFileSync(path.join(PUB, 'index.html'), 'utf8'));
 for (const f of JS_FILES) collect(fs.readFileSync(path.join(PUB, 'js', f), 'utf8'));

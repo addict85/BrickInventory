@@ -150,7 +150,6 @@ data class PartValuationItem(
     val quantity: Int = 1,
     @SerialName("image_url") val imageUrl: String? = null,
     @SerialName("image_local") val imageLocal: String? = null,
-    val note: String? = null,
     @SerialName("unit_price") val unitPrice: Double? = null,
     @SerialName("purchase_price") val purchasePrice: Double? = null,
     /**
@@ -246,7 +245,6 @@ data class FigValuationItem(
     // Der Server legt Minifiguren-Bilder seit der Erweiterung des img-dl-Laufs
     // unter /images/ ab und liefert sie über express.static.
     @SerialName("image_local") val imageLocal: String? = null,
-    val note: String? = null,
     @SerialName("unit_price") val unitPrice: Double? = null,
     @SerialName("purchase_price") val purchasePrice: Double? = null,
     /**
