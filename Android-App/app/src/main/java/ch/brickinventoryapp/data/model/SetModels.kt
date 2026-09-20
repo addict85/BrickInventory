@@ -495,6 +495,15 @@ data class Wunsch(
      * Aufruf je Zeile waere N+1 fuer eine Liste, die auch lang sein kann.
      */
     val alarm: WunschAlarm? = null,
+    /**
+     * Preisvergleich — die Adresse fuer den Knopf im Detail.
+     *
+     * Sie kommt mit dem Wunsch, nicht aus /catalog/sets/:nr: Ein Set, das
+     * rb_sets nicht kennt, beantwortet die Katalogroute mit 404 — und dann
+     * blieb der Knopf aus, obwohl die Adresse aus der Setnummer allein zu
+     * bilden ist. Die Begruendung steht in utils/wunschliste.ts.
+     */
+    @SerialName("preisvergleich_url") val preisvergleichUrl: String? = null,
 )
 
 @Serializable

@@ -181,9 +181,13 @@ test('der Preisjob holt alle Zustände, die ein Set tatsächlich führt', () => 
   // in dist/ und im Repo nicht mehr vorhanden.
   const job = fs.readFileSync(path.join(ROOT, 'jobs', 'priceJob.ts'), 'utf8');
 
-  assert.match(job, /async function conditionsNeededFor/,
+  // EINE Stelle, und sie arbeitet gebündelt: Der Einzelfall (Sofort-Abruf) ist
+  // eine Liste mit einem Eintrag. Vorher stand die Regel zweimal da — einmal
+  // hier und einmal ausgeschrieben in der Schleife —, und nur eine der beiden
+  // Fassungen kannte die Wunschliste.
+  assert.match(job, /async function zustaendeJeSet/,
     'Es braucht eine Stelle, die die vorkommenden Zustände eines Sets ermittelt');
-  assert.match(job, /FROM set_acquisitions WHERE user_id=\$1 AND set_number=\$2/,
+  assert.match(job, /FROM set_acquisitions WHERE user_id=\$1 AND set_number = ANY\(\$2\)/,
     'Die Zustände müssen aus den Erfassungen kommen, nicht aus einer Vorgabe');
 
   // Sofort-Abruf: Schleife über die ermittelten Zustände
@@ -200,8 +204,23 @@ test('der Preisjob holt alle Zustände, die ein Set tatsächlich führt', () => 
     'Die Zustände aller Sets gehören in EINE Abfrage — sonst ein Roundtrip je Set');
 
   // Reine Sets dürfen nicht doppelt abgefragt werden (BrickLink-Tageskontingent)
-  assert.match(bg, /condBySet\.has\(sn\)\s*\n?\s*\?\s*\[\.\.\.condBySet\.get\(sn\)\]/,
+  assert.match(bg, /const conditions = zustaende\.get\(sn\)/,
     'Nur die tatsächlich vorkommenden Zustände abrufen, nicht pauschal beide');
+  // Ohne Kommentare: Die Doku der Staffelung nennt ['N','U'] als Beispiel für
+  // einen Rückgabewert. Das ist eine Erklärung, keine Abfrage — die Regel gilt
+  // dem Code.
+  const bgCode = bg.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/[^\n]*$/gm, '');
+  assert.doesNotMatch(bgCode, /\['N'\s*,\s*'U'\]/,
+    'Der Lauf darf nie pauschal beide Zustände holen');
+
+  // Und der Beschluss steht VOR der Schleife: Eine Abfrage je Set wäre ein
+  // Roundtrip je Set — genau dafür ist die gebündelte Fassung da.
+  const aufgaben = bg.slice(bg.indexOf('const tasks = valid.map'),
+                            bg.indexOf('await parallelLimit(tasks'));
+  assert.ok(aufgaben.length > 200, 'Der Aufgabenblock wurde nicht gefunden');
+  assert.doesNotMatch(aufgaben, /db\.(all|get)\(/,
+    'In der Schleife über die Sets darf keine Abfrage stehen — die Zustände ' +
+    'sind vorher gebündelt bestimmt');
 });
 
 test("ohne Verkauf in sechs Monaten wird auf 'stock' ausgewichen", () => {

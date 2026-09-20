@@ -128,9 +128,15 @@ test('der Zustand eines Sets wird nirgends mehr direkt aus sets gelesen', () => 
   for (const f of dateien) {
     const code = fs.readFileSync(f, 'utf8')
       .replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/[^\n]*$/gm, '');
-    // Zwei Formen: die einzeilige `SELECT condition FROM sets` und die
-    // mehrzeilige in financeCalc (`SELECT s.condition, COUNT(...) …`).
-    for (const m of code.matchAll(/SELECT\s+condition\s+FROM sets\b|SELECT\s+s\.condition,/gi)) {
+    // Drei Formen: die einzeilige `SELECT condition FROM sets`, die
+    // mehrzeilige in financeCalc (`SELECT s.condition, COUNT(...) …`) und die
+    // gebündelte im Preisjob (`COALESCE(condition,'N') AS c … FROM sets`, für
+    // alle Sets eines Nutzers auf einmal). Die dritte kam dazu, als
+    // conditionsNeededFor() und die Schleife des Nachtlaufs zu einer Fassung
+    // wurden; ohne sie fiel die Zahl der gefundenen Lesestellen von drei auf
+    // zwei — der Selbstnachweis unten hat das gemeldet.
+    for (const m of code.matchAll(
+      /SELECT\s+condition\s+FROM sets\b|SELECT\s+s\.condition,|COALESCE\(condition,'N'\) AS c\s*\n?\s*FROM sets\b/gi)) {
       gelesen++;
       // Der Umkreis: 40 Zeilen davor und danach. Kommt darin keine der
       // Erfassungs-Regeln vor, steht der gespeicherte Wert allein da.

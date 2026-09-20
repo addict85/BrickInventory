@@ -295,7 +295,12 @@ export async function oeffneWunschDetail(arg) {
     `<span style="color:var(--mut);font-size:.78rem">${esc(tRaw('common.loading'))}</span>`;
   G('wl-m-market-rows').innerHTML = '';
   G('wl-m-det').innerHTML = zeilen(w, null);
-  for (const id of ['wl-m-vergleich', 'wl-m-bricklink']) G(id).style.display = 'none';
+  G('wl-m-bricklink').style.display = 'none';
+  // Der Preisvergleich ist SOFORT da: Er hängt am Wunsch, nicht am Katalog
+  // (utils/wunschliste.ts). Ein Set, das rb_sets nicht kennt, beantwortet
+  // /catalog/sets/:nr mit 404 — dann blieb dieser Knopf aus, obwohl die
+  // Adresse aus der Setnummer allein zu bilden ist.
+  zeigeAdresse('wl-m-vergleich', w.preisvergleich_url);
   G('wl-detail-modal').classList.add('open');
   // Ab hier meinen die Alarm-Handler DIESEN Dialog.
   setzeAlarmFeld('wl-m');
@@ -321,7 +326,9 @@ export async function oeffneWunschDetail(arg) {
     if (_detail !== arg || !d?.success) return;
     G('wl-m-det').innerHTML = zeilen(w, d.set);
     zeigeAdresse('wl-m-bricklink', d.set?.bricklink?.url);
-    zeigeAdresse('wl-m-vergleich', d.set?.preisvergleich_url);
+    // Mit dem Katalognamen wird die Suche besser („LEGO 75192 Millennium
+    // Falcon" statt nur der Nummer) — aber nur, wenn wirklich einer kam.
+    zeigeAdresse('wl-m-vergleich', d.set?.preisvergleich_url || w.preisvergleich_url);
   }).catch(() => {});
 
   // Der VERLAUF — die Zeilen darüber stehen da schon. Er kommt aus

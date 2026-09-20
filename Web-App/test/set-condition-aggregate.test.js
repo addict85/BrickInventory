@@ -494,7 +494,7 @@ test('neue Sets holen den richtigen Zustand, nicht den Standard', () => {
   const { hatParameter } = require('./helpers/sources');
   assert.ok(hatParameter(job, 'conditionsNeededFor', 'hintCondition', true),
     'Der Hinweis-Parameter fehlt');
-  assert.match(job, /if \(hintCondition === 'U' \|\| hintCondition === 'N'\) list\.push\(hintCondition\);/,
+  assert.match(job, /if \(hintCondition === 'U' \|\| hintCondition === 'N'\) eigene\.add\(hintCondition\);/,
     'Der Hinweis muss in die Liste der zu holenden Zustände einfliessen');
   assert.ok(hatParameter(job, 'refreshPriceForSet', 'hintCondition', true),
     'refreshPriceForSet muss den Hinweis annehmen');
