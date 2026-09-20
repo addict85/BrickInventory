@@ -290,5 +290,68 @@ test('Wunschliste gegen echte Datenbank', { concurrency: 1 }, async (t) => {
       `nichts: ${url2}`);
   });
 
+  await t.test('das Bild kommt lokal — und fehlt es, wird es bestellt', async () => {
+    // Marcos zwei Befunde in einem Test:
+    //
+    //   „Die Bilder in der Wunschliste werden nicht geladen. Anscheinend wird
+    //    direkt das CDN aufgerufen."
+    //   „Leider wird es auch nach ein paar Minuten noch über den Proxy
+    //    geladen … als würde das Bild nicht im Hintergrund heruntergeladen."
+    //
+    // Beides hing an derselben Lücke: Die Wunschliste war die einzige Liste
+    // ohne image_local, und eine Notiz für den Bild-Job entsteht im Proxy nur
+    // bei einer VORSCHAU-Anfrage (routes/imgProxy.ts) — das Detail fragt die
+    // volle Auflösung.
+    //
+    // Gegenproben (durchgeführt, Ergebnis im Commit):
+    //   a) merkeGebraucht()-Zeile aus wuenscheVon() entfernt → „bestellt" rot.
+    //   b) image_local fest auf null → „die lokale Datei gewinnt" rot.
+    const fs = require('node:fs');
+    const path = require('node:path');
+    const IQ = _req('jobs/imageQueue.js');
+    const ORDNER = path.join(__dirname, '..', 'data', 'images', 'sets');
+
+    // ZWEI Setnummern, und das ist kein Zufall: resolveIfExists() merkt sich
+    // ein „gibt es nicht" zehn Minuten lang (utils/images.ts). Dieselbe Nummer
+    // erst ohne und dann mit Datei zu prüfen, prüfte den Cache statt die Regel.
+    const ohneDatei = `wlimg${process.pid}a-1`;
+    const mitDatei  = `wlimg${process.pid}b-1`;
+    const datei = path.join(ORDNER, `${mitDatei}.jpg`);
+    // Die Datei VOR dem Anlegen des Wunsches: legeWunschAn() liest die Liste
+    // selbst noch einmal, und dieser Blick würde das „gibt es nicht" für die
+    // nächsten zehn Minuten festhalten.
+    fs.mkdirSync(ORDNER, { recursive: true });
+    fs.writeFileSync(datei, 'x');
+    for (const sn of [ohneDatei, mitDatei]) {
+      await db.run(
+        `INSERT INTO rb_sets (set_num, name, year, theme_id, num_parts, set_img_url)
+         VALUES ($1,'Testset',2024,158,100,$2)`,
+        [sn, `http://cdn.example/media/sets/${sn}.jpg`]);
+      await W.legeWunschAn(U.opa, sn, 'N');
+    }
+
+    try {
+      // ── Ohne Datei: kein image_local, dafür eine Bestellung ──────────────
+      const [a] = await W.wuenscheVon([U.opa], ohneDatei);
+      assert.equal(a.image_local, null, 'Vorbedingung: für dieses Set liegt keine Datei');
+      await IQ._schreibePuffer();
+      const notiz = await db.get(
+        'SELECT set_number FROM image_wanted WHERE url=$1',
+        [`http://cdn.example/media/sets/${ohneDatei}.jpg`]);
+      assert.ok(notiz, 'Das fehlende Bild wurde nicht bestellt — dann holt es der ' +
+        'Hintergrundjob nie, und die Anzeige bleibt für immer am Proxy hängen');
+      assert.equal(notiz.set_number, ohneDatei);
+
+      // ── Mit Datei: die lokale gewinnt ────────────────────────────────────
+      const [b] = await W.wuenscheVon([U.opa], mitDatei);
+      assert.ok(String(b.image_local || '').startsWith('/images/sets/'),
+        `image_local fehlt oder zeigt woandershin: ${b.image_local}`);
+    } finally {
+      fs.rmSync(datei, { force: true });
+      await db.run('DELETE FROM image_wanted WHERE url LIKE $1',
+        ['http://cdn.example/media/sets/wlimg%']).catch(() => {});
+    }
+  });
+
   await t.test('Verbindungen schliessen', async () => { await db.pool.end(); });
 });

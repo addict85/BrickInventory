@@ -108,7 +108,8 @@ fun WunschDetailScreen(
         ) {
             item {
                 coil.compose.AsyncImage(
-                    model = resolveFullUrl(appState.serverUrl, detail.katalog?.imageLocal, wunsch.imageUrl),
+                    model = resolveFullUrl(appState.serverUrl,
+                        detail.katalog?.imageLocal ?: wunsch.imageLocal, wunsch.imageUrl),
                     contentDescription = null,
                     imageLoader = imageLoader,
                     modifier = Modifier.fillMaxWidth().height(Abstaende.riesig * 5),

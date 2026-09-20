@@ -484,6 +484,17 @@ data class Wunsch(
     val year: Int? = null,
     @SerialName("num_parts") val numParts: Int? = null,
     @SerialName("image_url") val imageUrl: String? = null,
+    /**
+     * Die lokal abgelegte Bilddatei — wenn es sie gibt, hat sie Vorrang.
+     *
+     * Dieselbe Regel wie bei Sets, Teilen und Minifiguren: Was schon auf der
+     * Platte des Servers liegt, wird von dort geladen statt ueber den
+     * Bild-Proxy vom CDN. Die Wunschliste fuehrte das Feld als einzige Liste
+     * nicht mit — in der Webapp hat die Sicherheitsrichtlinie die direkten
+     * CDN-Aufrufe geblockt (Marcos Befund), am Telefon war es „nur" ein
+     * unnoetiger Umweg uebers Netz.
+     */
+    @SerialName("image_local") val imageLocal: String? = null,
     /** Liegt das Set schon in der Galerie eines Kontos im Blickfeld? */
     val owned: Boolean = false,
     /**
