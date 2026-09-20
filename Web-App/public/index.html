@@ -1099,8 +1099,8 @@
     <div class="mfooter" style="justify-content:space-between;flex-wrap:wrap;gap:8px">
       <button class="btn bd" id="btn-md" aria-label="Set löschen" data-i18n="detail.delete" data-i18n-attr="aria-label">🗑️</button>
       <div style="display:flex;gap:8px;flex-wrap:wrap">
-        <a class="btn bs" id="m-vergleich" href="#" target="_blank" rel="noopener" style="display:none" data-i18n="detail.compare">📊 Preisvergleich</a>
         <a class="btn bs" id="m-bricklink" href="#" target="_blank" rel="noopener" style="display:none" data-i18n="catalog.buy_bricklink">🛒 Auf BrickLink kaufen</a>
+        <a class="btn bs" id="m-vergleich" href="#" target="_blank" rel="noopener" style="display:none" data-i18n="detail.compare">📊 Preisvergleich</a>
       </div>
     </div>
   </div>
@@ -1144,9 +1144,13 @@
     </div>
     <div class="mfooter" style="justify-content:space-between;flex-wrap:wrap;gap:8px">
       <button class="btn bd" id="wl-m-del" data-click="wunschDetailLoeschen" aria-label="Wunsch entfernen" data-i18n="wishlist.remove" data-i18n-attr="aria-label">🗑️</button>
-      <div style="display:flex;gap:8px;flex-wrap:wrap">
-        <a class="btn bs" id="wl-m-vergleich" href="#" target="_blank" rel="noopener" style="display:none" data-i18n="detail.compare">📊 Preisvergleich</a>
+      <!-- Marcos Vorgabe: der Preisvergleich UNTERHALB von BrickLink. Deshalb
+           eine Spalte statt einer Reihe — „unterhalb" soll auch auf einem
+           schmalen Telefon unterhalb bleiben und nicht je nach Breite
+           danebenrutschen. -->
+      <div style="display:flex;flex-direction:column;gap:8px;align-items:stretch">
         <a class="btn bs" id="wl-m-bricklink" href="#" target="_blank" rel="noopener" style="display:none" data-i18n="catalog.buy_bricklink">🛒 Auf BrickLink kaufen</a>
+        <a class="btn bs" id="wl-m-vergleich" href="#" target="_blank" rel="noopener" style="display:none" data-i18n="detail.compare">📊 Preisvergleich</a>
         <button class="btn bp" id="wl-m-take" data-click="wunschDetailUebernehmen" data-i18n="wishlist.take">➕ In die Galerie</button>
       </div>
     </div>

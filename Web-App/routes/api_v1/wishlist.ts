@@ -11,6 +11,8 @@ import { sendeFehler } from '../../utils/fehlerTexte';
 import { requireToken } from './middleware';
 import { scopeIds, parseScopeMode, resolveWriteTarget } from '../../utils/household';
 import { legeWunschAn, loescheWunsch, uebernimm, wuenscheVon } from '../../utils/wunschliste';
+import { getSetting } from '../../utils/settings';
+import { fetchPrice } from '../../utils/financeCalc';
 
 const router = express.Router();
 type AuthedRequest = express.Request & { apiUser: { user_id: number } };
@@ -63,6 +65,56 @@ router.delete('/wishlist/:setNumber/:condition', requireToken, async (req: Authe
     if (owner === null) return sendeFehler(req, res, 403, 'kein_schreibrecht');
     const weg = await loescheWunsch(owner, pfadParam(req, 'setNumber'), pfadParam(req, 'condition'));
     res.json({ success: true, geloescht: weg });
+  } catch (e) { handleRouteError(res, e, undefined, req); }
+});
+
+/**
+ * Die Marktpreise eines Wunsches — BEIDE Zustände, frisch geholt.
+ *
+ * ── Warum es diese Route gibt ──────────────────────────────────────────────
+ *
+ * Marcos Frage: „Wieso werden die Preise nicht sofort angezeigt?"
+ *
+ * Weil bisher niemand sie holte. /sets/:sn/price-history LIEST nur den Cache,
+ * und in den schrieb bis zu dieser Änderung allein der Preislauf — der kannte
+ * `sets` und `price_alerts`, aber nicht die Wunschliste. Ein Wunsch ohne
+ * Preisalarm hatte deshalb NIE einen Preis.
+ *
+ * /sets/:sn/price wäre der fertige Weg gewesen, antwortet aber mit 404, wenn
+ * einem das Set nicht gehört — für einen Wunsch also ausgeschlossen.
+ *
+ * ── Warum beide Zustände ───────────────────────────────────────────────────
+ *
+ * Weil das Set-Detail sie ebenfalls beide zeigt: Wer auf ein gebrauchtes
+ * wartet, will trotzdem wissen, was ein neues kostet. Die Antwort trägt
+ * deshalb dieselbe Form wie `current` in /price-history — die Oberflächen
+ * zeichnen sie mit derselben Funktion.
+ *
+ * ── Was sie NICHT tut ──────────────────────────────────────────────────────
+ *
+ * Sie fragt nicht bei jedem Öffnen bei BrickLink an: fetchPrice() bedient
+ * sich am Cache, solange dessen Alter unter price_cache_ttl liegt. Der erste
+ * Aufruf für ein Set kostet zwei Abrufe, die folgenden keinen.
+ */
+router.get('/wishlist/:setNumber/preise', requireToken, async (req: AuthedRequest, res) => {
+  const sn = pfadParam(req, 'setNumber');
+  try {
+    const uid = req.apiUser.user_id;
+    const currency  = await getSetting(uid, 'currency', 'EUR');
+    const guideType = await getSetting(uid, 'price_guide_type', 'sold');
+    const ttlHours  = await getSetting(uid, 'price_cache_ttl', '24');
+    const current: Record<string, unknown> = {};
+    for (const c of ['N', 'U']) {
+      // Einzeln gefangen: Fuer ein Set, das BrickLink nicht kennt, soll der
+      // ANDERE Zustand trotzdem ankommen — und ein fehlender Preis ist kein
+      // Fehler, sondern ein Strich in der Anzeige.
+      try {
+        const pd = await fetchPrice(sn, c, guideType, currency, ttlHours);
+        current[c] = { condition: c, avg_price: pd.avg_price,
+                       min_price: pd.min_price, max_price: pd.max_price };
+      } catch { /* kein Preis fuer diesen Zustand */ }
+    }
+    res.json({ success: true, set_number: sn, currency, current });
   } catch (e) { handleRouteError(res, e, undefined, req); }
 });
 

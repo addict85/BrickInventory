@@ -738,11 +738,13 @@ fun LazyListScope.setDetailAlarmSection(
  * die Sackgasse, gegen die der Katalog-Knopf seit Nachtrag 49 absichert.
  */
 fun LazyListScope.setDetailKaufSection(set: SetItem) {
+    // BrickLink zuerst, der Preisvergleich darunter — Marcos Vorgabe, und in
+    // beiden Oberflaechen dieselbe Reihenfolge.
     val adressen = listOfNotNull(
-        set.preisvergleichUrl?.takeIf { it.isNotBlank() }
-            ?.let { R.string.detail_compare to it },
         set.bricklink?.url?.takeIf { it.isNotBlank() }
             ?.let { R.string.catalog_buy_bricklink to it },
+        set.preisvergleichUrl?.takeIf { it.isNotBlank() }
+            ?.let { R.string.detail_compare to it },
     )
     if (adressen.isEmpty()) return
     item {

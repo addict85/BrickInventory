@@ -189,7 +189,33 @@ async function runPriceRefresh(vorhandeneSperre?: (() => Promise<void>) | null) 
   const t0 = Date.now(); let updated=0, skipped=0, errors=0;
   monitor.update('priceJob', { status:'running', progress:0, total:0, sub:'Starte…', lastRun:new Date().toISOString() });
   try {
-    const allSets = await db.all('SELECT DISTINCT user_id, set_number FROM sets ORDER BY user_id');
+    // ── Bestand UND Wunschliste ──────────────────────────────────────────
+    //
+    // Marcos Frage: „Wieso werden die Preise nicht sofort angezeigt?"
+    //
+    // Weil dieser Lauf bis hierher nur `sets` kannte. Ein Wunsch ist kein
+    // Bestand, hatte also nie einen Preis im Cache — und /price-history LIEST
+    // den Cache nur, es holt nichts. Das Wunsch-Detail zeigte deshalb „—",
+    // und der Preisverlauf blieb leer, weil nie jemand einen Punkt schrieb.
+    //
+    // Ausgerechnet fuer einen WUNSCH ist die Preisentwicklung das
+    // Wichtigste: Man wartet ja darauf. Ein Set, das man schon hat, braucht
+    // sie weniger dringend als eines, das man kaufen will.
+    //
+    // Der UNION kostet Abrufe — je Wunsch und Zustand einen, im selben
+    // Rhythmus wie fuer ein eigenes Set. Wer das nicht will, nimmt die zweite
+    // Haelfte wieder heraus; dann bleibt das Wunsch-Detail auf den Preis
+    // angewiesen, den es beim Oeffnen selbst holt (routes/api_v1/wishlist.ts).
+    //
+    // `.catch`: Ein Aufbau, der nur initSchema() gelaufen ist, hat die
+    // Tabelle nicht (siehe db/schema.sql). Dann bleibt es beim Bestand.
+    const eigene = await db.all('SELECT DISTINCT user_id, set_number FROM sets');
+    const gewuenschte = await db.all(
+      'SELECT DISTINCT user_id, set_number FROM wishlist').catch(() => []);
+    const allSets = [...eigene, ...(gewuenschte || [])]
+      .filter((r, i, a) => a.findIndex(x =>
+        x.user_id === r.user_id && x.set_number === r.set_number) === i)
+      .sort((a, b) => a.user_id - b.user_id);
     // KEIN scheduleNext() hier: Der finally-Block unten macht das ohnehin, und
     // zwar für JEDEN Ausgang. Vorher stand es an beiden Stellen — ein Lauf
     // ohne Sets hinterliess dadurch ZWEI Intervall-Timer statt einem (am
@@ -375,7 +401,24 @@ async function conditionsNeededFor(setNumber: string, userId: number,
   // entscheidet.
   const set = await db.get('SELECT condition FROM sets WHERE user_id=$1 AND set_number=$2',
     [userId, setNumber]).catch(() => null);
-  return [set?.condition === 'U' ? 'U' : 'N'];
+  if (set) return [set.condition === 'U' ? 'U' : 'N'];
+
+  // Kein Bestand? Dann ist es ein WUNSCH, und dessen Zustand entscheidet —
+  // moeglicherweise beide, denn neu und gebraucht sind zwei Wuensche.
+  //
+  // Ohne diesen Zweig fiel die Funktion auf 'N' zurueck: Wer auf ein
+  // GEBRAUCHTES wartet, bekaeme still den Neupreis geholt und im Detail
+  // angezeigt — dieselbe Verwechslung, die in addSet() schon einmal einen
+  // Gebrauchtpreis als Neuzugang verbucht hat.
+  const wuensche = await db.all(
+    `SELECT DISTINCT COALESCE(condition,'N') AS c
+       FROM wishlist WHERE user_id=$1 AND set_number=$2`,
+    [userId, setNumber]).catch(() => []);
+  const ausWunsch: string[] = (wuensche || []).map(
+    (r: { c?: string | null }) => (r.c === 'U' ? 'U' : 'N'));
+  if (ausWunsch.length) return [...new Set(ausWunsch)];
+
+  return ['N'];
 }
 
 async function refreshPriceForSet(setNumber: string, userId: number, hintCondition: string | null = null) {

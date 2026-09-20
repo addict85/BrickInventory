@@ -571,3 +571,17 @@ data class WunschUebernahmeRequest(
     val condition: String? = null,
     @SerialName("owner_user_id") val ownerUserId: Int? = null,
 )
+
+/**
+ * Die Marktpreise eines Wunsches — BEIDE Zustaende.
+ *
+ * Dieselbe Form wie `current` in der Verlaufsantwort, damit die Oberflaeche
+ * sie mit derselben Zeichenfunktion anzeigen kann.
+ */
+@Serializable
+data class WunschPreiseResponse(
+    val success: Boolean = false,
+    val currency: String = "",
+    val current: CurrentByCondition = CurrentByCondition(),
+    val error: String? = null,
+)

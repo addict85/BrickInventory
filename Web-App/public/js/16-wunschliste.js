@@ -2,7 +2,7 @@ import { registerActions } from './00-registry.js';
 import { locale, t, tRaw } from '../i18n.js';
 import { CURRENCY, G, api, esc, escJs, fmtN, fullUrl, knopfBesetzt, thumbUrl, toast } from './01-core.js';
 import { detailZeile } from './01-bausteine.js';
-import { priceChartSVG, renderMarketRows } from './07-admin.js';
+import { alarmBlock, ladeAlarm, priceChartSVG, renderMarketRows, setzeAlarmFeld } from './07-admin.js';
 import { selectedOwner, loadGallery, loadStats } from './02-gallery.js';
 
 // ═══ Wunschliste ═════════════════════════════════════════════════════════════
@@ -297,6 +297,22 @@ export async function oeffneWunschDetail(arg) {
   G('wl-m-det').innerHTML = zeilen(w, null);
   for (const id of ['wl-m-vergleich', 'wl-m-bricklink']) G(id).style.display = 'none';
   G('wl-detail-modal').classList.add('open');
+  // Ab hier meinen die Alarm-Handler DIESEN Dialog.
+  setzeAlarmFeld('wl-m');
+  ladeAlarm(set_number).catch(() => {});
+
+  // ── Der Preis, SOFORT ─────────────────────────────────────────────────
+  //
+  // Marcos Frage: „Wieso werden die Preise nicht sofort angezeigt?" Weil
+  // /price-history nur den Cache LIEST und in den bis zu dieser Änderung
+  // niemand für Wünsche schrieb. Diese Route holt ihn (mit TTL, also nicht
+  // bei jedem Öffnen neu) und füllt den Cache gleich mit.
+  api('GET', `/v1/wishlist/${encodeURIComponent(set_number)}/preise`).then(pr => {
+    if (_detail !== arg || !pr?.success) return;
+    // Dieselbe Form wie `current` in /price-history — deshalb genügt hier
+    // dieselbe Zeichenfunktion.
+    renderMarketRows({ by_condition: umAufAnzeige(pr.current) }, 'wl-m-market-rows');
+  }).catch(() => {});
 
   // Katalog: Thema, Teile, Minifiguren, BrickLink. Schlägt er fehl (ein Set,
   // das rb_sets nicht kennt), bleibt der Block stehen, wie er ist — die
@@ -308,9 +324,13 @@ export async function oeffneWunschDetail(arg) {
     zeigeAdresse('wl-m-vergleich', d.set?.preisvergleich_url);
   }).catch(() => {});
 
+  // Der VERLAUF — die Zeilen darüber stehen da schon. Er kommt aus
+  // price_history, das der stündliche Preislauf füllt; für einen Wunsch seit
+  // dieser Änderung ebenfalls (jobs/priceJob.ts). Ein frischer Wunsch hat
+  // deshalb erst einen Punkt, und eine Linie braucht zwei — das ist kein
+  // Fehler, sondern der Anfang.
   api('GET', `/v1/sets/${encodeURIComponent(set_number)}/price-history`).then(ph => {
     if (_detail !== arg) return;
-    renderMarketRows(ph, 'wl-m-market-rows');
     G('wl-m-sparkline-content').innerHTML = ph?.success
       ? priceChartSVG(ph, 'wl' + set_number.replace(/[^a-zA-Z0-9]/g, ''))
       : `<span style="color:var(--mut);font-size:.78rem">${esc(tRaw('detail.no_history'))}</span>`;
@@ -335,11 +355,6 @@ function zeigeAdresse(id, url) {
 function zeilen(w, katalog) {
   const strich = '—';
   const zahl = (n) => (n == null ? strich : Number(n).toLocaleString(locale()));
-  const alarm = w.alarm
-    ? `${esc(tRaw(w.alarm.richtung === 'ueber' ? 'detail.alert_above' : 'detail.alert_below'))}
-       ${esc(fmtN(w.alarm.schwelle, CURRENCY))}
-       ${w.alarm.ausgeloest ? '🔔' : '⏰'}`
-    : strich;
   return [
     ['detail.year',     w.year != null ? String(w.year) : strich],
     ['detail.theme',    esc(katalog?.theme_name || strich)],
@@ -347,7 +362,10 @@ function zeilen(w, katalog) {
     ['detail.minifigs', zahl(katalog?.minifigs)],
     ['common.condition', esc(zustandText(w.condition))],
     ['wishlist.since',  w.created_at ? `📅 ${esc(new Date(w.created_at).toLocaleDateString(locale()))}` : strich],
-    ['detail.alert',    alarm],
+    // Derselbe Block wie im Set-Dialog, nicht ein zweiter: Es ist derselbe
+    // Eintrag in price_alerts, am selben Schlüssel (Konto, Set, Zustand).
+    // Gefüllt wird er von ladeAlarm() beim Öffnen.
+    ['detail.alert',    alarmBlock(w.set_number, 'wl-m')],
     ['parts.note_label', esc(w.notiz || strich)],
   ].map(([k, v]) => detailZeile(t(k), v)).join('');
 }
@@ -376,3 +394,23 @@ registerActions({ wunschHinzufuegen, katalogAufWunschliste, wunschLoeschen,
                   wunschUebernehmen, schliesseUebernahme, bestaetigeUebernahme,
                   oeffneWunschDetail, schliesseWunschDetail,
                   wunschDetailLoeschen, wunschDetailUebernehmen });
+
+/**
+ * `current` aus der Preis-Antwort in die Form, die renderMarketRows() liest.
+ *
+ * Die Zeichenfunktion erwartet `by_condition[c].market_price`; die
+ * Preisantwort nennt es `avg_price` — dieselbe Zahl, anderer Name, weil die
+ * eine aus dem Cache und die andere aus der Verlaufsrechnung kommt. Eine
+ * Umbenennung am Server hiesse, an drei Stellen gleichzeitig zu ändern.
+ *
+ * `pnl_pct` bleibt leer: Es ist Gewinn gegen den Kaufpreis, und den hat ein
+ * Wunsch nicht.
+ */
+function umAufAnzeige(current) {
+  const raus = {};
+  for (const c of ['N', 'U']) {
+    const d = current?.[c];
+    if (d) raus[c] = { market_price: d.avg_price, pnl_pct: null };
+  }
+  return raus;
+}

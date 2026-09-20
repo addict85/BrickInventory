@@ -188,9 +188,24 @@ internal fun MainViewModel.wuenscheMitAlarm(
 internal fun MainViewModel.ladeWunschDetail(setNumber: String) {
     viewModelScope.launch {
         _wunschDetailState.value = WunschDetailUiState(laedt = true)
+
+        // Der Alarm gehoert dem Set-Detail-Zustand, und das ist Absicht: Der
+        // Abschnitt, der ihn zeigt (setDetailAlarmSection), schreibt nach dem
+        // Speichern DORTHIN zurueck. Ein eigenes Feld hier waere nach der
+        // ersten Aenderung veraltet.
+        loadPreisalarme(setNumber)
+
         val katalog = (repo.admin.getCatalogSetDetail(setNumber) as? Result.Success)
             ?.data?.takeIf { it.success }?.set
         _wunschDetailState.update { it.copy(katalog = katalog) }
+
+        // ZUERST die Preise, DANN der Verlauf: Die Preisroute holt frisch und
+        // fuellt dabei den Cache, aus dem der Verlauf liest. Andersherum
+        // saehe der erste Blick auf einen neuen Wunsch leer aus.
+        val preise = (repo.sets.getWunschPreise(setNumber) as? Result.Success)
+            ?.data?.takeIf { it.success }
+        _wunschDetailState.update { it.copy(preise = preise) }
+
         val historie = (repo.finanzen.getSetPriceHistory(setNumber) as? Result.Success)
             ?.data?.takeIf { it.success }
         _wunschDetailState.update { it.copy(historie = historie, laedt = false) }

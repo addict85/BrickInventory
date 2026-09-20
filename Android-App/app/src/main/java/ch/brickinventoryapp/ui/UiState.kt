@@ -951,8 +951,17 @@ data class WunschUiState(
 data class WunschDetailUiState(
     /** Thema, Teile, Minifiguren, BrickLink, Preisvergleich. */
     val katalog: ch.brickinventoryapp.data.model.CatalogSetDetail? = null,
-    /** Marktpreis je Zustand UND der Verlauf — beides aus einer Antwort. */
+    /** Der VERLAUF. Die aktuellen Preise stehen in [preise] — siehe dort. */
     val historie: ch.brickinventoryapp.data.model.PriceHistoryResponse? = null,
+    /**
+     * Die aktuellen Marktpreise, frisch geholt.
+     *
+     * Getrennt von [historie], weil sie aus einer anderen Quelle kommen und
+     * frueher da sind: Der Verlauf LIEST nur price_cache, diese Antwort FUELLT
+     * ihn. Marcos Frage „wieso werden die Preise nicht sofort angezeigt" hatte
+     * genau hier ihre Ursache.
+     */
+    val preise: ch.brickinventoryapp.data.model.WunschPreiseResponse? = null,
     val laedt: Boolean = false,
 )
 

@@ -62,20 +62,34 @@ const ADMIN  = fs.readFileSync(path.join(ROOT, 'public', 'js', '07-admin.js'), '
  * Dieselbe Falle wie bei den Pfaden in test/baumbruecken.test.js: Eine
  * abgeschriebene Fassung prüft die Abschrift.
  *
- * Geschnitten wird von der `${detailZeile(t('detail.alert')` … bis zum
- * `<span id="m-alert-state">`; die Platzhalter der Vorlage werden durch die
- * Setnummer ersetzt, sonst stünde `${escJs(sn)}` wörtlich im Attribut.
+ * Geschnitten wird aus alarmBlock() — der Funktion, die BEIDE Dialoge
+ * benutzen (Set-Detail und Wunsch-Detail). Die Platzhalter der Vorlage werden
+ * ersetzt, sonst stünde `${escJs(sn)}` wörtlich im Attribut.
+ *
+ * ── Warum der Anker gewandert ist ───────────────────────────────────────────
+ *
+ * Das Markup stand früher inline im Set-Detail und trug feste IDs
+ * (`m-alert-cond`). Seit das Wunsch-Detail denselben Alarm zeigt — es ist
+ * derselbe Eintrag in price_alerts, am selben Schlüssel — liegt es in
+ * alarmBlock(praefix), und die ID entsteht aus dem Präfix.
+ *
+ * Geprüft wird weiterhin das ECHTE Markup, nur an seinem neuen Wohnort. Der
+ * Prüfstand setzt den Präfix auf 'm' und prüft damit den Set-Dialog; die
+ * Verdrahtung ist für beide dieselbe.
  */
 function alarmMarkup(sn) {
   // Ab dem ZUSTANDSFELD, nicht ab der Richtung: Seit der Alarm auch für
-  // „gebraucht" gilt, steht `m-alert-cond` davor, und alarmZustand() liest
+  // „gebraucht" gilt, steht das Zustandsfeld davor, und alarmZustand() liest
   // es. Ohne das Feld fiele der Prüfstand still auf „neu" zurück und prüfte
   // eine Oberfläche, die es so nicht gibt.
-  const i = ADMIN.indexOf("<select id=\"m-alert-cond\"");
-  const j = ADMIN.indexOf('id="m-alert-state"');
+  const i = ADMIN.indexOf('<select id="${p}-alert-cond"');
+  const j = ADMIN.indexOf('id="${p}-alert-state"');
   assert.ok(i > 0 && j > i, 'Das Alarm-Markup steht nicht mehr, wo erwartet');
   const roh = ADMIN.slice(i, ADMIN.indexOf('</span>', j) + 7);
   return roh
+    // Der Präfix des Set-Dialogs. Er steht in alarmBlock() als ${p}; hier
+    // wird daraus, was zur Laufzeit dort steht.
+    .replace(/\$\{p\}/g, 'm')
     .replace(/\$\{escJs\(sn\)\}/g, sn)
     // Die Beschriftungen kommen aus der Übersetzung; hier zählt nur die
     // Verdrahtung, nicht der Text.

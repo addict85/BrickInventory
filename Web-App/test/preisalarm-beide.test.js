@@ -318,7 +318,14 @@ test('der Alarm gilt für einen ZUSTAND, und der ist wählbar — in beiden', ()
   const js = require('./helpers/sources').ohneKommentare(web('public/js/07-admin.js'));
   assert.doesNotMatch(js, /const ALARM_ZUSTAND = /,
     'Die Webapp hat den Zustand wieder festgenagelt');
-  assert.match(js, /id="m-alert-cond"/, 'Der Webapp fehlt die Zustandswahl');
+  // Der Anker ist gewandert: Das Markup lag inline im Set-Dialog und trug
+  // feste IDs. Seit das Wunsch-Detail denselben Alarm zeigt — derselbe
+  // Eintrag in price_alerts, am selben Schluessel — steht es in
+  // alarmBlock(praefix), und die ID entsteht aus dem Praefix. Geprueft wird
+  // weiterhin, DASS es eine Zustandswahl gibt.
+  assert.match(js, /id="\$\{p\}-alert-cond"/, 'Der Webapp fehlt die Zustandswahl');
+  assert.match(js, /export function alarmBlock\(/,
+    'Der Alarmblock ist nicht mehr gemeinsam — dann hat die Wunschliste eine zweite Maske');
   assert.match(js, /function alarmZustand\(\)/,
     'Die Webapp liest den gewählten Zustand nicht');
 

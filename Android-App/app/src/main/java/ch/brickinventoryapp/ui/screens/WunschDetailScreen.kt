@@ -1,8 +1,7 @@
 package ch.brickinventoryapp.ui.screens
 
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.verticalScroll
+import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material3.*
@@ -64,6 +63,8 @@ fun WunschDetailScreen(
     val appState by vm.state.collectAsStateWithLifecycle()
     val liste    by vm.wunschState.collectAsStateWithLifecycle()
     val detail   by vm.wunschDetailState.collectAsStateWithLifecycle()
+    // Der Alarm liegt im Set-Detail-Zustand — Begruendung an ladeWunschDetail().
+    val setDetail by vm.setDetailState.collectAsStateWithLifecycle()
     val ctx = LocalContext.current
     // Derselbe Dialog wie in der Liste, nicht ein zweiter: Anzahl, Kaufpreis
     // und Zustand muessen hier dieselbe Maske sein.
@@ -100,103 +101,113 @@ fun WunschDetailScreen(
             Box(Modifier.fillMaxSize().padding(padding), Alignment.Center) { CircularProgressIndicator() }
             return@Scaffold
         }
-        Column(
-            Modifier.fillMaxSize().padding(padding).verticalScroll(rememberScrollState())
-                .padding(Abstaende.gross),
+        LazyColumn(
+            Modifier.fillMaxSize().padding(padding),
+            contentPadding = PaddingValues(Abstaende.gross),
             verticalArrangement = Arrangement.spacedBy(Abstaende.mittel),
         ) {
-            coil.compose.AsyncImage(
-                model = resolveFullUrl(appState.serverUrl, detail.katalog?.imageLocal, wunsch.imageUrl),
-                contentDescription = null,
-                imageLoader = imageLoader,
-                modifier = Modifier.fillMaxWidth().height(Abstaende.riesig * 5),
-            )
-
-            Card(Modifier.fillMaxWidth()) {
-                Column(Modifier.padding(Abstaende.mittel)) {
-                    CatalogDetailRow(stringResource(R.string.detail_set_number), wunsch.setNumber)
-                    CatalogDetailRow(stringResource(R.string.detail_year),
-                        wunsch.year?.toString() ?: "—")
-                    CatalogDetailRow(stringResource(R.string.detail_theme),
-                        detail.katalog?.themeName ?: "—")
-                    CatalogDetailRow(stringResource(R.string.detail_pieces),
-                        (detail.katalog?.numParts ?: wunsch.numParts)?.toString() ?: "—")
-                    CatalogDetailRow(stringResource(R.string.detail_minifigs),
-                        detail.katalog?.minifigs?.toString() ?: "—")
-                    CatalogDetailRow(stringResource(R.string.common_condition),
-                        stringResource(if (wunsch.condition == "U") R.string.condition_used
-                                       else R.string.condition_new))
-                    CatalogDetailRow(stringResource(R.string.wishlist_since),
-                        ch.brickinventoryapp.util.fmtDatum(wunsch.createdAt) ?: "—")
-                    CatalogDetailRow(stringResource(R.string.detail_alert), wunsch.alarm?.let { a ->
-                        stringResource(if (a.richtung == "ueber") R.string.detail_alert_above
-                                       else R.string.detail_alert_below) +
-                            " " + preis(a.schwelle) + (if (a.ausgeloest) " 🔔" else " ⏰")
-                    } ?: "—")
-                    CatalogDetailRow(stringResource(R.string.common_note), wunsch.notiz ?: "—")
-                }
+            item {
+                coil.compose.AsyncImage(
+                    model = resolveFullUrl(appState.serverUrl, detail.katalog?.imageLocal, wunsch.imageUrl),
+                    contentDescription = null,
+                    imageLoader = imageLoader,
+                    modifier = Modifier.fillMaxWidth().height(Abstaende.riesig * 5),
+                )
             }
 
-            // ── Marktpreis und Verlauf ───────────────────────────────────────
-            //
-            // Beide Zustaende, nicht nur der gewuenschte: Wer auf ein
-            // gebrauchtes wartet, will trotzdem wissen, was ein neues kostet
-            // — das Set-Detail zeigt es aus demselben Grund doppelt.
-            Card(Modifier.fillMaxWidth()) {
-                Column(Modifier.padding(Abstaende.mittel)) {
-                    Text(stringResource(R.string.detail_section_market), fontWeight = FontWeight.Bold)
-                    Spacer(Modifier.height(Abstaende.klein))
-                    CatalogDetailRow(stringResource(R.string.condition_new),
-                        preis(detail.historie?.current?.new?.avgPrice))
-                    CatalogDetailRow(stringResource(R.string.condition_used),
-                        preis(detail.historie?.current?.used?.avgPrice))
-
-                    val chart = detail.historie?.chart
-                    if (chart != null && chart.values.isNotEmpty()) {
-                        Spacer(Modifier.height(Abstaende.klein))
-                        PriceChart(chart)
-                    } else if (detail.laedt) {
-                        Spacer(Modifier.height(Abstaende.klein))
-                        PreisLaedtZeile()
+            item {
+                Card(Modifier.fillMaxWidth()) {
+                    Column(Modifier.padding(Abstaende.mittel)) {
+                        CatalogDetailRow(stringResource(R.string.detail_set_number), wunsch.setNumber)
+                        CatalogDetailRow(stringResource(R.string.detail_year),
+                            wunsch.year?.toString() ?: "—")
+                        CatalogDetailRow(stringResource(R.string.detail_theme),
+                            detail.katalog?.themeName ?: "—")
+                        CatalogDetailRow(stringResource(R.string.detail_pieces),
+                            (detail.katalog?.numParts ?: wunsch.numParts)?.toString() ?: "—")
+                        CatalogDetailRow(stringResource(R.string.detail_minifigs),
+                            detail.katalog?.minifigs?.toString() ?: "—")
+                        CatalogDetailRow(stringResource(R.string.common_condition),
+                            stringResource(if (wunsch.condition == "U") R.string.condition_used
+                                           else R.string.condition_new))
+                        CatalogDetailRow(stringResource(R.string.wishlist_since),
+                            ch.brickinventoryapp.util.fmtDatum(wunsch.createdAt) ?: "—")
+                        CatalogDetailRow(stringResource(R.string.common_note), wunsch.notiz ?: "—")
                     }
                 }
             }
 
-            // Dieselben zwei Kaufadressen wie im Set-Detail, vom Server
-            // aufgeloest. Fehlt eine, faellt ihr Knopf weg.
-            for ((beschriftung, url) in listOfNotNull(
-                detail.katalog?.preisvergleichUrl?.takeIf { it.isNotBlank() }
-                    ?.let { R.string.detail_compare to it },
-                detail.katalog?.bricklink?.url?.takeIf { it.isNotBlank() }
-                    ?.let { R.string.catalog_buy_bricklink to it },
-            )) {
-                OutlinedButton(
-                    onClick = {
-                        try {
-                            ctx.startActivity(android.content.Intent(
-                                android.content.Intent.ACTION_VIEW, android.net.Uri.parse(url)))
-                        } catch (_: Exception) {
-                            android.widget.Toast.makeText(
-                                ctx, ctx.getString(R.string.common_no_app_to_open),
-                                android.widget.Toast.LENGTH_SHORT).show()
+            // ── Der Preisalarm, EDITIERBAR ───────────────────────────────────
+            //
+            // Marcos Vorgabe. Derselbe Abschnitt wie im Set-Detail, nicht ein
+            // zweiter: Es ist derselbe Eintrag in price_alerts, am selben
+            // Schluessel (Konto, Set, Zustand). /sets/:sn/alert verlangt
+            // keinen Besitz — nachgesehen im Routenrumpf —, also funktioniert
+            // er hier unveraendert.
+            setDetailAlarmSection(wunsch.setNumber, setDetail.preisalarme, appState.currency, vm)
+
+            item {
+                Card(Modifier.fillMaxWidth()) {
+                    Column(Modifier.padding(Abstaende.mittel)) {
+                        Text(stringResource(R.string.detail_section_market), fontWeight = FontWeight.Bold)
+                        Spacer(Modifier.height(Abstaende.klein))
+                        // Aus der PREIS-Antwort, nicht aus dem Verlauf: Die
+                        // holt frisch, der Verlauf liest nur den Cache.
+                        CatalogDetailRow(stringResource(R.string.condition_new),
+                            preis(detail.preise?.current?.new?.avgPrice))
+                        CatalogDetailRow(stringResource(R.string.condition_used),
+                            preis(detail.preise?.current?.used?.avgPrice))
+
+                        val chart = detail.historie?.chart
+                        if (chart != null && chart.values.isNotEmpty()) {
+                            Spacer(Modifier.height(Abstaende.klein))
+                            PriceChart(chart)
+                        } else if (detail.laedt) {
+                            Spacer(Modifier.height(Abstaende.klein))
+                            PreisLaedtZeile()
                         }
-                    },
-                    modifier = Modifier.fillMaxWidth(),
-                    shape = Formen.leiste,
-                ) { Text(stringResource(beschriftung)) }
+                    }
+                }
             }
 
-            Button(
-                onClick = { uebernahmeOffen = true },
-                modifier = Modifier.fillMaxWidth(),
-                shape = Formen.leiste,
-            ) { Text(stringResource(R.string.wishlist_take)) }
+            item {
+                Column(verticalArrangement = Arrangement.spacedBy(Abstaende.klein)) {
+                    // BrickLink zuerst, der Preisvergleich darunter (Marcos Vorgabe).
+                    for ((beschriftung, url) in listOfNotNull(
+                        detail.katalog?.bricklink?.url?.takeIf { it.isNotBlank() }
+                            ?.let { R.string.catalog_buy_bricklink to it },
+                        detail.katalog?.preisvergleichUrl?.takeIf { it.isNotBlank() }
+                            ?.let { R.string.detail_compare to it },
+                    )) {
+                        OutlinedButton(
+                            onClick = {
+                                try {
+                                    ctx.startActivity(android.content.Intent(
+                                        android.content.Intent.ACTION_VIEW, android.net.Uri.parse(url)))
+                                } catch (_: Exception) {
+                                    android.widget.Toast.makeText(
+                                        ctx, ctx.getString(R.string.common_no_app_to_open),
+                                        android.widget.Toast.LENGTH_SHORT).show()
+                                }
+                            },
+                            modifier = Modifier.fillMaxWidth(),
+                            shape = Formen.leiste,
+                        ) { Text(stringResource(beschriftung)) }
+                    }
 
-            OutlinedButton(
-                onClick = { vm.loescheWunsch(wunsch.setNumber, wunsch.condition, wunsch.userId) },
-                modifier = Modifier.fillMaxWidth(),
-                shape = Formen.leiste,
-            ) { Text(stringResource(R.string.common_delete)) }
+                    Button(
+                        onClick = { uebernahmeOffen = true },
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = Formen.leiste,
+                    ) { Text(stringResource(R.string.wishlist_take)) }
+
+                    OutlinedButton(
+                        onClick = { vm.loescheWunsch(wunsch.setNumber, wunsch.condition, wunsch.userId) },
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = Formen.leiste,
+                    ) { Text(stringResource(R.string.common_delete)) }
+                }
+            }
         }
     }
 
