@@ -106,6 +106,22 @@
   border-radius:11px;padding:9px 16px;margin:0;font-weight:600;
 }
 [data-theme="brick"] .ntab:hover{background:#f2f6fa}
+/* Marcos Befund: „Monitoring sollte auf der gleichen Zeile sein wie die
+   restlichen Tabs."
+
+   Dieses Design ist das einzige, das die Reiterleiste UMBRECHEN laesst
+   (flex-wrap oben) — die anderen schieben sie seitlich weg. Mit den klobigen
+   Pills brauchten die neun Reiter, die ein Verwalter sieht, 1144px; auf einem
+   schmaleren Fenster rutschte Monitoring in eine zweite Zeile (im Browser
+   nachgestellt und gemessen).
+
+   Schmalere Pills fuer mittlere Fenster. flex-wrap BLEIBT: Unter etwa 1000px
+   hilft keine Polsterung mehr, und ein Umbruch ist immer noch besser als ein
+   Reiter, den man nicht sieht. */
+@media (min-width:641px) and (max-width:1300px){
+  [data-theme="brick"] nav{gap:6px}
+  [data-theme="brick"] .ntab{padding:8px 9px;font-size:.82rem}
+}
 [data-theme="brick"] .ntab.active{
   background:var(--b600);color:#fff;border-color:var(--b600);
 }

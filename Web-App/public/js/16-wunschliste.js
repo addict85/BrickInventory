@@ -113,7 +113,8 @@ export async function ladeWunschliste() {
 export async function wunschHinzufuegen() {
   const num = (G('wl-num')?.value || '').trim();
   if (!num) { toast(tRaw('common.enter_set_number'), 'warn'); return; }
-  await knopfBesetzt(G('wl-add'), async () => {
+  const frei = knopfBesetzt(G('wl-add'));
+  try {
     const d = await api('POST', '/v1/wishlist', {
       set_number: num,
       condition:  G('wl-cond')?.value || 'N',
@@ -125,7 +126,7 @@ export async function wunschHinzufuegen() {
     toast(tRaw(d.war_neu ? 'wishlist.added' : 'wishlist.already'), 'ok');
     G('wl-num').value = '';
     await ladeWunschliste();
-  });
+  } finally { frei(); }
 }
 
 /**
@@ -144,7 +145,8 @@ export async function katalogAufWunschliste() {
   if (!sn) return;
   const zustand = G('cat-m-cond')?.value === 'U' ? 'U' : 'N';
   const owner   = selectedOwner('cat-m-owner');
-  await knopfBesetzt(G('cat-m-wish'), async () => {
+  const frei = knopfBesetzt(G('cat-m-wish'));
+  try {
     const d = await api('POST', '/v1/wishlist',
       { set_number: sn, condition: zustand, owner_user_id: owner });
     if (!d?.success) return;
@@ -163,7 +165,7 @@ export async function katalogAufWunschliste() {
       }).catch(() => null);
     }
     toast(tRaw(d.war_neu ? 'wishlist.added' : 'wishlist.already'), 'ok');
-  });
+  } finally { frei(); }
 }
 
 /** setNumber|condition|user_id — der Schlüssel einer Zeile, wie ihn zeile() baut. */
@@ -229,7 +231,8 @@ export async function bestaetigeUebernahme() {
   const { set_number, condition, owner_user_id } = zerlege(_uebernahme);
   const roh = (G('wl-take-price').value || '').trim();
   const preis = parseFloat(roh.replace(',', '.'));
-  await knopfBesetzt(G('wl-take-ok'), async () => {
+  const frei = knopfBesetzt(G('wl-take-ok'));
+  try {
     const d = await api('POST',
       `/v1/wishlist/${encodeURIComponent(set_number)}/${encodeURIComponent(condition)}/uebernehmen`,
       {
@@ -249,7 +252,7 @@ export async function bestaetigeUebernahme() {
     await ladeWunschliste();
     await loadGallery();
     await loadStats();
-  });
+  } finally { frei(); }
 }
 
 /**
