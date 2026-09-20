@@ -262,5 +262,39 @@ test('Wunschliste gegen echte Datenbank', { concurrency: 1 }, async (t) => {
       'Geräumt wurde nach dem GEKAUFTEN Zustand — damit trifft es den falschen Wunsch');
   });
 
+  await t.test('der Preisvergleich haengt am Wunsch, nicht am Katalog', async () => {
+    // Marco: „Der Link für den Vergleich fehlt noch auf der Detailseite der
+    // Wunschliste." Beide Oberflächen holten ihn aus /catalog/sets/:nr —
+    // derselben Anfrage wie Thema und Teilezahl. Für ein Set, das rb_sets
+    // nicht kennt, antwortet die Route 404, und der Knopf blieb aus. Dabei
+    // braucht die Adresse nur die Setnummer.
+    //
+    // Gegenproben (durchgeführt, Ergebnis im Commit):
+    //   a) `preisvergleich_url: fuerSet(...)` aus wuenscheVon() entfernt →
+    //      beide Zusicherungen unten werden rot.
+    //   b) fuerSet() nur mit der Nummer aufgerufen (Name weggelassen) → „der
+    //      Name macht die Suche brauchbar" wird rot.
+    // Frisch angelegt: Die Subtests davor löschen und übernehmen, der Wunsch
+    // von oben muss hier nicht mehr stehen.
+    await W.legeWunschAn(U.opa, '75192-1', 'N', null);
+    const [mitKatalog] = await W.wuenscheVon([U.opa], '75192-1');
+    const url = decodeURIComponent(mitKatalog.preisvergleich_url || '');
+    assert.ok(url.startsWith('http'), 'Ohne Adresse führt der Knopf ins Leere');
+    assert.ok(url.includes('75192'), `Die Setnummer fehlt in der Adresse: ${url}`);
+    assert.ok(url.includes('Millennium Falcon'),
+      `Der Name macht die Suche brauchbar — "LEGO 75192 Millennium Falcon" findet, ` +
+      `die blosse Nummer oft nicht: ${url}`);
+
+    // Und der Fall, der den Knopf bisher verschwinden liess: ein Set, das im
+    // Katalog gar nicht steht. Der Name fehlt dann — die Adresse nicht.
+    await W.legeWunschAn(U.opa, '99999-1', 'N', null);
+    const [ohneKatalog] = await W.wuenscheVon([U.opa], '99999-1');
+    assert.equal(ohneKatalog.name, null, 'Vorbedingung: dieses Set kennt der Katalog nicht');
+    const url2 = decodeURIComponent(ohneKatalog.preisvergleich_url || '');
+    assert.ok(url2.includes('99999'),
+      `Gerade hier muss die Adresse stehen — der Katalog liefert für dieses Set ` +
+      `nichts: ${url2}`);
+  });
+
   await t.test('Verbindungen schliessen', async () => { await db.pool.end(); });
 });

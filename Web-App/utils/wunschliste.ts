@@ -32,6 +32,7 @@ import { loescheAlarm } from './preisalarm';
 import * as V from './validate';
 import { nutzerStandardZustand } from './settings';
 import { meldeUndWeiter } from './httpError';
+import { fuerSet } from './preisvergleich';
 
 /** Ein Eintrag, wie ihn beide Oberflächen sehen. */
 export interface Wunsch {
@@ -59,6 +60,24 @@ export interface Wunsch {
    * die auch hundert Eintraege haben kann.
    */
   alarm: { richtung: string; schwelle: number; ausgeloest: boolean } | null;
+  /**
+   * Preisvergleich — die Adresse, die der Knopf im Detail oeffnet.
+   *
+   * ── Warum sie AM WUNSCH haengt und nicht am Katalog ────────────────────
+   *
+   * Beide Oberflaechen holten sie bisher aus /catalog/sets/:nr, zusammen mit
+   * Thema und Teilezahl. Damit haengt ein Knopf, der nur die Setnummer
+   * braucht, an einer zweiten Anfrage: Ist das Set in rb_sets nicht
+   * vorhanden (Katalog noch nicht geladen, Set zu neu, Eigenbau), antwortet
+   * die Route 404 — und der Knopf bleibt aus, obwohl die Adresse aus der
+   * Nummer allein zu bilden gewesen waere.
+   *
+   * Sie reist deshalb mit der Liste mit. Der Name kommt aus rb_sets, wenn es
+   * ihn gibt; fehlt er, sucht die Adresse eben nur nach der Nummer
+   * (utils/preisvergleich.ts). Immer gesetzt, nie leer — ausser die Nummer
+   * waere leer, und dann gaebe es den Wunsch nicht.
+   */
+  preisvergleich_url: string;
 }
 
 /**
@@ -160,7 +179,7 @@ export async function wuenscheVon(userIds: number[], nurSet?: string): Promise<W
   // Die Zahlenspalten kommen als Zeichenkette aus dem Treiber — dieselbe
   // Stelle, an der in diesem Baum schon einmal ein Vergleich still falsch
   // wurde (siehe utils/preisalarm.ts).
-  type Zeile = Omit<Wunsch, 'year' | 'num_parts' | 'owned' | 'alarm'> &
+  type Zeile = Omit<Wunsch, 'year' | 'num_parts' | 'owned' | 'alarm' | 'preisvergleich_url'> &
                { year: string | number | null; num_parts: string | number | null; owned: unknown;
                  alarm_richtung: string | null; alarm_schwelle: string | number | null;
                  alarm_ausgeloest: unknown };
@@ -169,6 +188,7 @@ export async function wuenscheVon(userIds: number[], nurSet?: string): Promise<W
     year:      r.year      == null ? null : Number(r.year),
     num_parts: r.num_parts == null ? null : Number(r.num_parts),
     owned:     !!r.owned,
+    preisvergleich_url: fuerSet(r.set_number, r.name),
     alarm: alarm_richtung == null ? null : {
       richtung:   alarm_richtung,
       schwelle:   parseFloat(String(alarm_schwelle)),

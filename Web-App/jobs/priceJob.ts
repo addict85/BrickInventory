@@ -7,7 +7,6 @@ import { getSetting, getGlobalSetting } from '../utils/settings';
 import { katalogEintrag, ohneBricklinkPreis } from '../utils/setNummer';
 const monitor = require('../utils/jobMonitor');
 const { getPriceGuide } = require('../clients/bricklink');
-const { DEFAULT_PRICE_CONDITION } = require('../utils/financeCalc');
 
 /**
  * Laufzustand des Preis-Jobs.
@@ -202,10 +201,30 @@ async function runPriceRefresh(vorhandeneSperre?: (() => Promise<void>) | null) 
     // Wichtigste: Man wartet ja darauf. Ein Set, das man schon hat, braucht
     // sie weniger dringend als eines, das man kaufen will.
     //
-    // Der UNION kostet Abrufe — je Wunsch und Zustand einen, im selben
-    // Rhythmus wie fuer ein eigenes Set. Wer das nicht will, nimmt die zweite
-    // Haelfte wieder heraus; dann bleibt das Wunsch-Detail auf den Preis
-    // angewiesen, den es beim Oeffnen selbst holt (routes/api_v1/wishlist.ts).
+    // ── Was der Wunschteil kostet (Marcos Frage) ───────────────────────
+    //
+    // Ein Wunsch bringt eine zusaetzliche Zeile in diese Liste, also einen
+    // zusaetzlichen Durchgang durch fetchAndCachePrice() je gewuenschtem
+    // Zustand. Ein BrickLink-Abruf wird daraus aber nur, wenn der Cache
+    // nichts Frisches hat — und price_cache ist ueber
+    // (set_number, condition, currency_code) verschluesselt, NICHT ueber den
+    // Nutzer (db/schema.sql). Daraus folgt die Obergrenze:
+    //
+    //   Abrufe/Tag  =  Anzahl verschiedener (Set, Zustand, Waehrung) ueber
+    //                  ALLE Wunschlisten, die nicht ohnehin im Bestand sind
+    //                  +  einer je Antwort ganz ohne Preis (Rueckfall auf den
+    //                     anderen Zustand, siehe fetchAndCachePrice)
+    //
+    // Zwei Nutzer mit demselben Wunsch in derselben Waehrung kosten also
+    // EINEN Abruf, nicht zwei; ein Wunsch auf ein Set, das jemand schon
+    // besitzt, kostet nichts. Der Takt ist price_cache_ttl (Vorgabe 24 h),
+    // nicht das Job-Intervall — ein stuendlicher Lauf fragt denselben Wunsch
+    // trotzdem nur einmal am Tag. Nur Sets, zu denen BrickLink gar keinen
+    // Preis kennt, werden oefter versucht (ZERO_PRICE_TTL_HOURS = 6 h).
+    //
+    // Wer das nicht will, nimmt die zweite Haelfte wieder heraus; dann bleibt
+    // das Wunsch-Detail auf den Preis angewiesen, den es beim Oeffnen selbst
+    // holt (routes/api_v1/wishlist.ts) — und es entsteht kein Verlauf.
     //
     // `.catch`: Ein Aufbau, der nur initSchema() gelaufen ist, hat die
     // Tabelle nicht (siehe db/schema.sql). Dann bleibt es beim Bestand.
@@ -247,31 +266,24 @@ async function runPriceRefresh(vorhandeneSperre?: (() => Promise<void>) | null) 
       const ttlHours  = (await getGlobalSetting('price_cache_ttl', '24')) || '24';
       const valid = (setNumbers as string[]).filter(sn => /^[a-zA-Z0-9]+-\d+$/.test(sn));
 
-      // Zustände je Set in EINER Abfrage vorab bestimmen, statt pro Set einzeln
-      // nachzuschlagen. Gemischte Sets brauchen beide Preise (siehe
-      // conditionsNeededFor), reine Sets nur einen — jeder überflüssige Abruf
-      // ginge auf das BrickLink-Tageskontingent.
-      const condRows = await db.all(
-        `SELECT set_number, COALESCE(condition,'N') AS c
-           FROM set_acquisitions WHERE user_id=$1 AND set_number = ANY($2)
-          GROUP BY set_number, COALESCE(condition,'N')`,
-        [userId, valid]).catch(() => []);
-      const condBySet = new Map();
-      for (const r of condRows) {
-        if (!condBySet.has(r.set_number)) condBySet.set(r.set_number, new Set());
-        condBySet.get(r.set_number).add(r.c === 'U' ? 'U' : 'N');
-      }
-      const storedCond = new Map(
-        (await db.all('SELECT set_number, condition FROM sets WHERE user_id=$1', [userId]).catch(() => []))
-          .map((r: { set_number: string; condition?: string | null }) =>
-            [r.set_number, r.condition === 'U' ? 'U' : 'N']));
+      // Zustände je Set vorab bestimmen — drei Abfragen für den ganzen Nutzer,
+      // nicht drei je Set. Gemischte Sets brauchen beide Preise, reine nur
+      // einen; jeder überflüssige Abruf ginge auf das BrickLink-Tageskontingent.
+      //
+      // Hier stand die Regel vorher ein ZWEITES Mal (Erfassungen, sonst
+      // sets-Zeile, sonst DEFAULT_PRICE_CONDITION) — und diese Fassung kannte
+      // die Wunschliste nicht. Ein Wunsch hat weder Erfassung noch sets-Zeile,
+      // fiel also auf den Vorgabewert durch, und der ist 'U'
+      // (utils/finance/preise.ts). Gemessen hiess das: JEDER Wunsch wurde als
+      // GEBRAUCHT geholt — auch der auf ein neues Set. Der Preisverlauf im
+      // Wunsch-Detail füllte sich damit für den falschen Zustand, und für den
+      // gewünschten blieb er leer.
+      const zustaende = await zustaendeJeSet(Number(userId), valid);
 
       const tasks = valid.map(sn => async () => {
         fortschritt.current++; fortschritt.set = sn;
         monitor.update('priceJob', { status:'running', progress:fortschritt.current, total:fortschritt.total, sub:`${sn} (${fortschritt.current}/${fortschritt.total})` });
-        const conditions = condBySet.has(sn)
-          ? [...condBySet.get(sn)]
-          : [storedCond.get(sn) || DEFAULT_PRICE_CONDITION];
+        const conditions = zustaende.get(sn) ?? ['N'];
         let last = 'skipped';
         for (const c of conditions) {
           try {
@@ -359,7 +371,22 @@ async function runPriceRefresh(vorhandeneSperre?: (() => Promise<void>) | null) 
 }
 
 /**
- * Welche Zustände kommen in den Erfassungen dieses Sets vor?
+ * Welche Preis-Zustände braucht dieser Nutzer für diese Sets?
+ *
+ * ── Die eine Fassung der Regel ─────────────────────────────────────────────
+ * Sie stand zweimal im Baum: einmal hier als conditionsNeededFor() für EIN Set
+ * (Sofort-Abruf beim Erfassen) und einmal ausgeschrieben in der Schleife des
+ * Nachtlaufs, dort gebündelt über alle Sets eines Nutzers. Zwei Fassungen,
+ * und sie waren nicht gleich: Die Schleife kannte die Wunschliste nicht.
+ * Deshalb steht die Regel jetzt EINMAL, gebündelt — der Einzelfall ist eine
+ * Liste mit einem Eintrag.
+ *
+ * ── Die Staffelung ─────────────────────────────────────────────────────────
+ *
+ *   Bestand    die vorkommenden Zustände der Erfassungen, plus der Hinweis;
+ *              sonst der gespeicherte Zustand der sets-Zeile
+ *   Wunsch     die gewünschten Zustände — sie treten IMMER hinzu
+ *   sonst      'N'
  *
  * Seit der zustandsabhängigen Bewertung (utils/setValue.ts) braucht ein Set mit
  * einem neuen UND einem gebrauchten Exemplar BEIDE Preise im Cache. Vorher holte
@@ -367,58 +394,83 @@ async function runPriceRefresh(vorhandeneSperre?: (() => Promise<void>) | null) 
  * der erste gar keinen Preis lieferte — bei gemischten Sets fehlte damit dauerhaft
  * eine Hälfte, und die Bewertung fiel auf den jeweils anderen Zustand zurück.
  *
+ * ── Warum der Wunsch HINZUTRITT statt zu verlieren ─────────────────────────
+ * Wer ein Set neu besitzt und ein gebrauchtes zweites sucht, wartet auf den
+ * Gebraucht-Preis — den Neu-Preis hat er schon. Beide Fragen sind echt, also
+ * werden beide beantwortet. Das kostet einen zusätzlichen Abruf, aber nur für
+ * Sets, die jemand besitzt UND in einem ANDEREN Zustand wünscht.
+ *
  * Bewusst nur die tatsächlich vorkommenden Zustände: Jeder zusätzliche Abruf geht
  * auf das BrickLink-Tageskontingent, und für ein reines Neu-Set ist der
  * Gebraucht-Preis wertlos.
+ *
+ * `.catch`: Ein Aufbau, der nur initSchema() gelaufen ist, hat die
+ * wishlist-Tabelle nicht (siehe db/schema.sql). Dann bleibt es beim Bestand.
+ *
+ * @param hintCondition Zustand einer Erfassung, die es noch nicht GIBT (siehe
+ *        conditionsNeededFor) — gilt für alle übergebenen Sets, wird deshalb
+ *        nur mit einem einzelnen aufgerufen.
+ * @returns Map mit einem Eintrag je übergebenem Set, nie leer je Eintrag
+ */
+async function zustaendeJeSet(userId: number, setNumbers: string[],
+                              hintCondition: string | null = null): Promise<Map<string, string[]>> {
+  const ergebnis = new Map<string, string[]>();
+  if (!setNumbers.length) return ergebnis;
+
+  // Der Typ steht an jeder Abfrage, weil `db.all(...).catch(() => [])` eine
+  // Union aus any[] und never[] ergibt — darauf verliert .map() sein Ergebnis
+  // nach unknown[], und die Zusage oben wäre nicht mehr einlösbar.
+  type ZustandsZeile = { set_number: string; c?: string | null };
+  const sammle = async (sql: string): Promise<Map<string, Set<string>>> => {
+    const zeilen: ZustandsZeile[] = await db.all(sql, [userId, setNumbers]).catch(() => []);
+    const m = new Map<string, Set<string>>();
+    for (const r of zeilen) {
+      if (!m.has(r.set_number)) m.set(r.set_number, new Set<string>());
+      m.get(r.set_number)!.add(r.c === 'U' ? 'U' : 'N');
+    }
+    return m;
+  };
+
+  const erfasst = await sammle(
+    `SELECT set_number, COALESCE(condition,'N') AS c
+       FROM set_acquisitions WHERE user_id=$1 AND set_number = ANY($2)
+      GROUP BY set_number, COALESCE(condition,'N')`);
+  const bestand = await sammle(
+    `SELECT set_number, COALESCE(condition,'N') AS c
+       FROM sets WHERE user_id=$1 AND set_number = ANY($2)`);
+  const gewuenscht = await sammle(
+    `SELECT DISTINCT set_number, COALESCE(condition,'N') AS c
+       FROM wishlist WHERE user_id=$1 AND set_number = ANY($2)`);
+
+  for (const sn of setNumbers) {
+    // Der Hinweis tritt neben die Erfassungen und verdrängt die sets-Zeile:
+    // Beim Anlegen eines NEUEN Sets existiert noch keine von beiden.
+    const eigene = new Set<string>(erfasst.get(sn) ?? []);
+    if (hintCondition === 'U' || hintCondition === 'N') eigene.add(hintCondition);
+    if (!eigene.size) for (const c of bestand.get(sn) ?? []) eigene.add(c);
+    for (const c of gewuenscht.get(sn) ?? []) eigene.add(c);
+    ergebnis.set(sn, eigene.size ? [...eigene] : ['N']);
+  }
+  return ergebnis;
+}
+
+/**
+ * Derselbe Beschluss für ein EINZELNES Set — der Weg beim Erfassen.
+ *
+ * Der Hinweis ist hier das Entscheidende: Beim Anlegen eines neuen Sets
+ * existiert weder die sets- noch die set_acquisitions-Zeile schon, denn
+ * getCurrentMarketPrice() ruft refreshPriceForSet() auf, BEVOR
+ * recordAcquisition() geschrieben hat. Ohne den Hinweis sah diese Funktion
+ * nichts, fiel auf 'N' zurück, und nur der Neupreis wurde geholt. Die
+ * anschliessende Preisabfrage fand für 'U' noch nichts im Cache und wich auf
+ * den gerade gecachten Neupreis aus — ein als gebraucht importiertes Set
+ * bekam so den Neupreis als Kaufpreis, obwohl „Gebraucht" gewählt war.
  *
  * @returns {Promise<string[]>} z. B. ['N'], ['U'] oder ['N','U']
  */
 async function conditionsNeededFor(setNumber: string, userId: number,
                                    hintCondition: string | null = null): Promise<string[]> {
-  const rows = await db.all(
-    `SELECT DISTINCT COALESCE(condition,'N') AS c
-       FROM set_acquisitions WHERE user_id=$1 AND set_number=$2`,
-    [userId, setNumber]).catch(() => []);
-  // Der Typ steht hier, weil `db.all(...).catch(() => [])` eine Union aus
-  // any[] und never[] ergibt — darauf verliert .map() sein Ergebnis nach
-  // unknown[], und die Zusage Promise<string[]> oben waere nicht mehr
-  // einloesbar.
-  const list: string[] = rows.map((r: { c?: string | null }) => (r.c === 'U' ? 'U' : 'N'));
-
-  // Beim Anlegen eines NEUEN Sets existiert weder die sets- noch die
-  // set_acquisitions-Zeile schon — getCurrentMarketPrice() ruft
-  // refreshPriceForSet() auf, BEVOR recordAcquisition() geschrieben hat. Ohne
-  // den Hinweis sah diese Funktion nichts, fiel auf 'N' zurück, und nur der
-  // Neupreis wurde geholt. Die anschliessende Preisabfrage fand für 'U' noch
-  // nichts im Cache und wich auf den gerade gecachten Neupreis aus — ein als
-  // gebraucht importiertes Set bekam so den Neupreis als Kaufpreis, obwohl
-  // „Gebraucht" gewählt war. Der hier übergebene Hinweis behebt genau das:
-  // die Zeile existiert noch nicht, aber der GEWÜNSCHTE Zustand ist bekannt.
-  if (hintCondition === 'U' || hintCondition === 'N') list.push(hintCondition);
-
-  if (list.length) return [...new Set(list)];
-  // Keine Erfassungen und kein Hinweis → der gespeicherte Zustand des Sets
-  // entscheidet.
-  const set = await db.get('SELECT condition FROM sets WHERE user_id=$1 AND set_number=$2',
-    [userId, setNumber]).catch(() => null);
-  if (set) return [set.condition === 'U' ? 'U' : 'N'];
-
-  // Kein Bestand? Dann ist es ein WUNSCH, und dessen Zustand entscheidet —
-  // moeglicherweise beide, denn neu und gebraucht sind zwei Wuensche.
-  //
-  // Ohne diesen Zweig fiel die Funktion auf 'N' zurueck: Wer auf ein
-  // GEBRAUCHTES wartet, bekaeme still den Neupreis geholt und im Detail
-  // angezeigt — dieselbe Verwechslung, die in addSet() schon einmal einen
-  // Gebrauchtpreis als Neuzugang verbucht hat.
-  const wuensche = await db.all(
-    `SELECT DISTINCT COALESCE(condition,'N') AS c
-       FROM wishlist WHERE user_id=$1 AND set_number=$2`,
-    [userId, setNumber]).catch(() => []);
-  const ausWunsch: string[] = (wuensche || []).map(
-    (r: { c?: string | null }) => (r.c === 'U' ? 'U' : 'N'));
-  if (ausWunsch.length) return [...new Set(ausWunsch)];
-
-  return ['N'];
+  return (await zustaendeJeSet(userId, [setNumber], hintCondition)).get(setNumber) ?? ['N'];
 }
 
 async function refreshPriceForSet(setNumber: string, userId: number, hintCondition: string | null = null) {
@@ -484,4 +536,5 @@ async function triggerNow(): Promise<boolean> {
   return true;
 }
 
-export { start, stop, reschedule, getJobStatus, triggerNow, refreshPriceForSet, fetchAndCachePrice };
+export { start, stop, reschedule, getJobStatus, triggerNow, refreshPriceForSet, fetchAndCachePrice,
+         zustaendeJeSet, conditionsNeededFor };

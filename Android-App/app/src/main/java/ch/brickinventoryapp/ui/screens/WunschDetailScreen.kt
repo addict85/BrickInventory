@@ -176,7 +176,12 @@ fun WunschDetailScreen(
                     for ((beschriftung, url) in listOfNotNull(
                         detail.katalog?.bricklink?.url?.takeIf { it.isNotBlank() }
                             ?.let { R.string.catalog_buy_bricklink to it },
-                        detail.katalog?.preisvergleichUrl?.takeIf { it.isNotBlank() }
+                        // Der Katalog liefert dieselbe Adresse, nur mit Namen
+                        // darin („LEGO 75192 Millennium Falcon" statt nur der
+                        // Nummer). Kommt er nicht — 404 fuer ein Set, das
+                        // rb_sets nicht kennt —, steht die vom Wunsch bereit.
+                        (detail.katalog?.preisvergleichUrl ?: wunsch.preisvergleichUrl)
+                            ?.takeIf { it.isNotBlank() }
                             ?.let { R.string.detail_compare to it },
                     )) {
                         OutlinedButton(
