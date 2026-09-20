@@ -937,9 +937,11 @@ data class LagerUiState(
 data class WunschUiState(
     val wuensche: List<ch.brickinventoryapp.data.model.Wunsch> = emptyList(),
     val laedt: Boolean = false,
-    /** Setnummer im Eingabefeld — ueberlebt das Drehen ueber den Zustand. */
-    val eingabe: String = "",
-    /** 'N' oder 'U' — der Zustand des naechsten Wunsches. */
-    val zustand: String = "N",
-    val notiz: String = "",
 )
+
+// Hier standen `eingabe`, `zustand` und `notiz` — der Zustand des
+// Erfassungskastens, den es nicht mehr gibt. Seit die Erfassung ein Dialog
+// ist (Marcos „gleich wie bei den Sets"), haelt sie ihren Zustand selbst,
+// genau wie AddSetDialog. Drei Felder im geteilten Zustand, die niemand mehr
+// liest, waeren die naechste Stelle, an der jemand raetselt, wozu sie da
+// sind.

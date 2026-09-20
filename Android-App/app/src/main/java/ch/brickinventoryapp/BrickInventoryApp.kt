@@ -26,6 +26,10 @@ class BrickInventoryApp : Application(), Configuration.Provider {
      * Die Vorgaben genuegen: Der einzige Auftrag ist ein stuendlicher Abruf
      * ohne eigene WorkerFactory (siehe die Begruendung fuer EntryPoint statt
      * @HiltWorker in PreisalarmWorker).
+     *
+     * Dass die Umstellung noetig WAR und nicht nur gut aussah, hat Marcos
+     * Geraet bestaetigt: Davor startete die App nicht mehr, danach wieder.
+     * Die ausfuehrliche Fassung steht am Manifest-Eintrag.
      */
     override val workManagerConfiguration: Configuration
         get() = Configuration.Builder().build()

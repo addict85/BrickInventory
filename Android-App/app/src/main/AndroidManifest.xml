@@ -88,6 +88,25 @@
           Vorgabe sogar aus. Etwas, das die meisten Nutzer nie einschalten,
           gehoert nicht in den Pfad, den jeder Start durchlaufen muss.
 
+          ── BESTAETIGT, nicht mehr vermutet ──────────────────────────────
+
+          Als dieser Block entstand, war das eine Begruendung aus dem
+          Lehrbuch: Ich konnte Marcos Absturz NICHT erklaeren und habe das
+          auch so geschrieben. Geaendert wurde, was sich aendern liess.
+
+          Marco, nach dem naechsten APK: „Ja die App startet wieder."
+
+          Damit ist es keine Vorsichtsmassnahme mehr. Von den beiden
+          Aenderungen jenes Commits konnte nur DIESE den Start betreffen —
+          die andere (die Keep-Regel fuer den Worker) repariert etwas, das
+          im Hintergrund laeuft und den Start nicht toeten kann. Der
+          Initialisierer ist auf seinem Geraet also wirklich gescheitert.
+
+          WARUM er gescheitert ist, weiss bis heute niemand, und es wird
+          sich auch nicht mehr herausfinden lassen — er laeuft dort nicht
+          mehr. Wer diesen Eintrag zurueckholen will, holt einen Absturz
+          zurueck, den kein Protokoll erklaert hat.
+
           Stattdessen faehrt WorkManager beim ERSTEN Zugriff hoch (siehe
           Configuration.Provider in BrickInventoryApp). Der erste Zugriff ist
           PreisalarmWorker.einplanen(), und der steht in einem runCatching.

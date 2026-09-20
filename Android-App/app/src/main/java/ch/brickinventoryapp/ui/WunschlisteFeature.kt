@@ -38,16 +38,6 @@ internal fun MainViewModel.ladeWunschliste() {
     }
 }
 
-/** Die Eingabefelder des Erfassungskastens. */
-internal fun MainViewModel.setzeWunschEingabe(nummer: String) =
-    _wunschState.update { it.copy(eingabe = nummer) }
-
-internal fun MainViewModel.setzeWunschZustand(zustand: String) =
-    _wunschState.update { it.copy(zustand = if (zustand == "U") "U" else "N") }
-
-internal fun MainViewModel.setzeWunschNotiz(notiz: String) =
-    _wunschState.update { it.copy(notiz = notiz) }
-
 /**
  * Einen Wunsch eintragen.
  *
@@ -73,7 +63,6 @@ internal fun MainViewModel.legeWunschAn(
                 // Unterschied sehen.
                 _snackbar.value = text(
                     if (r.data.warNeu) R.string.wishlist_added else R.string.wishlist_already)
-                _wunschState.update { it.copy(eingabe = "", notiz = "") }
                 ladeWunschliste()
             }
             is Result.Error -> _snackbar.value = text(R.string.vm_error, meldung(r))
