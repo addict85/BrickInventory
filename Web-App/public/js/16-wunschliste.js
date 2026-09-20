@@ -1,6 +1,8 @@
 import { registerActions } from './00-registry.js';
-import { t, tRaw } from '../i18n.js';
-import { G, api, esc, escJs, knopfBesetzt, thumbUrl, toast } from './01-core.js';
+import { locale, t, tRaw } from '../i18n.js';
+import { CURRENCY, G, api, esc, escJs, fmtN, fullUrl, knopfBesetzt, thumbUrl, toast } from './01-core.js';
+import { detailZeile } from './01-bausteine.js';
+import { priceChartSVG, renderMarketRows } from './07-admin.js';
 import { selectedOwner, loadGallery, loadStats } from './02-gallery.js';
 
 // ═══ Wunschliste ═════════════════════════════════════════════════════════════
@@ -25,6 +27,9 @@ let _wuensche = [];
 
 /** Der Eintrag, ueber den der Uebernahme-Dialog gerade steht. */
 let _uebernahme = null;
+
+/** Der Eintrag, dessen Detail offen ist. */
+let _detail = null;
 
 function zustandText(c) {
   return t(c === 'U' ? 'common.condition_used' : 'common.condition_new');
@@ -76,7 +81,10 @@ function zeile(w) {
     <div style="display:flex;gap:12px;align-items:center;padding:10px;border:1px solid var(--bdr);
                 border-radius:var(--rad);background:var(--sur);margin-bottom:8px">
       ${bild}
-      <div style="flex:1;min-width:0">
+      <!-- Die Zeile selbst oeffnet das Detail — wie die Kachel in der Galerie.
+           Nur der Textblock, nicht die ganze Zeile: Sonst laege der Knopf
+           „Loeschen" auf einer Flaeche, die etwas anderes tut. -->
+      <div style="flex:1;min-width:0;cursor:pointer" data-click="oeffneWunschDetail" data-arg="${arg}">
         <div style="font-weight:600">${titel}</div>
         <div style="font-size:.78rem;color:var(--mut)">${unter}</div>
         ${notiz}
@@ -250,5 +258,121 @@ export async function bestaetigeUebernahme() {
   });
 }
 
+/**
+ * Das Detail eines Wunsches.
+ *
+ * ── Woher die Angaben kommen ────────────────────────────────────────────────
+ *
+ * Aus DREI Quellen, und keine davon ist neu:
+ *
+ *   * die Zeile selbst (Zustand, Notiz, Alarm, auf der Liste seit) — sie
+ *     liegt bereits geladen vor, GET /wishlist bringt alles mit;
+ *   * /catalog/sets/:sn für Thema, Teile, Minifiguren und die
+ *     BrickLink-Adresse — derselbe Aufruf, den das Katalog-Detail macht;
+ *   * /sets/:sn/price-history für Marktpreis UND Verlauf.
+ *
+ * Der dritte ist der interessante: Er verlangt KEINEN Besitz (die Route ruft
+ * getSetPriceHistory ohne Besitzprüfung, und price_cache/price_history hängen
+ * am Set, nicht am Konto). /sets/:sn/price dagegen antwortet mit 404, wenn
+ * einem das Set nicht gehört — für einen Wunsch also unbrauchbar. Nachgesehen,
+ * nicht vermutet.
+ *
+ * Damit braucht dieses Detail keinen einzigen neuen Endpunkt, und gezeichnet
+ * wird es von denselben Funktionen wie der Set-Dialog.
+ */
+export async function oeffneWunschDetail(arg) {
+  const { set_number, condition } = zerlege(arg);
+  const w = _wuensche.find(x => x.set_number === set_number && x.condition === condition);
+  if (!w) return;
+  _detail = arg;
+
+  G('wl-m-tit').textContent = w.name || w.set_number;
+  G('wl-m-sub').textContent = [w.set_number, zustandText(w.condition)].join(' · ');
+  const bild = w.image_url ? fullUrl(w.image_url) : '/assets/set-placeholder.svg';
+  G('wl-m-img').src = bild;
+  G('wl-m-img').dataset.orig = bild;
+  G('wl-m-sparkline-content').innerHTML =
+    `<span style="color:var(--mut);font-size:.78rem">${esc(tRaw('common.loading'))}</span>`;
+  G('wl-m-market-rows').innerHTML = '';
+  G('wl-m-det').innerHTML = zeilen(w, null);
+  for (const id of ['wl-m-vergleich', 'wl-m-bricklink']) G(id).style.display = 'none';
+  G('wl-detail-modal').classList.add('open');
+
+  // Katalog: Thema, Teile, Minifiguren, BrickLink. Schlägt er fehl (ein Set,
+  // das rb_sets nicht kennt), bleibt der Block stehen, wie er ist — die
+  // Angaben aus der Zeile sind dann alles, was es gibt.
+  api('GET', `/v1/catalog/sets/${encodeURIComponent(set_number)}`).then(d => {
+    if (_detail !== arg || !d?.success) return;
+    G('wl-m-det').innerHTML = zeilen(w, d.set);
+    zeigeAdresse('wl-m-bricklink', d.set?.bricklink?.url);
+    zeigeAdresse('wl-m-vergleich', d.set?.preisvergleich_url);
+  }).catch(() => {});
+
+  api('GET', `/v1/sets/${encodeURIComponent(set_number)}/price-history`).then(ph => {
+    if (_detail !== arg) return;
+    renderMarketRows(ph, 'wl-m-market-rows');
+    G('wl-m-sparkline-content').innerHTML = ph?.success
+      ? priceChartSVG(ph, 'wl' + set_number.replace(/[^a-zA-Z0-9]/g, ''))
+      : `<span style="color:var(--mut);font-size:.78rem">${esc(tRaw('detail.no_history'))}</span>`;
+  }).catch(() => {});
+}
+
+/** Ein Knopf, der ins Leere führt, ist schlechter als keiner. */
+function zeigeAdresse(id, url) {
+  const el = G(id);
+  if (!el) return;
+  if (url) { el.href = url; el.style.display = ''; }
+  else     { el.removeAttribute('href'); el.style.display = 'none'; }
+}
+
+/**
+ * Die Zeilen — dieselbe Auswahl und Reihenfolge wie im Set-Dialog, abzüglich
+ * dessen, was einen Besitz voraussetzt.
+ *
+ * `katalog` darf null sein: Dann steht das Detail schon da, während der
+ * Katalogabruf noch läuft, statt den Dialog leer zu zeigen.
+ */
+function zeilen(w, katalog) {
+  const strich = '—';
+  const zahl = (n) => (n == null ? strich : Number(n).toLocaleString(locale()));
+  const alarm = w.alarm
+    ? `${esc(tRaw(w.alarm.richtung === 'ueber' ? 'detail.alert_above' : 'detail.alert_below'))}
+       ${esc(fmtN(w.alarm.schwelle, CURRENCY))}
+       ${w.alarm.ausgeloest ? '🔔' : '⏰'}`
+    : strich;
+  return [
+    ['detail.year',     w.year != null ? String(w.year) : strich],
+    ['detail.theme',    esc(katalog?.theme_name || strich)],
+    ['detail.pieces',   zahl(katalog?.num_parts ?? w.num_parts)],
+    ['detail.minifigs', zahl(katalog?.minifigs)],
+    ['common.condition', esc(zustandText(w.condition))],
+    ['wishlist.since',  w.created_at ? `📅 ${esc(new Date(w.created_at).toLocaleDateString(locale()))}` : strich],
+    ['detail.alert',    alarm],
+    ['parts.note_label', esc(w.notiz || strich)],
+  ].map(([k, v]) => detailZeile(t(k), v)).join('');
+}
+
+export function schliesseWunschDetail() {
+  G('wl-detail-modal').classList.remove('open');
+  _detail = null;
+}
+
+/** Löschen und Übernehmen aus dem Detail — dieselben Wege wie aus der Liste. */
+export async function wunschDetailLoeschen() {
+  const arg = _detail;
+  if (!arg) return;
+  schliesseWunschDetail();
+  await wunschLoeschen(arg);
+}
+
+export function wunschDetailUebernehmen() {
+  const arg = _detail;
+  if (!arg) return;
+  schliesseWunschDetail();
+  wunschUebernehmen(arg);
+}
+
 registerActions({ wunschHinzufuegen, katalogAufWunschliste, wunschLoeschen,
-                  wunschUebernehmen, schliesseUebernahme, bestaetigeUebernahme });
+                  wunschUebernehmen, schliesseUebernahme, bestaetigeUebernahme,
+                  oeffneWunschDetail, schliesseWunschDetail,
+                  wunschDetailLoeschen, wunschDetailUebernehmen });

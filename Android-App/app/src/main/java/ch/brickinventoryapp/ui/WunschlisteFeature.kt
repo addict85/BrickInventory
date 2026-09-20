@@ -159,3 +159,40 @@ internal fun MainViewModel.wuenscheMitAlarm(
         }
     }
 }
+
+/**
+ * Was das Detail eines Wunsches zusaetzlich braucht.
+ *
+ * ── Zwei Abrufe, und beide gibt es schon ────────────────────────────────────
+ *
+ *   * /catalog/sets/:sn  — Thema, Teile, Minifiguren, BrickLink,
+ *     Preisvergleich. Derselbe Aufruf, den das Katalog-Detail macht.
+ *   * /sets/:sn/price-history — Marktpreis JE ZUSTAND und der Verlauf, beides
+ *     aus einer Antwort.
+ *
+ * Der zweite ist der interessante: Er verlangt KEINEN Besitz — die Route ruft
+ * getSetPriceHistory ohne Besitzpruefung, und price_cache/price_history
+ * haengen am Set, nicht am Konto. /sets/:sn/price dagegen antwortet mit 404,
+ * wenn einem das Set nicht gehoert; fuer einen Wunsch also unbrauchbar.
+ * Nachgesehen, nicht vermutet.
+ *
+ * Damit braucht das Wunsch-Detail keinen einzigen neuen Endpunkt.
+ *
+ * ── Warum beide Fehler still bleiben ────────────────────────────────────────
+ *
+ * Ein Set, das rb_sets nicht kennt, hat kein Katalog-Detail; ein Set, das nie
+ * abgefragt wurde, keinen Preis. Beides ist normal und kein Fehler, den man
+ * jemandem melden muesste — die Ansicht zeigt dann „—" statt einer Zahl. Eine
+ * Schnellmeldung dafuer waere Laerm.
+ */
+internal fun MainViewModel.ladeWunschDetail(setNumber: String) {
+    viewModelScope.launch {
+        _wunschDetailState.value = WunschDetailUiState(laedt = true)
+        val katalog = (repo.admin.getCatalogSetDetail(setNumber) as? Result.Success)
+            ?.data?.takeIf { it.success }?.set
+        _wunschDetailState.update { it.copy(katalog = katalog) }
+        val historie = (repo.finanzen.getSetPriceHistory(setNumber) as? Result.Success)
+            ?.data?.takeIf { it.success }
+        _wunschDetailState.update { it.copy(historie = historie, laedt = false) }
+    }
+}

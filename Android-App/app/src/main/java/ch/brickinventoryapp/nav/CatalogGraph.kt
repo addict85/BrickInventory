@@ -84,8 +84,26 @@ fun NavGraphBuilder.catalogGraph(
                     vm = vm,
                     imageLoader = imageLoader,
                     onScan = { navController.navigate(Screen.BarcodeScanner.route) },
+                    onOeffnen = { sn, zustand ->
+                        navController.navigate(Screen.WunschDetail.createRoute(sn, zustand))
+                    },
                 )
             }
+        }
+        composable(
+            route = Screen.WunschDetail.route,
+            arguments = listOf(
+                androidx.navigation.navArgument("setNumber") { type = androidx.navigation.NavType.StringType },
+                androidx.navigation.navArgument("condition") { type = androidx.navigation.NavType.StringType },
+            ),
+        ) { backStack ->
+            ch.brickinventoryapp.ui.screens.WunschDetailScreen(
+                vm = vm,
+                setNumber = backStack.arguments?.getString("setNumber") ?: "",
+                condition = backStack.arguments?.getString("condition") ?: "N",
+                imageLoader = imageLoader,
+                onBack = { navController.popBackStack() },
+            )
         }
         composable(Screen.Catalog.route) {
             // Zustand INNERHALB des Ziels lesen — als Parameter wäre es eine

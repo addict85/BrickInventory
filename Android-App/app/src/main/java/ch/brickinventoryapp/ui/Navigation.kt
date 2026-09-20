@@ -6,6 +6,14 @@ sealed class Screen(val route: String) {
     object Gallery  : Screen("gallery")
     object Catalog  : Screen("catalog")
     object Wishlist : Screen("wishlist")
+    /**
+     * Zustand IM PFAD: Dasselbe Set kann zweimal auf der Liste stehen (neu und
+     * gebraucht), und „zeig mir den Wunsch auf 75192" waere mehrdeutig.
+     */
+    object WunschDetail : Screen("wunsch_detail/{setNumber}/{condition}") {
+        fun createRoute(setNumber: String, condition: String) =
+            "wunsch_detail/${java.net.URLEncoder.encode(setNumber, "UTF-8")}/$condition"
+    }
     object CatalogDetail : Screen("catalog_detail/{setNumber}") {
         fun createRoute(setNumber: String) = "catalog_detail/$setNumber"
     }

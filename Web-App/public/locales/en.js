@@ -38,6 +38,8 @@ window.I18N_EN = {
   'catalog.add_to_gallery':    '➕ Add to gallery',
   'nav.wishlist': 'Wishlist',
   'wishlist.title': 'Wishlist',
+  'wishlist.since': 'On the list since',
+  'wishlist.remove': 'Remove wish',
   'wishlist.add.title': 'Add a wish',
   'wishlist.add.submit': 'Add to wishlist',
   'wishlist.note': 'Note (optional)',
