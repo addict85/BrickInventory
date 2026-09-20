@@ -50,7 +50,7 @@ import ch.brickinventoryapp.util.resolveThumbUrl
  * beim Neuzeichnen die Zuordnung, und der Uebernahme-Dialog stuende nach
  * einer Drehung ueber der falschen Zeile.
  */
-private fun schluessel(w: Wunsch) = "${w.setNumber}|${w.condition}|${w.userId}"
+private fun wunschSchluessel(w: Wunsch) = "${w.setNumber}|${w.condition}|${w.userId}"
 
 @Composable
 fun WunschlisteScreen(
@@ -71,7 +71,7 @@ fun WunschlisteScreen(
     // passt dort nicht hinein (nicht Parcelable), eine Zeichenkette schon —
     // und die Zeile dazu steht ohnehin in der geladenen Liste.
     var uebernahmeSchluessel by rememberSaveable { mutableStateOf<String?>(null) }
-    val uebernahme = zustand.wuensche.firstOrNull { schluessel(it) == uebernahmeSchluessel }
+    val uebernahme = zustand.wuensche.firstOrNull { wunschSchluessel(it) == uebernahmeSchluessel }
 
     LaunchedEffect(Unit) { vm.ladeWunschliste() }
 
@@ -92,9 +92,9 @@ fun WunschlisteScreen(
                 // Schluessel aus Nummer UND Zustand: Dasselbe Set kann zweimal
                 // dastehen (neu und gebraucht). Nur die Nummer waere doppelt
                 // und Compose verloere die Zuordnung beim Neuzeichnen.
-                items(zustand.wuensche, key = ::schluessel) { w ->
+                items(zustand.wuensche, key = ::wunschSchluessel) { w ->
                     WunschZeile(w, appState.serverUrl, imageLoader,
-                        onUebernehmen = { uebernahmeSchluessel = schluessel(w) },
+                        onUebernehmen = { uebernahmeSchluessel = wunschSchluessel(w) },
                         onLoeschen    = { vm.loescheWunsch(w.setNumber, w.condition, w.userId) })
                 }
             }
