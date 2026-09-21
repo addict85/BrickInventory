@@ -302,47 +302,66 @@ test('nur das Boot-Skript kennt die Liste der Designs', () => {
 });
 
 /**
- * Ein Design, dessen Reiterleiste UMBRECHEN darf, muss die Reiter auch
- * schmaler machen koennen.
+ * Ein Design, dessen Reiterleiste umbrechen darf, verschmälert die Reiter
+ * UNBEDINGT — nicht hinter einer Medienabfrage.
  *
- * ── Marcos Befund ───────────────────────────────────────────────────────────
+ * ── Marcos Befund, zweimal ──────────────────────────────────────────────────
  *
- * „Monitoring sollte auf der gleichen Zeile sein wie die restlichen Tabs."
+ *   „Monitoring sollte auf der gleichen Zeile sein wie die restlichen Tabs."
+ *   … und nach dem ersten Anlauf: „Die Menüs in der Webapp sind nicht alle
+ *   auf einer Zeile."
  *
- * Die Reiterleiste steht normalerweise in EINER Zeile und scrollt seitlich
- * (styles.css: nav{display:flex;overflow-x:auto}, kein flex-wrap). Genau ein
- * Design setzt flex-wrap und laesst sie stattdessen umbrechen — und dort
- * rutschte der neunte Reiter, den nur ein Verwalter sieht, in eine zweite
- * Zeile. Im Browser gemessen (Chromium): 1144px noetig, 1030px da.
+ * Der erste Anlauf hat die Reiter nur für MITTLERE FENSTER verschmälert, und
+ * genau das ging am Kern vorbei: Eine Medienabfrage misst das Fenster. Die
+ * Reiter stehen im Design „Stein" aber in #app, und das ist auf 1200px
+ * gedeckelt. Auf einem breiten Bildschirm griff die Abfrage also nicht, und
+ * die vollen Pills mussten sich trotzdem in dieselben 1168px drängen.
  *
- * Die Regel ist nicht „Design X braucht Regel Y" (das waere eine Aufzaehlung),
- * sondern: WER umbrechen laesst, muss fuer mittlere Fenster verschmaelern.
- * Sonst faellt es beim naechsten Design wieder auf.
+ * Im Browser auf der ECHTEN Seite gemessen (Chromium, Design „Stein",
+ * neun Reiter — die Zahl, die ein Verwalter sieht):
  *
- * ── Gegenprobe (durchgefuehrt, Ergebnis im Commit) ─────────────────────────
- *   Den @media-Block in themes/brick.css entfernt → rot.
+ *     Fenster 1920px  →  #app 1200px  →  nav 1168px
+ *     volle Pills                        1162px nötig   (sechs Pixel Luft)
+ *     schmale Pills                       968px nötig
+ *
+ * ── Was hier geprüft wird ───────────────────────────────────────────────────
+ *
+ * Nicht die Pixel — die kann ein Test ohne Browser nicht sehen —, sondern die
+ * NAHT: Wer seine Reiterleiste umbrechen lässt und seinen Inhalt zugleich auf
+ * eine feste Breite deckelt, darf die Verschmälerung nicht von der
+ * Fensterbreite abhängig machen. Die beiden Grössen haben nichts miteinander
+ * zu tun.
+ *
+ * ── Gegenprobe (durchgeführt, Ergebnis im Commit) ──────────────────────────
+ *   Die zwei Zeilen in themes/brick.css wieder in @media gepackt → rot.
  */
-test('wer die Reiterleiste umbrechen laesst, verschmaelert sie auch', () => {
+test('wer die Reiterleiste umbrechen lässt, verschmälert sie unbedingt', () => {
   const ordner = path.join(PUB, 'themes');
   const dateien = fs.readdirSync(ordner).filter(f => f.endsWith('.css'));
   assert.ok(dateien.length >= 4, `Nur ${dateien.length} Designs — greift die Suche noch?`);
 
-  const ohneUmbau = [];
-  let mitUmbruch = 0;
+  const fehler = [];
+  let betroffen = 0;
   for (const name of dateien) {
     const css = fs.readFileSync(path.join(ordner, name), 'utf8')
       .replace(/\/\*[\s\S]*?\*\//g, '');
-    // nav-Regelblock mit flex-wrap: nur dort stellt sich die Frage.
+    // Nur Designs, die BEIDES tun: umbrechen lassen und den Inhalt deckeln.
     if (!/nav\s*\{[^}]*flex-wrap\s*:\s*wrap/.test(css)) continue;
-    mitUmbruch++;
-    // Und dann muss es einen Medienblock geben, der die Reiter kleiner macht.
-    const schmal = /@media[^{]+\{[\s\S]*?\.ntab\s*\{[^}]*padding[^}]*\}/.test(css);
-    if (!schmal) ohneUmbau.push(name);
+    if (!/#app\s*\{[^}]*max-width/.test(css)) continue;
+    betroffen++;
+
+    // Jeder @media-Block, der die Reiter-Polsterung setzt, ist der Fehler.
+    for (const m of css.matchAll(/@media[^{]+\{([\s\S]*?)\n\}/g)) {
+      if (/\.ntab\s*\{[^}]*padding/.test(m[1])) {
+        fehler.push(`${name}: ${m[0].slice(0, m[0].indexOf('{')).trim()}`);
+      }
+    }
   }
-  assert.ok(mitUmbruch >= 1,
-    'Kein Design laesst die Reiterleiste mehr umbrechen — dann ist diese Regel leer wahr');
-  assert.deepEqual(ohneUmbau, [],
-    'Diese Designs lassen die Reiterleiste umbrechen, ohne die Reiter fuer ' +
-    'mittlere Fenster zu verschmaelern. Genau daran ist Monitoring in eine ' +
-    'zweite Zeile gerutscht.');
+  assert.ok(betroffen >= 1,
+    'Kein Design lässt die Reiterleiste umbrechen UND deckelt den Inhalt — ' +
+    'dann ist diese Regel leer wahr');
+  assert.deepEqual(fehler, [],
+    'Hier hängt die Breite der Reiter an der FENSTERbreite, obwohl sie in ' +
+    'einem gedeckelten Behälter stehen. Auf einem breiten Bildschirm greift ' +
+    'die Abfrage nicht — und genau dort brach die Leiste um.');
 });

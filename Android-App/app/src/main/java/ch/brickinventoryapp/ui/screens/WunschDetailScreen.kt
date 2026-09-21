@@ -1,5 +1,6 @@
 package ch.brickinventoryapp.ui.screens
 
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.material.icons.Icons
@@ -16,6 +17,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import ch.brickinventoryapp.R
 import ch.brickinventoryapp.data.model.Wunsch
 import ch.brickinventoryapp.ui.MainViewModel
+import ch.brickinventoryapp.ui.components.ZoomableImageDialog
 import ch.brickinventoryapp.ui.ladeWunschDetail
 import ch.brickinventoryapp.ui.loescheWunsch
 import ch.brickinventoryapp.ui.uebernimmWunsch
@@ -69,6 +71,14 @@ fun WunschDetailScreen(
     // Derselbe Dialog wie in der Liste, nicht ein zweiter: Anzahl, Kaufpreis
     // und Zustand muessen hier dieselbe Maske sein.
     var uebernahmeOffen by rememberSaveable { mutableStateOf(false) }
+    // Marcos Befund: „Der Zoom in der Wunschliste funktioniert nicht,
+    // zumindest nicht in der Android-App." Er hat recht — das Bild war das
+    // einzige Detailbild der App ohne Zoom. Set-Detail und Katalog-Detail
+    // haben ihn seit jeher, die Webapp im Wunsch-Detail ebenfalls
+    // (index.html: data-click="openImageLightboxFromEl" auf wl-m-img).
+    //
+    // rememberSaveable: Wer im Zoom das Telefon dreht, soll darin bleiben.
+    var zoomOffen by rememberSaveable { mutableStateOf(false) }
 
     val wunsch = liste.wuensche.firstOrNull {
         it.setNumber == setNumber && it.condition == condition
@@ -101,6 +111,12 @@ fun WunschDetailScreen(
             Box(Modifier.fillMaxSize().padding(padding), Alignment.Center) { CircularProgressIndicator() }
             return@Scaffold
         }
+        // Die Adresse EINMAL bestimmen: Vorschaubild und Zoom zeigen sonst
+        // womoeglich zwei verschiedene Bilder — und `resolveFullUrl` liefert
+        // ohnehin schon die volle Aufloesung (kein Thumb).
+        val bildUrl = resolveFullUrl(appState.serverUrl,
+            detail.katalog?.imageLocal ?: wunsch.imageLocal, wunsch.imageUrl)
+
         LazyColumn(
             Modifier.fillMaxSize().padding(padding),
             contentPadding = PaddingValues(Abstaende.gross),
@@ -108,11 +124,13 @@ fun WunschDetailScreen(
         ) {
             item {
                 coil.compose.AsyncImage(
-                    model = resolveFullUrl(appState.serverUrl,
-                        detail.katalog?.imageLocal ?: wunsch.imageLocal, wunsch.imageUrl),
-                    contentDescription = null,
+                    model = bildUrl,
+                    contentDescription = wunsch.name,
                     imageLoader = imageLoader,
-                    modifier = Modifier.fillMaxWidth().height(Abstaende.riesig * 5),
+                    // Antippen oeffnet den Zoom — dasselbe Verhalten wie im
+                    // Set- und im Katalog-Detail.
+                    modifier = Modifier.fillMaxWidth().height(Abstaende.riesig * 5)
+                        .clickable(enabled = bildUrl != null) { zoomOffen = true },
                 )
             }
 
@@ -216,10 +234,30 @@ fun WunschDetailScreen(
         }
     }
 
-    // Ausserhalb des Scaffolds, damit der Dialog ueber allem liegt — und mit
+    // Ausserhalb des Scaffolds, damit die Dialoge ueber allem liegen — und mit
     // `let`, weil `wunsch` hier wieder nullbar ist: Wer waehrend des offenen
     // Dialogs den letzten Eintrag anderswo loescht, soll keinen Absturz
     // bekommen, sondern nichts.
+    if (zoomOffen) wunsch?.let { w ->
+        // Dieselbe Adresse wie das Bild oben, nach denselben Regeln. Neu
+        // berechnet und nicht `bildUrl` weitergereicht: Die steht im
+        // Scaffold-Rumpf, wo `wunsch` nicht mehr nullbar ist — hier draussen
+        // ist es das wieder (siehe der Absatz beim Uebernahme-Dialog).
+        //
+        // Gezeichnet wird er von derselben Stelle wie im Set- und im
+        // Katalog-Detail: ui/components/ZoomableImageDialog.kt.
+        val zoomUrl = resolveFullUrl(appState.serverUrl,
+            detail.katalog?.imageLocal ?: w.imageLocal, w.imageUrl)
+        if (zoomUrl != null) {
+            ZoomableImageDialog(
+                imageUrl = zoomUrl,
+                contentDescription = w.name,
+                imageLoader = imageLoader,
+                onDismiss = { zoomOffen = false },
+            )
+        }
+    }
+
     if (uebernahmeOffen) wunsch?.let { w ->
         UebernahmeDialog(
             wunsch = w,
