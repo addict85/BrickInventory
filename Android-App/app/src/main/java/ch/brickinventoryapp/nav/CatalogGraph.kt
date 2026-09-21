@@ -73,31 +73,31 @@ fun NavGraphBuilder.catalogGraph(
     bottomNavItems: List<Triple<Screen, @Composable () -> Unit, String>>,
     snackbarHostState: SnackbarHostState,
 ) {
-        // ── Wunschliste (Nachtrag 179) ──────────────────────────────────────
+        // ── Merkliste (Nachtrag 179) ──────────────────────────────────────
         //
-        // Hier und nicht im CollectionGraph: Eine Wunschliste ist kein Bestand.
+        // Hier und nicht im CollectionGraph: Eine Merkliste ist kein Bestand.
         // Sie steht dem Katalog naeher — von dort kommt der haeufigste Weg
         // hinein, und wie er zeigt sie Sets, die einem NICHT gehoeren.
-        composable(Screen.Wishlist.route) {
-            ReiterGeruest(stringResource(R.string.nav_wishlist), vm, navController, bottomNavItems, snackbarHostState) {
-                ch.brickinventoryapp.ui.screens.WunschlisteScreen(
+        composable(Screen.Wanted.route) {
+            ReiterGeruest(stringResource(R.string.nav_wanted), vm, navController, bottomNavItems, snackbarHostState) {
+                ch.brickinventoryapp.ui.screens.MerklisteScreen(
                     vm = vm,
                     imageLoader = imageLoader,
                     onScan = { navController.navigate(Screen.BarcodeScanner.route) },
                     onOeffnen = { sn, zustand ->
-                        navController.navigate(Screen.WunschDetail.createRoute(sn, zustand))
+                        navController.navigate(Screen.MerkpostenDetail.createRoute(sn, zustand))
                     },
                 )
             }
         }
         composable(
-            route = Screen.WunschDetail.route,
+            route = Screen.MerkpostenDetail.route,
             arguments = listOf(
                 androidx.navigation.navArgument("setNumber") { type = androidx.navigation.NavType.StringType },
                 androidx.navigation.navArgument("condition") { type = androidx.navigation.NavType.StringType },
             ),
         ) { backStack ->
-            ch.brickinventoryapp.ui.screens.WunschDetailScreen(
+            ch.brickinventoryapp.ui.screens.MerkpostenDetailScreen(
                 vm = vm,
                 setNumber = backStack.arguments?.getString("setNumber") ?: "",
                 condition = backStack.arguments?.getString("condition") ?: "N",
@@ -159,10 +159,10 @@ fun NavGraphBuilder.catalogGraph(
                     vm.addSet(sn, qty, price, cond, owner)
                     katalog.markiereAufgenommen(sn, qty)
                 },
-                // Wunsch UND Preisalarm in einem Griff — die Regel dahinter
-                // steht in ui/WunschlisteFeature.kt, nicht hier.
+                // Merkposten UND Preisalarm in einem Griff — die Regel dahinter
+                // steht in ui/MerklisteFeature.kt, nicht hier.
                 onWish = { sn, zustand, richtung, schwelle ->
-                    vm.wuenscheMitAlarm(sn, zustand, richtung, schwelle)
+                    vm.merkpostenMitAlarm(sn, zustand, richtung, schwelle)
                 },
                 onOpenInGallery = { sn -> navController.navigate(Screen.SetDetail.createRoute(sn)) },
                 onBack = { navController.popBackStack() }

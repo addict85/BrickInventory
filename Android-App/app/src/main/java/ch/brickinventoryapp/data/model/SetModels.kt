@@ -403,7 +403,7 @@ enum class CsvArt { SETS, TEILE, MINIFIGUREN }
 /**
  * Ein Alarm gehoert genau EINEM Konto — anders als alles andere in diesem
  * Modell kennt er kein Blickfeld. Wer eine Schwelle setzt, will selbst
- * benachrichtigt werden; das Elternkonto haette nichts davon, die Wuensche
+ * benachrichtigt werden; das Elternkonto haette nichts davon, die Merkposten
  * seiner Kinder per Mail zu bekommen.
  */
 @Serializable
@@ -467,18 +467,18 @@ data class PendingAlertsResponse(
 )
 
 /**
- * Ein Eintrag der Wunschliste.
+ * Ein Eintrag der Merkliste.
  *
  * Die Stammdaten (name, year, …) kommen aus dem Katalog und sind NICHT
  * mitgespeichert — die Begruendung steht in der Migration 0021. Ein Set, das
  * der Katalog nicht kennt, hat hier `name == null` und zeigt seine Nummer.
  */
 @Serializable
-data class Wunsch(
+data class Merkposten(
     @SerialName("set_number") val setNumber: String = "",
     val condition: String = "N",
     @SerialName("created_at") val createdAt: String? = null,
-    /** Wem der Wunsch gehoert — im Kontenbaum sieht man fremde mit. */
+    /** Wem der Merkposten gehoert — im Kontenbaum sieht man fremde mit. */
     @SerialName("user_id") val userId: Int = 0,
     val name: String? = null,
     val year: Int? = null,
@@ -489,7 +489,7 @@ data class Wunsch(
      *
      * Dieselbe Regel wie bei Sets, Teilen und Minifiguren: Was schon auf der
      * Platte des Servers liegt, wird von dort geladen statt ueber den
-     * Bild-Proxy vom CDN. Die Wunschliste fuehrte das Feld als einzige Liste
+     * Bild-Proxy vom CDN. Die Merkliste fuehrte das Feld als einzige Liste
      * nicht mit — in der Webapp hat die Sicherheitsrichtlinie die direkten
      * CDN-Aufrufe geblockt (Marcos Befund), am Telefon war es „nur" ein
      * unnoetiger Umweg uebers Netz.
@@ -498,40 +498,70 @@ data class Wunsch(
     /** Liegt das Set schon in der Galerie eines Kontos im Blickfeld? */
     val owned: Boolean = false,
     /**
-     * Der Preisalarm zu GENAU diesem Wunsch — oder null.
+     * Der Preisalarm zu GENAU diesem Merkposten — oder null.
      *
      * Er reist mit, statt je Zeile einzeln geholt zu werden: Wer einen Alarm
      * setzt und ihn danach nirgends mehr sieht, hat ihn verloren, und ein
      * Aufruf je Zeile waere N+1 fuer eine Liste, die auch lang sein kann.
      */
-    val alarm: WunschAlarm? = null,
+    val alarm: MerkpostenAlarm? = null,
     /**
      * Preisvergleich — die Adresse fuer den Knopf im Detail.
      *
-     * Sie kommt mit dem Wunsch, nicht aus /catalog/sets/:nr: Ein Set, das
+     * Sie kommt mit dem Merkposten, nicht aus /catalog/sets/:nr: Ein Set, das
      * rb_sets nicht kennt, beantwortet die Katalogroute mit 404 — und dann
      * blieb der Knopf aus, obwohl die Adresse aus der Setnummer allein zu
-     * bilden ist. Die Begruendung steht in utils/wunschliste.ts.
+     * bilden ist. Die Begruendung steht in utils/merkliste.ts.
      */
     @SerialName("preisvergleich_url") val preisvergleichUrl: String? = null,
 )
 
 @Serializable
-data class WunschAlarm(
+data class MerkpostenAlarm(
     val richtung: String = "unter",
     val schwelle: Double = 0.0,
     val ausgeloest: Boolean = false,
 )
 
 @Serializable
-data class WunschlisteResponse(
+data class MerklisteResponse(
     val success: Boolean = false,
-    val wuensche: List<Wunsch> = emptyList(),
+    val merkposten: List<Merkposten> = emptyList(),
+    val error: String? = null,
+)
+
+/**
+ * Den Inhaber eines Merkpostens wechseln.
+ *
+ * ZWEI Konten im Rumpf, und beide sind noetig: Der Server muss wissen, WOHER
+ * er umhaengt — die Auswahl im Bildschirm kennt nur das Ziel, und der
+ * Betrachter ist nicht zwingend der bisherige Inhaber (der Grossvater sieht
+ * die Merkposten der Enkel).
+ */
+@Serializable
+data class MerkpostenInhaberRequest(
+    @SerialName("owner_user_id") val ownerUserId: Int,
+    @SerialName("neuer_inhaber") val neuerInhaber: Int,
+)
+
+/**
+ * Antwort auf den Inhaberwechsel.
+ *
+ * `zusammengefuehrt` heisst: Das Zielkonto hatte denselben Merkposten schon, die
+ * Quelle ist verschwunden statt umgezogen. Ohne diese Unterscheidung meldete
+ * die Oberflaeche „verschoben", wo etwas weg ist.
+ */
+@Serializable
+data class MerkpostenInhaberAntwort(
+    val success: Boolean = false,
+    val verschoben: Boolean = false,
+    val zusammengefuehrt: Boolean = false,
+    @SerialName("owner_user_id") val ownerUserId: Int? = null,
     val error: String? = null,
 )
 
 @Serializable
-data class WunschRequest(
+data class MerkpostenRequest(
     @SerialName("set_number") val setNumber: String,
     val condition: String = "N",
     @SerialName("owner_user_id") val ownerUserId: Int? = null,
@@ -544,10 +574,10 @@ data class WunschRequest(
  * saehe der zweite Druck auf denselben Knopf aus wie der erste.
  */
 @Serializable
-data class WunschAntwort(
+data class MerkpostenAntwort(
     val success: Boolean = false,
     @SerialName("war_neu") val warNeu: Boolean = false,
-    val wunsch: Wunsch? = null,
+    val merkposten: Merkposten? = null,
     val error: String? = null,
 )
 
@@ -558,7 +588,7 @@ data class WunschAntwort(
  * eines Sets, weil der Server dafuer dieselbe Funktion ruft (addSet).
  */
 @Serializable
-data class WunschUebernahmeResponse(
+data class MerkpostenUebernahmeResponse(
     val success: Boolean = false,
     val action: String? = null,
     @SerialName("set_number") val setNumber: String? = null,
@@ -573,31 +603,31 @@ data class WunschUebernahmeResponse(
  * Marktpreis ein, genau wie auf dem normalen Erfassungsweg.
  */
 @Serializable
-data class WunschUebernahmeRequest(
+data class MerkpostenUebernahmeRequest(
     val quantity: Int = 1,
     @SerialName("purchase_price") val purchasePrice: Double? = null,
     /**
-     * Der Zustand, in dem ERFASST wird — nicht der des Wunsches.
+     * Der Zustand, in dem ERFASST wird — nicht der des Merkpostens.
      *
      * Die beiden sind nicht dasselbe: Wer sich ein gebrauchtes gewuenscht und
-     * ein neues gefunden hat, erfasst ein neues, und erfuellt ist trotzdem der
-     * gebrauchte Wunsch. Welcher Wunsch verschwindet, entscheidet der Pfad;
+     * ein neues gefunden hat, erfasst ein neues, und erledigt ist trotzdem der
+     * gebrauchte Merkposten. Welcher Merkposten verschwindet, entscheidet der Pfad;
      * dieses Feld entscheidet nur, was in der Galerie steht.
      *
-     * null = so lassen wie der Wunsch.
+     * null = so lassen wie der Merkposten.
      */
     val condition: String? = null,
     @SerialName("owner_user_id") val ownerUserId: Int? = null,
 )
 
 /**
- * Die Marktpreise eines Wunsches — BEIDE Zustaende.
+ * Die Marktpreise eines Merkpostens — BEIDE Zustaende.
  *
  * Dieselbe Form wie `current` in der Verlaufsantwort, damit die Oberflaeche
  * sie mit derselben Zeichenfunktion anzeigen kann.
  */
 @Serializable
-data class WunschPreiseResponse(
+data class MerkpostenPreiseResponse(
     val success: Boolean = false,
     val currency: String = "",
     val current: CurrentByCondition = CurrentByCondition(),

@@ -188,22 +188,22 @@ async function runPriceRefresh(vorhandeneSperre?: (() => Promise<void>) | null) 
   const t0 = Date.now(); let updated=0, skipped=0, errors=0;
   monitor.update('priceJob', { status:'running', progress:0, total:0, sub:'Starte…', lastRun:new Date().toISOString() });
   try {
-    // ── Bestand UND Wunschliste ──────────────────────────────────────────
+    // ── Bestand UND Merkliste ──────────────────────────────────────────
     //
     // Marcos Frage: „Wieso werden die Preise nicht sofort angezeigt?"
     //
-    // Weil dieser Lauf bis hierher nur `sets` kannte. Ein Wunsch ist kein
+    // Weil dieser Lauf bis hierher nur `sets` kannte. Ein Merkposten ist kein
     // Bestand, hatte also nie einen Preis im Cache — und /price-history LIEST
-    // den Cache nur, es holt nichts. Das Wunsch-Detail zeigte deshalb „—",
+    // den Cache nur, es holt nichts. Das Merkposten-Detail zeigte deshalb „—",
     // und der Preisverlauf blieb leer, weil nie jemand einen Punkt schrieb.
     //
-    // Ausgerechnet fuer einen WUNSCH ist die Preisentwicklung das
+    // Ausgerechnet fuer einen MERKPOSTEN ist die Preisentwicklung das
     // Wichtigste: Man wartet ja darauf. Ein Set, das man schon hat, braucht
     // sie weniger dringend als eines, das man kaufen will.
     //
-    // ── Was der Wunschteil kostet (Marcos Frage) ───────────────────────
+    // ── Was der Merklisten-Anteil kostet (Marcos Frage) ────────────────────
     //
-    // Ein Wunsch bringt eine zusaetzliche Zeile in diese Liste, also einen
+    // Ein Merkposten bringt eine zusaetzliche Zeile in diese Liste, also einen
     // zusaetzlichen Durchgang durch fetchAndCachePrice() je gewuenschtem
     // Zustand. Ein BrickLink-Abruf wird daraus aber nur, wenn der Cache
     // nichts Frisches hat — und price_cache ist ueber
@@ -211,26 +211,26 @@ async function runPriceRefresh(vorhandeneSperre?: (() => Promise<void>) | null) 
     // Nutzer (db/schema.sql). Daraus folgt die Obergrenze:
     //
     //   Abrufe/Tag  =  Anzahl verschiedener (Set, Zustand, Waehrung) ueber
-    //                  ALLE Wunschlisten, die nicht ohnehin im Bestand sind
+    //                  ALLE Merklisten, die nicht ohnehin im Bestand sind
     //                  +  einer je Antwort ganz ohne Preis (Rueckfall auf den
     //                     anderen Zustand, siehe fetchAndCachePrice)
     //
-    // Zwei Nutzer mit demselben Wunsch in derselben Waehrung kosten also
-    // EINEN Abruf, nicht zwei; ein Wunsch auf ein Set, das jemand schon
+    // Zwei Nutzer mit demselben Merkposten in derselben Waehrung kosten also
+    // EINEN Abruf, nicht zwei; ein Merkposten auf ein Set, das jemand schon
     // besitzt, kostet nichts. Der Takt ist price_cache_ttl (Vorgabe 24 h),
-    // nicht das Job-Intervall — ein stuendlicher Lauf fragt denselben Wunsch
+    // nicht das Job-Intervall — ein stuendlicher Lauf fragt denselben Merkposten
     // trotzdem nur einmal am Tag. Nur Sets, zu denen BrickLink gar keinen
     // Preis kennt, werden oefter versucht (ZERO_PRICE_TTL_HOURS = 6 h).
     //
     // Wer das nicht will, nimmt die zweite Haelfte wieder heraus; dann bleibt
-    // das Wunsch-Detail auf den Preis angewiesen, den es beim Oeffnen selbst
-    // holt (routes/api_v1/wishlist.ts) — und es entsteht kein Verlauf.
+    // das Merkposten-Detail auf den Preis angewiesen, den es beim Oeffnen selbst
+    // holt (routes/api_v1/wanted.ts) — und es entsteht kein Verlauf.
     //
     // `.catch`: Ein Aufbau, der nur initSchema() gelaufen ist, hat die
     // Tabelle nicht (siehe db/schema.sql). Dann bleibt es beim Bestand.
     const eigene = await db.all('SELECT DISTINCT user_id, set_number FROM sets');
     const gewuenschte = await db.all(
-      'SELECT DISTINCT user_id, set_number FROM wishlist').catch(() => []);
+      'SELECT DISTINCT user_id, set_number FROM wanted').catch(() => []);
     const allSets = [...eigene, ...(gewuenschte || [])]
       .filter((r, i, a) => a.findIndex(x =>
         x.user_id === r.user_id && x.set_number === r.set_number) === i)
@@ -272,11 +272,11 @@ async function runPriceRefresh(vorhandeneSperre?: (() => Promise<void>) | null) 
       //
       // Hier stand die Regel vorher ein ZWEITES Mal (Erfassungen, sonst
       // sets-Zeile, sonst DEFAULT_PRICE_CONDITION) — und diese Fassung kannte
-      // die Wunschliste nicht. Ein Wunsch hat weder Erfassung noch sets-Zeile,
+      // die Merkliste nicht. Ein Merkposten hat weder Erfassung noch sets-Zeile,
       // fiel also auf den Vorgabewert durch, und der ist 'U'
-      // (utils/finance/preise.ts). Gemessen hiess das: JEDER Wunsch wurde als
+      // (utils/finance/preise.ts). Gemessen hiess das: JEDER Merkposten wurde als
       // GEBRAUCHT geholt — auch der auf ein neues Set. Der Preisverlauf im
-      // Wunsch-Detail füllte sich damit für den falschen Zustand, und für den
+      // Merkposten-Detail füllte sich damit für den falschen Zustand, und für den
       // gewünschten blieb er leer.
       const zustaende = await zustaendeJeSet(Number(userId), valid);
 
@@ -377,7 +377,7 @@ async function runPriceRefresh(vorhandeneSperre?: (() => Promise<void>) | null) 
  * Sie stand zweimal im Baum: einmal hier als conditionsNeededFor() für EIN Set
  * (Sofort-Abruf beim Erfassen) und einmal ausgeschrieben in der Schleife des
  * Nachtlaufs, dort gebündelt über alle Sets eines Nutzers. Zwei Fassungen,
- * und sie waren nicht gleich: Die Schleife kannte die Wunschliste nicht.
+ * und sie waren nicht gleich: Die Schleife kannte die Merkliste nicht.
  * Deshalb steht die Regel jetzt EINMAL, gebündelt — der Einzelfall ist eine
  * Liste mit einem Eintrag.
  *
@@ -385,7 +385,7 @@ async function runPriceRefresh(vorhandeneSperre?: (() => Promise<void>) | null) 
  *
  *   Bestand    die vorkommenden Zustände der Erfassungen, plus der Hinweis;
  *              sonst der gespeicherte Zustand der sets-Zeile
- *   Wunsch     die gewünschten Zustände — sie treten IMMER hinzu
+ *   Merkposten     die gewünschten Zustände — sie treten IMMER hinzu
  *   sonst      'N'
  *
  * Seit der zustandsabhängigen Bewertung (utils/setValue.ts) braucht ein Set mit
@@ -394,7 +394,7 @@ async function runPriceRefresh(vorhandeneSperre?: (() => Promise<void>) | null) 
  * der erste gar keinen Preis lieferte — bei gemischten Sets fehlte damit dauerhaft
  * eine Hälfte, und die Bewertung fiel auf den jeweils anderen Zustand zurück.
  *
- * ── Warum der Wunsch HINZUTRITT statt zu verlieren ─────────────────────────
+ * ── Warum der Merkposten HINZUTRITT statt zu verlieren ─────────────────────────
  * Wer ein Set neu besitzt und ein gebrauchtes zweites sucht, wartet auf den
  * Gebraucht-Preis — den Neu-Preis hat er schon. Beide Fragen sind echt, also
  * werden beide beantwortet. Das kostet einen zusätzlichen Abruf, aber nur für
@@ -405,7 +405,7 @@ async function runPriceRefresh(vorhandeneSperre?: (() => Promise<void>) | null) 
  * Gebraucht-Preis wertlos.
  *
  * `.catch`: Ein Aufbau, der nur initSchema() gelaufen ist, hat die
- * wishlist-Tabelle nicht (siehe db/schema.sql). Dann bleibt es beim Bestand.
+ * wanted-Tabelle nicht (siehe db/schema.sql). Dann bleibt es beim Bestand.
  *
  * @param hintCondition Zustand einer Erfassung, die es noch nicht GIBT (siehe
  *        conditionsNeededFor) — gilt für alle übergebenen Sets, wird deshalb
@@ -440,7 +440,7 @@ async function zustaendeJeSet(userId: number, setNumbers: string[],
        FROM sets WHERE user_id=$1 AND set_number = ANY($2)`);
   const gewuenscht = await sammle(
     `SELECT DISTINCT set_number, COALESCE(condition,'N') AS c
-       FROM wishlist WHERE user_id=$1 AND set_number = ANY($2)`);
+       FROM wanted WHERE user_id=$1 AND set_number = ANY($2)`);
 
   for (const sn of setNumbers) {
     // Der Hinweis tritt neben die Erfassungen und verdrängt die sets-Zeile:

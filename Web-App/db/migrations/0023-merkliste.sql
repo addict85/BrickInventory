@@ -1,0 +1,37 @@
+-- ════════════════════════════════════════════════════════════════════════════
+-- Aus `wishlist` wird `wanted`.
+-- ════════════════════════════════════════════════════════════════════════════
+--
+-- ── Marcos Vorgabe ──────────────────────────────────────────────────────────
+--
+-- „Kannst du den Text des Reiters noch auf Merkliste anpassen? Bitte auch im
+-- Quellcode. Auf Englisch bitte wanted." — auf Rueckfrage ausdruecklich bis in
+-- die Tabelle hinein.
+--
+-- ── Warum `wanted` und nicht `merkliste` ────────────────────────────────────
+--
+-- Die Datenbank dieses Baums spricht Englisch: sets, parts, minifigs,
+-- price_alerts, image_wanted. Eine deutsche Tabelle mittendrin waere die
+-- einzige — und `wanted` ist genau das Wort, das Marco fuer die englische
+-- Oberflaeche gewaehlt hat.
+--
+-- Nicht zu verwechseln mit image_wanted: Das sind Bilder, die noch
+-- heruntergeladen werden muessen. Zwei verschiedene Dinge, zwei getrennte
+-- Namen — der gemeinsame Wortstamm ist Zufall und stoert nicht.
+--
+-- ── Was hier passiert ───────────────────────────────────────────────────────
+--
+-- ALTER TABLE ... RENAME behaelt Inhalt, Schluessel und Fremdschluessel. Die
+-- automatisch benannte UNIQUE-Bedingung (wanted_user_id_set_number_...)
+-- traegt danach noch den alten Namen; das ist nur eine Bezeichnung und stoert
+-- nicht — sie umzubenennen waere eine zweite Fehlerquelle ohne Gewinn.
+--
+-- Der Index heisst explizit idx_wanted_user (0021) und wird mitgezogen,
+-- damit `\di` nicht zwei Welten zeigt.
+--
+-- IF EXISTS ueberall: Ein Aufbau, der nur initSchema() gelaufen ist, hat die
+-- Tabelle ueberhaupt nicht — schema.sql legt sie bewusst nicht an (die
+-- Begruendung steht dort im Abschnitt „Merkliste"). Dann sind beide Zeilen
+-- ein stiller No-op, und niemand muss den Fall gesondert behandeln.
+ALTER TABLE IF EXISTS wishlist          RENAME TO wanted;
+ALTER INDEX IF EXISTS idx_wishlist_user RENAME TO idx_wanted_user;

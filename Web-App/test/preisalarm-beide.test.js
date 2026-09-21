@@ -48,7 +48,7 @@ test('beide Oberflächen sprechen dieselben drei Endpunkte an', () => {
 test('ein Alarm gehört EINEM Konto — kein Blickfeld, nirgends', () => {
   // Der einzige Ort im Projekt, an dem `user_id` ohne scopeIds()/writableIds()
   // richtig ist: Wer eine Schwelle setzt, will selbst benachrichtigt werden.
-  // Das Elternkonto hätte nichts davon, die Wünsche seiner Kinder per Mail zu
+  // Das Elternkonto hätte nichts davon, die Merkposten seiner Kinder per Mail zu
   // bekommen — und dürfte sie schon gar nicht löschen.
   //
   // Geprüft wird beides: dass die Route NICHT filtert, und dass sie es
@@ -319,13 +319,13 @@ test('der Alarm gilt für einen ZUSTAND, und der ist wählbar — in beiden', ()
   assert.doesNotMatch(js, /const ALARM_ZUSTAND = /,
     'Die Webapp hat den Zustand wieder festgenagelt');
   // Der Anker ist gewandert: Das Markup lag inline im Set-Dialog und trug
-  // feste IDs. Seit das Wunsch-Detail denselben Alarm zeigt — derselbe
+  // feste IDs. Seit das Merkposten-Detail denselben Alarm zeigt — derselbe
   // Eintrag in price_alerts, am selben Schluessel — steht es in
   // alarmBlock(praefix), und die ID entsteht aus dem Praefix. Geprueft wird
   // weiterhin, DASS es eine Zustandswahl gibt.
   assert.match(js, /id="\$\{p\}-alert-cond"/, 'Der Webapp fehlt die Zustandswahl');
   assert.match(js, /export function alarmBlock\(/,
-    'Der Alarmblock ist nicht mehr gemeinsam — dann hat die Wunschliste eine zweite Maske');
+    'Der Alarmblock ist nicht mehr gemeinsam — dann hat die Merkliste eine zweite Maske');
   assert.match(js, /function alarmZustand\(\)/,
     'Die Webapp liest den gewählten Zustand nicht');
 

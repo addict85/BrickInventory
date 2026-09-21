@@ -423,17 +423,18 @@ CREATE INDEX IF NOT EXISTS idx_price_history_set ON price_history(set_number, re
 -- Der Preisalarm faengt das ab (utils/preisalarm.ts fragt, jobs/priceJob.ts
 -- kapselt den ganzen Block) — ohne Alarme gibt es nichts zu melden.
 
--- ── Wunschliste ─────────────────────────────────────────────────────────────
+-- ── Merkliste ───────────────────────────────────────────────────────────────
 --
--- `wishlist` steht aus demselben Grund nur in
--- db/migrations/0021-wunschliste.sql. Die Begründung dort nennt auch, warum
--- es keine Spalte an `sets` ist: `sets` ist der Besitz und wird von Galerie,
--- Teileliste, Portfolio und Finanzen gelesen — ein Wunsch würde überall
+-- `wanted` steht aus demselben Grund nur in den Migrationen: angelegt als
+-- `wishlist` in 0021, umbenannt in 0023 (Marcos „bitte auch im Quellcode …
+-- auf Englisch bitte wanted"). Die Begründung in 0021 nennt auch, warum es
+-- keine Spalte an `sets` ist: `sets` ist der Besitz und wird von Galerie,
+-- Teileliste, Portfolio und Finanzen gelesen — ein Merkposten würde überall
 -- mitgezählt.
 --
 -- Wie beim Preisalarm gilt: Ein Testaufbau, der nur initSchema() ruft, hat
--- die Tabelle nicht. utils/wunschliste.ts fragt vorher (hatWunschliste) und
--- liefert sonst eine leere Liste, statt zu werfen.
+-- die Tabelle nicht. utils/merkliste.ts faengt das ab und liefert eine leere
+-- Liste, statt zu werfen.
 
 -- Meistgenutzte Query der App: SELECT ... FROM sets WHERE user_id = $1.
 -- UNIQUE(user_id, set_number) deckt das zwar theoretisch ab, ein

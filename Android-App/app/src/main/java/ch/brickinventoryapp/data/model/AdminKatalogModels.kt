@@ -229,7 +229,7 @@ data class CatalogSetDetail(
      * Preisvergleich, fertig vom Server (utils/preisvergleich.ts).
      *
      * Dieselbe Begruendung wie beim Set-Detail: Die Adresse steht genau einmal
-     * im Baum. Verbraucher ist das Wunsch-Detail — dort ist „was kostet das
+     * im Baum. Verbraucher ist das Merkposten-Detail — dort ist „was kostet das
      * anderswo?" der wichtigste Griff ueberhaupt.
      */
     @SerialName("preisvergleich_url") val preisvergleichUrl: String? = null

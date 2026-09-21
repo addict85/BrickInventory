@@ -253,7 +253,7 @@ interface BrickApiService {
     // ── In welchen Sets steckt dieses Teil / diese Figur? ────────────────────
     //
     // Fuer den Detail-Dialog automatisch erfasster Teile und Figuren (Marcos
-    // Wunsch). Beide Adressen beantwortet auf dem Server DIESELBE Funktion
+    // Merkposten). Beide Adressen beantwortet auf dem Server DIESELBE Funktion
     // (verwendendeSets in utils/handlers/shared.ts) — deshalb dieselbe
     // Antwortform und dasselbe Modell hier.
     //
@@ -471,46 +471,60 @@ interface BrickApiService {
         @Path("id") id: Int,
     ): Response<LagerortResponse>
 
-    // ── Wunschliste ─────────────────────────────────────────────────────────
+    // ── Merkliste ─────────────────────────────────────────────────────────
     //
     // Vier Adressen, dieselben wie in der Webapp. Der Zustand steht im PFAD
     // und nicht im Rumpf, weil er zum Schluessel gehoert: Wer sich dasselbe
     // Set neu UND gebraucht wuenscht, hat zwei Eintraege, und „loesch den
-    // Wunsch auf 75192" waere mehrdeutig.
+    // Merkposten auf 75192" waere mehrdeutig.
 
-    @GET("api/v1/wishlist")
-    suspend fun getWunschliste(): Response<WunschlisteResponse>
+    @GET("api/v1/wanted")
+    suspend fun getMerkliste(): Response<MerklisteResponse>
 
-    @POST("api/v1/wishlist")
-    suspend fun legeWunschAn(
-        @Body request: WunschRequest,
-    ): Response<WunschAntwort>
+    @POST("api/v1/wanted")
+    suspend fun legeMerkpostenAn(
+        @Body request: MerkpostenRequest,
+    ): Response<MerkpostenAntwort>
 
-    @DELETE("api/v1/wishlist/{setNumber}/{condition}")
-    suspend fun loescheWunsch(
+    /**
+     * Den Inhaber eines Merkpostens wechseln.
+     *
+     * PUT und nicht POST: Es entsteht nichts Neues, ein vorhandener Eintrag
+     * bekommt ein anderes Konto. Die Regel dahinter (Aufnahmedatum bleibt,
+     * Preisalarm zieht mit) steht in utils/merkliste.ts.
+     */
+    @PUT("api/v1/wanted/{setNumber}/{condition}/inhaber")
+    suspend fun verschiebeMerkposten(
+        @Path("setNumber") setNumber: String,
+        @Path("condition") condition: String,
+        @Body request: MerkpostenInhaberRequest,
+    ): Response<MerkpostenInhaberAntwort>
+
+    @DELETE("api/v1/wanted/{setNumber}/{condition}")
+    suspend fun loescheMerkposten(
         @Path("setNumber") setNumber: String,
         @Path("condition") condition: String,
         @Query("owner_user_id") ownerUserId: Int? = null,
     ): Response<GenericResponse>
 
     /**
-     * Marktpreise eines Wunsches, frisch geholt.
+     * Marktpreise eines Merkpostens, frisch geholt.
      *
      * NICHT /sets/{sn}/price: Die antwortet mit 404, wenn einem das Set nicht
-     * gehoert — fuer einen Wunsch also ausgeschlossen. Die Begruendung steht
-     * ausfuehrlich an der Route (routes/api_v1/wishlist.ts).
+     * gehoert — fuer einen Merkposten also ausgeschlossen. Die Begruendung steht
+     * ausfuehrlich an der Route (routes/api_v1/wanted.ts).
      */
-    @GET("api/v1/wishlist/{setNumber}/preise")
-    suspend fun getWunschPreise(
+    @GET("api/v1/wanted/{setNumber}/preise")
+    suspend fun getMerkpostenPreise(
         @Path("setNumber") setNumber: String,
-    ): Response<WunschPreiseResponse>
+    ): Response<MerkpostenPreiseResponse>
 
-    @POST("api/v1/wishlist/{setNumber}/{condition}/uebernehmen")
-    suspend fun uebernimmWunsch(
+    @POST("api/v1/wanted/{setNumber}/{condition}/uebernehmen")
+    suspend fun uebernimmMerkposten(
         @Path("setNumber") setNumber: String,
         @Path("condition") condition: String,
-        @Body request: WunschUebernahmeRequest,
-    ): Response<WunschUebernahmeResponse>
+        @Body request: MerkpostenUebernahmeRequest,
+    ): Response<MerkpostenUebernahmeResponse>
 
     /** Welche Lagerorte es gibt und was darin liegt — Sets UND Teile. */
     @GET("api/v1/storage")

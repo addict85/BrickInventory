@@ -5,7 +5,7 @@
  *
  * Android-CI Lauf 203, nach anderthalb Minuten und einem roten Lauf:
  *
- *     WunschlisteScreen.kt:120:20 Unresolved reference 'rememberSaveable'.
+ *     MerklisteScreen.kt:120:20 Unresolved reference 'rememberSaveable'.
  *
  * Die Datei hatte `import androidx.compose.runtime.*`. Das sieht aus, als
  * decke es die Compose-Laufzeit ab — `rememberSaveable` liegt aber in einem

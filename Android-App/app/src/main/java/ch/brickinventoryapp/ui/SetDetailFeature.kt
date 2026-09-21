@@ -329,12 +329,12 @@ internal fun MainViewModel.setzePreisalarm(
                 //
                 // BEIDE Detailbildschirme, nicht nur das Set-Detail: Der
                 // Alarmabschnitt ist derselbe (setDetailAlarmSection), und das
-                // Wunsch-Detail laedt kein SetDetail. Die Bedingung traf dort
+                // Merkposten-Detail laedt kein SetDetail. Die Bedingung traf dort
                 // also nie zu — gespeichert wurde, angezeigt nichts, und der
                 // Merker „scharf" blieb aus. Genau das war Marcos „die Werte
                 // werden nicht gespeichert".
                 val offen = _setDetailState.value.setDetail?.setNumber == setNumber ||
-                            _wunschDetailState.value.setNumber == setNumber
+                            _merkpostenDetailState.value.setNumber == setNumber
                 if (offen) loadPreisalarme(setNumber)
             }
             is Result.Error -> _snackbar.emit(meldung(r))

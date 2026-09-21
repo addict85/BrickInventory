@@ -184,7 +184,7 @@ test('der Preisjob holt alle Zustände, die ein Set tatsächlich führt', () => 
   // EINE Stelle, und sie arbeitet gebündelt: Der Einzelfall (Sofort-Abruf) ist
   // eine Liste mit einem Eintrag. Vorher stand die Regel zweimal da — einmal
   // hier und einmal ausgeschrieben in der Schleife —, und nur eine der beiden
-  // Fassungen kannte die Wunschliste.
+  // Fassungen kannte die Merkliste.
   assert.match(job, /async function zustaendeJeSet/,
     'Es braucht eine Stelle, die die vorkommenden Zustände eines Sets ermittelt');
   assert.match(job, /FROM set_acquisitions WHERE user_id=\$1 AND set_number = ANY\(\$2\)/,

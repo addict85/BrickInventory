@@ -3,7 +3,7 @@
  *
  * ── Marcos Befund ───────────────────────────────────────────────────────────
  *
- * „Die Bilder in der Wunschliste werden nicht geladen. Anscheinend wird direkt
+ * „Die Bilder in der Merkliste werden nicht geladen. Anscheinend wird direkt
  * das CDN aufgerufen anstelle über den Proxy zu gehen wie bei allen anderen
  * Bildern." — In der Browser-Konsole stand dazu:
  *
@@ -25,7 +25,7 @@
  * schicken. Das ist die Naht, an der es zerbrochen ist.
  *
  * ── Gegenprobe (durchgeführt, Ergebnis im Commit) ──────────────────────────
- *   Die alte Zeile in 16-wunschliste.js wiederhergestellt → rot.
+ *   Die alte Zeile in 16-merkliste.js wiederhergestellt → rot.
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');

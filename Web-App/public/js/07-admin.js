@@ -507,8 +507,8 @@ export async function speichereSetLagerort(sn) {
  * Möglichkeit, darauf zu warten.
  */
 /**
- * Welcher Alarmblock gerade gemeint ist: 'm' (Set-Detail) oder 'wl-m'
- * (Wunsch-Detail).
+ * Welcher Alarmblock gerade gemeint ist: 'm' (Set-Detail) oder 'mk-m'
+ * (Merkposten-Detail).
  *
  * ── Warum eine Modulvariable und kein Parameter ─────────────────────────────
  *
@@ -522,19 +522,19 @@ export async function speichereSetLagerort(sn) {
  * Dokument, und das ginge ohnehin schief.
  */
 let _alarmFeld = 'm';
-export function setzeAlarmFeld(praefix) { _alarmFeld = praefix === 'wl-m' ? 'wl-m' : 'm'; }
+export function setzeAlarmFeld(praefix) { _alarmFeld = praefix === 'mk-m' ? 'mk-m' : 'm'; }
 const alarmId = (teil) => `${_alarmFeld}-alert-${teil}`;
 
 /**
  * Der Alarmblock — EINMAL formuliert, von beiden Dialogen benutzt.
  *
- * Das Wunsch-Detail zeigt denselben Alarm: Es ist derselbe Eintrag in
+ * Das Merkposten-Detail zeigt denselben Alarm: Es ist derselbe Eintrag in
  * price_alerts, am selben Schlüssel. Eine zweite Maske dafür wäre die
  * nächste Stelle, an der eine Regel nur an einem der beiden Wege nachgezogen
  * wird — das ist in diesem Baum schon mehrfach passiert.
  */
 export function alarmBlock(sn, praefix = 'm') {
-  const p = praefix === 'wl-m' ? 'wl-m' : 'm';
+  const p = praefix === 'mk-m' ? 'mk-m' : 'm';
   // Das Aussehen steht in styles.css unter .alarm-feld, nicht hier: Die feste
   // Hoehe im style-Attribut hat den gewaehlten Eintrag auf sechs Pixel
   // zusammengeschnitten (im Browser gemessen, Begruendung dort).

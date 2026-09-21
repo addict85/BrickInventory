@@ -63,13 +63,13 @@ const ADMIN  = fs.readFileSync(path.join(ROOT, 'public', 'js', '07-admin.js'), '
  * abgeschriebene Fassung prüft die Abschrift.
  *
  * Geschnitten wird aus alarmBlock() — der Funktion, die BEIDE Dialoge
- * benutzen (Set-Detail und Wunsch-Detail). Die Platzhalter der Vorlage werden
+ * benutzen (Set-Detail und Merkposten-Detail). Die Platzhalter der Vorlage werden
  * ersetzt, sonst stünde `${escJs(sn)}` wörtlich im Attribut.
  *
  * ── Warum der Anker gewandert ist ───────────────────────────────────────────
  *
  * Das Markup stand früher inline im Set-Detail und trug feste IDs
- * (`m-alert-cond`). Seit das Wunsch-Detail denselben Alarm zeigt — es ist
+ * (`m-alert-cond`). Seit das Merkposten-Detail denselben Alarm zeigt — es ist
  * derselbe Eintrag in price_alerts, am selben Schlüssel — liegt es in
  * alarmBlock(praefix), und die ID entsteht aus dem Präfix.
  *

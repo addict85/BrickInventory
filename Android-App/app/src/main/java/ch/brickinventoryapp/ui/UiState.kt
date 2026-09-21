@@ -657,7 +657,7 @@ data class ManualItemDetailUiState(
  */
 data class BarcodeUiState(
     val result: String? = null,
-    /** "gallery", "gallery_search", "partslist" oder "wishlist". */
+    /** "gallery", "gallery_search", "partslist" oder "wanted". */
     val source: String = "gallery",
     /**
      * Der Scan blieb ohne Setnummer → die manuelle Erfassung soll aufgehen.
@@ -927,35 +927,35 @@ data class LagerUiState(
 )
 
 /**
- * Die Wunschliste — was man haben MOECHTE, getrennt vom Besitz.
+ * Die Merkliste — was man haben MOECHTE, getrennt vom Besitz.
  *
  * Eigener Zustand und nicht ein Feld in AppUiState: Er aendert sich nur auf
  * diesem einen Bildschirm, und ein Feld im Haupt-Zustand rekomponierte bei
  * jedem Laden den ganzen Baum — dieselbe Begruendung wie bei der Snackbar und
  * beim Set-Detail.
  */
-data class WunschUiState(
-    val wuensche: List<ch.brickinventoryapp.data.model.Wunsch> = emptyList(),
+data class MerklisteUiState(
+    val merkposten: List<ch.brickinventoryapp.data.model.Merkposten> = emptyList(),
     val laedt: Boolean = false,
 )
 
 /**
- * Was das Detail EINES Wunsches zusaetzlich braucht.
+ * Was das Detail EINES Merkpostens zusaetzlich braucht.
  *
  * Eigener Zustand wie beim Set-Detail (_setDetailState) und aus demselben
  * Grund: Er aendert sich nur, solange genau ein Detail offen ist.
  *
- * Der Wunsch selbst steht NICHT hier — er liegt in der geladenen Liste, und
+ * Der Merkposten selbst steht NICHT hier — er liegt in der geladenen Liste, und
  * eine zweite Kopie liefe beim Loeschen oder Uebernehmen auseinander.
  */
-data class WunschDetailUiState(
+data class MerkpostenDetailUiState(
     /**
      * Welches Set dieses Detail zeigt.
      *
      * Gesetzt, SOBALD geladen wird — vor jeder Antwort. Daran erkennt
      * setzePreisalarm(), dass der Bildschirm noch offen ist und die Alarme
      * nachgeladen werden duerfen. Vorher fragte die Stelle nur
-     * _setDetailState.setDetail ab; das Wunsch-Detail laedt aber gar kein
+     * _setDetailState.setDetail ab; das Merkposten-Detail laedt aber gar kein
      * SetDetail, also traf die Bedingung dort NIE zu. Der Alarm wurde
      * gespeichert, die Anzeige erfuhr es nur nicht — aus Marcos Sicht war er
      * damit nicht gespeichert.
@@ -976,7 +976,7 @@ data class WunschDetailUiState(
      * ihn. Marcos Frage „wieso werden die Preise nicht sofort angezeigt" hatte
      * genau hier ihre Ursache.
      */
-    val preise: ch.brickinventoryapp.data.model.WunschPreiseResponse? = null,
+    val preise: ch.brickinventoryapp.data.model.MerkpostenPreiseResponse? = null,
     val laedt: Boolean = false,
 )
 
