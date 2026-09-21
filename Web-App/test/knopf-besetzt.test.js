@@ -3,10 +3,10 @@
  *
  * ── Marcos Bild ─────────────────────────────────────────────────────────────
  *
- * Im Reiter „Wunschliste" stand an der Stelle des Knopfes „Auf die
- * Wunschliste" der MINIFIZIERTE QUELLTEXT der Funktion:
+ * Im Reiter „Merkliste" stand an der Stelle des Knopfes „Auf die
+ * Merkliste" der MINIFIZIERTE QUELLTEXT der Funktion:
  *
- *     async()=>{let e=await f("POST","/v1/wishlist",{set_number:t,…
+ *     async()=>{let e=await f("POST","/v1/wanted",{set_number:t,…
  *
  * ── Warum ───────────────────────────────────────────────────────────────────
  *
@@ -21,15 +21,15 @@
  *
  * Das zweite Argument ist die BESCHRIFTUNG waehrend der Arbeit, und der
  * Rueckgabewert gibt den Knopf wieder frei. Drei Stellen in
- * 16-wunschliste.js haben sie aufgerufen, als nehme sie einen Rueckruf
+ * 16-merkliste.js haben sie aufgerufen, als nehme sie einen Rueckruf
  * entgegen:
  *
- *     await knopfBesetzt(G('wl-add'), async () => { … });
+ *     await knopfBesetzt(G('mk-add'), async () => { … });
  *
  * Damit passierte zweierlei: Die Funktion landete als TEXT auf dem Knopf, und
- * ihr Rumpf lief NIE. „Auf die Wunschliste" tat also gar nichts — deshalb
+ * ihr Rumpf lief NIE. „Auf die Merkliste" tat also gar nichts — deshalb
  * stand darunter weiter „Noch keine Wünsche". Dasselbe bei „Auf die
- * Wunschliste" im Katalog-Detail und beim Bestaetigen der Uebernahme.
+ * Merkliste" im Katalog-Detail und beim Bestaetigen der Uebernahme.
  *
  * ── Warum ein Test und kein Kommentar ───────────────────────────────────────
  *

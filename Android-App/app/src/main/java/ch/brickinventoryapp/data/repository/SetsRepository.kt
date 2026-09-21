@@ -83,31 +83,35 @@ class SetsRepository @Inject constructor(
     suspend fun updateQuantity(setNumber: String, quantity: Int, purchasePrice: Double? = null, condition: String? = null): Result<GenericResponse> =
         safeCall { api.updateSetQuantity(setNumber, UpdateQuantityRequest(quantity, purchasePrice, condition)) }
 
-    // ── Wunschliste ─────────────────────────────────────────────────────────
+    // ── Merkliste ─────────────────────────────────────────────────────────
     //
-    // Hier und nicht in einem eigenen Repository: Ein Wunsch ist ein Set, das
+    // Hier und nicht in einem eigenen Repository: Ein Merkposten ist ein Set, das
     // man noch nicht hat — dieselbe Sache, andere Tabelle. Ein sechstes
     // Repository fuer vier Aufrufe waere mehr Apparat als Nutzen.
 
-    suspend fun getWunschliste(): Result<WunschlisteResponse> =
-        safeCall { api.getWunschliste() }
+    suspend fun getMerkliste(): Result<MerklisteResponse> =
+        safeCall { api.getMerkliste() }
 
-    suspend fun legeWunschAn(setNumber: String, condition: String,
-                             ownerUserId: Int? = null): Result<WunschAntwort> =
-        safeCall { api.legeWunschAn(WunschRequest(setNumber, condition, ownerUserId)) }
+    suspend fun legeMerkpostenAn(setNumber: String, condition: String,
+                             ownerUserId: Int? = null): Result<MerkpostenAntwort> =
+        safeCall { api.legeMerkpostenAn(MerkpostenRequest(setNumber, condition, ownerUserId)) }
 
-    suspend fun loescheWunsch(setNumber: String, condition: String,
+    suspend fun verschiebeMerkposten(setNumber: String, condition: String,
+                                 vonId: Int, zuId: Int): Result<MerkpostenInhaberAntwort> =
+        safeCall { api.verschiebeMerkposten(setNumber, condition, MerkpostenInhaberRequest(vonId, zuId)) }
+
+    suspend fun loescheMerkposten(setNumber: String, condition: String,
                               ownerUserId: Int? = null): Result<GenericResponse> =
-        safeCall { api.loescheWunsch(setNumber, condition, ownerUserId) }
+        safeCall { api.loescheMerkposten(setNumber, condition, ownerUserId) }
 
-    suspend fun getWunschPreise(setNumber: String): Result<WunschPreiseResponse> =
-        safeCall { api.getWunschPreise(setNumber) }
+    suspend fun getMerkpostenPreise(setNumber: String): Result<MerkpostenPreiseResponse> =
+        safeCall { api.getMerkpostenPreise(setNumber) }
 
-    suspend fun uebernimmWunsch(setNumber: String, condition: String, quantity: Int = 1,
+    suspend fun uebernimmMerkposten(setNumber: String, condition: String, quantity: Int = 1,
                                 purchasePrice: Double? = null, erfasstAls: String? = null,
-                                ownerUserId: Int? = null): Result<WunschUebernahmeResponse> =
-        safeCall { api.uebernimmWunsch(setNumber, condition,
-                                       WunschUebernahmeRequest(quantity, purchasePrice,
+                                ownerUserId: Int? = null): Result<MerkpostenUebernahmeResponse> =
+        safeCall { api.uebernimmMerkposten(setNumber, condition,
+                                       MerkpostenUebernahmeRequest(quantity, purchasePrice,
                                                                erfasstAls, ownerUserId)) }
 
     suspend fun deleteSet(setNumber: String): Result<GenericResponse> =

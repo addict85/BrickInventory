@@ -7,31 +7,31 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
 /**
- * Wunschliste — was man haben moechte, getrennt vom Besitz.
+ * Merkliste — was man haben moechte, getrennt vom Besitz.
  *
  * ── Was hier NICHT entschieden wird ─────────────────────────────────────────
  *
- * Wie ein Wunsch angelegt wird, was beim Uebernehmen mit Eintrag und
- * Preisalarm geschieht und wessen Wuensche man sieht — all das beantwortet der
- * Server (utils/wunschliste.ts). Die App zeigt, was zurueckkommt. Eine zweite
+ * Wie ein Merkposten angelegt wird, was beim Uebernehmen mit Eintrag und
+ * Preisalarm geschieht und wessen Merkposten man sieht — all das beantwortet der
+ * Server (utils/merkliste.ts). Die App zeigt, was zurueckkommt. Eine zweite
  * Fassung dieser Regeln hier waere genau die Doppelung, an der in diesem
  * Projekt schon mehrere Zahlen auseinandergelaufen sind.
  *
  * ── Der Zustand geht ueberall mit ───────────────────────────────────────────
  *
- * Neu und gebraucht sind ZWEI Wuensche mit zwei Schwellen — er gehoert zum
+ * Neu und gebraucht sind ZWEI Merkposten mit zwei Schwellen — er gehoert zum
  * Schluessel, genau wie beim Preisalarm. Jede Funktion hier traegt ihn mit.
  */
 
 /** Die Liste laden. */
-internal fun MainViewModel.ladeWunschliste() {
+internal fun MainViewModel.ladeMerkliste() {
     viewModelScope.launch {
-        _wunschState.update { it.copy(laedt = true) }
-        when (val r = repo.sets.getWunschliste()) {
+        _merklisteState.update { it.copy(laedt = true) }
+        when (val r = repo.sets.getMerkliste()) {
             is Result.Success ->
-                _wunschState.update { it.copy(wuensche = r.data.wuensche, laedt = false) }
+                _merklisteState.update { it.copy(merkposten = r.data.merkposten, laedt = false) }
             is Result.Error -> {
-                _wunschState.update { it.copy(laedt = false) }
+                _merklisteState.update { it.copy(laedt = false) }
                 _snackbar.value = text(R.string.vm_error, meldung(r))
             }
         }
@@ -39,9 +39,9 @@ internal fun MainViewModel.ladeWunschliste() {
 }
 
 /**
- * Einen Wunsch eintragen.
+ * Einen Merkposten eintragen.
  *
- * `besitzer` ist das Zielkonto — der Grossvater traegt einen Wunsch fuer den
+ * `besitzer` ist das Zielkonto — der Grossvater traegt einen Merkposten fuer den
  * Enkel ein. Ohne Angabe schreibt der Server auf das eigene Konto; die
  * RICHTUNG prueft er selbst (resolveWriteTarget), nicht die App.
  *
@@ -50,31 +50,63 @@ internal fun MainViewModel.ladeWunschliste() {
  * nicht. Eine selbstgebaute Zeile stuende ohne Namen und ohne Bild da, bis
  * jemand den Bildschirm wechselt.
  */
-internal fun MainViewModel.legeWunschAn(
+internal fun MainViewModel.legeMerkpostenAn(
     setNumber: String, zustand: String, besitzer: Int? = null,
 ) {
     val nummer = setNumber.trim()
-    if (nummer.isBlank()) { _snackbar.value = text(R.string.wishlist_need_number); return }
+    if (nummer.isBlank()) { _snackbar.value = text(R.string.wanted_need_number); return }
     viewModelScope.launch {
-        when (val r = repo.sets.legeWunschAn(nummer, zustand, besitzer)) {
+        when (val r = repo.sets.legeMerkpostenAn(nummer, zustand, besitzer)) {
             is Result.Success -> {
                 // „stand schon drauf" ist kein Fehler, aber auch kein Neuzugang
                 // — wer zweimal auf denselben Knopf drueckt, soll den
                 // Unterschied sehen.
                 _snackbar.value = text(
-                    if (r.data.warNeu) R.string.wishlist_added else R.string.wishlist_already)
-                ladeWunschliste()
+                    if (r.data.warNeu) R.string.wanted_added else R.string.wanted_already)
+                ladeMerkliste()
             }
             is Result.Error -> _snackbar.value = text(R.string.vm_error, meldung(r))
         }
     }
 }
 
-/** Einen Wunsch entfernen — genau EINEN Zustand. */
-internal fun MainViewModel.loescheWunsch(setNumber: String, zustand: String, besitzer: Int?) {
+/**
+ * Den Inhaber eines Merkpostens wechseln.
+ *
+ * Marcos Befund: „Auf dem Detail-Dialog der Merkliste kann der Inhaber
+ * nicht geaendert werden. Auch in der Android-App nicht."
+ *
+ * Die Liste wird danach neu geladen und nicht von Hand nachgezogen: Wandert
+ * der Merkposten aus dem Blickfeld heraus, verschwindet er — und das soll man
+ * sehen. Der Detailbildschirm merkt es von selbst, er sucht seinen Eintrag in
+ * genau dieser Liste (siehe der Absatz in MerkpostenDetailScreen).
+ */
+internal fun MainViewModel.verschiebeMerkposten(
+    setNumber: String, zustand: String, vonId: Int, zuId: Int,
+) {
+    if (vonId == zuId) return
     viewModelScope.launch {
-        when (val r = repo.sets.loescheWunsch(setNumber, zustand, besitzer)) {
-            is Result.Success -> { _snackbar.value = text(R.string.wishlist_deleted); ladeWunschliste() }
+        when (val r = repo.sets.verschiebeMerkposten(setNumber, zustand, vonId, zuId)) {
+            is Result.Success -> {
+                if (!r.data.success) { _snackbar.value = r.data.error ?: text(R.string.err_unknown); return@launch }
+                // „stand dort schon" ist kein Fehler, aber auch kein Umzug.
+                // vm_saved statt eines neuen Textes: „Gespeichert" steht schon
+                // da, und ein zweiter gleichlautender Eintrag ist genau das,
+                // was StringResourceParityTest verhindert.
+                _snackbar.value = text(
+                    if (r.data.zusammengefuehrt) R.string.wanted_already else R.string.vm_saved)
+                ladeMerkliste()
+            }
+            is Result.Error -> _snackbar.value = text(R.string.vm_error, meldung(r))
+        }
+    }
+}
+
+/** Einen Merkposten entfernen — genau EINEN Zustand. */
+internal fun MainViewModel.loescheMerkposten(setNumber: String, zustand: String, besitzer: Int?) {
+    viewModelScope.launch {
+        when (val r = repo.sets.loescheMerkposten(setNumber, zustand, besitzer)) {
+            is Result.Success -> { _snackbar.value = text(R.string.wanted_deleted); ladeMerkliste() }
             is Result.Error   -> _snackbar.value = text(R.string.vm_error, meldung(r))
         }
     }
@@ -86,13 +118,13 @@ internal fun MainViewModel.loescheWunsch(setNumber: String, zustand: String, bes
  * Der Server ruft dafuer addSet() — die eine Wahrheit fuers Erfassen — und
  * raeumt danach Eintrag UND Preisalarm weg (Marcos Festlegung).
  *
- * 'exists' heisst: Das Set war schon im Blickfeld. Der Wunsch ist trotzdem
- * erfuellt und verschwindet; er stuende sonst fuer etwas, das man laengst hat.
+ * 'exists' heisst: Das Set war schon im Blickfeld. Der Merkposten ist trotzdem
+ * erledigt und verschwindet; er stuende sonst fuer etwas, das man laengst hat.
  *
  * Danach wird auch die Galerie neu geladen: Das Set ist jetzt dort, und wer
  * hinueberwechselt, soll es sehen und nicht eine Ansicht von vorhin.
  */
-internal fun MainViewModel.uebernimmWunsch(
+internal fun MainViewModel.uebernimmMerkposten(
     setNumber: String, zustand: String, besitzer: Int?,
     anzahl: Int = 1, kaufpreisRoh: String = "", erfasstAls: String? = null,
 ) {
@@ -101,13 +133,13 @@ internal fun MainViewModel.uebernimmWunsch(
         // leer heisst „kein Kaufpreis" — der Server setzt dann den Marktpreis
         // ein, genau wie auf dem normalen Erfassungsweg.
         val preis = ch.brickinventoryapp.alarm.Alarmeingabe.zahl(kaufpreisRoh)
-        when (val r = repo.sets.uebernimmWunsch(setNumber, zustand, anzahl, preis,
+        when (val r = repo.sets.uebernimmMerkposten(setNumber, zustand, anzahl, preis,
                                                 erfasstAls, besitzer)) {
             is Result.Success -> {
                 _snackbar.value = text(
-                    if (r.data.action == "exists") R.string.wishlist_taken_existing
-                    else R.string.wishlist_taken)
-                ladeWunschliste()
+                    if (r.data.action == "exists") R.string.wanted_taken_existing
+                    else R.string.wanted_taken)
+                ladeMerkliste()
                 loadSets()
             }
             is Result.Error -> _snackbar.value = text(R.string.vm_error, meldung(r))
@@ -116,33 +148,34 @@ internal fun MainViewModel.uebernimmWunsch(
 }
 
 /**
- * Wunsch UND Preisalarm in einem Griff — der Weg aus dem Katalog-Detail.
+ * Merkposten UND Preisalarm in einem Griff — der Weg aus dem Katalog-Detail.
  *
  * Marcos Vorgabe: „Aus dem Katalog sollen in der Detailansicht Sets in die
- * Wunschliste hinzugefuegt werden koennen inkl. Zustand und einem
+ * Merkliste hinzugefuegt werden koennen inkl. Zustand und einem
  * Preisalarm."
  *
- * ── Warum ZWEI Aufrufe und nicht ein Feld am Wunsch ────────────────────────
+ * ── Warum ZWEI Aufrufe und nicht ein Feld am Merkposten ────────────────────────
  *
  * Der Alarm lebt in price_alerts und ist genau derselbe, den die
  * Set-Detailansicht setzt — gleicher Schluessel, gleiche Tabelle. Eine
- * Schwelle am Wunsch waere eine ZWEITE Stelle, an der eine Preisschwelle
+ * Schwelle am Merkposten waere eine ZWEITE Stelle, an der eine Preisschwelle
  * steht, und die beiden liefen beim ersten Aendern auseinander.
  *
  * ── Warum die Schwelle optional ist ────────────────────────────────────────
  *
- * Ein Wunsch ohne Alarm ist ein gueltiger Wunsch. Leer heisst „kein Alarm",
+ * Ein Merkposten ohne Alarm ist ein gueltiger Merkposten. Leer heisst „kein Alarm",
  * nicht „Schwelle 0" — dieselbe Regel wie im Set-Detail.
  *
- * Der Alarm wird erst NACH dem erfolgreichen Wunsch gesetzt: Andersherum
- * stuende eine Schwelle fuer ein Set da, das auf keiner Liste steht.
+ * Der Alarm wird erst NACH dem erfolgreich angelegten Merkposten gesetzt:
+ * Andersherum stuende eine Schwelle fuer ein Set da, das auf keiner Liste
+ * steht.
  */
-internal fun MainViewModel.wuenscheMitAlarm(
+internal fun MainViewModel.merkpostenMitAlarm(
     setNumber: String, zustand: String, richtung: String, schwelleRoh: String,
     besitzer: Int? = null,
 ) {
     viewModelScope.launch {
-        when (val r = repo.sets.legeWunschAn(setNumber, zustand, besitzer)) {
+        when (val r = repo.sets.legeMerkpostenAn(setNumber, zustand, besitzer)) {
             is Result.Error -> { _snackbar.value = text(R.string.vm_error, meldung(r)); return@launch }
             is Result.Success -> {
                 // Dieselbe Zahlenerkennung wie beim Preisalarm im Set-Detail:
@@ -153,15 +186,15 @@ internal fun MainViewModel.wuenscheMitAlarm(
                     repo.sets.setPreisalarm(setNumber, richtung, schwelle, zustand)
                 }
                 _snackbar.value = text(
-                    if (r.data.warNeu) R.string.wishlist_added else R.string.wishlist_already)
-                ladeWunschliste()
+                    if (r.data.warNeu) R.string.wanted_added else R.string.wanted_already)
+                ladeMerkliste()
             }
         }
     }
 }
 
 /**
- * Was das Detail eines Wunsches zusaetzlich braucht.
+ * Was das Detail eines Merkpostens zusaetzlich braucht.
  *
  * ── Zwei Abrufe, und beide gibt es schon ────────────────────────────────────
  *
@@ -173,10 +206,10 @@ internal fun MainViewModel.wuenscheMitAlarm(
  * Der zweite ist der interessante: Er verlangt KEINEN Besitz — die Route ruft
  * getSetPriceHistory ohne Besitzpruefung, und price_cache/price_history
  * haengen am Set, nicht am Konto. /sets/:sn/price dagegen antwortet mit 404,
- * wenn einem das Set nicht gehoert; fuer einen Wunsch also unbrauchbar.
+ * wenn einem das Set nicht gehoert; fuer einen Merkposten also unbrauchbar.
  * Nachgesehen, nicht vermutet.
  *
- * Damit braucht das Wunsch-Detail keinen einzigen neuen Endpunkt.
+ * Damit braucht das Merkposten-Detail keinen einzigen neuen Endpunkt.
  *
  * ── Warum beide Fehler still bleiben ────────────────────────────────────────
  *
@@ -185,9 +218,9 @@ internal fun MainViewModel.wuenscheMitAlarm(
  * jemandem melden muesste — die Ansicht zeigt dann „—" statt einer Zahl. Eine
  * Schnellmeldung dafuer waere Laerm.
  */
-internal fun MainViewModel.ladeWunschDetail(setNumber: String) {
+internal fun MainViewModel.ladeMerkpostenDetail(setNumber: String) {
     viewModelScope.launch {
-        _wunschDetailState.value = WunschDetailUiState(setNumber = setNumber, laedt = true)
+        _merkpostenDetailState.value = MerkpostenDetailUiState(setNumber = setNumber, laedt = true)
 
         // Der Alarm gehoert dem Set-Detail-Zustand, und das ist Absicht: Der
         // Abschnitt, der ihn zeigt (setDetailAlarmSection), schreibt nach dem
@@ -197,17 +230,17 @@ internal fun MainViewModel.ladeWunschDetail(setNumber: String) {
 
         val katalog = (repo.admin.getCatalogSetDetail(setNumber) as? Result.Success)
             ?.data?.takeIf { it.success }?.set
-        _wunschDetailState.update { it.copy(katalog = katalog) }
+        _merkpostenDetailState.update { it.copy(katalog = katalog) }
 
         // ZUERST die Preise, DANN der Verlauf: Die Preisroute holt frisch und
         // fuellt dabei den Cache, aus dem der Verlauf liest. Andersherum
-        // saehe der erste Blick auf einen neuen Wunsch leer aus.
-        val preise = (repo.sets.getWunschPreise(setNumber) as? Result.Success)
+        // saehe der erste Blick auf einen neuen Merkposten leer aus.
+        val preise = (repo.sets.getMerkpostenPreise(setNumber) as? Result.Success)
             ?.data?.takeIf { it.success }
-        _wunschDetailState.update { it.copy(preise = preise) }
+        _merkpostenDetailState.update { it.copy(preise = preise) }
 
         val historie = (repo.finanzen.getSetPriceHistory(setNumber) as? Result.Success)
             ?.data?.takeIf { it.success }
-        _wunschDetailState.update { it.copy(historie = historie, laedt = false) }
+        _merkpostenDetailState.update { it.copy(historie = historie, laedt = false) }
     }
 }

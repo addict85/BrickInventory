@@ -18,13 +18,13 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import ch.brickinventoryapp.R
-import ch.brickinventoryapp.data.model.Wunsch
+import ch.brickinventoryapp.data.model.Merkposten
 import ch.brickinventoryapp.ui.MainViewModel
-import ch.brickinventoryapp.ui.ladeWunschliste
-import ch.brickinventoryapp.ui.legeWunschAn
-import ch.brickinventoryapp.ui.loescheWunsch
+import ch.brickinventoryapp.ui.ladeMerkliste
+import ch.brickinventoryapp.ui.legeMerkpostenAn
+import ch.brickinventoryapp.ui.loescheMerkposten
 import ch.brickinventoryapp.ui.setScannerSource
-import ch.brickinventoryapp.ui.uebernimmWunsch
+import ch.brickinventoryapp.ui.uebernimmMerkposten
 import ch.brickinventoryapp.ui.theme.Abstaende
 import ch.brickinventoryapp.ui.theme.Formen
 import ch.brickinventoryapp.ui.theme.LocalIsBrickTheme
@@ -32,18 +32,18 @@ import ch.brickinventoryapp.util.NumericInput
 import ch.brickinventoryapp.util.resolveThumbUrl
 
 /**
- * Die Wunschliste.
+ * Die Merkliste.
  *
  * ── Warum eine Liste und keine Kachelwand ───────────────────────────────────
  *
  * Die Galerie zeigt Kacheln, weil man seine Sammlung ansieht. Eine
- * Wunschliste wird GELESEN und abgearbeitet — Nummer, Jahr und Zustand
+ * Merkliste wird GELESEN und abgearbeitet — Nummer, Jahr und Zustand
  * nebeneinander, dazu der Preisalarm. Dieselbe Entscheidung wie in der
  * Webapp; die beiden Oberflaechen sollen sich gleich anfuehlen.
  *
  * ── Was hier NICHT entschieden wird ─────────────────────────────────────────
  *
- * Alle Regeln stehen am Server (utils/wunschliste.ts). Dieser Bildschirm
+ * Alle Regeln stehen am Server (utils/merkliste.ts). Dieser Bildschirm
  * zeigt und ruft.
  */
 /**
@@ -54,42 +54,42 @@ import ch.brickinventoryapp.util.resolveThumbUrl
  * beim Neuzeichnen die Zuordnung, und der Uebernahme-Dialog stuende nach
  * einer Drehung ueber der falschen Zeile.
  */
-private fun wunschSchluessel(w: Wunsch) = "${w.setNumber}|${w.condition}|${w.userId}"
+private fun merkpostenSchluessel(w: Merkposten) = "${w.setNumber}|${w.condition}|${w.userId}"
 
 @Composable
-fun WunschlisteScreen(
+fun MerklisteScreen(
     vm: MainViewModel,
     imageLoader: coil.ImageLoader,
     onScan: () -> Unit,
     onOeffnen: (String, String) -> Unit,
 ) {
-    val zustand by vm.wunschState.collectAsStateWithLifecycle()
+    val zustand by vm.merklisteState.collectAsStateWithLifecycle()
     // Die Bildadressen zeigen auf den eigenen Server (Proxy), nicht roh aufs
     // CDN — dieselbe Regel wie in Galerie, Teilen und Finanzen.
     val appState by vm.state.collectAsStateWithLifecycle()
 
-    // Der Wunsch, ueber dem der Uebernahme-Dialog gerade steht — als
+    // Der Merkposten, ueber dem der Uebernahme-Dialog gerade steht — als
     // SCHLUESSEL, nicht als Objekt.
     //
     // Wer den Dialog offen hat und das Telefon dreht, soll ihn offen
-    // wiederfinden; der Zustand muss also ins Bundle. Ein ganzes Wunsch-Objekt
+    // wiederfinden; der Zustand muss also ins Bundle. Ein ganzes Merkposten-Objekt
     // passt dort nicht hinein (nicht Parcelable), eine Zeichenkette schon —
     // und die Zeile dazu steht ohnehin in der geladenen Liste.
     var uebernahmeSchluessel by rememberSaveable { mutableStateOf<String?>(null) }
     var maskeOffen by rememberSaveable { mutableStateOf(false) }
-    val uebernahme = zustand.wuensche.firstOrNull { wunschSchluessel(it) == uebernahmeSchluessel }
+    val uebernahme = zustand.merkposten.firstOrNull { merkpostenSchluessel(it) == uebernahmeSchluessel }
 
-    LaunchedEffect(Unit) { vm.ladeWunschliste() }
+    LaunchedEffect(Unit) { vm.ladeMerkliste() }
 
     Box(Modifier.fillMaxSize()) {
         Column(Modifier.fillMaxSize().padding(horizontal = Abstaende.mittel)) {
             when {
-                zustand.laedt && zustand.wuensche.isEmpty() ->
+                zustand.laedt && zustand.merkposten.isEmpty() ->
                     Box(Modifier.fillMaxWidth().padding(Abstaende.riesig), Alignment.Center) { CircularProgressIndicator() }
 
-                zustand.wuensche.isEmpty() ->
+                zustand.merkposten.isEmpty() ->
                     Box(Modifier.fillMaxWidth().padding(Abstaende.riesig), Alignment.Center) {
-                        Text(stringResource(R.string.wishlist_empty),
+                        Text(stringResource(R.string.wanted_empty),
                              color = MaterialTheme.colorScheme.onSurfaceVariant)
                     }
 
@@ -99,11 +99,11 @@ fun WunschlisteScreen(
                     // letzte Zeile — dieselbe Vorsorge wie in der Galerie.
                     contentPadding = PaddingValues(bottom = Abstaende.riesig + Abstaende.riesig),
                 ) {
-                    items(zustand.wuensche, key = ::wunschSchluessel) { w ->
-                        WunschZeile(w, appState.serverUrl, imageLoader,
+                    items(zustand.merkposten, key = ::merkpostenSchluessel) { w ->
+                        MerkpostenZeile(w, appState.serverUrl, imageLoader,
                             onOeffnen     = { onOeffnen(w.setNumber, w.condition) },
-                            onUebernehmen = { uebernahmeSchluessel = wunschSchluessel(w) },
-                            onLoeschen    = { vm.loescheWunsch(w.setNumber, w.condition, w.userId) })
+                            onUebernehmen = { uebernahmeSchluessel = merkpostenSchluessel(w) },
+                            onLoeschen    = { vm.loescheMerkposten(w.setNumber, w.condition, w.userId) })
                     }
                 }
             }
@@ -125,7 +125,7 @@ fun WunschlisteScreen(
             verticalArrangement = Arrangement.spacedBy(Abstaende.klein),
         ) {
             SmallFloatingActionButton(
-                onClick = { vm.setScannerSource("wishlist"); onScan() },
+                onClick = { vm.setScannerSource("wanted"); onScan() },
                 containerColor = MaterialTheme.colorScheme.secondaryContainer,
                 contentColor = MaterialTheme.colorScheme.onSecondaryContainer,
                 shape = Formen.leiste,
@@ -135,17 +135,17 @@ fun WunschlisteScreen(
                 containerColor = if (LocalIsBrickTheme.current) MaterialTheme.colorScheme.secondary else MaterialTheme.colorScheme.primary,
                 contentColor = if (LocalIsBrickTheme.current) MaterialTheme.colorScheme.onSecondary else MaterialTheme.colorScheme.onPrimary,
                 shape = Formen.fab,
-            ) { Icon(Icons.Default.Add, stringResource(R.string.wishlist_add_title)) }
+            ) { Icon(Icons.Default.Add, stringResource(R.string.wanted_add_title)) }
         }
     }
 
     if (maskeOffen) {
-        WunschErfassenDialog(
+        MerkpostenErfassenDialog(
             householdMembers = appState.householdMembers,
             defaultCondition = appState.userDefaultCondition ?: "N",
             onDismiss = { maskeOffen = false },
             onAnlegen = { nummer, zustandWahl, besitzer ->
-                vm.legeWunschAn(nummer, zustandWahl, besitzer)
+                vm.legeMerkpostenAn(nummer, zustandWahl, besitzer)
                 maskeOffen = false
             },
         )
@@ -153,10 +153,10 @@ fun WunschlisteScreen(
 
     uebernahme?.let { w ->
         UebernahmeDialog(
-            wunsch = w,
+            merkposten = w,
             onDismiss = { uebernahmeSchluessel = null },
             onUebernehmen = { anzahl, preis, zustandWahl ->
-                vm.uebernimmWunsch(w.setNumber, w.condition, w.userId, anzahl, preis, zustandWahl)
+                vm.uebernimmMerkposten(w.setNumber, w.condition, w.userId, anzahl, preis, zustandWahl)
                 uebernahmeSchluessel = null
             },
         )
@@ -170,32 +170,32 @@ fun WunschlisteScreen(
  *
  * „gewisse Inhalte wie zB. Preis und Zustand, Anzahl muessen beim Uebernehmen
  * angepasst werden." Vorher ging die Uebernahme wortlos mit Anzahl 1, ohne
- * Kaufpreis und im Zustand des Wunsches durch — fuer ein Set, das man gerade
+ * Kaufpreis und im Zustand des Merkpostens durch — fuer ein Set, das man gerade
  * gekauft hat, ist keins davon zuverlaessig richtig.
  *
  * Dieselben drei Felder in derselben Reihenfolge wie im Katalog-Dialog
  * (CatalogAddDialog): Wer das eine kennt, kennt das andere.
  *
- * Der Zustand ist mit dem des WUNSCHES vorbelegt — der haeufigste Fall —,
- * laesst sich aber aendern. Welcher Wunsch dadurch erfuellt ist, bleibt davon
+ * Der Zustand ist mit dem des MERKPOSTENS vorbelegt — der haeufigste Fall —,
+ * laesst sich aber aendern. Welcher Merkposten dadurch erledigt ist, bleibt davon
  * unberuehrt; das entscheidet der Server.
  */
 @Composable
 internal fun UebernahmeDialog(
-    wunsch: Wunsch,
+    merkposten: Merkposten,
     onDismiss: () -> Unit,
     onUebernehmen: (Int, String, String) -> Unit,
 ) {
     var anzahl  by rememberSaveable { mutableStateOf("1") }
     var preis   by rememberSaveable { mutableStateOf("") }
-    var zustand by rememberSaveable { mutableStateOf(wunsch.condition) }
+    var zustand by rememberSaveable { mutableStateOf(merkposten.condition) }
 
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text(stringResource(R.string.wishlist_take), fontWeight = FontWeight.Bold) },
+        title = { Text(stringResource(R.string.wanted_take), fontWeight = FontWeight.Bold) },
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(Abstaende.mittel)) {
-                Text(wunsch.name ?: wunsch.setNumber, style = MaterialTheme.typography.bodyMedium)
+                Text(merkposten.name ?: merkposten.setNumber, style = MaterialTheme.typography.bodyMedium)
                 Row(horizontalArrangement = Arrangement.spacedBy(Abstaende.klein)) {
                     // NumericInput und keine eigene Filterung: Die Regel, was
                     // eine Zahl ist, steht genau einmal im Baum
@@ -224,7 +224,7 @@ internal fun UebernahmeDialog(
         },
         confirmButton = {
             Button(onClick = { onUebernehmen(anzahl.toIntOrNull() ?: 1, preis, zustand) }) {
-                Text(stringResource(R.string.wishlist_take))
+                Text(stringResource(R.string.wanted_take))
             }
         },
         dismissButton = { TextButton(onClick = onDismiss) { Text(stringResource(R.string.common_cancel)) } },
@@ -244,7 +244,7 @@ internal fun UebernahmeDialog(
  * ── Was drin steht und was nicht ────────────────────────────────────────────
  *
  * Nummer, Zustand, Konto — Anzahl und Kaufpreis fehlen bewusst: Ein
- * Wunsch hat weder das eine noch das andere. Beides wird erst bei der
+ * Merkposten hat weder das eine noch das andere. Beides wird erst bei der
  * Uebernahme in die Galerie gefragt.
  *
  * Der Cursor steht sofort im Nummernfeld, wie im AddSetDialog seit Nachtrag
@@ -252,7 +252,7 @@ internal fun UebernahmeDialog(
  * ist das Feld noch nicht angeordnet, ein requestFocus() liefe ins Leere.
  */
 @Composable
-private fun WunschErfassenDialog(
+private fun MerkpostenErfassenDialog(
     householdMembers: List<ch.brickinventoryapp.data.model.HouseholdMember>,
     defaultCondition: String,
     onDismiss: () -> Unit,
@@ -273,7 +273,7 @@ private fun WunschErfassenDialog(
 
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text(stringResource(R.string.wishlist_add_title), fontWeight = FontWeight.Bold) },
+        title = { Text(stringResource(R.string.wanted_add_title), fontWeight = FontWeight.Bold) },
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(Abstaende.mittel)) {
                 OutlinedTextField(
@@ -304,7 +304,7 @@ private fun WunschErfassenDialog(
                               if (householdMembers.size > 1) besitzer else null)
                 },
                 enabled = nummer.isNotBlank(),
-            ) { Text(stringResource(R.string.wishlist_add_submit)) }
+            ) { Text(stringResource(R.string.wanted_add_submit)) }
         },
         dismissButton = { TextButton(onClick = onDismiss) { Text(stringResource(R.string.common_cancel)) } },
     )
@@ -322,8 +322,8 @@ internal fun ZustandsWahl(gewaehlt: String, onWahl: (String) -> Unit) {
 }
 
 @Composable
-private fun WunschZeile(
-    w: Wunsch, serverUrl: String, imageLoader: coil.ImageLoader,
+private fun MerkpostenZeile(
+    w: Merkposten, serverUrl: String, imageLoader: coil.ImageLoader,
     onOeffnen: () -> Unit, onUebernehmen: () -> Unit, onLoeschen: () -> Unit,
 ) {
     // Die ganze Karte oeffnet das Detail — wie die Kachel in der Galerie. Die
@@ -340,7 +340,7 @@ private fun WunschZeile(
                 )
                 Column(Modifier.weight(1f)) {
                     // Kein Name heisst: Der Katalog kennt das Set nicht. Der
-                    // benannte Preis dafuer, dass die Wunschliste keine zweite
+                    // benannte Preis dafuer, dass die Merkliste keine zweite
                     // Kopie der Stammdaten fuehrt (Migration 0021).
                     Text(w.name ?: w.setNumber, fontWeight = FontWeight.SemiBold, maxLines = 2)
                     Text(
@@ -369,11 +369,11 @@ private fun WunschZeile(
                 // Grossvater heisst „ich habe es" auch „der Enkel hat es".
                 if (w.owned) {
                     AssistChip(onClick = {},
-                        label = { Text(stringResource(R.string.wishlist_owned)) })
+                        label = { Text(stringResource(R.string.wanted_owned)) })
                 }
                 Spacer(Modifier.weight(1f))
                 TextButton(onClick = onLoeschen) { Text(stringResource(R.string.common_delete)) }
-                Button(onClick = onUebernehmen) { Text(stringResource(R.string.wishlist_take)) }
+                Button(onClick = onUebernehmen) { Text(stringResource(R.string.wanted_take)) }
             }
         }
     }

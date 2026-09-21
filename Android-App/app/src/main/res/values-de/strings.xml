@@ -608,20 +608,20 @@
     <string name="price_from_other_condition_used">Kaufpreis aus dem Marktpreis „Gebraucht\" uebernommen — fuer „Neu\" fuehrt BrickLink keinen Preis.</string>
 
 
-    <!-- Wunschliste (Nachtrag 179) -->
-    <string name="nav_wishlist">Wunschliste</string>
-    <string name="wishlist_add_title">Wunsch hinzufügen</string>
-    <string name="wishlist_add_submit">Auf die Wunschliste</string>
-    <string name="wishlist_empty">Noch keine Wünsche.</string>
-    <string name="wishlist_owned">schon vorhanden</string>
-    <string name="wishlist_added">Auf die Wunschliste gesetzt</string>
-    <string name="wishlist_already">Stand schon auf der Wunschliste</string>
-    <string name="wishlist_deleted">Vom Wunschzettel genommen</string>
-    <string name="wishlist_take">In die Galerie</string>
-    <string name="wishlist_taken">In die Galerie übernommen</string>
-    <string name="wishlist_taken_existing">War schon in der Galerie — Wunsch erfüllt</string>
-    <string name="wishlist_need_number">Bitte Set-Nummer eingeben</string>
-    <string name="wishlist_threshold">Schwelle (optional)</string>
+    <!-- Merkliste (Nachtrag 179) -->
+    <string name="nav_wanted">Merkliste</string>
+    <string name="wanted_add_title">Merkposten hinzufügen</string>
+    <string name="wanted_add_submit">Auf die Merkliste</string>
+    <string name="wanted_empty">Noch keine Merkposten.</string>
+    <string name="wanted_owned">schon vorhanden</string>
+    <string name="wanted_added">Auf die Merkliste gesetzt</string>
+    <string name="wanted_already">Stand schon auf der Merkliste</string>
+    <string name="wanted_deleted">Von der Merkliste genommen</string>
+    <string name="wanted_take">In die Galerie</string>
+    <string name="wanted_taken">In die Galerie übernommen</string>
+    <string name="wanted_taken_existing">War schon in der Galerie — von der Merkliste genommen</string>
+    <string name="wanted_need_number">Bitte Set-Nummer eingeben</string>
+    <string name="wanted_threshold">Schwelle (optional)</string>
     <string name="detail_compare">📊 Preisvergleich</string>
-    <string name="wishlist_since">Auf der Liste seit</string>
+    <string name="wanted_since">Auf der Liste seit</string>
 </resources>

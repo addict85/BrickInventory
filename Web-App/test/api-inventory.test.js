@@ -260,17 +260,23 @@ const C = {
   'POST /api/v1/storage/locations': 'nur-v1',
   'PUT /api/v1/storage/locations/:id': 'nur-v1',
   'DELETE /api/v1/storage/locations/:id': 'nur-v1',
-  // Die Wunschliste (Nachtrag 179) — Marcos „was man haben moechte", getrennt
+  // Die Merkliste (Nachtrag 179) — Marcos „was man haben moechte", getrennt
   // vom Besitz. nur-v1 und nicht paritaet: Beide Oberflaechen rufen dieselben
-  // vier Adressen, es gibt also gar kein zweites Gegenstueck zu vergleichen.
-  // Die Regeln dahinter pruefet test/wunschliste-db.test.js gegen die DB.
-  'GET /api/v1/wishlist': 'nur-v1',
-  'POST /api/v1/wishlist': 'nur-v1',
-  'DELETE /api/v1/wishlist/:setNumber/:condition': 'nur-v1',
-  'POST /api/v1/wishlist/:setNumber/:condition/uebernehmen': 'nur-v1',
-  // Die Marktpreise eines Wunsches. Eigene Adresse, weil /sets/:sn/price mit
+  // Adressen, es gibt also gar kein zweites Gegenstueck zu vergleichen.
+  // Die Regeln dahinter pruefet test/merkliste-db.test.js gegen die DB.
+  'GET /api/v1/wanted': 'nur-v1',
+  'POST /api/v1/wanted': 'nur-v1',
+  'DELETE /api/v1/wanted/:setNumber/:condition': 'nur-v1',
+  'POST /api/v1/wanted/:setNumber/:condition/uebernehmen': 'nur-v1',
+  // Der Inhaberwechsel (Marcos „auf dem Detail-Dialog kann der Inhaber nicht
+  // geaendert werden"). Ebenfalls nur-v1: Beide Oberflaechen rufen dieselbe
+  // Adresse. Die Regel dahinter — Aufnahmedatum bleibt, Preisalarm zieht mit,
+  // ein Merkposten, den das Ziel schon hat, wird zusammengefuehrt — prueft
+  // test/merkliste-db.test.js gegen die Datenbank.
+  'PUT /api/v1/wanted/:setNumber/:condition/inhaber': 'nur-v1',
+  // Die Marktpreise eines Merkpostens. Eigene Adresse, weil /sets/:sn/price mit
   // 404 antwortet, wenn einem das Set nicht gehoert — Begruendung an der Route.
-  'GET /api/v1/wishlist/:setNumber/preise': 'nur-v1',
+  'GET /api/v1/wanted/:setNumber/preise': 'nur-v1',
   'PUT /api/v1/parts/:partNumber/:colorId/storage': 'nur-v1',
   'PUT /api/v1/sets/:setNumber/storage': 'nur-v1',
   'POST /api/v1/parts/import/csv': 'nur-v1',

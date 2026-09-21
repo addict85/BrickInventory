@@ -360,7 +360,7 @@ router.get('/catalog/sets/:setNumber', requireToken, async (req: AuthedRequest, 
     // utils/bricklinkLink.ts).
     // Die Preisvergleich-Adresse gehoert hierher wie die von BrickLink: Sie
     // wird aus Nummer und Namen gebaut, und diese Regel steht genau einmal im
-    // Baum (utils/preisvergleich.ts). Verbraucher ist das Wunsch-Detail —
+    // Baum (utils/preisvergleich.ts). Verbraucher ist das Merkposten-Detail —
     // dort ist der Griff „was kostet das anderswo?" der wichtigste ueberhaupt.
     const preisvergleichUrl = fuerSet(set.set_number, set.name);
     let bricklink = await resolveOne(set.set_number);

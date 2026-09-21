@@ -55,7 +55,7 @@ fun CatalogDetailScreen(
     onLoad: (String) -> Unit,
     onAddToGallery: (String, Int, Double?, String?, Int?) -> Unit,
     /**
-     * Auf die Wunschliste — Setnummer, Zustand, Alarmrichtung, Schwelle (roh).
+     * Auf die Merkliste — Setnummer, Zustand, Alarmrichtung, Schwelle (roh).
      *
      * Die Schwelle kommt als TEXT und nicht als Double: Leer heisst „kein
      * Alarm", nicht „Schwelle 0", und die Umwandlung gehoert an die eine
@@ -162,7 +162,7 @@ fun CatalogDetailScreen(
                 // 71021-1 → BrickLink col325), die sich aus keiner der beiden
                 // Datenquellen herleiten lässt. Statt den Button zu verstecken,
                 // liefert der Server dann eine Such-URL und exact = false.
-                // Auf die Wunschliste — Marcos „inkl. Zustand und einem
+                // Auf die Merkliste — Marcos „inkl. Zustand und einem
                 // Preisalarm". Zweitrangig gestaltet (OutlinedButton): Der
                 // haeufigere Griff ist das Aufnehmen, und zwei gleich starke
                 // Knoepfe nebeneinander sind eine Frage, keine Fuehrung.
@@ -173,7 +173,7 @@ fun CatalogDetailScreen(
                 ) {
                     Text("⭐")
                     Spacer(Modifier.width(Abstaende.winzig))
-                    Text(stringResource(R.string.wishlist_add_submit))
+                    Text(stringResource(R.string.wanted_add_submit))
                 }
                 val bl = detail.bricklink
                 val blUrl = bl?.url ?: BrickLinkUrls.searchFor(detail.setNumber)
@@ -215,7 +215,7 @@ fun CatalogDetailScreen(
     }
 
     if (showWishDialog && detail != null) {
-        WunschDialog(
+        MerkpostenDialog(
             setName = detail.name ?: detail.setNumber,
             defaultCondition = defaultCondition,
             onDismiss = { showWishDialog = false },
@@ -320,17 +320,17 @@ private fun CatalogAddDialog(
 }
 
 /**
- * Zustand und Preisalarm fuer einen Wunsch.
+ * Zustand und Preisalarm fuer einen Merkposten.
  *
  * Bewusst KEINE Anzahl und kein Kaufpreis — anders als beim Aufnehmen in die
- * Galerie. Ein Wunsch hat weder das eine noch das andere; beides wird erst
+ * Galerie. Ein Merkposten hat weder das eine noch das andere; beides wird erst
  * bei der Uebernahme gefragt.
  *
  * Der Alarm ist optional und steht deshalb unter einer eigenen Ueberschrift:
- * Wer nur wuenschen will, laesst das Feld leer und drueckt zu.
+ * Wer nur merken will, laesst das Feld leer und drueckt zu.
  */
 @Composable
-private fun WunschDialog(
+private fun MerkpostenDialog(
     setName: String,
     defaultCondition: String,
     onDismiss: () -> Unit,
@@ -342,7 +342,7 @@ private fun WunschDialog(
 
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text(stringResource(R.string.wishlist_add_submit), fontWeight = FontWeight.Bold) },
+        title = { Text(stringResource(R.string.wanted_add_submit), fontWeight = FontWeight.Bold) },
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(Abstaende.mittel)) {
                 Text(setName, style = MaterialTheme.typography.bodyMedium)
@@ -362,7 +362,7 @@ private fun WunschDialog(
                 OutlinedTextField(
                     value = schwelle,
                     onValueChange = { schwelle = ch.brickinventoryapp.util.NumericInput.price(it) },
-                    label = { Text(stringResource(R.string.wishlist_threshold)) },
+                    label = { Text(stringResource(R.string.wanted_threshold)) },
                     singleLine = true,
                     keyboardOptions = ch.brickinventoryapp.util.NumericInput.preisTastatur(),
                     modifier = Modifier.fillMaxWidth(),
@@ -371,7 +371,7 @@ private fun WunschDialog(
         },
         confirmButton = {
             Button(onClick = { onWish(zustand, richtung, schwelle) }) {
-                Text(stringResource(R.string.wishlist_add_submit))
+                Text(stringResource(R.string.wanted_add_submit))
             }
         },
         dismissButton = { TextButton(onClick = onDismiss) { Text(stringResource(R.string.common_cancel)) } },

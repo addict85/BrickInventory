@@ -422,7 +422,7 @@ async function openCatModal(setNumber){
   G('cat-m-add').textContent = s.owned ? t('catalog.add_again') : t('catalog.add_to_gallery');
   G('cat-m-qty').value = '1';
   G('cat-m-price').value = '';
-  // Die Setnummer am Modal hinterlegen: Der Wunschlisten-Knopf liegt in einem
+  // Die Setnummer am Modal hinterlegen: Der Merklisten-Knopf liegt in einem
   // anderen Modul und hat auf _catCurSet keinen Zugriff. Ein Export waere ein
   // zweiter Weg zu demselben Zustand — das Modal weiss ohnehin, was es zeigt.
   //

@@ -13,7 +13,7 @@ import { loadApiLimits, loadCacheStats, loadCacheTtl, loadProfile, loadRateLimit
 import { loadBrickColors, loadManualParts, loadMinifigs } from './06-minifigs.js';
 import { _lastImportAt, confirmDelete, enrichGalleryWithPrices, jobPollTimer, ladeLagerorte, openModal, pollJobStatus, set_jobPollTimer, set_lastImportAt } from './07-admin.js';
 import { openAcqModal, renderAcqModalBody, renderAcquisitionSummary } from './13-acquisition-modals.js';
-import { ladeWunschliste } from './16-wunschliste.js';
+import { ladeMerkliste } from './16-merkliste.js';
 import { initCatalog } from './09-catalog.js';
 import { delSetStop, openPdfViewerLink, stopEvent } from './11-actions.js';
 
@@ -58,7 +58,7 @@ export function bindTabs(){
       if (tab !== 'catalog') setScrollLabel(null);
       if(tab==='gallery')      { loadGallery(); loadStats(); }
       if(tab==='catalog')      { initCatalog(); }
-      if(tab==='wishlist')     { ladeWunschliste(); }
+      if(tab==='wanted')     { ladeMerkliste(); }
       if(tab==='parts')        {
         loadParts(); loadManualParts(); loadBrickColors();
         // If import was recent, reload again after background job completes
@@ -428,9 +428,23 @@ export function onScopeChange(view) {
   if (view === 'finance')  loadFinance();
 }
 
+/**
+ * Die Konten des Haushalts, wie sie zuletzt geladen wurden.
+ *
+ * Gemerkt, weil nicht jede Auswahl in index.html steht: Das Detail der
+ * Merkliste baut seine Zeilen beim Oeffnen und braucht die Liste dann —
+ * lange nach loadHouseholdMembers(). Ein zweiter Abruf waere ein zweiter
+ * Stand derselben Antwort.
+ */
+let _haushalt = [];
+
+/** Die gemerkten Konten. Leer, solange noch keine Antwort da war. */
+export function haushaltsKonten() { return _haushalt; }
+
 export async function loadHouseholdMembers() {
   const d = await api('GET', '/v1/sets/household-members').catch(() => null);
   const members = d?.members || [];
+  _haushalt = members;
   // Dieselbe Antwort entscheidet über den Kontofilter: mehr als ein Konto
   // heisst Hauptkonto mit Unterkonten.
   initScopeSelects(members);
@@ -446,9 +460,9 @@ export async function loadHouseholdMembers() {
   // soll für alle drei gleich gehen.
   // cat-m-owner seit Nachtrag 66 dabei — der Katalog-Dialog ist der vierte
   // Erfassungsweg und war als einziger nicht angeschlossen.
-  // wl-owner ist der fuenfte Erfassungsweg (Wunschliste) — dieselbe Liste,
+  // mk-owner ist der fuenfte Erfassungsweg (Merkliste) — dieselbe Liste,
   // dieselbe Regel. Der Grossvater traegt einen Wunsch fuer den Enkel ein.
-  for (const id of ['add-owner', 'ap-owner', 'af-owner', 'cat-m-owner', 'wl-owner']) {
+  for (const id of ['add-owner', 'ap-owner', 'af-owner', 'cat-m-owner', 'mk-owner']) {
     const box = G(`${id}-box`), sel = G(id);
     if (!box || !sel) continue;
     if (members.length < 2) { box.style.display = 'none'; continue; }

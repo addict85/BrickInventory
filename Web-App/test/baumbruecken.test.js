@@ -10,7 +10,7 @@ const path = require('node:path');
  * ── Woher das kommt ─────────────────────────────────────────────────────────
  * Vier von sechs Sicherheitsbefunden dieser Runde hatten dieselbe Ursache:
  * eine Regel, die nur EINE der beiden Oberflaechen kannte (der XML-Maskierer
- * der Wunschliste, die Set-Tabelle, der Preisverlauf, die Zeitplan-Werte).
+ * der Merkliste, die Set-Tabelle, der Preisverlauf, die Zeitplan-Werte).
  *
  * Dagegen tut dieser Baum schon das Richtige: 34 Web-Tests greifen in den
  * Android-Baum und halten Regeln fuer BEIDE Seiten fest. Was diese Kultur

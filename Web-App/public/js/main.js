@@ -37,7 +37,7 @@ import './12-pdfviewer.js';
 import './13-acquisition-modals.js';
 import './14-scope.js';
 import './15-scrollbar.js';
-import './16-wunschliste.js';
+import './16-merkliste.js';
 
 // ── Start ────────────────────────────────────────────────────────────────────
 // Erst NACH der Auswertung aller Module. Vorher lag der Aufruf im Rumpf von

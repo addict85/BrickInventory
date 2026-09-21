@@ -622,20 +622,20 @@
     <string name="price_from_other_condition_used">Purchase price taken from the "used" market price — BrickLink has no price for "new".</string>
 
 
-    <!-- Wunschliste (Nachtrag 179) -->
-    <string name="nav_wishlist">Wishlist</string>
-    <string name="wishlist_add_title">Add a wish</string>
-    <string name="wishlist_add_submit">Add to wishlist</string>
-    <string name="wishlist_empty">No wishes yet.</string>
-    <string name="wishlist_owned">already owned</string>
-    <string name="wishlist_added">Added to the wishlist</string>
-    <string name="wishlist_already">Already on the wishlist</string>
-    <string name="wishlist_deleted">Removed from the wishlist</string>
-    <string name="wishlist_take">To the gallery</string>
-    <string name="wishlist_taken">Moved into the gallery</string>
-    <string name="wishlist_taken_existing">Was already in the gallery — wish fulfilled</string>
-    <string name="wishlist_need_number">Please enter a set number</string>
-    <string name="wishlist_threshold">Threshold (optional)</string>
+    <!-- Merkliste (Nachtrag 179) -->
+    <string name="nav_wanted">Wanted</string>
+    <string name="wanted_add_title">Add a wanted item</string>
+    <string name="wanted_add_submit">Add to wanted list</string>
+    <string name="wanted_empty">Nothing on the wanted list yet.</string>
+    <string name="wanted_owned">already owned</string>
+    <string name="wanted_added">Added to the wanted list</string>
+    <string name="wanted_already">Already on the wanted list</string>
+    <string name="wanted_deleted">Removed from the wanted list</string>
+    <string name="wanted_take">To the gallery</string>
+    <string name="wanted_taken">Moved into the gallery</string>
+    <string name="wanted_taken_existing">Was already in the gallery — taken off the wanted list</string>
+    <string name="wanted_need_number">Please enter a set number</string>
+    <string name="wanted_threshold">Threshold (optional)</string>
     <string name="detail_compare">📊 Compare prices</string>
-    <string name="wishlist_since">On the list since</string>
+    <string name="wanted_since">On the list since</string>
 </resources>

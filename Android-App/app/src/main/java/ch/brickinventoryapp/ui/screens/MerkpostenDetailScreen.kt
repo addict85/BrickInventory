@@ -15,18 +15,19 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import ch.brickinventoryapp.R
-import ch.brickinventoryapp.data.model.Wunsch
+import ch.brickinventoryapp.data.model.Merkposten
 import ch.brickinventoryapp.ui.MainViewModel
 import ch.brickinventoryapp.ui.components.ZoomableImageDialog
-import ch.brickinventoryapp.ui.ladeWunschDetail
-import ch.brickinventoryapp.ui.loescheWunsch
-import ch.brickinventoryapp.ui.uebernimmWunsch
+import ch.brickinventoryapp.ui.ladeMerkpostenDetail
+import ch.brickinventoryapp.ui.loescheMerkposten
+import ch.brickinventoryapp.ui.uebernimmMerkposten
+import ch.brickinventoryapp.ui.verschiebeMerkposten
 import ch.brickinventoryapp.ui.theme.Abstaende
 import ch.brickinventoryapp.ui.theme.Formen
 import ch.brickinventoryapp.util.resolveFullUrl
 
 /**
- * Das Detail eines Wunschlisten-Eintrags.
+ * Das Detail eines Merklisten-Eintrags.
  *
  * ── Marcos Vorgabe ──────────────────────────────────────────────────────────
  *
@@ -36,17 +37,17 @@ import ch.brickinventoryapp.util.resolveFullUrl
  * fehlt aus einem Grund:
  *
  *     Kaufpreis      ausdruecklich ausgenommen
- *     Anzahl         ein Wunsch hat keine
+ *     Anzahl         ein Merkposten hat keine
  *     Lagerort       man kann nichts einlagern, was man nicht hat
  *     Hinzugefuegt   ersetzt durch „auf der Liste seit"
  *     Anleitungen    gehoeren zum Besitz; hier waere die Liste immer leer
  *
  * Was bleibt, bleibt ebenfalls aus einem Grund: Marktpreis und Preisverlauf
- * sind fuer einen WUNSCH das Wichtigste ueberhaupt — man wartet ja auf einen
+ * sind fuer einen MERKPOSTEN das Wichtigste ueberhaupt — man wartet ja auf einen
  * Preis. Gezeichnet werden sie von PriceChart(), derselben Funktion wie im
  * Set-Detail.
  *
- * ── Warum der Wunsch aus der LISTE kommt ────────────────────────────────────
+ * ── Warum der Merkposten aus der LISTE kommt ────────────────────────────────────
  *
  * Nicht als Parameter durchgereicht und nicht kopiert: Er wird aus dem
  * geladenen Zustand gesucht. Nach dem Loeschen oder Uebernehmen verschwindet
@@ -55,7 +56,7 @@ import ch.brickinventoryapp.util.resolveFullUrl
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun WunschDetailScreen(
+fun MerkpostenDetailScreen(
     vm: MainViewModel,
     setNumber: String,
     condition: String,
@@ -63,33 +64,33 @@ fun WunschDetailScreen(
     onBack: () -> Unit,
 ) {
     val appState by vm.state.collectAsStateWithLifecycle()
-    val liste    by vm.wunschState.collectAsStateWithLifecycle()
-    val detail   by vm.wunschDetailState.collectAsStateWithLifecycle()
-    // Der Alarm liegt im Set-Detail-Zustand — Begruendung an ladeWunschDetail().
+    val liste    by vm.merklisteState.collectAsStateWithLifecycle()
+    val detail   by vm.merkpostenDetailState.collectAsStateWithLifecycle()
+    // Der Alarm liegt im Set-Detail-Zustand — Begruendung an ladeMerkpostenDetail().
     val setDetail by vm.setDetailState.collectAsStateWithLifecycle()
     val ctx = LocalContext.current
     // Derselbe Dialog wie in der Liste, nicht ein zweiter: Anzahl, Kaufpreis
     // und Zustand muessen hier dieselbe Maske sein.
     var uebernahmeOffen by rememberSaveable { mutableStateOf(false) }
-    // Marcos Befund: „Der Zoom in der Wunschliste funktioniert nicht,
+    // Marcos Befund: „Der Zoom in der Merkliste funktioniert nicht,
     // zumindest nicht in der Android-App." Er hat recht — das Bild war das
     // einzige Detailbild der App ohne Zoom. Set-Detail und Katalog-Detail
-    // haben ihn seit jeher, die Webapp im Wunsch-Detail ebenfalls
-    // (index.html: data-click="openImageLightboxFromEl" auf wl-m-img).
+    // haben ihn seit jeher, die Webapp im Merkposten-Detail ebenfalls
+    // (index.html: data-click="openImageLightboxFromEl" auf mk-m-img).
     //
     // rememberSaveable: Wer im Zoom das Telefon dreht, soll darin bleiben.
     var zoomOffen by rememberSaveable { mutableStateOf(false) }
 
-    val wunsch = liste.wuensche.firstOrNull {
+    val merkposten = liste.merkposten.firstOrNull {
         it.setNumber == setNumber && it.condition == condition
     }
 
-    LaunchedEffect(setNumber) { vm.ladeWunschDetail(setNumber) }
+    LaunchedEffect(setNumber) { vm.ladeMerkpostenDetail(setNumber) }
 
-    // Der Wunsch ist weg (geloescht oder uebernommen) — dann gehoert dieser
+    // Der Merkposten ist weg (geloescht oder uebernommen) — dann gehoert dieser
     // Bildschirm ebenfalls weg, statt eine Leiche zu zeigen.
-    LaunchedEffect(wunsch == null, liste.laedt) {
-        if (wunsch == null && !liste.laedt && liste.wuensche.isNotEmpty()) onBack()
+    LaunchedEffect(merkposten == null, liste.laedt) {
+        if (merkposten == null && !liste.laedt && liste.merkposten.isNotEmpty()) onBack()
     }
 
     fun preis(v: Double?) = if (v == null) "—"
@@ -98,7 +99,7 @@ fun WunschDetailScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text(wunsch?.name ?: setNumber, maxLines = 1) },
+                title = { Text(merkposten?.name ?: setNumber, maxLines = 1) },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, stringResource(R.string.common_back))
@@ -107,7 +108,7 @@ fun WunschDetailScreen(
             )
         },
     ) { padding ->
-        if (wunsch == null) {
+        if (merkposten == null) {
             Box(Modifier.fillMaxSize().padding(padding), Alignment.Center) { CircularProgressIndicator() }
             return@Scaffold
         }
@@ -115,7 +116,7 @@ fun WunschDetailScreen(
         // womoeglich zwei verschiedene Bilder — und `resolveFullUrl` liefert
         // ohnehin schon die volle Aufloesung (kein Thumb).
         val bildUrl = resolveFullUrl(appState.serverUrl,
-            detail.katalog?.imageLocal ?: wunsch.imageLocal, wunsch.imageUrl)
+            detail.katalog?.imageLocal ?: merkposten.imageLocal, merkposten.imageUrl)
 
         LazyColumn(
             Modifier.fillMaxSize().padding(padding),
@@ -125,7 +126,7 @@ fun WunschDetailScreen(
             item {
                 coil.compose.AsyncImage(
                     model = bildUrl,
-                    contentDescription = wunsch.name,
+                    contentDescription = merkposten.name,
                     imageLoader = imageLoader,
                     // Antippen oeffnet den Zoom — dasselbe Verhalten wie im
                     // Set- und im Katalog-Detail.
@@ -137,20 +138,40 @@ fun WunschDetailScreen(
             item {
                 Card(Modifier.fillMaxWidth()) {
                     Column(Modifier.padding(Abstaende.mittel)) {
-                        CatalogDetailRow(stringResource(R.string.detail_set_number), wunsch.setNumber)
+                        CatalogDetailRow(stringResource(R.string.detail_set_number), merkposten.setNumber)
                         CatalogDetailRow(stringResource(R.string.detail_year),
-                            wunsch.year?.toString() ?: "—")
+                            merkposten.year?.toString() ?: "—")
                         CatalogDetailRow(stringResource(R.string.detail_theme),
                             detail.katalog?.themeName ?: "—")
                         CatalogDetailRow(stringResource(R.string.detail_pieces),
-                            (detail.katalog?.numParts ?: wunsch.numParts)?.toString() ?: "—")
+                            (detail.katalog?.numParts ?: merkposten.numParts)?.toString() ?: "—")
                         CatalogDetailRow(stringResource(R.string.detail_minifigs),
                             detail.katalog?.minifigs?.toString() ?: "—")
                         CatalogDetailRow(stringResource(R.string.common_condition),
-                            stringResource(if (wunsch.condition == "U") R.string.condition_used
+                            stringResource(if (merkposten.condition == "U") R.string.condition_used
                                            else R.string.condition_new))
-                        CatalogDetailRow(stringResource(R.string.wishlist_since),
-                            ch.brickinventoryapp.util.fmtDatum(wunsch.createdAt) ?: "—")
+                        CatalogDetailRow(stringResource(R.string.wanted_since),
+                            ch.brickinventoryapp.util.fmtDatum(merkposten.createdAt) ?: "—")
+
+                        // ── Der Inhaber, AENDERBAR ──────────────────────────
+                        //
+                        // Marcos Befund: „Auf dem Detail-Dialog der
+                        // Merkliste kann der Inhaber nicht geaendert werden.
+                        // Auch in der Android-App nicht." Waehlbar war er nur
+                        // beim Erfassen.
+                        //
+                        // Derselbe Waehler wie in den Erfassungsmasken; bei
+                        // einem Einzelkonto blendet er sich selbst aus
+                        // (OwnerPicker: `if (members.size < 2) return`).
+                        if (appState.householdMembers.size > 1) {
+                            Spacer(Modifier.height(Abstaende.klein))
+                            OwnerPicker(
+                                members = appState.householdMembers,
+                                selected = merkposten.userId,
+                                onSelect = { vm.verschiebeMerkposten(
+                                    merkposten.setNumber, merkposten.condition, merkposten.userId, it) },
+                            )
+                        }
                     }
                 }
             }
@@ -162,7 +183,7 @@ fun WunschDetailScreen(
             // Schluessel (Konto, Set, Zustand). /sets/:sn/alert verlangt
             // keinen Besitz — nachgesehen im Routenrumpf —, also funktioniert
             // er hier unveraendert.
-            setDetailAlarmSection(wunsch.setNumber, setDetail.preisalarme, appState.currency, vm)
+            setDetailAlarmSection(merkposten.setNumber, setDetail.preisalarme, appState.currency, vm)
 
             item {
                 Card(Modifier.fillMaxWidth()) {
@@ -197,8 +218,8 @@ fun WunschDetailScreen(
                         // Der Katalog liefert dieselbe Adresse, nur mit Namen
                         // darin („LEGO 75192 Millennium Falcon" statt nur der
                         // Nummer). Kommt er nicht — 404 fuer ein Set, das
-                        // rb_sets nicht kennt —, steht die vom Wunsch bereit.
-                        (detail.katalog?.preisvergleichUrl ?: wunsch.preisvergleichUrl)
+                        // rb_sets nicht kennt —, steht die vom Merkposten bereit.
+                        (detail.katalog?.preisvergleichUrl ?: merkposten.preisvergleichUrl)
                             ?.takeIf { it.isNotBlank() }
                             ?.let { R.string.detail_compare to it },
                     )) {
@@ -222,10 +243,10 @@ fun WunschDetailScreen(
                         onClick = { uebernahmeOffen = true },
                         modifier = Modifier.fillMaxWidth(),
                         shape = Formen.leiste,
-                    ) { Text(stringResource(R.string.wishlist_take)) }
+                    ) { Text(stringResource(R.string.wanted_take)) }
 
                     OutlinedButton(
-                        onClick = { vm.loescheWunsch(wunsch.setNumber, wunsch.condition, wunsch.userId) },
+                        onClick = { vm.loescheMerkposten(merkposten.setNumber, merkposten.condition, merkposten.userId) },
                         modifier = Modifier.fillMaxWidth(),
                         shape = Formen.leiste,
                     ) { Text(stringResource(R.string.common_delete)) }
@@ -235,13 +256,13 @@ fun WunschDetailScreen(
     }
 
     // Ausserhalb des Scaffolds, damit die Dialoge ueber allem liegen — und mit
-    // `let`, weil `wunsch` hier wieder nullbar ist: Wer waehrend des offenen
+    // `let`, weil `merkposten` hier wieder nullbar ist: Wer waehrend des offenen
     // Dialogs den letzten Eintrag anderswo loescht, soll keinen Absturz
     // bekommen, sondern nichts.
-    if (zoomOffen) wunsch?.let { w ->
+    if (zoomOffen) merkposten?.let { w ->
         // Dieselbe Adresse wie das Bild oben, nach denselben Regeln. Neu
         // berechnet und nicht `bildUrl` weitergereicht: Die steht im
-        // Scaffold-Rumpf, wo `wunsch` nicht mehr nullbar ist — hier draussen
+        // Scaffold-Rumpf, wo `merkposten` nicht mehr nullbar ist — hier draussen
         // ist es das wieder (siehe der Absatz beim Uebernahme-Dialog).
         //
         // Gezeichnet wird er von derselben Stelle wie im Set- und im
@@ -258,12 +279,12 @@ fun WunschDetailScreen(
         }
     }
 
-    if (uebernahmeOffen) wunsch?.let { w ->
+    if (uebernahmeOffen) merkposten?.let { w ->
         UebernahmeDialog(
-            wunsch = w,
+            merkposten = w,
             onDismiss = { uebernahmeOffen = false },
             onUebernehmen = { anzahl, preisRoh, zustandWahl ->
-                vm.uebernimmWunsch(w.setNumber, w.condition, w.userId,
+                vm.uebernimmMerkposten(w.setNumber, w.condition, w.userId,
                                    anzahl, preisRoh, zustandWahl)
                 uebernahmeOffen = false
             },
