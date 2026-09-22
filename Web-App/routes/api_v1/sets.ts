@@ -544,12 +544,44 @@ router.get('/sets/:setNumber/parts-list', requireToken, async (req: AuthedReques
       for (const r of refreshed) catalogMap[`${r.part_number}|${r.color_id}`] = r;
     }
 
-    // ── Step 5: Merge + group by BL part number+color ─────────────────────
+    // ── Step 5: Zusammenfassen nach der REBRICKABLE-Nummer + Farbe ────────
+    //
+    // ── Marcos Befund ─────────────────────────────────────────────────────
+    //
+    // „Ich besitze das Set 2x wie kann es dann sein, dass Teile fehlen?" und,
+    // eine Runde später, die richtige Vermutung: „Ist evtl. die BL und
+    // Rebrickable-ID das Problem?"
+    //
+    // Hier stand `part_number: blId` — der Endpunkt WARF die
+    // Rebrickable-Nummer weg und schrieb in beide Felder die BrickLink-Nummer.
+    // Der Bestandsabgleich fragt danach `parts` ab, und dort steht die
+    // Rebrickable-Nummer. Ein Tile 1x1 heisst bei Rebrickable `3070b`, bei
+    // BrickLink `3070`: gefragt wurde nach `3070`, gefunden wurde nichts.
+    //
+    // NACHGEMESSEN an Marcos Bestand (60052-1, Cargo Train): Das Inventar
+    // fuehrt 287 Bedarfszeilen, die Webapp zeigte 45 davon als fehlend, und
+    // keine einzige der gemeldeten Nummern (3070, 3068, x1687, 55423c01 …)
+    // stand in `rb_inventory_parts` — sie waren allesamt erst hier entstanden.
+    //
+    // ── Warum das Zusammenfassen mitwandert ───────────────────────────────
+    //
+    // Der Schluessel MUSS derselbe sein wie das, was in `part_number` landet.
+    // Bliebe er auf der BrickLink-Nummer, fielen mehrere Rebrickable-Teile zu
+    // einer Zeile zusammen (Formvarianten teilen sich regelmaessig eine
+    // BrickLink-Nummer) — mit addiertem Bedarf, aber nur EINER der Nummern im
+    // Feld. Genau dieselbe Falle, eine Ebene tiefer.
+    //
+    // Die BrickLink-Nummer bleibt vollstaendig erhalten: Sie steht weiter in
+    // `bl_part_number`, beide Oberflaechen ZEIGEN sie (die Rebrickable-Nummer
+    // steht im Titel daneben), und der BrickLink-Export fasst selbst noch
+    // einmal nach ihr zusammen — `blMap` in plExportBricklink schluesselt nach
+    // `type|partNum|colorId`. Aus der feineren Aufteilung hier entsteht dort
+    // also wieder eine Zeile je BrickLink-Nummer.
     const blMap = new Map();
     for (const p of csvParts) {
       const cat  = catalogMap[`${p.part_number}|${p.color_id}`] || {};
       const blId = cat.bl_part_number || p.bl_part_number || p.part_number;
-      const key  = `${blId}|${p.color_id}`;
+      const key  = `${p.part_number}|${p.color_id}`;
       const qty  = parseInt(p.total_quantity) || 0;
 
       // Image priority: local file → catalog CDN URL → Rebrickable CDN URL
@@ -562,7 +594,7 @@ router.get('/sets/:setNumber/parts-list', requireToken, async (req: AuthedReques
         blMap.get(key).total_quantity += qty;
       } else {
         blMap.set(key, {
-          part_number:    blId,
+          part_number:    p.part_number,
           bl_part_number: blId,
           part_name:      cat.part_name   || p.part_name   || p.part_number,
           color_id:       p.color_id,
