@@ -288,7 +288,7 @@ fun MerkpostenDetailScreen(
                                     modifier = Modifier.weight(1f),
                                     shape = Formen.leiste,
                                     contentPadding = PaddingValues(
-                                        horizontal = Abstaende.klein, vertical = 8.dp),
+                                        horizontal = Abstaende.klein, vertical = Abstaende.klein),
                                 ) {
                                     // Eine Stufe kleiner, aus demselben Grund wie im
                                     // Katalog-Detail: Zwei Knoepfe teilen sich die

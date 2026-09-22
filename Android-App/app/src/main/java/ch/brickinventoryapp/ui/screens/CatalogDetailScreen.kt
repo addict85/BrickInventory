@@ -205,7 +205,7 @@ fun CatalogDetailScreen(
                         onClick = { showWishDialog = true },
                         modifier = Modifier.weight(1f),
                         shape = Formen.leiste,
-                        contentPadding = PaddingValues(horizontal = Abstaende.klein, vertical = 8.dp),
+                        contentPadding = PaddingValues(horizontal = Abstaende.klein, vertical = Abstaende.klein),
                     ) {
                         Icon(Icons.Default.Add, null, Modifier.size(18.dp))
                         Spacer(Modifier.width(Abstaende.winzig))
@@ -217,7 +217,7 @@ fun CatalogDetailScreen(
                         onClick = { showAddDialog = true },
                         modifier = Modifier.weight(1f),
                         shape = Formen.leiste,
-                        contentPadding = PaddingValues(horizontal = Abstaende.klein, vertical = 8.dp),
+                        contentPadding = PaddingValues(horizontal = Abstaende.klein, vertical = Abstaende.klein),
                     ) {
                         Icon(Icons.Default.Add, null, Modifier.size(18.dp))
                         Spacer(Modifier.width(Abstaende.winzig))
