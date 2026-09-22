@@ -107,7 +107,14 @@ fun PartsListScreen(
      * Fehler. Die Vorgabe reicht die Liste unveraendert durch, damit der
      * Bildschirm auch in einer Vorschau ohne ViewModel baut.
      */
-    onLadeBestand: suspend (List<PlPart>, Boolean) -> List<PlPart>? = { p, _ -> p },
+    onLadeBestand: suspend (List<PlPart>, Boolean, Boolean) -> List<PlPart>? = { p, _, _ -> p },
+    /**
+     * Hat dieses Konto ueberhaupt Unterkonten? Nur dann wird die Wahl
+     * „Unterkonten mit einbeziehen" gezeigt — dieselbe Regel wie bei den
+     * Kontofiltern der anderen Reiter: Ein Schalter ohne Wirkung ist
+     * schlechter als keiner.
+     */
+    hatUnterkonten: Boolean = false,
     barcodeSetNumber: String? = null,
     onBarcodeConsumed: () -> Unit = {},
     /**
@@ -161,6 +168,8 @@ fun PartsListScreen(
     // rememberSaveable: Die Wahl gehoert zur Frage, nicht zur Koroutine — sie
     // soll eine Drehung ueberleben, anders als die Ladeanzeige daneben.
     var nurLose   by rememberSaveable { mutableStateOf(false) }
+    // Vorgabe AUS: Marcos „aber nur die eigenen Sets".
+    var mitUnterkonten by rememberSaveable { mutableStateOf(false) }
     val pdfStatusText by pdfStatus.collectAsStateWithLifecycle()
 
     val scope = rememberCoroutineScope()
@@ -347,19 +356,45 @@ fun PartsListScreen(
                             else { Icon(Icons.Default.PictureAsPdf, null, Modifier.size(16.dp)); Spacer(Modifier.width(Abstaende.winzig)); Text("PDF") }
                         }
                     }
-                    if (generated && parts.isNotEmpty()) {
-                        // remember, NICHT rememberSaveable — dieselbe
-                        // Begruendung wie beim PDF-Export darueber.
-                        // `…Laeuft`, nicht `laedt…`: BildschirmZustandTest
-                        // ordnet Zustaende nach dem NAMEN ein, und nur die
-                        // erste Form sagt ihm „laufender Vorgang, darf eine
-                        // Drehung nicht ueberleben".
-                        var bestandLaeuft by remember { mutableStateOf(false) }
+                    OutlinedButton(
+                        onClick = { reset() },
+                        colors = ButtonDefaults.outlinedButtonColors(contentColor = MaterialTheme.colorScheme.error)
+                    ) { Text(stringResource(R.string.partslist_reset)) }
+                }
+
+                // ── Eigener Bestand: eine Zeile fuer sich ───────────────────
+                //
+                // Marcos Vorgabe zur Webapp: „Bitte die rot umkreisten Buttons
+                // auf eine neue Zeile verschieben. Diese gehoeren thematisch
+                // nicht zum Rest." Hier gilt dasselbe, und die Zeile darueber
+                // sagt jetzt auch, warum: Dort steht das ZUSAMMENSTELLEN der
+                // Liste (Set-Nr., Hinzufuegen, Erstellen) und das WEITERGEBEN
+                // (PDF, Reset). Der eigene Bestand ist keines von beidem — er
+                // traegt Zahlen IN die fertige Liste ein.
+                //
+                // „nur lose Teile" steht neben dem Knopf und nicht in den
+                // Einstellungen: Die Wahl wechselt von Frage zu Frage.
+                if (generated && parts.isNotEmpty()) {
+                    // remember, NICHT rememberSaveable — dieselbe
+                    // Begruendung wie beim PDF-Export darueber.
+                    // `…Laeuft`, nicht `laedt…`: BildschirmZustandTest
+                    // ordnet Zustaende nach dem NAMEN ein, und nur die
+                    // erste Form sagt ihm „laufender Vorgang, darf eine
+                    // Drehung nicht ueberleben".
+                    var bestandLaeuft by remember { mutableStateOf(false) }
+                    // Untereinander, nicht nebeneinander: Die Beschriftung der
+                    // Wahl ist seit Marcos Umbenennung „nur manuell erfasste
+                    // Teile beruecksichtigen" — 43 Zeichen. Neben einem Knopf
+                    // passt das auf einem 360dp-Telefon nicht, und messen kann
+                    // ich es hier nicht (kein Android-SDK in dieser Umgebung).
+                    // Beides steht trotzdem zusammen und ausserhalb der
+                    // Werkzeugzeile, und genau darum ging es.
+                    Column(verticalArrangement = Arrangement.spacedBy(Abstaende.winzig)) {
                         Button(
                             onClick = {
                                 bestandLaeuft = true
                                 scope.launch {
-                                    val neu = onLadeBestand(parts.toList(), nurLose)
+                                    val neu = onLadeBestand(parts.toList(), nurLose, mitUnterkonten)
                                     bestandLaeuft = false
                                     if (neu == null) { status = bestandFehlerText; return@launch }
                                     parts = neu
@@ -377,22 +412,28 @@ fun PartsListScreen(
                                 color = MaterialTheme.colorScheme.onSecondary, strokeWidth = 2.dp)
                             else { Icon(Icons.Default.Inventory2, null, Modifier.size(16.dp)); Spacer(Modifier.width(Abstaende.winzig)); Text(stringResource(R.string.partslist_fill_owned)) }
                         }
-                    }
-                    OutlinedButton(
-                        onClick = { reset() },
-                        colors = ButtonDefaults.outlinedButtonColors(contentColor = MaterialTheme.colorScheme.error)
-                    ) { Text(stringResource(R.string.partslist_reset)) }
-                }
-
-                // „nur lose Teile" — die Wahl gehoert neben den Knopf, nicht
-                // in die Einstellungen: Sie wechselt von Frage zu Frage.
-                if (generated && parts.isNotEmpty()) {
-                    Row(verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(Abstaende.winzig)) {
-                        Checkbox(checked = nurLose, onCheckedChange = { nurLose = it })
-                        Text(stringResource(R.string.partslist_only_loose),
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        Row(verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(Abstaende.winzig)) {
+                            Checkbox(checked = nurLose, onCheckedChange = { nurLose = it })
+                            Text(stringResource(R.string.partslist_only_loose),
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        }
+                        // Zweite Wahl, andere Frage: Die erste sagt, WELCHE ART
+                        // Teile zaehlt, diese sagt, WESSEN. Beide wirken
+                        // zusammen — „nur manuell erfasste" plus „mit
+                        // Unterkonten" zaehlt die manuell erfassten Teile des
+                        // ganzen Haushalts.
+                        if (hatUnterkonten) {
+                            Row(verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(Abstaende.winzig)) {
+                                Checkbox(checked = mitUnterkonten,
+                                    onCheckedChange = { mitUnterkonten = it })
+                                Text(stringResource(R.string.partslist_include_subs),
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            }
+                        }
                     }
                 }
 

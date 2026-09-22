@@ -43,13 +43,30 @@ internal suspend fun MainViewModel.resolveSetForPartsList(setNumber: String): Pa
         // eigenen Sets; der Rueckfall auf die Nummer passiert also schon dort.
         val setName = (repo.sets.getSetInfo(setNumber) as? Result.Success)
             ?.data?.name?.takeIf { it.isNotBlank() } ?: setNumber
-        // Deduplicate by blPartNumber + colorId (same as webapp)
+        // ── Zusammengefasst wird nach der REBRICKABLE-Nummer ────────────────
+        //
+        // Marcos Frage zur Webapp: „Kann der Abgleich im Hintergrund nicht
+        // ueber die Rebrickable ID erfolgen, die Anzeige aber weiterhin ueber
+        // die BrickLink ID?" Hier stand derselbe Fehler wie dort (und der
+        // Kommentar sagte sogar „same as webapp"):
+        //
+        // Zusammengefasst wurde nach der BrickLink-Nummer, nachgefragt wird der
+        // Bestand aber mit der REBRICKABLE-Nummer (ladeTeilelisteBestand
+        // weiter unten). Mehrere Rebrickable-Teile teilen sich regelmaessig
+        // EINE BrickLink-Nummer — Formvarianten sind genau das. Fuer die fielen
+        // zwei Zeilen zu einer zusammen: der BEDARF beider addiert, gesucht
+        // aber nur nach der Nummer, die zufaellig zuerst kam. Das Teil galt als
+        // fehlend, obwohl es im Bestand lag.
+        //
+        // Angezeigt wird weiterhin die BrickLink-Nummer (PartsListScreen:
+        // `blPartNumber ?: partNumber`), und der BrickLink-Export fasst
+        // ohnehin selbst noch einmal zusammen.
         val deduped = mutableMapOf<String, ch.brickinventoryapp.ui.screens.PlPart>()
         if (partsResult is Result.Success) {
             val serverBase = _state.value.serverUrl.trimEnd('/')
             for (p in partsResult.data.parts) {
                 val blNum = p.blPartNumber ?: p.partNumber
-                val key   = "${blNum}|${p.colorId}"
+                val key   = "${p.partNumber}|${p.colorId}"
                 val existing = deduped[key]
                 val qty = p.totalQuantity.takeIf { it > 0 } ?: 1
                 if (existing != null) {
@@ -201,19 +218,27 @@ internal suspend fun MainViewModel.exportPartsPdf(
  *        Unterschied ist die eigentliche Antwort: Ein Teil in einem
  *        aufgebauten Set besitzt man zwar, muesste dafuer aber ein anderes Set
  *        zerlegen.
+ * @param mitUnterkonten false = nur das eigene Konto (Marcos Vorgabe: „aber
+ *        nur die eigenen Sets"). Die beiden Wahlen beantworten verschiedene
+ *        Fragen und wirken zusammen: WELCHE ART Teile zaehlt, und WESSEN.
  * @return dieselbe Liste mit gesetztem `vorhanden`, oder null bei einem Fehler
  *         (der Aufrufer zeigt dann eine Meldung).
  */
 internal suspend fun MainViewModel.ladeTeilelisteBestand(
     teile: List<ch.brickinventoryapp.ui.screens.PlPart>,
     nurLose: Boolean,
+    mitUnterkonten: Boolean,
 ): List<ch.brickinventoryapp.ui.screens.PlPart>? {
     if (teile.isEmpty()) return teile
     // Gefragt wird in der REBRICKABLE-Schreibweise: Genau die steht auch in
     // der eigenen Teile-Tabelle. Die BrickLink-Nummer daneben ist fuer den
     // Export da und taugt fuer den Abgleich nicht.
     val anfrage = teile.map { BestandTeil(partNumber = it.partNumber, colorId = it.colorId) }
-    val antwort = repo.teile.getOwnedParts(anfrage, scopeFor(ch.brickinventoryapp.data.ScopeFilter.View.PARTS))
+    // Das Blickfeld kommt aus DIESER Ansicht, nicht mehr aus dem Kontofilter
+    // des Teile-Reiters. Der stand nach jedem Start auf „Alle Konten" und
+    // beantwortete hier eine Frage, die an dieser Stelle niemand gestellt hat.
+    // `null` heisst „alle" (ScopeFilter.asQuery), "own" heisst nur ich.
+    val antwort = repo.teile.getOwnedParts(anfrage, if (mitUnterkonten) null else "own")
     val bestand = (antwort as? Result.Success)?.data?.takeIf { it.success }?.bestand ?: return null
     return teile.map { p ->
         val eintrag = bestand["${p.partNumber}|${p.colorId}"]

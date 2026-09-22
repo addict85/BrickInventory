@@ -171,7 +171,11 @@ fun NavGraphBuilder.toolsGraph(
                     manuelleErfassungAnfordern = barcodeState.manuelleErfassungAnfordern,
                     onManuelleErfassungQuittiert = { vm.manuelleErfassungQuittieren() },
                     onResolveSet = { setNumber -> vm.resolveSetForPartsList(setNumber) },
-                    onLadeBestand = { teile, nurLose -> vm.ladeTeilelisteBestand(teile, nurLose) },
+                    onLadeBestand = { teile, nurLose, mitUnterkonten ->
+                        vm.ladeTeilelisteBestand(teile, nurLose, mitUnterkonten) },
+                    // Dieselbe Regel wie in der Webapp (02-gallery.js): Mehr als
+                    // ein Mitglied im Haushalt heisst „es gibt Unterkonten".
+                    hatUnterkonten = state.householdMembers.size > 1,
                     barcodeSetNumber = barcodeState.fuerTeileliste,
                     onBarcodeConsumed = { vm.clearBarcodeForPartsList() },
                     listState = partsListState

@@ -731,13 +731,38 @@ export async function getOwnedQuantities(
   // Schachtel und lässt sich verbauen. Die Bedarfsseite schliesst sie aus
   // (parts-list), die Bestandsseite nicht — das ist kein Widerspruch, sondern
   // genau der Unterschied zwischen „braucht man" und „hat man".
+  //
+  // ── Die STÜCKZAHL des Sets zählt mit (Marcos Befund) ──────────────────────
+  //
+  // „Ich besitze das Set 2x wie kann es dann sein, dass Teile fehlen?"
+  //
+  // Weil hier `SUM(p.quantity)` stand — die Menge aus EINEM Bausatz. Der
+  // Teile-Import legt je (user_id, set_number) genau einen Satz Zeilen ab
+  // (utils/partsImport.ts: DELETE, dann INSERT mit `part.quantity`); wie oft
+  // jemand das Set besitzt, steht ausschliesslich in `sets.quantity`. Diese
+  // Zahl kam im Abgleich nirgends vor. Wer ein Set zweimal hatte, sah den
+  // Inhalt von einem.
+  //
+  // Der LEFT JOIN multipliziert sie hinein. Er ist LEFT und nicht INNER, weil
+  // `parts` Zeilen ohne passendes Set enthalten kann: manuell erfasste Teile
+  // haben gar keine set_number, und eine Zeile, deren Set später gelöscht
+  // wurde, hätte sonst den ganzen Posten aus der Antwort geworfen.
+  // COALESCE(s.quantity, 1) heisst dann „einmal" — die alte Rechnung.
+  //
+  // `lose` bleibt unberührt: Manuell erfasste Teile hängen an keinem Set, und
+  // eine Stückzahl gibt es dort nicht zu multiplizieren.
   const rows = await db.all(
     `SELECT p.part_number,
             COALESCE(p.color_id, 0)                                   AS color_id,
-            COALESCE(SUM(p.quantity), 0)::int                         AS gesamt,
+            COALESCE(SUM(CASE WHEN COALESCE(p.source,'set') = 'manual'
+                              THEN p.quantity
+                              ELSE p.quantity * COALESCE(s.quantity, 1)
+                         END), 0)::int                                AS gesamt,
             COALESCE(SUM(CASE WHEN COALESCE(p.source,'set') = 'manual'
                               THEN p.quantity ELSE 0 END), 0)::int    AS lose
        FROM parts p
+       LEFT JOIN sets s
+         ON s.user_id = p.user_id AND s.set_number = p.set_number
        JOIN unnest($2::text[], $3::int[]) AS g(part_number, color_id)
          ON g.part_number = p.part_number AND g.color_id = COALESCE(p.color_id, 0)
       WHERE p.user_id = ANY($1)
@@ -749,6 +774,47 @@ export async function getOwnedQuantities(
   for (const r of rows || []) {
     out[`${r.part_number}|${parseInt(r.color_id) || 0}`] =
       { gesamt: parseInt(r.gesamt) || 0, lose: parseInt(r.lose) || 0 };
+  }
+
+  // ── Minifiguren zaehlen mit (Marcos „die Teile sollten in meinem Bestand
+  //    liegen") ──────────────────────────────────────────────────────────────
+  //
+  // Eine Teileliste enthaelt nicht nur Teile: Der Zusammenbau (08-init.js,
+  // plGenerate) haengt jede Minifigur des Sets als eigene Zeile an, mit der
+  // FIGURENNUMMER als `part_number` und Farbe 0. Gefragt wurde damit hier —
+  // und `parts` kennt keine Figuren. Jede Minifigur einer Liste galt deshalb
+  // IMMER als fehlend, auch wenn sie im Bestand stand. Stillschweigend, denn
+  // „nicht gefunden" sieht aus wie „habe ich nicht".
+  //
+  // Verwechseln kann sich dabei nichts: Figurennummern (trn241, sw0123) und
+  // Teilenummern (3001) kommen aus verschiedenen Nummernkreisen, und die
+  // Anfrage schickt fuer eine Figur ohnehin Farbe 0. Sollte eine Nummer doch
+  // einmal in beiden Tabellen stehen, gewinnt das TEIL — deshalb steht diese
+  // Schleife hinter der oberen und ueberschreibt nichts.
+  //
+  // `lose` ist bei Figuren dasselbe wie bei Teilen: was nicht in einem Set
+  // steckt, also source='manual'.
+  const figRows = await db.all(
+    `SELECT m.fig_number                                                AS part_number,
+            COALESCE(SUM(CASE WHEN COALESCE(m.source,'set') = 'manual'
+                              THEN m.quantity
+                              ELSE m.quantity * COALESCE(s.quantity, 1)
+                         END), 0)::int                                  AS gesamt,
+            COALESCE(SUM(CASE WHEN COALESCE(m.source,'set') = 'manual'
+                              THEN m.quantity ELSE 0 END), 0)::int      AS lose
+       FROM minifigs m
+       LEFT JOIN sets s
+         ON s.user_id = m.user_id AND s.set_number = m.set_number
+       JOIN unnest($2::text[]) AS g(fig_number)
+         ON g.fig_number = m.fig_number
+      WHERE m.user_id = ANY($1)
+      GROUP BY m.fig_number`,
+    [uids, nums]
+  ).catch(() => []);
+  for (const r of figRows || []) {
+    const key = `${r.part_number}|0`;
+    if (out[key]) continue;
+    out[key] = { gesamt: parseInt(r.gesamt) || 0, lose: parseInt(r.lose) || 0 };
   }
   return out;
 }

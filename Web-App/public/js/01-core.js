@@ -767,7 +767,7 @@ function showLogin(){
   const plResult=G('pl-result'); if(plResult) plResult.innerHTML='';
   const plSetsEl=G('pl-sets'); if(plSetsEl) plSetsEl.innerHTML='';
   const plStatus=G('pl-status'); if(plStatus) plStatus.textContent='';
-  ['btn-pl-pdf','btn-pl-bl','pl-bl-condition','btn-pl-bestand','pl-bestand-lose-box'].forEach(id=>{const el=G(id);if(el)el.style.display='none';});
+  ['btn-pl-pdf','btn-pl-bl','pl-bl-condition','pl-bestand-zeile'].forEach(id=>{const el=G(id);if(el)el.style.display='none';});
   G('login-screen').style.display='flex';
   G('app').style.display='none';
   showPanel('login');

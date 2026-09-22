@@ -369,6 +369,24 @@ export function initScopeSelects(members) {
     if (el.value !== saved) setScopeMode(view, el.value);
     el.style.display = '';
   }
+
+  // Die Teileliste hat kein Auswahlfeld, sondern eine Wahl mit zwei
+  // Möglichkeiten („Unterkonten mit einbeziehen", index.html). Sie beantwortet
+  // dort dieselbe Frage und gehorcht deshalb derselben Regel: Wer keine
+  // Unterkonten hat, bekommt sie nicht zu sehen — ein Schalter ohne Wirkung
+  // ist schlechter als keiner.
+  //
+  // Hier und nicht in 08-init.js, weil `isMain` genau hier feststeht: Es
+  // ergibt sich aus der Haushaltsantwort, die diese Funktion ohnehin schon
+  // gelesen hat. Ein zweiter Abruf dafür wäre eine zweite Wahrheit.
+  const subsBox = G('pl-bestand-subs-box');
+  if (subsBox) {
+    subsBox.style.display = isMain ? 'inline-flex' : 'none';
+    // Kein Haken, wenn es nichts einzubeziehen gibt: Sonst bliebe die Wahl
+    // beim Entkoppeln des letzten Unterkontos unsichtbar gesetzt stehen und
+    // wirkte weiter.
+    if (!isMain) { const cb = G('pl-bestand-subs'); if (cb) cb.checked = false; }
+  }
 }
 
 /**

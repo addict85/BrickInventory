@@ -640,13 +640,55 @@
         <input type="text" id="pl-setnr" placeholder="Set-Nr." data-i18n="pl.set_nr" data-i18n-attr="placeholder" style="height:30px;border:1px solid var(--brd);border-radius:6px;padding:0 8px;font-size:.85rem;width:110px;flex-shrink:0" / aria-label="Set-Nr.">
         <button class="btn bp btn-sm" data-click="plAddSet" style="white-space:nowrap;flex-shrink:0" data-i18n="adding.button">+ Hinzufügen</button>
         <button class="btn bs btn-sm" data-click="plGenerate" id="btn-pl-gen" disabled style="white-space:nowrap;flex-shrink:0" data-i18n="pl.generate">🔧 Erstellen</button>
-        <button class="btn bs btn-sm" data-click="plFuelleBestand" id="btn-pl-bestand" style="display:none;white-space:nowrap;flex-shrink:0" data-i18n="pl.fill_owned">📦 Eigenen Bestand eintragen</button>
-        <label id="pl-bestand-lose-box" style="display:none;align-items:center;gap:5px;font-size:.8rem;color:var(--mut);white-space:nowrap;flex-shrink:0">
-          <input type="checkbox" id="pl-bestand-lose" data-change="plFuelleBestand" style="margin:0"><span data-i18n="pl.only_loose">nur lose Teile</span></label>
         <button class="btn bp btn-sm" data-click="plExportPdf" id="btn-pl-pdf" style="display:none;white-space:nowrap;flex-shrink:0;width:200px;box-sizing:border-box;justify-content:center">📄 PDF</button>
         <select id="pl-bl-condition" aria-label="Zustand" data-i18n="detail.condition" data-i18n-attr="aria-label" style="display:none;height:30px;border:1px solid var(--brd);border-radius:6px;padding:0 4px;font-size:.8rem;background:var(--sur);width:90px;flex-shrink:0"><option value="X" data-i18n="pl.condition.any">Beliebig</option><option value="N" data-i18n="pl.condition.new">Neu</option><option value="U" data-i18n="pl.condition.used">Gebraucht</option></select>
         <button class="btn bs btn-sm" data-click="plExportBricklink" id="btn-pl-bl" style="display:none;white-space:nowrap;flex-shrink:0"><svg width="14" height="14" viewBox="0 0 120 120" xmlns="http://www.w3.org/2000/svg" style="vertical-align:middle;margin-right:4px;flex-shrink:0"><rect x="18" y="38" width="84" height="68" rx="3" fill="#e63329"/><polygon points="18,38 30,20 102,20 102,38" fill="#cc2a21"/><polygon points="102,20 118,30 118,86 102,106" fill="#b5231c"/><ellipse cx="43" cy="20" rx="6" ry="3" fill="#cc2a21"/><rect x="37" y="17" width="12" height="3" fill="#cc2a21"/><ellipse cx="43" cy="17" rx="6" ry="3" fill="#b5231c"/><ellipse cx="58" cy="20" rx="6" ry="3" fill="#cc2a21"/><rect x="52" y="17" width="12" height="3" fill="#cc2a21"/><ellipse cx="58" cy="17" rx="6" ry="3" fill="#b5231c"/><ellipse cx="73" cy="20" rx="6" ry="3" fill="#cc2a21"/><rect x="67" y="17" width="12" height="3" fill="#cc2a21"/><ellipse cx="73" cy="17" rx="6" ry="3" fill="#b5231c"/><ellipse cx="88" cy="20" rx="6" ry="3" fill="#cc2a21"/><rect x="82" y="17" width="12" height="3" fill="#cc2a21"/><ellipse cx="88" cy="17" rx="6" ry="3" fill="#b5231c"/><rect x="24" y="54" width="72" height="40" rx="2" fill="#fff"/><rect x="29" y="58" width="46" height="15" rx="2" fill="#f5a800"/><text x="52" y="69" text-anchor="middle" font-family="Arial,sans-serif" font-weight="800" font-size="11" fill="white">BIM</text></svg>BrickLink XML</button>
         <button class="btn bd btn-sm" data-click="plReset" style="white-space:nowrap;flex-shrink:0;margin-left:auto" data-i18n="partslist.reset">🗑️ Reset</button>
+        </div>
+        <!--
+          Eigene ZEILE (Marcos Vorgabe): „Diese gehören thematisch nicht zum
+          Rest."
+
+          Er hat recht, und die Zeile darüber sagt jetzt auch, warum: Dort
+          stehen die Teileliste ZUSAMMENSTELLEN (Set-Nr., Hinzufügen,
+          Erstellen) und sie WEITERGEBEN (PDF, BrickLink, Reset). Der eigene
+          Bestand ist keines von beidem — er trägt Zahlen IN die fertige
+          Liste ein und ändert damit, was dasteht.
+
+          Die Sichtbarkeit hängt jetzt an DIESER Zeile statt an ihren beiden
+          Kindern: Sonst bliebe hier ein 8px-Streifen aus dem gap des
+          Elternteils stehen, solange noch keine Liste erzeugt ist — ein
+          leerer Absatz mitten in der Kopfzeile.
+
+          Zum Namen: Schlüssel und IDs sagen „lose", die Beschriftung sagt
+          „manuell erfasst". Das ist dieselbe Sache — der Server zählt unter
+          `lose` genau die Zeilen mit source='manual' (utils/handlers/parts.ts,
+          getOwnedQuantities). Marcos Beschriftung benennt die Bedingung,
+          die alten Namen benennen die Wirkung.
+        -->
+        <div id="pl-bestand-zeile" style="display:none;align-items:center;gap:.5rem;flex-wrap:wrap">
+          <button class="btn bs btn-sm" data-click="plFuelleBestand" id="btn-pl-bestand" style="white-space:nowrap;flex-shrink:0" data-i18n="pl.fill_owned">📦 Bereits vorhandene Teile eintragen</button>
+          <label id="pl-bestand-lose-box" style="display:inline-flex;align-items:center;gap:5px;font-size:.8rem;color:var(--mut);white-space:nowrap;flex-shrink:0">
+            <input type="checkbox" id="pl-bestand-lose" data-change="plFuelleBestand" style="margin:0"><span data-i18n="pl.only_loose">nur manuell erfasste Teile berücksichtigen</span></label>
+          <!--
+            Zweite Wahl, andere Frage (Marcos Vorgabe): Die erste sagt, WELCHE
+            ART Teile zählt (manuell erfasst oder auch die aus Sets), diese
+            sagt, WESSEN. Beide wirken zusammen — „nur manuell erfasste" plus
+            „mit Unterkonten" zählt die manuell erfassten Teile des ganzen
+            Haushalts.
+
+            Ohne Haken gilt `accounts=own`, also nur das eigene Konto — Marcos
+            „aber nur die eigenen Sets". Das ist bewusst die Vorgabe und eine
+            Änderung: Bisher übernahm der Abgleich stillschweigend den
+            Kontofilter des TEILE-Reiters, und der steht nach jeder Anmeldung
+            auf „Alle Konten". Eine Einstellung, die woanders sitzt und hier
+            wirkt, ist keine Antwort auf „wessen Teile zähle ich".
+
+            Sichtbar nur für ein Hauptkonto mit Unterkonten — dieselbe Regel
+            wie bei den Kontofiltern der anderen Reiter (02-gallery.js).
+          -->
+          <label id="pl-bestand-subs-box" style="display:none;align-items:center;gap:5px;font-size:.8rem;color:var(--mut);white-space:nowrap;flex-shrink:0">
+            <input type="checkbox" id="pl-bestand-subs" data-change="plFuelleBestand" style="margin:0"><span data-i18n="pl.include_subs">Unterkonten mit einbeziehen</span></label>
         </div>
       </div>
       <!-- Added sets -->
