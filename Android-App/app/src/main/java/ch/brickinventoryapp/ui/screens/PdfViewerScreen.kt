@@ -55,6 +55,8 @@ import java.io.IOException
 import java.io.RandomAccessFile
 import java.util.concurrent.TimeUnit
 import ch.brickinventoryapp.ui.theme.Abstaende
+import ch.brickinventoryapp.util.PdfSchritt
+import ch.brickinventoryapp.util.pdfSchritt
 
 /**
  * In-App PDF-Viewer.
@@ -111,28 +113,13 @@ fun PdfViewerScreen(
             ?.createWifiLock(WifiManager.WIFI_MODE_FULL_HIGH_PERF, "brickinv:pdf")
         try {
             try { wifiLock?.acquire() } catch (_: Exception) {}
-            val file = withContext(Dispatchers.IO) {
-                val cacheFile = File(ctx.cacheDir, "pdfview_${pdfUrl.hashCode()}.pdf")
-                prunePdfCache(ctx.cacheDir, keep = cacheFile)
-                downloadPdfWithResume(
-                    pdfUrl, cacheFile, httpClient,
-                    ctx.getString(R.string.pdfview_download_failed),
-                    ctx.getString(R.string.pdfview_empty_response)
-                ) { downloaded, total ->
-                    val pct = if (total > 0) (downloaded * 100 / total).toInt() else 0
-                    state = PdfLoadState.Downloading(pct, downloaded, if (total > 0) total else 0L)
-                }
-                cacheFile
-            }
-            state = PdfLoadState.Rendering
-            val pageCount = withContext(Dispatchers.IO) {
-                val pfd = ParcelFileDescriptor.open(file, ParcelFileDescriptor.MODE_READ_ONLY)
-                val renderer = PdfRenderer(pfd)
-                val count = renderer.pageCount
-                renderer.close()
-                pfd.close()
-                count
-            }
+            val cacheFile = File(ctx.cacheDir, "pdfview_${pdfUrl.hashCode()}.pdf")
+            val (file, pageCount) = ladeUndZaehle(
+                pdfUrl, cacheFile, httpClient,
+                ctx.getString(R.string.pdfview_download_failed),
+                ctx.getString(R.string.pdfview_empty_response),
+                aufraeumen = { prunePdfCache(ctx.cacheDir, keep = cacheFile) },
+            ) { state = it }
             state = PdfLoadState.Ready(file, pageCount)
         } catch (e: Exception) {
             state = PdfLoadState.Error(e.message ?: ctx.getString(R.string.pdfview_unknown_error))
@@ -304,6 +291,68 @@ private suspend fun renderPdfPage(file: File, index: Int, targetWidthPx: Int): B
  *    von vorne — bis zu maxAttempts Versuche.
  */
 /**
+ * Laden und Seiten zaehlen — mit EINEM Selbstheilungsversuch.
+ *
+ * ── Warum der zweite Versuch ────────────────────────────────────────────────
+ *
+ * Seit der Download in `<name>.part` schreibt (util/PdfCache.kt), heisst eine
+ * Datei ohne Endung `.part` „vollstaendig". Auf Geraeten, die die App vorher
+ * schon hatten, stimmt das nicht unbedingt: Die alte Fassung schrieb direkt in
+ * `<name>`, und ein dort abgebrochener Download hinterliess eine abgeschnittene
+ * Datei unter dem fertigen Namen. Die wuerde jetzt als fertig gelten und beim
+ * Oeffnen an PdfRenderer scheitern — mit einer Meldung, die nach einem
+ * kaputten Server aussieht und keiner ist.
+ *
+ * Deshalb: Scheitert das Aufbereiten, wird der Zwischenspeicher fuer genau
+ * diese Anleitung weggeworfen und EINMAL frisch geladen. Klappt es dann wieder
+ * nicht, liegt es nicht am Zwischenspeicher, und der Fehler geht durch.
+ *
+ * Genau einmal, nicht in einer Schleife: Eine Anleitung, die der Renderer
+ * nicht lesen kann, wird das auch beim dritten Mal nicht — dann waere es eine
+ * Endlosschleife ueber 300 MB.
+ */
+private suspend fun ladeUndZaehle(
+    url: String,
+    cacheFile: File,
+    httpClient: OkHttpClient,
+    fehlerText: String,
+    leerText: String,
+    aufraeumen: () -> Unit,
+    onZustand: (PdfLoadState) -> Unit,
+): Pair<File, Int> {
+    var versuch = 0
+    while (true) {
+        versuch++
+        withContext(Dispatchers.IO) {
+            aufraeumen()
+            downloadPdfWithResume(url, cacheFile, httpClient, fehlerText, leerText) { geladen, gesamt ->
+                val pct = if (gesamt > 0) (geladen * 100 / gesamt).toInt() else 0
+                onZustand(PdfLoadState.Downloading(pct, geladen, if (gesamt > 0) gesamt else 0L))
+            }
+        }
+        onZustand(PdfLoadState.Rendering)
+        try {
+            val anzahl = withContext(Dispatchers.IO) {
+                val pfd = ParcelFileDescriptor.open(cacheFile, ParcelFileDescriptor.MODE_READ_ONLY)
+                val renderer = PdfRenderer(pfd)
+                val count = renderer.pageCount
+                renderer.close()
+                pfd.close()
+                count
+            }
+            return cacheFile to anzahl
+        } catch (e: Exception) {
+            if (versuch >= 2) throw e
+            withContext(Dispatchers.IO) {
+                cacheFile.delete()
+                File(cacheFile.path + ".part").delete()
+            }
+            onZustand(PdfLoadState.Downloading(0, 0, 0))
+        }
+    }
+}
+
+/**
  * Hält den PDF-Ansichts-Cache unter [PDF_CACHE_BUDGET_BYTES].
  *
  * Angesehene Anleitungen bleiben absichtlich liegen (erneutes Öffnen ohne
@@ -317,14 +366,23 @@ private suspend fun renderPdfPage(file: File, index: Int, targetWidthPx: Int): B
  */
 private fun prunePdfCache(cacheDir: File, keep: File) {
     try {
+        // `.part` MIT gezaehlt: Ein abgebrochener 300-MB-Download belegt
+        // denselben Platz wie ein fertiger. Vorher endete der Filter auf
+        // ".pdf" und uebersah die Teildateien — sie waren damit vom Budget
+        // ausgenommen und wurden nie geraeumt.
         val files = cacheDir.listFiles { f ->
-            f.isFile && f.name.startsWith("pdfview_") && f.name.endsWith(".pdf")
+            f.isFile && f.name.startsWith("pdfview_") &&
+                (f.name.endsWith(".pdf") || f.name.endsWith(".pdf.part"))
         }?.sortedByDescending { it.lastModified() } ?: return
 
+        // Die gerade angeforderte Anleitung hat ZWEI Namen (fertig und
+        // Teildatei); geschont werden beide, sonst raeumt dieser Lauf den
+        // Download weg, den er gleich fortsetzen soll.
+        val geschont = setOf(keep.absolutePath, keep.absolutePath + ".part")
         var used = 0L
         for (f in files) {
             // Die aktuell angeforderte Datei zählt zum Budget, wird aber nie gelöscht
-            if (f.absolutePath == keep.absolutePath) { used += f.length(); continue }
+            if (f.absolutePath in geschont) { used += f.length(); continue }
             used += f.length()
             if (used > PDF_CACHE_BUDGET_BYTES) f.delete()
         }
@@ -362,52 +420,82 @@ private suspend fun downloadPdfWithResume(
         .retryOnConnectionFailure(true)
         .build()
 
+    // Der laufende Download schreibt in `<name>.part`; erst der Abschluss
+    // benennt um. Warum das der Kern des Fehlers war, steht in
+    // util/PdfCache.kt — kurz: Ohne diese Trennung ist eine FERTIGE Datei von
+    // einem abgebrochenen Download nicht zu unterscheiden, und der Viewer
+    // fragte nach einem Bereich hinter dem Dateiende.
+    val teil = File(dest.path + ".part")
+
     val maxAttempts = 8
     var lastError: Exception? = null
     for (attempt in 1..maxAttempts) {
-        val existing = if (dest.exists()) dest.length() else 0L
-        val reqBuilder = Request.Builder().url(url)
-        if (existing > 0) reqBuilder.header("Range", "bytes=$existing-")
-        try {
-            client.newCall(reqBuilder.build()).execute().use { resp ->
-                if (!resp.isSuccessful) throw IOException("HTTP ${resp.code}")
-                // Server unterstützt Range → 206; ignoriert Range → 200 (neu starten).
-                val resuming = resp.code == 206 && existing > 0
-                if (existing > 0 && !resuming) dest.delete()
-                val body = resp.body ?: throw IOException(leerText)
-                val total: Long = if (resuming) {
-                    resp.header("Content-Range")?.substringAfterLast('/')?.toLongOrNull()
-                        ?: (existing + body.contentLength())
-                } else {
-                    body.contentLength()
-                }
-                var downloaded = if (resuming) existing else 0L
-                RandomAccessFile(dest, "rw").use { raf ->
-                    if (resuming) raf.seek(existing) else raf.setLength(0)
-                    body.byteStream().use { input ->
-                        val buf = ByteArray(64 * 1024)
-                        var lastPct = -1
-                        var lastEmit = 0L
-                        var read = input.read(buf)
-                        while (read != -1) {
-                            raf.write(buf, 0, read)
-                            downloaded += read
-                            val now = System.currentTimeMillis()
-                            val pct = if (total > 0) (downloaded * 100 / total).toInt() else -1
-                            if (pct != lastPct || now - lastEmit > 300) {
-                                lastPct = pct; lastEmit = now
-                                onProgress(downloaded, total)
-                            }
-                            read = input.read(buf)
-                        }
-                    }
-                }
-                onProgress(downloaded, total)
+        when (val schritt = pdfSchritt(
+            fertigeGroesse = if (dest.exists()) dest.length() else 0L,
+            teilGroesse    = if (teil.exists()) teil.length() else 0L,
+        )) {
+            is PdfSchritt.Fertig -> {
+                // Schon vollstaendig da: kein Netz, kein Warten. Der Fortschritt
+                // wird trotzdem gemeldet, damit die Anzeige nicht bei 0 % stehen
+                // bleibt, bevor sie auf „wird aufbereitet" springt.
+                val len = dest.length()
+                onProgress(len, len)
+                return
             }
-            return // Erfolg
-        } catch (e: Exception) {
-            lastError = e
-            if (attempt < maxAttempts) delay((1000L * attempt).coerceAtMost(4000L)) // Pause, dann Resume
+            is PdfSchritt.Holen -> {
+                val ab = schritt.ab
+                val reqBuilder = Request.Builder().url(url)
+                if (ab > 0) reqBuilder.header("Range", "bytes=$ab-")
+                try {
+                    client.newCall(reqBuilder.build()).execute().use { resp ->
+                        if (!resp.isSuccessful) throw IOException("HTTP ${resp.code}")
+                        // Server unterstützt Range → 206; ignoriert Range → 200 (neu starten).
+                        val resuming = resp.code == 206 && ab > 0
+                        if (ab > 0 && !resuming) teil.delete()
+                        val body = resp.body ?: throw IOException(leerText)
+                        val total: Long = if (resuming) {
+                            resp.header("Content-Range")?.substringAfterLast('/')?.toLongOrNull()
+                                ?: (ab + body.contentLength())
+                        } else {
+                            body.contentLength()
+                        }
+                        var downloaded = if (resuming) ab else 0L
+                        RandomAccessFile(teil, "rw").use { raf ->
+                            if (resuming) raf.seek(ab) else raf.setLength(0)
+                            body.byteStream().use { input ->
+                                val buf = ByteArray(64 * 1024)
+                                var lastPct = -1
+                                var lastEmit = 0L
+                                var read = input.read(buf)
+                                while (read != -1) {
+                                    raf.write(buf, 0, read)
+                                    downloaded += read
+                                    val now = System.currentTimeMillis()
+                                    val pct = if (total > 0) (downloaded * 100 / total).toInt() else -1
+                                    if (pct != lastPct || now - lastEmit > 300) {
+                                        lastPct = pct; lastEmit = now
+                                        onProgress(downloaded, total)
+                                    }
+                                    read = input.read(buf)
+                                }
+                            }
+                        }
+                        onProgress(downloaded, total)
+                    }
+                    // Erst JETZT heisst die Datei wie die fertige. Schlaegt das
+                    // Umbenennen fehl (seltene Dateisystem-Eigenheit), wird
+                    // kopiert statt aufgegeben — sonst laedt der naechste
+                    // Aufruf alles noch einmal.
+                    if (!teil.renameTo(dest)) {
+                        teil.copyTo(dest, overwrite = true)
+                        teil.delete()
+                    }
+                    return // Erfolg
+                } catch (e: Exception) {
+                    lastError = e
+                    if (attempt < maxAttempts) delay((1000L * attempt).coerceAtMost(4000L)) // Pause, dann Resume
+                }
+            }
         }
     }
     throw lastError ?: IOException(fehlerText)

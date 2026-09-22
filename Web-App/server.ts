@@ -111,6 +111,7 @@ import { generateThumb } from './utils/thumbs';
 import { getGlobalSetting, deleteGlobalSetting } from './utils/settings';
 import { HAUSHALT_KANAL, leereHaushaltCache } from './utils/household';
 import { drossleBeruehren } from './utils/sitzungsBeruehrung';
+import { antwortAufDateiFehler, liefereDatei } from './utils/dateiAusliefern';
 
 const WORKERS = parseInt(process.env.WEB_WORKERS || '0') || Math.max(2, os.cpus().length);
 
@@ -485,10 +486,9 @@ function serveDataFile(subDir: string) {
     const filePath = safeDataPath(subDir, segments);
     if (!filePath) return res.status(404).send('Datei nicht gefunden');
     // Kein fs.existsSync mehr (blockiert den Event-Loop) — sendFile prüft
-    // die Existenz selbst; wir mappen den Fehler nur auf 404.
-    res.sendFile(filePath, (err?: Error) => {
-      if (err && !res.headersSent) res.status(404).send('Datei nicht gefunden');
-    });
+    // die Existenz selbst. Die Antwort auf einen Fehler steht in
+    // utils/dateiAusliefern.ts: Nicht jeder Fehler ist ein „nicht gefunden".
+    liefereDatei(res, filePath);
   };
 }
 
@@ -504,9 +504,7 @@ app.get('/data/instructions/*', async (req: WildcardRequest, res: Response) => {
   const segments = req.params[0].split('/').filter(Boolean);
   const filePath = safeDataPath('instructions', segments);
   if (!filePath) return res.status(404).send('Datei nicht gefunden');
-  res.sendFile(filePath, err => {
-    if (err && !res.headersSent) res.status(404).send('Datei nicht gefunden');
-  });
+  liefereDatei(res, filePath);
 });
 // Bild-Proxy: eigene Datei (routes/imgProxy.ts).
 //
@@ -620,6 +618,16 @@ app.get('/images/*', async (req: WildcardRequest, res: Response) => {
   res.sendFile(filePath, async err => {
     if (!err || res.headersSent) return;
 
+    // Ein Fehler MIT eigener Zahl ist keine fehlende Datei, sondern eine
+    // Aussage ueber die Anfrage — 416 fuer einen Bereich hinter dem Dateiende,
+    // 403 fuer einen Pfad, den das Dateisystem verweigert. Die Ausweichwege
+    // unten (Original statt Vorschau, CDN) suchen eine ANDERE DATEI; das hilft
+    // hier nicht und verdeckte bei den Anleitungen die wahre Ursache
+    // (utils/dateiAusliefern.ts nennt den Fall).
+    if ((err as { status?: number }).status && (err as { status?: number }).status !== 404) {
+      return antwortAufDateiFehler(res, err);
+    }
+
     // Fehlt eine VORSCHAU, gibt es fast immer das Original daneben — dann geht
     // das raus, sofort (Nachtrag 40, Marcos Anforderung: „Der Client soll das
     // Bild jeweils direkt erhalten und nicht warten, bis das Thumbs-Image
@@ -666,9 +674,7 @@ app.get('/images/*', async (req: WildcardRequest, res: Response) => {
             (require('./utils/thumbs') as typeof import('./utils/thumbs')).generateThumb(webPfadOriginal).catch(() => {});
           } catch (e) { meldeUndWeiter('server:vorschau-erzeugen', e); }
         });
-        return res.sendFile(originalPfad, err2 => {
-          if (err2 && !res.headersSent) res.status(404).send('Datei nicht gefunden');
-        });
+        return liefereDatei(res, originalPfad);
       }
     }
 
@@ -681,7 +687,7 @@ app.get('/images/*', async (req: WildcardRequest, res: Response) => {
     if (cdn && !res.headersSent) {
       return res.redirect(302, IMG_PROXY_PFAD + '?url=' + encodeURIComponent(cdn));
     }
-    if (!res.headersSent) res.status(404).send('Datei nicht gefunden');
+    antwortAufDateiFehler(res, err);
   });
 });
 
