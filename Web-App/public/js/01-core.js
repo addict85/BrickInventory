@@ -164,9 +164,33 @@ export function G(id) { return document.getElementById(id); }
  */
 export function knopfBesetzt(btn, laeuft = '…') {
   const vorher = btn.textContent;
+  // Die BREITE einfrieren, bevor die Beschriftung weicht.
+  //
+  // Marcos Video vom 22.09. zeigt es im Reiter „Teileliste": Beim Druck auf
+  // „Bereits vorhandene Teile eintragen“ zuckt die ganze Zeile kurz zusammen
+  // und springt zurück. Grund ist dieser Helfer — „…“ ist rund 200 px schmaler
+  // als die Beschriftung, und in einer flex-Zeile rutscht alles rechts daneben
+  // mit. Gemessen an den Einzelbildern: 7 Bilder bei 30 B/s, also gut 0,2 s.
+  //
+  // offsetWidth ist die AUSSENBREITE inklusive Rahmen und Innenabstand. Als
+  // min-width gesetzt hält sie die Zeile still, ohne den Knopf zu verbreitern:
+  // Ist der Wartetext ausnahmsweise länger (die PDF-Erzeugung gibt eigene mit),
+  // darf der Knopf weiter wachsen.
+  //
+  // 0 bedeutet „der Knopf wird gerade nicht angezeigt“ (display:none, oder
+  // jsdom ohne Layout). Dann gibt es nichts einzufrieren.
+  const breite = btn.offsetWidth;
+  const minVorher = btn.style.minWidth;
+  if (breite) btn.style.minWidth = breite + 'px';
   btn.disabled = true;
   btn.textContent = laeuft;
-  return (text) => { btn.disabled = false; btn.textContent = text ?? vorher; };
+  return (text) => {
+    btn.disabled = false;
+    btn.textContent = text ?? vorher;
+    // Die eigene Vorgabe zurückgeben, nicht blind leeren: Ein Knopf, der von
+    // sich aus eine min-width trägt, behält sie.
+    btn.style.minWidth = minVorher;
+  };
 }
 
 // Return thumbnail URL if it would exist, else original
