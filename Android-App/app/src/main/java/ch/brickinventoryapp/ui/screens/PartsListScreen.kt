@@ -39,6 +39,8 @@ import androidx.compose.ui.focus.focusRequester
 import ch.brickinventoryapp.R
 import androidx.compose.ui.res.vectorResource
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.text.input.ImeAction
+import ch.brickinventoryapp.util.NumericInput
 import ch.brickinventoryapp.ui.theme.Abstaende
 import ch.brickinventoryapp.ui.theme.Schrift
 
@@ -243,7 +245,19 @@ fun PartsListScreen(
                 Row(horizontalArrangement = Arrangement.spacedBy(Abstaende.klein), verticalAlignment = Alignment.CenterVertically) {
                     OutlinedTextField(
                         value = setInput,
-                        onValueChange = { setInput = it },
+                        // Dasselbe Paar wie bei jedem anderen Setnummernfeld
+                        // (util/NumericInput.kt): Filter UND Tastaturwahl.
+                        // Ohne die Wahl geht hier die Buchstabentastatur auf,
+                        // obwohl nur Ziffern und der Varianten-Bindestrich
+                        // hineingehoeren — dieses Feld war als einziges der
+                        // drei uebersehen worden.
+                        //
+                        // Done statt Next, weil rechts daneben kein Feld mehr
+                        // kommt, sondern der Knopf „+“: Die Tastatur soll sich
+                        // schliessen, nicht ins Leere weiterspringen. Denselben
+                        // Weg geht das letzte Feld in AcquisitionManagementScreen.
+                        onValueChange = { setInput = NumericInput.setNumber(it) },
+                        keyboardOptions = NumericInput.ganzzahlTastatur(ImeAction.Done),
                         placeholder = { Text(stringResource(R.string.partslist_set_number_placeholder)) },
                         modifier = Modifier.weight(1f).focusRequester(setFeldFokus),
                         singleLine = true,
@@ -318,9 +332,19 @@ fun PartsListScreen(
                         enabled = sets.isNotEmpty() && !isLoading,
                         colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary)
                     ) {
+                        // Nur das SYMBOL wird zum Kreisel, die Beschriftung
+                        // bleibt stehen. Tauschte der ganze Inhalt, schrumpfte
+                        // der Knopf auf Kreiselbreite und alles rechts daneben
+                        // spraenge mit — dasselbe Flackern, das Marcos Video
+                        // vom 22.09. in der Webapp zeigt (dort haelt jetzt
+                        // knopfBesetzt die Breite fest, 01-core.js). Kreisel
+                        // und Symbol sind beide 16.dp breit, die Zeile steht
+                        // also still.
                         if (isLoading) CircularProgressIndicator(Modifier.size(16.dp),
                             color = MaterialTheme.colorScheme.onPrimary, strokeWidth = 2.dp)
-                        else { Icon(Icons.Default.Build, null, Modifier.size(16.dp)); Spacer(Modifier.width(Abstaende.winzig)); Text(stringResource(R.string.partslist_generate)) }
+                        else Icon(Icons.Default.Build, null, Modifier.size(16.dp))
+                        Spacer(Modifier.width(Abstaende.winzig))
+                        Text(stringResource(R.string.partslist_generate))
                     }
                     val ctx = LocalContext.current
                     if (generated && parts.isNotEmpty()) {
@@ -351,9 +375,19 @@ fun PartsListScreen(
                             colors = ButtonDefaults.buttonColors(
                                 containerColor = MaterialTheme.colorScheme.tertiary)
                         ) {
+                            // Nur das SYMBOL wird zum Kreisel, die Beschriftung
+                            // bleibt stehen. Tauschte der ganze Inhalt, schrumpfte
+                            // der Knopf auf Kreiselbreite und alles rechts daneben
+                            // spraenge mit — dasselbe Flackern, das Marcos Video
+                            // vom 22.09. in der Webapp zeigt (dort haelt jetzt
+                            // knopfBesetzt die Breite fest, 01-core.js). Kreisel
+                            // und Symbol sind beide 16.dp breit, die Zeile steht
+                            // also still.
                             if (isExporting) CircularProgressIndicator(Modifier.size(16.dp),
                                 color = MaterialTheme.colorScheme.onTertiary, strokeWidth = 2.dp)
-                            else { Icon(Icons.Default.PictureAsPdf, null, Modifier.size(16.dp)); Spacer(Modifier.width(Abstaende.winzig)); Text("PDF") }
+                            else Icon(Icons.Default.PictureAsPdf, null, Modifier.size(16.dp))
+                            Spacer(Modifier.width(Abstaende.winzig))
+                            Text("PDF")
                         }
                     }
                     OutlinedButton(
@@ -408,9 +442,19 @@ fun PartsListScreen(
                             colors = ButtonDefaults.buttonColors(
                                 containerColor = MaterialTheme.colorScheme.secondary)
                         ) {
+                            // Nur das SYMBOL wird zum Kreisel, die Beschriftung
+                            // bleibt stehen. Tauschte der ganze Inhalt, schrumpfte
+                            // der Knopf auf Kreiselbreite und alles rechts daneben
+                            // spraenge mit — dasselbe Flackern, das Marcos Video
+                            // vom 22.09. in der Webapp zeigt (dort haelt jetzt
+                            // knopfBesetzt die Breite fest, 01-core.js). Kreisel
+                            // und Symbol sind beide 16.dp breit, die Zeile steht
+                            // also still.
                             if (bestandLaeuft) CircularProgressIndicator(Modifier.size(16.dp),
                                 color = MaterialTheme.colorScheme.onSecondary, strokeWidth = 2.dp)
-                            else { Icon(Icons.Default.Inventory2, null, Modifier.size(16.dp)); Spacer(Modifier.width(Abstaende.winzig)); Text(stringResource(R.string.partslist_fill_owned)) }
+                            else Icon(Icons.Default.Inventory2, null, Modifier.size(16.dp))
+                            Spacer(Modifier.width(Abstaende.winzig))
+                            Text(stringResource(R.string.partslist_fill_owned))
                         }
                         Row(verticalAlignment = Alignment.CenterVertically,
                             horizontalArrangement = Arrangement.spacedBy(Abstaende.winzig)) {
