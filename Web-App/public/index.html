@@ -659,11 +659,17 @@
           Kindern: Sonst bliebe hier ein 8px-Streifen aus dem gap des
           Elternteils stehen, solange noch keine Liste erzeugt ist — ein
           leerer Absatz mitten in der Kopfzeile.
+
+          Zum Namen: Schlüssel und IDs sagen „lose", die Beschriftung sagt
+          „manuell erfasst". Das ist dieselbe Sache — der Server zählt unter
+          `lose` genau die Zeilen mit source='manual' (utils/handlers/parts.ts,
+          getOwnedQuantities). Marcos Beschriftung benennt die Bedingung,
+          die alten Namen benennen die Wirkung.
         -->
         <div id="pl-bestand-zeile" style="display:none;align-items:center;gap:.5rem;flex-wrap:wrap">
           <button class="btn bs btn-sm" data-click="plFuelleBestand" id="btn-pl-bestand" style="white-space:nowrap;flex-shrink:0" data-i18n="pl.fill_owned">📦 Bereits vorhandene Teile eintragen</button>
           <label id="pl-bestand-lose-box" style="display:inline-flex;align-items:center;gap:5px;font-size:.8rem;color:var(--mut);white-space:nowrap;flex-shrink:0">
-            <input type="checkbox" id="pl-bestand-lose" data-change="plFuelleBestand" style="margin:0"><span data-i18n="pl.only_loose">nur lose Teile</span></label>
+            <input type="checkbox" id="pl-bestand-lose" data-change="plFuelleBestand" style="margin:0"><span data-i18n="pl.only_loose">nur manuell erfasste Teile berücksichtigen</span></label>
         </div>
       </div>
       <!-- Added sets -->

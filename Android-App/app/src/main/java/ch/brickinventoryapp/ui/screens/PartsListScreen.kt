@@ -373,8 +373,14 @@ fun PartsListScreen(
                     // erste Form sagt ihm „laufender Vorgang, darf eine
                     // Drehung nicht ueberleben".
                     var bestandLaeuft by remember { mutableStateOf(false) }
-                    Row(verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(Abstaende.klein)) {
+                    // Untereinander, nicht nebeneinander: Die Beschriftung der
+                    // Wahl ist seit Marcos Umbenennung „nur manuell erfasste
+                    // Teile beruecksichtigen" — 43 Zeichen. Neben einem Knopf
+                    // passt das auf einem 360dp-Telefon nicht, und messen kann
+                    // ich es hier nicht (kein Android-SDK in dieser Umgebung).
+                    // Beides steht trotzdem zusammen und ausserhalb der
+                    // Werkzeugzeile, und genau darum ging es.
+                    Column(verticalArrangement = Arrangement.spacedBy(Abstaende.winzig)) {
                         Button(
                             onClick = {
                                 bestandLaeuft = true
