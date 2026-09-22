@@ -139,8 +139,11 @@ fun BrickInventoryManagerApp(
             add(Triple(Screen.Minifigs,   { Text("👷", fontSize = 20.sp) },        labelMinifigs))
             add(Triple(Screen.PartsList,  { Text("📋", fontSize = 20.sp) },        labelPartslist))
             add(Triple(Screen.Finance,    { Text("💰", fontSize = 20.sp) },        labelFinance))
+            // Merkliste VOR dem Katalog (Marcos Vorgabe). Beide Reiter gehoeren
+            // zusammen — man merkt sich, was man im Katalog findet —, und die
+            // Webapp fuehrt sie seit derselben Aenderung in derselben Folge.
+            add(Triple(Screen.Wanted,     { Text("⭐", fontSize = 20.sp) },        labelWanted))
             add(Triple(Screen.Catalog,    { Text("📚", fontSize = 20.sp) },        labelCatalog))
-            add(Triple(Screen.Wanted,   { Text("⭐", fontSize = 20.sp) },        labelWanted))
             add(Triple(Screen.Comparison, { Icon(ImageVector.vectorResource(R.drawable.ic_compare_scale), labelComparison, tint = Color.Unspecified) }, labelComparison))
         }
     }

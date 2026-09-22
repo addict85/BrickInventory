@@ -5,6 +5,8 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
@@ -13,6 +15,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import ch.brickinventoryapp.R
 import ch.brickinventoryapp.data.model.Merkposten
@@ -103,6 +107,39 @@ fun MerkpostenDetailScreen(
                 navigationIcon = {
                     IconButton(onClick = onBack) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, stringResource(R.string.common_back))
+                    }
+                },
+                // Der Papierkorb steht hier und nicht mehr als Knopf unten.
+                //
+                // ── Warum er umgezogen ist ──────────────────────────────────
+                //
+                // Marcos Befund kam aus der Webapp: „Der Papierkorb im
+                // Detaildialog der Teile ist kleiner als auf den anderen
+                // Detaildialogen." In der App war die Abweichung eine andere,
+                // aber dieselbe Sorte: Set-Detail und Teile-Detail tragen den
+                // Papierkorb seit jeher in der Kopfleiste, dieser Bildschirm
+                // als einziger einen Textknopf ganz unten. Wer aus dem
+                // Set-Detail herkommt, sucht ihn oben.
+                //
+                // Ohne Rueckfrage, wie in der Webapp (16-merkliste.js:
+                // merkpostenDetailLoeschen). Ein Merkposten ist kein Besitz —
+                // versehentlich geloescht, ist er in zwei Griffen wieder da.
+                //
+                // Beschriftung `common_delete` wie am Set- und am
+                // Teile-Detail: Drei Papierkoerbe, die der Bildschirmleser
+                // verschieden ansagt, waeren drei Dinge statt einem.
+                //
+                // `let` statt eines direkten Zugriffs: Hier oben ist der
+                // Merkposten noch nullbar — die Pruefung darauf steht im Rumpf
+                // des Scaffolds, der erst nach der Kopfleiste aufgebaut wird.
+                // Solange nichts geladen ist, gibt es auch nichts zu loeschen.
+                actions = {
+                    merkposten?.let { w ->
+                        IconButton(onClick = {
+                            vm.loescheMerkposten(w.setNumber, w.condition, w.userId)
+                        }) {
+                            Icon(Icons.Default.Delete, stringResource(R.string.common_delete))
+                        }
                     }
                 },
             )
@@ -211,8 +248,16 @@ fun MerkpostenDetailScreen(
 
             item {
                 Column(verticalArrangement = Arrangement.spacedBy(Abstaende.klein)) {
-                    // BrickLink zuerst, der Preisvergleich darunter (Marcos Vorgabe).
-                    for ((beschriftung, url) in listOfNotNull(
+                    // Marcos Vorgabe: BrickLink und Preisvergleich NEBENEINANDER,
+                    // und darunter mit ABSTAND die Uebernahme. Der groessere
+                    // Abstand ist die ganze Aussage: Oben zwei Wege nach
+                    // draussen, unten die Griffe, die hier etwas veraendern.
+                    //
+                    // `weight(1f)` teilt die Breite gleich auf. Faellt eine der
+                    // beiden Adressen weg, nimmt die andere die ganze Zeile —
+                    // ein halber leerer Streifen waere die schlechtere Antwort
+                    // auf „dafuer gibt es keine Adresse".
+                    val adressen = listOfNotNull(
                         detail.katalog?.bricklink?.url?.takeIf { it.isNotBlank() }
                             ?.let { R.string.catalog_buy_bricklink to it },
                         // Der Katalog liefert dieselbe Adresse, nur mit Namen
@@ -222,34 +267,50 @@ fun MerkpostenDetailScreen(
                         (detail.katalog?.preisvergleichUrl ?: merkposten.preisvergleichUrl)
                             ?.takeIf { it.isNotBlank() }
                             ?.let { R.string.detail_compare to it },
-                    )) {
-                        OutlinedButton(
-                            onClick = {
-                                try {
-                                    ctx.startActivity(android.content.Intent(
-                                        android.content.Intent.ACTION_VIEW, android.net.Uri.parse(url)))
-                                } catch (_: Exception) {
-                                    android.widget.Toast.makeText(
-                                        ctx, ctx.getString(R.string.common_no_app_to_open),
-                                        android.widget.Toast.LENGTH_SHORT).show()
+                    )
+                    if (adressen.isNotEmpty()) {
+                        Row(
+                            Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(Abstaende.klein),
+                        ) {
+                            for ((beschriftung, url) in adressen) {
+                                OutlinedButton(
+                                    onClick = {
+                                        try {
+                                            ctx.startActivity(android.content.Intent(
+                                                android.content.Intent.ACTION_VIEW, android.net.Uri.parse(url)))
+                                        } catch (_: Exception) {
+                                            android.widget.Toast.makeText(
+                                                ctx, ctx.getString(R.string.common_no_app_to_open),
+                                                android.widget.Toast.LENGTH_SHORT).show()
+                                        }
+                                    },
+                                    modifier = Modifier.weight(1f),
+                                    shape = Formen.leiste,
+                                    contentPadding = PaddingValues(
+                                        horizontal = Abstaende.klein, vertical = Abstaende.klein),
+                                ) {
+                                    // Eine Stufe kleiner, aus demselben Grund wie im
+                                    // Katalog-Detail: Zwei Knoepfe teilen sich die
+                                    // Breite, die vorher einer allein hatte.
+                                    Text(stringResource(beschriftung), maxLines = 1,
+                                        overflow = TextOverflow.Ellipsis,
+                                        style = MaterialTheme.typography.labelMedium)
                                 }
-                            },
-                            modifier = Modifier.fillMaxWidth(),
-                            shape = Formen.leiste,
-                        ) { Text(stringResource(beschriftung)) }
+                            }
+                        }
+                        Spacer(Modifier.height(Abstaende.klein))
                     }
 
                     Button(
                         onClick = { uebernahmeOffen = true },
                         modifier = Modifier.fillMaxWidth(),
                         shape = Formen.leiste,
-                    ) { Text(stringResource(R.string.wanted_take)) }
-
-                    OutlinedButton(
-                        onClick = { vm.loescheMerkposten(merkposten.setNumber, merkposten.condition, merkposten.userId) },
-                        modifier = Modifier.fillMaxWidth(),
-                        shape = Formen.leiste,
-                    ) { Text(stringResource(R.string.common_delete)) }
+                    ) {
+                        Icon(Icons.Default.Add, null, Modifier.size(18.dp))
+                        Spacer(Modifier.width(Abstaende.winzig))
+                        Text(stringResource(R.string.wanted_take))
+                    }
                 }
             }
         }

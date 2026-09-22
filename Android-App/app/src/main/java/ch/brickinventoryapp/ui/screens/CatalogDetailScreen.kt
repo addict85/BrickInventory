@@ -19,6 +19,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import ch.brickinventoryapp.R
@@ -141,16 +142,17 @@ fun CatalogDetailScreen(
                     }
                 }
 
-                // Aktionen
-                Button(
-                    onClick = { showAddDialog = true },
-                    modifier = Modifier.fillMaxWidth(),
-                    shape = Formen.leiste
-                ) {
-                    Icon(Icons.Default.Add, null, Modifier.size(18.dp))
-                    Spacer(Modifier.width(6.dp))
-                    Text(stringResource(if (detail.owned) R.string.catalog_add_again else R.string.catalog_add_to_gallery))
-                }
+                // ── Aktionen ────────────────────────────────────────────────
+                //
+                // Marcos Vorgabe: BrickLink ZUERST, darunter die beiden
+                // Erfassungsknoepfe NEBENEINANDER, beide mit einem Plus.
+                //
+                // Die Reihenfolge sagt etwas: Oben der Weg nach draussen (zu
+                // BrickLink), unten die zwei Griffe, die hier etwas anlegen.
+                // Vorher standen sie gemischt — Galerie, Merkliste, BrickLink
+                // untereinander —, und der Weg nach draussen stand ausgerechnet
+                // am weitesten unten.
+                //
                 // Kauf-Link: URL kommt fertig vom Server. Vorher wurde sie hier
                 // aus der Rebrickable-Nummer gebaut und immer als Set verlinkt
                 // (S=…) — für Gear und Bücher war damit sowohl der Parameter als
@@ -162,19 +164,6 @@ fun CatalogDetailScreen(
                 // 71021-1 → BrickLink col325), die sich aus keiner der beiden
                 // Datenquellen herleiten lässt. Statt den Button zu verstecken,
                 // liefert der Server dann eine Such-URL und exact = false.
-                // Auf die Merkliste — Marcos „inkl. Zustand und einem
-                // Preisalarm". Zweitrangig gestaltet (OutlinedButton): Der
-                // haeufigere Griff ist das Aufnehmen, und zwei gleich starke
-                // Knoepfe nebeneinander sind eine Frage, keine Fuehrung.
-                OutlinedButton(
-                    onClick = { showWishDialog = true },
-                    modifier = Modifier.fillMaxWidth(),
-                    shape = Formen.leiste
-                ) {
-                    Text("⭐")
-                    Spacer(Modifier.width(Abstaende.winzig))
-                    Text(stringResource(R.string.wanted_add_submit))
-                }
                 val bl = detail.bricklink
                 val blUrl = bl?.url ?: BrickLinkUrls.searchFor(detail.setNumber)
                 val blLabel = if (bl != null && !bl.exact) R.string.catalog_search_bricklink
@@ -198,6 +187,45 @@ fun CatalogDetailScreen(
                     Icon(Icons.Default.ShoppingCart, null, Modifier.size(18.dp))
                     Spacer(Modifier.width(6.dp))
                     Text(stringResource(blLabel))
+                }
+                // Die beiden Erfassungsknoepfe nebeneinander. `weight(1f)` teilt
+                // die Breite gleich auf; die Merkliste bleibt der zweitrangige
+                // (OutlinedButton), denn der haeufigere Griff ist das Aufnehmen.
+                // Eine Stufe kleinere Schrift (labelMedium) und maxLines = 1: Zwei
+                // Knoepfe teilen sich die Breite, die vorher einer allein hatte.
+                // „In Galerie aufnehmen" ist der laengste der vier Texte; bei
+                // labelLarge stuende er auf einem 360dp-Telefon ueber dem Rand.
+                // Die Ellipse ist der Fallschirm fuer die Sprache, die noch
+                // dazukommt — kein Ersatz fuer das Nachsehen auf dem Geraet.
+                Row(
+                    Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(Abstaende.klein),
+                ) {
+                    OutlinedButton(
+                        onClick = { showWishDialog = true },
+                        modifier = Modifier.weight(1f),
+                        shape = Formen.leiste,
+                        contentPadding = PaddingValues(horizontal = Abstaende.klein, vertical = Abstaende.klein),
+                    ) {
+                        Icon(Icons.Default.Add, null, Modifier.size(18.dp))
+                        Spacer(Modifier.width(Abstaende.winzig))
+                        Text(stringResource(R.string.wanted_add_submit),
+                            maxLines = 1, overflow = TextOverflow.Ellipsis,
+                            style = MaterialTheme.typography.labelMedium)
+                    }
+                    Button(
+                        onClick = { showAddDialog = true },
+                        modifier = Modifier.weight(1f),
+                        shape = Formen.leiste,
+                        contentPadding = PaddingValues(horizontal = Abstaende.klein, vertical = Abstaende.klein),
+                    ) {
+                        Icon(Icons.Default.Add, null, Modifier.size(18.dp))
+                        Spacer(Modifier.width(Abstaende.winzig))
+                        Text(stringResource(if (detail.owned) R.string.catalog_add_again
+                                            else R.string.catalog_add_to_gallery),
+                            maxLines = 1, overflow = TextOverflow.Ellipsis,
+                            style = MaterialTheme.typography.labelMedium)
+                    }
                 }
                 if (detail.owned) {
                     OutlinedButton(

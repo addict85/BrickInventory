@@ -617,7 +617,7 @@
     <string name="wanted_added">Auf die Merkliste gesetzt</string>
     <string name="wanted_already">Stand schon auf der Merkliste</string>
     <string name="wanted_deleted">Von der Merkliste genommen</string>
-    <string name="wanted_take">In die Galerie</string>
+    <string name="wanted_take">In Galerie aufnehmen</string>
     <string name="wanted_taken">In die Galerie übernommen</string>
     <string name="wanted_taken_existing">War schon in der Galerie — von der Merkliste genommen</string>
     <string name="wanted_need_number">Bitte Set-Nummer eingeben</string>

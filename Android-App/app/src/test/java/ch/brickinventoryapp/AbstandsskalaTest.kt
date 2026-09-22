@@ -102,18 +102,26 @@ class AbstandsskalaTest {
 
     @Test
     fun `die Zahl der Abstaende, die noch als Zahl dastehen, sinkt nur`() {
-        // GEMESSEN beim Anlegen: 181, inzwischen 180 (die Design-Auswahl in
-        // MonitoringSections ist auf die Skala gewandert). Ganz oben stehen
-        // 6 (59-mal), 10 (41) und
+        // GEMESSEN beim Anlegen: 181, dann 180 (die Design-Auswahl in
+        // MonitoringSections ist auf die Skala gewandert), jetzt 178. Ganz
+        // oben stehen 6 (59-mal), 10 (41) und
         // 14 (26) — die drei Werte, die es auf einer Zweier-Skala nicht gibt.
+        //
+        // 180 -> 178: Die beiden Knopfreihen im Katalog- und im
+        // Merkposten-Detail brauchten einen kleineren Innenabstand, damit zwei
+        // Knoepfe nebeneinander passen. Der erste Versuch schrieb dafuer
+        // `vertical = 8.dp` — und genau das hat diese Ratsche gemeldet, bevor
+        // es in den Hauptzweig kam. Es ist `Abstaende.klein`, derselbe Wert
+        // mit Namen; die drei neuen Stellen zaehlen damit nicht mit, und eine
+        // alte faellt weg.
         //
         // Diese Zahl darf SINKEN, wenn jemand bewusst entscheidet, eine dieser
         // Gruppen auf die Skala zu ziehen. Sie darf nicht steigen: Ein neuer
         // Bildschirm hat keinen Grund, einen Abstand zu erfinden, den es noch
         // nicht gibt.
         val ist = zaehle(abstandsMuster)
-        assert(ist <= 180) {
-            "$ist Abstaende stehen noch als Zahl da, gemessen waren es 180. " +
+        assert(ist <= 178) {
+            "$ist Abstaende stehen noch als Zahl da, gemessen waren es 178. " +
                 "Ein neuer Wert ausserhalb von Abstaende gehoert begruendet — oder " +
                 "in die Skala. Sinkt die Zahl, gehoert sie hier nachgezogen."
         }

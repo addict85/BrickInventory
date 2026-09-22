@@ -631,7 +631,7 @@
     <string name="wanted_added">Added to the wanted list</string>
     <string name="wanted_already">Already on the wanted list</string>
     <string name="wanted_deleted">Removed from the wanted list</string>
-    <string name="wanted_take">To the gallery</string>
+    <string name="wanted_take">Add to gallery</string>
     <string name="wanted_taken">Moved into the gallery</string>
     <string name="wanted_taken_existing">Was already in the gallery — taken off the wanted list</string>
     <string name="wanted_need_number">Please enter a set number</string>
