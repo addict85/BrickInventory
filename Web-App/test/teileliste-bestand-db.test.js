@@ -71,6 +71,14 @@ async function seed() {
 
   // Teilezeile, deren Set nicht (mehr) in `sets` steht — der LEFT-JOIN-Fall.
   await setTeil('99999-1', '3004', 0, 4);
+
+  // Minifiguren: eine aus dem zweimal besessenen Set, eine manuell erfasste.
+  await db.run(
+    `INSERT INTO minifigs (user_id, set_number, fig_number, fig_name, quantity)
+     VALUES ($1,'60052-1','trn241','Train Driver',1)`, [UID]);
+  await db.run(
+    `INSERT INTO minifigs (user_id, fig_number, fig_name, quantity, source)
+     VALUES ($1,'cty0500','Worker',2,'manual')`, [UID]);
 }
 
 async function dbErreichbar() {
@@ -92,6 +100,10 @@ test('Bestandsabgleich der Teileliste', { concurrency: 1 }, async (t) => {
     { part_number: '3002', color_id: 0 },
     { part_number: '3003', color_id: 0 },
     { part_number: '3004', color_id: 0 },
+    // Die Teileliste haengt Minifiguren als eigene Zeilen an — mit der
+    // FIGURENNUMMER als part_number und Farbe 0 (08-init.js, plGenerate).
+    { part_number: 'trn241',  color_id: 0 },
+    { part_number: 'cty0500', color_id: 0 },
   ];
   const bestand = await getOwnedQuantities([UID], frage);
 
@@ -112,6 +124,22 @@ test('Bestandsabgleich der Teileliste', { concurrency: 1 }, async (t) => {
     assert.equal(bestand['3003|0']?.gesamt, 7);
     assert.equal(bestand['3003|0']?.lose, 7,
       'Manuell erfasste Teile sind genau das, was „nur manuell erfasste Teile" zählt');
+  });
+
+  await t.test('Minifiguren zaehlen mit — auch die aus Sets', () => {
+    // Der Befund hinter dieser Prüfung: Gefragt wurde in `parts`, und dort
+    // steht keine Figur. JEDE Minifigur einer Teileliste galt deshalb als
+    // fehlend, auch wenn sie im Bestand stand — stillschweigend, denn „nicht
+    // gefunden" sieht aus wie „habe ich nicht".
+    assert.equal(bestand['trn241|0']?.gesamt, 2,
+      'Die Figur steckt in einem zweimal besessenen Set — erwartet 2, bekommen ' +
+      `${bestand['trn241|0']?.gesamt}. Wird die Tabelle minifigs gar nicht gelesen?`);
+    assert.equal(bestand['trn241|0']?.lose, 0, 'Eine Figur aus einem Set ist nicht „lose"');
+  });
+
+  await t.test('manuell erfasste Figuren zaehlen als lose', () => {
+    assert.equal(bestand['cty0500|0']?.gesamt, 2);
+    assert.equal(bestand['cty0500|0']?.lose, 2);
   });
 
   await t.test('eine Teilezeile ohne Set faellt nicht aus der Antwort', () => {

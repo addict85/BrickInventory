@@ -775,5 +775,46 @@ export async function getOwnedQuantities(
     out[`${r.part_number}|${parseInt(r.color_id) || 0}`] =
       { gesamt: parseInt(r.gesamt) || 0, lose: parseInt(r.lose) || 0 };
   }
+
+  // ── Minifiguren zaehlen mit (Marcos „die Teile sollten in meinem Bestand
+  //    liegen") ──────────────────────────────────────────────────────────────
+  //
+  // Eine Teileliste enthaelt nicht nur Teile: Der Zusammenbau (08-init.js,
+  // plGenerate) haengt jede Minifigur des Sets als eigene Zeile an, mit der
+  // FIGURENNUMMER als `part_number` und Farbe 0. Gefragt wurde damit hier —
+  // und `parts` kennt keine Figuren. Jede Minifigur einer Liste galt deshalb
+  // IMMER als fehlend, auch wenn sie im Bestand stand. Stillschweigend, denn
+  // „nicht gefunden" sieht aus wie „habe ich nicht".
+  //
+  // Verwechseln kann sich dabei nichts: Figurennummern (trn241, sw0123) und
+  // Teilenummern (3001) kommen aus verschiedenen Nummernkreisen, und die
+  // Anfrage schickt fuer eine Figur ohnehin Farbe 0. Sollte eine Nummer doch
+  // einmal in beiden Tabellen stehen, gewinnt das TEIL — deshalb steht diese
+  // Schleife hinter der oberen und ueberschreibt nichts.
+  //
+  // `lose` ist bei Figuren dasselbe wie bei Teilen: was nicht in einem Set
+  // steckt, also source='manual'.
+  const figRows = await db.all(
+    `SELECT m.fig_number                                                AS part_number,
+            COALESCE(SUM(CASE WHEN COALESCE(m.source,'set') = 'manual'
+                              THEN m.quantity
+                              ELSE m.quantity * COALESCE(s.quantity, 1)
+                         END), 0)::int                                  AS gesamt,
+            COALESCE(SUM(CASE WHEN COALESCE(m.source,'set') = 'manual'
+                              THEN m.quantity ELSE 0 END), 0)::int      AS lose
+       FROM minifigs m
+       LEFT JOIN sets s
+         ON s.user_id = m.user_id AND s.set_number = m.set_number
+       JOIN unnest($2::text[]) AS g(fig_number)
+         ON g.fig_number = m.fig_number
+      WHERE m.user_id = ANY($1)
+      GROUP BY m.fig_number`,
+    [uids, nums]
+  ).catch(() => []);
+  for (const r of figRows || []) {
+    const key = `${r.part_number}|0`;
+    if (out[key]) continue;
+    out[key] = { gesamt: parseInt(r.gesamt) || 0, lose: parseInt(r.lose) || 0 };
+  }
   return out;
 }
