@@ -716,61 +716,20 @@ fun LazyListScope.setDetailAlarmSection(
     }
 }
 
-/**
- * Die zwei Kaufadressen: BrickLink und Preisvergleich.
- *
- * ── Marcos Nachtrag ─────────────────────────────────────────────────────────
- *
- * „Bitte auf dem Detail-Dialog sowohl den BrickLink-Link analog dem Katalog
- * als auch die URL des Preisvergleichs als Buttons einbauen."
- *
- * ── Warum hier nichts gebaut wird ───────────────────────────────────────────
- *
- * Beide Adressen kommen FERTIG vom Server. „Analog dem Katalog" ist woertlich
- * zu nehmen: Das Katalog-Detail loest die BrickLink-Adresse seit jeher dort
- * auf, weil sie sich NICHT aus der Setnummer herleiten laesst — Gear und
- * Buecher liegen unter einem anderen Parameter, Sammelminifiguren unter einer
- * ganz anderen Nummer. Eine hier gebaute Adresse waere fuer diese Faelle
- * still falsch.
- *
- * Fehlt eine Adresse (aelterer Server, kein BrickLink-Eintrag), faellt der
- * Knopf weg. Einer, der ins Leere fuehrt, ist schlechter als keiner — genau
- * die Sackgasse, gegen die der Katalog-Knopf seit Nachtrag 49 absichert.
- */
-fun LazyListScope.setDetailKaufSection(set: SetItem) {
-    // BrickLink zuerst, der Preisvergleich darunter — Marcos Vorgabe, und in
-    // beiden Oberflaechen dieselbe Reihenfolge.
-    val adressen = listOfNotNull(
-        set.bricklink?.url?.takeIf { it.isNotBlank() }
-            ?.let { R.string.catalog_buy_bricklink to it },
-        set.preisvergleichUrl?.takeIf { it.isNotBlank() }
-            ?.let { R.string.detail_compare to it },
-    )
-    if (adressen.isEmpty()) return
-    item {
-        val ctx = androidx.compose.ui.platform.LocalContext.current
-        Column(
-            Modifier.fillMaxWidth().padding(horizontal = Abstaende.gross, vertical = Abstaende.klein),
-            verticalArrangement = Arrangement.spacedBy(Abstaende.klein),
-        ) {
-            for ((beschriftung, url) in adressen) {
-                OutlinedButton(
-                    onClick = {
-                        // Nicht still schlucken — dieselbe Absicherung wie am
-                        // Katalog-Knopf: Ohne Browser tippte man sonst und es
-                        // passierte NICHTS.
-                        try {
-                            ctx.startActivity(android.content.Intent(
-                                android.content.Intent.ACTION_VIEW, android.net.Uri.parse(url)))
-                        } catch (_: Exception) {
-                            android.widget.Toast.makeText(
-                                ctx, ctx.getString(R.string.common_no_app_to_open),
-                                android.widget.Toast.LENGTH_SHORT).show()
-                        }
-                    },
-                    modifier = Modifier.fillMaxWidth(),
-                ) { Text(stringResource(beschriftung)) }
-            }
-        }
-    }
-}
+// Hier stand die Funktion `setDetailKaufSection` — BrickLink und
+// Preisvergleich am Set-Detail.
+//
+// ── Warum sie weg ist ───────────────────────────────────────────────────────
+//
+// Marcos Vorgabe: „Im Detaildialog der Sets sollen die Button Auf BrickLink
+// kaufen und Preisvergleich nicht angezeigt werden."
+//
+// Der Grund wird sichtbar, sobald man fragt, wem dieser Bildschirm gehoert:
+// Er zeigt ein Set, das man BESITZT. Kaufen und Preise vergleichen will, wer
+// es noch NICHT hat — und dort stehen beide Knoepfe weiter: im Katalog-Detail
+// und im Merkposten-Detail.
+//
+// `SetItem.bricklink` und `SetItem.preisvergleichUrl` bleiben im Modell: Der
+// Server liefert beide Felder weiter, und die Merkliste liest sie ueber
+// dieselbe Antwort. Ein Feld zu entfernen, das die Gegenstelle noch schickt,
+// waere eine Aenderung an der Schnittstelle fuer eine Frage der Darstellung.

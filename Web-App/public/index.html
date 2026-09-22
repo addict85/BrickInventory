@@ -245,8 +245,8 @@
     <div class="ntab" data-tab="minifigs" data-i18n-tab="nav.minifigs">👷 <span class="tab-label">Minifiguren</span></div>
     <div class="ntab" data-tab="partslist" data-i18n-tab="nav.partslist">📋 <span class="tab-label">Teileliste</span></div>
     <div class="ntab" data-tab="finance" data-i18n-tab="nav.finance">💰 <span class="tab-label">Finanzen</span></div>
-    <div class="ntab" data-tab="catalog" data-i18n-tab="nav.catalog">📚 <span class="tab-label">Katalog</span></div>
     <div class="ntab" data-tab="wanted" data-i18n-tab="nav.wanted">⭐ <span class="tab-label">Merkliste</span></div>
+    <div class="ntab" data-tab="catalog" data-i18n-tab="nav.catalog">📚 <span class="tab-label">Katalog</span></div>
     <div class="ntab" data-tab="settings" data-i18n-tab="nav.settings">⚙️ <span class="tab-label">Einstellungen</span></div>
     <div class="ntab" id="ntab-monitor" data-tab="monitor" data-i18n-tab="nav.monitoring" style="display:none">📊 <span class="tab-label">Monitoring</span></div>
   </nav>
@@ -1084,22 +1084,22 @@
     <div id="m-det"></div>
     <div id="m-instr" class="il"></div>
     <!--
-      Die zwei Kaufadressen (Marcos Nachtrag). Beide kommen als fertige
-      Adresse vom Server (utils/bricklinkLink.ts, utils/preisvergleich.ts) —
-      genau wie im Katalog-Dialog, und aus demselben Grund: Die
-      BrickLink-Adresse laesst sich NICHT aus der Setnummer herleiten (Gear,
-      Buecher und Sammelminifiguren liegen anders), und der Preisvergleich
-      stuende sonst an vier Stellen im Baum.
+      Keine Kaufadressen hier (Marcos Vorgabe): „Im Detaildialog der Sets
+      sollen die Button Auf BrickLink kaufen und Preisvergleich nicht
+      angezeigt werden."
 
-      Beide sind versteckt, bis das Detail sie fuellt: Ein Knopf, der ins
-      Leere fuehrt, ist schlechter als keiner.
+      Der Grund liegt auf der Hand, sobald man fragt, WEM der Dialog gehoert:
+      Er zeigt ein Set, das man BESITZT. Kaufen und Preise vergleichen will,
+      wer es noch nicht hat — und genau dort stehen die beiden Knoepfe
+      weiterhin: im Katalog-Detail und im Merkposten-Detail.
+
+      Der Server liefert `bricklink` und `preisvergleich_url` am Set-Detail
+      unveraendert weiter. Sie wegzunehmen waere eine Aenderung an der
+      Schnittstelle fuer eine Frage der Darstellung — und die App-Fassung
+      draussen liest sie noch.
     -->
     <div class="mfooter" style="justify-content:space-between;flex-wrap:wrap;gap:8px">
       <button class="btn bd" id="btn-md" aria-label="Set löschen" data-i18n="detail.delete" data-i18n-attr="aria-label">🗑️</button>
-      <div style="display:flex;gap:8px;flex-wrap:wrap">
-        <a class="btn bs" id="m-bricklink" href="#" target="_blank" rel="noopener" style="display:none" data-i18n="catalog.buy_bricklink">🛒 Auf BrickLink kaufen</a>
-        <a class="btn bs" id="m-vergleich" href="#" target="_blank" rel="noopener" style="display:none" data-i18n="detail.compare">📊 Preisvergleich</a>
-      </div>
     </div>
   </div>
 </div>
@@ -1142,14 +1142,28 @@
     </div>
     <div class="mfooter" style="justify-content:space-between;flex-wrap:wrap;gap:8px">
       <button class="btn bd" id="mk-m-del" data-click="merkpostenDetailLoeschen" aria-label="Merkposten entfernen" data-i18n="wanted.remove" data-i18n-attr="aria-label">🗑️</button>
-      <!-- Marcos Vorgabe: der Preisvergleich UNTERHALB von BrickLink. Deshalb
-           eine Spalte statt einer Reihe — „unterhalb" soll auch auf einem
-           schmalen Telefon unterhalb bleiben und nicht je nach Breite
-           danebenrutschen. -->
-      <div style="display:flex;flex-direction:column;gap:8px;align-items:stretch">
-        <a class="btn bs" id="mk-m-bricklink" href="#" target="_blank" rel="noopener" style="display:none" data-i18n="catalog.buy_bricklink">🛒 Auf BrickLink kaufen</a>
-        <a class="btn bs" id="mk-m-vergleich" href="#" target="_blank" rel="noopener" style="display:none" data-i18n="detail.compare">📊 Preisvergleich</a>
-        <button class="btn bp" id="mk-m-take" data-click="merkpostenDetailUebernehmen" data-i18n="wanted.take">➕ In die Galerie</button>
+      <!-- Marcos Vorgabe: die beiden Kaufadressen NEBENEINANDER, und darunter
+           mit ABSTAND die Uebernahme. Der groessere Abstand ist die ganze
+           Aussage: Oben zwei Wege nach draussen, unten der eine Griff, der
+           hier etwas veraendert. NACHGEMESSEN (Chromium, 1440px Fenster):
+           16px statt der 8px zwischen den beiden Adressen.
+
+           `flex:1` gibt beiden denselben Anteil, SOBALD Platz da ist; in
+           diesem Dialog ist keiner uebrig — gemessen 192px und 152px neben
+           einer 352px breiten Spalte, also genau die Textbreiten. Faellt eine
+           der Adressen weg, nimmt die andere die ganze Zeile; ein halber
+           leerer Streifen waere die schlechtere Antwort auf „dafuer gibt es
+           keine Adresse".
+
+           `flex-wrap` bleibt: Auf 320px und 390px Fensterbreite braucht
+           „🛒 Buy on BrickLink" allein 289px bzw. 359px — dort rutscht der
+           Preisvergleich darunter, statt die Beschriftung abzuschneiden. -->
+      <div style="display:flex;flex-direction:column;gap:16px;align-items:stretch">
+        <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:stretch">
+          <a class="btn bs" id="mk-m-bricklink" href="#" target="_blank" rel="noopener" style="flex:1;justify-content:center;display:none" data-i18n="catalog.buy_bricklink">🛒 Auf BrickLink kaufen</a>
+          <a class="btn bs" id="mk-m-vergleich" href="#" target="_blank" rel="noopener" style="flex:1;justify-content:center;display:none" data-i18n="detail.compare">📊 Preisvergleich</a>
+        </div>
+        <button class="btn bp" id="mk-m-take" data-click="merkpostenDetailUebernehmen" style="justify-content:center" data-i18n="wanted.take">➕ In Galerie aufnehmen</button>
       </div>
     </div>
   </div>
@@ -1216,10 +1230,26 @@
         <div class="fg" style="max-width:120px"><label for="cat-m-alert-dir" data-i18n="detail.alert">Preisalarm</label><select id="cat-m-alert-dir" style="padding:.45rem .7rem;border:1px solid var(--bdr);border-radius:var(--rad);background:var(--sur);color:var(--txt);font-size:.875rem"><option value="unter" data-i18n="detail.alert_below">fällt unter</option><option value="ueber" data-i18n="detail.alert_above">steigt über</option></select></div>
         <div class="fg" style="max-width:110px"><label for="cat-m-alert-val" data-i18n="wanted.threshold">Schwelle (opt.)</label><input type="number" id="cat-m-alert-val" step="0.01" min="0" placeholder="—" /></div>
       </div>
-      <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
-        <a class="btn bs" id="cat-m-bricklink" href="#" target="_blank" rel="noopener" data-i18n="catalog.buy_bricklink">🛒 Auf BrickLink kaufen</a>
-        <button class="btn bs" id="cat-m-wish" data-click="katalogAufMerkliste" data-i18n="wanted.add.submit">⭐ Auf die Merkliste</button>
-        <button class="btn bp" id="cat-m-add" data-i18n="catalog.add_to_gallery">➕ In Galerie aufnehmen</button>
+      <!-- Marcos Vorgabe: BrickLink eine Zeile hoeher, die beiden
+           Erfassungsknoepfe nebeneinander. Bis hierher standen alle drei in
+           EINER umbrechenden Reihe, und wo sie brach, entschied die Breite.
+           Zwei feste Zeilen sind ueberall dieselbe Anordnung.
+
+           NACHGEMESSEN (Chromium): bei 1440px Fenster 228px und 226px —
+           `flex:1` teilt die Zeile also wirklich in zwei Haelften. Bei 320px
+           und 390px Fensterbreite bleiben beide in EINER Zeile, ohne
+           Ueberlauf, auch mit den laengeren englischen Texten („➕ Add to
+           wanted list" braucht dort 195px von 195px).
+
+           `width:100%` an beiden Zeilen: Die Fusszeile ist selbst ein
+           umbrechendes Flex-Feld; ohne die volle Breite ruecken die zwei
+           Zeilen auf einem breiten Bildschirm wieder nebeneinander. -->
+      <div style="display:flex;width:100%">
+        <a class="btn bs" id="cat-m-bricklink" href="#" target="_blank" rel="noopener" style="flex:1;justify-content:center" data-i18n="catalog.buy_bricklink">🛒 Auf BrickLink kaufen</a>
+      </div>
+      <div style="display:flex;gap:8px;align-items:stretch;width:100%">
+        <button class="btn bs" id="cat-m-wish" data-click="katalogAufMerkliste" style="flex:1;justify-content:center" data-i18n="wanted.add.submit">➕ Auf die Merkliste</button>
+        <button class="btn bp" id="cat-m-add" style="flex:1;justify-content:center" data-i18n="catalog.add_to_gallery">➕ In Galerie aufnehmen</button>
       </div>
     </div>
   </div>
@@ -1237,9 +1267,14 @@
     </div>
     <img id="man-detail-img" alt="" style="width:100%;max-height:160px;object-fit:contain;background:var(--s50);border-radius:8px;border:1px solid var(--bdr);margin-bottom:1rem;display:none" />
     <div id="man-detail-body"></div>
+    <!-- Kein „Zurueck" hier (Marcos Vorgabe). Es war der zweite Weg aus
+         demselben Dialog: Das ✕ im Kopf schliesst ihn bereits, und zwar an
+         der Stelle, an der es in JEDEM Dialog dieses Baums steht. Zwei
+         Knoepfe fuer denselben Griff sind keine Hilfe, sondern eine Frage.
+         Damit steht in der Fusszeile nur noch der Papierkorb — wie im
+         Set-Detail. -->
     <div class="mfooter" style="justify-content:space-between">
-      <button class="btn bd btn-sm" id="man-detail-del" aria-label="Eintrag löschen" data-i18n="common.delete_item" data-i18n-attr="aria-label">🗑️</button>
-      <button class="btn bs" data-click="closeManDetail" data-i18n="acq.back">Zurück</button>
+      <button class="btn bd" id="man-detail-del" aria-label="Eintrag löschen" data-i18n="common.delete_item" data-i18n-attr="aria-label">🗑️</button>
     </div>
   </div>
 </div>
