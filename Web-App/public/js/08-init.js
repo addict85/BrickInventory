@@ -253,8 +253,10 @@ async function plGenerate() {
   G('btn-pl-pdf').style.display = '';
   G('btn-pl-bl').style.display = '';
   G('pl-bl-condition').style.display = '';
-  G('btn-pl-bestand').style.display = '';
-  G('pl-bestand-lose-box').style.display = 'inline-flex';
+  // Die ganze Zeile, nicht die zwei Knoepfe einzeln — sonst bliebe ein
+  // leerer Streifen stehen, solange keine Liste erzeugt ist (index.html
+  // erklaert es an Ort und Stelle).
+  G('pl-bestand-zeile').style.display = 'flex';
 }
 
 /**
@@ -565,8 +567,7 @@ async function plExportBricklink() {
 }
 
 function plReset() {
-  const bb = G('btn-pl-bestand'); if (bb) bb.style.display = 'none';
-  const lb = G('pl-bestand-lose-box'); if (lb) lb.style.display = 'none';
+  const bz = G('pl-bestand-zeile'); if (bz) bz.style.display = 'none';
   _plSets = []; _plParts = null;
   G('pl-result').innerHTML = '';
   G('pl-status').textContent = '';

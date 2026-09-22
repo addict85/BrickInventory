@@ -397,7 +397,7 @@ window.I18N_EN = {
   'storage.delete_title': 'Delete storage location?',
   'storage.delete_text': 'It disappears from the list. Sets and parts stored there would lose their place — so this only works for an empty location.',
   'filter.storage_all': 'All locations',
-  'pl.fill_owned': '📦 Fill from my inventory',
+  'pl.fill_owned': '📦 Fill in parts I already have',
   'pl.only_loose': 'loose parts only',
   'pl.owned_filled': 'Filled {n} of {m} parts from your inventory.',
   'pl.owned_none': 'Nothing in your inventory matches this list.',

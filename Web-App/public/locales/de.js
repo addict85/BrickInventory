@@ -398,7 +398,7 @@ window.I18N_DE = {
   'storage.delete_title': 'Lagerort löschen?',
   'storage.delete_text': 'Der Ort verschwindet aus der Auswahl. Sets und Teile, die darin liegen, behalten ihre Zuordnung nicht — deshalb geht es nur bei einem leeren Ort.',
   'filter.storage_all': 'Alle Lagerorte',
-  'pl.fill_owned': '📦 Eigenen Bestand eintragen',
+  'pl.fill_owned': '📦 Bereits vorhandene Teile eintragen',
   'pl.only_loose': 'nur lose Teile',
   'pl.owned_filled': '{n} von {m} Teilen aus dem eigenen Bestand übernommen.',
   'pl.owned_none': 'Vom eigenen Bestand passt nichts zu dieser Liste.',

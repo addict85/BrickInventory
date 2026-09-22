@@ -347,14 +347,34 @@ fun PartsListScreen(
                             else { Icon(Icons.Default.PictureAsPdf, null, Modifier.size(16.dp)); Spacer(Modifier.width(Abstaende.winzig)); Text("PDF") }
                         }
                     }
-                    if (generated && parts.isNotEmpty()) {
-                        // remember, NICHT rememberSaveable — dieselbe
-                        // Begruendung wie beim PDF-Export darueber.
-                        // `…Laeuft`, nicht `laedt…`: BildschirmZustandTest
-                        // ordnet Zustaende nach dem NAMEN ein, und nur die
-                        // erste Form sagt ihm „laufender Vorgang, darf eine
-                        // Drehung nicht ueberleben".
-                        var bestandLaeuft by remember { mutableStateOf(false) }
+                    OutlinedButton(
+                        onClick = { reset() },
+                        colors = ButtonDefaults.outlinedButtonColors(contentColor = MaterialTheme.colorScheme.error)
+                    ) { Text(stringResource(R.string.partslist_reset)) }
+                }
+
+                // ── Eigener Bestand: eine Zeile fuer sich ───────────────────
+                //
+                // Marcos Vorgabe zur Webapp: „Bitte die rot umkreisten Buttons
+                // auf eine neue Zeile verschieben. Diese gehoeren thematisch
+                // nicht zum Rest." Hier gilt dasselbe, und die Zeile darueber
+                // sagt jetzt auch, warum: Dort steht das ZUSAMMENSTELLEN der
+                // Liste (Set-Nr., Hinzufuegen, Erstellen) und das WEITERGEBEN
+                // (PDF, Reset). Der eigene Bestand ist keines von beidem — er
+                // traegt Zahlen IN die fertige Liste ein.
+                //
+                // „nur lose Teile" steht neben dem Knopf und nicht in den
+                // Einstellungen: Die Wahl wechselt von Frage zu Frage.
+                if (generated && parts.isNotEmpty()) {
+                    // remember, NICHT rememberSaveable — dieselbe
+                    // Begruendung wie beim PDF-Export darueber.
+                    // `…Laeuft`, nicht `laedt…`: BildschirmZustandTest
+                    // ordnet Zustaende nach dem NAMEN ein, und nur die
+                    // erste Form sagt ihm „laufender Vorgang, darf eine
+                    // Drehung nicht ueberleben".
+                    var bestandLaeuft by remember { mutableStateOf(false) }
+                    Row(verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(Abstaende.klein)) {
                         Button(
                             onClick = {
                                 bestandLaeuft = true
@@ -377,22 +397,13 @@ fun PartsListScreen(
                                 color = MaterialTheme.colorScheme.onSecondary, strokeWidth = 2.dp)
                             else { Icon(Icons.Default.Inventory2, null, Modifier.size(16.dp)); Spacer(Modifier.width(Abstaende.winzig)); Text(stringResource(R.string.partslist_fill_owned)) }
                         }
-                    }
-                    OutlinedButton(
-                        onClick = { reset() },
-                        colors = ButtonDefaults.outlinedButtonColors(contentColor = MaterialTheme.colorScheme.error)
-                    ) { Text(stringResource(R.string.partslist_reset)) }
-                }
-
-                // „nur lose Teile" — die Wahl gehoert neben den Knopf, nicht
-                // in die Einstellungen: Sie wechselt von Frage zu Frage.
-                if (generated && parts.isNotEmpty()) {
-                    Row(verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(Abstaende.winzig)) {
-                        Checkbox(checked = nurLose, onCheckedChange = { nurLose = it })
-                        Text(stringResource(R.string.partslist_only_loose),
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        Row(verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(Abstaende.winzig)) {
+                            Checkbox(checked = nurLose, onCheckedChange = { nurLose = it })
+                            Text(stringResource(R.string.partslist_only_loose),
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        }
                     }
                 }
 
