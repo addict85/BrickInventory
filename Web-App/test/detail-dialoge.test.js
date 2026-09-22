@@ -34,6 +34,7 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
+const { ohneKommentare } = require('./helpers/sources');
 
 const html = fs.readFileSync(path.join(__dirname, '..', 'public', 'index.html'), 'utf8');
 
@@ -95,4 +96,57 @@ test('der Teile-/Figuren-Dialog hat keinen zweiten Weg hinaus', () => {
     'Der „Zurueck"-Knopf steht wieder in der Fusszeile des Teile-/Figuren-Dialogs.');
   assert.ok(man.includes('data-click="closeManDetail"'),
     'Ohne ✕ im Kopf waere der Dialog jetzt eine Sackgasse.');
+});
+
+/**
+ * Dieselbe Regel fuer die App — die Detail-Bildschirme tragen den Papierkorb
+ * an derselben Stelle.
+ *
+ * ── Warum das hier steht und nicht in Kotlin ────────────────────────────────
+ *
+ * Weil die Regel BEIDE Oberflaechen meint. Ein Kotlin-Test kennt die Webapp
+ * nicht, und zwei getrennte Tests haetten genau den Fehler gemacht, den sie
+ * verhindern sollen: Jeder haette fuer sich recht behalten, waehrend die
+ * Oberflaechen auseinanderlaufen. Der Baum prueft Kotlin-Quelltext an
+ * mehreren Stellen von hier aus (app-compose-importe.test.js,
+ * catalog-local-images.test.js) — das ist die vorhandene Bauart, keine neue.
+ *
+ * In der App ist die Abweichung eine andere als in der Webapp: Nicht die
+ * GROESSE lief auseinander (alle drei benutzen IconButton mit der
+ * Vorgabegroesse), sondern der ORT. Das Merkposten-Detail hatte als einziges
+ * keinen Papierkorb in der Kopfleiste, sondern einen Textknopf ganz unten.
+ *
+ * `ohneKommentare()` ist hier nicht Zierde, sondern die Regel selbst: Ohne
+ * das Abstreifen haette der erste Versuch dieses Tests einen
+ * AUSKOMMENTIERTEN Papierkorb als vorhanden gezaehlt — die Gegenprobe blieb
+ * gruen, und genau daran ist sie aufgefallen. Der Helfer traegt dieselbe
+ * Warnung im Kopf; sie hat sich hier zum wiederholten Mal bewahrheitet.
+ *
+ * Gegenproben (beide durchgefuehrt): `actions`-Block im
+ * MerkpostenDetailScreen einmal auskommentiert und einmal ganz geloescht →
+ * dieser Schritt wird beide Male rot.
+ */
+test('jeder Detail-Bildschirm der App traegt den Papierkorb in der Kopfleiste', () => {
+  const app = path.join(__dirname, '..', '..', 'Android-App', 'app', 'src', 'main',
+                        'java', 'ch', 'brickinventoryapp', 'ui');
+  const SCHIRME = [
+    ['Set-Detail',        path.join(app, 'screens', 'SetDetailScreen.kt')],
+    ['Teile/Figuren',     path.join(app, 'screens', 'ManualItemDetailScreen.kt')],
+    ['Merkposten-Detail', path.join(app, 'screens', 'MerkpostenDetailScreen.kt')],
+  ];
+  for (const [name, datei] of SCHIRME) {
+    const src = ohneKommentare(fs.readFileSync(datei, 'utf8'));
+    // Der Kopf reicht vom TopAppBar bis zum Rumpf des Scaffolds.
+    const ab = src.indexOf('TopAppBar(');
+    assert.ok(ab > 0, `${name}: keine Kopfleiste gefunden — Bildschirm umgebaut?`);
+    const kopf = src.slice(ab, src.indexOf('    ) { padding', ab) + 1 || src.length);
+    assert.ok(/actions\s*=\s*\{/.test(kopf),
+      `${name}: die Kopfleiste hat keinen actions-Block — wo steht der Papierkorb?`);
+    assert.ok(kopf.includes('Icons.Default.Delete'),
+      `${name}: kein Papierkorb in der Kopfleiste. In den anderen Detail-Bildschirmen ` +
+      'steht er dort; ein Loeschknopf woanders ist genau Marcos Befund aus der Webapp.');
+    assert.ok(kopf.includes('IconButton('),
+      `${name}: der Papierkorb ist kein IconButton — damit hat er eine andere Groesse ` +
+      'als in den uebrigen Detail-Bildschirmen.');
+  }
 });

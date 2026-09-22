@@ -6,6 +6,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
@@ -106,6 +107,39 @@ fun MerkpostenDetailScreen(
                 navigationIcon = {
                     IconButton(onClick = onBack) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, stringResource(R.string.common_back))
+                    }
+                },
+                // Der Papierkorb steht hier und nicht mehr als Knopf unten.
+                //
+                // ── Warum er umgezogen ist ──────────────────────────────────
+                //
+                // Marcos Befund kam aus der Webapp: „Der Papierkorb im
+                // Detaildialog der Teile ist kleiner als auf den anderen
+                // Detaildialogen." In der App war die Abweichung eine andere,
+                // aber dieselbe Sorte: Set-Detail und Teile-Detail tragen den
+                // Papierkorb seit jeher in der Kopfleiste, dieser Bildschirm
+                // als einziger einen Textknopf ganz unten. Wer aus dem
+                // Set-Detail herkommt, sucht ihn oben.
+                //
+                // Ohne Rueckfrage, wie in der Webapp (16-merkliste.js:
+                // merkpostenDetailLoeschen). Ein Merkposten ist kein Besitz —
+                // versehentlich geloescht, ist er in zwei Griffen wieder da.
+                //
+                // Beschriftung `common_delete` wie am Set- und am
+                // Teile-Detail: Drei Papierkoerbe, die der Bildschirmleser
+                // verschieden ansagt, waeren drei Dinge statt einem.
+                //
+                // `let` statt eines direkten Zugriffs: Hier oben ist der
+                // Merkposten noch nullbar — die Pruefung darauf steht im Rumpf
+                // des Scaffolds, der erst nach der Kopfleiste aufgebaut wird.
+                // Solange nichts geladen ist, gibt es auch nichts zu loeschen.
+                actions = {
+                    merkposten?.let { w ->
+                        IconButton(onClick = {
+                            vm.loescheMerkposten(w.setNumber, w.condition, w.userId)
+                        }) {
+                            Icon(Icons.Default.Delete, stringResource(R.string.common_delete))
+                        }
                     }
                 },
             )
@@ -277,12 +311,6 @@ fun MerkpostenDetailScreen(
                         Spacer(Modifier.width(Abstaende.winzig))
                         Text(stringResource(R.string.wanted_take))
                     }
-
-                    OutlinedButton(
-                        onClick = { vm.loescheMerkposten(merkposten.setNumber, merkposten.condition, merkposten.userId) },
-                        modifier = Modifier.fillMaxWidth(),
-                        shape = Formen.leiste,
-                    ) { Text(stringResource(R.string.common_delete)) }
                 }
             }
         }
