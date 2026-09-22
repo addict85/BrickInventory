@@ -107,7 +107,14 @@ fun PartsListScreen(
      * Fehler. Die Vorgabe reicht die Liste unveraendert durch, damit der
      * Bildschirm auch in einer Vorschau ohne ViewModel baut.
      */
-    onLadeBestand: suspend (List<PlPart>, Boolean) -> List<PlPart>? = { p, _ -> p },
+    onLadeBestand: suspend (List<PlPart>, Boolean, Boolean) -> List<PlPart>? = { p, _, _ -> p },
+    /**
+     * Hat dieses Konto ueberhaupt Unterkonten? Nur dann wird die Wahl
+     * „Unterkonten mit einbeziehen" gezeigt — dieselbe Regel wie bei den
+     * Kontofiltern der anderen Reiter: Ein Schalter ohne Wirkung ist
+     * schlechter als keiner.
+     */
+    hatUnterkonten: Boolean = false,
     barcodeSetNumber: String? = null,
     onBarcodeConsumed: () -> Unit = {},
     /**
@@ -161,6 +168,8 @@ fun PartsListScreen(
     // rememberSaveable: Die Wahl gehoert zur Frage, nicht zur Koroutine — sie
     // soll eine Drehung ueberleben, anders als die Ladeanzeige daneben.
     var nurLose   by rememberSaveable { mutableStateOf(false) }
+    // Vorgabe AUS: Marcos „aber nur die eigenen Sets".
+    var mitUnterkonten by rememberSaveable { mutableStateOf(false) }
     val pdfStatusText by pdfStatus.collectAsStateWithLifecycle()
 
     val scope = rememberCoroutineScope()
@@ -385,7 +394,7 @@ fun PartsListScreen(
                             onClick = {
                                 bestandLaeuft = true
                                 scope.launch {
-                                    val neu = onLadeBestand(parts.toList(), nurLose)
+                                    val neu = onLadeBestand(parts.toList(), nurLose, mitUnterkonten)
                                     bestandLaeuft = false
                                     if (neu == null) { status = bestandFehlerText; return@launch }
                                     parts = neu
@@ -409,6 +418,21 @@ fun PartsListScreen(
                             Text(stringResource(R.string.partslist_only_loose),
                                 style = MaterialTheme.typography.bodySmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        }
+                        // Zweite Wahl, andere Frage: Die erste sagt, WELCHE ART
+                        // Teile zaehlt, diese sagt, WESSEN. Beide wirken
+                        // zusammen — „nur manuell erfasste" plus „mit
+                        // Unterkonten" zaehlt die manuell erfassten Teile des
+                        // ganzen Haushalts.
+                        if (hatUnterkonten) {
+                            Row(verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(Abstaende.winzig)) {
+                                Checkbox(checked = mitUnterkonten,
+                                    onCheckedChange = { mitUnterkonten = it })
+                                Text(stringResource(R.string.partslist_include_subs),
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            }
                         }
                     }
                 }

@@ -400,6 +400,7 @@ window.I18N_DE = {
   'filter.storage_all': 'Alle Lagerorte',
   'pl.fill_owned': '📦 Bereits vorhandene Teile eintragen',
   'pl.only_loose': 'nur manuell erfasste Teile berücksichtigen',
+  'pl.include_subs': 'Unterkonten mit einbeziehen',
   'pl.owned_filled': '{n} von {m} Teilen aus dem eigenen Bestand übernommen.',
   'pl.owned_none': 'Vom eigenen Bestand passt nichts zu dieser Liste.',
   'pl.owned_complete': 'Alles vorhanden — dieses Set ist vollständig baubar.',

@@ -21,7 +21,16 @@ const path = require('node:path');
 
 const WEB = path.join(__dirname, '..');
 const APP = path.join(WEB, '..', 'Android-App', 'app', 'src', 'main');
-const lies = p => fs.readFileSync(p, 'utf8');
+const { ohneKommentare } = require('./helpers/sources');
+// Kommentare ABSTREIFEN, und zwar hier schon beim Lesen.
+//
+// Dieser Test schneidet Funktionsrümpfe an Namen heraus. Ein Erklärkommentar,
+// der einen dieser Namen NENNT, verschiebt den Schnitt — und dann prüft die
+// Regel einen anderen Rumpf als gemeint. Genau das ist passiert: Ein Kommentar
+// im Zusammenfass-Block verwies auf `ladeTeilelisteBestand`, der Schnitt begann
+// dort statt an der Funktion, und die Regel meldete eine BrickLink-Nummer, die
+// in der Funktion gar nicht steht.
+const lies = p => ohneKommentare(fs.readFileSync(p, 'utf8'));
 const web  = rel => lies(path.join(WEB, rel));
 
 // ── Jeder Pfad in den Android-Baum AUSGESCHRIEBEN ───────────────────────────
@@ -88,15 +97,40 @@ test('beide unterscheiden „alles" von „nur lose"', () => {
     'Die App wertet den Schalter nicht aus');
 });
 
-test('beide legen den Kontofilter an', () => {
-  // Sonst zählt der Abgleich den ganzen Haushalt, während die Teileliste
-  // daneben gefiltert ist — zwei Zahlen aus zwei verschiedenen Blickfeldern
-  // auf demselben Bildschirm.
-  assert.match(web('public/js/08-init.js'), /scopeQuery\('parts'\)/,
-    'Die Webapp schickt den Kontofilter nicht mit');
-  assert.match(KT_FEAT,
+test('beide fragen ihr Blickfeld an DIESER Stelle', () => {
+  // ── Was sich geändert hat (Marcos Vorgabe) ────────────────────────────────
+  //
+  // „Ja die Stückzahl soll mitgezählt werden aber nur die eigenen Sets. Oder
+  // eine zusätzliche checkbox 'Unteraccounts mit einbeziehen'."
+  //
+  // Bis dahin übernahm der Abgleich in BEIDEN Oberflächen stillschweigend den
+  // Kontofilter des TEILE-Reiters. Das war als Gleichklang gedacht, hatte aber
+  // zwei Haken: Der Filter steht nach jeder Anmeldung auf „Alle Konten" — der
+  // Abgleich zählte also immer den ganzen Haushalt —, und er sitzt auf einem
+  // anderen Bildschirm, wo ihn niemand als Antwort auf „wessen Teile zähle
+  // ich" liest.
+  //
+  // Jetzt hat die Teileliste ihre eigene Wahl, in beiden Oberflächen dieselbe:
+  // ohne Haken `accounts=own`, mit Haken der ganze Haushalt. Die Namen sind
+  // weiterhin die des Servers (utils/household.ts, parseScopeMode) — es ist
+  // dieselbe Sache, nur an der richtigen Stelle bedient.
+  const js = web('public/js/08-init.js');
+  assert.match(js, /pl-bestand-subs/, 'Der Webapp fehlt die Wahl „Unterkonten mit einbeziehen"');
+  assert.match(js, /'\?accounts=own'/,
+    'Die Webapp schickt ohne Haken kein `accounts=own` — dann zählt der Haushalt immer mit');
+  assert.doesNotMatch(js, /scopeQuery\('parts'\)/,
+    'Die Webapp hängt wieder am Kontofilter des Teile-Reiters');
+
+  assert.match(KT_SCREEN, /Checkbox\(checked = mitUnterkonten/,
+    'Der App fehlt die Wahl „Unterkonten mit einbeziehen"');
+  assert.match(KT_FEAT, /if \(mitUnterkonten\) null else "own"/,
+    'Die App schickt ohne Haken kein „own"');
+  assert.doesNotMatch(KT_FEAT,
     /scopeFor\(ch\.brickinventoryapp\.data\.ScopeFilter\.View\.PARTS\)/,
-    'Die App schickt den Kontofilter nicht mit');
+    'Die App hängt wieder am Kontofilter des Teile-Reiters');
+
+  // Unverändert und weiterhin die Voraussetzung für beides: Der Endpunkt muss
+  // den Namen in IDs übersetzen.
   assert.match(web('routes/api_v1/parts.ts'),
     /router\.post\('\/parts\/owned'[\s\S]{0,400}?parseScopeMode\(req\.query\.accounts\)/,
     'Der Endpunkt übersetzt den Kontofilter nicht in IDs');
@@ -108,7 +142,7 @@ test('beide Sprachen sind gepflegt — in beiden Oberflächen', () => {
   // wie ein Text.
   for (const datei of ['public/locales/de.js', 'public/locales/en.js']) {
     const s = web(datei);
-    for (const k of ['pl.fill_owned', 'pl.only_loose', 'pl.owned_complete',
+    for (const k of ['pl.fill_owned', 'pl.only_loose', 'pl.include_subs', 'pl.owned_complete',
                      'pl.owned_missing', 'pl.owned_none', 'pl.owned_filled']) {
       assert.ok(s.includes(`'${k}'`), `${datei}: ${k} fehlt`);
     }
@@ -116,7 +150,7 @@ test('beide Sprachen sind gepflegt — in beiden Oberflächen', () => {
   for (const [name, s] of [['res/values/strings.xml', XML_EN],
                           ['res/values-de/strings.xml', XML_DE]]) {
     const datei = name;
-    for (const k of ['partslist_fill_owned', 'partslist_only_loose',
+    for (const k of ['partslist_fill_owned', 'partslist_only_loose', 'partslist_include_subs',
                      'partslist_owned_complete', 'partslist_owned_missing',
                      'partslist_owned_error']) {
       assert.ok(s.includes(`name="${k}"`), `${datei}: ${k} fehlt`);

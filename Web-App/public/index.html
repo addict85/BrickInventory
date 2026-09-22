@@ -670,6 +670,25 @@
           <button class="btn bs btn-sm" data-click="plFuelleBestand" id="btn-pl-bestand" style="white-space:nowrap;flex-shrink:0" data-i18n="pl.fill_owned">📦 Bereits vorhandene Teile eintragen</button>
           <label id="pl-bestand-lose-box" style="display:inline-flex;align-items:center;gap:5px;font-size:.8rem;color:var(--mut);white-space:nowrap;flex-shrink:0">
             <input type="checkbox" id="pl-bestand-lose" data-change="plFuelleBestand" style="margin:0"><span data-i18n="pl.only_loose">nur manuell erfasste Teile berücksichtigen</span></label>
+          <!--
+            Zweite Wahl, andere Frage (Marcos Vorgabe): Die erste sagt, WELCHE
+            ART Teile zählt (manuell erfasst oder auch die aus Sets), diese
+            sagt, WESSEN. Beide wirken zusammen — „nur manuell erfasste" plus
+            „mit Unterkonten" zählt die manuell erfassten Teile des ganzen
+            Haushalts.
+
+            Ohne Haken gilt `accounts=own`, also nur das eigene Konto — Marcos
+            „aber nur die eigenen Sets". Das ist bewusst die Vorgabe und eine
+            Änderung: Bisher übernahm der Abgleich stillschweigend den
+            Kontofilter des TEILE-Reiters, und der steht nach jeder Anmeldung
+            auf „Alle Konten". Eine Einstellung, die woanders sitzt und hier
+            wirkt, ist keine Antwort auf „wessen Teile zähle ich".
+
+            Sichtbar nur für ein Hauptkonto mit Unterkonten — dieselbe Regel
+            wie bei den Kontofiltern der anderen Reiter (02-gallery.js).
+          -->
+          <label id="pl-bestand-subs-box" style="display:none;align-items:center;gap:5px;font-size:.8rem;color:var(--mut);white-space:nowrap;flex-shrink:0">
+            <input type="checkbox" id="pl-bestand-subs" data-change="plFuelleBestand" style="margin:0"><span data-i18n="pl.include_subs">Unterkonten mit einbeziehen</span></label>
         </div>
       </div>
       <!-- Added sets -->

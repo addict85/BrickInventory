@@ -3,7 +3,6 @@ import { registerActions } from './00-registry.js';
 import { locale, t, tRaw} from '../i18n.js';
 import { escHex, G, api, checkAuth, esc, escUrl, imgUrl, knopfBesetzt, thumbUrl, toast } from './01-core.js';
 import { initScrollbalken } from './15-scrollbar.js';
-import { scopeQuery } from './14-scope.js';
 
 // ═══ App-Initialisierung + temporaere Teileliste ═══
 //
@@ -198,7 +197,27 @@ async function plGenerate() {
       if (d.success && d.parts?.length) {
         for (const p of d.parts) {
           const blNum = p.bl_part_number || p.part_number;
-          const key = `${blNum}|${p.color_id||0}`;
+          // ── Zusammengefasst wird nach der REBRICKABLE-Nummer ─────────────
+          //
+          // Marcos Frage: „Kann der Abgleich im Hintergrund nicht über die
+          // Rebrickable ID erfolgen, die Anzeige aber weiterhin über die
+          // BrickLink ID?" — Ja, und genau hier lag der Fehler.
+          //
+          // Hier stand `${blNum}|…`. Zusammengefasst wurde also nach der
+          // BrickLink-Nummer, nachgefragt wird der Bestand aber mit der
+          // REBRICKABLE-Nummer (plRenderTable: data-key). Mehrere
+          // Rebrickable-Teile teilen sich regelmässig EINE BrickLink-Nummer —
+          // Formvarianten sind genau das. Für die fielen zwei Zeilen zu einer
+          // zusammen: Der BEDARF beider addiert, gesucht wurde aber nur nach
+          // der Nummer, die zufällig zuerst kam. Das Teil galt als fehlend,
+          // obwohl es im Bestand lag.
+          //
+          // Angezeigt wird weiterhin die BrickLink-Nummer (der Titel nennt
+          // die Rebrickable-Nummer daneben), und der BrickLink-Export fasst
+          // ohnehin selbst noch einmal zusammen — `blMap` in
+          // plExportBricklink schlüsselt nach `type|partNum|colorId`. Die
+          // feinere Aufteilung hier kostet dort also nichts.
+          const key = `${p.part_number}|${p.color_id||0}`;
           if (combined[key]) {
             combined[key].quantity += parseInt(p.total_quantity || p.quantity || 1);
           } else {
@@ -292,7 +311,13 @@ async function plFuelleBestand() {
 
   const b = G('btn-pl-bestand');
   const frei = knopfBesetzt(b);
-  const d = await api('POST', '/v1/parts/owned' + scopeQuery('parts'), { teile }).catch(() => null);
+  // Das Blickfeld kommt aus DIESER Ansicht, nicht mehr aus dem Teile-Reiter.
+  // `own` und `all` sind die Namen, die der Server ohnehin kennt
+  // (utils/household.ts, parseScopeMode) — die Wahl ist also nur eine andere
+  // Bedienung derselben Sache, kein zweiter Begriff daneben.
+  const mitSubs = !!G('pl-bestand-subs')?.checked;
+  const d = await api('POST', '/v1/parts/owned' + (mitSubs ? '' : '?accounts=own'),
+    { teile }).catch(() => null);
   frei();
   if (!d?.success) { toast(d?.error || t('settings.error'), 'error'); return; }
 

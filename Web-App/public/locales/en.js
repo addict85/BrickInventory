@@ -399,6 +399,7 @@ window.I18N_EN = {
   'filter.storage_all': 'All locations',
   'pl.fill_owned': '📦 Fill in parts I already have',
   'pl.only_loose': 'count only manually added parts',
+  'pl.include_subs': 'include sub-accounts',
   'pl.owned_filled': 'Filled {n} of {m} parts from your inventory.',
   'pl.owned_none': 'Nothing in your inventory matches this list.',
   'pl.owned_complete': 'All parts present — this set can be built.',
