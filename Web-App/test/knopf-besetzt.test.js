@@ -109,28 +109,31 @@ test('knopfBesetzt(): zweites Argument ist eine Beschriftung, kein Rückruf', ()
 });
 
 /**
- * Der Knopf darf beim Drücken nicht schrumpfen.
+ * Der arbeitende Knopf behält seine Beschriftung — und seine Breite.
  *
- * ── Marcos Video vom 22.09. ─────────────────────────────────────────────────
+ * ── Zwei Meldungen, dieselbe Stelle ─────────────────────────────────────────
  *
- * Im Reiter „Teileliste" zuckt beim Druck auf „📦 Bereits vorhandene Teile
- * eintragen" die ganze Zeile kurz zusammen und springt zurück — mit ihr die
- * beiden Kästchen rechts daneben.
+ * Marcos Video vom 22.09., Reiter „Teileliste": Beim Druck auf „Bereits
+ * vorhandene Teile eintragen" zuckt die ganze Zeile kurz zusammen und springt
+ * zurück. NACHGEMESSEN an den Einzelbildern (1458×576, 30 Bilder/s): zweimal
+ * je sieben Bilder, also gut 0,2 s — Bilder 8–14 und 56–62. Verändert ist der
+ * Streifen y 256–269 über die volle Breite x 137–856, also Knopf UND beide
+ * Kästchen daneben. Die Zahl dunkler Bildpunkte darin fällt von 1258 auf 723.
  *
- * ── Nachgemessen an den Einzelbildern ───────────────────────────────────────
+ * Nach der ersten Reparatur (Breite einfrieren) blieb die Zeile stehen, aber
+ * Marco sah weiter hin: „verschwindet der Button nach wie vor kurz und man
+ * sieht ganz kurz Punkt." Er hatte recht — die Breite stand, der Knopf war
+ * trotzdem leer, weil knopfBesetzt() die Beschriftung gegen
+ * Auslassungspunkte tauschte.
  *
- * Aus dem Video (1458×576, 30 Bilder/s) fallen genau zwei Stellen auf, je
- * sieben Bilder lang (≈ 0,23 s): Bilder 8–14 und 56–62. Verändert ist dabei
- * der Streifen y 256–269 über die volle Breite x 137–856, also Knopf UND
- * beide Kästchen. Die Zahl dunkler Bildpunkte darin fällt von 1258 auf 723
- * und kommt danach auf 1233 zurück — Text verschwindet und kehrt wieder.
+ * ── Was jetzt gilt ──────────────────────────────────────────────────────────
  *
- * ── Die Ursache ─────────────────────────────────────────────────────────────
- *
- * knopfBesetzt() tauscht die Beschriftung gegen „…". Das ist rund 200 px
- * schmaler, und weil die Zeile ein flex-Behälter ist, rutscht alles rechts
- * daneben nach. Die Anfrage dauert nur zwei Zehntelsekunden — und genau das
- * macht daraus ein Flackern statt einer sichtbaren Bewegung.
+ * Die Beschriftung wird gar nicht mehr angefasst. Dass der Knopf arbeitet,
+ * zeigen die Sperre, der Zeiger und ein Streifen an der Unterkante
+ * (.besetzt in styles.css) — alles drei ohne jede Auswirkung auf die Breite.
+ * Nur wer ausdrücklich einen Wartetext mitgibt, bekommt einen; das tut allein
+ * die PDF-Erzeugung, die ihren Fortschritt hineinschreibt. Für DIESEN Fall
+ * bleibt das Einfrieren der Breite nötig.
  *
  * ── Warum dieser Test und keine Quelltext-Regel ─────────────────────────────
  *
@@ -140,10 +143,12 @@ test('knopfBesetzt(): zweites Argument ist eine Beschriftung, kein Rückruf', ()
  * ist die Breite das einzige, was gestellt werden muss.
  *
  * ── Gegenproben (durchgeführt, Ergebnis im Commit) ──────────────────────────
- *   a) Das Einfrieren wieder entfernt → Schritt 1 rot.
- *   b) Die Freigabe setzt minWidth blind auf '' → Schritt 3 rot.
+ *   a) Beschriftung wieder gegen „…" getauscht → Schritt 1 rot.
+ *   b) Die Klasse `besetzt` nicht mehr gesetzt → Schritt 1 rot.
+ *   c) Das Einfrieren der Breite entfernt → Schritt 5 rot.
+ *   d) Die Freigabe setzt minWidth blind auf '' → Schritt 3 rot.
  */
-test('knopfBesetzt(): die Breite bleibt, während der Knopf besetzt ist', () => {
+test('knopfBesetzt(): Beschriftung und Breite bleiben, solange der Knopf besetzt ist', () => {
   const { JSDOM } = require(path.join(__dirname, '..', 'node_modules', 'jsdom'));
 
   // Die echte Funktion aus dem Quelltext holen — nicht nachgebaut.
@@ -159,23 +164,29 @@ test('knopfBesetzt(): die Breite bleibt, während der Knopf besetzt ist', () => 
   const quelle = src.slice(auf, ende + 1).replace(/^export\s+/, '');
   const knopfBesetzt = new Function(`${quelle}; return knopfBesetzt;`)();
 
-  const dom = new JSDOM('<button id="b">📦 Bereits vorhandene Teile eintragen</button>');
+  const BESCHRIFTUNG = '📦 Bereits vorhandene Teile eintragen';
+  const dom = new JSDOM(`<button class="btn bs" id="b">${BESCHRIFTUNG}</button>`);
   const btn = dom.window.document.getElementById('b');
-  const beschriftung = btn.textContent;
   // jsdom rechnet kein Layout; offsetWidth ist dort immer 0. Die gemessene
   // Breite des echten Knopfes kommt deshalb von Hand herein.
-  Object.defineProperty(btn, 'offsetWidth', { value: 235, configurable: true });
+  const breite = (px) => Object.defineProperty(btn, 'offsetWidth', { value: px, configurable: true });
+  breite(235);
 
-  // 1. Besetzt: schmale Beschriftung, aber die Breite steht.
+  // 1. Besetzt: Beschriftung steht, der Zustand ist trotzdem sichtbar.
   const frei = knopfBesetzt(btn);
-  assert.equal(btn.textContent, '…');
-  assert.equal(btn.style.minWidth, '235px',
-    'Ohne eingefrorene Breite schrumpft der Knopf um rund 200 px und die ' +
-    'ganze Zeile rutscht nach — genau das Flackern aus Marcos Video.');
+  assert.equal(btn.textContent, BESCHRIFTUNG,
+    'Die Beschriftung darf nicht weichen — genau das meinte Marco mit „man ' +
+    'sieht ganz kurz Punkt".');
+  assert.ok(btn.classList.contains('besetzt'),
+    'Ohne diese Klasse fehlt jedes Zeichen, dass der Knopf arbeitet — ' +
+    'die Regel dazu steht in styles.css.');
+  assert.equal(btn.disabled, true);
 
   // 2. Freigegeben: alles zurück.
   frei();
-  assert.equal(btn.textContent, beschriftung);
+  assert.equal(btn.textContent, BESCHRIFTUNG);
+  assert.equal(btn.classList.contains('besetzt'), false);
+  assert.equal(btn.disabled, false);
   assert.equal(btn.style.minWidth, '', 'Die Vorgabe war leer, also muss sie leer zurückkommen.');
 
   // 3. Ein Knopf mit EIGENER Mindestbreite behält sie.
@@ -183,10 +194,27 @@ test('knopfBesetzt(): die Breite bleibt, während der Knopf besetzt ist', () => 
   knopfBesetzt(btn)();
   assert.equal(btn.style.minWidth, '300px',
     'Die Freigabe darf nicht blind leeren, sonst verliert der Knopf seine eigene Vorgabe.');
+  btn.style.minWidth = '';
 
   // 4. Ein unsichtbarer Knopf (offsetWidth 0) bekommt nichts aufgedrückt.
-  btn.style.minWidth = '';
-  Object.defineProperty(btn, 'offsetWidth', { value: 0, configurable: true });
+  breite(0);
   knopfBesetzt(btn);
   assert.equal(btn.style.minWidth, '', 'Bei Breite 0 gibt es nichts einzufrieren.');
+  btn.disabled = false;
+  btn.classList.remove('besetzt');
+
+  // 5. MIT eigenem Wartetext: Der Text wechselt — und die Breite wird
+  //    festgehalten, sonst risse dieser Knopf die Zeile mit.
+  breite(235);
+  const freiPdf = knopfBesetzt(btn, 'erstelle…');
+  assert.equal(btn.textContent, 'erstelle…');
+  assert.equal(btn.style.minWidth, '235px',
+    'Wechselt die Beschriftung doch, schrumpft der Knopf — dann muss die ' +
+    'Breite stehen bleiben.');
+  freiPdf();
+  assert.equal(btn.textContent, BESCHRIFTUNG, 'Danach kommt die ursprüngliche Beschriftung zurück.');
+
+  // 6. Die Freigabe darf eine ANDERE Beschriftung setzen (QR: „Neu generieren").
+  knopfBesetzt(btn)('Neu generieren');
+  assert.equal(btn.textContent, 'Neu generieren');
 });

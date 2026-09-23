@@ -150,45 +150,60 @@ export function G(id) { return document.getElementById(id); }
  * gibt es keine zweite Fassung, die auseinanderlaufen kann — und der Helfer
  * braucht keine Sprache zu kennen.
  *
- * Der Wartetext ist „…" ohne Wort: Der Knopf ist gesperrt, das sagt genug, und
- * so bleibt der Vorgang sprachfrei. Genau das machte die Anmeldung schon
- * richtig, während die vier anderen Stellen es ausformulierten.
+ * Die BESCHRIFTUNG BLEIBT STEHEN. Frueher tauschte der Helfer sie gegen
+ * Auslassungspunkte; Marco am 22.09.: „Wenn ich Bereits vorhandene Teile
+ * eintragen klicke verschwindet der Button nach wie vor kurz und man sieht
+ * ganz kurz Punkt." Genau das war es — der Knopf sah fuer zwei
+ * Zehntelsekunden leer aus. Dass er arbeitet, zeigen jetzt drei Dinge, die
+ * die Breite nicht anfassen: Er ist gesperrt (.btn:disabled blendet ihn ab),
+ * der Zeiger wird zu „progress", und ueber die Unterkante laeuft ein
+ * schmaler Streifen (.besetzt in styles.css). Die App macht es seit demselben
+ * Tag genauso — dort wird nur das Symbol zum Kreisel, die Beschriftung bleibt
+ * (PartsListScreen.kt).
+ *
+ * Sprachfrei bleibt es damit erst recht: Es kommt gar kein Wort hinzu.
  *
  * @param {HTMLButtonElement} btn
- * @param {string} [laeuft] Wartetext. Vorgabe „…". Die PDF-Erzeugung gibt
- *   einen eigenen mit, weil sie ihn während des Laufs mehrfach wechselt
- *   (erstellen → Bilder → Restzeit).
+ * @param {string} [laeuft] Andere Beschriftung waehrend der Arbeit. NUR
+ *   angeben, wenn der Knopf wirklich etwas anderes sagen soll: Die
+ *   PDF-Erzeugung tut das, weil sie den Fortschritt hineinschreibt
+ *   (erstellen → Bilder → Restzeit). Ohne dieses Argument bleibt die
+ *   Beschriftung unangetastet.
  * @returns {(text?: string) => void} Freigabe. Ohne Argument kommt die
- *   ursprüngliche Beschriftung zurück; mit Argument eine andere — die
+ *   urspruengliche Beschriftung zurueck; mit Argument eine andere — die
  *   QR-Erzeugung heisst danach absichtlich „Neu generieren".
  */
-export function knopfBesetzt(btn, laeuft = '…') {
+export function knopfBesetzt(btn, laeuft) {
   const vorher = btn.textContent;
-  // Die BREITE einfrieren, bevor die Beschriftung weicht.
+  // Die Breite einfrieren, BEVOR sich etwas aendern kann.
   //
-  // Marcos Video vom 22.09. zeigt es im Reiter „Teileliste": Beim Druck auf
-  // „Bereits vorhandene Teile eintragen“ zuckt die ganze Zeile kurz zusammen
-  // und springt zurück. Grund ist dieser Helfer — „…“ ist rund 200 px schmaler
-  // als die Beschriftung, und in einer flex-Zeile rutscht alles rechts daneben
-  // mit. Gemessen an den Einzelbildern: 7 Bilder bei 30 B/s, also gut 0,2 s.
+  // Ohne das riss der Knopf die ganze Zeile mit: Auslassungspunkte sind rund
+  // 200 px schmaler als „Bereits vorhandene Teile eintragen", und in einer
+  // flex-Zeile rutscht dann alles rechts daneben nach. Gemessen an Marcos
+  // Video vom 22.09.: sieben Bilder bei 30 B/s, gut 0,2 s.
   //
-  // offsetWidth ist die AUSSENBREITE inklusive Rahmen und Innenabstand. Als
-  // min-width gesetzt hält sie die Zeile still, ohne den Knopf zu verbreitern:
-  // Ist der Wartetext ausnahmsweise länger (die PDF-Erzeugung gibt eigene mit),
-  // darf der Knopf weiter wachsen.
+  // Seit die Beschriftung stehen bleibt, greift das nur noch im Fall mit
+  // eigenem Wartetext. Es steht trotzdem hier und nicht dort, weil die Regel
+  // fuer BEIDE Wege dieselbe ist.
   //
-  // 0 bedeutet „der Knopf wird gerade nicht angezeigt“ (display:none, oder
-  // jsdom ohne Layout). Dann gibt es nichts einzufrieren.
+  // offsetWidth ist die Aussenbreite inklusive Rahmen und Innenabstand; 0
+  // heisst „wird gerade nicht angezeigt" (display:none, oder jsdom ohne
+  // Layout) — da gibt es nichts einzufrieren.
   const breite = btn.offsetWidth;
   const minVorher = btn.style.minWidth;
   if (breite) btn.style.minWidth = breite + 'px';
   btn.disabled = true;
-  btn.textContent = laeuft;
+  btn.classList.add('besetzt');
+  if (laeuft !== undefined) btn.textContent = laeuft;
   return (text) => {
     btn.disabled = false;
-    btn.textContent = text ?? vorher;
-    // Die eigene Vorgabe zurückgeben, nicht blind leeren: Ein Knopf, der von
-    // sich aus eine min-width trägt, behält sie.
+    btn.classList.remove('besetzt');
+    // Nur zuruecksetzen, was ueberhaupt gesetzt wurde — sonst schriebe die
+    // Freigabe eine Beschriftung neu, die nie weg war.
+    if (text !== undefined) btn.textContent = text;
+    else if (laeuft !== undefined) btn.textContent = vorher;
+    // Die eigene Vorgabe zurueckgeben, nicht blind leeren: Ein Knopf, der von
+    // sich aus eine min-width traegt, behaelt sie.
     btn.style.minWidth = minVorher;
   };
 }

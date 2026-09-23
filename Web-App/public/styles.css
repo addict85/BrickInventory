@@ -152,6 +152,25 @@
     .btn-sm{padding:5px 11px;font-size:.77rem}
     .btn:disabled{opacity:.5;cursor:not-allowed}
 
+    /* Ein arbeitender Knopf BEHAELT seine Beschriftung.
+       Marco am 22.09.: „verschwindet der Button nach wie vor kurz und man
+       sieht ganz kurz Punkt" — vorher tauschte knopfBesetzt() den Text gegen
+       Auslassungspunkte, und der Knopf sah zwei Zehntelsekunden leer aus.
+       Dass er arbeitet, zeigt jetzt ein Streifen an der Unterkante. Er liegt
+       absolut und ausserhalb des Flusses: Die Breite des Knopfes aendert sich
+       also um kein Pixel, und die Zeile daneben steht still. Deshalb auch
+       kein Kreisel neben dem Text — der waere ein weiteres Flex-Kind und
+       verbreiterte den Knopf um rund 18 px.
+       currentColor statt einer festen Farbe: So passt der Streifen auf jeden
+       Knopf (bp weiss auf blau, bs dunkel auf hell) und auf jedes Thema.
+       @keyframes shimmer steht weiter unten und wird hier mitbenutzt. */
+    .besetzt{position:relative;overflow:hidden;cursor:progress}
+    .besetzt::after{content:'';position:absolute;left:0;right:0;bottom:0;height:2px;
+      background:linear-gradient(90deg,transparent,currentColor,transparent);
+      background-size:200% 100%;animation:shimmer 1.1s linear infinite}
+    /* Wer keine Bewegung sehen will, bekommt einen ruhenden Streifen. */
+    @media (prefers-reduced-motion:reduce){.besetzt::after{animation:none;opacity:.6}}
+
     /* PROGRESS OVERLAY */
     #progress-overlay{position:fixed;inset:0;background:rgba(15,23,42,.6);z-index:500;display:none;align-items:center;justify-content:center;backdrop-filter:blur(3px)}
     #progress-overlay.open{display:flex}
