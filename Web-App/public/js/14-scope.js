@@ -23,7 +23,12 @@
  * Tabelle", keine Eigenschaft des Kontos — und am Telefon will man sie
  * womöglich anders als am Rechner.
  */
-export const SCOPE_VIEWS = ['gallery', 'parts', 'minifigs', 'finance'];
+// 'merkliste' steht seit dem 24.09. mit darin (Marcos Vorgabe: „In der
+// Merkliste noch einen Filter analog den Sets einbauen inkl. Inhaber"). Der
+// Server verstand `accounts=` auf /v1/wanted schon immer — scopeIds() gilt
+// dort wie ueberall —, nur schickte es keine der beiden Oberflaechen. Es
+// fehlte also allein die Wahl.
+export const SCOPE_VIEWS = ['gallery', 'parts', 'minifigs', 'finance', 'merkliste'];
 
 export function scopeMode(view) {
   return localStorage.getItem('bim_scope_' + view) || 'all';

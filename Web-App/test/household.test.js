@@ -497,16 +497,21 @@ test('der Kontofilter gilt je Ansicht und wird überall mitgeschickt', () => {
   // Wer in der Galerie den ganzen Haushalt sieht, will in den Finanzen
   // womöglich nur die eigenen Zahlen — deshalb je Ansicht ein eigener Wert.
   const core = require('./helpers/sources').coreQuelle();
-  assert.match(core, /export const SCOPE_VIEWS = \['gallery', 'parts', 'minifigs', 'finance'\];/);
+  // 'merkliste' ist am 24.09. dazugekommen (Marcos Vorgabe: „In der Merkliste
+  // noch einen Filter analog den Sets einbauen inkl. Inhaber"). Der Server
+  // verstand `accounts=` auf /v1/wanted schon immer — es fehlte allein die
+  // Wahl in den Oberflaechen.
+  assert.match(core, /export const SCOPE_VIEWS = \['gallery', 'parts', 'minifigs', 'finance', 'merkliste'\];/);
   assert.match(core, /localStorage\.getItem\('bim_scope_' \+ view\)/,
     'Die Wahl soll einen Neuladen überleben');
   // 'all' ist die Vorgabe des Servers und wird weggelassen.
   assert.match(core, /if \(m && m !== 'all'\) p\.set\('accounts', m\);/);
 
-  // Jede der vier Ansichten hängt ihn an ihre Abfragen.
+  // Jede der fünf Ansichten hängt ihn an ihre Abfragen.
   assert.match(read('public/js/02-gallery.js'), /addScopeParam\(p, 'gallery'\)/);
   assert.match(read('public/js/03-parts.js'),   /addScopeParam\(p, 'parts'\)/);
   assert.match(read('public/js/06-minifigs.js'), /addScopeParam\(p, 'minifigs'\)/);
+  assert.match(read('public/js/16-merkliste.js'), /addScopeParam\(p, 'merkliste'\)/);
 
   // Im Finanzreiter ALLE vier Abfragen — sonst stünde eine Summe aus einem
   // Blickfeld neben einer Aufstellung aus einem anderen.

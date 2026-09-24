@@ -101,13 +101,18 @@ test('der Katalogtitel steht allein, die Suche darunter', () => {
 
 test('die Filterleisten halten Abstand zur Liste', () => {
   // Marcos Wunsch: „Der Zwischenraum sollte grösser sein, damit es schön
-  // aussieht." Gemeinsamer Wert für alle vier Filterleisten — 1rem war zu eng.
+  // aussieht." Gemeinsamer Wert für alle fünf Filterleisten — 1rem war zu eng.
+  //
+  // Die fünfte ist die Merkliste (24.09.). Diese Regel hat sie prompt
+  // gemeldet: Sie stand auf 1rem, also genau auf dem Wert, den Marco
+  // verworfen hat — eine neue Leiste, die den alten Fehler wiederholt, ist
+  // der Fall, für den eine Zahl hier überhaupt steht.
   // Nur die Leisten selbst (gap:8px) sind gemeint; andere Bereiche mit
   // margin-bottom:1rem bleiben unberührt.
   const LEISTE = /display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:([\d.]+)rem/g;
   const abstaende = [...html.matchAll(LEISTE)].map(m => parseFloat(m[1]));
-  assert.equal(abstaende.length, 4,
-    `erwartet werden vier Filterleisten (Galerie, Teile, Minifiguren, Katalog), gefunden: ${abstaende.length}`);
+  assert.equal(abstaende.length, 5,
+    `erwartet werden fünf Filterleisten (Galerie, Teile, Minifiguren, Katalog, Merkliste), gefunden: ${abstaende.length}`);
   for (const a of abstaende) {
     assert.ok(a >= 1.5, `eine Filterleiste steht noch auf ${a}rem — zu eng (mindestens 1.5rem)`);
   }

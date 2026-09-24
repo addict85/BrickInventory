@@ -439,6 +439,11 @@ class MainViewModel @Inject constructor(
     internal var lagerJob: kotlinx.coroutines.Job? = null
 
     internal var gallerySearchJob: kotlinx.coroutines.Job? = null
+
+    // Eigener Auftrag und nicht gallerySearchJob mitbenutzt: Beide Suchfelder
+    // koennen gleichzeitig einen Wert tragen, und ein gemeinsamer Auftrag
+    // haette das Tippen in der Merkliste die Galerie-Suche abbrechen lassen.
+    internal var merklisteSearchJob: kotlinx.coroutines.Job? = null
     internal var galleryListJob: kotlinx.coroutines.Job? = null
     internal var galleryGeneration = 0
 

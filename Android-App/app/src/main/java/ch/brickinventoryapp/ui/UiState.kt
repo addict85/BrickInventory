@@ -937,6 +937,21 @@ data class LagerUiState(
 data class MerklisteUiState(
     val merkposten: List<ch.brickinventoryapp.data.model.Merkposten> = emptyList(),
     val laedt: Boolean = false,
+    // ── Der Filter (Marcos Vorgabe vom 24.09.) ──────────────────────────────
+    //
+    // „In der Merkliste noch einen Filter analog den Sets einbauen inkl.
+    // Inhaber." Drei Werte hier, der vierte — der INHABER — steht wie in jeder
+    // anderen Ansicht in AppUiState.scopeModes; er ist dieselbe Wahl unter
+    // demselben Schluessel wie in Galerie, Teilen, Minifiguren und Finanzen.
+    //
+    // Angewandt werden alle vier am SERVER: Die Sortierung nach Marktpreis
+    // braucht price_cache, und den kennt die App nicht. So zeigen beide
+    // Oberflaechen dasselbe Ergebnis.
+    /** Suchtext — trifft Nummer UND Name. Leer heisst: kein Filter. */
+    val query: String = "",
+    /** "N", "U" — oder leer fuer beide Zustaende. */
+    val zustandFilter: String = "",
+    val sortierung: String = ch.brickinventoryapp.data.repository.MERKLISTE_DEFAULT_SORT,
 )
 
 /**

@@ -91,8 +91,9 @@ class SetsRepository @Inject constructor(
     // man noch nicht hat — dieselbe Sache, andere Tabelle. Ein sechstes
     // Repository fuer vier Aufrufe waere mehr Apparat als Nutzen.
 
-    suspend fun getMerkliste(): Result<MerklisteResponse> =
-        safeCall { api.getMerkliste() }
+    suspend fun getMerkliste(search: String? = null, condition: String? = null,
+                             sort: String? = null, accounts: String? = null): Result<MerklisteResponse> =
+        safeCall { api.getMerkliste(search, condition, sort, accounts) }
 
     suspend fun legeMerkpostenAn(setNumber: String, condition: String,
                              ownerUserId: Int? = null): Result<MerkpostenAntwort> =

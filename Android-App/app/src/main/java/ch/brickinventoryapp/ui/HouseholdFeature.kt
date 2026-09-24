@@ -45,6 +45,9 @@ internal fun MainViewModel.setScope(view: ScopeFilter.View, value: String) {
                 loadValuation()
                 loadPortfolioHistory(_financeState.value.historyPeriod)
             }
+            // Die Merkliste laedt EINE Liste und hat keine Kennzahlen
+            // darueber — anders als die Galerie, wo loadStats() mitmuss.
+            ScopeFilter.View.MERKLISTE -> ladeMerkliste()
         }
     }
 }

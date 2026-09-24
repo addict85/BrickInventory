@@ -3,6 +3,7 @@ package ch.brickinventoryapp.ui
 import androidx.lifecycle.viewModelScope
 import ch.brickinventoryapp.R
 import ch.brickinventoryapp.data.repository.Result
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
@@ -23,11 +24,33 @@ import kotlinx.coroutines.launch
  * Schluessel, genau wie beim Preisalarm. Jede Funktion hier traegt ihn mit.
  */
 
-/** Die Liste laden. */
+/**
+ * Die Liste laden — mit Suche, Zustand, Sortierung und Inhaber.
+ *
+ * ── Marcos Vorgabe vom 24.09. ───────────────────────────────────────────────
+ *
+ *   „In der Merkliste noch einen Filter analog den Sets einbauen inkl.
+ *    Inhaber."
+ *
+ * Gefiltert wird am SERVER (routes/api_v1/wanted.ts), nicht hier. Nicht wegen
+ * der Menge — eine Merkliste hat ein paar Dutzend Eintraege —, sondern weil
+ * beide Oberflaechen dasselbe Ergebnis zeigen sollen: Die Sortierung nach
+ * Marktpreis braucht price_cache, und den kennt kein Client.
+ *
+ * Leere Werte werden zu null und fallen damit aus der Adresse: Ein Aufruf ohne
+ * Filter ergibt dieselbe Adresse wie vor dieser Aenderung.
+ */
 internal fun MainViewModel.ladeMerkliste() {
     viewModelScope.launch {
+        val f = _merklisteState.value
         _merklisteState.update { it.copy(laedt = true) }
-        when (val r = repo.sets.getMerkliste()) {
+        val r = repo.sets.getMerkliste(
+            search    = f.query.trim().ifBlank { null },
+            condition = f.zustandFilter.ifBlank { null },
+            sort      = f.sortierung.ifBlank { null },
+            accounts  = scopeFor(ch.brickinventoryapp.data.ScopeFilter.View.MERKLISTE),
+        )
+        when (r) {
             is Result.Success ->
                 _merklisteState.update { it.copy(merkposten = r.data.merkposten, laedt = false) }
             is Result.Error -> {
@@ -36,6 +59,33 @@ internal fun MainViewModel.ladeMerkliste() {
             }
         }
     }
+}
+
+/**
+ * Suchtext — entprellt, damit nicht jeder Tastendruck eine Abfrage ausloest.
+ *
+ * Dieselben 350 ms wie bei der Galerie (setGalleryQuery). Der Wert steht sofort
+ * im Zustand, damit das Feld nicht ruckelt; nur der Abruf wartet.
+ */
+internal fun MainViewModel.setzeMerklisteSuche(q: String) {
+    _merklisteState.update { it.copy(query = q) }
+    merklisteSearchJob?.cancel()
+    merklisteSearchJob = viewModelScope.launch {
+        delay(350)
+        ladeMerkliste()
+    }
+}
+
+/** Zustandsfilter — "N", "U" oder leer fuer beide. Keine Entprellung: eine Wahl trifft man einmal. */
+internal fun MainViewModel.setzeMerklisteZustand(zustand: String) {
+    _merklisteState.update { it.copy(zustandFilter = zustand) }
+    ladeMerkliste()
+}
+
+/** Sortierung — ein Schluessel aus MERK_SORTS (utils/merkliste.ts). */
+internal fun MainViewModel.setzeMerklisteSortierung(sortierung: String) {
+    _merklisteState.update { it.copy(sortierung = sortierung) }
+    ladeMerkliste()
 }
 
 /**

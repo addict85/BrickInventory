@@ -160,6 +160,7 @@
     <string name="detail_alert_armed">scharf</string>
     <string name="detail_alert_fired">gemeldet — wieder scharf, sobald der Preis zurückkehrt</string>
     <string name="detail_storage_ph">z. B. Kiste 3</string>
+    <string name="filter_condition_all">Alle Zustände</string>
     <string name="filter_storage_all">Alle Lagerorte</string>
     <string name="partslist_only_loose">nur manuell erfasste Teile berücksichtigen</string>
     <string name="partslist_include_subs">Unterkonten mit einbeziehen</string>
@@ -613,6 +614,8 @@
     <string name="nav_wanted">Merkliste</string>
     <string name="wanted_add_title">Merkposten hinzufügen</string>
     <string name="wanted_add_submit">Auf die Merkliste</string>
+    <string name="wanted_search">Merkliste durchsuchen…</string>
+    <string name="wanted_no_results">Keine Merkposten gefunden</string>
     <string name="wanted_empty">Noch keine Merkposten.</string>
     <string name="wanted_owned">schon vorhanden</string>
     <string name="wanted_added">Auf die Merkliste gesetzt</string>

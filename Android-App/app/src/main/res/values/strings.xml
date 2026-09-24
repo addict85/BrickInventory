@@ -176,6 +176,7 @@
     <string name="detail_alert_armed">armed</string>
     <string name="detail_alert_fired">sent — armed again once the price moves back</string>
     <string name="detail_storage_ph">e.g. box 3</string>
+    <string name="filter_condition_all">All conditions</string>
     <string name="filter_storage_all">All locations</string>
     <string name="partslist_only_loose">count only manually added parts</string>
     <string name="partslist_include_subs">include sub-accounts</string>
@@ -627,6 +628,8 @@
     <string name="nav_wanted">Wanted</string>
     <string name="wanted_add_title">Add a wanted item</string>
     <string name="wanted_add_submit">Add to wanted list</string>
+    <string name="wanted_search">Search the wanted list…</string>
+    <string name="wanted_no_results">No wanted items found</string>
     <string name="wanted_empty">Nothing on the wanted list yet.</string>
     <string name="wanted_owned">already owned</string>
     <string name="wanted_added">Added to the wanted list</string>

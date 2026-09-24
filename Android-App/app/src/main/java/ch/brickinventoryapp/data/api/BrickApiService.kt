@@ -487,8 +487,24 @@ interface BrickApiService {
     // Set neu UND gebraucht wuenscht, hat zwei Eintraege, und „loesch den
     // Merkposten auf 75192" waere mehrdeutig.
 
+    /**
+     * Die Liste — mit Suche, Zustand, Sortierung und Inhaber.
+     *
+     * Dieselben Parameternamen wie bei getSets(); der Server liest sie in
+     * routes/api_v1/wanted.ts. `accounts` ist der INHABER: Er war dort schon
+     * immer vorgesehen, nur schickte ihn keine der beiden Oberflaechen.
+     *
+     * Alle vier sind optional (null = weglassen), damit ein Aufruf ohne Filter
+     * dieselbe Adresse ergibt wie bisher — und damit der Antwort-Cache sie
+     * nicht als vier verschiedene Anfragen fuehrt.
+     */
     @GET("api/v1/wanted")
-    suspend fun getMerkliste(): Response<MerklisteResponse>
+    suspend fun getMerkliste(
+        @Query("search") search: String? = null,
+        @Query("condition") condition: String? = null,
+        @Query("sort") sort: String? = null,
+        @Query("accounts") accounts: String? = null,
+    ): Response<MerklisteResponse>
 
     @POST("api/v1/wanted")
     suspend fun legeMerkpostenAn(

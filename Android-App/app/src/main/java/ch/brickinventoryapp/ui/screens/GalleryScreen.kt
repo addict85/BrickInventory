@@ -681,10 +681,17 @@ fun AddSetDialog(
 
 /**
  * Beschriftung eines Sortierwerts. Die Werte selbst sind die des Servers
- * (SET_SORTS in utils/handlers.ts) — hier wird nur übersetzt.
+ * (SET_SORTS in utils/handlers/sets.ts) — hier wird nur übersetzt.
+ *
+ * `internal` und nicht mehr `private`: Die Merkliste sortiert nach denselben
+ * Werten unter denselben Beschriftungen (MERK_SORTS in utils/merkliste.ts ist
+ * eine Teilmenge ohne qty_*). Eine zweite Fassung dort wäre ein neunzeiliges
+ * `when`, das bei der nächsten Umbenennung nur zur Hälfte nachgezogen würde —
+ * genau die Doppelung, an der in diesem Baum schon mehrfach zwei Texte
+ * auseinandergelaufen sind.
  */
 @Composable
-private fun gallerySortLabel(wert: String): String = when (wert) {
+internal fun gallerySortLabel(wert: String): String = when (wert) {
     "added_asc"  -> stringResource(R.string.gallery_sort_added_asc)
     "name_asc"   -> stringResource(R.string.gallery_sort_name)
     "num_asc"    -> stringResource(R.string.gallery_sort_number)
