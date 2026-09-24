@@ -842,7 +842,7 @@ router.post('/sets', requireToken, async (req: AuthedRequest, res) => {
     // Regel daran, welchen der beiden Wege jemand nimmt.
     const V = require('../../utils/validate');
     const result = await addSet(set_number, V.acquisitionQuantity(quantity), owner, null,
-      V.optionalPrice(purchase_price, 'Kaufpreis'), condition);
+      V.optionalPrice(purchase_price, 'Kaufpreis'), condition, req.body?.storage ?? null);
     res.json({ success:true, ...result });
   } catch (e) { handleRouteError(res, e, undefined, req); }
 });

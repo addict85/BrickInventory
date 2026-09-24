@@ -35,6 +35,12 @@ internal fun MainViewModel.loadDashboard() {
     // Die Lagerorte in EINEM Zug mit den Mitgliedern: Beide speisen Filter,
     // die nebeneinander stehen.
     loadLagerorte()
+    // Und der VORRAT, aus dem beim Erfassen gewaehlt wird. Das ist nicht
+    // dieselbe Liste: loadLagerorte() sagt, was BELEGT ist (Filter),
+    // ladeEigeneLagerorte() sagt, was zur WAHL steht — auch ein leeres Regal.
+    // Seit die Erfassungsdialoge ein Lagerortfeld haben, wird sie ueberall
+    // gebraucht und nicht mehr nur in den Einstellungen.
+    ladeEigeneLagerorte()
     loadSets()
     loadStats()
 }
@@ -202,7 +208,8 @@ internal fun MainViewModel.setGallerySort(sort: String) {
 }
 
 internal fun MainViewModel.addSet(setNumber: String, quantity: Int = 1, purchasePrice: Double? = null,
-                                  condition: String? = null, ownerUserId: Int? = null) {
+                                  condition: String? = null, ownerUserId: Int? = null,
+                                  storage: String? = null) {
     viewModelScope.launch {
         // Auf die Grundvariante normalisieren (Nachtrag 63) — DAS war der
         // Grund, warum ein vorhandenes Set trotzdem angelegt wurde: Der Nutzer
@@ -282,7 +289,8 @@ internal fun MainViewModel.addSet(setNumber: String, quantity: Int = 1, purchase
             zeigePruefung(sn, Pruefphase.BESTAND)
             var letzte: Result<AddSetResponse> =
                 Result.Error("", art = Fehlerart.LEERE_ANTWORT)
-            setAnlegenSse.anlegen(eingabe, quantity, purchasePrice, condition, ownerUserId)
+            setAnlegenSse.anlegen(eingabe, quantity, purchasePrice, condition, ownerUserId,
+                                  storage?.trim()?.takeIf { it.isNotEmpty() })
                 .collect { schritt ->
                     when (schritt) {
                         is SetAnlegenSseClient.Schritt.Stammdaten ->

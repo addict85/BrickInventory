@@ -3,7 +3,7 @@ import { locale, t, tRaw } from '../i18n.js';
 import { CURRENCY, G, api, esc, escJs, escUrl, fmtN, fullUrl, imgUrl, knopfBesetzt, thumbUrl, toast } from './01-core.js';
 import { detailZeile } from './01-bausteine.js';
 import { alarmBlock, ladeAlarm, priceChartSVG, renderMarketRows, setzeAlarmFeld } from './07-admin.js';
-import { selectedOwner, haushaltsKonten, loadGallery, loadStats } from './02-gallery.js';
+import { leereLagerortFeld, selectedOwner, selectedStorage, haushaltsKonten, loadGallery, loadStats } from './02-gallery.js';
 
 // ═══ Merkliste ═════════════════════════════════════════════════════════════
 //
@@ -224,6 +224,7 @@ export function merkpostenUebernehmen(arg) {
   G('mk-take-qty').value   = '1';
   G('mk-take-price').value = '';
   G('mk-take-cond').value  = condition === 'U' ? 'U' : 'N';
+  leereLagerortFeld('mk-take-storage');
   G('mk-take-modal').classList.add('open');
 }
 
@@ -262,6 +263,7 @@ export async function bestaetigeUebernahme() {
         // Marktpreis ein, genau wie auf dem normalen Erfassungsweg.
         purchase_price: roh && !isNaN(preis) ? preis : undefined,
         condition: G('mk-take-cond').value,
+        storage: selectedStorage('mk-take-storage'),
       });
     if (!d?.success) return;
     schliesseUebernahme();

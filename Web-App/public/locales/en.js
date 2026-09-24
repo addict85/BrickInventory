@@ -392,7 +392,7 @@ window.I18N_EN = {
   'storage.new_ph': 'New storage location',
   'storage.add': 'Add',
   'storage.empty': 'No storage locations yet.',
-  'storage.belegt': '{sets} sets, {teile} part types',
+  'storage.belegt': '{sets} sets, {teile} part types, {figuren} minifigs',
   'storage.leer': 'empty',
   'storage.delete_title': 'Delete storage location?',
   'storage.delete_text': 'It disappears from the list. Sets and parts stored there would lose their place — so this only works for an empty location.',

@@ -81,6 +81,12 @@ async function getMinifigs(userId: number | number[], { search, source, set_numb
            MIN(m.set_number) AS set_number,
            SUM(m.quantity * COALESCE(s.quantity, 1)) AS total_quantity,
            STRING_AGG(DISTINCT m.set_number, ',') FILTER (WHERE m.set_number IS NOT NULL) AS in_sets,
+           -- Lagerort der GRUPPE, wortgleich zu handlers/parts.ts: Dieselbe
+           -- Figur steckt in mehreren Sets und damit in mehreren Zeilen. Liegen
+           -- die an verschiedenen Orten, sollen beide dastehen statt einer
+           -- willkuerlich gewaehlt zu werden; NULLIF macht aus dem leeren
+           -- Ergebnis wieder NULL, also „nicht erfasst".
+           NULLIF(STRING_AGG(DISTINCT m.storage, ', '), '') AS storage,
            MAX(s.added_at) AS set_added_at
     FROM minifigs m
     LEFT JOIN sets s ON s.user_id = m.user_id AND s.set_number = m.set_number

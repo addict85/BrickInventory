@@ -45,10 +45,12 @@ import ch.brickinventoryapp.ui.theme.Abstaende
 fun AddPartDialog(
     colors: List<BrickColor> = emptyList(),
     onDismiss: () -> Unit,
-    onAdd: (String, Int, String?, String?, Int, Double?, String?, Int?) -> Unit,
+    onAdd: (String, Int, String?, String?, Int, Double?, String?, Int?, String?) -> Unit,
     defaultCondition: String = "N",
     /** Konten des Haushalts — ohne Unterkonten bleibt die Auswahl verborgen. */
-    householdMembers: List<ch.brickinventoryapp.data.model.HouseholdMember> = emptyList()
+    householdMembers: List<ch.brickinventoryapp.data.model.HouseholdMember> = emptyList(),
+    /** Vorrat an Lagerorten — leer heisst: es gibt noch keine, dann wird getippt. */
+    lagerorte: List<String> = emptyList(),
 ) {
     var partNumber by rememberSaveable { mutableStateOf("") }
     var quantity   by rememberSaveable { mutableStateOf("1") }
@@ -56,6 +58,7 @@ fun AddPartDialog(
     var selectedColor by remember { mutableStateOf<BrickColor?>(null) }
     var colorMenuExpanded by rememberSaveable { mutableStateOf(false) }
     var condition  by rememberSaveable { mutableStateOf(defaultCondition) }
+    var lagerort   by rememberSaveable { mutableStateOf("") }
     // Vorbelegt mit dem eigenen Konto: Wer nichts wählt, erfasst für sich —
     // dasselbe Verhalten wie vor der Haushaltssicht.
     var owner by remember(householdMembers) {
@@ -71,7 +74,8 @@ fun AddPartDialog(
             val w = erfassungsWerte(quantity, unitPrice, condition, owner, householdMembers)
             onAdd(
                 partNumber, selectedColor?.id ?: 0, selectedColor?.name, selectedColor?.hex,
-                w.anzahl, w.preis, w.zustand, w.besitzer
+                w.anzahl, w.preis, w.zustand, w.besitzer,
+                lagerort.trim().takeIf { it.isNotEmpty() }
             )
         }
     }
@@ -137,6 +141,8 @@ fun AddPartDialog(
                     anzahl = quantity, onAnzahl = { quantity = it },
                     preis = unitPrice, onPreis = { unitPrice = it },
                     zustand = condition, onZustand = { condition = it },
+                    lagerort = lagerort, onLagerort = { lagerort = it },
+                    lagerorte = lagerorte,
                 )
             }
         },

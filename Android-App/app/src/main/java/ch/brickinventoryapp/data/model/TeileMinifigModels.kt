@@ -33,7 +33,16 @@ data class AddPartRequest(
      * Zielkonto im Haushalt — null = eigenes Konto (Verhalten wie bisher).
      * Ob es erlaubt ist, prüft der Server (canWriteFor), nicht die App.
      */
-    @SerialName("owner_user_id") val ownerUserId: Int? = null
+    @SerialName("owner_user_id") val ownerUserId: Int? = null,
+    /**
+     * Lagerort — null heisst „nicht erfasst".
+     *
+     * Marcos Befund vom 24.09.: Der Ort liess sich erst NACH dem Erfassen im
+     * Detaildialog setzen. Der Server nimmt ihn seit demselben Tag auch beim
+     * Erfassen an und schreibt ihn ueber dieselbe Stelle wie der Detaildialog
+     * (utils/lagerort.ts) — ein neu getippter Ort landet damit auch im Vorrat.
+     */
+    val storage: String? = null,
 )
 
 @Serializable
@@ -68,7 +77,16 @@ data class AddMinifigRequest(
      * Zielkonto im Haushalt — null = eigenes Konto (Verhalten wie bisher).
      * Ob es erlaubt ist, prüft der Server (canWriteFor), nicht die App.
      */
-    @SerialName("owner_user_id") val ownerUserId: Int? = null
+    @SerialName("owner_user_id") val ownerUserId: Int? = null,
+    /**
+     * Lagerort — null heisst „nicht erfasst".
+     *
+     * Marcos Befund vom 24.09.: Der Ort liess sich erst NACH dem Erfassen im
+     * Detaildialog setzen. Der Server nimmt ihn seit demselben Tag auch beim
+     * Erfassen an und schreibt ihn ueber dieselbe Stelle wie der Detaildialog
+     * (utils/lagerort.ts) — ein neu getippter Ort landet damit auch im Vorrat.
+     */
+    val storage: String? = null,
 )
 
 @Serializable

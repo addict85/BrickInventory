@@ -113,10 +113,13 @@ fun PartsScreen(
     val onDeletePart: (String, Int, Int?) -> Unit = { partNumber, colorId, owner ->
         vm.deletePart(partNumber, colorId, owner)
     }
-    val onAddPart: (String, Int, String?, String?, Int, Double?, String?, Int?) -> Unit =
-        { num, colorId, colorName, colorHex, qty, unitPrice, cond, owner ->
-            vm.addPart(num, colorId, colorName, colorHex, qty, unitPrice, cond, owner)
+    val onAddPart: (String, Int, String?, String?, Int, Double?, String?, Int?, String?) -> Unit =
+        { num, colorId, colorName, colorHex, qty, unitPrice, cond, owner, ort ->
+            vm.addPart(num, colorId, colorName, colorHex, qty, unitPrice, cond, owner, ort)
         }
+    // Der VORRAT an Lagerorten (nicht die belegten Orte): Beim Erfassen soll
+    // auch ein leeres Regal zur Wahl stehen.
+    val lagerortVorrat = lagerState.eigene.map { it.name }
 
     // Das Feld zeigt, was im Zustand steht. `remember(...)` darauf geschluesselt
     // statt `rememberSaveable`: Der Text ueberlebt jetzt im ViewModel, und beim
@@ -323,9 +326,10 @@ fun PartsScreen(
             householdMembers = householdMembers,
             colors = colors,
             onDismiss = { showAddDialog = false },
-            onAdd = { num, colorId, colorName, colorHex, qty, unitPrice, cond, owner ->
+            lagerorte = lagerortVorrat,
+            onAdd = { num, colorId, colorName, colorHex, qty, unitPrice, cond, owner, ort ->
                 showAddDialog = false
-                onAddPart(num, colorId, colorName, colorHex, qty, unitPrice, cond, owner)
+                onAddPart(num, colorId, colorName, colorHex, qty, unitPrice, cond, owner, ort)
             },
             defaultCondition = defaultCondition
         )

@@ -291,6 +291,18 @@ fun ErfassungsFelder(
     onPreis: (String) -> Unit,
     zustand: String,
     onZustand: (String) -> Unit,
+    /**
+     * Lagerort und sein Vorrat.
+     *
+     * Marcos Befund vom 24.09.: „Bei den manuell erfassten Teilen kann ich beim
+     * Erfassen keinen Lagerort setzen. Bei manuelle erfassten Minifiguren kann
+     * ich beim Erfassen keinen Lagerort setzen." Das Feld steht hier und nicht
+     * in den beiden Dialogen, aus demselben Grund wie alles andere in dieser
+     * Funktion: Es ist derselbe Block.
+     */
+    lagerort: String = "",
+    onLagerort: (String) -> Unit = {},
+    lagerorte: List<String> = emptyList(),
 ) {
     OutlinedTextField(
         value = anzahl, onValueChange = { onAnzahl(NumericInput.quantity(it)) },
@@ -308,6 +320,7 @@ fun ErfassungsFelder(
         keyboardOptions = NumericInput.preisTastatur(),
     )
     Zustandszeile(zustand = zustand, onZustand = onZustand)
+    LagerortErfassung(lagerort, lagerorte, onLagerort)
 }
 
 /**

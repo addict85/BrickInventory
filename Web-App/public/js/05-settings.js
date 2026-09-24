@@ -620,7 +620,11 @@ export async function ladeLagerortVerwaltung() {
   }
   el.innerHTML = orte.map(o => {
     const n = belegung.get(o.name);
-    const wie = n ? t('storage.belegt', { sets: n.sets, teile: n.teile }) : esc(tRaw('storage.leer'));
+    // Figuren stehen EIGEN da, nicht bei den Teilesorten (utils/lagerort.ts):
+    // „18 Teilesorten" hiesse sonst mal 18 Teilesorten und mal 12 plus 6
+    // Figuren, und niemand koennte der Zahl ansehen, was gemeint ist.
+    const wie = n ? t('storage.belegt', { sets: n.sets, teile: n.teile, figuren: n.figuren ?? 0 })
+                  : esc(tRaw('storage.leer'));
     return `<div style="display:flex;align-items:center;gap:8px;padding:4px 0;border-bottom:1px solid var(--bdr)">
       <input type="text" maxlength="60" value="${esc(o.name)}"
              data-change="benenneLagerortUm" data-arg="${o.id}" data-val="1"

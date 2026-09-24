@@ -3,7 +3,7 @@ import { registerActions } from './00-registry.js';
 import { locale, t, tRaw} from '../i18n.js';
 import { G, api, esc, escUrl, fullUrl, imgUrl, thumbUrl, toast } from './01-core.js';
 import { setScrollLabel } from './15-scrollbar.js';
-import { PARTS_ICON_SVG, handleSseEvent, hideProgress, loadGallery, loadStats, selectedOwner, showProgress, streamRequest } from './02-gallery.js';
+import { PARTS_ICON_SVG, handleSseEvent, hideProgress, leereLagerortFeld, loadGallery, loadStats, selectedOwner, selectedStorage, showProgress, streamRequest } from './02-gallery.js';
 import { _lastImportAt , set_lastImportAt} from './07-admin.js';
 
 // ═══ Katalog: Rebrickable-Set-Katalog browsen, suchen, filtern ═══
@@ -383,6 +383,7 @@ async function openCatModal(setNumber){
   const s = d.set; _catCurSet = s;
   G('cat-m-tit').textContent = s.name || s.set_number;
   G('cat-m-sub').textContent = s.set_number;
+  leereLagerortFeld('cat-m-storage');
   // Volle Auflösung im Detail-Modal — wie beim Zoom der eigenen Sets
   // (11-actions.js, openImageLightboxFromEl): NICHT über den Proxy, sondern
   // direkt im Browser vom CDN geladen. Das ist bewusst so: Der Server-Umweg
@@ -450,10 +451,14 @@ async function addCatalogSetToGallery(){
   // Katalog aufgenommenes Set landete immer beim eigenen Konto, ohne dass man
   // es merkte. Genau das Muster, das dieses Projekt durchzieht.
   const owner_user_id = selectedOwner('cat-m-owner');
+  // VOR dem Schliessen lesen: closeCatModal() raeumt den Dialog, danach steht
+  // im Feld nichts mehr. Marcos Befund vom 24.09. („aus dem Katalog in die
+  // Galerie — Lagerort nicht setzbar") waere sonst nur halb behoben.
+  const storage = selectedStorage('cat-m-storage');
   closeCatModal();
   showProgress(t('gallery.adding_set', { num }), false);
   try {
-    await streamRequest('/api/v1/sets/add-stream', { set_number: num, quantity: qty, purchase_price, condition, owner_user_id }, (ev)=>{
+    await streamRequest('/api/v1/sets/add-stream', { set_number: num, quantity: qty, purchase_price, condition, owner_user_id, storage }, (ev)=>{
       handleSseEvent(ev, num);
       if (ev.step === 'done') {
         _activeAbort = null; G('btn-cancel-import').style.display = 'none';

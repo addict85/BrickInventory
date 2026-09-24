@@ -127,6 +127,7 @@ internal fun MainViewModel.loescheMerkposten(setNumber: String, zustand: String,
 internal fun MainViewModel.uebernimmMerkposten(
     setNumber: String, zustand: String, besitzer: Int?,
     anzahl: Int = 1, kaufpreisRoh: String = "", erfasstAls: String? = null,
+    lagerort: String? = null,
 ) {
     viewModelScope.launch {
         // Dieselbe Zahlenerkennung wie beim Preisalarm: Komma wie Punkt, und
@@ -134,7 +135,8 @@ internal fun MainViewModel.uebernimmMerkposten(
         // ein, genau wie auf dem normalen Erfassungsweg.
         val preis = ch.brickinventoryapp.alarm.Alarmeingabe.zahl(kaufpreisRoh)
         when (val r = repo.sets.uebernimmMerkposten(setNumber, zustand, anzahl, preis,
-                                                erfasstAls, besitzer)) {
+                                                erfasstAls, besitzer,
+                                                lagerort?.trim()?.takeIf { it.isNotEmpty() })) {
             is Result.Success -> {
                 _snackbar.value = text(
                     if (r.data.action == "exists") R.string.wanted_taken_existing

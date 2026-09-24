@@ -198,8 +198,15 @@ test('der Marktpreis als Kaufpreis richtet sich nach dem gewählten Zustand', ()
   // indexOf über alles vergleicht Positionen quer durch fremde Funktionen und
   // misst damit nichts. (Genau so ist der erste Entwurf dieser Fassung
   // fehlgeschlagen.)
-  const fnStart = src.indexOf('async function addSet(');
-  assert.ok(fnStart > 0, 'addSet() ist nicht mehr zu finden');
+  //
+  // GELESEN WIRD addSetIntern(): Seit dem 24.09. traegt addSet() nur die
+  // Huelle, die den Lagerort setzt (Marcos Befund vom selben Tag), und reicht
+  // durch. Der Rumpf mit Zustand und Preisabruf steht in addSetIntern. Das ist
+  // dieselbe Bewegung, die diese Regel schon einmal erwischt hat, als die
+  // Staffelung nach utils/settings.ts wanderte — und wieder gilt: Die Regel
+  // ist nicht verletzt, nur ihr Ausschnitt war veraltet.
+  const fnStart = src.indexOf('async function addSetIntern(');
+  assert.ok(fnStart > 0, 'addSetIntern() ist nicht mehr zu finden');
   const fnEnde = src.indexOf('\nasync function ', fnStart + 10);
   const addSetSrc = src.slice(fnStart, fnEnde > fnStart ? fnEnde : undefined);
 

@@ -66,6 +66,7 @@ fun MinifigsScreen(
     val scopeMode = state.scopeModes[ch.brickinventoryapp.data.ScopeFilter.View.MINIFIGS.key]
         ?: ch.brickinventoryapp.data.ScopeFilter.ALL
     val manualFigs = partsState.manualFigs ?: emptyList()
+    val lagerState by vm.lagerState.collectAsStateWithLifecycle()
 
     val onRefresh: () -> Unit = { vm.loadMinifigs() }
     val onScopeChange: (String) -> Unit = { vm.setScope(ch.brickinventoryapp.data.ScopeFilter.View.MINIFIGS, it) }
@@ -73,10 +74,13 @@ fun MinifigsScreen(
     // Konten. Ohne die Angabe loescht der Server die Zeile des Aufrufers —
     // geklickt waere die fremde Karte, weg die eigene.
     val onDeleteFig: (String, Int?) -> Unit = { figNumber, owner -> vm.deleteMinifig(figNumber, owner) }
-    val onAddMinifig: (String, String?, Int, Double?, String?, Int?) -> Unit =
-        { num, blNum, qty, unitPrice, cond, owner ->
-            vm.addMinifig(num, blNum, qty, unitPrice, cond, owner)
+    val onAddMinifig: (String, String?, Int, Double?, String?, Int?, String?) -> Unit =
+        { num, blNum, qty, unitPrice, cond, owner, ort ->
+            vm.addMinifig(num, blNum, qty, unitPrice, cond, owner, ort)
         }
+    // Der VORRAT an Lagerorten (nicht die belegten Orte): Beim Erfassen soll
+    // auch ein leeres Regal zur Wahl stehen.
+    val lagerortVorrat = lagerState.eigene.map { it.name }
 
     // Suchtext aus dem Zustand, gefiltert wird auf dem SERVER — wie bei den
     // Teilen (PartsScreen) und in der Galerie. Hier stand ein eigenes
@@ -228,9 +232,10 @@ fun MinifigsScreen(
             householdMembers = householdMembers,
             defaultCondition = defaultCondition,
             onDismiss = { showAddDialog = false },
-            onAdd = { num, blNum, qty, unitPrice, cond, owner ->
+            lagerorte = lagerortVorrat,
+            onAdd = { num, blNum, qty, unitPrice, cond, owner, ort ->
                 showAddDialog = false
-                onAddMinifig(num, blNum, qty, unitPrice, cond, owner)
+                onAddMinifig(num, blNum, qty, unitPrice, cond, owner, ort)
             }
         )
     }
@@ -282,16 +287,19 @@ fun ManualFigTile(fig: FigValuationItem, serverUrl: String, imageLoader: ImageLo
 @Composable
 fun AddMinifigDialog(
     onDismiss: () -> Unit,
-    onAdd: (String, String?, Int, Double?, String?, Int?) -> Unit,
+    onAdd: (String, String?, Int, Double?, String?, Int?, String?) -> Unit,
     defaultCondition: String = "N",
     /** Konten des Haushalts — ohne Unterkonten bleibt die Auswahl verborgen. */
-    householdMembers: List<ch.brickinventoryapp.data.model.HouseholdMember> = emptyList()
+    householdMembers: List<ch.brickinventoryapp.data.model.HouseholdMember> = emptyList(),
+    /** Vorrat an Lagerorten — leer heisst: es gibt noch keine, dann wird getippt. */
+    lagerorte: List<String> = emptyList(),
 ) {
     var figNumber  by rememberSaveable { mutableStateOf("") }
     var blFigNumber by rememberSaveable { mutableStateOf("") }
     var quantity   by rememberSaveable { mutableStateOf("1") }
     var unitPrice  by rememberSaveable { mutableStateOf("") }
     var condition  by rememberSaveable { mutableStateOf(defaultCondition) }
+    var lagerort   by rememberSaveable { mutableStateOf("") }
     // Vorbelegt mit dem eigenen Konto: Wer nichts wählt, erfasst für sich —
     // dasselbe Verhalten wie vor der Haushaltssicht.
     var owner by remember(householdMembers) {
@@ -306,7 +314,8 @@ fun AddMinifigDialog(
             onAdd(
                 figNumber,
                 blFigNumber.trim().ifBlank { null },
-                w.anzahl, w.preis, w.zustand, w.besitzer
+                w.anzahl, w.preis, w.zustand, w.besitzer,
+                lagerort.trim().takeIf { it.isNotEmpty() }
             )
         }
     }
@@ -339,6 +348,8 @@ fun AddMinifigDialog(
                     anzahl = quantity, onAnzahl = { quantity = it },
                     preis = unitPrice, onPreis = { unitPrice = it },
                     zustand = condition, onZustand = { condition = it },
+                    lagerort = lagerort, onLagerort = { lagerort = it },
+                    lagerorte = lagerorte,
                 )
             }
         },

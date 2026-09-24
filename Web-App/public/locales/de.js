@@ -393,7 +393,7 @@ window.I18N_DE = {
   'storage.new_ph': 'Neuer Lagerort',
   'storage.add': 'Hinzufügen',
   'storage.empty': 'Noch keine Lagerorte angelegt.',
-  'storage.belegt': '{sets} Sets, {teile} Teilesorten',
+  'storage.belegt': '{sets} Sets, {teile} Teilesorten, {figuren} Figuren',
   'storage.leer': 'leer',
   'storage.delete_title': 'Lagerort löschen?',
   'storage.delete_text': 'Der Ort verschwindet aus der Auswahl. Sets und Teile, die darin liegen, behalten ihre Zuordnung nicht — deshalb geht es nur bei einem leeren Ort.',

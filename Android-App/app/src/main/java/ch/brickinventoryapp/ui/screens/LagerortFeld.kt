@@ -1,5 +1,8 @@
 package ch.brickinventoryapp.ui.screens
 
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -7,6 +10,7 @@ import androidx.compose.material3.ExposedDropdownMenuBox
 import androidx.compose.material3.ExposedDropdownMenuDefaults
 import androidx.compose.material3.MenuAnchorType
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -16,6 +20,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import ch.brickinventoryapp.R
+import ch.brickinventoryapp.ui.theme.Abstaende
 import ch.brickinventoryapp.ui.theme.Schrift
 
 /**
@@ -92,5 +97,37 @@ fun LagerortFeld(
                 )
             }
         }
+    }
+}
+
+/**
+ * Dasselbe Feld, aber im ERFASSEN-Dialog: mit Beschriftung und voller Breite.
+ *
+ * ── Marcos Befund vom 24.09. ────────────────────────────────────────────────
+ *
+ * Der Lagerort liess sich erst NACH dem Erfassen setzen — im Detaildialog.
+ * „Wenn ich ein Set in der Galerie hinzufuegen will, kann ich den Lagerort
+ * nicht waehlen. Egal ob ich das manuell oder per Barcode hinzufuege." Dazu
+ * die Wege aus Katalog und Merkliste sowie die manuellen Teile und Figuren.
+ *
+ * ── Warum eine eigene Fassung und nicht fuenfmal [LagerortFeld] ─────────────
+ *
+ * In den Detailansichten steht das Feld in einer Zeile NEBEN seiner
+ * Beschriftung und ist schmal. In einem Dialog steht es unter ihr und nimmt
+ * die ganze Breite — wie die Felder darueber. Diese eine Stelle haelt den
+ * Unterschied fest; das Bedienelement selbst bleibt dasselbe.
+ */
+@Composable
+fun LagerortErfassung(
+    wert: String,
+    vorrat: List<String>,
+    onWert: (String) -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    Column(modifier, verticalArrangement = Arrangement.spacedBy(Abstaende.haar)) {
+        Text(stringResource(R.string.detail_storage),
+             style = MaterialTheme.typography.labelLarge)
+        LagerortFeld(wert = wert, vorrat = vorrat, onWert = onWert,
+                     modifier = Modifier.fillMaxWidth())
     }
 }

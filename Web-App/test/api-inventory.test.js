@@ -279,6 +279,10 @@ const C = {
   'GET /api/v1/wanted/:setNumber/preise': 'nur-v1',
   'PUT /api/v1/parts/:partNumber/:colorId/storage': 'nur-v1',
   'PUT /api/v1/sets/:setNumber/storage': 'nur-v1',
+  // Seit Migration 0024 traegt auch eine Minifigur einen Lagerort. Dieselbe
+  // Form und derselbe Grund wie die beiden Zeilen darueber: Die Webapp setzt
+  // ihn ueber die v1-Adresse, eine Sitzungs-Entsprechung gibt es nicht.
+  'PUT /api/v1/minifigs/:figNumber/storage': 'nur-v1',
   'POST /api/v1/parts/import/csv': 'nur-v1',
   'POST /api/v1/sets/:setNumber/instructions/upload': 'nur-v1',
   'POST /api/v1/sets/add-stream': 'nur-v1',

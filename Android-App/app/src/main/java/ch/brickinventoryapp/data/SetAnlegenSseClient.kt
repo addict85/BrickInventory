@@ -75,7 +75,7 @@ class SetAnlegenSseClient @Inject constructor(
      */
     fun anlegen(
         setNumber: String, quantity: Int, purchasePrice: Double?,
-        condition: String?, ownerUserId: Int?,
+        condition: String?, ownerUserId: Int?, storage: String? = null,
     ): Flow<Schritt> = callbackFlow {
         val baseUrl = prefs.serverUrl.first().trim().trimEnd('/')
         val token = prefs.authToken.first()
@@ -92,6 +92,12 @@ class SetAnlegenSseClient @Inject constructor(
             if (purchasePrice != null) add("\"purchase_price\":$purchasePrice")
             if (condition != null) add("\"condition\":\"$condition\"")
             if (ownerUserId != null) add("\"owner_user_id\":$ownerUserId")
+            // Der Lagerort ist freier Text und muss deshalb ueber den
+            // Serialisierer, nicht in die Zeichenkette gesetzt: Ein
+            // Anfuehrungszeichen im Namen („Regal \"A\"") zerbraeche den Rumpf
+            // sonst. Dieselbe Vorsicht wie eine Zeile hoeher bei set_number.
+            if (!storage.isNullOrBlank())
+                add("\"storage\":${json.encodeToString(kotlinx.serialization.serializer(), storage)}")
         }
         val rumpf = "{${felder.joinToString(",")}}"
             .toRequestBody("application/json; charset=utf-8".toMediaType())

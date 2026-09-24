@@ -3,7 +3,7 @@ import express from 'express';
 import * as db from '../../db/database';
 import { handleRouteError, pfadParam } from '../../utils/httpError';
 import { requireToken } from './middleware';
-import { scopeIds, parseScopeMode, resolveWriteTarget } from '../../utils/household';
+import { scopeIds, parseScopeMode, resolveWriteTarget, writableIds } from '../../utils/household';
 import { getManualMinifigs, getMinifigStats, getMinifigs } from '../../utils/handlers/minifigs';
 import { addManualFig, updateManualFig } from '../minifigs';
 import { getSetting } from '../../utils/settings';
@@ -13,6 +13,7 @@ import { einzelwert } from '../../utils/validate';
 import { verwendendeSets, loescheManuelleFigur } from '../../utils/handlers/shared';
 import { inventarNachKandidaten } from '../../utils/rbInventar';
 import { sendeFehler } from '../../utils/fehlerTexte';
+import { normalisiereLagerort, setzeLagerort } from '../../utils/lagerort';
 const router = express.Router();
 
 // ── MINIFIGS ─────────────────────────────────────────────────────────────────
@@ -42,6 +43,26 @@ router.put('/minifigs/:figNumber', requireToken, async (req: AuthedRequest, res)
     if (besitzer === null) return sendeFehler(req, res, 403, 'kein_zugriff_konto');
     await updateManualFig(besitzer, pfadParam(req, 'figNumber'), req.body);
     res.json({ success: true });
+  } catch (e) { handleRouteError(res, e, undefined, req); }
+});
+
+/**
+ * PUT /api/v1/minifigs/:figNumber/storage — Lagerort setzen.
+ *
+ * Wortgleich zum Gegenstueck bei den Teilen (routes/api_v1/parts.ts) und aus
+ * demselben Grund: Trifft ALLE Zeilen dieser Figur im Schreibbereich.
+ * Dieselbe Figur steckt in mehreren Sets und damit in mehreren Zeilen; wer in
+ * der Ansicht „Kiste 3" eintraegt, meint die Figur, nicht eine ihrer Zeilen.
+ *
+ * Neu seit Marcos Befund vom 24.09. — bis dahin konnte eine Minifigur
+ * ueberhaupt keinen Lagerort tragen (Migration 0024).
+ */
+router.put('/minifigs/:figNumber/storage', requireToken, async (req: AuthedRequest, res) => {
+  try {
+    const ort = normalisiereLagerort(req.body?.storage);
+    const n = await setzeLagerort('fig', await writableIds(req.apiUser.user_id),
+      [pfadParam(req, 'figNumber')], ort);
+    res.json({ success: true, storage: ort, changed: n });
   } catch (e) { handleRouteError(res, e, undefined, req); }
 });
 
