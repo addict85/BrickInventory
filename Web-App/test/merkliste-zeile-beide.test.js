@@ -94,42 +94,66 @@ test('3. der Lagerort steht im Detail der MANUELLEN Einträge', () => {
     'Die Lagerortzeile der App speichert nicht.');
 });
 
-test('5. Löschen steht im DETAIL, nicht auf der Kachel und nicht in der Zeile', () => {
-  // ── Marcos Vorgabe vom 24.09. ────────────────────────────────────────────
+test('5. Löschen: Papierkorb in der Webapp, nur im Detail in der App', () => {
+  // ── Marcos zwei Vorgaben vom 24.09., in dieser Reihenfolge ───────────────
   //
   //   „Den Papierkorb auf den Kacheln der manuell erfassten Teilen und manuell
   //    erfassten Minifiguren entfernen. Der Button löschen ebenfalls in der
   //    Tabelle der merkliste entfernen. Auf den Detail Seiten soll jeweils der
   //    Papierkorb angezeigt werden wie in der Detailseite der sets."
   //
-  // Die eine Hälfte ist ein Entfernen, die andere eine Zusicherung: Wäre der
-  // Papierkorb nur weg, liesse sich ein Eintrag nirgends mehr löschen. Beide
-  // Hälften stehen deshalb in EINER Prüfung.
+  //   „Im der Webapp soll auf den Kacheln bei den manuell erfassten Minifiguren
+  //    und den manuell erfassten Teilen sowie bei den Merkliste einträgen der
+  //    Papierkorb oben rechts angezeigt werden analog den Kacheln bei den Sets.
+  //    Dies aber nur in der webapp."
   //
-  // Die Set-KACHEL behält ihren Papierkorb — Marcos Vorgabe nennt ausdrücklich
-  // die manuell erfassten Einträge, und die Set-Detailseite ist das Vorbild,
-  // nicht der Gegenstand.
+  // Die zweite nimmt die erste für EINE der beiden Oberflächen zurück. Das
+  // Ergebnis ist deshalb kein Gleichstand, und genau darum steht es hier:
+  // Diese Prüfung ist sonst die Wächterin darüber, dass beide Oberflächen
+  // dasselbe tun. Eine gewollte Abweichung muss benannt sein, sonst zieht sie
+  // beim nächsten Abgleich jemand versehentlich glatt.
+  //
+  // Der Grund für die Abweichung liegt in der Bedienung: Am Zeigegerät blendet
+  // sich der Knopf beim Überfahren ein und kostet nichts; auf dem Telefon
+  // stünde er dauerhaft im Bild und läge unter dem Daumen.
+  //
+  // ── Gegenproben (durchgeführt) ───────────────────────────────────────────
+  //   a) delbtn aus 06-minifigs.js entfernt        → Schritt 5 rot.
+  //   b) Papierkorb aus der Webapp-Zeile entfernt  → Schritt 5 rot.
+  //   c) Icons.Default.Delete in ManuelleKachel()  → Schritt 5 rot.
+  //   d) Den Papierkorb im Webapp-Detail entfernt  → Schritt 5 rot.
 
-  // ── Webapp: nichts mehr auf den Kacheln ──────────────────────────────────
+  // ── Webapp: auf den Kacheln UND in der Merklisten-Zeile ──────────────────
   const kacheln = web('public/js/06-minifigs.js');
-  assert.ok(!/delbtn/.test(kacheln),
-    'Auf den Kacheln der manuell erfassten Einträge steht noch ein Papierkorb.');
+  assert.match(kacheln, /class="delbtn" data-click="deleteManualFigStop"/,
+    'Auf den Kacheln der manuell erfassten Minifiguren fehlt der Papierkorb.');
+  assert.match(kacheln, /class="delbtn" data-click="deleteManualPartStop"/,
+    'Auf den Kacheln der manuell erfassten Teile fehlt der Papierkorb.');
 
-  // ── Webapp: nichts mehr in der Merklisten-Zeile ──────────────────────────
   const zeileWeb = rumpf(web('public/js/16-merkliste.js'), 'function zeile(w) {');
-  assert.ok(!/merkpostenLoeschen/.test(zeileWeb),
-    'Die Merklisten-Zeile trägt noch den Löschen-Knopf.');
+  assert.match(zeileWeb, /class="delbtn" data-click="merkpostenLoeschenStop"/,
+    'Der Merklisten-Zeile fehlt der Papierkorb.');
+  // „oben rechts analog den Kacheln bei den Sets" ist kein Aussehen, sondern
+  // der Behälter: .ca sitzt absolut oben rechts und blendet sich beim
+  // Überfahren ein (styles.css). Ohne position:relative am Elternelement
+  // säße er an der nächsten positionierten Box — also irgendwo.
+  assert.match(zeileWeb, /class="mk-zeile"/,
+    'Die Zeile trägt die Klasse nicht, an der die Einblendung hängt.');
+  assert.match(zeileWeb, /position:relative/,
+    'Ohne position:relative sitzt der Papierkorb nicht in der Zeile.');
 
-  // ── App: dasselbe ────────────────────────────────────────────────────────
+  // ── App: NICHT auf der Kachel und NICHT in der Zeile ─────────────────────
   const kachelApp = rumpf(app('ui/screens/ManualItemComposables.kt'), 'fun ManuelleKachel(');
   assert.ok(!/Icons\.Default\.Delete/.test(kachelApp),
-    'Die Kachel der App trägt noch den Papierkorb.');
+    'Die Kachel der App trägt einen Papierkorb — „nur in der webapp".');
 
   const zeileApp = rumpf(app('ui/screens/MerklisteScreen.kt'), 'private fun MerkpostenZeile(');
   assert.ok(!/common_delete/.test(zeileApp),
-    'Die Merklisten-Zeile der App trägt noch den Löschen-Knopf.');
+    'Die Merklisten-Zeile der App trägt den Löschen-Knopf — „nur in der webapp".');
 
-  // ── Und die Detailseiten haben ihn ───────────────────────────────────────
+  // ── Und die Detailseiten haben ihn in BEIDEN ─────────────────────────────
+  // Das ist die Hälfte von Marcos erster Vorgabe, die die zweite nicht
+  // angerührt hat: In der App ist das Detail der einzige Weg zum Löschen.
   const html = fs.readFileSync(path.join(ROOT, 'public/index.html'), 'utf8');
   for (const id of ['btn-md', 'mk-m-del', 'man-detail-del']) {
     assert.match(html, new RegExp(`id="${id}"`),

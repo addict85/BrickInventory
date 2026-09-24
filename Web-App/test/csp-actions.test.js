@@ -272,16 +272,13 @@ test('Löschknöpfe auf Kacheln tragen einen Papierkorb, kein ✕', () => {
 
   // ── Der Selbstbeweis zählt über ALLE Dateien, nicht je Datei ─────────────
   //
-  // Er stand je Datei, und am 24.09. hat er zu Recht angeschlagen: In
-  // 06-minifigs.js gibt es gar keinen Löschknopf mehr. Marcos Vorgabe —
-  // „Den Papierkorb auf den Kacheln der manuell erfassten Teilen und manuell
-  // erfassten Minifiguren entfernen […] auf den Detail Seiten soll jeweils der
-  // Papierkorb angezeigt werden" — macht die Datei knopflos, und eine Regel,
-  // die in JEDER Datei einen Knopf verlangt, verlangt damit das Gegenteil.
-  //
-  // Was sie sichern soll, bleibt: Ein Löschknopf auf einer Kachel trägt den
-  // Papierkorb. Dass es überhaupt noch einen gibt, sichert die Summe — die
-  // Set-Kachel hat ihren behalten.
+  // Er stand je Datei und schlug am 24.09. an, als 06-minifigs.js kurzzeitig
+  // gar keinen Löschknopf mehr hatte. Er ist seither wieder da (Marco hat die
+  // Entfernung für die Webapp zurückgenommen), aber die Summenform bleibt: Eine
+  // Regel, die in JEDER Datei einen Knopf verlangt, bricht beim nächsten Umbau
+  // einer einzelnen Datei — obwohl das, was sie sichern soll, weiter gilt.
+  // Nämlich: Ein Löschknopf auf einer Kachel trägt den Papierkorb, und es gibt
+  // überhaupt noch einen.
   let knoepfeGesamt = 0;
   for (const file of ['02-gallery.js', '06-minifigs.js']) {
     const src = fs.readFileSync(path.join(PUB, 'js', file), 'utf8');
@@ -315,16 +312,21 @@ test('Löschknöpfe auf Kacheln tragen einen Papierkorb, kein ✕', () => {
 
   // Ohne Text braucht der Knopf eine Beschriftung für Hilfstechnik
   assert.match(gallery, /aria-label="\$\{esc\(t\('detail\.delete'\)\)\}"/, 'Set-Knopf ohne aria-label');
-  // Die Minifiguren-Zeile stand hier ebenfalls. Sie ist mit dem Knopf
-  // entfallen; dass auf den manuellen Kacheln keiner mehr steht, prüft
-  // test/merkliste-zeile-beide.test.js — und zwar für beide Oberflächen.
+  const figs = fs.readFileSync(path.join(PUB, 'js', '06-minifigs.js'), 'utf8');
+  assert.match(figs, /aria-label="\$\{esc\(t\('figs\.delete'\)\)\}"/,
+    'Minifiguren-Knopf ohne aria-label');
 
   // Einheitliches Muster über alle drei Tabellen: .ca als Hover-Behälter mit
   // .delbtn darin. Vorher war der Minifiguren-Knopf ein "btn bd" mit eigenem
   // Inline-Style und dauerhaft sichtbar, Teile hatten gar keinen.
-  // 06-minifigs.js steht nicht mehr in dieser Liste: Dort gibt es seit dem
-  // 24.09. keine Kachel-Löschknöpfe mehr (siehe oben).
-  for (const [file, expected] of [['02-gallery.js', 1]]) {
+  //
+  // Die drei in 06-minifigs.js: die Minifiguren-Kachel im Reiter „Minifiguren"
+  // (nur bei source==='manual'), das Kachelraster der manuell erfassten
+  // Minifiguren und das der manuell erfassten Teile. Marcos Vorgabe vom 24.09.:
+  // „Im der Webapp soll auf den Kacheln bei den manuell erfassten Minifiguren
+  // und den manuell erfassten Teilen […] der Papierkorb oben rechts angezeigt
+  // werden analog den Kacheln bei den Sets. Dies aber nur in der webapp."
+  for (const [file, expected] of [['02-gallery.js', 1], ['06-minifigs.js', 3]]) {
     const src = fs.readFileSync(path.join(PUB, 'js', file), 'utf8');
     const n = (src.match(/<div class="ca"><button class="delbtn"/g) || []).length;
     assert.equal(n, expected, `${file}: ${n} statt ${expected} Kachel-Löschknöpfe im .ca/.delbtn-Muster`);
@@ -333,8 +335,10 @@ test('Löschknöpfe auf Kacheln tragen einen Papierkorb, kein ✕', () => {
   // Der Hover gilt für Set- UND manuelle Kacheln, und ohne Zeigegerät bleibt
   // der Knopf sichtbar — sonst wäre Löschen per Touch nicht erreichbar.
   const css = fs.readFileSync(path.join(PUB, 'styles.css'), 'utf8');
-  assert.match(css, /\.sc:hover \.ca, \.man-tile:hover \.ca\{opacity:1\}/,
-    'Manuelle Kacheln zeigen den Löschknopf nicht beim Überfahren');
+  // .mk-zeile steht seit dem 24.09. mit darin: Die Merklisten-Zeile trägt
+  // denselben Papierkorb oben rechts und braucht dieselbe Einblendung.
+  assert.match(css, /\.sc:hover \.ca, \.man-tile:hover \.ca, \.mk-zeile:hover \.ca\{opacity:1\}/,
+    'Manuelle Kacheln oder die Merklisten-Zeile zeigen den Löschknopf nicht beim Überfahren');
   assert.match(css, /@media \(hover: none\)\{ \.ca\{opacity:1\} \}/,
     'Ohne Zeigegerät bliebe der Löschknopf unerreichbar');
 

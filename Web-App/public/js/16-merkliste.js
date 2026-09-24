@@ -1,6 +1,6 @@
 import { registerActions } from './00-registry.js';
 import { locale, t, tRaw } from '../i18n.js';
-import { CURRENCY, G, api, esc, escJs, escUrl, fmtN, fullUrl, imgUrl, knopfBesetzt, thumbUrl, toast } from './01-core.js';
+import { CURRENCY, G, TRASH_ICON_SVG, api, esc, escJs, escUrl, fmtN, fullUrl, imgUrl, knopfBesetzt, thumbUrl, toast } from './01-core.js';
 import { detailZeile } from './01-bausteine.js';
 import { alarmBlock, ladeAlarm, priceChartSVG, renderMarketRows, setzeAlarmFeld } from './07-admin.js';
 import { leereLagerortFeld, selectedOwner, selectedStorage, haushaltsKonten, loadGallery, loadStats } from './02-gallery.js';
@@ -114,16 +114,25 @@ function zeile(w) {
   const arg = escJs(`${w.set_number}|${w.condition}|${w.user_id}`);
   return `
     <!-- Die GANZE Zeile oeffnet das Detail — wie die Karte in der App.
-         Vorher tat das nur der Textblock, und zwar aus einem Grund, den es
-         nicht mehr gibt: Rechts sassen zwei Knoepfe, und eine klickbare
-         Flaeche darunter haette etwas anderes getan als sie. Seit Marcos
-         Vorgabe vom 24.09. („Der Button loeschen ebenfalls in der Tabelle der
-         merkliste entfernen") traegt die Zeile gar keinen Knopf mehr;
-         geloescht und uebernommen wird im Detail, an derselben Stelle wie
-         beim Set. -->
-    <div data-click="oeffneMerkpostenDetail" data-arg="${arg}"
-         style="display:flex;gap:12px;align-items:center;padding:10px;border:1px solid var(--bdr);
+         Der Papierkorb sitzt oben rechts und haelt seinen Klick an
+         (merkpostenLoeschenStop), genau wie auf der Set-Kachel. Marcos
+         Vorgabe vom 24.09., zweiter Teil: „soll auf den Kacheln […] sowie bei
+         den Merkliste Eintraegen der Papierkorb oben rechts angezeigt werden
+         analog den Kacheln bei den Sets. Dies aber nur in der webapp."
+
+         position:relative ist noetig, weil .ca absolut liegt; die Klasse
+         mk-zeile traegt die Einblendung beim Ueberfahren (styles.css).
+         Uebernommen wird weiterhin im Detail.
+
+         KEINE Backticks in diesem Kommentar: Er steht INNERHALB eines
+         Template-Literals und wuerde es sonst beenden. Genau daran ist der
+         erste Entwurf gescheitert — dieselbe Falle wie in
+         utils/handlers/parts.ts, wo derselbe Hinweis steht. -->
+    <div class="mk-zeile" data-click="oeffneMerkpostenDetail" data-arg="${arg}"
+         style="position:relative;display:flex;gap:12px;align-items:center;padding:10px;border:1px solid var(--bdr);
                 border-radius:var(--rad);background:var(--sur);margin-bottom:8px;cursor:pointer">
+      <div class="ca"><button class="delbtn" data-click="merkpostenLoeschenStop" data-arg="${arg}"
+           title="${esc(tRaw('wanted.remove'))}" aria-label="${esc(tRaw('wanted.remove'))}">${TRASH_ICON_SVG}</button></div>
       ${bild}
       <div style="flex:1;min-width:0">
         <div style="font-weight:600">${titel}</div>
