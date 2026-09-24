@@ -93,24 +93,44 @@ function zeile(w) {
     ? `<span style="background:var(--ok-bg,var(--bg));border:1px solid var(--bdr)">${esc(tRaw('wanted.owned'))}</span>`
     : '';
 
+  // ── Marktpreis statt Knopf ────────────────────────────────────────────────
+  //
+  // Marcos Vorgabe vom 24.09.: „Bitte in der Tabelle der Merkliste der Button
+  // In die Galerie aufnehme entfernen und dafuer den Marktpreis anzeigen."
+  //
+  // Der Knopf verschwindet nur aus der ZEILE, nicht aus der App: Das
+  // Merkposten-Detail hat ihn weiterhin (merkpostenDetailUebernehmen), und
+  // dort steht ohnehin der Dialog mit Anzahl, Kaufpreis und Zustand. In der
+  // Liste stand er neben „Loeschen" — zwei Knoepfe, von denen der eine ein
+  // Formular oeffnet und der andere sofort fragt.
+  //
+  // Ein Strich, wenn noch kein Preis im Cache liegt. Das ist kein Fehler:
+  // jobs/priceJob.ts holt die Preise der Merkposten taeglich; bis zum ersten
+  // Lauf nach dem Eintragen gibt es schlicht noch keinen.
+  const preis = w.marktpreis != null
+    ? `<span title="${esc(tRaw('detail.market_price'))}" style="font-weight:700;white-space:nowrap">${fmtN(w.marktpreis, w.waehrung || CURRENCY)}</span>`
+    : `<span style="color:var(--mut);white-space:nowrap">—</span>`;
+
   const arg = escJs(`${w.set_number}|${w.condition}|${w.user_id}`);
   return `
-    <div style="display:flex;gap:12px;align-items:center;padding:10px;border:1px solid var(--bdr);
-                border-radius:var(--rad);background:var(--sur);margin-bottom:8px">
+    <!-- Die GANZE Zeile oeffnet das Detail — wie die Karte in der App.
+         Vorher tat das nur der Textblock, und zwar aus einem Grund, den es
+         nicht mehr gibt: Rechts sassen zwei Knoepfe, und eine klickbare
+         Flaeche darunter haette etwas anderes getan als sie. Seit Marcos
+         Vorgabe vom 24.09. („Der Button loeschen ebenfalls in der Tabelle der
+         merkliste entfernen") traegt die Zeile gar keinen Knopf mehr;
+         geloescht und uebernommen wird im Detail, an derselben Stelle wie
+         beim Set. -->
+    <div data-click="oeffneMerkpostenDetail" data-arg="${arg}"
+         style="display:flex;gap:12px;align-items:center;padding:10px;border:1px solid var(--bdr);
+                border-radius:var(--rad);background:var(--sur);margin-bottom:8px;cursor:pointer">
       ${bild}
-      <!-- Die Zeile selbst oeffnet das Detail — wie die Kachel in der Galerie.
-           Nur der Textblock, nicht die ganze Zeile: Sonst laege der Knopf
-           „Loeschen" auf einer Flaeche, die etwas anderes tut. -->
-      <div style="flex:1;min-width:0;cursor:pointer" data-click="oeffneMerkpostenDetail" data-arg="${arg}">
+      <div style="flex:1;min-width:0">
         <div style="font-weight:600">${titel}</div>
         <div style="font-size:.78rem;color:var(--mut)">${unter}</div>
       </div>
       <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap">
-        ${alarm}${schon}
-        <button class="btn bp btn-sm" data-click="merkpostenUebernehmen" data-arg="${arg}"
-                data-i18n="wanted.take">➕ In die Galerie</button>
-        <button class="btn bs btn-sm" data-click="merkpostenLoeschen" data-arg="${arg}"
-                data-i18n="confirm.delete_btn">Löschen</button>
+        ${alarm}${schon}${preis}
       </div>
     </div>`;
 }

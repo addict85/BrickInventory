@@ -39,8 +39,16 @@ test('beide Oberflächen setzen den Lagerort über dieselben Endpunkte', () => {
   assert.match(route, /router\.put\('\/sets\/:setNumber\/storage'/);
   assert.match(route, /router\.get\('\/storage'/);
 
-  assert.match(web('public/js/13-acquisition-modals.js'), /\/storage`, \{ storage: el\.value \}/,
+  // Die Adresse wird seit dem 24.09. VORHER zusammengesetzt (`adresse`): Der
+  // Handler bedient jetzt Teile UND Figuren, und eine Figur hat keine Farbe —
+  // sie braucht deshalb eine eigene Route. Geprüft wird weiter, dass genau
+  // dieser eine Weg speichert, nur eben ohne die Adresse im selben Ausdruck.
+  assert.match(web('public/js/13-acquisition-modals.js'),
+    /api\('PUT', adresse, \{ storage: el\.value \}\)/,
     'Die Webapp speichert den Lagerort eines Teils nicht');
+  assert.match(web('public/js/13-acquisition-modals.js'),
+    /\/v1\/minifigs\/\$\{encodeURIComponent\(nummer\)\}\/storage/,
+    'Die Webapp kennt die Lagerort-Adresse der Minifiguren nicht (Migration 0024)');
   assert.match(web('public/js/07-admin.js'), /\/storage`, \{ storage: el\.value \}/,
     'Die Webapp speichert den Lagerort eines Sets nicht');
 

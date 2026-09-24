@@ -22,7 +22,6 @@ import ch.brickinventoryapp.data.model.Merkposten
 import ch.brickinventoryapp.ui.MainViewModel
 import ch.brickinventoryapp.ui.ladeMerkliste
 import ch.brickinventoryapp.ui.legeMerkpostenAn
-import ch.brickinventoryapp.ui.loescheMerkposten
 import ch.brickinventoryapp.ui.setScannerSource
 import ch.brickinventoryapp.ui.uebernimmMerkposten
 import ch.brickinventoryapp.ui.theme.Abstaende
@@ -67,20 +66,14 @@ fun MerklisteScreen(
     // Die Bildadressen zeigen auf den eigenen Server (Proxy), nicht roh aufs
     // CDN — dieselbe Regel wie in Galerie, Teilen und Finanzen.
     val appState by vm.state.collectAsStateWithLifecycle()
-    // Der VORRAT an Lagerorten (nicht die belegten Orte): Beim Uebernehmen
-    // soll auch ein leeres Regal zur Wahl stehen.
-    val lagerZustand by vm.lagerState.collectAsStateWithLifecycle()
 
-    // Der Merkposten, ueber dem der Uebernahme-Dialog gerade steht — als
-    // SCHLUESSEL, nicht als Objekt.
-    //
-    // Wer den Dialog offen hat und das Telefon dreht, soll ihn offen
-    // wiederfinden; der Zustand muss also ins Bundle. Ein ganzes Merkposten-Objekt
-    // passt dort nicht hinein (nicht Parcelable), eine Zeichenkette schon —
-    // und die Zeile dazu steht ohnehin in der geladenen Liste.
-    var uebernahmeSchluessel by rememberSaveable { mutableStateOf<String?>(null) }
+    // Hier stand der Uebernahme-Dialog samt seinem Zustand. Beides ist mit dem
+    // Knopf aus der Zeile entfallen (Marcos Vorgabe vom 24.09.: „den Button In
+    // die Galerie aufnehme entfernen und dafuer den Marktpreis anzeigen") —
+    // ohne den Knopf ginge er nie mehr auf. Die Uebernahme fuehrt jetzt ueber
+    // das Detail, wo derselbe Dialog steht (MerkpostenDetailScreen) und wo
+    // ohnehin Anzahl, Kaufpreis und Zustand zur Wahl stehen.
     var maskeOffen by rememberSaveable { mutableStateOf(false) }
-    val uebernahme = zustand.merkposten.firstOrNull { merkpostenSchluessel(it) == uebernahmeSchluessel }
 
     LaunchedEffect(Unit) { vm.ladeMerkliste() }
 
@@ -104,9 +97,7 @@ fun MerklisteScreen(
                 ) {
                     items(zustand.merkposten, key = ::merkpostenSchluessel) { w ->
                         MerkpostenZeile(w, appState.serverUrl, imageLoader,
-                            onOeffnen     = { onOeffnen(w.setNumber, w.condition) },
-                            onUebernehmen = { uebernahmeSchluessel = merkpostenSchluessel(w) },
-                            onLoeschen    = { vm.loescheMerkposten(w.setNumber, w.condition, w.userId) })
+                            onOeffnen = { onOeffnen(w.setNumber, w.condition) })
                     }
                 }
             }
@@ -154,18 +145,6 @@ fun MerklisteScreen(
         )
     }
 
-    uebernahme?.let { w ->
-        UebernahmeDialog(
-            merkposten = w,
-            lagerorte = lagerZustand.eigene.map { it.name },
-            onDismiss = { uebernahmeSchluessel = null },
-            onUebernehmen = { anzahl, preis, zustandWahl, ort ->
-                vm.uebernimmMerkposten(w.setNumber, w.condition, w.userId, anzahl, preis,
-                                       zustandWahl, ort)
-                uebernahmeSchluessel = null
-            },
-        )
-    }
 }
 
 /**
@@ -336,10 +315,12 @@ internal fun ZustandsWahl(gewaehlt: String, onWahl: (String) -> Unit) {
 @Composable
 private fun MerkpostenZeile(
     w: Merkposten, serverUrl: String, imageLoader: coil.ImageLoader,
-    onOeffnen: () -> Unit, onUebernehmen: () -> Unit, onLoeschen: () -> Unit,
+    onOeffnen: () -> Unit,
 ) {
-    // Die ganze Karte oeffnet das Detail — wie die Kachel in der Galerie. Die
-    // zwei Knoepfe darin fangen ihre eigenen Klicks ab.
+    // Die ganze Karte oeffnet das Detail — wie die Kachel in der Galerie.
+    // Seit dem 24.09. traegt sie GAR KEINEN Knopf mehr (Marcos Vorgabe: der
+    // Uebernahme- und der Loeschknopf sind beide entfallen), tut also auf
+    // ihrer ganzen Flaeche dasselbe.
     Card(Modifier.fillMaxWidth().clickable(onClick = onOeffnen)) {
         Column(Modifier.padding(Abstaende.mittel), verticalArrangement = Arrangement.spacedBy(Abstaende.winzig)) {
             Row(horizontalArrangement = Arrangement.spacedBy(Abstaende.klein),
@@ -384,8 +365,25 @@ private fun MerkpostenZeile(
                         label = { Text(stringResource(R.string.wanted_owned)) })
                 }
                 Spacer(Modifier.weight(1f))
-                TextButton(onClick = onLoeschen) { Text(stringResource(R.string.common_delete)) }
-                Button(onClick = onUebernehmen) { Text(stringResource(R.string.wanted_take)) }
+                // ── Marktpreis statt Knopf ────────────────────────────────
+                //
+                // Marcos Vorgabe vom 24.09.: „Bitte in der Tabelle der
+                // Merkliste der Button In die Galerie aufnehme entfernen und
+                // dafuer den Marktpreis anzeigen."
+                //
+                // Der Knopf verschwindet nur aus der ZEILE, nicht aus der App:
+                // Das Merkposten-Detail hat ihn weiterhin, und dort steht
+                // ohnehin der Dialog mit Anzahl, Kaufpreis und Zustand.
+                //
+                // Ein Strich, solange kein Preis im Cache liegt — das ist kein
+                // Fehler, sondern „der Preisjob war seit dem Eintragen noch
+                // nicht da".
+                Text(
+                    w.marktpreis?.let { ch.brickinventoryapp.util.fmtMoney(it, w.waehrung) } ?: "—",
+                    fontWeight = FontWeight.Bold,
+                    color = if (w.marktpreis == null) MaterialTheme.colorScheme.onSurfaceVariant
+                            else MaterialTheme.colorScheme.onSurface,
+                )
             }
         }
     }

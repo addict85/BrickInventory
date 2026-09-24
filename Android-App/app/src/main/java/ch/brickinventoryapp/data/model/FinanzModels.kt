@@ -186,7 +186,16 @@ data class PartValuationItem(
      * es keine Erfassungen gibt (Altbestand); dann bleibt es bei der
      * einen Zeile aus den Feldern oben.
      */
-    val acquisitions: List<ValuationAcquisition> = emptyList()
+    val acquisitions: List<ValuationAcquisition> = emptyList(),
+    /**
+     * Lagerort — null heisst „nicht erfasst".
+     *
+     * Marcos Befund vom 24.09.: Im Detaildialog der manuell erfassten
+     * Eintraege fehlte die Zeile. Der Server liefert das Feld (die Liste ist
+     * ein `SELECT * FROM parts` bzw. das Aggregat in handlers/minifigs.ts);
+     * das Modell kannte es nur nicht.
+     */
+    val storage: String? = null,
 )
 
 /**
@@ -281,7 +290,16 @@ data class FigValuationItem(
      * es keine Erfassungen gibt (Altbestand); dann bleibt es bei der
      * einen Zeile aus den Feldern oben.
      */
-    val acquisitions: List<ValuationAcquisition> = emptyList()
+    val acquisitions: List<ValuationAcquisition> = emptyList(),
+    /**
+     * Lagerort — null heisst „nicht erfasst".
+     *
+     * Marcos Befund vom 24.09.: Im Detaildialog der manuell erfassten
+     * Eintraege fehlte die Zeile. Der Server liefert das Feld (die Liste ist
+     * ein `SELECT * FROM parts` bzw. das Aggregat in handlers/minifigs.ts);
+     * das Modell kannte es nur nicht.
+     */
+    val storage: String? = null,
 )
 
 @Serializable

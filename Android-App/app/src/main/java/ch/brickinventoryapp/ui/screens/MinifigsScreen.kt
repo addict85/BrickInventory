@@ -70,10 +70,6 @@ fun MinifigsScreen(
 
     val onRefresh: () -> Unit = { vm.loadMinifigs() }
     val onScopeChange: (String) -> Unit = { vm.setScope(ch.brickinventoryapp.data.ScopeFilter.View.MINIFIGS, it) }
-    // Besitzer der Karte mitgeben: Im Haushalt stehen hier die Eintraege aller
-    // Konten. Ohne die Angabe loescht der Server die Zeile des Aufrufers —
-    // geklickt waere die fremde Karte, weg die eigene.
-    val onDeleteFig: (String, Int?) -> Unit = { figNumber, owner -> vm.deleteMinifig(figNumber, owner) }
     val onAddMinifig: (String, String?, Int, Double?, String?, Int?, String?) -> Unit =
         { num, blNum, qty, unitPrice, cond, owner, ort ->
             vm.addMinifig(num, blNum, qty, unitPrice, cond, owner, ort)
@@ -94,7 +90,6 @@ fun MinifigsScreen(
     var search by remember(partsState.minifigsQuery) { mutableStateOf(partsState.minifigsQuery) }
     val ansicht = partsState.minifigsView
     var showAddDialog by rememberSaveable { mutableStateOf(false) }
-    var deletingFig by remember { mutableStateOf<FigValuationItem?>(null) }
 
     Box(Modifier.fillMaxSize()) {
     Column(Modifier.fillMaxSize()) {
@@ -189,7 +184,6 @@ fun MinifigsScreen(
                                 imageLoader = imageLoader,
                                 waehrung = waehrung,
                                 onEdit = { onOpenDetail(fig.figNumber) },
-                                onDelete = { deletingFig = fig }
                             )
                         }
                         if (figs.isNotEmpty()) {
@@ -240,25 +234,16 @@ fun MinifigsScreen(
         )
     }
 
-    deletingFig?.let { fig ->
-        AlertDialog(
-            onDismissRequest = { deletingFig = null },
-            icon = { Icon(Icons.Default.Delete, null, tint = MaterialTheme.colorScheme.error) },
-            title = { Text(stringResource(R.string.minifigs_delete_title)) },
-            text = { Text(stringResource(R.string.minifigs_delete_text, fig.figName ?: fig.figNumber)) },
-            confirmButton = {
-                TextButton(onClick = { onDeleteFig(fig.figNumber, fig.userId); deletingFig = null }) {
-                    Text(stringResource(R.string.common_delete), color = MaterialTheme.colorScheme.error)
-                }
-            },
-            dismissButton = { TextButton(onClick = { deletingFig = null }) { Text(stringResource(R.string.common_cancel)) } }
-        )
-    }
+    // Hier stand die Loeschabfrage der KACHEL. Sie ist mit dem Papierkorb
+    // darauf entfallen (Marcos Vorgabe vom 24.09.) und waere ohne ihn nie mehr
+    // aufgegangen. Geloescht wird im Detail, und die Abfrage steht dort
+    // (ManualItemDetailScreen, showDeleteConfirm) — an derselben Stelle wie
+    // beim Set.
 }
 
 @Composable
 fun ManualFigTile(fig: FigValuationItem, serverUrl: String, imageLoader: ImageLoader,
-                  waehrung: String, onEdit: () -> Unit, onDelete: () -> Unit) {
+                  waehrung: String, onEdit: () -> Unit) {
     // Vorschaubild mit Rückfall auf volle Auflösung — siehe
     // util/ImageUrls.kt, rememberTileImageWithFallback().
     val (bild, onBildFehler) =
@@ -279,7 +264,6 @@ fun ManualFigTile(fig: FigValuationItem, serverUrl: String, imageLoader: ImageLo
         preis = fig.avgPurchasePrice ?: fig.unitPrice ?: fig.purchasePrice,
         waehrung = waehrung,
         onEdit = onEdit,
-        onDelete = onDelete,
         platzhalter = { Text("👷", fontSize = Schrift.riesig) },
     )
 }

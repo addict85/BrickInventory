@@ -104,6 +104,10 @@ class TeileRepository @Inject constructor(
         Result<LagerortResponse> =
         safeCall { api.setPartStorage(partNumber, colorId, LagerortRequest(ort)) }
 
+    /** Dasselbe fuer eine Minifigur — sie hat keine Farbe (Migration 0024). */
+    suspend fun setFigStorage(figNumber: String, ort: String): Result<LagerortResponse> =
+        safeCall { api.setFigStorage(figNumber, LagerortRequest(ort)) }
+
     /**
      * Welche Lagerorte es gibt.
      *

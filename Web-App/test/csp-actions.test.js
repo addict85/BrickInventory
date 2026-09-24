@@ -270,16 +270,27 @@ test('Löschknöpfe auf Kacheln tragen einen Papierkorb, kein ✕', () => {
   const AUSNAHME = new Set(['delInstr']);
   let ausnahmenGesehen = 0;
 
+  // ── Der Selbstbeweis zählt über ALLE Dateien, nicht je Datei ─────────────
+  //
+  // Er stand je Datei, und am 24.09. hat er zu Recht angeschlagen: In
+  // 06-minifigs.js gibt es gar keinen Löschknopf mehr. Marcos Vorgabe —
+  // „Den Papierkorb auf den Kacheln der manuell erfassten Teilen und manuell
+  // erfassten Minifiguren entfernen […] auf den Detail Seiten soll jeweils der
+  // Papierkorb angezeigt werden" — macht die Datei knopflos, und eine Regel,
+  // die in JEDER Datei einen Knopf verlangt, verlangt damit das Gegenteil.
+  //
+  // Was sie sichern soll, bleibt: Ein Löschknopf auf einer Kachel trägt den
+  // Papierkorb. Dass es überhaupt noch einen gibt, sichert die Summe — die
+  // Set-Kachel hat ihren behalten.
+  let knoepfeGesamt = 0;
   for (const file of ['02-gallery.js', '06-minifigs.js']) {
     const src = fs.readFileSync(path.join(PUB, 'js', file), 'utf8');
     // `del\w*` und nicht `delete\w*`: Die Galerie-Kachel ruft `delSetStop`.
     // Mit dem engeren Muster fand die Suche dort NICHTS — und der Selbstbeweis
-    // darunter hat genau das gemeldet, statt gruen durchzulaufen.
+    // hat genau das gemeldet, statt gruen durchzulaufen.
     const knoepfe = [...src.matchAll(/<button[^>]*data-click="del\w*"[\s\S]{0,400}?<\/button>/g)]
       .map(m => m[0]);
-    // Selbstbeweis: Findet das Muster keinen Knopf, wäre die Schleife leer und
-    // der Test grün, ohne etwas geprüft zu haben.
-    assert.ok(knoepfe.length >= 1, `${file}: kein Löschknopf gefunden — Muster veraltet?`);
+    knoepfeGesamt += knoepfe.length;
     let gefunden = 0;
     for (const k of knoepfe) {
       const name = (k.match(/data-click="(del\w*)"/) || [])[1];
@@ -290,6 +301,7 @@ test('Löschknöpfe auf Kacheln tragen einen Papierkorb, kein ✕', () => {
     }
     ausnahmenGesehen += gefunden;
   }
+  assert.ok(knoepfeGesamt >= 1, 'Kein einziger Löschknopf gefunden — Muster veraltet?');
 
   // Eine Zeile, die niemand mehr braucht, ist eine Erlaubnis, die niemand
   // prueft — dieselbe Regel wie in den anderen Waechtern dieses Baums.
@@ -300,17 +312,19 @@ test('Löschknöpfe auf Kacheln tragen einen Papierkorb, kein ✕', () => {
   // Die betroffenen Knöpfe dürfen kein ✕ mehr enthalten
   const gallery = fs.readFileSync(path.join(PUB, 'js', '02-gallery.js'), 'utf8');
   assert.doesNotMatch(gallery, /class="delbtn"[^>]*>✕/, 'Set-Kachel zeigt noch ✕');
-  const figs = fs.readFileSync(path.join(PUB, 'js', '06-minifigs.js'), 'utf8');
-  assert.doesNotMatch(figs, /data-click="deleteManualFig(Stop)?"[^>]*>✕/, 'Minifiguren zeigen noch ✕');
 
   // Ohne Text braucht der Knopf eine Beschriftung für Hilfstechnik
   assert.match(gallery, /aria-label="\$\{esc\(t\('detail\.delete'\)\)\}"/, 'Set-Knopf ohne aria-label');
-  assert.match(figs, /aria-label="\$\{esc\(t\('figs\.delete'\)\)\}"/, 'Minifiguren-Knopf ohne aria-label');
+  // Die Minifiguren-Zeile stand hier ebenfalls. Sie ist mit dem Knopf
+  // entfallen; dass auf den manuellen Kacheln keiner mehr steht, prüft
+  // test/merkliste-zeile-beide.test.js — und zwar für beide Oberflächen.
 
   // Einheitliches Muster über alle drei Tabellen: .ca als Hover-Behälter mit
   // .delbtn darin. Vorher war der Minifiguren-Knopf ein "btn bd" mit eigenem
   // Inline-Style und dauerhaft sichtbar, Teile hatten gar keinen.
-  for (const [file, expected] of [['02-gallery.js', 1], ['06-minifigs.js', 3]]) {
+  // 06-minifigs.js steht nicht mehr in dieser Liste: Dort gibt es seit dem
+  // 24.09. keine Kachel-Löschknöpfe mehr (siehe oben).
+  for (const [file, expected] of [['02-gallery.js', 1]]) {
     const src = fs.readFileSync(path.join(PUB, 'js', file), 'utf8');
     const n = (src.match(/<div class="ca"><button class="delbtn"/g) || []).length;
     assert.equal(n, expected, `${file}: ${n} statt ${expected} Kachel-Löschknöpfe im .ca/.delbtn-Muster`);

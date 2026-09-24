@@ -109,10 +109,6 @@ fun PartsScreen(
     val lagerModus = lagerState.modi[ch.brickinventoryapp.data.ScopeFilter.View.PARTS.key] ?: ""
     val onLagerChange: (String) -> Unit = { vm.setLagerFilter(ch.brickinventoryapp.data.ScopeFilter.View.PARTS, it) }
     val ansicht = partsState.partsView
-    // Besitzer der Karte mitgeben — Begruendung wie in MinifigsScreen.
-    val onDeletePart: (String, Int, Int?) -> Unit = { partNumber, colorId, owner ->
-        vm.deletePart(partNumber, colorId, owner)
-    }
     val onAddPart: (String, Int, String?, String?, Int, Double?, String?, Int?, String?) -> Unit =
         { num, colorId, colorName, colorHex, qty, unitPrice, cond, owner, ort ->
             vm.addPart(num, colorId, colorName, colorHex, qty, unitPrice, cond, owner, ort)
@@ -127,7 +123,6 @@ fun PartsScreen(
     // passen — nicht zu einem eigenen, davon unabhaengigen Gedaechtnis.
     var searchQuery by remember(partsState.partsQuery) { mutableStateOf(partsState.partsQuery) }
     var showAddDialog by rememberSaveable { mutableStateOf(false) }
-    var deletingPart by remember { mutableStateOf<PartValuationItem?>(null) }
     // Dedup nur neu berechnen, wenn sich die Daten aendern — nicht bei jeder Recomposition
     val distinctParts = remember(parts) { parts.distinctBy { "${it.partNumber}-${it.colorId}" } }
     val endReached by remember {
@@ -271,7 +266,6 @@ fun PartsScreen(
                                 imageLoader = imageLoader,
                                 waehrung = waehrung,
                                 onEdit = { onOpenDetail(part.partNumber, part.colorId) },
-                                onDelete = { deletingPart = part }
                             )
                         }
                         if (distinctParts.isNotEmpty()) {
@@ -335,25 +329,14 @@ fun PartsScreen(
         )
     }
 
-    deletingPart?.let { part ->
-        AlertDialog(
-            onDismissRequest = { deletingPart = null },
-            icon = { Icon(Icons.Default.Delete, null, tint = MaterialTheme.colorScheme.error) },
-            title = { Text(stringResource(R.string.parts_delete_title)) },
-            text = { Text(stringResource(R.string.parts_delete_text, part.partName ?: part.partNumber)) },
-            confirmButton = {
-                TextButton(onClick = { onDeletePart(part.partNumber, part.colorId, part.userId); deletingPart = null }) {
-                    Text(stringResource(R.string.common_delete), color = MaterialTheme.colorScheme.error)
-                }
-            },
-            dismissButton = { TextButton(onClick = { deletingPart = null }) { Text(stringResource(R.string.common_cancel)) } }
-        )
-    }
+    // Hier stand die Loeschabfrage der KACHEL — entfallen mit dem Papierkorb
+    // darauf (Marcos Vorgabe vom 24.09.). Geloescht wird im Detail, und die
+    // Abfrage steht dort (ManualItemDetailScreen, showDeleteConfirm).
 }
 
 @Composable
 fun ManualPartTile(part: PartValuationItem, serverUrl: String, imageLoader: ImageLoader,
-                   waehrung: String, onEdit: () -> Unit, onDelete: () -> Unit) {
+                   waehrung: String, onEdit: () -> Unit) {
     val farbe = remember(part.colorHex) {
         part.colorHex?.let {
             try { Color(android.graphics.Color.parseColor("#$it")) } catch (_: Exception) { null }
@@ -376,7 +359,6 @@ fun ManualPartTile(part: PartValuationItem, serverUrl: String, imageLoader: Imag
         preis = part.avgPurchasePrice ?: part.unitPrice ?: part.purchasePrice,
         waehrung = waehrung,
         onEdit = onEdit,
-        onDelete = onDelete,
         farbe = farbe,
         farbname = part.colorName,
         platzhalter = {

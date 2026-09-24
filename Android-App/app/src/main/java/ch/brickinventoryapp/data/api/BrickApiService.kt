@@ -434,6 +434,15 @@ interface BrickApiService {
         @Body request: LagerortRequest,
     ): Response<LagerortResponse>
 
+    // Seit Migration 0024 traegt auch eine Minifigur einen Lagerort. Eigene
+    // Adresse, weil sie keine Farbe hat — sonst muesste die Route eine 0
+    // mitschleppen, die nichts bedeutet.
+    @PUT("api/v1/minifigs/{figNumber}/storage")
+    suspend fun setFigStorage(
+        @Path("figNumber") figNumber: String,
+        @Body request: LagerortRequest,
+    ): Response<LagerortResponse>
+
     @PUT("api/v1/sets/{setNumber}/storage")
     suspend fun setSetStorage(
         @Path("setNumber") setNumber: String,
