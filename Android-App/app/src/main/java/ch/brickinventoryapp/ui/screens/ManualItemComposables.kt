@@ -6,7 +6,6 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.foundation.background
 import androidx.compose.foundation.shape.CircleShape
@@ -363,7 +362,6 @@ fun ManuelleKachel(
     preis: Double?,
     waehrung: String,
     onEdit: () -> Unit,
-    onDelete: () -> Unit,
     farbe: Color? = null,
     farbname: String? = null,
     platzhalter: @Composable () -> Unit,
@@ -415,11 +413,16 @@ fun ManuelleKachel(
                             Modifier.size(14.dp), tint = MaterialTheme.colorScheme.primary)
                     }
                 }
-                IconButton(onClick = onDelete,
-                    modifier = Modifier.align(Alignment.BottomEnd).size(24.dp)) {
-                    Icon(Icons.Default.Delete, stringResource(R.string.common_delete),
-                        Modifier.size(14.dp), tint = MaterialTheme.colorScheme.error)
-                }
+                // Hier sass der Papierkorb. Marcos Vorgabe vom 24.09.: „Den
+                // Papierkorb auf den Kacheln der manuell erfassten Teilen und
+                // manuell erfassten Minifiguren entfernen. […] Auf den Detail
+                // Seiten soll jeweils der Papierkorb angezeigt werden wie in
+                // der Detailseite der sets."
+                //
+                // Die ganze Karte oeffnet ohnehin das Detail, und dort steht
+                // er — an derselben Stelle wie beim Set. Ein Loeschknopf auf
+                // einer Flaeche, die etwas anderes tut, war der Grund, warum
+                // er 24.dp gross sein musste, um nicht im Weg zu sein.
             }
             Column(Modifier.padding(horizontal = 6.dp, vertical = Abstaende.winzig)) {
                 Text(name, style = MaterialTheme.typography.labelSmall,

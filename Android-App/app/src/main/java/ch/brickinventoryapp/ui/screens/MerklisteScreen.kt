@@ -22,7 +22,6 @@ import ch.brickinventoryapp.data.model.Merkposten
 import ch.brickinventoryapp.ui.MainViewModel
 import ch.brickinventoryapp.ui.ladeMerkliste
 import ch.brickinventoryapp.ui.legeMerkpostenAn
-import ch.brickinventoryapp.ui.loescheMerkposten
 import ch.brickinventoryapp.ui.setScannerSource
 import ch.brickinventoryapp.ui.uebernimmMerkposten
 import ch.brickinventoryapp.ui.theme.Abstaende
@@ -98,8 +97,7 @@ fun MerklisteScreen(
                 ) {
                     items(zustand.merkposten, key = ::merkpostenSchluessel) { w ->
                         MerkpostenZeile(w, appState.serverUrl, imageLoader,
-                            onOeffnen  = { onOeffnen(w.setNumber, w.condition) },
-                            onLoeschen = { vm.loescheMerkposten(w.setNumber, w.condition, w.userId) })
+                            onOeffnen = { onOeffnen(w.setNumber, w.condition) })
                     }
                 }
             }
@@ -317,10 +315,12 @@ internal fun ZustandsWahl(gewaehlt: String, onWahl: (String) -> Unit) {
 @Composable
 private fun MerkpostenZeile(
     w: Merkposten, serverUrl: String, imageLoader: coil.ImageLoader,
-    onOeffnen: () -> Unit, onLoeschen: () -> Unit,
+    onOeffnen: () -> Unit,
 ) {
-    // Die ganze Karte oeffnet das Detail — wie die Kachel in der Galerie. Der
-    // Knopf darin faengt seinen eigenen Klick ab.
+    // Die ganze Karte oeffnet das Detail — wie die Kachel in der Galerie.
+    // Seit dem 24.09. traegt sie GAR KEINEN Knopf mehr (Marcos Vorgabe: der
+    // Uebernahme- und der Loeschknopf sind beide entfallen), tut also auf
+    // ihrer ganzen Flaeche dasselbe.
     Card(Modifier.fillMaxWidth().clickable(onClick = onOeffnen)) {
         Column(Modifier.padding(Abstaende.mittel), verticalArrangement = Arrangement.spacedBy(Abstaende.winzig)) {
             Row(horizontalArrangement = Arrangement.spacedBy(Abstaende.klein),
@@ -384,7 +384,6 @@ private fun MerkpostenZeile(
                     color = if (w.marktpreis == null) MaterialTheme.colorScheme.onSurfaceVariant
                             else MaterialTheme.colorScheme.onSurface,
                 )
-                TextButton(onClick = onLoeschen) { Text(stringResource(R.string.common_delete)) }
             }
         }
     }

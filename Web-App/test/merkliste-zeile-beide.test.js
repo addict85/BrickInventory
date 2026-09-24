@@ -94,6 +94,53 @@ test('3. der Lagerort steht im Detail der MANUELLEN Einträge', () => {
     'Die Lagerortzeile der App speichert nicht.');
 });
 
+test('5. Löschen steht im DETAIL, nicht auf der Kachel und nicht in der Zeile', () => {
+  // ── Marcos Vorgabe vom 24.09. ────────────────────────────────────────────
+  //
+  //   „Den Papierkorb auf den Kacheln der manuell erfassten Teilen und manuell
+  //    erfassten Minifiguren entfernen. Der Button löschen ebenfalls in der
+  //    Tabelle der merkliste entfernen. Auf den Detail Seiten soll jeweils der
+  //    Papierkorb angezeigt werden wie in der Detailseite der sets."
+  //
+  // Die eine Hälfte ist ein Entfernen, die andere eine Zusicherung: Wäre der
+  // Papierkorb nur weg, liesse sich ein Eintrag nirgends mehr löschen. Beide
+  // Hälften stehen deshalb in EINER Prüfung.
+  //
+  // Die Set-KACHEL behält ihren Papierkorb — Marcos Vorgabe nennt ausdrücklich
+  // die manuell erfassten Einträge, und die Set-Detailseite ist das Vorbild,
+  // nicht der Gegenstand.
+
+  // ── Webapp: nichts mehr auf den Kacheln ──────────────────────────────────
+  const kacheln = web('public/js/06-minifigs.js');
+  assert.ok(!/delbtn/.test(kacheln),
+    'Auf den Kacheln der manuell erfassten Einträge steht noch ein Papierkorb.');
+
+  // ── Webapp: nichts mehr in der Merklisten-Zeile ──────────────────────────
+  const zeileWeb = rumpf(web('public/js/16-merkliste.js'), 'function zeile(w) {');
+  assert.ok(!/merkpostenLoeschen/.test(zeileWeb),
+    'Die Merklisten-Zeile trägt noch den Löschen-Knopf.');
+
+  // ── App: dasselbe ────────────────────────────────────────────────────────
+  const kachelApp = rumpf(app('ui/screens/ManualItemComposables.kt'), 'fun ManuelleKachel(');
+  assert.ok(!/Icons\.Default\.Delete/.test(kachelApp),
+    'Die Kachel der App trägt noch den Papierkorb.');
+
+  const zeileApp = rumpf(app('ui/screens/MerklisteScreen.kt'), 'private fun MerkpostenZeile(');
+  assert.ok(!/common_delete/.test(zeileApp),
+    'Die Merklisten-Zeile der App trägt noch den Löschen-Knopf.');
+
+  // ── Und die Detailseiten haben ihn ───────────────────────────────────────
+  const html = fs.readFileSync(path.join(ROOT, 'public/index.html'), 'utf8');
+  for (const id of ['btn-md', 'mk-m-del', 'man-detail-del']) {
+    assert.match(html, new RegExp(`id="${id}"`),
+      `Der Webapp fehlt der Papierkorb im Detail (${id}).`);
+  }
+  assert.match(app('ui/screens/ManualItemDetailScreen.kt'), /Icons\.Default\.Delete/,
+    'Der App fehlt der Papierkorb im Detail der manuellen Einträge.');
+  assert.match(app('ui/screens/MerkpostenDetailScreen.kt'), /Icons\.Default\.Delete/,
+    'Der App fehlt der Papierkorb im Merkposten-Detail.');
+});
+
 test('4. die Abfrage der manuellen Teile liefert den Lagerort überhaupt', () => {
   // Die halbe Ursache von Marcos Befund: getManualParts() zählt seine Spalten
   // auf, und storage fehlte in der Liste. Selbst mit einer Zeile in der

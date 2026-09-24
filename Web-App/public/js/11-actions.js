@@ -241,24 +241,22 @@ export function saveManualFigBl(id, owner) {
 /** War: onclick="event.stopPropagation();delSet('${sn}')" — Löschen auf klickbarer Kachel */
 export function delSetStop(sn, ev) { ev?.stopPropagation(); delSet(sn); }
 
-/** War: onclick="event.stopPropagation();deleteManualFig('${n}')" */
-export function deleteManualFigStop(n, owner, ev) { ev?.stopPropagation(); deleteManualFig(n, owner); }
-
-/**
- * Löschen eines manuellen Teils von der Kachel aus.
- *
- * stopPropagation ist zwingend: Die Kachel selbst trägt data-click="openManDetail".
- * Ohne das Anhalten öffnete der Klick zusätzlich den Detail-Dialog hinter der
- * Löschabfrage — genau dafür gibt es die Stop-Variante schon bei Sets und Figuren.
- *
- * @param {string} partNumber
- * @param {string} colorId Kommt als Zeichenkette aus data-arg2
- * @param {Event} ev
- */
-export function deleteManualPartStop(partNumber, colorId, owner, ev) {
-  ev?.stopPropagation();
-  deleteManualPart(partNumber, parseInt(colorId) || 0, owner);
-}
+// Hier standen deleteManualFigStop() und deleteManualPartStop() — die
+// Loeschknoepfe AUF den Kacheln der manuell erfassten Eintraege.
+//
+// Marcos Vorgabe vom 24.09.: „Den Papierkorb auf den Kacheln der manuell
+// erfassten Teilen und manuell erfassten Minifiguren entfernen. […] Auf den
+// Detail Seiten soll jeweils der Papierkorb angezeigt werden wie in der
+// Detailseite der sets."
+//
+// Damit entfaellt auch der Grund fuer die Stop-Fassung: Sie gab es nur, weil
+// die Kachel selbst data-click="openManDetail" traegt und der Klick sonst
+// zusaetzlich den Dialog hinter der Loeschabfrage geoeffnet haette. Ohne Knopf
+// auf der Kachel gibt es nichts mehr anzuhalten. deleteManualFig() und
+// deleteManualPart() bleiben — der Detaildialog ruft sie.
+//
+// delSetStop() bleibt ebenfalls: Die Set-Kachel hat ihren Papierkorb behalten;
+// Marcos Vorgabe nennt ausdruecklich die manuell erfassten Eintraege.
 
 /** War: onclick="openPdfViewer('${href}','${desc}');return false;" auf einem Link */
 export function openPdfViewerLink(href, desc, ev) { ev?.preventDefault(); openPdfViewer(href, desc || ''); }
@@ -277,8 +275,6 @@ registerActions({
   closeImportProgress,
   closePwModal,
   delSetStop,
-  deleteManualFigStop,
-  deleteManualPartStop,
   lightboxBackdrop,
   mQtyDec,
   mQtyInc,
