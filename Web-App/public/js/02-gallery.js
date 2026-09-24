@@ -11,7 +11,7 @@ import { loadParts } from './03-parts.js';
 import { loadFinance } from './04-finance.js';
 import { loadApiLimits, loadCacheStats, loadCacheTtl, loadProfile, loadRateLimitStats, loadSettings, loadTokens, ladeLagerortVerwaltung } from './05-settings.js';
 import { loadBrickColors, loadManualParts, loadMinifigs } from './06-minifigs.js';
-import { _lastImportAt, confirmDelete, enrichGalleryWithPrices, jobPollTimer, ladeLagerorte, openModal, pollJobStatus, set_jobPollTimer, set_lastImportAt } from './07-admin.js';
+import { _lastImportAt, confirmDelete, enrichGalleryWithPrices, jobPollTimer, ladeLagerorte, lagerortBlock, openModal, pollJobStatus, set_jobPollTimer, set_lastImportAt } from './07-admin.js';
 import { openAcqModal, renderAcqModalBody, renderAcquisitionSummary } from './13-acquisition-modals.js';
 import { ladeMerkliste } from './16-merkliste.js';
 import { initCatalog } from './09-catalog.js';
@@ -487,6 +487,66 @@ export async function loadHouseholdMembers() {
     sel.innerHTML = html;
     box.style.display = '';
   }
+  zeichneLagerortFelder();
+}
+
+/**
+ * Die Lagerortfelder der fuenf ERFASSUNGSWEGE einmal zeichnen.
+ *
+ * ── Marcos Befund vom 24.09. ────────────────────────────────────────────────
+ *
+ * „Wenn ich ein Set in der Galerie hinzufuegen will, kann ich den Lagerort
+ * nicht waehlen. Egal ob ich das manuell oder per Barcode hinzufuege. Bei den
+ * manuell erfassten Teilen kann ich beim Erfassen keinen Lagerort setzen. Bei
+ * manuelle erfassten Minifiguren kann ich beim Erfassen keinen Lagerort
+ * setzen." Dazu die beiden Wege in die Galerie, aus dem Katalog und aus der
+ * Merkliste.
+ *
+ * ── Warum hier und nicht fuenfmal im HTML ───────────────────────────────────
+ *
+ * Das Bedienelement ist zusammengesetzt (Auswahl + Textfeld fuer einen neuen
+ * Ort) und steht als EINE Fassung in lagerortBlock() — dieselbe, die die
+ * Detailansichten benutzen. Fuenfmal von Hand ausgeschrieben waeren fuenf
+ * Fassungen, die auseinanderlaufen koennen.
+ *
+ * Gezeichnet wird zusammen mit der Kontoauswahl, weil beides denselben Anlass
+ * hat: Der Haushalt ist geladen, die Erfassungsformulare stehen. setzeOrtVorrat()
+ * zieht die Auswahlen danach von selbst nach, sobald der Vorrat eintrifft —
+ * sie tragen data-ortauswahl.
+ */
+export function zeichneLagerortFelder() {
+  for (const id of ['add-storage', 'ap-storage', 'af-storage',
+                    'cat-m-storage', 'mk-take-storage']) {
+    const slot = G(`${id}-slot`);
+    // Nur einmal: Ein zweiter Durchlauf wuerfe eine bereits getroffene Wahl weg.
+    if (!slot || slot.dataset.gezeichnet === '1') continue;
+    slot.innerHTML = lagerortBlock(id, '');
+    // Die sichtbare Beschriftung steht im HTML, die beiden Bedienelemente
+    // entstehen hier — ein `for=` darauf waere im Quelltext ein Verweis ins
+    // Leere (test/a11y.test.js meldet genau das, zu Recht). aria-labelledby
+    // stellt die Verbindung zur Laufzeit her, und zwar fuer BEIDE: Auswahl und
+    // Textfeld tragen denselben Namen, weil sie dasselbe Feld sind.
+    for (const el of slot.children) el.setAttribute('aria-labelledby', `${id}-label`);
+    slot.dataset.gezeichnet = '1';
+  }
+}
+
+/**
+ * Das Lagerortfeld eines Erfassungswegs leeren.
+ *
+ * Beim Oeffnen des Formulars, wie Anzahl und Kaufpreis auch: Ein Ort von
+ * vorhin sieht aus wie eine Vorgabe, ist aber ein Rest.
+ */
+export function leereLagerortFeld(id) {
+  const feld = G(id), sel = G(`${id}-sel`);
+  if (feld) { feld.value = ''; feld.style.display = 'none'; }
+  if (sel) sel.selectedIndex = 0;
+}
+
+/** Der gewaehlte Lagerort eines Formulars — undefined, wenn keiner gesetzt ist. */
+export function selectedStorage(id) {
+  const wert = (G(id)?.value || '').trim();
+  return wert || undefined;
 }
 
 /** Gewähltes Zielkonto eines Formulars — undefined, solange es keines gibt. */
@@ -722,7 +782,7 @@ async function doAddSet(){
   if(!num){toast(tRaw('common.enter_set_number'),'error');return;}
   showProgress(t('gallery.adding_set',{num}), false);
   try{
-    await streamRequest('/api/v1/sets/add-stream', {set_number:num,quantity:qty,purchase_price,condition,owner_user_id}, (ev)=>{
+    await streamRequest('/api/v1/sets/add-stream', {set_number:num,quantity:qty,purchase_price,condition,owner_user_id,storage:selectedStorage('add-storage')}, (ev)=>{
       handleSseEvent(ev, num);
       if(ev.step==='done' && ev.action==='exists'){
         // Set steht schon im Blickfeld — der Server hat NICHTS geschrieben
@@ -739,6 +799,7 @@ async function doAddSet(){
         setTimeout(()=>{
           hideProgress(); loadGallery(); loadStats();
           G('add-num').value=''; if(G('add-price')) G('add-price').value='';
+          leereLagerortFeld('add-storage');
           toast(`Set ${esc(ev.set_number)} ${ev.action==='added'?t('common.added'):t('common.updated')}!`,'success');
           // Background jobs still running — refresh all tabs periodically
           set_lastImportAt(Date.now());

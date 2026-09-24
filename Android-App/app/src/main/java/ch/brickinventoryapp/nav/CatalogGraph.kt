@@ -139,6 +139,7 @@ fun NavGraphBuilder.catalogGraph(
             val state by vm.state.collectAsStateWithLifecycle()
             val catSetNumber = backStack.arguments?.getString("setNumber") ?: ""
             val catalogState by katalog.state.collectAsStateWithLifecycle()
+            val lagerZustand by vm.lagerState.collectAsStateWithLifecycle()
             // loadCatalogDetail() meldet ebenfalls („Set nicht gefunden",
             // Netzfehler). Die Bruecke dafuer stand hier und ist entfallen —
             // siehe oben und data/MeldungsKanal.kt.
@@ -151,18 +152,21 @@ fun NavGraphBuilder.catalogGraph(
                 defaultCondition = state.userDefaultCondition ?: "N",
                 onLoad = katalog::loadCatalogDetail,
                 householdMembers = state.householdMembers,
-                onAddToGallery = { sn, qty, price, cond, owner ->
+                // Der VORRAT an Lagerorten, nicht die belegten Orte: Beim
+                // Erfassen soll auch ein leeres Regal zur Wahl stehen.
+                lagerorte = lagerZustand.eigene.map { it.name },
+                onAddToGallery = { sn, qty, price, cond, owner, ort ->
                     // Das Aufnehmen gehoert der Galerie, das „besitze ich"
                     // dem Katalog. Frueher tat addCatalogSetToGallery() beides
                     // in einer Funktion — die Abhaengigkeit steht jetzt sichtbar
                     // hier statt versteckt dort.
-                    vm.addSet(sn, qty, price, cond, owner)
+                    vm.addSet(sn, qty, price, cond, owner, ort)
                     katalog.markiereAufgenommen(sn, qty)
                 },
                 // Merkposten UND Preisalarm in einem Griff — die Regel dahinter
                 // steht in ui/MerklisteFeature.kt, nicht hier.
-                onWish = { sn, zustand, richtung, schwelle ->
-                    vm.merkpostenMitAlarm(sn, zustand, richtung, schwelle)
+                onWish = { sn, zustand, richtung, schwelle, konto ->
+                    vm.merkpostenMitAlarm(sn, zustand, richtung, schwelle, konto)
                 },
                 onOpenInGallery = { sn -> navController.navigate(Screen.SetDetail.createRoute(sn)) },
                 onBack = { navController.popBackStack() }

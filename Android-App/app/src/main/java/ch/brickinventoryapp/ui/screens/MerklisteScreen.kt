@@ -67,6 +67,9 @@ fun MerklisteScreen(
     // Die Bildadressen zeigen auf den eigenen Server (Proxy), nicht roh aufs
     // CDN — dieselbe Regel wie in Galerie, Teilen und Finanzen.
     val appState by vm.state.collectAsStateWithLifecycle()
+    // Der VORRAT an Lagerorten (nicht die belegten Orte): Beim Uebernehmen
+    // soll auch ein leeres Regal zur Wahl stehen.
+    val lagerZustand by vm.lagerState.collectAsStateWithLifecycle()
 
     // Der Merkposten, ueber dem der Uebernahme-Dialog gerade steht — als
     // SCHLUESSEL, nicht als Objekt.
@@ -154,9 +157,11 @@ fun MerklisteScreen(
     uebernahme?.let { w ->
         UebernahmeDialog(
             merkposten = w,
+            lagerorte = lagerZustand.eigene.map { it.name },
             onDismiss = { uebernahmeSchluessel = null },
-            onUebernehmen = { anzahl, preis, zustandWahl ->
-                vm.uebernimmMerkposten(w.setNumber, w.condition, w.userId, anzahl, preis, zustandWahl)
+            onUebernehmen = { anzahl, preis, zustandWahl, ort ->
+                vm.uebernimmMerkposten(w.setNumber, w.condition, w.userId, anzahl, preis,
+                                       zustandWahl, ort)
                 uebernahmeSchluessel = null
             },
         )
@@ -183,12 +188,15 @@ fun MerklisteScreen(
 @Composable
 internal fun UebernahmeDialog(
     merkposten: Merkposten,
+    /** Vorrat an Lagerorten — leer heisst: es gibt noch keine, dann wird getippt. */
+    lagerorte: List<String> = emptyList(),
     onDismiss: () -> Unit,
-    onUebernehmen: (Int, String, String) -> Unit,
+    onUebernehmen: (Int, String, String, String?) -> Unit,
 ) {
-    var anzahl  by rememberSaveable { mutableStateOf("1") }
-    var preis   by rememberSaveable { mutableStateOf("") }
-    var zustand by rememberSaveable { mutableStateOf(merkposten.condition) }
+    var anzahl   by rememberSaveable { mutableStateOf("1") }
+    var preis    by rememberSaveable { mutableStateOf("") }
+    var zustand  by rememberSaveable { mutableStateOf(merkposten.condition) }
+    var lagerort by rememberSaveable { mutableStateOf("") }
 
     AlertDialog(
         onDismissRequest = onDismiss,
@@ -220,10 +228,14 @@ internal fun UebernahmeDialog(
                     )
                 }
                 ZustandsWahl(zustand) { zustand = it }
+                // Marcos Befund vom 24.09.: „Wenn ich etwas aus der Merkliste in
+                // die Galerie aufnehme, kann ich den Lagerort nicht setzen."
+                LagerortErfassung(lagerort, lagerorte, { lagerort = it })
             }
         },
         confirmButton = {
-            Button(onClick = { onUebernehmen(anzahl.toIntOrNull() ?: 1, preis, zustand) }) {
+            Button(onClick = { onUebernehmen(anzahl.toIntOrNull() ?: 1, preis, zustand,
+                                             lagerort.trim().takeIf { it.isNotEmpty() }) }) {
                 Text(stringResource(R.string.wanted_take))
             }
         },

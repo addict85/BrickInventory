@@ -77,8 +77,10 @@ class SetsRepository @Inject constructor(
         safeCall { api.getSetInfo(setNumber) }
 
     suspend fun addSet(setNumber: String, quantity: Int = 1, purchasePrice: Double? = null,
-                       condition: String? = null, ownerUserId: Int? = null): Result<AddSetResponse> =
-        safeCall { api.addSet(AddSetRequest(setNumber, quantity, purchasePrice, condition, ownerUserId)) }
+                       condition: String? = null, ownerUserId: Int? = null,
+                       storage: String? = null): Result<AddSetResponse> =
+        safeCall { api.addSet(AddSetRequest(setNumber, quantity, purchasePrice, condition,
+                                            ownerUserId, storage)) }
 
     suspend fun updateQuantity(setNumber: String, quantity: Int, purchasePrice: Double? = null, condition: String? = null): Result<GenericResponse> =
         safeCall { api.updateSetQuantity(setNumber, UpdateQuantityRequest(quantity, purchasePrice, condition)) }
@@ -109,10 +111,11 @@ class SetsRepository @Inject constructor(
 
     suspend fun uebernimmMerkposten(setNumber: String, condition: String, quantity: Int = 1,
                                 purchasePrice: Double? = null, erfasstAls: String? = null,
-                                ownerUserId: Int? = null): Result<MerkpostenUebernahmeResponse> =
+                                ownerUserId: Int? = null,
+                                storage: String? = null): Result<MerkpostenUebernahmeResponse> =
         safeCall { api.uebernimmMerkposten(setNumber, condition,
                                        MerkpostenUebernahmeRequest(quantity, purchasePrice,
-                                                               erfasstAls, ownerUserId)) }
+                                                               erfasstAls, ownerUserId, storage)) }
 
     suspend fun deleteSet(setNumber: String): Result<GenericResponse> =
         safeCall { api.deleteSet(setNumber) }

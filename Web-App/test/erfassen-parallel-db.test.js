@@ -134,9 +134,21 @@ test('alle Erfassen-Wege nutzen dieselbe Prüfung', () => {
   // Nur der Rumpf von addSet(): bis zur NÄCHSTEN Funktion auf oberster Ebene.
   // Ein Schnitt bis addSetWithDate() umfasste 1200 Zeilen samt fremder Routen
   // und zählte deren Sperren mit.
-  const beginn = sets.indexOf('async function addSet(');
+  //
+  // Gelesen wird addSetIntern(): Seit dem 24.09. traegt addSet() nur noch die
+  // Huelle, die den Lagerort setzt (Marcos Befund „beim Hinzufuegen kann ich
+  // den Lagerort nicht waehlen"), und reicht alles Weitere an addSetIntern
+  // durch. Der Rumpf mit den Erfassungen und der Sperre steht dort. Wuerde
+  // hier weiter die Huelle gelesen, faende die Regel null Schreibstellen und
+  // waere still zufrieden — genau das hat sie beim Umbau gemeldet.
+  const beginn = sets.indexOf('async function addSetIntern(');
   const naechste = sets.slice(beginn + 10).search(/\n(?:async )?function [a-zA-Z_$]/);
   const addSet = sets.slice(beginn, beginn + 10 + naechste);
+  // Und die Huelle selbst schreibt keine Erfassung an der Sperre vorbei.
+  const huelleAb = sets.indexOf('async function addSet(');
+  const huelle = sets.slice(huelleAb, sets.indexOf('async function addSetIntern('));
+  assert.equal((huelle.match(/recordAcquisition\(/g) || []).length, 0,
+    'Die Huelle von addSet() schreibt selbst eine Erfassung — die laeuft dann ohne Sperre.');
   const schreibt = (addSet.match(/recordAcquisition\(/g) || []).length;
   assert.ok(schreibt >= 2, `nur ${schreibt} Erfassungs-Schreibstellen gefunden`);
   assert.equal((addSet.match(/withInventoryLock\(/g) || []).length, schreibt,

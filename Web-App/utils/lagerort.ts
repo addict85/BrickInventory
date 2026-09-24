@@ -50,10 +50,25 @@ import { fehlerWerfen } from './fehlerTexte';
  */
 export const LAGERORT_MAX_ZEICHEN = 60;
 
-/** Die zwei Tabellen mit einem Lagerort — Whitelist, damit nie ein
- *  Request-Wert in den Tabellennamen gerät. */
-const TABELLEN = { set: 'sets', part: 'parts' } as const;
+/** Die drei Tabellen mit einem Lagerort — Whitelist, damit nie ein
+ *  Request-Wert in den Tabellennamen gerät.
+ *
+ *  Die Minifigur kam am 24.09. dazu (Migration 0024). 0018 hatte sie
+ *  uebersehen: „Ein Set liegt in einer Schachtel, lose Teile liegen in einer
+ *  Kiste. Beide Fragen sind dieselbe Frage" — die Figur ist dieselbe Frage
+ *  zum dritten Mal. Alles, was ueber diese Liste laeuft (Umbenennen,
+ *  Loeschen, Zaehlen), nimmt sie damit von selbst mit; genau darum steht sie
+ *  hier und nicht dreimal einzeln. */
+const TABELLEN = { set: 'sets', part: 'parts', fig: 'minifigs' } as const;
 export type LagerArt = keyof typeof TABELLEN;
+
+/** Woran eine Zeile je Art erkannt wird — dieselbe Reihenfolge wie die
+ *  Schluessel, die [setzeLagerort] entgegennimmt. */
+const BEDINGUNG: Record<LagerArt, string> = {
+  set:  'set_number = $3',
+  part: 'part_number = $3 AND COALESCE(color_id, 0) = $4',
+  fig:  'fig_number = $3',
+};
 
 /**
  * Eingabe zu dem machen, was in der Spalte steht.
@@ -82,9 +97,7 @@ export async function setzeLagerort(
   art: LagerArt, besitzerIds: number[], schluessel: string[], ort: string | null,
 ): Promise<number> {
   const tabelle = TABELLEN[art];
-  const bedingung = art === 'set'
-    ? 'set_number = $3'
-    : 'part_number = $3 AND COALESCE(color_id, 0) = $4';
+  const bedingung = BEDINGUNG[art];
   // Kein `as any` auf dem Ergebnis: db.run() ist typisiert ({ changes, lastID }).
   // Die Schreibweise `(r as any).changes` steht anderswo im Baum noch aus einer
   // Zeit, in der das nicht galt — sie schaltet den Typpruefer ab, ohne etwas zu
@@ -222,9 +235,13 @@ export async function loescheOrt(userId: number, id: number): Promise<void> {
   const ort = await db.get(
     'SELECT name FROM storage_locations WHERE id = $1 AND user_id = $2', [id, userId]);
   if (!ort) fehlerWerfen('lagerort_unbekannt', 404);
+  // Alle drei Tabellen: Ein Ort, in dem NUR Figuren liegen, liesse sich sonst
+  // loeschen, und ihre Zuordnung zeigte danach auf einen Namen, den der
+  // Vorrat nicht mehr kennt.
   const belegt = await db.get(
-    `SELECT (SELECT COUNT(*) FROM sets  WHERE user_id = $1 AND storage = $2)
-          + (SELECT COUNT(*) FROM parts WHERE user_id = $1 AND storage = $2) AS n`,
+    `SELECT (SELECT COUNT(*) FROM sets     WHERE user_id = $1 AND storage = $2)
+          + (SELECT COUNT(*) FROM parts    WHERE user_id = $1 AND storage = $2)
+          + (SELECT COUNT(*) FROM minifigs WHERE user_id = $1 AND storage = $2) AS n`,
     [userId, ort.name]);
   if (parseInt(String(belegt?.n ?? 0)) > 0) fehlerWerfen('lagerort_in_benutzung', 409);
   await db.run('DELETE FROM storage_locations WHERE id = $1 AND user_id = $2', [id, userId]);
@@ -243,32 +260,46 @@ export async function loescheOrt(userId: number, id: number): Promise<void> {
  * Gezählt wird nach ZEILEN, nicht nach Stückzahl: „In Kiste 3 liegen 4 Sets
  * und 120 Teilesorten" beantwortet „lohnt sich das Nachsehen?"; die Summe der
  * Einzelstücke beantwortet gar nichts.
+ *
+ * ── Warum die Figuren EIGEN gezählt werden ──────────────────────────────────
+ *
+ * Seit Migration 0024 trägt auch eine Minifigur einen Lagerort. Sie zu den
+ * Teilesorten zu addieren wäre die bequeme Lösung und die falsche: „18
+ * Teilesorten" hiesse dann mal 18 Teilesorten und mal 12 Teilesorten und 6
+ * Figuren, und niemand könnte der Zahl ansehen, welches davon gemeint ist.
  */
 export async function lagerorte(blickfeld: BlickfeldEingabe) {
   const uids = asIds(blickfeld);
   const rows = await db.all(
     `SELECT ort,
-            SUM(sets)::int  AS sets,
-            SUM(teile)::int AS teile
+            SUM(sets)::int    AS sets,
+            SUM(teile)::int   AS teile,
+            SUM(figuren)::int AS figuren
        FROM (
-         SELECT storage AS ort, COUNT(*)::int AS sets, 0 AS teile
+         SELECT storage AS ort, COUNT(*)::int AS sets, 0 AS teile, 0 AS figuren
            FROM sets  WHERE user_id = ANY($1) AND storage IS NOT NULL
           GROUP BY storage
          UNION ALL
-         SELECT storage AS ort, 0 AS sets, COUNT(*)::int AS teile
+         SELECT storage AS ort, 0 AS sets, COUNT(*)::int AS teile, 0 AS figuren
            FROM parts WHERE user_id = ANY($1) AND storage IS NOT NULL
+          GROUP BY storage
+         UNION ALL
+         SELECT storage AS ort, 0 AS sets, 0 AS teile, COUNT(*)::int AS figuren
+           FROM minifigs WHERE user_id = ANY($1) AND storage IS NOT NULL
           GROUP BY storage
        ) q
       GROUP BY ort
       ORDER BY ort`, [uids]).catch(() => []);
   // Typisiert statt `(r: any)`: db.all() liefert Zeilen ohne Form, und dieser
-  // Bauplan sagt, was diese Abfrage liefert. `sets`/`teile` stehen als string,
+  // Bauplan sagt, was diese Abfrage liefert. Die Summen stehen als string,
   // weil der Postgres-Treiber SUM() als Zeichenkette zurueckgibt — genau
   // deshalb steht darunter parseInt und nicht Number().
-  type Zeile = { ort: string; sets: string | number; teile: string | number };
+  type Zeile = { ort: string; sets: string | number; teile: string | number;
+                 figuren: string | number };
   return (rows as Zeile[] || []).map(r => ({
     ort: r.ort,
-    sets:  parseInt(String(r.sets))  || 0,
-    teile: parseInt(String(r.teile)) || 0,
+    sets:    parseInt(String(r.sets))    || 0,
+    teile:   parseInt(String(r.teile))   || 0,
+    figuren: parseInt(String(r.figuren)) || 0,
   }));
 }

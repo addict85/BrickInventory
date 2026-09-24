@@ -53,16 +53,25 @@ fun CatalogDetailScreen(
     defaultCondition: String = "N",
     /** Mitglieder des Haushalts — die Kontowahl blendet sich ohne sie selbst aus. */
     householdMembers: List<ch.brickinventoryapp.data.model.HouseholdMember> = emptyList(),
+    /** Vorrat an Lagerorten fuer den Erfassungsdialog. */
+    lagerorte: List<String> = emptyList(),
     onLoad: (String) -> Unit,
-    onAddToGallery: (String, Int, Double?, String?, Int?) -> Unit,
+    onAddToGallery: (String, Int, Double?, String?, Int?, String?) -> Unit,
     /**
-     * Auf die Merkliste — Setnummer, Zustand, Alarmrichtung, Schwelle (roh).
+     * Auf die Merkliste — Setnummer, Zustand, Alarmrichtung, Schwelle (roh)
+     * und ZIELKONTO.
      *
      * Die Schwelle kommt als TEXT und nicht als Double: Leer heisst „kein
      * Alarm", nicht „Schwelle 0", und die Umwandlung gehoert an die eine
      * Stelle, die sie schon kann (alarm/Alarmeingabe.kt).
+     *
+     * Das Zielkonto kam am 24.09. dazu (Marcos Befund: „Wenn ich etwas aus dem
+     * Katalog auf die Merkliste setze kann ich den Account nicht waehlen").
+     * Der Server nahm es seit jeher an — nur der Dialog fragte nicht danach,
+     * waehrend der Erfassungsdialog eine Zeile darueber es tat. Die Webapp
+     * hatte die Wahl bereits (cat-m-owner).
      */
-    onWish: (String, String, String, String) -> Unit,
+    onWish: (String, String, String, String, Int?) -> Unit,
     onOpenInGallery: (String) -> Unit,
     onBack: () -> Unit
 ) {
@@ -246,9 +255,10 @@ fun CatalogDetailScreen(
         MerkpostenDialog(
             setName = detail.name ?: detail.setNumber,
             defaultCondition = defaultCondition,
+            householdMembers = householdMembers,
             onDismiss = { showWishDialog = false },
-            onWish = { zustand, richtung, schwelle ->
-                onWish(detail.setNumber, zustand, richtung, schwelle)
+            onWish = { zustand, richtung, schwelle, konto ->
+                onWish(detail.setNumber, zustand, richtung, schwelle, konto)
                 showWishDialog = false
             },
         )
@@ -259,10 +269,11 @@ fun CatalogDetailScreen(
             setName = detail.name ?: detail.setNumber,
             defaultCondition = defaultCondition,
             householdMembers = householdMembers,
+            lagerorte = lagerorte,
             onDismiss = { showAddDialog = false },
-            onAdd = { qty, price, cond, owner ->
+            onAdd = { qty, price, cond, owner, ort ->
                 showAddDialog = false
-                onAddToGallery(detail.setNumber, qty, price, cond, owner)
+                onAddToGallery(detail.setNumber, qty, price, cond, owner, ort)
             }
         )
     }
@@ -298,12 +309,15 @@ private fun CatalogAddDialog(
     setName: String,
     defaultCondition: String,
     householdMembers: List<ch.brickinventoryapp.data.model.HouseholdMember>,
+    /** Vorrat an Lagerorten — leer heisst: es gibt noch keine, dann wird getippt. */
+    lagerorte: List<String>,
     onDismiss: () -> Unit,
-    onAdd: (Int, Double?, String?, Int?) -> Unit
+    onAdd: (Int, Double?, String?, Int?, String?) -> Unit
 ) {
     var quantity      by rememberSaveable { mutableStateOf("1") }
     var purchasePrice by rememberSaveable { mutableStateOf("") }
     var condition     by rememberSaveable { mutableStateOf(defaultCondition) }
+    var lagerort      by rememberSaveable { mutableStateOf("") }
     // Vorbelegt mit dem eigenen Konto, genau wie im Galerie-Dialog.
     var owner         by remember(householdMembers) {
         mutableStateOf(householdMembers.firstOrNull { it.isSelf }?.id)
@@ -328,6 +342,7 @@ private fun CatalogAddDialog(
                     singleLine = true, modifier = Modifier.fillMaxWidth()
                 )
                 Zustandszeile(zustand = condition, onZustand = { condition = it })
+                LagerortErfassung(lagerort, lagerorte, { lagerort = it })
             }
         },
         confirmButton = {
@@ -337,7 +352,8 @@ private fun CatalogAddDialog(
                 condition,
                 // Ohne Haushalt gar nichts mitschicken — der Server bleibt dann
                 // beim eigenen Konto (gleiche Regel wie im Galerie-Dialog).
-                if (householdMembers.size > 1) owner else null
+                if (householdMembers.size > 1) owner else null,
+                lagerort.trim().takeIf { it.isNotEmpty() }
             ) }) {
                 Text(stringResource(R.string.catalog_add_confirm))
             }
@@ -361,12 +377,18 @@ private fun CatalogAddDialog(
 private fun MerkpostenDialog(
     setName: String,
     defaultCondition: String,
+    /** Konten des Haushalts — ohne Unterkonten blendet sich die Wahl selbst aus. */
+    householdMembers: List<ch.brickinventoryapp.data.model.HouseholdMember>,
     onDismiss: () -> Unit,
-    onWish: (String, String, String) -> Unit,
+    onWish: (String, String, String, Int?) -> Unit,
 ) {
     var zustand  by rememberSaveable { mutableStateOf(defaultCondition) }
     var richtung by rememberSaveable { mutableStateOf("unter") }
     var schwelle by rememberSaveable { mutableStateOf("") }
+    // Vorbelegt mit dem eigenen Konto, genau wie im Erfassungsdialog daneben.
+    var konto    by remember(householdMembers) {
+        mutableStateOf(householdMembers.firstOrNull { it.isSelf }?.id)
+    }
 
     AlertDialog(
         onDismissRequest = onDismiss,
@@ -374,6 +396,10 @@ private fun MerkpostenDialog(
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(Abstaende.mittel)) {
                 Text(setName, style = MaterialTheme.typography.bodyMedium)
+                // Marcos Befund vom 24.09.: „Wenn ich etwas aus dem Katalog auf
+                // die Merkliste setze kann ich den Account nicht waehlen."
+                // Blendet sich bei weniger als zwei Mitgliedern selbst aus.
+                OwnerPicker(householdMembers, konto, { konto = it })
                 Zustandszeile(zustand = zustand, onZustand = { zustand = it })
                 HorizontalDivider()
                 Text(stringResource(R.string.detail_alert),
@@ -398,7 +424,10 @@ private fun MerkpostenDialog(
             }
         },
         confirmButton = {
-            Button(onClick = { onWish(zustand, richtung, schwelle) }) {
+            Button(onClick = { onWish(zustand, richtung, schwelle,
+                // Ohne Haushalt gar nichts mitschicken — dann bleibt der Server
+                // beim eigenen Konto (gleiche Regel wie im Erfassungsdialog).
+                if (householdMembers.size > 1) konto else null) }) {
                 Text(stringResource(R.string.wanted_add_submit))
             }
         },

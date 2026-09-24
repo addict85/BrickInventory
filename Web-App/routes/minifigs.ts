@@ -54,6 +54,7 @@ import { csvGemeinsameFelder, csvImportAntwort, csvZeilenAusAnfrage, toCsv } fro
 import { angemeldeteNutzerId } from '../utils/auth';
 import { csvEmpfang } from '../utils/dateiEmpfang';
 import { sendeFehler } from '../utils/fehlerTexte';
+import { normalisiereLagerort, setzeLagerort } from '../utils/lagerort';
 
 router.use(requireLogin);
 
@@ -176,7 +177,23 @@ async function resolveManualFigPurchase(uid: number, { figNumber, blFigNumber = 
 
 // body ist `any` wie in routes/parts.ts — so kommt es von Express, und die
 // Validierer in utils/validate.ts nehmen es genauso entgegen.
-async function addManualFig(uid: number, body: any) {
+/**
+ * Eine Minifigur von Hand erfassen — mit Lagerort, wenn einer mitkommt.
+ *
+ * Zwilling zu addManualPart (routes/parts.ts) — siehe die Begruendung dort.
+ * Bis zum 24.09. konnte eine Minifigur ueberhaupt keinen Lagerort tragen: Die
+ * Spalte gab es nicht (Migration 0024).
+ */
+async function addManualFig(uid: number, body: Record<string, unknown>) {
+  const ort = normalisiereLagerort(body?.storage);
+  const ergebnis = await addManualFigIntern(uid, body);
+  if (ort && ergebnis?.fig_number) {
+    await setzeLagerort('fig', [uid], [String(ergebnis.fig_number)], ort);
+  }
+  return ergebnis;
+}
+
+async function addManualFigIntern(uid: number, body: any) {
   // Gleiche Eingangsvalidierung wie bei manuellen Teilen (utils/validate.ts).
   const V = require('../utils/validate');
   const num       = V.requireItemNumber(body?.fig_number, 'fig_number');

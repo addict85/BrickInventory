@@ -373,6 +373,13 @@ CREATE INDEX IF NOT EXISTS idx_minifigs_user ON minifigs(user_id);
 ALTER TABLE minifigs ADD COLUMN IF NOT EXISTS bl_fig_number TEXT;
 ALTER TABLE minifigs ADD COLUMN IF NOT EXISTS image_local TEXT;
 
+-- Lagerort auch fuer Minifiguren (db/migrations/0024-lagerort-minifiguren.sql).
+-- Warum hier ZUSAETZLICH zur Migration: siehe den Block bei sets/parts weiter
+-- oben — diese Datei ist der Ausgangszustand fuer eine NEUE Datenbank.
+ALTER TABLE minifigs ADD COLUMN IF NOT EXISTS storage TEXT;
+CREATE INDEX IF NOT EXISTS idx_minifigs_storage
+  ON minifigs (user_id, storage) WHERE storage IS NOT NULL;
+
 CREATE TABLE IF NOT EXISTS minifig_price_cache (
   id            SERIAL PRIMARY KEY,
   fig_number    TEXT NOT NULL,

@@ -339,7 +339,8 @@ export async function merkpostenVon(userIds: number[], nurSet?: string): Promise
  */
 export async function uebernimm(
   leserId: number, besitzerId: number, setNumber: string, condition: unknown,
-  eingabe: { quantity?: unknown; purchase_price?: unknown; condition?: unknown } = {},
+  eingabe: { quantity?: unknown; purchase_price?: unknown; condition?: unknown;
+             storage?: unknown } = {},
 ): Promise<{ action: string; set_number: string }> {
   const sn = sanitizeSetNumber(setNumber);
 
@@ -371,7 +372,12 @@ export async function uebernimm(
   const ergebnis = vorhanden
     ? { action: 'exists', set_number: sn }
     : await addSet(sn, V.acquisitionQuantity(eingabe.quantity ?? 1), besitzerId, null,
-                   V.optionalPrice(eingabe.purchase_price, 'Kaufpreis'), zustand);
+                   V.optionalPrice(eingabe.purchase_price, 'Kaufpreis'), zustand,
+                   // Marcos Befund vom 24.09.: „Wenn ich etwas aus der Merkliste
+                   // in die Galerie aufnehme, kann ich den Lagerort nicht
+                   // setzen." Er reicht einfach durch — addSet() setzt ihn ueber
+                   // dieselbe Funktion wie der Detaildialog.
+                   eingabe.storage == null ? null : String(eingabe.storage));
 
   // Geraeumt wird nach dem MERKPOSTEN-Zustand, nicht nach dem erfassten: Es geht
   // um die Zeile, die man erfuellt hat.

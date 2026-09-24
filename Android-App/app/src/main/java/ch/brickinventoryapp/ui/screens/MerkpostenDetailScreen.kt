@@ -68,6 +68,8 @@ fun MerkpostenDetailScreen(
     onBack: () -> Unit,
 ) {
     val appState by vm.state.collectAsStateWithLifecycle()
+    // Der VORRAT an Lagerorten fuer den Uebernahme-Dialog.
+    val lagerZustand by vm.lagerState.collectAsStateWithLifecycle()
     val liste    by vm.merklisteState.collectAsStateWithLifecycle()
     val detail   by vm.merkpostenDetailState.collectAsStateWithLifecycle()
     // Der Alarm liegt im Set-Detail-Zustand — Begruendung an ladeMerkpostenDetail().
@@ -343,10 +345,11 @@ fun MerkpostenDetailScreen(
     if (uebernahmeOffen) merkposten?.let { w ->
         UebernahmeDialog(
             merkposten = w,
+            lagerorte = lagerZustand.eigene.map { it.name },
             onDismiss = { uebernahmeOffen = false },
-            onUebernehmen = { anzahl, preisRoh, zustandWahl ->
+            onUebernehmen = { anzahl, preisRoh, zustandWahl, ort ->
                 vm.uebernimmMerkposten(w.setNumber, w.condition, w.userId,
-                                   anzahl, preisRoh, zustandWahl)
+                                   anzahl, preisRoh, zustandWahl, ort)
                 uebernahmeOffen = false
             },
         )

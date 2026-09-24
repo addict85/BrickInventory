@@ -221,7 +221,39 @@ async function resolveManualPartPurchase(uid: number, { partNumber, colorId, uni
 // RUECKGABEN: V.colorId() gibt number, V.requireItemNumber() gibt string.
 // Ein `unknown` hier waere strenger, aber jeder Feldzugriff muesste dann
 // einzeln eingeengt werden, bevor der Validierer ihn ueberhaupt sieht.
-async function addManualPart(uid: number, rawBody: any) {
+/**
+ * Ein Teil von Hand erfassen — mit Lagerort, wenn einer mitkommt.
+ *
+ * ── Warum der Lagerort NACH dem Erfassen geschrieben wird ───────────────────
+ *
+ * Marcos Befund vom 24.09.: „Bei den manuell erfassten Teilen kann ich beim
+ * Erfassen keinen Lagerort setzen." Dieselbe Luecke wie beim Set, und dieselbe
+ * Antwort: setzeLagerort() ist die eine Stelle, die die Spalte schreibt —
+ * Laengengrenze, Trimmen und der Eintrag im VORRAT (stelleOrteSicher) haengen
+ * daran. Ein eigenes UPDATE in dieser Funktion waere die zweite Fassung
+ * derselben Regel, und der neu getippte Ort fehlte danach in der Auswahlliste.
+ *
+ * Der Rumpf hat zwei Ausgaenge — „added" und „updated" —, deshalb die Huelle:
+ * Beide Wege sollen den Ort setzen, und zwar genau einmal.
+ *
+ * GEPRUEFT wird vorher: Ein zu langer Name soll nicht erst das Teil anlegen
+ * und dann absagen.
+ */
+async function addManualPart(uid: number, rawBody: Record<string, unknown>) {
+  const V0 = require('../utils/validate');
+  const ort = normalisiereLagerort(rawBody?.storage);
+  // DIESELBE Umwandlung wie im Rumpf, auf derselben Eingabe — sie kann also
+  // nicht auseinanderlaufen. Der Rumpf gibt sie nicht zurueck, weil die
+  // Antwort der Route sonst eine Form mehr haette, die niemand liest.
+  const farbe = V0.colorId(rawBody?.color_id);
+  const ergebnis = await addManualPartIntern(uid, rawBody);
+  if (ort && ergebnis?.part_number) {
+    await setzeLagerort('part', [uid], [ergebnis.part_number, String(farbe || 0)], ort);
+  }
+  return ergebnis;
+}
+
+async function addManualPartIntern(uid: number, rawBody: any) {
   // Eingangsvalidierung (utils/validate.ts): vorher wurden part_number,
   // part_name, color_name, category_name und image_url völlig ungeprüft
   // gespeichert und später per innerHTML gerendert — das war die Server-Hälfte
@@ -432,6 +464,7 @@ import { csvGemeinsameFelder, csvImportAntwort, csvZeilenAusAnfrage, toCsv } fro
 import { angemeldeteNutzerId } from '../utils/auth';
 import { csvEmpfang } from '../utils/dateiEmpfang';
 import { sendeFehler } from '../utils/fehlerTexte';
+import { normalisiereLagerort, setzeLagerort } from '../utils/lagerort';
 
 
 router.post('/import/csv', csvEmpfang.single('file'), async (req: LoggedInRequest, res) => {

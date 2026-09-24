@@ -95,6 +95,15 @@ var barcodeCondition by remember(barcodeState.result) { mutableStateOf(state.use
 var barcodeOwner by remember(barcodeState.result, state.householdMembers) {
     mutableStateOf(state.householdMembers.firstOrNull { it.isSelf }?.id)
 }
+// Lagerort, ebenfalls je gescanntem Barcode zurueckgesetzt.
+//
+// Marcos Befund vom 24.09.: „Wenn ich ein Set in der Galerie hinzufuegen will,
+// kann ich den Lagerort nicht waehlen. Egal ob ich das manuell oder per
+// Barcode hinzufuege." Der Barcode-Weg ist wieder der, der ein Feld nicht
+// hatte, das die anderen haben — dasselbe Muster wie beim Eigentuemer eine
+// Zeile hoeher.
+var barcodeLagerort by remember(barcodeState.result) { mutableStateOf("") }
+val lagerZustand by vm.lagerState.collectAsStateWithLifecycle()
 AlertDialog(
     // Während des Hinzufügens nicht per Tipp daneben schliessbar —
     // sonst verschwindet der Dialog, während der Aufruf noch läuft.
@@ -222,6 +231,13 @@ AlertDialog(
                     zustand = barcodeCondition,
                     onZustand = { barcodeCondition = it }
                 )
+                ch.brickinventoryapp.ui.screens.LagerortErfassung(
+                    barcodeLagerort,
+                    // Der VORRAT, nicht die belegten Orte: Beim Erfassen soll
+                    // auch ein leeres Regal zur Wahl stehen.
+                    lagerZustand.eigene.map { it.name },
+                    { barcodeLagerort = it }
+                )
             }
         }
     },
@@ -249,7 +265,8 @@ AlertDialog(
                         // Ohne Haushalt gar nichts mitschicken — der Server
                         // bleibt dann beim eigenen Konto (gleiche Regel wie
                         // im Galerie-Dialog).
-                        if (state.householdMembers.size > 1) barcodeOwner else null
+                        if (state.householdMembers.size > 1) barcodeOwner else null,
+                        barcodeLagerort.trim().takeIf { it.isNotEmpty() }
                     )
                 }
             },

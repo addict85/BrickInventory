@@ -1,0 +1,39 @@
+-- ═══════════════════════════════════════════════════════════════════════════
+-- Der Lagerort gilt auch fuer Minifiguren
+-- ═══════════════════════════════════════════════════════════════════════════
+--
+-- ── Marcos Befund vom 24.09. ────────────────────────────────────────────────
+--
+--   „Bei manuelle erfassten Minifiguren kann ich beim Erfassen keinen
+--    Lagerort setzen."
+--
+-- Das stimmt, und es ist mehr als ein fehlendes Eingabefeld: Eine Minifigur
+-- kann bisher UEBERHAUPT KEINEN Lagerort tragen, auch nicht nachtraeglich.
+-- 0018 hat die Spalte an `sets` und `parts` gehaengt, mit der Begruendung:
+-- „Ein Set liegt in einer Schachtel, lose Teile liegen in einer Kiste. Beide
+-- Fragen sind dieselbe Frage." Die Minifigur ist dieselbe Frage zum dritten
+-- Mal — sie wurde damals schlicht uebersehen.
+--
+-- ── Warum das nicht ohne Folgen bleibt ──────────────────────────────────────
+--
+-- Die Liste der BELEGTEN Orte (utils/lagerort.ts, lagerorte()) zaehlt ueber
+-- alle Tabellen mit einer storage-Spalte, und loescheOrt() verweigert das
+-- Loeschen, solange eine davon den Namen noch traegt. Kaeme die Spalte hier
+-- dazu, ohne dass beide Stellen sie kennen, waere ein Ort, in dem NUR
+-- Figuren liegen, unsichtbar und liesse sich loeschen — die Zuordnung der
+-- Figuren zeigte danach auf einen Namen, den der Vorrat nicht mehr kennt.
+-- Beide Stellen wandern deshalb im selben Zug mit.
+--
+-- ── NULL heisst „nicht erfasst", nicht „nirgends" ───────────────────────────
+--
+-- Kein DEFAULT '', aus demselben Grund wie in 0018: Ein leerer Text waere ein
+-- Ort namens „nichts" und stuende in jeder Auswahlliste. NULL faellt aus
+-- DISTINCT heraus, und genau das ist richtig.
+ALTER TABLE minifigs ADD COLUMN IF NOT EXISTS storage TEXT;
+
+-- ── Der INDEX steht nicht hier, sondern in db/schema.sql ────────────────────
+--
+-- Dieselbe Regel wie in 0018: Diese Datei laeuft genau einmal, db/schema.sql
+-- bei JEDEM Start (alles darin ist idempotent). Ein Index an beiden Orten
+-- liefe auseinander, sobald ihn jemand an einem davon aendert —
+-- test/schema-am-start.test.js meldet genau das.

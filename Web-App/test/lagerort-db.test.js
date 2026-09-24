@@ -138,8 +138,12 @@ test('Lagerort gegen echte Datenbank', async (t) => {
     // „Kiste 3" hat ein Set UND zwei Teilezeilen — ein Ort, nicht zwei
     // Einträge. Zwei getrennte Listen zu liefern hiesse, dass jede Oberfläche
     // sie selbst zusammenführt, und zwar jede für sich.
-    assert.deepEqual(karte['Kiste 3'], { ort: 'Kiste 3', sets: 1, teile: 2 });
-    assert.deepEqual(karte['Regal B'], { ort: 'Regal B', sets: 1, teile: 0 });
+    // `figuren` kam am 24.09. dazu (Migration 0024): Eine Minifigur traegt
+    // seitdem ebenfalls einen Lagerort und wird EIGEN gezaehlt, nicht zu den
+    // Teilesorten addiert — sonst hiesse „2 Teilesorten" mal das eine und mal
+    // das andere. Hier liegt keine Figur, also 0.
+    assert.deepEqual(karte['Kiste 3'], { ort: 'Kiste 3', sets: 1, teile: 2, figuren: 0 });
+    assert.deepEqual(karte['Regal B'], { ort: 'Regal B', sets: 1, teile: 0, figuren: 0 });
     // Alphabetisch — die Auswahlliste soll nicht bei jedem Aufruf anders sein.
     assert.deepEqual(orte.map(o => o.ort), [...orte.map(o => o.ort)].sort());
     // Und nichts Fremdes.

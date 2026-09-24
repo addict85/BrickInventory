@@ -112,8 +112,12 @@ fun GalleryScreen(
     val lagerModus = lagerState.modi[ch.brickinventoryapp.data.ScopeFilter.View.GALLERY.key] ?: ""
     val onLagerChange: (String) -> Unit = { vm.setLagerFilter(ch.brickinventoryapp.data.ScopeFilter.View.GALLERY, it) }
     val onRefresh: () -> Unit = { vm.loadSets(); vm.loadStats() }
-    val onAddSet: (String, Int, Double?, String?, Int?) -> Unit =
-        { sn, qty, price, cond, owner -> vm.addSet(sn, qty, price, cond, owner) }
+    val onAddSet: (String, Int, Double?, String?, Int?, String?) -> Unit =
+        { sn, qty, price, cond, owner, ort -> vm.addSet(sn, qty, price, cond, owner, ort) }
+    // Der VORRAT, nicht die belegten Orte: `lagerorte` eine Zeile weiter oben
+    // speist den FILTER und enthaelt nur, worin schon etwas liegt. Beim
+    // Erfassen soll auch ein leeres Regal zur Wahl stehen.
+    val lagerortVorrat = lagerState.eigene.map { it.name }
 
     var showAddDialog by rememberSaveable { mutableStateOf(false) }
 
@@ -334,9 +338,11 @@ fun GalleryScreen(
     if (showAddDialog) {
         AddSetDialog(
             onDismiss = { showAddDialog = false },
-            onAdd = { sn, qty, price, cond, owner -> showAddDialog = false; onAddSet(sn, qty, price, cond, owner) },
+            onAdd = { sn, qty, price, cond, owner, ort ->
+                showAddDialog = false; onAddSet(sn, qty, price, cond, owner, ort) },
             householdMembers = householdMembers,
-            defaultCondition = defaultCondition
+            defaultCondition = defaultCondition,
+            lagerorte = lagerortVorrat
         )
     }
 }
@@ -578,13 +584,16 @@ fun SetCard(
 @Composable
 fun AddSetDialog(
     onDismiss: () -> Unit,
-    onAdd: (String, Int, Double?, String?, Int?) -> Unit,
+    onAdd: (String, Int, Double?, String?, Int?, String?) -> Unit,
     defaultCondition: String = "N",
     /** Konten des Haushalts — ohne Unterkonten bleibt die Auswahl verborgen. */
-    householdMembers: List<ch.brickinventoryapp.data.model.HouseholdMember> = emptyList()
+    householdMembers: List<ch.brickinventoryapp.data.model.HouseholdMember> = emptyList(),
+    /** Vorrat an Lagerorten — leer heisst: es gibt noch keine, dann wird getippt. */
+    lagerorte: List<String> = emptyList(),
 ) {
     var setNumber by rememberSaveable { mutableStateOf("") }
     var quantity  by rememberSaveable { mutableStateOf("1") }
+    var lagerort  by rememberSaveable { mutableStateOf("") }
 
     // ── Der Cursor steht sofort im Set-Feld (Nachtrag 113) ────────────────────
     //
@@ -616,7 +625,8 @@ fun AddSetDialog(
                   purchasePrice.replace(',', '.').toDoubleOrNull(), condition,
                   // Ohne Haushalt gar nichts mitschicken — der Server bleibt
                   // dann beim eigenen Konto.
-                  if (householdMembers.size > 1) owner else null)
+                  if (householdMembers.size > 1) owner else null,
+                  lagerort.trim().takeIf { it.isNotEmpty() })
         }
     }
 
@@ -655,6 +665,7 @@ fun AddSetDialog(
                     keyboardActions = KeyboardActions(onDone = { keyboard?.hide(); submit() })
                 )
                 Zustandszeile(zustand = condition, onZustand = { condition = it })
+                LagerortErfassung(lagerort, lagerorte, { lagerort = it })
             }
         },
         confirmButton = {

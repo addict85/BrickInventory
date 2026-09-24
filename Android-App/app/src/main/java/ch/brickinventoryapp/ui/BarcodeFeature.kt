@@ -274,7 +274,7 @@ internal fun MainViewModel.gallerySearchFoundConsumed() {
  * den Coroutine-Block verschieben; dann ist das Rennen wieder offen.
  */
 internal fun MainViewModel.confirmAddBarcode(setNum: String, purchasePrice: Double? = null, condition: String? = null,
-                                             ownerUserId: Int? = null) {
+                                             ownerUserId: Int? = null, storage: String? = null) {
     if (_barcodeState.value.adding) return
     if (_barcodeState.value.source == "wanted") {
         // Der vierte Scan-Weg (Nachtrag 179): Dieselbe Kamera, dasselbe
@@ -332,7 +332,8 @@ internal fun MainViewModel.confirmAddBarcode(setNum: String, purchasePrice: Doub
         // Server-Route kannten den Eigentümer längst — der Barcode-Weg war der
         // einzige der vier Erfassungswege, der ihn nicht mitgab und damit still
         // immer für das eigene Konto erfasste.
-        when (val r = repo.sets.addSet(setNum, 1, purchasePrice, condition, ownerUserId)) {
+        when (val r = repo.sets.addSet(setNum, 1, purchasePrice, condition, ownerUserId,
+                                       storage?.trim()?.takeIf { it.isNotEmpty() })) {
             is Result.Success -> {
                 _snackbar.value = text(R.string.vm_set_added, setNum)
                 _barcodeState.update { it.copy(adding = false) }

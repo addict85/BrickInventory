@@ -2,7 +2,7 @@ import { registerActions } from './00-registry.js';
 import { colorName, locale, t, tRaw} from '../i18n.js';
 import { escHex, hexZiffern, CURRENCY, G, TRASH_ICON_SVG, api, esc, escJs, escUrl, fmtN, fullUrl, imgUrl, thumbUrl, toast } from './01-core.js';
 import { addScopeParam, scopeQuery } from './14-scope.js';
-import { condBadges, ownerBadges, selectedOwner, PARTS_ICON_SVG } from './02-gallery.js';
+import { condBadges, leereLagerortFeld, ownerBadges, selectedOwner, selectedStorage, PARTS_ICON_SVG } from './02-gallery.js';
 import { loadFinance } from './04-finance.js';
 import { confirmDelete } from './07-admin.js';
 import { openManDetail } from './13-acquisition-modals.js';
@@ -377,6 +377,7 @@ G('btn-add-fig')?.addEventListener('click', async () => {
     unit_price: (v => { const n = parseFloat(v); return String(v).trim() !== '' && !isNaN(n) ? n : null; })(G('af-price-inline')?.value ?? ''),
     condition: G('af-condition')?.value || 'N',
     owner_user_id: selectedOwner('af-owner'),
+    storage: selectedStorage('af-storage'),
   });
   btn.disabled=false; btn.textContent=tRaw('adding.button');
   if(d.success){
@@ -385,6 +386,7 @@ G('btn-add-fig')?.addEventListener('click', async () => {
     res.textContent=`✅ ${esc(d.fig_number)} ${d.action==='added'?t('common.added'):t('common.updated')}`
       + (hinweisF ? ` — ${hinweisF}` : '');
     G('af-num-inline').value=''; G('af-blnum-inline').value=''; G('af-qty-inline').value='1'; G('af-price-inline').value='';
+    leereLagerortFeld('af-storage');
     loadMinifigs();
     // Mit Hinweis laenger stehen lassen: Drei Sekunden reichen fuer ein
     // Haekchen, nicht fuer einen Satz, den man lesen soll.
@@ -600,6 +602,7 @@ G('btn-add-part')?.addEventListener('click', async () => {
     unit_price: (v => { const n = parseFloat(v); return String(v).trim() !== '' && !isNaN(n) ? n : null; })(G('ap-price-inline')?.value ?? ''),
     condition: G('ap-condition')?.value || 'N',
     owner_user_id: selectedOwner('ap-owner'),
+    storage: selectedStorage('ap-storage'),
   });
   btn.disabled=false; btn.textContent=tRaw('adding.button');
   if(d.success){
@@ -608,6 +611,7 @@ G('btn-add-part')?.addEventListener('click', async () => {
     res.textContent=`✅ ${esc(d.part_number)} ${d.action==='added'?t('common.added'):t('common.updated')}`
       + (hinweisT ? ` — ${hinweisT}` : '');
     G('ap-num-inline').value=''; G('ap-qty-inline').value='1'; G('ap-price-inline').value='';
+    leereLagerortFeld('ap-storage');
     if(colorSel) colorSel.selectedIndex=0;
     loadManualParts();
     // Siehe die Figuren-Erfassung darueber: ein Satz braucht laenger als ein

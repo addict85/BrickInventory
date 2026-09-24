@@ -395,7 +395,7 @@ router.get('/export/rebrickable', async (req, res) => {
 
 
 router.post('/add-stream', async (req: LoggedInRequest, res) => {
-  const { set_number, quantity=1, purchase_price, condition: setCondition, owner_user_id } = req.body;
+  const { set_number, quantity=1, purchase_price, condition: setCondition, owner_user_id, storage } = req.body;
   if (!set_number) { sendeFehler(req, res, 400, 'set_number_erforderlich'); return; }
   const streamOwner = await resolveWriteTarget(angemeldeteNutzerId(req), owner_user_id);
   if (streamOwner === null) { sendeFehler(req, res, 403, 'kein_schreibrecht'); return; }
@@ -415,7 +415,7 @@ router.post('/add-stream', async (req: LoggedInRequest, res) => {
     const V2 = require('../utils/validate');
     const result = await addSet(set_number, V2.acquisitionQuantity(quantity), streamOwner,
       d=>{ if(cancelled) throw new Error('CANCELLED'); send(d); },
-      V2.optionalPrice(purchase_price, 'Kaufpreis'), setCondition);
+      V2.optionalPrice(purchase_price, 'Kaufpreis'), setCondition, storage);
     send({ step:'done', ...result });
   } catch (e) { if(fehlertext(e)!=='CANCELLED') send({ step:'error', error:fehlertext(e) }); }
   unregisterAddSse();

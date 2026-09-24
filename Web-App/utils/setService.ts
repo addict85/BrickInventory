@@ -15,6 +15,7 @@ import { getItemImageUrl } from '../clients/bricklink';
 import { generateThumb } from './thumbs';
 import * as nachErfassung from '../jobs/nachErfassung';
 import { normalisiereSetNummer } from './setNummer';
+import { normalisiereLagerort, setzeLagerort } from './lagerort';
 
 /**
  * Sets anlegen, ändern und ausgeben — der Kern hinter den Set-Routen.
@@ -248,8 +249,42 @@ async function addSetWithDate(setNumber: string, quantity: number, userId: numbe
   return result;
 }
 
-/** `sendProgress` meldet Zwischenschritte an den SSE-Strom; null beim CSV-Import. */
+/**
+ * Ein Set erfassen — mit Lagerort, wenn einer mitkommt.
+ *
+ * ── Warum der Lagerort HIER und nicht im Rumpf steht ────────────────────────
+ *
+ * Marcos Befund vom 24.09.: „Wenn ich ein Set in der Galerie hinzufuegen will,
+ * kann ich den Lagerort nicht waehlen." Das stimmte, und es war kein fehlendes
+ * Eingabefeld: Bis dahin liess sich der Lagerort ausschliesslich NACH dem
+ * Erfassen im Detaildialog setzen, ueber PUT …/storage.
+ *
+ * Der Rumpf hat zwei Zweige — Erst-Erfassung und Aufstocken —, und beide
+ * muessten die Spalte schreiben. Stattdessen schreibt sie KEINER von beiden:
+ * Der Lagerort wird danach ueber setzeLagerort() gesetzt, dieselbe Funktion,
+ * die auch der Detaildialog ruft. Damit gilt die Laengengrenze einmal, das
+ * Trimmen einmal, und — das ist der eigentliche Grund — ein neu getippter Ort
+ * landet ueber stelleOrteSicher() im Vorrat. Ohne das stuende der Ort am Set,
+ * fehlte aber in der Liste, aus der er gewaehlt werden soll.
+ *
+ * GEPRUEFT wird vorher: Ein zu langer Name soll nicht erst das Set anlegen und
+ * dann absagen.
+ *
+ * `sendProgress` meldet Zwischenschritte an den SSE-Strom; null beim CSV-Import.
+ */
 async function addSet(setNumber: string, quantity: number, userId: number,
+                      sendProgress: ((n: { step: string; set: string }) => void) | null,
+                      purchasePrice: number | null, condition: string | null = null,
+                      storage: string | null = null) {
+  const ort = normalisiereLagerort(storage);
+  const ergebnis = await addSetIntern(setNumber, quantity, userId, sendProgress, purchasePrice, condition);
+  if (ort && ergebnis?.set_number) {
+    await setzeLagerort('set', [userId], [ergebnis.set_number], ort);
+  }
+  return ergebnis;
+}
+
+async function addSetIntern(setNumber: string, quantity: number, userId: number,
                       sendProgress: ((n: { step: string; set: string }) => void) | null,
                       purchasePrice: number | null, condition: string | null = null) {
   const normalized = sanitizeSetNumber(setNumber);
