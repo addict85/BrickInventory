@@ -404,6 +404,26 @@ export async function openManDetail(type, id, colorId) {
     rows.push(detailZeile(t('parts.color_label'), `${swatch}${esc(item.color_name)}`));
   }
 
+  // ── Lagerort ─────────────────────────────────────────────────────────────
+  //
+  // Marcos Befund vom 24.09.: „Auf dem Detail Dialog der manuell erfassten
+  // Teile ist der Lagerort nicht ersichtlich. Auf dem Detaildialog der manuell
+  // erfassten Minifiguren ist das Lagerort nicht ersichtlich." Er vermutete
+  // es auch in der Webapp — zu Recht: Die Zeile gab es nur im Dialog der Teile
+  // AUS SETS (setitem-storage) und im Set-Detail.
+  //
+  // Dasselbe Bedienelement und derselbe Speicherweg wie dort; nur die Adresse
+  // haengt am Typ. Die Auswahlliste gehoert dem BESITZER des Eintrags, nicht
+  // dem Betrachter — im Haushalt zeigt der manuelle Bereich die Eintraege
+  // aller Konten.
+  ladeOrtAuswahl(item?.user_id != null ? [item.user_id] : []).catch(() => {});
+  rows.push(detailZeile(t('detail.storage'),
+    lagerortBlock('man-storage', item?.storage,
+      `data-change="speichereTeilLagerort" data-typ="${type === 'fig' ? 'fig' : 'part'}" ` +
+      `data-part="${escJs(id)}" data-color="${_manItem.colorId}" ` +
+      `data-owners="${esc(item?.user_id ?? '')}"`),
+    { wertStil: 'display:flex;align-items:center;gap:6px;flex-wrap:wrap;justify-content:flex-end' }));
+
   // Acquisition summary — compact, like set-detail
   rows.push(detailZeile(t('detail.purchase_price'), `
       ${renderManAcqSummary(acqs, type, id, colorId)}
@@ -583,7 +603,7 @@ export async function openSetItemDetail(type, id, colorId) {
     ladeOrtAuswahl(item?.owner_ids).catch(() => {});
     zeilen.push(detailZeile(t('detail.storage'),
       lagerortBlock('setitem-storage', item?.storage,
-        `data-change="speichereTeilLagerort" data-part="${escJs(id)}" data-color="${farbe}" ` +
+        `data-change="speichereTeilLagerort" data-typ="part" data-part="${escJs(id)}" data-color="${farbe}" ` +
         `data-owners="${esc((item?.owner_ids || []).join(','))}"`),
       { wertStil: 'display:flex;align-items:center;gap:6px;flex-wrap:wrap;justify-content:flex-end' }));
   }
@@ -645,19 +665,34 @@ export async function openSetItemDetail(type, id, colorId) {
 }
 
 /**
- * Lagerort eines Teils speichern.
+ * Lagerort eines Teils oder einer Figur speichern.
  *
  * Beim Verlassen des Feldes, aus demselben Grund wie beim Set (07-admin.js):
  * Ein Ortsname wird getippt, und ein Speichern je Zeichen hinterliesse für
  * „Kiste 3" fünf Zwischenstände in der Datenbank.
+ *
+ * ── Warum `this` und nicht mehr eine feste Kennung ──────────────────────────
+ *
+ * Hier stand `G('setitem-storage')`. Damit war der Handler an EINEN Dialog
+ * gebunden — der Detaildialog der manuell erfassten Einträge (Marcos Befund
+ * vom 24.09.: „Auf dem Detail Dialog der manuell erfassten Teile ist der
+ * Lagerort nicht ersichtlich") hätte einen zweiten mit derselben Regel
+ * gebraucht. Die Delegation ruft den Handler mit dem Element als Empfänger
+ * auf (11-actions.js, fn.apply(el, args)); `this` ist also das Feld, das
+ * gerade verlassen wurde.
+ *
+ * `data-typ` entscheidet die Adresse: Eine Figur hat keine Farbe und deshalb
+ * eine eigene Route (routes/api_v1/minifigs.ts).
  */
 async function speichereTeilLagerort() {
-  const el = G('setitem-storage');
+  const el = this instanceof HTMLElement ? this : G('setitem-storage');
   if (!el) return;
   const nummer = el.dataset.part;
   const farbe  = parseInt(el.dataset.color) || 0;
-  const d = await api('PUT',
-    `/v1/parts/${encodeURIComponent(nummer)}/${farbe}/storage`, { storage: el.value });
+  const adresse = el.dataset.typ === 'fig'
+    ? `/v1/minifigs/${encodeURIComponent(nummer)}/storage`
+    : `/v1/parts/${encodeURIComponent(nummer)}/${farbe}/storage`;
+  const d = await api('PUT', adresse, { storage: el.value });
   if (!d?.success) { toast(d?.error || tRaw('settings.error'), 'error'); return; }
   await ladeLagerorte();
   // Ein frisch getippter Ort ist jetzt im Vorrat — ohne das stünde er am Teil,

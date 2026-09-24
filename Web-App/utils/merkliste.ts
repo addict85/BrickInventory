@@ -42,6 +42,31 @@ export interface Merkposten {
   created_at: string;
   /** Wem der Merkposten gehört — im Kontenbaum sieht man fremde mit. */
   user_id: number;
+  /**
+   * Der Marktpreis im Zustand DIESES Merkpostens — null, solange keiner
+   * bekannt ist.
+   *
+   * ── Marcos Vorgabe vom 24.09. ────────────────────────────────────────────
+   *
+   * „Bitte in der Tabelle der Merkliste der Button In die Galerie aufnehme
+   *  entfernen und dafuer den Marktpreis anzeigen."
+   *
+   * ── Warum aus dem CACHE und nicht frisch geholt ──────────────────────────
+   *
+   * Ein Abruf je Zeile waere bei zwei Dutzend Merkposten ein Dutzend
+   * BrickLink-Anfragen beim Oeffnen des Reiters — und die Liste wartete
+   * darauf. Sie ist aber ohnehin da: jobs/priceJob.ts frischt die Preise der
+   * Merkposten taeglich auf (die Begruendung steht dort ausdruecklich —
+   * „ausgerechnet fuer einen Merkposten ist die Preisentwicklung das
+   * Wichtigste"). Ein LEFT JOIN kostet nichts und liefert genau den Stand,
+   * den der Job hinterlegt hat.
+   *
+   * Kein Preis heisst hier „noch keiner im Cache", nicht „wertlos" — die
+   * Oberflaechen zeigen dafuer einen Strich.
+   */
+  marktpreis: number | null;
+  /** Die Waehrung, in der [marktpreis] steht. */
+  waehrung: string;
   /** Aus rb_sets, nicht mitgespeichert (siehe Migration 0021). */
   name: string | null;
   year: number | null;
@@ -231,17 +256,22 @@ export async function verschiebeMerkposten(
  * `owned` beantwortet die Frage, die in der Liste sofort aufkommt: „Habe ich
  * das inzwischen?" — es prüft dasselbe Blickfeld, nicht nur das eigene Konto.
  */
-export async function merkpostenVon(userIds: number[], nurSet?: string): Promise<Merkposten[]> {
+export async function merkpostenVon(
+  userIds: number[], nurSet?: string, waehrung = 'EUR',
+): Promise<Merkposten[]> {
   if (!userIds?.length) return [];
   const params: unknown[] = [userIds];
   let filter = '';
-  if (nurSet) { params.push(sanitizeSetNumber(nurSet)); filter = ' AND w.set_number = $2'; }
+  if (nurSet) { params.push(sanitizeSetNumber(nurSet)); filter = ` AND w.set_number = $${params.length}`; }
+  params.push(waehrung);
+  const pWaehrung = `$${params.length}`;
   const rows = await db.all(
     `SELECT w.set_number, w.condition, w.created_at, w.user_id,
             rb.name, rb.year, rb.theme_id, rb.num_parts,
             rb.set_img_url AS image_url,
             pa.richtung AS alarm_richtung, pa.schwelle AS alarm_schwelle,
             pa.ausgeloest AS alarm_ausgeloest,
+            pc.avg_price AS marktpreis,
             EXISTS (SELECT 1 FROM sets s
                      WHERE s.user_id = ANY($1) AND s.set_number = w.set_number) AS owned
        FROM wanted w
@@ -249,6 +279,13 @@ export async function merkpostenVon(userIds: number[], nurSet?: string): Promise
        LEFT JOIN price_alerts pa ON pa.user_id = w.user_id
                                 AND pa.set_number = w.set_number
                                 AND pa.condition = w.condition
+       -- Der Marktpreis im Zustand DIESES Merkpostens. Ohne die
+       -- Zustandsbedingung stuende beim gebrauchten Merkposten der Neupreis —
+       -- dieselbe Verwechslung, die in addSet() schon einmal einen
+       -- Gebrauchtpreis als Neuzugang verbucht hat.
+       LEFT JOIN price_cache pc ON pc.set_number = w.set_number
+                               AND pc.condition = w.condition
+                               AND pc.currency_code = ${pWaehrung}
       WHERE w.user_id = ANY($1)${filter}
       ORDER BY w.created_at DESC, w.set_number, w.condition`,
     params)
@@ -259,10 +296,11 @@ export async function merkpostenVon(userIds: number[], nurSet?: string): Promise
   // Die Zahlenspalten kommen als Zeichenkette aus dem Treiber — dieselbe
   // Stelle, an der in diesem Baum schon einmal ein Vergleich still falsch
   // wurde (siehe utils/preisalarm.ts).
-  type Zeile = Omit<Merkposten, 'year' | 'num_parts' | 'owned' | 'alarm' | 'preisvergleich_url' | 'image_local'> &
+  type Zeile = Omit<Merkposten, 'year' | 'num_parts' | 'owned' | 'alarm' | 'preisvergleich_url'
+                            | 'image_local' | 'marktpreis' | 'waehrung'> &
                { year: string | number | null; num_parts: string | number | null; owned: unknown;
                  alarm_richtung: string | null; alarm_schwelle: string | number | null;
-                 alarm_ausgeloest: unknown };
+                 alarm_ausgeloest: unknown; marktpreis: string | number | null };
   // ── Fehlt das Bild noch, wird es hier bestellt ───────────────────────────
   //
   // Marcos zweiter Befund: „Leider wird es auch nach ein paar Minuten noch
@@ -301,6 +339,17 @@ export async function merkpostenVon(userIds: number[], nurSet?: string): Promise
       ...r,
       year:      r.year      == null ? null : Number(r.year),
       num_parts: r.num_parts == null ? null : Number(r.num_parts),
+      // Number() ist hier ein NETZ, keine Umrechnung: NACHGEMESSEN liefert der
+      // Treiber NUMERIC bereits als Zahl, weil db/database.ts:63 dafuer einen
+      // Typ-Leser setzt (parseFloat). Die Zeile bleibt trotzdem stehen — der
+      // Zeilentyp laesst `string | number` zu, und ohne sie haengt die
+      // Richtigkeit des Feldes an einer Einstellung sechs Dateien weiter.
+      //
+      // Der erste Entwurf dieses Kommentars behauptete das Gegenteil („kommt
+      // als Zeichenkette"). Die Gegenprobe hat es widerlegt: Number()
+      // weggelassen — der Test blieb gruen.
+      marktpreis: r.marktpreis == null ? null : Number(r.marktpreis),
+      waehrung,
       owned:     !!r.owned,
       preisvergleich_url: fuerSet(r.set_number, r.name),
       image_local: lokal,

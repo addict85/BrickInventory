@@ -27,7 +27,11 @@ type AuthedRequest = express.Request & { apiUser: { user_id: number } };
 router.get('/wanted', requireToken, async (req: AuthedRequest, res) => {
   try {
     const ids = await scopeIds(req.apiUser.user_id, parseScopeMode(req.query.accounts));
-    res.json({ success: true, merkposten: await merkpostenVon(ids) });
+    // Die Waehrung des LESERS: Der Marktpreis in der Liste steht in der
+    // Waehrung, in der er alles andere sieht. price_cache ist je Waehrung
+    // verschluesselt, deshalb gehoert sie in die Abfrage und nicht daneben.
+    const waehrung = await getSetting(req.apiUser.user_id, 'currency', 'EUR');
+    res.json({ success: true, merkposten: await merkpostenVon(ids, undefined, waehrung) });
   } catch (e) { handleRouteError(res, e, undefined, req); }
 });
 

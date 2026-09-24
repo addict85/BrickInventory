@@ -505,6 +505,19 @@ data class Merkposten(
      */
     @SerialName("image_local") val imageLocal: String? = null,
     /** Liegt das Set schon in der Galerie eines Kontos im Blickfeld? */
+    /**
+     * Marktpreis im Zustand DIESES Merkpostens — null, solange keiner bekannt
+     * ist.
+     *
+     * Marcos Vorgabe vom 24.09.: „Bitte in der Tabelle der Merkliste der
+     * Button In die Galerie aufnehme entfernen und dafuer den Marktpreis
+     * anzeigen." Der Wert kommt aus dem Preis-Cache des Servers, den
+     * jobs/priceJob.ts taeglich fuer die Merkposten auffrischt — kein Abruf je
+     * Zeile beim Oeffnen des Reiters.
+     */
+    val marktpreis: Double? = null,
+    /** Die Waehrung, in der [marktpreis] steht. */
+    val waehrung: String = "EUR",
     val owned: Boolean = false,
     /**
      * Der Preisalarm zu GENAU diesem Merkposten — oder null.

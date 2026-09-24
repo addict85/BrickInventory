@@ -162,3 +162,49 @@ internal fun MainViewModel.reloadItemList(type: String) {
         loadStats()
     }
 }
+
+/**
+ * Lagerort eines MANUELL erfassten Teils oder einer manuell erfassten Figur.
+ *
+ * ── Marcos Befund vom 24.09. ────────────────────────────────────────────────
+ *
+ *   „Auf dem Detail Dialog der manuell erfassten Teile ist der Lagerort nicht
+ *    ersichtlich. Auf dem Detaildialog der manuell erfassten Minifiguren ist
+ *    das Lagerort nicht ersichtlich."
+ *
+ * Die Zeile gab es nur im Dialog der Teile AUS SETS und im Set-Detail. Dass
+ * eine Figur ueberhaupt einen Lagerort tragen kann, ist neu (Migration 0024) —
+ * bei den Teilen war es schlicht uebersehen.
+ *
+ * ── Warum derselbe Auftrag wie beim Set-Teil ────────────────────────────────
+ *
+ * `lagerJob` wird geteilt, und das ist Absicht: Es ist immer nur EIN
+ * Lagerortfeld sichtbar. Zwei Auftraege waeren zwei Wege fuer dieselbe Sache —
+ * dieselbe Begruendung steht an setzeTeilLagerort().
+ *
+ * Entprellt aus demselben Grund wie dort: Wer tippt, die Tastatur schliesst
+ * und zurueckgeht, soll die Eingabe nicht verlieren; und „Kiste 3" soll nicht
+ * fuenf halbe Orte im Vorrat hinterlassen.
+ */
+internal fun MainViewModel.setzeManuellenLagerort(
+    type: String, id: String, farbe: Int, ort: String,
+) {
+    lagerJob?.cancel()
+    lagerJob = viewModelScope.launch {
+        kotlinx.coroutines.delay(ch.brickinventoryapp.alarm.Alarmeingabe.RUHE_MS)
+        val r = if (type == "fig") repo.teile.setFigStorage(id, ort)
+                else repo.teile.setPartStorage(id, farbe, ort)
+        when (r) {
+            is Result.Success -> {
+                if (!r.data.success) { _snackbar.emit(r.data.error ?: ""); return@launch }
+                // Die Karte im Dialog kommt aus der Liste des Reiters — ohne
+                // Nachladen stuende dort weiter der alte Ort.
+                reloadItemList(type)
+                // Ein frisch getippter Ort ist jetzt im Vorrat; ohne das
+                // Nachladen fehlte er beim naechsten Mal in der Auswahl.
+                ladeEigeneLagerorte()
+            }
+            is Result.Error -> _snackbar.emit(meldung(r))
+        }
+    }
+}

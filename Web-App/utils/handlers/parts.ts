@@ -654,6 +654,14 @@ async function getManualParts(userId: Blickfeld, viewerId: number, { page = 1, p
            -- eine davon mit Spaltenliste — und in der fehlte die eine Spalte,
            -- auf die es ankommt.
            condition,
+           -- storage FEHLTE ebenfalls — und zwar aus demselben Grund wie
+           -- die Spalte condition eine Zeile darueber: Diese Abfrage zaehlt ihre
+           -- Spalten auf, die Schwesterfunktion getManualMinifigs() macht
+           -- SELECT *. Marcos Befund vom 24.09. („Auf dem Detail Dialog der
+           -- manuell erfassten Teile ist der Lagerort nicht ersichtlich") ist
+           -- damit zur Haelfte hier begruendet: Selbst mit einer Zeile in der
+           -- Oberflaeche waere sie leer geblieben.
+           storage,
            created_at
     FROM parts WHERE user_id = ANY($1) AND source = 'manual'
     ORDER BY part_name ASC, part_number ASC${limit}`, params)

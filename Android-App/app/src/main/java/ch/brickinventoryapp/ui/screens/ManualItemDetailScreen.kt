@@ -30,6 +30,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import ch.brickinventoryapp.R
+import ch.brickinventoryapp.ui.setzeManuellenLagerort
 import ch.brickinventoryapp.ui.MainViewModel
 import ch.brickinventoryapp.ui.deleteMinifig
 import ch.brickinventoryapp.ui.deletePart
@@ -90,6 +91,8 @@ fun ManualItemDetailScreen(
     val state by vm.state.collectAsStateWithLifecycle()
     val partsState by vm.partsState.collectAsStateWithLifecycle()
     val manDetailState by vm.manDetailState.collectAsStateWithLifecycle()
+    // Der Vorrat an Lagerorten fuer das Feld weiter unten.
+    val lagerZustand by vm.lagerState.collectAsStateWithLifecycle()
 
     val isFig = type == "fig"
     val currency = state.currency
@@ -282,6 +285,32 @@ fun ManualItemDetailScreen(
                                 modifier = Modifier.size(32.dp), shape = Formen.etikett
                             ) { Icon(Icons.Default.Add, stringResource(R.string.cd_qty_increase), Modifier.size(14.dp)) }
                         }
+                    }
+
+                    HorizontalDivider(Modifier.padding(vertical = Abstaende.winzig),
+                        color = MaterialTheme.colorScheme.outlineVariant)
+
+                    // ── Lagerort ──────────────────────────────────────────────
+                    //
+                    // Marcos Befund vom 24.09.: Hier fehlte die Zeile, die es im
+                    // Set-Detail und im Dialog der Teile AUS SETS laengst gibt.
+                    // Dasselbe Bedienelement, derselbe entprellte Weg — nur die
+                    // Adresse haengt am Typ, weil eine Figur keine Farbe hat.
+                    Row(Modifier.fillMaxWidth().padding(vertical = Abstaende.haar),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically) {
+                        Text(stringResource(R.string.detail_storage),
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        LagerortFeld(
+                            wert = (if (isFig) fig?.storage else part?.storage) ?: "",
+                            // Der VORRAT, nicht die belegten Orte: Auch ein
+                            // leeres Regal soll zur Wahl stehen.
+                            vorrat = lagerZustand.eigene.map { it.name },
+                            onWert = { vm.setzeManuellenLagerort(type, id, colorId, it) },
+                            modifier = Modifier.padding(start = Abstaende.gross)
+                                .widthIn(max = 180.dp),
+                        )
                     }
 
                     HorizontalDivider(Modifier.padding(vertical = Abstaende.winzig),
