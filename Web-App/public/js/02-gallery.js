@@ -444,6 +444,9 @@ export function onScopeChange(view) {
   if (view === 'parts')    { loadParts(); loadManualParts(); }
   if (view === 'minifigs') loadMinifigs();
   if (view === 'finance')  loadFinance();
+  // Die Merkliste laedt EINE Liste und hat keine Kennzahlen darueber — anders
+  // als die Galerie, wo loadStats() mitmuss.
+  if (view === 'merkliste') ladeMerkliste();
 }
 
 /**

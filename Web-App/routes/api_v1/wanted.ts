@@ -23,6 +23,25 @@ type AuthedRequest = express.Request & { apiUser: { user_id: number } };
  * Marcos Festlegung: Der Kontenbaum gilt wie überall — der Grossvater sieht
  * die Merkposten der Enkel. Hier ist das nicht nur konsequent, sondern der
  * Zweck: Wer ein Geschenk sucht, schaut genau dort nach.
+ *
+ * ── Der Filter (Marcos Vorgabe vom 24.09.) ─────────────────────────────────
+ *
+ *   „In der Merkliste noch einen Filter analog den Sets einbauen inkl.
+ *    Inhaber."
+ *
+ * Dieselben vier Parameter wie bei /v1/sets und in derselben Schreibweise:
+ * `search`, `sort`, `accounts` — dazu `condition`, das dort die Zustandsspalte
+ * meint und hier den Zustand des Merkpostens.
+ *
+ * Der INHABER ist `accounts`: Er war hier schon immer vorgesehen, nur hatte
+ * ihn keine der beiden Oberflächen je geschickt. Die Übersetzung von „own",
+ * „subs" oder einer Konto-ID auf die Liste der IDs macht scopeIds() — eine
+ * Stelle für den ganzen Baum.
+ *
+ * Gefiltert wird am SERVER und nicht in den Oberflächen. Das ist hier nicht
+ * wegen der Menge nötig (eine Merkliste hat ein paar Dutzend Einträge),
+ * sondern damit beide Oberflächen dasselbe Ergebnis zeigen: Die Sortierung
+ * nach Marktpreis etwa braucht price_cache, und den kennt kein Client.
  */
 router.get('/wanted', requireToken, async (req: AuthedRequest, res) => {
   try {
@@ -31,7 +50,12 @@ router.get('/wanted', requireToken, async (req: AuthedRequest, res) => {
     // Waehrung, in der er alles andere sieht. price_cache ist je Waehrung
     // verschluesselt, deshalb gehoert sie in die Abfrage und nicht daneben.
     const waehrung = await getSetting(req.apiUser.user_id, 'currency', 'EUR');
-    res.json({ success: true, merkposten: await merkpostenVon(ids, undefined, waehrung) });
+    const merkposten = await merkpostenVon(ids, undefined, waehrung, {
+      suche:      req.query.search,
+      zustand:    req.query.condition,
+      sortierung: req.query.sort,
+    });
+    res.json({ success: true, merkposten });
   } catch (e) { handleRouteError(res, e, undefined, req); }
 });
 

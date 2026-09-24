@@ -110,6 +110,17 @@ const val CATALOG_PAGE_SIZE = 60
 /** Vorgabe-Sortierung; identisch mit SET_SORTS.added_desc auf dem Server. */
 const val GALLERY_DEFAULT_SORT = "added_desc"
 
+/**
+ * Vorgabe-Sortierung der Merkliste; identisch mit MERK_SORTS.added_desc
+ * (utils/merkliste.ts).
+ *
+ * Eigene Konstante und nicht GALLERY_DEFAULT_SORT wiederverwendet, obwohl der
+ * Wert derselbe ist: Es sind zwei Tabellen am Server, und sie koennen
+ * auseinanderlaufen. Eine geteilte Konstante haette diese Moeglichkeit
+ * verdeckt.
+ */
+const val MERKLISTE_DEFAULT_SORT = "added_desc"
+
 /** Status eines PDF-Export-Jobs inkl. geschätzter Restdauer (aus fehlenden Bildern). */
 data class PdfJobStatus(val status: String, val etaSeconds: Int?)
 

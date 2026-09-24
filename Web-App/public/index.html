@@ -393,6 +393,41 @@
         <div id="mk-status" style="margin-top:8px;font-size:.8rem"></div>
       </div>
 
+      <!-- Suche/Filter/Sortierung — dieselbe Zeile wie in der Galerie, an
+           derselben Stelle: unter dem Erfassen-Kasten und direkt ueber der
+           Liste, auf die sie wirkt. Marcos Vorgabe vom 24.09.: „In der
+           Merkliste noch einen Filter analog den Sets einbauen inkl. Inhaber."
+
+           Der Inhaber ist #scope-merkliste — dasselbe Auswahlfeld wie in
+           Galerie, Teilen, Minifiguren und Finanzen, gefuellt von
+           initScopeSelects() und verborgen, solange es keine Unterkonten gibt.
+
+           Kein Lagerortfilter: Ein Merkposten ist ein Set, das man NICHT hat,
+           und was man nicht hat, liegt nirgends. Kein Themenfilter: Er kaeme
+           aus rb_sets, und eine Merkliste hat ein paar Dutzend Eintraege —
+           dafuer reicht die Suche. Dafuer der Zustand, den es bei den Sets
+           als Filter nicht gibt: Hier steht dasselbe Set zweimal, neu und
+           gebraucht, und genau das ist die Frage, die man an eine Merkliste
+           stellt. -->
+      <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:1.5rem">
+        <input type="text" class="si" id="mks" placeholder="🔍 Merkliste durchsuchen…" data-i18n="wanted.search" data-i18n-attr="placeholder" style="width:220px" aria-label="Merkliste durchsuchen" />
+        <select id="mkcond" aria-label="Zustand" data-i18n="common.condition" data-i18n-attr="aria-label" style="width:auto" data-change="ladeMerkliste">
+          <option value="" data-i18n="filter.condition_all">Alle Zustände</option>
+          <option value="N" data-i18n="common.condition_new">Neu</option>
+          <option value="U" data-i18n="common.condition_used">Gebraucht</option>
+        </select>
+        <select id="mksort" aria-label="Sortierung" data-i18n="gallery.sort_label" data-i18n-attr="aria-label" style="width:auto" data-change="ladeMerkliste">
+          <option value="added_desc" data-i18n="gallery.sort.added">Neueste zuerst</option>
+          <option value="added_asc" data-i18n="gallery.sort.oldest">Älteste zuerst</option>
+          <option value="name_asc" data-i18n="gallery.sort.name">Name A–Z</option>
+          <option value="num_asc" data-i18n="gallery.sort.number">Nummer ↑</option>
+          <option value="year_desc" data-i18n="gallery.sort.year">Jahr ↓</option>
+          <option value="price_desc" data-i18n="gallery.sort.price_desc">Preis ↓</option>
+          <option value="price_asc" data-i18n="gallery.sort.price_asc">Preis ↑</option>
+        </select>
+        <select id="scope-merkliste" class="scope-select" aria-label="Konten" data-i18n="household.scope_label" data-i18n-attr="aria-label" data-change="onScopeChange" data-arg="merkliste" style="display:none"></select>
+      </div>
+
       <div id="mk-list"></div>
     </div>
 

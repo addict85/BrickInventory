@@ -62,4 +62,29 @@ object Abstaende {
 
     /** Vor und nach dem, was allein stehen soll. */
     val riesig = 32.dp
+
+    /**
+     * Der SEITENRAND der Bildschirme — 14 dp.
+     *
+     * ── Warum ein Wert ausserhalb der Skala ─────────────────────────────────
+     *
+     * Er ist keiner, und das ist Absicht. Die Skala darueber beschreibt
+     * Abstaende ZWISCHEN Dingen; dies ist der Rand, an dem eine Seite
+     * beginnt, und er steht im Baum 26-mal als blanke 14 — in ScopeFilterZeile,
+     * im gemeinsamen Suchfeld, in den Chip-Zeilen von Galerie, Teilen und
+     * Katalog. Auf 16 zu ziehen waere eine GESTALTUNGsaenderung an 26 Stellen
+     * gleichzeitig, und die entscheidet, wer die App vor sich hat.
+     *
+     * Er bekommt trotzdem einen Namen, weil die Alternative schlechter ist:
+     * Ein neuer Bildschirm, der sich an den bestehenden ausrichten will, muss
+     * sonst wieder eine blanke 14 schreiben — und genau die zaehlt
+     * AbstandsskalaTest. Mit dem Namen richtet er sich an derselben Wahrheit
+     * aus, und wenn der Rand eines Tages doch auf die Skala wandert, geschieht
+     * das an EINER Stelle.
+     *
+     * Zuerst benutzt von der Filterzeile der Merkliste (24.09.). Ihre
+     * Chip-Reihe steht direkt unter dem Suchfeld; 16 statt 14 haette die
+     * beiden um zwei Punkte gegeneinander versetzt.
+     */
+    val rand = 14.dp
 }

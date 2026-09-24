@@ -242,6 +242,63 @@ export async function verschiebeMerkposten(
 }
 
 /**
+ * Die Sortierungen der Merkliste.
+ *
+ * ── Warum nicht dieselbe Tabelle wie bei den Sets ──────────────────────────
+ *
+ * Die Namen sind absichtlich dieselben wie in SET_SORTS (utils/handlers/sets.ts)
+ * — beide Oberflaechen beschriften sie mit denselben Texten, und wer die
+ * Galerie kennt, erwartet in der Merkliste dieselbe Auswahl. Die AUSDRUECKE
+ * koennen es nicht sein: Dort steht `s.added_at`, hier `w.created_at`; dort
+ * ist der Preis der KAUFPREIS aus den Erfassungen, hier der MARKTPREIS aus
+ * dem Cache, denn gekauft hat man einen Merkposten gerade nicht.
+ *
+ * qty_desc/qty_asc fehlen mit Absicht: Ein Merkposten hat keine Anzahl.
+ *
+ * NULLS LAST ueberall dort, wo der Wert fehlen kann: Ein Set, das rb_sets
+ * nicht kennt, hat weder Namen noch Jahr, und ein Merkposten ohne Preis im
+ * Cache keinen Marktpreis.
+ *
+ * GEMESSEN (test/merkliste-filter-db.test.js, Gegenprobe d): Wirkung hat die
+ * Angabe nur bei DESC — dort ist NULLS FIRST die Vorgabe von Postgres, und
+ * ohne sie stuenden die Zeilen OHNE Preis ganz oben. Bei ASC ist NULLS LAST
+ * ohnehin die Vorgabe; dort steht sie nur, damit die Tabelle sich in jeder
+ * Zeile gleich liest. Das ist eine Messung und keine Vermutung: Die erste
+ * Gegenprobe strich sie bei name_asc und blieb gruen.
+ *
+ * Zweiter Sortierschluessel ueberall: Dasselbe Set steht zweimal da (neu und
+ * gebraucht) und im Kontenbaum bei mehreren Konten. Ohne ihn legt Postgres
+ * die Reihenfolge dieser Zeilen nicht fest, und sie sprang bei jedem Laden.
+ */
+const MERK_SORTS = {
+  added_desc: 'w.created_at DESC',
+  added_asc:  'w.created_at ASC',
+  name_asc:   'rb.name ASC NULLS LAST',
+  num_asc:    'w.set_number ASC',
+  year_desc:  'rb.year DESC NULLS LAST',
+  price_desc: 'pc.avg_price DESC NULLS LAST',
+  price_asc:  'pc.avg_price ASC NULLS LAST',
+};
+
+/**
+ * Suche, Zustand und Sortierung — Marcos Vorgabe „in der Merkliste noch einen
+ * Filter analog den Sets einbauen inkl. Inhaber".
+ *
+ * Der INHABER steht nicht in diesem Typ: Er ist das Blickfeld und kommt als
+ * `userIds` herein, genau wie in jeder anderen Liste dieses Baums. Die Route
+ * uebersetzt `accounts=` mit scopeIds() dorthin — eine zweite Stelle, die
+ * Konten auswaehlt, waere die Doppelung, vor der utils/household.ts warnt.
+ */
+export interface MerkFilter {
+  /** Nummer ODER Name, Teilzeichenkette, Gross-/Kleinschreibung egal. */
+  suche?: unknown;
+  /** 'N' oder 'U'. Alles andere heisst: beide. */
+  zustand?: unknown;
+  /** Ein Schluessel aus MERK_SORTS. Unbekanntes faellt auf added_desc zurueck. */
+  sortierung?: unknown;
+}
+
+/**
  * Die Merkposten eines Blickfelds.
  *
  * `userIds` und nicht `userId`: Marcos Festlegung ist, dass die Merkliste
@@ -257,12 +314,51 @@ export async function verschiebeMerkposten(
  * das inzwischen?" — es prüft dasselbe Blickfeld, nicht nur das eigene Konto.
  */
 export async function merkpostenVon(
-  userIds: number[], nurSet?: string, waehrung = 'EUR',
+  userIds: number[], nurSet?: string, waehrung = 'EUR', filter?: MerkFilter,
 ): Promise<Merkposten[]> {
   if (!userIds?.length) return [];
   const params: unknown[] = [userIds];
-  let filter = '';
-  if (nurSet) { params.push(sanitizeSetNumber(nurSet)); filter = ` AND w.set_number = $${params.length}`; }
+  let wo = '';
+  if (nurSet) { params.push(sanitizeSetNumber(nurSet)); wo += ` AND w.set_number = $${params.length}`; }
+
+  // ── Die Suche trifft Nummer UND Namen ─────────────────────────────────────
+  //
+  // Dieselbe Erwartung wie in der Galerie: Wer „Falcon" tippt, sucht nicht
+  // nach einer Nummer, und wer „75192" tippt, nicht nach einem Namen. Der Name
+  // steht nicht in `wanted`, sondern kommt aus dem LEFT JOIN auf rb_sets
+  // (siehe Migration 0021: keine zweite Kopie der Stammdaten) — ein Set, das
+  // der Katalog nicht kennt, ist deshalb nur ueber seine Nummer zu finden.
+  //
+  // Die Platzhalter % stehen im WERT und nicht im SQL: So bleibt die Eingabe
+  // ein Parameter. Ein zusammengesetztes ILIKE '%' || $n || '%' taete
+  // dasselbe, waere aber eine zweite Schreibweise fuer denselben Gedanken.
+  const suche = String(filter?.suche ?? '').trim();
+  if (suche) {
+    // Prozent, Unterstrich und der Gegenschraegstrich sind in LIKE
+    // Platzhalter. Ohne das Maskieren faende die Eingabe eines Prozentzeichens
+    // JEDEN Eintrag — sichtbar harmlos, aber es ist nicht, wonach gefragt
+    // wurde. ESCAPE benennt das Maskierzeichen ausdruecklich, damit die
+    // Abfrage nicht von standard_conforming_strings abhaengt.
+    const roh = suche.replace(/[\\%_]/g, (z) => '\\' + z);
+    params.push(`%${roh}%`);
+    wo += ` AND (w.set_number ILIKE $${params.length} ESCAPE '\\'`
+        + ` OR rb.name ILIKE $${params.length} ESCAPE '\\')`;
+  }
+
+  // Nur 'N' und 'U' sind Zustaende; alles andere heisst „beide" und nicht
+  // „keine". Ein unbekannter Wert soll die Liste nicht leeren — das saehe aus
+  // wie eine leere Merkliste.
+  const zustand = String(filter?.zustand ?? '').toUpperCase();
+  if (zustand === 'N' || zustand === 'U') {
+    params.push(zustand);
+    wo += ` AND w.condition = $${params.length}`;
+  }
+
+  // ausTabelle() und nicht `MERK_SORTS[x] || …`: Der direkte Zugriff findet
+  // auch geerbte Eigenschaften, und „constructor" waere damit eine gueltige
+  // Sortierung gewesen. Dieselbe Begruendung steht bei den Sets.
+  const ordnung = V.ausTabelle(MERK_SORTS, filter?.sortierung, MERK_SORTS.added_desc);
+
   params.push(waehrung);
   const pWaehrung = `$${params.length}`;
   const rows = await db.all(
@@ -286,8 +382,8 @@ export async function merkpostenVon(
        LEFT JOIN price_cache pc ON pc.set_number = w.set_number
                                AND pc.condition = w.condition
                                AND pc.currency_code = ${pWaehrung}
-      WHERE w.user_id = ANY($1)${filter}
-      ORDER BY w.created_at DESC, w.set_number, w.condition`,
+      WHERE w.user_id = ANY($1)${wo}
+      ORDER BY ${ordnung}, w.set_number, w.condition`,
     params)
     // Wie beim Preisalarm: Ein Aufbau, der nur initSchema() gelaufen ist, hat
     // die Tabelle nicht (siehe die Begruendung in db/schema.sql). Eine leere

@@ -1,9 +1,10 @@
 import { registerActions } from './00-registry.js';
 import { locale, t, tRaw } from '../i18n.js';
-import { CURRENCY, G, api, esc, escJs, escUrl, fmtN, fullUrl, imgUrl, knopfBesetzt, thumbUrl, toast } from './01-core.js';
+import { CURRENCY, G, TRASH_ICON_SVG, api, esc, escJs, escUrl, fmtN, fullUrl, imgUrl, knopfBesetzt, thumbUrl, toast } from './01-core.js';
 import { detailZeile } from './01-bausteine.js';
 import { alarmBlock, ladeAlarm, priceChartSVG, renderMarketRows, setzeAlarmFeld } from './07-admin.js';
 import { leereLagerortFeld, selectedOwner, selectedStorage, haushaltsKonten, loadGallery, loadStats } from './02-gallery.js';
+import { addScopeParam } from './14-scope.js';
 
 // ═══ Merkliste ═════════════════════════════════════════════════════════════
 //
@@ -114,16 +115,25 @@ function zeile(w) {
   const arg = escJs(`${w.set_number}|${w.condition}|${w.user_id}`);
   return `
     <!-- Die GANZE Zeile oeffnet das Detail — wie die Karte in der App.
-         Vorher tat das nur der Textblock, und zwar aus einem Grund, den es
-         nicht mehr gibt: Rechts sassen zwei Knoepfe, und eine klickbare
-         Flaeche darunter haette etwas anderes getan als sie. Seit Marcos
-         Vorgabe vom 24.09. („Der Button loeschen ebenfalls in der Tabelle der
-         merkliste entfernen") traegt die Zeile gar keinen Knopf mehr;
-         geloescht und uebernommen wird im Detail, an derselben Stelle wie
-         beim Set. -->
-    <div data-click="oeffneMerkpostenDetail" data-arg="${arg}"
-         style="display:flex;gap:12px;align-items:center;padding:10px;border:1px solid var(--bdr);
+         Der Papierkorb sitzt oben rechts und haelt seinen Klick an
+         (merkpostenLoeschenStop), genau wie auf der Set-Kachel. Marcos
+         Vorgabe vom 24.09., zweiter Teil: „soll auf den Kacheln […] sowie bei
+         den Merkliste Eintraegen der Papierkorb oben rechts angezeigt werden
+         analog den Kacheln bei den Sets. Dies aber nur in der webapp."
+
+         position:relative ist noetig, weil .ca absolut liegt; die Klasse
+         mk-zeile traegt die Einblendung beim Ueberfahren (styles.css).
+         Uebernommen wird weiterhin im Detail.
+
+         KEINE Backticks in diesem Kommentar: Er steht INNERHALB eines
+         Template-Literals und wuerde es sonst beenden. Genau daran ist der
+         erste Entwurf gescheitert — dieselbe Falle wie in
+         utils/handlers/parts.ts, wo derselbe Hinweis steht. -->
+    <div class="mk-zeile" data-click="oeffneMerkpostenDetail" data-arg="${arg}"
+         style="position:relative;display:flex;gap:12px;align-items:center;padding:10px;border:1px solid var(--bdr);
                 border-radius:var(--rad);background:var(--sur);margin-bottom:8px;cursor:pointer">
+      <div class="ca"><button class="delbtn" data-click="merkpostenLoeschenStop" data-arg="${arg}"
+           title="${esc(tRaw('wanted.remove'))}" aria-label="${esc(tRaw('wanted.remove'))}">${TRASH_ICON_SVG}</button></div>
       ${bild}
       <div style="flex:1;min-width:0">
         <div style="font-weight:600">${titel}</div>
@@ -135,15 +145,49 @@ function zeile(w) {
     </div>`;
 }
 
+/**
+ * Suche, Zustand, Sortierung und Inhaber als Anfrageparameter.
+ *
+ * Marcos Vorgabe vom 24.09.: „In der Merkliste noch einen Filter analog den
+ * Sets einbauen inkl. Inhaber." Dieselbe Form wie galleryParams() in
+ * 02-gallery.js, dieselben Parameternamen am Server — nur ohne `page`, weil
+ * die Merkliste nicht blaettert, und ohne Lagerort, weil ein Merkposten
+ * nirgends liegt.
+ *
+ * Gefiltert wird am SERVER. Clientseitig ueber _merkposten zu sieben waere
+ * hier zwar machbar (die Liste ist kurz), aber die Sortierung nach Marktpreis
+ * braucht price_cache, und beide Oberflaechen sollen dasselbe Ergebnis
+ * zeigen — die App kann es ohnehin nicht anders.
+ */
+function merklisteParams() {
+  const p = new URLSearchParams();
+  const q  = G('mks')?.value?.trim();  if (q)  p.set('search', q);
+  const c  = G('mkcond')?.value;       if (c)  p.set('condition', c);
+  const so = G('mksort')?.value;       if (so) p.set('sort', so);
+  addScopeParam(p, 'merkliste');
+  return p.toString();
+}
+
 /** Die Liste laden und zeichnen. */
 export async function ladeMerkliste() {
   const ziel = G('mk-list');
   if (!ziel) return;
-  const d = await api('GET', '/v1/wanted').catch(() => null);
+  // Das Fragezeichen steht HIER und nicht in merklisteParams(): Dieselbe
+  // Schreibweise wie bei der Galerie, und test/frontend-api-paths.test.js
+  // liest den Pfad aus genau dieser Zeile — mit dem Fragezeichen im Rueckgabe-
+  // wert las sie „/v1/wanted:x" und meldete eine Route, die es nicht gibt.
+  const d = await api('GET', `/v1/wanted?${merklisteParams()}`).catch(() => null);
   _merkposten = d?.merkposten || [];
+  // Zwei verschiedene Leermeldungen: „Noch keine Merkposten" ist eine Aussage
+  // ueber die Liste, „Nichts gefunden" eine ueber den Filter. Stuende hier
+  // immer die erste, saehe eine Suche ohne Treffer wie eine geleerte Merkliste
+  // aus — genau die Verwechslung, wegen der der Kontofilter beim Anmelden
+  // zurueckgesetzt wird (14-scope.js).
+  const gefiltert = !!merklisteParams();
   ziel.innerHTML = _merkposten.length
     ? _merkposten.map(zeile).join('')
-    : `<div style="padding:2rem;text-align:center;color:var(--mut)">${esc(tRaw('wanted.empty'))}</div>`;
+    : `<div style="padding:2rem;text-align:center;color:var(--mut)">${
+        esc(tRaw(gefiltert ? 'wanted.no_results' : 'wanted.empty'))}</div>`;
 }
 
 /**
@@ -517,7 +561,20 @@ export function merkpostenDetailUebernehmen() {
   merkpostenUebernehmen(arg);
 }
 
-registerActions({ merkpostenHinzufuegen, katalogAufMerkliste, merkpostenLoeschen,
+// Suche entprellt, 250 ms wie in Galerie und Teileliste: Jeder Tastendruck
+// waere sonst ein Abruf. Zustand und Sortierung haengen ueber data-change
+// direkt an ladeMerkliste() — eine Auswahl trifft man einmal, nicht buchstabenweise.
+//
+// Die Merkliste liegt in einem Reiter, der erst nach dem Anmelden im Baum
+// steht? Nein — index.html traegt alle Reiter von Anfang an, nur verborgen.
+// Der Wächter ist trotzdem da, weil dieselbe Datei in den Regeln ohne DOM
+// geladen wird (test/app-vm-importe.test.js und Geschwister).
+G('mks')?.addEventListener('input', () => {
+  clearTimeout(G('mks')._t);
+  G('mks')._t = setTimeout(ladeMerkliste, 250);
+});
+
+registerActions({ ladeMerkliste, merkpostenHinzufuegen, katalogAufMerkliste, merkpostenLoeschen,
                   merkpostenUebernehmen, schliesseUebernahme, bestaetigeUebernahme,
                   oeffneMerkpostenDetail, schliesseMerkpostenDetail,
                   merkpostenDetailLoeschen, merkpostenDetailUebernehmen,

@@ -234,7 +234,9 @@
        Sets einen — bei Teilen fehlte er ganz, bei Figuren war er ein
        dauerhaft sichtbarer roter Knopf in anderer Grösse. Drei Tabellen,
        drei Verhalten. */
-    .sc:hover .ca, .man-tile:hover .ca{opacity:1}
+    /* .mk-zeile dazu (24.09.): Die Merklisten-Zeile ist keine Kachel, soll den
+       Papierkorb aber genauso zeigen — „analog den Kacheln bei den Sets". */
+    .sc:hover .ca, .man-tile:hover .ca, .mk-zeile:hover .ca{opacity:1}
     /* Auf Geräten ohne Zeigegerät gibt es kein Überfahren — dort dauerhaft
        sichtbar, sonst wäre Löschen per Touch gar nicht erreichbar. */
     @media (hover: none){ .ca{opacity:1} }

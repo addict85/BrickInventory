@@ -3,9 +3,12 @@ package ch.brickinventoryapp.ui.screens
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.Sort
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.QrCodeScanner
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -18,14 +21,21 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import ch.brickinventoryapp.R
+import androidx.compose.ui.unit.dp
 import ch.brickinventoryapp.data.model.Merkposten
+import ch.brickinventoryapp.data.repository.MERKLISTE_DEFAULT_SORT
 import ch.brickinventoryapp.ui.MainViewModel
+import ch.brickinventoryapp.ui.setScope
+import ch.brickinventoryapp.ui.setzeMerklisteSortierung
+import ch.brickinventoryapp.ui.setzeMerklisteSuche
+import ch.brickinventoryapp.ui.setzeMerklisteZustand
 import ch.brickinventoryapp.ui.ladeMerkliste
 import ch.brickinventoryapp.ui.legeMerkpostenAn
 import ch.brickinventoryapp.ui.setScannerSource
 import ch.brickinventoryapp.ui.uebernimmMerkposten
 import ch.brickinventoryapp.ui.theme.Abstaende
 import ch.brickinventoryapp.ui.theme.Formen
+import ch.brickinventoryapp.ui.theme.Schrift
 import ch.brickinventoryapp.ui.theme.LocalIsBrickTheme
 import ch.brickinventoryapp.util.NumericInput
 import ch.brickinventoryapp.util.resolveThumbUrl
@@ -77,27 +87,118 @@ fun MerklisteScreen(
 
     LaunchedEffect(Unit) { vm.ladeMerkliste() }
 
+    // ── Der Filter (Marcos Vorgabe vom 24.09.) ──────────────────────────────
+    //
+    //   „In der Merkliste noch einen Filter analog den Sets einbauen inkl.
+    //    Inhaber."
+    //
+    // Dieselben Bausteine in derselben Reihenfolge wie im Galerie-Bildschirm:
+    // Kontofilter, Suchfeld, dann eine Zeile Chips. Wer das eine kennt, kennt
+    // das andere — darum geht es bei „einheitlichen Ansichten".
+    //
+    // Kein Lagerortfilter: Ein Merkposten ist ein Set, das man NICHT hat, und
+    // was man nicht hat, liegt nirgends. Dafuer der Zustand, den es bei den
+    // Sets als Filter nicht gibt: Hier steht dasselbe Set zweimal, neu und
+    // gebraucht, und genau das ist die Frage, die man an eine Merkliste stellt.
+    val scopeModus = appState.scopeModes[ch.brickinventoryapp.data.ScopeFilter.View.MERKLISTE.key]
+        ?: ch.brickinventoryapp.data.ScopeFilter.ALL
+    // Das Eingabefeld haelt seinen Text selbst (Tippen bleibt fluessig); die
+    // Entprellung liegt im ViewModel. Wechselt der Wert von aussen, zieht das
+    // Feld nach — dieselbe Zeile wie in der Galerie.
+    var sucheInput by remember(zustand.query) { mutableStateOf(zustand.query) }
+    var sortMenueOffen by rememberSaveable { mutableStateOf(false) }
+
     Box(Modifier.fillMaxSize()) {
-        Column(Modifier.fillMaxSize().padding(horizontal = Abstaende.mittel)) {
-            when {
-                zustand.laedt && zustand.merkposten.isEmpty() ->
-                    Box(Modifier.fillMaxWidth().padding(Abstaende.riesig), Alignment.Center) { CircularProgressIndicator() }
+        Column(Modifier.fillMaxSize()) {
 
-                zustand.merkposten.isEmpty() ->
-                    Box(Modifier.fillMaxWidth().padding(Abstaende.riesig), Alignment.Center) {
-                        Text(stringResource(R.string.wanted_empty),
-                             color = MaterialTheme.colorScheme.onSurfaceVariant)
+            ScopeFilterZeile(
+                members  = appState.householdMembers,
+                current  = scopeModus,
+                onSelect = { vm.setScope(ch.brickinventoryapp.data.ScopeFilter.View.MERKLISTE, it) },
+            )
+
+            Suchfeld(
+                wert = sucheInput,
+                onWert = { sucheInput = it; vm.setzeMerklisteSuche(it) },
+                platzhalter = stringResource(R.string.wanted_search),
+            )
+
+            LazyRow(
+                contentPadding = PaddingValues(horizontal = Abstaende.rand),
+                horizontalArrangement = Arrangement.spacedBy(Abstaende.winzig),
+                modifier = Modifier.padding(bottom = Abstaende.klein),
+            ) {
+                item {
+                    Box {
+                        FilterChip(
+                            selected = zustand.sortierung != MERKLISTE_DEFAULT_SORT,
+                            onClick = { sortMenueOffen = true },
+                            label = { Text(gallerySortLabel(zustand.sortierung), fontSize = Schrift.klein) },
+                            leadingIcon = { Icon(Icons.AutoMirrored.Filled.Sort, null, Modifier.size(16.dp)) },
+                            shape = Formen.chip,
+                        )
+                        DropdownMenu(sortMenueOffen, { sortMenueOffen = false }) {
+                            // Dieselben Werte wie MERK_SORTS am Server und
+                            // dieselbe Auswahl wie in der Webapp. qty_* fehlt
+                            // in beiden: Ein Merkposten hat keine Anzahl.
+                            listOf("added_desc", "added_asc", "name_asc", "num_asc",
+                                   "year_desc", "price_desc", "price_asc").forEach { w ->
+                                DropdownMenuItem(
+                                    text = { Text(gallerySortLabel(w)) },
+                                    onClick = { sortMenueOffen = false; vm.setzeMerklisteSortierung(w) },
+                                    trailingIcon = { if (zustand.sortierung == w) Icon(Icons.Default.Check, null, Modifier.size(16.dp)) },
+                                )
+                            }
+                        }
                     }
+                }
+                // Drei Chips statt ZustandsWahl(): Dort gibt es nur „neu" und
+                // „gebraucht", weil ein ERFASSTER Merkposten sich entscheiden
+                // muss. Ein Filter hat immer eine dritte Antwort — „beide" —,
+                // und die ist hier die Vorgabe.
+                items(listOf("" to R.string.filter_condition_all,
+                             "N" to R.string.condition_new,
+                             "U" to R.string.condition_used)) { (wert, text) ->
+                    FilterChip(
+                        selected = zustand.zustandFilter == wert,
+                        onClick = { vm.setzeMerklisteZustand(wert) },
+                        label = { Text(stringResource(text), fontSize = Schrift.klein) },
+                        shape = Formen.chip,
+                    )
+                }
+            }
 
-                else -> LazyColumn(
-                    verticalArrangement = Arrangement.spacedBy(Abstaende.klein),
-                    // Platz fuer die Knoepfe: Ohne ihn verdeckt der grosse die
-                    // letzte Zeile — dieselbe Vorsorge wie in der Galerie.
-                    contentPadding = PaddingValues(bottom = Abstaende.riesig + Abstaende.riesig),
-                ) {
-                    items(zustand.merkposten, key = ::merkpostenSchluessel) { w ->
-                        MerkpostenZeile(w, appState.serverUrl, imageLoader,
-                            onOeffnen = { onOeffnen(w.setNumber, w.condition) })
+            Column(Modifier.fillMaxSize().padding(horizontal = Abstaende.mittel)) {
+                when {
+                    zustand.laedt && zustand.merkposten.isEmpty() ->
+                        Box(Modifier.fillMaxWidth().padding(Abstaende.riesig), Alignment.Center) { CircularProgressIndicator() }
+
+                    zustand.merkposten.isEmpty() ->
+                        Box(Modifier.fillMaxWidth().padding(Abstaende.riesig), Alignment.Center) {
+                            // Zwei verschiedene Leermeldungen: „Noch keine
+                            // Merkposten" ist eine Aussage ueber die Liste,
+                            // „nichts gefunden" eine ueber den Filter. Stuende
+                            // hier immer die erste, saehe eine Suche ohne Treffer
+                            // wie eine geleerte Merkliste aus — dieselbe
+                            // Verwechslung, wegen der der Kontofilter beim
+                            // Anmelden zurueckgesetzt wird (ScopeFilter.kt).
+                            val gefiltert = zustand.query.isNotBlank() ||
+                                zustand.zustandFilter.isNotBlank() ||
+                                scopeModus != ch.brickinventoryapp.data.ScopeFilter.ALL
+                            Text(stringResource(if (gefiltert) R.string.wanted_no_results else R.string.wanted_empty),
+                                 color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        }
+
+                    else -> LazyColumn(
+                        verticalArrangement = Arrangement.spacedBy(Abstaende.klein),
+                        // Platz fuer die Knoepfe: Ohne ihn verdeckt der grosse die
+                        // letzte Zeile — dieselbe Vorsorge wie in der Galerie.
+                        contentPadding = PaddingValues(bottom = Abstaende.riesig + Abstaende.riesig),
+                    ) {
+                        items(zustand.merkposten, key = ::merkpostenSchluessel) { w ->
+                            MerkpostenZeile(w, appState.serverUrl, imageLoader,
+                                onOeffnen = { onOeffnen(w.setNumber, w.condition) })
+                        }
                     }
                 }
             }

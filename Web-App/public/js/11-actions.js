@@ -4,6 +4,7 @@ import { saveJobSchedule } from './01-monitor.js';
 import { openPdfViewer } from './12-pdfviewer.js';
 import { autosaveSet, closeImageLightbox, delSet, hideProgress, openImageLightbox } from './02-gallery.js';
 import { allFigsCache, deleteManualFig, renderFigs, updateManualFig, deleteManualPart} from './06-minifigs.js';
+import { merkpostenLoeschen } from './16-merkliste.js';
 
 // ═══ AKTIONEN OHNE INLINE-HANDLER ═══════════════════════════════════════════
 //
@@ -241,22 +242,47 @@ export function saveManualFigBl(id, owner) {
 /** War: onclick="event.stopPropagation();delSet('${sn}')" — Löschen auf klickbarer Kachel */
 export function delSetStop(sn, ev) { ev?.stopPropagation(); delSet(sn); }
 
-// Hier standen deleteManualFigStop() und deleteManualPartStop() — die
-// Loeschknoepfe AUF den Kacheln der manuell erfassten Eintraege.
-//
-// Marcos Vorgabe vom 24.09.: „Den Papierkorb auf den Kacheln der manuell
-// erfassten Teilen und manuell erfassten Minifiguren entfernen. […] Auf den
-// Detail Seiten soll jeweils der Papierkorb angezeigt werden wie in der
-// Detailseite der sets."
-//
-// Damit entfaellt auch der Grund fuer die Stop-Fassung: Sie gab es nur, weil
-// die Kachel selbst data-click="openManDetail" traegt und der Klick sonst
-// zusaetzlich den Dialog hinter der Loeschabfrage geoeffnet haette. Ohne Knopf
-// auf der Kachel gibt es nichts mehr anzuhalten. deleteManualFig() und
-// deleteManualPart() bleiben — der Detaildialog ruft sie.
-//
-// delSetStop() bleibt ebenfalls: Die Set-Kachel hat ihren Papierkorb behalten;
-// Marcos Vorgabe nennt ausdruecklich die manuell erfassten Eintraege.
+/**
+ * Löschen von einer KACHEL aus — Figur, Teil, Merkposten.
+ *
+ * ── Warum es diese Stop-Fassungen gibt ──────────────────────────────────────
+ *
+ * Die Kachel traegt selbst ein data-click (openManDetail bzw.
+ * oeffneMerkpostenDetail). Ohne stopPropagation oeffnete der Klick auf den
+ * Papierkorb ZUSAETZLICH den Dialog — hinter der Loeschabfrage.
+ *
+ * ── Hin und zurueck, und warum ──────────────────────────────────────────────
+ *
+ * Am 24.09. waren sie kurz weg: „Den Papierkorb auf den Kacheln der manuell
+ * erfassten Teilen und manuell erfassten Minifiguren entfernen." Marcos
+ * naechste Vorgabe hat das fuer die WEBAPP zurueckgenommen — „soll auf den
+ * Kacheln […] der Papierkorb oben rechts angezeigt werden analog den Kacheln
+ * bei den Sets. Dies aber nur in der webapp." In der App bleibt es beim
+ * Entfernen; dort loescht man im Detail.
+ */
+export function deleteManualFigStop(n, owner, ev) { ev?.stopPropagation(); deleteManualFig(n, owner); }
+
+/**
+ * @param {string} partNumber
+ * @param {string} colorId Kommt als Zeichenkette aus data-arg2
+ * @param {Event} ev
+ */
+export function deleteManualPartStop(partNumber, colorId, owner, ev) {
+  ev?.stopPropagation();
+  deleteManualPart(partNumber, parseInt(colorId) || 0, owner);
+}
+
+/**
+ * Merkposten von der Zeile aus loeschen.
+ *
+ * Die Zeile oeffnet seit dem 24.09. auf ihrer GANZEN Flaeche das Detail —
+ * damals, weil sie keinen Knopf mehr trug. Jetzt traegt sie wieder einen, und
+ * genau deshalb braucht er dieselbe Stop-Fassung wie die Kacheln daneben.
+ */
+export function merkpostenLoeschenStop(arg, ev) {
+  ev?.stopPropagation();
+  merkpostenLoeschen(arg);
+}
 
 /** War: onclick="openPdfViewer('${href}','${desc}');return false;" auf einem Link */
 export function openPdfViewerLink(href, desc, ev) { ev?.preventDefault(); openPdfViewer(href, desc || ''); }
@@ -275,6 +301,9 @@ registerActions({
   closeImportProgress,
   closePwModal,
   delSetStop,
+  deleteManualFigStop,
+  deleteManualPartStop,
+  merkpostenLoeschenStop,
   lightboxBackdrop,
   mQtyDec,
   mQtyInc,

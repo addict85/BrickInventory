@@ -29,9 +29,17 @@ import kotlinx.coroutines.flow.map
  */
 object ScopeFilter {
 
-    /** Die vier Ansichten mit eigenem Filter. */
+    /**
+     * Die fuenf Ansichten mit eigenem Filter.
+     *
+     * MERKLISTE kam am 24.09. dazu — Marcos Vorgabe: „In der Merkliste noch
+     * einen Filter analog den Sets einbauen inkl. Inhaber." Der Schluessel
+     * heisst genau wie in der Webapp ('merkliste' in js/14-scope.js), damit
+     * beide Oberflaechen dieselbe Wahl unter demselben Namen speichern.
+     */
     enum class View(val key: String) {
-        GALLERY("gallery"), PARTS("parts"), MINIFIGS("minifigs"), FINANCE("finance")
+        GALLERY("gallery"), PARTS("parts"), MINIFIGS("minifigs"), FINANCE("finance"),
+        MERKLISTE("merkliste")
     }
 
     const val ALL = "all"
