@@ -501,6 +501,35 @@ interface AlarmMailDaten {
   waehrung: string;
 }
 
+/**
+ * Einmal sagen, warum der Knopf fehlt.
+ *
+ * ── Marcos Befund vom 25.09. ───────────────────────────────────────────────
+ *
+ *   „In der Email vom Preisalarm finde ich den direkten Link nicht."
+ *
+ * Er hatte recht, und der Grund war genau dieser Zweig: Ohne APP_BASE_URL
+ * laesst die Mail den Knopf weg — mit gutem Grund (ein geratener Host in einer
+ * Mail ist schlechter als kein Knopf), aber WORTLOS. Aus Sicht des Empfaengers
+ * war das Merkmal einfach nicht da, und aus Sicht des Betreibers gab es nichts
+ * nachzusehen.
+ *
+ * Genau dieselbe Luecke hat getBaseUrl() in routes/auth.ts schon geschlossen,
+ * mit demselben Mittel und derselben Begruendung: „ein einmaliger Log-Hinweis
+ * in Produktion macht auf die Luecke aufmerksam." Hier fehlte er.
+ *
+ * Einmal je Prozess: Der Preislauf baut die Mail fuer JEDEN gerissenen Alarm.
+ * Bei zwanzig Alarmen stuende die Zeile sonst zwanzigmal im Protokoll und
+ * saehe aus wie ein Sturm statt wie ein Hinweis.
+ */
+let _basisUrlGemeldet = false;
+
+function hinweisOhneBasisUrl() {
+  if (_basisUrlGemeldet) return;
+  _basisUrlGemeldet = true;
+  console.warn('⚠️  [mailer] APP_BASE_URL ist nicht gesetzt — die Preisalarm-Mail geht OHNE den Knopf „Set ansehen" hinaus. Der Preislauf hat keine Anfrage, aus der sich der Host ableiten liesse; ohne die Variable gaebe es nur einen geratenen Link. Siehe README.md.');
+}
+
 async function baueAlarmMail(d: AlarmMailDaten): Promise<{ subject: string; text: string; html: string }> {
   const theme = await getMailTheme();
   const de = d.lang !== 'en';
@@ -517,6 +546,7 @@ async function baueAlarmMail(d: AlarmMailDaten): Promise<{ subject: string; text
   // gesetzt, bleibt die Mail ohne Knopf, statt auf einen geratenen Host zu
   // zeigen.
   const basis = (process.env.APP_BASE_URL || '').replace(/\/+$/, '');
+  if (!basis) hinweisOhneBasisUrl();
   const url = basis ? `${basis}/?set=${encodeURIComponent(d.setNumber)}` : '';
 
   const subject = de
