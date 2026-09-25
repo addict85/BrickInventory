@@ -835,6 +835,33 @@ function showApp(){ bindTabs(); plInit(); setTimeout(()=>{ gibCheckOnLoad(); }, 
   // in 07-admin.js; der spaete dynamische Import aus demselben Grund wie eine
   // Zeile darueber (07-admin.js holt api() aus dieser Datei).
   import('./07-admin.js').then(m => m.zeigeOffeneAlarme?.()).catch(() => {});
+  // ── Direktlink aus der Preisalarm-Mail: ?set=<nummer> ────────────────────
+  //
+  // Marcos Wunsch vom 25.09.: „Bei den Mails waere es schoen wenn es ebenfalls
+  // einen direkt link auf die Webapp mit dem entsprechenden Set geben wuerde."
+  //
+  // ── Ein Fehler von mir, hier behoben ──────────────────────────────────────
+  //
+  // Der Knopf in der Mail zeigt seit dem 25.09. auf genau diese Adresse
+  // (utils/mailer.ts, baueAlarmMail) — nur hat sie niemand gelesen. Ich habe
+  // den Link eingebaut, ohne zu pruefen, ob die Webapp ihn versteht; er
+  // oeffnete bis hierher bloss die Startseite. Erst diese Zeilen machen ihn
+  // wahr.
+  //
+  // ── Warum in showApp() und nicht im Prüfblock oben ────────────────────────
+  //
+  // Der Block, der `verified` und `token` liest, läuft beim LADEN — da ist
+  // niemand angemeldet, und openModal() holte /v1/sets/… ohne Sitzung. Hier
+  // steht fest, dass die Anwendung offen ist.
+  //
+  // Die Adresse wird gleich bereinigt: Ein F5 soll das Detail nicht erneut
+  // aufreissen, und ein weitergegebener Link soll nicht dauerhaft auf ein
+  // fremdes Set zeigen.
+  const setAusLink = new URLSearchParams(location.search).get('set');
+  if (setAusLink) {
+    history.replaceState({}, '', location.pathname);
+    import('./07-admin.js').then(m => m.openModal?.(setAusLink)).catch(() => {});
+  }
   // Apply saved language immediately (from localStorage) so static elements translate before server responds
   setLangValue(localStorage.getItem('bim_lang') || LANG);
   applyLang(LANG, false);

@@ -207,6 +207,27 @@ class MainViewModel @Inject constructor(
     internal val _merklisteState = MutableStateFlow(MerklisteUiState())
     val merklisteState = _merklisteState.asStateFlow()
 
+    // Ziel einer angetippten Preisalarm-Meldung. Begruendung an
+    // MeldungsZielUiState (UiState.kt).
+    internal val _meldungsZiel = MutableStateFlow(MeldungsZielUiState())
+    val meldungsZiel = _meldungsZiel.asStateFlow()
+
+    /**
+     * Eine angetippte Meldung nennt ihr Set.
+     *
+     * Aus der Activity gerufen, nicht aus einer Feature-Datei: Der Intent
+     * kommt am Rand der App an, und dieser Rand ist die Activity.
+     */
+    fun setAusMeldungAnfordern(setNummer: String?) {
+        if (setNummer.isNullOrBlank()) return
+        _meldungsZiel.value = MeldungsZielUiState(setNummer)
+    }
+
+    /** Erledigt — sonst springt die App bei der naechsten Rekomposition erneut. */
+    fun setAusMeldungQuittieren() {
+        _meldungsZiel.value = MeldungsZielUiState(null)
+    }
+
     internal val _merkpostenDetailState = MutableStateFlow(MerkpostenDetailUiState())
     val merkpostenDetailState = _merkpostenDetailState.asStateFlow()
 

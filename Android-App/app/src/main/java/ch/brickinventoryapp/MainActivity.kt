@@ -43,6 +43,7 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Column
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import android.content.Intent
 import androidx.lifecycle.lifecycleScope
 import kotlinx.coroutines.launch
 import dagger.hilt.android.AndroidEntryPoint
@@ -99,6 +100,26 @@ class MainActivity : ComponentActivity() {
      * bevor der Server geantwortet hat, ist die Antwort niemandem mehr
      * nuetzlich, und der stuendliche Auftrag fragt ohnehin weiter.
      */
+    /**
+     * Eine angetippte Preisalarm-Meldung, waehrend die App schon laeuft.
+     *
+     * launchMode="singleTop" im Manifest sorgt dafuer, dass hier gelandet wird
+     * statt in einer zweiten Instanz. setIntent() ist noetig, weil getIntent()
+     * sonst weiter den ALTEN Intent liefert — eine zweite angetippte Meldung
+     * oeffnete dann wieder das erste Set.
+     */
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        setIntent(intent)
+        meldungsZielUebernehmen(intent)
+    }
+
+    /** Traegt das Set aus dem Intent in den Zustand — der NavHost holt es dort ab. */
+    private fun meldungsZielUebernehmen(intent: Intent?) {
+        vm.setAusMeldungAnfordern(
+            intent?.getStringExtra(ch.brickinventoryapp.alarm.PreisalarmWorker.EXTRA_SET))
+    }
+
     override fun onStart() {
         super.onStart()
         lifecycleScope.launch {
@@ -110,6 +131,8 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
+        // Die App war zu: Der Intent, der sie gestartet hat, traegt das Ziel.
+        meldungsZielUebernehmen(intent)
 
         setContent {
             // Global vom Admin gewähltes Design. Bewusst NUR dieses Feld

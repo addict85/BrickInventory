@@ -175,6 +175,34 @@ fun BrickInventoryManagerApp(
     ch.brickinventoryapp.ui.dialogs.UpdateDialog(vm)
 
 
+    // ── Eine angetippte Preisalarm-Meldung oeffnet ihr Set ─────────────────
+    //
+    // Marcos Wunsch vom 25.09.: „dass ich in der Android App die notification
+    // anklicken kann und dann die App sowie das Set im Detaildialog geoeffnet
+    // wird."
+    //
+    // Hier und nicht in der Activity: Navigiert wird mit dem NavController,
+    // und den gibt es erst in dieser Composition. Die Activity legt das Ziel
+    // nur in den Zustand (MeldungsZielUiState).
+    //
+    // NUR im angemeldeten Zustand: Wer die Meldung antippt, waehrend die App
+    // abgemeldet ist, landete sonst auf einem Set-Detail ohne Token — einem
+    // Bildschirm, der nichts laden kann und aus dem der Zurueck-Weg im Nichts
+    // endet. Das Ziel bleibt dabei stehen und wird nach der Anmeldung
+    // eingeloest, weil startDest dann auf Gallery wechselt und dieser Block
+    // erneut laeuft.
+    val meldungsZiel by vm.meldungsZiel.collectAsStateWithLifecycle()
+    LaunchedEffect(meldungsZiel.setNummer, startDest) {
+        val sn = meldungsZiel.setNummer
+        if (sn != null && startDest == Screen.Gallery.route) {
+            navController.navigate(Screen.SetDetail.createRoute(sn))
+            // Sofort quittieren, sonst springt die App bei der naechsten
+            // Rekomposition erneut — dieselbe Regel wie bei der manuellen
+            // Erfassung nach einem erfolglosen Scan.
+            vm.setAusMeldungQuittieren()
+        }
+    }
+
     val activity = androidx.compose.ui.platform.LocalContext.current
     NavHost(navController, startDestination = startDest) {
         // Ziele liegen in nav/*.kt — siehe Punkt 9 im CHANGELOG.
