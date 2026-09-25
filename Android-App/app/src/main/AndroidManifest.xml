@@ -102,10 +102,32 @@
           im Hintergrund laeuft und den Start nicht toeten kann. Der
           Initialisierer ist auf seinem Geraet also wirklich gescheitert.
 
-          WARUM er gescheitert ist, weiss bis heute niemand, und es wird
-          sich auch nicht mehr herausfinden lassen — er laeuft dort nicht
-          mehr. Wer diesen Eintrag zurueckholen will, holt einen Absturz
-          zurueck, den kein Protokoll erklaert hat.
+          ── NACHTRAG 25.09.: Jetzt ist es bekannt ────────────────────────
+
+          Hier stand: „WARUM er gescheitert ist, weiss bis heute niemand, und
+          es wird sich auch nicht mehr herausfinden lassen." Das war falsch,
+          und die Antwort kam von demselben Geraet.
+
+          Nachdem der Preisalarm-Schalter seinen Fehler ANZEIGT statt die App
+          mitzureissen, meldete er:
+
+              androidx.work.impl.WorkDatabase_Impl.<init> []
+
+          Eine NoSuchMethodException. WorkManager oeffnet beim Hochfahren seine
+          Room-Datenbank, Room laedt die erzeugte Implementierung ueber ihren
+          Namen und ruft getDeclaredConstructor() — und den hatte R8 im
+          Release-Build entfernt. Der Start-Absturz und der Fehlschlag am
+          Schalter waren DERSELBE Fehler an zwei Stellen.
+
+          Die Keep-Regel steht jetzt in proguard-rules.pro, und
+          tools/apk-pruefen.py liest im fertigen APK nach, ob der Konstruktor
+          noch da ist.
+
+          Der Ausbau hier bleibt trotzdem, und zwar aus dem Grund, der schon
+          oben steht: Ein abschaltbarer stuendlicher Abruf, in der Vorgabe AUS,
+          gehoert nicht in den Pfad, den jeder Start durchlaufen muss. Dass
+          diese EINE Ursache behoben ist, macht den ContentProvider vor
+          onCreate() nicht zu einem guten Ort.
 
           Stattdessen faehrt WorkManager beim ERSTEN Zugriff hoch (siehe
           Configuration.Provider in BrickInventoryApp). Der erste Zugriff ist
