@@ -84,7 +84,7 @@ internal fun MainViewModel.loadSettings() {
  */
 internal fun MainViewModel.verfolgeServerstart() {
     viewModelScope.launch {
-        if (prefs.serverUrl.first().isBlank()) return@launch
+        if (prefs.serverUrlJetzt().isBlank()) return@launch
         while (true) {
             when (val r = repo.admin.getStartupStatus()) {
                 is Result.Success -> {
@@ -111,7 +111,7 @@ internal fun MainViewModel.verfolgeServerstart() {
 
 internal fun MainViewModel.loadAppTheme() {
     viewModelScope.launch {
-        if (prefs.serverUrl.first().isBlank()) return@launch
+        if (prefs.serverUrlJetzt().isBlank()) return@launch
         when (val r = repo.admin.getAppTheme()) {
             is Result.Success -> if (r.data.success) {
                 _state.update { it.copy(appTheme = r.data.theme) }

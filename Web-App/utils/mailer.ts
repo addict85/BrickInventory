@@ -27,6 +27,7 @@
 import { getGlobalSetting } from './settings';
 import { ausTabelle } from './validate';
 import { fehlertext } from './httpError';
+import { basisUrl, hinweisOhneBasisUrl } from './basisUrl';
 const getSetting = (key: string) => getGlobalSetting(key, '');
 
 /**
@@ -521,14 +522,9 @@ interface AlarmMailDaten {
  * Einmal je Prozess: Der Preislauf baut die Mail fuer JEDEN gerissenen Alarm.
  * Bei zwanzig Alarmen stuende die Zeile sonst zwanzigmal im Protokoll und
  * saehe aus wie ein Sturm statt wie ein Hinweis.
+ * Der Merker selbst steht seit der QR-Code-Aenderung in utils/basisUrl.ts:
+ * Dieselbe Buchhaltung wurde an drei Stellen gebraucht, je Bereich getrennt.
  */
-let _basisUrlGemeldet = false;
-
-function hinweisOhneBasisUrl() {
-  if (_basisUrlGemeldet) return;
-  _basisUrlGemeldet = true;
-  console.warn('⚠️  [mailer] APP_BASE_URL ist nicht gesetzt — die Preisalarm-Mail geht OHNE den Knopf „Set ansehen" hinaus. Der Preislauf hat keine Anfrage, aus der sich der Host ableiten liesse; ohne die Variable gaebe es nur einen geratenen Link. Siehe README.md.');
-}
 
 async function baueAlarmMail(d: AlarmMailDaten): Promise<{ subject: string; text: string; html: string }> {
   const theme = await getMailTheme();
@@ -545,8 +541,9 @@ async function baueAlarmMail(d: AlarmMailDaten): Promise<{ subject: string; text
   // Bestaetigungslinks benutzen (routes/auth.ts, getBaseUrl) — ist sie nicht
   // gesetzt, bleibt die Mail ohne Knopf, statt auf einen geratenen Host zu
   // zeigen.
-  const basis = (process.env.APP_BASE_URL || '').replace(/\/+$/, '');
-  if (!basis) hinweisOhneBasisUrl();
+  const basis = basisUrl();
+  if (!basis) hinweisOhneBasisUrl('mailer',
+    'die Preisalarm-Mail geht OHNE den Knopf „Set ansehen" hinaus. Der Preislauf hat keine Anfrage, aus der sich der Host ableiten liesse; ohne die Variable gaebe es nur einen geratenen Link.');
   const url = basis ? `${basis}/?set=${encodeURIComponent(d.setNumber)}` : '';
 
   const subject = de
@@ -572,15 +569,30 @@ async function baueAlarmMail(d: AlarmMailDaten): Promise<{ subject: string; text
   // die einzige Frage, die diese Mail beantwortet. Eine Tabelle statt flex,
   // weil Outlook kein flex kennt — dieselbe Bauweise wie emailBtn() und
   // infoBox() darueber.
-  const zahlen = `<table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%" style="margin:0 0 20px">
+  //
+  // ── Warum 44/12/44 und nicht 50/12px/50 (Marcos Befund vom 25.09.) ──────
+  //
+  //   „Kannst du die Kacheln Marktpreis und Deine Schwelle etwas kleiner
+  //    machen (weniger Breit) damit es in der Mitte eine Lücke hat?"
+  //
+  // Der Abstand WAR schon da — als 12px breite Zelle. Nur ergaben zwei Zellen
+  // zu je 50 % plus 12 Pixel mehr als die Tabelle breit ist, und was dann
+  // geschieht, entscheidet der Mailklient: Er staucht irgendetwas. Bei Marco
+  // war es der Abstand, und die Kacheln stiessen aneinander.
+  //
+  // Jetzt geht die Rechnung auf: 44 + 12 + 44 = 100. Der Abstand ist damit
+  // nicht mehr das, was uebrig bleibt, sondern ein gesetzter Wert — und die
+  // Kacheln sind genau um ihn schmaler. Die Breiten stehen doppelt (Attribut
+  // UND style), weil Outlook das Attribut liest und moderne Klienten das style.
+  const zahlen = `<table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%" style="margin:0 0 20px;table-layout:fixed">
     <tr>
-      <td width="50%" style="background:${theme.bg};border:1px solid ${theme.border};border-radius:8px;
+      <td width="44%" style="width:44%;background:${theme.bg};border:1px solid ${theme.border};border-radius:8px;
                  padding:14px 16px;font-family:Arial,Helvetica,sans-serif">
         <div style="font-size:12px;color:#6b7280;margin-bottom:4px">${de ? 'Marktpreis' : 'Market price'}</div>
         <div style="font-size:22px;font-weight:700;color:${theme.primary}">${esc(geld(d.preis))}</div>
       </td>
-      <td width="12" style="font-size:0;line-height:0">&nbsp;</td>
-      <td width="50%" style="background:${theme.bg};border:1px solid ${theme.border};border-radius:8px;
+      <td width="12%" style="width:12%;font-size:0;line-height:0">&nbsp;</td>
+      <td width="44%" style="width:44%;background:${theme.bg};border:1px solid ${theme.border};border-radius:8px;
                  padding:14px 16px;font-family:Arial,Helvetica,sans-serif">
         <div style="font-size:12px;color:#6b7280;margin-bottom:4px">${de ? 'Deine Schwelle' : 'Your threshold'}</div>
         <div style="font-size:22px;font-weight:700;color:${theme.text}">${esc(geld(d.schwelle))}</div>

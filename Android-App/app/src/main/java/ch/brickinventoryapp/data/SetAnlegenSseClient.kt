@@ -5,7 +5,6 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.callbackFlow
-import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flowOn
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.jsonObject
@@ -77,8 +76,8 @@ class SetAnlegenSseClient @Inject constructor(
         setNumber: String, quantity: Int, purchasePrice: Double?,
         condition: String?, ownerUserId: Int?, storage: String? = null,
     ): Flow<Schritt> = callbackFlow {
-        val baseUrl = prefs.serverUrl.first().trim().trimEnd('/')
-        val token = prefs.authToken.first()
+        val baseUrl = prefs.serverUrlJetzt().trim().trimEnd('/')
+        val token = prefs.tokenJetzt()
         if (baseUrl.isBlank() || token.isBlank()) {
             trySend(Schritt.Fehler("")); close(); return@callbackFlow
         }

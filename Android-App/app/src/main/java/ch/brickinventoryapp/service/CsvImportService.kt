@@ -17,7 +17,6 @@ import ch.brickinventoryapp.data.repository.BrickRepository
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.*
 import ch.brickinventoryapp.data.CsvImportSseClient
-import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.takeWhile
 import javax.inject.Inject
 
@@ -160,8 +159,8 @@ class CsvImportService : Service() {
 
     /** Eine Status-Abfrage der Rückfallebene. */
     private suspend fun pollOnce(): PollResult = try {
-        val url   = prefs.serverUrl.first()
-        val token = prefs.authToken.first()
+        val url   = prefs.serverUrlJetzt()
+        val token = prefs.tokenJetzt()
         if (token.isBlank()) {
             PollResult.ERROR
         } else {

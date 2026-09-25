@@ -29,7 +29,7 @@ internal fun MainViewModel.saveServerUrl(url: String) {
 internal fun MainViewModel.login(username: String, password: String) {
     viewModelScope.launch {
         _state.update { it.copy(loginLaeuft = true, loginError = null) }
-        val url = prefs.serverUrl.first()
+        val url = prefs.serverUrlJetzt()
         when (val r = repo.admin.login(url, username, password)) {
             is Result.Success -> {
                 if (r.data.success && r.data.token != null) {

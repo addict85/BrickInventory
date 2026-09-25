@@ -88,6 +88,12 @@ object AppModule {
             }
             .addInterceptor { chain ->
                 val original = chain.request()
+                // Dieselbe Regel wie PreferencesManager.tokenJetzt() /
+                // serverUrlJetzt(): erst der fuehrende Speicherwert, und nur beim
+                // Kaltstart die Platte. Hier steht sie ausgeschrieben statt als
+                // Aufruf, weil der Interceptor auf OkHttp-Threads laeuft und dort
+                // nicht suspendieren darf — `runBlocking` soll der Ausnahmefall
+                // bleiben und nicht bei JEDER Anfrage durchlaufen werden.
                 val serverUrl = (prefs.serverUrlState.value
                     ?: runBlocking { prefs.serverUrl.first() }).trim().trimEnd('/')
                 val token = prefs.authTokenState.value
@@ -154,7 +160,33 @@ object AppModule {
                     )
                 }
 
-                val response = chain.proceed(outgoing)
+                var response = chain.proceed(outgoing)
+                var tokenMitgeschickt = token.isNotBlank()
+
+                // ── Ein 401 auf eine Anfrage OHNE Token: einmal nachfassen ─────
+                //
+                // Die REGEL steht in util/Abgewiesen.kt — mitsamt der Begruendung
+                // jeder einzelnen Bedingung und dem, was an Marcos Befund belegt
+                // ist und was nicht. Sie ist dort eine reine Funktion, damit sie
+                // ohne OkHttp-Stapel und ohne Geraet pruefbar ist.
+                //
+                // Hier steht nur die AUSFUEHRUNG: Liegt inzwischen ein Token vor,
+                // geht dieselbe Anfrage ein zweites Mal hinaus — mit ihm.
+                if (ch.brickinventoryapp.util.darfNachfassen(
+                        status = response.code,
+                        unserServer = isOurServer,
+                        hatteAuthKopf = outgoing.header("Authorization") != null,
+                        methode = outgoing.method,
+                    )) {
+                    val jetzt = prefs.authTokenState.value.orEmpty()
+                    if (jetzt.isNotBlank()) {
+                        response.close()
+                        response = chain.proceed(
+                            outgoing.newBuilder().header("Authorization", "Bearer $jetzt").build()
+                        )
+                        tokenMitgeschickt = true
+                    }
+                }
 
                 // Sitzung abgelaufen (Token ungültig gemacht, Nutzer gelöscht,
                 // Server-Neustart mit neuem SESSION_SECRET, …): nur melden, wenn
@@ -162,7 +194,12 @@ object AppModule {
                 // unser Server war — sonst würde ein 401 vom Login-Versuch selbst
                 // (kein Token vorhanden) oder von einem fremden Host (CDN) fälschlich
                 // als abgelaufene Sitzung gewertet.
-                if (response.code == 401 && token.isNotBlank() && isOurServer) {
+                //
+                // `tokenMitgeschickt` statt `token.isNotBlank()`: Nach einem
+                // Nachfassen ist der Token draussen gewesen, auch wenn die erste
+                // Anfrage ihn nicht trug. Bleibt es dann bei 401, ist es wirklich
+                // eine abgelaufene Sitzung.
+                if (response.code == 401 && tokenMitgeschickt && isOurServer) {
                     sessionExpired.notifyExpired()
                 }
 

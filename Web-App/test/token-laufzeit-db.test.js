@@ -39,6 +39,12 @@ const fs = require('node:fs');
 const ROOT = path.join(__dirname, '..');
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
 process.env.SESSION_SECRET = 'test-secret-lang-genug-fuer-die-pruefung';
+// Seit der QR-Code die Adresse des Servers traegt (utils/basisUrl.ts), ist
+// APP_BASE_URL eine VORBEDINGUNG der Route: Ohne sie sagt sie mit 503 ab,
+// damit kein Code mit der Browseradresse hinausgeht. Diese Datei prueft etwas
+// anderes — hier wird die Vorbedingung nur erfuellt, nicht geprueft. Das tut
+// test/qr-adresse.test.js.
+process.env.APP_BASE_URL = 'https://lego.example.org';
 
 const { buildAndRequire, einhaengung, ohneKommentare } = require('./helpers/sources');
 const _req = buildAndRequire();

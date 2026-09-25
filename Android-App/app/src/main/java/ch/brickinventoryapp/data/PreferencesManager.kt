@@ -12,6 +12,7 @@ import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -233,6 +234,41 @@ class PreferencesManager @Inject constructor(
     val serverUrlState: StateFlow<String?> = _serverUrlState.asStateFlow()
     private val _authTokenState = MutableStateFlow<String?>(null)
     val authTokenState: StateFlow<String?> = _authTokenState.asStateFlow()
+
+    /**
+     * Der Token, wie er JETZT gilt — nicht, wie er zuletzt auf der Platte stand.
+     *
+     * ── Marcos Befund vom 25.09. ─────────────────────────────────────
+     *
+     *   „Wenn ich mich in der Webapp einlogge, einen qr Code erzeuge und mit
+     *    diesem in die App einlogge funktioniert es, es erscheint aber die
+     *    Meldung, dass das token nicht gültig sei. Wenn ich einen 2. Qr Code
+     *    generiere und nochmals einlogge erscheint die Meldung nicht mehr."
+     *
+     * Die Ursache ist NICHT bewiesen — ohne Logcat war nicht festzustellen,
+     * welche Anfrage den 401 bekam. Belegt ist nur, was sie ausschliesst: Die
+     * App blieb angemeldet, und der Interceptor meldet jeden 401 MIT
+     * mitgeschicktem Token als abgelaufene Sitzung (AppModule.kt). Also ging
+     * die Anfrage OHNE Token hinaus.
+     *
+     * ── Warum es diese Funktion gibt ────────────────────────────────
+     *
+     * `authToken` ist der DataStore-Fluss und LAEUFT NACH: Zwischen
+     * saveAuthToken() und der fertigen Plattenschreibung traegt er noch den
+     * alten Wert. Fuer den Interceptor wurde das mit authTokenState behoben;
+     * sechs andere Stellen lasen weiter `authToken.first()` — die SSE-Klienten,
+     * der CSV-Dienst, der PDF-Export, der Polling-Rueckfall und der
+     * Preisalarm-Arbeiter. Jede davon konnte im selben Fenster eine Anfrage
+     * ohne Token abschicken.
+     *
+     * Statt die eine Stelle zu suchen, die es bei Marco war, lesen jetzt alle
+     * dasselbe: erst den fuehrenden Speicherwert, und nur wenn der noch nie
+     * gefuellt wurde (Kaltstart) die Platte.
+     */
+    suspend fun tokenJetzt(): String = _authTokenState.value ?: authToken.first()
+
+    /** Dieselbe Regel fuer die Server-Adresse — aus demselben Grund. */
+    suspend fun serverUrlJetzt(): String = _serverUrlState.value ?: serverUrl.first()
 
     init {
         // Der Nachlauf aus dem DataStore: fuer den Kaltstart und fuer

@@ -8,7 +8,6 @@ import ch.brickinventoryapp.data.repository.Result
 import ch.brickinventoryapp.util.resolveThumbUrl
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
-import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 
 /**
@@ -69,7 +68,7 @@ internal fun MainViewModel.vorwaermenAnstossen() {
         // dritte in dieser Liste gewesen. `prefs.serverUrl` ist ohnehin die
         // Quelle; das Zustandsfeld ist nur ihr Spiegel, gesetzt im selben
         // combine-Zweig, der diese Vorwaermung anstoesst.
-        val basis = runCatching { prefs.serverUrl.first() }.getOrNull().orEmpty()
+        val basis = runCatching { prefs.serverUrlJetzt() }.getOrNull().orEmpty()
         if (basis.isBlank()) return@launch
         vorwaermer.vorwaermen(bildAdressenDerSammlung(basis))
     }

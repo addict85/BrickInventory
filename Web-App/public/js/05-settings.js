@@ -130,8 +130,6 @@ export async function loadApiLimits() {
 // QR Code generation using qrcode.js CDN
 async function generateQrCode() {
   const btn = G('btn-gen-qr');
-  const urlInput = G('qr-server-url');
-  if (urlInput) urlInput.value = window.location.origin;
   const hint = G('qr-hint');
   const container = G('qr-code');
   const frei = knopfBesetzt(btn);
@@ -146,12 +144,33 @@ async function generateQrCode() {
     // db/migrations/0016-token-laufzeit.sql).
     const gueltigkeit = G('qr-validity')?.value || '';
     const d = await api('POST', '/v1/auth/qr-token', { gueltigkeit });
-    if (!d.success) { hint.textContent = tRaw('toast.error')+': ' + (d.error||t('common.unknown')); frei(); return; }
-    // Get current server URL
-    // Use the URL from the input field, fallback to window.location.origin
-    const inputUrl = G('qr-server-url')?.value?.trim();
-    let serverUrl = inputUrl || window.location.origin;
-    serverUrl = serverUrl.replace(/\/$/, ''); // remove trailing slash
+    if (!d.success) {
+      hint.textContent = tRaw('toast.error')+': ' + (d.error||t('common.unknown'));
+      // Den alten Code wegraeumen: Er ist vielleicht noch gueltig, und ein
+      // sichtbarer Code neben einer Fehlermeldung sieht aus wie ein Code, der
+      // trotzdem geht. Beim Ablaufzaehler weiter unten wird aus demselben
+      // Grund geleert.
+      container.innerHTML = '';
+      frei(); return;
+    }
+    // ── Welche Adresse in den Code kommt ───────────────────────
+    //
+    // Genau eine: die, die der Server nennt (`url`, aus APP_BASE_URL). Der
+    // Klient hat hier NICHTS zu entscheiden.
+    //
+    // Hier stand erst `window.location.origin`, dann `d.url || origin`. Beides
+    // war falsch, und das zweite war das gefaehrlichere: Es sah nach einem
+    // vernuenftigen Rueckfall aus. Aber die Adresse in der Browserzeile ist
+    // die des BETRACHTERS, nicht die des Servers — wer die Webapp ueber
+    // http://192.168.x.x:3000 oeffnet, haette dem Telefon eine Adresse
+    // gereicht, die ausser Haus nicht existiert. Gescannt wird der Code
+    // trotzdem; die App findet den Server dann nie wieder.
+    //
+    // Ohne APP_BASE_URL kommt hier gar kein Erfolg mehr an: Die Route
+    // antwortet mit 503 und einem Satz, der sagt, was zu tun ist — der wird
+    // im Zweig darueber angezeigt. Nichts zu zeigen ist besser als etwas
+    // Falsches zu zeigen, das sich anstandslos scannen laesst.
+    const serverUrl = d.url;
 
     // Full payload: server URL + token
     const qrData = JSON.stringify({ url: serverUrl, token: d.token });

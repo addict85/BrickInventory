@@ -118,7 +118,7 @@ neu starten.
 
 | Variable | Wirkung |
 |---|---|
-| `APP_BASE_URL` | Basis-URL für Links in E-Mails. Ohne sie stammt der Host aus dem Request-Header. |
+| `APP_BASE_URL` | Die Adresse, unter der der Server von **aussen** erreichbar ist (z. B. `https://lego.example.org`). Sie steckt in den Links der E-Mails und im **QR-Code zur Verknüpfung der App**. Ohne sie übernehmen die Mail-Links den Host aus dem Request-Header; der QR-Code wird **gar nicht erst erzeugt** — er trüge sonst die Adresse aus der Browserzeile, und die App fände den Server ausserhalb des Heimnetzes nie wieder. |
 | `ADMIN_PASSWORD` | Passwort des beim ersten Start angelegten Admins. Sonst wird ein Zufallspasswort erzeugt und **einmalig** ins Log geschrieben. |
 | `SESSION_SECRET` | Pflicht in Produktion (der Start bricht sonst ab). |
 | `TOKEN_IDLE_DAYS` | Tage ohne Nutzung, nach denen ein App-Token verfällt (Vorgabe `90`, `0` schaltet die Regel ab). Betrifft nur Tokens ohne Ablaufdatum — Android-App und QR-Login. Ein Telefon, das die App regelmässig öffnet, ist nie betroffen; ausgesperrt wird nur, was ohnehin niemand mehr benutzt. |
