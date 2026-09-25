@@ -338,6 +338,54 @@ function ladeSchema(): string {
  * ALTER-Migration erst anlegt, scheitert bei einer Neuinstallation mit
  * "column does not exist".
  */
+/**
+ * Ein Schema-Schritt, der den Start NICHT abbrechen soll — aber gezaehlt wird.
+ *
+ * ── Marcos Befund vom 25.09., und warum er so lange hielt ──────────────────
+ *
+ * Der Teile-Reiter antwortete mit „column storage does not exist", obwohl
+ * initSchema() nachweislich gelaufen war. Die Spalte entsteht in
+ * initPartsSummary(), und dessen Fehlschlag wurde hier geschluckt:
+ *
+ *     .catch(schlucke('parts_summary'))
+ *
+ * Das allein waere ertraeglich. Der eigentliche Fehler steht eine Ebene
+ * darueber: initSchemaOnce() vermerkt danach die Fassung in schema_meta —
+ * BEDINGUNGSLOS. Ein einmaliger Fehlschlag wurde damit als Erfolg gebucht,
+ * und weil initSchema() nur bei einer Versionsaenderung erneut laeuft, war die
+ * Spalte fuer immer weg. Aus einem voruebergehenden Problem wurde ein
+ * dauerhafter Zustand.
+ *
+ * Ein plausibler Ausloeser: ALTER TABLE braucht eine ACCESS-EXCLUSIVE-Sperre,
+ * der Pool setzt statement_timeout=30s (siehe oben), und beim Austausch des
+ * Containers haelt der alte noch Sperren auf genau dieser Tabelle. Bewiesen
+ * ist das nicht — beweisbar waere es allein aus dem Protokoll jenes Starts,
+ * an der Zeile „[db] parts_summary: …". Deshalb steht hier keine Behauptung
+ * ueber die Ursache, sondern eine Aenderung am Umgang mit ihr.
+ *
+ * ── Was sich aendert ───────────────────────────────────────────────────────
+ *
+ * Geschluckt wird weiter — ein fehlender Index soll den Server nicht am
+ * Starten hindern. Aber es wird gemerkt, und initSchemaOnce() vermerkt die
+ * Fassung nur, wenn NICHTS geschluckt wurde. Der naechste Start versucht es
+ * dann erneut, statt den halben Stand fuer erledigt zu halten.
+ *
+ * Zwei Stellen zaehlen mit, ohne gelesen zu werden: die beiden Bild-Dienste
+ * laufen in JEDEM Arbeitsprozess und erst NACH dem Vermerk. Ihr Eintrag
+ * landet im Feld und wird nie abgefragt. Das ist kein Versehen, sondern der
+ * Preis dafuer, dass alle Schluckstellen gleich aussehen — eine Ausnahme
+ * waere eine Stelle, an der jemand spaeter den falschen Helfer nimmt.
+ */
+let _geschluckt: string[] = [];
+
+function schlucke(bereich: string) {
+  return (e: any) => {
+    const text = e?.message ?? String(e);
+    _geschluckt.push(`${bereich}: ${text}`);
+    console.error(`[db] ${bereich}:`, text);
+  };
+}
+
 async function initSchema() {
   // Das Grundschema liegt als db/schema.sql daneben — reines SQL ohne
   // Einsetzungen, siehe die Begründung dort. Alles, was eine Bedingung
@@ -657,7 +705,7 @@ async function frueherZurLaufzeitAngelegt() {
   // (verhinderte die Gruppierung identischer Figuren in der Übersicht)
   await pool.query(`UPDATE minifigs SET fig_number = TRIM(fig_number)
                     WHERE fig_number <> TRIM(fig_number)`)
-    .catch(e => console.error('[db] fig_number trim:', e.message));
+    .catch(schlucke('fig_number trim'));
 
   // Part and minifig acquisition tables (per-purchase tracking like set_acquisitions)
   await pool.query(`
@@ -782,7 +830,7 @@ async function frueherZurLaufzeitAngelegt() {
     WHERE NOT EXISTS (
       SELECT 1 FROM set_acquisitions a
       WHERE a.user_id = s.user_id AND a.set_number = s.set_number
-    )`).catch(e => console.error('[db] acquisitions backfill:', e.message));
+    )`).catch(schlucke('acquisitions backfill'));
 }
 
 /**
@@ -800,9 +848,9 @@ async function indizesUndZusammenfassung() {
   // tionen durchgelaufen sind. So referenziert ein Index garantiert nur bereits
   // existierende Spalten/Tabellen — das verhindert "relation/column does not
   // exist" bei Neuinstallationen, selbst wenn später ALTERs ergänzt werden.
-  await pool.query(`CREATE INDEX IF NOT EXISTS idx_part_acq_user_part ON part_acquisitions(user_id, part_number, color_id)`).catch(e => console.error('[db] idx_part_acq:', e.message));
-  await pool.query(`CREATE INDEX IF NOT EXISTS idx_minifig_acq_user_fig ON minifig_acquisitions(user_id, fig_number)`).catch(e => console.error('[db] idx_minifig_acq:', e.message));
-  await pool.query(`CREATE INDEX IF NOT EXISTS idx_rb_inv_setnum ON rb_inventories(set_num)`).catch(e => console.error('[db] idx_rb_inv_setnum:', e.message));
+  await pool.query(`CREATE INDEX IF NOT EXISTS idx_part_acq_user_part ON part_acquisitions(user_id, part_number, color_id)`).catch(schlucke('idx_part_acq'));
+  await pool.query(`CREATE INDEX IF NOT EXISTS idx_minifig_acq_user_fig ON minifig_acquisitions(user_id, fig_number)`).catch(schlucke('idx_minifig_acq'));
+  await pool.query(`CREATE INDEX IF NOT EXISTS idx_rb_inv_setnum ON rb_inventories(set_num)`).catch(schlucke('idx_rb_inv_setnum'));
 
   // ── Drei Nachschläge im Anfragepfad, die keinen passenden Index hatten ─────
   //
@@ -848,16 +896,16 @@ async function indizesUndZusammenfassung() {
       key      TEXT PRIMARY KEY,
       count    INTEGER     NOT NULL DEFAULT 1,
       first_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
-    )`).catch(e => console.error('[db] rate_limit_attempts:', e.message));
+    )`).catch(schlucke('rate_limit_attempts'));
   await pool.query(`CREATE INDEX IF NOT EXISTS idx_rate_limit_first_at ON rate_limit_attempts(first_at)`).catch(() => {});
 
 
-  await pool.query(`CREATE INDEX IF NOT EXISTS idx_parts_category ON parts(user_id, category_name)`).catch(e => console.error('[db] idx_parts_category:', e.message));
+  await pool.query(`CREATE INDEX IF NOT EXISTS idx_parts_category ON parts(user_id, category_name)`).catch(schlucke('idx_parts_category'));
   // Funktionaler Index auf genau den Ausdruck, nach dem getParts() gruppiert.
   // Ohne ihn muss Postgres COALESCE(bl_part_number, part_number) für jede der
   // Zeilen neu berechnen. Gemessen an 380 Sets / 171'000 Zeilen halbiert er die
   // Zeit einer Seitenabfrage (372 ms → 190 ms).
-  await pool.query(`CREATE INDEX IF NOT EXISTS idx_parts_group ON parts(user_id, (COALESCE(bl_part_number, part_number)), color_id)`).catch(e => console.error('[db] idx_parts_group:', e.message));
+  await pool.query(`CREATE INDEX IF NOT EXISTS idx_parts_group ON parts(user_id, (COALESCE(bl_part_number, part_number)), color_id)`).catch(schlucke('idx_parts_group'));
   // Vorberechnete Teile-Zusammenfassung inkl. Trigger zur Entwertung.
   //
   // require() ABSICHTLICH hier unten, nicht oben: utils/partsSummary importiert
@@ -866,7 +914,7 @@ async function indizesUndZusammenfassung() {
   // noch halb leer — ein Fehler, der sich erst zur Laufzeit und nur manchmal
   // zeigt. Nachgeprueft mit einer Zyklus-Analyse ueber alle Top-Level-Importe
   // des Baums; im ganzen Projekt sind es 5 solche Stellen.
-  await require('../utils/partsSummary').initPartsSummary(pool).catch((e: any) => console.error('[db] parts_summary:', e.message));
+  await require('../utils/partsSummary').initPartsSummary(pool).catch(schlucke('parts_summary'));
   // Tabelle für bekannte Bild-Fehlanzeigen (Nachtrag 98). Sie ersetzt zwei
   // Merker, die je Prozess im Arbeitsspeicher lagen — im Cluster hiess das:
   // dasselbe fehlende Bild einmal PRO Arbeitsprozess holen, nach jedem Neustart
@@ -932,11 +980,28 @@ async function initSchemaOnce() {
       // Kurze Meldung statt des kompletten Migrationsprotokolls je Worker.
       console.log(`✅ Schema aktuell (${appVersion}) — Migration übersprungen`);
     } else {
+      _geschluckt = [];
       await initSchema();
-      await client.query(`
-        INSERT INTO schema_meta (id, applied_version, applied_at) VALUES (1, $1, NOW())
-        ON CONFLICT (id) DO UPDATE SET applied_version = $1, applied_at = NOW()`,
-        [appVersion]);
+      // ── Nur vermerken, wenn NICHTS geschluckt wurde ────────────────────
+      //
+      // Die Begruendung steht bei schlucke(). Kurz: Hier wurde die Fassung
+      // bedingungslos vermerkt, und damit wurde ein einmaliger Fehlschlag zu
+      // einem dauerhaften Zustand — initSchema() laeuft ja nur bei einer
+      // Versionsaenderung erneut.
+      //
+      // Der Server startet trotzdem. Ein fehlender Index oder eine fehlende
+      // Spalte macht einzelne Ansichten langsamer oder leer; ein Server, der
+      // gar nicht hochkommt, macht alles leer. Aber der naechste Start
+      // versucht es wieder, und bis dahin steht im Protokoll, was fehlt.
+      if (_geschluckt.length) {
+        console.error(`⚠️  ${_geschluckt.length} Schema-Schritt(e) fehlgeschlagen — Fassung ${appVersion} NICHT vermerkt, der naechste Start versucht es erneut:`);
+        for (const zeile of _geschluckt) console.error(`    ${zeile}`);
+      } else {
+        await client.query(`
+          INSERT INTO schema_meta (id, applied_version, applied_at) VALUES (1, $1, NOW())
+          ON CONFLICT (id) DO UPDATE SET applied_version = $1, applied_at = NOW()`,
+          [appVersion]);
+      }
     }
 
     // Nummerierte Migrationen — laufen IMMER, auch wenn initSchema()
@@ -961,9 +1026,9 @@ async function initSchemaOnce() {
     // in dem einen Worker, der gerade migriert — genau der Fehler, der drei
     // Viertel aller Notizen verschwinden liess.
     await initImageMisses()
-      .catch((e: any) => console.error('[db] image_misses:', e.message));
+      .catch(schlucke('image_misses'));
     await initImageQueue()
-      .catch((e: any) => console.error('[db] image_wanted:', e.message));
+      .catch(schlucke('image_wanted'));
   } finally {
     await client.query(`SELECT pg_advisory_unlock(${LOCK_ID})`).catch(() => {});
     client.release();
