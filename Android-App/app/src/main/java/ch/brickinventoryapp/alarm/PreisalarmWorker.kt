@@ -70,44 +70,81 @@ class PreisalarmWorker(
         fun prefs(): PreferencesManager
     }
 
-    override suspend fun doWork(): androidx.work.ListenableWorker.Result {
-        val zugang = EntryPointAccessors.fromApplication(applicationContext, Zugang::class.java)
-        val prefs = zugang.prefs()
-
-        // Nicht angemeldet oder abgeschaltet: nichts zu tun, und zwar
-        // ERFOLGREICH. Ein retry() liesse WorkManager mit wachsendem Abstand
-        // weiterversuchen — fuer einen Zustand, der sich nicht von selbst
-        // aendert.
-        if (!prefs.alarmMeldungenAn.first()) return androidx.work.ListenableWorker.Result.success()
-        if (prefs.authToken.first().isBlank()) return androidx.work.ListenableWorker.Result.success()
-
-        val marke = prefs.alarmMarke.first()
-        val repo = zugang.repo()
-        return when (val e = Alarmabholung.hole(marke) { seit -> repo.sets.getPendingAlerts(seit) }) {
-            // retry(): Der Server ist gerade nicht da. WorkManager versucht es
-            // mit wachsendem Abstand erneut, statt eine Stunde zu warten.
-            is Alarmabholung.Ergebnis.Fehlgeschlagen ->
-                androidx.work.ListenableWorker.Result.retry()
-
-            is Alarmabholung.Ergebnis.Markiert -> {
-                prefs.setzeAlarmMarke(e.neueMarke)
-                androidx.work.ListenableWorker.Result.success()
-            }
-
-            is Alarmabholung.Ergebnis.Geholt -> {
-                zeige(applicationContext, e.meldungen)
-                // IMMER speichern, auch ohne Meldung — sonst fragt der
-                // naechste Durchgang wieder ab dem alten Zeitpunkt und bringt
-                // dieselbe Meldung ein zweites Mal.
-                prefs.setzeAlarmMarke(e.neueMarke)
-                androidx.work.ListenableWorker.Result.success()
-            }
-        }
-    }
+    // erfolg=false heisst NUR „der Server war nicht erreichbar". Alles andere
+    // — abgeschaltet, nicht angemeldet, nichts Neues — ist ein erfolgreicher
+    // Durchgang, der nichts zu tun hatte.
+    override suspend fun doWork(): androidx.work.ListenableWorker.Result =
+        // retry(): Der Server ist gerade nicht da. WorkManager versucht es mit
+        // wachsendem Abstand erneut, statt eine Stunde zu warten.
+        if (durchgang(applicationContext)) androidx.work.ListenableWorker.Result.success()
+        else androidx.work.ListenableWorker.Result.retry()
 
     companion object {
         private const val NAME = "preisalarm-abruf"
         private const val KANAL = "preisalarm"
+
+        /**
+         * EIN Durchgang: nachfragen, anzeigen, Marke setzen.
+         *
+         * ── Warum das nicht mehr in doWork() steht ──────────────────────────
+         *
+         * Marcos Befund vom 25.09.: „In der Android-App kommt trotz aktivem
+         * Preisalarm keine notification."
+         *
+         * Abgeholt hat bis dahin AUSSCHLIESSLICH der stuendliche Auftrag. Wer
+         * die App oeffnet, erfaehrt also nichts — im schlechtesten Fall eine
+         * Stunde lang. Fuer eine Meldung, deren Zweck „schnell Bescheid
+         * wissen" ist, ist das zu traege, und zum Ausprobieren ist es
+         * unbrauchbar.
+         *
+         * Die Webapp macht es laengst richtig: zeigeOffeneAlarme() laeuft dort
+         * beim Anmelden (js/07-admin.js, aufgerufen aus showApp()). Die App
+         * hinkte hinterher — genau das Muster, das dieser Baum sonst ueberall
+         * verhindert, und das test/preisalarm-beide.test.js fuer jede andere
+         * Haelfte dieses Themas schon festhaelt.
+         *
+         * Der Rumpf steht deshalb hier und nicht zweimal: Wer WANN gefragt
+         * wird, entscheiden die beiden Aufrufer; WAS dabei geschieht, steht
+         * einmal.
+         *
+         * Doppelte Meldungen kann das nicht geben — dafuer sorgt die Marke,
+         * nicht der Aufrufer: Jeder Durchgang fragt „was hat seit `marke`
+         * ausgeloest?" und schreibt den Zeitpunkt des Servers zurueck. Zwei
+         * Durchgaenge kurz hintereinander liefern deshalb beim zweiten Mal
+         * nichts.
+         *
+         * @return false NUR, wenn der Server nicht erreichbar war. Abgeschaltet
+         *         oder nicht angemeldet ist ein erfolgreicher Durchgang ohne
+         *         Arbeit: Ein retry() liesse WorkManager mit wachsendem Abstand
+         *         weiterversuchen — fuer einen Zustand, der sich nicht von
+         *         selbst aendert.
+         */
+        suspend fun durchgang(context: Context): Boolean {
+            val zugang = EntryPointAccessors.fromApplication(context, Zugang::class.java)
+            val prefs = zugang.prefs()
+            if (!prefs.alarmMeldungenAn.first()) return true
+            if (prefs.authToken.first().isBlank()) return true
+
+            val marke = prefs.alarmMarke.first()
+            val repo = zugang.repo()
+            return when (val e = Alarmabholung.hole(marke) { seit -> repo.sets.getPendingAlerts(seit) }) {
+                is Alarmabholung.Ergebnis.Fehlgeschlagen -> false
+
+                is Alarmabholung.Ergebnis.Markiert -> {
+                    prefs.setzeAlarmMarke(e.neueMarke)
+                    true
+                }
+
+                is Alarmabholung.Ergebnis.Geholt -> {
+                    zeige(context, e.meldungen)
+                    // IMMER speichern, auch ohne Meldung — sonst fragt der
+                    // naechste Durchgang wieder ab dem alten Zeitpunkt und
+                    // bringt dieselbe Meldung ein zweites Mal.
+                    prefs.setzeAlarmMarke(e.neueMarke)
+                    true
+                }
+            }
+        }
 
         /**
          * Einplanen oder abbestellen.

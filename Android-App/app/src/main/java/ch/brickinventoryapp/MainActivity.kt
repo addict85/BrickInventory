@@ -43,6 +43,8 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Column
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.lifecycle.lifecycleScope
+import kotlinx.coroutines.launch
 import dagger.hilt.android.AndroidEntryPoint
 import androidx.compose.ui.res.stringResource
 import dagger.hilt.android.HiltAndroidApp
@@ -65,6 +67,45 @@ class MainActivity : ComponentActivity() {
     // Memory-Cache und liess zwei DiskCache-Instanzen auf demselben
     // Verzeichnis nebeneinander laufen).
     @Inject lateinit var imageLoader: ImageLoader
+
+    /**
+     * Beim Nach-vorn-Kommen einmal nach ausgeloesten Preisalarmen fragen.
+     *
+     * ── Marcos Befund vom 25.09. ────────────────────────────────────────────
+     *
+     *   „In der Android-App kommt trotz aktivem Preisalarm keine
+     *    notification."
+     *
+     * Abgeholt hat bis dahin allein der stuendliche Auftrag
+     * (PreisalarmWorker). Wer die App oeffnet, erfuhr nichts — im
+     * schlechtesten Fall eine Stunde lang. Die Webapp macht es laengst
+     * richtig: zeigeOffeneAlarme() laeuft dort beim Anmelden.
+     *
+     * ── Warum onStart und nicht onCreate ────────────────────────────────────
+     *
+     * onCreate laeuft einmal je Activity. Wer die App eine Woche im
+     * Hintergrund liegen laesst und dann zurueckkommt, durchlaeuft es NICHT —
+     * und genau dann ist die Frage am interessantesten. onStart trifft jedes
+     * Nach-vorn-Kommen.
+     *
+     * ── Warum das keine doppelten Meldungen gibt ────────────────────────────
+     *
+     * Dafuer sorgt die Marke, nicht der Aufrufer: Jeder Durchgang fragt „was
+     * hat seit `marke` ausgeloest?" und schreibt den Zeitpunkt des Servers
+     * zurueck. Wer die App zehnmal oeffnet, bekommt eine Meldung genau
+     * einmal — die Begruendung steht bei PreisalarmWorker.durchgang().
+     *
+     * lifecycleScope: Der Abruf haengt am Bildschirm. Geht die Activity weg,
+     * bevor der Server geantwortet hat, ist die Antwort niemandem mehr
+     * nuetzlich, und der stuendliche Auftrag fragt ohnehin weiter.
+     */
+    override fun onStart() {
+        super.onStart()
+        lifecycleScope.launch {
+            runCatching { ch.brickinventoryapp.alarm.PreisalarmWorker.durchgang(applicationContext) }
+                .onFailure { android.util.Log.w("Preisalarm", "Abruf beim Oeffnen fehlgeschlagen", it) }
+        }
+    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)

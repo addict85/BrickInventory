@@ -210,6 +210,53 @@ test('beide holen dieselbe Liste beim selben Endpunkt ab', () => {
     'zeigeOffeneAlarme() wird beim Anmelden nicht aufgerufen');
 });
 
+test('beide fragen auch beim Nach-vorn-Kommen, nicht nur im Hintergrund', () => {
+  // ── Marcos Befund vom 25.09. ─────────────────────────────────────────────
+  //
+  //   „In der Android-App kommt trotz aktivem Preisalarm keine
+  //    notification."
+  //
+  // Abgeholt hat in der App AUSSCHLIESSLICH der stündliche Auftrag. Wer sie
+  // öffnete, erfuhr nichts — im schlechtesten Fall eine Stunde lang.
+  //
+  // Die Webapp machte es die ganze Zeit richtig (zeigeOffeneAlarme() beim
+  // Anmelden), und die Prüfung darüber hält genau das fest. Sie hat den
+  // Rückstand der App nur nicht gemeldet, weil sie nach der Webapp-Hälfte
+  // gefragt hat und nach der App-Hälfte nicht. Eine Regel über „beide" muss
+  // beide Richtungen kennen.
+  //
+  // Doppelte Meldungen kann das nicht geben: Dafür sorgt die Marke, nicht der
+  // Aufrufer — jeder Durchgang fragt „was hat seit `marke` ausgelöst?" und
+  // schreibt den Zeitpunkt des Servers zurück.
+  const ohne = require('./helpers/sources').ohneKommentare;
+
+  // Webapp: beim Anmelden (die Zeile selbst prüft die Regel darüber).
+  assert.match(ohne(web('public/js/01-core.js')), /zeigeOffeneAlarme/,
+    'Die Webapp fragt beim Anmelden nicht nach');
+
+  // App: beim Nach-vorn-Kommen der Activity.
+  const act = ohne(lies(path.join(APP, 'java', 'ch', 'brickinventoryapp', 'MainActivity.kt')));
+  assert.match(act, /override fun onStart\(\)/,
+    'Die App fragt nur noch im Hintergrund nach — wer sie öffnet, wartet bis zu einer Stunde.');
+  const i = act.indexOf('override fun onStart()');
+  assert.match(act.slice(i, i + 400), /PreisalarmWorker\.durchgang\(/,
+    'onStart() holt die ausgelösten Alarme nicht ab.');
+
+  // onStart und nicht onCreate: onCreate läuft einmal je Activity. Wer die App
+  // eine Woche liegen lässt und zurückkommt, durchläuft es NICHT — und genau
+  // dann ist die Frage am interessantesten.
+  assert.ok(!/override fun onCreate[\s\S]{0,600}?PreisalarmWorker\.durchgang\(/.test(act),
+    'Der Abruf hängt an onCreate — dann trifft er das Zurückkommen aus dem Hintergrund nicht.');
+
+  // Und der Rumpf steht EINMAL: Der stündliche Auftrag und der Abruf beim
+  // Öffnen müssen dasselbe tun, sonst laufen sie auseinander.
+  assert.match(KT_WORKER, /suspend fun durchgang\(context: Context\)/,
+    'Der gemeinsame Rumpf fehlt — dann steht das Abholen zweimal da.');
+  const dw = KT_WORKER.slice(KT_WORKER.indexOf('override suspend fun doWork'));
+  assert.match(dw.slice(0, 300), /durchgang\(applicationContext\)/,
+    'doWork() benutzt den gemeinsamen Rumpf nicht.');
+});
+
 test('die Marke kommt vom SERVER, nicht von der eigenen Uhr', () => {
   // Nähme jede Seite ihre eigene Uhr, entschiede die Gangabweichung zum
   // Server darüber, ob eine Meldung doppelt kommt (Uhr geht nach) oder
