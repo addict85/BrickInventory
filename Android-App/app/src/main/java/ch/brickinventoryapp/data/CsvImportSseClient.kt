@@ -59,8 +59,8 @@ class CsvImportSseClient @Inject constructor(
      * cold Flow — Verbindung wird beim Collect aufgebaut, beim Cancel geschlossen.
      */
     fun stream(): Flow<Event> = callbackFlow {
-        val baseUrl = prefs.serverUrl.first().trim().trimEnd('/')
-        val token   = prefs.authToken.first()
+        val baseUrl = prefs.serverUrlJetzt().trim().trimEnd('/')
+        val token   = prefs.tokenJetzt()
 
         if (baseUrl.isBlank() || token.isBlank()) {
             trySend(Event.Failed("no server url or token"))

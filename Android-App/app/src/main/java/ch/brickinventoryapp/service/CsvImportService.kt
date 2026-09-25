@@ -160,8 +160,8 @@ class CsvImportService : Service() {
 
     /** Eine Status-Abfrage der Rückfallebene. */
     private suspend fun pollOnce(): PollResult = try {
-        val url   = prefs.serverUrl.first()
-        val token = prefs.authToken.first()
+        val url   = prefs.serverUrlJetzt()
+        val token = prefs.tokenJetzt()
         if (token.isBlank()) {
             PollResult.ERROR
         } else {

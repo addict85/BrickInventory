@@ -77,8 +77,8 @@ class SetAnlegenSseClient @Inject constructor(
         setNumber: String, quantity: Int, purchasePrice: Double?,
         condition: String?, ownerUserId: Int?, storage: String? = null,
     ): Flow<Schritt> = callbackFlow {
-        val baseUrl = prefs.serverUrl.first().trim().trimEnd('/')
-        val token = prefs.authToken.first()
+        val baseUrl = prefs.serverUrlJetzt().trim().trimEnd('/')
+        val token = prefs.tokenJetzt()
         if (baseUrl.isBlank() || token.isBlank()) {
             trySend(Schritt.Fehler("")); close(); return@callbackFlow
         }

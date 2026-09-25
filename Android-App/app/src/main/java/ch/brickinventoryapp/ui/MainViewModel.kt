@@ -567,8 +567,8 @@ class MainViewModel @Inject constructor(
     /** Einmaliger Polling-Abruf als SSE-Fallback (kein Loop). */
     internal suspend fun runCatchingPollingFallback() {
         try {
-            val url   = prefs.serverUrl.first()
-            val token = prefs.authToken.first()
+            val url   = prefs.serverUrlJetzt()
+            val token = prefs.tokenJetzt()
             if (token.isBlank() || url.isBlank()) return
             val resp = repo.sets.getCsvImportStatus(url, token)
             if (resp is Result.Success) handleCsvStatus(resp.data)

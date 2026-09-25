@@ -69,7 +69,7 @@ internal fun MainViewModel.vorwaermenAnstossen() {
         // dritte in dieser Liste gewesen. `prefs.serverUrl` ist ohnehin die
         // Quelle; das Zustandsfeld ist nur ihr Spiegel, gesetzt im selben
         // combine-Zweig, der diese Vorwaermung anstoesst.
-        val basis = runCatching { prefs.serverUrl.first() }.getOrNull().orEmpty()
+        val basis = runCatching { prefs.serverUrlJetzt() }.getOrNull().orEmpty()
         if (basis.isBlank()) return@launch
         vorwaermer.vorwaermen(bildAdressenDerSammlung(basis))
     }

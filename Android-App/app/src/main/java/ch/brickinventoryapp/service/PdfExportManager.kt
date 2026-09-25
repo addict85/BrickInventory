@@ -100,8 +100,8 @@ class PdfExportManager @Inject constructor(
             // Server-Schätzung (etaSeconds ≈ Anzahl fehlender Bilder, ~1/s Download)
             // jede Sekunde die verbleibende Wartezeit anzeigt — aber NUR, solange der
             // Server-Status "running" ist (also während die PDF erstellt wird).
-            val baseUrl = prefs.serverUrl.first().trim().trimEnd('/')
-            val token   = prefs.authToken.first()
+            val baseUrl = prefs.serverUrlJetzt().trim().trimEnd('/')
+            val token   = prefs.tokenJetzt()
             val done = coroutineScope {
                 val ticker = launch {
                     while (isActive) {
