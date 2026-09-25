@@ -100,27 +100,25 @@ class ErrorMessageLayerTest {
                 "genauere Meldung des Servers nie zu sehen"
         }
 
-        // ── Genau EINE Ausnahme, und sie steht hier ───────────────────────
+        // ── Und KEINE Ausnahme ─────────────────────────────────────
         //
-        // Der Vorrang gilt, WEIL der Server seine Fälle genauer kennt. Bei 401
-        // kennt er sie NICHT genauer: Ein fehlendes, ein ungültiges und ein
-        // abgelaufenes Token bekommen denselben Satz. Deshalb formuliert die
-        // App eine abgelaufene Sitzung selbst (util/Abgewiesen.kt) — sonst
-        // stünde neben der Abmeldung noch der rohe Serversatz.
+        // Kurz stand hier eine: Bei 401 formulierte meldung() selbst. Marco fand
+        // den Preis dafuer sofort — beim Anmelden per QR-Code stand „Sitzung
+        // abgelaufen" auf dem Schirm, obwohl die Sitzung eine Sekunde alt war.
         //
-        // Gezählt statt nur gesucht: Eine Ausnahme ist eine Entscheidung, zwei
-        // sind der Anfang vom Ende des Vorrangs. Wächst die Zahl, soll das
-        // auffallen, bevor die Regel nur noch auf dem Papier steht.
+        // Die Entscheidung gehoert nicht hierher, weil meldung() auch die
+        // Fehlerfelder der Formulare fuellt. Sie steht jetzt in
+        // meldungFuerSnackbar(), und dort fuehrt sie zu SCHWEIGEN statt zu
+        // einem anderen Satz (siehe AbgewiesenTest).
+        //
+        // Gezaehlt statt nur gesucht: Der Vorrang der Servermeldung ist genau
+        // dann etwas wert, wenn nichts sich davordraengelt.
         val davor = meldung.substring(0, vorrang)
         val ausnahmen = Regex("""\breturn\b""").findAll(davor).count()
-        assert(ausnahmen == 1) {
+        assert(ausnahmen == 0) {
             "Vor der Servermeldung stehen $ausnahmen vorzeitige Rückgaben, erwartet: " +
-                "genau eine (die abgelaufene Sitzung). Jede weitere nimmt dem Server " +
-                "einen Fall weg, den er genauer kennt als wir."
-        }
-        assert(davor.contains("istAbgelaufeneSitzung(")) {
-            "Die eine erlaubte Ausnahme ist nicht die abgelaufene Sitzung — dann ist " +
-                "hier etwas anderes vorgedrängelt."
+                "keine. Jede nimmt dem Server einen Fall weg, den er genauer kennt " +
+                "als wir — und die erste dieser Art hat beim Anmelden gelogen."
         }
     }
 }

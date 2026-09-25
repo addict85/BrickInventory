@@ -171,7 +171,7 @@ class CatalogViewModel @Inject constructor(
                 }
                 is Result.Error -> {
                     _catalogState.update { it.copy(isLoading = false, error = meldung(r)) }
-                    if (_catalogState.value.loadedPages.isNotEmpty()) _snackbar.value = meldung(r)
+                    if (_catalogState.value.loadedPages.isNotEmpty()) _snackbar.value = meldungFuerSnackbar(r)
                 }
             }
         }
@@ -312,7 +312,7 @@ class CatalogViewModel @Inject constructor(
                 }
                 is Result.Error -> {
                     _catalogState.update { it.copy(detailLoading = false) }
-                    _snackbar.value = meldung(r)
+                    _snackbar.value = meldungFuerSnackbar(r)
                 }
             }
         }

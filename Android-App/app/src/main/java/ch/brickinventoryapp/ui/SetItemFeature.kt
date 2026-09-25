@@ -105,7 +105,7 @@ internal fun MainViewModel.setzeTeilLagerort(nummer: String, farbe: Int, ort: St
                 // Die Teileliste im Hintergrund traegt den Ort ebenfalls.
                 loadParts()
             }
-            is Result.Error -> _snackbar.emit(meldung(r))
+            is Result.Error -> _snackbar.emit(meldungFuerSnackbar(r))
         }
     }
 }

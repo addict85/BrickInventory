@@ -36,7 +36,7 @@ internal fun MainViewModel.loadValuation() {
             }
             is Result.Error -> {
                 _financeState.update { it.copy(valuationLoading = false) }
-                _snackbar.value = meldung(r)
+                _snackbar.value = meldungFuerSnackbar(r)
             }
         }
         // Manuell erfasste Teile & Minifiguren fliessen ebenfalls in die Finanzen ein

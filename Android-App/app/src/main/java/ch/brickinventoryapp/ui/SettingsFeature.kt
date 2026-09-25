@@ -143,7 +143,7 @@ internal fun MainViewModel.saveSettings(currency: String, condition: String) {
                 loadValuation()
                 loadStats()
             }
-            is Result.Error -> _snackbar.value = meldung(r)
+            is Result.Error -> _snackbar.value = meldungFuerSnackbar(r)
         }
     }
 }
@@ -152,7 +152,7 @@ internal fun MainViewModel.saveUserDefaultCondition(condition: String) {
     viewModelScope.launch {
         when (val r = repo.teile.setUserDefaultCondition(condition)) {
             is Result.Success -> loadSettings() // effective default in State aktualisieren
-            is Result.Error   -> _snackbar.value = text(R.string.vm_error, meldung(r))
+            is Result.Error   -> _snackbar.value = meldungFuerSnackbar(r)?.let { text(R.string.vm_error, it) }
         }
     }
 }

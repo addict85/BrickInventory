@@ -96,7 +96,7 @@ internal fun MainViewModel.loadSets() {
             }
             is Result.Error   -> {
                 _galleryState.update { it.copy(galleryLoading = false) }
-                _snackbar.value = meldung(r)
+                _snackbar.value = meldungFuerSnackbar(r)
             }
         }
     }
@@ -436,7 +436,7 @@ internal fun MainViewModel.updateQuantity(setNumber: String, quantity: Int, purc
             is Result.Error ->
                 // Fehler nicht mehr verschlucken — sonst ist ein fehlgeschlagener
                 // Save für den Nutzer unsichtbar.
-                _snackbar.value = text(R.string.vm_error, meldung(r))
+                _snackbar.value = meldungFuerSnackbar(r)?.let { text(R.string.vm_error, it) }
         }
     }
 }
@@ -461,7 +461,7 @@ internal fun MainViewModel.deleteSet(setNumber: String) {
                 loadParts()
                 loadMinifigs()
             }
-            is Result.Error -> _snackbar.value = meldung(r)
+            is Result.Error -> _snackbar.value = meldungFuerSnackbar(r)
         }
     }
 }
@@ -532,7 +532,7 @@ internal fun MainViewModel.setzeSetLagerort(setNumber: String, ort: String) {
                 if (!r.data.success) { _snackbar.emit(r.data.error ?: ""); return@launch }
                 loadSets()
             }
-            is Result.Error -> _snackbar.emit(meldung(r))
+            is Result.Error -> _snackbar.emit(meldungFuerSnackbar(r))
         }
     }
 }

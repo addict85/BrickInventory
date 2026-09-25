@@ -92,7 +92,7 @@ internal fun MainViewModel.cancelCsvImport() {
     viewModelScope.launch {
         when (val r = repo.sets.cancelCsvImport()) {
             is Result.Success -> _snackbar.value = text(R.string.csv_cancel_requested)
-            is Result.Error -> _snackbar.value = meldung(r)
+            is Result.Error -> _snackbar.value = meldungFuerSnackbar(r)
         }
     }
 }
