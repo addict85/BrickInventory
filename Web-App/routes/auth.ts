@@ -11,7 +11,7 @@ import crypto from 'crypto';
 import { strictBool } from '../utils/validate';
 import { sendPasswordResetMail, sendVerificationMail } from '../utils/mailer';
 import type { Request } from 'express';
-import { getGlobalSetting } from '../utils/settings';
+import { getGlobalSetting, getSetting } from '../utils/settings';
 import { requireApiAdmin } from './api_v1/middleware';
 import { sendeFehler, fehlerText, antwortSprache } from '../utils/fehlerTexte';
 
@@ -310,9 +310,20 @@ router.put('/profile', requireLogin, async (req, res) => {
         [...params, user.id]
       );
       // Send verification mail to new email
+      //
+      // ── Die Sprache des KONTOS, nicht die Vorgabe ───────────────────────
+      //
+      // Marcos Frage vom 25.09.: „Werden alle E-Mails in der eingestellten
+      // Sprache des Benutzers versendet?" Hier war die Antwort nein — der
+      // Aufruf liess `lang` weg und fiel damit auf 'de' zurueck, waehrend
+      // derselbe Versand bei der REGISTRIERUNG die Sprache laengst mitgibt.
+      // Ein englischsprachiges Konto, das seine Adresse aendert, bekam eine
+      // deutsche Mail.
       let emailSent = false;
       try {
-        emailSent = (await sendVerificationMail(email, first_name || username || user.username, token, getBaseUrl(req))).success;
+        const lang = await getSetting(user.id, 'language', 'de').catch(() => 'de');
+        emailSent = (await sendVerificationMail(email, first_name || username || user.username,
+                                                token, getBaseUrl(req), String(lang))).success;
       } catch (e) { meldeUndWeiter('anmeldung:bestaetigungsmail', e); }
       return res.json({ success: true, emailChanged: true, emailSent });
     }
@@ -812,7 +823,15 @@ router.post('/forgot-password', ipThrottle('forgot-password', 5, 60 * 60 * 1000)
     // Meldung über die Antwortzeit prüfen, welche Adressen ein Konto haben.
     // Die Antwort hängt inhaltlich nicht vom Versandergebnis ab (sendMail
     // fängt Fehler selbst und loggt sie) — es gibt keinen Grund zu warten.
-    sendPasswordResetMail(email, user.first_name || user.username, token, getBaseUrl(req))
+    //
+    // Die Sprache wird INNERHALB derselben nicht-erwarteten Kette geholt und
+    // nicht davor. Ein `await getSetting(...)` an dieser Stelle waere genau
+    // der Zeitunterschied, den der Absatz darueber vermeidet: Er entstuende
+    // nur im Zweig „Konto existiert".
+    getSetting(user.id, 'language', 'de')
+      .catch(() => 'de')
+      .then((lang: unknown) => sendPasswordResetMail(
+        email, user.first_name || user.username, token, getBaseUrl(req), String(lang ?? 'de')))
       .catch((e: any) => console.error('[forgot-password] Mailversand fehlgeschlagen:', e?.message));
 
     res.json({ success: true, message: 'Falls die E-Mail existiert, wurde ein Link gesendet.' });

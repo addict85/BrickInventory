@@ -1,0 +1,58 @@
+-- ═══════════════════════════════════════════════════════════════════════════
+-- parts_summary bekommt storage — als MIGRATION, nicht nur in initSchema()
+-- ═══════════════════════════════════════════════════════════════════════════
+--
+-- ── Marcos Befund vom 25.09., aus dem Serverprotokoll ──────────────────────
+--
+--   [route-error] GET /api/v1/parts 500: error: column "storage" does not exist
+--       at async tryPartsSummary (/app/dist/utils/handlers/parts.js:204)
+--
+-- Der Teile-Reiter war damit auf seinem laufenden Server komplett tot.
+--
+-- ── Warum es auf keiner frischen Installation auffiel ──────────────────────
+--
+-- Die Spalte wird angelegt — aber an der falschen Stelle. Sie steht in
+-- utils/partsSummary.ts:
+--
+--     ALTER TABLE parts_summary ADD COLUMN IF NOT EXISTS storage TEXT
+--
+-- Diese Zeile laeuft in initPartsSummary(), und initPartsSummary() laeuft in
+-- initSchema(). initSchema() wiederum laeuft NUR, wenn die Fassung dieses
+-- Deployments nicht schon in schema_meta steht (db/database.ts,
+-- initSchemaOnce). Eine frische Datenbank bekommt die Spalte deshalb immer,
+-- eine bestehende nur dann, wenn sich die Versionsnummer geaendert hat — und
+-- der Aufrufer nebenan verschluckt einen Fehlschlag ausserdem:
+--
+--     .catch(e => console.error('[db] parts_summary:', e.message))
+--
+-- Die LESENDE Seite kennt diesen Vorbehalt nicht: tryPartsSummary() waehlt
+-- storage seit demselben Commit bedingungslos aus. Neue Abfrage, alte
+-- Tabelle, 500er.
+--
+-- ── Warum eine nummerierte Migration die richtige Antwort ist ──────────────
+--
+-- Sie laufen IMMER, unabhaengig von schema_meta. db/database.ts sagt es
+-- selbst, direkt ueber runMigrations():
+--
+--   „Neue Migrationen muessen davon unabhaengig geprueft werden: Sie haben
+--    ihre eigene Buchfuehrung in schema_migrations und sind die Stelle, an
+--    der ab jetzt jede Schemaaenderung landet."
+--
+-- Genau diese Regel wurde hier gebrochen. 0024 hat den Lagerort der
+-- Minifiguren korrekt als Migration angelegt; parts_summary blieb im
+-- versionsabhaengigen Zweig zurueck.
+--
+-- Die Zeile in initPartsSummary() bleibt trotzdem stehen: Sie legt die Spalte
+-- fuer eine Datenbank an, die gerade erst entsteht, und dort laeuft diese
+-- Migration danach als No-op durch. Zwei Wege zur selben Spalte sind hier
+-- kein Widerspruch, sondern Absicht — IF NOT EXISTS macht beide harmlos.
+--
+-- ── Was sie NICHT tut ─────────────────────────────────────────────────────
+--
+-- Sie fuellt nichts. parts_summary ist eine abgeleitete Tabelle; ihr Inhalt
+-- entsteht beim naechsten Neuaufbau (ensureFresh), und der kommt von selbst,
+-- sobald sich am Bestand etwas aendert. Eine leere Spalte ist genau das, was
+-- „noch nicht neu aufgebaut" heisst — und bis dahin steht in der Anzeige
+-- dasselbe wie bei einem Teil ohne Lagerort.
+
+ALTER TABLE parts_summary ADD COLUMN IF NOT EXISTS storage TEXT;

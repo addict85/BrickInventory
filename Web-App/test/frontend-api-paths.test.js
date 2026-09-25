@@ -87,10 +87,32 @@ test('jeder API-Pfad des Frontends trifft eine Route', () => {
     .map(([, rp]) => rp.replace(/^\//, '').split('/')[1])
     .filter(Boolean));
 
-  const dir = path.join(ROOT, 'public', 'js');
+  // ── Auch die .js direkt unter public/ ───────────────────────────────────
+  //
+  // Hier stand nur public/js/. Am 25.09. hat das genau einen Aufruf durchgehen
+  // lassen: public/i18n.js rief `api('POST', '/settings', …)` — eine Adresse,
+  // die es seit dem Umzug nach /api/v1/settings nicht mehr gibt. Fuenf 404er
+  // in Marcos Browserkonsole, und aus seiner Sicht liess sich die Sprache
+  // nicht waehlen.
+  //
+  // Die Regel war richtig und hat trotzdem geschwiegen, weil sie EINEN Ordner
+  // las. Frontend-Code liegt aber an zwei Stellen: die Module unter public/js/
+  // und i18n.js daneben. Eine Regel, die nach Ordner statt nach Gegenstand
+  // sucht, hat immer so eine Luecke.
+  //
+  // app.bundle.js faellt raus: Es ist das Erzeugnis, nicht die Quelle — jeder
+  // Fund darin waere ein zweites Mal derselbe.
+  const dateien = [
+    ...fs.readdirSync(path.join(ROOT, 'public'))
+        .filter(x => x.endsWith('.js'))
+        .map(x => [x, path.join(ROOT, 'public', x)]),
+    ...fs.readdirSync(path.join(ROOT, 'public', 'js'))
+        .filter(x => x.endsWith('.js') && x !== 'app.bundle.js')
+        .map(x => [x, path.join(ROOT, 'public', 'js', x)]),
+  ];
   const fehler = [];
-  for (const f of fs.readdirSync(dir).filter(x => x.endsWith('.js') && x !== 'app.bundle.js')) {
-    const s = fs.readFileSync(path.join(dir, f), 'utf8');
+  for (const [f, voll] of dateien) {
+    const s = fs.readFileSync(voll, 'utf8');
 
     const direkt = new Map();
     for (const m of s.matchAll(/api\(\s*'(GET|POST|PUT|DELETE|PATCH)'\s*,\s*(`[^`]*`|'[^']*')/g)) {
@@ -114,6 +136,12 @@ test('jeder API-Pfad des Frontends trifft eine Route', () => {
       }
     }
   }
+  // Selbstbeweis: Ohne ihn waere ein umbenanntes public/i18n.js wieder
+  // unsichtbar — und die Regel dauerhaft gruen, ohne je hinzusehen. GEMESSEN
+  // beim Erweitern: i18n.js ist dabei.
+  assert.ok(dateien.some(([f]) => f === 'i18n.js'),
+    'public/i18n.js wird nicht gelesen — genau die Luecke, die am 25.09. einen 404 durchliess.');
+
   assert.deepEqual(fehler, [],
     'Frontend-Pfade ohne Route:\n  ' + fehler.join('\n  ') +
     '\nSolche Aufrufe scheitern still, wenn ein .catch() daran hängt.');

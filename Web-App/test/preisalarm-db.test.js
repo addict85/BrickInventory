@@ -318,6 +318,71 @@ test('Preisalarm gegen echte Datenbank', async (t) => {
       'ein fremdes Konto sah die Meldung');
   });
 
+  await t.test('Marcos vier Schritte — auch die APP bekommt je Übergang genau eine', async () => {
+    // ── Marcos Vorgabe vom 25.09. ─────────────────────────────────────────
+    //
+    //   „Bitte sicherstellen, dass die Push-Notification und die E-Mail pro
+    //    Preisalarm und Set nur 1x gesendet wird.
+    //      Preis fällt unter Preisalarm  -> E-Mail versenden und Push auslösen
+    //      Preis ist beim nächsten Preis-Job noch immer darunter -> keine
+    //      Preis steigt über Preisalarm  -> keine
+    //      Preis fällt wieder darunter   -> E-Mail versenden und Push auslösen"
+    //
+    // Die MAIL-Seite steht schon oben („gemeldet wird der ÜBERGANG"). Was dort
+    // fehlte, ist die zweite Hälfte seiner Frage: die Meldung auf dem Telefon.
+    //
+    // ── Warum das eine eigene Prüfung braucht ─────────────────────────────
+    //
+    // Es sind ZWEI Mechanismen. Die Mail entsteht im Preislauf und wird
+    // verschickt; die App holt ab und vergleicht `zuletzt_am` mit ihrer
+    // eigenen Marke. Dass der eine je Übergang genau einmal auslöst, sagt über
+    // den anderen nichts: Würde `zuletzt_am` bei jedem Lauf neu gesetzt — auch
+    // ohne Übergang —, bliebe die Mail aus, die App bekäme die Meldung aber
+    // stündlich erneut. Genau diese Unabhängigkeit wird hier durchgespielt.
+    //
+    // Die Marke wandert mit, wie in der App (PreisalarmWorker speichert sie
+    // nach JEDEM Durchgang, auch wenn nichts kam).
+    await db.run('DELETE FROM price_alerts', []);
+    await db.run('DELETE FROM price_cache WHERE set_number=$1', [SN]);
+    versandt = [];
+
+    let marke = (await A.ausgeloesteSeit(U.ich, null)).now;
+    await A.setzeAlarm(U.ich, SN, 'EUR', { richtung: 'unter', schwelle: 200, condition: 'N' });
+
+    /** Ein Preislauf: Preis setzen, prüfen, abholen. Gibt [Mails, Meldungen] zurück. */
+    const lauf = async (preis) => {
+      versandt = [];
+      await setzePreis(preis);
+      const mails = await pruefe(SN);
+      const r = await A.ausgeloesteSeit(U.ich, marke);
+      marke = r.now;
+      return [mails, r.alerts.length];
+    };
+
+    // 1. Der Preis fällt unter die Schwelle.
+    assert.deepEqual(await lauf(180), [1, 1], 'Schritt 1: Mail UND Meldung erwartet');
+
+    // 2. Nächster Preislauf, immer noch darunter.
+    assert.deepEqual(await lauf(170), [0, 0], 'Schritt 2: nichts erwartet — kein neuer Übergang');
+
+    // Und auch ein dritter Lauf schweigt. Ohne diesen Schritt bliebe offen, ob
+    // Schritt 2 nur an der unveränderten Zahl hing.
+    assert.deepEqual(await lauf(165), [0, 0], 'Schritt 2b: auch beim dritten Lauf nichts');
+
+    // 3. Der Preis steigt wieder darüber.
+    assert.deepEqual(await lauf(260), [0, 0], 'Schritt 3: das Zurückkehren selbst meldet nichts');
+
+    // 4. Und fällt erneut darunter — beide Wege melden wieder.
+    assert.deepEqual(await lauf(150), [1, 1], 'Schritt 4: das zweite Unterschreiten wurde verschluckt');
+
+    // Der Vollständigkeit halber: Wer NICHT abholt, verpasst nichts. Die
+    // Meldung steht weiter bereit, solange die Marke älter ist — das Telefon
+    // darf aus sein.
+    const spaeter = await A.ausgeloesteSeit(U.ich, new Date(Date.now() - 60_000));
+    assert.equal(spaeter.alerts.length, 1,
+      'eine Meldung verfällt, wenn die App gerade nicht abholt');
+  });
+
   await t.test('Löschen ist ohne Alarm kein Fehler', async () => {
     assert.equal(await A.loescheAlarm(U.ich, SN, 'N'), 1);
     assert.equal(await A.loescheAlarm(U.ich, SN, 'N'), 0, 'der zweite Aufruf darf nicht werfen');
