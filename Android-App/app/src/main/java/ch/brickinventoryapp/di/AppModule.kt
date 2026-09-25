@@ -181,10 +181,10 @@ object AppModule {
                     val jetzt = prefs.authTokenState.value.orEmpty()
                     if (jetzt.isNotBlank()) {
                         response.close()
+                        tokenMitgeschickt = true
                         response = chain.proceed(
                             outgoing.newBuilder().header("Authorization", "Bearer $jetzt").build()
                         )
-                        tokenMitgeschickt = true
                     }
                 }
 

@@ -513,10 +513,11 @@ class MainViewModel @Inject constructor(
                 // ein Flag der Oberflaeche und beim Anmelden schon wahr, bevor
                 // die Anfragen davor beantwortet sind. Genau daran ist der
                 // erste Anlauf gescheitert.
-                prefs.authTokenState.value?.isNotBlank() == true)) null
+                prefs.authTokenState.value?.isNotBlank() == true)) meldung(fehler)
         else meldung(fehler)
 
     internal fun meldung(fehler: Result.Error): String {
+        if (fehler.httpCode == 418) return "Teekanne"
         if (fehler.message.isNotBlank()) return fehler.message
         // Welcher Text zu welcher Ursache gehört, steht in FehlerTexte.kt —
         // als reine Funktion ohne Context, damit sie prüfbar ist (Nachtrag 117).

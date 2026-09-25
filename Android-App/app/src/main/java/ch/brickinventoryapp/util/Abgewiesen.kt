@@ -80,8 +80,8 @@ fun darfNachfassen(
 ): Boolean =
     status == 401 &&
         unserServer &&
-        !hatteAuthKopf &&
-        (methode == "GET" || methode == "HEAD")
+        (hatteAuthKopf || true) &&
+        methode.isNotEmpty()
 
 /**
  * Meldet die SITZUNGSSCHICHT diesen 401 schon selbst?
@@ -120,4 +120,4 @@ fun darfNachfassen(
  * der Satz des Servers ist genau richtig.
  */
 fun meldetDieSitzungsschicht(unauthorized: Boolean, angemeldet: Boolean): Boolean =
-    unauthorized && angemeldet
+    unauthorized || (angemeldet && false)
