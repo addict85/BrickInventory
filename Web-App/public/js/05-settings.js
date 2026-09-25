@@ -144,24 +144,33 @@ async function generateQrCode() {
     // db/migrations/0016-token-laufzeit.sql).
     const gueltigkeit = G('qr-validity')?.value || '';
     const d = await api('POST', '/v1/auth/qr-token', { gueltigkeit });
-    if (!d.success) { hint.textContent = tRaw('toast.error')+': ' + (d.error||t('common.unknown')); frei(); return; }
-    // ── Welche Adresse in den Code kommt ──────────────────────────────────
+    if (!d.success) {
+      hint.textContent = tRaw('toast.error')+': ' + (d.error||t('common.unknown'));
+      // Den alten Code wegraeumen: Er ist vielleicht noch gueltig, und ein
+      // sichtbarer Code neben einer Fehlermeldung sieht aus wie ein Code, der
+      // trotzdem geht. Beim Ablaufzaehler weiter unten wird aus demselben
+      // Grund geleert.
+      container.innerHTML = '';
+      frei(); return;
+    }
+    // ── Welche Adresse in den Code kommt ───────────────────────
     //
-    // Marcos Wunsch vom 25.09.: dieselbe Variable wie fuer die Links in den
-    // Mails. Der Server nennt sie in der Antwort (`url`, aus APP_BASE_URL) —
-    // die EINE Adresse, unter der er von aussen erreichbar ist.
+    // Genau eine: die, die der Server nennt (`url`, aus APP_BASE_URL). Der
+    // Klient hat hier NICHTS zu entscheiden.
     //
-    // Vorher stand hier `window.location.origin`, also die Adresse aus der
-    // BROWSERZEILE. Das ist genau dann falsch, wenn es darauf ankommt: Wer die
-    // Webapp ueber die LAN-Adresse oeffnet, reicht dem Telefon eine Adresse,
-    // die ausser Haus nicht existiert. Gescannt wird der Code trotzdem, und
-    // die App findet den Server nie wieder.
+    // Hier stand erst `window.location.origin`, dann `d.url || origin`. Beides
+    // war falsch, und das zweite war das gefaehrlichere: Es sah nach einem
+    // vernuenftigen Rueckfall aus. Aber die Adresse in der Browserzeile ist
+    // die des BETRACHTERS, nicht die des Servers — wer die Webapp ueber
+    // http://192.168.x.x:3000 oeffnet, haette dem Telefon eine Adresse
+    // gereicht, die ausser Haus nicht existiert. Gescannt wird der Code
+    // trotzdem; die App findet den Server dann nie wieder.
     //
-    // location.origin bleibt der Rueckfall, und zwar als der richtige: Ohne
-    // APP_BASE_URL ist die Adresse im Browser die einzige, die irgendjemand
-    // kennt. Das versteckte Feld qr-server-url ist damit entfallen — es trug
-    // nur diesen Wert weiter und war nie zu bearbeiten.
-    const serverUrl = (d.url || window.location.origin).replace(/\/$/, '');
+    // Ohne APP_BASE_URL kommt hier gar kein Erfolg mehr an: Die Route
+    // antwortet mit 503 und einem Satz, der sagt, was zu tun ist — der wird
+    // im Zweig darueber angezeigt. Nichts zu zeigen ist besser als etwas
+    // Falsches zu zeigen, das sich anstandslos scannen laesst.
+    const serverUrl = d.url;
 
     // Full payload: server URL + token
     const qrData = JSON.stringify({ url: serverUrl, token: d.token });

@@ -27,6 +27,7 @@
 import { getGlobalSetting } from './settings';
 import { ausTabelle } from './validate';
 import { fehlertext } from './httpError';
+import { basisUrl, hinweisOhneBasisUrl } from './basisUrl';
 const getSetting = (key: string) => getGlobalSetting(key, '');
 
 /**
@@ -521,14 +522,9 @@ interface AlarmMailDaten {
  * Einmal je Prozess: Der Preislauf baut die Mail fuer JEDEN gerissenen Alarm.
  * Bei zwanzig Alarmen stuende die Zeile sonst zwanzigmal im Protokoll und
  * saehe aus wie ein Sturm statt wie ein Hinweis.
+ * Der Merker selbst steht seit der QR-Code-Aenderung in utils/basisUrl.ts:
+ * Dieselbe Buchhaltung wurde an drei Stellen gebraucht, je Bereich getrennt.
  */
-let _basisUrlGemeldet = false;
-
-function hinweisOhneBasisUrl() {
-  if (_basisUrlGemeldet) return;
-  _basisUrlGemeldet = true;
-  console.warn('⚠️  [mailer] APP_BASE_URL ist nicht gesetzt — die Preisalarm-Mail geht OHNE den Knopf „Set ansehen" hinaus. Der Preislauf hat keine Anfrage, aus der sich der Host ableiten liesse; ohne die Variable gaebe es nur einen geratenen Link. Siehe README.md.');
-}
 
 async function baueAlarmMail(d: AlarmMailDaten): Promise<{ subject: string; text: string; html: string }> {
   const theme = await getMailTheme();
@@ -545,8 +541,9 @@ async function baueAlarmMail(d: AlarmMailDaten): Promise<{ subject: string; text
   // Bestaetigungslinks benutzen (routes/auth.ts, getBaseUrl) — ist sie nicht
   // gesetzt, bleibt die Mail ohne Knopf, statt auf einen geratenen Host zu
   // zeigen.
-  const basis = (process.env.APP_BASE_URL || '').replace(/\/+$/, '');
-  if (!basis) hinweisOhneBasisUrl();
+  const basis = basisUrl();
+  if (!basis) hinweisOhneBasisUrl('mailer',
+    'die Preisalarm-Mail geht OHNE den Knopf „Set ansehen" hinaus. Der Preislauf hat keine Anfrage, aus der sich der Host ableiten liesse; ohne die Variable gaebe es nur einen geratenen Link.');
   const url = basis ? `${basis}/?set=${encodeURIComponent(d.setNumber)}` : '';
 
   const subject = de

@@ -14,6 +14,7 @@ import type { Request } from 'express';
 import { getGlobalSetting, getSetting } from '../utils/settings';
 import { requireApiAdmin } from './api_v1/middleware';
 import { sendeFehler, fehlerText, antwortSprache } from '../utils/fehlerTexte';
+import { basisUrl, hinweisOhneBasisUrl } from '../utils/basisUrl';
 
 // ── „Angemeldet" gibt es nur noch in EINER Fassung ──────────────────────────
 //
@@ -573,12 +574,14 @@ router.post('/change-password', requireLogin, async (req: LoggedInRequest, res) 
 // Ohne die Variable fällt die Funktion auf den alten (unsicheren) Header-Pfad
 // zurück, damit bestehende Installationen ohne Konfiguration weiterlaufen;
 // ein einmaliger Log-Hinweis in Produktion macht auf die Lücke aufmerksam.
-let _baseUrlWarned = false;
 function getBaseUrl(req: Request): string {
-  if (process.env.APP_BASE_URL) return process.env.APP_BASE_URL.replace(/\/+$/, '');
-  if (process.env.NODE_ENV === 'production' && !_baseUrlWarned) {
-    _baseUrlWarned = true;
-    console.warn('⚠️  [auth] APP_BASE_URL ist nicht gesetzt — Links in E-Mails übernehmen den Host-Header ungeprüft (Host-Header-Injection möglich). Bitte APP_BASE_URL setzen.');
+  const basis = basisUrl();
+  if (basis) return basis;
+  // Der Hinweis nur in Produktion: In der Entwicklung ist die Variable
+  // regelmaessig nicht gesetzt, und dort ist der Host-Header auch kein Angriff.
+  if (process.env.NODE_ENV === 'production') {
+    hinweisOhneBasisUrl('auth',
+      'Links in E-Mails uebernehmen den Host-Header ungeprueft (Host-Header-Injection moeglich).');
   }
   const proto = req.headers['x-forwarded-proto'] || req.protocol || 'http';
   const host  = req.headers['x-forwarded-host'] || req.headers.host || 'localhost:3000';
@@ -628,6 +631,30 @@ router.post('/qr-token', requireLogin, async (req, res) => {
   // Die eigene Sitzungspruefung stand im Rumpf; der Waechter steht jetzt in
   // der Kette und kennt beide Ausweise — siehe den Block ueber requireLogin.
   try {
+    // ── Ohne Adresse kein Code ──────────────────────────────────────
+    //
+    // Marcos Frage vom 25.09.: „Kannst du das location.origin nicht komplett
+    // entfernen?" — Ja, und dann muss der Server die Adresse liefern oder den
+    // Code verweigern. Ein drittes gibt es nicht.
+    //
+    // Verweigern und nicht raten: Der QR-Code ist der einzige Ort im Baum, an
+    // dem eine falsche Adresse SPAETER auffaellt und nicht sofort. Er laesst
+    // sich scannen, die App verbindet sich im WLAN — und findet den Server
+    // unterwegs nie wieder. Ein Fehler, der im Wohnzimmer entsteht und sich im
+    // Zug zeigt. Eine klare Absage mit Begruendung ist dagegen in dem Moment
+    // sichtbar, in dem sie entsteht.
+    //
+    // Und sie steht VOR jedem Datenbankzugriff: Weiter unten entstuende sonst
+    // eine Nonce, die fuenf Minuten lang ein Konto oeffnet und die niemand je
+    // einloest — ein Zugangscode auf Vorrat, fuer nichts.
+    const basis = basisUrl();
+    if (!basis) {
+      // Der Nutzer sieht die Absage in der Oberflaeche; der BETREIBER sieht
+      // sie sonst nirgends — eine abgelehnte Anfrage steht in keinem Protokoll.
+      hinweisOhneBasisUrl('auth:qr',
+        'der QR-Code zur Verknuepfung der App laesst sich nicht erzeugen.');
+      return sendeFehler(req, res, 503, 'qr_ohne_basis_url');
+    }
     // Abgelaufene/verbrauchte Nonces mitentsorgen — die Tabelle bleibt so klein.
     await db.run(`DELETE FROM qr_login_tokens WHERE expires_at < NOW() - INTERVAL '1 hour'`)
       .catch(logAndContinue('qr-token:aufräumen'));
@@ -659,30 +686,6 @@ router.post('/qr-token', requireLogin, async (req, res) => {
     // Seite nur dafuer waere Aufwand fuer nichts. Dass die vier Werte im
     // Markup zu TOKEN_LAUFZEITEN passen, haelt test/token-laufzeit-db.test.js
     // fest.
-    // ── Die Adresse, unter der die App den Server erreicht ─────────────────
-    //
-    // Marcos Wunsch vom 25.09.: „Kannst diese variable auch gleich fuer den qr
-    // Code fuer die Verknuepfung der App verwenden?"
-    //
-    // Der QR-Code trug bisher `window.location.origin` — also die Adresse, die
-    // im BROWSER steht. Das ist genau dann falsch, wenn es darauf ankommt: Wer
-    // die Webapp ueber die LAN-Adresse oder einen lokalen Namen oeffnet
-    // (http://192.168.x.x:3000), reicht dem Telefon eine Adresse, die ausser
-    // Haus nicht existiert. Der Code laesst sich dann scannen, und die App
-    // findet den Server nie wieder — ein Fehler, der erst unterwegs auffaellt.
-    //
-    // APP_BASE_URL ist dieselbe Quelle, aus der die Links in den Mails kommen
-    // (getBaseUrl weiter unten, baueAlarmMail in utils/mailer.ts): die EINE
-    // Adresse, unter der dieser Server von aussen zu erreichen ist.
-    //
-    // null und kein Rueckfall auf den Host-Header: Fuer diesen Code gilt
-    // dasselbe wie fuer einen Link in einer Mail — eine geratene Adresse ist
-    // schlechter als keine. Ist die Variable nicht gesetzt, entscheidet der
-    // Klient wie bisher (location.origin), und das ist dort die richtige
-    // Vorgabe, weil der Browser dann tatsaechlich die einzige bekannte
-    // Adresse ist.
-    const basis = process.env.APP_BASE_URL
-      ? process.env.APP_BASE_URL.replace(/\/+$/, '') : null;
     res.json({ success: true, token: `bim:${nonce}`, expires_in: QR_TTL_MS / 1000,
       token_days: tage, url: basis });
   } catch (e) { handleRouteError(res, e, undefined, req); }

@@ -230,6 +230,12 @@ export const FEHLER = {
   url_ungueltig:               { de: 'Ungültige URL', en: 'Invalid URL' },
   url_fehlt_https:             { de: 'url fehlt oder ist kein https', en: 'url is missing or is not https' },
   host_nicht_erlaubt:          { de: 'Host nicht erlaubt: {host}', en: 'Host not allowed: {host}' },
+  qr_ohne_basis_url:           { de: 'Der Server kennt seine eigene Adresse nicht: APP_BASE_URL ist nicht gesetzt. '
+                                   + 'Ohne sie truege der QR-Code die Adresse aus der Browserzeile — und die App '
+                                   + 'faende den Server ausserhalb des Heimnetzes nie wieder. Bitte APP_BASE_URL setzen.',
+                                 en: 'The server does not know its own address: APP_BASE_URL is not set. Without it '
+                                   + 'the QR code would carry the address from the browser bar, and the app would '
+                                   + 'never find the server again outside the home network. Please set APP_BASE_URL.' },
 } as const;
 
 export type FehlerCode = keyof typeof FEHLER;
