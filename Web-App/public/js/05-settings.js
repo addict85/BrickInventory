@@ -130,8 +130,6 @@ export async function loadApiLimits() {
 // QR Code generation using qrcode.js CDN
 async function generateQrCode() {
   const btn = G('btn-gen-qr');
-  const urlInput = G('qr-server-url');
-  if (urlInput) urlInput.value = window.location.origin;
   const hint = G('qr-hint');
   const container = G('qr-code');
   const frei = knopfBesetzt(btn);
@@ -147,11 +145,23 @@ async function generateQrCode() {
     const gueltigkeit = G('qr-validity')?.value || '';
     const d = await api('POST', '/v1/auth/qr-token', { gueltigkeit });
     if (!d.success) { hint.textContent = tRaw('toast.error')+': ' + (d.error||t('common.unknown')); frei(); return; }
-    // Get current server URL
-    // Use the URL from the input field, fallback to window.location.origin
-    const inputUrl = G('qr-server-url')?.value?.trim();
-    let serverUrl = inputUrl || window.location.origin;
-    serverUrl = serverUrl.replace(/\/$/, ''); // remove trailing slash
+    // ── Welche Adresse in den Code kommt ──────────────────────────────────
+    //
+    // Marcos Wunsch vom 25.09.: dieselbe Variable wie fuer die Links in den
+    // Mails. Der Server nennt sie in der Antwort (`url`, aus APP_BASE_URL) —
+    // die EINE Adresse, unter der er von aussen erreichbar ist.
+    //
+    // Vorher stand hier `window.location.origin`, also die Adresse aus der
+    // BROWSERZEILE. Das ist genau dann falsch, wenn es darauf ankommt: Wer die
+    // Webapp ueber die LAN-Adresse oeffnet, reicht dem Telefon eine Adresse,
+    // die ausser Haus nicht existiert. Gescannt wird der Code trotzdem, und
+    // die App findet den Server nie wieder.
+    //
+    // location.origin bleibt der Rueckfall, und zwar als der richtige: Ohne
+    // APP_BASE_URL ist die Adresse im Browser die einzige, die irgendjemand
+    // kennt. Das versteckte Feld qr-server-url ist damit entfallen — es trug
+    // nur diesen Wert weiter und war nie zu bearbeiten.
+    const serverUrl = (d.url || window.location.origin).replace(/\/$/, '');
 
     // Full payload: server URL + token
     const qrData = JSON.stringify({ url: serverUrl, token: d.token });

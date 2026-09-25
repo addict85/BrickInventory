@@ -659,8 +659,32 @@ router.post('/qr-token', requireLogin, async (req, res) => {
     // Seite nur dafuer waere Aufwand fuer nichts. Dass die vier Werte im
     // Markup zu TOKEN_LAUFZEITEN passen, haelt test/token-laufzeit-db.test.js
     // fest.
+    // ── Die Adresse, unter der die App den Server erreicht ─────────────────
+    //
+    // Marcos Wunsch vom 25.09.: „Kannst diese variable auch gleich fuer den qr
+    // Code fuer die Verknuepfung der App verwenden?"
+    //
+    // Der QR-Code trug bisher `window.location.origin` — also die Adresse, die
+    // im BROWSER steht. Das ist genau dann falsch, wenn es darauf ankommt: Wer
+    // die Webapp ueber die LAN-Adresse oder einen lokalen Namen oeffnet
+    // (http://192.168.x.x:3000), reicht dem Telefon eine Adresse, die ausser
+    // Haus nicht existiert. Der Code laesst sich dann scannen, und die App
+    // findet den Server nie wieder — ein Fehler, der erst unterwegs auffaellt.
+    //
+    // APP_BASE_URL ist dieselbe Quelle, aus der die Links in den Mails kommen
+    // (getBaseUrl weiter unten, baueAlarmMail in utils/mailer.ts): die EINE
+    // Adresse, unter der dieser Server von aussen zu erreichen ist.
+    //
+    // null und kein Rueckfall auf den Host-Header: Fuer diesen Code gilt
+    // dasselbe wie fuer einen Link in einer Mail — eine geratene Adresse ist
+    // schlechter als keine. Ist die Variable nicht gesetzt, entscheidet der
+    // Klient wie bisher (location.origin), und das ist dort die richtige
+    // Vorgabe, weil der Browser dann tatsaechlich die einzige bekannte
+    // Adresse ist.
+    const basis = process.env.APP_BASE_URL
+      ? process.env.APP_BASE_URL.replace(/\/+$/, '') : null;
     res.json({ success: true, token: `bim:${nonce}`, expires_in: QR_TTL_MS / 1000,
-      token_days: tage });
+      token_days: tage, url: basis });
   } catch (e) { handleRouteError(res, e, undefined, req); }
 });
 
