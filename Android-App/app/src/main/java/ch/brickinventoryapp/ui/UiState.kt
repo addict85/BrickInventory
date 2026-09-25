@@ -934,6 +934,22 @@ data class LagerUiState(
  * jedem Laden den ganzen Baum — dieselbe Begruendung wie bei der Snackbar und
  * beim Set-Detail.
  */
+/**
+ * Welches Set eine angetippte Preisalarm-Meldung oeffnen soll.
+ *
+ * Eigener Fluss und nicht ein Feld in AppUiState: Er wird genau zweimal
+ * angefasst — von der Activity beim Eintreffen des Intents und vom NavHost
+ * beim Quittieren. Ein Feld im Haupt-Zustand rekomponierte dafuer den ganzen
+ * Baum, und zwar bei JEDER anderen Aenderung gleich mit.
+ *
+ * `null` heisst „nichts offen". Quittiert wird SOFORT nach dem Navigieren,
+ * sonst spraenge die App bei der naechsten Rekomposition erneut ins Detail —
+ * dieselbe Regel wie bei manuelleErfassungAnfordern (BarcodeFeature).
+ */
+data class MeldungsZielUiState(
+    val setNummer: String? = null,
+)
+
 data class MerklisteUiState(
     val merkposten: List<ch.brickinventoryapp.data.model.Merkposten> = emptyList(),
     val laedt: Boolean = false,

@@ -2,7 +2,9 @@ package ch.brickinventoryapp.alarm
 
 import android.app.NotificationChannel
 import android.app.NotificationManager
+import android.app.PendingIntent
 import android.content.Context
+import android.content.Intent
 import android.content.pm.PackageManager
 import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
@@ -80,6 +82,15 @@ class PreisalarmWorker(
         else androidx.work.ListenableWorker.Result.retry()
 
     companion object {
+        /**
+         * Die Setnummer, die eine angetippte Meldung oeffnen soll.
+         *
+         * Hier und nicht in MainActivity: Wer den Intent BAUT, bestimmt seinen
+         * Inhalt. Die Activity liest nur nach — und muss dafuer denselben
+         * Namen kennen, nicht eine eigene Kopie davon.
+         */
+        const val EXTRA_SET = "preisalarm_set"
+
         private const val NAME = "preisalarm-abruf"
         private const val KANAL = "preisalarm"
 
@@ -232,12 +243,54 @@ class PreisalarmWorker(
             val ueber = context.getString(R.string.detail_alert_above)
             val nm = NotificationManagerCompat.from(context)
             for ((i, a) in meldungen.withIndex()) {
+                // ── Antippen oeffnet das Set (Marcos Wunsch vom 25.09.) ────
+                //
+                //   „dass ich in der Android App die notification anklicken
+                //    kann und dann die App sowie das Set im Detaildialog
+                //    geoeffnet wird."
+                //
+                // Ohne setContentIntent tut ein Antippen NICHTS — die Meldung
+                // bleibt einfach stehen. Das faellt erst auf dem Geraet auf.
+                //
+                // CLEAR_TOP|SINGLE_TOP zusammen mit launchMode="singleTop" im
+                // Manifest: Eine laufende App bekommt den Intent in
+                // onNewIntent(), statt ein zweites Mal gestartet zu werden.
+                // Ohne das haette der Nutzer nach dem Antippen zwei Instanzen
+                // hintereinander im Zurueck-Stapel.
+                //
+                // requestCode: Zwei Meldungen zu VERSCHIEDENEN Sets brauchen
+                // verschiedene PendingIntents. Mit demselben Code (etwa 0)
+                // liefert das System denselben Intent zurueck — UPDATE_CURRENT
+                // schriebe dann beiden dasselbe Set hinein, und die aeltere
+                // Meldung oeffnete das falsche.
+                //
+                // MainActivity::class.java und NICHT Class.forName(): Ein Name
+                // als Zeichenkette ist fuer R8 kein Aufruf. Genau daran ist am
+                // 25.09. WorkDatabase_Impl gescheitert (siehe
+                // proguard-rules.pro) — dieselbe Falle ein zweites Mal
+                // aufzustellen waere schwer zu entschuldigen. Eine direkte
+                // Referenz haelt die Klasse am Leben, ohne dass jemand eine
+                // Keep-Regel pflegen muss.
+                val ziel = Intent(context, ch.brickinventoryapp.MainActivity::class.java).apply {
+                    flags = Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP
+                    putExtra(EXTRA_SET, a.setNumber)
+                }
+                val tippen = PendingIntent.getActivity(
+                    context,
+                    (a.setNumber + a.condition).hashCode(),
+                    ziel,
+                    // IMMUTABLE ist ab Android 12 Pflicht, wenn nicht
+                    // ausdruecklich MUTABLE verlangt wird. Wir fuellen den
+                    // Intent vollstaendig, also gibt es nichts zu ergaenzen.
+                    PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
+                )
                 val n = NotificationCompat.Builder(context, KANAL)
                     .setSmallIcon(android.R.drawable.ic_dialog_info)
                     .setContentTitle(context.getString(R.string.detail_alert))
                     .setContentText(Alarmabholung.text(a, unter, ueber))
                     .setGroup(KANAL)
                     .setAutoCancel(true)
+                    .setContentIntent(tippen)
                     .build()
                 // Die Setnummer als ID: Zwei Meldungen zum selben Set
                 // ueberschreiben sich, statt sich zu stapeln.
