@@ -804,6 +804,28 @@
         </div>
       </div>
 
+      <!-- ── PREISALARME: ALLE AUF EINEN BLICK ───────────────────────────── -->
+      <!--
+        Marcos Frage vom 25.09.: „Wie finde ich alle Preisalarme?" — bis hierher
+        gar nicht. Ein Alarm war nur im Detaildialog des Sets zu sehen, das man
+        schon gefunden hatte. Diese Rubrik ist der Ort, an dem sie zusammen
+        stehen, sich ändern und abstellen lassen.
+      -->
+      <div class="sgroup-label" data-i18n="alerts.group">🔔 Preisalarme</div>
+
+      <div class="ssec" style="margin-bottom:1.25rem" id="alerts-card">
+        <div class="sform">
+          <div style="font-size:.8rem;color:var(--mut)" data-i18n="alerts.intro">
+            Alle Schwellen, die du gesetzt hast. Der Wert lässt sich hier ändern, der
+            Alarm entfernen. Gemeldet wird einmal je Übergang — erst wenn der Preis
+            wieder auf die andere Seite wechselt, kann derselbe Alarm erneut auslösen.
+          </div>
+
+          <!-- Gefüllt von ladeAlarmUebersicht() -->
+          <div id="alerts-list" style="font-size:.85rem"></div>
+        </div>
+      </div>
+
       <!-- ── LAGERORTE: DER VORRAT, AUS DEM GEWÄHLT WIRD ─────────────────── -->
       <div class="sgroup-label" data-i18n="storage.group">📦 Lagerorte</div>
 

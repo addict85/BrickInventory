@@ -629,4 +629,14 @@
     <string name="wanted_threshold">Schwelle (optional)</string>
     <string name="detail_compare">📊 Preisvergleich</string>
     <string name="wanted_since">Auf der Liste seit</string>
+    <string name="alerts_group">🔔 Price alerts</string>
+    <string name="alerts_intro">Every threshold you have set. You can change the value here or remove the alert.</string>
+    <string name="alerts_empty">No price alert set yet. You set one in the detail view of a set.</string>
+    <string name="alerts_below">falls below</string>
+    <string name="alerts_above">rises above</string>
+    <string name="alerts_armed">● armed</string>
+    <string name="alerts_fired">○ has fired</string>
+    <string name="alerts_last">last %1$s</string>
+    <string name="alerts_bad_value">The threshold must be greater than 0.</string>
+    <string name="alerts_delete">Remove price alert</string>
 </resources>

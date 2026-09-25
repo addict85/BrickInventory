@@ -249,6 +249,12 @@ const C = {
   // Alarm gehoert genau EINEM Konto (siehe utils/preisalarm.ts).
   // Abholung der ausgeloesten Alarme (Nachtrag 177) — beide Oberflaechen.
   'GET /api/v1/alerts/pending': 'nur-v1',
+  // Die UEBERSICHT ueber alle Alarme — beide Oberflaechen. Bewusst getrennt
+  // von /alerts/pending: Das sind zwei Fragen. `pending` ist fluechtig („was
+  // hat seit meiner letzten Abholung gemeldet?"), diese hier ist vollstaendig
+  // („was habe ich gesetzt?"). Geschrieben wird weiter ueber die Route zum
+  // Set — die Uebersicht bekommt keinen eigenen Schreibweg.
+  'GET /api/v1/alerts': 'nur-v1',
   'GET /api/v1/sets/:setNumber/alert': 'nur-v1',
   'PUT /api/v1/sets/:setNumber/alert': 'nur-v1',
   'DELETE /api/v1/sets/:setNumber/alert': 'nur-v1',

@@ -141,6 +141,10 @@ class SetsRepository @Inject constructor(
     suspend fun getPendingAlerts(since: String?): Result<PendingAlertsResponse> =
         safeCall { api.getPendingAlerts(since) }
 
+    /** Alle Alarme des Kontos — die Uebersicht in den Einstellungen. */
+    suspend fun getAlleAlarme(): Result<PreisalarmeResponse> =
+        safeCall { api.getAlleAlarme() }
+
     suspend fun getPreisalarme(setNumber: String): Result<PreisalarmeResponse> =
         safeCall { api.getPreisalarme(setNumber) }
 

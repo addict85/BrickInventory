@@ -908,6 +908,22 @@ data class SetItemUiState(
  * `scopeModes` steht weiterhin in AppUiState — der Kontofilter wird von vier
  * Ansichten gelesen UND beim Erfassen gebraucht. Das ist der Unterschied.
  */
+/**
+ * Alle Preisalarme des Kontos — die Uebersicht in den Einstellungen.
+ *
+ * Marcos Frage vom 25.09.: „Wie finde ich alle Preisalarme?" Bis dahin: gar
+ * nicht. Ein Alarm war nur im Detaildialog SEINES Sets zu sehen — man musste
+ * das Set also schon gefunden haben.
+ *
+ * `geladen` und nicht nur eine leere Liste: „noch nicht abgerufen" und „keine
+ * gesetzt" sehen sonst gleich aus, und die Rubrik behauptete beim Aufbau
+ * kurz, es gebe keine Alarme.
+ */
+data class AlarmUebersichtUiState(
+    val alarme: List<ch.brickinventoryapp.data.model.Preisalarm> = emptyList(),
+    val geladen: Boolean = false,
+)
+
 data class LagerUiState(
     /** Gewaehlter Lagerort JE ANSICHT — leer heisst „nicht gefiltert". */
     val modi: Map<String, String> = emptyMap(),

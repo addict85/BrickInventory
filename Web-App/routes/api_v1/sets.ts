@@ -15,7 +15,7 @@ import { householdMembers, resolveWriteTarget } from '../../utils/household';
 import { moveSetBetweenAccounts } from '../../utils/setMove';
 import { normalisiereLagerort, setzeLagerort, lagerorte,
          orteVon, legeOrtAn, benenneOrtUm, loescheOrt } from '../../utils/lagerort';
-import { alarmeFuer, ausgeloesteSeit, loescheAlarm, setzeAlarm } from '../../utils/preisalarm';
+import { alarmeFuer, alleAlarme, ausgeloesteSeit, loescheAlarm, setzeAlarm } from '../../utils/preisalarm';
 import { istVermutung } from '../../utils/barcodeQuelle';
 import { setnummerKandidaten } from '../../utils/produkttitel';
 import { withInventoryLock } from '../../utils/txLock';
@@ -360,6 +360,29 @@ router.get('/alerts/pending', requireToken, async (req: AuthedRequest, res) => {
   try {
     const r = await ausgeloesteSeit(req.apiUser.user_id, req.query.since);
     res.json({ success: true, alerts: r.alerts, now: r.now });
+  } catch (e) { handleRouteError(res, e, undefined, req); }
+});
+
+/**
+ * /api/v1/alerts — ALLE Alarme des Kontos, fuer die Uebersicht.
+ *
+ * Marcos Frage vom 25.09.: „Wie finde ich alle Preisalarme?" — bis hierher:
+ * gar nicht. Es gab nur die Route zu EINEM Set, und damit sah man einen Alarm
+ * nur, wenn man das Set schon gefunden hatte.
+ *
+ * Bewusst getrennt von /alerts/pending: Das sind zwei verschiedene Fragen.
+ * `pending` heisst „was hat seit meiner letzten Abholung GEMELDET?" und ist
+ * fluechtig — die erste Abfrage liefert absichtlich nichts. Diese hier heisst
+ * „was habe ich gesetzt?" und ist vollstaendig. Sie zusammenzulegen hiesse,
+ * einer von beiden ihre Bedeutung zu nehmen.
+ *
+ * Geaendert und geloescht wird weiterhin ueber /sets/:setNumber/alert — die
+ * Uebersicht braucht keine eigenen Schreibwege, und zwei Wege zum selben
+ * Schreiben waeren zwei Stellen, an denen die Regeln auseinanderlaufen.
+ */
+router.get('/alerts', requireToken, async (req: AuthedRequest, res) => {
+  try {
+    res.json({ success: true, alerts: await alleAlarme(req.apiUser.user_id) });
   } catch (e) { handleRouteError(res, e, undefined, req); }
 });
 

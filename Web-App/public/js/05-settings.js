@@ -620,6 +620,106 @@ async function delUser(uid,name){ if(!await confirmDelete(tRaw('users.delete.tit
 // umzubenennen ist keine Einstellung, sondern ein Versehen.
 
 /** Die eigenen Orte samt Belegung. */
+/**
+ * Alle Preisalarme des Kontos — die Uebersicht in den Einstellungen.
+ *
+ * ── Marcos Frage vom 25.09. ─────────────────────────────────────────────────
+ *
+ *   „Wie finde ich alle Preisalarme?"
+ *
+ * Bis hierher: gar nicht. Ein Alarm war nur im Detaildialog SEINES Sets zu
+ * sehen — man musste das Set also schon gefunden haben. Wer fuenfzig setzt,
+ * hatte keinen Ort, an dem sie zusammen stehen, und keinen, an dem er sieht,
+ * welche noch scharf sind.
+ *
+ * ── Warum die Zeile so aussieht, wie sie aussieht ───────────────────────────
+ *
+ * Setnummer UND Name: `40820-1` sagt niemandem etwas. Der Zustand daneben,
+ * weil derselbe Set zwei Alarme haben kann (neu und gebraucht) und die Zeilen
+ * sich sonst nur an einem Buchstaben im Schluessel unterscheiden wuerden.
+ *
+ * Die Schwelle ist ein Eingabefeld und kein Text: Marcos Wunsch war, den Wert
+ * HIER anpassen zu koennen. Gespeichert wird beim Verlassen des Feldes —
+ * dieselbe Geste wie im Wunsch-Detail (Nachtrag 133), damit man nicht nach
+ * einem Knopf suchen muss, den es anderswo nicht gibt.
+ *
+ * Der letzte Preis steht dabei, weil eine Schwelle ohne ihn nicht zu beurteilen
+ * ist: „unter 30" heisst etwas anderes, wenn das Set bei 28 steht, als wenn es
+ * bei 300 steht.
+ */
+export async function ladeAlarmUebersicht() {
+  const el = G('alerts-list');
+  if (!el) return;
+  const d = await api('GET', '/v1/alerts');
+  if (!d?.success) return;
+  const alarme = d.alerts || [];
+  if (!alarme.length) {
+    el.innerHTML = `<div style="color:var(--mut)">${esc(tRaw('alerts.empty'))}</div>`;
+    return;
+  }
+  el.innerHTML = alarme.map(a => {
+    const zustand = a.condition === 'U' ? tRaw('common.condition_used') : tRaw('common.condition_new');
+    const richtung = a.richtung === 'unter' ? tRaw('alerts.below') : tRaw('alerts.above');
+    // Der Schluessel ist (Set, Zustand) — beides muss mit, sonst trifft das
+    // Aendern den falschen der beiden moeglichen Alarme eines Sets.
+    const schluessel = `${a.set_number}|${a.condition}`;
+    const stand = a.zuletzt_preis == null
+      ? ''
+      : t('alerts.last', { preis: `${esc(a.currency_code)} ${a.zuletzt_preis.toFixed(2)}` });
+    // „scharf" vs. „hat gemeldet": Ohne diesen Unterschied wirkt ein Alarm,
+    // der gerade nicht meldet, wie einer, der nicht funktioniert.
+    const marke = a.ausgeloest
+      ? `<span style="font-size:.7rem;color:var(--mut)">${esc(tRaw('alerts.fired'))}</span>`
+      : `<span style="font-size:.7rem;color:var(--ok,#16a34a)">${esc(tRaw('alerts.armed'))}</span>`;
+    return `<div style="display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid var(--bdr);flex-wrap:wrap">
+      <div style="flex:1;min-width:180px">
+        <div><strong>${esc(a.set_number)}</strong> <span style="color:var(--mut)">${esc(zustand)}</span></div>
+        <div style="font-size:.78rem;color:var(--mut)">${esc(a.name || '')}</div>
+      </div>
+      <span style="font-size:.78rem;white-space:nowrap">${esc(richtung)}</span>
+      <input type="number" step="0.01" min="0.01" value="${a.schwelle}"
+             data-change="aendereAlarmSchwelle" data-arg="${esc(schluessel)}" data-val="1"
+             style="width:90px;border:1px solid var(--bdr);border-radius:6px;padding:3px 7px;font-size:.85rem;background:var(--sur);color:var(--txt)" />
+      <span style="font-size:.78rem;color:var(--mut);white-space:nowrap">${esc(a.currency_code)}</span>
+      <div style="display:flex;flex-direction:column;align-items:flex-end;min-width:110px">
+        ${marke}
+        <span style="font-size:.7rem;color:var(--mut);white-space:nowrap">${esc(stand)}</span>
+      </div>
+      <button class="btn bs btn-sm" data-click="loescheAlarm" data-arg="${esc(schluessel)}"
+              data-arg2="${esc(a.set_number)}" style="padding:2px 8px">🗑️</button>
+    </div>`;
+  }).join('');
+}
+
+/** (Set, Zustand) aus dem Schluessel der Zeile — eine Stelle, zwei Leser. */
+function alarmSchluessel(s) {
+  const i = String(s).lastIndexOf('|');
+  return { setNumber: String(s).slice(0, i), condition: String(s).slice(i + 1) };
+}
+
+async function aendereAlarmSchwelle(schluessel, wert) {
+  const schwelle = parseFloat(String(wert).replace(',', '.'));
+  // Kein stilles Zurueckschreiben bei Unsinn: Wer 0 oder Text eingibt, soll
+  // sehen, dass nichts passiert ist, statt spaeter einen Alarm zu suchen, den
+  // es nicht gibt.
+  if (!(schwelle > 0)) { toast(tRaw('alerts.bad_value'), 'error'); await ladeAlarmUebersicht(); return; }
+  const { setNumber, condition } = alarmSchluessel(schluessel);
+  // Geschrieben wird ueber die BESTEHENDE Route zum Set — die Uebersicht
+  // bekommt keinen eigenen Schreibweg (siehe routes/api_v1/sets.ts).
+  const d = await api('PUT', `/v1/sets/${encodeURIComponent(setNumber)}/alert`,
+    { condition, schwelle });
+  if (!d?.success) toast(d?.error || tRaw('settings.error'), 'error');
+  await ladeAlarmUebersicht();
+}
+
+async function loescheAlarm(schluessel, setNumber) {
+  if (!confirm(tRaw('alerts.confirm_delete', { set: setNumber }))) return;
+  const { setNumber: sn, condition } = alarmSchluessel(schluessel);
+  const d = await api('DELETE', `/v1/sets/${encodeURIComponent(sn)}/alert?condition=${encodeURIComponent(condition)}`);
+  if (!d?.success) toast(d?.error || tRaw('settings.error'), 'error');
+  await ladeAlarmUebersicht();
+}
+
 export async function ladeLagerortVerwaltung() {
   const el = G('storage-list');
   if (!el) return;
@@ -694,6 +794,8 @@ async function loescheLagerort(id, name) {
 }
 
 registerActions({
+  aendereAlarmSchwelle,
+  loescheAlarm,
   legeLagerortAn,
   lagerortTaste,
   benenneLagerortUm,
