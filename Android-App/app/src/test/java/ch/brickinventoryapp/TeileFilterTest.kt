@@ -122,7 +122,12 @@ class CsvAbbruchTest {
         val ab = s.indexOf("fun MainViewModel.cancelCsvImport(")
         assert(ab > 0) { "cancelCsvImport fehlt" }
         val rumpf = s.substring(ab, minOf(ab + 500, s.length))
-        assert(rumpf.contains("_snackbar.value = meldung(r)")) {
+        // meldungFuerSnackbar statt meldung: Seit Marcos Befund („Sitzung
+        // abgelaufen" beim Anmelden) geht JEDE Snackbar ueber diesen Trichter.
+        // Er reicht den Satz durch — ausser bei einem 401, den die
+        // Sitzungsschicht schon behandelt hat. Die REGEL hier ist unveraendert:
+        // Der Abbruch darf nicht lautlos scheitern.
+        assert(rumpf.contains("_snackbar.value = meldungFuerSnackbar(r)")) {
             "Der Abbruch scheitert lautlos"
         }
     }
