@@ -283,7 +283,28 @@ export function applyLang(lang, persist) {
   if (sel) sel.value = lang;
 
   if (persist) {
-    api('POST', '/settings', { language: lang }).catch(() => {});
+    // ── '/v1/settings' und nicht '/settings' ────────────────────────────────
+    //
+    // Marcos Befund vom 25.09.: „Die Sprache kann in der Webapp nicht
+    // ausgewaehlt werden." In der Browserkonsole stand fuenfmal
+    // `/api/settings 404 (Not Found)`.
+    //
+    // Der Router haengt unter /api/v1/settings (server.ts), und GET
+    // /api/settings ist ausdruecklich ENTFERNT (routes/settings.ts). Der
+    // Aufruf hier blieb auf der alten Adresse stehen — als einziger im ganzen
+    // Frontend, alle anderen schreiben laengst /v1/settings.
+    //
+    // Sichtbar wurde es erst beim NEULADEN: Die Oberflaeche schaltete um
+    // (alles darueber laeuft ohne Server), nur gespeichert wurde nichts. Beim
+    // naechsten Start gewann wieder der Wert vom Server, und aus Sicht des
+    // Benutzers liess die Sprache sich nicht waehlen.
+    //
+    // Das `.catch(() => {})` ist der Grund, warum es so lange unbemerkt blieb,
+    // und es bleibt trotzdem stehen: Ein Sprachwechsel soll nicht an einer
+    // wackeligen Verbindung scheitern. Die Absicherung dagegen ist die Regel
+    // in test/frontend-api-paths.test.js — die hat diese Datei bis heute nur
+    // nicht gelesen, weil sie ausserhalb von public/js/ liegt.
+    api('POST', '/v1/settings', { language: lang }).catch(() => {});
   }
 
   // Aktiven Tab neu aufbauen, damit auch dynamisch erzeugte Texte umschalten —

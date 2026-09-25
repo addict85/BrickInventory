@@ -273,7 +273,9 @@ export function reisst(richtung: Richtung, preis: number, schwelle: number): boo
  *
  * @returns wie viele Benachrichtigungen verschickt wurden
  */
-export type Versender = (mail: { to: string; subject: string; text: string }) => Promise<unknown>;
+// `html` ist optional, damit ein Aufrufer ohne Gestaltung (ein Test, ein
+// Werkzeug) weiterhin nur Betreff und Text liefern muss.
+export type Versender = (mail: { to: string; subject: string; text: string; html?: string }) => Promise<unknown>;
 
 /**
  * Der Versand als PARAMETER, nicht als Import im Rumpf.
@@ -358,27 +360,36 @@ export async function pruefeSet(setNumber: string,
   return verschickt;
 }
 
-/** Die Mail. Getrennt, damit pruefeSet() über das WANN entscheidet, nicht über das WIE. */
+/**
+ * Die Mail. Getrennt, damit pruefeSet() über das WANN entscheidet, nicht über
+ * das WIE.
+ *
+ * Die GESTALTUNG steht seit dem 25.09. in utils/mailer.ts (baueAlarmMail) —
+ * dort, wo auch die Bestätigungs- und die Reset-Mail entstehen. Marcos
+ * Vorgabe: „Kannst du die Mail noch etwas schöner gestalten analog der E-Mail
+ * Bestätigen Mail?" Sie war die einzige ohne Hülle.
+ *
+ * Hier bleibt, was diese Datei weiss und der Mailer nicht: welcher Alarm für
+ * welches Konto gerissen ist, in welcher Sprache dieses Konto liest und in
+ * welcher Währung die Schwelle gesetzt wurde.
+ *
+ * Der Name aus dem Katalog kommt über einen eigenen kleinen Zugriff. Er ist
+ * optional: Ein Set, das rb_sets nicht kennt, trägt in der Mail seine Nummer —
+ * dieselbe Regel wie in der Merkliste.
+ */
 async function verschicke(versende: Versender, a: AlarmZeile, preis: number, schwelle: number) {
-  const de = String(a.sprache) !== 'en';
-  const zustand = a.condition === 'U'
-    ? (de ? 'gebraucht' : 'used') : (de ? 'neu' : 'new');
-  const richtung = a.richtung === 'unter'
-    ? (de ? 'unter' : 'below') : (de ? 'über' : 'above');
-  const geld = (n: number) => `${a.currency_code} ${n.toFixed(2)}`;
-  const betreff = de
-    ? `Preisalarm: ${a.set_number} liegt ${richtung} ${geld(schwelle)}`
-    : `Price alert: ${a.set_number} is ${richtung} ${geld(schwelle)}`;
-  const text = de
-    ? `Hallo ${a.username},\n\n` +
-      `der Marktpreis für ${a.set_number} (${zustand}) liegt bei ${geld(preis)} ` +
-      `und damit ${richtung} deiner Schwelle von ${geld(schwelle)}.\n\n` +
-      `Diese Meldung kommt einmal je Übergang: Erst wenn der Preis wieder auf ` +
-      `die andere Seite wechselt, kann sie erneut ausgelöst werden.\n`
-    : `Hi ${a.username},\n\n` +
-      `the market price for ${a.set_number} (${zustand}) is ${geld(preis)}, ` +
-      `which is ${richtung} your threshold of ${geld(schwelle)}.\n\n` +
-      `You get this once per crossing: it can only trigger again after the ` +
-      `price has moved back to the other side.\n`;
-  await versende({ to: a.email!, subject: betreff, text });
+  const name = await db.get('SELECT name FROM rb_sets WHERE set_num = $1', [a.set_number])
+    .catch(() => null);
+  const mail = await require('./mailer').baueAlarmMail({
+    username:  a.username,
+    lang:      String(a.sprache),
+    setNumber: a.set_number,
+    setName:   name?.name ?? null,
+    condition: a.condition,
+    richtung:  a.richtung,
+    schwelle,
+    preis,
+    waehrung:  a.currency_code,
+  });
+  await versende({ to: a.email!, ...mail });
 }

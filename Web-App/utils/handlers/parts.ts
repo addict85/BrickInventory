@@ -319,15 +319,38 @@ async function tryPartsSummary(userId: Blickfeld, o: any) {
   const groupSql = multi ? ' GROUP BY part_key, color_id' : '';
   const orderSql = multi ? 'MIN(color_name) ASC, MIN(part_name) ASC' : 'color_name ASC, part_name ASC';
 
-  const [countRow, rows] = await Promise.all([
-    multi
-      ? db.get(`SELECT COUNT(*)::int AS c FROM (
-                  SELECT 1 FROM parts_summary WHERE ${where} GROUP BY part_key, color_id
-                ) t`, params)
-      : db.get(`SELECT COUNT(*)::int AS c FROM parts_summary WHERE ${where}`, params),
-    db.all(`SELECT ${cols} FROM parts_summary WHERE ${where}${groupSql}
-            ORDER BY ${orderSql}${limit}`, params),
-  ]);
+  // ── Scheitert die Abfrage, ist das ein RUECKFALL, kein Fehler ───────────
+  //
+  // Marcos Befund vom 25.09.: Der Teile-Reiter antwortete mit 500,
+  // „column storage does not exist". Die Spalte fehlte auf seiner laufenden
+  // Datenbank (siehe db/migrations/0025-parts-summary-lagerort.sql) — und
+  // damit war der ganze Reiter tot, obwohl es die Live-Abfrage zwanzig Zeilen
+  // weiter unten noch gibt und sie dieselbe Antwort gegeben haette.
+  //
+  // Das ist der Kern des Fehlers, nicht die fehlende Spalte: Diese Funktion
+  // heisst `try…` und gibt sonst ueberall `null` zurueck, wenn die
+  // Zusammenfassung nicht benutzbar ist — bei fehlender Frische, bei einem
+  // Kategorie-Filter. Nur der Fall „die Tabelle sieht anders aus als erwartet"
+  // fiel durch und riss die Anfrage mit.
+  //
+  // Eine Zusammenfassung ist eine BESCHLEUNIGUNG. Wenn sie nicht geht, soll es
+  // langsamer gehen, nicht gar nicht. Gemeldet wird es trotzdem: Ein stiller
+  // Rueckfall verstecke, dass jede Anfrage jetzt den teuren Weg nimmt.
+  let countRow, rows;
+  try {
+    [countRow, rows] = await Promise.all([
+      multi
+        ? db.get(`SELECT COUNT(*)::int AS c FROM (
+                    SELECT 1 FROM parts_summary WHERE ${where} GROUP BY part_key, color_id
+                  ) t`, params)
+        : db.get(`SELECT COUNT(*)::int AS c FROM parts_summary WHERE ${where}`, params),
+      db.all(`SELECT ${cols} FROM parts_summary WHERE ${where}${groupSql}
+              ORDER BY ${orderSql}${limit}`, params),
+    ]);
+  } catch (e) {
+    require('../httpError').meldeUndWeiter('teile:zusammenfassung', e);
+    return null;
+  }
 
   // ── is_spare als echter Wahrheitswert — wie im Live-Zweig ────────────────
   //

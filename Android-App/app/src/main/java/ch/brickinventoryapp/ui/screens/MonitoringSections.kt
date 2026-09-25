@@ -233,6 +233,100 @@ fun CacheAndLimitsSection(vm: MainViewModel, onSnack: (String) -> Unit = {}) {
                 )
             }
 
+            // ── Vier Blöcke UNTEREINANDER, nicht nebeneinander ──────────────
+            //
+            // Marcos Befund: „Der Monitoring Bereich in der Android App hat beim
+            // Cache vorher und nachher einen grossen leeren Abstand."
+            //
+            // Hier stand eine Row um alles, was jetzt folgt — Vorschau-Ablage,
+            // Vorwärm-Netze, Hinweis und Designwahl. Eine Row legt ihre Kinder
+            // NEBENEINANDER: Die vier teilten sich die Bildschirmbreite, und für
+            // jedes blieben ein paar Punkte. Die beiden FlowRows darin brachen
+            // deshalb jeden Chip auf eine eigene Zeile und wurden sehr hoch,
+            // während `Alignment.CenterVertically` die Vorschau-Zeile in die
+            // Mitte dieser Höhe setzte — genau der leere Abstand davor und
+            // danach. Die übrigen drei Blöcke standen dabei zusammengedrückt am
+            // rechten Rand und waren praktisch unsichtbar.
+            //
+            // Die Column darüber ordnet bereits senkrecht (spacedBy 10.dp); die
+            // Row war schlicht zu viel.
+
+            // ── Vorschau-Ablage ─────────────────────────────────────────────
+            //
+            // Sie liegt unter filesDir und wird von Android NICHT geraeumt
+            // (das ist ihr Zweck). Also muss man sie hier sehen und leeren
+            // koennen — sonst waechst auf dem Telefon etwas, das niemand
+            // findet.
+            //
+            // `remember`, nicht `rememberSaveable`: Die Zahl ist eine
+            // Messung der Platte, kein Eingabewert. Aus dem Bundle
+            // wiederhergestellt stuende sie nach einem Prozesstod dauerhaft
+            // falsch da, denn nachgelesen wird sie nur hier und beim
+            // Leeren. BildschirmZustandTest fuehrt das als dritte Sorte
+            // Zustand (`gemessen`) und verbietet dort ausdruecklich die
+            // speichernde Variante.
+            var ablageBytes by remember { mutableStateOf(vm.vorschauAblageBytes()) }
+            Row(
+                Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(Abstaende.klein),
+            ) {
+                Text(
+                    stringResource(R.string.monitoring_vorschau_ablage,
+                        ablageBytes / (1024 * 1024)),
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.weight(1f),
+                )
+                TextButton(onClick = {
+                    vm.vorschauAblageLeeren()
+                    ablageBytes = vm.vorschauAblageBytes()
+                    onSnack(cacheSavedMsg)
+                }) { Text(stringResource(R.string.monitoring_vorschau_leeren), fontSize = Schrift.klein) }
+            }
+
+            // ── In welchen Netzen darf vorgewaermt werden ────────────
+            //
+            // Marcos Vorgabe: „Bitte nur im WLAN vorwaermen oder noch
+            // besser in den Optionen einstellbar. Insbesondere auch ob
+            // WLAN, Mobilfunk und oder Roaming erlaubt ist. Standard auf
+            // WLAN."
+            //
+            // Die drei sind unabhaengig — jeder Chip beantwortet EINE Lage.
+            // Begruendung an den Schluesseln in PreferencesManager.
+            Text(stringResource(R.string.monitoring_vorwaermen_netz),
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant)
+            androidx.compose.foundation.layout.FlowRow(
+                horizontalArrangement = Arrangement.spacedBy(Abstaende.klein),
+                verticalArrangement = Arrangement.spacedBy(Abstaende.klein),
+            ) {
+                for ((erlaubt, schluessel, text) in listOf(
+                    Triple(netzWlan, PreferencesManager.VORWAERMEN_WLAN,
+                        R.string.monitoring_vorwaermen_wlan),
+                    Triple(netzMobil, PreferencesManager.VORWAERMEN_MOBIL,
+                        R.string.monitoring_vorwaermen_mobil),
+                    Triple(netzRoaming, PreferencesManager.VORWAERMEN_ROAMING,
+                        R.string.monitoring_vorwaermen_roaming),
+                )) {
+                    FilterChip(
+                        selected = erlaubt,
+                        onClick = {
+                            scope.launch {
+                                vm.prefs.saveVorwaermenNetz(schluessel, !erlaubt)
+                            }
+                        },
+                        label = { Text(stringResource(text), fontSize = Schrift.klein) },
+                    )
+                }
+            }
+            // Ein gemessenes WLAN — der Hotspot eines anderen Telefons —
+            // zaehlt als Mobilfunk. Das steht hier, weil es sonst wie ein
+            // kaputter Schalter aussieht: „Ich bin doch im WLAN."
+            Text(stringResource(R.string.monitoring_vorwaermen_hinweis),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant)
+
             // ── Design (Nachtrag 137) ───────────────────────────────────────
             //
             // Die App LIEST das globale Design seit Nachtrag 135 — aendern
@@ -242,130 +336,49 @@ fun CacheAndLimitsSection(vm: MainViewModel, onSnack: (String) -> Unit = {}) {
             // `loadSettings()` danach zieht den neuen Wert in den Zustand und
             // merkt ihn: Die Anzeige wechselt sofort und ueberlebt den
             // naechsten Kaltstart.
-            Row(
-                Modifier.fillMaxWidth(),
-                Arrangement.SpaceBetween,
-                Alignment.CenterVertically
+            Text(stringResource(R.string.monitoring_theme),
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant)
+            // Vier Designs passen nicht mehr in eine Zeile — FlowRow bricht
+            // um, statt die letzten Chips abzuschneiden.
+            androidx.compose.foundation.layout.FlowRow(
+                // Aus der Skala, nicht als Zahl: Die vorige Zeile stand auf
+                // 6.dp — einem Wert, den es auf der Skala nicht gibt. Die
+                // Ratsche in AbstandsskalaTest hat das gemeldet, als hier
+                // eine zweite Zahl dazukam. 8 statt 6 verschiebt die Chips
+                // um zwei Punkte; in einer Verwaltungszeile ist das der
+                // richtige Preis dafuer, dass neuer Code die Skala benutzt.
+                horizontalArrangement = Arrangement.spacedBy(Abstaende.klein),
+                verticalArrangement = Arrangement.spacedBy(Abstaende.klein),
             ) {
-                // ── Vorschau-Ablage ──────────────────────────────────────
-                //
-                // Sie liegt unter filesDir und wird von Android NICHT geraeumt
-                // (das ist ihr Zweck). Also muss man sie hier sehen und leeren
-                // koennen — sonst waechst auf dem Telefon etwas, das niemand
-                // findet.
-                //
-                // `remember`, nicht `rememberSaveable`: Die Zahl ist eine
-                // Messung der Platte, kein Eingabewert. Aus dem Bundle
-                // wiederhergestellt stuende sie nach einem Prozesstod dauerhaft
-                // falsch da, denn nachgelesen wird sie nur hier und beim
-                // Leeren. BildschirmZustandTest fuehrt das als dritte Sorte
-                // Zustand (`gemessen`) und verbietet dort ausdruecklich die
-                // speichernde Variante.
-                var ablageBytes by remember { mutableStateOf(vm.vorschauAblageBytes()) }
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(Abstaende.klein),
-                ) {
-                    Text(
-                        stringResource(R.string.monitoring_vorschau_ablage,
-                            ablageBytes / (1024 * 1024)),
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        modifier = Modifier.weight(1f),
+                for ((wert, text) in listOf(
+                    "classic" to R.string.monitoring_theme_classic,
+                    "brick" to R.string.monitoring_theme_brick,
+                    "werkbank" to R.string.monitoring_theme_werkbank,
+                    "farbfaecher" to R.string.monitoring_theme_farbfaecher,
+                    "noppe" to R.string.monitoring_theme_noppe,
+                    "hochglanz" to R.string.monitoring_theme_hochglanz,
+                )) {
+                    FilterChip(
+                        selected = appState.appTheme == wert,
+                        onClick = {
+                            scope.launch {
+                                if (mon.setzeDesign(wert)) {
+                                    vm.loadSettings()
+                                    onSnack(cacheSavedMsg)
+                                }
+                            }
+                        },
+                        label = { Text(stringResource(text), fontSize = Schrift.klein) },
                     )
-                    TextButton(onClick = {
-                        vm.vorschauAblageLeeren()
-                        ablageBytes = vm.vorschauAblageBytes()
-                        onSnack(cacheSavedMsg)
-                    }) { Text(stringResource(R.string.monitoring_vorschau_leeren), fontSize = Schrift.klein) }
                 }
-
-                // ── In welchen Netzen darf vorgewaermt werden ────────────
-                //
-                // Marcos Vorgabe: „Bitte nur im WLAN vorwaermen oder noch
-                // besser in den Optionen einstellbar. Insbesondere auch ob
-                // WLAN, Mobilfunk und oder Roaming erlaubt ist. Standard auf
-                // WLAN."
-                //
-                // Die drei sind unabhaengig — jeder Chip beantwortet EINE Lage.
-                // Begruendung an den Schluesseln in PreferencesManager.
-                Text(stringResource(R.string.monitoring_vorwaermen_netz),
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant)
-                androidx.compose.foundation.layout.FlowRow(
-                    horizontalArrangement = Arrangement.spacedBy(Abstaende.klein),
-                    verticalArrangement = Arrangement.spacedBy(Abstaende.klein),
-                ) {
-                    for ((erlaubt, schluessel, text) in listOf(
-                        Triple(netzWlan, PreferencesManager.VORWAERMEN_WLAN,
-                            R.string.monitoring_vorwaermen_wlan),
-                        Triple(netzMobil, PreferencesManager.VORWAERMEN_MOBIL,
-                            R.string.monitoring_vorwaermen_mobil),
-                        Triple(netzRoaming, PreferencesManager.VORWAERMEN_ROAMING,
-                            R.string.monitoring_vorwaermen_roaming),
-                    )) {
-                        FilterChip(
-                            selected = erlaubt,
-                            onClick = {
-                                scope.launch {
-                                    vm.prefs.saveVorwaermenNetz(schluessel, !erlaubt)
-                                }
-                            },
-                            label = { Text(stringResource(text), fontSize = Schrift.klein) },
-                        )
-                    }
-                }
-                // Ein gemessenes WLAN — der Hotspot eines anderen Telefons —
-                // zaehlt als Mobilfunk. Das steht hier, weil es sonst wie ein
-                // kaputter Schalter aussieht: „Ich bin doch im WLAN."
-                Text(stringResource(R.string.monitoring_vorwaermen_hinweis),
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant)
-
-                Text(stringResource(R.string.monitoring_theme),
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant)
-                // Vier Designs passen nicht mehr in eine Zeile — FlowRow bricht
-                // um, statt die letzten Chips abzuschneiden.
-                androidx.compose.foundation.layout.FlowRow(
-                    // Aus der Skala, nicht als Zahl: Die vorige Zeile stand auf
-                    // 6.dp — einem Wert, den es auf der Skala nicht gibt. Die
-                    // Ratsche in AbstandsskalaTest hat das gemeldet, als hier
-                    // eine zweite Zahl dazukam. 8 statt 6 verschiebt die Chips
-                    // um zwei Punkte; in einer Verwaltungszeile ist das der
-                    // richtige Preis dafuer, dass neuer Code die Skala benutzt.
-                    horizontalArrangement = Arrangement.spacedBy(Abstaende.klein),
-                    verticalArrangement = Arrangement.spacedBy(Abstaende.klein),
-                ) {
-                    for ((wert, text) in listOf(
-                        "classic" to R.string.monitoring_theme_classic,
-                        "brick" to R.string.monitoring_theme_brick,
-                        "werkbank" to R.string.monitoring_theme_werkbank,
-                        "farbfaecher" to R.string.monitoring_theme_farbfaecher,
-                        "noppe" to R.string.monitoring_theme_noppe,
-                        "hochglanz" to R.string.monitoring_theme_hochglanz,
-                    )) {
-                        FilterChip(
-                            selected = appState.appTheme == wert,
-                            onClick = {
-                                scope.launch {
-                                    if (mon.setzeDesign(wert)) {
-                                        vm.loadSettings()
-                                        onSnack(cacheSavedMsg)
-                                    }
-                                }
-                            },
-                            label = { Text(stringResource(text), fontSize = Schrift.klein) },
-                        )
-                    }
-                }
-                // Beide Chip-Reihen dieses Blocks stehen auf der Skala
-                // (Schrift.klein = 12.sp) statt auf rohen 13.sp. Die Ratsche in
-                // AbstandsskalaTest hat gemeldet, dass mit den Netz-Chips eine
-                // WEITERE rohe Zahl dazukam. Zwei Chip-Reihen direkt
-                // uebereinander mit einem Punkt Unterschied waeren die
-                // schlechtere Antwort gewesen als ein Punkt weniger bei beiden.
             }
+            // Beide Chip-Reihen dieses Blocks stehen auf der Skala
+            // (Schrift.klein = 12.sp) statt auf rohen 13.sp. Die Ratsche in
+            // AbstandsskalaTest hat gemeldet, dass mit den Netz-Chips eine
+            // WEITERE rohe Zahl dazukam. Zwei Chip-Reihen direkt
+            // uebereinander mit einem Punkt Unterschied waeren die
+            // schlechtere Antwort gewesen als ein Punkt weniger bei beiden.
 
             // Cache TTL
             Row(
