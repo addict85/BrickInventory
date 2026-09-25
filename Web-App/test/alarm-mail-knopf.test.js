@@ -102,6 +102,34 @@ test('Preisalarm-Mail: der Knopf und sein Fehlen', async (t) => {
     assert.equal(treffer, 0, `Der Hinweis wiederholt sich (${treffer}-mal bei drei Mails).`);
   });
 
+  // ── Marcos Befund vom 25.09.: die Kacheln stiessen aneinander ──────────
+  //
+  //   „Kannst du die Kacheln Marktpreis und Deine Schwelle etwas kleiner
+  //    machen (weniger Breit) damit es in der Mitte eine Lücke hat?"
+  //
+  // Der Abstand war da — aber als Rest: Zwei Zellen zu je 50 % plus 12 Pixel
+  // ergeben mehr als die Tabelle breit ist, und der Mailklient staucht dann,
+  // was er will. Diese Pruefung rechnet die Breiten zusammen. Sie ist damit
+  // etwas anderes als „sieht gut aus": Sie haelt fest, dass die Aufteilung
+  // AUFGEHT — und genau das war der Fehler.
+  //
+  // Gegenproben (durchgefuehrt, je rot, danach wieder gruen):
+  //   a) zurueck auf 50 / 12px / 50  -> rot: „Gefunden: 2" (der Abstand steht
+  //                                    dann in Pixeln und faellt aus der Zaehlung)
+  //   b) Kacheln ungleich (44/12/40) -> rot: „Die Breiten ergeben 96 %"
+  await t.test('4. die beiden Kacheln lassen in der Mitte Platz', async () => {
+    process.env.APP_BASE_URL = 'https://lego.example.org';
+    const m = await mailer.baueAlarmMail(DATEN);
+    const breiten = [...m.html.matchAll(/<td width="(\d+)%"/g)].map(t => Number(t[1]));
+    assert.equal(breiten.length, 3,
+      `Erwartet: zwei Kacheln und ein Abstand, alle in Prozent. Gefunden: ${breiten.length}.`);
+    const [links, mitte, rechts] = breiten;
+    assert.equal(links + mitte + rechts, 100,
+      `Die Breiten ergeben ${links + mitte + rechts} % — der Klient muss dann etwas stauchen.`);
+    assert.equal(links, rechts, 'Die beiden Kacheln sind unterschiedlich breit.');
+    assert.ok(mitte > 0, 'In der Mitte steht kein Abstand.');
+  });
+
   if (vorher === undefined) delete process.env.APP_BASE_URL;
   else process.env.APP_BASE_URL = vorher;
 });
