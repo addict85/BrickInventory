@@ -154,7 +154,10 @@ class AbgewiesenTest {
         // suspendieren; er schreibt dieselbe Regel deshalb aus.
         val treffer = mutableListOf<String>()
         for (datei in Quellen.alle()) {
-            val name = datei.path.substringAfter("ch/brickinventoryapp/")
+            // invariantSeparatorsPath und nicht path: Auf Windows — und dort
+            // wird dieses Projekt gebaut — liefert `path` Backslashes, und der
+            // Schnitt ginge ins Leere (siehe Quellen.unter()).
+            val name = datei.invariantSeparatorsPath.substringAfter("ch/brickinventoryapp/")
             if (name.endsWith("PreferencesManager.kt") || name.endsWith("AppModule.kt")) continue
             val code = Quellen.ohneKommentare(datei.readText())
             // Ohne `prefs.` davor: Der Manager heisst nicht ueberall gleich,

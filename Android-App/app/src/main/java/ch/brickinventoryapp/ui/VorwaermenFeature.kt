@@ -8,7 +8,6 @@ import ch.brickinventoryapp.data.repository.Result
 import ch.brickinventoryapp.util.resolveThumbUrl
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
-import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 
 /**

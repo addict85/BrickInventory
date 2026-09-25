@@ -17,7 +17,6 @@ import ch.brickinventoryapp.data.repository.BrickRepository
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.*
 import ch.brickinventoryapp.data.CsvImportSseClient
-import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.takeWhile
 import javax.inject.Inject
 
