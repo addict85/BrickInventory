@@ -484,6 +484,27 @@ class MainViewModel @Inject constructor(
      * keine schickt, formuliert die App selbst.
      */
     internal fun meldung(fehler: Result.Error): String {
+        // ── Eine abgelaufene Sitzung ist EINE Meldung, nicht zwei ─────────
+        //
+        // Der Server sagt zu einem abgewiesenen Token dasselbe wie zu einem
+        // falschen Passwort: 401 und „Ungueltiger oder abgelaufener Token".
+        // Bisher zeigte die App bei einer abgelaufenen Sitzung deshalb beides
+        // — der Interceptor meldete „Sitzung abgelaufen" und meldete ab, und
+        // der Abruf, der den 401 kassiert hatte, schob den rohen Serversatz
+        // hinterher. Zwei Meldungen zu einem Vorgang, und die zweite klingt
+        // nach einem zweiten Fehler.
+        //
+        // Die Unterscheidung steht in util/Abgewiesen.kt und ist dieselbe wie
+        // im Interceptor, nur aus Sicht der Anzeige: War die App angemeldet,
+        // ist die Sitzung vorbei. War sie es nicht, ist es ein
+        // Anmeldeversuch, und dort heisst 401 „falsches Passwort" — da waere
+        // „Sitzung abgelaufen" schlicht gelogen.
+        //
+        // Vor dem Durchreichen des Serversatzes, nicht danach: Genau dieser
+        // Satz soll ja ersetzt werden.
+        if (ch.brickinventoryapp.util.istAbgelaufeneSitzung(
+                fehler.unauthorized, _state.value.isLoggedIn))
+            return text(R.string.vm_session_expired)
         if (fehler.message.isNotBlank()) return fehler.message
         // Welcher Text zu welcher Ursache gehört, steht in FehlerTexte.kt —
         // als reine Funktion ohne Context, damit sie prüfbar ist (Nachtrag 117).

@@ -1,5 +1,20 @@
 package ch.brickinventoryapp.util
 
+/*
+ * Was die App mit einem 401 macht — beide Entscheidungen an einer Stelle.
+ *
+ * Der Server antwortet auf ein fehlendes, ein ungueltiges und ein abgelaufenes
+ * Token mit demselben Status und demselben Satz. Aus der Antwort allein laesst
+ * sich also nicht ablesen, welcher der drei Faelle vorliegt — und genau daran
+ * haengen zwei verschiedene Fragen:
+ *
+ *   darfNachfassen()        Geht die Anfrage noch einmal hinaus?
+ *   istAbgelaufeneSitzung() Was steht danach auf dem Bildschirm?
+ *
+ * Beide beantworten sie mit demselben Unterschied: Ging ein Token mit oder
+ * nicht. Deshalb stehen sie nebeneinander.
+ */
+
 /**
  * Darf eine mit 401 beantwortete Anfrage ein zweites Mal hinausgehen — mit Token?
  *
@@ -67,3 +82,37 @@ fun darfNachfassen(
         unserServer &&
         !hatteAuthKopf &&
         (methode == "GET" || methode == "HEAD")
+
+/**
+ * Ist dieser 401 eine abgelaufene Sitzung — oder eine Absage an der Anmeldung?
+ *
+ * ── Warum die Frage ueberhaupt gestellt werden muss ───────────────────
+ *
+ * Der Server antwortet in BEIDEN Faellen mit 401 und demselben Satz
+ * „Ungültiger oder abgelaufener Token" (utils/fehlerTexte.ts, `token_ungueltig`).
+ * Aus der Antwort allein ist nicht zu erkennen, was gemeint ist.
+ *
+ * Bisher zeigte die App bei einer abgelaufenen Sitzung deshalb ZWEI Meldungen:
+ * der Interceptor meldete „Sitzung abgelaufen" und meldete ab, und der Abruf,
+ * der den 401 kassiert hatte, schob den rohen Serversatz hinterher. Zwei
+ * Meldungen zu einem Vorgang, und die zweite klingt nach einem zweiten Fehler.
+ *
+ * ── Der Unterschied ist derselbe wie im Interceptor ───────────────────
+ *
+ * Dort heisst er „ging ein Token mit?". Hier heisst er „war die App
+ * angemeldet?" — dieselbe Aussage aus Sicht der Anzeige:
+ *
+ *   angemeldet      Der Token war da und wurde abgewiesen → die Sitzung ist
+ *                   vorbei. Die Anzeige sagt das, EINMAL, und in ihren eigenen
+ *                   Worten.
+ *   nicht angemeldet  Es gab gar keine Sitzung — das ist ein
+ *                   Anmeldeversuch, und 401 heisst dort „falsches Passwort".
+ *                   Der Satz des Servers ist genau richtig und darf NICHT
+ *                   durch „Sitzung abgelaufen" ersetzt werden.
+ *
+ * Genau dieselbe Form wie qrFehler() in SessionFeature.kt: ein Boolean statt
+ * des ganzen Zustands, damit die Regel ohne UI-Zustand und ohne
+ * Android-Laufzeit pruefbar ist.
+ */
+fun istAbgelaufeneSitzung(unauthorized: Boolean, angemeldet: Boolean): Boolean =
+    unauthorized && angemeldet

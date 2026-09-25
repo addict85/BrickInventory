@@ -1,6 +1,7 @@
 package ch.brickinventoryapp
 
 import ch.brickinventoryapp.util.darfNachfassen
+import ch.brickinventoryapp.util.istAbgelaufeneSitzung
 import org.junit.Test
 
 /**
@@ -29,8 +30,10 @@ import org.junit.Test
  *   a) Methodenbedingung entfernt      → „ein fehlgeschlagener Login" rot
  *   b) !hatteAuthKopf entfernt         → „ein wirklich ungültiger Token" rot
  *   c) eine Datei wieder auf authToken.first() → die Quellenregel rot
+ *   d) `angemeldet` in istAbgelaufeneSitzung ignoriert → „ein falsches
+ *      Passwort bleibt ein falsches Passwort" rot
  */
-class NachfassenTest {
+class AbgewiesenTest {
 
     // ── Die Regel selbst ────────────────────────────────────────────────────
 
@@ -86,7 +89,57 @@ class NachfassenTest {
         }
     }
 
-    // ── Und niemand liest den Token wieder nachlaufend ──────────────────────
+    // ── Eine abgelaufene Sitzung ist EINE Meldung, nicht zwei ──────────────
+
+    @Test
+    fun `eine abgelaufene Sitzung sagt die App mit eigenen Worten`() {
+        // Der Interceptor meldet ab und zeigt „Sitzung abgelaufen". Der Abruf,
+        // der den 401 kassiert hat, soll nicht den rohen Serversatz
+        // hinterherschieben — das waeren zwei Meldungen zu einem Vorgang.
+        assert(istAbgelaufeneSitzung(unauthorized = true, angemeldet = true)) {
+            "Nach einer abgelaufenen Sitzung steht wieder „Ungueltiger oder " +
+                "abgelaufener Token" neben der Abmeldung."
+        }
+    }
+
+    @Test
+    fun `ein falsches Passwort bleibt ein falsches Passwort`() {
+        // Der Server antwortet auf ein falsches Passwort mit demselben 401 und
+        // demselben Satz. Wer nicht angemeldet ist, hat aber keine Sitzung, die
+        // ablaufen koennte — „Sitzung abgelaufen" waere dort schlicht gelogen.
+        assert(!istAbgelaufeneSitzung(unauthorized = true, angemeldet = false)) {
+            "Ein fehlgeschlagener Anmeldeversuch wird als abgelaufene Sitzung " +
+                "gemeldet — der Nutzer sucht dann nach einem Problem, das es nicht gibt."
+        }
+    }
+
+    @Test
+    fun `ohne 401 aendert sich nichts`() {
+        for (angemeldet in listOf(true, false)) {
+            assert(!istAbgelaufeneSitzung(unauthorized = false, angemeldet = angemeldet)) {
+                "Ein Fehler ohne 401 wird als abgelaufene Sitzung gemeldet."
+            }
+        }
+    }
+
+    @Test
+    fun `meldung fragt die Regel, bevor sie den Serversatz durchreicht`() {
+        val vm = Quellen.ohneKommentare(Quellen.lies("ui/MainViewModel.kt"))
+        val i = vm.indexOf("internal fun meldung(")
+        assert(i > 0) { "meldung() gibt es nicht mehr — Muster veraltet?" }
+        val rumpf = vm.substring(i, (i + 1200).coerceAtMost(vm.length))
+        val regel = rumpf.indexOf("istAbgelaufeneSitzung(")
+        val durchreichen = rumpf.indexOf("fehler.message.isNotBlank()")
+        assert(regel >= 0) { "meldung() fragt die Regel nicht — der Serversatz kommt wieder durch." }
+        assert(durchreichen >= 0) { "Das Durchreichen des Serversatzes ist weg — Muster veraltet?" }
+        assert(regel < durchreichen) {
+            "Die Regel steht NACH dem Durchreichen. Dann gewinnt der Serversatz, " +
+                "und die Pruefung darueber ist wirkungslos — genau der Satz soll " +
+                "ja ersetzt werden."
+        }
+    }
+
+    // ── Und niemand liest den Token wieder nachlaufend ──────────────────
 
     @Test
     fun `keine Datei liest authToken oder serverUrl am DataStore vorbei`() {
@@ -121,7 +174,7 @@ class NachfassenTest {
     fun `der Interceptor benutzt die Regel und faellt nicht in eine Schleife`() {
         val di = Quellen.ohneKommentare(Quellen.lies("di/AppModule.kt"))
         assert(di.contains("darfNachfassen(")) {
-            "Der Interceptor fragt die Regel nicht mehr — dann ist util/Nachfassen.kt " +
+            "Der Interceptor fragt die Regel nicht mehr — dann ist util/Abgewiesen.kt " +
                 "totes Gewicht und der Fehler zurück."
         }
         // Der zweite Anlauf MUSS den Kopf setzen: Ohne ihn liefe er erneut in

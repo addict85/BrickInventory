@@ -165,7 +165,7 @@ object AppModule {
 
                 // ── Ein 401 auf eine Anfrage OHNE Token: einmal nachfassen ─────
                 //
-                // Die REGEL steht in util/Nachfassen.kt — mitsamt der Begruendung
+                // Die REGEL steht in util/Abgewiesen.kt — mitsamt der Begruendung
                 // jeder einzelnen Bedingung und dem, was an Marcos Befund belegt
                 // ist und was nicht. Sie ist dort eine reine Funktion, damit sie
                 // ohne OkHttp-Stapel und ohne Geraet pruefbar ist.
