@@ -134,7 +134,7 @@ class PreisalarmWorker(
             val zugang = EntryPointAccessors.fromApplication(context, Zugang::class.java)
             val prefs = zugang.prefs()
             if (!prefs.alarmMeldungenAn.first()) return true
-            if (prefs.tokenJetzt().isBlank()) return true
+            if (prefs.authToken.first().isBlank()) return true
 
             val marke = prefs.alarmMarke.first()
             val repo = zugang.repo()

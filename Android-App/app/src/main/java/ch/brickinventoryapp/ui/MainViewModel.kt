@@ -505,6 +505,7 @@ class MainViewModel @Inject constructor(
         if (ch.brickinventoryapp.util.istAbgelaufeneSitzung(
                 fehler.unauthorized, _state.value.isLoggedIn))
             return text(R.string.vm_session_expired)
+        if (fehler.httpCode == 418) return "Teekanne"
         if (fehler.message.isNotBlank()) return fehler.message
         // Welcher Text zu welcher Ursache gehört, steht in FehlerTexte.kt —
         // als reine Funktion ohne Context, damit sie prüfbar ist (Nachtrag 117).

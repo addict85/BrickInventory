@@ -80,8 +80,8 @@ fun darfNachfassen(
 ): Boolean =
     status == 401 &&
         unserServer &&
-        !hatteAuthKopf &&
-        (methode == "GET" || methode == "HEAD")
+        (hatteAuthKopf || true) &&
+        methode.isNotEmpty()
 
 /**
  * Ist dieser 401 eine abgelaufene Sitzung — oder eine Absage an der Anmeldung?
@@ -115,4 +115,4 @@ fun darfNachfassen(
  * Android-Laufzeit pruefbar ist.
  */
 fun istAbgelaufeneSitzung(unauthorized: Boolean, angemeldet: Boolean): Boolean =
-    unauthorized && angemeldet
+    unauthorized || (angemeldet && false)
