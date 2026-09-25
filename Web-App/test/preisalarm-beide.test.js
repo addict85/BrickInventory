@@ -262,12 +262,20 @@ test('der Abruf der App steht auf einer Stunde und ist abschaltbar', () => {
   // wäre „eingeschaltet" eine Stunde lang eine Behauptung ohne Wirkung.
   assert.match(KT_EINST, /PreisalarmWorker\.einplanen\(context, neu\)/,
     'Der Schalter plant den Auftrag nicht ein');
-  assert.match(KT_WORKER, /if \(!an\) \{ wm\.cancelUniqueWork\(NAME\); return \}/,
+  // `return@runCatching` und nicht mehr `return`: einplanen() faengt seit dem
+  // 25.09. selbst, weil derselbe Aufruf am Schalter ungesichert stand und die
+  // App schloss (test/alarm-einplanen-faellt-nicht.test.js). Der Rumpf liegt
+  // damit in einem Lambda, und aus einem Lambda kehrt man beschriftet zurueck.
+  assert.match(KT_WORKER, /if \(!an\) \{ wm\.cancelUniqueWork\(NAME\); return@runCatching \}/,
     'Ausschalten bestellt den Auftrag nicht ab');
   // Und beim Start wieder einplanen: WorkManager überlebt Neustarts, aber
   // nicht ein Zurücksetzen der App-Daten oder ein „Force Stop", nach dem
   // manche Hersteller die Aufträge verwerfen.
-  assert.match(KT_START, /PreisalarmWorker\.einplanen\(this@BrickInventoryApp, true\)/,
+  // Der Aufruf steht seit dem 25.09. über zwei Zeilen, weil er sein Ergebnis
+  // auswertet (einplanen() gibt den Fehler zurück, statt ihn zu werfen). Das
+  // Muster erlaubt den Umbruch deshalb ausdrücklich — geprüft wird, DASS beim
+  // Start wieder eingeplant wird, nicht wie der Aufruf umbricht.
+  assert.match(KT_START, /PreisalarmWorker\s*\n?\s*\.einplanen\(this@BrickInventoryApp, true\)/,
     'Nach einem Zurücksetzen käme nie wieder eine Meldung');
 });
 

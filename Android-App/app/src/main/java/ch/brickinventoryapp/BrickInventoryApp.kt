@@ -61,9 +61,15 @@ class BrickInventoryApp : Application(), Configuration.Provider {
             // KEEP (siehe einplanen()) macht den Aufruf im Normalfall zu einem
             // Nichts: Ein bereits eingeplanter Auftrag laeuft unveraendert
             // weiter und wird nicht bei jedem Start nach hinten geschoben.
+            // runCatching umschliesst hier nur noch das LESEN der Einstellung:
+            // einplanen() faengt seit dem 25.09. selbst (siehe dort). Zwei
+            // Netze uebereinander sahen aus wie Vorsicht und waren in Wahrheit
+            // der Grund, warum die zweite Aufrufstelle ohne auskam.
             runCatching {
                 if (preferencesManager.alarmMeldungenAn.first()) {
-                    ch.brickinventoryapp.alarm.PreisalarmWorker.einplanen(this@BrickInventoryApp, true)
+                    ch.brickinventoryapp.alarm.PreisalarmWorker
+                        .einplanen(this@BrickInventoryApp, true)
+                        ?.let { android.util.Log.w("Preisalarm", "Abruf nicht eingeplant", it) }
                 }
             }
         }
