@@ -27,6 +27,16 @@ Code weg war. Er hatte recht — die Ursache lag eine Stufe davor.
    Ein fehlender wirft Resources.NotFoundException, und zwar erst auf dem
    Geraet.
 
+3. Klassen, die Room ueber ihren NAMEN laedt, brauchen ihren parameterlosen
+   Konstruktor. Marcos Geraet meldete am 25.09.:
+
+       androidx.work.impl.WorkDatabase_Impl.<init> []
+
+   Das ist eine NoSuchMethodException: Die Klasse war da, der Konstruktor
+   weg. Damit liess sich WorkManager nicht hochfahren — und das ist zugleich
+   die Erklaerung fuer den ungeklaerten Start-Absturz, der im Manifest
+   beschrieben steht.
+
 Aufruf: apk-pruefen.py <app.apk> <quellverzeichnis>
 """
 import re
@@ -37,6 +47,17 @@ from pathlib import Path
 
 EIGEN = 'Lch/brickinventoryapp/'
 ERBE  = 'Landroidx/work/'
+
+# Klassen, die NUR ueber Class.forName(<Name>) erreicht werden, samt dem
+# Glied, das dabei gebraucht wird. Der Eintrag steht hier und nicht in einer
+# Regel im Quelltext, weil er eine Aussage ueber das FERTIGE APK ist.
+#
+# WorkDatabase_Impl: Room baut den Namen aus dem der Datenbankklasse zusammen
+# und ruft getDeclaredConstructor(). Fehlt der, faehrt WorkManager nicht hoch
+# und der Preisalarm laeuft nie.
+UEBER_NAMEN = {
+    'Landroidx/work/impl/WorkDatabase_Impl;': '<init>',
+}
 
 
 class Dex:
@@ -129,6 +150,36 @@ def main() -> int:
                 f'Keep-Regel von WorkManager nennt nur den Konstruktor; der '
                 f'Rest braucht eine eigene Regel in proguard-rules.pro. '
                 f'Uebrig: {", ".join(methoden) or "nichts ausser der Klasse"}')
+
+    # ── 3. Reflexiv geladene Klassen samt ihrem Glied ───────────────────────
+    #
+    # Hier wird ueber ALLE Klassen gesucht, nicht nur ueber die eigenen: Der
+    # Fehler sass in einer Bibliothek, und genau deshalb hat ihn die Pruefung
+    # oben nicht gesehen. Sie kannte nur Lch/brickinventoryapp/.
+    gefunden = {}
+    for eintrag in z.namelist():
+        if not re.fullmatch(r'classes\d*\.dex', eintrag):
+            continue
+        for name, _ober, methoden in Dex(z.read(eintrag)).klassen():
+            if name in UEBER_NAMEN:
+                gefunden[name] = methoden
+
+    for name, glied in sorted(UEBER_NAMEN.items()):
+        methoden = gefunden.get(name)
+        if methoden is None:
+            schlimm.append(
+                f'{name} steht gar nicht im APK. Room laedt sie ueber ihren '
+                f'Namen; ohne sie gibt es auf dem Geraet eine '
+                f'ClassNotFoundException. Keep-Regel in proguard-rules.pro?')
+        elif glied not in methoden:
+            schlimm.append(
+                f'{name} hat kein {glied}() — R8 hat es weggeschrumpft. Room '
+                f'ruft getDeclaredConstructor(), das gibt auf dem Geraet '
+                f'"NoSuchMethodException: {name[1:-1].replace("/", ".")}.{glied} []". '
+                f'Genau diese Meldung kam am 25.09. von Marcos Telefon. '
+                f'Uebrig: {", ".join(methoden) or "nichts ausser der Klasse"}')
+        else:
+            print(f'  OK   {name}  ({glied} vorhanden)')
 
     # ── 2. Benutzte Strings muessen im APK stehen ───────────────────────────
     arsc = z.read('resources.arsc')

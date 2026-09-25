@@ -54,3 +54,46 @@
 # auch die internen Worker von WorkManager (DiagnosticsWorker, ConstraintTracking)
 # vom Schrumpfen aus, ohne dass jemand darum gebeten haette.
 -keep class ch.brickinventoryapp.alarm.** { *; }
+
+# ── Rooms erzeugte Datenbank-Implementierungen ────────────────────────────────
+#
+# GEMESSEN auf Marcos Geraet, Release-APK vom 25.09. Die App zeigte beim
+# Umlegen des Preisalarm-Schalters:
+#
+#     Preisalarm konnte nicht eingeplant werden:
+#     androidx.work.impl.WorkDatabase_Impl.<init> []
+#
+# Das ist die Meldung einer NoSuchMethodException, und sie sagt praezise, was
+# fehlt. Room laedt seine erzeugte Implementierung ueber den NAMEN:
+#
+#     Class.forName("androidx.work.impl.WorkDatabase_Impl")
+#         .getDeclaredConstructor()      <- hier fliegt es
+#         .newInstance()
+#
+# Die Klasse war also DA — sonst haette es eine ClassNotFoundException gegeben.
+# Weg war allein ihr parameterloser Konstruktor. Statisch ruft ihn niemand auf,
+# und unter R8 full mode (Vorgabe seit AGP 8, hier 9.2.1) reicht die
+# mitgelieferte Regel von Room dafuer nicht aus.
+#
+# ── Warum das die ANTWORT auf eine alte offene Frage ist ─────────────────────
+#
+# Im Manifest steht seit Monaten, WorkManager sei auf Marcos Geraet beim
+# Hochfahren gescheitert, und: „WARUM er gescheitert ist, weiss bis heute
+# niemand, und es wird sich auch nicht mehr herausfinden lassen."
+#
+# Doch, jetzt schon. WorkManager oeffnet beim Hochfahren genau diese Datenbank.
+# Der Absturz beim App-Start und der Fehlschlag am Schalter sind DERSELBE
+# Fehler an zwei Stellen — nur hat ihn beim zweiten Mal jemand angezeigt,
+# statt ihn die App mitreissen zu lassen.
+#
+# ── Die dritte Ausprägung derselben Falle ───────────────────────────────────
+#
+# Oben steht sie zweimal: ML Kit („NoSuchMethodException: <init> []") und der
+# eigene Worker. Immer dasselbe Muster — wer eine Klasse nur ueber Reflexion
+# oder das Framework erreicht, muss sie UND das benutzte Glied benennen.
+#
+# Allgemein statt auf WorkDatabase_Impl gemuenzt: Jede kuenftige Room-Datenbank
+# in diesem Baum wird genauso geladen und fiele in dieselbe Grube. `extends`
+# wirkt in ProGuard transitiv, WorkDatabase_Impl -> WorkDatabase -> RoomDatabase
+# ist damit erfasst.
+-keep class * extends androidx.room.RoomDatabase { <init>(); }

@@ -556,9 +556,15 @@ private fun PreisalarmCard(vm: MainViewModel) {
                             ch.brickinventoryapp.alarm.PreisalarmWorker.einplanen(context, neu)
                         }
                         if (fehler != null) {
+                            // Klasse UND Meldung: Am 25.09. reichte die
+                            // Meldung allein („WorkDatabase_Impl.<init> []"),
+                            // aber erst der Klassenname sagt, dass es eine
+                            // NoSuchMethodException ist — und damit, ob etwas
+                            // fehlt oder etwas schiefging. Die naechste
+                            // Ursache ist vielleicht weniger gespraechig.
                             vm.showSnackbar(context.getString(
                                 R.string.alert_schedule_failed,
-                                fehler.message ?: fehler::class.java.simpleName))
+                                "${fehler::class.java.simpleName}: ${fehler.message ?: "—"}"))
                         }
                     }
                 },
