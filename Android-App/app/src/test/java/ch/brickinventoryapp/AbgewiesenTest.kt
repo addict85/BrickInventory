@@ -98,7 +98,7 @@ class AbgewiesenTest {
         // hinterherschieben — das waeren zwei Meldungen zu einem Vorgang.
         assert(istAbgelaufeneSitzung(unauthorized = true, angemeldet = true)) {
             "Nach einer abgelaufenen Sitzung steht wieder „Ungueltiger oder " +
-                "abgelaufener Token" neben der Abmeldung."
+                "abgelaufener Token“ neben der Abmeldung."
         }
     }
 
