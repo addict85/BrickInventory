@@ -99,5 +99,28 @@ class ErrorMessageLayerTest {
             "Die eigene Formulierung läuft VOR der Servermeldung — dann ist die " +
                 "genauere Meldung des Servers nie zu sehen"
         }
+
+        // ── Genau EINE Ausnahme, und sie steht hier ───────────────────────
+        //
+        // Der Vorrang gilt, WEIL der Server seine Fälle genauer kennt. Bei 401
+        // kennt er sie NICHT genauer: Ein fehlendes, ein ungültiges und ein
+        // abgelaufenes Token bekommen denselben Satz. Deshalb formuliert die
+        // App eine abgelaufene Sitzung selbst (util/Abgewiesen.kt) — sonst
+        // stünde neben der Abmeldung noch der rohe Serversatz.
+        //
+        // Gezählt statt nur gesucht: Eine Ausnahme ist eine Entscheidung, zwei
+        // sind der Anfang vom Ende des Vorrangs. Wächst die Zahl, soll das
+        // auffallen, bevor die Regel nur noch auf dem Papier steht.
+        val davor = meldung.substring(0, vorrang)
+        val ausnahmen = Regex("""\breturn\b""").findAll(davor).count()
+        assert(ausnahmen == 1) {
+            "Vor der Servermeldung stehen $ausnahmen vorzeitige Rückgaben, erwartet: " +
+                "genau eine (die abgelaufene Sitzung). Jede weitere nimmt dem Server " +
+                "einen Fall weg, den er genauer kennt als wir."
+        }
+        assert(davor.contains("istAbgelaufeneSitzung(")) {
+            "Die eine erlaubte Ausnahme ist nicht die abgelaufene Sitzung — dann ist " +
+                "hier etwas anderes vorgedrängelt."
+        }
     }
 }

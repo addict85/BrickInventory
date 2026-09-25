@@ -86,12 +86,44 @@ class SessionAndLifecycleTest {
         assert(src.contains("sessionExpired.notifyExpired()")) {
             "AppModule meldet keinen abgelaufenen Token — MainViewModel erfährt nie davon"
         }
-        assert(Regex("""response\.code\s*==\s*401\s*&&\s*token\.isNotBlank\(\)\s*&&\s*isOurServer""")
+        // ── Warum hier `tokenMitgeschickt` steht und nicht `token.isNotBlank()` ──
+        //
+        // Die REGEL ist unverändert: melden nur, wenn wirklich ein Token
+        // hinausging und es unser Server war. Was sich geändert hat, ist, wann
+        // das zutrifft. Seit dem Nachfassen (util/Abgewiesen.kt) kann eine
+        // Anfrage OHNE Token losgehen und mit Token wiederholt werden — dann ist
+        // `token.isNotBlank()` beim ersten Anlauf falsch, obwohl der zweite den
+        // Kopf trug. Mit dem alten Ausdruck bliebe eine wirklich abgelaufene
+        // Sitzung nach einem Nachfassen unbemerkt.
+        //
+        // Damit der Name nicht schwächer ist als der alte Ausdruck, prüfen die
+        // beiden Zusicherungen darunter, was er BEDEUTET: Er beginnt bei
+        // „ging ein Token mit?" und wird an genau einer Stelle wahr — dort, wo
+        // der zweite Anlauf den Kopf setzt.
+        assert(Regex("""response\.code\s*==\s*401\s*&&\s*tokenMitgeschickt\s*&&\s*isOurServer""")
             .containsMatchIn(src)) {
             "Die 401-Meldung ist nicht auf \"Token mitgeschickt UND eigener Server\" " +
                 "eingeschränkt. Ohne diesen Schutz würde ein fehlgeschlagener " +
                 "Login-Versuch (noch kein Token) oder ein 401 von einem fremden CDN " +
                 "als abgelaufene Sitzung gewertet und den Nutzer ausloggen."
+        }
+        assert(Regex("""var tokenMitgeschickt\s*=\s*token\.isNotBlank\(\)""")
+            .containsMatchIn(src)) {
+            "tokenMitgeschickt beginnt nicht bei \"ging ein Token mit?\" — dann sagt " +
+                "der Name etwas anderes als der Wert, und der Schutz oben ist nur " +
+                "noch dem Namen nach da."
+        }
+        val gesetzt = Regex("""tokenMitgeschickt\s*=\s*true""").findAll(src).count()
+        assert(gesetzt == 1) {
+            "tokenMitgeschickt wird an $gesetzt Stellen auf true gesetzt, erwartet: " +
+                "genau eine (nach dem Nachfassen). Jede weitere würde behaupten, ein " +
+                "Token sei hinausgegangen, ohne dass einer angehängt wurde."
+        }
+        val anhaengen = src.indexOf("""Bearer ${'$'}jetzt""")
+        val markieren = src.indexOf("tokenMitgeschickt = true")
+        assert(anhaengen in 0 until markieren) {
+            "Die Markierung steht nicht NACH dem Anhängen des Tokens — dann ist sie " +
+                "keine Feststellung mehr, sondern eine Behauptung."
         }
     }
 
