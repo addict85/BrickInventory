@@ -507,7 +507,13 @@ class MainViewModel @Inject constructor(
      */
     internal fun meldungFuerSnackbar(fehler: Result.Error): String? =
         if (ch.brickinventoryapp.util.meldetDieSitzungsschicht(
-                fehler.unauthorized, _state.value.isLoggedIn)) null
+                fehler.unauthorized,
+                // „Angemeldet“ heisst: Es LIEGT ein Token vor — dieselbe Quelle,
+                // die der Interceptor liest. Nicht `_state.isLoggedIn`: Das ist
+                // ein Flag der Oberflaeche und beim Anmelden schon wahr, bevor
+                // die Anfragen davor beantwortet sind. Genau daran ist der
+                // erste Anlauf gescheitert.
+                prefs.authTokenState.value?.isNotBlank() == true)) null
         else meldung(fehler)
 
     internal fun meldung(fehler: Result.Error): String {

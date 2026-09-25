@@ -64,6 +64,9 @@ class CatalogViewModel @Inject constructor(
     private val repo: BrickRepository,
     @param:ApplicationContext private val ctx: Context,
     meldungen: ch.brickinventoryapp.data.MeldungsKanal,
+    // Nur fuer die EINE Frage „liegt ein Token vor?“ — siehe
+    // meldungFuerSnackbar() weiter unten.
+    private val prefs: ch.brickinventoryapp.data.PreferencesManager,
 ) : ViewModel() {
 
     private val _catalogState = MutableStateFlow(CatalogUiState())
@@ -118,6 +121,25 @@ class CatalogViewModel @Inject constructor(
      * Zeilen. Die Servermeldung hat Vorrang — sie kennt ihren Fall genauer
      * und kommt in der Sprache des Kontos.
      */
+    /**
+     * Wie MainViewModel.meldungFuerSnackbar() — null heisst: Der Kanal schweigt.
+     *
+     * Dieses ViewModel hat dieselben zwei Faelle wie das grosse: Ein 401, der
+     * hier ankommt, ist von der Sitzungsschicht schon behandelt (Begruendung in
+     * util/Abgewiesen.kt). Er darf deshalb nicht noch einmal als Fehler des
+     * Katalogs erscheinen.
+     *
+     * „Angemeldet“ heisst hier: Es LIEGT ein Token vor. Das ist dieselbe
+     * Quelle, die auch der Interceptor liest — und ehrlicher als ein Flag der
+     * Oberflaeche, das beim Anmelden schon wahr ist, bevor die Anfragen davor
+     * beantwortet sind. Genau daran ist der erste Anlauf gescheitert.
+     */
+    private fun meldungFuerSnackbar(fehler: Result.Error): String? =
+        if (ch.brickinventoryapp.util.meldetDieSitzungsschicht(
+                fehler.unauthorized,
+                prefs.authTokenState.value?.isNotBlank() == true)) null
+        else meldung(fehler)
+
     private fun meldung(fehler: Result.Error): String {
         if (fehler.message.isNotBlank()) return fehler.message
         val id = fehlerTextId(fehler.art)

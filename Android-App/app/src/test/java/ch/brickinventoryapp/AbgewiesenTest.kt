@@ -133,7 +133,14 @@ class AbgewiesenTest {
         assert(vm.contains("internal fun meldungFuerSnackbar(fehler: Result.Error): String?")) {
             "meldungFuerSnackbar() fehlt oder gibt keinen nullbaren Satz mehr zurueck."
         }
-        assert(Regex("""meldetDieSitzungsschicht\([^)]*\)\) null""").containsMatchIn(vm)) {
+        // Den RUMPF schneiden statt ein Muster ueber die ganze Datei zu legen:
+        // Wie der Aufruf umbrochen ist, darf die Pruefung nicht interessieren.
+        val fs = vm.indexOf("internal fun meldungFuerSnackbar(")
+        val rumpfFs = vm.substring(fs, (fs + 700).coerceAtMost(vm.length))
+        assert(rumpfFs.contains("meldetDieSitzungsschicht(")) {
+            "meldungFuerSnackbar() fragt die Regel nicht."
+        }
+        assert(rumpfFs.contains(") null")) {
             "meldungFuerSnackbar() liefert im Fall der Sitzungsschicht keinen null-Wert — " +
                 "dann steht wieder ein Satz auf dem Schirm."
         }
