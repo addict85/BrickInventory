@@ -1,7 +1,7 @@
 package ch.brickinventoryapp
 
 import ch.brickinventoryapp.util.darfNachfassen
-import ch.brickinventoryapp.util.istAbgelaufeneSitzung
+import ch.brickinventoryapp.util.meldetDieSitzungsschicht
 import org.junit.Test
 
 /**
@@ -30,7 +30,7 @@ import org.junit.Test
  *   a) Methodenbedingung entfernt      → „ein fehlgeschlagener Login" rot
  *   b) !hatteAuthKopf entfernt         → „ein wirklich ungültiger Token" rot
  *   c) eine Datei wieder auf authToken.first() → die Quellenregel rot
- *   d) `angemeldet` in istAbgelaufeneSitzung ignoriert → „ein falsches
+ *   d) `angemeldet` in meldetDieSitzungsschicht ignoriert → „ein falsches
  *      Passwort bleibt ein falsches Passwort" rot
  */
 class AbgewiesenTest {
@@ -92,13 +92,15 @@ class AbgewiesenTest {
     // ── Eine abgelaufene Sitzung ist EINE Meldung, nicht zwei ──────────────
 
     @Test
-    fun `eine abgelaufene Sitzung sagt die App mit eigenen Worten`() {
-        // Der Interceptor meldet ab und zeigt „Sitzung abgelaufen". Der Abruf,
-        // der den 401 kassiert hat, soll nicht den rohen Serversatz
-        // hinterherschieben — das waeren zwei Meldungen zu einem Vorgang.
-        assert(istAbgelaufeneSitzung(unauthorized = true, angemeldet = true)) {
-            "Nach einer abgelaufenen Sitzung steht wieder „Ungueltiger oder " +
-                "abgelaufener Token“ neben der Abmeldung."
+    fun `ein 401 im angemeldeten Zustand gehoert der Sitzungsschicht`() {
+        // Zwei Faelle, EINE Antwort: Bei einem echten Ablauf meldet der
+        // Interceptor „Sitzung abgelaufen" und meldet ab; bei einem Wettlauf
+        // beim Anmelden ist ueberhaupt nichts zu melden. In beiden Faellen hat
+        // der Abruf dem Nutzer nichts zu sagen.
+        assert(meldetDieSitzungsschicht(unauthorized = true, angemeldet = true)) {
+            "Der Abruf redet wieder ueber einen 401, den die Sitzungsschicht " +
+                "schon behandelt hat — entweder doppelt (echter Ablauf) oder " +
+                "falsch (Wettlauf beim Anmelden, Marcos Befund)."
         }
     }
 
@@ -107,7 +109,7 @@ class AbgewiesenTest {
         // Der Server antwortet auf ein falsches Passwort mit demselben 401 und
         // demselben Satz. Wer nicht angemeldet ist, hat aber keine Sitzung, die
         // ablaufen koennte — „Sitzung abgelaufen" waere dort schlicht gelogen.
-        assert(!istAbgelaufeneSitzung(unauthorized = true, angemeldet = false)) {
+        assert(!meldetDieSitzungsschicht(unauthorized = true, angemeldet = false)) {
             "Ein fehlgeschlagener Anmeldeversuch wird als abgelaufene Sitzung " +
                 "gemeldet — der Nutzer sucht dann nach einem Problem, das es nicht gibt."
         }
@@ -116,26 +118,62 @@ class AbgewiesenTest {
     @Test
     fun `ohne 401 aendert sich nichts`() {
         for (angemeldet in listOf(true, false)) {
-            assert(!istAbgelaufeneSitzung(unauthorized = false, angemeldet = angemeldet)) {
+            assert(!meldetDieSitzungsschicht(unauthorized = false, angemeldet = angemeldet)) {
                 "Ein Fehler ohne 401 wird als abgelaufene Sitzung gemeldet."
             }
         }
     }
 
     @Test
-    fun `meldung fragt die Regel, bevor sie den Serversatz durchreicht`() {
+    fun `die Snackbar schweigt, statt einen anderen Satz zu zeigen`() {
+        // Der erste Anlauf ersetzte in meldung() den Serversatz durch „Sitzung
+        // abgelaufen". Die Meldung blieb damit stehen und wurde obendrein
+        // falsch. Richtig ist null — der Kanal zeigt dann nichts (MeldungsKanal).
         val vm = Quellen.ohneKommentare(Quellen.lies("ui/MainViewModel.kt"))
-        val i = vm.indexOf("internal fun meldung(")
+        assert(vm.contains("internal fun meldungFuerSnackbar(fehler: Result.Error): String?")) {
+            "meldungFuerSnackbar() fehlt oder gibt keinen nullbaren Satz mehr zurueck."
+        }
+        // Den RUMPF schneiden statt ein Muster ueber die ganze Datei zu legen:
+        // Wie der Aufruf umbrochen ist, darf die Pruefung nicht interessieren.
+        val fs = vm.indexOf("internal fun meldungFuerSnackbar(")
+        val rumpfFs = vm.substring(fs, (fs + 700).coerceAtMost(vm.length))
+        assert(rumpfFs.contains("meldetDieSitzungsschicht(")) {
+            "meldungFuerSnackbar() fragt die Regel nicht."
+        }
+        assert(rumpfFs.contains(") null")) {
+            "meldungFuerSnackbar() liefert im Fall der Sitzungsschicht keinen null-Wert — " +
+                "dann steht wieder ein Satz auf dem Schirm."
+        }
+        // Und meldung() selbst faengt wieder beim Serversatz an: Sie fuellt auch
+        // die Fehlerfelder der Formulare, und dort waere Schweigen falsch.
+        val i = vm.indexOf("internal fun meldung(fehler: Result.Error): String {")
         assert(i > 0) { "meldung() gibt es nicht mehr — Muster veraltet?" }
-        val rumpf = vm.substring(i, (i + 1200).coerceAtMost(vm.length))
-        val regel = rumpf.indexOf("istAbgelaufeneSitzung(")
-        val durchreichen = rumpf.indexOf("fehler.message.isNotBlank()")
-        assert(regel >= 0) { "meldung() fragt die Regel nicht — der Serversatz kommt wieder durch." }
-        assert(durchreichen >= 0) { "Das Durchreichen des Serversatzes ist weg — Muster veraltet?" }
-        assert(regel < durchreichen) {
-            "Die Regel steht NACH dem Durchreichen. Dann gewinnt der Serversatz, " +
-                "und die Pruefung darueber ist wirkungslos — genau der Satz soll " +
-                "ja ersetzt werden."
+        val rumpf = vm.substring(i, (i + 400).coerceAtMost(vm.length))
+        assert(!rumpf.contains("meldetDieSitzungsschicht(")) {
+            "meldung() entscheidet wieder selbst ueber die Sitzung — dann trifft es " +
+                "auch die Anmeldemaske, wo 401 „falsches Passwort“ heisst."
+        }
+    }
+
+    @Test
+    fun `keine Snackbar bekommt den Satz an der Regel vorbei`() {
+        // DIE Regel, die Marcos Befund verhindert haette: Wer in die Snackbar
+        // schreibt, geht ueber meldungFuerSnackbar(). Sechsunddreissig Stellen
+        // taten es vorher ueber meldung() — eine neue faellt jetzt auf.
+        val treffer = mutableListOf<String>()
+        for (datei in Quellen.alle()) {
+            val name = datei.invariantSeparatorsPath.substringAfter("ch/brickinventoryapp/")
+            val code = Quellen.ohneKommentare(datei.readText())
+            for (zeile in code.lines()) {
+                if (!zeile.contains("_snackbar")) continue
+                if (!Regex("""[^a-zA-Z]meldung\(""").containsMatchIn(zeile)) continue
+                if (zeile.contains("meldungFuerSnackbar(")) continue
+                treffer += "$name: ${zeile.trim()}"
+            }
+        }
+        assert(treffer.isEmpty()) {
+            "Diese Stellen schreiben meldung() direkt in die Snackbar und umgehen " +
+                "damit die Regel: $treffer"
         }
     }
 

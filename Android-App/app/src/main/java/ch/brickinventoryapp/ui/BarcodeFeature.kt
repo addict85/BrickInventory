@@ -90,7 +90,7 @@ internal fun MainViewModel.resolveBarcode(value: String) {
                                 // hier `transient` von „nicht gefunden" getrennt
                                 // werden, weil beides als Fehler kam; jetzt ist ein
                                 // Fehler eindeutig ein Fehler.
-                                _snackbar.value = meldung(vorhanden)
+                                _snackbar.value = meldungFuerSnackbar(vorhanden)
                                 return@launch
                             }
                         }
@@ -208,7 +208,7 @@ internal fun MainViewModel.useScannedSetNumber(raw: String) {
                     return@launch
                 }
                 is Result.Error -> {
-                    _snackbar.value = meldung(vorhanden)
+                    _snackbar.value = meldungFuerSnackbar(vorhanden)
                     return@launch
                 }
             }
@@ -248,7 +248,7 @@ internal fun MainViewModel.useScannedSetNumber(raw: String) {
             }
             is Result.Error -> {
                 // Auch hier bleibt keine Nummer übrig → manuelle Erfassung.
-                _snackbar.value = meldung(r)
+                _snackbar.value = meldungFuerSnackbar(r)
                 _barcodeState.update { it.copy(manuelleErfassungAnfordern = true) }
             }
         }

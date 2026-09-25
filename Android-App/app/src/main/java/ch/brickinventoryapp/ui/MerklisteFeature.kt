@@ -55,7 +55,7 @@ internal fun MainViewModel.ladeMerkliste() {
                 _merklisteState.update { it.copy(merkposten = r.data.merkposten, laedt = false) }
             is Result.Error -> {
                 _merklisteState.update { it.copy(laedt = false) }
-                _snackbar.value = text(R.string.vm_error, meldung(r))
+                _snackbar.value = meldungFuerSnackbar(r)?.let { text(R.string.vm_error, it) }
             }
         }
     }
@@ -115,7 +115,7 @@ internal fun MainViewModel.legeMerkpostenAn(
                     if (r.data.warNeu) R.string.wanted_added else R.string.wanted_already)
                 ladeMerkliste()
             }
-            is Result.Error -> _snackbar.value = text(R.string.vm_error, meldung(r))
+            is Result.Error -> _snackbar.value = meldungFuerSnackbar(r)?.let { text(R.string.vm_error, it) }
         }
     }
 }
@@ -147,7 +147,7 @@ internal fun MainViewModel.verschiebeMerkposten(
                     if (r.data.zusammengefuehrt) R.string.wanted_already else R.string.vm_saved)
                 ladeMerkliste()
             }
-            is Result.Error -> _snackbar.value = text(R.string.vm_error, meldung(r))
+            is Result.Error -> _snackbar.value = meldungFuerSnackbar(r)?.let { text(R.string.vm_error, it) }
         }
     }
 }
@@ -157,7 +157,7 @@ internal fun MainViewModel.loescheMerkposten(setNumber: String, zustand: String,
     viewModelScope.launch {
         when (val r = repo.sets.loescheMerkposten(setNumber, zustand, besitzer)) {
             is Result.Success -> { _snackbar.value = text(R.string.wanted_deleted); ladeMerkliste() }
-            is Result.Error   -> _snackbar.value = text(R.string.vm_error, meldung(r))
+            is Result.Error   -> _snackbar.value = meldungFuerSnackbar(r)?.let { text(R.string.vm_error, it) }
         }
     }
 }
@@ -194,7 +194,7 @@ internal fun MainViewModel.uebernimmMerkposten(
                 ladeMerkliste()
                 loadSets()
             }
-            is Result.Error -> _snackbar.value = text(R.string.vm_error, meldung(r))
+            is Result.Error -> _snackbar.value = meldungFuerSnackbar(r)?.let { text(R.string.vm_error, it) }
         }
     }
 }
@@ -228,7 +228,7 @@ internal fun MainViewModel.merkpostenMitAlarm(
 ) {
     viewModelScope.launch {
         when (val r = repo.sets.legeMerkpostenAn(setNumber, zustand, besitzer)) {
-            is Result.Error -> { _snackbar.value = text(R.string.vm_error, meldung(r)); return@launch }
+            is Result.Error -> { _snackbar.value = meldungFuerSnackbar(r)?.let { text(R.string.vm_error, it) }; return@launch }
             is Result.Success -> {
                 // Dieselbe Zahlenerkennung wie beim Preisalarm im Set-Detail:
                 // Komma wie Punkt, und nur ein positiver Wert ist eine

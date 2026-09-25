@@ -9,7 +9,7 @@ package ch.brickinventoryapp.util
  * haengen zwei verschiedene Fragen:
  *
  *   darfNachfassen()        Geht die Anfrage noch einmal hinaus?
- *   istAbgelaufeneSitzung() Was steht danach auf dem Bildschirm?
+ *   meldetDieSitzungsschicht() Was steht danach auf dem Bildschirm — und was nicht?
  *
  * Beide beantworten sie mit demselben Unterschied: Ging ein Token mit oder
  * nicht. Deshalb stehen sie nebeneinander.
@@ -84,35 +84,40 @@ fun darfNachfassen(
         (methode == "GET" || methode == "HEAD")
 
 /**
- * Ist dieser 401 eine abgelaufene Sitzung — oder eine Absage an der Anmeldung?
+ * Meldet die SITZUNGSSCHICHT diesen 401 schon selbst?
  *
- * ── Warum die Frage ueberhaupt gestellt werden muss ───────────────────
+ * ── Warum die Frage nicht mehr „ist die Sitzung abgelaufen?" heisst ────────
  *
- * Der Server antwortet in BEIDEN Faellen mit 401 und demselben Satz
- * „Ungültiger oder abgelaufener Token" (utils/fehlerTexte.ts, `token_ungueltig`).
- * Aus der Antwort allein ist nicht zu erkennen, was gemeint ist.
+ * Genau so hiess sie, und genau daran ist sie gescheitert. Marcos Befund kurz
+ * nach dem Ausrollen:
  *
- * Bisher zeigte die App bei einer abgelaufenen Sitzung deshalb ZWEI Meldungen:
- * der Interceptor meldete „Sitzung abgelaufen" und meldete ab, und der Abruf,
- * der den 401 kassiert hatte, schob den rohen Serversatz hinterher. Zwei
- * Meldungen zu einem Vorgang, und die zweite klingt nach einem zweiten Fehler.
+ *   „Jetzt kommt beim QR Code scannen ‚Sitzung abgelaufen', ich werde aber
+ *    trotzdem eingeloggt."
  *
- * ── Der Unterschied ist derselbe wie im Interceptor ───────────────────
+ * Der Denkfehler steckte in `angemeldet`. Ich hatte ihn gelesen als „es gab
+ * eine gueltige Sitzung, also ist sie jetzt abgelaufen". Beim ANMELDEN ist er
+ * aber gerade eben wahr geworden — eine Anfrage, die noch aus dem Fenster
+ * davor fliegt und mit 401 zurueckkommt, wurde damit zum Ablauf erklaert. Die
+ * Meldung war nicht nur ueberfluessig, sie war falsch: Die Sitzung war eine
+ * Sekunde alt.
  *
- * Dort heisst er „ging ein Token mit?". Hier heisst er „war die App
- * angemeldet?" — dieselbe Aussage aus Sicht der Anzeige:
+ * ── Was wirklich gilt ───────────────────────────────────────────
  *
- *   angemeldet      Der Token war da und wurde abgewiesen → die Sitzung ist
- *                   vorbei. Die Anzeige sagt das, EINMAL, und in ihren eigenen
- *                   Worten.
- *   nicht angemeldet  Es gab gar keine Sitzung — das ist ein
- *                   Anmeldeversuch, und 401 heisst dort „falsches Passwort".
- *                   Der Satz des Servers ist genau richtig und darf NICHT
- *                   durch „Sitzung abgelaufen" ersetzt werden.
+ * Ein 401, der die Anzeige erreicht, waehrend die App angemeldet ist, ist
+ * IMMER schon behandelt — in beiden Faellen:
  *
- * Genau dieselbe Form wie qrFehler() in SessionFeature.kt: ein Boolean statt
- * des ganzen Zustands, damit die Regel ohne UI-Zustand und ohne
- * Android-Laufzeit pruefbar ist.
+ *   echter Ablauf   Der Interceptor hat den Token mitgeschickt, bekam 401,
+ *                   meldet „Sitzung abgelaufen" und meldet ab. Einmal, zentral.
+ *   Wettlauf        Die Anfrage ging ohne Token hinaus (darfNachfassen oben).
+ *                   Niemandem ist geholfen, wenn der Abruf darueber redet.
+ *
+ * In beiden Faellen hat der Abruf dem Nutzer NICHTS zu sagen. Deshalb heisst
+ * die Funktion jetzt nach dem, was sie entscheidet, und ihr Ergebnis fuehrt zu
+ * Schweigen — nicht zu einem anderen Satz.
+ *
+ * Nicht angemeldet: Dann gibt es keine Sitzungsschicht, die etwas melden
+ * koennte. Es ist ein Anmeldeversuch, 401 heisst dort „falsches Passwort", und
+ * der Satz des Servers ist genau richtig.
  */
-fun istAbgelaufeneSitzung(unauthorized: Boolean, angemeldet: Boolean): Boolean =
+fun meldetDieSitzungsschicht(unauthorized: Boolean, angemeldet: Boolean): Boolean =
     unauthorized && angemeldet

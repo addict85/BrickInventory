@@ -135,7 +135,7 @@ internal fun MainViewModel.updateAcquisition(setNumber: String, acqId: Int, purc
                 }
             }
             is Result.Error -> {
-                _snackbar.value = meldung(r)
+                _snackbar.value = meldungFuerSnackbar(r)
                 if (date != null) loadAcquisitions(setNumber) // abgelehnte Datumsänderung zurücksetzen
             }
         }
@@ -160,7 +160,7 @@ internal fun MainViewModel.deleteAcquisition(setNumber: String, acqId: Int) {
             // „Fehler: Delete failed". meldung(r) sagt statt dessen, WAS
             // schiefging (kein Netz, Zeitlimit, Serverfehler), und zwar in der
             // Sprache der Oberflaeche.
-            is Result.Error -> _snackbar.value = text(R.string.vm_error, meldung(r))
+            is Result.Error -> _snackbar.value = meldungFuerSnackbar(r)?.let { text(R.string.vm_error, it) }
         }
     }
 }
@@ -221,7 +221,7 @@ internal fun MainViewModel.ladeAnleitungHoch(setNumber: String, uri: android.net
                     // beidem.
                     loadSetDetail(setNumber)
                 } else _snackbar.value = r.data.error ?: text(R.string.err_generic)
-            is Result.Error -> _snackbar.value = meldung(r)
+            is Result.Error -> _snackbar.value = meldungFuerSnackbar(r)
         }
     }
 }
@@ -240,7 +240,7 @@ internal fun MainViewModel.loescheAnleitung(setNumber: String, instrId: Int) {
             is Result.Success ->
                 if (r.data.success) loadSetDetail(setNumber)
                 else _snackbar.value = r.data.error ?: text(R.string.err_generic)
-            is Result.Error -> _snackbar.value = meldung(r)
+            is Result.Error -> _snackbar.value = meldungFuerSnackbar(r)
         }
     }
 }
@@ -337,7 +337,7 @@ internal fun MainViewModel.setzePreisalarm(
                             _merkpostenDetailState.value.setNumber == setNumber
                 if (offen) loadPreisalarme(setNumber)
             }
-            is Result.Error -> _snackbar.emit(meldung(r))
+            is Result.Error -> _snackbar.emit(meldungFuerSnackbar(r))
         }
     }
 }

@@ -96,7 +96,7 @@ internal fun MainViewModel.updateManualAcquisition(
             // Refresh tile list to show updated condition/price badge
             reloadItemList(type)
         } else if (result is Result.Error) {
-            _snackbar.value = meldung(result)
+            _snackbar.value = meldungFuerSnackbar(result)
             if (date != null) loadManualAcquisitions(type, id, colorId) // abgelehnte Datumsänderung zurücksetzen
         }
     }
@@ -120,7 +120,7 @@ internal fun MainViewModel.deleteManualAcquisition(
             }
             // Ohne Meldung verschwindet die Zeile nicht, und niemand sagt warum.
             // updateManualAcquisition zwei Funktionen weiter meldet längst.
-            is Result.Error -> _snackbar.value = meldung(result)
+            is Result.Error -> _snackbar.value = meldungFuerSnackbar(result)
         }
     }
 }
@@ -204,7 +204,7 @@ internal fun MainViewModel.setzeManuellenLagerort(
                 // Nachladen fehlte er beim naechsten Mal in der Auswahl.
                 ladeEigeneLagerorte()
             }
-            is Result.Error -> _snackbar.emit(meldung(r))
+            is Result.Error -> _snackbar.emit(meldungFuerSnackbar(r))
         }
     }
 }

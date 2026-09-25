@@ -483,28 +483,40 @@ class MainViewModel @Inject constructor(
      * schon eingelöst) und antwortet in der Sprache des Kontos. Nur wenn er
      * keine schickt, formuliert die App selbst.
      */
+    /**
+     * Der Satz fuer die SNACKBAR — oder null, wenn dort nichts hingehoert.
+     *
+     * ── Marcos Befund nach dem Ausrollen ───────────────────────────────
+     *
+     *   „Jetzt kommt beim QR Code scannen ‚Sitzung abgelaufen', ich werde aber
+     *    trotzdem eingeloggt."
+     *
+     * Der erste Anlauf hat in meldung() den Serversatz durch „Sitzung
+     * abgelaufen" ERSETZT. Das war eine Verschlimmbesserung: Die Meldung blieb
+     * stehen, und ihr Inhalt wurde auch noch falsch — die Sitzung war beim
+     * Anmelden eine Sekunde alt.
+     *
+     * Richtig ist, GAR NICHTS zu zeigen: Ein 401, der hier ankommt, waehrend
+     * die App angemeldet ist, hat die Sitzungsschicht schon behandelt (die
+     * Begruendung steht in util/Abgewiesen.kt). Deshalb null statt eines
+     * anderen Satzes — der Kanal zeigt bei null nichts an (MeldungsKanal).
+     *
+     * Getrennt von meldung() und nicht als deren Rueckgabetyp: meldung()
+     * fuellt auch Fehlerfelder von Formularen (Anmeldung, Konto, Geraete), und
+     * dort ist „nichts zu sagen" keine sinnvolle Antwort.
+     */
+    internal fun meldungFuerSnackbar(fehler: Result.Error): String? =
+        if (ch.brickinventoryapp.util.meldetDieSitzungsschicht(
+                fehler.unauthorized,
+                // „Angemeldet“ heisst: Es LIEGT ein Token vor — dieselbe Quelle,
+                // die der Interceptor liest. Nicht `_state.isLoggedIn`: Das ist
+                // ein Flag der Oberflaeche und beim Anmelden schon wahr, bevor
+                // die Anfragen davor beantwortet sind. Genau daran ist der
+                // erste Anlauf gescheitert.
+                prefs.authTokenState.value?.isNotBlank() == true)) null
+        else meldung(fehler)
+
     internal fun meldung(fehler: Result.Error): String {
-        // ── Eine abgelaufene Sitzung ist EINE Meldung, nicht zwei ─────────
-        //
-        // Der Server sagt zu einem abgewiesenen Token dasselbe wie zu einem
-        // falschen Passwort: 401 und „Ungueltiger oder abgelaufener Token".
-        // Bisher zeigte die App bei einer abgelaufenen Sitzung deshalb beides
-        // — der Interceptor meldete „Sitzung abgelaufen" und meldete ab, und
-        // der Abruf, der den 401 kassiert hatte, schob den rohen Serversatz
-        // hinterher. Zwei Meldungen zu einem Vorgang, und die zweite klingt
-        // nach einem zweiten Fehler.
-        //
-        // Die Unterscheidung steht in util/Abgewiesen.kt und ist dieselbe wie
-        // im Interceptor, nur aus Sicht der Anzeige: War die App angemeldet,
-        // ist die Sitzung vorbei. War sie es nicht, ist es ein
-        // Anmeldeversuch, und dort heisst 401 „falsches Passwort" — da waere
-        // „Sitzung abgelaufen" schlicht gelogen.
-        //
-        // Vor dem Durchreichen des Serversatzes, nicht danach: Genau dieser
-        // Satz soll ja ersetzt werden.
-        if (ch.brickinventoryapp.util.istAbgelaufeneSitzung(
-                fehler.unauthorized, _state.value.isLoggedIn))
-            return text(R.string.vm_session_expired)
         if (fehler.message.isNotBlank()) return fehler.message
         // Welcher Text zu welcher Ursache gehört, steht in FehlerTexte.kt —
         // als reine Funktion ohne Context, damit sie prüfbar ist (Nachtrag 117).

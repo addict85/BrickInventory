@@ -79,7 +79,7 @@ internal fun MainViewModel.loadParts(page: Int = 1, debounce: Boolean = false) {
             }
             is Result.Error -> {
                 _partsState.update { it.copy(partsLoading = false) }
-                _snackbar.value = meldung(r)
+                _snackbar.value = meldungFuerSnackbar(r)
             }
         }
     }
@@ -262,7 +262,7 @@ internal fun MainViewModel.addPart(partNumber: String, colorId: Int = 0, colorNa
                 }
             }
             is Result.Error -> {
-                _snackbar.value = meldung(r)
+                _snackbar.value = meldungFuerSnackbar(r)
             }
         }
     }
@@ -286,7 +286,7 @@ internal fun MainViewModel.addMinifig(figNumber: String, blFigNumber: String? = 
                 }
             }
             is Result.Error -> {
-                _snackbar.value = meldung(r)
+                _snackbar.value = meldungFuerSnackbar(r)
             }
         }
     }
@@ -310,7 +310,7 @@ internal fun MainViewModel.updatePart(partNumber: String, colorId: Int, quantity
                     }
                 } else _snackbar.value = r.data.error ?: text(R.string.err_unknown)
             }
-            is Result.Error -> _snackbar.value = meldung(r)
+            is Result.Error -> _snackbar.value = meldungFuerSnackbar(r)
         }
     }
 }
@@ -329,7 +329,7 @@ internal fun MainViewModel.deletePart(partNumber: String, colorId: Int, owner: I
                 if (r.data.success) { _snackbar.value = text(R.string.vm_part_deleted); reloadItemList("part") }
                 else _snackbar.value = r.data.error ?: text(R.string.err_unknown)
             }
-            is Result.Error -> _snackbar.value = meldung(r)
+            is Result.Error -> _snackbar.value = meldungFuerSnackbar(r)
         }
     }
 }
@@ -352,7 +352,7 @@ internal fun MainViewModel.updateMinifig(figNumber: String, quantity: Int, unitP
                     }
                 } else _snackbar.value = r.data.error ?: text(R.string.err_unknown)
             }
-            is Result.Error -> _snackbar.value = meldung(r)
+            is Result.Error -> _snackbar.value = meldungFuerSnackbar(r)
         }
     }
 }
@@ -365,7 +365,7 @@ internal fun MainViewModel.deleteMinifig(figNumber: String, owner: Int? = null) 
                 if (r.data.success) { _snackbar.value = text(R.string.vm_minifig_deleted); reloadItemList("fig") }
                 else _snackbar.value = r.data.error ?: text(R.string.err_unknown)
             }
-            is Result.Error -> _snackbar.value = meldung(r)
+            is Result.Error -> _snackbar.value = meldungFuerSnackbar(r)
         }
     }
 }
@@ -414,7 +414,7 @@ internal fun MainViewModel.loadMinifigs(debounce: Boolean = false) {
                     ?.let { m -> _partsState.update { it.copy(manualFigs = m.data.figs) } }
             }
             is Result.Error   -> {
-                _snackbar.value = meldung(r)
+                _snackbar.value = meldungFuerSnackbar(r)
                 _partsState.update { it.copy(minifigsLoading = false) }
             }
         }
