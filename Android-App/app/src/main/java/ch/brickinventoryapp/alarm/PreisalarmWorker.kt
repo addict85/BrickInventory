@@ -116,10 +116,40 @@ class PreisalarmWorker(
          * App-Start weiterlaufen und nicht neu beginnen — sonst schoebe ein
          * haeufig geoeffneter App den naechsten Lauf immer wieder nach hinten
          * und der Abruf faende nie statt.
+         *
+         * ── Warum sie NICHT wirft (Marcos Befund vom 25.09.) ────────────────
+         *
+         *   „Sobald ich den Schalter Preisalarm in der App aktivieren will,
+         *    wird die App geschlossen."
+         *
+         * Genau dieser Aufruf war an EINER seiner beiden Stellen abgesichert
+         * und an der anderen nicht:
+         *
+         *   BrickInventoryApp.onCreate  runCatching { … einplanen(…) }
+         *   SettingsScreen, am Schalter  einplanen(context, neu)
+         *
+         * Die erste Zeile gibt es, weil WorkManager auf Marcos Geraet schon
+         * einmal beim Hochfahren gescheitert ist — der Manifest-Eintrag
+         * darueber erzaehlt die ganze Geschichte und schliesst mit: „WARUM er
+         * gescheitert ist, weiss bis heute niemand." Seither faehrt WorkManager
+         * beim ERSTEN Zugriff hoch, und dieser Zugriff ist einplanen(). Am
+         * Start faengt ihn das runCatching ab, die App laeuft weiter. Am
+         * Schalter fing ihn nichts ab — und dort ist es der Hauptthread einer
+         * sichtbaren Oberflaeche, also stirbt die App.
+         *
+         * Dieselbe Absicherung ein zweites Mal hinzuschreiben waere die
+         * naheliegende und die schlechtere Loesung: Die naechste Aufrufstelle
+         * vergisst sie wieder. Deshalb steht sie HIER, einmal, und die
+         * Funktion kann gar nicht mehr werfen.
+         *
+         * @return null bei Erfolg, sonst der Fehler — damit der Aufrufer ihn
+         *         ZEIGEN kann. Ein stilles Verschlucken waere die zweite Haelfte
+         *         desselben Fehlers: Der Schalter stuende auf „an" und es kaeme
+         *         nie eine Meldung.
          */
-        fun einplanen(context: Context, an: Boolean) {
+        fun einplanen(context: Context, an: Boolean): Throwable? = runCatching {
             val wm = WorkManager.getInstance(context)
-            if (!an) { wm.cancelUniqueWork(NAME); return }
+            if (!an) { wm.cancelUniqueWork(NAME); return@runCatching }
             val auftrag = PeriodicWorkRequestBuilder<PreisalarmWorker>(1, TimeUnit.HOURS)
                 .setConstraints(
                     Constraints.Builder()
@@ -128,7 +158,7 @@ class PreisalarmWorker(
                 )
                 .build()
             wm.enqueueUniquePeriodicWork(NAME, ExistingPeriodicWorkPolicy.KEEP, auftrag)
-        }
+        }.exceptionOrNull()
 
         /**
          * Die Meldungen anzeigen — eine Benachrichtigung je gerissener

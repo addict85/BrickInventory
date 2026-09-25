@@ -522,13 +522,44 @@ private fun PreisalarmCard(vm: MainViewModel) {
             Switch(
                 checked = an,
                 onCheckedChange = { neu ->
-                    bereich.launch { vm.prefs.setzeAlarmMeldungen(neu) }
-                    // Der Auftrag folgt dem Schalter sofort und nicht erst beim
-                    // naechsten App-Start: Sonst waere „eingeschaltet" eine
-                    // Stunde lang eine Behauptung ohne Wirkung.
-                    ch.brickinventoryapp.alarm.PreisalarmWorker.einplanen(context, neu)
+                    // Die Berechtigung ZUERST und auf dem Hauptthread: Sie
+                    // oeffnet einen Systemdialog, und der gehoert nicht hinter
+                    // eine Hintergrundarbeit.
                     if (neu && android.os.Build.VERSION.SDK_INT >= 33) {
                         frage.launch(android.Manifest.permission.POST_NOTIFICATIONS)
+                    }
+                    bereich.launch {
+                        vm.prefs.setzeAlarmMeldungen(neu)
+                        // ── Nicht auf dem Hauptthread ────────────────────────
+                        //
+                        // Der Auftrag folgt dem Schalter sofort und nicht erst
+                        // beim naechsten App-Start: Sonst waere „eingeschaltet"
+                        // eine Stunde lang eine Behauptung ohne Wirkung.
+                        //
+                        // Aber nicht hier vorne: Beim ERSTEN Zugriff faehrt
+                        // WorkManager hoch und liest dabei von der Platte
+                        // (der Manifest-Eintrag erklaert, warum das nicht mehr
+                        // beim App-Start geschieht). Auf dem Hauptthread einer
+                        // sichtbaren Oberflaeche ist das im besten Fall ein
+                        // Ruckeln.
+                        //
+                        // Marcos Befund vom 25.09.: „Sobald ich den Schalter
+                        // Preisalarm in der App aktivieren will, wird die App
+                        // geschlossen." Dieser Aufruf stand hier ungesichert,
+                        // waehrend derselbe Aufruf beim App-Start seit jeher in
+                        // einem runCatching steckt. einplanen() faengt jetzt
+                        // selbst und GIBT DEN FEHLER ZURUECK — verschluckt wird
+                        // er nicht: Ein Schalter auf „an", von dem nie eine
+                        // Meldung kommt, ist die zweite Haelfte desselben
+                        // Fehlers.
+                        val fehler = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
+                            ch.brickinventoryapp.alarm.PreisalarmWorker.einplanen(context, neu)
+                        }
+                        if (fehler != null) {
+                            vm.showSnackbar(context.getString(
+                                R.string.alert_schedule_failed,
+                                fehler.message ?: fehler::class.java.simpleName))
+                        }
                     }
                 },
             )

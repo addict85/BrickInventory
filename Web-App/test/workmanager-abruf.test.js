@@ -92,7 +92,13 @@ test('Der erste WorkManager-Zugriff liegt in einem runCatching', () => {
     .replace(/\/\*[\s\S]*?\*\//g, '')
     .replace(/\/\/[^\n]*/g, '');
 
-  const stelle = app.indexOf('PreisalarmWorker.einplanen');
+  // `.einplanen(` und nicht `PreisalarmWorker.einplanen`: Der Aufruf steht seit
+  // dem 25.09. ueber zwei Zeilen, weil er sein Ergebnis auswertet. Eine Suche
+  // nach der zusammenhaengenden Zeichenkette fand ihn dadurch nicht mehr — und
+  // diese Pruefung meldete, der Alarm werde beim Start gar nicht mehr
+  // eingeplant. Sie hatte recht in der Form und unrecht in der Sache; das ist
+  // der Unterschied zwischen „liest den Quelltext" und „liest den Baum".
+  const stelle = app.indexOf('.einplanen(');
   assert.ok(stelle > 0, 'einplanen() wird in BrickInventoryApp gar nicht mehr gerufen — '
     + 'dann plant den Alarm beim Start niemand wieder ein.');
 
@@ -120,4 +126,23 @@ test('Der erste WorkManager-Zugriff liegt in einem runCatching', () => {
     + 'Der ganze Zweck der Umstellung war, dass der Alarm ausfallen kann, ohne dass '
     + 'die App stirbt.',
   );
+
+  // ── Die zweite Haelfte, seit dem 25.09. ──────────────────────────────────
+  //
+  // Dieses runCatching hier war die EINZIGE Absicherung, und genau darin lag
+  // der naechste Absturz: Am Schalter im Einstellungsbildschirm stand derselbe
+  // Aufruf nackt, und dort ist es der Hauptthread einer sichtbaren
+  // Oberflaeche. Marco: „Sobald ich den Schalter Preisalarm in der App
+  // aktivieren will, wird die App geschlossen."
+  //
+  // Seither faengt einplanen() selbst. Diese Pruefung bleibt trotzdem stehen:
+  // Sie sichert den START, und das Lesen der Einstellung davor kann ebenfalls
+  // scheitern. Dass die Funktion nicht mehr werfen KANN, prueft
+  // test/alarm-einplanen-faellt-nicht.test.js — hier steht nur der Verweis,
+  // damit niemand die eine fuer die andere haelt.
+  const worker = fs.readFileSync(
+    APP.replace(/BrickInventoryApp\.kt$/, 'alarm/PreisalarmWorker.kt'), 'utf8');
+  assert.match(worker, /fun einplanen\([^)]*\)\s*:\s*Throwable\?/,
+    'einplanen() gibt keinen Fehler mehr zurueck — dann wirft es wieder, und die '
+    + 'Aufrufstelle am Schalter hat kein Netz.');
 });
