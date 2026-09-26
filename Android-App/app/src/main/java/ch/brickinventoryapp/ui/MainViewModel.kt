@@ -203,6 +203,8 @@ class MainViewModel @Inject constructor(
     // Begruendung steht an LagerUiState (UiState.kt).
     internal val _lagerState = MutableStateFlow(LagerUiState())
     val lagerState = _lagerState.asStateFlow()
+    internal val _alarmUebersicht = MutableStateFlow(AlarmUebersichtUiState())
+    val alarmUebersicht = _alarmUebersicht.asStateFlow()
 
     internal val _merklisteState = MutableStateFlow(MerklisteUiState())
     val merklisteState = _merklisteState.asStateFlow()

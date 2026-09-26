@@ -435,6 +435,19 @@ data class Preisalarm(
     val ausgeloest: Boolean = false,
     @SerialName("zuletzt_am") val zuletztAm: String? = null,
     @SerialName("zuletzt_preis") val zuletztPreis: Double? = null,
+    /**
+     * Der Setname — NUR aus der Uebersicht (GET /v1/alerts).
+     *
+     * Die Route zum einzelnen Set schickt ihn nicht: Dort steht der Name schon
+     * ueber dem Dialog. In der Uebersicht ist er dagegen das Einzige, was die
+     * Zeile lesbar macht — „40820-1" sagt niemandem etwas.
+     *
+     * Ein zweites Modell nur dafuer waere zwei Modelle, die auseinanderlaufen
+     * koennen. `null` heisst hier zweierlei und beides ist richtig: „nicht
+     * mitgeschickt" (Einzelroute) oder „dem Katalog unbekannt" (Uebersicht).
+     * Die Anzeige behandelt beides gleich — sie laesst die Zeile weg.
+     */
+    val name: String? = null,
 )
 
 @Serializable

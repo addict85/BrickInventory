@@ -135,6 +135,60 @@ export async function alarmeFuer(userId: number, setNumber: string): Promise<Pre
 }
 
 /**
+ * ALLE Alarme eines Kontos — fuer die Uebersicht in beiden Oberflaechen.
+ *
+ * ── Marcos Frage vom 25.09. ─────────────────────────────────────────────────
+ *
+ *   „Wie finde ich alle Preisalarme?"
+ *
+ * Gar nicht, war die Antwort. Es gab nur alarmeFuer() zu EINEM Set — man sah
+ * einen Alarm also nur, wenn man das Set schon gefunden hatte. Wer fuenfzig
+ * setzt, hat keinen Ort, an dem sie zusammen stehen, und keinen, an dem er
+ * sieht, welche noch scharf sind. Ein Alarm, den man nicht wiederfindet,
+ * laesst sich weder pruefen noch abstellen.
+ *
+ * ── Warum der Name mitkommt ─────────────────────────────────────────────────
+ *
+ * Eine Liste aus Setnummern ist keine Liste, die man lesen kann. `40820-1`
+ * sagt niemandem etwas; „Up-Scaled Santa Minifigure" schon. Der LEFT JOIN und
+ * nicht INNER: Ein Alarm auf ein Set, das der Katalog (noch) nicht kennt, darf
+ * nicht aus der Uebersicht verschwinden — sonst fehlt genau die Zeile, die man
+ * sucht, weil sie sich merkwuerdig verhaelt.
+ *
+ * ── Kein Blickfeld, kein Haushalt ───────────────────────────────────────────
+ *
+ * Wie ueberall in dieser Datei: `user_id = $1`. Ein Alarm gehoert genau EINEM
+ * Konto (Begruendung im Kopf der Datei). Die Uebersicht zeigt deshalb die
+ * eigenen Alarme, nicht die der Unterkonten.
+ */
+export interface AlarmMitName extends Preisalarm {
+  name: string | null;
+  set_img_url: string | null;
+}
+
+export async function alleAlarme(userId: number): Promise<AlarmMitName[]> {
+  const rows = await db.all(
+    `SELECT a.set_number, a.condition, a.richtung, a.schwelle, a.currency_code,
+            a.ausgeloest, a.zuletzt_am, a.zuletzt_preis,
+            rb.name, rb.set_img_url
+       FROM price_alerts a
+       LEFT JOIN rb_sets rb ON rb.set_num = a.set_number
+      WHERE a.user_id = $1
+      ORDER BY a.set_number, a.condition`,
+    [userId])
+    .catch(e => { require('./httpError').meldeUndWeiter('preisalarm:alle', e); return []; });
+  type Zeile = Omit<AlarmMitName, 'schwelle' | 'zuletzt_preis'> &
+               { schwelle: string | number; zuletzt_preis: string | number | null };
+  return (rows as Zeile[] || []).map(r => ({
+    ...r,
+    // numeric kommt als Zeichenkette aus dem Treiber — dieselbe Umwandlung wie
+    // in alarmeFuer(), und aus demselben Grund.
+    schwelle: parseFloat(String(r.schwelle)),
+    zuletzt_preis: r.zuletzt_preis == null ? null : parseFloat(String(r.zuletzt_preis)),
+  }));
+}
+
+/**
  * Was seit einem Zeitpunkt ausgelöst hat — für die Abholung durch die Clients.
  *
  * ── Warum die App fragt und der Server nicht schiebt ────────────────────────

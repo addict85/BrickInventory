@@ -247,3 +247,68 @@ private fun MainViewModel.dateiname(uri: android.net.Uri): String =
             if (i >= 0 && c.moveToFirst()) c.getStringOrNull(i) else null
         }
     }.getOrNull() ?: "import.csv"
+
+// ── Preisalarm-Uebersicht ───────────────────────────────────────────────────
+//
+// Marcos Frage vom 25.09.: „Wie finde ich alle Preisalarme?" — bis dahin gar
+// nicht. Ein Alarm war nur im Detaildialog SEINES Sets zu sehen; wer fuenfzig
+// setzt, hatte keinen Ort, an dem sie zusammen stehen. Marcos Auftrag danach:
+// „Baue die Uebersicht in beiden Apps in den Einstellungen als Rubrik. Ich
+// moechte dort den Alarm direkt loeschen koennen oder den Wert anpassen
+// koennen."
+//
+// Dieselbe Rubrik wie in der Webapp (public/index.html, alerts-card) und
+// dieselben drei Wege: lesen ueber /v1/alerts, aendern und loeschen ueber die
+// BESTEHENDE Route zum Set. Zwei Schreibwege zum selben Zustand waeren zwei
+// Stellen, an denen die Regeln auseinanderlaufen.
+
+/** Alle Alarme des Kontos holen — beim Oeffnen der Einstellungen. */
+internal fun MainViewModel.ladeAlarmUebersicht() {
+    viewModelScope.launch {
+        when (val r = repo.sets.getAlleAlarme()) {
+            is Result.Success ->
+                if (r.data.success) _alarmUebersicht.value =
+                    AlarmUebersichtUiState(alarme = r.data.alerts, geladen = true)
+                // Kein `geladen = true` bei einem Fehler: Sonst stuende dort
+                // „keine Alarme gesetzt", obwohl nur der Abruf scheiterte.
+                //
+                // Der Satz des Servers direkt, ohne Result.Error zu bauen: Das
+                // waere ein Fehlerobjekt, das es nie gab, nur um durch den
+                // Trichter zu passen. Ein `success:false` mit Text IST die
+                // Meldung.
+                else _snackbar.value = r.data.error
+            is Result.Error -> _snackbar.value = meldungFuerSnackbar(r)
+        }
+    }
+}
+
+/**
+ * Die Schwelle aendern oder den Alarm loeschen.
+ *
+ * Eine Schleuse fuer beides, wie bei den Lagerorten: Der Rumpf waere zweimal
+ * derselbe (rufen, Fehler melden, Liste neu laden), und genau bei solchen
+ * Paaren ist in diesem Baum schon mehrmals eine Haelfte stehen geblieben.
+ */
+private fun MainViewModel.alarmSchleuse(tun: suspend () -> Result<ch.brickinventoryapp.data.model.PreisalarmResponse>) {
+    viewModelScope.launch {
+        when (val r = tun()) {
+            is Result.Success -> if (!r.data.success) _snackbar.value = r.data.error
+            is Result.Error   -> _snackbar.value = meldungFuerSnackbar(r)
+        }
+        ladeAlarmUebersicht()
+    }
+}
+
+internal fun MainViewModel.aendereAlarmSchwelle(
+    setNumber: String, condition: String, richtung: String, schwelle: Double,
+) {
+    // Kein stilles Zurueckschreiben bei Unsinn — wie in der Webapp: Wer 0
+    // eingibt, soll es sehen, statt spaeter einen Alarm zu suchen, den es
+    // nicht gibt.
+    if (schwelle <= 0.0) { _snackbar.value = text(R.string.alerts_bad_value); return }
+    alarmSchleuse { repo.sets.setPreisalarm(setNumber, richtung, schwelle, condition) }
+}
+
+internal fun MainViewModel.loescheAlarm(setNumber: String, condition: String) {
+    alarmSchleuse { repo.sets.deletePreisalarm(setNumber, condition) }
+}

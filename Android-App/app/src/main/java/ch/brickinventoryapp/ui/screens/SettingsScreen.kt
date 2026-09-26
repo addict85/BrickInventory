@@ -234,6 +234,7 @@ fun SettingsScreen(
 
         PreisalarmCard(vm)
 
+        PreisalarmeCard(vm)
         LagerorteCard(vm)
 
         HouseholdCard(
@@ -398,6 +399,116 @@ private fun SettingsCard(
  * Die Alternative — stilles Leeren — verloere die Zuordnung von Sets, die der
  * Loeschende gar nicht im Blick hatte, und zwar ohne Weg zurueck.
  */
+/**
+ * Alle Preisalarme — aendern und loeschen.
+ *
+ * ── Marcos Frage vom 25.09. ──────────────────────────────────────
+ *
+ *   „Wie finde ich alle Preisalarme?"
+ *
+ * Gar nicht, war die Antwort: Ein Alarm war nur im Detail SEINES Sets zu
+ * sehen. Wer fuenfzig setzt, hatte keinen Ort, an dem sie zusammen stehen, und
+ * keinen, an dem er sieht, welche noch scharf sind.
+ *
+ * ── Dieselbe Rubrik wie in der Webapp ──────────────────────────────
+ *
+ * Gleiche Reihenfolge (vor den Lagerorten), gleiche Zeile: Setnummer und Name,
+ * Zustand daneben — derselbe Set kann zwei Alarme haben, und die Zeilen
+ * unterschieden sich sonst nur an einem Buchstaben. Der letzte Preis steht
+ * dabei, weil eine Schwelle ohne ihn nicht zu beurteilen ist: „unter 30"
+ * heisst etwas anderes bei einem Set, das bei 28 steht, als bei einem, das bei
+ * 300 steht.
+ *
+ * Gespeichert wird beim Knopf und nicht beim Tippen — anders als das
+ * Wunsch-Detail (Nachtrag 133), weil hier jeder Tastendruck sonst eine
+ * Schreibanfrage ausloeste, waehrend man die Zahl noch eintippt.
+ */
+@Composable
+private fun PreisalarmeCard(vm: MainViewModel) {
+    val uebersicht by vm.alarmUebersicht.collectAsStateWithLifecycle()
+
+    LaunchedEffect(Unit) { vm.ladeAlarmUebersicht() }
+
+    SettingsCard(
+        title = stringResource(R.string.alerts_group),
+        icon = Icons.Default.NotificationsActive,
+    ) {
+        Text(stringResource(R.string.alerts_intro),
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.padding(bottom = Abstaende.klein))
+
+        // `geladen` und nicht nur „Liste leer": Beim Aufbau stuende sonst kurz
+        // „keine Alarme gesetzt", obwohl noch gar nichts abgerufen wurde.
+        if (uebersicht.geladen && uebersicht.alarme.isEmpty()) {
+            Text(stringResource(R.string.alerts_empty),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant)
+        }
+        for (a in uebersicht.alarme) {
+            // Schluessel ist (Set, Zustand) — beides, sonst traegt das Feld des
+            // einen Alarms den Wert des anderen, wenn ein Set beide hat.
+            var wert by rememberSaveable(a.setNumber + a.condition) {
+                mutableStateOf(a.schwelle.toString())
+            }
+            Column(Modifier.fillMaxWidth().padding(vertical = Abstaende.haar)) {
+                Row(verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(Abstaende.klein)) {
+                    Column(Modifier.weight(1f)) {
+                        // Erst benennen, dann setzen: Eine Zeichenkette mit
+                        // mehrzeiliger Interpolation ist gueltig und trotzdem
+                        // die Zeile, die beim naechsten Anfassen kippt.
+                        val zustand = if (a.condition == "U")
+                            stringResource(R.string.condition_used)
+                        else stringResource(R.string.condition_new)
+                        Text("${a.setNumber}  $zustand",
+                            style = MaterialTheme.typography.bodyMedium,
+                            fontWeight = FontWeight.SemiBold)
+                        a.name?.let {
+                            Text(it, style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        }
+                        Text(
+                            (if (a.ausgeloest) stringResource(R.string.alerts_fired)
+                             else stringResource(R.string.alerts_armed)) +
+                            (a.zuletztPreis?.let {
+                                "  " + stringResource(R.string.alerts_last,
+                                    "${a.currencyCode} ${"%.2f".format(it)}")
+                            } ?: ""),
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    }
+                    IconButton(onClick = { vm.loescheAlarm(a.setNumber, a.condition) }) {
+                        Icon(Icons.Default.Delete, stringResource(R.string.alerts_delete),
+                            tint = MaterialTheme.colorScheme.error)
+                    }
+                }
+                Row(verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(Abstaende.klein)) {
+                    Text(if (a.richtung == "unter") stringResource(R.string.alerts_below)
+                         else stringResource(R.string.alerts_above),
+                        style = MaterialTheme.typography.bodySmall)
+                    OutlinedTextField(
+                        value = wert,
+                        onValueChange = { wert = it },
+                        singleLine = true,
+                        suffix = { Text(a.currencyCode) },
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+                        modifier = Modifier.weight(1f),
+                    )
+                    IconButton(onClick = {
+                        vm.aendereAlarmSchwelle(a.setNumber, a.condition, a.richtung,
+                            wert.replace(',', '.').toDoubleOrNull() ?: 0.0)
+                    }) {
+                        Icon(Icons.Default.Check, stringResource(R.string.settings_save),
+                            tint = MaterialTheme.colorScheme.primary)
+                    }
+                }
+            }
+        }
+    }
+}
+
 @Composable
 private fun LagerorteCard(vm: MainViewModel) {
     val lager by vm.lagerState.collectAsStateWithLifecycle()

@@ -404,6 +404,15 @@ interface BrickApiService {
         @Query("since") since: String? = null,
     ): Response<PendingAlertsResponse>
 
+    /**
+     * ALLE Alarme des Kontos — fuer die Uebersicht in den Einstellungen.
+     *
+     * Dieselbe Antwortform wie die Einzelroute: eine Liste von Preisalarm.
+     * Ein eigenes Antwortmodell waere ein zweites, das dasselbe bedeutet.
+     */
+    @GET("api/v1/alerts")
+    suspend fun getAlleAlarme(): Response<PreisalarmeResponse>
+
     @GET("api/v1/sets/{setNumber}/alert")
     suspend fun getPreisalarme(
         @Path("setNumber") setNumber: String,
