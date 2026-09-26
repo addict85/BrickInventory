@@ -427,8 +427,6 @@ private fun SettingsCard(
 private fun PreisalarmeCard(vm: MainViewModel) {
     val uebersicht by vm.alarmUebersicht.collectAsStateWithLifecycle()
 
-    LaunchedEffect(Unit) { vm.ladeAlarmUebersicht() }
-
     SettingsCard(
         title = stringResource(R.string.alerts_group),
         icon = Icons.Default.NotificationsActive,

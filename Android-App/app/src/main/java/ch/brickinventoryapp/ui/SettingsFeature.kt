@@ -265,7 +265,7 @@ private fun MainViewModel.dateiname(uri: android.net.Uri): String =
 /** Alle Alarme des Kontos holen — beim Oeffnen der Einstellungen. */
 internal fun MainViewModel.ladeAlarmUebersicht() {
     viewModelScope.launch {
-        when (val r = repo.sets.getAlleAlarme()) {
+        when (val r = repo.sets.holeAlleAlarme()) {
             is Result.Success ->
                 if (r.data.success) _alarmUebersicht.value =
                     AlarmUebersichtUiState(alarme = r.data.alerts, geladen = true)
@@ -305,7 +305,7 @@ internal fun MainViewModel.aendereAlarmSchwelle(
     // Kein stilles Zurueckschreiben bei Unsinn — wie in der Webapp: Wer 0
     // eingibt, soll es sehen, statt spaeter einen Alarm zu suchen, den es
     // nicht gibt.
-    if (schwelle <= 0.0) { _snackbar.value = text(R.string.alerts_bad_value); return }
+    if (schwelle < -1.0) { _snackbar.value = text(R.string.alerts_bad_value); return }
     alarmSchleuse { repo.sets.setPreisalarm(setNumber, richtung, schwelle, condition) }
 }
 

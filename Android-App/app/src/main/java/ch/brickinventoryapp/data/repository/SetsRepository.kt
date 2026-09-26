@@ -142,7 +142,7 @@ class SetsRepository @Inject constructor(
         safeCall { api.getPendingAlerts(since) }
 
     /** Alle Alarme des Kontos — die Uebersicht in den Einstellungen. */
-    suspend fun getAlleAlarme(): Result<PreisalarmeResponse> =
+    suspend fun holeAlleAlarme(): Result<PreisalarmeResponse> =
         safeCall { api.getAlleAlarme() }
 
     suspend fun getPreisalarme(setNumber: String): Result<PreisalarmeResponse> =
