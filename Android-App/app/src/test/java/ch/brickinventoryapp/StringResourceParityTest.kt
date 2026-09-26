@@ -66,6 +66,75 @@ class StringResourceParityTest {
     }
 
     /**
+     * Gleicher Text in beiden Dateien heisst: nicht uebersetzt.
+     *
+     * ── Warum der Test oben das nicht faengt (Nachtrag 136) ─────────────────
+     *
+     * `jeder Text steht in beiden Sprachdateien` vergleicht NAMEN. Die zehn
+     * Texte der Preisalarm-Rubrik standen brav in beiden Dateien — nur trug
+     * die deutsche denselben englischen Satz. Marco las in den Einstellungen
+     * seiner deutschen App „rises above" und „○ has fired" und musste
+     * nachfragen, was die Rubrik ihm eigentlich sagt.
+     *
+     * Der Fehler ist nicht das Vergessen, sondern seine Form: Wer einen neuen
+     * Text anlegt, kopiert den Block in die zweite Datei — und uebersetzt ihn
+     * dann nicht. Beide Dateien sehen danach vollstaendig aus. Kein Schalter
+     * steht auf Rot, keine Zeile fehlt. Deshalb prueft dieser Test nicht
+     * Vollstaendigkeit, sondern Verschiedenheit.
+     *
+     * ── Warum eine Liste und keine Heuristik ────────────────────────────────
+     *
+     * NACHGEMESSEN standen nach der Uebersetzung noch 30 Eintraege in beiden
+     * Dateien gleich, und alle 30 zu Recht: „Sets", „Scan", „OK", „Details",
+     * Formatvorlagen wie `×%1${DOLLAR}d`, die Adresse im Platzhalter. Eine
+     * Heuristik („mindestens zwei richtige Woerter") haette acht der zehn
+     * Alarm-Texte gefunden und dafuer `app_name` und `monitoring_title`
+     * faelschlich gemeldet — also beides falsch: unvollstaendig UND laut.
+     *
+     * Die Liste ist stattdessen eine Behauptung, die jeder Eintrag einzeln
+     * traegt: „dieser Text lautet in beiden Sprachen gleich, und das ist
+     * gewollt". Neue Texte kommen nicht von selbst hinein — genau das ist der
+     * Zweck. Und wie bei `erlaubt` weiter unten prueft der Test die Liste
+     * selbst mit: Ein Eintrag, der nicht mehr zutrifft, fliegt raus, statt als
+     * alte Entscheidung stehenzubleiben, die niemand mehr nachsieht.
+     */
+    @Test
+    fun `kein Text steht in beiden Sprachen unuebersetzt`() {
+        // Begriffe, Eigennamen und Formatvorlagen, die in beiden Sprachen
+        // gleich lauten. Jeder Eintrag ist eine Entscheidung, keine Nachsicht.
+        val gewolltGleich = setOf(
+            "acq_total_quantity", "app_name", "catalog_sort_name", "chart_period_max",
+            "comparison_barcode_label", "comparison_scan", "csv_ok_count",
+            "csv_upload_sets", "detail_section_item", "finance_filter_sets",
+            "finance_grand_total", "finance_section_sets", "finance_total_sets",
+            "gallery_quantity_badge", "gallery_sort_name", "gallery_stat_sets",
+            "main_menu_monitoring", "monitoring_cache_subsets", "monitoring_theme",
+            "monitoring_theme_noppe", "monitoring_title", "monitoring_vorwaermen_roaming",
+            "nav_minifigs_short", "nav_monitoring", "partslist_ok", "partslist_rb_prefix",
+            "partslist_scan", "settings_current_summary", "setup_build",
+            "setup_url_placeholder",
+        )
+
+        val en = texte("values/strings.xml")
+        val de = texte("values-de/strings.xml")
+        assert(en.size > 300) { "Zu wenige Texte gefunden (${en.size}) — Muster veraltet?" }
+
+        val gleich = en.keys.filter { it in de && en[it] == de[it] }.toSet()
+        val unuebersetzt = (gleich - gewolltGleich).sorted()
+        assert(unuebersetzt.isEmpty()) {
+            "Diese Texte stehen auf Deutsch wortgleich wie auf Englisch — sehr " +
+                "wahrscheinlich beim Anlegen kopiert und nicht uebersetzt:\n  " +
+                unuebersetzt.joinToString("\n  ") { "$it = \"${en[it]}\"" } +
+                "\nIst er wirklich in beiden Sprachen gleich, gehoert er in `gewolltGleich`."
+        }
+        val veraltet = (gewolltGleich - gleich).sorted()
+        assert(veraltet.isEmpty()) {
+            "Diese Eintraege in `gewolltGleich` stimmen nicht mehr (Text unterscheidet " +
+                "sich inzwischen oder Name ist weg): " + veraltet.joinToString(", ") + " — raus damit."
+        }
+    }
+
+    /**
      * Name → Text. Anders als [schluessel] verlangt das Muster hier ein `">`
      * direkt hinter dem Namen und überspringt damit den einen Eintrag mit
      * Zusatz (`lang_code translatable="false"`). Das ist richtig so: Der

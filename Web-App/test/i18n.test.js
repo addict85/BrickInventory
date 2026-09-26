@@ -38,6 +38,61 @@ test('Platzhalter stimmen zwischen DE und EN überein', () => {
   }
 });
 
+/**
+ * Gleicher Text in beiden Sprachen heisst: nicht übersetzt.
+ *
+ * ── Warum der Paritätstest oben das nicht fängt (Nachtrag 136) ─────────────
+ *
+ * Er vergleicht SCHLÜSSEL. Die zehn Texte der Preisalarm-Rubrik standen in
+ * der Android-App brav in beiden Sprachdateien — nur trug die deutsche
+ * denselben englischen Satz. Marco las in den Einstellungen seiner deutschen
+ * App „rises above" und musste nachfragen, was die Rubrik ihm sagt.
+ *
+ * Die Webapp hatte davon drei eigene Fälle („Minifigs" zweimal, „👤 User"),
+ * und der Fehler entsteht immer gleich: Wer einen Schlüssel anlegt, kopiert
+ * die Zeile in die zweite Datei und übersetzt sie dann nicht. Danach sehen
+ * beide Dateien vollständig aus. Deshalb prüft dieser Test nicht
+ * Vollständigkeit, sondern Verschiedenheit.
+ *
+ * Dieselbe Regel steht in der App (StringResourceParityTest). Zwei
+ * Oberflächen, die gleich aussehen sollen, brauchen auch dieselben Wächter —
+ * sonst fällt derselbe Fehler nur auf einer Seite auf.
+ *
+ * Die Liste ist bewusst eine Liste und keine Heuristik: Sie ist eine
+ * Behauptung, die jeder Eintrag einzeln trägt („das lautet in beiden Sprachen
+ * gleich, und das ist gewollt"). Neue Schlüssel kommen nicht von selbst
+ * hinein — genau das ist der Zweck. Und der Test prüft die Liste mit: Ein
+ * Eintrag, der nicht mehr zutrifft, fliegt raus, statt als alte Entscheidung
+ * stehenzubleiben, die niemand mehr nachsieht.
+ */
+test('kein Text steht in beiden Sprachen unübersetzt', () => {
+  // Begriffe, Eigennamen und Zahlenformate, die in beiden Sprachen gleich
+  // lauten. Jeder Eintrag ist eine Entscheidung, keine Nachsicht.
+  const gewolltGleich = new Set([
+    'catalog.sort.name', 'col.name', 'col.sets', 'currency.eur',
+    'finance.filter.sets', 'finance.grand.total', 'finance.period.max',
+    'gallery.sort.name', 'header.sets', 'log.auto', 'monitor.api.bricklink',
+    'monitor.api.brickset', 'monitor.api.rebrickable', 'nav.monitoring',
+    'settings.users_admin_badge', 'users.admin_badge', 'users.role.admin',
+  ]);
+
+  const { de, en } = loadTranslations();
+  assert.ok(Object.keys(en).length > 400,
+    `Zu wenige Texte geladen (${Object.keys(en).length}) — Helfer kaputt?`);
+
+  const gleich = Object.keys(en).filter(k => k in de && de[k] === en[k]);
+  const unuebersetzt = gleich.filter(k => !gewolltGleich.has(k)).sort();
+  assert.deepEqual(unuebersetzt, [],
+    'Diese Texte stehen auf Deutsch wortgleich wie auf Englisch — sehr wahrscheinlich ' +
+    'beim Anlegen kopiert und nicht übersetzt:\n  ' +
+    unuebersetzt.map(k => `${k} = "${en[k]}"`).join('\n  ') +
+    '\nIst er wirklich in beiden Sprachen gleich, gehört er in `gewolltGleich`.');
+
+  const veraltet = [...gewolltGleich].filter(k => !gleich.includes(k)).sort();
+  assert.deepEqual(veraltet, [],
+    `Diese Einträge in \`gewolltGleich\` stimmen nicht mehr: ${veraltet.join(', ')} — raus damit.`);
+});
+
 test('Katalog-Schlüssel vorhanden', () => {
   const { de } = loadTranslations();
   for (const k of ['nav.catalog', 'catalog.title', 'catalog.filter.year_from',
