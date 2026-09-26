@@ -34,6 +34,8 @@
  *   g) `besitzt` aus data class Preisalarm entfernt → Schritt 7 rot
  *   h) 'alerts.fired' auf „hat gemeldet" zurückgesetzt → Schritt 8 rot
  *   i) font-weight:600 aus .alarm-marke-an entfernt → Schritt 8 rot
+ *   j) Verbindung wieder auf `s.user_id = a.user_id` → Schritt 9 rot
+ *   k) DISTINCT ON entfernt → Schritt 9 rot (Alarm steht doppelt)
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -62,13 +64,23 @@ test('Preisalarm-Übersicht: eigene Alarme, mit Namen, änderbar, löschbar',
 
   const { alleAlarme, setzeAlarm, loescheAlarm } = _req('utils/preisalarm.js');
 
-  for (const n of ['alarm_ich', 'alarm_fremd']) await db.run('DELETE FROM users WHERE username = $1', [n]);
+  for (const n of ['alarm_ich', 'alarm_fremd', 'alarm_kind'])
+    await db.run('DELETE FROM users WHERE username = $1', [n]);
   const ich = await db.get(
     "INSERT INTO users (username,password_hash,is_admin,email_verified) VALUES ($1,'x',0,1) RETURNING id", ['alarm_ich']);
   const fremd = await db.get(
     "INSERT INTO users (username,password_hash,is_admin,email_verified) VALUES ($1,'x',0,1) RETURNING id", ['alarm_fremd']);
+  // Ein Unterkonto im HAUSHALT. Genau daran ist die erste Fassung gescheitert:
+  // Sie verband auf `s.user_id = a.user_id`, also streng das eigene Konto —
+  // ein Set des Kindes galt damit als „gibt es nicht", obwohl die
+  // Detailansicht es sehr wohl öffnet (sie fragt über scopeIds()).
+  const kind = await db.get(
+    "INSERT INTO users (username,password_hash,is_admin,email_verified) VALUES ($1,'x',0,1) RETURNING id", ['alarm_kind']);
+  await db.run('INSERT INTO account_links (main_user_id, sub_user_id) VALUES ($1,$2)', [ich.id, kind.id]);
+
   t.after(async () => {
-    for (const id of [ich.id, fremd.id]) await db.run('DELETE FROM users WHERE id = $1', [id]).catch(() => {});
+    for (const id of [ich.id, fremd.id, kind.id]) await db.run('DELETE FROM users WHERE id = $1', [id]).catch(() => {});
+    await db.run("DELETE FROM rb_sets WHERE set_num = '60000-1'").catch(() => {});
     await db.run("DELETE FROM rb_sets WHERE set_num = '70002-1'").catch(() => {});
     await db.pool.end().catch(() => {});
   });
@@ -92,9 +104,25 @@ test('Preisalarm-Übersicht: eigene Alarme, mit Namen, änderbar, löschbar',
   await setzeAlarm(ich.id, '99999-9', 'CHF', { richtung: 'ueber', schwelle: 500, condition: 'U' }); // Set unbekannt
   await setzeAlarm(fremd.id, '70002-1', 'CHF', { richtung: 'unter', schwelle: 10, condition: 'N' }); // fremd
 
+  // Das Set des KINDES — ich besitze es nicht, sehe es aber im Blickfeld.
+  await db.run(`INSERT INTO rb_sets (set_num, name, set_img_url)
+                VALUES ('60000-1','Feuerwehreinsatz','https://cdn.example/60000-1.jpg')
+                ON CONFLICT (set_num) DO NOTHING`);
+  await db.run(`INSERT INTO sets (user_id, set_number, name, image_local)
+                VALUES ($1,'60000-1','Feuerwehreinsatz','/uploads/60000-1_thumb.jpg')
+                ON CONFLICT (user_id, set_number) DO NOTHING`, [kind.id]);
+  await setzeAlarm(ich.id, '60000-1', 'CHF', { richtung: 'unter', schwelle: 40, condition: 'N' });
+
+  // Dasselbe Set ZWEIMAL im Haushalt — bei mir und beim Kind. Seit die
+  // Verbindung über das Blickfeld geht, kann sie mehrere Zeilen treffen;
+  // ohne DISTINCT ON stünde der Alarm doppelt in der Liste.
+  await db.run(`INSERT INTO sets (user_id, set_number, name)
+                VALUES ($1,'70002-1','Lennox Feuerwehr')
+                ON CONFLICT (user_id, set_number) DO NOTHING`, [kind.id]);
+
   await t.test('1. alle eigenen Alarme kommen', async () => {
     const a = await alleAlarme(ich.id);
-    assert.equal(a.length, 2, `Erwartet 2 eigene Alarme, bekommen: ${a.length}`);
+    assert.equal(a.length, 3, `Erwartet 3 eigene Alarme, bekommen: ${a.length}`);
     // numeric kommt als Zeichenkette aus dem Treiber — die Übersicht rechnet
     // damit (Feld, Vergleich), also muss hier eine ZAHL ankommen.
     assert.equal(typeof a[0].schwelle, 'number', 'Die Schwelle kommt nicht als Zahl an.');
@@ -261,9 +289,50 @@ test('Preisalarm-Übersicht: eigene Alarme, mit Namen, änderbar, löschbar',
     }
   });
 
-  await t.test('9. Löschen wirkt', async () => {
+  await t.test('9. ein Set des HAUSHALTS zählt auch — Marcos Befund vom 26.09.', async () => {
+    // „Das Bild in der Android-App ist sichtbar aber die Einträge in den
+    // Preisalarme sind nicht klickbar."
+    //
+    // Zwei Ursachen, beide meine. Diese hier ist die im Server: Die erste
+    // Fassung verband auf `s.user_id = a.user_id` — streng das eigene Konto.
+    // `GET /v1/sets/:nummer` fragt aber über `scopeIds()`, also über das ganze
+    // Blickfeld. Ein Set, das einem Unterkonto gehört, HAT eine Detailansicht;
+    // die Zeile war trotzdem tot.
+    //
+    // Die zweite Ursache lag in der App und steht dort (Vorgabewert von
+    // `besitzt`); sie ist von hier aus nicht messbar.
+    const a = await alleAlarme(ich.id);
+    const vomKind = a.find(x => x.set_number === '60000-1');
+    assert.ok(vomKind, 'Der Alarm auf das Set des Kindes fehlt ganz.');
+    assert.equal(vomKind.besitzt, true,
+      'Ein Set des Haushalts gilt als nicht vorhanden — die Zeile wäre nicht ' +
+      'anklickbar, obwohl die Detailansicht es öffnet. Genau das war Marcos Befund.');
+    assert.equal(vomKind.image_local, '/uploads/60000-1_thumb.jpg',
+      'Auch das Bild kommt nicht aus dem Haushalt, sondern nur aus dem Katalog.');
+
+    // Und die Kehrseite derselben Erweiterung: Dasselbe Set liegt bei mir UND
+    // beim Kind. Ohne DISTINCT ON stünde der Alarm jetzt zweimal da — ein
+    // Fehler, den die enge erste Fassung gar nicht haben konnte.
+    assert.equal(a.filter(x => x.set_number === '70002-1').length, 1,
+      'Der Alarm steht doppelt: Das Set liegt bei zwei Konten des Haushalts, ' +
+      'und die Verbindung vervielfacht die Zeile.');
+    // Die Zeile MIT heruntergeladenem Bild muss gewinnen, nicht eine beliebige.
+    assert.equal(a.find(x => x.set_number === '70002-1').image_local,
+      '/uploads/70002-1_thumb.jpg',
+      'Von zwei Zeilen hat die ohne Bild gewonnen — dann bliebe die Kachel leer, ' +
+      'obwohl ein Bild da ist.');
+  });
+
+  await t.test('10. Löschen wirkt', async () => {
+    const vorher = (await alleAlarme(ich.id)).length;
     await loescheAlarm(ich.id, '99999-9', 'U');
     const a = await alleAlarme(ich.id);
-    assert.equal(a.length, 1, 'Nach dem Löschen steht der Alarm noch in der Übersicht.');
+    // Gegen die VORHER gemessene Zahl und nicht gegen eine feste: Wer oben
+    // einen Alarm dazunimmt, soll nicht hier scheitern. Genau das ist eben
+    // passiert, als der Haushalts-Fall dazukam.
+    assert.equal(a.length, vorher - 1,
+      `Nach dem Löschen stehen ${a.length} Alarme da, vorher waren es ${vorher}.`);
+    assert.ok(!a.some(x => x.set_number === '99999-9'),
+      'Der gelöschte Alarm steht noch in der Übersicht.');
   });
 });
