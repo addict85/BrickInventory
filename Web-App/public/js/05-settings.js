@@ -666,11 +666,15 @@ export async function ladeAlarmUebersicht() {
     const stand = a.zuletzt_preis == null
       ? ''
       : t('alerts.last', { preis: `${esc(a.currency_code)} ${a.zuletzt_preis.toFixed(2)}` });
-    // „scharf" vs. „hat gemeldet": Ohne diesen Unterschied wirkt ein Alarm,
-    // der gerade nicht meldet, wie einer, der nicht funktioniert.
+    // „scharf" gegen „unscharf" — und der Unterschied darf NICHT in der Farbe
+    // liegen. Marco ist rot-gruen-schwach; gruen gegen grau ist fuer ihn
+    // zweimal dasselbe, und damit stand die Aussage bisher nirgends. Sie
+    // haengt jetzt an drei Dingen, von denen jedes einzeln reicht: am Wort
+    // (ein echtes Gegensatzpaar), an der Flaeche (gefuellt gegen umrandet)
+    // und am Zeichen davor (● gegen ○). Dieselben drei wie in der App.
     const marke = a.ausgeloest
-      ? `<span style="font-size:.7rem;color:var(--mut)">${esc(tRaw('alerts.fired'))}</span>`
-      : `<span style="font-size:.7rem;color:var(--ok,#16a34a)">${esc(tRaw('alerts.armed'))}</span>`;
+      ? `<span class="alarm-marke alarm-marke-aus">${esc(tRaw('alerts.fired'))}</span>`
+      : `<span class="alarm-marke alarm-marke-an">${esc(tRaw('alerts.armed'))}</span>`;
     // Bild wie in den Finanzen: erst die heruntergeladene Kopie, dann die
     // Adresse aus der eigenen Sammlung, zuletzt die des Katalogs. Ein Alarm
     // auf ein Set, das man NICHT besitzt, hat nur die letzte — deshalb steht

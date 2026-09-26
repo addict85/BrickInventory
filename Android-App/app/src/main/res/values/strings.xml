@@ -649,7 +649,7 @@
     <string name="alerts_below">falls below</string>
     <string name="alerts_above">rises above</string>
     <string name="alerts_armed">● armed</string>
-    <string name="alerts_fired">○ has fired</string>
+    <string name="alerts_fired">○ not armed</string>
     <string name="alerts_last">last %1$s</string>
     <string name="alerts_bad_value">The threshold must be greater than 0.</string>
     <string name="alerts_delete">Remove price alert</string>

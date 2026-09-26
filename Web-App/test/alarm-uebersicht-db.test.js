@@ -32,6 +32,8 @@
  *   e) zweiter LEFT JOIN auf `sets` entfernt → Schritt 5 rot (Bild und Besitz)
  *   f) `data-click="stopEvent"` am Feld entfernt → Schritt 6 rot
  *   g) `besitzt` aus data class Preisalarm entfernt → Schritt 7 rot
+ *   h) 'alerts.fired' auf „hat gemeldet" zurückgesetzt → Schritt 8 rot
+ *   i) font-weight:600 aus .alarm-marke-an entfernt → Schritt 8 rot
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -42,7 +44,7 @@ const ROOT = path.join(__dirname, '..');
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
 process.env.WEB_WORKERS = '1';
 
-const { buildAndRequire, ohneKommentare } = require('./helpers/sources');
+const { buildAndRequire, loadTranslations, ohneKommentare } = require('./helpers/sources');
 const _req = buildAndRequire();
 const db = _req('db/database.js');
 
@@ -206,7 +208,60 @@ test('Preisalarm-Übersicht: eigene Alarme, mit Namen, änderbar, löschbar',
       '\nSie kämen dort als null an, ohne Fehler und ohne Hinweis.');
   });
 
-  await t.test('8. Löschen wirkt', async () => {
+  await t.test('8. scharf/unscharf ist ohne Farbe zu erkennen', () => {
+    // ── Marcos Befund vom 26.09. ──────────────────────────────────────────
+    //
+    //   „Ok entschuldige ich habe eine rot grün schwäche. Deshalb sind labels
+    //    mit scharf / unscharf für mich einfacher."
+    //
+    // Bis dahin trug die Farbe die ganze Aussage: grün heisst scharf, grau
+    // heisst nicht mehr scharf. Rot-Grün-Schwäche trifft rund acht Prozent der
+    // Männer — für sie stand die Information nirgends. Die Entschuldigung ist
+    // an der falschen Stelle: Nicht das Auge ist der Fehler, sondern eine
+    // Oberfläche, die eine Aussage NUR in die Farbe legt.
+    //
+    // Geprüft werden drei Unterschiede, von denen jeder EINZELN reicht.
+    const js = ohneKommentare(fs.readFileSync(path.join(ROOT, 'public/js/05-settings.js'), 'utf8'));
+    const css = fs.readFileSync(path.join(ROOT, 'public/styles.css'), 'utf8');
+
+    // 1. Die Marke kommt aus einer Klasse, nicht aus einer Farbe im Markup.
+    //    Solange die Farbe direkt an der Stelle steht, ist sie das Einzige,
+    //    was die beiden Zustände trennt.
+    assert.match(js, /alarm-marke-an/, 'Der scharfe Zustand hat keine eigene Klasse.');
+    assert.match(js, /alarm-marke-aus/, 'Der unscharfe Zustand hat keine eigene Klasse.');
+    assert.ok(!/alerts\.armed'\)\}<\/span>/.test(js) || !/var\(--ok/.test(js),
+      'Die Marke färbt noch direkt im Markup — dann hängt die Aussage wieder an der Farbe.');
+
+    // 2. Die FLÄCHE unterscheidet: gefüllt gegen umrandet. Das ist der
+    //    Unterschied, den man auch dann sieht, wenn beide Farben gleich
+    //    aussehen.
+    const an  = (css.match(/\.alarm-marke-an\{([^}]*)\}/)  || [])[1] || '';
+    const aus = (css.match(/\.alarm-marke-aus\{([^}]*)\}/) || [])[1] || '';
+    assert.ok(an && aus, 'Die beiden Klassen sind nicht gestaltet.');
+    assert.match(an,  /background:var\(--s200\)/, 'Der scharfe Zustand ist nicht gefüllt.');
+    assert.match(aus, /border-color:var\(--bdr\)/, 'Der unscharfe Zustand ist nicht umrandet.');
+    assert.match(an,  /font-weight:600/,
+      'Auch das Schriftgewicht unterscheidet die beiden nicht — ein Merkmal weniger.');
+
+    // 3. Das WORT ist ein Paar, in BEIDEN Sprachen. Vorher stand „scharf"
+    //    gegen „hat gemeldet" — zwei Aussagen über verschiedene Dinge; wer die
+    //    Farbe nicht lesen kann, musste sich den Gegensatz erschliessen.
+    const { de, en } = loadTranslations();
+    for (const [name, w] of [['DE', de], ['EN', en]]) {
+      const scharf = String(w['alerts.armed'] || '');
+      const unscharf = String(w['alerts.fired'] || '');
+      assert.ok(scharf.includes('●'), `${name}: das gefüllte Zeichen fehlt bei „scharf".`);
+      assert.ok(unscharf.includes('○'), `${name}: das hohle Zeichen fehlt bei „unscharf".`);
+      const a = scharf.replace(/[^\p{L}]/gu, '').toLowerCase();
+      const b = unscharf.replace(/[^\p{L}]/gu, '').toLowerCase();
+      assert.ok(a && b.includes(a),
+        `${name}: „${scharf}" und „${unscharf}" sind kein erkennbares Gegensatzpaar. ` +
+        'Ohne Farbe ist das der einzige Hinweis darauf, dass der eine Zustand das ' +
+        'Gegenteil des anderen ist.');
+    }
+  });
+
+  await t.test('9. Löschen wirkt', async () => {
     await loescheAlarm(ich.id, '99999-9', 'U');
     const a = await alleAlarme(ich.id);
     assert.equal(a.length, 1, 'Nach dem Löschen steht der Alarm noch in der Übersicht.');

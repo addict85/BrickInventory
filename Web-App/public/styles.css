@@ -458,3 +458,20 @@ html::-webkit-scrollbar{width:0;height:0}
     .apk-btn-txt small{font-size:.66rem;letter-spacing:.06em;text-transform:uppercase;
                        color:var(--mut)}
     .apk-btn-txt strong{font-size:.95rem;font-weight:600}
+
+    /* ── Preisalarm: scharf oder unscharf ────────────────────────────────────
+       Die Aussage darf nicht in der Farbe liegen. Rot-Grün-Schwäche trifft
+       rund acht Prozent der Männer, und grün gegen grau ist dann zweimal
+       dasselbe — die Information stünde nirgends.
+
+       Sie hängt deshalb an drei Dingen, von denen jedes einzeln reicht: am
+       Wort („scharf" gegen „unscharf", ein echtes Paar), an der FLÄCHE
+       (gefüllt gegen umrandet) und am Zeichen davor (● gegen ○). Die Farbe
+       ist nur noch Zugabe, und ausdrücklich nicht grün gegen rot.
+
+       Dieselben drei Unterschiede trägt die App (AlarmZustandPlakette). */
+    .alarm-marke{display:inline-block;font-size:.7rem;line-height:1.5;
+                 padding:0 6px;border-radius:999px;white-space:nowrap;
+                 border:1px solid transparent}
+    .alarm-marke-an{background:var(--s200);color:var(--txt);font-weight:600}
+    .alarm-marke-aus{background:transparent;color:var(--mut);border-color:var(--bdr)}

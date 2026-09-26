@@ -203,23 +203,76 @@ class AlarmUebersichtTest {
             "Der Speichern-Knopf steht wieder dauerhaft da und sieht aus wie ein Zustand."
         }
 
-        // ── Die Farbe, und zwar die richtige ────────────────────────────────
+        // ── Der Unterschied darf nicht in der Farbe liegen ──────────────────
         //
-        // Der erste Entwurf faerbte „scharf" mit `colorScheme.tertiary`, in
-        // der Annahme, das sei die gruene Familie. NACHGEMESSEN ist tertiary
-        // in keinem der fuenf Designs gruen — im Standarddesign ist es
-        // BrandRed. „Scharf" haette rot dagestanden und damit das Gegenteil
-        // gesagt. Gefunden hat das kein Test, sondern ein Blick in Theme.kt;
-        // dieser Test sorgt dafuer, dass es beim naechsten Mal ein Test tut.
+        // Marco ist rot-gruen-schwach. Bis dahin trug die Farbe die ganze
+        // Aussage: gruen = scharf, grau = nicht mehr scharf — fuer ihn
+        // zweimal dasselbe. Die Zwischenfassung faerbte sogar mit
+        // `colorScheme.tertiary`, das NACHGEMESSEN in keinem der fuenf
+        // Designs gruen ist (im Standarddesign BrandRed); „scharf" waere rot
+        // dagestanden.
+        //
+        // Beides sind Symptome derselben Sache: Eine Aussage, die nur in der
+        // Farbe steht, steht nirgends. Dieser Test verlangt deshalb einen
+        // Unterschied, den man OHNE Farbe sieht.
         val rumpf = s.substring(s.indexOf("fun AlarmZustandPlakette("))
-            .let { it.substring(0, minOf(500, it.length)) }
-        assert(rumpf.contains("LocalStatusFarben.current.erfolg")) {
-            "Das Gruen kommt nicht aus LocalStatusFarben — dort und nur dort steht " +
-                "die Farbe fuer „das ist in Ordnung“ (Nachtrag 120), und sie traegt " +
-                "denselben Wert wie --ok in der Webapp."
+            .let { it.substring(0, minOf(1200, it.length)) }
+        assert(rumpf.contains("BorderStroke(")) {
+            "Die beiden Zustaende unterscheiden sich nicht in der Flaeche " +
+                "(gefuellt gegen umrandet) — dann bliebe nur die Farbe."
         }
-        assert(!rumpf.contains("colorScheme.tertiary")) {
-            "tertiary ist in keinem Design gruen — im Standarddesign ist es rot."
+        assert(rumpf.contains("FontWeight.SemiBold")) {
+            "Auch das Schriftgewicht unterscheidet die beiden nicht mehr."
+        }
+        // Kein Gruen gegen Rot, auch nicht gut gemeint — das waere derselbe
+        // Fehler noch einmal.
+        for (verboten in listOf("LocalStatusFarben", "colorScheme.error",
+                                "colorScheme.tertiary")) {
+            assert(!rumpf.contains(verboten)) {
+                "`$verboten` traegt eine Bedeutung ueber die Farbe. Genau das soll " +
+                    "die Plakette nicht mehr tun."
+            }
+        }
+    }
+
+    /**
+     * Das Wort ist ein Paar — „scharf" gegen „unscharf".
+     *
+     * Vorher stand „scharf" gegen „hat gemeldet": zwei Aussagen ueber
+     * verschiedene Dinge. Wer die Farbe nicht lesen kann, musste daraus
+     * schliessen, dass das eine das Gegenteil des anderen sei.
+     *
+     * Geprueft wird in BEIDEN Sprachdateien — genau hier wurde schon einmal
+     * eine Seite nachgezogen und die andere vergessen.
+     */
+    @Test
+    fun `die beiden Alarmzustaende sind als Wortpaar erkennbar`() {
+        for (datei in listOf("values/strings.xml", "values-de/strings.xml")) {
+            val xml = java.io.File("src/main/res/$datei").readText()
+            // Kein dreifaches Anfuehrungszeichen und keine Konstante dafuer:
+            // Ein einfaches Muster mit maskierten Anfuehrungszeichen reicht,
+            // und der erste Entwurf hatte hier tatsaechlich die drei Zeichen
+            // IN das Muster geschrieben statt um es herum.
+            fun text(name: String) =
+                Regex("<string name=\"" + name + "\">(.*?)</string>")
+                    .find(xml)?.groupValues?.get(1) ?: ""
+            val scharf = text("alerts_armed")
+            val unscharf = text("alerts_fired")
+            assert(scharf.isNotBlank() && unscharf.isNotBlank()) {
+                "Die Zustandstexte fehlen in $datei."
+            }
+            // Gefuelltes gegen hohles Zeichen — der dritte Unterschied neben
+            // Wort und Flaeche.
+            assert(scharf.contains("\u25CF")) { "In $datei fehlt das gefuellte Zeichen." }
+            assert(unscharf.contains("\u25CB")) { "In $datei fehlt das hohle Zeichen." }
+            // Das eine Wort muss im anderen stecken (scharf/unscharf,
+            // armed/not armed): Ohne Farbe ist das der einzige Hinweis darauf,
+            // dass der eine Zustand das Gegenteil des anderen ist.
+            val a = scharf.filter { it.isLetter() }.lowercase()
+            val b = unscharf.filter { it.isLetter() }.lowercase()
+            assert(a.isNotEmpty() && b.contains(a)) {
+                "Die beiden Zustaende in $datei sind kein erkennbares Gegensatzpaar."
+            }
         }
     }
 

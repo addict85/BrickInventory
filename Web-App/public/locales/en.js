@@ -399,7 +399,7 @@ window.I18N_EN = {
   'alerts.below': 'falls below',
   'alerts.above': 'rises above',
   'alerts.armed': '● armed',
-  'alerts.fired': '○ has fired',
+  'alerts.fired': '○ not armed',
   'alerts.last': 'last {preis}',
   'alerts.bad_value': 'The threshold must be greater than 0.',
   'alerts.confirm_delete': 'Really remove the price alert for {set}?',

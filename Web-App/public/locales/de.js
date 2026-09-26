@@ -400,7 +400,7 @@ window.I18N_DE = {
   'alerts.below': 'fällt unter',
   'alerts.above': 'steigt über',
   'alerts.armed': '● scharf',
-  'alerts.fired': '○ hat gemeldet',
+  'alerts.fired': '○ unscharf',
   'alerts.last': 'zuletzt {preis}',
   'alerts.bad_value': 'Die Schwelle muss grösser als 0 sein.',
   'alerts.confirm_delete': 'Preisalarm für {set} wirklich entfernen?',

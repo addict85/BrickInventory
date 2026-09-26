@@ -2,6 +2,7 @@ package ch.brickinventoryapp.ui.screens
 
 import ch.brickinventoryapp.ui.theme.Formen
 import ch.brickinventoryapp.ui.theme.AppKarte
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.ScrollState
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -16,6 +17,7 @@ import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -33,7 +35,6 @@ import ch.brickinventoryapp.ui.MainViewModel
 import ch.brickinventoryapp.ui.*  // Feature-Extensions (saveSettings, setLanguage, …)
 import ch.brickinventoryapp.util.passwortZuKurz
 import ch.brickinventoryapp.ui.theme.Abstaende
-import ch.brickinventoryapp.ui.theme.LocalStatusFarben
 import ch.brickinventoryapp.ui.theme.Schrift
 import kotlinx.coroutines.launch
 
@@ -604,43 +605,61 @@ private fun PreisalarmeCard(
 }
 
 /**
- * „scharf" oder „hat gemeldet" — als eigenes, gefaerbtes Label.
+ * „scharf" oder „unscharf" — ein Label, das ohne Farbe auskommt.
  *
- * ── Was die Webapp an dieser Stelle zeigt ──────────────────────────────────
+ * ── Marcos Befund vom 26.09. ───────────────────────────────────────────────
  *
- * Ein kleiner farbiger Text mit Punkt davor: gruen „● scharf", grau
- * „○ hat gemeldet" (05-settings.js, `marke`). In der App stand derselbe Text
- * bis hierher in derselben Farbe wie der Rest der Zeile, angehaengt an den
- * letzten Preis — er ging darin unter. Marco hat deshalb den gruenen
- * SPEICHERN-Haken daneben fuer die Zustandsanzeige gehalten und nach einem
- * Label gefragt: „analog der Webapp […] anstelle des gruenen Hackens".
+ *   „Ok entschuldige ich habe eine rot grün schwäche. Deshalb sind labels mit
+ *    scharf / unscharf für mich einfacher."
  *
- * Also genau das, was dort steht — nicht mehr: kein Hintergrund, keine
- * eigene Form. Eine Plakette mit Flaeche waere in fuenf Designs fuenfmal zu
- * pruefen, und die Webapp haette sie trotzdem nicht.
+ * Bis hierher trugen BEIDE Oberflaechen die Aussage in der Farbe: gruen heisst
+ * scharf, grau heisst nicht mehr scharf. Fuer rund acht Prozent der Maenner
+ * ist das keine Aussage, sondern zweimal dasselbe. Und der Entschuldigung
+ * widerspricht die Sache: Nicht das Auge ist der Fehler, sondern eine
+ * Oberflaeche, die eine Information NUR in die Farbe legt.
  *
- * ── Woher das Gruen kommt ──────────────────────────────────────────────────
+ * Drei Unterschiede tragen sie jetzt, von denen jeder EINZELN reicht:
  *
- * Aus [LocalStatusFarben], NICHT aus dem Material-Schema. Der erste Entwurf
- * griff zu `colorScheme.tertiary` in der Annahme, das sei die gruene Familie.
- * NACHGEMESSEN ist `tertiary` in keinem der fuenf Designs gruen — im
- * Standarddesign ist es BrandRed. „Scharf" haette rot dagestanden und damit
- * das Gegenteil dessen gesagt, was es bedeutet.
+ *   1. Das WORT. „scharf" und „unscharf" sind ein Paar — vorher stand dort
+ *      „scharf" gegen „hat gemeldet", zwei Saetze ueber verschiedene Dinge.
+ *      Was „unscharf" bedeutet, sagt der Einleitungstext der Rubrik, und die
+ *      Zeile „zuletzt CHF 28.50" daneben steht ohnehin nur bei einem Alarm,
+ *      der gemeldet hat (preisalarm.ts setzt beides in derselben Anweisung).
+ *   2. Die FORM: gefuellt gegen umrandet.
+ *   3. Das ZEICHEN davor: ● gegen ○, gefuellt gegen hohl.
  *
- * `LocalStatusFarben.erfolg` ist dafuer da (Nachtrag 120: „Farben mit
- * BEDEUTUNG, die das Material-Schema nicht kennt") und traegt im
- * Standarddesign 0xFF16A34A — denselben Wert wie `var(--ok,#16a34a)` in der
- * Webapp. Dieselbe Aussage, dieselbe Farbe, an beiden Orten.
+ * Farbe bleibt, aber nur noch als Zugabe — und ausdruecklich NICHT gruen
+ * gegen rot. Das Label nimmt `secondaryContainer`, also die Farbfamilie, die
+ * jedes der fuenf Designs fuer „hervorgehoben, aber nicht dringend" mitbringt.
+ * Ein gruenes Label waere derselbe Fehler noch einmal, nur freundlicher
+ * gemeint.
  */
 @Composable
 private fun AlarmZustandPlakette(ausgeloest: Boolean) {
-    Text(
-        stringResource(if (ausgeloest) R.string.alerts_fired else R.string.alerts_armed),
-        style = MaterialTheme.typography.labelSmall,
-        color = if (ausgeloest) MaterialTheme.colorScheme.onSurfaceVariant
-                else LocalStatusFarben.current.erfolg,
-    )
+    val text = stringResource(if (ausgeloest) R.string.alerts_fired else R.string.alerts_armed)
+    // Gefuellt = scharf, umrandet = unscharf. Die Flaeche ist der Unterschied,
+    // den man auch dann sieht, wenn die beiden Farben gleich aussehen.
+    Surface(
+        shape = Formen.chip,
+        color = if (ausgeloest) Color.Transparent
+                else MaterialTheme.colorScheme.secondaryContainer,
+        border = if (ausgeloest)
+            BorderStroke(1.dp, MaterialTheme.colorScheme.outline) else null,
+    ) {
+        Text(
+            text,
+            style = MaterialTheme.typography.labelSmall,
+            // Auch das Gewicht traegt mit: Ein scharfer Alarm ist der Zustand,
+            // auf den es ankommt.
+            fontWeight = if (ausgeloest) FontWeight.Normal else FontWeight.SemiBold,
+            color = if (ausgeloest) MaterialTheme.colorScheme.onSurfaceVariant
+                    else MaterialTheme.colorScheme.onSecondaryContainer,
+            modifier = Modifier.padding(
+                horizontal = Abstaende.winzig, vertical = Abstaende.haar),
+        )
+    }
 }
+
 
 @Composable
 private fun LagerorteCard(vm: MainViewModel) {

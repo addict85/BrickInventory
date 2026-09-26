@@ -635,7 +635,7 @@
     <string name="alerts_below">fällt unter</string>
     <string name="alerts_above">steigt über</string>
     <string name="alerts_armed">● scharf</string>
-    <string name="alerts_fired">○ hat gemeldet</string>
+    <string name="alerts_fired">○ unscharf</string>
     <string name="alerts_last">zuletzt %1$s</string>
     <string name="alerts_bad_value">Die Schwelle muss grösser als 0 sein.</string>
     <string name="alerts_delete">Preisalarm entfernen</string>
