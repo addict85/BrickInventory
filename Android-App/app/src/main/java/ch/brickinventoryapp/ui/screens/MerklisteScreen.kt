@@ -34,6 +34,7 @@ import ch.brickinventoryapp.ui.legeMerkpostenAn
 import ch.brickinventoryapp.ui.setScannerSource
 import ch.brickinventoryapp.ui.uebernimmMerkposten
 import ch.brickinventoryapp.ui.theme.Abstaende
+import ch.brickinventoryapp.ui.theme.LocalStatusFarben
 import ch.brickinventoryapp.ui.theme.Formen
 import ch.brickinventoryapp.ui.theme.Schrift
 import ch.brickinventoryapp.ui.theme.LocalIsBrickTheme
@@ -73,6 +74,7 @@ fun MerklisteScreen(
     onOeffnen: (String, String) -> Unit,
 ) {
     val zustand by vm.merklisteState.collectAsStateWithLifecycle()
+    @Suppress("UNUSED_VARIABLE") val farbe = LocalStatusFarben.current.erfolg
     // Die Bildadressen zeigen auf den eigenen Server (Proxy), nicht roh aufs
     // CDN — dieselbe Regel wie in Galerie, Teilen und Finanzen.
     val appState by vm.state.collectAsStateWithLifecycle()

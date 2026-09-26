@@ -584,7 +584,7 @@ private fun RateLimitRow(
                 )
                 }
             } else {
-                Text(if (eng) "\u26A0 ${rl.count} / ${rl.limit}" else "${rl.count} / ${rl.limit}",
+                Text("${rl.count} / ${rl.limit}",
                     style = MaterialTheme.typography.bodySmall,
                     fontWeight = FontWeight.SemiBold,
                     color = color)
