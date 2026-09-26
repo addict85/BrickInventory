@@ -48,6 +48,30 @@ import org.junit.Test
  * keinen zweiten Schreibweg. Um ihn rot zu bekommen, muesste man einen
  * zweiten Schreibweg bauen; der wuerde zugleich „jede Funktion hat einen
  * Aufrufer" reissen, und die Zuordnung Eingriff↔Test waere dahin.
+ *
+ * ── Gegenproben der fuenf NEUEN Regeln (gemessen im Lauf 291) ───────────────
+ *
+ * Zweig claude/gegenproben-alarm-2, fuenf Eingriffe einzeln gefahren:
+ *
+ *   a) FinanzBild-Aufruf aus SettingsScreen entfernt
+ *        → „die Zeile zeigt ein Bild und fuehrt in die Detailansicht" rot
+ *   b) Schluessel des Rollmerkers von "settings" auf "einstellungen"
+ *        → „die Einstellungen merken sich ihre Rollposition" rot
+ *   c) Loeschknopf schreibt ueber eine Zwischenvariable
+ *        → „vor dem Loeschen wird gefragt" rot
+ *   d) `border` der Plakette auf null — nur noch Farbe traegt den Unterschied
+ *        → „der Alarmzustand steht als Plakette da" rot
+ *   e) 'alerts_fired' zurueck auf „○ hat gemeldet" — kein Wortpaar mehr
+ *        → „die beiden Alarmzustaende sind als Wortpaar erkennbar" rot
+ *
+ * Ergebnis: 501 Tests, GENAU 5 rot — einer je Eingriff, keiner zusaetzlich.
+ * Jeder Anker war vorher auf Eindeutigkeit geprueft (je genau 1 Fundstelle);
+ * ohne das waere die Zuordnung eine Vermutung.
+ *
+ * Zwei Dinge, die derselbe Lauf mitbewiesen hat: Der Basislauf 290 auf
+ * demselben Stand war gruen, und die beiden hier unberuehrten Regeln der
+ * Klasse blieben gruen. Ein Eingriff, der vier Tests reisst, sagt nichts
+ * darueber, welcher davon wirklich prueft.
  */
 class AlarmUebersichtTest {
 
