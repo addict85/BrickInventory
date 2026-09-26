@@ -47,6 +47,24 @@ import org.junit.Test
  * deshalb eine Behauptung, die ein Mensch getroffen hat, und der Test haelt
  * nur fest, dass niemand eine NEUE Stelle hinzufuegt, ohne dieselbe Frage
  * gestellt zu haben.
+ *
+ * ── Gegenproben (gemessen im Lauf 296) ─────────────────────────────────────
+ *
+ * Zweig claude/gegenproben-farbe, zwei Eingriffe:
+ *
+ *   a) MerklisteScreen faerbt neuerdings mit LocalStatusFarben — eine
+ *      SIEBTE Datei, ohne dass jemand gefragt haette, was die Stelle sagt
+ *        → „wer Statusfarben benutzt, steht auf der geprueften Liste" rot
+ *   b) das ⚠ aus RateLimitRow entfernt, `val eng` aber stehen gelassen
+ *        → „die Kontingent-Zeile warnt nicht nur mit Farbe" rot
+ *
+ * Ergebnis: 503 Tests, GENAU 2 rot. Der Basislauf 295 auf demselben Stand
+ * war gruen.
+ *
+ * Bei b) blieb `val eng` mit Absicht stehen. Haette der Eingriff Schwelle
+ * UND Zeichen zugleich entfernt, saehe man dem roten Test nicht mehr an,
+ * woran er haengt — und eine Gegenprobe, die zwei Dinge auf einmal kaputt
+ * macht, beweist keines von beiden.
  */
 class FarbeAlleinTest {
 
