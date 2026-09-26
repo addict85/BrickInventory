@@ -463,14 +463,28 @@ data class Preisalarm(
     @SerialName("image_url") val imageUrl: String? = null,
     @SerialName("set_img_url") val setImgUrl: String? = null,
     /**
-     * Liegt das Set in der eigenen Sammlung?
+     * Gibt es zu diesem Set eine Detailansicht?
      *
      * Entscheidet, ob die Zeile anklickbar ist: Die Detailansicht holt
-     * `/v1/sets/:nummer`, und die gibt es fuer ein Set, das man nicht (mehr)
-     * besitzt, nicht. Ein Alarm ueberlebt das Entfernen des Sets — er haengt
-     * am Konto, nicht am Set.
+     * `/v1/sets/:nummer`, und die gibt es fuer ein Set ausserhalb des
+     * Blickfelds nicht. Ein Alarm ueberlebt das Entfernen des Sets — er
+     * haengt am Konto, nicht am Set.
+     *
+     * ── Warum der Vorgabewert `true` ist (Nachtrag 139) ───────────────────
+     *
+     * Marcos Befund: „Das Bild ist sichtbar aber die Eintraege sind nicht
+     * klickbar." Sein Server war noch der alte und schickte das Feld gar
+     * nicht mit; das Bild kam aus `set_img_url`, das es dort schon gab. Mit
+     * dem Vorgabewert `false` hiess „Feld fehlt" dasselbe wie „Set gibt es
+     * nicht" — und die Rubrik war stillschweigend tot.
+     *
+     * Ein fehlendes Feld ist aber keine Aussage. `true` heisst hier: im
+     * Zweifel versuchen. Auf einem neuen Server schickt die Antwort das Feld
+     * IMMER mit, der Vorgabewert greift also nur gegen einen alten — und dort
+     * ist ein Klick, der in einer Fehlermeldung endet, allemal besser als
+     * eine Liste, in der nichts geht.
      */
-    val besitzt: Boolean = false,
+    val besitzt: Boolean = true,
 )
 
 @Serializable

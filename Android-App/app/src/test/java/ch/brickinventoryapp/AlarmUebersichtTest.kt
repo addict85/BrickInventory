@@ -166,6 +166,42 @@ class AlarmUebersichtTest {
     }
 
     /**
+     * Ein fehlendes Feld schaltet die Rubrik nicht ab.
+     *
+     * ── Marcos Befund vom 26.09. ───────────────────────────────────────────
+     *
+     *   „Das Bild in der Android-App ist sichtbar aber die Eintraege in den
+     *    Preisalarme sind nicht klickbar."
+     *
+     * Zwei Ursachen, beide meine. Die im Server (Verbindung auf das eigene
+     * Konto statt auf das Blickfeld) hat ihre Regel in
+     * Web-App/test/alarm-uebersicht-db.test.js. Die hier ist die in der App:
+     *
+     * Sein Server war noch der alte und schickte `besitzt` gar nicht mit —
+     * das Bild kam aus `set_img_url`, das es dort schon gab. Mit dem
+     * Vorgabewert `false` hiess „Feld fehlt" dasselbe wie „Set gibt es
+     * nicht", und die ganze Rubrik war stillschweigend tot.
+     *
+     * Ein fehlendes Feld ist aber keine Aussage. Der Vorgabewert muss `true`
+     * sein: im Zweifel versuchen. Auf einem neuen Server schickt die Antwort
+     * das Feld immer mit, er greift also nur gegen einen alten — und dort ist
+     * ein Klick, der in einer Fehlermeldung endet, allemal besser als eine
+     * Liste, in der nichts geht.
+     */
+    @Test
+    fun `ein fehlendes besitzt-Feld macht die Zeile nicht tot`() {
+        val m = quelle("data/model/SetModels.kt")
+        val i = m.indexOf("data class Preisalarm(")
+        assert(i > 0) { "data class Preisalarm fehlt — Muster veraltet?" }
+        val rumpf = m.substring(i, m.indexOf("\n)", i))
+        assert(rumpf.contains("val besitzt: Boolean = true")) {
+            "Der Vorgabewert von `besitzt` ist nicht `true`. Ein Server, der das " +
+                "Feld nicht kennt, schaltet damit die ganze Rubrik ab — genau der " +
+                "Befund vom 26.09."
+        }
+    }
+
+    /**
      * Die Einstellungen kommen an derselben Stelle zurueck.
      *
      * „Kommt man zurück soll man sich wieder an der gleichen Stelle befinden

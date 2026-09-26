@@ -22,6 +22,7 @@
  * Versehen ist — deshalb steht es hier auch begründet.
  */
 import * as db from '../db/database';
+import { scopeIds } from './household';
 import { fehlerWerfen } from './fehlerTexte';
 
 /**
@@ -173,34 +174,61 @@ export interface AlarmMitName extends Preisalarm {
   image_local: string | null;
   image_url: string | null;
   /**
-   * Liegt das Set in der eigenen Sammlung?
+   * Gibt es zu diesem Set eine Detailansicht?
    *
    * Ein Alarm braucht das Set NICHT: `setzeAlarm()` schreibt ohne jede
    * Pruefung, und wer ein Set spaeter aus der Sammlung entfernt, behaelt
    * seinen Alarm. Die Uebersicht macht die Zeile deshalb nur dann anklickbar,
    * wenn es einen Detaildialog dazu gibt — sonst fuehrte der Klick auf
    * `GET /v1/sets/:nummer` und endete in einer Fehlermeldung.
+   *
+   * ── Warum das BLICKFELD und nicht `user_id` (Nachtrag 139) ────────────────
+   *
+   * Marcos Befund: „Das Bild in der Android-App ist sichtbar aber die
+   * Eintraege in den Preisalarme sind nicht klickbar."
+   *
+   * Die erste Fassung verband auf `s.user_id = a.user_id` — also streng das
+   * eigene Konto. `GET /v1/sets/:nummer` fragt aber ueber `scopeIds()`, das
+   * heisst ueber das ganze Blickfeld: eigenes Konto UND Haushalt. Ein Set,
+   * das einem Unterkonto gehoert, hat also sehr wohl eine Detailansicht —
+   * die Zeile war trotzdem tot.
+   *
+   * Die Regel lautet deshalb nicht mehr „gehoert mir", sondern „laesst sich
+   * oeffnen", und sie benutzt dieselbe Quelle wie die Route, die geoeffnet
+   * wird. Zwei Antworten auf dieselbe Frage waeren genau das, was hier
+   * auseinandergelaufen ist.
    */
   besitzt: boolean;
 }
 
 export async function alleAlarme(userId: number): Promise<AlarmMitName[]> {
+  // Dasselbe Blickfeld, das auch `GET /v1/sets/:nummer` benutzt. Der Alarm
+  // selbst bleibt beim EIGENEN Konto (siehe Kopf der Datei) — gefragt ist
+  // hier nur, ob das Set sichtbar ist.
+  const blickfeld = await scopeIds(userId);
   const rows = await db.all(
-    // Der zweite LEFT JOIN geht auf das EIGENE Set (sets ist ueber
-    // (user_id, set_number) eindeutig, die Verbindung kann also keine Zeile
-    // vervielfachen). Er liefert das Bild, das die Galerie zeigt; der Katalog
-    // springt ein, wenn man das Set gar nicht besitzt — und genau das ist der
-    // haeufige Fall bei einem Preisalarm.
-    `SELECT a.set_number, a.condition, a.richtung, a.schwelle, a.currency_code,
+    // Der zweite LEFT JOIN geht auf das Set im Blickfeld. Er liefert das Bild,
+    // das die Galerie zeigt; der Katalog springt ein, wenn es das Set dort gar
+    // nicht gibt — und das ist bei einem Preisalarm der haeufige Fall.
+    //
+    // DISTINCT ON, weil die Verbindung jetzt mehrere Zeilen treffen KANN:
+    // `sets` ist ueber (user_id, set_number) eindeutig, aber im Haushalt
+    // koennen zwei Konten dasselbe Set haben. Ohne das erschiene der Alarm
+    // zweimal — ein Fehler, den die erste Fassung nicht haben konnte und der
+    // mit der Erweiterung auf das Blickfeld neu entsteht. Sortiert wird nach
+    // `s.image_local` NULLS LAST, damit die Zeile MIT heruntergeladenem Bild
+    // gewinnt statt einer beliebigen.
+    `SELECT DISTINCT ON (a.set_number, a.condition)
+            a.set_number, a.condition, a.richtung, a.schwelle, a.currency_code,
             a.ausgeloest, a.zuletzt_am, a.zuletzt_preis,
             rb.name, rb.set_img_url, s.image_local, s.image_url,
             (s.id IS NOT NULL) AS besitzt
        FROM price_alerts a
        LEFT JOIN rb_sets rb ON rb.set_num = a.set_number
-       LEFT JOIN sets s ON s.user_id = a.user_id AND s.set_number = a.set_number
+       LEFT JOIN sets s ON s.user_id = ANY($2) AND s.set_number = a.set_number
       WHERE a.user_id = $1
-      ORDER BY a.set_number, a.condition`,
-    [userId])
+      ORDER BY a.set_number, a.condition, s.image_local NULLS LAST, s.id`,
+    [userId, blickfeld])
     .catch(e => { require('./httpError').meldeUndWeiter('preisalarm:alle', e); return []; });
   type Zeile = Omit<AlarmMitName, 'schwelle' | 'zuletzt_preis'> &
                { schwelle: string | number; zuletzt_preis: string | number | null };
