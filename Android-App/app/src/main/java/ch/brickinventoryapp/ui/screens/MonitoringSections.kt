@@ -552,6 +552,21 @@ private fun RateLimitRow(
         pct > 0.7f -> LocalStatusFarben.current.warnung
         else       -> MaterialTheme.colorScheme.primary
     }
+    // ── Das Zeichen, nicht nur die Farbe (Nachtrag 138) ─────────────────────
+    //
+    // Marco ist rot-gruen-schwach. Diese Zeile hatte DREI Stufen — blau, gelb,
+    // rot —, und nur die Farbe sagte, in welcher man steckt. Gelb gegen Rot
+    // ist genau das Paar, das dabei zusammenfaellt.
+    //
+    // Die Zahl „750 / 1000" und die Laenge des Balkens stehen zwar da, man
+    // kann es also AUSRECHNEN. Aber der Zweck der Faerbung war nie die
+    // Auskunft, sondern der Blickfang: „hier wird es eng". Genau der fiel
+    // ersatzlos weg.
+    //
+    // Ein Zeichen davor holt ihn zurueck, ohne die Farbe zu ersetzen. EINE
+    // Schwelle und nicht zwei: Ob 75 oder 95 Prozent, sagt die Zahl daneben
+    // schon; was sie nicht sagt, ist, ab wann man hinsehen sollte.
+    val eng = pct > 0.7f
     Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(3.dp)) {
         Row(Modifier.fillMaxWidth(), Arrangement.SpaceBetween, Alignment.CenterVertically) {
             Text(label, style = MaterialTheme.typography.bodyMedium)
@@ -569,7 +584,7 @@ private fun RateLimitRow(
                 )
                 }
             } else {
-                Text("${rl.count} / ${rl.limit}",
+                Text(if (eng) "\u26A0 ${rl.count} / ${rl.limit}" else "${rl.count} / ${rl.limit}",
                     style = MaterialTheme.typography.bodySmall,
                     fontWeight = FontWeight.SemiBold,
                     color = color)
