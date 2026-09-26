@@ -197,6 +197,25 @@ class AlarmUebersichtTest {
         assert(s.contains("val geaendert =")) {
             "Der Speichern-Knopf steht wieder dauerhaft da und sieht aus wie ein Zustand."
         }
+
+        // ── Die Farbe, und zwar die richtige ────────────────────────────────
+        //
+        // Der erste Entwurf faerbte „scharf" mit `colorScheme.tertiary`, in
+        // der Annahme, das sei die gruene Familie. NACHGEMESSEN ist tertiary
+        // in keinem der fuenf Designs gruen — im Standarddesign ist es
+        // BrandRed. „Scharf" haette rot dagestanden und damit das Gegenteil
+        // gesagt. Gefunden hat das kein Test, sondern ein Blick in Theme.kt;
+        // dieser Test sorgt dafuer, dass es beim naechsten Mal ein Test tut.
+        val rumpf = s.substring(s.indexOf("fun AlarmZustandPlakette("))
+            .let { it.substring(0, minOf(500, it.length)) }
+        assert(rumpf.contains("LocalStatusFarben.current.erfolg")) {
+            "Das Gruen kommt nicht aus LocalStatusFarben — dort und nur dort steht " +
+                "die Farbe fuer „das ist in Ordnung“ (Nachtrag 120), und sie traegt " +
+                "denselben Wert wie --ok in der Webapp."
+        }
+        assert(!rumpf.contains("colorScheme.tertiary")) {
+            "tertiary ist in keinem Design gruen — im Standarddesign ist es rot."
+        }
     }
 
     // Die Gegenrichtung — „hat die WEBAPP die Rubrik auch?" — steht bewusst

@@ -33,6 +33,7 @@ import ch.brickinventoryapp.ui.MainViewModel
 import ch.brickinventoryapp.ui.*  // Feature-Extensions (saveSettings, setLanguage, …)
 import ch.brickinventoryapp.util.passwortZuKurz
 import ch.brickinventoryapp.ui.theme.Abstaende
+import ch.brickinventoryapp.ui.theme.LocalStatusFarben
 import ch.brickinventoryapp.ui.theme.Schrift
 import kotlinx.coroutines.launch
 
@@ -603,32 +604,42 @@ private fun PreisalarmeCard(
 }
 
 /**
- * „scharf" oder „hat gemeldet" — als Plakette, nicht als Satzanfang.
+ * „scharf" oder „hat gemeldet" — als eigenes, gefaerbtes Label.
  *
- * Die Webapp faerbt denselben Text gruen bzw. grau. In der App stand er bis
- * hierher als gewoehnlicher Kleintext in derselben Farbe wie der Rest der
- * Zeile und ging darin unter; Marco hat den gruenen Speichern-Haken daneben
- * fuer die Zustandsanzeige gehalten. Eine Plakette ist an derselben Stelle
- * das, was die Webapp dort zeigt: erkennbar ohne Lesen.
+ * ── Was die Webapp an dieser Stelle zeigt ──────────────────────────────────
+ *
+ * Ein kleiner farbiger Text mit Punkt davor: gruen „● scharf", grau
+ * „○ hat gemeldet" (05-settings.js, `marke`). In der App stand derselbe Text
+ * bis hierher in derselben Farbe wie der Rest der Zeile, angehaengt an den
+ * letzten Preis — er ging darin unter. Marco hat deshalb den gruenen
+ * SPEICHERN-Haken daneben fuer die Zustandsanzeige gehalten und nach einem
+ * Label gefragt: „analog der Webapp […] anstelle des gruenen Hackens".
+ *
+ * Also genau das, was dort steht — nicht mehr: kein Hintergrund, keine
+ * eigene Form. Eine Plakette mit Flaeche waere in fuenf Designs fuenfmal zu
+ * pruefen, und die Webapp haette sie trotzdem nicht.
+ *
+ * ── Woher das Gruen kommt ──────────────────────────────────────────────────
+ *
+ * Aus [LocalStatusFarben], NICHT aus dem Material-Schema. Der erste Entwurf
+ * griff zu `colorScheme.tertiary` in der Annahme, das sei die gruene Familie.
+ * NACHGEMESSEN ist `tertiary` in keinem der fuenf Designs gruen — im
+ * Standarddesign ist es BrandRed. „Scharf" haette rot dagestanden und damit
+ * das Gegenteil dessen gesagt, was es bedeutet.
+ *
+ * `LocalStatusFarben.erfolg` ist dafuer da (Nachtrag 120: „Farben mit
+ * BEDEUTUNG, die das Material-Schema nicht kennt") und traegt im
+ * Standarddesign 0xFF16A34A — denselben Wert wie `var(--ok,#16a34a)` in der
+ * Webapp. Dieselbe Aussage, dieselbe Farbe, an beiden Orten.
  */
 @Composable
 private fun AlarmZustandPlakette(ausgeloest: Boolean) {
-    // Dieselbe Bedeutung, dieselbe Farbe wie in der Webapp: gruen = scharf,
-    // grau = hat gemeldet. Kein neues Gruen erfinden — `tertiary` ist im
-    // Noppen-Design die gruene Familie.
-    val farbe = if (ausgeloest) MaterialTheme.colorScheme.onSurfaceVariant
-                else MaterialTheme.colorScheme.tertiary
-    Surface(
-        shape = Formen.chip,
-        color = farbe.copy(alpha = 0.14f),
-    ) {
-        Text(
-            stringResource(if (ausgeloest) R.string.alerts_fired else R.string.alerts_armed),
-            style = MaterialTheme.typography.labelSmall,
-            color = farbe,
-            modifier = Modifier.padding(horizontal = Abstaende.klein, vertical = 1.dp),
-        )
-    }
+    Text(
+        stringResource(if (ausgeloest) R.string.alerts_fired else R.string.alerts_armed),
+        style = MaterialTheme.typography.labelSmall,
+        color = if (ausgeloest) MaterialTheme.colorScheme.onSurfaceVariant
+                else LocalStatusFarben.current.erfolg,
+    )
 }
 
 @Composable
