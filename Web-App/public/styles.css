@@ -439,3 +439,22 @@ html::-webkit-scrollbar{width:0;height:0}
        this.style.background gesetzt haben — Hover gehört ins Stylesheet, und
        Inline-Handler hätten 'unsafe-inline' in der CSP nötig gemacht. */
     .hover-row:hover{background:var(--s100)}
+
+    /* ── Download-Knopf für die Android-App ───────────────────────────────────
+       Die vertraute Form eines Store-Knopfs: Symbol links, zwei Zeilen rechts,
+       die kleine über der grossen. Bewusst KEIN `.btn`: Ein Knopf im Stil der
+       Oberfläche löst eine Aktion IN der Anwendung aus; dieser hier führt aus
+       ihr heraus und auf eine fremde Seite. Die andere Form sagt das, bevor
+       jemand klickt.
+
+       Farben aus den Tokens statt fest verdrahtet — sonst stünde der Knopf in
+       den fünf Designs fünfmal falsch. */
+    .apk-btn{display:inline-flex;align-items:center;gap:.7rem;
+             padding:.5rem .95rem;border-radius:10px;text-decoration:none;
+             border:1px solid var(--bdr);background:var(--sur);color:var(--txt);
+             transition:background .15s ease,border-color .15s ease}
+    .apk-btn:hover{background:var(--s100);border-color:var(--b600)}
+    .apk-btn-txt{display:flex;flex-direction:column;line-height:1.15;text-align:left}
+    .apk-btn-txt small{font-size:.66rem;letter-spacing:.06em;text-transform:uppercase;
+                       color:var(--mut)}
+    .apk-btn-txt strong{font-size:.95rem;font-weight:600}
