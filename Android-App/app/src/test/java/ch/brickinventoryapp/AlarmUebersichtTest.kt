@@ -46,7 +46,12 @@ class AlarmUebersichtTest {
     @Test
     fun `die Rubrik steht in den Einstellungen und laedt sich selbst`() {
         val s = quelle("ui/screens/SettingsScreen.kt")
-        assert(s.contains("PreisalarmeCard(vm)")) {
+        // Nur der Anfang des Aufrufs, nicht die ganze Zeile: Die Rubrik hat
+        // inzwischen vier Parameter (Bild, Serveradresse, Klick), und eine
+        // Regel, die an der Anzahl haengt, prueft nicht mehr das, was sie
+        // sagt — sie geht beim naechsten Parameter kaputt, ohne dass etwas
+        // kaputt waere. Genau das ist hier passiert (Lauf 286).
+        assert(s.contains("PreisalarmeCard(vm,") || s.contains("PreisalarmeCard(vm)")) {
             "Die Rubrik ist nicht in den Einstellungen eingehaengt — sie existiert, " +
                 "aber niemand sieht sie."
         }
