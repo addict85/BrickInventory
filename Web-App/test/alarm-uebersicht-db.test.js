@@ -31,6 +31,7 @@
  *   d) ladeAlarmUebersicht nicht aufgerufen → Schritt 4 rot
  *   e) zweiter LEFT JOIN auf `sets` entfernt → Schritt 5 rot (Bild und Besitz)
  *   f) `data-click="stopEvent"` am Feld entfernt → Schritt 6 rot
+ *   g) `besitzt` aus data class Preisalarm entfernt → Schritt 7 rot
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -170,7 +171,42 @@ test('Preisalarm-Übersicht: eigene Alarme, mit Namen, änderbar, löschbar',
       'Die Zeile zeigt kein Vorschaubild — analog den Finanzen war das der Auftrag.');
   });
 
-  await t.test('7. Löschen wirkt', async () => {
+  await t.test('7. jedes gelieferte Feld kommt in der App auch an', async () => {
+    // ── Warum das nicht der Kotlin-Übersetzer erledigt (Nachtrag 137) ──────
+    //
+    // Er fängt den lauten Fall: Ein Feld, das die Oberfläche liest und das es
+    // im Modell nicht gibt, übersetzt nicht. Genau das ist beim Einbau dieser
+    // Zeile passiert — die vier neuen Felder landeten versehentlich in der
+    // Nachbarklasse, und der Lauf war nach 88 Sekunden rot.
+    //
+    // Der STILLE Fall bleibt: Heisst das Feld hier `set_img_url` und im Modell
+    // `@SerialName("set_image")`, übersetzt alles sauber, und die App bekommt
+    // für immer `null`. Kein Fehler, kein Absturz — nur ein Bild, das nie
+    // erscheint, und niemand weiss, warum.
+    //
+    // Deshalb werden die Namen VERGLICHEN, und zwar die tatsächlich
+    // gelieferten aus der Antwort, nicht eine abgeschriebene Liste.
+    const a = await alleAlarme(ich.id);
+    const felder = Object.keys(a[0]);
+    assert.ok(felder.length >= 10, `Nur ${felder.length} Felder — Abfrage kaputt?`);
+
+    const kt = fs.readFileSync(path.join(ROOT, '..', 'Android-App', 'app', 'src', 'main',
+      'java', 'ch', 'brickinventoryapp', 'data', 'model', 'SetModels.kt'), 'utf8');
+    const klasse = kt.slice(kt.indexOf('data class Preisalarm('));
+    const rumpf = klasse.slice(0, klasse.indexOf('\n)'));
+    assert.ok(rumpf.includes('setNumber'), 'data class Preisalarm nicht gefunden — Muster veraltet?');
+
+    const camel = k => k.replace(/_([a-z])/g, (_, c) => c.toUpperCase());
+    const fehlen = felder.filter(k =>
+      !rumpf.includes(`@SerialName("${k}")`) &&
+      !new RegExp(`\\bval ${camel(k)}\\b`).test(rumpf));
+    assert.deepEqual(fehlen, [],
+      'Diese Felder liefert /v1/alerts, und die App hat keinen Platz dafür:\n  ' +
+      fehlen.join('\n  ') +
+      '\nSie kämen dort als null an, ohne Fehler und ohne Hinweis.');
+  });
+
+  await t.test('8. Löschen wirkt', async () => {
     await loescheAlarm(ich.id, '99999-9', 'U');
     const a = await alleAlarme(ich.id);
     assert.equal(a.length, 1, 'Nach dem Löschen steht der Alarm noch in der Übersicht.');
