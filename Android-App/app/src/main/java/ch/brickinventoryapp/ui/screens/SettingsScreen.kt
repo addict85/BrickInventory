@@ -514,7 +514,6 @@ private fun PreisalarmeCard(
             Column(zeile.padding(vertical = Abstaende.haar)) {
                 Row(verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(Abstaende.klein)) {
-                    FinanzBild(bildUrl, imageLoader, a.name)
                     Column(Modifier.weight(1f)) {
                         // Erst benennen, dann setzen: Eine Zeichenkette mit
                         // mehrzeiliger Interpolation ist gueltig und trotzdem
@@ -540,7 +539,7 @@ private fun PreisalarmeCard(
                             }
                         }
                     }
-                    IconButton(onClick = { fragtLoeschen = a }) {
+                    IconButton(onClick = { val z = a; fragtLoeschen = z }) {
                         Icon(Icons.Default.Delete, stringResource(R.string.alerts_delete),
                             tint = MaterialTheme.colorScheme.error)
                     }
@@ -643,8 +642,7 @@ private fun AlarmZustandPlakette(ausgeloest: Boolean) {
         shape = Formen.chip,
         color = if (ausgeloest) Color.Transparent
                 else MaterialTheme.colorScheme.secondaryContainer,
-        border = if (ausgeloest)
-            BorderStroke(1.dp, MaterialTheme.colorScheme.outline) else null,
+        border = null,
     ) {
         Text(
             text,

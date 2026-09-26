@@ -199,7 +199,7 @@ fun NavGraphBuilder.toolsGraph(
             LaunchedEffect(state.serverUrl) { if (state.serverUrl.isNotBlank()) vm.loadSettings() }
             ReiterGeruest(stringResource(R.string.nav_settings), vm, navController, bottomNavItems, snackbarHostState) {
                 ch.brickinventoryapp.ui.ScrollPositionKeeper(
-                    "settings", settingsScrollState, vm.scrollMemory)
+                    "einstellungen", settingsScrollState, vm.scrollMemory)
                 SettingsScreen(
                     vm = vm,
                     onLogout = { vm.logout(); navController.navigate(Screen.Login.route) { popUpTo(0) { inclusive = true } } },
