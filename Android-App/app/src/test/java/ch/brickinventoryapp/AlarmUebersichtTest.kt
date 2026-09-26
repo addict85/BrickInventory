@@ -24,10 +24,30 @@ import org.junit.Test
  * die App zieht nach, oder es steht ein Grund dabei) — diese hier ist die
  * Gegenrichtung.
  *
- * ── Gegenproben (durchgefuehrt, Ergebnis im Commit) ─────────────────────────
- *   a) PreisalarmeCard aus der Aufrufliste entfernt → „die Rubrik steht…" rot
- *   b) aendereAlarmSchwelle ohne Pruefung auf > 0   → „unsinnige Schwelle…" rot
- *   c) getAlleAlarme aus dem Repository entfernt    → „die App holt…" rot
+ * ── Gegenproben (gemessen im Lauf 281, Zweig claude/gegenproben-alarm) ──────
+ *
+ * Eine Regel, die auch dann gruen bleibt, wenn man das Gepruefte kaputt macht,
+ * prueft nichts. Also wurde jede der drei Aussagen einzeln kaputt gemacht und
+ * der Lauf gemessen — nicht behauptet:
+ *
+ *   a) LaunchedEffect(Unit) { vm.ladeAlarmUebersicht() } aus SettingsScreen.kt
+ *      entfernt
+ *        → „die Rubrik steht in den Einstellungen und laedt sich selbst" rot
+ *   b) in SettingsFeature.kt die Schranke `if (schwelle <= 0.0)` zu
+ *      `if (schwelle < -1.0)` aufgeweicht
+ *        → „eine unsinnige Schwelle wird nicht stillschweigend geschrieben" rot
+ *   c) getAlleAlarme in SetsRepository.kt und an der Aufrufstelle umbenannt
+ *        → „die App holt alle Alarme ueber die gemeinsame Route" rot
+ *
+ * Ergebnis des Laufs: 495 Tests, genau 3 rot — einer je Eingriff, keiner
+ * zusaetzlich. Damit haengt jede Regel an ihrer eigenen Aussage und nicht an
+ * einer Nachbarregel.
+ *
+ * Der vierte Test („geschrieben wird ueber die bestehende Route zum Set") ist
+ * bewusst NICHT gegengeprueft: seine Aussage ist eine Verneinung — es gibt
+ * keinen zweiten Schreibweg. Um ihn rot zu bekommen, muesste man einen
+ * zweiten Schreibweg bauen; der wuerde zugleich „jede Funktion hat einen
+ * Aufrufer" reissen, und die Zuordnung Eingriff↔Test waere dahin.
  */
 class AlarmUebersichtTest {
 
