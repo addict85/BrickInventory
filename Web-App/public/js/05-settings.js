@@ -1,6 +1,6 @@
 import { registerActions } from './00-registry.js';
 import { I18N, LANG, applyLang, locale, t, tRaw} from '../i18n.js';
-import { CURRENCY, G, ME, _settingsCache, _updateLangSelect, api, applyTheme, esc, initDefaultCondition, knopfBesetzt, toast , set_CURRENCY, set_settingsCache, passwortZuKurz, passwortZuKurzText} from './01-core.js';
+import { CURRENCY, G, ME, _settingsCache, _updateLangSelect, api, applyTheme, esc, escUrl, imgUrl, initDefaultCondition, knopfBesetzt, thumbUrl, toast , set_CURRENCY, set_settingsCache, passwortZuKurz, passwortZuKurzText} from './01-core.js';
 import { loadGallery, loadStats } from './02-gallery.js';
 import { loadParts } from './03-parts.js';
 import { loadMinifigs } from './06-minifigs.js';
@@ -666,12 +666,46 @@ export async function ladeAlarmUebersicht() {
     const stand = a.zuletzt_preis == null
       ? ''
       : t('alerts.last', { preis: `${esc(a.currency_code)} ${a.zuletzt_preis.toFixed(2)}` });
-    // „scharf" vs. „hat gemeldet": Ohne diesen Unterschied wirkt ein Alarm,
-    // der gerade nicht meldet, wie einer, der nicht funktioniert.
+    // „scharf" gegen „unscharf" — und der Unterschied darf NICHT in der Farbe
+    // liegen. Marco ist rot-gruen-schwach; gruen gegen grau ist fuer ihn
+    // zweimal dasselbe, und damit stand die Aussage bisher nirgends. Sie
+    // haengt jetzt an drei Dingen, von denen jedes einzeln reicht: am Wort
+    // (ein echtes Gegensatzpaar), an der Flaeche (gefuellt gegen umrandet)
+    // und am Zeichen davor (● gegen ○). Dieselben drei wie in der App.
     const marke = a.ausgeloest
-      ? `<span style="font-size:.7rem;color:var(--mut)">${esc(tRaw('alerts.fired'))}</span>`
-      : `<span style="font-size:.7rem;color:var(--ok,#16a34a)">${esc(tRaw('alerts.armed'))}</span>`;
-    return `<div style="display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid var(--bdr);flex-wrap:wrap">
+      ? `<span class="alarm-marke alarm-marke-aus">${esc(tRaw('alerts.fired'))}</span>`
+      : `<span class="alarm-marke alarm-marke-an">${esc(tRaw('alerts.armed'))}</span>`;
+    // Bild wie in den Finanzen: erst die heruntergeladene Kopie, dann die
+    // Adresse aus der eigenen Sammlung, zuletzt die des Katalogs. Ein Alarm
+    // auf ein Set, das man NICHT besitzt, hat nur die letzte — deshalb steht
+    // sie ueberhaupt in der Antwort.
+    const bildQuelle = a.image_local || a.image_url || a.set_img_url || '';
+    const bild = bildQuelle
+      ? `<img src="${escUrl(imgUrl(thumbUrl(bildQuelle) || bildQuelle, true))}" loading="lazy" decoding="async"
+              alt="" style="width:38px;height:38px;object-fit:contain;border-radius:6px;flex:0 0 auto" />`
+      : '<div style="width:38px;height:38px;flex:0 0 auto"></div>';
+    // Die ganze Zeile oeffnet den Detaildialog — derselbe `openModal` wie in
+    // den Finanzen und in der Galerie. Weil der Dialog ueber der Seite liegt
+    // und diese nicht verlaesst, steht man nach dem Schliessen wieder an
+    // derselben Stelle; dafuer ist nichts zu merken.
+    //
+    // Feld und Loeschknopf tragen deshalb ihr eigenes data-click: Der
+    // Verteiler nimmt das NAECHSTGELEGENE Element mit data-click, und ohne
+    // `stopEvent` oeffnete jeder Klick ins Zahlenfeld den Dialog ueber dem
+    // Feld, in das man gerade tippen wollte.
+    // Anklickbar nur, wenn es das Set in der Sammlung gibt — `openModal` holt
+    // `/v1/sets/:nummer`, und fuer ein Set, das man nicht (mehr) besitzt,
+    // waere der Klick eine Fehlermeldung statt eines Dialogs.
+    //
+    // Zwei `style`-Attribute an einem Element sind KEIN Zusammenzaehlen — der
+    // Browser nimmt das erste und wirft das zweite weg. Der Zeiger gehoert
+    // deshalb in dieselbe Zeichenkette und nicht in ein eigenes Attribut.
+    const oeffnet = a.besitzt
+      ? ` data-click="openModal" data-arg="${esc(a.set_number)}"`
+      : '';
+    const zeiger = a.besitzt ? ';cursor:pointer' : '';
+    return `<div style="display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid var(--bdr);flex-wrap:wrap${zeiger}"${oeffnet}>
+      ${bild}
       <div style="flex:1;min-width:180px">
         <div><strong>${esc(a.set_number)}</strong> <span style="color:var(--mut)">${esc(zustand)}</span></div>
         <div style="font-size:.78rem;color:var(--mut)">${esc(a.name || '')}</div>
@@ -679,6 +713,7 @@ export async function ladeAlarmUebersicht() {
       <span style="font-size:.78rem;white-space:nowrap">${esc(richtung)}</span>
       <input type="number" step="0.01" min="0.01" value="${a.schwelle}"
              data-change="aendereAlarmSchwelle" data-arg="${esc(schluessel)}" data-val="1"
+             data-click="stopEvent"
              style="width:90px;border:1px solid var(--bdr);border-radius:6px;padding:3px 7px;font-size:.85rem;background:var(--sur);color:var(--txt)" />
       <span style="font-size:.78rem;color:var(--mut);white-space:nowrap">${esc(a.currency_code)}</span>
       <div style="display:flex;flex-direction:column;align-items:flex-end;min-width:110px">

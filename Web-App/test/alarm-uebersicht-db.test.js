@@ -29,6 +29,11 @@
  *   b) LEFT JOIN → INNER JOIN              → Schritt 3 rot (unbekanntes Set weg)
  *   c) Rubrik aus index.html entfernt      → Schritt 4 rot
  *   d) ladeAlarmUebersicht nicht aufgerufen → Schritt 4 rot
+ *   e) zweiter LEFT JOIN auf `sets` entfernt → Schritt 5 rot (Bild und Besitz)
+ *   f) `data-click="stopEvent"` am Feld entfernt → Schritt 6 rot
+ *   g) `besitzt` aus data class Preisalarm entfernt → Schritt 7 rot
+ *   h) 'alerts.fired' auf „hat gemeldet" zurückgesetzt → Schritt 8 rot
+ *   i) font-weight:600 aus .alarm-marke-an entfernt → Schritt 8 rot
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -39,7 +44,7 @@ const ROOT = path.join(__dirname, '..');
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
 process.env.WEB_WORKERS = '1';
 
-const { buildAndRequire, ohneKommentare } = require('./helpers/sources');
+const { buildAndRequire, loadTranslations, ohneKommentare } = require('./helpers/sources');
 const _req = buildAndRequire();
 const db = _req('db/database.js');
 
@@ -69,8 +74,15 @@ test('Preisalarm-Übersicht: eigene Alarme, mit Namen, änderbar, löschbar',
   });
 
   // Ein Set, das der Katalog kennt — und eines, das er NICHT kennt.
-  await db.run(`INSERT INTO rb_sets (set_num, name) VALUES ('70002-1','Lennox Feuerwehr')
-                ON CONFLICT (set_num) DO UPDATE SET name = EXCLUDED.name`);
+  await db.run(`INSERT INTO rb_sets (set_num, name, set_img_url)
+                VALUES ('70002-1','Lennox Feuerwehr','https://cdn.example/70002-1.jpg')
+                ON CONFLICT (set_num) DO UPDATE
+                   SET name = EXCLUDED.name, set_img_url = EXCLUDED.set_img_url`);
+  // Dasselbe Set liegt ZUSÄTZLICH in meiner Sammlung — nur dann gibt es einen
+  // Detaildialog, und nur dann gibt es das heruntergeladene Bild.
+  await db.run(`INSERT INTO sets (user_id, set_number, name, image_local, image_url)
+                VALUES ($1,'70002-1','Lennox Feuerwehr','/uploads/70002-1_thumb.jpg','https://cdn.example/70002-1.jpg')
+                ON CONFLICT (user_id, set_number) DO NOTHING`, [ich.id]);
 
   // Signatur GELESEN, nicht geraten: (userId, setNumber, waehrung, eingabe).
   // Der erste Entwurf dieses Tests hatte sie sich zurechtgelegt und lief
@@ -124,7 +136,132 @@ test('Preisalarm-Übersicht: eigene Alarme, mit Namen, änderbar, löschbar',
       'Der Alarm lässt sich nicht löschen — genau das hat Marco verlangt.');
   });
 
-  await t.test('5. Löschen wirkt', async () => {
+  await t.test('5. Bild und Besitz kommen mit — für die Kachel und für den Klick', async () => {
+    const a = await alleAlarme(ich.id);
+    const meins = a.find(x => x.set_number === '70002-1');
+    const fremdes = a.find(x => x.set_number === '99999-9');
+    // Reihenfolge wie in den Finanzen: heruntergeladene Kopie zuerst. Ohne sie
+    // zeigte dieselbe Nummer in der Übersicht ein anderes Bild als in der
+    // Galerie daneben.
+    assert.equal(meins.image_local, '/uploads/70002-1_thumb.jpg',
+      'Das Bild der eigenen Sammlung fehlt — die Zeile bliebe ohne Kachel oder ' +
+      'zeigte eine andere als die Galerie.');
+    assert.equal(meins.set_img_url, 'https://cdn.example/70002-1.jpg',
+      'Das Katalogbild fehlt — es ist der Rückfall für Sets, die man nicht besitzt.');
+    assert.equal(meins.besitzt, true, 'Ein Set in der Sammlung gilt als nicht vorhanden.');
+    // Der zweite LEFT JOIN darf keine Zeile vervielfachen: sets ist über
+    // (user_id, set_number) eindeutig. Zwei Zeilen wären hier der Beweis.
+    assert.equal(a.filter(x => x.set_number === '70002-1').length, 1,
+      'Die Verbindung zur eigenen Sammlung hat die Zeile vervielfacht.');
+
+    assert.equal(fremdes.besitzt, false,
+      'Ein Alarm auf ein Set, das NICHT in der Sammlung liegt, gilt als vorhanden — ' +
+      'die Zeile wäre anklickbar und der Klick endete in einer Fehlermeldung.');
+    assert.equal(fremdes.image_local, null, 'Woher sollte das Bild kommen?');
+  });
+
+  await t.test('6. die Zeile öffnet den Detaildialog, das Zahlenfeld nicht', () => {
+    const js = ohneKommentare(fs.readFileSync(path.join(ROOT, 'public/js/05-settings.js'), 'utf8'));
+    assert.match(js, /data-click="openModal"/,
+      'Die Zeile öffnet den Detaildialog nicht — genau das hat Marco verlangt.');
+    // Der Verteiler in 11-actions.js nimmt das NÄCHSTGELEGENE Element mit
+    // data-click. Ohne `stopEvent` am Eingabefeld öffnete jeder Klick ins Feld
+    // den Dialog über dem Feld, in das man gerade tippen wollte.
+    assert.match(js, /data-click="stopEvent"/,
+      'Das Zahlenfeld hält den Klick nicht auf — Tippen öffnete den Dialog.');
+    assert.match(js, /thumbUrl\(/,
+      'Die Zeile zeigt kein Vorschaubild — analog den Finanzen war das der Auftrag.');
+  });
+
+  await t.test('7. jedes gelieferte Feld kommt in der App auch an', async () => {
+    // ── Warum das nicht der Kotlin-Übersetzer erledigt (Nachtrag 137) ──────
+    //
+    // Er fängt den lauten Fall: Ein Feld, das die Oberfläche liest und das es
+    // im Modell nicht gibt, übersetzt nicht. Genau das ist beim Einbau dieser
+    // Zeile passiert — die vier neuen Felder landeten versehentlich in der
+    // Nachbarklasse, und der Lauf war nach 88 Sekunden rot.
+    //
+    // Der STILLE Fall bleibt: Heisst das Feld hier `set_img_url` und im Modell
+    // `@SerialName("set_image")`, übersetzt alles sauber, und die App bekommt
+    // für immer `null`. Kein Fehler, kein Absturz — nur ein Bild, das nie
+    // erscheint, und niemand weiss, warum.
+    //
+    // Deshalb werden die Namen VERGLICHEN, und zwar die tatsächlich
+    // gelieferten aus der Antwort, nicht eine abgeschriebene Liste.
+    const a = await alleAlarme(ich.id);
+    const felder = Object.keys(a[0]);
+    assert.ok(felder.length >= 10, `Nur ${felder.length} Felder — Abfrage kaputt?`);
+
+    const kt = fs.readFileSync(path.join(ROOT, '..', 'Android-App', 'app', 'src', 'main',
+      'java', 'ch', 'brickinventoryapp', 'data', 'model', 'SetModels.kt'), 'utf8');
+    const klasse = kt.slice(kt.indexOf('data class Preisalarm('));
+    const rumpf = klasse.slice(0, klasse.indexOf('\n)'));
+    assert.ok(rumpf.includes('setNumber'), 'data class Preisalarm nicht gefunden — Muster veraltet?');
+
+    const camel = k => k.replace(/_([a-z])/g, (_, c) => c.toUpperCase());
+    const fehlen = felder.filter(k =>
+      !rumpf.includes(`@SerialName("${k}")`) &&
+      !new RegExp(`\\bval ${camel(k)}\\b`).test(rumpf));
+    assert.deepEqual(fehlen, [],
+      'Diese Felder liefert /v1/alerts, und die App hat keinen Platz dafür:\n  ' +
+      fehlen.join('\n  ') +
+      '\nSie kämen dort als null an, ohne Fehler und ohne Hinweis.');
+  });
+
+  await t.test('8. scharf/unscharf ist ohne Farbe zu erkennen', () => {
+    // ── Marcos Befund vom 26.09. ──────────────────────────────────────────
+    //
+    //   „Ok entschuldige ich habe eine rot grün schwäche. Deshalb sind labels
+    //    mit scharf / unscharf für mich einfacher."
+    //
+    // Bis dahin trug die Farbe die ganze Aussage: grün heisst scharf, grau
+    // heisst nicht mehr scharf. Rot-Grün-Schwäche trifft rund acht Prozent der
+    // Männer — für sie stand die Information nirgends. Die Entschuldigung ist
+    // an der falschen Stelle: Nicht das Auge ist der Fehler, sondern eine
+    // Oberfläche, die eine Aussage NUR in die Farbe legt.
+    //
+    // Geprüft werden drei Unterschiede, von denen jeder EINZELN reicht.
+    const js = ohneKommentare(fs.readFileSync(path.join(ROOT, 'public/js/05-settings.js'), 'utf8'));
+    const css = fs.readFileSync(path.join(ROOT, 'public/styles.css'), 'utf8');
+
+    // 1. Die Marke kommt aus einer Klasse, nicht aus einer Farbe im Markup.
+    //    Solange die Farbe direkt an der Stelle steht, ist sie das Einzige,
+    //    was die beiden Zustände trennt.
+    assert.match(js, /alarm-marke-an/, 'Der scharfe Zustand hat keine eigene Klasse.');
+    assert.match(js, /alarm-marke-aus/, 'Der unscharfe Zustand hat keine eigene Klasse.');
+    assert.ok(!/alerts\.armed'\)\}<\/span>/.test(js) || !/var\(--ok/.test(js),
+      'Die Marke färbt noch direkt im Markup — dann hängt die Aussage wieder an der Farbe.');
+
+    // 2. Die FLÄCHE unterscheidet: gefüllt gegen umrandet. Das ist der
+    //    Unterschied, den man auch dann sieht, wenn beide Farben gleich
+    //    aussehen.
+    const an  = (css.match(/\.alarm-marke-an\{([^}]*)\}/)  || [])[1] || '';
+    const aus = (css.match(/\.alarm-marke-aus\{([^}]*)\}/) || [])[1] || '';
+    assert.ok(an && aus, 'Die beiden Klassen sind nicht gestaltet.');
+    assert.match(an,  /background:var\(--s200\)/, 'Der scharfe Zustand ist nicht gefüllt.');
+    assert.match(aus, /border-color:var\(--bdr\)/, 'Der unscharfe Zustand ist nicht umrandet.');
+    assert.match(an,  /font-weight:600/,
+      'Auch das Schriftgewicht unterscheidet die beiden nicht — ein Merkmal weniger.');
+
+    // 3. Das WORT ist ein Paar, in BEIDEN Sprachen. Vorher stand „scharf"
+    //    gegen „hat gemeldet" — zwei Aussagen über verschiedene Dinge; wer die
+    //    Farbe nicht lesen kann, musste sich den Gegensatz erschliessen.
+    const { de, en } = loadTranslations();
+    for (const [name, w] of [['DE', de], ['EN', en]]) {
+      const scharf = String(w['alerts.armed'] || '');
+      const unscharf = String(w['alerts.fired'] || '');
+      assert.ok(scharf.includes('●'), `${name}: das gefüllte Zeichen fehlt bei „scharf".`);
+      assert.ok(unscharf.includes('○'), `${name}: das hohle Zeichen fehlt bei „unscharf".`);
+      const a = scharf.replace(/[^\p{L}]/gu, '').toLowerCase();
+      const b = unscharf.replace(/[^\p{L}]/gu, '').toLowerCase();
+      assert.ok(a && b.includes(a),
+        `${name}: „${scharf}" und „${unscharf}" sind kein erkennbares Gegensatzpaar. ` +
+        'Ohne Farbe ist das der einzige Hinweis darauf, dass der eine Zustand das ' +
+        'Gegenteil des anderen ist.');
+    }
+  });
+
+  await t.test('9. Löschen wirkt', async () => {
     await loescheAlarm(ich.id, '99999-9', 'U');
     const a = await alleAlarme(ich.id);
     assert.equal(a.length, 1, 'Nach dem Löschen steht der Alarm noch in der Übersicht.');

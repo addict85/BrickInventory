@@ -448,6 +448,29 @@ data class Preisalarm(
      * Die Anzeige behandelt beides gleich — sie laesst die Zeile weg.
      */
     val name: String? = null,
+    /**
+     * Bildquellen fuer die Zeile der Uebersicht — dieselbe Reihenfolge wie in
+     * den Finanzen: erst die vom Server heruntergeladene Kopie, dann die
+     * Adresse der eigenen Sammlung, zuletzt die des Katalogs.
+     *
+     * Die ersten beiden gibt es nur, wenn das Set in der Sammlung liegt; die
+     * dritte auch sonst. Bei einem Preisalarm ist gerade der zweite Fall
+     * haeufig — man beobachtet oft, was man noch nicht hat.
+     *
+     * Wie [name] kommen sie NUR aus der Uebersicht (GET /v1/alerts).
+     */
+    @SerialName("image_local") val imageLocal: String? = null,
+    @SerialName("image_url") val imageUrl: String? = null,
+    @SerialName("set_img_url") val setImgUrl: String? = null,
+    /**
+     * Liegt das Set in der eigenen Sammlung?
+     *
+     * Entscheidet, ob die Zeile anklickbar ist: Die Detailansicht holt
+     * `/v1/sets/:nummer`, und die gibt es fuer ein Set, das man nicht (mehr)
+     * besitzt, nicht. Ein Alarm ueberlebt das Entfernen des Sets — er haengt
+     * am Konto, nicht am Set.
+     */
+    val besitzt: Boolean = false,
 )
 
 @Serializable

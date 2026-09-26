@@ -644,13 +644,14 @@
     <string name="detail_compare">📊 Compare prices</string>
     <string name="wanted_since">On the list since</string>
     <string name="alerts_group">🔔 Price alerts</string>
-    <string name="alerts_intro">Every threshold you have set. You can change the value here or remove the alert.</string>
+    <string name="alerts_intro">Every threshold you have set. You can change the value here or remove the alert. You are notified once per crossing — the same alert can only fire again after the price has moved back to the other side.</string>
     <string name="alerts_empty">No price alert set yet. You set one in the detail view of a set.</string>
     <string name="alerts_below">falls below</string>
     <string name="alerts_above">rises above</string>
     <string name="alerts_armed">● armed</string>
-    <string name="alerts_fired">○ has fired</string>
+    <string name="alerts_fired">○ not armed</string>
     <string name="alerts_last">last %1$s</string>
     <string name="alerts_bad_value">The threshold must be greater than 0.</string>
     <string name="alerts_delete">Remove price alert</string>
+    <string name="alerts_confirm_delete">Really remove the price alert for %1$s?</string>
 </resources>

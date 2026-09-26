@@ -87,6 +87,12 @@ fun NavGraphBuilder.toolsGraph(
      * wo an derselben Stelle die gesammelten Sets verschwanden).
      */
     partsListState: androidx.compose.foundation.lazy.LazyListState,
+    /**
+     * Rollposition der Einstellungen — von aussen, seit die Preisalarm-Rubrik
+     * in die Detailansicht eines Sets fuehrt. Ohne das stuende man nach der
+     * Rueckkehr wieder ganz oben, und die Rubrik liegt weit unten.
+     */
+    settingsScrollState: androidx.compose.foundation.ScrollState,
 ) {
         composable(Screen.Finance.route) {
             // Zustand INNERHALB des Ziels lesen — als Parameter wäre es eine
@@ -192,10 +198,18 @@ fun NavGraphBuilder.toolsGraph(
             LaunchedEffect(state.serverUrl) { if (state.serverUrl.isNotBlank()) vm.loadHouseholdStatus() }
             LaunchedEffect(state.serverUrl) { if (state.serverUrl.isNotBlank()) vm.loadSettings() }
             ReiterGeruest(stringResource(R.string.nav_settings), vm, navController, bottomNavItems, snackbarHostState) {
+                ch.brickinventoryapp.ui.ScrollPositionKeeper(
+                    "settings", settingsScrollState, vm.scrollMemory)
                 SettingsScreen(
                     vm = vm,
                     onLogout = { vm.logout(); navController.navigate(Screen.Login.route) { popUpTo(0) { inclusive = true } } },
                     onServerWechseln = { navController.navigate(Screen.Setup.route) },
+                    imageLoader = imageLoader,
+                    // Dieselbe Detailansicht wie aus Galerie und Finanzen — ein
+                    // zweiter Weg dorthin waere ein zweiter Ort fuer dieselben
+                    // Regeln.
+                    onSetClick = { navController.navigate(Screen.SetDetail.createRoute(it)) },
+                    scrollState = settingsScrollState,
                 )
             }
         }

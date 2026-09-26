@@ -88,7 +88,7 @@
     <string name="gallery_stat_sets">Sets</string>
     <string name="gallery_stat_units">Einheiten</string>
     <string name="gallery_stat_parts">Teile</string>
-    <string name="gallery_stat_minifigs">Minifigs</string>
+    <string name="gallery_stat_minifigs">Minifiguren</string>
     <string name="gallery_stat_instructions">Anleitungen</string>
     <string name="gallery_search_placeholder">Sets suchen…</string>
     <string name="gallery_all">Alle</string>
@@ -223,7 +223,7 @@
     <string name="monitoring_sync_now">Jetzt synchronisieren</string>
     <string name="monitoring_queue_collapse">Queue zuklappen</string>
     <string name="monitoring_queue_show">Queue anzeigen (%1$d)</string>
-    <string name="monitoring_icon_retry">Retry</string>
+    <string name="monitoring_icon_retry">Erneut versuchen</string>
     <string name="monitoring_hide_error">Fehler ausblenden</string>
     <string name="monitoring_show_error">Letzter Fehler anzeigen</string>
     <string name="monitoring_price_cache">PREIS-CACHE</string>
@@ -248,7 +248,7 @@
     <!-- ══════════════ Set detail screen ══════════════ -->
     <string name="detail_year">Jahr</string>
     <string name="detail_pieces">Steine</string>
-    <string name="detail_minifigs">Minifigs</string>
+    <string name="detail_minifigs">Minifiguren</string>
     <string name="detail_theme">Thema</string>
     <string name="detail_section_details">Set-Details</string>
     <string name="detail_part_number">Teile-Nr.</string>
@@ -629,14 +629,15 @@
     <string name="wanted_threshold">Schwelle (optional)</string>
     <string name="detail_compare">📊 Preisvergleich</string>
     <string name="wanted_since">Auf der Liste seit</string>
-    <string name="alerts_group">🔔 Price alerts</string>
-    <string name="alerts_intro">Every threshold you have set. You can change the value here or remove the alert.</string>
-    <string name="alerts_empty">No price alert set yet. You set one in the detail view of a set.</string>
-    <string name="alerts_below">falls below</string>
-    <string name="alerts_above">rises above</string>
-    <string name="alerts_armed">● armed</string>
-    <string name="alerts_fired">○ has fired</string>
-    <string name="alerts_last">last %1$s</string>
-    <string name="alerts_bad_value">The threshold must be greater than 0.</string>
-    <string name="alerts_delete">Remove price alert</string>
+    <string name="alerts_group">🔔 Preisalarme</string>
+    <string name="alerts_intro">Alle Schwellen, die du gesetzt hast. Der Wert lässt sich hier ändern, der Alarm entfernen. Gemeldet wird einmal je Übergang — erst wenn der Preis wieder auf die andere Seite wechselt, kann derselbe Alarm erneut auslösen.</string>
+    <string name="alerts_empty">Noch kein Preisalarm gesetzt. Du setzt einen in der Detailansicht eines Sets.</string>
+    <string name="alerts_below">fällt unter</string>
+    <string name="alerts_above">steigt über</string>
+    <string name="alerts_armed">● scharf</string>
+    <string name="alerts_fired">○ unscharf</string>
+    <string name="alerts_last">zuletzt %1$s</string>
+    <string name="alerts_bad_value">Die Schwelle muss grösser als 0 sein.</string>
+    <string name="alerts_delete">Preisalarm entfernen</string>
+    <string name="alerts_confirm_delete">Preisalarm für %1$s wirklich entfernen?</string>
 </resources>

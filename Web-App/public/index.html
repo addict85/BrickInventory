@@ -1046,6 +1046,40 @@
 
       <!-- QR-Code für Android App -->
       <div class="sgroup-label">📱 Android App</div>
+
+      <!-- ── Die App holen ────────────────────────────────────────────────────
+           Steht VOR dem QR-Code, weil das die Reihenfolge ist: erst die App
+           installieren, dann das Gerät verknüpfen. Vorher gab es hier den
+           Code — und keinen Hinweis darauf, woher die App überhaupt kommt.
+
+           Die Adresse steht im Markup und nicht im JavaScript: Ein gewöhnlicher
+           Link funktioniert auch dann, wenn das Bündel nicht geladen hat, und
+           er lässt sich kopieren und weitergeben.
+
+           Sie ist dieselbe, aus der sich die App selbst aktualisiert
+           (UPDATE_RELEASE_BASIS in Android-App/.../util/AppUpdate.kt) und die
+           der Workflow bei jedem grünen Lauf neu bestückt (android.yml,
+           Etikett `apk-neuste`). Dass die drei nicht auseinanderlaufen, prüft
+           test/apk-download.test.js — eine tote Adresse hinter einem
+           Download-Knopf merkt sonst niemand, bis jemand darauf klickt. -->
+      <div class="ssec" style="margin-bottom:1.25rem">
+        <div class="stit" data-i18n="apk.title">📥 App herunterladen</div>
+        <p style="font-size:.82rem;color:var(--mut);margin-bottom:1rem" data-i18n="apk.hint">Immer die neuste Fassung, direkt aus der Ablage auf GitHub. Android fragt beim Öffnen der Datei nach der Erlaubnis, Apps aus dieser Quelle zu installieren.</p>
+        <a class="apk-btn" href="https://github.com/addict85/BrickInventory/releases/download/apk-neuste/BrickInventory.apk"
+           rel="noopener" target="_blank">
+          <!-- Ein eigener, schlichter Roboter — NICHT Googles Android-Marke.
+               Die ist markenrechtlich gebunden und gehört nicht ungefragt in
+               einen fremden Download-Knopf. Die Silhouette sagt trotzdem
+               deutlich genug, worum es geht. -->
+          <svg viewBox="0 0 24 24" width="26" height="26" aria-hidden="true" fill="currentColor">
+            <path d="M6.8 3.2a.6.6 0 0 1 .85-.1L9.2 4.4a6.3 6.3 0 0 1 5.6 0l1.55-1.3a.6.6 0 1 1 .77.92l-1.36 1.14A5.9 5.9 0 0 1 18 9.6H6a5.9 5.9 0 0 1 2.24-4.44L6.88 4.02a.6.6 0 0 1-.08-.82ZM9.4 7.1a.75.75 0 1 0 0-1.5.75.75 0 0 0 0 1.5Zm5.2 0a.75.75 0 1 0 0-1.5.75.75 0 0 0 0 1.5ZM6 10.6h12v6.9a1.4 1.4 0 0 1-1.4 1.4H7.4A1.4 1.4 0 0 1 6 17.5v-6.9Zm-2.1 0c.8 0 1.4.63 1.4 1.4v4.1a1.4 1.4 0 1 1-2.8 0V12c0-.77.63-1.4 1.4-1.4Zm16.2 0c.77 0 1.4.63 1.4 1.4v4.1a1.4 1.4 0 1 1-2.8 0V12c0-.77.63-1.4 1.4-1.4ZM8.6 19.8h2v1.6a1.4 1.4 0 1 1-2.8 0v-1.6h.8Zm5.6 0h.8v1.6a1.4 1.4 0 1 1-2.8 0v-1.6h2Z"/>
+          </svg>
+          <span class="apk-btn-txt">
+            <small data-i18n="apk.badge_small">Direkt herunterladen</small>
+            <strong data-i18n="apk.badge_big">Android-App (APK)</strong>
+          </span>
+        </a>
+      </div>
       <div class="ssec" style="margin-bottom:1.25rem">
         <div class="stit" data-i18n="settings.qr.title">📲 QR-Code für Android App</div>
         <p style="font-size:.82rem;color:var(--mut);margin-bottom:1rem" data-i18n="settings.qr.hint">Scanne diesen Code in der Android App um Server-URL und Login automatisch zu konfigurieren. Der Code ist 5 Minuten gültig und kann nur einmal verwendet werden.</p>

@@ -2,8 +2,10 @@ package ch.brickinventoryapp.ui.screens
 
 import ch.brickinventoryapp.ui.theme.Formen
 import ch.brickinventoryapp.ui.theme.AppKarte
+import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.ScrollState
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
@@ -15,6 +17,7 @@ import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -24,6 +27,9 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import ch.brickinventoryapp.R
+import ch.brickinventoryapp.data.model.Preisalarm
+import ch.brickinventoryapp.util.resolveThumbUrl
+import coil.ImageLoader
 import ch.brickinventoryapp.util.fmtDatum
 import ch.brickinventoryapp.ui.MainViewModel
 import ch.brickinventoryapp.ui.*  // Feature-Extensions (saveSettings, setLanguage, …)
@@ -47,6 +53,20 @@ fun SettingsScreen(
      * MainScaffold.kt (Nachtrag 114).
      */
     onServerWechseln: () -> Unit,
+    /** Fuer die Vorschaubilder der Preisalarm-Rubrik — dieselbe Instanz wie ueberall sonst. */
+    imageLoader: ImageLoader,
+    /**
+     * Klick auf einen Preisalarm oeffnet die Detailansicht des Sets. Wie
+     * [onLogout] ein Rueckruf, weil nur der Graph den NavController kennt.
+     */
+    onSetClick: (String) -> Unit,
+    /**
+     * Rollposition — von AUSSEN, aus demselben Grund wie bei den Finanzen:
+     * Der Weg in die Detailansicht verwirft dieses Ziel, und ein
+     * `rememberScrollState()` hier drin waere bei der Rueckkehr zurueckgesetzt.
+     * Die Einstellungen sind lang; man landete sonst wieder ganz oben.
+     */
+    scrollState: ScrollState,
 ) {
     // Zustand und Aktionen vom ViewModel statt über zwölf Parameter — dasselbe
     // Muster wie in Galerie/Finanzen/Teile/Minifiguren (Nachtrag 96). Die Namen
@@ -129,7 +149,7 @@ fun SettingsScreen(
     Column(
         Modifier
             .fillMaxSize()
-            .verticalScroll(rememberScrollState())
+            .verticalScroll(scrollState)
             .padding(horizontal = Abstaende.gross, vertical = Abstaende.mittel),
         verticalArrangement = Arrangement.spacedBy(10.dp)
     ) {
@@ -234,7 +254,7 @@ fun SettingsScreen(
 
         PreisalarmCard(vm)
 
-        PreisalarmeCard(vm)
+        PreisalarmeCard(vm, imageLoader, appState.serverUrl, onSetClick)
         LagerorteCard(vm)
 
         HouseholdCard(
@@ -422,10 +442,39 @@ private fun SettingsCard(
  * Gespeichert wird beim Knopf und nicht beim Tippen — anders als das
  * Wunsch-Detail (Nachtrag 133), weil hier jeder Tastendruck sonst eine
  * Schreibanfrage ausloeste, waehrend man die Zahl noch eintippt.
+ *
+ * ── Marcos Nachtrag vom 26.09. ─────────────────────────────────────
+ *
+ * Vier Dinge, alle aus einer Sitzung vor der App:
+ *
+ *  1. „Beim Loeschen soll noch nachgefragt werden." Die Webapp fragt seit
+ *     jeher (`confirm`), die App loeschte sofort. Ein Alarm ist schnell
+ *     angetippt und nicht wiederherstellbar.
+ *  2. Ein Vorschaubild je Zeile, wie in den Finanzen — deshalb auch
+ *     dasselbe [FinanzBild] und nicht ein zweites, das anders beschnitten
+ *     ist.
+ *  3. Die Zeile oeffnet die Detailansicht des Sets. Anklickbar ist sie nur,
+ *     wenn das Set in der Sammlung liegt: Ein Alarm ueberlebt das Entfernen
+ *     des Sets, und der Klick landete sonst auf einer Adresse, die es nicht
+ *     gibt.
+ *  4. „Das ‚scharf' analog der Webapp mit einem Label anzeigen." Der gruene
+ *     Haken, den Marco dafuer hielt, war der SPEICHERN-Knopf — er stand
+ *     dauerhaft gruen neben dem Zahlenfeld und sah aus wie eine Zusage. Er
+ *     wird jetzt erst sichtbar, wenn der Wert wirklich geaendert wurde, und
+ *     der Zustand steht als Plakette da, wie in der Webapp.
  */
 @Composable
-private fun PreisalarmeCard(vm: MainViewModel) {
+private fun PreisalarmeCard(
+    vm: MainViewModel,
+    imageLoader: ImageLoader,
+    serverUrl: String,
+    onSetClick: (String) -> Unit,
+) {
     val uebersicht by vm.alarmUebersicht.collectAsStateWithLifecycle()
+    // Die Rueckfrage haelt die ZEILE fest, nicht nur ein Ja/Nein: Der Text
+    // nennt das Set, und beim Bestaetigen braucht es beide Teile des
+    // Schluessels (Set und Zustand).
+    var fragtLoeschen by remember { mutableStateOf<Preisalarm?>(null) }
 
     LaunchedEffect(Unit) { vm.ladeAlarmUebersicht() }
 
@@ -451,9 +500,21 @@ private fun PreisalarmeCard(vm: MainViewModel) {
             var wert by rememberSaveable(a.setNumber + a.condition) {
                 mutableStateOf(a.schwelle.toString())
             }
-            Column(Modifier.fillMaxWidth().padding(vertical = Abstaende.haar)) {
+            // Reihenfolge wie in den Finanzen und in der Webapp: heruntergeladene
+            // Kopie, eigene Adresse, Katalog. Fuer ein Set, das man nicht besitzt,
+            // bleibt nur die letzte — und das ist beim Preisalarm der haeufige Fall.
+            val bildUrl = resolveThumbUrl(serverUrl, a.imageLocal, a.imageUrl)
+                ?: a.setImgUrl
+            // Nur anklickbar, wenn es die Detailansicht ueberhaupt gibt. `Modifier`
+            // ohne `clickable` heisst zugleich: kein Wellenschlag beim Tippen, also
+            // sieht man dem Eintrag an, dass da nichts kommt.
+            val zeile = if (a.besitzt)
+                Modifier.fillMaxWidth().clickable { onSetClick(a.setNumber) }
+            else Modifier.fillMaxWidth()
+            Column(zeile.padding(vertical = Abstaende.haar)) {
                 Row(verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(Abstaende.klein)) {
+                    FinanzBild(bildUrl, imageLoader, a.name)
                     Column(Modifier.weight(1f)) {
                         // Erst benennen, dann setzen: Eine Zeichenkette mit
                         // mehrzeiliger Interpolation ist gueltig und trotzdem
@@ -468,17 +529,18 @@ private fun PreisalarmeCard(vm: MainViewModel) {
                             Text(it, style = MaterialTheme.typography.bodySmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant)
                         }
-                        Text(
-                            (if (a.ausgeloest) stringResource(R.string.alerts_fired)
-                             else stringResource(R.string.alerts_armed)) +
-                            (a.zuletztPreis?.let {
-                                "  " + stringResource(R.string.alerts_last,
-                                    "${a.currencyCode} ${"%.2f".format(it)}")
-                            } ?: ""),
-                            style = MaterialTheme.typography.labelSmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        Row(verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(Abstaende.klein)) {
+                            AlarmZustandPlakette(a.ausgeloest)
+                            a.zuletztPreis?.let {
+                                Text(stringResource(R.string.alerts_last,
+                                        "${a.currencyCode} ${"%.2f".format(it)}"),
+                                    style = MaterialTheme.typography.labelSmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            }
+                        }
                     }
-                    IconButton(onClick = { vm.loescheAlarm(a.setNumber, a.condition) }) {
+                    IconButton(onClick = { fragtLoeschen = a }) {
                         Icon(Icons.Default.Delete, stringResource(R.string.alerts_delete),
                             tint = MaterialTheme.colorScheme.error)
                     }
@@ -496,18 +558,108 @@ private fun PreisalarmeCard(vm: MainViewModel) {
                         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
                         modifier = Modifier.weight(1f),
                     )
-                    IconButton(onClick = {
-                        vm.aendereAlarmSchwelle(a.setNumber, a.condition, a.richtung,
-                            wert.replace(',', '.').toDoubleOrNull() ?: 0.0)
-                    }) {
-                        Icon(Icons.Default.Check, stringResource(R.string.settings_save),
-                            tint = MaterialTheme.colorScheme.primary)
+                    // Der Knopf erscheint erst, wenn wirklich etwas anderes im
+                    // Feld steht — vorher stand hier ein dauerhaft gruener Haken,
+                    // und der las sich wie eine Zustandsanzeige („scharf") statt
+                    // wie ein Knopf. Verglichen wird die ZAHL und nicht der Text:
+                    // „30" und „30.0" sind dasselbe.
+                    val geaendert = wert.replace(',', '.').toDoubleOrNull()
+                        ?.let { it != a.schwelle } ?: true
+                    if (geaendert) {
+                        IconButton(onClick = {
+                            vm.aendereAlarmSchwelle(a.setNumber, a.condition, a.richtung,
+                                wert.replace(',', '.').toDoubleOrNull() ?: 0.0)
+                        }) {
+                            Icon(Icons.Default.Save, stringResource(R.string.settings_save),
+                                tint = MaterialTheme.colorScheme.primary)
+                        }
                     }
                 }
             }
         }
     }
+
+    // Rueckfrage vor dem Loeschen — wie in der Webapp. Ein Alarm ist mit einem
+    // Fingertipp weg und kommt nicht wieder; die Schwelle muesste man neu suchen.
+    fragtLoeschen?.let { a ->
+        AlertDialog(
+            onDismissRequest = { fragtLoeschen = null },
+            title = { Text(stringResource(R.string.alerts_delete)) },
+            text = { Text(stringResource(R.string.alerts_confirm_delete, a.setNumber)) },
+            confirmButton = {
+                TextButton(onClick = {
+                    fragtLoeschen = null
+                    vm.loescheAlarm(a.setNumber, a.condition)
+                }) {
+                    Text(stringResource(R.string.common_delete),
+                         color = MaterialTheme.colorScheme.error)
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { fragtLoeschen = null }) {
+                    Text(stringResource(R.string.common_cancel))
+                }
+            },
+        )
+    }
 }
+
+/**
+ * „scharf" oder „unscharf" — ein Label, das ohne Farbe auskommt.
+ *
+ * ── Marcos Befund vom 26.09. ───────────────────────────────────────────────
+ *
+ *   „Ok entschuldige ich habe eine rot grün schwäche. Deshalb sind labels mit
+ *    scharf / unscharf für mich einfacher."
+ *
+ * Bis hierher trugen BEIDE Oberflaechen die Aussage in der Farbe: gruen heisst
+ * scharf, grau heisst nicht mehr scharf. Fuer rund acht Prozent der Maenner
+ * ist das keine Aussage, sondern zweimal dasselbe. Und der Entschuldigung
+ * widerspricht die Sache: Nicht das Auge ist der Fehler, sondern eine
+ * Oberflaeche, die eine Information NUR in die Farbe legt.
+ *
+ * Drei Unterschiede tragen sie jetzt, von denen jeder EINZELN reicht:
+ *
+ *   1. Das WORT. „scharf" und „unscharf" sind ein Paar — vorher stand dort
+ *      „scharf" gegen „hat gemeldet", zwei Saetze ueber verschiedene Dinge.
+ *      Was „unscharf" bedeutet, sagt der Einleitungstext der Rubrik, und die
+ *      Zeile „zuletzt CHF 28.50" daneben steht ohnehin nur bei einem Alarm,
+ *      der gemeldet hat (preisalarm.ts setzt beides in derselben Anweisung).
+ *   2. Die FORM: gefuellt gegen umrandet.
+ *   3. Das ZEICHEN davor: ● gegen ○, gefuellt gegen hohl.
+ *
+ * Farbe bleibt, aber nur noch als Zugabe — und ausdruecklich NICHT gruen
+ * gegen rot. Das Label nimmt `secondaryContainer`, also die Farbfamilie, die
+ * jedes der fuenf Designs fuer „hervorgehoben, aber nicht dringend" mitbringt.
+ * Ein gruenes Label waere derselbe Fehler noch einmal, nur freundlicher
+ * gemeint.
+ */
+@Composable
+private fun AlarmZustandPlakette(ausgeloest: Boolean) {
+    val text = stringResource(if (ausgeloest) R.string.alerts_fired else R.string.alerts_armed)
+    // Gefuellt = scharf, umrandet = unscharf. Die Flaeche ist der Unterschied,
+    // den man auch dann sieht, wenn die beiden Farben gleich aussehen.
+    Surface(
+        shape = Formen.chip,
+        color = if (ausgeloest) Color.Transparent
+                else MaterialTheme.colorScheme.secondaryContainer,
+        border = if (ausgeloest)
+            BorderStroke(1.dp, MaterialTheme.colorScheme.outline) else null,
+    ) {
+        Text(
+            text,
+            style = MaterialTheme.typography.labelSmall,
+            // Auch das Gewicht traegt mit: Ein scharfer Alarm ist der Zustand,
+            // auf den es ankommt.
+            fontWeight = if (ausgeloest) FontWeight.Normal else FontWeight.SemiBold,
+            color = if (ausgeloest) MaterialTheme.colorScheme.onSurfaceVariant
+                    else MaterialTheme.colorScheme.onSecondaryContainer,
+            modifier = Modifier.padding(
+                horizontal = Abstaende.winzig, vertical = Abstaende.haar),
+        )
+    }
+}
+
 
 @Composable
 private fun LagerorteCard(vm: MainViewModel) {

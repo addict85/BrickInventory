@@ -1,5 +1,6 @@
 package ch.brickinventoryapp.ui
 
+import androidx.compose.foundation.ScrollState
 import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.grid.LazyGridState
 import androidx.compose.runtime.Composable
@@ -172,6 +173,57 @@ fun ScrollPositionKeeper(
         if (!wiederhergestellt) return@LaunchedEffect
         snapshotFlow { listState.firstVisibleItemIndex to listState.firstVisibleItemScrollOffset }
             .collect { (index, offset) -> speicher.merke(schluessel, index, offset) }
+    }
+}
+
+/**
+ * Dasselbe für eine gewöhnliche `Column(verticalScroll(…))`.
+ *
+ * ── Warum das nicht dieselbe Prüfung sein kann (Nachtrag 137) ───────────────
+ *
+ * Eine LazyColumn weiss von sich aus, wann sie Inhalt hat — die Liste ist
+ * entweder leer oder nicht, und `bereit` sagt es. Eine scrollende Column hat
+ * keinen solchen Schalter: Ihre Höhe entsteht erst, während die Karten darin
+ * ihre Daten bekommen, und sie WÄCHST danach noch (Alarme, Lagerorte, Geräte,
+ * Haushalt treffen unabhängig voneinander ein).
+ *
+ * `ScrollState.value` lässt sich nicht über `maxValue` hinaus setzen. Ein
+ * Zurückspringen zum frühestmöglichen Zeitpunkt landete deshalb irgendwo
+ * darunter — und nach dem Kappen wäre die gemerkte Stelle endgültig verloren,
+ * weil der Melder unten sofort den gekappten Wert zurückschriebe.
+ *
+ * Deshalb wird hier nicht auf ein Signal von aussen gewartet, sondern auf die
+ * Sache selbst: Erst wenn die Seite mindestens so hoch ist, wie die gemerkte
+ * Stelle tief liegt, ist der Sprung überhaupt ausführbar. Das ist keine
+ * Schätzung, sondern die Bedingung, die `scrollTo` erfüllt haben will.
+ */
+@Composable
+fun ScrollPositionKeeper(
+    schluessel: String,
+    scrollState: ScrollState,
+    speicher: ScrollMemory,
+) {
+    // Der Merker darf den Ausflug NICHT überleben — `remember` und nicht
+    // `rememberSaveable`, aus demselben Grund wie oben.
+    var wiederhergestellt by remember { mutableStateOf(false) }
+    // Die gemerkte Stelle EINMAL lesen und festhalten: Der Melder unten
+    // schreibt laufend, und ein zweites Lesen später läse den eigenen
+    // Zwischenstand.
+    val ziel = remember { speicher.lies(schluessel).first }
+
+    LaunchedEffect(scrollState.maxValue) {
+        if (wiederhergestellt) return@LaunchedEffect
+        if (ziel <= 0) { wiederhergestellt = true; return@LaunchedEffect }
+        if (scrollState.maxValue < ziel) return@LaunchedEffect
+        scrollState.scrollTo(ziel)
+        wiederhergestellt = true
+    }
+    LaunchedEffect(scrollState, wiederhergestellt) {
+        if (!wiederhergestellt) return@LaunchedEffect
+        // Der zweite Platz bleibt leer: Eine Column hat nur EINE Zahl, keinen
+        // Eintrag mit Versatz darin. Ihn mit etwas zu füllen wäre eine Angabe,
+        // die niemand liest und die beim nächsten Leser wie eine gilt.
+        snapshotFlow { scrollState.value }.collect { speicher.merke(schluessel, it, 0) }
     }
 }
 

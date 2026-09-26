@@ -164,15 +164,40 @@ export async function alarmeFuer(userId: number, setNumber: string): Promise<Pre
 export interface AlarmMitName extends Preisalarm {
   name: string | null;
   set_img_url: string | null;
+  /**
+   * Die heruntergeladene Kopie des Bildes, falls das Set in der eigenen
+   * Sammlung liegt — dieselbe Reihenfolge wie in den Finanzen
+   * (`image_local || image_url`). Ohne sie zeigte die Uebersicht fuer ein
+   * Set, das man besitzt, ein anderes Bild als die Galerie daneben.
+   */
+  image_local: string | null;
+  image_url: string | null;
+  /**
+   * Liegt das Set in der eigenen Sammlung?
+   *
+   * Ein Alarm braucht das Set NICHT: `setzeAlarm()` schreibt ohne jede
+   * Pruefung, und wer ein Set spaeter aus der Sammlung entfernt, behaelt
+   * seinen Alarm. Die Uebersicht macht die Zeile deshalb nur dann anklickbar,
+   * wenn es einen Detaildialog dazu gibt — sonst fuehrte der Klick auf
+   * `GET /v1/sets/:nummer` und endete in einer Fehlermeldung.
+   */
+  besitzt: boolean;
 }
 
 export async function alleAlarme(userId: number): Promise<AlarmMitName[]> {
   const rows = await db.all(
+    // Der zweite LEFT JOIN geht auf das EIGENE Set (sets ist ueber
+    // (user_id, set_number) eindeutig, die Verbindung kann also keine Zeile
+    // vervielfachen). Er liefert das Bild, das die Galerie zeigt; der Katalog
+    // springt ein, wenn man das Set gar nicht besitzt — und genau das ist der
+    // haeufige Fall bei einem Preisalarm.
     `SELECT a.set_number, a.condition, a.richtung, a.schwelle, a.currency_code,
             a.ausgeloest, a.zuletzt_am, a.zuletzt_preis,
-            rb.name, rb.set_img_url
+            rb.name, rb.set_img_url, s.image_local, s.image_url,
+            (s.id IS NOT NULL) AS besitzt
        FROM price_alerts a
        LEFT JOIN rb_sets rb ON rb.set_num = a.set_number
+       LEFT JOIN sets s ON s.user_id = a.user_id AND s.set_number = a.set_number
       WHERE a.user_id = $1
       ORDER BY a.set_number, a.condition`,
     [userId])
