@@ -653,4 +653,5 @@
     <string name="alerts_last">last %1$s</string>
     <string name="alerts_bad_value">The threshold must be greater than 0.</string>
     <string name="alerts_delete">Remove price alert</string>
+    <string name="alerts_confirm_delete">Really remove the price alert for %1$s?</string>
 </resources>

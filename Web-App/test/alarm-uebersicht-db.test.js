@@ -29,6 +29,8 @@
  *   b) LEFT JOIN → INNER JOIN              → Schritt 3 rot (unbekanntes Set weg)
  *   c) Rubrik aus index.html entfernt      → Schritt 4 rot
  *   d) ladeAlarmUebersicht nicht aufgerufen → Schritt 4 rot
+ *   e) zweiter LEFT JOIN auf `sets` entfernt → Schritt 5 rot (Bild und Besitz)
+ *   f) `data-click="stopEvent"` am Feld entfernt → Schritt 6 rot
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -69,8 +71,15 @@ test('Preisalarm-Übersicht: eigene Alarme, mit Namen, änderbar, löschbar',
   });
 
   // Ein Set, das der Katalog kennt — und eines, das er NICHT kennt.
-  await db.run(`INSERT INTO rb_sets (set_num, name) VALUES ('70002-1','Lennox Feuerwehr')
-                ON CONFLICT (set_num) DO UPDATE SET name = EXCLUDED.name`);
+  await db.run(`INSERT INTO rb_sets (set_num, name, set_img_url)
+                VALUES ('70002-1','Lennox Feuerwehr','https://cdn.example/70002-1.jpg')
+                ON CONFLICT (set_num) DO UPDATE
+                   SET name = EXCLUDED.name, set_img_url = EXCLUDED.set_img_url`);
+  // Dasselbe Set liegt ZUSÄTZLICH in meiner Sammlung — nur dann gibt es einen
+  // Detaildialog, und nur dann gibt es das heruntergeladene Bild.
+  await db.run(`INSERT INTO sets (user_id, set_number, name, image_local, image_url)
+                VALUES ($1,'70002-1','Lennox Feuerwehr','/uploads/70002-1_thumb.jpg','https://cdn.example/70002-1.jpg')
+                ON CONFLICT (user_id, set_number) DO NOTHING`, [ich.id]);
 
   // Signatur GELESEN, nicht geraten: (userId, setNumber, waehrung, eingabe).
   // Der erste Entwurf dieses Tests hatte sie sich zurechtgelegt und lief
@@ -124,7 +133,44 @@ test('Preisalarm-Übersicht: eigene Alarme, mit Namen, änderbar, löschbar',
       'Der Alarm lässt sich nicht löschen — genau das hat Marco verlangt.');
   });
 
-  await t.test('5. Löschen wirkt', async () => {
+  await t.test('5. Bild und Besitz kommen mit — für die Kachel und für den Klick', async () => {
+    const a = await alleAlarme(ich.id);
+    const meins = a.find(x => x.set_number === '70002-1');
+    const fremdes = a.find(x => x.set_number === '99999-9');
+    // Reihenfolge wie in den Finanzen: heruntergeladene Kopie zuerst. Ohne sie
+    // zeigte dieselbe Nummer in der Übersicht ein anderes Bild als in der
+    // Galerie daneben.
+    assert.equal(meins.image_local, '/uploads/70002-1_thumb.jpg',
+      'Das Bild der eigenen Sammlung fehlt — die Zeile bliebe ohne Kachel oder ' +
+      'zeigte eine andere als die Galerie.');
+    assert.equal(meins.set_img_url, 'https://cdn.example/70002-1.jpg',
+      'Das Katalogbild fehlt — es ist der Rückfall für Sets, die man nicht besitzt.');
+    assert.equal(meins.besitzt, true, 'Ein Set in der Sammlung gilt als nicht vorhanden.');
+    // Der zweite LEFT JOIN darf keine Zeile vervielfachen: sets ist über
+    // (user_id, set_number) eindeutig. Zwei Zeilen wären hier der Beweis.
+    assert.equal(a.filter(x => x.set_number === '70002-1').length, 1,
+      'Die Verbindung zur eigenen Sammlung hat die Zeile vervielfacht.');
+
+    assert.equal(fremdes.besitzt, false,
+      'Ein Alarm auf ein Set, das NICHT in der Sammlung liegt, gilt als vorhanden — ' +
+      'die Zeile wäre anklickbar und der Klick endete in einer Fehlermeldung.');
+    assert.equal(fremdes.image_local, null, 'Woher sollte das Bild kommen?');
+  });
+
+  await t.test('6. die Zeile öffnet den Detaildialog, das Zahlenfeld nicht', () => {
+    const js = ohneKommentare(fs.readFileSync(path.join(ROOT, 'public/js/05-settings.js'), 'utf8'));
+    assert.match(js, /data-click="openModal"/,
+      'Die Zeile öffnet den Detaildialog nicht — genau das hat Marco verlangt.');
+    // Der Verteiler in 11-actions.js nimmt das NÄCHSTGELEGENE Element mit
+    // data-click. Ohne `stopEvent` am Eingabefeld öffnete jeder Klick ins Feld
+    // den Dialog über dem Feld, in das man gerade tippen wollte.
+    assert.match(js, /data-click="stopEvent"/,
+      'Das Zahlenfeld hält den Klick nicht auf — Tippen öffnete den Dialog.');
+    assert.match(js, /thumbUrl\(/,
+      'Die Zeile zeigt kein Vorschaubild — analog den Finanzen war das der Auftrag.');
+  });
+
+  await t.test('7. Löschen wirkt', async () => {
     await loescheAlarm(ich.id, '99999-9', 'U');
     const a = await alleAlarme(ich.id);
     assert.equal(a.length, 1, 'Nach dem Löschen steht der Alarm noch in der Übersicht.');

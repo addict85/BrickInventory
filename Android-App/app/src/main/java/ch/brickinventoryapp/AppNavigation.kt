@@ -69,6 +69,10 @@ fun BrickInventoryManagerApp(
     val partsGridState     = androidx.compose.foundation.lazy.grid.rememberLazyGridState()
     val minifigsGridState  = androidx.compose.foundation.lazy.grid.rememberLazyGridState()
     val partsListState     = androidx.compose.foundation.lazy.rememberLazyListState()
+    // Die Einstellungen sind eine gewoehnliche scrollende Spalte, keine Liste —
+    // seit die Preisalarm-Rubrik in die Set-Detailansicht fuehrt, braucht auch
+    // sie ihren Zustand hier oben.
+    val settingsScrollState = androidx.compose.foundation.rememberScrollState()
 
     // Snackbar aus eigenem Flow — Meldungen rekomponieren so nicht mehr den
     // gesamten Tree über AppUiState.
@@ -215,6 +219,6 @@ fun BrickInventoryManagerApp(
             galleryGridState, partsGridState, minifigsGridState)
         catalogGraph(vm, katalog, navController, imageLoader, bottomNavItems, snackbarHostState)
         toolsGraph(vm, navController, imageLoader, bottomNavItems, snackbarHostState, activity,
-            financeListState, partsListState)
+            financeListState, partsListState, settingsScrollState)
     }
 }

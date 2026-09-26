@@ -639,4 +639,5 @@
     <string name="alerts_last">zuletzt %1$s</string>
     <string name="alerts_bad_value">Die Schwelle muss grösser als 0 sein.</string>
     <string name="alerts_delete">Preisalarm entfernen</string>
+    <string name="alerts_confirm_delete">Preisalarm für %1$s wirklich entfernen?</string>
 </resources>

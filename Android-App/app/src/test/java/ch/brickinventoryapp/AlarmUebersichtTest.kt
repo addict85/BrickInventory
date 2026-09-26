@@ -84,6 +84,121 @@ class AlarmUebersichtTest {
         }
     }
 
+    /**
+     * Vorschaubild und Klick in die Detailansicht — Marcos Nachtrag vom 26.09.
+     *
+     * „Bitte bei den Zeilen jeweils in beiden Apps noch das Thumbnail anzeigen
+     * (analog wie bei den Finanzen). Die Zeilen sollen zudem klickbar sein,
+     * dass dann der entsprechende Detaildialog geöffnet wird."
+     *
+     * Geprueft wird ausdruecklich auf [FinanzBild] und [resolveThumbUrl] und
+     * nicht bloss auf „irgendein Bild": „analog wie bei den Finanzen" ist die
+     * Vorgabe, und ein zweites, anders beschnittenes Bild an derselben Stelle
+     * waere genau das, was Marco seit Monaten anmerkt.
+     */
+    @Test
+    fun `die Zeile zeigt ein Bild und fuehrt in die Detailansicht`() {
+        val s = quelle("ui/screens/SettingsScreen.kt")
+        assert(s.contains("FinanzBild(")) {
+            "Die Zeile hat kein Vorschaubild — oder ein eigenes statt des der Finanzen."
+        }
+        assert(s.contains("resolveThumbUrl(")) {
+            "Die Bildadresse wird nicht ueber die gemeinsame Stelle gebildet."
+        }
+        assert(s.contains("onSetClick(a.setNumber)")) {
+            "Die Zeile oeffnet die Detailansicht nicht — genau das hat Marco verlangt."
+        }
+        // Nur anklickbar, wenn es das Set gibt: Ein Alarm ueberlebt das
+        // Entfernen des Sets, und /v1/sets/:nummer gaebe es dann nicht mehr.
+        assert(s.contains("a.besitzt")) {
+            "Die Zeile ist auch dann anklickbar, wenn das Set nicht (mehr) in der " +
+                "Sammlung liegt — der Klick liefe in eine Fehlermeldung."
+        }
+    }
+
+    /**
+     * Die Einstellungen kommen an derselben Stelle zurueck.
+     *
+     * „Kommt man zurück soll man sich wieder an der gleichen Stelle befinden
+     * (analog wie das bei den Finanzen der Fall ist)."
+     *
+     * Der Rollzustand MUSS ausserhalb des Ziels liegen: Der Weg in die
+     * Detailansicht verwirft das Ziel, und ein rememberScrollState() darin
+     * waere bei der Rueckkehr zurueckgesetzt. Genau das ist in dieser Reihe
+     * schon dreimal passiert (Nachtraege 92 bis 95).
+     */
+    @Test
+    fun `die Einstellungen merken sich ihre Rollposition`() {
+        val graph = quelle("nav/ToolsGraph.kt")
+        assert(graph.contains("settingsScrollState")) {
+            "Die Einstellungen halten ihren Rollzustand noch selbst — nach der " +
+                "Rueckkehr aus der Detailansicht stuende man wieder ganz oben."
+        }
+        assert(Regex(""""settings",\s*settingsScrollState""").containsMatchIn(graph)) {
+            "Der Rollzustand wird nicht gemerkt — er ueberlebt zwar, aber niemand " +
+                "springt zurueck."
+        }
+        val nav = quelle("AppNavigation.kt")
+        assert(nav.contains("val settingsScrollState")) {
+            "Der Zustand entsteht nicht oberhalb des NavHost — dort, wo er ueberlebt."
+        }
+        val screen = quelle("ui/screens/SettingsScreen.kt")
+        assert(!screen.contains("rememberScrollState()")) {
+            "In SettingsScreen steht wieder ein eigenes rememberScrollState() — " +
+                "damit ist der durchgereichte Zustand wirkungslos."
+        }
+    }
+
+    /**
+     * Vor dem Loeschen wird gefragt — wie in der Webapp.
+     *
+     * „Auch in der Android App soll beim Löschen eines Preisalarm noch
+     * nachgefragt werden ob der Eintrag wirklich gelöscht werden soll."
+     *
+     * Die Webapp fragt seit jeher (`confirm` in 05-settings.js). Geprueft wird
+     * nicht nur, dass es einen Dialog GIBT, sondern dass der Loeschknopf nicht
+     * mehr direkt loescht — sonst stuende der Dialog daneben und der Knopf
+     * fuehre weiter an ihm vorbei.
+     */
+    @Test
+    fun `vor dem Loeschen wird gefragt`() {
+        val s = quelle("ui/screens/SettingsScreen.kt")
+        assert(s.contains("R.string.alerts_confirm_delete")) {
+            "Es gibt keine Rueckfrage vor dem Loeschen eines Preisalarms."
+        }
+        assert(Regex("""IconButton\(onClick\s*=\s*\{\s*fragtLoeschen\s*=""")
+                   .containsMatchIn(s)) {
+            "Der Loeschknopf fragt nicht, sondern loescht — der Dialog stuende daneben " +
+                "und niemand kaeme an ihm vorbei."
+        }
+    }
+
+    /**
+     * Der Alarmzustand steht als Plakette da, nicht als Kleintext.
+     *
+     * „Bitte in der Android-App das ‚scharf' analog der Webapp mit einem Label
+     * anstelle des grünen Hackens anzeigen."
+     *
+     * Der gruene Haken war in Wahrheit der SPEICHERN-Knopf: Er stand dauerhaft
+     * neben dem Zahlenfeld und las sich wie eine Zusage. Deshalb zwei Aussagen
+     * in einem Test — die Plakette kommt, und der Knopf hoert auf, dauernd da
+     * zu stehen.
+     */
+    @Test
+    fun `der Alarmzustand steht als Plakette da`() {
+        val s = quelle("ui/screens/SettingsScreen.kt")
+        assert(s.contains("fun AlarmZustandPlakette(")) { "Es gibt keine Plakette." }
+        assert(s.contains("AlarmZustandPlakette(a.ausgeloest)")) {
+            "Die Plakette wird nicht benutzt — sie steht da und niemand zeigt sie."
+        }
+        // Der Speichern-Knopf erscheint nur bei einer Aenderung. Ohne diese
+        // Schranke steht wieder dauerhaft ein Symbol daneben, das wie eine
+        // Zustandsanzeige aussieht.
+        assert(s.contains("val geaendert =")) {
+            "Der Speichern-Knopf steht wieder dauerhaft da und sieht aus wie ein Zustand."
+        }
+    }
+
     // Die Gegenrichtung — „hat die WEBAPP die Rubrik auch?" — steht bewusst
     // NICHT hier. Sie hat dort ihre eigene Regel: Web-App/test/
     // webapp-endpunkte.test.js verlangt, dass eine Adresse, die nur die Webapp
