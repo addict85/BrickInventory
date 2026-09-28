@@ -17,32 +17,32 @@
   <script defer src="/vendor/qrcode/qrcode.min.js"></script>
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>BrickInventory Manager</title>
-  <link rel="stylesheet" href="/vendor/fonts/fonts.css?v=2026.09.17.1000">
+  <link rel="stylesheet" href="/vendor/fonts/fonts.css?v=2026.09.28.1646">
   <!-- Gemeinsame Farbtokens, ERZEUGT aus shared/design-tokens.json. Zuerst
        geladen: Sie sind die Grundlage, styles.css und die Designs bauen
        darauf auf. -->
-  <link rel="stylesheet" href="/tokens.css?v=2026.09.17.1000">
-  <link rel="stylesheet" href="/styles.css?v=2026.09.17.1000">
+  <link rel="stylesheet" href="/tokens.css?v=2026.09.28.1646">
+  <link rel="stylesheet" href="/styles.css?v=2026.09.28.1646">
   <!-- App-Designs (Stein-Look etc.) — je Theme eine Datei unter /themes/, greift via [data-theme] -->
-  <link rel="stylesheet" href="/themes/brick.css?v=2026.09.17.1000">
-  <link rel="stylesheet" href="/themes/werkbank.css?v=2026.09.17.1000">
-  <link rel="stylesheet" href="/themes/farbfaecher.css?v=2026.09.17.1000">
-  <link rel="stylesheet" href="/themes/noppe.css?v=2026.09.17.1000">
-  <link rel="stylesheet" href="/themes/hochglanz.css?v=2026.09.17.1000">
+  <link rel="stylesheet" href="/themes/brick.css?v=2026.09.28.1646">
+  <link rel="stylesheet" href="/themes/werkbank.css?v=2026.09.28.1646">
+  <link rel="stylesheet" href="/themes/farbfaecher.css?v=2026.09.28.1646">
+  <link rel="stylesheet" href="/themes/noppe.css?v=2026.09.28.1646">
+  <link rel="stylesheet" href="/themes/hochglanz.css?v=2026.09.28.1646">
   <!-- Responsive-Regeln, nach beiden Designs geladen: das Layout ist in
        classic und brick identisch, die Regeln gelten daher für beide. -->
-  <link rel="stylesheet" href="/mobile.css?v=2026.09.17.1000">
+  <link rel="stylesheet" href="/mobile.css?v=2026.09.28.1646">
   <!-- Setzt data-theme aus dem localStorage-Cache VOR dem ersten Paint und
        gleicht danach gegen GET /api/v1/settings/theme ab. Blockierend und im
        <head>, sonst blitzt auf Login-/Startup-Screen kurz das falsche Design auf. -->
-  <script src="/js/00-theme-boot.js?v=2026.09.17.1000"></script>
+  <script src="/js/00-theme-boot.js?v=2026.09.28.1646"></script>
   <!-- Aktive Sprachdatei. Blockierend und VOR dem Bündel, weil i18n.js beim
        Auswerten window.I18N_DE / window.I18N_EN erwartet.
        Welche Datei hier steht, entscheidet der Server (utils/indexHtml.ts)
        anhand der gespeicherten Sprache — genauso wie beim Design darüber.
        Der Wechsel zur anderen Sprache lädt sie zur Laufzeit nach
        (loadLang() in i18n.js). -->
-  <script src="/locales/de.js?v=2026.09.17.1000" data-i18n-locale></script>
+  <script src="/locales/de.js?v=2026.09.28.1646" data-i18n-locale></script>
 </head>
 <body>
 
@@ -108,7 +108,7 @@
         <a href="#" id="link-forgot" style="color:var(--b600)" data-i18n="login.forgot">Passwort vergessen?</a>
         <span id="link-register-wrap" style="display:none"><span data-i18n="login.register_prompt">Neu hier?</span> <a href="#" id="link-register" style="color:var(--b600);font-weight:600">Registrieren</a></span>
       </div>
-      <div style="color:var(--mut);font-size:.7rem;margin-top:1.5rem;text-align:center;opacity:.45;letter-spacing:.03em">Build 2026.09.07.1820</div>
+      <div style="color:var(--mut);font-size:.7rem;margin-top:1.5rem;text-align:center;opacity:.45;letter-spacing:.03em">Build 2026.09.28.1646</div>
       <div id="verified-msg" style="display:none;margin-top:.75rem;padding:.65rem .9rem;background:var(--g50);border:1px solid var(--g300);border-radius:7px;font-size:.82rem;color:var(--g700)"><span data-i18n="verify.success">✅ E-Mail erfolgreich bestätigt. Du kannst dich jetzt anmelden.</span></div>
     </div>
 
@@ -275,9 +275,9 @@
           </div>
         </div>
         <div class="frow">
-          <div class="fg"><label data-i18n="gallery.add.number">Setnummer</label><input type="text" id="add-num" placeholder="z.B. 75192" data-i18n="gallery.add.number" data-i18n-attr="placeholder" /></div>
-          <div class="fg" style="max-width:82px"><label for="add-qty" data-i18n="gallery.add.qty">Anzahl</label><input type="number" id="add-qty" value="1" min="1" /></div>
-          <div class="fg" style="max-width:120px"><label for="add-price" data-i18n="gallery.add.price">Kaufpreis (opt.)</label><input type="number" id="add-price" placeholder="Marktpreis" data-i18n="detail.market_price" data-i18n-attr="placeholder" step="0.01" min="0" /></div>
+          <div class="fg"><label data-i18n="gallery.add.number">Setnummer</label><input inputmode="numeric" type="text" id="add-num" placeholder="z.B. 75192" data-i18n="gallery.add.number" data-i18n-attr="placeholder" /></div>
+          <div class="fg" style="max-width:82px"><label for="add-qty" data-i18n="gallery.add.qty">Anzahl</label><input inputmode="numeric" type="number" id="add-qty" value="1" min="1" /></div>
+          <div class="fg" style="max-width:120px"><label for="add-price" data-i18n="gallery.add.price">Kaufpreis (opt.)</label><input inputmode="decimal" type="number" id="add-price" placeholder="Marktpreis" data-i18n="detail.market_price" data-i18n-attr="placeholder" step="0.01" min="0" /></div>
           <div class="fg" style="max-width:110px"><label for="add-condition" data-i18n="common.condition">Zustand</label><select id="add-condition" style="padding:.45rem .7rem;border:1px solid var(--bdr);border-radius:var(--rad);background:var(--sur);color:var(--txt);font-size:.875rem"><option value="N" data-i18n="common.condition_new">Neu</option><option value="U" data-i18n="common.condition_used">Gebraucht</option></select></div>
           <!-- Kontoauswahl: nur im Haushalt sichtbar (siehe loadHouseholdMembers) -->
           <div class="fg" id="add-owner-box" style="max-width:150px;display:none"><label for="add-owner" data-i18n="household.for_account">Für Konto</label><select id="add-owner" style="padding:.45rem .7rem;border:1px solid var(--bdr);border-radius:var(--rad);background:var(--sur);color:var(--txt);font-size:.875rem"></select></div><div class="fg" id="add-storage-box" style="max-width:220px"><label id="add-storage-label" data-i18n="detail.storage">Lagerort</label><span id="add-storage-slot" style="display:flex;gap:6px;align-items:center"></span></div>
@@ -385,7 +385,7 @@
           <h3 style="margin:0;font-size:1rem;font-weight:700" data-i18n="wanted.add.title">Merkposten hinzufügen</h3>
         </div>
         <div style="display:flex;gap:8px;align-items:flex-end;flex-wrap:wrap">
-          <div class="fg"><label for="mk-num" data-i18n="gallery.add.number">Setnummer</label><input type="text" id="mk-num" placeholder="z.B. 75192" data-i18n="gallery.add.number" data-i18n-attr="placeholder" /></div>
+          <div class="fg"><label for="mk-num" data-i18n="gallery.add.number">Setnummer</label><input inputmode="numeric" type="text" id="mk-num" placeholder="z.B. 75192" data-i18n="gallery.add.number" data-i18n-attr="placeholder" /></div>
           <div class="fg" style="max-width:110px"><label for="mk-cond" data-i18n="common.condition">Zustand</label><select id="mk-cond" style="padding:.45rem .7rem;border:1px solid var(--bdr);border-radius:var(--rad);background:var(--sur);color:var(--txt);font-size:.875rem"><option value="N" data-i18n="common.condition_new">Neu</option><option value="U" data-i18n="common.condition_used">Gebraucht</option></select></div>
           <div class="fg" id="mk-owner-box" style="max-width:150px;display:none"><label for="mk-owner" data-i18n="household.for_account">Für Konto</label><select id="mk-owner" style="padding:.45rem .7rem;border:1px solid var(--bdr);border-radius:var(--rad);background:var(--sur);color:var(--txt);font-size:.875rem"></select></div>
           <button class="btn bp" id="mk-add" data-click="merkpostenHinzufuegen" data-i18n="wanted.add.submit">Auf die Merkliste</button>
@@ -467,8 +467,8 @@
                 </select>
               </div>
             </div>
-            <div class="fg"><label data-i18n="parts.add.qty">Anzahl</label><input type="number" id="ap-qty-inline" value="1" min="1" style="height:38px" /></div>
-            <div class="fg"><label for="ap-price-inline" data-i18n="parts.add.price">Kaufpreis/Stk (opt.)</label><input type="number" id="ap-price-inline" placeholder="Leer = Marktpreis" data-i18n="parts.add.price_placeholder" data-i18n-attr="placeholder" step="0.01" style="height:38px" /></div>
+            <div class="fg"><label data-i18n="parts.add.qty">Anzahl</label><input inputmode="numeric" type="number" id="ap-qty-inline" value="1" min="1" style="height:38px" /></div>
+            <div class="fg"><label for="ap-price-inline" data-i18n="parts.add.price">Kaufpreis/Stk (opt.)</label><input inputmode="decimal" type="number" id="ap-price-inline" placeholder="Leer = Marktpreis" data-i18n="parts.add.price_placeholder" data-i18n-attr="placeholder" step="0.01" style="height:38px" /></div>
             <div class="fg"><label for="ap-condition" data-i18n="common.condition">Zustand</label><select id="ap-condition" style="height:38px;padding:.45rem .7rem;border:1px solid var(--bdr);border-radius:var(--rad);background:var(--sur);color:var(--txt);font-size:.875rem"><option value="N" data-i18n="common.condition_new">Neu</option><option value="U" data-i18n="common.condition_used">Gebraucht</option></select></div>
             <div class="fg" id="ap-owner-box" style="max-width:150px;display:none"><label for="ap-owner" data-i18n="household.for_account">Für Konto</label><select id="ap-owner" style="height:38px;padding:.45rem .7rem;border:1px solid var(--bdr);border-radius:var(--rad);background:var(--sur);color:var(--txt);font-size:.875rem"></select></div><div class="fg" id="ap-storage-box" style="max-width:220px"><label id="ap-storage-label" data-i18n="detail.storage">Lagerort</label><span id="ap-storage-slot" style="display:flex;gap:6px;align-items:center"></span></div>
             <div class="fg" style="align-self:end"><button class="btn bp" id="btn-add-part" style="width:100%;height:38px" data-i18n="adding.button">+ Hinzufügen</button></div>
@@ -565,9 +565,9 @@
           <div class="fg"><label for="af-blnum-inline"><span data-i18n="figs.blnum_label">BrickLink-Nr. (opt.)</span> <span style="font-size:.72rem;color:var(--mut)" data-i18n="parts.add.bl_hint">für Marktpreis</span></label>
             <input type="text" id="af-blnum-inline" placeholder="z.B. sw0001" /></div>
           <div class="fg"><label for="af-qty-inline" data-i18n="figs.qty_label">Anzahl</label>
-            <input type="number" id="af-qty-inline" value="1" min="1" style="height:38px" /></div>
+            <input inputmode="numeric" type="number" id="af-qty-inline" value="1" min="1" style="height:38px" /></div>
           <div class="fg"><label for="af-price-inline" data-i18n="figs.price_label">Kaufpreis/Stk (opt.)</label>
-            <input type="number" id="af-price-inline" placeholder="Leer = Marktpreis" data-i18n="parts.add.price_placeholder" data-i18n-attr="placeholder" step="0.01" style="height:38px" /></div>
+            <input inputmode="decimal" type="number" id="af-price-inline" placeholder="Leer = Marktpreis" data-i18n="parts.add.price_placeholder" data-i18n-attr="placeholder" step="0.01" style="height:38px" /></div>
           <div class="fg"><label for="af-condition" data-i18n="common.condition">Zustand</label><select id="af-condition" style="height:38px;padding:.45rem .7rem;border:1px solid var(--bdr);border-radius:var(--rad);background:var(--sur);color:var(--txt);font-size:.875rem"><option value="N" data-i18n="common.condition_new">Neu</option><option value="U" data-i18n="common.condition_used">Gebraucht</option></select></div>
             <div class="fg" id="af-owner-box" style="max-width:150px;display:none"><label for="af-owner" data-i18n="household.for_account">Für Konto</label><select id="af-owner" style="height:38px;padding:.45rem .7rem;border:1px solid var(--bdr);border-radius:var(--rad);background:var(--sur);color:var(--txt);font-size:.875rem"></select></div><div class="fg" id="af-storage-box" style="max-width:220px"><label id="af-storage-label" data-i18n="detail.storage">Lagerort</label><span id="af-storage-slot" style="display:flex;gap:6px;align-items:center"></span></div>
           <div class="fg" style="align-self:end">
@@ -935,7 +935,7 @@
             <div class="fg"><label for="bl-cs">Consumer Secret</label><input type="password" id="bl-cs" autocomplete="off" /></div>
             <div class="fg"><label for="bl-tok">Token Value</label><input type="text" id="bl-tok" autocomplete="off" /></div>
             <div class="fg"><label for="bl-ts">Token Secret</label><input type="password" id="bl-ts" autocomplete="off" /></div>
-            <div class="fg"><label for="lim-bl"><span data-i18n="settings.max_calls">Max. Aufrufe pro Tag</span> <span style="font-size:.72rem;color:var(--mut)" data-i18n="settings.default_n" data-i18n-vars='{"n":"4000"}'>(Standard: 4000)</span></label><input type="number" id="lim-bl" min="1" max="100000" value="4000" style="max-width:160px" /></div>
+            <div class="fg"><label for="lim-bl"><span data-i18n="settings.max_calls">Max. Aufrufe pro Tag</span> <span style="font-size:.72rem;color:var(--mut)" data-i18n="settings.default_n" data-i18n-vars='{"n":"4000"}'>(Standard: 4000)</span></label><input inputmode="numeric" type="number" id="lim-bl" min="1" max="100000" value="4000" style="max-width:160px" /></div>
             <button class="btn bp" id="btn-sav-bl" data-i18n="settings.save_key">🔑 Speichern</button>
           </div>
         </div>
@@ -944,7 +944,7 @@
           <div class="sform">
             <div class="ibox" style="margin-bottom:4px"><a href="https://rebrickable.com/api/" target="_blank" rel="noopener noreferrer">rebrickable.com → API → Generate Key</a><br><span style="font-size:.78rem" data-i18n="settings.rebrickable_hint">Set-Infos, Teile &amp; Bilder</span></div>
             <div class="fg"><label for="rb-key">Rebrickable API Key</label><input type="text" id="rb-key" autocomplete="off" /></div>
-            <div class="fg"><label for="lim-rb"><span data-i18n="settings.max_calls">Max. Aufrufe pro Tag</span> <span style="font-size:.72rem;color:var(--mut)" data-i18n="settings.default_n" data-i18n-vars='{"n":"25000"}'>(Standard: 25000)</span></label><input type="number" id="lim-rb" min="1" max="100000" value="25000" style="max-width:160px" /></div>
+            <div class="fg"><label for="lim-rb"><span data-i18n="settings.max_calls">Max. Aufrufe pro Tag</span> <span style="font-size:.72rem;color:var(--mut)" data-i18n="settings.default_n" data-i18n-vars='{"n":"25000"}'>(Standard: 25000)</span></label><input inputmode="numeric" type="number" id="lim-rb" min="1" max="100000" value="25000" style="max-width:160px" /></div>
             <button class="btn bp" id="btn-sav-rb" data-i18n="settings.save_key">🔑 Speichern</button>
           </div>
         </div>
@@ -953,7 +953,7 @@
           <div class="sform">
             <div class="ibox" style="margin-bottom:4px"><a href="https://brickset.com/tools/webservices/requestkey" target="_blank" rel="noopener noreferrer"><span data-i18n="settings.brickset_link">brickset.com → Tools → API Key anfordern</span></a><br><span style="font-size:.78rem" data-i18n="settings.brickset_hint">Anleitungen, Fallback Set-Infos</span></div>
             <div class="fg"><label for="bs-key">Brickset API Key</label><input type="text" id="bs-key" autocomplete="off" /></div>
-            <div class="fg"><label for="lim-bs"><span data-i18n="settings.max_calls">Max. Aufrufe pro Tag</span> <span style="font-size:.72rem;color:var(--mut)" data-i18n="settings.default_n" data-i18n-vars='{"n":"100"}'>(Standard: 100)</span></label><input type="number" id="lim-bs" min="1" max="100000" value="100" style="max-width:160px" /></div>
+            <div class="fg"><label for="lim-bs"><span data-i18n="settings.max_calls">Max. Aufrufe pro Tag</span> <span style="font-size:.72rem;color:var(--mut)" data-i18n="settings.default_n" data-i18n-vars='{"n":"100"}'>(Standard: 100)</span></label><input inputmode="numeric" type="number" id="lim-bs" min="1" max="100000" value="100" style="max-width:160px" /></div>
             <button class="btn bp" id="btn-sav-bs" data-i18n="settings.save_key">🔑 Speichern</button>
           </div>
         </div>
@@ -990,7 +990,7 @@
             <div class="ibox" style="margin-bottom:.75rem" data-i18n="settings.smtp.hint">Für Registrierungsbestätigungen und Passwort-Rücksetzungen. Ohne SMTP-Konfiguration werden Links in der Server-Konsole ausgegeben.</div>
             <div style="display:grid;grid-template-columns:1fr 120px;gap:10px">
               <div class="fg"><label for="smtp-host">SMTP Host</label><input type="text" id="smtp-host" placeholder="mail.example.com" /></div>
-              <div class="fg"><label for="smtp-port">Port</label><input type="number" id="smtp-port" placeholder="587" /></div>
+              <div class="fg"><label for="smtp-port">Port</label><input inputmode="numeric" type="number" id="smtp-port" placeholder="587" /></div>
             </div>
             <div class="fg"><label for="smtp-user" data-i18n="settings.smtp.user">Benutzername</label><input type="text" id="smtp-user" autocomplete="off" /></div>
             <div class="fg"><label for="smtp-pass" data-i18n="settings.smtp.pass">Passwort</label><input type="password" id="smtp-pass" autocomplete="off" /></div>
@@ -1320,8 +1320,8 @@
       <button class="btn bs btn-sm" data-click="schliesseUebernahme" aria-label="Schliessen" data-i18n="common.close" data-i18n-attr="aria-label">✕</button>
     </div>
     <div style="display:flex;gap:8px;align-items:flex-end;flex-wrap:wrap;padding:12px">
-      <div class="fg" style="max-width:82px"><label for="mk-take-qty" data-i18n="gallery.add.qty">Anzahl</label><input type="number" id="mk-take-qty" value="1" min="1" /></div>
-      <div class="fg" style="max-width:120px"><label for="mk-take-price" data-i18n="gallery.add.price">Kaufpreis (opt.)</label><input type="number" id="mk-take-price" step="0.01" min="0" placeholder="—" /></div>
+      <div class="fg" style="max-width:82px"><label for="mk-take-qty" data-i18n="gallery.add.qty">Anzahl</label><input inputmode="numeric" type="number" id="mk-take-qty" value="1" min="1" /></div>
+      <div class="fg" style="max-width:120px"><label for="mk-take-price" data-i18n="gallery.add.price">Kaufpreis (opt.)</label><input inputmode="decimal" type="number" id="mk-take-price" step="0.01" min="0" placeholder="—" /></div>
       <div class="fg" style="max-width:110px"><label for="mk-take-cond" data-i18n="common.condition">Zustand</label><select id="mk-take-cond" style="padding:.45rem .7rem;border:1px solid var(--bdr);border-radius:var(--rad);background:var(--sur);color:var(--txt);font-size:.875rem"><option value="N" data-i18n="common.condition_new">Neu</option><option value="U" data-i18n="common.condition_used">Gebraucht</option></select></div><div class="fg" id="mk-take-storage-box" style="max-width:220px"><label id="mk-take-storage-label" data-i18n="detail.storage">Lagerort</label><span id="mk-take-storage-slot" style="display:flex;gap:6px;align-items:center"></span></div>
     </div>
     <div class="mfooter">
@@ -1345,8 +1345,8 @@
     <div class="mfooter" style="justify-content:space-between;flex-wrap:wrap;gap:8px">
       <div style="display:flex;gap:8px;align-items:flex-end;flex-wrap:wrap">
         <div class="fg" id="cat-m-owner-box" style="max-width:150px;display:none"><label for="cat-m-owner" data-i18n="household.for_account">Für Konto</label><select id="cat-m-owner" style="padding:.45rem .7rem;border:1px solid var(--bdr);border-radius:var(--rad);background:var(--sur);color:var(--txt);font-size:.875rem"></select></div><div class="fg" id="cat-m-storage-box" style="max-width:220px"><label id="cat-m-storage-label" data-i18n="detail.storage">Lagerort</label><span id="cat-m-storage-slot" style="display:flex;gap:6px;align-items:center"></span></div>
-        <div class="fg" style="max-width:74px"><label for="cat-m-qty" data-i18n="gallery.add.qty">Anzahl</label><input type="number" id="cat-m-qty" value="1" min="1" /></div>
-        <div class="fg" style="max-width:110px"><label for="cat-m-price" data-i18n="gallery.add.price">Kaufpreis (opt.)</label><input type="number" id="cat-m-price" step="0.01" min="0" placeholder="—" /></div>
+        <div class="fg" style="max-width:74px"><label for="cat-m-qty" data-i18n="gallery.add.qty">Anzahl</label><input inputmode="numeric" type="number" id="cat-m-qty" value="1" min="1" /></div>
+        <div class="fg" style="max-width:110px"><label for="cat-m-price" data-i18n="gallery.add.price">Kaufpreis (opt.)</label><input inputmode="decimal" type="number" id="cat-m-price" step="0.01" min="0" placeholder="—" /></div>
         <div class="fg" style="max-width:110px"><label for="cat-m-cond" data-i18n="common.condition">Zustand</label><select id="cat-m-cond" style="padding:.45rem .7rem;border:1px solid var(--bdr);border-radius:var(--rad);background:var(--sur);color:var(--txt);font-size:.875rem"><option value="N" data-i18n="common.condition_new">Neu</option><option value="U" data-i18n="common.condition_used">Gebraucht</option></select></div>
       </div>
       <!--
@@ -1360,7 +1360,7 @@
       -->
       <div style="display:flex;gap:8px;align-items:flex-end;flex-wrap:wrap">
         <div class="fg" style="max-width:120px"><label for="cat-m-alert-dir" data-i18n="detail.alert">Preisalarm</label><select id="cat-m-alert-dir" style="padding:.45rem .7rem;border:1px solid var(--bdr);border-radius:var(--rad);background:var(--sur);color:var(--txt);font-size:.875rem"><option value="unter" data-i18n="detail.alert_below">fällt unter</option><option value="ueber" data-i18n="detail.alert_above">steigt über</option></select></div>
-        <div class="fg" style="max-width:110px"><label for="cat-m-alert-val" data-i18n="wanted.threshold">Schwelle (opt.)</label><input type="number" id="cat-m-alert-val" step="0.01" min="0" placeholder="—" /></div>
+        <div class="fg" style="max-width:110px"><label for="cat-m-alert-val" data-i18n="wanted.threshold">Schwelle (opt.)</label><input inputmode="decimal" type="number" id="cat-m-alert-val" step="0.01" min="0" placeholder="—" /></div>
       </div>
       <!-- Marcos Vorgabe: BrickLink eine Zeile hoeher, die beiden
            Erfassungsknoepfe nebeneinander. Bis hierher standen alle drei in
@@ -1499,7 +1499,7 @@
 
 <div id="toasts"></div>
 
-<script type="module" src="/js/pdfjs-boot.js?v=2026.09.17.1000"></script>
+<script type="module" src="/js/pdfjs-boot.js?v=2026.09.28.1646"></script>
 <!-- Ein Bündel statt zwölf Einzeldateien.
      i18n.js und js/01-*.js … js/11-*.js werden von scripts/build-frontend.js in
      genau dieser Reihenfolge aneinandergehängt und minifiziert. Die Quellen
@@ -1509,7 +1509,7 @@
      00-theme-boot.js bleibt oben im <head> (muss vor dem ersten Rendern laufen),
      pdfjs-boot.js bleibt separat (ES-Modul), logviewer.js wird bei Bedarf
      zur Laufzeit nachgeladen. -->
-<script src="/js/app.bundle.js?v=2026.09.17.1000"></script>
+<script src="/js/app.bundle.js?v=2026.09.28.1646"></script>
 <!-- app.js ist in Sektions-Dateien aufgeteilt (public/js/) — Ladereihenfolge
      ist relevant, die Dateien teilen sich den globalen Scope. -->
 <!-- Bekannte Lagerorte — EINE Liste für alle Eingabefelder (Set-Detail,

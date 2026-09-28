@@ -23,6 +23,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import ch.brickinventoryapp.R
+import ch.brickinventoryapp.util.NumericInput
 import ch.brickinventoryapp.data.model.CatalogSetDetail
 import ch.brickinventoryapp.util.BrickLinkUrls
 import androidx.compose.foundation.clickable
@@ -331,15 +332,22 @@ private fun CatalogAddDialog(
                 Text(setName, fontWeight = FontWeight.SemiBold)
                 // Blendet sich bei weniger als zwei Mitgliedern selbst aus.
                 OwnerPicker(householdMembers, owner, { owner = it })
+                // Menge und Preis wie im Erfassen-Dialog der Galerie: gefiltert
+                // UND mit der passenden Tastatur. Hier fehlte beides — derselbe
+                // Dialog, zwei Bildschirme weiter, hatte es laengst.
                 OutlinedTextField(
-                    value = quantity, onValueChange = { quantity = it },
+                    value = quantity,
+                    onValueChange = { quantity = NumericInput.quantity(it) },
                     label = { Text(stringResource(R.string.common_quantity)) },
-                    singleLine = true, modifier = Modifier.fillMaxWidth()
+                    singleLine = true, modifier = Modifier.fillMaxWidth(),
+                    keyboardOptions = NumericInput.ganzzahlTastatur()
                 )
                 OutlinedTextField(
-                    value = purchasePrice, onValueChange = { purchasePrice = it },
+                    value = purchasePrice,
+                    onValueChange = { purchasePrice = NumericInput.price(it) },
                     label = { Text(stringResource(R.string.gallery_purchase_price)) },
-                    singleLine = true, modifier = Modifier.fillMaxWidth()
+                    singleLine = true, modifier = Modifier.fillMaxWidth(),
+                    keyboardOptions = NumericInput.preisTastatur()
                 )
                 Zustandszeile(zustand = condition, onZustand = { condition = it })
                 LagerortErfassung(lagerort, lagerorte, { lagerort = it })

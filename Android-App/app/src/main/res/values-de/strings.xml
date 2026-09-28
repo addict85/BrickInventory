@@ -47,13 +47,13 @@
     <string name="chart_period_max">Max</string>
 
     <!-- ══════════════ Comparison screen ══════════════ -->
-    <string name="comparison_search_placeholder">Suche z.B. Technic, City…</string>
+    <string name="comparison_search_placeholder">z.B. 75192-1 oder Barcode</string>
     <string name="comparison_search">Suchen</string>
     <string name="comparison_scan_new">Neu</string>
     <string name="comparison_scan">Scan</string>
     <string name="comparison_barcode_label">Barcode: %1$s</string>
     <string name="comparison_title">Preisvergleich</string>
-    <string name="comparison_hint">Suchbegriff eingeben oder Barcode scannen.\nDie Suche öffnet toppreise.ch im Browser.</string>
+    <string name="comparison_hint">Setnummer oder Barcode eingeben, oder Barcode scannen.\nDie Suche öffnet toppreise.ch im Browser.</string>
 
     <!-- ══════════════ Barcode result dialog ══════════════ -->
     <string name="barcode_add">Hinzufügen</string>

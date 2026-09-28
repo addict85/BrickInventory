@@ -711,7 +711,7 @@ export async function ladeAlarmUebersicht() {
         <div style="font-size:.78rem;color:var(--mut)">${esc(a.name || '')}</div>
       </div>
       <span style="font-size:.78rem;white-space:nowrap">${esc(richtung)}</span>
-      <input type="number" step="0.01" min="0.01" value="${a.schwelle}"
+      <input inputmode="decimal" type="number" step="0.01" min="0.01" value="${a.schwelle}"
              data-change="aendereAlarmSchwelle" data-arg="${esc(schluessel)}" data-val="1"
              data-click="stopEvent"
              style="width:90px;border:1px solid var(--bdr);border-radius:6px;padding:3px 7px;font-size:.85rem;background:var(--sur);color:var(--txt)" />
