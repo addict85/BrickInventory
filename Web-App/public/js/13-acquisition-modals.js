@@ -112,7 +112,7 @@ export function renderAcqModalBody(sn, acqs, totals) {
     const priceVal = a.purchase_price != null ? parseFloat(a.purchase_price) : '';
     html += `<tr style="border-bottom:1px solid var(--bdr)" id="acq-row-${a.id}">
       <td style="padding:6px 6px">
-        <input type="number" min="1" value="${a.quantity}"
+        <input inputmode="numeric" type="number" min="1" value="${a.quantity}"
           data-blur="acqSave" data-arg="${esc(sn)}" data-arg2="${a.id}" data-arg3="qty" data-val="1"
           data-keydown="blurOnEnter"
           style="width:48px;text-align:center;border:1px solid var(--bdr);border-radius:6px;padding:4px 6px;font-size:.875rem;font-weight:700;background:var(--sur);color:var(--txt)" />
@@ -386,7 +386,7 @@ export async function openManDetail(type, id, colorId) {
     ? ad.totals.quantity : item.quantity;
   rows.push(detailZeile(t('detail.qty'), `
     <button class="btn bs btn-sm" data-click="manQtyChange" data-arg="-1" style="font-size:1rem;padding:2px 8px;line-height:1">−</button>
-    <input type="number" id="man-det-qty" min="1" value="${totalQty}" style="width:46px;text-align:center;border:1px solid var(--bdr);border-radius:6px;padding:2px;font-weight:600" data-change="manQtySave" />
+    <input inputmode="numeric" type="number" id="man-det-qty" min="1" value="${totalQty}" style="width:46px;text-align:center;border:1px solid var(--bdr);border-radius:6px;padding:2px;font-weight:600" data-change="manQtySave" />
     <button class="btn bs btn-sm" data-click="manQtyChange" data-arg="1" style="font-size:1rem;padding:2px 8px;line-height:1">+</button>
   `, { wertStil: 'display:flex;align-items:center;gap:6px' }));
 
@@ -863,7 +863,7 @@ function renderManAcqBody(type, id, colorId, acqs, totals) {
     const t_ = type, i_ = id, c_ = colorId, ai_ = a.id;
     html += `<tr style="border-bottom:1px solid var(--bdr)">
       <td style="padding:6px 6px">
-        <input type="number" min="1" value="${a.quantity}"
+        <input inputmode="numeric" type="number" min="1" value="${a.quantity}"
           data-blur="manAcqSave" data-arg="${esc(t_)}" data-arg2="${i_}" data-arg3="${c_}" data-arg4="${ai_}" data-arg5="qty" data-val="1"
           data-keydown="blurOnEnter"
           style="width:48px;text-align:center;border:1px solid var(--bdr);border-radius:6px;padding:4px 6px;font-size:.875rem;font-weight:700;background:var(--sur);color:var(--txt)" />

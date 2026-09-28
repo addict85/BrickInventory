@@ -167,7 +167,7 @@ export async function loadMonitor() {
         return `<input type="time" class="job-sched-input" value="${esc(sc.time)}" title="${t('monitor.sched.daily_hint')}" data-change="saveJobTime" data-arg="${esc(k)}" style="font-size:.75rem;padding:2px 5px;border:1px solid var(--bdr);border-radius:6px;background:var(--sur);color:var(--txt)">`;
       }
       if (sc.type === 'interval') {
-        return `<span style="display:inline-flex;align-items:center;gap:3px;font-size:.72rem;color:var(--mut)" title="${t('monitor.sched.interval_hint')}"><input type="number" min="5" class="job-sched-input" value="${esc(sc.minutes)}" data-change="saveJobMinutes" data-arg="${esc(k)}" style="width:54px;font-size:.75rem;padding:2px 5px;border:1px solid var(--bdr);border-radius:6px;background:var(--sur);color:var(--txt)"> ${t('monitor.sched.min')}</span>`;
+        return `<span style="display:inline-flex;align-items:center;gap:3px;font-size:.72rem;color:var(--mut)" title="${t('monitor.sched.interval_hint')}"><input inputmode="numeric" type="number" min="5" class="job-sched-input" value="${esc(sc.minutes)}" data-change="saveJobMinutes" data-arg="${esc(k)}" style="width:54px;font-size:.75rem;padding:2px 5px;border:1px solid var(--bdr);border-radius:6px;background:var(--sur);color:var(--txt)"> ${t('monitor.sched.min')}</span>`;
       }
       return '';
     };

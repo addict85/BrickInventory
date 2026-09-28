@@ -7,7 +7,6 @@ import android.util.Log
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardActions
-import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Clear
 import androidx.compose.material.icons.filled.OpenInBrowser
@@ -20,6 +19,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
+import ch.brickinventoryapp.util.NumericInput
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
@@ -84,9 +84,24 @@ fun ComparisonScreen() {
                 // Search field
                 OutlinedTextField(
                     value = searchText,
+                    // ── Zahlentastatur statt Freitext (Nachtrag 140) ──────────
+                    //
+                    // Marcos Vorgabe: „Beim Preisvergleich soll nur das
+                    // Zahlenfeld erscheinen wenn man in das Eingabefeld
+                    // klickt." Das Feld war eine Produktsuche — Platzhalter
+                    // „Suche z.B. Technic, City…", Leerzeichen wurden zu „+".
+                    // Mit der Zahlentastatur ist das nicht mehr moeglich, und
+                    // Marco hat den Tausch ausdruecklich gewaehlt: Er tippt
+                    // dort Setnummern und Barcodes, keine Namen.
+                    //
+                    // Der Filter gehoert dazu und nicht bloss die Tastatur:
+                    // Eine angeschlossene Tastatur, die Zwischenablage und
+                    // manche Bildschirmtastaturen liefern trotzdem Buchstaben.
+                    // setNumber() laesst Ziffern und den Varianten-Bindestrich
+                    // durch — genau das, was „75192-1" braucht.
                     onValueChange = {
-                        searchText = it
-                        if (it.isNotBlank()) scannedBarcode = null
+                        searchText = NumericInput.setNumber(it)
+                        if (searchText.isNotBlank()) scannedBarcode = null
                     },
                     placeholder = { Text(stringResource(R.string.comparison_search_placeholder)) },
                     leadingIcon = { Icon(Icons.Default.Search, null, Modifier.size(20.dp)) },
@@ -108,7 +123,7 @@ fun ComparisonScreen() {
                     colors = OutlinedTextFieldDefaults.colors(
                         unfocusedBorderColor = MaterialTheme.colorScheme.outline.copy(alpha = 0.4f)
                     ),
-                    keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
+                    keyboardOptions = NumericInput.ganzzahlTastatur(ImeAction.Search),
                     keyboardActions = KeyboardActions(onSearch = { triggerSearch() })
                 )
 

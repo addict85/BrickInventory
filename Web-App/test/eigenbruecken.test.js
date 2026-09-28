@@ -160,8 +160,14 @@ test('kein Test liest eine Quelldatei, die es nicht gibt', () => {
   // Sie haette die Pruefung von Anfang an rot gehalten und damit unbrauchbar
   // gemacht. Die Schranke sitzt jetzt knapp ueber dem gemessenen Stand — sie
   // fragt „ist es MEHR geworden", nicht „ist es viel".
-  assert.ok(offen.length <= 70,
-    `${offen.length} Pfade mit variablem Segment (gemessen waren es 62):\n  ` +
+  //
+  // 70 -> 71 (Nachtrag 140): test/zahlentastatur.test.js geht alle Dateien in
+  // public/js durch und liest sie ueber die Schleifenvariable. Genau der Fall,
+  // den der Absatz darueber als gutes Muster beschreibt — ausgeschrieben waere
+  // die Liste eine zweite Wahrheit, die beim naechsten neuen Baustein veraltet.
+  // Die Schranke zieht deshalb um eins nach und nicht der Test.
+  assert.ok(offen.length <= 71,
+    `${offen.length} Pfade mit variablem Segment (gemessen waren es 71):\n  ` +
     offen.join('\n  ') + '\nWo es geht, gehoert der Pfad ausgeschrieben — ein ' +
     'variables Segment nimmt dieser Pruefung die Sicht.');
 });
