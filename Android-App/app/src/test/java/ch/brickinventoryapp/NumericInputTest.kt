@@ -16,8 +16,13 @@ import org.junit.Test
  * Die Tastaturwahl ist eine BITTE an die Tastatur-App, keine Zusicherung: Viele
  * Tastaturen zeigen auf `Number` trotzdem eine Umschalttaste zu Buchstaben, und
  * über Einfügen aus der Zwischenablage kommt ohnehin alles herein. Deshalb
- * prüft dieser Test beides — die Filterung UND dass kein Zahlenfeld ohne
- * Tastaturwahl dasteht.
+ * braucht jedes Zahlenfeld beides: den Filter und die Tastaturwahl.
+ *
+ * Hier steht seit dem 28.09. die FILTERUNG — was NumericInput mit einer
+ * Eingabe macht — und die Sonderregel für die Setnummernfelder, die ihre
+ * Felder an der Beschriftung erkennt. Die Sammelregel „jedes gefilterte Feld
+ * zeigt auch die Zahlentastatur" steht in ZahlentastaturTest; siehe die
+ * Notiz unten, wo sie vorher stand.
  */
 class NumericInputTest {
 
@@ -105,19 +110,25 @@ class NumericInputTest {
         return treffer
     }
 
-    @Test
-    fun `kein Zahlenfeld steht ohne Tastaturwahl da`() {
-        val ohne = textfelder().filter { (_, _, block) ->
-            val istZahlenfeld = block.contains("NumericInput.quantity(") ||
-                block.contains("NumericInput.price(") ||
-                block.contains("NumericInput.setNumber(")
-            istZahlenfeld && !block.contains("keyboardOptions")
-        }.map { (datei, zeile, _) -> "$datei:$zeile" }
-        assert(ohne.isEmpty()) {
-            "Zahlenfelder ohne Tastaturwahl: ${ohne.joinToString(", ")} — dort muss " +
-                "man auf dem Telefon erst zu den Zahlen umschalten"
-        }
-    }
+    // ── Hier stand „kein Zahlenfeld steht ohne Tastaturwahl da" ──────────────
+    //
+    // Die Regel ist nicht weggefallen, sie ist umgezogen: nach
+    // ZahlentastaturTest, „wer Zahlen filtert, zeigt auch die
+    // Zahlentastatur". Beide sagten dasselbe — ein Feld mit NumericInput-
+    // Filter braucht die passende Tastatur —, und die Gegenprobe am 28.09.
+    // hat es sichtbar gemacht: EIN Eingriff (keyboardOptions im
+    // Katalog-Detail entfernt) machte ZWEI Tests rot.
+    //
+    // Geblieben ist die schaerfere der beiden:
+    //   · Sie sieht auch `TextField(`, nicht nur `OutlinedTextField(`.
+    //   · Sie verlangt eine echte `KeyboardType.…`. Die Fassung hier fragte
+    //     nur, ob das Wort `keyboardOptions` im Aufruf vorkommt — ein
+    //     `keyboardOptions = KeyboardOptions(imeAction = ImeAction.Next)`
+    //     ohne jede Tastaturangabe stellte sie zufrieden.
+    //
+    // Zwei Fassungen derselben Regel sind nicht doppelt sicher, sondern
+    // gefaehrlich: Wer die eine entschaerft, sieht die andere nicht, und wer
+    // beide sieht, pflegt am Ende nur noch die, die zuerst rot wird.
 
     @Test
     fun `jedes Setnummernfeld nimmt Filter und Zahlenpad`() {
