@@ -57,8 +57,23 @@ import org.junit.Test
  *
  * Aufgeloest: Die aeltere, schwaechere Fassung ist entfernt (die Notiz an
  * ihrer Stelle in NumericInputTest sagt, warum diese hier die schaerfere ist);
- * ihre Zeilennummer-Meldung ist hierher uebernommen. Der Eingriff a) macht
- * seitdem genau EINEN Test rot.
+ * ihre Zeilennummer-Meldung ist hierher uebernommen.
+ *
+ * ── Nachgefahren mit drei isolierten Eingriffen (Lauf 311) ──────────────
+ *
+ * Danach je EIN Eingriff pro Regel, um die Zuordnung wirklich zu zeigen und
+ * nicht bloss zu behaupten. GEMESSEN (506 tests completed, 3 failed):
+ *
+ *   Tastatur weg im Katalog-Detail, Filter bleibt
+ *     → wer Zahlen filtert, zeigt auch die Zahlentastatur
+ *   Filter weg bei der Alarmschwelle, Tastatur bleibt
+ *     → wer die Zahlentastatur zeigt, filtert auch
+ *   ImeAction.Search → Done im Preisvergleich
+ *     → der Preisvergleich nimmt Ziffern und Bindestrich
+ *
+ * Drei Eingriffe, drei rote Tests, jeder genau einer — und NumericInputTest
+ * schweigt jetzt dazu. Damit ist die Dopplung nicht nur weggeraeumt, sondern
+ * ihr Verschwinden auch gemessen.
  *
  * Was das ueber die Gegenprobe sagt: Sie hat hier nicht bewiesen, dass die
  * Regel greift — das auch —, sondern dass sie eine zu viel war. Ohne sie
