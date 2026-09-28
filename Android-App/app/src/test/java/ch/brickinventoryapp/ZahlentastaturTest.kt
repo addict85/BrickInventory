@@ -184,6 +184,21 @@ class ZahlentastaturTest {
      * Er stand hier nicht zufaellig: Das Feld war eine Freitextsuche, und
      * Marco hat den Tausch ausdruecklich gewaehlt. Steht der Filter wieder
      * auf Freitext, ist die Entscheidung stillschweigend zurueckgenommen.
+     *
+     * ── Warum das keine dritte Fassung derselben Regel ist ──────────────────
+     *
+     * Die beiden Regeln darueber sagen BEDINGT etwas: Wenn ein Feld ein
+     * Zahlenfeld ist, braucht es beide Haelften. Nimmt man diesem Feld Filter
+     * UND Tastatur zugleich, faellt es aus beiden Schleifen und keine der
+     * beiden wird rot — es ist dann eben kein Zahlenfeld mehr.
+     *
+     * Diese Regel sagt UNBEDINGT etwas: Dieses eine Feld IST ein Zahlenfeld,
+     * weil Marco das am 28.09. so entschieden hat. Das kann keine Regel
+     * wissen, die Felder nur an ihrer Bauart erkennt — dieselbe Luecke, die in
+     * NumericInputTest schon „jedes Setnummernfeld nimmt Filter und Zahlenpad"
+     * schliesst.
+     *
+     * Dazu die Suchtaste, von der sonst niemand etwas sagt.
      */
     @Test
     fun `der Preisvergleich nimmt Ziffern und Bindestrich`() {
