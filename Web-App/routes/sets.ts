@@ -416,7 +416,21 @@ router.post('/add-stream', async (req: LoggedInRequest, res) => {
     const result = await addSet(set_number, V2.acquisitionQuantity(quantity), streamOwner,
       d=>{ if(cancelled) throw new Error('CANCELLED'); send(d); },
       V2.optionalPrice(purchase_price, 'Kaufpreis'), setCondition, storage);
-    send({ step:'done', ...result });
+    // `success: true` gehoert dazu und ist nicht Zierde.
+    //
+    // addSet() gibt {action, set_number, name} zurueck — ohne `success`. Die
+    // Token-Route (routes/api_v1/sets.ts) wickelt dasselbe Ergebnis in
+    // `{ success:true, ...result }`, und der Zweig fuenf Zeilen weiter oben
+    // („schon im Blickfeld") tut es hier ebenfalls. Nur dieser eine Ausgang tat
+    // es nicht: DIESELBE Route antwortete also in zwei Formen, je nachdem ob
+    // das Set neu war.
+    //
+    // Der Webapp fiel das nie auf, weil handleSseEvent() nur `action` und
+    // `set_number` liest. Der Android-App schon: Sie liest die Antwort in eine
+    // Klasse mit einem PFLICHTfeld `success` und brach beim Anlegen jedes
+    // neuen Sets mit „Field 'success' is required" ab — das Set war da, die
+    // Meldung sagte das Gegenteil.
+    send({ step:'done', success:true, ...result });
   } catch (e) { if(fehlertext(e)!=='CANCELLED') send({ step:'error', error:fehlertext(e) }); }
   unregisterAddSse();
   res.end();
