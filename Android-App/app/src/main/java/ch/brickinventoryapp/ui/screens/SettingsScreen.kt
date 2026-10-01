@@ -28,6 +28,7 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import ch.brickinventoryapp.R
 import ch.brickinventoryapp.data.model.Preisalarm
+import ch.brickinventoryapp.util.NumericInput
 import ch.brickinventoryapp.util.resolveThumbUrl
 import coil.ImageLoader
 import ch.brickinventoryapp.util.fmtDatum
@@ -552,10 +553,15 @@ private fun PreisalarmeCard(
                         style = MaterialTheme.typography.bodySmall)
                     OutlinedTextField(
                         value = wert,
-                        onValueChange = { wert = it },
+                        // Der Filter fehlte hier, die Zahlentastatur stand schon
+                        // da. Das ist die gefaehrlichere Haelfte: Die
+                        // Tastaturwahl ist eine Bitte, keine Zusicherung —
+                        // angestoepselte Tastatur und Zwischenablage liefern
+                        // trotzdem Buchstaben, und unten wurde daraus eine 0.
+                        onValueChange = { wert = NumericInput.price(it) },
                         singleLine = true,
                         suffix = { Text(a.currencyCode) },
-                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+                        keyboardOptions = NumericInput.preisTastatur(),
                         modifier = Modifier.weight(1f),
                     )
                     // Der Knopf erscheint erst, wenn wirklich etwas anderes im
@@ -563,12 +569,17 @@ private fun PreisalarmeCard(
                     // und der las sich wie eine Zustandsanzeige („scharf") statt
                     // wie ein Knopf. Verglichen wird die ZAHL und nicht der Text:
                     // „30" und „30.0" sind dasselbe.
-                    val geaendert = wert.replace(',', '.').toDoubleOrNull()
-                        ?.let { it != a.schwelle } ?: true
-                    if (geaendert) {
+                    //
+                    // Steht KEINE Zahl im Feld, erscheint der Knopf gar nicht
+                    // mehr. Vorher hiess „nicht lesbar" hier `?: true`, also
+                    // Knopf da — und ein Druck darauf schrieb ueber `?: 0.0`
+                    // eine Schwelle von 0. Die ist keine Schwelle: „unter 0"
+                    // meldet nie, „ueber 0" meldet immer. Beides faellt erst
+                    // Wochen spaeter auf.
+                    val zahl = wert.replace(',', '.').toDoubleOrNull()
+                    if (zahl != null && zahl != a.schwelle) {
                         IconButton(onClick = {
-                            vm.aendereAlarmSchwelle(a.setNumber, a.condition, a.richtung,
-                                wert.replace(',', '.').toDoubleOrNull() ?: 0.0)
+                            vm.aendereAlarmSchwelle(a.setNumber, a.condition, a.richtung, zahl)
                         }) {
                             Icon(Icons.Default.Save, stringResource(R.string.settings_save),
                                 tint = MaterialTheme.colorScheme.primary)

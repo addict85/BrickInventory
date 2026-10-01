@@ -102,7 +102,19 @@ test('beide speichern beim TIPPEN, entprellt, mit derselben Ruhezeit', () => {
     'Das Schwellenfeld der Webapp hängt nicht am Tippen');
   assert.doesNotMatch(js, /id="m-alert-val"[^>]*data-change/,
     'Das Schwellenfeld hängt wieder am Fokuswechsel');
-  assert.match(KT_SECT, /onValueChange = \{ schwelle = it; vm\.setzePreisalarm\(setNumber, richtung, it, zustand\) \}/,
+  // Geprüft wird die BEHAUPTUNG — beim Tippen wird gespeichert —, nicht der
+  // Wortlaut der Zeile. Vorher stand hier die ganze Zeile als Muster; am
+  // 28.09. bekam das Feld einen NumericInput-Filter, der Aufruf rückte in
+  // einen mehrzeiligen Lambda, und der Test wurde rot, obwohl er weiter beim
+  // Tippen speichert. Das ist der dritte Test in diesem Projekt, der die
+  // Schreibweise statt der Aussage festgehalten hat.
+  //
+  // Was weiterhin festgehalten wird, und zwar das Wesentliche: Der Aufruf
+  // steht IN `onValueChange` und nicht irgendwo sonst, und er bekommt den
+  // gerade getippten Wert — nicht die Zustandsvariable `schwelle`, die zu
+  // diesem Zeitpunkt noch den vorigen Stand trägt.
+  assert.match(require('./helpers/sources').ohneKommentare(KT_SECT),
+    /onValueChange = \{[\s\S]{0,400}?vm\.setzePreisalarm\(setNumber, richtung, (?!schwelle\b)\w+, zustand\)/,
     'Das Schwellenfeld der App hängt nicht am Tippen');
   assert.doesNotMatch(require('./helpers/sources').ohneKommentare(KT_SECT),
     /alarmFokus/, 'Die App speichert noch am Fokuswechsel');

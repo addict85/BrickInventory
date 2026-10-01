@@ -46,14 +46,13 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import androidx.compose.foundation.text.KeyboardOptions
-import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.ui.unit.sp
 import coil.ImageLoader
 import coil.compose.AsyncImage
 import coil.request.ImageRequest
+import ch.brickinventoryapp.util.NumericInput
 import ch.brickinventoryapp.R
 import ch.brickinventoryapp.data.model.Acquisition
 import ch.brickinventoryapp.data.model.PriceHistoryResponse
@@ -692,10 +691,20 @@ fun LazyListScope.setDetailAlarmSection(
                     // koennte die Zwischenstaende anders beurteilen als die
                     // andere. Was ein Zwischenstand bedeutet, steht an genau
                     // einer Stelle (Alarmeingabe.zahl).
-                    onValueChange = { schwelle = it; vm.setzePreisalarm(setNumber, richtung, it, zustand) },
+                    //
+                    // Der Filter (Nachtrag 28.09.) widerspricht dem nicht: Er
+                    // DEUTET nichts, er laesst nur Ziffern und ein Trennzeichen
+                    // herein. Was er verhindert, ist ein eigener Weg zum
+                    // Loeschen: Ein Buchstabe aus der Zwischenablage machte die
+                    // Eingabe unlesbar, und unlesbar heisst hier LOESCHEN. Das
+                    // Feld zu leeren bleibt der eine gewollte Weg dahin.
+                    onValueChange = { roh ->
+                        val g = NumericInput.price(roh)
+                        schwelle = g; vm.setzePreisalarm(setNumber, richtung, g, zustand)
+                    },
                     singleLine = true,
                     placeholder = { Text(currency, fontSize = Schrift.klein) },
-                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+                    keyboardOptions = NumericInput.preisTastatur(),
                     modifier = Modifier.weight(1f),
                 )
             }
