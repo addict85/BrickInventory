@@ -216,7 +216,32 @@ data class AddSetRequest(
 
 @Serializable
 data class AddSetResponse(
-    val success: Boolean,
+    /**
+     * Vorgabe `true`, weil „Feld fehlt" keine Aussage ist.
+     *
+     * Marcos Meldung vom 01.10.: Jedes Set, das er ueber die Nummer erfasste,
+     * endete mit „Field 'success' is required for type with serial name
+     * …AddSetResponse, but it was missing at path: $". Das Set WAR angelegt —
+     * nur meldete die App das Gegenteil und lud die Galerie nicht nach.
+     *
+     * Ursache war der Server: Das `done`-Ereignis des Stroms schickte
+     * `{step, action, set_number, name}` ohne `success`, waehrend dieselbe
+     * Route im Zweig „schon vorhanden" und die Token-Route
+     * `{ success:true, … }` schicken. Das ist dort behoben.
+     *
+     * Der Vorgabewert hier ist trotzdem richtig und nicht bloss ein Pflaster:
+     * Marcos Server ist bis zum naechsten Rollout der alte. Ohne ihn braechte
+     * das neue APK nichts, und der naechste Server, der dieses Feld vergisst,
+     * braeche das Erfassen wieder ganz.
+     *
+     * `true` und nicht `false`, mit Begruendung: Dieses Feld wird nur gelesen,
+     * wenn eine Antwort ueberhaupt ankam. Ein Fehlschlag kommt auf anderen
+     * Wegen — als `step:'error'` im Strom oder als HTTP-Fehler, und dessen
+     * Rumpf liest safeCall() gar nicht erst durch diesen Serialisierer
+     * (RepoBasis.kt: nur `isSuccessful` landet hier). „Angekommen, aber ohne
+     * success" heisst also: ein aelterer Server, dessen Arbeit getan ist.
+     */
+    val success: Boolean = true,
     val action: String? = null,
     @SerialName("set_number") val setNumber: String? = null,
     val name: String? = null,
