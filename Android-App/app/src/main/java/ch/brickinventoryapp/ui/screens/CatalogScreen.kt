@@ -51,9 +51,10 @@ import ch.brickinventoryapp.ui.theme.steinTon
 import ch.brickinventoryapp.ui.theme.LocalIsFarbfaecherTheme
 import ch.brickinventoryapp.ui.theme.faecherTon
 import ch.brickinventoryapp.util.rememberTileImageWithFallback
-import coil.ImageLoader
-import coil.compose.AsyncImage
-import coil.request.ImageRequest
+import coil3.ImageLoader
+import coil3.compose.AsyncImage
+import coil3.request.ImageRequest
+import coil3.request.crossfade
 import androidx.compose.ui.res.vectorResource
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.graphics.Color

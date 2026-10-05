@@ -23,7 +23,7 @@ import ch.brickinventoryapp.data.model.FigsValuationResponse
 import ch.brickinventoryapp.data.model.PartsValuationResponse
 import ch.brickinventoryapp.data.model.PnlResponse
 import ch.brickinventoryapp.data.model.ValuationResponse
-import coil.ImageLoader
+import coil3.ImageLoader
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyRow
@@ -42,7 +42,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import ch.brickinventoryapp.R
 import ch.brickinventoryapp.util.resolveThumbUrl
-import coil.compose.AsyncImage
+import coil3.compose.AsyncImage
 import androidx.compose.material.icons.filled.*
 import ch.brickinventoryapp.ui.theme.Abstaende
 import ch.brickinventoryapp.ui.theme.Schrift

@@ -115,7 +115,7 @@ internal fun qrFehler(bereitsAngemeldet: Boolean, meldung: String): String? =
  * ändert, statt dass eine breite Freigabe künftige Warnungen im ganzen
  * Modul verschluckt.
  */
-@OptIn(coil.annotation.ExperimentalCoilApi::class)
+@OptIn(coil3.annotation.ExperimentalCoilApi::class)
 // ── Konto anlegen und Passwort vergessen ─────────────────────────────────
 //
 // Beides braucht KEINE Anmeldung und laeuft deshalb ueber eigene Felder

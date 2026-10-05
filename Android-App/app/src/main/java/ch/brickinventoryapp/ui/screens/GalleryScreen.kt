@@ -50,9 +50,10 @@ import ch.brickinventoryapp.util.fmtInt
 import ch.brickinventoryapp.util.rememberTileImageWithFallback
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
-import coil.compose.AsyncImage
-import coil.ImageLoader
-import coil.request.ImageRequest
+import coil3.compose.AsyncImage
+import coil3.ImageLoader
+import coil3.request.ImageRequest
+import coil3.request.crossfade
 import kotlinx.coroutines.FlowPreview
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.flow.debounce
@@ -471,7 +472,7 @@ fun SetCard(
                             imageLoader = imageLoader,
                             contentDescription = set.name,
                             onState = { st ->
-                                if (st is coil.compose.AsyncImagePainter.State.Error && retryNonce == 0) {
+                                if (st is coil3.compose.AsyncImagePainter.State.Error && retryNonce == 0) {
                                     // Verzögert, nicht im selben Moment: Direkt nach
                                     // dem Erfassen erzeugt der Server die Vorschau
                                     // erst noch.
@@ -479,7 +480,7 @@ fun SetCard(
                                         kotlinx.coroutines.delay(1000)
                                         retryNonce = 1
                                     }
-                                } else if (st is coil.compose.AsyncImagePainter.State.Error) {
+                                } else if (st is coil3.compose.AsyncImagePainter.State.Error) {
                                     // Auch der zweite Versuch scheiterte — jetzt auf
                                     // die volle Auflösung ausweichen (fehlende
                                     // _thumb-Datei ist der häufigste Grund).

@@ -24,7 +24,7 @@ import ch.brickinventoryapp.ui.*  // Feature-Extensions (loadSetDetail, updateQu
 import ch.brickinventoryapp.ui.theme.LocalIsBrickTheme
 import ch.brickinventoryapp.ui.components.ZoomableImageDialog
 import ch.brickinventoryapp.util.resolveFullUrl
-import coil.ImageLoader
+import coil3.ImageLoader
 import ch.brickinventoryapp.ui.theme.Abstaende
 
 @OptIn(ExperimentalMaterial3Api::class)

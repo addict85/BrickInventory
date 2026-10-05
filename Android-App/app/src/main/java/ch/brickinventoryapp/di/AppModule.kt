@@ -26,6 +26,7 @@ import java.io.IOException
 import java.util.concurrent.TimeUnit
 import javax.inject.Named
 import javax.inject.Singleton
+import okio.Path.Companion.toOkioPath
 
 @Module
 @InstallIn(SingletonComponent::class)
@@ -500,37 +501,70 @@ object AppModule {
     fun provideImageLoader(
         @dagger.hilt.android.qualifiers.ApplicationContext context: android.content.Context,
         @Named("image") client: OkHttpClient
-    ): coil.ImageLoader =
-        coil.ImageLoader.Builder(context)
-            .okHttpClient(client)
+    ): coil3.ImageLoader =
+        coil3.ImageLoader.Builder(context)
+            // ── Das Netz ist in Coil 3 ein eigenes Bauteil ──────────────────
+            //
+            // `.okHttpClient(client)` gibt es nicht mehr. Coil 3 ist
+            // mehrplattformfaehig und kennt http(s) nur ueber einen Fetcher,
+            // der dazugesteckt wird. Ohne diese Zeile laedt die App stumm
+            // keine Bilder mehr — kein Fehler, nur leere Flaechen.
+            //
+            // NACHGESEHEN in coil-network-okhttp 3.3.0: Die Fabrik ist dort
+            // eine FUNKTION, `OkHttpNetworkFetcher.factory(Call.Factory)`,
+            // keine Klasse. Unser OkHttpClient ist eine Call.Factory.
+            //
+            // Der Client ist derselbe wie zuvor — mit ihm bleiben
+            // Authentifizierung, Zeitgrenzen und der Offline-Interceptor am
+            // Bild-Weg genauso haengen wie bisher.
+            .components { add(coil3.network.okhttp.OkHttpNetworkFetcher.factory(client)) }
             .memoryCache {
-                coil.memory.MemoryCache.Builder(context)
-                    .maxSizePercent(0.15) // use 15% of app memory for image cache
+                // Builder() ohne Context in Coil 3; der Context wandert an
+                // maxSizePercent, weil nur dort der Speicher des Geraets
+                // gebraucht wird.
+                coil3.memory.MemoryCache.Builder()
+                    .maxSizePercent(context, 0.15) // 15 % des App-Speichers
                     .build()
             }
             .diskCache {
-                coil.disk.DiskCache.Builder()
-                    .directory(context.cacheDir.resolve("image_cache"))
-                    .maxSizeBytes(50L * 1024 * 1024) // 50 MB disk cache
+                coil3.disk.DiskCache.Builder()
+                    // directory() nimmt in Coil 3 einen okio.Path statt einer
+                    // java.io.File. Derselbe Ordner wie bisher, damit ein
+                    // bestehender Zwischenspeicher nicht verwaist.
+                    .directory(context.cacheDir.resolve("image_cache").toOkioPath())
+                    .maxSizeBytes(50L * 1024 * 1024) // 50 MB auf der Platte
                     .build()
             }
-            // respectCacheHeaders(true) — Nachtrag 37, Marcos Anforderung:
-            // „Wenn ein falsches Bild heruntergeladen wurde, soll geprüft
-            // werden, ob ein neues auf dem Server vorhanden ist."
+            // ── Hier stand `.respectCacheHeaders(true)` ────────────────────
             //
-            // Vorher stand hier false mit der Begründung „auch dann
-            // zwischenspeichern, wenn der Server no-cache schickt". Die Folge
-            // war die andere Hälfte davon: Coil lieferte ein einmal geladenes
-            // Bild AUF IMMER aus seinem Plattencache und fragte nie wieder
-            // nach — ein falsches oder veraltetes Bild liess sich nur noch
-            // durch Löschen der App-Daten beseitigen.
+            // Die Anforderung dahinter gilt unveraendert. Nachtrag 37, Marcos
+            // Worte: „Wenn ein falsches Bild heruntergeladen wurde, soll
+            // geprueft werden, ob ein neues auf dem Server vorhanden ist."
             //
-            // Mit true stellt Coil eine bedingte Anfrage (If-None-Match mit
-            // dem ETag). Unverändert → 304 ohne Rumpf, die vorhandene Kopie
-            // wird weiterverwendet; geändert → neue Bytes. Die Sorge von
-            // damals trägt der Interceptor unten: Ist der Server nicht
-            // erreichbar, kommt alles aus dem Cache.
-            .respectCacheHeaders(true)
+            // Die Vorgeschichte, weil sie erklaert, warum hier ueberhaupt
+            // etwas stand: Davor war es `false`, mit der Begruendung „auch
+            // dann zwischenspeichern, wenn der Server no-cache schickt". Die
+            // andere Haelfte davon war, dass Coil ein einmal geladenes Bild
+            // AUF IMMER aus dem Plattencache lieferte — ein falsches Bild
+            // liess sich nur durch Loeschen der App-Daten beseitigen.
+            //
+            // In Coil 3 ist das keine Einstellung mehr. Das Verhalten sitzt
+            // am Netzwerk-Fetcher und heisst CacheStrategy. NACHGESEHEN in
+            // coil-network-core 3.3.0: Es gibt GENAU EINE Implementierung
+            // (internal DefaultCacheStrategy, erreichbar als
+            // CacheStrategy.DEFAULT), und die ist der Vorgabewert der Fabrik
+            // oben. Eine Fassung, die Cache-Koepfe ignoriert, laesst sich gar
+            // nicht mehr hinschreiben — der Rueckfall in den Zustand von vor
+            // Nachtrag 37 ist damit baulich ausgeschlossen statt verboten.
+            //
+            // WAS ICH NICHT GEPRUEFT HABE: ob DefaultCacheStrategy sich im
+            // Einzelnen so verhaelt wie respectCacheHeaders(true). Gelesen
+            // habe ich die Signaturen, nicht den Rumpf. Diese Probe gehoert
+            // auf ein Geraet: ein Bild auf dem Server austauschen und
+            // nachsehen, ob die App es holt.
+            //
+            // Die Sorge von damals traegt weiterhin der Interceptor unten:
+            // Ist der Server nicht erreichbar, kommt alles aus dem Cache.
             .build()
 
     /**

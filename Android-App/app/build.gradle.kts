@@ -391,6 +391,10 @@ dependencies {
 
     // Image loading
     implementation(libs.coil.compose)
+    // Siehe den Kommentar im Versionskatalog: Coil 3 laedt ohne dieses
+    // Artefakt NICHT aus dem Netz. Das Fehlen ergaebe keine Fehlermeldung,
+    // sondern leere Bildflaechen.
+    implementation(libs.coil.network.okhttp)
 
     // Barcode scanner
     implementation(libs.camerax.core)

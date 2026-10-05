@@ -38,9 +38,10 @@ import ch.brickinventoryapp.data.model.BrickColor
 import ch.brickinventoryapp.util.rememberTileImageWithFallback
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
-import coil.compose.AsyncImage
-import coil.ImageLoader
-import coil.request.ImageRequest
+import coil3.compose.AsyncImage
+import coil3.ImageLoader
+import coil3.request.ImageRequest
+import coil3.request.crossfade
 import ch.brickinventoryapp.ui.theme.Abstaende
 import ch.brickinventoryapp.ui.theme.Schrift
 
@@ -401,7 +402,7 @@ fun PartCard(part: Part, serverUrl: String, imageLoader: ImageLoader,
                         imageLoader = imageLoader,
                         contentDescription = part.partName,
                         onState = { st ->
-                            if (st is coil.compose.AsyncImagePainter.State.Error) onImageError()
+                            if (st is coil3.compose.AsyncImagePainter.State.Error) onImageError()
                         },
                         modifier = Modifier.fillMaxSize()
                             .clip(Formen.kachelBildEcken),

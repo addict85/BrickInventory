@@ -25,7 +25,16 @@ graphicsPath                = "1.1.0"   # 16-KB-Versuch, siehe app/build.gradle.
 datastore                   = "1.1.7"   # NICHT auf 1.2.0 heben: dort ist die native Bibliothek wieder 4-KB-ausgerichtet
 appcompat                   = "1.7.0"
 profileinstaller            = "1.4.1"
-coil                        = "2.7.0"
+# NICHT 3.6.3, obwohl es das gibt. GEMESSEN aus den Gradle-Metadaten:
+#   coil3 3.3.0 → kotlin-stdlib 2.2.0    ← passt zu unseren 2.3.0
+#   coil3 3.4.0 → kotlin-stdlib 2.3.10
+#   coil3 3.6.3 → kotlin-stdlib 2.4.10
+# Mit Kotlin 2.3.0 ist 3.3.0 die hoechste. Hebt die Werkzeugkette auf
+# 2.3.20, wird 3.4.0 moeglich — das ist dann eine Zahl, kein Umbau.
+#
+# 3.6.3 bleibt auch danach ausser Reichweite: Es verlangt Kotlin 2.4, und
+# KSP hoert bei 2.3.12 auf (erwartet 2.3.20). Hilt braucht KSP.
+coil                        = "3.3.0"
 coroutines                  = "1.9.0"
 # WorkManager fuer den stuendlichen Preisalarm-Abruf. Reine Java-/Kotlin-
 # Bibliothek — sie bringt KEINE native .so mit und beruehrt die
@@ -72,7 +81,11 @@ androidx-work                       = { group = "androidx.work",              na
 androidx-graphics-path              = { group = "androidx.graphics",          name = "graphics-path",                     version.ref = "graphicsPath" }
 androidx-appcompat                  = { group = "androidx.appcompat",         name = "appcompat",                         version.ref = "appcompat" }
 androidx-profileinstaller           = { group = "androidx.profileinstaller",  name = "profileinstaller",                  version.ref = "profileinstaller" }
-coil-compose                        = { group = "io.coil-kt",                 name = "coil-compose",                      version.ref = "coil" }
+coil-compose                        = { group = "io.coil-kt.coil3",           name = "coil-compose",                      version.ref = "coil" }
+# Coil 3 ist mehrplattformfaehig und laedt deshalb NICHT mehr von sich aus
+# aus dem Netz — der Weg ueber http(s) steckt in einem eigenen Artefakt.
+# Ohne das zeigt die App stumm keine Bilder mehr.
+coil-network-okhttp                 = { group = "io.coil-kt.coil3",           name = "coil-network-okhttp",               version.ref = "coil" }
 kotlinx-coroutines-android          = { group = "org.jetbrains.kotlinx",      name = "kotlinx-coroutines-android",        version.ref = "coroutines" }
 androidx-ui-tooling                 = { group = "androidx.compose.ui",        name = "ui-tooling" }
 camerax-core                        = { group = "androidx.camera",            name = "camera-core",                       version.ref = "camerax" }

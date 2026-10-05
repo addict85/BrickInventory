@@ -16,9 +16,10 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.platform.LocalContext
-import coil.ImageLoader
-import coil.compose.AsyncImage
-import coil.request.ImageRequest
+import coil3.ImageLoader
+import coil3.compose.AsyncImage
+import coil3.request.ImageRequest
+import coil3.request.crossfade
 import ch.brickinventoryapp.R
 import ch.brickinventoryapp.ui.theme.Formen
 import androidx.compose.material.icons.Icons
@@ -116,7 +117,7 @@ fun TabellenZeile(
                             imageLoader = imageLoader,
                             contentDescription = name,
                             onState = { st ->
-                                if (st is coil.compose.AsyncImagePainter.State.Error) onBildFehler()
+                                if (st is coil3.compose.AsyncImagePainter.State.Error) onBildFehler()
                             },
                             modifier = Modifier.fillMaxSize(),
                             contentScale = ContentScale.Fit,

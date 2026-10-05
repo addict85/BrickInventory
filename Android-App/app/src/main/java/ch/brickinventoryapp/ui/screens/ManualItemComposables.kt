@@ -13,9 +13,10 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
-import coil.ImageLoader
-import coil.compose.AsyncImage
-import coil.request.ImageRequest
+import coil3.ImageLoader
+import coil3.compose.AsyncImage
+import coil3.request.ImageRequest
+import coil3.request.crossfade
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -382,7 +383,7 @@ fun ManuelleKachel(
                         imageLoader = imageLoader,
                         contentDescription = name,
                         onState = { st ->
-                            if (st is coil.compose.AsyncImagePainter.State.Error) onBildFehler()
+                            if (st is coil3.compose.AsyncImagePainter.State.Error) onBildFehler()
                         },
                         modifier = Modifier.fillMaxSize().clip(Formen.kachelBildEcken),
                         contentScale = ContentScale.Fit,

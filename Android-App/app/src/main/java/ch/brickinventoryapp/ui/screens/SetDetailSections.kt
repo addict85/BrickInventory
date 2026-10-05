@@ -49,9 +49,10 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.ui.unit.sp
-import coil.ImageLoader
-import coil.compose.AsyncImage
-import coil.request.ImageRequest
+import coil3.ImageLoader
+import coil3.compose.AsyncImage
+import coil3.request.ImageRequest
+import coil3.request.crossfade
 import ch.brickinventoryapp.util.NumericInput
 import ch.brickinventoryapp.R
 import ch.brickinventoryapp.data.model.Acquisition
@@ -547,7 +548,7 @@ fun LazyListScope.setDetailHeroImage(
         ) {
             if (imageUrl != null) {
                 AsyncImage(
-                    model = coil.request.ImageRequest.Builder(LocalContext.current)
+                    model = coil3.request.ImageRequest.Builder(LocalContext.current)
                         .data(imageUrl)
                         .setParameter("retry", detailRetry.intValue)
                         .crossfade(true)
@@ -555,7 +556,7 @@ fun LazyListScope.setDetailHeroImage(
                     imageLoader = imageLoader,
                     contentDescription = set.name,
                     onState = { st ->
-                        if (st is coil.compose.AsyncImagePainter.State.Error && detailRetry.intValue == 0) {
+                        if (st is coil3.compose.AsyncImagePainter.State.Error && detailRetry.intValue == 0) {
                             detailScope.launch {
                                 kotlinx.coroutines.delay(1000)
                                 detailRetry.intValue = 1

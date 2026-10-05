@@ -31,7 +31,7 @@ import ch.brickinventoryapp.ui.*
 import ch.brickinventoryapp.ui.AppUiState
 import ch.brickinventoryapp.ui.screens.*
 import ch.brickinventoryapp.ui.theme.BrickInventoryManagerTheme
-import coil.ImageLoader
+import coil3.ImageLoader
 import androidx.compose.foundation.Image
 import androidx.compose.ui.res.painterResource
 import ch.brickinventoryapp.R

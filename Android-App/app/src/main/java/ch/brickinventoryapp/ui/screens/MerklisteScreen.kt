@@ -68,7 +68,7 @@ private fun merkpostenSchluessel(w: Merkposten) = "${w.setNumber}|${w.condition}
 @Composable
 fun MerklisteScreen(
     vm: MainViewModel,
-    imageLoader: coil.ImageLoader,
+    imageLoader: coil3.ImageLoader,
     onScan: () -> Unit,
     onOeffnen: (String, String) -> Unit,
 ) {
@@ -415,7 +415,7 @@ internal fun ZustandsWahl(gewaehlt: String, onWahl: (String) -> Unit) {
 
 @Composable
 private fun MerkpostenZeile(
-    w: Merkposten, serverUrl: String, imageLoader: coil.ImageLoader,
+    w: Merkposten, serverUrl: String, imageLoader: coil3.ImageLoader,
     onOeffnen: () -> Unit,
 ) {
     // Die ganze Karte oeffnet das Detail — wie die Kachel in der Galerie.
@@ -426,7 +426,7 @@ private fun MerkpostenZeile(
         Column(Modifier.padding(Abstaende.mittel), verticalArrangement = Arrangement.spacedBy(Abstaende.winzig)) {
             Row(horizontalArrangement = Arrangement.spacedBy(Abstaende.klein),
                 verticalAlignment = Alignment.CenterVertically) {
-                coil.compose.AsyncImage(
+                coil3.compose.AsyncImage(
                     model = resolveThumbUrl(serverUrl, w.imageLocal, w.imageUrl),
                     contentDescription = null,
                     imageLoader = imageLoader,

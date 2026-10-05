@@ -66,7 +66,7 @@ class MainViewModel @Inject constructor(
     @param:javax.inject.Named("api") val apiHttpClient: okhttp3.OkHttpClient,
     // Nur fürs Abmelden: Der Bild-Cache enthält Thumbnails des angemeldeten
     // Kontos und wird zusammen mit dem API-Cache geleert (SessionFeature.kt).
-    internal val imageLoader: coil.ImageLoader,
+    internal val imageLoader: coil3.ImageLoader,
     /**
      * Selbstaktualisierung — ein EIGENER, blanker Client (siehe AppModule).
      * Nicht der api-Client: Der kennt Server, Token und Anzeigesprache, und
