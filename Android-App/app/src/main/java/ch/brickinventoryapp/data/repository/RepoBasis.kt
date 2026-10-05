@@ -107,6 +107,33 @@ abstract class RepoBasis(
             Result.Error("", transient = true, art = Fehlerart.NETZ)
         } catch (e: java.net.SocketTimeoutException) {
             Result.Error("", transient = true, art = Fehlerart.ZEIT)
+        } catch (e: java.io.IOException) {
+            // ── Der Auffangzweig fuer alles, was der Transport wirft ─────────
+            //
+            // Die drei Zweige darueber bleiben, weil sie eine eigene Fehlerart
+            // tragen (NETZ gegen ZEIT) — der Nutzer soll „keine Verbindung"
+            // von „zu langsam" unterscheiden koennen.
+            //
+            // Dieser hier faengt den Rest. Warum er noetig wurde: Bis okhttp 4
+            // kam ein ABRISS der Verbindung als ConnectException an und lief in
+            // den zweiten Zweig. Unter okhttp 5 wirft derselbe Abriss einen
+            // anderen Untertyp, und damit fiel er in den letzten Zweig —
+            // `transient = false`, also kein Wiederholen. GEMESSEN: Genau das
+            // hat „abgerissene Verbindung ist ein Netzfehler und
+            // voruebergehend" rot gemacht.
+            //
+            // Die Aufzaehlung war das Zerbrechliche daran, nicht die Bibliothek.
+            // Eine IOException IST definitionsgemaess ein Transportproblem: Sie
+            // kommt aus dem Aufruf selbst oder aus dem Lesen des Rumpfes, und
+            // beides ist ein Weg ueber das Netz. Dass sie wiederholbar ist,
+            // haengt an dieser Eigenschaft und nicht daran, welchen Untertyp
+            // eine Bibliotheksfassung gerade waehlt.
+            //
+            // Was NICHT hierher faellt und auch nicht soll: Fehler beim
+            // Auswerten der Antwort (Serialisierung) sind keine IOException und
+            // laufen weiter unten als UNBEKANNT durch — ein Wiederholen
+            // brauchte dort auch nichts.
+            Result.Error("", transient = true, art = Fehlerart.NETZ, technisch = e.message)
         } catch (e: Exception) {
             // e.message ist hier durchweg englischer Bibliothekstext ("Socket
             // closed", "unexpected end of stream"). Als Meldung an den Nutzer
