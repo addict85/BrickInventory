@@ -18,7 +18,14 @@ hilt                        = "2.59"
 hiltNavigationCompose       = "1.2.0"
 navigationCompose           = "2.8.3"
 retrofit                    = "2.11.0"
-okhttp                      = "4.12.0"
+# Deckt vier Artefakte ab, alle ueber dieselbe Referenz: okhttp,
+# okhttp-sse, logging-interceptor und mockwebserver. NACHGESEHEN, dass es
+# alle vier auf 5.5.0 gibt — auch das alte `mockwebserver` (okhttp 5 bringt
+# daneben ein neues `mockwebserver3`, das wir nicht brauchen).
+#
+# Voraussetzungen geprueft: okhttp 5 will Android 5+ und Java 8+, wir fahren
+# minSdk 26 und Java 17.
+okhttp                      = "5.5.0"
 kotlinxSerializationJson    = "1.6.3"
 retrofitKotlinxSerialization = "1.0.0"
 graphicsPath                = "1.1.0"   # 16-KB-Versuch, siehe app/build.gradle.kts
