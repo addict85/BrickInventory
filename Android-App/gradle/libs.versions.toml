@@ -8,8 +8,35 @@ mlkitTextRec                = "16.0.1"   # bundled — liegt IM APK, kein Play-N
 accompanistPermissions      = "0.34.0"
 
 agp                         = "9.2.1"
-kotlin                      = "2.3.0"
-ksp                         = "2.3.6"
+# ── Die beiden gehoeren ZUSAMMEN und werden nie einzeln gehoben ─────────
+#
+# GEMESSEN aus den POMs von symbol-processing-api (05.10.):
+#   KSP 2.3.6              → erwartet Kotlin 2.3.0
+#   KSP 2.3.7 und hoeher   → erwartet Kotlin 2.3.20
+#
+# ── Warum ueberhaupt (05.10.) ───────────────────────────────────────────
+#
+# Drei Abhaengigkeiten standen auf einem Deckel, und es war DERSELBE:
+#
+#   kotlinx-serialization-json 1.11.0 → verlangt kotlin-stdlib 2.3.20
+#   hilt 2.60.1 (ueber KSP-API 2.3.7) → verlangt Kotlin 2.3.20
+#   coil3 3.4.0                       → verlangt kotlin-stdlib 2.3.10
+#
+# Jede einzeln zu heben war unmoeglich; alle drei haengen am Uebersetzer.
+# Deshalb steht hier die Werkzeugkette allein in einem Schritt — was sie
+# freigibt, kommt danach und einzeln.
+#
+# ── Das Risiko, das sich hier nicht pruefen laesst ──────────────────────
+#
+# Der Compose-Compiler ist ein Kotlin-Plugin und traegt dieselbe Nummer
+# (siehe [plugins] unten: kotlin-compose → version.ref = "kotlin"). Er
+# verlangt eine Mindestfassung der Compose-LAUFZEIT, und die kommt aus der
+# BOM, die hier auf 2024.09.03 steht. Ob 2.3.20 damit zufrieden ist, konnte
+# ich nicht nachsehen: Die BOM liegt auf Google-Maven, und das ist aus
+# diesem Container nicht erreichbar (HTTP 000; Maven Central geht).
+# Die GitHub-Action ist an dieser Stelle die einzige Auskunft.
+kotlin                      = "2.3.20"
+ksp                         = "2.3.12"
 coreKtx                     = "1.13.1"
 lifecycleRuntimeKtx         = "2.8.6"
 activityCompose             = "1.9.2"
