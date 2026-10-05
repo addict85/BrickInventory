@@ -20,12 +20,31 @@ navigationCompose           = "2.8.3"
 retrofit                    = "2.11.0"
 # Deckt vier Artefakte ab, alle ueber dieselbe Referenz: okhttp,
 # okhttp-sse, logging-interceptor und mockwebserver. NACHGESEHEN, dass es
-# alle vier auf 5.5.0 gibt — auch das alte `mockwebserver` (okhttp 5 bringt
+# alle vier auf 5.3.0 gibt — auch das alte `mockwebserver` (okhttp 5 bringt
 # daneben ein neues `mockwebserver3`, das wir nicht brauchen).
 #
+# ── WARUM 5.3.0 UND NICHT 5.5.0 ─────────────────────────────────────────
+#
+# 5.5.0 war der erste Versuch, und der Lauf ist daran gescheitert — vor dem
+# ersten Test, mit `Task :app:checkDebugAarMetadata FAILED`. Der Grund steht
+# in den AAR-Metadaten des Pakets selbst, nachgelesen und nicht geraten:
+#
+#   okhttp-android 5.5.0 → minCompileSdk=37
+#   okhttp-android 5.3.0 → minCompileSdk=1   (und ebenso 5.2.1, 5.1.0, 5.0.0)
+#
+# Wir fahren compileSdk 36. Auf 37 zu gehen waere keine Kleinigkeit: Der
+# Kommentar bei compileSdk haelt ausdruecklich fest, dass compileSdk und
+# targetSdk gleich bleiben sollen — ein compileSdk darueber hiesse, gegen
+# eine API zu bauen, deren Verhalten man nicht uebernimmt. targetSdk zu
+# heben ist eine eigene Entscheidung mit eigener Pruefung und gehoert nicht
+# als Nebenwirkung in eine Abhaengigkeits-Auffrischung.
+#
+# 5.3.0 bringt denselben Hauptsprung ohne diesen Zwang. Sobald das Projekt
+# ohnehin auf SDK 37 geht, ist 5.5.0 eine Zahl.
+#
 # Voraussetzungen geprueft: okhttp 5 will Android 5+ und Java 8+, wir fahren
-# minSdk 26 und Java 17.
-okhttp                      = "5.5.0"
+# minSdk 26 und Java 17. kotlin-stdlib 2.2.21 liegt unter unseren 2.3.0.
+okhttp                      = "5.3.0"
 kotlinxSerializationJson    = "1.6.3"
 retrofitKotlinxSerialization = "1.0.0"
 graphicsPath                = "1.1.0"   # 16-KB-Versuch, siehe app/build.gradle.kts
