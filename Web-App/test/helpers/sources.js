@@ -206,7 +206,7 @@ module.exports.i18nAll = i18nAll;
  * 1. Der eigene Erklärkommentar über einer Prüfung enthält den gesuchten Namen
  *    und hält sie grün (passiert in hardened-123/126/127/128).
  * 2. Ein naives `/\*[\s\S]*?\*\//g` reisst Löcher in die Datei: In server.ts
- *    steht `app.get('/images/*', …)`. Das `/*` darin eröffnet für die
+ *    steht `app.get('/images/*pfad', …)`. Das `/*` darin eröffnet für die
  *    Ersetzung einen Blockkommentar, den erst das nächste echte `*​/` schliesst
  *    — 28 von 53 KB verschwanden, und drei Prüfungen wurden grundlos rot.
  *

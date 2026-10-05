@@ -65,7 +65,7 @@ test('die Bildroute behält Anmeldepflicht und CDN-Heilung', () => {
   // weiter, nur der Ausschnitt war zu kurz. strip() gibt es in dieser Datei
   // bereits.
   const src = strip(read('server.ts'));
-  const start = src.indexOf("app.get('/images/*'");
+  const start = src.indexOf("app.get('/images/*pfad'");
   assert.ok(start > 0, 'Bildroute nicht gefunden');
   const route = src.slice(start, start + 2000);
   assert.match(route, /resolveUserId\(req\)/,

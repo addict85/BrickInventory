@@ -113,7 +113,7 @@ test('Bilder werden privat gecacht, nicht öffentlich', () => {
   // `public` erlaubt einem Reverse-Proxy oder CDN, die Antwort zu behalten und
   // an andere auszuliefern. Bei anmeldepflichtigen Inhalten wäre das genau der
   // Weg, die Prüfung wieder auszuhebeln.
-  const route = CODE.slice(CODE.indexOf("app.get('/images/*'"));
+  const route = CODE.slice(CODE.indexOf("app.get('/images/*pfad'"));
   assert.match(route.slice(0, 1500), /Cache-Control', 'private/,
     'Bilder hinter Anmeldung dürfen nicht public gecacht werden');
 });

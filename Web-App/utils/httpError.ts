@@ -177,8 +177,24 @@ function fehlerCode(e: unknown): string | undefined {
  * nach dem Routing nicht geben kann. `''` faellt bei jeder Pruefung darunter
  * sauber durch — anders als ein `!`, das im Fehlerfall einen Absturz erzeugt.
  */
-function pfadParam(req: { params: Record<string, string | undefined> }, name: string): string {
-  return req.params[name] ?? '';
+/*
+ * Der Typ nimmt seit Express 5 auch `string[]` an (05.10.).
+ *
+ * Express 5 erfasst benannte Platzhalter (`/images/*pfad`) als ARRAY von
+ * Segmenten, deshalb ist `ParamsDictionary` jetzt
+ * `Record<string, string | string[]>`. Ohne die Erweiterung hier meldete der
+ * Pruefer das an elf Aufrufstellen.
+ *
+ * Zusammengefuegt wird mit `/` und nicht mit `String(…)`: Ein Array wuerde
+ * sonst ueber `toString()` mit KOMMA verbunden ("a,b" statt "a/b"). Dass heute
+ * keine dieser elf Stellen auf einer Wildcard-Route sitzt, macht es nicht
+ * ueberfluessig — es macht es nur heute folgenlos, und genau solche Zeilen
+ * stehen spaeter an einer Route, bei der es nicht mehr folgenlos ist.
+ */
+function pfadParam(req: { params: Record<string, string | string[] | undefined> },
+                   name: string): string {
+  const wert = req.params[name];
+  return Array.isArray(wert) ? wert.join('/') : (wert ?? '');
 }
 
 /**

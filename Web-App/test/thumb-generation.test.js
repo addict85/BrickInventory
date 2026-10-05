@@ -88,7 +88,7 @@ test('die Bildroute stösst eine fehlende Vorschau selbst an', () => {
   // als Beispiel. indexOf() landete dadurch im Dateikopf statt an der Route.
   const src = require('./helpers/sources').ohneKommentare(
     require('./helpers/sources').startQuelle());
-  const start = src.indexOf("app.get('/images/*'");
+  const start = src.indexOf("app.get('/images/*pfad'");
   const block = src.slice(start, start + 4000);
   assert.ok(/generateThumb/.test(block),
     'ohne diesen Anstoss bleibt eine einmal verpasste Vorschau für immer aus — ' +
