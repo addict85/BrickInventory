@@ -50,25 +50,59 @@ composeBom                  = "2024.09.03"
 hilt                        = "2.59"
 hiltNavigationCompose       = "1.2.0"
 navigationCompose           = "2.8.3"
-# NACHGESEHEN in der POM von 3.0.0: Retrofit 3 haengt selbst an okhttp
-# 4.12.0 und kotlin-stdlib 2.1.21 — beides unter unserem Stand, also kein
-# Zwang zu okhttp 5 und kein Konflikt mit Kotlin 2.3.0.
+# NACHGESEHEN in der Metadatei von 3.0.0: Retrofit 3 verlangt okhttp
+# 4.12.0 und kotlin-stdlib 2.1.21 — beides als `requires`, also WEICH.
+# Gradle nimmt bei einem Streit die hoehere Fassung, hier also unsere
+# okhttp 5.3.0 unten; es gibt keinen Zwangsabstieg auf 4.12.0.
+#
+# Dass Retrofit 3 mit okhttp 5 laeuft, ist damit NICHT bewiesen, nur
+# nicht verboten: Retrofit 3 ist gegen die API von okhttp 4.12.0
+# uebersetzt. Belegt wird es erst von den Tests, die mockwebserver
+# benutzen und bei dieser Zusammenfuehrung erstmals beide Spruenge
+# gemeinsam durchlaufen.
 #
 # Der Konverter (retrofitKotlinxSerialization) bleibt auf 1.0.0: Eine
 # neuere gibt es nicht, und seine POM nennt retrofit 2.9.0 als Mindestmass.
 # Die benutzte Stelle ist asConverterFactory() auf einer Converter.Factory,
 # und die Schnittstelle ist in Retrofit 3 unveraendert.
 retrofit                    = "3.0.0"
-okhttp                      = "4.12.0"
-# NICHT auf 1.11.0, obwohl es das gibt — GEMESSEN am 05.10. aus den
-# Gradle-Metadaten der Artefakte selbst:
+# Deckt vier Artefakte ab, alle ueber dieselbe Referenz: okhttp,
+# okhttp-sse, logging-interceptor und mockwebserver. NACHGESEHEN, dass es
+# alle vier auf 5.3.0 gibt — auch das alte `mockwebserver` (okhttp 5 bringt
+# daneben ein neues `mockwebserver3`, das wir nicht brauchen).
+#
+# ── WARUM 5.3.0 UND NICHT 5.5.0 ─────────────────────────────────────────
+#
+# 5.5.0 war der erste Versuch, und der Lauf ist daran gescheitert — vor dem
+# ersten Test, mit `Task :app:checkDebugAarMetadata FAILED`. Der Grund steht
+# in den AAR-Metadaten des Pakets selbst, nachgelesen und nicht geraten:
+#
+#   okhttp-android 5.5.0 → minCompileSdk=37
+#   okhttp-android 5.3.0 → minCompileSdk=1   (und ebenso 5.2.1, 5.1.0, 5.0.0)
+#
+# Wir fahren compileSdk 36. Auf 37 zu gehen waere keine Kleinigkeit: Der
+# Kommentar bei compileSdk haelt ausdruecklich fest, dass compileSdk und
+# targetSdk gleich bleiben sollen — ein compileSdk darueber hiesse, gegen
+# eine API zu bauen, deren Verhalten man nicht uebernimmt. targetSdk zu
+# heben ist eine eigene Entscheidung mit eigener Pruefung und gehoert nicht
+# als Nebenwirkung in eine Abhaengigkeits-Auffrischung.
+#
+# 5.3.0 bringt denselben Hauptsprung ohne diesen Zwang. Sobald das Projekt
+# ohnehin auf SDK 37 geht, ist 5.5.0 eine Zahl.
+#
+# Voraussetzungen geprueft: okhttp 5 will Android 5+ und Java 8+, wir fahren
+# minSdk 26 und Java 17. kotlin-stdlib 2.2.21 liegt unter unseren 2.3.20.
+okhttp                      = "5.3.0"
+# GEMESSEN am 05.10. aus den Gradle-Metadaten der Artefakte selbst:
 #   serialization-json 1.10.0 → kotlin-stdlib 2.3.0
 #   serialization-json 1.11.0 → kotlin-stdlib 2.3.20
-# Unser Compiler ist Kotlin 2.3.0 (siehe `kotlin` oben). Mit 1.11.0 zoege
-# Gradle eine stdlib, die NEUER ist als der Uebersetzer, der sie benutzt —
-# das meldet Kotlin bestenfalls als Warnung und bricht schlimmstenfalls
-# erst an einer entlegenen Stelle ab. 1.10.0 verlangt genau unsere
-# Fassung.
+#
+# Als diese Zahl gesetzt wurde, war unser Uebersetzer Kotlin 2.3.0, und
+# 1.11.0 haette eine stdlib NEUER als den Uebersetzer gezogen. Dieser Grund
+# ist inzwischen entfallen: `kotlin` steht oben auf 2.3.20, 1.11.0 waere
+# also moeglich. Die Zahl bleibt trotzdem auf 1.10.0 — sie zu heben ist eine
+# eigene Entscheidung mit eigenem Lauf und gehoert nicht als Nebenwirkung in
+# die Aufloesung einer Zusammenfuehrung.
 kotlinxSerializationJson    = "1.10.0"
 retrofitKotlinxSerialization = "1.0.0"
 graphicsPath                = "1.1.0"   # 16-KB-Versuch, siehe app/build.gradle.kts
