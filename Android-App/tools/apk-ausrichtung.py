@@ -32,8 +32,27 @@ Gelesen wird direkt aus dem Zip-Eintrag, ohne Entpacken und ohne fremde
 Werkzeuge: Das APK ist ein Zip, ELF ist ein dokumentiertes Format, und beides
 kann die Standardbibliothek.
 
+── Warum nur die 64-Bit-Bibliotheken zaehlen ───────────────────────────────
+
+Die erste Fassung dieses Werkzeugs verlangte 16 KB von JEDER Bibliothek. Der
+Lauf 37531717086 hat gezeigt, dass das zu streng ist — er meldete rot fuer
+
+    lib/x86/libmlkit_google_ocr_pipeline.so          p_align=4096
+    lib/armeabi-v7a/libmlkit_google_ocr_pipeline.so  p_align=4096
+
+und fuer KEINE einzige 64-Bit-Bibliothek. Das ist kein Mangel von ML Kit: Die
+16-KB-Speicherseiten gibt es nur auf 64-Bit-Kernen. Ein 32-Bit-Android-Kern
+kennt diese Seitengroesse nicht, also kann eine 32-Bit-Bibliothek dort auch
+nicht daran scheitern. Google verlangt die Ausrichtung entsprechend nur fuer
+arm64-v8a und x86_64.
+
+Unterschieden wird hier NICHT am Verzeichnisnamen, sondern am ELF-Kopf
+(e_ident[EI_CLASS]). Eine Liste erlaubter Verzeichnisse muesste gepflegt
+werden, sobald Android eine weitere 64-Bit-Architektur bekommt — der Kopf der
+Datei sagt es von selbst, und er ist die Eigenschaft, auf die es ankommt.
+
 Aufruf:  python3 tools/apk-ausrichtung.py <pfad-zum-apk>
-Rueckgabe: 0 wenn alles ab 16 KB ausgerichtet ist, sonst 1.
+Rueckgabe: 0 wenn jede 64-Bit-Bibliothek ab 16 KB ausgerichtet ist, sonst 1.
 """
 import struct
 import sys
@@ -44,7 +63,7 @@ PT_LOAD = 1
 
 
 def ausrichtung(daten):
-    """Groesste p_align aller PT_LOAD-Segmente — oder None, wenn kein ELF."""
+    """(ist64, groesste p_align aller PT_LOAD) — oder None, wenn kein ELF."""
     if len(daten) < 64 or daten[:4] != b"\x7fELF":
         return None
     # e_ident[EI_CLASS]: 1 = 32 Bit, 2 = 64 Bit. Die Koepfe unterscheiden sich
@@ -74,7 +93,7 @@ def ausrichtung(daten):
         else:
             p_align, = struct.unpack_from(klein + "I", daten, off + 0x1C)
         groesste = max(groesste, p_align)
-    return groesste
+    return ist64, groesste
 
 
 def main():
@@ -83,33 +102,50 @@ def main():
         return 2
     apk = sys.argv[1]
 
-    schlecht, gut = [], []
+    schlecht, gut, befreit = [], [], []
     with zipfile.ZipFile(apk) as z:
         namen = [n for n in z.namelist() if n.startswith("lib/") and n.endswith(".so")]
         for name in sorted(namen):
             with z.open(name) as f:
-                a = ausrichtung(f.read())
-            if a is None:
+                gemessen = ausrichtung(f.read())
+            if gemessen is None:
                 print("::warning::%s ist keine lesbare ELF-Datei — uebersprungen" % name)
                 continue
-            (gut if a >= SEITE else schlecht).append((name, a))
+            ist64, a = gemessen
+            if not ist64:
+                befreit.append((name, a))
+            elif a >= SEITE:
+                gut.append((name, a))
+            else:
+                schlecht.append((name, a))
 
-    # Selbstnachweis gegen die stille Null: Findet die Suche gar keine
-    # Bibliothek, waere die Pruefung darunter fuer immer gruen.
+    # Selbstnachweis gegen die stille Null: Gezaehlt werden nur die
+    # 64-Bit-Bibliotheken. Findet die Suche keine einzige, haette die Pruefung
+    # darunter nichts gemessen und waere trotzdem gruen — der Fall muss rot
+    # sein, nicht still. Dass 32-Bit-Dateien dabei waren, hilft nicht: Genau
+    # die sind ja ausgenommen.
     if not gut and not schlecht:
-        print("::error::Keine native Bibliothek im APK gefunden — die Pruefung "
-              "liefe ins Leere. Entweder ist der Pfad falsch oder das Muster "
-              "`lib/*/*.so` trifft nicht mehr.")
+        print("::error::Keine native 64-Bit-Bibliothek im APK gefunden — die "
+              "Pruefung liefe ins Leere. Entweder ist der Pfad falsch, das "
+              "Muster `lib/*/*.so` trifft nicht mehr, oder das APK enthaelt "
+              "keine 64-Bit-Architektur mehr (%d 32-Bit-Dateien gesehen)."
+              % len(befreit))
         return 1
 
     for name, a in gut:
         print("  ok   %s  p_align=%d" % (name, a))
+    for name, a in befreit:
+        # Nicht „ok": Hier wurde nichts bestanden, sondern nichts verlangt.
+        # Der Unterschied steht im Wort, nicht in einer Farbe.
+        print("  --   %s  p_align=%d  (32 Bit, 16 KB gilt dort nicht)" % (name, a))
     for name, a in schlecht:
         print("::error::%s ist auf %d Byte ausgerichtet, noetig sind %d. Auf "
               "einem Geraet mit 16-KB-Speicherseiten laedt diese Bibliothek "
               "nicht." % (name, a, SEITE))
 
-    print("\n%d ausgerichtet, %d nicht." % (len(gut), len(schlecht)))
+    print("\n%d von %d 64-Bit-Bibliotheken ausgerichtet, %d nicht; "
+          "%d 32-Bit-Bibliotheken ausgenommen."
+          % (len(gut), len(gut) + len(schlecht), len(schlecht), len(befreit)))
     return 1 if schlecht else 0
 
 

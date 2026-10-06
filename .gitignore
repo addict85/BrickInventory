@@ -5,3 +5,8 @@
 # im Baum, das Erzeugnis nicht.
 .design-mockups/*.html
 !.design-mockups/*.dc.html
+
+# Pythons Bytecode-Zwischenablage. Entsteht, sobald ein Werkzeug unter
+# Android-App/tools/ als Modul geladen wird — etwa von einer Gegenprobe, die
+# es ohne Netz aufruft. Erzeugnis, kein Quelltext.
+__pycache__/

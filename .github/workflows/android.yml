@@ -293,6 +293,30 @@ jobs:
           python3 tools/apk-ausrichtung.py \
             app/build/outputs/apk/release/BrickInventory.apk
 
+      # ── Sind die Abhängigkeiten aktuell? Gemessen, nicht geschätzt ─────────
+      #
+      # Die Frage „sind alle Libs auf der neuesten Major- und Minor-Version"
+      # kam mehrfach, und ein Teil der Antwort war jedes Mal GESCHÄTZT: Die
+      # androidx-Nummern stammten aus einer Doku-Seite, weil Google-Maven aus
+      # der Entwicklungsumgebung nicht erreichbar ist — dl.google.com antwortet
+      # dort mit HTTP 000, und maven.google.com leitet genau dorthin um.
+      #
+      # Dieser Runner erreicht es sehr wohl; von dort lädt der Build ja seine
+      # Abhängigkeiten. Also wird hier gemessen, direkt aus group-index.xml
+      # (Google) und maven-metadata.xml (Central).
+      #
+      # Der Schritt macht den Lauf NICHT rot, wenn etwas hinterherhinkt — ob
+      # eine ältere Fassung richtig ist, entscheidet ein Mensch (bei okhttp und
+      # coil entschied es `minCompileSdk`, nicht die Nummer). Rot wird er nur,
+      # wenn er gar nichts messen konnte und sein Bericht damit nichts aussagt.
+      #
+      # `!cancelled()` statt `always()`: Der Bericht soll auch dann kommen,
+      # wenn der Bau vorher rot war — aber ein abgebrochener Lauf (neuer Push
+      # auf denselben Zweig) braucht ihn nicht mehr.
+      - name: Sind die Abhängigkeiten auf der neuesten Fassung?
+        if: ${{ !cancelled() }}
+        run: python3 tools/fassungen-pruefen.py gradle/libs.versions.toml
+
       # `always()`: Die Berichte sind gerade dann interessant, wenn der Lauf rot
       # ist. Ohne das lädt GitHub sie bei einem Fehlschlag nicht hoch.
       # upload-artifact auf v6 (vorher v4).
