@@ -23,6 +23,7 @@ import adminRouter from './admin';
 import miscRouter from './misc';
 import catalogRouter from './catalog';
 import wantedRouter from './wanted';
+import vouchersRouter from './vouchers';
 
 const router = express.Router();
 
@@ -36,6 +37,7 @@ router.use(settingsRouter);
 router.use(adminRouter);
 router.use(catalogRouter);      // /catalog/* — Rebrickable-Katalog (Browsen/Suchen)
 router.use(wantedRouter);     // /wanted — Merkliste (eigene Tabelle, siehe 0021)
+router.use(vouchersRouter);     // /vouchers — Gutscheine (eigene Tabelle, siehe 0026)
 router.use(miscRouter);         // /stats + Endpoint-Übersicht unter /
 
 export = router;

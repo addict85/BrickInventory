@@ -197,6 +197,10 @@ fun NavGraphBuilder.toolsGraph(
             // Aufwand ohne Nutzen.
             LaunchedEffect(state.serverUrl) { if (state.serverUrl.isNotBlank()) vm.loadHouseholdStatus() }
             LaunchedEffect(state.serverUrl) { if (state.serverUrl.isNotBlank()) vm.loadSettings() }
+            // Dieselbe Stelle wie die beiden darueber: Gutscheine werden beim
+            // Oeffnen der Einstellungen geholt, nicht im Dauerabo. Sie aendern
+            // sich ausserhalb dieser Ansicht nicht.
+            LaunchedEffect(state.serverUrl) { if (state.serverUrl.isNotBlank()) vm.ladeGutscheine() }
             ReiterGeruest(stringResource(R.string.nav_settings), vm, navController, bottomNavItems, snackbarHostState) {
                 ch.brickinventoryapp.ui.ScrollPositionKeeper(
                     "settings", settingsScrollState, vm.scrollMemory)
@@ -209,6 +213,12 @@ fun NavGraphBuilder.toolsGraph(
                     // zweiter Weg dorthin waere ein zweiter Ort fuer dieselben
                     // Regeln.
                     onSetClick = { navController.navigate(Screen.SetDetail.createRoute(it)) },
+                    // Derselbe Betrachter wie fuer Bauanleitungen und
+                    // Teilelisten — er laedt die Adresse mit dem angemeldeten
+                    // Client der App und kann drucken und speichern.
+                    onPdfOeffnen = { url, titel ->
+                        navController.navigate(Screen.PdfViewer.createRoute(url, titel))
+                    },
                     scrollState = settingsScrollState,
                 )
             }

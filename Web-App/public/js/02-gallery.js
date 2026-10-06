@@ -11,6 +11,7 @@ import { loadParts } from './03-parts.js';
 import { loadFinance } from './04-finance.js';
 import { loadApiLimits, loadCacheStats, loadCacheTtl, loadProfile, loadRateLimitStats, loadSettings, loadTokens, ladeAlarmUebersicht, ladeLagerortVerwaltung } from './05-settings.js';
 import { loadBrickColors, loadManualParts, loadMinifigs } from './06-minifigs.js';
+import { ladeGutscheine } from './17-gutscheine.js';
 import { _lastImportAt, confirmDelete, enrichGalleryWithPrices, jobPollTimer, ladeLagerorte, lagerortBlock, openModal, pollJobStatus, set_jobPollTimer, set_lastImportAt } from './07-admin.js';
 import { openAcqModal, renderAcqModalBody, renderAcquisitionSummary } from './13-acquisition-modals.js';
 import { ladeMerkliste } from './16-merkliste.js';
@@ -70,7 +71,7 @@ export function bindTabs(){
       }
       if(tab==='finance')      { loadFinance(); } // loadFinance already fetches parts+minifigs valuation in parallel
       if(tab==='partslist')    { /* session-only, no server load needed */ }
-      if(tab==='settings')     { loadSettings(); loadProfile(); loadTokens(); ladeAlarmUebersicht(); ladeLagerortVerwaltung(); if(ME?.isAdmin) loadApiLimits(); }
+      if(tab==='settings')     { loadSettings(); loadProfile(); ladeGutscheine(); loadTokens(); ladeAlarmUebersicht(); ladeLagerortVerwaltung(); if(ME?.isAdmin) loadApiLimits(); }
       if(tab==='monitor')      { loadMonitor(); loadCacheStats(); loadRateLimitStats(); loadCacheTtl(); if(jobPollTimer) clearTimeout(jobPollTimer); pollJobStatus(); }
       if(tab!=='monitor' && _monitorTimer) { clearInterval(_monitorTimer); set_monitorTimer(null); if(jobPollTimer){clearTimeout(jobPollTimer);set_jobPollTimer(null);} }
     });

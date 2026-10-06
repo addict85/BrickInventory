@@ -475,3 +475,48 @@ html::-webkit-scrollbar{width:0;height:0}
                  border:1px solid transparent}
     .alarm-marke-an{background:var(--s200);color:var(--txt);font-weight:600}
     .alarm-marke-aus{background:transparent;color:var(--mut);border-color:var(--bdr)}
+
+    /* ── Gutscheine (LEGO-Geschenkkarten im Profil) ─────────────────────────
+       Eine Zeile je Karte: Nummer und Betrag links, der PIN in der Mitte, die
+       Knoepfe rechts. Kein Raster mit festen Spalten — bei 19 Ziffern und
+       einem Betrag laeuft das auf dem Telefon sonst aus dem Bild.
+
+       Die Knoepfe sind IMMER sichtbar, anders als der Papierkorb an den
+       Set-Kacheln (.ca). Dort verdeckt der Knopf das Bild; hier gibt es
+       nichts zu verdecken, und „PDF oeffnen" ist kein Rand-, sondern der
+       Hauptfall.
+
+       Bedeutung haengt nirgends an der FARBE: Jeder Knopf traegt ein Symbol
+       und einen Titel, der verdeckte PIN steht als Punkte da, nicht als
+       graues Feld. */
+    .voucher-list{display:flex;flex-direction:column;gap:.45rem}
+    .voucher-row{display:flex;flex-wrap:wrap;align-items:center;gap:.5rem;
+                 padding:.55rem .7rem;border:1px solid var(--bdr);
+                 border-radius:var(--rad);background:var(--sur)}
+    .voucher-main{flex:1 1 12rem;min-width:0}
+    /* Tabellenziffern: Die Vierergruppen stehen sonst je nach Ziffer
+       unterschiedlich breit und sind beim Abtippen schlechter zu verfolgen. */
+    .voucher-num{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;
+                 font-size:.86rem;font-variant-numeric:tabular-nums;
+                 word-break:break-all}
+    .voucher-meta{font-size:.76rem;color:var(--mut);margin-top:2px}
+    .voucher-amount{font-weight:600;color:var(--txt)}
+    .voucher-pin{display:flex;align-items:center;gap:.35rem;font-size:.78rem}
+    .voucher-pin-label{color:var(--mut);text-transform:uppercase;
+                       letter-spacing:.5px;font-size:.66rem}
+    .voucher-pin code{font-size:.84rem;letter-spacing:.08em}
+    .voucher-nopdf{color:var(--mut);font-size:.8rem;padding:0 .35rem}
+    .voucher-actions{display:flex;align-items:center;gap:.3rem;margin-left:auto}
+    .v-btn{width:26px;height:26px;border-radius:6px;border:1px solid var(--bdr);
+           cursor:pointer;background:transparent;color:var(--txt);font-size:.8rem;
+           display:flex;align-items:center;justify-content:center;
+           transition:background .15s,border-color .15s}
+    .v-btn:hover{background:var(--s200);border-color:var(--p500)}
+    .voucher-total-row{display:flex;justify-content:space-between;
+                       align-items:baseline;margin-top:.5rem;font-size:.82rem}
+    /* Die Notiz neben dem Betrag — zurückhaltend, sie ist ein Zusatz. */
+    .voucher-note{color:var(--mut)}
+    /* „Noch keine Gutscheine" und die Fehlermeldung der Liste. `mut` war hier
+       als Klasse gedacht — den Namen gibt es in diesem Baum aber nur als
+       FARBVARIABLE (var(--mut)), nicht als Regel. */
+    .voucher-leer{color:var(--mut);font-size:.8rem}

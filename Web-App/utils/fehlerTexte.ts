@@ -207,6 +207,22 @@ export const FEHLER = {
                                  en: 'Job not found, or it has expired' },
   unbekannter_job:             { de: 'Unbekannter Job', en: 'Unknown job' },
 
+  // ── Gutscheine (LEGO-Geschenkkarten im eigenen Profil) ───────────────────
+  //
+  // `gutschein_existiert` ist der einzige davon, den der Nutzer auch bei
+  // richtiger Eingabe sieht: Die Tabelle laesst dieselbe Kartennummer je
+  // Konto nur einmal zu. Der Text sagt deshalb WARUM und nicht nur DASS.
+  nummer_ungueltig:            { de: 'Ungültige Gutscheinnummer (nur Ziffern, 4–25 Stellen)',
+                                 en: 'Invalid voucher number (digits only, 4–25 characters)' },
+  pin_ungueltig:               { de: 'Ungültiger PIN (nur Ziffern, 3–10 Stellen)',
+                                 en: 'Invalid PIN (digits only, 3–10 characters)' },
+  betrag_ungueltig:            { de: 'Ungültiger Betrag', en: 'Invalid amount' },
+  waehrung_ungueltig:          { de: 'Ungültige Währung', en: 'Invalid currency' },
+  gutschein_existiert:         { de: 'Diesen Gutschein gibt es bereits.',
+                                 en: 'This voucher already exists.' },
+  nur_pdf:                     { de: 'Nur PDF-Dateien', en: 'PDF files only' },
+  id_ungueltig:                { de: 'Ungültige ID', en: 'Invalid ID' },
+
   // ── Betrieb und Verwaltung ───────────────────────────────────────────────
   nicht_gefunden:              { de: 'Nicht gefunden', en: 'Not found' },
   kaufpreis_nicht_gefunden:    { de: 'Kaufpreis nicht gefunden', en: 'Purchase not found' },

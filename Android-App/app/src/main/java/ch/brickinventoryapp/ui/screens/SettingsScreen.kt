@@ -62,6 +62,14 @@ fun SettingsScreen(
      */
     onSetClick: (String) -> Unit,
     /**
+     * Ein Gutschein-PDF anzeigen — im vorhandenen PdfViewerScreen.
+     *
+     * Wie [onSetClick] ein Rueckruf, weil nur der Graph den NavController
+     * kennt. OHNE Vorgabewert, aus demselben Grund wie bei [onServerWechseln]:
+     * Mit `= {}` waere eine vergessene Weitergabe ein Knopf, der nichts tut.
+     */
+    onPdfOeffnen: (url: String, titel: String) -> Unit,
+    /**
      * Rollposition — von AUSSEN, aus demselben Grund wie bei den Finanzen:
      * Der Weg in die Detailansicht verwirft dieses Ziel, und ein
      * `rememberScrollState()` hier drin waere bei der Rueckkehr zurueckgesetzt.
@@ -102,6 +110,7 @@ fun SettingsScreen(
     // darueber — UiStateFieldsTest bestimmt den Typ je Name und Datei.
     val kontoZustand by vm.kontoState.collectAsStateWithLifecycle()
     val csvZustand by vm.csvHochladenState.collectAsStateWithLifecycle()
+    val gutscheinZustand by vm.gutscheinState.collectAsStateWithLifecycle()
 
     // Einmal beim Betreten laden. LaunchedEffect(Unit) und nicht bei jedem
     // Neuzeichnen: Die Liste aendert sich nur, wenn sich ein Geraet an- oder
@@ -272,6 +281,20 @@ fun SettingsScreen(
             onMeldungWeg = { vm.kontoMeldungWeg() },
         )
 
+        // Gutscheine direkt nach dem Konto: Marcos „möglichst einfach
+        // erreichbar" — sie gehoeren zu dem, was einem selbst gehoert.
+        GutscheineCard(
+            zustand = gutscheinZustand,
+            serverUrl = appState.serverUrl,
+            onFeld = { n, p, b, w, no -> vm.setzeGutscheinFeld(n, p, b, w, no) },
+            onPinSchalten = { vm.schalteGutscheinPin(it) },
+            onBearbeiten = { vm.bearbeiteGutschein(it) },
+            onAbbrechen = { vm.leereGutscheinFormular() },
+            onSpeichern = { vm.speichereGutschein(it) },
+            onLoeschen = { vm.loescheGutschein(it) },
+            onPdfOeffnen = onPdfOeffnen,
+        )
+
         CsvImportCard(
             csvZustand = csvZustand,
             onDatei = { art, uri -> vm.ladeCsvHoch(art, uri) },
@@ -373,8 +396,16 @@ fun SettingsScreen(
     }
 }
 
+/**
+ * Der Rahmen einer Einstellungs-Rubrik.
+ *
+ * `internal` statt `private`: GutscheineCard.kt steht in einer eigenen Datei
+ * (SettingsScreen.kt hat schon 1448 Zeilen) und braucht denselben Rahmen. Eine
+ * zweite Fassung dort haette genuegt, damit die eine Karte anders aussieht als
+ * alle anderen — und zwar erst dann, wenn jemand hier etwas aendert.
+ */
 @Composable
-private fun SettingsCard(
+internal fun SettingsCard(
     title: String,
     icon: androidx.compose.ui.graphics.vector.ImageVector,
     content: @Composable ColumnScope.() -> Unit

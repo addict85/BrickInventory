@@ -74,6 +74,8 @@ test('kein Text steht in beiden Sprachen unübersetzt', () => {
     'gallery.sort.name', 'header.sets', 'log.auto', 'monitor.api.bricklink',
     'monitor.api.brickset', 'monitor.api.rebrickable', 'nav.monitoring',
     'settings.users_admin_badge', 'users.admin_badge', 'users.role.admin',
+    // PIN ist in beiden Sprachen PIN — ein Begriff, kein Satz.
+    'vouchers.pin',
   ]);
 
   const { de, en } = loadTranslations();

@@ -209,6 +209,10 @@ class MainViewModel @Inject constructor(
     internal val _merklisteState = MutableStateFlow(MerklisteUiState())
     val merklisteState = _merklisteState.asStateFlow()
 
+    /** Gutscheine im eigenen Profil — siehe GutscheinFeature.kt. */
+    internal val _gutscheinState = MutableStateFlow(GutscheinUiState())
+    val gutscheinState = _gutscheinState.asStateFlow()
+
     // Ziel einer angetippten Preisalarm-Meldung. Begruendung an
     // MeldungsZielUiState (UiState.kt).
     internal val _meldungsZiel = MutableStateFlow(MeldungsZielUiState())
