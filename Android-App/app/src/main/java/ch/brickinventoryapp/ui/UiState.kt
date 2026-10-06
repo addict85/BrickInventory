@@ -1005,7 +1005,6 @@ data class GutscheinUiState(
     val pin: String = "",
     val betrag: String = "",
     val waehrung: String = "CHF",
-    val notiz: String = "",
     /** Die gewaehlte PDF-Datei, solange sie noch nicht hochgeladen ist. */
     val pdfName: String? = null,
     /**

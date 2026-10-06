@@ -131,6 +131,35 @@ class GutscheineContractTest {
     }
 
     @Test
+    fun `Nummer und PIN lassen sich durch Antippen kopieren`() {
+        // Marcos Vorgabe: „Wenn ich in der Android-App den Gutscheincode oder
+        // den Pin anklicke, soll dieser kopiert werden."
+        assert(karte.contains("clickable { onKopieren(g.number, true) }")) {
+            "Die Gutscheinnummer laesst sich nicht durch Antippen kopieren."
+        }
+        assert(karte.contains("clickable { onKopieren(g.pin, false) }")) {
+            "Der PIN laesst sich nicht durch Antippen kopieren."
+        }
+        // Die ROHE Nummer, nicht die in Vierergruppen gezeigte: Die
+        // Gruppierung ist eine Lesehilfe, ein Bezahlfeld nimmt sie nicht an.
+        assert(!karte.contains("onKopieren(g.number.chunked")) {
+            "Kopiert wird die gruppierte Anzeige statt der echten Nummer."
+        }
+    }
+
+    @Test
+    fun `der Gutschein hat keine Notiz mehr`() {
+        // Marcos Vorgabe: „Das Feld ‚Notiz' bitte vollständig inkl. Spalten
+        // auf der Datenbank entfernen." Ein Rest in der App waere eine Zeile,
+        // die der Server gar nicht mehr beantwortet.
+        for (datei in listOf(karte, feature)) {
+            assert(!datei.contains("notiz") && !datei.contains(".note")) {
+                "In der App steht noch eine Notiz am Gutschein."
+            }
+        }
+    }
+
+    @Test
     fun `die Liste wird nicht zwischengespeichert`() {
         // Die anderen Repositories legen Antworten im ResponseCache ab — der
         // liegt auf der Platte. Eine Liste mit Nummern und PINs gehoert dort

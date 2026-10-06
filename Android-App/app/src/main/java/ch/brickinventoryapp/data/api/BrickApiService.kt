@@ -958,7 +958,6 @@ interface BrickApiService {
         @retrofit2.http.Part("pin") pin: okhttp3.RequestBody? = null,
         @retrofit2.http.Part("amount") betrag: okhttp3.RequestBody? = null,
         @retrofit2.http.Part("currency") waehrung: okhttp3.RequestBody? = null,
-        @retrofit2.http.Part("note") notiz: okhttp3.RequestBody? = null,
     ): Response<GutscheinAntwort>
 
     // Eine Methode fuer `GET /vouchers/{id}/pdf` steht hier mit Absicht NICHT:

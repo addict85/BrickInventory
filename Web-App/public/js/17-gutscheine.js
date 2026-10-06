@@ -1,6 +1,7 @@
 import { registerActions } from './00-registry.js';
 import { t, tRaw } from '../i18n.js';
 import { TRASH_ICON_SVG, api, esc, fmtN, toast } from './01-core.js';
+import { openPdfViewer } from './12-pdfviewer.js';
 
 // ═══ Gutscheine (LEGO-Geschenkkarten) ══════════════════════════════════════
 //
@@ -46,33 +47,54 @@ const el = (id) => document.getElementById(id);
  */
 const _sichtbar = new Set();
 
+/**
+ * Das Kopieren-Symbol — zwei Blaetter, wie ueberall sonst auch.
+ *
+ * Inline und nicht als Schriftzeichen: Ein Emoji sieht auf jedem System
+ * anders aus und faellt bei manchen Schriften ganz aus. `currentColor` laesst
+ * es die Farbe des Knopfes annehmen, also auch im Dunkelmodus.
+ */
+const KOPIE_ICON_SVG =
+  '<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" ' +
+  'stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' +
+  '<rect x="9" y="9" width="13" height="13" rx="2"/>' +
+  '<path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>';
+
 function zeile(g) {
   const pinOffen = _sichtbar.has(g.id);
   // Die Nummer in Vierergruppen: 19 Ziffern am Stück sind beim Abtippen an
-  // der Kasse nicht zu lesen, und genau dafür ist sie da.
-  const nummer = String(g.number).replace(/(.{4})/g, '$1 ').trim();
+  // der Kasse nicht zu lesen, und genau dafür ist sie da. Kopiert wird
+  // trotzdem die ROHE Nummer — mit Leerzeichen nimmt sie kein Bezahlfeld an.
+  const nummer = String(g.number).replace(/(.{4})/g, '$1 ').trim();
   return `
     <div class="voucher-row" data-id="${g.id}">
       <div class="voucher-main">
-        <div class="voucher-num" title="${esc(g.number)}">${esc(nummer)}</div>
+        <div class="voucher-num-row">
+          <span class="voucher-num" title="${esc(g.number)}">${esc(nummer)}</span>
+          <button class="v-btn" data-click="gutscheinKopieren" data-arg="${g.id}" data-arg2="nummer"
+                  title="${tRaw('vouchers.copy_number')}"
+                  aria-label="${tRaw('vouchers.copy_number')}">${KOPIE_ICON_SVG}</button>
+        </div>
         <div class="voucher-meta">
           <span class="voucher-amount">${fmtN(g.amount, g.currency)}</span>
-          ${g.note ? `<span class="voucher-note">· ${esc(g.note)}</span>` : ''}
         </div>
       </div>
       <div class="voucher-pin">
         <span class="voucher-pin-label">${t('vouchers.pin')}</span>
         <code>${g.pin ? (pinOffen ? esc(g.pin) : '••••') : '–'}</code>
         ${g.pin ? `<button class="v-btn" data-click="gutscheinPinUmschalten" data-arg="${g.id}"
-                     title="${tRaw(pinOffen ? 'vouchers.pin_hide' : 'vouchers.pin_show')}">
-                     ${pinOffen ? '🙈' : '👁'}</button>` : ''}
+                     title="${tRaw(pinOffen ? 'vouchers.pin_hide' : 'vouchers.pin_show')}"
+                     aria-label="${tRaw(pinOffen ? 'vouchers.pin_hide' : 'vouchers.pin_show')}">
+                     ${pinOffen ? '🙈' : '👁'}</button>
+                   <button class="v-btn" data-click="gutscheinKopieren" data-arg="${g.id}" data-arg2="pin"
+                     title="${tRaw('vouchers.copy_pin')}"
+                     aria-label="${tRaw('vouchers.copy_pin')}">${KOPIE_ICON_SVG}</button>` : ''}
       </div>
       <div class="voucher-actions">
         ${g.hat_pdf ? `
           <button class="v-btn" data-click="gutscheinPdfOeffnen" data-arg="${g.id}"
-                  title="${tRaw('vouchers.pdf_open')}">📄</button>
-          <button class="v-btn" data-click="gutscheinPdfLaden" data-arg="${g.id}"
-                  title="${tRaw('vouchers.pdf_download')}">⬇</button>`
+                  title="${tRaw('vouchers.pdf_open')}"
+                  aria-label="${tRaw('vouchers.pdf_open')}">📄</button>`
         : `<span class="voucher-nopdf" title="${tRaw('vouchers.no_pdf')}">—</span>`}
         <button class="v-btn" data-click="gutscheinBearbeiten" data-arg="${g.id}"
                 title="${tRaw('vouchers.edit_title')}">✎</button>
@@ -107,7 +129,7 @@ export async function ladeGutscheine() {
 
 function formularLeeren() {
   _bearbeitet = null;
-  for (const id of ['v-number', 'v-pin', 'v-amount', 'v-note']) { const e = el(id); if (e) e.value = ''; }
+  for (const id of ['v-number', 'v-pin', 'v-amount']) { const e = el(id); if (e) e.value = ''; }
   const datei = el('v-pdf'); if (datei) datei.value = '';
   const titel = el('vouchers-form-title');
   if (titel) titel.textContent = tRaw('vouchers.add');
@@ -122,7 +144,6 @@ export function gutscheinBearbeiten(id) {
   el('v-number').value = g.number;
   el('v-pin').value    = g.pin || '';
   el('v-amount').value = g.amount;
-  el('v-note').value   = g.note || '';
   const cur = el('v-currency'); if (cur) cur.value = g.currency;
   el('vouchers-form-title').textContent = tRaw('vouchers.edit');
   el('v-cancel').style.display = '';
@@ -152,11 +173,10 @@ export async function gutscheinSpeichern() {
   const pin      = el('v-pin').value.trim();
   const amount   = el('v-amount').value.trim();
   const currency = el('v-currency')?.value || 'CHF';
-  const note     = el('v-note').value.trim();
   const datei    = el('v-pdf')?.files?.[0] || null;
 
   if (_bearbeitet) {
-    const d = await api('PUT', `/v1/vouchers/${_bearbeitet}`, { number, pin, amount, currency, note });
+    const d = await api('PUT', `/v1/vouchers/${_bearbeitet}`, { number, pin, amount, currency });
     if (!d?.success) { toast(d?.error || tRaw('vouchers.save_error'), 'error'); return; }
     toast(tRaw('vouchers.saved'), 'success');
     formularLeeren(); el('v-pdf').parentElement.style.display = '';
@@ -176,7 +196,6 @@ export async function gutscheinSpeichern() {
     if (pin)      form.append('pin', pin);
     if (amount)   form.append('amount', amount);
     if (currency) form.append('currency', currency);
-    if (note)     form.append('note', note);
     let r, d;
     try {
       r = await fetch('/api/v1/vouchers/pdf', { method: 'POST', body: form });
@@ -203,7 +222,7 @@ export async function gutscheinSpeichern() {
     return;
   }
 
-  const d = await api('POST', '/v1/vouchers', { number, pin, amount, currency, note });
+  const d = await api('POST', '/v1/vouchers', { number, pin, amount, currency });
   if (!d?.success) { toast(d?.error || tRaw('vouchers.save_error'), 'error'); return; }
   toast(tRaw('vouchers.saved'), 'success');
   formularLeeren();
@@ -227,22 +246,75 @@ export function gutscheinPinUmschalten(id) {
 }
 
 /**
- * Das PDF in einem neuen Fenster — Marcos Vorgabe wörtlich.
+ * Das PDF im Betrachter der App — derselbe wie bei den Bauanleitungen.
  *
- * `window.open` mit der Adresse und nicht mit einem Blob: Die Route gibt
- * `Content-Disposition: inline` zurück, also zeigt der Browser das PDF selbst
- * an. Die Anmeldung reist über das Sitzungs-Cookie mit; ein Blob müsste erst
- * geladen und dann in ein Objekt-URL verpackt werden, und der bliebe im
- * Speicher stehen.
+ * ── Marcos Vorgabe ─────────────────────────────────────────────────────────
+ *
+ *   „Die beiden Buttons PDF Download und PDF im neuen Fenster öffnen
+ *    entfernen und durch den PDF-Viewer der Anleitungen ersetzen → Analog wie
+ *    es in der Android-App umgesetzt ist."
+ *
+ * Hier standen zwei Knöpfe: `window.open` für die Anzeige und ein zweiter
+ * mit `?download=1` für das Herunterladen. Beide sind entfallen, und zwar
+ * ersatzlos — der Betrachter trägt seinen Download-Knopf selbst
+ * (`pdf-viewer-download` in index.html, er bekommt dieselbe Adresse).
+ * Zwei Knöpfe für eine Sache waren eine Zeile Platz und eine Entscheidung
+ * zu viel.
+ *
+ * Damit verhalten sich beide Apps gleich: Die Android-App zeigt Gutschein-
+ * PDFs im PdfViewerScreen, demselben, der auch Anleitungen und Teilelisten
+ * zeigt. Genau das meint „analog".
  */
 export function gutscheinPdfOeffnen(id) {
-  window.open(`/api/v1/vouchers/${id}/pdf`, '_blank', 'noopener');
+  const g = _gutscheine.find(x => String(x.id) === String(id));
+  openPdfViewer(`/api/v1/vouchers/${id}/pdf`, g ? g.number : 'PDF');
 }
 
-export function gutscheinPdfLaden(id) {
-  // Dieselbe Route, nur mit `?download=1` — der Server setzt dann
-  // `attachment` und der Browser legt die Datei ab, statt sie zu zeigen.
-  window.location.href = `/api/v1/vouchers/${id}/pdf?download=1`;
+/**
+ * Gutscheinnummer oder PIN in die Zwischenablage.
+ *
+ * ── Marcos Vorgabe ─────────────────────────────────────────────────────────
+ *
+ *   „Kannst du in der Webapp hinter den Gutscheincode und den Pin jeweils
+ *    einen Kopieren Button einfügen (mit einem Icon)."
+ *
+ * Kopiert wird die ROHE Nummer, nicht die mit Leerzeichen gruppierte Anzeige:
+ * Die Gruppierung ist eine Lesehilfe fürs Abtippen an der Kasse — ein
+ * Bezahlfeld nimmt sie nicht an.
+ *
+ * `navigator.clipboard` braucht einen sicheren Kontext (HTTPS oder
+ * localhost). Auf einem Server, der nur über HTTP läuft, fehlt das Objekt
+ * ganz; deshalb der Rückfall über ein unsichtbares Textfeld und
+ * `execCommand('copy')`. Das ist veraltet, aber es ist der einzige Weg, der
+ * dort noch funktioniert — und ein Kopieren-Knopf, der auf halben Servern
+ * stumm nichts tut, wäre schlimmer als sein Fehlen.
+ */
+export async function gutscheinKopieren(id, feld) {
+  const g = _gutscheine.find(x => String(x.id) === String(id));
+  if (!g) return;
+  const wert = feld === 'pin' ? (g.pin || '') : String(g.number);
+  if (!wert) return;
+  let geklappt = false;
+  try {
+    if (navigator.clipboard?.writeText) { await navigator.clipboard.writeText(wert); geklappt = true; }
+  } catch { geklappt = false; }
+  if (!geklappt) {
+    try {
+      const feldchen = document.createElement('textarea');
+      feldchen.value = wert;
+      // Ausserhalb des Bildes statt `display:none`: Ein verstecktes Element
+      // lässt sich nicht markieren, und ohne Markierung kopiert execCommand
+      // nichts.
+      feldchen.style.cssText = 'position:fixed;top:-1000px;opacity:0';
+      document.body.appendChild(feldchen);
+      feldchen.select();
+      geklappt = document.execCommand('copy');
+      feldchen.remove();
+    } catch { geklappt = false; }
+  }
+  toast(tRaw(geklappt
+    ? (feld === 'pin' ? 'vouchers.copied_pin' : 'vouchers.copied_number')
+    : 'vouchers.copy_error'), geklappt ? 'success' : 'error');
 }
 
 registerActions({
@@ -253,5 +325,5 @@ registerActions({
   gutscheinLoeschen,
   gutscheinPinUmschalten,
   gutscheinPdfOeffnen,
-  gutscheinPdfLaden,
+  gutscheinKopieren,
 });

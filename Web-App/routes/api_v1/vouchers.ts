@@ -77,7 +77,6 @@ interface GutscheinZeile {
   pin: string | null;
   amount: string | number;
   currency: string;
-  note: string | null;
   pdf_path: string | null;
   created_at: string | Date;
   updated_at: string | Date;
@@ -100,14 +99,13 @@ function fuerAussen(z: GutscheinZeile) {
     pin: z.pin,
     amount: Number(z.amount),
     currency: z.currency,
-    note: z.note,
     hat_pdf: !!z.pdf_path,
     created_at: z.created_at,
     updated_at: z.updated_at,
   };
 }
 
-const SPALTEN = 'id, number, pin, amount, currency, note, pdf_path, created_at, updated_at';
+const SPALTEN = 'id, number, pin, amount, currency, pdf_path, created_at, updated_at';
 
 /**
  * Die drei Pflichtwerte pruefen.
@@ -137,11 +135,10 @@ function pruefeWerte(roh: { number?: unknown; pin?: unknown; amount?: unknown; c
   return { ok: true, number, pin: pinRoh || null, amount, currency };
 }
 
-/** Freitext kuerzen — dieselbe Grenze wie bei den Anleitungen. */
-function notiz(roh: unknown): string | null {
-  const s = String(roh ?? '').trim();
-  return s ? s.slice(0, 500) : null;
-}
+// `notiz()` stand hier und kuerzte den Freitext. ENTFALLEN mit der Notiz
+// selbst (Migration 0027): Marcos Vorgabe war „vollstaendig inkl. Spalten auf
+// der Datenbank entfernen". Ein Helfer ohne Aufrufer waere genau der Rest, der
+// beim naechsten Durchgang die Frage aufwirft, wofuer er da ist.
 
 // ── GET /api/v1/vouchers — die eigenen Gutscheine ───────────────────────────
 router.get('/vouchers', requireToken, async (req: AuthedRequest, res) => {
@@ -159,11 +156,11 @@ router.post('/vouchers', requireToken, async (req: AuthedRequest, res) => {
     const w = pruefeWerte(req.body || {});
     if (!w.ok) return sendeFehler(req, res, 400, w.code);
     const zeile = await db.get(
-      `INSERT INTO vouchers (user_id, number, pin, amount, currency, note)
-       VALUES ($1,$2,$3,$4,$5,$6)
+      `INSERT INTO vouchers (user_id, number, pin, amount, currency)
+       VALUES ($1,$2,$3,$4,$5)
        ON CONFLICT (user_id, number) DO NOTHING
        RETURNING ${SPALTEN}`,
-      [req.apiUser.user_id, w.number, w.pin, w.amount, w.currency, notiz(req.body?.note)]);
+      [req.apiUser.user_id, w.number, w.pin, w.amount, w.currency]);
     // DO NOTHING liefert KEINE Zeile zurueck, wenn es die Karte schon gibt.
     // Das ist der Unterschied zwischen „angelegt" und „war schon da" — und
     // beides stillschweigend als Erfolg zu melden, hiesse: Der Nutzer legt
@@ -217,11 +214,11 @@ router.post('/vouchers/pdf', requireToken, upload.single('file'), async (req: Au
     }
 
     const zeile = await db.get(
-      `INSERT INTO vouchers (user_id, number, pin, amount, currency, note)
-       VALUES ($1,$2,$3,$4,$5,$6)
+      `INSERT INTO vouchers (user_id, number, pin, amount, currency)
+       VALUES ($1,$2,$3,$4,$5)
        ON CONFLICT (user_id, number) DO NOTHING
        RETURNING ${SPALTEN}`,
-      [req.apiUser.user_id, w.number, w.pin, w.amount, w.currency, notiz(req.body?.note)]);
+      [req.apiUser.user_id, w.number, w.pin, w.amount, w.currency]);
     if (!zeile) return sendeFehler(req, res, 409, 'gutschein_existiert');
 
     const z = zeile as GutscheinZeile;
@@ -266,11 +263,9 @@ router.put('/vouchers/:id', requireToken, async (req: AuthedRequest, res) => {
     if (!w.ok) return sendeFehler(req, res, 400, w.code);
 
     const zeile = await db.get(
-      `UPDATE vouchers SET number=$1, pin=$2, amount=$3, currency=$4, note=$5, updated_at=NOW()
-        WHERE id=$6 AND user_id=$7 RETURNING ${SPALTEN}`,
-      [w.number, w.pin, w.amount, w.currency,
-       req.body?.note === undefined ? alt.note : notiz(req.body.note),
-       id, req.apiUser.user_id]);
+      `UPDATE vouchers SET number=$1, pin=$2, amount=$3, currency=$4, updated_at=NOW()
+        WHERE id=$5 AND user_id=$6 RETURNING ${SPALTEN}`,
+      [w.number, w.pin, w.amount, w.currency, id, req.apiUser.user_id]);
     res.json({ success: true, voucher: fuerAussen(zeile as GutscheinZeile) });
   } catch (e) {
     // Die UNIQUE-Bedingung schlaegt zu, wenn jemand eine Karte auf die Nummer

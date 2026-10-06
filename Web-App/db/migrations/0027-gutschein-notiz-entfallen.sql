@@ -1,0 +1,26 @@
+-- ════════════════════════════════════════════════════════════════════════════
+-- Die Notiz am Gutschein entfaellt — restlos, samt Spalte.
+-- ════════════════════════════════════════════════════════════════════════════
+--
+-- ── Marcos Vorgabe ──────────────────────────────────────────────────────────
+--
+--   „Das Feld ‚Notiz' bitte vollständig inkl. Spalten auf der Datenbank
+--    entfernen."
+--
+-- ── Warum DROP COLUMN und nicht bloss „nicht mehr anzeigen" ─────────────────
+--
+-- Weil „vollstaendig" genau das heisst. Eine Spalte, die niemand mehr
+-- schreibt und niemand mehr liest, ist keine Sparsamkeit, sondern eine Falle:
+-- Sie taucht im Schema-Abgleich auf, im Sicherungs-Export, in jedem
+-- `SELECT *`, und beim naechsten Durchgang fragt jemand, wofuer sie da ist.
+-- Der Baum hat dafuer ein Beispiel — die Begruendung bei `wanted` in 0023.
+--
+-- ── Was dabei verlorengeht ──────────────────────────────────────────────────
+--
+-- Die bereits erfassten Notizen. Das ist unumkehrbar und soll es sein: Die
+-- Funktion ist zwei Tage alt, die Spalte kam mit 0026, und Marco hat sie
+-- gesehen und ausdruecklich weggewuenscht.
+--
+-- IF EXISTS: Ein Aufbau, der 0026 nie gelaufen hat, besitzt die Tabelle gar
+-- nicht — dann ist die Zeile ein stiller No-op statt eines Fehlers.
+ALTER TABLE IF EXISTS vouchers DROP COLUMN IF EXISTS note;

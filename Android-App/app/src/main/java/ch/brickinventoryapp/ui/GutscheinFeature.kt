@@ -53,7 +53,7 @@ internal fun MainViewModel.ladeGutscheine() {
 /** Ein Formularfeld setzen. */
 internal fun MainViewModel.setzeGutscheinFeld(
     nummer: String? = null, pin: String? = null, betrag: String? = null,
-    waehrung: String? = null, notiz: String? = null,
+    waehrung: String? = null,
 ) {
     _gutscheinState.update {
         it.copy(
@@ -61,7 +61,6 @@ internal fun MainViewModel.setzeGutscheinFeld(
             pin = pin ?: it.pin,
             betrag = betrag ?: it.betrag,
             waehrung = waehrung ?: it.waehrung,
-            notiz = notiz ?: it.notiz,
         )
     }
 }
@@ -86,7 +85,6 @@ internal fun MainViewModel.bearbeiteGutschein(id: Int) {
             // weiter.
             betrag = if (g.amount % 1.0 == 0.0) g.amount.toLong().toString() else g.amount.toString(),
             waehrung = g.currency,
-            notiz = g.note.orEmpty(),
             // Die Datei bleibt, wie sie ist: Ein Gutschein bekommt sein PDF
             // beim Anlegen. Es nachtraeglich auszutauschen waere ein eigener
             // Vorgang und beantwortet keine Frage, die jemand hat.
@@ -99,7 +97,7 @@ internal fun MainViewModel.bearbeiteGutschein(id: Int) {
 internal fun MainViewModel.leereGutscheinFormular() {
     _gutscheinState.update {
         it.copy(bearbeitet = null, nummer = "", pin = "", betrag = "",
-                waehrung = "CHF", notiz = "", pdfName = null)
+                waehrung = "CHF", pdfName = null)
     }
 }
 
@@ -124,7 +122,7 @@ internal fun MainViewModel.speichereGutschein(uri: android.net.Uri?) {
                 if (betrag == null) { _snackbar.value = text(R.string.vouchers_amount_invalid); return@launch }
                 val r = repo.gutscheine.aendern(bearbeitet, GutscheinRequest(
                     number = s.nummer.trim(), pin = s.pin.trim().ifEmpty { null },
-                    amount = betrag, currency = s.waehrung, note = s.notiz.trim().ifEmpty { null }))
+                    amount = betrag, currency = s.waehrung))
                 behandleGutscheinAntwort(r)
                 return@launch
             }
@@ -148,7 +146,7 @@ internal fun MainViewModel.speichereGutschein(uri: android.net.Uri?) {
                 val r = repo.gutscheine.ausPdf(
                     dateiname = s.pdfName ?: "gutschein.pdf", typ = typ, inhalt = bytes,
                     nummer = s.nummer, pin = s.pin, betrag = s.betrag.replace(',', '.'),
-                    waehrung = s.waehrung, notiz = s.notiz,
+                    waehrung = s.waehrung,
                 )
                 if (r is Result.Success && !r.data.success) {
                     // Der Server hat gelesen, aber zu wenig gefunden (422). Was
@@ -179,7 +177,7 @@ internal fun MainViewModel.speichereGutschein(uri: android.net.Uri?) {
             if (betrag == null) { _snackbar.value = text(R.string.vouchers_amount_invalid); return@launch }
             val r = repo.gutscheine.anlegen(GutscheinRequest(
                 number = s.nummer.trim(), pin = s.pin.trim().ifEmpty { null },
-                amount = betrag, currency = s.waehrung, note = s.notiz.trim().ifEmpty { null }))
+                amount = betrag, currency = s.waehrung))
             behandleGutscheinAntwort(r)
         } finally {
             _gutscheinState.update { it.copy(speichert = false) }
@@ -209,6 +207,19 @@ internal fun MainViewModel.loescheGutschein(id: Int) {
             is Result.Error -> _snackbar.value = meldungFuerSnackbar(r)
         }
     }
+}
+
+/**
+ * Rueckmeldung nach dem Kopieren.
+ *
+ * Das Kopieren selbst macht die Oberflaeche (LocalClipboardManager ist an die
+ * Komposition gebunden, nicht an das ViewModel). Hier steht nur der Satz —
+ * damit er ueber denselben Weg geht wie jede andere Meldung der App und nicht
+ * als zweite Art von Rueckmeldung danebensteht.
+ */
+internal fun MainViewModel.meldeGutscheinKopiert(istNummer: Boolean) {
+    _snackbar.value = text(
+        if (istNummer) R.string.vouchers_copied_number else R.string.vouchers_copied_pin)
 }
 
 /** Das PDF dieses Gutscheins anzeigen — der Graph greift das Ziel ab. */

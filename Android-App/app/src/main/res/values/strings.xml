@@ -663,8 +663,10 @@
     <string name="vouchers_edit">Edit voucher</string>
     <string name="vouchers_number">Voucher number</string>
     <string name="vouchers_pin">PIN</string>
+    <string name="vouchers_copy_hint">Tap the number or PIN to copy it</string>
+    <string name="vouchers_copied_number">Voucher number copied</string>
+    <string name="vouchers_copied_pin">PIN copied</string>
     <string name="vouchers_amount">Amount</string>
-    <string name="vouchers_note">Note</string>
     <string name="vouchers_pick_pdf">Choose PDF</string>
     <string name="vouchers_pdf_chosen">File selected</string>
     <string name="vouchers_pdf_hint">The values are read from it. Anything you fill in yourself wins.</string>

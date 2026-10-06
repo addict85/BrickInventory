@@ -860,18 +860,13 @@
               </div>
             </div>
 
-            <div class="fg">
-              <label for="v-note" data-i18n="vouchers.note">Notiz</label>
-              <input type="text" id="v-note" maxlength="500" />
-            </div>
-
             <!--
               Der PDF-Weg. Wird eine Datei gewählt, liest der SERVER die drei
               Werte heraus; ausgefüllte Felder gewinnen gegen das Gelesene.
               Beides zusammen in einem Formular, weil es ein Vorgang ist:
               „diesen Gutschein erfassen".
             -->
-            <div class="fg">
+            <div class="fg voucher-upload">
               <label for="v-pdf" data-i18n="vouchers.pdf_label">PDF des Gutscheins (optional)</label>
               <input type="file" id="v-pdf" accept="application/pdf" />
               <div style="font-size:.72rem;color:var(--mut);margin-top:3px" data-i18n="vouchers.pdf_hint">Die Werte werden daraus gelesen. Was du selbst einträgst, gilt.</div>
