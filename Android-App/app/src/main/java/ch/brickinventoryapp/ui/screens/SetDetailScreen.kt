@@ -24,7 +24,7 @@ import ch.brickinventoryapp.ui.*  // Feature-Extensions (loadSetDetail, updateQu
 import ch.brickinventoryapp.ui.theme.LocalIsBrickTheme
 import ch.brickinventoryapp.ui.components.ZoomableImageDialog
 import ch.brickinventoryapp.util.resolveFullUrl
-import coil.ImageLoader
+import coil3.ImageLoader
 import ch.brickinventoryapp.ui.theme.Abstaende
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -148,9 +148,10 @@ fun SetDetailScreen(
         // erneut.
         //
         // An setNumber UND imageUrl gebunden: Bei einem Wechsel des Sets oder
-        // der Adresse beginnt die Zählung neu. setParameter macht die zweite
-        // Anfrage für Coil unterscheidbar; ohne das gälte sie als dieselbe,
-        // bereits gescheiterte.
+        // der Adresse beginnt die Zählung neu. memoryCacheKeyExtra macht die
+        // zweite Anfrage für Coil unterscheidbar; ohne das gälte sie als
+        // dieselbe, bereits gescheiterte. (In Coil 2 hiess das setParameter;
+        // Parameter gibt es in Coil 3 nicht mehr.)
         // Als State-Objekt statt per `by`: setDetailHeroImage() setzt den Wert
         // im Fehlerzweig, um Coil zu einem zweiten Anlauf zu bewegen — dafür
         // muss es dasselbe Objekt sein, keine Kopie (Nachtrag 98).

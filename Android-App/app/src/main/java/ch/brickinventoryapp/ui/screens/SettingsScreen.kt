@@ -30,7 +30,7 @@ import ch.brickinventoryapp.R
 import ch.brickinventoryapp.data.model.Preisalarm
 import ch.brickinventoryapp.util.NumericInput
 import ch.brickinventoryapp.util.resolveThumbUrl
-import coil.ImageLoader
+import coil3.ImageLoader
 import ch.brickinventoryapp.util.fmtDatum
 import ch.brickinventoryapp.ui.MainViewModel
 import ch.brickinventoryapp.ui.*  // Feature-Extensions (saveSettings, setLanguage, …)

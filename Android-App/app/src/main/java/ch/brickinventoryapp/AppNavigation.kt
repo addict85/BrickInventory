@@ -13,7 +13,7 @@ import ch.brickinventoryapp.ui.viewmodel.CatalogViewModel
 import ch.brickinventoryapp.nav.toolsGraph
 import ch.brickinventoryapp.ui.*
 import ch.brickinventoryapp.ui.screens.*
-import coil.ImageLoader
+import coil3.ImageLoader
 import ch.brickinventoryapp.R
 import androidx.compose.ui.res.vectorResource
 import androidx.compose.ui.graphics.vector.ImageVector
@@ -40,7 +40,7 @@ fun BrickInventoryManagerApp(
     // Der Katalog haelt seinen Zustand selbst; die Activity haelt beide, damit
     // Liste und Detail dieselbe Instanz sehen (siehe CatalogViewModel).
     katalog: CatalogViewModel,
-    imageLoader: coil.ImageLoader,
+    imageLoader: coil3.ImageLoader,
 ) {
     // collectAsStateWithLifecycle: Collection stoppt, wenn die App im
     // Hintergrund ist — kein unnötiges Recomposition-/State-Processing mehr.

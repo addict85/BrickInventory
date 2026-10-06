@@ -34,9 +34,9 @@ import ch.brickinventoryapp.data.model.Acquisition
 import ch.brickinventoryapp.data.model.BrickColor
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
-import coil.compose.AsyncImage
-import coil.ImageLoader
-import coil.request.ImageRequest
+import coil3.compose.AsyncImage
+import coil3.ImageLoader
+import coil3.request.ImageRequest
 import ch.brickinventoryapp.util.NumericInput
 import ch.brickinventoryapp.ui.theme.Abstaende
 

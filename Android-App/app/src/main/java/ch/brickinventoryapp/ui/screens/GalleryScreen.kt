@@ -50,9 +50,10 @@ import ch.brickinventoryapp.util.fmtInt
 import ch.brickinventoryapp.util.rememberTileImageWithFallback
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
-import coil.compose.AsyncImage
-import coil.ImageLoader
-import coil.request.ImageRequest
+import coil3.compose.AsyncImage
+import coil3.ImageLoader
+import coil3.request.ImageRequest
+import coil3.request.crossfade
 import kotlinx.coroutines.FlowPreview
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.flow.debounce
@@ -413,10 +414,19 @@ fun SetCard(
     //
     // retryNonce ist an setNumber UND imageUrl gebunden: Wird die Kachel
     // wiederverwendet (LazyGrid recycelt) oder ändert sich die Adresse, beginnt
-    // die Zählung neu. setParameter("retry", …) macht die zweite Anfrage für
-    // Coil unterscheidbar — ohne das würde sie als dieselbe (gescheiterte)
-    // Anfrage behandelt. Genau EIN Versuch, damit ein dauerhaft fehlendes Bild
-    // nicht in eine Endlosschleife läuft.
+    // die Zählung neu. memoryCacheKeyExtra("retry", …) macht die zweite
+    // Anfrage für Coil unterscheidbar — ohne das würde sie als dieselbe
+    // (gescheiterte) Anfrage behandelt. Genau EIN Versuch, damit ein dauerhaft
+    // fehlendes Bild nicht in eine Endlosschleife läuft.
+    //
+    // In Coil 2 hiess das `setParameter`. Coil 3 kennt keine Parameter mehr;
+    // NACHGESEHEN in den Quellen von coil-core 3.3.0 ist
+    // `memoryCacheKeyExtra(String, String?)` der Nachfolger für genau diesen
+    // Zweck: Der Wert landet in `MemoryCache.Key(key, extras)`
+    // (MemoryCacheService.kt), und weil ImageRequest `@Poko` ist, geht er auch
+    // in die Gleichheit der Anfrage ein. Beides ist nötig: Das erste sorgt für
+    // den Fehlschlag im Speicher-Cache, das zweite dafür, dass AsyncImage die
+    // Anfrage überhaupt neu stellt.
     var retryNonce by remember(set.setNumber, imageUrl) { mutableStateOf(0) }
     val scope = rememberCoroutineScope()
 
@@ -466,12 +476,12 @@ fun SetCard(
                     if (imageUrl != null) {
                         AsyncImage(
                             model = ImageRequest.Builder(ctx).data(imageUrl)
-                                .setParameter("retry", retryNonce)
+                                .memoryCacheKeyExtra("retry", retryNonce.toString())
                                 .crossfade(true).build(),
                             imageLoader = imageLoader,
                             contentDescription = set.name,
                             onState = { st ->
-                                if (st is coil.compose.AsyncImagePainter.State.Error && retryNonce == 0) {
+                                if (st is coil3.compose.AsyncImagePainter.State.Error && retryNonce == 0) {
                                     // Verzögert, nicht im selben Moment: Direkt nach
                                     // dem Erfassen erzeugt der Server die Vorschau
                                     // erst noch.
@@ -479,7 +489,7 @@ fun SetCard(
                                         kotlinx.coroutines.delay(1000)
                                         retryNonce = 1
                                     }
-                                } else if (st is coil.compose.AsyncImagePainter.State.Error) {
+                                } else if (st is coil3.compose.AsyncImagePainter.State.Error) {
                                     // Auch der zweite Versuch scheiterte — jetzt auf
                                     // die volle Auflösung ausweichen (fehlende
                                     // _thumb-Datei ist der häufigste Grund).

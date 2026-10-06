@@ -64,7 +64,7 @@ fun MerkpostenDetailScreen(
     vm: MainViewModel,
     setNumber: String,
     condition: String,
-    imageLoader: coil.ImageLoader,
+    imageLoader: coil3.ImageLoader,
     onBack: () -> Unit,
 ) {
     val appState by vm.state.collectAsStateWithLifecycle()
@@ -163,7 +163,7 @@ fun MerkpostenDetailScreen(
             verticalArrangement = Arrangement.spacedBy(Abstaende.mittel),
         ) {
             item {
-                coil.compose.AsyncImage(
+                coil3.compose.AsyncImage(
                     model = bildUrl,
                     contentDescription = merkposten.name,
                     imageLoader = imageLoader,

@@ -26,8 +26,8 @@ import ch.brickinventoryapp.ui.screens.*
 import ch.brickinventoryapp.ui.theme.BrickInventoryManagerTheme
 import ch.brickinventoryapp.ui.theme.LocalIsBrickTheme
 import ch.brickinventoryapp.ui.theme.Petrol
-import coil.ImageLoader
-import coil.util.DebugLogger
+import coil3.ImageLoader
+import coil3.util.DebugLogger
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.shape.RoundedCornerShape

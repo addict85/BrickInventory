@@ -109,8 +109,35 @@ graphicsPath                = "1.1.0"   # 16-KB-Versuch, siehe app/build.gradle.
 datastore                   = "1.1.7"   # NICHT auf 1.2.0 heben: dort ist die native Bibliothek wieder 4-KB-ausgerichtet
 appcompat                   = "1.7.0"
 profileinstaller            = "1.4.1"
-coil                        = "2.7.0"
-# 1.11.0 verlangt kotlin-stdlib 2.2.20, liegt also UNTER unseren 2.3.0 —
+# NICHT 3.4.0 und nicht 3.6.3, obwohl es beide gibt. GEMESSEN aus den
+# Gradle-Metadaten:
+#   coil3 3.3.0 → kotlin-stdlib 2.2.0
+#   coil3 3.4.0 → kotlin-stdlib 2.3.10
+#   coil3 3.6.3 → kotlin-stdlib 2.4.10
+#
+# Als 3.3.0 gesetzt wurde, war unser Uebersetzer Kotlin 2.3.0 und 3.3.0
+# damit die hoechste erreichbare. Mit Kotlin 2.3.20 aus #28 waere 3.4.0
+# jetzt moeglich — der Kommentar sagte das voraus, und es trifft zu.
+#
+# Sie bleibt trotzdem auf 3.3.0, und zwar aus einem Grund, der nicht die
+# Zahl ist: Der Sprung von coil 2 auf coil 3 hat 81 Stellen in 30 Dateien
+# angefasst, und zwei Namen darin (OkHttpNetworkFetcherFactory,
+# memoryCacheKeyExtra) wurden erst nach einem roten Lauf in den QUELLEN von
+# 3.3.0 nachgesehen — die Dokumentation nannte die Java-Sicht. Diese
+# Pruefung gilt fuer 3.3.0, nicht fuer 3.4.0. Auf 3.4.0 zu gehen heisst,
+# sie zu wiederholen: eine eigene Aenderung mit eigenem Lauf, keine
+# Nebenwirkung einer Zusammenfuehrung.
+#
+# 3.6.3 ist auf unabsehbare Zeit ausser Reichweite, weil es Kotlin 2.4
+# verlangt. GEMESSEN am 06.10. an der maven-metadata.xml von
+# symbol-processing-gradle-plugin: <latest> und <release> stehen beide auf
+# 2.3.12, und eine KSP-Fassung fuer Kotlin 2.4 gibt es UEBERHAUPT NICHT —
+# null Treffer auf "2.4" in der ganzen Metadatei. Kotlin selbst ist zu
+# diesem Zeitpunkt bei 2.4.20 (stabil) bzw. 2.5.0-Beta1. Der Deckel ist
+# also KSP, nicht Kotlin, und er sitzt hier fest, weil Hilts Codeerzeugung
+# ueber KSP laeuft (app/build.gradle.kts: `ksp(libs.hilt.compiler)`).
+coil                        = "3.3.0"
+# 1.11.0 verlangt kotlin-stdlib 2.2.20, liegt also UNTER unseren 2.3.20 —
 # anders als serialization oben kein Konflikt. Ebenfalls aus den
 # Gradle-Metadaten gelesen, nicht geschaetzt.
 coroutines                  = "1.11.0"
@@ -159,7 +186,11 @@ androidx-work                       = { group = "androidx.work",              na
 androidx-graphics-path              = { group = "androidx.graphics",          name = "graphics-path",                     version.ref = "graphicsPath" }
 androidx-appcompat                  = { group = "androidx.appcompat",         name = "appcompat",                         version.ref = "appcompat" }
 androidx-profileinstaller           = { group = "androidx.profileinstaller",  name = "profileinstaller",                  version.ref = "profileinstaller" }
-coil-compose                        = { group = "io.coil-kt",                 name = "coil-compose",                      version.ref = "coil" }
+coil-compose                        = { group = "io.coil-kt.coil3",           name = "coil-compose",                      version.ref = "coil" }
+# Coil 3 ist mehrplattformfaehig und laedt deshalb NICHT mehr von sich aus
+# aus dem Netz — der Weg ueber http(s) steckt in einem eigenen Artefakt.
+# Ohne das zeigt die App stumm keine Bilder mehr.
+coil-network-okhttp                 = { group = "io.coil-kt.coil3",           name = "coil-network-okhttp",               version.ref = "coil" }
 kotlinx-coroutines-android          = { group = "org.jetbrains.kotlinx",      name = "kotlinx-coroutines-android",        version.ref = "coroutines" }
 androidx-ui-tooling                 = { group = "androidx.compose.ui",        name = "ui-tooling" }
 camerax-core                        = { group = "androidx.camera",            name = "camera-core",                       version.ref = "camerax" }

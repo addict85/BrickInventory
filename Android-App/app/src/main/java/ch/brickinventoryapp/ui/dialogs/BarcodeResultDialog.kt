@@ -30,8 +30,9 @@ import ch.brickinventoryapp.ui.screens.*
 import ch.brickinventoryapp.ui.theme.BrickInventoryManagerTheme
 import ch.brickinventoryapp.ui.theme.LocalIsBrickTheme
 import ch.brickinventoryapp.ui.theme.Petrol
-import coil.ImageLoader
-import coil.util.DebugLogger
+import coil3.ImageLoader
+import coil3.util.DebugLogger
+import coil3.request.crossfade
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -153,8 +154,8 @@ AlertDialog(
             }
             val imgUrl = barcodeState.imageLocal?.let { "${state.serverUrl}$it" } ?: barcodeState.imageUrl
             if (imgUrl != null) {
-                coil.compose.AsyncImage(
-                    model = coil.request.ImageRequest.Builder(androidx.compose.ui.platform.LocalContext.current)
+                coil3.compose.AsyncImage(
+                    model = coil3.request.ImageRequest.Builder(androidx.compose.ui.platform.LocalContext.current)
                         .data(imgUrl).crossfade(true).build(),
                     imageLoader = imageLoader,
                     contentDescription = barcodeState.setName,

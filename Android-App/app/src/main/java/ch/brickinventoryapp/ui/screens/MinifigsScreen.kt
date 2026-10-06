@@ -27,9 +27,9 @@ import ch.brickinventoryapp.util.fmtDatum
 import ch.brickinventoryapp.util.rememberTileImageWithFallback
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
-import coil.compose.AsyncImage
-import coil.ImageLoader
-import coil.request.ImageRequest
+import coil3.compose.AsyncImage
+import coil3.ImageLoader
+import coil3.request.ImageRequest
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -366,7 +366,7 @@ fun MinifigCard(fig: Minifig, serverUrl: String, imageLoader: ImageLoader,
                         imageLoader = imageLoader,
                         contentDescription = fig.figName,
                         onState = { st ->
-                            if (st is coil.compose.AsyncImagePainter.State.Error) onFigImgError()
+                            if (st is coil3.compose.AsyncImagePainter.State.Error) onFigImgError()
                         },
                         modifier = Modifier.fillMaxSize()
                             .clip(Formen.kachelBildEcken),

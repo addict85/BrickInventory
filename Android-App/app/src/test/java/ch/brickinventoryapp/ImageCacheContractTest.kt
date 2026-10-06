@@ -22,8 +22,30 @@ import org.junit.Test
  * wird und die ganze Datei verschluckt.)
  *
  * Die drei Teile gehören zusammen und sind einzeln wertlos:
- *   1. respectCacheHeaders(true) — Coil stellt eine bedingte Anfrage
+ *   1. Coil fragt beim Server nach, statt blind zu behalten — bedingte Anfrage
  *      (If-None-Match mit dem ETag); unverändert → 304, geändert → neue Bytes.
+ *
+ * ── Was Coil 3 daran geändert hat (05.10.) ──────────────────────────────────
+ *
+ * Teil 1 hiess bis dahin `respectCacheHeaders(true)`, und dieser Test suchte
+ * genau diese Zeichenkette. In Coil 3 gibt es sie nicht mehr: Das Verhalten
+ * sitzt am Netzwerk-Fetcher und heisst CacheStrategy.
+ *
+ * NACHGESEHEN in coil-network-core 3.3.0 — es gibt GENAU EINE Implementierung
+ * (internal DefaultCacheStrategy, erreichbar als CacheStrategy.DEFAULT), und
+ * die ist der Vorgabewert. Eine Fassung, die Cache-Köpfe ignoriert, lässt sich
+ * gar nicht mehr hinschreiben; der Rückfall in den Zustand von vor Nachtrag 37
+ * ist damit baulich ausgeschlossen statt nur verboten.
+ *
+ * Teil 1 prüft deshalb jetzt etwas anderes für dieselbe Sache: dass der
+ * Netzwerk-Fetcher überhaupt angesteckt ist. Ohne ihn lädt Coil 3 gar nichts
+ * aus dem Netz — und was nie geladen wird, wird auch nie aufgefrischt.
+ *
+ * WAS DIESER TEST NICHT MEHR KANN, und das soll hier stehen: Er bewies vorher
+ * eine SCHALTERSTELLUNG. Jetzt bezeugt er nur noch, dass der Weg existiert.
+ * Ob DefaultCacheStrategy sich im Einzelnen wie respectCacheHeaders(true)
+ * verhält, steht in ihrem Rumpf, den ich nicht gelesen habe — diese Probe
+ * gehört auf ein Gerät: ein Bild auf dem Server austauschen und nachsehen.
  *   2. ein HTTP-Zwischenspeicher am Bild-Client — ohne ihn gäbe es nichts, aus
  *      dem der Offline-Fall bedient werden könnte.
  *   3. der Rückfall auf FORCE_CACHE bei einer IOException — bewusst am
@@ -48,13 +70,36 @@ class ImageCacheContractTest {
     private val src by lazy { code(read("src/main/java/ch/brickinventoryapp/di/AppModule.kt")) }
 
     @Test
-    fun `Coil beachtet die Cache-Kopfzeilen und fragt beim Server nach`() {
-        assert(src.contains("respectCacheHeaders(true)")) {
-            "Mit respectCacheHeaders(false) liefert Coil ein einmal geladenes Bild auf " +
-                "immer aus dem Plattencache — ein falsches Bild wird nie ersetzt."
+    fun `Coil laedt ueberhaupt aus dem Netz, und damit ueber die Cache-Strategie`() {
+        // ── Der Name ist mit Absicht der KOTLIN-Name ───────────────────
+        //
+        // Diese Zusicherung stand zuerst auf `OkHttpNetworkFetcher.factory(`
+        // — demselben falschen Namen, den auch der Code trug. Damit war sie
+        // gruen und wertlos: Eine Textpruefung, die den Fehler des Codes
+        // wiederholt, kann ihn nicht finden. Gefunden hat ihn erst der
+        // Uebersetzer.
+        //
+        // Nachgesehen in den Quellen von coil-network-okhttp 3.3.0: Die freie
+        // Funktion heisst `OkHttpNetworkFetcherFactory`. `@file:JvmName` und
+        // `@JvmName("factory")` erzeugen daraus NUR fuer Java
+        // `OkHttpNetworkFetcher.factory(...)`.
+        assert(src.contains("OkHttpNetworkFetcherFactory(")) {
+            "Dem ImageLoader fehlt der Netzwerk-Fetcher. Coil 3 kennt http(s) nur " +
+                "ueber dieses Bauteil; ohne es bleibt jede Kachel leer, ohne " +
+                "Fehlermeldung — und ein veraltetes Bild wird nie aufgefrischt, " +
+                "weil ueberhaupt nichts mehr geholt wird."
         }
-        assert(!src.contains("respectCacheHeaders(false)")) {
-            "respectCacheHeaders(false) ist zurück"
+        // Der Client gehoert MIT uebergeben: Nur so haengen Anmeldung,
+        // Zeitgrenzen und der Offline-Rueckfall unten auch am Bild-Weg. Die
+        // Fabrik ohne Argument baut sich einen eigenen Client.
+        assert(!src.contains("OkHttpNetworkFetcherFactory()")) {
+            "Der Netzwerk-Fetcher baut sich einen EIGENEN OkHttpClient. Damit " +
+                "verliert der Bild-Weg den Zwischenspeicher und den " +
+                "FORCE_CACHE-Rueckfall, die weiter unten geprueft werden."
+        }
+        assert(!src.contains("respectCacheHeaders")) {
+            "respectCacheHeaders gibt es in Coil 3 nicht mehr; das Verhalten " +
+                "steckt in der CacheStrategy des Fetchers."
         }
     }
 

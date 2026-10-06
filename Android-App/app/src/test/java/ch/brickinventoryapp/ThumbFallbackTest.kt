@@ -78,7 +78,8 @@ class ThumbFallbackTest {
             "Der Fehlerfall muss den Rückfall auslösen"
         }
         // ── Nachgezogen (Nachtrag 38) ───────────────────────────────────────
-        // Hier standen zwei Verbote: kein `retryNonce`, kein `setParameter`.
+        // Hier standen zwei Verbote: kein `retryNonce`, kein `setParameter`
+        // (das hiess in Coil 2 so; heute `memoryCacheKeyExtra`).
         // Sie stammen aus einer Phase, in der ein Wiederholversuch als
         // wirkungslos verworfen wurde („fragt bei einer echt fehlenden Datei
         // zweimal dieselbe 404 an"). Das galt für den DAMALIGEN Fall.

@@ -223,7 +223,12 @@ class GalleryImageRetryTest {
         assert(src.contains("AsyncImagePainter.State.Error && retryNonce == 0")) {
             "Der Wiederholversuch muss auf GENAU EINMAL begrenzt sein"
         }
-        assert(src.contains(".setParameter(\"retry\", retryNonce)")) {
+        // Coil 3 kennt keine Parameter mehr; nachgesehen in den Quellen von
+        // coil-core 3.3.0 ist memoryCacheKeyExtra der Nachfolger. Geprüft wird
+        // weiter das WAS (ein unterscheidbares Merkmal an der Anfrage), nicht
+        // der Name einer Bibliotheksfunktion — der Name steht hier nur, weil
+        // ein Textvergleich nichts anderes kann.
+        assert(src.contains(".memoryCacheKeyExtra(\"retry\", retryNonce.toString())")) {
             "Die Anfrage braucht ein unterscheidbares Merkmal, sonst könnte Coil " +
             "sie mit dem fehlgeschlagenen Vorgänger verwechseln"
         }
