@@ -7,7 +7,11 @@ mlkitBarcode                = "18.3.1"   # unbundled (Play-Dienste) — siehe 16
 mlkitTextRec                = "16.0.1"   # bundled — liegt IM APK, kein Play-Nachladen
 accompanistPermissions      = "0.37.3"
 
-agp                         = "9.3.2"
+# Gehoben auf 9.4.1, GEMESSEN im Lauf 37536799223 gegen
+# dl.google.com/dl/android/maven2/com/android/application/group-index.xml —
+# aus der Entwicklungsumgebung ist dieses Verzeichnis nicht abrufbar, vom
+# Runner sehr wohl (tools/fassungen-pruefen.py).
+agp                         = "9.4.1"
 # ── Die Nummern der beiden muessen NICHT uebereinstimmen ────────────────
 #
 # Hier stand: „KSP 2.3.7 und hoeher erwartet Kotlin 2.3.20", gelesen aus der
@@ -48,7 +52,11 @@ ksp                         = "2.3.12"
 coreKtx                     = "1.19.1"
 lifecycleRuntimeKtx         = "2.11.0"
 activityCompose             = "1.13.0"
-composeBom                  = "2026.08.00"
+# 2026.09.00, ebenfalls aus dem Lauf 37536799223 gemessen. Die BOM setzt die
+# Fassungen der Compose-Artefakte; graphics-path bleibt davon unberuehrt, weil
+# es direkt festgelegt ist (siehe graphicsPath weiter unten und
+# SixteenKbAlignmentTest).
+composeBom                  = "2026.09.00"
 # Gehoben von 2.59 auf 2.60.1, und zwar NICHT der Neuheit wegen, sondern
 # weil Kotlin 2.4.20 es verlangt. GEMESSEN an den POMs von hilt-compiler:
 #
