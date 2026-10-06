@@ -14,19 +14,37 @@ coreKtx                     = "1.13.1"
 lifecycleRuntimeKtx         = "2.8.6"
 activityCompose             = "1.9.2"
 composeBom                  = "2024.09.03"
+# BLEIBT auf 2.59. Es gibt 2.60.1, und der Sprung sieht nach einer
+# Kleinigkeit aus — ist aber keiner: hilt-compiler 2.60.1 zieht die
+# KSP-API 2.3.7, und die erwartet Kotlin 2.3.20. Unser Paar ist heute
+# Kotlin 2.3.0 + KSP 2.3.6, und das passt zusammen (KSP 2.3.6 erwartet
+# genau 2.3.0). Hilt zu heben heisst also, die ganze Werkzeugkette zu
+# heben — das gehoert in einen eigenen Schritt und nicht hier mit hinein.
 hilt                        = "2.59"
 hiltNavigationCompose       = "1.2.0"
 navigationCompose           = "2.8.3"
 retrofit                    = "2.11.0"
 okhttp                      = "4.12.0"
-kotlinxSerializationJson    = "1.6.3"
+# NICHT auf 1.11.0, obwohl es das gibt — GEMESSEN am 05.10. aus den
+# Gradle-Metadaten der Artefakte selbst:
+#   serialization-json 1.10.0 → kotlin-stdlib 2.3.0
+#   serialization-json 1.11.0 → kotlin-stdlib 2.3.20
+# Unser Compiler ist Kotlin 2.3.0 (siehe `kotlin` oben). Mit 1.11.0 zoege
+# Gradle eine stdlib, die NEUER ist als der Uebersetzer, der sie benutzt —
+# das meldet Kotlin bestenfalls als Warnung und bricht schlimmstenfalls
+# erst an einer entlegenen Stelle ab. 1.10.0 verlangt genau unsere
+# Fassung.
+kotlinxSerializationJson    = "1.10.0"
 retrofitKotlinxSerialization = "1.0.0"
 graphicsPath                = "1.1.0"   # 16-KB-Versuch, siehe app/build.gradle.kts
 datastore                   = "1.1.7"   # NICHT auf 1.2.0 heben: dort ist die native Bibliothek wieder 4-KB-ausgerichtet
 appcompat                   = "1.7.0"
 profileinstaller            = "1.4.1"
 coil                        = "2.7.0"
-coroutines                  = "1.9.0"
+# 1.11.0 verlangt kotlin-stdlib 2.2.20, liegt also UNTER unseren 2.3.0 —
+# anders als serialization oben kein Konflikt. Ebenfalls aus den
+# Gradle-Metadaten gelesen, nicht geschaetzt.
+coroutines                  = "1.11.0"
 # WorkManager fuer den stuendlichen Preisalarm-Abruf. Reine Java-/Kotlin-
 # Bibliothek — sie bringt KEINE native .so mit und beruehrt die
 # 16-KB-Ausrichtung deshalb nicht (siehe INVARIANTEN.md). Room und
