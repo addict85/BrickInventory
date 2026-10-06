@@ -71,7 +71,19 @@ class ImageCacheContractTest {
 
     @Test
     fun `Coil laedt ueberhaupt aus dem Netz, und damit ueber die Cache-Strategie`() {
-        assert(src.contains("OkHttpNetworkFetcher.factory(")) {
+        // ── Der Name ist mit Absicht der KOTLIN-Name ───────────────────
+        //
+        // Diese Zusicherung stand zuerst auf `OkHttpNetworkFetcher.factory(`
+        // — demselben falschen Namen, den auch der Code trug. Damit war sie
+        // gruen und wertlos: Eine Textpruefung, die den Fehler des Codes
+        // wiederholt, kann ihn nicht finden. Gefunden hat ihn erst der
+        // Uebersetzer.
+        //
+        // Nachgesehen in den Quellen von coil-network-okhttp 3.3.0: Die freie
+        // Funktion heisst `OkHttpNetworkFetcherFactory`. `@file:JvmName` und
+        // `@JvmName("factory")` erzeugen daraus NUR fuer Java
+        // `OkHttpNetworkFetcher.factory(...)`.
+        assert(src.contains("OkHttpNetworkFetcherFactory(")) {
             "Dem ImageLoader fehlt der Netzwerk-Fetcher. Coil 3 kennt http(s) nur " +
                 "ueber dieses Bauteil; ohne es bleibt jede Kachel leer, ohne " +
                 "Fehlermeldung — und ein veraltetes Bild wird nie aufgefrischt, " +
@@ -80,7 +92,7 @@ class ImageCacheContractTest {
         // Der Client gehoert MIT uebergeben: Nur so haengen Anmeldung,
         // Zeitgrenzen und der Offline-Rueckfall unten auch am Bild-Weg. Die
         // Fabrik ohne Argument baut sich einen eigenen Client.
-        assert(!src.contains("OkHttpNetworkFetcher.factory()")) {
+        assert(!src.contains("OkHttpNetworkFetcherFactory()")) {
             "Der Netzwerk-Fetcher baut sich einen EIGENEN OkHttpClient. Damit " +
                 "verliert der Bild-Weg den Zwischenspeicher und den " +
                 "FORCE_CACHE-Rueckfall, die weiter unten geprueft werden."

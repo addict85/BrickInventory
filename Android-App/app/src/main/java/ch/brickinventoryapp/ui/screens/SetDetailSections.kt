@@ -550,7 +550,7 @@ fun LazyListScope.setDetailHeroImage(
                 AsyncImage(
                     model = coil3.request.ImageRequest.Builder(LocalContext.current)
                         .data(imageUrl)
-                        .setParameter("retry", detailRetry.intValue)
+                        .memoryCacheKeyExtra("retry", detailRetry.intValue.toString())
                         .crossfade(true)
                         .build(),
                     imageLoader = imageLoader,

@@ -510,14 +510,21 @@ object AppModule {
             // der dazugesteckt wird. Ohne diese Zeile laedt die App stumm
             // keine Bilder mehr — kein Fehler, nur leere Flaechen.
             //
-            // NACHGESEHEN in coil-network-okhttp 3.3.0: Die Fabrik ist dort
-            // eine FUNKTION, `OkHttpNetworkFetcher.factory(Call.Factory)`,
-            // keine Klasse. Unser OkHttpClient ist eine Call.Factory.
+            // NACHGESEHEN in den Quellen von coil-network-okhttp 3.3.0: Die
+            // Fabrik ist eine freie FUNKTION, keine Klasse —
+            // `OkHttpNetworkFetcherFactory(Call.Factory)`. Unser OkHttpClient
+            // IST eine Call.Factory, deshalb greift diese Ueberladung.
+            //
+            // `OkHttpNetworkFetcher.factory(...)` waere falsch: Die Datei
+            // tragt `@file:JvmName("OkHttpNetworkFetcher")` und die Funktion
+            // `@JvmName("factory")`. Das ist die Sicht von JAVA aus. Von
+            // Kotlin aus gibt es diese Klasse nicht, und genau daran ist der
+            // erste Uebersetzungsversuch gescheitert.
             //
             // Der Client ist derselbe wie zuvor — mit ihm bleiben
             // Authentifizierung, Zeitgrenzen und der Offline-Interceptor am
             // Bild-Weg genauso haengen wie bisher.
-            .components { add(coil3.network.okhttp.OkHttpNetworkFetcher.factory(client)) }
+            .components { add(coil3.network.okhttp.OkHttpNetworkFetcherFactory(client)) }
             .memoryCache {
                 // Builder() ohne Context in Coil 3; der Context wandert an
                 // maxSizePercent, weil nur dort der Speicher des Geraets

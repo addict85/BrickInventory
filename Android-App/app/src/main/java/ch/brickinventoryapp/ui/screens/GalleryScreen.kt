@@ -414,10 +414,19 @@ fun SetCard(
     //
     // retryNonce ist an setNumber UND imageUrl gebunden: Wird die Kachel
     // wiederverwendet (LazyGrid recycelt) oder ändert sich die Adresse, beginnt
-    // die Zählung neu. setParameter("retry", …) macht die zweite Anfrage für
-    // Coil unterscheidbar — ohne das würde sie als dieselbe (gescheiterte)
-    // Anfrage behandelt. Genau EIN Versuch, damit ein dauerhaft fehlendes Bild
-    // nicht in eine Endlosschleife läuft.
+    // die Zählung neu. memoryCacheKeyExtra("retry", …) macht die zweite
+    // Anfrage für Coil unterscheidbar — ohne das würde sie als dieselbe
+    // (gescheiterte) Anfrage behandelt. Genau EIN Versuch, damit ein dauerhaft
+    // fehlendes Bild nicht in eine Endlosschleife läuft.
+    //
+    // In Coil 2 hiess das `setParameter`. Coil 3 kennt keine Parameter mehr;
+    // NACHGESEHEN in den Quellen von coil-core 3.3.0 ist
+    // `memoryCacheKeyExtra(String, String?)` der Nachfolger für genau diesen
+    // Zweck: Der Wert landet in `MemoryCache.Key(key, extras)`
+    // (MemoryCacheService.kt), und weil ImageRequest `@Poko` ist, geht er auch
+    // in die Gleichheit der Anfrage ein. Beides ist nötig: Das erste sorgt für
+    // den Fehlschlag im Speicher-Cache, das zweite dafür, dass AsyncImage die
+    // Anfrage überhaupt neu stellt.
     var retryNonce by remember(set.setNumber, imageUrl) { mutableStateOf(0) }
     val scope = rememberCoroutineScope()
 
@@ -467,7 +476,7 @@ fun SetCard(
                     if (imageUrl != null) {
                         AsyncImage(
                             model = ImageRequest.Builder(ctx).data(imageUrl)
-                                .setParameter("retry", retryNonce)
+                                .memoryCacheKeyExtra("retry", retryNonce.toString())
                                 .crossfade(true).build(),
                             imageLoader = imageLoader,
                             contentDescription = set.name,
