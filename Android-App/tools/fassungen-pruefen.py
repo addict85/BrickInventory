@@ -196,6 +196,36 @@ def main():
     for ref, ist, warum in unklar:
         print("  %-30s %-14s %s" % (ref, ist, warum))
 
+    # ── Derselbe Befund als Annotation ──────────────────────────────────────
+    #
+    # Ein Bericht, der nur im Log steht, liest sich niemand: Das Log dieses
+    # Laufs hat ueber tausend Zeilen, und der Bericht liegt irgendwo in der
+    # Mitte. Eine Annotation steht oben auf der Lauf-Seite und ist ueber die
+    # API einzeln abrufbar, ohne das ganze Log zu holen.
+    #
+    # ALLES in EINER Annotation, nicht eine je Bibliothek: GitHub zeigt je
+    # Schritt und Stufe hoechstens zehn an und verschluckt den Rest
+    # stillschweigend — bei rund dreissig Fassungen waere der Bericht damit
+    # unvollstaendig, ohne dass es jemand saehe. %0A ist der Zeilenumbruch
+    # innerhalb einer Annotation.
+    def zeilen(titel, eintraege):
+        return [titel] + ["  " + e for e in eintraege]
+
+    offen = []
+    offen += zeilen("HINTERHER:", ["%s %s -> %s" % (r, i, n) for r, i, n in hinterher]) if hinterher else []
+    offen += zeilen("VORAUS (eingetragen > hoechste stabile):",
+                    ["%s %s, Verzeichnis kennt %s" % (r, i, n) for r, i, n in voraus]) if voraus else []
+    offen += zeilen("UNKLAR (nicht gemessen):",
+                    ["%s %s — %s" % (r, i, w) for r, i, w in unklar]) if unklar else []
+    if offen:
+        print("::warning title=Fassungen::" + "%0A".join(offen))
+    else:
+        print("::notice title=Fassungen::Jede gemessene Fassung ist die "
+              "hoechste stabile.")
+    print("::notice title=Fassungen gemessen::aktuell %d, hinterher %d, "
+          "voraus %d, unklar %d"
+          % (len(aktuell), len(hinterher), len(voraus), len(unklar)))
+
     # Selbstnachweis gegen die stille Null: Misst das Werkzeug gar nichts —
     # kein Netz, falsche Datei —, stuenden oben vier leere Listen und der
     # Bericht saehe aus wie „nichts zu tun".
