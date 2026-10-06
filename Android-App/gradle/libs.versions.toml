@@ -23,7 +23,15 @@ composeBom                  = "2024.09.03"
 hilt                        = "2.59"
 hiltNavigationCompose       = "1.2.0"
 navigationCompose           = "2.8.3"
-retrofit                    = "2.11.0"
+# NACHGESEHEN in der POM von 3.0.0: Retrofit 3 haengt selbst an okhttp
+# 4.12.0 und kotlin-stdlib 2.1.21 — beides unter unserem Stand, also kein
+# Zwang zu okhttp 5 und kein Konflikt mit Kotlin 2.3.0.
+#
+# Der Konverter (retrofitKotlinxSerialization) bleibt auf 1.0.0: Eine
+# neuere gibt es nicht, und seine POM nennt retrofit 2.9.0 als Mindestmass.
+# Die benutzte Stelle ist asConverterFactory() auf einer Converter.Factory,
+# und die Schnittstelle ist in Retrofit 3 unveraendert.
+retrofit                    = "3.0.0"
 okhttp                      = "4.12.0"
 # NICHT auf 1.11.0, obwohl es das gibt — GEMESSEN am 05.10. aus den
 # Gradle-Metadaten der Artefakte selbst:
