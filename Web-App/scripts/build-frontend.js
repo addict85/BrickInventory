@@ -42,7 +42,7 @@ const PUBLIC = path.join(ROOT, 'public');
  * Installation aufruft, und sollte deshalb mit package.json übereinstimmen
  * (test/build-tooling.test.js prüft das).
  */
-const ESBUILD_VERSION = '0.25.12';
+const ESBUILD_VERSION = '0.28.2';
 
 /** Einstiegspunkt — importiert alle Teile in der bisherigen Reihenfolge. */
 const ENTRY   = 'js/main.js';
