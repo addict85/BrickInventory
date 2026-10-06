@@ -113,6 +113,8 @@ class StringResourceParityTest {
             "nav_minifigs_short", "nav_monitoring", "partslist_ok", "partslist_rb_prefix",
             "partslist_scan", "settings_current_summary", "setup_build",
             "setup_url_placeholder",
+            // PIN ist in beiden Sprachen PIN — ein Begriff, kein Satz.
+            "vouchers_pin",
         )
 
         val en = texte("values/strings.xml")

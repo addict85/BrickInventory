@@ -157,6 +157,7 @@ class BrickRepository @Inject constructor(
     val finanzen: FinanzenRepository,
     val haushalt: HaushaltRepository,
     val admin: AdminRepository,
+    val gutscheine: GutscheineRepository,
     private val cache: ResponseCache,
 ) {
 

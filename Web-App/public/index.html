@@ -804,6 +804,87 @@
         </div>
       </div>
 
+      <!-- ── GUTSCHEINE ───────────────────────────────────────────────────── -->
+      <!--
+        Marcos Vorgabe: „Im Eigenen Profil sollen Lego-Gutscheine mit
+        Gutscheinnummer und Pins und Betrag hinterlegt werden können […]
+        möglichst einfach erreichbar."
+
+        Deshalb hier, direkt unter den Profil-Einstellungen, und nicht in
+        einem eigenen Reiter: Es gehört zu dem, was einem selbst gehört.
+      -->
+      <div class="sgroup-label" data-i18n="vouchers.group">🎟️ Gutscheine</div>
+
+      <div class="ssec" style="margin-bottom:1.25rem" id="vouchers-card">
+        <div class="sform">
+
+          <div id="vouchers-list" class="voucher-list"></div>
+          <div class="voucher-total-row">
+            <span style="color:var(--mut)" data-i18n="vouchers.total">Summe</span>
+            <strong id="vouchers-total"></strong>
+          </div>
+
+          <div style="border-top:1px solid var(--bdr);padding-top:13px">
+            <div style="font-size:.73rem;font-weight:700;text-transform:uppercase;letter-spacing:.6px;color:var(--mut);margin-bottom:.6rem"
+                 id="vouchers-form-title" data-i18n="vouchers.add">Gutschein hinzufügen</div>
+
+            <div class="sgrid2" style="gap:.75rem">
+              <div class="fg">
+                <label for="v-number" data-i18n="vouchers.number">Gutscheinnummer</label>
+                <input type="text" id="v-number" inputmode="numeric" autocomplete="off" />
+              </div>
+              <div class="fg">
+                <label for="v-pin" data-i18n="vouchers.pin">PIN</label>
+                <input type="text" id="v-pin" inputmode="numeric" autocomplete="off" />
+              </div>
+            </div>
+
+            <div class="sgrid2" style="gap:.75rem">
+              <div class="fg">
+                <label for="v-amount" data-i18n="vouchers.amount">Betrag</label>
+                <input type="number" id="v-amount" step="0.01" min="0" inputmode="decimal" />
+              </div>
+              <div class="fg">
+                <label for="v-currency" data-i18n="settings.currency">Währung</label>
+                <select id="v-currency">
+                  <option value="CHF">CHF</option>
+                  <option value="EUR">EUR</option>
+                  <option value="USD">USD</option>
+                  <option value="GBP">GBP</option>
+                  <option value="SEK">SEK</option>
+                  <option value="NOK">NOK</option>
+                  <option value="AUD">AUD</option>
+                  <option value="CAD">CAD</option>
+                  <option value="DKK">DKK</option>
+                </select>
+              </div>
+            </div>
+
+            <div class="fg">
+              <label for="v-note" data-i18n="vouchers.note">Notiz</label>
+              <input type="text" id="v-note" maxlength="500" />
+            </div>
+
+            <!--
+              Der PDF-Weg. Wird eine Datei gewählt, liest der SERVER die drei
+              Werte heraus; ausgefüllte Felder gewinnen gegen das Gelesene.
+              Beides zusammen in einem Formular, weil es ein Vorgang ist:
+              „diesen Gutschein erfassen".
+            -->
+            <div class="fg">
+              <label for="v-pdf" data-i18n="vouchers.pdf_label">PDF des Gutscheins (optional)</label>
+              <input type="file" id="v-pdf" accept="application/pdf" />
+              <div style="font-size:.72rem;color:var(--mut);margin-top:3px" data-i18n="vouchers.pdf_hint">Die Werte werden daraus gelesen. Was du selbst einträgst, gilt.</div>
+            </div>
+
+            <div style="display:flex;gap:.5rem;align-items:center;margin-top:.5rem">
+              <button class="btn bp" data-click="gutscheinSpeichern">💾 <span data-i18n="settings.save">Speichern</span></button>
+              <button class="btn" id="v-cancel" data-click="gutscheinAbbrechen" style="display:none" data-i18n="common.cancel">Abbrechen</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
       <!-- ── PREISALARME: ALLE AUF EINEN BLICK ───────────────────────────── -->
       <!--
         Marcos Frage vom 25.09.: „Wie finde ich alle Preisalarme?" — bis hierher

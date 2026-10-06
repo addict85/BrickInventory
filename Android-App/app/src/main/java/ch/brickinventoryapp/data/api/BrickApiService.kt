@@ -911,4 +911,58 @@ interface BrickApiService {
 
     @GET("api/v1/catalog/sets/{setNumber}")
     suspend fun getCatalogSetDetail(@Path("setNumber") setNumber: String): Response<CatalogSetDetailResponse>
+
+    // ── Gutscheine (LEGO-Geschenkkarten im eigenen Profil) ───────────────────
+    //
+    // DIESELBEN Adressen, die auch die Webapp ruft — Marcos Vorgabe „beide
+    // Apps sollen die gleichen Services des Backends verwenden". Der Server
+    // hat dafuer genau einen Router (routes/api_v1/vouchers.ts); requireToken
+    // dort nimmt Sitzungscookie UND Bearer-Token an, deshalb braucht es hier
+    // keinen eigenen Weg.
+    //
+    // Gutscheine sind streng eigentuemergebunden: kein Haushalts-Blickfeld,
+    // kein Admin-Durchgriff. Deshalb gibt es hier auch keinen
+    // `accounts`-Parameter wie bei Sets oder der Merkliste — es gaebe nichts
+    // zu waehlen.
+    @GET("api/v1/vouchers")
+    suspend fun getGutscheine(): Response<GutscheinListe>
+
+    @POST("api/v1/vouchers")
+    suspend fun legeGutscheinAn(@Body request: GutscheinRequest): Response<GutscheinAntwort>
+
+    @PUT("api/v1/vouchers/{id}")
+    suspend fun aendereGutschein(
+        @Path("id") id: Int,
+        @Body request: GutscheinRequest,
+    ): Response<GutscheinAntwort>
+
+    @DELETE("api/v1/vouchers/{id}")
+    suspend fun loescheGutschein(@Path("id") id: Int): Response<GenericResponse>
+
+    /**
+     * Einen Gutschein aus seinem PDF anlegen.
+     *
+     * Die vier Werte duerfen MITGESCHICKT werden; was mitkommt, gewinnt gegen
+     * das aus dem PDF Gelesene. Damit deckt derselbe Aufruf beide Faelle ab:
+     * „alles im PDF" und „PDF plus Nachtrag von Hand". Gibt das PDF zu wenig
+     * her, antwortet der Server mit 422 und dem, was er lesen konnte.
+     *
+     * Die Teile sind optional (`RequestBody?`), weil ein LEERES Feld das
+     * Gelesene ueberschreiben wuerde — mit nichts.
+     */
+    @Multipart
+    @POST("api/v1/vouchers/pdf")
+    suspend fun ladeGutscheinPdfHoch(
+        @retrofit2.http.Part datei: okhttp3.MultipartBody.Part,
+        @retrofit2.http.Part("number") nummer: okhttp3.RequestBody? = null,
+        @retrofit2.http.Part("pin") pin: okhttp3.RequestBody? = null,
+        @retrofit2.http.Part("amount") betrag: okhttp3.RequestBody? = null,
+        @retrofit2.http.Part("currency") waehrung: okhttp3.RequestBody? = null,
+        @retrofit2.http.Part("note") notiz: okhttp3.RequestBody? = null,
+    ): Response<GutscheinAntwort>
+
+    // Eine Methode fuer `GET /vouchers/{id}/pdf` steht hier mit Absicht NICHT:
+    // Das PDF holt der PdfViewerScreen selbst ueber seine Adresse, mit dem
+    // angemeldeten Client der App. Siehe gutscheinPdfAdresse() in
+    // ui/GutscheinFeature.kt.
 }

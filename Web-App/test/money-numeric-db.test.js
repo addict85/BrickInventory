@@ -25,12 +25,24 @@ process.env.WEB_WORKERS = '1';
 const _req = require('./helpers/sources').buildAndRequire();
 const db   = _req('db/database.js');
 
-/** Alle Spalten, die Geld führen — Name endet auf _price. */
+/**
+ * Alle Spalten, die Geld führen.
+ *
+ * Bis zu den Gutscheinen hiess das: Name endet auf `_price`. `vouchers.amount`
+ * führt aber genauso Geld und wäre durch dieses Netz gefallen — eine neue
+ * Geldspalte wäre damit ungeprüft als REAL anlegbar gewesen, und genau davor
+ * schützt dieser Test.
+ *
+ * Deshalb steht `amount` jetzt daneben. GEMESSEN beim Hinzufügen: Vor den
+ * Gutscheinen gab es im ganzen Schema keine einzige Spalte mit „amount" im
+ * Namen, das Muster fängt also nichts Fremdes ein.
+ */
 const GELDSPALTEN = `
   SELECT table_name || '.' || column_name AS spalte, data_type
     FROM information_schema.columns
    WHERE table_schema = 'public'
-     AND (column_name LIKE '%\\_price' OR column_name LIKE '%\\_price\\_%')
+     AND (column_name LIKE '%\\_price' OR column_name LIKE '%\\_price\\_%'
+          OR column_name = 'amount' OR column_name LIKE '%\\_amount')
    ORDER BY 1`;
 
 test('Geldbeträge sind exakt', { concurrency: 1 }, async (t) => {

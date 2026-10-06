@@ -5,6 +5,7 @@ import ch.brickinventoryapp.data.cache.ResponseCache
 import ch.brickinventoryapp.data.repository.AdminRepository
 import ch.brickinventoryapp.data.repository.BrickRepository
 import ch.brickinventoryapp.data.repository.FinanzenRepository
+import ch.brickinventoryapp.data.repository.GutscheineRepository
 import ch.brickinventoryapp.data.repository.HaushaltRepository
 import ch.brickinventoryapp.data.repository.SetsRepository
 import ch.brickinventoryapp.data.repository.TeileRepository
@@ -84,10 +85,25 @@ class MonitoringViewModelVerhaltenTest {
             .build()
             .create(BrickApiService::class.java)
         val cache = ResponseCache { cacheDir }
+        // ── BENANNT und nicht nach Stellung ──────────────────────────────
+        //
+        // Hier standen die sechs Teile positionsweise. Als BrickRepository ein
+        // siebtes bekam (GutscheineRepository, eingefuegt VOR `cache`), rutschte
+        // alles dahinter um eins — und der Uebersetzer meldete „actual type is
+        // 'ResponseCache', but 'GutscheineRepository' was expected". Gefunden
+        // hat das die Action, nicht diese Datei.
+        //
+        // Mit Namen ist die Reihenfolge gleichgueltig: Das naechste Teil kommt
+        // dazu, ohne dass hier etwas bricht — und faellt eines WEG, bricht es
+        // sofort und an der richtigen Stelle.
         vm = MonitoringViewModel(BrickRepository(
-            SetsRepository(api, cache), TeileRepository(api, cache),
-            FinanzenRepository(api, cache), HaushaltRepository(api, cache),
-            AdminRepository(api, cache), cache,
+            sets = SetsRepository(api, cache),
+            teile = TeileRepository(api, cache),
+            finanzen = FinanzenRepository(api, cache),
+            haushalt = HaushaltRepository(api, cache),
+            admin = AdminRepository(api, cache),
+            gutscheine = GutscheineRepository(api, cache),
+            cache = cache,
         ))
     }
 

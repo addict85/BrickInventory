@@ -966,6 +966,61 @@ data class MeldungsZielUiState(
     val setNummer: String? = null,
 )
 
+/**
+ * Gutscheine — LEGO-Geschenkkarten im eigenen Profil.
+ *
+ * ── Marcos Vorgabe ──────────────────────────────────────────────────────────
+ *
+ *   „Im Eigenen Profil sollen Lego-Gutscheine mit Gutscheinnummer und Pins und
+ *    Betrag hinterlegt werden können. […] möglichst einfach erreichbar."
+ *
+ * Deshalb steht die Liste in den EINSTELLUNGEN, beim Profil — nicht in einem
+ * eigenen Reiter. Genau wie in der Webapp.
+ *
+ * ── Warum die sichtbaren PINs im Zustand stehen ─────────────────────────────
+ *
+ * Der PIN ist standardmaessig verdeckt und wird je Zeile einzeln aufgedeckt.
+ * Nicht aus Sicherheitsglauben — wer den Bildschirm sieht, ist angemeldet —,
+ * sondern gegen die Schulter daneben: Eine Liste mit allen PINs im Klartext
+ * ist das, was man nicht versehentlich herumzeigen will.
+ *
+ * Als Menge und nicht als Feld am Gutschein: Der Gutschein kommt vom Server
+ * und soll genau das bleiben, was dort steht. Was die ANZEIGE gerade aufdeckt,
+ * ist ein Zustand der Oberflaeche.
+ */
+data class GutscheinUiState(
+    val gutscheine: List<ch.brickinventoryapp.data.model.Gutschein> = emptyList(),
+    val laedt: Boolean = false,
+    /** ids, deren PIN gerade im Klartext steht. */
+    val pinSichtbar: Set<Int> = emptySet(),
+    /** Der Gutschein, der gerade bearbeitet wird; null = neuer Eintrag. */
+    val bearbeitet: Int? = null,
+    // ── Die Formularfelder ──────────────────────────────────────────────────
+    //
+    // Als Zeichenketten, auch der Betrag: Waehrend des Tippens ist „12," weder
+    // eine Zahl noch ein Fehler. Umgewandelt wird beim Speichern, und was sich
+    // nicht umwandeln laesst, weist der SERVER ab — dieselbe Pruefung fuer
+    // beide Apps (pruefeWerte in routes/api_v1/vouchers.ts).
+    val nummer: String = "",
+    val pin: String = "",
+    val betrag: String = "",
+    val waehrung: String = "CHF",
+    val notiz: String = "",
+    /** Die gewaehlte PDF-Datei, solange sie noch nicht hochgeladen ist. */
+    val pdfName: String? = null,
+    /**
+     * Welcher Gutschein sein PDF zeigen soll — oder null.
+     *
+     * Hier und nicht als Rueckruf-Parameter von SettingsScreen: Der Bildschirm
+     * darf hoechstens sechs Parameter haben (ScreenViewModelWiringTest), und
+     * ein siebter waere genau die breite Signatur, gegen die diese Regel
+     * gebaut ist. Verbraucht wird das Ziel im Navigationsgraphen — nur der
+     * kennt den NavController —, derselbe Weg wie bei MeldungsZielUiState.
+     */
+    val pdfZiel: Int? = null,
+    val speichert: Boolean = false,
+)
+
 data class MerklisteUiState(
     val merkposten: List<ch.brickinventoryapp.data.model.Merkposten> = emptyList(),
     val laedt: Boolean = false,

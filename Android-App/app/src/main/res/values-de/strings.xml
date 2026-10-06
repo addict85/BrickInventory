@@ -640,4 +640,28 @@
     <string name="alerts_bad_value">Die Schwelle muss grösser als 0 sein.</string>
     <string name="alerts_delete">Preisalarm entfernen</string>
     <string name="alerts_confirm_delete">Preisalarm für %1$s wirklich entfernen?</string>
+
+    <!-- Gutscheine (LEGO-Geschenkkarten im eigenen Profil) -->
+    <string name="vouchers_title">Gutscheine</string>
+    <string name="vouchers_empty">Noch keine Gutscheine hinterlegt.</string>
+    <string name="vouchers_total">Summe</string>
+    <string name="vouchers_add">Gutschein hinzufügen</string>
+    <string name="vouchers_edit">Gutschein ändern</string>
+    <string name="vouchers_number">Gutscheinnummer</string>
+    <string name="vouchers_pin">PIN</string>
+    <string name="vouchers_amount">Betrag</string>
+    <string name="vouchers_note">Notiz</string>
+    <string name="vouchers_pick_pdf">PDF wählen</string>
+    <string name="vouchers_pdf_chosen">Datei gewählt</string>
+    <string name="vouchers_pdf_hint">Die Werte werden daraus gelesen. Was du selbst einträgst, gilt.</string>
+    <string name="vouchers_pdf_open">PDF öffnen</string>
+    <string name="vouchers_pin_show">PIN anzeigen</string>
+    <string name="vouchers_pin_hide">PIN verbergen</string>
+    <string name="vouchers_delete_confirm">Gutschein %1$s wirklich löschen? Das hinterlegte PDF wird mit gelöscht.</string>
+    <string name="vouchers_saved">Gutschein gespeichert</string>
+    <string name="vouchers_deleted">Gutschein gelöscht</string>
+    <string name="vouchers_save_error">Gutschein konnte nicht gespeichert werden</string>
+    <string name="vouchers_amount_invalid">Bitte einen gültigen Betrag eingeben</string>
+    <string name="vouchers_only_pdf">Es lassen sich nur PDF-Dateien lesen</string>
+    <string name="vouchers_pdf_incomplete">Aus dem PDF liessen sich nicht alle Werte lesen. Bitte ergänzen und erneut speichern.</string>
 </resources>

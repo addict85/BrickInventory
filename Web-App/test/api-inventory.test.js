@@ -274,6 +274,23 @@ const C = {
   'POST /api/v1/wanted': 'nur-v1',
   'DELETE /api/v1/wanted/:setNumber/:condition': 'nur-v1',
   'POST /api/v1/wanted/:setNumber/:condition/uebernehmen': 'nur-v1',
+
+  // ── Gutscheine ───────────────────────────────────────────────────────────
+  //
+  // Durchweg `nur-v1`, und zwar auf Marcos ausdrueckliche Vorgabe: „Bitte die
+  // Login jeweils nur 1x im Backend bauen. Beide Apps sollen die gleichen
+  // Services des Backends verwenden." Es gibt deshalb KEINEN Zwilling unter
+  // routes/ — die Webapp ruft dieselben Adressen wie die Android-App, und
+  // requireToken nimmt Sitzungscookie wie Bearer-Token.
+  'GET /api/v1/vouchers': 'nur-v1',
+  'POST /api/v1/vouchers': 'nur-v1',
+  'POST /api/v1/vouchers/pdf': 'nur-v1',
+  'PUT /api/v1/vouchers/:id': 'nur-v1',
+  'DELETE /api/v1/vouchers/:id': 'nur-v1',
+  // Die PDF-Ausgabe ruft die Android-App nicht ueber Retrofit, sondern ueber
+  // die Adresse im PdfViewerScreen (derselbe angemeldete OkHttpClient). Fuer
+  // dieses Inventar ist das derselbe Fall: eine Umsetzung, beide Apps.
+  'GET /api/v1/vouchers/:id/pdf': 'nur-v1',
   // Der Inhaberwechsel (Marcos „auf dem Detail-Dialog kann der Inhaber nicht
   // geaendert werden"). Ebenfalls nur-v1: Beide Oberflaechen rufen dieselbe
   // Adresse. Die Regel dahinter — Aufnahmedatum bleibt, Preisalarm zieht mit,

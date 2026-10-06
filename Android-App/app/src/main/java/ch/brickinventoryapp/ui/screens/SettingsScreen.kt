@@ -102,6 +102,7 @@ fun SettingsScreen(
     // darueber — UiStateFieldsTest bestimmt den Typ je Name und Datei.
     val kontoZustand by vm.kontoState.collectAsStateWithLifecycle()
     val csvZustand by vm.csvHochladenState.collectAsStateWithLifecycle()
+    val gutscheinZustand by vm.gutscheinState.collectAsStateWithLifecycle()
 
     // Einmal beim Betreten laden. LaunchedEffect(Unit) und nicht bei jedem
     // Neuzeichnen: Die Liste aendert sich nur, wenn sich ein Geraet an- oder
@@ -272,6 +273,23 @@ fun SettingsScreen(
             onMeldungWeg = { vm.kontoMeldungWeg() },
         )
 
+        // Gutscheine direkt nach dem Konto: Marcos „möglichst einfach
+        // erreichbar" — sie gehoeren zu dem, was einem selbst gehoert.
+        GutscheineCard(
+            zustand = gutscheinZustand,
+            onFeld = { n, p, b, w, no -> vm.setzeGutscheinFeld(n, p, b, w, no) },
+            onPinSchalten = { vm.schalteGutscheinPin(it) },
+            onBearbeiten = { vm.bearbeiteGutschein(it) },
+            onAbbrechen = { vm.leereGutscheinFormular() },
+            onSpeichern = { vm.speichereGutschein(it) },
+            onLoeschen = { vm.loescheGutschein(it) },
+            // Kein Rueckruf von aussen: Der Bildschirm darf hoechstens sechs
+            // Parameter haben (ScreenViewModelWiringTest). Das Ziel wandert
+            // deshalb durch den Zustand, und der Graph navigiert — siehe
+            // GutscheinUiState.pdfZiel.
+            onPdfOeffnen = { vm.oeffneGutscheinPdf(it) },
+        )
+
         CsvImportCard(
             csvZustand = csvZustand,
             onDatei = { art, uri -> vm.ladeCsvHoch(art, uri) },
@@ -373,8 +391,16 @@ fun SettingsScreen(
     }
 }
 
+/**
+ * Der Rahmen einer Einstellungs-Rubrik.
+ *
+ * `internal` statt `private`: GutscheineCard.kt steht in einer eigenen Datei
+ * (SettingsScreen.kt hat schon 1448 Zeilen) und braucht denselben Rahmen. Eine
+ * zweite Fassung dort haette genuegt, damit die eine Karte anders aussieht als
+ * alle anderen — und zwar erst dann, wenn jemand hier etwas aendert.
+ */
 @Composable
-private fun SettingsCard(
+internal fun SettingsCard(
     title: String,
     icon: androidx.compose.ui.graphics.vector.ImageVector,
     content: @Composable ColumnScope.() -> Unit

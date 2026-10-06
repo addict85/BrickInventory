@@ -38,6 +38,7 @@ import './13-acquisition-modals.js';
 import './14-scope.js';
 import './15-scrollbar.js';
 import './16-merkliste.js';
+import './17-gutscheine.js';
 
 // ── Start ────────────────────────────────────────────────────────────────────
 // Erst NACH der Auswertung aller Module. Vorher lag der Aufruf im Rumpf von

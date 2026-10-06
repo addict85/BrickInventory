@@ -197,6 +197,26 @@ fun NavGraphBuilder.toolsGraph(
             // Aufwand ohne Nutzen.
             LaunchedEffect(state.serverUrl) { if (state.serverUrl.isNotBlank()) vm.loadHouseholdStatus() }
             LaunchedEffect(state.serverUrl) { if (state.serverUrl.isNotBlank()) vm.loadSettings() }
+            // Dieselbe Stelle wie die beiden darueber: Gutscheine werden beim
+            // Oeffnen der Einstellungen geholt, nicht im Dauerabo. Sie aendern
+            // sich ausserhalb dieser Ansicht nicht.
+            LaunchedEffect(state.serverUrl) { if (state.serverUrl.isNotBlank()) vm.ladeGutscheine() }
+            // Ein angetipptes Gutschein-PDF: Das Ziel steht im Zustand, die
+            // Navigation macht der Graph — SettingsScreen darf dafuer keinen
+            // siebten Parameter bekommen (ScreenViewModelWiringTest). Derselbe
+            // Weg wie beim Meldungsziel in AppNavigation.kt.
+            //
+            // Der Betrachter ist der vorhandene PdfViewerScreen: Er laedt die
+            // Adresse mit dem angemeldeten Client der App und kann drucken und
+            // speichern.
+            val gutscheine by vm.gutscheinState.collectAsStateWithLifecycle()
+            LaunchedEffect(gutscheine.pdfZiel) {
+                val id = gutscheine.pdfZiel ?: return@LaunchedEffect
+                val nummer = gutscheine.gutscheine.find { it.id == id }?.number.orEmpty()
+                navController.navigate(Screen.PdfViewer.createRoute(
+                    ch.brickinventoryapp.ui.gutscheinPdfAdresse(state.serverUrl, id), nummer))
+                vm.gutscheinPdfQuittieren()
+            }
             ReiterGeruest(stringResource(R.string.nav_settings), vm, navController, bottomNavItems, snackbarHostState) {
                 ch.brickinventoryapp.ui.ScrollPositionKeeper(
                     "settings", settingsScrollState, vm.scrollMemory)
