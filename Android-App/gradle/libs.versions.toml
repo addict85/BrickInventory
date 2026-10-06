@@ -8,46 +8,66 @@ mlkitTextRec                = "16.0.1"   # bundled — liegt IM APK, kein Play-N
 accompanistPermissions      = "0.34.0"
 
 agp                         = "9.2.1"
-# ── Die beiden gehoeren ZUSAMMEN und werden nie einzeln gehoben ─────────
+# ── Die Nummern der beiden muessen NICHT uebereinstimmen ────────────────
 #
-# GEMESSEN aus den POMs von symbol-processing-api (05.10.):
-#   KSP 2.3.6              → erwartet Kotlin 2.3.0
-#   KSP 2.3.7 und hoeher   → erwartet Kotlin 2.3.20
+# Hier stand: „KSP 2.3.7 und hoeher erwartet Kotlin 2.3.20", gelesen aus der
+# kotlin-stdlib-Zeile in der POM von symbol-processing-api. Das war ein
+# FEHLSCHLUSS, und er hat die Werkzeugkette eine Nebenrunde lang
+# kuenstlich festgehalten.
 #
-# ── Warum ueberhaupt (05.10.) ───────────────────────────────────────────
+# Richtig ist: Das galt fuer KSP 1. Das war ein Compiler-Plugin und musste
+# genau zum Uebersetzer passen — daher die alte Schreibweise
+# `<kotlin>-1.0.x`, die bei `2.1.20-RC3-1.0.31` endet. KSP 2 laeuft
+# EIGENSTAENDIG; seine kotlin-stdlib-Zeile ist seine eigene Laufzeit, keine
+# Bindung an den Uebersetzer.
 #
-# Drei Abhaengigkeiten standen auf einem Deckel, und es war DERSELBE:
+# BELEG, nicht Schlussfolgerung: Die Schnellstart-Seite von Kotlin selbst
+# (kotlinlang.org/docs/ksp-quickstart.html, gelesen am 06.10.) zeigt im
+# Beispiel genau diese Paarung —
 #
-#   kotlinx-serialization-json 1.11.0 → verlangt kotlin-stdlib 2.3.20
-#   hilt 2.60.1 (ueber KSP-API 2.3.7) → verlangt Kotlin 2.3.20
-#   coil3 3.4.0                       → verlangt kotlin-stdlib 2.3.10
+#   kotlin("jvm") version "2.4.20"
+#   id("com.google.devtools.ksp") version "2.3.10"
 #
-# Jede einzeln zu heben war unmoeglich; alle drei haengen am Uebersetzer.
-# Deshalb steht hier die Werkzeugkette allein in einem Schritt — was sie
-# freigibt, kommt danach und einzeln.
+# Eine KSP-Fassung mit 2.4 gibt es nicht und wird auch nicht gebraucht.
+# GEMESSEN am 06.10. an zwei unabhaengigen Quellen: das aus dem echten
+# Inhalt erzeugte Verzeichnis auf Maven Central endet bei 2.3.12, und das
+# Gradle-Plugin-Portal nennt <latest> und <release> ebenfalls 2.3.12.
+# 2.3.12 ist damit die hoechste und die passende.
 #
 # ── Das Risiko, das sich hier nicht pruefen laesst ──────────────────────
 #
 # Der Compose-Compiler ist ein Kotlin-Plugin und traegt dieselbe Nummer
 # (siehe [plugins] unten: kotlin-compose → version.ref = "kotlin"). Er
 # verlangt eine Mindestfassung der Compose-LAUFZEIT, und die kommt aus der
-# BOM, die hier auf 2024.09.03 steht. Ob 2.3.20 damit zufrieden ist, konnte
+# BOM, die hier auf 2024.09.03 steht. Ob 2.4.20 damit zufrieden ist, konnte
 # ich nicht nachsehen: Die BOM liegt auf Google-Maven, und das ist aus
 # diesem Container nicht erreichbar (HTTP 000; Maven Central geht).
 # Die GitHub-Action ist an dieser Stelle die einzige Auskunft.
-kotlin                      = "2.3.20"
+kotlin                      = "2.4.20"
 ksp                         = "2.3.12"
 coreKtx                     = "1.13.1"
 lifecycleRuntimeKtx         = "2.8.6"
 activityCompose             = "1.9.2"
 composeBom                  = "2024.09.03"
-# BLEIBT auf 2.59. Es gibt 2.60.1, und der Sprung sieht nach einer
-# Kleinigkeit aus — ist aber keiner: hilt-compiler 2.60.1 zieht die
-# KSP-API 2.3.7, und die erwartet Kotlin 2.3.20. Unser Paar ist heute
-# Kotlin 2.3.0 + KSP 2.3.6, und das passt zusammen (KSP 2.3.6 erwartet
-# genau 2.3.0). Hilt zu heben heisst also, die ganze Werkzeugkette zu
-# heben — das gehoert in einen eigenen Schritt und nicht hier mit hinein.
-hilt                        = "2.59"
+# Gehoben von 2.59 auf 2.60.1, und zwar NICHT der Neuheit wegen, sondern
+# weil Kotlin 2.4.20 es verlangt. GEMESSEN an den POMs von hilt-compiler:
+#
+#   2.59    → kotlin-metadata-jvm 2.2.20
+#   2.59.2  → kotlin-metadata-jvm 2.2.20
+#   2.60.1  → kotlin-metadata-jvm 2.3.21
+#
+# Mit dieser Bibliothek liest Hilts Prozessor die @Metadata-Annotationen
+# UNSERER eigenen Klassen. Sie weigert sich, Metadaten zu lesen, die neuer
+# sind als sie selbst — und Kotlin 2.4.20 schreibt Metadaten der 2.4er
+# Reihe. 2.60.1 ist die hoechste, die es gibt, und liest bis 2.3.21.
+#
+# Ob das fuer 2.4er-Metadaten reicht, ist damit NICHT bewiesen. Es ist die
+# wahrscheinlichste Stelle, an der dieser Sprung scheitert, und es ist der
+# Grund, warum Hilt hier mitgeht statt stehen zu bleiben: Mit 2.59 waere
+# der Abstand noch eine ganze Nebenversion groesser. Die GitHub-Action
+# entscheidet; der frueher an dieser Stelle vermutete Grund (KSP muesse zur
+# Kotlin-Nummer passen) war falsch, siehe den Block bei `kotlin`.
+hilt                        = "2.60.1"
 hiltNavigationCompose       = "1.2.0"
 navigationCompose           = "2.8.3"
 # NACHGESEHEN in der Metadatei von 3.0.0: Retrofit 3 verlangt okhttp
