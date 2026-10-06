@@ -167,9 +167,13 @@ test('der Server setzt data-theme selbst — kein Sprung beim ersten Aufruf', ()
     'Der Cache ist prozesslokal; ohne Ablauf ziehen die übrigen Cluster-Worker nie nach');
 
   const server = require('./helpers/sources').serverAll();
-  // Auf den Zeilenanfang ankern: der Erklärkommentar darüber erwähnt
-  // app.get('*') ebenfalls, ein blosses indexOf träfe den Kommentar.
-  const at = server.search(/^app\.get\('\*'/m);
+  // Auf den Zeilenanfang ankern: der Erklärkommentar darüber erwähnt den
+  // Catch-all ebenfalls, ein blosses indexOf träfe den Kommentar.
+  //
+  // Seit Express 5 (05.10.) heisst das Muster '/{*splat}' und nicht mehr '*'.
+  // Die geschweiften Klammern sind nicht Geschmack: Ohne sie trifft die Regel
+  // die nackte Wurzel '/' nicht mehr — gemessen gegen express 5.2.1.
+  const at = server.search(/^app\.get\('\/\{\*splat\}'/m);
   assert.ok(at > 0, "SPA-Catch-all nicht gefunden");
   const catchAll = server.slice(at, at + 700);
   // Argument zugelassen: renderIndexHtml() bekommt seit der Aufteilung der

@@ -36,7 +36,7 @@ const SRC_DIRS = ['db', 'utils', 'routes', 'jobs', 'clients', 'startup'];
  * Installation aufruft, und sollte deshalb mit package.json übereinstimmen
  * (test/build-tooling.test.js prüft das).
  */
-const ESBUILD_VERSION = '0.25.12';
+const ESBUILD_VERSION = '0.28.2';
 
 const outdirArg = process.argv.indexOf('--outdir');
 // `--outdir` ohne Wert dahinter ist ein Bedienfehler und ergibt jetzt null

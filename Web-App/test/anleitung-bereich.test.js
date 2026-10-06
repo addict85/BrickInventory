@@ -47,7 +47,7 @@ const GROESSE = fs.statSync(DATEI).size;
 /** Server mit GENAU dem Rumpf, den die Anleitungs-Route in server.ts hat. */
 function starte() {
   const app = express();
-  app.get('/data/instructions/*', (_req, res) => liefereDatei(res, DATEI));
+  app.get('/data/instructions/*pfad', (_req, res) => liefereDatei(res, DATEI));
   app.get('/fehlt', (_req, res) => liefereDatei(res, DATEI + '.gibtesnicht'));
   const srv = app.listen(0);
   const basis = `http://127.0.0.1:${srv.address().port}`;
