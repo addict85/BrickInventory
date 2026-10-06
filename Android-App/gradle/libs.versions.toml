@@ -1,13 +1,13 @@
 [versions]
-camerax                     = "1.6.1"
+camerax                     = "1.6.2"
 mlkitBarcode                = "18.3.1"   # unbundled (Play-Dienste) — siehe 16-KB-Hinweis in app/build.gradle.kts
 # Texterkennung FEST EINGEBAUT (com.google.mlkit statt com.google.android.gms):
 # Marcos Wunsch — kein Nachladen über Play, funktioniert sofort und offline.
 # Kostet rund 4 MB APK, dafür keine Überraschung beim ersten Scan.
 mlkitTextRec                = "16.0.1"   # bundled — liegt IM APK, kein Play-Nachladen
-accompanistPermissions      = "0.34.0"
+accompanistPermissions      = "0.37.3"
 
-agp                         = "9.2.1"
+agp                         = "9.3.2"
 # ── Die Nummern der beiden muessen NICHT uebereinstimmen ────────────────
 #
 # Hier stand: „KSP 2.3.7 und hoeher erwartet Kotlin 2.3.20", gelesen aus der
@@ -45,10 +45,10 @@ agp                         = "9.2.1"
 # Die GitHub-Action ist an dieser Stelle die einzige Auskunft.
 kotlin                      = "2.4.20"
 ksp                         = "2.3.12"
-coreKtx                     = "1.13.1"
-lifecycleRuntimeKtx         = "2.8.6"
-activityCompose             = "1.9.2"
-composeBom                  = "2024.09.03"
+coreKtx                     = "1.19.1"
+lifecycleRuntimeKtx         = "2.11.0"
+activityCompose             = "1.13.0"
+composeBom                  = "2026.08.00"
 # Gehoben von 2.59 auf 2.60.1, und zwar NICHT der Neuheit wegen, sondern
 # weil Kotlin 2.4.20 es verlangt. GEMESSEN an den POMs von hilt-compiler:
 #
@@ -68,8 +68,8 @@ composeBom                  = "2024.09.03"
 # entscheidet; der frueher an dieser Stelle vermutete Grund (KSP muesse zur
 # Kotlin-Nummer passen) war falsch, siehe den Block bei `kotlin`.
 hilt                        = "2.60.1"
-hiltNavigationCompose       = "1.2.0"
-navigationCompose           = "2.8.3"
+hiltNavigationCompose       = "1.4.0"
+navigationCompose           = "2.10.2"
 # NACHGESEHEN in der Metadatei von 3.0.0: Retrofit 3 verlangt okhttp
 # 4.12.0 und kotlin-stdlib 2.1.21 — beides als `requires`, also WEICH.
 # Gradle nimmt bei einem Streit die hoehere Fassung, hier also unsere
@@ -87,76 +87,55 @@ navigationCompose           = "2.8.3"
 # und die Schnittstelle ist in Retrofit 3 unveraendert.
 retrofit                    = "3.0.0"
 # Deckt vier Artefakte ab, alle ueber dieselbe Referenz: okhttp,
-# okhttp-sse, logging-interceptor und mockwebserver. NACHGESEHEN, dass es
-# alle vier auf 5.3.0 gibt — auch das alte `mockwebserver` (okhttp 5 bringt
-# daneben ein neues `mockwebserver3`, das wir nicht brauchen).
+# okhttp-sse, logging-interceptor und mockwebserver.
 #
-# ── WARUM 5.3.0 UND NICHT 5.5.0 ─────────────────────────────────────────
+# ── Der Deckel war compileSdk, nicht okhttp ─────────────────────────────
 #
-# 5.5.0 war der erste Versuch, und der Lauf ist daran gescheitert — vor dem
-# ersten Test, mit `Task :app:checkDebugAarMetadata FAILED`. Der Grund steht
-# in den AAR-Metadaten des Pakets selbst, nachgelesen und nicht geraten:
+# Hier stand lange 5.3.0 mit der Begruendung, 5.5.0 verlange
+# `minCompileSdk=37` und wir faehrten 36. Das stimmte; mit dem Sprung auf
+# compileSdk/targetSdk 37 (siehe app/build.gradle.kts) ist es gegenstandslos.
 #
-#   okhttp-android 5.5.0 → minCompileSdk=37
-#   okhttp-android 5.3.0 → minCompileSdk=1   (und ebenso 5.2.1, 5.1.0, 5.0.0)
+# GEMESSEN an den AAR-Metadaten von okhttp-android, alle 5.x der Reihe nach:
+#   5.3.0, 5.3.1, 5.3.2 → minCompileSdk=1
+#   5.4.0               → minCompileSdk=36
+#   5.5.0               → minCompileSdk=37
 #
-# Wir fahren compileSdk 36. Auf 37 zu gehen waere keine Kleinigkeit: Der
-# Kommentar bei compileSdk haelt ausdruecklich fest, dass compileSdk und
-# targetSdk gleich bleiben sollen — ein compileSdk darueber hiesse, gegen
-# eine API zu bauen, deren Verhalten man nicht uebernimmt. targetSdk zu
-# heben ist eine eigene Entscheidung mit eigener Pruefung und gehoert nicht
-# als Nebenwirkung in eine Abhaengigkeits-Auffrischung.
-#
-# 5.3.0 bringt denselben Hauptsprung ohne diesen Zwang. Sobald das Projekt
-# ohnehin auf SDK 37 geht, ist 5.5.0 eine Zahl.
-#
-# Voraussetzungen geprueft: okhttp 5 will Android 5+ und Java 8+, wir fahren
-# minSdk 26 und Java 17. kotlin-stdlib 2.2.21 liegt unter unseren 2.3.20.
-okhttp                      = "5.3.0"
-# GEMESSEN am 05.10. aus den Gradle-Metadaten der Artefakte selbst:
+# Beim ersten Versuch mit 5.5.0 hatte ich nur die Endpunkte gemessen und
+# bin auf die naechstniedrigere HAUPTfassung zurueckgegangen — 5.4.0 waere
+# schon damals gegangen. Deshalb steht die ganze Reihe hier.
+okhttp                      = "5.5.0"
+# GEMESSEN aus den Gradle-Metadaten der Artefakte selbst:
 #   serialization-json 1.10.0 → kotlin-stdlib 2.3.0
 #   serialization-json 1.11.0 → kotlin-stdlib 2.3.20
 #
-# Als diese Zahl gesetzt wurde, war unser Uebersetzer Kotlin 2.3.0, und
-# 1.11.0 haette eine stdlib NEUER als den Uebersetzer gezogen. Dieser Grund
-# ist inzwischen entfallen: `kotlin` steht oben auf 2.3.20, 1.11.0 waere
-# also moeglich. Die Zahl bleibt trotzdem auf 1.10.0 — sie zu heben ist eine
-# eigene Entscheidung mit eigenem Lauf und gehoert nicht als Nebenwirkung in
-# die Aufloesung einer Zusammenfuehrung.
-kotlinxSerializationJson    = "1.10.0"
+# 1.10.0 stand hier, solange unser Uebersetzer Kotlin 2.3.0 war. Mit 2.4.20
+# ist 1.11.0 erreichbar und damit die hoechste.
+kotlinxSerializationJson    = "1.11.0"
 retrofitKotlinxSerialization = "1.0.0"
 graphicsPath                = "1.1.0"   # 16-KB-Versuch, siehe app/build.gradle.kts
-datastore                   = "1.1.7"   # NICHT auf 1.2.0 heben: dort ist die native Bibliothek wieder 4-KB-ausgerichtet
-appcompat                   = "1.7.0"
+# 1.1.7 stand hier, weil libdatastore_shared_counter.so in 1.2.0 wieder
+# 4-KB-ausgerichtet war. Geprueft wird das jetzt nicht mehr an der ZAHL,
+# sondern am gebauten APK: tools/apk-ausrichtung.py liest die ELF-Kopfe
+# aller mitgelieferten .so und meldet jede Ausrichtung unter 16 KB. Faellt
+# eine Fassung zurueck, wird der Lauf rot — egal welche Nummer sie traegt.
+datastore                   = "1.2.1"
+appcompat                   = "1.8.0"
 profileinstaller            = "1.4.1"
-# NICHT 3.4.0 und nicht 3.6.3, obwohl es beide gibt. GEMESSEN aus den
-# Gradle-Metadaten:
-#   coil3 3.3.0 → kotlin-stdlib 2.2.0
-#   coil3 3.4.0 → kotlin-stdlib 2.3.10
-#   coil3 3.6.3 → kotlin-stdlib 2.4.10
+# ── Auch hier war der Deckel compileSdk ────────────────────────────────
 #
-# Als 3.3.0 gesetzt wurde, war unser Uebersetzer Kotlin 2.3.0 und 3.3.0
-# damit die hoechste erreichbare. Mit Kotlin 2.3.20 aus #28 waere 3.4.0
-# jetzt moeglich — der Kommentar sagte das voraus, und es trifft zu.
+# Hier stand 3.3.0, zuerst wegen Kotlin (3.6.3 verlangt kotlin-stdlib
+# 2.4.10) und danach wegen des SDK. Beides ist weg: Kotlin steht auf 2.4.20,
+# compileSdk auf 37.
 #
-# Sie bleibt trotzdem auf 3.3.0, und zwar aus einem Grund, der nicht die
-# Zahl ist: Der Sprung von coil 2 auf coil 3 hat 81 Stellen in 30 Dateien
-# angefasst, und zwei Namen darin (OkHttpNetworkFetcherFactory,
-# memoryCacheKeyExtra) wurden erst nach einem roten Lauf in den QUELLEN von
-# 3.3.0 nachgesehen — die Dokumentation nannte die Java-Sicht. Diese
-# Pruefung gilt fuer 3.3.0, nicht fuer 3.4.0. Auf 3.4.0 zu gehen heisst,
-# sie zu wiederholen: eine eigene Aenderung mit eigenem Lauf, keine
-# Nebenwirkung einer Zusammenfuehrung.
+# GEMESSEN an den AAR-Metadaten von coil-core-android:
+#   3.3.0 → minCompileSdk=1     3.4.0 → 35    3.5.0 → 36
+#   3.6.0 bis 3.6.3            → minCompileSdk=37
 #
-# 3.6.3 ist auf unabsehbare Zeit ausser Reichweite, weil es Kotlin 2.4
-# verlangt. GEMESSEN am 06.10. an der maven-metadata.xml von
-# symbol-processing-gradle-plugin: <latest> und <release> stehen beide auf
-# 2.3.12, und eine KSP-Fassung fuer Kotlin 2.4 gibt es UEBERHAUPT NICHT —
-# null Treffer auf "2.4" in der ganzen Metadatei. Kotlin selbst ist zu
-# diesem Zeitpunkt bei 2.4.20 (stabil) bzw. 2.5.0-Beta1. Der Deckel ist
-# also KSP, nicht Kotlin, und er sitzt hier fest, weil Hilts Codeerzeugung
-# ueber KSP laeuft (app/build.gradle.kts: `ksp(libs.hilt.compiler)`).
-coil                        = "3.3.0"
+# NACHGESEHEN in den Quellen von 3.6.3, weil die Pruefung von 3.3.0 dafuer
+# nicht gilt: `OkHttpNetworkFetcherFactory`, `memoryCacheKeyExtra`,
+# `crossfade(Boolean)`, `MemoryCache.Builder.maxSizePercent(PlatformContext,
+# Double)` und `DiskCache.Builder.directory(Path)` heissen unveraendert.
+coil                        = "3.6.3"
 # 1.11.0 verlangt kotlin-stdlib 2.2.20, liegt also UNTER unseren 2.3.20 —
 # anders als serialization oben kein Konflikt. Ebenfalls aus den
 # Gradle-Metadaten gelesen, nicht geschaetzt.
@@ -166,7 +145,7 @@ coroutines                  = "1.11.0"
 # 16-KB-Ausrichtung deshalb nicht (siehe INVARIANTEN.md). Room und
 # androidx.sqlite kommen transitiv mit, nutzen aber das SQLite des Systems;
 # das gebuendelte SQLite waere ein eigener, hier nicht gezogener Artefakt.
-work                        = "2.10.0"
+work                        = "2.12.0"
 junit                       = "4.13.2"
 # org.json steckt in android.jar nur als Attrappe — siehe Kommentar bei
 # testImplementation(libs.json) in app/build.gradle.kts.

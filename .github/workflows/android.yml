@@ -277,6 +277,22 @@ jobs:
             app/build/outputs/apk/release/BrickInventory.apk \
             app/src/main/java
 
+      # ── 16-KB-Speicherseiten am ERGEBNIS messen ─────────────────────────────
+      #
+      # Bis hierher stand die 16-KB-Tauglichkeit auf einer ZAHL: datastore war
+      # auf 1.1.7 festgenagelt, weil 1.2.0 wieder 4-KB-ausgerichtet war, und
+      # ein Test verlangte genau diese Nummer.
+      #
+      # Das prüft die Nummer, nicht die Ausrichtung — und war in der
+      # Entwicklungsumgebung gar nicht nachprüfbar: Die AARs liegen auf
+      # dl.google.com, das von dort nicht erreichbar ist. Hier liegt das
+      # gebaute APK, also wird hier gemessen. Dieselbe Umkehrung wie beim
+      # Schritt darüber, der R8s Ergebnis liest statt des Quelltexts.
+      - name: Native Bibliotheken auf 16 KB ausgerichtet?
+        run: |
+          python3 tools/apk-ausrichtung.py \
+            app/build/outputs/apk/release/BrickInventory.apk
+
       # `always()`: Die Berichte sind gerade dann interessant, wenn der Lauf rot
       # ist. Ohne das lädt GitHub sie bei einem Fehlschlag nicht hoch.
       # upload-artifact auf v6 (vorher v4).

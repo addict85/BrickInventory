@@ -55,16 +55,36 @@ android {
     }
 
     namespace  = "ch.brickinventoryapp"
-    // compileSdk = targetSdk: gegen SDK 36 (Android 16) kompilieren UND das
-    // Verhalten von 36 übernehmen. Ein compileSdk über dem targetSdk wäre
+    // compileSdk = targetSdk: gegen SDK 37 (Android 17) kompilieren UND das
+    // Verhalten von 37 übernehmen. Ein compileSdk über dem targetSdk wäre
     // ebenfalls zulässig, verdeckt aber, welche Verhaltensänderungen bereits
     // aktiv sind — hier bewusst gleichgezogen.
-    compileSdk = 36
+    //
+    // ── Warum 37 und nicht weiter 36 ────────────────────────────────────────
+    //
+    // Nicht der Neuheit wegen, sondern weil zwei Bibliotheken es verlangen.
+    // GEMESSEN an ihren AAR-Metadaten:
+    //   okhttp-android 5.5.0      → minCompileSdk=37
+    //   coil-core-android 3.6.x   → minCompileSdk=37
+    // Mit compileSdk 36 bricht `checkDebugAarMetadata` ab, bevor ein
+    // einziger Test läuft — das ist in diesem Baum schon einmal passiert.
+    compileSdk = 37
 
     defaultConfig {
         applicationId = "ch.brickinventoryapp"
         minSdk        = 26
-        // targetSdk 36 (Android 16). Relevante Verhaltensänderungen gegenüber 35:
+        // targetSdk 37 (Android 17). Relevante Verhaltensänderungen gegenüber 36
+        // sind hier NICHT aufgezählt, und das ist eine Lücke, die benannt
+        // gehört: Die Liste darunter beschreibt den Schritt 35 → 36. Was 37
+        // mitbringt, liess sich in dieser Umgebung nicht nachlesen —
+        // developer.android.com ist erreichbar, dl.google.com nicht, und die
+        // Verhaltensänderungen stehen in den Release-Notes zum SDK.
+        //
+        // Der Sprung erfolgt, weil okhttp 5.5.0 und coil 3.6.x ihn verlangen
+        // (siehe compileSdk oben). Was er am VERHALTEN ändert, muss am Gerät
+        // nachgeprüft werden; ein grüner Lauf sagt dazu nichts.
+        //
+        // Die Änderungen von 35 → 36, weiterhin gültig:
         //  - Vorhersagendes Zurück ("predictive back") ist standardmässig AN.
         //    Unkritisch hier: Die App hat keinen einzigen BackHandler und
         //    überlässt Zurück komplett der Navigation-Compose-Voreinstellung.
@@ -74,7 +94,7 @@ android {
         //    erzwingen. Ebenfalls unkritisch: Das Manifest setzt weder
         //    screenOrientation noch resizeableActivity.
         //  - Edge-to-edge war schon unter 35 erzwungen, ändert sich also nicht.
-        targetSdk     = 36
+        targetSdk     = 37
         versionCode   = generatedVersionCode
         versionName   = generatedVersionName
     }
@@ -189,22 +209,26 @@ android {
     }
 }
 
-// ── DataStore auf 1.1.7 festnageln ────────────────────────────────────────────
-// 1.1.7 liefert libdatastore_shared_counter.so 16-KB-ausgerichtet, 1.2.0 wieder
-// NICHT — dort ist die Ausrichtung zurückgefallen. Eine transitive Anhebung
-// (über eine andere Abhängigkeit) würde die 16-KB-Tauglichkeit still wieder
-// kaputt machen, deshalb hier erzwungen statt nur deklariert.
+// ── DataStore auf EINE Fassung festnageln ─────────────────────────────────────
 //
-// Vor dem Entfernen dieses Blocks prüfen, ob die dann gezogene Fassung
-// ausgerichtet ist — siehe INVARIANTEN.md, Abschnitt "16-KB-Speicherseiten".
+// Der Riegel bleibt, die Zahl wandert: 1.1.7 → 1.2.1. Sein Zweck war nie die
+// bestimmte Nummer, sondern dass eine TRANSITIVE Anhebung (über eine andere
+// Abhängigkeit) die 16-KB-Tauglichkeit nicht still wieder kaputt macht.
+//
+// Ob 1.2.1 ausgerichtet ist, war in dieser Umgebung nicht nachzusehen —
+// dl.google.com ist gesperrt, das AAR also nicht herunterladbar. Statt es zu
+// hoffen, misst es jetzt die Action am GEBAUTEN APK:
+// tools/apk-ausrichtung.py liest die ELF-Köpfe aller mitgelieferten .so und
+// meldet jede Ausrichtung unter 16 KB. Das ist der Nachweis, den der
+// Kommentar hier vorher nur verlangt hat.
 configurations.configureEach {
     resolutionStrategy {
-        force("androidx.datastore:datastore:1.1.7")
-        force("androidx.datastore:datastore-android:1.1.7")
-        force("androidx.datastore:datastore-core:1.1.7")
-        force("androidx.datastore:datastore-core-android:1.1.7")
-        force("androidx.datastore:datastore-preferences:1.1.7")
-        force("androidx.datastore:datastore-preferences-android:1.1.7")
+        force("androidx.datastore:datastore:1.2.1")
+        force("androidx.datastore:datastore-android:1.2.1")
+        force("androidx.datastore:datastore-core:1.2.1")
+        force("androidx.datastore:datastore-core-android:1.2.1")
+        force("androidx.datastore:datastore-preferences:1.2.1")
+        force("androidx.datastore:datastore-preferences-android:1.2.1")
     }
 }
 
