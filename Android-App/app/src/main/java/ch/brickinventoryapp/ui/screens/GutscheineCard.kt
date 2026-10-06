@@ -1,7 +1,6 @@
 package ch.brickinventoryapp.ui.screens
 
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
@@ -12,17 +11,18 @@ import androidx.compose.material.icons.filled.Visibility
 import androidx.compose.material.icons.filled.VisibilityOff
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import ch.brickinventoryapp.R
 import ch.brickinventoryapp.data.model.Gutschein
 import ch.brickinventoryapp.ui.GutscheinUiState
 import ch.brickinventoryapp.ui.theme.Abstaende
+import ch.brickinventoryapp.util.NumericInput
 
 /**
  * Gutscheine — LEGO-Geschenkkarten im eigenen Profil.
@@ -48,19 +48,22 @@ import ch.brickinventoryapp.ui.theme.Abstaende
 @Composable
 fun GutscheineCard(
     zustand: GutscheinUiState,
-    serverUrl: String,
     onFeld: (nummer: String?, pin: String?, betrag: String?, waehrung: String?, notiz: String?) -> Unit,
     onPinSchalten: (Int) -> Unit,
     onBearbeiten: (Int) -> Unit,
     onAbbrechen: () -> Unit,
     onSpeichern: (android.net.Uri?) -> Unit,
     onLoeschen: (Int) -> Unit,
-    onPdfOeffnen: (url: String, titel: String) -> Unit,
+    onPdfOeffnen: (id: Int) -> Unit,
 ) {
     // Die gewaehlte Datei lebt nur, solange das Formular offen ist — sie
     // gehoert nicht in den geteilten Zustand, weil eine Uri eine Berechtigung
     // dieses Bildschirms ist und kein Datum des Kontos.
-    var pdfUri by remember { mutableStateOf<android.net.Uri?>(null) }
+    // rememberSaveable und nicht remember: Die gewaehlte Datei ist eine WAHL
+    // des Menschen (Sorte 1 in BildschirmZustandTest) und soll eine Drehung
+    // ueberstehen — sonst ist sie nach dem Kippen des Telefons weg, und zwar
+    // ohne Hinweis. Eine Uri ist Parcelable, der Standard-Saver kann sie.
+    var pdfUri by rememberSaveable { mutableStateOf<android.net.Uri?>(null) }
     val auswahl = androidx.activity.compose.rememberLauncherForActivityResult(
         androidx.activity.result.contract.ActivityResultContracts.OpenDocument()
     ) { uri -> pdfUri = uri }
@@ -82,12 +85,7 @@ fun GutscheineCard(
                 onPinSchalten = { onPinSchalten(g.id) },
                 onBearbeiten = { onBearbeiten(g.id) },
                 onLoeschen = { onLoeschen(g.id) },
-                onPdfOeffnen = {
-                    onPdfOeffnen(
-                        ch.brickinventoryapp.ui.gutscheinPdfAdresse(serverUrl, g.id),
-                        g.number,
-                    )
-                },
+                onPdfOeffnen = { onPdfOeffnen(g.id) },
             )
         }
 
@@ -116,12 +114,16 @@ fun GutscheineCard(
             modifier = Modifier.padding(bottom = Abstaende.klein),
         )
 
+        // Filter UND Tastatur gehoeren zusammen — die Tastaturwahl ist eine
+        // Bitte an die Tastatur-App, keine Zusicherung: Eine angestoepselte
+        // Tastatur und die Zwischenablage liefern trotzdem Buchstaben. Die
+        // Regel steht in ZahlentastaturTest, der Filter in NumericInput.kt.
         OutlinedTextField(
             value = zustand.nummer,
-            onValueChange = { onFeld(it, null, null, null, null) },
+            onValueChange = { onFeld(NumericInput.quantity(it), null, null, null, null) },
             label = { Text(stringResource(R.string.vouchers_number)) },
             singleLine = true,
-            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+            keyboardOptions = NumericInput.ganzzahlTastatur(),
             modifier = Modifier.fillMaxWidth(),
         )
         Spacer(Modifier.height(Abstaende.klein))
@@ -129,20 +131,22 @@ fun GutscheineCard(
         Row(horizontalArrangement = Arrangement.spacedBy(Abstaende.klein)) {
             OutlinedTextField(
                 value = zustand.pin,
-                onValueChange = { onFeld(null, it, null, null, null) },
+                onValueChange = { onFeld(null, NumericInput.quantity(it), null, null, null) },
                 label = { Text(stringResource(R.string.vouchers_pin)) },
                 singleLine = true,
-                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                keyboardOptions = NumericInput.ganzzahlTastatur(),
                 modifier = Modifier.weight(1f),
             )
             OutlinedTextField(
                 value = zustand.betrag,
-                onValueChange = { onFeld(null, null, it, null, null) },
+                onValueChange = { onFeld(null, null, NumericInput.price(it), null, null) },
                 label = { Text(stringResource(R.string.vouchers_amount)) },
                 singleLine = true,
-                // Decimal und nicht Number: Ein Gutschein kann auf Rappen
-                // lauten, und ohne Komma waere das Feld nicht ausfuellbar.
-                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+                // price/preisTastatur und nicht ganzzahl: Ein Gutschein kann
+                // auf Rappen lauten. `price` laesst GENAU EIN Trennzeichen zu
+                // — „12.3.4" waere sonst tippbar und floege erst beim
+                // Umwandeln auf, dann als stiller Nullbetrag.
+                keyboardOptions = NumericInput.preisTastatur(),
                 modifier = Modifier.weight(1f),
             )
         }
@@ -185,7 +189,7 @@ fun GutscheineCard(
                 stringResource(R.string.vouchers_pdf_hint),
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.padding(top = 2.dp),
+                modifier = Modifier.padding(top = Abstaende.haar),
             )
         }
 
@@ -225,7 +229,7 @@ private fun GutscheinZeile(
     onLoeschen: () -> Unit,
     onPdfOeffnen: () -> Unit,
 ) {
-    var loeschFrage by remember { mutableStateOf(false) }
+    var loeschFrage by rememberSaveable { mutableStateOf(false) }
 
     Column(Modifier.fillMaxWidth().padding(vertical = Abstaende.klein)) {
         Text(
@@ -252,8 +256,12 @@ private fun GutscheinZeile(
                     (g.pin?.let { if (pinSichtbar) it else "••••" } ?: "–"),
                 style = MaterialTheme.typography.bodySmall,
             )
+            // Ohne `Modifier.size(...)`: IconButton bringt von sich aus
+            // 48 dp Antippflaeche mit (minimumInteractiveComponentSize). Sie
+            // kleiner zu zeichnen waere ein Eintrag in TouchTargetSizeTest —
+            // hier gibt es keinen Grund dafuer, die Zeile hat Platz.
             if (g.pin != null) {
-                IconButton(onClick = onPinSchalten, modifier = Modifier.size(32.dp)) {
+                IconButton(onClick = onPinSchalten) {
                     Icon(
                         if (pinSichtbar) Icons.Default.VisibilityOff else Icons.Default.Visibility,
                         stringResource(if (pinSichtbar) R.string.vouchers_pin_hide else R.string.vouchers_pin_show),
@@ -263,15 +271,15 @@ private fun GutscheinZeile(
             }
             Spacer(Modifier.weight(1f))
             if (g.hatPdf) {
-                IconButton(onClick = onPdfOeffnen, modifier = Modifier.size(32.dp)) {
+                IconButton(onClick = onPdfOeffnen) {
                     Icon(Icons.Default.PictureAsPdf, stringResource(R.string.vouchers_pdf_open),
                          Modifier.size(18.dp))
                 }
             }
-            IconButton(onClick = onBearbeiten, modifier = Modifier.size(32.dp)) {
+            IconButton(onClick = onBearbeiten) {
                 Icon(Icons.Default.Edit, stringResource(R.string.common_edit), Modifier.size(18.dp))
             }
-            IconButton(onClick = { loeschFrage = true }, modifier = Modifier.size(32.dp)) {
+            IconButton(onClick = { loeschFrage = true }) {
                 Icon(Icons.Default.Delete, stringResource(R.string.common_delete), Modifier.size(18.dp))
             }
         }
@@ -304,7 +312,7 @@ private val WAEHRUNGEN = listOf("CHF", "EUR", "USD", "GBP", "SEK", "NOK", "AUD",
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun WaehrungsWahl(gewaehlt: String, onWahl: (String) -> Unit) {
-    var offen by remember { mutableStateOf(false) }
+    var offen by rememberSaveable { mutableStateOf(false) }
     ExposedDropdownMenuBox(expanded = offen, onExpandedChange = { offen = it }) {
         OutlinedTextField(
             value = gewaehlt,

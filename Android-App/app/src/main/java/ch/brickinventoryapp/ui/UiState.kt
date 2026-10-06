@@ -1008,6 +1008,16 @@ data class GutscheinUiState(
     val notiz: String = "",
     /** Die gewaehlte PDF-Datei, solange sie noch nicht hochgeladen ist. */
     val pdfName: String? = null,
+    /**
+     * Welcher Gutschein sein PDF zeigen soll — oder null.
+     *
+     * Hier und nicht als Rueckruf-Parameter von SettingsScreen: Der Bildschirm
+     * darf hoechstens sechs Parameter haben (ScreenViewModelWiringTest), und
+     * ein siebter waere genau die breite Signatur, gegen die diese Regel
+     * gebaut ist. Verbraucht wird das Ziel im Navigationsgraphen — nur der
+     * kennt den NavController —, derselbe Weg wie bei MeldungsZielUiState.
+     */
+    val pdfZiel: Int? = null,
     val speichert: Boolean = false,
 )
 

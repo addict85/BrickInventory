@@ -62,14 +62,6 @@ fun SettingsScreen(
      */
     onSetClick: (String) -> Unit,
     /**
-     * Ein Gutschein-PDF anzeigen — im vorhandenen PdfViewerScreen.
-     *
-     * Wie [onSetClick] ein Rueckruf, weil nur der Graph den NavController
-     * kennt. OHNE Vorgabewert, aus demselben Grund wie bei [onServerWechseln]:
-     * Mit `= {}` waere eine vergessene Weitergabe ein Knopf, der nichts tut.
-     */
-    onPdfOeffnen: (url: String, titel: String) -> Unit,
-    /**
      * Rollposition — von AUSSEN, aus demselben Grund wie bei den Finanzen:
      * Der Weg in die Detailansicht verwirft dieses Ziel, und ein
      * `rememberScrollState()` hier drin waere bei der Rueckkehr zurueckgesetzt.
@@ -285,14 +277,17 @@ fun SettingsScreen(
         // erreichbar" — sie gehoeren zu dem, was einem selbst gehoert.
         GutscheineCard(
             zustand = gutscheinZustand,
-            serverUrl = appState.serverUrl,
             onFeld = { n, p, b, w, no -> vm.setzeGutscheinFeld(n, p, b, w, no) },
             onPinSchalten = { vm.schalteGutscheinPin(it) },
             onBearbeiten = { vm.bearbeiteGutschein(it) },
             onAbbrechen = { vm.leereGutscheinFormular() },
             onSpeichern = { vm.speichereGutschein(it) },
             onLoeschen = { vm.loescheGutschein(it) },
-            onPdfOeffnen = onPdfOeffnen,
+            // Kein Rueckruf von aussen: Der Bildschirm darf hoechstens sechs
+            // Parameter haben (ScreenViewModelWiringTest). Das Ziel wandert
+            // deshalb durch den Zustand, und der Graph navigiert — siehe
+            // GutscheinUiState.pdfZiel.
+            onPdfOeffnen = { vm.oeffneGutscheinPdf(it) },
         )
 
         CsvImportCard(

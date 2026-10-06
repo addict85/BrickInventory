@@ -44,7 +44,7 @@ internal fun MainViewModel.ladeGutscheine() {
             }
             is Result.Error -> {
                 _gutscheinState.update { it.copy(laedt = false) }
-                _snackbar.value = meldung(r)
+                _snackbar.value = meldungFuerSnackbar(r)
             }
         }
     }
@@ -198,7 +198,7 @@ private suspend fun MainViewModel.behandleGutscheinAntwort(
             leereGutscheinFormular()
             ladeGutscheine()
         }
-        is Result.Error -> _snackbar.value = meldung(r)
+        is Result.Error -> _snackbar.value = meldungFuerSnackbar(r)
     }
 }
 
@@ -206,9 +206,19 @@ internal fun MainViewModel.loescheGutschein(id: Int) {
     viewModelScope.launch {
         when (val r = repo.gutscheine.loeschen(id)) {
             is Result.Success -> { _snackbar.value = text(R.string.vouchers_deleted); ladeGutscheine() }
-            is Result.Error -> _snackbar.value = meldung(r)
+            is Result.Error -> _snackbar.value = meldungFuerSnackbar(r)
         }
     }
+}
+
+/** Das PDF dieses Gutscheins anzeigen — der Graph greift das Ziel ab. */
+internal fun MainViewModel.oeffneGutscheinPdf(id: Int) {
+    _gutscheinState.update { it.copy(pdfZiel = id) }
+}
+
+/** Erledigt — sonst springt die App bei der naechsten Rekomposition erneut. */
+internal fun MainViewModel.gutscheinPdfQuittieren() {
+    _gutscheinState.update { it.copy(pdfZiel = null) }
 }
 
 /**
