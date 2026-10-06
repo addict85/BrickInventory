@@ -243,7 +243,15 @@ router.get('/export', async (req, res) => {
 // Augmentierung sichert userId als number zu — die drei CSV-Bauer verlangen das.
 router.get('/export/data', async (req: LoggedInRequest, res) => {
   try {
-    const archiver = require('archiver');
+    // archiver 8 (05.10.) exportiert KEINE aufrufbare Funktion mehr, sondern
+    // Klassen — das Paket ist `type: module`. Node kann es aus CommonJS
+    // heraus weiterhin per `require()` holen (seit 22.12 stabil, wir fahren
+    // 26), was herauskommt ist dann aber ein Objekt.
+    //
+    // NACHGEMESSEN gegen archiver 8.0.0: `new ZipArchive(opts)` traegt
+    // dieselben vier Dinge, die hier gebraucht werden — append, pipe,
+    // finalize, on('error') — und erzeugt ein Archiv mit PK-Signatur.
+    const { ZipArchive } = require('archiver');
     const uid = angemeldeteNutzerId(req);
 
     const [setsCsv, partsCsv, figsCsv] = await Promise.all([
@@ -254,7 +262,7 @@ router.get('/export/data', async (req: LoggedInRequest, res) => {
     res.setHeader('Content-Type', 'application/zip');
     res.setHeader('Content-Disposition', `attachment; filename="brickinventory-export-${dateStr}.zip"`);
 
-    const archive = archiver('zip', { zlib: { level: 9 } });
+    const archive = new ZipArchive({ zlib: { level: 9 } });
     archive.on('error', (err: any) => { console.error('[export-zip]', err.message); res.status(500).end(); });
     archive.pipe(res);
     archive.append('\uFEFF' + setsCsv,  { name: 'sets.csv' });

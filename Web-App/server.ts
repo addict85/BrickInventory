@@ -1,19 +1,31 @@
 import type { Request, Response, NextFunction } from 'express';
 
 /**
- * Anfrage einer Wildcard-Route (`app.get('/images/*', …)`).
+ * Anfrage einer Wildcard-Route (`app.get('/images/*pfad', …)`).
  *
  * ── Warum benannt (Nachtrag 155) ────────────────────────────────────────────
- * Express legt die Erfassung eines `*` unter dem numerischen Schluessel `0` ab.
- * Auf dem allgemeinen Request-Typ ist `params` leer, ein `req.params[0]` also
+ * Auf dem allgemeinen Request-Typ ist `params` leer, der erfasste Pfad also
  * ein implizites `any` — und der Wert geht hier direkt in safeDataPath(), den
  * Path-Traversal-Schutz. Ein Pfadsegment ist der letzte Wert, den man
  * ungeprueft durchreichen will.
  *
  * Der Typ schreibt hin, was die Route zusichert, statt es an vier Stellen
  * wegzucasten.
+ *
+ * ── Was Express 5 daran geaendert hat (05.10.) ──────────────────────────────
+ * Express 4 legte die Erfassung eines `*` unter dem numerischen Schluessel `0`
+ * ab, als EINE Zeichenkette ("42/bild.png"). Express 5 verlangt einen Namen
+ * (`*pfad`) und liefert ein ARRAY der Segmente (["42","bild.png"]).
+ *
+ * NACHGEMESSEN gegen express 5.2.1, nicht aus der Anleitung abgeschrieben:
+ *   /images/42/abc.png  → ["42","abc.png"]
+ *   /images/a//b.png    → ["a","","b.png"]   ← leere Segmente bleiben drin
+ *   /images/a/          → ["a",""]
+ * Deshalb bleibt das `.filter(Boolean)` unten stehen: Es tat vorher genau
+ * dasselbe (`split('/')` liefert bei `a//b` ebenfalls ein leeres Stueck), und
+ * safeDataPath() bekommt damit weiterhin dieselbe Liste wie bisher.
  */
-type WildcardRequest = Request<{ 0: string }>;
+type WildcardRequest = Request<{ pfad: string[] }>;
 // ── Log interceptor — write console output to PostgreSQL app_logs ─────────────
 // Must be first so all subsequent logs are captured
 const _logBuffer: any[] = [];
@@ -305,6 +317,38 @@ app.use((req, res, next) => {
 app.use(express.json({ limit: '256kb' }));
 app.use(express.urlencoded({ extended: true, limit: '256kb' }));
 
+/**
+ * `req.body` ist immer ein Objekt — die Zusicherung von Express 4, nachgebaut.
+ *
+ * ── Was Express 5 geaendert hat ─────────────────────────────────────────────
+ * Vorher war `req.body` ein leeres Objekt, wenn kein Parser etwas zu lesen
+ * fand. Jetzt ist es `undefined`. NACHGEMESSEN gegen express 5.2.1 mit genau
+ * diesen beiden Parsern davor:
+ *
+ *   POST mit JSON                → {x:1}
+ *   POST leerer Rumpf, JSON-Typ  → {}
+ *   POST ohne Rumpf, ohne Typ    → undefined
+ *   POST formular-kodiert        → undefined   (urlencoded liest nur sich selbst)
+ *   GET  ohne Rumpf              → undefined
+ *
+ * ── Warum das hier steht und nicht an vierzehn Stellen ──────────────────────
+ * Vierzehn Handler schreiben `const { … } = req.body`. Auf `undefined` wirft
+ * das — und zwar mit „Cannot destructure property …", also einem 500. Vorher
+ * liefen dieselben Anfragen in die EIGENE Pruefung des Handlers und bekamen
+ * einen sauberen 400 („set_number_erforderlich"). Ein Client, der den
+ * Content-Type vergisst, verdient die zweite Antwort, nicht die erste.
+ *
+ * Vierzehn Stellen einzeln abzusichern waere dieselbe Regel in vierzehn
+ * Fassungen. Hier steht sie einmal, an der Stelle, an der die Parser hängen.
+ *
+ * Was dadurch NICHT verlorengeht: Wer „kein Rumpf" von „leerer Rumpf"
+ * unterscheiden will, kann das weiterhin — nur eben nicht mehr an `undefined`.
+ * Heute will das niemand: Die einzige Stelle, die `req.body` ausserhalb eines
+ * POST/PUT liest, fragt mit `req.body?.owner` (routes/api_v1/sets.ts), und die
+ * bekommt so oder so `undefined`.
+ */
+app.use((req, _res, next) => { if (req.body === undefined) req.body = {}; next(); });
+
 // Hinter einem TLS-terminierenden Reverse-Proxy (Docker/nginx/traefik/caddy)
 // muss Express dem X-Forwarded-Proto vertrauen, sonst wird das secure-Cookie
 // nie gesetzt (Express hält die Verbindung fälschlich für HTTP).
@@ -476,7 +520,7 @@ function serveDataFile(subDir: string) {
   return async (req: WildcardRequest, res: Response) => {
     const userId = await resolveUserId(req);
     if (!userId) return res.status(401).send('Nicht angemeldet');
-    const segments = req.params[0].split('/').filter(Boolean);
+    const segments = req.params.pfad.filter(Boolean);
     const besitzer = segments[0] ? parseInt(segments[0]) : NaN;
     if (Number.isFinite(besitzer) && besitzer !== userId && !req.session?.isAdmin) {
       const { scopeIds } = require('./utils/household') as typeof import('./utils/household');
@@ -498,10 +542,10 @@ function serveDataFile(subDir: string) {
 // benutzereigene Anleitungen liegen unter data/uploads/<benutzer-id>/. Deshalb
 // KEIN serveDataFile(): dessen Prüfung des ersten Pfadsegments gegen die
 // Benutzer-ID kann hier nie passen.
-app.get('/data/instructions/*', async (req: WildcardRequest, res: Response) => {
+app.get('/data/instructions/*pfad', async (req: WildcardRequest, res: Response) => {
   const userId = await resolveUserId(req);
   if (!userId) return res.status(401).send('Nicht angemeldet');
-  const segments = req.params[0].split('/').filter(Boolean);
+  const segments = req.params.pfad.filter(Boolean);
   const filePath = safeDataPath('instructions', segments);
   if (!filePath) return res.status(404).send('Datei nicht gefunden');
   liefereDatei(res, filePath);
@@ -570,12 +614,12 @@ async function lookupCdnForMissingImage(webPath: string): Promise<string | null>
 // Der Platzhalter (set-placeholder.svg) liegt bewusst NICHT hier, sondern unter
 // /assets/: Er ist ein Build-Asset wie CSS und JavaScript und hat mit dem
 // Bestand nichts zu tun.
-app.get('/images/*', async (req: WildcardRequest, res: Response) => {
+app.get('/images/*pfad', async (req: WildcardRequest, res: Response) => {
   // Session ODER Bearer-Token (Android) — läuft über den gemeinsamen Token-Cache
   const imgUserId = await resolveUserId(req);
   if (!imgUserId) return res.status(401).send('Nicht angemeldet');
 
-  const segments = req.params[0].split('/').filter(Boolean);
+  const segments = req.params.pfad.filter(Boolean);
   const filePath = safeDataPath('images', segments);
   if (!filePath) return res.status(404).send('Datei nicht gefunden');
 
@@ -646,9 +690,14 @@ app.get('/images/*', async (req: WildcardRequest, res: Response) => {
     // rund 150 ms Jimp verlängern — bei einer Kachelwand summiert sich das zu
     // Sekunden. Die Vorschau kommt vom Hintergrundlauf; bis dahin ist das
     // Original das bessere Bild als gar keines.
-    const thumbTreffer = /_thumb(\.[^.]+)$/.exec(req.params[0]);
+    // `segments` ist hier schon da und steht im selben Handler — der rohe Pfad
+    // wird daraus wieder zusammengesetzt, weil die beiden regulaeren Ausdruecke
+    // unten auf der ganzen Zeichenkette arbeiten. Unter Express 4 stand genau
+    // das in `req.params[0]`; `join('/')` stellt es wieder her.
+    const rohPfad = segments.join('/');
+    const thumbTreffer = /_thumb(\.[^.]+)$/.exec(rohPfad);
     if (thumbTreffer) {
-      const originalSegs = req.params[0].replace(/_thumb(\.[^.]+)$/, '$1').split('/').filter(Boolean);
+      const originalSegs = rohPfad.replace(/_thumb(\.[^.]+)$/, '$1').split('/').filter(Boolean);
       const originalPfad = safeDataPath('images', originalSegs);
       if (originalPfad && fs.existsSync(originalPfad)) {
         // Fehlende Vorschau im HINTERGRUND nachziehen (Nachtrag 48).
@@ -691,7 +740,7 @@ app.get('/images/*', async (req: WildcardRequest, res: Response) => {
   });
 });
 
-app.get('/data/uploads/*',      serveDataFile('uploads'));
+app.get('/data/uploads/*pfad',      serveDataFile('uploads'));
 
 // Kein express.static für /images mehr.
 //
@@ -854,7 +903,21 @@ app.get('/reset-password', (_req, res) => {
 // registriert und damit nicht betroffen.
 app.use('/api', (_req, res) => res.status(404).json({ success: false, error: 'Endpoint nicht gefunden' }));
 
-app.get('*', async (req, res) => {
+// Die Schreibweise mit den geschweiften Klammern ist NICHT Geschmack.
+//
+// Express 5 verlangt fuer einen Platzhalter einen Namen. Die naheliegende
+// Uebersetzung von `'*'` waere `'/*splat'` — und die haette die Startseite
+// gekostet. NACHGEMESSEN gegen express 5.2.1:
+//
+//   '/*splat'    /  → 404      /start → 200     /tief/drin → 200
+//   '/{*splat}'  /  → 200      /start → 200     /tief/drin → 200
+//
+// Die geschweiften Klammern machen den Teil OPTIONAL, und nur damit trifft
+// die Regel auch die nackte Wurzel. Ein Aufruf von https://…/ ohne Pfad ist
+// aber genau der Normalfall — die Lesezeichen, der Startbildschirm des
+// Telefons, jeder erste Besuch. Das waere beim Umstieg lautlos kaputtgegangen
+// und haette in keinem Test gefehlt, der mit einem Pfad anfaengt.
+app.get('/{*splat}', async (req, res) => {
   res.set('Cache-Control', 'no-cache');
   try {
     // data-theme wird serverseitig gesetzt (utils/indexHtml.ts). Ohne das

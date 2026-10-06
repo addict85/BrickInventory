@@ -39,13 +39,14 @@ const express = require(path.join(__dirname, '..', 'node_modules', 'express'));
 function baueApp(wurzel) {
   const app = express();
   const pfadFuer = segs => path.join(wurzel, 'images', ...segs);
-  app.get('/images/*', (req, res) => {
-    const segments = req.params[0].split('/').filter(Boolean);
+  app.get('/images/*pfad', (req, res) => {
+    const segments = req.params.pfad.filter(Boolean);
+    const rohPfad = segments.join('/');
     res.sendFile(pfadFuer(segments), err => {
       if (!err || res.headersSent) return;
-      const treffer = /_thumb(\.[^.]+)$/.exec(req.params[0]);
+      const treffer = /_thumb(\.[^.]+)$/.exec(rohPfad);
       if (treffer) {
-        const origSegs = req.params[0].replace(/_thumb(\.[^.]+)$/, '$1').split('/').filter(Boolean);
+        const origSegs = rohPfad.replace(/_thumb(\.[^.]+)$/, '$1').split('/').filter(Boolean);
         const orig = pfadFuer(origSegs);
         if (fs.existsSync(orig)) {
           return res.sendFile(orig, e2 => { if (e2 && !res.headersSent) res.status(404).end(); });
@@ -111,7 +112,7 @@ test('server.ts nimmt den Original-Rückfall vor dem CDN-Umweg', () => {
   // nicht benutzt.
   const src = require('./helpers/sources')
     .ohneKommentare(fs.readFileSync(path.join(__dirname, '..', 'server.ts'), 'utf8'));
-  const start = src.indexOf("app.get('/images/*'");
+  const start = src.indexOf("app.get('/images/*pfad'");
   // Erst Kommentare weg, DANN schneiden (Nachtrag 48): Vorher wurde das
   // 4000-Zeichen-Fenster aus dem rohen Quelltext genommen — ein gewachsener
   // Erklärtext schob die geprüfte Zeile hinaus, und der Test wurde rot, obwohl

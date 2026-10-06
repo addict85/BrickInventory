@@ -8,34 +8,139 @@ mlkitTextRec                = "16.0.1"   # bundled — liegt IM APK, kein Play-N
 accompanistPermissions      = "0.34.0"
 
 agp                         = "9.2.1"
-kotlin                      = "2.3.0"
-ksp                         = "2.3.6"
+# ── Die beiden gehoeren ZUSAMMEN und werden nie einzeln gehoben ─────────
+#
+# GEMESSEN aus den POMs von symbol-processing-api (05.10.):
+#   KSP 2.3.6              → erwartet Kotlin 2.3.0
+#   KSP 2.3.7 und hoeher   → erwartet Kotlin 2.3.20
+#
+# ── Warum ueberhaupt (05.10.) ───────────────────────────────────────────
+#
+# Drei Abhaengigkeiten standen auf einem Deckel, und es war DERSELBE:
+#
+#   kotlinx-serialization-json 1.11.0 → verlangt kotlin-stdlib 2.3.20
+#   hilt 2.60.1 (ueber KSP-API 2.3.7) → verlangt Kotlin 2.3.20
+#   coil3 3.4.0                       → verlangt kotlin-stdlib 2.3.10
+#
+# Jede einzeln zu heben war unmoeglich; alle drei haengen am Uebersetzer.
+# Deshalb steht hier die Werkzeugkette allein in einem Schritt — was sie
+# freigibt, kommt danach und einzeln.
+#
+# ── Das Risiko, das sich hier nicht pruefen laesst ──────────────────────
+#
+# Der Compose-Compiler ist ein Kotlin-Plugin und traegt dieselbe Nummer
+# (siehe [plugins] unten: kotlin-compose → version.ref = "kotlin"). Er
+# verlangt eine Mindestfassung der Compose-LAUFZEIT, und die kommt aus der
+# BOM, die hier auf 2024.09.03 steht. Ob 2.3.20 damit zufrieden ist, konnte
+# ich nicht nachsehen: Die BOM liegt auf Google-Maven, und das ist aus
+# diesem Container nicht erreichbar (HTTP 000; Maven Central geht).
+# Die GitHub-Action ist an dieser Stelle die einzige Auskunft.
+kotlin                      = "2.3.20"
+ksp                         = "2.3.12"
 coreKtx                     = "1.13.1"
 lifecycleRuntimeKtx         = "2.8.6"
 activityCompose             = "1.9.2"
 composeBom                  = "2024.09.03"
+# BLEIBT auf 2.59. Es gibt 2.60.1, und der Sprung sieht nach einer
+# Kleinigkeit aus — ist aber keiner: hilt-compiler 2.60.1 zieht die
+# KSP-API 2.3.7, und die erwartet Kotlin 2.3.20. Unser Paar ist heute
+# Kotlin 2.3.0 + KSP 2.3.6, und das passt zusammen (KSP 2.3.6 erwartet
+# genau 2.3.0). Hilt zu heben heisst also, die ganze Werkzeugkette zu
+# heben — das gehoert in einen eigenen Schritt und nicht hier mit hinein.
 hilt                        = "2.59"
 hiltNavigationCompose       = "1.2.0"
 navigationCompose           = "2.8.3"
-retrofit                    = "2.11.0"
-okhttp                      = "4.12.0"
-kotlinxSerializationJson    = "1.6.3"
+# NACHGESEHEN in der Metadatei von 3.0.0: Retrofit 3 verlangt okhttp
+# 4.12.0 und kotlin-stdlib 2.1.21 — beides als `requires`, also WEICH.
+# Gradle nimmt bei einem Streit die hoehere Fassung, hier also unsere
+# okhttp 5.3.0 unten; es gibt keinen Zwangsabstieg auf 4.12.0.
+#
+# Dass Retrofit 3 mit okhttp 5 laeuft, ist damit NICHT bewiesen, nur
+# nicht verboten: Retrofit 3 ist gegen die API von okhttp 4.12.0
+# uebersetzt. Belegt wird es erst von den Tests, die mockwebserver
+# benutzen und bei dieser Zusammenfuehrung erstmals beide Spruenge
+# gemeinsam durchlaufen.
+#
+# Der Konverter (retrofitKotlinxSerialization) bleibt auf 1.0.0: Eine
+# neuere gibt es nicht, und seine POM nennt retrofit 2.9.0 als Mindestmass.
+# Die benutzte Stelle ist asConverterFactory() auf einer Converter.Factory,
+# und die Schnittstelle ist in Retrofit 3 unveraendert.
+retrofit                    = "3.0.0"
+# Deckt vier Artefakte ab, alle ueber dieselbe Referenz: okhttp,
+# okhttp-sse, logging-interceptor und mockwebserver. NACHGESEHEN, dass es
+# alle vier auf 5.3.0 gibt — auch das alte `mockwebserver` (okhttp 5 bringt
+# daneben ein neues `mockwebserver3`, das wir nicht brauchen).
+#
+# ── WARUM 5.3.0 UND NICHT 5.5.0 ─────────────────────────────────────────
+#
+# 5.5.0 war der erste Versuch, und der Lauf ist daran gescheitert — vor dem
+# ersten Test, mit `Task :app:checkDebugAarMetadata FAILED`. Der Grund steht
+# in den AAR-Metadaten des Pakets selbst, nachgelesen und nicht geraten:
+#
+#   okhttp-android 5.5.0 → minCompileSdk=37
+#   okhttp-android 5.3.0 → minCompileSdk=1   (und ebenso 5.2.1, 5.1.0, 5.0.0)
+#
+# Wir fahren compileSdk 36. Auf 37 zu gehen waere keine Kleinigkeit: Der
+# Kommentar bei compileSdk haelt ausdruecklich fest, dass compileSdk und
+# targetSdk gleich bleiben sollen — ein compileSdk darueber hiesse, gegen
+# eine API zu bauen, deren Verhalten man nicht uebernimmt. targetSdk zu
+# heben ist eine eigene Entscheidung mit eigener Pruefung und gehoert nicht
+# als Nebenwirkung in eine Abhaengigkeits-Auffrischung.
+#
+# 5.3.0 bringt denselben Hauptsprung ohne diesen Zwang. Sobald das Projekt
+# ohnehin auf SDK 37 geht, ist 5.5.0 eine Zahl.
+#
+# Voraussetzungen geprueft: okhttp 5 will Android 5+ und Java 8+, wir fahren
+# minSdk 26 und Java 17. kotlin-stdlib 2.2.21 liegt unter unseren 2.3.20.
+okhttp                      = "5.3.0"
+# GEMESSEN am 05.10. aus den Gradle-Metadaten der Artefakte selbst:
+#   serialization-json 1.10.0 → kotlin-stdlib 2.3.0
+#   serialization-json 1.11.0 → kotlin-stdlib 2.3.20
+#
+# Als diese Zahl gesetzt wurde, war unser Uebersetzer Kotlin 2.3.0, und
+# 1.11.0 haette eine stdlib NEUER als den Uebersetzer gezogen. Dieser Grund
+# ist inzwischen entfallen: `kotlin` steht oben auf 2.3.20, 1.11.0 waere
+# also moeglich. Die Zahl bleibt trotzdem auf 1.10.0 — sie zu heben ist eine
+# eigene Entscheidung mit eigenem Lauf und gehoert nicht als Nebenwirkung in
+# die Aufloesung einer Zusammenfuehrung.
+kotlinxSerializationJson    = "1.10.0"
 retrofitKotlinxSerialization = "1.0.0"
 graphicsPath                = "1.1.0"   # 16-KB-Versuch, siehe app/build.gradle.kts
 datastore                   = "1.1.7"   # NICHT auf 1.2.0 heben: dort ist die native Bibliothek wieder 4-KB-ausgerichtet
 appcompat                   = "1.7.0"
 profileinstaller            = "1.4.1"
-# NICHT 3.6.3, obwohl es das gibt. GEMESSEN aus den Gradle-Metadaten:
-#   coil3 3.3.0 → kotlin-stdlib 2.2.0    ← passt zu unseren 2.3.0
+# NICHT 3.4.0 und nicht 3.6.3, obwohl es beide gibt. GEMESSEN aus den
+# Gradle-Metadaten:
+#   coil3 3.3.0 → kotlin-stdlib 2.2.0
 #   coil3 3.4.0 → kotlin-stdlib 2.3.10
 #   coil3 3.6.3 → kotlin-stdlib 2.4.10
-# Mit Kotlin 2.3.0 ist 3.3.0 die hoechste. Hebt die Werkzeugkette auf
-# 2.3.20, wird 3.4.0 moeglich — das ist dann eine Zahl, kein Umbau.
 #
-# 3.6.3 bleibt auch danach ausser Reichweite: Es verlangt Kotlin 2.4, und
-# KSP hoert bei 2.3.12 auf (erwartet 2.3.20). Hilt braucht KSP.
+# Als 3.3.0 gesetzt wurde, war unser Uebersetzer Kotlin 2.3.0 und 3.3.0
+# damit die hoechste erreichbare. Mit Kotlin 2.3.20 aus #28 waere 3.4.0
+# jetzt moeglich — der Kommentar sagte das voraus, und es trifft zu.
+#
+# Sie bleibt trotzdem auf 3.3.0, und zwar aus einem Grund, der nicht die
+# Zahl ist: Der Sprung von coil 2 auf coil 3 hat 81 Stellen in 30 Dateien
+# angefasst, und zwei Namen darin (OkHttpNetworkFetcherFactory,
+# memoryCacheKeyExtra) wurden erst nach einem roten Lauf in den QUELLEN von
+# 3.3.0 nachgesehen — die Dokumentation nannte die Java-Sicht. Diese
+# Pruefung gilt fuer 3.3.0, nicht fuer 3.4.0. Auf 3.4.0 zu gehen heisst,
+# sie zu wiederholen: eine eigene Aenderung mit eigenem Lauf, keine
+# Nebenwirkung einer Zusammenfuehrung.
+#
+# 3.6.3 ist auf unabsehbare Zeit ausser Reichweite, weil es Kotlin 2.4
+# verlangt. GEMESSEN am 06.10. an der maven-metadata.xml von
+# symbol-processing-gradle-plugin: <latest> und <release> stehen beide auf
+# 2.3.12, und eine KSP-Fassung fuer Kotlin 2.4 gibt es UEBERHAUPT NICHT —
+# null Treffer auf "2.4" in der ganzen Metadatei. Kotlin selbst ist zu
+# diesem Zeitpunkt bei 2.4.20 (stabil) bzw. 2.5.0-Beta1. Der Deckel ist
+# also KSP, nicht Kotlin, und er sitzt hier fest, weil Hilts Codeerzeugung
+# ueber KSP laeuft (app/build.gradle.kts: `ksp(libs.hilt.compiler)`).
 coil                        = "3.3.0"
-coroutines                  = "1.9.0"
+# 1.11.0 verlangt kotlin-stdlib 2.2.20, liegt also UNTER unseren 2.3.20 —
+# anders als serialization oben kein Konflikt. Ebenfalls aus den
+# Gradle-Metadaten gelesen, nicht geschaetzt.
+coroutines                  = "1.11.0"
 # WorkManager fuer den stuendlichen Preisalarm-Abruf. Reine Java-/Kotlin-
 # Bibliothek — sie bringt KEINE native .so mit und beruehrt die
 # 16-KB-Ausrichtung deshalb nicht (siehe INVARIANTEN.md). Room und
