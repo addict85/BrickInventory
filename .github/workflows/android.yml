@@ -231,7 +231,17 @@ jobs:
           BRICK_KEYSTORE_PASSWORT: ${{ secrets.KEYSTORE_PASSWORT }}
           BRICK_KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
           BRICK_KEY_PASSWORT: ${{ secrets.KEY_PASSWORT }}
-        run: ./gradlew --no-daemon assembleRelease bundleRelease
+        # tee wie bei den Unit-Tests, aus einem zweiten Grund: Die
+        # Warnungen des Übersetzers stehen NUR hier. Ohne Mitschnitt kann
+        # `warnungen-zaehlen.py` weiter unten nichts zählen — und „0
+        # Warnungen" wäre dann die beruhigendste aller Falschaussagen.
+        #
+        # set -o pipefail: ohne das bestimmt tee den Rückgabewert und ein
+        # gescheiterter Bau ginge als Erfolg durch.
+        run: |
+          set -o pipefail
+          ./gradlew --no-daemon assembleRelease bundleRelease 2>&1 \
+            | tee "$RUNNER_TEMP/bau.log"
 
       # ── Warum ZUSÄTZLICH ein Bundle (.aab) ──────────────────────────────────
       #
@@ -248,8 +258,37 @@ jobs:
       # ist deshalb gerade hier interessant; abbrechen soll er nicht, das
       # entspricht abortOnError = false im Buildskript.
       - name: Lint
-        run: ./gradlew --no-daemon lintRelease
+        run: |
+          set -o pipefail
+          ./gradlew --no-daemon lintRelease 2>&1 | tee "$RUNNER_TEMP/lint.log"
         continue-on-error: true
+
+      # ── Wie viele Warnungen wirft der Übersetzer? ──────────────────────────
+      #
+      # Auf die Frage „sind alle Warnungen beim Kompilieren gelöst" gab es hier
+      # keine Antwort, nur zwei Zeilen, die das Gegenteil festlegen:
+      #
+      #     app/build.gradle.kts:177   abortOnError     = false
+      #     app/build.gradle.kts:178   warningsAsErrors = false
+      #
+      # und `allWarningsAsErrors` für Kotlin ist nirgends gesetzt. Es gab also
+      # keine Regel, die Warnungen verbietet — und niemand hat sie je GEZÄHLT.
+      # Die Zahl stand in hunderten Zeilen Gradle-Protokoll, das GitHub nur als
+      # Ganzes von einem Host ausliefert, den der Proxy hier mit 403 abweist.
+      #
+      # Warum nicht einfach allWarningsAsErrors = true: Das bricht den Bau ab
+      # der ersten Warnung ab, auch bei einer aus generiertem Code (Hilt, KSP),
+      # die hier niemand beheben kann. Eine Regel, die man danach sofort mit
+      # Ausnahmen durchlöchern muss, ist keine. Stattdessen: zählen, jede
+      # Warnung beim Namen nennen, und rot werden, sobald die Zahl STEIGT.
+      #
+      # `!cancelled()`: Der Befund ist gerade dann interessant, wenn der Bau
+      # rot war — ein abgebrochener Lauf braucht ihn nicht mehr.
+      - name: Warnungen zählen
+        if: ${{ !cancelled() }}
+        run: |
+          python3 tools/warnungen-zaehlen.py tools/warnungen-obergrenze.txt \
+            "$RUNNER_TEMP/bau.log" "$RUNNER_TEMP/lint.log"
 
       # Den Namen vergibt GRADLE (Aufgabe copyReleaseApkAsBrickInventory in
       # app/build.gradle.kts), nicht dieser Schritt. Hier wird nur nachgesehen,
