@@ -5,7 +5,7 @@
          (Registrierung: Sprache der Bestaetigungs-E-Mail und des neuen Kontos).
          Aus den Ressourcen abgeleitet statt selbst ermittelt: So sagt sie
          genau das, was die Oberflaeche gerade zeigt. -->
-    <string name="lang_code" translatable="false">en</string>
+    <string name="lang_code">en</string>
 
     <!-- ══════════════ Settings screen ══════════════ -->
     <string name="settings_currency">Currency</string>

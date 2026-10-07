@@ -336,10 +336,19 @@ fun CatalogScreen(
                     // nur bei Sortierung nach Jahr. Steht die Liste nach Name
                     // oder Nummer, liegen die Jahre verstreut, und ein Jahr im
                     // Etikett waere ohne Aussage.
+                    // `gridState.firstVisibleItemIndex` traegt
+                    // @FrequentlyChangingValue: direkt in der Komposition
+                    // gelesen, wertet es den ganzen Bildschirm bei jeder
+                    // Aenderung neu aus. Lint meldet das als
+                    // FrequentlyChangingValue. In einem derivedStateOf gelesen
+                    // loest es nur aus, wenn sich der abgeleitete Wert aendert.
+                    val sichtbareNummer by remember(gridState) {
+                        derivedStateOf { gridState.firstVisibleItemIndex }
+                    }
                     if (state.sort.startsWith("year_") && state.total > 0
                         && state.jahrVerteilung.isNotEmpty()) {
                         YearScrubber(
-                            listenNummer = gridState.firstVisibleItemIndex,
+                            listenNummer = sichtbareNummer,
                             total = state.total,
                             verteilung = state.jahrVerteilung,
                             // Erste Wahl wie in der Webapp: das Jahr der

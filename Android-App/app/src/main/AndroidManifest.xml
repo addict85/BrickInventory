@@ -58,7 +58,16 @@
     -->
     <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES" />
 
+    <!--
+      tools:targetApi="33" fuer localeConfig und enableOnBackInvokedCallback:
+      Lint meldet beide als UnusedAttribute, weil sie erst ab API 33 wirken und
+      minSdk 26 ist. Das ist KEIN Fehler, sondern die Absicht — auf aelteren
+      Geraeten werden sie ignoriert, und die App funktioniert dort ohne sie.
+      `tools:targetApi` ist die vorgesehene Form, das zu sagen; es legt keine
+      Warnung still, sondern beantwortet sie.
+    -->
     <application
+        tools:targetApi="33"
         android:name=".BrickInventoryApp"
         android:allowBackup="false"
         android:dataExtractionRules="@xml/data_extraction_rules"

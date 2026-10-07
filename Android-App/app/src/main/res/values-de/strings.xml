@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="app_name">BrickInventory Manager</string>
-    <string name="lang_code" translatable="false">de</string>
+    <string name="lang_code">de</string>
 
     <!-- ══════════════ Settings screen ══════════════ -->
     <string name="settings_currency">Währung</string>

@@ -1,81 +1,68 @@
 # Obergrenze fuer die Lint-Warnungen.
-43
-# VORHERSAGE, eingetragen vor dem Lauf: 58 minus 12 UseKtx, minus 2 „fuer",
-# minus 1 „ok" = 43. Nachtraeglich eingetragen waere die Zahl immer richtig und
-# damit wertlos; so kann der Lauf sie widerlegen.
+35
+# VORHERSAGE, eingetragen VOR dem Lauf: 43 minus 8.
 #
-# Stand vorher: 58, gemessen im Lauf 37600557096 (Summe stimmt, dazu 5 Hinweise).
+#   1x UseKtx                 Bitmap.createBitmap(w,h,ARGB_8888) -> createBitmap(w,h)
+#                             (PdfViewerScreen.kt; ARGB_8888 ist dort die
+#                             Vorbelegung — gelesen in androidx.core.graphics)
+#   2x DefaultLocale          String.format mit ausdruecklichem
+#                             Locale.getDefault() (PdfViewerScreen.kt:666).
+#                             Verhalten unveraendert: ohne Locale nahm es
+#                             ohnehin die voreingestellte.
+#   1x FrequentlyChangingValue  gridState.firstVisibleItemIndex jetzt in einem
+#                             derivedStateOf (CatalogScreen.kt). Direkt in der
+#                             Komposition gelesen, wertet es den ganzen
+#                             Bildschirm bei jeder Aenderung neu aus.
+#   1x Untranslatable         lang_code: translatable="false" entfernt. Die
+#                             Zeichenkette gibt den Code der aktuellen Sprache
+#                             und ist absichtlich je Sprachdatei anders — die
+#                             Angabe war schlicht falsch.
+#   2x UnusedAttribute        tools:targetApi="33" am <application>-Element.
+#   1x ObsoleteSdkInt         res/mipmap-anydpi-v26 -> res/mipmap-anydpi.
+#                             Der Qualifizierer war unnoetig, minSdk IST 26.
 #
-# ── Behoben ────────────────────────────────────────────────────────────────
-#
-#   12x UseKtx   Color.parseColor("#$x") -> "#$x".toColorInt()   (7 Stellen)
-#                Uri.parse(x)            -> x.toUri()            (5 Stellen)
-#
-#     Die Importe sind nicht geraten, sondern in androidx gelesen — die
-#     Erweiterungen liegen inzwischen in androidx.core:core:
-#       package androidx.core.graphics
-#         @ColorInt public inline fun String.toColorInt(): Int = Color.parseColor(this)
-#       package androidx.core.net
-#         public inline fun String.toUri(): Uri = Uri.parse(this)
-#
-#    2x Typos    „fuer" -> „für"   (values-de/strings.xml:610, 611)
-#
-#     Mitgenommen, weil derselbe Defekt: „uebernommen" -> „übernommen" und
-#     „fuehrt" -> „führt" in denselben zwei Zeilen. Lint hatte sie nicht
-#     gemeldet, ASCII-Behelf sind sie trotzdem.
-#
-#    1x Typos    „ok" -> „OK"      (values/strings.xml:49)
-#
-#     Die deutsche Fassung desselben Textes stand ebenfalls auf „ok" und wurde
-#     mitgezogen — sonst haette das Beheben eine neue Unstimmigkeit erzeugt.
+# Stand vorher: 43 (Lauf 37605993159, Vorhersage damals exakt gehalten).
 #
 # ── 15 bleiben ABSICHTLICH stehen ──────────────────────────────────────────
 #
-# 9x Typos — Lint prueft gegen BUNDESDEUTSCHE Rechtschreibung und will neun
-# Woerter berichtigen, die richtig sind. In der Schweiz gibt es kein ß:
+# 9x Typos — Lint prueft gegen BUNDESDEUTSCHE Rechtschreibung. In der Schweiz
+# gibt es kein ß: liess (2x), Schliessen (2x), grösser (2x), liesse,
+# ausserhalb, liessen. Alle neun sind richtig geschrieben.
 #
-#     liess (2x)     Schliessen (2x)   grösser (2x)
-#     liesse         ausserhalb        liessen
-#
-# Das ist korrektes Schweizer Hochdeutsch. Diese App ist auf Schweizer Franken
-# und Schweizer Usus ausgelegt; ein ß darin waere der Fehler, nicht die
-# Behebung.
-#
-# 4x TypographyDashes — alle vier betreffen dieselbe Zeichenkette: die
-# Setnummer „75192-1" im Beispieltext (values/strings.xml:66, :123 und
-# values-de/strings.xml:50, :107). Lint moechte den Bindestrich durch einen
-# Halbgeviertstrich ersetzen. Das waere in einem Text, der dem Nutzer das
-# EINGABEFORMAT zeigt, schlicht falsch — die Nummer heisst mit Bindestrich.
+# 4x TypographyDashes — alle vier betreffen die Setnummer „75192-1" im
+# Beispieltext (values/strings.xml:66, :123; values-de/strings.xml:50, :107).
+# Die Nummer heisst mit Bindestrich; ein Halbgeviertstrich waere dort falsch.
 #
 # 2x AcceptsUserCertificates / InsecureBaseConfiguration — in
-# res/xml/network_security_config.xml ausfuehrlich begruendet: Klartext, weil
-# die Server-URL der Nutzer selbst eintraegt (private LAN-Adresse, in <domain>
-# nicht per Wildcard ausdrueckbar; eingeschraenkt im OkHttp-Abfanger), und
-# Nutzer-CA fuer ein selbst ausgestelltes Zertifikat. GitHub ist per
-# domain-config davon ausgenommen.
+# res/xml/network_security_config.xml begruendet.
 #
-# Keiner dieser 15 wird mit tools:ignore stillgelegt. Eine stillgelegte Warnung
-# ist unsichtbar — derselbe Fehler wie eine lint-Baseline. Sie bleiben gezaehlt
-# und hier erklaert.
+# ── 20 offen, davon 1 mit Begruendung ──────────────────────────────────────
 #
-# ── Noch offen, mit Entscheidungsbedarf ────────────────────────────────────
+#   10x PluralsCandidate      „%d set/sets/part/parts/types/other/tokens/rows"
+#                             gehoert in <plurals>. Echter i18n-Umbau in BEIDEN
+#                             Sprachdateien — kein mechanischer Handgriff, und
+#                             im Deutschen sind die Formen andere als im
+#                             Englischen.
+#    5x IconLauncherShape     Startbild fuellt das ganze Quadrat.
+#    2x MonochromeLauncherIcon  dem adaptiven Icon fehlt ein monochrome-Zweig.
+#    1x UnusedResources       R.mipmap.ic_launcher_foreground unbenutzt.
 #
-#   10x PluralsCandidate       „%d set/sets/part/parts/types/other/tokens/rows"
-#                              gehoert in <plurals>. Echter i18n-Umbau in BEIDEN
-#                              Sprachdateien, nicht mechanisch.
-#    5x IconLauncherShape      Startbild fuellt das ganze Quadrat — Grafikarbeit.
-#    2x MonochromeLauncherIcon dem adaptiven Icon fehlt ein monochrome-Zweig.
-#    2x UnusedAttribute        localeConfig / enableOnBackInvokedCallback erst ab
-#                              API 33 (minSdk 26) — harmlos, aber benennbar.
-#    1x AppBundleLocaleChanges Sprachwechsel ohne Play-Core-Aufrufe. Betrifft die
-#                              AAB-Auslieferung, nicht die APK von Hand.
-#    1x Untranslatable         lang_code ist translatable="false" und doch
-#                              uebersetzt.
-#    1x DataExtractionRules    gilt erst ab Android 12; fuer API 26-30 fehlt
-#                              fullBackupContent.
-#    1x ObsoleteSdkInt         Ordner mipmap-anydpi-v26 unnoetig, minSdk ist 26.
-#    1x FrequentlyChangingValue  Lesen eines @FrequentlyChangingValue in der
-#                              Komposition — der einzige mit Leistungswirkung.
-#    1x UnusedResources        R.mipmap.ic_launcher_foreground unbenutzt.
-#    1x DefaultLocale (2 Befunde) String.format ohne Locale,
-#                              PdfViewerScreen.kt:666.
+#      Diese acht sind GRAFIKARBEIT, nicht Code. Ein monochrome-Zweig braucht
+#      eine einfarbige Silhouette; die aus dem farbigen Vordergrund zu erzeugen
+#      ergibt eine Flaeche, die man ANSEHEN muss, um sie zu beurteilen. Das kann
+#      hier niemand, und Marco hat eine Rot-Gruen-Schwaeche — eine Beurteilung
+#      „sieht gut aus" von mir waere hier doppelt wertlos.
+#
+#    1x AppBundleLocaleChanges  Sprachwechsel ohne Play-Core-Aufrufe
+#                             (LanguageManager.kt:48). Betrifft die
+#                             AAB-Auslieferung ueber Play mit Sprach-Splits —
+#                             die APK von Hand traegt alle Sprachen im Paket.
+#
+#    1x DataExtractionRules   Lint moechte zusaetzlich fullBackupContent fuer
+#                             API 26-30. Im Manifest steht aber
+#                             allowBackup="false": Auf diesen Fassungen wird
+#                             ueberhaupt nicht gesichert, die Datei waere ohne
+#                             Wirkung. dataExtractionRules bleibt trotzdem, weil
+#                             es ab Android 12 auch die Geraet-zu-Geraet-
+#                             Uebertragung steuert, und die ist von allowBackup
+#                             unabhaengig.
