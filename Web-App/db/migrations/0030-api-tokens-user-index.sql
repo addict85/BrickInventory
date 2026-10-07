@@ -1,0 +1,82 @@
+-- ═══════════════════════════════════════════════════════════════════════════
+-- api_tokens(user_id, created_at DESC) — der einzige Fremdschluessel ohne
+-- Index, der auf einem Abfrageweg liegt
+-- ═══════════════════════════════════════════════════════════════════════════
+--
+-- ── Warum 0030 und nicht 0028 ──────────────────────────────────────────────
+--
+-- Diese Migration lag fertig und gruen auf einem Zweig und wurde beim
+-- Zusammenfuehren uebersehen; inzwischen ist 0029 in main. Sie als 0028
+-- nachzuschieben waere technisch gegangen — db/migrate.ts sortiert die Dateien
+-- und ueberspringt, was in schema_migrations steht, eine Luecke stoert es also
+-- nicht. Aber es waere eine stille Unwahrheit: Auf einer frischen Datenbank
+-- liefe 0028 vor 0029, auf einer bestehenden 0029 vor 0028. Die Nummern sind
+-- dafuer da, die Reihenfolge zu sagen; dann sollen sie auf jeder Datenbank
+-- dieselbe sagen.
+--
+-- Umnummerieren kostet hier nichts, weil sie nirgends angewandt ist — sie war
+-- nie in main und nie in einem Abbild.
+--
+-- ── Woher der Befund kommt ─────────────────────────────────────────────────
+--
+-- GEMESSEN am frisch aus den Migrationen aufgebauten Schema: Von allen
+-- Fremdschluesseln dieser Datenbank haben genau ZWEI keinen fuehrenden Index.
+-- Postgres legt fuer Fremdschluessel keinen an — ohne ihn durchsucht jedes
+-- DELETE oder UPDATE am Elternsatz die Kindtabelle vollstaendig.
+--
+--   api_tokens.user_id            -> users    DIESER hier
+--   account_link_invites.used_by  -> users    NICHT noetig, Begruendung unten
+--
+-- ── Warum dieser Index etwas bringt ────────────────────────────────────────
+--
+-- `user_id` liegt auf einem echten Abfrageweg, nicht nur am Fremdschluessel:
+--
+--   routes/settings.ts:85   SELECT … FROM api_tokens
+--                           WHERE user_id = $1 ORDER BY created_at DESC
+--   routes/settings.ts:122  DELETE FROM api_tokens
+--                           WHERE user_id = $1 AND token LIKE $2
+--
+-- Die erste ist die Geraeteliste in den Einstellungen. Sie filtert nach
+-- user_id UND sortiert nach created_at — darum beide Spalten im Index, und
+-- created_at absteigend in derselben Richtung wie die Abfrage.
+--
+-- Dass die Spaltenreihenfolge das wirklich leistet, ist GEMESSEN und nicht
+-- behauptet. Frische Datenbank, 400 Zeilen, EXPLAIN mit verbotenem Seq-Scan
+-- (damit die Frage „kann der Index das?" beantwortet wird und nicht die Frage
+-- „ist die Tabelle gross genug?"):
+--
+--   ohne Index   Sort  ->  Seq Scan on api_tokens
+--   mit Index    Index Scan using idx_api_tokens_user_created
+--                Index Cond: (user_id = 1)
+--
+-- Entscheidend ist, was in der zweiten Zeile FEHLT: der Sort-Knoten. Postgres
+-- liest die Zeilen in der gewuenschten Reihenfolge aus dem Index. Bei
+-- vertauschten Spalten oder aufsteigendem created_at waere er geblieben.
+--
+-- ── Und warum der zweite Index NICHT kommt ─────────────────────────────────
+--
+-- `account_link_invites.used_by` wird ausschliesslich GESCHRIEBEN:
+--
+--   utils/household.ts:347  UPDATE account_link_invites SET used_at = NOW(),
+--                           used_by = $2 …
+--   utils/household.ts:357  UPDATE … SET used_at = NULL, used_by = NULL …
+--
+-- Es gibt keine Abfrage, die danach filtert. Ein Index waere dort reine
+-- Kosten: Platz und Schreibaufwand bei jeder Einladung, Nutzen nur beim
+-- Loeschen eines Kontos — und diese Tabelle ist winzig. Nachgesehen statt
+-- angenommen; ein Index, den man „zur Sicherheit" anlegt, ist eine
+-- Behauptung ohne Messung.
+--
+-- ── Groessenordnung, ehrlich ───────────────────────────────────────────────
+--
+-- api_tokens traegt pro Geraet und Anmeldung eine Zeile — in dieser
+-- Installation Dutzende, nicht Millionen. Der Index macht die Geraeteliste
+-- also nicht spuerbar schneller, und genau deshalb steht oben ein EXPLAIN mit
+-- verbotenem Seq-Scan und keine Millisekundenzahl: Eine Zeitmessung an einer
+-- winzigen Tabelle haette nur gezeigt, dass beides schnell ist. Er kommt trotzdem, weil er die EINZIGE
+-- Luecke ist, die auf einem Abfrageweg liegt, weil er nichts kostet, und
+-- weil ein fehlender Fremdschluessel-Index genau die Sorte Fund ist, die
+-- unbemerkt waechst.
+
+CREATE INDEX IF NOT EXISTS idx_api_tokens_user_created
+  ON api_tokens (user_id, created_at DESC);
