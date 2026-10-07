@@ -366,10 +366,15 @@ private fun ZoomLeiste(zoom: Float, setzeZoom: (Float) -> Unit, modifier: Modifi
         ) {
             Icon(Icons.Default.ZoomOut, contentDescription = stringResource(R.string.pdfview_zoom_out))
         }
-        Text(
-            "${(zoom * 100).roundToInt()} %",
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-            style = MaterialTheme.typography.labelMedium,
+        // Der Faktor ist zugleich der Knopf „zurueck auf 100 %".
+        //
+        // defaultMinSize, weil der Text allein nur rund 24 dp hoch waere. Die
+        // Materialvorgabe fuer ein Beruehrungsziel sind 48 dp, und das ist keine
+        // Geschmacksfrage: Die beiden Symbolknoepfe daneben sind 48 dp, ein
+        // 24-dp-Ziel dazwischen trifft man mit dem Daumen nur knapp daneben.
+        // Sichtbar aendert sich nichts — die Reihe ist durch die Knoepfe ohnehin
+        // 48 dp hoch.
+        Box(
             modifier = Modifier
                 // onClickLabel statt nur clickable: Vorgelesen wuerde sonst
                 // „125 Prozent, Doppeltippen zum Aktivieren" — und was dann
@@ -378,8 +383,15 @@ private fun ZoomLeiste(zoom: Float, setzeZoom: (Float) -> Unit, modifier: Modifi
                     onClickLabel = stringResource(R.string.pdfview_zoom_reset),
                     onClick = { setzeZoom(PDF_ZOOM_MIN) }
                 )
-                .padding(horizontal = Abstaende.klein, vertical = Abstaende.winzig)
-        )
+                .defaultMinSize(minWidth = 56.dp, minHeight = 48.dp),
+            contentAlignment = Alignment.Center
+        ) {
+            Text(
+                "${(zoom * 100).roundToInt()} %",
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                style = MaterialTheme.typography.labelMedium
+            )
+        }
         IconButton(
             onClick = { setzeZoom(zoom * PDF_ZOOM_SCHRITT) },
             enabled = zoom < PDF_ZOOM_MAX - 0.01f
@@ -446,6 +458,18 @@ private fun PdfPages(file: File, pageCount: Int, zoom: Float, setzeZoom: (Float)
     val waagrecht = rememberScrollState()
     val geste = rememberTransformableState { zoomChange, _, _ -> setzeZoom(zoom * zoomChange) }
 
+    // `pointerInput(Unit)` wird NICHT neu aufgesetzt, wenn sich etwas aendert —
+    // das ist der Sinn des Schluessels Unit, sonst riss jede Neuberechnung eine
+    // laufende Geste ab. Der Preis: Der Block haelt die Huelle der ERSTEN
+    // Komposition fest. Ohne rememberUpdatedState saehe der Doppeltipp `zoom`
+    // fuer immer als 1 und zoomte nur noch hinein, nie zurueck.
+    //
+    // Fuer `geste` braucht es das nicht: rememberTransformableState legt den
+    // Rueckruf selbst in ein rememberUpdatedState (gelesen in
+    // foundation/gestures/TransformableState.kt).
+    val zoomJetzt by rememberUpdatedState(zoom)
+    val setzeZoomJetzt by rememberUpdatedState(setzeZoom)
+
     BoxWithConstraints(Modifier.fillMaxSize()) {
         // Die Seitenbreite OHNE den Rand, den die Liste ringsum legt — sonst
         // waere die gerenderte Bitmap um zweimal Abstaende.klein zu breit.
@@ -469,7 +493,9 @@ private fun PdfPages(file: File, pageCount: Int, zoom: Float, setzeZoom: (Float)
                     // Erkenner beanspruchen keine Zuege (sie brechen beim
                     // Schwellwert ab), streiten also mit dem Rollen nicht.
                     detectTapGestures(onDoubleTap = {
-                        setzeZoom(if (zoom > PDF_ZOOM_MIN + 0.01f) PDF_ZOOM_MIN else PDF_ZOOM_DOPPELTIPP)
+                        setzeZoomJetzt(
+                            if (zoomJetzt > PDF_ZOOM_MIN + 0.01f) PDF_ZOOM_MIN else PDF_ZOOM_DOPPELTIPP
+                        )
                     })
                 }
         ) {

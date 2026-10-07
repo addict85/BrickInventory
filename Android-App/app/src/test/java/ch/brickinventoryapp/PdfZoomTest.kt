@@ -182,6 +182,32 @@ class PdfZoomTest {
     }
 
     @Test
+    fun `der Doppeltipp liest den aktuellen Zoom, nicht den von damals`() {
+        // pointerInput(Unit) wird absichtlich nicht neu aufgesetzt — sonst riss
+        // jede Neuberechnung eine laufende Geste ab. Dafuer haelt der Block die
+        // Huelle der ERSTEN Komposition fest. Liest der Doppeltipp `zoom`
+        // unmittelbar, sieht er fuer immer 1 und zoomt nur noch hinein.
+        //
+        // Das ist der Fehler, der beim Ausprobieren nicht auffaellt: Hineinzoomen
+        // geht, und dass das Zurueckzoomen nicht geht, haelt man fuer die
+        // Bedienung.
+        assert(quelle.contains("val zoomJetzt by rememberUpdatedState(zoom)")) {
+            "Es gibt kein rememberUpdatedState fuer den Zoom mehr — dann liest der " +
+                "Doppeltipp den eingefrorenen Wert aus der ersten Komposition."
+        }
+        val tipp = Regex("detectTapGestures\\(onDoubleTap = \\{(.*?)\\}\\)", RegexOption.DOT_MATCHES_ALL)
+            .find(quelle)?.groupValues?.get(1)
+        assert(tipp != null) { "Kein detectTapGestures(onDoubleTap = ...) mehr gefunden." }
+        assert(tipp!!.contains("zoomJetzt") && tipp.contains("setzeZoomJetzt")) {
+            "Der Doppeltipp greift nicht auf die nachgefuehrten Werte zu:\n$tipp"
+        }
+        assert(!Regex("[^A-Za-z]zoom[^A-Za-z]").containsMatchIn(tipp)) {
+            "Der Doppeltipp liest `zoom` unmittelbar — das ist der eingefrorene " +
+                "Wert aus der ersten Komposition:\n$tipp"
+        }
+    }
+
+    @Test
     fun `der Zoom laeuft nicht ueber einen graphicsLayer`() {
         assert(!quelle.contains("graphicsLayer")) {
             "Im PDF-Betrachter steht ein graphicsLayer. Der streckt die gerenderte " +
