@@ -1,5 +1,45 @@
 # Obergrenze fuer die Lint-Warnungen.
-35
+25
+# VORHERSAGE, eingetragen VOR dem Lauf: 35 minus die zehn PluralsCandidate.
+#
+# ── Was dabei NICHT mechanisch war ─────────────────────────────────────────
+#
+# Ein <plurals> stimmt mit EINER Zahl ueberein. Sechs der zehn hatten genau
+# eine Zahl mit einem Wort dahinter und wurden unmittelbar umgewandelt — bei
+# `partslist_sets_in_list` verschwindet damit das krueckenhafte „Set(s)".
+#
+# Vier hatten ZWEI:
+#
+#   partslist_summary     „%1$d Teiletypen · %2$d Teile"
+#   partslist_owned_missing  „Es fehlen %1$d Teile (%2$d verschiedene)."
+#   household_move_ok     „… %1$d Teile und %2$d Minifiguren mitgenommen."
+#   csv_upload_result     „%1$d Zeilen: %2$d neu, … %4$d Fehler"
+#
+# Die sind in Bruchstuecke zerlegt und ueber eine Rahmen-Zeichenkette
+# zusammengesetzt. Der Rahmen traegt dabei KEIN %d mehr — sonst beanstandet
+# Lint ihn gleich wieder. Darum haben auch „neu" und „aktualisiert" eigene
+# Mengenformen, obwohl sie sich in beiden Sprachen nicht beugen: Sie halten das
+# %d aus dem Rahmen heraus, und in einer Sprache mit anderen Mengenklassen
+# waeren sie ohnehin noetig.
+#
+# Bei `partslist_owned_missing` laesst die EINZAHLform die Klammer weg: Fehlt
+# genau ein Teil, ist die Zahl der verschiedenen zwangslaeufig auch eins — die
+# Angabe waere dort nur Wiederholung.
+#
+# ── Ein ausgesprochenes Risiko ─────────────────────────────────────────────
+#
+# Genau deshalb haben die beiden Mengenklassen von `partslist_owned_missing`
+# UNTERSCHIEDLICH viele Argumente (one: %1$d, other: %1$d und %2$s). Ob Lint das
+# als StringFormatCount/StringFormatMatches beanstandet, weiss ich nicht —
+# erraten will ich es nicht, und es waere ein Befund der Stufe Error, also rot.
+# Tritt es ein, nehme ich die Klammer in die Einzahlform zurueck; dann steht da
+# „Es fehlt 1 Teil (1 verschiedenes)", was albern ist, aber gleich viele
+# Argumente hat.
+#
+# Dazu kommt: Die Pruefung auf Gleichstand der Sprachdateien kannte nur
+# <string>. <plurals> war ihr unsichtbar — mit sechzehn davon waere eine
+# fehlende deutsche Einzahlform genau der Fehler, den diese Datei beschreibt.
+# StringResourceParityTest hat darum eine neue Pruefung bekommen.
 # VORHERSAGE, eingetragen VOR dem Lauf: 43 minus 8.
 #
 #   1x UseKtx                 Bitmap.createBitmap(w,h,ARGB_8888) -> createBitmap(w,h)

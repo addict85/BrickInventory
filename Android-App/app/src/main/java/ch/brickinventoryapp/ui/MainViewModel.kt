@@ -141,6 +141,24 @@ class MainViewModel @Inject constructor(
         return if (args.isEmpty()) c.getString(id) else c.getString(id, *args)
     }
 
+    /**
+     * Dasselbe fuer Mengenformen (`<plurals>`).
+     *
+     * Warum ein eigener Helfer und nicht `text()`: Eine Mengenform waehlt ihre
+     * Fassung nach einer ZAHL aus, und die muss getrennt uebergeben werden —
+     * `getQuantityString(id, anzahl, *args)`. Die Zahl steht meist AUCH im Text,
+     * dann gehoert sie zusaetzlich in `args`; das entscheidet die Aufrufstelle.
+     *
+     * Derselbe sprachbewusste Context wie bei `text()`: Ohne ihn waehlte Android
+     * die Mengenform nach der SYSTEMsprache, nicht nach der in der App
+     * eingestellten — und bei Sprachen mit anderen Mengenklassen als eins/viele
+     * waere das nicht nur ein falsches Wort, sondern die falsche Regel.
+     */
+    internal fun menge(id: Int, anzahl: Int, vararg args: Any?): String {
+        val c = ch.brickinventoryapp.util.LanguageManager.localizedContext(ctx)
+        return c.resources.getQuantityString(id, anzahl, *args)
+    }
+
     // ── Der Zustand wird MIT dem gemerkten Design geboren ───────────────────
     //
     // Nicht `AppUiState()` und dann nachtraeglich korrigieren: `appTheme` wird

@@ -212,8 +212,13 @@ fun AcquisitionManagementScreen(
                                 // Die Zahlen kommen aus der Antwort. Sie standen
                                 // hier fest auf 0/0 — die Meldung sagte also
                                 // auch dann „0 Teile", wenn hunderte wanderten.
+                                // Zwei Zahlen, zwei Uebereinstimmungen: ein
+                                // <plurals> stimmt nur mit EINER ueberein,
+                                // darum zwei Bruchstuecke in einem Rahmen.
                                 moveMessage = err ?: res.getString(
-                                    R.string.household_move_ok, teile, figuren)
+                                    R.string.household_move_ok,
+                                    res.getQuantityString(R.plurals.household_move_parts, teile, teile),
+                                    res.getQuantityString(R.plurals.household_move_minifigs, figuren, figuren))
                             }
                         },
                         modifier = Modifier.padding(top = Abstaende.winzig)

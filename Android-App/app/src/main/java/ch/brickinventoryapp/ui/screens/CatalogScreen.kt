@@ -22,6 +22,7 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
@@ -269,7 +270,9 @@ fun CatalogScreen(
         CatalogFilterRow(state, selectedThemeName, showThemeSheet, showYearSheet, showSortMenu, onSortChange)
         // Trefferzahl
         Text(
-            stringResource(R.string.catalog_result_count, state.total),
+            // pluralStringResource statt stringResource: „1 Set im Katalog",
+            // nicht „1 Sets".
+            pluralStringResource(R.plurals.catalog_result_count, state.total, state.total),
             style = MaterialTheme.typography.labelSmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
             modifier = Modifier.padding(horizontal = Abstaende.gross, vertical = Abstaende.haar)

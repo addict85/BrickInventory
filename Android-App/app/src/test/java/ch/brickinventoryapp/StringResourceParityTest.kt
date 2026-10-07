@@ -65,6 +65,82 @@ class StringResourceParityTest {
         }
     }
 
+    /** Name → Mengenklassen („one", „other", …) einer `<plurals>`. */
+    private fun mengenformen(datei: String): Map<String, Set<String>> =
+        Regex("""<plurals name="([^"]+)">(.*?)</plurals>""", RegexOption.DOT_MATCHES_ALL)
+            .findAll(java.io.File("src/main/res/$datei").readText())
+            .associate { m ->
+                m.groupValues[1] to Regex("""quantity="([^"]+)"""")
+                    .findAll(m.groupValues[2]).map { it.groupValues[1] }.toSet()
+            }
+
+    /**
+     * Mengenformen: beide Dateien, dieselben Klassen.
+     *
+     * ── Warum es diese Prüfung gibt (Nachtrag 161) ──────────────────────────
+     *
+     * Die Prüfung oben sucht `<string name=`. `<plurals>` war ihr unsichtbar —
+     * solange es keine gab, war das kein Loch. Mit dem Beheben der zehn
+     * PluralsCandidate-Befunde gibt es sechzehn, und damit wäre eine fehlende
+     * deutsche Einzahlform genau der Fehler, den die Datei oben beschreibt:
+     * Android fällt stillschweigend auf die Vorgabesprache zurück, und ein
+     * deutscher Nutzer liest bei genau einem Treffer einen englischen Satz.
+     *
+     * Geprüft wird darum dreierlei:
+     *   1. Dieselben Namen in beiden Dateien.
+     *   2. Dieselben Mengenklassen je Name — eine deutsche `<plurals>` ohne
+     *      `one` sieht vollständig aus und ist es nicht.
+     *   3. Jede hat mindestens `one` und `other`. Fehlt `one` in BEIDEN
+     *      Dateien, fällt Punkt 2 nicht auf, und doch steht dann überall die
+     *      Mehrzahl — „1 Sets im Katalog".
+     *
+     * Gegenproben (durchgeführt, in derselben Logik gegen die echten Dateien
+     * und vier verfälschte Fassungen):
+     *   die echten Dateien              -> grün (16 Mengenformen)
+     *   deutsche Einzahlform entfernt   -> ROT
+     *   deutsche Mengenform ganz weg    -> ROT
+     *   Mengenform nur auf Deutsch      -> ROT
+     *   englische Mengenform ohne one   -> ROT
+     */
+    @Test
+    fun `jede Mengenform steht in beiden Sprachdateien mit denselben Klassen`() {
+        val en = mengenformen("values/strings.xml")
+        val de = mengenformen("values-de/strings.xml")
+
+        // Selbstnachweis gegen die stille Null: Ohne Treffer liefe alles
+        // darunter ins Leere und wäre trotzdem grün.
+        assert(en.isNotEmpty()) {
+            "Keine <plurals> in values/strings.xml gefunden — Muster veraltet?"
+        }
+
+        val nurEn = (en.keys - de.keys).sorted()
+        assert(nurEn.isEmpty()) {
+            "Mengenform nur in values/, fehlt auf Deutsch (Android zeigt dort still " +
+                "Englisch):\n  " + nurEn.joinToString("\n  ")
+        }
+        val nurDe = (de.keys - en.keys).sorted()
+        assert(nurDe.isEmpty()) {
+            "Mengenform nur in values-de/, ohne Gegenstück in values/:\n  " +
+                nurDe.joinToString("\n  ")
+        }
+
+        val andereKlassen = en.keys.filter { it in de && en[it] != de[it] }.sorted()
+        assert(andereKlassen.isEmpty()) {
+            "Diese Mengenformen haben in den beiden Dateien NICHT dieselben " +
+                "Mengenklassen — die fehlende Fassung fällt still auf Englisch " +
+                "zurück:\n  " + andereKlassen.joinToString("\n  ") {
+                    "$it: values=${en[it]?.sorted()} values-de=${de[it]?.sorted()}"
+                }
+        }
+
+        val ohneBeide = en.keys.filter { !en.getValue(it).containsAll(listOf("one", "other")) }.sorted()
+        assert(ohneBeide.isEmpty()) {
+            "Diese Mengenformen haben nicht beide Klassen `one` und `other` — dann " +
+                "steht auch bei genau einem Treffer die Mehrzahl da:\n  " +
+                ohneBeide.joinToString("\n  ")
+        }
+    }
+
     /**
      * Gleicher Text in beiden Dateien heisst: nicht uebersetzt.
      *
@@ -115,6 +191,11 @@ class StringResourceParityTest {
             "setup_url_placeholder",
             // PIN ist in beiden Sprachen PIN — ein Begriff, kein Satz.
             "vouchers_pin",
+            // Reine Rahmen ohne eigenen Text (Nachtrag 161): Seit die zehn
+            // PluralsCandidate-Befunde behoben sind, setzen diese beiden einen
+            // Satz aus Mengenform-Bruchstuecken zusammen. Sie enthalten nur
+            // Platzhalter und Satzzeichen — uebersetzt wird in den <plurals>.
+            "partslist_summary", "csv_upload_result",
         )
 
         val en = texte("values/strings.xml")
@@ -137,11 +218,15 @@ class StringResourceParityTest {
     }
 
     /**
-     * Name → Text. Anders als [schluessel] verlangt das Muster hier ein `">`
-     * direkt hinter dem Namen und überspringt damit den einen Eintrag mit
-     * Zusatz (`lang_code translatable="false"`). Das ist richtig so: Der
-     * Sprachcode ist kein Oberflächentext, und für den Vergleich unten wäre er
-     * nur Rauschen.
+     * Name → Text. Das Muster verlangt ein `">` direkt hinter dem Namen und
+     * überspringt damit jeden Eintrag mit zusätzlichem Attribut.
+     *
+     * NACHTRAG 161: Bis hierhin war das genau ein Eintrag, `lang_code
+     * translatable="false"`. Den Zusatz gibt es nicht mehr — Lint hatte ihn als
+     * `Untranslatable` beanstandet, und zu Recht: Die Zeichenkette gibt den Code
+     * der aktuellen Sprache und ist absichtlich je Sprachdatei anders, also
+     * sehr wohl zu übersetzen. Sie fällt jetzt in den Vergleich unten und ist
+     * dort harmlos, weil "en" und "de" sich unterscheiden.
      */
     private fun texte(datei: String): Map<String, String> =
         Regex("""<string name="([^"]+)">(.*?)</string>""", RegexOption.DOT_MATCHES_ALL)

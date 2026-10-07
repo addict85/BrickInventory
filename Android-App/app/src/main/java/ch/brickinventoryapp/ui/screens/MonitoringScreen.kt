@@ -155,7 +155,9 @@ fun MonitoringScreen(vm: MainViewModel) {
                             reimportMsg = reimportLoadingMsg
                             val eingereiht = mon.leseAnleitungenNeuEin()
                             if (eingereiht != null) {
-                                reimportMsg = monRes.getString(R.string.monitoring_reimport_enqueued, eingereiht)
+                                reimportMsg = monRes.getQuantityString(
+                                    R.plurals.monitoring_reimport_enqueued,
+                                    eingereiht, eingereiht)
                                 scope.launch { delay(4000); reimportMsg = null }
                             } else {
                                 reimportMsg = null; snack = reimportErrorMsg

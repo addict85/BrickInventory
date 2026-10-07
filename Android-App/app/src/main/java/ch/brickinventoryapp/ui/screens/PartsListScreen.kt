@@ -181,14 +181,15 @@ fun PartsListScreen(
     // String-Templates einmal composabel aufloesen, dann in Lambdas (scope.launch etc.)
     // per String.format() weiterverwenden (dort ist stringResource() nicht erlaubt).
     val setAlreadyAddedMsg = stringResource(R.string.partslist_set_already_added)
-    val setsInListFmt      = stringResource(R.string.partslist_sets_in_list)
+    // Mengenformen brauchen die ZAHL zum Formatierzeitpunkt, und der liegt in
+    // den Rueckrufen unten. `pluralStringResource` ist @Composable und dort
+    // nicht erlaubt — `LocalResources` liefert eine Resources, die auch dort
+    // gilt und bei einem Wechsel der Konfiguration mitgeht.
+    val mengen = androidx.compose.ui.platform.LocalResources.current
     val loadingSetFmt      = stringResource(R.string.partslist_loading_set)
     val errorForSetFmt     = stringResource(R.string.partslist_error_for_set)
-    val summaryFmt         = stringResource(R.string.partslist_summary)
     val noColorLabel       = stringResource(R.string.partslist_no_color)
-    val groupSummaryFmt    = stringResource(R.string.partslist_group_summary)
     val rbPrefixFmt        = stringResource(R.string.partslist_rb_prefix)
-    val bestandFehltFmt        = stringResource(R.string.partslist_owned_missing)
     val bestandVollstaendigText = stringResource(R.string.partslist_owned_complete)
     val bestandFehlerText       = stringResource(R.string.partslist_owned_error)
 
@@ -198,7 +199,8 @@ fun PartsListScreen(
         if (sets.any { it.setNumber == normalized }) { status = setAlreadyAddedMsg; return }
         sets = sets + PlSet(normalized, normalized)
         setInput = ""
-        status = String.format(setsInListFmt, sets.size)
+        status = mengen.getQuantityString(
+            R.plurals.partslist_sets_in_list, sets.size, sets.size)
     }
 
     LaunchedEffect(barcodeSetNumber) {
@@ -327,7 +329,14 @@ fun PartsListScreen(
                                         )
                                     }
                                 )
-                                status = String.format(summaryFmt, parts.size, parts.sumOf { it.quantity })
+                                // Zwei Zahlen, zwei Uebereinstimmungen: ein
+                                // <plurals> stimmt nur mit EINER ueberein,
+                                // darum zwei Bruchstuecke und ein Rahmen.
+                                val typen = parts.size
+                                val stueck = parts.sumOf { it.quantity }
+                                status = mengen.getString(R.string.partslist_summary,
+                                    mengen.getQuantityString(R.plurals.partslist_summary_types, typen, typen),
+                                    mengen.getQuantityString(R.plurals.partslist_summary_parts, stueck, stueck))
                                 isLoading = false; generated = true
                             }
                         },
@@ -435,9 +444,18 @@ fun PartsListScreen(
                                     if (neu == null) { status = bestandFehlerText; return@launch }
                                     parts = neu
                                     val fehlen = neu.filter { (it.vorhanden ?: 0) < it.quantity }
+                                    val fehlendeStueck =
+                                        fehlen.sumOf { it.quantity - (it.vorhanden ?: 0) }
                                     status = if (fehlen.isEmpty()) bestandVollstaendigText
-                                    else String.format(bestandFehltFmt,
-                                        fehlen.sumOf { it.quantity - (it.vorhanden ?: 0) }, fehlen.size)
+                                    // Die Einzahlform laesst die Klammer weg: Fehlt
+                                    // genau EIN Teil, ist die Zahl der
+                                    // verschiedenen zwangslaeufig auch eins — die
+                                    // Angabe waere dort nur Wiederholung.
+                                    else mengen.getQuantityString(
+                                        R.plurals.partslist_owned_missing, fehlendeStueck, fehlendeStueck,
+                                        mengen.getQuantityString(
+                                            R.plurals.partslist_owned_missing_distinct,
+                                            fehlen.size, fehlen.size))
                                 }
                             },
                             enabled = !bestandLaeuft,
@@ -542,7 +560,10 @@ fun PartsListScreen(
                             style = MaterialTheme.typography.titleSmall,
                             color = MaterialTheme.colorScheme.primary)
                         Spacer(Modifier.width(Abstaende.klein))
-                        Text(String.format(groupSummaryFmt, colorParts.sumOf { it.quantity }, colorParts.size),
+                        // Uebereinstimmung mit %2$d (den Typen) — %1$d traegt
+                        // nur ein „×" und kein Wort.
+                        Text(mengen.getQuantityString(R.plurals.partslist_group_summary,
+                                colorParts.size, colorParts.sumOf { it.quantity }, colorParts.size),
                             style = MaterialTheme.typography.labelSmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant)
                     }

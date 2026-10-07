@@ -148,10 +148,21 @@
 
     <!-- ══════════════ Parts list screen ══════════════ -->
     <string name="partslist_set_already_added">Set already in the list</string>
-    <string name="partslist_sets_in_list">%1$d set(s) in the list</string>
+    <plurals name="partslist_sets_in_list">
+        <item quantity="one">%1$d set in the list</item>
+        <item quantity="other">%1$d sets in the list</item>
+    </plurals>
     <string name="partslist_loading_set">Loading %1$s (%2$d/%3$d)…</string>
     <string name="partslist_error_for_set">Error for %1$s</string>
-    <string name="partslist_summary">%1$d part types · %2$d parts</string>
+    <string name="partslist_summary">%1$s · %2$s</string>
+    <plurals name="partslist_summary_types">
+        <item quantity="one">%1$d part type</item>
+        <item quantity="other">%1$d part types</item>
+    </plurals>
+    <plurals name="partslist_summary_parts">
+        <item quantity="one">%1$d part</item>
+        <item quantity="other">%1$d parts</item>
+    </plurals>
     <string name="partslist_set_number_placeholder">Set number (e.g. 75192)</string>
     <string name="partslist_scan">Scan</string>
     <string name="partslist_generate">Generate</string>
@@ -182,11 +193,21 @@
     <string name="partslist_only_loose">count only manually added parts</string>
     <string name="partslist_include_subs">include sub-accounts</string>
     <string name="partslist_owned_complete">All parts present — this can be built.</string>
-    <string name="partslist_owned_missing">%1$d parts missing (%2$d distinct).</string>
+    <plurals name="partslist_owned_missing">
+        <item quantity="one">%1$d part missing.</item>
+        <item quantity="other">%1$d parts missing (%2$s).</item>
+    </plurals>
+    <plurals name="partslist_owned_missing_distinct">
+        <item quantity="one">%1$d distinct</item>
+        <item quantity="other">%1$d distinct</item>
+    </plurals>
     <string name="partslist_owned_error">Could not load your inventory.</string>
     <string name="partslist_empty_hint">Add sets and generate a parts list</string>
     <string name="partslist_no_color">(No color)</string>
-    <string name="partslist_group_summary">%1$d×  ·  %2$d types</string>
+    <plurals name="partslist_group_summary">
+        <item quantity="one">%1$d×  ·  %2$d type</item>
+        <item quantity="other">%1$d×  ·  %2$d types</item>
+    </plurals>
     <string name="partslist_rb_prefix">RB: %1$s</string>
     <!-- ══════════════ Finance screen ══════════════ -->
     <string name="finance_loading">Prices are loading…</string>
@@ -402,7 +423,10 @@
     <string name="monitoring_import_missing_instr">Import missing instructions</string>
     <string name="monitoring_loading">Loading…</string>
     <string name="monitoring_reimport_error">Reimport failed</string>
-    <string name="monitoring_reimport_enqueued">✅ %1$d sets enqueued</string>
+    <plurals name="monitoring_reimport_enqueued">
+        <item quantity="one">✅ %1$d set enqueued</item>
+        <item quantity="other">✅ %1$d sets enqueued</item>
+    </plurals>
     <!-- Katalog -->
     <string name="nav_catalog">Catalog</string>
     <string name="catalog_search_placeholder">Set number / name…</string>
@@ -411,7 +435,10 @@
     <string name="catalog_all_themes">All themes</string>
     <string name="catalog_all_years">All years</string>
     <string name="catalog_theme_search">Search themes…</string>
-    <string name="catalog_result_count">%1$d sets in catalog</string>
+    <plurals name="catalog_result_count">
+        <item quantity="one">%1$d set in catalog</item>
+        <item quantity="other">%1$d sets in catalog</item>
+    </plurals>
     <string name="catalog_no_results">No sets found</string>
     <string name="catalog_owned">Owned</string>
     <string name="catalog_add_to_gallery">Add to gallery</string>
@@ -450,7 +477,15 @@
     <string name="household_redeem_submit">Link</string>
     <string name="household_unlink">Unlink</string>
     <string name="household_remove">Remove</string>
-    <string name="household_move_ok">Set moved — %1$d parts and %2$d minifigures came along.</string>
+    <string name="household_move_ok">Set moved — %1$s and %2$s came along.</string>
+    <plurals name="household_move_parts">
+        <item quantity="one">%1$d part</item>
+        <item quantity="other">%1$d parts</item>
+    </plurals>
+    <plurals name="household_move_minifigs">
+        <item quantity="one">%1$d minifigure</item>
+        <item quantity="other">%1$d minifigures</item>
+    </plurals>
     <!-- Barrierefreiheit: Beschriftungen für Bedienelemente, die NUR aus einem
          Symbol bestehen. TalkBack liest sonst bloss „Schaltfläche" vor. Icons
          NEBEN einem Text bekommen bewusst weiterhin contentDescription = null —
@@ -524,8 +559,14 @@
     <string name="tokens_revoked">Device signed out</string>
     <string name="tokens_revoke_others">Sign out all others</string>
     <string name="tokens_revoke_others_title">Sign out all others?</string>
-    <string name="tokens_revoke_others_text">%1$d other tokens lose access. This device stays signed in.</string>
-    <string name="tokens_revoked_n">%1$d tokens signed out</string>
+    <plurals name="tokens_revoke_others_text">
+        <item quantity="one">%1$d other token loses access. This device stays signed in.</item>
+        <item quantity="other">%1$d other tokens lose access. This device stays signed in.</item>
+    </plurals>
+    <plurals name="tokens_revoked_n">
+        <item quantity="one">%1$d token signed out</item>
+        <item quantity="other">%1$d tokens signed out</item>
+    </plurals>
     <string name="tokens_no_others">There are no other tokens.</string>
     <string name="tokens_self_unknown">This device\'s own token is not identifiable — without it there is no way to tell which ones are “the others”.</string>
 
@@ -572,7 +613,23 @@
     <string name="csv_upload_hint">Same files as in the web app. Maximum %1$d MB.</string>
     <string name="csv_upload_unreadable">The selected file could not be read.</string>
     <string name="csv_upload_too_big">The file is larger than %1$d MB.</string>
-    <string name="csv_upload_result">%1$d rows: %2$d new, %3$d updated, %4$d errors</string>
+    <string name="csv_upload_result">%1$s: %2$s, %3$s, %4$s</string>
+    <plurals name="csv_upload_rows">
+        <item quantity="one">%1$d row</item>
+        <item quantity="other">%1$d rows</item>
+    </plurals>
+    <plurals name="csv_upload_new">
+        <item quantity="one">%1$d new</item>
+        <item quantity="other">%1$d new</item>
+    </plurals>
+    <plurals name="csv_upload_updated">
+        <item quantity="one">%1$d updated</item>
+        <item quantity="other">%1$d updated</item>
+    </plurals>
+    <plurals name="csv_upload_errors">
+        <item quantity="one">%1$d error</item>
+        <item quantity="other">%1$d errors</item>
+    </plurals>
     <string name="csv_upload_close">Close</string>
 
     <!-- ══════════════ Instructions upload ══════════════ -->

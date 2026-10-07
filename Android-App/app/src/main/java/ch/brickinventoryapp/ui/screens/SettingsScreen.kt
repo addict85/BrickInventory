@@ -18,6 +18,7 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -997,8 +998,11 @@ private fun GeraeteCard(
     if (fragtAlle) AlertDialog(
         onDismissRequest = { fragtAlle = false },
         title = { Text(stringResource(R.string.tokens_revoke_others_title)) },
-        text = { Text(stringResource(R.string.tokens_revoke_others_text,
-            zustand.geraete.count { !it.aktuell })) },
+        text = {
+            val betroffen = zustand.geraete.count { !it.aktuell }
+            Text(pluralStringResource(
+                R.plurals.tokens_revoke_others_text, betroffen, betroffen))
+        },
         confirmButton = {
             TextButton(onClick = { fragtAlle = false; onRevokeOthers() }) {
                 Text(stringResource(R.string.tokens_revoke_confirm),
@@ -1354,8 +1358,16 @@ private fun CsvImportCard(
         val ergebnis = csvZustand.ergebnis
         if (ergebnis != null) {
             Text(
+                // Vier Zahlen, und im Englischen stimmen zwei davon ueberein
+                // („row/rows", „error/errors"). Ein <plurals> stimmt nur mit
+                // EINER ueberein, darum vier Bruchstuecke in einem Rahmen —
+                // auch „neu" und „aktualisiert", damit der Rahmen KEIN %d mehr
+                // traegt und Lint ihn nicht gleich wieder beanstandet.
                 stringResource(R.string.csv_upload_result,
-                    ergebnis.total, ergebnis.neuAngelegt, ergebnis.updated, ergebnis.errors),
+                    pluralStringResource(R.plurals.csv_upload_rows, ergebnis.total, ergebnis.total),
+                    pluralStringResource(R.plurals.csv_upload_new, ergebnis.neuAngelegt, ergebnis.neuAngelegt),
+                    pluralStringResource(R.plurals.csv_upload_updated, ergebnis.updated, ergebnis.updated),
+                    pluralStringResource(R.plurals.csv_upload_errors, ergebnis.errors, ergebnis.errors)),
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.primary)
             TextButton(onClick = onSchliessen) { Text(stringResource(R.string.csv_upload_close)) }
