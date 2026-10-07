@@ -21,6 +21,9 @@ const assert = require('node:assert/strict');
 const fs     = require('node:fs');
 const path   = require('node:path');
 
+const os     = require('node:os');
+const { execFileSync } = require('node:child_process');
+
 const ROOT = path.join(__dirname, '..');
 const read = f => fs.readFileSync(path.join(ROOT, f), 'utf8');
 
@@ -670,3 +673,111 @@ test('@types/node passt zur Node-Version aus dem Dockerfile', () => {
     `Ausgeliefert wird Node ${imBild}, typgeprüft wird gegen @types/node ${typen[1]} — ` +
     'dann beschreibt der Übersetzer eine andere Standardbibliothek als die laufende');
 });
+
+/**
+ * Eine Migration, die es in der Quelle nicht mehr gibt, liegt nach dem Bau
+ * auch nicht mehr in dist/.
+ *
+ * ── Woher dieser Fall kommt ─────────────────────────────────────────────────
+ *
+ * GEMESSEN, nicht ausgedacht: Beim Wechsel zwischen zwei Zweigen blieb ein
+ * `0027-…sql` aus dem einen in dist/db/migrations/ liegen. db/migrate.ts liest
+ * dist/ — der Läufer hat die Datei also ausgeführt, als wäre sie Teil des
+ * Schemas. Zwölf Tests wurden rot, und die Suche ging zuerst in die eigene
+ * Änderung statt in das Bauwerkzeug.
+ *
+ * Das ist die teure Sorte Fehler: Der Befund zeigt nicht dorthin, wo die
+ * Ursache liegt. Deshalb steht die Regel jetzt hier und nicht nur im
+ * Kommentar von build-ts.js.
+ *
+ * ── Warum der echte Bau laeuft und kein Quelltextvergleich ──────────────────
+ *
+ * Eine Pruefung „im Skript steht entferneVerwaiste()" waere eine Aussage ueber
+ * den Text. Die Abbildung Quelle → Ziel wird in copyAssets() vorwaerts und in
+ * entferneVerwaiste() rueckwaerts gerechnet; dass die beiden Rechnungen
+ * zueinander passen, sieht man nur, wenn man sie ausfuehrt. Gebaut wird in ein
+ * TEMPORAERES Verzeichnis, nicht nach dist/ — der Lauf greift damit keinem
+ * anderen Test ins Werk.
+ */
+test('verwaiste .sql-Dateien verschwinden beim naechsten Bau', async (t) => {
+  const ziel = fs.mkdtempSync(path.join(os.tmpdir(), 'bi-bau-'));
+  t.after(() => fs.rmSync(ziel, { recursive: true, force: true }));
+
+  // Der Pfad steht hier woertlich und nicht in einer Variablen: eigenbruecken.test.js
+  // zaehlt Pfade mit variablem Segment und laesst die Zahl nicht wachsen. Die
+  // Ratsche ist berechtigt — ein zusammengesetzter Pfad ist genau der, bei dem
+  // niemand merkt, dass die Datei nicht mehr existiert.
+  const baue = () =>
+    execFileSync(process.execPath, [path.join(ROOT, 'scripts/build-ts.js'), '--outdir', ziel],
+      { cwd: ROOT, encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] });
+
+  const sql = (dir) => fs.existsSync(dir) ? fs.readdirSync(dir).filter(f => f.endsWith('.sql')).sort() : [];
+  const quelle = path.join(ROOT, 'db', 'migrations');
+  const gebaut = path.join(ziel, 'db', 'migrations');
+
+  baue();
+  const erwartet = sql(quelle);
+  assert.ok(erwartet.length >= 20,
+    `Nur ${erwartet.length} Migrationen in der Quelle gefunden — zu wenig; stimmt der Pfad noch? ` +
+    `Ohne sie prueft dieser Fall nichts.`);
+  assert.deepEqual(sql(gebaut), erwartet,
+    'Der Bau traegt nicht genau die Migrationen der Quelle.');
+
+  // Den Fall herstellen: eine Migration, die es nur im Ziel gibt.
+  const fremd = path.join(gebaut, '9999-verwaist-aus-anderem-zweig.sql');
+  fs.writeFileSync(fremd, '-- aus einem anderen Zweig zurueckgeblieben\nSELECT 1;\n');
+  const jsVorher = zaehleJs(ziel);
+
+  baue();
+  assert.ok(!fs.existsSync(fremd),
+    'Die verwaiste Migration liegt nach dem Bau noch in dist/. db/migrate.ts liest ' +
+    'dieses Verzeichnis und fuehrt sie aus, als waere sie Teil des Schemas.');
+  assert.deepEqual(sql(gebaut), erwartet,
+    'Beim Aufraeumen ist mehr verschwunden als die verwaiste Datei.');
+  assert.equal(zaehleJs(ziel), jsVorher,
+    'Das Aufraeumen hat .js-Dateien angefasst. Es darf ausschliesslich quellenlose ' +
+    'Nicht-TS-Abbilder entfernen.');
+
+  // ── Gegenprobe ────────────────────────────────────────────────────────────
+  //
+  // Ohne diesen Teil hiesse „die Datei ist weg" nur, dass der zweite Bau das
+  // Verzeichnis irgendwie neu angelegt hat. Zwei voneinander unabhaengige
+  // Zusicherungen schliessen das aus:
+  //
+  //  1. Der Bau NENNT die entfernte Datei. Verschwaende sie aus einem anderen
+  //     Grund — ein geleertes Verzeichnis, ein neuer Zielpfad —, stuende sie
+  //     nicht im Protokoll von entferneVerwaiste().
+  //  2. Eine Datei, die nicht zu den mitkopierten Endungen gehoert, bleibt
+  //     LIEGEN. Wuerde irgendetwas pauschal aufraeumen, waere auch sie weg.
+  //
+  // Erwogen und verworfen: eine Fassung des Skripts ohne den Aufruf laufen zu
+  // lassen. Die Kopie muesste in scripts/ liegen, weil build-ts.js seine Wurzel
+  // aus __dirname ableitet — und eine Testdatei, die auf einen Pfad verweist,
+  // den es nur waehrend des Laufs gibt, bricht `eigenbruecken.test.js`. Dieser
+  // Waechter hat recht: Ein Test, der eine verschwundene Quelle liest, prueft
+  // irgendwann nichts mehr und schweigt dabei.
+  const fremdTxt = path.join(gebaut, 'nicht-mitkopiert.txt');
+  fs.writeFileSync(fremd, '-- zweiter Versuch\nSELECT 1;\n');
+  fs.writeFileSync(fremdTxt, 'keine .sql — darf liegen bleiben\n');
+
+  const protokoll = baue();
+  assert.match(protokoll, /verwaiste Datei\(en\) entfernt:.*9999-verwaist-aus-anderem-zweig\.sql/,
+    'Der Bau nennt die entfernte Datei nicht im Protokoll. Dann ist unklar, ob sie ' +
+    'entferneVerwaiste() zum Opfer fiel oder aus einem anderen Grund fehlt — und wer ' +
+    'spaeter sucht, warum eine Datei weg ist, findet keine Spur.\n' + protokoll);
+  assert.ok(!fs.existsSync(fremd), 'Die verwaiste .sql liegt noch da.');
+  assert.ok(fs.existsSync(fremdTxt),
+    'Auch die .txt ist verschwunden. Dann raeumt etwas PAUSCHAL auf, und der Fall ' +
+    'oben prueft nicht das gezielte Entfernen quellenloser Abbilder.');
+});
+
+/** @param {string} wurzel @returns {number} Anzahl .js-Dateien darunter */
+function zaehleJs(wurzel) {
+  let n = 0;
+  for (const e of fs.readdirSync(wurzel, { withFileTypes: true })) {
+    const abs = path.join(wurzel, e.name);
+    if (e.isDirectory()) n += zaehleJs(abs);
+    else if (e.name.endsWith('.js')) n++;
+  }
+  return n;
+}

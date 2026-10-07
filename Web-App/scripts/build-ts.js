@@ -150,10 +150,62 @@ function copyAssets(dir, out) {
   }
   return n;
 }
+// ── Und wieder wegräumen, was es in der Quelle nicht mehr gibt ──────────────
+//
+// copyAssets() kopiert, löscht aber nie. Eine Migration, die auf einem Zweig
+// entstand und beim Wechsel auf einen anderen aus db/migrations/ verschwindet,
+// bleibt in dist/db/migrations/ liegen — und db/migrate.ts liest dist/. Der
+// Läufer führt sie dann aus, als wäre sie Teil des Schemas.
+//
+// GEMESSEN, nicht ausgedacht: Genau das hat in dieser Sitzung zwölf Tests rot
+// gemacht (ein zurückgebliebenes 0027-…sql aus einem anderen Zweig), und die
+// Suche ging zuerst in die eigene Änderung statt in das Bauwerkzeug. Das ist
+// die teure Sorte Fehler: Der Befund zeigt nicht dorthin, wo die Ursache liegt.
+//
+// Gelöscht wird nur, was die Umkehrung der Abbildung aus copyAssets() als
+// quellenlos ausweist — dieselbe Rechnung, nur rückwärts. Alles andere in
+// OUTDIR bleibt unberührt, insbesondere die .js-Dateien von esbuild.
+/**
+ * Verwaiste Abbilder entfernen.
+ * @param {string} out Wurzel des Bauziels
+ * @returns {string[]} die entfernten Pfade, relativ zu ROOT
+ */
+function entferneVerwaiste(out) {
+  /** @type {string[]} */
+  const weg = [];
+  /** @param {string} dir */
+  function geheDurch(dir) {
+    if (!fs.existsSync(dir)) return;
+    for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
+      const abs = path.join(dir, entry.name);
+      if (entry.isDirectory()) { geheDurch(abs); continue; }
+      if (!ASSET_EXT.includes(path.extname(entry.name))) continue;
+      // Umkehrung von copyAssets(): dst = out + (abs - ROOT)
+      const quelle = path.join(ROOT, path.relative(out, abs));
+      if (!fs.existsSync(quelle)) {
+        fs.unlinkSync(abs);
+        weg.push(path.relative(out, abs));
+      }
+    }
+  }
+  for (const dir of SRC_DIRS) geheDurch(path.join(out, dir));
+  return weg;
+}
+
 if (OUTDIR) {
   let assets = 0;
   for (const dir of SRC_DIRS) assets += copyAssets(path.join(ROOT, dir), OUTDIR);
+  // Die Annotation steht hier, weil tsconfig auch die Skripte prueft
+  // (allowJs + noImplicitAny): Ohne sie ist `weg` ein `any[]`, und
+  // `npm run typecheck` wird rot. Gemeldet hat es das eigene Tor des Projekts,
+  // nicht ich.
+  /** @type {string[]} */
+  const weg = entferneVerwaiste(OUTDIR);
   console.log(`[build-ts] ${assets} Nicht-TS-Datei(en) mitkopiert (${ASSET_EXT.join(', ')})`);
+  // Laut und namentlich, nicht als Zahl: Wird hier etwas entfernt, das jemand
+  // noch braucht, soll es im Bauprotokoll stehen und nicht stillschweigend
+  // verschwinden.
+  if (weg.length) console.log(`[build-ts] ${weg.length} verwaiste Datei(en) entfernt: ${weg.join(', ')}`);
 }
 
 console.log('[build-ts] Fertig.');
