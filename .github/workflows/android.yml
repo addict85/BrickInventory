@@ -223,6 +223,7 @@ jobs:
         run: echo "${{ secrets.KEYSTORE_BASE64 }}" | base64 -d > "$RUNNER_TEMP/brick.jks"
 
       - name: Release bauen
+        id: bau
         env:
           # Immer gesetzt, auch ohne Secret: Das Buildskript prüft, ob die
           # Datei EXISTIERT, und baut sonst unsigniert. Eine Fallunterscheidung
@@ -284,8 +285,17 @@ jobs:
       #
       # `!cancelled()`: Der Befund ist gerade dann interessant, wenn der Bau
       # rot war — ein abgebrochener Lauf braucht ihn nicht mehr.
+      # `steps.bau.outcome != 'skipped'`: Im Lauf 37584609538 waren die
+      # Unit-Tests rot, der Bau lief damit nie — und dieser Schritt wurde
+      # trotzdem rot, weil er kein Protokoll fand. Das ist ein zweiter roter
+      # Schritt fuer EINEN Fehler, und er zeigt in die falsche Richtung.
+      #
+      # Das Werkzeug bleibt dabei rot bei fehlendem Protokoll: Lief der Bau und
+      # ging der Mitschnitt verloren, ist „0 Warnungen" eine Falschaussage, und
+      # genau die soll auffallen. Nur gefragt wird es nicht mehr, wenn gar nicht
+      # gebaut wurde.
       - name: Warnungen zählen
-        if: ${{ !cancelled() }}
+        if: ${{ !cancelled() && steps.bau.outcome != 'skipped' }}
         run: |
           python3 tools/warnungen-zaehlen.py tools/warnungen-obergrenze.txt \
             "$RUNNER_TEMP/bau.log" "$RUNNER_TEMP/lint.log"

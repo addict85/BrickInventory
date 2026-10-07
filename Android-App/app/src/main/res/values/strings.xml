@@ -444,6 +444,7 @@
     <string name="household_invite_create">Create invitation code</string>
     <string name="household_invite_hint">Enter the code in the other account under Settings. Valid for 24 hours, usable once.</string>
     <string name="household_invite_copy">Copy</string>
+    <string name="household_invite_label">Invitation code</string>
     <string name="household_redeem_title">Accept an invitation</string>
     <string name="household_redeem_hint">Enter the code from the main account. Your data stays yours.</string>
     <string name="household_redeem_submit">Link</string>

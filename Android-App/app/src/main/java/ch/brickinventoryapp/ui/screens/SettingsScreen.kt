@@ -1038,6 +1038,17 @@ private fun HouseholdCard(
     //   public actual class ClipEntry(public val clipData: ClipData)
     val clipboard = androidx.compose.ui.platform.LocalClipboard.current
     val kopierBereich = rememberCoroutineScope()
+    // Das Etikett eines ClipData ist auf manchen Android-Oberflaechen SICHTBAR
+    // — es gehoert darum in die Sprachdateien und nicht in den Quelltext.
+    //
+    // Hier stand erst `"invite"`, und StringResourceParityTest hat es zu Recht
+    // beanstandet: `newPlainText(` endet auf `Text(` und faellt damit unter
+    // dieselbe Regel wie ein Compose-`Text("…")`. Das ist kein Fehlalarm des
+    // Tests, sondern genau sein Zweck.
+    //
+    // Geholt wird die Zeichenkette HIER, nicht im onClick: stringResource ist
+    // @Composable, der Klick-Rumpf ist es nicht.
+    val einladungEtikett = stringResource(R.string.household_invite_label)
 
     SettingsCard(title = stringResource(R.string.household_title), icon = Icons.Default.Group) {
         Text(stringResource(R.string.household_intro),
@@ -1101,7 +1112,7 @@ private fun HouseholdCard(
                                 clipboard.setClipEntry(
                                     androidx.compose.ui.platform.ClipEntry(
                                         android.content.ClipData.newPlainText(
-                                            "invite", c)))
+                                            einladungEtikett, c)))
                             }
                         }) { Icon(Icons.Default.ContentCopy, stringResource(R.string.household_invite_copy)) }
                     }

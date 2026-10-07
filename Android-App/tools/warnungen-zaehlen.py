@@ -41,6 +41,7 @@ import sys
 import xml.etree.ElementTree as ET
 
 LINT_BERICHT = "app/build/reports/lint-results-release.xml"
+GRADLE_EIGENSCHAFTEN = "gradle.properties"
 
 # kotlinc schreibt „w: file:///pfad/Datei.kt:12:7 Text". Der Pfad enthaelt das
 # Arbeitsverzeichnis des Runners, das sich von Lauf zu Lauf unterscheidet —
@@ -49,6 +50,12 @@ LINT_BERICHT = "app/build/reports/lint-results-release.xml"
 # derselben Datei von einem, das zweimal gemeldet wurde.
 ORT = re.compile(r"^w:\s*(?:file://)?(\S*?)(:\d+:\d+)?\s+(.*)$")
 JAVA_ORT = re.compile(r"^(\S+?)(:\d+)?:\s*warning:\s*(.*)$")
+
+# Eine einzelne Gradle-Veraltung. Wortlaute aus Gradles
+# DeprecationMessageBuilder.java, nicht aus dem Gedaechtnis.
+VERALTET = re.compile(
+    r"has been deprecated|is scheduled to be removed in Gradle"
+    r"|will fail with an error in Gradle")
 
 
 def warnungen(zeilen):
@@ -98,12 +105,38 @@ def warnungen(zeilen):
             gesehen.add(schluessel)
             java.append((ort, text))
         elif "Deprecated Gradle features were used in this build" in z:
-            # Ohne Stelle: EIN Zustand des Baus, egal wie viele Aufrufe ihn
-            # melden.
-            if ("gradle", "", "", "deprecated") in gesehen:
+            # Die SAMMELZEILE. Ohne Stelle: EIN Zustand des Baus, egal wie
+            # viele Aufrufe ihn melden.
+            #
+            # Sie erscheint nur im Modus `summary`. Seit gradle.properties auf
+            # `org.gradle.warning.mode=all` steht, sollte sie gar nicht mehr
+            # kommen — gezaehlt wird sie weiter, damit ein Zuruecksetzen des
+            # Modus nicht unbemerkt bleibt.
+            if ("gradle", "", "", "sammelzeile") in gesehen:
                 continue
-            gesehen.add(("gradle", "", "", "deprecated"))
-            gradle.append(("", "Deprecated Gradle features were used in this build"))
+            gesehen.add(("gradle", "", "", "sammelzeile"))
+            gradle.append(("", "Deprecated Gradle features were used in this "
+                               "build (Sammelzeile — warning.mode ist nicht "
+                               "`all`, die Einzelmeldungen fehlen)"))
+        elif VERALTET.search(z):
+            # Eine EINZELNE Veraltung, wie `--warning-mode all` sie ausgibt.
+            #
+            # Die Wortlaute sind nicht geraten, sondern in Gradles
+            # DeprecationMessageBuilder.java nachgelesen:
+            #
+            #   "%s has been deprecated."
+            #   "This is scheduled to be removed in Gradle 10."
+            #   "This will fail with an error in Gradle 10."
+            #
+            # Entdoppelt ueber den Meldungstext: Gradle entdoppelt selbst schon
+            # je Aufruf (displayDeprecationIfSameMessageNotDisplayedBefore),
+            # aber dieser Bau ruft Gradle dreimal.
+            text = z.strip()
+            schluessel = ("gradle", "", "", text)
+            if schluessel in gesehen:
+                continue
+            gesehen.add(schluessel)
+            gradle.append(("", text))
     return kotlin, ksp, java, gradle
 
 
@@ -153,6 +186,34 @@ def main(argv):
 
     kotlin, ksp, java, gradle = warnungen(zeilen)
     lint = lint_warnungen()
+
+    # ── Selbstnachweis: steht `all`, kommen aber keine Einzelmeldungen? ──────
+    #
+    # Mit org.gradle.warning.mode=all erscheint die Sammelzeile nicht mehr.
+    # Findet dieses Werkzeug dann auch keine Einzelmeldung, gibt es ZWEI
+    # Erklaerungen, und sie sind nicht dasselbe:
+    #
+    #   1. Es gibt keine Veraltung mehr — das waere die gute.
+    #   2. Die Muster in VERALTET passen nicht auf Gradles Wortlaut — dann
+    #      meldet das Werkzeug „sauber", ohne etwas gemessen zu haben.
+    #
+    # Im Lauf 37580480952 gab es nachweislich mindestens eine Veraltung
+    # (die Sammelzeile stand da). Darum wird der Fall benannt statt
+    # stillschweigend als Null durchgelassen — aber nicht rot, denn nach dem
+    # Beheben ist er der RICHTIGE Zustand.
+    modus_all = False
+    if os.path.exists(GRADLE_EIGENSCHAFTEN):
+        for z in open(GRADLE_EIGENSCHAFTEN, encoding="utf-8"):
+            z = z.split("#", 1)[0].strip()
+            if z.replace(" ", "") == "org.gradle.warning.mode=all":
+                modus_all = True
+    if modus_all and not gradle:
+        print("::warning title=Gradle-Veraltungen::org.gradle.warning.mode "
+              "steht auf `all`, es wurde aber KEINE Einzelmeldung gefunden. "
+              "Entweder gibt es keine Veraltung mehr (dann ist das richtig), "
+              "oder die Muster in VERALTET passen nicht mehr auf Gradles "
+              "Wortlaut (dann meldet dieses Werkzeug sauber, ohne gemessen zu "
+              "haben). Im Lauf 37580480952 gab es nachweislich mindestens eine.")
     summe = len(kotlin) + len(ksp) + len(java) + len(gradle)
 
     print("Protokolle: %s (%d Zeilen)" % (", ".join(gelesen), len(zeilen)))
