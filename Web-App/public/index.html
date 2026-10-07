@@ -1514,6 +1514,14 @@
     <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;padding:.55rem .9rem;border-bottom:1px solid var(--bdr)">
       <div id="pdf-viewer-title" style="font-weight:600;font-size:.9rem;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">PDF</div>
       <div style="display:flex;gap:8px;align-items:center;flex-shrink:0">
+        <!-- Zoom: Minus, Faktor, Plus, und der Faktor selbst ist der
+             Zurueck-auf-100%-Knopf. Der Faktor steht als ZAHL da, nicht als
+             Balken oder Farbe -- man muss ablesen koennen, wo man ist. -->
+        <div style="display:flex;align-items:center;gap:4px;flex-shrink:0">
+          <button id="pdf-viewer-zoom-out" class="btn bs btn-sm" data-click="pdfZoomOut" aria-label="Verkleinern (Taste −, oder Strg + Mausrad)" data-i18n="pdf.zoom_out" data-i18n-attr="aria-label">−</button>
+          <button id="pdf-viewer-zoom" class="btn bs btn-sm" data-click="pdfZoomReset" aria-label="Zoom zurücksetzen (Taste 0)" data-i18n="pdf.zoom_reset" data-i18n-attr="aria-label" style="min-width:3.4rem">100%</button>
+          <button id="pdf-viewer-zoom-in" class="btn bs btn-sm" data-click="pdfZoomIn" aria-label="Vergrössern (Taste +, oder Strg + Mausrad)" data-i18n="pdf.zoom_in" data-i18n-attr="aria-label">+</button>
+        </div>
         <button id="pdf-viewer-print" class="btn bs btn-sm" data-click="printPdfViewer">🖨️ <span data-i18n="pdf.print">Drucken</span></button>
         <a id="pdf-viewer-download" class="btn bs btn-sm" download href="#" style="text-decoration:none">⬇️ <span data-i18n="pdf.download">Herunterladen</span></a>
         <button class="btn bs btn-sm" data-click="closePdfViewer" aria-label="Schliessen" data-i18n="common.close" data-i18n-attr="aria-label">✕</button>

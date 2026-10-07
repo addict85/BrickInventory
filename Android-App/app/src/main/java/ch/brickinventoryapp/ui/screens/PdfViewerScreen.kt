@@ -25,19 +25,29 @@ import android.widget.Toast
 import androidx.compose.material.icons.filled.Print
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.detectTapGestures
+import androidx.compose.foundation.gestures.rememberTransformableState
+import androidx.compose.foundation.gestures.transformable
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Download
+import androidx.compose.material.icons.filled.ZoomIn
+import androidx.compose.material.icons.filled.ZoomOut
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.stringResource
 import ch.brickinventoryapp.R
 import androidx.compose.ui.text.style.TextOverflow
@@ -58,6 +68,10 @@ import java.util.concurrent.TimeUnit
 import ch.brickinventoryapp.ui.theme.Abstaende
 import ch.brickinventoryapp.util.PdfSchritt
 import ch.brickinventoryapp.util.pdfSchritt
+import ch.brickinventoryapp.ui.theme.Formen
+import kotlin.math.ceil
+import kotlin.math.roundToInt
+import kotlin.math.sqrt
 
 /**
  * In-App PDF-Viewer.
@@ -71,6 +85,74 @@ import ch.brickinventoryapp.util.pdfSchritt
  * Abruf über den DownloadManager hätte keinen Bearer-Token dabei, und
  * Anleitungen verlangen auf dem Server eine Anmeldung.
  */
+// ── Zoom ─────────────────────────────────────────────────────────────────────
+//
+// Der Faktor gilt auf die Grundgroesse, und die Grundgroesse ist „Seite fuellt
+// die Breite". 1 ist deshalb der untere Anschlag: darunter gibt es nichts zu
+// sehen, die Breite ist schon ganz da. Dieselbe Untergrenze hat der Bildzoom
+// (ui/components/ZoomableImageDialog.kt) und der PDF-Betrachter der Weboberflaeche.
+private const val PDF_ZOOM_MIN = 1f
+private const val PDF_ZOOM_MAX = 5f
+private const val PDF_ZOOM_SCHRITT = 1.25f      // ein Druck auf + bzw. −
+private const val PDF_ZOOM_DOPPELTIPP = 2.5f    // Doppeltipp aus 1x heraus
+
+/**
+ * Obergrenze fuer eine Seiten-Bitmap, in Pixeln der Flaeche.
+ *
+ * ARGB_8888 heisst 4 Byte je Pixel, 8 Millionen Pixel sind also rund 32 MB.
+ * Zum Vergleich: Die feste Breite von 1080 px, mit der dieser Betrachter bisher
+ * gerendert hat, ergibt bei A4-Verhaeltnis rund 6,6 MB. Die LazyColumn haelt
+ * die sichtbaren Seiten; bei starkem Zoom ist das eine bis zwei.
+ *
+ * Der Riegel wirkt auf die FLAECHE und nicht auf eine Seitenlaenge: Eine
+ * querformatige Anleitungsseite hat dieselbe Pixelzahl wie eine hochformatige,
+ * nur anders verteilt.
+ *
+ * Wird er erreicht, bleibt die Anzeige richtig und wird nur weicher — die
+ * Bitmap ist dann kleiner als der Kasten und wird hochskaliert.
+ */
+internal const val PDF_BITMAP_MAX_PX = 8_000_000
+
+/**
+ * In welcher Aufloesung wird beim Faktor [zoom] gerendert — 1-, 2- oder 3-mal
+ * die Behaelterbreite?
+ *
+ * STUFEN und nicht stufenlos, und das ist der Kern dieser Funktion: Beim Zoomen
+ * aendert sich der Faktor mit jedem Bild der Geste. Haenge man die
+ * Renderaufloesung unmittelbar daran, liefe waehrend einer einzigen
+ * Zwei-Finger-Bewegung ein Dutzend PdfRenderer-Durchlaeufe an — auf einem
+ * Mutex serialisiert, jeder einige zehn Millisekunden. Mit Stufen sind es
+ * hoechstens zwei Wechsel auf dem ganzen Weg von 1x nach 5x.
+ *
+ * Dass es zwischen den Stufen weicher aussieht, ist gewollt: Dafuer ist die
+ * Geste fluessig, und die scharfe Fassung kommt, sobald die Stufe wechselt.
+ */
+internal fun renderStufe(zoom: Float): Int = ceil(zoom).toInt().coerceIn(1, 3)
+
+/**
+ * Masse der Seiten-Bitmap: die gewuenschte Breite, auf [PDF_BITMAP_MAX_PX]
+ * begrenzt.
+ *
+ * @param breitePx gewuenschte Breite in Pixeln
+ * @param ratio Hoehe geteilt durch Breite der PDF-Seite
+ * @return (Breite, Hoehe) in Pixeln, beide mindestens 1
+ *
+ * Begrenzt wird die FLAECHE, weil sie den Speicher bestimmt, und mit der WURZEL,
+ * weil beide Seitenlaengen gleichmaessig schrumpfen muessen — nur die Breite zu
+ * kappen wuerde das Seitenverhaeltnis verlieren und die Seite verzerren.
+ *
+ * Eigene Funktion statt drei Zeilen in renderPdfPage(): So ist die Rechnung
+ * pruefbar, ohne einen PdfRenderer und damit ein Geraet zu brauchen
+ * (PdfZoomTest).
+ */
+internal fun bitmapMasse(breitePx: Int, ratio: Float): Pair<Int, Int> {
+    var w = breitePx.coerceAtLeast(1)
+    val flaeche = w.toFloat() * (w * ratio)
+    if (flaeche > PDF_BITMAP_MAX_PX) w = (w * sqrt(PDF_BITMAP_MAX_PX / flaeche)).toInt()
+    w = w.coerceAtLeast(1)
+    return w to (w * ratio).toInt().coerceAtLeast(1)
+}
+
 private sealed class PdfLoadState {
     data class Downloading(val pct: Int, val bytes: Long, val total: Long) : PdfLoadState()
     object Rendering : PdfLoadState()
@@ -100,6 +182,11 @@ fun PdfViewerScreen(
     val ladefehlerText = stringResource(R.string.pdfview_download_failed)
     val unbekannterFehlerText = stringResource(R.string.pdfview_unknown_error)
     var state by remember(pdfUrl) { mutableStateOf<PdfLoadState>(PdfLoadState.Downloading(0, 0, 0)) }
+    // Der Zoom gehoert hierher und nicht in PdfPages: Die Knoepfe sitzen in der
+    // Kopfzeile, die Geste in der Liste, und der Faktor wird unten angezeigt —
+    // drei Stellen, eine Wahrheit. Zurueck auf 1x bei einem anderen PDF.
+    var zoom by remember(pdfUrl) { mutableFloatStateOf(PDF_ZOOM_MIN) }
+    val setzeZoom = { neu: Float -> zoom = neu.coerceIn(PDF_ZOOM_MIN, PDF_ZOOM_MAX) }
 
     // Bildschirm WÄHREND DES LADENS anlassen: Geht das Display aus, trennt Android
     // (je nach Gerät/WLAN-Sleep) kurz das Netzwerk, was zu DNS-Fehlern führt
@@ -172,7 +259,7 @@ fun PdfViewerScreen(
             when (val s = state) {
                 is PdfLoadState.Downloading -> DownloadProgress(s)
                 is PdfLoadState.Rendering -> CenteredLoading(stringResource(R.string.pdfview_rendering))
-                is PdfLoadState.Ready -> PdfPages(s.file, s.pageCount)
+                is PdfLoadState.Ready -> PdfPages(s.file, s.pageCount, zoom, setzeZoom)
                 is PdfLoadState.Error -> Box(Modifier.fillMaxSize(), Alignment.Center) {
                     Text(
                         stringResource(R.string.pdfview_load_failed, s.message),
@@ -180,6 +267,15 @@ fun PdfViewerScreen(
                         modifier = Modifier.padding(Abstaende.sehrGross)
                     )
                 }
+            }
+            if (state is PdfLoadState.Ready) {
+                ZoomLeiste(
+                    zoom = zoom,
+                    setzeZoom = setzeZoom,
+                    modifier = Modifier
+                        .align(Alignment.BottomCenter)
+                        .padding(bottom = Abstaende.gross)
+                )
             }
         }
     }
@@ -222,25 +318,216 @@ private fun CenteredLoading(text: String) {
     }
 }
 
+/**
+ * Minus, Faktor, Plus — unten in der Mitte.
+ *
+ * ── Warum unten und nicht in der Kopfzeile ──────────────────────────────────
+ *
+ * Dort waere es der naheliegende Platz, aber die Kopfzeile traegt schon Zurueck,
+ * Drucken und Herunterladen. Mit zwei weiteren Knoepfen blieben auf einem
+ * Telefon rund 120 dp fuer den Titel, und der Titel ist der Name der Anleitung
+ * — genau das, was man beim Blaettern durch mehrere Anleitungen lesen will.
+ *
+ * Unten kommt dazu, dass der Daumen dort ist, und dass der Faktor beim
+ * Bedienelement steht, das ihn aendert, statt am anderen Ende des Bildschirms.
+ *
+ * ── Warum immer sichtbar und nicht erst ab 1x ───────────────────────────────
+ *
+ * Der Bildzoom (ZoomableImageDialog.kt) blendet seinen Faktor erst ein, wenn er
+ * ueber 1 liegt — dort ist das richtig, denn die Zwei-Finger-Geste ist der
+ * einzige Weg und jeder kennt sie. Hier ist die Leiste AUCH der Weg, auf dem
+ * gezoomt wird, und zwar der verlaessliche: Die Geste kann im Streit mit dem
+ * Rollen der Liste unterliegen (siehe PdfPages). Ein Bedienelement, das erst
+ * erscheint, nachdem man das getan hat, wofuer man es braucht, ist keines.
+ *
+ * Der Faktor ist eine ZAHL, kein Balken und keine Farbe: Man muss ablesen
+ * koennen, wo man ist, und zwar unabhaengig davon, welche Farben man
+ * unterscheidet.
+ */
 @Composable
-private fun PdfPages(file: File, pageCount: Int) {
-    LazyColumn(
-        modifier = Modifier.fillMaxSize(),
-        contentPadding = PaddingValues(Abstaende.klein),
-        verticalArrangement = Arrangement.spacedBy(Abstaende.klein)
+private fun ZoomLeiste(zoom: Float, setzeZoom: (Float) -> Unit, modifier: Modifier = Modifier) {
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        modifier = modifier
+            // Farben aus dem Farbschema, nicht Schwarz mit Alpha: Der Hintergrund
+            // dahinter ist surfaceVariant, und im Dunkelmodus waere ein
+            // schwarzes Plaettchen darauf unsichtbar. surface/onSurfaceVariant
+            // ist das Paar, fuer das Material3 den Kontrast in BEIDEN Modi
+            // zusichert.
+            .background(MaterialTheme.colorScheme.surface.copy(alpha = 0.92f), shape = Formen.chip)
+            .padding(horizontal = Abstaende.winzig)
     ) {
-        items((0 until pageCount).toList()) { index ->
-            PdfPage(file, index)
+        // Am Anschlag abgeschaltet. `enabled` ist fuer Tastatur und Screenreader
+        // verbindlich; die Ausgrauung ist nur die Begleitung davon, nicht das
+        // Signal.
+        IconButton(
+            onClick = { setzeZoom(zoom / PDF_ZOOM_SCHRITT) },
+            enabled = zoom > PDF_ZOOM_MIN + 0.01f
+        ) {
+            Icon(Icons.Default.ZoomOut, contentDescription = stringResource(R.string.pdfview_zoom_out))
+        }
+        // Der Faktor ist zugleich der Knopf „zurueck auf 100 %".
+        //
+        // defaultMinSize, weil der Text allein nur rund 24 dp hoch waere. Die
+        // Materialvorgabe fuer ein Beruehrungsziel sind 48 dp, und das ist keine
+        // Geschmacksfrage: Die beiden Symbolknoepfe daneben sind 48 dp, ein
+        // 24-dp-Ziel dazwischen trifft man mit dem Daumen nur knapp daneben.
+        // Sichtbar aendert sich nichts — die Reihe ist durch die Knoepfe ohnehin
+        // 48 dp hoch.
+        Box(
+            modifier = Modifier
+                // onClickLabel statt nur clickable: Vorgelesen wuerde sonst
+                // „125 Prozent, Doppeltippen zum Aktivieren" — und was dann
+                // passiert, bliebe offen.
+                .clickable(
+                    onClickLabel = stringResource(R.string.pdfview_zoom_reset),
+                    onClick = { setzeZoom(PDF_ZOOM_MIN) }
+                )
+                .defaultMinSize(minWidth = 56.dp, minHeight = 48.dp),
+            contentAlignment = Alignment.Center
+        ) {
+            Text(
+                "${(zoom * 100).roundToInt()} %",
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                style = MaterialTheme.typography.labelMedium
+            )
+        }
+        IconButton(
+            onClick = { setzeZoom(zoom * PDF_ZOOM_SCHRITT) },
+            enabled = zoom < PDF_ZOOM_MAX - 0.01f
+        ) {
+            Icon(Icons.Default.ZoomIn, contentDescription = stringResource(R.string.pdfview_zoom_in))
+        }
+    }
+}
+
+/**
+ * Die Seiten, zoombar.
+ *
+ * ── Warum der Zoom die BREITE aendert und nicht einen graphicsLayer ─────────
+ *
+ * Der naheliegende Weg waere der aus ZoomableImageDialog.kt: scaleX/scaleY in
+ * einem graphicsLayer, dazu ein Verschiebe-Offset. Fuer ein einzelnes Bild ohne
+ * Rollbalken ist das richtig. Hier nicht, aus drei Gruenden:
+ *
+ *  1. Die Bitmaps sind in einer festen Aufloesung gerendert. Ein graphicsLayer
+ *     streckt sie nur — bei 4x waere eine Teilenummer unleserlich. Die
+ *     Seitenbreite als Mass zu nehmen heisst dagegen, dass PdfPage genau in der
+ *     Groesse rendert, in der die Seite steht.
+ *  2. Ein graphicsLayer auf der LazyColumn skaliert auch deren Sichtfeld: Ein
+ *     Zug von 100 px rollt dann 100 * Faktor Pixel weit. Das fuehlt sich bei 4x
+ *     wie ein Rutsch an.
+ *  3. Der Verschiebe-Offset muesste gegen die Inhaltsgroesse begrenzt werden,
+ *     und die kennt niemand, solange die Liste faul laedt. ZoomableImageDialog
+ *     begrenzt ihn NICHT — dort kann man das Bild bei 6x aus dem Sichtfeld
+ *     ziehen. Bei einer 80-seitigen Anleitung waere das kein Schoenheitsfehler.
+ *
+ * Mit der Breite als Mass macht ein echtes horizontalScroll das Verschieben:
+ * mit Schwung, mit Anschlag, nicht verlierbar.
+ *
+ * ── Warum sich die Geste nicht mit dem Rollen schlaegt ──────────────────────
+ *
+ * GELESEN in der Quelle von foundation (gestures/Transformable.kt,
+ * gestures/DragGestureDetector.kt), nicht vermutet:
+ *
+ *  - `transformable(state, canPan = { false })`: In detectZoom() kommt der
+ *    Schwellwert nur ueber zoomMotion, rotationMotion oder
+ *    `panMotion > touchSlop && canPan(...)`. Mit canPan = false faellt der
+ *    dritte Weg weg, und mit EINEM Finger sind zoomChange 1 und rotationChange
+ *    0 — ein Einfinger-Zug wird also nie beansprucht. Genau fuer diesen Zweck
+ *    gibt es die Ueberladung; ihr eigener Kommentar nennt als Beispiel
+ *    „TransformableSampleInsideScroll".
+ *  - detectZoom() bricht ausserdem von selbst ab, sobald ein anderer die
+ *    Bewegung beansprucht (`event.changes.fastAny { it.isConsumed }` →
+ *    TransformStopped). Unterliegt die Geste also doch, rollt die Liste — und
+ *    es passiert nicht beides.
+ *  - Senkrecht und waagerecht vertragen sich: TouchSlopDetector rechnet bei
+ *    gesetzter Orientierung nur `finalChange.mainAxis().absoluteValue`. Ein
+ *    waagerechter Zug ueberschreitet den senkrechten Schwellwert nie, also
+ *    beansprucht die LazyColumn ihn nicht, und das horizontalScroll bekommt ihn.
+ *
+ * NICHT geprueft, weil es dafuer ein Geraet braucht: Bei einer Zwei-Finger-Geste,
+ * deren Finger sich fast senkrecht voneinander entfernen, kann die LazyColumn
+ * schneller am Schwellwert sein und die Geste gewinnen. Dann rollt die Liste
+ * statt zu zoomen — unschoen, aber nichts geht kaputt. Dagegen stehen der
+ * Doppeltipp und die beiden Knoepfe in der Kopfzeile.
+ */
+@Composable
+private fun PdfPages(file: File, pageCount: Int, zoom: Float, setzeZoom: (Float) -> Unit) {
+    val dichte = LocalDensity.current
+    val waagrecht = rememberScrollState()
+    val geste = rememberTransformableState { zoomChange, _, _ -> setzeZoom(zoom * zoomChange) }
+
+    // `pointerInput(Unit)` wird NICHT neu aufgesetzt, wenn sich etwas aendert —
+    // das ist der Sinn des Schluessels Unit, sonst riss jede Neuberechnung eine
+    // laufende Geste ab. Der Preis: Der Block haelt die Huelle der ERSTEN
+    // Komposition fest. Ohne rememberUpdatedState saehe der Doppeltipp `zoom`
+    // fuer immer als 1 und zoomte nur noch hinein, nie zurueck.
+    //
+    // Fuer `geste` braucht es das nicht: rememberTransformableState legt den
+    // Rueckruf selbst in ein rememberUpdatedState (gelesen in
+    // foundation/gestures/TransformableState.kt).
+    val zoomJetzt by rememberUpdatedState(zoom)
+    val setzeZoomJetzt by rememberUpdatedState(setzeZoom)
+
+    BoxWithConstraints(Modifier.fillMaxSize()) {
+        // Die Seitenbreite OHNE den Rand, den die Liste ringsum legt — sonst
+        // waere die gerenderte Bitmap um zweimal Abstaende.klein zu breit.
+        val seitenBreite = (this.maxWidth - Abstaende.klein * 2) * zoom
+        val renderBreitePx = with(dichte) {
+            ((this@BoxWithConstraints.maxWidth - Abstaende.klein * 2).toPx() * renderStufe(zoom))
+                .toInt().coerceAtLeast(1)
+        }
+        Box(
+            Modifier
+                .fillMaxSize()
+                // Reihenfolge: transformable steht HINTER horizontalScroll und
+                // ist damit das tiefere Glied — es sieht die Bewegung zuerst.
+                // Andersherum koennte das waagerechte Rollen eine Zwei-Finger-
+                // Geste fuer sich beanspruchen, deren Finger auseinandergehen,
+                // und der Zoom kaeme nie zum Zug.
+                .horizontalScroll(waagrecht)
+                .transformable(state = geste, canPan = { false })
+                .pointerInput(Unit) {
+                    // Doppeltipp: der verlaessliche Weg mit einem Finger. Tipp-
+                    // Erkenner beanspruchen keine Zuege (sie brechen beim
+                    // Schwellwert ab), streiten also mit dem Rollen nicht.
+                    detectTapGestures(onDoubleTap = {
+                        setzeZoomJetzt(
+                            if (zoomJetzt > PDF_ZOOM_MIN + 0.01f) PDF_ZOOM_MIN else PDF_ZOOM_DOPPELTIPP
+                        )
+                    })
+                }
+        ) {
+            LazyColumn(
+                modifier = Modifier
+                    .width(seitenBreite + Abstaende.klein * 2)
+                    .fillMaxHeight(),
+                contentPadding = PaddingValues(Abstaende.klein),
+                verticalArrangement = Arrangement.spacedBy(Abstaende.klein)
+            ) {
+                items((0 until pageCount).toList()) { index ->
+                    PdfPage(file, index, renderBreitePx)
+                }
+            }
         }
     }
 }
 
 @Composable
-private fun PdfPage(file: File, index: Int) {
+private fun PdfPage(file: File, index: Int, renderBreitePx: Int) {
     var bitmap by remember(file, index) { mutableStateOf<Bitmap?>(null) }
 
-    LaunchedEffect(file, index) {
-        bitmap = withContext(Dispatchers.IO) { renderPdfPage(file, index, targetWidthPx = 1080) }
+    // `remember(file, index)` ohne renderBreitePx, LaunchedEffect MIT: Beim
+    // Wechsel der Renderstufe bleibt die alte Bitmap stehen, bis die neue da
+    // ist. Wuerde der Zustand mit zurueckgesetzt, blitzte bei jedem
+    // Stufenwechsel auf allen sichtbaren Seiten der Ladekreis auf — und das
+    // waere nicht nur haesslich, sondern bei einem Zoom mitten in einer langen
+    // Anleitung der Verlust der Stelle, weil leere Seiten eine andere Hoehe
+    // haben als gerenderte.
+    LaunchedEffect(file, index, renderBreitePx) {
+        val neu = withContext(Dispatchers.IO) { renderPdfPage(file, index, renderBreitePx) }
+        if (neu != null) bitmap = neu
     }
 
     val bmp = bitmap
@@ -275,8 +562,7 @@ private suspend fun renderPdfPage(file: File, index: Int, targetWidthPx: Int): B
             if (index >= renderer.pageCount) return@withLock null
             val page = renderer.openPage(index)
             val ratio = page.height.toFloat() / page.width.toFloat().coerceAtLeast(1f)
-            val w = targetWidthPx
-            val h = (w * ratio).toInt().coerceAtLeast(1)
+            val (w, h) = bitmapMasse(targetWidthPx, ratio)
             // KTX-Form; ARGB_8888 ist dort die Vorbelegung (gelesen in
             // androidx.core.graphics.Bitmap.kt).
             val bmp = createBitmap(w, h)
