@@ -1,10 +1,30 @@
 /**
- * API-Paritätstest: Die Session-Routen der Webapp (/api/...) und die
- * Token-Routen der Android-App (/api/v1/...) müssen für dieselben Daten
- * dieselben Informationen liefern.
+ * API-Paritätstest: EINE Adresse, BEIDE Ausweise — Session und Bearer-Token
+ * müssen für dieselben Daten dieselben Informationen liefern.
  *
- * Aufbau: Der ECHTE Stack läuft — beide Router-Familien, die gemeinsamen
- * Handler (utils/handlers) und das echte db-Modul gegen die Test-DB. Es wird
+ * ── Was hier stand, und was es angerichtet hat ──────────────────────────────
+ *
+ * Hier stand „Die Session-Routen der Webapp (/api/...) und die Token-Routen der
+ * Android-App (/api/v1/...)". Das beschrieb eine Teilung, die es seit
+ * Nachtrag 70 nicht mehr gibt: Die doppelten Routen sind zusammengelegt,
+ * routes/auth.ts ist von /api/auth nach /api/v1/auth umgezogen, alle fünf
+ * Dateien in routes/ hängen unter /api/v1 — und `const PAIRS = []` unten ist
+ * leer, es gibt also kein einziges Paar mehr zu vergleichen.
+ *
+ * Dieser Kommentar hat mich dazu gebracht, dem Benutzer „zwei API-Oberflächen"
+ * als Architekturproblem zu melden und das Entfernen der „alten" vorzuschlagen.
+ * Entfernt worden wären lebende Routen, an denen Weboberfläche UND App hängen.
+ * Aufgefallen ist es erst beim Nachsehen, welche Datei denn nun welche Adresse
+ * bedient.
+ *
+ * Ein Kommentar, der eine überholte Struktur beschreibt, ist deshalb nicht
+ * bloss unaufgeräumt: Er ist die Quelle, aus der jemand — Mensch oder
+ * Maschine — eine falsche Entscheidung ableitet, und zwar mit der Zuversicht,
+ * es nachgelesen zu haben.
+ *
+ * Aufbau: Der ECHTE Stack läuft — beide Router-Verzeichnisse (routes/ und
+ * routes/api_v1/, die gemeinsam EINE Oberfläche unter /api/v1 bilden), die
+ * gemeinsamen Handler (utils/handlers) und das echte db-Modul gegen die Test-DB. Es wird
  * NICHTS gestubbt; die Authentifizierung erfolgt über eine injizierte
  * Session (die echten requireLogin/requireToken-Middlewares akzeptieren sie
  * beide). Zusätzlich wird der Bearer-Token-Pfad (so authentifiziert Android

@@ -20,6 +20,7 @@
 import { Pool, types as pgTypes } from 'pg';
 import { runMigrations } from './migrate';
 import { logAndContinue } from '../utils/httpError';
+import { APP_ROOT } from '../utils/appPaths';
 import fs from 'fs';
 import path from 'path';
 import bcrypt from 'bcryptjs';
@@ -503,8 +504,22 @@ async function spaltenMigrationen() {
   // Mit Protokoll: Scheitert eine dieser beiden, bleibt ein Konto inaktiv oder
   // unbestaetigt und niemand kann sich anmelden — der Grund stuende nirgends.
   // Die Spaltenmigrationen darueber melden ihren Erfolg ebenfalls.
+  //
+  // ── `IS NULL` statt bedingungslos ─────────────────────────────────────────
+  //
+  // Gedacht war die Anweisung fuer Datenbanken, auf denen die beiden Spalten
+  // gerade erst per ALTER TABLE dazugekommen sind — dort stehen sie auf NULL.
+  // Geschrieben war sie bedingungslos, und damit setzte sie auch eine
+  // ABSICHTLICHE 0 zurueck: Ein abgeschaltetes Administratorkonto waere bei
+  // jedem Lauf von initSchema() wieder freigeschaltet worden.
+  //
+  // Heute laeuft initSchema() nur beim Erststart, dort ist der Unterschied
+  // gegenstandslos. Der Riegel steht fuer FORCE_SCHEMA_INIT=1 — einen
+  // Notausgang, hinter dem keine Tretmine liegen soll. Die ursprueglich
+  // gemeinte Wirkung bleibt vollstaendig erhalten.
   await pool.query(
-    "UPDATE users SET is_active=1, email_verified=1 WHERE is_admin=1"
+    "UPDATE users SET is_active=1, email_verified=1 WHERE is_admin=1 " +
+    "AND (is_active IS NULL OR email_verified IS NULL)"
   ).catch(logAndContinue('start:admin aktiv setzen'));
   await pool.query(
     "UPDATE users SET is_active=COALESCE(is_active,1), email_verified=COALESCE(email_verified,0)"
@@ -936,8 +951,19 @@ async function initSchemaOnce() {
   // Fassung dieses Deployments. Der postinstall-Hook (scripts/bump-version.js)
   // setzt sie bei jeder Installation neu — sie ändert sich also genau dann,
   // wenn auch neue Migrationen dazugekommen sein können.
+  //
+  // GEMESSEN: Hier stand `require('../package.json')`. Aus dist/db/database.js
+  // loest Node das nach dist/package.json auf — eine Datei, die es nicht gibt.
+  // appVersion war damit IMMER 'unknown'.
+  //
+  // Dieselbe Falle ist in utils/appPaths.ts bereits beschrieben und geloest
+  // („dist/server.js sieht als __dirname das Verzeichnis dist/"): APP_ROOT geht
+  // nach oben, bis eine package.json auftaucht, und stimmt aus den Quellen wie
+  // aus dem Bau. Von dort wird sie jetzt gelesen.
   let appVersion = 'unknown';
-  try { appVersion = require('../package.json').version || 'unknown'; } catch (_) {}
+  try {
+    appVersion = JSON.parse(fs.readFileSync(path.join(APP_ROOT, 'package.json'), 'utf8')).version || 'unknown';
+  } catch (_) { /* Vermerk bleibt 'unknown' — er steuert nichts, siehe unten. */ }
   // Blockierender Advisory-Lock auf einer DEDIZIERTEN Verbindung: So führt im
   // Cluster immer nur EIN Worker die Schema-Migration gleichzeitig aus. Andere
   // Worker warten hier, bis der Lock frei ist, und rufen initSchema danach als
@@ -953,15 +979,44 @@ async function initSchemaOnce() {
   try {
     await client.query(`SELECT pg_advisory_lock(${LOCK_ID})`);
 
-    // Der Lock serialisiert nur — bisher lief initSchema() danach in JEDEM
-    // Worker vollständig durch. Bei vier Workern also viermal alle 84
-    // CREATE-/ALTER-Anweisungen plus Migrationen und Backfills, nacheinander.
-    // Korrekt (alles ist IF NOT EXISTS), aber unnötig: Der erste Worker hat die
-    // Arbeit bereits erledigt.
+    // ── initSchema() ist der ERSTSTART, nicht der Weg fuer Aenderungen ──────
     //
-    // Deshalb ein Vermerk in der DB. Steht dort die Fassung dieses Deployments,
-    // ist nichts mehr zu tun. Nach einem Update ändert sich die Version und die
-    // Migration läuft genau einmal erneut.
+    // Hier stand ein Vergleich mit der Fassung dieses Deployments, und darueber
+    // der Satz „Nach einem Update aendert sich die Version und die Migration
+    // laeuft genau einmal erneut". Beides war unwahr und das zweite waere
+    // gefaehrlich:
+    //
+    //  1. UNWAHR: appVersion war immer 'unknown' (siehe oben), der Vergleich
+    //     also immer erfuellt. initSchema() lief seit Einfuehrung des Vermerks
+    //     auf jeder bestehenden Datenbank NIE wieder — unabhaengig von Updates.
+    //  2. GEFAEHRLICH, waere es wahr gewesen: initSchema() macht nicht nur
+    //     Schema. Nachgezaehlt enthaelt es ein Dutzend datenverändernder
+    //     Anweisungen, in drei Sorten:
+    //
+    //       • `CREATE … IF NOT EXISTS` — beliebig oft wiederholbar.
+    //       • Nachtraege mit `NOT EXISTS`-Riegel (Erst-Erfassungen fuer
+    //         manuelle Teile, Minifiguren, Sets). Wiederholbar, ABER: Sie legen
+    //         eine Zeile wieder an, die jemand bewusst geloescht hat.
+    //       • `UPDATE users SET is_active=1, email_verified=1 WHERE is_admin=1`
+    //         — ohne jeden Riegel. Bei jedem Deployment haette das ein
+    //         abgeschaltetes Administratorkonto stillschweigend wieder
+    //         freigeschaltet. (Diese eine Anweisung ist jetzt auf NULL-Werte
+    //         eingeschraenkt, also auf das, wofuer sie gedacht war: Spalten, die
+    //         es gerade erst gibt.)
+    //
+    // Der Zustand, der hier aus Versehen entstand, ist also der RICHTIGE. Er
+    // steht jetzt ausdruecklich da: initSchema() laeuft, wenn diese Datenbank
+    // noch keinen Schemastand vermerkt hat — das heisst beim allerersten Start.
+    // Jede Aenderung danach gehoert in eine Migration (db/migrate.ts), und das
+    // stand ohnehin schon weiter unten.
+    //
+    // appVersion wird weiter vermerkt, steuert aber NICHTS mehr: Sie ist eine
+    // Auskunft fuer die Fehlersuche („welcher Stand hat dieses Schema
+    // angelegt?"). Genau deshalb durfte sie repariert werden, ohne das
+    // Verhalten zu bewegen.
+    //
+    // FORCE_SCHEMA_INIT=1 ist der Notausgang von Hand. Er tut jetzt mehr als
+    // vorher — naemlich ueberhaupt etwas — und deshalb warnt er.
     await client.query(`
       CREATE TABLE IF NOT EXISTS schema_meta (
         id              INTEGER PRIMARY KEY DEFAULT 1,
@@ -970,24 +1025,31 @@ async function initSchemaOnce() {
         CONSTRAINT schema_meta_single_row CHECK (id = 1)
       )`);
 
-    const done = await client.query(
-      'SELECT applied_version FROM schema_meta WHERE id = 1 AND applied_version = $1',
-      [appVersion]);
-
+    const vermerk = await client.query('SELECT applied_version FROM schema_meta WHERE id = 1');
     // rowCount ist bei pg für Nicht-SELECT null — hier immer eine Zahl, aber
     // der Typ weiss das nicht.
-    if ((done.rowCount ?? 0) > 0 && process.env.FORCE_SCHEMA_INIT !== '1') {
+    const schonAngelegt = (vermerk.rowCount ?? 0) > 0;
+    const erzwungen = process.env.FORCE_SCHEMA_INIT === '1';
+
+    if (schonAngelegt && !erzwungen) {
       // Kurze Meldung statt des kompletten Migrationsprotokolls je Worker.
-      console.log(`✅ Schema aktuell (${appVersion}) — Migration übersprungen`);
+      console.log(`✅ Schema angelegt (${vermerk.rows[0].applied_version}) — nur Migrationen`);
     } else {
+      if (erzwungen && schonAngelegt) {
+        console.warn('⚠️  FORCE_SCHEMA_INIT=1 — initSchema() laeuft auf einer bestehenden ' +
+          'Datenbank. Das traegt geloeschte Erst-Erfassungen fuer manuelle Teile, ' +
+          'Minifiguren und Sets WIEDER EIN. Das Schema selbst ist davon unberuehrt.');
+      }
       _geschluckt = [];
       await initSchema();
       // ── Nur vermerken, wenn NICHTS geschluckt wurde ────────────────────
       //
       // Die Begruendung steht bei schlucke(). Kurz: Hier wurde die Fassung
       // bedingungslos vermerkt, und damit wurde ein einmaliger Fehlschlag zu
-      // einem dauerhaften Zustand — initSchema() laeuft ja nur bei einer
-      // Versionsaenderung erneut.
+      // einem dauerhaften Zustand — initSchema() laeuft ja nur EINMAL, beim
+      // Erststart. Der fehlende Vermerk ist damit der einzige Weg, auf dem ein
+      // unvollstaendig angelegtes Schema beim naechsten Start noch eine zweite
+      // Gelegenheit bekommt.
       //
       // Der Server startet trotzdem. Ein fehlender Index oder eine fehlende
       // Spalte macht einzelne Ansichten langsamer oder leer; ein Server, der
@@ -1007,12 +1069,12 @@ async function initSchemaOnce() {
     // Nummerierte Migrationen — laufen IMMER, auch wenn initSchema()
     // übersprungen wurde.
     //
-    // Der Vermerk in schema_meta beantwortet nur "lief initSchema für diese
-    // App-Version schon?". Neue Migrationen müssen davon unabhängig geprüft
-    // werden: Sie haben ihre eigene Buchführung in schema_migrations und sind
-    // die Stelle, an der ab jetzt jede Schemaänderung landet (siehe
-    // db/migrate.ts). Läuft auf derselben Verbindung wie der Advisory-Lock,
-    // also im Cluster serialisiert.
+    // Der Vermerk in schema_meta beantwortet nur "hat diese Datenbank je einen
+    // Schemastand angelegt bekommen?". Neue Migrationen müssen davon unabhängig
+    // geprüft werden: Sie haben ihre eigene Buchführung in schema_migrations und
+    // sind die Stelle, an der jede Schemaänderung landet (siehe db/migrate.ts).
+    // Läuft auf derselben Verbindung wie der Advisory-Lock, also im Cluster
+    // serialisiert.
 
     const applied = await runMigrations(client);
     if (applied.length) console.log(`✅ ${applied.length} Migration(en) angewandt`);
