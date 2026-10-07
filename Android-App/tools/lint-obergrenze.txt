@@ -1,0 +1,14 @@
+# Obergrenze fuer die Lint-Warnungen.
+#
+# DERZEIT KEINE ZAHL — absichtlich.
+#
+# Bekannt ist bisher nur die Summe: 58, gemeldet von
+# tools/warnungen-zaehlen.py im Lauf 37580480952. WELCHE 58 es sind, stand nur
+# im XML-Bericht, und der liegt in einer Ablage, die aus dieser Umgebung nicht
+# erreichbar ist. tools/lint-zaehlen.py nennt sie jetzt nach Prueferkennung;
+# der erste Lauf mit diesem Schritt liefert die Liste.
+#
+# Hier eine 58 einzutragen waere Schaetzen: Die Zahl stammt aus einem anderen
+# Zaehlweg (severity="Warning" im XML, gezaehlt vom Werkzeug fuer die
+# Uebersetzerwarnungen), und ob beide dasselbe meinen, ist unbewiesen. Erst
+# messen, dann eintragen.
