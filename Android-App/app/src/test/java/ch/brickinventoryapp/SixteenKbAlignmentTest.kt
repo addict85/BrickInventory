@@ -9,7 +9,7 @@ import org.junit.Test
  *   libimage_processing_util_jni.so  → CameraX      → ab 1.4.0 ausgerichtet
  *   libbarhopper_v3.so               → ML Kit       → nur über das unbundled
  *                                                     Paket loszuwerden
- *   libdatastore_shared_counter.so   → DataStore    → 1.1.7 ausgerichtet
+ *   libdatastore_shared_counter.so   → DataStore    → am APK GEMESSEN
  *   libandroidx.graphics.path.so     → Compose      → OFFEN
  *
  * Jede dieser Entscheidungen lässt sich mit einer einzigen Zeile in
@@ -76,17 +76,38 @@ class SixteenKbAlignmentTest {
     }
 
     @Test
-    fun `DataStore steht auf 1_1_7 und wird erzwungen`() {
+    fun `DataStore wird auf EINE Fassung festgenagelt`() {
+        // ── Was diese Pruefung NICHT mehr tut ───────────────────────────────
+        //
+        // Hier stand `== "1.1.7"`: eine bestimmte NUMMER, weil 1.2.0 die
+        // 16-KB-Ausrichtung verloren hatte. Das hatte zwei Luecken, und beide
+        // sind grundsaetzlich:
+        //
+        //   1. Es prueft die Nummer, nicht die Ausrichtung. Richtet Google
+        //      eine spaetere Fassung wieder aus, bleibt der Riegel trotzdem
+        //      zu. Faellt eine ANDERE Bibliothek zurueck, merkt es niemand.
+        //   2. Ob eine Fassung ausgerichtet ist, liess sich hier gar nicht
+        //      nachsehen — die AARs liegen auf dl.google.com, und das ist aus
+        //      der Entwicklungsumgebung nicht erreichbar.
+        //
+        // Gemessen wird das jetzt am ERGEBNIS: tools/apk-ausrichtung.py liest
+        // die ELF-Koepfe aller .so im gebauten APK und meldet jede Ausrichtung
+        // unter 16 KB. Die Action ruft es nach dem Release-Bau auf.
+        //
+        // Was hier BLEIBT, ist das, was ein Texttest kann und jene Messung
+        // nicht: dass die Fassung ueberhaupt FESTGENAGELT ist. Ohne den
+        // force-Block zoege eine andere Abhaengigkeit die Fassung transitiv
+        // hoch, und das APK waere beim naechsten Mal ein anderes als geprueft.
         val m = Regex("""datastore\s*=\s*"([\d.]+)"""").find(toml)
         assert(m != null) { "datastore-Version nicht gefunden" }
-        assert(m!!.groupValues[1] == "1.1.7") {
-            "DataStore steht auf ${m.groupValues[1]}. 1.1.7 ist 16-KB-ausgerichtet, " +
-                "1.2.0 ist es NICHT mehr — dort ist die Ausrichtung zurückgefallen. " +
-                "Höher gehen erst, wenn eine neuere Fassung nachweislich ausgerichtet ist."
-        }
-        assert(gradle.contains("""force("androidx.datastore:datastore:1.1.7")""")) {
-            "Die Version wird nicht erzwungen. Eine transitive Anhebung auf 1.2.0 " +
-                "würde die 16-KB-Tauglichkeit still wieder kaputt machen."
+        val fassung = m!!.groupValues[1]
+        for (artefakt in listOf("datastore", "datastore-android", "datastore-core",
+                                "datastore-core-android", "datastore-preferences",
+                                "datastore-preferences-android")) {
+            assert(gradle.contains("""force("androidx.datastore:$artefakt:$fassung")""")) {
+                "androidx.datastore:$artefakt wird nicht auf $fassung festgenagelt. Eine " +
+                    "transitive Anhebung wuerde ein anderes APK ergeben als das geprüfte."
+            }
         }
     }
 

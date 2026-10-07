@@ -1035,7 +1035,30 @@ private fun HouseholdCard(
 ) {
     val st = state.status
     var code by rememberSaveable { mutableStateOf("") }
-    val clipboard = androidx.compose.ui.platform.LocalClipboardManager.current
+    // LocalClipboardManager ist veraltet („Use LocalClipboard instead which
+    // supports suspend functions"). Der Nachfolger ist kein reiner
+    // Namenstausch: `Clipboard.setClipEntry` ist SUSPEND, braucht also einen
+    // Bereich, und der Eintrag wird aus einem ClipData gebaut.
+    //
+    // GELESEN in der Quelle von androidx (Google-Maven ist aus dieser
+    // Umgebung gesperrt, raw.githubusercontent.com nicht):
+    //
+    //   public val LocalClipboard: ProvidableCompositionLocal<Clipboard>
+    //   public suspend fun setClipEntry(clipEntry: ClipEntry?)
+    //   public actual class ClipEntry(public val clipData: ClipData)
+    val clipboard = androidx.compose.ui.platform.LocalClipboard.current
+    val kopierBereich = rememberCoroutineScope()
+    // Das Etikett eines ClipData ist auf manchen Android-Oberflaechen SICHTBAR
+    // — es gehoert darum in die Sprachdateien und nicht in den Quelltext.
+    //
+    // Hier stand erst `"invite"`, und StringResourceParityTest hat es zu Recht
+    // beanstandet: `newPlainText(` endet auf `Text(` und faellt damit unter
+    // dieselbe Regel wie ein Compose-`Text("…")`. Das ist kein Fehlalarm des
+    // Tests, sondern genau sein Zweck.
+    //
+    // Geholt wird die Zeichenkette HIER, nicht im onClick: stringResource ist
+    // @Composable, der Klick-Rumpf ist es nicht.
+    val einladungEtikett = stringResource(R.string.household_invite_label)
 
     SettingsCard(title = stringResource(R.string.household_title), icon = Icons.Default.Group) {
         Text(stringResource(R.string.household_intro),
@@ -1095,7 +1118,12 @@ private fun HouseholdCard(
                     modifier = Modifier.fillMaxWidth(),
                     trailingIcon = {
                         IconButton(onClick = {
-                            clipboard.setText(androidx.compose.ui.text.AnnotatedString(c))
+                            kopierBereich.launch {
+                                clipboard.setClipEntry(
+                                    androidx.compose.ui.platform.ClipEntry(
+                                        android.content.ClipData.newPlainText(
+                                            einladungEtikett, c)))
+                            }
                         }) { Icon(Icons.Default.ContentCopy, stringResource(R.string.household_invite_copy)) }
                     }
                 )

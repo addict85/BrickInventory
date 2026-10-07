@@ -254,9 +254,9 @@ class SetsRepository @Inject constructor(
     suspend fun uploadAnleitung(
         setNumber: String, dateiname: String, typ: String, inhalt: ByteArray, beschreibung: String,
     ): Result<GenericResponse> {
-        val koerper = okhttp3.RequestBody.create(typ.toMediaType(), inhalt)
+        val koerper = inhalt.toRequestBody(typ.toMediaType())
         val teil = okhttp3.MultipartBody.Part.createFormData("file", dateiname, koerper)
-        val text = okhttp3.RequestBody.create("text/plain".toMediaType(), beschreibung)
+        val text = beschreibung.toRequestBody("text/plain".toMediaType())
         return safeCall { api.uploadAnleitung(setNumber, teil, text) }
     }
 

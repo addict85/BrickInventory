@@ -435,6 +435,7 @@
     <string name="household_invite_create">Einladungscode erzeugen</string>
     <string name="household_invite_hint">Gib den Code im anderen Konto unter Einstellungen ein. 24 Stunden gültig, einmal verwendbar.</string>
     <string name="household_invite_copy">Kopieren</string>
+    <string name="household_invite_label">Einladungscode</string>
     <string name="household_redeem_title">Einladung annehmen</string>
     <string name="household_redeem_hint">Gib den Code aus dem Hauptkonto ein. Deine Daten bleiben deine.</string>
     <string name="household_redeem_submit">Verknüpfen</string>
@@ -493,7 +494,6 @@
     <string name="pdfview_no_target">Kein Speicherort erhalten</string>
     <string name="pdfview_write_failed">Datei konnte nicht geschrieben werden</string>
     <string name="pdfview_default_name">Anleitung</string>
-    <string name="pdfview_empty_response">Leere Antwort vom Server</string>
     <string name="pdfview_share">PDF teilen</string>
     <!-- Angemeldete Geraete (Token-Verwaltung) -->
     <string name="tokens_title">Angemeldete Geräte</string>

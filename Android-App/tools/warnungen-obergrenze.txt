@@ -1,0 +1,43 @@
+# Obergrenze fuer die Warnungen des Uebersetzungslaufs.
+1
+# GEMESSEN im Lauf 37591711248 (Gradle 9.8.0, AGP 9.4.1, Kotlin 2.4.20,
+# org.gradle.warning.mode=all):
+#
+#     Kotlin 0,  KSP 0,  Java 0,  Gradle 1,  Summe 1
+#
+# Kotlin steht auf NULL. Die zwoelf Uebersetzerwarnungen, mit denen diese Reihe
+# anfing, sind behoben.
+#
+# ── Was die eine verbleibende Warnung ist ──────────────────────────────────
+#
+#     The Configuration.setVisible(boolean) method has been deprecated.
+#     This is scheduled to be removed in Gradle 11.
+#     docs.gradle.org/9.8.0/userguide/upgrading_version_9.html
+#       #deprecate-visible-property
+#
+# Sie gehoert NICHT uns. Nachgesehen statt angenommen:
+#
+#     grep -rn "setVisible|isVisible" --include=*.gradle.kts  ->  kein Treffer
+#
+# Kein Buildskript dieses Projekts ruft das auf. Der Aufruf kommt aus einem
+# Plugin (AGP, Hilt oder KSP) und ist von hier aus nur zu beheben, indem das
+# Plugin es laesst. Darum steht die Zahl auf 1 und nicht auf 0: Eine 0 waere
+# eine Behauptung, die beim naechsten Lauf platzt, und ein Riegel, der sofort
+# wieder weichen muesste, ist keiner.
+#
+# Fiele sie weg — weil ein Plugin nachzieht —, meldet das Werkzeug „weniger als
+# erlaubt" und fordert, die Zahl hier auf 0 zu senken. Dann ist sie 0, weil sie
+# gemessen ist.
+#
+# ── Geschichte dieser Zahl ─────────────────────────────────────────────────
+#
+#   18  Lauf 37579256987 — FALSCH, teils doppelt gezaehlt (bau.log und
+#       lint.log; lintRelease uebersetzt erneut)
+#    7  Lauf 37582386384 — entdoppelt nach Datei/Zeile/Spalte:
+#       6 Kotlin + 1 Gradle (damals noch die Sammelzeile)
+#    ?  nach dem Beheben der sechs: Zaehlgrundlage geaendert, weil
+#       warning.mode=all die Sammelzeile durch die Einzelmeldungen ersetzt
+#    1  Lauf 37591711248 — gemessen, und zwar die GENANNTE eine
+#
+# NICHT in dieser Summe und von nichts begrenzt: 58 Lint-Warnungen. Dafuer gibt
+# es tools/lint-zaehlen.py auf dem Zweig claude/lint-warnungen.

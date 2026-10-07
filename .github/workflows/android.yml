@@ -71,14 +71,14 @@ jobs:
       HAT_SCHLUESSEL: ${{ secrets.KEYSTORE_BASE64 != '' }}
 
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
 
       # JDK 17 — passt zu sourceCompatibility/targetCompatibility und jvmTarget
       # im app/build.gradle.kts. Verlangt AGP eine neuere Fassung, steht das
       # klar im Protokoll; dann hier auf '21' stellen. Die Zahlen im
       # Buildskript bleiben trotzdem auf 17.
       - name: JDK einrichten
-        uses: actions/setup-java@v5
+        uses: actions/setup-java@v6
         with:
           distribution: temurin
           java-version: '17'
@@ -116,6 +116,28 @@ jobs:
             exit 1
           fi
           echo "Wrapper vollständig."
+
+      # ── Ist die festgenagelte Gradle-Prüfsumme die amtliche? ──────────────
+      #
+      # gradle-wrapper.properties nagelt die Verteilung auf eine sha256 fest.
+      # Das ist der Riegel gegen ein ausgetauschtes Archiv — nur hat nie etwas
+      # geprüft, ob die Zahl daneben die richtige IST. Eine beim Heben
+      # verdrehte Ziffer bricht sofort und laut; eine Prüfsumme, die zu einem
+      # FREMDEN Archiv passt, nicht.
+      #
+      # Der Schritt liest zusätzlich, welche Fassung die neueste ist und wie
+      # IHRE Prüfsumme lautet — das ist die Zahl, die zum Heben nötig ist.
+      # downloads.gradle.org ist aus der Entwicklungsumgebung gesperrt
+      # (HTTP 000), von hier erreichbar. Erfinden ist keine Möglichkeit: Eine
+      # falsche Zahl bricht jeden Build, eine entfernte Zeile wäre ein
+      # geschwächter Riegel.
+      #
+      # Der Hinweis auf die neuere Fassung färbt NICHT rot — ob gehoben wird,
+      # entscheidet ein Mensch. Rot ist die Abweichung, und rot ist auch ein
+      # ausgefallener Abruf: ein stillschweigend übergangener Riegel ist
+      # schlimmer als keiner.
+      - name: Gradle-Prüfsumme gegen die amtliche
+        run: python3 tools/gradle-wrapper-pruefen.py gradle/wrapper/gradle-wrapper.properties
 
       # Legt den Gradle-Cache an. Ohne das lädt jeder Lauf alle Abhängigkeiten
       # neu — mehrere Minuten pro Bau.
@@ -201,6 +223,7 @@ jobs:
         run: echo "${{ secrets.KEYSTORE_BASE64 }}" | base64 -d > "$RUNNER_TEMP/brick.jks"
 
       - name: Release bauen
+        id: bau
         env:
           # Immer gesetzt, auch ohne Secret: Das Buildskript prüft, ob die
           # Datei EXISTIERT, und baut sonst unsigniert. Eine Fallunterscheidung
@@ -209,7 +232,17 @@ jobs:
           BRICK_KEYSTORE_PASSWORT: ${{ secrets.KEYSTORE_PASSWORT }}
           BRICK_KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
           BRICK_KEY_PASSWORT: ${{ secrets.KEY_PASSWORT }}
-        run: ./gradlew --no-daemon assembleRelease bundleRelease
+        # tee wie bei den Unit-Tests, aus einem zweiten Grund: Die
+        # Warnungen des Übersetzers stehen NUR hier. Ohne Mitschnitt kann
+        # `warnungen-zaehlen.py` weiter unten nichts zählen — und „0
+        # Warnungen" wäre dann die beruhigendste aller Falschaussagen.
+        #
+        # set -o pipefail: ohne das bestimmt tee den Rückgabewert und ein
+        # gescheiterter Bau ginge als Erfolg durch.
+        run: |
+          set -o pipefail
+          ./gradlew --no-daemon assembleRelease bundleRelease 2>&1 \
+            | tee "$RUNNER_TEMP/bau.log"
 
       # ── Warum ZUSÄTZLICH ein Bundle (.aab) ──────────────────────────────────
       #
@@ -226,8 +259,46 @@ jobs:
       # ist deshalb gerade hier interessant; abbrechen soll er nicht, das
       # entspricht abortOnError = false im Buildskript.
       - name: Lint
-        run: ./gradlew --no-daemon lintRelease
+        run: |
+          set -o pipefail
+          ./gradlew --no-daemon lintRelease 2>&1 | tee "$RUNNER_TEMP/lint.log"
         continue-on-error: true
+
+      # ── Wie viele Warnungen wirft der Übersetzer? ──────────────────────────
+      #
+      # Auf die Frage „sind alle Warnungen beim Kompilieren gelöst" gab es hier
+      # keine Antwort, nur zwei Zeilen, die das Gegenteil festlegen:
+      #
+      #     app/build.gradle.kts:177   abortOnError     = false
+      #     app/build.gradle.kts:178   warningsAsErrors = false
+      #
+      # und `allWarningsAsErrors` für Kotlin ist nirgends gesetzt. Es gab also
+      # keine Regel, die Warnungen verbietet — und niemand hat sie je GEZÄHLT.
+      # Die Zahl stand in hunderten Zeilen Gradle-Protokoll, das GitHub nur als
+      # Ganzes von einem Host ausliefert, den der Proxy hier mit 403 abweist.
+      #
+      # Warum nicht einfach allWarningsAsErrors = true: Das bricht den Bau ab
+      # der ersten Warnung ab, auch bei einer aus generiertem Code (Hilt, KSP),
+      # die hier niemand beheben kann. Eine Regel, die man danach sofort mit
+      # Ausnahmen durchlöchern muss, ist keine. Stattdessen: zählen, jede
+      # Warnung beim Namen nennen, und rot werden, sobald die Zahl STEIGT.
+      #
+      # `!cancelled()`: Der Befund ist gerade dann interessant, wenn der Bau
+      # rot war — ein abgebrochener Lauf braucht ihn nicht mehr.
+      # `steps.bau.outcome != 'skipped'`: Im Lauf 37584609538 waren die
+      # Unit-Tests rot, der Bau lief damit nie — und dieser Schritt wurde
+      # trotzdem rot, weil er kein Protokoll fand. Das ist ein zweiter roter
+      # Schritt fuer EINEN Fehler, und er zeigt in die falsche Richtung.
+      #
+      # Das Werkzeug bleibt dabei rot bei fehlendem Protokoll: Lief der Bau und
+      # ging der Mitschnitt verloren, ist „0 Warnungen" eine Falschaussage, und
+      # genau die soll auffallen. Nur gefragt wird es nicht mehr, wenn gar nicht
+      # gebaut wurde.
+      - name: Warnungen zählen
+        if: ${{ !cancelled() && steps.bau.outcome != 'skipped' }}
+        run: |
+          python3 tools/warnungen-zaehlen.py tools/warnungen-obergrenze.txt \
+            "$RUNNER_TEMP/bau.log" "$RUNNER_TEMP/lint.log"
 
       # Den Namen vergibt GRADLE (Aufgabe copyReleaseApkAsBrickInventory in
       # app/build.gradle.kts), nicht dieser Schritt. Hier wird nur nachgesehen,
@@ -277,6 +348,46 @@ jobs:
             app/build/outputs/apk/release/BrickInventory.apk \
             app/src/main/java
 
+      # ── 16-KB-Speicherseiten am ERGEBNIS messen ─────────────────────────────
+      #
+      # Bis hierher stand die 16-KB-Tauglichkeit auf einer ZAHL: datastore war
+      # auf 1.1.7 festgenagelt, weil 1.2.0 wieder 4-KB-ausgerichtet war, und
+      # ein Test verlangte genau diese Nummer.
+      #
+      # Das prüft die Nummer, nicht die Ausrichtung — und war in der
+      # Entwicklungsumgebung gar nicht nachprüfbar: Die AARs liegen auf
+      # dl.google.com, das von dort nicht erreichbar ist. Hier liegt das
+      # gebaute APK, also wird hier gemessen. Dieselbe Umkehrung wie beim
+      # Schritt darüber, der R8s Ergebnis liest statt des Quelltexts.
+      - name: Native Bibliotheken auf 16 KB ausgerichtet?
+        run: |
+          python3 tools/apk-ausrichtung.py \
+            app/build/outputs/apk/release/BrickInventory.apk
+
+      # ── Sind die Abhängigkeiten aktuell? Gemessen, nicht geschätzt ─────────
+      #
+      # Die Frage „sind alle Libs auf der neuesten Major- und Minor-Version"
+      # kam mehrfach, und ein Teil der Antwort war jedes Mal GESCHÄTZT: Die
+      # androidx-Nummern stammten aus einer Doku-Seite, weil Google-Maven aus
+      # der Entwicklungsumgebung nicht erreichbar ist — dl.google.com antwortet
+      # dort mit HTTP 000, und maven.google.com leitet genau dorthin um.
+      #
+      # Dieser Runner erreicht es sehr wohl; von dort lädt der Build ja seine
+      # Abhängigkeiten. Also wird hier gemessen, direkt aus group-index.xml
+      # (Google) und maven-metadata.xml (Central).
+      #
+      # Der Schritt macht den Lauf NICHT rot, wenn etwas hinterherhinkt — ob
+      # eine ältere Fassung richtig ist, entscheidet ein Mensch (bei okhttp und
+      # coil entschied es `minCompileSdk`, nicht die Nummer). Rot wird er nur,
+      # wenn er gar nichts messen konnte und sein Bericht damit nichts aussagt.
+      #
+      # `!cancelled()` statt `always()`: Der Bericht soll auch dann kommen,
+      # wenn der Bau vorher rot war — aber ein abgebrochener Lauf (neuer Push
+      # auf denselben Zweig) braucht ihn nicht mehr.
+      - name: Sind die Abhängigkeiten auf der neuesten Fassung?
+        if: ${{ !cancelled() }}
+        run: python3 tools/fassungen-pruefen.py gradle/libs.versions.toml
+
       # `always()`: Die Berichte sind gerade dann interessant, wenn der Lauf rot
       # ist. Ohne das lädt GitHub sie bei einem Fehlschlag nicht hoch.
       # upload-artifact auf v6 (vorher v4).
@@ -295,9 +406,31 @@ jobs:
       # startet — die Versionsnummer allein sagt es nicht.
       #
       #     curl https://raw.githubusercontent.com/actions/upload-artifact/v6/action.yml
+      #
+      # ── Nachtrag: eine Hauptversion weiter, aus anderem Grund ─────────────
+      #
+      # Die Tabelle darueber bleibt richtig. Gehoben wurde jetzt NICHT wegen
+      # einer Warnung, sondern weil die Frage „sind alle verwendeten Fassungen
+      # die neuesten" auch fuer die Actions gilt — und die standen in keinem
+      # Katalog und in keiner package.json, also hat sie niemand gemessen.
+      #
+      # Gemessen wurde mit demselben Handgriff wie oben, nur umgedreht: ob ein
+      # hoeherer Haupt-Tag UEBERHAUPT existiert. api.github.com ist aus dieser
+      # Umgebung gesperrt (403), raw.githubusercontent.com nicht:
+      #
+      #     raw.githubusercontent.com/<action>/v7/action.yml  -> 200 = gibt es
+      #                                      .../v9, v42, v99 -> 404 = gibt es nicht
+      #
+      # Die Gegenprobe mit v9, v42, v99 und vXYZ war noetig: Ohne sie waere
+      # „200 bei jedem geprueften Tag" nicht von „der Abruf antwortet immer
+      # 200" zu unterscheiden gewesen.
+      #
+      # Jede neue Hauptversion laeuft auf node24 — die Laufzeit aendert sich
+      # also nicht, es gibt hier keine Warnung zu beseitigen und auch keine
+      # einzufangen.
       - name: Testberichte sichern
         if: always()
-        uses: actions/upload-artifact@v6
+        uses: actions/upload-artifact@v7
         with:
           name: testberichte
           path: |
@@ -457,7 +590,7 @@ jobs:
       # Ressourcen-Aufteilung arbeiten fuer die beiden Formate nicht gleich.
       - name: App-Bundle (.aab) sichern
         if: success()
-        uses: actions/upload-artifact@v6
+        uses: actions/upload-artifact@v7
         with:
           name: BrickInventory-bundle
           path: Android-App/app/build/outputs/bundle/release/app-release.aab

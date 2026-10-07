@@ -86,10 +86,10 @@ jobs:
           fi
           echo "Alle fuenf Secrets sind gesetzt."
 
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
 
       - name: JDK einrichten
-        uses: actions/setup-java@v5
+        uses: actions/setup-java@v6
         with:
           distribution: temurin
           java-version: '17'
@@ -210,7 +210,7 @@ jobs:
 
       - name: Bundle sichern
         if: always()
-        uses: actions/upload-artifact@v6
+        uses: actions/upload-artifact@v7
         with:
           name: BrickInventory-bundle-${{ github.event.inputs.spur }}
           path: |

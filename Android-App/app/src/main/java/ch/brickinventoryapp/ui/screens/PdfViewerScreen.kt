@@ -117,7 +117,6 @@ fun PdfViewerScreen(
             val (file, pageCount) = ladeUndZaehle(
                 pdfUrl, cacheFile, httpClient,
                 ctx.getString(R.string.pdfview_download_failed),
-                ctx.getString(R.string.pdfview_empty_response),
                 aufraeumen = { prunePdfCache(ctx.cacheDir, keep = cacheFile) },
             ) { state = it }
             state = PdfLoadState.Ready(file, pageCount)
@@ -316,7 +315,6 @@ private suspend fun ladeUndZaehle(
     cacheFile: File,
     httpClient: OkHttpClient,
     fehlerText: String,
-    leerText: String,
     aufraeumen: () -> Unit,
     onZustand: (PdfLoadState) -> Unit,
 ): Pair<File, Int> {
@@ -325,7 +323,7 @@ private suspend fun ladeUndZaehle(
         versuch++
         withContext(Dispatchers.IO) {
             aufraeumen()
-            downloadPdfWithResume(url, cacheFile, httpClient, fehlerText, leerText) { geladen, gesamt ->
+            downloadPdfWithResume(url, cacheFile, httpClient, fehlerText) { geladen, gesamt ->
                 val pct = if (gesamt > 0) (geladen * 100 / gesamt).toInt() else 0
                 onZustand(PdfLoadState.Downloading(pct, geladen, if (gesamt > 0) gesamt else 0L))
             }
@@ -402,8 +400,6 @@ private suspend fun downloadPdfWithResume(
      * IO-Dispatcher und ist die einzige hier, die reine Netzarbeit macht.
      */
     fehlerText: String,
-    /** Meldung für eine Antwort ohne Rumpf — aus demselben Grund ein Parameter. */
-    leerText: String,
     onProgress: (downloaded: Long, total: Long) -> Unit
 ) {
     // Vom geteilten api-Client ABGELEITET statt eigenständig gebaut:
@@ -452,7 +448,12 @@ private suspend fun downloadPdfWithResume(
                         // Server unterstützt Range → 206; ignoriert Range → 200 (neu starten).
                         val resuming = resp.code == 206 && ab > 0
                         if (ab > 0 && !resuming) teil.delete()
-                        val body = resp.body ?: throw IOException(leerText)
+                        // Kein `?:`: `resp.body` ist seit OkHttp 5 nicht
+                        // nullbar. Damit war nicht nur der Elvis-Operator
+                        // ueberfluessig, sondern auch der Parameter `leerText`
+                        // und die Zeichenkette dahinter — eine Meldung fuer
+                        // einen Fall, den es nicht mehr geben kann.
+                        val body = resp.body
                         val total: Long = if (resuming) {
                             resp.header("Content-Range")?.substringAfterLast('/')?.toLongOrNull()
                                 ?: (ab + body.contentLength())
