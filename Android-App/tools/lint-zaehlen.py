@@ -102,36 +102,48 @@ def main(argv):
     for stufe in sorted(nach_stufe):
         print("  %-13s %d" % (stufe, len(nach_stufe[stufe])))
 
-    # Nach Prueferkennung gruppieren: „58 Warnungen" ist unbrauchbar,
-    # „38x UnusedResources, 7x OldTargetApi, …" ist eine Arbeitsliste.
+    # Nach Prueferkennung UND Meldungstext gruppieren.
+    #
+    # Die erste Fassung gruppierte nur nach der Kennung und zeigte EINE
+    # Beispielmeldung. Das war zu wenig, und es fiel bei UseKtx auf: 13 Befunde
+    # unter einer Kennung, gezeigt wurde „Use the KTX extension function
+    # `String.toUri` instead?" — im Quelltext gibt es aber nur fuenf
+    # Uri.parse-Stellen. Die anderen acht sind andere KTX-Vorschlaege, und
+    # welche, verschwieg die Liste.
+    #
+    # Dieselbe Lehre wie bei der Anzeigegrenze fuer Error/Fatal: Eine Liste, die
+    # genau das verschweigt, was man nicht erraten kann, ist keine Liste.
     def gruppiere(liste):
         g = {}
         for kennung, text, orte in liste:
-            n, o, bsp = g.get(kennung, (0, [], text))
+            schluessel = (kennung, text)
+            n, o = g.get(schluessel, (0, []))
             for ort in orte:
                 if ort and ort not in o:
                     o.append(ort)
-            g[kennung] = (n + 1, o, bsp)
+            g[schluessel] = (n + 1, o)
         return g
 
     gruppen = gruppiere(warnungen)
     if gruppen:
-        print("\nWarnungen nach Prueferkennung:")
-        for kennung in sorted(gruppen, key=lambda k: -gruppen[k][0]):
-            n, orte, bsp = gruppen[kennung]
-            print("  %3dx %-28s %s" % (n, kennung, ", ".join(orte[:4])
-                                       + (" …" if len(orte) > 4 else "")))
-            print("       %s" % bsp[:160])
+        print("\nWarnungen nach Prueferkennung und Meldung:")
+        for (kennung, text) in sorted(gruppen, key=lambda k: -gruppen[k][0]):
+            n, orte = gruppen[(kennung, text)]
+            print("  %3dx %-28s %s" % (n, kennung, ", ".join(orte[:6])
+                                       + (" …" if len(orte) > 6 else "")))
+            print("       %s" % text)
 
     zeile = ["Warnungen %d" % len(warnungen)]
     if rest:
         zeile.append("ausserdem: " + ", ".join("%s %d" % (s, n) for s, n in sorted(rest.items())))
-    for kennung in sorted(gruppen, key=lambda k: -gruppen[k][0])[:20]:
-        n, orte, bsp = gruppen[kennung]
-        zeile.append("  %dx %s — %s" % (n, kennung, bsp[:120]))
-    if len(gruppen) > 20:
-        zeile.append("  … und %d weitere Kennungen, vollstaendig im Protokoll."
-                     % (len(gruppen) - 20))
+    for (kennung, text) in sorted(gruppen, key=lambda k: -gruppen[k][0])[:30]:
+        n, orte = gruppen[(kennung, text)]
+        zeile.append("  %dx %s — %s [%s]"
+                     % (n, kennung, text[:130],
+                        ", ".join(orte[:4]) + (" …" if len(orte) > 4 else "")))
+    if len(gruppen) > 30:
+        zeile.append("  … und %d weitere Gruppen, vollstaendig im Protokoll."
+                     % (len(gruppen) - 30))
 
     # Error und Fatal gehoeren NICHT unter eine Warnungs-Obergrenze: Da ist die
     # richtige Zahl null, und sie unter einer Summe zu verstecken waere genau

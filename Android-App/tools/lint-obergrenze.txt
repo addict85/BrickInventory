@@ -1,14 +1,49 @@
 # Obergrenze fuer die Lint-Warnungen.
+58
+# GEMESSEN im Lauf 37598447257. Die Summe stimmt auf 58, dazu 5 Hinweise
+# (Hint), die hier nicht mitzaehlen.
 #
-# DERZEIT KEINE ZAHL — absichtlich.
+# Diese Zahl ist NICHT das Ziel, sondern der Stand. Wer eine Warnung behebt,
+# senkt sie mit; das Werkzeug fordert dazu auf, sobald die Summe darunter liegt.
 #
-# Bekannt ist bisher nur die Summe: 58, gemeldet von
-# tools/warnungen-zaehlen.py im Lauf 37580480952. WELCHE 58 es sind, stand nur
-# im XML-Bericht, und der liegt in einer Ablage, die aus dieser Umgebung nicht
-# erreichbar ist. tools/lint-zaehlen.py nennt sie jetzt nach Prueferkennung;
-# der erste Lauf mit diesem Schritt liefert die Liste.
+# ── Die 58, nach Prueferkennung ────────────────────────────────────────────
 #
-# Hier eine 58 einzutragen waere Schaetzen: Die Zahl stammt aus einem anderen
-# Zaehlweg (severity="Warning" im XML, gezaehlt vom Werkzeug fuer die
-# Uebersetzerwarnungen), und ob beide dasselbe meinen, ist unbewiesen. Erst
-# messen, dann eintragen.
+#   13x UseKtx                  Uri.parse(x) -> x.toUri()
+#   12x Typos                   „ok" sollte „OK" sein
+#   10x PluralsCandidate        „%d set" gehoert in <plurals>
+#    5x IconLauncherShape       Startbild fuellt das ganze Quadrat
+#    4x TypographyDashes        „-" sollte ein Halbgeviertstrich sein
+#    2x DefaultLocale           String.format ohne Locale
+#    2x UnusedAttribute         localeConfig erst ab API 33 (minSdk 26)
+#    2x MonochromeLauncherIcon  dem adaptiven Icon fehlt monochrome
+#    1x AppBundleLocaleChanges  Sprachwechsel ohne Play-Core-Aufrufe
+#    1x Untranslatable          lang_code ist translatable="false", aber uebersetzt
+#    1x AcceptsUserCertificates nutzerinstallierte CA im Release erlaubt
+#    1x InsecureBaseConfiguration  Klartext in der base-config erlaubt
+#    1x DataExtractionRules     dataExtractionRules erst ab Android 12
+#    1x ObsoleteSdkInt          Ordner v26 unnoetig, minSdk ist 26
+#    1x FrequentlyChangingValue @FrequentlyChangingValue in der Komposition
+#    1x UnusedResources         R.mipmap.ic_launcher_foreground unbenutzt
+#
+# ── Zwei bleiben ABSICHTLICH stehen ────────────────────────────────────────
+#
+#   AcceptsUserCertificates
+#   InsecureBaseConfiguration
+#
+# Beide beschreiben Entscheidungen, die in res/xml/network_security_config.xml
+# ausfuehrlich begruendet sind:
+#
+#   * cleartextTrafficPermitted="true" in der base-config, weil die Server-URL
+#     der Nutzer selbst eintraegt — typischerweise eine private LAN-Adresse, und
+#     RFC1918-Bereiche lassen sich in <domain> nicht per Wildcard ausdruecken.
+#     Eingeschraenkt wird eine Ebene hoeher, im OkHttp-Abfanger
+#     (util/NetworkPolicy.kt): Klartext nur zu privaten Adressen.
+#   * <certificates src="user" />, damit ein selbst ausgestelltes Zertifikat
+#     funktioniert. GitHub ist davon per domain-config ausgenommen (nur system),
+#     weil von dort das APK kommt.
+#
+# Sie werden NICHT mit tools:ignore stillgelegt. Eine stillgelegte Warnung ist
+# unsichtbar, und das ist derselbe Fehler wie eine lint-Baseline: Man sieht
+# nicht mehr, dass es sie gibt, und also auch nicht, wenn sich die Lage aendert.
+# Sie bleiben gezaehlt und hier erklaert — zwei von 58, die ein Mensch
+# entschieden hat.
