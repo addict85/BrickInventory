@@ -1,5 +1,24 @@
 # Obergrenze fuer die Lint-Warnungen.
-25
+26
+# NACHGEMESSEN hochgesetzt von 25, und zwar OHNE Vorhersage — ich hatte den
+# Befund nicht erwartet (Lauf 37649940049, Android-App auf claude/pdf-zoom).
+#
+# Dazugekommen ist genau einer, und er ist eine Entscheidung, die hier schon
+# zweimal getroffen wurde:
+#
+#   1x Typos   „Vergrössern" (values-de/strings.xml) — Lint moechte
+#              „Vergrößern".
+#
+# Das ist die ZEHNTE Zeile derselben Sorte (siehe unten, „9x Typos"): Lint
+# prueft gegen bundesdeutsche Rechtschreibung, in der Schweiz gibt es kein ß.
+# Das Wort ist richtig geschrieben.
+#
+# NICHT getan, obwohl es die Grenze bei 25 gelassen haette: das Wort gegen eines
+# ohne ss tauschen („Hineinzoomen"). Ein Bedienelement nach dem Rechtschreib-
+# woerterbuch eines Pruefwerkzeugs zu benennen hiesse, die Oberflaeche nach der
+# Zaehlung zu richten statt umgekehrt — und es haette verborgen, dass dieses
+# Projekt jetzt zehn bewusst schweizerische Schreibungen hat und nicht neun.
+# Genau das soll die Zahl hier zeigen.
 # VORHERSAGE, eingetragen VOR dem Lauf: 35 minus die zehn PluralsCandidate.
 #
 # ── Was dabei NICHT mechanisch war ─────────────────────────────────────────
@@ -63,11 +82,13 @@
 #
 # Stand vorher: 43 (Lauf 37605993159, Vorhersage damals exakt gehalten).
 #
-# ── 15 bleiben ABSICHTLICH stehen ──────────────────────────────────────────
+# ── 16 bleiben ABSICHTLICH stehen ──────────────────────────────────────────
 #
-# 9x Typos — Lint prueft gegen BUNDESDEUTSCHE Rechtschreibung. In der Schweiz
+# 10x Typos — Lint prueft gegen BUNDESDEUTSCHE Rechtschreibung. In der Schweiz
 # gibt es kein ß: liess (2x), Schliessen (2x), grösser (2x), liesse,
-# ausserhalb, liessen. Alle neun sind richtig geschrieben.
+# ausserhalb, liessen, Vergrössern. Alle zehn sind richtig geschrieben.
+# („Vergrössern" ist der Zoom-Knopf des PDF-Betrachters und der Grund, aus dem
+# die Grenze oben von 25 auf 26 ging.)
 #
 # 4x TypographyDashes — alle vier betreffen die Setnummer „75192-1" im
 # Beispieltext (values/strings.xml:66, :123; values-de/strings.xml:50, :107).
