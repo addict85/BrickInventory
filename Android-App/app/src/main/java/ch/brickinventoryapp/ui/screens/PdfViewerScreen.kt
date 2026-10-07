@@ -42,6 +42,7 @@ import androidx.compose.ui.res.stringResource
 import ch.brickinventoryapp.R
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.core.graphics.createBitmap
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.sync.Mutex
@@ -90,6 +91,14 @@ fun PdfViewerScreen(
     onBack: () -> Unit
 ) {
     val ctx = LocalContext.current
+    // `stringResource` statt `ctx.getString` im Rueckruf: Lint meldet
+    // LocalContextGetResourceValueCall (Stufe ERROR), weil ein aus
+    // LocalContext.current gegriffener Context nach einem Wechsel der
+    // Konfiguration — Sprache, Dunkelmodus, Drehung — veraltete Werte liefern
+    // kann. Hier geholt, in der Komposition, wo Compose bei einer Aenderung neu
+    // auswertet.
+    val ladefehlerText = stringResource(R.string.pdfview_download_failed)
+    val unbekannterFehlerText = stringResource(R.string.pdfview_unknown_error)
     var state by remember(pdfUrl) { mutableStateOf<PdfLoadState>(PdfLoadState.Downloading(0, 0, 0)) }
 
     // Bildschirm WÄHREND DES LADENS anlassen: Geht das Display aus, trennt Android
@@ -116,12 +125,12 @@ fun PdfViewerScreen(
             val cacheFile = File(ctx.cacheDir, "pdfview_${pdfUrl.hashCode()}.pdf")
             val (file, pageCount) = ladeUndZaehle(
                 pdfUrl, cacheFile, httpClient,
-                ctx.getString(R.string.pdfview_download_failed),
+                ladefehlerText,
                 aufraeumen = { prunePdfCache(ctx.cacheDir, keep = cacheFile) },
             ) { state = it }
             state = PdfLoadState.Ready(file, pageCount)
         } catch (e: Exception) {
-            state = PdfLoadState.Error(e.message ?: ctx.getString(R.string.pdfview_unknown_error))
+            state = PdfLoadState.Error(e.message ?: unbekannterFehlerText)
         } finally {
             try { if (wifiLock?.isHeld == true) wifiLock.release() } catch (_: Exception) {}
         }
@@ -268,7 +277,9 @@ private suspend fun renderPdfPage(file: File, index: Int, targetWidthPx: Int): B
             val ratio = page.height.toFloat() / page.width.toFloat().coerceAtLeast(1f)
             val w = targetWidthPx
             val h = (w * ratio).toInt().coerceAtLeast(1)
-            val bmp = Bitmap.createBitmap(w, h, Bitmap.Config.ARGB_8888)
+            // KTX-Form; ARGB_8888 ist dort die Vorbelegung (gelesen in
+            // androidx.core.graphics.Bitmap.kt).
+            val bmp = createBitmap(w, h)
             bmp.eraseColor(AndroidColor.WHITE)
             page.render(bmp, null, null, PdfRenderer.Page.RENDER_MODE_FOR_DISPLAY)
             page.close()
@@ -655,5 +666,10 @@ private fun Context.findActivity(): Activity? {
 private fun formatMb(bytes: Long): String {
     if (bytes <= 0) return "0 MB"
     val mb = bytes / 1_048_576.0
-    return if (mb >= 1024) String.format("%.2f GB", mb / 1024) else String.format("%.1f MB", mb)
+    // Locale AUSDRUECKLICH: `String.format` ohne Locale nimmt ohnehin die
+    // voreingestellte — Lint beanstandet, dass das nicht dasteht, und damit
+    // hat es recht. Hier ist getDefault() auch das Richtige: Die Zahl wird
+    // ANGEZEIGT, ein deutscher Nutzer erwartet „1,5 MB" mit Komma.
+    return if (mb >= 1024) String.format(java.util.Locale.getDefault(), "%.2f GB", mb / 1024)
+           else String.format(java.util.Locale.getDefault(), "%.1f MB", mb)
 }

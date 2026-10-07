@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="app_name">BrickInventory Manager</string>
-    <string name="lang_code" translatable="false">de</string>
+    <string name="lang_code">de</string>
 
     <!-- ══════════════ Settings screen ══════════════ -->
     <string name="settings_currency">Währung</string>
@@ -30,7 +30,7 @@
     <string name="login_button">Anmelden</string>
 
     <!-- ══════════════ CSV import banner ══════════════ -->
-    <string name="csv_ok_count">✅ %1$d ok</string>
+    <string name="csv_ok_count">✅ %1$d OK</string>
     <string name="csv_stat_success">Erfolg</string>
     <string name="csv_stat_warnings">Warnungen</string>
     <string name="csv_stat_errors">Fehler</string>
@@ -132,10 +132,21 @@
 
     <!-- ══════════════ Parts list screen ══════════════ -->
     <string name="partslist_set_already_added">Set bereits in der Liste</string>
-    <string name="partslist_sets_in_list">%1$d Set(s) in der Liste</string>
+    <plurals name="partslist_sets_in_list">
+        <item quantity="one">%1$d Set in der Liste</item>
+        <item quantity="other">%1$d Sets in der Liste</item>
+    </plurals>
     <string name="partslist_loading_set">Lade %1$s (%2$d/%3$d)…</string>
     <string name="partslist_error_for_set">Fehler bei %1$s</string>
-    <string name="partslist_summary">%1$d Teiletypen · %2$d Teile</string>
+    <string name="partslist_summary">%1$s · %2$s</string>
+    <plurals name="partslist_summary_types">
+        <item quantity="one">%1$d Teiletyp</item>
+        <item quantity="other">%1$d Teiletypen</item>
+    </plurals>
+    <plurals name="partslist_summary_parts">
+        <item quantity="one">%1$d Teil</item>
+        <item quantity="other">%1$d Teile</item>
+    </plurals>
     <string name="partslist_set_number_placeholder">Set-Nummer (z.B. 75192)</string>
     <string name="partslist_scan">Scan</string>
     <string name="partslist_generate">Erstellen</string>
@@ -166,11 +177,21 @@
     <string name="partslist_only_loose">nur manuell erfasste Teile berücksichtigen</string>
     <string name="partslist_include_subs">Unterkonten mit einbeziehen</string>
     <string name="partslist_owned_complete">Alles vorhanden — das lässt sich bauen.</string>
-    <string name="partslist_owned_missing">Es fehlen %1$d Teile (%2$d verschiedene).</string>
+    <plurals name="partslist_owned_missing">
+        <item quantity="one">Es fehlt %1$d Teil.</item>
+        <item quantity="other">Es fehlen %1$d Teile (%2$s).</item>
+    </plurals>
+    <plurals name="partslist_owned_missing_distinct">
+        <item quantity="one">%1$d verschiedenes</item>
+        <item quantity="other">%1$d verschiedene</item>
+    </plurals>
     <string name="partslist_owned_error">Der eigene Bestand liess sich nicht laden.</string>
     <string name="partslist_empty_hint">Sets hinzufügen und Teileliste erstellen</string>
     <string name="partslist_no_color">(Keine Farbe)</string>
-    <string name="partslist_group_summary">%1$d×  ·  %2$d Typen</string>
+    <plurals name="partslist_group_summary">
+        <item quantity="one">%1$d×  ·  %2$d Typ</item>
+        <item quantity="other">%1$d×  ·  %2$d Typen</item>
+    </plurals>
     <string name="partslist_rb_prefix">RB: %1$s</string>
 
     <!-- ══════════════ Finance screen ══════════════ -->
@@ -393,7 +414,10 @@
     <string name="monitoring_import_missing_instr">Fehlende Anleitungen importieren</string>
     <string name="monitoring_loading">Lädt…</string>
     <string name="monitoring_reimport_error">Fehler beim Reimport</string>
-    <string name="monitoring_reimport_enqueued">✅ %1$d Sets eingereiht</string>
+    <plurals name="monitoring_reimport_enqueued">
+        <item quantity="one">✅ %1$d Set eingereiht</item>
+        <item quantity="other">✅ %1$d Sets eingereiht</item>
+    </plurals>
     <!-- Katalog -->
     <string name="nav_catalog">Katalog</string>
     <string name="catalog_search_placeholder">Setnummer / Name…</string>
@@ -402,7 +426,10 @@
     <string name="catalog_all_themes">Alle Themen</string>
     <string name="catalog_all_years">Alle Jahre</string>
     <string name="catalog_theme_search">Themen durchsuchen…</string>
-    <string name="catalog_result_count">%1$d Sets im Katalog</string>
+    <plurals name="catalog_result_count">
+        <item quantity="one">%1$d Set im Katalog</item>
+        <item quantity="other">%1$d Sets im Katalog</item>
+    </plurals>
     <string name="catalog_no_results">Keine Sets gefunden</string>
     <string name="catalog_owned">Im Besitz</string>
     <string name="catalog_add_to_gallery">In Galerie aufnehmen</string>
@@ -441,7 +468,15 @@
     <string name="household_redeem_submit">Verknüpfen</string>
     <string name="household_unlink">Verknüpfung lösen</string>
     <string name="household_remove">Entfernen</string>
-    <string name="household_move_ok">Set verschoben — %1$d Teile und %2$d Minifiguren mitgenommen.</string>
+    <string name="household_move_ok">Set verschoben — %1$s und %2$s mitgenommen.</string>
+    <plurals name="household_move_parts">
+        <item quantity="one">%1$d Teil</item>
+        <item quantity="other">%1$d Teile</item>
+    </plurals>
+    <plurals name="household_move_minifigs">
+        <item quantity="one">%1$d Minifigur</item>
+        <item quantity="other">%1$d Minifiguren</item>
+    </plurals>
     <string name="cd_search_clear">Suche leeren</string>
     <string name="cd_password_show">Passwort anzeigen</string>
     <string name="cd_password_hide">Passwort verbergen</string>
@@ -510,8 +545,14 @@
     <string name="tokens_revoked">Gerät abgemeldet</string>
     <string name="tokens_revoke_others">Alle anderen abmelden</string>
     <string name="tokens_revoke_others_title">Alle anderen abmelden?</string>
-    <string name="tokens_revoke_others_text">%1$d andere Zugänge verlieren ihre Berechtigung. Dieses Gerät bleibt angemeldet.</string>
-    <string name="tokens_revoked_n">%1$d Zugänge abgemeldet</string>
+    <plurals name="tokens_revoke_others_text">
+        <item quantity="one">%1$d anderer Zugang verliert seine Berechtigung. Dieses Gerät bleibt angemeldet.</item>
+        <item quantity="other">%1$d andere Zugänge verlieren ihre Berechtigung. Dieses Gerät bleibt angemeldet.</item>
+    </plurals>
+    <plurals name="tokens_revoked_n">
+        <item quantity="one">%1$d Zugang abgemeldet</item>
+        <item quantity="other">%1$d Zugänge abgemeldet</item>
+    </plurals>
     <string name="tokens_no_others">Es gibt keine anderen Zugänge.</string>
     <string name="tokens_self_unknown">Der eigene Zugang ist nicht erkennbar — ohne ihn liesse sich nicht sagen, welche die „anderen" sind.</string>
 
@@ -558,7 +599,23 @@
     <string name="csv_upload_hint">Dieselben Dateien wie in der Webapp. Höchstens %1$d MB.</string>
     <string name="csv_upload_unreadable">Die gewählte Datei liess sich nicht lesen.</string>
     <string name="csv_upload_too_big">Die Datei ist grösser als %1$d MB.</string>
-    <string name="csv_upload_result">%1$d Zeilen: %2$d neu, %3$d aktualisiert, %4$d Fehler</string>
+    <string name="csv_upload_result">%1$s: %2$s, %3$s, %4$s</string>
+    <plurals name="csv_upload_rows">
+        <item quantity="one">%1$d Zeile</item>
+        <item quantity="other">%1$d Zeilen</item>
+    </plurals>
+    <plurals name="csv_upload_new">
+        <item quantity="one">%1$d neu</item>
+        <item quantity="other">%1$d neu</item>
+    </plurals>
+    <plurals name="csv_upload_updated">
+        <item quantity="one">%1$d aktualisiert</item>
+        <item quantity="other">%1$d aktualisiert</item>
+    </plurals>
+    <plurals name="csv_upload_errors">
+        <item quantity="one">%1$d Fehler</item>
+        <item quantity="other">%1$d Fehler</item>
+    </plurals>
     <string name="csv_upload_close">Schliessen</string>
 
     <!-- ══════════════ Anleitung hochladen ══════════════ -->
@@ -607,8 +664,8 @@
     <string name="update_fremde_adresse">Das Update zeigt auf eine Adresse ausserhalb unseres Release. Es wurde nichts geladen.</string>
     <string name="update_installer_fehlt">Auf diesem Geraet kann keine App Pakete installieren.</string>
 
-    <string name="price_from_other_condition_new">Kaufpreis aus dem Marktpreis „Neu\" uebernommen — fuer „Gebraucht\" fuehrt BrickLink keinen Preis.</string>
-    <string name="price_from_other_condition_used">Kaufpreis aus dem Marktpreis „Gebraucht\" uebernommen — fuer „Neu\" fuehrt BrickLink keinen Preis.</string>
+    <string name="price_from_other_condition_new">Kaufpreis aus dem Marktpreis „Neu\" übernommen — für „Gebraucht\" führt BrickLink keinen Preis.</string>
+    <string name="price_from_other_condition_used">Kaufpreis aus dem Marktpreis „Gebraucht\" übernommen — für „Neu\" führt BrickLink keinen Preis.</string>
 
 
     <!-- Merkliste (Nachtrag 179) -->

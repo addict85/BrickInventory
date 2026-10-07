@@ -18,6 +18,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.core.net.toUri
 import ch.brickinventoryapp.R
 import ch.brickinventoryapp.data.model.Merkposten
 import ch.brickinventoryapp.ui.MainViewModel
@@ -75,6 +76,13 @@ fun MerkpostenDetailScreen(
     // Der Alarm liegt im Set-Detail-Zustand — Begruendung an ladeMerkpostenDetail().
     val setDetail by vm.setDetailState.collectAsStateWithLifecycle()
     val ctx = LocalContext.current
+    // `stringResource` statt `ctx.getString` im Rueckruf: Lint meldet
+    // LocalContextGetResourceValueCall (Stufe ERROR), weil ein aus
+    // LocalContext.current gegriffener Context nach einem Wechsel der
+    // Konfiguration — Sprache, Dunkelmodus, Drehung — veraltete Werte liefern
+    // kann. Hier geholt, in der Komposition, wo Compose bei einer Aenderung neu
+    // auswertet.
+    val keineAppText = stringResource(R.string.common_no_app_to_open)
     // Derselbe Dialog wie in der Liste, nicht ein zweiter: Anzahl, Kaufpreis
     // und Zustand muessen hier dieselbe Maske sein.
     var uebernahmeOffen by rememberSaveable { mutableStateOf(false) }
@@ -280,10 +288,10 @@ fun MerkpostenDetailScreen(
                                     onClick = {
                                         try {
                                             ctx.startActivity(android.content.Intent(
-                                                android.content.Intent.ACTION_VIEW, android.net.Uri.parse(url)))
+                                                android.content.Intent.ACTION_VIEW, url.toUri()))
                                         } catch (_: Exception) {
                                             android.widget.Toast.makeText(
-                                                ctx, ctx.getString(R.string.common_no_app_to_open),
+                                                ctx, keineAppText,
                                                 android.widget.Toast.LENGTH_SHORT).show()
                                         }
                                     },

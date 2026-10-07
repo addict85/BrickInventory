@@ -38,6 +38,7 @@ import ch.brickinventoryapp.data.model.BrickColor
 import ch.brickinventoryapp.util.rememberTileImageWithFallback
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
+import androidx.core.graphics.toColorInt
 import coil3.compose.AsyncImage
 import coil3.ImageLoader
 import coil3.request.ImageRequest
@@ -201,7 +202,7 @@ fun PartsScreen(
                     TeileFilterEintrag(
                         wert = name, text = name, anzahl = f.uniqueParts,
                         farbe = f.colorHex?.let {
-                            try { Color(android.graphics.Color.parseColor("#$it")) }
+                            try { Color("#$it".toColorInt()) }
                             catch (_: Exception) { null }
                         },
                     )
@@ -340,7 +341,7 @@ fun ManualPartTile(part: PartValuationItem, serverUrl: String, imageLoader: Imag
                    waehrung: String, onEdit: () -> Unit) {
     val farbe = remember(part.colorHex) {
         part.colorHex?.let {
-            try { Color(android.graphics.Color.parseColor("#$it")) } catch (_: Exception) { null }
+            try { Color("#$it".toColorInt()) } catch (_: Exception) { null }
         }
     }
     // Auf Nutzerwunsch läuft auch die volle Auflösung (Rückfall) über
@@ -376,7 +377,7 @@ fun PartCard(part: Part, serverUrl: String, imageLoader: ImageLoader,
     val qty = part.totalQuantity.takeIf { it > 0 } ?: 1
     val colorObj = remember(part.colorHex) {
         part.colorHex?.let {
-            try { Color(android.graphics.Color.parseColor("#$it")) }
+            try { Color("#$it".toColorInt()) }
             catch (_: Exception) { null }
         }
     }
@@ -477,7 +478,7 @@ fun PartTableRow(part: Part, serverUrl: String, imageLoader: ImageLoader,
                  onClick: (() -> Unit)? = null) {
     val farbe = remember(part.colorHex) {
         part.colorHex?.let {
-            try { Color(android.graphics.Color.parseColor("#$it")) }
+            try { Color("#$it".toColorInt()) }
             catch (_: Exception) { null }
         }
     }

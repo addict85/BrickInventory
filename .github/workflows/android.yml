@@ -259,6 +259,7 @@ jobs:
       # ist deshalb gerade hier interessant; abbrechen soll er nicht, das
       # entspricht abortOnError = false im Buildskript.
       - name: Lint
+        id: lint
         run: |
           set -o pipefail
           ./gradlew --no-daemon lintRelease 2>&1 | tee "$RUNNER_TEMP/lint.log"
@@ -299,6 +300,35 @@ jobs:
         run: |
           python3 tools/warnungen-zaehlen.py tools/warnungen-obergrenze.txt \
             "$RUNNER_TEMP/bau.log" "$RUNNER_TEMP/lint.log"
+
+      # ── Die Lint-Befunde: benannt, nicht nur gezählt ───────────────────────
+      #
+      # Der Schritt darüber meldet „Lint-Warnungen: 58 (nicht in der Summe)" —
+      # eine Zahl und sonst nichts. WELCHE 58 stand nur im XML-Bericht, und der
+      # liegt als Artefakt in einer Ablage, die der Proxy der
+      # Entwicklungsumgebung mit 403 abweist. Damit war die Zahl nicht
+      # handhabbar: Sie sagt, DASS etwas da ist, nicht was zu tun wäre.
+      #
+      # Warum KEINE lint-Baseline: Eine Baseline macht bestehende Befunde
+      # unsichtbar — sie stehen dann in einer Datei, die niemand liest, und
+      # verschwinden aus jedem Bericht. Man sieht nicht mehr, dass es sie gibt,
+      # und also auch nicht, dass man sie beheben könnte. Dieser Schritt macht
+      # das Gegenteil: Er nennt jeden Befund nach Prüferkennung, mit Anzahl und
+      # Fundorten, und wird rot, sobald die Summe steigt.
+      #
+      # Error und Fatal fallen NICHT unter die Obergrenze: Da ist die richtige
+      # Zahl null, und sie unter einer Summe zu verstecken wäre genau die Art
+      # Riegel, die nichts hält.
+      #
+      # `steps.lint.outcome != 'skipped'`: Lief Lint nicht, gibt es keinen
+      # Bericht — dann wäre ein roter Schritt hier ein zweiter roter für EINEN
+      # Fehler und zeigte in die falsche Richtung. Dieselbe Lehre wie beim
+      # Schritt darüber (Lauf 37584609538).
+      - name: Lint-Befunde zählen
+        if: ${{ !cancelled() && steps.lint.outcome != 'skipped' }}
+        run: |
+          python3 tools/lint-zaehlen.py tools/lint-obergrenze.txt \
+            app/build/reports/lint-results-release.xml
 
       # Den Namen vergibt GRADLE (Aufgabe copyReleaseApkAsBrickInventory in
       # app/build.gradle.kts), nicht dieser Schritt. Hier wird nur nachgesehen,

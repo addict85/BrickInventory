@@ -31,6 +31,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.core.net.toUri
 import ch.brickinventoryapp.ui.components.ZoomableImageDialog
 import ch.brickinventoryapp.util.resolveFullUrl
 import coil3.ImageLoader
@@ -83,6 +84,13 @@ fun CatalogDetailScreen(
     // Bildschirmfüllender Zoom wie im Set-Detail — auf Nutzerwunsch auch hier.
     var showImageZoom by rememberSaveable { mutableStateOf(false) }
     val ctx = LocalContext.current
+    // `stringResource` statt `ctx.getString` im Rueckruf: Lint meldet
+    // LocalContextGetResourceValueCall (Stufe ERROR), weil ein aus
+    // LocalContext.current gegriffener Context nach einem Wechsel der
+    // Konfiguration — Sprache, Dunkelmodus, Drehung — veraltete Werte liefern
+    // kann. Hier geholt, in der Komposition, wo Compose bei einer Aenderung neu
+    // auswertet.
+    val keineAppText = stringResource(R.string.common_no_app_to_open)
 
     Scaffold(
         topBar = {
@@ -186,9 +194,9 @@ fun CatalogDetailScreen(
                         // Nutzer bisher auf den Knopf und es passierte NICHTS —
                         // dieselbe Sorte Sackgasse wie „klicken, nichts
                         // passiert" in der Webapp.
-                        try { ctx.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(blUrl))) }
+                        try { ctx.startActivity(Intent(Intent.ACTION_VIEW, blUrl.toUri())) }
                         catch (_: Exception) {
-                            android.widget.Toast.makeText(ctx, ctx.getString(R.string.common_no_app_to_open),
+                            android.widget.Toast.makeText(ctx, keineAppText,
                                 android.widget.Toast.LENGTH_SHORT).show()
                         }
                     },

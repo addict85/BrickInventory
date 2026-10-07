@@ -1,0 +1,108 @@
+# Obergrenze fuer die Lint-Warnungen.
+25
+# VORHERSAGE, eingetragen VOR dem Lauf: 35 minus die zehn PluralsCandidate.
+#
+# ── Was dabei NICHT mechanisch war ─────────────────────────────────────────
+#
+# Ein <plurals> stimmt mit EINER Zahl ueberein. Sechs der zehn hatten genau
+# eine Zahl mit einem Wort dahinter und wurden unmittelbar umgewandelt — bei
+# `partslist_sets_in_list` verschwindet damit das krueckenhafte „Set(s)".
+#
+# Vier hatten ZWEI:
+#
+#   partslist_summary     „%1$d Teiletypen · %2$d Teile"
+#   partslist_owned_missing  „Es fehlen %1$d Teile (%2$d verschiedene)."
+#   household_move_ok     „… %1$d Teile und %2$d Minifiguren mitgenommen."
+#   csv_upload_result     „%1$d Zeilen: %2$d neu, … %4$d Fehler"
+#
+# Die sind in Bruchstuecke zerlegt und ueber eine Rahmen-Zeichenkette
+# zusammengesetzt. Der Rahmen traegt dabei KEIN %d mehr — sonst beanstandet
+# Lint ihn gleich wieder. Darum haben auch „neu" und „aktualisiert" eigene
+# Mengenformen, obwohl sie sich in beiden Sprachen nicht beugen: Sie halten das
+# %d aus dem Rahmen heraus, und in einer Sprache mit anderen Mengenklassen
+# waeren sie ohnehin noetig.
+#
+# Bei `partslist_owned_missing` laesst die EINZAHLform die Klammer weg: Fehlt
+# genau ein Teil, ist die Zahl der verschiedenen zwangslaeufig auch eins — die
+# Angabe waere dort nur Wiederholung.
+#
+# ── Ein ausgesprochenes Risiko ─────────────────────────────────────────────
+#
+# Genau deshalb haben die beiden Mengenklassen von `partslist_owned_missing`
+# UNTERSCHIEDLICH viele Argumente (one: %1$d, other: %1$d und %2$s). Ob Lint das
+# als StringFormatCount/StringFormatMatches beanstandet, weiss ich nicht —
+# erraten will ich es nicht, und es waere ein Befund der Stufe Error, also rot.
+# Tritt es ein, nehme ich die Klammer in die Einzahlform zurueck; dann steht da
+# „Es fehlt 1 Teil (1 verschiedenes)", was albern ist, aber gleich viele
+# Argumente hat.
+#
+# Dazu kommt: Die Pruefung auf Gleichstand der Sprachdateien kannte nur
+# <string>. <plurals> war ihr unsichtbar — mit sechzehn davon waere eine
+# fehlende deutsche Einzahlform genau der Fehler, den diese Datei beschreibt.
+# StringResourceParityTest hat darum eine neue Pruefung bekommen.
+# VORHERSAGE, eingetragen VOR dem Lauf: 43 minus 8.
+#
+#   1x UseKtx                 Bitmap.createBitmap(w,h,ARGB_8888) -> createBitmap(w,h)
+#                             (PdfViewerScreen.kt; ARGB_8888 ist dort die
+#                             Vorbelegung — gelesen in androidx.core.graphics)
+#   2x DefaultLocale          String.format mit ausdruecklichem
+#                             Locale.getDefault() (PdfViewerScreen.kt:666).
+#                             Verhalten unveraendert: ohne Locale nahm es
+#                             ohnehin die voreingestellte.
+#   1x FrequentlyChangingValue  gridState.firstVisibleItemIndex jetzt in einem
+#                             derivedStateOf (CatalogScreen.kt). Direkt in der
+#                             Komposition gelesen, wertet es den ganzen
+#                             Bildschirm bei jeder Aenderung neu aus.
+#   1x Untranslatable         lang_code: translatable="false" entfernt. Die
+#                             Zeichenkette gibt den Code der aktuellen Sprache
+#                             und ist absichtlich je Sprachdatei anders — die
+#                             Angabe war schlicht falsch.
+#   2x UnusedAttribute        tools:targetApi="33" am <application>-Element.
+#   1x ObsoleteSdkInt         res/mipmap-anydpi-v26 -> res/mipmap-anydpi.
+#                             Der Qualifizierer war unnoetig, minSdk IST 26.
+#
+# Stand vorher: 43 (Lauf 37605993159, Vorhersage damals exakt gehalten).
+#
+# ── 15 bleiben ABSICHTLICH stehen ──────────────────────────────────────────
+#
+# 9x Typos — Lint prueft gegen BUNDESDEUTSCHE Rechtschreibung. In der Schweiz
+# gibt es kein ß: liess (2x), Schliessen (2x), grösser (2x), liesse,
+# ausserhalb, liessen. Alle neun sind richtig geschrieben.
+#
+# 4x TypographyDashes — alle vier betreffen die Setnummer „75192-1" im
+# Beispieltext (values/strings.xml:66, :123; values-de/strings.xml:50, :107).
+# Die Nummer heisst mit Bindestrich; ein Halbgeviertstrich waere dort falsch.
+#
+# 2x AcceptsUserCertificates / InsecureBaseConfiguration — in
+# res/xml/network_security_config.xml begruendet.
+#
+# ── 20 offen, davon 1 mit Begruendung ──────────────────────────────────────
+#
+#   10x PluralsCandidate      „%d set/sets/part/parts/types/other/tokens/rows"
+#                             gehoert in <plurals>. Echter i18n-Umbau in BEIDEN
+#                             Sprachdateien — kein mechanischer Handgriff, und
+#                             im Deutschen sind die Formen andere als im
+#                             Englischen.
+#    5x IconLauncherShape     Startbild fuellt das ganze Quadrat.
+#    2x MonochromeLauncherIcon  dem adaptiven Icon fehlt ein monochrome-Zweig.
+#    1x UnusedResources       R.mipmap.ic_launcher_foreground unbenutzt.
+#
+#      Diese acht sind GRAFIKARBEIT, nicht Code. Ein monochrome-Zweig braucht
+#      eine einfarbige Silhouette; die aus dem farbigen Vordergrund zu erzeugen
+#      ergibt eine Flaeche, die man ANSEHEN muss, um sie zu beurteilen. Das kann
+#      hier niemand, und Marco hat eine Rot-Gruen-Schwaeche — eine Beurteilung
+#      „sieht gut aus" von mir waere hier doppelt wertlos.
+#
+#    1x AppBundleLocaleChanges  Sprachwechsel ohne Play-Core-Aufrufe
+#                             (LanguageManager.kt:48). Betrifft die
+#                             AAB-Auslieferung ueber Play mit Sprach-Splits —
+#                             die APK von Hand traegt alle Sprachen im Paket.
+#
+#    1x DataExtractionRules   Lint moechte zusaetzlich fullBackupContent fuer
+#                             API 26-30. Im Manifest steht aber
+#                             allowBackup="false": Auf diesen Fassungen wird
+#                             ueberhaupt nicht gesichert, die Datei waere ohne
+#                             Wirkung. dataExtractionRules bleibt trotzdem, weil
+#                             es ab Android 12 auch die Geraet-zu-Geraet-
+#                             Uebertragung steuert, und die ist von allowBackup
+#                             unabhaengig.

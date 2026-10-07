@@ -58,6 +58,10 @@ fun MonitoringScreen(vm: MainViewModel) {
     var snack          by remember { mutableStateOf<String?>(null) }
 
     val monCtx = androidx.compose.ui.platform.LocalContext.current
+    // Siehe AcquisitionManagementScreen: LocalResources statt Context, weil
+    // Lint LocalContextGetResourceValueCall als ERROR meldet und die Zahl fuer
+    // den Platzhalter erst im Rueckruf bekannt ist.
+    val monRes = androidx.compose.ui.platform.LocalResources.current
     val reimportLoadingMsg = stringResource(R.string.monitoring_loading)
     val reimportErrorMsg   = stringResource(R.string.monitoring_reimport_error)
 
@@ -151,7 +155,9 @@ fun MonitoringScreen(vm: MainViewModel) {
                             reimportMsg = reimportLoadingMsg
                             val eingereiht = mon.leseAnleitungenNeuEin()
                             if (eingereiht != null) {
-                                reimportMsg = monCtx.getString(R.string.monitoring_reimport_enqueued, eingereiht)
+                                reimportMsg = monRes.getQuantityString(
+                                    R.plurals.monitoring_reimport_enqueued,
+                                    eingereiht, eingereiht)
                                 scope.launch { delay(4000); reimportMsg = null }
                             } else {
                                 reimportMsg = null; snack = reimportErrorMsg

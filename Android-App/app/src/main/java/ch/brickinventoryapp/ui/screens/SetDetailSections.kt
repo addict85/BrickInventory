@@ -77,6 +77,7 @@ import ch.brickinventoryapp.ui.theme.BrickStatTile
 import ch.brickinventoryapp.ui.theme.Petrol
 import ch.brickinventoryapp.ui.theme.SlateBlue
 import androidx.compose.material.icons.filled.*
+import androidx.core.net.toUri
 import ch.brickinventoryapp.ui.theme.Abstaende
 import ch.brickinventoryapp.ui.theme.Schrift
 
@@ -116,6 +117,11 @@ fun LazyListScope.setDetailInstructionsSection(
                         }
                     } else {
                         val ctx = LocalContext.current
+                        // Siehe CatalogDetailScreen: Lint meldet
+                        // LocalContextGetResourceValueCall als ERROR, weil ein
+                        // gegriffener Context nach einem Wechsel der
+                        // Konfiguration veraltete Werte liefern kann.
+                        val keineAppText = stringResource(R.string.common_no_app_to_open)
                         instructions.forEachIndexed { idx, instr ->
                             // Kein `?token=` mehr an der Adresse.
                             //
@@ -182,10 +188,10 @@ fun LazyListScope.setDetailInstructionsSection(
                                         } else {
                                             // Rückmeldung statt Stille (Nachtrag 49) — siehe
                                             // CatalogDetailScreen.
-                                            try { ctx.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(openUrl))) }
+                                            try { ctx.startActivity(Intent(Intent.ACTION_VIEW, openUrl.toUri())) }
                                             catch (_: Exception) {
                                                 android.widget.Toast.makeText(ctx,
-                                                    ctx.getString(R.string.common_no_app_to_open),
+                                                    keineAppText,
                                                     android.widget.Toast.LENGTH_SHORT).show()
                                             }
                                         }

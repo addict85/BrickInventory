@@ -82,7 +82,7 @@ internal fun MainViewModel.entwerteAndereGeraete() {
         _geraeteState.update { it.copy(laedt = true, fehler = null) }
         var weg = 0
         for (g in andere) if (repo.admin.revokeToken(g.tokenId) is Result.Success) weg++
-        _snackbar.value = text(R.string.tokens_revoked_n, weg)
+        _snackbar.value = menge(R.plurals.tokens_revoked_n, weg, weg)
         ladeGeraete()
     }
 }

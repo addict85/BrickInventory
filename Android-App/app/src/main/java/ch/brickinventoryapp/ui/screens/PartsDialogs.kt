@@ -34,6 +34,7 @@ import ch.brickinventoryapp.data.model.Acquisition
 import ch.brickinventoryapp.data.model.BrickColor
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
+import androidx.core.graphics.toColorInt
 import coil3.compose.AsyncImage
 import coil3.ImageLoader
 import coil3.request.ImageRequest
@@ -104,7 +105,7 @@ fun AddPartDialog(
                         label = { Text(stringResource(R.string.parts_color_label)) },
                         leadingIcon = {
                             val swatch = selectedColor?.hex?.let {
-                                try { Color(android.graphics.Color.parseColor("#$it")) } catch (_: Exception) { null }
+                                try { Color("#$it".toColorInt()) } catch (_: Exception) { null }
                             }
                             if (swatch != null) {
                                 Box(Modifier.padding(start = Abstaende.mittel).size(14.dp)
@@ -126,7 +127,7 @@ fun AddPartDialog(
                                 text = { Text(c.name) },
                                 leadingIcon = {
                                     val swatch = c.hex?.let {
-                                        try { Color(android.graphics.Color.parseColor("#$it")) } catch (_: Exception) { null }
+                                        try { Color("#$it".toColorInt()) } catch (_: Exception) { null }
                                     }
                                     if (swatch != null) {
                                         Box(Modifier.size(14.dp).clip(androidx.compose.foundation.shape.CircleShape).background(swatch))
