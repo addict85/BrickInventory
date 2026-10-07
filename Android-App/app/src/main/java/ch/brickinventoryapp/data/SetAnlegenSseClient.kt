@@ -110,9 +110,15 @@ class SetAnlegenSseClient @Inject constructor(
         val aufruf = client.newCall(anfrage)
         try {
             aufruf.execute().use { antwort ->
+                // `antwort.body` ist seit OkHttp 5 NICHT nullbar. Die
+                // Pruefung `koerper == null` konnte darum nie zutreffen — der
+                // Uebersetzer nannte sie „Condition is always 'false'" — und
+                // der `?.` dahinter war aus demselben Grund ueberfluessig.
+                // Stehen geblieben aus der Zeit von OkHttp 4, wo ein leerer
+                // Koerper tatsaechlich null war.
                 val koerper = antwort.body
-                if (!antwort.isSuccessful || koerper == null) {
-                    trySend(Schritt.Fehler(fehlertextAus(koerper?.string())))
+                if (!antwort.isSuccessful) {
+                    trySend(Schritt.Fehler(fehlertextAus(koerper.string())))
                     close(); return@use
                 }
                 // Die JSON-Form: Das Set stand schon im Blickfeld.

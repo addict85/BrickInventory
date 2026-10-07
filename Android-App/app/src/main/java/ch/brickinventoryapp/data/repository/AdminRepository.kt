@@ -76,7 +76,7 @@ class AdminRepository @Inject constructor(
     suspend fun importiereCsv(
         art: CsvArt, dateiname: String, inhalt: ByteArray,
     ): Result<CsvImportErgebnis> {
-        val koerper = okhttp3.RequestBody.create("text/csv".toMediaType(), inhalt)
+        val koerper = inhalt.toRequestBody("text/csv".toMediaType())
         val teil = okhttp3.MultipartBody.Part.createFormData("file", dateiname, koerper)
         return safeCall {
             when (art) {

@@ -493,7 +493,6 @@
     <string name="pdfview_no_target">Kein Speicherort erhalten</string>
     <string name="pdfview_write_failed">Datei konnte nicht geschrieben werden</string>
     <string name="pdfview_default_name">Anleitung</string>
-    <string name="pdfview_empty_response">Leere Antwort vom Server</string>
     <string name="pdfview_share">PDF teilen</string>
     <!-- Angemeldete Geraete (Token-Verwaltung) -->
     <string name="tokens_title">Angemeldete Geräte</string>

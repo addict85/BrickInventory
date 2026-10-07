@@ -44,22 +44,65 @@ LINT_BERICHT = "app/build/reports/lint-results-release.xml"
 
 # kotlinc schreibt „w: file:///pfad/Datei.kt:12:7 Text". Der Pfad enthaelt das
 # Arbeitsverzeichnis des Runners, das sich von Lauf zu Lauf unterscheidet —
-# fuers Zusammenfassen wird er darum abgeschnitten.
-ORT = re.compile(r"^w:\s*(?:file://)?(\S*?)(?::\d+:\d+)?\s+(.*)$")
+# fuers Zusammenfassen wird er darum abgeschnitten, die Zeilen- und
+# Spaltennummer aber BEHALTEN: Sie unterscheidet zwei echte Vorkommen in
+# derselben Datei von einem, das zweimal gemeldet wurde.
+ORT = re.compile(r"^w:\s*(?:file://)?(\S*?)(:\d+:\d+)?\s+(.*)$")
+JAVA_ORT = re.compile(r"^(\S+?)(:\d+)?:\s*warning:\s*(.*)$")
 
 
 def warnungen(zeilen):
-    """(kotlin, ksp, java, gradle) als Listen von (ort, text)."""
+    """(kotlin, ksp, java, gradle) als Listen von (ort, text) — je Stelle EINMAL.
+
+    ── Warum hier entdoppelt wird ──────────────────────────────────────────
+
+    Gezaehlt wird ueber mehrere Protokolle: `assembleRelease` und
+    `lintRelease` sind zwei Gradle-Aufrufe, und `lintRelease` UEBERSETZT
+    erneut. Dieselbe Warnung an derselben Quelltextstelle erschien damit
+    zweimal.
+
+    GEMESSEN an Lauf 37580480952: Das Werkzeug meldete „3x Elvis operator …
+    [UpdateFeature.kt, PdfViewerScreen.kt]" — im Quelltext gibt es aber genau
+    ZWEI solche Stellen. Eine davon war doppelt gezaehlt. Und „Deprecated
+    Gradle features were used in this build" stand zweimal da, obwohl es EIN
+    Zustand ist, der von zwei Aufrufen gemeldet wird.
+
+    Eine Warnung ist eine Eigenschaft einer QUELLTEXTSTELLE, nicht eines
+    Gradle-Aufrufs. Der Schluessel ist darum Datei + Zeile + Spalte + Text.
+    Zwei verschiedene Zeilen derselben Datei bleiben zwei Warnungen.
+    """
+    gesehen = set()
     kotlin, ksp, java, gradle = [], [], [], []
     for z in zeilen:
         z = z.rstrip("\r\n")
         if z.startswith("w: "):
             m = ORT.match(z)
-            ort, text = (m.group(1), m.group(2)) if m else ("", z[3:])
-            (ksp if "[ksp]" in z else kotlin).append((os.path.basename(ort), text))
+            if m:
+                ort, stelle, text = os.path.basename(m.group(1)), m.group(2) or "", m.group(3)
+            else:
+                ort, stelle, text = "", "", z[3:]
+            schluessel = ("kotlin", ort, stelle, text)
+            if schluessel in gesehen:
+                continue
+            gesehen.add(schluessel)
+            (ksp if "[ksp]" in z else kotlin).append((ort, text))
         elif ": warning:" in z:
-            java.append(("", z.split(": warning:", 1)[1].strip()))
+            m = JAVA_ORT.match(z)
+            if m:
+                ort, stelle, text = os.path.basename(m.group(1)), m.group(2) or "", m.group(3)
+            else:
+                ort, stelle, text = "", "", z.split(": warning:", 1)[1].strip()
+            schluessel = ("java", ort, stelle, text)
+            if schluessel in gesehen:
+                continue
+            gesehen.add(schluessel)
+            java.append((ort, text))
         elif "Deprecated Gradle features were used in this build" in z:
+            # Ohne Stelle: EIN Zustand des Baus, egal wie viele Aufrufe ihn
+            # melden.
+            if ("gradle", "", "", "deprecated") in gesehen:
+                continue
+            gesehen.add(("gradle", "", "", "deprecated"))
             gradle.append(("", "Deprecated Gradle features were used in this build"))
     return kotlin, ksp, java, gradle
 
@@ -143,7 +186,7 @@ def main(argv):
         print("\nIm Einzelnen:")
         for text in sorted(gezaehlt, key=lambda t: -gezaehlt[t][0]):
             n, wo = faltung(text)
-            print("  %3dx %-55s %s" % (n, text[:55], wo or "—"))
+            print("  %3dx %s\n        %s" % (n, text, wo or "—"))
 
     grenze = obergrenze(grenze_pfad)
 
@@ -161,7 +204,7 @@ def main(argv):
         zeile.append("Lint-Warnungen: %d (nicht in der Summe)" % lint)
     for text in sorted(gezaehlt, key=lambda t: -gezaehlt[t][0])[:15]:
         n, wo = faltung(text)
-        zeile.append("  %dx %s%s" % (n, text[:100], (" [" + wo + "]") if wo else ""))
+        zeile.append("  %dx %s%s" % (n, text[:260], (" [" + wo + "]") if wo else ""))
     if len(gezaehlt) > 15:
         zeile.append("  … und %d weitere Arten, vollstaendig im Protokoll."
                      % (len(gezaehlt) - 15))

@@ -1,10 +1,13 @@
 # Obergrenze fuer die Warnungen des Uebersetzungslaufs.
 #
-# GEMESSEN im Lauf 37579256987 (Gradle 9.8.0, AGP 9.4.1, Kotlin 2.4.20):
-# 18 Warnungen. Diese Zahl ist NICHT das Ziel, sondern der Stand — sie steht
-# hier, damit tools/warnungen-zaehlen.py rot wird, sobald eine dazukommt.
+# DERZEIT KEINE ZAHL — absichtlich.
 #
-# Wer eine Warnung behebt, senkt die Zahl hier mit. Das Werkzeug fordert dazu
-# auf, sobald die Summe darunter liegt — sonst waere der Riegel nach dem
-# ersten Beheben um genau diesen einen Fall zu locker.
-18
+# Hier stand 18, gemessen im Lauf 37579256987. Diese Zahl war falsch: Gezaehlt
+# wurde ueber bau.log UND lint.log, und `lintRelease` uebersetzt erneut —
+# dieselbe Warnung an derselben Quelltextstelle erschien damit zweimal.
+# Aufgefallen ist es daran, dass „3x Elvis operator" in zwei Dateien gemeldet
+# wurde, es im Quelltext aber nur ZWEI solche Stellen gibt.
+#
+# tools/warnungen-zaehlen.py entdoppelt jetzt nach Datei, Zeile und Spalte. Die
+# richtige Zahl nennt der naechste Lauf; sie wird dann hier eingetragen.
+# Schaetzen waere derselbe Fehler nochmal.

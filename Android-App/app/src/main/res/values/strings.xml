@@ -507,7 +507,6 @@
     <string name="pdfview_no_target">No storage location available</string>
     <string name="pdfview_write_failed">File could not be written</string>
     <string name="pdfview_default_name">Instructions</string>
-    <string name="pdfview_empty_response">Empty response from server</string>
     <string name="pdfview_share">Share PDF</string>
     <!-- Angemeldete Geraete (Token-Verwaltung) -->
     <string name="tokens_title">Signed-in devices</string>

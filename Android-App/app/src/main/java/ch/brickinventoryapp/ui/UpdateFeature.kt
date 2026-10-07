@@ -119,7 +119,11 @@ internal fun MainViewModel.ladeUpdate() {
                 updateHttpClient.newCall(Request.Builder().url(fassung.apkUrl).build())
                     .execute().use { antwort ->
                         if (!antwort.isSuccessful) throw java.io.IOException("HTTP ${antwort.code}")
-                        val koerper = antwort.body ?: throw java.io.IOException("leere Antwort")
+                        // Kein `?:` mehr: `antwort.body` ist seit OkHttp 5
+                        // nicht nullbar, der Elvis-Operator gab darum immer
+                        // den linken Teil zurueck und die Ausnahme rechts war
+                        // unerreichbar.
+                        val koerper = antwort.body
                         // Die Gesamtgroesse kommt bevorzugt aus version.json:
                         // Ein Release-Anhang wird ueber eine Umleitung
                         // ausgeliefert, und contentLength ist dabei

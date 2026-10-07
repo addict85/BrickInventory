@@ -168,7 +168,10 @@ class VorschauVorwaermer @Inject constructor(
                 .url(adresse)
                 .tag(Vorwaermung::class.java, Vorwaermung)
                 .build()
-            bildClient.newCall(anfrage).execute().use { it.body?.bytes() }
+            // Kein `?.`: `body` ist seit OkHttp 5 nicht nullbar. Der Wert
+            // wird ohnehin verworfen — gelesen wird nur, damit die Antwort
+            // vollstaendig durch den Zwischenspeicher laeuft.
+            bildClient.newCall(anfrage).execute().use { it.body.bytes() }
         }
     }
 }
