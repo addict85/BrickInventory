@@ -515,6 +515,9 @@
     <string name="err_session_expired">Sitzung abgelaufen — bitte neu anmelden</string>
     <string name="err_unknown">Etwas ist schiefgelaufen</string>
     <string name="pdfview_print">Drucken</string>
+    <string name="pdfview_zoom_in">Vergrössern</string>
+    <string name="pdfview_zoom_out">Verkleinern</string>
+    <string name="pdfview_zoom_reset">Zoom zurücksetzen</string>
     <string name="pdfview_download">Herunterladen</string>
     <string name="pdfview_loading_pct">PDF wird geladen… %1$d%%</string>
     <string name="pdfview_loading_bytes">PDF wird geladen… %1$s</string>

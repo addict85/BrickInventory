@@ -529,6 +529,9 @@
     <string name="err_session_expired">Session expired — please sign in again</string>
     <string name="err_unknown">Something went wrong</string>
     <string name="pdfview_print">Print</string>
+    <string name="pdfview_zoom_in">Zoom in</string>
+    <string name="pdfview_zoom_out">Zoom out</string>
+    <string name="pdfview_zoom_reset">Reset zoom</string>
     <string name="pdfview_download">Download</string>
     <string name="pdfview_loading_pct">Loading PDF… %1$d%%</string>
     <string name="pdfview_loading_bytes">Loading PDF… %1$s</string>
