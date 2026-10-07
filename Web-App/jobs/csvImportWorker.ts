@@ -2,6 +2,7 @@ import { fehlertext } from '../utils/httpError';
 // Nur eine reine Funktion, kein Verbindungspool — der eigene Prozess
 // dieses Workers bleibt davon unberuehrt.
 import { istErsatzteil } from '../utils/validate';
+import { pflegeTabelle } from '../utils/tabellePflegen';
 'use strict';
 const fs       = require('fs');
 // Pfade zentral auflösen — __dirname zeigt seit dem dist/-Build nicht mehr
@@ -269,6 +270,16 @@ async function importiereMitTauschIntern(client: any, opts: any) {
       throw e;
     }
     await client.query(`DROP TABLE IF EXISTS ${schatten}`).catch(() => {});
+    // Nach einem VOLLSTAENDIGEN Tausch ist die Statistik der Tabelle
+    // bedeutungslos — der Planer rechnet mit den Zahlen von vorher, und bei
+    // einer eben noch leeren Tabelle schaetzt er eine Zeile. Gemessen greift er
+    // dann zu einem beliebigen anderen Index und geht alle Zeilen durch; das
+    // sieht wie ein fehlender Index aus, obwohl der richtige daliegt. Die
+    // Begruendung samt Zahlen steht in utils/tabellePflegen.ts.
+    //
+    // Hier, nach dem COMMIT, und nicht darin: VACUUM ist in einer Transaktion
+    // nicht erlaubt.
+    await pflegeTabelle(sql => client.query(sql), tabelle);
     return total;
   }
 }

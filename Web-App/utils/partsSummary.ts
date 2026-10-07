@@ -38,6 +38,7 @@
  * selbst gehosteten Installation mit wenigen Konten ist das der richtige Tausch
  * gegen die Sicherheit, nie veraltete Zahlen zu zeigen.
  */
+import { pflegeTabelle } from './tabellePflegen';
 import * as db from '../db/database';
 
 /** Legt Tabellen und Trigger an. Aus initSchema() aufgerufen, idempotent. */
@@ -175,6 +176,10 @@ async function currentVersion(userId: number): Promise<number> {
 /** Baut die Zusammenfassung eines Nutzers neu auf. */
 export async function rebuild(userId: number, version?: number): Promise<void> {
   const v = version ?? await currentVersion(userId);
+  // Ob DIESER Aufruf gebaut hat. Der Block unten verlaesst die Transaktion
+  // vorzeitig, wenn ein anderer Arbeiter die Sperre haelt — dann hat hier
+  // nichts geschrieben, und nachzupflegen waere 240 ms fuer nichts.
+  let gebaut = false;
   await db.transaction(async (tx: any) => {
     // Sperre über die Datenbank, nicht nur über die In-Memory-Map
     // (_rebuilding) weiter unten.
@@ -237,7 +242,18 @@ export async function rebuild(userId: number, version?: number): Promise<void> {
       VALUES ($1, $2, NOW())
       ON CONFLICT (user_id) DO UPDATE SET built_version = $2, built_at = NOW()`,
       [userId, v]);
+    gebaut = true;
   });
+
+  // DELETE + INSERT aller Zeilen eines Nutzers ist ein Masseneinfuegen. Gemessen
+  // an 72 000 Zeilen: Die Suche nach einem seltenen Begriff dauert danach
+  // 9,5 ms und nach dem Auffrischen 0,2 ms; ohne Statistik sogar 94 ms, weil
+  // der Planer dann den falschen Index nimmt. Zahlen und Begruendung in
+  // utils/tabellePflegen.ts.
+  //
+  // NACH der Transaktion, nicht darin: VACUUM ist in einer Transaktion nicht
+  // erlaubt. Und nur wenn gebaut wurde — siehe oben.
+  if (gebaut) await pflegeTabelle((sql: string) => db.exec(sql), 'parts_summary');
 }
 
 /**
