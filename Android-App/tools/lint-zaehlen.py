@@ -159,14 +159,27 @@ def main(argv):
     zeile = ["Warnungen %d" % len(warnungen)]
     if rest:
         zeile.append("ausserdem: " + ", ".join("%s %d" % (s, n) for s, n in sorted(rest.items())))
-    for (kennung, text) in sorted(gruppen, key=lambda k: -gruppen[k][0])[:30]:
+    # ── Die Liste auf MEHRERE Annotationen verteilen ────────────────────────
+    #
+    # GitHub schneidet eine einzelne Annotation ab. Im Lauf 37603954539 endete
+    # sie mitten in „[mipmap-hdpi/ic_la": gezeigt wurden 40 von 43 Befunden, und
+    # unter den fehlenden war eine UseKtx-Warnung, von der ich nichts wusste.
+    #
+    # Das war das vierte Mal, dass eine Zusammenfassung von mir genau das
+    # weglaesst, was man zum Handeln braucht — nach der auf 100 Zeichen
+    # gekuerzten Meldung, der Anzeigegrenze 10 bei 13 Fehlern und der
+    # Gruppierung, die 13 Meldungen zu einer zusammenfaltete. Die Grenze noch
+    # einmal zu verschieben haette denselben Fehler ein fuenftes Mal ergeben.
+    #
+    # Also: je Annotation hoechstens zehn Gruppen. GitHub zeigt bis zu zehn
+    # Annotationen je Stufe und Schritt — das reicht fuer hundert Gruppen.
+    gruppenliste = sorted(gruppen, key=lambda k: -gruppen[k][0])
+    einzeln = []
+    for (kennung, text) in gruppenliste:
         n, orte = gruppen[(kennung, text)]
-        zeile.append("  %dx %s — %s [%s]"
-                     % (n, kennung, text[:130],
-                        ", ".join(orte[:4]) + (" …" if len(orte) > 4 else "")))
-    if len(gruppen) > 30:
-        zeile.append("  … und %d weitere Gruppen, vollstaendig im Protokoll."
-                     % (len(gruppen) - 30))
+        einzeln.append("  %dx %s — %s [%s]"
+                       % (n, kennung, text[:130],
+                          ", ".join(orte[:4]) + (" …" if len(orte) > 4 else "")))
 
     # Error und Fatal gehoeren NICHT unter eine Warnungs-Obergrenze: Da ist die
     # richtige Zahl null, und sie unter einer Summe zu verstecken waere genau
@@ -186,23 +199,31 @@ def main(argv):
         return 1
 
     grenze = obergrenze(grenze_pfad)
+    def teile_ausgeben(stufe):
+        """Kopf als eine Annotation, die Liste in Zehnerbloecken danach."""
+        print("::%s title=Lint::" % stufe + "%0A".join(zeile))
+        for i in range(0, len(einzeln), 10):
+            block = einzeln[i:i + 10]
+            kopf = "Befunde %d–%d von %d" % (i + 1, i + len(block), len(einzeln))
+            print("::%s title=Lint (%s)::" % (stufe, kopf) + "%0A".join(block))
+
     if grenze is None:
         zeile.append("In %s steht keine Obergrenze — es gibt derzeit nichts, "
                      "was ein Anwachsen bemerkt." % grenze_pfad)
-        print("::warning title=Lint::" + "%0A".join(zeile))
+        teile_ausgeben("warning")
         return 0
     if len(warnungen) > grenze:
         zeile.insert(1, "Obergrenze ist %d — ueberschritten." % grenze)
-        print("::error title=Lint::" + "%0A".join(zeile))
+        teile_ausgeben("error")
         return 1
     if len(warnungen) < grenze:
         zeile.insert(1, "Obergrenze ist %d. Weniger als erlaubt — %s auf %d "
                         "senken, damit der Riegel weiter greift."
                         % (grenze, grenze_pfad, len(warnungen)))
-        print("::warning title=Lint::" + "%0A".join(zeile))
+        teile_ausgeben("warning")
         return 0
     zeile.insert(1, "Obergrenze ist %d — genau eingehalten." % grenze)
-    print("::notice title=Lint::" + "%0A".join(zeile))
+    teile_ausgeben("notice")
     return 0
 
 
