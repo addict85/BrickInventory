@@ -45,6 +45,31 @@ import sys
 import xml.etree.ElementTree as ET
 
 
+def kurzname(pfad, zeile=None):
+    """Dateiname — bei Ressourcen MIT Ordner.
+
+    Nur der Dateiname reicht hier nicht: `values/strings.xml` und
+    `values-de/strings.xml` heissen beide „strings.xml". Im Lauf 37600557096
+    standen vier TypographyDashes-Befunde fuer „strings.xml:50, :66, :107,
+    :123" — zwei davon im englischen, zwei im deutschen Baum, und welche
+    welche, war nicht zu sehen. Ich habe erst im Quelltext nachgesehen und
+    dabei festgestellt, dass alle vier dieselbe Setnummer „75192-1" betreffen.
+    Das haette die Liste sagen muessen.
+    """
+    teile = pfad.replace("\\", "/").split("/")
+    name = teile[-1] if teile else ""
+    # Voranstellen NUR, wenn der Elternordner selbst in res/ liegt — also der
+    # Qualifizierer-Ordner ist (values, values-de, mipmap-hdpi …).
+    #
+    # Nicht „irgendwo im Pfad steht res": Bei einem Befund, der auf einen ORDNER
+    # zeigt (ObsoleteSdkInt meldet `mipmap-anydpi-v26`), ist der letzte Teil
+    # schon der Ordner, und die erste Fassung machte daraus „res/
+    # mipmap-anydpi-v26". Die Gegenprobe hat es gefangen.
+    if len(teile) >= 3 and teile[-3] == "res":
+        name = teile[-2] + "/" + name
+    return name + (":" + zeile if zeile else "")
+
+
 def obergrenze(pfad):
     if not os.path.exists(pfad):
         return None
@@ -65,9 +90,7 @@ def lies(pfad):
         text = (k.get("message") or "").strip()
         orte = []
         for ort in k.iter("location"):
-            datei = os.path.basename(ort.get("file") or "")
-            zeile = ort.get("line")
-            orte.append(datei + (":" + zeile if zeile else ""))
+            orte.append(kurzname(ort.get("file") or "", ort.get("line")))
         nach_stufe.setdefault(stufe, []).append((kennung, text, orte))
     return nach_stufe
 

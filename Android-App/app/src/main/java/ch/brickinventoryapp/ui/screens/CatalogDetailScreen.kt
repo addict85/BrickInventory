@@ -31,6 +31,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.core.net.toUri
 import ch.brickinventoryapp.ui.components.ZoomableImageDialog
 import ch.brickinventoryapp.util.resolveFullUrl
 import coil3.ImageLoader
@@ -193,7 +194,7 @@ fun CatalogDetailScreen(
                         // Nutzer bisher auf den Knopf und es passierte NICHTS —
                         // dieselbe Sorte Sackgasse wie „klicken, nichts
                         // passiert" in der Webapp.
-                        try { ctx.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(blUrl))) }
+                        try { ctx.startActivity(Intent(Intent.ACTION_VIEW, blUrl.toUri())) }
                         catch (_: Exception) {
                             android.widget.Toast.makeText(ctx, keineAppText,
                                 android.widget.Toast.LENGTH_SHORT).show()

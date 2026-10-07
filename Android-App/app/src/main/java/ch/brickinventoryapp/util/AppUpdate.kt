@@ -6,6 +6,7 @@ import android.content.pm.PackageManager
 import android.net.Uri
 import android.os.Build
 import androidx.core.content.FileProvider
+import androidx.core.net.toUri
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import java.io.File
@@ -199,7 +200,7 @@ fun darfInstallieren(ctx: Context): Boolean =
 /** Fuehrt in die Systemeinstellung, in der die Erlaubnis erteilt wird. */
 fun erlaubnisAbsicht(ctx: Context): Intent =
     Intent(android.provider.Settings.ACTION_MANAGE_UNKNOWN_APP_SOURCES)
-        .setData(Uri.parse("package:${ctx.packageName}"))
+        .setData("package:${ctx.packageName}".toUri())
         .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
 
 /**

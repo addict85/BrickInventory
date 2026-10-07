@@ -46,7 +46,7 @@
     <string name="login_button">Sign in</string>
 
     <!-- ══════════════ CSV import banner ══════════════ -->
-    <string name="csv_ok_count">✅ %1$d ok</string>
+    <string name="csv_ok_count">✅ %1$d OK</string>
     <string name="csv_stat_success">Success</string>
     <string name="csv_stat_warnings">Warnings</string>
     <string name="csv_stat_errors">Errors</string>

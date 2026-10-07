@@ -26,6 +26,7 @@ import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.core.net.toUri
 import ch.brickinventoryapp.R
 import ch.brickinventoryapp.ui.theme.Abstaende
 import ch.brickinventoryapp.ui.theme.Schrift
@@ -51,7 +52,7 @@ fun ComparisonScreen() {
     fun openInBrowser(query: String) {
         val url = "https://www.toppreise.ch/produktsuche?q=$query"
         Log.d("ComparisonScreen", "Opening in browser: $url")
-        context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(url)))
+        context.startActivity(Intent(Intent.ACTION_VIEW, url.toUri()))
     }
 
     LaunchedEffect(activeQuery) {

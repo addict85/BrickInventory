@@ -18,6 +18,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.core.net.toUri
 import ch.brickinventoryapp.R
 import ch.brickinventoryapp.data.model.Merkposten
 import ch.brickinventoryapp.ui.MainViewModel
@@ -287,7 +288,7 @@ fun MerkpostenDetailScreen(
                                     onClick = {
                                         try {
                                             ctx.startActivity(android.content.Intent(
-                                                android.content.Intent.ACTION_VIEW, android.net.Uri.parse(url)))
+                                                android.content.Intent.ACTION_VIEW, url.toUri()))
                                         } catch (_: Exception) {
                                             android.widget.Toast.makeText(
                                                 ctx, keineAppText,

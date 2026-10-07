@@ -41,6 +41,7 @@ import ch.brickinventoryapp.R
 import androidx.compose.ui.res.vectorResource
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.input.ImeAction
+import androidx.core.graphics.toColorInt
 import ch.brickinventoryapp.util.NumericInput
 import ch.brickinventoryapp.ui.theme.Abstaende
 import ch.brickinventoryapp.ui.theme.Schrift
@@ -532,7 +533,7 @@ fun PartsListScreen(
                         val hex = colorParts.first().colorHex
                         if (hex != null && !colorParts.first().isFig) {
                             Box(Modifier.size(14.dp).clip(CircleShape)
-                                .background(try { Color(android.graphics.Color.parseColor("#$hex")) }
+                                .background(try { Color("#$hex".toColorInt()) }
                                 catch (_: Exception) { Color.Gray }))
                             Spacer(Modifier.width(6.dp))
                         }

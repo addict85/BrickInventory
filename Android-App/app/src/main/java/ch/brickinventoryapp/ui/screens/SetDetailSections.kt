@@ -77,6 +77,7 @@ import ch.brickinventoryapp.ui.theme.BrickStatTile
 import ch.brickinventoryapp.ui.theme.Petrol
 import ch.brickinventoryapp.ui.theme.SlateBlue
 import androidx.compose.material.icons.filled.*
+import androidx.core.net.toUri
 import ch.brickinventoryapp.ui.theme.Abstaende
 import ch.brickinventoryapp.ui.theme.Schrift
 
@@ -187,7 +188,7 @@ fun LazyListScope.setDetailInstructionsSection(
                                         } else {
                                             // Rückmeldung statt Stille (Nachtrag 49) — siehe
                                             // CatalogDetailScreen.
-                                            try { ctx.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(openUrl))) }
+                                            try { ctx.startActivity(Intent(Intent.ACTION_VIEW, openUrl.toUri())) }
                                             catch (_: Exception) {
                                                 android.widget.Toast.makeText(ctx,
                                                     keineAppText,

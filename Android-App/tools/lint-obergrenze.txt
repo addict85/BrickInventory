@@ -1,49 +1,81 @@
 # Obergrenze fuer die Lint-Warnungen.
-58
-# GEMESSEN im Lauf 37598447257. Die Summe stimmt auf 58, dazu 5 Hinweise
-# (Hint), die hier nicht mitzaehlen.
+43
+# VORHERSAGE, eingetragen vor dem Lauf: 58 minus 12 UseKtx, minus 2 „fuer",
+# minus 1 „ok" = 43. Nachtraeglich eingetragen waere die Zahl immer richtig und
+# damit wertlos; so kann der Lauf sie widerlegen.
 #
-# Diese Zahl ist NICHT das Ziel, sondern der Stand. Wer eine Warnung behebt,
-# senkt sie mit; das Werkzeug fordert dazu auf, sobald die Summe darunter liegt.
+# Stand vorher: 58, gemessen im Lauf 37600557096 (Summe stimmt, dazu 5 Hinweise).
 #
-# ── Die 58, nach Prueferkennung ────────────────────────────────────────────
+# ── Behoben ────────────────────────────────────────────────────────────────
 #
-#   13x UseKtx                  Uri.parse(x) -> x.toUri()
-#   12x Typos                   „ok" sollte „OK" sein
-#   10x PluralsCandidate        „%d set" gehoert in <plurals>
-#    5x IconLauncherShape       Startbild fuellt das ganze Quadrat
-#    4x TypographyDashes        „-" sollte ein Halbgeviertstrich sein
-#    2x DefaultLocale           String.format ohne Locale
-#    2x UnusedAttribute         localeConfig erst ab API 33 (minSdk 26)
-#    2x MonochromeLauncherIcon  dem adaptiven Icon fehlt monochrome
-#    1x AppBundleLocaleChanges  Sprachwechsel ohne Play-Core-Aufrufe
-#    1x Untranslatable          lang_code ist translatable="false", aber uebersetzt
-#    1x AcceptsUserCertificates nutzerinstallierte CA im Release erlaubt
-#    1x InsecureBaseConfiguration  Klartext in der base-config erlaubt
-#    1x DataExtractionRules     dataExtractionRules erst ab Android 12
-#    1x ObsoleteSdkInt          Ordner v26 unnoetig, minSdk ist 26
-#    1x FrequentlyChangingValue @FrequentlyChangingValue in der Komposition
-#    1x UnusedResources         R.mipmap.ic_launcher_foreground unbenutzt
+#   12x UseKtx   Color.parseColor("#$x") -> "#$x".toColorInt()   (7 Stellen)
+#                Uri.parse(x)            -> x.toUri()            (5 Stellen)
 #
-# ── Zwei bleiben ABSICHTLICH stehen ────────────────────────────────────────
+#     Die Importe sind nicht geraten, sondern in androidx gelesen — die
+#     Erweiterungen liegen inzwischen in androidx.core:core:
+#       package androidx.core.graphics
+#         @ColorInt public inline fun String.toColorInt(): Int = Color.parseColor(this)
+#       package androidx.core.net
+#         public inline fun String.toUri(): Uri = Uri.parse(this)
 #
-#   AcceptsUserCertificates
-#   InsecureBaseConfiguration
+#    2x Typos    „fuer" -> „für"   (values-de/strings.xml:610, 611)
 #
-# Beide beschreiben Entscheidungen, die in res/xml/network_security_config.xml
-# ausfuehrlich begruendet sind:
+#     Mitgenommen, weil derselbe Defekt: „uebernommen" -> „übernommen" und
+#     „fuehrt" -> „führt" in denselben zwei Zeilen. Lint hatte sie nicht
+#     gemeldet, ASCII-Behelf sind sie trotzdem.
 #
-#   * cleartextTrafficPermitted="true" in der base-config, weil die Server-URL
-#     der Nutzer selbst eintraegt — typischerweise eine private LAN-Adresse, und
-#     RFC1918-Bereiche lassen sich in <domain> nicht per Wildcard ausdruecken.
-#     Eingeschraenkt wird eine Ebene hoeher, im OkHttp-Abfanger
-#     (util/NetworkPolicy.kt): Klartext nur zu privaten Adressen.
-#   * <certificates src="user" />, damit ein selbst ausgestelltes Zertifikat
-#     funktioniert. GitHub ist davon per domain-config ausgenommen (nur system),
-#     weil von dort das APK kommt.
+#    1x Typos    „ok" -> „OK"      (values/strings.xml:49)
 #
-# Sie werden NICHT mit tools:ignore stillgelegt. Eine stillgelegte Warnung ist
-# unsichtbar, und das ist derselbe Fehler wie eine lint-Baseline: Man sieht
-# nicht mehr, dass es sie gibt, und also auch nicht, wenn sich die Lage aendert.
-# Sie bleiben gezaehlt und hier erklaert — zwei von 58, die ein Mensch
-# entschieden hat.
+#     Die deutsche Fassung desselben Textes stand ebenfalls auf „ok" und wurde
+#     mitgezogen — sonst haette das Beheben eine neue Unstimmigkeit erzeugt.
+#
+# ── 15 bleiben ABSICHTLICH stehen ──────────────────────────────────────────
+#
+# 9x Typos — Lint prueft gegen BUNDESDEUTSCHE Rechtschreibung und will neun
+# Woerter berichtigen, die richtig sind. In der Schweiz gibt es kein ß:
+#
+#     liess (2x)     Schliessen (2x)   grösser (2x)
+#     liesse         ausserhalb        liessen
+#
+# Das ist korrektes Schweizer Hochdeutsch. Diese App ist auf Schweizer Franken
+# und Schweizer Usus ausgelegt; ein ß darin waere der Fehler, nicht die
+# Behebung.
+#
+# 4x TypographyDashes — alle vier betreffen dieselbe Zeichenkette: die
+# Setnummer „75192-1" im Beispieltext (values/strings.xml:66, :123 und
+# values-de/strings.xml:50, :107). Lint moechte den Bindestrich durch einen
+# Halbgeviertstrich ersetzen. Das waere in einem Text, der dem Nutzer das
+# EINGABEFORMAT zeigt, schlicht falsch — die Nummer heisst mit Bindestrich.
+#
+# 2x AcceptsUserCertificates / InsecureBaseConfiguration — in
+# res/xml/network_security_config.xml ausfuehrlich begruendet: Klartext, weil
+# die Server-URL der Nutzer selbst eintraegt (private LAN-Adresse, in <domain>
+# nicht per Wildcard ausdrueckbar; eingeschraenkt im OkHttp-Abfanger), und
+# Nutzer-CA fuer ein selbst ausgestelltes Zertifikat. GitHub ist per
+# domain-config davon ausgenommen.
+#
+# Keiner dieser 15 wird mit tools:ignore stillgelegt. Eine stillgelegte Warnung
+# ist unsichtbar — derselbe Fehler wie eine lint-Baseline. Sie bleiben gezaehlt
+# und hier erklaert.
+#
+# ── Noch offen, mit Entscheidungsbedarf ────────────────────────────────────
+#
+#   10x PluralsCandidate       „%d set/sets/part/parts/types/other/tokens/rows"
+#                              gehoert in <plurals>. Echter i18n-Umbau in BEIDEN
+#                              Sprachdateien, nicht mechanisch.
+#    5x IconLauncherShape      Startbild fuellt das ganze Quadrat — Grafikarbeit.
+#    2x MonochromeLauncherIcon dem adaptiven Icon fehlt ein monochrome-Zweig.
+#    2x UnusedAttribute        localeConfig / enableOnBackInvokedCallback erst ab
+#                              API 33 (minSdk 26) — harmlos, aber benennbar.
+#    1x AppBundleLocaleChanges Sprachwechsel ohne Play-Core-Aufrufe. Betrifft die
+#                              AAB-Auslieferung, nicht die APK von Hand.
+#    1x Untranslatable         lang_code ist translatable="false" und doch
+#                              uebersetzt.
+#    1x DataExtractionRules    gilt erst ab Android 12; fuer API 26-30 fehlt
+#                              fullBackupContent.
+#    1x ObsoleteSdkInt         Ordner mipmap-anydpi-v26 unnoetig, minSdk ist 26.
+#    1x FrequentlyChangingValue  Lesen eines @FrequentlyChangingValue in der
+#                              Komposition — der einzige mit Leistungswirkung.
+#    1x UnusedResources        R.mipmap.ic_launcher_foreground unbenutzt.
+#    1x DefaultLocale (2 Befunde) String.format ohne Locale,
+#                              PdfViewerScreen.kt:666.

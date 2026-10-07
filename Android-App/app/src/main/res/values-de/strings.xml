@@ -30,7 +30,7 @@
     <string name="login_button">Anmelden</string>
 
     <!-- ══════════════ CSV import banner ══════════════ -->
-    <string name="csv_ok_count">✅ %1$d ok</string>
+    <string name="csv_ok_count">✅ %1$d OK</string>
     <string name="csv_stat_success">Erfolg</string>
     <string name="csv_stat_warnings">Warnungen</string>
     <string name="csv_stat_errors">Fehler</string>
@@ -607,8 +607,8 @@
     <string name="update_fremde_adresse">Das Update zeigt auf eine Adresse ausserhalb unseres Release. Es wurde nichts geladen.</string>
     <string name="update_installer_fehlt">Auf diesem Geraet kann keine App Pakete installieren.</string>
 
-    <string name="price_from_other_condition_new">Kaufpreis aus dem Marktpreis „Neu\" uebernommen — fuer „Gebraucht\" fuehrt BrickLink keinen Preis.</string>
-    <string name="price_from_other_condition_used">Kaufpreis aus dem Marktpreis „Gebraucht\" uebernommen — fuer „Neu\" fuehrt BrickLink keinen Preis.</string>
+    <string name="price_from_other_condition_new">Kaufpreis aus dem Marktpreis „Neu\" übernommen — für „Gebraucht\" führt BrickLink keinen Preis.</string>
+    <string name="price_from_other_condition_used">Kaufpreis aus dem Marktpreis „Gebraucht\" übernommen — für „Neu\" führt BrickLink keinen Preis.</string>
 
 
     <!-- Merkliste (Nachtrag 179) -->
