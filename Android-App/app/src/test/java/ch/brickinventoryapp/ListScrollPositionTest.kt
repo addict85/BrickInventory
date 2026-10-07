@@ -246,8 +246,45 @@ class ListScrollPositionTest {
             "Der Griff zeigt weiterhin nur die gezogene Stelle — ohne Ziehen bliebe " +
                 "er dort stehen, wo zuletzt gezogen wurde"
         }
-        assert(katalog.contains("listenNummer = gridState.firstVisibleItemIndex")) {
-            "Die Jahresleiste bekommt die Stelle der Liste gar nicht zu sehen"
+        // ── Die REGEL, nicht die Schreibweise (Nachtrag 160) ────────────────
+        //
+        // Hier stand `katalog.contains("listenNummer = gridState.firstVisibleItemIndex")`.
+        // Das war genau der Fehler, den der Test direkt darunter als bekanntes
+        // Muster beschreibt: Er prüfte einen WORTLAUT statt die Regel.
+        //
+        // Aufgefallen ist es, als `firstVisibleItemIndex` in ein
+        // `derivedStateOf` wanderte — Lint meldete den direkten Zugriff als
+        // FrequentlyChangingValue, weil er den ganzen Bildschirm bei jeder
+        // Änderung neu auswerten lässt. Die Regel blieb unverändert erfüllt,
+        // der Test wurde trotzdem rot.
+        //
+        // Die Regel heisst: Was die Jahresleiste als `listenNummer` bekommt,
+        // muss auf `gridState.firstVisibleItemIndex` ZURÜCKGEHEN — unmittelbar
+        // oder über einen Wert, der genau daraus abgeleitet ist. Eine Konstante,
+        // eine andere Ableitung oder eine fehlende Übergabe sind rot.
+        //
+        // Gegenproben (durchgeführt, in derselben Logik gegen die echte Datei
+        // und drei verfälschte Fassungen):
+        //   unmittelbare Fassung            -> grün
+        //   über derivedStateOf abgeleitet  -> grün
+        //   listenNummer = 0                -> ROT
+        //   derivedStateOf { 0 }            -> ROT
+        //   Übergabe ganz entfernt          -> ROT
+        val uebergabe = Regex("""listenNummer\s*=\s*([A-Za-z0-9_.]+)""").find(katalog)
+        assert(uebergabe != null) {
+            "Die Jahresleiste bekommt die Stelle der Liste gar nicht zu sehen — " +
+                "`listenNummer` wird nicht übergeben"
+        }
+        val ausdruck = uebergabe!!.groupValues[1]
+        val unmittelbar = ausdruck == "gridState.firstVisibleItemIndex"
+        val abgeleitet = Regex(
+            """val\s+""" + Regex.escape(ausdruck) +
+                """\s+by\s+remember[^{]*\{\s*derivedStateOf\s*\{\s*""" +
+                """gridState\.firstVisibleItemIndex\s*\}"""
+        ).containsMatchIn(katalog)
+        assert(unmittelbar || abgeleitet) {
+            "`listenNummer = $ausdruck` geht nicht auf gridState.firstVisibleItemIndex " +
+                "zurück — die Jahresleiste zeigt dann nicht, wo die Liste steht"
         }
     }
 
