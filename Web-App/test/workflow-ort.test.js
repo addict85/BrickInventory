@@ -20,6 +20,9 @@
  *     .github/workflows/android-playstore.yml
  *     .github/workflows/docker-publish.yml
  *
+ * (Der mittlere ist inzwischen entfernt — die App wird als APK ueber die
+ * GitHub-Releases ausgeliefert. Die Aufzaehlung bleibt, wie sie gemessen wurde.)
+ *
  * Und `test/build-tooling.test.js` bewachte den INHALT dieser Datei die ganze
  * Zeit zuverlässig — es zeigte nur auf etwas, das niemand ausführt. Dass eine
  * Prüfung grün ist, sagt eben nur etwas über das, worauf sie zeigt.
@@ -81,7 +84,13 @@ test('im Wurzelverzeichnis stehen die Workflows, die es geben soll', () => {
   // Selbstbeweis 2: Eine Mindestzahl statt einer Aufzählung. Verschwände der
   // Ordner oder griffe das Muster nicht, wäre die Liste leer — und die
   // Prüfung darunter hätte nichts zu sagen.
-  assert.ok(dateien.length >= 4,
+  //
+  // Von 4 auf 3 gesenkt, als android-playstore.yml entfernt wurde. Die Zahl ist
+  // eine Untergrenze gegen „gar nichts gefunden", keine Aussage darüber, wie
+  // viele Workflows es geben soll — deshalb wird sie der Wirklichkeit
+  // nachgezogen und nicht umgekehrt. Gemessen sind es android.yml,
+  // docker-publish.yml, web-ci.yml.
+  assert.ok(dateien.length >= 3,
     `Nur ${dateien.length} Workflows im Wurzelverzeichnis: ${dateien.join(', ')}`);
 
   // Der Web-Lauf muss dabei sein. Er ist der einzige, der die Testsuite
@@ -118,7 +127,12 @@ test('ein Workflow benutzt jede Action überall in derselben Fassung', () => {
     `Nur ${fassungen.size} Actions gefunden — Muster veraltet?`);
   const mehrfach = [...fassungen].filter(([, je]) =>
     [...je.values()].reduce((n, d) => n + d.length, 0) > 1);
-  assert.ok(mehrfach.length >= 3,
+  // Von 3 auf 2 gesenkt, als android-playstore.yml entfernt wurde: Mit einem
+  // Workflow weniger gibt es weniger Ueberlappung. GEMESSEN sind es jetzt
+  // actions/checkout@v7 (in allen drei Laeufen) und actions/upload-artifact@v7
+  // (in zwei) — beide einheitlich, die Pruefung unten greift also weiter auf
+  // genau die Faelle, um die es geht.
+  assert.ok(mehrfach.length >= 2,
     `Nur ${mehrfach.length} Actions stehen an mehr als einer Stelle — dann ` +
     'kann diese Prüfung nichts finden.');
 
@@ -150,12 +164,17 @@ test('ein Lauf, der Tests ausführt, läuft auf JEDEM Zweig', () => {
   // Namen. Ein neuer Testlauf ist damit von selbst mitgeprüft.
   //
   // Und NUR, wenn er überhaupt auf Push reagiert. Die erste Fassung dieser
-  // Prüfung liess das weg und meldete prompt android-playstore.yml: Der führt
-  // `testDebugUnitTest` aus, wird aber ausschliesslich von Hand angestossen
-  // (`workflow_dispatch` mit der Play-Spur als Eingabe). „Läuft nicht auf
-  // jedem Zweig-Push" ist bei einem Lauf ohne Push-Auslöser keine Aussage —
-  // das wäre eine erfundene Regel gewesen, und die meldet nur Rauschen.
-  // Veröffentlichungsläufe sollen auf ein Etikett oder einen Knopf warten.
+  // Prüfung liess das weg und meldete prompt den damaligen
+  // android-playstore.yml: Der führte `testDebugUnitTest` aus, wurde aber
+  // ausschliesslich von Hand angestossen (`workflow_dispatch` mit der Play-Spur
+  // als Eingabe). „Läuft nicht auf jedem Zweig-Push" ist bei einem Lauf ohne
+  // Push-Auslöser keine Aussage — das wäre eine erfundene Regel gewesen, und die
+  // meldet nur Rauschen. Veröffentlichungsläufe sollen auf ein Etikett oder
+  // einen Knopf warten.
+  //
+  // Jener Workflow ist inzwischen entfernt. Die Einschraenkung bleibt: Sie ist
+  // richtig, unabhaengig davon, ob es gerade einen solchen Lauf gibt — und der
+  // naechste Veroeffentlichungslauf findet sie vor, statt sie neu zu brauchen.
   const TESTBEFEHLE = [/npm\s+test/, /testDebugUnitTest/];
 
   const pruefend = [];

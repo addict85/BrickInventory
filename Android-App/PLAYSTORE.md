@@ -1,5 +1,20 @@
 # Veröffentlichung im Google Play Store
 
+> **Stand: der Workflow dazu ist entfernt.**
+>
+> `.github/workflows/android-playstore.yml` gibt es nicht mehr. Die App wird als
+> **APK über die GitHub-Releases** ausgeliefert und aktualisiert sich daraus
+> selbst (`util/AppUpdate.kt`); der Play-Weg war gebaut, aber nie benutzt.
+>
+> Diese Anleitung bleibt als Bauplan stehen, falls der Weg je wieder gewollt
+> ist — **Teil 2 beschreibt aber einen Ablauf, der derzeit nicht existiert.**
+>
+> Weiter gültig und woanders dokumentiert: Die vier Schlüsselspeicher-Secrets
+> (`KEYSTORE_BASE64`, `KEYSTORE_PASSWORT`, `KEY_ALIAS`, `KEY_PASSWORT`) braucht
+> `android.yml` nach wie vor, um die APK zu signieren — siehe *Release
+> signieren* in `README.md`. Nicht mehr gebraucht wird allein
+> `PLAY_SERVICE_ACCOUNT_JSON`.
+
 Diese Datei beschreibt, was einmalig einzurichten ist und was danach
 automatisch läuft. Sie ist bewusst offen darüber, **was die Action nicht kann**
 — das meiste an einer Play-Veröffentlichung ist Verwaltungsarbeit in der Play
