@@ -90,6 +90,14 @@ fun PdfViewerScreen(
     onBack: () -> Unit
 ) {
     val ctx = LocalContext.current
+    // `stringResource` statt `ctx.getString` im Rueckruf: Lint meldet
+    // LocalContextGetResourceValueCall (Stufe ERROR), weil ein aus
+    // LocalContext.current gegriffener Context nach einem Wechsel der
+    // Konfiguration — Sprache, Dunkelmodus, Drehung — veraltete Werte liefern
+    // kann. Hier geholt, in der Komposition, wo Compose bei einer Aenderung neu
+    // auswertet.
+    val ladefehlerText = stringResource(R.string.pdfview_download_failed)
+    val unbekannterFehlerText = stringResource(R.string.pdfview_unknown_error)
     var state by remember(pdfUrl) { mutableStateOf<PdfLoadState>(PdfLoadState.Downloading(0, 0, 0)) }
 
     // Bildschirm WÄHREND DES LADENS anlassen: Geht das Display aus, trennt Android
@@ -116,12 +124,12 @@ fun PdfViewerScreen(
             val cacheFile = File(ctx.cacheDir, "pdfview_${pdfUrl.hashCode()}.pdf")
             val (file, pageCount) = ladeUndZaehle(
                 pdfUrl, cacheFile, httpClient,
-                ctx.getString(R.string.pdfview_download_failed),
+                ladefehlerText,
                 aufraeumen = { prunePdfCache(ctx.cacheDir, keep = cacheFile) },
             ) { state = it }
             state = PdfLoadState.Ready(file, pageCount)
         } catch (e: Exception) {
-            state = PdfLoadState.Error(e.message ?: ctx.getString(R.string.pdfview_unknown_error))
+            state = PdfLoadState.Error(e.message ?: unbekannterFehlerText)
         } finally {
             try { if (wifiLock?.isHeld == true) wifiLock.release() } catch (_: Exception) {}
         }

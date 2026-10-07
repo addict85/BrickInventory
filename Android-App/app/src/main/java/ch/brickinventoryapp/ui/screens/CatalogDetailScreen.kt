@@ -83,6 +83,13 @@ fun CatalogDetailScreen(
     // Bildschirmfüllender Zoom wie im Set-Detail — auf Nutzerwunsch auch hier.
     var showImageZoom by rememberSaveable { mutableStateOf(false) }
     val ctx = LocalContext.current
+    // `stringResource` statt `ctx.getString` im Rueckruf: Lint meldet
+    // LocalContextGetResourceValueCall (Stufe ERROR), weil ein aus
+    // LocalContext.current gegriffener Context nach einem Wechsel der
+    // Konfiguration — Sprache, Dunkelmodus, Drehung — veraltete Werte liefern
+    // kann. Hier geholt, in der Komposition, wo Compose bei einer Aenderung neu
+    // auswertet.
+    val keineAppText = stringResource(R.string.common_no_app_to_open)
 
     Scaffold(
         topBar = {
@@ -188,7 +195,7 @@ fun CatalogDetailScreen(
                         // passiert" in der Webapp.
                         try { ctx.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(blUrl))) }
                         catch (_: Exception) {
-                            android.widget.Toast.makeText(ctx, ctx.getString(R.string.common_no_app_to_open),
+                            android.widget.Toast.makeText(ctx, keineAppText,
                                 android.widget.Toast.LENGTH_SHORT).show()
                         }
                     },

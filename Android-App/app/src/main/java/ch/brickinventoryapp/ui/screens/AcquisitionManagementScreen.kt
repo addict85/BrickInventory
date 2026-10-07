@@ -78,6 +78,13 @@ fun AcquisitionManagementScreen(
     var moveMessage by remember { mutableStateOf<String?>(null) }
     // Für die Erfolgsmeldung mit den echten Zahlen aus der Antwort.
     val ctx = LocalContext.current
+    // Nicht `ctx.getString`: Lint meldet LocalContextGetResourceValueCall als
+    // ERROR, weil ein gegriffener Context nach einem Wechsel der Konfiguration
+    // veraltete Werte liefert. `stringResource` geht hier nicht — die Zahlen
+    // fuer die Platzhalter entstehen erst in der Antwort. LocalResources ist
+    // die konfigurationsbewusste Form (androidx: „will be updated when
+    // LocalConfiguration changes").
+    val res = androidx.compose.ui.platform.LocalResources.current
     val isLoading    = if (type == "set") detailState.acquisitionsLoading else manDetailState.isLoading
 
     LaunchedEffect(type, id, colorId) {
@@ -205,7 +212,7 @@ fun AcquisitionManagementScreen(
                                 // Die Zahlen kommen aus der Antwort. Sie standen
                                 // hier fest auf 0/0 — die Meldung sagte also
                                 // auch dann „0 Teile", wenn hunderte wanderten.
-                                moveMessage = err ?: ctx.getString(
+                                moveMessage = err ?: res.getString(
                                     R.string.household_move_ok, teile, figuren)
                             }
                         },

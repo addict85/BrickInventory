@@ -116,6 +116,11 @@ fun LazyListScope.setDetailInstructionsSection(
                         }
                     } else {
                         val ctx = LocalContext.current
+                        // Siehe CatalogDetailScreen: Lint meldet
+                        // LocalContextGetResourceValueCall als ERROR, weil ein
+                        // gegriffener Context nach einem Wechsel der
+                        // Konfiguration veraltete Werte liefern kann.
+                        val keineAppText = stringResource(R.string.common_no_app_to_open)
                         instructions.forEachIndexed { idx, instr ->
                             // Kein `?token=` mehr an der Adresse.
                             //
@@ -185,7 +190,7 @@ fun LazyListScope.setDetailInstructionsSection(
                                             try { ctx.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(openUrl))) }
                                             catch (_: Exception) {
                                                 android.widget.Toast.makeText(ctx,
-                                                    ctx.getString(R.string.common_no_app_to_open),
+                                                    keineAppText,
                                                     android.widget.Toast.LENGTH_SHORT).show()
                                             }
                                         }

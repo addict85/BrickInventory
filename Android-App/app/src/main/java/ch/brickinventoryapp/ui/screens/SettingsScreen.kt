@@ -793,6 +793,10 @@ private fun LagerorteCard(vm: MainViewModel) {
 @Composable
 private fun PreisalarmCard(vm: MainViewModel) {
     val context = androidx.compose.ui.platform.LocalContext.current
+    // Siehe AcquisitionManagementScreen: LocalResources statt Context, weil
+    // Lint LocalContextGetResourceValueCall als ERROR meldet und der
+    // Platzhalter erst aus der Ausnahme entsteht.
+    val resn = androidx.compose.ui.platform.LocalResources.current
     val bereich = rememberCoroutineScope()
     // Direkt aus den Einstellungen, nicht ueber AppUiState: eine
     // Geraete-Einstellung, genau wie die drei Netzerlaubnisse in
@@ -862,7 +866,7 @@ private fun PreisalarmCard(vm: MainViewModel) {
                             // NoSuchMethodException ist — und damit, ob etwas
                             // fehlt oder etwas schiefging. Die naechste
                             // Ursache ist vielleicht weniger gespraechig.
-                            vm.showSnackbar(context.getString(
+                            vm.showSnackbar(resn.getString(
                                 R.string.alert_schedule_failed,
                                 "${fehler::class.java.simpleName}: ${fehler.message ?: "—"}"))
                         }

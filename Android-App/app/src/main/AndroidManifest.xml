@@ -22,6 +22,28 @@
     -->
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
     <uses-permission android:name="android.permission.CAMERA" />
+    <!--
+      Ohne diese Zeile erklaert die CAMERA-Erlaubnis `android.hardware.camera`
+      IMPLIZIT als erforderlich — und damit faellt die App auf Geraeten ohne
+      Kamera aus dem Raster (ChromeOS-Geraete, manche Tablets). Lint meldet das
+      als PermissionImpliesUnsupportedChromeOsHardware, Stufe ERROR; gesehen hat
+      es niemand, weil `abortOnError = false` steht und der Bericht in einer
+      Ablage liegt, die aus der Entwicklungsumgebung nicht erreichbar ist.
+
+      `required="false"` ist hier nicht der Trick, mit dem man die Pruefung
+      ruhigstellt, sondern die Wahrheit ueber die App: Bestand, Preise, Listen
+      und Anleitungen brauchen keine Kamera. Das Scannen ist eine Funktion unter
+      vielen.
+
+      Was sich dadurch NICHT aendert: Die APK wird hier von Hand installiert
+      (util/AppUpdate.kt holt sie aus dem GitHub-Release). Die Filterung nach
+      `uses-feature` macht Play, nicht das Geraet — ein Geraet ohne Kamera
+      konnte die App also auch vorher schon installieren. Diese Zeile berichtigt
+      die ANGABE, sie oeffnet keinen neuen Weg.
+    -->
+    <uses-feature
+        android:name="android.hardware.camera"
+        android:required="false" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_DATA_SYNC" />
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
