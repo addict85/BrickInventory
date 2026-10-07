@@ -36,6 +36,12 @@ import java.util.concurrent.Executors
  *
  * Der Rumpf ist wortgleich übernommen, verändert wurde nur die Einrückung.
  */
+// Einverstaendnis fuer imageProxy.image: `@androidx.annotation.OptIn` ist die
+// Form fuer einen in Java definierten Marker — `@ExperimentalGetImage` an der
+// lokalen Variablen war die MARKIERUNG und kein Einverstaendnis, und Lint hat
+// das als Error gemeldet (UnsafeOptInUsageError). Dasselbe Muster wie in
+// KameraAufbau.kt fuer ExperimentalCamera2Interop.
+@androidx.annotation.OptIn(ExperimentalGetImage::class)
 @Composable
 fun rememberBarcodeAnalyzer(
     frozen: Boolean,
@@ -103,7 +109,6 @@ fun rememberBarcodeAnalyzer(
             .also { analysis ->
                 analysis.setAnalyzer(executor) { imageProxy ->
                     if (frozen) { imageProxy.close(); return@setAnalyzer }
-                    @androidx.camera.core.ExperimentalGetImage
                     val mediaImage = imageProxy.image
                     if (mediaImage == null) { imageProxy.close(); return@setAnalyzer }
                     val image = InputImage.fromMediaImage(mediaImage, imageProxy.imageInfo.rotationDegrees)

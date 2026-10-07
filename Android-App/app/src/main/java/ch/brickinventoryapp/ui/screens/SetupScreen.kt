@@ -248,7 +248,11 @@ fun QrSetupScannerScreen(onResult: (String) -> Unit, onDismiss: () -> Unit) {
     }
 }
 
-@androidx.annotation.OptIn(ExperimentalCamera2Interop::class)
+// ExperimentalGetImage kommt hinzu: Das Einverstaendnis fuer
+// imageProxy.image stand als `@ExperimentalGetImage` an der lokalen
+// Variablen, und das ist die MARKIERUNG, nicht das Einverstaendnis. Lint
+// meldete es als Error (UnsafeOptInUsageError).
+@androidx.annotation.OptIn(ExperimentalCamera2Interop::class, ExperimentalGetImage::class)
 @Composable
 fun QrCameraPreview(frozen: Boolean, onQrFound: (String) -> Unit) {
     val lifecycleOwner = LocalLifecycleOwner.current
@@ -282,7 +286,6 @@ fun QrCameraPreview(frozen: Boolean, onQrFound: (String) -> Unit) {
             .also { analysis ->
                 analysis.setAnalyzer(executor) { imageProxy ->
                     if (frozen) { imageProxy.close(); return@setAnalyzer }
-                    @ExperimentalGetImage
                     val mediaImage = imageProxy.image
                     if (mediaImage == null) { imageProxy.close(); return@setAnalyzer }
                     val image = InputImage.fromMediaImage(mediaImage, imageProxy.imageInfo.rotationDegrees)

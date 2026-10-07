@@ -139,8 +139,14 @@ def main(argv):
     if schlimme:
         hart = ["%d Lint-Befund(e) der Stufe Error/Fatal — die gehoeren nicht "
                 "unter eine Obergrenze." % len(schlimme)]
-        for kennung, text, orte in schlimme[:10]:
-            hart.append("  %s — %s [%s]" % (kennung, text[:120], ", ".join(orte[:3])))
+        # 40 statt 10, und 150 Zeichen statt 120: Im Lauf 37593918009 standen
+        # 13 Error-Befunde an, die Annotation zeigte zehn — und WELCHE die drei
+        # fehlenden waren, liess sich aus dem Quelltext nicht herleiten, weil
+        # Lint nur die Aufrufe beanstandet, die in der Komposition selbst
+        # stehen, nicht die in spaeter laufenden Rueckrufen. Eine Liste, die
+        # genau die Faelle verschweigt, die man nicht erraten kann, ist keine.
+        for kennung, text, orte in schlimme[:40]:
+            hart.append("  %s — %s [%s]" % (kennung, text[:150], ", ".join(orte[:3])))
         print("::error title=Lint::" + "%0A".join(hart))
         return 1
 
