@@ -514,9 +514,34 @@ html::-webkit-scrollbar{width:0;height:0}
     .v-btn:hover{background:var(--s200);border-color:var(--p500)}
     .voucher-total-row{display:flex;justify-content:space-between;
                        align-items:baseline;margin-top:.5rem;font-size:.82rem}
-    /* Die Notiz neben dem Betrag — zurückhaltend, sie ist ein Zusatz. */
-    .voucher-note{color:var(--mut)}
     /* „Noch keine Gutscheine" und die Fehlermeldung der Liste. `mut` war hier
        als Klasse gedacht — den Namen gibt es in diesem Baum aber nur als
        FARBVARIABLE (var(--mut)), nicht als Regel. */
     .voucher-leer{color:var(--mut);font-size:.8rem}
+
+    /* ── Das Dateifeld des Gutschein-Uploads ────────────────────────────────
+       `.fg input` setzt height:38px und einen senkrechten Innenabstand. Auf
+       einem NATIVEN Dateifeld schneidet das den eingebauten Knopf ab: Der
+       Browser zeichnet „Datei auswählen" samt Dateinamen INNERHALB des
+       Feldes, und 38px abzüglich Polsterung reichen dafür nicht. Marco hat
+       genau das gemeldet — der Text war angeschnitten.
+
+       Deshalb hier height:auto statt einer grösseren festen Zahl: Wie hoch
+       der eingebaute Knopf ist, entscheidet der Browser und nicht dieses
+       Stylesheet. Eine Zahl, die unter Chrome passt, schnitte unter Firefox
+       wieder ab. */
+    .voucher-upload input[type=file]{
+      height:auto;min-height:38px;padding:.5rem .75rem;line-height:1.6;
+      /* Der Dateiname kann lang sein; ohne das schiebt er die Karte breit. */
+      max-width:100%}
+    /* Der eingebaute Knopf bekommt dieselbe Form wie die übrigen Knöpfe —
+       ohne das steht ein graues Systemelement mitten im Formular. */
+    .voucher-upload input[type=file]::file-selector-button{
+      margin-right:.6rem;padding:.3rem .7rem;border:1px solid var(--bdr);
+      border-radius:6px;background:var(--sur);color:var(--txt);
+      font-family:inherit;font-size:.8rem;cursor:pointer}
+    .voucher-upload input[type=file]::file-selector-button:hover{
+      background:var(--s200);border-color:var(--p500)}
+
+    /* Nummer und Kopieren-Knopf in einer Zeile. */
+    .voucher-num-row{display:flex;align-items:center;gap:.35rem}

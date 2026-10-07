@@ -138,7 +138,7 @@ test('Gutscheine gegen echte Datenbank', { concurrency: 1 }, async (t) => {
   try {
     await t.test('manuell anlegen: die drei Werte landen in der Datenbank', async () => {
       const r = await jsonAn('/api/v1/vouchers', keksOpa, 'POST',
-        { number: '5045076374450011166', pin: '5225', amount: 400, currency: 'CHF', note: 'Geburtstag' });
+        { number: '5045076374450011166', pin: '5225', amount: 400, currency: 'CHF' });
       const b = await r.json();
       assert.equal(r.status, 200, JSON.stringify(b));
       assert.equal(b.voucher.number, '5045076374450011166');
@@ -311,7 +311,7 @@ test('Gutscheine gegen echte Datenbank', { concurrency: 1 }, async (t) => {
       assert.equal(b.voucher.amount, 350, 'der neue Betrag');
       assert.equal(b.voucher.number, '5045076374450011166', 'die Nummer darf nicht verschwinden');
       assert.equal(b.voucher.pin, '5225', 'der PIN darf nicht verschwinden');
-      assert.equal(b.voucher.note, 'Geburtstag', 'die Notiz darf nicht verschwinden');
+      assert.equal(b.voucher.pin, '5225', 'der PIN darf nicht verschwinden');
     });
 
     await t.test('eine Karte auf die Nummer einer anderen umschreiben gibt 409', async () => {
@@ -361,6 +361,18 @@ test('Gutscheine gegen echte Datenbank', { concurrency: 1 }, async (t) => {
       assert.ok(!fs.existsSync(datei), 'die Datei muss mit der Zeile verschwinden');
     });
 
+    await t.test('die Notiz-Spalte gibt es nicht mehr', async () => {
+      // Marcos Vorgabe: „Das Feld ‚Notiz' bitte vollständig inkl. Spalten auf
+      // der Datenbank entfernen." Eine Spalte, die niemand mehr schreibt,
+      // waere nicht „entfernt", sondern nur unbenutzt — und taucht im
+      // Schema-Abgleich, im Sicherungs-Export und in jedem SELECT * wieder
+      // auf. Geprueft wird deshalb das Schema selbst (Migration 0027).
+      const spalte = await db.get(
+        `SELECT column_name FROM information_schema.columns
+          WHERE table_schema='public' AND table_name='vouchers' AND column_name='note'`);
+      assert.equal(spalte, undefined, 'die Spalte `note` steht noch in der Tabelle');
+    });
+
     await t.test('mit dem Konto verschwinden auch seine Gutscheine', async () => {
       // ON DELETE CASCADE. Ohne das blieben Nummer und PIN eines geloeschten
       // Kontos in der Datenbank stehen — Zahlen, die weiter einloesbar sind.
@@ -376,4 +388,75 @@ test('Gutscheine gegen echte Datenbank', { concurrency: 1 }, async (t) => {
     await fs.promises.rm(VOUCHER_DIR, { recursive: true, force: true }).catch(() => {});
     await db.pool.end().catch(() => {});
   }
+});
+
+/**
+ * Die Oberflaeche der Webapp — Marcos Nachbesserungen vom 06.10.
+ *
+ * Textpruefungen, und das ist hier angemessen: Was geprueft wird, sind
+ * Entscheidungen ueber die DARSTELLUNG, und die stehen nirgendwo sonst. Was
+ * der Server tut, pruefen die Zusicherungen darueber gegen eine echte
+ * Datenbank.
+ */
+const testOberflaeche = require('node:test');
+testOberflaeche('Gutscheine in der Webapp: Marcos Nachbesserungen', async (t) => {
+  const fsO = require('node:fs');
+  // Die Pfade unten stehen AUSGESCHRIEBEN und nicht hinter einem Helfer mit
+  // Variable: Ein `path.join(ROOT, rel)` nimmt test/eigenbruecken.test.js die
+  // Sicht darauf, ob ein Test eine Datei liest, die es gar nicht gibt — und
+  // genau dieser Waechter ist hier prompt rot geworden.
+  // ohneKommentare: Die Erklaertexte in 17-gutscheine.js nennen die
+  // entfernten Wege beim Namen („Hier standen zwei Knoepfe: window.open …").
+  // Eine Textpruefung, die sie mitliest, prueft die Prosa und nicht den Code —
+  // und war prompt rot, obwohl der Code stimmte.
+  const { ohneKommentare } = require('./helpers/sources');
+  const js = ohneKommentare(fsO.readFileSync(path.join(ROOT, 'public', 'js', '17-gutscheine.js'), 'utf8'));
+  const html = fsO.readFileSync(path.join(ROOT, 'public', 'index.html'), 'utf8');
+  const css = fsO.readFileSync(path.join(ROOT, 'public', 'styles.css'), 'utf8');
+
+  await t.test('das PDF geht in den Betrachter der Anleitungen', () => {
+    // „Die beiden Buttons PDF Download und PDF im neuen Fenster öffnen
+    // entfernen und durch den PDF-Viewer der Anleitungen ersetzen → Analog
+    // wie es in der Android-App umgesetzt ist."
+    assert.match(js, /openPdfViewer\(/, 'der Betrachter wird nicht benutzt');
+    assert.ok(!/window\.open\(/.test(js), 'es wird noch ein neues Fenster geoeffnet');
+    assert.ok(!/download=1/.test(js),
+      'der zweite Knopf ist noch da — der Betrachter traegt seinen Download selbst');
+  });
+
+  await t.test('Nummer und PIN haben je einen Kopieren-Knopf', () => {
+    // „Kannst du in der Webapp hinter den Gutscheincode und den Pin jeweils
+    // einen Kopieren Button einfügen (mit einem Icon)."
+    const treffer = js.match(/data-click="gutscheinKopieren"/g) || [];
+    assert.equal(treffer.length, 2, `erwartet 2 Kopieren-Knoepfe, gefunden ${treffer.length}`);
+    assert.match(js, /KOPIE_ICON_SVG/, 'der Knopf traegt kein Symbol');
+    // Kopiert wird die ROHE Nummer: Die Vierergruppen sind eine Lesehilfe,
+    // ein Bezahlfeld nimmt sie nicht an.
+    //
+    // Geprueft wird die Zeile IN der Kopierfunktion, nicht irgendein
+    // `String(g.number)` in der Datei. Die erste Fassung tat Letzteres und
+    // blieb bei der Gegenprobe gruen — die Anzeigefunktion darueber enthaelt
+    // denselben Ausdruck, also bestand sie aus dem falschen Grund.
+    const kopierRumpf = js.slice(js.indexOf('function gutscheinKopieren'));
+    assert.match(kopierRumpf.slice(0, 400), /String\(g\.number\)/,
+      'in gutscheinKopieren wird nicht die rohe Nummer genommen');
+    assert.ok(!/\.replace\(\/\(\.\{4\}\)\//.test(kopierRumpf.slice(0, 400)),
+      'die Kopierfunktion gruppiert die Nummer — ein Bezahlfeld nimmt das nicht an');
+  });
+
+  await t.test('die Notiz ist auch aus der Oberflaeche verschwunden', () => {
+    for (const [name, inhalt] of [['17-gutscheine.js', js], ['index.html', html], ['styles.css', css]]) {
+      assert.ok(!/v-note|vouchers\.note|voucher-note/.test(inhalt),
+        `${name} nennt die Notiz noch`);
+    }
+  });
+
+  await t.test('das Dateifeld bekommt Platz fuer seinen eingebauten Knopf', () => {
+    // Marcos Befund: „der rot markierte Bereich beim Upload ist zu klein. Der
+    // Text wird abgeschnitten." Ursache war `.fg input{height:38px}` auf einem
+    // nativen Dateifeld.
+    assert.match(html, /class="fg voucher-upload"/, 'das Dateifeld traegt die eigene Klasse nicht');
+    assert.match(css, /\.voucher-upload input\[type=file\]\{[^}]*height:auto/,
+      'die Hoehe steht nicht auf auto — eine feste Zahl schneidet je nach Browser wieder ab');
+  });
 });

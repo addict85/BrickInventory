@@ -1,5 +1,6 @@
 package ch.brickinventoryapp.ui.screens
 
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Delete
@@ -48,13 +49,15 @@ import ch.brickinventoryapp.util.NumericInput
 @Composable
 fun GutscheineCard(
     zustand: GutscheinUiState,
-    onFeld: (nummer: String?, pin: String?, betrag: String?, waehrung: String?, notiz: String?) -> Unit,
+    onFeld: (nummer: String?, pin: String?, betrag: String?, waehrung: String?) -> Unit,
     onPinSchalten: (Int) -> Unit,
     onBearbeiten: (Int) -> Unit,
     onAbbrechen: () -> Unit,
     onSpeichern: (android.net.Uri?) -> Unit,
     onLoeschen: (Int) -> Unit,
     onPdfOeffnen: (id: Int) -> Unit,
+    /** Nummer oder PIN in die Zwischenablage; `istNummer` steuert die Meldung. */
+    onKopieren: (wert: String, istNummer: Boolean) -> Unit,
 ) {
     // Die gewaehlte Datei lebt nur, solange das Formular offen ist — sie
     // gehoert nicht in den geteilten Zustand, weil eine Uri eine Berechtigung
@@ -86,6 +89,19 @@ fun GutscheineCard(
                 onBearbeiten = { onBearbeiten(g.id) },
                 onLoeschen = { onLoeschen(g.id) },
                 onPdfOeffnen = { onPdfOeffnen(g.id) },
+                onKopieren = onKopieren,
+            )
+        }
+
+        // Dass Antippen kopiert, sieht man einem Text nicht an — anders als
+        // der Webapp, wo ein Knopf mit Symbol danebensteht. Deshalb der
+        // Hinweis, und nur solange es ueberhaupt etwas zu kopieren gibt.
+        if (zustand.gutscheine.isNotEmpty()) {
+            Text(
+                stringResource(R.string.vouchers_copy_hint),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.padding(top = Abstaende.winzig),
             )
         }
 
@@ -120,7 +136,7 @@ fun GutscheineCard(
         // Regel steht in ZahlentastaturTest, der Filter in NumericInput.kt.
         OutlinedTextField(
             value = zustand.nummer,
-            onValueChange = { onFeld(NumericInput.quantity(it), null, null, null, null) },
+            onValueChange = { onFeld(NumericInput.quantity(it), null, null, null) },
             label = { Text(stringResource(R.string.vouchers_number)) },
             singleLine = true,
             keyboardOptions = NumericInput.ganzzahlTastatur(),
@@ -131,7 +147,7 @@ fun GutscheineCard(
         Row(horizontalArrangement = Arrangement.spacedBy(Abstaende.klein)) {
             OutlinedTextField(
                 value = zustand.pin,
-                onValueChange = { onFeld(null, NumericInput.quantity(it), null, null, null) },
+                onValueChange = { onFeld(null, NumericInput.quantity(it), null, null) },
                 label = { Text(stringResource(R.string.vouchers_pin)) },
                 singleLine = true,
                 keyboardOptions = NumericInput.ganzzahlTastatur(),
@@ -139,7 +155,7 @@ fun GutscheineCard(
             )
             OutlinedTextField(
                 value = zustand.betrag,
-                onValueChange = { onFeld(null, null, NumericInput.price(it), null, null) },
+                onValueChange = { onFeld(null, null, NumericInput.price(it), null) },
                 label = { Text(stringResource(R.string.vouchers_amount)) },
                 singleLine = true,
                 // price/preisTastatur und nicht ganzzahl: Ein Gutschein kann
@@ -152,16 +168,7 @@ fun GutscheineCard(
         }
         Spacer(Modifier.height(Abstaende.klein))
 
-        WaehrungsWahl(zustand.waehrung) { onFeld(null, null, null, it, null) }
-        Spacer(Modifier.height(Abstaende.klein))
-
-        OutlinedTextField(
-            value = zustand.notiz,
-            onValueChange = { onFeld(null, null, null, null, it) },
-            label = { Text(stringResource(R.string.vouchers_note)) },
-            singleLine = true,
-            modifier = Modifier.fillMaxWidth(),
-        )
+        WaehrungsWahl(zustand.waehrung) { onFeld(null, null, null, it) }
 
         // ── Der PDF-Weg ────────────────────────────────────────────────────
         //
@@ -228,14 +235,33 @@ private fun GutscheinZeile(
     onBearbeiten: () -> Unit,
     onLoeschen: () -> Unit,
     onPdfOeffnen: () -> Unit,
+    onKopieren: (wert: String, istNummer: Boolean) -> Unit,
 ) {
     var loeschFrage by rememberSaveable { mutableStateOf(false) }
 
     Column(Modifier.fillMaxWidth().padding(vertical = Abstaende.klein)) {
+        // ── Marcos Vorgabe ──────────────────────────────────────────────────
+        //
+        //   „Wenn ich in der Android-App den Gutscheincode oder den Pin
+        //    anklicke, soll dieser kopiert werden."
+        //
+        // Kopiert wird die ROHE Nummer, nicht die in Vierergruppen gezeigte:
+        // Die Gruppierung ist eine Lesehilfe fuers Abtippen an der Kasse — ein
+        // Bezahlfeld nimmt sie nicht an.
+        //
+        // `clickable` auf dem Text und kein eigener Knopf: Marco hat das Feld
+        // selbst als Ziel genannt, und ein zusaetzlicher Knopf je Zeile waere
+        // in der Webapp richtig (dort gibt es keine Beruehrung) und hier eine
+        // Verdoppelung. Die Antippflaeche wird dafuer bis zur vollen Breite
+        // aufgezogen, damit sie nicht nur die Ziffern selbst trifft.
         Text(
             g.number.chunked(4).joinToString(" "),
             style = MaterialTheme.typography.bodyMedium,
             fontWeight = FontWeight.Medium,
+            modifier = Modifier
+                .fillMaxWidth()
+                .clickable { onKopieren(g.number, true) }
+                .padding(vertical = Abstaende.winzig),
         )
         Row(verticalAlignment = Alignment.CenterVertically) {
             Text(
@@ -243,18 +269,19 @@ private fun GutscheinZeile(
                 style = MaterialTheme.typography.bodySmall,
                 fontWeight = FontWeight.Bold,
             )
-            if (!g.note.isNullOrBlank()) {
-                Text(" · " + g.note,
-                     style = MaterialTheme.typography.bodySmall,
-                     color = MaterialTheme.colorScheme.onSurfaceVariant,
-                     maxLines = 1, overflow = TextOverflow.Ellipsis)
-            }
         }
         Row(verticalAlignment = Alignment.CenterVertically) {
             Text(
                 stringResource(R.string.vouchers_pin) + ": " +
                     (g.pin?.let { if (pinSichtbar) it else "••••" } ?: "–"),
                 style = MaterialTheme.typography.bodySmall,
+                // Der PIN ist auch VERDECKT antippbar: Kopieren heisst nicht
+                // ansehen, und wer ihn einfuegen will, muss ihn dafuer nicht
+                // erst aufdecken.
+                modifier = if (g.pin != null)
+                    Modifier.clickable { onKopieren(g.pin, false) }
+                            .padding(vertical = Abstaende.winzig)
+                else Modifier,
             )
             // Ohne `Modifier.size(...)`: IconButton bringt von sich aus
             // 48 dp Antippflaeche mit (minimumInteractiveComponentSize). Sie

@@ -36,7 +36,6 @@ data class Gutschein(
     val pin: String? = null,
     val amount: Double = 0.0,
     val currency: String = "CHF",
-    val note: String? = null,
     /**
      * Ob ein PDF hinterlegt ist.
      *
@@ -87,5 +86,4 @@ data class GutscheinRequest(
     val pin: String? = null,
     val amount: Double,
     val currency: String = "CHF",
-    val note: String? = null,
 )

@@ -103,6 +103,7 @@ fun SettingsScreen(
     val kontoZustand by vm.kontoState.collectAsStateWithLifecycle()
     val csvZustand by vm.csvHochladenState.collectAsStateWithLifecycle()
     val gutscheinZustand by vm.gutscheinState.collectAsStateWithLifecycle()
+    val gutscheinZwischenablage = androidx.compose.ui.platform.LocalClipboardManager.current
 
     // Einmal beim Betreten laden. LaunchedEffect(Unit) und nicht bei jedem
     // Neuzeichnen: Die Liste aendert sich nur, wenn sich ein Geraet an- oder
@@ -277,7 +278,7 @@ fun SettingsScreen(
         // erreichbar" — sie gehoeren zu dem, was einem selbst gehoert.
         GutscheineCard(
             zustand = gutscheinZustand,
-            onFeld = { n, p, b, w, no -> vm.setzeGutscheinFeld(n, p, b, w, no) },
+            onFeld = { n, p, b, w -> vm.setzeGutscheinFeld(n, p, b, w) },
             onPinSchalten = { vm.schalteGutscheinPin(it) },
             onBearbeiten = { vm.bearbeiteGutschein(it) },
             onAbbrechen = { vm.leereGutscheinFormular() },
@@ -288,6 +289,15 @@ fun SettingsScreen(
             // deshalb durch den Zustand, und der Graph navigiert — siehe
             // GutscheinUiState.pdfZiel.
             onPdfOeffnen = { vm.oeffneGutscheinPdf(it) },
+            // Die Zwischenablage kommt aus Compose und nicht aus dem
+            // ViewModel: Sie ist an die Komposition gebunden, genau wie beim
+            // Einladungscode weiter unten in dieser Datei. Die Rueckmeldung
+            // laeuft ueber den Snackbar des ViewModels, damit sie dort steht,
+            // wo alle anderen Meldungen stehen.
+            onKopieren = { wert, istNummer ->
+                gutscheinZwischenablage.setText(androidx.compose.ui.text.AnnotatedString(wert))
+                vm.meldeGutscheinKopiert(istNummer)
+            },
         )
 
         CsvImportCard(

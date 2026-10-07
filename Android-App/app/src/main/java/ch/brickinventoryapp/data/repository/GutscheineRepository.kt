@@ -67,14 +67,13 @@ class GutscheineRepository @Inject constructor(
         pin: String? = null,
         betrag: String? = null,
         waehrung: String? = null,
-        notiz: String? = null,
     ): Result<GutscheinAntwort> {
         val koerper = inhalt.toRequestBody(typ.toMediaType())
         val teil = okhttp3.MultipartBody.Part.createFormData("file", dateiname, koerper)
         return safeCall {
             val antwort = api.ladeGutscheinPdfHoch(
                 teil,
-                alsTeil(nummer), alsTeil(pin), alsTeil(betrag), alsTeil(waehrung), alsTeil(notiz),
+                alsTeil(nummer), alsTeil(pin), alsTeil(betrag), alsTeil(waehrung),
             )
             // ── Warum die 422 hier umgebogen wird ────────────────────────────
             //
