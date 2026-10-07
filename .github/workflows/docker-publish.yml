@@ -76,7 +76,7 @@ jobs:
             runner: ubuntu-24.04-arm
 
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
 
       # Frueh und mit klarer Meldung scheitern, statt spaeter im Login mit
       # "unauthorized: incorrect username or password".
@@ -96,22 +96,22 @@ jobs:
       - name: Plattformnamen fuer Dateinamen ableiten
         run: echo "PAAR=${{ matrix.plattform }}" | tr '/' '-' >> "$GITHUB_ENV"
 
-      - uses: docker/setup-buildx-action@v3
+      - uses: docker/setup-buildx-action@v4
 
-      - uses: docker/login-action@v3
+      - uses: docker/login-action@v4
         with:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
 
       - name: Beschriftungen erzeugen
         id: meta
-        uses: docker/metadata-action@v5
+        uses: docker/metadata-action@v6
         with:
           images: ${{ env.IMAGE }}
 
       - name: Bauen und als Digest hochladen
         id: build
-        uses: docker/build-push-action@v6
+        uses: docker/build-push-action@v7
         with:
           context: ${{ env.CONTEXT }}
           file: ${{ env.CONTEXT }}/Dockerfile
@@ -155,7 +155,29 @@ jobs:
       # Geprueft wurde ausserdem, dass die benutzten Eingaben es noch gibt:
       # `pattern` und `merge-multiple` stehen auch in v7; die Aenderung in v5
       # betrifft die Ablage EINZELNER Artefakte ohne merge-multiple.
-      - uses: actions/upload-artifact@v6
+      #
+      # ── Nachtrag: eine Hauptversion weiter, aus anderem Grund ─────────────
+      #
+      # Die Tabelle darueber bleibt richtig. Gehoben wurde jetzt NICHT wegen
+      # einer Warnung, sondern weil die Frage „sind alle verwendeten Fassungen
+      # die neuesten" auch fuer die Actions gilt — und die standen in keinem
+      # Katalog und in keiner package.json, also hat sie niemand gemessen.
+      #
+      # Gemessen wurde mit demselben Handgriff wie oben, nur umgedreht: ob ein
+      # hoeherer Haupt-Tag UEBERHAUPT existiert. api.github.com ist aus dieser
+      # Umgebung gesperrt (403), raw.githubusercontent.com nicht:
+      #
+      #     raw.githubusercontent.com/<action>/v7/action.yml  -> 200 = gibt es
+      #                                      .../v9, v42, v99 -> 404 = gibt es nicht
+      #
+      # Die Gegenprobe mit v9, v42, v99 und vXYZ war noetig: Ohne sie waere
+      # „200 bei jedem geprueften Tag" nicht von „der Abruf antwortet immer
+      # 200" zu unterscheiden gewesen.
+      #
+      # Jede neue Hauptversion laeuft auf node24 — die Laufzeit aendert sich
+      # also nicht, es gibt hier keine Warnung zu beseitigen und auch keine
+      # einzufangen.
+      - uses: actions/upload-artifact@v7
         with:
           name: digest-${{ env.PAAR }}
           path: /tmp/digests/*
@@ -167,22 +189,22 @@ jobs:
     runs-on: ubuntu-latest
     needs: build
     steps:
-      - uses: actions/download-artifact@v7
+      - uses: actions/download-artifact@v8
         with:
           path: /tmp/digests
           pattern: digest-*
           merge-multiple: true
 
-      - uses: docker/setup-buildx-action@v3
+      - uses: docker/setup-buildx-action@v4
 
-      - uses: docker/login-action@v3
+      - uses: docker/login-action@v4
         with:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
 
       - name: Tags festlegen
         id: meta
-        uses: docker/metadata-action@v5
+        uses: docker/metadata-action@v6
         with:
           images: ${{ env.IMAGE }}
           tags: |

@@ -71,14 +71,14 @@ jobs:
       HAT_SCHLUESSEL: ${{ secrets.KEYSTORE_BASE64 != '' }}
 
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
 
       # JDK 17 — passt zu sourceCompatibility/targetCompatibility und jvmTarget
       # im app/build.gradle.kts. Verlangt AGP eine neuere Fassung, steht das
       # klar im Protokoll; dann hier auf '21' stellen. Die Zahlen im
       # Buildskript bleiben trotzdem auf 17.
       - name: JDK einrichten
-        uses: actions/setup-java@v5
+        uses: actions/setup-java@v6
         with:
           distribution: temurin
           java-version: '17'
@@ -116,6 +116,28 @@ jobs:
             exit 1
           fi
           echo "Wrapper vollständig."
+
+      # ── Ist die festgenagelte Gradle-Prüfsumme die amtliche? ──────────────
+      #
+      # gradle-wrapper.properties nagelt die Verteilung auf eine sha256 fest.
+      # Das ist der Riegel gegen ein ausgetauschtes Archiv — nur hat nie etwas
+      # geprüft, ob die Zahl daneben die richtige IST. Eine beim Heben
+      # verdrehte Ziffer bricht sofort und laut; eine Prüfsumme, die zu einem
+      # FREMDEN Archiv passt, nicht.
+      #
+      # Der Schritt liest zusätzlich, welche Fassung die neueste ist und wie
+      # IHRE Prüfsumme lautet — das ist die Zahl, die zum Heben nötig ist.
+      # downloads.gradle.org ist aus der Entwicklungsumgebung gesperrt
+      # (HTTP 000), von hier erreichbar. Erfinden ist keine Möglichkeit: Eine
+      # falsche Zahl bricht jeden Build, eine entfernte Zeile wäre ein
+      # geschwächter Riegel.
+      #
+      # Der Hinweis auf die neuere Fassung färbt NICHT rot — ob gehoben wird,
+      # entscheidet ein Mensch. Rot ist die Abweichung, und rot ist auch ein
+      # ausgefallener Abruf: ein stillschweigend übergangener Riegel ist
+      # schlimmer als keiner.
+      - name: Gradle-Prüfsumme gegen die amtliche
+        run: python3 tools/gradle-wrapper-pruefen.py gradle/wrapper/gradle-wrapper.properties
 
       # Legt den Gradle-Cache an. Ohne das lädt jeder Lauf alle Abhängigkeiten
       # neu — mehrere Minuten pro Bau.
@@ -335,9 +357,31 @@ jobs:
       # startet — die Versionsnummer allein sagt es nicht.
       #
       #     curl https://raw.githubusercontent.com/actions/upload-artifact/v6/action.yml
+      #
+      # ── Nachtrag: eine Hauptversion weiter, aus anderem Grund ─────────────
+      #
+      # Die Tabelle darueber bleibt richtig. Gehoben wurde jetzt NICHT wegen
+      # einer Warnung, sondern weil die Frage „sind alle verwendeten Fassungen
+      # die neuesten" auch fuer die Actions gilt — und die standen in keinem
+      # Katalog und in keiner package.json, also hat sie niemand gemessen.
+      #
+      # Gemessen wurde mit demselben Handgriff wie oben, nur umgedreht: ob ein
+      # hoeherer Haupt-Tag UEBERHAUPT existiert. api.github.com ist aus dieser
+      # Umgebung gesperrt (403), raw.githubusercontent.com nicht:
+      #
+      #     raw.githubusercontent.com/<action>/v7/action.yml  -> 200 = gibt es
+      #                                      .../v9, v42, v99 -> 404 = gibt es nicht
+      #
+      # Die Gegenprobe mit v9, v42, v99 und vXYZ war noetig: Ohne sie waere
+      # „200 bei jedem geprueften Tag" nicht von „der Abruf antwortet immer
+      # 200" zu unterscheiden gewesen.
+      #
+      # Jede neue Hauptversion laeuft auf node24 — die Laufzeit aendert sich
+      # also nicht, es gibt hier keine Warnung zu beseitigen und auch keine
+      # einzufangen.
       - name: Testberichte sichern
         if: always()
-        uses: actions/upload-artifact@v6
+        uses: actions/upload-artifact@v7
         with:
           name: testberichte
           path: |
@@ -497,7 +541,7 @@ jobs:
       # Ressourcen-Aufteilung arbeiten fuer die beiden Formate nicht gleich.
       - name: App-Bundle (.aab) sichern
         if: success()
-        uses: actions/upload-artifact@v6
+        uses: actions/upload-artifact@v7
         with:
           name: BrickInventory-bundle
           path: Android-App/app/build/outputs/bundle/release/app-release.aab

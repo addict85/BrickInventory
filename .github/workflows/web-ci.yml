@@ -106,7 +106,7 @@ jobs:
       WEB_WORKERS: '1'
 
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
 
       # pg_dump/psql für test/backup-restore-db.test.js. Der Postgres-DIENST
       # oben ist ein Container — die Klienten laufen auf dem Runner.
@@ -170,7 +170,29 @@ jobs:
       # v4 und v5 nachgesehen statt geraten (dieselbe Methode wie in android.yml):
       #     actions/setup-node@v4 -> runs.using: node20   (warnt)
       #     actions/setup-node@v5 -> runs.using: node24    (still)
-      - uses: actions/setup-node@v6
+      #
+      # ── Nachtrag: eine Hauptversion weiter, aus anderem Grund ─────────────
+      #
+      # Die Tabelle darueber bleibt richtig. Gehoben wurde jetzt NICHT wegen
+      # einer Warnung, sondern weil die Frage „sind alle verwendeten Fassungen
+      # die neuesten" auch fuer die Actions gilt — und die standen in keinem
+      # Katalog und in keiner package.json, also hat sie niemand gemessen.
+      #
+      # Gemessen wurde mit demselben Handgriff wie oben, nur umgedreht: ob ein
+      # hoeherer Haupt-Tag UEBERHAUPT existiert. api.github.com ist aus dieser
+      # Umgebung gesperrt (403), raw.githubusercontent.com nicht:
+      #
+      #     raw.githubusercontent.com/<action>/v7/action.yml  -> 200 = gibt es
+      #                                      .../v9, v42, v99 -> 404 = gibt es nicht
+      #
+      # Die Gegenprobe mit v9, v42, v99 und vXYZ war noetig: Ohne sie waere
+      # „200 bei jedem geprueften Tag" nicht von „der Abruf antwortet immer
+      # 200" zu unterscheiden gewesen.
+      #
+      # Jede neue Hauptversion laeuft auf node24 — die Laufzeit aendert sich
+      # also nicht, es gibt hier keine Warnung zu beseitigen und auch keine
+      # einzufangen.
+      - uses: actions/setup-node@v7
         with:
           # Wie im Dockerfile (node:26-alpine) — geprüft werden soll, was auch
           # ausgeliefert wird. Node 20 stand hier bis Nachtrag 152 und war zu
