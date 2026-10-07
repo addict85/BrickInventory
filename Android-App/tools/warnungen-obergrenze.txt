@@ -1,0 +1,10 @@
+# Obergrenze fuer die Warnungen des Uebersetzungslaufs.
+#
+# GEMESSEN im Lauf 37579256987 (Gradle 9.8.0, AGP 9.4.1, Kotlin 2.4.20):
+# 18 Warnungen. Diese Zahl ist NICHT das Ziel, sondern der Stand — sie steht
+# hier, damit tools/warnungen-zaehlen.py rot wird, sobald eine dazukommt.
+#
+# Wer eine Warnung behebt, senkt die Zahl hier mit. Das Werkzeug fordert dazu
+# auf, sobald die Summe darunter liegt — sonst waere der Riegel nach dem
+# ersten Beheben um genau diesen einen Fall zu locker.
+18

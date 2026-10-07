@@ -146,29 +146,44 @@ def main(argv):
             print("  %3dx %-55s %s" % (n, text[:55], wo or "—"))
 
     grenze = obergrenze(grenze_pfad)
+
+    # ── Die Annotation trägt IMMER die Liste ────────────────────────────────
+    #
+    # Die erste Fassung nannte im gruenen Fall nur die Zahl. Damit stand „18
+    # Warnungen" am Lauf und WELCHE 18 nur im Protokoll — also dort, wo es aus
+    # dieser Umgebung nicht hinkommt (GitHub liefert das Protokoll als Ganzes
+    # von einem Host, den der Proxy mit 403 abweist). Eine Zahl ohne die Liste
+    # ist aber genau die Auskunft, mit der man nichts anfangen kann: Sie sagt,
+    # DASS etwas da ist, und nicht, was zu tun waere.
+    zeile = ["Kotlin %d, KSP %d, Java %d, Gradle %d, Summe %d"
+             % (len(kotlin), len(ksp), len(java), len(gradle), summe)]
+    if lint is not None:
+        zeile.append("Lint-Warnungen: %d (nicht in der Summe)" % lint)
+    for text in sorted(gezaehlt, key=lambda t: -gezaehlt[t][0])[:15]:
+        n, wo = faltung(text)
+        zeile.append("  %dx %s%s" % (n, text[:100], (" [" + wo + "]") if wo else ""))
+    if len(gezaehlt) > 15:
+        zeile.append("  … und %d weitere Arten, vollstaendig im Protokoll."
+                     % (len(gezaehlt) - 15))
+
     if grenze is None:
         # KEIN stilles Durchlassen: Ohne Obergrenze gibt es keinen Riegel, und
         # das muss man sehen.
-        print("::warning title=Warnungen::%d Warnungen gezaehlt, aber in %s "
-              "steht keine Obergrenze — es gibt derzeit nichts, was ein "
-              "Anwachsen bemerkt." % (summe, grenze_pfad))
+        zeile.append("In %s steht keine Obergrenze — es gibt derzeit nichts, "
+                     "was ein Anwachsen bemerkt." % grenze_pfad)
+        print("::warning title=Warnungen::" + "%0A".join(zeile))
         return 0
-
-    zeile = ["Kotlin %d, KSP %d, Java %d, Gradle %d, Summe %d (Obergrenze %d)"
-             % (len(kotlin), len(ksp), len(java), len(gradle), summe, grenze)]
-    if lint is not None:
-        zeile.append("Lint-Warnungen: %d (nicht in der Summe)" % lint)
     if summe > grenze:
-        for text in sorted(gezaehlt, key=lambda t: -gezaehlt[t][0])[:12]:
-            n, wo = faltung(text)
-            zeile.append("  %dx %s%s" % (n, text[:100], (" [" + wo + "]") if wo else ""))
+        zeile.insert(1, "Obergrenze ist %d — ueberschritten." % grenze)
         print("::error title=Warnungen::" + "%0A".join(zeile))
         return 1
     if summe < grenze:
-        zeile.append("Weniger als erlaubt — %s auf %d senken, damit der Riegel "
-                     "weiter greift." % (grenze_pfad, summe))
+        zeile.insert(1, "Obergrenze ist %d. Weniger als erlaubt — %s auf %d "
+                        "senken, damit der Riegel weiter greift."
+                        % (grenze, grenze_pfad, summe))
         print("::warning title=Warnungen::" + "%0A".join(zeile))
         return 0
+    zeile.insert(1, "Obergrenze ist %d — genau eingehalten." % grenze)
     print("::notice title=Warnungen::" + "%0A".join(zeile))
     return 0
 
