@@ -320,7 +320,7 @@ private fun WaehrungsWahl(gewaehlt: String, onWahl: (String) -> Unit) {
             readOnly = true,
             label = { Text(stringResource(R.string.settings_currency)) },
             trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = offen) },
-            modifier = Modifier.menuAnchor(MenuAnchorType.PrimaryNotEditable, true).fillMaxWidth(),
+            modifier = Modifier.menuAnchor(ExposedDropdownMenuAnchorType.PrimaryNotEditable, true).fillMaxWidth(),
         )
         ExposedDropdownMenu(expanded = offen, onDismissRequest = { offen = false }) {
             for (w in WAEHRUNGEN) {

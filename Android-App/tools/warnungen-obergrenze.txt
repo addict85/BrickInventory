@@ -1,13 +1,34 @@
 # Obergrenze fuer die Warnungen des Uebersetzungslaufs.
+1
+# Erwartet wird: Kotlin 0, KSP 0, Java 0, Gradle 1.
 #
-# DERZEIT KEINE ZAHL — absichtlich.
+# ── Warum hier eine VORHERSAGE steht ────────────────────────────────────────
 #
-# Hier stand 18, gemessen im Lauf 37579256987. Diese Zahl war falsch: Gezaehlt
-# wurde ueber bau.log UND lint.log, und `lintRelease` uebersetzt erneut —
-# dieselbe Warnung an derselben Quelltextstelle erschien damit zweimal.
-# Aufgefallen ist es daran, dass „3x Elvis operator" in zwei Dateien gemeldet
-# wurde, es im Quelltext aber nur ZWEI solche Stellen gibt.
+# Die Zahl haette man auch nach dem Lauf eintragen koennen. Dann waere sie
+# immer richtig — und damit wertlos: Sie wuerde nur abschreiben, was
+# herauskam.
 #
-# tools/warnungen-zaehlen.py entdoppelt jetzt nach Datei, Zeile und Spalte. Die
-# richtige Zahl nennt der naechste Lauf; sie wird dann hier eingetragen.
-# Schaetzen waere derselbe Fehler nochmal.
+# So herum ist sie eine Behauptung, die der Lauf WIDERLEGEN kann. Uebersetzt
+# eine der sechs Behebungen nicht, oder bleibt eine Warnung stehen, die ich
+# fuer behoben halte, wird der Lauf rot statt still gruen.
+#
+# ── Was die eine verbleibende Warnung ist ──────────────────────────────────
+#
+#     Deprecated Gradle features were used in this build
+#
+# Gradle sagt NICHT, welche — dafuer braucht es `--warning-mode all`, und das
+# ist eine eigene Aenderung mit eigenem Befund. Die Warnung bleibt hier also
+# bewusst stehen, gezaehlt und benannt, statt unter den Teppich zu wandern.
+#
+# ── Geschichte dieser Zahl ─────────────────────────────────────────────────
+#
+#   18  Lauf 37579256987 — FALSCH, teils doppelt gezaehlt (bau.log und
+#       lint.log, `lintRelease` uebersetzt erneut)
+#    7  Lauf 37582386384 — entdoppelt nach Datei/Zeile/Spalte, davon
+#       6 Kotlin (3x MenuAnchorType, 2x hiltViewModel, 1x LocalClipboardManager)
+#       und 1 Gradle
+#    1  erwartet nach dieser Aenderung
+#
+# Wer eine Warnung behebt, senkt die Zahl hier mit. Das Werkzeug fordert dazu
+# auf, sobald die Summe darunter liegt — sonst waere der Riegel nach dem
+# ersten Beheben um genau diesen einen Fall zu locker.
