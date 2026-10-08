@@ -63,6 +63,7 @@ Module.prototype.require = function (name) {
 };
 
 const _req = require('./helpers/sources').buildAndRequire();
+const { leereWarteschlange } = require('./helpers/bildwarteschlange');
 const { testServer } = require('./helpers/server');
 const db = _req('db/database.js');
 const express = require(path.join(ROOT, 'node_modules', 'express'));
@@ -73,6 +74,10 @@ test('Katalogbilder auf Knopfdruck', { concurrency: 1 }, async (t) => {
     if (process.env.REQUIRE_DB === '1') throw e;
     t.skip('Test-DB nicht erreichbar'); return;
   }
+  // Die Warteschlange gehoert VOR dem Benutzen geleert, nicht nur das eigene
+  // Praefix — sonst nimmt der Stapel die Zeilen eines Vorgaengers. Begruendung
+  // und Nachstellung in helpers/bildwarteschlange.js.
+  await leereWarteschlange(db);
 
   const { SET_IMAGES_DIR } = _req('utils/appPaths.js');
   fs.mkdirSync(SET_IMAGES_DIR, { recursive: true });

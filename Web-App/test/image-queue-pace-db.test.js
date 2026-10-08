@@ -73,6 +73,7 @@ Module.prototype.require = function (name) {
 };
 
 const _req = require('./helpers/sources').buildAndRequire();
+const { leereWarteschlange } = require('./helpers/bildwarteschlange');
 const db = _req('db/database.js');
 const IQ = _req('jobs/imageQueue.js');
 const { SET_IMAGES_DIR } = _req('utils/appPaths.js');
@@ -114,6 +115,10 @@ test('ein Takt räumt fertige Notizen ab, statt je zwanzig Sekunden zehn',
     if (process.env.REQUIRE_DB === '1') throw e;
     t.skip('Test-DB nicht erreichbar'); return;
   }
+  // Die Warteschlange gehoert VOR dem Benutzen geleert, nicht nur das eigene
+  // Praefix — sonst nimmt der Stapel die Zeilen eines Vorgaengers. Begruendung
+  // und Nachstellung in helpers/bildwarteschlange.js.
+  await leereWarteschlange(db);
   fs.mkdirSync(SET_IMAGES_DIR, { recursive: true });
 
   const P = `FE${process.pid}`;
@@ -153,6 +158,10 @@ test('das Kontingent gilt für echte Arbeit, nicht für Notizen',
     if (process.env.REQUIRE_DB === '1') throw e;
     t.skip('Test-DB nicht erreichbar'); return;
   }
+  // Die Warteschlange gehoert VOR dem Benutzen geleert, nicht nur das eigene
+  // Praefix — sonst nimmt der Stapel die Zeilen eines Vorgaengers. Begruendung
+  // und Nachstellung in helpers/bildwarteschlange.js.
+  await leereWarteschlange(db);
 
   fs.mkdirSync(SET_IMAGES_DIR, { recursive: true });
   const P = `KO${process.pid}`;
@@ -209,6 +218,10 @@ test('Übersprünge verbrauchen kein Kontingent — Marcos gemischte Warteschlan
     if (process.env.REQUIRE_DB === '1') throw e;
     t.skip('Test-DB nicht erreichbar'); return;
   }
+  // Die Warteschlange gehoert VOR dem Benutzen geleert, nicht nur das eigene
+  // Praefix — sonst nimmt der Stapel die Zeilen eines Vorgaengers. Begruendung
+  // und Nachstellung in helpers/bildwarteschlange.js.
+  await leereWarteschlange(db);
   fs.mkdirSync(SET_IMAGES_DIR, { recursive: true });
 
   // Der Normalfall nach dem Knopf „Katalogbilder holen": ein paar fehlende
@@ -243,6 +256,10 @@ test('ein Takt sieht höchstens DURCHGANG_MAX_NOTIZEN Notizen durch',
     if (process.env.REQUIRE_DB === '1') throw e;
     t.skip('Test-DB nicht erreichbar'); return;
   }
+  // Die Warteschlange gehoert VOR dem Benutzen geleert, nicht nur das eigene
+  // Praefix — sonst nimmt der Stapel die Zeilen eines Vorgaengers. Begruendung
+  // und Nachstellung in helpers/bildwarteschlange.js.
+  await leereWarteschlange(db);
   fs.mkdirSync(SET_IMAGES_DIR, { recursive: true });
 
   const P = `DK${process.pid}`;
@@ -273,6 +290,10 @@ test('verfallene Notizen werden wirklich gelöscht', { concurrency: 1 }, async (
     if (process.env.REQUIRE_DB === '1') throw e;
     t.skip('Test-DB nicht erreichbar'); return;
   }
+  // Die Warteschlange gehoert VOR dem Benutzen geleert, nicht nur das eigene
+  // Praefix — sonst nimmt der Stapel die Zeilen eines Vorgaengers. Begruendung
+  // und Nachstellung in helpers/bildwarteschlange.js.
+  await leereWarteschlange(db);
 
   const P = `VF${process.pid}`;
   await db.run(`DELETE FROM image_wanted WHERE set_number LIKE $1`, [P + '%']);
@@ -310,6 +331,10 @@ test('ein ANDERER Prozess sieht, dass der Job gelaufen ist', { concurrency: 1 },
     if (process.env.REQUIRE_DB === '1') throw e;
     t.skip('Test-DB nicht erreichbar'); return;
   }
+  // Die Warteschlange gehoert VOR dem Benutzen geleert, nicht nur das eigene
+  // Praefix — sonst nimmt der Stapel die Zeilen eines Vorgaengers. Begruendung
+  // und Nachstellung in helpers/bildwarteschlange.js.
+  await leereWarteschlange(db);
 
   await db.run(`DELETE FROM global_settings WHERE key='imgqueue_last_run'`);
   const vorher = await db.get(
@@ -412,6 +437,10 @@ test('jeder Ausgang der Schleife hat einen Zähler', { concurrency: 1 }, async (
     if (process.env.REQUIRE_DB === '1') throw e;
     t.skip('Test-DB nicht erreichbar'); return;
   }
+  // Die Warteschlange gehoert VOR dem Benutzen geleert, nicht nur das eigene
+  // Praefix — sonst nimmt der Stapel die Zeilen eines Vorgaengers. Begruendung
+  // und Nachstellung in helpers/bildwarteschlange.js.
+  await leereWarteschlange(db);
   const IM = _req('utils/imageMisses.js');
   fs.mkdirSync(SET_IMAGES_DIR, { recursive: true });
 

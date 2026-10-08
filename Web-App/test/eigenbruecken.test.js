@@ -171,3 +171,65 @@ test('kein Test liest eine Quelldatei, die es nicht gibt', () => {
     offen.join('\n  ') + '\nWo es geht, gehoert der Pfad ausgeschrieben — ein ' +
     'variables Segment nimmt dieser Pruefung die Sicht.');
 });
+
+/**
+ * Wer die Bild-Warteschlange abarbeitet, leert sie vorher.
+ *
+ * ── Woher diese Regel kommt ─────────────────────────────────────────────────
+ *
+ * `imageQueue._arbeiteStapel()` holt sich die aeltesten Notizen der GANZEN
+ * Tabelle. Die Tests grenzen ihre eigenen Zeilen dagegen nur ueber ein Praefix
+ * ab (`DR<pid>_1` …), und das auch nur beim Zaehlen und beim Aufraeumen.
+ * Laesst eine frueher gelaufene Datei Zeilen zurueck, nimmt der Stapel DEREN
+ * Zeilen — und der Test misst etwas anderes, als er glaubt.
+ *
+ * NACHGESTELLT: zehn fremde Zeilen von Hand eingefuegt, dann
+ * image-throttle-db.test.js laufen lassen → „0 Versuche — nach der ersten
+ * Drosselung muss der Stapel abbrechen", 4 von 5 Faellen rot. Wortgleich der
+ * Fehlschlag, der in dieser Reihe gelegentlich auftrat und sich ALLEIN nie
+ * nachstellen liess (acht Laeufe hintereinander gruen). Mit
+ * leereWarteschlange() und denselben zehn Fremdzeilen: 5 von 5 gruen.
+ *
+ * Eine Datei raeumt ihr eigenes Praefix am Ende weg — aber eine, die
+ * mittendrin scheitert, kommt nicht mehr dazu, und
+ * catalog-images-button-db.test.js raeumte ueberhaupt nicht auf. Vor dem
+ * Benutzen zu leeren ist die einzige Form, die nicht davon abhaengt, ob der
+ * Vorgaenger ordentlich war.
+ *
+ * Gegenprobe (durchgefuehrt): den Aufruf aus image-throttle-db.test.js
+ * entfernt → dieser Schritt wird rot und nennt die Datei.
+ */
+test('wer die Bild-Warteschlange abarbeitet, leert sie vorher', () => {
+  const dir = __dirname;
+  const BENUTZT = /_arbeiteStapel|_taktDurchgang/;
+  const LEERT = /leereWarteschlange\s*\(/;
+
+  const betroffen = [];
+  const ohne = [];
+  for (const f of fs.readdirSync(dir).filter(n => n.endsWith('.test.js'))) {
+    const src = fs.readFileSync(path.join(dir, f), 'utf8');
+    // Kommentare raus: Die Erklaerbloecke dieser Dateien nennen die
+    // Funktionsnamen im Fliesstext, sonst gilt eine Datei als betroffen,
+    // weil sie ueber den Stapel SCHREIBT.
+    const code = src.split('\n')
+      .map(z => { const t = z.trim(); return (t.startsWith('//') || t.startsWith('*') || t.startsWith('/*')) ? '' : z; })
+      .join('\n');
+    if (!BENUTZT.test(code)) continue;
+    betroffen.push(f);
+    if (!LEERT.test(code)) ohne.push(f);
+  }
+
+  // Selbstbeweis: Ohne Fund prueft die Zusicherung darunter nichts.
+  assert.ok(betroffen.length >= 5,
+    `Nur ${betroffen.length} Dateien arbeiten die Warteschlange ab — Muster veraltet? ` +
+    'Ohne Fund besteht diese Pruefung stillschweigend.');
+
+  assert.deepEqual(ohne, [],
+    'Diese Testdateien arbeiten die Bild-Warteschlange ab, ohne sie vorher zu leeren:\n  ' +
+    ohne.join('\n  ') +
+    '\n\n_arbeiteStapel() nimmt die aeltesten Notizen der GANZEN Tabelle. Bleibt aus ' +
+    'einer frueher gelaufenen Datei etwas liegen, arbeitet der Stapel DEREN Zeilen ab ' +
+    'und der Test misst etwas anderes, als er glaubt — und zwar nur manchmal, je ' +
+    'nachdem, was vorher lief. Abhilfe: `await leereWarteschlange(db)` nach dem ' +
+    'Schema-Vorbau (helpers/bildwarteschlange.js).');
+});

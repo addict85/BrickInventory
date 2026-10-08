@@ -50,6 +50,7 @@ Module.prototype.require = function (name) {
 };
 
 const _req = require('./helpers/sources').buildAndRequire();
+const { leereWarteschlange } = require('./helpers/bildwarteschlange');
 const { testServer } = require('./helpers/server');
 const db = _req('db/database.js');
 const IQ = _req('jobs/imageQueue.js');
@@ -69,6 +70,10 @@ test('nur ein 404 heisst „das Bild gibt es nicht"', { concurrency: 1 }, async 
     if (process.env.REQUIRE_DB === '1') throw e;
     t.skip('Test-DB nicht erreichbar'); return;
   }
+  // Die Warteschlange gehoert VOR dem Benutzen geleert, nicht nur das eigene
+  // Praefix — sonst nimmt der Stapel die Zeilen eines Vorgaengers. Begruendung
+  // und Nachstellung in helpers/bildwarteschlange.js.
+  await leereWarteschlange(db);
   const P = `MR${process.pid}`;
 
   await t.test('404 wird gemerkt, mit Grund', async () => {
@@ -136,6 +141,10 @@ test('Fehlanzeigen lassen sich zurücknehmen und sind erklärbar',
     if (process.env.REQUIRE_DB === '1') throw e;
     t.skip('Test-DB nicht erreichbar'); return;
   }
+  // Die Warteschlange gehoert VOR dem Benutzen geleert, nicht nur das eigene
+  // Praefix — sonst nimmt der Stapel die Zeilen eines Vorgaengers. Begruendung
+  // und Nachstellung in helpers/bildwarteschlange.js.
+  await leereWarteschlange(db);
 
   const P = `VG${process.pid}`;
   const NUTZER = `vg-${process.pid}`;
