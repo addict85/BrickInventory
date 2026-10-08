@@ -82,7 +82,23 @@ class BildschirmZustandTest {
      * Die Lehre ist die dieser ganzen Reihe: eine Sache in zwei Schreibweisen,
      * und die Suche kennt nur eine.
      */
-    private val fluechtig = Regex("""(?i)lade|loading|busy|running|laeuft|laden|pending|saving|speichert|scanning|scannt|progress|fortschritt|zieh|drag|export|fokus|focus""")
+    private val fluechtig = Regex("""(?i)lade|loading|busy|running|laeuft|laden|pending|saving|speichert|scanning|scannt|progress|fortschritt|zieh|drag|export|fokus|focus|finger""")
+
+    // ── „finger" kam mit dem Zoom im PDF-Betrachter dazu ────────────────────
+    //
+    // `zweiFinger` in PdfViewerScreen.kt haelt fest, ob GERADE zwei Finger auf
+    // dem Glas liegen; solange sie liegen, rollt die Liste nicht, damit die
+    // Zwei-Finger-Geste zum Zoomen durchkommt.
+    //
+    // Nach einer Drehung liegt kein Finger mehr auf dem Glas. Ein
+    // wiederhergestelltes „zwei Finger liegen auf" liesse die Liste dauerhaft
+    // gesperrt, bis jemand das naechste Mal mit zwei Fingern hinfasst — die
+    // Liste rollte nicht mehr, und niemand kaeme auf die Ursache.
+    //
+    // Das ist dieselbe Falle wie bei der laufenden Ziehgeste (`dragging`)
+    // weiter oben: Ein Wert ueberlebt, das Ereignis, das ihn zuruecksetzt,
+    // ist weg. Eine Fingerzahl beschreibt immer die Geste von jetzt, nie
+    // etwas, das jemand eingegeben hat.
 
     // ── „fokus" kam mit Nachtrag 175 dazu ───────────────────────────────────
     //
