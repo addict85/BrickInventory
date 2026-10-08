@@ -1,5 +1,8 @@
 # Obergrenze fuer die Warnungen des Uebersetzungslaufs.
 1
+# (Gradle steht inzwischen auf 9.8.1. Die Messung unten bleibt, wie sie war —
+#  die eine Warnung kommt aus einem Plugin und nicht aus dem Gradle-Kern,
+#  und der Zaehler zaehlt Warnungen, nicht Fassungsnummern in deren Text.)
 # GEMESSEN im Lauf 37591711248 (Gradle 9.8.0, AGP 9.4.1, Kotlin 2.4.20,
 # org.gradle.warning.mode=all):
 #
