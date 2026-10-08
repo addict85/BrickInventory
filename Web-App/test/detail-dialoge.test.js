@@ -150,3 +150,133 @@ test('jeder Detail-Bildschirm der App traegt den Papierkorb in der Kopfleiste', 
       'als in den uebrigen Detail-Bildschirmen.');
   }
 });
+
+/**
+ * Titel- und Fussleiste der Dialoge bleiben beim Rollen stehen.
+ *
+ * ── Marcos Wunsch ───────────────────────────────────────────────────────────
+ *
+ * „Kannst du bei den Detail-Dialogen in der Webapp dafuer sorgen, dass der
+ * exemplarisch rot markierte Teil jeweils immer sichtbar ist auch wenn nach
+ * unten gescrollt wird? Ebenso der Papierkorb ganz zu unterst. Dies bitte bei
+ * allen Detail-Dialogen so umsetzen (auch bei den Teilen, Minifiguren,
+ * Katalog, etc.)" — und nachgereicht: „Es soll wie ein Windows-Dialog wirken
+ * (X ganz oben rechts)."
+ *
+ * ── Was hier geprueft wird, und was NICHT ───────────────────────────────────
+ *
+ * NICHT das Aussehen: Ob die Leiste wirklich oben klebt, entscheidet das
+ * Layout, und node rechnet keines. Das wurde in Chromium 142 gemessen
+ * (playwright-core, echte tokens.css + styles.css + mobile.css, echtes Markup
+ * aus index.html, Inhalt bis zum Ueberlaufen aufgefuellt, dann ans Ende
+ * gerollt). Abstand der Leisten vom Rand des Rollfensters:
+ *
+ *                      Kopf oben   links   rechts   Fuss unten
+ *   Set                      0px     0px      0px          0px
+ *   Katalog                  0px     0px      0px          0px
+ *   Teile/Figuren            0px     0px      0px        0,4px
+ *   Teil im Set              0px     0px      0px        0,4px
+ *   Merkposten               0px     0px      0px          0px
+ *   Erfassungen              0px     0px      0px        0,4px
+ *   Set (Handy 390px)        0px     0px      0px          0px
+ *   Teile/Figuren (Handy)    0px     0px      0px          0px
+ *
+ * Die erste Fassung mass dort 28px statt 0 — `position:sticky` rechnet seinen
+ * Versatz vom INHALTSKASTEN des Rollbereichs, nicht von dessen Sichtfenster,
+ * und 28px sind genau die Polsterung des Dialogs. Deshalb der negative
+ * Versatz in styles.css. Dieselbe Stelle stand in mobile.css schon einmal mit
+ * `top:0` da — die Leiste klebte dort 1,1rem zu tief, ohne dass es auffiel.
+ *
+ * GEPRUEFT wird hier die VORAUSSETZUNG, und die ist die eigentliche Falle:
+ * `position:sticky` wirkt nur, wenn das Element ein direktes Kind des
+ * Rollbereichs ist. Wickelt jemand den Rumpf eines Dialogs in ein weiteres
+ * <div> — der naheliegendste Handgriff der Welt —, hoert die Leiste
+ * stillschweigend auf zu kleben. Kein Fehler, keine Warnung, nichts im Test.
+ *
+ * Gegenproben (durchgefuehrt):
+ *   a) Ein <div> um den Rumpf von #set-modal gelegt  -> Schritt 1 rot.
+ *   b) `position:sticky` aus .mhd entfernt           -> Schritt 2 rot.
+ *   c) Den negativen Versatz auf 0 gesetzt           -> Schritt 2 rot.
+ *   d) Die Polster-Variablen aus .modal entfernt     -> Schritt 2 rot.
+ */
+test('Titel- und Fussleiste kleben — und koennen das auch', () => {
+  // ── 1. Voraussetzung: direktes Kind des Rollbereichs ──────────────────────
+  //
+  // Gesucht, nicht aufgezaehlt: Jeder Dialog mit einer .mhd wird geprueft, ein
+  // neuer ist damit von selbst dabei.
+  const dialoge = [...html.matchAll(/<div class="ovl"[^>]*id="([\w-]+)"/g)].map(m => m[1]);
+  assert.ok(dialoge.length >= 8,
+    `Nur ${dialoge.length} Dialoge gefunden — Muster veraltet? Ohne Fund prueft der Rest nichts.`);
+
+  let mitLeiste = 0;
+  for (const id of dialoge) {
+    const rumpf = dialog(id);
+    if (!/class="mhd"/.test(rumpf)) continue;
+    mitLeiste++;
+    // Zwischen `<div class="modal…">` und `<div class="mhd">` darf kein
+    // weiteres oeffnendes <div> stehen.
+    const abModal = rumpf.search(/<div class="modal/);
+    assert.ok(abModal >= 0, `#${id}: kein .modal gefunden`);
+    const bisKopf = rumpf.slice(abModal, rumpf.indexOf('<div class="mhd"'));
+    const dazwischen = (bisKopf.match(/<div\b/g) || []).length - 1;   // das .modal selbst abziehen
+    assert.equal(dazwischen, 0,
+      `#${id}: zwischen .modal und .mhd liegen ${dazwischen} weitere <div>. ` +
+      `position:sticky wirkt nur gegen den naechsten ROLLBEREICH, und das ist .modal ` +
+      `(overflow-y:auto). Mit einem Element dazwischen hoert die Titelleiste ` +
+      `stillschweigend auf zu kleben — kein Fehler, keine Warnung.`);
+  }
+  assert.ok(mitLeiste >= 6,
+    `Nur ${mitLeiste} Dialoge mit Titelleiste — zu wenig, da stimmt das Muster nicht mehr.`);
+
+  // ── 2. Die Regeln selbst ──────────────────────────────────────────────────
+  //
+  // Kommentare raus, BEVOR gesucht wird: Die Erklaerbloecke in diesen Dateien
+  // zitieren die Regeln, um die es geht („hier stand `.mhd { position:
+  // sticky; top: 0 }`"). Ohne das meldet die Pruefung den Erklaertext als
+  // Verstoss — genau das ist beim Schreiben dieser Datei passiert.
+  const ohneCssKommentare = (t) => t.replace(/\/\*[\s\S]*?\*\//g, '');
+  const css = ohneCssKommentare(
+    fs.readFileSync(path.join(__dirname, '..', 'public', 'styles.css'), 'utf8'));
+  const regel = (wahl) => {
+    const ab = css.indexOf(wahl + '{');
+    assert.ok(ab > 0, `${wahl} nicht mehr in styles.css gefunden`);
+    return css.slice(ab, css.indexOf('}', ab));
+  };
+
+  const kopf = regel('.mhd'), fuss = regel('.mfooter');
+  assert.match(kopf, /position:sticky/, 'Die Titelleiste klebt nicht mehr.');
+  assert.match(fuss, /position:sticky/, 'Die Fussleiste klebt nicht mehr.');
+  assert.match(kopf, /top:calc\(var\(--modal-pady\) \* -1\)/,
+    'Der Versatz der Titelleiste ist nicht mehr die negative Polsterung. Mit top:0 ' +
+    'bleibt sie um genau diese Polsterung zu tief stehen — in Chromium gemessen: 28px.');
+  assert.match(fuss, /bottom:calc\(var\(--modal-padb\) \* -1\)/,
+    'Der Versatz der Fussleiste ist nicht mehr die negative Polsterung.');
+  // Volle Breite: ohne die negativen Seitenraender bleibt links und rechts ein
+  // Streifen, durch den der Inhalt sichtbar vorbeirollt.
+  for (const [name, r] of [['Titelleiste', kopf], ['Fussleiste', fuss]])
+    assert.match(r, /calc\(var\(--modal-padx\) \* -1\)/,
+      `${name}: kein negativer Seitenrand — dann geht sie nicht ueber die volle Breite.`);
+  // Undurchsichtig, sonst scheint der Inhalt durch.
+  for (const [name, r] of [['Titelleiste', kopf], ['Fussleiste', fuss]])
+    assert.match(r, /background:var\(--sur\)/, `${name}: kein eigener Hintergrund.`);
+  // Die Trennlinie ist FORM, nicht Farbe — Marco hat eine Rot-Gruen-Schwaeche.
+  assert.match(kopf, /border-bottom:1px solid/, 'Der Titelleiste fehlt die Trennlinie.');
+  assert.match(fuss, /border-top:1px solid/,    'Der Fussleiste fehlt die Trennlinie.');
+
+  const modal = regel('.modal');
+  for (const v of ['--modal-padx', '--modal-pady', '--modal-padb'])
+    assert.ok(modal.includes(v + ':'),
+      `.modal setzt ${v} nicht mehr. Die Leisten rechnen damit ihre negativen Raender; ` +
+      `ohne die Variable faellt calc() aus und die Leisten sitzen falsch.`);
+
+  // ── 3. Die Handyfassung darf die Polsterung nicht zurueckdrehen ───────────
+  const mobil = ohneCssKommentare(
+    fs.readFileSync(path.join(__dirname, '..', 'public', 'mobile.css'), 'utf8'));
+  assert.doesNotMatch(mobil, /\.mhd\s*\{[^}]*position:\s*sticky/,
+    'mobile.css setzt .mhd wieder selbst auf sticky. Diese Regel gab es dort schon ' +
+    'einmal — mit top:0 und eigener Polsterung, wodurch die Leiste zu tief stand. ' +
+    'Die Regel steht jetzt in styles.css fuer alle Breiten.');
+  assert.match(mobil, /--modal-padx:/,
+    'Die Handyfassung setzt ihre Polsterung nicht ueber die Variablen — dann sind die ' +
+    'Leisten dort um die Differenz zu breit.');
+});

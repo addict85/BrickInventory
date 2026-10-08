@@ -166,16 +166,26 @@
   /* ─ Modals als Sheet ────────────────────────────────────────────────── */
   .ovl { align-items: flex-end; }
   .modal {
+    /* Die Polsterung ueber die Variablen, nicht ueber `padding`: Titel- und
+       Fussleiste in styles.css heben sie mit negativen Raendern wieder auf,
+       um ueber die volle Breite zu gehen. Stuende hier nur `padding`, waeren
+       die Leisten auf dem Handy um die Differenz zu breit. */
+    --modal-padx: .9rem;
+    --modal-pady: 1.1rem;
+    --modal-padb: calc(1.1rem + env(safe-area-inset-bottom));
     width: 100%;
     max-width: none;
     max-height: 92vh;
-    padding: 1.1rem .9rem calc(1.1rem + env(safe-area-inset-bottom));
     border-radius: 16px 16px 0 0;
     border-left: none;
     border-right: none;
     border-bottom: none;
   }
-  .mhd  { position: sticky; top: 0; background: var(--sur); z-index: 2; padding-top: .2rem; }
+  /* Hier stand `.mhd { position: sticky; top: 0; … }` — nur fuer kleine
+     Schirme. Das Muster war richtig und ist jetzt in styles.css fuer ALLE
+     Breiten da, zusammen mit der Fussleiste. Diese Zeile wuerde die dortige
+     Polsterung ueberschreiben und die Leiste wieder zusammenschnurren
+     lassen. */
   .mimg { max-height: 34vh; object-fit: contain; }
 
   /* ─ Fortschritts-Overlay ────────────────────────────────────────────── */
