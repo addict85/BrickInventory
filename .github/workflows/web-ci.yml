@@ -325,15 +325,21 @@ jobs:
           # abdeckt, schweigt genau dann, wenn etwas Unerwartetes passiert.
           rot=$(grep -E -c "$ROT_MUSTER" "$RUNNER_TEMP/test.log" || true)
           if [ "${rot:-0}" -gt 0 ]; then
-            while IFS= read -r zeile; do
-              [ -n "$zeile" ] || continue
-              zeile=${zeile#not ok }
-              zeile=${zeile#✖ }
-              # „failing tests:" ist die Ueberschrift des spec-Reporters ueber
-              # der Liste, kein Testname.
-              [ "$zeile" != "failing tests:" ] || continue
-              echo "::error title=Roter Test::${zeile}"
-            done < <(grep -E -m 20 "$ROT_MUSTER" "$RUNNER_TEMP/test.log" || true)
+            # ── Mit BEGRUENDUNG, nicht nur mit dem Namen ────────────────────
+            #
+            # Hier stand eine Schleife, die je rote Zeile eine Annotation aus
+            # dem NAMEN machte. GEMESSEN an einem roten Lauf auf main: Ueber die
+            # API war nur „Roter Test: Sitzung: gelesen wird immer, geschrieben
+            # nur alle paar Minuten (3178ms)" zu sehen. Dass er rot war, stand
+            # fest; warum nicht — und das Joblog mit dem `grep -A 12` darueber
+            # ist von aussen nicht zu holen (anderer Host, der Proxy lehnt die
+            # Weiterleitung mit 403 ab).
+            #
+            # Das Auslesen steht in .github/rote-tests.awk, damit es pruefbar
+            # ist (Web-App/test/ci-rote-tests.test.js). Ein Diagnoseschritt, der
+            # nur im Ernstfall laeuft, ist sonst der am wenigsten gepruefte Teil
+            # des Workflows — und genau dann ist keine Zeit, ihn zu reparieren.
+            awk -f "$GITHUB_WORKSPACE/.github/rote-tests.awk" "$RUNNER_TEMP/test.log" || true
           else
             # Kein einziger fehlgeschlagener Test, und trotzdem rot. Dann sagt
             # das ENDE des Protokolls, was los war — als eine Annotation, damit
