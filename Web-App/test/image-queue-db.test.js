@@ -60,6 +60,7 @@ Module.prototype.require = function (name) {
 };
 
 const _req = require('./helpers/sources').buildAndRequire();
+const { leereWarteschlange } = require('./helpers/bildwarteschlange');
 const { testServer } = require('./helpers/server');
 const db = _req('db/database.js');
 const express = require(path.join(ROOT, 'node_modules', 'express'));
@@ -71,6 +72,10 @@ test('die Anfrage notiert, der Job legt ab', { concurrency: 1 }, async (t) => {
       throw new Error(`REQUIRE_DB=1, aber die Test-DB ist nicht erreichbar: ${e.message}`);
     t.skip('Test-DB nicht erreichbar'); return;
   }
+  // Die Warteschlange gehoert VOR dem Benutzen geleert, nicht nur das eigene
+  // Praefix — sonst nimmt der Stapel die Zeilen eines Vorgaengers. Begruendung
+  // und Nachstellung in helpers/bildwarteschlange.js.
+  await leereWarteschlange(db);
 
   const IQ = _req('jobs/imageQueue.js');
   await IQ.initImageQueue();
@@ -144,6 +149,10 @@ test('die Kachel „Bild-Download (CDN)" zeigt die Katalog-Warteschlange',
     if (process.env.REQUIRE_DB === '1') throw e;
     t.skip('Test-DB nicht erreichbar'); return;
   }
+  // Die Warteschlange gehoert VOR dem Benutzen geleert, nicht nur das eigene
+  // Praefix — sonst nimmt der Stapel die Zeilen eines Vorgaengers. Begruendung
+  // und Nachstellung in helpers/bildwarteschlange.js.
+  await leereWarteschlange(db);
 
   const NUTZER = `ka-${process.pid}`;
   await db.run(`DELETE FROM users WHERE username=$1`, [NUTZER]);

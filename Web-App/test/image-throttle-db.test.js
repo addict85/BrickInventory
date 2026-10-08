@@ -59,6 +59,7 @@ Module.prototype.require = function (name) {
 };
 
 const _req = require('./helpers/sources').buildAndRequire();
+const { leereWarteschlange } = require('./helpers/bildwarteschlange');
 const db = _req('db/database.js');
 
 test('eine hoffnungslose Vorschau wird nur EINMAL versucht', { concurrency: 1 }, async (t) => {
@@ -80,6 +81,10 @@ test('eine hoffnungslose Vorschau wird nur EINMAL versucht', { concurrency: 1 },
     if (process.env.REQUIRE_DB === '1') throw e;
     t.skip('Test-DB nicht erreichbar'); return;
   }
+  // Die Warteschlange gehoert VOR dem Benutzen geleert, nicht nur das eigene
+  // Praefix — sonst nimmt der Stapel die Zeilen eines Vorgaengers. Begruendung
+  // und Nachstellung in helpers/bildwarteschlange.js.
+  await leereWarteschlange(db);
   const { SET_IMAGES_DIR } = _req('utils/appPaths.js');
   const fsm = require('node:fs');
   fsm.mkdirSync(SET_IMAGES_DIR, { recursive: true });
@@ -119,6 +124,10 @@ test('Drosselung und fehlendes Bild werden unterschieden', { concurrency: 1 }, a
     if (process.env.REQUIRE_DB === '1') throw e;
     t.skip('Test-DB nicht erreichbar'); return;
   }
+  // Die Warteschlange gehoert VOR dem Benutzen geleert, nicht nur das eigene
+  // Praefix — sonst nimmt der Stapel die Zeilen eines Vorgaengers. Begruendung
+  // und Nachstellung in helpers/bildwarteschlange.js.
+  await leereWarteschlange(db);
 
   const P = `DR${process.pid}`;
   const fuellen = async () => {

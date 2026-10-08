@@ -26,6 +26,7 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 const path = require('node:path');
 const { abschnitt } = require('./helpers/sources');
+const { leereWarteschlange } = require('./helpers/bildwarteschlange');
 const fs = require('node:fs');
 const Module = require('node:module');
 
@@ -69,6 +70,10 @@ test('der Bildserver wird schonend abgefragt', { concurrency: 1 }, async (t) => 
     if (process.env.REQUIRE_DB === '1') throw e;
     t.skip('Test-DB nicht erreichbar'); return;
   }
+  // Die Warteschlange gehoert VOR dem Benutzen geleert, nicht nur das eigene
+  // Praefix — sonst nimmt der Stapel die Zeilen eines Vorgaengers. Begruendung
+  // und Nachstellung in helpers/bildwarteschlange.js.
+  await leereWarteschlange(db);
 
   const P = `TK${process.pid}`;
   await db.run(`DELETE FROM image_wanted WHERE set_number LIKE $1`, [P + '%']);
@@ -139,6 +144,10 @@ test('auch reine Vorschau-Arbeit wird gebremst', { concurrency: 1 }, async (t) =
     if (process.env.REQUIRE_DB === '1') throw e;
     t.skip('Test-DB nicht erreichbar'); return;
   }
+  // Die Warteschlange gehoert VOR dem Benutzen geleert, nicht nur das eigene
+  // Praefix — sonst nimmt der Stapel die Zeilen eines Vorgaengers. Begruendung
+  // und Nachstellung in helpers/bildwarteschlange.js.
+  await leereWarteschlange(db);
   const { SET_IMAGES_DIR } = _req('utils/appPaths.js');
   fs.mkdirSync(SET_IMAGES_DIR, { recursive: true });
   const P = `NT${process.pid}`;
