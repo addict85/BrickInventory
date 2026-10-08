@@ -207,6 +207,63 @@ class PdfZoomTest {
         }
     }
 
+
+    @Test
+    fun `waehrend einer Zwei-Finger-Geste rollt die Liste nicht`() {
+        // Die eine Schwaeche, die beim Bauen schon benannt war: Die LazyColumn
+        // ist das TIEFERE Glied und sieht die Bewegung vor dem transformable.
+        // Geht eine Geste auch nur ein wenig senkrecht auseinander, beansprucht
+        // sie die Liste — und gezoomt wird nicht. Marcos Befund: „Das zoomen in
+        // der Android-App verhaelt sich noch nicht gut."
+        assert(quelle.contains("userScrollEnabled = !zweiFinger")) {
+            "Die Liste rollt waehrend einer Zwei-Finger-Geste weiter. Dann gewinnt " +
+                "sie den Streit um die Bewegung und der Zoom kommt nicht zum Zug."
+        }
+        assert(quelle.contains("awaitPointerEvent(PointerEventPass.Initial)")) {
+            "Die Finger werden nicht mehr im Initial-Durchgang gezaehlt. Nur dort " +
+                "sieht der Zaehler sie VOR der Liste; im Main-Durchgang kaeme er zu spaet."
+        }
+        // Der Zaehler darf NICHTS beanspruchen — sonst ist es derselbe Streit
+        // mit vertauschten Rollen.
+        val block = Regex(
+            "awaitPointerEventScope \\{(.*?)\\n {16}\\}", RegexOption.DOT_MATCHES_ALL
+        ).find(quelle)?.groupValues?.get(1)
+        assert(block != null) { "Kein awaitPointerEventScope-Block mehr gefunden." }
+        assert(!block!!.contains("consume()")) {
+            "Der Finger-Zaehler beansprucht Ereignisse:\n$block"
+        }
+    }
+
+    @Test
+    fun `der Zoom haelt die Stelle fest`() {
+        // Ohne Anker waechst die Seite aus der oberen linken Ecke heraus: Wer in
+        // eine Teilenummer hineinzoomt, sieht danach einen anderen Ausschnitt.
+        assert(Regex("""senkrecht\.scrollToItem\(""").containsMatchIn(quelle)) {
+            "Senkrecht wird nicht nachgefuehrt — beim Zoomen verliert man die Stelle."
+        }
+        assert(Regex("""firstVisibleItemScrollOffset \* f""").containsMatchIn(quelle)) {
+            "Der Versatz wird nicht mit dem Zoomfaktor mitgerechnet. Ohne das bleibt " +
+                "die Zahl stehen, waehrend die Seite waechst — die Anzeige wandert."
+        }
+        assert(Regex("""waagrecht\.scrollTo\(""").containsMatchIn(quelle)) {
+            "Waagerecht wird nicht nachgefuehrt. Beim Hineinzoomen aus 1x waechst die " +
+                "Seite sonst nach rechts aus dem Bild."
+        }
+        // scrollToItem und NICHT scrollBy: Ein Delta waere je nach Zeitpunkt
+        // gegen die alte oder die neue Groesse gerechnet.
+        assert(!Regex("""senkrecht\.scrollBy\(""").containsMatchIn(quelle)) {
+            "Senkrecht wird mit einem Delta nachgefuehrt. Das ist je nach Zeitpunkt " +
+                "gegen die alte oder die neue Seitengroesse gerechnet; scrollToItem " +
+                "(Index + Versatz) ist davon unabhaengig."
+        }
+        // EIN langlebiger Effekt, nicht einer je Zoomwert.
+        assert(Regex("""snapshotFlow \{ zoomJetzt \}""").containsMatchIn(quelle)) {
+            "Die Nachfuehrung haengt nicht mehr an einem snapshotFlow. Mit dem Zoom als " +
+                "Effekt-Schluessel wird sie bei jedem Bild der Geste abgebrochen und neu " +
+                "gestartet — und jede abgebrochene Nachfuehrung ist ein Stueck Abdrift."
+        }
+    }
+
     @Test
     fun `der Zoom laeuft nicht ueber einen graphicsLayer`() {
         assert(!quelle.contains("graphicsLayer")) {

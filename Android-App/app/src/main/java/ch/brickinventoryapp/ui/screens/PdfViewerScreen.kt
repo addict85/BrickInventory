@@ -33,6 +33,7 @@ import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
@@ -44,6 +45,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.input.pointer.PointerEventPass
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
@@ -456,7 +458,24 @@ private fun ZoomLeiste(zoom: Float, setzeZoom: (Float) -> Unit, modifier: Modifi
 private fun PdfPages(file: File, pageCount: Int, zoom: Float, setzeZoom: (Float) -> Unit) {
     val dichte = LocalDensity.current
     val waagrecht = rememberScrollState()
+    val senkrecht = rememberLazyListState()
     val geste = rememberTransformableState { zoomChange, _, _ -> setzeZoom(zoom * zoomChange) }
+
+    // ── Solange zwei Finger aufliegen, rollt die Liste nicht ─────────────────
+    //
+    // Das war die eine Schwaeche, die beim Bauen schon benannt war: Die
+    // LazyColumn ist das TIEFERE Glied und sieht die Bewegung vor dem
+    // transformable. Geht eine Zwei-Finger-Geste auch nur ein wenig senkrecht
+    // auseinander, beansprucht sie die Liste — und gezoomt wird nicht.
+    //
+    // Hier wird deshalb mitgezaehlt, wie viele Finger aufliegen, und ab zwei
+    // bekommt die Liste `userScrollEnabled = false`.
+    //
+    // Gezaehlt wird im INITIAL-Durchgang und es wird NICHTS beansprucht: Der
+    // Initial-Durchgang laeuft von aussen nach innen, der Zaehler sieht die
+    // Finger also vor der Liste, nimmt ihr aber nichts weg. Ein Beobachter, der
+    // beansprucht, waere derselbe Streit mit vertauschten Rollen.
+    var zweiFinger by remember { mutableStateOf(false) }
 
     // `pointerInput(Unit)` wird NICHT neu aufgesetzt, wenn sich etwas aendert —
     // das ist der Sinn des Schluessels Unit, sonst riss jede Neuberechnung eine
@@ -478,6 +497,47 @@ private fun PdfPages(file: File, pageCount: Int, zoom: Float, setzeZoom: (Float)
             ((this@BoxWithConstraints.maxWidth - Abstaende.klein * 2).toPx() * renderStufe(zoom))
                 .toInt().coerceAtLeast(1)
         }
+        // ── Der Zoom haelt die Stelle fest ──────────────────────────────────
+        //
+        // Ohne das waechst die Seite aus der oberen linken Ecke heraus: Wer bei
+        // Seite 12 in eine Teilenummer hineinzoomt, sieht danach einen anderen
+        // Ausschnitt und muss sie suchen. Genau das ist der Unterschied
+        // zwischen „es zoomt" und „es laesst sich damit arbeiten".
+        //
+        // Senkrecht ueber scrollToItem(index, offset): Der Versatz wird mit dem
+        // Zoomfaktor mitgerechnet, damit dieselbe Stelle oben bleibt. Diese
+        // Form ist unabhaengig davon, WANN das neue Layout fertig ist — sie
+        // sagt „setze Seite i um n Pixel versetzt nach oben", nicht „rolle um n
+        // Pixel". Ein Delta waere gegen die alte oder die neue Groesse
+        // gerechnet, je nach Zeitpunkt, und genau daran scheitern solche Anker
+        // sonst.
+        //
+        // Waagerecht bleibt die Mitte des Sichtfelds stehen. Beim Hineinzoomen
+        // aus 1x waechst die Seite sonst nach rechts aus dem Bild.
+        //
+        // snapshotFlow in EINEM langlebigen Effekt statt LaunchedEffect(zoom):
+        // Waehrend einer Geste aendert sich der Faktor mit jedem Bild. Ein
+        // Effekt mit dem Zoom als Schluessel wuerde dabei staendig abgebrochen
+        // und neu gestartet — und jede abgebrochene Nachfuehrung ist ein
+        // Stueck Abdrift.
+        val sichtBreitePx = with(dichte) { this@BoxWithConstraints.maxWidth.toPx() }
+        LaunchedEffect(Unit) {
+            var vorher = zoomJetzt
+            snapshotFlow { zoomJetzt }.collect { neu ->
+                val f = if (vorher > 0f) neu / vorher else 1f
+                vorher = neu
+                if (f == 1f) return@collect
+                senkrecht.scrollToItem(
+                    senkrecht.firstVisibleItemIndex,
+                    (senkrecht.firstVisibleItemScrollOffset * f).roundToInt().coerceAtLeast(0)
+                )
+                val mitte = sichtBreitePx / 2f
+                waagrecht.scrollTo(
+                    ((waagrecht.value + mitte) * f - mitte).roundToInt().coerceAtLeast(0)
+                )
+            }
+        }
+
         Box(
             Modifier
                 .fillMaxSize()
@@ -488,6 +548,15 @@ private fun PdfPages(file: File, pageCount: Int, zoom: Float, setzeZoom: (Float)
                 // und der Zoom kaeme nie zum Zug.
                 .horizontalScroll(waagrecht)
                 .transformable(state = geste, canPan = { false })
+                .pointerInput(Unit) {
+                    // Nur zaehlen, nie beanspruchen — siehe oben.
+                    awaitPointerEventScope {
+                        while (true) {
+                            val e = awaitPointerEvent(PointerEventPass.Initial)
+                            zweiFinger = e.changes.count { it.pressed } >= 2
+                        }
+                    }
+                }
                 .pointerInput(Unit) {
                     // Doppeltipp: der verlaessliche Weg mit einem Finger. Tipp-
                     // Erkenner beanspruchen keine Zuege (sie brechen beim
@@ -500,6 +569,8 @@ private fun PdfPages(file: File, pageCount: Int, zoom: Float, setzeZoom: (Float)
                 }
         ) {
             LazyColumn(
+                state = senkrecht,
+                userScrollEnabled = !zweiFinger,
                 modifier = Modifier
                     .width(seitenBreite + Abstaende.klein * 2)
                     .fillMaxHeight(),
