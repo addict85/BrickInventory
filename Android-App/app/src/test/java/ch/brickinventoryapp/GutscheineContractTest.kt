@@ -159,6 +159,32 @@ class GutscheineContractTest {
         }
     }
 
+    /**
+     * Die Gutscheinkarte steht als ERSTE in den Einstellungen.
+     *
+     * Marco: „Kannst du in der Android-App auch noch gleich die Gutscheine in
+     * den Einstellungen ganz an den Anfang verschieben?"
+     *
+     * Eine Reihenfolge ist das, was beim naechsten Einbau still verrutscht:
+     * Wer eine neue Karte hinzufuegt, setzt sie oben hin, weil dort Platz ist
+     * — und niemand merkt es, bis Marco wieder rollen muss.
+     *
+     * Geprueft wird der ERSTE Kartenaufruf im Rumpf und nicht bloss, DASS die
+     * Karte vorkommt: Eine Pruefung auf Vorkommen waere auch an der alten
+     * Stelle hinter dem Konto gruen gewesen und haette damit nichts von dem
+     * geprueft, was hier verlangt war.
+     */
+    @Test
+    fun `die Gutscheinkarte steht ganz oben in den Einstellungen`() {
+        val rumpf = code(lies("src/main/java/ch/brickinventoryapp/ui/screens/SettingsScreen.kt"))
+            .substringAfter(".verticalScroll(scrollState)")
+        val erste = Regex("""\b(\w*Card)\(""").find(rumpf)?.groupValues?.get(1)
+        assert(erste == "GutscheineCard") {
+            "Die erste Karte in den Einstellungen ist $erste statt GutscheineCard — " +
+                "dann muss Marco fuer seine Gutscheine wieder rollen."
+        }
+    }
+
     @Test
     fun `die Liste wird nicht zwischengespeichert`() {
         // Die anderen Repositories legen Antworten im ResponseCache ab — der

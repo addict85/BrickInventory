@@ -157,6 +157,41 @@ fun SettingsScreen(
             .padding(horizontal = Abstaende.gross, vertical = Abstaende.mittel),
         verticalArrangement = Arrangement.spacedBy(10.dp)
     ) {
+        // ── Gutscheine stehen ganz oben ─────────────────────────────────────
+        //
+        // Marco: „Kannst du in der Android-App auch noch gleich die Gutscheine
+        // in den Einstellungen ganz an den Anfang verschieben?"
+        //
+        // Vorher standen sie hinter dem Konto. Alles, was darueber lag —
+        // Waehrung, Erfassungs-Zustand, Preisgrundlage, Sprache — wird einmal
+        // gesetzt und danach nie wieder angefasst. Ein Gutschein wird dagegen
+        // im Laden gebraucht: unter Zeitdruck, mit einer Hand, waehrend jemand
+        // an der Kasse wartet. Was dann gesucht wird, darf nicht hinter dem
+        // stehen, was einmal eingestellt wird — ganz oben heisst: kein Rollen.
+        GutscheineCard(
+            zustand = gutscheinZustand,
+            onFeld = { n, p, b, w -> vm.setzeGutscheinFeld(n, p, b, w) },
+            onPinSchalten = { vm.schalteGutscheinPin(it) },
+            onBearbeiten = { vm.bearbeiteGutschein(it) },
+            onAbbrechen = { vm.leereGutscheinFormular() },
+            onSpeichern = { vm.speichereGutschein(it) },
+            onLoeschen = { vm.loescheGutschein(it) },
+            // Kein Rueckruf von aussen: Der Bildschirm darf hoechstens sechs
+            // Parameter haben (ScreenViewModelWiringTest). Das Ziel wandert
+            // deshalb durch den Zustand, und der Graph navigiert — siehe
+            // GutscheinUiState.pdfZiel.
+            onPdfOeffnen = { vm.oeffneGutscheinPdf(it) },
+            // Die Zwischenablage kommt aus Compose und nicht aus dem
+            // ViewModel: Sie ist an die Komposition gebunden, genau wie beim
+            // Einladungscode weiter unten in dieser Datei. Die Rueckmeldung
+            // laeuft ueber den Snackbar des ViewModels, damit sie dort steht,
+            // wo alle anderen Meldungen stehen.
+            onKopieren = { wert, istNummer ->
+                gutscheinZwischenablage.setText(androidx.compose.ui.text.AnnotatedString(wert))
+                vm.meldeGutscheinKopiert(istNummer)
+            },
+        )
+
         // Currency
         SettingsCard(title = stringResource(R.string.settings_currency), icon = Icons.Default.Euro) {
             Row(horizontalArrangement = Arrangement.spacedBy(Abstaende.klein), modifier = Modifier.fillMaxWidth()) {
@@ -273,32 +308,6 @@ fun SettingsScreen(
             onSpeichern = { b, e, v, n -> vm.speichereProfil(b, e, v, n) },
             onPasswort = { alt, neu -> vm.aenderePasswort(alt, neu) },
             onMeldungWeg = { vm.kontoMeldungWeg() },
-        )
-
-        // Gutscheine direkt nach dem Konto: Marcos „möglichst einfach
-        // erreichbar" — sie gehoeren zu dem, was einem selbst gehoert.
-        GutscheineCard(
-            zustand = gutscheinZustand,
-            onFeld = { n, p, b, w -> vm.setzeGutscheinFeld(n, p, b, w) },
-            onPinSchalten = { vm.schalteGutscheinPin(it) },
-            onBearbeiten = { vm.bearbeiteGutschein(it) },
-            onAbbrechen = { vm.leereGutscheinFormular() },
-            onSpeichern = { vm.speichereGutschein(it) },
-            onLoeschen = { vm.loescheGutschein(it) },
-            // Kein Rueckruf von aussen: Der Bildschirm darf hoechstens sechs
-            // Parameter haben (ScreenViewModelWiringTest). Das Ziel wandert
-            // deshalb durch den Zustand, und der Graph navigiert — siehe
-            // GutscheinUiState.pdfZiel.
-            onPdfOeffnen = { vm.oeffneGutscheinPdf(it) },
-            // Die Zwischenablage kommt aus Compose und nicht aus dem
-            // ViewModel: Sie ist an die Komposition gebunden, genau wie beim
-            // Einladungscode weiter unten in dieser Datei. Die Rueckmeldung
-            // laeuft ueber den Snackbar des ViewModels, damit sie dort steht,
-            // wo alle anderen Meldungen stehen.
-            onKopieren = { wert, istNummer ->
-                gutscheinZwischenablage.setText(androidx.compose.ui.text.AnnotatedString(wert))
-                vm.meldeGutscheinKopiert(istNummer)
-            },
         )
 
         CsvImportCard(
