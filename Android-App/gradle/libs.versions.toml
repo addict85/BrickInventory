@@ -47,7 +47,26 @@ agp                         = "9.4.1"
 # ich nicht nachsehen: Die BOM liegt auf Google-Maven, und das ist aus
 # diesem Container nicht erreichbar (HTTP 000; Maven Central geht).
 # Die GitHub-Action ist an dieser Stelle die einzige Auskunft.
-kotlin                      = "2.4.20"
+# ── 2.4.20 -> 2.4.21, und zwar nicht der Neuheit wegen ──────────────────
+#
+# Lint meldete zwei NewerVersionAvailable (kotlin-compose und
+# kotlin-serialization, beide ueber version.ref = "kotlin"). Damit stand die
+# Lint-Warnungszahl auf 28 bei einer Obergrenze von 26 — der Lauf war rot,
+# und zwar auf ZWEI voneinander unabhaengigen Zweigen gleich (Android-App
+# auf claude/android-zoom-anker und claude/android-gutscheine-oben, 18
+# Befundgruppen, Zeichen fuer Zeichen dieselbe Liste). Das kam also von
+# aussen: Jetbrains hat 2.4.21 veroeffentlicht.
+#
+# Die Obergrenze hochzusetzen waere hier falsch gewesen. Sie faengt
+# „etwas ist dazugekommen", und dazugekommen ist keine Entscheidung, die
+# man begruenden koennte, sondern ein Rueckstand, den ein Zeichen Arbeit
+# aufhebt. Dasselbe wurde in diesem Baum schon einmal so entschieden, als
+# Gradle 9.8.1 erschien: der Wrapper wurde gehoben, nicht der Riegel.
+#
+# Eine Flickfassung (dritte Stelle), kein Sprachstand-Wechsel. KSP bleibt
+# bei 2.3.12 — KSP 2 ist nicht an die Uebersetzernummer gebunden, siehe
+# den Block darueber.
+kotlin                      = "2.4.21"
 ksp                         = "2.3.12"
 coreKtx                     = "1.19.1"
 lifecycleRuntimeKtx         = "2.11.0"
