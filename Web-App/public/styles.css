@@ -256,7 +256,7 @@
     /* Kaufpreis-Dialog: sechs Spalten brauchen Breite. Der Rollbalken bleibt
        als Rückfall für schmale Telefone — dort hilft keine Breite mehr, und
        die Alternative wäre, Spalten zu verstecken. */
-    .modal.acq-wide{padding:1.25rem}
+    .modal.acq-wide{--modal-padx:1.25rem;--modal-pady:1.25rem}
     .modal.acq-wide .dt{font-size:.84rem}
     .modal.acq-wide .dt th,.modal.acq-wide .dt td{padding-left:4px;padding-right:4px}
     .dt{width:100%;border-collapse:collapse}
@@ -345,14 +345,66 @@
     /* MODAL */
     .ovl{position:fixed;inset:0;background:rgba(15,23,42,.45);z-index:200;display:none;align-items:center;justify-content:center;backdrop-filter:blur(2px)}
     .ovl.open{display:flex}
-    .modal{background:var(--sur);border:1px solid var(--bdr);border-radius:14px;padding:1.75rem;max-width:520px;width:92%;box-shadow:var(--sh2);max-height:90vh;overflow-y:auto}
-    .mhd{display:flex;justify-content:space-between;align-items:center;margin-bottom:1.25rem}
+    /* Die Polsterung steht als VARIABLE da, nicht als Zahl: Titel- und
+       Fussleiste heben sie mit negativen Raendern wieder auf, um ueber die
+       volle Breite zu gehen. Zwei Fassungen weichen ab (.acq-wide mit 1.25rem
+       und die Handyfassung in mobile.css mit 1.1rem/.9rem) — mit einer fest
+       eingetragenen Zahl waeren deren Leisten zu schmal oder zu breit, und
+       zwar genau an der Stelle, an der der Inhalt darunter durchlaeuft.
+       --modal-padb ist eigens da, weil die Handyfassung unten
+       env(safe-area-inset-bottom) dazurechnet. */
+    .modal{--modal-padx:1.75rem;--modal-pady:1.75rem;--modal-padb:var(--modal-pady);
+           background:var(--sur);border:1px solid var(--bdr);border-radius:14px;
+           padding:var(--modal-pady) var(--modal-padx) var(--modal-padb);
+           max-width:520px;width:92%;box-shadow:var(--sh2);max-height:90vh;overflow-y:auto}
+
+    /* ── Titelleiste und Fussleiste bleiben stehen ──────────────────────────
+       Marcos Wunsch: „dass der rot markierte Teil jeweils immer sichtbar ist
+       auch wenn nach unten gescrollt wird. Ebenso der Papierkorb ganz zu
+       unterst." Und: „Es soll wie ein Windows-Dialog wirken (X ganz oben
+       rechts)."
+
+       `position:sticky` und nicht ein Flex-Geruest mit drei Teilen: .modal ist
+       selbst der Rollbereich (overflow-y:auto), und .mhd/.mfooter sind in
+       ALLEN acht Dialogen direkte Kinder davon (nachgezaehlt im Markup). Ein
+       Flex-Geruest haette um jeden Dialogrumpf ein zusaetzliches Element
+       gebraucht — acht Stellen statt zwei Regeln.
+
+       Die negativen Raender ziehen die Leisten ueber die Polsterung des
+       Dialogs, damit sie wie eine Fensterleiste ueber die ganze Breite gehen.
+       Ohne sie bliebe links und rechts ein Streifen, durch den der Inhalt
+       sichtbar vorbeirollt.
+
+       Die Trennlinien sind FORM, nicht Farbe: Dass unter der Leiste noch etwas
+       liegt, erkennt man an der Kante, nicht an einem Farbton.
+
+       Der NEGATIVE Versatz (top/bottom) ist gemessen und nicht Geschmack:
+       Mit `top:0` blieb die Leiste 28px zu tief stehen — genau die Polsterung
+       des Dialogs. `position:sticky` rechnet seinen Versatz vom INHALTSKASTEN
+       des Rollbereichs, nicht von dessen Sichtfenster. Die Polsterung wieder
+       abzuziehen schiebt die Leiste buendig an den oberen Rand.
+       (Dieselbe Stelle war in mobile.css schon einmal mit `top:0` gebaut —
+       dort stand die Leiste deshalb 1,1rem zu tief, ohne dass es jemandem
+       auffiel.)
+
+       Die runden Ecken brauchen die Leisten nicht — .modal hat
+       overflow-y:auto und border-radius, der Rollbereich wird also entlang der
+       Rundung beschnitten. */
+    .mhd{position:sticky;top:calc(var(--modal-pady) * -1);z-index:3;background:var(--sur);
+         border-bottom:1px solid var(--bdr);
+         margin:calc(var(--modal-pady) * -1) calc(var(--modal-padx) * -1) 1.25rem;
+         padding:.85rem var(--modal-padx);
+         display:flex;justify-content:space-between;align-items:center}
     .mtit{font-size:1.05rem;font-weight:800}
     .mimg{width:100%;aspect-ratio:4/3;object-fit:contain;background:var(--s50);border-radius:8px;border:1px solid var(--bdr);margin-bottom:1rem}
     .dr{display:flex;justify-content:space-between;padding:7px 0;border-bottom:1px solid var(--bdr);font-size:.875rem}
     .dr:last-child{border-bottom:none}
     .dl{color:var(--mut);font-weight:500}.dv{font-weight:600}
-    .mfooter{margin-top:1.25rem;display:flex;gap:10px;justify-content:flex-end;align-items:flex-end}
+    .mfooter{position:sticky;bottom:calc(var(--modal-padb) * -1);z-index:3;background:var(--sur);
+             border-top:1px solid var(--bdr);
+             margin:1.25rem calc(var(--modal-padx) * -1) calc(var(--modal-padb) * -1);
+             padding:.85rem var(--modal-padx);
+             display:flex;gap:10px;justify-content:flex-end;align-items:flex-end}
     .il{margin-top:1rem}
     .ii{display:flex;align-items:center;gap:8px;padding:7px 10px;background:var(--s50);border:1px solid var(--bdr);border-radius:7px;margin-bottom:5px;font-size:.82rem}
     .ii a{color:var(--b600);font-weight:600;text-decoration:none;flex:1}
