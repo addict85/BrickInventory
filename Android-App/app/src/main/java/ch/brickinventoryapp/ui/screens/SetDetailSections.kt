@@ -41,6 +41,7 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -145,64 +146,101 @@ fun LazyListScope.setDetailInstructionsSection(
                                 Modifier.padding(vertical = Abstaende.winzig),
                                 color = MaterialTheme.colorScheme.outlineVariant
                             )
+                            // ── Die GANZE Zeile oeffnet die Anleitung ──────────
+                            //
+                            // Marco: „Kannst du noch anpassen, dass die ganze
+                            // Anleitung in der Android-App auf dem Detail-Dialog
+                            // klickbar ist (zum PDF öffnen) und nicht nur das Icon
+                            // rechts daneben?"
+                            //
+                            // Antippbar war allein der 36-dp-Knopf am rechten Rand.
+                            // Links davon lagen eine 38-dp-Kachel mit PDF-Symbol und
+                            // zwei Zeilen Text — und die Adresse steht in der
+                            // Akzentfarbe, also in der Farbe, die in dieser App
+                            // „hier geht etwas auf" heisst. Es sah aus wie ein
+                            // Verweis und war keiner.
+                            //
+                            // Das Symbol rechts BLEIBT, aber als Hinweis und nicht
+                            // als Knopf: Ein eigener Knopf an derselben Stelle waere
+                            // ein zweites Ziel fuer dieselbe Handlung, und die
+                            // Sprachausgabe nennte ihn als eigenes Bedienelement
+                            // neben der Zeile, die schon dasselbe tut.
+                            //
+                            // Der Papierkorb liegt AUSSERHALB der antippbaren Zeile
+                            // — als Geschwister, nicht als Kind. Damit haengt nichts
+                            // daran, welcher von zwei verschachtelten Antippbereichen
+                            // ein Tippen bekommt, und Loeschen ist die Handlung, bei
+                            // der ein Fehlgriff weh tut.
+                            val oeffneAnleitung: () -> Unit = {
+                                if (instr.localPath != null) {
+                                    onOpenPdf(openUrl, instr.description ?: "")
+                                } else {
+                                    // Rückmeldung statt Stille (Nachtrag 49) — siehe
+                                    // CatalogDetailScreen.
+                                    try { ctx.startActivity(Intent(Intent.ACTION_VIEW, openUrl.toUri())) }
+                                    catch (_: Exception) {
+                                        android.widget.Toast.makeText(ctx,
+                                            keineAppText,
+                                            android.widget.Toast.LENGTH_SHORT).show()
+                                    }
+                                }
+                            }
                             Row(
-                                Modifier
-                                    .fillMaxWidth()
-                                    .padding(vertical = Abstaende.winzig),
+                                Modifier.fillMaxWidth(),
                                 verticalAlignment = Alignment.CenterVertically,
                                 horizontalArrangement = Arrangement.spacedBy(Abstaende.mittel)
                             ) {
-                                Surface(
-                                    shape = Formen.kachel,
-                                    color = MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.5f),
-                                    modifier = Modifier.size(38.dp)
+                                Row(
+                                    Modifier
+                                        .weight(1f)
+                                        // clickable VOR padding: So gehoert der
+                                        // Innenabstand zur Antippflaeche, und der
+                                        // Druckkreis deckt die ganze Zeilenhoehe.
+                                        // Umgekehrt blieben oben und unten je ein
+                                        // paar totes Pixel.
+                                        .clickable(role = Role.Button, onClick = oeffneAnleitung)
+                                        .padding(vertical = Abstaende.winzig),
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.spacedBy(Abstaende.mittel)
                                 ) {
-                                    Box(Modifier.fillMaxSize(), Alignment.Center) {
-                                        Icon(
-                                            Icons.Default.PictureAsPdf, null,
-                                            tint = MaterialTheme.colorScheme.error,
-                                            modifier = Modifier.size(20.dp)
+                                    Surface(
+                                        shape = Formen.kachel,
+                                        color = MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.5f),
+                                        modifier = Modifier.size(38.dp)
+                                    ) {
+                                        Box(Modifier.fillMaxSize(), Alignment.Center) {
+                                            Icon(
+                                                Icons.Default.PictureAsPdf, null,
+                                                tint = MaterialTheme.colorScheme.error,
+                                                modifier = Modifier.size(20.dp)
+                                            )
+                                        }
+                                    }
+                                    Column(Modifier.weight(1f)) {
+                                        Text(
+                                            instr.description ?: stringResource(R.string.detail_instruction_default),
+                                            style = MaterialTheme.typography.bodyMedium,
+                                            fontWeight = FontWeight.Medium,
+                                            maxLines = 2,
+                                            overflow = TextOverflow.Ellipsis
+                                        )
+                                        Text(
+                                            openUrl,
+                                            style = MaterialTheme.typography.labelSmall,
+                                            color = MaterialTheme.colorScheme.primary,
+                                            maxLines = 1,
+                                            overflow = TextOverflow.Ellipsis
                                         )
                                     }
-                                }
-                                Column(Modifier.weight(1f)) {
-                                    Text(
-                                        instr.description ?: stringResource(R.string.detail_instruction_default),
-                                        style = MaterialTheme.typography.bodyMedium,
-                                        fontWeight = FontWeight.Medium,
-                                        maxLines = 2,
-                                        overflow = TextOverflow.Ellipsis
-                                    )
-                                    Text(
-                                        openUrl,
-                                        style = MaterialTheme.typography.labelSmall,
-                                        color = MaterialTheme.colorScheme.primary,
-                                        maxLines = 1,
-                                        overflow = TextOverflow.Ellipsis
-                                    )
-                                }
-                                IconButton(
-                                    onClick = {
-                                        if (instr.localPath != null) {
-                                            onOpenPdf(openUrl, instr.description ?: "")
-                                        } else {
-                                            // Rückmeldung statt Stille (Nachtrag 49) — siehe
-                                            // CatalogDetailScreen.
-                                            try { ctx.startActivity(Intent(Intent.ACTION_VIEW, openUrl.toUri())) }
-                                            catch (_: Exception) {
-                                                android.widget.Toast.makeText(ctx,
-                                                    keineAppText,
-                                                    android.widget.Toast.LENGTH_SHORT).show()
-                                            }
-                                        }
-                                    },
-                                    modifier = Modifier.size(36.dp)
-                                ) {
-                                    Icon(
-                                        Icons.AutoMirrored.Filled.OpenInNew, null,
-                                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                                        modifier = Modifier.size(18.dp)
-                                    )
+                                    // Dieselbe Flaeche wie der frühere Knopf, damit
+                                    // die Zeilen so breit bleiben wie bisher.
+                                    Box(Modifier.size(36.dp), Alignment.Center) {
+                                        Icon(
+                                            Icons.AutoMirrored.Filled.OpenInNew, null,
+                                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                                            modifier = Modifier.size(18.dp)
+                                        )
+                                    }
                                 }
                                 // Entfernen nur bei SELBST hochgeladenen
                                 // Anleitungen.
