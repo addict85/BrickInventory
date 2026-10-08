@@ -30,6 +30,11 @@
 # android.yml, android-playstore.yml, docker-publish.yml. Dieser hier war
 # keiner davon. Er ist nie gelaufen, kein einziges Mal.
 #
+# (android-playstore.yml ist inzwischen entfernt — die App wird als APK über die
+# GitHub-Releases ausgeliefert. Die Messung oben bleibt stehen, wie sie war: Sie
+# beschreibt den Stand von damals, und nachträglich umgeschrieben wäre sie keine
+# Messung mehr.)
+#
 # Bitter daran: Der Kopf oben beschreibt genau den Fehler, gegen den er gebaut
 # wurde („die zehn Prüfungen darunter liefen monatelang nicht"), und
 # test/build-tooling.test.js bewacht seinen INHALT seither zuverlässig. Eine

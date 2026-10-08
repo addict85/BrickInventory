@@ -611,13 +611,18 @@ jobs:
           } >> "$GITHUB_STEP_SUMMARY"
 
       # Das Bundle wird hier nur GEBAUT und gesichert, nicht veroeffentlicht.
-      # Das Hochladen zu Play steht in einem eigenen Workflow, der von Hand
-      # gestartet wird (android-playstore.yml) — eine Veroeffentlichung soll
-      # nicht bei jedem Push auf main passieren.
       #
-      # Der Bau hier hat trotzdem einen Zweck: Er faellt auf, wenn das Bundle
-      # bricht, waehrend das APK noch durchlaeuft. Das kommt vor — R8 und die
-      # Ressourcen-Aufteilung arbeiten fuer die beiden Formate nicht gleich.
+      # Hier stand, dass das Hochladen zu Play in android-playstore.yml stehe.
+      # Diesen Workflow gibt es nicht mehr: Die App wird als APK ueber die
+      # GitHub-Releases ausgeliefert (Schritt „BrickInventory.apk als Release
+      # bereitstellen" weiter oben) und aktualisiert sich daraus selbst
+      # (util/AppUpdate.kt). Der Play-Weg war gebaut, aber nie benutzt.
+      #
+      # Der Bau hier bleibt trotzdem, und zwar aus dem Grund, der schon vorher
+      # der zweite war: Er faellt auf, wenn das Bundle bricht, waehrend das APK
+      # noch durchlaeuft. Das kommt vor — R8 und die Ressourcen-Aufteilung
+      # arbeiten fuer die beiden Formate nicht gleich. Als Artefakt ist es
+      # ausserdem da, falls der Play-Weg je wieder gewollt ist.
       - name: App-Bundle (.aab) sichern
         if: success()
         uses: actions/upload-artifact@v7
