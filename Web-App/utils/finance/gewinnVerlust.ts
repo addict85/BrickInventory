@@ -46,7 +46,7 @@ async function computePnl(viewerId: number, ids: Blickfeld) {
   ]);
 
   const sets = await db.all(
-    `SELECT s.set_number, s.name, s.year, s.quantity, s.image_local, s.image_url, s.added_at,
+    `SELECT s.set_number, c.name, c.year, s.quantity, c.image_local, c.image_url, s.added_at,
             -- Ø-Kaufpreis pro Stück aus der Erfassungs-Historie. Frontend/Apps
             -- rechnen weiterhin purchase_price × quantity, die Summe stimmt damit
             -- auch bei unterschiedlich teuren Erfassungen.
@@ -81,9 +81,9 @@ async function computePnl(viewerId: number, ids: Blickfeld) {
             -- für denselben Zustand.
             COALESCE(a.acq_count, 0)  AS acq_count,
             COALESCE(a.used_count, 0) AS used_count
-     -- Die Sicht: Name, Jahr und Bilder stehen seit Migration 0033 in
-     -- set_catalog.
-     FROM sets_mit_katalog s
+     -- Name, Jahr und Bilder stehen seit Migration 0033 in set_catalog.
+     FROM sets s
+     LEFT JOIN set_catalog c ON c.set_number = s.set_number
      LEFT JOIN (
        SELECT user_id, set_number,
               SUM(COALESCE(purchase_price, 0) * quantity) AS total_price,

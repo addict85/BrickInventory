@@ -97,7 +97,8 @@ async function getSets(userId: Blickfeld, query: any = {}) {
   // image_local: null, und beide Clients zeigten den Platzhalter.
   //
   // Mit Migration 0033 gibt es nichts mehr, wovon zurückzufallen wäre: Die
-  // Adresse steht nur im Katalog, und die Sicht `sets_mit_katalog` liefert sie.
+  // Adresse steht nur im Katalog, und jede Abfrage holt sie über ihren eigenen,
+  // ausgeschriebenen JOIN darauf.
   // Der Rückfall war die richtige Abhilfe für zwei Spalten; eine Spalte braucht
   // ihn nicht. Genau das war auch das Problem daran — er stand in EINER
   // Abfrage, und jede andere kannte ihn nicht.
@@ -124,16 +125,16 @@ async function getSets(userId: Blickfeld, query: any = {}) {
   // gleich. MIN(added_at) ist bewusst das früheste Aufnahmedatum im Haushalt.
   //
   // Seit Migration 0033 sind sie es nicht nur „hinweg gleich", sondern
-  // buchstäblich derselbe Wert: Sie kommen aus `set_catalog`, über die Sicht
-  // `sets_mit_katalog`. MIN() bleibt trotzdem stehen — die Gruppierung über
-  // `set_number` verlangt für jede nicht gruppierte Spalte eine Zusammenfassung,
-  // und „irgendeinen von identischen Werten" sagt MIN() am kürzesten.
+  // buchstäblich derselbe Wert: Sie kommen aus `set_catalog`, über den JOIN
+  // unten. MIN() bleibt trotzdem stehen — die Gruppierung über `set_number`
+  // verlangt für jede nicht gruppierte Spalte eine Zusammenfassung, und
+  // „irgendeinen von identischen Werten" sagt MIN() am kürzesten.
   const setsFrom = uids.length > 1
     ? `(SELECT s.set_number,
-               MIN(s.name) AS name, MIN(s.year) AS year, MIN(s.theme) AS theme,
-               MIN(s.pieces) AS pieces, MIN(s.minifigs) AS minifigs,
+               MIN(c.name) AS name, MIN(c.year) AS year, MIN(c.theme) AS theme,
+               MIN(c.pieces) AS pieces, MIN(c.minifigs) AS minifigs,
                SUM(s.quantity)::int AS quantity,
-               MIN(s.image_url) AS image_url, MIN(s.image_local) AS image_local,
+               MIN(c.image_url) AS image_url, MIN(c.image_local) AS image_local,
                MIN(s.added_at) AS added_at,
                -- Lagerort: string_agg statt MIN, und das ist kein Zierrat.
                --
@@ -161,7 +162,12 @@ async function getSets(userId: Blickfeld, query: any = {}) {
                -- Mengenregler). Ohne FILTER stand das Konto danach weiter als
                -- Besitzer auf der Kachel, obwohl es nichts mehr besitzt.
                array_agg(DISTINCT s.user_id) FILTER (WHERE s.quantity > 0) AS owner_ids
-          FROM sets_mit_katalog s
+          FROM sets s
+          -- Der JOIN steht ausgeschrieben, nicht hinter einer Sicht: So sagt
+          -- die Abfrage selbst, dass Name, Jahr und Bild aus dem Katalog
+          -- kommen. LEFT JOIN, weil ein Set ohne Katalogzeile sonst aus der
+          -- Liste verschwaende — lieber ohne Namen als unsichtbar.
+          LEFT JOIN set_catalog c ON c.set_number = s.set_number
           LEFT JOIN storage_locations lo ON lo.id = s.storage_id
          WHERE s.user_id = ANY($1)
          GROUP BY s.set_number) s`
@@ -171,11 +177,15 @@ async function getSets(userId: Blickfeld, query: any = {}) {
     // Migration 0031 aber die ID. `s.*` plus die aufgeloeste Spalte liefert
     // genau die alte Form, und der Filter bleibt unberuehrt.
     //
-    // `s.*` auf der SICHT und nicht auf der Tabelle: Die Stammdaten stehen seit
-    // Migration 0033 in `set_catalog`, und die Sicht fügt beide zusammen. Die
-    // Form bleibt damit dieselbe wie vorher.
-    : `(SELECT s.*, lo.name AS storage
-          FROM sets_mit_katalog s LEFT JOIN storage_locations lo ON lo.id = s.storage_id) s`;
+    // Die Katalogfelder ausgeschrieben neben `s.*`: Die Stammdaten stehen seit
+    // Migration 0033 in `set_catalog`. Sie hier einzeln zu nennen ist der Preis
+    // dafür, dass die Abfrage ohne Nachschlagen lesbar bleibt.
+    : `(SELECT s.*, lo.name AS storage,
+               c.name, c.year, c.theme, c.pieces, c.minifigs,
+               c.image_url, c.image_local
+          FROM sets s
+          LEFT JOIN set_catalog c ON c.set_number = s.set_number
+          LEFT JOIN storage_locations lo ON lo.id = s.storage_id) s`;
   const SET_OWNER_COL = uids.length > 1 ? ', s.owner_ids' : '';
   // Ohne Gruppierung filtert die WHERE-Klausel wie bisher; mit Gruppierung hat
   // die Unterabfrage bereits gefiltert.
@@ -267,8 +277,11 @@ async function getSets(userId: Blickfeld, query: any = {}) {
     // der geladenen Seite — sonst schrumpft das Auswahlfeld beim Paginieren.
     // Nur bei der ersten Seite nötig; Folgeseiten sparen die Abfrage.
     (page_size && parseInt(page) <= 1)
-      // Aus der Sicht: `theme` steht seit Migration 0033 im Katalog.
-      ? db.all(`SELECT DISTINCT theme FROM sets_mit_katalog WHERE user_id = ANY($1) AND theme IS NOT NULL AND theme <> '' ORDER BY theme`, [uids])
+      // `theme` steht seit Migration 0033 im Katalog — deshalb der JOIN.
+      ? db.all(`SELECT DISTINCT c.theme AS theme
+                  FROM sets s JOIN set_catalog c ON c.set_number = s.set_number
+                 WHERE s.user_id = ANY($1) AND c.theme IS NOT NULL AND c.theme <> ''
+                 ORDER BY c.theme`, [uids])
       : Promise.resolve(null),
   ]);
 
@@ -428,9 +441,16 @@ async function getSet(userId: Blickfeld, setNumber: string) {
     // Summe über alle Konten im Blickfeld.
     db.get(
       `SELECT s.*,
+              -- Die Stammdaten ausgeschrieben: s.* liefert seit Migration
+              -- 0033 nur noch Menge, Besitzer, Aufnahmedatum und Lagerort.
+              -- (Keine Gegenstriche: Der Kommentar steht in einem
+              -- Template-Literal, und ein Gegenstrich beendet es.)
+              c.name, c.year, c.theme, c.pieces, c.minifigs,
+              c.image_url, c.image_local,
               (SELECT COALESCE(SUM(a.quantity),0)::int FROM sets a
                 WHERE a.user_id = ANY($1) AND a.set_number = s.set_number) AS quantity
-         FROM sets_mit_katalog s
+         FROM sets s
+         LEFT JOIN set_catalog c ON c.set_number = s.set_number
         WHERE s.user_id = ANY($1) AND s.set_number = $2
         ORDER BY (s.user_id = $3) DESC, s.id ASC
         LIMIT 1`, [uids, setNumber, uids[0]]),

@@ -217,23 +217,25 @@ export async function alleAlarme(userId: number): Promise<AlarmMitName[]> {
     // zweimal — ein Fehler, den die erste Fassung nicht haben konnte und der
     // mit der Erweiterung auf das Blickfeld neu entsteht.
     //
-    // Sortiert wird nach `s.image_local` NULLS LAST, damit die Zeile MIT
+    // Sortiert wurde nach `image_local` NULLS LAST, damit die Zeile MIT
     // heruntergeladenem Bild gewinnt statt einer beliebigen. Seit Migration
-    // 0033 ist das Bild fuer alle Haushaltszeilen derselbe Wert (es kommt aus
-    // set_catalog, ueber die Sicht sets_mit_katalog) — die Sortierung
-    // entscheidet damit nichts mehr, und `s.id` dahinter macht die Auswahl
-    // weiterhin vorhersagbar. Stehen bleibt sie, weil sie nichts kostet und
-    // die Absicht benennt.
+    // 0033 kommt das Bild aus set_catalog und ist fuer alle Haushaltszeilen
+    // derselbe Wert — die Sortierung entscheidet damit nichts mehr, und `s.id`
+    // dahinter macht die Auswahl weiterhin vorhersagbar. Stehen bleibt sie,
+    // weil sie nichts kostet und die Absicht benennt.
     `SELECT DISTINCT ON (a.set_number, a.condition)
             a.set_number, a.condition, a.richtung, a.schwelle, a.currency_code,
             a.ausgeloest, a.zuletzt_am, a.zuletzt_preis,
-            rb.name, rb.set_img_url, s.image_local, s.image_url,
+            rb.name, rb.set_img_url, c.image_local, c.image_url,
             (s.id IS NOT NULL) AS besitzt
        FROM price_alerts a
        LEFT JOIN rb_sets rb ON rb.set_num = a.set_number
-       LEFT JOIN sets_mit_katalog s ON s.user_id = ANY($2) AND s.set_number = a.set_number
+       -- sets sagt, ob der Haushalt das Set BESITZT (daran haengt die Spalte
+       -- besitzt und der Detaildialog), set_catalog liefert das Bild.
+       LEFT JOIN sets s ON s.user_id = ANY($2) AND s.set_number = a.set_number
+       LEFT JOIN set_catalog c ON c.set_number = a.set_number
       WHERE a.user_id = $1
-      ORDER BY a.set_number, a.condition, s.image_local NULLS LAST, s.id`,
+      ORDER BY a.set_number, a.condition, c.image_local NULLS LAST, s.id`,
     [userId, blickfeld])
     .catch(e => { require('./httpError').meldeUndWeiter('preisalarm:alle', e); return []; });
   type Zeile = Omit<AlarmMitName, 'schwelle' | 'zuletzt_preis'> &

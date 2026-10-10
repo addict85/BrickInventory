@@ -183,11 +183,13 @@ test('Sicherung und Wiederherstellung', async (t) => {
     const s = await db.get(`SELECT set_number, quantity FROM sets`);
     assert.equal(s.set_number, '10214-1');
     assert.equal(Number(s.quantity), 2);
-    // Name und Jahr aus dem Katalog — und ueber die Sicht gelesen, damit die
-    // Sicherung auch SIE zurueckgebracht haben muss. Eine Sicht ist kein
-    // Beiwerk: Ohne sie liefe die halbe Anwendung nach dem Zurueckspielen in
-    // „relation sets_mit_katalog does not exist".
-    const k = await db.get(`SELECT name, year FROM sets_mit_katalog WHERE set_number='10214-1'`);
+    // Name und Jahr aus dem Katalog — eine ANDERE Tabelle als die Menge
+    // darueber. Genau daran faellt eine unvollstaendige Sicherung auf: Ein
+    // Dump, der nur den Bestand nimmt, laesst jedes Set namenlos zurueck.
+    const k = await db.get(
+      `SELECT c.name, c.year FROM sets s
+         JOIN set_catalog c ON c.set_number = s.set_number
+        WHERE s.set_number='10214-1'`);
     assert.equal(k?.name, 'Tower Bridge');
     assert.equal(Number(k?.year), 2010);
     const a = await db.get(`SELECT purchase_price, condition FROM set_acquisitions`);

@@ -80,11 +80,12 @@ async function computeSetsValuation(viewerId: number, ids: Blickfeld) {
     // drei Schreibwege (Erfassen, Mengenänderung, Verschieben) legen die
     // Erfassung in derselben Transaktion an. Ein Set ohne Erfassung kann es
     // also nicht mehr geben.
-    // Die Sicht: Name, Jahr und Bilder stehen seit Migration 0033 in
-    // set_catalog.
-    `SELECT s.set_number, s.name, s.year, s.quantity, s.image_local, s.image_url,
+    // Name, Jahr und Bilder stehen seit Migration 0033 in set_catalog —
+    // deshalb der ausgeschriebene JOIN.
+    `SELECT s.set_number, c.name, c.year, s.quantity, c.image_local, c.image_url,
             s.added_at
-       FROM sets_mit_katalog s
+       FROM sets s
+       LEFT JOIN set_catalog c ON c.set_number = s.set_number
       WHERE s.user_id = ANY($1)`, [uids]);
   if (!sets.length) return { currency, condition: defaultCondition, guide_type: guideType, ttl_hours: ttlHours, sets: [], totals: { min:'0.00', avg:'0.00', max:'0.00', qty_avg:'0.00' } };
 

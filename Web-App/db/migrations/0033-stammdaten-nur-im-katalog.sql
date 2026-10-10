@@ -44,10 +44,16 @@
 --  2. PRÜFEN: Bleibt eine Setnummer ohne Katalogzeile, oder verliert ein Set
 --     dabei seinen Namen, bricht das Skript ab. In einer Transaktion, es wird
 --     also nichts gelöscht.
---  3. SICHT: `sets_mit_katalog` liefert die alte Form — Bestandszeile plus
---     Katalogfelder. Die Abfragen im Code lesen von dort und brauchen den JOIN
---     nicht einzeln hinzuschreiben.
---  4. LÖSCHEN: Die sieben Spalten fallen weg.
+--  3. LÖSCHEN: Die sieben Spalten fallen weg.
+--
+-- Hier stand als Schritt 3 eine Sicht `sets_mit_katalog`, die die alte Form
+-- lieferte, damit die Abfragen im Code unveraendert bleiben konnten. Sie ist
+-- wieder weg — Marcos Einwand: „es gibt nur sets aus dem Katalog, somit macht
+-- die View aus meiner Sicht wenig Sinn." Er hat recht: Weil die Zuordnung
+-- garantiert eins-zu-eins ist, verbarg die Sicht keine Entscheidung, sondern
+-- nur Tipparbeit — und dafuer stand im Schema ein 54. Objekt, das in jedem
+-- Werkzeug wie eine Tabelle aussieht. Jede Abfrage schreibt ihren JOIN jetzt
+-- selbst aus und sagt damit, woher Name, Jahr und Bild kommen.
 --
 -- ── Was es NICHT anfasst ───────────────────────────────────────────────────
 --
@@ -116,35 +122,14 @@ BEGIN
   END IF;
 END $$;
 
--- ── Schritt 3: Die Sicht, die die alte Form liefert ────────────────────────
+-- ── Schritt 3: Der Schnitt ─────────────────────────────────────────────────
 --
--- Sie steht auch in db/schema.sql, mit derselben Begründung wie ein
--- `ADD COLUMN IF NOT EXISTS`: Eine Sicht beschreibt eine ZIELFORM, keine
--- Entscheidung, und `CREATE OR REPLACE` ist beliebig wiederholbar. Eine neue
--- Datenbank braucht sie aus schema.sql, eine bestehende von hier.
---
--- Spalten ausgeschrieben und nicht `s.*`: Die Form der Sicht ist der Vertrag,
--- an dem vierzig Abfragen hängen. Mit `s.*` würde jede neue Spalte an `sets`
--- stillschweigend Teil davon.
---
--- LEFT JOIN und nicht JOIN: Schritt 2 stellt sicher, dass es zu jeder
--- Setnummer eine Katalogzeile gibt — aber ein INNER JOIN würde ein Set, dem
--- sie später doch fehlt, aus JEDER Liste verschwinden lassen. Lieber ein Set
--- ohne Namen als ein Set, das niemand mehr findet.
-CREATE OR REPLACE VIEW sets_mit_katalog AS
-  SELECT s.id, s.user_id, s.set_number, s.quantity,
-         s.added_at, s.updated_at, s.storage_id,
-         c.name, c.year, c.theme, c.pieces, c.minifigs,
-         c.image_url, c.image_local
-    FROM sets s
-    LEFT JOIN set_catalog c ON c.set_number = s.set_number;
-
--- ── Schritt 4: Der Schnitt ─────────────────────────────────────────────────
---
--- Die Sicht oben benutzt diese Spalten NICHT (sie nimmt die des Katalogs) —
--- deshalb hindert sie das Löschen nicht. Ein Index auf einer der sieben
--- Spalten gibt es nicht; db/migrations/0029 hat die Trigramm-Indizes für
+-- Ein Index auf einer der sieben Spalten gibt es nicht; db/migrations/0029 hat die Trigramm-Indizes für
 -- `sets` ausdrücklich nicht angelegt („NICHT angelegt: sets (472 Zeilen)").
+-- Falls eine Datenbank die Sicht aus einem Zwischenstand noch traegt: weg
+-- damit, sonst haengen die Spalten unten an ihr und das DROP scheitert.
+DROP VIEW IF EXISTS sets_mit_katalog;
+
 ALTER TABLE sets DROP COLUMN IF EXISTS name;
 ALTER TABLE sets DROP COLUMN IF EXISTS year;
 ALTER TABLE sets DROP COLUMN IF EXISTS theme;

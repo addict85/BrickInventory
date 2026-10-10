@@ -803,8 +803,12 @@ router.get('/sets/:setNumber/price', requireToken, async (req: AuthedRequest, re
     // seit Migration 0031 steht an der Zeile nur die ID. Ohne die Spalte waere
     // das Feld im Detaildialog leer — und zwar in beiden Oberflaechen.
     const set = await db.get(
-      `SELECT s.*, lo.name AS storage
-         FROM sets_mit_katalog s LEFT JOIN storage_locations lo ON lo.id = s.storage_id
+      `SELECT s.*, lo.name AS storage,
+              c.name, c.year, c.theme, c.pieces, c.minifigs,
+              c.image_url, c.image_local
+         FROM sets s
+         LEFT JOIN set_catalog c ON c.set_number = s.set_number
+         LEFT JOIN storage_locations lo ON lo.id = s.storage_id
         WHERE s.set_number = $1 AND s.user_id = ANY($2)`, [sn, uids]);
     if (!set) return sendeFehler(req, res, 404, 'set_nicht_gefunden');
     // Die Währung kommt aus der NUTZEREINSTELLUNG — der frühere

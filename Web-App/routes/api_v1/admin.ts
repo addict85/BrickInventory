@@ -96,13 +96,14 @@ router.get('/admin/image-diag/:setNumber', requireApiAdmin, async (req: AuthedRe
     const sn = String(req.params.setNumber);
 
     // 1. Was weiss die Datenbank — eigene Zeile UND gemeinsamer Katalog?
-    // Die SICHT: `image_local` und `image_url` stehen seit Migration 0033 im
-    // Katalog, und damit tragen alle Zeilen denselben Wert. Die Liste
-    // beantwortet weiter „welche Konten fuehren dieses Set?" — genau das
-    // braucht die Einschaetzung unten.
+    // `image_local` und `image_url` stehen seit Migration 0033 im Katalog, und
+    // damit tragen alle Zeilen denselben Wert. Die Liste beantwortet weiter
+    // „welche Konten fuehren dieses Set?" — genau das braucht die
+    // Einschaetzung unten.
     const zeilen = await db.all(
-      `SELECT user_id, image_local, image_url FROM sets_mit_katalog
-        WHERE set_number = $1 ORDER BY user_id`, [sn]
+      `SELECT s.user_id, c.image_local, c.image_url
+         FROM sets s LEFT JOIN set_catalog c ON c.set_number = s.set_number
+        WHERE s.set_number = $1 ORDER BY s.user_id`, [sn]
     ).catch(() => []);
     const katalog = await db.get(
       `SELECT image_url, image_local FROM set_catalog WHERE set_number = $1`, [sn]

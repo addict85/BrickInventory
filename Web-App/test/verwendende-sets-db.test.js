@@ -63,7 +63,7 @@ test('die Liste der verwendenden Sets folgt dem Blickfeld', async (t) => {
       ($1,'10305-1',1),
       ($2,'21058-1',1)`, [haupt, kind]);
   // Der Setname steht seit Migration 0033 im Katalog; die Liste der
-  // verwendenden Sets liest ihn ueber die Sicht sets_mit_katalog.
+  // verwendenden Sets holt ihn mit einem eigenen JOIN darauf.
   await db.run(`INSERT INTO set_catalog (set_number, name) VALUES
       ('75192-1','Millennium Falcon'),
       ('10305-1','Lion Knights Castle'),

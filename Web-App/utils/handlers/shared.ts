@@ -409,16 +409,18 @@ async function verwendendeSets(
     `SELECT x.set_number,
             x.user_id            AS owner_user_id,
             SUM(x.quantity)::int AS quantity,
-            s.name               AS set_name,
-            s.image_local        AS set_image_local,
-            s.image_url          AS set_image_url,
+            c.name               AS set_name,
+            c.image_local        AS set_image_local,
+            c.image_url          AS set_image_url,
             ${KOPFFELDER[tabelle]}
        FROM ${tabelle} x
-       -- Die SICHT, nicht die Tabelle: Name und Bilder des Sets stehen seit
-       -- Migration 0033 in set_catalog, und sets_mit_katalog fuegt beides
-       -- zusammen. Der JOIN bleibt ueber (user_id, set_number) — gefragt ist
-       -- das Set DIESES Kontos, nicht irgendeines.
-       LEFT JOIN sets_mit_katalog s ON s.user_id = x.user_id AND s.set_number = x.set_number
+       -- Zwei JOINs, ausgeschrieben: sets sagt, WELCHES Konto das Set haelt
+       -- (deshalb ueber user_id UND set_number), set_catalog sagt, wie es
+       -- heisst und wie es aussieht (nur ueber set_number — der Name haengt
+       -- nicht am Konto). Keine Gegenstriche: Der Kommentar steht in einem
+       -- Template-Literal, und ein Gegenstrich beendet es.
+       LEFT JOIN sets s ON s.user_id = x.user_id AND s.set_number = x.set_number
+       LEFT JOIN set_catalog c ON c.set_number = x.set_number
        -- Der Lagerortname aus dem Vorrat (Migration 0031). Steht hier und
        -- nicht nur im parts-Zweig von KOPFFELDER, weil der minifigs-Zweig ihn
        -- als feste NULL fuehrt — ein unbenutzter LEFT JOIN kostet dort nichts
@@ -428,7 +430,7 @@ async function verwendendeSets(
         AND x.set_number IS NOT NULL
         AND ${bedingungen.join(' AND ')}
       GROUP BY x.set_number, x.user_id, ${SCHLUESSELSPALTE[tabelle]},
-               s.name, s.image_local, s.image_url
+               c.name, c.image_local, c.image_url
       ORDER BY x.set_number`,
     params,
   ).catch(() => []);
