@@ -50,9 +50,13 @@ async function seed() {
     [U.ich, '10179-1', '3001', 5],
     [U.ich, '10179-1', '3002', 4], [U.fremd, '10030-1', '3001', 4],
   ]) {
+    // Der Name steht seit Migration 0034 im Katalog.
     await db.run(
-      `INSERT INTO parts (user_id, set_number, part_number, color_id, quantity, part_name)
-       VALUES ($1,$2,$3,$4,1,$5)`, [uid, sn, num, farbe, 'Teil ' + num]);
+      `INSERT INTO part_catalog (part_number, part_name) VALUES ($1,$2)
+       ON CONFLICT (part_number) DO NOTHING`, [num, 'Teil ' + num]);
+    await db.run(
+      `INSERT INTO parts (user_id, set_number, part_number, color_id, quantity)
+       VALUES ($1,$2,$3,$4,1)`, [uid, sn, num, farbe]);
   }
 }
 

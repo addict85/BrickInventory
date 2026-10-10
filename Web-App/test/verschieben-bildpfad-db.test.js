@@ -1,27 +1,26 @@
 /**
- * Beim Verschieben eines Sets nimmt JEDER Bestandteil seinen Bildpfad mit.
+ * Nach dem Verschieben eines Sets hat JEDER Bestandteil im Zielkonto sein Bild.
  *
- * ── Der Befund ──────────────────────────────────────────────────────────────
+ * ── Der Befund, der zu diesem Test führte ───────────────────────────────────
  * copyContents() in utils/setMove.ts kopiert Teile, Minifiguren und
  * Anleitungen ins Zielkonto. Die Teile wurden mit 14 Spalten kopiert, die
  * Minifiguren mit 7 — und die einzige, die dabei WIRKLICH fehlte, war
  * `image_local`.
  *
- * Die übrigen fehlenden (unit_price, purchase_price, note, condition,
- * bl_fig_number) sind ausschliesslich bei MANUELL erfassten Figuren gefüllt;
- * kopiert werden hier nur Set-Figuren, dort steht überall NULL. image_local
- * nicht: Der Bild-Job setzt es „über Nutzer und Quellen hinweg"
- * (server.ts: UPDATE minifigs SET image_local=… WHERE fig_number=…), also
- * haben Set-Figuren es sehr wohl.
- *
  * Wer ein Set ins Konto seines Kindes verschob, sah dort danach die Teilebilder
  * aus dem Zwischenspeicher und die Figurenbilder wieder über den Proxy vom CDN
  * — bis zum nächsten Serverstart, denn nur dann läuft der Bild-Job.
  *
- * ── Was geprüft wird ────────────────────────────────────────────────────────
- * Nicht „steht image_local im INSERT", sondern: Nach dem Verschieben steht bei
- * BEIDEN Bestandteilen derselbe Pfad wie vorher. Die Frage ist der Vergleich
- * der zwei Zweige, und den beantwortet nur die Tabelle.
+ * ── Warum der Test jetzt etwas STÄRKERES prüft ──────────────────────────────
+ * Mit Migration 0034 steht das Bild nicht mehr an der Bestandszeile, sondern
+ * im Katalog: part_color_catalog je (Teil, Farbe), minifigs_catalog je Figur.
+ * Beim Verschieben ist damit nichts mitzunehmen — und folglich auch nichts zu
+ * vergessen. Die FEHLERQUELLE ist weg, nicht nur der Fehler.
+ *
+ * Geprüft wird deshalb die Wirkung und nicht der Weg: Nach dem Verschieben
+ * liefert die Teile- bzw. Figurenliste des ZIELKONTOS für beide Bestandteile
+ * denselben Bildpfad wie vorher. Das ist die Frage, die den Nutzer angeht, und
+ * sie bleibt dieselbe, ob der Pfad nun kopiert oder nachgeschlagen wird.
  *
  * Voraussetzung: Test-DB via TEST_DATABASE_URL.
  */
@@ -61,10 +60,20 @@ test('ein verschobenes Set nimmt die Bildpfade aller Bestandteile mit', { concur
                   VALUES ($1,$2,1,10,'N')`, [vonId, SN]);
     // Beide Bestandteile kommen AUS DEM SET (source='set') und haben ein
     // zwischengespeichertes Bild — genau der Fall, den der Bild-Job herstellt.
-    await db.run(`INSERT INTO parts (user_id,set_number,part_number,color_id,quantity,source,image_local)
-                  VALUES ($1,$2,$3,4,2,'set',$4)`, [vonId, SN, PN, PFAD_TEIL]);
-    await db.run(`INSERT INTO minifigs (user_id,set_number,fig_number,fig_name,quantity,source,image_local)
-                  VALUES ($1,$2,$3,'Testfigur',1,'set',$4)`, [vonId, SN, FN, PFAD_FIGUR]);
+    // Das Bild steht seit Migration 0034 im Katalog, der Bestand in
+    // parts/minifigs.
+    await db.run(`INSERT INTO part_color_catalog (part_number,color_id,image_local)
+                  VALUES ($1,4,$2)
+                  ON CONFLICT (part_number,color_id) DO UPDATE SET image_local=EXCLUDED.image_local`,
+                 [PN, PFAD_TEIL]);
+    await db.run(`INSERT INTO minifigs_catalog (fig_number,fig_name,image_local)
+                  VALUES ($1,'Testfigur',$2)
+                  ON CONFLICT (fig_number) DO UPDATE SET image_local=EXCLUDED.image_local`,
+                 [FN, PFAD_FIGUR]);
+    await db.run(`INSERT INTO parts (user_id,set_number,part_number,color_id,quantity,source)
+                  VALUES ($1,$2,$3,4,2,'set')`, [vonId, SN, PN]);
+    await db.run(`INSERT INTO minifigs (user_id,set_number,fig_number,quantity,source)
+                  VALUES ($1,$2,$3,1,'set')`, [vonId, SN, FN]);
 
     const c = await db.pool.connect();
     try {
@@ -79,26 +88,39 @@ test('ein verschobenes Set nimmt die Bildpfade aller Bestandteile mit', { concur
     } catch (e) { await c.query('ROLLBACK'); throw e; }
     finally { c.release(); }
 
+    // Gelesen wird über denselben JOIN, den die Oberflächen benutzen — also
+    // über die Wirkung. Eine Abfrage auf parts.image_local gibt es nicht mehr,
+    // und sie wäre auch die falsche Frage: Der Nutzer will das Bild sehen, und
+    // ob es kopiert oder nachgeschlagen wird, ist ihm gleich.
     const teil  = await db.get(
-      `SELECT image_local FROM parts WHERE user_id=$1 AND part_number=$2`, [nachId, PN]);
+      `SELECT pcc.image_local
+         FROM parts p
+         LEFT JOIN part_color_catalog pcc ON pcc.part_number = p.part_number
+                                         AND pcc.color_id    = p.color_id
+        WHERE p.user_id=$1 AND p.part_number=$2`, [nachId, PN]);
     const figur = await db.get(
-      `SELECT image_local FROM minifigs WHERE user_id=$1 AND fig_number=$2`, [nachId, FN]);
+      `SELECT mc.image_local
+         FROM minifigs m
+         LEFT JOIN minifigs_catalog mc ON mc.fig_number = m.fig_number
+        WHERE m.user_id=$1 AND m.fig_number=$2`, [nachId, FN]);
 
     assert.ok(teil,  'Das Teil ist im Zielkonto gar nicht angekommen');
     assert.ok(figur, 'Die Minifigur ist im Zielkonto gar nicht angekommen');
 
     assert.equal(figur.image_local, PFAD_FIGUR,
       `Die verschobene Minifigur hat image_local=${figur.image_local} statt "${PFAD_FIGUR}". ` +
-      'Der Zwischenspeicher-Pfad geht beim Verschieben verloren, und bis zum ' +
-      'nächsten Serverstart kommt jedes Figurenbild wieder über den Proxy vom CDN.');
+      'Das Figurenbild ist im Zielkonto nicht sichtbar, und bis zum nächsten ' +
+      'Serverstart kommt es wieder über den Proxy vom CDN.');
+    assert.equal(teil.image_local, PFAD_TEIL,
+      `Das verschobene Teil hat image_local=${teil.image_local} statt "${PFAD_TEIL}".`);
 
-    // Die eigentliche Regel: Beide Zweige behandeln den Bildpfad gleich.
+    // Die eigentliche Regel: Beide Zweige liefern dasselbe Ergebnis.
     assert.deepEqual(
       { teil: teil.image_local !== null, figur: figur.image_local !== null },
       { teil: true, figur: true },
-      'Teile und Minifiguren werden beim Verschieben verschieden behandelt — ' +
-      'copyContents() kopiert zwei Tabellen mit derselben Absicht, und eine ' +
-      'davon lässt eine gefüllte Spalte fallen.');
+      'Teile und Minifiguren kommen beim Verschieben verschieden heraus — ' +
+      'copyContents() kopiert zwei Tabellen mit derselben Absicht, und bei ' +
+      'einer davon fehlt hinterher das Bild.');
   } finally {
     for (const uid of [vonId, nachId]) {
       await db.run(`DELETE FROM set_acquisitions WHERE user_id=$1`, [uid]).catch(() => {});
@@ -107,6 +129,9 @@ test('ein verschobenes Set nimmt die Bildpfade aller Bestandteile mit', { concur
       await db.run(`DELETE FROM sets WHERE user_id=$1`, [uid]).catch(() => {});
     }
     await db.run(`DELETE FROM users WHERE username IN ($1,$2)`, [VON, NACH]).catch(() => {});
+    // Die Katalogzeilen hängen an keinem Konto und bleiben sonst stehen.
+    await db.run(`DELETE FROM part_color_catalog WHERE part_number=$1`, [PN]).catch(() => {});
+    await db.run(`DELETE FROM minifigs_catalog WHERE fig_number=$1`, [FN]).catch(() => {});
     await db.pool.end().catch(() => {});
   }
 });

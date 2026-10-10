@@ -64,10 +64,10 @@ test('der Papierkorb trifft die geklickte Karte, nicht die eigene', async (t) =>
 
   // Dieselbe Nummer bei beiden — genau der Fall, den die Route nicht
   // unterscheiden konnte.
-  await db.run(`INSERT INTO parts (user_id,part_number,color_id,part_name,quantity,source)
-                VALUES ($1,'3001',4,'Brick 2x4',5,'manual'), ($2,'3001',4,'Brick 2x4',9,'manual')`, [haupt, kind]);
-  await db.run(`INSERT INTO minifigs (user_id,fig_number,fig_name,quantity,source)
-                VALUES ($1,'sw0001','Luke',1,'manual'), ($2,'sw0001','Luke',2,'manual')`, [haupt, kind]);
+  await db.run(`INSERT INTO parts (user_id, part_number, color_id, quantity, source)
+                VALUES ($1,'3001',4,5,'manual'), ($2,'3001',4,9,'manual')`, [haupt, kind]);
+  await db.run(`INSERT INTO minifigs (user_id, fig_number, quantity, source)
+                VALUES ($1,'sw0001',1,'manual'), ($2,'sw0001',2,'manual')`, [haupt, kind]);
 
   const { base } = testServer(_req, {
     sitzung: { userId: haupt },
@@ -109,8 +109,8 @@ test('der Papierkorb trifft die geklickte Karte, nicht die eigene', async (t) =>
   // 99 — geändert wurde die EIGENE Zeile (vorher 5|9, nachher 99|9), und die
   // Antwort sagte „success". Lesen und Löschen zu prüfen und das Schreiben
   // auszulassen hiesse, denselben Fehler an der dritten Stelle stehen zu lassen.
-  await db.run(`INSERT INTO parts (user_id,part_number,color_id,part_name,quantity,source)
-                VALUES ($1,'3020',0,'Plate',5,'manual'), ($2,'3020',0,'Plate',9,'manual')`, [haupt, kind]);
+  await db.run(`INSERT INTO parts (user_id, part_number, color_id, quantity, source)
+                VALUES ($1,'3020',0,5,'manual'), ($2,'3020',0,9,'manual')`, [haupt, kind]);
   const mengen = async () => (await db.all(
     `SELECT user_id, quantity FROM parts WHERE part_number='3020' ORDER BY user_id`))
     .map(r => `${r.user_id}:${r.quantity}`);
@@ -163,10 +163,10 @@ test('beide Bewertungen fuehren den Besitzer mit', async (t) => {
   const id = async (n) => (await db.get(`SELECT id FROM users WHERE username=$1`, [n])).id;
   const haupt = await id('h2'), kind = await id('k2');
   await db.run(`INSERT INTO account_links (main_user_id,sub_user_id) VALUES ($1,$2)`, [haupt, kind]);
-  await db.run(`INSERT INTO parts (user_id,part_number,color_id,part_name,quantity,source,unit_price)
-                VALUES ($1,'3001',4,'Brick',5,'manual',0.5), ($2,'3020',0,'Plate',9,'manual',0.3)`, [haupt, kind]);
-  await db.run(`INSERT INTO minifigs (user_id,fig_number,fig_name,quantity,source,unit_price)
-                VALUES ($1,'sw0001','Luke',1,'manual',12.0), ($2,'sw0002','Leia',2,'manual',9.0)`, [haupt, kind]);
+  await db.run(`INSERT INTO parts (user_id, part_number, color_id, quantity, source, unit_price)
+                VALUES ($1,'3001',4,5,'manual',0.5), ($2,'3020',0,9,'manual',0.3)`, [haupt, kind]);
+  await db.run(`INSERT INTO minifigs (user_id, fig_number, quantity, source, unit_price)
+                VALUES ($1,'sw0001',1,'manual',12.0), ($2,'sw0002',2,'manual',9.0)`, [haupt, kind]);
 
   const { base } = testServer(_req, {
     sitzung: { userId: haupt },

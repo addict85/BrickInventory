@@ -98,18 +98,22 @@ router.get('/categories', async (req, res) => {
       -- rb_parts stammt aus dem CSV-Sync und kennt part_cat_id zu jeder
       -- Teilenummer. Über diesen Umweg bekommt auch ein 'Unknown'-Teil seine
       -- Kategorie, ohne dass die gespeicherten Daten angefasst werden müssen.
-      SELECT COALESCE(rc.id::text, rp_cat.id::text, p.category_name) AS category_name,
-             COALESCE(rc.name, rp_cat.name, 'Unbekannt')             AS label,
+      --
+      -- Die Kategorie kommt seit Migration 0034 aus part_catalog (Alias pc);
+      -- vorher stand sie je Konto in parts.
+      SELECT COALESCE(rc.id::text, rp_cat.id::text, pc.category_name) AS category_name,
+             COALESCE(rc.name, rp_cat.name, 'Unbekannt')              AS label,
              COUNT(DISTINCT p.part_number) AS unique_parts,
              SUM(p.quantity * COALESCE(s.quantity,1)) AS total_quantity
       FROM parts p
       LEFT JOIN sets s ON s.user_id = p.user_id AND s.set_number = p.set_number
+      LEFT JOIN part_catalog pc ON pc.part_number = p.part_number
       LEFT JOIN rb_part_categories rc
-             ON rc.id = (CASE WHEN p.category_name ~ '^[0-9]+$' THEN p.category_name::int ELSE NULL END)
+             ON rc.id = (CASE WHEN pc.category_name ~ '^[0-9]+$' THEN pc.category_name::int ELSE NULL END)
       LEFT JOIN rb_parts rp ON rp.part_num = p.part_number
       LEFT JOIN rb_part_categories rp_cat ON rp_cat.id = rp.part_cat_id
       WHERE p.user_id = ANY($1) AND COALESCE(p.source,'set') <> 'manual'
-      GROUP BY COALESCE(rc.id::text, rp_cat.id::text, p.category_name),
+      GROUP BY COALESCE(rc.id::text, rp_cat.id::text, pc.category_name),
                COALESCE(rc.name, rp_cat.name, 'Unbekannt')
       ORDER BY total_quantity DESC`, [uids]);
     res.json({ success:true, categories:cats });
@@ -341,10 +345,25 @@ async function addManualPartIntern(uid: number, rawBody: any) {
     || (await db.get('SELECT rgb FROM rb_colors WHERE id=$1', [color_id]).catch(() => null))?.rgb
     || null;
 
+  // ── Beschreibung in den Katalog, Bestand in parts ───────────────────────
+  //
+  // Seit Migration 0034 trennt sich beides: Name, Farbbezeichnung, Farbcode,
+  // Kategorie und Bild gelten fuer ALLE Konten, der Bestand gilt fuer eines.
+  //
+  // Der Katalog ZUERST: Faellt die Anfrage zwischen den beiden Anweisungen
+  // aus, steht lieber eine Beschreibung ohne Bestand da (unsichtbar, weil
+  // niemand das Teil hat) als ein Bestand ohne Beschreibung (eine Zeile ohne
+  // Namen in der Teileliste).
+  //
+  // Die beiden Upserts stehen in utils/katalogPflege.ts — derselbe Schreiber
+  // wie beim CSV-Import, beim Set-Import und beim Verschieben eines Sets.
+  await merkeTeil(part_number, part_name, category_name);
+  await merkeTeilFarbe(part_number, color_id, color_name, effectiveColorHex, image_url);
+
   await db.run(`
-    INSERT INTO parts (user_id, set_number, part_number, part_name, color_id, color_name, color_hex, category_name, quantity, image_url, source, unit_price, purchase_price, condition)
-    VALUES ($1, NULL, $2, $3, $4, $5, $6, $7, $8, $9, 'manual', $10, $11, $12) ON CONFLICT DO NOTHING`,
-    [uid, part_number, part_name, color_id, color_name, effectiveColorHex, category_name, quantity, image_url, effectiveUnitPrice, effectivePurchasePrice, effectiveCondition]
+    INSERT INTO parts (user_id, set_number, part_number, color_id, quantity, source, unit_price, purchase_price, condition)
+    VALUES ($1, NULL, $2, $3, $4, 'manual', $5, $6, $7) ON CONFLICT DO NOTHING`,
+    [uid, part_number, color_id, quantity, effectiveUnitPrice, effectivePurchasePrice, effectiveCondition]
   );
 
   // Gibt es das Teil schon, hat das INSERT oben nichts getan (ON CONFLICT DO
@@ -465,6 +484,7 @@ import { angemeldeteNutzerId } from '../utils/auth';
 import { csvEmpfang } from '../utils/dateiEmpfang';
 import { sendeFehler } from '../utils/fehlerTexte';
 import { normalisiereLagerort, setzeLagerort } from '../utils/lagerort';
+import { merkeTeil, merkeTeilFarbe } from '../utils/katalogPflege';
 
 
 router.post('/import/csv', csvEmpfang.single('file'), async (req: LoggedInRequest, res) => {
@@ -527,9 +547,15 @@ router.post('/import/csv', csvEmpfang.single('file'), async (req: LoggedInReques
           results.push({ part_number: partNumber, action: 'updated' });
         } else {
           const colorHex = (await db.get('SELECT rgb FROM rb_colors WHERE id=$1', [colorId]).catch(() => null))?.rgb || null;
-          await db.run(`INSERT INTO parts (user_id, set_number, part_number, part_name, color_id, color_name, color_hex, category_name, quantity, image_url, source, unit_price, purchase_price, condition)
-            VALUES ($1, NULL, $2, $3, $4, $5, $6, $7, $8, $9, 'manual', $10, $11, $12) ON CONFLICT DO NOTHING`,
-            [uid, partNumber, partName, colorId, colorName, colorHex, categoryName, qty, imageUrl, effectiveUnitPrice, effectivePurchasePrice, csvCondition]);
+          // Beschreibung in den Katalog, Bestand in parts (Migration 0034).
+          // Der Katalog zuerst, aus demselben Grund wie beim Anlegen von
+          // Hand: lieber eine Beschreibung ohne Bestand als ein Bestand ohne
+          // Beschreibung.
+          await merkeTeil(partNumber, partName, categoryName);
+          await merkeTeilFarbe(partNumber, colorId, colorName, colorHex, imageUrl);
+          await db.run(`INSERT INTO parts (user_id, set_number, part_number, color_id, quantity, source, unit_price, purchase_price, condition)
+            VALUES ($1, NULL, $2, $3, $4, 'manual', $5, $6, $7) ON CONFLICT DO NOTHING`,
+            [uid, partNumber, colorId, qty, effectiveUnitPrice, effectivePurchasePrice, csvCondition]);
           await recordAcquisitionForDay('part', uid, [partNumber, colorId],
             // > 0 wie beim Anlegen von Hand: Die 0 ist ein Anzeigewert fuer
             // die Stammzeile, in der Erfassung steht dafuer NULL.
@@ -572,7 +598,7 @@ const PARTS_CSV_SQL = `
   SELECT p.part_number,
          CASE WHEN a.id IS NULL THEN p.quantity   ELSE a.quantity   END AS quantity,
          COALESCE(p.color_id, 0) AS color_id,
-         COALESCE(p.color_name,'') AS color_name,
+         COALESCE(pcc.color_name,'') AS color_name,
          CASE WHEN a.id IS NULL THEN p.unit_price ELSE a.unit_price END AS unit_price,
          COALESCE(CASE WHEN a.id IS NULL THEN p.condition ELSE a.condition END, 'N') AS condition,
          CASE WHEN a.id IS NULL THEN ''
@@ -582,18 +608,27 @@ const PARTS_CSV_SQL = `
            ON a.user_id = p.user_id
           AND a.part_number = p.part_number
           AND COALESCE(a.color_id, 0) = COALESCE(p.color_id, 0)
+    -- Name und Farbbezeichnung aus den Katalogen (Migration 0034). LEFT JOIN,
+    -- damit ein Teil ohne Katalogzeile nicht aus dem Export faellt.
+    LEFT JOIN part_catalog pc ON pc.part_number = p.part_number
+    LEFT JOIN part_color_catalog pcc ON pcc.part_number = p.part_number
+                                    AND pcc.color_id    = p.color_id
    WHERE p.user_id = $1 AND p.source = 'manual'
-   ORDER BY p.part_name ASC, p.part_number ASC, a.created_at ASC, a.id ASC`;
+   ORDER BY pc.part_name ASC, p.part_number ASC, a.created_at ASC, a.id ASC`;
 
 async function buildPartsCsv(uid: number) {
   const rows = (await db.all(PARTS_CSV_SQL, [uid]).catch(() => null)
     ?? await db.all(
-      `SELECT part_number, quantity, COALESCE(color_id,0) AS color_id,
-              COALESCE(color_name,'') AS color_name, unit_price,
-              COALESCE(condition,'N') AS condition,
+      `SELECT p.part_number, p.quantity, COALESCE(p.color_id,0) AS color_id,
+              COALESCE(pcc.color_name,'') AS color_name, p.unit_price,
+              COALESCE(p.condition,'N') AS condition,
               '' AS acquired_at
-         FROM parts WHERE user_id=$1 AND source='manual'
-        ORDER BY part_name ASC, part_number ASC`, [uid])
+         FROM parts p
+         LEFT JOIN part_catalog pc ON pc.part_number = p.part_number
+         LEFT JOIN part_color_catalog pcc ON pcc.part_number = p.part_number
+                                         AND pcc.color_id    = p.color_id
+        WHERE p.user_id=$1 AND p.source='manual'
+        ORDER BY pc.part_name ASC, p.part_number ASC`, [uid])
   ).map((r: any) => ({ ...r, unit_price: r.unit_price ?? '' }));
 
   return toCsv(

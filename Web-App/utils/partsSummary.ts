@@ -221,9 +221,17 @@ export async function rebuild(userId: number, version?: number): Promise<void> {
              COALESCE(p.bl_part_number, p.part_number),
              p.color_id,
              MIN(p.part_number), MIN(p.bl_part_number),
-             MIN(p.part_name), MIN(p.color_name), MIN(p.color_hex), MIN(p.category_name),
-             MIN(p.image_url), MIN(p.image_local),
-             MAX(COALESCE(p.is_spare, 0)),
+             -- Beschreibung aus den Katalogen (Migration 0034): Name und
+             -- Kategorie haengen am Teil, Farbbezeichnung und Bild an der
+             -- Farbe. In parts stand beides je Konto neu.
+             MIN(pc.part_name), MIN(pcc.color_name), MIN(pcc.color_hex), MIN(pc.category_name),
+             MIN(pcc.image_url), MIN(pcc.image_local),
+             -- is_spare gehoert zur TEILELISTE eines Sets, nicht zum Teil:
+             -- derselbe Stein ist in einem Set Ersatzteil und im naechsten
+             -- Pflichtteil. MAX() wie vorher, weil die Gruppe mehrere Sets
+             -- zusammenfasst; je (Set, Teil, Farbe) ist der Wert eindeutig
+             -- (Primaerschluessel von set_parts_catalog).
+             MAX(COALESCE(spc.is_spare, 0)),
              SUM(p.quantity * COALESCE(s.quantity, 1)),
              STRING_AGG(DISTINCT p.set_number, ','),
              -- Lagerort: STRING_AGG statt MIN, wie in der Live-Abfrage
@@ -240,6 +248,12 @@ export async function rebuild(userId: number, version?: number): Promise<void> {
         FROM parts p
         LEFT JOIN sets s ON s.user_id = p.user_id AND s.set_number = p.set_number
         LEFT JOIN storage_locations lo ON lo.id = p.storage_id
+        LEFT JOIN part_catalog pc ON pc.part_number = p.part_number
+        LEFT JOIN part_color_catalog pcc ON pcc.part_number = p.part_number
+                                        AND pcc.color_id    = p.color_id
+        LEFT JOIN set_parts_catalog spc ON spc.set_number  = p.set_number
+                                       AND spc.part_number = p.part_number
+                                       AND spc.color_id    = p.color_id
        WHERE p.user_id = $1 AND COALESCE(p.source, 'set') <> 'manual'
        GROUP BY p.user_id, COALESCE(p.bl_part_number, p.part_number), p.color_id`,
       [userId]);

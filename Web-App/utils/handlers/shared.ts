@@ -375,17 +375,43 @@ const SUCHSPALTEN = new Set(['part_number', 'color_id', 'fig_number']);
  * laufen in diesem Projekt Dinge auseinander.
  */
 const KOPFFELDER = {
-  parts: `x.part_number AS nummer, MAX(x.part_name) AS name,
-          MAX(x.color_id) AS color_id, MAX(x.color_name) AS color_name,
-          MAX(x.color_hex) AS color_hex, MAX(x.category_name) AS category_name,
-          MAX(x.image_local) AS teil_image_local, MAX(x.image_url) AS teil_image_url,
-          MAX(x.is_spare) AS is_spare,
+  parts: `x.part_number AS nummer, MAX(pc.part_name) AS name,
+          MAX(x.color_id) AS color_id, MAX(pcc.color_name) AS color_name,
+          MAX(pcc.color_hex) AS color_hex, MAX(pc.category_name) AS category_name,
+          MAX(pcc.image_local) AS teil_image_local, MAX(pcc.image_url) AS teil_image_url,
+          MAX(COALESCE(spc.is_spare, 0)) AS is_spare,
           NULLIF(STRING_AGG(DISTINCT lo.name, ', '), '') AS storage`,
-  minifigs: `x.fig_number AS nummer, MAX(x.fig_name) AS name,
+  minifigs: `x.fig_number AS nummer, MAX(mc.fig_name) AS name,
           NULL::int AS color_id, NULL::text AS color_name,
           NULL::text AS color_hex, NULL::text AS category_name,
-          MAX(x.image_local) AS teil_image_local, MAX(x.image_url) AS teil_image_url,
+          MAX(mc.image_local) AS teil_image_local, MAX(mc.image_url) AS teil_image_url,
           0 AS is_spare, NULL::text AS storage`,
+} as const;
+
+/**
+ * Die Katalog-JOINs je Tabelle.
+ *
+ * Seit Migration 0034 steht die Beschreibung nicht mehr an der Bestandszeile:
+ * Name und Kategorie in part_catalog, Farbbezeichnung/Farbcode/Bild in
+ * part_color_catalog, das Ersatzteilkennzeichen in set_parts_catalog, und bei
+ * den Figuren alles in minifigs_catalog.
+ *
+ * Alle ueber ihren Primaerschluessel verbunden, also hoechstens eine Zeile je
+ * Treffer — die Gruppierung bleibt unberuehrt.
+ *
+ * Dass das hier gebraucht wird, ist nicht aufgefallen, weil die Abfrage unten
+ * ein `.catch(() => [])` traegt: Aus „column x.part_name does not exist" wurde
+ * eine LEERE LISTE. GEMESSEN an test/verwendende-sets-db.test.js — „Erwartet
+ * drei Sets in Nummernfolge, bekam []".
+ */
+const KATALOGJOIN = {
+  parts: `LEFT JOIN part_catalog pc ON pc.part_number = x.part_number
+          LEFT JOIN part_color_catalog pcc ON pcc.part_number = x.part_number
+                                          AND pcc.color_id    = x.color_id
+          LEFT JOIN set_parts_catalog spc ON spc.set_number  = x.set_number
+                                         AND spc.part_number = x.part_number
+                                         AND spc.color_id    = x.color_id`,
+  minifigs: `LEFT JOIN minifigs_catalog mc ON mc.fig_number = x.fig_number`,
 } as const;
 
 const SCHLUESSELSPALTE = { parts: 'x.part_number', minifigs: 'x.fig_number' } as const;
@@ -426,6 +452,7 @@ async function verwendendeSets(
        -- als feste NULL fuehrt — ein unbenutzter LEFT JOIN kostet dort nichts
        -- und haelt die Abfrage in EINER Form.
        LEFT JOIN storage_locations lo ON lo.id = x.storage_id
+       ${KATALOGJOIN[tabelle]}
       WHERE x.user_id = ANY($1)
         AND x.set_number IS NOT NULL
         AND ${bedingungen.join(' AND ')}

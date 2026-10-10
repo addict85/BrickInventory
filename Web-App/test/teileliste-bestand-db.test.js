@@ -58,27 +58,32 @@ async function seed() {
   await db.run(`INSERT INTO sets (user_id, set_number, quantity) VALUES ($1,'10276-1',1)`, [UID]);
 
   // Teile AUS den Sets (source bleibt leer — genau wie partsImport.ts sie legt).
-  const setTeil = (setNr, num, farbe, menge) => db.run(
-    `INSERT INTO parts (user_id, set_number, part_number, part_name, color_id, quantity)
-     VALUES ($1,$2,$3,$4,$5,$6)`, [UID, setNr, num, 'Brick', farbe, menge]);
+  const setTeil = async (setNr, num, farbe, menge) => {
+    // Beschreibung in den Katalog, Bestand in parts (Migration 0034).
+    await db.run(`INSERT INTO part_catalog (part_number, part_name) VALUES ($1,'Brick')
+                  ON CONFLICT (part_number) DO NOTHING`, [num]);
+    await db.run(
+      `INSERT INTO parts (user_id, set_number, part_number, color_id, quantity)
+       VALUES ($1,$2,$3,$4,$5)`, [UID, setNr, num, farbe, menge]);
+  };
   await setTeil('60052-1', '3001', 0, 3);   // 3 je Bausatz, zweimal besessen → 6
   await setTeil('10276-1', '3002', 0, 5);   // 5 je Bausatz, einmal besessen  → 5
 
   // Manuell erfasst: haengt an keinem Set.
   await db.run(
-    `INSERT INTO parts (user_id, part_number, part_name, color_id, quantity, source)
-     VALUES ($1,'3003','Brick',0,7,'manual')`, [UID]);
+    `INSERT INTO parts (user_id, part_number, color_id, quantity, source)
+     VALUES ($1,'3003',0,7,'manual')`, [UID]);
 
   // Teilezeile, deren Set nicht (mehr) in `sets` steht — der LEFT-JOIN-Fall.
   await setTeil('99999-1', '3004', 0, 4);
 
   // Minifiguren: eine aus dem zweimal besessenen Set, eine manuell erfasste.
   await db.run(
-    `INSERT INTO minifigs (user_id, set_number, fig_number, fig_name, quantity)
-     VALUES ($1,'60052-1','trn241','Train Driver',1)`, [UID]);
+    `INSERT INTO minifigs (user_id, set_number, fig_number, quantity)
+     VALUES ($1,'60052-1','trn241',1)`, [UID]);
   await db.run(
-    `INSERT INTO minifigs (user_id, fig_number, fig_name, quantity, source)
-     VALUES ($1,'cty0500','Worker',2,'manual')`, [UID]);
+    `INSERT INTO minifigs (user_id, fig_number, quantity, source)
+     VALUES ($1,'cty0500',2,'manual')`, [UID]);
 }
 
 async function dbErreichbar() {

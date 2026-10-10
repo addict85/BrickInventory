@@ -65,8 +65,8 @@ test('der Figuren-Preisverlauf findet die Preise unter der BrickLink-Nummer', { 
     // Die Figur trägt eine ABWEICHENDE BrickLink-Nummer — der Fall, für den
     // es das Feld gibt.
     await db.run(
-      `INSERT INTO minifigs (user_id,fig_number,bl_fig_number,fig_name,quantity,source)
-       VALUES ($1,$2,$3,'Testfigur',1,'manual')`, [uid, EIGENE, BL]);
+      `INSERT INTO minifigs (user_id, fig_number, bl_fig_number, quantity, source)
+       VALUES ($1,$2,$3,1,'manual')`, [uid, EIGENE, BL]);
     // Der Kaufpreis steht unter der Nummer des Benutzers.
     await db.run(
       `INSERT INTO minifig_acquisitions (user_id,fig_number,quantity,unit_price,condition)
@@ -103,8 +103,8 @@ test('der Figuren-Preisverlauf findet die Preise unter der BrickLink-Nummer', { 
     // Benutzers ab, und ältere Zeilen stammen aus der Zeit vor der
     // bl_fig_number.
     await db.run(
-      `INSERT INTO minifigs (user_id,fig_number,fig_name,quantity,source)
-       VALUES ($1,$2,'Testfigur ohne BL',1,'manual')`, [uid, OHNE_BL]);
+      `INSERT INTO minifigs (user_id, fig_number, quantity, source)
+       VALUES ($1,$2,1,'manual')`, [uid, OHNE_BL]);
     await db.run(
       `INSERT INTO minifig_acquisitions (user_id,fig_number,quantity,unit_price,condition)
        VALUES ($1,$2,1,3.00,'N')`, [uid, OHNE_BL]);

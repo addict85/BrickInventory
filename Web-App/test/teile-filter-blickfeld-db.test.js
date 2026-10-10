@@ -70,10 +70,23 @@ test('Farb- und Kategorienliste sehen im Haushalt denselben Bestand',
         ($1,'0001-1',1), ($2,'0002-1',1)`, [haupt, kind]);
     // Je Konto ein Teil, VERSCHIEDENE Farben: Waere die Farbe gleich, faenden
     // beide Zaehlungen zufaellig dieselbe Zahl und der Test pruefte nichts.
+    // Name, Farbbezeichnung und Kategorie stehen seit Migration 0034 in den
+    // Katalogen — und sie sind hier der Kern der Sache: Beide Listen dieses
+    // Tests gruppieren danach. VERSCHIEDENE Kategorien je Teil, aus demselben
+    // Grund wie bei den Farben.
+    // ON CONFLICT DO NOTHING: Die Kataloge haengen an keinem Konto, und diese
+    // Datei laeuft auf der gemeinsamen Test-Datenbank — eine andere Datei kann
+    // dieselben Teilenummern schon eingetragen haben.
+    await db.run(`INSERT INTO part_catalog (part_number, part_name, category_name) VALUES
+        ('3001','Brick 2x4','Bricks'), ('3002','Plate 1x2','Plates')
+        ON CONFLICT (part_number) DO UPDATE SET category_name = EXCLUDED.category_name`);
+    await db.run(`INSERT INTO part_color_catalog (part_number, color_id, color_name) VALUES
+        ('3001',4,'Red'), ('3002',1,'Blue')
+        ON CONFLICT (part_number, color_id) DO UPDATE SET color_name = EXCLUDED.color_name`);
     await db.run(`INSERT INTO parts
-        (user_id, set_number, part_number, part_name, color_id, color_name, category_name, quantity, source)
-        VALUES ($1,'0001-1','3001','Stein',4,'Rot','Bricks',2,'set'),
-               ($2,'0002-1','3002','Platte',1,'Blau','Plates',5,'set')`, [haupt, kind]);
+        (user_id, set_number, part_number, color_id, quantity, source)
+        VALUES ($1,'0001-1','3001',4,2,'set'),
+               ($2,'0002-1','3002',1,5,'set')`, [haupt, kind]);
 
     const { base } = testServer(_req, {
       sitzung: { userId: haupt },

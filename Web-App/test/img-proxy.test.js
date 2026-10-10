@@ -221,14 +221,23 @@ test('Minifiguren-Bilder werden lokal abgelegt wie Set-Bilder', () => {
   // liefen dadurch dauerhaft über /api/img-proxy: Anmeldeprüfung, Cache-Suche
   // und Stream bei jeder Kachel, beim ersten Anzeigen ein CDN-Roundtrip je
   // Bild. Set-Bilder liegen längst lokal und gehen über express.static.
-  assert.match(SERVER, /SELECT DISTINCT ON \(fig_number\) fig_number, image_url FROM minifigs/,
+  // Gelesen wird seit Migration 0034 aus minifigs_catalog — dort steht jede
+  // Figur EINMAL. Das DISTINCT ON stand hier, weil die Abfrage auf minifigs
+  // lief und dieselbe Figur je Konto eine Zeile hatte; jetzt erledigt das der
+  // Primaerschluessel.
+  assert.match(SERVER, /SELECT mc\.fig_number, mc\.image_url FROM minifigs_catalog mc/,
     'Der Hintergrundlauf muss alle Minifiguren ohne lokales Bild finden');
   assert.doesNotMatch(SERVER, /FROM minifigs\s+WHERE source='manual' AND image_url IS NOT NULL AND image_local IS NULL/,
     'Die Beschränkung auf manuelle Figuren muss weg sein');
+  // Aber nur Figuren, die jemand BESITZT: Der Katalog kennt auch Figuren aus
+  // Set-Teilelisten, die niemand hat — die braucht kein lokales Bild.
+  assert.match(SERVER, /EXISTS \(SELECT 1 FROM minifigs m WHERE m\.fig_number = mc\.fig_number\)/,
+    'Der Lauf darf nicht Bilder von Figuren holen, die niemand besitzt');
 
-  // Eine Datei je Nummer, geteilt über alle Nutzer
-  assert.match(SERVER, /UPDATE minifigs SET image_local=\$1 WHERE fig_number=\$2 AND image_local IS NULL/,
-    'Ein Download muss die Zeilen aller Nutzer setzen');
+  // Eine Datei je Nummer, geteilt über alle Nutzer — und seit Migration 0034
+  // auch nur EINE Zeile, die darauf zeigt.
+  assert.match(SERVER, /setzeFigurBildLokal\(f\.fig_number, local\)/,
+    'Ein Download muss den Katalogeintrag der Figur setzen');
 
   // Fortschritt im bestehenden Job, kein zweiter Eintrag im Monitoring
   assert.match(SERVER, /const tick = async \(\) => \{/, 'Fortschrittszähler fehlt');
@@ -239,8 +248,12 @@ test('Minifiguren-Bilder werden lokal abgelegt wie Set-Bilder', () => {
 
   // Und die offene Menge im Monitoring muss sie mitzählen
   const admin = fs.readFileSync(path.join(ROOT, 'routes', 'api_v1', 'admin.ts'), 'utf8');
-  assert.match(admin, /COUNT\(DISTINCT fig_number\) as c FROM minifigs WHERE image_url IS NOT NULL AND image_local IS NULL/,
+  assert.match(admin, /COUNT\(\*\) as c FROM minifigs_catalog mc/,
     'Die Minifiguren des Bestands fehlen in der offenen Menge');
+  // Dieselbe Menge wie der Hintergrundlauf — sonst zeigt das Monitoring eine
+  // Zahl, die mit dem Fortschritt nicht zusammenpasst.
+  assert.match(admin, /EXISTS \(SELECT 1 FROM minifigs m WHERE m\.fig_number = mc\.fig_number\)/,
+    'Die offene Menge und der Hintergrundlauf müssen dieselbe Menge meinen');
 });
 
 test('nur Bilder verlassen den Bild-Proxy', () => {

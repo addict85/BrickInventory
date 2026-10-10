@@ -74,15 +74,21 @@ async function getPartsColors(userId: Blickfeld) {
       GROUP BY ps.color_name, COALESCE(ps.color_hex, rc.rgb)
       ORDER BY total_quantity DESC`, [uids]);
   }
+  // Farbbezeichnung und Farbcode aus part_color_catalog (Migration 0034):
+  // Sie haengen am Teil-Farb-Paar, nicht am Konto, das das Teil besitzt.
+  // Der Hex-Ausweich ueber rb_colors bleibt — fuer Teile, deren Katalogzeile
+  // noch keinen Farbcode hat.
   return db.all(`
-    SELECT p.color_name, COALESCE(p.color_hex, rc.rgb) AS color_hex,
+    SELECT pcc.color_name, COALESCE(pcc.color_hex, rc.rgb) AS color_hex,
            COUNT(DISTINCT p.part_number)::int AS unique_parts,
            SUM(p.quantity * COALESCE(s.quantity,1))::int AS total_quantity
     FROM parts p
     LEFT JOIN sets s ON s.user_id = p.user_id AND s.set_number = p.set_number
+    LEFT JOIN part_color_catalog pcc ON pcc.part_number = p.part_number
+                                    AND pcc.color_id    = p.color_id
     LEFT JOIN rb_colors rc ON rc.id = p.color_id
     WHERE p.user_id = ANY($1) AND COALESCE(p.source,'set') <> 'manual'
-    GROUP BY p.color_name, COALESCE(p.color_hex, rc.rgb) ORDER BY total_quantity DESC`, [uids]);
+    GROUP BY pcc.color_name, COALESCE(pcc.color_hex, rc.rgb) ORDER BY total_quantity DESC`, [uids]);
 }
 
 /**
@@ -108,21 +114,28 @@ function teileFilter(uids: number[], query: any) {
     where += ` AND (p.set_number = $${pi} OR p.set_number = $${pi+1})`;
     params.push(...beideSchreibweisen(set_number)); pi += 2;
   }
-  if (color)    { where += ` AND p.color_name = $${pi++}`;    params.push(color); }
-  // Kategorie auch über den Teilekatalog auflösen — parts.category_name steht
-  // bei vielen Teilen auf 'Unknown', weil die Set-Teile-Antwort von
+  // Farbe, Kategorie, Name und Ersatzteilkennzeichen stehen seit Migration
+  // 0034 in den Katalogen; die Aliase pc/pcc/spc haengt der Aufrufer an
+  // (katalogJoin in getParts).
+  if (color)    { where += ` AND pcc.color_name = $${pi++}`;  params.push(color); }
+  // Kategorie auch über rb_parts auflösen — die Kategorie steht bei vielen
+  // Teilen auf 'Unknown', weil die Set-Teile-Antwort von
   // Rebrickable kein part_cat_id mitliefert. Die Filterliste zeigt deshalb die
   // über rb_parts aufgelöste ID; hier muss dieselbe Auflösung greifen, sonst
   // fände ein Klick nichts.
   if (category) {
-    where += ` AND (p.category_name = $${pi}
+    where += ` AND (pc.category_name = $${pi}
                     OR EXISTS (SELECT 1 FROM rb_parts rp
                                 WHERE rp.part_num = p.part_number
                                   AND rp.part_cat_id::text = $${pi}))`;
     pi++; params.push(category);
   }
-  if (spare === '0') where += ' AND p.is_spare = 0';
-  if (spare === '1') where += ' AND p.is_spare = 1';
+  // is_spare aus set_parts_catalog: Es ist eine Eigenschaft der TEILELISTE
+  // eines Sets, nicht des Teils — derselbe Stein ist in einem Set Ersatzteil
+  // und im naechsten Pflichtteil. COALESCE, weil ein Teil ohne Katalogzeile
+  // (manuell erfasst) kein Ersatzteil ist.
+  if (spare === '0') where += ' AND COALESCE(spc.is_spare, 0) = 0';
+  if (spare === '1') where += ' AND COALESCE(spc.is_spare, 0) = 1';
   // Manuell erfasste Teile aus der Set-Teile-Übersicht ausschließen — sie haben
   // ihren eigenen Bereich ("Manuell erfasste Teile") und gehören nicht in die
   // nach Farbe/Kategorie gruppierte Set-Teileliste.
@@ -130,7 +143,7 @@ function teileFilter(uids: number[], query: any) {
     where += " AND COALESCE(p.source,'set') <> 'manual'";
   }
   if (search) {
-    where += ` AND (LOWER(p.part_number) LIKE $${pi} OR LOWER(p.part_name) LIKE $${pi})`;
+    where += ` AND (LOWER(p.part_number) LIKE $${pi} OR LOWER(pc.part_name) LIKE $${pi})`;
     params.push(`%${search.toLowerCase()}%`); pi++;
   }
   // Lagerort als eigener Filter, nicht als Teil der Volltextsuche: „Kiste 3"
@@ -414,9 +427,27 @@ async function getParts(userId: Blickfeld, query: any = {}) {
   // die Zeile eine ID, der Name steht in storage_locations. LEFT JOIN, damit
   // ein Teil ohne Ort nicht aus der Liste faellt.
   const lagerJoin = ' LEFT JOIN storage_locations lo ON lo.id = p.storage_id';
+  // ── Die Beschreibung kommt aus den Katalogen (Migration 0034) ───────────
+  //
+  // pc  je Teilenummer:          Name, Kategorie
+  // pcc je Teilenummer + Farbe:  Farbbezeichnung, Farbcode, Bild
+  // spc je Set + Teil + Farbe:   Ersatzteilkennzeichen
+  //
+  // Alle drei ueber ihren Primaerschluessel verbunden, also hoechstens eine
+  // Zeile je Treffer — die Gruppierung und damit die Gesamtzahl bleiben
+  // unberuehrt. LEFT JOIN durchweg: Ein manuell erfasstes Teil hat keine
+  // Set-Nummer und damit keine spc-Zeile, und ein Teil ohne Katalogzeile
+  // soll in der Liste stehen, statt aus ihr zu fallen.
+  const katalogJoin =
+    ' LEFT JOIN part_catalog pc ON pc.part_number = p.part_number'
+  + ' LEFT JOIN part_color_catalog pcc ON pcc.part_number = p.part_number'
+  + '                                 AND pcc.color_id    = p.color_id'
+  + ' LEFT JOIN set_parts_catalog spc ON spc.set_number  = p.set_number'
+  + '                                AND spc.part_number = p.part_number'
+  + '                                AND spc.color_id    = p.color_id';
   const joinClause = (set_number ? 'FROM parts p' :
     'FROM parts p LEFT JOIN sets s ON s.user_id = p.user_id AND s.set_number = p.set_number')
-    + lagerJoin;
+    + lagerJoin + katalogJoin;
 
   // Count for pagination.
   // Vorher COUNT(DISTINCT <concat>) — das baut pro Zeile einen String und
@@ -440,8 +471,20 @@ async function getParts(userId: Blickfeld, query: any = {}) {
     if (summary) return summary;
   }
 
+  // ── Dieselben Joins wie die Hauptabfrage, nicht nur `FROM parts p` ──────
+  //
+  // Hier stand `FROM parts p` allein. Die Filterbedingung kann aber auf lo
+  // zeigen (?storage=) und seit Migration 0034 auch auf pc/pcc/spc — ohne die
+  // Joins ist das ein harter Fehler, und der Aufruf antwortete mit 500.
+  //
+  // GEMESSEN am Lagerortfilter, der schon vor dieser Aenderung so lief:
+  // „missing FROM-clause entry for table lo". Siehe die Gegenprobe in
+  // test/teile-katalogspalten-db.test.js.
+  //
+  // Die zusaetzlichen Joins aendern die Zahl nicht: Jeder haengt am
+  // Primaerschluessel seiner Tabelle, liefert also hoechstens eine Zeile.
   const countSql = `SELECT COUNT(*)::int AS c FROM (
-       SELECT 1 FROM parts p WHERE ${where}
+       SELECT 1 ${joinClause} WHERE ${where}
        GROUP BY COALESCE(p.bl_part_number, p.part_number), p.color_id
      ) g`;
 
@@ -475,15 +518,18 @@ async function getParts(userId: Blickfeld, query: any = {}) {
       -- Use BL part number as the canonical identifier
       COALESCE(p.bl_part_number, p.part_number) AS part_number,
       COALESCE(p.bl_part_number, p.part_number) AS bl_part_number,
-      -- Pick one representative part name/image (MIN is deterministic)
-      MIN(p.part_name)    AS part_name,
+      -- Pick one representative part name/image (MIN is deterministic).
+      -- Die Werte kommen aus den Katalogen (Migration 0034); MIN bleibt,
+      -- weil die Gruppe mehrere Rebrickable-Nummern derselben BL-Nummer
+      -- zusammenfasst.
+      MIN(pc.part_name)    AS part_name,
       p.color_id,
-      MIN(p.color_name)   AS color_name,
-      MIN(p.color_hex)    AS color_hex,
-      MIN(p.category_name) AS category_name,
-      MIN(p.image_url)    AS image_url,
-      MIN(p.image_local)  AS image_local,
-      MAX(p.is_spare)     AS is_spare,
+      MIN(pcc.color_name)  AS color_name,
+      MIN(pcc.color_hex)   AS color_hex,
+      MIN(pc.category_name) AS category_name,
+      MIN(pcc.image_url)   AS image_url,
+      MIN(pcc.image_local) AS image_local,
+      MAX(COALESCE(spc.is_spare, 0)) AS is_spare,
       MAX(p.condition)    AS stored_condition,
       -- Lagerort: string_agg statt MIN, und das ist kein Zierrat. Diese
       -- Abfrage fasst je Teil-Farb-Paar MEHRERE Zeilen zusammen (dasselbe
@@ -500,7 +546,7 @@ async function getParts(userId: Blickfeld, query: any = {}) {
     ${joinClause}
     WHERE ${where}
     GROUP BY COALESCE(p.bl_part_number, p.part_number), p.color_id
-    ORDER BY MIN(p.color_name) ASC, MIN(p.part_name) ASC${limitClause}`;
+    ORDER BY MIN(pcc.color_name) ASC, MIN(pc.part_name) ASC${limitClause}`;
 
   // Angezeigter Zustand als Aggregat über die Kaufpreis-Erfassungen manueller
   // Teile: sobald eine Erfassung "Gebraucht" ist, gilt das Teil als gebraucht.
@@ -670,9 +716,9 @@ async function getManualParts(userId: Blickfeld, viewerId: number, { page = 1, p
     limit = ` LIMIT $${params.length - 1} OFFSET $${params.length}`;
   }
   return db.all(`
-    SELECT t.id, t.user_id, t.part_number, t.bl_part_number, t.part_name, t.color_id,
-           t.color_name, t.color_hex,
-           t.category_name, t.quantity, t.image_url, t.image_local, t.unit_price,
+    SELECT t.id, t.user_id, t.part_number, t.bl_part_number, pc.part_name, t.color_id,
+           pcc.color_name, pcc.color_hex,
+           pc.category_name, t.quantity, pcc.image_url, pcc.image_local, t.unit_price,
            t.purchase_price, t.source,
            -- condition FEHLTE in dieser Liste. applyManualCondition() unten
            -- faellt ohne Erfassungen auf genau diesen gespeicherten Wert
@@ -698,11 +744,20 @@ async function getManualParts(userId: Blickfeld, viewerId: number, { page = 1, p
            -- traegt die ID. LEFT JOIN, damit ein Teil ohne Ort in der Liste
            -- bleibt.
            lo.name AS storage,
-           t.created_at
+           -- Hier stand t.created_at. Die Spalte war das Doppel von added_at
+           -- mit derselben Bedeutung; Migration 0034 hat sie geloescht und
+           -- added_at daraus nachgefuellt. Der Name nach aussen bleibt, damit
+           -- die Oberflaechen und die App unveraendert weiterlesen.
+           t.added_at AS created_at
     FROM parts t
+    -- Beschreibung aus den Katalogen (Migration 0034). Dieselben beiden
+    -- Tabellen wie in getParts, nur mit dem Alias dieser Abfrage.
+    LEFT JOIN part_catalog pc ON pc.part_number = t.part_number
+    LEFT JOIN part_color_catalog pcc ON pcc.part_number = t.part_number
+                                    AND pcc.color_id    = t.color_id
     LEFT JOIN storage_locations lo ON lo.id = t.storage_id
     WHERE t.user_id = ANY($1) AND t.source = 'manual'
-    ORDER BY t.part_name ASC, t.part_number ASC${limit}`, params)
+    ORDER BY pc.part_name ASC, t.part_number ASC${limit}`, params)
     .then(async (rows) => {
       const mitZustand = await applyManualCondition(uids, rows, 'part');
       // Der Marktpreis gehoert dazu — dieselbe Luecke wie bei den manuellen

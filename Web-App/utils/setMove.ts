@@ -78,39 +78,36 @@ async function copyContents(tx: any, sn: string, fromId: number, toId: number) {
   const hasFigs  = await has('minifigs');
   const hasInstr = await has('instructions');
   if (hasParts && hasFigs && hasInstr) return { parts: 0, minifigs: 0, instructions: 0 };
+  // ── Nur noch der Bestand ────────────────────────────────────────────────
+  //
+  // Hier standen 14 Spalten; jetzt sind es fuenf. Die restlichen neun waren
+  // die BESCHREIBUNG des Teils — Name, Farbbezeichnung, Farbcode, Kategorie,
+  // Bild, Ersatzteilkennzeichen. Seit Migration 0034 steht die einmal im
+  // Katalog und gilt fuer alle Konten; beim Verschieben ist also nichts
+  // mitzunehmen, und es kann auch nichts vergessen werden. Genau das war
+  // hier naemlich schon einmal der Fehler (siehe den naechsten Block).
   const p = hasParts ? { changes: 0 } : await tx.run(
-    `INSERT INTO parts (user_id, set_number, part_number, part_name, color_id, color_name,
-                        color_hex, category_name, quantity, image_url, image_local, is_spare,
+    `INSERT INTO parts (user_id, set_number, part_number, color_id, quantity,
                         source, bl_part_number)
-     SELECT $1, set_number, part_number, part_name, color_id, color_name,
-            color_hex, category_name, quantity, image_url, image_local, is_spare,
+     SELECT $1, set_number, part_number, color_id, quantity,
             source, bl_part_number
        FROM parts
       WHERE user_id = $2 AND set_number = $3 AND COALESCE(source,'set') <> 'manual'`,
     [toId, fromId, sn]);
-  // image_local kommt MIT — wie bei den Teilen eine Zeile darüber.
+  // ── Was hier einmal schiefging, kann jetzt nicht mehr schiefgehen ───────
   //
-  // Es fehlte hier, und das war die einzige Spalte, die beide Zweige
-  // verschieden behandelten: Die Teile nehmen 14 Spalten mit, die Minifiguren
-  // nahmen 7. Von den fehlenden sind unit_price, purchase_price,
-  // condition und bl_fig_number ausschliesslich bei MANUELL erfassten Figuren
-  // gefüllt — hier werden aber nur Set-Figuren kopiert, dort steht überall
-  // NULL. image_local nicht: Der Bild-Job setzt es „über Nutzer und Quellen
-  // hinweg" (server.ts, UPDATE minifigs SET image_local … WHERE fig_number=…),
-  // Set-Figuren haben es also.
+  // Vorher nahmen die Teile 14 Spalten mit und die Figuren 7 — und das war
+  // kein Stilunterschied: image_local fehlte im Figurenzweig. Ein verschobenes
+  // Set verlor im Zielkonto die zwischengespeicherten Figuren-Bilder, die
+  // Teile behielten ihre. Bis zum naechsten Durchlauf des Bild-Jobs (der nur
+  // beim Serverstart laeuft) kam jedes Bild wieder ueber den Proxy vom CDN.
   //
-  // Ohne diese Spalte verlor ein verschobenes Set im Zielkonto die
-  // zwischengespeicherten Figuren-Bilder — die Teile behielten ihre. Bis zum
-  // nächsten Durchlauf des Bild-Jobs (der nur beim Serverstart läuft) kam
-  // jedes Bild wieder über den Proxy vom CDN.
-  //
-  // Den Pfad wörtlich zu übernehmen ist die hier bereits getroffene
-  // Entscheidung: Die Datei heisst nach der Nummer, und wer sie sehen darf,
-  // entscheidet scopeIds() — nicht die Benutzer-ID im Pfad (siehe server.ts
-  // zur selben Frage bei den Anleitungen).
+  // Mit Migration 0034 steht das Bild im Katalog und nicht an der Zeile. Es
+  // gibt nichts mitzunehmen, also auch nichts zu vergessen — die Fehlerquelle
+  // ist weg, nicht nur der Fehler.
   const m = hasFigs ? { changes: 0 } : await tx.run(
-    `INSERT INTO minifigs (user_id, set_number, fig_number, fig_name, quantity, image_url, image_local, source)
-     SELECT $1, set_number, fig_number, fig_name, quantity, image_url, image_local, source
+    `INSERT INTO minifigs (user_id, set_number, fig_number, quantity, source)
+     SELECT $1, set_number, fig_number, quantity, source
        FROM minifigs
       WHERE user_id = $2 AND set_number = $3 AND COALESCE(source,'set') <> 'manual'`,
     [toId, fromId, sn]);
@@ -269,22 +266,23 @@ export async function moveManualAcquisition(
   if (dst) {
     await tx.run(`UPDATE ${table} SET quantity = quantity + $1 WHERE id = $2`, [movingQty, dst.id]);
   } else if (isPart) {
-    // Stammdaten mitnehmen — Name, Farbe und Bild beschreiben das Teil, nicht
-    // das Exemplar; ein erneuter Katalogabruf wäre unnötig.
+    // Die Beschreibung — Name, Farbe, Bild — stand hier einmal mit in der
+    // Spaltenliste. Sie beschreibt das Teil und nicht das Exemplar und liegt
+    // seit Migration 0034 im Katalog; sie ist also schon da, denn das Teil
+    // existiert im Absenderkonto und damit im Katalog. Mitzunehmen sind nur
+    // Menge, Preis und Zustand.
     await tx.run(
-      `INSERT INTO parts (user_id, part_number, part_name, color_id, color_name, color_hex,
-                          category_name, quantity, image_url, image_local, unit_price,
+      `INSERT INTO parts (user_id, part_number, color_id, quantity, unit_price,
                           condition, source, bl_part_number)
-       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,'manual',$13)`,
-      [toId, src.part_number, src.part_name, src.color_id, src.color_name, src.color_hex,
-       src.category_name, movingQty, src.image_url, src.image_local, src.unit_price,
+       VALUES ($1,$2,$3,$4,$5,$6,'manual',$7)`,
+      [toId, src.part_number, src.color_id, movingQty, src.unit_price,
        src.condition, src.bl_part_number]);
   } else {
     await tx.run(
-      `INSERT INTO minifigs (user_id, fig_number, fig_name, quantity, image_url,
+      `INSERT INTO minifigs (user_id, fig_number, quantity,
                              unit_price, condition, source, bl_fig_number)
-       VALUES ($1,$2,$3,$4,$5,$6,$7,'manual',$8)`,
-      [toId, src.fig_number, src.fig_name, movingQty, src.image_url,
+       VALUES ($1,$2,$3,$4,$5,'manual',$6)`,
+      [toId, src.fig_number, movingQty,
        src.unit_price, src.condition, src.bl_fig_number]);
   }
 

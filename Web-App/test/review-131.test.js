@@ -46,6 +46,12 @@ test('Teile-Rückfallebene für fremde Sets', async (t) => {
   await db.run('DROP SCHEMA public CASCADE');
   await db.run('CREATE SCHEMA public');
   await db.initSchema();
+  // Und die Migrationen: Die Teileliste liest seit Migration 0034 aus
+  // part_catalog und part_color_catalog, und die gibt es nur dort —
+  // initSchema() legt sie nicht an (siehe die Begruendung in db/schema.sql
+  // bei den Katalogtabellen).
+  const c0 = await db.pool.connect();
+  try { await _req('db/migrate.js').runMigrations(c0); } finally { c0.release(); }
   await db.run(`INSERT INTO users (username, password_hash) VALUES ('marco','x')`);
   const uid = (await db.get(`SELECT id FROM users WHERE username='marco'`)).id;
 

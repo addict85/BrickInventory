@@ -51,10 +51,15 @@ async function seed() {
     [U.fremd, '3001', 4, 99, 'manual', null],
   ];
   for (const [uid, num, farbe, menge, quelle, set] of teile) {
+    // Der Name gehoert seit Migration 0034 in den Katalog, nicht an die
+    // Bestandszeile.
     await db.run(
-      `INSERT INTO parts (user_id, set_number, part_number, color_id, quantity, source, part_name)
-       VALUES ($1,$2,$3,$4,$5,$6,$7)`,
-      [uid, set, num, farbe, menge, quelle, 'Teil ' + num]);
+      `INSERT INTO part_catalog (part_number, part_name) VALUES ($1,$2)
+       ON CONFLICT (part_number) DO NOTHING`, [num, 'Teil ' + num]);
+    await db.run(
+      `INSERT INTO parts (user_id, set_number, part_number, color_id, quantity, source)
+       VALUES ($1,$2,$3,$4,$5,$6)`,
+      [uid, set, num, farbe, menge, quelle]);
   }
 }
 

@@ -82,8 +82,11 @@ async function vorschaubilderNachtragen(): Promise<void> {
     const fs   = require('fs');
     const path = require('path');
     const sets  = await db.all("SELECT image_local FROM set_catalog WHERE image_local IS NOT NULL");
-    const parts = await db.all("SELECT image_local FROM parts WHERE image_local IS NOT NULL");
-    const paths = [...sets, ...parts].map((r: any) => r.image_local).filter(Boolean);
+    // Aus part_color_catalog statt aus parts (Migration 0034): dasselbe
+    // Bild stand dort einmal je Konto, die Schleife lief es mehrfach ab.
+    const parts = await db.all("SELECT image_local FROM part_color_catalog WHERE image_local IS NOT NULL");
+    const figs  = await db.all("SELECT image_local FROM minifigs_catalog WHERE image_local IS NOT NULL");
+    const paths = [...sets, ...parts, ...figs].map((r: any) => r.image_local).filter(Boolean);
     let generated = 0;
     // Async statt existsSync: die Schleife läuft über ALLE Bilder von Sets
     // und Teilen und lief direkt nach app.listen() — bei ein paar tausend

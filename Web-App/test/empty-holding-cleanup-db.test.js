@@ -88,10 +88,10 @@ test('letzter Kaufpreis gelöscht → der Eintrag verschwindet ganz',
     // Abgeleitete Teile und Minifiguren — sie hängen am Set und müssen
     // mitgehen. Bleiben sie liegen, tauchen sie in Teileliste und
     // Finanzsummen weiter auf, ohne dass es ein Set dazu gäbe.
-    await db.run(`INSERT INTO parts (user_id,part_number,color_id,part_name,quantity,source,set_number)
-                  VALUES ($1,'3001',4,'Stein',10,'set',$2)`, [uid, sn]);
-    await db.run(`INSERT INTO minifigs (user_id,fig_number,fig_name,quantity,source,set_number)
-                  VALUES ($1,'cty0001','Polizist',1,'set',$2)`, [uid, sn]);
+    await db.run(`INSERT INTO parts (user_id, part_number, color_id, quantity, source, set_number)
+                  VALUES ($1,'3001',4,10,'set',$2)`, [uid, sn]);
+    await db.run(`INSERT INTO minifigs (user_id, fig_number, quantity, source, set_number)
+                  VALUES ($1,'cty0001',1,'set',$2)`, [uid, sn]);
   }
 
   const { base, srv } = testServer(_req, {

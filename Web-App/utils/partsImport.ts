@@ -9,6 +9,7 @@ import { meldeUndWeiter } from '../utils/httpError';
 import { getGlobalSetting } from '../utils/settings';
 import { mitVersion } from './setNummer';
 import { merkeBlTeilnummer, merkeBlNummerUnveraendert } from './blZuordnung';
+import { merkeTeil, merkeTeilFarbe, setzeTeilBildLokal } from './katalogPflege';
 
 /**
  * Teile eines Sets aus dem Katalog übernehmen.
@@ -48,10 +49,19 @@ async function downloadPartImagesBackground(
           'UPDATE set_parts_catalog SET image_local=$1 WHERE part_number=$2 AND color_id=$3',
           [rel, partNumber, colorId]
         ).catch(logAndContinue('parts:image_local katalog'));
-        await db.run(
-          'UPDATE parts SET image_local=$1 WHERE part_number=$2 AND color_id=$3',
-          [rel, partNumber, colorId]
-        ).catch(logAndContinue('parts:image_local bestand'));
+        // Hier stand ein UPDATE auf parts — also je Konto einmal derselbe
+        // Pfad. Seit Migration 0034 steht das Bild einmal im Katalog, und
+        // zwar je (Teil, Farbe): Dasselbe Teil in Rot und in Blau hat
+        // verschiedene Bilder, dieselbe Farbe aber immer dasselbe.
+        //
+        // Als Upsert, nicht als UPDATE: Der Bildabgleich kann ein Teil
+        // treffen, dessen Katalogzeile es noch nicht gibt (das Bild wird
+        // heruntergeladen, bevor der Teile-Import die Zeile schreibt).
+        // Ein nacktes UPDATE waere dort wirkungslos — lautlos.
+        // Ohne COALESCE: Eine eben heruntergeladene Datei ist der richtige
+        // Pfad, auch wenn schon einer dasteht (utils/katalogPflege.ts).
+        await setzeTeilBildLokal(partNumber, colorId, rel)
+          .catch(logAndContinue('parts:image_local katalog (teil/farbe)'));
       }
     }));
     done += batch.length;
@@ -137,10 +147,33 @@ async function importPartsForSet(setNumber: string, userId: number) {
           await db.transaction(async (tx) => {
             for (const row of rows) {
               // [0]=userId [1]=setNum [2]=partNo [3]=blNum [4]=name [5]=colorId [6]=colorName [7]=colorHex [8]=catName [9]=qty [10]=imageUrl [11]=imageLocal [12]=isSpare
+              //
+              // Nur noch der BESTAND: wer welches Teil in welcher Farbe aus
+              // welchem Set hat. Die Beschreibung schreiben die beiden
+              // Schleifen darunter EINMAL in den Katalog, statt je Konto neu
+              // (Migration 0034).
               await tx.run(
-                'INSERT INTO parts (user_id,set_number,part_number,bl_part_number,part_name,color_id,color_name,color_hex,category_name,quantity,image_url,image_local,is_spare) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13) ON CONFLICT DO NOTHING',
-                row
+                'INSERT INTO parts (user_id,set_number,part_number,bl_part_number,color_id,quantity) VALUES ($1,$2,$3,$4,$5,$6) ON CONFLICT DO NOTHING',
+                [row[0], row[1], row[2], row[3], row[5], row[9]]
               );
+            }
+            // ── Teilekatalog ────────────────────────────────────────────
+            //
+            // DO UPDATE mit COALESCE auf der SPALTE, nicht auf EXCLUDED: Ein
+            // vorhandener Name bleibt stehen, ein fehlender wird gefuellt.
+            // Die Set-Teile-Antwort von Rebrickable liefert kein part_cat_id,
+            // die Kategorie steht dort oft auf 'Unknown' — NULLIF haelt das
+            // aus dem Katalog heraus, damit ein spaeterer, echter Wert nicht
+            // dagegen antreten muss.
+            // In eigenen Schleifen, Tabelle fuer Tabelle — dieselbe
+            // Begruendung wie beim Set-Teilekatalog darunter: eine feste
+            // Sperrreihenfolge statt einer Verschraenkung ueber Tabellen
+            // hinweg. Die Zeilen sind nach Teilenummer und Farbe sortiert.
+            for (const row of rows) {
+              await merkeTeil(row[2], row[4], row[8], tx);
+            }
+            for (const row of rows) {
+              await merkeTeilFarbe(row[2], row[5], row[6], row[7], row[10], row[11], tx);
             }
             // Insert catalog separately (different table — avoids cross-table deadlock)
             for (const row of rows) {

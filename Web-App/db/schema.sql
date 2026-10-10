@@ -297,6 +297,42 @@ CREATE TABLE IF NOT EXISTS set_minifigs_catalog (
 );
 CREATE INDEX IF NOT EXISTS idx_smc_set ON set_minifigs_catalog(set_number);
 
+-- ── Teile- und Minifigurenkatalog: part_catalog, part_color_catalog, ───────
+-- ── minifigs_catalog — angelegt von Migration 0034 ─────────────────────────
+--
+-- Das Gegenstueck zu set_catalog: Die BESCHREIBUNG eines Teils haengt nicht am
+-- Konto, das es besitzt. Sie lag vorher in parts/minifigs und damit je Konto
+-- neu.
+--
+-- Angelegt werden die drei Tabellen in
+-- db/migrations/0034-teile-und-minifiguren-stammdaten-im-katalog.sql und NICHT
+-- hier. Zwei Gruende, beide stehen schon anderswo in diesem Baum:
+--
+--   1. initSchema() laeuft nur bei einer Versionsaenderung. Nummerierte
+--      Migrationen laufen IMMER und sind „die Stelle, an der ab jetzt jede
+--      Schemaaenderung landet" (initSchemaOnce in db/database.ts).
+--   2. Eine Tabelle gehoert an GENAU EINE Stelle. Zwei Fassungen fallen nicht
+--      auf, solange sie dasselbe wollen: Ein Anlegen mit IF NOT EXISTS meldet
+--      einen Unterschied nicht — es tut dann einfach nichts.
+--      scripts/check-schema-am-start.js prueft das.
+--      (Die Anweisung ist hier bewusst NICHT ausgeschrieben: Die Pruefung
+--       sucht sie im Text und haette diesen Kommentar als zweite Fassung
+--       gemeldet. GEMESSEN: „mehrfach angelegt: meldet".)
+--
+-- Neun weitere Tabellen liegen aus demselben Grund nur in ihrer Migration,
+-- darunter account_links und wishlist.
+--
+-- Warum eigene Tabellen und nicht rb_parts/rb_colors: jobs/csvImportWorker.ts
+-- fuellt die Rebrickable-Spiegel ueber importiereMitTausch(), und das macht
+-- `DELETE FROM <tabelle>` und schreibt den CSV-Inhalt neu. Nachgetragenes
+-- waere beim naechsten Tageslauf weg. Die Spiegel bleiben reine Spiegel.
+--
+-- Warum das BILD an der Farbe haengt: Ein 2x4-Stein in Rot und derselbe in
+-- Blau haben verschiedene Bilder. set_parts_catalog fuehrt es deshalb schon
+-- heute je (set_number, part_number, color_id). part_color_catalog ist genau
+-- diese Tabelle ohne set_number, is_spare und quantity.
+
+
 CREATE TABLE IF NOT EXISTS price_market (
   set_number    TEXT NOT NULL,
   currency_code TEXT NOT NULL,
@@ -309,6 +345,40 @@ CREATE TABLE IF NOT EXISTS price_market (
 );
 -- ─────────────────────────────────────────────────────────────────────────
 
+-- ── Teilebestand ────────────────────────────────────────────────────────────
+--
+-- Eine Zeile sagt: WER hat WELCHES Teil in welcher Farbe aus welchem Set.
+-- Die BESCHREIBUNG des Teils (Name, Farbbezeichnung, Farbcode, Kategorie,
+-- Bild) ist kontounabhaengig und steht seit Migration 0034 in part_catalog
+-- bzw. part_color_catalog (weiter oben, bei den Katalogtabellen).
+--
+-- ── Warum die Beschreibungsspalten hier TROTZDEM noch stehen ───────────────
+--
+-- Dieselbe Begruendung wie bei sets (siehe dort): Diese Datei legt den
+-- AUSGANGSZUSTAND einer NEUEN Datenbank, danach laufen alle numerierten
+-- Migrationen der Reihe nach. Drei davon fassen Spalten an, die 0034 loescht:
+--
+--   0007-geld-als-numeric.sql        ALTER COLUMN unit_price/purchase_price TYPE
+--   0014-img-proxy-nach-v1.sql       UPDATE parts SET image_url = ...
+--   0029-trigramm-bestandssuche.sql  CREATE INDEX ... ON parts (lower(part_name))
+--
+-- Auf einer fehlenden Spalte ist jedes davon ein harter Fehler, und schema.sql
+-- laeuft in EINER Transaktion — ein Fehler darin nimmt die ganze Datei mit.
+-- GEMESSEN, als part_name hier fehlte: „Migration
+-- 0029-trigramm-bestandssuche.sql fehlgeschlagen: column \"part_name\" does not
+-- exist" — der erste Start einer frischen Installation war damit kaputt.
+--
+-- Die UEBRIGEN Beschreibungsspalten (color_name, color_hex, category_name,
+-- image_local, is_spare, created_at) fasst keine Migration an. Sie stehen hier
+-- aus einem zweiten Grund, und der ist genauso handfest: Migration 0034 traegt
+-- die Beschreibung manuell erfasster Positionen aus dem BESTAND in die
+-- Kataloge nach, und dieser Nachtrag liest sie alle in EINER Anweisung.
+-- Fehlte eine davon auf einer frischen Datenbank, braeche 0034 ab —
+-- GEMESSEN: „column p.category_name does not exist".
+--
+-- Eine frische und eine laufende Datenbank haben damit dieselbe Form, und die
+-- Migration braucht nur EINE Spaltenpruefung statt acht. Alles davon loescht
+-- 0034 am Ende der Kette; die beiden Preisspalten folgen in 0035.
 CREATE TABLE IF NOT EXISTS parts (
   id            SERIAL PRIMARY KEY,
   user_id       INTEGER NOT NULL,
@@ -395,7 +465,10 @@ CREATE INDEX IF NOT EXISTS idx_parts_storage_id
   ON parts (user_id, storage_id) WHERE storage_id IS NOT NULL;
 
 CREATE INDEX IF NOT EXISTS idx_parts_user  ON parts(user_id);
-CREATE INDEX IF NOT EXISTS idx_parts_color ON parts(user_id, color_name);
+-- Hier stand idx_parts_color ON parts(user_id, color_name). Die
+-- Farbbezeichnung steht seit Migration 0034 im Katalog; gefiltert wird nach
+-- der Farb-ID. Den Ersatzindex legt 0034 an — an EINER Stelle, aus demselben
+-- Grund wie die Katalogtabellen (siehe den Block weiter oben).
 CREATE INDEX IF NOT EXISTS idx_parts_set   ON parts(user_id, set_number);
 
 CREATE TABLE IF NOT EXISTS subsets_cache (
@@ -442,6 +515,14 @@ CREATE TABLE IF NOT EXISTS catalog_cache (
   fetched_at TIMESTAMPTZ DEFAULT NOW()
 );
 
+-- ── Minifigurenbestand ──────────────────────────────────────────────────────
+--
+-- Wie parts: hier steht der Bestand, Name und Bild stehen seit Migration 0034
+-- in minifigs_catalog. fig_name, image_url und image_local bleiben hier
+-- stehen, aus genau den beiden Gruenden, die bei parts ausgeschrieben sind:
+-- Migration 0014 fasst image_url an, und der Nachtrag in 0034 liest alle drei
+-- in EINER Anweisung. 0034 loescht sie am Ende der Kette, die beiden
+-- Preisspalten folgen in 0035.
 CREATE TABLE IF NOT EXISTS minifigs (
   id            SERIAL PRIMARY KEY,
   user_id       INTEGER NOT NULL,
@@ -450,6 +531,7 @@ CREATE TABLE IF NOT EXISTS minifigs (
   fig_name      TEXT,
   quantity      INTEGER DEFAULT 1,
   image_url     TEXT,
+  image_local   TEXT,
   source          TEXT DEFAULT 'set',
   unit_price      NUMERIC(12,4),
   purchase_price  NUMERIC(12,4),
@@ -457,7 +539,6 @@ CREATE TABLE IF NOT EXISTS minifigs (
 );
 CREATE INDEX IF NOT EXISTS idx_minifigs_user ON minifigs(user_id);
 ALTER TABLE minifigs ADD COLUMN IF NOT EXISTS bl_fig_number TEXT;
-ALTER TABLE minifigs ADD COLUMN IF NOT EXISTS image_local TEXT;
 
 -- Lagerort auch fuer Minifiguren (db/migrations/0024-lagerort-minifiguren.sql).
 -- Warum hier ZUSAETZLICH zur Migration: siehe den Block bei sets/parts weiter

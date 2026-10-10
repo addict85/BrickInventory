@@ -1,7 +1,8 @@
 import * as db from '../db/database';
 import { getSetMinifigs } from '../clients/rebrickable';
-import { fehlertext } from '../utils/httpError';
+import { fehlertext, logAndContinue } from '../utils/httpError';
 import { mitVersion, beideSchreibweisen } from './setNummer';
+import { merkeFigur } from './katalogPflege';
 
 /**
  * Minifiguren eines Sets aus dem Katalog übernehmen.
@@ -53,9 +54,16 @@ async function importMinifigsForSet(setNumber: string, userId: number) {
       [userId, setNumber]);
 
     for (const fig of figs) {
+      // Nur noch der BESTAND: wer welche Figur aus welchem Set hat. Name und
+      // Bild schreibt der Katalog-Upsert darunter EINMAL, statt je Konto neu
+      // (Migration 0034).
       await db.run(
-        "INSERT INTO minifigs (user_id, set_number, fig_number, fig_name, quantity, image_url, source) VALUES ($1,$2,$3,$4,$5,$6,'set') ON CONFLICT DO NOTHING",
-        [userId, setNumber, fig.fig_number, fig.fig_name, fig.quantity, fig.image_url]);
+        "INSERT INTO minifigs (user_id, set_number, fig_number, quantity, source) VALUES ($1,$2,$3,$4,'set') ON CONFLICT DO NOTHING",
+        [userId, setNumber, fig.fig_number, fig.quantity]);
+      // Figurenkatalog — derselbe Schreiber wie beim Anlegen von Hand und
+      // beim Verschieben eines Sets (utils/katalogPflege.ts).
+      await merkeFigur(fig.fig_number, fig.fig_name, fig.image_url)
+        .catch(logAndContinue('minifiguren:katalog'));
       // Also upsert into shared catalog
       await db.run(
         `INSERT INTO set_minifigs_catalog (set_number, fig_number, fig_name, quantity, image_url)

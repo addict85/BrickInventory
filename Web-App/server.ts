@@ -120,6 +120,7 @@ import cluster from 'cluster';
 import os from 'os';
 import { starteHintergrundlaeufe } from './startup/backgroundJobs';
 import { generateThumb } from './utils/thumbs';
+import { setzeTeilBildLokal, setzeFigurBildLokal } from './utils/katalogPflege';
 import { getGlobalSetting, deleteGlobalSetting } from './utils/settings';
 import { HAUSHALT_KANAL, leereHaushaltCache } from './utils/household';
 import { drossleBeruehren } from './utils/sitzungsBeruehrung';
@@ -1176,9 +1177,22 @@ db.initSchemaOnce().then(async () => {
         ).catch(() => []);
         // Manuell erfasste Teile mit fehlendem lokalen Bild — im selben Job
         // dauerhaft in den lokalen Cache laden (statt nur über den Proxy).
+        //
+        // Ohne user_id, und das ist der Punkt: Das Bild haengt am Teil-Farb-Paar
+        // und liegt seit Migration 0034 EINMAL im Katalog. Vorher stand diese
+        // Abfrage auf parts und lieferte dasselbe Paar je Konto erneut — der
+        // Job lud dieselbe Datei mehrfach herunter.
+        //
+        // Der JOIN auf parts bleibt: Geladen werden nur Bilder von Teilen, die
+        // jemand tatsaechlich manuell erfasst hat. Set-Teile deckt
+        // downloadSetImages() oben ueber set_parts_catalog ab.
         const manualParts = await db.all(
-          `SELECT user_id, part_number, color_id, image_url FROM parts
-           WHERE source='manual' AND image_url IS NOT NULL AND image_local IS NULL`
+          `SELECT DISTINCT pcc.part_number, pcc.color_id, pcc.image_url
+             FROM part_color_catalog pcc
+             JOIN parts p ON p.part_number = pcc.part_number
+                         AND p.color_id    = pcc.color_id
+                         AND p.source      = 'manual'
+            WHERE pcc.image_url IS NOT NULL AND pcc.image_local IS NULL`
         ).catch(() => []);
         // Minifiguren — ALLE, nicht nur manuell erfasste.
         //
@@ -1188,12 +1202,20 @@ db.initSchemaOnce().then(async () => {
         // CDN-Roundtrip je Bild. Set-Bilder liegen längst lokal und gehen über
         // express.static — deshalb war die Minifiguren-Ansicht spürbar träger.
         //
-        // DISTINCT über die Nummer: Die Datei heisst nach der Figur und wird
-        // von allen Nutzern geteilt, sie muss also nur einmal geholt werden.
+        // Das DISTINCT ON ueber die Nummer stand hier, weil die Abfrage auf
+        // minifigs lief und dieselbe Figur je Konto eine Zeile hatte. Seit
+        // Migration 0034 steht Name und Bild EINMAL im Katalog, und
+        // fig_number ist dort der Primaerschluessel — die Verdichtung erledigt
+        // die Tabelle.
+        //
+        // Das EXISTS haelt die Menge bei dem, was die Abfrage vorher lieferte:
+        // Figuren, die jemand besitzt. Der Katalog kennt auch Figuren aus
+        // Set-Teilelisten, die niemand hat.
         const figsToFetch = await db.all(
-          `SELECT DISTINCT ON (fig_number) fig_number, image_url FROM minifigs
-            WHERE image_url IS NOT NULL AND image_local IS NULL
-            ORDER BY fig_number`
+          `SELECT mc.fig_number, mc.image_url FROM minifigs_catalog mc
+            WHERE mc.image_url IS NOT NULL AND mc.image_local IS NULL
+              AND EXISTS (SELECT 1 FROM minifigs m WHERE m.fig_number = mc.fig_number)
+            ORDER BY mc.fig_number`
         ).catch(() => []);
         if (!sets.length && !manualParts.length && !figsToFetch.length) {
           await monitor.update('imgDl', { status: 'idle', sub: 'Alle Bilder gecacht', label: '📥 Bild-Download (CDN)' }).catch(() => {});
@@ -1220,13 +1242,13 @@ db.initSchemaOnce().then(async () => {
         for (const p of manualParts) {
           const local = await enrich.downloadImage(p.image_url, p.part_number, p.color_id || 0, 'part').catch(() => null);
           if (local) {
-            await db.run(
-              "UPDATE parts SET image_local=$1 WHERE user_id=$2 AND part_number=$3 AND color_id=$4 AND source='manual'",
-              [local, p.user_id, p.part_number, p.color_id || 0]
-            // Das Bild liegt dann auf der Platte, die Zeile zeigt aber nicht
-            // darauf: In der Oberflaeche fehlt es weiterhin, und der naechste
-            // Start laedt es erneut herunter.
-            ).catch(logAndContinue(`bilder:teil ${p.part_number}`));
+            // In den Katalog (utils/katalogPflege.ts) — einmal fuer alle
+            // Konten. Mit Protokoll, falls es scheitert: Das Bild liegt dann
+            // auf der Platte, der Katalog zeigt aber nicht darauf. In der
+            // Oberflaeche fehlt es weiterhin, und der naechste Start laedt es
+            // erneut herunter.
+            await setzeTeilBildLokal(p.part_number, p.color_id || 0, local)
+              .catch(logAndContinue(`bilder:teil ${p.part_number}`));
             // Fehlte bisher: Ohne diesen Aufruf blieb es bei der Originalgrösse,
             // dauerhaft — anders als bei Sets (downloadSetImages() oben), wo
             // die Vorschau schon immer angestossen wurde. Der einmalige
@@ -1240,12 +1262,11 @@ db.initSchemaOnce().then(async () => {
         for (const f of figsToFetch) {
           const local = await enrich.downloadImage(f.image_url, f.fig_number, 0, 'minifig').catch(() => null);
           if (local) {
-            // Alle Zeilen dieser Figur setzen — über Nutzer und Quellen hinweg.
-            // Die Datei ist dieselbe, sie heisst nach der Nummer.
-            await db.run(
-              'UPDATE minifigs SET image_local=$1 WHERE fig_number=$2 AND image_local IS NULL',
-              [local, f.fig_number]
-            ).catch(logAndContinue(`bilder:minifigur ${f.fig_number}`));
+            // Eine Zeile, nicht mehr alle Zeilen dieser Figur ueber Nutzer
+            // und Quellen hinweg: Die Datei heisst nach der Nummer, und der
+            // Katalog fuehrt sie seit Migration 0034 genau einmal.
+            await setzeFigurBildLokal(f.fig_number, local)
+              .catch(logAndContinue(`bilder:minifigur ${f.fig_number}`));
             // Dieselbe fehlende Vorschau-Erzeugung wie bei den Teilen oben.
             generateThumb(local).catch(() => {});
           }

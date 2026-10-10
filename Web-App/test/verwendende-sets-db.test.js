@@ -70,25 +70,34 @@ test('die Liste der verwendenden Sets folgt dem Blickfeld', async (t) => {
       ('21058-1','Cheops-Pyramide')
       ON CONFLICT (set_number) DO UPDATE SET name = EXCLUDED.name`);
 
+  // Name, Farbbezeichnung und Ersatzteilkennzeichen stehen seit Migration
+  // 0034 in den Katalogen. Der Dialogkopf unten liest sie von dort, und
+  // dieser Test prueft genau, dass er sie aus DEMSELBEN Durchgang bildet wie
+  // die Liste.
+  await db.run(`INSERT INTO part_catalog (part_number, part_name) VALUES ('3001','Brick 2x4')`);
+  await db.run(`INSERT INTO part_color_catalog (part_number, color_id, color_name) VALUES
+      ('3001',4,'Rot'), ('3001',1,'Blau')`);
+  await db.run(`INSERT INTO minifigs_catalog (fig_number, fig_name) VALUES ('sw0001','Han Solo')`);
+
   // Dasselbe Teil in drei Sets — zweimal beim Hauptkonto, einmal beim Kind.
   // Im ersten Set steht es ZWEIMAL (zwei Zeilen), damit die Summe je Set
   // etwas zu tun bekommt: Ohne die Gruppierung stünde 75192-1 doppelt da.
-  await db.run(`INSERT INTO parts (user_id,set_number,part_number,part_name,color_id,color_name,quantity,source) VALUES
-      ($1,'75192-1','3001','Brick 2x4',4,'Rot',10,'set'),
-      ($1,'75192-1','3001','Brick 2x4',4,'Rot', 5,'set'),
-      ($1,'10305-1','3001','Brick 2x4',4,'Rot', 7,'set'),
-      ($2,'21058-1','3001','Brick 2x4',4,'Rot', 3,'set'),
-      ($1,'75192-1','3001','Brick 2x4',1,'Blau',99,'set')`, [haupt, kind]);
+  await db.run(`INSERT INTO parts (user_id, set_number, part_number, color_id, quantity, source) VALUES
+      ($1,'75192-1','3001',4,10,'set'),
+      ($1,'75192-1','3001',4, 5,'set'),
+      ($1,'10305-1','3001',4, 7,'set'),
+      ($2,'21058-1','3001',4, 3,'set'),
+      ($1,'75192-1','3001',1,99,'set')`, [haupt, kind]);
 
   // Manuell erfasst: KEINE Set-Nummer. Darf nicht auftauchen.
-  await db.run(`INSERT INTO parts (user_id,set_number,part_number,part_name,color_id,color_name,quantity,source)
-      VALUES ($1,NULL,'3001','Brick 2x4',4,'Rot',42,'manual')`, [haupt]);
+  await db.run(`INSERT INTO parts (user_id, set_number, part_number, color_id, quantity, source)
+      VALUES ($1,NULL,'3001',4,42,'manual')`, [haupt]);
 
-  await db.run(`INSERT INTO minifigs (user_id,set_number,fig_number,fig_name,quantity,source) VALUES
-      ($1,'75192-1','sw0001','Han Solo',2,'set'),
-      ($2,'21058-1','sw0001','Han Solo',1,'set')`, [haupt, kind]);
-  await db.run(`INSERT INTO minifigs (user_id,set_number,fig_number,fig_name,quantity,source)
-      VALUES ($1,NULL,'sw0001','Han Solo',9,'manual')`, [haupt]);
+  await db.run(`INSERT INTO minifigs (user_id, set_number, fig_number, quantity, source) VALUES
+      ($1,'75192-1','sw0001',2,'set'),
+      ($2,'21058-1','sw0001',1,'set')`, [haupt, kind]);
+  await db.run(`INSERT INTO minifigs (user_id, set_number, fig_number, quantity, source)
+      VALUES ($1,NULL,'sw0001',9,'manual')`, [haupt]);
 
   // ── Teil, Blickfeld des Hauptkontos (Haushalt) ───────────────────────────
   const { item, sets: imHaushalt } = await verwendendeSets([haupt, kind], 'parts',

@@ -125,10 +125,10 @@ test('Löschen und Mengenänderung gegen die Datenbank', { concurrency: 1 }, asy
   await db.run(`INSERT INTO set_acquisitions (user_id,set_number,purchase_price,condition,quantity)
                 VALUES ($1,$2,15,'N',1)`, [uid, SN]);
   // Ein Exemplar enthält 10 Teile und 1 Minifigur.
-  await db.run(`INSERT INTO parts (user_id,part_number,color_id,part_name,quantity,source,set_number)
-                VALUES ($1,'3001',4,'Stein',10,'set',$2)`, [uid, SN]);
-  await db.run(`INSERT INTO minifigs (user_id,fig_number,fig_name,quantity,source,set_number)
-                VALUES ($1,'cty0001','Polizist',1,'set',$2)`, [uid, SN]);
+  await db.run(`INSERT INTO parts (user_id, part_number, color_id, quantity, source, set_number)
+                VALUES ($1,'3001',4,10,'set',$2)`, [uid, SN]);
+  await db.run(`INSERT INTO minifigs (user_id, fig_number, quantity, source, set_number)
+                VALUES ($1,'cty0001',1,'set',$2)`, [uid, SN]);
 
   const { base, srv } = testServer(_req, {
     sitzung: { userId: uid },

@@ -926,7 +926,20 @@ async function indizesUndZusammenfassung() {
   await pool.query(`CREATE INDEX IF NOT EXISTS idx_rate_limit_first_at ON rate_limit_attempts(first_at)`).catch(() => {});
 
 
-  await pool.query(`CREATE INDEX IF NOT EXISTS idx_parts_category ON parts(user_id, category_name)`).catch(schlucke('idx_parts_category'));
+  // ── idx_parts_category stand hier ───────────────────────────────────────
+  //
+  // Der Index lag auf parts(user_id, category_name). Die Kategorie steht seit
+  // Migration 0034 in part_catalog und haengt NICHT am Konto — der fuehrende
+  // user_id waere dort sinnlos.
+  //
+  // GEMESSEN, als die Anweisung hier noch stand: „[db] idx_parts_category:
+  // column \"category_name\" does not exist" — geschluckt, also lautlos.
+  //
+  // Der Ersatz steht in db/migrations/0034-…, nicht hier, und zwar aus
+  // demselben Grund wie die Indizes aus 0015 (siehe den Block weiter oben):
+  // initSchema() laeuft nur beim allerersten Start. Auf einer LAUFENDEN
+  // Datenbank waere der Index hier nie entstanden, und niemand haette es
+  // gemerkt, weil nichts scheitert.
   // Funktionaler Index auf genau den Ausdruck, nach dem getParts() gruppiert.
   // Ohne ihn muss Postgres COALESCE(bl_part_number, part_number) für jede der
   // Zeilen neu berechnen. Gemessen an 380 Sets / 171'000 Zeilen halbiert er die

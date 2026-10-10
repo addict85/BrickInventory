@@ -86,15 +86,15 @@ test('Preisverlauf: das Hauptkonto sieht die Erfassungen des Unterkontos',
   await db.run(`INSERT INTO price_cache (set_number,condition,currency_code,avg_price,total_quantity)
                 VALUES ($1,'N',$2,20,1)`, [SN, CUR]);
 
-  await db.run(`INSERT INTO parts (user_id,part_number,color_id,part_name,quantity,source)
-                VALUES ($1,$2,4,'T',1,'manual')`, [subId, PN]);
+  await db.run(`INSERT INTO parts (user_id, part_number, color_id, quantity, source)
+                VALUES ($1,$2,4,1,'manual')`, [subId, PN]);
   await db.run(`INSERT INTO part_acquisitions (user_id,part_number,color_id,unit_price,condition,quantity)
                 VALUES ($1,$2,4,3,'N',1)`, [subId, PN]);
   await db.run(`INSERT INTO part_price_cache (part_number,color_id,condition,currency_code,avg_price)
                 VALUES ($1,4,'N',$2,6)`, [PN, CUR]);
 
-  await db.run(`INSERT INTO minifigs (user_id,fig_number,fig_name,quantity,source)
-                VALUES ($1,$2,'T',1,'manual')`, [subId, FN]);
+  await db.run(`INSERT INTO minifigs (user_id, fig_number, quantity, source)
+                VALUES ($1,$2,1,'manual')`, [subId, FN]);
   await db.run(`INSERT INTO minifig_acquisitions (user_id,fig_number,unit_price,condition,quantity)
                 VALUES ($1,$2,4,'N',1)`, [subId, FN]);
   await db.run(`INSERT INTO minifig_price_cache (fig_number,condition,currency_code,avg_price)

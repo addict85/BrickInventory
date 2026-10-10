@@ -243,7 +243,19 @@ async function computeMinifigsValuation(viewerId: number, ids: Blickfeld) {
   // Rueckfall, den effectiveCondition() jetzt richtig macht. Der Compiler hat
   // das gemeldet, sobald der Rueckfall weg war — ein Wert, den niemand mehr
   // liest, ist der beste Beleg dafuer, dass er nur den Fehler getragen hat.
-  const manualFigs = await db.all(`SELECT *, COALESCE(condition,'N') AS condition FROM minifigs WHERE user_id = ANY($1) AND source='manual'`, [uids]);
+  // ── Spalten ausgeschrieben, kein SELECT * ───────────────────────────────
+  //
+  // Name und Bild kommen seit Migration 0034 aus minifigs_catalog. Ein Stern
+  // haette sie stillschweigend verloren — genau so ist der Lagerort einmal
+  // aus der Set-Detailansicht verschwunden (siehe handlers/sets.ts).
+  const manualFigs = await db.all(`
+    SELECT m.id, m.user_id, m.set_number, m.fig_number, m.bl_fig_number,
+           m.quantity, m.source, m.unit_price, m.purchase_price, m.storage_id,
+           COALESCE(m.condition,'N') AS condition,
+           mc.fig_name, mc.image_url, mc.image_local
+      FROM minifigs m
+      LEFT JOIN minifigs_catalog mc ON mc.fig_number = m.fig_number
+     WHERE m.user_id = ANY($1) AND m.source='manual'`, [uids]);
   if (!manualFigs.length) return { currency, figs: [], total_value: '0.00' };
 
   const acqByFig = await loadManualAcquisitions(uids, 'fig');
@@ -358,8 +370,21 @@ async function computePartsValuation(viewerId: number, ids: Blickfeld) {
     getGlobalSetting('price_cache_ttl', '24'),
   ]);
   // Kein defaultCondition mehr — siehe die Figuren-Bewertung darueber.
-  const manualParts = await db.all(
-    `SELECT *, COALESCE(condition,'N') AS condition FROM parts WHERE user_id = ANY($1) AND source = 'manual'`, [uids]);
+  // Spalten ausgeschrieben, kein SELECT * — dieselbe Begruendung wie bei den
+  // Figuren darueber. Die Beschreibung kommt aus den Katalogen (Migration
+  // 0034), der Bestand aus parts.
+  const manualParts = await db.all(`
+    SELECT p.id, p.user_id, p.set_number, p.part_number, p.bl_part_number,
+           p.color_id, p.quantity, p.source, p.unit_price, p.purchase_price,
+           p.storage_id, p.added_at,
+           COALESCE(p.condition,'N') AS condition,
+           pc.part_name, pc.category_name,
+           pcc.color_name, pcc.color_hex, pcc.image_url, pcc.image_local
+      FROM parts p
+      LEFT JOIN part_catalog pc ON pc.part_number = p.part_number
+      LEFT JOIN part_color_catalog pcc ON pcc.part_number = p.part_number
+                                      AND pcc.color_id    = p.color_id
+     WHERE p.user_id = ANY($1) AND p.source = 'manual'`, [uids]);
 
   if (!manualParts.length) return { currency, parts: [], total_value: '0.00' };
 

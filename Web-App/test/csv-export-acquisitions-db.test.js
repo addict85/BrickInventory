@@ -223,9 +223,14 @@ test('Minifiguren-Export: dieselbe Regel, dieselbe eine Abfrage',
     for (const [nr, name, menge, preis] of [
       ['fig-a', 'Aaa', 2, 9.00], ['fig-b', 'Bbb', 1, 42.00],
     ]) {
+      // Der Name steht seit Migration 0034 im Katalog — und er ist hier
+      // nicht nebensaechlich: Der Export sortiert danach.
       await db.run(
-        `INSERT INTO minifigs (user_id, fig_number, fig_name, quantity, unit_price, condition, source)
-         VALUES ($1,$2,$3,$4,$5,'N','manual')`, [uid, nr, name, menge, preis]);
+        `INSERT INTO minifigs_catalog (fig_number, fig_name) VALUES ($1,$2)
+         ON CONFLICT (fig_number) DO NOTHING`, [nr, name]);
+      await db.run(
+        `INSERT INTO minifigs (user_id, fig_number, quantity, unit_price, condition, source)
+         VALUES ($1,$2,$3,$4,'N','manual')`, [uid, nr, menge, preis]);
     }
     await db.run(
       `INSERT INTO minifig_acquisitions (user_id, fig_number, quantity, unit_price, condition)
@@ -297,11 +302,19 @@ test('Teile-Export: dieselbe Regel, dieselbe eine Abfrage',
       ['3001', 1, 'Blau', 7, 2.00],
       ['3002', 0, '',     1, 42.00],
     ]) {
+      // Name und Farbbezeichnung in die Kataloge (Migration 0034). Beide
+      // stehen in der Exportspalte color_name bzw. in der Sortierung.
       await db.run(
-        `INSERT INTO parts (user_id, part_number, part_name, color_id, color_name,
+        `INSERT INTO part_catalog (part_number, part_name) VALUES ($1,$2)
+         ON CONFLICT (part_number) DO NOTHING`, [nr, `Teil ${nr}`]);
+      await db.run(
+        `INSERT INTO part_color_catalog (part_number, color_id, color_name) VALUES ($1,$2,$3)
+         ON CONFLICT (part_number, color_id) DO NOTHING`, [nr, farbe, farbname]);
+      await db.run(
+        `INSERT INTO parts (user_id, part_number, color_id,
                             quantity, unit_price, condition, source)
-         VALUES ($1,$2,$3,$4,$5,$6,$7,'N','manual')`,
-        [uid, nr, `Teil ${nr}`, farbe, farbname, menge, preis]);
+         VALUES ($1,$2,$3,$4,$5,'N','manual')`,
+        [uid, nr, farbe, menge, preis]);
     }
     await db.run(
       `INSERT INTO part_acquisitions (user_id, part_number, color_id, quantity, unit_price, condition, created_at)

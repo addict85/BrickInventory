@@ -124,10 +124,19 @@ test('Zusammenfassung stimmt mit der Live-Abfrage überein und veraltet nicht',
   await db.run("INSERT INTO users (id,username,password_hash,is_admin) VALUES ($1,'psum','x',0) ON CONFLICT DO NOTHING", [U]);
   // Zwei Sets, das zweite doppelt vorhanden — die Menge muss mitmultipliziert werden.
   await db.run("INSERT INTO sets (user_id,set_number,quantity) VALUES ($1,'A-1',1),($1,'B-1',2)", [U]);
-  await db.run(`INSERT INTO parts (user_id,set_number,part_number,color_id,color_name,part_name,quantity,source)
-    VALUES ($1,'A-1','3001',5,'Rot','Brick',3,'set'),
-           ($1,'B-1','3001',5,'Rot','Brick',4,'set'),
-           ($1,'A-1','3002',1,'Blau','Plate',1,'set')`, [U]);
+  // Farbbezeichnung und Name stehen seit Migration 0034 in den Katalogen.
+  // Hier nicht nebensaechlich: Die Prüfungen unten suchen die Gruppe über
+  // `color_name === 'Rot'`.
+  await db.run(`INSERT INTO part_catalog (part_number, part_name) VALUES
+    ('3001','Brick 2x4'),('3002','Plate 1x2'),('3003','Tile 1x1')
+    ON CONFLICT (part_number) DO NOTHING`);
+  await db.run(`INSERT INTO part_color_catalog (part_number, color_id, color_name) VALUES
+    ('3001',5,'Rot'),('3002',1,'Blau'),('3003',2,'Gruen')
+    ON CONFLICT (part_number, color_id) DO NOTHING`);
+  await db.run(`INSERT INTO parts (user_id, set_number, part_number, color_id, quantity, source)
+    VALUES ($1,'A-1','3001',5,3,'set'),
+           ($1,'B-1','3001',5,4,'set'),
+           ($1,'A-1','3002',1,1,'set')`, [U]);
 
   // Seit dem Fix baut ensureFresh() NICHT mehr im Request auf. Der erste
   // Zugriff eines Nutzers ohne Zusammenfassung wird deshalb aus der
@@ -146,8 +155,8 @@ test('Zusammenfassung stimmt mit der Live-Abfrage überein und veraltet nicht',
     'die Set-Menge muss in die Teilemenge eingehen');
 
   // Änderung an parts → Trigger → nächster Lesezugriff baut neu auf
-  await db.run(`INSERT INTO parts (user_id,set_number,part_number,color_id,color_name,part_name,quantity,source)
-                VALUES ($1,'A-1','3003',2,'Gelb','Tile',9,'set')`, [U]);
+  await db.run(`INSERT INTO parts (user_id, set_number, part_number, color_id, quantity, source)
+                VALUES ($1,'A-1','3003',2,9,'set')`, [U]);
   // Der Lesezugriff darf jetzt NICHT mehr blockieren: Er liefert den alten
   // Stand und stösst den Aufbau nur an. Erst danach stimmen die Zahlen wieder.
   const stale = await H.getParts(U, { exclude_manual: '1', page: 1, page_size: 50 });
@@ -176,8 +185,8 @@ test('Zusammenfassung stimmt mit der Live-Abfrage überein und veraltet nicht',
   await PS.rebuildNow(U);
   assert.equal(await PS.ensureFresh(U, { strict: true }), true,
     'Vorbedingung: die eigene Zusammenfassung ist frisch');
-  await db.run(`INSERT INTO parts (user_id,part_number,color_id,color_name,part_name,quantity,source)
-                VALUES ($1,'9999',7,'Grün','Fremd',1,'manual')`, [FREMD]);
+  await db.run(`INSERT INTO parts (user_id, part_number, color_id, quantity, source)
+                VALUES ($1,'9999',7,1,'manual')`, [FREMD]);
   assert.equal(await PS.ensureFresh(U, { strict: true }), true,
     'Ein fremdes Konto darf die eigene Zusammenfassung nicht entwerten');
   // Die eigene Änderung dagegen schon.
@@ -288,9 +297,9 @@ test('beide Pfade der Kennzahlen zählen DASSELBE — auch mit manuellen Teilen'
   await db.run(
     "INSERT INTO users (id,username,password_hash,is_admin) VALUES ($1,'psum2','x',0) ON CONFLICT DO NOTHING", [U]);
   await db.run("INSERT INTO sets (user_id,set_number,quantity) VALUES ($1,'A-1',1)", [U]);
-  await db.run(`INSERT INTO parts (user_id,set_number,part_number,color_id,color_name,part_name,quantity,source)
-    VALUES ($1,'A-1','3001',5,'Rot','Brick',3,'set'),
-           ($1,NULL,'9999',7,'Gruen','Handerfasst',11,'manual')`, [U]);
+  await db.run(`INSERT INTO parts (user_id, set_number, part_number, color_id, quantity, source)
+    VALUES ($1,'A-1','3001',5,3,'set'),
+           ($1,NULL,'9999',7,11,'manual')`, [U]);
 
   // Weg 1: aus der Zusammenfassung.
   await PS.rebuildNow(U);

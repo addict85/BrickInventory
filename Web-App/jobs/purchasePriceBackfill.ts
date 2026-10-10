@@ -141,7 +141,20 @@ async function backfillPartImages() {
     try {
       const info = await lookupPart(row.part_number, row.color_id);
       if (info?.image_url) {
-        await db.run('UPDATE parts SET image_url=$1 WHERE id=$2', [info.image_url, row.id]);
+        // In den Katalog, nicht an die Bestandszeile: Das Bild haengt am
+        // Teil-Farb-Paar und gilt fuer alle Konten (Migration 0034). Vorher
+        // war es ein UPDATE je Zeile — derselbe Abruf lief also fuer jedes
+        // Konto erneut, und die Bilder konnten auseinanderlaufen.
+        //
+        // Ueberschreibend (nicht COALESCE): Genau das ist der Zweck dieses
+        // Nachtrags — ein generisches, oft falschfarbiges Standardbild soll
+        // durch das Bild der tatsaechlich gewaehlten Farbe ersetzt werden.
+        await db.run(`
+          INSERT INTO part_color_catalog (part_number, color_id, image_url)
+          VALUES ($1, $2, $3)
+          ON CONFLICT (part_number, color_id) DO UPDATE
+            SET image_url = EXCLUDED.image_url, updated_at = NOW()`,
+          [row.part_number, row.color_id, info.image_url]);
         done++;
       }
     } catch (e) { meldeUndWeiter('kaufpreis-nachtrag:teilebild', e); }

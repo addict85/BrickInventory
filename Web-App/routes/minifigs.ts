@@ -55,6 +55,7 @@ import { angemeldeteNutzerId } from '../utils/auth';
 import { csvEmpfang } from '../utils/dateiEmpfang';
 import { sendeFehler } from '../utils/fehlerTexte';
 import { normalisiereLagerort, setzeLagerort } from '../utils/lagerort';
+import { merkeFigur } from '../utils/katalogPflege';
 
 router.use(requireLogin);
 
@@ -84,8 +85,11 @@ const FIGS_CSV_SQL = `
     FROM minifigs f
     LEFT JOIN minifig_acquisitions a
            ON a.user_id = f.user_id AND a.fig_number = f.fig_number
+    -- Der Figurenname steht seit Migration 0034 im Katalog. LEFT JOIN, damit
+    -- eine Figur ohne Katalogzeile nicht aus dem Export faellt.
+    LEFT JOIN minifigs_catalog mc ON mc.fig_number = f.fig_number
    WHERE f.user_id = $1 AND f.source = 'manual'
-   ORDER BY f.fig_name ASC, f.fig_number ASC, a.created_at ASC, a.id ASC`;
+   ORDER BY mc.fig_name ASC, f.fig_number ASC, a.created_at ASC, a.id ASC`;
 
 async function buildFigsCsv(uid: number) {
   // Rueckfallweg wie beim Sets-Export: Das frueherere `.catch(()=>[])` je Figur
@@ -93,10 +97,12 @@ async function buildFigsCsv(uid: number) {
   // wuerde stattdessen die ganze Abfrage abbrechen.
   const acqRows = (await db.all(FIGS_CSV_SQL, [uid]).catch(() => null)
     ?? await db.all(
-      `SELECT fig_number, COALESCE(bl_fig_number,'') AS bl_fig_number, quantity, unit_price,
-              COALESCE(condition,'N') AS condition, '' AS acquired_at
-         FROM minifigs WHERE user_id=$1 AND source='manual'
-        ORDER BY fig_name ASC, fig_number ASC`, [uid])
+      `SELECT f.fig_number, COALESCE(f.bl_fig_number,'') AS bl_fig_number, f.quantity, f.unit_price,
+              COALESCE(f.condition,'N') AS condition, '' AS acquired_at
+         FROM minifigs f
+         LEFT JOIN minifigs_catalog mc ON mc.fig_number = f.fig_number
+        WHERE f.user_id=$1 AND f.source='manual'
+        ORDER BY mc.fig_name ASC, f.fig_number ASC`, [uid])
   ).map((r: any) => ({ ...r, unit_price: r.unit_price ?? '' }));
 
   // Die Abfrage liefert die Felder bereits in der Form, die der Export braucht
@@ -243,10 +249,15 @@ async function addManualFigIntern(uid: number, body: any) {
 
   const { effectiveUnitPrice, effectivePurchasePrice, erfassungsPreis, effectiveCondition, preisAusZustand } =
     await resolveManualFigPurchase(uid, { figNumber: num, blFigNumber: blNum, unitPrice: unit_price, condition });
+  // Beschreibung in den Katalog, Bestand in minifigs (Migration 0034). Der
+  // Katalog zuerst: Faellt die Anfrage dazwischen aus, steht lieber eine
+  // Beschreibung ohne Bestand da (unsichtbar, weil niemand die Figur hat) als
+  // ein Bestand ohne Namen in der Figurenliste.
+  await merkeFigur(num, fig_name, image_url);
   await db.run(`
-    INSERT INTO minifigs (user_id, set_number, fig_number, bl_fig_number, fig_name, quantity, image_url, source, unit_price, purchase_price, condition)
-    VALUES ($1, NULL, $2, $3, $4, $5, $6, 'manual', $7, $8, $9) ON CONFLICT DO NOTHING`,
-    [uid, num, blNum, fig_name, quantity, image_url, effectiveUnitPrice, effectivePurchasePrice, effectiveCondition]);
+    INSERT INTO minifigs (user_id, set_number, fig_number, bl_fig_number, quantity, source, unit_price, purchase_price, condition)
+    VALUES ($1, NULL, $2, $3, $4, 'manual', $5, $6, $7) ON CONFLICT DO NOTHING`,
+    [uid, num, blNum, quantity, effectiveUnitPrice, effectivePurchasePrice, effectiveCondition]);
   // Record acquisition — mit dem tatsächlich verwendeten Kaufpreis (Marktpreis
   // bzw. Teile-Schätzung, falls kein Preis eingegeben wurde), damit die
   // Erfassungshistorie und die PnL-Berechnung stimmen.
@@ -421,9 +432,12 @@ router.post('/import/csv', csvEmpfang.single('file'), async (req: LoggedInReques
           updated++;
           results.push({ fig_number: figNumber, action: 'updated' });
         } else {
+          // Beschreibung in den Katalog, Bestand in minifigs — wie beim
+          // Anlegen von Hand (Migration 0034).
+          await merkeFigur(figNumber, figName, imageUrl);
           await db.run(
-            "INSERT INTO minifigs (user_id, set_number, fig_number, bl_fig_number, fig_name, quantity, image_url, source, unit_price, purchase_price, condition) VALUES ($1,NULL,$2,$3,$4,$5,$6,'manual',$7,$8,$9) ON CONFLICT DO NOTHING",
-            [uid, figNumber, blFigNumber, figName, qty, imageUrl, effectiveUnitPrice, effectivePurchasePrice, effectiveCondition]);
+            "INSERT INTO minifigs (user_id, set_number, fig_number, bl_fig_number, quantity, source, unit_price, purchase_price, condition) VALUES ($1,NULL,$2,$3,$4,'manual',$5,$6,$7) ON CONFLICT DO NOTHING",
+            [uid, figNumber, blFigNumber, qty, effectiveUnitPrice, effectivePurchasePrice, effectiveCondition]);
           await recordAcquisitionForDay('fig', uid, [figNumber],
             { quantity: qty, price: erfassungsPreis, condition: effectiveCondition||'N', createdAt: acqDate }
           ).catch(logAndContinue(`minifigs:import ${figNumber} (neu)`));

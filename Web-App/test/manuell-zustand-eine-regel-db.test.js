@@ -75,13 +75,20 @@ test('manuelle Teile und Figuren: Liste und Bewertung sagen denselben Zustand',
       { nr: '3004', gespeichert: 'U', erfassung: 'N',  erwartet: 'N' },
     ];
     for (const f of faelle) {
-      await db.run(`INSERT INTO parts (user_id,part_number,part_name,color_id,color_name,quantity,source,condition)
-                    VALUES ($1,$2,$3,4,'Rot',1,'manual',$4)`, [uid, f.nr, 'Teil ' + f.nr, f.gespeichert]);
+      // Name und Farbbezeichnung in die Kataloge (Migration 0034).
+      await db.run(`INSERT INTO part_catalog (part_number,part_name) VALUES ($1,$2)
+                    ON CONFLICT (part_number) DO NOTHING`, [f.nr, 'Teil ' + f.nr]);
+      await db.run(`INSERT INTO part_color_catalog (part_number,color_id,color_name)
+                    VALUES ($1,4,'Rot') ON CONFLICT (part_number,color_id) DO NOTHING`, [f.nr]);
+      await db.run(`INSERT INTO parts (user_id,part_number,color_id,quantity,source,condition)
+                    VALUES ($1,$2,4,1,'manual',$3)`, [uid, f.nr, f.gespeichert]);
       if (f.erfassung)
         await db.run(`INSERT INTO part_acquisitions (user_id,part_number,color_id,quantity,unit_price,condition)
                       VALUES ($1,$2,4,1,0.5,$3)`, [uid, f.nr, f.erfassung]);
-      await db.run(`INSERT INTO minifigs (user_id,fig_number,fig_name,quantity,source,condition)
-                    VALUES ($1,$2,$3,1,'manual',$4)`, [uid, 'fig' + f.nr, 'Figur ' + f.nr, f.gespeichert]);
+      await db.run(`INSERT INTO minifigs_catalog (fig_number,fig_name) VALUES ($1,$2)
+                    ON CONFLICT (fig_number) DO NOTHING`, ['fig' + f.nr, 'Figur ' + f.nr]);
+      await db.run(`INSERT INTO minifigs (user_id,fig_number,quantity,source,condition)
+                    VALUES ($1,$2,1,'manual',$3)`, [uid, 'fig' + f.nr, f.gespeichert]);
       if (f.erfassung)
         await db.run(`INSERT INTO minifig_acquisitions (user_id,fig_number,quantity,unit_price,condition)
                       VALUES ($1,$2,1,0.5,$3)`, [uid, 'fig' + f.nr, f.erfassung]);

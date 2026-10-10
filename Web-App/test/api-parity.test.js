@@ -70,6 +70,25 @@ async function seed() {
   await db.run('DROP SCHEMA public CASCADE');
   await db.run('CREATE SCHEMA public');
   await db.initSchema();
+  // ── Und die Migrationen, nicht nur initSchema() ──────────────────────────
+  //
+  // Hier endete der Aufbau nach initSchema(). Das ergab ein Schema, das KEINE
+  // echte Installation hat: initSchema() laeuft nur bei einer
+  // Versionsaenderung, die nummerierten Migrationen laufen IMMER. Neun
+  // Tabellen gibt es ueberhaupt nur in ihrer Migration (account_links,
+  // wishlist, vouchers, price_alerts, …), und Spalten, die eine Migration
+  // LOESCHT, standen hier noch.
+  //
+  // Das ist nicht theoretisch: Genau daran ist GET /api/v1/sets zerbrochen.
+  // schema.sql legt sets.name an, damit Migration 0014 sie anfassen kann, und
+  // Migration 0033 loescht sie am Ende der Kette. Auf DIESEM halben Schema gab
+  // es sie noch — und `SELECT s.*, c.name` hatte damit zwei Spalten namens
+  // name. GEMESSEN: „column reference \"name\" is ambiguous", die ganze
+  // Set-Liste antwortete mit 500, und der Fehler war nur hier zu sehen.
+  //
+  // Eine Paritaetspruefung muss gegen das Schema laufen, das die Nutzer haben.
+  const client = await db.pool.connect();
+  try { await _req('db/migrate.js').runMigrations(client); } finally { client.release(); }
 
   // Kein RETURNING: der SQLite-Kompat-Layer (toPostgres) hängt an INSERTs
   // "ON CONFLICT DO NOTHING" an, was hinter RETURNING ungültig wäre.
@@ -104,13 +123,13 @@ async function seed() {
 
   // Teile + Minifiguren (je Set-Quelle und manuelle Position)
   await db.run(
-    `INSERT INTO parts (user_id, set_number, part_number, part_name, color_id, color_name, color_hex, category_name, quantity, source)
-     VALUES ($1,'75192-1','3001','Brick 2 x 4',4,'Red','C91A09','Bricks',10,'set'),
-            ($1,NULL,'3020','Plate 2 x 4',0,'Black','05131D','Plates',5,'manual') ON CONFLICT DO NOTHING`, [USER.id]);
+    `INSERT INTO parts (user_id, set_number, part_number, color_id, quantity, source)
+     VALUES ($1,'75192-1','3001',4,10,'set'),
+            ($1,NULL,'3020',0,5,'manual') ON CONFLICT DO NOTHING`, [USER.id]);
   await db.run(
-    `INSERT INTO minifigs (user_id, set_number, fig_number, fig_name, quantity, source)
-     VALUES ($1,'75192-1','sw0850','Han Solo',1,'set'),
-            ($1,NULL,'sw0001','Luke Skywalker',2,'manual') ON CONFLICT DO NOTHING`, [USER.id]);
+    `INSERT INTO minifigs (user_id, set_number, fig_number, quantity, source)
+     VALUES ($1,'75192-1','sw0850',1,'set'),
+            ($1,NULL,'sw0001',2,'manual') ON CONFLICT DO NOTHING`, [USER.id]);
 
   // Erfassungen für Teile/Minifiguren (eigene Acquisition-Endpunkte)
   await db.run(

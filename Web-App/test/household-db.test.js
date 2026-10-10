@@ -583,11 +583,11 @@ test('Haushalt gegen echte Datenbank', async (t) => {
 
     // Manuell erfasste Teile und Minifiguren hängen an eigenen Endpunkten —
     // gemeldet war, dass der Filter dort nicht greift.
-    await db.run(`INSERT INTO parts (user_id,part_number,color_id,quantity,source,part_name)
-                  VALUES ($1,'m-A',0,1,'manual','Teil A'), ($2,'m-B',0,1,'manual','Teil B')`,
+    await db.run(`INSERT INTO parts (user_id, part_number, color_id, quantity, source)
+                  VALUES ($1,'m-A',0,1,'manual'), ($2,'m-B',0,1,'manual')`,
       [U.kindA, U.kindB]);
-    await db.run(`INSERT INTO minifigs (user_id,fig_number,quantity,source,fig_name)
-                  VALUES ($1,'mf-A',1,'manual','Figur A'), ($2,'mf-B',1,'manual','Figur B')`,
+    await db.run(`INSERT INTO minifigs (user_id, fig_number, quantity, source)
+                  VALUES ($1,'mf-A',1,'manual'), ($2,'mf-B',1,'manual')`,
       [U.kindA, U.kindB]);
 
     const nummern = rows => rows.map(r => r.part_number ?? r.fig_number);

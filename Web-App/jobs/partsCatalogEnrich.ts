@@ -9,7 +9,7 @@
  */
 const db    = require('../db/database');
 import { cdnImageLimiter } from '../utils/rateLimiter';
-import { meldeUndWeiter, fehlertext, vorDem } from '../utils/httpError';
+import { meldeUndWeiter, fehlertext, vorDem, logAndContinue } from '../utils/httpError';
 import { setGlobalSetting } from '../utils/settings';
 import { neuestesInventar, inventarKandidaten } from '../utils/rbInventar';
 import { mitVersion, ohneVersion } from '../utils/setNummer';
@@ -712,7 +712,13 @@ async function _redownloadMissingImages() {
          UNION ALL
          SELECT image_local, image_url FROM set_minifigs_catalog WHERE image_local IS NOT NULL
          UNION ALL
-         SELECT image_local, image_url FROM parts                WHERE image_local IS NOT NULL
+         -- Gelesen seit Migration 0034 aus part_color_catalog: Dort steht
+         -- jedes Teil-Farb-Paar einmal statt einmal je Konto.
+         SELECT image_local, image_url FROM part_color_catalog    WHERE image_local IS NOT NULL
+         UNION ALL
+         -- Die Figurenbilder fehlten hier ganz: Der Lauf prueft jetzt auch
+         -- sie, seit sie mit Migration 0034 einen eigenen Katalog haben.
+         SELECT image_local, image_url FROM minifigs_catalog      WHERE image_local IS NOT NULL
          UNION ALL
          -- sets fehlte hier (Nachtrag 49): Der Lauf liess ausgerechnet die
          -- Set-Bilder aus, die in der Galerie am sichtbarsten sind.
@@ -784,9 +790,27 @@ async function _redownloadMissingImages() {
           await generateThumb(m.image_local).catch(() => {});
           redownloaded++;
         } else {
-          // Nicht wiederherstellbar -> image_local leeren (Fallback auf CDN-URL)
-          for (const tbl of ['set_parts_catalog', 'set_minifigs_catalog', 'parts', 'sets']) {
-            await db.run(`UPDATE ${tbl} SET image_local=NULL WHERE image_local=$1`, [m.image_local]).catch(() => {});
+          // ── Nicht wiederherstellbar -> image_local leeren ─────────────
+          //
+          // Damit fallen beide Oberflaechen auf die CDN-URL zurueck. Die
+          // Liste MUSS zu den Tabellen passen, die die Spalte wirklich haben,
+          // und das tat sie nicht mehr:
+          //
+          //   'sets'  — Migration 0033 hat sets.image_local geloescht. Der
+          //             Aufruf lief seither in einen Fehler, den das
+          //             .catch(() => {}) verschluckte: Ein verlorenes
+          //             Set-Bild blieb als toter Pfad stehen, und die Galerie
+          //             zeigte eine Luecke statt des CDN-Bildes.
+          //   'parts' — dasselbe seit Migration 0034.
+          //
+          // Jetzt die vier Tabellen, die die Spalte fuehren. Ohne .catch an
+          // dieser Stelle gaebe es keinen Grund mehr — aber ein fehlgeschlagenes
+          // Leeren soll den Lauf nicht abbrechen, also bleibt es, und der
+          // Fehler kommt wenigstens ins Protokoll.
+          for (const tbl of ['set_parts_catalog', 'set_minifigs_catalog',
+                             'part_color_catalog', 'minifigs_catalog', 'set_catalog']) {
+            await db.run(`UPDATE ${tbl} SET image_local=NULL WHERE image_local=$1`, [m.image_local])
+              .catch(logAndContinue(`img-redl:leeren ${tbl}`));
           }
           cleared++;
         }

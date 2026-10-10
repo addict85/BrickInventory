@@ -660,9 +660,14 @@ router.get('/admin/jobs', requireApiAdmin, async (_req: AuthedRequest, res) => {
     db.get(`SELECT COUNT(*) as c FROM set_minifigs_catalog WHERE image_url IS NOT NULL AND image_local IS NULL`).catch(()=>null),
     // Minifiguren des Bestands: Sie werden seit der Erweiterung des
     // img-dl-Hintergrundlaufs ebenfalls lokal abgelegt und gehören damit in
-    // die offene Menge. DISTINCT, weil die Datei je Figur nur einmal geholt
-    // wird und von allen Nutzern geteilt wird.
-    db.get(`SELECT COUNT(DISTINCT fig_number) as c FROM minifigs WHERE image_url IS NOT NULL AND image_local IS NULL`).catch(()=>null),
+    // die offene Menge. Das DISTINCT stand hier, weil die Abfrage auf
+    // minifigs lief und dieselbe Figur je Konto eine Zeile hatte; seit
+    // Migration 0034 ist fig_number der Primaerschluessel des Katalogs.
+    // Das EXISTS haelt die Menge bei dem, was der Hintergrundlauf wirklich
+    // holt: Figuren, die jemand besitzt (siehe server.ts).
+    db.get(`SELECT COUNT(*) as c FROM minifigs_catalog mc
+             WHERE mc.image_url IS NOT NULL AND mc.image_local IS NULL
+               AND EXISTS (SELECT 1 FROM minifigs m WHERE m.fig_number = mc.fig_number)`).catch(()=>null),
   ]);
   const imgPending = parseInt(imgDlPending?.c||0) + parseInt(imgDlPendingFigs?.c||0)
                    + parseInt(imgDlPendingOwnFigs?.c||0);

@@ -62,12 +62,12 @@ test('jede Liste mit Plakette im Client traegt sie auch in der Antwort', async (
   // das Hauptkonto einen Bestand ohne Herkunft.
   await db.run(`INSERT INTO sets (user_id, set_number, quantity)
                 VALUES ($1,'75192-1',1)`, [kind]);
-  await db.run(`INSERT INTO parts (user_id,set_number,part_number,color_id,part_name,quantity,source)
-                VALUES ($1,'75192-1','3001',4,'Brick',10,'set'),
-                       ($1,NULL,'3020',0,'Plate',3,'manual')`, [kind]);
-  await db.run(`INSERT INTO minifigs (user_id,set_number,fig_number,fig_name,quantity,source)
-                VALUES ($1,'75192-1','sw0001','Luke',1,'set'),
-                       ($1,NULL,'sw0002','Leia',2,'manual')`, [kind]);
+  await db.run(`INSERT INTO parts (user_id, set_number, part_number, color_id, quantity, source)
+                VALUES ($1,'75192-1','3001',4,10,'set'),
+                       ($1,NULL,'3020',0,3,'manual')`, [kind]);
+  await db.run(`INSERT INTO minifigs (user_id, set_number, fig_number, quantity, source)
+                VALUES ($1,'75192-1','sw0001',1,'set'),
+                       ($1,NULL,'sw0002',2,'manual')`, [kind]);
 
   const { scopeIds } = _req('utils/household.js');
   const uids = await scopeIds(haupt, 'all');
@@ -121,8 +121,8 @@ test('im Einzelkonto steht keine Plakette', async (t) => {
   const allein = (await db.get(`SELECT id FROM users WHERE username='allein'`)).id;
   await db.run(`INSERT INTO sets (user_id, set_number, quantity)
                 VALUES ($1,'21318-1',1)`, [allein]);
-  await db.run(`INSERT INTO minifigs (user_id,set_number,fig_number,fig_name,quantity,source)
-                VALUES ($1,'21318-1','sw0003','Rey',1,'set')`, [allein]);
+  await db.run(`INSERT INTO minifigs (user_id, set_number, fig_number, quantity, source)
+                VALUES ($1,'21318-1','sw0003',1,'set')`, [allein]);
 
   const { scopeIds } = _req('utils/household.js');
   const uids = await scopeIds(allein, 'all');

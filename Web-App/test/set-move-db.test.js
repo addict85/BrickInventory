@@ -50,12 +50,12 @@ test('Set verschieben', { concurrency: 1 }, async (t) => {
     await db.run(`INSERT INTO set_acquisitions (user_id,set_number,quantity,purchase_price,condition)
                   VALUES ($1,$2,1,50,'N')`, [a, sn]);
     for (let i = 0; i < teile; i++) {
-      await db.run(`INSERT INTO parts (user_id,set_number,part_number,part_name,color_id,color_name,quantity)
-                    VALUES ($1,$2,$3,'Brick',4,'Rot',2)`, [a, sn, `300${i}`]);
+      await db.run(`INSERT INTO parts (user_id, set_number, part_number, color_id, quantity)
+                    VALUES ($1,$2,$3,4,2)`, [a, sn, `300${i}`]);
     }
     for (let i = 0; i < figuren; i++) {
-      await db.run(`INSERT INTO minifigs (user_id,set_number,fig_number,fig_name,quantity)
-                    VALUES ($1,$2,$3,'Figur',1)`, [a, sn, `fig-00${i}`]);
+      await db.run(`INSERT INTO minifigs (user_id, set_number, fig_number, quantity)
+                    VALUES ($1,$2,$3,1)`, [a, sn, `fig-00${i}`]);
     }
   }
 
@@ -108,8 +108,8 @@ test('Set verschieben', { concurrency: 1 }, async (t) => {
 
   await t.test('hat das Ziel schon Teile, wird nicht doppelt kopiert', async () => {
     await bestandAnlegen('10004-1', 2, 0);
-    await db.run(`INSERT INTO parts (user_id,set_number,part_number,part_name,color_id,color_name,quantity)
-                  VALUES ($1,'10004-1','3000','Brick',4,'Rot',2)`, [b]);
+    await db.run(`INSERT INTO parts (user_id, set_number, part_number, color_id, quantity)
+                  VALUES ($1,'10004-1','3000',4,2)`, [b]);
     const r = await db.transaction(tx => moveSetBetweenAccounts(tx, '10004-1', a, b));
     assert.equal(r.parts, 0, 'Teile wurden trotz vorhandener Zeilen erneut kopiert');
     const n = await db.get(

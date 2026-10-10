@@ -62,6 +62,8 @@ test('beide Wege der Teileliste liefern dieselben Typen', async (t) => {
   const aufraeumen = async () => {
     for (const tab of ['parts', 'sets', 'parts_summary', 'parts_summary_state'])
       await db.run(`DELETE FROM ${tab} WHERE user_id=$1`, [U]).catch(() => {});
+    // Die Katalogzeilen haengen an keinem Konto und bleiben sonst stehen.
+    await db.run(`DELETE FROM set_parts_catalog WHERE set_number='Z-1'`).catch(() => {});
   };
 
   try {
@@ -70,9 +72,26 @@ test('beide Wege der Teileliste liefern dieselben Typen', async (t) => {
     await db.run("INSERT INTO sets (user_id,set_number,quantity) VALUES ($1,'Z-1',1)", [U]);
     // Ein Ersatzteil UND ein gewöhnliches: Wäre nur eines dabei, könnte ein
     // Zweig zufällig richtig liegen, ohne die Umwandlung zu machen.
-    await db.run(`INSERT INTO parts (user_id,set_number,part_number,color_id,color_name,part_name,quantity,source,is_spare)
-                  VALUES ($1,'Z-1','3001',5,'Rot','Brick',3,'set','0'),
-                         ($1,'Z-1','3002',1,'Blau','Plate',1,'set','1')`, [U]);
+    // Das Ersatzteilkennzeichen steht seit Migration 0034 in
+    // set_parts_catalog — es gehoert zur TEILELISTE eines Sets, nicht zum
+    // Teil. Die Frage dieses Tests bleibt dieselbe: Beide Wege muessen
+    // denselben TYP liefern.
+    // 3002 ist das Ersatzteil, 3001 das gewoehnliche — dieselbe Belegung wie
+    // vorher, als is_spare noch an der Bestandszeile stand.
+    await db.run(`INSERT INTO set_parts_catalog (set_number,part_number,color_id,quantity,is_spare)
+                  VALUES ('Z-1','3001',5,3,0),
+                         ('Z-1','3002',1,1,1)
+                  ON CONFLICT (set_number,part_number,color_id) DO UPDATE SET is_spare=EXCLUDED.is_spare`);
+    // Name und Farbbezeichnung: Die Typpruefung unten vergleicht sie zwischen
+    // den beiden Zweigen, also muessen sie gefuellt sein.
+    await db.run(`INSERT INTO part_catalog (part_number,part_name) VALUES ('3001','Brick'),('3002','Plate')
+                  ON CONFLICT (part_number) DO NOTHING`);
+    await db.run(`INSERT INTO part_color_catalog (part_number,color_id,color_name)
+                  VALUES ('3001',5,'Rot'),('3002',1,'Blau')
+                  ON CONFLICT (part_number,color_id) DO NOTHING`);
+    await db.run(`INSERT INTO parts (user_id, set_number, part_number, color_id, quantity, source)
+                  VALUES ($1,'Z-1','3001',5,3,'set'),
+                         ($1,'Z-1','3002',1,1,'set')`, [U]);
 
     const abfrage = { exclude_manual: '1', page: 1, page_size: 50 };
 

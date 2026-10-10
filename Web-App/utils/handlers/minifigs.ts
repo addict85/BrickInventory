@@ -35,7 +35,9 @@ async function getMinifigs(userId: number | number[], { search, source, set_numb
   if (source === 'set')    where += " AND m.source = 'set'";
   if (source === 'manual') where += " AND m.source = 'manual'";
   if (search) {
-    where += ` AND (LOWER(m.fig_number) LIKE $${pi} OR LOWER(m.fig_name) LIKE $${pi})`;
+    // Der Figurenname steht seit Migration 0034 im Katalog; der Alias mc
+    // haengt an jeder Abfrage, die diese Bedingung benutzt.
+    where += ` AND (LOWER(m.fig_number) LIKE $${pi} OR LOWER(mc.fig_name) LIKE $${pi})`;
     params.push(`%${search.toLowerCase()}%`); pi++;
   }
   // Gruppierung pro Figur (und Quelle): Dieselbe Figur aus mehreren Sets
@@ -56,6 +58,7 @@ async function getMinifigs(userId: number | number[], { search, source, set_numb
     ? await db.get(`SELECT COUNT(*)::int AS c FROM (
          SELECT 1 FROM minifigs m
          LEFT JOIN sets s ON s.user_id = m.user_id AND s.set_number = m.set_number
+         LEFT JOIN minifigs_catalog mc ON mc.fig_number = m.fig_number
          WHERE ${where} GROUP BY LOWER(TRIM(m.fig_number)), m.source) g`, params)
     : null;
 
@@ -71,10 +74,14 @@ async function getMinifigs(userId: number | number[], { search, source, set_numb
            -- manuelle Figuren JA, Set-Figuren nein.
            array_agg(DISTINCT m.user_id) AS owner_ids,
            MIN(TRIM(m.fig_number)) AS fig_number,
-           MAX(m.fig_name) AS fig_name,
+           -- Name und Bild aus minifigs_catalog (Migration 0034): Sie
+           -- haengen an der Figur, nicht am Konto, das sie besitzt. MAX
+           -- bleibt, weil die Gruppe mehrere Schreibweisen derselben
+           -- Figurennummer zusammenfasst.
+           MAX(mc.fig_name) AS fig_name,
            SUM(m.quantity) AS quantity,
-           MAX(m.image_url) AS image_url,
-           MAX(m.image_local) AS image_local,
+           MAX(mc.image_url) AS image_url,
+           MAX(mc.image_local) AS image_local,
            m.source,
            MAX(m.unit_price) AS unit_price,
            MAX(m.condition) AS stored_condition,
@@ -93,12 +100,19 @@ async function getMinifigs(userId: number | number[], { search, source, set_numb
     -- Der Name aus dem Vorrat (Migration 0031: die Zeile traegt eine ID).
     -- LEFT JOIN, damit eine Figur ohne Ort nicht aus der Liste faellt.
     LEFT JOIN storage_locations lo ON lo.id = m.storage_id
+    -- Beschreibung aus dem Katalog. Verbunden ueber den Primaerschluessel,
+    -- also hoechstens eine Zeile je Treffer — die Gruppierung und die
+    -- Gesamtzahl bleiben unberuehrt. Genau (nicht ueber LOWER(TRIM(...))):
+    -- Migration 0034 fuellt den Katalog aus denselben Zeichenketten, die in
+    -- minifigs stehen, und eine Normalisierung im Join haette den
+    -- Primaerschluessel umgangen.
+    LEFT JOIN minifigs_catalog mc ON mc.fig_number = m.fig_number
     WHERE ${where}
     -- LOWER(TRIM(...)): Import-Pfade (Rebrickable-API vs. CSV-Katalog) können
     -- dieselbe Figurennummer mit Whitespace-/Case-Varianten liefern — die
     -- würden die Gruppierung sonst unsichtbar aushebeln.
     GROUP BY LOWER(TRIM(m.fig_number)), m.source
-    ORDER BY MAX(m.fig_name) ASC, LOWER(TRIM(m.fig_number)) ASC${figLimit}`, figParams);
+    ORDER BY MAX(mc.fig_name) ASC, LOWER(TRIM(m.fig_number)) ASC${figLimit}`, figParams);
 
   // Angezeigter Zustand als Aggregat über die Kaufpreis-Erfassungen manueller
   // Figuren: eine "Gebraucht"-Erfassung genügt, damit die Figur als gebraucht
@@ -205,16 +219,26 @@ async function getManualMinifigs(userId: number | number[], viewerId: number, { 
     limit = ` LIMIT $${params.length - 1} OFFSET $${params.length}`;
   }
   const figs = await db.all(
-    // `m.*` plus der aufgeloeste Lagerortname: Das SELECT * lieferte den Ort
-    // seit jeher mit, und seit Migration 0031 steht an der Zeile nur noch die
-    // ID. Ohne diese Spalte waere der Lagerort im Detail der manuell
-    // erfassten Figuren wieder leer — genau Marcos Befund vom 24.09., nur mit
-    // anderer Ursache.
-    `SELECT m.*, lo.name AS storage
+    // ── Spalten ausgeschrieben, kein m.* ──────────────────────────────────
+    //
+    // Hier stand `m.*` plus der aufgeloeste Lagerortname. Das SELECT * ist
+    // zweimal zur Fehlerquelle geworden: Migration 0031 nahm ihm den
+    // Lagerortnamen weg (Marcos Befund vom 24.09.), und ein Stern liefert
+    // stillschweigend auch SPALTEN DAZU, sobald die Tabelle eine bekommt.
+    // Beides faellt erst in der Oberflaeche auf.
+    //
+    // Name und Bild kommen seit Migration 0034 aus minifigs_catalog —
+    // sie haengen an der Figur, nicht am Konto, das sie besitzt.
+    `SELECT m.id, m.user_id, m.set_number, m.fig_number, m.bl_fig_number,
+            m.quantity, m.source, m.unit_price, m.purchase_price, m.condition,
+            m.storage_id,
+            mc.fig_name, mc.image_url, mc.image_local,
+            lo.name AS storage
        FROM minifigs m
+       LEFT JOIN minifigs_catalog mc ON mc.fig_number = m.fig_number
        LEFT JOIN storage_locations lo ON lo.id = m.storage_id
       WHERE m.user_id = ANY($1) AND m.source = 'manual'
-      ORDER BY m.fig_name ASC, m.fig_number ASC${limit}`,
+      ORDER BY mc.fig_name ASC, m.fig_number ASC${limit}`,
     params);
   const mapped = figs.map(f => ({ ...f, image_local: resolveImageLocal(f.image_local) }));
   const mitZustand = await applyManualCondition(uids, mapped, 'fig');
