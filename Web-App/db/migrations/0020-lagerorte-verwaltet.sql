@@ -35,18 +35,21 @@
 -- die Liste am KONTO — und deshalb sieht der Grossvater beim Set des Enkels
 -- die Orte des Enkels, nicht seine eigenen (Marcos Festlegung).
 
-CREATE TABLE IF NOT EXISTS storage_locations (
-  id         SERIAL PRIMARY KEY,
-  user_id    INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-  name       TEXT NOT NULL,
-  created_at TIMESTAMPTZ DEFAULT NOW()
-);
-
--- Eindeutig OHNE Ruecksicht auf Gross-/Kleinschreibung: „Regal A" und
--- „regal a" sind dasselbe Regal. Zwei Eintraege dafuer waeren eine Falle in
--- der Auswahlliste, nicht eine Wahlmoeglichkeit.
-CREATE UNIQUE INDEX IF NOT EXISTS storage_locations_konto_name
-  ON storage_locations (user_id, lower(name));
+-- ── Tabelle und Index stehen jetzt in db/schema.sql ────────────────────────
+--
+-- Sie standen hier, und das war richtig, solange nur die Auswahlliste daran
+-- hing. Mit Migration 0031 verbindet jede Abfrage, die einen Lagerortnamen
+-- ANZEIGT, diese Tabelle — und Pruefungen, die ihre Datenbank mit
+-- initSchema() allein aufbauen (ohne Migrationen), bekamen dann „relation
+-- storage_locations does not exist".
+--
+-- Umgezogen und nicht verdoppelt: Jede Tabelle wird an genau EINEM Ort
+-- angelegt (test/schema-am-start.test.js). db/schema.sql laeuft bei JEDEM
+-- Start und vor den Migrationen, diese Datei genau einmal — der Vorrat steht
+-- also fuer bestehende Installationen genauso bereit wie vorher.
+--
+-- Was hier BLEIBT, ist die Uebernahme darunter: Sie ist der einmalige
+-- Schritt, den schema.sql nicht ausdruecken kann.
 
 -- ── Die bereits benutzten Orte uebernehmen ──────────────────────────────────
 --

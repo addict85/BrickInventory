@@ -112,12 +112,18 @@ internal fun MainViewModel.loadLagerortVorrat(besitzer: List<Int>) {
     }
 }
 
-/** Die EIGENEN Orte — fuer die Verwaltung in den Einstellungen. */
+/**
+ * Die EIGENEN Orte — fuer die Verwaltung in den Einstellungen.
+ *
+ * Und MIT ihnen die Vorgabe (Marcos Stern): Sie steht in derselben Antwort.
+ * Ein zweiter Abruf dafuer koennte sich mit diesem ueberholen — dann stuende
+ * der Stern einen Moment am falschen Eintrag.
+ */
 internal fun MainViewModel.ladeEigeneLagerorte() {
     viewModelScope.launch {
         val r = repo.teile.getLagerortVorrat(null)
-        val orte = (r as? Result.Success)?.data?.takeIf { it.success }?.orte ?: return@launch
-        _lagerState.update { it.copy(eigene = orte) }
+        val antwort = (r as? Result.Success)?.data?.takeIf { it.success } ?: return@launch
+        _lagerState.update { it.copy(eigene = antwort.orte, vorgabe = antwort.vorgabe) }
     }
 }
 
@@ -162,6 +168,12 @@ private fun Result<ch.brickinventoryapp.data.model.LagerortEintragResponse>.eint
         is Result.Error   -> false to message
     }
 
+private fun Result<ch.brickinventoryapp.data.model.LagerortVorgabeResponse>.vorgabeAuswerten() =
+    when (this) {
+        is Result.Success -> data.success to data.error
+        is Result.Error   -> false to message
+    }
+
 private fun Result<ch.brickinventoryapp.data.model.LagerortResponse>.lagerAuswerten() =
     when (this) {
         is Result.Success -> data.success to data.error
@@ -173,6 +185,22 @@ internal fun MainViewModel.legeLagerortAn(name: String) =
 
 internal fun MainViewModel.benenneLagerortUm(id: Int, name: String) =
     lagerortSchleuse(true) { repo.teile.benenneLagerortUm(id, name).eintragAuswerten() }
+
+/**
+ * Marcos Stern umschalten.
+ *
+ * `istVorgabe` kommt aus der Liste: Der zweite Druck auf denselben Stern
+ * schaltet die Vorgabe ab. Ein eigener Knopf dafuer waere ein zweites
+ * Bedienelement fuer eine Frage mit zwei Antworten.
+ *
+ * Ohne Galerie-Neuladung: Es aendert sich keine Zuordnung an einem Set,
+ * sondern nur, was beim NAECHSTEN Erfassen vorausgewaehlt ist. Die Schleuse
+ * laedt die eigenen Orte neu, und damit kommt auch die neue Vorgabe mit.
+ */
+internal fun MainViewModel.schalteLagerortVorgabe(id: Int, istVorgabe: Boolean) =
+    lagerortSchleuse(false) {
+        repo.teile.setzeLagerortVorgabe(if (istVorgabe) null else id).vorgabeAuswerten()
+    }
 
 internal fun MainViewModel.loescheLagerort(id: Int) =
     lagerortSchleuse(false) { repo.teile.loescheLagerort(id).lagerAuswerten() }

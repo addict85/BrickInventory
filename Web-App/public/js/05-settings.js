@@ -772,7 +772,11 @@ export async function ladeLagerortVerwaltung() {
     el.innerHTML = `<div style="color:var(--mut)">${esc(tRaw('storage.empty'))}</div>`;
     return;
   }
-  el.innerHTML = orte.map(o => {
+  // Marcos Stern: „Weiter möchte ich ein Lagerort in den Einstellungen als
+  // Default setzen können. […] Ich stelle mir das mit einem Sternicon vor."
+  const vorgabeId = v.vorgabe?.id ?? null;
+  el.innerHTML = `<div style="font-size:.72rem;color:var(--mut);margin-bottom:6px">` +
+                 `${esc(tRaw('storage.default_hint'))}</div>` + orte.map(o => {
     const n = belegung.get(o.name);
     // Figuren stehen EIGEN da, nicht bei den Teilesorten (utils/lagerort.ts):
     // „18 Teilesorten" hiesse sonst mal 18 Teilesorten und mal 12 plus 6
@@ -784,6 +788,11 @@ export async function ladeLagerortVerwaltung() {
              data-change="benenneLagerortUm" data-arg="${o.id}" data-val="1"
              style="flex:1;border:1px solid var(--bdr);border-radius:6px;padding:3px 7px;font-size:.85rem;background:var(--sur);color:var(--txt)" />
       <span style="font-size:.72rem;color:var(--mut);white-space:nowrap">${wie}</span>
+      <button class="btn bs btn-sm" data-click="schalteLagerortVorgabe" data-arg="${o.id}"
+              data-arg2="${o.id === vorgabeId ? 1 : 0}" style="padding:2px 8px"
+              title="${esc(tRaw(o.id === vorgabeId ? 'storage.default_is' : 'storage.default_set'))}"
+              aria-label="${esc(tRaw(o.id === vorgabeId ? 'storage.default_is' : 'storage.default_set'))}"
+              aria-pressed="${o.id === vorgabeId ? 'true' : 'false'}">${o.id === vorgabeId ? '★' : '☆'}</button>
       <button class="btn bs btn-sm" data-click="loescheLagerort" data-arg="${o.id}"
               data-arg2="${esc(o.name)}" style="padding:2px 8px">🗑️</button>
     </div>`;
@@ -820,6 +829,31 @@ async function benenneLagerortUm(id, wert) {
   loadGallery();
 }
 
+/**
+ * Den Stern umschalten.
+ *
+ * ── Warum der Stern und nicht eine Farbe ────────────────────────────────────
+ *
+ * ★ und ☆ unterscheiden sich in der FORM. Marco ist rot-gruen-schwach; ein
+ * farbig hervorgehobener Eintrag waere fuer ihn kein Unterschied. Dazu tragen
+ * beide Zustaende einen eigenen Titel (und aria-pressed), damit die Aussage
+ * auch dort ankommt, wo niemand hinsieht.
+ *
+ * `war` kommt aus dem Knopf: Der zweite Druck auf denselben Stern schaltet die
+ * Vorgabe ab. Ein eigener Knopf dafuer waere ein zweites Bedienelement fuer
+ * eine Frage mit zwei Antworten.
+ */
+async function schalteLagerortVorgabe(id, war) {
+  const d = await api('PUT', '/v1/storage/default',
+                      { id: String(war) === '1' ? null : parseInt(id) });
+  if (!d?.success) { toast(d?.error || tRaw('settings.error'), 'error'); return; }
+  await ladeLagerortVerwaltung();
+  // Die Erfassungsformulare stehen schon — ohne das Nachziehen zeigten sie
+  // den alten Stand, bis jemand die Seite neu laedt. Dieselbe Geste wie beim
+  // Erfassungs-Zustand, der nach dem Speichern initDefaultCondition() ruft.
+  import('./02-gallery.js').then(m => m.ladeLagerortVorgabe?.()).catch(() => {});
+}
+
 async function loescheLagerort(id, name) {
   if (!await confirmDelete(tRaw('storage.delete_title'),
                            `${name} — ${tRaw('storage.delete_text')}`, '📦')) return;
@@ -835,6 +869,7 @@ registerActions({
   lagerortTaste,
   benenneLagerortUm,
   loescheLagerort,
+  schalteLagerortVorgabe,
   copyHouseholdInvite,
   createHouseholdInvite,
   delUser,

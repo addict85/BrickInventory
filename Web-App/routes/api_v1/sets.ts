@@ -14,7 +14,8 @@ import { istErsatzteil, ersatzteilSql } from '../../utils/validate';
 import { householdMembers, resolveWriteTarget } from '../../utils/household';
 import { moveSetBetweenAccounts } from '../../utils/setMove';
 import { normalisiereLagerort, setzeLagerort, lagerorte,
-         orteVon, legeOrtAn, benenneOrtUm, loescheOrt } from '../../utils/lagerort';
+         orteVon, legeOrtAn, benenneOrtUm, loescheOrt,
+         vorgabeVon, setzeVorgabe } from '../../utils/lagerort';
 import { alarmeFuer, alleAlarme, ausgeloesteSeit, loescheAlarm, setzeAlarm } from '../../utils/preisalarm';
 import { istVermutung } from '../../utils/barcodeQuelle';
 import { setnummerKandidaten } from '../../utils/produkttitel';
@@ -431,7 +432,35 @@ async function lagerKonten(req: AuthedRequest, schreiben: boolean): Promise<numb
 
 router.get('/storage/locations', requireToken, async (req: AuthedRequest, res) => {
   try {
-    res.json({ success: true, orte: await orteVon(await lagerKonten(req, false)) });
+    // Die Liste kann ueber mehrere Konten spannen (der Grossvater sieht beim
+    // Set des Enkels dessen Orte, siehe Migration 0020) — die VORGABE ist
+    // dagegen immer die des Anfragenden. Ein geerbter Stern am Regal eines
+    // anderen Haushaltsmitglieds waere eine Aussage ueber dessen Wohnung.
+    const [orte, vorgabe] = await Promise.all([
+      orteVon(await lagerKonten(req, false)),
+      vorgabeVon(req.apiUser.user_id),
+    ]);
+    res.json({ success: true, orte, vorgabe });
+  } catch (e) { handleRouteError(res, e, undefined, req); }
+});
+
+/**
+ * PUT /api/v1/storage/default — der Stern.
+ *
+ * `{ id: <Zahl> }` setzt die Vorgabe, `{ id: null }` schaltet sie ab; das ist
+ * der zweite Druck auf denselben Stern. EIN Endpunkt fuer beides, weil es eine
+ * Einstellung mit genau einem Wert ist — ein eigener Loeschweg waere eine
+ * zweite Stelle fuer denselben Gedanken.
+ */
+router.put('/storage/default', requireToken, async (req: AuthedRequest, res) => {
+  try {
+    const roh = req.body?.id;
+    // `null` UND `undefined` heissen abschalten: Ein Client, der das Feld
+    // weglaesst, meint nichts anderes als einer, der null schickt. Eine Zahl,
+    // die keine ist, waere dagegen ein Fehler im Aufruf und keine Absicht.
+    const id = (roh === null || roh === undefined) ? null : parseInt(String(roh), 10);
+    if (id !== null && !Number.isFinite(id)) return sendeFehler(req, res, 400, 'lagerort_unbekannt');
+    res.json({ success: true, vorgabe: await setzeVorgabe(req.apiUser.user_id, id) });
   } catch (e) { handleRouteError(res, e, undefined, req); }
 });
 
@@ -759,7 +788,13 @@ router.get('/sets/:setNumber/price', requireToken, async (req: AuthedRequest, re
     // Weg". Am laufenden System nachgestellt: Hauptkonto öffnet Unterkonto-Set
     // → Detail 200, Preis 404.
     const uids = await scopeIds(uid, parseScopeMode(req.query.accounts));
-    const set = await db.get('SELECT * FROM sets WHERE set_number=$1 AND user_id = ANY($2)', [sn, uids]);
+    // `s.*` plus der aufgeloeste Lagerortname: Das Detail zeigt den Ort, und
+    // seit Migration 0031 steht an der Zeile nur die ID. Ohne die Spalte waere
+    // das Feld im Detaildialog leer — und zwar in beiden Oberflaechen.
+    const set = await db.get(
+      `SELECT s.*, lo.name AS storage
+         FROM sets s LEFT JOIN storage_locations lo ON lo.id = s.storage_id
+        WHERE s.set_number = $1 AND s.user_id = ANY($2)`, [sn, uids]);
     if (!set) return sendeFehler(req, res, 404, 'set_nicht_gefunden');
     // Die Währung kommt aus der NUTZEREINSTELLUNG — der frühere
     // `req.query.currency ||`-Vorrang ist weg (Nachtrag 31). Die Android-App

@@ -81,8 +81,9 @@ test('Lagerort gegen echte Datenbank', async (t) => {
     const n = await L.setzeLagerort('part', schreibbar, ['3001', '4'], 'Kiste 3');
     assert.equal(n, 2, `${n} Zeilen getroffen, erwartet 2 (beide Sets)`);
     const rows = await db.all(
-      `SELECT color_id, storage FROM parts
-        WHERE user_id=$1 AND part_number=$2 ORDER BY color_id`, [U.ich, '3001']);
+      `SELECT t.color_id, l.name AS storage
+         FROM parts t LEFT JOIN storage_locations l ON l.id = t.storage_id
+        WHERE t.user_id=$1 AND t.part_number=$2 ORDER BY t.color_id`, [U.ich, '3001']);
     assert.deepEqual(rows.map(r => [parseInt(r.color_id), r.storage]),
       [[4, 'Kiste 3'], [4, 'Kiste 3'], [5, null]],
       'Beide Zeilen der Farbe 4 müssen den Ort haben — und die Farbe 5 keinen');
@@ -92,10 +93,14 @@ test('Lagerort gegen echte Datenbank', async (t) => {
     // Ohne diese Grenze wäre der Lagerort ein Weg, in fremden Daten zu
     // schreiben — und zwar unauffällig, weil sich sonst nichts ändert.
     const vorher = (await db.get(
-      'SELECT storage FROM parts WHERE user_id=$1', [U.fremd]))?.storage ?? null;
+      `SELECT l.name AS storage FROM parts t
+         LEFT JOIN storage_locations l ON l.id = t.storage_id
+        WHERE t.user_id=$1`, [U.fremd]))?.storage ?? null;
     await L.setzeLagerort('part', schreibbar, ['3001', '4'], 'Kiste 9');
     const nachher = (await db.get(
-      'SELECT storage FROM parts WHERE user_id=$1', [U.fremd]))?.storage ?? null;
+      `SELECT l.name AS storage FROM parts t
+         LEFT JOIN storage_locations l ON l.id = t.storage_id
+        WHERE t.user_id=$1`, [U.fremd]))?.storage ?? null;
     assert.equal(nachher, vorher, 'Eine fremde Zeile wurde verändert');
 
     // Zurücksetzen: Dieselben Zeilen zählt die Übersicht weiter unten. Ohne
@@ -116,7 +121,9 @@ test('Lagerort gegen echte Datenbank', async (t) => {
     await L.setzeLagerort('part', schreibbar, ['3002', '4'], 'Regal B');
     await L.setzeLagerort('part', schreibbar, ['3002', '4'], null);
     const r = await db.get(
-      'SELECT storage FROM parts WHERE user_id=$1 AND part_number=$2', [U.ich, '3002']);
+      `SELECT l.name AS storage FROM parts t
+         LEFT JOIN storage_locations l ON l.id = t.storage_id
+        WHERE t.user_id=$1 AND t.part_number=$2`, [U.ich, '3002']);
     assert.equal(r.storage, null, 'Das Leeren hat den Ort nicht entfernt');
   });
 

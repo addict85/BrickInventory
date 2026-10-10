@@ -489,6 +489,15 @@ interface BrickApiService {
         @Path("id") id: Int,
     ): Response<LagerortResponse>
 
+    // Marcos Stern: der Lagerort, der beim Erfassen schon vorausgewaehlt ist.
+    // EIN Endpunkt fuer setzen und abschalten (id = null), weil es eine
+    // Einstellung mit genau einem Wert ist. Gelesen wird sie nicht hier,
+    // sondern als Feld `vorgabe` der Vorratsantwort darueber.
+    @PUT("api/v1/storage/default")
+    suspend fun setzeLagerortVorgabe(
+        @Body request: LagerortVorgabeRequest,
+    ): Response<LagerortVorgabeResponse>
+
     // ── Merkliste ─────────────────────────────────────────────────────────
     //
     // Vier Adressen, dieselben wie in der Webapp. Der Zustand steht im PFAD

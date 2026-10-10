@@ -231,9 +231,15 @@ export async function rebuild(userId: number, version?: number): Promise<void> {
              -- aus mehreren Sets zusammen, und die koennen in verschiedenen
              -- Kisten liegen. MIN() zeigte eine davon und verschwiege die
              -- andere — so, dass es wie eine vollstaendige Antwort aussieht.
-             NULLIF(STRING_AGG(DISTINCT p.storage, ', '), '')
+             -- Der Name kommt aus dem Vorrat (Migration 0031: die Zeile
+             -- traegt eine ID). Die Spalte HIER bleibt Text, und das ist kein
+             -- Rueckfall: Sie ist ein berechnetes Etikett ueber mehrere
+             -- Zeilen, kein Verweis — ein einzelner koennte „Kiste 3,
+             -- Regal A" gar nicht ausdruecken.
+             NULLIF(STRING_AGG(DISTINCT lo.name, ', '), '')
         FROM parts p
         LEFT JOIN sets s ON s.user_id = p.user_id AND s.set_number = p.set_number
+        LEFT JOIN storage_locations lo ON lo.id = p.storage_id
        WHERE p.user_id = $1 AND COALESCE(p.source, 'set') <> 'manual'
        GROUP BY p.user_id, COALESCE(p.bl_part_number, p.part_number), p.color_id`,
       [userId]);

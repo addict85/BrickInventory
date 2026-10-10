@@ -103,8 +103,15 @@ var barcodeOwner by remember(barcodeState.result, state.householdMembers) {
 // Barcode hinzufuege." Der Barcode-Weg ist wieder der, der ein Feld nicht
 // hatte, das die anderen haben — dasselbe Muster wie beim Eigentuemer eine
 // Zeile hoeher.
-var barcodeLagerort by remember(barcodeState.result) { mutableStateOf("") }
+//
+// Zurueckgesetzt wird auf die VORGABE und nicht auf leer (Marcos Stern): „Der
+// soll dann bei einer Neuerfassung bereits vorausgewaehlt sein." Der zweite
+// Schluessel ist die Vorgabe selbst — sie kommt ueber das Netz und kann nach
+// dem Scan eintreffen; ohne ihn bliebe das Feld bei dem Stand, den es beim
+// Oeffnen hatte.
 val lagerZustand by vm.lagerState.collectAsStateWithLifecycle()
+val lagerVorgabe = lagerZustand.vorgabe?.name ?: ""
+var barcodeLagerort by remember(barcodeState.result, lagerVorgabe) { mutableStateOf(lagerVorgabe) }
 AlertDialog(
     // Während des Hinzufügens nicht per Tipp daneben schliessbar —
     // sonst verschwindet der Dialog, während der Aufruf noch läuft.

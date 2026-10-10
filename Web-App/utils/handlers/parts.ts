@@ -137,7 +137,10 @@ function teileFilter(uids: number[], query: any) {
   // soll genau die Teile in Kiste 3 zeigen und nicht zusaetzlich jedes Teil,
   // dessen Name zufaellig „Kiste" enthaelt.
   if (query.storage) {
-    where += ` AND p.storage = $${pi++}`;
+    // Ueber den Namen aus dem Vorrat (lo), nicht mehr ueber eine Spalte an der
+    // Zeile: Die traegt seit Migration 0031 die ID. Der Aufrufer schickt
+    // weiter den Namen — die Oberflaechen und die API bleiben unveraendert.
+    where += ` AND lo.name = $${pi++}`;
     params.push(String(query.storage));
   }
 
@@ -407,8 +410,13 @@ async function getParts(userId: Blickfeld, query: any = {}) {
   // SUM(BIGINT) käme als Zahl, SUM(INTEGER) und die rohe BIGINT-Spalte als
   // Text. Haushalt, Einzelkonto und Live-Abfrage liefern jetzt dieselbe Form.
   const qtyExpr   = set_number ? 'SUM(p.quantity)::int' : 'SUM(p.quantity * COALESCE(s.quantity, 1))::int';
-  const joinClause = set_number ? 'FROM parts p' :
-    'FROM parts p LEFT JOIN sets s ON s.user_id = p.user_id AND s.set_number = p.set_number';
+  // Der Vorrat haengt in BEIDEN Zweigen mit dran: Seit Migration 0031 traegt
+  // die Zeile eine ID, der Name steht in storage_locations. LEFT JOIN, damit
+  // ein Teil ohne Ort nicht aus der Liste faellt.
+  const lagerJoin = ' LEFT JOIN storage_locations lo ON lo.id = p.storage_id';
+  const joinClause = (set_number ? 'FROM parts p' :
+    'FROM parts p LEFT JOIN sets s ON s.user_id = p.user_id AND s.set_number = p.set_number')
+    + lagerJoin;
 
   // Count for pagination.
   // Vorher COUNT(DISTINCT <concat>) — das baut pro Zeile einen String und
@@ -485,7 +493,7 @@ async function getParts(userId: Blickfeld, query: any = {}) {
       -- nicht: Dasselbe Teil liegt in zwei Kisten, und MIN() haette eine davon
       -- gezeigt und die andere verschwiegen — so, dass es wie eine
       -- vollstaendige Antwort aussieht.
-      NULLIF(STRING_AGG(DISTINCT p.storage, ', '), '') AS storage,
+      NULLIF(STRING_AGG(DISTINCT lo.name, ', '), '') AS storage,
       -- Sum quantities across all RB part numbers that map to the same BL ID
       ${qtyExpr}          AS total_quantity${withSets ? `,
       STRING_AGG(DISTINCT p.set_number, ',') AS in_sets` : ''}
@@ -662,8 +670,10 @@ async function getManualParts(userId: Blickfeld, viewerId: number, { page = 1, p
     limit = ` LIMIT $${params.length - 1} OFFSET $${params.length}`;
   }
   return db.all(`
-    SELECT id, user_id, part_number, bl_part_number, part_name, color_id, color_name, color_hex,
-           category_name, quantity, image_url, image_local, unit_price, purchase_price, source,
+    SELECT t.id, t.user_id, t.part_number, t.bl_part_number, t.part_name, t.color_id,
+           t.color_name, t.color_hex,
+           t.category_name, t.quantity, t.image_url, t.image_local, t.unit_price,
+           t.purchase_price, t.source,
            -- condition FEHLTE in dieser Liste. applyManualCondition() unten
            -- faellt ohne Erfassungen auf genau diesen gespeicherten Wert
            -- zurueck (stored || 'N') — und bekam undefined. NACHGEMESSEN:
@@ -676,7 +686,7 @@ async function getManualParts(userId: Blickfeld, viewerId: number, { page = 1, p
            -- hatte den Fehler deshalb nie. Zwei Fassungen derselben Abfrage,
            -- eine davon mit Spaltenliste — und in der fehlte die eine Spalte,
            -- auf die es ankommt.
-           condition,
+           t.condition,
            -- storage FEHLTE ebenfalls — und zwar aus demselben Grund wie
            -- die Spalte condition eine Zeile darueber: Diese Abfrage zaehlt ihre
            -- Spalten auf, die Schwesterfunktion getManualMinifigs() macht
@@ -684,10 +694,15 @@ async function getManualParts(userId: Blickfeld, viewerId: number, { page = 1, p
            -- manuell erfassten Teile ist der Lagerort nicht ersichtlich") ist
            -- damit zur Haelfte hier begruendet: Selbst mit einer Zeile in der
            -- Oberflaeche waere sie leer geblieben.
-           storage,
-           created_at
-    FROM parts WHERE user_id = ANY($1) AND source = 'manual'
-    ORDER BY part_name ASC, part_number ASC${limit}`, params)
+           -- Der Name kommt seit Migration 0031 aus dem Vorrat; die Zeile
+           -- traegt die ID. LEFT JOIN, damit ein Teil ohne Ort in der Liste
+           -- bleibt.
+           lo.name AS storage,
+           t.created_at
+    FROM parts t
+    LEFT JOIN storage_locations lo ON lo.id = t.storage_id
+    WHERE t.user_id = ANY($1) AND t.source = 'manual'
+    ORDER BY t.part_name ASC, t.part_number ASC${limit}`, params)
     .then(async (rows) => {
       const mitZustand = await applyManualCondition(uids, rows, 'part');
       // Der Marktpreis gehoert dazu — dieselbe Luecke wie bei den manuellen

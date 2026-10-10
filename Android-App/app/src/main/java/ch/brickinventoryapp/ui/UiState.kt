@@ -940,6 +940,18 @@ data class LagerUiState(
     val vorrat: List<ch.brickinventoryapp.data.model.LagerortEintrag> = emptyList(),
     /** Die EIGENEN Orte — fuer die Verwaltung in den Einstellungen. */
     val eigene: List<ch.brickinventoryapp.data.model.LagerortEintrag> = emptyList(),
+    /**
+     * Der Ort, der beim Erfassen schon dasteht — Marcos Stern.
+     *
+     * „Weiter moechte ich ein Lagerort in den Einstellungen als Default setzen
+     *  koennen. Der soll dann bei einer Neuerfassung bereits vorausgewaehlt
+     *  sein."
+     *
+     * `null` heisst: keine Vorgabe, die Erfassungsfelder bleiben leer wie
+     * bisher. Er kommt mit [eigene] aus derselben Antwort — der Vorrat und
+     * sein Stern sind eine Auskunft, nicht zwei.
+     */
+    val vorgabe: ch.brickinventoryapp.data.model.LagerortEintrag? = null,
 )
 
 /**

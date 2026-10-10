@@ -303,12 +303,52 @@ ALTER TABLE parts ADD COLUMN IF NOT EXISTS bl_part_number TEXT;
 --
 -- Die Begruendung der Sache selbst — warum eine Spalte und keine Tabelle,
 -- warum auf beiden Tabellen, warum NULL statt '' — steht in der Migration.
-ALTER TABLE sets  ADD COLUMN IF NOT EXISTS storage TEXT;
-ALTER TABLE parts ADD COLUMN IF NOT EXISTS storage TEXT;
-CREATE INDEX IF NOT EXISTS idx_sets_storage
-  ON sets (user_id, storage) WHERE storage IS NOT NULL;
-CREATE INDEX IF NOT EXISTS idx_parts_storage
-  ON parts (user_id, storage) WHERE storage IS NOT NULL;
+-- Seit Migration 0031 ist es eine ID und kein Name mehr. Warum: Mit dem Namen
+-- konnte am Bestand eine Schreibweise stehen, die der Vorrat nicht fuehrt —
+-- dann wanderte sie beim Umbenennen nicht mit, und das Loeschen hielt den Ort
+-- fuer leer. Nachgestellt und begruendet in der Migration.
+--
+-- Der VORRAT steht ebenfalls hier und nicht mehr in Migration 0020, und zwar
+-- gezwungenermassen: Pruefungen, die ihre Datenbank mit initSchema() ALLEIN
+-- aufbauen (ohne Migrationen), bekamen sonst „relation storage_locations does
+-- not exist" aus jeder Abfrage, die den Lagerortnamen verbindet — gemessen an
+-- test/api-parity.test.js. Genau der Fall, den der Block darueber beschreibt,
+-- nur jetzt fuer eine Tabelle statt fuer eine Spalte. In 0020 steht an ihrer
+-- Stelle ein Hinweis; angelegt wird jede Tabelle an genau EINEM Ort
+-- (test/schema-am-start.test.js).
+CREATE TABLE IF NOT EXISTS storage_locations (
+  id         SERIAL PRIMARY KEY,
+  user_id    INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  name       TEXT NOT NULL,
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+-- Eindeutig OHNE Ruecksicht auf Gross-/Kleinschreibung: „Regal A" und „regal a"
+-- sind dasselbe Regal (Begruendung in 0020). Seit Migration 0031 haengt daran
+-- mehr als die Auswahlliste — die Zuordnung am Bestand loest den getippten
+-- Namen ueber lower(name) auf.
+CREATE UNIQUE INDEX IF NOT EXISTS storage_locations_konto_name
+  ON storage_locations (user_id, lower(name));
+
+-- Die Spalte steht hier OHNE Fremdschluessel, und das hat zwei Gruende, die
+-- beide aus dieser Datei selbst folgen:
+--
+--   1. Der Vorrat (storage_locations) wird von Migration 0020 angelegt, und
+--      jede Tabelle hat genau EINEN Anlegeort (test/schema-am-start.test.js).
+--      Diese Datei laeuft bei einer neuen Datenbank VOR den Migrationen — eine
+--      Fremdschluessel-Regel verlangt die Zieltabelle aber sofort.
+--   2. Eine Spalte darf doppelt stehen (hier und in der Migration): Ein
+--      `ADD COLUMN IF NOT EXISTS` beschreibt dieselbe ZIELFORM. Eine
+--      Fremdschluessel-REGEL ist dagegen eine Entscheidung und gehoert an
+--      genau einen Ort — dieselbe Unterscheidung, die 0018 fuer die Indizes
+--      trifft.
+--
+-- Die Regel selbst steht deshalb in 0031, gleich hinter dem Vorrat.
+ALTER TABLE sets  ADD COLUMN IF NOT EXISTS storage_id INTEGER;
+ALTER TABLE parts ADD COLUMN IF NOT EXISTS storage_id INTEGER;
+CREATE INDEX IF NOT EXISTS idx_sets_storage_id
+  ON sets (user_id, storage_id) WHERE storage_id IS NOT NULL;
+CREATE INDEX IF NOT EXISTS idx_parts_storage_id
+  ON parts (user_id, storage_id) WHERE storage_id IS NOT NULL;
 
 CREATE INDEX IF NOT EXISTS idx_parts_user  ON parts(user_id);
 CREATE INDEX IF NOT EXISTS idx_parts_color ON parts(user_id, color_name);
@@ -376,9 +416,9 @@ ALTER TABLE minifigs ADD COLUMN IF NOT EXISTS image_local TEXT;
 -- Lagerort auch fuer Minifiguren (db/migrations/0024-lagerort-minifiguren.sql).
 -- Warum hier ZUSAETZLICH zur Migration: siehe den Block bei sets/parts weiter
 -- oben — diese Datei ist der Ausgangszustand fuer eine NEUE Datenbank.
-ALTER TABLE minifigs ADD COLUMN IF NOT EXISTS storage TEXT;
-CREATE INDEX IF NOT EXISTS idx_minifigs_storage
-  ON minifigs (user_id, storage) WHERE storage IS NOT NULL;
+ALTER TABLE minifigs ADD COLUMN IF NOT EXISTS storage_id INTEGER;
+CREATE INDEX IF NOT EXISTS idx_minifigs_storage_id
+  ON minifigs (user_id, storage_id) WHERE storage_id IS NOT NULL;
 
 CREATE TABLE IF NOT EXISTS minifig_price_cache (
   id            SERIAL PRIMARY KEY,

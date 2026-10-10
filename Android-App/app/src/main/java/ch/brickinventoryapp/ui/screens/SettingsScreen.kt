@@ -732,6 +732,18 @@ private fun LagerorteCard(vm: MainViewModel) {
         Text(stringResource(R.string.storage_manage_hint),
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.padding(bottom = Abstaende.haar))
+        // ── Marcos Stern ────────────────────────────────────────────────────
+        //
+        // „Weiter moechte ich ein Lagerort in den Einstellungen als Default
+        //  setzen koennen. Der soll dann bei einer Neuerfassung bereits
+        //  vorausgewaehlt sein. Ich stelle mir das mit einem Sternicon vor."
+        //
+        // Der Hinweis steht da, weil ein Stern allein nicht sagt, WAS er tut —
+        // und weil niemand erraten soll, dass ein zweiter Druck ihn abschaltet.
+        Text(stringResource(R.string.storage_default_hint),
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
             modifier = Modifier.padding(bottom = Abstaende.klein))
 
         if (lager.eigene.isEmpty()) {
@@ -752,6 +764,21 @@ private fun LagerorteCard(vm: MainViewModel) {
                     singleLine = true,
                     modifier = Modifier.weight(1f),
                 )
+                // ── Der Stern: gefuellt ODER umrissen ───────────────────
+                //
+                // Der Unterschied liegt in der FORM und nicht in der Farbe.
+                // Marco ist rot-gruen-schwach; ein farbig hervorgehobener
+                // Eintrag waere fuer ihn kein Unterschied. Die Beschreibung
+                // sagt dasselbe noch einmal in Worten — fuer die
+                // Sprachausgabe und fuer jeden, der den Stern nicht deutet.
+                val istVorgabe = lager.vorgabe?.id == ort.id
+                IconButton(onClick = { vm.schalteLagerortVorgabe(ort.id, istVorgabe) }) {
+                    Icon(
+                        if (istVorgabe) Icons.Default.Star else Icons.Default.StarBorder,
+                        stringResource(if (istVorgabe) R.string.storage_default_is
+                                       else R.string.storage_default_set),
+                    )
+                }
                 // Umbenennen auf Knopfdruck, NICHT beim Tippen: Anders als beim
                 // Lagerort am Set schreibt ein Umbenennen hier alle Zuordnungen
                 // mit um. Das nebenbei zu tun, waehrend jemand einen Buchstaben

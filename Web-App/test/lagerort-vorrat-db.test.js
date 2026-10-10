@@ -127,7 +127,16 @@ test('Lagerort-Vorrat gegen echte Datenbank', { concurrency: 1 }, async (t) => {
   await t.test('Umbenennen nimmt die Zuordnungen mit', async () => {
     const ort = (await L.orteVon([U.enkel])).find(o => o.name === 'Unterm Bett');
     await L.benenneOrtUm(U.enkel, ort.id, 'Kiste 3');
-    assert.equal((await db.get('SELECT storage FROM sets WHERE set_number=$1', ['10179-1'])).storage,
+    // Die Aussage ist dieselbe wie vorher, der Weg dahin ein anderer: Bis
+    // Migration 0031 schrieb benenneOrtUm() den neuen Namen in drei Tabellen
+    // nach, und genau das konnte eine Schreibweise verfehlen. Jetzt traegt die
+    // Zeile eine ID, es gibt nichts nachzuschreiben — die Pruefung bleibt
+    // trotzdem stehen, weil sie das ERGEBNIS prueft und nicht den Weg.
+    const amSet = await db.get(
+      `SELECT l.name AS storage FROM sets t
+         LEFT JOIN storage_locations l ON l.id = t.storage_id
+        WHERE t.set_number = $1`, ['10179-1']);
+    assert.equal(amSet.storage,
       'Kiste 3', 'Das Set steht noch im alten Ort — das Umbenennen war ein Verlieren');
     assert.ok((await L.orteVon([U.enkel])).some(o => o.name === 'Kiste 3'));
   });
@@ -162,28 +171,37 @@ test('Lagerort-Vorrat gegen echte Datenbank', { concurrency: 1 }, async (t) => {
     assert.ok(!(await L.orteVon([U.enkel])).some(o => o.name === 'Kinderzimmer'));
 
     // Und nach dem Ausräumen geht auch der belegte.
-    await db.run('UPDATE sets SET storage = NULL WHERE set_number = $1', ['10179-1']);
+    await db.run('UPDATE sets SET storage_id = NULL WHERE set_number = $1', ['10179-1']);
     await L.loescheOrt(U.enkel, belegt.id);
     assert.deepEqual(await L.orteVon([U.enkel]), []);
   });
 
-  await t.test('die Migration übernimmt bereits benutzte Orte', async () => {
-    // Ohne diesen Schritt wäre die Auswahlliste nach der Migration LEER,
-    // während in den Sets weiter Orte stehen — die Oberfläche zeigte dann
-    // einen Wert an, den sie selbst nicht zur Wahl stellt.
-    await db.run('DELETE FROM storage_locations', []);
-    await db.run('UPDATE sets SET storage = $1 WHERE set_number = $2', ['Dachboden', '10179-1']);
-    await db.run(`INSERT INTO parts (user_id, part_number, color_id, quantity, storage)
-                  VALUES ($1,'3001',5,2,'dachboden')`, [U.enkel]);
-
-    const sql = require('node:fs').readFileSync(
-      require('node:path').join(__dirname, '..', 'db', 'migrations', '0020-lagerorte-verwaltet.sql'), 'utf8');
-    // Nur der Übernahme-Teil: Tabelle und Index stehen schon.
-    await db.run(sql.slice(sql.indexOf('INSERT INTO storage_locations')));
-
-    const orte = await L.orteVon([U.enkel]);
-    assert.equal(orte.length, 1,
-      `„Dachboden" und „dachboden" ergaben ${orte.length} Einträge: ${orte.map(o => o.name)}`);
+  await t.test('eine Zuordnung ohne Ort im Vorrat ist nicht mehr moeglich', async () => {
+    // ── Was hier vorher stand, und warum es weg ist ─────────────────────────
+    //
+    // „die Migration übernimmt bereits benutzte Orte": Migration 0020 las die
+    // Namen aus `sets.storage` / `parts.storage` in den Vorrat, damit die
+    // Auswahlliste nach der Umstellung nicht leer ist, „während in den Sets
+    // weiter Orte stehen — die Oberfläche zeigte dann einen Wert an, den sie
+    // selbst nicht zur Wahl stellt."
+    //
+    // Diese beiden Spalten gibt es seit Migration 0031 nicht mehr (Marcos
+    // Ansage: die bestehenden Zuordnungen durften weg). Die Prüfung konnte
+    // ihre eigene Eingabe also nicht mehr herstellen — sie zu behalten hiesse,
+    // eine Spalte wieder anzulegen, nur damit ein Test sie findet.
+    //
+    // Geprüft wird jetzt der NACHFOLGER derselben Sorge: Ein Bestand, der auf
+    // einen Ort zeigt, den der Vorrat nicht kennt, ist nicht mehr bloss
+    // unerwünscht, sondern unmöglich. Das sagt kein Code mehr, sondern die
+    // Fremdschlüssel-Regel aus 0031 — und genau das ist der Gewinn der
+    // Umstellung.
+    const frei = (await db.get(
+      'SELECT COALESCE(MAX(id),0) + 1000 AS frei FROM storage_locations')).frei;
+    await assert.rejects(
+      () => db.run('UPDATE sets SET storage_id = $1 WHERE set_number = $2',
+                   [frei, '10179-1']),
+      (e) => /foreign key|verletzt|violates/i.test(String(e?.message || e)),
+      'Ein Set liess sich auf einen Ort setzen, den es im Vorrat nicht gibt');
   });
 
   await db.pool.end().catch(() => {});

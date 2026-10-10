@@ -354,6 +354,7 @@ fun MerkpostenDetailScreen(
         UebernahmeDialog(
             merkposten = w,
             lagerorte = lagerZustand.eigene.map { it.name },
+            lagerortVorgabe = lagerZustand.vorgabe?.name ?: "",
             onDismiss = { uebernahmeOffen = false },
             onUebernehmen = { anzahl, preisRoh, zustandWahl, ort ->
                 vm.uebernimmMerkposten(w.setNumber, w.condition, w.userId,

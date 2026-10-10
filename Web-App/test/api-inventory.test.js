@@ -266,6 +266,11 @@ const C = {
   'POST /api/v1/storage/locations': 'nur-v1',
   'PUT /api/v1/storage/locations/:id': 'nur-v1',
   'DELETE /api/v1/storage/locations/:id': 'nur-v1',
+  // Marcos Stern: der Lagerort, der beim Erfassen schon vorausgewaehlt ist.
+  // Beide Oberflaechen setzen ihn (Webapp: Einstellungen, App: LagerorteCard),
+  // beide lesen ihn aus der Antwort von GET /storage/locations mit — deshalb
+  // nur-v1 und kein eigener Leseweg.
+  'PUT /api/v1/storage/default': 'nur-v1',
   // Die Merkliste (Nachtrag 179) — Marcos „was man haben moechte", getrennt
   // vom Besitz. nur-v1 und nicht paritaet: Beide Oberflaechen rufen dieselben
   // Adressen, es gibt also gar kein zweites Gegenstueck zu vergleichen.

@@ -97,7 +97,10 @@ test('beide zeigen den Lagerort dort, wo er hingehört', () => {
 test('beide filtern am Server, nicht im Gerät', () => {
   // Eine Kachelwand liesse sich im Klienten aussieben, die Gesamtzahl darunter
   // nicht. Dieselbe Begründung wie beim Kontofilter — und derselbe Weg.
-  assert.match(web('utils/handlers/parts.ts'), /p\.storage = \$\$\{pi\+\+\}/,
+  // Seit Migration 0031 traegt die Zeile eine ID, der Name steht im Vorrat —
+  // der Filter vergleicht deshalb `lo.name` statt `p.storage`. Die Aussage ist
+  // dieselbe: Gefiltert wird am Server.
+  assert.match(web('utils/handlers/parts.ts'), /lo\.name = \$\$\{pi\+\+\}/,
     'Der Server filtert Teile nicht nach Lagerort');
   assert.match(web('utils/handlers/sets.ts'), /s\.storage = \$\$\{params\.length\}/,
     'Der Server filtert Sets nicht nach Lagerort');
@@ -272,7 +275,13 @@ test('beide bieten auswählen UND neu eintippen in EINEM Feld', () => {
     'Das Feld der App klappt nicht auf');
   // Und getippte Werte landen im Vorrat — sonst stünde der Ort am Set und
   // fehlte in der Liste, aus der er gewählt werden soll.
-  assert.match(web('utils/lagerort.ts'), /await stelleOrteSicher\(besitzerIds, ort\)/,
+  // Hier stand `stelleOrteSicher(besitzerIds, ort)`. Die Funktion gibt es nicht
+  // mehr: Mit der ID muss der Ort VOR dem Zuordnen im Vorrat stehen (ohne
+  // Zeile keine ID), und beides laeuft deshalb in einer Transaktion in
+  // setzeLagerort(). Gesucht wird jetzt die Anweisung selbst — die Aussage
+  // bleibt, dass ein getippter Ort in den Vorrat kommt.
+  assert.match(web('utils/lagerort.ts'),
+    /INSERT INTO storage_locations \(user_id, name\)\s*\n\s*SELECT id, \$2 FROM users/,
     'Ein frisch getippter Ort landet nicht im Vorrat');
 });
 

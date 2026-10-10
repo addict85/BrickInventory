@@ -159,6 +159,9 @@
     <string name="storage_new">Neuer Lagerort</string>
     <string name="storage_add">Hinzufügen</string>
     <string name="storage_empty">Noch keine Lagerorte angelegt.</string>
+    <string name="storage_default_hint">Der Stern markiert den Lagerort, der beim Erfassen schon vorausgewählt ist. Nochmal tippen schaltet ihn ab.</string>
+    <string name="storage_default_set">Als Vorgabe beim Erfassen setzen</string>
+    <string name="storage_default_is">Vorgabe beim Erfassen — tippen schaltet sie ab</string>
     <string name="storage_delete">Lagerort löschen</string>
     <string name="detail_storage">Lagerort</string>
     <string name="detail_alert">Preisalarm</string>

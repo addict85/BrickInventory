@@ -323,6 +323,7 @@ fun PartsScreen(
             colors = colors,
             onDismiss = { showAddDialog = false },
             lagerorte = lagerortVorrat,
+            lagerortVorgabe = lagerState.vorgabe?.name ?: "",
             onAdd = { num, colorId, colorName, colorHex, qty, unitPrice, cond, owner, ort ->
                 showAddDialog = false
                 onAddPart(num, colorId, colorName, colorHex, qty, unitPrice, cond, owner, ort)

@@ -42,6 +42,22 @@ process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:t
 process.env.WEB_WORKERS = '1';
 
 const _req = require('./helpers/sources').buildAndRequire();
+
+/**
+ * Der Lagerort-NAME einer Bestandszeile.
+ *
+ * Seit Migration 0031 traegt die Zeile eine ID; der Name steht im Vorrat. Die
+ * Pruefungen unten fragen weiter nach dem Namen — das ist die Aussage, auf die
+ * es ankommt — nur der Weg dorthin fuehrt jetzt ueber einen JOIN.
+ */
+async function ortVon(db, tabelle, bedingung, params) {
+  const r = await db.get(
+    `SELECT l.name AS storage
+       FROM ${tabelle} t
+       LEFT JOIN storage_locations l ON l.id = t.storage_id
+      WHERE ${bedingung}`, params);
+  return r?.storage ?? null;
+}
 const db = _req('db/database.js');
 
 const U = {};
@@ -90,9 +106,9 @@ test('Lagerort beim Erfassen — gegen echte Datenbank', async (t) => {
     // trotzdem an („Set 10179-1"). Genau das ist hier erwünscht — geprüft wird
     // der Lagerort, nicht die Anreicherung.
     await setService.addSet('10179-1', 1, U.ich, null, null, 'N', 'Kiste 3');
-    const r = await db.get('SELECT storage FROM sets WHERE user_id=$1 AND set_number=$2',
+    const ort = await ortVon(db, 'sets', 't.user_id=$1 AND t.set_number=$2',
       [U.ich, '10179-1']);
-    assert.equal(r?.storage, 'Kiste 3',
+    assert.equal(ort, 'Kiste 3',
       'Das Set wurde erfasst, aber ohne den mitgegebenen Lagerort.');
   });
 
@@ -108,7 +124,9 @@ test('Lagerort beim Erfassen — gegen echte Datenbank', async (t) => {
     await teile.addManualPart(U.ich,
       { part_number: '3001', color_id: 4, quantity: 2, storage: 'Regal B' });
     const r = await db.get(
-      `SELECT storage FROM parts WHERE user_id=$1 AND part_number=$2 AND source='manual'`,
+      `SELECT l.name AS storage FROM parts t
+         LEFT JOIN storage_locations l ON l.id = t.storage_id
+        WHERE t.user_id=$1 AND t.part_number=$2 AND t.source='manual'`,
       [U.ich, '3001']);
     assert.equal(r?.storage, 'Regal B');
     assert.ok(await imVorrat(U.ich, 'Regal B'), 'Nicht im Vorrat');
@@ -119,7 +137,9 @@ test('Lagerort beim Erfassen — gegen echte Datenbank', async (t) => {
     await figuren.addManualFig(U.ich,
       { fig_number: 'sw0001', quantity: 1, storage: 'Vitrine' });
     const r = await db.get(
-      `SELECT storage FROM minifigs WHERE user_id=$1 AND fig_number=$2`,
+      `SELECT l.name AS storage FROM minifigs t
+         LEFT JOIN storage_locations l ON l.id = t.storage_id
+        WHERE t.user_id=$1 AND t.fig_number=$2`,
       [U.ich, 'sw0001']);
     assert.equal(r?.storage, 'Vitrine');
     assert.ok(await imVorrat(U.ich, 'Vitrine'), 'Nicht im Vorrat');
@@ -130,9 +150,9 @@ test('Lagerort beim Erfassen — gegen echte Datenbank', async (t) => {
       `INSERT INTO wanted (user_id, set_number, condition) VALUES ($1,$2,'N')`,
       [U.ich, '75192-1']);
     await merkliste.uebernimm(U.ich, U.ich, '75192-1', 'N', { quantity: 1, storage: 'Dachboden' });
-    const r = await db.get('SELECT storage FROM sets WHERE user_id=$1 AND set_number=$2',
+    const ort = await ortVon(db, 'sets', 't.user_id=$1 AND t.set_number=$2',
       [U.ich, '75192-1']);
-    assert.equal(r?.storage, 'Dachboden',
+    assert.equal(ort, 'Dachboden',
       'Der Merkposten wurde übernommen, der Lagerort ging dabei verloren.');
   });
 
@@ -164,9 +184,9 @@ test('Lagerort beim Erfassen — gegen echte Datenbank', async (t) => {
     const ort = await db.get(
       'SELECT id FROM storage_locations WHERE user_id=$1 AND name=$2', [U.ich, 'Vitrine']);
     await L.benenneOrtUm(U.ich, parseInt(ort.id), 'Vitrine Wohnzimmer');
-    const r = await db.get('SELECT storage FROM minifigs WHERE user_id=$1 AND fig_number=$2',
+    const figurOrt = await ortVon(db, 'minifigs', 't.user_id=$1 AND t.fig_number=$2',
       [U.ich, 'sw0001']);
-    assert.equal(r?.storage, 'Vitrine Wohnzimmer',
+    assert.equal(figurOrt, 'Vitrine Wohnzimmer',
       'Der Vorrat wurde umbenannt, die Figur zeigt auf den alten Namen.');
   });
 

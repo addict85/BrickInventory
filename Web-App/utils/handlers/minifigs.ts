@@ -86,10 +86,13 @@ async function getMinifigs(userId: number | number[], { search, source, set_numb
            -- die an verschiedenen Orten, sollen beide dastehen statt einer
            -- willkuerlich gewaehlt zu werden; NULLIF macht aus dem leeren
            -- Ergebnis wieder NULL, also „nicht erfasst".
-           NULLIF(STRING_AGG(DISTINCT m.storage, ', '), '') AS storage,
+           NULLIF(STRING_AGG(DISTINCT lo.name, ', '), '') AS storage,
            MAX(s.added_at) AS set_added_at
     FROM minifigs m
     LEFT JOIN sets s ON s.user_id = m.user_id AND s.set_number = m.set_number
+    -- Der Name aus dem Vorrat (Migration 0031: die Zeile traegt eine ID).
+    -- LEFT JOIN, damit eine Figur ohne Ort nicht aus der Liste faellt.
+    LEFT JOIN storage_locations lo ON lo.id = m.storage_id
     WHERE ${where}
     -- LOWER(TRIM(...)): Import-Pfade (Rebrickable-API vs. CSV-Katalog) können
     -- dieselbe Figurennummer mit Whitespace-/Case-Varianten liefern — die
@@ -202,7 +205,16 @@ async function getManualMinifigs(userId: number | number[], viewerId: number, { 
     limit = ` LIMIT $${params.length - 1} OFFSET $${params.length}`;
   }
   const figs = await db.all(
-    `SELECT * FROM minifigs WHERE user_id = ANY($1) AND source = 'manual' ORDER BY fig_name ASC, fig_number ASC${limit}`,
+    // `m.*` plus der aufgeloeste Lagerortname: Das SELECT * lieferte den Ort
+    // seit jeher mit, und seit Migration 0031 steht an der Zeile nur noch die
+    // ID. Ohne diese Spalte waere der Lagerort im Detail der manuell
+    // erfassten Figuren wieder leer — genau Marcos Befund vom 24.09., nur mit
+    // anderer Ursache.
+    `SELECT m.*, lo.name AS storage
+       FROM minifigs m
+       LEFT JOIN storage_locations lo ON lo.id = m.storage_id
+      WHERE m.user_id = ANY($1) AND m.source = 'manual'
+      ORDER BY m.fig_name ASC, m.fig_number ASC${limit}`,
     params);
   const mapped = figs.map(f => ({ ...f, image_local: resolveImageLocal(f.image_local) }));
   const mitZustand = await applyManualCondition(uids, mapped, 'fig');

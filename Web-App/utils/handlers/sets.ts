@@ -132,7 +132,11 @@ async function getSets(userId: Blickfeld, query: any = {}) {
                -- dasselbe Set, liegt es in zwei Kisten. MIN() haette eine
                -- davon gezeigt und die andere verschwiegen — und zwar so, dass
                -- es wie eine vollstaendige Antwort aussieht.
-               NULLIF(string_agg(DISTINCT s.storage, ', '), '') AS storage,
+               -- Der Name kommt seit Migration 0031 aus dem Vorrat (die Zeile
+               -- traegt eine ID). LEFT JOIN, weil ein Set ohne Ort weiter in
+               -- der Liste stehen muss — ein INNER JOIN liesse es verschwinden,
+               -- und zwar genau die Sets, die noch nicht eingeraeumt sind.
+               NULLIF(string_agg(DISTINCT lo.name, ', '), '') AS storage,
                -- Nur Konten, die auch wirklich ein Exemplar halten.
                --
                -- Marcos Befund: „Ich habe den Kaufpreis für den Marco
@@ -145,9 +149,17 @@ async function getSets(userId: Blickfeld, query: any = {}) {
                -- Mengenregler). Ohne FILTER stand das Konto danach weiter als
                -- Besitzer auf der Kachel, obwohl es nichts mehr besitzt.
                array_agg(DISTINCT s.user_id) FILTER (WHERE s.quantity > 0) AS owner_ids
-          FROM sets s WHERE s.user_id = ANY($1)
+          FROM sets s
+          LEFT JOIN storage_locations lo ON lo.id = s.storage_id
+         WHERE s.user_id = ANY($1)
          GROUP BY s.set_number) s`
-    : 'sets s';
+    // Auch ohne Haushalt eine Unterabfrage, und zwar NUR wegen des Lagerorts:
+    // Alles darunter (Filter `s.storage = $n`, Sortierung, Ausgabe) erwartet
+    // den NAMEN in einer Spalte namens `storage` — die Tabelle traegt seit
+    // Migration 0031 aber die ID. `s.*` plus die aufgeloeste Spalte liefert
+    // genau die alte Form, und der Filter bleibt unberuehrt.
+    : `(SELECT s.*, lo.name AS storage
+          FROM sets s LEFT JOIN storage_locations lo ON lo.id = s.storage_id) s`;
   const SET_OWNER_COL = uids.length > 1 ? ', s.owner_ids' : '';
   // Ohne Gruppierung filtert die WHERE-Klausel wie bisher; mit Gruppierung hat
   // die Unterabfrage bereits gefiltert.

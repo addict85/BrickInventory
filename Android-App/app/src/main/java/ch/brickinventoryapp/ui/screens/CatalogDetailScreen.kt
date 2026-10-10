@@ -58,6 +58,8 @@ fun CatalogDetailScreen(
     householdMembers: List<ch.brickinventoryapp.data.model.HouseholdMember> = emptyList(),
     /** Vorrat an Lagerorten fuer den Erfassungsdialog. */
     lagerorte: List<String> = emptyList(),
+    /** Der vorausgewaehlte Lagerort — Marcos Stern. Leer heisst: keine Vorgabe. */
+    lagerortVorgabe: String = "",
     onLoad: (String) -> Unit,
     onAddToGallery: (String, Int, Double?, String?, Int?, String?) -> Unit,
     /**
@@ -280,6 +282,7 @@ fun CatalogDetailScreen(
             defaultCondition = defaultCondition,
             householdMembers = householdMembers,
             lagerorte = lagerorte,
+            lagerortVorgabe = lagerortVorgabe,
             onDismiss = { showAddDialog = false },
             onAdd = { qty, price, cond, owner, ort ->
                 showAddDialog = false
@@ -321,13 +324,18 @@ private fun CatalogAddDialog(
     householdMembers: List<ch.brickinventoryapp.data.model.HouseholdMember>,
     /** Vorrat an Lagerorten — leer heisst: es gibt noch keine, dann wird getippt. */
     lagerorte: List<String>,
+    /** Der vorausgewaehlte Lagerort — Marcos Stern. Leer heisst: keine Vorgabe. */
+    lagerortVorgabe: String = "",
     onDismiss: () -> Unit,
     onAdd: (Int, Double?, String?, Int?, String?) -> Unit
 ) {
     var quantity      by rememberSaveable { mutableStateOf("1") }
     var purchasePrice by rememberSaveable { mutableStateOf("") }
     var condition     by rememberSaveable { mutableStateOf(defaultCondition) }
-    var lagerort      by rememberSaveable { mutableStateOf("") }
+    // Schluessel ist die Vorgabe: Sie kommt ueber das Netz und kann nach dem
+    // Oeffnen eintreffen. Eine eigene Eingabe bleibt stehen, weil sich die
+    // Vorgabe danach nicht mehr aendert.
+    var lagerort      by rememberSaveable(lagerortVorgabe) { mutableStateOf(lagerortVorgabe) }
     // Vorbelegt mit dem eigenen Konto, genau wie im Galerie-Dialog.
     var owner         by remember(householdMembers) {
         mutableStateOf(householdMembers.firstOrNull { it.isSelf }?.id)
