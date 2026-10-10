@@ -82,11 +82,17 @@ const TABELLEN = { set: 'sets', part: 'parts', fig: 'minifigs' } as const;
 export type LagerArt = keyof typeof TABELLEN;
 
 /** Woran eine Zeile je Art erkannt wird — dieselbe Reihenfolge wie die
- *  Schluessel, die [setzeLagerort] entgegennimmt. */
-const BEDINGUNG: Record<LagerArt, string> = {
-  set:  'set_number = $3',
-  part: 'part_number = $3 AND COALESCE(color_id, 0) = $4',
-  fig:  'fig_number = $3',
+ *  Schluessel, die [setzeLagerort] entgegennimmt.
+ *
+ *  Als Funktion des ERSTEN Platzhalters und nicht als feste Zeichenkette:
+ *  [setzeLagerort] braucht dieselbe Bedingung in zwei Abfragen mit
+ *  verschieden vielen vorangestellten Werten. Eine Luecke in der Numerierung
+ *  zu lassen ginge nicht — Postgres leitet die Zahl der Parameter aus dem
+ *  hoechsten $n ab und verlangt dann einen Typ fuer den uebersprungenen. */
+const BEDINGUNG: Record<LagerArt, (ab: number) => string> = {
+  set:  (ab) => `set_number = $${ab}`,
+  part: (ab) => `part_number = $${ab} AND COALESCE(color_id, 0) = $${ab + 1}`,
+  fig:  (ab) => `fig_number = $${ab}`,
 };
 
 /**
@@ -116,7 +122,8 @@ export async function setzeLagerort(
   art: LagerArt, besitzerIds: number[], schluessel: string[], ort: string | null,
 ): Promise<number> {
   const tabelle = TABELLEN[art];
-  const bedingung = BEDINGUNG[art];
+  // $1 = Besitzer, $2 = Ortsname, ab $3 die Schluessel.
+  const bedingung = BEDINGUNG[art](3);
   // ── Die Zuordnung ist seit Migration 0031 eine ID ────────────────────────
   //
   // Aufgelöst wird sie in einer Unterabfrage je ZEILE und nicht einmal
@@ -163,18 +170,48 @@ export async function setzeLagerort(
   // Eintrag im Vorrat". Deshalb beides in EINER Transaktion mit Rücknahme,
   // wenn keine Zeile getroffen wurde. Sonst legte jedes Setzen auf ein
   // fremdes Set einen Ort an, den niemand bestellt hat.
-  const nichtsGetroffen = {};
+  // ── Nur in die Konten, die auch wirklich eine Zeile halten ──────────────
+  //
+  // Marcos Befund: „Wenn ich in den Filtern nach einem Account filtere,
+  // erscheinen die falschen Lagerorte im Filter und in den Sets ist keiner
+  // gesetzt."
+  //
+  // NACHGEMESSEN, Hauptkonto mit einem Unterkonto, das Set gehört dem
+  // Hauptkonto, Ort „Estrich" darauf gesetzt:
+  //
+  //     Vorrat Hauptkonto                : ['Estrich']
+  //     Vorrat Unterkonto                : ['Estrich']   ← falsch
+  //     Sets des Unterkontos MIT Lagerort: 0
+  //
+  // Hier stand `SELECT id, $2 FROM users WHERE id = ANY($1)` — der Ort entstand
+  // in JEDEM Konto, in das der Aufrufer schreiben darf. Bei einem Haushalt mit
+  // drei Unterkonten legt ein einziges Setzen also vier Vorratszeilen an, von
+  // denen drei leer bleiben. Genau die stehen danach im Kontofilter und zeigen
+  // kein einziges Set.
+  //
+  // Richtig ist: Der Ort gehört in die Konten, deren Zeilen er beschreibt. Die
+  // werden deshalb VORHER ermittelt. Das ersetzt zugleich den früheren
+  // Rücknahme-Umweg (eine Ausnahme, die im Fang wieder zu 0 wurde): Trifft die
+  // Auswahl kein Konto, ist nichts zu tun, und es entsteht auch kein Eintrag —
+  // dieselbe Eigenschaft, nur ohne Transaktion, die etwas zurücknimmt, das sie
+  // gar nicht hätte tun müssen.
   return await db.transaction(async (tx) => {
+    // Hier gibt es kein $2 (der Ortsname spielt beim Suchen keine Rolle), die
+    // Schluessel beginnen also bei $2.
+    const besitzer: { user_id: number }[] = await tx.all(
+      `SELECT DISTINCT t.user_id
+         FROM ${tabelle} t
+        WHERE t.user_id = ANY($1) AND ${BEDINGUNG[art](2)}`,
+      [besitzerIds, ...schluessel]);
+    const ids = besitzer.map(b => parseInt(String(b.user_id)));
+    if (!ids.length) return 0;
+
     await tx.run(
       `INSERT INTO storage_locations (user_id, name)
        SELECT id, $2 FROM users WHERE id = ANY($1)
-       ON CONFLICT (user_id, lower(name)) DO NOTHING`, [besitzerIds, ort]);
-    const r = await tx.run(setzen, [besitzerIds, ort, ...schluessel]);
-    if ((r.changes ?? 0) === 0) throw nichtsGetroffen;
+       ON CONFLICT (user_id, lower(name)) DO NOTHING`, [ids, ort]);
+    const r = await tx.run(setzen, [ids, ort, ...schluessel]);
     return r.changes ?? 0;
-  }).catch((e) => {
-    if (e === nichtsGetroffen) return 0;
-    throw e;
   });
 }
 
