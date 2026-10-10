@@ -69,7 +69,17 @@ class PurchasePriceDisplayTest {
         assert(kopf.isNotEmpty() && kopf.contains("setNumber")) {
             "Der Kopf von SetItem wurde nicht gefunden — die Prüfung darunter wäre leer wahr"
         }
-        assert(!kopf.contains("purchase_price")) {
+        // Der GANZE Name mit Anführungszeichen, nicht die Teilzeichenfolge.
+        //
+        // GEMESSEN, als hier `contains("purchase_price")` stand: Die Prüfung war
+        // immer rot, weil `avg_purchase_price` und `max_purchase_price` die
+        // Zeichenfolge enthalten — beide gehören in den Kopf und sind genau die
+        // Felder, die den Kaufpreis jetzt liefern.
+        assert(kopf.contains("""@SerialName("avg_purchase_price")""")) {
+            "avg_purchase_price fehlt in SetItem — dann hat die Kachel gar keinen " +
+                "Kaufpreis mehr, und die Prüfung darunter wäre nebenbei leer wahr"
+        }
+        assert(!kopf.contains("""@SerialName("purchase_price")""")) {
             "SetItem hat purchase_price wieder — der Server liefert es für Sets " +
                 "seit Migration 0032 nicht mehr, das Feld wäre immer leer"
         }
