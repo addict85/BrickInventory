@@ -28,12 +28,26 @@
  * einzeln anzufassen; ihn LÖSCHEN. Deshalb `storage_locations` (Migration
  * 0020) — der Vorrat.
  *
- * Die Zuordnung bleibt der freie Text in `sets.storage` / `parts.storage`.
- * Eine Fremdschlüssel-ID hätte jede bestehende Zeile umschreiben müssen und
- * jede Abfrage um einen JOIN erweitert — für einen Namen, der ohnehin
- * eindeutig ist. [lagerorte] zählt deshalb weiter, was WIRKLICH belegt ist;
- * [orteVon] sagt, was zur Wahl steht. Beides wird gebraucht, und es ist nicht
- * dasselbe.
+ * ── Die Zuordnung ist eine ID — und hier stand das Gegenteil ────────────────
+ *
+ * Bis Migration 0031 stand hier: „Die Zuordnung bleibt der freie Text in
+ * `sets.storage` / `parts.storage`. Eine Fremdschlüssel-ID hätte jede
+ * bestehende Zeile umschreiben müssen und jede Abfrage um einen JOIN erweitert
+ * — für einen Namen, der ohnehin eindeutig ist."
+ *
+ * Der letzte Halbsatz war der Fehler: Eindeutig ist der Name im VORRAT, und
+ * zwar ohne Rücksicht auf Gross-/Kleinschreibung (`lower(name)`). Am Bestand
+ * stand dagegen die getippte Schreibweise, zeichengenau verglichen. Damit
+ * konnte am Set ein Name stehen, den der Vorrat nicht führt — und dann wanderte
+ * er beim Umbenennen nicht mit, und das Löschen hielt den Ort für leer.
+ * Nachgestellt, nicht vermutet; der Ablauf steht in der Migration.
+ *
+ * Die beiden Kosten von damals sind geblieben und bezahlt: Die bestehenden
+ * Zuordnungen wurden auf Marcos Ansage weggeworfen statt nachgefüllt, und die
+ * Abfragen, die den Ort ANZEIGEN, tragen jetzt einen LEFT JOIN auf den Vorrat.
+ *
+ * [lagerorte] zählt weiter, was WIRKLICH belegt ist; [orteVon] sagt, was zur
+ * Wahl steht. Beides wird gebraucht, und es ist nicht dasselbe.
  */
 import * as db from '../db/database';
 import { asIds } from './household';
@@ -103,23 +117,65 @@ export async function setzeLagerort(
 ): Promise<number> {
   const tabelle = TABELLEN[art];
   const bedingung = BEDINGUNG[art];
+  // ── Die Zuordnung ist seit Migration 0031 eine ID ────────────────────────
+  //
+  // Aufgelöst wird sie in einer Unterabfrage je ZEILE und nicht einmal
+  // vorher. Das hat einen Grund, der im Haushalt sichtbar wird: Derselbe
+  // Name kann in zwei Konten liegen, und jedes hat seine eigene Zeile im
+  // Vorrat (ein Regal ist ein Regal in EINER Wohnung, Migration 0020). Die
+  // Unterabfrage greift über `l.user_id = t.user_id` genau die des
+  // Besitzers — eine vorher aufgelöste ID träfe für das zweite Konto die
+  // falsche Wohnung.
+  //
+  // `lower(...)`: Der Vorrat ist ohne Rücksicht auf Gross-/Kleinschreibung
+  // eindeutig. Genau hier lag der Fehler des alten Entwurfs — er schrieb die
+  // GETIPPTE Schreibweise an den Bestand, und die musste nicht die des
+  // Vorrats sein (nachgestellt in der Migration).
+  //
+  // Dieselbe Anweisung leert auch: Mit `ort = null` ist `lower($2)` NULL, die
+  // Unterabfrage findet nichts und setzt NULL. Eine zweite Anweisung dafür
+  // wäre eine zweite Stelle, die stimmen muss.
+  const setzen =
+    `UPDATE ${tabelle} t
+        SET storage_id = (SELECT l.id FROM storage_locations l
+                           WHERE l.user_id = t.user_id
+                             AND lower(l.name) = lower($2))
+      WHERE t.user_id = ANY($1) AND ${bedingung}`;
+
   // Kein `as any` auf dem Ergebnis: db.run() ist typisiert ({ changes, lastID }).
   // Die Schreibweise `(r as any).changes` steht anderswo im Baum noch aus einer
   // Zeit, in der das nicht galt — sie schaltet den Typpruefer ab, ohne etwas zu
   // gewinnen (test/ratschen.test.js zaehlt sie mit).
-  const r = await db.run(
-    `UPDATE ${tabelle} SET storage = $2 WHERE user_id = ANY($1) AND ${bedingung}`,
-    [besitzerIds, ort, ...schluessel]);
-  // Ein Name, den es im Vorrat noch nicht gibt, kommt hinein — das ist
-  // Marcos „man kann auch gleich neue Auswahlwerte erfassen". Ohne diese
-  // Zeile stünde der gerade gesetzte Ort am Set, fehlte aber in der Liste,
-  // aus der er gewählt werden soll.
+  if (ort === null) {
+    const r = await db.run(setzen, [besitzerIds, null, ...schluessel]);
+    return r.changes ?? 0;
+  }
+
+  // ── Anlegen und Zuordnen gehören zusammen ────────────────────────────────
   //
-  // NACH dem UPDATE und nur bei Erfolg: Ein Ort, der keiner Zeile zugeordnet
-  // werden konnte (falsches Set, kein Schreibrecht), soll auch keinen
-  // Eintrag im Vorrat hinterlassen.
-  if (ort && (r.changes ?? 0) > 0) await stelleOrteSicher(besitzerIds, ort);
-  return r.changes ?? 0;
+  // Ein Name, den es im Vorrat noch nicht gibt, kommt hinein — das ist Marcos
+  // „man kann auch gleich neue Auswahlwerte erfassen". Mit dem Namen als
+  // Zuordnung ging das NACH dem UPDATE, mit der ID muss es davor stehen: Ohne
+  // Zeile im Vorrat gibt es keine ID, und die Unterabfrage setzte NULL.
+  //
+  // Die Reihenfolge kostet eine Eigenschaft, die der alte Weg nebenbei hatte —
+  // „ein Ort, der keiner Zeile zugeordnet werden konnte, hinterlässt keinen
+  // Eintrag im Vorrat". Deshalb beides in EINER Transaktion mit Rücknahme,
+  // wenn keine Zeile getroffen wurde. Sonst legte jedes Setzen auf ein
+  // fremdes Set einen Ort an, den niemand bestellt hat.
+  const nichtsGetroffen = {};
+  return await db.transaction(async (tx) => {
+    await tx.run(
+      `INSERT INTO storage_locations (user_id, name)
+       SELECT id, $2 FROM users WHERE id = ANY($1)
+       ON CONFLICT (user_id, lower(name)) DO NOTHING`, [besitzerIds, ort]);
+    const r = await tx.run(setzen, [besitzerIds, ort, ...schluessel]);
+    if ((r.changes ?? 0) === 0) throw nichtsGetroffen;
+    return r.changes ?? 0;
+  }).catch((e) => {
+    if (e === nichtsGetroffen) return 0;
+    throw e;
+  });
 }
 
 /**
@@ -188,24 +244,21 @@ export async function legeOrtAn(userId: number, name: unknown):
            war_neu: false };
 }
 
-/** Mehrere Konten auf einmal — für [setzeLagerort]. */
-async function stelleOrteSicher(userIds: number[], name: string) {
-  await db.run(
-    `INSERT INTO storage_locations (user_id, name)
-     SELECT id, $2 FROM users WHERE id = ANY($1)
-     ON CONFLICT (user_id, lower(name)) DO NOTHING`, [userIds, name])
-    .catch(e => { require('./httpError').meldeUndWeiter('lagerort:vorrat', e); });
-}
-
 /**
- * Einen Ort umbenennen — samt allem, was darin liegt.
+ * Einen Ort umbenennen.
  *
- * ── Warum die Zuordnungen mitwandern ────────────────────────────────────────
+ * ── Hier stand die Schleife, die den Namen in drei Tabellen nachschrieb ─────
  *
- * Die Zuordnung ist der NAME, nicht eine ID. Bliebe sie beim Umbenennen
+ * Mit dem NAMEN als Zuordnung musste sie da sein: „Bliebe sie beim Umbenennen
  * stehen, stünden die Sets danach in einem Ort, den die Auswahlliste nicht
- * mehr kennt — ein Umbenennen wäre in Wahrheit ein Verlieren. Beides in EINER
+ * mehr kennt — ein Umbenennen wäre in Wahrheit ein Verlieren." Dazu eine
  * Transaktion, weil ein halber Durchlauf genau diesen Zustand hinterliesse.
+ *
+ * Seit Migration 0031 ist die Zuordnung eine ID, und damit ist dieser ganze
+ * Absatz gegenstandslos: Es gibt nichts nachzuschreiben, also auch keinen
+ * halben Durchlauf. Eine Anweisung, eine Zeile, fertig — und der Fall, in dem
+ * die Schleife eine Schreibweise NICHT traf (sie verglich zeichengenau), kann
+ * nicht mehr entstehen. Nachgewiesen in test/lagerort-id-db.test.js.
  */
 export async function benenneOrtUm(userId: number, id: number, name: unknown): Promise<Lagerort> {
   const neu = nameOderFehler(name);
@@ -218,14 +271,8 @@ export async function benenneOrtUm(userId: number, id: number, name: unknown): P
     `SELECT id FROM storage_locations
       WHERE user_id = $1 AND lower(name) = lower($2) AND id <> $3`, [userId, neu, id]);
   if (kollision) fehlerWerfen('lagerort_doppelt', 409);
-  await db.transaction(async (tx) => {
-    await tx.run('UPDATE storage_locations SET name = $3 WHERE id = $1 AND user_id = $2',
-      [id, userId, neu]);
-    for (const tabelle of Object.values(TABELLEN)) {
-      await tx.run(`UPDATE ${tabelle} SET storage = $3 WHERE user_id = $1 AND storage = $2`,
-        [userId, alt.name, neu]);
-    }
-  });
+  await db.run('UPDATE storage_locations SET name = $3 WHERE id = $1 AND user_id = $2',
+    [id, userId, neu]);
   return { id, user_id: userId, name: neu };
 }
 
@@ -243,11 +290,16 @@ export async function loescheOrt(userId: number, id: number): Promise<void> {
   // Alle drei Tabellen: Ein Ort, in dem NUR Figuren liegen, liesse sich sonst
   // loeschen, und ihre Zuordnung zeigte danach auf einen Namen, den der
   // Vorrat nicht mehr kennt.
+  // Gezaehlt wird ueber die ID und nicht ueber den Namen. Mit dem Namen war
+  // diese Pruefung umgehbar, ohne dass jemand etwas falsch machte: Lag am Set
+  // „estrich" und im Vorrat „Estrich", zaehlte der zeichengenaue Vergleich
+  // null — der Ort liess sich loeschen, und das Set behielt einen Namen, den
+  // die Auswahlliste nicht mehr kannte (nachgestellt in Migration 0031).
   const belegt = await db.get(
-    `SELECT (SELECT COUNT(*) FROM sets     WHERE user_id = $1 AND storage = $2)
-          + (SELECT COUNT(*) FROM parts    WHERE user_id = $1 AND storage = $2)
-          + (SELECT COUNT(*) FROM minifigs WHERE user_id = $1 AND storage = $2) AS n`,
-    [userId, ort.name]);
+    `SELECT (SELECT COUNT(*) FROM sets     WHERE user_id = $1 AND storage_id = $2)
+          + (SELECT COUNT(*) FROM parts    WHERE user_id = $1 AND storage_id = $2)
+          + (SELECT COUNT(*) FROM minifigs WHERE user_id = $1 AND storage_id = $2) AS n`,
+    [userId, id]);
   if (parseInt(String(belegt?.n ?? 0)) > 0) fehlerWerfen('lagerort_in_benutzung', 409);
   await db.run('DELETE FROM storage_locations WHERE id = $1 AND user_id = $2', [id, userId]);
 }
@@ -275,23 +327,31 @@ export async function loescheOrt(userId: number, id: number): Promise<void> {
  */
 export async function lagerorte(blickfeld: BlickfeldEingabe) {
   const uids = asIds(blickfeld);
+  // Gruppiert wird ueber den NAMEN und nicht ueber die ID — auch jetzt, wo die
+  // Zuordnung eine ID ist. Das ist Absicht: Ein Blickfeld kann mehrere Konten
+  // umfassen, und „Keller" des Grossvaters und „Keller" des Enkels sind zwei
+  // Zeilen im Vorrat. In der Uebersicht gehoeren sie zusammen, sonst stuende
+  // „Keller" zweimal da und niemand koennte den Unterschied sehen.
   const rows = await db.all(
     `SELECT ort,
             SUM(sets)::int    AS sets,
             SUM(teile)::int   AS teile,
             SUM(figuren)::int AS figuren
        FROM (
-         SELECT storage AS ort, COUNT(*)::int AS sets, 0 AS teile, 0 AS figuren
-           FROM sets  WHERE user_id = ANY($1) AND storage IS NOT NULL
-          GROUP BY storage
+         SELECT l.name AS ort, COUNT(*)::int AS sets, 0 AS teile, 0 AS figuren
+           FROM sets s JOIN storage_locations l ON l.id = s.storage_id
+          WHERE s.user_id = ANY($1)
+          GROUP BY l.name
          UNION ALL
-         SELECT storage AS ort, 0 AS sets, COUNT(*)::int AS teile, 0 AS figuren
-           FROM parts WHERE user_id = ANY($1) AND storage IS NOT NULL
-          GROUP BY storage
+         SELECT l.name AS ort, 0 AS sets, COUNT(*)::int AS teile, 0 AS figuren
+           FROM parts p JOIN storage_locations l ON l.id = p.storage_id
+          WHERE p.user_id = ANY($1)
+          GROUP BY l.name
          UNION ALL
-         SELECT storage AS ort, 0 AS sets, 0 AS teile, COUNT(*)::int AS figuren
-           FROM minifigs WHERE user_id = ANY($1) AND storage IS NOT NULL
-          GROUP BY storage
+         SELECT l.name AS ort, 0 AS sets, 0 AS teile, COUNT(*)::int AS figuren
+           FROM minifigs m JOIN storage_locations l ON l.id = m.storage_id
+          WHERE m.user_id = ANY($1)
+          GROUP BY l.name
        ) q
       GROUP BY ort
       ORDER BY ort`, [uids]).catch(() => []);

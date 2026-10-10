@@ -788,7 +788,13 @@ router.get('/sets/:setNumber/price', requireToken, async (req: AuthedRequest, re
     // Weg". Am laufenden System nachgestellt: Hauptkonto öffnet Unterkonto-Set
     // → Detail 200, Preis 404.
     const uids = await scopeIds(uid, parseScopeMode(req.query.accounts));
-    const set = await db.get('SELECT * FROM sets WHERE set_number=$1 AND user_id = ANY($2)', [sn, uids]);
+    // `s.*` plus der aufgeloeste Lagerortname: Das Detail zeigt den Ort, und
+    // seit Migration 0031 steht an der Zeile nur die ID. Ohne die Spalte waere
+    // das Feld im Detaildialog leer — und zwar in beiden Oberflaechen.
+    const set = await db.get(
+      `SELECT s.*, lo.name AS storage
+         FROM sets s LEFT JOIN storage_locations lo ON lo.id = s.storage_id
+        WHERE s.set_number = $1 AND s.user_id = ANY($2)`, [sn, uids]);
     if (!set) return sendeFehler(req, res, 404, 'set_nicht_gefunden');
     // Die Währung kommt aus der NUTZEREINSTELLUNG — der frühere
     // `req.query.currency ||`-Vorrang ist weg (Nachtrag 31). Die Android-App

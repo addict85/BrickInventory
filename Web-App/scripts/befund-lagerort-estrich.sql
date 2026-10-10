@@ -39,14 +39,18 @@
 \echo '   "anderer_ort"  = steht woanders und wuerde UEBERSCHRIEBEN'
 \echo ''
 
-SELECT u.username                                                   AS konto,
-       COUNT(*)                                                     AS sets,
-       COUNT(*) FILTER (WHERE s.storage = :'ort')                   AS im_zielort,
-       COUNT(*) FILTER (WHERE COALESCE(btrim(s.storage), '') = '')   AS ohne_ort,
-       COUNT(*) FILTER (WHERE COALESCE(btrim(s.storage), '') <> ''
-                          AND s.storage <> :'ort')                  AS anderer_ort
+-- Der Lagerort steht seit Migration 0031 als ID an der Zeile; der Name
+-- kommt aus dem Vorrat. LEFT JOIN, weil ein Set ohne Ort mitgezaehlt werden
+-- muss — es ist der haeufigste Fall, den dieses Skript aendert.
+SELECT u.username                                        AS konto,
+       COUNT(*)                                          AS sets,
+       COUNT(*) FILTER (WHERE l.name = :'ort')           AS im_zielort,
+       COUNT(*) FILTER (WHERE s.storage_id IS NULL)      AS ohne_ort,
+       COUNT(*) FILTER (WHERE s.storage_id IS NOT NULL
+                          AND l.name <> :'ort')          AS anderer_ort
   FROM sets s
   JOIN users u ON u.id = s.user_id
+  LEFT JOIN storage_locations l ON l.id = s.storage_id
  GROUP BY u.username
  ORDER BY u.username;
 
@@ -56,14 +60,14 @@ SELECT u.username                                                   AS konto,
 \echo ''
 
 SELECT u.username   AS konto,
-       s.storage    AS bisheriger_ort,
+       l.name       AS bisheriger_ort,
        COUNT(*)     AS sets
   FROM sets s
   JOIN users u ON u.id = s.user_id
- WHERE COALESCE(btrim(s.storage), '') <> ''
-   AND s.storage <> :'ort'
- GROUP BY u.username, s.storage
- ORDER BY u.username, COUNT(*) DESC, s.storage;
+  JOIN storage_locations l ON l.id = s.storage_id
+ WHERE l.name <> :'ort'
+ GROUP BY u.username, l.name
+ ORDER BY u.username, COUNT(*) DESC, l.name;
 
 \echo ''
 \echo '== 3. Steht der Zielort schon im Vorrat? ================================'
@@ -87,17 +91,17 @@ SELECT u.username AS konto,
 \echo '   damit niemand annimmt, die Korrektur haette alles mitgenommen.'
 \echo ''
 
-SELECT u.username                                                  AS konto,
-       COUNT(*) FILTER (WHERE COALESCE(btrim(p.storage), '') <> '') AS teile_mit_ort,
-       COUNT(*) FILTER (WHERE COALESCE(btrim(p.storage), '') = '')  AS teile_ohne_ort
+SELECT u.username                                            AS konto,
+       COUNT(*) FILTER (WHERE p.storage_id IS NOT NULL)      AS teile_mit_ort,
+       COUNT(*) FILTER (WHERE p.storage_id IS NULL)          AS teile_ohne_ort
   FROM parts p
   JOIN users u ON u.id = p.user_id
  GROUP BY u.username
  ORDER BY u.username;
 
-SELECT u.username                                                  AS konto,
-       COUNT(*) FILTER (WHERE COALESCE(btrim(m.storage), '') <> '') AS figuren_mit_ort,
-       COUNT(*) FILTER (WHERE COALESCE(btrim(m.storage), '') = '')  AS figuren_ohne_ort
+SELECT u.username                                            AS konto,
+       COUNT(*) FILTER (WHERE m.storage_id IS NOT NULL)      AS figuren_mit_ort,
+       COUNT(*) FILTER (WHERE m.storage_id IS NULL)          AS figuren_ohne_ort
   FROM minifigs m
   JOIN users u ON u.id = m.user_id
  GROUP BY u.username

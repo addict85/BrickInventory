@@ -111,14 +111,15 @@ DO $$ BEGIN RAISE EXCEPTION 'Konto nicht gefunden — nichts geaendert'; END $$;
 \echo ''
 \echo '== Vorher =============================================================='
 
-SELECT u.username                                                  AS konto,
-       COUNT(*)                                                    AS sets,
-       COUNT(*) FILTER (WHERE s.storage = :'ort')                  AS im_zielort,
-       COUNT(*) FILTER (WHERE COALESCE(btrim(s.storage), '') = '')  AS ohne_ort,
-       COUNT(*) FILTER (WHERE COALESCE(btrim(s.storage), '') <> ''
-                          AND s.storage <> :'ort')                 AS anderer_ort
+SELECT u.username                                        AS konto,
+       COUNT(*)                                          AS sets,
+       COUNT(*) FILTER (WHERE l.name = :'ort')           AS im_zielort,
+       COUNT(*) FILTER (WHERE s.storage_id IS NULL)      AS ohne_ort,
+       COUNT(*) FILTER (WHERE s.storage_id IS NOT NULL
+                          AND l.name <> :'ort')          AS anderer_ort
   FROM sets s
   JOIN users u ON u.id = s.user_id
+  LEFT JOIN storage_locations l ON l.id = s.storage_id
  WHERE lower(:'konto') = 'alle' OR lower(u.username) = lower(:'konto')
  GROUP BY u.username
  ORDER BY u.username;
@@ -132,27 +133,73 @@ INSERT INTO storage_locations (user_id, name)
 SELECT u.id, :'ort'
   FROM users u
  WHERE lower(:'konto') = 'alle' OR lower(u.username) = lower(:'konto')
-ON CONFLICT DO NOTHING;
+ON CONFLICT (user_id, lower(name)) DO NOTHING;
 
 \echo ''
 \echo '== Schritt 1: Vorrat ==================================================='
 \echo '   Zeilen oben = neu angelegt. 0 heisst: war schon da.'
 
+-- ── Steht der Ort jetzt wirklich bereit? ───────────────────────────────────
+--
+-- NACHGEMESSEN, nicht angenommen: Beim Gegenprobieren stand die Sequenz von
+-- storage_locations hinter dem hoechsten vergebenen Schluessel (so entsteht es
+-- bei einem Import mit ausdruecklichen IDs). Dann traf das INSERT den
+-- PRIMAERSCHLUESSEL, nicht den Namensindex — und ein ON CONFLICT ohne Ziel
+-- verschluckt beides. Das Skript meldete „INSERT 0 0 / UPDATE 0" und sah aus
+-- wie „gab nichts zu tun".
+--
+-- Zwei Riegel dagegen, und der erste ist nachgemessen: Das ON CONFLICT oben
+-- nennt jetzt sein Ziel, und derselbe Versuch endet damit laut —
+--
+--     ERROR:  duplicate key value violates unique constraint
+--             "storage_locations_pkey"
+--
+-- mit Ruecknahme der Transaktion; die Sets blieben unveraendert. Die Pruefung
+-- hier ist der zweite Riegel: Sie faengt den Fall, dass der Ort aus einem
+-- ANDEREN Grund fehlt, bevor irgendetwas zugeordnet wird. Mit nachgezogener
+-- Sequenz laeuft derselbe Aufruf durch (INSERT 0 1, UPDATE 2, COMMIT).
+SELECT CASE WHEN COUNT(*) = 0 THEN 'yes' ELSE 'no' END AS vorrat_da,
+       COUNT(*)                                        AS fehlt_bei
+  FROM users u
+ WHERE (lower(:'konto') = 'alle' OR lower(u.username) = lower(:'konto'))
+   AND NOT EXISTS (SELECT 1 FROM storage_locations l
+                    WHERE l.user_id = u.id AND lower(l.name) = lower(:'ort'))
+\gset
+
+\if :vorrat_da
+\else
+\echo ''
+\echo 'FEHLER: Der Zielort fehlt im Vorrat von' :fehlt_bei 'Konto/Konten.'
+\echo '        Pruefe die Sequenz: SELECT setval(''storage_locations_id_seq'','
+\echo '        (SELECT MAX(id) FROM storage_locations));'
+\echo ''
+DO $$ BEGIN RAISE EXCEPTION 'Zielort nicht im Vorrat — nichts geaendert'; END $$;
+\endif
+
 -- ── Schritt 2: Die Sets ────────────────────────────────────────────────────
 --
--- `IS DISTINCT FROM` und nicht `<>`: Ein Set ohne Ort hat NULL, und NULL <>
--- 'Estrich' ergibt NULL, also nicht wahr — die Zeilen ohne Ort waeren
+-- Seit Migration 0031 traegt die Zeile eine ID. Aufgeloest wird sie je ZEILE
+-- ueber das KONTO des Besitzers: Derselbe Name kann in zwei Konten liegen, und
+-- jedes hat seine eigene Zeile im Vorrat (ein Regal steht in EINER Wohnung).
+-- Mit -v konto=alle trifft dieses Skript mehrere Konten, und jedes muss sein
+-- eigenes Regal bekommen — eine vorher aufgeloeste ID waere fuer alle anderen
+-- die falsche Wohnung.
+--
+-- `IS DISTINCT FROM` und nicht `<>`: Ein Set ohne Ort hat NULL, und
+-- NULL <> <id> ergibt NULL, also nicht wahr — die Zeilen ohne Ort waeren
 -- stillschweigend uebersprungen. Genau die sollen aber geaendert werden.
 --
 -- Die Einschraenkung ist kein Geschwindigkeitstrick: Sie haelt updated_at (wo
 -- vorhanden) und die gemeldete Zahl ehrlich. „37 geaendert" soll heissen, dass
 -- 37 Sets vorher anders standen.
 UPDATE sets s
-   SET storage = :'ort'
-  FROM users u
+   SET storage_id = l.id
+  FROM users u, storage_locations l
  WHERE u.id = s.user_id
+   AND l.user_id = s.user_id
+   AND lower(l.name) = lower(:'ort')
    AND (lower(:'konto') = 'alle' OR lower(u.username) = lower(:'konto'))
-   AND s.storage IS DISTINCT FROM :'ort';
+   AND s.storage_id IS DISTINCT FROM l.id;
 
 \echo ''
 \echo '== Schritt 2: Sets ====================================================='
@@ -161,14 +208,15 @@ UPDATE sets s
 \echo ''
 \echo '== Nachher ============================================================='
 
-SELECT u.username                                                  AS konto,
-       COUNT(*)                                                    AS sets,
-       COUNT(*) FILTER (WHERE s.storage = :'ort')                  AS im_zielort,
-       COUNT(*) FILTER (WHERE COALESCE(btrim(s.storage), '') = '')  AS ohne_ort,
-       COUNT(*) FILTER (WHERE COALESCE(btrim(s.storage), '') <> ''
-                          AND s.storage <> :'ort')                 AS anderer_ort
+SELECT u.username                                        AS konto,
+       COUNT(*)                                          AS sets,
+       COUNT(*) FILTER (WHERE l.name = :'ort')           AS im_zielort,
+       COUNT(*) FILTER (WHERE s.storage_id IS NULL)      AS ohne_ort,
+       COUNT(*) FILTER (WHERE s.storage_id IS NOT NULL
+                          AND l.name <> :'ort')          AS anderer_ort
   FROM sets s
   JOIN users u ON u.id = s.user_id
+  LEFT JOIN storage_locations l ON l.id = s.storage_id
  WHERE lower(:'konto') = 'alle' OR lower(u.username) = lower(:'konto')
  GROUP BY u.username
  ORDER BY u.username;

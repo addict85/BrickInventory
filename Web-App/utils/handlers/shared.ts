@@ -357,7 +357,7 @@ const KOPFFELDER = {
           MAX(x.color_hex) AS color_hex, MAX(x.category_name) AS category_name,
           MAX(x.image_local) AS teil_image_local, MAX(x.image_url) AS teil_image_url,
           MAX(x.is_spare) AS is_spare,
-          NULLIF(STRING_AGG(DISTINCT x.storage, ', '), '') AS storage`,
+          NULLIF(STRING_AGG(DISTINCT lo.name, ', '), '') AS storage`,
   minifigs: `x.fig_number AS nummer, MAX(x.fig_name) AS name,
           NULL::int AS color_id, NULL::text AS color_name,
           NULL::text AS color_hex, NULL::text AS category_name,
@@ -392,6 +392,11 @@ async function verwendendeSets(
             ${KOPFFELDER[tabelle]}
        FROM ${tabelle} x
        LEFT JOIN sets s ON s.user_id = x.user_id AND s.set_number = x.set_number
+       -- Der Lagerortname aus dem Vorrat (Migration 0031). Steht hier und
+       -- nicht nur im parts-Zweig von KOPFFELDER, weil der minifigs-Zweig ihn
+       -- als feste NULL fuehrt — ein unbenutzter LEFT JOIN kostet dort nichts
+       -- und haelt die Abfrage in EINER Form.
+       LEFT JOIN storage_locations lo ON lo.id = x.storage_id
       WHERE x.user_id = ANY($1)
         AND x.set_number IS NOT NULL
         AND ${bedingungen.join(' AND ')}

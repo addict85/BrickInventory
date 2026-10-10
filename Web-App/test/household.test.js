@@ -423,7 +423,11 @@ test('manuelle Teile und Minifiguren tragen den Besitzer', () => {
   pruefeParameter(h, 'withOwners', ['uids', 'rows']);
   assert.match(h, /if \(uids\.length < 2 \|\| !rows\?\.length\) return rows;/,
     'Im Einzelkonto darf keine Plakette erscheinen');
-  assert.match(h, /SELECT id, user_id, part_number/,
+  // Der Tabellenname davor ist seit Migration 0031 erlaubt: Die Abfrage
+  // verbindet den Vorrat, um den Lagerortnamen aufzuloesen, und muss ihre
+  // Spalten deshalb qualifizieren (`t.id` statt `id`). Die Aussage bleibt
+  // dieselbe — ohne user_id in der Auswahl gibt es keinen Besitzer.
+  assert.match(h, /SELECT (?:t\.)?id, (?:t\.)?user_id, (?:t\.)?part_number/,
     'Ohne user_id in der Abfrage gibt es keinen Besitzer');
 
   const fc = require('./helpers/sources').finanzQuelle();
