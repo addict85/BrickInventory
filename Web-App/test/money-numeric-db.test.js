@@ -71,6 +71,13 @@ test('Geldbeträge sind exakt', { concurrency: 1 }, async (t) => {
   await t.test('die Migration holt eine alte Datenbank nach', async () => {
     // Alte Installation nachstellen: Spalte zurück auf REAL, Migration erneut
     // laufen lassen (Vermerk in schema_migrations entfernen).
+    //
+    // Dazu gehört seit Migration 0032 auch `sets.purchase_price`: Migration
+    // 0007 fasst die Spalte an, und 0032 löscht sie am Ende der Kette. Eine
+    // alte Datenbank, die 0007 noch vor sich hat, HAT sie also — ohne diese
+    // Zeile scheitert der erneute Lauf mit „column purchase_price does not
+    // exist" und prüft nichts mehr (GEMESSEN).
+    await db.run('ALTER TABLE sets ADD COLUMN IF NOT EXISTS purchase_price REAL');
     await db.run('ALTER TABLE set_acquisitions ALTER COLUMN purchase_price TYPE REAL');
     await db.run("DELETE FROM schema_migrations WHERE name LIKE '0007%'");
     const vorher = await db.get(
@@ -114,7 +121,11 @@ test('Geldbeträge sind exakt', { concurrency: 1 }, async (t) => {
     const satz = r.sets.find(s => s.set_number === '99002-1');
     assert.ok(satz, 'Set nicht gefunden');
 
-    for (const feld of ['purchase_price', 'avg_purchase_price', 'max_purchase_price']) {
+    // `purchase_price` stand hier mit in der Liste. Die Set-Antwort fuehrt das
+    // Feld seit Migration 0032 nicht mehr (die Spalte ist weg); den Kaufpreis
+    // liefern die beiden Aggregate aus den Erfassungen. Ohne diese Aenderung
+    // pruefte die Schleife ein fehlendes Feld und meldete `NaN !== 49.9`.
+    for (const feld of ['avg_purchase_price', 'max_purchase_price']) {
       const wert = Number(satz[feld]);
       assert.equal(wert, 49.9,
         `${feld} = ${satz[feld]} — genau dieser Gleitkomma-Schwanz ging bisher an den Client`);

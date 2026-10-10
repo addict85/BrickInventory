@@ -52,7 +52,7 @@ const { testServer } = require('./helpers/server');
 const db = _req('db/database.js');
 const express = require(path.join(ROOT, 'node_modules', 'express'));
 
-test('der geänderte Kaufpreis erreicht die sets-Zeile — Webapp UND App',
+test('der geänderte Kaufpreis erreicht die Kachel — Webapp UND App',
   { concurrency: 1 }, async (t) => {
 
   try { await db.initSchema(); }

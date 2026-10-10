@@ -199,7 +199,11 @@ test('db/database.ts aendert nur die aufgezaehlten Daten', () => {
     'UPDATE minifigs':                  'schneidet Leerzeichen aus fig_number',
     'INSERT INTO part_acquisitions':    'traegt Erst-Erfassungen nach, mit NOT EXISTS-Riegel',
     'INSERT INTO minifig_acquisitions': 'traegt Erst-Erfassungen nach, mit NOT EXISTS-Riegel',
-    'INSERT INTO set_acquisitions':     'traegt Erst-Erfassungen nach, mit NOT EXISTS-Riegel',
+    // 'INSERT INTO set_acquisitions' stand hier und ist mit Migration 0032
+    // weggefallen: Der Nachtrag in db/database.ts las sets.purchase_price und
+    // lief ausserdem nur beim allerersten Start, wo `sets` leer ist — er hat
+    // also nie etwas getan. Wo er gebraucht wird, steht er jetzt: in der
+    // Migration, einmalig und mit einer Pruefung danach.
     'INSERT INTO schema_meta':          'vermerkt, dass das Schema angelegt wurde',
   };
 

@@ -2,10 +2,15 @@
  * Kaufpreis und Zustand landen im selben Konto.
  *
  * ── Der Fehler, den das verhindert ──────────────────────────────────────────
- * updateSet() macht fuer beide dieselbe Bewegung: erst die sets-Zeile, dann
- * die Erfassung, die der Detail-Dialog bearbeitet (die neueste). Es waren
- * zwei Abschriften — und die zweite hatte ein anderes Konto eingesetzt: der
- * Preis-Zweig `ownerId`, der Zustands-Zweig `uid`.
+ * updateSet() macht fuer beide dieselbe Bewegung: die Erfassung aendern, die
+ * der Detail-Dialog bearbeitet (die neueste). Es waren zwei Abschriften — und
+ * die zweite hatte ein anderes Konto eingesetzt: der Preis-Zweig `ownerId`,
+ * der Zustands-Zweig `uid`.
+ *
+ * Bis Migration 0032 schrieb jede der beiden Bewegungen ZWEIMAL: in die
+ * sets-Zeile und in die Erfassung. Der Spiegel ist weg; die Frage, WELCHE
+ * Zeile getroffen wird, ist dieselbe geblieben — und sie ist der Gegenstand
+ * dieser Datei.
  *
  * NACHGEMESSEN, bevor etwas geaendert wurde. Set UND Erfassung gehoeren dem
  * UNTERKONTO, geaendert wird vom Hauptkonto:
@@ -13,6 +18,10 @@
  *     vorher                       sets: N/10   erfassung: N/10
  *     nach Preis 99 (Hauptkonto)   sets: N/99   erfassung: N/99
  *     nach Zustand U (Hauptkonto)  sets: N/99   erfassung: N/99   <- unveraendert
+ *
+ * (Die sets-Spalte in dieser Messung gibt es seit Migration 0032 nicht mehr.
+ * Die Messung bleibt stehen, weil sie den Fehler beschreibt, der zu dieser
+ * Datei gefuehrt hat.)
  *
  * Der Preis kam an, der Zustand verschwand STILL: `WHERE user_id =
  * <Aufrufer>` trifft keine Zeile. Kein Fehler, kein Hinweis — updateSet
@@ -86,26 +95,27 @@ test('Kaufpreis und Zustand landen im Konto des Besitzers', { concurrency: 1 }, 
                   VALUES ($1,$2,1,10,'N')`, [subId, SET]);
 
     const { updateSet } = _req('utils/setService.js');
+    // Die sets-Zeile traegt seit Migration 0032 nur noch Menge und Besitzer —
+    // Kaufpreis und Zustand stehen in der Erfassung.
     const stand = async () => ({
-      set: await db.get('SELECT user_id, condition, purchase_price::float AS p FROM sets WHERE set_number=$1', [SET]),
+      set: await db.get('SELECT user_id, quantity FROM sets WHERE set_number=$1', [SET]),
       erf: await db.get('SELECT user_id, condition, purchase_price::float AS p FROM set_acquisitions WHERE set_number=$1', [SET]),
     });
 
     // 1. Der Preis — der Zweig, der schon vorher richtig lag.
     await updateSet(hauptId, SET, { purchase_price: 99 });
     let s = await stand();
-    assert.equal(s.set.p, 99);
-    assert.equal(s.erf.p, 99);
+    assert.equal(s.erf.p, 99, 'Die Erfassung traegt den neuen Preis nicht');
 
     // 2. Der Zustand — genau hier verschwand die Aenderung.
-    //    Gegenprobe: in spiegleAufSetUndLetzteErfassung ownerId durch den
-    //    Aufrufer ersetzt -> dieser Teilschritt rot.
+    //    Gegenprobe: in schreibeInLetzteErfassung ownerId durch den Aufrufer
+    //    ersetzt -> dieser Teilschritt rot (durchgefuehrt).
     await updateSet(hauptId, SET, { condition: 'U' });
     s = await stand();
-    assert.equal(s.set.condition, 'U',
-      'Der Zustand des Sets bleibt auf N — die Aenderung hat keine Zeile getroffen ' +
-      'und wurde trotzdem als Erfolg gemeldet');
-    assert.equal(s.erf.condition, 'U', 'Die letzte Erfassung traegt den neuen Zustand nicht');
+    assert.equal(s.erf.condition, 'U',
+      'Die letzte Erfassung traegt den neuen Zustand nicht — die Aenderung hat ' +
+      'keine Zeile getroffen und wurde trotzdem als Erfolg gemeldet');
+    assert.equal(s.erf.p, 99, 'Die Zustandsaenderung hat den Preis mitgenommen');
 
     // 3. Und beides steht weiterhin beim BESITZER, nicht beim Aufrufer.
     assert.equal(s.set.user_id, subId, 'Die Aenderung hat eine Zeile im falschen Konto angelegt');
@@ -134,7 +144,11 @@ test('die Menge geht bewusst auf das eigene Konto', () => {
     'Preis oder Zustand werden wieder mit der Aufrufer-ID geschrieben');
 });
 
-test('die Spiegelung auf Set und letzte Erfassung steht an einer Stelle', () => {
+// Der Name lautete „die Spiegelung auf Set und letzte Erfassung steht an einer
+// Stelle". Gespiegelt wird seit Migration 0032 nichts mehr — geschrieben wird
+// nur noch die letzte Erfassung. Die Regel selbst ist unveraendert richtig und
+// sogar wichtiger geworden: Sie ist jetzt der EINZIGE Schreibweg.
+test('die letzte Erfassung wird an genau einer Stelle beschrieben', () => {
   // Gefunden, nicht aufgezaehlt.
   const dateien = [];
   const gehen = (d) => {

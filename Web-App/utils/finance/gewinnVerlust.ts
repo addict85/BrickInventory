@@ -57,7 +57,17 @@ async function computePnl(viewerId: number, ids: Blickfeld) {
             -- eine nachgetragen. Die Zustands-Spalte fällt aus derselben
             -- Auswahlliste weg — effectiveCondition() unten liest ohnehin nur
             -- acq_count/used_count.
-            a.total_price / NULLIF(a.total_qty, 0) AS purchase_price,
+            -- Eigener Name und NICHT purchase_price: Eine Spalte dieses Namens
+            -- gab es an der sets-Zeile, und das Feld hiess damit jahrelang
+            -- „der gespiegelte Einzelwert". Derselbe Name mit neuer Bedeutung
+            -- ist die Sorte Stolperstein, die hier schon mehrfach etwas
+            -- gekostet hat. Die Antwort an die Clients heisst weiter
+            -- purchase_price; zusammengesetzt wird sie unten.
+            --
+            -- (Keine Gegenstriche in diesem Kommentar: Er steht in einem
+            -- Template-Literal, und ein Gegenstrich beendet es. Gemessen —
+            -- tsc meldete „',' expected".)
+            a.total_price / NULLIF(a.total_qty, 0) AS acq_preis_schnitt,
             -- acq_count/used_count fehlten hier komplett — effectiveCondition()
             -- weiter unten braucht sie, um den Zustand aus den Erfassungen
             -- abzuleiten. Ohne sie war set.acq_count/used_count immer
@@ -174,11 +184,11 @@ async function computePnl(viewerId: number, ids: Blickfeld) {
     // Kaufpreis aus den Erfassungen — purchaseMap gewichtet nach Reihenfolge,
     // die Abfrage oben als einfacher Ø. Beide Wege lesen set_acquisitions.
     const acqPurchase = purchaseMap.get(set.set_number);
-    // `set.purchase_price` ist der Ø aus der Erfassungs-Historie (Abfrage oben)
-    // und null, wenn keine Erfassung einen Preis trägt. 0 zählt als erfasst.
-    const spaltenPreis = set.purchase_price != null ? parseFloat(set.purchase_price) : null;
-    const hasCost = acqPurchase != null || spaltenPreis != null;
-    const purchasePrice = acqPurchase != null ? acqPurchase : (spaltenPreis ?? 0);
+    // `acq_preis_schnitt` ist der Ø aus der Erfassungs-Historie (Abfrage oben)
+    // und null, wenn es gar keine Erfassung gibt. 0 zählt als erfasst.
+    const schnitt = set.acq_preis_schnitt != null ? parseFloat(set.acq_preis_schnitt) : null;
+    const hasCost = acqPurchase != null || schnitt != null;
+    const purchasePrice = acqPurchase != null ? acqPurchase : (schnitt ?? 0);
     const qty = qtyMap.get(set.set_number) || set.quantity || 1;
     const pnlAbs = hasCost ? (currentPrice - purchasePrice) * qty : null;
     const pnlPct = (hasCost && currentPrice > 0) ? ((currentPrice - purchasePrice) / Math.max(purchasePrice, PNL_EPS)) * 100 : null;

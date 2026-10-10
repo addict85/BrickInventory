@@ -89,7 +89,27 @@ async function priceForNewAcquisition(userId: number, setNumber: string, dbh: an
   // Lazy require: utils/financeCalc auf Modulebene ergaebe einen Zyklus —
   // dasselbe Muster wie in utils/rateLimiter.ts.
   const { resolveSetCondition } = require('./financeCalc');
-  const cond = await resolveSetCondition(userId, setNumber, dbh);
+  // ── Der Zustand ist eine HAUSHALTS-Frage, keine Konto-Frage ─────────────
+  //
+  // Hier stand `resolveSetCondition(userId, …)` mit einer nackten ID. Das ging
+  // gut, solange die sets-Zeile einen eigenen Zustand trug: Legte die
+  // Mengenaenderung fuer das eigene Konto eine frische Zeile an, kopierte das
+  // INSERT den Wert aus der Zeile des Haushalts mit (`SELECT … condition FROM
+  // sets WHERE user_id = ANY(leseFeld)`). Mit Migration 0032 gibt es nichts
+  // mehr zu kopieren, und die Frage „gebraucht oder neu?" muss dort gestellt
+  // werden, wo die Erfassungen liegen — beim BESITZER.
+  //
+  // GEMESSEN, als hier noch die nackte ID stand: Das Unterkonto haelt ein
+  // gebrauchtes Exemplar, das Hauptkonto erhoeht die Menge → die neue
+  // Erfassung bekam 'N' und damit den Neupreis
+  // (set-quantity-household-db: „erhoehen legt im EIGENEN Konto an, mit
+  // Marktpreis", 'N' !== 'U').
+  //
+  // resolveSetCondition() sagt es in seinem eigenen Kommentar: „Auch hier das
+  // Blickfeld — mit einer nackten ID faende der Hauptaccount das Set des
+  // Unterkontos nicht."
+  const blickfeld = await scopeIds(userId).catch(() => [userId]);
+  const cond = await resolveSetCondition(blickfeld, setNumber, dbh);
   const currRow = await dbh.get("SELECT value FROM global_settings WHERE key='currency'").catch(()=>null);
   const currency = currRow?.value || 'EUR';
   const cached = await dbh.get(
@@ -557,11 +577,17 @@ async function updateSet(uid: number, sn: string, body: any) {
       // Eigene Zeile anlegen, falls das Set bisher nur einem anderen Konto
       // gehörte — sonst liefe die Mengenanpassung ins Leere.
       if (eigenVorher === 0 && eigenZiel > 0) {
+        // Ohne `condition`: Die Spalte ist mit Migration 0032 weg. Der Zustand
+        // des neuen Exemplars entsteht in der Erfassung, die
+        // adjustAcquisitionsToQuantity() gleich darunter anlegt — und zwar aus
+        // priceForNewAcquisition(), die ihn aus den Erfassungen des Haushalts
+        // ableitet. Das ist genauer als die Abschrift hier je war: Sie nahm den
+        // Wert der Zeile, die die Abfrage zufaellig zuerst fand.
         await db.run(
           `INSERT INTO sets (user_id, set_number, name, year, theme, pieces, minifigs,
-                             image_url, image_local, quantity, condition)
+                             image_url, image_local, quantity)
            SELECT $1, set_number, name, year, theme, pieces, minifigs,
-                  image_url, image_local, 0, condition
+                  image_url, image_local, 0
              FROM sets WHERE user_id = ANY($2) AND set_number = $3
             ORDER BY id ASC LIMIT 1
            ON CONFLICT DO NOTHING`, [uid, leseFeld, sn])

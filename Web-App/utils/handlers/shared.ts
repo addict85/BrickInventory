@@ -97,22 +97,32 @@ type Zaehlwert = number | string | null | undefined;
  * doppelt ausformuliert und lief dadurch auseinander. Ein Test hält fest, dass
  * `usedCount > 0 ? 'U'` im Code nur einmal vorkommt.
  */
-function conditionFromAcquisitions(acqCount: Zaehlwert, usedCount: Zaehlwert) {
+function conditionFromAcquisitions(acqCount: Zaehlwert, usedCount: Zaehlwert,
+                                   stored?: string | null) {
   // parseInt wie in der Schwesterfunktion unten. Vorher stand hier
   // `usedCount > 0` — das ging nur ueber die JS-Umwandlung gut, weil COUNT(*)
   // als "2" ankommt. Nachgemessen und gleichwertig fuer alles, was hier
   // ankommt: "2"/2 -> wahr, "0"/0/null/undefined -> falsch. Der Typ hat die
   // Stelle sichtbar gemacht; verlassen wollen wir uns auf die Umwandlung nicht.
   //
-  // Der dritte Parameter `stored` ist mit Migration 0032 entfallen: Er war der
-  // gespeicherte Wert in sets.condition, und die Spalte gibt es nicht mehr.
-  // Ohne Erfassungen bleibt es bei „Neu" — fuer Sets kann der Fall gar nicht
-  // mehr eintreten (jede Zeile hat mindestens eine Erfassung, die Migration
-  // hat es nachgetragen und geprueft), fuer Teile und Figuren aus einem Set
-  // ist „Neu" der Wert, den der gespeicherte Rueckfall dort ohnehin trug.
-  void acqCount;
+  // ── Warum `stored` noch da ist, obwohl Sets es nicht mehr haben ─────────
+  //
+  // Mit Migration 0032 hat die sets-Zeile keine condition-Spalte mehr, und die
+  // Set-Aufrufer geben hier deshalb nichts mehr mit. `parts` und `minifigs`
+  // haben ihre Spalte noch, und dort TRAEGT sie etwas: Ein manuell erfasstes
+  // Teil ohne Erfassung hat genau diesen einen Wert.
+  //
+  // GEMESSEN, als der Parameter kurzzeitig weg war: „Teil 3002 (gespeichert U,
+  // ohne Erfassung): erwartet U, bekommen N" (manuell-zustand-eine-regel-db).
+  // Der Parameter ist also nicht Altlast, sondern der Stand von zwei der drei
+  // Tabellen — er faellt mit ihnen, nicht vorher.
+  const acq  = parseInt(String(acqCount ?? ''))  || 0;
   const used = parseInt(String(usedCount ?? '')) || 0;
-  return used > 0 ? 'U' : 'N';
+  // Als Bedingungsausdruck und nicht als zwei Rueckgaben: Die Regel soll als
+  // EIN Ausdruck lesbar sein, und test/set-condition-aggregate.test.js zaehlt
+  // genau diese Form („die Aggregat-Regel steht nur noch an einer Stelle").
+  if (acq > 0) return used > 0 ? 'U' : 'N';
+  return stored === 'U' ? 'U' : 'N';
 }
 
 /**
@@ -131,12 +141,14 @@ function conditionFromAcquisitions(acqCount: Zaehlwert, usedCount: Zaehlwert) {
  * Reihenfolge immer Neu vor Gebraucht — nicht nach Häufigkeit, sonst tauschen
  * die Plaketten beim nächsten Kauf die Plätze.
  */
-function conditionsFromAcquisitions(acqCount: Zaehlwert, usedCount: Zaehlwert): ('N' | 'U')[] {
+function conditionsFromAcquisitions(acqCount: Zaehlwert, usedCount: Zaehlwert,
+                                    stored?: string | null): ('N' | 'U')[] {
   const acq  = parseInt(String(acqCount ?? ''))  || 0;
   const used = parseInt(String(usedCount ?? '')) || 0;
-  // Ohne Erfassungen eine „Neu"-Plakette: Der gespeicherte Wert, der hier
-  // stand, ist mit Migration 0032 entfallen (Begruendung oben).
-  if (acq <= 0) return ['N'];
+  // Ohne Erfassungen die eine Plakette des gespeicherten Werts — siehe die
+  // Begruendung zu `stored` in der Schwesterfunktion oben. Set-Aufrufer geben
+  // ihn nicht mit, dann bleibt es bei „Neu".
+  if (acq <= 0) return [stored === 'U' ? 'U' : 'N'];
   const out: ('N' | 'U')[] = [];
   if (acq - used > 0) out.push('N');
   if (used > 0)       out.push('U');
@@ -208,8 +220,10 @@ async function applyManualCondition(userId: unknown, rows: any[], kind: 'part' |
     const usedCount = parseInt(a?.used_count) || 0;
     return {
       ...r,
-      condition: conditionFromAcquisitions(acqCount, usedCount),
-      conditions: conditionsFromAcquisitions(acqCount, usedCount),
+      // `r.condition` ist der gespeicherte Wert der Stammzeile (parts bzw.
+      // minifigs fuehren ihn noch) — er zaehlt nur ohne Erfassungen.
+      condition: conditionFromAcquisitions(acqCount, usedCount, r.condition),
+      conditions: conditionsFromAcquisitions(acqCount, usedCount, r.condition),
       acq_count: acqCount,
       used_count: usedCount,
       // Mengengewichtet über die Erfassungen — die Kachel zeigte bisher den

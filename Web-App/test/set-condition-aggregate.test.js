@@ -479,9 +479,21 @@ test('Erfassungen ohne Kaufpreis werden nachgetragen', () => {
   // Der Zustand der ERFASSUNG bestimmt den Preis, nicht der des Sets
   assert.match(job, /getCurrentMarketPrice\(row\.set_number, row\.user_id, row\.condition \|\| null\)/,
     'Ein gebraucht erfasstes Exemplar braucht den Gebrauchtpreis');
-  // Ein gepflegter Set-Preis darf nicht überschrieben werden
-  assert.match(job, /UPDATE sets SET purchase_price=\$1\s+WHERE user_id=\$2 AND set_number=\$3 AND purchase_price IS NULL/,
-    'Nur setzen, wo noch nichts steht');
+  // ── Hier stand eine Regel auf die Spiegelung ────────────────────────────
+  //
+  // „Ein gepflegter Set-Preis darf nicht überschrieben werden":
+  // `UPDATE sets SET purchase_price=$1 … AND purchase_price IS NULL`. Die
+  // Vorsicht war nötig, weil der Preis an ZWEI Orten stand und der Nachtrag
+  // den gepflegten hätte überschreiben können. Mit Migration 0032 gibt es nur
+  // noch einen — die Frage stellt sich nicht mehr.
+  //
+  // Die Nachfolgeregel ist die strengere: Der Job darf die sets-Zeile gar
+  // nicht mehr anfassen. Eine Spiegelung dorthin wäre ab jetzt ein Schreiben
+  // auf eine Spalte, die es nicht gibt.
+  assert.doesNotMatch(job.replace(/\/\/[^\n]*/g, '').replace(/\/\*[\s\S]*?\*\//g, ''),
+    /UPDATE sets SET/,
+    'Der Nachtrag schreibt wieder in die sets-Zeile — dort gibt es seit ' +
+    'Migration 0032 weder Kaufpreis noch Zustand');
   assert.match(job, /await backfillAcquisitions\(\)/, 'Der Durchlauf ist nicht eingehängt');
 
   // Und der Import selbst soll seltener ohne Preis enden
@@ -559,8 +571,12 @@ test('computePnl liest acq_count/used_count — sonst ist jedes Set neu', () => 
   // Funktionsanfang und hat die geprüften Zeilen nach hinten geschoben. Ein
   // knapp bemessener Ausschnitt macht die Prüfung von jeder eingefügten Zeile
   // abhängig und meldet dann einen Fehler, den es nicht gibt.
+  // 4600 statt 3200 Zeichen: Die Begruendungen an der Abfrage sind mit
+  // Migration 0032 laenger geworden und haben `acq_count` aus dem Fenster
+  // geschoben. Genau die Falle, die der Kommentar darueber beschreibt — ein
+  // knapp bemessener Ausschnitt meldet einen Fehler, den es nicht gibt.
   const fn = src.slice(src.indexOf('async function computePnl'),
-                       src.indexOf('async function computePnl') + 3200);
+                       src.indexOf('async function computePnl') + 4600);
 
   assert.match(fn, /COUNT\(\*\)\s+AS acq_count,/, 'acq_count fehlt in der Unterabfrage');
   assert.match(fn, /COUNT\(\*\) FILTER \(WHERE condition = 'U'\)\s+AS used_count/,

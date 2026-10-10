@@ -1038,8 +1038,8 @@ router.get('/admin/price-probe', requireApiAdmin, async (req: AuthedRequest, res
       any_acquisition_used: anyUsed,
       chosen_for_price: chosen,
       hinweis: 'Eine gebrauchte Erfassung macht das Set gebraucht, sonst ist es neu. '
-             + 'Der Zustand steht seit Migration 0032 nur in den Erfassungen; '
-             + '`stored_in_sets` stand hier vorher und ist weggefallen. '
+             + 'Der Zustand steht seit Migration 0032 nur in den Erfassungen; das Feld '
+             + 'mit dem gespeicherten Wert, das hier vorher stand, ist weggefallen. '
              + 'Weicht "chosen_for_price" von der Anzeige ab, liegt der Fehler dort.',
     },
     currency: currRow?.value || 'EUR',

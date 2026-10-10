@@ -159,16 +159,25 @@ export function valueSet(
 export async function getSetValue(
   userId: number, setNumber: string, currency: string
 ): Promise<SetValue> {
-  const [acqs, setRow] = await Promise.all([
-    db.all('SELECT quantity, condition FROM set_acquisitions WHERE user_id=$1 AND set_number=$2',
-      [userId, setNumber]).catch(() => []),
-    // Nur noch die Menge: sets.condition ist mit Migration 0032 weg, der
-    // Zustand kommt aus den Erfassungen in der Zeile darüber.
-    db.get('SELECT quantity FROM sets WHERE user_id=$1 AND set_number=$2',
-      [userId, setNumber]).catch(() => null),
-  ]);
+  // Nur noch EINE Abfrage. Hier stand daneben ein `SELECT quantity, condition
+  // FROM sets` für den Rückfall. Beides ist weggefallen:
+  //
+  //   • `condition` gibt es an der sets-Zeile seit Migration 0032 nicht mehr.
+  //   • `quantity` wurde ausschliesslich als fallbackQuantity gebraucht, und
+  //     der zählt nur, wenn es KEINE Erfassung gibt. Für Sets kann das nicht
+  //     mehr vorkommen (die Migration hat nachgetragen und geprüft), und für
+  //     den Fall, dass es doch einmal so ist, ist 1 die richtige Annahme —
+  //     eine Menge aus einer Zeile, zu der keine Kaufhistorie gehört, sagt
+  //     über die Bewertung nichts.
+  //
+  // Nebenbei behebt das eine gemeldete Dopplung: Die Abfrage stand wortgleich
+  // in utils/setMove.ts (test/sql-kerne.test.js meldet eine Anweisung, die in
+  // mehr als einer Datei steht).
+  const acqs = await db.all(
+    'SELECT quantity, condition FROM set_acquisitions WHERE user_id=$1 AND set_number=$2',
+    [userId, setNumber]).catch(() => []);
   const prices = await loadConditionPrices([setNumber], currency);
-  return valueSet(setNumber, acqs, prices, 'N', parseInt(setRow?.quantity) || 1);
+  return valueSet(setNumber, acqs, prices, 'N', 1);
 }
 
 // ═══════════════════════════════════════════════════════════════════════════

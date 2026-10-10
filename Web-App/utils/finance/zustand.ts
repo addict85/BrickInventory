@@ -19,14 +19,27 @@
  * aus dem Gebraucht-Eintrag. Genau diese Abweichung war die Ursache für den
  * wiederholt zu niedrigen Preis.
  *
- * Mit Migration 0032 ist die Abweichung keine Möglichkeit mehr: Es gibt nur
- * noch die Erfassungen. Der dritte Zweig, der auf `set.condition` zurückfiel,
- * ist damit entfallen — `acqCount` bleibt als Parameter erhalten, weil die
- * Aufrufer ihn mitliefern und er die Lage beschreibt.
+ * ── Was Migration 0032 daran geändert hat, und was nicht ───────────────────
+ *
+ * Für SETS gibt es die Abweichung nicht mehr: Die Spalte ist weg, die
+ * Set-Abfragen liefern hier gar keinen gespeicherten Wert mehr, und der dritte
+ * Zweig unten kann für sie nicht greifen.
+ *
+ * Für manuell erfasste TEILE und MINIFIGUREN greift er weiter, und er muss es:
+ * `parts.condition` und `minifigs.condition` gibt es noch, und bei einem Stück
+ * ohne Kaufpreis-Erfassung ist dieser Wert die einzige Auskunft. GEMESSEN, als
+ * der Zweig kurzzeitig fehlte: „Teil 3002 (gespeichert U, ohne Erfassung):
+ * /parts/manual sagt U, die Bewertung sagt N" — also genau das
+ * Auseinanderlaufen zwischen Liste und Bewertung, gegen das diese Funktion
+ * geschrieben wurde (manuell-zustand-eine-regel-db.test.js).
+ *
+ * Der Zweig fällt mit den beiden Spalten, nicht vorher.
  */
 function effectiveCondition(set: any): 'N' | 'U' {
+  const acqCount  = parseInt(set?.acq_count)  || 0;
   const usedCount = parseInt(set?.used_count) || 0;
-  return usedCount > 0 ? 'U' : 'N';
+  if (acqCount > 0) return usedCount > 0 ? 'U' : 'N';
+  return set?.condition === 'U' ? 'U' : 'N';
 }
 
 export { effectiveCondition };

@@ -489,13 +489,19 @@ test('Bewertung und Anzeige benutzen dieselbe Zustandsregel', () => {
   // Eigenes schreiben.
   const fc = require('./helpers/sources').finanzQuelle();
   assert.match(fc, /function effectiveCondition/, 'Gemeinsame Regel fehlt');
-  assert.doesNotMatch(fc.replace(/\/\/[^\n]*/g, '').replace(/\/\*[\s\S]*?\*\//g, ''),
-    /set\.condition/,
-    'Kein Pfad darf eine Zustands-Spalte der sets-Zeile auswerten');
 
-  // Die Regel muss der Anzeige entsprechen: eine Gebraucht-Erfassung genügt.
-  assert.match(fc, /return usedCount > 0 \? 'U' : 'N';/,
+  // Die Regel muss der Anzeige entsprechen: eine Gebraucht-Erfassung genügt,
+  // Erfassungen ohne gebrauchte bedeuten neu.
+  assert.match(fc, /if \(acqCount > 0\) return usedCount > 0 \? 'U' : 'N';/,
     'Eine gebrauchte Erfassung macht das Set gebraucht, sonst ist es neu');
+
+  // Der dritte Zweig (gespeicherter Wert) darf NUR noch fuer Teile und
+  // Minifiguren greifen — sie haben ihre condition-Spalte noch. Dass die
+  // SET-Abfragen keinen solchen Wert mehr mitliefern, prueft
+  // test/neue-erfassung-zustand-db.test.js am Quelltext aller Abfragen.
+  assert.match(fc, /return set\?\.condition === 'U' \? 'U' : 'N';/,
+    'Ohne Erfassungen muss der gespeicherte Wert zaehlen — fuer Teile und ' +
+    'Minifiguren ist er die einzige Auskunft');
 
   // Und die Abfrage muss die Zähler überhaupt liefern
   assert.match(fc, /COUNT\(\*\) FILTER \(WHERE condition = 'U'\)\s+AS used_count/,
