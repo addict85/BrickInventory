@@ -177,10 +177,20 @@ async function getSets(userId: Blickfeld, query: any = {}) {
     // Migration 0031 aber die ID. `s.*` plus die aufgeloeste Spalte liefert
     // genau die alte Form, und der Filter bleibt unberuehrt.
     //
-    // Die Katalogfelder ausgeschrieben neben `s.*`: Die Stammdaten stehen seit
-    // Migration 0033 in `set_catalog`. Sie hier einzeln zu nennen ist der Preis
-    // dafür, dass die Abfrage ohne Nachschlagen lesbar bleibt.
-    : `(SELECT s.*, lo.name AS storage,
+    // ── Beide Seiten ausgeschrieben, kein `s.*` ───────────────────────────
+    //
+    // Die Stammdaten stehen seit Migration 0033 in `set_catalog`, der Bestand
+    // in `sets`. Beide Listen hier einzeln zu nennen ist der Preis dafür, dass
+    // die Abfrage ohne Nachschlagen lesbar bleibt — und sie ist nötig:
+    //
+    // `s.*` brachte auf einer Datenbank, der Migration 0033 noch FEHLT, ein
+    // zweites `name` mit (schema.sql legt die Spalte an, damit Migration 0014
+    // sie anfassen kann). Jeder Zugriff darauf wurde damit zweideutig.
+    // GEMESSEN an test/api-parity.test.js, das nur initSchema() ruft und keine
+    // Migrationen: „column reference \"name\" is ambiguous", und die ganze
+    // Set-Liste antwortete mit 500.
+    : `(SELECT s.id, s.user_id, s.set_number, s.quantity, s.added_at, s.updated_at, s.storage_id,
+               lo.name AS storage,
                c.name, c.year, c.theme, c.pieces, c.minifigs,
                c.image_url, c.image_local
           FROM sets s
@@ -440,11 +450,11 @@ async function getSet(userId: Blickfeld, setNumber: string) {
     // eigene Exemplar (Zustand, Kaufpreis). Die MENGE dagegen kommt aus der
     // Summe über alle Konten im Blickfeld.
     db.get(
-      `SELECT s.*,
-              -- Die Stammdaten ausgeschrieben: s.* liefert seit Migration
-              -- 0033 nur noch Menge, Besitzer, Aufnahmedatum und Lagerort.
-              -- (Keine Gegenstriche: Der Kommentar steht in einem
-              -- Template-Literal, und ein Gegenstrich beendet es.)
+      `SELECT s.id, s.user_id, s.set_number, s.quantity, s.added_at, s.updated_at, s.storage_id,
+              -- Beide Listen ausgeschrieben, kein s.*: Auf einer Datenbank
+              -- ohne Migration 0033 braechte s.* ein zweites name mit, und
+              -- der Zugriff darauf waere zweideutig (siehe die Begruendung
+              -- bei setsFrom weiter oben).
               c.name, c.year, c.theme, c.pieces, c.minifigs,
               c.image_url, c.image_local,
               (SELECT COALESCE(SUM(a.quantity),0)::int FROM sets a

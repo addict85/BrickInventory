@@ -803,7 +803,8 @@ router.get('/sets/:setNumber/price', requireToken, async (req: AuthedRequest, re
     // seit Migration 0031 steht an der Zeile nur die ID. Ohne die Spalte waere
     // das Feld im Detaildialog leer — und zwar in beiden Oberflaechen.
     const set = await db.get(
-      `SELECT s.*, lo.name AS storage,
+      `SELECT s.id, s.user_id, s.set_number, s.quantity, s.added_at, s.updated_at, s.storage_id,
+              lo.name AS storage,
               c.name, c.year, c.theme, c.pieces, c.minifigs,
               c.image_url, c.image_local
          FROM sets s
