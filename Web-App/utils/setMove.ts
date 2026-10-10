@@ -157,12 +157,17 @@ export async function moveSetBetweenAccounts(
   } else {
     // Stammdaten mitnehmen (Name, Jahr, Bild …) — sie beschreiben das Set,
     // nicht das Exemplar, und ein erneuter Katalogabruf wäre unnötig.
+    // Kaufpreis und Zustand stehen NICHT mehr hier: Sie wandern mit den
+    // Erfassungen eine Schleife weiter unten, und seit Migration 0032 hat die
+    // sets-Zeile diese Spalten gar nicht mehr. Vorher wurden sie an beiden
+    // Stellen übertragen — mit dem Risiko, dass die kopierte Spalte und die
+    // kopierten Erfassungen beim Teilverschieben auseinanderliefen.
     await tx.run(
       `INSERT INTO sets (user_id, set_number, name, year, theme, pieces, minifigs, quantity,
-                         image_url, image_local, added_at, purchase_price, condition)
-       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13)`,
+                         image_url, image_local, added_at)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11)`,
       [toId, sn, src.name, src.year, src.theme, src.pieces, src.minifigs, movingQty,
-       src.image_url, src.image_local, src.added_at, src.purchase_price, src.condition]);
+       src.image_url, src.image_local, src.added_at]);
   }
 
   // Erfassungen einzeln übertragen — mit Tagesregel und Preisgewichtung.

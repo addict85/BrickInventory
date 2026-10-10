@@ -76,7 +76,11 @@ test('gar kein Preis ergibt null, nicht 0', () => {
   assert.equal(v.total, null, 'eine 0 sähe in den Summen wie ein bekannter Wert aus');
 });
 
-test('ohne Erfassungen zählt sets.condition', () => {
+// valueSet() wird auch fuer manuelle Teile und Minifiguren benutzt; dort ist
+// die Erfassung tatsaechlich optional. Fuer SETS gibt es seit Migration 0032
+// keine Zeile ohne Erfassung mehr — der Rueckfallweg bleibt aber erreichbar
+// und muss richtig rechnen.
+test('ohne Erfassungen zaehlen die mitgegebenen Rueckfallwerte', () => {
   const v = valueSet(SN, [], prices(148.72, 92.68), 'U', 3);
   assert.equal(v.unit_price, 92.68);
   assert.equal(v.total, 278.04);
@@ -354,9 +358,16 @@ test('Finanzen: Kaufpreis statt zweiter Marktpreis-Spalte', () => {
   assert.match(sv, /r\.purchase_price != null/,
     'Erfassungen ohne Kaufpreis dürfen den Nenner nicht aufblähen');
 
+  // Hier stand eine Regel auf den Rueckfall `set.purchase_price != null ?
+  // parseFloat(set.purchase_price) : null` in der Bewertung. Mit Migration 0032
+  // gibt es die Spalte nicht mehr; die Bewertung nimmt ausschliesslich den
+  // gewichteten Kaufpreis aus den Erfassungen. Das ist die Nachfolgeregel.
   const fc = require('./helpers/sources').finanzQuelle();
-  assert.match(fc, /set\.purchase_price != null \? parseFloat\(set\.purchase_price\) : null/,
-    'Ohne Erfassungen zählt sets.purchase_price');
+  assert.match(fc, /const purchase = weightedPurchase\(rows\);/,
+    'Die Bewertung muss den Kaufpreis aus den Erfassungen nehmen, ohne Rueckfall');
+  assert.doesNotMatch(fc.replace(/\/\/[^\n]*/g, '').replace(/\/\*[\s\S]*?\*\//g, ''),
+    /parseFloat\(set\.purchase_price\)/,
+    'Kein Pfad darf auf eine Kaufpreis-Spalte der sets-Zeile zurueckfallen');
 });
 
 test('eine späte Antwort schreibt nicht in einen fremden Dialog', () => {
@@ -466,20 +477,25 @@ test('nur 404 wird negativ gemerkt, kein 403', () => {
 });
 
 test('Bewertung und Anzeige benutzen dieselbe Zustandsregel', () => {
-  // DER Kern des wiederholt falschen Marktpreises: Die Anzeige leitet den
+  // DER Kern des wiederholt falschen Marktpreises: Die Anzeige leitete den
   // Zustand aus den Erfassungen ab (getSetConditionAggregate), die Bewertung
   // las stur sets.condition. Weichen die voneinander ab — etwa weil ein Set
   // nachträglich auf „Neu" korrigiert wurde — zeigte die Kachel „Neu", der
   // Preis stammte aber aus dem Gebraucht-Eintrag.
+  //
+  // Seit Migration 0032 gibt es die Spalte nicht mehr. Die gemeinsame Regel
+  // bleibt trotzdem geprueft: Sie ist jetzt auf EINEN Satz zusammengeschrumpft,
+  // und gerade deshalb liesse sich an zwei Stellen leicht wieder etwas
+  // Eigenes schreiben.
   const fc = require('./helpers/sources').finanzQuelle();
   assert.match(fc, /function effectiveCondition/, 'Gemeinsame Regel fehlt');
   assert.doesNotMatch(fc.replace(/\/\/[^\n]*/g, '').replace(/\/\*[\s\S]*?\*\//g, ''),
-    /set\.condition === 'U'\) \? 'U' :/,
-    'Kein Pfad darf sets.condition mehr direkt auswerten');
+    /set\.condition/,
+    'Kein Pfad darf eine Zustands-Spalte der sets-Zeile auswerten');
 
   // Die Regel muss der Anzeige entsprechen: eine Gebraucht-Erfassung genügt.
-  assert.match(fc, /if \(usedCount > 0\) return 'U';/, 'Eine gebrauchte Erfassung macht das Set gebraucht');
-  assert.match(fc, /if \(acqCount > 0\)\s+return 'N';/, 'Erfassungen ohne Gebraucht bedeuten neu');
+  assert.match(fc, /return usedCount > 0 \? 'U' : 'N';/,
+    'Eine gebrauchte Erfassung macht das Set gebraucht, sonst ist es neu');
 
   // Und die Abfrage muss die Zähler überhaupt liefern
   assert.match(fc, /COUNT\(\*\) FILTER \(WHERE condition = 'U'\)\s+AS used_count/,

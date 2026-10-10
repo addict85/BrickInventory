@@ -73,12 +73,15 @@ async function computeSetsValuation(viewerId: number, ids: Blickfeld) {
   const defaultCondition = DEFAULT_PRICE_CONDITION;
 
   const sets = await db.all(
-    // Kaufpreis/Zustand kommen NICHT mehr aus dieser Abfrage zusammengefasst,
-    // sondern aus den Erfassungen weiter unten — eine Zeile je Kaufpreis.
-    // s.purchase_price und s.condition bleiben als Rückfall für Altbestände
-    // ohne Erfassungen.
+    // Kaufpreis und Zustand stehen seit Migration 0032 NUR in den Erfassungen
+    // (set_acquisitions), eine Zeile je Kauf. Der frühere Rückfall auf
+    // s.purchase_price/s.condition ist weg: Die Migration hat für jede
+    // Set-Zeile eine Erfassung nachgetragen und prüft das auch nach, und alle
+    // drei Schreibwege (Erfassen, Mengenänderung, Verschieben) legen die
+    // Erfassung in derselben Transaktion an. Ein Set ohne Erfassung kann es
+    // also nicht mehr geben.
     `SELECT s.set_number, s.name, s.year, s.quantity, s.image_local, s.image_url,
-            s.added_at, s.condition, s.purchase_price
+            s.added_at
        FROM sets s
       WHERE s.user_id = ANY($1)`, [uids]);
   if (!sets.length) return { currency, condition: defaultCondition, guide_type: guideType, ttl_hours: ttlHours, sets: [], totals: { min:'0.00', avg:'0.00', max:'0.00', qty_avg:'0.00' } };
@@ -126,8 +129,10 @@ async function computeSetsValuation(viewerId: number, ids: Blickfeld) {
     // effectiveCondition() ausgerechnet hat. Ein gemischtes Set braucht beide.
     // Ein reines Neu- oder Gebraucht-Set holt weiterhin nur einen Preis — die
     // Zahl der BrickLink-Abrufe steigt also ausschliesslich für gemischte Sets.
-    // Zustand NUR als Rückfall für Sets ohne Erfassungen — und dann über die
-    // gemeinsame Regel, nicht mit einer eigenen Auswertung von sets.condition.
+    // effectiveCondition() wertet nur noch acq_count/used_count aus; diese
+    // Abfrage liefert sie nicht mit, also kommt hier 'N' heraus. Das zählt
+    // ausschliesslich für ein Set ohne Erfassungen, und das gibt es seit
+    // Migration 0032 nicht mehr (siehe Kommentar an der Abfrage oben).
     const fallbackCond: 'N' | 'U' = effectiveCondition(set);
     const needed: Array<'N' | 'U'> = acqs.length
       ? [...new Set(acqs.map(a => (a.condition === 'U' ? 'U' : 'N')))] as Array<'N'|'U'>
@@ -157,9 +162,9 @@ async function computeSetsValuation(viewerId: number, ids: Blickfeld) {
     const valued = valueSet(set.set_number, acqs, priceMapForSet, fallbackCond, set.quantity || 1);
     // Einzelzeilen: eine je Kaufpreis, jede mit dem Preis IHRES Zustands.
     const rows = valueAcquisitionRows(set.set_number, acqs, priceMapForSet);
-    const purchase = acqs.length
-      ? weightedPurchase(rows)
-      : (set.purchase_price != null ? parseFloat(set.purchase_price) : null);
+    // Ohne Erfassung kein Kaufpreis — und nicht 0. Eine 0 sähe in den Summen
+    // wie ein erfasstes Geschenk aus.
+    const purchase = weightedPurchase(rows);
 
     // Min/Max analog gewichtet — sie speisen nur die Min/Max-Kacheln oben,
     // müssen aber zur selben Mengenaufteilung passen wie der Schnitt.

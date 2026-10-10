@@ -123,7 +123,7 @@ test('Zusammenfassung stimmt mit der Live-Abfrage überein und veraltet nicht',
   await clean();
   await db.run("INSERT INTO users (id,username,password_hash,is_admin) VALUES ($1,'psum','x',0) ON CONFLICT DO NOTHING", [U]);
   // Zwei Sets, das zweite doppelt vorhanden — die Menge muss mitmultipliziert werden.
-  await db.run("INSERT INTO sets (user_id,set_number,quantity,condition) VALUES ($1,'A-1',1,'N'),($1,'B-1',2,'N')", [U]);
+  await db.run("INSERT INTO sets (user_id,set_number,quantity) VALUES ($1,'A-1',1),($1,'B-1',2)", [U]);
   await db.run(`INSERT INTO parts (user_id,set_number,part_number,color_id,color_name,part_name,quantity,source)
     VALUES ($1,'A-1','3001',5,'Rot','Brick',3,'set'),
            ($1,'B-1','3001',5,'Rot','Brick',4,'set'),
@@ -287,7 +287,7 @@ test('beide Pfade der Kennzahlen zählen DASSELBE — auch mit manuellen Teilen'
   await db.run('DELETE FROM parts_summary_state WHERE user_id=$1', [U]);
   await db.run(
     "INSERT INTO users (id,username,password_hash,is_admin) VALUES ($1,'psum2','x',0) ON CONFLICT DO NOTHING", [U]);
-  await db.run("INSERT INTO sets (user_id,set_number,quantity,condition) VALUES ($1,'A-1',1,'N')", [U]);
+  await db.run("INSERT INTO sets (user_id,set_number,quantity) VALUES ($1,'A-1',1)", [U]);
   await db.run(`INSERT INTO parts (user_id,set_number,part_number,color_id,color_name,part_name,quantity,source)
     VALUES ($1,'A-1','3001',5,'Rot','Brick',3,'set'),
            ($1,NULL,'9999',7,'Gruen','Handerfasst',11,'manual')`, [U]);

@@ -80,8 +80,13 @@ test('die Portfolio-Prozentzahl misst Preise, nicht Zukäufe',
 
   /** Set anlegen und ihm ab `abTag` Tagen vor heute einen Preisverlauf geben. */
   const setMit = async (i, abTag, preisAmAnfang, preisHeute) => {
-    await db.run(`INSERT INTO sets (user_id,set_number,name,quantity,purchase_price)
-                  VALUES ($1,$2,'T',1,10)`, [uid, SN(i)]);
+    await db.run(`INSERT INTO sets (user_id,set_number,name,quantity)
+                  VALUES ($1,$2,'T',1)`, [uid, SN(i)]);
+    // Der Kaufpreis stand bis Migration 0032 in der sets-Zeile. Er steht jetzt
+    // in der Erfassung — dieselbe Zahl, nur am einzigen Ort, an dem
+    // portfolioHistory.ts ihn noch liest.
+    await db.run(`INSERT INTO set_acquisitions (user_id,set_number,quantity,purchase_price,condition)
+                  VALUES ($1,$2,1,10,'N')`, [uid, SN(i)]);
     for (let d = abTag; d >= 0; d--) {
       const preis = abTag === 0 ? preisHeute
         : preisAmAnfang + (preisHeute - preisAmAnfang) * ((abTag - d) / abTag);

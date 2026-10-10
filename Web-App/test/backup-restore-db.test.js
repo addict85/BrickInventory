@@ -138,8 +138,15 @@ test('Sicherung und Wiederherstellung', async (t) => {
     await db.run(`INSERT INTO users (username, password_hash) VALUES ('sicherung','x')`);
     const uid = (await db.get(`SELECT id FROM users WHERE username='sicherung'`)).id;
     await db.run(
-      `INSERT INTO sets (user_id, set_number, name, year, quantity, condition)
-       VALUES ($1,'10214-1','Tower Bridge',2010,2,'U')`, [uid]);
+      `INSERT INTO sets (user_id, set_number, name, year, quantity)
+       VALUES ($1,'10214-1','Tower Bridge',2010,2)`, [uid]);
+    // Der Zustand steht seit Migration 0032 in der Erfassung. Die Sicherung
+    // muss ihn von DORT zurueckbringen — sonst prueft dieser Test nach dem
+    // Umbau eine Spalte, die es nicht mehr gibt, und waere stillschweigend
+    // schwaecher geworden.
+    await db.run(
+      `INSERT INTO set_acquisitions (user_id, set_number, quantity, purchase_price, condition)
+       VALUES ($1,'10214-1',2,44.50,'U')`, [uid]);
     await db.run(
       `INSERT INTO parts (user_id, part_number, color_id, quantity, source)
        VALUES ($1,'3001',4,17,'manual')`, [uid]);
@@ -165,11 +172,14 @@ test('Sicherung und Wiederherstellung', async (t) => {
       `Das Zurückspielen scheiterte. psql sagt:\n${grund()}\n` +
       `pg_dump: ${fassung(pgDump)} · psql: ${fassung(psql)}`);
 
-    const s = await db.get(`SELECT set_number, name, quantity, condition FROM sets`);
+    const s = await db.get(`SELECT set_number, name, quantity FROM sets`);
     assert.equal(s.set_number, '10214-1');
     assert.equal(s.name, 'Tower Bridge');
     assert.equal(Number(s.quantity), 2);
-    assert.equal(s.condition, 'U', 'Der Zustand ging beim Wiederherstellen verloren');
+    const a = await db.get(`SELECT purchase_price, condition FROM set_acquisitions`);
+    assert.equal(a?.condition, 'U', 'Der Zustand ging beim Wiederherstellen verloren');
+    assert.equal(Number(a?.purchase_price), 44.50,
+      'Der Kaufpreis ging beim Wiederherstellen verloren');
     const p = await db.get(`SELECT part_number, quantity FROM parts`);
     assert.equal(p.part_number, '3001');
     assert.equal(Number(p.quantity), 17);

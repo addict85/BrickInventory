@@ -348,12 +348,13 @@ fun LazyListScope.setDetailPriceSection(set: SetItem, detailState: SetDetailUiSt
                             Spacer(Modifier.height(Abstaende.winzig))
                             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(Abstaende.klein)) {
                                 PnlBadge(pct)
-                                // Mengengewichtet über die Erfassungen;
-                                // set.purchasePrice ist nur der
-                                // gespiegelte Wert der LETZTEN
-                                // Erfassung und passt bei mehreren
-                                // Käufen nicht zur Prozentangabe
-                                // daneben.
+                                // Mengengewichtet über die Erfassungen —
+                                // dieselbe Grösse, gegen die die
+                                // Prozentangabe daneben rechnet. Der
+                                // frühere Rückfall auf den gespiegelten
+                                // Wert der LETZTEN Erfassung passte dort
+                                // nicht; die Spalte gibt es seit
+                                // Migration 0032 nicht mehr.
                                 val shownPurchase = set.anzeigeKaufpreis
                                 if (shownPurchase != null) {
                                     Text(

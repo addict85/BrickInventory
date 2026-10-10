@@ -230,14 +230,16 @@ test('Merkliste gegen echte Datenbank', { concurrency: 1 }, async (t) => {
       { quantity: 3, purchase_price: 88.5, condition: 'U' });
 
     const set = await db.get(
-      'SELECT quantity, purchase_price FROM sets WHERE user_id=$1 AND set_number=$2',
+      'SELECT quantity FROM sets WHERE user_id=$1 AND set_number=$2',
       [U.opa, '10497-1']);
     assert.equal(set.quantity, 3, 'Die Anzahl wurde nicht übernommen');
-    assert.equal(parseFloat(set.purchase_price), 88.5, 'Der Kaufpreis wurde nicht übernommen');
 
+    // Kaufpreis und Zustand stehen seit Migration 0032 nur in der Erfassung —
+    // vorher prüfte diese Stelle den Preis an der sets-Zeile.
     const erf = await db.get(
-      `SELECT condition FROM set_acquisitions WHERE user_id=$1 AND set_number=$2`,
+      `SELECT purchase_price, condition FROM set_acquisitions WHERE user_id=$1 AND set_number=$2`,
       [U.opa, '10497-1']);
+    assert.equal(parseFloat(erf.purchase_price), 88.5, 'Der Kaufpreis wurde nicht übernommen');
     assert.equal(erf.condition, 'U',
       'Die Erfassung steht im Zustand des MERKPOSTENS statt in dem, was gekauft wurde');
   });

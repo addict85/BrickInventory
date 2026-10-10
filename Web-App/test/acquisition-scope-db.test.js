@@ -63,8 +63,8 @@ test('das Hauptkonto kann den Kaufpreis einer Unterkonto-Erfassung ändern',
 
   await db.run(`DELETE FROM sets WHERE set_number=$1`, [SET]);
   // Set UND Erfassung gehören dem Unterkonto — wie im gemeldeten Fall.
-  await db.run(`INSERT INTO sets (user_id,set_number,name,quantity,condition,purchase_price)
-                VALUES ($1,$2,'F1 Truck',1,'U',18.20)`, [subId, SET]);
+  await db.run(`INSERT INTO sets (user_id,set_number,name,quantity)
+                VALUES ($1,$2,'F1 Truck',1)`, [subId, SET]);
   await db.run(`INSERT INTO set_acquisitions (user_id,set_number,purchase_price,condition,quantity)
                 VALUES ($1,$2,18.20,'U',1)`, [subId, SET]);
   const acqId = (await db.get(
@@ -99,11 +99,15 @@ test('das Hauptkonto kann den Kaufpreis einer Unterkonto-Erfassung ändern',
     assert.equal(r.status, 200, 'die Webapp-Route darf nicht mehr 404 „Not found" liefern');
     assert.equal(await preis(), 25.50, 'der neue Kaufpreis muss gespeichert sein');
 
-    // Die Spiegelung nach sets gehört dem BESITZER, nicht dem Betrachter.
-    const gespiegelt = await db.get(
-      `SELECT purchase_price FROM sets WHERE user_id=$1 AND set_number=$2`, [subId, SET]);
-    assert.equal(parseFloat(gespiegelt.purchase_price), 25.50,
-      'sets.purchase_price des Unterkontos muss mitgezogen werden');
+    // Geschrieben wird in die Erfassung des BESITZERS, nicht des Betrachters.
+    // Hier stand die Spiegelung nach sets.purchase_price; die Spalte ist mit
+    // Migration 0032 weg, die Besitzerfrage bleibt dieselbe — und sie ist der
+    // Grund, aus dem dieser Test existiert.
+    const beimBesitzer = await db.get(
+      `SELECT purchase_price FROM set_acquisitions WHERE user_id=$1 AND set_number=$2`,
+      [subId, SET]);
+    assert.equal(parseFloat(beimBesitzer.purchase_price), 25.50,
+      'die Erfassung des Unterkontos muss den neuen Preis tragen');
 
     // 2. Dieselbe Änderung über die Android-Route.
     r = await fetch(`${baseHaupt}/api/v1/sets/${SET}/acquisitions/${acqId}`, {

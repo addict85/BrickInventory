@@ -11,16 +11,25 @@
  * Dieser Test wurde VOR dem Umbau gegen die alte Fassung geschrieben und lief
  * dort grün. Er hält damit fest, was der Umbau NICHT ändern durfte:
  *
- *   • ein Set ohne Erfassungen fällt auf seine eigene Zeile zurück
+ *   • ein Set ohne Erfassungen liefert trotzdem eine Zeile — mit seiner Menge
  *   • ein Set mit mehreren Erfassungen liefert eine Zeile je Erfassung,
  *     aufsteigend nach Erfassungszeitpunkt
- *   • ein leerer Kaufpreis bleibt leer und wird NICHT vom Set-Preis gefüllt —
- *     die naheliegende COALESCE-Formulierung im JOIN täte genau das
+ *   • ein leerer Kaufpreis bleibt leer
  *   • ein fehlender Zustand wird zu 'N'
  *
- * Der dritte Punkt ist der, an dem ein JOIN am leichtesten falsch wird: Zu
- * einer vorhandenen Erfassung OHNE Preis gehört ein leeres Feld, nicht der
- * Preis der Set-Zeile.
+ * ── Was Migration 0032 an diesem Test geändert hat ──────────────────────────
+ * Der dritte Punkt lautete vorher: „ein leerer Kaufpreis wird NICHT vom
+ * Set-Preis gefüllt — die naheliegende COALESCE-Formulierung im JOIN täte
+ * genau das". Das war die heikelste Stelle des JOINs, weil `sets` einen
+ * eigenen Kaufpreis trug. Seit Migration 0032 trägt sie keinen mehr: Der Fehler
+ * ist nicht mehr behoben, sondern unmöglich. Die Prüfung bleibt stehen, weil
+ * sie weiterhin eine Aussage über die Ausgabe macht — leer heisst leer.
+ *
+ * Der erste Punkt hat damit ebenfalls eine schwächere Bedeutung: Ein Set ohne
+ * Erfassung hat nichts mehr, worauf es zurückfallen könnte. Die Zeile entsteht
+ * trotzdem (LEFT JOIN) und trägt die Menge der Set-Zeile — und genau das ist
+ * der Fall, den Migration 0032 nach dem Nachtragen nicht mehr erwartet, hier
+ * aber von Hand hergestellt wird.
  *
  * Voraussetzung: Test-DB via TEST_DATABASE_URL.
  */
@@ -70,17 +79,14 @@ test('Sets-Export: eine Zeile je Erfassung, ohne Erfassung die Set-Zeile',
 
   try {
     // ── Vier Faelle, jeder mit einer eigenen Aussage ────────────────────────
-    // 0001-1  keine Erfassung        → faellt auf die Set-Zeile zurueck
+    // 0001-1  keine Erfassung        → eine Zeile, Menge der Set-Zeile
     // 0002-1  zwei Erfassungen       → zwei Zeilen, aelteste zuerst
-    // 0003-1  Erfassung ohne Preis   → leeres Feld, NICHT der Set-Preis
-    // 0004-1  Set ohne Zustand       → 'N'
-    for (const [sn, menge, preis, zustand] of [
-      ['0001-1', 3, 12.50, 'N'], ['0002-1', 1, 99.00, 'N'],
-      ['0003-1', 1, 77.00, 'U'], ['0004-1', 2, null, null],
-    ]) {
+    // 0003-1  Erfassung ohne Preis   → leeres Feld
+    // 0004-1  keine Erfassung        → Zustand 'N'
+    for (const [sn, menge] of [['0001-1', 3], ['0002-1', 1], ['0003-1', 1], ['0004-1', 2]]) {
       await db.run(
-        `INSERT INTO sets (user_id, set_number, name, quantity, purchase_price, condition)
-         VALUES ($1,$2,$3,$4,$5,$6)`, [uid, sn, `Set ${sn}`, menge, preis, zustand]);
+        `INSERT INTO sets (user_id, set_number, name, quantity)
+         VALUES ($1,$2,$3,$4)`, [uid, sn, `Set ${sn}`, menge]);
     }
     await db.run(
       `INSERT INTO set_acquisitions (user_id, set_number, quantity, purchase_price, condition, created_at)
@@ -94,14 +100,11 @@ test('Sets-Export: eine Zeile je Erfassung, ohne Erfassung die Set-Zeile',
 
     assert.equal(r.length, 5, `5 Zeilen erwartet (1+2+1+1), bekommen ${r.length}:\n${csv}`);
 
-    // Ohne Erfassung: die Set-Zeile, ohne Datum.
-    // '12.5' und nicht '12.50', obwohl die Spalte NUMERIC(12,4) ist:
-    // db/database.ts stellt den pg-Typparser fuer NUMERIC auf parseFloat um.
-    // Aus '12.5000' wird dadurch die Zahl 12.5, und csvField() schreibt
-    // deren String-Form. Nachgesehen, nicht angenommen — die uebliche
-    // Regel „numeric kommt als Zeichenkette" gilt in diesem Projekt nicht.
+    // Ohne Erfassung: eine Zeile mit der Menge der Set-Zeile, ohne Preis,
+    // ohne Datum, Zustand 'N'. Hier stand vorher purchase_price '12.5' — der
+    // Wert der Set-Spalte, die es seit Migration 0032 nicht mehr gibt.
     assert.deepEqual(je('0001-1'),
-      [{ set_number: '0001-1', quantity: '3', purchase_price: '12.5', condition: 'N', acquired_at: '' }]);
+      [{ set_number: '0001-1', quantity: '3', purchase_price: '', condition: 'N', acquired_at: '' }]);
 
     // Zwei Erfassungen, aelteste zuerst — die Reihenfolge traegt die Bedeutung.
     const zwei = je('0002-1');
@@ -112,15 +115,16 @@ test('Sets-Export: eine Zeile je Erfassung, ohne Erfassung die Set-Zeile',
     assert.equal(zwei[1].condition, 'U');
     assert.match(zwei[0].acquired_at, /^\d{4}-\d{2}-\d{2}$/, 'Erfassungen tragen ihr Datum');
 
-    // Der heikle Fall: Erfassung ohne Preis. Das Feld bleibt LEER; es darf
-    // nicht mit dem Preis der Set-Zeile (77.00) gefuellt werden.
+    // Erfassung vorhanden, aber ohne Preis → leeres Feld. Die Verwechslung mit
+    // dem Set-Preis, gegen die diese Pruefung geschrieben wurde, kann es seit
+    // Migration 0032 nicht mehr geben; die Aussage ueber die Ausgabe bleibt.
     const ohnePreis = je('0003-1');
     assert.equal(ohnePreis.length, 1);
     assert.equal(ohnePreis[0].purchase_price, '',
-      'eine Erfassung ohne Preis erbt NICHT den Preis der Set-Zeile');
+      'eine Erfassung ohne Preis muss ein leeres Feld ergeben');
     assert.equal(ohnePreis[0].condition, 'N', 'fehlender Zustand wird zu N');
 
-    // Set ohne Zustand und ohne Preis.
+    // Set ohne Erfassung: Zustand 'N', Preis leer.
     assert.deepEqual(je('0004-1'),
       [{ set_number: '0004-1', quantity: '2', purchase_price: '', condition: 'N', acquired_at: '' }]);
   } finally {
@@ -167,8 +171,8 @@ test('Sets-Export braucht EINE Abfrage, unabhaengig von der Anzahl Sets',
     for (let i = 1; i <= 25; i++) {
       const sn = `9${String(i).padStart(3, '0')}-1`;
       await db.run(
-        `INSERT INTO sets (user_id, set_number, name, quantity, purchase_price, condition)
-         VALUES ($1,$2,$3,1,5.00,'N')`, [uid, sn, `Set ${sn}`]);
+        `INSERT INTO sets (user_id, set_number, name, quantity)
+         VALUES ($1,$2,$3,1)`, [uid, sn, `Set ${sn}`]);
       await db.run(
         `INSERT INTO set_acquisitions (user_id, set_number, quantity, purchase_price, condition)
          VALUES ($1,$2,1,5.00,'N')`, [uid, sn]);

@@ -11,22 +11,22 @@
 /**
  * Zustand eines Sets nach derselben Regel wie die Anzeige
  * (utils/handlers.ts → getSetConditionAggregate):
- * Sobald EINE Erfassung gebraucht ist, gilt das Set als gebraucht; gibt es
- * Erfassungen ohne Gebraucht-Eintrag, ist es neu; ohne Erfassungen zählt der
- * gespeicherte Wert in sets.condition.
+ * Sobald EINE Erfassung gebraucht ist, gilt das Set als gebraucht; sonst neu.
  *
  * Vorher richtete sich die Bewertung allein nach sets.condition. Weicht der
  * gespeicherte Wert von den Erfassungen ab — etwa weil ein Set nachträglich auf
  * „Neu" korrigiert wurde — zeigte die Kachel „Neu", der Marktpreis stammte aber
  * aus dem Gebraucht-Eintrag. Genau diese Abweichung war die Ursache für den
  * wiederholt zu niedrigen Preis.
+ *
+ * Mit Migration 0032 ist die Abweichung keine Möglichkeit mehr: Es gibt nur
+ * noch die Erfassungen. Der dritte Zweig, der auf `set.condition` zurückfiel,
+ * ist damit entfallen — `acqCount` bleibt als Parameter erhalten, weil die
+ * Aufrufer ihn mitliefern und er die Lage beschreibt.
  */
 function effectiveCondition(set: any): 'N' | 'U' {
-  const acqCount  = parseInt(set?.acq_count) || 0;
   const usedCount = parseInt(set?.used_count) || 0;
-  if (usedCount > 0) return 'U';
-  if (acqCount > 0)  return 'N';
-  return set?.condition === 'U' ? 'U' : 'N';
+  return usedCount > 0 ? 'U' : 'N';
 }
 
 export { effectiveCondition };

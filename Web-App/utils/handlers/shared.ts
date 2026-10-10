@@ -97,15 +97,22 @@ type Zaehlwert = number | string | null | undefined;
  * doppelt ausformuliert und lief dadurch auseinander. Ein Test hält fest, dass
  * `usedCount > 0 ? 'U'` im Code nur einmal vorkommt.
  */
-function conditionFromAcquisitions(acqCount: Zaehlwert, usedCount: Zaehlwert, stored: string | null | undefined) {
+function conditionFromAcquisitions(acqCount: Zaehlwert, usedCount: Zaehlwert) {
   // parseInt wie in der Schwesterfunktion unten. Vorher stand hier
   // `usedCount > 0` — das ging nur ueber die JS-Umwandlung gut, weil COUNT(*)
   // als "2" ankommt. Nachgemessen und gleichwertig fuer alles, was hier
   // ankommt: "2"/2 -> wahr, "0"/0/null/undefined -> falsch. Der Typ hat die
   // Stelle sichtbar gemacht; verlassen wollen wir uns auf die Umwandlung nicht.
-  const acq  = parseInt(String(acqCount ?? ''))  || 0;
+  //
+  // Der dritte Parameter `stored` ist mit Migration 0032 entfallen: Er war der
+  // gespeicherte Wert in sets.condition, und die Spalte gibt es nicht mehr.
+  // Ohne Erfassungen bleibt es bei „Neu" — fuer Sets kann der Fall gar nicht
+  // mehr eintreten (jede Zeile hat mindestens eine Erfassung, die Migration
+  // hat es nachgetragen und geprueft), fuer Teile und Figuren aus einem Set
+  // ist „Neu" der Wert, den der gespeicherte Rueckfall dort ohnehin trug.
+  void acqCount;
   const used = parseInt(String(usedCount ?? '')) || 0;
-  return used > 0 ? 'U' : (acq > 0 ? 'N' : (stored || 'N'));
+  return used > 0 ? 'U' : 'N';
 }
 
 /**
@@ -124,10 +131,12 @@ function conditionFromAcquisitions(acqCount: Zaehlwert, usedCount: Zaehlwert, st
  * Reihenfolge immer Neu vor Gebraucht — nicht nach Häufigkeit, sonst tauschen
  * die Plaketten beim nächsten Kauf die Plätze.
  */
-function conditionsFromAcquisitions(acqCount: Zaehlwert, usedCount: Zaehlwert, stored: string | null | undefined): ('N' | 'U')[] {
+function conditionsFromAcquisitions(acqCount: Zaehlwert, usedCount: Zaehlwert): ('N' | 'U')[] {
   const acq  = parseInt(String(acqCount ?? ''))  || 0;
   const used = parseInt(String(usedCount ?? '')) || 0;
-  if (acq <= 0) return [stored === 'U' ? 'U' : 'N'];
+  // Ohne Erfassungen eine „Neu"-Plakette: Der gespeicherte Wert, der hier
+  // stand, ist mit Migration 0032 entfallen (Begruendung oben).
+  if (acq <= 0) return ['N'];
   const out: ('N' | 'U')[] = [];
   if (acq - used > 0) out.push('N');
   if (used > 0)       out.push('U');
@@ -199,8 +208,8 @@ async function applyManualCondition(userId: unknown, rows: any[], kind: 'part' |
     const usedCount = parseInt(a?.used_count) || 0;
     return {
       ...r,
-      condition: conditionFromAcquisitions(acqCount, usedCount, r.condition),
-      conditions: conditionsFromAcquisitions(acqCount, usedCount, r.condition),
+      condition: conditionFromAcquisitions(acqCount, usedCount),
+      conditions: conditionsFromAcquisitions(acqCount, usedCount),
       acq_count: acqCount,
       used_count: usedCount,
       // Mengengewichtet über die Erfassungen — die Kachel zeigte bisher den

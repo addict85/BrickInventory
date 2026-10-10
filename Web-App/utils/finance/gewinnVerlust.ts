@@ -46,18 +46,25 @@ async function computePnl(viewerId: number, ids: Blickfeld) {
   ]);
 
   const sets = await db.all(
-    `SELECT s.set_number, s.name, s.year, s.quantity, s.image_local, s.image_url, s.added_at, s.condition,
-            -- Ø-Kaufpreis pro Stück aus der Erfassungs-Historie (Fallback: alter
-            -- Einzelwert). Frontend/Apps rechnen weiterhin purchase_price × quantity,
-            -- die Summe stimmt damit auch bei unterschiedlich teuren Erfassungen.
-            COALESCE(a.total_price / NULLIF(a.total_qty, 0), s.purchase_price) AS purchase_price,
+    `SELECT s.set_number, s.name, s.year, s.quantity, s.image_local, s.image_url, s.added_at,
+            -- Ø-Kaufpreis pro Stück aus der Erfassungs-Historie. Frontend/Apps
+            -- rechnen weiterhin purchase_price × quantity, die Summe stimmt damit
+            -- auch bei unterschiedlich teuren Erfassungen.
+            --
+            -- Der zweite COALESCE-Operand war die Kaufpreis-Spalte der sets-Zeile.
+            -- Sie ist mit Migration 0032 weg: Kaufpreis und Zustand stehen nur
+            -- noch in den Erfassungen, und die Migration hat für jede Set-Zeile
+            -- eine nachgetragen. Die Zustands-Spalte fällt aus derselben
+            -- Auswahlliste weg — effectiveCondition() unten liest ohnehin nur
+            -- acq_count/used_count.
+            a.total_price / NULLIF(a.total_qty, 0) AS purchase_price,
             -- acq_count/used_count fehlten hier komplett — effectiveCondition()
             -- weiter unten braucht sie, um den Zustand aus den Erfassungen
             -- abzuleiten. Ohne sie war set.acq_count/used_count immer
-            -- undefined, effectiveCondition() fiel IMMER auf sets.condition
-            -- zurück, egal was die Erfassungen tatsächlich sagten. Für ein Set
-            -- mit gemischten Erfassungen (z. B. 1× Neu, 1× Gebraucht) oder
-            -- einem veralteten sets.condition zeigte der P&L-Pfad — und damit
+            -- undefined, effectiveCondition() fiel IMMER auf die damalige
+            -- Zustands-Spalte der sets-Zeile zurück, egal was die Erfassungen
+            -- sagten. Für ein Set mit gemischten Erfassungen (z. B. 1× Neu,
+            -- 1× Gebraucht) oder einem veralteten Spaltenwert zeigte der P&L-Pfad — und damit
             -- die Galerie-Kachel und der Detail-Dialog — dadurch den falschen
             -- Marktpreis, während computeSetsValuation() (Finanzen-Reiter)
             -- längst korrekt über die Erfassungen entschied. Zwei Wahrheiten
@@ -164,11 +171,14 @@ async function computePnl(viewerId: number, ids: Blickfeld) {
   const setResults = sets.map(set => {
     const setCondition = effectiveCondition(set);
     const currentPrice = priceMap.get(set.set_number) || 0;
-    // Kaufpreis aus den Erfassungen; die sets-Spalte nur noch als Rückfall für
-    // Altbestände ohne Erfassungen.
+    // Kaufpreis aus den Erfassungen — purchaseMap gewichtet nach Reihenfolge,
+    // die Abfrage oben als einfacher Ø. Beide Wege lesen set_acquisitions.
     const acqPurchase = purchaseMap.get(set.set_number);
-    const hasCost = acqPurchase != null || set.purchase_price != null;  // 0 zählt als erfasst
-    const purchasePrice = acqPurchase != null ? acqPurchase : parseFloat(set.purchase_price || 0);
+    // `set.purchase_price` ist der Ø aus der Erfassungs-Historie (Abfrage oben)
+    // und null, wenn keine Erfassung einen Preis trägt. 0 zählt als erfasst.
+    const spaltenPreis = set.purchase_price != null ? parseFloat(set.purchase_price) : null;
+    const hasCost = acqPurchase != null || spaltenPreis != null;
+    const purchasePrice = acqPurchase != null ? acqPurchase : (spaltenPreis ?? 0);
     const qty = qtyMap.get(set.set_number) || set.quantity || 1;
     const pnlAbs = hasCost ? (currentPrice - purchasePrice) * qty : null;
     const pnlPct = (hasCost && currentPrice > 0) ? ((currentPrice - purchasePrice) / Math.max(purchasePrice, PNL_EPS)) * 100 : null;

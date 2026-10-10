@@ -95,13 +95,13 @@ async function resolveSetCondition(
   // priceForNewAcquisition() tut genau das.
   const uids = asIds(uid as any);
   const row = await dbh.get(
-    `SELECT s.condition,
-            COUNT(a.id)                                 AS acq_count,
+    // Ohne s.condition (Migration 0032): Der Zustand steht in den Erfassungen,
+    // und effectiveCondition() liest ohnehin nur noch die beiden Zaehler.
+    `SELECT COUNT(a.id)                                 AS acq_count,
             COUNT(a.id) FILTER (WHERE a.condition='U')  AS used_count
        FROM sets s LEFT JOIN set_acquisitions a
          ON a.user_id = s.user_id AND a.set_number = s.set_number
-      WHERE s.user_id = ANY($1) AND s.set_number=$2
-      GROUP BY s.condition`,
+      WHERE s.user_id = ANY($1) AND s.set_number=$2`,
     [uids, setNumber]
   ).catch(() => null);
   return effectiveCondition(row);

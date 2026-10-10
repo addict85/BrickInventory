@@ -435,19 +435,19 @@ async function zustaendeJeSet(userId: number, setNumbers: string[],
     `SELECT set_number, COALESCE(condition,'N') AS c
        FROM set_acquisitions WHERE user_id=$1 AND set_number = ANY($2)
       GROUP BY set_number, COALESCE(condition,'N')`);
-  const bestand = await sammle(
-    `SELECT set_number, COALESCE(condition,'N') AS c
-       FROM sets WHERE user_id=$1 AND set_number = ANY($2)`);
   const gewuenscht = await sammle(
     `SELECT DISTINCT set_number, COALESCE(condition,'N') AS c
        FROM wanted WHERE user_id=$1 AND set_number = ANY($2)`);
 
   for (const sn of setNumbers) {
-    // Der Hinweis tritt neben die Erfassungen und verdrängt die sets-Zeile:
-    // Beim Anlegen eines NEUEN Sets existiert noch keine von beiden.
+    // Hier stand eine dritte Quelle: `COALESCE(condition,'N') FROM sets`, die
+    // nur zählte, wenn es KEINE Erfassung gab. Mit Migration 0032 ist die
+    // Spalte weg — und mit ihr der Fall, dass zwei Orte verschiedene Zustände
+    // behaupten. Der Hinweis bleibt und ist jetzt die einzige Quelle für ein
+    // Set, dessen Erfassung noch nicht geschrieben ist (siehe
+    // conditionsNeededFor unten).
     const eigene = new Set<string>(erfasst.get(sn) ?? []);
     if (hintCondition === 'U' || hintCondition === 'N') eigene.add(hintCondition);
-    if (!eigene.size) for (const c of bestand.get(sn) ?? []) eigene.add(c);
     for (const c of gewuenscht.get(sn) ?? []) eigene.add(c);
     ergebnis.set(sn, eigene.size ? [...eigene] : ['N']);
   }
@@ -458,7 +458,7 @@ async function zustaendeJeSet(userId: number, setNumbers: string[],
  * Derselbe Beschluss für ein EINZELNES Set — der Weg beim Erfassen.
  *
  * Der Hinweis ist hier das Entscheidende: Beim Anlegen eines neuen Sets
- * existiert weder die sets- noch die set_acquisitions-Zeile schon, denn
+ * existiert die set_acquisitions-Zeile noch nicht, denn
  * getCurrentMarketPrice() ruft refreshPriceForSet() auf, BEVOR
  * recordAcquisition() geschrieben hat. Ohne den Hinweis sah diese Funktion
  * nichts, fiel auf 'N' zurück, und nur der Neupreis wurde geholt. Die

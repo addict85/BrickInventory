@@ -62,10 +62,16 @@ test('die Portfoliokurve folgt dem gewählten Konto', { concurrency: 1 }, async 
   // Jedes Konto braucht Bestand, sonst entsteht gar keine Kurve.
   const SN_H = `9991-${process.pid}`, SN_S = `9992-${process.pid}`;
   await db.run(`DELETE FROM sets WHERE set_number IN ($1,$2)`, [SN_H, SN_S]);
-  await db.run(`INSERT INTO sets (user_id,set_number,name,quantity,condition,purchase_price)
-                VALUES ($1,$2,'A',1,'N',100)`, [hauptId, SN_H]);
-  await db.run(`INSERT INTO sets (user_id,set_number,name,quantity,condition,purchase_price)
-                VALUES ($1,$2,'B',1,'N',200)`, [subId, SN_S]);
+  await db.run(`INSERT INTO sets (user_id,set_number,name,quantity)
+                VALUES ($1,$2,'A',1)`, [hauptId, SN_H]);
+  await db.run(`INSERT INTO sets (user_id,set_number,name,quantity)
+                VALUES ($1,$2,'B',1)`, [subId, SN_S]);
+  // Kaufpreis und Zustand in die Erfassung (Migration 0032).
+  await db.run(`DELETE FROM set_acquisitions WHERE set_number IN ($1,$2)`, [SN_H, SN_S]);
+  await db.run(`INSERT INTO set_acquisitions (user_id,set_number,quantity,purchase_price,condition)
+                VALUES ($1,$2,1,100,'N')`, [hauptId, SN_H]);
+  await db.run(`INSERT INTO set_acquisitions (user_id,set_number,quantity,purchase_price,condition)
+                VALUES ($1,$2,1,200,'N')`, [subId, SN_S]);
 
   // Deutlich verschiedene Preise — bei einer Verwechslung fällt es auf.
   await db.run(`DELETE FROM price_history WHERE set_number IN ($1,$2)`, [SN_H, SN_S]);

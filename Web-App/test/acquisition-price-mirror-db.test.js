@@ -14,11 +14,22 @@
  * zeigte die ganze App danach den alten Wert — dauerhaft, nicht nur bis zum
  * Neuladen.
  *
- * Wieder das Muster „dieselbe Regel fehlt am zweiten Weg". Deshalb prüft
- * dieser Test beide Routenfamilien gegeneinander statt nur die reparierte.
+ * ── Was Migration 0032 daran geändert hat ───────────────────────────────────
+ * Es gibt keine Spiegelung mehr, weil es keine zweite Spalte mehr gibt.
+ * `parentPriceSql` ist für Sets wieder `null` — diesmal nicht aus Versehen,
+ * sondern weil nichts zu spiegeln ist. Die Kachel rechnet aus den Erfassungen
+ * (avg_purchase_price in getSetConditionAggregate).
  *
- * Gegenprobe (durchgeführt): parentPriceSql zurück auf null → der
- * Android-Teilschritt zeigt wieder 108.
+ * Damit ändert sich auch eine REGEL, und zwar sichtbar für Marco: Die Kachel
+ * zeigte bisher den Preis der NEUESTEN Erfassung, jetzt den mengengewichteten
+ * Mittelwert über alle. Bei einem Set mit einem Kauf ist das dasselbe; bei
+ * zwei verschieden teuren Käufen ist der Mittelwert die Zahl, die zur Menge
+ * daneben passt (Anzeige × Menge = Summe). Der Teilschritt „Gegenrichtung"
+ * unten hält genau diesen Unterschied fest.
+ *
+ * Gegenprobe (durchgeführt): in getSetConditionAggregate() avg_purchase_price
+ * auf `MAX(purchase_price)` umgestellt → „Gegenrichtung" wird rot
+ * (erwartet 125, bekommen 200). Danach zurückgesetzt.
  *
  * FALLE beim Schreiben dieses Tests: Beim ersten Anlauf räumte mein Aufbau
  * zwischen den beiden Läufen nur `sets` weg, nicht `set_acquisitions`. Die
@@ -68,14 +79,17 @@ test('der geänderte Kaufpreis erreicht die sets-Zeile — Webapp UND App',
   const aufbauen = async () => {
     await db.run(`DELETE FROM set_acquisitions WHERE set_number=$1`, [SN]);
     await db.run(`DELETE FROM sets WHERE set_number=$1`, [SN]);
-    await db.run(`INSERT INTO sets (user_id,set_number,name,quantity,condition,purchase_price)
-                  VALUES ($1,$2,'Space Roller Coaster',1,'U',108.00)`, [uid, SN]);
+    await db.run(`INSERT INTO sets (user_id,set_number,name,quantity)
+                  VALUES ($1,$2,'Space Roller Coaster',1)`, [uid, SN]);
     await db.run(`INSERT INTO set_acquisitions (user_id,set_number,purchase_price,condition,quantity)
                   VALUES ($1,$2,108.00,'U',1)`, [uid, SN]);
     return (await db.get(`SELECT id FROM set_acquisitions WHERE user_id=$1 AND set_number=$2`, [uid, SN])).id;
   };
-  const kachel = async () => parseFloat(
-    (await db.get(`SELECT purchase_price FROM sets WHERE user_id=$1 AND set_number=$2`, [uid, SN])).purchase_price);
+  // Was die Kachel zeigt: das Aggregat aus den Erfassungen. Hier stand
+  // `SELECT purchase_price FROM sets` — die gespiegelte Spalte, die es seit
+  // Migration 0032 nicht mehr gibt.
+  const kachel = async () =>
+    (await _req('utils/handlers/sets.js').getSetConditionAggregate([uid], SN)).avg_purchase_price;
 
   try {
     for (const [name, pfad] of [
@@ -93,12 +107,19 @@ test('der geänderte Kaufpreis erreicht die sets-Zeile — Webapp UND App',
         (await db.get(`SELECT purchase_price FROM set_acquisitions WHERE id=$1`, [id])).purchase_price);
       assert.equal(erfasst, 107.00, `${name}: die Erfassung muss den neuen Preis tragen`);
       assert.equal(await kachel(), 107.00,
-        `${name}: sets.purchase_price wurde NICHT mitgezogen — Galerie, Finanzübersicht und ` +
-        'Detail-Kachel lesen von dort und zeigen dann dauerhaft den alten Wert');
+        `${name}: die Kachel zieht den neuen Preis nicht mit — Galerie, Finanzübersicht und ` +
+        'Detail-Kachel rechnen aus den Erfassungen und zeigen dann den alten Wert');
     }
 
-    // Gegenrichtung: Ist die geänderte Erfassung NICHT die neueste, darf die
-    // Kachel sich auch nicht ändern — sie zeigt definitionsgemäss die neueste.
+    // Gegenrichtung — und hier liegt der Unterschied zu vorher.
+    //
+    // Bis Migration 0032 lautete die Regel: Ändert man eine ÄLTERE Erfassung,
+    // bleibt die Kachel stehen, denn sie zeigt die NEUESTE (200). Jetzt zählt
+    // jede Erfassung mit: 50 und 200, je ein Exemplar → 125.
+    //
+    // Das ist die bessere Zahl. Die alte liess sich nicht mit der Menge
+    // daneben multiplizieren: „1 Stück zu 200" bei einem Bestand von zwei
+    // Exemplaren für zusammen 250 war schlicht falsch.
     const alt = await aufbauen();
     // Ein anderer TAG, nicht bloss eine Stunde später: Der Index
     // idx_set_acq_tag lässt pro Tag und Set nur EINE Erfassung zu. Mit
@@ -107,14 +128,14 @@ test('der geänderte Kaufpreis erreicht die sets-Zeile — Webapp UND App',
     // (in der Suite um 23:xx aufgefallen, mittags wäre es durchgegangen).
     await db.run(`INSERT INTO set_acquisitions (user_id,set_number,purchase_price,condition,quantity,created_at)
                   VALUES ($1,$2,200.00,'U',1, NOW() + INTERVAL '1 day')`, [uid, SN]);
-    await db.run(`UPDATE sets SET purchase_price=200.00 WHERE user_id=$1 AND set_number=$2`, [uid, SN]);
     const r2 = await fetch(`${base}/api/v1/sets/${SN}/acquisitions/${alt}`, {
       method: 'PUT', headers: { 'content-type': 'application/json' },
       body: JSON.stringify({ purchase_price: 50.00 }),
     });
     assert.equal(r2.status, 200);
-    assert.equal(await kachel(), 200.00,
-      'eine ÄLTERE Erfassung darf die Kachel nicht überschreiben — sie zeigt die neueste');
+    assert.equal(await kachel(), 125.00,
+      'Die Kachel muss den Mittelwert über BEIDE Erfassungen zeigen (50 und 200). ' +
+      'Bei 200 zählt weiterhin nur die neueste — die Regel der gelöschten Spalte.');
   } finally {
     await db.run(`DELETE FROM users WHERE username=$1`, [USER]).catch(() => {});
     await db.run(`DELETE FROM set_acquisitions WHERE set_number=$1`, [SN]).catch(() => {});

@@ -101,10 +101,12 @@ async function seed() {
 /** Set + Erfassung für ein Konto anlegen. */
 async function giveSet(uid, sn, qty, price, cond = 'N', day = null) {
   await db.run(
-    `INSERT INTO sets (user_id, set_number, name, year, quantity, condition)
-     VALUES ($1,$2,$3,2020,$4,$5)
+    `INSERT INTO sets (user_id, set_number, name, year, quantity)
+     VALUES ($1,$2,$3,2020,$4)
      ON CONFLICT (user_id, set_number) DO UPDATE SET quantity = sets.quantity + $4`,
-    [uid, sn, 'Set ' + sn, qty, cond]);
+    [uid, sn, 'Set ' + sn, qty]);
+  // `cond` geht nur noch in die Erfassung — die sets-Zeile hat seit
+  // Migration 0032 keine condition-Spalte mehr.
   await _req('utils/acquisitions.js').recordAcquisitionForDay('set', uid, [sn], {
     quantity: qty, price, condition: cond, createdAt: day,
   });

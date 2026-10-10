@@ -444,6 +444,18 @@ async function preisVerlaufEindeutigProTag() {
 async function spaltenMigrationen() {
   // ── Migrations: add columns to existing tables ──────────────────────────────
   // sets table migrations
+  //
+  // purchase_price und condition stehen hier weiterhin, obwohl Migration 0032
+  // sie loescht — und das ist kein Versehen: initSchema() laeuft NUR beim
+  // allerersten Start, und danach laufen alle Migrationen der Reihe nach.
+  // Migration 0007 schreibt `ALTER TABLE sets ALTER COLUMN purchase_price TYPE
+  // NUMERIC`, und das ist auf einer fehlenden Spalte ein harter Fehler
+  // (GEMESSEN: der erste Start einer frischen Datenbank brach damit ab).
+  // 0032 raeumt sie am Ende derselben Kette weg. Die Begruendung steht
+  // ausfuehrlich in db/schema.sql an der sets-Tabelle.
+  //
+  // Auf einer LAUFENDEN Datenbank gibt es die beiden Spalten nicht: Diese
+  // Schleife kommt dort nie mehr vorbei.
   const setsMigrations = [
     { col: 'updated_at',     sql: "ALTER TABLE sets ADD COLUMN updated_at TIMESTAMPTZ DEFAULT NOW()" },
     { col: 'purchase_price', sql: "ALTER TABLE sets ADD COLUMN purchase_price NUMERIC(12,4)" },
@@ -836,16 +848,15 @@ async function frueherZurLaufzeitAngelegt() {
   `).catch(logAndContinue('start:erfassungen fuer Minifiguren nachtragen'));
   console.log('  ✅ part_acquisitions + minifig_acquisitions erstellt/migriert');
 
-  // Migration: bestehende Sets ohne Kaufpreis-Historie bekommen genau eine
-  // Acquisition-Zeile (Menge/Preis/Datum vom Set) — Finanzsummen bleiben identisch.
-  await pool.query(`
-    INSERT INTO set_acquisitions (user_id, set_number, quantity, purchase_price, created_at)
-    SELECT s.user_id, s.set_number, s.quantity, s.purchase_price, COALESCE(s.added_at, NOW())
-    FROM sets s
-    WHERE NOT EXISTS (
-      SELECT 1 FROM set_acquisitions a
-      WHERE a.user_id = s.user_id AND a.set_number = s.set_number
-    )`).catch(schlucke('acquisitions backfill'));
+  // Hier stand der Nachtrag „bestehende Sets ohne Kaufpreis-Historie bekommen
+  // genau eine Acquisition-Zeile (Menge/Preis/Datum vom Set)". Er ist weg, und
+  // zwar weil er nie etwas getan hat: initSchema() laeuft NUR beim allerersten
+  // Start einer Datenbank (siehe initSchemaOnce), und dort ist `sets` leer. Der
+  // Nachtrag war fuer Altbestaende gedacht und hat sie niemals erreicht.
+  //
+  // Wo er gebraucht wird, steht er jetzt richtig: Migration 0032 traegt die
+  // fehlenden Erfassungen nach, einmalig, und prueft danach nach, dass keine
+  // Set-Zeile ohne Erfassung uebrig ist — bevor sie die beiden Spalten loescht.
 }
 
 /**

@@ -41,7 +41,10 @@
  *
  * Fehlt der Preis für einen Zustand, wird auf den anderen ausgewichen; das ist
  * besser als die Erfassung mit 0 zu bewerten und die Summe zu verfälschen.
- * Sets ohne Erfassungen fallen auf sets.condition zurück.
+ * Sets ohne Erfassungen gibt es seit Migration 0032 nicht mehr — Kaufpreis und
+ * Zustand stehen nur noch in set_acquisitions. Die Parameter
+ * fallbackCondition/fallbackQuantity bleiben, weil valueSet() auch für Teile
+ * und Minifiguren benutzt wird; dort ist die Erfassung tatsächlich optional.
  */
 import * as db from '../db/database';
 
@@ -159,12 +162,13 @@ export async function getSetValue(
   const [acqs, setRow] = await Promise.all([
     db.all('SELECT quantity, condition FROM set_acquisitions WHERE user_id=$1 AND set_number=$2',
       [userId, setNumber]).catch(() => []),
-    db.get('SELECT quantity, condition FROM sets WHERE user_id=$1 AND set_number=$2',
+    // Nur noch die Menge: sets.condition ist mit Migration 0032 weg, der
+    // Zustand kommt aus den Erfassungen in der Zeile darüber.
+    db.get('SELECT quantity FROM sets WHERE user_id=$1 AND set_number=$2',
       [userId, setNumber]).catch(() => null),
   ]);
   const prices = await loadConditionPrices([setNumber], currency);
-  return valueSet(setNumber, acqs, prices,
-    setRow?.condition || 'N', parseInt(setRow?.quantity) || 1);
+  return valueSet(setNumber, acqs, prices, 'N', parseInt(setRow?.quantity) || 1);
 }
 
 // ═══════════════════════════════════════════════════════════════════════════

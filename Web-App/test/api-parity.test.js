@@ -89,9 +89,9 @@ async function seed() {
 
   // Sets: eines mit gemischten Erfassungen (Zustand-Aggregat!), eines ohne
   await db.run(
-    `INSERT INTO sets (user_id, set_number, name, year, theme, pieces, minifigs, quantity, image_url, purchase_price, condition)
-     VALUES ($1,'75192-1','Millennium Falcon',2017,'Star Wars',7541,8,2,'https://img/75192.jpg',649.99,'N'),
-            ($1,'6346-1','Shuttle Launching Crew',1992,'Town',154,3,1,NULL,25.00,'N') ON CONFLICT DO NOTHING`, [USER.id]);
+    `INSERT INTO sets (user_id, set_number, name, year, theme, pieces, minifigs, quantity, image_url)
+     VALUES ($1,'75192-1','Millennium Falcon',2017,'Star Wars',7541,8,2,'https://img/75192.jpg'),
+            ($1,'6346-1','Shuttle Launching Crew',1992,'Town',154,3,1,NULL) ON CONFLICT DO NOTHING`, [USER.id]);
   await db.run(
     `INSERT INTO set_acquisitions (user_id, set_number, purchase_price, condition)
      VALUES ($1,'75192-1',649.99,'N'), ($1,'75192-1',420.00,'U'), ($1,'6346-1',25.00,'N') ON CONFLICT DO NOTHING`, [USER.id]);
@@ -128,9 +128,9 @@ async function seed() {
 
   // Zwei identische Wegwerf-Sets für die Schreib-Paritätstests (PUT/DELETE)
   await db.run(
-    `INSERT INTO sets (user_id, set_number, name, year, quantity, purchase_price, condition)
-     VALUES ($1,'40567-1','Forest Hideout A',2022,1,35.00,'N'),
-            ($1,'40568-1','Forest Hideout B',2022,1,35.00,'N') ON CONFLICT DO NOTHING`, [USER.id]);
+    `INSERT INTO sets (user_id, set_number, name, year, quantity)
+     VALUES ($1,'40567-1','Forest Hideout A',2022,1),
+            ($1,'40568-1','Forest Hideout B',2022,1) ON CONFLICT DO NOTHING`, [USER.id]);
   await db.run(
     `INSERT INTO set_acquisitions (user_id, set_number, quantity, purchase_price, condition)
      VALUES ($1,'40567-1',1,35.00,'N'), ($1,'40568-1',1,35.00,'N') ON CONFLICT DO NOTHING`, [USER.id]);

@@ -72,10 +72,13 @@ test('ein neues Exemplar folgt den Erfassungen, nicht dem gespeicherten Wert', {
     await db.run(`INSERT INTO users (username,password_hash) VALUES ($1,'x')`, [U]);
     const uid = (await db.get('SELECT id FROM users WHERE username=$1', [U])).id;
 
-    // Der Fall, fuer den effectiveCondition() gebaut wurde: Die sets-Zeile
-    // sagt 'N', die einzige Erfassung sagt 'U'.
-    await db.run(`INSERT INTO sets (user_id,set_number,name,quantity,condition)
-                  VALUES ($1,$2,'Probe',1,'N')`, [uid, SET]);
+    // Der Fall, fuer den effectiveCondition() gebaut wurde: Die einzige
+    // Erfassung sagt 'U', und die Vorgabe des Nutzers (DEFAULT_PRICE_CONDITION)
+    // sagt 'N'. Bis Migration 0032 stand das 'N' zusaetzlich in
+    // sets.condition — die Spalte ist weg, die Verwechslungsmoeglichkeit
+    // zwischen Vorgabe und Erfassung bleibt.
+    await db.run(`INSERT INTO sets (user_id,set_number,name,quantity)
+                  VALUES ($1,$2,'Probe',1)`, [uid, SET]);
     await db.run(`INSERT INTO set_acquisitions (user_id,set_number,quantity,purchase_price,condition,created_at)
                   VALUES ($1,$2,1,10,'U', NOW() - INTERVAL '2 days')`, [uid, SET]);
     // Preise fuer BEIDE Zustaende — sonst waere der Unterschied unsichtbar.
@@ -91,10 +94,10 @@ test('ein neues Exemplar folgt den Erfassungen, nicht dem gespeicherten Wert', {
       `SELECT condition, purchase_price::float AS p FROM set_acquisitions
         WHERE user_id=$1 AND set_number=$2 ORDER BY created_at ASC, id ASC`, [uid, SET]);
     assert.equal(erf.length, 2, 'Die Mengenerhoehung hat keine neue Erfassung angelegt');
-    // Gegenprobe: in priceForNewAcquisition wieder `SELECT condition FROM
-    // sets` -> hier steht 'N' und 100.
+    // Gegenprobe: in priceForNewAcquisition den Zustand auf
+    // DEFAULT_PRICE_CONDITION festnageln -> hier steht 'N' und 100.
     assert.equal(erf[1].condition, 'U',
-      'Das neue Exemplar traegt den gespeicherten Zustand statt den der Erfassungen');
+      'Das neue Exemplar traegt die Vorgabe statt den Zustand der Erfassungen');
     assert.equal(erf[1].p, 20,
       'Das neue Exemplar hat den Neupreis bekommen, obwohl das Set gebraucht ist — ' +
       'das geht in Bestandswert und G&V ein');
@@ -104,7 +107,25 @@ test('ein neues Exemplar folgt den Erfassungen, nicht dem gespeicherten Wert', {
   }
 });
 
-test('der Zustand eines Sets wird nirgends mehr direkt aus sets gelesen', () => {
+/**
+ * ── Warum diese Regel umgeschrieben wurde ──────────────────────────────────
+ *
+ * Sie lautete: „Wer sets.condition liest, muss im selben Atemzug die
+ * ERFASSUNGEN beruecksichtigen" — mit einem Selbstnachweis, der mindestens
+ * drei Lesestellen verlangte. Nach Migration 0032 gibt es NULL, und der
+ * Selbstnachweis haette gemeldet, dass die Suche nicht mehr greift. Er hatte
+ * recht: Die Regel war fuer eine Spalte geschrieben, die es nicht mehr gibt.
+ *
+ * Die Nachfolgeregel ist strenger und braucht keinen Umkreis mehr: Die beiden
+ * Spalten DUERFEN in Abfragen auf `sets` gar nicht mehr vorkommen.
+ *
+ * Dass sie auf einer fertig migrierten Datenbank auch wirklich fehlen, prueft
+ * test/sets-ohne-kaufpreisspalte-db.test.js — und zwar gegen eine von null
+ * aufgebaute Datenbank, denn nur dort ist die Aussage ueberhaupt pruefbar:
+ * db/schema.sql legt die Spalten weiterhin an (Migration 0007 braucht sie),
+ * und auf der gemeinsamen Test-Datenbank ruft jede Testdatei initSchema() auf.
+ */
+test('kein Quelltext liest Kaufpreis oder Zustand aus sets', () => {
   // Gefunden, nicht aufgezaehlt.
   const dateien = [];
   const gehen = (d) => {
@@ -119,39 +140,47 @@ test('der Zustand eines Sets wird nirgends mehr direkt aus sets gelesen', () => 
   assert.ok(dateien.length >= 40,
     `Nur ${dateien.length} Quelldateien gefunden — die Suche greift nicht mehr`);
 
-  // Die Regel ist NICHT "wer darf sets.condition lesen" (das waere eine
-  // Aufzaehlung), sondern: Wer ihn liest, muss im selben Atemzug die
-  // ERFASSUNGEN beruecksichtigen. Der gespeicherte Wert ist der Rueckfall,
-  // nicht die Antwort.
-  const ohneErfassungen = [];
-  let gelesen = 0;
+  // Gesucht werden die Formen, in denen die zwei Spalten in diesem Baum
+  // tatsaechlich vorkamen — GEFUNDEN, nicht erdacht (git log von Migration
+  // 0032 nennt jede Stelle):
+  //
+  //   s.purchase_price / s.condition      die Finanzabfragen, mit Alias s
+  //   sets.purchase_price=                die zwei Spiegel-Anweisungen
+  //   SELECT condition FROM sets          priceForNewAcquisition
+  //   SELECT purchase_price, condition FROM sets   adjustAcquisitionsToQuantity
+  //   COALESCE(condition,'N') AS c … FROM sets     der Preisjob
+  //   INSERT INTO sets (… purchase_price …)        die drei Schreibwege
+  const verboten = [
+    /\bs\.purchase_price\b/i,
+    /\bs\.condition\b/i,
+    /UPDATE sets SET (purchase_price|condition)\b/i,
+    /SELECT\s+condition\s+FROM sets\b/i,
+    /SELECT\s+purchase_price,\s*condition\s+FROM sets\b/i,
+    /COALESCE\(condition,'N'\) AS c\s*\n?\s*FROM sets\b/i,
+    /INSERT INTO sets \([^)]*\b(purchase_price|condition)\b/i,
+  ];
+  const treffer = [];
+  let geprueft = 0;
   for (const f of dateien) {
     const code = fs.readFileSync(f, 'utf8')
       .replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/[^\n]*$/gm, '');
-    // Drei Formen: die einzeilige `SELECT condition FROM sets`, die
-    // mehrzeilige in financeCalc (`SELECT s.condition, COUNT(...) …`) und die
-    // gebündelte im Preisjob (`COALESCE(condition,'N') AS c … FROM sets`, für
-    // alle Sets eines Nutzers auf einmal). Die dritte kam dazu, als
-    // conditionsNeededFor() und die Schleife des Nachtlaufs zu einer Fassung
-    // wurden; ohne sie fiel die Zahl der gefundenen Lesestellen von drei auf
-    // zwei — der Selbstnachweis unten hat das gemeldet.
-    for (const m of code.matchAll(
-      /SELECT\s+condition\s+FROM sets\b|SELECT\s+s\.condition,|COALESCE\(condition,'N'\) AS c\s*\n?\s*FROM sets\b/gi)) {
-      gelesen++;
-      // Der Umkreis: 40 Zeilen davor und danach. Kommt darin keine der
-      // Erfassungs-Regeln vor, steht der gespeicherte Wert allein da.
-      const zeilen = code.slice(0, m.index).split('\n').length;
-      const alle = code.split('\n');
-      const umkreis = alle.slice(Math.max(0, zeilen - 40), zeilen + 40).join('\n');
-      if (!/set_acquisitions|getSetConditionAggregate|effectiveCondition|acq_count/.test(umkreis))
-        ohneErfassungen.push(`${path.relative(ROOT, f)}:${zeilen}`);
+    geprueft++;
+    for (const r of verboten) {
+      const m = code.match(r);
+      if (m) treffer.push(`${path.relative(ROOT, f)}: ${m[0].replace(/\s+/g, ' ')}`);
     }
   }
-  // Selbstnachweis: Faende die Suche keine einzige Lesestelle, waere die
-  // Regel leer wahr.
-  assert.ok(gelesen >= 3,
-    `Nur ${gelesen} Lesestellen gefunden — die Suche greift nicht mehr`);
-  assert.deepEqual(ohneErfassungen, [],
-    'Hier steht der gespeicherte Zustand ALLEIN — genau daraus ist in diesem ' +
-    'Baum achtmal derselbe Fehler entstanden');
+  // Selbstnachweis mit GEMESSENER Zahl: Die Muster muessen auf einem Text, der
+  // sie enthaelt, auch wirklich anschlagen — sonst waere die Regel leer wahr.
+  const probe = `SELECT s.condition, s.purchase_price FROM sets s
+    INSERT INTO sets (user_id,purchase_price) VALUES ($1,$2)`;
+  const angeschlagen = verboten.filter(r => r.test(probe)).length;
+  assert.equal(angeschlagen, 3,
+    `Von den Mustern schlugen ${angeschlagen} auf der Probe an, erwartet 3 ` +
+    '(s.condition, s.purchase_price, INSERT INTO sets mit purchase_price)');
+  assert.ok(geprueft >= 40, `Nur ${geprueft} Dateien geprueft — die Suche greift nicht mehr`);
+  assert.deepEqual(treffer, [],
+    'Diese Stellen lesen oder schreiben Kaufpreis/Zustand auf der sets-Zeile. ' +
+    'Beides steht seit Migration 0032 nur in set_acquisitions; genau aus dem ' +
+    'Nebeneinander sind in diesem Baum achtmal dieselben Fehler entstanden.');
 });

@@ -51,6 +51,37 @@ CREATE TABLE IF NOT EXISTS sets (
   brickset_id INTEGER,
   added_at       TIMESTAMPTZ DEFAULT NOW(),
   updated_at     TIMESTAMPTZ DEFAULT NOW(),
+  -- ── Diese zwei Spalten sind WEG — und stehen trotzdem hier ───────────────
+  --
+  -- Kaufpreis und Zustand eines Sets stehen in set_acquisitions, eine Zeile je
+  -- Kauf. Migration 0032 LOESCHT die beiden Spalten hier; sie waren aelter als
+  -- jene Tabelle und wurden danach nur noch als Spiegel der neuesten Erfassung
+  -- gefuehrt — dreimal ist genau daran etwas auseinandergelaufen.
+  --
+  -- Warum sie dann noch angelegt werden: Diese Datei ist der Ausgangszustand
+  -- einer NEUEN Datenbank, und danach laufen ALLE Migrationen der Reihe nach.
+  -- Migration 0007 enthaelt
+  --
+  --     ALTER TABLE sets ALTER COLUMN purchase_price TYPE NUMERIC(12,4) …
+  --
+  -- und ein ALTER COLUMN auf eine fehlende Spalte ist ein harter Fehler, kein
+  -- stilles Nichts. Ohne die Deklaration hier bricht der erste Start einer
+  -- frischen Installation ab — GEMESSEN, genau so: „Migration
+  -- 0007-geld-als-numeric.sql fehlgeschlagen: column "purchase_price" does
+  -- not exist". Eine ausgelieferte Migration nachtraeglich zu aendern ist
+  -- keine Loesung (sie ist auf fremden Installationen schon gelaufen), und
+  -- eine Nummer VOR 0007 gibt es nicht mehr.
+  --
+  -- Dieselbe Aufteilung wie beim Lagerort: 0018 legt `sets.storage` an, 0031
+  -- loescht es wieder, und bis dahin muss die Spalte da sein.
+  --
+  -- `condition` steht aus demselben Grund in spaltenMigrationen() in
+  -- db/database.ts — dort hat sie immer gestanden, und 0007 fasst sie nicht an.
+  -- Verschoben wird nichts: Eine Spalte an einen anderen Ort zu heben, nur um
+  -- sie zwei Migrationen spaeter zu loeschen, waere Bewegung ohne Wirkung.
+  --
+  -- Wer eine Abfrage auf diese Spalten schreibt, hat sie auf keiner laufenden
+  -- Datenbank — nach 0032 existieren sie dort nirgends mehr.
   purchase_price NUMERIC(12,4),
   UNIQUE(user_id, set_number),
   FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE
@@ -371,8 +402,10 @@ CREATE TABLE IF NOT EXISTS minifig_parts_cache (
 DELETE FROM subsets_cache WHERE fetched_at < NOW() - INTERVAL '1 day' OR data NOT LIKE '%external_ids%';
 
 -- Kaufpreis-Historie: eine Zeile pro Erfassung (auch beim erneuten
--- Hinzufügen desselben Sets). sets.purchase_price spiegelt den Preis der
--- LETZTEN Erfassung; Finanz-Summen rechnen über diese Tabelle.
+-- Hinzufügen desselben Sets). Sie ist seit Migration 0032 die EINZIGE Stelle
+-- für Kaufpreis und Zustand eines Sets — hier stand vorher „sets.purchase_price
+-- spiegelt den Preis der LETZTEN Erfassung", und dieser Spiegel hat dreimal
+-- etwas auseinanderlaufen lassen.
 CREATE TABLE IF NOT EXISTS set_acquisitions (
   id             SERIAL PRIMARY KEY,
   user_id        INTEGER NOT NULL,

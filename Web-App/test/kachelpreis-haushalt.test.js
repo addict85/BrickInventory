@@ -13,9 +13,10 @@
  * Zeile aus. Zwei Konten mit 600 und 100 ergaben in BEIDEN Zeilen 350 —
  * „letzte gewinnt" traf also zufällig das Richtige.
  *
- * Fehlen die Erfassungen und steht nur noch sets.purchase_price (Altdaten,
- * oder alle Kaufpreise eines Sets wieder entfernt), fallen die Zeilen
- * auseinander: 100 → 750 %, 600 → 41,7 %. Die Kachel nahm eine davon.
+ * Fehlen die Erfassungen, fallen die Zeilen auseinander: 100 → 750 %,
+ * 600 → 41,7 %. Die Kachel nahm eine davon. (Gemessen wurde das damals mit
+ * Altdaten, die nur noch die Spalte sets.purchase_price hatten; die Spalte ist
+ * mit Migration 0032 weg, der Fall „Erfassungen ohne Preis" bleibt.)
  *
  * ── Was jetzt gilt ──────────────────────────────────────────────────────────
  * Bei mehreren Zeilen wird nach Menge gewichtet, gerechnet über

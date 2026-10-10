@@ -30,8 +30,10 @@ const SET_SORTS = {
   name_asc:   's.name ASC NULLS LAST',
   num_asc:    's.set_number ASC',
   year_desc:  's.year DESC NULLS LAST',
-  price_desc: 'COALESCE(a.max_purchase_price, s.purchase_price, 0) DESC',
-  price_asc:  'COALESCE(a.max_purchase_price, s.purchase_price, 0) ASC',
+  // Nur noch aus den Erfassungen: Der zweite Operand war sets.purchase_price,
+  // den es seit Migration 0032 nicht mehr gibt.
+  price_desc: 'COALESCE(a.max_purchase_price, 0) DESC',
+  price_asc:  'COALESCE(a.max_purchase_price, 0) ASC',
   // Anzahl der besessenen Exemplare. sets.quantity wird bei jeder Änderung an
   // den Erfassungen neu aus set_acquisitions gespiegelt (routes/sets.ts), ist
   // hier also der richtige Wert — und der einzige, der ohne zusätzlichen JOIN
@@ -78,8 +80,13 @@ async function getSets(userId: Blickfeld, query: any = {}) {
   // den JSON-Payload der /sets-Antwort nur unnötig aufgebläht.
   // Mit "s." qualifiziert: die angehängte Aggregat-Subquery führt set_number
   // ebenfalls, unqualifiziert wäre die Spalte ab jetzt mehrdeutig.
+  // Ohne purchase_price und condition (Migration 0032): Beides kommt aus den
+  // Erfassungen — `avg_purchase_price` und `max_purchase_price` aus dem JOIN
+  // weiter unten, der Zustand aus conditionFromAcquisitions(). Die Antwort
+  // behaelt das Feld `condition`, es wird nur nicht mehr aus der Spalte
+  // gelesen.
   const SET_COLS = ['set_number','name','year','theme','pieces','minifigs','quantity',
-                    'image_local','added_at','purchase_price','condition','storage']
+                    'image_local','added_at','storage']
                    .map(c => `s.${c}`).join(', ') +
     // image_url mit Rückfall auf den GEMEINSAMEN Katalog (Nachtrag 36, Marcos
     // Bericht: „wenn das Bild lokal noch nicht vorhanden ist, soll es direkt
@@ -122,7 +129,6 @@ async function getSets(userId: Blickfeld, query: any = {}) {
                SUM(s.quantity)::int AS quantity,
                MIN(s.image_url) AS image_url, MIN(s.image_local) AS image_local,
                MIN(s.added_at) AS added_at,
-               MIN(s.purchase_price) AS purchase_price, MIN(s.condition) AS condition,
                -- Lagerort: string_agg statt MIN, und das ist kein Zierrat.
                --
                -- Alle anderen Spalten hier beschreiben DAS SET (Name, Jahr,
@@ -297,9 +303,9 @@ async function getSets(userId: Blickfeld, query: any = {}) {
     // gespeicherte sets.condition-Wert wird NICHT mehr als Fallback benutzt,
     // solange Erfassungen existieren (er kann nach Löschen/Reduzieren veraltet
     // sein). Nur ganz ohne Erfassungen zählt die gespeicherte Spalte.
-    condition: conditionFromAcquisitions(s.acq_count, s.used_count, s.condition),
+    condition: conditionFromAcquisitions(s.acq_count, s.used_count),
     // Alle vorkommenden Zustände — die Kachel zeigt je eine Plakette.
-    conditions: conditionsFromAcquisitions(s.acq_count, s.used_count, s.condition),
+    conditions: conditionsFromAcquisitions(s.acq_count, s.used_count),
     avg_purchase_price: s.avg_purchase_price != null ? parseFloat(s.avg_purchase_price) : null,
     image_local: resolveImageLocal(s.image_local),
     // Besitzer nur im Haushalt: Im Einzelkonto wäre die Angabe „gehört mir“ an
@@ -344,7 +350,7 @@ async function getSets(userId: Blickfeld, query: any = {}) {
  * Jetzt gibt es die Regel einmal, und die Schreib-Endpunkte liefern das
  * Ergebnis in ihrer Antwort mit — die Clients rechnen nichts mehr nach.
  */
-async function getSetConditionAggregate(userId: Blickfeld, setNumber: string, storedCondition: string | null | undefined) {
+async function getSetConditionAggregate(userId: Blickfeld, setNumber: string) {
   // Blickfeld statt einer einzelnen ID: Ein Hauptkonto sieht (und ändert)
   // auch die Daten seiner Unterkonten, alle anderen nur ihre eigenen. Die
   // Liste kommt von scopeIds() in utils/household.ts — hier wird sie nur
@@ -360,12 +366,12 @@ async function getSetConditionAggregate(userId: Blickfeld, setNumber: string, st
   const acqCount  = parseInt(acq?.acq_count) || 0;
   const usedCount = parseInt(acq?.used_count) || 0;
   return {
-    condition: conditionFromAcquisitions(acqCount, usedCount, storedCondition),
+    condition: conditionFromAcquisitions(acqCount, usedCount),
     // Dieselben Felder wie in getSets() — die Schreib-Endpunkte liefern das
     // Aggregat mit, und die Kachel wird damit ohne Neuladen aktualisiert.
     // Fehlte conditions hier, verlöre sie nach dem Speichern die zweite
     // Plakette bis zum nächsten vollständigen Laden.
-    conditions: conditionsFromAcquisitions(acqCount, usedCount, storedCondition),
+    conditions: conditionsFromAcquisitions(acqCount, usedCount),
     acq_count: acqCount,
     used_count: usedCount,
     max_purchase_price: acq?.max_purchase_price ?? null,
@@ -384,9 +390,9 @@ async function getSetConditionAggregate(userId: Blickfeld, setNumber: string, st
  */
 async function withSetAggregate<T extends object>(userId: Blickfeld, setNumber: string, payload: T) {
   const uids = asIds(userId);
-  const row = await db.get('SELECT condition FROM sets WHERE user_id = ANY($1) AND set_number=$2',
-    [uids, setNumber]).catch(() => null);
-  const agg = await getSetConditionAggregate(uids, setNumber, row?.condition).catch(() => null);
+  // Die Abfrage auf sets.condition, die hier stand, ist mit Migration 0032
+  // entfallen — samt der Spalte. Das Aggregat rechnet aus den Erfassungen.
+  const agg = await getSetConditionAggregate(uids, setNumber).catch(() => null);
   return agg ? { ...payload, set: { set_number: setNumber, ...agg } } : payload;
 }
 
@@ -426,7 +432,7 @@ async function getSet(userId: Blickfeld, setNumber: string) {
   // wie in getSets(). Vorher fehlten sie hier, weshalb ein Client die
   // Listen-Kachel nicht einfach mit dem Detail-Objekt überschreiben konnte,
   // ohne genau diese Werte zu verlieren.
-  const agg = await getSetConditionAggregate(uids, setNumber, set.condition);
+  const agg = await getSetConditionAggregate(uids, setNumber);
   // ── Zwei Kaufadressen, vom Server aufgeloest ────────────────────────────
   //
   // Marcos Wunsch: „auf dem Detail-Dialog sowohl den BrickLink-Link analog

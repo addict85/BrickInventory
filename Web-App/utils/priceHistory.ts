@@ -125,9 +125,11 @@ export async function getSetPriceHistory(uid: number | number[], setNumber: stri
     U: currentRows.find((r: any) => r.condition === 'U') || null,
   };
 
-  // Kaufpreis: aus der ERSTEN Erfassung, ersatzweise vom Set.
+  // Kaufpreis: aus der ERSTEN Erfassung. Der Rückfall auf s.purchase_price ist
+  // mit Migration 0032 weggefallen — die Spalte gibt es nicht mehr, und jede
+  // Set-Zeile hat mindestens eine Erfassung.
   const set = await db.get(
-    `SELECT COALESCE(a.purchase_price, s.purchase_price) AS purchase_price,
+    `SELECT a.purchase_price AS purchase_price,
             to_char(COALESCE(a.created_at, s.added_at), 'YYYY-MM-DD') AS added_day
        FROM sets s
        LEFT JOIN LATERAL (

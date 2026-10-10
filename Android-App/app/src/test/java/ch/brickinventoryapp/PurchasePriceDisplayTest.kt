@@ -13,12 +13,19 @@ import org.junit.Test
  * Der Server rechnet ihn längst und liefert ihn auf BEIDEN Wegen als
  * `avg_purchase_price` (nachgemessen: 2×7.41 + 1×9.48 → 8.10 in Liste UND
  * Detail). Die Webapp nutzt das Feld seit jeher. Nur die Kachel der App las
- * `purchase_price` — und das ist bloss der in die sets-Zeile gespiegelte Wert
+ * `purchase_price` — und das war bloss der in die sets-Zeile gespiegelte Wert
  * der NEUESTEN Erfassung, also der letzte Kauf statt der Sammlung.
  *
  * Die Regel steht jetzt EINMAL im Modell (`anzeigeKaufpreis`) statt in jeder
  * Ansicht. Genau darum geht es: nicht „an zwei Stellen dasselbe hinschreiben",
  * sondern eine Stelle, die beide Ansichten benutzen.
+ *
+ * ── Was Migration 0032 daran geändert hat ───────────────────────────────────
+ * Die gespiegelte Spalte ist weg, und mit ihr das Feld `purchasePrice` an
+ * SetItem. `anzeigeKaufpreis` hat deshalb keinen Rückfall mehr. Die Prüfung
+ * darauf ist umgedreht: Das Modell darf das Feld NICHT wieder einführen, denn
+ * es käme ab jetzt immer leer vom Server — und ein leerer Rückfall hinter
+ * einem gefüllten Wert fällt niemandem auf, bis der gefüllte einmal fehlt.
  */
 class PurchasePriceDisplayTest {
 
@@ -48,9 +55,23 @@ class PurchasePriceDisplayTest {
             "Die Anzeigeregel fehlt im Modell — dann schreibt sie jede Ansicht selbst, " +
                 "und genau so entstehen unterschiedliche Werte in App und Webapp"
         }
-        assert(m.contains("avgPurchasePrice ?: purchasePrice")) {
-            "Die Reihenfolge muss stimmen: mengengewichtet zuerst, der gespiegelte " +
-                "Einzelwert nur als Rückfall"
+        assert(m.contains("get() = avgPurchasePrice")) {
+            "Die Anzeigeregel muss den mengengewichteten Wert nehmen"
+        }
+        // Umgedrehte Richtung, siehe Kopfkommentar: Das Feld darf nicht zurück.
+        //
+        // Geprüft wird der Kopf von SetItem, nicht die ganze Modelldatei:
+        // `purchase_price` ist in den ANFRAGEN (AddSetRequest,
+        // UpdateQuantityRequest, Merkposten-Übernahme) weiterhin richtig — dort
+        // schickt die App einen Preis HIN. Eine Suche über alles würde die
+        // verbieten und wäre schlicht falsch.
+        val kopf = m.substringAfter("data class SetItem(").substringBefore("\n)")
+        assert(kopf.isNotEmpty() && kopf.contains("setNumber")) {
+            "Der Kopf von SetItem wurde nicht gefunden — die Prüfung darunter wäre leer wahr"
+        }
+        assert(!kopf.contains("purchase_price")) {
+            "SetItem hat purchase_price wieder — der Server liefert es für Sets " +
+                "seit Migration 0032 nicht mehr, das Feld wäre immer leer"
         }
     }
 

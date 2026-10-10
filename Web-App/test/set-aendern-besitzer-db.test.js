@@ -80,8 +80,8 @@ test('Kaufpreis und Zustand landen im Konto des Besitzers', { concurrency: 1 }, 
       [hauptId, subId]);
 
     // Set UND Erfassung gehoeren dem UNTERKONTO — wie im gemeldeten Fall.
-    await db.run(`INSERT INTO sets (user_id,set_number,name,quantity,condition,purchase_price)
-                  VALUES ($1,$2,'Probe',1,'N',10)`, [subId, SET]);
+    await db.run(`INSERT INTO sets (user_id,set_number,name,quantity)
+                  VALUES ($1,$2,'Probe',1)`, [subId, SET]);
     await db.run(`INSERT INTO set_acquisitions (user_id,set_number,quantity,purchase_price,condition)
                   VALUES ($1,$2,1,10,'N')`, [subId, SET]);
 

@@ -11,8 +11,10 @@
  * `resolvePrice: null` — als einzige der drei Elementarten. Teile und
  * Minifiguren holen den Marktpreis seit jeher, und die Webapp-Route tut es für
  * Sets ebenfalls. Nur der Android-Weg liess das Feld leer. Weil die Kachel aus
- * `sets.purchase_price` liest und die Spiegelung den leeren Wert übernimmt,
- * stand danach in der ganzen App ein Strich.
+ * `sets.purchase_price` las und die Spiegelung den leeren Wert übernahm, stand
+ * danach in der ganzen App ein Strich. (Die Spalte ist seit Migration 0032
+ * weg; die Kachel rechnet jetzt aus den Erfassungen — eine leere Erfassung
+ * ergibt dort genauso einen Strich, der Fall bleibt also derselbe.)
  *
  * Wieder das Muster „dieselbe Regel fehlt am zweiten Weg" — dieselbe Zeile in
  * derselben Konfiguration wie schon bei `parentPriceSql` (Nachtrag 51).
@@ -79,8 +81,8 @@ test('ein geleerter Kaufpreis wird aus dem Marktpreis gefüllt — Webapp UND Ap
   const aufbauen = async () => {
     await db.run(`DELETE FROM set_acquisitions WHERE set_number=$1`, [SN]);
     await db.run(`DELETE FROM sets WHERE set_number=$1`, [SN]);
-    await db.run(`INSERT INTO sets (user_id,set_number,name,quantity,condition,purchase_price)
-                  VALUES ($1,$2,'Flatbed Truck',2,'N',9.00)`, [subId, SN]);
+    await db.run(`INSERT INTO sets (user_id,set_number,name,quantity)
+                  VALUES ($1,$2,'Flatbed Truck',2)`, [subId, SN]);
     await db.run(`INSERT INTO set_acquisitions (user_id,set_number,purchase_price,condition,quantity,created_at)
                   VALUES ($1,$2,7.30,'U',1, NOW() - INTERVAL '1 day')`, [subId, SN]);
     await db.run(`INSERT INTO set_acquisitions (user_id,set_number,purchase_price,condition,quantity)
@@ -125,11 +127,13 @@ test('ein geleerter Kaufpreis wird aus dem Marktpreis gefüllt — Webapp UND Ap
         `${name}: es muss der NEU-Preis sein (12.55), nicht der Gebraucht-Preis der ` +
         'Erfassung daneben (7.30)');
 
-      // Und die Kachel oben liest aus sets.purchase_price — dort stand Marcos Strich.
-      const kachel = await db.get(
-        `SELECT purchase_price FROM sets WHERE user_id=$1 AND set_number=$2`, [subId, SN]);
-      assert.equal(Number(kachel.purchase_price), 12.55,
-        `${name}: die Kachel muss den gefüllten Preis zeigen, keinen Strich`);
+      // Und die Kachel oben — dort stand Marcos Strich. Sie rechnet seit
+      // Migration 0032 aus den Erfassungen; der Bestand hat hier zwei (7.30
+      // gebraucht, 12.55 neu, je ein Exemplar), der Mittelwert ist 9.925.
+      const kachel = await _req('utils/handlers/sets.js')
+        .getSetConditionAggregate([subId], SN);
+      assert.equal(kachel.avg_purchase_price, 9.925,
+        `${name}: die Kachel muss den gefüllten Preis mitrechnen, keinen Strich zeigen`);
       ergebnisse[name] = Number(acq.purchase_price);
     }
 

@@ -1005,7 +1005,7 @@ router.get('/admin/price-probe', requireApiAdmin, async (req: AuthedRequest, res
   const uid = req.apiUser.user_id;
 
   const [setRow, acqs, cacheRows, histRows, currRow, ttlRow] = await Promise.all([
-    db.get('SELECT set_number, quantity, condition, purchase_price FROM sets WHERE user_id=$1 AND set_number=$2', [uid, setNumber]),
+    db.get('SELECT set_number, quantity FROM sets WHERE user_id=$1 AND set_number=$2', [uid, setNumber]),
     // Spalte heisst created_at, nicht added_at — daran scheiterte die Probe
     // zuvor mit einem 500er.
     db.all('SELECT quantity, condition, purchase_price, created_at FROM set_acquisitions WHERE user_id=$1 AND set_number=$2 ORDER BY created_at', [uid, setNumber]),
@@ -1019,25 +1019,27 @@ router.get('/admin/price-probe', requireApiAdmin, async (req: AuthedRequest, res
   ]);
 
   // Welchen Zustand würde die Bewertung wählen? Dieselbe Regel wie
-  // conditionFromAcquisitions() in utils/handlers.ts: Eine gebrauchte
-  // Erfassung genügt; gibt es Erfassungen ohne gebrauchte, ist es Neu; ohne
-  // Erfassungen zählt sets.condition. Die Probe zeigte hier vorher die
-  // ÜBERHOLTE Regel („nur sets.condition zählt") — das hätte bei genau dieser
-  // Art von Anfrage einen falschen Eindruck vermittelt.
-  const acqCount = acqs.length;
+  // conditionFromAcquisitions() in utils/handlers/shared.ts: Eine gebrauchte
+  // Erfassung genügt, sonst Neu.
+  //
+  // Die Probe zeigte hier zweimal eine überholte Regel — erst „nur
+  // sets.condition zählt", dann „ohne Erfassungen zählt sets.condition". Beide
+  // Male war es derselbe Fehler: eine ZWEITE Abschrift der Zustandsregel, die
+  // nicht mitgepflegt wurde. Seit Migration 0032 gibt es die Spalte nicht mehr,
+  // und damit auch keinen dritten Fall, der auseinanderlaufen könnte.
   const anyUsed = acqs.some((a: any) => a.condition === 'U');
-  const chosen = anyUsed ? 'U' : (acqCount > 0 ? 'N' : (setRow?.condition === 'U' ? 'U' : 'N'));
+  const chosen = anyUsed ? 'U' : 'N';
 
   const out: any = {
     success: true,
     set: setRow || null,
     acquisitions: acqs,
     condition_logic: {
-      stored_in_sets: setRow?.condition ?? null,
       any_acquisition_used: anyUsed,
       chosen_for_price: chosen,
-      hinweis: 'Eine gebrauchte Erfassung macht das Set gebraucht; Erfassungen ohne '
-             + 'gebrauchte machen es neu; ohne Erfassungen zählt sets.condition. '
+      hinweis: 'Eine gebrauchte Erfassung macht das Set gebraucht, sonst ist es neu. '
+             + 'Der Zustand steht seit Migration 0032 nur in den Erfassungen; '
+             + '`stored_in_sets` stand hier vorher und ist weggefallen. '
              + 'Weicht "chosen_for_price" von der Anzeige ab, liegt der Fehler dort.',
     },
     currency: currRow?.value || 'EUR',

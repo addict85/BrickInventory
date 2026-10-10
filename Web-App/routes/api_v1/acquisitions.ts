@@ -29,7 +29,6 @@ import { deleteSetRows } from '../../utils/handlers/sets';
 import { getPartAcquisitions } from '../parts';
 import { getCurrentFigMarketPrice, getFigAcquisitions } from '../minifigs';
 import { loescheManuellesTeil, loescheManuelleFigur } from '../../utils/handlers/shared';
-import { SETS_PREIS_SQL, SETS_ZUSTAND_SQL } from '../../utils/setService';
 import { sendeFehler, fehlerWerfen } from '../../utils/fehlerTexte';
 import type { FehlerCode } from '../../utils/fehlerTexte';
 const router = express.Router();
@@ -62,8 +61,12 @@ type AcqConfig = {
   parentQuantitySql: string;
   /** Latest-wins-Preisübernahme in die Parent-Zeile ($1=Preis, $2=uid, danach keyVals). */
   parentPriceSql: string | null;
-  /** Latest-wins-Zustandsübernahme in die Parent-Zeile ($1=Zustand, $2=uid, danach keyVals). */
-  parentConditionSql: string;
+  /**
+   * Latest-wins-Zustandsübernahme in die Parent-Zeile ($1=Zustand, $2=uid,
+   * danach keyVals). null für Sets: Dort gibt es seit Migration 0032 keine
+   * Spalte mehr, in die gespiegelt werden könnte.
+   */
+  parentConditionSql: string | null;
   /** Neueste Erfassung der Ressource ($1=uid, danach keyVals). */
   latestSql: string;
   /**
@@ -260,8 +263,10 @@ async function withSetAggregate(uid: number, cfgTable: string, keys: any[], payl
           // besonders teuer, weil die folgenden Statements auf einer bereits
           // abgebrochenen Transaktion laufen.
           await tx.run(`UPDATE ${cfg.table} SET condition=$1 WHERE id=$2`, [cond, id]);
-          const latest = await tx.get(cfg.latestSql, [ownerId, ...keys]);
-          if (latest?.id === id) await tx.run(cfg.parentConditionSql, [cond, ownerId, ...keys]);
+          if (cfg.parentConditionSql) {
+            const latest = await tx.get(cfg.latestSql, [ownerId, ...keys]);
+            if (latest?.id === id) await tx.run(cfg.parentConditionSql, [cond, ownerId, ...keys]);
+          }
         }
 
         if (_newDate) {
@@ -270,11 +275,16 @@ async function withSetAggregate(uid: number, cfgTable: string, keys: any[], payl
           // Nach einer Datumsänderung kann eine ANDERE Erfassung die neueste
           // sein — die Spiegelung in die Elternzeile muss deshalb neu bestimmt
           // werden, sonst zeigt die Kachel den Preis der falschen Zeile.
-          const latest = await tx.get(cfg.latestSql, [ownerId, ...keys]);
-          if (latest && cfg.parentPriceSql) {
-            const row = await tx.get(`SELECT ${cfg.priceCol} AS p, condition FROM ${cfg.table} WHERE id=$1`, [latest.id]);
+          // `parentPriceSql ||`, nicht `&&`: Für Sets sind beide null, für
+          // Teile und Figuren beide gesetzt — würde hier nur der Preis geprüft,
+          // bliebe eine künftige Art mit Zustand ohne Preis unbedient.
+          if (cfg.parentPriceSql || cfg.parentConditionSql) {
+            const latest = await tx.get(cfg.latestSql, [ownerId, ...keys]);
+            const row = latest
+              ? await tx.get(`SELECT ${cfg.priceCol} AS p, condition FROM ${cfg.table} WHERE id=$1`, [latest.id])
+              : null;
             if (row) {
-              await tx.run(cfg.parentPriceSql, [row.p, ownerId, ...keys]);
+              if (cfg.parentPriceSql)     await tx.run(cfg.parentPriceSql, [row.p, ownerId, ...keys]);
               if (cfg.parentConditionSql) await tx.run(cfg.parentConditionSql, [row.condition || 'N', ownerId, ...keys]);
             }
           }
@@ -388,23 +398,25 @@ registerAcquisitionRoutes({
   parentQuantitySql: `UPDATE sets
      SET quantity = COALESCE((SELECT SUM(quantity) FROM set_acquisitions WHERE user_id=$1 AND set_number=$2), 0)
      WHERE user_id=$1 AND set_number=$2 RETURNING quantity`,
-  // Kaufpreis in die sets-Zeile spiegeln (Nachtrag 51, Marcos Bericht:
-  // „Der Preis oben in der Kachel wird nicht angepasst").
+  // Keine Spiegelung mehr — und zwar nicht aus Versehen.
   //
-  // Hier stand `null` — als EINZIGE der drei Elementarten. Teile und
-  // Minifiguren spiegelten seit jeher, und die Webapp-Route tut es für Sets
-  // auch (routes/sets.ts). Nur der Android-Weg liess die sets-Zeile stehen:
-  // Die Erfassung stand danach auf 107, die Kachel weiter auf 108, und weil
-  // Galerie, Finanzübersicht und Detail-Kachel alle aus sets.purchase_price
-  // lesen, zeigte die ganze App den alten Wert — dauerhaft, nicht nur bis zum
-  // Neuladen. Am laufenden Server nachgestellt: derselbe Preiswechsel über
-  // beide Wege, Webapp zog die Kachel mit, Android nicht.
+  // Hier standen SETS_PREIS_SQL und SETS_ZUSTAND_SQL, und davor stand an
+  // derselben Stelle zweimal `null`. Beide Zustände waren falsch, und zwar
+  // dasselbe Problem von zwei Seiten:
   //
-  // Wieder das Muster „dieselbe Regel fehlt am zweiten Weg". Die Bedingung
-  // („nur wenn die geänderte Erfassung die neueste ist") steckt bereits im
-  // gemeinsamen Ablauf oben und gilt damit automatisch mit.
-  parentPriceSql: SETS_PREIS_SQL,
-  parentConditionSql: SETS_ZUSTAND_SQL,
+  //   Nachtrag 51 (Marco): „Der Preis oben in der Kachel wird nicht
+  //     angepasst" — der Android-Weg spiegelte nicht, die Webapp schon.
+  //     Erfassung 107, Kachel weiter 108.
+  //   Nachtrag 75 (Marco): „Kaufpreis entfernt, die Kachel zeigt ihn weiter"
+  //     — Erfassung 7.41, Kachel 9.48.
+  //
+  // Beide Male war die Ursache, dass Kaufpreis und Zustand an ZWEI Orten
+  // standen. Mit Migration 0032 gibt es nur noch einen: set_acquisitions.
+  // Damit kann die Kachel gar nicht mehr abweichen, und die Spiegelung hat
+  // kein Ziel mehr. Teile und Minifiguren spiegeln weiter — bei ihnen liegen
+  // die Spalten noch auf der Elternzeile.
+  parentPriceSql: null,
+  parentConditionSql: null,
   latestSql: 'SELECT id FROM set_acquisitions WHERE user_id=$1 AND set_number=$2 ORDER BY created_at DESC, id DESC LIMIT 1',
   // Dieselben Zeilen wie beim ausdrücklichen Löschen — EINE Liste, in
   // utils/handlers.ts. Ohne die Teile und Minifiguren blieben sie ohne Set

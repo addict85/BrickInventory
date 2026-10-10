@@ -101,10 +101,11 @@ export async function enrichGalleryWithPrices(){
   // schon je Zeile aus — zwei Konten mit 600 und 100 ergaben in BEIDEN Zeilen
   // 350, „letzte gewinnt" traf also zufaellig das Richtige.
   //
-  // Fehlen die Erfassungen und steht nur noch sets.purchase_price (Altdaten,
-  // oder alle Kaufpreise eines Sets wieder entfernt), fallen die Zeilen
-  // auseinander: 100 mit 750 % und 600 mit 41,7 %, und die Kachel nahm eine
-  // davon.
+  // Fehlen die Kaufpreise in den Erfassungen (alle Kaufpreise eines Sets
+  // wieder entfernt), fallen die Zeilen auseinander: 100 mit 750 % und 600 mit
+  // 41,7 %, und die Kachel nahm eine davon. Gemessen wurde das an Altdaten, die
+  // damals nur noch die Spalte sets.purchase_price hatten — die Spalte ist mit
+  // Migration 0032 weg, der Fall bleibt.
   //
   // Gewichtet nach Menge ergibt in BEIDEN Faellen dasselbe: 350 und 142,9 %.
   // Gerechnet wird ueber `baseline_price` — das ist der Kaufpreis, wenn er

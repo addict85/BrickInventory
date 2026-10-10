@@ -231,7 +231,8 @@ test('ein ausdrücklich angefragter Zustand schlägt die Erfassungs-Bewertung', 
   // wirkungslos blieb: getCurrentMarketPrice() rief getSetValue() OHNE ihn auf.
   // Diese Funktion entscheidet anhand der Erfassungen — beim Anlegen eines
   // neuen Sets gibt es aber noch keine, und sets.condition ist ebenfalls noch
-  // nicht geschrieben. Sie fiel damit auf 'N' zurück und lieferte den
+  // nicht geschrieben (die Spalte gab es damals noch; seit Migration 0032
+  // nicht mehr). Sie fiel damit auf 'N' zurück und lieferte den
   // Neupreis, obwohl „Gebraucht" angefragt war. Der berechnete effectiveCond
   // wurde nur im unerreichbaren Rückfall darunter benutzt.
   // Fundort seit Nachtrag 125: utils/marketPrice.ts. Die Funktion hatte sieben
@@ -528,19 +529,31 @@ test('die Preis-Probe läuft ohne Serverfehler', () => {
   // veraltet — sie hätte fälschlich auf sets.condition verwiesen.
   assert.doesNotMatch(admin, /Die Bewertung richtet sich nach sets\.condition, nicht nach den Erfassungen/,
     'Die alte Erklärung passt nicht mehr zur tatsächlichen Regel');
-  assert.match(admin, /const chosen = anyUsed \? 'U' : \(acqCount > 0 \? 'N' : /,
+  // Hier stand die dreiteilige Fassung mit dem Rückfall auf sets.condition.
+  // Seit Migration 0032 gibt es nur noch zwei Fälle, und die Probe muss genau
+  // sie zeigen — eine eigene dritte Lesart wäre wieder die zweite Wahrheit,
+  // gegen die dieser Test geschrieben ist.
+  assert.match(admin, /const chosen = anyUsed \? 'U' : 'N';/,
     'Die Probe muss dieselbe Regel zeigen wie die tatsächliche Bewertung');
+  assert.doesNotMatch(admin.replace(/\/\/[^\n]*/g, '').replace(/\/\*[\s\S]*?\*\//g, ''),
+    /stored_in_sets/,
+    'Die Probe darf keinen gespeicherten Zustand mehr ausweisen — es gibt keinen');
 });
 
-test('computePnl liest acq_count/used_count — sonst gewinnt immer sets.condition', () => {
+test('computePnl liest acq_count/used_count — sonst ist jedes Set neu', () => {
   // Die SELECT-Abfrage in computePnl (finance/pnl → Galerie-Kachel und
   // Detail-Dialog) selektierte kein acq_count/used_count. effectiveCondition()
   // liest genau diese Felder; ohne sie war set.acq_count immer undefined,
-  // parseInt(undefined) ergab NaN, und die Funktion fiel IMMER auf
-  // sets.condition zurück — unabhängig davon, was die Erfassungen tatsächlich
-  // sagten. Bei einem veralteten sets.condition oder gemischten Erfassungen
-  // (1× Neu, 1× Gebraucht) zeigte der P&L-Pfad einen anderen Marktpreis als
-  // computeSetsValuation() (Finanzen-Reiter), die das schon korrekt machte.
+  // parseInt(undefined) ergab NaN, und die Funktion fiel IMMER auf die
+  // damalige Zustands-Spalte der sets-Zeile zurück — unabhängig davon, was die
+  // Erfassungen tatsächlich sagten. Bei einem veralteten Spaltenwert oder
+  // gemischten Erfassungen (1× Neu, 1× Gebraucht) zeigte der P&L-Pfad einen
+  // anderen Marktpreis als computeSetsValuation() (Finanzen-Reiter), die das
+  // schon korrekt machte.
+  //
+  // Seit Migration 0032 gibt es die Spalte nicht mehr. Fehlten die Zähler
+  // jetzt, wäre jedes Set unbemerkt „neu" — derselbe falsche Marktpreis, nur
+  // ohne zweite Wahrheit als Erklärung. Die Prüfung bleibt deshalb stehen.
   const src = require('./helpers/sources').finanzQuelle();
   // Fenster grosszügiger: Der Blickfeld-Kommentar (Haushalt) steht am
   // Funktionsanfang und hat die geprüften Zeilen nach hinten geschoben. Ein
