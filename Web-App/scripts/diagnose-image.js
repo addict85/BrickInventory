@@ -58,11 +58,16 @@ function hole(url) {
   console.log(`\n═══ Bild-Diagnose für ${setNumber} ═══\n`);
 
   // ── 1. Die Zeilen der Konten ──────────────────────────────────────────────
+  //
+  // Die SICHT, nicht die Tabelle: Seit Migration 0033 stehen die Bildfelder im
+  // Katalog, und sets_mit_katalog fuegt beides zusammen. Alle Zeilen tragen
+  // damit denselben Wert — was die Diagnose unten als Punkt 2 ohnehin schon
+  // sagte. Die Liste hier beantwortet weiter „welche Konten fuehren das Set?".
   const rows = await db.all(
     `SELECT s.user_id, u.username, s.image_url, s.image_local
-       FROM sets s LEFT JOIN users u ON u.id = s.user_id
+       FROM sets_mit_katalog s LEFT JOIN users u ON u.id = s.user_id
       WHERE s.set_number = $1 ORDER BY s.user_id`, [setNumber]);
-  console.log('1. Tabelle sets (je Konto):');
+  console.log('1. Bestand je Konto (Bildfelder aus dem Katalog):');
   if (!rows.length) console.log('   ⚠️  Kein Konto besitzt dieses Set.');
   for (const r of rows) {
     console.log(`   ── ${r.username || r.user_id}`);

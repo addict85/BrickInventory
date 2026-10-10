@@ -82,6 +82,17 @@ CREATE TABLE IF NOT EXISTS sets (
   --
   -- Wer eine Abfrage auf diese Spalten schreibt, hat sie auf keiner laufenden
   -- Datenbank — nach 0032 existieren sie dort nirgends mehr.
+  --
+  -- ── Und dasselbe noch einmal fuer die STAMMDATEN ─────────────────────────
+  --
+  -- name, year, theme, pieces, minifigs, image_url und image_local stehen
+  -- unten aus demselben Grund: Migration 0033 loescht sie (sie beschreiben das
+  -- SET und stehen in set_catalog), aber Migration 0014 schreibt vorher
+  -- `UPDATE sets SET image_url = …`. Fehlte die Spalte hier, braeche der erste
+  -- Start einer frischen Installation dort ab.
+  --
+  -- Gelesen werden sie nach 0033 ueber die Sicht `sets_mit_katalog` weiter
+  -- unten in dieser Datei.
   purchase_price NUMERIC(12,4),
   UNIQUE(user_id, set_number),
   FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE
@@ -252,6 +263,36 @@ CREATE TABLE IF NOT EXISTS set_catalog (
   brickset_id INTEGER,
   updated_at  TIMESTAMPTZ DEFAULT NOW()
 );
+
+-- ── Bestandszeile plus Katalogfelder — die Form, die der Code liest ───────
+--
+-- Name, Jahr, Thema, Teilezahl, Minifigurenzahl und die Bilder beschreiben das
+-- SET und nicht das Exemplar. Sie standen bis Migration 0033 zusaetzlich an
+-- jeder sets-Zeile, als Abschrift aus denselben Variablen, aus denen auch
+-- set_catalog gefuellt wurde — und liefen auseinander, sobald eine der beiden
+-- Schreibstellen nichts bekam (Marcos fehlendes Bild, Nachtrag 36).
+--
+-- Diese Sicht ist die EINE Stelle, an der die beiden Tabellen zusammengefuegt
+-- werden. Vierzig Abfragen lesen von hier und behalten damit ihre Form; ohne
+-- sie stuende derselbe JOIN in vierzehn Dateien.
+--
+-- Spalten ausgeschrieben und nicht `s.*`: Die Form ist der Vertrag. Mit `s.*`
+-- wuerde jede neue Spalte an `sets` stillschweigend Teil davon.
+--
+-- GESCHRIEBEN wird weiter in die Tabellen, nie hierher. Eine Sicht mit JOIN
+-- ist in Postgres ohnehin nicht beschreibbar — das ist hier ein Vorteil: Wer
+-- einen Katalogwert aendern will, muss den Katalog nennen.
+--
+-- Steht auch in db/migrations/0033 (dieselbe Aufteilung wie bei einem
+-- ADD COLUMN IF NOT EXISTS: eine neue Datenbank braucht sie von hier, eine
+-- bestehende von dort; CREATE OR REPLACE ist beliebig wiederholbar).
+CREATE OR REPLACE VIEW sets_mit_katalog AS
+  SELECT s.id, s.user_id, s.set_number, s.quantity,
+         s.added_at, s.updated_at, s.storage_id,
+         c.name, c.year, c.theme, c.pieces, c.minifigs,
+         c.image_url, c.image_local
+    FROM sets s
+    LEFT JOIN set_catalog c ON c.set_number = s.set_number;
 
 CREATE TABLE IF NOT EXISTS set_parts_catalog (
   set_number    TEXT NOT NULL,

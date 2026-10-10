@@ -215,9 +215,15 @@ export async function alleAlarme(userId: number): Promise<AlarmMitName[]> {
     // `sets` ist ueber (user_id, set_number) eindeutig, aber im Haushalt
     // koennen zwei Konten dasselbe Set haben. Ohne das erschiene der Alarm
     // zweimal — ein Fehler, den die erste Fassung nicht haben konnte und der
-    // mit der Erweiterung auf das Blickfeld neu entsteht. Sortiert wird nach
-    // `s.image_local` NULLS LAST, damit die Zeile MIT heruntergeladenem Bild
-    // gewinnt statt einer beliebigen.
+    // mit der Erweiterung auf das Blickfeld neu entsteht.
+    //
+    // Sortiert wird nach `s.image_local` NULLS LAST, damit die Zeile MIT
+    // heruntergeladenem Bild gewinnt statt einer beliebigen. Seit Migration
+    // 0033 ist das Bild fuer alle Haushaltszeilen derselbe Wert (es kommt aus
+    // set_catalog, ueber die Sicht sets_mit_katalog) — die Sortierung
+    // entscheidet damit nichts mehr, und `s.id` dahinter macht die Auswahl
+    // weiterhin vorhersagbar. Stehen bleibt sie, weil sie nichts kostet und
+    // die Absicht benennt.
     `SELECT DISTINCT ON (a.set_number, a.condition)
             a.set_number, a.condition, a.richtung, a.schwelle, a.currency_code,
             a.ausgeloest, a.zuletzt_am, a.zuletzt_preis,
@@ -225,7 +231,7 @@ export async function alleAlarme(userId: number): Promise<AlarmMitName[]> {
             (s.id IS NOT NULL) AS besitzt
        FROM price_alerts a
        LEFT JOIN rb_sets rb ON rb.set_num = a.set_number
-       LEFT JOIN sets s ON s.user_id = ANY($2) AND s.set_number = a.set_number
+       LEFT JOIN sets_mit_katalog s ON s.user_id = ANY($2) AND s.set_number = a.set_number
       WHERE a.user_id = $1
       ORDER BY a.set_number, a.condition, s.image_local NULLS LAST, s.id`,
     [userId, blickfeld])

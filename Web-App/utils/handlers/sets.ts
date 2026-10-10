@@ -85,25 +85,25 @@ async function getSets(userId: Blickfeld, query: any = {}) {
   // weiter unten, der Zustand aus conditionFromAcquisitions(). Die Antwort
   // behaelt das Feld `condition`, es wird nur nicht mehr aus der Spalte
   // gelesen.
+  // ── Hier stand ein COALESCE auf den Katalog, und warum es weg ist ───────
+  //
+  // `image_url` kam mit einem Rückfall: `COALESCE(s.image_url, sc.image_url)`,
+  // dazu ein LEFT JOIN auf `set_catalog` weiter unten. Das war die Abhilfe zu
+  // Marcos Bericht (Nachtrag 36): „wenn das Bild lokal noch nicht vorhanden
+  // ist, soll es direkt via Proxy vom CDN geholt werden". Stand in der eigenen
+  // sets-Zeile nichts — weil der Bild-Download in seine 15-Sekunden-Frist lief,
+  // weil das Set über CSV oder Barcode kam, oder weil eine ältere Zeile das
+  // Feld nie gefüllt hat —, lieferte die API image_url: null UND
+  // image_local: null, und beide Clients zeigten den Platzhalter.
+  //
+  // Mit Migration 0033 gibt es nichts mehr, wovon zurückzufallen wäre: Die
+  // Adresse steht nur im Katalog, und die Sicht `sets_mit_katalog` liefert sie.
+  // Der Rückfall war die richtige Abhilfe für zwei Spalten; eine Spalte braucht
+  // ihn nicht. Genau das war auch das Problem daran — er stand in EINER
+  // Abfrage, und jede andere kannte ihn nicht.
   const SET_COLS = ['set_number','name','year','theme','pieces','minifigs','quantity',
-                    'image_local','added_at','storage']
-                   .map(c => `s.${c}`).join(', ') +
-    // image_url mit Rückfall auf den GEMEINSAMEN Katalog (Nachtrag 36, Marcos
-    // Bericht: „wenn das Bild lokal noch nicht vorhanden ist, soll es direkt
-    // via Proxy vom CDN geholt werden").
-    //
-    // Bisher kam die Adresse ausschliesslich aus der eigenen sets-Zeile. Steht
-    // dort nichts — weil der Bild-Download beim Erfassen in seine 15-Sekunden-
-    // Frist lief, weil das Set über CSV-Import oder Barcode-Scan kam, oder
-    // weil eine ältere Zeile das Feld nie gefüllt hat —, lieferte die API
-    // image_url: null UND image_local: null. Beide Clients hatten dann nichts
-    // in der Hand und zeigten den Platzhalter, obwohl die CDN-Adresse im
-    // set_catalog längst bekannt war. Genau dieser Fall ist Marco aufgefallen.
-    //
-    // set_catalog wird beim Erfassen JEDES Sets gefüllt (routes/sets.ts) und
-    // ist kontoübergreifend — der Rückfall greift damit auch für Sets, die ein
-    // anderes Haushaltsmitglied zuerst erfasst hat.
-    ', COALESCE(s.image_url, sc.image_url) AS image_url';
+                    'image_local','image_url','added_at','storage']
+                   .map(c => `s.${c}`).join(', ');
   const { search, theme, sort, page = 1, page_size = null } = query;
 
   // ── Ein Set, EINE Zeile ─────────────────────────────────────────────────
@@ -122,6 +122,12 @@ async function getSets(userId: Blickfeld, query: any = {}) {
   // MIN() auf den Stammdaten ist kein Zufallsgriff: Name, Jahr, Thema und Bild
   // beschreiben DAS SET, nicht das Exemplar — sie sind über die Konten hinweg
   // gleich. MIN(added_at) ist bewusst das früheste Aufnahmedatum im Haushalt.
+  //
+  // Seit Migration 0033 sind sie es nicht nur „hinweg gleich", sondern
+  // buchstäblich derselbe Wert: Sie kommen aus `set_catalog`, über die Sicht
+  // `sets_mit_katalog`. MIN() bleibt trotzdem stehen — die Gruppierung über
+  // `set_number` verlangt für jede nicht gruppierte Spalte eine Zusammenfassung,
+  // und „irgendeinen von identischen Werten" sagt MIN() am kürzesten.
   const setsFrom = uids.length > 1
     ? `(SELECT s.set_number,
                MIN(s.name) AS name, MIN(s.year) AS year, MIN(s.theme) AS theme,
@@ -155,7 +161,7 @@ async function getSets(userId: Blickfeld, query: any = {}) {
                -- Mengenregler). Ohne FILTER stand das Konto danach weiter als
                -- Besitzer auf der Kachel, obwohl es nichts mehr besitzt.
                array_agg(DISTINCT s.user_id) FILTER (WHERE s.quantity > 0) AS owner_ids
-          FROM sets s
+          FROM sets_mit_katalog s
           LEFT JOIN storage_locations lo ON lo.id = s.storage_id
          WHERE s.user_id = ANY($1)
          GROUP BY s.set_number) s`
@@ -164,8 +170,12 @@ async function getSets(userId: Blickfeld, query: any = {}) {
     // den NAMEN in einer Spalte namens `storage` — die Tabelle traegt seit
     // Migration 0031 aber die ID. `s.*` plus die aufgeloeste Spalte liefert
     // genau die alte Form, und der Filter bleibt unberuehrt.
+    //
+    // `s.*` auf der SICHT und nicht auf der Tabelle: Die Stammdaten stehen seit
+    // Migration 0033 in `set_catalog`, und die Sicht fügt beide zusammen. Die
+    // Form bleibt damit dieselbe wie vorher.
     : `(SELECT s.*, lo.name AS storage
-          FROM sets s LEFT JOIN storage_locations lo ON lo.id = s.storage_id) s`;
+          FROM sets_mit_katalog s LEFT JOIN storage_locations lo ON lo.id = s.storage_id) s`;
   const SET_OWNER_COL = uids.length > 1 ? ', s.owner_ids' : '';
   // Ohne Gruppierung filtert die WHERE-Klausel wie bisher; mit Gruppierung hat
   // die Unterabfrage bereits gefiltert.
@@ -235,7 +245,6 @@ async function getSets(userId: Blickfeld, query: any = {}) {
       a.max_purchase_price, a.avg_purchase_price,
       COALESCE(a.acq_count, 0) AS acq_count, COALESCE(a.used_count, 0) AS used_count
       FROM ${setsFrom}
-      LEFT JOIN set_catalog sc ON sc.set_number = s.set_number
       LEFT JOIN (
         SELECT set_number,
                MAX(purchase_price)                     AS max_purchase_price,
@@ -258,7 +267,8 @@ async function getSets(userId: Blickfeld, query: any = {}) {
     // der geladenen Seite — sonst schrumpft das Auswahlfeld beim Paginieren.
     // Nur bei der ersten Seite nötig; Folgeseiten sparen die Abfrage.
     (page_size && parseInt(page) <= 1)
-      ? db.all(`SELECT DISTINCT theme FROM sets WHERE user_id = ANY($1) AND theme IS NOT NULL AND theme <> '' ORDER BY theme`, [uids])
+      // Aus der Sicht: `theme` steht seit Migration 0033 im Katalog.
+      ? db.all(`SELECT DISTINCT theme FROM sets_mit_katalog WHERE user_id = ANY($1) AND theme IS NOT NULL AND theme <> '' ORDER BY theme`, [uids])
       : Promise.resolve(null),
   ]);
 
@@ -420,7 +430,7 @@ async function getSet(userId: Blickfeld, setNumber: string) {
       `SELECT s.*,
               (SELECT COALESCE(SUM(a.quantity),0)::int FROM sets a
                 WHERE a.user_id = ANY($1) AND a.set_number = s.set_number) AS quantity
-         FROM sets s
+         FROM sets_mit_katalog s
         WHERE s.user_id = ANY($1) AND s.set_number = $2
         ORDER BY (s.user_id = $3) DESC, s.id ASC
         LIMIT 1`, [uids, setNumber, uids[0]]),

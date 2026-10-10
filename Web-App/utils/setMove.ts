@@ -131,6 +131,8 @@ async function copyContents(tx: any, sn: string, fromId: number, toId: number) {
 export async function moveSetBetweenAccounts(
   tx: any, sn: string, fromId: number, toId: number, acquisitionIds?: number[]
 ): Promise<MoveResult> {
+  // `SELECT *` genügt und holt seit Migration 0033 nur noch Menge, Besitzer,
+  // Aufnahmedatum und Lagerort — die Stammdaten stehen im Katalog.
   const src = await tx.get('SELECT * FROM sets WHERE user_id=$1 AND set_number=$2', [fromId, sn]);
   if (!src) fehlerWerfen('nicht_gefunden', 404);
 
@@ -157,17 +159,26 @@ export async function moveSetBetweenAccounts(
   } else {
     // Stammdaten mitnehmen (Name, Jahr, Bild …) — sie beschreiben das Set,
     // nicht das Exemplar, und ein erneuter Katalogabruf wäre unnötig.
-    // Kaufpreis und Zustand stehen NICHT mehr hier: Sie wandern mit den
-    // Erfassungen eine Schleife weiter unten, und seit Migration 0032 hat die
-    // sets-Zeile diese Spalten gar nicht mehr. Vorher wurden sie an beiden
-    // Stellen übertragen — mit dem Risiko, dass die kopierte Spalte und die
-    // kopierten Erfassungen beim Teilverschieben auseinanderliefen.
+    // ── Was hier NICHT mehr mitwandert ────────────────────────────────────
+    //
+    // Kaufpreis und Zustand: Sie wandern mit den Erfassungen eine Schleife
+    // weiter unten; die sets-Zeile hat die Spalten seit Migration 0032 nicht
+    // mehr. Vorher wurden sie an beiden Stellen übertragen — mit dem Risiko,
+    // dass die kopierte Spalte und die kopierten Erfassungen beim
+    // Teilverschieben auseinanderliefen.
+    //
+    // Die Stammdaten („Name, Jahr, Bild … sie beschreiben das Set, nicht das
+    // Exemplar, und ein erneuter Katalogabruf wäre unnötig") stehen seit
+    // Migration 0033 im Katalog. Hier gab es nie etwas zu holen: Die Setnummer
+    // bleibt dieselbe, also ist es dieselbe Katalogzeile. Der Satz war richtig
+    // und die Abschrift trotzdem unnötig.
+    //
+    // `added_at` wandert weiter mit: Es beschreibt, seit wann DIESER Bestand
+    // da ist, nicht das Set.
     await tx.run(
-      `INSERT INTO sets (user_id, set_number, name, year, theme, pieces, minifigs, quantity,
-                         image_url, image_local, added_at)
-       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11)`,
-      [toId, sn, src.name, src.year, src.theme, src.pieces, src.minifigs, movingQty,
-       src.image_url, src.image_local, src.added_at]);
+      `INSERT INTO sets (user_id, set_number, quantity, added_at)
+       VALUES ($1,$2,$3,$4)`,
+      [toId, sn, movingQty, src.added_at]);
   }
 
   // Erfassungen einzeln übertragen — mit Tagesregel und Preisgewichtung.

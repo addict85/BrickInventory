@@ -398,9 +398,18 @@ async function addSetIntern(setNumber: string, quantity: number, userId: number,
     // Sync image_local to shared set_catalog
     db.run('UPDATE set_catalog SET image_local=$1 WHERE set_number=$2', [localImage, normalized]).catch(()=>{});
   }
-  // Upsert into shared set_catalog
+  // ── Der Katalog ist seit Migration 0033 die EINZIGE Stelle ──────────────
+  //
+  // Hier stand `.catch(()=>{})`. Das ging, solange die Stammdaten gleich
+  // darunter noch einmal in die sets-Zeile geschrieben wurden: Scheiterte der
+  // Katalog, hatte das Set immer noch seinen Namen.
+  //
+  // Jetzt nicht mehr. Scheitert diese Anweisung, hat das Set nirgends einen
+  // Namen, kein Jahr und kein Bild — und niemand erfaehrt davon. Deshalb kein
+  // Fang: Das Erfassen bricht ab, und zwar mit der Meldung von Postgres. Ein
+  // Set ohne Namen ist der schlechtere Ausgang.
   await db.run('INSERT INTO set_catalog (set_number,name,year,theme,pieces,minifigs,image_url,image_local) VALUES ($1,$2,$3,$4,$5,$6,$7,$8) ON CONFLICT (set_number) DO UPDATE SET name=EXCLUDED.name,year=EXCLUDED.year,theme=EXCLUDED.theme,pieces=EXCLUDED.pieces,minifigs=EXCLUDED.minifigs,image_url=COALESCE(EXCLUDED.image_url,set_catalog.image_url),image_local=COALESCE(EXCLUDED.image_local,set_catalog.image_local),updated_at=NOW()',
-    [normalized, name, year, theme||null, pieces, minifigs, imageUrl, localImage]).catch(()=>{});
+    [normalized, name, year, theme||null, pieces, minifigs, imageUrl, localImage]);
 
   // Zustand: siehe oben, einmal fuer beide Zweige bestimmt.
   const effectiveCondition = zustand;
@@ -421,14 +430,21 @@ async function addSetIntern(setNumber: string, quantity: number, userId: number,
   // laufen sonst beide durch den ON-CONFLICT-Zweig, während ihre Erfassungen
   // sich gegenseitig überschreiben.
   await withInventoryLock(userId, normalized, async (tx) => {
-    // Kaufpreis und Zustand stehen NUR in der Erfassung eine Zeile tiefer —
-    // seit Migration 0032 hat die sets-Zeile diese Spalten nicht mehr.
-    await tx.run('INSERT INTO sets (user_id,set_number,name,year,theme,pieces,minifigs,quantity,image_url,image_local) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10) ON CONFLICT (user_id,set_number) DO UPDATE SET quantity=sets.quantity+EXCLUDED.quantity,name=COALESCE(EXCLUDED.name,sets.name),updated_at=NOW()',
-      [userId, normalized, name, year, theme||null, pieces, minifigs, quantity, imageUrl, localImage]);
+    // Die Bestandszeile traegt nur noch, WER WIE VIELE haelt.
+    //
+    // Kaufpreis und Zustand stehen in der Erfassung eine Zeile tiefer
+    // (Migration 0032), Name, Jahr, Thema, Teilezahl, Minifigurenzahl und
+    // Bilder im Katalog (Migration 0033, Upsert oben). Der ON-CONFLICT-Zweig
+    // hatte dafuer eigens ein `name=COALESCE(EXCLUDED.name,sets.name)` — die
+    // Abschrift nachtragen, falls sie fehlte. Auch das faellt weg.
+    await tx.run('INSERT INTO sets (user_id,set_number,quantity) VALUES ($1,$2,$3) ON CONFLICT (user_id,set_number) DO UPDATE SET quantity=sets.quantity+EXCLUDED.quantity,updated_at=NOW()',
+      [userId, normalized, quantity]);
     await recordAcquisition(userId, normalized, quantity, effectivePurchasePrice, effectiveCondition, tx);
   });
 
-  if (minifigs) await db.run('UPDATE sets SET minifigs = $1 WHERE user_id = $2 AND set_number = $3', [minifigs, userId, normalized]);
+  // In den Katalog, nicht an die Bestandszeile (Migration 0033). Und ohne
+  // user_id: Die Teilezahl eines Sets ist in jedem Konto dieselbe.
+  if (minifigs) await db.run('UPDATE set_catalog SET minifigs = $1 WHERE set_number = $2', [minifigs, normalized]);
 
   // Kein 'instructions'-Schritt mehr an die Oberfläche: Der Download läuft
   // eine Zeile tiefer in einem setImmediate() und damit NACH der Antwort. Der
@@ -577,17 +593,21 @@ async function updateSet(uid: number, sn: string, body: any) {
       // Eigene Zeile anlegen, falls das Set bisher nur einem anderen Konto
       // gehörte — sonst liefe die Mengenanpassung ins Leere.
       if (eigenVorher === 0 && eigenZiel > 0) {
-        // Ohne `condition`: Die Spalte ist mit Migration 0032 weg. Der Zustand
-        // des neuen Exemplars entsteht in der Erfassung, die
-        // adjustAcquisitionsToQuantity() gleich darunter anlegt — und zwar aus
-        // priceForNewAcquisition(), die ihn aus den Erfassungen des Haushalts
-        // ableitet. Das ist genauer als die Abschrift hier je war: Sie nahm den
-        // Wert der Zeile, die die Abfrage zufaellig zuerst fand.
+        // Nur noch Menge und Besitzer — und damit keine Abschrift mehr.
+        //
+        // Hier stand ein `INSERT … SELECT name, year, theme, … FROM sets`: Die
+        // Stammdaten der Haushaltszeile wurden in die neue Zeile kopiert, und
+        // `condition` mit ihnen. Beides ist weg (Migration 0032 und 0033), und
+        // beides war ungenauer als das, was jetzt gilt: Die Stammdaten stehen
+        // im Katalog, der Zustand entsteht in der Erfassung, die
+        // adjustAcquisitionsToQuantity() gleich darunter anlegt.
+        //
+        // Das vorangestellte SELECT bleibt — es beantwortet „gibt es diese
+        // Setnummer im Haushalt ueberhaupt?". Ohne diese Bedingung legte ein
+        // Mengenregler eine Zeile fuer eine Nummer an, die niemand haelt.
         await db.run(
-          `INSERT INTO sets (user_id, set_number, name, year, theme, pieces, minifigs,
-                             image_url, image_local, quantity)
-           SELECT $1, set_number, name, year, theme, pieces, minifigs,
-                  image_url, image_local, 0
+          `INSERT INTO sets (user_id, set_number, quantity)
+           SELECT $1, set_number, 0
              FROM sets WHERE user_id = ANY($2) AND set_number = $3
             ORDER BY id ASC LIMIT 1
            ON CONFLICT DO NOTHING`, [uid, leseFeld, sn])
@@ -700,11 +720,16 @@ async function buildSetsCsv(uid: number) {
   // Fehlt set_acquisitions (Migration noch nicht gelaufen), kam dort weiterhin
   // die Set-Zeile heraus. Ein JOIN würde stattdessen die GANZE Abfrage
   // abbrechen — der Export lieferte gar nichts mehr.
-  const rows = await db.all(SETS_CSV_SQL, [uid]).catch(() => null)
-    ?? await db.all(
-      `SELECT set_number, quantity, purchase_price, COALESCE(condition,'N') AS condition,
-              '' AS acquired_at
-         FROM sets WHERE user_id=$1 ORDER BY set_number ASC`, [uid]);
+  // ── Der Rueckfall ist weg, und er war bereits kaputt ───────────────────
+  //
+  // Hier stand ein zweiter Lauf fuer den Fall „Fehlt set_acquisitions
+  // (Migration noch nicht gelaufen)". Er las `purchase_price` und `condition`
+  // aus der sets-Zeile — Spalten, die es seit Migration 0032 nicht mehr gibt.
+  // Er haette also genau dann gescheitert, wenn er gebraucht worden waere,
+  // und kein Test hat das gemeldet, weil ihn nichts aufruft: Die Haupt-Abfrage
+  // scheitert nur, wenn set_acquisitions fehlt, und ohne diese Tabelle laeuft
+  // dieser Stand ohnehin nicht.
+  const rows = await db.all(SETS_CSV_SQL, [uid]);
 
   return toCsv(['set_number', 'quantity', 'purchase_price', 'condition', 'acquired_at'],
     rows.map((r: any) => ({ ...r, purchase_price: r.purchase_price ?? '' })));

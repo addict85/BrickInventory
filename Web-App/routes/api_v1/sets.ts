@@ -76,7 +76,11 @@ router.get('/sets/barcode/:barcode', requireToken, async (req: AuthedRequest, re
   // nie exportiert — der Aufruf weiter unten endete deshalb immer in einem
   // TypeError, und die Bestellnummern-Suche der App antwortete mit 500 statt
   // in die Rebrickable-Rückfallebene zu gehen.
-  const uid = req.apiUser.user_id;
+  //
+  // `const uid` stand hier und wird nicht mehr gebraucht: Die einzige Stelle,
+  // die ihn benutzte, las Stammdaten aus der eigenen sets-Zeile. Die stehen
+  // seit Migration 0033 im kontouebergreifenden Katalog — die Frage „wie heisst
+  // dieses Set?" hat kein Konto mehr.
 
   // Helper: Rebrickable HTTPS GET (declared first so enrichResult can use it)
   //
@@ -119,10 +123,17 @@ router.get('/sets/barcode/:barcode', requireToken, async (req: AuthedRequest, re
       rbMinifigs = mfData?.count ?? null;
     }
 
-    // 1. Local sets table (for image_local)
+    // 1. Der gemeinsame Katalog (fuer image_local und die Stammdaten)
+    //
+    // Hier stand `FROM sets … AND user_id=$2` mit dem Kommentar „Local sets
+    // table (for image_local)". Seit Migration 0033 stehen diese Felder nur im
+    // Katalog, und das ist auch die richtige Frage: Name, Jahr und Bild eines
+    // Sets haengen nicht am Konto. Nebenbei beantwortet der Katalog sie auch
+    // fuer ein Set, das dieses Konto gar nicht haelt — der Katalogdialog
+    // zeigte dort vorher nichts.
     const local = await db.get(
-      'SELECT name, image_local, image_url, year, pieces, theme, minifigs FROM sets WHERE set_number=$1 AND user_id=$2',
-      [setNumber, uid]
+      'SELECT name, image_local, image_url, year, pieces, theme, minifigs FROM set_catalog WHERE set_number=$1',
+      [setNumber]
     ).catch(()=>null);
 
     const minifigs = rbMinifigs ?? local?.minifigs ?? null;
@@ -793,7 +804,7 @@ router.get('/sets/:setNumber/price', requireToken, async (req: AuthedRequest, re
     // das Feld im Detaildialog leer — und zwar in beiden Oberflaechen.
     const set = await db.get(
       `SELECT s.*, lo.name AS storage
-         FROM sets s LEFT JOIN storage_locations lo ON lo.id = s.storage_id
+         FROM sets_mit_katalog s LEFT JOIN storage_locations lo ON lo.id = s.storage_id
         WHERE s.set_number = $1 AND s.user_id = ANY($2)`, [sn, uids]);
     if (!set) return sendeFehler(req, res, 404, 'set_nicht_gefunden');
     // Die Währung kommt aus der NUTZEREINSTELLUNG — der frühere

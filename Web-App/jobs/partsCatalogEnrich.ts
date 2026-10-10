@@ -716,7 +716,9 @@ async function _redownloadMissingImages() {
          UNION ALL
          -- sets fehlte hier (Nachtrag 49): Der Lauf liess ausgerechnet die
          -- Set-Bilder aus, die in der Galerie am sichtbarsten sind.
-         SELECT image_local, image_url FROM sets                 WHERE image_local IS NOT NULL
+         -- Gelesen wird seit Migration 0033 aus set_catalog — dort steht jede
+         -- Setnummer einmal statt einmal je Konto.
+         SELECT image_local, image_url FROM set_catalog          WHERE image_local IS NOT NULL
        ) t
        GROUP BY image_local`
     ).catch(() => []);

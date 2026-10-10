@@ -96,11 +96,16 @@ router.get('/admin/image-diag/:setNumber', requireApiAdmin, async (req: AuthedRe
     const sn = String(req.params.setNumber);
 
     // 1. Was weiss die Datenbank — eigene Zeile UND gemeinsamer Katalog?
+    // Die SICHT: `image_local` und `image_url` stehen seit Migration 0033 im
+    // Katalog, und damit tragen alle Zeilen denselben Wert. Die Liste
+    // beantwortet weiter „welche Konten fuehren dieses Set?" — genau das
+    // braucht die Einschaetzung unten.
     const zeilen = await db.all(
-      `SELECT user_id, image_local, image_url FROM sets WHERE set_number = $1 ORDER BY user_id`, [sn]
+      `SELECT user_id, image_local, image_url FROM sets_mit_katalog
+        WHERE set_number = $1 ORDER BY user_id`, [sn]
     ).catch(() => []);
     const katalog = await db.get(
-      `SELECT image_url FROM set_catalog WHERE set_number = $1`, [sn]
+      `SELECT image_url, image_local FROM set_catalog WHERE set_number = $1`, [sn]
     ).catch(() => null);
 
     // 2. Was liegt auf der Platte?
@@ -539,9 +544,14 @@ router.get('/admin/logs', requireApiAdmin, async (req: AuthedRequest, res) => {
 router.get('/admin/brickset-queue', requireApiAdmin, async (_req: AuthedRequest, res) => {
   const rows = await db.all(
     `SELECT q.set_number, q.retry_after, q.attempts, q.last_error, q.created_at,
-            s.name
+            c.name
+     -- Der KATALOG, nicht die sets-Tabelle: Die Warteschlange ist
+     -- kontouebergreifend, und ein LEFT JOIN auf sets traf im Haushalt je
+     -- Konto eine Zeile — derselbe Eintrag erschien dann mehrfach. Mit
+     -- set_catalog ist es genau eine.
+     -- (Keine Gegenstriche: Der Kommentar steht in einem Template-Literal.)
      FROM brickset_retry_queue q
-     LEFT JOIN sets s ON s.set_number = q.set_number
+     LEFT JOIN set_catalog c ON c.set_number = q.set_number
      ORDER BY q.retry_after ASC, q.set_number ASC`
   ).catch(() => []);
   res.json({ success: true, count: rows.length, entries: rows });

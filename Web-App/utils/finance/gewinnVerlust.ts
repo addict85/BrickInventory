@@ -81,7 +81,9 @@ async function computePnl(viewerId: number, ids: Blickfeld) {
             -- für denselben Zustand.
             COALESCE(a.acq_count, 0)  AS acq_count,
             COALESCE(a.used_count, 0) AS used_count
-     FROM sets s
+     -- Die Sicht: Name, Jahr und Bilder stehen seit Migration 0033 in
+     -- set_catalog.
+     FROM sets_mit_katalog s
      LEFT JOIN (
        SELECT user_id, set_number,
               SUM(COALESCE(purchase_price, 0) * quantity) AS total_price,

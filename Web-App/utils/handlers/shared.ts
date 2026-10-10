@@ -414,7 +414,11 @@ async function verwendendeSets(
             s.image_url          AS set_image_url,
             ${KOPFFELDER[tabelle]}
        FROM ${tabelle} x
-       LEFT JOIN sets s ON s.user_id = x.user_id AND s.set_number = x.set_number
+       -- Die SICHT, nicht die Tabelle: Name und Bilder des Sets stehen seit
+       -- Migration 0033 in set_catalog, und sets_mit_katalog fuegt beides
+       -- zusammen. Der JOIN bleibt ueber (user_id, set_number) — gefragt ist
+       -- das Set DIESES Kontos, nicht irgendeines.
+       LEFT JOIN sets_mit_katalog s ON s.user_id = x.user_id AND s.set_number = x.set_number
        -- Der Lagerortname aus dem Vorrat (Migration 0031). Steht hier und
        -- nicht nur im parts-Zweig von KOPFFELDER, weil der minifigs-Zweig ihn
        -- als feste NULL fuehrt — ein unbenutzter LEFT JOIN kostet dort nichts
