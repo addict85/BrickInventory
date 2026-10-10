@@ -39,8 +39,8 @@ async function seed() {
   // Dasselbe Teil in ZWEI Sets — daran hängt die wichtigste Aussage.
   for (const [uid, sn] of [[U.ich, '10179-1'], [U.ich, '75192-1'], [U.kind, '21318-1'],
                            [U.fremd, '10030-1']]) {
-    await db.run(`INSERT INTO sets (user_id, set_number, name, quantity) VALUES ($1,$2,$3,1)`,
-      [uid, sn, 'Set ' + sn]);
+    await db.run(`INSERT INTO sets (user_id, set_number, quantity) VALUES ($1,$2,1)`,
+      [uid, sn]);
   }
   for (const [uid, sn, num, farbe] of [
     [U.ich, '10179-1', '3001', 4], [U.ich, '75192-1', '3001', 4],

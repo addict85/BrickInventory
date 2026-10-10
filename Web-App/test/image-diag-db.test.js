@@ -59,10 +59,14 @@ test('die Bild-Diagnose beschreibt jede Lage im Klartext',
   await db.run(`INSERT INTO users (username,password_hash,is_admin) VALUES ($1,'x',1)`, [USER]);
   const uid = (await db.get(`SELECT id FROM users WHERE username=$1`, [USER])).id;
   await db.run(`DELETE FROM sets WHERE set_number = ANY($1)`, [[MIT, OHNE]]);
-  await db.run(`INSERT INTO sets (user_id,set_number,name,quantity,image_local)
-                VALUES ($1,$2,'Mit Bild',1,$3)`, [uid, MIT, `/images/sets/${MIT}.jpg`]);
-  await db.run(`INSERT INTO sets (user_id,set_number,name,quantity)
-                VALUES ($1,$2,'Ohne alles',1)`, [uid, OHNE]);
+  await db.run(`DELETE FROM set_catalog WHERE set_number = ANY($1)`, [[MIT, OHNE]]);
+  // Der Bestand sagt nur „dieses Konto haelt das Set"; Name und Bildpfad
+  // stehen seit Migration 0033 im Katalog.
+  await db.run(`INSERT INTO sets (user_id, set_number, quantity) VALUES ($1,$2,1)`, [uid, MIT]);
+  await db.run(`INSERT INTO set_catalog (set_number, name, image_local) VALUES ($1,'Mit Bild',$2)`,
+               [MIT, `/images/sets/${MIT}.jpg`]);
+  await db.run(`INSERT INTO sets (user_id, set_number, quantity) VALUES ($1,$2,1)`, [uid, OHNE]);
+  await db.run(`INSERT INTO set_catalog (set_number, name) VALUES ($1,'Ohne alles')`, [OHNE]);
   await new Jimp({ width: 500, height: 400, color: 0x0000ffff }).write(original);
   fs.rmSync(vorschau, { force: true });
 

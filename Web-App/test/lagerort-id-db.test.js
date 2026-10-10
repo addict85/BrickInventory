@@ -49,8 +49,8 @@ async function seed() {
   finally { client.release(); }
   await db.run(`INSERT INTO users (username, password_hash) VALUES ('ich','x')`);
   UID = (await db.get("SELECT id FROM users WHERE username='ich'")).id;
-  await db.run(`INSERT INTO sets (user_id, set_number, name, quantity) VALUES ($1,$2,$3,1)`,
-    [UID, '10179-1', 'Falcon']);
+  await db.run(`INSERT INTO sets (user_id, set_number, quantity) VALUES ($1,$2,1)`,
+    [UID, '10179-1']);
 }
 
 /** Der NAME, den die Oberfläche am Set sieht — über den Vorrat aufgelöst. */

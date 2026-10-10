@@ -81,8 +81,8 @@ test('letzter Kaufpreis gelöscht → der Eintrag verschwindet ganz',
   for (const sn of [WEG, BLEIBT]) {
     await db.run(`INSERT INTO price_cache (set_number,condition,currency_code,avg_price,qty_avg_price,total_quantity)
                   VALUES ($1,'N','CHF',20,20,3)`, [sn]);
-    await db.run(`INSERT INTO sets (user_id,set_number,name,quantity,pieces)
-                  VALUES ($1,$2,'T',1,100)`, [uid, sn]);
+    await db.run(`INSERT INTO sets (user_id, set_number, quantity)
+                  VALUES ($1,$2,1)`, [uid, sn]);
     await db.run(`INSERT INTO set_acquisitions (user_id,set_number,purchase_price,condition,quantity)
                   VALUES ($1,$2,15,'N',1)`, [uid, sn]);
     // Abgeleitete Teile und Minifiguren — sie hängen am Set und müssen

@@ -46,7 +46,7 @@ test('Set verschieben', { concurrency: 1 }, async (t) => {
 
   /** Ein Set mit Inhalt beim Absender anlegen. */
   async function bestandAnlegen(sn, teile, figuren) {
-    await db.run(`INSERT INTO sets (user_id,set_number,name,quantity) VALUES ($1,$2,'Testset',1)`, [a, sn]);
+    await db.run(`INSERT INTO sets (user_id, set_number, quantity) VALUES ($1,$2,1)`, [a, sn]);
     await db.run(`INSERT INTO set_acquisitions (user_id,set_number,quantity,purchase_price,condition)
                   VALUES ($1,$2,1,50,'N')`, [a, sn]);
     for (let i = 0; i < teile; i++) {

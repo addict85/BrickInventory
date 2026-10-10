@@ -85,8 +85,8 @@ test('Erfassungen des Unterkontos: ändern und löschen auf allen drei Elementar
     await db.run(`DELETE FROM parts WHERE part_number=$1`, [PN]);
     await db.run(`DELETE FROM minifig_acquisitions WHERE fig_number=$1`, [FN]);
     await db.run(`DELETE FROM minifigs WHERE fig_number=$1`, [FN]);
-    await db.run(`INSERT INTO sets (user_id,set_number,name,quantity)
-                  VALUES ($1,$2,'T',1)`, [subId, SN]);
+    await db.run(`INSERT INTO sets (user_id, set_number, quantity)
+                  VALUES ($1,$2,1)`, [subId, SN]);
     await db.run(`INSERT INTO set_acquisitions (user_id,set_number,purchase_price,condition,quantity)
                   VALUES ($1,$2,10,'N',1)`, [subId, SN]);
     await db.run(`INSERT INTO parts (user_id,part_number,color_id,quantity,source)

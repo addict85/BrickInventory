@@ -73,7 +73,7 @@ test('Anleitungen: der Server sagt, welche selbst hochgeladen ist',
   await db.run(`INSERT INTO users (username,password_hash) VALUES ($1,'x')`, [USER]);
   const uid = (await db.get(`SELECT id FROM users WHERE username=$1`, [USER])).id;
 
-  await db.run(`INSERT INTO sets (user_id,set_number,name,quantity) VALUES ($1,$2,'Katzenburg',1)`,
+  await db.run(`INSERT INTO sets (user_id, set_number, quantity) VALUES ($1,$2,1)`,
     [uid, SN]);
   // Die automatische Suche: kein Konto, Datei unter /data/instructions/.
   await db.run(`INSERT INTO shared_instructions (set_number,url,description,local_path)

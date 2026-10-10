@@ -50,8 +50,8 @@ async function seed() {
   }
   await db.run('INSERT INTO account_links (main_user_id, sub_user_id) VALUES ($1,$2)',
     [U.ich, U.kind]);
-  await db.run(`INSERT INTO sets (user_id, set_number, name, quantity) VALUES ($1,$2,$3,1)`,
-    [U.ich, '10179-1', 'Falcon']);
+  await db.run(`INSERT INTO sets (user_id, set_number, quantity) VALUES ($1,$2,1)`,
+    [U.ich, '10179-1']);
 }
 
 async function dbReachable() {

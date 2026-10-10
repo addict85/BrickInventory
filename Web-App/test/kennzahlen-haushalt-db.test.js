@@ -57,8 +57,8 @@ test('Kopfzeile und Galerie zaehlen dieselben Sets', async (t) => {
 
   // 75192-1 besitzen BEIDE — ohne diese Überschneidung stimmen Zeilenzahl und
   // Kachelzahl zufällig überein, und der Test prüfte nichts.
-  await db.run(`INSERT INTO sets (user_id,set_number,name,quantity) VALUES
-      ($1,'75192-1','Falcon',1), ($2,'75192-1','Falcon',1), ($2,'21318-1','Baumhaus',1)`, [haupt, kind]);
+  await db.run(`INSERT INTO sets (user_id, set_number, quantity) VALUES
+      ($1,'75192-1',1), ($2,'75192-1',1), ($2,'21318-1',1)`, [haupt, kind]);
 
   const { scopeIds } = _req('utils/household.js');
   const { getStats } = _req('utils/handlers/stats.js');

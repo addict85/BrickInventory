@@ -90,8 +90,8 @@ test('aufstocken ohne Zustandsangabe folgt dem Standard des Nutzers', { concurre
     // Also die Set-Zeile direkt anlegen, ohne Erfassung. Der nächste Aufruf
     // nimmt damit den „existing"-Zweig und schreibt die erste Tageszeile.
     await db.run(
-      `INSERT INTO sets (user_id, set_number, name, quantity)
-       VALUES ($1, $2, 'Testset', 1)`, [uid, SET]);
+      `INSERT INTO sets (user_id, set_number, quantity)
+       VALUES ($1,$2,1)`, [uid, SET]);
 
     // Erfassung OHNE Zustandsangabe. Preis mitgeben, damit kein Netzaufruf
     // nötig ist; um den Preis geht es hier nicht.

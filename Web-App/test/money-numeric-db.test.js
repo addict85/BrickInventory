@@ -97,7 +97,7 @@ test('Geldbeträge sind exakt', { concurrency: 1 }, async (t) => {
   await t.test('tausend Beträge summieren sich exakt', async () => {
     await db.run("INSERT INTO users (username,password_hash) VALUES ('geld','x')");
     const uid = (await db.get("SELECT id FROM users WHERE username='geld'")).id;
-    await db.run(`INSERT INTO sets (user_id,set_number,name,quantity) VALUES ($1,'99001-1','S',1)`, [uid]);
+    await db.run(`INSERT INTO sets (user_id, set_number, quantity) VALUES ($1,'99001-1',1)`, [uid]);
     // 1000 Zeilen à 0.07 — in REAL ergab das 69.99974 statt 70.00.
     await db.run(
       `INSERT INTO set_acquisitions (user_id,set_number,quantity,purchase_price,condition,created_at)
@@ -111,8 +111,8 @@ test('Geldbeträge sind exakt', { concurrency: 1 }, async (t) => {
 
   await t.test('ein gespeicherter Kaufpreis kommt unverändert zurück', async () => {
     const uid = (await db.get("SELECT id FROM users WHERE username='geld'")).id;
-    await db.run(`INSERT INTO sets (user_id,set_number,name,quantity)
-                  VALUES ($1,'99002-1','S2',1)`, [uid]);
+    await db.run(`INSERT INTO sets (user_id, set_number, quantity)
+                  VALUES ($1,'99002-1',1)`, [uid]);
     await db.run(`INSERT INTO set_acquisitions (user_id,set_number,quantity,purchase_price,condition)
                   VALUES ($1,'99002-1',1,49.90,'N')`, [uid]);
 

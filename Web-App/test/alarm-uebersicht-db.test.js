@@ -92,8 +92,8 @@ test('Preisalarm-Übersicht: eigene Alarme, mit Namen, änderbar, löschbar',
                    SET name = EXCLUDED.name, set_img_url = EXCLUDED.set_img_url`);
   // Dasselbe Set liegt ZUSÄTZLICH in meiner Sammlung — nur dann gibt es einen
   // Detaildialog, und nur dann gibt es das heruntergeladene Bild.
-  await db.run(`INSERT INTO sets (user_id, set_number, name, image_local, image_url)
-                VALUES ($1,'70002-1','Lennox Feuerwehr','/uploads/70002-1_thumb.jpg','https://cdn.example/70002-1.jpg')
+  await db.run(`INSERT INTO sets (user_id, set_number)
+                VALUES ($1,'70002-1')
                 ON CONFLICT (user_id, set_number) DO NOTHING`, [ich.id]);
 
   // Signatur GELESEN, nicht geraten: (userId, setNumber, waehrung, eingabe).
@@ -108,16 +108,16 @@ test('Preisalarm-Übersicht: eigene Alarme, mit Namen, änderbar, löschbar',
   await db.run(`INSERT INTO rb_sets (set_num, name, set_img_url)
                 VALUES ('60000-1','Feuerwehreinsatz','https://cdn.example/60000-1.jpg')
                 ON CONFLICT (set_num) DO NOTHING`);
-  await db.run(`INSERT INTO sets (user_id, set_number, name, image_local)
-                VALUES ($1,'60000-1','Feuerwehreinsatz','/uploads/60000-1_thumb.jpg')
+  await db.run(`INSERT INTO sets (user_id, set_number)
+                VALUES ($1,'60000-1')
                 ON CONFLICT (user_id, set_number) DO NOTHING`, [kind.id]);
   await setzeAlarm(ich.id, '60000-1', 'CHF', { richtung: 'unter', schwelle: 40, condition: 'N' });
 
   // Dasselbe Set ZWEIMAL im Haushalt — bei mir und beim Kind. Seit die
   // Verbindung über das Blickfeld geht, kann sie mehrere Zeilen treffen;
   // ohne DISTINCT ON stünde der Alarm doppelt in der Liste.
-  await db.run(`INSERT INTO sets (user_id, set_number, name)
-                VALUES ($1,'70002-1','Lennox Feuerwehr')
+  await db.run(`INSERT INTO sets (user_id, set_number)
+                VALUES ($1,'70002-1')
                 ON CONFLICT (user_id, set_number) DO NOTHING`, [kind.id]);
 
   await t.test('1. alle eigenen Alarme kommen', async () => {

@@ -50,7 +50,7 @@ test('Erfassen unter Last', { concurrency: 1 }, async (t) => {
        FROM set_acquisitions WHERE user_id=$1 AND set_number=$2`, [uid, sn]);
 
   await t.test('zehn gleichzeitige Erfassungen ergeben EINE Tageszeile mit Menge 10', async () => {
-    await db.run(`INSERT INTO sets (user_id,set_number,name,quantity) VALUES ($1,'70001-1','S',0)`, [uid]);
+    await db.run(`INSERT INTO sets (user_id, set_number, quantity) VALUES ($1,'70001-1',0)`, [uid]);
     await Promise.all(Array.from({ length: 10 }, () =>
       withInventoryLock(uid, '70001-1', (tx) =>
         recordAcquisitionForDay('set', uid, ['70001-1'], { quantity: 1, price: 10, condition: 'N' }, tx))

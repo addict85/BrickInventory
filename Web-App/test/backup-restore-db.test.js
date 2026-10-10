@@ -138,8 +138,8 @@ test('Sicherung und Wiederherstellung', async (t) => {
     await db.run(`INSERT INTO users (username, password_hash) VALUES ('sicherung','x')`);
     const uid = (await db.get(`SELECT id FROM users WHERE username='sicherung'`)).id;
     await db.run(
-      `INSERT INTO sets (user_id, set_number, name, year, quantity)
-       VALUES ($1,'10214-1','Tower Bridge',2010,2)`, [uid]);
+      `INSERT INTO sets (user_id, set_number, quantity)
+       VALUES ($1,'10214-1',2)`, [uid]);
     // Der Zustand steht seit Migration 0032 in der Erfassung. Die Sicherung
     // muss ihn von DORT zurueckbringen — sonst prueft dieser Test nach dem
     // Umbau eine Spalte, die es nicht mehr gibt, und waere stillschweigend

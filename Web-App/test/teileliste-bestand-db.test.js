@@ -54,8 +54,8 @@ async function seed() {
   UID = (await db.get(`SELECT id FROM users WHERE username='bauer'`)).id;
 
   // Zwei Sets: eines zweimal besessen, eines einmal.
-  await db.run(`INSERT INTO sets (user_id, set_number, name, quantity) VALUES ($1,'60052-1','Cargo Train',2)`, [UID]);
-  await db.run(`INSERT INTO sets (user_id, set_number, name, quantity) VALUES ($1,'10276-1','Colosseum',1)`, [UID]);
+  await db.run(`INSERT INTO sets (user_id, set_number, quantity) VALUES ($1,'60052-1',2)`, [UID]);
+  await db.run(`INSERT INTO sets (user_id, set_number, quantity) VALUES ($1,'10276-1',1)`, [UID]);
 
   // Teile AUS den Sets (source bleibt leer — genau wie partsImport.ts sie legt).
   const setTeil = (setNr, num, farbe, menge) => db.run(

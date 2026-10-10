@@ -60,8 +60,8 @@ test('jede Liste mit Plakette im Client traegt sie auch in der Antwort', async (
   // NUR das Unterkonto besitzt etwas. Damit ist die Plakette aussagekräftig:
   // Steht dort das eigene Konto, ist die Zuordnung falsch; fehlt sie, sieht
   // das Hauptkonto einen Bestand ohne Herkunft.
-  await db.run(`INSERT INTO sets (user_id,set_number,name,quantity)
-                VALUES ($1,'75192-1','Falcon',1)`, [kind]);
+  await db.run(`INSERT INTO sets (user_id, set_number, quantity)
+                VALUES ($1,'75192-1',1)`, [kind]);
   await db.run(`INSERT INTO parts (user_id,set_number,part_number,color_id,part_name,quantity,source)
                 VALUES ($1,'75192-1','3001',4,'Brick',10,'set'),
                        ($1,NULL,'3020',0,'Plate',3,'manual')`, [kind]);
@@ -119,8 +119,8 @@ test('im Einzelkonto steht keine Plakette', async (t) => {
   await db.initSchemaOnce();
   await db.run(`INSERT INTO users (username,password_hash) VALUES ('allein','x')`);
   const allein = (await db.get(`SELECT id FROM users WHERE username='allein'`)).id;
-  await db.run(`INSERT INTO sets (user_id,set_number,name,quantity)
-                VALUES ($1,'21318-1','Baumhaus',1)`, [allein]);
+  await db.run(`INSERT INTO sets (user_id, set_number, quantity)
+                VALUES ($1,'21318-1',1)`, [allein]);
   await db.run(`INSERT INTO minifigs (user_id,set_number,fig_number,fig_name,quantity,source)
                 VALUES ($1,'21318-1','sw0003','Rey',1,'set')`, [allein]);
 

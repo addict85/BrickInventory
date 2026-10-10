@@ -101,10 +101,16 @@ async function seed() {
 /** Set + Erfassung für ein Konto anlegen. */
 async function giveSet(uid, sn, qty, price, cond = 'N', day = null) {
   await db.run(
-    `INSERT INTO sets (user_id, set_number, name, year, quantity)
-     VALUES ($1,$2,$3,2020,$4)
-     ON CONFLICT (user_id, set_number) DO UPDATE SET quantity = sets.quantity + $4`,
-    [uid, sn, 'Set ' + sn, qty]);
+    `INSERT INTO sets (user_id, set_number, quantity)
+     VALUES ($1,$2,$3)
+     ON CONFLICT (user_id, set_number) DO UPDATE SET quantity = sets.quantity + $3`,
+    [uid, sn, qty]);
+  // Der Name gehoert seit Migration 0033 in den Katalog, und zu jedem Set im
+  // Bestand MUSS dort eine Zeile stehen (die Migration traegt sie nach und
+  // prueft das). Die Vorlage stellt also die Lage her, die es wirklich gibt.
+  await db.run(
+    `INSERT INTO set_catalog (set_number, name, year) VALUES ($1,$2,2020)
+     ON CONFLICT (set_number) DO NOTHING`, [sn, 'Set ' + sn]);
   // `cond` geht nur noch in die Erfassung — die sets-Zeile hat seit
   // Migration 0032 keine condition-Spalte mehr.
   await _req('utils/acquisitions.js').recordAcquisitionForDay('set', uid, [sn], {
@@ -621,10 +627,10 @@ test('Haushalt gegen echte Datenbank', async (t) => {
     // Ausgangslage nachstellen: kindB besitzt 10290-1, die Teile liegen aber
     // noch bei kindA — und ein FREMDES Konto besitzt dasselbe Set ebenfalls,
     // darf aber nichts abbekommen.
-    await db.run(`INSERT INTO sets (user_id,set_number,name,quantity) VALUES ($1,'10290-1','x',1)
+    await db.run(`INSERT INTO sets (user_id, set_number, quantity) VALUES ($1,'10290-1',1)
                   ON CONFLICT (user_id,set_number) DO NOTHING`, [U.kindB]);
     await db.run(`DELETE FROM sets WHERE user_id=$1 AND set_number='10290-1'`, [U.kindA]);
-    await db.run(`INSERT INTO sets (user_id,set_number,name,quantity) VALUES ($1,'10290-1','x',1)
+    await db.run(`INSERT INTO sets (user_id, set_number, quantity) VALUES ($1,'10290-1',1)
                   ON CONFLICT (user_id,set_number) DO NOTHING`, [U.fremd]);
     await db.run(`INSERT INTO parts (user_id,set_number,part_number,color_id,quantity,source)
                   VALUES ($1,'10290-1','3005',1,7,'set')`, [U.kindA]);

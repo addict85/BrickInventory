@@ -58,10 +58,10 @@ test('die Liste der verwendenden Sets folgt dem Blickfeld', async (t) => {
   const haupt = await id('haupt'), kind = await id('kind');
   await db.run(`INSERT INTO account_links (main_user_id,sub_user_id) VALUES ($1,$2)`, [haupt, kind]);
 
-  await db.run(`INSERT INTO sets (user_id,set_number,name,quantity) VALUES
-      ($1,'75192-1','Millennium Falcon',1),
-      ($1,'10305-1','Löwenritterburg',1),
-      ($2,'21058-1','Cheops-Pyramide',1)`, [haupt, kind]);
+  await db.run(`INSERT INTO sets (user_id, set_number, quantity) VALUES
+      ($1,'75192-1',1),
+      ($1,'10305-1',1),
+      ($2,'21058-1',1)`, [haupt, kind]);
 
   // Dasselbe Teil in drei Sets — zweimal beim Hauptkonto, einmal beim Kind.
   // Im ersten Set steht es ZWEIMAL (zwei Zeilen), damit die Summe je Set

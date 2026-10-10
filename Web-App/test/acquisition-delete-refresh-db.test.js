@@ -74,8 +74,8 @@ test('Löschen einer Erfassung bestimmt Preis und Zustand der Elternzeile neu',
   const aufbauen = async () => {
     await db.run(`DELETE FROM set_acquisitions WHERE set_number=$1`, [SN]);
     await db.run(`DELETE FROM sets WHERE set_number=$1`, [SN]);
-    await db.run(`INSERT INTO sets (user_id,set_number,name,quantity,condition,purchase_price)
-                  VALUES ($1,$2,'Katzensalon',2,'N',9.48)`, [uid, SN]);
+    await db.run(`INSERT INTO sets (user_id, set_number, quantity, condition, purchase_price)
+                  VALUES ($1,$2,2,'N',9.48)`, [uid, SN]);
     await db.run(`INSERT INTO set_acquisitions (user_id,set_number,purchase_price,condition,quantity,created_at)
                   VALUES ($1,$2,7.41,'U',1, NOW() - INTERVAL '2 days')`, [uid, SN]);
     await db.run(`INSERT INTO set_acquisitions (user_id,set_number,purchase_price,condition,quantity,created_at)

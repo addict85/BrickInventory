@@ -76,8 +76,8 @@ test('eine Mengenerhöhung am Unterkonto-Set landet im eigenen Konto',
     await db.run(`DELETE FROM price_cache WHERE set_number=$1`, [SN]);
     await db.run(`INSERT INTO price_cache (set_number,condition,currency_code,avg_price,qty_avg_price,total_quantity)
                   VALUES ($1,'U','EUR',77.00,77.00,4)`, [SN]);
-    await db.run(`INSERT INTO sets (user_id,set_number,name,quantity,condition,purchase_price)
-                  VALUES ($1,$2,'Space Roller Coaster',1,'U',108.00)`, [subId, SN]);
+    await db.run(`INSERT INTO sets (user_id, set_number, quantity, condition, purchase_price)
+                  VALUES ($1,$2,1,'U',108.00)`, [subId, SN]);
     await db.run(`INSERT INTO set_acquisitions (user_id,set_number,purchase_price,condition,quantity)
                   VALUES ($1,$2,108.00,'U',1)`, [subId, SN]);
   };

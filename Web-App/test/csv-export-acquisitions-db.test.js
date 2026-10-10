@@ -85,8 +85,8 @@ test('Sets-Export: eine Zeile je Erfassung, ohne Erfassung die Set-Zeile',
     // 0004-1  keine Erfassung        → Zustand 'N'
     for (const [sn, menge] of [['0001-1', 3], ['0002-1', 1], ['0003-1', 1], ['0004-1', 2]]) {
       await db.run(
-        `INSERT INTO sets (user_id, set_number, name, quantity)
-         VALUES ($1,$2,$3,$4)`, [uid, sn, `Set ${sn}`, menge]);
+        `INSERT INTO sets (user_id, set_number, quantity)
+         VALUES ($1,$2,$3)`, [uid, sn, menge]);
     }
     await db.run(
       `INSERT INTO set_acquisitions (user_id, set_number, quantity, purchase_price, condition, created_at)
@@ -171,8 +171,8 @@ test('Sets-Export braucht EINE Abfrage, unabhaengig von der Anzahl Sets',
     for (let i = 1; i <= 25; i++) {
       const sn = `9${String(i).padStart(3, '0')}-1`;
       await db.run(
-        `INSERT INTO sets (user_id, set_number, name, quantity)
-         VALUES ($1,$2,$3,1)`, [uid, sn, `Set ${sn}`]);
+        `INSERT INTO sets (user_id, set_number, quantity)
+         VALUES ($1,$2,1)`, [uid, sn]);
       await db.run(
         `INSERT INTO set_acquisitions (user_id, set_number, quantity, purchase_price, condition)
          VALUES ($1,$2,1,5.00,'N')`, [uid, sn]);

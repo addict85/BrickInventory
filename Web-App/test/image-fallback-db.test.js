@@ -59,15 +59,26 @@ test('fehlt die Bildadresse am Set, kommt sie aus dem gemeinsamen Katalog',
   await db.run(`DELETE FROM sets WHERE set_number = ANY($1)`, [[OHNE, MIT]]);
   await db.run(`DELETE FROM set_catalog WHERE set_number = ANY($1)`, [[OHNE, MIT]]);
 
-  // Der beobachtete Zustand: Zeile ohne jede Bildangabe.
-  await db.run(`INSERT INTO sets (user_id,set_number,name,quantity) VALUES ($1,$2,'F1 Truck',1)`, [uid, OHNE]);
+  // ── Was Migration 0033 an diesem Aufbau geaendert hat ──────────────────
+  //
+  // Vorher gab es ZWEI Orte fuer die Bildadresse: die eigene sets-Zeile und
+  // den Katalog. Der Test stellte beide Faelle her — Zeile leer (der Katalog
+  // muss einspringen) und Zeile gefuellt (sie darf nicht ueberschrieben
+  // werden). Genau diesen Rueckfall gibt es nicht mehr: Die Adresse steht nur
+  // im Katalog.
+  //
+  // Geblieben ist die Aussage, auf die es Marco ankam („wenn das Bild lokal
+  // noch nicht vorhanden ist, soll es direkt via Proxy vom CDN geholt
+  // werden"): Ein Set ohne lokale Datei muss die CDN-Adresse mitliefern.
+  await db.run(`INSERT INTO sets (user_id, set_number, quantity) VALUES ($1,$2,1)`, [uid, OHNE]);
   await db.run(`INSERT INTO set_catalog (set_number,name,image_url) VALUES ($1,'F1 Truck',$2)
                 ON CONFLICT (set_number) DO UPDATE SET image_url=EXCLUDED.image_url`, [OHNE, CDN]);
 
-  // Gegenstück: eigene Adresse vorhanden — sie darf NICHT überschrieben werden.
-  await db.run(`INSERT INTO sets (user_id,set_number,name,quantity,image_url) VALUES ($1,$2,'Anderes',1,$3)`, [uid, MIT, EIGEN]);
-  await db.run(`INSERT INTO set_catalog (set_number,name,image_url) VALUES ($1,'Anderes','https://cdn.rebrickable.com/media/sets/katalog.jpg')
-                ON CONFLICT (set_number) DO UPDATE SET image_url=EXCLUDED.image_url`, [MIT]);
+  // Gegenstück: eine ANDERE Adresse im Katalog — sie muss unveraendert
+  // durchkommen. Vorher stand sie an der sets-Zeile ($1 = EIGEN).
+  await db.run(`INSERT INTO sets (user_id, set_number, quantity) VALUES ($1,$2,1)`, [uid, MIT]);
+  await db.run(`INSERT INTO set_catalog (set_number,name,image_url) VALUES ($1,'Anderes',$2)
+                ON CONFLICT (set_number) DO UPDATE SET image_url=EXCLUDED.image_url`, [MIT, EIGEN]);
 
   try {
     const { getSets } = require('./helpers/sources').handlerModul(_req);

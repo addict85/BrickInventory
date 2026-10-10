@@ -96,7 +96,7 @@ test('vorhandenes Set: Erfassen meldet exists und schreibt nichts',
   await aufraeumen();
 
   const anlegen = async (besitzer, sn) => {
-    await db.run(`INSERT INTO sets (user_id,set_number,name,quantity) VALUES ($1,$2,'T',1)`, [besitzer, sn]);
+    await db.run(`INSERT INTO sets (user_id, set_number, quantity) VALUES ($1,$2,1)`, [besitzer, sn]);
     await db.run(`INSERT INTO set_acquisitions (user_id,set_number,purchase_price,condition,quantity)
                   VALUES ($1,$2,10,'N',1)`, [besitzer, sn]);
   };

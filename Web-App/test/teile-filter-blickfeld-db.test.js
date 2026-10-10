@@ -66,8 +66,8 @@ test('Farb- und Kategorienliste sehen im Haushalt denselben Bestand',
     await db.run('INSERT INTO account_links (main_user_id, sub_user_id) VALUES ($1,$2)', [haupt, kind]);
 
     // Das Set traegt die Teile — beide Listen schliessen `source='manual'` aus.
-    await db.run(`INSERT INTO sets (user_id,set_number,name,quantity) VALUES
-        ($1,'0001-1','Haupt',1), ($2,'0002-1','Kind',1)`, [haupt, kind]);
+    await db.run(`INSERT INTO sets (user_id, set_number, quantity) VALUES
+        ($1,'0001-1',1), ($2,'0002-1',1)`, [haupt, kind]);
     // Je Konto ein Teil, VERSCHIEDENE Farben: Waere die Farbe gleich, faenden
     // beide Zaehlungen zufaellig dieselbe Zahl und der Test pruefte nichts.
     await db.run(`INSERT INTO parts

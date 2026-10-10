@@ -120,8 +120,8 @@ test('Löschen und Mengenänderung gegen die Datenbank', { concurrency: 1 }, asy
                 ON CONFLICT (key) DO UPDATE SET value='EUR'`);
   await db.run(`INSERT INTO price_cache (set_number,condition,currency_code,avg_price,qty_avg_price,total_quantity)
                 VALUES ($1,'N','EUR',20,20,3)`, [SN]);
-  await db.run(`INSERT INTO sets (user_id,set_number,name,quantity,condition,purchase_price,pieces,minifigs)
-                VALUES ($1,$2,'T',1,'N',15,100,2)`, [uid, SN]);
+  await db.run(`INSERT INTO sets (user_id, set_number, quantity, condition, purchase_price)
+                VALUES ($1,$2,1,'N',15)`, [uid, SN]);
   await db.run(`INSERT INTO set_acquisitions (user_id,set_number,purchase_price,condition,quantity)
                 VALUES ($1,$2,15,'N',1)`, [uid, SN]);
   // Ein Exemplar enthält 10 Teile und 1 Minifigur.

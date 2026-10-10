@@ -59,7 +59,7 @@ test('der currency-Parameter der App übersteuert die Nutzereinstellung NICHT',
   await db.run(`INSERT INTO user_settings (user_id,key,value) VALUES ($1,'currency','CHF')
                 ON CONFLICT (user_id,key) DO UPDATE SET value='CHF'`, [uid]);
   await db.run(`DELETE FROM sets WHERE set_number=$1`, [SET]);
-  await db.run(`INSERT INTO sets (user_id,set_number,name,quantity) VALUES ($1,$2,'Testset',1)`, [uid, SET]);
+  await db.run(`INSERT INTO sets (user_id, set_number, quantity) VALUES ($1,$2,1)`, [uid, SET]);
   // Preis liegt NUR in der eingestellten Währung vor — wie im Betrieb, wo der
   // Preis-Job genau diese füllt.
   await db.run(`INSERT INTO price_cache (set_number,condition,currency_code,min_price,avg_price,max_price,qty_avg_price,total_quantity,fetched_at)

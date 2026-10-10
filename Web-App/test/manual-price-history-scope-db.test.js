@@ -79,8 +79,8 @@ test('Preisverlauf: das Hauptkonto sieht die Erfassungen des Unterkontos',
   await aufraeumen();
 
   // ── Bestand ANLEGEN, und zwar durchgehend beim UNTERKONTO ────────────────
-  await db.run(`INSERT INTO sets (user_id,set_number,name,quantity)
-                VALUES ($1,$2,'T',1)`, [subId, SN]);
+  await db.run(`INSERT INTO sets (user_id, set_number, quantity)
+                VALUES ($1,$2,1)`, [subId, SN]);
   await db.run(`INSERT INTO set_acquisitions (user_id,set_number,purchase_price,condition,quantity)
                 VALUES ($1,$2,10,'N',1)`, [subId, SN]);
   await db.run(`INSERT INTO price_cache (set_number,condition,currency_code,avg_price,total_quantity)

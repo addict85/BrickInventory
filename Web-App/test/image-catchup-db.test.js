@@ -65,8 +65,12 @@ test('der Nachlauf erzeugt fehlende Vorschauen — auch für Set-Bilder',
   await db.run(`INSERT INTO users (username,password_hash) VALUES ($1,'x')`, [USER]);
   const uid = (await db.get(`SELECT id FROM users WHERE username=$1`, [USER])).id;
   await db.run(`DELETE FROM sets WHERE set_number=$1`, [name]);
-  await db.run(`INSERT INTO sets (user_id,set_number,name,quantity,image_local)
-                VALUES ($1,$2,'Test',1,$3)`, [uid, name, `/images/sets/${name}.jpg`]);
+  await db.run(`DELETE FROM set_catalog WHERE set_number=$1`, [name]);
+  await db.run(`INSERT INTO sets (user_id, set_number, quantity) VALUES ($1,$2,1)`, [uid, name]);
+  // Der Bildpfad steht seit Migration 0033 im Katalog — und genau von dort
+  // sammelt der Nachlauf (jobs/partsCatalogEnrich.ts) die Pfade ein.
+  await db.run(`INSERT INTO set_catalog (set_number, name, image_local) VALUES ($1,'Test',$2)`,
+               [name, `/images/sets/${name}.jpg`]);
 
   try {
     const { redownloadMissingImages } = _req('jobs/partsCatalogEnrich.js');

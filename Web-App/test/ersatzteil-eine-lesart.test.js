@@ -111,7 +111,7 @@ test('die Antwort traegt einen echten Wahrheitswert', async (t) => {
 
   await db.run(`INSERT INTO users (username,password_hash) VALUES ('spare','x')`);
   const uid = (await db.get(`SELECT id FROM users WHERE username='spare'`)).id;
-  await db.run(`INSERT INTO sets (user_id,set_number,name,quantity) VALUES ($1,'75192-1','Falcon',1)`, [uid]);
+  await db.run(`INSERT INTO sets (user_id, set_number, quantity) VALUES ($1,'75192-1',1)`, [uid]);
   await db.run(`INSERT INTO parts (user_id,set_number,part_number,color_id,part_name,quantity,source,is_spare)
                 VALUES ($1,'75192-1','3001',4,'Brick',10,'set',1),
                        ($1,'75192-1','3020',0,'Plate',2,'set',0)`, [uid]);

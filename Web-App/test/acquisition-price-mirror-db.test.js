@@ -79,8 +79,8 @@ test('der geänderte Kaufpreis erreicht die Kachel — Webapp UND App',
   const aufbauen = async () => {
     await db.run(`DELETE FROM set_acquisitions WHERE set_number=$1`, [SN]);
     await db.run(`DELETE FROM sets WHERE set_number=$1`, [SN]);
-    await db.run(`INSERT INTO sets (user_id,set_number,name,quantity)
-                  VALUES ($1,$2,'Space Roller Coaster',1)`, [uid, SN]);
+    await db.run(`INSERT INTO sets (user_id, set_number, quantity)
+                  VALUES ($1,$2,1)`, [uid, SN]);
     await db.run(`INSERT INTO set_acquisitions (user_id,set_number,purchase_price,condition,quantity)
                   VALUES ($1,$2,108.00,'U',1)`, [uid, SN]);
     return (await db.get(`SELECT id FROM set_acquisitions WHERE user_id=$1 AND set_number=$2`, [uid, SN])).id;

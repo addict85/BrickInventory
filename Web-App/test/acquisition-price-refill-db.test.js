@@ -81,8 +81,8 @@ test('ein geleerter Kaufpreis wird aus dem Marktpreis gefüllt — Webapp UND Ap
   const aufbauen = async () => {
     await db.run(`DELETE FROM set_acquisitions WHERE set_number=$1`, [SN]);
     await db.run(`DELETE FROM sets WHERE set_number=$1`, [SN]);
-    await db.run(`INSERT INTO sets (user_id,set_number,name,quantity)
-                  VALUES ($1,$2,'Flatbed Truck',2)`, [subId, SN]);
+    await db.run(`INSERT INTO sets (user_id, set_number, quantity)
+                  VALUES ($1,$2,2)`, [subId, SN]);
     await db.run(`INSERT INTO set_acquisitions (user_id,set_number,purchase_price,condition,quantity,created_at)
                   VALUES ($1,$2,7.30,'U',1, NOW() - INTERVAL '1 day')`, [subId, SN]);
     await db.run(`INSERT INTO set_acquisitions (user_id,set_number,purchase_price,condition,quantity)

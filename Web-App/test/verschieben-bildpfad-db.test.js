@@ -55,7 +55,7 @@ test('ein verschobenes Set nimmt die Bildpfade aller Bestandteile mit', { concur
   const nachId = (await db.get(`SELECT id FROM users WHERE username=$1`, [NACH])).id;
 
   try {
-    await db.run(`INSERT INTO sets (user_id,set_number,name,quantity) VALUES ($1,$2,'Testset',1)`,
+    await db.run(`INSERT INTO sets (user_id, set_number, quantity) VALUES ($1,$2,1)`,
       [vonId, SN]);
     await db.run(`INSERT INTO set_acquisitions (user_id,set_number,quantity,purchase_price,condition)
                   VALUES ($1,$2,1,10,'N')`, [vonId, SN]);

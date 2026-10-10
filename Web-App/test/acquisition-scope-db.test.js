@@ -63,8 +63,8 @@ test('das Hauptkonto kann den Kaufpreis einer Unterkonto-Erfassung ändern',
 
   await db.run(`DELETE FROM sets WHERE set_number=$1`, [SET]);
   // Set UND Erfassung gehören dem Unterkonto — wie im gemeldeten Fall.
-  await db.run(`INSERT INTO sets (user_id,set_number,name,quantity)
-                VALUES ($1,$2,'F1 Truck',1)`, [subId, SET]);
+  await db.run(`INSERT INTO sets (user_id, set_number, quantity)
+                VALUES ($1,$2,1)`, [subId, SET]);
   await db.run(`INSERT INTO set_acquisitions (user_id,set_number,purchase_price,condition,quantity)
                 VALUES ($1,$2,18.20,'U',1)`, [subId, SET]);
   const acqId = (await db.get(

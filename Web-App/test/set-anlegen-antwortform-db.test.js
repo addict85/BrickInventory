@@ -110,7 +110,7 @@ test('ein neu angelegtes Set wird in beiden Routen gleich beantwortet',
   await db.run(`INSERT INTO users (username,password_hash) VALUES ($1,'x')`, [NUTZER]);
   const uid = (await db.get(`SELECT id FROM users WHERE username=$1`, [NUTZER])).id;
   await aufraeumen();
-  await db.run(`INSERT INTO sets (user_id,set_number,name,quantity) VALUES ($1,$2,'T',1)`, [uid, DA]);
+  await db.run(`INSERT INTO sets (user_id, set_number, quantity) VALUES ($1,$2,1)`, [uid, DA]);
   await db.run(`INSERT INTO set_acquisitions (user_id,set_number,purchase_price,condition,quantity)
                 VALUES ($1,$2,10,'N',1)`, [uid, DA]);
 

@@ -108,8 +108,8 @@ test('Lagerort-Vorrat gegen echte Datenbank', { concurrency: 1 }, async (t) => {
     // Marcos „man kann auch gleich neue Auswahlwerte erfassen". Ohne das
     // stünde der Ort am Set, fehlte aber in der Liste, aus der er beim
     // nächsten Mal gewählt werden soll.
-    await db.run(`INSERT INTO sets (user_id, set_number, name, quantity)
-                  VALUES ($1,'10179-1','Falcon',1)`, [U.enkel]);
+    await db.run(`INSERT INTO sets (user_id, set_number, quantity)
+                  VALUES ($1,'10179-1',1)`, [U.enkel]);
     assert.equal(await L.setzeLagerort('set', [U.enkel], ['10179-1'], 'Unterm Bett'), 1);
     assert.ok((await L.orteVon([U.enkel])).some(o => o.name === 'Unterm Bett'),
       'Der frisch getippte Ort fehlt im Vorrat');

@@ -78,11 +78,11 @@ test('Diagramm und Besitzer folgen dem Bestand', { concurrency: 1 }, async (t) =
   }
 
   // Hauptkonto: Kaufpreis gelöscht → Menge 0, keine Erfassung mehr.
-  await db.run(`INSERT INTO sets (user_id,set_number,name,quantity)
-                VALUES ($1,$2,'T',0)`, [hauptId, SN]);
+  await db.run(`INSERT INTO sets (user_id, set_number, quantity)
+                VALUES ($1,$2,0)`, [hauptId, SN]);
   // Unterkonto: ein GEBRAUCHTES Exemplar mit Kaufpreis.
-  await db.run(`INSERT INTO sets (user_id,set_number,name,quantity)
-                VALUES ($1,$2,'T',1)`, [subId, SN]);
+  await db.run(`INSERT INTO sets (user_id, set_number, quantity)
+                VALUES ($1,$2,1)`, [subId, SN]);
   await db.run(`INSERT INTO set_acquisitions (user_id,set_number,purchase_price,condition,quantity)
                 VALUES ($1,$2,3.94,'U',1)`, [subId, SN]);
 

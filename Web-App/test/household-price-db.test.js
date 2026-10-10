@@ -65,7 +65,7 @@ test('das Hauptkonto sieht Marktpreis und Verlauf eines Unterkonto-Sets',
   await db.run(`DELETE FROM sets WHERE set_number=$1`, [SET]);
   await db.run(`DELETE FROM price_history WHERE set_number=$1`, [SET]);
   // Das Set gehört dem UNTERKONTO — wie im Screenshot.
-  await db.run(`INSERT INTO sets (user_id,set_number,name,quantity) VALUES ($1,$2,'ThunderROARus',1)`, [subId, SET]);
+  await db.run(`INSERT INTO sets (user_id, set_number, quantity) VALUES ($1,$2,1)`, [subId, SET]);
   await db.run(`INSERT INTO set_acquisitions (user_id,set_number,purchase_price,condition,quantity) VALUES ($1,$2,18.20,'U',1)`, [subId, SET]);
   await db.run(`INSERT INTO price_cache (set_number,condition,currency_code,min_price,avg_price,max_price,qty_avg_price,total_quantity,fetched_at)
                 VALUES ($1,'U','CHF',15,22.50,30,23,4,NOW())
