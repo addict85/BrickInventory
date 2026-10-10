@@ -62,6 +62,13 @@ test('die Liste der verwendenden Sets folgt dem Blickfeld', async (t) => {
       ($1,'75192-1',1),
       ($1,'10305-1',1),
       ($2,'21058-1',1)`, [haupt, kind]);
+  // Der Setname steht seit Migration 0033 im Katalog; die Liste der
+  // verwendenden Sets liest ihn ueber die Sicht sets_mit_katalog.
+  await db.run(`INSERT INTO set_catalog (set_number, name) VALUES
+      ('75192-1','Millennium Falcon'),
+      ('10305-1','Lion Knights Castle'),
+      ('21058-1','Cheops-Pyramide')
+      ON CONFLICT (set_number) DO UPDATE SET name = EXCLUDED.name`);
 
   // Dasselbe Teil in drei Sets — zweimal beim Hauptkonto, einmal beim Kind.
   // Im ersten Set steht es ZWEIMAL (zwei Zeilen), damit die Summe je Set

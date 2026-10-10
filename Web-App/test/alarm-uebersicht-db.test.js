@@ -92,9 +92,19 @@ test('Preisalarm-Übersicht: eigene Alarme, mit Namen, änderbar, löschbar',
                    SET name = EXCLUDED.name, set_img_url = EXCLUDED.set_img_url`);
   // Dasselbe Set liegt ZUSÄTZLICH in meiner Sammlung — nur dann gibt es einen
   // Detaildialog, und nur dann gibt es das heruntergeladene Bild.
+  //
+  // Das BILD steht seit Migration 0033 im Katalog, nicht an der
+  // Bestandszeile. Der Unterschied, auf den dieser Test zielt, bleibt
+  // derselbe: `besitzt` kommt aus `sets` (habe ich das Set?), das Bild aus
+  // dem Katalog (gibt es eine heruntergeladene Datei?). Vorher standen beide
+  // in derselben Zeile und waren damit nicht zu trennen.
   await db.run(`INSERT INTO sets (user_id, set_number)
                 VALUES ($1,'70002-1')
                 ON CONFLICT (user_id, set_number) DO NOTHING`, [ich.id]);
+  await db.run(`INSERT INTO set_catalog (set_number, name, image_local, image_url)
+                VALUES ('70002-1','Lennox Feuerwehr','/uploads/70002-1_thumb.jpg','https://cdn.example/70002-1.jpg')
+                ON CONFLICT (set_number) DO UPDATE
+                   SET image_local = EXCLUDED.image_local, image_url = EXCLUDED.image_url`);
 
   // Signatur GELESEN, nicht geraten: (userId, setNumber, waehrung, eingabe).
   // Der erste Entwurf dieses Tests hatte sie sich zurechtgelegt und lief
@@ -111,6 +121,9 @@ test('Preisalarm-Übersicht: eigene Alarme, mit Namen, änderbar, löschbar',
   await db.run(`INSERT INTO sets (user_id, set_number)
                 VALUES ($1,'60000-1')
                 ON CONFLICT (user_id, set_number) DO NOTHING`, [kind.id]);
+  await db.run(`INSERT INTO set_catalog (set_number, name, image_local)
+                VALUES ('60000-1','Feuerwehreinsatz','/uploads/60000-1_thumb.jpg')
+                ON CONFLICT (set_number) DO UPDATE SET image_local = EXCLUDED.image_local`);
   await setzeAlarm(ich.id, '60000-1', 'CHF', { richtung: 'unter', schwelle: 40, condition: 'N' });
 
   // Dasselbe Set ZWEIMAL im Haushalt — bei mir und beim Kind. Seit die

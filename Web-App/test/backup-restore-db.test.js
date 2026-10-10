@@ -140,6 +140,14 @@ test('Sicherung und Wiederherstellung', async (t) => {
     await db.run(
       `INSERT INTO sets (user_id, set_number, quantity)
        VALUES ($1,'10214-1',2)`, [uid]);
+    // Der Name steht seit Migration 0033 im Katalog. Auch ihn muss die
+    // Sicherung zurueckbringen — und zwar aus einer ANDEREN Tabelle als die
+    // Menge. Genau das ist der Fall, an dem eine unvollstaendige Sicherung
+    // auffaellt: Ein Dump, der nur den Bestand nimmt, laesst jedes Set
+    // namenlos zurueck.
+    await db.run(
+      `INSERT INTO set_catalog (set_number, name, year) VALUES ('10214-1','Tower Bridge',2010)
+       ON CONFLICT (set_number) DO UPDATE SET name = EXCLUDED.name, year = EXCLUDED.year`);
     // Der Zustand steht seit Migration 0032 in der Erfassung. Die Sicherung
     // muss ihn von DORT zurueckbringen — sonst prueft dieser Test nach dem
     // Umbau eine Spalte, die es nicht mehr gibt, und waere stillschweigend
@@ -172,10 +180,16 @@ test('Sicherung und Wiederherstellung', async (t) => {
       `Das Zurückspielen scheiterte. psql sagt:\n${grund()}\n` +
       `pg_dump: ${fassung(pgDump)} · psql: ${fassung(psql)}`);
 
-    const s = await db.get(`SELECT set_number, name, quantity FROM sets`);
+    const s = await db.get(`SELECT set_number, quantity FROM sets`);
     assert.equal(s.set_number, '10214-1');
-    assert.equal(s.name, 'Tower Bridge');
     assert.equal(Number(s.quantity), 2);
+    // Name und Jahr aus dem Katalog — und ueber die Sicht gelesen, damit die
+    // Sicherung auch SIE zurueckgebracht haben muss. Eine Sicht ist kein
+    // Beiwerk: Ohne sie liefe die halbe Anwendung nach dem Zurueckspielen in
+    // „relation sets_mit_katalog does not exist".
+    const k = await db.get(`SELECT name, year FROM sets_mit_katalog WHERE set_number='10214-1'`);
+    assert.equal(k?.name, 'Tower Bridge');
+    assert.equal(Number(k?.year), 2010);
     const a = await db.get(`SELECT purchase_price, condition FROM set_acquisitions`);
     assert.equal(a?.condition, 'U', 'Der Zustand ging beim Wiederherstellen verloren');
     assert.equal(Number(a?.purchase_price), 44.50,
