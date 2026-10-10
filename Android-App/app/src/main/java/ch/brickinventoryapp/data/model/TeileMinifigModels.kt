@@ -437,11 +437,48 @@ data class LagerortEintrag(
 data class LagerortVorratResponse(
     val success: Boolean = false,
     val orte: List<LagerortEintrag> = emptyList(),
+    /**
+     * Der Ort, der beim Erfassen schon vorausgewaehlt ist — Marcos Stern.
+     *
+     * Er kommt MIT dem Vorrat und nicht aus einem eigenen Abruf: Wer die Liste
+     * zeichnet, braucht beides zur selben Zeit, und zwei Abrufe koennten sich
+     * ueberholen — dann stuende der Stern einen Moment am falschen Eintrag.
+     *
+     * `null` heisst: keine Vorgabe. Die Liste kann ueber mehrere Konten
+     * spannen, die Vorgabe ist immer die EIGENE (so begruendet im Server).
+     */
+    val vorgabe: LagerortEintrag? = null,
     val error: String? = null,
 )
 
 @Serializable
 data class LagerortNameRequest(val name: String)
+
+/**
+ * Den Stern setzen oder abschalten.
+ *
+ * `null` schaltet ab — das ist der zweite Druck auf denselben Stern. Ein
+ * eigener Loeschweg waere ein zweites Bedienelement fuer eine Frage mit zwei
+ * Antworten.
+ */
+@Serializable
+data class LagerortVorgabeRequest(val id: Int? = null)
+
+/**
+ * Die Antwort darauf — dasselbe Feld wie im Vorrat.
+ *
+ * Eigener Bauplan und nicht [LagerortEintragResponse]: Die Antwort heisst
+ * `vorgabe` und nicht `ort`, und zwar mit Absicht — sie sagt, was jetzt die
+ * Vorgabe IST (`null` nach dem Abschalten), nicht welcher Eintrag angefasst
+ * wurde. Ein Bauplan, dessen Feldname nicht zur Antwort passt, liest still
+ * `null` und niemand sieht den Grund.
+ */
+@Serializable
+data class LagerortVorgabeResponse(
+    val success: Boolean = false,
+    val vorgabe: LagerortEintrag? = null,
+    val error: String? = null,
+)
 
 @Serializable
 data class LagerortEintragResponse(

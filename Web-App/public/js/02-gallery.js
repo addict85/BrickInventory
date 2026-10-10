@@ -474,6 +474,9 @@ export async function loadHouseholdMembers() {
   // die gemeinsame <datalist> der Eingabefelder. Zwei Aufrufe waeren zwei
   // Staende derselben Liste.
   ladeLagerorte().catch(() => {});
+  // Die Vorgabe fuer die Erfassungsfelder (Marcos Stern) — eigener Abruf,
+  // Begruendung bei ladeLagerortVorgabe().
+  ladeLagerortVorgabe().catch(() => {});
   const html = members.map(m =>
     `<option value="${m.id}"${m.is_self ? ' selected' : ''}>${esc(m.username)}${m.is_self ? ' (ich)' : ''}</option>`
   ).join('');
@@ -518,32 +521,93 @@ export async function loadHouseholdMembers() {
  * zieht die Auswahlen danach von selbst nach, sobald der Vorrat eintrifft —
  * sie tragen data-ortauswahl.
  */
+export const ERFASSUNGS_ORTFELDER = ['add-storage', 'ap-storage', 'af-storage',
+                                     'cat-m-storage', 'mk-take-storage'];
+
+/**
+ * Der Lagerort, der beim Erfassen schon dastehen soll — Marcos Stern.
+ *
+ * „Weiter möchte ich ein Lagerort in den Einstellungen als Default setzen
+ *  können. Der soll dann bei einer Neuerfassung bereits vorausgewählt sein."
+ *
+ * Leer heisst: keine Vorgabe, die Felder stehen auf „—" wie bisher.
+ */
+let _ortVorgabe = '';
+
+/** Ein Lagerortfeld eines Erfassungswegs neu zeichnen. */
+function zeichneOrtFeld(id, wert) {
+  const slot = G(`${id}-slot`);
+  if (!slot) return;
+  slot.innerHTML = lagerortBlock(id, wert);
+  // Die sichtbare Beschriftung steht im HTML, die beiden Bedienelemente
+  // entstehen hier — ein `for=` darauf waere im Quelltext ein Verweis ins
+  // Leere (test/a11y.test.js meldet genau das, zu Recht). aria-labelledby
+  // stellt die Verbindung zur Laufzeit her, und zwar fuer BEIDE: Auswahl und
+  // Textfeld tragen denselben Namen, weil sie dasselbe Feld sind.
+  for (const el of slot.children) el.setAttribute('aria-labelledby', `${id}-label`);
+  slot.dataset.gezeichnet = '1';
+}
+
 export function zeichneLagerortFelder() {
-  for (const id of ['add-storage', 'ap-storage', 'af-storage',
-                    'cat-m-storage', 'mk-take-storage']) {
+  for (const id of ERFASSUNGS_ORTFELDER) {
     const slot = G(`${id}-slot`);
     // Nur einmal: Ein zweiter Durchlauf wuerfe eine bereits getroffene Wahl weg.
     if (!slot || slot.dataset.gezeichnet === '1') continue;
-    slot.innerHTML = lagerortBlock(id, '');
-    // Die sichtbare Beschriftung steht im HTML, die beiden Bedienelemente
-    // entstehen hier — ein `for=` darauf waere im Quelltext ein Verweis ins
-    // Leere (test/a11y.test.js meldet genau das, zu Recht). aria-labelledby
-    // stellt die Verbindung zur Laufzeit her, und zwar fuer BEIDE: Auswahl und
-    // Textfeld tragen denselben Namen, weil sie dasselbe Feld sind.
-    for (const el of slot.children) el.setAttribute('aria-labelledby', `${id}-label`);
-    slot.dataset.gezeichnet = '1';
+    zeichneOrtFeld(id, _ortVorgabe);
   }
 }
 
 /**
- * Das Lagerortfeld eines Erfassungswegs leeren.
+ * Die Vorgabe holen und die Erfassungsfelder darauf stellen.
+ *
+ * ── Warum ein eigener Abruf und nicht der Vorrat von ladeLagerorte() ────────
+ *
+ * ladeLagerorte() liest /v1/storage — das sind die BELEGTEN Orte mit ihrer
+ * Anzahl, und die Antwort hat keine Vorgabe (sie ist je Konto, die Uebersicht
+ * spannt das ganze Blickfeld). Die Vorgabe steht in /v1/storage/locations,
+ * also beim Vorrat, zu dem sie gehoert.
+ *
+ * Das Vorbild ist initDefaultCondition() in 01-core.js: Derselbe Gedanke —
+ * eine Einstellung aus den Einstellungen belegt die Erfassungsformulare vor —,
+ * nur fuer den Ort statt fuer den Zustand.
+ *
+ * NACHZIEHEN, weil die Felder schon stehen: Sie werden mit dem Haushalt
+ * gezeichnet, die Antwort kommt ueber das Netz. Nachgezogen wird aber nur, was
+ * noch LEER ist; wer in der Zwischenzeit selbst etwas gewaehlt hat, behaelt es.
+ */
+export async function ladeLagerortVorgabe() {
+  const d = await api('GET', '/v1/storage/locations').catch(() => null);
+  if (!d?.success) return;
+  _ortVorgabe = d.vorgabe?.name || '';
+  if (!_ortVorgabe) return;
+  for (const id of ERFASSUNGS_ORTFELDER) {
+    if (!(G(id)?.value || '').trim()) zeichneOrtFeld(id, _ortVorgabe);
+  }
+}
+
+/**
+ * Das Lagerortfeld eines Erfassungswegs auf den Ausgangszustand stellen.
  *
  * Beim Oeffnen des Formulars, wie Anzahl und Kaufpreis auch: Ein Ort von
  * vorhin sieht aus wie eine Vorgabe, ist aber ein Rest.
+ *
+ * Seit es Marcos Stern gibt, ist der Ausgangszustand nicht mehr zwangslaeufig
+ * leer: Gibt es eine Vorgabe, steht SIE wieder da. Genau das ist der Sinn der
+ * Sache — und deshalb heisst die Funktion nicht mehr „leeren", sondern stellt
+ * den Anfang wieder her.
+ *
+ * Gezeichnet statt gesetzt: ortOptionen() legt fuer einen Ort, den der Vorrat
+ * noch nicht kennt (die Liste kommt ueber das Netz), eine eigene Option an.
+ * Setzte man nur `sel.value`, stuende die Auswahl auf „—", waehrend im
+ * Textfeld der Ort steht — ein Feld mit zwei Aussagen.
  */
 export function leereLagerortFeld(id) {
+  if (G(`${id}-slot`)) { zeichneOrtFeld(id, _ortVorgabe); return; }
+  // Ohne Slot gibt es das zusammengesetzte Feld nicht; dann bleibt es beim
+  // alten Weg. Heute hat jeder der fuenf Erfassungswege einen (public/
+  // index.html), aber ein Formular ohne Slot soll hier nicht abstuerzen.
   const feld = G(id), sel = G(`${id}-sel`);
-  if (feld) { feld.value = ''; feld.style.display = 'none'; }
+  if (feld) { feld.value = _ortVorgabe; feld.style.display = 'none'; }
   if (sel) sel.selectedIndex = 0;
 }
 

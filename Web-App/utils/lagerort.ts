@@ -39,6 +39,11 @@ import * as db from '../db/database';
 import { asIds } from './household';
 import type { BlickfeldEingabe } from './household';
 import { fehlerWerfen } from './fehlerTexte';
+// Statisch und nicht als dynamischer Import: Einen Kreis gibt es nicht
+// (settings.ts kennt nur db und httpError), und `await import('./settings')`
+// verlangt unter moduleResolution node16 die Dateiendung — eine Schreibweise,
+// die im Baum sonst nirgends steht.
+import { setUserSetting } from './settings';
 
 /**
  * Wie lang ein Lagerortname höchstens sein darf.
@@ -302,4 +307,97 @@ export async function lagerorte(blickfeld: BlickfeldEingabe) {
     teile:   parseInt(String(r.teile))   || 0,
     figuren: parseInt(String(r.figuren)) || 0,
   }));
+}
+
+/**
+ * ═══════════════════════════════════════════════════════════════════════════
+ * Die VORGABE — welcher Ort beim Erfassen schon dasteht
+ * ═══════════════════════════════════════════════════════════════════════════
+ *
+ * Marcos Vorgabe: „Weiter möchte ich ein Lagerort in den Einstellungen als
+ * Default setzen können. Der soll dann bei einer Neuerfassung bereits
+ * vorausgewählt sein. Ich stelle mir das mit einem Sternicon vor."
+ *
+ * ── Warum die ID gespeichert wird und nicht der Name ────────────────────────
+ *
+ * Überall sonst in dieser Datei ist der NAME die Zuordnung (siehe die
+ * Begründung oben: eine Fremdschlüssel-ID hätte jede bestehende Zeile
+ * umschreiben müssen). Für die Vorgabe ist es umgekehrt, und zwar aus einem
+ * nachprüfbaren Grund: Sie ist genau EIN Verweis, und sie muss zwei Ereignisse
+ * überleben, die der Name nicht übersteht.
+ *
+ *   Umbenennen  Mit dem Namen müsste [benenneOrtUm] die Vorgabe mitziehen —
+ *               eine dritte Stelle, die beim Umbenennen stimmen muss. Mit der
+ *               ID passiert nichts, weil sich nichts ändert.
+ *   Löschen     Mit dem Namen bliebe eine Vorgabe stehen, die auf einen Ort
+ *               zeigt, den es nicht mehr gibt. Beim Erfassen stünde dann ein
+ *               Ort da, den die Auswahlliste nicht kennt — genau die Falle,
+ *               die Migration 0020 beschreibt. Mit der ID findet [vorgabeVon]
+ *               keine Zeile mehr und liefert null: die Vorgabe heilt sich
+ *               selbst.
+ *
+ * Deshalb braucht weder [benenneOrtUm] noch [loescheOrt] eine Zeile für die
+ * Vorgabe. Das ist der ganze Gewinn — nachgewiesen in
+ * test/lagerort-vorgabe-db.test.js, das beide Ereignisse durchspielt.
+ *
+ * ── Warum user_settings und keine eigene Spalte ─────────────────────────────
+ *
+ * `user_settings` ist die Schlüssel-Wert-Tabelle für genau solche
+ * Einzelwerte — Währung, Erfassungs-Zustand und Sprache stehen dort. Eine
+ * Spalte `is_default` an storage_locations bräuchte eine Migration UND einen
+ * partiellen Eindeutigkeitsindex, damit nicht zwei Orte gleichzeitig Vorgabe
+ * sind. Ein einzelner Wert in einer Tabelle, die es schon gibt, kann nicht
+ * zweimal dastehen.
+ */
+export const VORGABE_SCHLUESSEL = 'default_storage_id';
+
+/**
+ * Die Vorgabe EINES Kontos — oder null.
+ *
+ * Gelesen wird über einen JOIN auf den Vorrat, nicht nur die Zahl aus den
+ * Einstellungen: Eine Vorgabe, deren Ort gelöscht wurde, ist keine Vorgabe.
+ * Und `user_id = $1` stellt sicher, dass eine fremde ID in den Einstellungen
+ * (durch einen Import, durch einen Fehler) nicht den Ort eines anderen Kontos
+ * zurückgibt.
+ */
+export async function vorgabeVon(userId: number): Promise<Lagerort | null> {
+  const row = await db.get(
+    `SELECT l.id, l.user_id, l.name
+       FROM user_settings e
+       JOIN storage_locations l
+         ON l.id = NULLIF(btrim(e.value), '')::int AND l.user_id = e.user_id
+      WHERE e.user_id = $1 AND e.key = $2`, [userId, VORGABE_SCHLUESSEL])
+    .catch(() => null);
+  if (!row) return null;
+  return { id: parseInt(String(row.id)), user_id: parseInt(String(row.user_id)),
+           name: row.name };
+}
+
+/**
+ * Die Vorgabe setzen oder abschalten.
+ *
+ * `null` löscht sie — das ist der zweite Druck auf denselben Stern. Ein Ort,
+ * der dem Konto nicht gehört, wird abgelehnt und nicht stillschweigend
+ * ignoriert: Der Stern stünde danach am falschen Eintrag, und niemand käme auf
+ * den Grund.
+ */
+export async function setzeVorgabe(userId: number, id: number | null): Promise<Lagerort | null> {
+  if (id === null) {
+    await db.run('DELETE FROM user_settings WHERE user_id = $1 AND key = $2',
+                 [userId, VORGABE_SCHLUESSEL]);
+    return null;
+  }
+  const ort = await db.get(
+    'SELECT id, user_id, name FROM storage_locations WHERE id = $1 AND user_id = $2',
+    [id, userId]);
+  if (!ort) fehlerWerfen('lagerort_unbekannt', 404);
+  // Geschrieben wird ueber setUserSetting() und NICHT mit einer eigenen
+  // Anweisung: Die erste Fassung hatte das INSERT … ON CONFLICT hier stehen,
+  // mit der Begruendung, ein Import von settings.ts koenne einen Kreis
+  // schaffen. Beides war falsch — einen Kreis gibt es nicht (settings.ts
+  // kennt diese Datei nicht), und test/sql-kerne.test.js hat die Kopie
+  // gemeldet: „keine SQL-Anweisung steht in mehr als einer Datei". Zu Recht,
+  // denn der Zugriff auf user_settings gehoert dorthin, wo er schon steht.
+  await setUserSetting(userId, VORGABE_SCHLUESSEL, String(id));
+  return { id: parseInt(String(ort.id)), user_id: userId, name: ort.name };
 }

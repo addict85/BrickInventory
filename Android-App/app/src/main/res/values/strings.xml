@@ -175,6 +175,9 @@
     <string name="storage_new">New storage location</string>
     <string name="storage_add">Add</string>
     <string name="storage_empty">No storage locations yet.</string>
+    <string name="storage_default_hint">The star marks the storage location that is preselected when adding items. Tap again to switch it off.</string>
+    <string name="storage_default_set">Set as default when adding</string>
+    <string name="storage_default_is">Default when adding — tap to switch off</string>
     <string name="storage_delete">Delete storage location</string>
     <string name="detail_storage">Storage</string>
     <string name="detail_alert">Price alert</string>

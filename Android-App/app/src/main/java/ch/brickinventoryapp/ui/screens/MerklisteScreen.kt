@@ -270,13 +270,16 @@ internal fun UebernahmeDialog(
     merkposten: Merkposten,
     /** Vorrat an Lagerorten — leer heisst: es gibt noch keine, dann wird getippt. */
     lagerorte: List<String> = emptyList(),
+    /** Der vorausgewaehlte Lagerort — Marcos Stern. Leer heisst: keine Vorgabe. */
+    lagerortVorgabe: String = "",
     onDismiss: () -> Unit,
     onUebernehmen: (Int, String, String, String?) -> Unit,
 ) {
     var anzahl   by rememberSaveable { mutableStateOf("1") }
     var preis    by rememberSaveable { mutableStateOf("") }
     var zustand  by rememberSaveable { mutableStateOf(merkposten.condition) }
-    var lagerort by rememberSaveable { mutableStateOf("") }
+    // Schluessel ist die Vorgabe — dieselbe Begruendung wie im Katalog-Dialog.
+    var lagerort by rememberSaveable(lagerortVorgabe) { mutableStateOf(lagerortVorgabe) }
 
     AlertDialog(
         onDismissRequest = onDismiss,

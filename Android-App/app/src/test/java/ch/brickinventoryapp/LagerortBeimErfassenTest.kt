@@ -69,6 +69,60 @@ class LagerortBeimErfassenTest {
         }
     }
 
+    /**
+     * Jeder Erfassungsweg STARTET bei der Vorgabe — Marcos Stern.
+     *
+     * „Weiter moechte ich ein Lagerort in den Einstellungen als Default setzen
+     *  koennen. Der soll dann bei einer Neuerfassung bereits vorausgewaehlt
+     *  sein."
+     *
+     * ── Warum dieselbe Liste ein zweites Mal ────────────────────────────────
+     *
+     * Die Pruefung darueber zaehlt ab, welcher Weg ein Lagerortfeld HAT. Diese
+     * hier zaehlt ab, welcher es VORBELEGT — zwei verschiedene Aussagen ueber
+     * dieselben Wege. Und es ist genau das Muster, an dem dieser Baum schon
+     * mehrfach haengengeblieben ist: Ein Feld wird an einem Weg eingebaut, die
+     * anderen bleiben zurueck (Eigentuemer: Nachtrag 44 und 66, Lagerort: fuenf
+     * Wege auf einmal).
+     *
+     * Geprueft wird der ZUSTAND und nicht das Feld: Die Vorbelegung steht in
+     * der Zeile, die ihn anlegt. Sechs Halter und nicht fuenf Wege, weil die
+     * manuelle Erfassung zwei hat — Teil und Minifigur teilen das Feld
+     * (ErfassungsFelder), halten den Zustand aber je selbst.
+     */
+    @Test
+    fun `jeder Erfassungsweg startet beim vorgegebenen Lagerort`() {
+        val halter = listOf(
+            Triple("ui/screens/GalleryScreen.kt", "fun AddSetDialog(", "Set hinzufuegen (Galerie)"),
+            Triple("ui/screens/CatalogDetailScreen.kt", "fun CatalogAddDialog(", "Katalog → Galerie"),
+            Triple("ui/screens/MerklisteScreen.kt", "fun UebernahmeDialog(", "Merkliste → Galerie"),
+            Triple("ui/screens/PartsDialogs.kt", "fun AddPartDialog(", "manuelles Teil"),
+            Triple("ui/screens/MinifigsScreen.kt", "fun AddMinifigDialog(", "manuelle Minifigur"),
+            Triple("ui/dialogs/BarcodeResultDialog.kt", "fun BarcodeResultDialog(", "Barcode"),
+        )
+        check(halter.size >= 6) { "Nur ${halter.size} Halter — Liste unvollstaendig?" }
+        val leer = mutableListOf<String>()
+        for ((datei, kopf, name) in halter) {
+            val quelle = Quellen.ohneKommentare(Quellen.lies(datei))
+            val koerper = rumpf(quelle, kopf)
+            // Die Zeile, die den Lagerort-Zustand anlegt. `lagerort` trifft auch
+            // `barcodeLagerort` — gewollt, es ist dieselbe Sache.
+            val zeile = koerper.lines().firstOrNull {
+                Regex("""var \w*[Ll]agerort\b.*mutableStateOf\(""").containsMatchIn(it)
+            }
+            if (zeile == null) { leer += "$name (kein Zustand gefunden)"; continue }
+            // `mutableStateOf("")` ist der alte Stand: Start bei leer. Eine
+            // Vorgabe erkennt man daran, dass dort ein NAME steht.
+            if (Regex("""mutableStateOf\(\s*""\s*\)""").containsMatchIn(zeile)) leer += name
+            else if (!zeile.contains("orgabe")) leer += "$name (kein Vorgabe-Wert)"
+        }
+        assert(leer.isEmpty()) {
+            "Diese Erfassungswege starten nicht bei der Vorgabe: " +
+                "${leer.joinToString(", ")} — Marcos Stern wirkt dort nicht, und " +
+                "man muesste den Ort jedes Mal von Hand waehlen."
+        }
+    }
+
     @Test
     fun `der Merkposten-Dialog fragt nach dem Konto`() {
         // Der Server nahm owner_user_id seit jeher an (routes/api_v1/wanted.ts),

@@ -343,7 +343,8 @@ fun GalleryScreen(
                 showAddDialog = false; onAddSet(sn, qty, price, cond, owner, ort) },
             householdMembers = householdMembers,
             defaultCondition = defaultCondition,
-            lagerorte = lagerortVorrat
+            lagerorte = lagerortVorrat,
+            vorgabe = lagerState.vorgabe?.name ?: "",
         )
     }
 }
@@ -600,10 +601,21 @@ fun AddSetDialog(
     householdMembers: List<ch.brickinventoryapp.data.model.HouseholdMember> = emptyList(),
     /** Vorrat an Lagerorten — leer heisst: es gibt noch keine, dann wird getippt. */
     lagerorte: List<String> = emptyList(),
+    /**
+     * Der Ort, der schon dastehen soll — Marcos Stern aus den Einstellungen.
+     *
+     * Leer heisst: keine Vorgabe, das Feld bleibt leer wie bisher.
+     */
+    vorgabe: String = "",
 ) {
     var setNumber by rememberSaveable { mutableStateOf("") }
     var quantity  by rememberSaveable { mutableStateOf("1") }
-    var lagerort  by rememberSaveable { mutableStateOf("") }
+    // Schluessel ist die Vorgabe: Kommt sie erst mit der Antwort des Servers
+    // (der Dialog kann schneller offen sein als der Abruf), soll das Feld sie
+    // uebernehmen. Hat jemand in der Zwischenzeit selbst etwas eingetragen,
+    // bleibt es stehen — `rememberSaveable(vorgabe)` setzt nur neu, wenn sich
+    // die Vorgabe aendert, und das tut sie genau einmal.
+    var lagerort  by rememberSaveable(vorgabe) { mutableStateOf(vorgabe) }
 
     // ── Der Cursor steht sofort im Set-Feld (Nachtrag 113) ────────────────────
     //

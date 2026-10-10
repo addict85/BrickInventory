@@ -155,6 +155,7 @@ fun NavGraphBuilder.catalogGraph(
                 // Der VORRAT an Lagerorten, nicht die belegten Orte: Beim
                 // Erfassen soll auch ein leeres Regal zur Wahl stehen.
                 lagerorte = lagerZustand.eigene.map { it.name },
+                lagerortVorgabe = lagerZustand.vorgabe?.name ?: "",
                 onAddToGallery = { sn, qty, price, cond, owner, ort ->
                     // Das Aufnehmen gehoert der Galerie, das „besitze ich"
                     // dem Katalog. Frueher tat addCatalogSetToGallery() beides

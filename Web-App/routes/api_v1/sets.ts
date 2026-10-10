@@ -14,7 +14,8 @@ import { istErsatzteil, ersatzteilSql } from '../../utils/validate';
 import { householdMembers, resolveWriteTarget } from '../../utils/household';
 import { moveSetBetweenAccounts } from '../../utils/setMove';
 import { normalisiereLagerort, setzeLagerort, lagerorte,
-         orteVon, legeOrtAn, benenneOrtUm, loescheOrt } from '../../utils/lagerort';
+         orteVon, legeOrtAn, benenneOrtUm, loescheOrt,
+         vorgabeVon, setzeVorgabe } from '../../utils/lagerort';
 import { alarmeFuer, alleAlarme, ausgeloesteSeit, loescheAlarm, setzeAlarm } from '../../utils/preisalarm';
 import { istVermutung } from '../../utils/barcodeQuelle';
 import { setnummerKandidaten } from '../../utils/produkttitel';
@@ -431,7 +432,35 @@ async function lagerKonten(req: AuthedRequest, schreiben: boolean): Promise<numb
 
 router.get('/storage/locations', requireToken, async (req: AuthedRequest, res) => {
   try {
-    res.json({ success: true, orte: await orteVon(await lagerKonten(req, false)) });
+    // Die Liste kann ueber mehrere Konten spannen (der Grossvater sieht beim
+    // Set des Enkels dessen Orte, siehe Migration 0020) — die VORGABE ist
+    // dagegen immer die des Anfragenden. Ein geerbter Stern am Regal eines
+    // anderen Haushaltsmitglieds waere eine Aussage ueber dessen Wohnung.
+    const [orte, vorgabe] = await Promise.all([
+      orteVon(await lagerKonten(req, false)),
+      vorgabeVon(req.apiUser.user_id),
+    ]);
+    res.json({ success: true, orte, vorgabe });
+  } catch (e) { handleRouteError(res, e, undefined, req); }
+});
+
+/**
+ * PUT /api/v1/storage/default — der Stern.
+ *
+ * `{ id: <Zahl> }` setzt die Vorgabe, `{ id: null }` schaltet sie ab; das ist
+ * der zweite Druck auf denselben Stern. EIN Endpunkt fuer beides, weil es eine
+ * Einstellung mit genau einem Wert ist — ein eigener Loeschweg waere eine
+ * zweite Stelle fuer denselben Gedanken.
+ */
+router.put('/storage/default', requireToken, async (req: AuthedRequest, res) => {
+  try {
+    const roh = req.body?.id;
+    // `null` UND `undefined` heissen abschalten: Ein Client, der das Feld
+    // weglaesst, meint nichts anderes als einer, der null schickt. Eine Zahl,
+    // die keine ist, waere dagegen ein Fehler im Aufruf und keine Absicht.
+    const id = (roh === null || roh === undefined) ? null : parseInt(String(roh), 10);
+    if (id !== null && !Number.isFinite(id)) return sendeFehler(req, res, 400, 'lagerort_unbekannt');
+    res.json({ success: true, vorgabe: await setzeVorgabe(req.apiUser.user_id, id) });
   } catch (e) { handleRouteError(res, e, undefined, req); }
 });
 

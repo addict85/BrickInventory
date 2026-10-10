@@ -141,6 +141,10 @@ class TeileRepository @Inject constructor(
     suspend fun loescheLagerort(id: Int): Result<LagerortResponse> =
         safeCall { api.loescheLagerort(id) }
 
+    /** Marcos Stern — `null` schaltet die Vorgabe ab. */
+    suspend fun setzeLagerortVorgabe(id: Int?): Result<LagerortVorgabeResponse> =
+        safeCall { api.setzeLagerortVorgabe(LagerortVorgabeRequest(id)) }
+
     // ── In welchen Sets steckt dieses Teil / diese Figur? ────────────────────
     //
     // Fuer den Detail-Dialog automatisch erfasster Teile und Figuren. BEWUSST

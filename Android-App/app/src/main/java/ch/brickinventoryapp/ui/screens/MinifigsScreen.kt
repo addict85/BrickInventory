@@ -227,6 +227,7 @@ fun MinifigsScreen(
             defaultCondition = defaultCondition,
             onDismiss = { showAddDialog = false },
             lagerorte = lagerortVorrat,
+            lagerortVorgabe = lagerState.vorgabe?.name ?: "",
             onAdd = { num, blNum, qty, unitPrice, cond, owner, ort ->
                 showAddDialog = false
                 onAddMinifig(num, blNum, qty, unitPrice, cond, owner, ort)
@@ -277,13 +278,17 @@ fun AddMinifigDialog(
     householdMembers: List<ch.brickinventoryapp.data.model.HouseholdMember> = emptyList(),
     /** Vorrat an Lagerorten — leer heisst: es gibt noch keine, dann wird getippt. */
     lagerorte: List<String> = emptyList(),
+    /** Der vorausgewaehlte Lagerort — Marcos Stern. Leer heisst: keine Vorgabe. */
+    lagerortVorgabe: String = "",
 ) {
     var figNumber  by rememberSaveable { mutableStateOf("") }
     var blFigNumber by rememberSaveable { mutableStateOf("") }
     var quantity   by rememberSaveable { mutableStateOf("1") }
     var unitPrice  by rememberSaveable { mutableStateOf("") }
     var condition  by rememberSaveable { mutableStateOf(defaultCondition) }
-    var lagerort   by rememberSaveable { mutableStateOf("") }
+    // Schluessel ist die Vorgabe — dieselbe Begruendung wie im Galerie-Dialog:
+    // Sie kommt ueber das Netz und kann nach dem Oeffnen eintreffen.
+    var lagerort   by rememberSaveable(lagerortVorgabe) { mutableStateOf(lagerortVorgabe) }
     // Vorbelegt mit dem eigenen Konto: Wer nichts wählt, erfasst für sich —
     // dasselbe Verhalten wie vor der Haushaltssicht.
     var owner by remember(householdMembers) {
