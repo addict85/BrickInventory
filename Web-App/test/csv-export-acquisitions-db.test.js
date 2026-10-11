@@ -42,7 +42,7 @@ process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:t
 process.env.WEB_WORKERS = '1';
 
 const _req = require('./helpers/sources').buildAndRequire();
-const { haeltSet } = require('./helpers/bestand');
+const { haeltFigur, haeltSet, haeltTeil } = require('./helpers/bestand');
 const db = _req('db/database.js');
 
 // Ohne das Schliessen des Verbindungspools endet der Testprozess nie: Der Pool
@@ -241,9 +241,8 @@ test('Minifiguren-Export: dieselbe Regel, dieselbe eine Abfrage',
          ON CONFLICT (fig_number) DO NOTHING`, [nr, name]);
       // fig-a bekommt KEINE Erfassung — das ist der Fall, den der Export
       // unterscheiden muss. Die Erfassung fuer fig-b legt der Test darunter an.
-      await db.run(
-        `INSERT INTO minifigs (user_id, fig_number, quantity, source)
-         VALUES ($1,$2,$3,'manual')`, [uid, nr, menge]);
+      // Menge 0: fig-b bekommt ihre Erfassung darunter, fig-a bewusst keine.
+      await haeltFigur(db, uid, nr, { menge: 0 });
     }
     await db.run(
       `INSERT INTO minifig_acquisitions (user_id, fig_number, quantity, unit_price, condition)
@@ -258,7 +257,12 @@ test('Minifiguren-Export: dieselbe Regel, dieselbe eine Abfrage',
     assert.equal(r.length, 2, `2 Zeilen erwartet, bekommen ${r.length}:\n${csv}`);
 
     const a = r.find(x => x.fig_number === 'fig-a');
-    assert.equal(a.quantity, '2', 'ohne Erfassung zaehlt die Figuren-Zeile');
+    // Hier stand '2' — die Zahl der Figuren-Zeile. Seit Migration 0038 gibt es
+    // sie dort nicht mehr: Fuer eine MANUELLE Position ist die Stueckzahl die
+    // Summe der Erfassungen, und ohne Erfassung ist das 0. Die Zeile bleibt
+    // trotzdem im Export (sie steht im Bestand) — genau diese Unterscheidung
+    // soll der Fall festhalten. Dieselbe Aenderung wie im Set-Export.
+    assert.equal(a.quantity, '0', 'ohne Erfassung ist die Stueckzahl 0 — die Zeile bleibt aber');
     assert.equal(a.acquired_at, '', 'ohne Erfassung kein Datum');
 
     const b = r.find(x => x.fig_number === 'fig-b');
@@ -313,10 +317,14 @@ test('Teile-Export: dieselbe Regel, dieselbe eine Abfrage',
     //
     // Die Preise standen hier einmal an der Teile-Zeile — siehe die
     // Begruendung im Figuren-Teil darueber (Migration 0035).
-    for (const [nr, farbe, farbname, menge] of [
-      ['3001', 4, 'Rot',  5],
-      ['3001', 1, 'Blau', 7],
-      ['3002', 0, '',     1],
+    // Keine Stueckzahl in dieser Aufstellung: Seit Migration 0038 ist die
+    // Menge einer manuellen Position die Summe ihrer Erfassungen, und die
+    // legt der Test unten gezielt an. Eine Zahl hier waere eine, die nichts
+    // bewirkt.
+    for (const [nr, farbe, farbname] of [
+      ['3001', 4, 'Rot'],
+      ['3001', 1, 'Blau'],
+      ['3002', 0, ''],
     ]) {
       // Name und Farbbezeichnung in die Kataloge (Migration 0034). Beide
       // stehen in der Exportspalte color_name bzw. in der Sortierung.
@@ -326,12 +334,9 @@ test('Teile-Export: dieselbe Regel, dieselbe eine Abfrage',
       await db.run(
         `INSERT INTO part_color_catalog (part_number, color_id, color_name) VALUES ($1,$2,$3)
          ON CONFLICT (part_number, color_id) DO NOTHING`, [nr, farbe, farbname]);
-      // Die Erfassungen legt der Test darunter gezielt an, damit die Faelle
-      // „mit" und „ohne Preis" unterscheidbar bleiben.
-      await db.run(
-        `INSERT INTO parts (user_id, part_number, color_id, quantity, source)
-         VALUES ($1,$2,$3,$4,'manual')`,
-        [uid, nr, farbe, menge]);
+      // Menge 0: die Erfassungen legt der Test darunter gezielt an, damit die
+      // Faelle „mit" und „ohne Preis" unterscheidbar bleiben.
+      await haeltTeil(db, uid, nr, { menge: 0, colorId: farbe });
     }
     await db.run(
       `INSERT INTO part_acquisitions (user_id, part_number, color_id, quantity, unit_price, condition, created_at)
@@ -353,7 +358,9 @@ test('Teile-Export: dieselbe Regel, dieselbe eine Abfrage',
     assert.equal(rot.length, 2, 'die rote Zeile hat zwei Erfassungen');
     assert.equal(blau.length, 1,
       'die blaue Zeile hat KEINE Erfassung — sie darf die der roten nicht erben');
-    assert.equal(blau[0].quantity, '7', 'ohne Erfassung zaehlt die Teile-Zeile');
+    // Wie bei fig-a oben: ohne Erfassung ist die Stueckzahl 0, die Zeile
+    // bleibt aber im Export.
+    assert.equal(blau[0].quantity, '0', 'ohne Erfassung ist die Stueckzahl 0');
     assert.equal(blau[0].acquired_at, '', 'ohne Erfassung kein Datum');
 
     assert.equal(rot[0].quantity, '2', 'die aeltere Erfassung steht oben');

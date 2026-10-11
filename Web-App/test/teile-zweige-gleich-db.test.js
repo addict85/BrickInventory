@@ -39,7 +39,7 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const path = require('node:path');
-const { haeltSet } = require('./helpers/bestand');
+const { haeltSet, haeltTeil } = require('./helpers/bestand');
 
 const ROOT = path.join(__dirname, '..');
 const DB_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
@@ -90,9 +90,8 @@ test('beide Wege der Teileliste liefern dieselben Typen', async (t) => {
     await db.run(`INSERT INTO part_color_catalog (part_number,color_id,color_name)
                   VALUES ('3001',5,'Rot'),('3002',1,'Blau')
                   ON CONFLICT (part_number,color_id) DO NOTHING`);
-    await db.run(`INSERT INTO parts (user_id, set_number, part_number, color_id, quantity, source)
-                  VALUES ($1,'Z-1','3001',5,3,'set'),
-                         ($1,'Z-1','3002',1,1,'set')`, [U]);
+    await haeltTeil(db, U, '3001', { setNumber: 'Z-1', menge: 3, colorId: 5 });
+    await haeltTeil(db, U, '3002', { setNumber: 'Z-1', menge: 1, colorId: 1 });
 
     const abfrage = { exclude_manual: '1', page: 1, page_size: 50 };
 

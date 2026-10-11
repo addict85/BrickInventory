@@ -48,6 +48,7 @@ process.env.WEB_WORKERS = '1';
 
 const _req = require('./helpers/sources').buildAndRequire();
 const db = _req('db/database.js');
+const { haeltFigur, haeltTeil } = require('./helpers/bestand');
 
 // Dieselbe Begruendung wie in test/setmenge-aus-erfassungen-db.test.js: Diese
 // Datei baut die Datenbank mehrfach von null auf.
@@ -325,14 +326,10 @@ test('die Lesewege liefern die BrickLink-Nummer aus der Zuordnung',
                 VALUES ('3070b',0,'Schwarz') ON CONFLICT (part_number,color_id) DO NOTHING`);
   await db.run(`INSERT INTO minifigs_catalog (fig_number,fig_name) VALUES ('fig-9','Testfigur')
                 ON CONFLICT (fig_number) DO NOTHING`);
-  await db.run(`INSERT INTO parts (user_id,part_number,color_id,quantity,source)
-                VALUES ($1,'3070b',0,5,'manual')`, [uid]);
-  await db.run(`INSERT INTO minifigs (user_id,fig_number,quantity,source)
-                VALUES ($1,'fig-9',2,'manual')`, [uid]);
-  await db.run(`INSERT INTO part_acquisitions (user_id,part_number,color_id,quantity,unit_price,condition)
-                VALUES ($1,'3070b',0,5,1.00,'N')`, [uid]);
-  await db.run(`INSERT INTO minifig_acquisitions (user_id,fig_number,quantity,unit_price,condition)
-                VALUES ($1,'fig-9',2,5.00,'N')`, [uid]);
+  // Bestandszeile UND Erfassung in einem — die Stückzahl steht seit
+  // Migration 0038 nur noch dort.
+  await haeltTeil(db, uid, '3070b', { menge: 5, colorId: 0, preis: 1.00 });
+  await haeltFigur(db, uid, 'fig-9', { menge: 2, preis: 5.00 });
   await db.run(`INSERT INTO bl_zuordnung (art,rb_id,bl_id) VALUES
                 ('part','3070b','3070'), ('fig','fig-9','sw9999')`);
 

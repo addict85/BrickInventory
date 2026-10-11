@@ -53,7 +53,7 @@ const _req = require('./helpers/sources').buildAndRequire();
 const { testServer } = require('./helpers/server');
 const db = _req('db/database.js');
 const express = require(path.join(ROOT, 'node_modules', 'express'));
-const { haeltSet, mengeVon } = require('./helpers/bestand');
+const { haeltFigur, haeltSet, haeltTeil, mengeVon } = require('./helpers/bestand');
 
 test('das Löschen fragt genau einmal', () => {
   const src = ohneKommentare(fs.readFileSync(path.join(ROOT, 'public/js/02-gallery.js'), 'utf8'));
@@ -142,10 +142,8 @@ test('Löschen und Mengenänderung gegen die Datenbank', { concurrency: 1 }, asy
   await db.run(`INSERT INTO set_acquisitions (user_id,set_number,purchase_price,condition,quantity)
                 VALUES ($1,$2,15,'N',1)`, [uid, SN]);
   // Ein Exemplar enthält 10 Teile und 1 Minifigur.
-  await db.run(`INSERT INTO parts (user_id, part_number, color_id, quantity, source, set_number)
-                VALUES ($1,'3001',4,10,'set',$2)`, [uid, SN]);
-  await db.run(`INSERT INTO minifigs (user_id, fig_number, quantity, source, set_number)
-                VALUES ($1,'cty0001',1,'set',$2)`, [uid, SN]);
+  await haeltTeil(db, uid, '3001', { setNumber: SN, menge: 10, colorId: 4 });
+  await haeltFigur(db, uid, 'cty0001', { setNumber: SN, menge: 1 });
 
   const { base, srv } = testServer(_req, {
     sitzung: { userId: uid },
@@ -190,14 +188,26 @@ test('Löschen und Mengenänderung gegen die Datenbank', { concurrency: 1 }, asy
       const st = await H.getStats([uid]);
       assert.equal(st.total_parts, 10, `Teile ${st.total_parts} statt 10`);
       assert.equal(st.total_minifigs, 1, `Minifiguren ${st.total_minifigs} statt 1`);
-      // Die Teile-Zeile selbst bleibt bei 10 je Exemplar — multipliziert wird
-      // beim Lesen, nicht beim Schreiben. Stünde hier 30, hätte jemand die
-      // Menge in die Tabelle geschrieben, und das nächste Ändern rechnete auf
-      // einem schon multiplizierten Wert weiter.
+      // Die Stückzahl je Exemplar bleibt bei 10 — multipliziert wird beim
+      // Lesen, nicht beim Schreiben. Seit Migration 0038 steht sie nicht mehr
+      // in `parts` (die Spalte gibt es nicht), sondern EINMAL im Katalog des
+      // Sets. Stünde dort 30, hätte jemand die Setmenge hineingerechnet, und
+      // das nächste Ändern rechnete auf einem schon multiplizierten Wert
+      // weiter — zusätzlich wäre die Zahl dann für JEDES Konto falsch, das
+      // dasselbe Set hält, denn der Katalog ist gemeinsam.
       const roh = await db.get(
-        `SELECT quantity FROM parts WHERE user_id=$1 AND set_number=$2`, [uid, SN]);
-      assert.equal(roh.quantity, 10,
-        'die gespeicherte Teilemenge muss die JE EXEMPLAR sein');
+        `SELECT quantity FROM set_parts_catalog WHERE set_number=$1 AND part_number='3001'`,
+        [SN]);
+      assert.equal(Number(roh.quantity), 10,
+        'die Katalog-Stückzahl muss die JE EXEMPLAR sein');
+      // Und in `parts` selbst gibt es keine Menge mehr, in die etwas
+      // hineingerechnet werden KÖNNTE. Ohne diese zweite Zusicherung wäre der
+      // Test auch grün, wenn die Spalte wieder auftauchte.
+      const spalte = await db.get(
+        `SELECT 1 AS da FROM information_schema.columns
+          WHERE table_name='parts' AND column_name='quantity'`);
+      assert.equal(spalte, undefined,
+        'parts.quantity ist zurück — dann gibt es die Stückzahl wieder zweimal');
     });
 
     await t.test('Löschen nimmt Teile, Minifiguren und Kaufpreise mit', async () => {

@@ -38,7 +38,7 @@ process.env.WEB_WORKERS = '1';
 
 const _req = require('./helpers/sources').buildAndRequire();
 const { testServer } = require('./helpers/server');
-const { haeltSet } = require('./helpers/bestand');
+const { haeltSet, haeltTeil } = require('./helpers/bestand');
 const db = _req('db/database.js');
 
 test.after(async () => { await db.pool.end().catch(() => {}); });
@@ -84,10 +84,8 @@ test('Farb- und Kategorienliste sehen im Haushalt denselben Bestand',
     await db.run(`INSERT INTO part_color_catalog (part_number, color_id, color_name) VALUES
         ('3001',4,'Red'), ('3002',1,'Blue')
         ON CONFLICT (part_number, color_id) DO UPDATE SET color_name = EXCLUDED.color_name`);
-    await db.run(`INSERT INTO parts
-        (user_id, set_number, part_number, color_id, quantity, source)
-        VALUES ($1,'0001-1','3001',4,2,'set'),
-               ($2,'0002-1','3002',1,5,'set')`, [haupt, kind]);
+    await haeltTeil(db, haupt, '3001', { setNumber: '0001-1', menge: 2, colorId: 4 });
+    await haeltTeil(db, kind, '3002', { setNumber: '0002-1', menge: 5, colorId: 1 });
 
     const { base } = testServer(_req, {
       sitzung: { userId: haupt },

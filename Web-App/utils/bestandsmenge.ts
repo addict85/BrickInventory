@@ -178,76 +178,150 @@ export async function mengeDesSets(
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
-// Teile und Minifiguren — noch materialisiert, aber mit EINEM Schreiber
+// Teile und Minifiguren — zwei Bedeutungen, EINE Fallunterscheidung
 // ═══════════════════════════════════════════════════════════════════════════
 //
-// `parts.quantity` und `minifigs.quantity` gibt es noch, und das ist ein
-// ZWISCHENSTAND mit Ansage: Sie gehen denselben Weg wie sets.quantity, in
-// einem eigenen Schritt. Der Grund fuer die Trennung ist nicht Bequemlichkeit,
-// sondern dass die beiden Spalten ZWEI Bedeutungen tragen:
+// ── Marcos Befund ─────────────────────────────────────────────────────────
 //
-//   source='manual'  wie viele der Mensch besitzt  → Summe der Erfassungen
-//   source='set'     wie viele im SET stecken      → set_parts_catalog.quantity
-//                                                     bzw. set_minifigs_catalog
+//   „Bei den Minifigs und parts gibt es noch immer ein quantity"
 //
-// Fuer Set-Teile gibt es keinen eigenen Kauf (gekauft wurde das Set), also auch
-// keine Erfassung. Ihre Stueckzahl ist eine KATALOGZAHL, und der eigene
+// Richtig, und es war ein ZWISCHENSTAND mit Ansage: Die Spalte trug ZWEI
+// Bedeutungen, und deshalb ging sie nicht mit sets.quantity zusammen weg.
+//
+//   source='manual'  wie viele ich besitze    → Summe der Erfassungen
+//   source='set'     wie viele im SET stecken → set_parts_catalog.quantity
+//                                                bzw. set_minifigs_catalog
+//
+// Fuer Set-Teile gibt es keinen eigenen Kauf (gekauft wurde das Set), also
+// auch keine Erfassung. Ihre Stueckzahl ist eine KATALOGZAHL, und der eigene
 // Bestand ergibt sich beim Lesen aus Katalogmenge x Set-Menge — genau Marcos
 // Formel „alle set_acquisitions-Eintraege x ihre Quantity pro Set pro User".
 //
-// Die Ableitung braucht dort also eine Fallunterscheidung UND einen Nachtrag:
-// Eine Set-Teile-Zeile ohne Katalogzeile verloere ihre Menge. Das ist ein
-// eigener Riegel und gehoert in eine eigene Migration.
+// Beide Zweige waren Abschriften, GEMESSEN: utils/partsImport.ts schrieb
+// denselben Wert in DERSELBEN Schleife nach parts.quantity und nach
+// set_parts_catalog.quantity, utils/minifigsImport.ts wortgleich fuer die
+// Figuren. Und mengeNeuRechnen() hier war fuer die manuellen Positionen der
+// einzige Schreiber — es rechnete die Summe der Erfassungen.
 //
-// Bis dahin gilt fuer die beiden Spalten dasselbe wie vorher fuer sets: EIN
-// Schreiber, und das ist diese Funktion. Die sieben Stellen, die sie
-// fortschrieben, sind weg.
+// Migration 0038 loescht die beiden Spalten. Was bleibt, ist diese
+// Fallunterscheidung, einmal hingeschrieben.
 
-/** Welcher Bestand — Sets stehen hier nicht mehr, ihre Spalte ist weg. */
+/** Welcher Bestand. Sets stehen hier nicht: ihre Spalte ist seit 0036 weg. */
 export type Bestandsart = 'part' | 'fig';
 
+/** Je Art: Tabellen, Schluessel und Spaltennamen. Einmal, als Tabelle. */
+const ART = {
+  part: {
+    bestand:   'parts',
+    erfassung: 'part_acquisitions',
+    katalog:   'set_parts_catalog',
+    nummer:    'part_number',
+    // Die Farbe gehoert in BEIDE Schluessel — und COALESCE(...,0) auf beiden
+    // Seiten: Die Erfassung fuehrt „ohne Angabe" als 0, die Bestandszeile
+    // kann dort NULL haben. Ohne das trifft der Vergleich nicht, und die
+    // Menge faellt auf den Rueckfallwert. Genau dieser Fehler stand schon
+    // einmal in mengeNeuRechnen().
+    farbe:     true,
+  },
+  fig: {
+    bestand:   'minifigs',
+    erfassung: 'minifig_acquisitions',
+    katalog:   'set_minifigs_catalog',
+    nummer:    'fig_number',
+    farbe:     false,
+  },
+} as const;
+
 /**
- * Stückzahl einer MANUELL erfassten Position neu aus den Erfassungen rechnen.
+ * Die beiden JOIN-Quellen fuer die Stückzahl einer Bestandszeile.
  *
- * @param keys Teil: [partNumber, colorId] · Figur: [figNumber]
- * @returns Die neue Stückzahl, oder null, wenn es die Bestandszeile nicht
- *          (mehr) gibt. Das ist kein Fehler: Beim Löschen der letzten
- *          Erfassung entfernt der Aufrufer die Zeile, und ein UPDATE trifft
- *          danach nichts mehr.
+ * ZWEI Quellen und kein CASE mit Unterabfragen: Die Teileliste laeuft ueber
+ * 171'000 Zeilen (die Zahl steht in utils/partsSummary.ts). Eine korrelierte
+ * Unterabfrage je Zeile waere dort 171'000 Indexzugriffe statt EINER
+ * Gruppierung ueber die Erfassungen plus einem Hash-Join auf den Katalog.
+ * Dieselbe Abwaegung wie bei mengeJoin() weiter oben, aus demselben Grund.
+ *
+ * @param bezug Alias der Bestandszeile, z. B. `p` oder `m`
+ * @param alias Grundname; angelegt werden `<alias>_e` (Erfassungen) und
+ *              `<alias>_k` (Katalog)
  */
-export async function mengeNeuRechnen(
+export function teilmengeJoin(bezug: string, art: Bestandsart, alias = 'tm'): string {
+  const a = ART[art];
+  const farbErf = a.farbe
+    ? `, COALESCE(x.color_id, 0) AS fk` : '';
+  const farbVgl = a.farbe
+    ? ` AND ${alias}_e.fk = COALESCE(${bezug}.color_id, 0)` : '';
+  const farbKat = a.farbe
+    ? ` AND ${alias}_k.color_id = COALESCE(${bezug}.color_id, 0)` : '';
+  return `LEFT JOIN (SELECT x.user_id, x.${a.nummer}${farbErf},
+                             SUM(x.quantity)::int AS menge
+                        FROM ${a.erfassung} x
+                       GROUP BY x.user_id, x.${a.nummer}${a.farbe ? ', COALESCE(x.color_id, 0)' : ''}) ${alias}_e
+               ON ${alias}_e.user_id = ${bezug}.user_id
+              AND ${alias}_e.${a.nummer} = ${bezug}.${a.nummer}${farbVgl}
+    LEFT JOIN ${a.katalog} ${alias}_k
+               ON ${alias}_k.set_number = ${bezug}.set_number
+              AND ${alias}_k.${a.nummer} = ${bezug}.${a.nummer}${farbKat}`;
+}
+
+/**
+ * Die Stückzahl der Bestandszeile — die Fallunterscheidung selbst.
+ *
+ * `COALESCE(source,'set')`: Die Spalte hat keinen NOT-NULL-Zwang, und alte
+ * Zeilen tragen dort NULL. Dieselbe Lesart steht an jeder Filterstelle im
+ * Baum (`COALESCE(p.source,'set') <> 'manual'`) — hier genauso, damit eine
+ * Zeile nicht je nach Abfrage in den anderen Zweig faellt.
+ *
+ * Der Rückfall 1 im Set-Zweig heisst „Katalogzeile fehlt, trotzdem zaehlen".
+ * Es sollte sie nicht geben (Migration 0038 traegt fuer jede Set-Zeile eine
+ * nach und prueft das danach), aber eine fehlende Zeile darf eine Liste nicht
+ * leeren.
+ *
+ * Der Rückfall 0 im manuellen Zweig heisst „keine Erfassung, also kein
+ * Bestand" — dort ist 0 die richtige Antwort und 1 waere ein erfundenes
+ * Exemplar.
+ */
+export function teilmengeAus(bezug: string, _art: Bestandsart, alias = 'tm'): string {
+  return `CASE WHEN COALESCE(${bezug}.source, 'set') = 'manual'
+               THEN COALESCE(${alias}_e.menge, 0)
+               ELSE COALESCE(${alias}_k.quantity, 1) END`;
+}
+
+/**
+ * Die Stückzahl EINER manuellen Position — als Zahl, nicht als Schnipsel.
+ *
+ * Dieselbe Aufgabe wie [mengeDesSets] fuer die Sets, und dieselbe
+ * Unterscheidung:
+ *
+ *   null → es gibt die Bestandszeile nicht (mehr)
+ *   0    → die Zeile ist da, hat aber keine Erfassung mehr → aufräumen
+ *
+ * `source='manual'` in der Bedingung: Die eine Stelle, die das braucht
+ * (raeumeLeerenBestand in routes/api_v1/acquisitions.ts), entscheidet nur
+ * ueber manuelle Positionen — ihr cleanupWhenEmpty ruft loescheManuellesTeil
+ * bzw. loescheManuelleFigur. Ein Set-Teil hat keine eigene Erfassung und
+ * duerfte hier nie als „leer" herauskommen.
+ *
+ * Hier stand mengeNeuRechnen(), das die Spalte NEU BERECHNETE und dabei
+ * schrieb. Es gibt nichts mehr zu schreiben: ein SELECT, kein UPDATE.
+ */
+export async function mengeDerPosition(
   art: Bestandsart,
   userId: number,
   keys: (string | number | null)[],
-  dbh: Schreiber = db,
+  dbh: { get: (sql: string, params?: unknown[]) => Promise<any> } = db,
 ): Promise<number | null> {
-  // RETURNING quantity: Die Aufrufer brauchen die neue Zahl fuer ihre Antwort,
-  // und ein zweites SELECT danach koennte eine andere sehen.
-  //
-  // COALESCE(…, 0) und nicht NULL: Eine Zeile ohne Erfassung ist ein Bestand
-  // von null Stueck. Die Aufrufer entfernen sie danach (cleanupWhenEmpty) —
-  // eine 0 ist der Zwischenzustand, nicht das Ergebnis.
-  const zeile = art === 'part'
-    ? await dbh.get(
-        // COALESCE(color_id, 0) auf BEIDEN Seiten: Die Erfassung fuehrt die
-        // Farbe „ohne Angabe" als 0, die Bestandszeile kann dort NULL haben.
-        // Ohne das trifft der Vergleich nicht, und die Menge blieb stehen.
-        `UPDATE parts SET quantity = COALESCE(
-           (SELECT SUM(a.quantity) FROM part_acquisitions a
-             WHERE a.user_id = $1 AND a.part_number = $2
-               AND COALESCE(a.color_id, 0) = COALESCE($3, 0)), 0)
-          WHERE user_id = $1 AND part_number = $2
-            AND COALESCE(color_id, 0) = COALESCE($3, 0)
-            AND source = 'manual'
-        RETURNING quantity`,
-        [userId, keys[0], keys[1] ?? 0])
-    : await dbh.get(
-        `UPDATE minifigs SET quantity = COALESCE(
-           (SELECT SUM(a.quantity) FROM minifig_acquisitions a
-             WHERE a.user_id = $1 AND a.fig_number = $2), 0)
-          WHERE user_id = $1 AND fig_number = $2 AND source = 'manual'
-        RETURNING quantity`,
-        [userId, keys[0]]);
-
-  return zeile ? (parseInt(String(zeile.quantity)) || 0) : null;
+  const a = ART[art];
+  const farbe = a.farbe ? ' AND COALESCE(b.color_id, 0) = COALESCE($3, 0)' : '';
+  const farbErf = a.farbe ? ' AND COALESCE(x.color_id, 0) = COALESCE($3, 0)' : '';
+  const params = a.farbe ? [userId, keys[0], keys[1] ?? 0] : [userId, keys[0]];
+  const zeile = await dbh.get(
+    `SELECT COALESCE((SELECT SUM(x.quantity) FROM ${a.erfassung} x
+                       WHERE x.user_id = $1 AND x.${a.nummer} = $2${farbErf}), 0)::int AS menge
+       FROM ${a.bestand} b
+      WHERE b.user_id = $1 AND b.${a.nummer} = $2${farbe}
+        AND b.source = 'manual'`,
+    params);
+  return zeile ? (parseInt(String(zeile.menge)) || 0) : null;
 }
+

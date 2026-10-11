@@ -52,7 +52,7 @@ process.env.WEB_WORKERS = '1';
 // Nach dist/ bauen statt in-place — siehe helpers/sources.js.
 const _req = require('./helpers/sources').buildAndRequire();
 const { routerEinhaengungen } = require('./helpers/sources');
-const { haeltSet } = require('./helpers/bestand');
+const { haeltFigur, haeltSet, haeltTeil } = require('./helpers/bestand');
 
 const db = _req('db/database.js');
 const express = require(path.join(ROOT, 'node_modules', 'express'));
@@ -121,14 +121,10 @@ async function seed() {
     .catch(() => {});
 
   // Teile + Minifiguren (je Set-Quelle und manuelle Position)
-  await db.run(
-    `INSERT INTO parts (user_id, set_number, part_number, color_id, quantity, source)
-     VALUES ($1,'75192-1','3001',4,10,'set'),
-            ($1,NULL,'3020',0,5,'manual') ON CONFLICT DO NOTHING`, [USER.id]);
-  await db.run(
-    `INSERT INTO minifigs (user_id, set_number, fig_number, quantity, source)
-     VALUES ($1,'75192-1','sw0850',1,'set'),
-            ($1,NULL,'sw0001',2,'manual') ON CONFLICT DO NOTHING`, [USER.id]);
+  await haeltTeil(db, USER.id, '3001', { setNumber: '75192-1', menge: 10, colorId: 4, egalWennDa: true });
+  await haeltTeil(db, USER.id, '3020', { menge: 0, colorId: 0, egalWennDa: true });  // Menge 0: die Erfassung dahinter traegt sie
+  await haeltFigur(db, USER.id, 'sw0850', { setNumber: '75192-1', menge: 1, egalWennDa: true });
+  await haeltFigur(db, USER.id, 'sw0001', { menge: 0, egalWennDa: true });  // Menge 0: die Erfassung dahinter traegt sie
 
   // Erfassungen für Teile/Minifiguren (eigene Acquisition-Endpunkte)
   await db.run(

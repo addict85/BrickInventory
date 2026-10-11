@@ -55,6 +55,7 @@ const { getManualParts }    = _req('utils/handlers/parts.js');
 const { getManualMinifigs } = _req('utils/handlers/minifigs.js');
 const { computePartsValuation, computeMinifigsValuation } = _req('utils/financeCalc.js');
 const bcrypt = require(path.join(ROOT, 'node_modules', 'bcryptjs'));
+const { haeltFigur, haeltTeil } = require('./helpers/bestand');
 
 const NAME = 'zustand_eine_regel';
 
@@ -92,12 +93,10 @@ test('manuelle Teile und Figuren: Liste und Bewertung sagen denselben Zustand',
                     ON CONFLICT (part_number) DO NOTHING`, [f.nr, 'Teil ' + f.nr]);
       await db.run(`INSERT INTO part_color_catalog (part_number,color_id,color_name)
                     VALUES ($1,4,'Rot') ON CONFLICT (part_number,color_id) DO NOTHING`, [f.nr]);
-      await db.run(`INSERT INTO parts (user_id,part_number,color_id,quantity,source)
-                    VALUES ($1,$2,4,1,'manual')`, [uid, f.nr]);
+      await haeltTeil(db, uid, f.nr, { menge: 0, colorId: 4 });  // Menge 0: die Erfassung dahinter traegt sie
       await db.run(`INSERT INTO minifigs_catalog (fig_number,fig_name) VALUES ($1,$2)
                     ON CONFLICT (fig_number) DO NOTHING`, ['fig' + f.nr, 'Figur ' + f.nr]);
-      await db.run(`INSERT INTO minifigs (user_id,fig_number,quantity,source)
-                    VALUES ($1,$2,1,'manual')`, [uid, 'fig' + f.nr]);
+      await haeltFigur(db, uid, 'fig' + f.nr, { menge: 0 });  // Menge 0: die Erfassung dahinter traegt sie
       // Verschiedene Tage, damit „die neueste Erfassung" eindeutig ist.
       for (const [i, z] of f.erfassungen.entries()) {
         await db.run(`INSERT INTO part_acquisitions (user_id,part_number,color_id,quantity,unit_price,condition,created_at)

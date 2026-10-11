@@ -176,8 +176,14 @@ test('kein Test liest eine Quelldatei, die es nicht gibt', () => {
   // 72 -> 73 (Migration 0037): test/bricklink-zuordnung-db.test.js baut die
   // Kette VOR 0037 auf und geht dafuer die Migrationsdateien durch —
   // dieselbe Begruendung wie eine Zeile darueber.
-  assert.ok(offen.length <= 73,
-    `${offen.length} Pfade mit variablem Segment (gemessen waren es 73):\n  ` +
+  //
+  // 73 -> 74 (Migration 0038): test/teilemengen-abgeleitet-db.test.js baut die
+  // Kette VOR 0038 auf — dieselbe Begruendung, dritter Fall. Dass diese Zahl
+  // bei jeder solchen Migration um eins steigt, ist kein Schleifen der Regel:
+  // Jeder Schritt steht hier mit Datei und Grund, und ein Zuwachs OHNE Grund
+  // faellt genau deshalb auf.
+  assert.ok(offen.length <= 74,
+    `${offen.length} Pfade mit variablem Segment (gemessen waren es 74):\n  ` +
     offen.join('\n  ') + '\nWo es geht, gehoert der Pfad ausgeschrieben — ein ' +
     'variables Segment nimmt dieser Pruefung die Sicht.');
 });

@@ -21,6 +21,7 @@ import {
 } from './preise';
 import { ladeSetErfassungen } from './abfragen';
 import { blJoin, blNummerSql } from '../blZuordnung';
+import { teilmengeJoin, teilmengeAus } from '../bestandsmenge';
 
 /**
  * Erfassungen manueller Teile bzw. Minifiguren, gruppiert nach Eintrag.
@@ -258,13 +259,17 @@ async function computeMinifigsValuation(viewerId: number, ids: Blickfeld) {
            -- Die BrickLink-Nummer aus der Zuordnung (Migration 0037); hier
            -- stand m.bl_fig_number, eine Abschrift je Konto.
            ${blNummerSql('m.fig_number', 'blzf')} AS bl_fig_number,
-           m.quantity, m.source, m.storage_id,
+           -- Die Stückzahl aus den Erfassungen (Migration 0038); hier stand
+           -- m.quantity. Nur manuelle Figuren, siehe die Bedingung unten.
+           ${teilmengeAus('m', 'fig')} AS quantity,
+           m.source, m.storage_id,
            -- unit_price, purchase_price und condition sind mit Migration 0035
            -- weg. Die Bewertung rechnet ohnehin aus den ERFASSUNGEN
            -- (loadManualAcquisitions oben) — die drei Spalten waren eine
            -- Abschrift der letzten davon.
            mc.fig_name, mc.image_url, mc.image_local
       FROM minifigs m
+      ${teilmengeJoin('m', 'fig')}
       ${blJoin('m.fig_number', 'fig', 'blzf')}
       LEFT JOIN minifigs_catalog mc ON mc.fig_number = m.fig_number
      WHERE m.user_id = ANY($1) AND m.source='manual'`, [uids]);
@@ -405,13 +410,17 @@ async function computePartsValuation(viewerId: number, ids: Blickfeld) {
            -- Die BrickLink-Nummer aus der Zuordnung (Migration 0037); hier
            -- stand p.bl_part_number, eine Abschrift je Konto.
            ${blNummerSql('p.part_number')} AS bl_part_number,
-           p.color_id, p.quantity, p.source,
+           p.color_id,
+           -- Wie bei den Figuren darueber (Migration 0038).
+           ${teilmengeAus('p', 'part')} AS quantity,
+           p.source,
            p.storage_id, p.added_at,
            -- Preise und Zustand: siehe die Figuren-Bewertung darueber
            -- (Migration 0035).
            pc.part_name, pc.category_name,
            pcc.color_name, pcc.color_hex, pcc.image_url, pcc.image_local
       FROM parts p
+      ${teilmengeJoin('p', 'part')}
       ${blJoin('p.part_number', 'part')}
       LEFT JOIN part_catalog pc ON pc.part_number = p.part_number
       LEFT JOIN part_color_catalog pcc ON pcc.part_number = p.part_number

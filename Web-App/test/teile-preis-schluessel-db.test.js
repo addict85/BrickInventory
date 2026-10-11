@@ -45,6 +45,7 @@ const _req = require('./helpers/sources').buildAndRequire();
 const db = _req('db/database.js');
 const { fetchPartPrice } = _req('utils/financeCalc.js');
 const { getPartPriceHistory } = _req('utils/priceHistory.js');
+const { haeltTeil } = require('./helpers/bestand');
 
 test('Teile-Preise stehen unter EINER Nummer', { concurrency: 1 }, async (t) => {
   try { await db.initSchema(); }
@@ -125,9 +126,7 @@ test('Teile-Preise stehen unter EINER Nummer', { concurrency: 1 }, async (t) => 
     // Was stattdessen geprüft wird, ist der Fall, der BLEIBT: ein Teil ohne
     // jede Zuordnung. Dann muss der Cache unter der REBRICKABLE-Nummer
     // getroffen werden — und nicht unter einer erfundenen.
-    await db.run(
-      `INSERT INTO parts (user_id,part_number,color_id,quantity,source)
-       VALUES ($1,$2,$3,1,'manual')`, [uid, RB2, FARBE]);
+    await haeltTeil(db, uid, RB2, { menge: 1, colorId: FARBE });
     await db.run(
       `INSERT INTO part_price_cache (part_number,color_id,condition,currency_code,avg_price,qty_avg_price,fetched_at)
        VALUES ($1,$2,'N',$3,15.00,15.00,NOW())

@@ -142,9 +142,14 @@ async function importPartsForSet(setNumber: string, userId: number) {
               // welchem Set hat. Die Beschreibung schreiben die beiden
               // Schleifen darunter EINMAL in den Katalog, statt je Konto neu
               // (Migration 0034).
+              // Ohne Menge: Die Stückzahl eines Set-Teils ist seit Migration
+              // 0038 die Katalogzahl — und die schreibt der Upsert auf
+              // set_parts_catalog weiter unten, aus demselben row[9].
+              // Vorher stand derselbe Wert an BEIDEN Stellen, in derselben
+              // Schleife; genau das war die Abschrift.
               await tx.run(
-                'INSERT INTO parts (user_id,set_number,part_number,color_id,quantity) VALUES ($1,$2,$3,$4,$5) ON CONFLICT DO NOTHING',
-                [row[0], row[1], row[2], row[5], row[9]]
+                'INSERT INTO parts (user_id,set_number,part_number,color_id) VALUES ($1,$2,$3,$4) ON CONFLICT DO NOTHING',
+                [row[0], row[1], row[2], row[5]]
               );
             }
             // ── Teilekatalog ────────────────────────────────────────────

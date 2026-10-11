@@ -70,8 +70,6 @@ router.use(requireLogin);
 // immer in einem TypeError. Der Weg läuft jetzt über getAllSetParts() in
 // clients/rebrickable.ts, das all das kann.
 
-
-
 router.get('/categories', async (req, res) => {
   // ── Blickfeld statt eigener ID (Nachtrag 134) ─────────────────────────────
   //
@@ -109,9 +107,15 @@ router.get('/categories', async (req, res) => {
              -- 0036 weg, die Menge kommt aus set_acquisitions. Die 1 bleibt
              -- die Lesart „Set nicht im Bestand, Teil trotzdem zaehlen" —
              -- dafuer steht der zweite Parameter von mengeAus().
-             SUM(p.quantity * ${mengeAus('sm', 1)}) AS total_quantity
+             -- Der ERSTE Faktor ist die Stückzahl der Bestandszeile. Sie
+             -- stand als p.quantity dort; Migration 0038 hat die Spalte
+             -- geloescht. Fuer ein Set-Teil ist es die Katalogzahl, fuer
+             -- ein manuelles die Summe der Erfassungen — die
+             -- Fallunterscheidung steht in utils/bestandsmenge.ts.
+             SUM(${teilmengeAus('p', 'part')} * ${mengeAus('sm', 1)}) AS total_quantity
       FROM parts p
       ${mengeJoin('p')}
+      ${teilmengeJoin('p', 'part')}
       LEFT JOIN part_catalog pc ON pc.part_number = p.part_number
       LEFT JOIN rb_part_categories rc
              ON rc.id = (CASE WHEN pc.category_name ~ '^[0-9]+$' THEN pc.category_name::int ELSE NULL END)
@@ -125,11 +129,7 @@ router.get('/categories', async (req, res) => {
   } catch (e) { handleRouteError(res, e, undefined, req); }
 });
 
-
-
-
 // ── Manual part lookup via Rebrickable ────────────────────────────────────────
-
 
 // ── GET /api/parts/brick-colors — brick color list for dropdown ───────────────
 
@@ -173,7 +173,6 @@ async function getPartColorList() {
     {id:28,name:'Gold',hex:'DBAC34'},
   ];
 }
-
 
 /**
  * Preis/Stk, Kaufpreis und Zustand fuer ein manuell erfasstes Teil.
@@ -298,9 +297,12 @@ async function addManualPartIntern(uid: number, rawBody: any) {
     if (info) { part_name = info.part_name; image_url = info.image_url; category_name = info.category_name; }
   }
 
-  // Upsert: if same part+color already manually added for this user, increment quantity
+  // Gibt es die Position schon? Nur die EXISTENZ wird gebraucht — die
+  // Stückzahl stand hier als zweite Spalte und ist mit Migration 0038 weg.
+  // Gelesen wurde sie ohnehin nicht mehr: Die Menge addiert sich dadurch,
+  // dass eine zweite Erfassung entsteht.
   const existing = await db.get(
-    "SELECT id, quantity FROM parts WHERE user_id=$1 AND part_number=$2 AND color_id=$3 AND source='manual'",
+    "SELECT id FROM parts WHERE user_id=$1 AND part_number=$2 AND color_id=$3 AND source='manual'",
     [uid, part_number, color_id]
   );
 
@@ -313,8 +315,8 @@ async function addManualPartIntern(uid: number, rawBody: any) {
     // das gemeldete Verhalten. Der CSV-Import macht an dieser Stelle seit
     // jeher beides.
     // Die Menge wird NICHT hier fortgeschrieben: Die Erfassung unten ist die
-    // Wahrheit, und mengeNeuRechnen() leitet die Spalte daraus ab
-    // (utils/bestandsmenge.ts). Hier stand `quantity = quantity + $1`.
+    // Wahrheit, und seit Migration 0038 gibt es gar keine Spalte mehr, die
+    // man fortschreiben koennte. Hier stand `quantity = quantity + $1`.
     const reCond = ['N','U'].includes(condition) ? condition
       : await resolvePartCondition(uid, part_number, color_id).catch(() => 'N');
     const reEntered = (unit_price !== undefined && unit_price !== null && unit_price !== '')
@@ -329,7 +331,10 @@ async function addManualPartIntern(uid: number, rawBody: any) {
     await recordAcquisitionForDay('part', uid, [part_number, color_id || 0], {
       quantity, price: ((rePrice ?? 0) > 0 ? rePrice : null), condition: reCond, createdAt: acquiredAt,
     }).catch(e => console.error('[addManualPart] Zweiterfassung:', e.message));
-    await mengeNeuRechnen('part', uid, [part_number, color_id || 0]);
+    // Kein Nachrechnen mehr: Die Stückzahl steht seit Migration 0038
+    // nicht an der Zeile. Hier stand mengeNeuRechnen(), das sie aus den
+    // Erfassungen ableitete und SCHRIEB — jetzt rechnet sie das Lesen
+    // (utils/bestandsmenge.ts, teilmengeJoin/teilmengeAus).
 
     return { action: 'updated', part_number };
   }
@@ -375,17 +380,20 @@ async function addManualPartIntern(uid: number, rawBody: any) {
   // stehen in der Erfassung, die recordAcquisitionForDay() gleich darunter
   // anlegt. effectiveUnitPrice/effectivePurchasePrice werden dort ueber
   // erfassungsPreis verwendet.
-  // Menge 0: Sie entsteht aus der Erfassung, die recordAcquisitionForDay()
-  // weiter unten anlegt (utils/bestandsmenge.ts).
+  // Ohne Menge: Sie steht seit Migration 0038 nicht an der Zeile. Fuer ein
+  // manuelles Teil ist sie die Summe der Erfassungen, und die erste legt
+  // recordAcquisitionForDay() gleich darunter an.
   await db.run(`
-    INSERT INTO parts (user_id, set_number, part_number, color_id, quantity, source)
-    VALUES ($1, NULL, $2, $3, 0, 'manual') ON CONFLICT DO NOTHING`,
+    INSERT INTO parts (user_id, set_number, part_number, color_id, source)
+    VALUES ($1, NULL, $2, $3, 'manual') ON CONFLICT DO NOTHING`,
     [uid, part_number, color_id]
   );
 
   // Gibt es das Teil schon, hat das INSERT oben nichts getan (ON CONFLICT DO
-  // NOTHING). Dann die Menge addieren — eine zweite Erfassung ist ein Zugang,
-  // kein Fehler. Der CSV-Import macht das seit jeher so.
+  // NOTHING) — und das genuegt: Eine zweite Erfassung ist ein Zugang, kein
+  // Fehler, und sie addiert sich von selbst, weil die Stückzahl die SUMME der
+  // Erfassungen ist (Migration 0038). Hier stand dafuer ein eigenes
+  // `UPDATE parts SET quantity = quantity + $1`.
   // Erfassung anlegen — analog zu Sets (recordAcquisition in routes/sets.ts).
   //
   // Vorher entstand beim manuellen Anlegen KEINE Zeile in part_acquisitions:
@@ -396,7 +404,6 @@ async function addManualPartIntern(uid: number, rawBody: any) {
     quantity, price: erfassungsPreis,
     condition: effectiveCondition, createdAt: acquiredAt,
   }).catch(e => console.error('[addManualPart] Erfassung:', e.message));
-  await mengeNeuRechnen('part', uid, [part_number, color_id || 0]);
 
   // `price_from_condition` sagt der Oberflaeche, dass der uebernommene
   // Marktpreis aus dem ANDEREN Zustand stammt (Nachtrag 167, Marcos
@@ -483,7 +490,6 @@ async function updateManualPart(uid: number, partNumber: string, colorId: number
         }
       }
     }
-    await mengeNeuRechnen('part', uid, [partNumber, colorId]);
   }
   if (body.unit_price !== undefined) {
     // Die Regel („leer heisst Marktpreis", Zustand gestaffelt) steht in
@@ -545,8 +551,7 @@ import { csvEmpfang } from '../utils/dateiEmpfang';
 import { sendeFehler } from '../utils/fehlerTexte';
 import { normalisiereLagerort, setzeLagerort } from '../utils/lagerort';
 import { merkeTeil, merkeTeilFarbe } from '../utils/katalogPflege';
-import { mengeNeuRechnen, mengeJoin, mengeAus } from '../utils/bestandsmenge';
-
+import { mengeJoin, mengeAus, teilmengeJoin, teilmengeAus } from '../utils/bestandsmenge';
 
 router.post('/import/csv', csvEmpfang.single('file'), async (req: LoggedInRequest, res) => {
   if (!req.file) return sendeFehler(req, res, 400, 'keine_datei');
@@ -606,7 +611,6 @@ router.post('/import/csv', csvEmpfang.single('file'), async (req: LoggedInReques
             { quantity: qty, price: erfassungsPreis,
               condition: csvCondition||'N', createdAt: acqDate }
           ).catch(logAndContinue(`teile:import ${partNumber}/${colorId} (aufgestockt)`));
-          await mengeNeuRechnen('part', uid, [partNumber, colorId]);
           updated++;
           results.push({ part_number: partNumber, action: 'updated' });
         } else {
@@ -619,9 +623,9 @@ router.post('/import/csv', csvEmpfang.single('file'), async (req: LoggedInReques
           await merkeTeilFarbe(partNumber, colorId, colorName, colorHex, imageUrl);
           // Preis und Zustand in die Erfassung, nicht an die Bestandszeile
           // (Migration 0035) — siehe addManualPart.
-          // Menge 0 — siehe addManualPart.
-          await db.run(`INSERT INTO parts (user_id, set_number, part_number, color_id, quantity, source)
-            VALUES ($1, NULL, $2, $3, 0, 'manual') ON CONFLICT DO NOTHING`,
+          // Ohne Menge — siehe addManualPart (Migration 0038).
+          await db.run(`INSERT INTO parts (user_id, set_number, part_number, color_id, source)
+            VALUES ($1, NULL, $2, $3, 'manual') ON CONFLICT DO NOTHING`,
             [uid, partNumber, colorId]);
           await recordAcquisitionForDay('part', uid, [partNumber, colorId],
             // > 0 wie beim Anlegen von Hand: Die 0 ist ein Anzeigewert fuer
@@ -629,7 +633,6 @@ router.post('/import/csv', csvEmpfang.single('file'), async (req: LoggedInReques
             { quantity: qty, price: erfassungsPreis,
               condition: csvCondition||'N', createdAt: acqDate }
           ).catch(logAndContinue(`teile:import ${partNumber}/${colorId} (neu)`));
-          await mengeNeuRechnen('part', uid, [partNumber, colorId]);
           added++;
           results.push({ part_number: partNumber, action: 'added' });
         }
@@ -671,7 +674,12 @@ router.post('/import/csv', csvEmpfang.single('file'), async (req: LoggedInReques
 // Export soll an einer unerwarteten Lage nicht ganz ausfallen.
 const PARTS_CSV_SQL = `
   SELECT p.part_number,
-         COALESCE(a.quantity, p.quantity) AS quantity,
+         -- Die Menge der ERFASSUNG, ohne Rueckfall auf die Zeile: Migration
+         -- 0038 hat p.quantity geloescht, und dieser Export liefert eine
+         -- Zeile JE ERFASSUNG (source='manual' unten). Ohne Erfassung gibt
+         -- es keine Zeile und damit keine Menge — 0 statt leer, dieselbe
+         -- Lesart wie im Sets-Export (utils/setService.ts).
+         COALESCE(a.quantity, 0) AS quantity,
          COALESCE(p.color_id, 0) AS color_id,
          COALESCE(pcc.color_name,'') AS color_name,
          a.unit_price,
@@ -748,8 +756,5 @@ async function getPartAcquisitions(uid: number[], partNumber: string, colorId: s
     [uid, partNumber, parseInt(String(colorId)) || 0]
   );
 }
-
-
-
 
 export = Object.assign(router, { fetchMissingBlIds, importPartsForSet, getCurrentPartMarketPrice, addManualPart, updateManualPart, lookupPart, getPartColorList, buildPartsCsv, getPartAcquisitions });

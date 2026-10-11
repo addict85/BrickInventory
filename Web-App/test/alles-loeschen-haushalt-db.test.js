@@ -40,7 +40,7 @@ process.env.WEB_WORKERS = '1';
 
 const _req = require('./helpers/sources').buildAndRequire();
 const { testServer } = require('./helpers/server');
-const { haeltSet } = require('./helpers/bestand');
+const { haeltFigur, haeltSet, haeltTeil } = require('./helpers/bestand');
 const db = _req('db/database.js');
 
 async function erreichbar() {
@@ -57,6 +57,22 @@ test('Alles-Loeschen fasst die verknuepften Konten nicht an', async (t) => {
   await db.run('DROP SCHEMA public CASCADE');
   await db.run('CREATE SCHEMA public');
   await db.initSchemaOnce();
+  // ── Und die MIGRATIONEN, nicht nur das Schema ───────────────────────────
+  //
+  // Diese Datei loescht das Schema und baut es neu auf. initSchemaOnce()
+  // laeuft dabei voll durch (die Marke in schema_meta ist mit weg), bleibt
+  // aber auf dem Stand von db/schema.sql — also VOR allen Migrationen. Das
+  // ist nicht nur fuer diese Datei falsch, sondern fuer jede danach: Sie erbt
+  // eine halbe Datenbank.
+  //
+  // GEMESSEN beim Umzug der Teilemengen (Migration 0038): db/schema.sql legt
+  // `parts.quantity DEFAULT 1` an, die Katalogzeilen tragen die echte Zahl.
+  // Die naechste Datei, die die Migrationen laufen liess, brach ab — „Bei 8
+  // Set-Teilen weicht parts.quantity vom Katalog ab". Der Riegel hatte recht.
+  {
+    const mc = await db.pool.connect();
+    try { await _req('db/migrate.js').runMigrations(mc); } finally { mc.release(); }
+  }
   t.after(() => db.pool.end());
 
   await db.run(`INSERT INTO users (username, password_hash) VALUES ('haupt','x'), ('kind','x')`);
@@ -69,10 +85,8 @@ test('Alles-Loeschen fasst die verknuepften Konten nicht an', async (t) => {
   await haeltSet(db, haupt, '75192-1', 1);
   await haeltSet(db, kind, '75192-1', 1);
   await haeltSet(db, kind, '21318-1', 1);
-  await db.run(`INSERT INTO parts (user_id,set_number,part_number,color_id,quantity,source)
-                VALUES ($1,'21318-1','3001',4,10,'set')`, [kind]);
-  await db.run(`INSERT INTO minifigs (user_id,set_number,fig_number,quantity,source)
-                VALUES ($1,'21318-1','fig1',1,'set')`, [kind]);
+  await haeltTeil(db, kind, '3001', { setNumber: '21318-1', menge: 10, colorId: 4 });
+  await haeltFigur(db, kind, 'fig1', { setNumber: '21318-1', menge: 1 });
 
   const { base } = testServer(_req, {
     sitzung: { userId: haupt },

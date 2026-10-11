@@ -48,7 +48,7 @@ const _req = require('./helpers/sources').buildAndRequire();
 const { testServer } = require('./helpers/server');
 const db = _req('db/database.js');
 const express = require(path.join(ROOT, 'node_modules', 'express'));
-const { haeltSet, mengeVon, haltZeile } = require('./helpers/bestand');
+const { haeltFigur, haeltSet, haeltTeil, haltZeile, mengeVon } = require('./helpers/bestand');
 
 test('letzter Kaufpreis gelöscht → der Eintrag verschwindet ganz',
   { concurrency: 1 }, async (t) => {
@@ -88,10 +88,8 @@ test('letzter Kaufpreis gelöscht → der Eintrag verschwindet ganz',
     // Abgeleitete Teile und Minifiguren — sie hängen am Set und müssen
     // mitgehen. Bleiben sie liegen, tauchen sie in Teileliste und
     // Finanzsummen weiter auf, ohne dass es ein Set dazu gäbe.
-    await db.run(`INSERT INTO parts (user_id, part_number, color_id, quantity, source, set_number)
-                  VALUES ($1,'3001',4,10,'set',$2)`, [uid, sn]);
-    await db.run(`INSERT INTO minifigs (user_id, fig_number, quantity, source, set_number)
-                  VALUES ($1,'cty0001',1,'set',$2)`, [uid, sn]);
+    await haeltTeil(db, uid, '3001', { setNumber: sn, menge: 10, colorId: 4 });
+    await haeltFigur(db, uid, 'cty0001', { setNumber: sn, menge: 1 });
   }
 
   const { base, srv } = testServer(_req, {

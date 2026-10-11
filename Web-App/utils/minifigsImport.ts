@@ -57,9 +57,14 @@ async function importMinifigsForSet(setNumber: string, userId: number) {
       // Nur noch der BESTAND: wer welche Figur aus welchem Set hat. Name und
       // Bild schreibt der Katalog-Upsert darunter EINMAL, statt je Konto neu
       // (Migration 0034).
+      // Ohne Menge: Die Stückzahl einer Set-Figur ist seit Migration 0038 die
+      // Katalogzahl — und die schreibt der Upsert auf
+      // set_minifigs_catalog gleich darunter, aus derselben fig.quantity.
+      // Vorher stand derselbe Wert an BEIDEN Stellen, in derselben Schleife;
+      // genau das war die Abschrift.
       await db.run(
-        "INSERT INTO minifigs (user_id, set_number, fig_number, quantity, source) VALUES ($1,$2,$3,$4,'set') ON CONFLICT DO NOTHING",
-        [userId, setNumber, fig.fig_number, fig.quantity]);
+        "INSERT INTO minifigs (user_id, set_number, fig_number, source) VALUES ($1,$2,$3,'set') ON CONFLICT DO NOTHING",
+        [userId, setNumber, fig.fig_number]);
       // Figurenkatalog — derselbe Schreiber wie beim Anlegen von Hand und
       // beim Verschieben eines Sets (utils/katalogPflege.ts).
       await merkeFigur(fig.fig_number, fig.fig_name, fig.image_url)

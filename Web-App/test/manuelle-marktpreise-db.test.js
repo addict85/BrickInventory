@@ -43,6 +43,7 @@ const _req = buildAndRequire();
 const db = _req('db/database.js');
 const H  = handlerModul(_req);
 const MF = _req('utils/handlers/minifigs.js');
+const { haeltFigur, haeltTeil } = require('./helpers/bestand');
 
 const U = 990701;
 const FIG = 'mp-fig-1', TEIL = 'mp-teil-1', FARBE = 4;
@@ -68,8 +69,8 @@ test('manuelle Listen tragen den Marktpreis aus dem Cache', async (t) => {
     // bl_fig_number ist mit Migration 0037 weg; dieselbe Nummer in beiden
     // Feldern hiess „keine abweichende", und das ist in der Zuordnung eine
     // leere bl_id. Hier braucht es dafuer gar keine Zeile.
-    await db.run("INSERT INTO minifigs (user_id, fig_number, quantity, source) VALUES ($1,$2,1,'manual')", [U, FIG]);
-    await db.run("INSERT INTO parts (user_id, part_number, color_id, quantity, source) VALUES ($1,$2,$3,1,'manual')", [U, TEIL, FARBE]);
+    await haeltFigur(db, U, FIG, { menge: 1 });
+    await haeltTeil(db, U, TEIL, { menge: 1, colorId: FARBE });
 
     // ── 2 zuerst: OHNE Cache-Eintrag ───────────────────────────────────────
     // Diese Reihenfolge ist Absicht. Stünde sie hinten, könnte ein Fehler in

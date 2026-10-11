@@ -37,7 +37,7 @@ const ROOT = path.join(__dirname, '..');
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
 process.env.WEB_WORKERS = '1';
 const _req = require('./helpers/sources').buildAndRequire();
-const { haeltSet } = require('./helpers/bestand');
+const { haeltSet, haeltTeil } = require('./helpers/bestand');
 const db = _req('db/database.js');
 
 after(() => db.pool.end().catch(() => {}));
@@ -126,9 +126,8 @@ test('die Antwort traegt einen echten Wahrheitswert', async (t) => {
   await db.run(`INSERT INTO set_parts_catalog (set_number,part_number,color_id,quantity,is_spare)
                 VALUES ('75192-1','3001',4,10,1),
                        ('75192-1','3020',0,2,0)`);
-  await db.run(`INSERT INTO parts (user_id, set_number, part_number, color_id, quantity, source)
-                VALUES ($1,'75192-1','3001',4,10,'set'),
-                       ($1,'75192-1','3020',0,2,'set')`, [uid]);
+  await haeltTeil(db, uid, '3001', { setNumber: '75192-1', menge: 10, colorId: 4 });
+  await haeltTeil(db, uid, '3020', { setNumber: '75192-1', menge: 2, colorId: 0 });
 
   const { getParts } = _req('utils/handlers/parts.js');
   const parts = (await getParts([uid], { page_size: 60 })).parts || [];

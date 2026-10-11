@@ -44,7 +44,7 @@ process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:t
 process.env.WEB_WORKERS = '1';
 
 const _req = require('./helpers/sources').buildAndRequire();
-const { haeltSet } = require('./helpers/bestand');
+const { haeltFigur, haeltSet, haeltTeil } = require('./helpers/bestand');
 const db = _req('db/database.js');
 
 // Dieselbe Begruendung wie in test/sets-ohne-kaufpreisspalte-db.test.js: Diese
@@ -321,9 +321,10 @@ test('die Teileliste liefert Beschreibung und Lagerort aus den Katalogen',
            ('3002',1,'Blue','0055BF','http://cdn/3002b.png')`);
   const ort = await db.get(
     `INSERT INTO storage_locations (user_id,name) VALUES ($1,'Kiste 3') RETURNING id`, [uid]);
-  await db.run(`INSERT INTO parts (user_id,set_number,part_number,color_id,quantity,source,storage_id)
-    VALUES ($1,'75192-1','3001',4,6,'set',$2),
-           ($1,'75192-1','3002',1,2,'set',NULL)`, [uid, ort.id]);
+  // Die Stückzahl steht seit Migration 0038 im Set-Teile-Katalog, nicht an
+  // der Zeile — haeltTeil() legt beides an.
+  await haeltTeil(db, uid, '3001', { setNumber: '75192-1', menge: 6, colorId: 4, storageId: ort.id });
+  await haeltTeil(db, uid, '3002', { setNumber: '75192-1', menge: 2, colorId: 1 });
 
   const handlers = _req('utils/handlers/parts.js');
 
@@ -399,8 +400,7 @@ test('die Figurenliste liefert Name und Bild aus minifigs_catalog',
   await haeltSet(db, uid, '75192-1', 3);
   await db.run(`INSERT INTO minifigs_catalog (fig_number,fig_name,image_url)
     VALUES ('fig-000123','Chewbacca','http://cdn/chewie.png')`);
-  await db.run(`INSERT INTO minifigs (user_id,set_number,fig_number,quantity,source)
-    VALUES ($1,'75192-1','fig-000123',1,'set')`, [uid]);
+  await haeltFigur(db, uid, 'fig-000123', { setNumber: '75192-1', menge: 1 });
 
   const handlers = _req('utils/handlers/minifigs.js');
   const liste = await handlers.getMinifigs(uid, {});

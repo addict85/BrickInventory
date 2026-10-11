@@ -36,6 +36,7 @@ process.env.WEB_WORKERS = '1';
 
 const _req = require('./helpers/sources').buildAndRequire();
 const db = _req('db/database.js');
+const { haeltFigur, haeltTeil } = require('./helpers/bestand');
 
 // Dieselbe Begruendung wie in test/sets-ohne-kaufpreisspalte-db.test.js: Diese
 // Datei baut die Datenbank mehrfach von null auf.
@@ -109,8 +110,11 @@ test('nach der ganzen Kette tragen parts und minifigs keinen Preis mehr',
   // bl_part_number stand hier und ist weg: Migration 0037 hat sie geloescht,
   // die BrickLink-Nummer steht in bl_zuordnung (einmal je Teil statt je
   // Konto). Siehe test/bricklink-zuordnung-db.test.js.
+  // quantity stand hier und ist weg: Migration 0038 hat sie geloescht — fuer
+  // ein Set-Teil ist die Stückzahl die Katalogzahl, fuer ein manuelles die
+  // Summe der Erfassungen. Siehe test/teilemengen-abgeleitet-db.test.js.
   for (const sp of ['id', 'user_id', 'set_number', 'part_number', 'color_id',
-                    'quantity', 'source', 'storage_id', 'added_at']) {
+                    'source', 'storage_id', 'added_at']) {
     assert.ok(nachher.includes(sp), `parts.${sp} fehlt — die Spalte gehoert zum Bestand`);
   }
 
@@ -274,10 +278,11 @@ test('die Listen liefern Preis und Zustand aus der neuesten Erfassung',
                 VALUES ('3002',1,'Blau') ON CONFLICT (part_number,color_id) DO NOTHING`);
   await db.run(`INSERT INTO minifigs_catalog (fig_number,fig_name) VALUES ('fig-5','Testfigur')
                 ON CONFLICT (fig_number) DO NOTHING`);
-  await db.run(`INSERT INTO parts (user_id,part_number,color_id,quantity,source)
-                VALUES ($1,'3002',1,5,'manual')`, [uid]);
-  await db.run(`INSERT INTO minifigs (user_id,fig_number,quantity,source)
-                VALUES ($1,'fig-5',3,'manual')`, [uid]);
+  // Nur die Bestandszeilen, ohne Menge: Die beiden Erfassungen weiter unten
+  // tragen sie (Migration 0038). haeltTeil() mit menge 0 legt deshalb keine
+  // eigene Erfassung an — die Tagesregel liesse daneben keine zweite zu.
+  await haeltTeil(db, uid, '3002', { menge: 0, colorId: 1 });
+  await haeltFigur(db, uid, 'fig-5', { menge: 0 });
 
   // ZWEI Erfassungen, verschiedene Tage und Zustaende. Die neuere ist die, die
   // als „der Preis dieses Teils" angezeigt werden muss — die aeltere darf ihn
@@ -317,8 +322,9 @@ test('die Listen liefern Preis und Zustand aus der neuesten Erfassung',
   // Leseabfrage sie.
   await db.run(`INSERT INTO part_catalog (part_number,part_name) VALUES ('3003','Plate 1x1')
                 ON CONFLICT (part_number) DO NOTHING`);
-  await db.run(`INSERT INTO parts (user_id,part_number,color_id,quantity,source)
-                VALUES ($1,'3003',0,1,'manual')`, [uid]);
+  // Menge 0 fuer die Bestandszeile, die Erfassung kommt darunter mit
+  // AUSDRUECKLICH leerem Preis — das ist die Aussage dieses Falls.
+  await haeltTeil(db, uid, '3003', { menge: 0, colorId: 0 });
   await db.run(`INSERT INTO part_acquisitions (user_id,part_number,color_id,quantity,unit_price,condition)
                 VALUES ($1,'3003',0,1,NULL,'N')`, [uid]);
   const teile2 = await H.getManualParts([uid], uid);

@@ -85,4 +85,143 @@ async function haltZeile(db, userId, setNumber) {
     [userId, setNumber]);
 }
 
-module.exports = { haeltSet, erfasse, mengeVon, haltZeile };
+// ═══════════════════════════════════════════════════════════════════════════
+// Teile und Minifiguren
+// ═══════════════════════════════════════════════════════════════════════════
+//
+// Dieselbe Geschichte wie bei den Sets, eine Migration spaeter: Bis 0038 stand
+// die Stückzahl in `parts.quantity` bzw. `minifigs.quantity`, und 79
+// Testaufbauten schrieben sie dorthin (gemessen). Die Spalte trug ZWEI
+// Bedeutungen, und beide waren Abschriften:
+//
+//   source='manual'  Summe der Erfassungen       → part_acquisitions
+//   source='set'     Stückzahl im Set            → set_parts_catalog.quantity
+//
+// Ein Bestand ist seitdem ZWEI Zeilen, und welche zweite es ist, haengt an der
+// Herkunft. Genau das nehmen die beiden Funktionen hier auseinander — damit
+// ein Testaufbau sagt, WAS er herstellt, und nicht, in welche Spalten er
+// schreibt.
+
+/**
+ * „Dieses Konto hält dieses Teil."
+ *
+ * @param opt.setNumber  Aus welchem Set. Fehlt sie, ist es ein MANUELL
+ *                       erfasstes Teil (source='manual'), und die Menge geht
+ *                       in eine Erfassung. Steht sie da, ist es ein Set-Teil
+ *                       (source='set'), und die Menge ist die KATALOGZAHL.
+ * @param opt.menge      Stückzahl (Standard 1)
+ * @param opt.colorId    Farbe (Standard 0)
+ * @param opt.preis      Kaufpreis der Erfassung — nur fuer manuelle Teile
+ * @param opt.zustand    'N' oder 'U' (Standard 'N'), nur fuer manuelle Teile
+ * @param opt.am         Aufnahmedatum der Erfassung. idx_part_acq_tag
+ *                       (Migration 0008) erlaubt je Konto, Teil, Farbe und
+ *                       TAG nur eine Erfassung — genau wie bei den Sets.
+ *                       Hier stand das Gegenteil, und es war falsch:
+ *                       GEMESSEN brachen fuenf Testdateien mit „duplicate
+ *                       key value violates unique constraint
+ *                       idx_part_acq_tag" ab.
+ * @param opt.storageId  Lagerort
+ */
+async function haeltTeil(db, userId, partNumber, opt = {}) {
+  const { setNumber = null, menge = 1, colorId = 0 } = opt;
+  const quelle = setNumber ? 'set' : 'manual';
+  await db.run(
+    `INSERT INTO parts (user_id, set_number, part_number, color_id, source, storage_id)
+     VALUES ($1,$2,$3,$4,$5,$6) ON CONFLICT DO NOTHING`,
+    [userId, setNumber, partNumber, colorId, quelle, opt.storageId ?? null]);
+  if (setNumber) {
+    // Die Katalogzahl — ohne sie faellt teilmengeAus() auf den Rueckfall 1
+    // zurueck, und ein Set mit vier gleichen Steinen zaehlte als einer.
+    await db.run(
+      `INSERT INTO set_parts_catalog (set_number, part_number, color_id, quantity)
+       VALUES ($1,$2,$3,$4)
+       ON CONFLICT (set_number, part_number, color_id) DO UPDATE SET quantity = $4`,
+      [setNumber, partNumber, colorId, menge]);
+  } else if (menge > 0) {
+    // ON CONFLICT auf die Tagesregel: Ein zweiter Aufruf fuer dieselbe
+    // Position SETZT die Menge, statt abzubrechen oder sie zu addieren.
+    // Das ist die Zusage dieser Funktion — „dieses Konto haelt N davon",
+    // nicht „kauf N dazu". Wer zwei Kaeufe braucht, gibt zwei Daten mit
+    // (opt.am) oder ruft erfasseTeil() zweimal.
+    await db.run(
+      `INSERT INTO part_acquisitions (user_id, part_number, color_id, quantity, unit_price, condition, created_at)
+       VALUES ($1,$2,$3,$4,$5,$6, COALESCE($7::timestamptz, NOW()))
+       ON CONFLICT (user_id, part_number, color_id, ((created_at AT TIME ZONE 'UTC')::date))
+       DO UPDATE SET quantity = EXCLUDED.quantity,
+                     unit_price = COALESCE(EXCLUDED.unit_price, part_acquisitions.unit_price),
+                     condition = EXCLUDED.condition`,
+      [userId, partNumber, colorId, menge,
+       opt.preis ?? null, opt.zustand ?? 'N', opt.am ?? null]);
+  }
+}
+
+/**
+ * „Dieses Konto hält diese Minifigur." Wortgleich zu [haeltTeil], ohne Farbe.
+ */
+async function haeltFigur(db, userId, figNumber, opt = {}) {
+  const { setNumber = null, menge = 1 } = opt;
+  const quelle = setNumber ? 'set' : 'manual';
+  await db.run(
+    `INSERT INTO minifigs (user_id, set_number, fig_number, source, storage_id)
+     VALUES ($1,$2,$3,$4,$5) ON CONFLICT DO NOTHING`,
+    [userId, setNumber, figNumber, quelle, opt.storageId ?? null]);
+  if (setNumber) {
+    await db.run(
+      `INSERT INTO set_minifigs_catalog (set_number, fig_number, quantity)
+       VALUES ($1,$2,$3)
+       ON CONFLICT (set_number, fig_number) DO UPDATE SET quantity = $3`,
+      [setNumber, figNumber, menge]);
+  } else if (menge > 0) {
+    // ON CONFLICT auf die Tagesregel — siehe haeltTeil().
+    await db.run(
+      `INSERT INTO minifig_acquisitions (user_id, fig_number, quantity, unit_price, condition, created_at)
+       VALUES ($1,$2,$3,$4,$5, COALESCE($6::timestamptz, NOW()))
+       ON CONFLICT (user_id, fig_number, ((created_at AT TIME ZONE 'UTC')::date))
+       DO UPDATE SET quantity = EXCLUDED.quantity,
+                     unit_price = COALESCE(EXCLUDED.unit_price, minifig_acquisitions.unit_price),
+                     condition = EXCLUDED.condition`,
+      [userId, figNumber, menge, opt.preis ?? null, opt.zustand ?? 'N', opt.am ?? null]);
+  }
+}
+
+/**
+ * Die Stückzahl einer Bestandszeile, wie der Server sie seit Migration 0038
+ * sieht — die Fallunterscheidung, in JavaScript nachgefragt.
+ *
+ * Ersetzt das `SELECT quantity FROM parts` der Zusicherungen.
+ */
+async function teilmengeVon(db, userId, partNumber, colorId = 0) {
+  const z = await db.get(
+    `SELECT CASE WHEN COALESCE(p.source,'set') = 'manual'
+                 THEN COALESCE((SELECT SUM(a.quantity) FROM part_acquisitions a
+                                 WHERE a.user_id = p.user_id
+                                   AND a.part_number = p.part_number
+                                   AND COALESCE(a.color_id,0) = COALESCE(p.color_id,0)), 0)
+                 ELSE COALESCE(c.quantity, 1) END::int AS menge
+       FROM parts p
+       LEFT JOIN set_parts_catalog c ON c.set_number = p.set_number
+                                    AND c.part_number = p.part_number
+                                    AND c.color_id = COALESCE(p.color_id,0)
+      WHERE p.user_id=$1 AND p.part_number=$2 AND COALESCE(p.color_id,0)=$3`,
+    [userId, partNumber, colorId]);
+  return z ? Number(z.menge) : null;
+}
+
+/** Dasselbe fuer eine Minifigur. */
+async function figurmengeVon(db, userId, figNumber) {
+  const z = await db.get(
+    `SELECT CASE WHEN COALESCE(m.source,'set') = 'manual'
+                 THEN COALESCE((SELECT SUM(a.quantity) FROM minifig_acquisitions a
+                                 WHERE a.user_id = m.user_id
+                                   AND a.fig_number = m.fig_number), 0)
+                 ELSE COALESCE(c.quantity, 1) END::int AS menge
+       FROM minifigs m
+       LEFT JOIN set_minifigs_catalog c ON c.set_number = m.set_number
+                                      AND c.fig_number = m.fig_number
+      WHERE m.user_id=$1 AND m.fig_number=$2`,
+    [userId, figNumber]);
+  return z ? Number(z.menge) : null;
+}
+
+module.exports = { haeltSet, erfasse, mengeVon, haltZeile,
+                   haeltTeil, haeltFigur, teilmengeVon, figurmengeVon };

@@ -35,7 +35,7 @@ process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:t
 process.env.WEB_WORKERS = '1';
 
 const _req = require('./helpers/sources').buildAndRequire();
-const { haeltSet } = require('./helpers/bestand');
+const { haeltFigur, haeltSet, haeltTeil } = require('./helpers/bestand');
 const db = _req('db/database.js');
 
 async function erreichbar() {
@@ -52,6 +52,22 @@ test('jede Liste mit Plakette im Client traegt sie auch in der Antwort', async (
   await db.run('DROP SCHEMA public CASCADE');
   await db.run('CREATE SCHEMA public');
   await db.initSchemaOnce();
+  // ── Und die MIGRATIONEN, nicht nur das Schema ───────────────────────────
+  //
+  // Diese Datei loescht das Schema und baut es neu auf. initSchemaOnce()
+  // laeuft dabei voll durch (die Marke in schema_meta ist mit weg), bleibt
+  // aber auf dem Stand von db/schema.sql — also VOR allen Migrationen. Das
+  // ist nicht nur fuer diese Datei falsch, sondern fuer jede danach: Sie erbt
+  // eine halbe Datenbank.
+  //
+  // GEMESSEN beim Umzug der Teilemengen (Migration 0038): db/schema.sql legt
+  // `parts.quantity DEFAULT 1` an, die Katalogzeilen tragen die echte Zahl.
+  // Die naechste Datei, die die Migrationen laufen liess, brach ab — „Bei 8
+  // Set-Teilen weicht parts.quantity vom Katalog ab". Der Riegel hatte recht.
+  {
+    const mc = await db.pool.connect();
+    try { await _req('db/migrate.js').runMigrations(mc); } finally { mc.release(); }
+  }
 
   await db.run(`INSERT INTO users (username,password_hash) VALUES ('haupt','x'),('kind','x')`);
   const id = async (n) => (await db.get(`SELECT id FROM users WHERE username=$1`, [n])).id;
@@ -62,12 +78,10 @@ test('jede Liste mit Plakette im Client traegt sie auch in der Antwort', async (
   // Steht dort das eigene Konto, ist die Zuordnung falsch; fehlt sie, sieht
   // das Hauptkonto einen Bestand ohne Herkunft.
   await haeltSet(db, kind, '75192-1', 1);
-  await db.run(`INSERT INTO parts (user_id, set_number, part_number, color_id, quantity, source)
-                VALUES ($1,'75192-1','3001',4,10,'set'),
-                       ($1,NULL,'3020',0,3,'manual')`, [kind]);
-  await db.run(`INSERT INTO minifigs (user_id, set_number, fig_number, quantity, source)
-                VALUES ($1,'75192-1','sw0001',1,'set'),
-                       ($1,NULL,'sw0002',2,'manual')`, [kind]);
+  await haeltTeil(db, kind, '3001', { setNumber: '75192-1', menge: 10, colorId: 4 });
+  await haeltTeil(db, kind, '3020', { menge: 3, colorId: 0 });
+  await haeltFigur(db, kind, 'sw0001', { setNumber: '75192-1', menge: 1 });
+  await haeltFigur(db, kind, 'sw0002', { menge: 2 });
 
   const { scopeIds } = _req('utils/household.js');
   const uids = await scopeIds(haupt, 'all');
@@ -117,11 +131,15 @@ test('im Einzelkonto steht keine Plakette', async (t) => {
   // Kein zweites DROP SCHEMA — eigene Kontonamen genügen (siehe
   // manuell-loeschen-besitzer-db.test.js).
   await db.initSchemaOnce();
+  // Migrationen auch hier — siehe die Begruendung weiter oben.
+  {
+    const mc = await db.pool.connect();
+    try { await _req('db/migrate.js').runMigrations(mc); } finally { mc.release(); }
+  }
   await db.run(`INSERT INTO users (username,password_hash) VALUES ('allein','x')`);
   const allein = (await db.get(`SELECT id FROM users WHERE username='allein'`)).id;
   await haeltSet(db, allein, '21318-1', 1);
-  await db.run(`INSERT INTO minifigs (user_id, set_number, fig_number, quantity, source)
-                VALUES ($1,'21318-1','sw0003',1,'set')`, [allein]);
+  await haeltFigur(db, allein, 'sw0003', { setNumber: '21318-1', menge: 1 });
 
   const { scopeIds } = _req('utils/household.js');
   const uids = await scopeIds(allein, 'all');

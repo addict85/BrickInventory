@@ -17,7 +17,7 @@ process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:t
 process.env.WEB_WORKERS = '1';
 
 const _req = require('./helpers/sources').buildAndRequire();
-const { haeltSet } = require('./helpers/bestand');
+const { haeltSet, haeltTeil } = require('./helpers/bestand');
 const db = _req('db/database.js');
 
 const U = {};
@@ -54,9 +54,7 @@ async function seed() {
     await db.run(
       `INSERT INTO part_catalog (part_number, part_name) VALUES ($1,$2)
        ON CONFLICT (part_number) DO NOTHING`, [num, 'Teil ' + num]);
-    await db.run(
-      `INSERT INTO parts (user_id, set_number, part_number, color_id, quantity)
-       VALUES ($1,$2,$3,$4,1)`, [uid, sn, num, farbe]);
+    await haeltTeil(db, uid, num, { setNumber: sn, menge: 1, colorId: farbe });
   }
 }
 

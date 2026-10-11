@@ -20,7 +20,7 @@ const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
 const { execFileSync } = require('node:child_process');
-const { haeltSet } = require('./helpers/bestand');
+const { haeltSet, haeltTeil } = require('./helpers/bestand');
 
 const ROOT = path.join(__dirname, '..');
 const DB_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
@@ -135,10 +135,9 @@ test('Zusammenfassung stimmt mit der Live-Abfrage überein und veraltet nicht',
   await db.run(`INSERT INTO part_color_catalog (part_number, color_id, color_name) VALUES
     ('3001',5,'Rot'),('3002',1,'Blau'),('3003',2,'Gruen')
     ON CONFLICT (part_number, color_id) DO NOTHING`);
-  await db.run(`INSERT INTO parts (user_id, set_number, part_number, color_id, quantity, source)
-    VALUES ($1,'A-1','3001',5,3,'set'),
-           ($1,'B-1','3001',5,4,'set'),
-           ($1,'A-1','3002',1,1,'set')`, [U]);
+  await haeltTeil(db, U, '3001', { setNumber: 'A-1', menge: 3, colorId: 5 });
+  await haeltTeil(db, U, '3001', { setNumber: 'B-1', menge: 4, colorId: 5 });
+  await haeltTeil(db, U, '3002', { setNumber: 'A-1', menge: 1, colorId: 1 });
 
   // Seit dem Fix baut ensureFresh() NICHT mehr im Request auf. Der erste
   // Zugriff eines Nutzers ohne Zusammenfassung wird deshalb aus der
@@ -157,8 +156,7 @@ test('Zusammenfassung stimmt mit der Live-Abfrage überein und veraltet nicht',
     'die Set-Menge muss in die Teilemenge eingehen');
 
   // Änderung an parts → Trigger → nächster Lesezugriff baut neu auf
-  await db.run(`INSERT INTO parts (user_id, set_number, part_number, color_id, quantity, source)
-                VALUES ($1,'A-1','3003',2,9,'set')`, [U]);
+  await haeltTeil(db, U, '3003', { setNumber: 'A-1', menge: 9, colorId: 2 });
   // Der Lesezugriff darf jetzt NICHT mehr blockieren: Er liefert den alten
   // Stand und stösst den Aufbau nur an. Erst danach stimmen die Zahlen wieder.
   const stale = await H.getParts(U, { exclude_manual: '1', page: 1, page_size: 50 });
@@ -190,8 +188,7 @@ test('Zusammenfassung stimmt mit der Live-Abfrage überein und veraltet nicht',
   await PS.rebuildNow(U);
   assert.equal(await PS.ensureFresh(U, { strict: true }), true,
     'Vorbedingung: die eigene Zusammenfassung ist frisch');
-  await db.run(`INSERT INTO parts (user_id, part_number, color_id, quantity, source)
-                VALUES ($1,'9999',7,1,'manual')`, [FREMD]);
+  await haeltTeil(db, FREMD, '9999', { menge: 1, colorId: 7 });
   assert.equal(await PS.ensureFresh(U, { strict: true }), true,
     'Ein fremdes Konto darf die eigene Zusammenfassung nicht entwerten');
   // Die eigene Änderung dagegen schon. `updated_at=updated_at` schreibt
@@ -317,9 +314,8 @@ test('beide Pfade der Kennzahlen zählen DASSELBE — auch mit manuellen Teilen'
   await db.run(
     "INSERT INTO users (id,username,password_hash,is_admin) VALUES ($1,'psum2','x',0) ON CONFLICT DO NOTHING", [U]);
   await haeltSet(db, U, 'A-1', 1);
-  await db.run(`INSERT INTO parts (user_id, set_number, part_number, color_id, quantity, source)
-    VALUES ($1,'A-1','3001',5,3,'set'),
-           ($1,NULL,'9999',7,11,'manual')`, [U]);
+  await haeltTeil(db, U, '3001', { setNumber: 'A-1', menge: 3, colorId: 5 });
+  await haeltTeil(db, U, '9999', { menge: 11, colorId: 7 });
 
   // Weg 1: aus der Zusammenfassung.
   await PS.rebuildNow(U);

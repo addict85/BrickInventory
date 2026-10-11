@@ -24,7 +24,7 @@ process.env.WEB_WORKERS = '1';
 const _req = require('./helpers/sources').buildAndRequire();
 const db = _req('db/database.js');
 const express = require(path.join(ROOT, 'node_modules', 'express'));
-const { haeltSet, mengeVon } = require('./helpers/bestand');
+const { haeltFigur, haeltSet, haeltTeil, mengeVon } = require('./helpers/bestand');
 
 /**
  * Die ECHTE Verschiebe-Route aufrufen — mit injizierter Session, wie in
@@ -340,12 +340,10 @@ test('Haushalt gegen echte Datenbank', async (t) => {
   await t.test('Verschieben nimmt Teile, Minifiguren und Anleitungen mit', async () => {
     // Inhalt für das Set von kindA anlegen — plus ein manuell erfasstes Teil,
     // das ausdrücklich NICHT mitwandern darf.
-    await db.run(`INSERT INTO parts (user_id,set_number,part_number,color_id,quantity,source)
-                  VALUES ($1,'75192-1','3001',4,10,'set'), ($1,'75192-1','3002',1,5,'set')`, [U.kindA]);
-    await db.run(`INSERT INTO parts (user_id,part_number,color_id,quantity,source)
-                  VALUES ($1,'9999',0,3,'manual')`, [U.kindA]);
-    await db.run(`INSERT INTO minifigs (user_id,set_number,fig_number,quantity,source)
-                  VALUES ($1,'75192-1','sw0001',2,'set')`, [U.kindA]);
+    await haeltTeil(db, U.kindA, '3001', { setNumber: '75192-1', menge: 10, colorId: 4 });
+    await haeltTeil(db, U.kindA, '3002', { setNumber: '75192-1', menge: 5, colorId: 1 });
+    await haeltTeil(db, U.kindA, '9999', { menge: 3, colorId: 0 });
+    await haeltFigur(db, U.kindA, 'sw0001', { setNumber: '75192-1', menge: 2 });
     await db.run(`INSERT INTO instructions (user_id,set_number,url) VALUES ($1,'75192-1','http://x/1.pdf')`,
       [U.kindA]);
 
@@ -446,10 +444,8 @@ test('Haushalt gegen echte Datenbank', async (t) => {
     // können. Hier wandert EINE Zeile — die Quelle behält den Rest samt Teilen.
     await giveSet(U.kindA, '21318-1', 1, 200, 'N', '2026-01-05');
     await giveSet(U.kindA, '21318-1', 1, 240, 'N', '2026-02-05');
-    await db.run(`INSERT INTO parts (user_id,set_number,part_number,color_id,quantity,source)
-                  VALUES ($1,'21318-1','3020',2,4,'set')`, [U.kindA]);
-    await db.run(`INSERT INTO minifigs (user_id,set_number,fig_number,quantity,source)
-                  VALUES ($1,'21318-1','fig-tree',1,'set')`, [U.kindA]);
+    await haeltTeil(db, U.kindA, '3020', { setNumber: '21318-1', menge: 4, colorId: 2 });
+    await haeltFigur(db, U.kindA, 'fig-tree', { setNumber: '21318-1', menge: 1 });
     await db.run(`INSERT INTO instructions (user_id,set_number,url)
                   VALUES ($1,'21318-1','http://x/tree.pdf')`, [U.kindA]);
 
@@ -585,12 +581,10 @@ test('Haushalt gegen echte Datenbank', async (t) => {
 
     // Manuell erfasste Teile und Minifiguren hängen an eigenen Endpunkten —
     // gemeldet war, dass der Filter dort nicht greift.
-    await db.run(`INSERT INTO parts (user_id, part_number, color_id, quantity, source)
-                  VALUES ($1,'m-A',0,1,'manual'), ($2,'m-B',0,1,'manual')`,
-      [U.kindA, U.kindB]);
-    await db.run(`INSERT INTO minifigs (user_id, fig_number, quantity, source)
-                  VALUES ($1,'mf-A',1,'manual'), ($2,'mf-B',1,'manual')`,
-      [U.kindA, U.kindB]);
+    await haeltTeil(db, U.kindA, 'm-A', { menge: 1, colorId: 0 });
+    await haeltTeil(db, U.kindB, 'm-B', { menge: 1, colorId: 0 });
+    await haeltFigur(db, U.kindA, 'mf-A', { menge: 1 });
+    await haeltFigur(db, U.kindB, 'mf-B', { menge: 1 });
 
     const nummern = rows => rows.map(r => r.part_number ?? r.fig_number);
     const nurA = nummern(await handlers.getManualParts(await household.scopeIds(U.eltern, U.kindA)));
@@ -632,10 +626,8 @@ test('Haushalt gegen echte Datenbank', async (t) => {
     await haeltSet(db, U.kindB, '10290-1', 1, { egalWennDa: true });
     await db.run(`DELETE FROM sets WHERE user_id=$1 AND set_number='10290-1'`, [U.kindA]);
     await haeltSet(db, U.fremd, '10290-1', 1, { egalWennDa: true });
-    await db.run(`INSERT INTO parts (user_id,set_number,part_number,color_id,quantity,source)
-                  VALUES ($1,'10290-1','3005',1,7,'set')`, [U.kindA]);
-    await db.run(`INSERT INTO minifigs (user_id,set_number,fig_number,quantity,source)
-                  VALUES ($1,'10290-1','fig-1',1,'set')`, [U.kindA]);
+    await haeltTeil(db, U.kindA, '3005', { setNumber: '10290-1', menge: 7, colorId: 1 });
+    await haeltFigur(db, U.kindA, 'fig-1', { setNumber: '10290-1', menge: 1 });
 
     const client = await db.pool.connect();
     try {

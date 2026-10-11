@@ -3,7 +3,7 @@ import { resolveImageLocal } from '../images';
 import { asIds } from '../household';
 import { clampPageSize, applyManualCondition, withOwners } from './shared';
 import { beideSchreibweisen } from '../setNummer';
-import { mengeJoin, mengeAus } from '../bestandsmenge';
+import { mengeJoin, mengeAus, teilmengeJoin, teilmengeAus } from '../bestandsmenge';
 import { marktpreiseAusCacheFuerFiguren } from '../marketPrice';
 import { blJoin, blNummerSql } from '../blZuordnung';
 
@@ -86,7 +86,10 @@ async function getMinifigs(userId: number | number[], { search, source, set_numb
            -- bleibt, weil die Gruppe mehrere Schreibweisen derselben
            -- Figurennummer zusammenfasst.
            MAX(mc.fig_name) AS fig_name,
-           SUM(m.quantity) AS quantity,
+           -- Die Stückzahl der Bestandszeile (Migration 0038): manuell die
+           -- Summe der Erfassungen, aus einem Set die Katalogzahl. Hier
+           -- stand m.quantity.
+           SUM(${teilmengeAus('m', 'fig')}) AS quantity,
            MAX(mc.image_url) AS image_url,
            MAX(mc.image_local) AS image_local,
            m.source,
@@ -104,7 +107,7 @@ async function getMinifigs(userId: number | number[], { search, source, set_numb
            -- hat sets.quantity geloescht). Der zweite Parameter 1 steht fuer
            -- „keine Erfassung", weil der Wert in einer
            -- MULTIPLIKATION steht: eine manuell erfasste Figur zaehlt einfach.
-           SUM(m.quantity * ${mengeAus('sm', 1)}) AS total_quantity,
+           SUM(${teilmengeAus('m', 'fig')} * ${mengeAus('sm', 1)}) AS total_quantity,
            STRING_AGG(DISTINCT m.set_number, ',') FILTER (WHERE m.set_number IS NOT NULL) AS in_sets,
            -- Lagerort der GRUPPE, wortgleich zu handlers/parts.ts: Dieselbe
            -- Figur steckt in mehreren Sets und damit in mehreren Zeilen. Liegen
@@ -115,6 +118,7 @@ async function getMinifigs(userId: number | number[], { search, source, set_numb
            MAX(s.added_at) AS set_added_at
     FROM minifigs m
     ${mengeJoin('m')}
+    ${teilmengeJoin('m', 'fig')}
     -- Die sets-Zeile bleibt verbunden — aber nur noch fuer added_at („seit
     -- wann haelt dieses Konto das Set?"). Keine Gegenstriche um den
     -- Spaltennamen: Der Kommentar steht in einem Template-Literal, und ein
@@ -221,9 +225,10 @@ async function getMinifigStats(userId: number | number[]) {
            COALESCE(SUM(g.menge), 0)::int AS total_quantity,
            COUNT(*) FILTER (WHERE g.source = 'manual')::int AS manual
       FROM (
-        SELECT m.source, SUM(m.quantity * ${mengeAus('sm', 1)}) AS menge
+        SELECT m.source, SUM(${teilmengeAus('m', 'fig')} * ${mengeAus('sm', 1)}) AS menge
           FROM minifigs m
           ${mengeJoin('m')}
+          ${teilmengeJoin('m', 'fig')}
          WHERE m.user_id = ANY($1)
          GROUP BY LOWER(TRIM(m.fig_number)), m.source
       ) g`, [uids]);
@@ -273,7 +278,10 @@ async function getManualMinifigs(userId: number | number[], viewerId: number, { 
             -- stand m.bl_fig_number, eine Abschrift je Konto. Der Feldname
             -- nach aussen bleibt.
             ${blNummerSql('m.fig_number', 'blz')} AS bl_fig_number,
-            m.quantity, m.source, m.storage_id,
+            -- Die Stückzahl aus den Erfassungen (Migration 0038); hier stand
+            -- m.quantity. Diese Liste zeigt nur manuelle Figuren.
+            ${teilmengeAus('m', 'fig')} AS quantity,
+            m.source, m.storage_id,
             -- Preis und Zustand aus der NEUESTEN Erfassung (Migration 0035).
             -- Die beiden Bedeutungen bleiben unterschieden, so wie
             -- utils/preisRegel.ts sie ausschreibt: unit_price ist der
@@ -285,6 +293,7 @@ async function getManualMinifigs(userId: number | number[], viewerId: number, { 
             mc.fig_name, mc.image_url, mc.image_local,
             lo.name AS storage
        FROM minifigs m
+       ${teilmengeJoin('m', 'fig')}
        ${blJoin('m.fig_number', 'fig')}
        LEFT JOIN minifigs_catalog mc ON mc.fig_number = m.fig_number
        LEFT JOIN storage_locations lo ON lo.id = m.storage_id

@@ -44,7 +44,7 @@ process.env.WEB_WORKERS = '1';
 
 const { ROOT } = require('./helpers/sources');
 const _req = require('./helpers/sources').buildAndRequire();
-const { haeltSet, mengeVon } = require('./helpers/bestand');
+const { haeltSet, haeltTeil, mengeVon, teilmengeVon } = require('./helpers/bestand');
 const db = _req('db/database.js');
 
 /** pg_dump/psql finden — auf dem PATH oder in einer Distributions-Installation. */
@@ -154,9 +154,7 @@ test('Sicherung und Wiederherstellung', async (t) => {
     await db.run(
       `INSERT INTO set_acquisitions (user_id, set_number, quantity, purchase_price, condition)
        VALUES ($1,'10214-1',2,44.50,'U')`, [uid]);
-    await db.run(
-      `INSERT INTO parts (user_id, part_number, color_id, quantity, source)
-       VALUES ($1,'3001',4,17,'manual')`, [uid]);
+    await haeltTeil(db, uid, '3001', { menge: 17, colorId: 4 });
   });
 
   await t.test('pg_dump erzeugt einen vollständigen Dump', () => {
@@ -200,9 +198,10 @@ test('Sicherung und Wiederherstellung', async (t) => {
     assert.equal(a?.condition, 'U', 'Der Zustand ging beim Wiederherstellen verloren');
     assert.equal(Number(a?.purchase_price), 44.50,
       'Der Kaufpreis ging beim Wiederherstellen verloren');
-    const p = await db.get(`SELECT part_number, quantity FROM parts`);
-    assert.equal(p.part_number, '3001');
-    assert.equal(Number(p.quantity), 17);
+    const p2 = await db.get(`SELECT user_id, part_number, color_id FROM parts`);
+    assert.equal(p2.part_number, '3001');
+    assert.equal(await teilmengeVon(db, p2.user_id, '3001', p2.color_id), 17,
+      'Die Stückzahl ist nicht zurückgekommen — part_acquisitions fehlt im Dump');
   });
 
   await t.test('ein abgeschnittener Dump wird an der Endmarke erkannt', () => {

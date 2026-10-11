@@ -44,6 +44,7 @@ const { buildAndRequire } = require('./helpers/sources');
 const _req = buildAndRequire();
 const db = _req('db/database.js');
 const fc = _req('utils/financeCalc.js');
+const { haeltTeil } = require('./helpers/bestand');
 
 const UID = 990101;
 const N   = 20;               // genug, damit „je Stück" von „einmalig" trennbar ist
@@ -77,10 +78,9 @@ test('Teile-Bewertung: kein Nachschlag je Teil', async (t) => {
     await aufraeumen();
     await db.run("INSERT INTO users (id, username, password_hash) VALUES ($1, 'bwt_messnutzer', 'x')", [UID]);
     for (let i = 0; i < N; i++) {
-      await db.run(
-        // Zustand und Preis stehen seit Migration 0035 in der Erfassung.
-        "INSERT INTO parts (user_id, part_number, color_id, quantity, source) VALUES ($1, $2, 4, 1, 'manual')",
-        [UID, NR(i)]);
+      // Zustand und Preis stehen seit Migration 0035 in der Erfassung, die
+      // Stückzahl seit 0038 — haeltTeil() legt beides an.
+      await haeltTeil(db, UID, NR(i), { menge: 1, colorId: 4 });
       // Der Betriebsfall: Der Nachtrag-Job hat nachgesehen. Eine Zeile mit
       // LEERER bl_id heisst „keine abweichende Nummer" (Migration 0037) —
       // damit bleibt der Preis-Cache-Schlüssel die Rebrickable-Nummer.

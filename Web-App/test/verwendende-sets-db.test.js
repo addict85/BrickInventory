@@ -35,7 +35,7 @@ process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:t
 process.env.WEB_WORKERS = '1';
 
 const _req = require('./helpers/sources').buildAndRequire();
-const { haeltSet } = require('./helpers/bestand');
+const { haeltFigur, haeltSet, haeltTeil } = require('./helpers/bestand');
 const db = _req('db/database.js');
 const { verwendendeSets } = _req('utils/handlers/shared.js');
 
@@ -53,6 +53,22 @@ test('die Liste der verwendenden Sets folgt dem Blickfeld', async (t) => {
   await db.run('DROP SCHEMA public CASCADE');
   await db.run('CREATE SCHEMA public');
   await db.initSchemaOnce();
+  // ── Und die MIGRATIONEN, nicht nur das Schema ───────────────────────────
+  //
+  // Diese Datei loescht das Schema und baut es neu auf. initSchemaOnce()
+  // laeuft dabei voll durch (die Marke in schema_meta ist mit weg), bleibt
+  // aber auf dem Stand von db/schema.sql — also VOR allen Migrationen. Das
+  // ist nicht nur fuer diese Datei falsch, sondern fuer jede danach: Sie erbt
+  // eine halbe Datenbank.
+  //
+  // GEMESSEN beim Umzug der Teilemengen (Migration 0038): db/schema.sql legt
+  // `parts.quantity DEFAULT 1` an, die Katalogzeilen tragen die echte Zahl.
+  // Die naechste Datei, die die Migrationen laufen liess, brach ab — „Bei 8
+  // Set-Teilen weicht parts.quantity vom Katalog ab". Der Riegel hatte recht.
+  {
+    const mc = await db.pool.connect();
+    try { await _req('db/migrate.js').runMigrations(mc); } finally { mc.release(); }
+  }
 
   await db.run(`INSERT INTO users (username,password_hash) VALUES ('haupt','x'),('kind','x')`);
   const id = async (n) => (await db.get(`SELECT id FROM users WHERE username=$1`, [n])).id;
@@ -80,24 +96,23 @@ test('die Liste der verwendenden Sets folgt dem Blickfeld', async (t) => {
   await db.run(`INSERT INTO minifigs_catalog (fig_number, fig_name) VALUES ('sw0001','Han Solo')`);
 
   // Dasselbe Teil in drei Sets — zweimal beim Hauptkonto, einmal beim Kind.
-  // Im ersten Set steht es ZWEIMAL (zwei Zeilen), damit die Summe je Set
-  // etwas zu tun bekommt: Ohne die Gruppierung stünde 75192-1 doppelt da.
-  await db.run(`INSERT INTO parts (user_id, set_number, part_number, color_id, quantity, source) VALUES
-      ($1,'75192-1','3001',4,10,'set'),
-      ($1,'75192-1','3001',4, 5,'set'),
-      ($1,'10305-1','3001',4, 7,'set'),
-      ($2,'21058-1','3001',4, 3,'set'),
-      ($1,'75192-1','3001',1,99,'set')`, [haupt, kind]);
+  //
+  // Hier standen fuer 75192-1 ZWEI Zeilen (10 und 5), damit die Gruppierung
+  // etwas zu tun bekommt. Seit Migration 0038 gibt es diesen Zustand nicht
+  // mehr: idx_parts_eindeutig erlaubt je Konto, Set, Teil und Farbe genau eine
+  // Zeile, und die Stueckzahl steht einmal im Katalog des Sets. Der Aufbau
+  // sagt das jetzt so — und beweist es gleich darunter.
+  await haeltTeil(db, haupt, '3001', { setNumber: '75192-1', menge: 15, colorId: 4 });
+  await haeltTeil(db, haupt, '3001', { setNumber: '10305-1', menge: 7, colorId: 4 });
+  await haeltTeil(db, kind, '3001', { setNumber: '21058-1', menge: 3, colorId: 4 });
+  await haeltTeil(db, haupt, '3001', { setNumber: '75192-1', menge: 99, colorId: 1 });
 
   // Manuell erfasst: KEINE Set-Nummer. Darf nicht auftauchen.
-  await db.run(`INSERT INTO parts (user_id, set_number, part_number, color_id, quantity, source)
-      VALUES ($1,NULL,'3001',4,42,'manual')`, [haupt]);
+  await haeltTeil(db, haupt, '3001', { menge: 42, colorId: 4 });
 
-  await db.run(`INSERT INTO minifigs (user_id, set_number, fig_number, quantity, source) VALUES
-      ($1,'75192-1','sw0001',2,'set'),
-      ($2,'21058-1','sw0001',1,'set')`, [haupt, kind]);
-  await db.run(`INSERT INTO minifigs (user_id, set_number, fig_number, quantity, source)
-      VALUES ($1,NULL,'sw0001',9,'manual')`, [haupt]);
+  await haeltFigur(db, haupt, 'sw0001', { setNumber: '75192-1', menge: 2 });
+  await haeltFigur(db, kind, 'sw0001', { setNumber: '21058-1', menge: 1 });
+  await haeltFigur(db, haupt, 'sw0001', { menge: 9 });
 
   // ── Teil, Blickfeld des Hauptkontos (Haushalt) ───────────────────────────
   const { item, sets: imHaushalt } = await verwendendeSets([haupt, kind], 'parts',
@@ -105,9 +120,22 @@ test('die Liste der verwendenden Sets folgt dem Blickfeld', async (t) => {
   assert.deepEqual(imHaushalt.map(s => s.set_number), ['10305-1', '21058-1', '75192-1'],
     `Erwartet drei Sets in Nummernfolge, bekam ${JSON.stringify(imHaushalt.map(s => s.set_number))}`);
 
+  // ── Eine zweite Zeile fuer denselben Schluessel wird abgewiesen ──────────
+  //
+  // Der Aufbau oben behauptet, es koenne sie nicht geben. Ohne diese Probe
+  // waere das nur eine Behauptung im Kommentar; faellt idx_parts_eindeutig
+  // weg, kaeme die alte Doppelung zurueck — und mit ihr zwei Stueckzahlen fuer
+  // dieselbe Position, von denen eine falsch ist.
+  await assert.rejects(
+    () => db.run(`INSERT INTO parts (user_id, set_number, part_number, color_id, source)
+                  VALUES ($1,'75192-1','3001',4,'set')`, [haupt]),
+    /idx_parts_eindeutig|duplicate key/,
+    'Eine zweite parts-Zeile fuer dasselbe Konto, Set, Teil und dieselbe Farbe ' +
+    'wurde angenommen — dann gibt es die Stueckzahl wieder zweimal');
+
   const nach = Object.fromEntries(imHaushalt.map(s => [s.set_number, s]));
   assert.equal(nach['75192-1'].quantity, 15,
-    'Zwei Zeilen desselben Teils im selben Set müssen zusammengezählt werden');
+    'Die Stückzahl eines Set-Teils ist die Katalogzahl des Sets');
   assert.equal(nach['10305-1'].quantity, 7);
   assert.equal(nach['21058-1'].quantity, 3);
   assert.equal(nach['21058-1'].owner_user_id, kind,

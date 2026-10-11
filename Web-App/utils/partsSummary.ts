@@ -41,6 +41,7 @@
 import { pflegeTabelle } from './tabellePflegen';
 import { mengeJoin, mengeAus } from './bestandsmenge';
 import { blJoin, blNummerSql } from './blZuordnung';
+import { teilmengeJoin, teilmengeAus } from './bestandsmenge';
 import * as db from '../db/database';
 
 /** Legt Tabellen und Trigger an. Aus initSchema() aufgerufen, idempotent. */
@@ -258,7 +259,9 @@ export async function rebuild(userId: number, version?: number): Promise<void> {
              -- Unterabfrage, weil dieser Aufbau ueber 171'000 Teilezeilen
              -- laeuft — eine Unterabfrage je Zeile waeren 171'000
              -- Indexzugriffe statt EINER Gruppierung plus Hash-Join.
-             SUM(p.quantity * ${mengeAus('sm', 1)}),
+             -- Der erste Faktor ist die Stückzahl der Bestandszeile. Hier
+             -- stand p.quantity; Migration 0038 hat die Spalte geloescht.
+             SUM(${teilmengeAus('p', 'part')} * ${mengeAus('sm', 1)}),
              STRING_AGG(DISTINCT p.set_number, ','),
              -- Lagerort: STRING_AGG statt MIN, wie in der Live-Abfrage
              -- (utils/handlers/parts.ts). Dieselbe Gruppe fasst dasselbe Teil
@@ -273,6 +276,7 @@ export async function rebuild(userId: number, version?: number): Promise<void> {
              NULLIF(STRING_AGG(DISTINCT lo.name, ', '), '')
         FROM parts p
         ${mengeJoin('p')}
+        ${teilmengeJoin('p', 'part')}
         ${blJoin('p.part_number', 'part')}
         LEFT JOIN storage_locations lo ON lo.id = p.storage_id
         LEFT JOIN part_catalog pc ON pc.part_number = p.part_number

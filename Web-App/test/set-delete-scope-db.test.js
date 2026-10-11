@@ -36,7 +36,7 @@ process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:t
 process.env.WEB_WORKERS = '1';
 
 const _req = require('./helpers/sources').buildAndRequire();
-const { haeltSet } = require('./helpers/bestand');
+const { haeltSet, haeltTeil } = require('./helpers/bestand');
 const db = _req('db/database.js');
 const express = require(path.join(ROOT, 'node_modules', 'express'));
 
@@ -86,8 +86,7 @@ test('Löschen im Haushalt: vorwärts erlaubt, rückwärts nicht',
     await haeltSet(db, besitzer, SN, 0);  // Menge 0: die Erfassung dahinter traegt sie
     await db.run(`INSERT INTO set_acquisitions (user_id,set_number,purchase_price,condition,quantity)
                   VALUES ($1,$2,10,'N',1)`, [besitzer, SN]);
-    await db.run(`INSERT INTO parts (user_id,set_number,part_number,color_id,quantity,source)
-                  VALUES ($1,$2,'3001',4,5,'set')`, [besitzer, SN]);
+    await haeltTeil(db, besitzer, '3001', { setNumber: SN, menge: 5, colorId: 4 });
   };
   const bestand = async (besitzer) => ({
     set:   !!(await db.get(`SELECT 1 FROM sets WHERE user_id=$1 AND set_number=$2`, [besitzer, SN])),

@@ -19,7 +19,7 @@ import { getGlobalSetting } from '../../utils/settings';
 import { neuestesInventar, inventarKandidaten } from '../rbInventar';
 import { beideSchreibweisen } from '../setNummer';
 import { merkeBlFarbnummer, blFarbnummerAus, blJoin, blNummerSql } from '../blZuordnung';
-import { mengeJoin, mengeAus } from '../bestandsmenge';
+import { mengeJoin, mengeAus, teilmengeJoin, teilmengeAus } from '../bestandsmenge';
 
 /**
  * Leseabfragen für Teile — inklusive der Ausweichebenen (CSV-Zwischenspeicher,
@@ -82,9 +82,10 @@ async function getPartsColors(userId: Blickfeld) {
   return db.all(`
     SELECT pcc.color_name, COALESCE(pcc.color_hex, rc.rgb) AS color_hex,
            COUNT(DISTINCT p.part_number)::int AS unique_parts,
-           SUM(p.quantity * ${mengeAus('sm', 1)})::int AS total_quantity
+           SUM(${teilmengeAus('p', 'part')} * ${mengeAus('sm', 1)})::int AS total_quantity
     FROM parts p
     ${mengeJoin('p')}
+    ${teilmengeJoin('p', 'part')}
     LEFT JOIN part_color_catalog pcc ON pcc.part_number = p.part_number
                                     AND pcc.color_id    = p.color_id
     LEFT JOIN rb_colors rc ON rc.id = p.color_id
@@ -426,7 +427,12 @@ async function getParts(userId: Blickfeld, query: any = {}) {
   // Die Set-Menge als Faktor, aus den Erfassungen (Migration 0036). Mit
   // set_number-Filter entfaellt der Faktor: Dort geht es um die Teile EINES
   // Sets, nicht um den Bestand.
-  const qtyExpr   = set_number ? 'SUM(p.quantity)::int' : `SUM(p.quantity * ${mengeAus('sm', 1)})::int`;
+  // Die Stückzahl der Bestandszeile stand als p.quantity hier; Migration
+  // 0038 hat die Spalte geloescht (teilmengeAus unterscheidet jetzt
+  // Katalogzahl und Erfassungssumme).
+  const qtyExpr   = set_number
+    ? `SUM(${teilmengeAus('p', 'part')})::int`
+    : `SUM(${teilmengeAus('p', 'part')} * ${mengeAus('sm', 1)})::int`;
   // Der Vorrat haengt in BEIDEN Zweigen mit dran: Seit Migration 0031 traegt
   // die Zeile eine ID, der Name steht in storage_locations. LEFT JOIN, damit
   // ein Teil ohne Ort nicht aus der Liste faellt.
@@ -459,6 +465,7 @@ async function getParts(userId: Blickfeld, query: any = {}) {
   // seit Migration 0037 aus bl_zuordnung. Ohne den Join gaebe es den Alias
   // blz nicht — ein harter Fehler, keine stille 500.
   const joinClause = (set_number ? 'FROM parts p' : `FROM parts p ${mengeJoin('p')}`)
+    + ` ${teilmengeJoin('p', 'part')}`
     + ` ${blJoin('p.part_number', 'part')}`
     + lagerJoin + katalogJoin;
 
@@ -677,9 +684,10 @@ async function getPartsStats(userId: Blickfeld) {
   const row = await db.get(`
     SELECT COUNT(DISTINCT p.part_number) AS unique_parts,
            COUNT(DISTINCT p.color_id)    AS unique_colors,
-           SUM(p.quantity * ${mengeAus('sm', 1)}) AS total_parts
+           SUM(${teilmengeAus('p', 'part')} * ${mengeAus('sm', 1)}) AS total_parts
     FROM parts p
     ${mengeJoin('p')}
+    ${teilmengeJoin('p', 'part')}
     WHERE p.user_id = ANY($1) AND COALESCE(p.source, 'set') <> 'manual'`, [uids]);
   return {
     unique_parts:  parseInt(row?.unique_parts  || 0),
@@ -754,7 +762,12 @@ async function getManualParts(userId: Blickfeld, viewerId: number, { page = 1, p
            ${blNummerSql('t.part_number')} AS bl_part_number,
            pc.part_name, t.color_id,
            pcc.color_name, pcc.color_hex,
-           pc.category_name, t.quantity, pcc.image_url, pcc.image_local,
+           pc.category_name,
+           -- Die Stückzahl aus den Erfassungen (Migration 0038); hier stand
+           -- t.quantity. Diese Liste zeigt nur manuelle Teile, der
+           -- Set-Zweig der Fallunterscheidung greift hier also nie.
+           ${teilmengeAus('t', 'part')} AS quantity,
+           pcc.image_url, pcc.image_local,
            -- ── Preis und Zustand aus der NEUESTEN Erfassung ───────────────
            --
            -- Hier standen t.unit_price, t.purchase_price und t.condition —
@@ -801,6 +814,7 @@ async function getManualParts(userId: Blickfeld, viewerId: number, { page = 1, p
            -- die Oberflaechen und die App unveraendert weiterlesen.
            t.added_at AS created_at
     FROM parts t
+    ${teilmengeJoin('t', 'part')}
     ${blJoin('t.part_number', 'part')}
     -- Beschreibung aus den Katalogen (Migration 0034). Dieselben beiden
     -- Tabellen wie in getParts, nur mit dem Alias dieser Abfrage.
@@ -921,14 +935,19 @@ export async function getOwnedQuantities(
   const rows = await db.all(
     `SELECT p.part_number,
             COALESCE(p.color_id, 0)                                   AS color_id,
+            -- teilmengeAus() traegt die Fallunterscheidung schon in sich:
+            -- manuell → Summe der Erfassungen, Set → Katalogzahl. Die
+            -- CASE-Verzweigung hier bleibt trotzdem, weil sie etwas
+            -- ANDERES entscheidet — ob der Set-Faktor dazukommt.
             COALESCE(SUM(CASE WHEN COALESCE(p.source,'set') = 'manual'
-                              THEN p.quantity
-                              ELSE p.quantity * ${mengeAus('sm', 1)}
+                              THEN ${teilmengeAus('p', 'part')}
+                              ELSE ${teilmengeAus('p', 'part')} * ${mengeAus('sm', 1)}
                          END), 0)::int                                AS gesamt,
             COALESCE(SUM(CASE WHEN COALESCE(p.source,'set') = 'manual'
-                              THEN p.quantity ELSE 0 END), 0)::int    AS lose
+                              THEN ${teilmengeAus('p', 'part')} ELSE 0 END), 0)::int AS lose
        FROM parts p
        ${mengeJoin('p')}
+       ${teilmengeJoin('p', 'part')}
        JOIN unnest($2::text[], $3::int[]) AS g(part_number, color_id)
          ON g.part_number = p.part_number AND g.color_id = COALESCE(p.color_id, 0)
       WHERE p.user_id = ANY($1)
@@ -963,13 +982,14 @@ export async function getOwnedQuantities(
   const figRows = await db.all(
     `SELECT m.fig_number                                                AS part_number,
             COALESCE(SUM(CASE WHEN COALESCE(m.source,'set') = 'manual'
-                              THEN m.quantity
-                              ELSE m.quantity * ${mengeAus('sm', 1)}
+                              THEN ${teilmengeAus('m', 'fig')}
+                              ELSE ${teilmengeAus('m', 'fig')} * ${mengeAus('sm', 1)}
                          END), 0)::int                                  AS gesamt,
             COALESCE(SUM(CASE WHEN COALESCE(m.source,'set') = 'manual'
-                              THEN m.quantity ELSE 0 END), 0)::int      AS lose
+                              THEN ${teilmengeAus('m', 'fig')} ELSE 0 END), 0)::int AS lose
        FROM minifigs m
        ${mengeJoin('m')}
+       ${teilmengeJoin('m', 'fig')}
        JOIN unnest($2::text[]) AS g(fig_number)
          ON g.fig_number = m.fig_number
       WHERE m.user_id = ANY($1)

@@ -21,6 +21,7 @@ process.env.WEB_WORKERS = '1';
 
 const _req = require('./helpers/sources').buildAndRequire();
 const db = _req('db/database.js');
+const { haeltTeil } = require('./helpers/bestand');
 
 const U = {};
 
@@ -41,25 +42,28 @@ async function seed() {
 
   // Dieselbe Teilenummer in ZWEI Farben, und dieselbe Farbe bei ZWEI
   // Teilenummern: Nur so fällt eine verrutschte Paarung auf.
+  // Die Spalte `quelle` ist WEG: haeltTeil() leitet sie aus der Setnummer
+  // ab — eine Zeile mit Set ist ein Set-Teil, eine ohne ein manuelles.
+  // Genau diese Regel wendet der Server seit jeher an, und zweimal
+  // hingeschrieben waere sie zweimal zu pflegen. (Seit Migration 0038
+  // entscheidet sie ausserdem, WOHER die Stückzahl kommt: Katalogzahl oder
+  // Summe der Erfassungen.)
   const teile = [
-    // user, nummer, farbe, menge, quelle, set
-    [U.ich,   '3001', 4,  6, 'set',    '10179-1'],
-    [U.ich,   '3001', 4,  2, 'manual', null],
-    [U.ich,   '3001', 5,  3, 'manual', null],
-    [U.ich,   '3002', 4, 10, 'set',    '10179-1'],
-    [U.kind,  '3001', 4,  1, 'manual', null],
-    [U.fremd, '3001', 4, 99, 'manual', null],
+    // user, nummer, farbe, menge, set
+    [U.ich,   '3001', 4,  6, '10179-1'],
+    [U.ich,   '3001', 4,  2, null],
+    [U.ich,   '3001', 5,  3, null],
+    [U.ich,   '3002', 4, 10, '10179-1'],
+    [U.kind,  '3001', 4,  1, null],
+    [U.fremd, '3001', 4, 99, null],
   ];
-  for (const [uid, num, farbe, menge, quelle, set] of teile) {
+  for (const [uid, num, farbe, menge, set] of teile) {
     // Der Name gehoert seit Migration 0034 in den Katalog, nicht an die
     // Bestandszeile.
     await db.run(
       `INSERT INTO part_catalog (part_number, part_name) VALUES ($1,$2)
        ON CONFLICT (part_number) DO NOTHING`, [num, 'Teil ' + num]);
-    await db.run(
-      `INSERT INTO parts (user_id, set_number, part_number, color_id, quantity, source)
-       VALUES ($1,$2,$3,$4,$5,$6)`,
-      [uid, set, num, farbe, menge, quelle]);
+    await haeltTeil(db, uid, num, { setNumber: set, menge, colorId: farbe });
   }
 }
 

@@ -1,7 +1,7 @@
 import * as db from '../../db/database';
 import { asIds } from '../household';
 import { getGlobalSetting } from '../settings';
-import { mengeJoin, mengeAus } from '../bestandsmenge';
+import { mengeJoin, mengeAus, teilmengeJoin, teilmengeAus } from '../bestandsmenge';
 
 /**
  * Die Kennzahlen der Übersichtsseite — spannen über alle drei Domänen und
@@ -63,8 +63,12 @@ async function getStats(userId: number | number[]) {
     // in einer MULTIPLIKATION steht: Ein Teil ohne Set-Zeile (manuell
     // erfasst) zaehlt einfach, nicht null — dieselbe Lesart wie das
     // frueherere COALESCE(s.quantity, 1).
-    db.get(`SELECT SUM(p.quantity*${mengeAus('sm', 1)}) AS t FROM parts p ${mengeJoin('p')} WHERE p.user_id = ANY($1)`, [uids]),
-    db.get(`SELECT SUM(m.quantity*${mengeAus('sm', 1)}) AS t FROM minifigs m ${mengeJoin('m')} WHERE m.user_id = ANY($1)`, [uids]),
+    db.get(`SELECT SUM(${teilmengeAus('p', 'part')}*${mengeAus('sm', 1)}) AS t
+              FROM parts p ${mengeJoin('p')} ${teilmengeJoin('p', 'part')}
+             WHERE p.user_id = ANY($1)`, [uids]),
+    db.get(`SELECT SUM(${teilmengeAus('m', 'fig')}*${mengeAus('sm', 1)}) AS t
+              FROM minifigs m ${mengeJoin('m')} ${teilmengeJoin('m', 'fig')}
+             WHERE m.user_id = ANY($1)`, [uids]),
     db.get("SELECT value FROM user_settings WHERE user_id = ANY($1) AND key = 'currency'", [uids]),
   ]);
   const userCondRow = await db.get("SELECT value FROM user_settings WHERE user_id = ANY($1) AND key='user_default_condition'", [uids]).catch(() => null);

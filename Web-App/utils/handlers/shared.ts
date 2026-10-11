@@ -1,6 +1,7 @@
 import * as db from '../../db/database';
 import { istErsatzteil } from '../validate';
 import { asIds } from '../household';
+import { teilmengeJoin, teilmengeAus } from '../bestandsmenge';
 
 /**
  * Was alle drei Domänen brauchen: Seitengrössen, Zustandsableitung aus
@@ -415,6 +416,14 @@ const KATALOGJOIN = {
 
 const SCHLUESSELSPALTE = { parts: 'x.part_number', minifigs: 'x.fig_number' } as const;
 
+/**
+ * Die Bestandsart je Tabelle — fuer teilmengeJoin/teilmengeAus
+ * (utils/bestandsmenge.ts). Dieselbe Bauart wie KOPFFELDER und
+ * KATALOGJOIN darueber: Diese Abfrage bedient beide Tabellen in EINER
+ * Form, und was sich unterscheidet, steht in einer Zuordnung.
+ */
+const ART = { parts: 'part', minifigs: 'fig' } as const;
+
 async function verwendendeSets(
   uids: number[],
   tabelle: 'parts' | 'minifigs',
@@ -433,12 +442,21 @@ async function verwendendeSets(
   const rows = await db.all(
     `SELECT x.set_number,
             x.user_id            AS owner_user_id,
-            SUM(x.quantity)::int AS quantity,
+            -- Die Stückzahl der Bestandszeile (Migration 0038): Fuer ein
+            -- Set-Teil die Katalogzahl, fuer ein manuelles die Summe der
+            -- Erfassungen. Hier stand SUM(x.quantity).
+            --
+            -- Die Art steht nicht im Alias: Diese Abfrage bedient BEIDE
+            -- Tabellen ueber ${tabelle}, und der Helfer braucht dieselbe
+            -- Unterscheidung — deshalb kommt sie wie KOPFFELDER aus einer
+            -- Zuordnung je Tabelle.
+            SUM(${teilmengeAus('x', ART[tabelle])})::int AS quantity,
             c.name               AS set_name,
             c.image_local        AS set_image_local,
             c.image_url          AS set_image_url,
             ${KOPFFELDER[tabelle]}
        FROM ${tabelle} x
+       ${teilmengeJoin('x', ART[tabelle])}
        -- Zwei JOINs, ausgeschrieben: sets sagt, WELCHES Konto das Set haelt
        -- (deshalb ueber user_id UND set_number), set_catalog sagt, wie es
        -- heisst und wie es aussieht (nur ueber set_number — der Name haengt

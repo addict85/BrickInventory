@@ -37,6 +37,7 @@ process.env.WEB_WORKERS = '1';
 const _req = require('./helpers/sources').buildAndRequire();
 const { testServer } = require('./helpers/server');
 const db = _req('db/database.js');
+const { haeltFigur, haeltTeil, teilmengeVon } = require('./helpers/bestand');
 
 async function erreichbar() {
   try { await db.get('SELECT 1'); return true; } catch { return false; }
@@ -56,6 +57,22 @@ test('der Papierkorb trifft die geklickte Karte, nicht die eigene', async (t) =>
   await db.run('DROP SCHEMA public CASCADE');
   await db.run('CREATE SCHEMA public');
   await db.initSchemaOnce();
+  // ── Und die MIGRATIONEN, nicht nur das Schema ───────────────────────────
+  //
+  // Diese Datei loescht das Schema und baut es neu auf. initSchemaOnce()
+  // laeuft dabei voll durch (die Marke in schema_meta ist mit weg), bleibt
+  // aber auf dem Stand von db/schema.sql — also VOR allen Migrationen. Das
+  // ist nicht nur fuer diese Datei falsch, sondern fuer jede danach: Sie erbt
+  // eine halbe Datenbank.
+  //
+  // GEMESSEN beim Umzug der Teilemengen (Migration 0038): db/schema.sql legt
+  // `parts.quantity DEFAULT 1` an, die Katalogzeilen tragen die echte Zahl.
+  // Die naechste Datei, die die Migrationen laufen liess, brach ab — „Bei 8
+  // Set-Teilen weicht parts.quantity vom Katalog ab". Der Riegel hatte recht.
+  {
+    const mc = await db.pool.connect();
+    try { await _req('db/migrate.js').runMigrations(mc); } finally { mc.release(); }
+  }
 
   await db.run(`INSERT INTO users (username,password_hash) VALUES ('haupt','x'),('kind','x'),('fremd','x')`);
   const id = async (n) => (await db.get(`SELECT id FROM users WHERE username=$1`, [n])).id;
@@ -64,10 +81,10 @@ test('der Papierkorb trifft die geklickte Karte, nicht die eigene', async (t) =>
 
   // Dieselbe Nummer bei beiden — genau der Fall, den die Route nicht
   // unterscheiden konnte.
-  await db.run(`INSERT INTO parts (user_id, part_number, color_id, quantity, source)
-                VALUES ($1,'3001',4,5,'manual'), ($2,'3001',4,9,'manual')`, [haupt, kind]);
-  await db.run(`INSERT INTO minifigs (user_id, fig_number, quantity, source)
-                VALUES ($1,'sw0001',1,'manual'), ($2,'sw0001',2,'manual')`, [haupt, kind]);
+  await haeltTeil(db, haupt, '3001', { menge: 5, colorId: 4 });
+  await haeltTeil(db, kind, '3001', { menge: 9, colorId: 4 });
+  await haeltFigur(db, haupt, 'sw0001', { menge: 1 });
+  await haeltFigur(db, kind, 'sw0001', { menge: 2 });
 
   const { base } = testServer(_req, {
     sitzung: { userId: haupt },
@@ -79,9 +96,17 @@ test('der Papierkorb trifft die geklickte Karte, nicht die eigene', async (t) =>
     const r = await fetch(base + pfad, { method: methode });
     return { status: r.status, body: await r.json() };
   };
-  const teile = async () => (await db.all(
-    `SELECT user_id, quantity FROM parts WHERE part_number='3001' ORDER BY user_id`))
-    .map(r => `${r.user_id}:${r.quantity}`);
+  // Die Stückzahl kommt seit Migration 0038 aus den Erfassungen, nicht aus
+  // der Spalte. teilmengeVon() traegt dieselbe Fallunterscheidung wie der
+  // Server (test/helpers/bestand.js).
+  const teile = async () => {
+    const zeilen = await db.all(
+      `SELECT user_id, color_id FROM parts WHERE part_number='3001' ORDER BY user_id`);
+    const raus = [];
+    for (const r of zeilen)
+      raus.push(`${r.user_id}:${await teilmengeVon(db, r.user_id, '3001', r.color_id ?? 0)}`);
+    return raus;
+  };
   const figuren = async () => (await db.all(
     `SELECT user_id FROM minifigs WHERE fig_number='sw0001' ORDER BY user_id`)).map(r => r.user_id);
 
@@ -109,11 +134,19 @@ test('der Papierkorb trifft die geklickte Karte, nicht die eigene', async (t) =>
   // 99 — geändert wurde die EIGENE Zeile (vorher 5|9, nachher 99|9), und die
   // Antwort sagte „success". Lesen und Löschen zu prüfen und das Schreiben
   // auszulassen hiesse, denselben Fehler an der dritten Stelle stehen zu lassen.
-  await db.run(`INSERT INTO parts (user_id, part_number, color_id, quantity, source)
-                VALUES ($1,'3020',0,5,'manual'), ($2,'3020',0,9,'manual')`, [haupt, kind]);
-  const mengen = async () => (await db.all(
-    `SELECT user_id, quantity FROM parts WHERE part_number='3020' ORDER BY user_id`))
-    .map(r => `${r.user_id}:${r.quantity}`);
+  await haeltTeil(db, haupt, '3020', { menge: 5, colorId: 0 });
+  await haeltTeil(db, kind, '3020', { menge: 9, colorId: 0 });
+  // Wie teile() oben: Die Stueckzahl steht seit Migration 0038 in den
+  // Erfassungen. Der Mengenregler schreibt genau dorthin — deshalb ist das
+  // hier auch die Stelle, an der ein Griff auf die falsche Zeile auffaellt.
+  const mengen = async () => {
+    const zeilen = await db.all(
+      `SELECT user_id, color_id FROM parts WHERE part_number='3020' ORDER BY user_id`);
+    const raus = [];
+    for (const r of zeilen)
+      raus.push(`${r.user_id}:${await teilmengeVon(db, r.user_id, '3020', r.color_id ?? 0)}`);
+    return raus;
+  };
   const setze = async (pfad, menge) => (await fetch(base + pfad, {
     method: 'PUT', headers: { 'content-type': 'application/json' },
     body: JSON.stringify({ quantity: menge }),
@@ -158,6 +191,11 @@ test('beide Bewertungen fuehren den Besitzer mit', async (t) => {
   // k2) und eigene Nummern, damit sie sich mit der ersten nicht ins Gehege
   // kommt. initSchemaOnce() bleibt, damit der Test auch einzeln läuft.
   await db.initSchemaOnce();
+  // Migrationen auch hier — siehe die Begruendung weiter oben.
+  {
+    const mc = await db.pool.connect();
+    try { await _req('db/migrate.js').runMigrations(mc); } finally { mc.release(); }
+  }
 
   await db.run(`INSERT INTO users (username,password_hash) VALUES ('h2','x'),('k2','x')`);
   const id = async (n) => (await db.get(`SELECT id FROM users WHERE username=$1`, [n])).id;
@@ -165,14 +203,14 @@ test('beide Bewertungen fuehren den Besitzer mit', async (t) => {
   await db.run(`INSERT INTO account_links (main_user_id,sub_user_id) VALUES ($1,$2)`, [haupt, kind]);
   // Der Preis steht seit Migration 0035 in der Erfassung, nicht an der
   // Bestandszeile.
-  await db.run(`INSERT INTO parts (user_id, part_number, color_id, quantity, source)
-                VALUES ($1,'3001',4,5,'manual'), ($2,'3020',0,9,'manual')`, [haupt, kind]);
-  await db.run(`INSERT INTO part_acquisitions (user_id, part_number, color_id, quantity, unit_price, condition)
-                VALUES ($1,'3001',4,5,0.5,'N'), ($2,'3020',0,9,0.3,'N')`, [haupt, kind]);
-  await db.run(`INSERT INTO minifigs (user_id, fig_number, quantity, source)
-                VALUES ($1,'sw0001',1,'manual'), ($2,'sw0002',2,'manual')`, [haupt, kind]);
-  await db.run(`INSERT INTO minifig_acquisitions (user_id, fig_number, quantity, unit_price, condition)
-                VALUES ($1,'sw0001',1,12.0,'N'), ($2,'sw0002',2,9.0,'N')`, [haupt, kind]);
+  // Menge UND Preis in einem Aufruf: haeltTeil/haeltFigur legen die Erfassung
+  // selbst an. Ein zweites INSERT daneben verstiesse gegen idx_part_acq_tag
+  // (Migration 0008 — je Konto, Position und TAG eine Erfassung) und zaehlte,
+  // wo es durchkaeme, die Menge doppelt.
+  await haeltTeil(db, haupt, '3001', { menge: 5, colorId: 4, preis: 0.5 });
+  await haeltTeil(db, kind, '3020', { menge: 9, colorId: 0, preis: 0.3 });
+  await haeltFigur(db, haupt, 'sw0001', { menge: 1, preis: 12.0 });
+  await haeltFigur(db, kind, 'sw0002', { menge: 2, preis: 9.0 });
 
   const { base } = testServer(_req, {
     sitzung: { userId: haupt },

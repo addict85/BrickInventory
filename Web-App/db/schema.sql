@@ -413,6 +413,11 @@ CREATE TABLE IF NOT EXISTS parts (
   color_name    TEXT,
   color_hex     TEXT,
   category_name TEXT,
+  -- quantity steht hier weiter, obwohl Migration 0038 sie loescht: Ihr
+  -- Nachtrag LIEST sie, um fehlende Katalogzeilen (set_parts_catalog)
+  -- daraus anzulegen, und sein Riegel prueft danach, dass keine Stueckzahl
+  -- verloren geht. Fehlte sie auf einer frischen Datenbank, braeche die
+  -- Kette dort ab — dieselbe Begruendung wie bei sets.quantity weiter oben.
   quantity      INTEGER DEFAULT 1,
   image_url     TEXT,
   image_local   TEXT,
@@ -561,6 +566,8 @@ CREATE TABLE IF NOT EXISTS minifigs (
   set_number    TEXT,
   fig_number    TEXT NOT NULL,
   fig_name      TEXT,
+  -- quantity: angelegt, damit Migration 0038 sie lesen kann, und von ihr
+  -- danach geloescht — siehe parts.quantity weiter oben.
   quantity      INTEGER DEFAULT 1,
   image_url     TEXT,
   image_local   TEXT,

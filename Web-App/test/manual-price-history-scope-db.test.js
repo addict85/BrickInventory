@@ -31,7 +31,7 @@ process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:t
 process.env.WEB_WORKERS = '1';
 
 const _req = require('./helpers/sources').buildAndRequire();
-const { haeltSet } = require('./helpers/bestand');
+const { haeltFigur, haeltSet, haeltTeil } = require('./helpers/bestand');
 const db = _req('db/database.js');
 const express = require(path.join(ROOT, 'node_modules', 'express'));
 
@@ -86,15 +86,13 @@ test('Preisverlauf: das Hauptkonto sieht die Erfassungen des Unterkontos',
   await db.run(`INSERT INTO price_cache (set_number,condition,currency_code,avg_price,total_quantity)
                 VALUES ($1,'N',$2,20,1)`, [SN, CUR]);
 
-  await db.run(`INSERT INTO parts (user_id, part_number, color_id, quantity, source)
-                VALUES ($1,$2,4,1,'manual')`, [subId, PN]);
+  await haeltTeil(db, subId, PN, { menge: 0, colorId: 4 });  // Menge 0: die Erfassung dahinter traegt sie
   await db.run(`INSERT INTO part_acquisitions (user_id,part_number,color_id,unit_price,condition,quantity)
                 VALUES ($1,$2,4,3,'N',1)`, [subId, PN]);
   await db.run(`INSERT INTO part_price_cache (part_number,color_id,condition,currency_code,avg_price)
                 VALUES ($1,4,'N',$2,6)`, [PN, CUR]);
 
-  await db.run(`INSERT INTO minifigs (user_id, fig_number, quantity, source)
-                VALUES ($1,$2,1,'manual')`, [subId, FN]);
+  await haeltFigur(db, subId, FN, { menge: 0 });  // Menge 0: die Erfassung dahinter traegt sie
   await db.run(`INSERT INTO minifig_acquisitions (user_id,fig_number,unit_price,condition,quantity)
                 VALUES ($1,$2,4,'N',1)`, [subId, FN]);
   await db.run(`INSERT INTO minifig_price_cache (fig_number,condition,currency_code,avg_price)

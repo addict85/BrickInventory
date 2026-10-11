@@ -56,7 +56,7 @@ import { csvEmpfang } from '../utils/dateiEmpfang';
 import { sendeFehler } from '../utils/fehlerTexte';
 import { normalisiereLagerort, setzeLagerort } from '../utils/lagerort';
 import { merkeFigur } from '../utils/katalogPflege';
-import { mengeNeuRechnen } from '../utils/bestandsmenge';
+
 import { merkeBlNummer, blJoin, blNummerSql } from '../utils/blZuordnung';
 
 router.use(requireLogin);
@@ -87,7 +87,9 @@ const FIGS_CSV_SQL = `
          -- f.unit_price und f.condition geloescht und traegt fuer jede
          -- manuelle Figur eine Erfassung nach. Dieselbe Aenderung wie bei
          -- PARTS_CSV_SQL in routes/parts.ts, wo sie ausgeschrieben steht.
-         COALESCE(a.quantity, f.quantity) AS quantity,
+         -- Ohne Rueckfall auf f.quantity: Migration 0038 hat die Spalte
+         -- geloescht. Siehe PARTS_CSV_SQL in routes/parts.ts.
+         COALESCE(a.quantity, 0) AS quantity,
          a.unit_price,
          COALESCE(a.condition, 'N') AS condition,
          CASE WHEN a.id IS NULL THEN ''
@@ -151,7 +153,6 @@ function resolveBlFigNumber(fig: { bl_fig_number?: string | null; fig_number?: s
 // muss nur durchgereicht werden.
 //
 // @param {'N'|'U'} condition Zustand, in dem die Teile bepreist werden.
-
 
 // Shared logic to add/update a single manual minifig. Used by both the
 // session-based web route (POST /api/minifigs) and the token-based API
@@ -247,7 +248,10 @@ async function addManualFigIntern(uid: number, body: any) {
       price: re.erfassungsPreis,
       condition: re.effectiveCondition, createdAt: acquiredAt,
     }).catch(e => console.error('[addManualFig] Zweiterfassung:', e.message));
-    await mengeNeuRechnen('fig', uid, [num]);
+    // Kein Nachrechnen mehr: Die Stückzahl steht seit Migration 0038
+    // nicht an der Zeile. Hier stand mengeNeuRechnen(), das sie aus den
+    // Erfassungen ableitete und SCHRIEB — jetzt rechnet sie das Lesen
+    // (utils/bestandsmenge.ts, teilmengeJoin/teilmengeAus).
 
     return { action: 'updated', fig_number: num };
   }
@@ -270,9 +274,10 @@ async function addManualFigIntern(uid: number, body: any) {
   // Ohne bl_fig_number: Die BrickLink-Nummer steht seit Migration 0037 in
   // bl_zuordnung, einmal je Figur und ohne Konto. Eingegeben wird sie
   // weiterhin hier — sie landet nur woanders.
+  // Ohne Menge — siehe addManualPart in routes/parts.ts (Migration 0038).
   await db.run(`
-    INSERT INTO minifigs (user_id, set_number, fig_number, quantity, source)
-    VALUES ($1, NULL, $2, 0, 'manual') ON CONFLICT DO NOTHING`,
+    INSERT INTO minifigs (user_id, set_number, fig_number, source)
+    VALUES ($1, NULL, $2, 'manual') ON CONFLICT DO NOTHING`,
     [uid, num]);
   if (blNum) await merkeBlNummer('fig', num, blNum).catch(
     logAndContinue(`minifiguren:bl-nummer ${num}`));
@@ -285,7 +290,6 @@ async function addManualFigIntern(uid: number, body: any) {
     quantity, price: erfassungsPreis,
     condition: effectiveCondition, createdAt: acquiredAt,
   }).catch(logAndContinue(`minifiguren:anlegen ${num}`));
-  await mengeNeuRechnen('fig', uid, [num]);
 
   // Zwilling zu addManualPart — siehe die Begruendung dort (Nachtrag 167).
   return { action: 'added', fig_number: num, fig_name, price_from_condition: preisAusZustand };
@@ -371,7 +375,6 @@ async function updateManualFig(uid: number, figNumber: string, body: any) {
         }
       }
     }
-    await mengeNeuRechnen('fig', uid, [figNumber]);
   }
   let newBlNum = existing.bl_fig_number;
   if (body.bl_fig_number !== undefined) {
@@ -484,7 +487,6 @@ router.post('/import/csv', csvEmpfang.single('file'), async (req: LoggedInReques
           await recordAcquisitionForDay('fig', uid, [figNumber],
             { quantity: qty, price: erfassungsPreis, condition: effectiveCondition||'N', createdAt: acqDate }
           ).catch(logAndContinue(`minifigs:import ${figNumber} (aufgestockt)`));
-          await mengeNeuRechnen('fig', uid, [figNumber]);
           updated++;
           results.push({ fig_number: figNumber, action: 'updated' });
         } else {
@@ -493,17 +495,16 @@ router.post('/import/csv', csvEmpfang.single('file'), async (req: LoggedInReques
           await merkeFigur(figNumber, figName, imageUrl);
           // Preis und Zustand in die Erfassung (Migration 0035) — siehe
           // addManualFig.
-          // Menge 0 — siehe addManualFig.
-          // Ohne bl_fig_number — siehe addManualFig (Migration 0037).
+          // Ohne Menge (0038) und ohne bl_fig_number (0037) — siehe
+          // addManualFig.
           await db.run(
-            "INSERT INTO minifigs (user_id, set_number, fig_number, quantity, source) VALUES ($1,NULL,$2,0,'manual') ON CONFLICT DO NOTHING",
+            "INSERT INTO minifigs (user_id, set_number, fig_number, source) VALUES ($1,NULL,$2,'manual') ON CONFLICT DO NOTHING",
             [uid, figNumber]);
           if (blFigNumber) await merkeBlNummer('fig', figNumber, blFigNumber)
             .catch(logAndContinue(`minifigs:import ${figNumber} (bl-nummer)`));
           await recordAcquisitionForDay('fig', uid, [figNumber],
             { quantity: qty, price: erfassungsPreis, condition: effectiveCondition||'N', createdAt: acqDate }
           ).catch(logAndContinue(`minifigs:import ${figNumber} (neu)`));
-          await mengeNeuRechnen('fig', uid, [figNumber]);
           added++;
           results.push({ fig_number: figNumber, action: 'added', fig_name: figName });
         }
@@ -535,8 +536,5 @@ async function getFigAcquisitions(uid: number[], figNumber: string) {
     [uid, figNumber]
   );
 }
-
-
-
 
 export = Object.assign(router, { importMinifigsForSet, getCurrentFigMarketPrice, addManualFig, updateManualFig, resolveBlFigNumber, buildFigsCsv, estimateFigPriceFromParts, getFigAcquisitions });

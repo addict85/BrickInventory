@@ -29,7 +29,7 @@
  *    kopiert bzw. beim letzten Exemplar mitgenommen.
  */
 import { recordAcquisitionForDay } from './acquisitions';
-import { mengeNeuRechnen } from './bestandsmenge';
+
 import { fehlerWerfen } from './fehlerTexte';
 
 export interface MoveResult {
@@ -92,9 +92,12 @@ async function copyContents(tx: any, sn: string, fromId: number, toId: number) {
     // Migration 0037 in bl_zuordnung, einmal je Teil und ohne Konto. Beim
     // Verschieben ist also nichts mitzunehmen — genau wie bei der
     // Beschreibung seit Migration 0034, siehe den Absatz darueber.
-    `INSERT INTO parts (user_id, set_number, part_number, color_id, quantity,
-                        source)
-     SELECT $1, set_number, part_number, color_id, quantity, source
+    // quantity ist nicht mehr dabei: Die Stückzahl eines Set-Teils ist seit
+    // Migration 0038 die Katalogzahl (set_parts_catalog) und haengt nicht am
+    // Konto. Beim Verschieben ist also nichts mitzunehmen — wie bei der
+    // Beschreibung (0034) und der BrickLink-Nummer (0037).
+    `INSERT INTO parts (user_id, set_number, part_number, color_id, source)
+     SELECT $1, set_number, part_number, color_id, source
        FROM parts
       WHERE user_id = $2 AND set_number = $3 AND COALESCE(source,'set') <> 'manual'`,
     [toId, fromId, sn]);
@@ -110,8 +113,9 @@ async function copyContents(tx: any, sn: string, fromId: number, toId: number) {
   // gibt nichts mitzunehmen, also auch nichts zu vergessen — die Fehlerquelle
   // ist weg, nicht nur der Fehler.
   const m = hasFigs ? { changes: 0 } : await tx.run(
-    `INSERT INTO minifigs (user_id, set_number, fig_number, quantity, source)
-     SELECT $1, set_number, fig_number, quantity, source
+    // Ohne quantity — siehe den Teile-Zweig darueber (Migration 0038).
+    `INSERT INTO minifigs (user_id, set_number, fig_number, source)
+     SELECT $1, set_number, fig_number, source
        FROM minifigs
       WHERE user_id = $2 AND set_number = $3 AND COALESCE(source,'set') <> 'manual'`,
     [toId, fromId, sn]);
@@ -314,15 +318,18 @@ export async function moveManualAcquisition(
       // Ohne bl_part_number: Die BrickLink-Nummer steht seit Migration 0037
       // in bl_zuordnung, einmal je Teil und ohne Konto — beim Verschieben
       // ist nichts mitzunehmen.
-      `INSERT INTO parts (user_id, part_number, color_id, quantity, source)
-       VALUES ($1,$2,$3,0,'manual')`,
+      // Ohne quantity: Sie entsteht aus der Erfassung, die gleich darunter
+      // wandert (Migration 0038).
+      `INSERT INTO parts (user_id, part_number, color_id, source)
+       VALUES ($1,$2,$3,'manual')`,
       [toId, src.part_number, src.color_id]);
   } else {
     await tx.run(
       // Menge 0 — siehe den Teile-Zweig darueber.
       // Ohne bl_fig_number — siehe den Teile-Zweig darueber.
-      `INSERT INTO minifigs (user_id, fig_number, quantity, source)
-       VALUES ($1,$2,0,'manual')`,
+      // Ohne quantity — siehe den Teile-Zweig darueber.
+      `INSERT INTO minifigs (user_id, fig_number, source)
+       VALUES ($1,$2,'manual')`,
       [toId, src.fig_number]);
   }
 
@@ -334,8 +341,10 @@ export async function moveManualAcquisition(
 
   // Die Mengen beider Konten aus ihren Erfassungen. Hier stand beim Absender
   // ein `UPDATE … SET quantity = $1` mit dem von Hand ausgerechneten Rest.
-  await mengeNeuRechnen(kind, toId, keyValues as (string | number | null)[], tx);
-  await mengeNeuRechnen(kind, fromId, keyValues as (string | number | null)[], tx);
+  // Kein Nachrechnen mehr: Die Stückzahl steht seit Migration 0038
+  // nicht an der Zeile. Hier stand mengeNeuRechnen(), das sie aus den
+  // Erfassungen ableitete und SCHRIEB — jetzt rechnet sie das Lesen
+  // (utils/bestandsmenge.ts, teilmengeJoin/teilmengeAus).
 
   if (remaining > 0) {
     return { quantity: movingQty, merged: !!dst, source_emptied: false };

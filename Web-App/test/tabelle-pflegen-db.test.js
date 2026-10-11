@@ -135,8 +135,12 @@ test('Auffrischen nach Masseneinfuegen', { concurrency: 1 }, async (t) => {
     await db.run(`INSERT INTO part_color_catalog (part_number, color_id, color_name)
       SELECT 'p'||g, 0, 'Red' FROM generate_series(1, 300) g
       ON CONFLICT (part_number, color_id) DO NOTHING`);
-    await db.run(`INSERT INTO parts (user_id, set_number, part_number, color_id, quantity)
-      SELECT $1, '75192-1', 'p'||g, 0, 1
+    // Ohne quantity: Die Stückzahl eines Set-Teils ist seit Migration 0038 die
+    // Katalogzahl. Hier zaehlt nur die MENGE der Zeilen (300), nicht ihr Wert
+    // — deshalb braucht es keine Katalogzeilen dazu; teilmengeAus() faellt auf
+    // 1 zurueck, und 1 stand hier auch vorher.
+    await db.run(`INSERT INTO parts (user_id, set_number, part_number, color_id)
+      SELECT $1, '75192-1', 'p'||g, 0
       FROM generate_series(1, 300) g ON CONFLICT DO NOTHING`, [nutzer]);
 
     const vorher = await stand('parts_summary');

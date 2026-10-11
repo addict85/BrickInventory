@@ -40,7 +40,7 @@ process.env.WEB_WORKERS = '1';
 const _req = require('./helpers/sources').buildAndRequire();
 const db = _req('db/database.js');
 const { getOwnedQuantities } = _req('utils/handlers/parts.js');
-const { haeltSet } = require('./helpers/bestand');
+const { haeltFigur, haeltSet, haeltTeil } = require('./helpers/bestand');
 
 let UID = 0;
 
@@ -63,28 +63,20 @@ async function seed() {
     // Beschreibung in den Katalog, Bestand in parts (Migration 0034).
     await db.run(`INSERT INTO part_catalog (part_number, part_name) VALUES ($1,'Brick')
                   ON CONFLICT (part_number) DO NOTHING`, [num]);
-    await db.run(
-      `INSERT INTO parts (user_id, set_number, part_number, color_id, quantity)
-       VALUES ($1,$2,$3,$4,$5)`, [UID, setNr, num, farbe, menge]);
+    await haeltTeil(db, UID, num, { setNumber: setNr, menge: menge, colorId: farbe });
   };
   await setTeil('60052-1', '3001', 0, 3);   // 3 je Bausatz, zweimal besessen → 6
   await setTeil('10276-1', '3002', 0, 5);   // 5 je Bausatz, einmal besessen  → 5
 
   // Manuell erfasst: haengt an keinem Set.
-  await db.run(
-    `INSERT INTO parts (user_id, part_number, color_id, quantity, source)
-     VALUES ($1,'3003',0,7,'manual')`, [UID]);
+  await haeltTeil(db, UID, '3003', { menge: 7, colorId: 0 });
 
   // Teilezeile, deren Set nicht (mehr) in `sets` steht — der LEFT-JOIN-Fall.
   await setTeil('99999-1', '3004', 0, 4);
 
   // Minifiguren: eine aus dem zweimal besessenen Set, eine manuell erfasste.
-  await db.run(
-    `INSERT INTO minifigs (user_id, set_number, fig_number, quantity)
-     VALUES ($1,'60052-1','trn241',1)`, [UID]);
-  await db.run(
-    `INSERT INTO minifigs (user_id, fig_number, quantity, source)
-     VALUES ($1,'cty0500',2,'manual')`, [UID]);
+  await haeltFigur(db, UID, 'trn241', { setNumber: '60052-1', menge: 1 });
+  await haeltFigur(db, UID, 'cty0500', { menge: 2 });
 }
 
 async function dbErreichbar() {

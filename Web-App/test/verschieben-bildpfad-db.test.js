@@ -31,7 +31,7 @@ process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:t
 process.env.WEB_WORKERS = '1';
 
 const _req = require('./helpers/sources').buildAndRequire();
-const { haeltSet } = require('./helpers/bestand');
+const { haeltFigur, haeltSet, haeltTeil } = require('./helpers/bestand');
 const db = _req('db/database.js');
 const { moveSetBetweenAccounts } = _req('utils/setMove.js');
 
@@ -70,10 +70,8 @@ test('ein verschobenes Set nimmt die Bildpfade aller Bestandteile mit', { concur
                   VALUES ($1,'Testfigur',$2)
                   ON CONFLICT (fig_number) DO UPDATE SET image_local=EXCLUDED.image_local`,
                  [FN, PFAD_FIGUR]);
-    await db.run(`INSERT INTO parts (user_id,set_number,part_number,color_id,quantity,source)
-                  VALUES ($1,$2,$3,4,2,'set')`, [vonId, SN, PN]);
-    await db.run(`INSERT INTO minifigs (user_id,set_number,fig_number,quantity,source)
-                  VALUES ($1,$2,$3,1,'set')`, [vonId, SN, FN]);
+    await haeltTeil(db, vonId, PN, { setNumber: SN, menge: 2, colorId: 4 });
+    await haeltFigur(db, vonId, FN, { setNumber: SN, menge: 1 });
 
     const c = await db.pool.connect();
     try {

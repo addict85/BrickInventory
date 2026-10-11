@@ -32,7 +32,7 @@ import { loescheManuellesTeil, loescheManuelleFigur } from '../../utils/handlers
 import { sendeFehler, fehlerWerfen } from '../../utils/fehlerTexte';
 import type { FehlerCode } from '../../utils/fehlerTexte';
 import { blAbrufNummer } from '../../utils/blZuordnung';
-import { mengeNeuRechnen, mengeDesSets } from '../../utils/bestandsmenge';
+import { mengeDesSets, mengeDerPosition } from '../../utils/bestandsmenge';
 const router = express.Router();
 
 type AcqConfig = {
@@ -139,17 +139,13 @@ async function raeumeLeerenBestand(tx: any, cfg: any, ownerId: number, keys: any
  * steht in utils/bestandsmenge.ts).
  */
 async function mengeDesBestands(tx: any, cfg: any, ownerId: number, keys: any[]) {
-  // Sets und die beiden anderen Arten gehen verschiedene Wege, und das ist
-  // der ZWISCHENSTAND mit Ansage (siehe utils/bestandsmenge.ts):
-  //
-  //   Set            die Spalte ist mit Migration 0036 weg → nur LESEN
-  //   Teil / Figur   die Spalte gibt es noch → neu rechnen und SCHREIBEN
-  //
-  // Beide liefern dieselben drei Antworten: eine Zahl, 0 („Zeile da, nichts
-  // drin" → aufraeumen) oder null („Zeile gibt es nicht").
+  // Beide Wege LESEN nur — der Zwischenstand, in dem die Teile- und
+  // Figurenspalte noch geschrieben werden musste, ist mit Migration 0038
+  // vorbei. Beide liefern dieselben drei Antworten: eine Zahl, 0 („Zeile da,
+  // nichts drin" → aufraeumen) oder null („Zeile gibt es nicht").
   return cfg.kind === 'set'
     ? mengeDesSets(ownerId, String(keys[0]), tx).catch(() => null)
-    : mengeNeuRechnen(cfg.kind, ownerId, keys, tx).catch(() => null);
+    : mengeDerPosition(cfg.kind, ownerId, keys, tx).catch(() => null);
 }
 
 async function withSetAggregate(uid: number, cfgTable: string, keys: any[], payload: any) {
