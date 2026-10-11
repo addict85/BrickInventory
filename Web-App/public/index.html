@@ -990,7 +990,10 @@
               <label for="household-redeem-code" data-i18n="household.invite_code">Einladungscode</label>
               <input type="text" id="household-redeem-code" autocomplete="off" style="font-family:var(--mono);font-size:.8rem" />
             </div>
-            <button class="btn bp" data-click="redeemHouseholdInvite" style="align-self:flex-start">
+            <!-- margin-top: Der Knopf klebte am Eingabefeld. .75rem ist der
+                 Abstand, den der Hinweistext darueber schon benutzt — kein
+                 neuer Wert, sondern der im Block vorhandene. -->
+            <button class="btn bp" data-click="redeemHouseholdInvite" style="align-self:flex-start;margin-top:.75rem">
               ✓ <span data-i18n="household.redeem_submit">Verknüpfen</span>
             </button>
           </div>

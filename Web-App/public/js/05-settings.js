@@ -475,12 +475,23 @@ function renderHousehold(d){
     // Nur die DIREKTEN Unterkonten stehen hier — nur deren Verknuepfung haengt
     // am eigenen Konto und laesst sich von hier loesen (utils/household.ts,
     // unlink()). Wer den ganzen Blick sehen will, hat dafuer den Kontofilter.
-    const rows = d.sub_accounts.map(a => `<li style="display:flex;align-items:center;gap:.6rem;padding:.3rem 0">
-      <span style="font-weight:600">${esc(a.username)}</span>
-      <button class="btn" data-click="unlinkHousehold" data-arg="${a.id}">${t('household.unlink_sub')}</button>
+    // ── Zwei Spalten, nicht drei Flex-Zeilen ──────────────────────────────
+    //
+    // Marcos Befund: „alle Entfernen Buttons schön in einer Spalte" — vorher
+    // war jede Zeile ein eigenes Flexfeld, und der Knopf begann dort, wo der
+    // Benutzername aufhoerte. Bei „emily.bigolin" und „alessio.bigolin" sind
+    // das verschiedene Stellen.
+    //
+    // Das Raster steht auf der LISTE, die Zeilen sind display:contents: Nur so
+    // liegen alle Namen und alle Knoepfe in DENSELBEN zwei Spalten. Waere
+    // jedes <li> ein eigenes Raster, haette jede Zeile wieder ihre eigene
+    // Spaltenbreite — also genau den Zustand von vorher.
+    const rows = d.sub_accounts.map(a => `<li style="display:contents">
+      <span style="font-weight:600;padding:.3rem 0">${esc(a.username)}</span>
+      <span style="padding:.3rem 0"><button class="btn" data-click="unlinkHousehold" data-arg="${a.id}">${t('household.unlink_sub')}</button></span>
     </li>`).join('');
     teile.push(`<div style="margin-top:${d.is_sub ? '.6rem' : '0'}">${t('household.state_main', { n: d.sub_accounts.length })}
-      <ul style="list-style:none;padding:0;margin:.4rem 0 0">${rows}</ul></div>`);
+      <ul style="list-style:none;padding:0;margin:.4rem 0 0;display:grid;grid-template-columns:max-content max-content;align-items:center;column-gap:.6rem">${rows}</ul></div>`);
   }
   if(!teile.length){
     teile.push(`<div style="color:var(--mut)">${t('household.state_none', { cur: esc(d.currency||'') })}</div>`);
@@ -775,28 +786,50 @@ export async function ladeLagerortVerwaltung() {
   // Marcos Stern: „Weiter möchte ich ein Lagerort in den Einstellungen als
   // Default setzen können. […] Ich stelle mir das mit einem Sternicon vor."
   const vorgabeId = v.vorgabe?.id ?? null;
+  // ── Vier Spalten wie in einer Tabelle ───────────────────────────────────
+  //
+  // Marcos Befund: „dass die Felder alle schön gleich ausgerichtet sind wie in
+  // einer Tabelle? aktuell sind sie alle unterschiedlich lang".
+  //
+  // Vorher war jede Zeile ein eigenes Flexfeld mit `flex:1` auf dem
+  // Eingabefeld. Der Platz, der dem Feld blieb, haengt damit an der LAENGE DES
+  // BELEGUNGSTEXTES daneben — „406 Sets, 0 Teilesorten, 0 Figuren" ist
+  // breiter als „leer", und das Feld daneben entsprechend schmaler.
+  //
+  // Jetzt traegt die LISTE das Raster und die Zeilen sind display:contents.
+  // Damit teilen sich alle Zeilen dieselben vier Spaltenbreiten: Das Feld
+  // nimmt den Rest (minmax(0,1fr) — nicht 1fr, sonst sprengt ein langer Name
+  // die Spalte), die drei anderen genau so viel, wie ihr laengster Inhalt
+  // braucht.
+  //
+  // Der Trennstrich sass an der Zeile. Ein display:contents-Element erzeugt
+  // keinen Kasten und kann keinen Rahmen tragen — er liegt deshalb an jeder
+  // Zelle und ergibt zusammen dieselbe durchgehende Linie.
+  const zelle = 'padding:4px 0;border-bottom:1px solid var(--bdr);display:flex;align-items:center';
   el.innerHTML = `<div style="font-size:.72rem;color:var(--mut);margin-bottom:6px">` +
-                 `${esc(tRaw('storage.default_hint'))}</div>` + orte.map(o => {
+                 `${esc(tRaw('storage.default_hint'))}</div>` +
+                 `<div style="display:grid;grid-template-columns:minmax(0,1fr) max-content max-content max-content;align-items:center;column-gap:8px">` +
+                 orte.map(o => {
     const n = belegung.get(o.name);
     // Figuren stehen EIGEN da, nicht bei den Teilesorten (utils/lagerort.ts):
     // „18 Teilesorten" hiesse sonst mal 18 Teilesorten und mal 12 plus 6
     // Figuren, und niemand koennte der Zahl ansehen, was gemeint ist.
     const wie = n ? t('storage.belegt', { sets: n.sets, teile: n.teile, figuren: n.figuren ?? 0 })
                   : esc(tRaw('storage.leer'));
-    return `<div style="display:flex;align-items:center;gap:8px;padding:4px 0;border-bottom:1px solid var(--bdr)">
-      <input type="text" maxlength="60" value="${esc(o.name)}"
+    return `<div style="display:contents">
+      <span style="${zelle}"><input type="text" maxlength="60" value="${esc(o.name)}"
              data-change="benenneLagerortUm" data-arg="${o.id}" data-val="1"
-             style="flex:1;border:1px solid var(--bdr);border-radius:6px;padding:3px 7px;font-size:.85rem;background:var(--sur);color:var(--txt)" />
-      <span style="font-size:.72rem;color:var(--mut);white-space:nowrap">${wie}</span>
-      <button class="btn bs btn-sm" data-click="schalteLagerortVorgabe" data-arg="${o.id}"
+             style="width:100%;border:1px solid var(--bdr);border-radius:6px;padding:3px 7px;font-size:.85rem;background:var(--sur);color:var(--txt)" /></span>
+      <span style="${zelle};font-size:.72rem;color:var(--mut);white-space:nowrap;justify-content:flex-end">${wie}</span>
+      <span style="${zelle}"><button class="btn bs btn-sm" data-click="schalteLagerortVorgabe" data-arg="${o.id}"
               data-arg2="${o.id === vorgabeId ? 1 : 0}" style="padding:2px 8px"
               title="${esc(tRaw(o.id === vorgabeId ? 'storage.default_is' : 'storage.default_set'))}"
               aria-label="${esc(tRaw(o.id === vorgabeId ? 'storage.default_is' : 'storage.default_set'))}"
-              aria-pressed="${o.id === vorgabeId ? 'true' : 'false'}">${o.id === vorgabeId ? '★' : '☆'}</button>
-      <button class="btn bs btn-sm" data-click="loescheLagerort" data-arg="${o.id}"
-              data-arg2="${esc(o.name)}" style="padding:2px 8px">🗑️</button>
+              aria-pressed="${o.id === vorgabeId ? 'true' : 'false'}">${o.id === vorgabeId ? '★' : '☆'}</button></span>
+      <span style="${zelle}"><button class="btn bs btn-sm" data-click="loescheLagerort" data-arg="${o.id}"
+              data-arg2="${esc(o.name)}" style="padding:2px 8px">🗑️</button></span>
     </div>`;
-  }).join('');
+  }).join('') + `</div>`;
 }
 
 async function legeLagerortAn() {

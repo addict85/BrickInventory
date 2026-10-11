@@ -92,6 +92,31 @@ async function isDecodable(filePath: string) {
     fh = await fs.promises.open(filePath, 'r');
     const buf = Buffer.alloc(HEADER_BYTES);
     const { bytesRead } = await fh.read(buf, 0, HEADER_BYTES, 0);
+    // ── Eine LEERE oder abgeschnittene Datei ist kein Bild ─────────────────
+    //
+    // Marcos Protokoll:
+    //
+    //     [thumb] Vorschau fehlgeschlagen fuer /images/sets/265-2.jpg:
+    //             Input file contains unsupported image format
+    //
+    // Ohne diese Schranke kam so eine Datei durch: `bytesRead` ist 0, damit
+    // erkennt readDimensions() kein Format, und der Rueckfall „unbekanntes
+    // Format: durchlassen" liess sie weiter — bis sharp daran scheiterte.
+    //
+    // Der Rueckfall ist richtig gedacht: Fuer ein Format, das wir nicht lesen
+    // koennen, soll der Dekodierer entscheiden. Er setzt aber voraus, dass es
+    // ueberhaupt etwas zu entscheiden GIBT. Null gelesene Bytes heissen
+    // „leer", und abgeschnitten kleiner als der kleinste denkbare Bildkopf
+    // (ein GIF hat 10 Byte, ein PNG-IHDR 24) heisst „kaputt". Beides ist kein
+    // unbekanntes Format, sondern gar keines.
+    //
+    // Dass daraus ein harter Fehler wurde und nicht ein stilles „keine
+    // Vorschau", hat es ueberhaupt erst sichtbar gemacht — der Fehler war
+    // also nicht das Melden, sondern das Durchlassen.
+    if (bytesRead < 10) {
+      console.warn(`[image-guard] ${bytesRead} Byte gelesen — keine Bilddatei: ${filePath}`);
+      return false;
+    }
     const dim = readDimensions(buf.subarray(0, bytesRead));
     // Unbekanntes Format: durchlassen. Jimp erkennt ohnehin nur eine Handvoll
     // Formate und wirft bei allem anderen — das ist der harmlose Ausgang.
