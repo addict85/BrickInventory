@@ -384,6 +384,11 @@ test('Verschieben läuft über die Tagesregel, nicht über UPDATE user_id', () =
 
   // Der Wechsel des ganzen Sets liegt seit Nachtrag 74 in der v1-Fabrik.
   const src = read('routes/api_v1/sets.ts');
+  // Dies ist eine MUSTERregel: Sie faengt eine geloeschte Zeile. Dass die
+  // Sperre wirklich greift — und zwar auf (Quellkonto, Set) und nicht auf dem
+  // Zielkonto oder einem festen Schluessel — laeuft in
+  // test/sperre-beim-verschieben-db.test.js ueber die echte Adresse; beides
+  // zusammen, nicht eines statt des anderen.
   assert.ok(src.includes('withInventoryLock(fromId, sn'), 'Serialisiert über das Quellkonto');
   // Ganzes Set und einzelne Kaufpreise laufen durch DIESELBE Umsetzung — der
   // Teilfall ist kein Sonderweg, sondern der allgemeine Fall mit Auswahl.

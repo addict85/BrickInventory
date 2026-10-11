@@ -14,9 +14,15 @@
  *
  * Gemessen wurden 26 solche Zusicherungen über Routen-Quelltext in sechs
  * Dateien. Davon sind acht durch test/kontowechsel-ueber-die-route-db.test.js
- * abgedeckt, vier sind KEINE Verdrahtungsbehauptungen (sie sagen „diese Zeile
- * darf nicht zurückkommen" — das kann kein Lauf prüfen), und eine betrifft
- * eine Sperre (withInventoryLock), für die ein Lauf wackelig wäre.
+ * abgedeckt und vier sind KEINE Verdrahtungsbehauptungen (sie sagen „diese
+ * Zeile darf nicht zurückkommen" — das kann kein Lauf prüfen).
+ *
+ * Eine betraf eine Sperre (withInventoryLock). Hier stand „für die ein Lauf
+ * wackelig wäre" — das galt für die naheliegende Bauart (zwei Verschiebungen
+ * gleichzeitig losschicken und hoffen, dass eine verliert), nicht für die
+ * Sache: test/sperre-beim-verschieben-db.test.js hält die Sperre von einer
+ * eigenen Verbindung und liest in pg_locks nach, ob ein Warter steht. Das ist
+ * ein Zustand, keine Dauer, und damit kein Wettlauf.
  *
  * Die fünf hier übrigen laufen jetzt:
  *
