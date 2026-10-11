@@ -43,6 +43,7 @@ const _req = buildAndRequire();
 const db = _req('db/database.js');
 const H  = handlerModul(_req);
 const MF = _req('utils/handlers/minifigs.js');
+const { haeltFigur, haeltTeil } = require('./helpers/bestand');
 
 const U = 990701;
 const FIG = 'mp-fig-1', TEIL = 'mp-teil-1', FARBE = 4;
@@ -62,8 +63,14 @@ test('manuelle Listen tragen den Marktpreis aus dem Cache', async (t) => {
     // Die Farbe muss sich auf sich selbst abbilden, sonst liegt der
     // Cache-Schlüssel woanders — fetchPartPrice übersetzt beides, bevor es liest.
     await db.run("INSERT INTO rb_colors (id,name,bl_color_id) VALUES ($1,'Rot',$1) ON CONFLICT (id) DO UPDATE SET bl_color_id=$1", [FARBE]);
-    await db.run("INSERT INTO minifigs (user_id,fig_number,bl_fig_number,fig_name,quantity,condition,source) VALUES ($1,$2,$2,'Probefigur',1,'N','manual')", [U, FIG]);
-    await db.run("INSERT INTO parts (user_id,part_number,part_name,color_id,color_name,quantity,condition,source) VALUES ($1,$2,'Probeteil',$3,'Rot',1,'N','manual')", [U, TEIL, FARBE]);
+    // Der Zustand steht seit Migration 0035 in der Erfassung. Dieser Test
+    // prueft den Marktpreis OHNE Erfassung, also bleibt es beim Vorgabewert
+    // 'N', den conditionFromAcquisitions() ohne Erfassungen liefert.
+    // bl_fig_number ist mit Migration 0037 weg; dieselbe Nummer in beiden
+    // Feldern hiess „keine abweichende", und das ist in der Zuordnung eine
+    // leere bl_id. Hier braucht es dafuer gar keine Zeile.
+    await haeltFigur(db, U, FIG, { menge: 1 });
+    await haeltTeil(db, U, TEIL, { menge: 1, colorId: FARBE });
 
     // ── 2 zuerst: OHNE Cache-Eintrag ───────────────────────────────────────
     // Diese Reihenfolge ist Absicht. Stünde sie hinten, könnte ein Fehler in

@@ -4,7 +4,8 @@ import { getCurrentMarketPrice } from '../utils/marketPrice';
 // zwei Zahlen zu kommen.
 import { getCurrentFigMarketPrice, getCurrentPartMarketPrice } from '../utils/marketPrice';
 import { lookupPart } from '../clients/rebrickable';
-import { fehlertext, logAndContinue, meldeUndWeiter } from '../utils/httpError';
+import { blAbrufNummer } from '../utils/blZuordnung';
+import { fehlertext, meldeUndWeiter } from '../utils/httpError';
 import { sleep } from '../clients/rebrickable';
 'use strict';
 
@@ -25,13 +26,15 @@ function log(msg: string) {
 
 
 /**
- * Erfassungen ohne Kaufpreis nachtragen — unabhängig von der Set-Zeile.
+ * Erfassungen ohne Kaufpreis nachtragen.
  *
- * Die Lücke: backfillSets() betrachtet nur Sets mit `purchase_price IS NULL`
- * und zieht deren Erfassungen mit. Bekam die Set-Zeile beim Import einen Preis,
- * die Erfassung aber nicht, blieb sie dauerhaft leer.
+ * Das war früher der zweite von zwei Durchläufen: backfillSets() betrachtete
+ * Sets mit `sets.purchase_price IS NULL` und zog deren Erfassungen mit, und
+ * diese Funktion fing die Erfassungen ab, die dabei durchfielen — Set-Zeile
+ * beim Import bepreist, Erfassung nicht. Mit Migration 0032 gibt es nur noch
+ * den einen Ort und damit nur noch diesen Durchlauf.
  *
- * Genau das passiert beim CSV-Import: Er fragt zuerst den Preis-Cache ab und
+ * Die Lücke, die er schliesst, bleibt dieselbe und entsteht beim CSV-Import: Er fragt zuerst den Preis-Cache ab und
  * greift nur bei einem Treffer zu. Ist das Set dort noch nicht drin — bei neuen
  * Sets die Regel — folgt ein BrickLink-Abruf, und der scheitert bei vielen
  * Sets am Tageskontingent. Die Erfassung entsteht dann ohne Preis, und niemand
@@ -56,13 +59,12 @@ async function backfillAcquisitions() {
     try {
       const price = await getCurrentMarketPrice(row.set_number, row.user_id, row.condition || null);
       if (price) {
+        // EIN Schreibvorgang. Hier folgte eine Spiegelung nach
+        // sets.purchase_price („nur setzen, wenn dort noch nichts steht, sonst
+        // überschriebe der Nachtrag einen bewusst gepflegten Wert") — die
+        // Spalte ist mit Migration 0032 weg, und mit ihr die Frage, welcher der
+        // zwei Werte der richtige ist.
         await db.run('UPDATE set_acquisitions SET purchase_price=$1 WHERE id=$2', [price, row.id]);
-        // sets.purchase_price spiegelt die LETZTE Erfassung — nur setzen, wenn
-        // dort noch nichts steht, sonst überschriebe der Nachtrag einen
-        // bewusst gepflegten Wert.
-        await db.run(`UPDATE sets SET purchase_price=$1
-                       WHERE user_id=$2 AND set_number=$3 AND purchase_price IS NULL`,
-          [price, row.user_id, row.set_number]).catch((e: any) => log(`Spiegelung ${row.set_number} fehlgeschlagen: ${e.message}`));
         done++;
       }
     } catch (e) {
@@ -76,70 +78,95 @@ async function backfillAcquisitions() {
   log(`Erfassungen nachgetragen: ${done} von ${rows.length}`);
 }
 
-async function backfillSets() {
+/*
+ * backfillSets() stand hier: ein eigener Durchlauf über `sets WHERE
+ * purchase_price IS NULL`, der den Marktpreis in die Set-Zeile schrieb und die
+ * Erfassungen mitzog. Beides erledigt backfillAcquisitions() oben — und zwar
+ * genauer, weil es den Zustand JEDER Erfassung heranzieht statt den einen Wert
+ * des Sets. Der Durchlauf hier holte den Preis ohne Zustandsangabe, also für
+ * den Standardzustand; ein gebraucht erfasstes Set bekam darüber den Neupreis.
+ * Mit Migration 0032 fällt sein Ziel ohnehin weg.
+ */
+
+/**
+ * Dasselbe fuer Teile- und Figuren-ERFASSUNGEN.
+ *
+ * ── Was hier vorher stand ───────────────────────────────────────────────────
+ *
+ * Zwei Durchlaeufe ueber `parts`/`minifigs WHERE purchase_price IS NULL`, die
+ * den Marktpreis in die Stammzeile schrieben. Migration 0035 hat die Spalte
+ * geloescht; das Ziel ist weg.
+ *
+ * Die LUECKE bleibt aber dieselbe, und sie ist dieselbe wie bei den Sets:
+ * Beim CSV-Import wird zuerst der Preis-Cache gefragt, und ist das Teil dort
+ * noch nicht drin, folgt ein BrickLink-Abruf — der bei vielen Positionen am
+ * Tageskontingent scheitert. Die Erfassung entsteht dann ohne Preis, und
+ * niemand traegt ihn nach, sobald der Preis-Job den Cache gefuellt hat.
+ *
+ * Deshalb ist der Durchlauf an den EINEN verbliebenen Ort gezogen — genau wie
+ * backfillAcquisitions() oben es fuer die Sets schon tat. Zwei Verbesserungen
+ * fallen dabei an:
+ *
+ *   * Der Zustand JEDER Erfassung entscheidet ueber den Preis, nicht ein
+ *     Sammelwert der Stammzeile. Ein gebraucht erfasstes Teil bekam vorher den
+ *     Neupreis.
+ *   * Die `0`, die der Teile-Durchlauf bei erfolglosem Abruf schrieb, entfaellt.
+ *     Sie war der Anzeigewert der Stammzeile („nichts bekannt"); in einer
+ *     Erfassung hiesse sie „fuer null Franken gekauft". Der Anzeigewert wird
+ *     jetzt beim Lesen gebildet (COALESCE(..., 0) in handlers/parts.ts).
+ */
+async function backfillTeileErfassungen() {
   const rows = await db.all(
-    'SELECT id, user_id, set_number FROM sets WHERE purchase_price IS NULL ORDER BY id ASC'
+    `SELECT id, user_id, part_number, color_id, condition
+       FROM part_acquisitions
+      WHERE unit_price IS NULL
+      ORDER BY id ASC`
   ).catch(() => []);
   if (!rows.length) return;
-  log(`Sets ohne Kaufpreis: ${rows.length}`);
+  log(`Teile-Erfassungen ohne Kaufpreis: ${rows.length}`);
   let done = 0;
   for (const row of rows) {
     try {
-      const price = await getCurrentMarketPrice(row.set_number, row.user_id);
+      const price = await getCurrentPartMarketPrice(
+        row.part_number, row.color_id, row.user_id, row.condition || null);
       if (price) {
-        await db.run('UPDATE sets SET purchase_price=$1 WHERE id=$2', [price, row.id]);
-        // Erfassungen ohne Preis mit dem ermittelten Marktpreis nachziehen
-        await db.run(`UPDATE set_acquisitions SET purchase_price=$1
-                      WHERE user_id=$2 AND set_number=$3 AND purchase_price IS NULL`,
-          [price, row.user_id, row.set_number]).catch((e: any) => log(`Nachtrag ${row.set_number} fehlgeschlagen: ${e.message}`));
+        await db.run('UPDATE part_acquisitions SET unit_price=$1 WHERE id=$2', [price, row.id]);
         done++;
       }
-    } catch (e) {
-      log(`übersprungen (${row.set_number}): ${fehlertext(e)}`);
-    }
-    await sleep(1500); // pace requests to respect BrickLink daily limit
+    } catch (e) { meldeUndWeiter('kaufpreis-nachtrag:teil-erfassung', e); }
+    await sleep(1500);
   }
-  log(`Sets migriert: ${done}/${rows.length}`);
+  log(`Teile-Erfassungen nachgetragen: ${done}/${rows.length}`);
 }
 
-async function backfillMinifigs() {
+async function backfillFigurenErfassungen() {
   const rows = await db.all(
-    "SELECT id, user_id, fig_number FROM minifigs WHERE purchase_price IS NULL AND source='manual' ORDER BY id ASC"
+    `SELECT id, user_id, fig_number, condition
+       FROM minifig_acquisitions
+      WHERE unit_price IS NULL
+      ORDER BY id ASC`
   ).catch(() => []);
   if (!rows.length) return;
-  log(`Minifiguren ohne Kaufpreis: ${rows.length}`);
+  log(`Figuren-Erfassungen ohne Kaufpreis: ${rows.length}`);
   let done = 0;
   for (const row of rows) {
     try {
-      const price = await getCurrentFigMarketPrice(row.fig_number, row.user_id);
+      // Die BrickLink-Nummer kommt aus der Zuordnung (Migration 0037) und
+      // nicht mehr aus der Bestandszeile — sie haengt an der Figur, nicht am
+      // Konto, das sie besitzt. Die Abfrage steht in utils/blZuordnung.ts,
+      // weil sie auch routes/api_v1/acquisitions.ts braucht; zwei Fassungen
+      // hat test/sql-kerne.test.js gemeldet.
+      const price = await getCurrentFigMarketPrice(
+        row.fig_number, row.user_id,
+        await blAbrufNummer('fig', row.fig_number), row.condition || null);
       if (price) {
-        await db.run('UPDATE minifigs SET purchase_price=$1 WHERE id=$2', [price, row.id]);
+        await db.run('UPDATE minifig_acquisitions SET unit_price=$1 WHERE id=$2', [price, row.id]);
         done++;
       }
-    } catch (e) { meldeUndWeiter('kaufpreis-nachtrag:minifigur', e); }
+    } catch (e) { meldeUndWeiter('kaufpreis-nachtrag:figur-erfassung', e); }
     await sleep(1500);
   }
-  log(`Minifiguren migriert: ${done}/${rows.length}`);
-}
-
-async function backfillParts() {
-  const rows = await db.all(
-    "SELECT id, user_id, part_number, color_id FROM parts WHERE purchase_price IS NULL AND source='manual' ORDER BY id ASC"
-  ).catch(() => []);
-  if (!rows.length) return;
-  log(`Teile ohne Kaufpreis: ${rows.length}`);
-  let done = 0;
-  for (const row of rows) {
-    try {
-      const price = await getCurrentPartMarketPrice(row.part_number, row.color_id, row.user_id);
-      // Auch ohne gefundenen Preis 0 schreiben: NULL liesse das Kaufpreis-Feld
-      // dauerhaft leer ("Marktpreis"-Platzhalter) und den Job ewig neu versuchen.
-      await db.run('UPDATE parts SET purchase_price=$1 WHERE id=$2', [price || 0, row.id]);
-      done++;
-    } catch (e) { meldeUndWeiter('kaufpreis-nachtrag:teil', e); }
-    await sleep(1500);
-  }
-  log(`Teile migriert: ${done}/${rows.length}`);
+  log(`Figuren-Erfassungen nachgetragen: ${done}/${rows.length}`);
 }
 
 // Einmalige Korrektur: Bild soll immer die tatsächlich gewählte Farbe zeigen.
@@ -156,7 +183,20 @@ async function backfillPartImages() {
     try {
       const info = await lookupPart(row.part_number, row.color_id);
       if (info?.image_url) {
-        await db.run('UPDATE parts SET image_url=$1 WHERE id=$2', [info.image_url, row.id]);
+        // In den Katalog, nicht an die Bestandszeile: Das Bild haengt am
+        // Teil-Farb-Paar und gilt fuer alle Konten (Migration 0034). Vorher
+        // war es ein UPDATE je Zeile — derselbe Abruf lief also fuer jedes
+        // Konto erneut, und die Bilder konnten auseinanderlaufen.
+        //
+        // Ueberschreibend (nicht COALESCE): Genau das ist der Zweck dieses
+        // Nachtrags — ein generisches, oft falschfarbiges Standardbild soll
+        // durch das Bild der tatsaechlich gewaehlten Farbe ersetzt werden.
+        await db.run(`
+          INSERT INTO part_color_catalog (part_number, color_id, image_url)
+          VALUES ($1, $2, $3)
+          ON CONFLICT (part_number, color_id) DO UPDATE
+            SET image_url = EXCLUDED.image_url, updated_at = NOW()`,
+          [row.part_number, row.color_id, info.image_url]);
         done++;
       }
     } catch (e) { meldeUndWeiter('kaufpreis-nachtrag:teilebild', e); }
@@ -170,27 +210,19 @@ async function backfillPartImages() {
 // irgendeinem Grund trotzdem noch leer, wird er direkt vom vorhandenen unit_price
 // übernommen — genau das, was addManualPart/addManualFig eigentlich schon beim
 // Erfassen tun sollten.
-async function backfillFromUnitPrice() {
-  const r1 = await db.run(
-    "UPDATE parts SET purchase_price = unit_price WHERE source='manual' AND purchase_price IS NULL AND unit_price IS NOT NULL"
-  // Die Logzeile unten meldet sonst "0 uebernommen" — nicht unterscheidbar
-  // von "es gab nichts zu tun".
-  ).catch(logAndContinue('kaufpreis-nachtrag:teile'));
-  const r2 = await db.run(
-    "UPDATE minifigs SET purchase_price = unit_price WHERE source='manual' AND purchase_price IS NULL AND unit_price IS NOT NULL"
-  ).catch(logAndContinue('kaufpreis-nachtrag:minifiguren'));
-  log(`Kaufpreis aus vorhandenem Preis/Stk übernommen: ${r1?.changes||0} Teile, ${r2?.changes||0} Minifiguren`);
-}
+/*
+ * backfillFromUnitPrice() stand hier: „UPDATE parts SET purchase_price =
+ * unit_price WHERE purchase_price IS NULL". Es uebertrug den eingegebenen
+ * Preis in den Anzeigewert — zwei Spalten derselben Zeile, von denen Migration
+ * 0035 beide geloescht hat. In der Erfassung gibt es nur EINEN Preis; es gibt
+ * nichts mehr zu uebertragen.
+ */
 
 async function run() {
   log('Starte Migration bestehender Elemente ohne Kaufpreis…');
-  await backfillFromUnitPrice().catch(e => log(`Preis/Stk-Übernahme Fehler: ${e.message}`));
-  await backfillSets().catch(e => log(`Sets Fehler: ${e.message}`));
-  // Nach backfillSets: Dort werden Erfassungen bereits mitgezogen, wenn die
-  // Set-Zeile leer war. Der Durchlauf hier fängt die übrigen ab.
   await backfillAcquisitions().catch(e => log(`Erfassungen Fehler: ${e.message}`));
-  await backfillMinifigs().catch(e => log(`Minifiguren Fehler: ${e.message}`));
-  await backfillParts().catch(e => log(`Teile Fehler: ${e.message}`));
+  await backfillFigurenErfassungen().catch(e => log(`Figuren-Erfassungen Fehler: ${e.message}`));
+  await backfillTeileErfassungen().catch(e => log(`Teile-Erfassungen Fehler: ${e.message}`));
   await backfillPartImages().catch(e => log(`Teile-Bilder Fehler: ${e.message}`));
   log('Migration abgeschlossen.');
 }

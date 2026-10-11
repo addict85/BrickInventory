@@ -32,6 +32,7 @@ process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:t
 process.env.WEB_WORKERS = '1';
 
 const _req = require('./helpers/sources').buildAndRequire();
+const { haeltSet } = require('./helpers/bestand');
 const db = _req('db/database.js');
 
 const U = {};
@@ -50,8 +51,7 @@ async function seed() {
   }
   await db.run('INSERT INTO account_links (main_user_id, sub_user_id) VALUES ($1,$2)',
     [U.ich, U.kind]);
-  await db.run(`INSERT INTO sets (user_id, set_number, name, quantity) VALUES ($1,$2,$3,1)`,
-    [U.ich, '10179-1', 'Falcon']);
+  await haeltSet(db, U.ich, '10179-1', 1);
 }
 
 async function dbReachable() {

@@ -1,6 +1,5 @@
 /**
- * Eine Erfassung löschen → Preis und Zustand der Elternzeile werden NEU
- * bestimmt.
+ * Eine Erfassung löschen → Preis und Zustand der ANTWORT werden NEU bestimmt.
  *
  * ── Woher dieser Test kommt (Marcos Screenshot, Nachtrag 75) ────────────────
  * „Wenn ich in der Android-App einen Kaufpreis entferne, wird der Preis auf der
@@ -9,17 +8,27 @@
  * Zeile.
  *
  * Ursache: Der Lösch-Weg der gemeinsamen Fabrik aktualisierte nur die MENGE
- * (parentQuantitySql). Preis und Zustand blieben stehen. Das fällt weiter auf
- * als es klingt: Kachel, Galerie und Finanzübersicht lesen alle aus
- * sets.purchase_price.
+ * (parentQuantitySql). Preis und Zustand blieben in der gespiegelten Spalte
+ * sets.purchase_price stehen, aus der Kachel, Galerie und Finanzübersicht
+ * lasen.
  *
- * Der ÄNDERN-Weg macht es seit jeher richtig („es gilt der Wert der neuesten
- * Erfassung") — der LÖSCHEN-Weg hatte diese Regel nie. Wieder das Muster
- * „dieselbe Regel fehlt am zweiten Weg", diesmal zwischen zwei Zweigen
- * derselben Datei.
+ * ── Was Migration 0032 daran geändert hat ───────────────────────────────────
+ * Die Spalte ist weg. Preis und Zustand stehen nur noch in set_acquisitions,
+ * und die Antwort der Schreib-Endpunkte trägt das Aggregat daraus mit
+ * (withSetAggregate → avg_purchase_price, condition). Genau diese Felder liest
+ * die Kachel, also prüft dieser Test jetzt SIE statt der Spalte.
  *
- * Gegenprobe (durchgeführt): den Neubestimmungs-Block auskommentiert → der
- * erste Teilschritt zeigt wieder den Preis der gelöschten Zeile.
+ * Das ist nicht derselbe Test mit anderen Worten: Vorher war die Frage „zieht
+ * der Lösch-Weg die zweite Wahrheit nach?", jetzt ist sie „rechnet die Antwort
+ * aus dem, was übrig ist?". Der Fehler von Nachtrag 75 kann in dieser Form
+ * nicht mehr entstehen — dafür kann das Aggregat falsch rechnen, und das wäre
+ * für Marco dasselbe Bild.
+ *
+ * Teilschritt 0 unten ist deshalb neu: Er prüft mit ZWEI Erfassungen im
+ * Bestand, dass der gezeigte Preis der mengengewichtete Mittelwert ist und
+ * nicht der der neuesten Erfassung — also genau das, was die gelöschte Spalte
+ * geführt hätte. Ohne ihn wäre jeder Teilschritt mit nur einer übrigen
+ * Erfassung von „Mittelwert" und „neuester Wert" nicht zu unterscheiden.
  *
  * Voraussetzung: Test-DB via TEST_DATABASE_URL.
  */
@@ -33,6 +42,7 @@ process.env.WEB_WORKERS = '1';
 
 const _req = require('./helpers/sources').buildAndRequire();
 const { testServer } = require('./helpers/server');
+const { haeltSet, mengeVon, haltZeile } = require('./helpers/bestand');
 const db = _req('db/database.js');
 const express = require(path.join(ROOT, 'node_modules', 'express'));
 
@@ -65,8 +75,11 @@ test('Löschen einer Erfassung bestimmt Preis und Zustand der Elternzeile neu',
   const aufbauen = async () => {
     await db.run(`DELETE FROM set_acquisitions WHERE set_number=$1`, [SN]);
     await db.run(`DELETE FROM sets WHERE set_number=$1`, [SN]);
-    await db.run(`INSERT INTO sets (user_id,set_number,name,quantity,condition,purchase_price)
-                  VALUES ($1,$2,'Katzensalon',2,'N',9.48)`, [uid, SN]);
+    // Nur die Bestandszeile, ohne Zahlen: Menge, Preis und Zustand stehen in
+    // den beiden Erfassungen darunter (Migration 0032 fuer Preis und Zustand,
+    // 0036 fuer die Menge). Menge 0 heisst hier „die Erfassungen tragen sie" —
+    // 1 + 1 = 2, wie vorher in der Spalte.
+    await haeltSet(db, uid, SN, 0);
     await db.run(`INSERT INTO set_acquisitions (user_id,set_number,purchase_price,condition,quantity,created_at)
                   VALUES ($1,$2,7.41,'U',1, NOW() - INTERVAL '2 days')`, [uid, SN]);
     await db.run(`INSERT INTO set_acquisitions (user_id,set_number,purchase_price,condition,quantity,created_at)
@@ -75,10 +88,31 @@ test('Löschen einer Erfassung bestimmt Preis und Zustand der Elternzeile neu',
   const neueste = async () => (await db.get(
     `SELECT id FROM set_acquisitions WHERE user_id=$1 AND set_number=$2
       ORDER BY created_at DESC, id DESC LIMIT 1`, [uid, SN])).id;
-  const eltern = async () => await db.get(
-    `SELECT purchase_price, condition, quantity FROM sets WHERE user_id=$1 AND set_number=$2`, [uid, SN]);
+  // Was die Kachel sieht: das Aggregat aus den Erfassungen plus die Menge der
+  // sets-Zeile (die der Lösch-Weg weiterhin nachrechnet).
+  const eltern = async () => {
+    // „Gibt es die Zeile?" und „wie viele Exemplare?" sind seit Migration 0036
+    // zwei Fragen an zwei Tabellen — vorher beantwortete die Spalte beide
+    // zugleich. Die Reihenfolge bleibt: ohne Bestandszeile gibt es keine
+    // Elternangabe, auch wenn noch Erfassungen herumliegen sollten.
+    if (!(await haltZeile(db, uid, SN))) return undefined;
+    const agg = await _req('utils/handlers/sets.js').getSetConditionAggregate([uid], SN);
+    return { purchase_price: agg.avg_purchase_price, condition: agg.condition,
+             quantity: await mengeVon(db, uid, SN) };
+  };
 
   try {
+    // 0. Vor dem Löschen: zwei Erfassungen, 7.41 und 9.48, je ein Exemplar.
+    //    Die alte Spalte hätte 9.48 geführt (Preis der neuesten Erfassung).
+    //    Die Antwort muss den mengengewichteten Mittelwert zeigen.
+    await aufbauen();
+    const vorher = await eltern();
+    assert.equal(Number(vorher.purchase_price), 8.445,
+      'Der gezeigte Preis ist nicht der Mittelwert über die Erfassungen — ' +
+      'bei 9.48 steht dort weiterhin der Wert der NEUESTEN Erfassung');
+    assert.equal(vorher.condition, 'U',
+      'Eine gebrauchte Erfassung macht das Set gebraucht');
+
     // 1. Marcos Fall: die neueste Erfassung löschen.
     await aufbauen();
     let r = await fetch(`${base}/api/v1/sets/${SN}/acquisitions/${await neueste()}`, { method: 'DELETE' });
@@ -86,6 +120,8 @@ test('Löschen einer Erfassung bestimmt Preis und Zustand der Elternzeile neu',
     let e = await eltern();
     assert.equal(Number(e.purchase_price), 7.41,
       'Die Kachel zeigt den Preis der GELÖSCHTEN Zeile — sie muss der verbliebenen folgen');
+    // 7.41 ist hier gleichzeitig der Mittelwert, weil nur eine Erfassung übrig
+    // ist. Teilschritt 2 unten trennt die beiden Lesarten.
     assert.equal(e.condition, 'U',
       'Auch der Zustand muss der verbliebenen Erfassung folgen, nicht der gelöschten');
     assert.equal(Number(e.quantity), 1, 'Die Menge muss weiterhin stimmen');

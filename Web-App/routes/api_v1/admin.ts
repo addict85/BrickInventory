@@ -25,6 +25,7 @@ import { DAILY_JOBS } from '../../jobs/dailyScheduler';
 import { getGlobalSetting, setGlobalSetting, setGlobalTrigger, deleteGlobalSetting } from '../../utils/settings';
 import { ausRetryWarteschlange } from '../../clients/brickset';
 import { sendeFehler } from '../../utils/fehlerTexte';
+import { mengeSkalar } from '../../utils/bestandsmenge';
 const router = express.Router();
 
 /**
@@ -96,11 +97,17 @@ router.get('/admin/image-diag/:setNumber', requireApiAdmin, async (req: AuthedRe
     const sn = String(req.params.setNumber);
 
     // 1. Was weiss die Datenbank — eigene Zeile UND gemeinsamer Katalog?
+    // `image_local` und `image_url` stehen seit Migration 0033 im Katalog, und
+    // damit tragen alle Zeilen denselben Wert. Die Liste beantwortet weiter
+    // „welche Konten fuehren dieses Set?" — genau das braucht die
+    // Einschaetzung unten.
     const zeilen = await db.all(
-      `SELECT user_id, image_local, image_url FROM sets WHERE set_number = $1 ORDER BY user_id`, [sn]
+      `SELECT s.user_id, c.image_local, c.image_url
+         FROM sets s LEFT JOIN set_catalog c ON c.set_number = s.set_number
+        WHERE s.set_number = $1 ORDER BY s.user_id`, [sn]
     ).catch(() => []);
     const katalog = await db.get(
-      `SELECT image_url FROM set_catalog WHERE set_number = $1`, [sn]
+      `SELECT image_url, image_local FROM set_catalog WHERE set_number = $1`, [sn]
     ).catch(() => null);
 
     // 2. Was liegt auf der Platte?
@@ -539,9 +546,14 @@ router.get('/admin/logs', requireApiAdmin, async (req: AuthedRequest, res) => {
 router.get('/admin/brickset-queue', requireApiAdmin, async (_req: AuthedRequest, res) => {
   const rows = await db.all(
     `SELECT q.set_number, q.retry_after, q.attempts, q.last_error, q.created_at,
-            s.name
+            c.name
+     -- Der KATALOG, nicht die sets-Tabelle: Die Warteschlange ist
+     -- kontouebergreifend, und ein LEFT JOIN auf sets traf im Haushalt je
+     -- Konto eine Zeile — derselbe Eintrag erschien dann mehrfach. Mit
+     -- set_catalog ist es genau eine.
+     -- (Keine Gegenstriche: Der Kommentar steht in einem Template-Literal.)
      FROM brickset_retry_queue q
-     LEFT JOIN sets s ON s.set_number = q.set_number
+     LEFT JOIN set_catalog c ON c.set_number = q.set_number
      ORDER BY q.retry_after ASC, q.set_number ASC`
   ).catch(() => []);
   res.json({ success: true, count: rows.length, entries: rows });
@@ -585,7 +597,12 @@ router.get('/admin/jobs', requireApiAdmin, async (_req: AuthedRequest, res) => {
     db.get(`SELECT COUNT(*) as c FROM instruction_queue WHERE status='done'`).catch(()=>null),
     db.get(`SELECT COUNT(*) as c FROM instruction_queue WHERE status='failed'`).catch(()=>null),
   ]);
-  const blMapped = await db.get(`SELECT COUNT(*) as c FROM rb_bl_mapping`).catch(()=>null);
+  // Art 'part': Die Zuordnung traegt seit Migration 0037 auch Figuren, und
+  // diese Kennzahl stellt „nachgesehene Teile" der Zahl der Teile gegenueber
+  // (blTotal darunter). Ohne die Einschraenkung waere der Zaehler groesser
+  // als der Nenner.
+  const blMapped = await db.get(
+    `SELECT COUNT(*) as c FROM bl_zuordnung WHERE art='part'`).catch(()=>null);
   const blTotal  = await db.get(`SELECT COUNT(DISTINCT part_number) as c FROM parts WHERE source!='manual'`).catch(()=>null);
   const rbParts  = await db.get(`SELECT COUNT(*) as c FROM rb_parts`).catch(()=>null);
   const rbInvParts = await db.get(`SELECT COUNT(*) as c FROM rb_inventory_parts`).catch(()=>null);
@@ -649,9 +666,14 @@ router.get('/admin/jobs', requireApiAdmin, async (_req: AuthedRequest, res) => {
     db.get(`SELECT COUNT(*) as c FROM set_minifigs_catalog WHERE image_url IS NOT NULL AND image_local IS NULL`).catch(()=>null),
     // Minifiguren des Bestands: Sie werden seit der Erweiterung des
     // img-dl-Hintergrundlaufs ebenfalls lokal abgelegt und gehören damit in
-    // die offene Menge. DISTINCT, weil die Datei je Figur nur einmal geholt
-    // wird und von allen Nutzern geteilt wird.
-    db.get(`SELECT COUNT(DISTINCT fig_number) as c FROM minifigs WHERE image_url IS NOT NULL AND image_local IS NULL`).catch(()=>null),
+    // die offene Menge. Das DISTINCT stand hier, weil die Abfrage auf
+    // minifigs lief und dieselbe Figur je Konto eine Zeile hatte; seit
+    // Migration 0034 ist fig_number der Primaerschluessel des Katalogs.
+    // Das EXISTS haelt die Menge bei dem, was der Hintergrundlauf wirklich
+    // holt: Figuren, die jemand besitzt (siehe server.ts).
+    db.get(`SELECT COUNT(*) as c FROM minifigs_catalog mc
+             WHERE mc.image_url IS NOT NULL AND mc.image_local IS NULL
+               AND EXISTS (SELECT 1 FROM minifigs m WHERE m.fig_number = mc.fig_number)`).catch(()=>null),
   ]);
   const imgPending = parseInt(imgDlPending?.c||0) + parseInt(imgDlPendingFigs?.c||0)
                    + parseInt(imgDlPendingOwnFigs?.c||0);
@@ -1005,7 +1027,11 @@ router.get('/admin/price-probe', requireApiAdmin, async (req: AuthedRequest, res
   const uid = req.apiUser.user_id;
 
   const [setRow, acqs, cacheRows, histRows, currRow, ttlRow] = await Promise.all([
-    db.get('SELECT set_number, quantity, condition, purchase_price FROM sets WHERE user_id=$1 AND set_number=$2', [uid, setNumber]),
+    // Die Menge aus den Erfassungen (Migration 0036 hat sets.quantity
+    // geloescht). Die Probe soll zeigen, was die Bewertung sieht — und die
+    // sieht seitdem genau diese Summe.
+    db.get(`SELECT s.set_number, ${mengeSkalar('s')} AS quantity
+              FROM sets s WHERE s.user_id=$1 AND s.set_number=$2`, [uid, setNumber]),
     // Spalte heisst created_at, nicht added_at — daran scheiterte die Probe
     // zuvor mit einem 500er.
     db.all('SELECT quantity, condition, purchase_price, created_at FROM set_acquisitions WHERE user_id=$1 AND set_number=$2 ORDER BY created_at', [uid, setNumber]),
@@ -1019,25 +1045,27 @@ router.get('/admin/price-probe', requireApiAdmin, async (req: AuthedRequest, res
   ]);
 
   // Welchen Zustand würde die Bewertung wählen? Dieselbe Regel wie
-  // conditionFromAcquisitions() in utils/handlers.ts: Eine gebrauchte
-  // Erfassung genügt; gibt es Erfassungen ohne gebrauchte, ist es Neu; ohne
-  // Erfassungen zählt sets.condition. Die Probe zeigte hier vorher die
-  // ÜBERHOLTE Regel („nur sets.condition zählt") — das hätte bei genau dieser
-  // Art von Anfrage einen falschen Eindruck vermittelt.
-  const acqCount = acqs.length;
+  // conditionFromAcquisitions() in utils/handlers/shared.ts: Eine gebrauchte
+  // Erfassung genügt, sonst Neu.
+  //
+  // Die Probe zeigte hier zweimal eine überholte Regel — erst „nur
+  // sets.condition zählt", dann „ohne Erfassungen zählt sets.condition". Beide
+  // Male war es derselbe Fehler: eine ZWEITE Abschrift der Zustandsregel, die
+  // nicht mitgepflegt wurde. Seit Migration 0032 gibt es die Spalte nicht mehr,
+  // und damit auch keinen dritten Fall, der auseinanderlaufen könnte.
   const anyUsed = acqs.some((a: any) => a.condition === 'U');
-  const chosen = anyUsed ? 'U' : (acqCount > 0 ? 'N' : (setRow?.condition === 'U' ? 'U' : 'N'));
+  const chosen = anyUsed ? 'U' : 'N';
 
   const out: any = {
     success: true,
     set: setRow || null,
     acquisitions: acqs,
     condition_logic: {
-      stored_in_sets: setRow?.condition ?? null,
       any_acquisition_used: anyUsed,
       chosen_for_price: chosen,
-      hinweis: 'Eine gebrauchte Erfassung macht das Set gebraucht; Erfassungen ohne '
-             + 'gebrauchte machen es neu; ohne Erfassungen zählt sets.condition. '
+      hinweis: 'Eine gebrauchte Erfassung macht das Set gebraucht, sonst ist es neu. '
+             + 'Der Zustand steht seit Migration 0032 nur in den Erfassungen; das Feld '
+             + 'mit dem gespeicherten Wert, das hier vorher stand, ist weggefallen. '
              + 'Weicht "chosen_for_price" von der Anzeige ab, liegt der Fehler dort.',
     },
     currency: currRow?.value || 'EUR',

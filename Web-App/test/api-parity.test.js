@@ -52,6 +52,7 @@ process.env.WEB_WORKERS = '1';
 // Nach dist/ bauen statt in-place — siehe helpers/sources.js.
 const _req = require('./helpers/sources').buildAndRequire();
 const { routerEinhaengungen } = require('./helpers/sources');
+const { haeltFigur, haeltSet, haeltTeil } = require('./helpers/bestand');
 
 const db = _req('db/database.js');
 const express = require(path.join(ROOT, 'node_modules', 'express'));
@@ -70,6 +71,25 @@ async function seed() {
   await db.run('DROP SCHEMA public CASCADE');
   await db.run('CREATE SCHEMA public');
   await db.initSchema();
+  // ── Und die Migrationen, nicht nur initSchema() ──────────────────────────
+  //
+  // Hier endete der Aufbau nach initSchema(). Das ergab ein Schema, das KEINE
+  // echte Installation hat: initSchema() laeuft nur bei einer
+  // Versionsaenderung, die nummerierten Migrationen laufen IMMER. Neun
+  // Tabellen gibt es ueberhaupt nur in ihrer Migration (account_links,
+  // wishlist, vouchers, price_alerts, …), und Spalten, die eine Migration
+  // LOESCHT, standen hier noch.
+  //
+  // Das ist nicht theoretisch: Genau daran ist GET /api/v1/sets zerbrochen.
+  // schema.sql legt sets.name an, damit Migration 0014 sie anfassen kann, und
+  // Migration 0033 loescht sie am Ende der Kette. Auf DIESEM halben Schema gab
+  // es sie noch — und `SELECT s.*, c.name` hatte damit zwei Spalten namens
+  // name. GEMESSEN: „column reference \"name\" is ambiguous", die ganze
+  // Set-Liste antwortete mit 500, und der Fehler war nur hier zu sehen.
+  //
+  // Eine Paritaetspruefung muss gegen das Schema laufen, das die Nutzer haben.
+  const client = await db.pool.connect();
+  try { await _req('db/migrate.js').runMigrations(client); } finally { client.release(); }
 
   // Kein RETURNING: der SQLite-Kompat-Layer (toPostgres) hängt an INSERTs
   // "ON CONFLICT DO NOTHING" an, was hinter RETURNING ungültig wäre.
@@ -88,10 +108,8 @@ async function seed() {
     [_req('utils/auth.js').hashToken(TOKEN), USER.id]);
 
   // Sets: eines mit gemischten Erfassungen (Zustand-Aggregat!), eines ohne
-  await db.run(
-    `INSERT INTO sets (user_id, set_number, name, year, theme, pieces, minifigs, quantity, image_url, purchase_price, condition)
-     VALUES ($1,'75192-1','Millennium Falcon',2017,'Star Wars',7541,8,2,'https://img/75192.jpg',649.99,'N'),
-            ($1,'6346-1','Shuttle Launching Crew',1992,'Town',154,3,1,NULL,25.00,'N') ON CONFLICT DO NOTHING`, [USER.id]);
+  await haeltSet(db, USER.id, '75192-1', 0, { egalWennDa: true });  // Menge 0: die Erfassung dahinter traegt sie
+  await haeltSet(db, USER.id, '6346-1', 0, { egalWennDa: true });  // Menge 0: die Erfassung dahinter traegt sie
   await db.run(
     `INSERT INTO set_acquisitions (user_id, set_number, purchase_price, condition)
      VALUES ($1,'75192-1',649.99,'N'), ($1,'75192-1',420.00,'U'), ($1,'6346-1',25.00,'N') ON CONFLICT DO NOTHING`, [USER.id]);
@@ -103,14 +121,10 @@ async function seed() {
     .catch(() => {});
 
   // Teile + Minifiguren (je Set-Quelle und manuelle Position)
-  await db.run(
-    `INSERT INTO parts (user_id, set_number, part_number, part_name, color_id, color_name, color_hex, category_name, quantity, source)
-     VALUES ($1,'75192-1','3001','Brick 2 x 4',4,'Red','C91A09','Bricks',10,'set'),
-            ($1,NULL,'3020','Plate 2 x 4',0,'Black','05131D','Plates',5,'manual') ON CONFLICT DO NOTHING`, [USER.id]);
-  await db.run(
-    `INSERT INTO minifigs (user_id, set_number, fig_number, fig_name, quantity, source)
-     VALUES ($1,'75192-1','sw0850','Han Solo',1,'set'),
-            ($1,NULL,'sw0001','Luke Skywalker',2,'manual') ON CONFLICT DO NOTHING`, [USER.id]);
+  await haeltTeil(db, USER.id, '3001', { setNumber: '75192-1', menge: 10, colorId: 4, egalWennDa: true });
+  await haeltTeil(db, USER.id, '3020', { menge: 0, colorId: 0, egalWennDa: true });  // Menge 0: die Erfassung dahinter traegt sie
+  await haeltFigur(db, USER.id, 'sw0850', { setNumber: '75192-1', menge: 1, egalWennDa: true });
+  await haeltFigur(db, USER.id, 'sw0001', { menge: 0, egalWennDa: true });  // Menge 0: die Erfassung dahinter traegt sie
 
   // Erfassungen für Teile/Minifiguren (eigene Acquisition-Endpunkte)
   await db.run(
@@ -127,10 +141,8 @@ async function seed() {
             ('75192-1','N','CHF',710,860,1010,870,NOW() - INTERVAL '1 day') ON CONFLICT DO NOTHING`).catch(() => {});
 
   // Zwei identische Wegwerf-Sets für die Schreib-Paritätstests (PUT/DELETE)
-  await db.run(
-    `INSERT INTO sets (user_id, set_number, name, year, quantity, purchase_price, condition)
-     VALUES ($1,'40567-1','Forest Hideout A',2022,1,35.00,'N'),
-            ($1,'40568-1','Forest Hideout B',2022,1,35.00,'N') ON CONFLICT DO NOTHING`, [USER.id]);
+  await haeltSet(db, USER.id, '40567-1', 0, { egalWennDa: true });  // Menge 0: die Erfassung dahinter traegt sie
+  await haeltSet(db, USER.id, '40568-1', 0, { egalWennDa: true });  // Menge 0: die Erfassung dahinter traegt sie
   await db.run(
     `INSERT INTO set_acquisitions (user_id, set_number, quantity, purchase_price, condition)
      VALUES ($1,'40567-1',1,35.00,'N'), ($1,'40568-1',1,35.00,'N') ON CONFLICT DO NOTHING`, [USER.id]);

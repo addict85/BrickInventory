@@ -14,6 +14,7 @@ import { verwendendeSets, loescheManuelleFigur } from '../../utils/handlers/shar
 import { inventarNachKandidaten } from '../../utils/rbInventar';
 import { sendeFehler } from '../../utils/fehlerTexte';
 import { normalisiereLagerort, setzeLagerort } from '../../utils/lagerort';
+import { blJoin, blNummerSql } from '../../utils/blZuordnung';
 const router = express.Router();
 
 // ── MINIFIGS ─────────────────────────────────────────────────────────────────
@@ -136,7 +137,7 @@ router.get('/minifigs/:figNumber/parts', requireToken, async (req: AuthedRequest
     // Get CSV parts for this minifig
     const csvParts = await db.all(
       `SELECT ip.part_num AS part_number,
-              COALESCE(m.bl_part_num, ip.part_num) AS bl_part_number,
+              COALESCE(m.bl_id, ip.part_num) AS bl_part_number,
               p.name AS part_name, ip.color_id,
               c.name AS color_name, c.rgb AS color_hex,
               -- Dieselbe Lesart wie istErsatzteil() in utils/validate.ts.
@@ -147,15 +148,20 @@ router.get('/minifigs/:figNumber/parts', requireToken, async (req: AuthedRequest
        FROM rb_inventory_parts ip
        LEFT JOIN rb_parts  p ON p.part_num = ip.part_num
        LEFT JOIN rb_colors c ON c.id       = ip.color_id
-       LEFT JOIN rb_bl_mapping m ON m.part_num = ip.part_num
+       LEFT JOIN bl_zuordnung  m ON m.art = 'part' AND m.rb_id = ip.part_num
        WHERE ip.inventory_id = $1`,
       [invId]
     ).catch(() => []);
 
     // Check catalog — if empty, enrich NOW (get correct BL IDs before responding)
     let catRows = await db.all(
-      `SELECT part_number, color_id, bl_part_number, image_url, image_local
-       FROM set_parts_catalog WHERE set_number=$1`,
+      // bl_part_number aus der Zuordnung (Migration 0037) — siehe die
+      // Begruendung in routes/api_v1/sets.ts.
+      `SELECT c.part_number, c.color_id, ${blNummerSql('c.part_number')} AS bl_part_number,
+              c.image_url, c.image_local
+         FROM set_parts_catalog c
+         ${blJoin('c.part_number', 'part')}
+        WHERE c.set_number=$1`,
       [figNumber]
     ).catch(() => []);
 
@@ -178,8 +184,11 @@ router.get('/minifigs/:figNumber/parts', requireToken, async (req: AuthedRequest
       }
 
       catRows = await db.all(
-        `SELECT part_number, color_id, bl_part_number, image_url, image_local
-         FROM set_parts_catalog WHERE set_number=$1`,
+        `SELECT c.part_number, c.color_id, ${blNummerSql('c.part_number')} AS bl_part_number,
+                c.image_url, c.image_local
+           FROM set_parts_catalog c
+           ${blJoin('c.part_number', 'part')}
+          WHERE c.set_number=$1`,
         [figNumber]
       ).catch(() => []);
     }

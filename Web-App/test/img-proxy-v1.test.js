@@ -150,6 +150,55 @@ test('die Migration erfasst JEDE Tabelle mit image_url', () => {
     fehlend.join('\n  ') +
     '\nSonst bleiben dort Adressen in der alten Form stehen.');
 
+  // ── Tabellen, die es bei Migration 0014 noch nicht gab ──────────────────
+  //
+  // Die Liste oben liest schema.sql. Neun Tabellen stehen nur in ihrer
+  // Migration, und drei davon tragen image_url: part_catalog gibt es nicht,
+  // aber part_color_catalog und minifigs_catalog (Migration 0034).
+  //
+  // Migration 0014 KANN sie nicht anfassen — sie laeuft zwanzig Dateien
+  // vorher. Die Zusage muss hier also anders lauten, und sie ist genauso
+  // pruefbar: Ihre Adressen kommen aus Tabellen, die 0014 umschreibt. Steht
+  // dort die neue Form, steht sie auch hier.
+  //
+  // Geprueft wird genau das — nicht angenommen: Fuer jede solche Tabelle muss
+  // die Migration, die sie anlegt, ihre image_url aus einer Tabelle lesen, die
+  // 0014 umschreibt.
+  const umgeschrieben = [...mig.matchAll(/UPDATE\s+(\w+)\s/g)].map(m => m[1]);
+  assert.ok(umgeschrieben.length >= 5,
+    `Nur ${umgeschrieben.length} UPDATE-Ziele in 0014 gefunden — Muster veraltet?`);
+
+  const migVerz = path.join(ROOT, 'db', 'migrations');
+  const spaeter = fs.readdirSync(migVerz).filter(f => f.endsWith('.sql') && f > '0014').sort();
+  const nachzuegler = [];
+  for (const f of spaeter) {
+    const txt = ohneKommentare(lies(ROOT, 'db', 'migrations', f));
+    for (const m of txt.matchAll(/CREATE\s+TABLE(?:\s+IF\s+NOT\s+EXISTS)?\s+(\w+)\s*\(([^;]*?)\)\s*;/gs)) {
+      if (/^\s*image_url\s/m.test(m[2])) nachzuegler.push([m[1], f, txt]);
+    }
+  }
+  assert.ok(nachzuegler.length >= 2,
+    `Nur ${nachzuegler.length} spaetere Tabellen mit image_url gefunden ` +
+    '(gemessen sind es zwei: part_color_catalog und minifigs_catalog) — Muster veraltet?');
+
+  const ohneHerkunft = nachzuegler
+    .filter(([tab, , txt]) => {
+      // Der INSERT, der diese Tabelle fuellt, und woraus er liest.
+      const bloecke = [...txt.matchAll(
+        new RegExp(`INSERT\\s+INTO\\s+${tab}\\s*\\([^)]*image_url[^)]*\\)([\\s\\S]*?)(?=INSERT\\s+INTO|ALTER\\s+TABLE|CREATE\\s|\\$sql\\$|$)`, 'gi'))];
+      if (!bloecke.length) return true;
+      return !bloecke.some(b => umgeschrieben.some(
+        q => new RegExp(`FROM\\s+${q}\\b`, 'i').test(b[1])));
+    })
+    .map(([tab, f]) => `${tab} (${f})`)
+    .sort();
+  assert.deepEqual(ohneHerkunft, [],
+    'Diese Tabellen tragen image_url, entstehen NACH Migration 0014 und ' +
+    'bekommen ihre Adressen nicht aus einer Tabelle, die 0014 umschreibt:\n  ' +
+    ohneHerkunft.join('\n  ') +
+    '\nDann koennen dort Adressen in der alten Form landen, und 0014 kommt ' +
+    'nie wieder vorbei.');
+
   // Und der Vergleich bleibt ein PRÄFIX-Vergleich. Ein `LIKE '%…%'` träfe
   // auch einen CDN-Link, der die Zeichenkette im Abfrageteil trägt, und
   // machte aus ihm eine kaputte Adresse.

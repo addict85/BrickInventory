@@ -24,6 +24,7 @@ process.env.WEB_WORKERS = '1';
 const _req = require('./helpers/sources').buildAndRequire();
 const db = _req('db/database.js');
 const express = require(path.join(ROOT, 'node_modules', 'express'));
+const { haeltFigur, haeltSet, haeltTeil, mengeVon } = require('./helpers/bestand');
 
 /**
  * Die ECHTE Verschiebe-Route aufrufen — mit injizierter Session, wie in
@@ -100,11 +101,20 @@ async function seed() {
 
 /** Set + Erfassung für ein Konto anlegen. */
 async function giveSet(uid, sn, qty, price, cond = 'N', day = null) {
+  // Nur die Bestandszeile. Die Menge traegt die Erfassung weiter unten
+  // (recordAcquisitionForDay) — seit Migration 0036 der einzige Ort. Das
+  // frueher noetige `DO UPDATE SET quantity = sets.quantity + $3` faellt damit
+  // weg: Zwei Aufrufe fuer dasselbe Set addieren sich jetzt dadurch, dass
+  // ZWEI Erfassungen entstehen.
+  await haeltSet(db, uid, sn, 0, { egalWennDa: true });
+  // Der Name gehoert seit Migration 0033 in den Katalog, und zu jedem Set im
+  // Bestand MUSS dort eine Zeile stehen (die Migration traegt sie nach und
+  // prueft das). Die Vorlage stellt also die Lage her, die es wirklich gibt.
   await db.run(
-    `INSERT INTO sets (user_id, set_number, name, year, quantity, condition)
-     VALUES ($1,$2,$3,2020,$4,$5)
-     ON CONFLICT (user_id, set_number) DO UPDATE SET quantity = sets.quantity + $4`,
-    [uid, sn, 'Set ' + sn, qty, cond]);
+    `INSERT INTO set_catalog (set_number, name, year) VALUES ($1,$2,2020)
+     ON CONFLICT (set_number) DO NOTHING`, [sn, 'Set ' + sn]);
+  // `cond` geht nur noch in die Erfassung — die sets-Zeile hat seit
+  // Migration 0032 keine condition-Spalte mehr.
   await _req('utils/acquisitions.js').recordAcquisitionForDay('set', uid, [sn], {
     quantity: qty, price, condition: cond, createdAt: day,
   });
@@ -330,12 +340,10 @@ test('Haushalt gegen echte Datenbank', async (t) => {
   await t.test('Verschieben nimmt Teile, Minifiguren und Anleitungen mit', async () => {
     // Inhalt für das Set von kindA anlegen — plus ein manuell erfasstes Teil,
     // das ausdrücklich NICHT mitwandern darf.
-    await db.run(`INSERT INTO parts (user_id,set_number,part_number,color_id,quantity,source)
-                  VALUES ($1,'75192-1','3001',4,10,'set'), ($1,'75192-1','3002',1,5,'set')`, [U.kindA]);
-    await db.run(`INSERT INTO parts (user_id,part_number,color_id,quantity,source)
-                  VALUES ($1,'9999',0,3,'manual')`, [U.kindA]);
-    await db.run(`INSERT INTO minifigs (user_id,set_number,fig_number,quantity,source)
-                  VALUES ($1,'75192-1','sw0001',2,'set')`, [U.kindA]);
+    await haeltTeil(db, U.kindA, '3001', { setNumber: '75192-1', menge: 10, colorId: 4 });
+    await haeltTeil(db, U.kindA, '3002', { setNumber: '75192-1', menge: 5, colorId: 1 });
+    await haeltTeil(db, U.kindA, '9999', { menge: 3, colorId: 0 });
+    await haeltFigur(db, U.kindA, 'sw0001', { setNumber: '75192-1', menge: 2 });
     await db.run(`INSERT INTO instructions (user_id,set_number,url) VALUES ($1,'75192-1','http://x/1.pdf')`,
       [U.kindA]);
 
@@ -436,10 +444,8 @@ test('Haushalt gegen echte Datenbank', async (t) => {
     // können. Hier wandert EINE Zeile — die Quelle behält den Rest samt Teilen.
     await giveSet(U.kindA, '21318-1', 1, 200, 'N', '2026-01-05');
     await giveSet(U.kindA, '21318-1', 1, 240, 'N', '2026-02-05');
-    await db.run(`INSERT INTO parts (user_id,set_number,part_number,color_id,quantity,source)
-                  VALUES ($1,'21318-1','3020',2,4,'set')`, [U.kindA]);
-    await db.run(`INSERT INTO minifigs (user_id,set_number,fig_number,quantity,source)
-                  VALUES ($1,'21318-1','fig-tree',1,'set')`, [U.kindA]);
+    await haeltTeil(db, U.kindA, '3020', { setNumber: '21318-1', menge: 4, colorId: 2 });
+    await haeltFigur(db, U.kindA, 'fig-tree', { setNumber: '21318-1', menge: 1 });
     await db.run(`INSERT INTO instructions (user_id,set_number,url)
                   VALUES ($1,'21318-1','http://x/tree.pdf')`, [U.kindA]);
 
@@ -459,8 +465,8 @@ test('Haushalt gegen echte Datenbank', async (t) => {
     assert.equal(body.source_emptied, false, 'die Quelle behält ein Exemplar');
 
     // Mengen stimmen auf beiden Seiten …
-    const qty = async uid => (await db.get(
-      'SELECT quantity FROM sets WHERE user_id=$1 AND set_number=$2', [uid, '21318-1']))?.quantity;
+    // Aus den Erfassungen (Migration 0036) — die Spalte gibt es nicht mehr.
+    const qty = async uid => await mengeVon(db, uid, '21318-1');
     assert.equal(await qty(U.kindA), 1, 'Quelle nicht heruntergezählt');
     assert.equal(await qty(U.eltern), 1);
 
@@ -575,12 +581,10 @@ test('Haushalt gegen echte Datenbank', async (t) => {
 
     // Manuell erfasste Teile und Minifiguren hängen an eigenen Endpunkten —
     // gemeldet war, dass der Filter dort nicht greift.
-    await db.run(`INSERT INTO parts (user_id,part_number,color_id,quantity,source,part_name)
-                  VALUES ($1,'m-A',0,1,'manual','Teil A'), ($2,'m-B',0,1,'manual','Teil B')`,
-      [U.kindA, U.kindB]);
-    await db.run(`INSERT INTO minifigs (user_id,fig_number,quantity,source,fig_name)
-                  VALUES ($1,'mf-A',1,'manual','Figur A'), ($2,'mf-B',1,'manual','Figur B')`,
-      [U.kindA, U.kindB]);
+    await haeltTeil(db, U.kindA, 'm-A', { menge: 1, colorId: 0 });
+    await haeltTeil(db, U.kindB, 'm-B', { menge: 1, colorId: 0 });
+    await haeltFigur(db, U.kindA, 'mf-A', { menge: 1 });
+    await haeltFigur(db, U.kindB, 'mf-B', { menge: 1 });
 
     const nummern = rows => rows.map(r => r.part_number ?? r.fig_number);
     const nurA = nummern(await handlers.getManualParts(await household.scopeIds(U.eltern, U.kindA)));
@@ -619,15 +623,11 @@ test('Haushalt gegen echte Datenbank', async (t) => {
     // Ausgangslage nachstellen: kindB besitzt 10290-1, die Teile liegen aber
     // noch bei kindA — und ein FREMDES Konto besitzt dasselbe Set ebenfalls,
     // darf aber nichts abbekommen.
-    await db.run(`INSERT INTO sets (user_id,set_number,name,quantity) VALUES ($1,'10290-1','x',1)
-                  ON CONFLICT (user_id,set_number) DO NOTHING`, [U.kindB]);
+    await haeltSet(db, U.kindB, '10290-1', 1, { egalWennDa: true });
     await db.run(`DELETE FROM sets WHERE user_id=$1 AND set_number='10290-1'`, [U.kindA]);
-    await db.run(`INSERT INTO sets (user_id,set_number,name,quantity) VALUES ($1,'10290-1','x',1)
-                  ON CONFLICT (user_id,set_number) DO NOTHING`, [U.fremd]);
-    await db.run(`INSERT INTO parts (user_id,set_number,part_number,color_id,quantity,source)
-                  VALUES ($1,'10290-1','3005',1,7,'set')`, [U.kindA]);
-    await db.run(`INSERT INTO minifigs (user_id,set_number,fig_number,quantity,source)
-                  VALUES ($1,'10290-1','fig-1',1,'set')`, [U.kindA]);
+    await haeltSet(db, U.fremd, '10290-1', 1, { egalWennDa: true });
+    await haeltTeil(db, U.kindA, '3005', { setNumber: '10290-1', menge: 7, colorId: 1 });
+    await haeltFigur(db, U.kindA, 'fig-1', { setNumber: '10290-1', menge: 1 });
 
     const client = await db.pool.connect();
     try {

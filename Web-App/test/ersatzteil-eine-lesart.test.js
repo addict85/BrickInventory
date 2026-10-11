@@ -37,6 +37,7 @@ const ROOT = path.join(__dirname, '..');
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
 process.env.WEB_WORKERS = '1';
 const _req = require('./helpers/sources').buildAndRequire();
+const { haeltSet, haeltTeil } = require('./helpers/bestand');
 const db = _req('db/database.js');
 
 after(() => db.pool.end().catch(() => {}));
@@ -107,14 +108,26 @@ test('die Antwort traegt einen echten Wahrheitswert', async (t) => {
   }
   await db.run('DROP SCHEMA public CASCADE');
   await db.run('CREATE SCHEMA public');
+  // initSchemaOnce() — nicht initSchema(): Es faehrt anschliessend die
+  // nummerierten Migrationen (db/database.ts, `const applied = await
+  // runMigrations(client)`). Die Kataloge aus Migration 0034 gibt es nur dort,
+  // und das Ersatzteilkennzeichen steht seit 0034 in set_parts_catalog.
   await db.initSchemaOnce();
 
   await db.run(`INSERT INTO users (username,password_hash) VALUES ('spare','x')`);
   const uid = (await db.get(`SELECT id FROM users WHERE username='spare'`)).id;
-  await db.run(`INSERT INTO sets (user_id,set_number,name,quantity) VALUES ($1,'75192-1','Falcon',1)`, [uid]);
-  await db.run(`INSERT INTO parts (user_id,set_number,part_number,color_id,part_name,quantity,source,is_spare)
-                VALUES ($1,'75192-1','3001',4,'Brick',10,'set',1),
-                       ($1,'75192-1','3020',0,'Plate',2,'set',0)`, [uid]);
+  await haeltSet(db, uid, '75192-1', 1);
+  // ── is_spare gehoert zur TEILELISTE des Sets, nicht zum Teil ────────────
+  //
+  // Seit Migration 0034 steht es in set_parts_catalog, und das ist die
+  // richtige Stelle: Derselbe Stein ist in einem Set Ersatzteil und im
+  // naechsten Pflichtteil. Die Frage dieses Tests bleibt dieselbe — kommt
+  // beim Leser ein echter Wahrheitswert an.
+  await db.run(`INSERT INTO set_parts_catalog (set_number,part_number,color_id,quantity,is_spare)
+                VALUES ('75192-1','3001',4,10,1),
+                       ('75192-1','3020',0,2,0)`);
+  await haeltTeil(db, uid, '3001', { setNumber: '75192-1', menge: 10, colorId: 4 });
+  await haeltTeil(db, uid, '3020', { setNumber: '75192-1', menge: 2, colorId: 0 });
 
   const { getParts } = _req('utils/handlers/parts.js');
   const parts = (await getParts([uid], { page_size: 60 })).parts || [];

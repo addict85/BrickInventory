@@ -18,7 +18,8 @@ import { farbkarte as blFarbkarte } from '../financeCalc';
 import { getGlobalSetting } from '../../utils/settings';
 import { neuestesInventar, inventarKandidaten } from '../rbInventar';
 import { beideSchreibweisen } from '../setNummer';
-import { merkeBlFarbnummer, blFarbnummerAus } from '../blZuordnung';
+import { merkeBlFarbnummer, blFarbnummerAus, blJoin, blNummerSql } from '../blZuordnung';
+import { mengeJoin, mengeAus, teilmengeJoin, teilmengeAus } from '../bestandsmenge';
 
 /**
  * Leseabfragen für Teile — inklusive der Ausweichebenen (CSV-Zwischenspeicher,
@@ -74,15 +75,22 @@ async function getPartsColors(userId: Blickfeld) {
       GROUP BY ps.color_name, COALESCE(ps.color_hex, rc.rgb)
       ORDER BY total_quantity DESC`, [uids]);
   }
+  // Farbbezeichnung und Farbcode aus part_color_catalog (Migration 0034):
+  // Sie haengen am Teil-Farb-Paar, nicht am Konto, das das Teil besitzt.
+  // Der Hex-Ausweich ueber rb_colors bleibt — fuer Teile, deren Katalogzeile
+  // noch keinen Farbcode hat.
   return db.all(`
-    SELECT p.color_name, COALESCE(p.color_hex, rc.rgb) AS color_hex,
+    SELECT pcc.color_name, COALESCE(pcc.color_hex, rc.rgb) AS color_hex,
            COUNT(DISTINCT p.part_number)::int AS unique_parts,
-           SUM(p.quantity * COALESCE(s.quantity,1))::int AS total_quantity
+           SUM(${teilmengeAus('p', 'part')} * ${mengeAus('sm', 1)})::int AS total_quantity
     FROM parts p
-    LEFT JOIN sets s ON s.user_id = p.user_id AND s.set_number = p.set_number
+    ${mengeJoin('p')}
+    ${teilmengeJoin('p', 'part')}
+    LEFT JOIN part_color_catalog pcc ON pcc.part_number = p.part_number
+                                    AND pcc.color_id    = p.color_id
     LEFT JOIN rb_colors rc ON rc.id = p.color_id
     WHERE p.user_id = ANY($1) AND COALESCE(p.source,'set') <> 'manual'
-    GROUP BY p.color_name, COALESCE(p.color_hex, rc.rgb) ORDER BY total_quantity DESC`, [uids]);
+    GROUP BY pcc.color_name, COALESCE(pcc.color_hex, rc.rgb) ORDER BY total_quantity DESC`, [uids]);
 }
 
 /**
@@ -108,21 +116,28 @@ function teileFilter(uids: number[], query: any) {
     where += ` AND (p.set_number = $${pi} OR p.set_number = $${pi+1})`;
     params.push(...beideSchreibweisen(set_number)); pi += 2;
   }
-  if (color)    { where += ` AND p.color_name = $${pi++}`;    params.push(color); }
-  // Kategorie auch über den Teilekatalog auflösen — parts.category_name steht
-  // bei vielen Teilen auf 'Unknown', weil die Set-Teile-Antwort von
+  // Farbe, Kategorie, Name und Ersatzteilkennzeichen stehen seit Migration
+  // 0034 in den Katalogen; die Aliase pc/pcc/spc haengt der Aufrufer an
+  // (katalogJoin in getParts).
+  if (color)    { where += ` AND pcc.color_name = $${pi++}`;  params.push(color); }
+  // Kategorie auch über rb_parts auflösen — die Kategorie steht bei vielen
+  // Teilen auf 'Unknown', weil die Set-Teile-Antwort von
   // Rebrickable kein part_cat_id mitliefert. Die Filterliste zeigt deshalb die
   // über rb_parts aufgelöste ID; hier muss dieselbe Auflösung greifen, sonst
   // fände ein Klick nichts.
   if (category) {
-    where += ` AND (p.category_name = $${pi}
+    where += ` AND (pc.category_name = $${pi}
                     OR EXISTS (SELECT 1 FROM rb_parts rp
                                 WHERE rp.part_num = p.part_number
                                   AND rp.part_cat_id::text = $${pi}))`;
     pi++; params.push(category);
   }
-  if (spare === '0') where += ' AND p.is_spare = 0';
-  if (spare === '1') where += ' AND p.is_spare = 1';
+  // is_spare aus set_parts_catalog: Es ist eine Eigenschaft der TEILELISTE
+  // eines Sets, nicht des Teils — derselbe Stein ist in einem Set Ersatzteil
+  // und im naechsten Pflichtteil. COALESCE, weil ein Teil ohne Katalogzeile
+  // (manuell erfasst) kein Ersatzteil ist.
+  if (spare === '0') where += ' AND COALESCE(spc.is_spare, 0) = 0';
+  if (spare === '1') where += ' AND COALESCE(spc.is_spare, 0) = 1';
   // Manuell erfasste Teile aus der Set-Teile-Übersicht ausschließen — sie haben
   // ihren eigenen Bereich ("Manuell erfasste Teile") und gehören nicht in die
   // nach Farbe/Kategorie gruppierte Set-Teileliste.
@@ -130,7 +145,7 @@ function teileFilter(uids: number[], query: any) {
     where += " AND COALESCE(p.source,'set') <> 'manual'";
   }
   if (search) {
-    where += ` AND (LOWER(p.part_number) LIKE $${pi} OR LOWER(p.part_name) LIKE $${pi})`;
+    where += ` AND (LOWER(p.part_number) LIKE $${pi} OR LOWER(pc.part_name) LIKE $${pi})`;
     params.push(`%${search.toLowerCase()}%`); pi++;
   }
   // Lagerort als eigener Filter, nicht als Teil der Volltextsuche: „Kiste 3"
@@ -173,7 +188,7 @@ async function teileErsatzquelle(set_number: string) {
     if (invId) {
       const csvParts = await db.all(`
         SELECT ip.part_num AS part_number,
-               COALESCE(m.bl_part_num, ip.part_num) AS bl_part_number,
+               COALESCE(m.bl_id, ip.part_num) AS bl_part_number,
                p.name AS part_name, ip.color_id,
                c.name AS color_name, c.rgb AS color_hex,
                NULL AS category_name,
@@ -187,7 +202,7 @@ async function teileErsatzquelle(set_number: string) {
         FROM rb_inventory_parts ip
         LEFT JOIN rb_parts p ON p.part_num = ip.part_num
         LEFT JOIN rb_colors c ON c.id = ip.color_id
-        LEFT JOIN rb_bl_mapping m ON m.part_num = ip.part_num
+        LEFT JOIN bl_zuordnung  m ON m.art = 'part' AND m.rb_id = ip.part_num
         WHERE ip.inventory_id = $1`, [invId, set_number]
       ).catch(() => []);
       if (csvParts.length > 0)
@@ -409,14 +424,50 @@ async function getParts(userId: Blickfeld, query: any = {}) {
   // Der JSON-Typ von total_quantity darf nicht vom Zweig abhängen —
   // SUM(BIGINT) käme als Zahl, SUM(INTEGER) und die rohe BIGINT-Spalte als
   // Text. Haushalt, Einzelkonto und Live-Abfrage liefern jetzt dieselbe Form.
-  const qtyExpr   = set_number ? 'SUM(p.quantity)::int' : 'SUM(p.quantity * COALESCE(s.quantity, 1))::int';
+  // Die Set-Menge als Faktor, aus den Erfassungen (Migration 0036). Mit
+  // set_number-Filter entfaellt der Faktor: Dort geht es um die Teile EINES
+  // Sets, nicht um den Bestand.
+  // Die Stückzahl der Bestandszeile stand als p.quantity hier; Migration
+  // 0038 hat die Spalte geloescht (teilmengeAus unterscheidet jetzt
+  // Katalogzahl und Erfassungssumme).
+  const qtyExpr   = set_number
+    ? `SUM(${teilmengeAus('p', 'part')})::int`
+    : `SUM(${teilmengeAus('p', 'part')} * ${mengeAus('sm', 1)})::int`;
   // Der Vorrat haengt in BEIDEN Zweigen mit dran: Seit Migration 0031 traegt
   // die Zeile eine ID, der Name steht in storage_locations. LEFT JOIN, damit
   // ein Teil ohne Ort nicht aus der Liste faellt.
   const lagerJoin = ' LEFT JOIN storage_locations lo ON lo.id = p.storage_id';
-  const joinClause = (set_number ? 'FROM parts p' :
-    'FROM parts p LEFT JOIN sets s ON s.user_id = p.user_id AND s.set_number = p.set_number')
-    + lagerJoin;
+  // ── Die Beschreibung kommt aus den Katalogen (Migration 0034) ───────────
+  //
+  // pc  je Teilenummer:          Name, Kategorie
+  // pcc je Teilenummer + Farbe:  Farbbezeichnung, Farbcode, Bild
+  // spc je Set + Teil + Farbe:   Ersatzteilkennzeichen
+  //
+  // Alle drei ueber ihren Primaerschluessel verbunden, also hoechstens eine
+  // Zeile je Treffer — die Gruppierung und damit die Gesamtzahl bleiben
+  // unberuehrt. LEFT JOIN durchweg: Ein manuell erfasstes Teil hat keine
+  // Set-Nummer und damit keine spc-Zeile, und ein Teil ohne Katalogzeile
+  // soll in der Liste stehen, statt aus ihr zu fallen.
+  const katalogJoin =
+    ' LEFT JOIN part_catalog pc ON pc.part_number = p.part_number'
+  + ' LEFT JOIN part_color_catalog pcc ON pcc.part_number = p.part_number'
+  + '                                 AND pcc.color_id    = p.color_id'
+  + ' LEFT JOIN set_parts_catalog spc ON spc.set_number  = p.set_number'
+  + '                                AND spc.part_number = p.part_number'
+  + '                                AND spc.color_id    = p.color_id';
+  // Ohne set_number-Filter haengt die Set-Menge mit dran (der Faktor in
+  // qtyExpr). Mit Filter nicht: Dort geht es um die Teile EINES Sets.
+  //
+  // Hier stand ein LEFT JOIN auf `sets` — er diente allein der Spalte
+  // s.quantity, und die ist mit Migration 0036 weg.
+  // blJoin() ist in BEIDEN Zweigen dabei, auch bei set_number: Der
+  // Gruppierungsschluessel unten ist die BrickLink-Nummer, und die kommt
+  // seit Migration 0037 aus bl_zuordnung. Ohne den Join gaebe es den Alias
+  // blz nicht — ein harter Fehler, keine stille 500.
+  const joinClause = (set_number ? 'FROM parts p' : `FROM parts p ${mengeJoin('p')}`)
+    + ` ${teilmengeJoin('p', 'part')}`
+    + ` ${blJoin('p.part_number', 'part')}`
+    + lagerJoin + katalogJoin;
 
   // Count for pagination.
   // Vorher COUNT(DISTINCT <concat>) — das baut pro Zeile einen String und
@@ -440,9 +491,21 @@ async function getParts(userId: Blickfeld, query: any = {}) {
     if (summary) return summary;
   }
 
+  // ── Dieselben Joins wie die Hauptabfrage, nicht nur `FROM parts p` ──────
+  //
+  // Hier stand `FROM parts p` allein. Die Filterbedingung kann aber auf lo
+  // zeigen (?storage=) und seit Migration 0034 auch auf pc/pcc/spc — ohne die
+  // Joins ist das ein harter Fehler, und der Aufruf antwortete mit 500.
+  //
+  // GEMESSEN am Lagerortfilter, der schon vor dieser Aenderung so lief:
+  // „missing FROM-clause entry for table lo". Siehe die Gegenprobe in
+  // test/teile-katalogspalten-db.test.js.
+  //
+  // Die zusaetzlichen Joins aendern die Zahl nicht: Jeder haengt am
+  // Primaerschluessel seiner Tabelle, liefert also hoechstens eine Zeile.
   const countSql = `SELECT COUNT(*)::int AS c FROM (
-       SELECT 1 FROM parts p WHERE ${where}
-       GROUP BY COALESCE(p.bl_part_number, p.part_number), p.color_id
+       SELECT 1 ${joinClause} WHERE ${where}
+       GROUP BY ${blNummerSql('p.part_number')}, p.color_id
      ) g`;
 
   // Build paginated query
@@ -472,19 +535,23 @@ async function getParts(userId: Blickfeld, query: any = {}) {
   // langsamste Einzelabfrage.
   const partsSql = `
     SELECT
-      -- Use BL part number as the canonical identifier
-      COALESCE(p.bl_part_number, p.part_number) AS part_number,
-      COALESCE(p.bl_part_number, p.part_number) AS bl_part_number,
-      -- Pick one representative part name/image (MIN is deterministic)
-      MIN(p.part_name)    AS part_name,
+      -- Use BL part number as the canonical identifier. Sie kommt seit
+      -- Migration 0037 aus bl_zuordnung (blz) und stand vorher je Konto
+      -- an der Bestandszeile.
+      ${blNummerSql('p.part_number')} AS part_number,
+      ${blNummerSql('p.part_number')} AS bl_part_number,
+      -- Pick one representative part name/image (MIN is deterministic).
+      -- Die Werte kommen aus den Katalogen (Migration 0034); MIN bleibt,
+      -- weil die Gruppe mehrere Rebrickable-Nummern derselben BL-Nummer
+      -- zusammenfasst.
+      MIN(pc.part_name)    AS part_name,
       p.color_id,
-      MIN(p.color_name)   AS color_name,
-      MIN(p.color_hex)    AS color_hex,
-      MIN(p.category_name) AS category_name,
-      MIN(p.image_url)    AS image_url,
-      MIN(p.image_local)  AS image_local,
-      MAX(p.is_spare)     AS is_spare,
-      MAX(p.condition)    AS stored_condition,
+      MIN(pcc.color_name)  AS color_name,
+      MIN(pcc.color_hex)   AS color_hex,
+      MIN(pc.category_name) AS category_name,
+      MIN(pcc.image_url)   AS image_url,
+      MIN(pcc.image_local) AS image_local,
+      MAX(COALESCE(spc.is_spare, 0)) AS is_spare,
       -- Lagerort: string_agg statt MIN, und das ist kein Zierrat. Diese
       -- Abfrage fasst je Teil-Farb-Paar MEHRERE Zeilen zusammen (dasselbe
       -- Teil aus verschiedenen Sets, im Haushalt zusaetzlich aus verschiedenen
@@ -499,23 +566,31 @@ async function getParts(userId: Blickfeld, query: any = {}) {
       STRING_AGG(DISTINCT p.set_number, ',') AS in_sets` : ''}
     ${joinClause}
     WHERE ${where}
-    GROUP BY COALESCE(p.bl_part_number, p.part_number), p.color_id
-    ORDER BY MIN(p.color_name) ASC, MIN(p.part_name) ASC${limitClause}`;
+    GROUP BY ${blNummerSql('p.part_number')}, p.color_id
+    ORDER BY MIN(pcc.color_name) ASC, MIN(pc.part_name) ASC${limitClause}`;
 
-  // Angezeigter Zustand als Aggregat über die Kaufpreis-Erfassungen manueller
-  // Teile: sobald eine Erfassung "Gebraucht" ist, gilt das Teil als gebraucht.
-  // Teile aus Sets (source='set') haben keine Erfassungen → gespeicherter Wert.
+  // ── Angezeigter Zustand: nur noch aus den Erfassungen ───────────────────
+  //
+  // Sobald eine Erfassung „Gebraucht" ist, gilt das Teil als gebraucht.
+  //
+  // Hier stand daneben `MAX(p.condition) AS stored_condition` als Rueckfall
+  // fuer Teile OHNE Erfassung. Die Spalte ist mit Migration 0035 weg, und der
+  // Rueckfall war fuer Set-Teile ohnehin wirkungslos: parts.condition stand
+  // bei ihnen seit jeher auf dem Vorgabewert 'N' und wurde nie geschrieben
+  // (gemessen an allen Schreibwegen — beide fassen nur source='manual' an).
+  // Fuer manuelle Teile garantiert Migration 0035 eine Erfassung.
   //
   // Entfällt komplett, wenn manuelle Teile ohnehin ausgefiltert sind — dann
   // kann keine Zeile des Ergebnisses davon betroffen sein. Genau so ruft die
   // Teile-Seite den Endpunkt auf (exclude_manual=1).
   const usedSql =
-    `SELECT COALESCE(p.bl_part_number, p.part_number) AS pid, p.color_id,
+    `SELECT ${blNummerSql('p.part_number')} AS pid, p.color_id,
             MAX(CASE WHEN pa.condition='U' THEN 1 ELSE 0 END) AS any_used
      FROM parts p
+     ${blJoin('p.part_number', 'part')}
      JOIN part_acquisitions pa ON pa.user_id=p.user_id AND pa.part_number=p.part_number AND pa.color_id=p.color_id
      WHERE p.user_id = ANY($1) AND p.source='manual'
-     GROUP BY COALESCE(p.bl_part_number, p.part_number), p.color_id`;
+     GROUP BY ${blNummerSql('p.part_number')}, p.color_id`;
 
   const [countRow, parts, usedPartRows] = await Promise.all([
     db.get(countSql, params),
@@ -529,9 +604,10 @@ async function getParts(userId: Blickfeld, query: any = {}) {
   const { resolveImageLocal } = require('../images');
   const partsResolved = parts.map(p => ({
     ...p,
-    condition: usedPartMap.has(`${p.part_number}|${p.color_id}`)
-      ? (usedPartMap.get(`${p.part_number}|${p.color_id}`) ? 'U' : 'N')
-      : (p.stored_condition || 'N'),
+    // Ohne Erfassung 'N' — nicht mehr der gespeicherte Wert, den es nicht
+    // mehr gibt (Migration 0035). Fuer Set-Teile ist das dasselbe Ergebnis
+    // wie vorher, siehe die Begruendung bei usedSql.
+    condition: usedPartMap.get(`${p.part_number}|${p.color_id}`) ? 'U' : 'N',
     image_local: resolveImageLocal(p.image_local),
     image_url:   p.image_url || null,
     // Ein echter Wahrheitswert, nicht '1'/'0': Der Treiber liefert das
@@ -543,9 +619,16 @@ async function getParts(userId: Blickfeld, query: any = {}) {
   // Background: fetch missing BL IDs
   setImmediate(async () => {
     try {
+      // „Gibt es ein Teil, zu dem noch nie nachgesehen wurde?" — geprueft
+      // wird die ZEILE, nicht ihr Wert: Eine Zeile mit leerer bl_id heisst
+      // „nachgesehen, es gibt keine abweichende Nummer" (Migration 0037) und
+      // soll kein erneutes Nachladen ausloesen. Vorher trug diese Notiz die
+      // Rebrickable-Nummer als BrickLink-Nummer, und `m.part_num IS NULL`
+      // sagte dasselbe.
       const unmapped = await db.get(
-        `SELECT 1 FROM parts p LEFT JOIN rb_bl_mapping m ON m.part_num = p.part_number
-         WHERE p.user_id = ANY($1) AND m.part_num IS NULL LIMIT 1`, [uids]
+        `SELECT 1 FROM parts p
+         LEFT JOIN bl_zuordnung m ON m.art = 'part' AND m.rb_id = p.part_number
+         WHERE p.user_id = ANY($1) AND m.rb_id IS NULL LIMIT 1`, [uids]
       );
       if (unmapped) fetchMissingBlIds().catch(() => {});
     } catch (e) { meldeUndWeiter('teile:bl-nummern-nachladen', e); }
@@ -601,9 +684,10 @@ async function getPartsStats(userId: Blickfeld) {
   const row = await db.get(`
     SELECT COUNT(DISTINCT p.part_number) AS unique_parts,
            COUNT(DISTINCT p.color_id)    AS unique_colors,
-           SUM(p.quantity * COALESCE(s.quantity, 1)) AS total_parts
+           SUM(${teilmengeAus('p', 'part')} * ${mengeAus('sm', 1)}) AS total_parts
     FROM parts p
-    LEFT JOIN sets s ON s.user_id = p.user_id AND s.set_number = p.set_number
+    ${mengeJoin('p')}
+    ${teilmengeJoin('p', 'part')}
     WHERE p.user_id = ANY($1) AND COALESCE(p.source, 'set') <> 'manual'`, [uids]);
   return {
     unique_parts:  parseInt(row?.unique_parts  || 0),
@@ -670,10 +754,36 @@ async function getManualParts(userId: Blickfeld, viewerId: number, { page = 1, p
     limit = ` LIMIT $${params.length - 1} OFFSET $${params.length}`;
   }
   return db.all(`
-    SELECT t.id, t.user_id, t.part_number, t.bl_part_number, t.part_name, t.color_id,
-           t.color_name, t.color_hex,
-           t.category_name, t.quantity, t.image_url, t.image_local, t.unit_price,
-           t.purchase_price, t.source,
+    SELECT t.id, t.user_id, t.part_number,
+           -- Die BrickLink-Nummer aus der Zuordnung (Migration 0037); hier
+           -- stand t.bl_part_number, eine Abschrift je Konto. Der Feldname
+           -- nach aussen bleibt, damit beide Oberflaechen und die App
+           -- unveraendert weiterlesen.
+           ${blNummerSql('t.part_number')} AS bl_part_number,
+           pc.part_name, t.color_id,
+           pcc.color_name, pcc.color_hex,
+           pc.category_name,
+           -- Die Stückzahl aus den Erfassungen (Migration 0038); hier stand
+           -- t.quantity. Diese Liste zeigt nur manuelle Teile, der
+           -- Set-Zweig der Fallunterscheidung greift hier also nie.
+           ${teilmengeAus('t', 'part')} AS quantity,
+           pcc.image_url, pcc.image_local,
+           -- ── Preis und Zustand aus der NEUESTEN Erfassung ───────────────
+           --
+           -- Hier standen t.unit_price, t.purchase_price und t.condition —
+           -- eine Abschrift der letzten Erfassung an der Bestandszeile.
+           -- Migration 0035 hat die drei Spalten geloescht; die Regel
+           -- „latest wins" steht jetzt an EINER Stelle, hier, statt zusaetzlich
+           -- in parentPriceSql und parentConditionSql (routes/api_v1/
+           -- acquisitions.ts).
+           --
+           -- Die beiden Bedeutungen bleiben unterschieden, so wie
+           -- utils/preisRegel.ts sie ausschreibt: unit_price ist der
+           -- eingegebene Preis und darf leer sein, purchase_price ist der
+           -- ANZEIGEWERT und ist nie leer (0 heisst „nichts bekannt").
+           neu.unit_price,
+           COALESCE(neu.unit_price, 0) AS purchase_price,
+           t.source,
            -- condition FEHLTE in dieser Liste. applyManualCondition() unten
            -- faellt ohne Erfassungen auf genau diesen gespeicherten Wert
            -- zurueck (stored || 'N') — und bekam undefined. NACHGEMESSEN:
@@ -686,7 +796,7 @@ async function getManualParts(userId: Blickfeld, viewerId: number, { page = 1, p
            -- hatte den Fehler deshalb nie. Zwei Fassungen derselben Abfrage,
            -- eine davon mit Spaltenliste — und in der fehlte die eine Spalte,
            -- auf die es ankommt.
-           t.condition,
+           COALESCE(neu.condition, 'N') AS condition,
            -- storage FEHLTE ebenfalls — und zwar aus demselben Grund wie
            -- die Spalte condition eine Zeile darueber: Diese Abfrage zaehlt ihre
            -- Spalten auf, die Schwesterfunktion getManualMinifigs() macht
@@ -698,11 +808,34 @@ async function getManualParts(userId: Blickfeld, viewerId: number, { page = 1, p
            -- traegt die ID. LEFT JOIN, damit ein Teil ohne Ort in der Liste
            -- bleibt.
            lo.name AS storage,
-           t.created_at
+           -- Hier stand t.created_at. Die Spalte war das Doppel von added_at
+           -- mit derselben Bedeutung; Migration 0034 hat sie geloescht und
+           -- added_at daraus nachgefuellt. Der Name nach aussen bleibt, damit
+           -- die Oberflaechen und die App unveraendert weiterlesen.
+           t.added_at AS created_at
     FROM parts t
+    ${teilmengeJoin('t', 'part')}
+    ${blJoin('t.part_number', 'part')}
+    -- Beschreibung aus den Katalogen (Migration 0034). Dieselben beiden
+    -- Tabellen wie in getParts, nur mit dem Alias dieser Abfrage.
+    LEFT JOIN part_catalog pc ON pc.part_number = t.part_number
+    LEFT JOIN part_color_catalog pcc ON pcc.part_number = t.part_number
+                                    AND pcc.color_id    = t.color_id
     LEFT JOIN storage_locations lo ON lo.id = t.storage_id
+    -- LATERAL, weil die Unterabfrage auf die aeussere Zeile zeigt. LIMIT 1
+    -- nach created_at DESC, id DESC: dieselbe Ordnung, die latestSql in
+    -- routes/api_v1/acquisitions.ts benutzt — sonst haetten „neuester Preis"
+    -- und „neueste Erfassung" zwei Bedeutungen.
+    LEFT JOIN LATERAL (
+      SELECT a.unit_price, a.condition
+        FROM part_acquisitions a
+       WHERE a.user_id = t.user_id AND a.part_number = t.part_number
+         AND COALESCE(a.color_id, 0) = COALESCE(t.color_id, 0)
+       ORDER BY a.created_at DESC, a.id DESC
+       LIMIT 1
+    ) neu ON TRUE
     WHERE t.user_id = ANY($1) AND t.source = 'manual'
-    ORDER BY t.part_name ASC, t.part_number ASC${limit}`, params)
+    ORDER BY pc.part_name ASC, t.part_number ASC${limit}`, params)
     .then(async (rows) => {
       const mitZustand = await applyManualCondition(uids, rows, 'part');
       // Der Marktpreis gehoert dazu — dieselbe Luecke wie bei den manuellen
@@ -793,22 +926,28 @@ export async function getOwnedQuantities(
   // `parts` Zeilen ohne passendes Set enthalten kann: manuell erfasste Teile
   // haben gar keine set_number, und eine Zeile, deren Set später gelöscht
   // wurde, hätte sonst den ganzen Posten aus der Antwort geworfen.
-  // COALESCE(s.quantity, 1) heisst dann „einmal" — die alte Rechnung.
+  // Die Set-Menge kommt seit Migration 0036 aus den Erfassungen; mengeAus()
+  // mit `fehlt = 1` heisst dann „einmal" — dieselbe Rechnung wie vorher mit
+  // COALESCE(s.quantity, 1).
   //
   // `lose` bleibt unberührt: Manuell erfasste Teile hängen an keinem Set, und
   // eine Stückzahl gibt es dort nicht zu multiplizieren.
   const rows = await db.all(
     `SELECT p.part_number,
             COALESCE(p.color_id, 0)                                   AS color_id,
+            -- teilmengeAus() traegt die Fallunterscheidung schon in sich:
+            -- manuell → Summe der Erfassungen, Set → Katalogzahl. Die
+            -- CASE-Verzweigung hier bleibt trotzdem, weil sie etwas
+            -- ANDERES entscheidet — ob der Set-Faktor dazukommt.
             COALESCE(SUM(CASE WHEN COALESCE(p.source,'set') = 'manual'
-                              THEN p.quantity
-                              ELSE p.quantity * COALESCE(s.quantity, 1)
+                              THEN ${teilmengeAus('p', 'part')}
+                              ELSE ${teilmengeAus('p', 'part')} * ${mengeAus('sm', 1)}
                          END), 0)::int                                AS gesamt,
             COALESCE(SUM(CASE WHEN COALESCE(p.source,'set') = 'manual'
-                              THEN p.quantity ELSE 0 END), 0)::int    AS lose
+                              THEN ${teilmengeAus('p', 'part')} ELSE 0 END), 0)::int AS lose
        FROM parts p
-       LEFT JOIN sets s
-         ON s.user_id = p.user_id AND s.set_number = p.set_number
+       ${mengeJoin('p')}
+       ${teilmengeJoin('p', 'part')}
        JOIN unnest($2::text[], $3::int[]) AS g(part_number, color_id)
          ON g.part_number = p.part_number AND g.color_id = COALESCE(p.color_id, 0)
       WHERE p.user_id = ANY($1)
@@ -843,14 +982,14 @@ export async function getOwnedQuantities(
   const figRows = await db.all(
     `SELECT m.fig_number                                                AS part_number,
             COALESCE(SUM(CASE WHEN COALESCE(m.source,'set') = 'manual'
-                              THEN m.quantity
-                              ELSE m.quantity * COALESCE(s.quantity, 1)
+                              THEN ${teilmengeAus('m', 'fig')}
+                              ELSE ${teilmengeAus('m', 'fig')} * ${mengeAus('sm', 1)}
                          END), 0)::int                                  AS gesamt,
             COALESCE(SUM(CASE WHEN COALESCE(m.source,'set') = 'manual'
-                              THEN m.quantity ELSE 0 END), 0)::int      AS lose
+                              THEN ${teilmengeAus('m', 'fig')} ELSE 0 END), 0)::int AS lose
        FROM minifigs m
-       LEFT JOIN sets s
-         ON s.user_id = m.user_id AND s.set_number = m.set_number
+       ${mengeJoin('m')}
+       ${teilmengeJoin('m', 'fig')}
        JOIN unnest($2::text[]) AS g(fig_number)
          ON g.fig_number = m.fig_number
       WHERE m.user_id = ANY($1)

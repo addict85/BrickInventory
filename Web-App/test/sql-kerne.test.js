@@ -16,8 +16,10 @@
  *                              blank abgelegte Zeile nicht.
  *   catalog_cache              Zwei Schluessel fuer dieselbe Markierung — drei
  *                              Abrufe fuer ein Set ohne Preis.
- *   sets.condition             Ein neues Exemplar bekam den Neupreis fuer ein
- *                              gebrauchtes Set.
+ *   Zustand eines Sets         Ein neues Exemplar bekam den Neupreis fuer ein
+ *                              gebrauchtes Set, weil der Zustand an zwei Orten
+ *                              stand. Seit Migration 0032 gibt es nur einen
+ *                              (set_acquisitions).
  *
  * Bei zwei weiteren wurde AUSDRUECKLICH kein Unterschied gemessen
  * (shared_instructions, der Loeschweg fuer manuelle Stuecke). Die sind

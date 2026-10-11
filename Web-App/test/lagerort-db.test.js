@@ -17,6 +17,7 @@ process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:t
 process.env.WEB_WORKERS = '1';
 
 const _req = require('./helpers/sources').buildAndRequire();
+const { haeltSet, haeltTeil } = require('./helpers/bestand');
 const db = _req('db/database.js');
 
 const U = {};
@@ -39,8 +40,7 @@ async function seed() {
   // Dasselbe Teil in ZWEI Sets — daran hängt die wichtigste Aussage.
   for (const [uid, sn] of [[U.ich, '10179-1'], [U.ich, '75192-1'], [U.kind, '21318-1'],
                            [U.fremd, '10030-1']]) {
-    await db.run(`INSERT INTO sets (user_id, set_number, name, quantity) VALUES ($1,$2,$3,1)`,
-      [uid, sn, 'Set ' + sn]);
+    await haeltSet(db, uid, sn, 1);
   }
   for (const [uid, sn, num, farbe] of [
     [U.ich, '10179-1', '3001', 4], [U.ich, '75192-1', '3001', 4],
@@ -50,9 +50,11 @@ async function seed() {
     [U.ich, '10179-1', '3001', 5],
     [U.ich, '10179-1', '3002', 4], [U.fremd, '10030-1', '3001', 4],
   ]) {
+    // Der Name steht seit Migration 0034 im Katalog.
     await db.run(
-      `INSERT INTO parts (user_id, set_number, part_number, color_id, quantity, part_name)
-       VALUES ($1,$2,$3,$4,1,$5)`, [uid, sn, num, farbe, 'Teil ' + num]);
+      `INSERT INTO part_catalog (part_number, part_name) VALUES ($1,$2)
+       ON CONFLICT (part_number) DO NOTHING`, [num, 'Teil ' + num]);
+    await haeltTeil(db, uid, num, { setNumber: sn, menge: 1, colorId: farbe });
   }
 }
 

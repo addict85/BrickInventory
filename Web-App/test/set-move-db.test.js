@@ -24,6 +24,7 @@ process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:t
 process.env.WEB_WORKERS = '1';
 
 const _req = require('./helpers/sources').buildAndRequire();
+const { haeltFigur, haeltSet, haeltTeil } = require('./helpers/bestand');
 const db   = _req('db/database.js');
 
 test('Set verschieben', { concurrency: 1 }, async (t) => {
@@ -38,6 +39,21 @@ test('Set verschieben', { concurrency: 1 }, async (t) => {
   await db.run('DROP SCHEMA public CASCADE');
   await db.run('CREATE SCHEMA public');
   await db.initSchema();
+  // ── Und die MIGRATIONEN, nicht nur das Schema ───────────────────────────
+  //
+  // Diese Datei loescht das Schema und baut es neu auf. Ohne die Migrationen
+  // bleibt die Datenbank auf dem Stand von db/schema.sql stehen — also VOR
+  // allen Migrationen —, und das ist nicht nur fuer sie selbst falsch,
+  // sondern fuer jede Datei danach: Sie erbt eine halbe Datenbank.
+  //
+  // GEMESSEN beim Umzug der Teilemengen (Migration 0038): db/schema.sql legt
+  // `parts.quantity DEFAULT 1` an, die Katalogzeilen tragen die echte Zahl.
+  // Die naechste Datei, die die Migrationen laufen liess, brach ab — „Bei 8
+  // Set-Teilen weicht parts.quantity vom Katalog ab". Der Riegel hatte recht.
+  {
+    const mc = await db.pool.connect();
+    try { await _req('db/migrate.js').runMigrations(mc); } finally { mc.release(); }
+  }
 
   const { moveSetBetweenAccounts } = _req('utils/setMove.js');
 
@@ -46,16 +62,14 @@ test('Set verschieben', { concurrency: 1 }, async (t) => {
 
   /** Ein Set mit Inhalt beim Absender anlegen. */
   async function bestandAnlegen(sn, teile, figuren) {
-    await db.run(`INSERT INTO sets (user_id,set_number,name,quantity) VALUES ($1,$2,'Testset',1)`, [a, sn]);
+    await haeltSet(db, a, sn, 0);  // Menge 0: die Erfassung dahinter traegt sie
     await db.run(`INSERT INTO set_acquisitions (user_id,set_number,quantity,purchase_price,condition)
                   VALUES ($1,$2,1,50,'N')`, [a, sn]);
     for (let i = 0; i < teile; i++) {
-      await db.run(`INSERT INTO parts (user_id,set_number,part_number,part_name,color_id,color_name,quantity)
-                    VALUES ($1,$2,$3,'Brick',4,'Rot',2)`, [a, sn, `300${i}`]);
+      await haeltTeil(db, a, `300${i}`, { setNumber: sn, menge: 2, colorId: 4 });
     }
     for (let i = 0; i < figuren; i++) {
-      await db.run(`INSERT INTO minifigs (user_id,set_number,fig_number,fig_name,quantity)
-                    VALUES ($1,$2,$3,'Figur',1)`, [a, sn, `fig-00${i}`]);
+      await haeltFigur(db, a, `fig-00${i}`, { setNumber: sn, menge: 1 });
     }
   }
 
@@ -108,8 +122,7 @@ test('Set verschieben', { concurrency: 1 }, async (t) => {
 
   await t.test('hat das Ziel schon Teile, wird nicht doppelt kopiert', async () => {
     await bestandAnlegen('10004-1', 2, 0);
-    await db.run(`INSERT INTO parts (user_id,set_number,part_number,part_name,color_id,color_name,quantity)
-                  VALUES ($1,'10004-1','3000','Brick',4,'Rot',2)`, [b]);
+    await haeltTeil(db, b, '3000', { setNumber: '10004-1', menge: 2, colorId: 4 });
     const r = await db.transaction(tx => moveSetBetweenAccounts(tx, '10004-1', a, b));
     assert.equal(r.parts, 0, 'Teile wurden trotz vorhandener Zeilen erneut kopiert');
     const n = await db.get(

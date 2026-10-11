@@ -16,6 +16,7 @@ import { generateThumb } from './thumbs';
 import * as nachErfassung from '../jobs/nachErfassung';
 import { normalisiereSetNummer } from './setNummer';
 import { normalisiereLagerort, setzeLagerort } from './lagerort';
+import { mengeSummeSql } from './bestandsmenge';
 
 /**
  * Sets anlegen, ändern und ausgeben — der Kern hinter den Set-Routen.
@@ -40,23 +41,11 @@ import { normalisiereLagerort, setzeLagerort } from './lagerort';
  * HTTP-Routen — die bleiben in routes/sets.ts und rufen von hier.
  */
 
-// Setzt sets.condition konsistent aus den Erfassungen neu: "Gebraucht" sobald
-// eine Erfassung U ist, sonst "Neu". Ohne Erfassungen bleibt der Wert
-// unverändert. Wird nach jeder Mengen-/Erfassungsänderung aufgerufen, damit
-// der denormalisierte Wert nicht veraltet (z. B. nach LIFO-Reduktion).
-async function recomputeSetCondition(userId: number, setNumber: string, dbh: any = db) {
-  const row = await dbh.get(
-    "SELECT COUNT(*) AS n, COUNT(*) FILTER (WHERE condition='U') AS used FROM set_acquisitions WHERE user_id=$1 AND set_number=$2",
-    [userId, setNumber]
-  ).catch(() => null);
-  if (!row || (parseInt(row.n) || 0) === 0) return;
-  const cond = (parseInt(row.used) || 0) > 0 ? 'U' : 'N';
-  // Ohne .catch(() => {}): Scheitert die Spiegelung, zeigt die Galerie-Kachel
-  // dauerhaft den falschen Zustand — und der Aufrufer erführe nie davon.
-  // Innerhalb einer Transaktion (dbh = tx) wäre es zusätzlich fatal: Postgres
-  // bricht beim ersten Fehler ab, alle folgenden Statements laufen ins Leere.
-  await dbh.run(SETS_ZUSTAND_SQL, [cond, userId, setNumber]);
-}
+// recomputeSetCondition() stand hier: Sie leitete den Zustand aus den
+// Erfassungen ab und spiegelte ihn nach sets.condition. Mit Migration 0032 ist
+// die Spalte weg — damit entfällt nicht nur die Spiegelung, sondern auch der
+// Grund, sie nach jeder Mengenänderung aufzufrischen. Wer den Zustand braucht,
+// leitet ihn beim Lesen ab (utils/finance/zustand.ts, effectiveCondition).
 
 // `unknown`, weil der Rumpf mit String(input) genau das abfaengt — hier
 // kommen Formularfelder und CSV-Zellen an, nicht garantierte Zeichenketten.
@@ -101,7 +90,27 @@ async function priceForNewAcquisition(userId: number, setNumber: string, dbh: an
   // Lazy require: utils/financeCalc auf Modulebene ergaebe einen Zyklus —
   // dasselbe Muster wie in utils/rateLimiter.ts.
   const { resolveSetCondition } = require('./financeCalc');
-  const cond = await resolveSetCondition(userId, setNumber, dbh);
+  // ── Der Zustand ist eine HAUSHALTS-Frage, keine Konto-Frage ─────────────
+  //
+  // Hier stand `resolveSetCondition(userId, …)` mit einer nackten ID. Das ging
+  // gut, solange die sets-Zeile einen eigenen Zustand trug: Legte die
+  // Mengenaenderung fuer das eigene Konto eine frische Zeile an, kopierte das
+  // INSERT den Wert aus der Zeile des Haushalts mit (`SELECT … condition FROM
+  // sets WHERE user_id = ANY(leseFeld)`). Mit Migration 0032 gibt es nichts
+  // mehr zu kopieren, und die Frage „gebraucht oder neu?" muss dort gestellt
+  // werden, wo die Erfassungen liegen — beim BESITZER.
+  //
+  // GEMESSEN, als hier noch die nackte ID stand: Das Unterkonto haelt ein
+  // gebrauchtes Exemplar, das Hauptkonto erhoeht die Menge → die neue
+  // Erfassung bekam 'N' und damit den Neupreis
+  // (set-quantity-household-db: „erhoehen legt im EIGENEN Konto an, mit
+  // Marktpreis", 'N' !== 'U').
+  //
+  // resolveSetCondition() sagt es in seinem eigenen Kommentar: „Auch hier das
+  // Blickfeld — mit einer nackten ID faende der Hauptaccount das Set des
+  // Unterkontos nicht."
+  const blickfeld = await scopeIds(userId).catch(() => [userId]);
+  const cond = await resolveSetCondition(blickfeld, setNumber, dbh);
   const currRow = await dbh.get("SELECT value FROM global_settings WHERE key='currency'").catch(()=>null);
   const currency = currRow?.value || 'EUR';
   const cached = await dbh.get(
@@ -136,7 +145,8 @@ async function priceForNewAcquisition(userId: number, setNumber: string, dbh: an
 
 // ── Kaufpreis-Historie ────────────────────────────────────────────────────────
 // Jede Erfassung (auch Re-Add desselben Sets) erzeugt eine Zeile in
-// set_acquisitions. sets.purchase_price spiegelt den Preis der letzten Erfassung.
+// set_acquisitions. Das ist seit Migration 0032 der einzige Ort für Kaufpreis
+// und Zustand — die Spiegelung nach sets.purchase_price/condition ist weg.
 async function recordAcquisition(userId: number, setNumber: string, quantity: number, purchasePrice: number | null, condition: string | null = null, dbh: any = db) {
   // Der Zustand wurde von allen Aufrufern schon immer als 5. Argument
   // übergeben, aber bisher hier ignoriert (Signatur hatte nur 4 Parameter) —
@@ -201,22 +211,22 @@ async function adjustAcquisitionsToQuantity(userId: number, setNumber: string, n
     } else {
       // ERSTE Erfassung dieses Kontos für das Set.
       //
-      // Der Preis der sets-Zeile gilt als Vorgabe — das ist der Altfall, in dem
-      // eine Zeile mit Kaufpreis, aber ohne Erfassungen existiert. Steht dort
-      // keiner, MUSS der Marktpreis einspringen, sonst entsteht eine Erfassung
-      // ohne Preis.
+      // Hier stand ein `SELECT purchase_price, condition FROM sets`: Der Wert
+      // der sets-Zeile galt als Vorgabe, und nur wenn dort keiner stand, sprang
+      // der Marktpreis ein. Beide Spalten sind mit Migration 0032 weg — die
+      // Vorgabe kann also nur noch der Plan sein, und der stimmt hier auch
+      // besser. Denn genau dieser Zweig trifft den Fall, dass bisher nur ein
+      // ANDERES Konto das Set hält (Nachtrag 85): Für das eigene entstand eine
+      // frische Zeile ohne Kaufpreis, der Zweig las sie und übergab null,
+      // obwohl der Aufrufer den Marktpreis längst ermittelt hatte.
       //
-      // Genau das passierte, seit die Mengenänderung auf das eigene Konto
-      // schreibt (Nachtrag 85): Hält bisher nur ein anderes Konto das Set, wird
-      // für das eigene eine frische Zeile ohne Kaufpreis angelegt — der Zweig
-      // hier las sie und übergab null, obwohl der Aufrufer den Marktpreis
-      // längst ermittelt hatte. Der Plan wurde schlicht ignoriert.
-      const set = await dbh.get('SELECT purchase_price, condition FROM sets WHERE user_id=$1 AND set_number=$2', [userId, setNumber]);
+      // priceForNewAcquisition() liest den Zustand aus den Erfassungen des
+      // Haushalts, nicht aus einer Spalte; eine leere eigene Zeile verdirbt ihn
+      // damit nicht mehr.
       const plan = pricePlan ?? await priceForNewAcquisition(userId, setNumber, dbh);
       await recordAcquisition(userId, setNumber, newTotalQty,
-        set?.purchase_price ?? plan.price, set?.condition || plan.condition || 'N', dbh);
+        plan.price, plan.condition || 'N', dbh);
     }
-    await recomputeSetCondition(userId, setNumber, dbh);
     return;
   }
   // Reduktion: LIFO
@@ -227,9 +237,10 @@ async function adjustAcquisitionsToQuantity(userId: number, setNumber: string, n
     else await dbh.run('UPDATE set_acquisitions SET quantity = quantity - $1 WHERE id=$2', [take, r.id]);
     delta += take;
   }
-  // Nach LIFO-Reduktion kann die letzte "Gebraucht"-Erfassung weggefallen sein
-  // → Zustand aus den verbleibenden Erfassungen neu ableiten.
-  await recomputeSetCondition(userId, setNumber, dbh);
+  // Hier stand recomputeSetCondition(): Nach einer LIFO-Reduktion kann die
+  // letzte „Gebraucht"-Erfassung weggefallen sein, und der gespiegelte Wert in
+  // sets.condition wäre veraltet. Die Spalte gibt es seit Migration 0032 nicht
+  // mehr — die verbleibenden Erfassungen SIND der Zustand.
 }
 
 // CSV import helper: add set with specific acquisition date (avoids duplicate acquisitions)
@@ -336,13 +347,21 @@ async function addSetIntern(setNumber: string, quantity: number, userId: number,
     // Schreibwege (Mengenänderung, Verschieben, Eigentümerwechsel) hielten
     // diese Sperre längst; ausgerechnet das Erfassen nicht.
     await withInventoryLock(userId, normalized, async (tx) => {
-      await tx.run('UPDATE sets SET quantity = quantity + $1 WHERE user_id = $2 AND set_number = $3', [quantity, userId, normalized]);
+      // ── Erst die Erfassung, dann die Menge daraus ──────────────────────
+      //
+      // Hier stand `UPDATE sets SET quantity = quantity + $1` VOR der
+      // Erfassung. Das war die zweite Schreibrichtung: Zwei Stellen fuehrten
+      // dieselbe Zahl fort, und genau sie sind auseinandergelaufen (der
+      // Befund steht im Kommentar darueber).
+      //
+      // Jetzt schreibt nur noch die Erfassung. Die Menge ist seit Migration
+      // 0036 keine Spalte mehr — sie wird beim LESEN aus den Erfassungen
+      // gerechnet (utils/bestandsmenge.ts).
+      //
+      // Hier folgte aussserdem ein UPDATE auf sets.purchase_price („Preis der
+      // letzten Erfassung"). Die Spalte ist mit Migration 0032 weg;
+      // recordAcquisition() schreibt den Preis an seinen einzigen Ort.
       await recordAcquisition(userId, normalized, quantity, reAddPrice, zustand, tx);
-      // sets.purchase_price = Preis der letzten Erfassung (editierbar im Detail)
-      if (reAddPrice !== null && !isNaN(reAddPrice)) {
-        await tx.run(SETS_PREIS_SQL,
-          [reAddPrice, userId, normalized]);
-      }
     });
     // During bulk CSV import, skip immediate background jobs to avoid DB pool exhaustion.
     // The import loop triggers enrichment after all sets are imported.
@@ -390,9 +409,18 @@ async function addSetIntern(setNumber: string, quantity: number, userId: number,
     // Sync image_local to shared set_catalog
     db.run('UPDATE set_catalog SET image_local=$1 WHERE set_number=$2', [localImage, normalized]).catch(()=>{});
   }
-  // Upsert into shared set_catalog
+  // ── Der Katalog ist seit Migration 0033 die EINZIGE Stelle ──────────────
+  //
+  // Hier stand `.catch(()=>{})`. Das ging, solange die Stammdaten gleich
+  // darunter noch einmal in die sets-Zeile geschrieben wurden: Scheiterte der
+  // Katalog, hatte das Set immer noch seinen Namen.
+  //
+  // Jetzt nicht mehr. Scheitert diese Anweisung, hat das Set nirgends einen
+  // Namen, kein Jahr und kein Bild — und niemand erfaehrt davon. Deshalb kein
+  // Fang: Das Erfassen bricht ab, und zwar mit der Meldung von Postgres. Ein
+  // Set ohne Namen ist der schlechtere Ausgang.
   await db.run('INSERT INTO set_catalog (set_number,name,year,theme,pieces,minifigs,image_url,image_local) VALUES ($1,$2,$3,$4,$5,$6,$7,$8) ON CONFLICT (set_number) DO UPDATE SET name=EXCLUDED.name,year=EXCLUDED.year,theme=EXCLUDED.theme,pieces=EXCLUDED.pieces,minifigs=EXCLUDED.minifigs,image_url=COALESCE(EXCLUDED.image_url,set_catalog.image_url),image_local=COALESCE(EXCLUDED.image_local,set_catalog.image_local),updated_at=NOW()',
-    [normalized, name, year, theme||null, pieces, minifigs, imageUrl, localImage]).catch(()=>{});
+    [normalized, name, year, theme||null, pieces, minifigs, imageUrl, localImage]);
 
   // Zustand: siehe oben, einmal fuer beide Zweige bestimmt.
   const effectiveCondition = zustand;
@@ -413,12 +441,28 @@ async function addSetIntern(setNumber: string, quantity: number, userId: number,
   // laufen sonst beide durch den ON-CONFLICT-Zweig, während ihre Erfassungen
   // sich gegenseitig überschreiben.
   await withInventoryLock(userId, normalized, async (tx) => {
-    await tx.run('INSERT INTO sets (user_id,set_number,name,year,theme,pieces,minifigs,quantity,image_url,image_local,purchase_price,condition) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12) ON CONFLICT (user_id,set_number) DO UPDATE SET quantity=sets.quantity+EXCLUDED.quantity,name=COALESCE(EXCLUDED.name,sets.name),updated_at=NOW()',
-      [userId, normalized, name, year, theme||null, pieces, minifigs, quantity, imageUrl, localImage, effectivePurchasePrice, effectiveCondition]);
+    // Die Bestandszeile traegt nur noch, WER WIE VIELE haelt.
+    //
+    // Kaufpreis und Zustand stehen in der Erfassung eine Zeile tiefer
+    // (Migration 0032), Name, Jahr, Thema, Teilezahl, Minifigurenzahl und
+    // Bilder im Katalog (Migration 0033, Upsert oben). Der ON-CONFLICT-Zweig
+    // hatte dafuer eigens ein `name=COALESCE(EXCLUDED.name,sets.name)` — die
+    // Abschrift nachtragen, falls sie fehlte. Auch das faellt weg.
+    // Die Bestandszeile sagt nur noch: DIESES Konto haelt DIESES Set. Wie
+    // viele, steht in den Erfassungen — die Spalte ist mit Migration 0036 weg.
+    //
+    // Hier stand ein `DO UPDATE SET quantity=sets.quantity+EXCLUDED.quantity`:
+    // die zweite Schreibrichtung, an der die Zahlen auseinandergelaufen sind
+    // (der Befund steht in utils/bestandsmenge.ts). DO NOTHING statt DO
+    // UPDATE — gibt es die Zeile schon, ist nichts zu tun.
+    await tx.run('INSERT INTO sets (user_id,set_number) VALUES ($1,$2) ON CONFLICT (user_id,set_number) DO NOTHING',
+      [userId, normalized]);
     await recordAcquisition(userId, normalized, quantity, effectivePurchasePrice, effectiveCondition, tx);
   });
 
-  if (minifigs) await db.run('UPDATE sets SET minifigs = $1 WHERE user_id = $2 AND set_number = $3', [minifigs, userId, normalized]);
+  // In den Katalog, nicht an die Bestandszeile (Migration 0033). Und ohne
+  // user_id: Die Teilezahl eines Sets ist in jedem Konto dieselbe.
+  if (minifigs) await db.run('UPDATE set_catalog SET minifigs = $1 WHERE set_number = $2', [minifigs, normalized]);
 
   // Kein 'instructions'-Schritt mehr an die Oberfläche: Der Download läuft
   // eine Zeile tiefer in einem setImmediate() und damit NACH der Antwort. Der
@@ -450,55 +494,38 @@ async function addSetIntern(setNumber: string, quantity: number, userId: number,
 // `uid` ist eine EINZELNE ID, kein Blickfeld: Zeile darunter vergleicht
 // `user_id = $3` damit, und scopeIds(uid) verlangt eine Zahl. Das Blickfeld
 // wird im Rumpf daraus berechnet (_wids, leseFeld).
-/**
- * Die beiden Anweisungen, die einen Wert in die sets-Zeile spiegeln.
- *
- * Als Konstanten, weil routes/api_v1/acquisitions.ts sie ebenfalls braucht:
- * Der dortige Ablauf ist tabellengesteuert (dieselbe Mechanik fuer Sets, Teile
- * und Figuren) und bekommt seine Anweisungen als Zeichenketten. Sie standen
- * deshalb zweimal da — hier und dort.
- *
- * $1 = Wert, $2 = Besitzer, $3 = Setnummer.
+/*
+ * Hier standen SETS_PREIS_SQL und SETS_ZUSTAND_SQL — die zwei Anweisungen, die
+ * Kaufpreis und Zustand in die sets-Zeile spiegelten. Mit Migration 0032 gibt
+ * es nichts mehr zu spiegeln; routes/api_v1/acquisitions.ts importierte sie und
+ * führt sie dort jetzt ebenfalls nicht mehr.
  */
-export const SETS_PREIS_SQL   = 'UPDATE sets SET purchase_price=$1 WHERE user_id=$2 AND set_number=$3';
-export const SETS_ZUSTAND_SQL = 'UPDATE sets SET condition=$1 WHERE user_id=$2 AND set_number=$3';
 
 /**
- * Einen Wert auf die sets-Zeile UND die letzte Erfassung schreiben.
+ * Einen Wert in die LETZTE Erfassung schreiben — die, die der Detail-Dialog
+ * definitionsgemaess bearbeitet.
  *
- * ── Warum das eine Funktion ist ─────────────────────────────────────────────
- * Kaufpreis und Zustand machen in updateSet dieselbe Bewegung: erst die
- * sets-Zeile, dann die Erfassung, die der Detail-Dialog definitionsgemaess
- * bearbeitet (die neueste). Es waren zwei Abschriften — und die zweite hatte
- * ein anderes Konto eingesetzt.
+ * ── Was hier vorher auch noch passierte ─────────────────────────────────────
+ * Die Funktion hiess spiegleAufSetUndLetzteErfassung() und schrieb denselben
+ * Wert zusaetzlich in die sets-Zeile. Beides zusammen war der Grund fuer drei
+ * gemeldete Fehler, weil die zwei Orte auseinanderliefen. Mit Migration 0032
+ * gibt es nur noch EINEN Ort, und die halbe Funktion faellt weg.
  *
- * NACHGEMESSEN, Set und Erfassung gehoeren dem UNTERKONTO, geaendert wird
- * vom Hauptkonto:
- *
- *     vorher                       sets: N/10   erfassung: N/10
- *     nach Preis 99 (Hauptkonto)   sets: N/99   erfassung: N/99
- *     nach Zustand U (Hauptkonto)  sets: N/99   erfassung: N/99
- *
- * Der Preis kam an, der Zustand verschwand still: Der Zustands-Zweig schrieb
- * `WHERE user_id = <Aufrufer>`, und das trifft keine Zeile. Kein Fehler, kein
- * Hinweis — updateSet meldete Erfolg.
- *
- * Das bleibt nicht bei der Plakette: effectiveCondition() entscheidet, zu
- * welchem Zustand der Marktpreis geholt wird. Ein Set, das der Haushalt als
- * gebraucht fuehrt, wurde weiter als neu bewertet.
- *
- * `ownerId`, nicht der Aufrufer — die Regel steht in updateSet ausdrueckllich
- * ueber dieser Stelle („ab hier zaehlt der BESITZER der Zeile"). Der
- * Mengen-Zweig weicht bewusst davon ab (Marcos Vorgabe: angezeigt wird der
- * Haushalt, geaendert wird das eigene Konto) — deshalb geht der nicht hier
- * durch.
+ * Erhalten bleibt die Lehre aus dem damaligen Fehler, denn sie gilt weiter:
+ * `ownerId`, nicht der Aufrufer. Der frueher doppelte Code hatte im
+ * Zustands-Zweig `WHERE user_id = <Aufrufer>` — bei einem Set des Unterkontos
+ * traf das keine Zeile, und updateSet meldete trotzdem Erfolg. NACHGEMESSEN
+ * damals: Preis 99 kam an, Zustand U verschwand still. Die Regel steht in
+ * updateSet ausdruecklich ueber der Aufrufstelle („ab hier zaehlt der BESITZER
+ * der Zeile"); der Mengen-Zweig weicht bewusst davon ab (Marcos Vorgabe:
+ * angezeigt wird der Haushalt, geaendert wird das eigene Konto) und geht
+ * deshalb nicht hier durch.
  *
  * @param feld  fester Spaltenname, KEINE Eingabe von aussen
  */
-async function spiegleAufSetUndLetzteErfassung(
+async function schreibeInLetzteErfassung(
   feld: 'purchase_price' | 'condition', wert: any, ownerId: number, sn: string,
 ) {
-  await db.run(feld === 'condition' ? SETS_ZUSTAND_SQL : SETS_PREIS_SQL, [wert, ownerId, sn]);
   await db.run(`UPDATE set_acquisitions SET ${feld} = $1
                  WHERE id = (SELECT id FROM set_acquisitions
                               WHERE user_id=$2 AND set_number=$3
@@ -569,10 +596,14 @@ async function updateSet(uid: number, sn: string, body: any) {
     const gewuenschtGesamt = parseInt(body.quantity) || 0;
     const leseFeld = await scopeIds(uid);
     const gesamtVorher = (await db.get(
-      `SELECT COALESCE(SUM(quantity),0)::int q FROM sets WHERE user_id = ANY($1) AND set_number=$2`,
+      // Aus den Erfassungen, nicht aus sets.quantity — die Spalte ist mit
+      // Migration 0036 weg. Die Abfrage steht in utils/bestandsmenge.ts;
+      // derselbe Satz stand hier dreimal, und dreimal derselbe Satz heisst
+      // dreimal Gelegenheit, dass er beim naechsten Mal anders aussieht.
+      mengeSummeSql('blickfeld'),
       [leseFeld, sn]))?.q ?? 0;
     const eigenVorher = (await db.get(
-      `SELECT COALESCE(SUM(quantity),0)::int q FROM sets WHERE user_id = $1 AND set_number=$2`,
+      mengeSummeSql('eines'),
       [uid, sn]))?.q ?? 0;
     // Nach unten bei 0 gedeckelt: Die Exemplare eines anderen Kontos sind
     // nicht meine, ich kann sie nicht wegnehmen. Die Antwort trägt die
@@ -584,26 +615,37 @@ async function updateSet(uid: number, sn: string, body: any) {
       // Eigene Zeile anlegen, falls das Set bisher nur einem anderen Konto
       // gehörte — sonst liefe die Mengenanpassung ins Leere.
       if (eigenVorher === 0 && eigenZiel > 0) {
+        // Nur noch Menge und Besitzer — und damit keine Abschrift mehr.
+        //
+        // Hier stand ein `INSERT … SELECT name, year, theme, … FROM sets`: Die
+        // Stammdaten der Haushaltszeile wurden in die neue Zeile kopiert, und
+        // `condition` mit ihnen. Beides ist weg (Migration 0032 und 0033), und
+        // beides war ungenauer als das, was jetzt gilt: Die Stammdaten stehen
+        // im Katalog, der Zustand entsteht in der Erfassung, die
+        // adjustAcquisitionsToQuantity() gleich darunter anlegt.
+        //
+        // Das vorangestellte SELECT bleibt — es beantwortet „gibt es diese
+        // Setnummer im Haushalt ueberhaupt?". Ohne diese Bedingung legte ein
+        // Mengenregler eine Zeile fuer eine Nummer an, die niemand haelt.
         await db.run(
-          `INSERT INTO sets (user_id, set_number, name, year, theme, pieces, minifigs,
-                             image_url, image_local, quantity, condition)
-           SELECT $1, set_number, name, year, theme, pieces, minifigs,
-                  image_url, image_local, 0, condition
+          `INSERT INTO sets (user_id, set_number)
+           SELECT $1, set_number
              FROM sets WHERE user_id = ANY($2) AND set_number = $3
             ORDER BY id ASC LIMIT 1
            ON CONFLICT DO NOTHING`, [uid, leseFeld, sn])
-          // Scheitert dieses INSERT, trifft das UPDATE zwei Zeilen weiter NULL
-          // Zeilen — die Mengenaenderung geht verloren, waehrend
-          // adjustAcquisitionsToQuantity() trotzdem Erfassungen schreibt. Der
-          // Kommentar oben nennt genau diese Gefahr; still verschluckt werden
-          // darf sie deshalb nicht.
+          // Scheitert dieses INSERT, gibt es keine Bestandszeile — das Set
+          // erscheint in keiner Liste, waehrend adjustAcquisitionsToQuantity()
+          // trotzdem Erfassungen schreibt. Der Kommentar oben nennt genau
+          // diese Gefahr; still verschluckt werden darf sie deshalb nicht.
           .catch(logAndContinue(`sets:eigene Zeile anlegen ${sn}`));
       }
       // Der Marktpreis wird VOR der Sperre geholt (Netzaufruf); innerhalb
       // läuft nur noch Datenbankarbeit.
       const plan = await priceForNewAcquisition(uid, sn).catch(() => ({ price: null, condition: 'N' }));
       await withInventoryLock(uid, sn, async (tx) => {
-        await tx.run('UPDATE sets SET quantity = $1 WHERE user_id = $2 AND set_number = $3', [eigenZiel, uid, sn]);
+        // Nur noch die Erfassungen angleichen — sie SIND die Menge. Hier
+        // stand davor ein `UPDATE sets SET quantity = $1`, also zwei Stellen
+        // fuer dieselbe Zahl (utils/bestandsmenge.ts).
         await adjustAcquisitionsToQuantity(uid, sn, eigenZiel, tx, plan);
         // Bleibt nichts übrig, verschwindet die eigene Zeile ganz — dieselbe
         // Regel wie beim Löschen des letzten Kaufpreises (Nachtrag 84), sonst
@@ -639,7 +681,7 @@ async function updateSet(uid: number, sn: string, body: any) {
     }
     const val = (pp !== null && !isNaN(pp)) ? pp : null;
     // Der Detail-Dialog editiert definitionsgemäss die LETZTE Erfassung.
-    await spiegleAufSetUndLetzteErfassung('purchase_price', val, ownerId, sn);
+    await schreibeInLetzteErfassung('purchase_price', val, ownerId, sn);
   }
   // condition === null bedeutet "nicht gesetzt" (nicht auf 'N' zwingen), und
   // während einer Mengenänderung ist ein mitgeschicktes condition ein Echo.
@@ -648,14 +690,16 @@ async function updateSet(uid: number, sn: string, body: any) {
     try {
       // ownerId, nicht uid: Hier stand der Aufrufer, und damit traf das
       // UPDATE bei einem Set des Unterkontos keine Zeile.
-      await spiegleAufSetUndLetzteErfassung('condition', cond, ownerId, sn);
+      await schreibeInLetzteErfassung('condition', cond, ownerId, sn);
     } catch (e) {
       console.error('[updateSet] condition update skipped (migration pending?):', fehlertext(e));
     }
   }
   // Die Gesamtmenge des Blickfelds NACH der Änderung — siehe Kopfkommentar.
   const nachher = await db.get(
-    `SELECT COALESCE(SUM(quantity),0)::int q FROM sets WHERE user_id = ANY($1) AND set_number=$2`,
+    // Aus den Erfassungen (Migration 0036) — siehe die Begruendung bei
+    // setQuantity weiter oben.
+    mengeSummeSql('blickfeld'),
     [await scopeIds(uid), sn]).catch(() => null);
   return { quantity: nachher?.q ?? 0 };
 }
@@ -664,7 +708,8 @@ async function updateSet(uid: number, sn: string, body: any) {
 // standalone CSV download and the combined ZIP export in settings.js.
 // Eine Zeile pro Erfassung, damit Kaufpreis, Zustand und Datum je Kauf erhalten
 // bleiben und beim Re-Import 1:1 wiederhergestellt werden. Sets ohne Erfassungen
-// fallen auf die Set-Zeile zurück.
+// fallen auf die Set-Zeile zurück — die trägt seit Migration 0032 nur noch die
+// Menge, Kaufpreis und Zustand bleiben dann leer bzw. 'N'.
 //
 // ── Warum ein LEFT JOIN und keine Schleife ──────────────────────────────────
 // Vorher lief hier eine Abfrage JE SET. Bei 700 Sets waren das 701 Hin- und
@@ -676,16 +721,27 @@ async function updateSet(uid: number, sn: string, body: any) {
 // Erfassung oder, wenn es keine gibt, genau eine mit NULL-Erfassungsspalten.
 //
 // ── Die Falle dabei ─────────────────────────────────────────────────────────
-// Die naheliegende Formulierung `COALESCE(a.purchase_price, s.purchase_price)`
-// wäre FALSCH: Zu einer vorhandenen Erfassung OHNE Preis gehört ein leeres
-// Feld, nicht der Preis der Set-Zeile. Entschieden wird deshalb an `a.id IS
-// NULL` — also daran, OB es eine Erfassung gibt, nicht daran, ob ihre Werte
-// gefüllt sind. csv-export-acquisitions-db.test.js prüft genau diesen Fall.
+// Die Unterscheidung „Erfassung vorhanden, aber ohne Preis" gegen „keine
+// Erfassung" bleibt wichtig, auch wenn der frühere Rückfall auf
+// s.purchase_price/s.condition mit Migration 0032 weggefallen ist: Zu einer
+// vorhandenen Erfassung ohne Preis gehört ein leeres Feld. Das ergibt sich
+// jetzt von selbst, weil a.purchase_price dann NULL ist.
+// csv-export-acquisitions-db.test.js prüft genau diesen Fall.
 const SETS_CSV_SQL = `
   SELECT s.set_number,
-         CASE WHEN a.id IS NULL THEN s.quantity       ELSE a.quantity       END AS quantity,
-         CASE WHEN a.id IS NULL THEN s.purchase_price ELSE a.purchase_price END AS purchase_price,
-         COALESCE(CASE WHEN a.id IS NULL THEN s.condition ELSE a.condition END, 'N') AS condition,
+         -- Hier stand CASE WHEN a.id IS NULL THEN s.quantity ELSE a.quantity.
+         -- (Keine Gegenstriche: Der Kommentar steht in einem Template-Literal.)
+         -- Der Rueckfall auf die Set-Zeile ist weg: Migration 0036 hat die
+         -- Spalte geloescht, und Migration 0032 garantiert fuer jede Set-Zeile
+         -- eine Erfassung. Der LEFT JOIN bleibt, damit ein Export an einer
+         -- unerwarteten Lage nicht ganz ausfaellt.
+         -- COALESCE(..., 0) und nicht NULL: Eine Set-Zeile ohne Erfassung
+         -- bedeutet null Exemplare — dieselbe Lesart wie in
+         -- utils/bestandsmenge.ts (mengeAus mit 0). Ein leeres Feld im Export
+         -- hiesse „keine Angabe", und das ist eine andere Aussage.
+         COALESCE(a.quantity, 0) AS quantity,
+         a.purchase_price AS purchase_price,
+         COALESCE(a.condition, 'N') AS condition,
          CASE WHEN a.id IS NULL THEN ''
               ELSE TO_CHAR(a.created_at AT TIME ZONE 'UTC','YYYY-MM-DD') END AS acquired_at
     FROM sets s
@@ -699,11 +755,16 @@ async function buildSetsCsv(uid: number) {
   // Fehlt set_acquisitions (Migration noch nicht gelaufen), kam dort weiterhin
   // die Set-Zeile heraus. Ein JOIN würde stattdessen die GANZE Abfrage
   // abbrechen — der Export lieferte gar nichts mehr.
-  const rows = await db.all(SETS_CSV_SQL, [uid]).catch(() => null)
-    ?? await db.all(
-      `SELECT set_number, quantity, purchase_price, COALESCE(condition,'N') AS condition,
-              '' AS acquired_at
-         FROM sets WHERE user_id=$1 ORDER BY set_number ASC`, [uid]);
+  // ── Der Rueckfall ist weg, und er war bereits kaputt ───────────────────
+  //
+  // Hier stand ein zweiter Lauf fuer den Fall „Fehlt set_acquisitions
+  // (Migration noch nicht gelaufen)". Er las `purchase_price` und `condition`
+  // aus der sets-Zeile — Spalten, die es seit Migration 0032 nicht mehr gibt.
+  // Er haette also genau dann gescheitert, wenn er gebraucht worden waere,
+  // und kein Test hat das gemeldet, weil ihn nichts aufruft: Die Haupt-Abfrage
+  // scheitert nur, wenn set_acquisitions fehlt, und ohne diese Tabelle laeuft
+  // dieser Stand ohnehin nicht.
+  const rows = await db.all(SETS_CSV_SQL, [uid]);
 
   return toCsv(['set_number', 'quantity', 'purchase_price', 'condition', 'acquired_at'],
     rows.map((r: any) => ({ ...r, purchase_price: r.purchase_price ?? '' })));

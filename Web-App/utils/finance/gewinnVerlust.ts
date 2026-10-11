@@ -46,25 +46,55 @@ async function computePnl(viewerId: number, ids: Blickfeld) {
   ]);
 
   const sets = await db.all(
-    `SELECT s.set_number, s.name, s.year, s.quantity, s.image_local, s.image_url, s.added_at, s.condition,
-            -- Ø-Kaufpreis pro Stück aus der Erfassungs-Historie (Fallback: alter
-            -- Einzelwert). Frontend/Apps rechnen weiterhin purchase_price × quantity,
-            -- die Summe stimmt damit auch bei unterschiedlich teuren Erfassungen.
-            COALESCE(a.total_price / NULLIF(a.total_qty, 0), s.purchase_price) AS purchase_price,
+    `SELECT s.set_number, c.name, c.year,
+            -- Die Menge aus den Erfassungen (Migration 0036 hat s.quantity
+            -- geloescht) — und zwar aus der Gruppierung a weiter unten, die
+            -- diese Summe fuer total_price ohnehin schon bildet. Darum hier
+            -- KEIN zusaetzlicher JOIN ueber utils/bestandsmenge.ts: Der
+            -- rechnete dieselbe Summe ein zweites Mal im selben Satz.
+            --
+            -- (Keine Gegenstriche in diesem Kommentar — auch nicht um den
+            -- Alias a: Er steht in einem Template-Literal, und ein
+            -- Gegenstrich beendet es. Gemessen, tsc meldete „',' expected".)
+            COALESCE(a.total_qty, 0)::int AS quantity,
+            c.image_local, c.image_url, s.added_at,
+            -- Ø-Kaufpreis pro Stück aus der Erfassungs-Historie. Frontend/Apps
+            -- rechnen weiterhin purchase_price × quantity, die Summe stimmt damit
+            -- auch bei unterschiedlich teuren Erfassungen.
+            --
+            -- Der zweite COALESCE-Operand war die Kaufpreis-Spalte der sets-Zeile.
+            -- Sie ist mit Migration 0032 weg: Kaufpreis und Zustand stehen nur
+            -- noch in den Erfassungen, und die Migration hat für jede Set-Zeile
+            -- eine nachgetragen. Die Zustands-Spalte fällt aus derselben
+            -- Auswahlliste weg — effectiveCondition() unten liest ohnehin nur
+            -- acq_count/used_count.
+            -- Eigener Name und NICHT purchase_price: Eine Spalte dieses Namens
+            -- gab es an der sets-Zeile, und das Feld hiess damit jahrelang
+            -- „der gespiegelte Einzelwert". Derselbe Name mit neuer Bedeutung
+            -- ist die Sorte Stolperstein, die hier schon mehrfach etwas
+            -- gekostet hat. Die Antwort an die Clients heisst weiter
+            -- purchase_price; zusammengesetzt wird sie unten.
+            --
+            -- (Keine Gegenstriche in diesem Kommentar: Er steht in einem
+            -- Template-Literal, und ein Gegenstrich beendet es. Gemessen —
+            -- tsc meldete „',' expected".)
+            a.total_price / NULLIF(a.total_qty, 0) AS acq_preis_schnitt,
             -- acq_count/used_count fehlten hier komplett — effectiveCondition()
             -- weiter unten braucht sie, um den Zustand aus den Erfassungen
             -- abzuleiten. Ohne sie war set.acq_count/used_count immer
-            -- undefined, effectiveCondition() fiel IMMER auf sets.condition
-            -- zurück, egal was die Erfassungen tatsächlich sagten. Für ein Set
-            -- mit gemischten Erfassungen (z. B. 1× Neu, 1× Gebraucht) oder
-            -- einem veralteten sets.condition zeigte der P&L-Pfad — und damit
+            -- undefined, effectiveCondition() fiel IMMER auf die damalige
+            -- Zustands-Spalte der sets-Zeile zurück, egal was die Erfassungen
+            -- sagten. Für ein Set mit gemischten Erfassungen (z. B. 1× Neu,
+            -- 1× Gebraucht) oder einem veralteten Spaltenwert zeigte der P&L-Pfad — und damit
             -- die Galerie-Kachel und der Detail-Dialog — dadurch den falschen
             -- Marktpreis, während computeSetsValuation() (Finanzen-Reiter)
             -- längst korrekt über die Erfassungen entschied. Zwei Wahrheiten
             -- für denselben Zustand.
             COALESCE(a.acq_count, 0)  AS acq_count,
             COALESCE(a.used_count, 0) AS used_count
+     -- Name, Jahr und Bilder stehen seit Migration 0033 in set_catalog.
      FROM sets s
+     LEFT JOIN set_catalog c ON c.set_number = s.set_number
      LEFT JOIN (
        SELECT user_id, set_number,
               SUM(COALESCE(purchase_price, 0) * quantity) AS total_price,
@@ -164,11 +194,14 @@ async function computePnl(viewerId: number, ids: Blickfeld) {
   const setResults = sets.map(set => {
     const setCondition = effectiveCondition(set);
     const currentPrice = priceMap.get(set.set_number) || 0;
-    // Kaufpreis aus den Erfassungen; die sets-Spalte nur noch als Rückfall für
-    // Altbestände ohne Erfassungen.
+    // Kaufpreis aus den Erfassungen — purchaseMap gewichtet nach Reihenfolge,
+    // die Abfrage oben als einfacher Ø. Beide Wege lesen set_acquisitions.
     const acqPurchase = purchaseMap.get(set.set_number);
-    const hasCost = acqPurchase != null || set.purchase_price != null;  // 0 zählt als erfasst
-    const purchasePrice = acqPurchase != null ? acqPurchase : parseFloat(set.purchase_price || 0);
+    // `acq_preis_schnitt` ist der Ø aus der Erfassungs-Historie (Abfrage oben)
+    // und null, wenn es gar keine Erfassung gibt. 0 zählt als erfasst.
+    const schnitt = set.acq_preis_schnitt != null ? parseFloat(set.acq_preis_schnitt) : null;
+    const hasCost = acqPurchase != null || schnitt != null;
+    const purchasePrice = acqPurchase != null ? acqPurchase : (schnitt ?? 0);
     const qty = qtyMap.get(set.set_number) || set.quantity || 1;
     const pnlAbs = hasCost ? (currentPrice - purchasePrice) * qty : null;
     const pnlPct = (hasCost && currentPrice > 0) ? ((currentPrice - purchasePrice) / Math.max(purchasePrice, PNL_EPS)) * 100 : null;

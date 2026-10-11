@@ -45,12 +45,61 @@ CREATE TABLE IF NOT EXISTS sets (
   theme       TEXT,
   pieces      INTEGER,
   minifigs    INTEGER,
+  -- quantity steht hier weiter, obwohl Migration 0036 sie loescht: Der
+  -- Nachtrag in Migration 0032 LIEST sie (`COALESCE(s.quantity, 0)`), um die
+  -- fehlenden Erfassungen anzulegen, und der in 0036 ebenso. Fehlte sie auf
+  -- einer frischen Datenbank, braeche die Kette ab — dieselbe Begruendung wie
+  -- bei purchase_price und condition weiter unten.
   quantity    INTEGER DEFAULT 1,
   image_url   TEXT,
   image_local TEXT,
   brickset_id INTEGER,
   added_at       TIMESTAMPTZ DEFAULT NOW(),
   updated_at     TIMESTAMPTZ DEFAULT NOW(),
+  -- ── Diese zwei Spalten sind WEG — und stehen trotzdem hier ───────────────
+  --
+  -- Kaufpreis und Zustand eines Sets stehen in set_acquisitions, eine Zeile je
+  -- Kauf. Migration 0032 LOESCHT die beiden Spalten hier; sie waren aelter als
+  -- jene Tabelle und wurden danach nur noch als Spiegel der neuesten Erfassung
+  -- gefuehrt — dreimal ist genau daran etwas auseinandergelaufen.
+  --
+  -- Warum sie dann noch angelegt werden: Diese Datei ist der Ausgangszustand
+  -- einer NEUEN Datenbank, und danach laufen ALLE Migrationen der Reihe nach.
+  -- Migration 0007 enthaelt
+  --
+  --     ALTER TABLE sets ALTER COLUMN purchase_price TYPE NUMERIC(12,4) …
+  --
+  -- und ein ALTER COLUMN auf eine fehlende Spalte ist ein harter Fehler, kein
+  -- stilles Nichts. Ohne die Deklaration hier bricht der erste Start einer
+  -- frischen Installation ab — GEMESSEN, genau so: „Migration
+  -- 0007-geld-als-numeric.sql fehlgeschlagen: column "purchase_price" does
+  -- not exist". Eine ausgelieferte Migration nachtraeglich zu aendern ist
+  -- keine Loesung (sie ist auf fremden Installationen schon gelaufen), und
+  -- eine Nummer VOR 0007 gibt es nicht mehr.
+  --
+  -- Dieselbe Aufteilung wie beim Lagerort: 0018 legt `sets.storage` an, 0031
+  -- loescht es wieder, und bis dahin muss die Spalte da sein.
+  --
+  -- `condition` steht aus demselben Grund in spaltenMigrationen() in
+  -- db/database.ts — dort hat sie immer gestanden, und 0007 fasst sie nicht an.
+  -- Verschoben wird nichts: Eine Spalte an einen anderen Ort zu heben, nur um
+  -- sie zwei Migrationen spaeter zu loeschen, waere Bewegung ohne Wirkung.
+  --
+  -- Wer eine Abfrage auf diese Spalten schreibt, hat sie auf keiner laufenden
+  -- Datenbank — nach 0032 existieren sie dort nirgends mehr.
+  --
+  -- ── Und dasselbe noch einmal fuer die STAMMDATEN ─────────────────────────
+  --
+  -- name, year, theme, pieces, minifigs, image_url und image_local stehen
+  -- unten aus demselben Grund: Migration 0033 loescht sie (sie beschreiben das
+  -- SET und stehen in set_catalog), aber Migration 0014 schreibt vorher
+  -- `UPDATE sets SET image_url = …`. Fehlte die Spalte hier, braeche der erste
+  -- Start einer frischen Installation dort ab.
+  --
+  -- Gelesen werden sie nach 0033 aus set_catalog, ueber einen in jeder
+  -- Abfrage ausgeschriebenen LEFT JOIN. Eine Sicht, die beides zusammenfuegt,
+  -- stand hier kurzzeitig und ist wieder weg: Sie sah in jedem Werkzeug wie
+  -- eine Tabelle aus und verbarg, woher ein Feld kommt.
   purchase_price NUMERIC(12,4),
   UNIQUE(user_id, set_number),
   FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE
@@ -175,6 +224,15 @@ CREATE TABLE IF NOT EXISTS rb_inventory_parts (
   img_url      TEXT
 );
 CREATE INDEX IF NOT EXISTS idx_rb_inv_parts ON rb_inventory_parts(inventory_id);
+-- rb_bl_mapping: steht hier weiter, obwohl Migration 0037 die TABELLE
+-- loescht. Ihr Nachtrag liest sie als erste und verlaesslichste Quelle, und
+-- sein Riegel prueft danach, dass jede ihrer Zeilen uebernommen ist. Fehlte
+-- sie auf einer frischen Datenbank, braeche die Kette dort ab.
+--
+-- Was an ihre Stelle tritt: bl_zuordnung (art, rb_id, bl_id) — dieselbe
+-- Aussage fuer Teile, Figuren UND Sets, angelegt in Migration 0037 und
+-- deshalb NICHT hier (eine Tabelle gehoert an genau eine Stelle,
+-- scripts/check-schema-am-start.js prueft das).
 CREATE TABLE IF NOT EXISTS rb_bl_mapping (
   part_num    TEXT PRIMARY KEY,
   bl_part_num TEXT,
@@ -225,6 +283,11 @@ CREATE TABLE IF NOT EXISTS set_catalog (
 CREATE TABLE IF NOT EXISTS set_parts_catalog (
   set_number    TEXT NOT NULL,
   part_number   TEXT NOT NULL,
+  -- bl_part_number steht hier weiter, obwohl Migration 0037 sie loescht:
+  -- Der Nachtrag in 0037 LIEST sie, um die BrickLink-Nummern in
+  -- bl_zuordnung zu tragen, und sein Riegel prueft danach, dass keine
+  -- verloren geht. Fehlte sie auf einer frischen Datenbank, braeche die
+  -- Kette dort ab — dieselbe Begruendung wie bei sets.quantity.
   bl_part_number TEXT,
   part_name     TEXT,
   color_id      INTEGER,
@@ -253,6 +316,42 @@ CREATE TABLE IF NOT EXISTS set_minifigs_catalog (
 );
 CREATE INDEX IF NOT EXISTS idx_smc_set ON set_minifigs_catalog(set_number);
 
+-- ── Teile- und Minifigurenkatalog: part_catalog, part_color_catalog, ───────
+-- ── minifigs_catalog — angelegt von Migration 0034 ─────────────────────────
+--
+-- Das Gegenstueck zu set_catalog: Die BESCHREIBUNG eines Teils haengt nicht am
+-- Konto, das es besitzt. Sie lag vorher in parts/minifigs und damit je Konto
+-- neu.
+--
+-- Angelegt werden die drei Tabellen in
+-- db/migrations/0034-teile-und-minifiguren-stammdaten-im-katalog.sql und NICHT
+-- hier. Zwei Gruende, beide stehen schon anderswo in diesem Baum:
+--
+--   1. initSchema() laeuft nur bei einer Versionsaenderung. Nummerierte
+--      Migrationen laufen IMMER und sind „die Stelle, an der ab jetzt jede
+--      Schemaaenderung landet" (initSchemaOnce in db/database.ts).
+--   2. Eine Tabelle gehoert an GENAU EINE Stelle. Zwei Fassungen fallen nicht
+--      auf, solange sie dasselbe wollen: Ein Anlegen mit IF NOT EXISTS meldet
+--      einen Unterschied nicht — es tut dann einfach nichts.
+--      scripts/check-schema-am-start.js prueft das.
+--      (Die Anweisung ist hier bewusst NICHT ausgeschrieben: Die Pruefung
+--       sucht sie im Text und haette diesen Kommentar als zweite Fassung
+--       gemeldet. GEMESSEN: „mehrfach angelegt: meldet".)
+--
+-- Neun weitere Tabellen liegen aus demselben Grund nur in ihrer Migration,
+-- darunter account_links und wishlist.
+--
+-- Warum eigene Tabellen und nicht rb_parts/rb_colors: jobs/csvImportWorker.ts
+-- fuellt die Rebrickable-Spiegel ueber importiereMitTausch(), und das macht
+-- `DELETE FROM <tabelle>` und schreibt den CSV-Inhalt neu. Nachgetragenes
+-- waere beim naechsten Tageslauf weg. Die Spiegel bleiben reine Spiegel.
+--
+-- Warum das BILD an der Farbe haengt: Ein 2x4-Stein in Rot und derselbe in
+-- Blau haben verschiedene Bilder. set_parts_catalog fuehrt es deshalb schon
+-- heute je (set_number, part_number, color_id). part_color_catalog ist genau
+-- diese Tabelle ohne set_number, is_spare und quantity.
+
+
 CREATE TABLE IF NOT EXISTS price_market (
   set_number    TEXT NOT NULL,
   currency_code TEXT NOT NULL,
@@ -265,6 +364,45 @@ CREATE TABLE IF NOT EXISTS price_market (
 );
 -- ─────────────────────────────────────────────────────────────────────────
 
+-- ── Teilebestand ────────────────────────────────────────────────────────────
+--
+-- Eine Zeile sagt: WER hat WELCHES Teil in welcher Farbe aus welchem Set.
+-- Die BESCHREIBUNG des Teils (Name, Farbbezeichnung, Farbcode, Kategorie,
+-- Bild) ist kontounabhaengig und steht seit Migration 0034 in part_catalog
+-- bzw. part_color_catalog (weiter oben, bei den Katalogtabellen).
+--
+-- ── Warum die Beschreibungsspalten hier TROTZDEM noch stehen ───────────────
+--
+-- Dieselbe Begruendung wie bei sets (siehe dort): Diese Datei legt den
+-- AUSGANGSZUSTAND einer NEUEN Datenbank, danach laufen alle numerierten
+-- Migrationen der Reihe nach. Drei davon fassen Spalten an, die 0034 loescht:
+--
+--   0007-geld-als-numeric.sql        ALTER COLUMN unit_price/purchase_price TYPE
+--   0014-img-proxy-nach-v1.sql       UPDATE parts SET image_url = ...
+--   0029-trigramm-bestandssuche.sql  CREATE INDEX ... ON parts (lower(part_name))
+--
+-- Auf einer fehlenden Spalte ist jedes davon ein harter Fehler, und schema.sql
+-- laeuft in EINER Transaktion — ein Fehler darin nimmt die ganze Datei mit.
+-- GEMESSEN, als part_name hier fehlte: „Migration
+-- 0029-trigramm-bestandssuche.sql fehlgeschlagen: column \"part_name\" does not
+-- exist" — der erste Start einer frischen Installation war damit kaputt.
+--
+-- Die UEBRIGEN Beschreibungsspalten (color_name, color_hex, category_name,
+-- image_local, is_spare, created_at) fasst keine Migration an. Sie stehen hier
+-- aus einem zweiten Grund, und der ist genauso handfest: Migration 0034 traegt
+-- die Beschreibung manuell erfasster Positionen aus dem BESTAND in die
+-- Kataloge nach, und dieser Nachtrag liest sie alle in EINER Anweisung.
+-- Fehlte eine davon auf einer frischen Datenbank, braeche 0034 ab —
+-- GEMESSEN: „column p.category_name does not exist".
+--
+-- Eine frische und eine laufende Datenbank haben damit dieselbe Form, und die
+-- Migration braucht nur EINE Spaltenpruefung statt acht. Alles davon loescht
+-- 0034 am Ende der Kette.
+--
+-- unit_price und purchase_price stehen aus BEIDEN Gruenden hier: Migration
+-- 0007 fasst sie an, und der Nachtrag in Migration 0035 LIEST sie, um sie in
+-- part_acquisitions zu tragen. 0035 loescht sie danach, zusammen mit
+-- condition (die legt db/database.ts an, siehe dort).
 CREATE TABLE IF NOT EXISTS parts (
   id            SERIAL PRIMARY KEY,
   user_id       INTEGER NOT NULL,
@@ -275,6 +413,11 @@ CREATE TABLE IF NOT EXISTS parts (
   color_name    TEXT,
   color_hex     TEXT,
   category_name TEXT,
+  -- quantity steht hier weiter, obwohl Migration 0038 sie loescht: Ihr
+  -- Nachtrag LIEST sie, um fehlende Katalogzeilen (set_parts_catalog)
+  -- daraus anzulegen, und sein Riegel prueft danach, dass keine Stueckzahl
+  -- verloren geht. Fehlte sie auf einer frischen Datenbank, braeche die
+  -- Kette dort ab — dieselbe Begruendung wie bei sets.quantity weiter oben.
   quantity      INTEGER DEFAULT 1,
   image_url     TEXT,
   image_local   TEXT,
@@ -286,6 +429,11 @@ CREATE TABLE IF NOT EXISTS parts (
   FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE
 );
 
+-- bl_part_number: angelegt, damit Migration 0015 ihren Teil-Index darauf
+-- setzen kann (idx_parts_blnum) und Migration 0037 sie lesen kann. 0037
+-- loescht sie danach; die BrickLink-Nummer steht dann in bl_zuordnung,
+-- einmal je Teil. Wer eine Abfrage darauf schreibt, hat sie auf keiner
+-- laufenden Datenbank.
 ALTER TABLE parts ADD COLUMN IF NOT EXISTS bl_part_number TEXT;
 
 -- ── Lagerort ────────────────────────────────────────────────────────────────
@@ -351,7 +499,10 @@ CREATE INDEX IF NOT EXISTS idx_parts_storage_id
   ON parts (user_id, storage_id) WHERE storage_id IS NOT NULL;
 
 CREATE INDEX IF NOT EXISTS idx_parts_user  ON parts(user_id);
-CREATE INDEX IF NOT EXISTS idx_parts_color ON parts(user_id, color_name);
+-- Hier stand idx_parts_color ON parts(user_id, color_name). Die
+-- Farbbezeichnung steht seit Migration 0034 im Katalog; gefiltert wird nach
+-- der Farb-ID. Den Ersatzindex legt 0034 an — an EINER Stelle, aus demselben
+-- Grund wie die Katalogtabellen (siehe den Block weiter oben).
 CREATE INDEX IF NOT EXISTS idx_parts_set   ON parts(user_id, set_number);
 
 CREATE TABLE IF NOT EXISTS subsets_cache (
@@ -371,8 +522,10 @@ CREATE TABLE IF NOT EXISTS minifig_parts_cache (
 DELETE FROM subsets_cache WHERE fetched_at < NOW() - INTERVAL '1 day' OR data NOT LIKE '%external_ids%';
 
 -- Kaufpreis-Historie: eine Zeile pro Erfassung (auch beim erneuten
--- Hinzufügen desselben Sets). sets.purchase_price spiegelt den Preis der
--- LETZTEN Erfassung; Finanz-Summen rechnen über diese Tabelle.
+-- Hinzufügen desselben Sets). Sie ist seit Migration 0032 die EINZIGE Stelle
+-- für Kaufpreis und Zustand eines Sets — hier stand vorher „sets.purchase_price
+-- spiegelt den Preis der LETZTEN Erfassung", und dieser Spiegel hat dreimal
+-- etwas auseinanderlaufen lassen.
 CREATE TABLE IF NOT EXISTS set_acquisitions (
   id             SERIAL PRIMARY KEY,
   user_id        INTEGER NOT NULL,
@@ -396,22 +549,37 @@ CREATE TABLE IF NOT EXISTS catalog_cache (
   fetched_at TIMESTAMPTZ DEFAULT NOW()
 );
 
+-- ── Minifigurenbestand ──────────────────────────────────────────────────────
+--
+-- Wie parts: hier steht der Bestand, Name und Bild stehen seit Migration 0034
+-- in minifigs_catalog. fig_name, image_url und image_local bleiben hier
+-- stehen, aus genau den beiden Gruenden, die bei parts ausgeschrieben sind:
+-- Migration 0014 fasst image_url an, und der Nachtrag in 0034 liest alle drei
+-- in EINER Anweisung. 0034 loescht sie am Ende der Kette.
+--
+-- unit_price und purchase_price bleiben fuer Migration 0007 und fuer den
+-- Nachtrag in 0035, der sie nach minifig_acquisitions traegt; 0035 loescht
+-- sie danach zusammen mit condition.
 CREATE TABLE IF NOT EXISTS minifigs (
   id            SERIAL PRIMARY KEY,
   user_id       INTEGER NOT NULL,
   set_number    TEXT,
   fig_number    TEXT NOT NULL,
   fig_name      TEXT,
+  -- quantity: angelegt, damit Migration 0038 sie lesen kann, und von ihr
+  -- danach geloescht — siehe parts.quantity weiter oben.
   quantity      INTEGER DEFAULT 1,
   image_url     TEXT,
+  image_local   TEXT,
   source          TEXT DEFAULT 'set',
   unit_price      NUMERIC(12,4),
   purchase_price  NUMERIC(12,4),
   FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE
 );
 CREATE INDEX IF NOT EXISTS idx_minifigs_user ON minifigs(user_id);
+-- bl_fig_number: angelegt, damit Migration 0037 sie lesen kann, und von ihr
+-- danach geloescht — siehe parts.bl_part_number weiter oben.
 ALTER TABLE minifigs ADD COLUMN IF NOT EXISTS bl_fig_number TEXT;
-ALTER TABLE minifigs ADD COLUMN IF NOT EXISTS image_local TEXT;
 
 -- Lagerort auch fuer Minifiguren (db/migrations/0024-lagerort-minifiguren.sql).
 -- Warum hier ZUSAETZLICH zur Migration: siehe den Block bei sets/parts weiter

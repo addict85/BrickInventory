@@ -91,8 +91,14 @@ test('ohne page_size bleibt alles wie bisher', () => {
 });
 
 test('die Themenliste kommt vom Server und nur auf Seite 1', () => {
-  assert.match(H_SRC, /SELECT DISTINCT theme FROM sets/,
+  // Die Abfrage las bis Migration 0033 `SELECT DISTINCT theme FROM sets`. Das
+  // Thema steht jetzt im Katalog, also braucht sie einen JOIN — geprüft wird
+  // weiterhin die AUSSAGE: über den ganzen Bestand des Kontos, nicht über die
+  // geladene Seite.
+  assert.match(H_SRC, /SELECT DISTINCT c\.theme AS theme\s*\n\s*FROM sets s JOIN set_catalog c/,
     'Aus der geladenen Seite abgeleitet wäre das Auswahlfeld unvollständig');
+  assert.match(H_SRC, /WHERE s\.user_id = ANY\(\$1\) AND c\.theme IS NOT NULL/,
+    'Die Themenliste muss auf das Blickfeld eingeschränkt sein');
   assert.match(H_SRC, /parseInt\(page\) <= 1/, 'Folgeseiten brauchen die Liste nicht');
   assert.match(GAL, /Array\.isArray\(d\.themes\)/, 'Der Client muss die Serverliste verwenden');
   assert.match(GAL, /esc\(th\)/, 'Themennamen stammen aus Fremddaten und müssen escaped werden');

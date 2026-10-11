@@ -45,7 +45,7 @@ import { fehlertext, handleRouteError, logAndContinue } from '../utils/httpError
 import { recordAcquisitionForDay } from '../utils/acquisitions';
 // Die Katalogarbeit liegt seit Nachtrag 131 in utils/partsImport.ts — sonst
 // müsste utils/setService.ts (addSet) einen Router importieren.
-import { importPartsForSet, fetchMissingBlIds, syncBlPartNumbers } from '../utils/partsImport';
+import { importPartsForSet, fetchMissingBlIds } from '../utils/partsImport';
 import { requireLogin } from './auth';
 // Blickfeld — dieselbe Quelle wie in routes/api_v1/parts.ts.
 import { scopeIds, parseScopeMode } from '../utils/household';
@@ -69,8 +69,6 @@ router.use(requireLogin);
 // zwar über einen Namen, den diese Datei nie exportiert hat: Der Aufruf endete
 // immer in einem TypeError. Der Weg läuft jetzt über getAllSetParts() in
 // clients/rebrickable.ts, das all das kann.
-
-
 
 router.get('/categories', async (req, res) => {
   // ── Blickfeld statt eigener ID (Nachtrag 134) ─────────────────────────────
@@ -98,29 +96,40 @@ router.get('/categories', async (req, res) => {
       -- rb_parts stammt aus dem CSV-Sync und kennt part_cat_id zu jeder
       -- Teilenummer. Über diesen Umweg bekommt auch ein 'Unknown'-Teil seine
       -- Kategorie, ohne dass die gespeicherten Daten angefasst werden müssen.
-      SELECT COALESCE(rc.id::text, rp_cat.id::text, p.category_name) AS category_name,
-             COALESCE(rc.name, rp_cat.name, 'Unbekannt')             AS label,
+      --
+      -- Die Kategorie kommt seit Migration 0034 aus part_catalog (Alias pc);
+      -- vorher stand sie je Konto in parts.
+      SELECT COALESCE(rc.id::text, rp_cat.id::text, pc.category_name) AS category_name,
+             COALESCE(rc.name, rp_cat.name, 'Unbekannt')              AS label,
              COUNT(DISTINCT p.part_number) AS unique_parts,
-             SUM(p.quantity * COALESCE(s.quantity,1)) AS total_quantity
+             -- Der zweite Faktor ist die Zahl der Exemplare DES SETS. Er stand
+             -- als COALESCE(s.quantity,1) hier; die Spalte ist mit Migration
+             -- 0036 weg, die Menge kommt aus set_acquisitions. Die 1 bleibt
+             -- die Lesart „Set nicht im Bestand, Teil trotzdem zaehlen" —
+             -- dafuer steht der zweite Parameter von mengeAus().
+             -- Der ERSTE Faktor ist die Stückzahl der Bestandszeile. Sie
+             -- stand als p.quantity dort; Migration 0038 hat die Spalte
+             -- geloescht. Fuer ein Set-Teil ist es die Katalogzahl, fuer
+             -- ein manuelles die Summe der Erfassungen — die
+             -- Fallunterscheidung steht in utils/bestandsmenge.ts.
+             SUM(${teilmengeAus('p', 'part')} * ${mengeAus('sm', 1)}) AS total_quantity
       FROM parts p
-      LEFT JOIN sets s ON s.user_id = p.user_id AND s.set_number = p.set_number
+      ${mengeJoin('p')}
+      ${teilmengeJoin('p', 'part')}
+      LEFT JOIN part_catalog pc ON pc.part_number = p.part_number
       LEFT JOIN rb_part_categories rc
-             ON rc.id = (CASE WHEN p.category_name ~ '^[0-9]+$' THEN p.category_name::int ELSE NULL END)
+             ON rc.id = (CASE WHEN pc.category_name ~ '^[0-9]+$' THEN pc.category_name::int ELSE NULL END)
       LEFT JOIN rb_parts rp ON rp.part_num = p.part_number
       LEFT JOIN rb_part_categories rp_cat ON rp_cat.id = rp.part_cat_id
       WHERE p.user_id = ANY($1) AND COALESCE(p.source,'set') <> 'manual'
-      GROUP BY COALESCE(rc.id::text, rp_cat.id::text, p.category_name),
+      GROUP BY COALESCE(rc.id::text, rp_cat.id::text, pc.category_name),
                COALESCE(rc.name, rp_cat.name, 'Unbekannt')
       ORDER BY total_quantity DESC`, [uids]);
     res.json({ success:true, categories:cats });
   } catch (e) { handleRouteError(res, e, undefined, req); }
 });
 
-
-
-
 // ── Manual part lookup via Rebrickable ────────────────────────────────────────
-
 
 // ── GET /api/parts/brick-colors — brick color list for dropdown ───────────────
 
@@ -164,7 +173,6 @@ async function getPartColorList() {
     {id:28,name:'Gold',hex:'DBAC34'},
   ];
 }
-
 
 /**
  * Preis/Stk, Kaufpreis und Zustand fuer ein manuell erfasstes Teil.
@@ -289,9 +297,12 @@ async function addManualPartIntern(uid: number, rawBody: any) {
     if (info) { part_name = info.part_name; image_url = info.image_url; category_name = info.category_name; }
   }
 
-  // Upsert: if same part+color already manually added for this user, increment quantity
+  // Gibt es die Position schon? Nur die EXISTENZ wird gebraucht — die
+  // Stückzahl stand hier als zweite Spalte und ist mit Migration 0038 weg.
+  // Gelesen wurde sie ohnehin nicht mehr: Die Menge addiert sich dadurch,
+  // dass eine zweite Erfassung entsteht.
   const existing = await db.get(
-    "SELECT id, quantity FROM parts WHERE user_id=$1 AND part_number=$2 AND color_id=$3 AND source='manual'",
+    "SELECT id FROM parts WHERE user_id=$1 AND part_number=$2 AND color_id=$3 AND source='manual'",
     [uid, part_number, color_id]
   );
 
@@ -303,9 +314,9 @@ async function addManualPartIntern(uid: number, rawBody: any) {
     // Erfassung, und ein abweichendes Erfassungsdatum ging verloren — genau
     // das gemeldete Verhalten. Der CSV-Import macht an dieser Stelle seit
     // jeher beides.
-    await db.run('UPDATE parts SET quantity = quantity + $1 WHERE id = $2',
-      [quantity, existing.id]);
-
+    // Die Menge wird NICHT hier fortgeschrieben: Die Erfassung unten ist die
+    // Wahrheit, und seit Migration 0038 gibt es gar keine Spalte mehr, die
+    // man fortschreiben koennte. Hier stand `quantity = quantity + $1`.
     const reCond = ['N','U'].includes(condition) ? condition
       : await resolvePartCondition(uid, part_number, color_id).catch(() => 'N');
     const reEntered = (unit_price !== undefined && unit_price !== null && unit_price !== '')
@@ -320,6 +331,10 @@ async function addManualPartIntern(uid: number, rawBody: any) {
     await recordAcquisitionForDay('part', uid, [part_number, color_id || 0], {
       quantity, price: ((rePrice ?? 0) > 0 ? rePrice : null), condition: reCond, createdAt: acquiredAt,
     }).catch(e => console.error('[addManualPart] Zweiterfassung:', e.message));
+    // Kein Nachrechnen mehr: Die Stückzahl steht seit Migration 0038
+    // nicht an der Zeile. Hier stand mengeNeuRechnen(), das sie aus den
+    // Erfassungen ableitete und SCHRIEB — jetzt rechnet sie das Lesen
+    // (utils/bestandsmenge.ts, teilmengeJoin/teilmengeAus).
 
     return { action: 'updated', part_number };
   }
@@ -333,7 +348,12 @@ async function addManualPartIntern(uid: number, rawBody: any) {
   // und die kennt beim Anlegen noch keine Erfassung — sie lieferte also
   // ebenfalls den Standardzustand des Kontos. Nur steht die Staffelung jetzt
   // sichtbar da, statt zweimal auf verschiedenen Wegen berechnet zu werden.
-  const { effectiveUnitPrice, effectivePurchasePrice, erfassungsPreis, effectiveCondition, preisAusZustand } =
+  // effectiveUnitPrice und effectivePurchasePrice werden hier NICHT mehr
+  // ausgepackt: Sie waren fuer die Bestandszeile, und die traegt seit
+  // Migration 0035 keinen Preis. Der Compiler hat die Stelle gemeldet, sobald
+  // die Spalten weg waren — ein Wert, den niemand mehr liest, ist der beste
+  // Beleg dafuer, dass er nur die Abschrift getragen hat.
+  const { erfassungsPreis, effectiveCondition, preisAusZustand } =
     await resolveManualPartPurchase(uid, { partNumber: part_number, colorId: color_id, unitPrice: unit_price, condition });
   // Farbcode möglichst füllen: vom Client übergeben, sonst aus rb_colors ableiten
   // (sonst bleibt der Farbpunkt in der Oberfläche grau).
@@ -341,15 +361,39 @@ async function addManualPartIntern(uid: number, rawBody: any) {
     || (await db.get('SELECT rgb FROM rb_colors WHERE id=$1', [color_id]).catch(() => null))?.rgb
     || null;
 
+  // ── Beschreibung in den Katalog, Bestand in parts ───────────────────────
+  //
+  // Seit Migration 0034 trennt sich beides: Name, Farbbezeichnung, Farbcode,
+  // Kategorie und Bild gelten fuer ALLE Konten, der Bestand gilt fuer eines.
+  //
+  // Der Katalog ZUERST: Faellt die Anfrage zwischen den beiden Anweisungen
+  // aus, steht lieber eine Beschreibung ohne Bestand da (unsichtbar, weil
+  // niemand das Teil hat) als ein Bestand ohne Beschreibung (eine Zeile ohne
+  // Namen in der Teileliste).
+  //
+  // Die beiden Upserts stehen in utils/katalogPflege.ts — derselbe Schreiber
+  // wie beim CSV-Import, beim Set-Import und beim Verschieben eines Sets.
+  await merkeTeil(part_number, part_name, category_name);
+  await merkeTeilFarbe(part_number, color_id, color_name, effectiveColorHex, image_url);
+
+  // Preis und Zustand nicht mehr an die Bestandszeile (Migration 0035) — sie
+  // stehen in der Erfassung, die recordAcquisitionForDay() gleich darunter
+  // anlegt. effectiveUnitPrice/effectivePurchasePrice werden dort ueber
+  // erfassungsPreis verwendet.
+  // Ohne Menge: Sie steht seit Migration 0038 nicht an der Zeile. Fuer ein
+  // manuelles Teil ist sie die Summe der Erfassungen, und die erste legt
+  // recordAcquisitionForDay() gleich darunter an.
   await db.run(`
-    INSERT INTO parts (user_id, set_number, part_number, part_name, color_id, color_name, color_hex, category_name, quantity, image_url, source, unit_price, purchase_price, condition)
-    VALUES ($1, NULL, $2, $3, $4, $5, $6, $7, $8, $9, 'manual', $10, $11, $12) ON CONFLICT DO NOTHING`,
-    [uid, part_number, part_name, color_id, color_name, effectiveColorHex, category_name, quantity, image_url, effectiveUnitPrice, effectivePurchasePrice, effectiveCondition]
+    INSERT INTO parts (user_id, set_number, part_number, color_id, source)
+    VALUES ($1, NULL, $2, $3, 'manual') ON CONFLICT DO NOTHING`,
+    [uid, part_number, color_id]
   );
 
   // Gibt es das Teil schon, hat das INSERT oben nichts getan (ON CONFLICT DO
-  // NOTHING). Dann die Menge addieren — eine zweite Erfassung ist ein Zugang,
-  // kein Fehler. Der CSV-Import macht das seit jeher so.
+  // NOTHING) — und das genuegt: Eine zweite Erfassung ist ein Zugang, kein
+  // Fehler, und sie addiert sich von selbst, weil die Stückzahl die SUMME der
+  // Erfassungen ist (Migration 0038). Hier stand dafuer ein eigenes
+  // `UPDATE parts SET quantity = quantity + $1`.
   // Erfassung anlegen — analog zu Sets (recordAcquisition in routes/sets.ts).
   //
   // Vorher entstand beim manuellen Anlegen KEINE Zeile in part_acquisitions:
@@ -373,17 +417,36 @@ async function addManualPartIntern(uid: number, rawBody: any) {
 // part. Used by both the session-based web route and the token-based API, so
 // the behaviour is implemented exactly once.
 async function updateManualPart(uid: number, partNumber: string, colorId: number, body: any) {
+  // Der Zustand kommt aus der NEUESTEN Erfassung — an der Bestandszeile gibt
+  // es ihn seit Migration 0035 nicht mehr. Dieselbe Ordnung wie latestSql in
+  // routes/api_v1/acquisitions.ts.
   const existing = await db.get(
-    "SELECT id, condition FROM parts WHERE user_id=$1 AND part_number=$2 AND color_id=$3 AND source='manual'",
+    `SELECT p.id,
+            (SELECT a.condition FROM part_acquisitions a
+              WHERE a.user_id = p.user_id AND a.part_number = p.part_number
+                AND COALESCE(a.color_id, 0) = COALESCE(p.color_id, 0)
+              ORDER BY a.created_at DESC, a.id DESC LIMIT 1) AS condition
+       FROM parts p
+      WHERE p.user_id=$1 AND p.part_number=$2 AND p.color_id=$3 AND p.source='manual'`,
     [uid, partNumber, colorId]
   );
   if (!existing) { const e = Object.assign(new Error('Teil nicht gefunden oder nicht manuell hinzugefügt'), { status: 404 }); throw e; }
 
   if (body.quantity !== undefined) {
     const newQty = parseInt(body.quantity) || 1;
-    await db.run('UPDATE parts SET quantity=$1 WHERE id=$2', [newQty, existing.id]);
-    // Acquisition tracking — wrapped separately so a missing table never breaks qty save
-    try {
+    // ── Erst die Erfassungen, dann die Menge daraus ────────────────────────
+    //
+    // Hier stand `UPDATE parts SET quantity=$1` VOR dem Angleichen der
+    // Erfassungen, und das Angleichen lag in einem try/catch, das seinen
+    // Fehler verschluckte („so a missing table never breaks qty save").
+    // Scheiterte es, standen Menge und Erfassungen dauerhaft verschieden da —
+    // lautlos.
+    //
+    // Jetzt ist die Reihenfolge umgekehrt und das Verschlucken weg: Geht das
+    // Angleichen schief, hat sich NICHTS geaendert, und der Fehler wird
+    // gemeldet. Die Spalte schreibt mengeNeuRechnen() danach aus den
+    // Erfassungen (utils/bestandsmenge.ts).
+    {
       const acqs = await db.all('SELECT id, quantity, created_at FROM part_acquisitions WHERE user_id=$1 AND part_number=$2 AND color_id=$3 ORDER BY created_at DESC, id DESC',
         [uid, partNumber, colorId]);
       const currentTotal = acqs.reduce((s,r)=>s+r.quantity,0);
@@ -426,27 +489,49 @@ async function updateManualPart(uid: number, partNumber: string, colorId: number
           rem -= take;
         }
       }
-    } catch(e) { console.error('[updateManualPart] acq tracking:', fehlertext(e)); }
+    }
   }
   if (body.unit_price !== undefined) {
     // Die Regel („leer heisst Marktpreis", Zustand gestaffelt) steht in
     // utils/preisRegel.ts — sie galt vorher zeichengleich hier und in
     // routes/minifigs.ts. Hier bleibt nur, was sich unterscheidet: welche
     // Marktpreis-Abfrage und welche Tabelle.
-    const { unitPrice, purchasePrice } = await kaufpreisAusEingabe(
+    const { unitPrice } = await kaufpreisAusEingabe(
       body.unit_price, body.condition, existing.condition, uid,
       (zustand) => getCurrentPartMarketPrice(partNumber, colorId, uid, zustand),
     );
-    await db.run('UPDATE parts SET unit_price=$1, purchase_price=$2 WHERE id=$3',
-      [unitPrice, purchasePrice, existing.id]);
+    // ── In die NEUESTE Erfassung, nicht an die Bestandszeile ──────────────
+    //
+    // Hier stand `UPDATE parts SET unit_price=$1, purchase_price=$2`. Die
+    // beiden Spalten hat Migration 0035 geloescht; der Preis gehoert je Kauf
+    // in die Erfassung. Geaendert wird die neueste — das ist die, die alle
+    // Leseabfragen als „der Preis dieses Teils" anzeigen.
+    //
+    // purchasePrice wird gar nicht mehr ausgepackt: Er war der ANZEIGEWERT
+    // (nie NULL, 0 heisst „nichts bekannt"), und den bildet jetzt die
+    // Leseabfrage mit COALESCE(..., 0). In der Erfassung bedeutet 0 „fuer
+    // null Franken gekauft" — deshalb NULLIF.
+    await db.run(
+      `UPDATE part_acquisitions SET unit_price = NULLIF($1, 0)
+        WHERE id = (SELECT a.id FROM part_acquisitions a
+                     WHERE a.user_id=$2 AND a.part_number=$3
+                       AND COALESCE(a.color_id, 0) = COALESCE($4, 0)
+                     ORDER BY a.created_at DESC, a.id DESC LIMIT 1)`,
+      [unitPrice, uid, partNumber, colorId]);
   }
   if (body.condition !== undefined && body.condition !== null) {
     const cond = ['N','U'].includes(body.condition) ? body.condition : 'N';
-    try {
-      await db.run('UPDATE parts SET condition=$1 WHERE id=$2', [cond, existing.id]);
-    } catch (e) {
-      console.error('[updateManualPart] condition update skipped (migration pending?):', fehlertext(e));
-    }
+    // Ebenfalls in die neueste Erfassung. Das try/catch mit dem Hinweis
+    // „migration pending?" ist weg: Es deckte eine Zeit ab, in der die Spalte
+    // parts.condition noch fehlen konnte. Jetzt gibt es sie nicht mehr, und
+    // ein Fehlschlag soll nicht verschwiegen werden.
+    await db.run(
+      `UPDATE part_acquisitions SET condition=$1
+        WHERE id = (SELECT a.id FROM part_acquisitions a
+                     WHERE a.user_id=$2 AND a.part_number=$3
+                       AND COALESCE(a.color_id, 0) = COALESCE($4, 0)
+                     ORDER BY a.created_at DESC, a.id DESC LIMIT 1)`,
+      [cond, uid, partNumber, colorId]);
   }
 }
 
@@ -465,7 +550,8 @@ import { angemeldeteNutzerId } from '../utils/auth';
 import { csvEmpfang } from '../utils/dateiEmpfang';
 import { sendeFehler } from '../utils/fehlerTexte';
 import { normalisiereLagerort, setzeLagerort } from '../utils/lagerort';
-
+import { merkeTeil, merkeTeilFarbe } from '../utils/katalogPflege';
+import { mengeJoin, mengeAus, teilmengeJoin, teilmengeAus } from '../utils/bestandsmenge';
 
 router.post('/import/csv', csvEmpfang.single('file'), async (req: LoggedInRequest, res) => {
   if (!req.file) return sendeFehler(req, res, 400, 'keine_datei');
@@ -505,7 +591,8 @@ router.post('/import/csv', csvEmpfang.single('file'), async (req: LoggedInReques
         // unit_price bekam hier den MARKTPREIS (das Feld heisst „Preis/Stk"
         // und meint, was der Mensch bezahlt hat), und ohne Marktpreis stand
         // NULL im Kaufpreis statt der 0, die das Frontend erwartet.
-        const { effectiveUnitPrice, effectivePurchasePrice, erfassungsPreis, effectiveCondition: csvCondition } =
+        // Ohne effectiveUnitPrice/effectivePurchasePrice — siehe addManualPart.
+        const { erfassungsPreis, effectiveCondition: csvCondition } =
           await resolveManualPartPurchase(uid, { partNumber, colorId, unitPrice, condition: rawCondition });
         const acqDate = acquiredAt || new Date().toISOString().slice(0,10);
 
@@ -514,7 +601,8 @@ router.post('/import/csv', csvEmpfang.single('file'), async (req: LoggedInReques
           [uid, partNumber, colorId]
         );
         if (existing) {
-          await db.run('UPDATE parts SET quantity = quantity + $1 WHERE id = $2', [qty, existing.id]);
+          // Keine Mengenaenderung hier — die Erfassung unten ist die Wahrheit
+          // (utils/bestandsmenge.ts).
           // Erfassung auch beim Aufstocken anlegen, damit Zustand/Preis/Datum der
           // importierten Menge erhalten bleiben (und das Zustands-Aggregat stimmt).
           await recordAcquisitionForDay('part', uid, [partNumber, colorId],
@@ -527,9 +615,18 @@ router.post('/import/csv', csvEmpfang.single('file'), async (req: LoggedInReques
           results.push({ part_number: partNumber, action: 'updated' });
         } else {
           const colorHex = (await db.get('SELECT rgb FROM rb_colors WHERE id=$1', [colorId]).catch(() => null))?.rgb || null;
-          await db.run(`INSERT INTO parts (user_id, set_number, part_number, part_name, color_id, color_name, color_hex, category_name, quantity, image_url, source, unit_price, purchase_price, condition)
-            VALUES ($1, NULL, $2, $3, $4, $5, $6, $7, $8, $9, 'manual', $10, $11, $12) ON CONFLICT DO NOTHING`,
-            [uid, partNumber, partName, colorId, colorName, colorHex, categoryName, qty, imageUrl, effectiveUnitPrice, effectivePurchasePrice, csvCondition]);
+          // Beschreibung in den Katalog, Bestand in parts (Migration 0034).
+          // Der Katalog zuerst, aus demselben Grund wie beim Anlegen von
+          // Hand: lieber eine Beschreibung ohne Bestand als ein Bestand ohne
+          // Beschreibung.
+          await merkeTeil(partNumber, partName, categoryName);
+          await merkeTeilFarbe(partNumber, colorId, colorName, colorHex, imageUrl);
+          // Preis und Zustand in die Erfassung, nicht an die Bestandszeile
+          // (Migration 0035) — siehe addManualPart.
+          // Ohne Menge — siehe addManualPart (Migration 0038).
+          await db.run(`INSERT INTO parts (user_id, set_number, part_number, color_id, source)
+            VALUES ($1, NULL, $2, $3, 'manual') ON CONFLICT DO NOTHING`,
+            [uid, partNumber, colorId]);
           await recordAcquisitionForDay('part', uid, [partNumber, colorId],
             // > 0 wie beim Anlegen von Hand: Die 0 ist ein Anzeigewert fuer
             // die Stammzeile, in der Erfassung steht dafuer NULL.
@@ -563,18 +660,30 @@ router.post('/import/csv', csvEmpfang.single('file'), async (req: LoggedInReques
 // Kommentare beschreiben genau diesen Umbau; die Teile blieben als einzige
 // zurueck. Wieder eine Regel, die an zwei von drei Stellen gilt.
 //
-// Der LEFT JOIN erhaelt, was das frueherer `.catch(()=>[])` je Teil leistete:
-// Teile ohne Erfassungen liefern eine Zeile aus der Stammzeile. Der Rueckfall
-// darunter faengt den anderen Fall ab, den das `.catch` abdeckte — die Tabelle
-// part_acquisitions fehlt ganz (Migration noch nicht gelaufen). Ein JOIN wuerde
-// dann die GANZE Abfrage abbrechen und der Export lieferte nichts mehr.
+// ── Der Rueckfall auf die Stammzeile ist weg ─────────────────────────────────
+//
+// Hier stand je Spalte ein `CASE WHEN a.id IS NULL THEN p.<spalte>` und
+// darunter eine zweite, vollstaendige Abfrage fuer den Fall, dass
+// part_acquisitions ganz fehlt. Beides griff auf p.unit_price und p.condition
+// zu, und die hat Migration 0035 geloescht.
+//
+// Gebraucht wird der Rueckfall auch nicht mehr: 0035 traegt fuer jede manuelle
+// Position eine Erfassung nach und prueft danach nach, dass keine ohne
+// geblieben ist. Der LEFT JOIN bleibt trotzdem — loescht jemand die letzte
+// Erfassung, entfernt cleanupWhenEmpty() die Bestandszeile mit, aber ein
+// Export soll an einer unerwarteten Lage nicht ganz ausfallen.
 const PARTS_CSV_SQL = `
   SELECT p.part_number,
-         CASE WHEN a.id IS NULL THEN p.quantity   ELSE a.quantity   END AS quantity,
+         -- Die Menge der ERFASSUNG, ohne Rueckfall auf die Zeile: Migration
+         -- 0038 hat p.quantity geloescht, und dieser Export liefert eine
+         -- Zeile JE ERFASSUNG (source='manual' unten). Ohne Erfassung gibt
+         -- es keine Zeile und damit keine Menge — 0 statt leer, dieselbe
+         -- Lesart wie im Sets-Export (utils/setService.ts).
+         COALESCE(a.quantity, 0) AS quantity,
          COALESCE(p.color_id, 0) AS color_id,
-         COALESCE(p.color_name,'') AS color_name,
-         CASE WHEN a.id IS NULL THEN p.unit_price ELSE a.unit_price END AS unit_price,
-         COALESCE(CASE WHEN a.id IS NULL THEN p.condition ELSE a.condition END, 'N') AS condition,
+         COALESCE(pcc.color_name,'') AS color_name,
+         a.unit_price,
+         COALESCE(a.condition, 'N') AS condition,
          CASE WHEN a.id IS NULL THEN ''
               ELSE TO_CHAR(a.created_at AT TIME ZONE 'UTC','YYYY-MM-DD') END AS acquired_at
     FROM parts p
@@ -582,19 +691,20 @@ const PARTS_CSV_SQL = `
            ON a.user_id = p.user_id
           AND a.part_number = p.part_number
           AND COALESCE(a.color_id, 0) = COALESCE(p.color_id, 0)
+    -- Name und Farbbezeichnung aus den Katalogen (Migration 0034). LEFT JOIN,
+    -- damit ein Teil ohne Katalogzeile nicht aus dem Export faellt.
+    LEFT JOIN part_catalog pc ON pc.part_number = p.part_number
+    LEFT JOIN part_color_catalog pcc ON pcc.part_number = p.part_number
+                                    AND pcc.color_id    = p.color_id
    WHERE p.user_id = $1 AND p.source = 'manual'
-   ORDER BY p.part_name ASC, p.part_number ASC, a.created_at ASC, a.id ASC`;
+   ORDER BY pc.part_name ASC, p.part_number ASC, a.created_at ASC, a.id ASC`;
 
 async function buildPartsCsv(uid: number) {
-  const rows = (await db.all(PARTS_CSV_SQL, [uid]).catch(() => null)
-    ?? await db.all(
-      `SELECT part_number, quantity, COALESCE(color_id,0) AS color_id,
-              COALESCE(color_name,'') AS color_name, unit_price,
-              COALESCE(condition,'N') AS condition,
-              '' AS acquired_at
-         FROM parts WHERE user_id=$1 AND source='manual'
-        ORDER BY part_name ASC, part_number ASC`, [uid])
-  ).map((r: any) => ({ ...r, unit_price: r.unit_price ?? '' }));
+  // Ohne zweite Abfrage als Rueckfall — siehe die Begruendung bei
+  // PARTS_CSV_SQL. Scheitert sie, soll der Fehler sichtbar werden, statt eine
+  // Abfrage zu versuchen, die auf geloeschte Spalten zeigt.
+  const rows = (await db.all(PARTS_CSV_SQL, [uid]))
+    .map((r: any) => ({ ...r, unit_price: r.unit_price ?? '' }));
 
   return toCsv(
     ['part_number', 'quantity', 'color_id', 'color_name', 'unit_price', 'condition', 'acquired_at'],
@@ -626,21 +736,25 @@ async function getPartAcquisitions(uid: number[], partNumber: string, colorId: s
   // uid ist hier das BLICKFELD (Liste): Im Haushalt können die Kaufpreise
   // eines Teils mehreren Konten gehören, und je Zeile kommt der Eigentümer
   // mit — sonst wüsste die Auswahl im Dialog nicht, worauf sie steht.
+  // ── Kein Rueckfall auf die Stammzeile mehr ──────────────────────────────
+  //
+  // Hier stand COALESCE(a.unit_price, p.unit_price, p.purchase_price) und
+  // dazu ein LEFT JOIN auf parts. Beide Spalten hat Migration 0035 geloescht
+  // — und der Rueckfall war ohnehin verkehrt herum: Er liess eine Erfassung
+  // OHNE Preis den Preis der Stammzeile anzeigen, also den der NEUESTEN
+  // Erfassung. Im Kaufpreis-Dialog stand damit an einer leeren Zeile ein
+  // Betrag, der zu einer anderen Zeile gehoert.
+  //
+  // Jetzt zeigt die Erfassung, was in ihr steht. Leer heisst leer.
   return db.all(
-    `SELECT a.id, a.quantity,
-            COALESCE(a.unit_price, p.unit_price, p.purchase_price) AS unit_price,
-            COALESCE(a.condition, p.condition, 'N') AS condition,
+    `SELECT a.id, a.quantity, a.unit_price,
+            COALESCE(a.condition, 'N') AS condition,
             a.created_at, a.user_id AS owner_user_id
      FROM part_acquisitions a
-     LEFT JOIN parts p ON p.user_id=a.user_id AND p.part_number=a.part_number
-                       AND p.color_id=a.color_id AND p.source='manual'
      WHERE a.user_id = ANY($1) AND a.part_number=$2 AND a.color_id=$3
      ORDER BY a.created_at ASC, a.id ASC`,
     [uid, partNumber, parseInt(String(colorId)) || 0]
   );
 }
 
-
-
-
-export = Object.assign(router, { syncBlPartNumbers, fetchMissingBlIds, importPartsForSet, getCurrentPartMarketPrice, addManualPart, updateManualPart, lookupPart, getPartColorList, buildPartsCsv, getPartAcquisitions });
+export = Object.assign(router, { fetchMissingBlIds, importPartsForSet, getCurrentPartMarketPrice, addManualPart, updateManualPart, lookupPart, getPartColorList, buildPartsCsv, getPartAcquisitions });

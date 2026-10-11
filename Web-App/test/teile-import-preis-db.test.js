@@ -74,13 +74,22 @@ test('Import ohne Preis hinterlässt dasselbe wie Erfassen ohne Preis', { concur
     const { addManualPart } = _req('routes/parts.js');
     await addManualPart(uid, { part_number: VON_HAND, part_name: 'Testteil', color_id: 0, quantity: 3 });
 
-    const spalten = 'unit_price, purchase_price, condition';
+    // ── Gelesen aus der ERFASSUNG ─────────────────────────────────────────
+    //
+    // Preis und Zustand standen hier auf der Teile-Zeile. Migration 0035 hat
+    // sie geloescht: Sie gehoeren je Kauf in part_acquisitions. Die Frage
+    // dieses Tests bleibt dieselbe — hinterlassen CSV-Import und Erfassen von
+    // Hand denselben Zustand? — nur dass sie jetzt dort gestellt wird, wo die
+    // Antwort liegt.
+    const spalten = 'unit_price, condition, quantity';
     const imp = await db.get(
-      `SELECT ${spalten} FROM parts WHERE user_id=$1 AND part_number=$2`, [uid, IMPORTIERT]);
+      `SELECT ${spalten} FROM part_acquisitions WHERE user_id=$1 AND part_number=$2`,
+      [uid, IMPORTIERT]);
     const hand = await db.get(
-      `SELECT ${spalten} FROM parts WHERE user_id=$1 AND part_number=$2`, [uid, VON_HAND]);
-    assert.ok(imp,  'Das importierte Teil steht nicht in der Tabelle');
-    assert.ok(hand, 'Das von Hand erfasste Teil steht nicht in der Tabelle');
+      `SELECT ${spalten} FROM part_acquisitions WHERE user_id=$1 AND part_number=$2`,
+      [uid, VON_HAND]);
+    assert.ok(imp,  'Zum importierten Teil wurde keine Erfassung angelegt');
+    assert.ok(hand, 'Zum von Hand erfassten Teil wurde keine Erfassung angelegt');
 
     // Der eigentliche Fehler: Ohne Angabe in der Datei darf im Feld
     // „Preis/Stk" nichts stehen.
@@ -91,9 +100,9 @@ test('Import ohne Preis hinterlässt dasselbe wie Erfassen ohne Preis', { concur
 
     // Und die Regel dahinter: BEIDE Wege hinterlassen dasselbe.
     assert.deepEqual(
-      { unit_price: imp.unit_price, purchase_price: imp.purchase_price, condition: imp.condition },
-      { unit_price: hand.unit_price, purchase_price: hand.purchase_price, condition: hand.condition },
-      'CSV-Import und Erfassen von Hand hinterlassen verschiedene Zeilen für ' +
+      { unit_price: imp.unit_price, condition: imp.condition, quantity: imp.quantity },
+      { unit_price: hand.unit_price, condition: hand.condition, quantity: hand.quantity },
+      'CSV-Import und Erfassen von Hand hinterlassen verschiedene Erfassungen für ' +
       'denselben Fall. Beide rechnen über resolveManualPartPurchase — weichen ' +
       'sie ab, rechnet einer der beiden wieder selbst.');
   } finally {

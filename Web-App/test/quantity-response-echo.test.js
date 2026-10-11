@@ -63,7 +63,24 @@ test('die Route liefert die Menge überhaupt mit', () => {
   const fn = sets.slice(anfang, sets.indexOf('\n}', anfang));
   assert.match(fn, /return \{ quantity: /,
     'updateSet gibt die Gesamtmenge nicht zurück');
-  assert.match(fn, /SUM\(quantity\)[\s\S]{0,120}user_id = ANY/,
+  // Die Abfrage steht seit Migration 0036 in utils/bestandsmenge.ts — hier
+  // stand sie dreimal ausgeschrieben. Geprueft wird deshalb zweistufig: Der
+  // Aufruf nennt das Blickfeld, und der Helfer macht daraus ein `= ANY($1)`.
+  // Ohne den zweiten Teil koennte die Funktion dort still eine einzelne
+  // Konto-ID einsetzen und diese Regel bliebe gruen.
+  assert.match(fn, /mengeSummeSql\('blickfeld'\)/,
     'Die zurückgegebene Menge muss über das Blickfeld summiert sein — eine ' +
     'einzelne Kontozeile wäre wieder die alte Verwechslung');
+  // Stufe zwei: Was der Helfer daraus macht.
+  const bm = ohneKommentare(
+    require('node:fs').readFileSync(
+      require('node:path').join(__dirname, '..', 'utils/bestandsmenge.ts'), 'utf8'));
+  const summe = require('./helpers/sources').abschnitt(
+    bm, 'export function mengeSummeSql', '\n}', 'mengeSummeSql in bestandsmenge.ts');
+  assert.match(summe, /'blickfeld' \? '= ANY\(\$1\)'/,
+    'mengeSummeSql(\'blickfeld\') summiert nicht über eine Kontenliste — dann ' +
+    'nennt der Aufruf oben ein Blickfeld, das es in der Abfrage nicht gibt');
+  assert.match(summe, /JOIN sets s/,
+    'Ohne den JOIN auf sets zählt eine Erfassung ohne Bestandszeile mit — etwa ' +
+    'eine, die beim Verschieben zurückgeblieben ist');
 });

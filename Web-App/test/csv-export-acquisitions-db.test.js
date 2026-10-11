@@ -11,16 +11,25 @@
  * Dieser Test wurde VOR dem Umbau gegen die alte Fassung geschrieben und lief
  * dort grün. Er hält damit fest, was der Umbau NICHT ändern durfte:
  *
- *   • ein Set ohne Erfassungen fällt auf seine eigene Zeile zurück
+ *   • ein Set ohne Erfassungen liefert trotzdem eine Zeile — mit seiner Menge
  *   • ein Set mit mehreren Erfassungen liefert eine Zeile je Erfassung,
  *     aufsteigend nach Erfassungszeitpunkt
- *   • ein leerer Kaufpreis bleibt leer und wird NICHT vom Set-Preis gefüllt —
- *     die naheliegende COALESCE-Formulierung im JOIN täte genau das
+ *   • ein leerer Kaufpreis bleibt leer
  *   • ein fehlender Zustand wird zu 'N'
  *
- * Der dritte Punkt ist der, an dem ein JOIN am leichtesten falsch wird: Zu
- * einer vorhandenen Erfassung OHNE Preis gehört ein leeres Feld, nicht der
- * Preis der Set-Zeile.
+ * ── Was Migration 0032 an diesem Test geändert hat ──────────────────────────
+ * Der dritte Punkt lautete vorher: „ein leerer Kaufpreis wird NICHT vom
+ * Set-Preis gefüllt — die naheliegende COALESCE-Formulierung im JOIN täte
+ * genau das". Das war die heikelste Stelle des JOINs, weil `sets` einen
+ * eigenen Kaufpreis trug. Seit Migration 0032 trägt sie keinen mehr: Der Fehler
+ * ist nicht mehr behoben, sondern unmöglich. Die Prüfung bleibt stehen, weil
+ * sie weiterhin eine Aussage über die Ausgabe macht — leer heisst leer.
+ *
+ * Der erste Punkt hat damit ebenfalls eine schwächere Bedeutung: Ein Set ohne
+ * Erfassung hat nichts mehr, worauf es zurückfallen könnte. Die Zeile entsteht
+ * trotzdem (LEFT JOIN) und trägt die Menge der Set-Zeile — und genau das ist
+ * der Fall, den Migration 0032 nach dem Nachtragen nicht mehr erwartet, hier
+ * aber von Hand hergestellt wird.
  *
  * Voraussetzung: Test-DB via TEST_DATABASE_URL.
  */
@@ -33,6 +42,7 @@ process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:t
 process.env.WEB_WORKERS = '1';
 
 const _req = require('./helpers/sources').buildAndRequire();
+const { haeltFigur, haeltSet, haeltTeil } = require('./helpers/bestand');
 const db = _req('db/database.js');
 
 // Ohne das Schliessen des Verbindungspools endet der Testprozess nie: Der Pool
@@ -70,17 +80,18 @@ test('Sets-Export: eine Zeile je Erfassung, ohne Erfassung die Set-Zeile',
 
   try {
     // ── Vier Faelle, jeder mit einer eigenen Aussage ────────────────────────
-    // 0001-1  keine Erfassung        → faellt auf die Set-Zeile zurueck
+    // 0001-1  keine Erfassung        → eine Zeile, Menge 0
     // 0002-1  zwei Erfassungen       → zwei Zeilen, aelteste zuerst
-    // 0003-1  Erfassung ohne Preis   → leeres Feld, NICHT der Set-Preis
-    // 0004-1  Set ohne Zustand       → 'N'
-    for (const [sn, menge, preis, zustand] of [
-      ['0001-1', 3, 12.50, 'N'], ['0002-1', 1, 99.00, 'N'],
-      ['0003-1', 1, 77.00, 'U'], ['0004-1', 2, null, null],
-    ]) {
-      await db.run(
-        `INSERT INTO sets (user_id, set_number, name, quantity, purchase_price, condition)
-         VALUES ($1,$2,$3,$4,$5,$6)`, [uid, sn, `Set ${sn}`, menge, preis, zustand]);
+    // 0003-1  Erfassung ohne Preis   → leeres Preisfeld
+    // 0004-1  keine Erfassung        → Zustand 'N'
+    //
+    // Menge 0 heisst hier „Bestandszeile ohne Erfassung" — genau der Fall,
+    // den die beiden ersten Zeilen beschreiben. Vorher stand die Menge in
+    // sets.quantity und blieb auch ohne Erfassung stehen; seit Migration 0036
+    // gibt es sie dort nicht, und „ohne Erfassung" heisst null Exemplare.
+    // Die Mengen der anderen beiden kommen aus den Erfassungen darunter.
+    for (const sn of ['0001-1', '0002-1', '0003-1', '0004-1']) {
+      await haeltSet(db, uid, sn, 0);
     }
     await db.run(
       `INSERT INTO set_acquisitions (user_id, set_number, quantity, purchase_price, condition, created_at)
@@ -94,14 +105,12 @@ test('Sets-Export: eine Zeile je Erfassung, ohne Erfassung die Set-Zeile',
 
     assert.equal(r.length, 5, `5 Zeilen erwartet (1+2+1+1), bekommen ${r.length}:\n${csv}`);
 
-    // Ohne Erfassung: die Set-Zeile, ohne Datum.
-    // '12.5' und nicht '12.50', obwohl die Spalte NUMERIC(12,4) ist:
-    // db/database.ts stellt den pg-Typparser fuer NUMERIC auf parseFloat um.
-    // Aus '12.5000' wird dadurch die Zahl 12.5, und csvField() schreibt
-    // deren String-Form. Nachgesehen, nicht angenommen — die uebliche
-    // Regel „numeric kommt als Zeichenkette" gilt in diesem Projekt nicht.
+    // Ohne Erfassung: eine Zeile mit Menge 0, ohne Preis, ohne Datum,
+    // Zustand 'N'. Hier stand quantity '3' — die Menge der Set-Spalte, die es
+    // seit Migration 0036 nicht mehr gibt, und purchase_price '12.5' aus der
+    // Spalte, die Migration 0032 geloescht hat.
     assert.deepEqual(je('0001-1'),
-      [{ set_number: '0001-1', quantity: '3', purchase_price: '12.5', condition: 'N', acquired_at: '' }]);
+      [{ set_number: '0001-1', quantity: '0', purchase_price: '', condition: 'N', acquired_at: '' }]);
 
     // Zwei Erfassungen, aelteste zuerst — die Reihenfolge traegt die Bedeutung.
     const zwei = je('0002-1');
@@ -112,17 +121,18 @@ test('Sets-Export: eine Zeile je Erfassung, ohne Erfassung die Set-Zeile',
     assert.equal(zwei[1].condition, 'U');
     assert.match(zwei[0].acquired_at, /^\d{4}-\d{2}-\d{2}$/, 'Erfassungen tragen ihr Datum');
 
-    // Der heikle Fall: Erfassung ohne Preis. Das Feld bleibt LEER; es darf
-    // nicht mit dem Preis der Set-Zeile (77.00) gefuellt werden.
+    // Erfassung vorhanden, aber ohne Preis → leeres Feld. Die Verwechslung mit
+    // dem Set-Preis, gegen die diese Pruefung geschrieben wurde, kann es seit
+    // Migration 0032 nicht mehr geben; die Aussage ueber die Ausgabe bleibt.
     const ohnePreis = je('0003-1');
     assert.equal(ohnePreis.length, 1);
     assert.equal(ohnePreis[0].purchase_price, '',
-      'eine Erfassung ohne Preis erbt NICHT den Preis der Set-Zeile');
+      'eine Erfassung ohne Preis muss ein leeres Feld ergeben');
     assert.equal(ohnePreis[0].condition, 'N', 'fehlender Zustand wird zu N');
 
-    // Set ohne Zustand und ohne Preis.
+    // Set ohne Erfassung: Menge 0, Zustand 'N', Preis leer.
     assert.deepEqual(je('0004-1'),
-      [{ set_number: '0004-1', quantity: '2', purchase_price: '', condition: 'N', acquired_at: '' }]);
+      [{ set_number: '0004-1', quantity: '0', purchase_price: '', condition: 'N', acquired_at: '' }]);
   } finally {
     await db.run('DELETE FROM set_acquisitions WHERE user_id = $1', [uid]).catch(() => {});
     await db.run('DELETE FROM sets WHERE user_id = $1', [uid]).catch(() => {});
@@ -166,9 +176,7 @@ test('Sets-Export braucht EINE Abfrage, unabhaengig von der Anzahl Sets',
   try {
     for (let i = 1; i <= 25; i++) {
       const sn = `9${String(i).padStart(3, '0')}-1`;
-      await db.run(
-        `INSERT INTO sets (user_id, set_number, name, quantity, purchase_price, condition)
-         VALUES ($1,$2,$3,1,5.00,'N')`, [uid, sn, `Set ${sn}`]);
+      await haeltSet(db, uid, sn, 0);  // Menge 0: die Erfassung dahinter traegt sie
       await db.run(
         `INSERT INTO set_acquisitions (user_id, set_number, quantity, purchase_price, condition)
          VALUES ($1,$2,1,5.00,'N')`, [uid, sn]);
@@ -214,14 +222,27 @@ test('Minifiguren-Export: dieselbe Regel, dieselbe eine Abfrage',
 
   const echtesQuery = db.pool.query.bind(db.pool);
   try {
-    // fig-a  ohne Erfassung          → Figuren-Zeile
-    // fig-b  Erfassung ohne Preis    → leeres Feld, NICHT 42.00
-    for (const [nr, name, menge, preis] of [
-      ['fig-a', 'Aaa', 2, 9.00], ['fig-b', 'Bbb', 1, 42.00],
+    // fig-a  ohne Erfassung        → Figuren-Zeile
+    // fig-b  Erfassung ohne Preis  → leeres Feld
+    //
+    // Der Preis stand hier einmal an der Figuren-Zeile (9.00 bzw. 42.00), und
+    // die Zusage lautete: „eine Erfassung ohne Preis erbt NICHT den Preis der
+    // Figuren-Zeile". Seit Migration 0035 gibt es dort keinen Preis mehr —
+    // die FEHLERQUELLE ist weg, nicht nur der Fehler. Die Zusicherung bleibt
+    // trotzdem: Sie haelt fest, dass eine leere Erfassung leer exportiert und
+    // nicht etwa als 0.
+    for (const [nr, name, menge] of [
+      ['fig-a', 'Aaa', 2], ['fig-b', 'Bbb', 1],
     ]) {
+      // Der Name steht seit Migration 0034 im Katalog — und er ist hier
+      // nicht nebensaechlich: Der Export sortiert danach.
       await db.run(
-        `INSERT INTO minifigs (user_id, fig_number, fig_name, quantity, unit_price, condition, source)
-         VALUES ($1,$2,$3,$4,$5,'N','manual')`, [uid, nr, name, menge, preis]);
+        `INSERT INTO minifigs_catalog (fig_number, fig_name) VALUES ($1,$2)
+         ON CONFLICT (fig_number) DO NOTHING`, [nr, name]);
+      // fig-a bekommt KEINE Erfassung — das ist der Fall, den der Export
+      // unterscheiden muss. Die Erfassung fuer fig-b legt der Test darunter an.
+      // Menge 0: fig-b bekommt ihre Erfassung darunter, fig-a bewusst keine.
+      await haeltFigur(db, uid, nr, { menge: 0 });
     }
     await db.run(
       `INSERT INTO minifig_acquisitions (user_id, fig_number, quantity, unit_price, condition)
@@ -236,12 +257,17 @@ test('Minifiguren-Export: dieselbe Regel, dieselbe eine Abfrage',
     assert.equal(r.length, 2, `2 Zeilen erwartet, bekommen ${r.length}:\n${csv}`);
 
     const a = r.find(x => x.fig_number === 'fig-a');
-    assert.equal(a.quantity, '2', 'ohne Erfassung zaehlt die Figuren-Zeile');
+    // Hier stand '2' — die Zahl der Figuren-Zeile. Seit Migration 0038 gibt es
+    // sie dort nicht mehr: Fuer eine MANUELLE Position ist die Stueckzahl die
+    // Summe der Erfassungen, und ohne Erfassung ist das 0. Die Zeile bleibt
+    // trotzdem im Export (sie steht im Bestand) — genau diese Unterscheidung
+    // soll der Fall festhalten. Dieselbe Aenderung wie im Set-Export.
+    assert.equal(a.quantity, '0', 'ohne Erfassung ist die Stueckzahl 0 — die Zeile bleibt aber');
     assert.equal(a.acquired_at, '', 'ohne Erfassung kein Datum');
 
     const b = r.find(x => x.fig_number === 'fig-b');
     assert.equal(b.unit_price, '',
-      'eine Erfassung ohne Preis erbt NICHT den Preis der Figuren-Zeile (42.00)');
+      'eine Erfassung ohne Preis muss leer exportieren — nicht als 0');
     assert.equal(b.condition, 'N', 'fehlender Zustand wird zu N');
 
     assert.ok(abfragen >= 1, 'der Zaehler hat nichts erfasst — der Patch greift nicht mehr');
@@ -285,19 +311,32 @@ test('Teile-Export: dieselbe Regel, dieselbe eine Abfrage',
 
   const echtesQuery = db.pool.query.bind(db.pool);
   try {
-    // 3001 / Farbe 4   zwei Erfassungen        → zwei Zeilen, aelteste zuerst
-    // 3001 / Farbe 1   KEINE Erfassung         → Teile-Zeile, nicht die von Farbe 4
-    // 3002 / Farbe 0   Erfassung ohne Preis    → leeres Feld, NICHT 42.00
-    for (const [nr, farbe, farbname, menge, preis] of [
-      ['3001', 4, 'Rot',  5, 1.00],
-      ['3001', 1, 'Blau', 7, 2.00],
-      ['3002', 0, '',     1, 42.00],
+    // 3001 / Farbe 4   zwei Erfassungen      → zwei Zeilen, aelteste zuerst
+    // 3001 / Farbe 1   KEINE Erfassung       → Teile-Zeile, nicht die von Farbe 4
+    // 3002 / Farbe 0   Erfassung ohne Preis  → leeres Feld
+    //
+    // Die Preise standen hier einmal an der Teile-Zeile — siehe die
+    // Begruendung im Figuren-Teil darueber (Migration 0035).
+    // Keine Stueckzahl in dieser Aufstellung: Seit Migration 0038 ist die
+    // Menge einer manuellen Position die Summe ihrer Erfassungen, und die
+    // legt der Test unten gezielt an. Eine Zahl hier waere eine, die nichts
+    // bewirkt.
+    for (const [nr, farbe, farbname] of [
+      ['3001', 4, 'Rot'],
+      ['3001', 1, 'Blau'],
+      ['3002', 0, ''],
     ]) {
+      // Name und Farbbezeichnung in die Kataloge (Migration 0034). Beide
+      // stehen in der Exportspalte color_name bzw. in der Sortierung.
       await db.run(
-        `INSERT INTO parts (user_id, part_number, part_name, color_id, color_name,
-                            quantity, unit_price, condition, source)
-         VALUES ($1,$2,$3,$4,$5,$6,$7,'N','manual')`,
-        [uid, nr, `Teil ${nr}`, farbe, farbname, menge, preis]);
+        `INSERT INTO part_catalog (part_number, part_name) VALUES ($1,$2)
+         ON CONFLICT (part_number) DO NOTHING`, [nr, `Teil ${nr}`]);
+      await db.run(
+        `INSERT INTO part_color_catalog (part_number, color_id, color_name) VALUES ($1,$2,$3)
+         ON CONFLICT (part_number, color_id) DO NOTHING`, [nr, farbe, farbname]);
+      // Menge 0: die Erfassungen legt der Test darunter gezielt an, damit die
+      // Faelle „mit" und „ohne Preis" unterscheidbar bleiben.
+      await haeltTeil(db, uid, nr, { menge: 0, colorId: farbe });
     }
     await db.run(
       `INSERT INTO part_acquisitions (user_id, part_number, color_id, quantity, unit_price, condition, created_at)
@@ -319,7 +358,9 @@ test('Teile-Export: dieselbe Regel, dieselbe eine Abfrage',
     assert.equal(rot.length, 2, 'die rote Zeile hat zwei Erfassungen');
     assert.equal(blau.length, 1,
       'die blaue Zeile hat KEINE Erfassung — sie darf die der roten nicht erben');
-    assert.equal(blau[0].quantity, '7', 'ohne Erfassung zaehlt die Teile-Zeile');
+    // Wie bei fig-a oben: ohne Erfassung ist die Stueckzahl 0, die Zeile
+    // bleibt aber im Export.
+    assert.equal(blau[0].quantity, '0', 'ohne Erfassung ist die Stueckzahl 0');
     assert.equal(blau[0].acquired_at, '', 'ohne Erfassung kein Datum');
 
     assert.equal(rot[0].quantity, '2', 'die aeltere Erfassung steht oben');
@@ -330,7 +371,7 @@ test('Teile-Export: dieselbe Regel, dieselbe eine Abfrage',
 
     const ohnePreis = r.find(x => x.part_number === '3002');
     assert.equal(ohnePreis.unit_price, '',
-      'eine Erfassung ohne Preis erbt NICHT den Preis der Teile-Zeile (42.00)');
+      'eine Erfassung ohne Preis muss leer exportieren — nicht als 0');
     assert.equal(ohnePreis.condition, 'N', 'fehlender Zustand wird zu N');
 
     assert.ok(abfragen >= 1, 'der Zaehler hat nichts erfasst — der Patch greift nicht mehr');

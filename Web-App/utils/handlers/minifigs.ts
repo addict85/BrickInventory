@@ -3,7 +3,9 @@ import { resolveImageLocal } from '../images';
 import { asIds } from '../household';
 import { clampPageSize, applyManualCondition, withOwners } from './shared';
 import { beideSchreibweisen } from '../setNummer';
+import { mengeJoin, mengeAus, teilmengeJoin, teilmengeAus } from '../bestandsmenge';
 import { marktpreiseAusCacheFuerFiguren } from '../marketPrice';
+import { blJoin, blNummerSql } from '../blZuordnung';
 
 /**
  * Leseabfragen für Minifiguren.
@@ -35,7 +37,9 @@ async function getMinifigs(userId: number | number[], { search, source, set_numb
   if (source === 'set')    where += " AND m.source = 'set'";
   if (source === 'manual') where += " AND m.source = 'manual'";
   if (search) {
-    where += ` AND (LOWER(m.fig_number) LIKE $${pi} OR LOWER(m.fig_name) LIKE $${pi})`;
+    // Der Figurenname steht seit Migration 0034 im Katalog; der Alias mc
+    // haengt an jeder Abfrage, die diese Bedingung benutzt.
+    where += ` AND (LOWER(m.fig_number) LIKE $${pi} OR LOWER(mc.fig_name) LIKE $${pi})`;
     params.push(`%${search.toLowerCase()}%`); pi++;
   }
   // Gruppierung pro Figur (und Quelle): Dieselbe Figur aus mehreren Sets
@@ -52,10 +56,16 @@ async function getMinifigs(userId: number | number[], { search, source, set_numb
     figParams.push(size, off);
     figLimit = ` LIMIT $${figParams.length - 1} OFFSET $${figParams.length}`;
   }
+  // In dieser ZAEHLUNG stand ein LEFT JOIN auf sets. Er diente allein der
+  // Spalte s.quantity — die hier gar nicht gelesen wird und die es seit
+  // Migration 0036 nicht mehr gibt. Der Kommentar steht VOR der Abfrage und
+  // nicht darin: test/gallery-paging.test.js prueft, dass zwischen
+  // „SELECT 1 FROM minifigs m" und dem GROUP BY nicht mehr als 220 Zeichen
+  // liegen — ein Erklaertext im SQL hat diese Regel gerissen (gemessen).
   const figCount = page_size
     ? await db.get(`SELECT COUNT(*)::int AS c FROM (
          SELECT 1 FROM minifigs m
-         LEFT JOIN sets s ON s.user_id = m.user_id AND s.set_number = m.set_number
+         LEFT JOIN minifigs_catalog mc ON mc.fig_number = m.fig_number
          WHERE ${where} GROUP BY LOWER(TRIM(m.fig_number)), m.source) g`, params)
     : null;
 
@@ -71,15 +81,33 @@ async function getMinifigs(userId: number | number[], { search, source, set_numb
            -- manuelle Figuren JA, Set-Figuren nein.
            array_agg(DISTINCT m.user_id) AS owner_ids,
            MIN(TRIM(m.fig_number)) AS fig_number,
-           MAX(m.fig_name) AS fig_name,
-           SUM(m.quantity) AS quantity,
-           MAX(m.image_url) AS image_url,
-           MAX(m.image_local) AS image_local,
+           -- Name und Bild aus minifigs_catalog (Migration 0034): Sie
+           -- haengen an der Figur, nicht am Konto, das sie besitzt. MAX
+           -- bleibt, weil die Gruppe mehrere Schreibweisen derselben
+           -- Figurennummer zusammenfasst.
+           MAX(mc.fig_name) AS fig_name,
+           -- Die Stückzahl der Bestandszeile (Migration 0038): manuell die
+           -- Summe der Erfassungen, aus einem Set die Katalogzahl. Hier
+           -- stand m.quantity.
+           SUM(${teilmengeAus('m', 'fig')}) AS quantity,
+           MAX(mc.image_url) AS image_url,
+           MAX(mc.image_local) AS image_local,
            m.source,
-           MAX(m.unit_price) AS unit_price,
-           MAX(m.condition) AS stored_condition,
+           -- Preis aus der neuesten Erfassung. Hier stand
+           -- MAX(m.unit_price) — eine Abschrift an der Bestandszeile, die
+           -- Migration 0035 geloescht hat. MAX ueber die Gruppe bleibt, weil
+           -- sie mehrere Schreibweisen derselben Figurennummer zusammenfasst.
+           --
+           -- stored_condition ist mitentfallen: Den gespeicherten Zustand
+           -- gibt es nicht mehr, und fuer Set-Figuren stand er seit jeher auf
+           -- dem Vorgabewert 'N'.
+           MAX(neu.unit_price) AS unit_price,
            MIN(m.set_number) AS set_number,
-           SUM(m.quantity * COALESCE(s.quantity, 1)) AS total_quantity,
+           -- Die Set-Menge als Faktor, aus den Erfassungen (Migration 0036
+           -- hat sets.quantity geloescht). Der zweite Parameter 1 steht fuer
+           -- „keine Erfassung", weil der Wert in einer
+           -- MULTIPLIKATION steht: eine manuell erfasste Figur zaehlt einfach.
+           SUM(${teilmengeAus('m', 'fig')} * ${mengeAus('sm', 1)}) AS total_quantity,
            STRING_AGG(DISTINCT m.set_number, ',') FILTER (WHERE m.set_number IS NOT NULL) AS in_sets,
            -- Lagerort der GRUPPE, wortgleich zu handlers/parts.ts: Dieselbe
            -- Figur steckt in mehreren Sets und damit in mehreren Zeilen. Liegen
@@ -89,16 +117,44 @@ async function getMinifigs(userId: number | number[], { search, source, set_numb
            NULLIF(STRING_AGG(DISTINCT lo.name, ', '), '') AS storage,
            MAX(s.added_at) AS set_added_at
     FROM minifigs m
+    ${mengeJoin('m')}
+    ${teilmengeJoin('m', 'fig')}
+    -- Die sets-Zeile bleibt verbunden — aber nur noch fuer added_at („seit
+    -- wann haelt dieses Konto das Set?"). Keine Gegenstriche um den
+    -- Spaltennamen: Der Kommentar steht in einem Template-Literal, und ein
+    -- Gegenstrich beendet es (gemessen, tsc meldete „',' expected").
+    -- Die MENGE kommt aus mengeJoin()
+    -- darueber; sie stand bis Migration 0036 in derselben Zeile, und genau
+    -- deshalb war beim Entfernen der Spalte nicht zu sehen, dass dieser JOIN
+    -- noch eine zweite Aufgabe hat. GEMESSEN: „missing FROM-clause entry for
+    -- table s" in vier Testdateien.
     LEFT JOIN sets s ON s.user_id = m.user_id AND s.set_number = m.set_number
     -- Der Name aus dem Vorrat (Migration 0031: die Zeile traegt eine ID).
     -- LEFT JOIN, damit eine Figur ohne Ort nicht aus der Liste faellt.
     LEFT JOIN storage_locations lo ON lo.id = m.storage_id
+    -- Beschreibung aus dem Katalog. Verbunden ueber den Primaerschluessel,
+    -- also hoechstens eine Zeile je Treffer — die Gruppierung und die
+    -- Gesamtzahl bleiben unberuehrt. Genau (nicht ueber LOWER(TRIM(...))):
+    -- Migration 0034 fuellt den Katalog aus denselben Zeichenketten, die in
+    -- minifigs stehen, und eine Normalisierung im Join haette den
+    -- Primaerschluessel umgangen.
+    LEFT JOIN minifigs_catalog mc ON mc.fig_number = m.fig_number
+    -- Die neueste Erfassung je Figur — dieselbe Ordnung wie latestSql in
+    -- routes/api_v1/acquisitions.ts, damit „neuester Preis" und „neueste
+    -- Erfassung" dasselbe heissen.
+    LEFT JOIN LATERAL (
+      SELECT a.unit_price
+        FROM minifig_acquisitions a
+       WHERE a.user_id = m.user_id AND a.fig_number = m.fig_number
+       ORDER BY a.created_at DESC, a.id DESC
+       LIMIT 1
+    ) neu ON TRUE
     WHERE ${where}
     -- LOWER(TRIM(...)): Import-Pfade (Rebrickable-API vs. CSV-Katalog) können
     -- dieselbe Figurennummer mit Whitespace-/Case-Varianten liefern — die
     -- würden die Gruppierung sonst unsichtbar aushebeln.
     GROUP BY LOWER(TRIM(m.fig_number)), m.source
-    ORDER BY MAX(m.fig_name) ASC, LOWER(TRIM(m.fig_number)) ASC${figLimit}`, figParams);
+    ORDER BY MAX(mc.fig_name) ASC, LOWER(TRIM(m.fig_number)) ASC${figLimit}`, figParams);
 
   // Angezeigter Zustand als Aggregat über die Kaufpreis-Erfassungen manueller
   // Figuren: eine "Gebraucht"-Erfassung genügt, damit die Figur als gebraucht
@@ -123,9 +179,10 @@ async function getMinifigs(userId: number | number[], { search, source, set_numb
     // im Einzelkonto durchgerutscht — der Test hat genau das gemeldet.
     ...(uids.length > 1 ? { owner_ids: (owner_ids || []).map((n: any) => parseInt(n)) } : {}),
     image_local: resolveImageLocal(f.image_local),
-    condition: usedFigMap.has(String(f.fig_number).trim().toLowerCase())
-      ? (usedFigMap.get(String(f.fig_number).trim().toLowerCase()) ? 'U' : 'N')
-      : (f.stored_condition || 'N'),
+    // Ohne Erfassung 'N' — nicht mehr der gespeicherte Wert, den es seit
+    // Migration 0035 nicht mehr gibt. Fuer Set-Figuren dasselbe Ergebnis wie
+    // vorher: Dort stand die Spalte seit jeher auf dem Vorgabewert.
+    condition: usedFigMap.get(String(f.fig_number).trim().toLowerCase()) ? 'U' : 'N',
   }));
 
   // Objektform wie bei getSets, damit die Gesamtzahl für den Endlos-Scroll
@@ -168,9 +225,10 @@ async function getMinifigStats(userId: number | number[]) {
            COALESCE(SUM(g.menge), 0)::int AS total_quantity,
            COUNT(*) FILTER (WHERE g.source = 'manual')::int AS manual
       FROM (
-        SELECT m.source, SUM(m.quantity * COALESCE(s.quantity, 1)) AS menge
+        SELECT m.source, SUM(${teilmengeAus('m', 'fig')} * ${mengeAus('sm', 1)}) AS menge
           FROM minifigs m
-          LEFT JOIN sets s ON s.user_id = m.user_id AND s.set_number = m.set_number
+          ${mengeJoin('m')}
+          ${teilmengeJoin('m', 'fig')}
          WHERE m.user_id = ANY($1)
          GROUP BY LOWER(TRIM(m.fig_number)), m.source
       ) g`, [uids]);
@@ -205,16 +263,49 @@ async function getManualMinifigs(userId: number | number[], viewerId: number, { 
     limit = ` LIMIT $${params.length - 1} OFFSET $${params.length}`;
   }
   const figs = await db.all(
-    // `m.*` plus der aufgeloeste Lagerortname: Das SELECT * lieferte den Ort
-    // seit jeher mit, und seit Migration 0031 steht an der Zeile nur noch die
-    // ID. Ohne diese Spalte waere der Lagerort im Detail der manuell
-    // erfassten Figuren wieder leer — genau Marcos Befund vom 24.09., nur mit
-    // anderer Ursache.
-    `SELECT m.*, lo.name AS storage
+    // ── Spalten ausgeschrieben, kein m.* ──────────────────────────────────
+    //
+    // Hier stand `m.*` plus der aufgeloeste Lagerortname. Das SELECT * ist
+    // zweimal zur Fehlerquelle geworden: Migration 0031 nahm ihm den
+    // Lagerortnamen weg (Marcos Befund vom 24.09.), und ein Stern liefert
+    // stillschweigend auch SPALTEN DAZU, sobald die Tabelle eine bekommt.
+    // Beides faellt erst in der Oberflaeche auf.
+    //
+    // Name und Bild kommen seit Migration 0034 aus minifigs_catalog —
+    // sie haengen an der Figur, nicht am Konto, das sie besitzt.
+    `SELECT m.id, m.user_id, m.set_number, m.fig_number,
+            -- Die BrickLink-Nummer aus der Zuordnung (Migration 0037); hier
+            -- stand m.bl_fig_number, eine Abschrift je Konto. Der Feldname
+            -- nach aussen bleibt.
+            ${blNummerSql('m.fig_number', 'blz')} AS bl_fig_number,
+            -- Die Stückzahl aus den Erfassungen (Migration 0038); hier stand
+            -- m.quantity. Diese Liste zeigt nur manuelle Figuren.
+            ${teilmengeAus('m', 'fig')} AS quantity,
+            m.source, m.storage_id,
+            -- Preis und Zustand aus der NEUESTEN Erfassung (Migration 0035).
+            -- Die beiden Bedeutungen bleiben unterschieden, so wie
+            -- utils/preisRegel.ts sie ausschreibt: unit_price ist der
+            -- eingegebene Preis und darf leer sein, purchase_price ist der
+            -- ANZEIGEWERT und ist nie leer.
+            neu.unit_price,
+            COALESCE(neu.unit_price, 0) AS purchase_price,
+            COALESCE(neu.condition, 'N') AS condition,
+            mc.fig_name, mc.image_url, mc.image_local,
+            lo.name AS storage
        FROM minifigs m
+       ${teilmengeJoin('m', 'fig')}
+       ${blJoin('m.fig_number', 'fig')}
+       LEFT JOIN minifigs_catalog mc ON mc.fig_number = m.fig_number
        LEFT JOIN storage_locations lo ON lo.id = m.storage_id
+       LEFT JOIN LATERAL (
+         SELECT a.unit_price, a.condition
+           FROM minifig_acquisitions a
+          WHERE a.user_id = m.user_id AND a.fig_number = m.fig_number
+          ORDER BY a.created_at DESC, a.id DESC
+          LIMIT 1
+       ) neu ON TRUE
       WHERE m.user_id = ANY($1) AND m.source = 'manual'
-      ORDER BY m.fig_name ASC, m.fig_number ASC${limit}`,
+      ORDER BY mc.fig_name ASC, m.fig_number ASC${limit}`,
     params);
   const mapped = figs.map(f => ({ ...f, image_local: resolveImageLocal(f.image_local) }));
   const mitZustand = await applyManualCondition(uids, mapped, 'fig');

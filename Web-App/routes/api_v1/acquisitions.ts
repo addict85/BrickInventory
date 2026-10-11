@@ -29,9 +29,10 @@ import { deleteSetRows } from '../../utils/handlers/sets';
 import { getPartAcquisitions } from '../parts';
 import { getCurrentFigMarketPrice, getFigAcquisitions } from '../minifigs';
 import { loescheManuellesTeil, loescheManuelleFigur } from '../../utils/handlers/shared';
-import { SETS_PREIS_SQL, SETS_ZUSTAND_SQL } from '../../utils/setService';
 import { sendeFehler, fehlerWerfen } from '../../utils/fehlerTexte';
 import type { FehlerCode } from '../../utils/fehlerTexte';
+import { blAbrufNummer } from '../../utils/blZuordnung';
+import { mengeDesSets, mengeDerPosition } from '../../utils/bestandsmenge';
 const router = express.Router();
 
 type AcqConfig = {
@@ -58,12 +59,18 @@ type AcqConfig = {
    * Sets haben keinen Fallback — leerer Preis bleibt leer.
    */
   resolvePrice: ((uid: any, keys: any[], cond?: string | null) => Promise<number | null>) | null;
-  /** Atomare Neuberechnung der Parent-Menge ($1=uid, danach keyVals). */
-  parentQuantitySql: string;
+  // parentQuantitySql stand hier: je Elementart eine eigene Anweisung fuer
+  // dieselbe Rechnung. Sie steht jetzt EINMAL in utils/bestandsmenge.ts, und
+  // `kind` oben sagt bereits, welche Tabelle gemeint ist — eine zweite Angabe
+  // koennte nur noch widersprechen.
   /** Latest-wins-Preisübernahme in die Parent-Zeile ($1=Preis, $2=uid, danach keyVals). */
   parentPriceSql: string | null;
-  /** Latest-wins-Zustandsübernahme in die Parent-Zeile ($1=Zustand, $2=uid, danach keyVals). */
-  parentConditionSql: string;
+  /**
+   * Latest-wins-Zustandsübernahme in die Parent-Zeile ($1=Zustand, $2=uid,
+   * danach keyVals). null für Sets: Dort gibt es seit Migration 0032 keine
+   * Spalte mehr, in die gespiegelt werden könnte.
+   */
+  parentConditionSql: string | null;
   /** Neueste Erfassung der Ressource ($1=uid, danach keyVals). */
   latestSql: string;
   /**
@@ -73,7 +80,7 @@ type AcqConfig = {
    * „Gibt es noch ein Problem, wenn ein Kaufpreis entfernt wird, dass der
    * Eintrag noch sichtbar war?"
    *
-   * Ja, und zwar an mehreren Stellen. parentQuantitySql setzte die Menge auf 0
+   * Ja, und zwar an mehreren Stellen. Die Mengen-Neuberechnung setzte sie auf 0
    * und liess die Elternzeile stehen. Nachgemessen mit einem einzelnen Konto
    * und zwei Sets, eines davon mit gelöschtem Kaufpreis:
    *
@@ -116,10 +123,29 @@ function registerAcquisitionRoutes(cfg: AcqConfig) {
  * einem Abbruch bliebe genau der Geistereintrag zurück, den das hier
  * verhindern soll.
  */
-async function raeumeLeerenBestand(tx: any, cfg: any, ownerId: number, keys: any[], row: any) {
+async function raeumeLeerenBestand(tx: any, cfg: any, ownerId: number, keys: any[], menge: number | null) {
   if (!cfg.cleanupWhenEmpty) return;
-  if ((parseInt(String(row?.quantity ?? 0)) || 0) > 0) return;
+  if ((menge ?? 0) > 0) return;
   await cfg.cleanupWhenEmpty(tx, ownerId, keys);
+}
+
+/**
+ * Die Stueckzahl der Bestandszeile aus den Erfassungen — und zwar ueber
+ * utils/bestandsmenge.ts, die einzige Stelle, die sie schreibt.
+ *
+ * Hier stand `cfg.parentQuantitySql`: je Elementart eine eigene Anweisung,
+ * dreimal dieselbe Rechnung. Daneben gab es SIEBEN weitere Schreibstellen,
+ * die die Spalte fortschrieben — und sie sind auseinandergelaufen (der Befund
+ * steht in utils/bestandsmenge.ts).
+ */
+async function mengeDesBestands(tx: any, cfg: any, ownerId: number, keys: any[]) {
+  // Beide Wege LESEN nur — der Zwischenstand, in dem die Teile- und
+  // Figurenspalte noch geschrieben werden musste, ist mit Migration 0038
+  // vorbei. Beide liefern dieselben drei Antworten: eine Zahl, 0 („Zeile da,
+  // nichts drin" → aufraeumen) oder null („Zeile gibt es nicht").
+  return cfg.kind === 'set'
+    ? mengeDesSets(ownerId, String(keys[0]), tx).catch(() => null)
+    : mengeDerPosition(cfg.kind, ownerId, keys, tx).catch(() => null);
 }
 
 async function withSetAggregate(uid: number, cfgTable: string, keys: any[], payload: any) {
@@ -235,7 +261,7 @@ async function withSetAggregate(uid: number, cfgTable: string, keys: any[], payl
         if (quantity !== undefined && quantity !== null) {
           const newQty = Math.max(1, parseInt(quantity) || 1);
           await tx.run(`UPDATE ${cfg.table} SET quantity=$1 WHERE id=$2`, [newQty, id]);
-          const q = await tx.get(cfg.parentQuantitySql, [ownerId, ...keys]).catch(() => null);
+          const q = await mengeDesBestands(tx, cfg, ownerId, keys);
           // Auch hier: Eine Erfassung auf 0 zu setzen ist zwar durch
           // Math.max(1, …) oben ausgeschlossen, aber die Regel gehört an die
           // Menge, nicht an den einen Weg dorthin.
@@ -260,8 +286,10 @@ async function withSetAggregate(uid: number, cfgTable: string, keys: any[], payl
           // besonders teuer, weil die folgenden Statements auf einer bereits
           // abgebrochenen Transaktion laufen.
           await tx.run(`UPDATE ${cfg.table} SET condition=$1 WHERE id=$2`, [cond, id]);
-          const latest = await tx.get(cfg.latestSql, [ownerId, ...keys]);
-          if (latest?.id === id) await tx.run(cfg.parentConditionSql, [cond, ownerId, ...keys]);
+          if (cfg.parentConditionSql) {
+            const latest = await tx.get(cfg.latestSql, [ownerId, ...keys]);
+            if (latest?.id === id) await tx.run(cfg.parentConditionSql, [cond, ownerId, ...keys]);
+          }
         }
 
         if (_newDate) {
@@ -270,11 +298,16 @@ async function withSetAggregate(uid: number, cfgTable: string, keys: any[], payl
           // Nach einer Datumsänderung kann eine ANDERE Erfassung die neueste
           // sein — die Spiegelung in die Elternzeile muss deshalb neu bestimmt
           // werden, sonst zeigt die Kachel den Preis der falschen Zeile.
-          const latest = await tx.get(cfg.latestSql, [ownerId, ...keys]);
-          if (latest && cfg.parentPriceSql) {
-            const row = await tx.get(`SELECT ${cfg.priceCol} AS p, condition FROM ${cfg.table} WHERE id=$1`, [latest.id]);
+          // `parentPriceSql ||`, nicht `&&`: Für Sets sind beide null, für
+          // Teile und Figuren beide gesetzt — würde hier nur der Preis geprüft,
+          // bliebe eine künftige Art mit Zustand ohne Preis unbedient.
+          if (cfg.parentPriceSql || cfg.parentConditionSql) {
+            const latest = await tx.get(cfg.latestSql, [ownerId, ...keys]);
+            const row = latest
+              ? await tx.get(`SELECT ${cfg.priceCol} AS p, condition FROM ${cfg.table} WHERE id=$1`, [latest.id])
+              : null;
             if (row) {
-              await tx.run(cfg.parentPriceSql, [row.p, ownerId, ...keys]);
+              if (cfg.parentPriceSql)     await tx.run(cfg.parentPriceSql, [row.p, ownerId, ...keys]);
               if (cfg.parentConditionSql) await tx.run(cfg.parentConditionSql, [row.condition || 'N', ownerId, ...keys]);
             }
           }
@@ -329,11 +362,11 @@ async function withSetAggregate(uid: number, cfgTable: string, keys: any[], payl
             }
           }
         }
-        const row = await tx.get(cfg.parentQuantitySql, [ownerId, ...keys]).catch(() => null);
-        await raeumeLeerenBestand(tx, cfg, ownerId, keys, row);
-        return row;
+        const menge = await mengeDesBestands(tx, cfg, ownerId, keys);
+        await raeumeLeerenBestand(tx, cfg, ownerId, keys, menge);
+        return menge;
       });
-      res.json(await withSetAggregate(uid, cfg.table, keys, { success: true, new_quantity: row?.quantity ?? 0 }));
+      res.json(await withSetAggregate(uid, cfg.table, keys, { success: true, new_quantity: row ?? 0 }));
     } catch (e) { handleRouteError(res, e, undefined, req); }
   });
 }
@@ -385,26 +418,25 @@ registerAcquisitionRoutes({
   // Wieder „dieselbe Regel fehlt am zweiten Weg".
   resolvePrice: (uid, [sn], cond) =>
     getCurrentMarketPrice(sn, uid, cond || null),
-  parentQuantitySql: `UPDATE sets
-     SET quantity = COALESCE((SELECT SUM(quantity) FROM set_acquisitions WHERE user_id=$1 AND set_number=$2), 0)
-     WHERE user_id=$1 AND set_number=$2 RETURNING quantity`,
-  // Kaufpreis in die sets-Zeile spiegeln (Nachtrag 51, Marcos Bericht:
-  // „Der Preis oben in der Kachel wird nicht angepasst").
+  // Keine Spiegelung mehr — und zwar nicht aus Versehen.
   //
-  // Hier stand `null` — als EINZIGE der drei Elementarten. Teile und
-  // Minifiguren spiegelten seit jeher, und die Webapp-Route tut es für Sets
-  // auch (routes/sets.ts). Nur der Android-Weg liess die sets-Zeile stehen:
-  // Die Erfassung stand danach auf 107, die Kachel weiter auf 108, und weil
-  // Galerie, Finanzübersicht und Detail-Kachel alle aus sets.purchase_price
-  // lesen, zeigte die ganze App den alten Wert — dauerhaft, nicht nur bis zum
-  // Neuladen. Am laufenden Server nachgestellt: derselbe Preiswechsel über
-  // beide Wege, Webapp zog die Kachel mit, Android nicht.
+  // Hier standen SETS_PREIS_SQL und SETS_ZUSTAND_SQL, und davor stand an
+  // derselben Stelle zweimal `null`. Beide Zustände waren falsch, und zwar
+  // dasselbe Problem von zwei Seiten:
   //
-  // Wieder das Muster „dieselbe Regel fehlt am zweiten Weg". Die Bedingung
-  // („nur wenn die geänderte Erfassung die neueste ist") steckt bereits im
-  // gemeinsamen Ablauf oben und gilt damit automatisch mit.
-  parentPriceSql: SETS_PREIS_SQL,
-  parentConditionSql: SETS_ZUSTAND_SQL,
+  //   Nachtrag 51 (Marco): „Der Preis oben in der Kachel wird nicht
+  //     angepasst" — der Android-Weg spiegelte nicht, die Webapp schon.
+  //     Erfassung 107, Kachel weiter 108.
+  //   Nachtrag 75 (Marco): „Kaufpreis entfernt, die Kachel zeigt ihn weiter"
+  //     — Erfassung 7.41, Kachel 9.48.
+  //
+  // Beide Male war die Ursache, dass Kaufpreis und Zustand an ZWEI Orten
+  // standen. Mit Migration 0032 gibt es nur noch einen: set_acquisitions.
+  // Damit kann die Kachel gar nicht mehr abweichen, und die Spiegelung hat
+  // kein Ziel mehr. Teile und Minifiguren sind mit Migration 0035
+  // nachgezogen — jetzt gilt es fuer alle drei Elementarten.
+  parentPriceSql: null,
+  parentConditionSql: null,
   latestSql: 'SELECT id FROM set_acquisitions WHERE user_id=$1 AND set_number=$2 ORDER BY created_at DESC, id DESC LIMIT 1',
   // Dieselben Zeilen wie beim ausdrücklichen Löschen — EINE Liste, in
   // utils/handlers.ts. Ohne die Teile und Minifiguren blieben sie ohne Set
@@ -451,13 +483,13 @@ registerAcquisitionRoutes({
   // wurde nie ermittelt, also blieb die Zeile im Detailfenster leer.
   resolvePrice: (uid, [pn, cid], cond) =>
     require('../parts').getCurrentPartMarketPrice(pn, cid, uid, cond),
-  parentQuantitySql: `UPDATE parts
-     SET quantity = COALESCE((SELECT SUM(quantity) FROM part_acquisitions WHERE user_id=$1 AND part_number=$2 AND color_id=$3), 0)
-     WHERE user_id=$1 AND part_number=$2 AND color_id=$3 AND source='manual' RETURNING quantity`,
-  parentPriceSql: `UPDATE parts SET unit_price=$1, purchase_price=$1
-     WHERE user_id=$2 AND part_number=$3 AND color_id=$4 AND source='manual'`,
-  parentConditionSql: `UPDATE parts SET condition=$1
-     WHERE user_id=$2 AND part_number=$3 AND color_id=$4 AND source='manual'`,
+  // Keine Spiegelung mehr — dieselbe Begruendung wie bei den Sets weiter
+  // oben, nur eine Migration spaeter: Mit 0035 gibt es unit_price,
+  // purchase_price und condition auf der Teilezeile nicht mehr. Die
+  // Spiegelung hat kein Ziel, und die Kachel kann gar nicht mehr abweichen —
+  // sie liest die neueste Erfassung (getManualParts in utils/handlers/parts.ts).
+  parentPriceSql: null,
+  parentConditionSql: null,
   latestSql: 'SELECT id FROM part_acquisitions WHERE user_id=$1 AND part_number=$2 AND color_id=$3 ORDER BY created_at DESC, id DESC LIMIT 1',
   // Nur die manuelle Position: Teile aus einem Set hängen am Set und werden
   // mit ihm gelöscht, nicht hier.
@@ -487,20 +519,21 @@ registerAcquisitionRoutes({
   notFound:  'nicht_gefunden',
   deleteChecksExistence: false,
   // cond mitgeben — siehe die Begründung bei den Teilen (Nachtrag 146).
+  // Die BL-Nummer-Abfrage steht in utils/blZuordnung.ts — sie wird auch vom
+  // Kaufpreis-Nachtrag gebraucht (jobs/purchasePriceBackfill.ts).
+  //
+  // Sie steht in einer eigenen Zeile und nicht im Aufruf: So ist sichtbar,
+  // dass `cond` als letztes Argument ankommt. Genau das prueft
+  // test/acquisition-condition-price-db.test.js, und zwar mit einem Abstand
+  // von hoechstens 400 Zeichen — der Erklaertext gehoert deshalb hierher,
+  // vor die Eigenschaft, nicht in ihren Rumpf.
   resolvePrice: async (uid, [fn], cond) => {
-    const figRow = await db.get(
-      "SELECT bl_fig_number FROM minifigs WHERE user_id=$1 AND fig_number=$2 AND source='manual'",
-      [uid, fn]
-    ).catch(() => null);
-    return getCurrentFigMarketPrice(fn, uid, figRow?.bl_fig_number || null, cond);
+    const blNummer = await blAbrufNummer('fig', fn);
+    return getCurrentFigMarketPrice(fn, uid, blNummer, cond);
   },
-  parentQuantitySql: `UPDATE minifigs
-     SET quantity = COALESCE((SELECT SUM(quantity) FROM minifig_acquisitions WHERE user_id=$1 AND fig_number=$2), 0)
-     WHERE user_id=$1 AND fig_number=$2 AND source='manual' RETURNING quantity`,
-  parentPriceSql: `UPDATE minifigs SET unit_price=$1, purchase_price=$1
-     WHERE user_id=$2 AND fig_number=$3 AND source='manual'`,
-  parentConditionSql: `UPDATE minifigs SET condition=$1
-     WHERE user_id=$2 AND fig_number=$3 AND source='manual'`,
+  // Keine Spiegelung mehr — siehe die Begruendung bei den Teilen darueber.
+  parentPriceSql: null,
+  parentConditionSql: null,
   latestSql: 'SELECT id FROM minifig_acquisitions WHERE user_id=$1 AND fig_number=$2 ORDER BY created_at DESC, id DESC LIMIT 1',
   // Nur die manuelle Position — siehe Teile.
   cleanupWhenEmpty: async (tx, ownerId, [fn]) => {

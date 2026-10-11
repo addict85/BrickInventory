@@ -31,7 +31,10 @@ test('die Aggregat-Regel steht nur noch an einer Stelle', () => {
     'Der gemeinsame Helfer fehlt');
   // Weder getSets()/getSet() noch die manuellen Listen dürfen die Regel je
   // eigen ausformulieren — sie steht in conditionFromAcquisitions().
-  pruefeParameter(h, 'conditionFromAcquisitions', ['acqCount', 'usedCount', 'stored'],
+  // Zwei Parameter, nicht drei: Der dritte war der gespeicherte Zustand der
+  // Stammzeile. Migration 0032 hat ihn den Sets genommen, 0035 den Teilen und
+  // Minifiguren — es gibt keinen Rueckfall mehr, auf den er zeigen koennte.
+  pruefeParameter(h, 'conditionFromAcquisitions', ['acqCount', 'usedCount'],
     'der gemeinsame Regel-Helfer fehlt');
   // Kommentare ausblenden: Der Erklärtext am Helfer zitiert die Regel selbst.
   const code = h.replace(/\/\*[\s\S]*?\*\//g, '').replace(/\/\/[^\n]*/g, '');
@@ -231,7 +234,8 @@ test('ein ausdrücklich angefragter Zustand schlägt die Erfassungs-Bewertung', 
   // wirkungslos blieb: getCurrentMarketPrice() rief getSetValue() OHNE ihn auf.
   // Diese Funktion entscheidet anhand der Erfassungen — beim Anlegen eines
   // neuen Sets gibt es aber noch keine, und sets.condition ist ebenfalls noch
-  // nicht geschrieben. Sie fiel damit auf 'N' zurück und lieferte den
+  // nicht geschrieben (die Spalte gab es damals noch; seit Migration 0032
+  // nicht mehr). Sie fiel damit auf 'N' zurück und lieferte den
   // Neupreis, obwohl „Gebraucht" angefragt war. Der berechnete effectiveCond
   // wurde nur im unerreichbaren Rückfall darunter benutzt.
   // Fundort seit Nachtrag 125: utils/marketPrice.ts. Die Funktion hatte sieben
@@ -263,7 +267,8 @@ test('manuelle Teile und Minifiguren nutzen dieselbe Zustandsregel wie Sets', ()
   pruefeParameter(src, 'applyManualCondition', ['userId', 'rows', 'kind'],
     'gemeinsame Regel für manuelle Einträge fehlt');
 
-  // Dieselbe Regel wie getSetConditionAggregate: eine gebrauchte Erfassung genügt
+  // Dieselbe Regel wie getSetConditionAggregate: eine gebrauchte Erfassung
+  // genügt. Ohne den dritten Parameter — siehe die Begruendung oben.
   // Der Ausschnitt endet jetzt an der Funktion selbst, nicht an der nächsten:
   // applyManualCondition steht seit Nachtrag 133 in utils/handlers/shared.ts,
   // getManualParts in utils/handlers/parts.ts — die Reihenfolge im
@@ -271,7 +276,7 @@ test('manuelle Teile und Minifiguren nutzen dieselbe Zustandsregel wie Sets', ()
   const anfang = src.indexOf('async function applyManualCondition');
   const fn = src.slice(anfang, src.indexOf('\n}', anfang));
   // Nicht neu ausformulieren, sondern denselben Helfer benutzen wie Sets.
-  assert.match(fn, /conditionFromAcquisitions\(acqCount, usedCount, r\.condition\)/,
+  assert.match(fn, /conditionFromAcquisitions\(acqCount, usedCount\)/,
     'Manuelle Einträge müssen denselben Regel-Helfer benutzen wie Sets');
   assert.match(fn, /COUNT\(\*\) FILTER \(WHERE condition = 'U'\) AS used_count/,
     'Ohne used_count kann die Regel nicht greifen');
@@ -478,9 +483,21 @@ test('Erfassungen ohne Kaufpreis werden nachgetragen', () => {
   // Der Zustand der ERFASSUNG bestimmt den Preis, nicht der des Sets
   assert.match(job, /getCurrentMarketPrice\(row\.set_number, row\.user_id, row\.condition \|\| null\)/,
     'Ein gebraucht erfasstes Exemplar braucht den Gebrauchtpreis');
-  // Ein gepflegter Set-Preis darf nicht überschrieben werden
-  assert.match(job, /UPDATE sets SET purchase_price=\$1\s+WHERE user_id=\$2 AND set_number=\$3 AND purchase_price IS NULL/,
-    'Nur setzen, wo noch nichts steht');
+  // ── Hier stand eine Regel auf die Spiegelung ────────────────────────────
+  //
+  // „Ein gepflegter Set-Preis darf nicht überschrieben werden":
+  // `UPDATE sets SET purchase_price=$1 … AND purchase_price IS NULL`. Die
+  // Vorsicht war nötig, weil der Preis an ZWEI Orten stand und der Nachtrag
+  // den gepflegten hätte überschreiben können. Mit Migration 0032 gibt es nur
+  // noch einen — die Frage stellt sich nicht mehr.
+  //
+  // Die Nachfolgeregel ist die strengere: Der Job darf die sets-Zeile gar
+  // nicht mehr anfassen. Eine Spiegelung dorthin wäre ab jetzt ein Schreiben
+  // auf eine Spalte, die es nicht gibt.
+  assert.doesNotMatch(job.replace(/\/\/[^\n]*/g, '').replace(/\/\*[\s\S]*?\*\//g, ''),
+    /UPDATE sets SET/,
+    'Der Nachtrag schreibt wieder in die sets-Zeile — dort gibt es seit ' +
+    'Migration 0032 weder Kaufpreis noch Zustand');
   assert.match(job, /await backfillAcquisitions\(\)/, 'Der Durchlauf ist nicht eingehängt');
 
   // Und der Import selbst soll seltener ohne Preis enden
@@ -528,26 +545,42 @@ test('die Preis-Probe läuft ohne Serverfehler', () => {
   // veraltet — sie hätte fälschlich auf sets.condition verwiesen.
   assert.doesNotMatch(admin, /Die Bewertung richtet sich nach sets\.condition, nicht nach den Erfassungen/,
     'Die alte Erklärung passt nicht mehr zur tatsächlichen Regel');
-  assert.match(admin, /const chosen = anyUsed \? 'U' : \(acqCount > 0 \? 'N' : /,
+  // Hier stand die dreiteilige Fassung mit dem Rückfall auf sets.condition.
+  // Seit Migration 0032 gibt es nur noch zwei Fälle, und die Probe muss genau
+  // sie zeigen — eine eigene dritte Lesart wäre wieder die zweite Wahrheit,
+  // gegen die dieser Test geschrieben ist.
+  assert.match(admin, /const chosen = anyUsed \? 'U' : 'N';/,
     'Die Probe muss dieselbe Regel zeigen wie die tatsächliche Bewertung');
+  assert.doesNotMatch(admin.replace(/\/\/[^\n]*/g, '').replace(/\/\*[\s\S]*?\*\//g, ''),
+    /stored_in_sets/,
+    'Die Probe darf keinen gespeicherten Zustand mehr ausweisen — es gibt keinen');
 });
 
-test('computePnl liest acq_count/used_count — sonst gewinnt immer sets.condition', () => {
+test('computePnl liest acq_count/used_count — sonst ist jedes Set neu', () => {
   // Die SELECT-Abfrage in computePnl (finance/pnl → Galerie-Kachel und
   // Detail-Dialog) selektierte kein acq_count/used_count. effectiveCondition()
   // liest genau diese Felder; ohne sie war set.acq_count immer undefined,
-  // parseInt(undefined) ergab NaN, und die Funktion fiel IMMER auf
-  // sets.condition zurück — unabhängig davon, was die Erfassungen tatsächlich
-  // sagten. Bei einem veralteten sets.condition oder gemischten Erfassungen
-  // (1× Neu, 1× Gebraucht) zeigte der P&L-Pfad einen anderen Marktpreis als
-  // computeSetsValuation() (Finanzen-Reiter), die das schon korrekt machte.
+  // parseInt(undefined) ergab NaN, und die Funktion fiel IMMER auf die
+  // damalige Zustands-Spalte der sets-Zeile zurück — unabhängig davon, was die
+  // Erfassungen tatsächlich sagten. Bei einem veralteten Spaltenwert oder
+  // gemischten Erfassungen (1× Neu, 1× Gebraucht) zeigte der P&L-Pfad einen
+  // anderen Marktpreis als computeSetsValuation() (Finanzen-Reiter), die das
+  // schon korrekt machte.
+  //
+  // Seit Migration 0032 gibt es die Spalte nicht mehr. Fehlten die Zähler
+  // jetzt, wäre jedes Set unbemerkt „neu" — derselbe falsche Marktpreis, nur
+  // ohne zweite Wahrheit als Erklärung. Die Prüfung bleibt deshalb stehen.
   const src = require('./helpers/sources').finanzQuelle();
   // Fenster grosszügiger: Der Blickfeld-Kommentar (Haushalt) steht am
   // Funktionsanfang und hat die geprüften Zeilen nach hinten geschoben. Ein
   // knapp bemessener Ausschnitt macht die Prüfung von jeder eingefügten Zeile
   // abhängig und meldet dann einen Fehler, den es nicht gibt.
+  // 4600 statt 3200 Zeichen: Die Begruendungen an der Abfrage sind mit
+  // Migration 0032 laenger geworden und haben `acq_count` aus dem Fenster
+  // geschoben. Genau die Falle, die der Kommentar darueber beschreibt — ein
+  // knapp bemessener Ausschnitt meldet einen Fehler, den es nicht gibt.
   const fn = src.slice(src.indexOf('async function computePnl'),
-                       src.indexOf('async function computePnl') + 3200);
+                       src.indexOf('async function computePnl') + 4600);
 
   assert.match(fn, /COUNT\(\*\)\s+AS acq_count,/, 'acq_count fehlt in der Unterabfrage');
   assert.match(fn, /COUNT\(\*\) FILTER \(WHERE condition = 'U'\)\s+AS used_count/,
@@ -801,29 +834,39 @@ test('gemischte Erfassungen ergeben ZWEI Plaketten', () => {
   // Der gemeldete Fall: ein Exemplar neu, eines gebraucht. Bisher zeigte die
   // Kachel nur „Gebraucht" — die Neu-Erfassung war unsichtbar, obwohl sie mit
   // ihrem eigenen Preis in die Bewertung eingeht.
-  assert.deepEqual(conditionsFromAcquisitions(2, 1, 'N'), ['N', 'U']);
+  assert.deepEqual(conditionsFromAcquisitions(2, 1), ['N', 'U']);
   // Und die Einzelangabe bleibt daneben, was sie war.
-  assert.equal(conditionFromAcquisitions(2, 1, 'N'), 'U');
+  assert.equal(conditionFromAcquisitions(2, 1), 'U');
 });
 
 test('nur ein Zustand ergibt eine Plakette', () => {
-  assert.deepEqual(conditionsFromAcquisitions(3, 0, 'U'), ['N'],
-    'alle Erfassungen neu → nur Neu, auch wenn die Stammzeile U sagt');
-  assert.deepEqual(conditionsFromAcquisitions(2, 2, 'N'), ['U'],
+  assert.deepEqual(conditionsFromAcquisitions(3, 0), ['N'],
+    'alle Erfassungen neu → nur Neu');
+  assert.deepEqual(conditionsFromAcquisitions(2, 2), ['U'],
     'alle Erfassungen gebraucht → nur Gebraucht');
 });
 
-test('ohne Erfassungen zählt der gespeicherte Wert', () => {
-  assert.deepEqual(conditionsFromAcquisitions(0, 0, 'U'), ['U']);
-  assert.deepEqual(conditionsFromAcquisitions(0, 0, null), ['N']);
+test('ohne Erfassungen gilt „Neu"', () => {
+  // Hier stand „ohne Erfassungen zählt der gespeicherte Wert" mit einem
+  // dritten Parameter. Den gibt es seit Migration 0035 nicht mehr: Fuer
+  // manuelle Positionen traegt sie eine Erfassung nach und prueft danach
+  // nach, dass keine ohne geblieben ist; fuer Teile und Figuren aus einem Set
+  // stand die Spalte seit jeher auf dem Vorgabewert.
+  //
+  // Ein dritter Parameter wuerde jetzt stillschweigend ignoriert. Deshalb
+  // prueft die Regel oben („die Aggregat-Regel steht nur noch an einer
+  // Stelle") die Parameterliste mit — sonst koennte ein Aufrufer ihn weiter
+  // mitgeben und sich auf eine Wirkung verlassen, die es nicht gibt.
+  assert.deepEqual(conditionsFromAcquisitions(0, 0), ['N']);
+  assert.equal(conditionFromAcquisitions(0, 0), 'N');
 });
 
 test('die Reihenfolge ist fest: Neu vor Gebraucht', () => {
   // Nach Häufigkeit sortiert würden die Plaketten beim nächsten Kauf die
   // Plätze tauschen — auf einer Kachel, die man überfliegt, fällt genau das
   // als „hat sich was geändert?" auf.
-  assert.deepEqual(conditionsFromAcquisitions(5, 4, 'N'), ['N', 'U']);
-  assert.deepEqual(conditionsFromAcquisitions(5, 1, 'N'), ['N', 'U']);
+  assert.deepEqual(conditionsFromAcquisitions(5, 4), ['N', 'U']);
+  assert.deepEqual(conditionsFromAcquisitions(5, 1), ['N', 'U']);
 });
 
 test('die Kacheln rechnen die Plaketten nicht selbst aus', () => {

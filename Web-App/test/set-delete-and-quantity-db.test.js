@@ -53,6 +53,7 @@ const _req = require('./helpers/sources').buildAndRequire();
 const { testServer } = require('./helpers/server');
 const db = _req('db/database.js');
 const express = require(path.join(ROOT, 'node_modules', 'express'));
+const { haeltFigur, haeltSet, haeltTeil, mengeVon } = require('./helpers/bestand');
 
 test('das Löschen fragt genau einmal', () => {
   const src = ohneKommentare(fs.readFileSync(path.join(ROOT, 'public/js/02-gallery.js'), 'utf8'));
@@ -81,17 +82,32 @@ test('das Löschen fragt genau einmal', () => {
 test('die Mengen-Multiplikation steht an allen Stellen', () => {
   const h = ohneKommentare(require('./helpers/sources').handlerQuelle());
   // Teile und Minifiguren eines Sets zählen JE EXEMPLAR mal Setanzahl.
-  const stellen = (h.match(/COALESCE\(s\.quantity, ?1\)/g) || []).length;
+  //
+  // Gesucht wird jetzt der Aufruf des Helfers statt der ausgeschriebenen
+  // Formel: Hier stand `COALESCE(s.quantity, ?1)`, und die Spalte ist mit
+  // Migration 0036 weg. Die „1" ist dieselbe geblieben — sie heisst „Set
+  // nicht im Bestand, Teil trotzdem zaehlen" und ist der zweite Parameter
+  // von mengeAus() (utils/bestandsmenge.ts).
+  const stellen = (h.match(/mengeAus\('sm', ?1\)/g) || []).length;
   assert.ok(stellen >= 3,
     `nur ${stellen} Stellen multiplizieren mit der Setanzahl — erwartet werden ` +
     'mindestens Teileliste, Kennzahlen und Minifigurenliste');
+  // Und jede dieser Stellen braucht die JOIN-Quelle dazu, sonst gibt es den
+  // Alias `sm` gar nicht. Ohne diese zweite Zusicherung waere die Regel auch
+  // mit einer Multiplikation gruen, die zur Laufzeit abbricht.
+  assert.ok((h.match(/mengeJoin\(/g) || []).length >= 3,
+    'Zu wenige JOIN-Quellen: mengeAus() liest `sm.menge`, und den Alias hängt ' +
+    'erst mengeJoin() an');
 
-  // Die Zusammenfassung hält vorberechnete Mengen. Ihre Zähler müssen auch bei
-  // einer Änderung an `sets` hochgehen, sonst bleibt die Teilezahl stehen.
+  // Die Zusammenfassung hält vorberechnete Mengen. Ihre Zähler müssen bei
+  // einer Änderung an `sets` hochgehen — UND an `set_acquisitions`: Dort
+  // steht die Setmenge seit Migration 0036, und total_quantity rechnet mit
+  // ihr. Ohne den zweiten Trigger bliebe die Teilezahl nach einem Zukauf
+  // stehen, ohne dass etwas falsch aussähe.
   const ps = ohneKommentare(fs.readFileSync(path.join(ROOT, 'utils/partsSummary.ts'), 'utf8'));
-  assert.match(ps, /for \(const tbl of \['parts', 'sets'\]\)/,
-    'Die Versionszähler hängen nicht mehr an `sets` — nach einer Mengenänderung ' +
-    'bliebe die vorberechnete Teilezahl stehen');
+  assert.match(ps, /for \(const tbl of \['parts', 'sets', 'set_acquisitions'\]\)/,
+    'Die Versionszähler hängen nicht an `sets` UND `set_acquisitions` — nach ' +
+    'einer Mengenänderung bliebe die vorberechnete Teilezahl stehen');
 });
 
 test('Löschen und Mengenänderung gegen die Datenbank', { concurrency: 1 }, async (t) => {
@@ -120,15 +136,14 @@ test('Löschen und Mengenänderung gegen die Datenbank', { concurrency: 1 }, asy
                 ON CONFLICT (key) DO UPDATE SET value='EUR'`);
   await db.run(`INSERT INTO price_cache (set_number,condition,currency_code,avg_price,qty_avg_price,total_quantity)
                 VALUES ($1,'N','EUR',20,20,3)`, [SN]);
-  await db.run(`INSERT INTO sets (user_id,set_number,name,quantity,condition,purchase_price,pieces,minifigs)
-                VALUES ($1,$2,'T',1,'N',15,100,2)`, [uid, SN]);
+  // Nur die Bestandszeile: Menge, Preis und Zustand stehen in der Erfassung
+  // darunter (Migration 0032 fuer Preis und Zustand, 0036 fuer die Menge).
+  await haeltSet(db, uid, SN, 0);
   await db.run(`INSERT INTO set_acquisitions (user_id,set_number,purchase_price,condition,quantity)
                 VALUES ($1,$2,15,'N',1)`, [uid, SN]);
   // Ein Exemplar enthält 10 Teile und 1 Minifigur.
-  await db.run(`INSERT INTO parts (user_id,part_number,color_id,part_name,quantity,source,set_number)
-                VALUES ($1,'3001',4,'Stein',10,'set',$2)`, [uid, SN]);
-  await db.run(`INSERT INTO minifigs (user_id,fig_number,fig_name,quantity,source,set_number)
-                VALUES ($1,'cty0001','Polizist',1,'set',$2)`, [uid, SN]);
+  await haeltTeil(db, uid, '3001', { setNumber: SN, menge: 10, colorId: 4 });
+  await haeltFigur(db, uid, 'cty0001', { setNumber: SN, menge: 1 });
 
   const { base, srv } = testServer(_req, {
     sitzung: { userId: uid },
@@ -173,14 +188,26 @@ test('Löschen und Mengenänderung gegen die Datenbank', { concurrency: 1 }, asy
       const st = await H.getStats([uid]);
       assert.equal(st.total_parts, 10, `Teile ${st.total_parts} statt 10`);
       assert.equal(st.total_minifigs, 1, `Minifiguren ${st.total_minifigs} statt 1`);
-      // Die Teile-Zeile selbst bleibt bei 10 je Exemplar — multipliziert wird
-      // beim Lesen, nicht beim Schreiben. Stünde hier 30, hätte jemand die
-      // Menge in die Tabelle geschrieben, und das nächste Ändern rechnete auf
-      // einem schon multiplizierten Wert weiter.
+      // Die Stückzahl je Exemplar bleibt bei 10 — multipliziert wird beim
+      // Lesen, nicht beim Schreiben. Seit Migration 0038 steht sie nicht mehr
+      // in `parts` (die Spalte gibt es nicht), sondern EINMAL im Katalog des
+      // Sets. Stünde dort 30, hätte jemand die Setmenge hineingerechnet, und
+      // das nächste Ändern rechnete auf einem schon multiplizierten Wert
+      // weiter — zusätzlich wäre die Zahl dann für JEDES Konto falsch, das
+      // dasselbe Set hält, denn der Katalog ist gemeinsam.
       const roh = await db.get(
-        `SELECT quantity FROM parts WHERE user_id=$1 AND set_number=$2`, [uid, SN]);
-      assert.equal(roh.quantity, 10,
-        'die gespeicherte Teilemenge muss die JE EXEMPLAR sein');
+        `SELECT quantity FROM set_parts_catalog WHERE set_number=$1 AND part_number='3001'`,
+        [SN]);
+      assert.equal(Number(roh.quantity), 10,
+        'die Katalog-Stückzahl muss die JE EXEMPLAR sein');
+      // Und in `parts` selbst gibt es keine Menge mehr, in die etwas
+      // hineingerechnet werden KÖNNTE. Ohne diese zweite Zusicherung wäre der
+      // Test auch grün, wenn die Spalte wieder auftauchte.
+      const spalte = await db.get(
+        `SELECT 1 AS da FROM information_schema.columns
+          WHERE table_name='parts' AND column_name='quantity'`);
+      assert.equal(spalte, undefined,
+        'parts.quantity ist zurück — dann gibt es die Stückzahl wieder zweimal');
     });
 
     await t.test('Löschen nimmt Teile, Minifiguren und Kaufpreise mit', async () => {

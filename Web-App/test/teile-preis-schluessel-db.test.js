@@ -45,6 +45,7 @@ const _req = require('./helpers/sources').buildAndRequire();
 const db = _req('db/database.js');
 const { fetchPartPrice } = _req('utils/financeCalc.js');
 const { getPartPriceHistory } = _req('utils/priceHistory.js');
+const { haeltTeil } = require('./helpers/bestand');
 
 test('Teile-Preise stehen unter EINER Nummer', { concurrency: 1 }, async (t) => {
   try { await db.initSchema(); }
@@ -63,15 +64,15 @@ test('Teile-Preise stehen unter EINER Nummer', { concurrency: 1 }, async (t) => 
   const RB = `pt${p}`;          // so steht das Teil in der Sammlung
   const BL = `pt${p}bl`;        // so kennt BrickLink es
   const FARBE = 0;              // 0 wird nicht übersetzt (resolveBlColorId)
-  const RB2 = `qt${p}`;         // zweites Teil: BL-Nummer nur in parts
-  const BL2 = `qt${p}bl`;
+  const RB2 = `qt${p}`;         // zweites Teil: GAR KEINE Zuordnung
   const WAEHRUNG = 'CHF';
 
   await db.run(`DELETE FROM users WHERE username=$1`, [NUTZER]);
   await db.run(`INSERT INTO users (username,password_hash) VALUES ($1,'x')`, [NUTZER]);
   const uid = (await db.get(`SELECT id FROM users WHERE username=$1`, [NUTZER])).id;
-  await db.run(`INSERT INTO rb_bl_mapping (part_num, bl_part_num) VALUES ($1,$2)
-                ON CONFLICT (part_num) DO UPDATE SET bl_part_num = EXCLUDED.bl_part_num`, [RB, BL]);
+  // Die Zuordnung steht seit Migration 0037 in bl_zuordnung (art, rb_id, bl_id).
+  await db.run(`INSERT INTO bl_zuordnung (art, rb_id, bl_id) VALUES ('part',$1,$2)
+                ON CONFLICT (art, rb_id) DO UPDATE SET bl_id = EXCLUDED.bl_id`, [RB, BL]);
 
   try {
     // ── 1. Cache-Treffer über die BrickLink-Nummer ─────────────────────────
@@ -114,32 +115,34 @@ test('Teile-Preise stehen unter EINER Nummer', { concurrency: 1 }, async (t) => 
     assert.equal(Number(v.by_condition.N.purchase_price), 5,
       'Der Kaufpreis steht unter der Nummer des Benutzers und muss weiter gefunden werden');
 
-    // ── 3. Zweite Quelle: parts.bl_part_number ohne rb_bl_mapping ─────────
+    // ── 3. OHNE Zuordnung gilt die Rebrickable-Nummer ─────────────────────
     //
-    // jobs/backfillBlPartNumbers.ts schreibt beide im selben Durchlauf.
-    // Scheitert dort das INSERT in rb_bl_mapping, bleibt die Lücke für immer:
-    // Der Job wählt beim nächsten Mal nur Teile mit leerem bl_part_number, und
-    // dieses hat ja eines. Genau dieser Zustand wird hier hergestellt.
-    await db.run(`DELETE FROM rb_bl_mapping WHERE part_num=$1`, [RB2]);
-    await db.run(
-      `INSERT INTO parts (user_id,part_number,bl_part_number,color_id,quantity,source)
-       VALUES ($1,$2,$3,$4,1,'manual')`, [uid, RB2, BL2, FARBE]);
+    // Hier stand ein Fall, den es nicht mehr geben kann: Die BrickLink-Nummer
+    // nur in parts.bl_part_number und nicht in rb_bl_mapping — der Zustand,
+    // aus dem der Nachtrag-Job von selbst nie wieder herausfand. Mit Migration
+    // 0037 gibt es die zweite Quelle nicht, also auch nicht die Lücke zwischen
+    // beiden (die Begründung steht in utils/finance/preise.ts).
+    //
+    // Was stattdessen geprüft wird, ist der Fall, der BLEIBT: ein Teil ohne
+    // jede Zuordnung. Dann muss der Cache unter der REBRICKABLE-Nummer
+    // getroffen werden — und nicht unter einer erfundenen.
+    await haeltTeil(db, uid, RB2, { menge: 1, colorId: FARBE });
     await db.run(
       `INSERT INTO part_price_cache (part_number,color_id,condition,currency_code,avg_price,qty_avg_price,fetched_at)
        VALUES ($1,$2,'N',$3,15.00,15.00,NOW())
        ON CONFLICT (part_number,color_id,condition,currency_code)
        DO UPDATE SET avg_price=15.00, qty_avg_price=15.00, fetched_at=NOW()`,
-      [BL2, FARBE, WAEHRUNG]);
+      [RB2, FARBE, WAEHRUNG]);
 
     const preis2 = await fetchPartPrice(RB2, FARBE, 'N', WAEHRUNG, 24);
     assert.equal(Number(preis2?.avg_price), 15,
-      `fetchPartPrice lieferte ${JSON.stringify(preis2)} statt 15. Für dieses Teil steht ` +
-      'die BrickLink-Nummer nur in parts.bl_part_number, nicht in rb_bl_mapping — ein ' +
-      'Zustand, aus dem der Nachtrag-Job von selbst nie wieder herausfindet.');
+      `fetchPartPrice lieferte ${JSON.stringify(preis2)} statt 15. Ohne Zuordnung ` +
+      'muss die Rebrickable-Nummer selbst der Schlüssel sein — sonst fragt jeder ' +
+      'Aufruf BrickLink neu, obwohl der Preis dasteht.');
   } finally {
-    await db.run(`DELETE FROM part_price_history WHERE part_number = ANY($1)`, [[RB, BL, RB2, BL2]]).catch(() => {});
-    await db.run(`DELETE FROM part_price_cache   WHERE part_number = ANY($1)`, [[RB, BL, RB2, BL2]]).catch(() => {});
-    await db.run(`DELETE FROM rb_bl_mapping WHERE part_num = ANY($1)`, [[RB, RB2]]).catch(() => {});
+    await db.run(`DELETE FROM part_price_history WHERE part_number = ANY($1)`, [[RB, BL, RB2]]).catch(() => {});
+    await db.run(`DELETE FROM part_price_cache   WHERE part_number = ANY($1)`, [[RB, BL, RB2]]).catch(() => {});
+    await db.run(`DELETE FROM bl_zuordnung WHERE art='part' AND rb_id = ANY($1)`, [[RB, RB2]]).catch(() => {});
     await db.run(`DELETE FROM parts WHERE user_id=$1`, [uid]).catch(() => {});
     await db.run(`DELETE FROM part_acquisitions WHERE user_id=$1`, [uid]).catch(() => {});
     await db.run(`DELETE FROM users WHERE id=$1`, [uid]).catch(() => {});

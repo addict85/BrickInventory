@@ -45,6 +45,10 @@ process.env.WEB_WORKERS = '1';
 
 const _req = require('./helpers/sources').buildAndRequire();
 const db = _req('db/database.js');
+// Ein Bestand ist seit Migration 0036 ZWEI Zeilen: eine in `sets` („dieses
+// Konto haelt dieses Set") und eine je Kauf in `set_acquisitions`. haeltSet()
+// legt beide an — siehe test/helpers/bestand.js.
+const { haeltSet } = require('./helpers/bestand');
 
 test.after(async () => { await db.pool.end().catch(() => {}); });
 
@@ -62,10 +66,15 @@ async function seed() {
   HAUPT = (await db.get("SELECT id FROM users WHERE username='haupt'")).id;
   KIND  = (await db.get("SELECT id FROM users WHERE username='kind'")).id;
   await db.run('INSERT INTO account_links (main_user_id, sub_user_id) VALUES ($1,$2)', [HAUPT, KIND]);
+  // Der Setname steht seit Migration 0033 im Katalog, nicht an der
+  // Bestandszeile; die Stueckzahl seit 0036 in der Erfassung. Hier stand
+  // `INSERT INTO sets (user_id, set_number, name, quantity)` — beide Spalten
+  // gibt es nicht mehr.
+  await db.run(`INSERT INTO set_catalog (set_number, name) VALUES ($1,'Falcon')
+                ON CONFLICT (set_number) DO UPDATE SET name = EXCLUDED.name`, [SN]);
   // Das Set gehört dem HAUPTKONTO. Das Unterkonto hat gar keine Zeile — genau
   // die Lage, in der ein Eintrag in seinem Vorrat nichts beschreibt.
-  await db.run(`INSERT INTO sets (user_id, set_number, name, quantity) VALUES ($1,$2,'Falcon',1)`,
-    [HAUPT, SN]);
+  await haeltSet(db, HAUPT, SN, 1);
 }
 
 test('Lagerort: Detail und Vorrat gegen echte Datenbank', async (t) => {
@@ -161,8 +170,9 @@ test('Lagerort: Detail und Vorrat gegen echte Datenbank', async (t) => {
     // Zeile hält". Hält das Unterkonto ein Exemplar, gehört der Ort auch dorthin
     // — und zwar als EIGENE Zeile, weil ein Regal in einer Wohnung steht
     // (Migration 0020).
-    await db.run(`INSERT INTO sets (user_id, set_number, name, quantity) VALUES ($1,$2,'Falcon',1)`,
-      [KIND, SN]);
+    // Wie im Aufbau oben: Name im Katalog (schon da), Stueckzahl in der
+    // Erfassung.
+    await haeltSet(db, KIND, SN, 1);
     const n = await L.setzeLagerort('set', schreibbar, [SN], 'Keller');
     assert.equal(n, 2, `${n} Zeilen getroffen, erwartet 2 (beide Konten halten das Set)`);
     for (const [wer, id] of [['Hauptkonto', HAUPT], ['Unterkonto', KIND]]) {

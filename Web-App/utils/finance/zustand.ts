@@ -11,22 +11,35 @@
 /**
  * Zustand eines Sets nach derselben Regel wie die Anzeige
  * (utils/handlers.ts → getSetConditionAggregate):
- * Sobald EINE Erfassung gebraucht ist, gilt das Set als gebraucht; gibt es
- * Erfassungen ohne Gebraucht-Eintrag, ist es neu; ohne Erfassungen zählt der
- * gespeicherte Wert in sets.condition.
+ * Sobald EINE Erfassung gebraucht ist, gilt das Set als gebraucht; sonst neu.
  *
  * Vorher richtete sich die Bewertung allein nach sets.condition. Weicht der
  * gespeicherte Wert von den Erfassungen ab — etwa weil ein Set nachträglich auf
  * „Neu" korrigiert wurde — zeigte die Kachel „Neu", der Marktpreis stammte aber
  * aus dem Gebraucht-Eintrag. Genau diese Abweichung war die Ursache für den
  * wiederholt zu niedrigen Preis.
+ *
+ * ── Der dritte Zweig ist weg, und zwar genau jetzt ─────────────────────────
+ *
+ * Hier stand ein Rueckfall auf den gespeicherten Wert der Stammzeile, mit der
+ * Begruendung: „`parts.condition` und `minifigs.condition` gibt es noch … Der
+ * Zweig fällt mit den beiden Spalten, nicht vorher."
+ *
+ * Migration 0032 hat sie den Sets genommen, 0035 den Teilen und Figuren. Fuer
+ * manuelle Positionen traegt 0035 eine Erfassung nach und prueft danach, dass
+ * keine ohne geblieben ist — es gibt also keinen Fall mehr, in dem der
+ * gespeicherte Wert die einzige Auskunft waere. Fuer Teile und Figuren aus
+ * einem Set stand die Spalte seit jeher auf dem Vorgabewert 'N'.
+ *
+ * Damit liest diese Funktion nur noch die zwei Zaehler — und kann gar nicht
+ * mehr von der Anzeige abweichen, denn conditionFromAcquisitions() in
+ * utils/handlers/shared.ts rechnet aus denselben zwei Zahlen.
  */
 function effectiveCondition(set: any): 'N' | 'U' {
-  const acqCount  = parseInt(set?.acq_count) || 0;
+  const acqCount  = parseInt(set?.acq_count)  || 0;
   const usedCount = parseInt(set?.used_count) || 0;
-  if (usedCount > 0) return 'U';
-  if (acqCount > 0)  return 'N';
-  return set?.condition === 'U' ? 'U' : 'N';
+  if (acqCount > 0) return usedCount > 0 ? 'U' : 'N';
+  return 'N';
 }
 
 export { effectiveCondition };

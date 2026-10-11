@@ -55,6 +55,9 @@ import { angemeldeteNutzerId } from '../utils/auth';
 import { csvEmpfang } from '../utils/dateiEmpfang';
 import { sendeFehler } from '../utils/fehlerTexte';
 import { normalisiereLagerort, setzeLagerort } from '../utils/lagerort';
+import { merkeFigur } from '../utils/katalogPflege';
+
+import { merkeBlNummer, blJoin, blNummerSql } from '../utils/blZuordnung';
 
 router.use(requireLogin);
 
@@ -75,29 +78,38 @@ router.use(requireLogin);
 // ueber die Werte.
 const FIGS_CSV_SQL = `
   SELECT f.fig_number,
-         COALESCE(f.bl_fig_number,'') AS bl_fig_number,
-         CASE WHEN a.id IS NULL THEN f.quantity   ELSE a.quantity   END AS quantity,
-         CASE WHEN a.id IS NULL THEN f.unit_price ELSE a.unit_price END AS unit_price,
-         COALESCE(CASE WHEN a.id IS NULL THEN f.condition ELSE a.condition END, 'N') AS condition,
+         -- Die BrickLink-Nummer aus der Zuordnung (Migration 0037); hier
+         -- stand COALESCE(f.bl_fig_number,''), eine Abschrift je Konto.
+         -- Das leere Feld bleibt die Ausgabe fuer „keine abweichende
+         -- Nummer" — in der Zuordnung ist das eine leere bl_id.
+         COALESCE(z.bl_id,'') AS bl_fig_number,
+         -- Der Rueckfall auf die Stammzeile ist weg: Migration 0035 hat
+         -- f.unit_price und f.condition geloescht und traegt fuer jede
+         -- manuelle Figur eine Erfassung nach. Dieselbe Aenderung wie bei
+         -- PARTS_CSV_SQL in routes/parts.ts, wo sie ausgeschrieben steht.
+         -- Ohne Rueckfall auf f.quantity: Migration 0038 hat die Spalte
+         -- geloescht. Siehe PARTS_CSV_SQL in routes/parts.ts.
+         COALESCE(a.quantity, 0) AS quantity,
+         a.unit_price,
+         COALESCE(a.condition, 'N') AS condition,
          CASE WHEN a.id IS NULL THEN ''
               ELSE TO_CHAR(a.created_at AT TIME ZONE 'UTC','YYYY-MM-DD') END AS acquired_at
     FROM minifigs f
+    LEFT JOIN bl_zuordnung z ON z.art = 'fig' AND z.rb_id = f.fig_number
     LEFT JOIN minifig_acquisitions a
            ON a.user_id = f.user_id AND a.fig_number = f.fig_number
+    -- Der Figurenname steht seit Migration 0034 im Katalog. LEFT JOIN, damit
+    -- eine Figur ohne Katalogzeile nicht aus dem Export faellt.
+    LEFT JOIN minifigs_catalog mc ON mc.fig_number = f.fig_number
    WHERE f.user_id = $1 AND f.source = 'manual'
-   ORDER BY f.fig_name ASC, f.fig_number ASC, a.created_at ASC, a.id ASC`;
+   ORDER BY mc.fig_name ASC, f.fig_number ASC, a.created_at ASC, a.id ASC`;
 
 async function buildFigsCsv(uid: number) {
-  // Rueckfallweg wie beim Sets-Export: Das frueherere `.catch(()=>[])` je Figur
-  // liess den Export weiterlaufen, wenn minifig_acquisitions fehlt. Ein JOIN
-  // wuerde stattdessen die ganze Abfrage abbrechen.
-  const acqRows = (await db.all(FIGS_CSV_SQL, [uid]).catch(() => null)
-    ?? await db.all(
-      `SELECT fig_number, COALESCE(bl_fig_number,'') AS bl_fig_number, quantity, unit_price,
-              COALESCE(condition,'N') AS condition, '' AS acquired_at
-         FROM minifigs WHERE user_id=$1 AND source='manual'
-        ORDER BY fig_name ASC, fig_number ASC`, [uid])
-  ).map((r: any) => ({ ...r, unit_price: r.unit_price ?? '' }));
+  // Ohne zweite Abfrage als Rueckfall — sie zeigte auf f.unit_price und
+  // f.condition, die Migration 0035 geloescht hat. Siehe buildPartsCsv in
+  // routes/parts.ts.
+  const acqRows = (await db.all(FIGS_CSV_SQL, [uid]))
+    .map((r: any) => ({ ...r, unit_price: r.unit_price ?? '' }));
 
   // Die Abfrage liefert die Felder bereits in der Form, die der Export braucht
   // (COALESCE auf '' beziehungsweise 'N' steht oben im SQL) — das frueher hier
@@ -141,7 +153,6 @@ function resolveBlFigNumber(fig: { bl_fig_number?: string | null; fig_number?: s
 // muss nur durchgereicht werden.
 //
 // @param {'N'|'U'} condition Zustand, in dem die Teile bepreist werden.
-
 
 // Shared logic to add/update a single manual minifig. Used by both the
 // session-based web route (POST /api/minifigs) and the token-based API
@@ -222,9 +233,9 @@ async function addManualFigIntern(uid: number, body: any) {
     // Vorher endete der Pfad hier: Eine erneut erfasste Figur bekam keine neue
     // Zeile in minifig_acquisitions — kein Kaufpreis, kein abweichendes
     // Erfassungsdatum. Gleicher Fehler wie zuvor bei den manuellen Teilen.
-    await db.run('UPDATE minifigs SET quantity = quantity + $1 WHERE id = $2',
-      [quantity, existing.id]);
-
+    // Die Menge wird NICHT hier fortgeschrieben: Die Erfassung unten ist die
+    // Wahrheit, und mengeNeuRechnen() leitet die Spalte daraus ab
+    // (utils/bestandsmenge.ts). Hier stand `quantity = quantity + $1`.
     const re = await resolveManualFigPurchase(uid, {
       figNumber: num, blFigNumber: blNum, unitPrice: unit_price, condition,
     });
@@ -237,16 +248,39 @@ async function addManualFigIntern(uid: number, body: any) {
       price: re.erfassungsPreis,
       condition: re.effectiveCondition, createdAt: acquiredAt,
     }).catch(e => console.error('[addManualFig] Zweiterfassung:', e.message));
+    // Kein Nachrechnen mehr: Die Stückzahl steht seit Migration 0038
+    // nicht an der Zeile. Hier stand mengeNeuRechnen(), das sie aus den
+    // Erfassungen ableitete und SCHRIEB — jetzt rechnet sie das Lesen
+    // (utils/bestandsmenge.ts, teilmengeJoin/teilmengeAus).
 
     return { action: 'updated', fig_number: num };
   }
 
-  const { effectiveUnitPrice, effectivePurchasePrice, erfassungsPreis, effectiveCondition, preisAusZustand } =
+  // Ohne effectiveUnitPrice/effectivePurchasePrice: Sie waren fuer die
+  // Bestandszeile, und die traegt seit Migration 0035 keinen Preis. Dieselbe
+  // Stelle wie in routes/parts.ts, vom Compiler gemeldet.
+  const { erfassungsPreis, effectiveCondition, preisAusZustand } =
     await resolveManualFigPurchase(uid, { figNumber: num, blFigNumber: blNum, unitPrice: unit_price, condition });
+  // Beschreibung in den Katalog, Bestand in minifigs (Migration 0034). Der
+  // Katalog zuerst: Faellt die Anfrage dazwischen aus, steht lieber eine
+  // Beschreibung ohne Bestand da (unsichtbar, weil niemand die Figur hat) als
+  // ein Bestand ohne Namen in der Figurenliste.
+  await merkeFigur(num, fig_name, image_url);
+  // Preis und Zustand nicht mehr an die Bestandszeile (Migration 0035) — sie
+  // stehen in der Erfassung, die recordAcquisitionForDay() gleich darunter
+  // anlegt.
+  // Menge 0: Sie entsteht aus der Erfassung, die recordAcquisitionForDay()
+  // weiter unten anlegt (utils/bestandsmenge.ts).
+  // Ohne bl_fig_number: Die BrickLink-Nummer steht seit Migration 0037 in
+  // bl_zuordnung, einmal je Figur und ohne Konto. Eingegeben wird sie
+  // weiterhin hier — sie landet nur woanders.
+  // Ohne Menge — siehe addManualPart in routes/parts.ts (Migration 0038).
   await db.run(`
-    INSERT INTO minifigs (user_id, set_number, fig_number, bl_fig_number, fig_name, quantity, image_url, source, unit_price, purchase_price, condition)
-    VALUES ($1, NULL, $2, $3, $4, $5, $6, 'manual', $7, $8, $9) ON CONFLICT DO NOTHING`,
-    [uid, num, blNum, fig_name, quantity, image_url, effectiveUnitPrice, effectivePurchasePrice, effectiveCondition]);
+    INSERT INTO minifigs (user_id, set_number, fig_number, source)
+    VALUES ($1, NULL, $2, 'manual') ON CONFLICT DO NOTHING`,
+    [uid, num]);
+  if (blNum) await merkeBlNummer('fig', num, blNum).catch(
+    logAndContinue(`minifiguren:bl-nummer ${num}`));
   // Record acquisition — mit dem tatsächlich verwendeten Kaufpreis (Marktpreis
   // bzw. Teile-Schätzung, falls kein Preis eingegeben wurde), damit die
   // Erfassungshistorie und die PnL-Berechnung stimmen.
@@ -266,15 +300,28 @@ async function addManualFigIntern(uid: number, body: any) {
 // minifig. Used by both the session-based web route and the token-based API,
 // so the behaviour is implemented exactly once.
 async function updateManualFig(uid: number, figNumber: string, body: any) {
+  // Der Zustand kommt aus der NEUESTEN Erfassung — an der Bestandszeile gibt
+  // es ihn seit Migration 0035 nicht mehr. Dieselbe Ordnung wie latestSql in
+  // routes/api_v1/acquisitions.ts. Die BrickLink-Nummer kommt seit Migration
+  // 0037 aus bl_zuordnung — sie ist eine Kennung der FIGUR, nicht meines
+  // Exemplars, und stand vorher je Konto an der Bestandszeile.
   const existing = await db.get(
-    "SELECT id, bl_fig_number, condition FROM minifigs WHERE user_id=$1 AND fig_number=$2 AND source='manual'",
+    `SELECT m.id, ${blNummerSql('m.fig_number', 'z')} AS bl_fig_number,
+            (SELECT a.condition FROM minifig_acquisitions a
+              WHERE a.user_id = m.user_id AND a.fig_number = m.fig_number
+              ORDER BY a.created_at DESC, a.id DESC LIMIT 1) AS condition
+       FROM minifigs m
+       ${blJoin('m.fig_number', 'fig', 'z')}
+      WHERE m.user_id=$1 AND m.fig_number=$2 AND m.source='manual'`,
     [uid, figNumber]);
   if (!existing) { const e = Object.assign(new Error('Minifigur nicht gefunden oder nicht manuell hinzugefügt'), { status: 404 }); throw e; }
 
   if (body.quantity !== undefined) {
     const newQty = parseInt(body.quantity) || 1;
-    await db.run('UPDATE minifigs SET quantity=$1 WHERE id=$2', [newQty, existing.id]);
-    try {
+    // Erst die Erfassungen, dann die Menge daraus — und ohne das try/catch,
+    // das seinen Fehler verschluckte. Die Begruendung steht ausgeschrieben
+    // bei updateManualPart in routes/parts.ts; es ist dieselbe Stelle.
+    {
       const acqs = await db.all('SELECT id, quantity, created_at FROM minifig_acquisitions WHERE user_id=$1 AND fig_number=$2 ORDER BY created_at DESC, id DESC',
         [uid, figNumber]);
       const currentTotal = acqs.reduce((s,r)=>s+r.quantity,0);
@@ -327,29 +374,49 @@ async function updateManualFig(uid: number, figNumber: string, body: any) {
           rem -= take;
         }
       }
-    } catch(e) { console.error('[updateManualFig] acq tracking:', fehlertext(e)); }
+    }
   }
   let newBlNum = existing.bl_fig_number;
   if (body.bl_fig_number !== undefined) {
     newBlNum = body.bl_fig_number ? String(body.bl_fig_number).trim() : null;
-    await db.run('UPDATE minifigs SET bl_fig_number=$1 WHERE id=$2', [newBlNum, existing.id]);
+    // In die Zuordnung, nicht an die Bestandszeile (Migration 0037). Eine
+    // geleerte Eingabe loescht die Zuordnung nicht, sie setzt sie auf
+    // „keine abweichende Nummer" — die Zeile bleibt also als „nachgesehen"
+    // stehen, genau wie bei den Teilen.
+    if (newBlNum) await merkeBlNummer('fig', figNumber, newBlNum);
+    else await db.run(
+      `INSERT INTO bl_zuordnung (art, rb_id, bl_id) VALUES ('fig',$1,NULL)
+       ON CONFLICT (art, rb_id) DO UPDATE SET bl_id=NULL, fetched_at=NOW()`,
+      [figNumber]);
   }
   if (body.unit_price !== undefined) {
     // Siehe utils/preisRegel.ts — dieselbe Regel wie bei den Teilen.
-    const { unitPrice, purchasePrice } = await kaufpreisAusEingabe(
+    // purchasePrice wird nicht ausgepackt — siehe updateManualPart in
+    // routes/parts.ts: Er war der Anzeigewert der Bestandszeile.
+    const { unitPrice } = await kaufpreisAusEingabe(
       body.unit_price, body.condition, existing.condition, uid,
       (zustand) => getCurrentFigMarketPrice(figNumber, uid, newBlNum, zustand),
     );
-    await db.run('UPDATE minifigs SET unit_price=$1, purchase_price=$2 WHERE id=$3',
-      [unitPrice, purchasePrice, existing.id]);
+    // In die NEUESTE Erfassung (Migration 0035) — dieselbe Begruendung und
+    // dieselbe Form wie bei den Teilen.
+    await db.run(
+      `UPDATE minifig_acquisitions SET unit_price = NULLIF($1, 0)
+        WHERE id = (SELECT a.id FROM minifig_acquisitions a
+                     WHERE a.user_id=$2 AND a.fig_number=$3
+                     ORDER BY a.created_at DESC, a.id DESC LIMIT 1)`,
+      [unitPrice, uid, figNumber]);
   }
   if (body.condition !== undefined && body.condition !== null) {
     const cond = ['N','U'].includes(body.condition) ? body.condition : 'N';
-    try {
-      await db.run('UPDATE minifigs SET condition=$1 WHERE id=$2', [cond, existing.id]);
-    } catch (e) {
-      console.error('[updateManualFig] condition update skipped (migration pending?):', fehlertext(e));
-    }
+    // Das try/catch mit „migration pending?" ist weg: Es deckte eine Zeit ab,
+    // in der minifigs.condition noch fehlen konnte. Jetzt gibt es die Spalte
+    // nicht mehr, und ein Fehlschlag soll nicht verschwiegen werden.
+    await db.run(
+      `UPDATE minifig_acquisitions SET condition=$1
+        WHERE id = (SELECT a.id FROM minifig_acquisitions a
+                     WHERE a.user_id=$2 AND a.fig_number=$3
+                     ORDER BY a.created_at DESC, a.id DESC LIMIT 1)`,
+      [cond, uid, figNumber]);
   }
 }
 
@@ -404,7 +471,8 @@ router.post('/import/csv', csvEmpfang.single('file'), async (req: LoggedInReques
 
         // Gleiche Preis-/Zustandslogik wie beim Einzel-Hinzufügen (inkl.
         // Teile-Schätzung, wenn die Figur bei BrickLink nicht gefunden wird).
-        const { effectiveUnitPrice, effectivePurchasePrice, erfassungsPreis, effectiveCondition } =
+        // Ohne die beiden Stammzeilen-Werte — siehe addManualFig.
+        const { erfassungsPreis, effectiveCondition } =
           await resolveManualFigPurchase(uid, { figNumber, blFigNumber, unitPrice, condition: rawCondition });
         const acqDate = acquiredAt || new Date().toISOString().slice(0,10);
 
@@ -413,7 +481,8 @@ router.post('/import/csv', csvEmpfang.single('file'), async (req: LoggedInReques
           [uid, figNumber]);
 
         if (existing) {
-          await db.run('UPDATE minifigs SET quantity = quantity + $1 WHERE id = $2', [qty, existing.id]);
+          // Keine Mengenaenderung hier — die Erfassung unten ist die Wahrheit
+          // (utils/bestandsmenge.ts).
           // Erfassung auch beim Aufstocken anlegen (Zustand/Preis/Datum erhalten).
           await recordAcquisitionForDay('fig', uid, [figNumber],
             { quantity: qty, price: erfassungsPreis, condition: effectiveCondition||'N', createdAt: acqDate }
@@ -421,9 +490,18 @@ router.post('/import/csv', csvEmpfang.single('file'), async (req: LoggedInReques
           updated++;
           results.push({ fig_number: figNumber, action: 'updated' });
         } else {
+          // Beschreibung in den Katalog, Bestand in minifigs — wie beim
+          // Anlegen von Hand (Migration 0034).
+          await merkeFigur(figNumber, figName, imageUrl);
+          // Preis und Zustand in die Erfassung (Migration 0035) — siehe
+          // addManualFig.
+          // Ohne Menge (0038) und ohne bl_fig_number (0037) — siehe
+          // addManualFig.
           await db.run(
-            "INSERT INTO minifigs (user_id, set_number, fig_number, bl_fig_number, fig_name, quantity, image_url, source, unit_price, purchase_price, condition) VALUES ($1,NULL,$2,$3,$4,$5,$6,'manual',$7,$8,$9) ON CONFLICT DO NOTHING",
-            [uid, figNumber, blFigNumber, figName, qty, imageUrl, effectiveUnitPrice, effectivePurchasePrice, effectiveCondition]);
+            "INSERT INTO minifigs (user_id, set_number, fig_number, source) VALUES ($1,NULL,$2,'manual') ON CONFLICT DO NOTHING",
+            [uid, figNumber]);
+          if (blFigNumber) await merkeBlNummer('fig', figNumber, blFigNumber)
+            .catch(logAndContinue(`minifigs:import ${figNumber} (bl-nummer)`));
           await recordAcquisitionForDay('fig', uid, [figNumber],
             { quantity: qty, price: erfassungsPreis, condition: effectiveCondition||'N', createdAt: acqDate }
           ).catch(logAndContinue(`minifigs:import ${figNumber} (neu)`));
@@ -446,20 +524,17 @@ router.post('/import/csv', csvEmpfang.single('file'), async (req: LoggedInReques
 
 /** Wie getPartAcquisitions: `uid` ist das Blickfeld (Liste), das SQL fragt ANY($1). */
 async function getFigAcquisitions(uid: number[], figNumber: string) {
+  // Kein Rueckfall auf die Stammzeile mehr — siehe die Begruendung bei
+  // getPartAcquisitions in routes/parts.ts (Migration 0035).
   return db.all(
-    `SELECT a.id, a.quantity,
-            COALESCE(a.unit_price, m.unit_price, m.purchase_price) AS unit_price,
-            COALESCE(a.condition, m.condition, 'N') AS condition,
+    `SELECT a.id, a.quantity, a.unit_price,
+            COALESCE(a.condition, 'N') AS condition,
             a.created_at, a.user_id AS owner_user_id
      FROM minifig_acquisitions a
-     LEFT JOIN minifigs m ON m.user_id=a.user_id AND m.fig_number=a.fig_number AND m.source='manual'
      WHERE a.user_id = ANY($1) AND a.fig_number=$2
      ORDER BY a.created_at ASC, a.id ASC`,
     [uid, figNumber]
   );
 }
-
-
-
 
 export = Object.assign(router, { importMinifigsForSet, getCurrentFigMarketPrice, addManualFig, updateManualFig, resolveBlFigNumber, buildFigsCsv, estimateFigPriceFromParts, getFigAcquisitions });

@@ -444,6 +444,18 @@ async function preisVerlaufEindeutigProTag() {
 async function spaltenMigrationen() {
   // ── Migrations: add columns to existing tables ──────────────────────────────
   // sets table migrations
+  //
+  // purchase_price und condition stehen hier weiterhin, obwohl Migration 0032
+  // sie loescht — und das ist kein Versehen: initSchema() laeuft NUR beim
+  // allerersten Start, und danach laufen alle Migrationen der Reihe nach.
+  // Migration 0007 schreibt `ALTER TABLE sets ALTER COLUMN purchase_price TYPE
+  // NUMERIC`, und das ist auf einer fehlenden Spalte ein harter Fehler
+  // (GEMESSEN: der erste Start einer frischen Datenbank brach damit ab).
+  // 0032 raeumt sie am Ende derselben Kette weg. Die Begruendung steht
+  // ausfuehrlich in db/schema.sql an der sets-Tabelle.
+  //
+  // Auf einer LAUFENDEN Datenbank gibt es die beiden Spalten nicht: Diese
+  // Schleife kommt dort nie mehr vorbei.
   const setsMigrations = [
     { col: 'updated_at',     sql: "ALTER TABLE sets ADD COLUMN updated_at TIMESTAMPTZ DEFAULT NOW()" },
     { col: 'purchase_price', sql: "ALTER TABLE sets ADD COLUMN purchase_price NUMERIC(12,4)" },
@@ -762,7 +774,17 @@ async function frueherZurLaufzeitAngelegt() {
     await pool.query("ALTER TABLE parts ADD COLUMN added_at TIMESTAMPTZ DEFAULT NOW()");
   }
 
-  // Migration: condition column for parts (manual parts)
+  // ── Migration: condition column for parts (manual parts) ────────────────
+  //
+  // Steht hier weiter, obwohl Migration 0035 die Spalte loescht — und das ist
+  // kein Versehen, sondern dieselbe Begruendung wie bei sets.purchase_price
+  // (siehe spaltenMigrationen weiter oben): Diese Funktion legt den
+  // AUSGANGSZUSTAND einer neuen Datenbank, danach laufen die numerierten
+  // Migrationen der Reihe nach. Der Nachtrag in 0035 LIEST parts.condition,
+  // um sie in die Erfassung zu tragen; fehlte die Spalte auf einer frischen
+  // Datenbank, braeche er ab.
+  //
+  // Auf einer LAUFENDEN Datenbank kommt dieser Block nie mehr vorbei.
   const partsCondExists = await pool.query(
     "SELECT 1 FROM information_schema.columns WHERE table_name='parts' AND column_name='condition'",
   ).then(r => r.rows.length > 0).catch(() => false);
@@ -771,7 +793,7 @@ async function frueherZurLaufzeitAngelegt() {
     console.log('  ✅ Migration: parts.condition hinzugefügt');
   }
 
-  // Migration: condition column for minifigs (manual minifigs)
+  // Dasselbe fuer die Minifiguren — siehe die Begruendung direkt darueber.
   const mfCondExists = await pool.query(
     "SELECT 1 FROM information_schema.columns WHERE table_name='minifigs' AND column_name='condition'",
   ).then(r => r.rows.length > 0).catch(() => false);
@@ -792,60 +814,35 @@ async function frueherZurLaufzeitAngelegt() {
   //
   // Der Sets-Nachtrag direkt darunter stand immer schon an der richtigen
   // Stelle. Von dreien war einer richtig einsortiert und zwei nicht.
-  // Backfill: existing manual parts/minifigs get one acquisition row if none exists
-  // Scheitert das Nachtragen, bleiben manuelle Teile dauerhaft ohne
-  // Erst-Erfassung — die Kaufhistorie hat ein Loch und die Finanzansicht
-  // rechnet mit einer Zeile weniger. Ohne Protokoll erfaehrt das niemand.
+  // ── Hier stand der Nachtrag „manuelle Teile und Figuren ohne Erfassung ──
+  // ── bekommen eine" — er ist weg, und zwar weil er nie etwas getan hat ───
   //
-  // Der Kommentar stand hier zwischenzeitlich INNERHALB des Literals, also
-  // hinter der schliessenden Klammer der Abfrage. Postgres bekam ihn mit
-  // gesendet und antwortete `syntax error at or near "das"` — das Nachtragen
-  // lief ab da gar nicht mehr. Aufgefallen ist es genau durch das Protokoll,
-  // das im selben Zug eingebaut wurde.
-  await pool.query(`
-    INSERT INTO part_acquisitions (user_id, part_number, color_id, quantity, unit_price, condition, created_at)
-    SELECT p.user_id, p.part_number, COALESCE(p.color_id,0), p.quantity,
-           COALESCE(p.unit_price, p.purchase_price), COALESCE(p.condition,'N'), p.added_at
-    FROM parts p
-    WHERE p.source='manual'
-    AND NOT EXISTS (
-      SELECT 1 FROM part_acquisitions a
-      WHERE a.user_id=p.user_id AND a.part_number=p.part_number AND a.color_id=COALESCE(p.color_id,0)
-    )
-  `).catch(logAndContinue('start:erfassungen fuer Teile nachtragen'));
-  // NOW() statt m.added_at: Die Tabelle minifigs hat GAR KEINE Zeitspalte —
-  // weder im Schema noch in einer Migration. Diese Abfrage ist deshalb seit
-  // jeher an `column m.added_at does not exist` gescheitert, bei jedem Start,
-  // und der Fehler wurde verschluckt. Manuell erfasste Minifiguren aus der
-  // Zeit vor den Erfassungen haben daher bis heute keine Erst-Erfassung: Ihr
-  // Kaufpreis fehlt in der Historie und in der Finanzansicht.
+  // Dieselbe Begruendung, die beim Sets-Nachtrag ein Stueck weiter unten schon
+  // ausgeschrieben steht: initSchema() laeuft NUR beim allerersten Start einer
+  // Datenbank (siehe initSchemaOnce — das Tor ist „hat schema_meta ueberhaupt
+  // eine Zeile", kein Versionsvergleich), und dort sind `parts` und `minifigs`
+  // leer. Gedacht war er fuer Altbestaende und hat sie niemals erreicht.
   //
-  // Ein Datum zu erfinden waere schlechter als das Erfassungsdatum "jetzt":
-  // Der Portfolio-Verlauf ordnet nach created_at, und ein frei gewaehltes
-  // Datum verschoebe eine Kurve, die nie so verlaufen ist.
-  await pool.query(`
-    INSERT INTO minifig_acquisitions (user_id, fig_number, quantity, unit_price, condition, created_at)
-    SELECT m.user_id, m.fig_number, m.quantity,
-           COALESCE(m.unit_price, m.purchase_price), COALESCE(m.condition,'N'), NOW()
-    FROM minifigs m
-    WHERE m.source='manual'
-    AND NOT EXISTS (
-      SELECT 1 FROM minifig_acquisitions a
-      WHERE a.user_id=m.user_id AND a.fig_number=m.fig_number
-    )
-  `).catch(logAndContinue('start:erfassungen fuer Minifiguren nachtragen'));
+  // Schlimmer noch waere er ab jetzt: Migration 0035 loescht unit_price,
+  // purchase_price und condition aus beiden Tabellen. Bei einem Start mit
+  // FORCE_SCHEMA_INIT=1 liefe er danach gegen geloeschte Spalten — und sein
+  // logAndContinue() wuerde das verschlucken.
+  //
+  // Wo er gebraucht wird, steht er jetzt richtig: Migration 0035 traegt die
+  // fehlenden Erfassungen nach, einmalig, und prueft danach nach, dass keine
+  // manuelle Position ohne Erfassung und kein Kaufpreis uebrig bleibt — bevor
+  // sie die sechs Spalten loescht.
   console.log('  ✅ part_acquisitions + minifig_acquisitions erstellt/migriert');
 
-  // Migration: bestehende Sets ohne Kaufpreis-Historie bekommen genau eine
-  // Acquisition-Zeile (Menge/Preis/Datum vom Set) — Finanzsummen bleiben identisch.
-  await pool.query(`
-    INSERT INTO set_acquisitions (user_id, set_number, quantity, purchase_price, created_at)
-    SELECT s.user_id, s.set_number, s.quantity, s.purchase_price, COALESCE(s.added_at, NOW())
-    FROM sets s
-    WHERE NOT EXISTS (
-      SELECT 1 FROM set_acquisitions a
-      WHERE a.user_id = s.user_id AND a.set_number = s.set_number
-    )`).catch(schlucke('acquisitions backfill'));
+  // Hier stand der Nachtrag „bestehende Sets ohne Kaufpreis-Historie bekommen
+  // genau eine Acquisition-Zeile (Menge/Preis/Datum vom Set)". Er ist weg, und
+  // zwar weil er nie etwas getan hat: initSchema() laeuft NUR beim allerersten
+  // Start einer Datenbank (siehe initSchemaOnce), und dort ist `sets` leer. Der
+  // Nachtrag war fuer Altbestaende gedacht und hat sie niemals erreicht.
+  //
+  // Wo er gebraucht wird, steht er jetzt richtig: Migration 0032 traegt die
+  // fehlenden Erfassungen nach, einmalig, und prueft danach nach, dass keine
+  // Set-Zeile ohne Erfassung uebrig ist — bevor sie die beiden Spalten loescht.
 }
 
 /**
@@ -915,12 +912,60 @@ async function indizesUndZusammenfassung() {
   await pool.query(`CREATE INDEX IF NOT EXISTS idx_rate_limit_first_at ON rate_limit_attempts(first_at)`).catch(() => {});
 
 
-  await pool.query(`CREATE INDEX IF NOT EXISTS idx_parts_category ON parts(user_id, category_name)`).catch(schlucke('idx_parts_category'));
-  // Funktionaler Index auf genau den Ausdruck, nach dem getParts() gruppiert.
-  // Ohne ihn muss Postgres COALESCE(bl_part_number, part_number) für jede der
-  // Zeilen neu berechnen. Gemessen an 380 Sets / 171'000 Zeilen halbiert er die
-  // Zeit einer Seitenabfrage (372 ms → 190 ms).
-  await pool.query(`CREATE INDEX IF NOT EXISTS idx_parts_group ON parts(user_id, (COALESCE(bl_part_number, part_number)), color_id)`).catch(schlucke('idx_parts_group'));
+  // ── idx_parts_category stand hier ───────────────────────────────────────
+  //
+  // Der Index lag auf parts(user_id, category_name). Die Kategorie steht seit
+  // Migration 0034 in part_catalog und haengt NICHT am Konto — der fuehrende
+  // user_id waere dort sinnlos.
+  //
+  // GEMESSEN, als die Anweisung hier noch stand: „[db] idx_parts_category:
+  // column \"category_name\" does not exist" — geschluckt, also lautlos.
+  //
+  // Der Ersatz steht in db/migrations/0034-…, nicht hier, und zwar aus
+  // demselben Grund wie die Indizes aus 0015 (siehe den Block weiter oben):
+  // initSchema() laeuft nur beim allerersten Start. Auf einer LAUFENDEN
+  // Datenbank waere der Index hier nie entstanden, und niemand haette es
+  // gemerkt, weil nichts scheitert.
+  // ── Der funktionale Index ist WEG, und das ist eine Einbusse ────────────
+  //
+  // Hier stand
+  //
+  //     CREATE INDEX idx_parts_group
+  //       ON parts(user_id, (COALESCE(bl_part_number, part_number)), color_id)
+  //
+  // auf genau den Ausdruck, nach dem getParts() gruppiert. GEMESSEN an 380
+  // Sets / 171'000 Zeilen halbierte er die Zeit einer Seitenabfrage
+  // (372 ms → 190 ms).
+  //
+  // Mit Migration 0037 steht die BrickLink-Nummer in `bl_zuordnung`, und der
+  // Gruppierungsausdruck liest damit eine ANDERE Tabelle. Ein funktionaler
+  // Index kann das nicht: Er darf nur Spalten seiner eigenen Tabelle
+  // enthalten. Dieser Index ist also nicht umgezogen, sondern unmoeglich
+  // geworden — das ist der Preis dafuer, dass die Nummer nur noch an einer
+  // Stelle steht.
+  //
+  // Was an seine Stelle tritt:
+  //
+  //   * idx_parts_gruppe hier: die EINGÄNGE der Gruppierung
+  //     (user_id, part_number, color_id). Postgres liest die Teilezeilen
+  //     darueber geordnet und haengt die Zuordnung per Hash-Join an;
+  //     bl_zuordnung hat wenige zehntausend Zeilen und passt in den
+  //     Arbeitsspeicher.
+  //   * Vor allem aber: Der HEISSE Weg laeuft gar nicht ueber diese Abfrage.
+  //     Die Teileansicht (exclude_manual=1, ohne Set- und Lagerortfilter)
+  //     liest die vorberechnete Zusammenfassung, und die traegt den
+  //     Gruppenschluessel als fertige Spalte `part_key`
+  //     (utils/partsSummary.ts). Die Live-Abfrage bleibt fuer die Faelle, in
+  //     denen ein Filter die Menge ohnehin klein macht.
+  // Der Ersatzindex steht in Migration 0037 und NICHT hier, aus demselben
+  // Grund wie idx_parts_category (Migration 0034): initSchema() laeuft nur
+  // beim allerersten Start, auf einer laufenden Datenbank waere der Index
+  // hier nie entstanden. Und an zwei Stellen darf er nicht stehen —
+  // scripts/check-schema-am-start.js meldet jede doppelte Definition.
+  //
+  // Den alten Index muss niemand loeschen: Er haengt an
+  // parts.bl_part_number, und Postgres entfernt abhaengige Indizes beim
+  // DROP COLUMN selbst.
   // Vorberechnete Teile-Zusammenfassung inkl. Trigger zur Entwertung.
   //
   // require() ABSICHTLICH hier unten, nicht oben: utils/partsSummary importiert

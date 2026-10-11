@@ -47,6 +47,7 @@ process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:t
 process.env.WEB_WORKERS = '1';
 
 const _req = require('./helpers/sources').buildAndRequire();
+const { haeltSet } = require('./helpers/bestand');
 const db = _req('db/database.js');
 
 test('die Portfolio-Prozentzahl misst Preise, nicht Zukäufe',
@@ -80,8 +81,12 @@ test('die Portfolio-Prozentzahl misst Preise, nicht Zukäufe',
 
   /** Set anlegen und ihm ab `abTag` Tagen vor heute einen Preisverlauf geben. */
   const setMit = async (i, abTag, preisAmAnfang, preisHeute) => {
-    await db.run(`INSERT INTO sets (user_id,set_number,name,quantity,purchase_price)
-                  VALUES ($1,$2,'T',1,10)`, [uid, SN(i)]);
+    await haeltSet(db, uid, SN(i), 0);  // Menge 0: die Erfassung dahinter traegt sie
+    // Der Kaufpreis stand bis Migration 0032 in der sets-Zeile. Er steht jetzt
+    // in der Erfassung — dieselbe Zahl, nur am einzigen Ort, an dem
+    // portfolioHistory.ts ihn noch liest.
+    await db.run(`INSERT INTO set_acquisitions (user_id,set_number,quantity,purchase_price,condition)
+                  VALUES ($1,$2,1,10,'N')`, [uid, SN(i)]);
     for (let d = abTag; d >= 0; d--) {
       const preis = abTag === 0 ? preisHeute
         : preisAmAnfang + (preisHeute - preisAmAnfang) * ((abTag - d) / abTag);

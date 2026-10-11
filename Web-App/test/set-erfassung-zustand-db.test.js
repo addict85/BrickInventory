@@ -55,6 +55,7 @@ Module.prototype.require = function (name) {
 };
 
 const _req = require('./helpers/sources').buildAndRequire();
+const { haeltSet } = require('./helpers/bestand');
 const db = _req('db/database.js');
 const { setUserSetting } = _req('utils/settings.js');
 const { addSet } = _req('utils/setService.js');
@@ -89,9 +90,7 @@ test('aufstocken ohne Zustandsangabe folgt dem Standard des Nutzers', { concurre
     //
     // Also die Set-Zeile direkt anlegen, ohne Erfassung. Der nächste Aufruf
     // nimmt damit den „existing"-Zweig und schreibt die erste Tageszeile.
-    await db.run(
-      `INSERT INTO sets (user_id, set_number, name, quantity)
-       VALUES ($1, $2, 'Testset', 1)`, [uid, SET]);
+    await haeltSet(db, uid, SET, 1);
 
     // Erfassung OHNE Zustandsangabe. Preis mitgeben, damit kein Netzaufruf
     // nötig ist; um den Preis geht es hier nicht.

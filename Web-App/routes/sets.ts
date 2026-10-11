@@ -129,6 +129,7 @@ import { ausTabelle } from '../utils/validate';
 import { mitVersion } from '../utils/setNummer';
 import { csvEmpfang } from '../utils/dateiEmpfang';
 import { sendeFehler, fehlerText, antwortSprache } from '../utils/fehlerTexte';
+import { mengeSkalar } from '../utils/bestandsmenge';
 
 const requireLoginOrToken = loginOrTokenGuard({ timeoutMs: 3000 });
 
@@ -329,12 +330,17 @@ router.get('/info/:setNumber', requireLogin, async (req, res) => {
       [n]
     );
     if (row) return res.json({ success: true, set_number: n, name: row.name || n, ...row });
-    // Not in catalog yet — try the user's own sets table as fallback
-    const own = await db.get(
-      'SELECT name, year, theme, pieces, image_url, image_local FROM sets WHERE set_number = $1 AND user_id = $2',
-      [n, angemeldeteNutzerId(req)]
-    );
-    if (own) return res.json({ success: true, set_number: n, name: own.name || n, ...own });
+    // ── Hier stand ein Rueckfall auf die eigene sets-Zeile ─────────────────
+    //
+    // „Not in catalog yet — try the user's own sets table as fallback": Die
+    // Stammdaten standen an beiden Orten, und der zweite konnte etwas wissen,
+    // was dem ersten fehlte.
+    //
+    // Mit Migration 0033 gibt es nur noch den Katalog, und sie traegt fuer
+    // JEDE Setnummer aus `sets` eine Zeile nach (Schritt 1) und prueft das
+    // danach (Schritt 2). Ein Set, das jemand haelt, ist hier also immer
+    // gefunden. Bleibt die Abfrage leer, kennt diese Installation die Nummer
+    // wirklich nicht — dann ist die Nummer selbst die beste Antwort.
     // Unknown set — return the number itself as name
     res.json({ success: true, set_number: n, name: n });
   } catch (e) { handleRouteError(res, e, undefined, req); }
@@ -355,7 +361,13 @@ router.use(requireLogin);
 // "Set Number,Quantity" list-import format (see rebrickable.com/help/lists-sets/)
 router.get('/export/rebrickable', async (req, res) => {
   try {
-    const sets = await db.all('SELECT set_number, quantity FROM sets WHERE user_id=$1 ORDER BY set_number ASC', [angemeldeteNutzerId(req)]);
+    // Die Menge aus den Erfassungen (Migration 0036 hat sets.quantity
+    // geloescht). Rebrickable erwartet eine Zeile je Setnummer mit der Anzahl
+    // der Exemplare — genau die Summe ueber set_acquisitions.
+    const sets = await db.all(
+      `SELECT s.set_number, ${mengeSkalar('s')} AS quantity
+         FROM sets s WHERE s.user_id=$1 ORDER BY s.set_number ASC`,
+      [angemeldeteNutzerId(req)]);
     sendCsv(res, `rebrickable-sets-${new Date().toISOString().substring(0,10)}.csv`,
       ['Set Number', 'Quantity'],
       sets.map(s => ({ 'Set Number': s.set_number, 'Quantity': s.quantity })));
@@ -667,8 +679,13 @@ router.post('/import/csv', csvEmpfang.single('file'), async (req, res) => {
         // kaputter Brickset-Zugang genauso aus wie ein Set ohne Eintrag dort.
         await require('../clients/brickset').getSetInfo(sn).then((bs: any) => {
           if (!bs) return;
+          // In den KATALOG, nicht in die Bestandszeilen: Die Stammdaten stehen
+          // seit Migration 0033 dort, und zwar einmal je Setnummer statt einmal
+          // je Konto. Beim CSV-Import eines Haushalts traf die alte Anweisung
+          // ohne user_id ohnehin alle Zeilen aller Konten — jetzt ist es genau
+          // eine Zeile, und sie ist die, aus der gelesen wird.
           return db.run(
-            `UPDATE sets SET name=COALESCE(name,$1), year=COALESCE(year,$2), theme=COALESCE(theme,$3), pieces=COALESCE(pieces,$4), minifigs=COALESCE(minifigs,$5) WHERE set_number=$6`,
+            `UPDATE set_catalog SET name=COALESCE(name,$1), year=COALESCE(year,$2), theme=COALESCE(theme,$3), pieces=COALESCE(pieces,$4), minifigs=COALESCE(minifigs,$5) WHERE set_number=$6`,
             [bs.name, bs.year, bs.theme, bs.pieces, bs.minifigs, sn]
           ).catch(logAndContinue(`sets:brickset-meta ${sn}`));
         }).catch(logAndContinue(`sets:brickset-abruf ${sn}`));

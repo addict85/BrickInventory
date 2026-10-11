@@ -39,6 +39,9 @@
  * gegen die Sicherheit, nie veraltete Zahlen zu zeigen.
  */
 import { pflegeTabelle } from './tabellePflegen';
+import { mengeJoin, mengeAus } from './bestandsmenge';
+import { blJoin, blNummerSql } from './blZuordnung';
+import { teilmengeJoin, teilmengeAus } from './bestandsmenge';
 import * as db from '../db/database';
 
 /** Legt Tabellen und Trigger an. Aus initSchema() aufgerufen, idempotent. */
@@ -143,7 +146,18 @@ export async function initPartsSummary(pool: any) {
       RETURN NULL;
     END $$ LANGUAGE plpgsql`);
 
-  for (const tbl of ['parts', 'sets']) {
+  // ── Warum `set_acquisitions` dazugehoert ────────────────────────────────
+  //
+  // Die Zusammenfassung speichert `total_quantity` = Teilemenge je Set x Zahl
+  // der Exemplare DES SETS. Dieser zweite Faktor stand bis Migration 0036 in
+  // `sets.quantity` — eine Mengenaenderung war also eine Aenderung an `sets`
+  // und entwertete die Zusammenfassung ueber den Trigger dort.
+  //
+  // Seit 0036 steht die Zahl in `set_acquisitions`. Ohne diesen Trigger
+  // bliebe `total_quantity` nach einem Zukauf stehen, und zwar ohne dass
+  // irgendetwas falsch AUSSIEHT — die Zahl ist plausibel, nur alt. Genau die
+  // Sorte Fehler, die den Umzug der Spalte ueberhaupt noetig gemacht hat.
+  for (const tbl of ['parts', 'sets', 'set_acquisitions']) {
     // Der alte Sammel-Trigger muss weg, sonst zählt er weiter mit.
     await pool.query(`DROP TRIGGER IF EXISTS trg_bump_parts_version ON ${tbl}`);
     for (const [suffix, op, ref] of [
@@ -218,13 +232,36 @@ export async function rebuild(userId: number, version?: number): Promise<void> {
         part_name, color_name, color_hex, category_name, image_url, image_local,
         is_spare, total_quantity, in_sets, storage)
       SELECT p.user_id,
-             COALESCE(p.bl_part_number, p.part_number),
+             -- Der Gruppierungsschluessel ist die BrickLink-Nummer, soweit es
+             -- eine abweichende gibt. Sie stand bis Migration 0037 als
+             -- Spalte bl_part_number an der Bestandszeile — je Konto,
+             -- nachkopiert aus rb_bl_mapping. Jetzt kommt sie aus
+             -- bl_zuordnung, einmal je Teil (utils/blZuordnung.ts).
+             -- (Keine Gegenstriche um den Spaltennamen: Der Kommentar steht
+             -- in einem Template-Literal, und ein Gegenstrich beendet es.)
+             ${blNummerSql('p.part_number')},
              p.color_id,
-             MIN(p.part_number), MIN(p.bl_part_number),
-             MIN(p.part_name), MIN(p.color_name), MIN(p.color_hex), MIN(p.category_name),
-             MIN(p.image_url), MIN(p.image_local),
-             MAX(COALESCE(p.is_spare, 0)),
-             SUM(p.quantity * COALESCE(s.quantity, 1)),
+             MIN(p.part_number), MIN(${blNummerSql('p.part_number')}),
+             -- Beschreibung aus den Katalogen (Migration 0034): Name und
+             -- Kategorie haengen am Teil, Farbbezeichnung und Bild an der
+             -- Farbe. In parts stand beides je Konto neu.
+             MIN(pc.part_name), MIN(pcc.color_name), MIN(pcc.color_hex), MIN(pc.category_name),
+             MIN(pcc.image_url), MIN(pcc.image_local),
+             -- is_spare gehoert zur TEILELISTE eines Sets, nicht zum Teil:
+             -- derselbe Stein ist in einem Set Ersatzteil und im naechsten
+             -- Pflichtteil. MAX() wie vorher, weil die Gruppe mehrere Sets
+             -- zusammenfasst; je (Set, Teil, Farbe) ist der Wert eindeutig
+             -- (Primaerschluessel von set_parts_catalog).
+             MAX(COALESCE(spc.is_spare, 0)),
+             -- Der zweite Faktor ist die Zahl der Exemplare DES SETS. Hier
+             -- stand COALESCE(s.quantity, 1); die Spalte ist mit Migration
+             -- 0036 weg. Die gruppierte Form (mengeJoin) und nicht die
+             -- Unterabfrage, weil dieser Aufbau ueber 171'000 Teilezeilen
+             -- laeuft — eine Unterabfrage je Zeile waeren 171'000
+             -- Indexzugriffe statt EINER Gruppierung plus Hash-Join.
+             -- Der erste Faktor ist die Stückzahl der Bestandszeile. Hier
+             -- stand p.quantity; Migration 0038 hat die Spalte geloescht.
+             SUM(${teilmengeAus('p', 'part')} * ${mengeAus('sm', 1)}),
              STRING_AGG(DISTINCT p.set_number, ','),
              -- Lagerort: STRING_AGG statt MIN, wie in der Live-Abfrage
              -- (utils/handlers/parts.ts). Dieselbe Gruppe fasst dasselbe Teil
@@ -238,10 +275,18 @@ export async function rebuild(userId: number, version?: number): Promise<void> {
              -- Regal A" gar nicht ausdruecken.
              NULLIF(STRING_AGG(DISTINCT lo.name, ', '), '')
         FROM parts p
-        LEFT JOIN sets s ON s.user_id = p.user_id AND s.set_number = p.set_number
+        ${mengeJoin('p')}
+        ${teilmengeJoin('p', 'part')}
+        ${blJoin('p.part_number', 'part')}
         LEFT JOIN storage_locations lo ON lo.id = p.storage_id
+        LEFT JOIN part_catalog pc ON pc.part_number = p.part_number
+        LEFT JOIN part_color_catalog pcc ON pcc.part_number = p.part_number
+                                        AND pcc.color_id    = p.color_id
+        LEFT JOIN set_parts_catalog spc ON spc.set_number  = p.set_number
+                                       AND spc.part_number = p.part_number
+                                       AND spc.color_id    = p.color_id
        WHERE p.user_id = $1 AND COALESCE(p.source, 'set') <> 'manual'
-       GROUP BY p.user_id, COALESCE(p.bl_part_number, p.part_number), p.color_id`,
+       GROUP BY p.user_id, ${blNummerSql('p.part_number')}, p.color_id`,
       [userId]);
     await tx.run(`
       INSERT INTO parts_summary_state (user_id, built_version, built_at)

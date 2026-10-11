@@ -187,11 +187,11 @@ async function getAllSetPartsFromCsv(setNumber: string) {
     `SELECT ip.part_num, ip.color_id, ip.quantity, ip.is_spare, ip.img_url,
             p.name, p.part_img_url,
             c.name as color_name, c.rgb as color_rgb,
-            m.bl_part_num
+            m.bl_id AS bl_part_num
      FROM rb_inventory_parts ip
      LEFT JOIN rb_parts p ON p.part_num = ip.part_num
      LEFT JOIN rb_colors c ON c.id = ip.color_id
-     LEFT JOIN rb_bl_mapping m ON m.part_num = ip.part_num
+     LEFT JOIN bl_zuordnung  m ON m.art = 'part' AND m.rb_id = ip.part_num
      WHERE ip.inventory_id = $1`,
     [invId]
   ).catch(()=>[]);

@@ -31,6 +31,7 @@ process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:t
 process.env.WEB_WORKERS = '1';
 
 const _req = require('./helpers/sources').buildAndRequire();
+const { haeltFigur, haeltSet, haeltTeil } = require('./helpers/bestand');
 const db = _req('db/database.js');
 const express = require(path.join(ROOT, 'node_modules', 'express'));
 
@@ -79,22 +80,19 @@ test('Preisverlauf: das Hauptkonto sieht die Erfassungen des Unterkontos',
   await aufraeumen();
 
   // ── Bestand ANLEGEN, und zwar durchgehend beim UNTERKONTO ────────────────
-  await db.run(`INSERT INTO sets (user_id,set_number,name,quantity,purchase_price,condition)
-                VALUES ($1,$2,'T',1,10,'N')`, [subId, SN]);
+  await haeltSet(db, subId, SN, 0);  // Menge 0: die Erfassung dahinter traegt sie
   await db.run(`INSERT INTO set_acquisitions (user_id,set_number,purchase_price,condition,quantity)
                 VALUES ($1,$2,10,'N',1)`, [subId, SN]);
   await db.run(`INSERT INTO price_cache (set_number,condition,currency_code,avg_price,total_quantity)
                 VALUES ($1,'N',$2,20,1)`, [SN, CUR]);
 
-  await db.run(`INSERT INTO parts (user_id,part_number,color_id,part_name,quantity,source)
-                VALUES ($1,$2,4,'T',1,'manual')`, [subId, PN]);
+  await haeltTeil(db, subId, PN, { menge: 0, colorId: 4 });  // Menge 0: die Erfassung dahinter traegt sie
   await db.run(`INSERT INTO part_acquisitions (user_id,part_number,color_id,unit_price,condition,quantity)
                 VALUES ($1,$2,4,3,'N',1)`, [subId, PN]);
   await db.run(`INSERT INTO part_price_cache (part_number,color_id,condition,currency_code,avg_price)
                 VALUES ($1,4,'N',$2,6)`, [PN, CUR]);
 
-  await db.run(`INSERT INTO minifigs (user_id,fig_number,fig_name,quantity,source)
-                VALUES ($1,$2,'T',1,'manual')`, [subId, FN]);
+  await haeltFigur(db, subId, FN, { menge: 0 });  // Menge 0: die Erfassung dahinter traegt sie
   await db.run(`INSERT INTO minifig_acquisitions (user_id,fig_number,unit_price,condition,quantity)
                 VALUES ($1,$2,4,'N',1)`, [subId, FN]);
   await db.run(`INSERT INTO minifig_price_cache (fig_number,condition,currency_code,avg_price)

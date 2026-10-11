@@ -44,6 +44,7 @@ process.env.WEB_WORKERS = '1';
 
 const { ROOT } = require('./helpers/sources');
 const _req = require('./helpers/sources').buildAndRequire();
+const { haeltSet, haeltTeil, mengeVon, teilmengeVon } = require('./helpers/bestand');
 const db = _req('db/database.js');
 
 /** pg_dump/psql finden — auf dem PATH oder in einer Distributions-Installation. */
@@ -137,12 +138,23 @@ test('Sicherung und Wiederherstellung', async (t) => {
 
     await db.run(`INSERT INTO users (username, password_hash) VALUES ('sicherung','x')`);
     const uid = (await db.get(`SELECT id FROM users WHERE username='sicherung'`)).id;
+    await haeltSet(db, uid, '10214-1', 0);  // Menge 0: die Erfassung dahinter traegt sie
+    // Der Name steht seit Migration 0033 im Katalog. Auch ihn muss die
+    // Sicherung zurueckbringen — und zwar aus einer ANDEREN Tabelle als die
+    // Menge. Genau das ist der Fall, an dem eine unvollstaendige Sicherung
+    // auffaellt: Ein Dump, der nur den Bestand nimmt, laesst jedes Set
+    // namenlos zurueck.
     await db.run(
-      `INSERT INTO sets (user_id, set_number, name, year, quantity, condition)
-       VALUES ($1,'10214-1','Tower Bridge',2010,2,'U')`, [uid]);
+      `INSERT INTO set_catalog (set_number, name, year) VALUES ('10214-1','Tower Bridge',2010)
+       ON CONFLICT (set_number) DO UPDATE SET name = EXCLUDED.name, year = EXCLUDED.year`);
+    // Der Zustand steht seit Migration 0032 in der Erfassung. Die Sicherung
+    // muss ihn von DORT zurueckbringen — sonst prueft dieser Test nach dem
+    // Umbau eine Spalte, die es nicht mehr gibt, und waere stillschweigend
+    // schwaecher geworden.
     await db.run(
-      `INSERT INTO parts (user_id, part_number, color_id, quantity, source)
-       VALUES ($1,'3001',4,17,'manual')`, [uid]);
+      `INSERT INTO set_acquisitions (user_id, set_number, quantity, purchase_price, condition)
+       VALUES ($1,'10214-1',2,44.50,'U')`, [uid]);
+    await haeltTeil(db, uid, '3001', { menge: 17, colorId: 4 });
   });
 
   await t.test('pg_dump erzeugt einen vollständigen Dump', () => {
@@ -165,14 +177,31 @@ test('Sicherung und Wiederherstellung', async (t) => {
       `Das Zurückspielen scheiterte. psql sagt:\n${grund()}\n` +
       `pg_dump: ${fassung(pgDump)} · psql: ${fassung(psql)}`);
 
-    const s = await db.get(`SELECT set_number, name, quantity, condition FROM sets`);
+    const s = await db.get(`SELECT user_id, set_number FROM sets`);
     assert.equal(s.set_number, '10214-1');
-    assert.equal(s.name, 'Tower Bridge');
-    assert.equal(Number(s.quantity), 2);
-    assert.equal(s.condition, 'U', 'Der Zustand ging beim Wiederherstellen verloren');
-    const p = await db.get(`SELECT part_number, quantity FROM parts`);
-    assert.equal(p.part_number, '3001');
-    assert.equal(Number(p.quantity), 17);
+    // Die Menge aus den Erfassungen (Migration 0036) — und dadurch ist sie
+    // hier eine zweite Aussage ueber eine zweite Tabelle, genau wie Name und
+    // Jahr darunter: Ein Dump, der nur `sets` mitnimmt, laesst jedes Set bei
+    // null Exemplaren zurueck.
+    assert.equal(await mengeVon(db, s.user_id, '10214-1'), 2,
+      'Die Stückzahl ist nicht zurückgekommen — set_acquisitions fehlt im Dump');
+    // Name und Jahr aus dem Katalog — eine ANDERE Tabelle als die Menge
+    // darueber. Genau daran faellt eine unvollstaendige Sicherung auf: Ein
+    // Dump, der nur den Bestand nimmt, laesst jedes Set namenlos zurueck.
+    const k = await db.get(
+      `SELECT c.name, c.year FROM sets s
+         JOIN set_catalog c ON c.set_number = s.set_number
+        WHERE s.set_number='10214-1'`);
+    assert.equal(k?.name, 'Tower Bridge');
+    assert.equal(Number(k?.year), 2010);
+    const a = await db.get(`SELECT purchase_price, condition FROM set_acquisitions`);
+    assert.equal(a?.condition, 'U', 'Der Zustand ging beim Wiederherstellen verloren');
+    assert.equal(Number(a?.purchase_price), 44.50,
+      'Der Kaufpreis ging beim Wiederherstellen verloren');
+    const p2 = await db.get(`SELECT user_id, part_number, color_id FROM parts`);
+    assert.equal(p2.part_number, '3001');
+    assert.equal(await teilmengeVon(db, p2.user_id, '3001', p2.color_id), 17,
+      'Die Stückzahl ist nicht zurückgekommen — part_acquisitions fehlt im Dump');
   });
 
   await t.test('ein abgeschnittener Dump wird an der Endmarke erkannt', () => {

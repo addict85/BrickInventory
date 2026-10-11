@@ -47,7 +47,12 @@ data class SetItem(
     @SerialName("image_url") val imageUrl: String? = null,
     @SerialName("image_local") val imageLocal: String? = null,
     @SerialName("added_at") val addedAt: String? = null,
-    @SerialName("purchase_price") val purchasePrice: Double? = null,
+    // Kein `purchase_price` mehr: Der Server fuehrt den Kaufpreis seit
+    // Migration 0032 nur in den Erfassungen und liefert ihn in den
+    // Set-Antworten ausschliesslich als `avg_purchase_price` (mengengewichtet)
+    // und `max_purchase_price`. Das Feld hier waere ab jetzt immer null — und
+    // ein immer leeres Feld, das `anzeigeKaufpreis` als Rueckfall benutzt, ist
+    // genau die stille Null, die Marco als Strich sehen wuerde.
     val condition: String? = null, // "N" = New/Neu, "U" = Used/Gebraucht
     /**
      * Lagerort — wo liegt dieses Set.
@@ -110,18 +115,20 @@ data class SetItem(
      * Marcos Befund: „In der Android-App wird der Kaufpreis des gebrauchten
      * Sets angezeigt, in der Webapp der gewichtete Durchschnittspreis."
      *
-     * `purchasePrice` ist nur der in die sets-Zeile GESPIEGELTE Wert der
-     * neuesten Erfassung. Bei mehreren Käufen (2×7.41 gebraucht, 1×9.48 neu)
-     * ist das nicht der Preis der Sammlung, sondern der des letzten Kaufs — und
-     * er passt auch nicht zur Prozentangabe daneben, die gegen den
-     * Durchschnitt rechnet.
+     * Hier stand `avgPurchasePrice ?: purchasePrice`. Der Rueckfall las den in
+     * die sets-Zeile GESPIEGELTEN Wert der neuesten Erfassung — bei mehreren
+     * Kaeufen (2×7.41 gebraucht, 1×9.48 neu) nicht der Preis der Sammlung,
+     * sondern der des letzten Kaufs, und er passte auch nicht zur
+     * Prozentangabe daneben.
      *
-     * Die Webapp nutzt `avg_purchase_price` seit jeher (mit demselben Rückfall).
-     * Der Server rechnet den Wert; beide Clients lesen jetzt DASSELBE Feld —
-     * die Regel steht hier EINMAL statt in jeder Ansicht.
+     * Mit Migration 0032 gibt es diese Spalte nicht mehr; der Server liefert
+     * nur noch den gewichteten Wert. Die Eigenschaft bleibt trotzdem stehen,
+     * denn sie ist die EINE Stelle, an der beide Ansichten (Kachel und
+     * Detail-Kachel) den Kaufpreis holen — und genau das war der Punkt von
+     * Nachtrag 76.
      */
     val anzeigeKaufpreis: Double?
-        get() = avgPurchasePrice ?: purchasePrice
+        get() = avgPurchasePrice
 }
 
 @Serializable

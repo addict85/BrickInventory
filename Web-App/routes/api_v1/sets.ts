@@ -34,6 +34,8 @@ import { neuestesInventar } from '../../utils/rbInventar';
 import { mitVersion, ohneVersion } from '../../utils/setNummer';
 import { figurenAusKatalog } from '../../utils/minifigsImport';
 import { sendeFehler } from '../../utils/fehlerTexte';
+import { mengeSkalar } from '../../utils/bestandsmenge';
+import { blJoin, blNummerSql } from '../../utils/blZuordnung';
 const router = express.Router();
 
 // ── GIBT ES DIESES SET SCHON? ────────────────────────────────────────────────
@@ -76,7 +78,11 @@ router.get('/sets/barcode/:barcode', requireToken, async (req: AuthedRequest, re
   // nie exportiert — der Aufruf weiter unten endete deshalb immer in einem
   // TypeError, und die Bestellnummern-Suche der App antwortete mit 500 statt
   // in die Rebrickable-Rückfallebene zu gehen.
-  const uid = req.apiUser.user_id;
+  //
+  // `const uid` stand hier und wird nicht mehr gebraucht: Die einzige Stelle,
+  // die ihn benutzte, las Stammdaten aus der eigenen sets-Zeile. Die stehen
+  // seit Migration 0033 im kontouebergreifenden Katalog — die Frage „wie heisst
+  // dieses Set?" hat kein Konto mehr.
 
   // Helper: Rebrickable HTTPS GET (declared first so enrichResult can use it)
   //
@@ -119,10 +125,17 @@ router.get('/sets/barcode/:barcode', requireToken, async (req: AuthedRequest, re
       rbMinifigs = mfData?.count ?? null;
     }
 
-    // 1. Local sets table (for image_local)
+    // 1. Der gemeinsame Katalog (fuer image_local und die Stammdaten)
+    //
+    // Hier stand `FROM sets … AND user_id=$2` mit dem Kommentar „Local sets
+    // table (for image_local)". Seit Migration 0033 stehen diese Felder nur im
+    // Katalog, und das ist auch die richtige Frage: Name, Jahr und Bild eines
+    // Sets haengen nicht am Konto. Nebenbei beantwortet der Katalog sie auch
+    // fuer ein Set, das dieses Konto gar nicht haelt — der Katalogdialog
+    // zeigte dort vorher nichts.
     const local = await db.get(
-      'SELECT name, image_local, image_url, year, pieces, theme, minifigs FROM sets WHERE set_number=$1 AND user_id=$2',
-      [setNumber, uid]
+      'SELECT name, image_local, image_url, year, pieces, theme, minifigs FROM set_catalog WHERE set_number=$1',
+      [setNumber]
     ).catch(()=>null);
 
     const minifigs = rbMinifigs ?? local?.minifigs ?? null;
@@ -528,14 +541,14 @@ router.get('/sets/:setNumber/parts-list', requireToken, async (req: AuthedReques
       csvParts = await db.all(
         `SELECT ip.part_num AS part_number, ip.color_id,
                 ip.quantity AS total_quantity, ip.is_spare,
-                COALESCE(m.bl_part_num, ip.part_num) AS bl_part_number,
+                COALESCE(m.bl_id, ip.part_num) AS bl_part_number,
                 p.name AS part_name, p.part_img_url AS rb_image_url,
                 c.name AS color_name, c.rgb AS color_hex,
                 c.bl_color_id
          FROM rb_inventory_parts ip
          LEFT JOIN rb_parts      p ON p.part_num = ip.part_num
          LEFT JOIN rb_colors     c ON c.id       = ip.color_id
-         LEFT JOIN rb_bl_mapping m ON m.part_num = ip.part_num
+         LEFT JOIN bl_zuordnung  m ON m.art = 'part' AND m.rb_id = ip.part_num
          WHERE ip.inventory_id = $1
            -- „Kein Ersatzteil" als Kehrseite derselben Lesart wie
            -- istErsatzteil() in utils/validate.ts. Vorher stand hier eine
@@ -576,9 +589,14 @@ router.get('/sets/:setNumber/parts-list', requireToken, async (req: AuthedReques
     // ── Step 3: Load catalog enrichment (image_url from API / image_local) ─
     const catalogMap: any = {};
     const catalog = await db.all(
-      `SELECT part_number, color_id, bl_part_number, part_name, color_name,
-              color_hex, image_url, image_local
-       FROM set_parts_catalog WHERE set_number=$1 OR set_number=$2`,
+      // bl_part_number kommt aus der Zuordnung (Migration 0037), nicht mehr
+      // aus dieser Tabelle: Dort stand sie je Set-Teile-Zeile, also fuer
+      // dasselbe Teil so oft, wie es Sets damit gibt.
+      `SELECT c.part_number, c.color_id, ${blNummerSql('c.part_number')} AS bl_part_number,
+              c.part_name, c.color_name, c.color_hex, c.image_url, c.image_local
+         FROM set_parts_catalog c
+         ${blJoin('c.part_number', 'part')}
+        WHERE c.set_number=$1 OR c.set_number=$2`,
       [n, bare]
     );
     for (const r of catalog) catalogMap[`${r.part_number}|${r.color_id}`] = r;
@@ -588,9 +606,11 @@ router.get('/sets/:setNumber/parts-list', requireToken, async (req: AuthedReques
     if (missingInCatalog) {
       await require('../../jobs/partsCatalogEnrich').enrichSetParts(setNum).catch(() => {});
       const refreshed = await db.all(
-        `SELECT part_number, color_id, bl_part_number, part_name, color_name,
-                color_hex, image_url, image_local
-         FROM set_parts_catalog WHERE set_number=$1 OR set_number=$2`,
+        `SELECT c.part_number, c.color_id, ${blNummerSql('c.part_number')} AS bl_part_number,
+                c.part_name, c.color_name, c.color_hex, c.image_url, c.image_local
+           FROM set_parts_catalog c
+           ${blJoin('c.part_number', 'part')}
+          WHERE c.set_number=$1 OR c.set_number=$2`,
         [n, bare]
       );
       for (const r of refreshed) catalogMap[`${r.part_number}|${r.color_id}`] = r;
@@ -792,8 +812,18 @@ router.get('/sets/:setNumber/price', requireToken, async (req: AuthedRequest, re
     // seit Migration 0031 steht an der Zeile nur die ID. Ohne die Spalte waere
     // das Feld im Detaildialog leer — und zwar in beiden Oberflaechen.
     const set = await db.get(
-      `SELECT s.*, lo.name AS storage
-         FROM sets s LEFT JOIN storage_locations lo ON lo.id = s.storage_id
+      // Die Menge aus den Erfassungen (Migration 0036 hat s.quantity
+      // geloescht). Die Unterabfrage-Form und nicht der JOIN, weil diese
+      // Abfrage GENAU EINE Zeile holt: ein Indexzugriff ueber
+      // idx_acq_user_set statt einer Gruppierung ueber alle Erfassungen.
+      `SELECT s.id, s.user_id, s.set_number, ${mengeSkalar('s')}::int AS quantity,
+              s.added_at, s.updated_at, s.storage_id,
+              lo.name AS storage,
+              c.name, c.year, c.theme, c.pieces, c.minifigs,
+              c.image_url, c.image_local
+         FROM sets s
+         LEFT JOIN set_catalog c ON c.set_number = s.set_number
+         LEFT JOIN storage_locations lo ON lo.id = s.storage_id
         WHERE s.set_number = $1 AND s.user_id = ANY($2)`, [sn, uids]);
     if (!set) return sendeFehler(req, res, 404, 'set_nicht_gefunden');
     // Die Währung kommt aus der NUTZEREINSTELLUNG — der frühere

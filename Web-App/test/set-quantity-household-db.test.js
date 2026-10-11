@@ -42,6 +42,7 @@ process.env.WEB_WORKERS = '1';
 
 const _req = require('./helpers/sources').buildAndRequire();
 const { testServer } = require('./helpers/server');
+const { haeltSet, mengeVon } = require('./helpers/bestand');
 const db = _req('db/database.js');
 const express = require(path.join(ROOT, 'node_modules', 'express'));
 
@@ -75,8 +76,7 @@ test('Menge: Anzeige = Haushalt, Änderung = eigenes Konto', { concurrency: 1 },
   await db.run(`INSERT INTO price_cache (set_number,condition,currency_code,avg_price,qty_avg_price,total_quantity)
                 VALUES ($1,'U','EUR',3.94,3.94,3)`, [SN]);
   // NUR das Unterkonto hält ein Exemplar — Marcos Ausgangslage.
-  await db.run(`INSERT INTO sets (user_id,set_number,name,quantity,condition,purchase_price)
-                VALUES ($1,$2,'T',1,'U',3.94)`, [subId, SN]);
+  await haeltSet(db, subId, SN, 0);  // Menge 0: die Erfassung dahinter traegt sie
   await db.run(`INSERT INTO set_acquisitions (user_id,set_number,purchase_price,condition,quantity)
                 VALUES ($1,$2,3.94,'U',1)`, [subId, SN]);
 
@@ -95,8 +95,8 @@ test('Menge: Anzeige = Haushalt, Änderung = eigenes Konto', { concurrency: 1 },
     });
     return { status: r.status, body: await r.json() };
   };
-  const menge = async (uid) => (await db.get(
-    `SELECT COALESCE(SUM(quantity),0)::int q FROM sets WHERE user_id=$1 AND set_number=$2`, [uid, SN])).q;
+  // Aus den Erfassungen (Migration 0036 hat sets.quantity geloescht).
+  const menge = async (uid) => await mengeVon(db, uid, SN);
 
   try {
     await t.test('das Detail zeigt die Menge aller Konten', async () => {

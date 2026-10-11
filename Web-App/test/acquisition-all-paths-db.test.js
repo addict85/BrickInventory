@@ -36,6 +36,7 @@ process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:t
 process.env.WEB_WORKERS = '1';
 
 const _req = require('./helpers/sources').buildAndRequire();
+const { haeltFigur, haeltSet, haeltTeil } = require('./helpers/bestand');
 const db = _req('db/database.js');
 const express = require(path.join(ROOT, 'node_modules', 'express'));
 
@@ -85,16 +86,13 @@ test('Erfassungen des Unterkontos: ändern und löschen auf allen drei Elementar
     await db.run(`DELETE FROM parts WHERE part_number=$1`, [PN]);
     await db.run(`DELETE FROM minifig_acquisitions WHERE fig_number=$1`, [FN]);
     await db.run(`DELETE FROM minifigs WHERE fig_number=$1`, [FN]);
-    await db.run(`INSERT INTO sets (user_id,set_number,name,quantity,condition,purchase_price)
-                  VALUES ($1,$2,'T',1,'N',10)`, [subId, SN]);
+    await haeltSet(db, subId, SN, 0);  // Menge 0: die Erfassung dahinter traegt sie
     await db.run(`INSERT INTO set_acquisitions (user_id,set_number,purchase_price,condition,quantity)
                   VALUES ($1,$2,10,'N',1)`, [subId, SN]);
-    await db.run(`INSERT INTO parts (user_id,part_number,color_id,quantity,source)
-                  VALUES ($1,$2,4,1,'manual')`, [subId, PN]);
+    await haeltTeil(db, subId, PN, { menge: 0, colorId: 4 });  // Menge 0: die Erfassung dahinter traegt sie
     await db.run(`INSERT INTO part_acquisitions (user_id,part_number,color_id,unit_price,condition,quantity)
                   VALUES ($1,$2,4,5,'N',1)`, [subId, PN]);
-    await db.run(`INSERT INTO minifigs (user_id,fig_number,fig_name,quantity,source)
-                  VALUES ($1,$2,'F',1,'manual')`, [subId, FN]);
+    await haeltFigur(db, subId, FN, { menge: 0 });  // Menge 0: die Erfassung dahinter traegt sie
     await db.run(`INSERT INTO minifig_acquisitions (user_id,fig_number,unit_price,condition,quantity)
                   VALUES ($1,$2,7,'N',1)`, [subId, FN]);
   };

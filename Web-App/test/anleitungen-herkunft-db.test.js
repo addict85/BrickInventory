@@ -47,6 +47,7 @@ const ROOT = path.join(__dirname, '..');
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
 
 const { buildAndRequire, ohneKommentare } = require('./helpers/sources');
+const { haeltSet } = require('./helpers/bestand');
 const _req = buildAndRequire();
 const db = _req('db/database.js');
 const { getSet, getSets } = _req('utils/handlers/sets.js');
@@ -73,8 +74,7 @@ test('Anleitungen: der Server sagt, welche selbst hochgeladen ist',
   await db.run(`INSERT INTO users (username,password_hash) VALUES ($1,'x')`, [USER]);
   const uid = (await db.get(`SELECT id FROM users WHERE username=$1`, [USER])).id;
 
-  await db.run(`INSERT INTO sets (user_id,set_number,name,quantity) VALUES ($1,$2,'Katzenburg',1)`,
-    [uid, SN]);
+  await haeltSet(db, uid, SN, 1);
   // Die automatische Suche: kein Konto, Datei unter /data/instructions/.
   await db.run(`INSERT INTO shared_instructions (set_number,url,description,local_path)
                 VALUES ($1,$2,'Anleitung automatisch',$3)`,

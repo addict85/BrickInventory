@@ -1,6 +1,7 @@
 import * as db from '../../db/database';
 import { istErsatzteil } from '../validate';
 import { asIds } from '../household';
+import { teilmengeJoin, teilmengeAus } from '../bestandsmenge';
 
 /**
  * Was alle drei Domänen brauchen: Seitengrössen, Zustandsableitung aus
@@ -97,15 +98,31 @@ type Zaehlwert = number | string | null | undefined;
  * doppelt ausformuliert und lief dadurch auseinander. Ein Test hält fest, dass
  * `usedCount > 0 ? 'U'` im Code nur einmal vorkommt.
  */
-function conditionFromAcquisitions(acqCount: Zaehlwert, usedCount: Zaehlwert, stored: string | null | undefined) {
+function conditionFromAcquisitions(acqCount: Zaehlwert, usedCount: Zaehlwert) {
   // parseInt wie in der Schwesterfunktion unten. Vorher stand hier
   // `usedCount > 0` — das ging nur ueber die JS-Umwandlung gut, weil COUNT(*)
   // als "2" ankommt. Nachgemessen und gleichwertig fuer alles, was hier
   // ankommt: "2"/2 -> wahr, "0"/0/null/undefined -> falsch. Der Typ hat die
   // Stelle sichtbar gemacht; verlassen wollen wir uns auf die Umwandlung nicht.
+  //
+  // ── Der Parameter `stored` ist weg, und zwar genau jetzt ────────────────
+  //
+  // Hier stand ein dritter Parameter fuer den gespeicherten Zustand der
+  // Stammzeile, mit der Begruendung: „`parts` und `minifigs` haben ihre
+  // Spalte noch … er faellt mit ihnen, nicht vorher."
+  //
+  // Mit Migration 0035 fallen sie. Fuer manuelle Positionen traegt die
+  // Migration eine Erfassung nach und prueft danach, dass keine ohne
+  // geblieben ist — der Rueckfall hat also kein Ziel mehr. Fuer Set-Teile war
+  // er ohnehin wirkungslos: parts.condition stand bei ihnen seit jeher auf
+  // dem Vorgabewert 'N' und wurde nie geschrieben.
   const acq  = parseInt(String(acqCount ?? ''))  || 0;
   const used = parseInt(String(usedCount ?? '')) || 0;
-  return used > 0 ? 'U' : (acq > 0 ? 'N' : (stored || 'N'));
+  // Als Bedingungsausdruck und nicht als zwei Rueckgaben: Die Regel soll als
+  // EIN Ausdruck lesbar sein, und test/set-condition-aggregate.test.js zaehlt
+  // genau diese Form („die Aggregat-Regel steht nur noch an einer Stelle").
+  if (acq > 0) return used > 0 ? 'U' : 'N';
+  return 'N';
 }
 
 /**
@@ -124,10 +141,12 @@ function conditionFromAcquisitions(acqCount: Zaehlwert, usedCount: Zaehlwert, st
  * Reihenfolge immer Neu vor Gebraucht — nicht nach Häufigkeit, sonst tauschen
  * die Plaketten beim nächsten Kauf die Plätze.
  */
-function conditionsFromAcquisitions(acqCount: Zaehlwert, usedCount: Zaehlwert, stored: string | null | undefined): ('N' | 'U')[] {
+function conditionsFromAcquisitions(acqCount: Zaehlwert, usedCount: Zaehlwert): ('N' | 'U')[] {
   const acq  = parseInt(String(acqCount ?? ''))  || 0;
   const used = parseInt(String(usedCount ?? '')) || 0;
-  if (acq <= 0) return [stored === 'U' ? 'U' : 'N'];
+  // Ohne Erfassungen die eine Plakette „Neu" — siehe die Begruendung in der
+  // Schwesterfunktion oben, warum es keinen gespeicherten Wert mehr gibt.
+  if (acq <= 0) return ['N'];
   const out: ('N' | 'U')[] = [];
   if (acq - used > 0) out.push('N');
   if (used > 0)       out.push('U');
@@ -139,7 +158,8 @@ function conditionsFromAcquisitions(acqCount: Zaehlwert, usedCount: Zaehlwert, s
  *
  * Dieselbe Regel wie bei Sets (getSetConditionAggregate): Sobald EINE Erfassung
  * gebraucht ist, gilt der Eintrag als gebraucht. Gibt es Erfassungen, aber
- * keine gebrauchte, ist er neu. Ohne Erfassungen zählt der gespeicherte Wert.
+ * keine gebrauchte, ist er neu. Ohne Erfassungen gilt „Neu" — einen
+ * gespeicherten Wert gibt es seit Migration 0035 nicht mehr.
  *
  * Vorher lasen beide Funktionen nur die Stammtabelle. Wurden Kaufpreise
  * ausschliesslich mit „Gebraucht" erfasst, stand auf der Kachel trotzdem „Neu",
@@ -199,8 +219,11 @@ async function applyManualCondition(userId: unknown, rows: any[], kind: 'part' |
     const usedCount = parseInt(a?.used_count) || 0;
     return {
       ...r,
-      condition: conditionFromAcquisitions(acqCount, usedCount, r.condition),
-      conditions: conditionsFromAcquisitions(acqCount, usedCount, r.condition),
+      // Ohne den gespeicherten Wert der Stammzeile: Migration 0035 hat die
+      // Spalte geloescht und garantiert fuer jede manuelle Position eine
+      // Erfassung.
+      condition: conditionFromAcquisitions(acqCount, usedCount),
+      conditions: conditionsFromAcquisitions(acqCount, usedCount),
       acq_count: acqCount,
       used_count: usedCount,
       // Mengengewichtet über die Erfassungen — die Kachel zeigte bisher den
@@ -352,20 +375,54 @@ const SUCHSPALTEN = new Set(['part_number', 'color_id', 'fig_number']);
  * laufen in diesem Projekt Dinge auseinander.
  */
 const KOPFFELDER = {
-  parts: `x.part_number AS nummer, MAX(x.part_name) AS name,
-          MAX(x.color_id) AS color_id, MAX(x.color_name) AS color_name,
-          MAX(x.color_hex) AS color_hex, MAX(x.category_name) AS category_name,
-          MAX(x.image_local) AS teil_image_local, MAX(x.image_url) AS teil_image_url,
-          MAX(x.is_spare) AS is_spare,
+  parts: `x.part_number AS nummer, MAX(pc.part_name) AS name,
+          MAX(x.color_id) AS color_id, MAX(pcc.color_name) AS color_name,
+          MAX(pcc.color_hex) AS color_hex, MAX(pc.category_name) AS category_name,
+          MAX(pcc.image_local) AS teil_image_local, MAX(pcc.image_url) AS teil_image_url,
+          MAX(COALESCE(spc.is_spare, 0)) AS is_spare,
           NULLIF(STRING_AGG(DISTINCT lo.name, ', '), '') AS storage`,
-  minifigs: `x.fig_number AS nummer, MAX(x.fig_name) AS name,
+  minifigs: `x.fig_number AS nummer, MAX(mc.fig_name) AS name,
           NULL::int AS color_id, NULL::text AS color_name,
           NULL::text AS color_hex, NULL::text AS category_name,
-          MAX(x.image_local) AS teil_image_local, MAX(x.image_url) AS teil_image_url,
+          MAX(mc.image_local) AS teil_image_local, MAX(mc.image_url) AS teil_image_url,
           0 AS is_spare, NULL::text AS storage`,
 } as const;
 
+/**
+ * Die Katalog-JOINs je Tabelle.
+ *
+ * Seit Migration 0034 steht die Beschreibung nicht mehr an der Bestandszeile:
+ * Name und Kategorie in part_catalog, Farbbezeichnung/Farbcode/Bild in
+ * part_color_catalog, das Ersatzteilkennzeichen in set_parts_catalog, und bei
+ * den Figuren alles in minifigs_catalog.
+ *
+ * Alle ueber ihren Primaerschluessel verbunden, also hoechstens eine Zeile je
+ * Treffer — die Gruppierung bleibt unberuehrt.
+ *
+ * Dass das hier gebraucht wird, ist nicht aufgefallen, weil die Abfrage unten
+ * ein `.catch(() => [])` traegt: Aus „column x.part_name does not exist" wurde
+ * eine LEERE LISTE. GEMESSEN an test/verwendende-sets-db.test.js — „Erwartet
+ * drei Sets in Nummernfolge, bekam []".
+ */
+const KATALOGJOIN = {
+  parts: `LEFT JOIN part_catalog pc ON pc.part_number = x.part_number
+          LEFT JOIN part_color_catalog pcc ON pcc.part_number = x.part_number
+                                          AND pcc.color_id    = x.color_id
+          LEFT JOIN set_parts_catalog spc ON spc.set_number  = x.set_number
+                                         AND spc.part_number = x.part_number
+                                         AND spc.color_id    = x.color_id`,
+  minifigs: `LEFT JOIN minifigs_catalog mc ON mc.fig_number = x.fig_number`,
+} as const;
+
 const SCHLUESSELSPALTE = { parts: 'x.part_number', minifigs: 'x.fig_number' } as const;
+
+/**
+ * Die Bestandsart je Tabelle — fuer teilmengeJoin/teilmengeAus
+ * (utils/bestandsmenge.ts). Dieselbe Bauart wie KOPFFELDER und
+ * KATALOGJOIN darueber: Diese Abfrage bedient beide Tabellen in EINER
+ * Form, und was sich unterscheidet, steht in einer Zuordnung.
+ */
+const ART = { parts: 'part', minifigs: 'fig' } as const;
 
 async function verwendendeSets(
   uids: number[],
@@ -385,23 +442,39 @@ async function verwendendeSets(
   const rows = await db.all(
     `SELECT x.set_number,
             x.user_id            AS owner_user_id,
-            SUM(x.quantity)::int AS quantity,
-            s.name               AS set_name,
-            s.image_local        AS set_image_local,
-            s.image_url          AS set_image_url,
+            -- Die Stückzahl der Bestandszeile (Migration 0038): Fuer ein
+            -- Set-Teil die Katalogzahl, fuer ein manuelles die Summe der
+            -- Erfassungen. Hier stand SUM(x.quantity).
+            --
+            -- Die Art steht nicht im Alias: Diese Abfrage bedient BEIDE
+            -- Tabellen ueber ${tabelle}, und der Helfer braucht dieselbe
+            -- Unterscheidung — deshalb kommt sie wie KOPFFELDER aus einer
+            -- Zuordnung je Tabelle.
+            SUM(${teilmengeAus('x', ART[tabelle])})::int AS quantity,
+            c.name               AS set_name,
+            c.image_local        AS set_image_local,
+            c.image_url          AS set_image_url,
             ${KOPFFELDER[tabelle]}
        FROM ${tabelle} x
+       ${teilmengeJoin('x', ART[tabelle])}
+       -- Zwei JOINs, ausgeschrieben: sets sagt, WELCHES Konto das Set haelt
+       -- (deshalb ueber user_id UND set_number), set_catalog sagt, wie es
+       -- heisst und wie es aussieht (nur ueber set_number — der Name haengt
+       -- nicht am Konto). Keine Gegenstriche: Der Kommentar steht in einem
+       -- Template-Literal, und ein Gegenstrich beendet es.
        LEFT JOIN sets s ON s.user_id = x.user_id AND s.set_number = x.set_number
+       LEFT JOIN set_catalog c ON c.set_number = x.set_number
        -- Der Lagerortname aus dem Vorrat (Migration 0031). Steht hier und
        -- nicht nur im parts-Zweig von KOPFFELDER, weil der minifigs-Zweig ihn
        -- als feste NULL fuehrt — ein unbenutzter LEFT JOIN kostet dort nichts
        -- und haelt die Abfrage in EINER Form.
        LEFT JOIN storage_locations lo ON lo.id = x.storage_id
+       ${KATALOGJOIN[tabelle]}
       WHERE x.user_id = ANY($1)
         AND x.set_number IS NOT NULL
         AND ${bedingungen.join(' AND ')}
       GROUP BY x.set_number, x.user_id, ${SCHLUESSELSPALTE[tabelle]},
-               s.name, s.image_local, s.image_url
+               c.name, c.image_local, c.image_url
       ORDER BY x.set_number`,
     params,
   ).catch(() => []);

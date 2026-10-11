@@ -49,7 +49,7 @@ async function dbReachable() {
  * Stellt das echte Schema wieder her, das seed() durch Attrappen ersetzt.
  *
  * ── Warum das noetig ist ────────────────────────────────────────────────────
- * seed() legt `sets` als Dreispalter an (user_id, set_number, quantity) und
+ * seed() legt `sets` als Zweispalter an (user_id, set_number) und
  * liess sie so stehen. Fuer DIESEN Test reicht das — fuer jeden spaeteren, der
  * danach in derselben Datenbank laeuft, nicht: Er findet eine verstuemmelte
  * Tabelle. Aufgefallen ist es erst, als csv-export-acquisitions-db.test.js
@@ -61,17 +61,41 @@ async function dbReachable() {
  * `sets` ist der einzige echte Eingriff.
  */
 async function schemaWiederherstellen() {
+  // Die Erfassungszeile von seed() mit weg — sie haengt an einem Konto, das
+  // spaetere Dateien nicht kennen, und waere dort ein Bestand aus dem Nichts.
+  await db.run(
+    `DELETE FROM set_acquisitions WHERE user_id = 1 AND set_number = '9000-1'`).catch(() => {});
   await db.run(`DROP TABLE IF EXISTS sets CASCADE`).catch(() => {});
   await db.initSchema();
 }
 
 async function seed() {
-  await db.run(`DROP TABLE IF EXISTS rb_sets, rb_themes, rb_inventories, rb_inventory_minifigs, sets CASCADE`);
+  // Erst das echte Schema sicherstellen, dann die Attrappen daruebersetzen:
+  // seed() braucht `set_acquisitions` ECHT (siehe unten), und ob eine frueher
+  // gelaufene Datei sie schon angelegt hat, haengt an der Reihenfolge.
+  // initSchema() ist idempotent (CREATE TABLE IF NOT EXISTS) und muss VOR dem
+  // Loeschen stehen — danach legte es die gerade entfernten Attrappen-Tabellen
+  // wieder als echte an (gemessen: „relation rb_sets already exists").
+  await db.initSchema();
+  await db.run(`DROP TABLE IF EXISTS rb_sets, rb_themes, rb_inventories,
+                                    rb_inventory_minifigs, sets CASCADE`);
   await db.run(`CREATE TABLE rb_sets (set_num TEXT PRIMARY KEY, name TEXT, year INTEGER, theme_id INTEGER, num_parts INTEGER, set_img_url TEXT)`);
   await db.run(`CREATE TABLE rb_themes (id INTEGER PRIMARY KEY, name TEXT, parent_id INTEGER)`);
   await db.run(`CREATE TABLE rb_inventories (id INTEGER PRIMARY KEY, version INTEGER, set_num TEXT)`);
   await db.run(`CREATE TABLE rb_inventory_minifigs (id SERIAL PRIMARY KEY, inventory_id INTEGER, fig_num TEXT, quantity INTEGER)`);
-  await db.run(`CREATE TABLE sets (user_id INTEGER, set_number TEXT, quantity INTEGER)`);
+  // `sets` bleibt die einzige Attrappe. Die Setmenge steht seit Migration
+  // 0036 in set_acquisitions, und die Katalogliste liest sie von dort
+  // (owned_quantity ueber utils/bestandsmenge.ts) — mit nur `sets`
+  // antwortete sie 0 (gemessen: „expected 2, actual 0").
+  //
+  // Diese Tabelle wird deshalb ECHT benutzt und NICHT nachgebaut: Ihr
+  // eindeutiger Index idx_set_acq_tag („je Konto, Set und Tag eine
+  // Erfassung") steht nur in Migration 0008. Eine Attrappe haette ihn nicht,
+  // und weil initSchema() ihn auch nicht anlegt, waere er fuer jede spaetere
+  // Datei dieses Laufs weg — die Tagesregel still ausgeschaltet. Genau die
+  // Sorte reihenfolgenabhaengiger Fehler, die der Kopfkommentar von
+  // schemaWiederherstellen() beschreibt.
+  await db.run(`CREATE TABLE sets (user_id INTEGER, set_number TEXT)`);
   await db.run(`INSERT INTO rb_themes VALUES (1,'Star Wars',NULL),(2,'Ultimate Collector Series',1),(3,'Technic',NULL) ON CONFLICT DO NOTHING`);
   let i = 0;
   for (let y = 2000; y <= 2026; y++)
@@ -83,7 +107,19 @@ async function seed() {
       [`${9000 + k}-1`, `Future Set ${k}`, 2027, 1, 500 + k, '']);
   await db.run(`INSERT INTO rb_inventories VALUES (1, 1, '9000-1'), (2, 2, '9000-1') ON CONFLICT DO NOTHING`);
   await db.run(`INSERT INTO rb_inventory_minifigs (inventory_id, fig_num, quantity) VALUES (2,'fig-001',2),(2,'fig-002',1),(1,'fig-old',9) ON CONFLICT DO NOTHING`);
-  await db.run(`INSERT INTO sets VALUES (1, '9000-1', 2) ON CONFLICT DO NOTHING`);
+  // Der Bestand: Konto 1 haelt 9000-1, und zwar zwei Exemplare — die Zahl
+  // steht in der Erfassung.
+  //
+  // Die echte set_acquisitions traegt einen Fremdschluessel auf users, also
+  // muss das Konto existieren. initSchema() legt beim Erststart einen Admin
+  // an, der diese ID meist schon hat; ON CONFLICT DO NOTHING macht beide
+  // Faelle gleich.
+  await db.run(`INSERT INTO users (id, username, password_hash)
+                VALUES (1, 'katalogprobe', 'x') ON CONFLICT (id) DO NOTHING`);
+  await db.run(`INSERT INTO sets (user_id, set_number) VALUES (1, '9000-1')`);
+  await db.run(`DELETE FROM set_acquisitions WHERE user_id = 1 AND set_number = '9000-1'`);
+  await db.run(`INSERT INTO set_acquisitions (user_id, set_number, quantity)
+                VALUES (1, '9000-1', 2)`);
 }
 
 test('Katalog-API (Postgres-Integration)', async (t) => {

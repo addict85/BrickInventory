@@ -33,6 +33,7 @@ process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:t
 process.env.WEB_WORKERS = '1';
 
 const _req = require('./helpers/sources').buildAndRequire();
+const { haeltSet, mengeVon, haltZeile } = require('./helpers/bestand');
 const db = _req('db/database.js');
 
 const U = {};
@@ -141,7 +142,7 @@ test('Merkliste gegen echte Datenbank', { concurrency: 1 }, async (t) => {
   await t.test('owned prüft das BLICKFELD, nicht nur das eigene Konto', async () => {
     // „Habe ich das inzwischen?" ist die Frage, die in der Liste sofort
     // aufkommt. Beim Grossvater heisst „ich habe es" auch: der Enkel hat es.
-    await db.run(`INSERT INTO sets (user_id, set_number, quantity) VALUES ($1,'75192-1',1)`, [U.enkel]);
+    await haeltSet(db, U.enkel, '75192-1', 1);
     const alleinOpa = await W.merkpostenVon([U.opa], '75192-1');
     assert.equal(alleinOpa[0].owned, false);
     const imBlickfeld = await W.merkpostenVon([U.opa, U.enkel], '75192-1');
@@ -168,10 +169,10 @@ test('Merkliste gegen echte Datenbank', { concurrency: 1 }, async (t) => {
     const r = await W.uebernimm(U.opa, U.opa, '75192-1', 'N', { quantity: 2 });
     assert.equal(r.action, 'added');
 
-    const set = await db.get(
-      'SELECT quantity FROM sets WHERE user_id=$1 AND set_number=$2', [U.opa, '75192-1']);
-    assert.ok(set, 'Das Set ist nicht in der Galerie gelandet');
-    assert.equal(set.quantity, 2);
+    assert.ok(await haltZeile(db, U.opa, '75192-1'),
+      'Das Set ist nicht in der Galerie gelandet');
+    // Die Menge aus den Erfassungen (Migration 0036).
+    assert.equal(await mengeVon(db, U.opa, '75192-1'), 2);
 
     const erf = await db.get(
       `SELECT COUNT(*)::int AS n FROM set_acquisitions WHERE user_id=$1 AND set_number=$2`,
@@ -209,14 +210,12 @@ test('Merkliste gegen echte Datenbank', { concurrency: 1 }, async (t) => {
     // Dieselbe Regel wie beim Erfassen (utils/setAdd.ts): Schon im Blickfeld
     // heisst „Detail öffnen", nicht „Menge erhöhen". Sie darf nicht davon
     // abhängen, über welchen der vier Wege jemand kommt.
-    const vorher = await db.get(
-      'SELECT quantity FROM sets WHERE user_id=$1 AND set_number=$2', [U.opa, '75192-1']);
+    const vorher = await mengeVon(db, U.opa, '75192-1');
     await W.legeMerkpostenAn(U.opa, '75192-1', 'N');
     const r = await W.uebernimm(U.opa, U.opa, '75192-1', 'N', { quantity: 5 });
     assert.equal(r.action, 'exists');
-    const nachher = await db.get(
-      'SELECT quantity FROM sets WHERE user_id=$1 AND set_number=$2', [U.opa, '75192-1']);
-    assert.equal(nachher.quantity, vorher.quantity, 'Die Menge wurde aufgestockt');
+    const nachher = await mengeVon(db, U.opa, '75192-1');
+    assert.equal(nachher, vorher, 'Die Menge wurde aufgestockt');
     // Erledigt ist der Merkposten trotzdem — sonst bliebe er für ein Set stehen,
     // das man längst hat.
     assert.equal((await W.merkpostenVon([U.opa], '75192-1')).length, 0);
@@ -229,15 +228,15 @@ test('Merkliste gegen echte Datenbank', { concurrency: 1 }, async (t) => {
     await W.uebernimm(U.opa, U.opa, '10497-1', 'N',
       { quantity: 3, purchase_price: 88.5, condition: 'U' });
 
-    const set = await db.get(
-      'SELECT quantity, purchase_price FROM sets WHERE user_id=$1 AND set_number=$2',
-      [U.opa, '10497-1']);
-    assert.equal(set.quantity, 3, 'Die Anzahl wurde nicht übernommen');
-    assert.equal(parseFloat(set.purchase_price), 88.5, 'Der Kaufpreis wurde nicht übernommen');
+    assert.equal(await mengeVon(db, U.opa, '10497-1'), 3,
+      'Die Anzahl wurde nicht übernommen');
 
+    // Kaufpreis und Zustand stehen seit Migration 0032 nur in der Erfassung —
+    // vorher prüfte diese Stelle den Preis an der sets-Zeile.
     const erf = await db.get(
-      `SELECT condition FROM set_acquisitions WHERE user_id=$1 AND set_number=$2`,
+      `SELECT purchase_price, condition FROM set_acquisitions WHERE user_id=$1 AND set_number=$2`,
       [U.opa, '10497-1']);
+    assert.equal(parseFloat(erf.purchase_price), 88.5, 'Der Kaufpreis wurde nicht übernommen');
     assert.equal(erf.condition, 'U',
       'Die Erfassung steht im Zustand des MERKPOSTENS statt in dem, was gekauft wurde');
   });

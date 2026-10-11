@@ -79,15 +79,11 @@ async function _processRetryQueue(force = false) {
       // Retry set info
       const info = await getSetInfo(set_number);
       if (info) {
-        await db.run(
-          `UPDATE sets SET
-            name    = COALESCE(name, $1),    year     = COALESCE(year, $2),
-            theme   = COALESCE(theme, $3),   pieces   = COALESCE(pieces, $4),
-            minifigs = COALESCE(minifigs, $5)
-           WHERE set_number = $6`,
-          [info.name, info.year, info.theme, info.pieces, info.minifigs, set_number]
-        // Ohne Protokoll sieht ein erfolgloser Nachlauf aus wie ein erfolgreicher.
-        ).catch(logAndContinue(`brickset-nachlauf:set ${set_number}`));
+        // Hier stand dasselbe UPDATE noch einmal auf `sets` — die Abschrift
+        // der Stammdaten an jeder Bestandszeile. Mit Migration 0033 gibt es
+        // nur noch den Katalog, und damit nur noch EINE Anweisung. Genau das
+        // war der Grund: Zwei Schreibstellen aus derselben Antwort, und eine
+        // davon konnte scheitern oder vergessen werden.
         await db.run(
           `UPDATE set_catalog SET
             name    = COALESCE(name, $1),    year     = COALESCE(year, $2),
@@ -95,7 +91,12 @@ async function _processRetryQueue(force = false) {
             minifigs = COALESCE(minifigs, $5)
            WHERE set_number = $6`,
           [info.name, info.year, info.theme, info.pieces, info.minifigs, set_number]
-        ).catch(() => {});
+        // Das Protokoll gehoert jetzt HIER her. Es stand am UPDATE auf `sets`,
+        // mit der Begruendung „Ohne Protokoll sieht ein erfolgloser Nachlauf
+        // aus wie ein erfolgreicher" — und am Katalog, der ueberlebenden
+        // Haelfte, stand ein stiller Fang. Seit Migration 0033 ist das die
+        // einzige Schreibstelle: Scheitert sie, bleibt das Set namenlos.
+        ).catch(logAndContinue(`brickset-nachlauf:set ${set_number}`));
         console.log(`[brickset] Retry OK: ${set_number}`);
         processed++;
       }

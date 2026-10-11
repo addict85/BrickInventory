@@ -36,6 +36,7 @@ process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:t
 process.env.WEB_WORKERS = '1';
 
 const _req = require('./helpers/sources').buildAndRequire();
+const { haeltSet } = require('./helpers/bestand');
 const db = _req('db/database.js');
 
 let UID = 0;
@@ -49,8 +50,7 @@ async function seed() {
   finally { client.release(); }
   await db.run(`INSERT INTO users (username, password_hash) VALUES ('ich','x')`);
   UID = (await db.get("SELECT id FROM users WHERE username='ich'")).id;
-  await db.run(`INSERT INTO sets (user_id, set_number, name, quantity) VALUES ($1,$2,$3,1)`,
-    [UID, '10179-1', 'Falcon']);
+  await haeltSet(db, UID, '10179-1', 1);
 }
 
 /** Der NAME, den die Oberfläche am Set sieht — über den Vorrat aufgelöst. */

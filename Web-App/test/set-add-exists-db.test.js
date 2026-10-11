@@ -54,6 +54,7 @@ Module.prototype.require = function (name) {
 
 const _req = require('./helpers/sources').buildAndRequire();
 const { testServer } = require('./helpers/server');
+const { haeltSet } = require('./helpers/bestand');
 const db = _req('db/database.js');
 const express = require(path.join(ROOT, 'node_modules', 'express'));
 
@@ -96,7 +97,7 @@ test('vorhandenes Set: Erfassen meldet exists und schreibt nichts',
   await aufraeumen();
 
   const anlegen = async (besitzer, sn) => {
-    await db.run(`INSERT INTO sets (user_id,set_number,name,quantity) VALUES ($1,$2,'T',1)`, [besitzer, sn]);
+    await haeltSet(db, besitzer, sn, 0);  // Menge 0: die Erfassung dahinter traegt sie
     await db.run(`INSERT INTO set_acquisitions (user_id,set_number,purchase_price,condition,quantity)
                   VALUES ($1,$2,10,'N',1)`, [besitzer, sn]);
   };
@@ -104,7 +105,13 @@ test('vorhandenes Set: Erfassen meldet exists und schreibt nichts',
   await anlegen(subId,   KIND);
 
   const stand = async (sn) => ({
-    menge: (await db.get(`SELECT COALESCE(SUM(quantity),0)::int AS q FROM sets WHERE set_number=$1`, [sn])).q,
+    // Aus den Erfassungen (Migration 0036), ueber ALLE Konten — der Test
+    // fragt „wie viele Exemplare gibt es insgesamt".
+    menge: (await db.get(
+      `SELECT COALESCE(SUM(a.quantity),0)::int AS q
+         FROM set_acquisitions a
+         JOIN sets s ON s.user_id = a.user_id AND s.set_number = a.set_number
+        WHERE a.set_number=$1`, [sn])).q,
     acqs:  (await db.get(`SELECT COUNT(*)::int AS c FROM set_acquisitions WHERE set_number=$1`, [sn])).c,
     zeilen:(await db.get(`SELECT COUNT(*)::int AS c FROM sets WHERE set_number=$1`, [sn])).c,
   });

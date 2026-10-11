@@ -51,8 +51,11 @@ async function anleitungenNachtragen(): Promise<void> {
 /** Fehlende Set-Bilder vom CDN holen. */
 async function setBilderNachladen(): Promise<void> {
   try {
+    // Der KATALOG: Bilder haengen an der Setnummer, nicht am Konto. Hier
+    // stand `FROM sets` mit DISTINCT — das brauchte es nur, weil dieselbe
+    // Setnummer je Konto einmal darin stand. Im Katalog ist sie es einmal.
     const missing = await db.all(
-      `SELECT DISTINCT set_number, image_url FROM sets
+      `SELECT set_number, image_url FROM set_catalog
        WHERE image_local IS NULL AND image_url IS NOT NULL LIMIT 500`
     ).catch(() => []);
     if (!missing.length) return;
@@ -60,9 +63,11 @@ async function setBilderNachladen(): Promise<void> {
     for (const { set_number, image_url } of missing) {
       const local = await downloadSetImage(image_url, set_number).catch(() => null);
       if (local) {
-        await db.run(`UPDATE sets SET image_local=$1 WHERE set_number=$2 AND image_local IS NULL`, [local, set_number])
+        // EINE Anweisung. Das UPDATE auf `sets`, das hier daneben stand, ist
+        // mit Migration 0033 weggefallen — und mit ihm der stille Fang am
+        // Katalog-Schreiber, der die wichtigere der beiden Haelften war.
+        await db.run(`UPDATE set_catalog SET image_local=$1 WHERE set_number=$2 AND image_local IS NULL`, [local, set_number])
           .catch(logAndContinue(`bilder:set ${set_number}`));
-        await db.run(`UPDATE set_catalog SET image_local=$1 WHERE set_number=$2 AND image_local IS NULL`, [local, set_number]).catch(() => {});
         generateThumb(local).catch(() => {});
       }
       await new Promise(r => setTimeout(r, 300));
@@ -76,9 +81,12 @@ async function vorschaubilderNachtragen(): Promise<void> {
   try {
     const fs   = require('fs');
     const path = require('path');
-    const sets  = await db.all("SELECT image_local FROM sets WHERE image_local IS NOT NULL");
-    const parts = await db.all("SELECT image_local FROM parts WHERE image_local IS NOT NULL");
-    const paths = [...sets, ...parts].map((r: any) => r.image_local).filter(Boolean);
+    const sets  = await db.all("SELECT image_local FROM set_catalog WHERE image_local IS NOT NULL");
+    // Aus part_color_catalog statt aus parts (Migration 0034): dasselbe
+    // Bild stand dort einmal je Konto, die Schleife lief es mehrfach ab.
+    const parts = await db.all("SELECT image_local FROM part_color_catalog WHERE image_local IS NOT NULL");
+    const figs  = await db.all("SELECT image_local FROM minifigs_catalog WHERE image_local IS NOT NULL");
+    const paths = [...sets, ...parts, ...figs].map((r: any) => r.image_local).filter(Boolean);
     let generated = 0;
     // Async statt existsSync: die Schleife läuft über ALLE Bilder von Sets
     // und Teilen und lief direkt nach app.listen() — bei ein paar tausend

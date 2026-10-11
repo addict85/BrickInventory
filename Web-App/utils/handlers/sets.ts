@@ -8,6 +8,7 @@ import { asIds } from '../household';
 import { clampPageSize, conditionFromAcquisitions, conditionsFromAcquisitions, withOwners } from './shared';
 import { ausTabelle } from '../validate';
 import { anleitungenZuSet, anleitungenZusammenlegen } from '../instructions';
+import { mengeJoin, mengeAus } from '../bestandsmenge';
 
 /**
  * Leseabfragen für Sets, samt der Ableitung des Zustands aus den Erfassungen.
@@ -30,12 +31,17 @@ const SET_SORTS = {
   name_asc:   's.name ASC NULLS LAST',
   num_asc:    's.set_number ASC',
   year_desc:  's.year DESC NULLS LAST',
-  price_desc: 'COALESCE(a.max_purchase_price, s.purchase_price, 0) DESC',
-  price_asc:  'COALESCE(a.max_purchase_price, s.purchase_price, 0) ASC',
-  // Anzahl der besessenen Exemplare. sets.quantity wird bei jeder Änderung an
-  // den Erfassungen neu aus set_acquisitions gespiegelt (routes/sets.ts), ist
-  // hier also der richtige Wert — und der einzige, der ohne zusätzlichen JOIN
-  // auskommt.
+  // Nur noch aus den Erfassungen: Der zweite Operand war sets.purchase_price,
+  // den es seit Migration 0032 nicht mehr gibt.
+  price_desc: 'COALESCE(a.max_purchase_price, 0) DESC',
+  price_asc:  'COALESCE(a.max_purchase_price, 0) ASC',
+  // Anzahl der besessenen Exemplare.
+  //
+  // `s.quantity` ist hier KEINE Tabellenspalte mehr — die ist mit Migration
+  // 0036 weg. `s` ist in beiden Zweigen von `setsFrom` eine Unterabfrage, und
+  // deren Mengenspalte heisst `quantity` (aus utils/bestandsmenge.ts). Diese
+  // Sortierung bleibt dadurch wörtlich stehen, und das ist Absicht: Der Name
+  // nach aussen soll sich nicht ändern, nur seine Herkunft.
   //
   // Zweiter Sortierschlüssel: Ohne ihn stehen alle Sets mit derselben Anzahl —
   // und das sind fast alle, nämlich die mit genau einem Exemplar — in einer
@@ -78,25 +84,31 @@ async function getSets(userId: Blickfeld, query: any = {}) {
   // den JSON-Payload der /sets-Antwort nur unnötig aufgebläht.
   // Mit "s." qualifiziert: die angehängte Aggregat-Subquery führt set_number
   // ebenfalls, unqualifiziert wäre die Spalte ab jetzt mehrdeutig.
+  // Ohne purchase_price und condition (Migration 0032): Beides kommt aus den
+  // Erfassungen — `avg_purchase_price` und `max_purchase_price` aus dem JOIN
+  // weiter unten, der Zustand aus conditionFromAcquisitions(). Die Antwort
+  // behaelt das Feld `condition`, es wird nur nicht mehr aus der Spalte
+  // gelesen.
+  // ── Hier stand ein COALESCE auf den Katalog, und warum es weg ist ───────
+  //
+  // `image_url` kam mit einem Rückfall: `COALESCE(s.image_url, sc.image_url)`,
+  // dazu ein LEFT JOIN auf `set_catalog` weiter unten. Das war die Abhilfe zu
+  // Marcos Bericht (Nachtrag 36): „wenn das Bild lokal noch nicht vorhanden
+  // ist, soll es direkt via Proxy vom CDN geholt werden". Stand in der eigenen
+  // sets-Zeile nichts — weil der Bild-Download in seine 15-Sekunden-Frist lief,
+  // weil das Set über CSV oder Barcode kam, oder weil eine ältere Zeile das
+  // Feld nie gefüllt hat —, lieferte die API image_url: null UND
+  // image_local: null, und beide Clients zeigten den Platzhalter.
+  //
+  // Mit Migration 0033 gibt es nichts mehr, wovon zurückzufallen wäre: Die
+  // Adresse steht nur im Katalog, und jede Abfrage holt sie über ihren eigenen,
+  // ausgeschriebenen JOIN darauf.
+  // Der Rückfall war die richtige Abhilfe für zwei Spalten; eine Spalte braucht
+  // ihn nicht. Genau das war auch das Problem daran — er stand in EINER
+  // Abfrage, und jede andere kannte ihn nicht.
   const SET_COLS = ['set_number','name','year','theme','pieces','minifigs','quantity',
-                    'image_local','added_at','purchase_price','condition','storage']
-                   .map(c => `s.${c}`).join(', ') +
-    // image_url mit Rückfall auf den GEMEINSAMEN Katalog (Nachtrag 36, Marcos
-    // Bericht: „wenn das Bild lokal noch nicht vorhanden ist, soll es direkt
-    // via Proxy vom CDN geholt werden").
-    //
-    // Bisher kam die Adresse ausschliesslich aus der eigenen sets-Zeile. Steht
-    // dort nichts — weil der Bild-Download beim Erfassen in seine 15-Sekunden-
-    // Frist lief, weil das Set über CSV-Import oder Barcode-Scan kam, oder
-    // weil eine ältere Zeile das Feld nie gefüllt hat —, lieferte die API
-    // image_url: null UND image_local: null. Beide Clients hatten dann nichts
-    // in der Hand und zeigten den Platzhalter, obwohl die CDN-Adresse im
-    // set_catalog längst bekannt war. Genau dieser Fall ist Marco aufgefallen.
-    //
-    // set_catalog wird beim Erfassen JEDES Sets gefüllt (routes/sets.ts) und
-    // ist kontoübergreifend — der Rückfall greift damit auch für Sets, die ein
-    // anderes Haushaltsmitglied zuerst erfasst hat.
-    ', COALESCE(s.image_url, sc.image_url) AS image_url';
+                    'image_local','image_url','added_at','storage']
+                   .map(c => `s.${c}`).join(', ');
   const { search, theme, sort, page = 1, page_size = null } = query;
 
   // ── Ein Set, EINE Zeile ─────────────────────────────────────────────────
@@ -115,14 +127,22 @@ async function getSets(userId: Blickfeld, query: any = {}) {
   // MIN() auf den Stammdaten ist kein Zufallsgriff: Name, Jahr, Thema und Bild
   // beschreiben DAS SET, nicht das Exemplar — sie sind über die Konten hinweg
   // gleich. MIN(added_at) ist bewusst das früheste Aufnahmedatum im Haushalt.
+  //
+  // Seit Migration 0033 sind sie es nicht nur „hinweg gleich", sondern
+  // buchstäblich derselbe Wert: Sie kommen aus `set_catalog`, über den JOIN
+  // unten. MIN() bleibt trotzdem stehen — die Gruppierung über `set_number`
+  // verlangt für jede nicht gruppierte Spalte eine Zusammenfassung, und
+  // „irgendeinen von identischen Werten" sagt MIN() am kürzesten.
   const setsFrom = uids.length > 1
     ? `(SELECT s.set_number,
-               MIN(s.name) AS name, MIN(s.year) AS year, MIN(s.theme) AS theme,
-               MIN(s.pieces) AS pieces, MIN(s.minifigs) AS minifigs,
-               SUM(s.quantity)::int AS quantity,
-               MIN(s.image_url) AS image_url, MIN(s.image_local) AS image_local,
+               MIN(c.name) AS name, MIN(c.year) AS year, MIN(c.theme) AS theme,
+               MIN(c.pieces) AS pieces, MIN(c.minifigs) AS minifigs,
+               -- Die Menge kommt aus den ERFASSUNGEN (Migration 0036 hat
+               -- sets.quantity geloescht). Die gruppierte Quelle haengt
+               -- utils/bestandsmenge.ts an — hier stand SUM(s.quantity).
+               SUM(${mengeAus('sm', 0)})::int AS quantity,
+               MIN(c.image_url) AS image_url, MIN(c.image_local) AS image_local,
                MIN(s.added_at) AS added_at,
-               MIN(s.purchase_price) AS purchase_price, MIN(s.condition) AS condition,
                -- Lagerort: string_agg statt MIN, und das ist kein Zierrat.
                --
                -- Alle anderen Spalten hier beschreiben DAS SET (Name, Jahr,
@@ -148,9 +168,19 @@ async function getSets(userId: Blickfeld, query: any = {}) {
                -- eine Menge von 0 ist ein gültiger Zustand, etwa über den
                -- Mengenregler). Ohne FILTER stand das Konto danach weiter als
                -- Besitzer auf der Kachel, obwohl es nichts mehr besitzt.
-               array_agg(DISTINCT s.user_id) FILTER (WHERE s.quantity > 0) AS owner_ids
+               --
+               -- Die Bedingung liest jetzt die ERFASSUNGEN (Migration 0036
+               -- hat sets.quantity geloescht) — dieselbe Summe wie in der
+               -- Mengenspalte darueber, also dieselbe Aussage wie vorher.
+               array_agg(DISTINCT s.user_id) FILTER (WHERE ${mengeAus('sm', 0)} > 0) AS owner_ids
           FROM sets s
+          -- Der JOIN steht ausgeschrieben, nicht hinter einer Sicht: So sagt
+          -- die Abfrage selbst, dass Name, Jahr und Bild aus dem Katalog
+          -- kommen. LEFT JOIN, weil ein Set ohne Katalogzeile sonst aus der
+          -- Liste verschwaende — lieber ohne Namen als unsichtbar.
+          LEFT JOIN set_catalog c ON c.set_number = s.set_number
           LEFT JOIN storage_locations lo ON lo.id = s.storage_id
+          ${mengeJoin('s')}
          WHERE s.user_id = ANY($1)
          GROUP BY s.set_number) s`
     // Auch ohne Haushalt eine Unterabfrage, und zwar NUR wegen des Lagerorts:
@@ -158,8 +188,29 @@ async function getSets(userId: Blickfeld, query: any = {}) {
     // den NAMEN in einer Spalte namens `storage` — die Tabelle traegt seit
     // Migration 0031 aber die ID. `s.*` plus die aufgeloeste Spalte liefert
     // genau die alte Form, und der Filter bleibt unberuehrt.
-    : `(SELECT s.*, lo.name AS storage
-          FROM sets s LEFT JOIN storage_locations lo ON lo.id = s.storage_id) s`;
+    //
+    // ── Beide Seiten ausgeschrieben, kein `s.*` ───────────────────────────
+    //
+    // Die Stammdaten stehen seit Migration 0033 in `set_catalog`, der Bestand
+    // in `sets`. Beide Listen hier einzeln zu nennen ist der Preis dafür, dass
+    // die Abfrage ohne Nachschlagen lesbar bleibt — und sie ist nötig:
+    //
+    // `s.*` brachte auf einer Datenbank, der Migration 0033 noch FEHLT, ein
+    // zweites `name` mit (schema.sql legt die Spalte an, damit Migration 0014
+    // sie anfassen kann). Jeder Zugriff darauf wurde damit zweideutig.
+    // GEMESSEN an test/api-parity.test.js, das nur initSchema() ruft und keine
+    // Migrationen: „column reference \"name\" is ambiguous", und die ganze
+    // Set-Liste antwortete mit 500.
+    : `(SELECT s.id, s.user_id, s.set_number,
+               ${mengeAus('sm', 0)}::int AS quantity,
+               s.added_at, s.updated_at, s.storage_id,
+               lo.name AS storage,
+               c.name, c.year, c.theme, c.pieces, c.minifigs,
+               c.image_url, c.image_local
+          FROM sets s
+          LEFT JOIN set_catalog c ON c.set_number = s.set_number
+          LEFT JOIN storage_locations lo ON lo.id = s.storage_id
+          ${mengeJoin('s')}) s`;
   const SET_OWNER_COL = uids.length > 1 ? ', s.owner_ids' : '';
   // Ohne Gruppierung filtert die WHERE-Klausel wie bisher; mit Gruppierung hat
   // die Unterabfrage bereits gefiltert.
@@ -229,7 +280,6 @@ async function getSets(userId: Blickfeld, query: any = {}) {
       a.max_purchase_price, a.avg_purchase_price,
       COALESCE(a.acq_count, 0) AS acq_count, COALESCE(a.used_count, 0) AS used_count
       FROM ${setsFrom}
-      LEFT JOIN set_catalog sc ON sc.set_number = s.set_number
       LEFT JOIN (
         SELECT set_number,
                MAX(purchase_price)                     AS max_purchase_price,
@@ -252,7 +302,11 @@ async function getSets(userId: Blickfeld, query: any = {}) {
     // der geladenen Seite — sonst schrumpft das Auswahlfeld beim Paginieren.
     // Nur bei der ersten Seite nötig; Folgeseiten sparen die Abfrage.
     (page_size && parseInt(page) <= 1)
-      ? db.all(`SELECT DISTINCT theme FROM sets WHERE user_id = ANY($1) AND theme IS NOT NULL AND theme <> '' ORDER BY theme`, [uids])
+      // `theme` steht seit Migration 0033 im Katalog — deshalb der JOIN.
+      ? db.all(`SELECT DISTINCT c.theme AS theme
+                  FROM sets s JOIN set_catalog c ON c.set_number = s.set_number
+                 WHERE s.user_id = ANY($1) AND c.theme IS NOT NULL AND c.theme <> ''
+                 ORDER BY c.theme`, [uids])
       : Promise.resolve(null),
   ]);
 
@@ -297,9 +351,9 @@ async function getSets(userId: Blickfeld, query: any = {}) {
     // gespeicherte sets.condition-Wert wird NICHT mehr als Fallback benutzt,
     // solange Erfassungen existieren (er kann nach Löschen/Reduzieren veraltet
     // sein). Nur ganz ohne Erfassungen zählt die gespeicherte Spalte.
-    condition: conditionFromAcquisitions(s.acq_count, s.used_count, s.condition),
+    condition: conditionFromAcquisitions(s.acq_count, s.used_count),
     // Alle vorkommenden Zustände — die Kachel zeigt je eine Plakette.
-    conditions: conditionsFromAcquisitions(s.acq_count, s.used_count, s.condition),
+    conditions: conditionsFromAcquisitions(s.acq_count, s.used_count),
     avg_purchase_price: s.avg_purchase_price != null ? parseFloat(s.avg_purchase_price) : null,
     image_local: resolveImageLocal(s.image_local),
     // Besitzer nur im Haushalt: Im Einzelkonto wäre die Angabe „gehört mir“ an
@@ -344,7 +398,7 @@ async function getSets(userId: Blickfeld, query: any = {}) {
  * Jetzt gibt es die Regel einmal, und die Schreib-Endpunkte liefern das
  * Ergebnis in ihrer Antwort mit — die Clients rechnen nichts mehr nach.
  */
-async function getSetConditionAggregate(userId: Blickfeld, setNumber: string, storedCondition: string | null | undefined) {
+async function getSetConditionAggregate(userId: Blickfeld, setNumber: string) {
   // Blickfeld statt einer einzelnen ID: Ein Hauptkonto sieht (und ändert)
   // auch die Daten seiner Unterkonten, alle anderen nur ihre eigenen. Die
   // Liste kommt von scopeIds() in utils/household.ts — hier wird sie nur
@@ -360,12 +414,12 @@ async function getSetConditionAggregate(userId: Blickfeld, setNumber: string, st
   const acqCount  = parseInt(acq?.acq_count) || 0;
   const usedCount = parseInt(acq?.used_count) || 0;
   return {
-    condition: conditionFromAcquisitions(acqCount, usedCount, storedCondition),
+    condition: conditionFromAcquisitions(acqCount, usedCount),
     // Dieselben Felder wie in getSets() — die Schreib-Endpunkte liefern das
     // Aggregat mit, und die Kachel wird damit ohne Neuladen aktualisiert.
     // Fehlte conditions hier, verlöre sie nach dem Speichern die zweite
     // Plakette bis zum nächsten vollständigen Laden.
-    conditions: conditionsFromAcquisitions(acqCount, usedCount, storedCondition),
+    conditions: conditionsFromAcquisitions(acqCount, usedCount),
     acq_count: acqCount,
     used_count: usedCount,
     max_purchase_price: acq?.max_purchase_price ?? null,
@@ -384,9 +438,9 @@ async function getSetConditionAggregate(userId: Blickfeld, setNumber: string, st
  */
 async function withSetAggregate<T extends object>(userId: Blickfeld, setNumber: string, payload: T) {
   const uids = asIds(userId);
-  const row = await db.get('SELECT condition FROM sets WHERE user_id = ANY($1) AND set_number=$2',
-    [uids, setNumber]).catch(() => null);
-  const agg = await getSetConditionAggregate(uids, setNumber, row?.condition).catch(() => null);
+  // Die Abfrage auf sets.condition, die hier stand, ist mit Migration 0032
+  // entfallen — samt der Spalte. Das Aggregat rechnet aus den Erfassungen.
+  const agg = await getSetConditionAggregate(uids, setNumber).catch(() => null);
   return agg ? { ...payload, set: { set_number: setNumber, ...agg } } : payload;
 }
 
@@ -434,14 +488,32 @@ async function getSet(userId: Blickfeld, setNumber: string) {
     // Zeile, verschwiege es den anderen — und zwar so, dass es wie eine
     // vollständige Antwort aussieht. Die Menge daneben folgt derselben Regel.
     db.get(
-      `SELECT s.*,
-              (SELECT COALESCE(SUM(a.quantity),0)::int FROM sets a
+      `SELECT s.id, s.user_id, s.set_number, s.added_at, s.updated_at, s.storage_id,
+              -- Beide Listen ausgeschrieben, kein s.*: Auf einer Datenbank
+              -- ohne Migration 0033 braechte s.* ein zweites name mit, und
+              -- der Zugriff darauf waere zweideutig (siehe die Begruendung
+              -- bei setsFrom weiter oben).
+              c.name, c.year, c.theme, c.pieces, c.minifigs,
+              c.image_url, c.image_local,
+              -- Die Gesamtmenge im Blickfeld, aus den ERFASSUNGEN. Hier
+              -- stand eine Summe ueber sets.quantity; die Spalte ist mit
+              -- Migration 0036 weg. Der JOIN auf sets haelt die
+              -- Einschraenkung „nur Konten, die das Set wirklich halten".
+              (SELECT COALESCE(SUM(a.quantity),0)::int
+                 FROM set_acquisitions a
+                 JOIN sets b ON b.user_id = a.user_id AND b.set_number = a.set_number
                 WHERE a.user_id = ANY($1) AND a.set_number = s.set_number) AS quantity,
+              -- Und der Lagerortname, zusammengefasst ueber das Blickfeld
+              -- (der Absatz darueber). Mit dem Wegfall von s.* muss er
+              -- ausdruecklich dastehen — genau das war Marcos Befund: Seit
+              -- Migration 0031 traegt die Zeile nur noch storage_id, und die
+              -- liest kein Klient.
               (SELECT NULLIF(string_agg(DISTINCT lo.name, ', '), '')
-                 FROM sets b
-                 JOIN storage_locations lo ON lo.id = b.storage_id
-                WHERE b.user_id = ANY($1) AND b.set_number = s.set_number) AS storage
+                 FROM sets d
+                 JOIN storage_locations lo ON lo.id = d.storage_id
+                WHERE d.user_id = ANY($1) AND d.set_number = s.set_number) AS storage
          FROM sets s
+         LEFT JOIN set_catalog c ON c.set_number = s.set_number
         WHERE s.user_id = ANY($1) AND s.set_number = $2
         ORDER BY (s.user_id = $3) DESC, s.id ASC
         LIMIT 1`, [uids, setNumber, uids[0]]),
@@ -453,7 +525,7 @@ async function getSet(userId: Blickfeld, setNumber: string) {
   // wie in getSets(). Vorher fehlten sie hier, weshalb ein Client die
   // Listen-Kachel nicht einfach mit dem Detail-Objekt überschreiben konnte,
   // ohne genau diese Werte zu verlieren.
-  const agg = await getSetConditionAggregate(uids, setNumber, set.condition);
+  const agg = await getSetConditionAggregate(uids, setNumber);
   // ── Zwei Kaufadressen, vom Server aufgeloest ────────────────────────────
   //
   // Marcos Wunsch: „auf dem Detail-Dialog sowohl den BrickLink-Link analog

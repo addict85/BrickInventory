@@ -25,6 +25,7 @@ import * as db from '../db/database';
 import { resolveSetCondition, resolveBlColorId, resolveBlPartNumber } from './financeCalc';
 import { asIds } from './household';
 import { buildChart } from './chartData';
+import { blNummerVon } from './blZuordnung';
 
 /**
  * Welche Zustaende gehoeren ins Diagramm?
@@ -125,9 +126,11 @@ export async function getSetPriceHistory(uid: number | number[], setNumber: stri
     U: currentRows.find((r: any) => r.condition === 'U') || null,
   };
 
-  // Kaufpreis: aus der ERSTEN Erfassung, ersatzweise vom Set.
+  // Kaufpreis: aus der ERSTEN Erfassung. Der Rückfall auf s.purchase_price ist
+  // mit Migration 0032 weggefallen — die Spalte gibt es nicht mehr, und jede
+  // Set-Zeile hat mindestens eine Erfassung.
   const set = await db.get(
-    `SELECT COALESCE(a.purchase_price, s.purchase_price) AS purchase_price,
+    `SELECT a.purchase_price AS purchase_price,
             to_char(COALESCE(a.created_at, s.added_at), 'YYYY-MM-DD') AS added_day
        FROM sets s
        LEFT JOIN LATERAL (
@@ -460,17 +463,18 @@ export async function getMinifigPriceHistory(uid: number | number[], figNumber: 
 /**
  * Unter welchen Nummern können die Preise dieser Figur liegen?
  *
- * Die eigene und, falls hinterlegt, die BrickLink-Nummer aus dem Blickfeld.
+ * Die eigene und, falls hinterlegt, die BrickLink-Nummer.
  * Doppelte fallen weg — meist sind beide gleich, dann bleibt es bei einer.
+ *
+ * Das BLICKFELD ist hier entfallen, und das ist keine Vereinfachung, sondern
+ * eine Richtigstellung: Die Nummer stand bis Migration 0037 je Konto an der
+ * Bestandszeile, also musste die Abfrage alle Konten des Haushalts ansehen.
+ * Jetzt haengt sie an der FIGUR und gilt fuer alle — es gibt nichts mehr zu
+ * sammeln.
  */
-async function preisNummernFuerFigur(uid: number | number[], figNumber: string): Promise<string[]> {
-  const zeilen = await db.all(
-    `SELECT DISTINCT bl_fig_number FROM minifigs
-      WHERE user_id = ANY($1) AND fig_number = $2
-        AND bl_fig_number IS NOT NULL AND bl_fig_number <> ''`,
-    [asIds(uid as any), figNumber]
-  ).catch(() => []);
-  return [...new Set([figNumber, ...zeilen.map((z: any) => z.bl_fig_number)])];
+async function preisNummernFuerFigur(_uid: number | number[], figNumber: string): Promise<string[]> {
+  const bl = await blNummerVon('fig', figNumber);
+  return [...new Set([figNumber, ...(bl ? [bl] : [])])];
 }
 
 /**

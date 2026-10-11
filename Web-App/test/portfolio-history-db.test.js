@@ -99,6 +99,21 @@ test('die Portfolio-Kurve rechnet dasselbe wie die Vergleichsfassung', { concurr
   await db.run('DROP SCHEMA public CASCADE');
   await db.run('CREATE SCHEMA public');
   await db.initSchema();
+  // ── Und die Migrationen, nicht nur das Schema ────────────────────────────
+  //
+  // Diese Datei baut die Datenbank von null auf und liess sie danach auf dem
+  // Stand von db/schema.sql stehen — also VOR allen Migrationen. Das ist
+  // nicht nur fuer sie selbst falsch, sondern fuer jede Datei danach: Sie
+  // erbt eine halbe Datenbank.
+  //
+  // GEMESSEN: Nach dem Umzug der Setmenge (Migration 0036) hatte
+  // db/schema.sql noch `sets.quantity DEFAULT 1`, die Erfassungen hier
+  // tragen `1 + (g%3)`. Die naechste Datei, die die Migrationen laufen liess
+  // (test/portfolio-scope-db.test.js), brach ab: „Bei 20 Set-Zeilen weicht
+  // sets.quantity von der Summe der Erfassungen ab". Der Riegel hatte recht
+  // — die beiden Zahlen WAREN verschieden.
+  const c0 = await db.pool.connect();
+  try { await _req('db/migrate.js').runMigrations(c0); } finally { c0.release(); }
 
   const { getPortfolioHistory } = _req('utils/portfolioHistory.js');
   const getSetting = async (_u, k, d) => (k === 'currency' ? 'CHF' : d);
@@ -107,9 +122,27 @@ test('die Portfolio-Kurve rechnet dasselbe wie die Vergleichsfassung', { concurr
   const [u1, u2] = (await db.all('SELECT id FROM users ORDER BY id')).map(r => r.id);
 
   // 30 Sets, hälftig auf zwei Haushaltskonten, verschiedene Mengen.
+  // Nur die Bestandszeilen; die Mengen stehen in den Erfassungen weiter unten
+  // (Migration 0036). `1 + (g%3)` taucht dort genauso auf — dieselbe Formel,
+  // und das ist der Punkt: Sie MUSS uebereinstimmen, sonst gewichtet
+  // portfolioHistory.ts anders als die Kurve, die dieser Test vergleicht.
+  // Hier stand sie zusaetzlich in der Spalte, also dreimal.
   await db.run(
-    `INSERT INTO sets (user_id, set_number, name, quantity, purchase_price)
-     SELECT (CASE WHEN g%2=0 THEN $1::int ELSE $2::int END), (10000+g)||'-1', 'Set '||g, 1 + (g%3), 40
+    `INSERT INTO sets (user_id, set_number)
+     SELECT (CASE WHEN g%2=0 THEN $1::int ELSE $2::int END), (10000+g)||'-1'
+       FROM generate_series(1,30) g`, [u1, u2]);
+  // Der Name gehoert seit Migration 0033 in den Katalog, und zu jedem Set im
+  // Bestand steht dort eine Zeile.
+  await db.run(
+    `INSERT INTO set_catalog (set_number, name)
+     SELECT (10000+g)||'-1', 'Set '||g FROM generate_series(1,30) g
+     ON CONFLICT (set_number) DO NOTHING`);
+  // Kaufpreis und Menge je Erfassung — seit Migration 0032 der einzige Ort.
+  // Die Menge MUSS zur sets-Zeile passen, sonst gewichtet portfolioHistory.ts
+  // anders als die Kurve, die dieser Test vergleicht.
+  await db.run(
+    `INSERT INTO set_acquisitions (user_id, set_number, quantity, purchase_price, condition)
+     SELECT (CASE WHEN g%2=0 THEN $1::int ELSE $2::int END), (10000+g)||'-1', 1 + (g%3), 40, 'N'
        FROM generate_series(1,30) g`, [u1, u2]);
 
   // Preisverlauf mit LÜCKEN: Ein Set schreibt nur jeden dritten Tag. Genau
@@ -130,7 +163,16 @@ test('die Portfolio-Kurve rechnet dasselbe wie die Vergleichsfassung', { concurr
        FROM generate_series(1,10) g, generate_series(1,400) d
       WHERE (d + g) % 3 = 0 AND d % 7 = 0`);
 
-  const setsRows = await db.all('SELECT set_number, quantity FROM sets ORDER BY set_number');
+  // Die Mengen aus den Erfassungen (Migration 0036 hat sets.quantity
+  // geloescht). Der JOIN auf `sets` ist dieselbe Einschraenkung wie in
+  // utils/bestandsmenge.ts: Eine Erfassung ohne Bestandszeile zaehlt nicht.
+  const setsRows = await db.all(
+    `SELECT s.set_number, COALESCE(SUM(a.quantity), 0)::int AS quantity
+       FROM sets s
+       LEFT JOIN set_acquisitions a
+              ON a.user_id = s.user_id AND a.set_number = s.set_number
+      GROUP BY s.set_number
+      ORDER BY s.set_number`);
   const setNumbers = setsRows.map(r => r.set_number);
   const setQty = Object.fromEntries(setsRows.map(r => [r.set_number, r.quantity]));
 

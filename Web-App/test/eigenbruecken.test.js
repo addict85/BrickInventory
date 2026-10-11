@@ -166,8 +166,24 @@ test('kein Test liest eine Quelldatei, die es nicht gibt', () => {
   // den der Absatz darueber als gutes Muster beschreibt — ausgeschrieben waere
   // die Liste eine zweite Wahrheit, die beim naechsten neuen Baustein veraltet.
   // Die Schranke zieht deshalb um eins nach und nicht der Test.
-  assert.ok(offen.length <= 71,
-    `${offen.length} Pfade mit variablem Segment (gemessen waren es 71):\n  ` +
+  //
+  // 71 -> 72 (Migration 0036): test/setmenge-aus-erfassungen-db.test.js geht
+  // die Migrationsdateien der Reihe nach durch, um die Kette VOR 0036
+  // aufzubauen, und liest sie ueber die Schleifenvariable. Die Liste
+  // ausschreiben hiesse, bei jeder neuen Migration eine zweite Stelle zu
+  // pflegen — dieselbe Begruendung wie darueber.
+  //
+  // 72 -> 73 (Migration 0037): test/bricklink-zuordnung-db.test.js baut die
+  // Kette VOR 0037 auf und geht dafuer die Migrationsdateien durch —
+  // dieselbe Begruendung wie eine Zeile darueber.
+  //
+  // 73 -> 74 (Migration 0038): test/teilemengen-abgeleitet-db.test.js baut die
+  // Kette VOR 0038 auf — dieselbe Begruendung, dritter Fall. Dass diese Zahl
+  // bei jeder solchen Migration um eins steigt, ist kein Schleifen der Regel:
+  // Jeder Schritt steht hier mit Datei und Grund, und ein Zuwachs OHNE Grund
+  // faellt genau deshalb auf.
+  assert.ok(offen.length <= 74,
+    `${offen.length} Pfade mit variablem Segment (gemessen waren es 74):\n  ` +
     offen.join('\n  ') + '\nWo es geht, gehoert der Pfad ausgeschrieben — ein ' +
     'variables Segment nimmt dieser Pruefung die Sicht.');
 });

@@ -8,7 +8,7 @@ const db      = require('../db/database');
 const https   = require('https');
 const { rebrickableBackgroundLimiter: rebrickableLimiter, consumeRebrickableDaily, parseThrottleWait } = require('../utils/rateLimiter');
 
-import { merkeBlTeilnummer } from '../utils/blZuordnung';
+import { merkeBlNummer } from '../utils/blZuordnung';
 import { getRbKey } from '../clients/rebrickable';
 
 /** Ergebnis der handgebauten HTTPS-Aufrufe in dieser Datei. Ohne Typparameter
@@ -47,12 +47,17 @@ async function run() {
   const rbKey = await getRbKey();
   if (!rbKey) { console.log('[bl-backfill] No Rebrickable API key — skipping'); return; }
 
+  // „Noch keine Zeile in bl_zuordnung" statt „Spalte leer" (Migration
+  // 0037). Geprueft wird die ZEILE, nicht ihr Wert: leer heisst
+  // nachgesehen und ohne abweichende Nummer, und das soll kein zweites
+  // Nachladen ausloesen.
   const parts = await db.all(
-    `SELECT DISTINCT part_number FROM parts
-     WHERE bl_part_number IS NULL
-     ORDER BY part_number`
+    `SELECT DISTINCT p.part_number FROM parts p
+      LEFT JOIN bl_zuordnung z ON z.art = 'part' AND z.rb_id = p.part_number
+      WHERE z.rb_id IS NULL
+      ORDER BY p.part_number`
   );
-  if (!parts.length) { console.log('[bl-backfill] All parts already have bl_part_number'); return; }
+  if (!parts.length) { console.log('[bl-backfill] Alle Teile sind nachgesehen'); return; }
 
   const partNums = parts.map((p: any) => p.part_number);
   console.log(`[bl-backfill] Backfilling ${partNums.length} parts in batches of 500...`);
@@ -77,12 +82,13 @@ async function run() {
     // Update DB for all parts in this batch
     for (const partNum of batch) {
       const blId = apiMap[partNum] || partNum; // if not in API response, use RB ID
-      await db.run(
-        `UPDATE parts SET bl_part_number=$1 WHERE part_number=$2 AND bl_part_number IS NULL`,
-        [blId, partNum]
-      ).catch((e: any) => console.warn(`[bl-backfill] bl_part_number ${partNum}: ${e.message}`));
-      await merkeBlTeilnummer(partNum, blId)
-        .catch((e: any) => console.warn(`[bl-backfill] rb_bl_mapping ${partNum}: ${e.message}`));
+      // EIN Schreibvorgang statt zwei: Hier stand zuerst ein
+      // `UPDATE parts SET bl_part_number=...` und danach derselbe Wert noch
+      // einmal in die Zuordnung. Mit Migration 0037 gibt es die Spalte nicht
+      // mehr — und damit auch nicht mehr die Frage, welcher der beiden
+      // Schreibvorgänge gilt, wenn einer von ihnen ausfällt.
+      await merkeBlNummer('part', partNum, blId)
+        .catch((e: any) => console.warn(`[bl-backfill] bl_zuordnung ${partNum}: ${e.message}`));
       if (apiMap[partNum]) updated++; else skipped++;
     }
     console.log(`[bl-backfill] ${Math.min(i+BATCH, partNums.length)}/${partNums.length} done (${updated} updated)`);

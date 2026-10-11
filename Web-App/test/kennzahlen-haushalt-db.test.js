@@ -33,6 +33,7 @@ process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:t
 process.env.WEB_WORKERS = '1';
 
 const _req = require('./helpers/sources').buildAndRequire();
+const { haeltSet } = require('./helpers/bestand');
 const db = _req('db/database.js');
 
 async function erreichbar() {
@@ -49,6 +50,22 @@ test('Kopfzeile und Galerie zaehlen dieselben Sets', async (t) => {
   await db.run('DROP SCHEMA public CASCADE');
   await db.run('CREATE SCHEMA public');
   await db.initSchemaOnce();
+  // ── Und die MIGRATIONEN, nicht nur das Schema ───────────────────────────
+  //
+  // Diese Datei loescht das Schema und baut es neu auf. initSchemaOnce()
+  // laeuft dabei voll durch (die Marke in schema_meta ist mit weg), bleibt
+  // aber auf dem Stand von db/schema.sql — also VOR allen Migrationen. Das
+  // ist nicht nur fuer diese Datei falsch, sondern fuer jede danach: Sie erbt
+  // eine halbe Datenbank.
+  //
+  // GEMESSEN beim Umzug der Teilemengen (Migration 0038): db/schema.sql legt
+  // `parts.quantity DEFAULT 1` an, die Katalogzeilen tragen die echte Zahl.
+  // Die naechste Datei, die die Migrationen laufen liess, brach ab — „Bei 8
+  // Set-Teilen weicht parts.quantity vom Katalog ab". Der Riegel hatte recht.
+  {
+    const mc = await db.pool.connect();
+    try { await _req('db/migrate.js').runMigrations(mc); } finally { mc.release(); }
+  }
 
   await db.run(`INSERT INTO users (username,password_hash) VALUES ('haupt','x'),('kind','x')`);
   const id = async (n) => (await db.get(`SELECT id FROM users WHERE username=$1`, [n])).id;
@@ -57,8 +74,9 @@ test('Kopfzeile und Galerie zaehlen dieselben Sets', async (t) => {
 
   // 75192-1 besitzen BEIDE — ohne diese Überschneidung stimmen Zeilenzahl und
   // Kachelzahl zufällig überein, und der Test prüfte nichts.
-  await db.run(`INSERT INTO sets (user_id,set_number,name,quantity) VALUES
-      ($1,'75192-1','Falcon',1), ($2,'75192-1','Falcon',1), ($2,'21318-1','Baumhaus',1)`, [haupt, kind]);
+  await haeltSet(db, haupt, '75192-1', 1);
+  await haeltSet(db, kind, '75192-1', 1);
+  await haeltSet(db, kind, '21318-1', 1);
 
   const { scopeIds } = _req('utils/household.js');
   const { getStats } = _req('utils/handlers/stats.js');

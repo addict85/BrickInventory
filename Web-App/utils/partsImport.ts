@@ -8,7 +8,8 @@ import { generateThumb } from './thumbs';
 import { meldeUndWeiter } from '../utils/httpError';
 import { getGlobalSetting } from '../utils/settings';
 import { mitVersion } from './setNummer';
-import { merkeBlTeilnummer, merkeBlNummerUnveraendert } from './blZuordnung';
+import { merkeBlNummer, merkeBlNummerUnveraendert } from './blZuordnung';
+import { merkeTeil, merkeTeilFarbe, setzeTeilBildLokal } from './katalogPflege';
 
 /**
  * Teile eines Sets aus dem Katalog übernehmen.
@@ -48,10 +49,19 @@ async function downloadPartImagesBackground(
           'UPDATE set_parts_catalog SET image_local=$1 WHERE part_number=$2 AND color_id=$3',
           [rel, partNumber, colorId]
         ).catch(logAndContinue('parts:image_local katalog'));
-        await db.run(
-          'UPDATE parts SET image_local=$1 WHERE part_number=$2 AND color_id=$3',
-          [rel, partNumber, colorId]
-        ).catch(logAndContinue('parts:image_local bestand'));
+        // Hier stand ein UPDATE auf parts — also je Konto einmal derselbe
+        // Pfad. Seit Migration 0034 steht das Bild einmal im Katalog, und
+        // zwar je (Teil, Farbe): Dasselbe Teil in Rot und in Blau hat
+        // verschiedene Bilder, dieselbe Farbe aber immer dasselbe.
+        //
+        // Als Upsert, nicht als UPDATE: Der Bildabgleich kann ein Teil
+        // treffen, dessen Katalogzeile es noch nicht gibt (das Bild wird
+        // heruntergeladen, bevor der Teile-Import die Zeile schreibt).
+        // Ein nacktes UPDATE waere dort wirkungslos — lautlos.
+        // Ohne COALESCE: Eine eben heruntergeladene Datei ist der richtige
+        // Pfad, auch wenn schon einer dasteht (utils/katalogPflege.ts).
+        await setzeTeilBildLokal(partNumber, colorId, rel)
+          .catch(logAndContinue('parts:image_local katalog (teil/farbe)'));
       }
     }));
     done += batch.length;
@@ -60,31 +70,21 @@ async function downloadPartImagesBackground(
   if (done > 0) console.log(`[parts] ${setNumber}: ${done} Bilder`);
 }
 
-// Sync bl_part_number from rb_bl_mapping table (called after CSV sync)
-async function syncBlPartNumbers() {
-  // Sync to user parts table
-  const r1 = await db.run(
-    `UPDATE parts SET bl_part_number = m.bl_part_num
-     FROM rb_bl_mapping m
-     WHERE parts.part_number = m.part_num
-       AND (parts.bl_part_number IS NULL OR parts.bl_part_number = parts.part_number)
-       AND m.bl_part_num IS NOT NULL`
-  ).catch(logAndContinue('teile:bl-nummern (Bestand)'));
-  // Sync to shared catalog too
-  const r2 = await db.run(
-    `UPDATE set_parts_catalog SET bl_part_number = m.bl_part_num
-     FROM rb_bl_mapping m
-     WHERE set_parts_catalog.part_number = m.part_num
-       AND (set_parts_catalog.bl_part_number IS NULL OR set_parts_catalog.bl_part_number = set_parts_catalog.part_number)
-       AND m.bl_part_num IS NOT NULL`
-  ).catch(logAndContinue('teile:bl-nummern (Katalog)'));
-  // db.run() liefert { changes, lastID } — nicht rowCount. Hier stand
-  // r1?.rowCount + r2?.rowCount, und die Summe war deshalb immer 0. Da sie
-  // ausserdem nirgends verwendet wurde, war die ganze Zeile wirkungslos:
-  // jetzt eine Logzeile, die tatsächlich etwas aussagt.
-  const count = (r1?.changes || 0) + (r2?.changes || 0);
-  if (count) console.log(`[parts] BrickLink-Nummern nachgetragen: ${count} Zeilen`);
-}
+// ── syncBlPartNumbers() ist WEG ───────────────────────────────────────────
+//
+// Ihre ganze Aufgabe war das KOPIEREN: Sie trug rb_bl_mapping in
+// `parts.bl_part_number` und `set_parts_catalog.bl_part_number` nach, nach
+// jedem CSV-Abgleich. Der Kommentar darueber sagte es selbst — „Sync
+// bl_part_number from rb_bl_mapping table (called after CSV sync)".
+//
+// Mit Migration 0037 gibt es die beiden Abschriften nicht mehr: Die
+// BrickLink-Nummer steht in `bl_zuordnung`, einmal je Teil, und die
+// Leseabfragen holen sie von dort (utils/blZuordnung.ts, blJoin/blNummerSql).
+// Es gibt also nichts zu kopieren, und damit auch keinen Zeitpunkt, zu dem
+// eine Kopie veralten koennte.
+//
+// Marcos Vorgabe dahinter: „ich würde mir für die bl_*_number Spalten eine
+// Mapping-Tabelle vorstellen mit der Spalte RB_id und BL_id".
 
 // Der frühere `sendProgress`-Parameter ist ersatzlos entfallen, und mit ihm die
 // Schritte 'parts_start', 'parts_importing', 'parts_done', 'parts_images' und
@@ -137,24 +137,60 @@ async function importPartsForSet(setNumber: string, userId: number) {
           await db.transaction(async (tx) => {
             for (const row of rows) {
               // [0]=userId [1]=setNum [2]=partNo [3]=blNum [4]=name [5]=colorId [6]=colorName [7]=colorHex [8]=catName [9]=qty [10]=imageUrl [11]=imageLocal [12]=isSpare
+              //
+              // Nur noch der BESTAND: wer welches Teil in welcher Farbe aus
+              // welchem Set hat. Die Beschreibung schreiben die beiden
+              // Schleifen darunter EINMAL in den Katalog, statt je Konto neu
+              // (Migration 0034).
+              // Ohne Menge: Die Stückzahl eines Set-Teils ist seit Migration
+              // 0038 die Katalogzahl — und die schreibt der Upsert auf
+              // set_parts_catalog weiter unten, aus demselben row[9].
+              // Vorher stand derselbe Wert an BEIDEN Stellen, in derselben
+              // Schleife; genau das war die Abschrift.
               await tx.run(
-                'INSERT INTO parts (user_id,set_number,part_number,bl_part_number,part_name,color_id,color_name,color_hex,category_name,quantity,image_url,image_local,is_spare) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13) ON CONFLICT DO NOTHING',
-                row
+                'INSERT INTO parts (user_id,set_number,part_number,color_id) VALUES ($1,$2,$3,$4) ON CONFLICT DO NOTHING',
+                [row[0], row[1], row[2], row[5]]
               );
+            }
+            // ── Teilekatalog ────────────────────────────────────────────
+            //
+            // DO UPDATE mit COALESCE auf der SPALTE, nicht auf EXCLUDED: Ein
+            // vorhandener Name bleibt stehen, ein fehlender wird gefuellt.
+            // Die Set-Teile-Antwort von Rebrickable liefert kein part_cat_id,
+            // die Kategorie steht dort oft auf 'Unknown' — NULLIF haelt das
+            // aus dem Katalog heraus, damit ein spaeterer, echter Wert nicht
+            // dagegen antreten muss.
+            // In eigenen Schleifen, Tabelle fuer Tabelle — dieselbe
+            // Begruendung wie beim Set-Teilekatalog darunter: eine feste
+            // Sperrreihenfolge statt einer Verschraenkung ueber Tabellen
+            // hinweg. Die Zeilen sind nach Teilenummer und Farbe sortiert.
+            for (const row of rows) {
+              await merkeTeil(row[2], row[4], row[8], tx);
+            }
+            for (const row of rows) {
+              await merkeTeilFarbe(row[2], row[5], row[6], row[7], row[10], row[11], tx);
             }
             // Insert catalog separately (different table — avoids cross-table deadlock)
             for (const row of rows) {
+              // Ohne bl_part_number: Die BrickLink-Nummer steht seit
+              // Migration 0037 in bl_zuordnung, einmal je Teil. Hier stand
+              // sie je Set-Teile-Zeile, also fuer dasselbe Teil so oft, wie
+              // es Sets damit gibt — und wurde nach jedem CSV-Abgleich aus
+              // rb_bl_mapping nachkopiert (syncBlPartNumbers, siehe oben).
               await tx.run(
-                `INSERT INTO set_parts_catalog (set_number,part_number,bl_part_number,part_name,color_id,color_name,color_hex,category_name,image_url,image_local,is_spare,quantity)
-                 VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12)
+                `INSERT INTO set_parts_catalog (set_number,part_number,part_name,color_id,color_name,color_hex,category_name,image_url,image_local,is_spare,quantity)
+                 VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11)
                  ON CONFLICT (set_number,part_number,color_id) DO UPDATE SET
-                   bl_part_number=COALESCE(EXCLUDED.bl_part_number,set_parts_catalog.bl_part_number),
                    part_name=EXCLUDED.part_name,color_name=EXCLUDED.color_name,color_hex=EXCLUDED.color_hex,
                    image_url=COALESCE(EXCLUDED.image_url,set_parts_catalog.image_url),
                    image_local=COALESCE(EXCLUDED.image_local,set_parts_catalog.image_local),
                    quantity=EXCLUDED.quantity,updated_at=NOW()`,
-                [row[1],row[2],row[3],row[4],row[5],row[6],row[7],row[8],row[10],row[11],row[12],row[9]]
+                [row[1],row[2],row[4],row[5],row[6],row[7],row[8],row[10],row[11],row[12],row[9]]
               );
+              // Die BrickLink-Nummer aus derselben Antwort — jetzt dorthin,
+              // wo sie hingehoert. merkeBlNummer() schreibt NULL, wenn sie
+              // mit der Rebrickable-Nummer uebereinstimmt.
+              if (row[3]) await merkeBlNummer('part', String(row[2]), String(row[3]));
             }
           });
           break; // success
@@ -187,11 +223,15 @@ async function fetchMissingBlIds() {
     const rbKey = await getGlobalSetting('rebrickable_api_key');
     if (!rbKey) return;
 
-    // Only fetch parts not yet in rb_bl_mapping (source of truth for BL IDs)
+    // Nur Teile, zu denen noch KEINE Zeile in bl_zuordnung steht (die
+    // Zuordnung ist seit Migration 0037 die einzige Quelle). Geprueft wird
+    // die Zeile, nicht ihr Wert: Eine Zeile mit leerer bl_id heisst
+    // „nachgesehen, keine abweichende Nummer" und darf kein zweites
+    // Nachladen ausloesen — genau dafuer gibt es merkeBlNummerUnveraendert().
     const missing = await db.all(
       `SELECT DISTINCT p.part_number FROM parts p
-       LEFT JOIN rb_bl_mapping m ON m.part_num = p.part_number
-       WHERE m.part_num IS NULL
+       LEFT JOIN bl_zuordnung m ON m.art = 'part' AND m.rb_id = p.part_number
+       WHERE m.rb_id IS NULL
          AND p.part_number IS NOT NULL
          AND p.source != 'manual'
        LIMIT 5000`
@@ -234,20 +274,22 @@ const https2 = require('https') as typeof import('https');
       for (const part of (data?.results || [])) {
         const blIds = part.external_ids?.BrickLink;
         const blNum = Array.isArray(blIds) && blIds.length > 0 ? blIds[0] : part.part_num;
-        await merkeBlTeilnummer(part.part_num, blNum).catch(() => {});
+        await merkeBlNummer('part', part.part_num, blNum).catch(() => {});
       }
       // Mark unmatched as checked
       const returned = new Set((data?.results||[]).map((p: { part_num: string }) => p.part_num));
       for (const pn of batch) {
         if (!returned.has(pn)) {
-          await merkeBlNummerUnveraendert(pn).catch(() => {});
+          await merkeBlNummerUnveraendert('part', pn).catch(() => {});
         }
       }
     }
-    await syncBlPartNumbers();
+    // Hier stand `await syncBlPartNumbers()`. Die eben gemerkten Nummern
+    // stehen schon da, wo sie gelesen werden — in bl_zuordnung. Nachtragen
+    // muss sie niemand mehr.
     monitor.update('blIds', { status: 'done', sub: null });
 
   } catch(e) { console.error('[bl-fetch] error:', fehlertext(e)); }
 }
 
-export { importPartsForSet, fetchMissingBlIds, syncBlPartNumbers, downloadPartImagesBackground };
+export { importPartsForSet, fetchMissingBlIds, downloadPartImagesBackground };
