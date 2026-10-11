@@ -93,6 +93,74 @@ test('nur ein 404 heisst „das Bild gibt es nicht"', { concurrency: 1 }, async 
     await db.run(`DELETE FROM image_misses WHERE cache_key = $1`, ['set:' + sn]);
   });
 
+  await t.test('ein Stapel aus lauter 404ern meldet sich als warn, nicht als error', async () => {
+    // ── Marcos Protokoll ───────────────────────────────────────────────────
+    //
+    //     [image-queue] 265-2: Vorschau fehlgeschlagen · 5010729-1: Download
+    //                   fehlgeschlagen (HTTP 404)
+    //
+    // Ein 404 heisst „dieses Set hat beim CDN kein Bild" — bei alten Sets der
+    // Normalfall. Er wird vermerkt und NICHT wiederholt; es gibt nichts zu
+    // tun. Als `error` gemeldet macht er das Protokoll unlesbar und damit die
+    // echten Fehler daneben unsichtbar.
+    //
+    // Geprueft wird die STUFE, nicht der Wortlaut: Was dort steht, ist
+    // anderswo schon zugesichert (die Setnummer muss drinstehen) — hier geht
+    // es darum, auf welchem Kanal es landet.
+    const sn = `${P}_leise`;
+    await db.run(`DELETE FROM image_misses WHERE cache_key = $1`, ['set:' + sn]);
+    IM._leereVordergrund();
+    antwortStatus = 404;
+    await einreihen(sn);
+
+    const echtErr = console.error, echtWarn = console.warn;
+    const alsError = [], alsWarn = [];
+    console.error = (...a) => alsError.push(a.map(String).join(' '));
+    console.warn  = (...a) => alsWarn.push(a.map(String).join(' '));
+    try { await IQ._arbeiteStapel(); }
+    finally { console.error = echtErr; console.warn = echtWarn; }
+    await IM._schreibePuffer();
+
+    const queueErr  = alsError.filter(z => z.startsWith('[image-queue]'));
+    const queueWarn = alsWarn.filter(z => z.startsWith('[image-queue]'));
+    assert.deepEqual(queueErr, [],
+      `Ein reiner 404-Stapel wurde als error gemeldet: ${queueErr.join(' | ')}`);
+    assert.equal(queueWarn.length, 1,
+      `Erwartet GENAU eine warn-Zeile, bekam ${queueWarn.length}: ${queueWarn.join(' | ')}. ` +
+      'Keine hiesse, der Stapel schweigt jetzt ganz — und dann faellt auch nicht ' +
+      'mehr auf, WELCHE Sets kein Bild haben.');
+    assert.match(queueWarn[0], new RegExp(sn), 'Die Setnummer fehlt in der Meldung');
+    await db.run(`DELETE FROM image_misses WHERE cache_key = $1`, ['set:' + sn]);
+  });
+
+  await t.test('GEGENPROBE: ein wiederholbarer Fehler bleibt error', async () => {
+    // Ohne diesen Fall waere die Regel oben auch erfuellt, wenn die
+    // Sammelzeile IMMER auf warn ginge — und dann faellt nichts mehr auf.
+    // Kein Statuscode heisst „voruebergehend, wird erneut versucht": genau
+    // das, was jemand sehen soll.
+    const sn = `${P}_laut`;
+    await db.run(`DELETE FROM image_misses WHERE cache_key = $1`, ['set:' + sn]);
+    IM._leereVordergrund();
+    antwortStatus = null;
+    await einreihen(sn);
+
+    const echtErr = console.error, echtWarn = console.warn;
+    const alsError = [], alsWarn = [];
+    console.error = (...a) => alsError.push(a.map(String).join(' '));
+    console.warn  = (...a) => alsWarn.push(a.map(String).join(' '));
+    try { await IQ._arbeiteStapel(); }
+    finally { console.error = echtErr; console.warn = echtWarn; }
+
+    const queueErr = alsError.filter(z => z.startsWith('[image-queue]'));
+    assert.equal(queueErr.length, 1,
+      `Ein wiederholbarer Fehler muss als error gemeldet werden, bekam ` +
+      `${queueErr.length} error- und ${alsWarn.filter(z => z.startsWith('[image-queue]')).length} warn-Zeilen`);
+    assert.match(queueErr[0], /wird erneut versucht/,
+      'Die Meldung sagt nicht, dass es wiederholt wird — genau das unterscheidet ' +
+      'sie vom 404, der endgueltig ist');
+    await db.run(`DELETE FROM image_misses WHERE cache_key = $1`, ['set:' + sn]);
+  });
+
   await t.test('eine Zeitüberschreitung sperrt NICHT sieben Tage aus', async () => {
     // Kein Statuscode: genau das Bild eines Netzwerkfehlers. downloadSetImage
     // setzt info.status ausschliesslich bei einer Antwort ≠ 200 — bricht die

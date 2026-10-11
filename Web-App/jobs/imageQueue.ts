@@ -415,6 +415,9 @@ async function arbeiteStapel(): Promise<StapelErgebnis> {
 
   /** Setnummern mit Grund — bei wenigen Fällen nennt die Meldung sie beim Namen. */
   const gruende: string[] = [];
+  // Traegt dieser Stapel etwas, das Aufmerksamkeit braucht? Ein 404 vom CDN
+  // tut es nicht (siehe die Sammelzeile am Ende), alles andere schon.
+  let etwasZuTun = false;
 
   const fs = require('fs');
   const path = require('path');
@@ -479,7 +482,12 @@ async function arbeiteStapel(): Promise<StapelErgebnis> {
         await pauseVorArbeit();
         arbeit++;
         if (await vorschauErzeugen(`/images/sets/${r.set_number}.jpg`, vorschau)) { fertig++; erg.vorschau++; }
-        else { erg.keineVorschau++; gruende.push(`${r.set_number}: Vorschau fehlgeschlagen`); }
+        // Eine gescheiterte Vorschau IST etwas zu tun: Die Originaldatei
+        // liegt da, nur liess sie sich nicht verkleinern — das deutet auf
+        // eine kaputte oder unbekannte Datei und wiederholt sich bei jedem
+        // Takt, solange niemand hinsieht.
+        else { erg.keineVorschau++; etwasZuTun = true;
+               gruende.push(`${r.set_number}: Vorschau fehlgeschlagen`); }
       }
       continue;   // kein zweiter Download
     }
@@ -576,6 +584,9 @@ async function arbeiteStapel(): Promise<StapelErgebnis> {
       // nicht".
       const hartFehlend = info.status === 404 || info.status === 410;
       if (hartFehlend) merkeFehlend('set:' + r.set_number, `HTTP ${info.status} vom CDN`);
+      // Ob in diesem Stapel ueberhaupt etwas steht, das Aufmerksamkeit
+      // braucht — siehe die Begruendung bei der Sammelzeile unten.
+      if (!hartFehlend) etwasZuTun = true;
       erg.nichtGeladen++;
       gruende.push(`${r.set_number}: Download fehlgeschlagen` +
                    (info.status ? ` (HTTP ${info.status})` : ' (kein Statuscode — vorübergehend?)') +
@@ -602,8 +613,22 @@ async function arbeiteStapel(): Promise<StapelErgebnis> {
   // GET /api/v1/admin/image-diag/:setNumber die Frage in EINER Antwort.
   // Nur bei wenigen Fällen — bei fünfzig wäre die Zeile unlesbar, und die
   // Einzelgründe stehen ohnehin in den [set-img]- und [thumb]-Zeilen.
+  //
+  // ── error nur, wenn etwas ZU TUN ist ─────────────────────────────────────
+  //
+  // Marcos Protokoll nach einem Serverstart:
+  //
+  //     [image-queue] 265-2: Vorschau fehlgeschlagen · 5010729-1: Download
+  //                   fehlgeschlagen (HTTP 404)
+  //
+  // Ein 404 heisst „dieses Set hat beim CDN kein Bild" — bei alten Sets der
+  // Normalfall. Er wird als Fehlanzeige vermerkt und NICHT wiederholt; es
+  // gibt nichts zu tun. Besteht der ganze Stapel aus solchen Faellen, ist
+  // `warn` die ehrliche Stufe. Sobald EIN Grund etwas anderes ist (eine
+  // gescheiterte Vorschau, ein 403, ein Netzwerkfehler, der wiederholt wird),
+  // bleibt es `error` — und faellt dann auch wieder auf.
   if (gruende.length && gruende.length <= 5) {
-    console.error(`[image-queue] ${gruende.join(' · ')}`);
+    (etwasZuTun ? console.error : console.warn)(`[image-queue] ${gruende.join(' · ')}`);
   }
   // HIER festhalten, nicht erst im Takt: Wer diesen Stapel ausführt, hat
   // gearbeitet — gleich, von wo er gerufen wurde. In die DATENBANK schreibt

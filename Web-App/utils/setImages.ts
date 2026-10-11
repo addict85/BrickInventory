@@ -94,7 +94,26 @@ async function downloadSetImage(url: string, setNumber: string, info?: { status?
             // Statuscode nennen (Nachtrag 50): „404 vom CDN" und „403 wegen
             // Bot-Erkennung" verlangen völlig verschiedene Massnahmen —
             // vorher waren beide dasselbe schweigende null.
-            console.error(`[set-img] ${setNumber}: HTTP ${res.statusCode} vom Bildserver: ${url}`);
+            //
+            // ── Und 404 ist KEIN Fehler ─────────────────────────────────
+            //
+            // Marcos Protokoll nach einem Serverstart war voll davon:
+            //
+            //     [set-img] 5010729-1: HTTP 404 vom Bildserver: …
+            //
+            // Ein 404 heisst „dieses Set hat beim CDN kein Bild" — bei alten
+            // Sets der Normalfall, und der Job behandelt ihn auch so: Er
+            // vermerkt ihn als Fehlanzeige (image_misses) und versucht es
+            // NICHT wieder. Etwas, das richtig laeuft und sich nie aendern
+            // wird, als `error` zu melden macht das Protokoll unlesbar — und
+            // damit die echten Fehler unsichtbar, die daneben stehen.
+            //
+            // 403 und 429 bleiben `error`: Dort ist etwas zu tun (Drosselung,
+            // Bot-Erkennung), und genau diese Unterscheidung war der Grund,
+            // den Statuscode ueberhaupt zu nennen.
+            const nichtVorhanden = res.statusCode === 404 || res.statusCode === 410;
+            (nichtVorhanden ? console.warn : console.error)(
+              `[set-img] ${setNumber}: HTTP ${res.statusCode} vom Bildserver: ${url}`);
             // Nur zuweisen, wenn es wirklich einen Code gibt: jobs/imageQueue.ts
             // unterscheidet „HTTP 404" von „kein Statuscode — voruebergehend?"
             // (Zeile 573). Ein zugewiesenes undefined machte beide gleich.
