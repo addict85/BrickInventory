@@ -123,6 +123,9 @@ test('der Anlege-Pfad erzeugt keinen Zustand, den der Bearbeiten-Pfad ablehnt', 
   // Schreibweise: Der gemeinsame Helfer wird gerufen, und jede Elementart ist
   // in der Konfiguration hinterlegt.
   const fab = read('routes/api_v1/acquisitions.ts');
+  // Dies ist eine MUSTERregel: Sie faengt eine geloeschte Zeile. Dass der
+  // Weg wirklich lebt, laeuft in test/verdrahtung-laeuft-db.test.js —
+  // beides zusammen, nicht eines statt des anderen.
   assert.match(fab, /findSameDayAcquisition\(\s*cfg\.kind\s*,/,
     'routes/api_v1/acquisitions.ts: die Kollisionsprüfung muss über den gemeinsamen Helfer laufen');
   for (const kind of ['set', 'part', 'fig']) {

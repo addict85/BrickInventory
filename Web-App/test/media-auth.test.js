@@ -120,6 +120,9 @@ test('Bilder werden privat gecacht, nicht öffentlich', () => {
 
 test('der PDF-Download verlangt einen Token', () => {
   const pdf = read('routes/api_v1/pdf.ts');
+  // Dies ist eine MUSTERregel: Sie faengt eine geloeschte Zeile. Dass der
+  // Weg wirklich lebt, laeuft in test/verdrahtung-laeuft-db.test.js —
+  // beides zusammen, nicht eines statt des anderen.
   assert.match(pdf, /router\.get\('\/sets\/partslist-pdf\/download\/:jobId', requireToken/,
     'Der PDF-Download muss requireToken tragen');
 });

@@ -184,6 +184,9 @@ test('die beiden Stellen benutzen die Regel wirklich', () => {
   assert.doesNotMatch(proxy, /const ALLOWED_IMAGE_HOSTS = \[/,
     'Die Bild-Allowlist ist zurueck in der Route — sie gehoert nach utils/, ' +
     'weil clients/ sie braucht und ein Client nicht von einer Route abhaengen soll');
+  // Dies ist eine MUSTERregel: Sie faengt eine geloeschte Zeile. Dass der
+  // Weg wirklich lebt, laeuft in test/verdrahtung-laeuft-db.test.js —
+  // beides zusammen, nicht eines statt des anderen.
   assert.match(proxy, /hostErlaubt\(url, ERLAUBTE_BILD_HOSTS\)/,
     'Der Bild-Proxy prueft nicht mehr ueber die gemeinsame Regel');
   assert.match(ohneKommentare(read('routes/api_v1/admin.ts')), /hostErlaubt\(url, ERLAUBTE_BILD_HOSTS\)/,
