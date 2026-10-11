@@ -16,8 +16,17 @@
 # gehört ins Repository — sie wird ausgeliefert.
 
 # Abhängigkeiten und Bauergebnisse
-node_modules/
-dist/
+#
+# OHNE Schrägstrich, und das ist ein Nachtrag mit Grund: `node_modules/`
+# trifft nur ein VERZEICHNIS. Ein SYMLINK dieses Namens ist keines — er wurde
+# nicht ignoriert und landete im Merge-Commit f911f3e als Selbstverweis
+# (`Web-App/node_modules -> /home/user/.../Web-App/node_modules`), weil beim
+# Arbeiten in einem zweiten Arbeitsbaum die Abhängigkeiten per Symlink geteilt
+# wurden. Jeder, der danach zog, hatte eine Schleife im Baum, und `npm` meldete
+# „Too many levels of symbolic links". Ohne Schrägstrich trifft das Muster
+# beides.
+node_modules
+dist
 
 # Laufzeitdaten: Bilder, Vorschaubilder, Uploads, Zwischenstände
 data/

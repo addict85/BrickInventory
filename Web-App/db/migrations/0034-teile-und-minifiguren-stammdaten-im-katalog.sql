@@ -50,6 +50,21 @@
 -- ── Reihenfolge ─────────────────────────────────────────────────────────────
 --
 -- Schritt 1 fuellt die Kataloge aus allem, was da ist.
+--
+--           LEER IST WIE FEHLT, und das ist nachgetragen, nicht von Anfang an
+--           dagestanden. Marcos Installation blieb hier stehen:
+--
+--               228 Teil/Farb-Paare wuerden ihre Farbbezeichnung verlieren
+--
+--           Die Ursache war, dass dieser Schritt und der Riegel „fehlt"
+--           VERSCHIEDEN gelesen haben. Hier stand
+--           `COALESCE(vorhandener_wert, NEUER)`: eine LEERE Zeichenkette ist
+--           nicht NULL, also gewann sie — und der Name aus dem Bestand kam
+--           nie an. Der Riegel darunter zaehlt `COALESCE(x,'') <> ''`, also
+--           leer ALS fehlend, und hielt die Migration damit fuer immer an.
+--           GEMESSEN und nachgestellt: eine Zeile in set_parts_catalog mit
+--           color_name = '' und eine in parts mit color_name = 'Rot' genuegen.
+--           Jetzt steht ueberall NULLIF(x, ''), auf beiden Seiten.
 -- Schritt 2 ist der Riegel: Er bricht ab, wenn ein Bestand seinen Namen
 --           verlieren wuerde. Lieber eine Migration, die stehenbleibt, als
 --           eine Teileliste ohne Teilenamen.
@@ -90,35 +105,38 @@ CREATE TABLE IF NOT EXISTS minifigs_catalog (
 -- NULL-Werte, und ueber mehrere Sets hinweg ist der Name derselbe.
 
 INSERT INTO part_catalog (part_number, part_name, category_name)
-SELECT spc.part_number, MAX(spc.part_name), MAX(NULLIF(spc.category_name, 'Unknown'))
+SELECT spc.part_number, MAX(NULLIF(spc.part_name, '')),
+       MAX(NULLIF(NULLIF(spc.category_name, 'Unknown'), ''))
   FROM set_parts_catalog spc
  WHERE spc.part_number IS NOT NULL AND spc.part_number <> ''
  GROUP BY spc.part_number
     ON CONFLICT (part_number) DO UPDATE
-   SET part_name     = COALESCE(part_catalog.part_name,     EXCLUDED.part_name),
-       category_name = COALESCE(part_catalog.category_name, EXCLUDED.category_name);
+   SET part_name     = COALESCE(NULLIF(part_catalog.part_name, ''),     EXCLUDED.part_name),
+       category_name = COALESCE(NULLIF(part_catalog.category_name, ''), EXCLUDED.category_name);
 
 INSERT INTO part_color_catalog (part_number, color_id, color_name, color_hex, image_url, image_local)
 SELECT spc.part_number, spc.color_id,
-       MAX(spc.color_name), MAX(spc.color_hex), MAX(spc.image_url), MAX(spc.image_local)
+       MAX(NULLIF(spc.color_name, '')),  MAX(NULLIF(spc.color_hex, '')),
+       MAX(NULLIF(spc.image_url, '')),   MAX(NULLIF(spc.image_local, ''))
   FROM set_parts_catalog spc
  WHERE spc.part_number IS NOT NULL AND spc.part_number <> '' AND spc.color_id IS NOT NULL
  GROUP BY spc.part_number, spc.color_id
     ON CONFLICT (part_number, color_id) DO UPDATE
-   SET color_name  = COALESCE(part_color_catalog.color_name,  EXCLUDED.color_name),
-       color_hex   = COALESCE(part_color_catalog.color_hex,   EXCLUDED.color_hex),
-       image_url   = COALESCE(part_color_catalog.image_url,   EXCLUDED.image_url),
-       image_local = COALESCE(part_color_catalog.image_local, EXCLUDED.image_local);
+   SET color_name  = COALESCE(NULLIF(part_color_catalog.color_name, ''),  EXCLUDED.color_name),
+       color_hex   = COALESCE(NULLIF(part_color_catalog.color_hex, ''),   EXCLUDED.color_hex),
+       image_url   = COALESCE(NULLIF(part_color_catalog.image_url, ''),   EXCLUDED.image_url),
+       image_local = COALESCE(NULLIF(part_color_catalog.image_local, ''), EXCLUDED.image_local);
 
 INSERT INTO minifigs_catalog (fig_number, fig_name, image_url, image_local)
-SELECT smc.fig_number, MAX(smc.fig_name), MAX(smc.image_url), MAX(smc.image_local)
+SELECT smc.fig_number, MAX(NULLIF(smc.fig_name, '')),
+       MAX(NULLIF(smc.image_url, '')), MAX(NULLIF(smc.image_local, ''))
   FROM set_minifigs_catalog smc
  WHERE smc.fig_number IS NOT NULL AND smc.fig_number <> ''
  GROUP BY smc.fig_number
     ON CONFLICT (fig_number) DO UPDATE
-   SET fig_name    = COALESCE(minifigs_catalog.fig_name,    EXCLUDED.fig_name),
-       image_url   = COALESCE(minifigs_catalog.image_url,   EXCLUDED.image_url),
-       image_local = COALESCE(minifigs_catalog.image_local, EXCLUDED.image_local);
+   SET fig_name    = COALESCE(NULLIF(minifigs_catalog.fig_name, ''),    EXCLUDED.fig_name),
+       image_url   = COALESCE(NULLIF(minifigs_catalog.image_url, ''),   EXCLUDED.image_url),
+       image_local = COALESCE(NULLIF(minifigs_catalog.image_local, ''), EXCLUDED.image_local);
 
 -- ── Schritt 1c: aus dem Bestand nachfuellen ─────────────────────────────────
 --
@@ -136,27 +154,29 @@ BEGIN
               WHERE table_name = 'parts' AND column_name = 'part_name') THEN
     EXECUTE $sql$
       INSERT INTO part_catalog (part_number, part_name, category_name)
-      SELECT p.part_number, MAX(p.part_name), MAX(NULLIF(p.category_name, 'Unknown'))
+      SELECT p.part_number, MAX(NULLIF(p.part_name, '')),
+             MAX(NULLIF(NULLIF(p.category_name, 'Unknown'), ''))
         FROM parts p
        WHERE p.part_number IS NOT NULL AND p.part_number <> ''
        GROUP BY p.part_number
           ON CONFLICT (part_number) DO UPDATE
-         SET part_name     = COALESCE(part_catalog.part_name,     EXCLUDED.part_name),
-             category_name = COALESCE(part_catalog.category_name, EXCLUDED.category_name)
+         SET part_name     = COALESCE(NULLIF(part_catalog.part_name, ''),     EXCLUDED.part_name),
+             category_name = COALESCE(NULLIF(part_catalog.category_name, ''), EXCLUDED.category_name)
     $sql$;
 
     EXECUTE $sql$
       INSERT INTO part_color_catalog (part_number, color_id, color_name, color_hex, image_url, image_local)
       SELECT p.part_number, p.color_id,
-             MAX(p.color_name), MAX(p.color_hex), MAX(p.image_url), MAX(p.image_local)
+             MAX(NULLIF(p.color_name, '')), MAX(NULLIF(p.color_hex, '')),
+             MAX(NULLIF(p.image_url, '')),  MAX(NULLIF(p.image_local, ''))
         FROM parts p
        WHERE p.part_number IS NOT NULL AND p.part_number <> '' AND p.color_id IS NOT NULL
        GROUP BY p.part_number, p.color_id
           ON CONFLICT (part_number, color_id) DO UPDATE
-         SET color_name  = COALESCE(part_color_catalog.color_name,  EXCLUDED.color_name),
-             color_hex   = COALESCE(part_color_catalog.color_hex,   EXCLUDED.color_hex),
-             image_url   = COALESCE(part_color_catalog.image_url,   EXCLUDED.image_url),
-             image_local = COALESCE(part_color_catalog.image_local, EXCLUDED.image_local)
+         SET color_name  = COALESCE(NULLIF(part_color_catalog.color_name, ''),  EXCLUDED.color_name),
+             color_hex   = COALESCE(NULLIF(part_color_catalog.color_hex, ''),   EXCLUDED.color_hex),
+             image_url   = COALESCE(NULLIF(part_color_catalog.image_url, ''),   EXCLUDED.image_url),
+             image_local = COALESCE(NULLIF(part_color_catalog.image_local, ''), EXCLUDED.image_local)
     $sql$;
   END IF;
 
@@ -164,14 +184,15 @@ BEGIN
               WHERE table_name = 'minifigs' AND column_name = 'fig_name') THEN
     EXECUTE $sql$
       INSERT INTO minifigs_catalog (fig_number, fig_name, image_url, image_local)
-      SELECT m.fig_number, MAX(m.fig_name), MAX(m.image_url), MAX(m.image_local)
+      SELECT m.fig_number, MAX(NULLIF(m.fig_name, '')),
+             MAX(NULLIF(m.image_url, '')), MAX(NULLIF(m.image_local, ''))
         FROM minifigs m
        WHERE m.fig_number IS NOT NULL AND m.fig_number <> ''
        GROUP BY m.fig_number
           ON CONFLICT (fig_number) DO UPDATE
-         SET fig_name    = COALESCE(minifigs_catalog.fig_name,    EXCLUDED.fig_name),
-             image_url   = COALESCE(minifigs_catalog.image_url,   EXCLUDED.image_url),
-             image_local = COALESCE(minifigs_catalog.image_local, EXCLUDED.image_local)
+         SET fig_name    = COALESCE(NULLIF(minifigs_catalog.fig_name, ''),    EXCLUDED.fig_name),
+             image_url   = COALESCE(NULLIF(minifigs_catalog.image_url, ''),   EXCLUDED.image_url),
+             image_local = COALESCE(NULLIF(minifigs_catalog.image_local, ''), EXCLUDED.image_local)
     $sql$;
   END IF;
 END $nachtrag$;
@@ -203,11 +224,24 @@ END $zeiten$;
 -- stehenbleiben und sagen, welche — nicht stillschweigend eine Teileliste
 -- aus leeren Zellen hinterlassen.
 
+-- Und die ZWEITE Haelfte desselben Befunds: Der Riegel muss denselben
+-- Schluesselfilter tragen wie der Nachtrag. `parts.part_number` ist NOT NULL,
+-- aber die LEERE Zeichenkette ist erlaubt — und eine Zeile mit leerer
+-- Teilenummer kann keine Katalogzeile haben, denn die Nummer IST der
+-- Schluessel. Der Nachtrag liess sie deshalb von Anfang an aus
+-- (`part_number <> ''`), der Riegel zaehlte sie mit: eine solche Zeile hielt
+-- die Migration fuer immer an, und von Hand war nichts zu entscheiden.
+--
+-- Jetzt zaehlt der Riegel sie nicht mehr als Verlust, aber er VERSCHWEIGT sie
+-- auch nicht: Die Zahl kommt als Hinweis heraus. Lieber ein Satz im
+-- Startprotokoll als eine Zeile, die stumm ihre Beschreibung verliert.
 DO $pruefung$
 DECLARE
   ohne_namen   INTEGER := 0;
   ohne_farbe   INTEGER := 0;
   ohne_figuren INTEGER := 0;
+  ohne_nummer  INTEGER := 0;
+  ohne_fignr   INTEGER := 0;
 BEGIN
   IF EXISTS (SELECT 1 FROM information_schema.columns
               WHERE table_name = 'parts' AND column_name = 'part_name') THEN
@@ -215,6 +249,7 @@ BEGIN
       SELECT COUNT(*) FROM (
         SELECT DISTINCT p.part_number FROM parts p
          WHERE COALESCE(p.part_name, '') <> ''
+           AND COALESCE(p.part_number, '') <> ''
            AND NOT EXISTS (SELECT 1 FROM part_catalog pc
                             WHERE pc.part_number = p.part_number
                               AND COALESCE(pc.part_name, '') <> '')) t
@@ -224,11 +259,19 @@ BEGIN
       SELECT COUNT(*) FROM (
         SELECT DISTINCT p.part_number, p.color_id FROM parts p
          WHERE p.color_id IS NOT NULL AND COALESCE(p.color_name, '') <> ''
+           AND COALESCE(p.part_number, '') <> ''
            AND NOT EXISTS (SELECT 1 FROM part_color_catalog pcc
                             WHERE pcc.part_number = p.part_number
                               AND pcc.color_id = p.color_id
                               AND COALESCE(pcc.color_name, '') <> '')) t
     $sql$ INTO ohne_farbe;
+
+    -- Die ausgelassenen Zeilen, damit sie nicht stumm bleiben.
+    EXECUTE $sql$
+      SELECT COUNT(*) FROM parts p
+       WHERE COALESCE(p.part_number, '') = ''
+         AND (COALESCE(p.part_name, '') <> '' OR COALESCE(p.color_name, '') <> '')
+    $sql$ INTO ohne_nummer;
   END IF;
 
   IF EXISTS (SELECT 1 FROM information_schema.columns
@@ -237,10 +280,23 @@ BEGIN
       SELECT COUNT(*) FROM (
         SELECT DISTINCT m.fig_number FROM minifigs m
          WHERE COALESCE(m.fig_name, '') <> ''
+           AND COALESCE(m.fig_number, '') <> ''
            AND NOT EXISTS (SELECT 1 FROM minifigs_catalog mc
                             WHERE mc.fig_number = m.fig_number
                               AND COALESCE(mc.fig_name, '') <> '')) t
     $sql$ INTO ohne_figuren;
+
+    EXECUTE $sql$
+      SELECT COUNT(*) FROM minifigs m
+       WHERE COALESCE(m.fig_number, '') = '' AND COALESCE(m.fig_name, '') <> ''
+    $sql$ INTO ohne_fignr;
+  END IF;
+
+  IF ohne_nummer > 0 THEN
+    RAISE NOTICE '% Bestandszeile(n) ohne Teilenummer verlieren ihre Beschreibung — eine leere Nummer kann keine Katalogzeile haben. Die Zeilen selbst bleiben stehen.', ohne_nummer;
+  END IF;
+  IF ohne_fignr > 0 THEN
+    RAISE NOTICE '% Bestandszeile(n) ohne Figurennummer verlieren ihren Namen — dieselbe Lage wie bei den Teilen.', ohne_fignr;
   END IF;
 
   IF ohne_namen > 0 THEN

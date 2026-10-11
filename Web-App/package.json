@@ -1,6 +1,6 @@
 {
   "name": "brickinventory-manager",
-  "version": "2026.10.05.1947",
+  "version": "2026.10.11.1135",
   "description": "BrickInventory Manager",
   "main": "dist/server.js",
   "scripts": {
