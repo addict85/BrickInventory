@@ -197,13 +197,19 @@ test('db/database.ts aendert nur die aufgezaehlten Daten', () => {
     'DELETE FROM api_tokens':           'entfernt Token, die nicht wie SHA-256 aussehen (Altbestand)',
     'DELETE FROM price_history':        'entdoppelt Altbestand',
     'UPDATE minifigs':                  'schneidet Leerzeichen aus fig_number',
-    'INSERT INTO part_acquisitions':    'traegt Erst-Erfassungen nach, mit NOT EXISTS-Riegel',
-    'INSERT INTO minifig_acquisitions': 'traegt Erst-Erfassungen nach, mit NOT EXISTS-Riegel',
-    // 'INSERT INTO set_acquisitions' stand hier und ist mit Migration 0032
-    // weggefallen: Der Nachtrag in db/database.ts las sets.purchase_price und
-    // lief ausserdem nur beim allerersten Start, wo `sets` leer ist — er hat
-    // also nie etwas getan. Wo er gebraucht wird, steht er jetzt: in der
-    // Migration, einmalig und mit einer Pruefung danach.
+    // ── Drei Nachtraege standen hier, alle drei sind weggefallen ──────────
+    //
+    //   'INSERT INTO set_acquisitions'      mit Migration 0032
+    //   'INSERT INTO part_acquisitions'     mit Migration 0035
+    //   'INSERT INTO minifig_acquisitions'  mit Migration 0035
+    //
+    // Immer aus demselben Grund: Die Nachtraege lasen die Preisspalten der
+    // Bestandszeile und liefen nur beim allerersten Start, wo die Tabellen
+    // leer sind — sie haben also nie etwas getan. Gedacht waren sie fuer
+    // Altbestaende und haben sie niemals erreicht.
+    //
+    // Wo sie gebraucht werden, stehen sie jetzt: in der Migration, einmalig
+    // und mit einem Riegel danach, der nachprueft, dass nichts verloren geht.
     'INSERT INTO schema_meta':          'vermerkt, dass das Schema angelegt wurde',
   };
 
@@ -216,7 +222,10 @@ test('db/database.ts aendert nur die aufgezaehlten Daten', () => {
     gefunden.get(schluessel).push(zeile);
   }
 
-  assert.ok(gefunden.size >= 10,
+  // GEMESSEN: 8. Die Schwelle liegt knapp darunter — sie soll ein kaputtes
+  // Muster fangen, nicht jede einzelne Schemaaenderung. Sie lag bei 10, als
+  // die drei Erfassungs-Nachtraege oben noch hier standen.
+  assert.ok(gefunden.size >= 7,
     `Nur ${gefunden.size} Sorten gefunden — zu wenig. Vermutlich greift das Muster nicht mehr, ` +
     `und dann besteht diese Pruefung stillschweigend.`);
 

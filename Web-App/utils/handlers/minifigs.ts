@@ -83,8 +83,15 @@ async function getMinifigs(userId: number | number[], { search, source, set_numb
            MAX(mc.image_url) AS image_url,
            MAX(mc.image_local) AS image_local,
            m.source,
-           MAX(m.unit_price) AS unit_price,
-           MAX(m.condition) AS stored_condition,
+           -- Preis aus der neuesten Erfassung. Hier stand
+           -- MAX(m.unit_price) — eine Abschrift an der Bestandszeile, die
+           -- Migration 0035 geloescht hat. MAX ueber die Gruppe bleibt, weil
+           -- sie mehrere Schreibweisen derselben Figurennummer zusammenfasst.
+           --
+           -- stored_condition ist mitentfallen: Den gespeicherten Zustand
+           -- gibt es nicht mehr, und fuer Set-Figuren stand er seit jeher auf
+           -- dem Vorgabewert 'N'.
+           MAX(neu.unit_price) AS unit_price,
            MIN(m.set_number) AS set_number,
            SUM(m.quantity * COALESCE(s.quantity, 1)) AS total_quantity,
            STRING_AGG(DISTINCT m.set_number, ',') FILTER (WHERE m.set_number IS NOT NULL) AS in_sets,
@@ -107,6 +114,16 @@ async function getMinifigs(userId: number | number[], { search, source, set_numb
     -- minifigs stehen, und eine Normalisierung im Join haette den
     -- Primaerschluessel umgangen.
     LEFT JOIN minifigs_catalog mc ON mc.fig_number = m.fig_number
+    -- Die neueste Erfassung je Figur — dieselbe Ordnung wie latestSql in
+    -- routes/api_v1/acquisitions.ts, damit „neuester Preis" und „neueste
+    -- Erfassung" dasselbe heissen.
+    LEFT JOIN LATERAL (
+      SELECT a.unit_price
+        FROM minifig_acquisitions a
+       WHERE a.user_id = m.user_id AND a.fig_number = m.fig_number
+       ORDER BY a.created_at DESC, a.id DESC
+       LIMIT 1
+    ) neu ON TRUE
     WHERE ${where}
     -- LOWER(TRIM(...)): Import-Pfade (Rebrickable-API vs. CSV-Katalog) können
     -- dieselbe Figurennummer mit Whitespace-/Case-Varianten liefern — die
@@ -137,9 +154,10 @@ async function getMinifigs(userId: number | number[], { search, source, set_numb
     // im Einzelkonto durchgerutscht — der Test hat genau das gemeldet.
     ...(uids.length > 1 ? { owner_ids: (owner_ids || []).map((n: any) => parseInt(n)) } : {}),
     image_local: resolveImageLocal(f.image_local),
-    condition: usedFigMap.has(String(f.fig_number).trim().toLowerCase())
-      ? (usedFigMap.get(String(f.fig_number).trim().toLowerCase()) ? 'U' : 'N')
-      : (f.stored_condition || 'N'),
+    // Ohne Erfassung 'N' — nicht mehr der gespeicherte Wert, den es seit
+    // Migration 0035 nicht mehr gibt. Fuer Set-Figuren dasselbe Ergebnis wie
+    // vorher: Dort stand die Spalte seit jeher auf dem Vorgabewert.
+    condition: usedFigMap.get(String(f.fig_number).trim().toLowerCase()) ? 'U' : 'N',
   }));
 
   // Objektform wie bei getSets, damit die Gesamtzahl für den Endlos-Scroll
@@ -230,13 +248,27 @@ async function getManualMinifigs(userId: number | number[], viewerId: number, { 
     // Name und Bild kommen seit Migration 0034 aus minifigs_catalog —
     // sie haengen an der Figur, nicht am Konto, das sie besitzt.
     `SELECT m.id, m.user_id, m.set_number, m.fig_number, m.bl_fig_number,
-            m.quantity, m.source, m.unit_price, m.purchase_price, m.condition,
-            m.storage_id,
+            m.quantity, m.source, m.storage_id,
+            -- Preis und Zustand aus der NEUESTEN Erfassung (Migration 0035).
+            -- Die beiden Bedeutungen bleiben unterschieden, so wie
+            -- utils/preisRegel.ts sie ausschreibt: unit_price ist der
+            -- eingegebene Preis und darf leer sein, purchase_price ist der
+            -- ANZEIGEWERT und ist nie leer.
+            neu.unit_price,
+            COALESCE(neu.unit_price, 0) AS purchase_price,
+            COALESCE(neu.condition, 'N') AS condition,
             mc.fig_name, mc.image_url, mc.image_local,
             lo.name AS storage
        FROM minifigs m
        LEFT JOIN minifigs_catalog mc ON mc.fig_number = m.fig_number
        LEFT JOIN storage_locations lo ON lo.id = m.storage_id
+       LEFT JOIN LATERAL (
+         SELECT a.unit_price, a.condition
+           FROM minifig_acquisitions a
+          WHERE a.user_id = m.user_id AND a.fig_number = m.fig_number
+          ORDER BY a.created_at DESC, a.id DESC
+          LIMIT 1
+       ) neu ON TRUE
       WHERE m.user_id = ANY($1) AND m.source = 'manual'
       ORDER BY mc.fig_name ASC, m.fig_number ASC${limit}`,
     params);

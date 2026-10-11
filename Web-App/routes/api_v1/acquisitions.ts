@@ -31,6 +31,7 @@ import { getCurrentFigMarketPrice, getFigAcquisitions } from '../minifigs';
 import { loescheManuellesTeil, loescheManuelleFigur } from '../../utils/handlers/shared';
 import { sendeFehler, fehlerWerfen } from '../../utils/fehlerTexte';
 import type { FehlerCode } from '../../utils/fehlerTexte';
+import { blFigNummerAus } from '../../utils/blZuordnung';
 const router = express.Router();
 
 type AcqConfig = {
@@ -413,8 +414,8 @@ registerAcquisitionRoutes({
   // Beide Male war die Ursache, dass Kaufpreis und Zustand an ZWEI Orten
   // standen. Mit Migration 0032 gibt es nur noch einen: set_acquisitions.
   // Damit kann die Kachel gar nicht mehr abweichen, und die Spiegelung hat
-  // kein Ziel mehr. Teile und Minifiguren spiegeln weiter — bei ihnen liegen
-  // die Spalten noch auf der Elternzeile.
+  // kein Ziel mehr. Teile und Minifiguren sind mit Migration 0035
+  // nachgezogen — jetzt gilt es fuer alle drei Elementarten.
   parentPriceSql: null,
   parentConditionSql: null,
   latestSql: 'SELECT id FROM set_acquisitions WHERE user_id=$1 AND set_number=$2 ORDER BY created_at DESC, id DESC LIMIT 1',
@@ -466,10 +467,13 @@ registerAcquisitionRoutes({
   parentQuantitySql: `UPDATE parts
      SET quantity = COALESCE((SELECT SUM(quantity) FROM part_acquisitions WHERE user_id=$1 AND part_number=$2 AND color_id=$3), 0)
      WHERE user_id=$1 AND part_number=$2 AND color_id=$3 AND source='manual' RETURNING quantity`,
-  parentPriceSql: `UPDATE parts SET unit_price=$1, purchase_price=$1
-     WHERE user_id=$2 AND part_number=$3 AND color_id=$4 AND source='manual'`,
-  parentConditionSql: `UPDATE parts SET condition=$1
-     WHERE user_id=$2 AND part_number=$3 AND color_id=$4 AND source='manual'`,
+  // Keine Spiegelung mehr — dieselbe Begruendung wie bei den Sets weiter
+  // oben, nur eine Migration spaeter: Mit 0035 gibt es unit_price,
+  // purchase_price und condition auf der Teilezeile nicht mehr. Die
+  // Spiegelung hat kein Ziel, und die Kachel kann gar nicht mehr abweichen —
+  // sie liest die neueste Erfassung (getManualParts in utils/handlers/parts.ts).
+  parentPriceSql: null,
+  parentConditionSql: null,
   latestSql: 'SELECT id FROM part_acquisitions WHERE user_id=$1 AND part_number=$2 AND color_id=$3 ORDER BY created_at DESC, id DESC LIMIT 1',
   // Nur die manuelle Position: Teile aus einem Set hängen am Set und werden
   // mit ihm gelöscht, nicht hier.
@@ -499,20 +503,24 @@ registerAcquisitionRoutes({
   notFound:  'nicht_gefunden',
   deleteChecksExistence: false,
   // cond mitgeben — siehe die Begründung bei den Teilen (Nachtrag 146).
+  // Die BL-Nummer-Abfrage steht in utils/blZuordnung.ts — sie wird auch vom
+  // Kaufpreis-Nachtrag gebraucht (jobs/purchasePriceBackfill.ts).
+  //
+  // Sie steht in einer eigenen Zeile und nicht im Aufruf: So ist sichtbar,
+  // dass `cond` als letztes Argument ankommt. Genau das prueft
+  // test/acquisition-condition-price-db.test.js, und zwar mit einem Abstand
+  // von hoechstens 400 Zeichen — der Erklaertext gehoert deshalb hierher,
+  // vor die Eigenschaft, nicht in ihren Rumpf.
   resolvePrice: async (uid, [fn], cond) => {
-    const figRow = await db.get(
-      "SELECT bl_fig_number FROM minifigs WHERE user_id=$1 AND fig_number=$2 AND source='manual'",
-      [uid, fn]
-    ).catch(() => null);
-    return getCurrentFigMarketPrice(fn, uid, figRow?.bl_fig_number || null, cond);
+    const blNummer = await blFigNummerAus(uid, fn);
+    return getCurrentFigMarketPrice(fn, uid, blNummer, cond);
   },
   parentQuantitySql: `UPDATE minifigs
      SET quantity = COALESCE((SELECT SUM(quantity) FROM minifig_acquisitions WHERE user_id=$1 AND fig_number=$2), 0)
      WHERE user_id=$1 AND fig_number=$2 AND source='manual' RETURNING quantity`,
-  parentPriceSql: `UPDATE minifigs SET unit_price=$1, purchase_price=$1
-     WHERE user_id=$2 AND fig_number=$3 AND source='manual'`,
-  parentConditionSql: `UPDATE minifigs SET condition=$1
-     WHERE user_id=$2 AND fig_number=$3 AND source='manual'`,
+  // Keine Spiegelung mehr — siehe die Begruendung bei den Teilen darueber.
+  parentPriceSql: null,
+  parentConditionSql: null,
   latestSql: 'SELECT id FROM minifig_acquisitions WHERE user_id=$1 AND fig_number=$2 ORDER BY created_at DESC, id DESC LIMIT 1',
   // Nur die manuelle Position — siehe Teile.
   cleanupWhenEmpty: async (tx, ownerId, [fn]) => {

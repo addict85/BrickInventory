@@ -72,12 +72,35 @@ test('Geldbeträge sind exakt', { concurrency: 1 }, async (t) => {
     // Alte Installation nachstellen: Spalte zurück auf REAL, Migration erneut
     // laufen lassen (Vermerk in schema_migrations entfernen).
     //
-    // Dazu gehört seit Migration 0032 auch `sets.purchase_price`: Migration
-    // 0007 fasst die Spalte an, und 0032 löscht sie am Ende der Kette. Eine
-    // alte Datenbank, die 0007 noch vor sich hat, HAT sie also — ohne diese
-    // Zeile scheitert der erneute Lauf mit „column purchase_price does not
-    // exist" und prüft nichts mehr (GEMESSEN).
-    await db.run('ALTER TABLE sets ADD COLUMN IF NOT EXISTS purchase_price REAL');
+    // ── Alle Spalten zurueckholen, die 0007 anfasst ───────────────────────
+    //
+    // Migration 0007 stellt fuenfzehn Geldspalten auf NUMERIC um. Spaetere
+    // Migrationen loeschen einige davon wieder, weil der Wert an einen anderen
+    // Ort gehoert:
+    //
+    //   0032  sets.purchase_price
+    //   0035  parts.unit_price, parts.purchase_price,
+    //         minifigs.unit_price, minifigs.purchase_price
+    //
+    // Eine alte Datenbank, die 0007 noch vor sich hat, HAT sie alle. Fehlt
+    // eine, scheitert der erneute Lauf mit „column … does not exist" und
+    // prueft nichts mehr — GEMESSEN zuerst mit sets.purchase_price (0032) und
+    // dann erneut mit parts.purchase_price (0035).
+    //
+    // Und es trifft nicht nur diese Datei: Der Vermerk fuer 0007 wird unten
+    // geloescht und erst vom erfolgreichen Lauf wieder gesetzt. Scheitert er,
+    // laeuft 0007 in JEDER spaeteren Testdatei erneut und scheitert dort auch
+    // — GEMESSEN an test/part-price-keys-db.test.js, das daran mit einem
+    // Zeitueberschreitung abbrach.
+    for (const [tab, sp] of [
+      ['sets',     'purchase_price'],
+      ['parts',    'purchase_price'],
+      ['parts',    'unit_price'],
+      ['minifigs', 'purchase_price'],
+      ['minifigs', 'unit_price'],
+    ]) {
+      await db.run(`ALTER TABLE ${tab} ADD COLUMN IF NOT EXISTS ${sp} REAL`);
+    }
     await db.run('ALTER TABLE set_acquisitions ALTER COLUMN purchase_price TYPE REAL');
     await db.run("DELETE FROM schema_migrations WHERE name LIKE '0007%'");
     const vorher = await db.get(
@@ -92,6 +115,23 @@ test('Geldbeträge sind exakt', { concurrency: 1 }, async (t) => {
       `SELECT data_type FROM information_schema.columns
         WHERE table_name='set_acquisitions' AND column_name='purchase_price'`);
     assert.equal(nachher.data_type, 'numeric', 'Migration hat die Spalte nicht umgestellt');
+
+    // ── Und den Endzustand wiederherstellen ───────────────────────────────
+    //
+    // Die fuenf Spalten oben sind absichtlich zurueckgeholt worden, damit 0007
+    // erneut laufen KANN. Die Migrationen, die sie loeschen, gelten als
+    // angewandt und raeumen sie nicht noch einmal weg — ohne diese Zeilen
+    // bliebe die gemeinsame Test-Datenbank in einem Zustand, den keine
+    // Installation hat, fuer alle Dateien danach.
+    for (const [tab, sp] of [
+      ['sets',     'purchase_price'],
+      ['parts',    'purchase_price'],
+      ['parts',    'unit_price'],
+      ['minifigs', 'purchase_price'],
+      ['minifigs', 'unit_price'],
+    ]) {
+      await db.run(`ALTER TABLE ${tab} DROP COLUMN IF EXISTS ${sp}`);
+    }
   });
 
   await t.test('tausend Beträge summieren sich exakt', async () => {

@@ -495,13 +495,22 @@ test('Bewertung und Anzeige benutzen dieselbe Zustandsregel', () => {
   assert.match(fc, /if \(acqCount > 0\) return usedCount > 0 \? 'U' : 'N';/,
     'Eine gebrauchte Erfassung macht das Set gebraucht, sonst ist es neu');
 
-  // Der dritte Zweig (gespeicherter Wert) darf NUR noch fuer Teile und
-  // Minifiguren greifen — sie haben ihre condition-Spalte noch. Dass die
-  // SET-Abfragen keinen solchen Wert mehr mitliefern, prueft
-  // test/neue-erfassung-zustand-db.test.js am Quelltext aller Abfragen.
-  assert.match(fc, /return set\?\.condition === 'U' \? 'U' : 'N';/,
-    'Ohne Erfassungen muss der gespeicherte Wert zaehlen — fuer Teile und ' +
-    'Minifiguren ist er die einzige Auskunft');
+  // ── Der dritte Zweig ist weg, und das wird hier festgehalten ───────────
+  //
+  // Er las den gespeicherten Zustand der Stammzeile. Migration 0032 hat die
+  // Spalte den Sets genommen, 0035 den Teilen und Minifiguren — fuer manuelle
+  // Positionen traegt 0035 eine Erfassung nach und prueft danach nach, dass
+  // keine ohne geblieben ist.
+  //
+  // Die Zusicherung lautet jetzt umgekehrt: Dieser Zweig darf NICHT
+  // wiederkommen. Kaeme er, haette die Bewertung wieder eine zweite Quelle,
+  // und genau daraus ist der wiederholt falsche Marktpreis entstanden.
+  assert.doesNotMatch(fc, /return set\?\.condition === 'U' \? 'U' : 'N';/,
+    'Der Rueckfall auf den gespeicherten Zustand ist zurueck — es gibt die ' +
+    'Spalte nicht mehr, der Zweig kann also nur noch falsch liegen');
+  assert.match(fc, /function effectiveCondition[\s\S]{0,400}?return 'N';/,
+    'Ohne Erfassungen muss die Regel „Neu" liefern — dieselbe Vorgabe wie ' +
+    'conditionFromAcquisitions() in utils/handlers/shared.ts');
 
   // Und die Abfrage muss die Zähler überhaupt liefern
   assert.match(fc, /COUNT\(\*\) FILTER \(WHERE condition = 'U'\)\s+AS used_count/,

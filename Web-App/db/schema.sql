@@ -378,7 +378,12 @@ CREATE TABLE IF NOT EXISTS price_market (
 --
 -- Eine frische und eine laufende Datenbank haben damit dieselbe Form, und die
 -- Migration braucht nur EINE Spaltenpruefung statt acht. Alles davon loescht
--- 0034 am Ende der Kette; die beiden Preisspalten folgen in 0035.
+-- 0034 am Ende der Kette.
+--
+-- unit_price und purchase_price stehen aus BEIDEN Gruenden hier: Migration
+-- 0007 fasst sie an, und der Nachtrag in Migration 0035 LIEST sie, um sie in
+-- part_acquisitions zu tragen. 0035 loescht sie danach, zusammen mit
+-- condition (die legt db/database.ts an, siehe dort).
 CREATE TABLE IF NOT EXISTS parts (
   id            SERIAL PRIMARY KEY,
   user_id       INTEGER NOT NULL,
@@ -521,8 +526,11 @@ CREATE TABLE IF NOT EXISTS catalog_cache (
 -- in minifigs_catalog. fig_name, image_url und image_local bleiben hier
 -- stehen, aus genau den beiden Gruenden, die bei parts ausgeschrieben sind:
 -- Migration 0014 fasst image_url an, und der Nachtrag in 0034 liest alle drei
--- in EINER Anweisung. 0034 loescht sie am Ende der Kette, die beiden
--- Preisspalten folgen in 0035.
+-- in EINER Anweisung. 0034 loescht sie am Ende der Kette.
+--
+-- unit_price und purchase_price bleiben fuer Migration 0007 und fuer den
+-- Nachtrag in 0035, der sie nach minifig_acquisitions traegt; 0035 loescht
+-- sie danach zusammen mit condition.
 CREATE TABLE IF NOT EXISTS minifigs (
   id            SERIAL PRIMARY KEY,
   user_id       INTEGER NOT NULL,

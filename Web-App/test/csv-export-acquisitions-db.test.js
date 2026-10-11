@@ -218,19 +218,28 @@ test('Minifiguren-Export: dieselbe Regel, dieselbe eine Abfrage',
 
   const echtesQuery = db.pool.query.bind(db.pool);
   try {
-    // fig-a  ohne Erfassung          → Figuren-Zeile
-    // fig-b  Erfassung ohne Preis    → leeres Feld, NICHT 42.00
-    for (const [nr, name, menge, preis] of [
-      ['fig-a', 'Aaa', 2, 9.00], ['fig-b', 'Bbb', 1, 42.00],
+    // fig-a  ohne Erfassung        → Figuren-Zeile
+    // fig-b  Erfassung ohne Preis  → leeres Feld
+    //
+    // Der Preis stand hier einmal an der Figuren-Zeile (9.00 bzw. 42.00), und
+    // die Zusage lautete: „eine Erfassung ohne Preis erbt NICHT den Preis der
+    // Figuren-Zeile". Seit Migration 0035 gibt es dort keinen Preis mehr —
+    // die FEHLERQUELLE ist weg, nicht nur der Fehler. Die Zusicherung bleibt
+    // trotzdem: Sie haelt fest, dass eine leere Erfassung leer exportiert und
+    // nicht etwa als 0.
+    for (const [nr, name, menge] of [
+      ['fig-a', 'Aaa', 2], ['fig-b', 'Bbb', 1],
     ]) {
       // Der Name steht seit Migration 0034 im Katalog — und er ist hier
       // nicht nebensaechlich: Der Export sortiert danach.
       await db.run(
         `INSERT INTO minifigs_catalog (fig_number, fig_name) VALUES ($1,$2)
          ON CONFLICT (fig_number) DO NOTHING`, [nr, name]);
+      // fig-a bekommt KEINE Erfassung — das ist der Fall, den der Export
+      // unterscheiden muss. Die Erfassung fuer fig-b legt der Test darunter an.
       await db.run(
-        `INSERT INTO minifigs (user_id, fig_number, quantity, unit_price, condition, source)
-         VALUES ($1,$2,$3,$4,'N','manual')`, [uid, nr, menge, preis]);
+        `INSERT INTO minifigs (user_id, fig_number, quantity, source)
+         VALUES ($1,$2,$3,'manual')`, [uid, nr, menge]);
     }
     await db.run(
       `INSERT INTO minifig_acquisitions (user_id, fig_number, quantity, unit_price, condition)
@@ -250,7 +259,7 @@ test('Minifiguren-Export: dieselbe Regel, dieselbe eine Abfrage',
 
     const b = r.find(x => x.fig_number === 'fig-b');
     assert.equal(b.unit_price, '',
-      'eine Erfassung ohne Preis erbt NICHT den Preis der Figuren-Zeile (42.00)');
+      'eine Erfassung ohne Preis muss leer exportieren — nicht als 0');
     assert.equal(b.condition, 'N', 'fehlender Zustand wird zu N');
 
     assert.ok(abfragen >= 1, 'der Zaehler hat nichts erfasst — der Patch greift nicht mehr');
@@ -294,13 +303,16 @@ test('Teile-Export: dieselbe Regel, dieselbe eine Abfrage',
 
   const echtesQuery = db.pool.query.bind(db.pool);
   try {
-    // 3001 / Farbe 4   zwei Erfassungen        → zwei Zeilen, aelteste zuerst
-    // 3001 / Farbe 1   KEINE Erfassung         → Teile-Zeile, nicht die von Farbe 4
-    // 3002 / Farbe 0   Erfassung ohne Preis    → leeres Feld, NICHT 42.00
-    for (const [nr, farbe, farbname, menge, preis] of [
-      ['3001', 4, 'Rot',  5, 1.00],
-      ['3001', 1, 'Blau', 7, 2.00],
-      ['3002', 0, '',     1, 42.00],
+    // 3001 / Farbe 4   zwei Erfassungen      → zwei Zeilen, aelteste zuerst
+    // 3001 / Farbe 1   KEINE Erfassung       → Teile-Zeile, nicht die von Farbe 4
+    // 3002 / Farbe 0   Erfassung ohne Preis  → leeres Feld
+    //
+    // Die Preise standen hier einmal an der Teile-Zeile — siehe die
+    // Begruendung im Figuren-Teil darueber (Migration 0035).
+    for (const [nr, farbe, farbname, menge] of [
+      ['3001', 4, 'Rot',  5],
+      ['3001', 1, 'Blau', 7],
+      ['3002', 0, '',     1],
     ]) {
       // Name und Farbbezeichnung in die Kataloge (Migration 0034). Beide
       // stehen in der Exportspalte color_name bzw. in der Sortierung.
@@ -310,11 +322,12 @@ test('Teile-Export: dieselbe Regel, dieselbe eine Abfrage',
       await db.run(
         `INSERT INTO part_color_catalog (part_number, color_id, color_name) VALUES ($1,$2,$3)
          ON CONFLICT (part_number, color_id) DO NOTHING`, [nr, farbe, farbname]);
+      // Die Erfassungen legt der Test darunter gezielt an, damit die Faelle
+      // „mit" und „ohne Preis" unterscheidbar bleiben.
       await db.run(
-        `INSERT INTO parts (user_id, part_number, color_id,
-                            quantity, unit_price, condition, source)
-         VALUES ($1,$2,$3,$4,$5,'N','manual')`,
-        [uid, nr, farbe, menge, preis]);
+        `INSERT INTO parts (user_id, part_number, color_id, quantity, source)
+         VALUES ($1,$2,$3,$4,'manual')`,
+        [uid, nr, farbe, menge]);
     }
     await db.run(
       `INSERT INTO part_acquisitions (user_id, part_number, color_id, quantity, unit_price, condition, created_at)
@@ -347,7 +360,7 @@ test('Teile-Export: dieselbe Regel, dieselbe eine Abfrage',
 
     const ohnePreis = r.find(x => x.part_number === '3002');
     assert.equal(ohnePreis.unit_price, '',
-      'eine Erfassung ohne Preis erbt NICHT den Preis der Teile-Zeile (42.00)');
+      'eine Erfassung ohne Preis muss leer exportieren — nicht als 0');
     assert.equal(ohnePreis.condition, 'N', 'fehlender Zustand wird zu N');
 
     assert.ok(abfragen >= 1, 'der Zaehler hat nichts erfasst — der Patch greift nicht mehr');

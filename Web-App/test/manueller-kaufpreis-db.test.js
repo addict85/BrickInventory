@@ -28,6 +28,19 @@
  * und `erfassungsPreis` (null, wenn unbekannt) getrennt zurück, und keine
  * Schreibstelle rechnet mehr selbst.
  *
+ * ── Was Migration 0035 daran geändert hat ───────────────────────────────────
+ *
+ * Die Stammzeile hat keinen Preis mehr — er gehört je Kauf in die Erfassung.
+ * Der ANZEIGEWERT (nie leer, 0 heisst „nichts bekannt") wird jetzt beim Lesen
+ * gebildet: COALESCE(neueste Erfassung, 0) in getManualParts bzw.
+ * getManualMinifigs.
+ *
+ * Der Unterschied, den dieser Test gefunden hat, ist damit nicht nur behoben,
+ * sondern unmöglich geworden: Es gibt nur noch EINEN Ausdruck, der die 0
+ * erzeugt, und beide Listen benutzen ihn. Geprüft wird deshalb jetzt die
+ * ANTWORT der beiden Listen statt der Spalteninhalt — die Aussage bleibt
+ * dieselbe, die Frage ist dieselbe.
+ *
  * ── Warum gegen die echte Datenbank ────────────────────────────────────────
  *
  * Am Quelltext wäre es die Frage, ob dieselbe Variable an beiden Stellen
@@ -49,7 +62,7 @@ process.env.WEB_WORKERS = '1';
 const _req = require('./helpers/sources').buildAndRequire();
 const db = _req('db/database.js');
 
-test('ohne Marktpreis: Stammzeile 0, Erfassung NULL — bei Teil UND Figur',
+test('ohne Marktpreis: Anzeigewert 0, Erfassung NULL — bei Teil UND Figur',
   { concurrency: 1 }, async (t) => {
 
   try { await db.initSchema(); }
@@ -78,18 +91,24 @@ test('ohne Marktpreis: Stammzeile 0, Erfassung NULL — bei Teil UND Figur',
     await addManualPart(uid, { part_number: TEIL, part_name: 'Testteil', color_id: 0, quantity: 2 });
     await addManualFig(uid,  { fig_number: FIG,  fig_name: 'Testfigur',  quantity: 2 });
 
-    const teil = await db.get(
-      'SELECT unit_price, purchase_price FROM parts WHERE user_id=$1 AND part_number=$2', [uid, TEIL]);
-    const figur = await db.get(
-      'SELECT unit_price, purchase_price FROM minifigs WHERE user_id=$1 AND fig_number=$2', [uid, FIG]);
-    assert.ok(teil,  'Das Teil steht nicht in der Tabelle');
-    assert.ok(figur, 'Die Figur steht nicht in der Tabelle');
+    // Gelesen ueber die Listen, die auch die Oberflaechen benutzen — die
+    // Spalten gibt es seit Migration 0035 nicht mehr (siehe den Kopf).
+    const { getManualParts }    = _req('utils/handlers/parts.js');
+    const { getManualMinifigs } = _req('utils/handlers/minifigs.js');
+    const teileListe = await getManualParts([uid], uid);
+    const figListe   = await getManualMinifigs([uid], uid);
+    const teil  = (Array.isArray(teileListe) ? teileListe : [])
+      .find(p => p.part_number === TEIL);
+    const figur = (Array.isArray(figListe) ? figListe : [])
+      .find(f => f.fig_number === FIG);
+    assert.ok(teil,  'Das Teil steht nicht in der Liste');
+    assert.ok(figur, 'Die Figur steht nicht in der Liste');
 
     // Ohne Eingabe steht in „Preis/Stk" nichts — bei beiden.
     assert.equal(teil.unit_price, null, 'Das Teil behauptet eine Preiseingabe');
     assert.equal(figur.unit_price, null, 'Die Figur behauptet eine Preiseingabe');
 
-    // Der eigentliche Fund: die Stammzeile trägt 0, nicht NULL — und zwar
+    // Der eigentliche Fund: der Anzeigewert trägt 0, nicht NULL — und zwar
     // bei beiden gleich.
     assert.equal(Number(teil.purchase_price), 0,
       `Das Teil hat ${teil.purchase_price} statt 0 im Kaufpreis`);
@@ -103,7 +122,8 @@ test('ohne Marktpreis: Stammzeile 0, Erfassung NULL — bei Teil UND Figur',
     // Und die feinere Hälfte: In der ERFASSUNG steht NULL, nicht 0.
     // Die Erfassungstabellen nennen die Spalte `unit_price`, nicht
     // `purchase_price` — nachgesehen, nicht angenommen (\d part_acquisitions).
-    // Sie traegt den PREIS DIESER ERFASSUNG; die Stammzeile hat beide Felder.
+    // Sie traegt den PREIS DIESER ERFASSUNG; der Anzeigewert daneben wird
+    // beim Lesen gebildet.
     const teilErf = await db.get(
       'SELECT unit_price FROM part_acquisitions WHERE user_id=$1 AND part_number=$2', [uid, TEIL]);
     const figErf = await db.get(
@@ -111,8 +131,8 @@ test('ohne Marktpreis: Stammzeile 0, Erfassung NULL — bei Teil UND Figur',
     assert.ok(teilErf, 'Zum Teil wurde keine Erfassung angelegt');
     assert.ok(figErf,  'Zur Figur wurde keine Erfassung angelegt');
     assert.equal(teilErf.unit_price, null,
-      `Die Teil-Erfassung trägt ${teilErf.unit_price}; die 0 der Stammzeile ist ein ` +
-      'Anzeigewert und gehört hier nicht hin');
+      `Die Teil-Erfassung trägt ${teilErf.unit_price}; die 0 ist ein Anzeigewert ` +
+      'und gehört hier nicht hin');
     assert.equal(figErf.unit_price, null,
       `Die Figuren-Erfassung trägt ${figErf.unit_price} statt NULL — die Umwandlung ` +
       'stand in routes/minifigs.ts an einer von drei Schreibstellen');

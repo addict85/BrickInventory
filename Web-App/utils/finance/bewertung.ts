@@ -250,8 +250,11 @@ async function computeMinifigsValuation(viewerId: number, ids: Blickfeld) {
   // aus der Set-Detailansicht verschwunden (siehe handlers/sets.ts).
   const manualFigs = await db.all(`
     SELECT m.id, m.user_id, m.set_number, m.fig_number, m.bl_fig_number,
-           m.quantity, m.source, m.unit_price, m.purchase_price, m.storage_id,
-           COALESCE(m.condition,'N') AS condition,
+           m.quantity, m.source, m.storage_id,
+           -- unit_price, purchase_price und condition sind mit Migration 0035
+           -- weg. Die Bewertung rechnet ohnehin aus den ERFASSUNGEN
+           -- (loadManualAcquisitions oben) — die drei Spalten waren eine
+           -- Abschrift der letzten davon.
            mc.fig_name, mc.image_url, mc.image_local
       FROM minifigs m
       LEFT JOIN minifigs_catalog mc ON mc.fig_number = m.fig_number
@@ -287,12 +290,14 @@ async function computeMinifigsValuation(viewerId: number, ids: Blickfeld) {
     // Webapp am selben Stueck „Neu" zeigte — und holte den Marktpreis als
     // Gebrauchtpreis.
     //
-    // effectiveCondition() ist die Aufloesung, die der Kopf dieser Datei „DIE
-    // Zustandsaufloesung" nennt; sie stand die ganze Zeit dreissig Zeilen
-    // weiter oben. Ohne Erfassungen liefert sie den gespeicherten Wert —
-    // genau das, was hier gemeint war.
-    const stored = effectiveCondition(fig);
-    const conds  = conditionsOf(acqs, stored);
+    // ── Kein gespeicherter Zustand mehr ──────────────────────────────────
+    //
+    // Hier stand effectiveCondition(fig) und wurde als Rueckfall
+    // weitergegeben. Beide Wege lesen seit Migration 0035 nur noch die
+    // Erfassungen, und fuer jede manuelle Position garantiert die Migration
+    // eine. Ohne Erfassung gilt „Neu“ — dieselbe Regel wie in
+    // conditionFromAcquisitions() (utils/handlers/shared.ts).
+    const conds  = conditionsOf(acqs);
 
     const priceMap = new Map<string, number>();
     let priceData: any = null;
@@ -330,14 +335,27 @@ async function computeMinifigsValuation(viewerId: number, ids: Blickfeld) {
 
     const qty = fig.quantity || 1;
     // Gewichteter Stückwert über die Erfassungen — dieselbe Regel wie bei Sets.
-    const valued  = valueSet(key, acqs, priceMap, stored, qty);
+    // 'N' statt eines gespeicherten Zustands: Der Rueckfall greift nur ohne
+    // Erfassungen, und dort gilt „Neu“ (siehe conditionsOf unten).
+    const valued  = valueSet(key, acqs, priceMap, 'N', qty);
     const rows    = valueAcquisitionRows(key, acqs, priceMap);
     const unitVal = valued.unit_price ?? 0;
     const totalQty = acqs.length ? valued.quantity : qty;
     // Kaufpreis ebenfalls mengengewichtet; ohne Erfassungen die Stammzeile.
     const acqPurchase = acqs.length ? weightedPurchase(rows) : null;
-    const hasCost = acqPurchase != null || fig.purchase_price != null;   // 0 zählt als erfasst
-    const purchasePrice = acqPurchase != null ? acqPurchase : parseFloat(fig.purchase_price || 0);
+    // ── Kaufpreis: aus den Erfassungen, 0 wenn keiner bekannt ────────────
+    //
+    // Hier stand acqPurchase != null || fig.purchase_price != null mit dem
+    // Vermerk „0 zählt als erfasst“. Die Spalte purchase_price war der
+    // ANZEIGEWERT der Stammzeile und nie NULL (utils/preisRegel.ts: der
+    // eingegebene Preis, sonst der Marktpreis, sonst 0) — hasCost war damit
+    // fuer jede manuelle Position wahr.
+    //
+    // Genau das bleibt, nur ohne zweite Spalte: Migration 0035 garantiert
+    // eine Erfassung, also ist hasCost weiter wahr, und der Anzeigewert wird
+    // hier gebildet statt gespeichert.
+    const hasCost = acqs.length > 0;
+    const purchasePrice = acqPurchase ?? 0;
     return { ...fig, ...priceData,
       condition: valued.by_condition.some(b => b.condition === 'U') ? 'U' : 'N',
       conditions: valued.by_condition.map(b => b.condition),
@@ -375,9 +393,10 @@ async function computePartsValuation(viewerId: number, ids: Blickfeld) {
   // 0034), der Bestand aus parts.
   const manualParts = await db.all(`
     SELECT p.id, p.user_id, p.set_number, p.part_number, p.bl_part_number,
-           p.color_id, p.quantity, p.source, p.unit_price, p.purchase_price,
+           p.color_id, p.quantity, p.source,
            p.storage_id, p.added_at,
-           COALESCE(p.condition,'N') AS condition,
+           -- Preise und Zustand: siehe die Figuren-Bewertung darueber
+           -- (Migration 0035).
            pc.part_name, pc.category_name,
            pcc.color_name, pcc.color_hex, pcc.image_url, pcc.image_local
       FROM parts p
@@ -422,12 +441,14 @@ async function computePartsValuation(viewerId: number, ids: Blickfeld) {
     // Webapp am selben Stueck „Neu" zeigte — und holte den Marktpreis als
     // Gebrauchtpreis.
     //
-    // effectiveCondition() ist die Aufloesung, die der Kopf dieser Datei „DIE
-    // Zustandsaufloesung" nennt; sie stand die ganze Zeit dreissig Zeilen
-    // weiter oben. Ohne Erfassungen liefert sie den gespeicherten Wert —
-    // genau das, was hier gemeint war.
-    const stored = effectiveCondition(part);
-    const conds  = conditionsOf(acqs, stored);
+    // ── Kein gespeicherter Zustand mehr ──────────────────────────────────
+    //
+    // Hier stand effectiveCondition(part) und wurde als Rueckfall
+    // weitergegeben. Beide Wege lesen seit Migration 0035 nur noch die
+    // Erfassungen, und fuer jede manuelle Position garantiert die Migration
+    // eine. Ohne Erfassung gilt „Neu“ — dieselbe Regel wie in
+    // conditionFromAcquisitions() (utils/handlers/shared.ts).
+    const conds  = conditionsOf(acqs);
 
     const priceMap = new Map<string, number>();
     let priceData: any = null;
@@ -447,13 +468,16 @@ async function computePartsValuation(viewerId: number, ids: Blickfeld) {
     }
 
     const qty     = part.quantity || 1;
-    const valued  = valueSet(key, acqs, priceMap, stored, qty);
+    // 'N' statt eines gespeicherten Zustands: Der Rueckfall greift nur ohne
+    // Erfassungen, und dort gilt „Neu“ (siehe conditionsOf unten).
+    const valued  = valueSet(key, acqs, priceMap, 'N', qty);
     const rows    = valueAcquisitionRows(key, acqs, priceMap);
     const unitVal = valued.unit_price ?? 0;
     const totalQty = acqs.length ? valued.quantity : qty;
     const acqPurchase = acqs.length ? weightedPurchase(rows) : null;
-    const hasCost = acqPurchase != null || part.purchase_price != null;  // 0 zählt als erfasst
-    const purchasePrice = acqPurchase != null ? acqPurchase : parseFloat(part.purchase_price || 0);
+    // Kaufpreis wie bei den Figuren darueber (Migration 0035).
+    const hasCost = acqs.length > 0;
+    const purchasePrice = acqPurchase ?? 0;
     return {
       id:           part.id,
       // user_id gehoert in die Antwort, obwohl die Kachel keine Kontonummer
@@ -477,7 +501,13 @@ async function computePartsValuation(viewerId: number, ids: Blickfeld) {
       quantity:     qty,
       image_url:    part.image_url,
       image_local:  part.image_local,
-      unit_price:   part.unit_price,
+      // Der Einzelpreis der NEUESTEN Erfassung. Hier stand part.unit_price —
+      // die Abschrift an der Bestandszeile, die Migration 0035 geloescht hat.
+      // loadManualAcquisitions() ordnet aufsteigend nach created_at, also ist
+      // der letzte Eintrag der neueste. Die Webapp nimmt ohnehin
+      // avg_purchase_price zuerst (06-minifigs.js) und dieses Feld nur als
+      // Rueckfall.
+      unit_price:   acqs.length ? (acqs[acqs.length - 1].unit_price ?? null) : null,
       purchase_price: hasCost ? purchasePrice : null,
       condition:    valued.by_condition.some(b => b.condition === 'U') ? 'U' : 'N',
       conditions:   valued.by_condition.map(b => b.condition),
@@ -511,11 +541,14 @@ async function computePartsValuation(viewerId: number, ids: Blickfeld) {
 }
 
 /**
- * Zustände eines manuellen Eintrags — aus den Erfassungen, ersatzweise aus der
- * Stammzeile.
+ * Zustände eines manuellen Eintrags — aus den Erfassungen.
+ *
+ * Ohne Erfassungen „Neu“: Den gespeicherten Wert der Stammzeile, der hier
+ * einmal der Rueckfall war, gibt es seit Migration 0035 nicht mehr. Dieselbe
+ * Regel wie conditionsFromAcquisitions() in utils/handlers/shared.ts.
  */
-function conditionsOf(acqs: any[], stored: string): ('N' | 'U')[] {
-  if (!acqs?.length) return [stored === 'U' ? 'U' : 'N'];
+function conditionsOf(acqs: any[]): ('N' | 'U')[] {
+  if (!acqs?.length) return ['N'];
   const set = new Set(acqs.map(a => (a.condition === 'U' ? 'U' : 'N')));
   return (['N', 'U'] as const).filter(c => set.has(c));
 }

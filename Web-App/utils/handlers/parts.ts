@@ -530,7 +530,6 @@ async function getParts(userId: Blickfeld, query: any = {}) {
       MIN(pcc.image_url)   AS image_url,
       MIN(pcc.image_local) AS image_local,
       MAX(COALESCE(spc.is_spare, 0)) AS is_spare,
-      MAX(p.condition)    AS stored_condition,
       -- Lagerort: string_agg statt MIN, und das ist kein Zierrat. Diese
       -- Abfrage fasst je Teil-Farb-Paar MEHRERE Zeilen zusammen (dasselbe
       -- Teil aus verschiedenen Sets, im Haushalt zusaetzlich aus verschiedenen
@@ -548,9 +547,16 @@ async function getParts(userId: Blickfeld, query: any = {}) {
     GROUP BY COALESCE(p.bl_part_number, p.part_number), p.color_id
     ORDER BY MIN(pcc.color_name) ASC, MIN(pc.part_name) ASC${limitClause}`;
 
-  // Angezeigter Zustand als Aggregat über die Kaufpreis-Erfassungen manueller
-  // Teile: sobald eine Erfassung "Gebraucht" ist, gilt das Teil als gebraucht.
-  // Teile aus Sets (source='set') haben keine Erfassungen → gespeicherter Wert.
+  // ── Angezeigter Zustand: nur noch aus den Erfassungen ───────────────────
+  //
+  // Sobald eine Erfassung „Gebraucht" ist, gilt das Teil als gebraucht.
+  //
+  // Hier stand daneben `MAX(p.condition) AS stored_condition` als Rueckfall
+  // fuer Teile OHNE Erfassung. Die Spalte ist mit Migration 0035 weg, und der
+  // Rueckfall war fuer Set-Teile ohnehin wirkungslos: parts.condition stand
+  // bei ihnen seit jeher auf dem Vorgabewert 'N' und wurde nie geschrieben
+  // (gemessen an allen Schreibwegen — beide fassen nur source='manual' an).
+  // Fuer manuelle Teile garantiert Migration 0035 eine Erfassung.
   //
   // Entfällt komplett, wenn manuelle Teile ohnehin ausgefiltert sind — dann
   // kann keine Zeile des Ergebnisses davon betroffen sein. Genau so ruft die
@@ -575,9 +581,10 @@ async function getParts(userId: Blickfeld, query: any = {}) {
   const { resolveImageLocal } = require('../images');
   const partsResolved = parts.map(p => ({
     ...p,
-    condition: usedPartMap.has(`${p.part_number}|${p.color_id}`)
-      ? (usedPartMap.get(`${p.part_number}|${p.color_id}`) ? 'U' : 'N')
-      : (p.stored_condition || 'N'),
+    // Ohne Erfassung 'N' — nicht mehr der gespeicherte Wert, den es nicht
+    // mehr gibt (Migration 0035). Fuer Set-Teile ist das dasselbe Ergebnis
+    // wie vorher, siehe die Begruendung bei usedSql.
+    condition: usedPartMap.get(`${p.part_number}|${p.color_id}`) ? 'U' : 'N',
     image_local: resolveImageLocal(p.image_local),
     image_url:   p.image_url || null,
     // Ein echter Wahrheitswert, nicht '1'/'0': Der Treiber liefert das
@@ -718,8 +725,23 @@ async function getManualParts(userId: Blickfeld, viewerId: number, { page = 1, p
   return db.all(`
     SELECT t.id, t.user_id, t.part_number, t.bl_part_number, pc.part_name, t.color_id,
            pcc.color_name, pcc.color_hex,
-           pc.category_name, t.quantity, pcc.image_url, pcc.image_local, t.unit_price,
-           t.purchase_price, t.source,
+           pc.category_name, t.quantity, pcc.image_url, pcc.image_local,
+           -- ── Preis und Zustand aus der NEUESTEN Erfassung ───────────────
+           --
+           -- Hier standen t.unit_price, t.purchase_price und t.condition —
+           -- eine Abschrift der letzten Erfassung an der Bestandszeile.
+           -- Migration 0035 hat die drei Spalten geloescht; die Regel
+           -- „latest wins" steht jetzt an EINER Stelle, hier, statt zusaetzlich
+           -- in parentPriceSql und parentConditionSql (routes/api_v1/
+           -- acquisitions.ts).
+           --
+           -- Die beiden Bedeutungen bleiben unterschieden, so wie
+           -- utils/preisRegel.ts sie ausschreibt: unit_price ist der
+           -- eingegebene Preis und darf leer sein, purchase_price ist der
+           -- ANZEIGEWERT und ist nie leer (0 heisst „nichts bekannt").
+           neu.unit_price,
+           COALESCE(neu.unit_price, 0) AS purchase_price,
+           t.source,
            -- condition FEHLTE in dieser Liste. applyManualCondition() unten
            -- faellt ohne Erfassungen auf genau diesen gespeicherten Wert
            -- zurueck (stored || 'N') — und bekam undefined. NACHGEMESSEN:
@@ -732,7 +754,7 @@ async function getManualParts(userId: Blickfeld, viewerId: number, { page = 1, p
            -- hatte den Fehler deshalb nie. Zwei Fassungen derselben Abfrage,
            -- eine davon mit Spaltenliste — und in der fehlte die eine Spalte,
            -- auf die es ankommt.
-           t.condition,
+           COALESCE(neu.condition, 'N') AS condition,
            -- storage FEHLTE ebenfalls — und zwar aus demselben Grund wie
            -- die Spalte condition eine Zeile darueber: Diese Abfrage zaehlt ihre
            -- Spalten auf, die Schwesterfunktion getManualMinifigs() macht
@@ -756,6 +778,18 @@ async function getManualParts(userId: Blickfeld, viewerId: number, { page = 1, p
     LEFT JOIN part_color_catalog pcc ON pcc.part_number = t.part_number
                                     AND pcc.color_id    = t.color_id
     LEFT JOIN storage_locations lo ON lo.id = t.storage_id
+    -- LATERAL, weil die Unterabfrage auf die aeussere Zeile zeigt. LIMIT 1
+    -- nach created_at DESC, id DESC: dieselbe Ordnung, die latestSql in
+    -- routes/api_v1/acquisitions.ts benutzt — sonst haetten „neuester Preis"
+    -- und „neueste Erfassung" zwei Bedeutungen.
+    LEFT JOIN LATERAL (
+      SELECT a.unit_price, a.condition
+        FROM part_acquisitions a
+       WHERE a.user_id = t.user_id AND a.part_number = t.part_number
+         AND COALESCE(a.color_id, 0) = COALESCE(t.color_id, 0)
+       ORDER BY a.created_at DESC, a.id DESC
+       LIMIT 1
+    ) neu ON TRUE
     WHERE t.user_id = ANY($1) AND t.source = 'manual'
     ORDER BY pc.part_name ASC, t.part_number ASC${limit}`, params)
     .then(async (rows) => {

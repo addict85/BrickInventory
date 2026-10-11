@@ -31,7 +31,10 @@ test('die Aggregat-Regel steht nur noch an einer Stelle', () => {
     'Der gemeinsame Helfer fehlt');
   // Weder getSets()/getSet() noch die manuellen Listen dürfen die Regel je
   // eigen ausformulieren — sie steht in conditionFromAcquisitions().
-  pruefeParameter(h, 'conditionFromAcquisitions', ['acqCount', 'usedCount', 'stored'],
+  // Zwei Parameter, nicht drei: Der dritte war der gespeicherte Zustand der
+  // Stammzeile. Migration 0032 hat ihn den Sets genommen, 0035 den Teilen und
+  // Minifiguren — es gibt keinen Rueckfall mehr, auf den er zeigen koennte.
+  pruefeParameter(h, 'conditionFromAcquisitions', ['acqCount', 'usedCount'],
     'der gemeinsame Regel-Helfer fehlt');
   // Kommentare ausblenden: Der Erklärtext am Helfer zitiert die Regel selbst.
   const code = h.replace(/\/\*[\s\S]*?\*\//g, '').replace(/\/\/[^\n]*/g, '');
@@ -264,7 +267,8 @@ test('manuelle Teile und Minifiguren nutzen dieselbe Zustandsregel wie Sets', ()
   pruefeParameter(src, 'applyManualCondition', ['userId', 'rows', 'kind'],
     'gemeinsame Regel für manuelle Einträge fehlt');
 
-  // Dieselbe Regel wie getSetConditionAggregate: eine gebrauchte Erfassung genügt
+  // Dieselbe Regel wie getSetConditionAggregate: eine gebrauchte Erfassung
+  // genügt. Ohne den dritten Parameter — siehe die Begruendung oben.
   // Der Ausschnitt endet jetzt an der Funktion selbst, nicht an der nächsten:
   // applyManualCondition steht seit Nachtrag 133 in utils/handlers/shared.ts,
   // getManualParts in utils/handlers/parts.ts — die Reihenfolge im
@@ -272,7 +276,7 @@ test('manuelle Teile und Minifiguren nutzen dieselbe Zustandsregel wie Sets', ()
   const anfang = src.indexOf('async function applyManualCondition');
   const fn = src.slice(anfang, src.indexOf('\n}', anfang));
   // Nicht neu ausformulieren, sondern denselben Helfer benutzen wie Sets.
-  assert.match(fn, /conditionFromAcquisitions\(acqCount, usedCount, r\.condition\)/,
+  assert.match(fn, /conditionFromAcquisitions\(acqCount, usedCount\)/,
     'Manuelle Einträge müssen denselben Regel-Helfer benutzen wie Sets');
   assert.match(fn, /COUNT\(\*\) FILTER \(WHERE condition = 'U'\) AS used_count/,
     'Ohne used_count kann die Regel nicht greifen');
@@ -830,29 +834,39 @@ test('gemischte Erfassungen ergeben ZWEI Plaketten', () => {
   // Der gemeldete Fall: ein Exemplar neu, eines gebraucht. Bisher zeigte die
   // Kachel nur „Gebraucht" — die Neu-Erfassung war unsichtbar, obwohl sie mit
   // ihrem eigenen Preis in die Bewertung eingeht.
-  assert.deepEqual(conditionsFromAcquisitions(2, 1, 'N'), ['N', 'U']);
+  assert.deepEqual(conditionsFromAcquisitions(2, 1), ['N', 'U']);
   // Und die Einzelangabe bleibt daneben, was sie war.
-  assert.equal(conditionFromAcquisitions(2, 1, 'N'), 'U');
+  assert.equal(conditionFromAcquisitions(2, 1), 'U');
 });
 
 test('nur ein Zustand ergibt eine Plakette', () => {
-  assert.deepEqual(conditionsFromAcquisitions(3, 0, 'U'), ['N'],
-    'alle Erfassungen neu → nur Neu, auch wenn die Stammzeile U sagt');
-  assert.deepEqual(conditionsFromAcquisitions(2, 2, 'N'), ['U'],
+  assert.deepEqual(conditionsFromAcquisitions(3, 0), ['N'],
+    'alle Erfassungen neu → nur Neu');
+  assert.deepEqual(conditionsFromAcquisitions(2, 2), ['U'],
     'alle Erfassungen gebraucht → nur Gebraucht');
 });
 
-test('ohne Erfassungen zählt der gespeicherte Wert', () => {
-  assert.deepEqual(conditionsFromAcquisitions(0, 0, 'U'), ['U']);
-  assert.deepEqual(conditionsFromAcquisitions(0, 0, null), ['N']);
+test('ohne Erfassungen gilt „Neu"', () => {
+  // Hier stand „ohne Erfassungen zählt der gespeicherte Wert" mit einem
+  // dritten Parameter. Den gibt es seit Migration 0035 nicht mehr: Fuer
+  // manuelle Positionen traegt sie eine Erfassung nach und prueft danach
+  // nach, dass keine ohne geblieben ist; fuer Teile und Figuren aus einem Set
+  // stand die Spalte seit jeher auf dem Vorgabewert.
+  //
+  // Ein dritter Parameter wuerde jetzt stillschweigend ignoriert. Deshalb
+  // prueft die Regel oben („die Aggregat-Regel steht nur noch an einer
+  // Stelle") die Parameterliste mit — sonst koennte ein Aufrufer ihn weiter
+  // mitgeben und sich auf eine Wirkung verlassen, die es nicht gibt.
+  assert.deepEqual(conditionsFromAcquisitions(0, 0), ['N']);
+  assert.equal(conditionFromAcquisitions(0, 0), 'N');
 });
 
 test('die Reihenfolge ist fest: Neu vor Gebraucht', () => {
   // Nach Häufigkeit sortiert würden die Plaketten beim nächsten Kauf die
   // Plätze tauschen — auf einer Kachel, die man überfliegt, fällt genau das
   // als „hat sich was geändert?" auf.
-  assert.deepEqual(conditionsFromAcquisitions(5, 4, 'N'), ['N', 'U']);
-  assert.deepEqual(conditionsFromAcquisitions(5, 1, 'N'), ['N', 'U']);
+  assert.deepEqual(conditionsFromAcquisitions(5, 4), ['N', 'U']);
+  assert.deepEqual(conditionsFromAcquisitions(5, 1), ['N', 'U']);
 });
 
 test('die Kacheln rechnen die Plaketten nicht selbst aus', () => {

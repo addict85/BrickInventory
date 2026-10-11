@@ -78,7 +78,8 @@ test('Teile-Bewertung: kein Nachschlag je Teil', async (t) => {
     await db.run("INSERT INTO users (id, username, password_hash) VALUES ($1, 'bwt_messnutzer', 'x')", [UID]);
     for (let i = 0; i < N; i++) {
       await db.run(
-        "INSERT INTO parts (user_id, part_number, color_id, quantity, condition, source) VALUES ($1, $2, 4, 1, 'N', 'manual')",
+        // Zustand und Preis stehen seit Migration 0035 in der Erfassung.
+        "INSERT INTO parts (user_id, part_number, color_id, quantity, source) VALUES ($1, $2, 4, 1, 'manual')",
         [UID, NR(i)]);
       // Der Betriebsfall: Der Nachtrag-Job hat die Nummer übersetzt.
       // bl_part_num == part_num, damit der Preis-Cache-Schlüssel gleich bleibt.

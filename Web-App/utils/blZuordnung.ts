@@ -53,3 +53,28 @@ export function blFarbnummerAus(farbe: any): number | null {
   const id = farbe?.external_ids?.BrickLink?.ext_ids?.[0] ?? farbe?.external_ids?.BrickLink?.[0];
   return id ?? null;
 }
+
+/**
+ * Die BrickLink-Nummer einer manuell erfassten Figur.
+ *
+ * ── Warum hier und nicht zweimal hingeschrieben ─────────────────────────────
+ *
+ * Dieselbe Abfrage stand in routes/api_v1/acquisitions.ts (resolvePrice) und
+ * in jobs/purchasePriceBackfill.ts. test/sql-kerne.test.js hat das gemeldet:
+ * „Diese Anweisungen stehen in mehreren Dateien."
+ *
+ * Die Regel dahinter ist nicht Kosmetik — in diesem Baum sind mehrfach zwei
+ * Fassungen derselben Abfrage auseinandergelaufen, und einmal hat es die
+ * Preise getroffen (Nachtrag 146: dieselbe Regel in zwei Kopien, nachgezogen
+ * in einer).
+ *
+ * `source='manual'` bleibt in der Bedingung: Figuren aus einem Set tragen
+ * keine eigene BrickLink-Nummer, und ihr Preis haengt am Set.
+ */
+export async function blFigNummerAus(userId: number, figNumber: string): Promise<string | null> {
+  const zeile = await db.get(
+    "SELECT bl_fig_number FROM minifigs WHERE user_id=$1 AND fig_number=$2 AND source='manual'",
+    [userId, figNumber]
+  ).catch(() => null);
+  return zeile?.bl_fig_number || null;
+}

@@ -266,24 +266,30 @@ export async function moveManualAcquisition(
   if (dst) {
     await tx.run(`UPDATE ${table} SET quantity = quantity + $1 WHERE id = $2`, [movingQty, dst.id]);
   } else if (isPart) {
+    // ── Nur noch Menge und Nummer ───────────────────────────────────────
+    //
     // Die Beschreibung — Name, Farbe, Bild — stand hier einmal mit in der
     // Spaltenliste. Sie beschreibt das Teil und nicht das Exemplar und liegt
     // seit Migration 0034 im Katalog; sie ist also schon da, denn das Teil
-    // existiert im Absenderkonto und damit im Katalog. Mitzunehmen sind nur
-    // Menge, Preis und Zustand.
+    // existiert im Absenderkonto und damit im Katalog.
+    //
+    // Preis und Zustand sind mit Migration 0035 gefolgt: Sie reisen in der
+    // ERFASSUNG mit, und die legt recordAcquisitionForDay() gleich darunter
+    // an — mit acq.unit_price und acq.condition, also den Werten DER
+    // verschobenen Erfassung. Sie hier noch einmal mitzunehmen hiesse, den
+    // Wert der NEUESTEN Erfassung des Absenders zu kopieren; das war schon
+    // vorher eine andere Zahl als die verschobene.
     await tx.run(
-      `INSERT INTO parts (user_id, part_number, color_id, quantity, unit_price,
-                          condition, source, bl_part_number)
-       VALUES ($1,$2,$3,$4,$5,$6,'manual',$7)`,
-      [toId, src.part_number, src.color_id, movingQty, src.unit_price,
-       src.condition, src.bl_part_number]);
+      `INSERT INTO parts (user_id, part_number, color_id, quantity,
+                          source, bl_part_number)
+       VALUES ($1,$2,$3,$4,'manual',$5)`,
+      [toId, src.part_number, src.color_id, movingQty, src.bl_part_number]);
   } else {
     await tx.run(
       `INSERT INTO minifigs (user_id, fig_number, quantity,
-                             unit_price, condition, source, bl_fig_number)
-       VALUES ($1,$2,$3,$4,$5,'manual',$6)`,
-      [toId, src.fig_number, movingQty,
-       src.unit_price, src.condition, src.bl_fig_number]);
+                             source, bl_fig_number)
+       VALUES ($1,$2,$3,'manual',$4)`,
+      [toId, src.fig_number, movingQty, src.bl_fig_number]);
   }
 
   await recordAcquisitionForDay(kind, toId, keyValues, {

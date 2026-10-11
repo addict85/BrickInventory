@@ -25,8 +25,19 @@
  * Eine Prüfung je Endpunkt hätte jede der beiden Fassungen für sich für
  * richtig erklären können — man muss ja wissen, was herauskommen SOLL. Der
  * Vergleich braucht das nicht: Zwei Antworten auf dieselbe Frage müssen
- * übereinstimmen, egal welche stimmt. Und die vier Fälle darunter nageln fest,
+ * übereinstimmen, egal welche stimmt. Und die fünf Fälle darunter nageln fest,
  * welche es ist.
+ *
+ * ── Was Migration 0035 daran geändert hat ───────────────────────────────────
+ *
+ * Die Fälle hiessen vorher „gespeichert U, ohne Erfassung → U": Es gab eine
+ * Spalte `condition` an der Bestandszeile, und ohne Erfassung war sie die
+ * einzige Auskunft. Migration 0035 hat sie geloescht — der Zustand steht je
+ * KAUF in der Erfassung, so wie Marco es vorgegeben hat.
+ *
+ * Die Fälle prüfen deshalb jetzt die Aggregat-Regel selbst, und das ist die
+ * stärkere Prüfung: Sie deckt zwei Erfassungen in verschiedenen Zuständen ab,
+ * was mit einer einzelnen Spalte nicht darstellbar war.
  *
  * Voraussetzung: Test-DB (Inhalt wird angefasst!) via TEST_DATABASE_URL.
  * Ohne DB: skip. Ausführen: REQUIRE_DB=1 npm test
@@ -66,13 +77,14 @@ test('manuelle Teile und Figuren: Liste und Bewertung sagen denselben Zustand',
   const uid = (await db.get('SELECT id FROM users WHERE username=$1', [NAME])).id;
 
   try {
-    // Die vier Fälle, die es gibt. Ohne Erfassung zählt der gespeicherte Wert;
-    // mit Erfassungen zählen die Erfassungen (eine gebrauchte genügt).
+    // Die Regel: Sobald EINE Erfassung gebraucht ist, gilt das Stueck als
+    // gebraucht. Ohne Erfassung gilt „Neu".
     const faelle = [
-      { nr: '3001', gespeichert: 'N', erfassung: null, erwartet: 'N' },
-      { nr: '3002', gespeichert: 'U', erfassung: null, erwartet: 'U' },
-      { nr: '3003', gespeichert: 'N', erfassung: 'U',  erwartet: 'U' },
-      { nr: '3004', gespeichert: 'U', erfassung: 'N',  erwartet: 'N' },
+      { nr: '3001', erfassungen: [],         erwartet: 'N' },
+      { nr: '3002', erfassungen: ['N'],      erwartet: 'N' },
+      { nr: '3003', erfassungen: ['U'],      erwartet: 'U' },
+      { nr: '3004', erfassungen: ['N', 'U'], erwartet: 'U' },
+      { nr: '3005', erfassungen: ['N', 'N'], erwartet: 'N' },
     ];
     for (const f of faelle) {
       // Name und Farbbezeichnung in die Kataloge (Migration 0034).
@@ -80,18 +92,21 @@ test('manuelle Teile und Figuren: Liste und Bewertung sagen denselben Zustand',
                     ON CONFLICT (part_number) DO NOTHING`, [f.nr, 'Teil ' + f.nr]);
       await db.run(`INSERT INTO part_color_catalog (part_number,color_id,color_name)
                     VALUES ($1,4,'Rot') ON CONFLICT (part_number,color_id) DO NOTHING`, [f.nr]);
-      await db.run(`INSERT INTO parts (user_id,part_number,color_id,quantity,source,condition)
-                    VALUES ($1,$2,4,1,'manual',$3)`, [uid, f.nr, f.gespeichert]);
-      if (f.erfassung)
-        await db.run(`INSERT INTO part_acquisitions (user_id,part_number,color_id,quantity,unit_price,condition)
-                      VALUES ($1,$2,4,1,0.5,$3)`, [uid, f.nr, f.erfassung]);
+      await db.run(`INSERT INTO parts (user_id,part_number,color_id,quantity,source)
+                    VALUES ($1,$2,4,1,'manual')`, [uid, f.nr]);
       await db.run(`INSERT INTO minifigs_catalog (fig_number,fig_name) VALUES ($1,$2)
                     ON CONFLICT (fig_number) DO NOTHING`, ['fig' + f.nr, 'Figur ' + f.nr]);
-      await db.run(`INSERT INTO minifigs (user_id,fig_number,quantity,source,condition)
-                    VALUES ($1,$2,1,'manual',$3)`, [uid, 'fig' + f.nr, f.gespeichert]);
-      if (f.erfassung)
-        await db.run(`INSERT INTO minifig_acquisitions (user_id,fig_number,quantity,unit_price,condition)
-                      VALUES ($1,$2,1,0.5,$3)`, [uid, 'fig' + f.nr, f.erfassung]);
+      await db.run(`INSERT INTO minifigs (user_id,fig_number,quantity,source)
+                    VALUES ($1,$2,1,'manual')`, [uid, 'fig' + f.nr]);
+      // Verschiedene Tage, damit „die neueste Erfassung" eindeutig ist.
+      for (const [i, z] of f.erfassungen.entries()) {
+        await db.run(`INSERT INTO part_acquisitions (user_id,part_number,color_id,quantity,unit_price,condition,created_at)
+                      VALUES ($1,$2,4,1,0.5,$3, NOW() - make_interval(days => $4))`,
+                     [uid, f.nr, z, f.erfassungen.length - i]);
+        await db.run(`INSERT INTO minifig_acquisitions (user_id,fig_number,quantity,unit_price,condition,created_at)
+                      VALUES ($1,$2,1,0.5,$3, NOW() - make_interval(days => $4))`,
+                     [uid, 'fig' + f.nr, z, f.erfassungen.length - i]);
+      }
     }
 
     const [liste, bewertung, figListe, figBewertung] = await Promise.all([
@@ -111,8 +126,8 @@ test('manuelle Teile und Figuren: Liste und Bewertung sagen denselben Zustand',
       liste.find(x => x[schluessel] === wert)?.condition;
 
     for (const f of faelle) {
-      const beschreibung = `Teil ${f.nr} (gespeichert ${f.gespeichert}` +
-        (f.erfassung ? `, Erfassung ${f.erfassung}` : ', ohne Erfassung') + ')';
+      const beschreibung = `Teil ${f.nr} (` +
+        (f.erfassungen.length ? `Erfassungen ${f.erfassungen.join('+')}` : 'ohne Erfassung') + ')';
 
       const ausListe    = zustand(liste, 'part_number', f.nr);
       const ausBewertung = zustand(bewertung.parts, 'part_number', f.nr);

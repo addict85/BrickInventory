@@ -163,10 +163,16 @@ test('beide Bewertungen fuehren den Besitzer mit', async (t) => {
   const id = async (n) => (await db.get(`SELECT id FROM users WHERE username=$1`, [n])).id;
   const haupt = await id('h2'), kind = await id('k2');
   await db.run(`INSERT INTO account_links (main_user_id,sub_user_id) VALUES ($1,$2)`, [haupt, kind]);
-  await db.run(`INSERT INTO parts (user_id, part_number, color_id, quantity, source, unit_price)
-                VALUES ($1,'3001',4,5,'manual',0.5), ($2,'3020',0,9,'manual',0.3)`, [haupt, kind]);
-  await db.run(`INSERT INTO minifigs (user_id, fig_number, quantity, source, unit_price)
-                VALUES ($1,'sw0001',1,'manual',12.0), ($2,'sw0002',2,'manual',9.0)`, [haupt, kind]);
+  // Der Preis steht seit Migration 0035 in der Erfassung, nicht an der
+  // Bestandszeile.
+  await db.run(`INSERT INTO parts (user_id, part_number, color_id, quantity, source)
+                VALUES ($1,'3001',4,5,'manual'), ($2,'3020',0,9,'manual')`, [haupt, kind]);
+  await db.run(`INSERT INTO part_acquisitions (user_id, part_number, color_id, quantity, unit_price, condition)
+                VALUES ($1,'3001',4,5,0.5,'N'), ($2,'3020',0,9,0.3,'N')`, [haupt, kind]);
+  await db.run(`INSERT INTO minifigs (user_id, fig_number, quantity, source)
+                VALUES ($1,'sw0001',1,'manual'), ($2,'sw0002',2,'manual')`, [haupt, kind]);
+  await db.run(`INSERT INTO minifig_acquisitions (user_id, fig_number, quantity, unit_price, condition)
+                VALUES ($1,'sw0001',1,12.0,'N'), ($2,'sw0002',2,9.0,'N')`, [haupt, kind]);
 
   const { base } = testServer(_req, {
     sitzung: { userId: haupt },
