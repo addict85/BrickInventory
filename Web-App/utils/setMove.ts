@@ -290,7 +290,24 @@ export async function moveManualAcquisition(
   if (!src) fehlerWerfen('nicht_gefunden', 404);
 
   const movingQty = Math.max(1, parseInt(String(acq.quantity)) || 1);
-  const remaining = Math.max(0, (src.quantity || 1) - movingQty);
+  // ── Wieviel bleibt: aus den ERFASSUNGEN, nicht von der Zeile ────────────
+  //
+  // Hier stand `(src.quantity || 1) - movingQty`. Die Spalte gibt es seit
+  // Migration 0038 nicht mehr, `src.quantity` war also `undefined` — und weil
+  // movingQty mindestens 1 ist, war `remaining` IMMER 0. Jedes Verschieben
+  // einer einzelnen Erfassung loeschte damit unten ALLE Erfassungen des
+  // Absenders fuer diese Position und seine Bestandszeile dazu, auch wenn er
+  // zehn hatte. Ohne Fehlermeldung.
+  //
+  // Der Set-Zweig daneben (moveSetAcquisition) rechnet genau so, und dort
+  // steht sogar der Kommentar, dass dieser Rueckfall entfernt wurde — im
+  // manuellen Zweig blieb er stehen. Gemessen an
+  // test/erfassung-verschieben-rest-bleibt-db.test.js: „Der Absender hat 0
+  // Erfassungen uebrig, erwartet 1 mit Menge 3".
+  const gesamt = Number((await tx.get(
+    `SELECT COALESCE(SUM(quantity), 0)::int AS summe FROM ${acqTab}
+      WHERE user_id = $1 AND ${keySql}`, [fromId, ...keyValues]))?.summe ?? 0);
+  const remaining = Math.max(0, gesamt - movingQty);
 
   const dst = await tx.get(
     `SELECT id FROM ${table} WHERE user_id = $1 AND ${keySql} AND COALESCE(source,'set') = 'manual'`,

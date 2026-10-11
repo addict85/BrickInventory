@@ -70,8 +70,27 @@ export const ERLAUBTE_BILD_HOSTS = [
  * auch `https://lego.com.angreifer.tld/x.pdf` und `https://evil-lego.com/x.pdf`
  * — es prüft eine Teilzeichenkette, keinen Host. Die Prüfung am HOLENDEN Ende
  * fängt das mit ab, und zwar unabhängig davon, wie die Adresse dorthin kam.
+ *
+ * ── bdpinstructions.s3.amazonaws.com, und warum GENAU dieser Host ──────────
+ *
+ * Marcos Serverprotokoll, seitenweise:
+ *
+ *     [download] Adresse nicht in der Liste erlaubter Hosts:
+ *                https://bdpinstructions.s3.amazonaws.com/11010.pdf
+ *
+ * Diese Adresse baut der Baum SELBST: utils/instructions.ts, Rueckfall 2 fuer
+ * die BrickLink Designer Programme. Sie zu bauen und dann abzulehnen ist
+ * keine Schranke, sondern eine Unstimmigkeit zwischen zwei Stellen — der
+ * Rueckfall konnte nie etwas holen, und zwar seit er existiert.
+ *
+ * Der VOLLE Host und nicht `amazonaws.com`: Letzteres liesse jeden fremden
+ * S3-Eimer der Welt durch, und hostErlaubt() lässt echte Subdomains ohnehin
+ * durch — `amazonaws.com` waere also die Erlaubnis fuer alles, was irgendwer
+ * dort ablegt. Ein Eimername ist eine Subdomain, kein Pfad.
  */
-export const ERLAUBTE_DOWNLOAD_HOSTS = [...ERLAUBTE_BILD_HOSTS, 'lego.com'];
+export const ERLAUBTE_DOWNLOAD_HOSTS = [
+  ...ERLAUBTE_BILD_HOSTS, 'lego.com', 'bdpinstructions.s3.amazonaws.com',
+];
 
 /**
  * Darf diese Adresse abgerufen werden?

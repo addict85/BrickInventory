@@ -116,6 +116,46 @@ test('die Host-Pruefung faellt nicht auf einen angehaengten Namen herein', () =>
   assert.equal(hostErlaubt('kein-url', ERLAUBTE_BILD_HOSTS), false);
 });
 
+/**
+ * Die Anleitungen der BrickLink Designer Programme.
+ *
+ * ── Marcos Serverprotokoll ─────────────────────────────────────────────────
+ *
+ *     [download] Adresse nicht in der Liste erlaubter Hosts:
+ *                https://bdpinstructions.s3.amazonaws.com/11010.pdf
+ *
+ * Seitenweise, fuer jedes BDP-Set. Diese Adresse baut der Baum SELBST
+ * (utils/instructions.ts, Rueckfall 2) und lehnte sie dann ab: Der Rueckfall
+ * konnte nie etwas holen, seit es ihn gibt.
+ */
+test('der BDP-Eimer darf geholt werden — aber nur er', () => {
+  assert.ok(hostErlaubt('https://bdpinstructions.s3.amazonaws.com/11010.pdf',
+                        ERLAUBTE_DOWNLOAD_HOSTS),
+    'Der Rueckfall in utils/instructions.ts baut genau diese Adresse — sie hier ' +
+    'abzulehnen heisst, ihn bauen zu lassen und ins Leere laufen zu lassen');
+
+  // ── Und NICHT der halbe Anbieter ─────────────────────────────────────────
+  //
+  // Der Punkt dieses Falls. `amazonaws.com` in die Liste zu schreiben waere
+  // die bequeme Fassung gewesen — und die Erlaubnis fuer jeden fremden
+  // S3-Eimer der Welt, denn hostErlaubt() laesst echte Subdomains durch und
+  // ein Eimername IST eine Subdomain. Ohne diese Haelfte waere der Fall
+  // darueber auch mit der bequemen Fassung gruen.
+  for (const fremd of ['https://amazonaws.com/x.pdf',
+                       'https://s3.amazonaws.com/x.pdf',
+                       'https://boeser-eimer.s3.amazonaws.com/x.pdf',
+                       'https://bdpinstructions.s3.amazonaws.com.angreifer.tld/x.pdf']) {
+    assert.ok(!hostErlaubt(fremd, ERLAUBTE_DOWNLOAD_HOSTS),
+      `${fremd} darf nicht durchgehen — sonst ist jeder fremde Eimer erlaubt`);
+  }
+
+  // Und die Bildliste bleibt unberuehrt: Von dort kommen PDFs, keine Bilder.
+  assert.ok(!hostErlaubt('https://bdpinstructions.s3.amazonaws.com/11010.pdf',
+                         ERLAUBTE_BILD_HOSTS),
+    'Der PDF-Eimer hat in der BILDliste nichts zu suchen — der Bild-Proxy ' +
+    'liefert an den Browser aus, und das ist eine andere Frage');
+});
+
 test('die beiden Stellen benutzen die Regel wirklich', () => {
   const rb = ohneKommentare(read('clients/rebrickable.ts'));
 
