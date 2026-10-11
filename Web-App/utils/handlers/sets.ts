@@ -410,10 +410,37 @@ async function getSet(userId: Blickfeld, setNumber: string) {
     // Die eigene Zeile gewinnt für die übrigen Felder — sie beschreibt das
     // eigene Exemplar (Zustand, Kaufpreis). Die MENGE dagegen kommt aus der
     // Summe über alle Konten im Blickfeld.
+    // ── Der Lagerort muss AUSDRÜCKLICH dastehen ───────────────────────────
+    //
+    // Marcos Befund: „Wenn ich einen Lagerort setze und das Set später
+    // aufrufe, ist er weg."
+    //
+    // NACHGEMESSEN, Set mit gesetztem Ort:
+    //
+    //     sets.storage_id in der Datenbank : 1
+    //     Antwort der LISTE   → storage    : "Estrich"
+    //     Antwort des DETAILS → storage    : undefined
+    //
+    // Bis Migration 0031 trug die sets-Zeile den NAMEN in einer Spalte
+    // `storage`, und `s.*` lieferte ihn mit. Seit der Umstellung trägt sie
+    // `storage_id`; `s.*` liefert eine Zahl, die kein Client liest. Die LISTE
+    // löst sie auf (getSets, LEFT JOIN auf storage_locations) — das DETAIL
+    // nicht. Wieder „dieselbe Regel fehlt am zweiten Weg", und wieder zwischen
+    // Liste und Detail, wie schon bei der Menge zwei Kommentare weiter oben.
+    //
+    // Zusammengefasst über das BLICKFELD und nicht aus der gewählten Zeile:
+    // Besitzen zwei Kinder dasselbe Set, liegt es in zwei Kisten. Die Liste
+    // schreibt dort „Kiste 3, Regal A"; nähme das Detail nur den Ort der einen
+    // Zeile, verschwiege es den anderen — und zwar so, dass es wie eine
+    // vollständige Antwort aussieht. Die Menge daneben folgt derselben Regel.
     db.get(
       `SELECT s.*,
               (SELECT COALESCE(SUM(a.quantity),0)::int FROM sets a
-                WHERE a.user_id = ANY($1) AND a.set_number = s.set_number) AS quantity
+                WHERE a.user_id = ANY($1) AND a.set_number = s.set_number) AS quantity,
+              (SELECT NULLIF(string_agg(DISTINCT lo.name, ', '), '')
+                 FROM sets b
+                 JOIN storage_locations lo ON lo.id = b.storage_id
+                WHERE b.user_id = ANY($1) AND b.set_number = s.set_number) AS storage
          FROM sets s
         WHERE s.user_id = ANY($1) AND s.set_number = $2
         ORDER BY (s.user_id = $3) DESC, s.id ASC
