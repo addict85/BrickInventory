@@ -65,7 +65,10 @@ test('manuelle Listen tragen den Marktpreis aus dem Cache', async (t) => {
     // Der Zustand steht seit Migration 0035 in der Erfassung. Dieser Test
     // prueft den Marktpreis OHNE Erfassung, also bleibt es beim Vorgabewert
     // 'N', den conditionFromAcquisitions() ohne Erfassungen liefert.
-    await db.run("INSERT INTO minifigs (user_id, fig_number, bl_fig_number, quantity, source) VALUES ($1,$2,$2,1,'manual')", [U, FIG]);
+    // bl_fig_number ist mit Migration 0037 weg; dieselbe Nummer in beiden
+    // Feldern hiess „keine abweichende", und das ist in der Zuordnung eine
+    // leere bl_id. Hier braucht es dafuer gar keine Zeile.
+    await db.run("INSERT INTO minifigs (user_id, fig_number, quantity, source) VALUES ($1,$2,1,'manual')", [U, FIG]);
     await db.run("INSERT INTO parts (user_id, part_number, color_id, quantity, source) VALUES ($1,$2,$3,1,'manual')", [U, TEIL, FARBE]);
 
     // ── 2 zuerst: OHNE Cache-Eintrag ───────────────────────────────────────

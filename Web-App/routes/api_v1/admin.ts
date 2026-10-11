@@ -597,7 +597,12 @@ router.get('/admin/jobs', requireApiAdmin, async (_req: AuthedRequest, res) => {
     db.get(`SELECT COUNT(*) as c FROM instruction_queue WHERE status='done'`).catch(()=>null),
     db.get(`SELECT COUNT(*) as c FROM instruction_queue WHERE status='failed'`).catch(()=>null),
   ]);
-  const blMapped = await db.get(`SELECT COUNT(*) as c FROM rb_bl_mapping`).catch(()=>null);
+  // Art 'part': Die Zuordnung traegt seit Migration 0037 auch Figuren, und
+  // diese Kennzahl stellt „nachgesehene Teile" der Zahl der Teile gegenueber
+  // (blTotal darunter). Ohne die Einschraenkung waere der Zaehler groesser
+  // als der Nenner.
+  const blMapped = await db.get(
+    `SELECT COUNT(*) as c FROM bl_zuordnung WHERE art='part'`).catch(()=>null);
   const blTotal  = await db.get(`SELECT COUNT(DISTINCT part_number) as c FROM parts WHERE source!='manual'`).catch(()=>null);
   const rbParts  = await db.get(`SELECT COUNT(*) as c FROM rb_parts`).catch(()=>null);
   const rbInvParts = await db.get(`SELECT COUNT(*) as c FROM rb_inventory_parts`).catch(()=>null);

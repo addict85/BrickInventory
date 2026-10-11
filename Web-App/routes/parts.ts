@@ -45,7 +45,7 @@ import { fehlertext, handleRouteError, logAndContinue } from '../utils/httpError
 import { recordAcquisitionForDay } from '../utils/acquisitions';
 // Die Katalogarbeit liegt seit Nachtrag 131 in utils/partsImport.ts — sonst
 // müsste utils/setService.ts (addSet) einen Router importieren.
-import { importPartsForSet, fetchMissingBlIds, syncBlPartNumbers } from '../utils/partsImport';
+import { importPartsForSet, fetchMissingBlIds } from '../utils/partsImport';
 import { requireLogin } from './auth';
 // Blickfeld — dieselbe Quelle wie in routes/api_v1/parts.ts.
 import { scopeIds, parseScopeMode } from '../utils/household';
@@ -752,4 +752,4 @@ async function getPartAcquisitions(uid: number[], partNumber: string, colorId: s
 
 
 
-export = Object.assign(router, { syncBlPartNumbers, fetchMissingBlIds, importPartsForSet, getCurrentPartMarketPrice, addManualPart, updateManualPart, lookupPart, getPartColorList, buildPartsCsv, getPartAcquisitions });
+export = Object.assign(router, { fetchMissingBlIds, importPartsForSet, getCurrentPartMarketPrice, addManualPart, updateManualPart, lookupPart, getPartColorList, buildPartsCsv, getPartAcquisitions });

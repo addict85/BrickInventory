@@ -18,7 +18,7 @@ import { farbkarte as blFarbkarte } from '../financeCalc';
 import { getGlobalSetting } from '../../utils/settings';
 import { neuestesInventar, inventarKandidaten } from '../rbInventar';
 import { beideSchreibweisen } from '../setNummer';
-import { merkeBlFarbnummer, blFarbnummerAus } from '../blZuordnung';
+import { merkeBlFarbnummer, blFarbnummerAus, blJoin, blNummerSql } from '../blZuordnung';
 import { mengeJoin, mengeAus } from '../bestandsmenge';
 
 /**
@@ -187,7 +187,7 @@ async function teileErsatzquelle(set_number: string) {
     if (invId) {
       const csvParts = await db.all(`
         SELECT ip.part_num AS part_number,
-               COALESCE(m.bl_part_num, ip.part_num) AS bl_part_number,
+               COALESCE(m.bl_id, ip.part_num) AS bl_part_number,
                p.name AS part_name, ip.color_id,
                c.name AS color_name, c.rgb AS color_hex,
                NULL AS category_name,
@@ -201,7 +201,7 @@ async function teileErsatzquelle(set_number: string) {
         FROM rb_inventory_parts ip
         LEFT JOIN rb_parts p ON p.part_num = ip.part_num
         LEFT JOIN rb_colors c ON c.id = ip.color_id
-        LEFT JOIN rb_bl_mapping m ON m.part_num = ip.part_num
+        LEFT JOIN bl_zuordnung  m ON m.art = 'part' AND m.rb_id = ip.part_num
         WHERE ip.inventory_id = $1`, [invId, set_number]
       ).catch(() => []);
       if (csvParts.length > 0)
@@ -454,7 +454,12 @@ async function getParts(userId: Blickfeld, query: any = {}) {
   //
   // Hier stand ein LEFT JOIN auf `sets` — er diente allein der Spalte
   // s.quantity, und die ist mit Migration 0036 weg.
+  // blJoin() ist in BEIDEN Zweigen dabei, auch bei set_number: Der
+  // Gruppierungsschluessel unten ist die BrickLink-Nummer, und die kommt
+  // seit Migration 0037 aus bl_zuordnung. Ohne den Join gaebe es den Alias
+  // blz nicht — ein harter Fehler, keine stille 500.
   const joinClause = (set_number ? 'FROM parts p' : `FROM parts p ${mengeJoin('p')}`)
+    + ` ${blJoin('p.part_number', 'part')}`
     + lagerJoin + katalogJoin;
 
   // Count for pagination.
@@ -493,7 +498,7 @@ async function getParts(userId: Blickfeld, query: any = {}) {
   // Primaerschluessel seiner Tabelle, liefert also hoechstens eine Zeile.
   const countSql = `SELECT COUNT(*)::int AS c FROM (
        SELECT 1 ${joinClause} WHERE ${where}
-       GROUP BY COALESCE(p.bl_part_number, p.part_number), p.color_id
+       GROUP BY ${blNummerSql('p.part_number')}, p.color_id
      ) g`;
 
   // Build paginated query
@@ -523,9 +528,11 @@ async function getParts(userId: Blickfeld, query: any = {}) {
   // langsamste Einzelabfrage.
   const partsSql = `
     SELECT
-      -- Use BL part number as the canonical identifier
-      COALESCE(p.bl_part_number, p.part_number) AS part_number,
-      COALESCE(p.bl_part_number, p.part_number) AS bl_part_number,
+      -- Use BL part number as the canonical identifier. Sie kommt seit
+      -- Migration 0037 aus bl_zuordnung (blz) und stand vorher je Konto
+      -- an der Bestandszeile.
+      ${blNummerSql('p.part_number')} AS part_number,
+      ${blNummerSql('p.part_number')} AS bl_part_number,
       -- Pick one representative part name/image (MIN is deterministic).
       -- Die Werte kommen aus den Katalogen (Migration 0034); MIN bleibt,
       -- weil die Gruppe mehrere Rebrickable-Nummern derselben BL-Nummer
@@ -552,7 +559,7 @@ async function getParts(userId: Blickfeld, query: any = {}) {
       STRING_AGG(DISTINCT p.set_number, ',') AS in_sets` : ''}
     ${joinClause}
     WHERE ${where}
-    GROUP BY COALESCE(p.bl_part_number, p.part_number), p.color_id
+    GROUP BY ${blNummerSql('p.part_number')}, p.color_id
     ORDER BY MIN(pcc.color_name) ASC, MIN(pc.part_name) ASC${limitClause}`;
 
   // ── Angezeigter Zustand: nur noch aus den Erfassungen ───────────────────
@@ -570,12 +577,13 @@ async function getParts(userId: Blickfeld, query: any = {}) {
   // kann keine Zeile des Ergebnisses davon betroffen sein. Genau so ruft die
   // Teile-Seite den Endpunkt auf (exclude_manual=1).
   const usedSql =
-    `SELECT COALESCE(p.bl_part_number, p.part_number) AS pid, p.color_id,
+    `SELECT ${blNummerSql('p.part_number')} AS pid, p.color_id,
             MAX(CASE WHEN pa.condition='U' THEN 1 ELSE 0 END) AS any_used
      FROM parts p
+     ${blJoin('p.part_number', 'part')}
      JOIN part_acquisitions pa ON pa.user_id=p.user_id AND pa.part_number=p.part_number AND pa.color_id=p.color_id
      WHERE p.user_id = ANY($1) AND p.source='manual'
-     GROUP BY COALESCE(p.bl_part_number, p.part_number), p.color_id`;
+     GROUP BY ${blNummerSql('p.part_number')}, p.color_id`;
 
   const [countRow, parts, usedPartRows] = await Promise.all([
     db.get(countSql, params),
@@ -604,9 +612,16 @@ async function getParts(userId: Blickfeld, query: any = {}) {
   // Background: fetch missing BL IDs
   setImmediate(async () => {
     try {
+      // „Gibt es ein Teil, zu dem noch nie nachgesehen wurde?" — geprueft
+      // wird die ZEILE, nicht ihr Wert: Eine Zeile mit leerer bl_id heisst
+      // „nachgesehen, es gibt keine abweichende Nummer" (Migration 0037) und
+      // soll kein erneutes Nachladen ausloesen. Vorher trug diese Notiz die
+      // Rebrickable-Nummer als BrickLink-Nummer, und `m.part_num IS NULL`
+      // sagte dasselbe.
       const unmapped = await db.get(
-        `SELECT 1 FROM parts p LEFT JOIN rb_bl_mapping m ON m.part_num = p.part_number
-         WHERE p.user_id = ANY($1) AND m.part_num IS NULL LIMIT 1`, [uids]
+        `SELECT 1 FROM parts p
+         LEFT JOIN bl_zuordnung m ON m.art = 'part' AND m.rb_id = p.part_number
+         WHERE p.user_id = ANY($1) AND m.rb_id IS NULL LIMIT 1`, [uids]
       );
       if (unmapped) fetchMissingBlIds().catch(() => {});
     } catch (e) { meldeUndWeiter('teile:bl-nummern-nachladen', e); }
@@ -731,7 +746,13 @@ async function getManualParts(userId: Blickfeld, viewerId: number, { page = 1, p
     limit = ` LIMIT $${params.length - 1} OFFSET $${params.length}`;
   }
   return db.all(`
-    SELECT t.id, t.user_id, t.part_number, t.bl_part_number, pc.part_name, t.color_id,
+    SELECT t.id, t.user_id, t.part_number,
+           -- Die BrickLink-Nummer aus der Zuordnung (Migration 0037); hier
+           -- stand t.bl_part_number, eine Abschrift je Konto. Der Feldname
+           -- nach aussen bleibt, damit beide Oberflaechen und die App
+           -- unveraendert weiterlesen.
+           ${blNummerSql('t.part_number')} AS bl_part_number,
+           pc.part_name, t.color_id,
            pcc.color_name, pcc.color_hex,
            pc.category_name, t.quantity, pcc.image_url, pcc.image_local,
            -- ── Preis und Zustand aus der NEUESTEN Erfassung ───────────────
@@ -780,6 +801,7 @@ async function getManualParts(userId: Blickfeld, viewerId: number, { page = 1, p
            -- die Oberflaechen und die App unveraendert weiterlesen.
            t.added_at AS created_at
     FROM parts t
+    ${blJoin('t.part_number', 'part')}
     -- Beschreibung aus den Katalogen (Migration 0034). Dieselben beiden
     -- Tabellen wie in getParts, nur mit dem Alias dieser Abfrage.
     LEFT JOIN part_catalog pc ON pc.part_number = t.part_number

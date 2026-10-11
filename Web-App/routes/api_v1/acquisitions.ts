@@ -31,7 +31,7 @@ import { getCurrentFigMarketPrice, getFigAcquisitions } from '../minifigs';
 import { loescheManuellesTeil, loescheManuelleFigur } from '../../utils/handlers/shared';
 import { sendeFehler, fehlerWerfen } from '../../utils/fehlerTexte';
 import type { FehlerCode } from '../../utils/fehlerTexte';
-import { blFigNummerAus } from '../../utils/blZuordnung';
+import { blAbrufNummer } from '../../utils/blZuordnung';
 import { mengeNeuRechnen, mengeDesSets } from '../../utils/bestandsmenge';
 const router = express.Router();
 
@@ -532,7 +532,7 @@ registerAcquisitionRoutes({
   // von hoechstens 400 Zeichen — der Erklaertext gehoert deshalb hierher,
   // vor die Eigenschaft, nicht in ihren Rumpf.
   resolvePrice: async (uid, [fn], cond) => {
-    const blNummer = await blFigNummerAus(uid, fn);
+    const blNummer = await blAbrufNummer('fig', fn);
     return getCurrentFigMarketPrice(fn, uid, blNummer, cond);
   },
   // Keine Spiegelung mehr — siehe die Begruendung bei den Teilen darueber.

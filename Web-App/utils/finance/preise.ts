@@ -35,6 +35,7 @@ import { bricklinkRequest, getPriceGuide } from '../../clients/bricklink';
 import { fehlertext } from '../httpError';
 import { mitVersion, katalogEintrag, ohneBricklinkPreis } from '../setNummer';
 import { effectiveCondition } from './zustand';
+import { blAbrufNummer, blAbrufNummern } from '../blZuordnung';
 
 
 
@@ -492,30 +493,30 @@ async function resolveBlColorId(rbColorId: number) {
   } catch (_) { return rbColorId; }
 }
 
-// Rebrickable-Teilenummer → BrickLink-Teilenummer (rb_bl_mapping, gepflegt
-// durch syncBlPartNumbers/fetchMissingBlIds nach dem CSV-Sync). Ohne diese
-// Übersetzung antwortet BrickLink für RB-Nummern mit 404 RESOURCE_NOT_FOUND —
-// analog zu resolveBlColorId für die Farben. Unbekannte Nummern (oder bereits
+// Rebrickable-Teilenummer → BrickLink-Teilenummer (bl_zuordnung, gepflegt
+// durch fetchMissingBlIds nach dem CSV-Sync). Ohne diese Übersetzung antwortet
+// BrickLink für RB-Nummern mit 404 RESOURCE_NOT_FOUND — analog zu
+// resolveBlColorId für die Farben. Unbekannte Nummern (oder bereits
 // BL-Nummern) laufen unverändert durch.
+//
+// ── EINE Quelle, nicht zwei ────────────────────────────────────────────────
+//
+// Hier stand ein Rückfall auf `parts.bl_part_number`, und seine Begründung
+// war, dass die beiden Orte auseinanderlaufen KONNTEN: „Scheitert dort aber
+// ausgerechnet das INSERT in rb_bl_mapping (es wird protokolliert und
+// übergangen), bleibt die Lücke FÜR IMMER."
+//
+// Genau diese Lücke gibt es mit Migration 0037 nicht mehr: Die Nummer steht
+// an einer Stelle, also kann sie dort fehlen oder dastehen — aber nicht an
+// einer von zwei Stellen fehlen. Der Rückfall ist damit nicht nur unnötig,
+// sondern unmöglich geworden, und mit ihm die zweite Abfrage je Teil.
+// blAbrufNummer und nicht blNummerVon: Eine Zeile mit leerer bl_id heisst
+// „heisst bei BrickLink genauso" und ist eine vollstaendige Antwort. Als
+// null kaeme sie hier als FEHLSCHLAG an, und das Nachschlagwerk merkt
+// Fehlschlaege bewusst nicht — jedes Teil fragte dann wieder einzeln.
+// GEMESSEN an test/bewertung-abfragen-db.test.js: 20 Einzelabfragen statt 0.
 const _blTeil = nachschlagwerk(async (partNumber: string) => {
-  const row = await db.get('SELECT bl_part_num FROM rb_bl_mapping WHERE part_num=$1', [partNumber]);
-  if (row?.bl_part_num) return row.bl_part_num;
-  // Zweite Quelle: parts.bl_part_number.
-  //
-  // jobs/backfillBlPartNumbers.ts schreibt beide im selben Durchlauf mit
-  // demselben Wert — sie stimmen also normalerweise überein. Scheitert dort
-  // aber ausgerechnet das INSERT in rb_bl_mapping (es wird protokolliert und
-  // übergangen), bleibt die Lücke FÜR IMMER: Der Job wählt beim nächsten Mal
-  // nur noch Teile mit leerem bl_part_number, und dieses hat ja eines.
-  //
-  // Beim LESEN kostet der Rückfall genau einen Indexzugriff — seit
-  // idx_parts_blnum (db/database.ts) auch wirklich einen und keinen
-  // Tabellenscan: nachgemessen 10,1 ms → 0,012 ms an 100'000 Zeilen.
-  const teil = await db.get(
-    `SELECT bl_part_number FROM parts
-      WHERE part_number=$1 AND bl_part_number IS NOT NULL AND bl_part_number <> ''
-      LIMIT 1`, [partNumber]);
-  return teil?.bl_part_number || null;
+  return await blAbrufNummer('part', partNumber);
 });
 
 async function resolveBlPartNumber(partNumber: string) {
@@ -531,41 +532,28 @@ async function resolveBlPartNumber(partNumber: string) {
  * resolveBlPartNumber() fragt je Teil einzeln — und anders als bei den Farben
  * hilft das Gedächtnis innerhalb einer Bewertung nicht, weil jedes Teil eine
  * ANDERE Nummer hat. NACHGEMESSEN an 50 Teilen: 50 Abfragen auf rb_bl_mapping
- * plus 50 auf parts. Dieselben Antworten passen in zwei Abfragen.
+ * plus 50 auf parts. Dieselben Antworten passen in EINE Abfrage — seit
+ * Migration 0037 in eine statt zwei, weil es nur noch eine Quelle gibt.
  *
  * Das ist genau das Muster, das computeSetsValuation seit jeher benutzt:
  * alles mit `= ANY($1)` vorladen, dann aus Maps rechnen (0,2 Abfragen je Set
  * gegenüber 4,1 je Teil, gemessen bei warmem Preis-Cache).
  *
  * Gefüllt wird das GEMEINSAME Gedächtnis, nicht ein eigener Vorrat: So findet
- * fetchPartPrice die Antwort auf seinem gewohnten Weg, und die Reihenfolge der
- * beiden Quellen bleibt die von resolveBlPartNumber — erst rb_bl_mapping, dann
- * der Rückfall über parts.
+ * fetchPartPrice die Antwort auf seinem gewohnten Weg.
  *
  * FEHLSCHLÄGE bleiben ungemerkt (siehe nachschlagwerk): Ein Teil ohne
- * Übersetzung fragt weiterhin zweimal nach. Beide Fragen sind seit
- * idx_parts_blnum reine Indexzugriffe; sie zu merken hiesse, den Nachtrag-Job
+ * Übersetzung fragt weiterhin nach. Die Frage ist ein Zugriff auf den
+ * Primärschlüssel von bl_zuordnung; sie zu merken hiesse, den Nachtrag-Job
  * zehn Minuten lang zu übersehen.
  */
 async function ladeBlNummernVor(teilnummern: string[]): Promise<void> {
   const offen = [...new Set(teilnummern.filter(Boolean).map(String))].filter(n => !_blTeil.kennt(n));
   if (!offen.length) return;
-  const abbildung = await db.all(
-    'SELECT part_num, bl_part_num FROM rb_bl_mapping WHERE part_num = ANY($1)', [offen],
-  ).catch(() => []);
-  for (const r of abbildung) if (r.bl_part_num) _blTeil.merken(String(r.part_num), r.bl_part_num);
-
-  const rest = offen.filter(n => !_blTeil.kennt(n));
-  if (!rest.length) return;
-  // DISTINCT ON: parts kann dieselbe Nummer vielfach führen (mehrere Konten,
-  // mehrere Farben). Der Einzelweg nahm mit LIMIT 1 irgendeine davon; hier
-  // steht die mit der kleinsten id — dieselbe Antwort bei jedem Durchlauf.
-  const ausTeilen = await db.all(
-    `SELECT DISTINCT ON (part_number) part_number, bl_part_number FROM parts
-      WHERE part_number = ANY($1) AND bl_part_number IS NOT NULL AND bl_part_number <> ''
-      ORDER BY part_number, id`, [rest],
-  ).catch(() => []);
-  for (const r of ausTeilen) _blTeil.merken(String(r.part_number), r.bl_part_number);
+  // EINE Abfrage, nicht zwei: Der Rückfall über `parts.bl_part_number` ist mit
+  // Migration 0037 weg (siehe die Begründung bei _blTeil). Die Abfrage selbst
+  // steht in utils/blZuordnung.ts.
+  for (const [rb, bl] of await blAbrufNummern('part', offen)) _blTeil.merken(rb, bl);
 }
 
 // ── Fetch price for a single part from BrickLink ─────────────────────────────

@@ -42,7 +42,17 @@ const { buildAndRequire } = require('./helpers/sources');
 const _req = buildAndRequire();
 const db = _req('db/database.js');
 
-const ERWARTET = ['idx_parts_blnum', 'idx_set_minifigs_fig', 'idx_sets_setnum'];
+// idx_parts_blnum stand hier und ist weg: Er war ein Teilindex auf
+// parts.bl_part_number, und Migration 0037 hat die Spalte geloescht (die
+// BrickLink-Nummer steht jetzt in bl_zuordnung). Postgres entfernt
+// abhaengige Indizes beim DROP COLUMN selbst.
+//
+// Was an seine Stelle tritt, prueft der zweite Teil dieses Tests: Die
+// Nachschlage-Abfrage laeuft jetzt ueber den Primaerschluessel von
+// bl_zuordnung. Der steht in der MIGRATION und nicht in initSchema(),
+// gehoert also nicht in diese Liste — sie sagt, was der Schema-Aufbau
+// anlegt.
+const ERWARTET = ['idx_set_minifigs_fig', 'idx_sets_setnum'];
 
 /**
  * Den Plan einer Abfrage holen — ohne Tabellenscan-Ausweg.
@@ -76,7 +86,7 @@ test('Anfragepfad: die drei Indizes gibt es und der Planer kann sie nehmen', asy
       'SELECT indexname FROM pg_indexes WHERE schemaname = $1 AND indexname = ANY($2)',
       ['public', ERWARTET])).map(r => r.indexname).sort();
     assert.deepEqual(da, [...ERWARTET].sort(),
-      `db/database.ts legt nicht alle drei Indizes an — gefunden: ${da.join(', ') || '(keine)'}`);
+      `db/database.ts legt nicht alle erwarteten Indizes an — gefunden: ${da.join(', ') || '(keine)'}`);
 
     // GEGENPROBE: Die Abfrage darf nicht einfach alles bestätigen.
     const erfunden = await db.all(
@@ -86,14 +96,27 @@ test('Anfragepfad: die drei Indizes gibt es und der Planer kann sie nehmen', asy
       'Gegenprobe: die Index-Abfrage meldet auch erfundene Namen als vorhanden');
 
     // ── 2. Der Planer kann sie nehmen ──────────────────────────────────────
-    // Zeichengleich die Abfrage aus utils/financeCalc.ts (ladeBlNummernVor
-    // fragt mit ANY, der Einzelweg mit =; beide brauchen dasselbe Prädikat).
-    const teilePlan = await plan(
-      `SELECT bl_part_number FROM parts
-        WHERE part_number = 'x' AND bl_part_number IS NOT NULL AND bl_part_number <> ''
-        LIMIT 1`);
-    assert.match(teilePlan, /idx_parts_blnum/,
-      `Der Teilindex passt nicht mehr zur Abfrage:\n${teilePlan}`);
+    //
+    // Die BrickLink-Nachschlage zuerst, und dafuer braucht es die
+    // MIGRATIONEN: bl_zuordnung wird in 0037 angelegt, nicht in
+    // db/schema.sql (eine Tabelle gehoert an genau eine Stelle,
+    // scripts/check-schema-am-start.js prueft das).
+    const c0 = await db.pool.connect();
+    try { await _req('db/migrate.js').runMigrations(c0); } finally { c0.release(); }
+
+    // Zeichengleich die Abfrage aus utils/blZuordnung.ts (blAbrufNummer).
+    //
+    // Geprueft wird „ueber einen INDEX" und nicht „ueber genau diesen
+    // Index": Auf einer leeren Tabelle waehlt der Planer den kleineren von
+    // beiden und filtert den Rest — gemessen nahm er
+    // idx_bl_zuordnung_bl statt bl_zuordnung_pkey. Beides ist ein
+    // Indexzugriff und damit die Aussage, auf die es ankommt; welchen er
+    // nimmt, entscheidet er mit echten Daten neu.
+    const blPlan = await plan(
+      `SELECT COALESCE(bl_id, rb_id) AS nr FROM bl_zuordnung
+        WHERE art = 'part' AND rb_id = 'x'`);
+    assert.match(blPlan, /Index (Only )?Scan.* on bl_zuordnung/,
+      `Die BrickLink-Nachschlage laeuft nicht ueber einen Index:\n${blPlan}`);
 
     const figurPlan = await plan(
       `SELECT set_number FROM set_minifigs_catalog WHERE fig_number = 'x' LIMIT 1`);
@@ -103,13 +126,14 @@ test('Anfragepfad: die drei Indizes gibt es und der Planer kann sie nehmen', asy
       `SELECT user_id FROM sets WHERE set_number = 'x' ORDER BY user_id`);
     assert.match(setPlan, /idx_sets_setnum/, `Plan:\n${setPlan}`);
 
-    // GEGENPROBE zum Teilindex: OHNE die beiden bl_part_number-Bedingungen
-    // darf er NICHT genommen werden. Sonst wäre die Zusicherung oben blind
-    // dafür, ob das Prädikat wirklich passt.
-    const ohnePraedikat = await plan(
-      `SELECT bl_part_number FROM parts WHERE part_number = 'x' LIMIT 1`);
-    assert.doesNotMatch(ohnePraedikat, /idx_parts_blnum/,
-      `Gegenprobe: der Teilindex wurde auch ohne sein Prädikat genommen:\n${ohnePraedikat}`);
+    // GEGENPROBE zur BrickLink-Nachschlage: Eine Spalte, auf der KEIN Index
+    // sitzt, muss zu einem Tabellenscan fuehren. Sonst waere die
+    // Zusicherung oben blind dafuer, ob der Planer ueberhaupt zwischen
+    // beidem unterscheidet.
+    const ohneIndex = await plan(
+      `SELECT rb_id FROM bl_zuordnung WHERE fetched_at < NOW()`);
+    assert.match(ohneIndex, /Seq Scan on bl_zuordnung/,
+      `Gegenprobe: auch ohne Index kam kein Tabellenscan:\n${ohneIndex}`);
   } finally {
     await db.pool.end().catch(() => {});
   }

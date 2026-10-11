@@ -4,7 +4,7 @@ import { getCurrentMarketPrice } from '../utils/marketPrice';
 // zwei Zahlen zu kommen.
 import { getCurrentFigMarketPrice, getCurrentPartMarketPrice } from '../utils/marketPrice';
 import { lookupPart } from '../clients/rebrickable';
-import { blFigNummerAus } from '../utils/blZuordnung';
+import { blAbrufNummer } from '../utils/blZuordnung';
 import { fehlertext, meldeUndWeiter } from '../utils/httpError';
 import { sleep } from '../clients/rebrickable';
 'use strict';
@@ -151,13 +151,14 @@ async function backfillFigurenErfassungen() {
   let done = 0;
   for (const row of rows) {
     try {
-      // Die BrickLink-Nummer kommt aus der Bestandszeile — sie steht dort
-      // weiter (sie ist eine Kennung, kein Kaufmerkmal). Die Abfrage steht in
-      // utils/blZuordnung.ts, weil sie auch routes/api_v1/acquisitions.ts
-      // braucht; zwei Fassungen hat test/sql-kerne.test.js gemeldet.
+      // Die BrickLink-Nummer kommt aus der Zuordnung (Migration 0037) und
+      // nicht mehr aus der Bestandszeile — sie haengt an der Figur, nicht am
+      // Konto, das sie besitzt. Die Abfrage steht in utils/blZuordnung.ts,
+      // weil sie auch routes/api_v1/acquisitions.ts braucht; zwei Fassungen
+      // hat test/sql-kerne.test.js gemeldet.
       const price = await getCurrentFigMarketPrice(
         row.fig_number, row.user_id,
-        await blFigNummerAus(row.user_id, row.fig_number), row.condition || null);
+        await blAbrufNummer('fig', row.fig_number), row.condition || null);
       if (price) {
         await db.run('UPDATE minifig_acquisitions SET unit_price=$1 WHERE id=$2', [price, row.id]);
         done++;

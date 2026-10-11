@@ -35,6 +35,7 @@ import { mitVersion, ohneVersion } from '../../utils/setNummer';
 import { figurenAusKatalog } from '../../utils/minifigsImport';
 import { sendeFehler } from '../../utils/fehlerTexte';
 import { mengeSkalar } from '../../utils/bestandsmenge';
+import { blJoin, blNummerSql } from '../../utils/blZuordnung';
 const router = express.Router();
 
 // ── GIBT ES DIESES SET SCHON? ────────────────────────────────────────────────
@@ -540,14 +541,14 @@ router.get('/sets/:setNumber/parts-list', requireToken, async (req: AuthedReques
       csvParts = await db.all(
         `SELECT ip.part_num AS part_number, ip.color_id,
                 ip.quantity AS total_quantity, ip.is_spare,
-                COALESCE(m.bl_part_num, ip.part_num) AS bl_part_number,
+                COALESCE(m.bl_id, ip.part_num) AS bl_part_number,
                 p.name AS part_name, p.part_img_url AS rb_image_url,
                 c.name AS color_name, c.rgb AS color_hex,
                 c.bl_color_id
          FROM rb_inventory_parts ip
          LEFT JOIN rb_parts      p ON p.part_num = ip.part_num
          LEFT JOIN rb_colors     c ON c.id       = ip.color_id
-         LEFT JOIN rb_bl_mapping m ON m.part_num = ip.part_num
+         LEFT JOIN bl_zuordnung  m ON m.art = 'part' AND m.rb_id = ip.part_num
          WHERE ip.inventory_id = $1
            -- „Kein Ersatzteil" als Kehrseite derselben Lesart wie
            -- istErsatzteil() in utils/validate.ts. Vorher stand hier eine
@@ -588,9 +589,14 @@ router.get('/sets/:setNumber/parts-list', requireToken, async (req: AuthedReques
     // ── Step 3: Load catalog enrichment (image_url from API / image_local) ─
     const catalogMap: any = {};
     const catalog = await db.all(
-      `SELECT part_number, color_id, bl_part_number, part_name, color_name,
-              color_hex, image_url, image_local
-       FROM set_parts_catalog WHERE set_number=$1 OR set_number=$2`,
+      // bl_part_number kommt aus der Zuordnung (Migration 0037), nicht mehr
+      // aus dieser Tabelle: Dort stand sie je Set-Teile-Zeile, also fuer
+      // dasselbe Teil so oft, wie es Sets damit gibt.
+      `SELECT c.part_number, c.color_id, ${blNummerSql('c.part_number')} AS bl_part_number,
+              c.part_name, c.color_name, c.color_hex, c.image_url, c.image_local
+         FROM set_parts_catalog c
+         ${blJoin('c.part_number', 'part')}
+        WHERE c.set_number=$1 OR c.set_number=$2`,
       [n, bare]
     );
     for (const r of catalog) catalogMap[`${r.part_number}|${r.color_id}`] = r;
@@ -600,9 +606,11 @@ router.get('/sets/:setNumber/parts-list', requireToken, async (req: AuthedReques
     if (missingInCatalog) {
       await require('../../jobs/partsCatalogEnrich').enrichSetParts(setNum).catch(() => {});
       const refreshed = await db.all(
-        `SELECT part_number, color_id, bl_part_number, part_name, color_name,
-                color_hex, image_url, image_local
-         FROM set_parts_catalog WHERE set_number=$1 OR set_number=$2`,
+        `SELECT c.part_number, c.color_id, ${blNummerSql('c.part_number')} AS bl_part_number,
+                c.part_name, c.color_name, c.color_hex, c.image_url, c.image_local
+           FROM set_parts_catalog c
+           ${blJoin('c.part_number', 'part')}
+          WHERE c.set_number=$1 OR c.set_number=$2`,
         [n, bare]
       );
       for (const r of refreshed) catalogMap[`${r.part_number}|${r.color_id}`] = r;

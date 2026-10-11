@@ -20,6 +20,7 @@ import {
   type Blickfeld,
 } from './preise';
 import { ladeSetErfassungen } from './abfragen';
+import { blJoin, blNummerSql } from '../blZuordnung';
 
 /**
  * Erfassungen manueller Teile bzw. Minifiguren, gruppiert nach Eintrag.
@@ -253,7 +254,10 @@ async function computeMinifigsValuation(viewerId: number, ids: Blickfeld) {
   // haette sie stillschweigend verloren — genau so ist der Lagerort einmal
   // aus der Set-Detailansicht verschwunden (siehe handlers/sets.ts).
   const manualFigs = await db.all(`
-    SELECT m.id, m.user_id, m.set_number, m.fig_number, m.bl_fig_number,
+    SELECT m.id, m.user_id, m.set_number, m.fig_number,
+           -- Die BrickLink-Nummer aus der Zuordnung (Migration 0037); hier
+           -- stand m.bl_fig_number, eine Abschrift je Konto.
+           ${blNummerSql('m.fig_number', 'blzf')} AS bl_fig_number,
            m.quantity, m.source, m.storage_id,
            -- unit_price, purchase_price und condition sind mit Migration 0035
            -- weg. Die Bewertung rechnet ohnehin aus den ERFASSUNGEN
@@ -261,6 +265,7 @@ async function computeMinifigsValuation(viewerId: number, ids: Blickfeld) {
            -- Abschrift der letzten davon.
            mc.fig_name, mc.image_url, mc.image_local
       FROM minifigs m
+      ${blJoin('m.fig_number', 'fig', 'blzf')}
       LEFT JOIN minifigs_catalog mc ON mc.fig_number = m.fig_number
      WHERE m.user_id = ANY($1) AND m.source='manual'`, [uids]);
   if (!manualFigs.length) return { currency, figs: [], total_value: '0.00' };
@@ -396,7 +401,10 @@ async function computePartsValuation(viewerId: number, ids: Blickfeld) {
   // Figuren darueber. Die Beschreibung kommt aus den Katalogen (Migration
   // 0034), der Bestand aus parts.
   const manualParts = await db.all(`
-    SELECT p.id, p.user_id, p.set_number, p.part_number, p.bl_part_number,
+    SELECT p.id, p.user_id, p.set_number, p.part_number,
+           -- Die BrickLink-Nummer aus der Zuordnung (Migration 0037); hier
+           -- stand p.bl_part_number, eine Abschrift je Konto.
+           ${blNummerSql('p.part_number')} AS bl_part_number,
            p.color_id, p.quantity, p.source,
            p.storage_id, p.added_at,
            -- Preise und Zustand: siehe die Figuren-Bewertung darueber
@@ -404,6 +412,7 @@ async function computePartsValuation(viewerId: number, ids: Blickfeld) {
            pc.part_name, pc.category_name,
            pcc.color_name, pcc.color_hex, pcc.image_url, pcc.image_local
       FROM parts p
+      ${blJoin('p.part_number', 'part')}
       LEFT JOIN part_catalog pc ON pc.part_number = p.part_number
       LEFT JOIN part_color_catalog pcc ON pcc.part_number = p.part_number
                                       AND pcc.color_id    = p.color_id

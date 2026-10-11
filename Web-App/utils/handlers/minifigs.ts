@@ -5,6 +5,7 @@ import { clampPageSize, applyManualCondition, withOwners } from './shared';
 import { beideSchreibweisen } from '../setNummer';
 import { mengeJoin, mengeAus } from '../bestandsmenge';
 import { marktpreiseAusCacheFuerFiguren } from '../marketPrice';
+import { blJoin, blNummerSql } from '../blZuordnung';
 
 /**
  * Leseabfragen für Minifiguren.
@@ -267,7 +268,11 @@ async function getManualMinifigs(userId: number | number[], viewerId: number, { 
     //
     // Name und Bild kommen seit Migration 0034 aus minifigs_catalog —
     // sie haengen an der Figur, nicht am Konto, das sie besitzt.
-    `SELECT m.id, m.user_id, m.set_number, m.fig_number, m.bl_fig_number,
+    `SELECT m.id, m.user_id, m.set_number, m.fig_number,
+            -- Die BrickLink-Nummer aus der Zuordnung (Migration 0037); hier
+            -- stand m.bl_fig_number, eine Abschrift je Konto. Der Feldname
+            -- nach aussen bleibt.
+            ${blNummerSql('m.fig_number', 'blz')} AS bl_fig_number,
             m.quantity, m.source, m.storage_id,
             -- Preis und Zustand aus der NEUESTEN Erfassung (Migration 0035).
             -- Die beiden Bedeutungen bleiben unterschieden, so wie
@@ -280,6 +285,7 @@ async function getManualMinifigs(userId: number | number[], viewerId: number, { 
             mc.fig_name, mc.image_url, mc.image_local,
             lo.name AS storage
        FROM minifigs m
+       ${blJoin('m.fig_number', 'fig')}
        LEFT JOIN minifigs_catalog mc ON mc.fig_number = m.fig_number
        LEFT JOIN storage_locations lo ON lo.id = m.storage_id
        LEFT JOIN LATERAL (

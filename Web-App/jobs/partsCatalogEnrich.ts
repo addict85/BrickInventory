@@ -13,7 +13,7 @@ import { meldeUndWeiter, fehlertext, vorDem, logAndContinue } from '../utils/htt
 import { setGlobalSetting } from '../utils/settings';
 import { neuestesInventar, inventarKandidaten } from '../utils/rbInventar';
 import { mitVersion, ohneVersion } from '../utils/setNummer';
-import { merkeBlTeilnummer } from '../utils/blZuordnung';
+import { merkeBlNummer } from '../utils/blZuordnung';
 import { getRbKey } from '../clients/rebrickable';
 const https = require('https');
 const fs    = require('fs');
@@ -142,21 +142,25 @@ async function enrichSetParts(setNumber: string) {
   if (!csvParts.length) return;
 
   const catalogRows = await db.all(
-    `SELECT part_number, color_id, image_url, image_local, bl_part_number
+    // Ohne bl_part_number: Die Spalte ist mit Migration 0037 weg, und
+    // gelesen wurde sie hier nur, um sie gleich wieder zurueckzuschreiben.
+    `SELECT part_number, color_id, image_url, image_local
      FROM set_parts_catalog WHERE set_number=$1 OR set_number=$2`,
     [n, alt]
   );
   const catalogMap: any = {};
   for (const r of catalogRows) catalogMap[`${r.part_number}|${r.color_id}`] = r;
 
-  // Get all part_nums already in rb_bl_mapping (= already looked up via API)
+  // Alle Teilenummern, zu denen schon eine Zeile in bl_zuordnung steht
+  // (= schon ueber die API nachgesehen). Die ZEILE zaehlt, nicht ihr Wert:
+  // leer heisst „nachgesehen, keine abweichende Nummer" (Migration 0037).
   const lookedUp = await db.all(
-    `SELECT part_num FROM rb_bl_mapping WHERE part_num = ANY($1::text[])`,
+    `SELECT rb_id FROM bl_zuordnung WHERE art = 'part' AND rb_id = ANY($1::text[])`,
     [csvParts.map((p: { part_num: string }) => p.part_num)]
   ).catch(() => []);
-  const lookedUpSet = new Set(lookedUp.map((r: { part_num: string }) => r.part_num));
+  const lookedUpSet = new Set(lookedUp.map((r: { rb_id: string }) => r.rb_id));
 
-  // Only re-enrich parts NOT yet in rb_bl_mapping (never looked up)
+  // Only re-enrich parts NOT yet in bl_zuordnung (never looked up)
   const missing = csvParts.filter((p: { part_num: string; color_id: number | string; [k: string]: any }) => {
     const cat = catalogMap[`${p.part_num}|${p.color_id}`];
     if (!cat) return true;                    // not in catalog at all
@@ -219,40 +223,44 @@ async function enrichSetParts(setNumber: string) {
               const key = `${part.part_num}|${colorId}`;
               if (apiParts[key]) apiParts[key].bl_part_num = blId;
             }
-            // Also store in rb_bl_mapping for future use
-            await merkeBlTeilnummer(part.part_num, blId).catch(() => {});
+            // Also store in bl_zuordnung for future use
+            await merkeBlNummer('part', part.part_num, blId).catch(() => {});
           }
         }
       }
     }
 
-    // Build blMap from rb_bl_mapping for all csvParts (includes what we just fetched)
+    // Build blMap from bl_zuordnung for all csvParts (includes what we just fetched)
     const blMapRows = await db.all(
-      `SELECT part_num, bl_part_num FROM rb_bl_mapping
-       WHERE part_num = ANY($1::text[])`,
+      `SELECT rb_id, bl_id FROM bl_zuordnung
+       WHERE art = 'part' AND rb_id = ANY($1::text[])`,
       [csvParts.map((p: { part_num: string }) => p.part_num)]
     ).catch(() => []);
     const blMap: any = {};
-    for (const r of blMapRows) blMap[r.part_num] = r.bl_part_num;
+    for (const r of blMapRows) blMap[r.rb_id] = r.bl_id;
 
     // Step 3: Save all CSV parts to catalog with API data
     for (const p of csvParts) {
       const key  = `${p.part_num}|${p.color_id}`;
       const info = apiParts[key] || {};
-      // BL ID: from API response, then from rb_bl_mapping (just updated), then null
+      // BL ID: from API response, then from bl_zuordnung (just updated)
       const blPartNum = info.bl_part_num || blMap[p.part_num] || null;
+      // Sie geht in die ZUORDNUNG, nicht in den Set-Teile-Katalog
+      // (Migration 0037): Sie haengt am Teil, nicht an der Kombination aus
+      // Set, Teil und Farbe. Dort stand sie fuer dasselbe Teil so oft, wie
+      // es Sets damit gibt.
+      if (blPartNum) await merkeBlNummer('part', p.part_num, blPartNum).catch(() => {});
       await db.run(
         `INSERT INTO set_parts_catalog
-           (set_number, part_number, bl_part_number, part_name, color_id, color_name, color_hex, image_url, quantity, is_spare)
-         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)
+           (set_number, part_number, part_name, color_id, color_name, color_hex, image_url, quantity, is_spare)
+         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)
          ON CONFLICT (set_number, part_number, color_id) DO UPDATE SET
-           bl_part_number = CASE WHEN EXCLUDED.bl_part_number IS NOT NULL THEN EXCLUDED.bl_part_number ELSE set_parts_catalog.bl_part_number END,
            part_name      = COALESCE(EXCLUDED.part_name,  set_parts_catalog.part_name),
            color_name     = COALESCE(EXCLUDED.color_name, set_parts_catalog.color_name),
            color_hex      = COALESCE(EXCLUDED.color_hex,  set_parts_catalog.color_hex),
            image_url      = COALESCE(EXCLUDED.image_url,  set_parts_catalog.image_url),
            quantity       = EXCLUDED.quantity, updated_at = NOW()`,
-        [n, p.part_num, blPartNum, info.part_name||p.part_num,
+        [n, p.part_num, info.part_name||p.part_num,
          p.color_id||0, info.color_name||'', info.color_hex||null,
          info.image_url||null, p.quantity||1, 0]
       ).catch(() => {});
@@ -530,28 +538,28 @@ async function enrichSetMinifigs(setNumber: string) {
 
   if (!allPartNums.size) return;
 
-  // Check which parts already have correct BL IDs in catalog
-  const existingBl = await db.all(
-    `SELECT part_number, color_id, bl_part_number
-     FROM set_parts_catalog
-     WHERE part_number = ANY($1::text[])
-       AND bl_part_number IS NOT NULL
-       AND bl_part_number != part_number`,
-    [[...allPartNums]]
-  ).catch(() => []);
-  const existingBlMap: any = {};
-  for (const r of existingBl) existingBlMap[`${r.part_number}|${r.color_id}`] = r.bl_part_number;
+  // ── Die Abfrage auf set_parts_catalog ist WEG ──────────────────────────
+  //
+  // Sie las dort `bl_part_number` — eine Abschrift je Set-Teile-Zeile, also
+  // fuer dasselbe Teil so oft, wie es Sets damit gibt. Migration 0037 hat die
+  // Spalte geloescht; die Abfrage auf bl_zuordnung darunter liest dieselbe
+  // Aussage einmal je Teil.
+  //
+  // Und sie war TOT: Ihr Ergebnis landete in einer Abbildung existingBlMap,
+  // die nirgends gelesen wurde (nachgemessen am Stand vor dieser Aenderung —
+  // zwei Vorkommen, Deklaration und Zuweisung). Aufgefallen ist das erst beim
+  // Umzug der Spalte. Sie ist deshalb ersatzlos weg, nicht umgestellt.
 
-  // Also check rb_bl_mapping
+  // bl_zuordnung: die Nummer, einmal je Teil
   const rbBlRows = await db.all(
-    `SELECT part_num, bl_part_num FROM rb_bl_mapping
-     WHERE part_num = ANY($1::text[])`,
+    `SELECT rb_id, bl_id FROM bl_zuordnung
+     WHERE art = 'part' AND rb_id = ANY($1::text[])`,
     [[...allPartNums]]
   ).catch(() => []);
   const rbBlMap: Record<string, string> = {};
-  for (const r of rbBlRows) rbBlMap[r.part_num] = r.bl_part_num;
+  for (const r of rbBlRows) rbBlMap[r.rb_id] = r.bl_id;
 
-  // Find part_nums NOT yet in rb_bl_mapping (= never looked up via API)
+  // Find part_nums NOT yet in bl_zuordnung (= never looked up via API)
   const needsBl = [...allPartNums].filter((pn: any) => !(String(pn) in rbBlMap));
 
   let apiBlMap: Record<string, string> = {};
@@ -568,8 +576,8 @@ async function enrichSetMinifigs(setNumber: string) {
         const finalId = blId || p.part_num;
         apiBlMap[p.part_num] = finalId;
         
-        // Persist to rb_bl_mapping
-        await merkeBlTeilnummer(p.part_num, finalId).catch(() => {});
+        // Persist to bl_zuordnung
+        await merkeBlNummer('part', p.part_num, finalId).catch(() => {});
       }
     }
   }
@@ -583,14 +591,17 @@ async function enrichSetMinifigs(setNumber: string) {
   // Save parts for each minifig to set_parts_catalog
   for (const [figNum, { parts }] of Object.entries(figPartsMap) as [string, { parts: any[] }][]) {
     for (const p of parts) {
-      const blId = finalBlMap[p.part_num] || p.part_num;
+      // Ohne bl_part_number: Seit Migration 0037 steht die BrickLink-Nummer
+      // einmal je Teil in bl_zuordnung, nicht je Set-Teile-Zeile. Die
+      // Schleife weiter oben hat sie dort schon gemerkt (merkeBlNummer);
+      // finalBlMap wird nur noch fuer die Antwort an den Aufrufer gebraucht.
       await db.run(
         `INSERT INTO set_parts_catalog
-           (set_number, part_number, bl_part_number, color_id, quantity, is_spare)
-         VALUES ($1,$2,$3,$4,$5,$6)
+           (set_number, part_number, color_id, quantity, is_spare)
+         VALUES ($1,$2,$3,$4,$5)
          ON CONFLICT (set_number, part_number, color_id) DO UPDATE SET
-           bl_part_number = $3, quantity = $5, updated_at = NOW()`,
-        [figNum, p.part_num, blId, p.color_id||0, p.quantity||1, 0]
+           quantity = $4, updated_at = NOW()`,
+        [figNum, p.part_num, p.color_id||0, p.quantity||1, 0]
       ).catch(() => {});
     }
   }

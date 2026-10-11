@@ -57,6 +57,7 @@ import { sendeFehler } from '../utils/fehlerTexte';
 import { normalisiereLagerort, setzeLagerort } from '../utils/lagerort';
 import { merkeFigur } from '../utils/katalogPflege';
 import { mengeNeuRechnen } from '../utils/bestandsmenge';
+import { merkeBlNummer, blJoin, blNummerSql } from '../utils/blZuordnung';
 
 router.use(requireLogin);
 
@@ -77,7 +78,11 @@ router.use(requireLogin);
 // ueber die Werte.
 const FIGS_CSV_SQL = `
   SELECT f.fig_number,
-         COALESCE(f.bl_fig_number,'') AS bl_fig_number,
+         -- Die BrickLink-Nummer aus der Zuordnung (Migration 0037); hier
+         -- stand COALESCE(f.bl_fig_number,''), eine Abschrift je Konto.
+         -- Das leere Feld bleibt die Ausgabe fuer „keine abweichende
+         -- Nummer" — in der Zuordnung ist das eine leere bl_id.
+         COALESCE(z.bl_id,'') AS bl_fig_number,
          -- Der Rueckfall auf die Stammzeile ist weg: Migration 0035 hat
          -- f.unit_price und f.condition geloescht und traegt fuer jede
          -- manuelle Figur eine Erfassung nach. Dieselbe Aenderung wie bei
@@ -88,6 +93,7 @@ const FIGS_CSV_SQL = `
          CASE WHEN a.id IS NULL THEN ''
               ELSE TO_CHAR(a.created_at AT TIME ZONE 'UTC','YYYY-MM-DD') END AS acquired_at
     FROM minifigs f
+    LEFT JOIN bl_zuordnung z ON z.art = 'fig' AND z.rb_id = f.fig_number
     LEFT JOIN minifig_acquisitions a
            ON a.user_id = f.user_id AND a.fig_number = f.fig_number
     -- Der Figurenname steht seit Migration 0034 im Katalog. LEFT JOIN, damit
@@ -261,10 +267,15 @@ async function addManualFigIntern(uid: number, body: any) {
   // anlegt.
   // Menge 0: Sie entsteht aus der Erfassung, die recordAcquisitionForDay()
   // weiter unten anlegt (utils/bestandsmenge.ts).
+  // Ohne bl_fig_number: Die BrickLink-Nummer steht seit Migration 0037 in
+  // bl_zuordnung, einmal je Figur und ohne Konto. Eingegeben wird sie
+  // weiterhin hier — sie landet nur woanders.
   await db.run(`
-    INSERT INTO minifigs (user_id, set_number, fig_number, bl_fig_number, quantity, source)
-    VALUES ($1, NULL, $2, $3, 0, 'manual') ON CONFLICT DO NOTHING`,
-    [uid, num, blNum]);
+    INSERT INTO minifigs (user_id, set_number, fig_number, quantity, source)
+    VALUES ($1, NULL, $2, 0, 'manual') ON CONFLICT DO NOTHING`,
+    [uid, num]);
+  if (blNum) await merkeBlNummer('fig', num, blNum).catch(
+    logAndContinue(`minifiguren:bl-nummer ${num}`));
   // Record acquisition — mit dem tatsächlich verwendeten Kaufpreis (Marktpreis
   // bzw. Teile-Schätzung, falls kein Preis eingegeben wurde), damit die
   // Erfassungshistorie und die PnL-Berechnung stimmen.
@@ -287,14 +298,16 @@ async function addManualFigIntern(uid: number, body: any) {
 async function updateManualFig(uid: number, figNumber: string, body: any) {
   // Der Zustand kommt aus der NEUESTEN Erfassung — an der Bestandszeile gibt
   // es ihn seit Migration 0035 nicht mehr. Dieselbe Ordnung wie latestSql in
-  // routes/api_v1/acquisitions.ts. Die BrickLink-Nummer bleibt an der Zeile:
-  // Sie ist eine Kennung, kein Kaufmerkmal.
+  // routes/api_v1/acquisitions.ts. Die BrickLink-Nummer kommt seit Migration
+  // 0037 aus bl_zuordnung — sie ist eine Kennung der FIGUR, nicht meines
+  // Exemplars, und stand vorher je Konto an der Bestandszeile.
   const existing = await db.get(
-    `SELECT m.id, m.bl_fig_number,
+    `SELECT m.id, ${blNummerSql('m.fig_number', 'z')} AS bl_fig_number,
             (SELECT a.condition FROM minifig_acquisitions a
               WHERE a.user_id = m.user_id AND a.fig_number = m.fig_number
               ORDER BY a.created_at DESC, a.id DESC LIMIT 1) AS condition
        FROM minifigs m
+       ${blJoin('m.fig_number', 'fig', 'z')}
       WHERE m.user_id=$1 AND m.fig_number=$2 AND m.source='manual'`,
     [uid, figNumber]);
   if (!existing) { const e = Object.assign(new Error('Minifigur nicht gefunden oder nicht manuell hinzugefügt'), { status: 404 }); throw e; }
@@ -363,7 +376,15 @@ async function updateManualFig(uid: number, figNumber: string, body: any) {
   let newBlNum = existing.bl_fig_number;
   if (body.bl_fig_number !== undefined) {
     newBlNum = body.bl_fig_number ? String(body.bl_fig_number).trim() : null;
-    await db.run('UPDATE minifigs SET bl_fig_number=$1 WHERE id=$2', [newBlNum, existing.id]);
+    // In die Zuordnung, nicht an die Bestandszeile (Migration 0037). Eine
+    // geleerte Eingabe loescht die Zuordnung nicht, sie setzt sie auf
+    // „keine abweichende Nummer" — die Zeile bleibt also als „nachgesehen"
+    // stehen, genau wie bei den Teilen.
+    if (newBlNum) await merkeBlNummer('fig', figNumber, newBlNum);
+    else await db.run(
+      `INSERT INTO bl_zuordnung (art, rb_id, bl_id) VALUES ('fig',$1,NULL)
+       ON CONFLICT (art, rb_id) DO UPDATE SET bl_id=NULL, fetched_at=NOW()`,
+      [figNumber]);
   }
   if (body.unit_price !== undefined) {
     // Siehe utils/preisRegel.ts — dieselbe Regel wie bei den Teilen.
@@ -473,9 +494,12 @@ router.post('/import/csv', csvEmpfang.single('file'), async (req: LoggedInReques
           // Preis und Zustand in die Erfassung (Migration 0035) — siehe
           // addManualFig.
           // Menge 0 — siehe addManualFig.
+          // Ohne bl_fig_number — siehe addManualFig (Migration 0037).
           await db.run(
-            "INSERT INTO minifigs (user_id, set_number, fig_number, bl_fig_number, quantity, source) VALUES ($1,NULL,$2,$3,0,'manual') ON CONFLICT DO NOTHING",
-            [uid, figNumber, blFigNumber]);
+            "INSERT INTO minifigs (user_id, set_number, fig_number, quantity, source) VALUES ($1,NULL,$2,0,'manual') ON CONFLICT DO NOTHING",
+            [uid, figNumber]);
+          if (blFigNumber) await merkeBlNummer('fig', figNumber, blFigNumber)
+            .catch(logAndContinue(`minifigs:import ${figNumber} (bl-nummer)`));
           await recordAcquisitionForDay('fig', uid, [figNumber],
             { quantity: qty, price: erfassungsPreis, condition: effectiveCondition||'N', createdAt: acqDate }
           ).catch(logAndContinue(`minifigs:import ${figNumber} (neu)`));

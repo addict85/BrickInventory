@@ -172,8 +172,12 @@ test('kein Test liest eine Quelldatei, die es nicht gibt', () => {
   // aufzubauen, und liest sie ueber die Schleifenvariable. Die Liste
   // ausschreiben hiesse, bei jeder neuen Migration eine zweite Stelle zu
   // pflegen — dieselbe Begruendung wie darueber.
-  assert.ok(offen.length <= 72,
-    `${offen.length} Pfade mit variablem Segment (gemessen waren es 72):\n  ` +
+  //
+  // 72 -> 73 (Migration 0037): test/bricklink-zuordnung-db.test.js baut die
+  // Kette VOR 0037 auf und geht dafuer die Migrationsdateien durch —
+  // dieselbe Begruendung wie eine Zeile darueber.
+  assert.ok(offen.length <= 73,
+    `${offen.length} Pfade mit variablem Segment (gemessen waren es 73):\n  ` +
     offen.join('\n  ') + '\nWo es geht, gehoert der Pfad ausgeschrieben — ein ' +
     'variables Segment nimmt dieser Pruefung die Sicht.');
 });

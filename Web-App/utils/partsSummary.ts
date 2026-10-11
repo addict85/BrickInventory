@@ -40,6 +40,7 @@
  */
 import { pflegeTabelle } from './tabellePflegen';
 import { mengeJoin, mengeAus } from './bestandsmenge';
+import { blJoin, blNummerSql } from './blZuordnung';
 import * as db from '../db/database';
 
 /** Legt Tabellen und Trigger an. Aus initSchema() aufgerufen, idempotent. */
@@ -230,9 +231,16 @@ export async function rebuild(userId: number, version?: number): Promise<void> {
         part_name, color_name, color_hex, category_name, image_url, image_local,
         is_spare, total_quantity, in_sets, storage)
       SELECT p.user_id,
-             COALESCE(p.bl_part_number, p.part_number),
+             -- Der Gruppierungsschluessel ist die BrickLink-Nummer, soweit es
+             -- eine abweichende gibt. Sie stand bis Migration 0037 als
+             -- Spalte bl_part_number an der Bestandszeile — je Konto,
+             -- nachkopiert aus rb_bl_mapping. Jetzt kommt sie aus
+             -- bl_zuordnung, einmal je Teil (utils/blZuordnung.ts).
+             -- (Keine Gegenstriche um den Spaltennamen: Der Kommentar steht
+             -- in einem Template-Literal, und ein Gegenstrich beendet es.)
+             ${blNummerSql('p.part_number')},
              p.color_id,
-             MIN(p.part_number), MIN(p.bl_part_number),
+             MIN(p.part_number), MIN(${blNummerSql('p.part_number')}),
              -- Beschreibung aus den Katalogen (Migration 0034): Name und
              -- Kategorie haengen am Teil, Farbbezeichnung und Bild an der
              -- Farbe. In parts stand beides je Konto neu.
@@ -265,6 +273,7 @@ export async function rebuild(userId: number, version?: number): Promise<void> {
              NULLIF(STRING_AGG(DISTINCT lo.name, ', '), '')
         FROM parts p
         ${mengeJoin('p')}
+        ${blJoin('p.part_number', 'part')}
         LEFT JOIN storage_locations lo ON lo.id = p.storage_id
         LEFT JOIN part_catalog pc ON pc.part_number = p.part_number
         LEFT JOIN part_color_catalog pcc ON pcc.part_number = p.part_number
@@ -273,7 +282,7 @@ export async function rebuild(userId: number, version?: number): Promise<void> {
                                        AND spc.part_number = p.part_number
                                        AND spc.color_id    = p.color_id
        WHERE p.user_id = $1 AND COALESCE(p.source, 'set') <> 'manual'
-       GROUP BY p.user_id, COALESCE(p.bl_part_number, p.part_number), p.color_id`,
+       GROUP BY p.user_id, ${blNummerSql('p.part_number')}, p.color_id`,
       [userId]);
     await tx.run(`
       INSERT INTO parts_summary_state (user_id, built_version, built_at)

@@ -65,7 +65,7 @@ const wieOft = muster => gesehen.filter(q => muster.test(q)).length;
 async function aufraeumen() {
   await db.run('DELETE FROM parts WHERE user_id = $1', [UID]).catch(() => {});
   await db.run('DELETE FROM part_price_cache WHERE part_number LIKE $1', ['bwt-teil-%']).catch(() => {});
-  await db.run('DELETE FROM rb_bl_mapping WHERE part_num LIKE $1', ['bwt-teil-%']).catch(() => {});
+  await db.run("DELETE FROM bl_zuordnung WHERE art='part' AND rb_id LIKE $1", ['bwt-teil-%']).catch(() => {});
   await db.run('DELETE FROM users WHERE id = $1', [UID]).catch(() => {});
 }
 
@@ -81,10 +81,12 @@ test('Teile-Bewertung: kein Nachschlag je Teil', async (t) => {
         // Zustand und Preis stehen seit Migration 0035 in der Erfassung.
         "INSERT INTO parts (user_id, part_number, color_id, quantity, source) VALUES ($1, $2, 4, 1, 'manual')",
         [UID, NR(i)]);
-      // Der Betriebsfall: Der Nachtrag-Job hat die Nummer übersetzt.
-      // bl_part_num == part_num, damit der Preis-Cache-Schlüssel gleich bleibt.
+      // Der Betriebsfall: Der Nachtrag-Job hat nachgesehen. Eine Zeile mit
+      // LEERER bl_id heisst „keine abweichende Nummer" (Migration 0037) —
+      // damit bleibt der Preis-Cache-Schlüssel die Rebrickable-Nummer.
+      // Vorher stand dafuer bl_part_num = part_num in rb_bl_mapping.
       await db.run(
-        'INSERT INTO rb_bl_mapping (part_num, bl_part_num) VALUES ($1, $1) ON CONFLICT (part_num) DO UPDATE SET bl_part_num = EXCLUDED.bl_part_num',
+        "INSERT INTO bl_zuordnung (art, rb_id, bl_id) VALUES ('part', $1, NULL) ON CONFLICT (art, rb_id) DO UPDATE SET bl_id = NULL",
         [NR(i)]);
       // Warmer Preis-Cache — der Normalfall. Ohne ihn misst man den
       // BrickLink-Abruf mit, den es beim zweiten Aufruf nicht mehr gibt.
@@ -108,14 +110,16 @@ test('Teile-Bewertung: kein Nachschlag je Teil', async (t) => {
     assert.equal(ergebnis.parts.length, N, 'alle Teile bewertet');
 
     // ── 1. Keine EINZELabfrage je Teil mehr ────────────────────────────────
-    assert.equal(wieOft(/FROM rb_bl_mapping WHERE part_num=\$1/), 0,
-      `rb_bl_mapping wurde einzeln gefragt — das Vorladen (ladeBlNummernVor) greift nicht`);
-    assert.equal(wieOft(/FROM parts WHERE part_number=\$1 AND bl_part_number/), 0,
-      'der BL-Rückfall auf parts lief je Teil einzeln');
+    //
+    // Es ist nur noch EINE Einzelabfrage, nicht zwei: Der Rückfall auf
+    // `parts.bl_part_number` ist mit Migration 0037 weg, weil es die zweite
+    // Quelle nicht mehr gibt (die Begründung steht in utils/finance/preise.ts).
+    assert.equal(wieOft(/FROM bl_zuordnung WHERE art=\$1 AND rb_id=\$2/), 0,
+      'die Zuordnung wurde einzeln gefragt — das Vorladen (ladeBlNummernVor) greift nicht');
 
     // ── 2. Statt dessen genau eine Sammelabfrage ───────────────────────────
-    assert.equal(wieOft(/FROM rb_bl_mapping WHERE part_num = ANY\(\$1\)/), 1,
-      'die Sammelabfrage auf rb_bl_mapping fehlt oder lief mehrfach');
+    assert.equal(wieOft(/FROM bl_zuordnung WHERE art=\$1 AND rb_id = ANY\(\$2\)/), 1,
+      'die Sammelabfrage auf bl_zuordnung fehlt oder lief mehrfach');
 
     // ── 3. Die Farbtabelle höchstens einmal ────────────────────────────────
     // Höchstens, nicht genau: Ein vorheriger Test im selben Prozess kann sie
@@ -138,10 +142,8 @@ test('Teile-Bewertung: kein Nachschlag je Teil', async (t) => {
     zaehlen = true;
     await fc.resolveBlPartNumber('bwt-teil-gibtesnicht');
     zaehlen = false;
-    assert.equal(wieOft(/FROM rb_bl_mapping WHERE part_num=\$1/), 1,
-      'Gegenprobe: die Einzelabfrage auf rb_bl_mapping wurde nicht mitgezählt');
-    assert.equal(wieOft(/FROM parts WHERE part_number=\$1 AND bl_part_number/), 1,
-      'Gegenprobe: die Einzelabfrage auf parts wurde nicht mitgezählt');
+    assert.equal(wieOft(/FROM bl_zuordnung WHERE art=\$1 AND rb_id=\$2/), 1,
+      'Gegenprobe: die Einzelabfrage auf bl_zuordnung wurde nicht mitgezählt');
   } finally {
     db.pool.query = altQuery;
     await aufraeumen();

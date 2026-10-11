@@ -926,11 +926,46 @@ async function indizesUndZusammenfassung() {
   // initSchema() laeuft nur beim allerersten Start. Auf einer LAUFENDEN
   // Datenbank waere der Index hier nie entstanden, und niemand haette es
   // gemerkt, weil nichts scheitert.
-  // Funktionaler Index auf genau den Ausdruck, nach dem getParts() gruppiert.
-  // Ohne ihn muss Postgres COALESCE(bl_part_number, part_number) für jede der
-  // Zeilen neu berechnen. Gemessen an 380 Sets / 171'000 Zeilen halbiert er die
-  // Zeit einer Seitenabfrage (372 ms → 190 ms).
-  await pool.query(`CREATE INDEX IF NOT EXISTS idx_parts_group ON parts(user_id, (COALESCE(bl_part_number, part_number)), color_id)`).catch(schlucke('idx_parts_group'));
+  // ── Der funktionale Index ist WEG, und das ist eine Einbusse ────────────
+  //
+  // Hier stand
+  //
+  //     CREATE INDEX idx_parts_group
+  //       ON parts(user_id, (COALESCE(bl_part_number, part_number)), color_id)
+  //
+  // auf genau den Ausdruck, nach dem getParts() gruppiert. GEMESSEN an 380
+  // Sets / 171'000 Zeilen halbierte er die Zeit einer Seitenabfrage
+  // (372 ms → 190 ms).
+  //
+  // Mit Migration 0037 steht die BrickLink-Nummer in `bl_zuordnung`, und der
+  // Gruppierungsausdruck liest damit eine ANDERE Tabelle. Ein funktionaler
+  // Index kann das nicht: Er darf nur Spalten seiner eigenen Tabelle
+  // enthalten. Dieser Index ist also nicht umgezogen, sondern unmoeglich
+  // geworden — das ist der Preis dafuer, dass die Nummer nur noch an einer
+  // Stelle steht.
+  //
+  // Was an seine Stelle tritt:
+  //
+  //   * idx_parts_gruppe hier: die EINGÄNGE der Gruppierung
+  //     (user_id, part_number, color_id). Postgres liest die Teilezeilen
+  //     darueber geordnet und haengt die Zuordnung per Hash-Join an;
+  //     bl_zuordnung hat wenige zehntausend Zeilen und passt in den
+  //     Arbeitsspeicher.
+  //   * Vor allem aber: Der HEISSE Weg laeuft gar nicht ueber diese Abfrage.
+  //     Die Teileansicht (exclude_manual=1, ohne Set- und Lagerortfilter)
+  //     liest die vorberechnete Zusammenfassung, und die traegt den
+  //     Gruppenschluessel als fertige Spalte `part_key`
+  //     (utils/partsSummary.ts). Die Live-Abfrage bleibt fuer die Faelle, in
+  //     denen ein Filter die Menge ohnehin klein macht.
+  // Der Ersatzindex steht in Migration 0037 und NICHT hier, aus demselben
+  // Grund wie idx_parts_category (Migration 0034): initSchema() laeuft nur
+  // beim allerersten Start, auf einer laufenden Datenbank waere der Index
+  // hier nie entstanden. Und an zwei Stellen darf er nicht stehen —
+  // scripts/check-schema-am-start.js meldet jede doppelte Definition.
+  //
+  // Den alten Index muss niemand loeschen: Er haengt an
+  // parts.bl_part_number, und Postgres entfernt abhaengige Indizes beim
+  // DROP COLUMN selbst.
   // Vorberechnete Teile-Zusammenfassung inkl. Trigger zur Entwertung.
   //
   // require() ABSICHTLICH hier unten, nicht oben: utils/partsSummary importiert

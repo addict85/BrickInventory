@@ -64,9 +64,14 @@ test('der Figuren-Preisverlauf findet die Preise unter der BrickLink-Nummer', { 
   try {
     // Die Figur trägt eine ABWEICHENDE BrickLink-Nummer — der Fall, für den
     // es das Feld gibt.
+    // Die Nummer steht seit Migration 0037 in bl_zuordnung — einmal je
+    // Figur, ohne Konto. An der Bestandszeile stand sie je Konto.
     await db.run(
-      `INSERT INTO minifigs (user_id, fig_number, bl_fig_number, quantity, source)
-       VALUES ($1,$2,$3,1,'manual')`, [uid, EIGENE, BL]);
+      `INSERT INTO minifigs (user_id, fig_number, quantity, source)
+       VALUES ($1,$2,1,'manual')`, [uid, EIGENE]);
+    await db.run(
+      `INSERT INTO bl_zuordnung (art, rb_id, bl_id) VALUES ('fig',$1,$2)
+       ON CONFLICT (art, rb_id) DO UPDATE SET bl_id = EXCLUDED.bl_id`, [EIGENE, BL]);
     // Der Kaufpreis steht unter der Nummer des Benutzers.
     await db.run(
       `INSERT INTO minifig_acquisitions (user_id,fig_number,quantity,unit_price,condition)

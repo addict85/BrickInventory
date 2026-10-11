@@ -106,8 +106,11 @@ test('nach der ganzen Kette tragen parts und minifigs keinen Preis mehr',
       'geloescht, oder etwas legt die Spalte danach wieder an.');
   }
   // Und der Bestand ist noch da: Marcos Liste, plus was den Kauf NICHT betrifft.
+  // bl_part_number stand hier und ist weg: Migration 0037 hat sie geloescht,
+  // die BrickLink-Nummer steht in bl_zuordnung (einmal je Teil statt je
+  // Konto). Siehe test/bricklink-zuordnung-db.test.js.
   for (const sp of ['id', 'user_id', 'set_number', 'part_number', 'color_id',
-                    'quantity', 'source', 'storage_id', 'added_at', 'bl_part_number']) {
+                    'quantity', 'source', 'storage_id', 'added_at']) {
     assert.ok(nachher.includes(sp), `parts.${sp} fehlt — die Spalte gehoert zum Bestand`);
   }
 

@@ -224,6 +224,15 @@ CREATE TABLE IF NOT EXISTS rb_inventory_parts (
   img_url      TEXT
 );
 CREATE INDEX IF NOT EXISTS idx_rb_inv_parts ON rb_inventory_parts(inventory_id);
+-- rb_bl_mapping: steht hier weiter, obwohl Migration 0037 die TABELLE
+-- loescht. Ihr Nachtrag liest sie als erste und verlaesslichste Quelle, und
+-- sein Riegel prueft danach, dass jede ihrer Zeilen uebernommen ist. Fehlte
+-- sie auf einer frischen Datenbank, braeche die Kette dort ab.
+--
+-- Was an ihre Stelle tritt: bl_zuordnung (art, rb_id, bl_id) — dieselbe
+-- Aussage fuer Teile, Figuren UND Sets, angelegt in Migration 0037 und
+-- deshalb NICHT hier (eine Tabelle gehoert an genau eine Stelle,
+-- scripts/check-schema-am-start.js prueft das).
 CREATE TABLE IF NOT EXISTS rb_bl_mapping (
   part_num    TEXT PRIMARY KEY,
   bl_part_num TEXT,
@@ -274,6 +283,11 @@ CREATE TABLE IF NOT EXISTS set_catalog (
 CREATE TABLE IF NOT EXISTS set_parts_catalog (
   set_number    TEXT NOT NULL,
   part_number   TEXT NOT NULL,
+  -- bl_part_number steht hier weiter, obwohl Migration 0037 sie loescht:
+  -- Der Nachtrag in 0037 LIEST sie, um die BrickLink-Nummern in
+  -- bl_zuordnung zu tragen, und sein Riegel prueft danach, dass keine
+  -- verloren geht. Fehlte sie auf einer frischen Datenbank, braeche die
+  -- Kette dort ab — dieselbe Begruendung wie bei sets.quantity.
   bl_part_number TEXT,
   part_name     TEXT,
   color_id      INTEGER,
@@ -410,6 +424,11 @@ CREATE TABLE IF NOT EXISTS parts (
   FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE
 );
 
+-- bl_part_number: angelegt, damit Migration 0015 ihren Teil-Index darauf
+-- setzen kann (idx_parts_blnum) und Migration 0037 sie lesen kann. 0037
+-- loescht sie danach; die BrickLink-Nummer steht dann in bl_zuordnung,
+-- einmal je Teil. Wer eine Abfrage darauf schreibt, hat sie auf keiner
+-- laufenden Datenbank.
 ALTER TABLE parts ADD COLUMN IF NOT EXISTS bl_part_number TEXT;
 
 -- ── Lagerort ────────────────────────────────────────────────────────────────
@@ -551,6 +570,8 @@ CREATE TABLE IF NOT EXISTS minifigs (
   FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE
 );
 CREATE INDEX IF NOT EXISTS idx_minifigs_user ON minifigs(user_id);
+-- bl_fig_number: angelegt, damit Migration 0037 sie lesen kann, und von ihr
+-- danach geloescht — siehe parts.bl_part_number weiter oben.
 ALTER TABLE minifigs ADD COLUMN IF NOT EXISTS bl_fig_number TEXT;
 
 -- Lagerort auch fuer Minifiguren (db/migrations/0024-lagerort-minifiguren.sql).

@@ -44,7 +44,7 @@ async function syncSetCatalog(setNumber: string) {
   // Load parts from CSV cache
   const parts = await db.all(
     `SELECT ip.part_num AS part_number,
-            COALESCE(m.bl_part_num, ip.part_num) AS bl_part_number,
+            COALESCE(m.bl_id, ip.part_num) AS bl_part_number,
             p.name AS part_name, ip.color_id,
             c.name AS color_name, c.rgb AS color_hex,
             COALESCE(NULLIF(p.part_img_url, '')) AS image_url,
@@ -52,7 +52,7 @@ async function syncSetCatalog(setNumber: string) {
      FROM rb_inventory_parts ip
      LEFT JOIN rb_parts p ON p.part_num = ip.part_num
      LEFT JOIN rb_colors c ON c.id = ip.color_id
-     LEFT JOIN rb_bl_mapping m ON m.part_num = ip.part_num
+     LEFT JOIN bl_zuordnung  m ON m.art = 'part' AND m.rb_id = ip.part_num
      WHERE ip.inventory_id = $1
        AND (ip.is_spare IS NULL OR ip.is_spare IN ('f','false','False','0',''))`,
     [invId]
@@ -90,18 +90,21 @@ async function syncSetCatalog(setNumber: string) {
     if (total === 0) {
       // First time: full upsert
       await db.run(
+        // Ohne bl_part_number — siehe jobs/partsCatalogEnrich.ts
+        // (Migration 0037). Die Nummer stammt aus derselben
+        // Inventar-Abfrage und steht dort schon in bl_zuordnung; sie kommt
+        // ueber den JOIN mit, nicht ueber diese Tabelle.
         `INSERT INTO set_parts_catalog
-           (set_number,part_number,bl_part_number,part_name,color_id,color_name,color_hex,image_url,image_local,quantity,is_spare)
-         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11)
+           (set_number,part_number,part_name,color_id,color_name,color_hex,image_url,image_local,quantity,is_spare)
+         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)
          ON CONFLICT (set_number,part_number,color_id) DO UPDATE SET
-           bl_part_number = COALESCE(EXCLUDED.bl_part_number, set_parts_catalog.bl_part_number),
            part_name      = COALESCE(EXCLUDED.part_name, set_parts_catalog.part_name),
            color_name     = COALESCE(EXCLUDED.color_name, set_parts_catalog.color_name),
            color_hex      = COALESCE(EXCLUDED.color_hex, set_parts_catalog.color_hex),
            image_url      = COALESCE(EXCLUDED.image_url, set_parts_catalog.image_url),
            image_local    = COALESCE(EXCLUDED.image_local, set_parts_catalog.image_local),
            quantity       = EXCLUDED.quantity, updated_at = NOW()`,
-        [n, p.part_number, p.bl_part_number, p.part_name||'', p.color_id||0,
+        [n, p.part_number, p.part_name||'', p.color_id||0,
          p.color_name||'', p.color_hex||null, p.image_url||null, imageLocal, p.quantity||1, 0]
       ).catch(()=>{});
     } else if (imageLocal) {

@@ -88,10 +88,13 @@ async function copyContents(tx: any, sn: string, fromId: number, toId: number) {
   // mitzunehmen, und es kann auch nichts vergessen werden. Genau das war
   // hier naemlich schon einmal der Fehler (siehe den naechsten Block).
   const p = hasParts ? { changes: 0 } : await tx.run(
+    // bl_part_number ist nicht mehr dabei: Die BrickLink-Nummer steht seit
+    // Migration 0037 in bl_zuordnung, einmal je Teil und ohne Konto. Beim
+    // Verschieben ist also nichts mitzunehmen — genau wie bei der
+    // Beschreibung seit Migration 0034, siehe den Absatz darueber.
     `INSERT INTO parts (user_id, set_number, part_number, color_id, quantity,
-                        source, bl_part_number)
-     SELECT $1, set_number, part_number, color_id, quantity,
-            source, bl_part_number
+                        source)
+     SELECT $1, set_number, part_number, color_id, quantity, source
        FROM parts
       WHERE user_id = $2 AND set_number = $3 AND COALESCE(source,'set') <> 'manual'`,
     [toId, fromId, sn]);
@@ -308,17 +311,19 @@ export async function moveManualAcquisition(
     // vorher eine andere Zahl als die verschobene.
     await tx.run(
       // Menge 0: Sie entsteht aus der Erfassung, die gleich darunter wandert.
-      `INSERT INTO parts (user_id, part_number, color_id, quantity,
-                          source, bl_part_number)
-       VALUES ($1,$2,$3,0,'manual',$4)`,
-      [toId, src.part_number, src.color_id, src.bl_part_number]);
+      // Ohne bl_part_number: Die BrickLink-Nummer steht seit Migration 0037
+      // in bl_zuordnung, einmal je Teil und ohne Konto — beim Verschieben
+      // ist nichts mitzunehmen.
+      `INSERT INTO parts (user_id, part_number, color_id, quantity, source)
+       VALUES ($1,$2,$3,0,'manual')`,
+      [toId, src.part_number, src.color_id]);
   } else {
     await tx.run(
       // Menge 0 — siehe den Teile-Zweig darueber.
-      `INSERT INTO minifigs (user_id, fig_number, quantity,
-                             source, bl_fig_number)
-       VALUES ($1,$2,0,'manual',$3)`,
-      [toId, src.fig_number, src.bl_fig_number]);
+      // Ohne bl_fig_number — siehe den Teile-Zweig darueber.
+      `INSERT INTO minifigs (user_id, fig_number, quantity, source)
+       VALUES ($1,$2,0,'manual')`,
+      [toId, src.fig_number]);
   }
 
   await recordAcquisitionForDay(kind, toId, keyValues, {

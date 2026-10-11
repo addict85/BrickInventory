@@ -40,8 +40,9 @@ test('Preise stehen unter der BrickLink-Nummer, Erfassungen unter der Rebrickabl
     `INSERT INTO users (username, password_hash) VALUES ('t_'||floor(random()*1e9),'x') RETURNING id`);
 
   // Marcos Lage nachgebaut: Die BrickLink-Nummer weicht ab, die Farbe auch.
+  // Die Zuordnung steht seit Migration 0037 in bl_zuordnung (art, rb_id, bl_id).
   await db.run(
-    `INSERT INTO rb_bl_mapping (part_num, bl_part_num) VALUES ('31000','bl31000')
+    `INSERT INTO bl_zuordnung (art, rb_id, bl_id) VALUES ('part','31000','bl31000')
      ON CONFLICT DO NOTHING`);
   await db.run(
     `INSERT INTO rb_colors (id, name, bl_color_id) VALUES (1,'Blue',7)
