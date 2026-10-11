@@ -207,8 +207,10 @@ test('Migration 0038 löscht nur, wenn keine Stückzahl verloren geht',
     'Schritt 1 traegt keine Figuren-Katalogzeilen mehr nach');
   assert.match(riegel, /RAISE EXCEPTION '% Set-Teile haben keine Katalogzeile/,
     'Der Riegel prueft nicht mehr auf fehlende Katalogzeilen');
-  assert.match(riegel, /weicht parts\.quantity vom Katalog ab/,
-    'Der Riegel prueft nicht mehr auf den Drift zwischen Abschrift und Katalog');
+  assert.match(riegel, /kommt die Katalogzahl im Bestand nicht vor/,
+    'Der Riegel prueft nicht mehr, ob die Katalogzahl im Bestand ueberhaupt vorkommt');
+  assert.match(riegel, /liegen an VERSCHIEDENEN Lagerorten/,
+    'Der Riegel prueft nicht mehr, ob die Doppelten in verschiedenen Kisten liegen');
   assert.match(riegel, /weicht quantity von der Summe der Erfassungen ab/,
     'Der Riegel prueft die manuellen Positionen nicht mehr gegen ihre Erfassungen');
   assert.match(zusammen, /DELETE FROM minifigs a/,
@@ -253,15 +255,72 @@ test('Migration 0038 löscht nur, wenn keine Stückzahl verloren geht',
         VALUES ('75192-1','3001',4,6);
       INSERT INTO parts (user_id,set_number,part_number,color_id,quantity,source)
         SELECT id,'75192-1','3001',4,6,'set' FROM users WHERE username='tm'`,
-    // ZWEI Zeilen fuer denselben Schluessel, und der Katalog ist mit der
-    // SUMME einig (6 + 4 = 10). Nur dann darf Schritt 3 zusammenlegen.
+    // ── ZWEI Zeilen fuer denselben Schluessel ────────────────────────────
+    //
+    // Hier stand 6 + 4 bei Katalog 10 — die Annahme, zwei Zeilen seien zwei
+    // Anteile, die sich addieren. Marcos Installation hat das widerlegt:
+    // `parts.quantity` war fuer ein Set-Teil die Zahl JE EXEMPLAR des Sets,
+    // und zwei Zeilen sind KOPIEN derselben Aussage (ein zweiter Import, dem
+    // das wirkungslose ON CONFLICT nicht im Weg stand).
+    //
+    // Also zwei Kopien mit derselben Zahl, und der Katalog ist mit IHR einig.
     doppelt: `
+      INSERT INTO set_parts_catalog (set_number,part_number,color_id,quantity)
+        VALUES ('75192-1','3001',4,6);
+      INSERT INTO parts (user_id,set_number,part_number,color_id,quantity,source)
+        SELECT id,'75192-1','3001',4,6,'set' FROM users WHERE username='tm';
+      INSERT INTO parts (user_id,set_number,part_number,color_id,quantity,source)
+        SELECT id,'75192-1','3001',4,6,'set' FROM users WHERE username='tm'`,
+    // Marcos haeufigster Fall, GEMESSEN: 4908 von 6684 Gruppen. Zwei Zeilen
+    // mit VERSCHIEDENEN Zahlen, und die groessere ist die Katalogzahl. Auch
+    // das muss durchlaufen — die Katalogzahl kommt im Bestand vor.
+    doppeltEineTrifft: `
+      INSERT INTO set_parts_catalog (set_number,part_number,color_id,quantity)
+        VALUES ('75192-1','3001',4,18);
+      INSERT INTO parts (user_id,set_number,part_number,color_id,quantity,source)
+        SELECT id,'75192-1','3001',4,18,'set' FROM users WHERE username='tm';
+      INSERT INTO parts (user_id,set_number,part_number,color_id,quantity,source)
+        SELECT id,'75192-1','3001',4,5,'set' FROM users WHERE username='tm'`,
+    // Und die Gegenrichtung: KEINE der beiden Zahlen ist die Katalogzahl.
+    // Dann ist wirklich zu entscheiden, und die Migration haelt an. Mit der
+    // alten Summenpruefung rutschte genau das DURCH (6 + 4 = 10).
+    doppeltKeineTrifft: `
       INSERT INTO set_parts_catalog (set_number,part_number,color_id,quantity)
         VALUES ('75192-1','3001',4,10);
       INSERT INTO parts (user_id,set_number,part_number,color_id,quantity,source)
         SELECT id,'75192-1','3001',4,6,'set' FROM users WHERE username='tm';
       INSERT INTO parts (user_id,set_number,part_number,color_id,quantity,source)
         SELECT id,'75192-1','3001',4,4,'set' FROM users WHERE username='tm'`,
+    // Doppelte, von denen nur EINE einen Lagerort traegt. Der muss die
+    // Zusammenlegung ueberleben.
+    doppeltEinOrt: `
+      INSERT INTO storage_locations (user_id,name)
+        SELECT id,'Estrich' FROM users WHERE username='tm';
+      INSERT INTO set_parts_catalog (set_number,part_number,color_id,quantity)
+        VALUES ('75192-1','3001',4,6);
+      INSERT INTO parts (user_id,set_number,part_number,color_id,quantity,source,storage_id)
+        SELECT id,'75192-1','3001',4,6,'set',NULL FROM users WHERE username='tm';
+      INSERT INTO parts (user_id,set_number,part_number,color_id,quantity,source,storage_id)
+        SELECT u.id,'75192-1','3001',4,6,'set',
+               (SELECT id FROM storage_locations WHERE name='Estrich')
+          FROM users u WHERE u.username='tm'`,
+    // Und zwei VERSCHIEDENE Orte: Zusammengelegt kann nur einer bleiben, also
+    // haelt die Migration an.
+    doppeltZweiOrte: `
+      INSERT INTO storage_locations (user_id,name)
+        SELECT id,'Estrich' FROM users WHERE username='tm';
+      INSERT INTO storage_locations (user_id,name)
+        SELECT id,'Keller' FROM users WHERE username='tm';
+      INSERT INTO set_parts_catalog (set_number,part_number,color_id,quantity)
+        VALUES ('75192-1','3001',4,6);
+      INSERT INTO parts (user_id,set_number,part_number,color_id,quantity,source,storage_id)
+        SELECT u.id,'75192-1','3001',4,6,'set',
+               (SELECT id FROM storage_locations WHERE name='Estrich')
+          FROM users u WHERE u.username='tm';
+      INSERT INTO parts (user_id,set_number,part_number,color_id,quantity,source,storage_id)
+        SELECT u.id,'75192-1','3001',4,6,'set',
+               (SELECT id FROM storage_locations WHERE name='Keller')
+          FROM users u WHERE u.username='tm'`,
     // Manuelle Position: Spalte 5, Erfassung 3. Die Spalte ist nachgelaufen.
     manuellDrift: `
       INSERT INTO parts (user_id,part_number,color_id,quantity,source)
@@ -352,7 +411,7 @@ test('Migration 0038 löscht nur, wenn keine Stückzahl verloren geht',
 
   // ── Lauf 4: der DRIFT ───────────────────────────────────────────────────
   const driftMeldung = await lauf(skript, 'drift');
-  assert.match(String(driftMeldung), /Bei 1 Set-Teilen weicht parts\.quantity/,
+  assert.match(String(driftMeldung), /Bei 1 Set-Teilen kommt die Katalogzahl im Bestand nicht vor/,
     `Der Drift-Riegel hat nicht gegriffen. Postgres sagte: ${driftMeldung}`);
   assert.match(String(driftMeldung), /75192-1 \/ 3001 Farbe 4/,
     'Die Meldung nennt kein Beispiel — „1 Zeile weicht ab" sagt nicht, wo man nachsieht');
@@ -380,17 +439,66 @@ test('Migration 0038 löscht nur, wenn keine Stückzahl verloren geht',
   assert.equal(await lauf(skript, 'manuellStimmig'), null,
     'Bei uebereinstimmender Spalte und Erfassungssumme muss die Migration durchlaufen');
 
-  // ── Lauf 7: Doppelte ────────────────────────────────────────────────────
+  // ── Lauf 7: Doppelte, beide mit der Katalogzahl einig ───────────────────
   assert.equal(await lauf(skript, 'doppelt'), null,
-    'Mit einem Katalog, der mit der SUMME der beiden Zeilen einig ist, muss die ' +
-    'Migration durchlaufen');
+    'Zwei Kopien derselben Zahl, mit der der Katalog einig ist, muessen ' +
+    'durchlaufen — da ist nichts zu entscheiden');
   assert.equal(await zeilen('parts'), 1,
     'Schritt 3 hat die doppelte Zeile nicht zusammengelegt — ab Schritt 4 liest ' +
-    'jede Zeile dieselbe Katalogzahl, zwei Zeilen zaehlten also doppelt (20 statt 10)');
-  assert.equal(Number(await katalogzahl()), 10,
-    'Die Summe der beiden Zeilen ist nicht die Katalogzahl geblieben');
+    'jede Zeile dieselbe Katalogzahl, zwei Zeilen zaehlten also doppelt (12 statt 6)');
+  assert.equal(Number(await katalogzahl()), 6, 'Die Katalogzahl wurde veraendert');
   assert.ok((await indizes()).includes('idx_parts_eindeutig'),
     'Schritt 5 hat den eindeutigen Index nicht angelegt');
+
+  // ── Lauf 7b: Marcos haeufigster Fall ────────────────────────────────────
+  //
+  // GEMESSEN auf seiner Installation: 4908 von 6684 Gruppen tragen zwei
+  // verschiedene Zahlen, und die groessere ist die Katalogzahl. Die alte
+  // Summenpruefung meldete das als Verlust („Bestand 23, Katalog 18") und
+  // hielt die Migration fuer immer an — obwohl die 18 im Bestand steht.
+  assert.equal(await lauf(skript, 'doppeltEineTrifft'), null,
+    'Wenn eine der Zeilen die Katalogzahl traegt, muss die Migration ' +
+    'durchlaufen. Die zweite Zahl ist der Rest eines aelteren Imports.');
+  assert.equal(await zeilen('parts'), 1, 'Schritt 3 hat nicht zusammengelegt');
+  assert.equal(Number(await katalogzahl()), 18, 'Die Katalogzahl wurde veraendert');
+
+  // ── Lauf 7c: und wenn KEINE der Zahlen die Katalogzahl ist ──────────────
+  //
+  // Die Gegenrichtung zu 7b, und zugleich die Luecke der alten Fassung: 6 + 4
+  // ergibt 10, also sah die Summenpruefung hier NICHTS — obwohl weder 6 noch
+  // 4 die 10 ist und wirklich zu entscheiden war.
+  const keineMeldung = await lauf(skript, 'doppeltKeineTrifft');
+  assert.match(String(keineMeldung),
+    /Bei 1 Set-Teilen kommt die Katalogzahl im Bestand nicht vor/,
+    `Der Riegel hat nicht gegriffen. Postgres sagte: ${keineMeldung}`);
+  assert.match(String(keineMeldung), /Bestand 4, 6, Katalog 10/,
+    'Die Meldung nennt nicht ALLE Zahlen des Bestands. „Bestand 10" waere hier ' +
+    'die irrefuehrendste Auskunft von allen — es ist die Summe, die niemand hat.');
+  assert.ok((await spaltenVon('parts')).includes('quantity'),
+    'parts.quantity ist trotz Abbruch weg — dann rollt die Transaktion nicht zurueck');
+
+  // ── Lauf 7d: der Lagerort ueberlebt das Zusammenlegen ───────────────────
+  //
+  // Die kleinste id bleibt, aber sie ist nicht unbedingt die Zeile mit dem
+  // Lagerort. Ohne Schritt 3a waere er stumm weg: Der Vorrat (Migration 0031)
+  // zeigte den Ort weiter, nur stuende kein Teil mehr darin.
+  assert.equal(await lauf(skript, 'doppeltEinOrt'), null,
+    'Doppelte, von denen eine einen Lagerort traegt, muessen durchlaufen');
+  const mitOrt = await db.get(
+    `SELECT l.name FROM parts p LEFT JOIN storage_locations l ON l.id = p.storage_id
+      WHERE p.part_number='3001'`);
+  assert.equal(mitOrt?.name, 'Estrich',
+    `Der Lagerort hat das Zusammenlegen nicht ueberlebt (${JSON.stringify(mitOrt?.name)}). ` +
+    'Die bleibende Zeile hatte keinen, die geloeschte schon.');
+
+  // ── Lauf 7e: zwei VERSCHIEDENE Orte sind eine Entscheidung ──────────────
+  const orteMeldung = await lauf(skript, 'doppeltZweiOrte');
+  assert.match(String(orteMeldung), /liegen an VERSCHIEDENEN Lagerorten/,
+    `Der Lagerort-Riegel hat nicht gegriffen. Postgres sagte: ${orteMeldung}`);
+  assert.match(String(orteMeldung), /Estrich, Keller|Keller, Estrich/,
+    'Die Meldung nennt die Orte nicht — dann kann der Mensch nicht entscheiden');
+  assert.equal(await zeilen('parts'), 2,
+    'Nach dem Abbruch muessen beide Zeilen noch da sein');
 
   // ── Lauf 8: GEGENPROBE zum Zusammenlegen ────────────────────────────────
   //
@@ -400,6 +508,8 @@ test('Migration 0038 löscht nur, wenn keine Stückzahl verloren geht',
   // stillschweigend ausfiele.
   const ohneZusammen = skript.replace(zusammen, '');
   assert.notEqual(ohneZusammen, skript, 'Schritt 3 wurde nicht herausgeschnitten');
+  // Dieselbe Lage wie Lauf 7 (zwei Kopien, Katalog einig) — nur ohne das
+  // Zusammenlegen.
   const doppeltMeldung = await lauf(ohneZusammen, 'doppelt');
   assert.match(String(doppeltMeldung), /could not create unique index|duplicate key/,
     `Ohne Schritt 3 muss der eindeutige Index abgelehnt werden. Postgres sagte: ${doppeltMeldung}`);

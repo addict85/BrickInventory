@@ -55,35 +55,41 @@ DO $nachtrag$
 BEGIN
   IF EXISTS (SELECT 1 FROM information_schema.columns
               WHERE table_name = 'parts' AND column_name = 'quantity') THEN
-    -- ── Die SUMME je Konto, nicht die groesste Einzelzeile ──────────────
+    -- ── MAX, nicht die Summe — und das ist eine KORREKTUR ───────────────
     --
-    -- GEMESSEN: `parts` traegt KEINEN eindeutigen Index ausser dem
-    -- Primaerschluessel auf `id`. Dasselbe Teil kann also in derselben Farbe
-    -- aus demselben Set ZWEIMAL in der Tabelle stehen, und die Listen haben
-    -- die beiden Zeilen addiert. test/verwendende-sets-db.test.js trug genau
-    -- diesen Aufbau (zwei Zeilen, 10 + 5 = 15); seit Schritt 5 unten ist er
-    -- nicht mehr moeglich, und der Fall steht jetzt in
-    -- test/teilemengen-abgeleitet-db.test.js (Lage „doppelt": 6 + 4 = 10).
+    -- Hier stand die Summe je Konto. Die Annahme dahinter: Zwei Zeilen fuer
+    -- dieselbe Position seien zwei Anteile, die sich addieren (so stand es im
+    -- damaligen Aufbau von test/verwendende-sets-db.test.js: 10 + 5 = 15).
     --
-    -- Nimmt der Nachtrag hier nur eine der Zeilen, verliert die Installation
-    -- diese Summe. Deshalb MAX ueber die Konten (jedes Konto haelt dasselbe
-    -- Set, die Zahl im Set ist dieselbe) und SUMME innerhalb eines Kontos.
+    -- Diese Annahme war FALSCH, und Marcos Installation hat sie widerlegt.
+    -- `parts.quantity` hiess fuer ein Set-Teil „so viele stecken in EINEM
+    -- Exemplar dieses Sets" — ein Wert, kein Anteil. Zwei Zeilen sind also
+    -- KOPIEN derselben Aussage: utils/partsImport.ts schreibt bei jedem Lauf
+    -- dieselbe Zahl, und weil das `ON CONFLICT DO NOTHING` ohne eindeutigen
+    -- Index wirkungslos war, legte ein zweiter Import eine zweite Zeile mit
+    -- DERSELBEN Zahl an.
+    --
+    -- GEMESSEN auf Marcos Installation (64403 Gruppen, 6684 mit Doppelten,
+    -- hoechstens zwei Zeilen je Gruppe): 1776 Gruppen trugen zweimal
+    -- dieselbe Zahl, und in keiner einzigen Gruppe wich eine EINZELNE Zeile
+    -- vom Katalog ab. Die Summe hat daraus 6684 Scheinabweichungen gemacht —
+    -- z. B. „Bestand 6, Katalog 3" fuer zwei Zeilen mit je 3.
+    --
+    -- Der alte Testaufbau war eine erfundene Vorlage, keine Beschreibung der
+    -- Wirklichkeit. Ich habe ihn als Letzteres gelesen; das steht hier, damit
+    -- es nicht noch einmal passiert.
     EXECUTE $sql$
       INSERT INTO set_parts_catalog (set_number, part_number, color_id, quantity)
-      SELECT set_number, part_number, farbe, GREATEST(MAX(je_konto), 1)
-        FROM (
-          SELECT p.set_number, p.part_number, COALESCE(p.color_id, 0) AS farbe,
-                 p.user_id, SUM(COALESCE(p.quantity, 1))::int AS je_konto
-            FROM parts p
-           WHERE COALESCE(p.source, 'set') = 'set'
-             AND p.set_number IS NOT NULL AND p.set_number <> ''
-             AND NOT EXISTS (SELECT 1 FROM set_parts_catalog c
-                              WHERE c.set_number  = p.set_number
-                                AND c.part_number = p.part_number
-                                AND c.color_id    = COALESCE(p.color_id, 0))
-           GROUP BY 1,2,3,4
-        ) k
-       GROUP BY set_number, part_number, farbe
+      SELECT p.set_number, p.part_number, COALESCE(p.color_id, 0),
+             GREATEST(MAX(COALESCE(p.quantity, 1)), 1)
+        FROM parts p
+       WHERE COALESCE(p.source, 'set') = 'set'
+         AND p.set_number IS NOT NULL AND p.set_number <> ''
+         AND NOT EXISTS (SELECT 1 FROM set_parts_catalog c
+                          WHERE c.set_number  = p.set_number
+                            AND c.part_number = p.part_number
+                            AND c.color_id    = COALESCE(p.color_id, 0))
+       GROUP BY p.set_number, p.part_number, COALESCE(p.color_id, 0)
       ON CONFLICT (set_number, part_number, color_id) DO NOTHING
     $sql$;
   END IF;
@@ -93,19 +99,14 @@ BEGIN
     -- Dieselbe Rechnung wie bei den Teilen darueber.
     EXECUTE $sql$
       INSERT INTO set_minifigs_catalog (set_number, fig_number, quantity)
-      SELECT set_number, fig_number, GREATEST(MAX(je_konto), 1)
-        FROM (
-          SELECT m.set_number, m.fig_number, m.user_id,
-                 SUM(COALESCE(m.quantity, 1))::int AS je_konto
-            FROM minifigs m
-           WHERE COALESCE(m.source, 'set') = 'set'
-             AND m.set_number IS NOT NULL AND m.set_number <> ''
-             AND NOT EXISTS (SELECT 1 FROM set_minifigs_catalog c
-                              WHERE c.set_number = m.set_number
-                                AND c.fig_number = m.fig_number)
-           GROUP BY 1,2,3
-        ) k
-       GROUP BY set_number, fig_number
+      SELECT m.set_number, m.fig_number, GREATEST(MAX(COALESCE(m.quantity, 1)), 1)
+        FROM minifigs m
+       WHERE COALESCE(m.source, 'set') = 'set'
+         AND m.set_number IS NOT NULL AND m.set_number <> ''
+         AND NOT EXISTS (SELECT 1 FROM set_minifigs_catalog c
+                          WHERE c.set_number = m.set_number
+                            AND c.fig_number = m.fig_number)
+       GROUP BY m.set_number, m.fig_number
       ON CONFLICT (set_number, fig_number) DO NOTHING
     $sql$;
   END IF;
@@ -134,6 +135,8 @@ DECLARE
   figs_drift   INTEGER := 0;
   man_drift      INTEGER := 0;
   man_figs_drift INTEGER := 0;
+  orte_streit    INTEGER := 0;
+  orte_beispiel  TEXT    := '';
   beispiel       TEXT    := '';
 BEGIN
   IF EXISTS (SELECT 1 FROM information_schema.columns
@@ -148,44 +151,64 @@ BEGIN
                             AND c.color_id    = COALESCE(p.color_id, 0))
     $sql$ INTO teile_ohne;
 
-    -- Je KONTO die Summe, nicht je Zeile: Zwei Zeilen desselben Teils im
-    -- selben Set sind zusammen die Stueckzahl (siehe den Nachtrag oben).
-    -- Zeilenweise verglichen meldete diese Pruefung eine Abweichung, wo gar
-    -- keine ist — GEMESSEN am damaligen Aufbau von
-    -- test/verwendende-sets-db.test.js (zwei Zeilen 10 + 5, Katalog 15):
-    -- „Bei 2 Set-Teilen weicht parts.quantity vom Katalog ab".
+    -- ── Die Katalogzahl muss im Bestand VORKOMMEN ───────────────────────
+    --
+    -- Hier stand die Gruppensumme gegen den Katalog. Mit der Summe (siehe
+    -- den Nachtrag oben) war das zweifach falsch:
+    --
+    --   * Zwei Kopien mit je 3 ergaben 6 und wurden als Abweichung von
+    --     Katalog 3 gemeldet — 6684 Scheinbefunde auf Marcos Installation,
+    --     obwohl dort KEINE einzelne Zeile vom Katalog abweicht.
+    --   * Umgekehrt rutschte echte Uneinigkeit DURCH, wenn die Summe zufaellig
+    --     passte: zwei Zeilen mit 6 und 4 bei Katalog 10 ergeben 10, und die
+    --     Pruefung sah nichts. GEMESSEN an der eigenen Probe „doppelt".
+    --
+    -- Die Frage, auf die es ankommt, ist eine andere: Nach Schritt 4 gilt die
+    -- KATALOGZAHL. Sie darf keine sein, die der Bestand nie gesehen hat. Also
+    -- wird gezaehlt, in wie vielen Gruppen die Katalogzahl bei KEINER Zeile
+    -- vorkommt.
+    --
+    -- Damit ist beides abgedeckt: Kopien, die mit dem Katalog einig sind,
+    -- laufen durch; zwei Zeilen 6 und 4 bei Katalog 10 halten an, weil weder
+    -- 6 noch 4 die 10 ist.
     EXECUTE $sql$
       SELECT COUNT(*) FROM (
         SELECT p.user_id, p.set_number, p.part_number, COALESCE(p.color_id,0) AS farbe,
-               SUM(COALESCE(p.quantity, 1))::int AS summe
+               BOOL_OR(COALESCE(p.quantity, 1) = COALESCE(c.quantity, 1)) AS trifft
           FROM parts p
+          JOIN set_parts_catalog c ON c.set_number  = p.set_number
+                                  AND c.part_number = p.part_number
+                                  AND c.color_id    = COALESCE(p.color_id, 0)
          WHERE COALESCE(p.source,'set') = 'set'
          GROUP BY 1,2,3,4
       ) g
-       JOIN set_parts_catalog c ON c.set_number  = g.set_number
-                               AND c.part_number = g.part_number
-                               AND c.color_id    = g.farbe
-       WHERE g.summe <> COALESCE(c.quantity, 1)
+       WHERE NOT g.trifft
     $sql$ INTO teile_drift;
 
     IF teile_drift > 0 THEN
       -- Ein Beispiel mit BEIDEN Zahlen: „3 Zeilen weichen ab" sagt nicht, wo
       -- man nachsieht und was zur Wahl steht.
+      -- Das Beispiel nennt ALLE Zahlen des Bestands, nicht ihre Summe: Bei
+      -- zwei Zeilen soll dastehen „Bestand 6, 4 — Katalog 10", damit zu sehen
+      -- ist, dass keine der beiden die Katalogzahl ist. „Bestand 10" waere
+      -- hier die irrefuehrendste Auskunft von allen.
       EXECUTE $sql$
         SELECT g.set_number || ' / ' || g.part_number || ' Farbe ' || g.farbe
-               || ' (Konto ' || g.user_id || '): Bestand ' || g.summe
-               || ', Katalog ' || COALESCE(c.quantity, 1)
+               || ' (Konto ' || g.user_id || '): Bestand ' || g.zahlen
+               || ', Katalog ' || g.kat
           FROM (
             SELECT p.user_id, p.set_number, p.part_number, COALESCE(p.color_id,0) AS farbe,
-                   SUM(COALESCE(p.quantity, 1))::int AS summe
+                   STRING_AGG(DISTINCT COALESCE(p.quantity, 1)::text, ', ') AS zahlen,
+                   COALESCE(c.quantity, 1) AS kat,
+                   BOOL_OR(COALESCE(p.quantity, 1) = COALESCE(c.quantity, 1)) AS trifft
               FROM parts p
+              JOIN set_parts_catalog c ON c.set_number  = p.set_number
+                                      AND c.part_number = p.part_number
+                                      AND c.color_id    = COALESCE(p.color_id, 0)
              WHERE COALESCE(p.source,'set') = 'set'
-             GROUP BY 1,2,3,4
+             GROUP BY 1,2,3,4, COALESCE(c.quantity, 1)
           ) g
-          JOIN set_parts_catalog c ON c.set_number  = g.set_number
-                                  AND c.part_number = g.part_number
-                                  AND c.color_id    = g.farbe
-         WHERE g.summe <> COALESCE(c.quantity, 1)
+         WHERE NOT g.trifft
          ORDER BY g.set_number, g.part_number, g.farbe, g.user_id
          LIMIT 1
       $sql$ INTO beispiel;
@@ -201,6 +224,40 @@ BEGIN
     $sql$ INTO man_drift;
   END IF;
 
+  -- ── Doppelte, die in VERSCHIEDENEN Kisten liegen ─────────────────────────
+  --
+  -- Schritt 3 legt die Doppelten zusammen und rettet dabei einen Lagerort,
+  -- wenn nur eine der Zeilen einen traegt. Tragen sie VERSCHIEDENE, ist das
+  -- keine Rettung mehr: Eine Zeile kann nur an einem Ort liegen, und welcher
+  -- gilt, kann diese Migration nicht wissen. Also anhalten.
+  --
+  -- Ohne Spaltenpruefung, denn storage_id bleibt — aber nur, solange es
+  -- ueberhaupt Doppelte geben kann, und die gibt es nach Schritt 5 nicht mehr.
+  SELECT COUNT(*) INTO orte_streit FROM (
+    SELECT p.user_id, COALESCE(p.set_number, '') AS setnr, p.part_number,
+           COALESCE(p.color_id, 0) AS farbe
+      FROM parts p
+     GROUP BY 1,2,3,4
+    HAVING COUNT(DISTINCT p.storage_id) > 1
+  ) g;
+
+  IF orte_streit > 0 THEN
+    SELECT g.setnr || ' / ' || g.part_number || ' Farbe ' || g.farbe
+           || ' (Konto ' || g.user_id || '): Orte ' || g.orte
+      INTO orte_beispiel
+      FROM (
+        SELECT p.user_id, COALESCE(p.set_number, '') AS setnr, p.part_number,
+               COALESCE(p.color_id, 0) AS farbe,
+               STRING_AGG(DISTINCT COALESCE(l.name, '(ohne)'), ', ') AS orte
+          FROM parts p
+          LEFT JOIN storage_locations l ON l.id = p.storage_id
+         GROUP BY 1,2,3,4
+        HAVING COUNT(DISTINCT p.storage_id) > 1
+      ) g
+     ORDER BY g.setnr, g.part_number, g.farbe, g.user_id
+     LIMIT 1;
+  END IF;
+
   IF EXISTS (SELECT 1 FROM information_schema.columns
               WHERE table_name = 'minifigs' AND column_name = 'quantity') THEN
     EXECUTE $sql$
@@ -212,17 +269,18 @@ BEGIN
                             AND c.fig_number = m.fig_number)
     $sql$ INTO figs_ohne;
 
+    -- Dieselbe Frage wie bei den Teilen darueber.
     EXECUTE $sql$
       SELECT COUNT(*) FROM (
         SELECT m.user_id, m.set_number, m.fig_number,
-               SUM(COALESCE(m.quantity, 1))::int AS summe
+               BOOL_OR(COALESCE(m.quantity, 1) = COALESCE(c.quantity, 1)) AS trifft
           FROM minifigs m
+          JOIN set_minifigs_catalog c ON c.set_number = m.set_number
+                                     AND c.fig_number = m.fig_number
          WHERE COALESCE(m.source,'set') = 'set'
          GROUP BY 1,2,3
       ) g
-       JOIN set_minifigs_catalog c ON c.set_number = g.set_number
-                                  AND c.fig_number = g.fig_number
-       WHERE g.summe <> COALESCE(c.quantity, 1)
+       WHERE NOT g.trifft
     $sql$ INTO figs_drift;
 
     -- Die manuellen FIGUREN gegen ihre Erfassungen. Eigene Zaehlvariable und
@@ -246,17 +304,21 @@ BEGIN
     RAISE EXCEPTION '% Set-Figuren haben keine Katalogzeile — nichts geaendert.', figs_ohne;
   END IF;
   IF teile_drift > 0 THEN
-    RAISE EXCEPTION 'Bei % Set-Teilen weicht parts.quantity vom Katalog ab, z. B. %. Bitte von Hand entscheiden, welche Zahl gilt — nichts geaendert.',
+    RAISE EXCEPTION 'Bei % Set-Teilen kommt die Katalogzahl im Bestand nicht vor, z. B. %. Bitte von Hand entscheiden, welche Zahl gilt — nichts geaendert.',
       teile_drift, beispiel;
   END IF;
   IF figs_drift > 0 THEN
-    RAISE EXCEPTION 'Bei % Set-Figuren weicht minifigs.quantity vom Katalog ab — nichts geaendert.', figs_drift;
+    RAISE EXCEPTION 'Bei % Set-Figuren kommt die Katalogzahl im Bestand nicht vor — nichts geaendert.', figs_drift;
   END IF;
   IF man_drift > 0 THEN
     RAISE EXCEPTION 'Bei % manuellen Teilen weicht quantity von der Summe der Erfassungen ab — nichts geaendert.', man_drift;
   END IF;
   IF man_figs_drift > 0 THEN
     RAISE EXCEPTION 'Bei % manuellen Figuren weicht quantity von der Summe der Erfassungen ab — nichts geaendert.', man_figs_drift;
+  END IF;
+  IF orte_streit > 0 THEN
+    RAISE EXCEPTION '% Positionen stehen doppelt im Bestand und liegen an VERSCHIEDENEN Lagerorten, z. B. %. Zusammengelegt kann nur einer bleiben — bitte von Hand entscheiden; nichts geaendert.',
+      orte_streit, orte_beispiel;
   END IF;
 END $pruefung$;
 
@@ -277,6 +339,35 @@ END $pruefung$;
 -- Dasselbe hat Migration 0008 fuer die Erfassungen getan, mit derselben
 -- Reihenfolge: zusammenlegen, dann den eindeutigen Index setzen.
 
+-- ── Erst den LAGERORT retten, dann loeschen ────────────────────────────────
+--
+-- Die kleinste id bleibt — aber sie ist nicht unbedingt die Zeile mit dem
+-- Lagerort. Traegt die bleibende Zeile keinen und eine der Doppelten schon,
+-- ginge er beim Loeschen verloren, und zwar stumm: Der Vorrat (Migration
+-- 0031) zeigte den Ort weiter, nur stuende kein Teil mehr darin.
+--
+-- Das ist ein Befund an Marcos Daten, kein gedachter Fall — deshalb steht die
+-- Frage danach auch im Riegel oben: Tragen die Doppelten VERSCHIEDENE Orte,
+-- ist das keine Rettung mehr, sondern eine Entscheidung, und die trifft ein
+-- Mensch. Hier wird nur der Fall „die eine hat einen, die andere keinen"
+-- aufgeloest.
+UPDATE parts z
+   SET storage_id = (
+     SELECT MIN(w.storage_id) FROM parts w
+      WHERE w.user_id = z.user_id
+        AND COALESCE(w.set_number, '') = COALESCE(z.set_number, '')
+        AND w.part_number = z.part_number
+        AND COALESCE(w.color_id, 0) = COALESCE(z.color_id, 0)
+        AND w.storage_id IS NOT NULL)
+ WHERE z.storage_id IS NULL
+   AND EXISTS (
+     SELECT 1 FROM parts w
+      WHERE w.user_id = z.user_id
+        AND COALESCE(w.set_number, '') = COALESCE(z.set_number, '')
+        AND w.part_number = z.part_number
+        AND COALESCE(w.color_id, 0) = COALESCE(z.color_id, 0)
+        AND w.storage_id IS NOT NULL);
+
 DELETE FROM parts a
  USING parts b
  WHERE a.user_id = b.user_id
@@ -284,6 +375,22 @@ DELETE FROM parts a
    AND a.part_number = b.part_number
    AND COALESCE(a.color_id, 0) = COALESCE(b.color_id, 0)
    AND a.id > b.id;
+
+-- Derselbe Schutz fuer die Figuren.
+UPDATE minifigs z
+   SET storage_id = (
+     SELECT MIN(w.storage_id) FROM minifigs w
+      WHERE w.user_id = z.user_id
+        AND COALESCE(w.set_number, '') = COALESCE(z.set_number, '')
+        AND w.fig_number = z.fig_number
+        AND w.storage_id IS NOT NULL)
+ WHERE z.storage_id IS NULL
+   AND EXISTS (
+     SELECT 1 FROM minifigs w
+      WHERE w.user_id = z.user_id
+        AND COALESCE(w.set_number, '') = COALESCE(z.set_number, '')
+        AND w.fig_number = z.fig_number
+        AND w.storage_id IS NOT NULL);
 
 DELETE FROM minifigs a
  USING minifigs b
