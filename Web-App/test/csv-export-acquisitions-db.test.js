@@ -42,6 +42,7 @@ process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:t
 process.env.WEB_WORKERS = '1';
 
 const _req = require('./helpers/sources').buildAndRequire();
+const { haeltSet } = require('./helpers/bestand');
 const db = _req('db/database.js');
 
 // Ohne das Schliessen des Verbindungspools endet der Testprozess nie: Der Pool
@@ -79,14 +80,18 @@ test('Sets-Export: eine Zeile je Erfassung, ohne Erfassung die Set-Zeile',
 
   try {
     // ── Vier Faelle, jeder mit einer eigenen Aussage ────────────────────────
-    // 0001-1  keine Erfassung        → eine Zeile, Menge der Set-Zeile
+    // 0001-1  keine Erfassung        → eine Zeile, Menge 0
     // 0002-1  zwei Erfassungen       → zwei Zeilen, aelteste zuerst
-    // 0003-1  Erfassung ohne Preis   → leeres Feld
+    // 0003-1  Erfassung ohne Preis   → leeres Preisfeld
     // 0004-1  keine Erfassung        → Zustand 'N'
-    for (const [sn, menge] of [['0001-1', 3], ['0002-1', 1], ['0003-1', 1], ['0004-1', 2]]) {
-      await db.run(
-        `INSERT INTO sets (user_id, set_number, quantity)
-         VALUES ($1,$2,$3)`, [uid, sn, menge]);
+    //
+    // Menge 0 heisst hier „Bestandszeile ohne Erfassung" — genau der Fall,
+    // den die beiden ersten Zeilen beschreiben. Vorher stand die Menge in
+    // sets.quantity und blieb auch ohne Erfassung stehen; seit Migration 0036
+    // gibt es sie dort nicht, und „ohne Erfassung" heisst null Exemplare.
+    // Die Mengen der anderen beiden kommen aus den Erfassungen darunter.
+    for (const sn of ['0001-1', '0002-1', '0003-1', '0004-1']) {
+      await haeltSet(db, uid, sn, 0);
     }
     await db.run(
       `INSERT INTO set_acquisitions (user_id, set_number, quantity, purchase_price, condition, created_at)
@@ -100,11 +105,12 @@ test('Sets-Export: eine Zeile je Erfassung, ohne Erfassung die Set-Zeile',
 
     assert.equal(r.length, 5, `5 Zeilen erwartet (1+2+1+1), bekommen ${r.length}:\n${csv}`);
 
-    // Ohne Erfassung: eine Zeile mit der Menge der Set-Zeile, ohne Preis,
-    // ohne Datum, Zustand 'N'. Hier stand vorher purchase_price '12.5' — der
-    // Wert der Set-Spalte, die es seit Migration 0032 nicht mehr gibt.
+    // Ohne Erfassung: eine Zeile mit Menge 0, ohne Preis, ohne Datum,
+    // Zustand 'N'. Hier stand quantity '3' — die Menge der Set-Spalte, die es
+    // seit Migration 0036 nicht mehr gibt, und purchase_price '12.5' aus der
+    // Spalte, die Migration 0032 geloescht hat.
     assert.deepEqual(je('0001-1'),
-      [{ set_number: '0001-1', quantity: '3', purchase_price: '', condition: 'N', acquired_at: '' }]);
+      [{ set_number: '0001-1', quantity: '0', purchase_price: '', condition: 'N', acquired_at: '' }]);
 
     // Zwei Erfassungen, aelteste zuerst — die Reihenfolge traegt die Bedeutung.
     const zwei = je('0002-1');
@@ -124,9 +130,9 @@ test('Sets-Export: eine Zeile je Erfassung, ohne Erfassung die Set-Zeile',
       'eine Erfassung ohne Preis muss ein leeres Feld ergeben');
     assert.equal(ohnePreis[0].condition, 'N', 'fehlender Zustand wird zu N');
 
-    // Set ohne Erfassung: Zustand 'N', Preis leer.
+    // Set ohne Erfassung: Menge 0, Zustand 'N', Preis leer.
     assert.deepEqual(je('0004-1'),
-      [{ set_number: '0004-1', quantity: '2', purchase_price: '', condition: 'N', acquired_at: '' }]);
+      [{ set_number: '0004-1', quantity: '0', purchase_price: '', condition: 'N', acquired_at: '' }]);
   } finally {
     await db.run('DELETE FROM set_acquisitions WHERE user_id = $1', [uid]).catch(() => {});
     await db.run('DELETE FROM sets WHERE user_id = $1', [uid]).catch(() => {});
@@ -170,9 +176,7 @@ test('Sets-Export braucht EINE Abfrage, unabhaengig von der Anzahl Sets',
   try {
     for (let i = 1; i <= 25; i++) {
       const sn = `9${String(i).padStart(3, '0')}-1`;
-      await db.run(
-        `INSERT INTO sets (user_id, set_number, quantity)
-         VALUES ($1,$2,1)`, [uid, sn]);
+      await haeltSet(db, uid, sn, 0);  // Menge 0: die Erfassung dahinter traegt sie
       await db.run(
         `INSERT INTO set_acquisitions (user_id, set_number, quantity, purchase_price, condition)
          VALUES ($1,$2,1,5.00,'N')`, [uid, sn]);

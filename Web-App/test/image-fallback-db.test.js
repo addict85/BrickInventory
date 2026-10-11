@@ -35,6 +35,7 @@ process.env.WEB_WORKERS = '1';
 
 const _req = require('./helpers/sources').buildAndRequire();
 const db = _req('db/database.js');
+const { haeltSet } = require('./helpers/bestand');
 
 test('fehlt die Bildadresse am Set, kommt sie aus dem gemeinsamen Katalog',
   { concurrency: 1 }, async (t) => {
@@ -70,13 +71,13 @@ test('fehlt die Bildadresse am Set, kommt sie aus dem gemeinsamen Katalog',
   // Geblieben ist die Aussage, auf die es Marco ankam („wenn das Bild lokal
   // noch nicht vorhanden ist, soll es direkt via Proxy vom CDN geholt
   // werden"): Ein Set ohne lokale Datei muss die CDN-Adresse mitliefern.
-  await db.run(`INSERT INTO sets (user_id, set_number, quantity) VALUES ($1,$2,1)`, [uid, OHNE]);
+  await haeltSet(db, uid, OHNE, 1);
   await db.run(`INSERT INTO set_catalog (set_number,name,image_url) VALUES ($1,'F1 Truck',$2)
                 ON CONFLICT (set_number) DO UPDATE SET image_url=EXCLUDED.image_url`, [OHNE, CDN]);
 
   // Gegenstück: eine ANDERE Adresse im Katalog — sie muss unveraendert
   // durchkommen. Vorher stand sie an der sets-Zeile ($1 = EIGEN).
-  await db.run(`INSERT INTO sets (user_id, set_number, quantity) VALUES ($1,$2,1)`, [uid, MIT]);
+  await haeltSet(db, uid, MIT, 1);
   await db.run(`INSERT INTO set_catalog (set_number,name,image_url) VALUES ($1,'Anderes',$2)
                 ON CONFLICT (set_number) DO UPDATE SET image_url=EXCLUDED.image_url`, [MIT, EIGEN]);
 

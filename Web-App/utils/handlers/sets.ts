@@ -8,6 +8,7 @@ import { asIds } from '../household';
 import { clampPageSize, conditionFromAcquisitions, conditionsFromAcquisitions, withOwners } from './shared';
 import { ausTabelle } from '../validate';
 import { anleitungenZuSet, anleitungenZusammenlegen } from '../instructions';
+import { mengeJoin, mengeAus } from '../bestandsmenge';
 
 /**
  * Leseabfragen für Sets, samt der Ableitung des Zustands aus den Erfassungen.
@@ -34,10 +35,13 @@ const SET_SORTS = {
   // den es seit Migration 0032 nicht mehr gibt.
   price_desc: 'COALESCE(a.max_purchase_price, 0) DESC',
   price_asc:  'COALESCE(a.max_purchase_price, 0) ASC',
-  // Anzahl der besessenen Exemplare. sets.quantity wird bei jeder Änderung an
-  // den Erfassungen neu aus set_acquisitions gespiegelt (routes/sets.ts), ist
-  // hier also der richtige Wert — und der einzige, der ohne zusätzlichen JOIN
-  // auskommt.
+  // Anzahl der besessenen Exemplare.
+  //
+  // `s.quantity` ist hier KEINE Tabellenspalte mehr — die ist mit Migration
+  // 0036 weg. `s` ist in beiden Zweigen von `setsFrom` eine Unterabfrage, und
+  // deren Mengenspalte heisst `quantity` (aus utils/bestandsmenge.ts). Diese
+  // Sortierung bleibt dadurch wörtlich stehen, und das ist Absicht: Der Name
+  // nach aussen soll sich nicht ändern, nur seine Herkunft.
   //
   // Zweiter Sortierschlüssel: Ohne ihn stehen alle Sets mit derselben Anzahl —
   // und das sind fast alle, nämlich die mit genau einem Exemplar — in einer
@@ -133,7 +137,10 @@ async function getSets(userId: Blickfeld, query: any = {}) {
     ? `(SELECT s.set_number,
                MIN(c.name) AS name, MIN(c.year) AS year, MIN(c.theme) AS theme,
                MIN(c.pieces) AS pieces, MIN(c.minifigs) AS minifigs,
-               SUM(s.quantity)::int AS quantity,
+               -- Die Menge kommt aus den ERFASSUNGEN (Migration 0036 hat
+               -- sets.quantity geloescht). Die gruppierte Quelle haengt
+               -- utils/bestandsmenge.ts an — hier stand SUM(s.quantity).
+               SUM(${mengeAus('sm', 0)})::int AS quantity,
                MIN(c.image_url) AS image_url, MIN(c.image_local) AS image_local,
                MIN(s.added_at) AS added_at,
                -- Lagerort: string_agg statt MIN, und das ist kein Zierrat.
@@ -161,7 +168,11 @@ async function getSets(userId: Blickfeld, query: any = {}) {
                -- eine Menge von 0 ist ein gültiger Zustand, etwa über den
                -- Mengenregler). Ohne FILTER stand das Konto danach weiter als
                -- Besitzer auf der Kachel, obwohl es nichts mehr besitzt.
-               array_agg(DISTINCT s.user_id) FILTER (WHERE s.quantity > 0) AS owner_ids
+               --
+               -- Die Bedingung liest jetzt die ERFASSUNGEN (Migration 0036
+               -- hat sets.quantity geloescht) — dieselbe Summe wie in der
+               -- Mengenspalte darueber, also dieselbe Aussage wie vorher.
+               array_agg(DISTINCT s.user_id) FILTER (WHERE ${mengeAus('sm', 0)} > 0) AS owner_ids
           FROM sets s
           -- Der JOIN steht ausgeschrieben, nicht hinter einer Sicht: So sagt
           -- die Abfrage selbst, dass Name, Jahr und Bild aus dem Katalog
@@ -169,6 +180,7 @@ async function getSets(userId: Blickfeld, query: any = {}) {
           -- Liste verschwaende — lieber ohne Namen als unsichtbar.
           LEFT JOIN set_catalog c ON c.set_number = s.set_number
           LEFT JOIN storage_locations lo ON lo.id = s.storage_id
+          ${mengeJoin('s')}
          WHERE s.user_id = ANY($1)
          GROUP BY s.set_number) s`
     // Auch ohne Haushalt eine Unterabfrage, und zwar NUR wegen des Lagerorts:
@@ -189,13 +201,16 @@ async function getSets(userId: Blickfeld, query: any = {}) {
     // GEMESSEN an test/api-parity.test.js, das nur initSchema() ruft und keine
     // Migrationen: „column reference \"name\" is ambiguous", und die ganze
     // Set-Liste antwortete mit 500.
-    : `(SELECT s.id, s.user_id, s.set_number, s.quantity, s.added_at, s.updated_at, s.storage_id,
+    : `(SELECT s.id, s.user_id, s.set_number,
+               ${mengeAus('sm', 0)}::int AS quantity,
+               s.added_at, s.updated_at, s.storage_id,
                lo.name AS storage,
                c.name, c.year, c.theme, c.pieces, c.minifigs,
                c.image_url, c.image_local
           FROM sets s
           LEFT JOIN set_catalog c ON c.set_number = s.set_number
-          LEFT JOIN storage_locations lo ON lo.id = s.storage_id) s`;
+          LEFT JOIN storage_locations lo ON lo.id = s.storage_id
+          ${mengeJoin('s')}) s`;
   const SET_OWNER_COL = uids.length > 1 ? ', s.owner_ids' : '';
   // Ohne Gruppierung filtert die WHERE-Klausel wie bisher; mit Gruppierung hat
   // die Unterabfrage bereits gefiltert.
@@ -450,14 +465,20 @@ async function getSet(userId: Blickfeld, setNumber: string) {
     // eigene Exemplar (Zustand, Kaufpreis). Die MENGE dagegen kommt aus der
     // Summe über alle Konten im Blickfeld.
     db.get(
-      `SELECT s.id, s.user_id, s.set_number, s.quantity, s.added_at, s.updated_at, s.storage_id,
+      `SELECT s.id, s.user_id, s.set_number, s.added_at, s.updated_at, s.storage_id,
               -- Beide Listen ausgeschrieben, kein s.*: Auf einer Datenbank
               -- ohne Migration 0033 braechte s.* ein zweites name mit, und
               -- der Zugriff darauf waere zweideutig (siehe die Begruendung
               -- bei setsFrom weiter oben).
               c.name, c.year, c.theme, c.pieces, c.minifigs,
               c.image_url, c.image_local,
-              (SELECT COALESCE(SUM(a.quantity),0)::int FROM sets a
+              -- Die Gesamtmenge im Blickfeld, aus den ERFASSUNGEN. Hier
+              -- stand eine Summe ueber sets.quantity; die Spalte ist mit
+              -- Migration 0036 weg. Der JOIN auf sets haelt die
+              -- Einschraenkung „nur Konten, die das Set wirklich halten".
+              (SELECT COALESCE(SUM(a.quantity),0)::int
+                 FROM set_acquisitions a
+                 JOIN sets b ON b.user_id = a.user_id AND b.set_number = a.set_number
                 WHERE a.user_id = ANY($1) AND a.set_number = s.set_number) AS quantity
          FROM sets s
          LEFT JOIN set_catalog c ON c.set_number = s.set_number

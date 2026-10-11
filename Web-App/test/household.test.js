@@ -323,11 +323,15 @@ test('ein Set erscheint nur EINMAL, mit der Summe der Mengen', () => {
   // Zwei Kinder mit demselben Set ergäben sonst zwei Zeilen mit gleichem Bild
   // und Namen — das liest sich wie ein Fehler in der Liste.
   const h = require('./helpers/sources').handlerQuelle();
-  assert.match(h, /SUM\(s\.quantity\)::int AS quantity/,
+  // Die Menge kommt seit Migration 0036 aus den Erfassungen: Hier stand
+  // `SUM(s.quantity)::int AS quantity`, die Spalte gibt es nicht mehr. Die
+  // AUSSAGE ist dieselbe — eine Summe, keine einzelne Kontozeile.
+  assert.match(h, /SUM\(\$\{mengeAus\('sm', 0\)\}\)::int AS quantity/,
     'Mengen müssen addiert werden');
   // FILTER seit Nachtrag 83: Ein Konto, dessen Kaufpreis gelöscht wurde, steht
   // mit Menge 0 in der Tabelle und soll nicht mehr als Besitzer erscheinen.
-  assert.match(h, /array_agg\(DISTINCT s\.user_id\) FILTER \(WHERE s\.quantity > 0\) AS owner_ids/,
+  // Die Bedingung liest jetzt ebenfalls die Erfassungen.
+  assert.match(h, /array_agg\(DISTINCT s\.user_id\) FILTER \(WHERE \$\{mengeAus\('sm', 0\)\} > 0\) AS owner_ids/,
     'Ohne Besitzer verschiebt man das falsche Exemplar — und ohne FILTER steht ' +
     'ein Konto ohne Exemplar weiter auf der Kachel');
   assert.match(h, /GROUP BY s\.set_number\) s/,
@@ -359,13 +363,24 @@ test('die Portfoliokurve des Haushalts ist rückwirkend', () => {
 test('Verschieben läuft über die Tagesregel, nicht über UPDATE user_id', () => {
   // Ein direktes UPDATE hinterliesse im Zielkonto zwei Erfassungen desselben
   // Tages — genau den Zustand, den der Bearbeiten-Pfad ablehnt.
-  const mv = read('utils/setMove.ts');
+  // ohneKommentare(): Die BEGRÜNDUNGEN dieser Regeln stehen in setMove.ts als
+  // Kommentar, und sie ZITIEREN die Anweisungen, die es nicht mehr geben darf
+  // („hier stand dafuer UPDATE sets SET quantity=$1"). Auf dem Rohtext meldete
+  // die Regel genau diesen Erklärtext — gemessen. Dieselbe Falle wie bei der
+  // Haushaltsregel weiter oben.
+  const mv = require('./helpers/sources').ohneKommentare(read('utils/setMove.ts'));
   assert.ok(mv.includes("recordAcquisitionForDay('set', toId, [sn]"),
     'Erfassungen müssen einzeln über den gemeinsamen Helfer wandern');
   assert.doesNotMatch(mv, /UPDATE set_acquisitions SET user_id/,
     'Kein direktes Umhängen der Erfassungen');
-  assert.ok(mv.includes('UPDATE sets SET quantity = quantity + $1'),
-    'Besitzt das Zielkonto das Set schon, werden Mengen addiert');
+  // Besitzt das Zielkonto das Set schon, addieren sich die Mengen dadurch,
+  // dass die ERFASSUNGEN wandern — hier stand dafuer
+  // `UPDATE sets SET quantity = quantity + $1`. Mit Migration 0036 gibt es die
+  // Spalte nicht mehr, und ein Mengen-UPDATE auf `sets` waere jetzt ein
+  // Fehler. Also genau umgekehrt geprueft.
+  assert.doesNotMatch(mv, /UPDATE\s+sets\s+SET[^;`']*\bquantity\s*=/,
+    'Die Stückzahl eines Sets wird nicht mehr geschrieben — sie steht in ' +
+    'set_acquisitions und wird beim Lesen gerechnet (utils/bestandsmenge.ts)');
 
   // Der Wechsel des ganzen Sets liegt seit Nachtrag 74 in der v1-Fabrik.
   const src = read('routes/api_v1/sets.ts');
@@ -552,7 +567,11 @@ test('beim Verschieben wandert der Inhalt des Sets mit', () => {
   // Teile und Minifiguren gehören zum Set, nicht zum Konto. Blieben sie
   // zurück, hätte das Quellkonto Teile aus einem Set, das es nicht mehr
   // besitzt — sichtbar in der Teileliste, aber ohne Herkunft.
-  const mv = read('utils/setMove.ts');
+  //
+  // ohneKommentare(): Die Kommentare in setMove.ts ZITIEREN entfernte
+  // Anweisungen („hier stand dafuer UPDATE sets SET quantity=$1"), und die
+  // verneinenden Zusicherungen unten meldeten genau diesen Erklärtext.
+  const mv = require('./helpers/sources').ohneKommentare(read('utils/setMove.ts'));
   for (const t of ['parts', 'minifigs', 'instructions']) {
     assert.ok(mv.includes(`INSERT INTO ${t}`), `${t} wandern nicht mit`);
   }
@@ -563,9 +582,31 @@ test('beim Verschieben wandert der Inhalt des Sets mit', () => {
   // Erst wenn dort das letzte Exemplar geht, wird beim Absender aufgeräumt.
   // Bei einer Teilverschiebung steht danach ALLES in beiden Konten: Der
   // Absender behält Set, Teile und Anleitungen, das Ziel bekam Kopien.
-  const teil = mv.slice(mv.indexOf('if (remaining > 0)'), mv.indexOf('// Letztes Exemplar'));
-  assert.ok(teil.includes('UPDATE sets SET quantity=$1'),
-    'Bei einer Teilverschiebung sinkt beim Absender nur die Stückzahl');
+  // abschnitt() und nicht slice(indexOf(...)): Zeigt einer der beiden Anker
+  // eines Tages ins Leere, waere der Ausschnitt leer — und die verneinenden
+  // Zusicherungen darauf blieben gruen, ohne noch etwas zu pruefen.
+  // abschnitt() wirft dann. (test/stille-schnitte.test.js prueft genau das,
+  // und hat diese Stelle gemeldet.)
+  // Der Endanker ist CODE und kein Kommentar: `mv` ist hier schon durch
+  // ohneKommentare() gelaufen, und das frueher benutzte „// Letztes Exemplar"
+  // waere darin gar nicht mehr da — abschnitt() haette geworfen.
+  const teil = require('./helpers/sources').abschnitt(
+    mv, 'if (remaining > 0)', "for (const t of ['parts', 'minifigs'])",
+    'Teilverschiebung in setMove.ts');
+  // Der Ausschnitt ist der richtige: Er traegt die Antwort des Teilfalls.
+  // Ohne diese bejahende Zusicherung sagen die beiden darunter nur, was NICHT
+  // dasteht — und das sagt jeder leere Text.
+  assert.match(teil, /source_emptied: false/,
+    'Der Ausschnitt ist nicht der Teilfall — dort muss die Antwort ' +
+    'source_emptied: false tragen');
+  // Bei einer Teilverschiebung sinkt beim Absender nur die Stückzahl — und
+  // zwar VON SELBST: Die gewanderten Erfassungen sind bei ihm gelöscht, die
+  // verbliebenen ergeben seine neue Menge. Hier stand
+  // `UPDATE sets SET quantity=$1` mit einem von Hand ausgerechneten Rest;
+  // seit Migration 0036 darf in diesem Zweig GAR NICHTS mehr geschrieben
+  // werden, auch nicht gelöscht (die Zusicherung darunter).
+  assert.doesNotMatch(teil, /UPDATE\s+sets\s+SET/,
+    'Im Teilfall darf an der sets-Zeile des Absenders nichts geändert werden');
   assert.doesNotMatch(teil, /DELETE FROM/,
     'Im Teilfall darf beim Absender nichts gelöscht werden');
   assert.ok(mv.includes("DELETE FROM ${t} WHERE user_id=$1 AND set_number=$2 AND COALESCE(source,'set') <> 'manual'"),

@@ -35,6 +35,7 @@ process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:t
 process.env.WEB_WORKERS = '1';
 
 const _req = require('./helpers/sources').buildAndRequire();
+const { haeltSet } = require('./helpers/bestand');
 const db = _req('db/database.js');
 const { verwendendeSets } = _req('utils/handlers/shared.js');
 
@@ -58,10 +59,9 @@ test('die Liste der verwendenden Sets folgt dem Blickfeld', async (t) => {
   const haupt = await id('haupt'), kind = await id('kind');
   await db.run(`INSERT INTO account_links (main_user_id,sub_user_id) VALUES ($1,$2)`, [haupt, kind]);
 
-  await db.run(`INSERT INTO sets (user_id, set_number, quantity) VALUES
-      ($1,'75192-1',1),
-      ($1,'10305-1',1),
-      ($2,'21058-1',1)`, [haupt, kind]);
+  await haeltSet(db, haupt, '75192-1', 1);
+  await haeltSet(db, haupt, '10305-1', 1);
+  await haeltSet(db, kind, '21058-1', 1);
   // Der Setname steht seit Migration 0033 im Katalog; die Liste der
   // verwendenden Sets holt ihn mit einem eigenen JOIN darauf.
   await db.run(`INSERT INTO set_catalog (set_number, name) VALUES

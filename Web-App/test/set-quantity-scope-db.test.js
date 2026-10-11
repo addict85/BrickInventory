@@ -36,6 +36,7 @@ const _req = require('./helpers/sources').buildAndRequire();
 const { testServer } = require('./helpers/server');
 const db = _req('db/database.js');
 const express = require(path.join(ROOT, 'node_modules', 'express'));
+const { haeltSet, mengeVon } = require('./helpers/bestand');
 
 test('eine Mengenerhöhung am Unterkonto-Set landet im eigenen Konto',
   { concurrency: 1 }, async (t) => {
@@ -76,8 +77,9 @@ test('eine Mengenerhöhung am Unterkonto-Set landet im eigenen Konto',
     await db.run(`DELETE FROM price_cache WHERE set_number=$1`, [SN]);
     await db.run(`INSERT INTO price_cache (set_number,condition,currency_code,avg_price,qty_avg_price,total_quantity)
                   VALUES ($1,'U','EUR',77.00,77.00,4)`, [SN]);
-    await db.run(`INSERT INTO sets (user_id, set_number, quantity, condition, purchase_price)
-                  VALUES ($1,$2,1,'U',108.00)`, [subId, SN]);
+    // Nur die Bestandszeile: Menge, Preis und Zustand stehen in der Erfassung
+    // darunter (Migration 0032 fuer Preis und Zustand, 0036 fuer die Menge).
+    await haeltSet(db, subId, SN, 0);
     await db.run(`INSERT INTO set_acquisitions (user_id,set_number,purchase_price,condition,quantity)
                   VALUES ($1,$2,108.00,'U',1)`, [subId, SN]);
   };
@@ -94,8 +96,7 @@ test('eine Mengenerhöhung am Unterkonto-Set landet im eigenen Konto',
       });
       assert.equal(r.status, 200, `${name}: die Mengenänderung darf nicht mehr in 404 enden`);
 
-      const set = await db.get(
-        `SELECT quantity FROM sets WHERE user_id=$1 AND set_number=$2`, [subId, SN]);
+      // (Die Mengen kommen jetzt alle aus den Erfassungen — Migration 0036.)
       // ── Marcos neue Regel (Nachtrag 85) ────────────────────────────────
       // „Die Anzahl soll immer von allen angezeigt werden. Wenn ich diese
       // erhöhe, soll es für meinen Account einen neuen Kaufpreis-Eintrag
@@ -107,21 +108,16 @@ test('eine Mengenerhöhung am Unterkonto-Set landet im eigenen Konto',
       // KEINE Erfassung entsteht. Genau das ist jetzt umgekehrt: Die
       // angezeigte 3 ist die Gesamtmenge des Haushalts, die Differenz gehört
       // dem, der sie auslöst.
-      const beimBesitzer = await db.get(
-        `SELECT COALESCE(SUM(quantity),0)::int AS q FROM sets WHERE user_id=$1 AND set_number=$2`,
-        [subId, SN]);
-      assert.equal(beimBesitzer.q, 1,
+      const beimBesitzer = await mengeVon(db, subId, SN);
+      assert.equal(beimBesitzer, 1,
         `${name}: der Bestand des Unterkontos darf sich durch eine fremde Erhöhung nicht ändern`);
 
-      const beimBetrachter = await db.get(
-        `SELECT COALESCE(SUM(quantity),0)::int AS q FROM sets WHERE user_id=$1 AND set_number=$2`,
-        [hauptId, SN]);
-      assert.equal(beimBetrachter.q, 2,
+      const beimBetrachter = await mengeVon(db, hauptId, SN);
+      assert.equal(beimBetrachter, 2,
         `${name}: die Differenz (3 − 1) muss im eigenen Konto liegen`);
 
-      const gesamt = await db.get(
-        `SELECT COALESCE(SUM(quantity),0)::int AS q FROM sets WHERE set_number=$1`, [SN]);
-      assert.equal(gesamt.q, 3, `${name}: die Gesamtmenge muss der Eingabe entsprechen`);
+      const gesamt = await mengeVon(db, [subId, hauptId], SN);
+      assert.equal(gesamt, 3, `${name}: die Gesamtmenge muss der Eingabe entsprechen`);
 
       // Und die Erfassungen ziehen mit — im eigenen Konto, mit Preis.
       const acq = await db.get(

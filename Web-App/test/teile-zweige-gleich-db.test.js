@@ -39,6 +39,7 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const path = require('node:path');
+const { haeltSet } = require('./helpers/bestand');
 
 const ROOT = path.join(__dirname, '..');
 const DB_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
@@ -69,7 +70,7 @@ test('beide Wege der Teileliste liefern dieselben Typen', async (t) => {
   try {
     await aufraeumen();
     await db.run("INSERT INTO users (id,username,password_hash) VALUES ($1,'zweige','x') ON CONFLICT (id) DO NOTHING", [U]);
-    await db.run("INSERT INTO sets (user_id,set_number,quantity) VALUES ($1,'Z-1',1)", [U]);
+    await haeltSet(db, U, 'Z-1', 1);
     // Ein Ersatzteil UND ein gewöhnliches: Wäre nur eines dabei, könnte ein
     // Zweig zufällig richtig liegen, ohne die Umwandlung zu machen.
     // Das Ersatzteilkennzeichen steht seit Migration 0034 in

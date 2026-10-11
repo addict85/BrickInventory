@@ -38,6 +38,7 @@ process.env.WEB_WORKERS = '1';
 
 const _req = require('./helpers/sources').buildAndRequire();
 const { testServer } = require('./helpers/server');
+const { haeltSet } = require('./helpers/bestand');
 const db = _req('db/database.js');
 const express = require(path.join(ROOT, 'node_modules', 'express'));
 
@@ -59,7 +60,7 @@ test('der currency-Parameter der App übersteuert die Nutzereinstellung NICHT',
   await db.run(`INSERT INTO user_settings (user_id,key,value) VALUES ($1,'currency','CHF')
                 ON CONFLICT (user_id,key) DO UPDATE SET value='CHF'`, [uid]);
   await db.run(`DELETE FROM sets WHERE set_number=$1`, [SET]);
-  await db.run(`INSERT INTO sets (user_id, set_number, quantity) VALUES ($1,$2,1)`, [uid, SET]);
+  await haeltSet(db, uid, SET, 1);
   // Preis liegt NUR in der eingestellten Währung vor — wie im Betrieb, wo der
   // Preis-Job genau diese füllt.
   await db.run(`INSERT INTO price_cache (set_number,condition,currency_code,min_price,avg_price,max_price,qty_avg_price,total_quantity,fetched_at)

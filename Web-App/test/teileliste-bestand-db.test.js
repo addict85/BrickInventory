@@ -40,6 +40,7 @@ process.env.WEB_WORKERS = '1';
 const _req = require('./helpers/sources').buildAndRequire();
 const db = _req('db/database.js');
 const { getOwnedQuantities } = _req('utils/handlers/parts.js');
+const { haeltSet } = require('./helpers/bestand');
 
 let UID = 0;
 
@@ -54,8 +55,8 @@ async function seed() {
   UID = (await db.get(`SELECT id FROM users WHERE username='bauer'`)).id;
 
   // Zwei Sets: eines zweimal besessen, eines einmal.
-  await db.run(`INSERT INTO sets (user_id, set_number, quantity) VALUES ($1,'60052-1',2)`, [UID]);
-  await db.run(`INSERT INTO sets (user_id, set_number, quantity) VALUES ($1,'10276-1',1)`, [UID]);
+  await haeltSet(db, UID, '60052-1', 2);
+  await haeltSet(db, UID, '10276-1', 1);
 
   // Teile AUS den Sets (source bleibt leer — genau wie partsImport.ts sie legt).
   const setTeil = async (setNr, num, farbe, menge) => {

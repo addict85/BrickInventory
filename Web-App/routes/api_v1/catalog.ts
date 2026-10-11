@@ -25,6 +25,7 @@ import { ausTabelle } from '../../utils/validate';
 import { neuestesInventar } from '../../utils/rbInventar';
 import { mitVersion } from '../../utils/setNummer';
 import { sendeFehler } from '../../utils/fehlerTexte';
+import { mengeJoin, mengeAus } from '../../utils/bestandsmenge';
 
 const router = express.Router();
 
@@ -260,9 +261,10 @@ router.get('/catalog/sets', requireToken, async (req: AuthedRequest, res) => {
       `SELECT rb.set_num AS set_number, rb.name, rb.year, rb.theme_id,
               rb.num_parts, rb.set_img_url AS image_url,
               (s.set_number IS NOT NULL) AS owned,
-              COALESCE(s.quantity, 0)::int AS owned_quantity
+              ${mengeAus('sm', 0)}::int AS owned_quantity
        FROM rb_sets rb
        LEFT JOIN sets s ON s.user_id = $1 AND s.set_number = rb.set_num
+       ${mengeJoin('s')}
        ${listWhere}
        ORDER BY ${sort}
        LIMIT $${pl} OFFSET $${po}`,
@@ -332,9 +334,10 @@ router.get('/catalog/sets/:setNumber', requireToken, async (req: AuthedRequest, 
       `SELECT rb.set_num AS set_number, rb.name, rb.year, rb.theme_id,
               rb.num_parts, rb.set_img_url AS image_url,
               (s.set_number IS NOT NULL) AS owned,
-              COALESCE(s.quantity, 0)::int AS owned_quantity
+              ${mengeAus('sm', 0)}::int AS owned_quantity
        FROM rb_sets rb
        LEFT JOIN sets s ON s.user_id = $1 AND s.set_number = rb.set_num
+       ${mengeJoin('s')}
        WHERE rb.set_num = $2`,
       [userId, n]
     );

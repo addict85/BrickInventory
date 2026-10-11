@@ -49,6 +49,7 @@ process.env.WEB_WORKERS = '1';
 
 const _req = require('./helpers/sources').buildAndRequire();
 const { testServer } = require('./helpers/server');
+const { haeltSet } = require('./helpers/bestand');
 const db = _req('db/database.js');
 const express = require(path.join(ROOT, 'node_modules', 'express'));
 
@@ -79,8 +80,7 @@ test('der geänderte Kaufpreis erreicht die Kachel — Webapp UND App',
   const aufbauen = async () => {
     await db.run(`DELETE FROM set_acquisitions WHERE set_number=$1`, [SN]);
     await db.run(`DELETE FROM sets WHERE set_number=$1`, [SN]);
-    await db.run(`INSERT INTO sets (user_id, set_number, quantity)
-                  VALUES ($1,$2,1)`, [uid, SN]);
+    await haeltSet(db, uid, SN, 0);  // Menge 0: die Erfassung dahinter traegt sie
     await db.run(`INSERT INTO set_acquisitions (user_id,set_number,purchase_price,condition,quantity)
                   VALUES ($1,$2,108.00,'U',1)`, [uid, SN]);
     return (await db.get(`SELECT id FROM set_acquisitions WHERE user_id=$1 AND set_number=$2`, [uid, SN])).id;

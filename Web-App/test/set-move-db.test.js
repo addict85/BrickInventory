@@ -24,6 +24,7 @@ process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:t
 process.env.WEB_WORKERS = '1';
 
 const _req = require('./helpers/sources').buildAndRequire();
+const { haeltSet } = require('./helpers/bestand');
 const db   = _req('db/database.js');
 
 test('Set verschieben', { concurrency: 1 }, async (t) => {
@@ -46,7 +47,7 @@ test('Set verschieben', { concurrency: 1 }, async (t) => {
 
   /** Ein Set mit Inhalt beim Absender anlegen. */
   async function bestandAnlegen(sn, teile, figuren) {
-    await db.run(`INSERT INTO sets (user_id, set_number, quantity) VALUES ($1,$2,1)`, [a, sn]);
+    await haeltSet(db, a, sn, 0);  // Menge 0: die Erfassung dahinter traegt sie
     await db.run(`INSERT INTO set_acquisitions (user_id,set_number,quantity,purchase_price,condition)
                   VALUES ($1,$2,1,50,'N')`, [a, sn]);
     for (let i = 0; i < teile; i++) {

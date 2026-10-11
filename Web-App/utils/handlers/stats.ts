@@ -1,6 +1,7 @@
 import * as db from '../../db/database';
 import { asIds } from '../household';
 import { getGlobalSetting } from '../settings';
+import { mengeJoin, mengeAus } from '../bestandsmenge';
 
 /**
  * Die Kennzahlen der Übersichtsseite — spannen über alle drei Domänen und
@@ -41,17 +42,29 @@ async function getStats(userId: number | number[]) {
     // Exemplare, und die App zeigt sie direkt daneben als eigene Kachel
     // („Einheiten", GalleryScreen.kt). Zwei Kacheln, zwei Fragen — mit
     // COUNT(*) haetten beide dieselbe beantwortet.
-    db.get(`SELECT COUNT(DISTINCT set_number) AS total_sets,
-                   COALESCE(SUM(quantity), 0)  AS total_quantity
-              FROM sets WHERE user_id = ANY($1)`, [uids]),
+    // ── Die Menge aus den ERFASSUNGEN ────────────────────────────────────
+    //
+    // Migration 0036 hat sets.quantity geloescht. Die Setzahl kommt weiter aus
+    // `sets` (eine Zeile je Konto und Set), die Stueckzahl aus den
+    // Erfassungen — der JOIN haelt die Einschraenkung „nur Konten, die das
+    // Set wirklich halten".
+    db.get(`SELECT COUNT(DISTINCT s.set_number) AS total_sets,
+                   COALESCE(SUM(${mengeAus()}), 0) AS total_quantity
+              FROM sets s
+              ${mengeJoin('s')}
+             WHERE s.user_id = ANY($1)`, [uids]),
     db.get(`
       SELECT
         (SELECT COUNT(*) FROM shared_instructions si
            JOIN sets s ON s.set_number = si.set_number AND s.user_id = ANY($1)) +
         (SELECT COUNT(*) FROM instructions WHERE user_id = ANY($2)) AS total_instructions`,
       [uids, userId]),
-    db.get(`SELECT SUM(p.quantity*COALESCE(s.quantity,1)) AS t FROM parts p LEFT JOIN sets s ON s.user_id=p.user_id AND s.set_number=p.set_number WHERE p.user_id = ANY($1)`, [uids]),
-    db.get(`SELECT SUM(m.quantity*COALESCE(s.quantity,1)) AS t FROM minifigs m LEFT JOIN sets s ON s.user_id=m.user_id AND s.set_number=m.set_number WHERE m.user_id = ANY($1)`, [uids]),
+    // Der Faktor ist die Set-Menge aus den Erfassungen. `fehlt = 1`, weil er
+    // in einer MULTIPLIKATION steht: Ein Teil ohne Set-Zeile (manuell
+    // erfasst) zaehlt einfach, nicht null — dieselbe Lesart wie das
+    // frueherere COALESCE(s.quantity, 1).
+    db.get(`SELECT SUM(p.quantity*${mengeAus('sm', 1)}) AS t FROM parts p ${mengeJoin('p')} WHERE p.user_id = ANY($1)`, [uids]),
+    db.get(`SELECT SUM(m.quantity*${mengeAus('sm', 1)}) AS t FROM minifigs m ${mengeJoin('m')} WHERE m.user_id = ANY($1)`, [uids]),
     db.get("SELECT value FROM user_settings WHERE user_id = ANY($1) AND key = 'currency'", [uids]),
   ]);
   const userCondRow = await db.get("SELECT value FROM user_settings WHERE user_id = ANY($1) AND key='user_default_condition'", [uids]).catch(() => null);

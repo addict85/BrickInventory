@@ -129,6 +129,7 @@ import { ausTabelle } from '../utils/validate';
 import { mitVersion } from '../utils/setNummer';
 import { csvEmpfang } from '../utils/dateiEmpfang';
 import { sendeFehler, fehlerText, antwortSprache } from '../utils/fehlerTexte';
+import { mengeSkalar } from '../utils/bestandsmenge';
 
 const requireLoginOrToken = loginOrTokenGuard({ timeoutMs: 3000 });
 
@@ -360,7 +361,13 @@ router.use(requireLogin);
 // "Set Number,Quantity" list-import format (see rebrickable.com/help/lists-sets/)
 router.get('/export/rebrickable', async (req, res) => {
   try {
-    const sets = await db.all('SELECT set_number, quantity FROM sets WHERE user_id=$1 ORDER BY set_number ASC', [angemeldeteNutzerId(req)]);
+    // Die Menge aus den Erfassungen (Migration 0036 hat sets.quantity
+    // geloescht). Rebrickable erwartet eine Zeile je Setnummer mit der Anzahl
+    // der Exemplare — genau die Summe ueber set_acquisitions.
+    const sets = await db.all(
+      `SELECT s.set_number, ${mengeSkalar('s')} AS quantity
+         FROM sets s WHERE s.user_id=$1 ORDER BY s.set_number ASC`,
+      [angemeldeteNutzerId(req)]);
     sendCsv(res, `rebrickable-sets-${new Date().toISOString().substring(0,10)}.csv`,
       ['Set Number', 'Quantity'],
       sets.map(s => ({ 'Set Number': s.set_number, 'Quantity': s.quantity })));

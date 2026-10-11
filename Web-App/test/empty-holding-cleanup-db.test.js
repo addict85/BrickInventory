@@ -48,6 +48,7 @@ const _req = require('./helpers/sources').buildAndRequire();
 const { testServer } = require('./helpers/server');
 const db = _req('db/database.js');
 const express = require(path.join(ROOT, 'node_modules', 'express'));
+const { haeltSet, mengeVon, haltZeile } = require('./helpers/bestand');
 
 test('letzter Kaufpreis gelöscht → der Eintrag verschwindet ganz',
   { concurrency: 1 }, async (t) => {
@@ -81,8 +82,7 @@ test('letzter Kaufpreis gelöscht → der Eintrag verschwindet ganz',
   for (const sn of [WEG, BLEIBT]) {
     await db.run(`INSERT INTO price_cache (set_number,condition,currency_code,avg_price,qty_avg_price,total_quantity)
                   VALUES ($1,'N','CHF',20,20,3)`, [sn]);
-    await db.run(`INSERT INTO sets (user_id, set_number, quantity)
-                  VALUES ($1,$2,1)`, [uid, sn]);
+    await haeltSet(db, uid, sn, 0);  // Menge 0: die Erfassung dahinter traegt sie
     await db.run(`INSERT INTO set_acquisitions (user_id,set_number,purchase_price,condition,quantity)
                   VALUES ($1,$2,15,'N',1)`, [uid, sn]);
     // Abgeleitete Teile und Minifiguren — sie hängen am Set und müssen
@@ -152,8 +152,13 @@ test('letzter Kaufpreis gelöscht → der Eintrag verschwindet ganz',
     await t.test('die Kontrollgruppe ist unberührt', async () => {
       // Ohne diese Gegenrichtung wäre der Test auch grün, wenn das Löschen
       // einer Erfassung den ganzen Bestand mitnähme.
-      const n = (await db.get(`SELECT quantity FROM sets WHERE set_number=$1`, [BLEIBT]));
-      assert.equal(n?.quantity, 1, 'das andere Set wurde mitgelöscht');
+      // Zwei Fragen, zwei Tabellen (Migration 0036): Steht die Bestandszeile
+      // noch, und wie viele Exemplare sagen die Erfassungen? Vorher
+      // beantwortete die Spalte beides zugleich — und „weg" sah dabei genauso
+      // aus wie „null Stueck".
+      assert.ok(await haltZeile(db, uid, BLEIBT), 'das andere Set wurde mitgelöscht');
+      assert.equal(await mengeVon(db, uid, BLEIBT), 1,
+        'das andere Set hat seine Erfassung verloren');
       assert.equal((await db.get(`SELECT COUNT(*)::int c FROM parts WHERE set_number=$1`, [BLEIBT])).c, 1);
     });
 
@@ -166,9 +171,10 @@ test('letzter Kaufpreis gelöscht → der Eintrag verschwindet ganz',
       const l = await (await fetch(`${base}/api/v1/sets/${BLEIBT}/acquisitions`)).json();
       const erste = l.acquisitions[0].id;
       await fetch(`${base}/api/v1/sets/${BLEIBT}/acquisitions/${erste}`, { method: 'DELETE' });
-      const s = await db.get(`SELECT quantity FROM sets WHERE set_number=$1`, [BLEIBT]);
-      assert.ok(s, 'das Set wurde gelöscht, obwohl noch eine Erfassung übrig ist');
-      assert.ok(s.quantity > 0, `Menge ${s.quantity}`);
+      assert.ok(await haltZeile(db, uid, BLEIBT),
+        'das Set wurde gelöscht, obwohl noch eine Erfassung übrig ist');
+      const menge = await mengeVon(db, uid, BLEIBT);
+      assert.ok(menge > 0, `Menge ${menge}`);
     });
   } finally {
     await aufraeumen();

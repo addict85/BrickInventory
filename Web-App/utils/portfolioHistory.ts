@@ -26,9 +26,13 @@ async function getPortfolioHistory(
   // 0032 weggefallen; COALESCE(a.total_price, 0) hält die Summe trotzdem
   // rechenbar, falls die Erfassungen eines Sets alle ohne Preis sind.
   const sets = await db.all(
-    `SELECT s.set_number, SUM(s.quantity)::int AS quantity,
+    // Die Menge aus den Erfassungen (Migration 0036 hat s.quantity geloescht).
+    // Sie steht in `a.total_qty` schon da — die Unterabfrage darunter gruppiert
+    // genau danach. Der Rueckfall `COALESCE(a.total_qty, s.quantity)` ist damit
+    // gegenstandslos: Ohne Erfassungen gibt es auch keine Menge.
+    `SELECT s.set_number, COALESCE(SUM(a.total_qty), 0)::int AS quantity,
             SUM(COALESCE(a.total_price, 0))
-              / NULLIF(SUM(COALESCE(a.total_qty, s.quantity)), 0) AS purchase_price
+              / NULLIF(SUM(a.total_qty), 0) AS purchase_price
      FROM sets s
      LEFT JOIN (
        SELECT user_id, set_number,

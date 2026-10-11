@@ -42,6 +42,7 @@ process.env.WEB_WORKERS = '1';
 
 const _req = require('./helpers/sources').buildAndRequire();
 const { testServer } = require('./helpers/server');
+const { haeltSet, mengeVon, haltZeile } = require('./helpers/bestand');
 const db = _req('db/database.js');
 const express = require(path.join(ROOT, 'node_modules', 'express'));
 
@@ -74,8 +75,11 @@ test('Löschen einer Erfassung bestimmt Preis und Zustand der Elternzeile neu',
   const aufbauen = async () => {
     await db.run(`DELETE FROM set_acquisitions WHERE set_number=$1`, [SN]);
     await db.run(`DELETE FROM sets WHERE set_number=$1`, [SN]);
-    await db.run(`INSERT INTO sets (user_id, set_number, quantity, condition, purchase_price)
-                  VALUES ($1,$2,2,'N',9.48)`, [uid, SN]);
+    // Nur die Bestandszeile, ohne Zahlen: Menge, Preis und Zustand stehen in
+    // den beiden Erfassungen darunter (Migration 0032 fuer Preis und Zustand,
+    // 0036 fuer die Menge). Menge 0 heisst hier „die Erfassungen tragen sie" —
+    // 1 + 1 = 2, wie vorher in der Spalte.
+    await haeltSet(db, uid, SN, 0);
     await db.run(`INSERT INTO set_acquisitions (user_id,set_number,purchase_price,condition,quantity,created_at)
                   VALUES ($1,$2,7.41,'U',1, NOW() - INTERVAL '2 days')`, [uid, SN]);
     await db.run(`INSERT INTO set_acquisitions (user_id,set_number,purchase_price,condition,quantity,created_at)
@@ -87,12 +91,14 @@ test('Löschen einer Erfassung bestimmt Preis und Zustand der Elternzeile neu',
   // Was die Kachel sieht: das Aggregat aus den Erfassungen plus die Menge der
   // sets-Zeile (die der Lösch-Weg weiterhin nachrechnet).
   const eltern = async () => {
-    const zeile = await db.get(
-      `SELECT quantity FROM sets WHERE user_id=$1 AND set_number=$2`, [uid, SN]);
-    if (!zeile) return undefined;
+    // „Gibt es die Zeile?" und „wie viele Exemplare?" sind seit Migration 0036
+    // zwei Fragen an zwei Tabellen — vorher beantwortete die Spalte beide
+    // zugleich. Die Reihenfolge bleibt: ohne Bestandszeile gibt es keine
+    // Elternangabe, auch wenn noch Erfassungen herumliegen sollten.
+    if (!(await haltZeile(db, uid, SN))) return undefined;
     const agg = await _req('utils/handlers/sets.js').getSetConditionAggregate([uid], SN);
     return { purchase_price: agg.avg_purchase_price, condition: agg.condition,
-             quantity: zeile.quantity };
+             quantity: await mengeVon(db, uid, SN) };
   };
 
   try {

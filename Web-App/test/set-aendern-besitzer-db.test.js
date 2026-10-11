@@ -60,6 +60,7 @@ process.env.WEB_WORKERS = '1';
 
 const ROOT = path.join(__dirname, '..');
 const _req = require('./helpers/sources').buildAndRequire();
+const { haeltSet } = require('./helpers/bestand');
 const db = _req('db/database.js');
 
 test('Kaufpreis und Zustand landen im Konto des Besitzers', { concurrency: 1 }, async (t) => {
@@ -89,8 +90,7 @@ test('Kaufpreis und Zustand landen im Konto des Besitzers', { concurrency: 1 }, 
       [hauptId, subId]);
 
     // Set UND Erfassung gehoeren dem UNTERKONTO — wie im gemeldeten Fall.
-    await db.run(`INSERT INTO sets (user_id, set_number, quantity)
-                  VALUES ($1,$2,1)`, [subId, SET]);
+    await haeltSet(db, subId, SET, 0);  // Menge 0: die Erfassung dahinter traegt sie
     await db.run(`INSERT INTO set_acquisitions (user_id,set_number,quantity,purchase_price,condition)
                   VALUES ($1,$2,1,10,'N')`, [subId, SET]);
 
@@ -98,7 +98,14 @@ test('Kaufpreis und Zustand landen im Konto des Besitzers', { concurrency: 1 }, 
     // Die sets-Zeile traegt seit Migration 0032 nur noch Menge und Besitzer —
     // Kaufpreis und Zustand stehen in der Erfassung.
     const stand = async () => ({
-      set: await db.get('SELECT user_id, quantity FROM sets WHERE set_number=$1', [SET]),
+      // Die Menge aus den Erfassungen (Migration 0036) — hier stand
+      // s.quantity.
+      set: await db.get(
+        `SELECT s.user_id,
+                COALESCE((SELECT SUM(a.quantity) FROM set_acquisitions a
+                           WHERE a.user_id = s.user_id
+                             AND a.set_number = s.set_number), 0)::int AS quantity
+           FROM sets s WHERE s.set_number=$1`, [SET]),
       erf: await db.get('SELECT user_id, condition, purchase_price::float AS p FROM set_acquisitions WHERE set_number=$1', [SET]),
     });
 

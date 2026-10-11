@@ -39,6 +39,7 @@
  * gegen die Sicherheit, nie veraltete Zahlen zu zeigen.
  */
 import { pflegeTabelle } from './tabellePflegen';
+import { mengeJoin, mengeAus } from './bestandsmenge';
 import * as db from '../db/database';
 
 /** Legt Tabellen und Trigger an. Aus initSchema() aufgerufen, idempotent. */
@@ -143,7 +144,18 @@ export async function initPartsSummary(pool: any) {
       RETURN NULL;
     END $$ LANGUAGE plpgsql`);
 
-  for (const tbl of ['parts', 'sets']) {
+  // ── Warum `set_acquisitions` dazugehoert ────────────────────────────────
+  //
+  // Die Zusammenfassung speichert `total_quantity` = Teilemenge je Set x Zahl
+  // der Exemplare DES SETS. Dieser zweite Faktor stand bis Migration 0036 in
+  // `sets.quantity` — eine Mengenaenderung war also eine Aenderung an `sets`
+  // und entwertete die Zusammenfassung ueber den Trigger dort.
+  //
+  // Seit 0036 steht die Zahl in `set_acquisitions`. Ohne diesen Trigger
+  // bliebe `total_quantity` nach einem Zukauf stehen, und zwar ohne dass
+  // irgendetwas falsch AUSSIEHT — die Zahl ist plausibel, nur alt. Genau die
+  // Sorte Fehler, die den Umzug der Spalte ueberhaupt noetig gemacht hat.
+  for (const tbl of ['parts', 'sets', 'set_acquisitions']) {
     // Der alte Sammel-Trigger muss weg, sonst zählt er weiter mit.
     await pool.query(`DROP TRIGGER IF EXISTS trg_bump_parts_version ON ${tbl}`);
     for (const [suffix, op, ref] of [
@@ -232,7 +244,13 @@ export async function rebuild(userId: number, version?: number): Promise<void> {
              -- zusammenfasst; je (Set, Teil, Farbe) ist der Wert eindeutig
              -- (Primaerschluessel von set_parts_catalog).
              MAX(COALESCE(spc.is_spare, 0)),
-             SUM(p.quantity * COALESCE(s.quantity, 1)),
+             -- Der zweite Faktor ist die Zahl der Exemplare DES SETS. Hier
+             -- stand COALESCE(s.quantity, 1); die Spalte ist mit Migration
+             -- 0036 weg. Die gruppierte Form (mengeJoin) und nicht die
+             -- Unterabfrage, weil dieser Aufbau ueber 171'000 Teilezeilen
+             -- laeuft — eine Unterabfrage je Zeile waeren 171'000
+             -- Indexzugriffe statt EINER Gruppierung plus Hash-Join.
+             SUM(p.quantity * ${mengeAus('sm', 1)}),
              STRING_AGG(DISTINCT p.set_number, ','),
              -- Lagerort: STRING_AGG statt MIN, wie in der Live-Abfrage
              -- (utils/handlers/parts.ts). Dieselbe Gruppe fasst dasselbe Teil
@@ -246,7 +264,7 @@ export async function rebuild(userId: number, version?: number): Promise<void> {
              -- Regal A" gar nicht ausdruecken.
              NULLIF(STRING_AGG(DISTINCT lo.name, ', '), '')
         FROM parts p
-        LEFT JOIN sets s ON s.user_id = p.user_id AND s.set_number = p.set_number
+        ${mengeJoin('p')}
         LEFT JOIN storage_locations lo ON lo.id = p.storage_id
         LEFT JOIN part_catalog pc ON pc.part_number = p.part_number
         LEFT JOIN part_color_catalog pcc ON pcc.part_number = p.part_number

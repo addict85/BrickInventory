@@ -166,8 +166,14 @@ test('kein Test liest eine Quelldatei, die es nicht gibt', () => {
   // den der Absatz darueber als gutes Muster beschreibt — ausgeschrieben waere
   // die Liste eine zweite Wahrheit, die beim naechsten neuen Baustein veraltet.
   // Die Schranke zieht deshalb um eins nach und nicht der Test.
-  assert.ok(offen.length <= 71,
-    `${offen.length} Pfade mit variablem Segment (gemessen waren es 71):\n  ` +
+  //
+  // 71 -> 72 (Migration 0036): test/setmenge-aus-erfassungen-db.test.js geht
+  // die Migrationsdateien der Reihe nach durch, um die Kette VOR 0036
+  // aufzubauen, und liest sie ueber die Schleifenvariable. Die Liste
+  // ausschreiben hiesse, bei jeder neuen Migration eine zweite Stelle zu
+  // pflegen — dieselbe Begruendung wie darueber.
+  assert.ok(offen.length <= 72,
+    `${offen.length} Pfade mit variablem Segment (gemessen waren es 72):\n  ` +
     offen.join('\n  ') + '\nWo es geht, gehoert der Pfad ausgeschrieben — ein ' +
     'variables Segment nimmt dieser Pruefung die Sicht.');
 });

@@ -35,6 +35,7 @@ process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:t
 process.env.WEB_WORKERS = '1';
 
 const _req = require('./helpers/sources').buildAndRequire();
+const { haeltSet } = require('./helpers/bestand');
 const db = _req('db/database.js');
 
 async function erreichbar() {
@@ -60,8 +61,7 @@ test('jede Liste mit Plakette im Client traegt sie auch in der Antwort', async (
   // NUR das Unterkonto besitzt etwas. Damit ist die Plakette aussagekräftig:
   // Steht dort das eigene Konto, ist die Zuordnung falsch; fehlt sie, sieht
   // das Hauptkonto einen Bestand ohne Herkunft.
-  await db.run(`INSERT INTO sets (user_id, set_number, quantity)
-                VALUES ($1,'75192-1',1)`, [kind]);
+  await haeltSet(db, kind, '75192-1', 1);
   await db.run(`INSERT INTO parts (user_id, set_number, part_number, color_id, quantity, source)
                 VALUES ($1,'75192-1','3001',4,10,'set'),
                        ($1,NULL,'3020',0,3,'manual')`, [kind]);
@@ -119,8 +119,7 @@ test('im Einzelkonto steht keine Plakette', async (t) => {
   await db.initSchemaOnce();
   await db.run(`INSERT INTO users (username,password_hash) VALUES ('allein','x')`);
   const allein = (await db.get(`SELECT id FROM users WHERE username='allein'`)).id;
-  await db.run(`INSERT INTO sets (user_id, set_number, quantity)
-                VALUES ($1,'21318-1',1)`, [allein]);
+  await haeltSet(db, allein, '21318-1', 1);
   await db.run(`INSERT INTO minifigs (user_id, set_number, fig_number, quantity, source)
                 VALUES ($1,'21318-1','sw0003',1,'set')`, [allein]);
 

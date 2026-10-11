@@ -79,6 +79,7 @@ Module.prototype.require = function (name) {
 const _req = require('./helpers/sources').buildAndRequire();
 const { testServer } = require('./helpers/server');
 const { ohneKommentare } = require('./helpers/sources');
+const { haeltSet } = require('./helpers/bestand');
 const db = _req('db/database.js');
 
 test('ein neu angelegtes Set wird in beiden Routen gleich beantwortet',
@@ -110,7 +111,7 @@ test('ein neu angelegtes Set wird in beiden Routen gleich beantwortet',
   await db.run(`INSERT INTO users (username,password_hash) VALUES ($1,'x')`, [NUTZER]);
   const uid = (await db.get(`SELECT id FROM users WHERE username=$1`, [NUTZER])).id;
   await aufraeumen();
-  await db.run(`INSERT INTO sets (user_id, set_number, quantity) VALUES ($1,$2,1)`, [uid, DA]);
+  await haeltSet(db, uid, DA, 0);  // Menge 0: die Erfassung dahinter traegt sie
   await db.run(`INSERT INTO set_acquisitions (user_id,set_number,purchase_price,condition,quantity)
                 VALUES ($1,$2,10,'N',1)`, [uid, DA]);
 

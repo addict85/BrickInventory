@@ -23,6 +23,7 @@ process.env.WEB_WORKERS = '1';
 
 const _req = require('./helpers/sources').buildAndRequire();
 const db   = _req('db/database.js');
+const { haeltSet } = require('./helpers/bestand');
 
 test('Erfassen unter Last', { concurrency: 1 }, async (t) => {
   try { await db.get('SELECT 1'); }
@@ -50,7 +51,7 @@ test('Erfassen unter Last', { concurrency: 1 }, async (t) => {
        FROM set_acquisitions WHERE user_id=$1 AND set_number=$2`, [uid, sn]);
 
   await t.test('zehn gleichzeitige Erfassungen ergeben EINE Tageszeile mit Menge 10', async () => {
-    await db.run(`INSERT INTO sets (user_id, set_number, quantity) VALUES ($1,'70001-1',0)`, [uid]);
+    await haeltSet(db, uid, '70001-1', 0);
     await Promise.all(Array.from({ length: 10 }, () =>
       withInventoryLock(uid, '70001-1', (tx) =>
         recordAcquisitionForDay('set', uid, ['70001-1'], { quantity: 1, price: 10, condition: 'N' }, tx))

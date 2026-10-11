@@ -39,6 +39,7 @@ process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:t
 process.env.WEB_WORKERS = '1';
 
 const _req = require('./helpers/sources').buildAndRequire();
+const { haeltSet } = require('./helpers/bestand');
 const db = _req('db/database.js');
 const express = require(path.join(ROOT, 'node_modules', 'express'));
 
@@ -63,8 +64,7 @@ test('das Hauptkonto kann den Kaufpreis einer Unterkonto-Erfassung ändern',
 
   await db.run(`DELETE FROM sets WHERE set_number=$1`, [SET]);
   // Set UND Erfassung gehören dem Unterkonto — wie im gemeldeten Fall.
-  await db.run(`INSERT INTO sets (user_id, set_number, quantity)
-                VALUES ($1,$2,1)`, [subId, SET]);
+  await haeltSet(db, subId, SET, 0);  // Menge 0: die Erfassung dahinter traegt sie
   await db.run(`INSERT INTO set_acquisitions (user_id,set_number,purchase_price,condition,quantity)
                 VALUES ($1,$2,18.20,'U',1)`, [subId, SET]);
   const acqId = (await db.get(

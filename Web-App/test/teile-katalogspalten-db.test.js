@@ -44,6 +44,7 @@ process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:t
 process.env.WEB_WORKERS = '1';
 
 const _req = require('./helpers/sources').buildAndRequire();
+const { haeltSet } = require('./helpers/bestand');
 const db = _req('db/database.js');
 
 // Dieselbe Begruendung wie in test/sets-ohne-kaufpreisspalte-db.test.js: Diese
@@ -308,7 +309,7 @@ test('die Teileliste liefert Beschreibung und Lagerort aus den Katalogen',
 
   // Ein Set mit zwei Teilen: eines Pflichtteil, eines Ersatzteil.
   await db.run(`INSERT INTO set_catalog (set_number,name) VALUES ('75192-1','Falcon')`);
-  await db.run(`INSERT INTO sets (user_id,set_number,quantity) VALUES ($1,'75192-1',2)`, [uid]);
+  await haeltSet(db, uid, '75192-1', 2);
   await db.run(`INSERT INTO set_parts_catalog
     (set_number,part_number,part_name,color_id,color_name,color_hex,category_name,image_url,is_spare,quantity)
     VALUES ('75192-1','3001','Brick 2x4',4,'Red','C91A09','Bricks','http://cdn/3001r.png',0,6),
@@ -395,7 +396,7 @@ test('die Figurenliste liefert Name und Bild aus minifigs_catalog',
     `INSERT INTO users (username,password_hash) VALUES ('figleser','x') RETURNING id`);
   const uid = u.id;
   await db.run(`INSERT INTO set_catalog (set_number,name) VALUES ('75192-1','Falcon')`);
-  await db.run(`INSERT INTO sets (user_id,set_number,quantity) VALUES ($1,'75192-1',3)`, [uid]);
+  await haeltSet(db, uid, '75192-1', 3);
   await db.run(`INSERT INTO minifigs_catalog (fig_number,fig_name,image_url)
     VALUES ('fig-000123','Chewbacca','http://cdn/chewie.png')`);
   await db.run(`INSERT INTO minifigs (user_id,set_number,fig_number,quantity,source)

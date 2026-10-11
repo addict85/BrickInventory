@@ -3,6 +3,7 @@ import { resolveImageLocal } from '../images';
 import { asIds } from '../household';
 import { clampPageSize, applyManualCondition, withOwners } from './shared';
 import { beideSchreibweisen } from '../setNummer';
+import { mengeJoin, mengeAus } from '../bestandsmenge';
 import { marktpreiseAusCacheFuerFiguren } from '../marketPrice';
 
 /**
@@ -54,10 +55,15 @@ async function getMinifigs(userId: number | number[], { search, source, set_numb
     figParams.push(size, off);
     figLimit = ` LIMIT $${figParams.length - 1} OFFSET $${figParams.length}`;
   }
+  // In dieser ZAEHLUNG stand ein LEFT JOIN auf sets. Er diente allein der
+  // Spalte s.quantity — die hier gar nicht gelesen wird und die es seit
+  // Migration 0036 nicht mehr gibt. Der Kommentar steht VOR der Abfrage und
+  // nicht darin: test/gallery-paging.test.js prueft, dass zwischen
+  // „SELECT 1 FROM minifigs m" und dem GROUP BY nicht mehr als 220 Zeichen
+  // liegen — ein Erklaertext im SQL hat diese Regel gerissen (gemessen).
   const figCount = page_size
     ? await db.get(`SELECT COUNT(*)::int AS c FROM (
          SELECT 1 FROM minifigs m
-         LEFT JOIN sets s ON s.user_id = m.user_id AND s.set_number = m.set_number
          LEFT JOIN minifigs_catalog mc ON mc.fig_number = m.fig_number
          WHERE ${where} GROUP BY LOWER(TRIM(m.fig_number)), m.source) g`, params)
     : null;
@@ -93,7 +99,11 @@ async function getMinifigs(userId: number | number[], { search, source, set_numb
            -- dem Vorgabewert 'N'.
            MAX(neu.unit_price) AS unit_price,
            MIN(m.set_number) AS set_number,
-           SUM(m.quantity * COALESCE(s.quantity, 1)) AS total_quantity,
+           -- Die Set-Menge als Faktor, aus den Erfassungen (Migration 0036
+           -- hat sets.quantity geloescht). Der zweite Parameter 1 steht fuer
+           -- „keine Erfassung", weil der Wert in einer
+           -- MULTIPLIKATION steht: eine manuell erfasste Figur zaehlt einfach.
+           SUM(m.quantity * ${mengeAus('sm', 1)}) AS total_quantity,
            STRING_AGG(DISTINCT m.set_number, ',') FILTER (WHERE m.set_number IS NOT NULL) AS in_sets,
            -- Lagerort der GRUPPE, wortgleich zu handlers/parts.ts: Dieselbe
            -- Figur steckt in mehreren Sets und damit in mehreren Zeilen. Liegen
@@ -103,6 +113,16 @@ async function getMinifigs(userId: number | number[], { search, source, set_numb
            NULLIF(STRING_AGG(DISTINCT lo.name, ', '), '') AS storage,
            MAX(s.added_at) AS set_added_at
     FROM minifigs m
+    ${mengeJoin('m')}
+    -- Die sets-Zeile bleibt verbunden — aber nur noch fuer added_at („seit
+    -- wann haelt dieses Konto das Set?"). Keine Gegenstriche um den
+    -- Spaltennamen: Der Kommentar steht in einem Template-Literal, und ein
+    -- Gegenstrich beendet es (gemessen, tsc meldete „',' expected").
+    -- Die MENGE kommt aus mengeJoin()
+    -- darueber; sie stand bis Migration 0036 in derselben Zeile, und genau
+    -- deshalb war beim Entfernen der Spalte nicht zu sehen, dass dieser JOIN
+    -- noch eine zweite Aufgabe hat. GEMESSEN: „missing FROM-clause entry for
+    -- table s" in vier Testdateien.
     LEFT JOIN sets s ON s.user_id = m.user_id AND s.set_number = m.set_number
     -- Der Name aus dem Vorrat (Migration 0031: die Zeile traegt eine ID).
     -- LEFT JOIN, damit eine Figur ohne Ort nicht aus der Liste faellt.
@@ -200,9 +220,9 @@ async function getMinifigStats(userId: number | number[]) {
            COALESCE(SUM(g.menge), 0)::int AS total_quantity,
            COUNT(*) FILTER (WHERE g.source = 'manual')::int AS manual
       FROM (
-        SELECT m.source, SUM(m.quantity * COALESCE(s.quantity, 1)) AS menge
+        SELECT m.source, SUM(m.quantity * ${mengeAus('sm', 1)}) AS menge
           FROM minifigs m
-          LEFT JOIN sets s ON s.user_id = m.user_id AND s.set_number = m.set_number
+          ${mengeJoin('m')}
          WHERE m.user_id = ANY($1)
          GROUP BY LOWER(TRIM(m.fig_number)), m.source
       ) g`, [uids]);

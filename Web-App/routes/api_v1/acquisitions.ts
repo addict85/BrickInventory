@@ -32,6 +32,7 @@ import { loescheManuellesTeil, loescheManuelleFigur } from '../../utils/handlers
 import { sendeFehler, fehlerWerfen } from '../../utils/fehlerTexte';
 import type { FehlerCode } from '../../utils/fehlerTexte';
 import { blFigNummerAus } from '../../utils/blZuordnung';
+import { mengeNeuRechnen, mengeDesSets } from '../../utils/bestandsmenge';
 const router = express.Router();
 
 type AcqConfig = {
@@ -58,8 +59,10 @@ type AcqConfig = {
    * Sets haben keinen Fallback — leerer Preis bleibt leer.
    */
   resolvePrice: ((uid: any, keys: any[], cond?: string | null) => Promise<number | null>) | null;
-  /** Atomare Neuberechnung der Parent-Menge ($1=uid, danach keyVals). */
-  parentQuantitySql: string;
+  // parentQuantitySql stand hier: je Elementart eine eigene Anweisung fuer
+  // dieselbe Rechnung. Sie steht jetzt EINMAL in utils/bestandsmenge.ts, und
+  // `kind` oben sagt bereits, welche Tabelle gemeint ist — eine zweite Angabe
+  // koennte nur noch widersprechen.
   /** Latest-wins-Preisübernahme in die Parent-Zeile ($1=Preis, $2=uid, danach keyVals). */
   parentPriceSql: string | null;
   /**
@@ -77,7 +80,7 @@ type AcqConfig = {
    * „Gibt es noch ein Problem, wenn ein Kaufpreis entfernt wird, dass der
    * Eintrag noch sichtbar war?"
    *
-   * Ja, und zwar an mehreren Stellen. parentQuantitySql setzte die Menge auf 0
+   * Ja, und zwar an mehreren Stellen. Die Mengen-Neuberechnung setzte sie auf 0
    * und liess die Elternzeile stehen. Nachgemessen mit einem einzelnen Konto
    * und zwei Sets, eines davon mit gelöschtem Kaufpreis:
    *
@@ -120,10 +123,33 @@ function registerAcquisitionRoutes(cfg: AcqConfig) {
  * einem Abbruch bliebe genau der Geistereintrag zurück, den das hier
  * verhindern soll.
  */
-async function raeumeLeerenBestand(tx: any, cfg: any, ownerId: number, keys: any[], row: any) {
+async function raeumeLeerenBestand(tx: any, cfg: any, ownerId: number, keys: any[], menge: number | null) {
   if (!cfg.cleanupWhenEmpty) return;
-  if ((parseInt(String(row?.quantity ?? 0)) || 0) > 0) return;
+  if ((menge ?? 0) > 0) return;
   await cfg.cleanupWhenEmpty(tx, ownerId, keys);
+}
+
+/**
+ * Die Stueckzahl der Bestandszeile aus den Erfassungen — und zwar ueber
+ * utils/bestandsmenge.ts, die einzige Stelle, die sie schreibt.
+ *
+ * Hier stand `cfg.parentQuantitySql`: je Elementart eine eigene Anweisung,
+ * dreimal dieselbe Rechnung. Daneben gab es SIEBEN weitere Schreibstellen,
+ * die die Spalte fortschrieben — und sie sind auseinandergelaufen (der Befund
+ * steht in utils/bestandsmenge.ts).
+ */
+async function mengeDesBestands(tx: any, cfg: any, ownerId: number, keys: any[]) {
+  // Sets und die beiden anderen Arten gehen verschiedene Wege, und das ist
+  // der ZWISCHENSTAND mit Ansage (siehe utils/bestandsmenge.ts):
+  //
+  //   Set            die Spalte ist mit Migration 0036 weg → nur LESEN
+  //   Teil / Figur   die Spalte gibt es noch → neu rechnen und SCHREIBEN
+  //
+  // Beide liefern dieselben drei Antworten: eine Zahl, 0 („Zeile da, nichts
+  // drin" → aufraeumen) oder null („Zeile gibt es nicht").
+  return cfg.kind === 'set'
+    ? mengeDesSets(ownerId, String(keys[0]), tx).catch(() => null)
+    : mengeNeuRechnen(cfg.kind, ownerId, keys, tx).catch(() => null);
 }
 
 async function withSetAggregate(uid: number, cfgTable: string, keys: any[], payload: any) {
@@ -239,7 +265,7 @@ async function withSetAggregate(uid: number, cfgTable: string, keys: any[], payl
         if (quantity !== undefined && quantity !== null) {
           const newQty = Math.max(1, parseInt(quantity) || 1);
           await tx.run(`UPDATE ${cfg.table} SET quantity=$1 WHERE id=$2`, [newQty, id]);
-          const q = await tx.get(cfg.parentQuantitySql, [ownerId, ...keys]).catch(() => null);
+          const q = await mengeDesBestands(tx, cfg, ownerId, keys);
           // Auch hier: Eine Erfassung auf 0 zu setzen ist zwar durch
           // Math.max(1, …) oben ausgeschlossen, aber die Regel gehört an die
           // Menge, nicht an den einen Weg dorthin.
@@ -340,11 +366,11 @@ async function withSetAggregate(uid: number, cfgTable: string, keys: any[], payl
             }
           }
         }
-        const row = await tx.get(cfg.parentQuantitySql, [ownerId, ...keys]).catch(() => null);
-        await raeumeLeerenBestand(tx, cfg, ownerId, keys, row);
-        return row;
+        const menge = await mengeDesBestands(tx, cfg, ownerId, keys);
+        await raeumeLeerenBestand(tx, cfg, ownerId, keys, menge);
+        return menge;
       });
-      res.json(await withSetAggregate(uid, cfg.table, keys, { success: true, new_quantity: row?.quantity ?? 0 }));
+      res.json(await withSetAggregate(uid, cfg.table, keys, { success: true, new_quantity: row ?? 0 }));
     } catch (e) { handleRouteError(res, e, undefined, req); }
   });
 }
@@ -396,9 +422,6 @@ registerAcquisitionRoutes({
   // Wieder „dieselbe Regel fehlt am zweiten Weg".
   resolvePrice: (uid, [sn], cond) =>
     getCurrentMarketPrice(sn, uid, cond || null),
-  parentQuantitySql: `UPDATE sets
-     SET quantity = COALESCE((SELECT SUM(quantity) FROM set_acquisitions WHERE user_id=$1 AND set_number=$2), 0)
-     WHERE user_id=$1 AND set_number=$2 RETURNING quantity`,
   // Keine Spiegelung mehr — und zwar nicht aus Versehen.
   //
   // Hier standen SETS_PREIS_SQL und SETS_ZUSTAND_SQL, und davor stand an
@@ -464,9 +487,6 @@ registerAcquisitionRoutes({
   // wurde nie ermittelt, also blieb die Zeile im Detailfenster leer.
   resolvePrice: (uid, [pn, cid], cond) =>
     require('../parts').getCurrentPartMarketPrice(pn, cid, uid, cond),
-  parentQuantitySql: `UPDATE parts
-     SET quantity = COALESCE((SELECT SUM(quantity) FROM part_acquisitions WHERE user_id=$1 AND part_number=$2 AND color_id=$3), 0)
-     WHERE user_id=$1 AND part_number=$2 AND color_id=$3 AND source='manual' RETURNING quantity`,
   // Keine Spiegelung mehr — dieselbe Begruendung wie bei den Sets weiter
   // oben, nur eine Migration spaeter: Mit 0035 gibt es unit_price,
   // purchase_price und condition auf der Teilezeile nicht mehr. Die
@@ -515,9 +535,6 @@ registerAcquisitionRoutes({
     const blNummer = await blFigNummerAus(uid, fn);
     return getCurrentFigMarketPrice(fn, uid, blNummer, cond);
   },
-  parentQuantitySql: `UPDATE minifigs
-     SET quantity = COALESCE((SELECT SUM(quantity) FROM minifig_acquisitions WHERE user_id=$1 AND fig_number=$2), 0)
-     WHERE user_id=$1 AND fig_number=$2 AND source='manual' RETURNING quantity`,
   // Keine Spiegelung mehr — siehe die Begruendung bei den Teilen darueber.
   parentPriceSql: null,
   parentConditionSql: null,

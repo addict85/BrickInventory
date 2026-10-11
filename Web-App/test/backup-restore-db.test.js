@@ -44,6 +44,7 @@ process.env.WEB_WORKERS = '1';
 
 const { ROOT } = require('./helpers/sources');
 const _req = require('./helpers/sources').buildAndRequire();
+const { haeltSet, mengeVon } = require('./helpers/bestand');
 const db = _req('db/database.js');
 
 /** pg_dump/psql finden — auf dem PATH oder in einer Distributions-Installation. */
@@ -137,9 +138,7 @@ test('Sicherung und Wiederherstellung', async (t) => {
 
     await db.run(`INSERT INTO users (username, password_hash) VALUES ('sicherung','x')`);
     const uid = (await db.get(`SELECT id FROM users WHERE username='sicherung'`)).id;
-    await db.run(
-      `INSERT INTO sets (user_id, set_number, quantity)
-       VALUES ($1,'10214-1',2)`, [uid]);
+    await haeltSet(db, uid, '10214-1', 0);  // Menge 0: die Erfassung dahinter traegt sie
     // Der Name steht seit Migration 0033 im Katalog. Auch ihn muss die
     // Sicherung zurueckbringen — und zwar aus einer ANDEREN Tabelle als die
     // Menge. Genau das ist der Fall, an dem eine unvollstaendige Sicherung
@@ -180,9 +179,14 @@ test('Sicherung und Wiederherstellung', async (t) => {
       `Das Zurückspielen scheiterte. psql sagt:\n${grund()}\n` +
       `pg_dump: ${fassung(pgDump)} · psql: ${fassung(psql)}`);
 
-    const s = await db.get(`SELECT set_number, quantity FROM sets`);
+    const s = await db.get(`SELECT user_id, set_number FROM sets`);
     assert.equal(s.set_number, '10214-1');
-    assert.equal(Number(s.quantity), 2);
+    // Die Menge aus den Erfassungen (Migration 0036) — und dadurch ist sie
+    // hier eine zweite Aussage ueber eine zweite Tabelle, genau wie Name und
+    // Jahr darunter: Ein Dump, der nur `sets` mitnimmt, laesst jedes Set bei
+    // null Exemplaren zurueck.
+    assert.equal(await mengeVon(db, s.user_id, '10214-1'), 2,
+      'Die Stückzahl ist nicht zurückgekommen — set_acquisitions fehlt im Dump');
     // Name und Jahr aus dem Katalog — eine ANDERE Tabelle als die Menge
     // darueber. Genau daran faellt eine unvollstaendige Sicherung auf: Ein
     // Dump, der nur den Bestand nimmt, laesst jedes Set namenlos zurueck.

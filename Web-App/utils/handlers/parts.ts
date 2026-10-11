@@ -19,6 +19,7 @@ import { getGlobalSetting } from '../../utils/settings';
 import { neuestesInventar, inventarKandidaten } from '../rbInventar';
 import { beideSchreibweisen } from '../setNummer';
 import { merkeBlFarbnummer, blFarbnummerAus } from '../blZuordnung';
+import { mengeJoin, mengeAus } from '../bestandsmenge';
 
 /**
  * Leseabfragen für Teile — inklusive der Ausweichebenen (CSV-Zwischenspeicher,
@@ -81,9 +82,9 @@ async function getPartsColors(userId: Blickfeld) {
   return db.all(`
     SELECT pcc.color_name, COALESCE(pcc.color_hex, rc.rgb) AS color_hex,
            COUNT(DISTINCT p.part_number)::int AS unique_parts,
-           SUM(p.quantity * COALESCE(s.quantity,1))::int AS total_quantity
+           SUM(p.quantity * ${mengeAus('sm', 1)})::int AS total_quantity
     FROM parts p
-    LEFT JOIN sets s ON s.user_id = p.user_id AND s.set_number = p.set_number
+    ${mengeJoin('p')}
     LEFT JOIN part_color_catalog pcc ON pcc.part_number = p.part_number
                                     AND pcc.color_id    = p.color_id
     LEFT JOIN rb_colors rc ON rc.id = p.color_id
@@ -422,7 +423,10 @@ async function getParts(userId: Blickfeld, query: any = {}) {
   // Der JSON-Typ von total_quantity darf nicht vom Zweig abhängen —
   // SUM(BIGINT) käme als Zahl, SUM(INTEGER) und die rohe BIGINT-Spalte als
   // Text. Haushalt, Einzelkonto und Live-Abfrage liefern jetzt dieselbe Form.
-  const qtyExpr   = set_number ? 'SUM(p.quantity)::int' : 'SUM(p.quantity * COALESCE(s.quantity, 1))::int';
+  // Die Set-Menge als Faktor, aus den Erfassungen (Migration 0036). Mit
+  // set_number-Filter entfaellt der Faktor: Dort geht es um die Teile EINES
+  // Sets, nicht um den Bestand.
+  const qtyExpr   = set_number ? 'SUM(p.quantity)::int' : `SUM(p.quantity * ${mengeAus('sm', 1)})::int`;
   // Der Vorrat haengt in BEIDEN Zweigen mit dran: Seit Migration 0031 traegt
   // die Zeile eine ID, der Name steht in storage_locations. LEFT JOIN, damit
   // ein Teil ohne Ort nicht aus der Liste faellt.
@@ -445,8 +449,12 @@ async function getParts(userId: Blickfeld, query: any = {}) {
   + ' LEFT JOIN set_parts_catalog spc ON spc.set_number  = p.set_number'
   + '                                AND spc.part_number = p.part_number'
   + '                                AND spc.color_id    = p.color_id';
-  const joinClause = (set_number ? 'FROM parts p' :
-    'FROM parts p LEFT JOIN sets s ON s.user_id = p.user_id AND s.set_number = p.set_number')
+  // Ohne set_number-Filter haengt die Set-Menge mit dran (der Faktor in
+  // qtyExpr). Mit Filter nicht: Dort geht es um die Teile EINES Sets.
+  //
+  // Hier stand ein LEFT JOIN auf `sets` — er diente allein der Spalte
+  // s.quantity, und die ist mit Migration 0036 weg.
+  const joinClause = (set_number ? 'FROM parts p' : `FROM parts p ${mengeJoin('p')}`)
     + lagerJoin + katalogJoin;
 
   // Count for pagination.
@@ -654,9 +662,9 @@ async function getPartsStats(userId: Blickfeld) {
   const row = await db.get(`
     SELECT COUNT(DISTINCT p.part_number) AS unique_parts,
            COUNT(DISTINCT p.color_id)    AS unique_colors,
-           SUM(p.quantity * COALESCE(s.quantity, 1)) AS total_parts
+           SUM(p.quantity * ${mengeAus('sm', 1)}) AS total_parts
     FROM parts p
-    LEFT JOIN sets s ON s.user_id = p.user_id AND s.set_number = p.set_number
+    ${mengeJoin('p')}
     WHERE p.user_id = ANY($1) AND COALESCE(p.source, 'set') <> 'manual'`, [uids]);
   return {
     unique_parts:  parseInt(row?.unique_parts  || 0),
@@ -882,7 +890,9 @@ export async function getOwnedQuantities(
   // `parts` Zeilen ohne passendes Set enthalten kann: manuell erfasste Teile
   // haben gar keine set_number, und eine Zeile, deren Set später gelöscht
   // wurde, hätte sonst den ganzen Posten aus der Antwort geworfen.
-  // COALESCE(s.quantity, 1) heisst dann „einmal" — die alte Rechnung.
+  // Die Set-Menge kommt seit Migration 0036 aus den Erfassungen; mengeAus()
+  // mit `fehlt = 1` heisst dann „einmal" — dieselbe Rechnung wie vorher mit
+  // COALESCE(s.quantity, 1).
   //
   // `lose` bleibt unberührt: Manuell erfasste Teile hängen an keinem Set, und
   // eine Stückzahl gibt es dort nicht zu multiplizieren.
@@ -891,13 +901,12 @@ export async function getOwnedQuantities(
             COALESCE(p.color_id, 0)                                   AS color_id,
             COALESCE(SUM(CASE WHEN COALESCE(p.source,'set') = 'manual'
                               THEN p.quantity
-                              ELSE p.quantity * COALESCE(s.quantity, 1)
+                              ELSE p.quantity * ${mengeAus('sm', 1)}
                          END), 0)::int                                AS gesamt,
             COALESCE(SUM(CASE WHEN COALESCE(p.source,'set') = 'manual'
                               THEN p.quantity ELSE 0 END), 0)::int    AS lose
        FROM parts p
-       LEFT JOIN sets s
-         ON s.user_id = p.user_id AND s.set_number = p.set_number
+       ${mengeJoin('p')}
        JOIN unnest($2::text[], $3::int[]) AS g(part_number, color_id)
          ON g.part_number = p.part_number AND g.color_id = COALESCE(p.color_id, 0)
       WHERE p.user_id = ANY($1)
@@ -933,13 +942,12 @@ export async function getOwnedQuantities(
     `SELECT m.fig_number                                                AS part_number,
             COALESCE(SUM(CASE WHEN COALESCE(m.source,'set') = 'manual'
                               THEN m.quantity
-                              ELSE m.quantity * COALESCE(s.quantity, 1)
+                              ELSE m.quantity * ${mengeAus('sm', 1)}
                          END), 0)::int                                  AS gesamt,
             COALESCE(SUM(CASE WHEN COALESCE(m.source,'set') = 'manual'
                               THEN m.quantity ELSE 0 END), 0)::int      AS lose
        FROM minifigs m
-       LEFT JOIN sets s
-         ON s.user_id = m.user_id AND s.set_number = m.set_number
+       ${mengeJoin('m')}
        JOIN unnest($2::text[]) AS g(fig_number)
          ON g.fig_number = m.fig_number
       WHERE m.user_id = ANY($1)

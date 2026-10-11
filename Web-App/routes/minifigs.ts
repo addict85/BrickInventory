@@ -56,6 +56,7 @@ import { csvEmpfang } from '../utils/dateiEmpfang';
 import { sendeFehler } from '../utils/fehlerTexte';
 import { normalisiereLagerort, setzeLagerort } from '../utils/lagerort';
 import { merkeFigur } from '../utils/katalogPflege';
+import { mengeNeuRechnen } from '../utils/bestandsmenge';
 
 router.use(requireLogin);
 
@@ -225,9 +226,9 @@ async function addManualFigIntern(uid: number, body: any) {
     // Vorher endete der Pfad hier: Eine erneut erfasste Figur bekam keine neue
     // Zeile in minifig_acquisitions — kein Kaufpreis, kein abweichendes
     // Erfassungsdatum. Gleicher Fehler wie zuvor bei den manuellen Teilen.
-    await db.run('UPDATE minifigs SET quantity = quantity + $1 WHERE id = $2',
-      [quantity, existing.id]);
-
+    // Die Menge wird NICHT hier fortgeschrieben: Die Erfassung unten ist die
+    // Wahrheit, und mengeNeuRechnen() leitet die Spalte daraus ab
+    // (utils/bestandsmenge.ts). Hier stand `quantity = quantity + $1`.
     const re = await resolveManualFigPurchase(uid, {
       figNumber: num, blFigNumber: blNum, unitPrice: unit_price, condition,
     });
@@ -240,6 +241,7 @@ async function addManualFigIntern(uid: number, body: any) {
       price: re.erfassungsPreis,
       condition: re.effectiveCondition, createdAt: acquiredAt,
     }).catch(e => console.error('[addManualFig] Zweiterfassung:', e.message));
+    await mengeNeuRechnen('fig', uid, [num]);
 
     return { action: 'updated', fig_number: num };
   }
@@ -257,10 +259,12 @@ async function addManualFigIntern(uid: number, body: any) {
   // Preis und Zustand nicht mehr an die Bestandszeile (Migration 0035) — sie
   // stehen in der Erfassung, die recordAcquisitionForDay() gleich darunter
   // anlegt.
+  // Menge 0: Sie entsteht aus der Erfassung, die recordAcquisitionForDay()
+  // weiter unten anlegt (utils/bestandsmenge.ts).
   await db.run(`
     INSERT INTO minifigs (user_id, set_number, fig_number, bl_fig_number, quantity, source)
-    VALUES ($1, NULL, $2, $3, $4, 'manual') ON CONFLICT DO NOTHING`,
-    [uid, num, blNum, quantity]);
+    VALUES ($1, NULL, $2, $3, 0, 'manual') ON CONFLICT DO NOTHING`,
+    [uid, num, blNum]);
   // Record acquisition — mit dem tatsächlich verwendeten Kaufpreis (Marktpreis
   // bzw. Teile-Schätzung, falls kein Preis eingegeben wurde), damit die
   // Erfassungshistorie und die PnL-Berechnung stimmen.
@@ -270,6 +274,7 @@ async function addManualFigIntern(uid: number, body: any) {
     quantity, price: erfassungsPreis,
     condition: effectiveCondition, createdAt: acquiredAt,
   }).catch(logAndContinue(`minifiguren:anlegen ${num}`));
+  await mengeNeuRechnen('fig', uid, [num]);
 
   // Zwilling zu addManualPart — siehe die Begruendung dort (Nachtrag 167).
   return { action: 'added', fig_number: num, fig_name, price_from_condition: preisAusZustand };
@@ -296,8 +301,10 @@ async function updateManualFig(uid: number, figNumber: string, body: any) {
 
   if (body.quantity !== undefined) {
     const newQty = parseInt(body.quantity) || 1;
-    await db.run('UPDATE minifigs SET quantity=$1 WHERE id=$2', [newQty, existing.id]);
-    try {
+    // Erst die Erfassungen, dann die Menge daraus — und ohne das try/catch,
+    // das seinen Fehler verschluckte. Die Begruendung steht ausgeschrieben
+    // bei updateManualPart in routes/parts.ts; es ist dieselbe Stelle.
+    {
       const acqs = await db.all('SELECT id, quantity, created_at FROM minifig_acquisitions WHERE user_id=$1 AND fig_number=$2 ORDER BY created_at DESC, id DESC',
         [uid, figNumber]);
       const currentTotal = acqs.reduce((s,r)=>s+r.quantity,0);
@@ -350,7 +357,8 @@ async function updateManualFig(uid: number, figNumber: string, body: any) {
           rem -= take;
         }
       }
-    } catch(e) { console.error('[updateManualFig] acq tracking:', fehlertext(e)); }
+    }
+    await mengeNeuRechnen('fig', uid, [figNumber]);
   }
   let newBlNum = existing.bl_fig_number;
   if (body.bl_fig_number !== undefined) {
@@ -449,11 +457,13 @@ router.post('/import/csv', csvEmpfang.single('file'), async (req: LoggedInReques
           [uid, figNumber]);
 
         if (existing) {
-          await db.run('UPDATE minifigs SET quantity = quantity + $1 WHERE id = $2', [qty, existing.id]);
+          // Keine Mengenaenderung hier — die Erfassung unten ist die Wahrheit
+          // (utils/bestandsmenge.ts).
           // Erfassung auch beim Aufstocken anlegen (Zustand/Preis/Datum erhalten).
           await recordAcquisitionForDay('fig', uid, [figNumber],
             { quantity: qty, price: erfassungsPreis, condition: effectiveCondition||'N', createdAt: acqDate }
           ).catch(logAndContinue(`minifigs:import ${figNumber} (aufgestockt)`));
+          await mengeNeuRechnen('fig', uid, [figNumber]);
           updated++;
           results.push({ fig_number: figNumber, action: 'updated' });
         } else {
@@ -462,12 +472,14 @@ router.post('/import/csv', csvEmpfang.single('file'), async (req: LoggedInReques
           await merkeFigur(figNumber, figName, imageUrl);
           // Preis und Zustand in die Erfassung (Migration 0035) — siehe
           // addManualFig.
+          // Menge 0 — siehe addManualFig.
           await db.run(
-            "INSERT INTO minifigs (user_id, set_number, fig_number, bl_fig_number, quantity, source) VALUES ($1,NULL,$2,$3,$4,'manual') ON CONFLICT DO NOTHING",
-            [uid, figNumber, blFigNumber, qty]);
+            "INSERT INTO minifigs (user_id, set_number, fig_number, bl_fig_number, quantity, source) VALUES ($1,NULL,$2,$3,0,'manual') ON CONFLICT DO NOTHING",
+            [uid, figNumber, blFigNumber]);
           await recordAcquisitionForDay('fig', uid, [figNumber],
             { quantity: qty, price: erfassungsPreis, condition: effectiveCondition||'N', createdAt: acqDate }
           ).catch(logAndContinue(`minifigs:import ${figNumber} (neu)`));
+          await mengeNeuRechnen('fig', uid, [figNumber]);
           added++;
           results.push({ fig_number: figNumber, action: 'added', fig_name: figName });
         }

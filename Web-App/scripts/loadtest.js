@@ -106,30 +106,67 @@ async function seed() {
   await db.run(`INSERT INTO users (username, password_hash) VALUES ($1, 'x')`, [USER.username]);
   USER.id = (await db.get(`SELECT id FROM users WHERE username = $1`, [USER.username])).id;
 
+  // ── Dieser Aufbau war kaputt, und niemand hat es gemerkt ─────────────────
+  //
+  // Er schrieb in sets.name/year/theme/pieces/minifigs (Migration 0033),
+  // sets.purchase_price/condition (0032), parts.part_name/color_name (0034)
+  // und minifigs.fig_name (0034) — alles Spalten, die es nicht mehr gibt.
+  // Das Skript waere also schon seit Migration 0032 an der ersten Anweisung
+  // gescheitert.
+  //
+  // Aufgefallen ist es erst jetzt, beim Zaehlen der Leser von sets.quantity,
+  // denn KEIN Test ruft dieses Skript auf: Es ist ein Messwerkzeug von Hand.
+  // Ein Messwerkzeug, das nicht laeuft, ist schlimmer als keines — man greift
+  // danach, wenn man eine Zahl braucht.
+  //
+  // Die Stammdaten gehen jetzt in die Kataloge, Preis, Zustand und Menge in
+  // die Erfassungen. Die GROESSENORDNUNGEN bleiben dieselben, damit die
+  // Messungen aus Durchgang 119 vergleichbar bleiben.
   await db.run(
-    `INSERT INTO sets (user_id, set_number, name, year, theme, pieces, minifigs, quantity, purchase_price, condition)
-     SELECT $1, (10000+g)||'-1', 'Set '||g, 1990 + (g % 35), 'Theme '||(g%12),
-            100 + (g*7)%8000, g%9, 1 + (g%3), 20 + (g%400), CASE WHEN g%3=0 THEN 'U' ELSE 'N' END
-       FROM generate_series(1, $2) g`, [USER.id, N_SETS]);
+    `INSERT INTO set_catalog (set_number, name, year, theme, pieces, minifigs)
+     SELECT (10000+g)||'-1', 'Set '||g, 1990 + (g % 35), 'Theme '||(g%12),
+            100 + (g*7)%8000, g%9
+       FROM generate_series(1, $1) g
+     ON CONFLICT (set_number) DO NOTHING`, [N_SETS]);
+  await db.run(
+    `INSERT INTO sets (user_id, set_number)
+     SELECT $1, (10000+g)||'-1' FROM generate_series(1, $2) g`, [USER.id, N_SETS]);
 
-  // Erfassungen: im Schnitt gut eine je Set, verteilt über zwei Jahre.
+  // Erfassungen: Sie sind seit Migration 0036 die EINZIGE Quelle der
+  // Stueckzahl. 1 bis 3 Exemplare je Set, verteilt über zwei Jahre.
   await db.run(
     `INSERT INTO set_acquisitions (user_id, set_number, purchase_price, condition, quantity, created_at)
-     SELECT $1, (10000+g)||'-1', 20 + (g%400), CASE WHEN g%3=0 THEN 'U' ELSE 'N' END, 1,
+     SELECT $1, (10000+g)||'-1', 20 + (g%400), CASE WHEN g%3=0 THEN 'U' ELSE 'N' END,
+            1 + (g%3),
             NOW() - ((g % 700) || ' days')::interval
        FROM generate_series(1, $2) g`, [USER.id, N_SETS]);
 
   // Teile: ~75 je Set — das ergibt bei 800 Sets die Grössenordnung 60'000
   // aus den Messungen von Durchgang 119.
   await db.run(
-    `INSERT INTO parts (user_id, set_number, part_number, part_name, color_id, color_name, quantity)
-     SELECT $1, (10000+g)||'-1', (3000 + (g*13 + p) % 900)::text, 'Part '||((g*13+p)%900),
-            (p % 60), 'Color '||(p % 60), 1 + (p % 4)
+    `INSERT INTO part_catalog (part_number, part_name)
+     SELECT DISTINCT (3000 + (g*13 + p) % 900)::text, 'Part '||((g*13+p)%900)
+       FROM generate_series(1, $1) g, generate_series(1, 75) p
+     ON CONFLICT (part_number) DO NOTHING`, [N_SETS]);
+  await db.run(
+    `INSERT INTO part_color_catalog (part_number, color_id, color_name)
+     SELECT DISTINCT (3000 + (g*13 + p) % 900)::text, (p % 60), 'Color '||(p % 60)
+       FROM generate_series(1, $1) g, generate_series(1, 75) p
+     ON CONFLICT (part_number, color_id) DO NOTHING`, [N_SETS]);
+  await db.run(
+    `INSERT INTO parts (user_id, set_number, part_number, color_id, quantity)
+     SELECT $1, (10000+g)||'-1', (3000 + (g*13 + p) % 900)::text,
+            (p % 60), 1 + (p % 4)
        FROM generate_series(1, $2) g, generate_series(1, 75) p`, [USER.id, N_SETS]);
 
   await db.run(
-    `INSERT INTO minifigs (user_id, set_number, fig_number, fig_name, quantity)
-     SELECT $1, (10000+g)||'-1', 'fig'||((g*3+m)%2500), 'Minifig '||((g*3+m)%2500), 1
+    `INSERT INTO minifigs_catalog (fig_number, fig_name)
+     SELECT DISTINCT 'fig'||((g*3+m)%2500), 'Minifig '||((g*3+m)%2500)
+       FROM generate_series(1, $1) g, generate_series(1, 4) m
+     ON CONFLICT (fig_number) DO NOTHING`, [N_SETS]);
+  await db.run(
+    `INSERT INTO minifigs (user_id, set_number, fig_number, quantity)
+     SELECT $1, (10000+g)||'-1', 'fig'||((g*3+m)%2500), 1
        FROM generate_series(1, $2) g, generate_series(1, 4) m`, [USER.id, N_SETS]);
 
   // Marktpreise je Zustand — ohne sie rechnen die Finanz-Endpunkte im Leeren.

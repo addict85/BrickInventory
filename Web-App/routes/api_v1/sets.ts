@@ -34,6 +34,7 @@ import { neuestesInventar } from '../../utils/rbInventar';
 import { mitVersion, ohneVersion } from '../../utils/setNummer';
 import { figurenAusKatalog } from '../../utils/minifigsImport';
 import { sendeFehler } from '../../utils/fehlerTexte';
+import { mengeSkalar } from '../../utils/bestandsmenge';
 const router = express.Router();
 
 // ── GIBT ES DIESES SET SCHON? ────────────────────────────────────────────────
@@ -803,7 +804,12 @@ router.get('/sets/:setNumber/price', requireToken, async (req: AuthedRequest, re
     // seit Migration 0031 steht an der Zeile nur die ID. Ohne die Spalte waere
     // das Feld im Detaildialog leer — und zwar in beiden Oberflaechen.
     const set = await db.get(
-      `SELECT s.id, s.user_id, s.set_number, s.quantity, s.added_at, s.updated_at, s.storage_id,
+      // Die Menge aus den Erfassungen (Migration 0036 hat s.quantity
+      // geloescht). Die Unterabfrage-Form und nicht der JOIN, weil diese
+      // Abfrage GENAU EINE Zeile holt: ein Indexzugriff ueber
+      // idx_acq_user_set statt einer Gruppierung ueber alle Erfassungen.
+      `SELECT s.id, s.user_id, s.set_number, ${mengeSkalar('s')}::int AS quantity,
+              s.added_at, s.updated_at, s.storage_id,
               lo.name AS storage,
               c.name, c.year, c.theme, c.pieces, c.minifigs,
               c.image_url, c.image_local

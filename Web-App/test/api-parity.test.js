@@ -52,6 +52,7 @@ process.env.WEB_WORKERS = '1';
 // Nach dist/ bauen statt in-place — siehe helpers/sources.js.
 const _req = require('./helpers/sources').buildAndRequire();
 const { routerEinhaengungen } = require('./helpers/sources');
+const { haeltSet } = require('./helpers/bestand');
 
 const db = _req('db/database.js');
 const express = require(path.join(ROOT, 'node_modules', 'express'));
@@ -107,10 +108,8 @@ async function seed() {
     [_req('utils/auth.js').hashToken(TOKEN), USER.id]);
 
   // Sets: eines mit gemischten Erfassungen (Zustand-Aggregat!), eines ohne
-  await db.run(
-    `INSERT INTO sets (user_id, set_number, quantity)
-     VALUES ($1,'75192-1',2),
-            ($1,'6346-1',1) ON CONFLICT DO NOTHING`, [USER.id]);
+  await haeltSet(db, USER.id, '75192-1', 0, { egalWennDa: true });  // Menge 0: die Erfassung dahinter traegt sie
+  await haeltSet(db, USER.id, '6346-1', 0, { egalWennDa: true });  // Menge 0: die Erfassung dahinter traegt sie
   await db.run(
     `INSERT INTO set_acquisitions (user_id, set_number, purchase_price, condition)
      VALUES ($1,'75192-1',649.99,'N'), ($1,'75192-1',420.00,'U'), ($1,'6346-1',25.00,'N') ON CONFLICT DO NOTHING`, [USER.id]);
@@ -146,10 +145,8 @@ async function seed() {
             ('75192-1','N','CHF',710,860,1010,870,NOW() - INTERVAL '1 day') ON CONFLICT DO NOTHING`).catch(() => {});
 
   // Zwei identische Wegwerf-Sets für die Schreib-Paritätstests (PUT/DELETE)
-  await db.run(
-    `INSERT INTO sets (user_id, set_number, quantity)
-     VALUES ($1,'40567-1',1),
-            ($1,'40568-1',1) ON CONFLICT DO NOTHING`, [USER.id]);
+  await haeltSet(db, USER.id, '40567-1', 0, { egalWennDa: true });  // Menge 0: die Erfassung dahinter traegt sie
+  await haeltSet(db, USER.id, '40568-1', 0, { egalWennDa: true });  // Menge 0: die Erfassung dahinter traegt sie
   await db.run(
     `INSERT INTO set_acquisitions (user_id, set_number, quantity, purchase_price, condition)
      VALUES ($1,'40567-1',1,35.00,'N'), ($1,'40568-1',1,35.00,'N') ON CONFLICT DO NOTHING`, [USER.id]);

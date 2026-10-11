@@ -30,6 +30,7 @@ process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:t
 process.env.WEB_WORKERS = '1';
 
 const _req = require('./helpers/sources').buildAndRequire();
+const { haeltSet } = require('./helpers/bestand');
 const db = _req('db/database.js');
 
 const U = {};
@@ -108,8 +109,7 @@ test('Lagerort-Vorrat gegen echte Datenbank', { concurrency: 1 }, async (t) => {
     // Marcos „man kann auch gleich neue Auswahlwerte erfassen". Ohne das
     // stünde der Ort am Set, fehlte aber in der Liste, aus der er beim
     // nächsten Mal gewählt werden soll.
-    await db.run(`INSERT INTO sets (user_id, set_number, quantity)
-                  VALUES ($1,'10179-1',1)`, [U.enkel]);
+    await haeltSet(db, U.enkel, '10179-1', 1);
     assert.equal(await L.setzeLagerort('set', [U.enkel], ['10179-1'], 'Unterm Bett'), 1);
     assert.ok((await L.orteVon([U.enkel])).some(o => o.name === 'Unterm Bett'),
       'Der frisch getippte Ort fehlt im Vorrat');

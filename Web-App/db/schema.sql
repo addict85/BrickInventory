@@ -45,6 +45,11 @@ CREATE TABLE IF NOT EXISTS sets (
   theme       TEXT,
   pieces      INTEGER,
   minifigs    INTEGER,
+  -- quantity steht hier weiter, obwohl Migration 0036 sie loescht: Der
+  -- Nachtrag in Migration 0032 LIEST sie (`COALESCE(s.quantity, 0)`), um die
+  -- fehlenden Erfassungen anzulegen, und der in 0036 ebenso. Fehlte sie auf
+  -- einer frischen Datenbank, braeche die Kette ab — dieselbe Begruendung wie
+  -- bei purchase_price und condition weiter unten.
   quantity    INTEGER DEFAULT 1,
   image_url   TEXT,
   image_local TEXT,

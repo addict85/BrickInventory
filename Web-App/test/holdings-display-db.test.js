@@ -39,6 +39,7 @@ process.env.WEB_WORKERS = '1';
 
 const _req = require('./helpers/sources').buildAndRequire();
 const db = _req('db/database.js');
+const { haeltSet, erfasse } = require('./helpers/bestand');
 
 test('Diagramm und Besitzer folgen dem Bestand', { concurrency: 1 }, async (t) => {
   try { await db.initSchema(); }
@@ -78,11 +79,9 @@ test('Diagramm und Besitzer folgen dem Bestand', { concurrency: 1 }, async (t) =
   }
 
   // Hauptkonto: Kaufpreis gelöscht → Menge 0, keine Erfassung mehr.
-  await db.run(`INSERT INTO sets (user_id, set_number, quantity)
-                VALUES ($1,$2,0)`, [hauptId, SN]);
+  await haeltSet(db, hauptId, SN, 0);  // Menge 0: die Erfassung dahinter traegt sie
   // Unterkonto: ein GEBRAUCHTES Exemplar mit Kaufpreis.
-  await db.run(`INSERT INTO sets (user_id, set_number, quantity)
-                VALUES ($1,$2,1)`, [subId, SN]);
+  await haeltSet(db, subId, SN, 0);  // Menge 0: die Erfassung dahinter traegt sie
   await db.run(`INSERT INTO set_acquisitions (user_id,set_number,purchase_price,condition,quantity)
                 VALUES ($1,$2,3.94,'U',1)`, [subId, SN]);
 
@@ -139,7 +138,11 @@ test('Diagramm und Besitzer folgen dem Bestand', { concurrency: 1 }, async (t) =
     await t.test('hält wieder jemand ein Exemplar, kommt das Label zurück', async () => {
       // Ohne diese Gegenrichtung wäre der Test auch grün, wenn das Label ganz
       // verschwände.
-      await db.run(`UPDATE sets SET quantity=2 WHERE user_id=$1 AND set_number=$2`, [hauptId, SN]);
+      // „Wieder ein Exemplar halten" heisst seit Migration 0036: eine
+      // Erfassung anlegen. Hier stand `UPDATE sets SET quantity=2` — die
+      // Spalte gibt es nicht mehr, und das war auch vorher schon die falsche
+      // Richtung: Die Menge war ein Spiegel der Erfassungen.
+      await erfasse(db, hauptId, SN, 2);
       const r = await getSets([hauptId, subId], {});
       const namen = (r.sets.find(s => s.set_number === SN).owners || []).map(o => o.username).sort();
       assert.deepEqual(namen, [HAUPT, SUB].sort(), 'beide Konten halten jetzt Exemplare');

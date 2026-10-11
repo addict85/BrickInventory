@@ -40,6 +40,7 @@ process.env.WEB_WORKERS = '1';
 
 const _req = require('./helpers/sources').buildAndRequire();
 const { testServer } = require('./helpers/server');
+const { haeltSet } = require('./helpers/bestand');
 const db = _req('db/database.js');
 
 async function erreichbar() {
@@ -65,8 +66,9 @@ test('Alles-Loeschen fasst die verknuepften Konten nicht an', async (t) => {
 
   // 75192-1 besitzen BEIDE — das ist der Fall, den eine Prüfung auf
   // „fremde Setnummern bleiben stehen" allein nicht fängt.
-  await db.run(`INSERT INTO sets (user_id, set_number, quantity) VALUES
-      ($1,'75192-1',1), ($2,'75192-1',1), ($2,'21318-1',1)`, [haupt, kind]);
+  await haeltSet(db, haupt, '75192-1', 1);
+  await haeltSet(db, kind, '75192-1', 1);
+  await haeltSet(db, kind, '21318-1', 1);
   await db.run(`INSERT INTO parts (user_id,set_number,part_number,color_id,quantity,source)
                 VALUES ($1,'21318-1','3001',4,10,'set')`, [kind]);
   await db.run(`INSERT INTO minifigs (user_id,set_number,fig_number,quantity,source)

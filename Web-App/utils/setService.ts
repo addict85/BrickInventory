@@ -16,6 +16,7 @@ import { generateThumb } from './thumbs';
 import * as nachErfassung from '../jobs/nachErfassung';
 import { normalisiereSetNummer } from './setNummer';
 import { normalisiereLagerort, setzeLagerort } from './lagerort';
+import { mengeSummeSql } from './bestandsmenge';
 
 /**
  * Sets anlegen, ändern und ausgeben — der Kern hinter den Set-Routen.
@@ -346,10 +347,20 @@ async function addSetIntern(setNumber: string, quantity: number, userId: number,
     // Schreibwege (Mengenänderung, Verschieben, Eigentümerwechsel) hielten
     // diese Sperre längst; ausgerechnet das Erfassen nicht.
     await withInventoryLock(userId, normalized, async (tx) => {
-      await tx.run('UPDATE sets SET quantity = quantity + $1 WHERE user_id = $2 AND set_number = $3', [quantity, userId, normalized]);
-      // Hier folgte ein UPDATE auf sets.purchase_price („Preis der letzten
-      // Erfassung"). Die Spalte ist mit Migration 0032 weg; recordAcquisition()
-      // oben schreibt den Preis an seinen einzigen Ort.
+      // ── Erst die Erfassung, dann die Menge daraus ──────────────────────
+      //
+      // Hier stand `UPDATE sets SET quantity = quantity + $1` VOR der
+      // Erfassung. Das war die zweite Schreibrichtung: Zwei Stellen fuehrten
+      // dieselbe Zahl fort, und genau sie sind auseinandergelaufen (der
+      // Befund steht im Kommentar darueber).
+      //
+      // Jetzt schreibt nur noch die Erfassung. Die Menge ist seit Migration
+      // 0036 keine Spalte mehr — sie wird beim LESEN aus den Erfassungen
+      // gerechnet (utils/bestandsmenge.ts).
+      //
+      // Hier folgte aussserdem ein UPDATE auf sets.purchase_price („Preis der
+      // letzten Erfassung"). Die Spalte ist mit Migration 0032 weg;
+      // recordAcquisition() schreibt den Preis an seinen einzigen Ort.
       await recordAcquisition(userId, normalized, quantity, reAddPrice, zustand, tx);
     });
     // During bulk CSV import, skip immediate background jobs to avoid DB pool exhaustion.
@@ -437,8 +448,15 @@ async function addSetIntern(setNumber: string, quantity: number, userId: number,
     // Bilder im Katalog (Migration 0033, Upsert oben). Der ON-CONFLICT-Zweig
     // hatte dafuer eigens ein `name=COALESCE(EXCLUDED.name,sets.name)` — die
     // Abschrift nachtragen, falls sie fehlte. Auch das faellt weg.
-    await tx.run('INSERT INTO sets (user_id,set_number,quantity) VALUES ($1,$2,$3) ON CONFLICT (user_id,set_number) DO UPDATE SET quantity=sets.quantity+EXCLUDED.quantity,updated_at=NOW()',
-      [userId, normalized, quantity]);
+    // Die Bestandszeile sagt nur noch: DIESES Konto haelt DIESES Set. Wie
+    // viele, steht in den Erfassungen — die Spalte ist mit Migration 0036 weg.
+    //
+    // Hier stand ein `DO UPDATE SET quantity=sets.quantity+EXCLUDED.quantity`:
+    // die zweite Schreibrichtung, an der die Zahlen auseinandergelaufen sind
+    // (der Befund steht in utils/bestandsmenge.ts). DO NOTHING statt DO
+    // UPDATE — gibt es die Zeile schon, ist nichts zu tun.
+    await tx.run('INSERT INTO sets (user_id,set_number) VALUES ($1,$2) ON CONFLICT (user_id,set_number) DO NOTHING',
+      [userId, normalized]);
     await recordAcquisition(userId, normalized, quantity, effectivePurchasePrice, effectiveCondition, tx);
   });
 
@@ -578,10 +596,14 @@ async function updateSet(uid: number, sn: string, body: any) {
     const gewuenschtGesamt = parseInt(body.quantity) || 0;
     const leseFeld = await scopeIds(uid);
     const gesamtVorher = (await db.get(
-      `SELECT COALESCE(SUM(quantity),0)::int q FROM sets WHERE user_id = ANY($1) AND set_number=$2`,
+      // Aus den Erfassungen, nicht aus sets.quantity — die Spalte ist mit
+      // Migration 0036 weg. Die Abfrage steht in utils/bestandsmenge.ts;
+      // derselbe Satz stand hier dreimal, und dreimal derselbe Satz heisst
+      // dreimal Gelegenheit, dass er beim naechsten Mal anders aussieht.
+      mengeSummeSql('blickfeld'),
       [leseFeld, sn]))?.q ?? 0;
     const eigenVorher = (await db.get(
-      `SELECT COALESCE(SUM(quantity),0)::int q FROM sets WHERE user_id = $1 AND set_number=$2`,
+      mengeSummeSql('eines'),
       [uid, sn]))?.q ?? 0;
     // Nach unten bei 0 gedeckelt: Die Exemplare eines anderen Kontos sind
     // nicht meine, ich kann sie nicht wegnehmen. Die Antwort trägt die
@@ -606,23 +628,24 @@ async function updateSet(uid: number, sn: string, body: any) {
         // Setnummer im Haushalt ueberhaupt?". Ohne diese Bedingung legte ein
         // Mengenregler eine Zeile fuer eine Nummer an, die niemand haelt.
         await db.run(
-          `INSERT INTO sets (user_id, set_number, quantity)
-           SELECT $1, set_number, 0
+          `INSERT INTO sets (user_id, set_number)
+           SELECT $1, set_number
              FROM sets WHERE user_id = ANY($2) AND set_number = $3
             ORDER BY id ASC LIMIT 1
            ON CONFLICT DO NOTHING`, [uid, leseFeld, sn])
-          // Scheitert dieses INSERT, trifft das UPDATE zwei Zeilen weiter NULL
-          // Zeilen — die Mengenaenderung geht verloren, waehrend
-          // adjustAcquisitionsToQuantity() trotzdem Erfassungen schreibt. Der
-          // Kommentar oben nennt genau diese Gefahr; still verschluckt werden
-          // darf sie deshalb nicht.
+          // Scheitert dieses INSERT, gibt es keine Bestandszeile — das Set
+          // erscheint in keiner Liste, waehrend adjustAcquisitionsToQuantity()
+          // trotzdem Erfassungen schreibt. Der Kommentar oben nennt genau
+          // diese Gefahr; still verschluckt werden darf sie deshalb nicht.
           .catch(logAndContinue(`sets:eigene Zeile anlegen ${sn}`));
       }
       // Der Marktpreis wird VOR der Sperre geholt (Netzaufruf); innerhalb
       // läuft nur noch Datenbankarbeit.
       const plan = await priceForNewAcquisition(uid, sn).catch(() => ({ price: null, condition: 'N' }));
       await withInventoryLock(uid, sn, async (tx) => {
-        await tx.run('UPDATE sets SET quantity = $1 WHERE user_id = $2 AND set_number = $3', [eigenZiel, uid, sn]);
+        // Nur noch die Erfassungen angleichen — sie SIND die Menge. Hier
+        // stand davor ein `UPDATE sets SET quantity = $1`, also zwei Stellen
+        // fuer dieselbe Zahl (utils/bestandsmenge.ts).
         await adjustAcquisitionsToQuantity(uid, sn, eigenZiel, tx, plan);
         // Bleibt nichts übrig, verschwindet die eigene Zeile ganz — dieselbe
         // Regel wie beim Löschen des letzten Kaufpreises (Nachtrag 84), sonst
@@ -674,7 +697,9 @@ async function updateSet(uid: number, sn: string, body: any) {
   }
   // Die Gesamtmenge des Blickfelds NACH der Änderung — siehe Kopfkommentar.
   const nachher = await db.get(
-    `SELECT COALESCE(SUM(quantity),0)::int q FROM sets WHERE user_id = ANY($1) AND set_number=$2`,
+    // Aus den Erfassungen (Migration 0036) — siehe die Begruendung bei
+    // setQuantity weiter oben.
+    mengeSummeSql('blickfeld'),
     [await scopeIds(uid), sn]).catch(() => null);
   return { quantity: nachher?.q ?? 0 };
 }
@@ -704,7 +729,17 @@ async function updateSet(uid: number, sn: string, body: any) {
 // csv-export-acquisitions-db.test.js prüft genau diesen Fall.
 const SETS_CSV_SQL = `
   SELECT s.set_number,
-         CASE WHEN a.id IS NULL THEN s.quantity ELSE a.quantity END AS quantity,
+         -- Hier stand CASE WHEN a.id IS NULL THEN s.quantity ELSE a.quantity.
+         -- (Keine Gegenstriche: Der Kommentar steht in einem Template-Literal.)
+         -- Der Rueckfall auf die Set-Zeile ist weg: Migration 0036 hat die
+         -- Spalte geloescht, und Migration 0032 garantiert fuer jede Set-Zeile
+         -- eine Erfassung. Der LEFT JOIN bleibt, damit ein Export an einer
+         -- unerwarteten Lage nicht ganz ausfaellt.
+         -- COALESCE(..., 0) und nicht NULL: Eine Set-Zeile ohne Erfassung
+         -- bedeutet null Exemplare — dieselbe Lesart wie in
+         -- utils/bestandsmenge.ts (mengeAus mit 0). Ein leeres Feld im Export
+         -- hiesse „keine Angabe", und das ist eine andere Aussage.
+         COALESCE(a.quantity, 0) AS quantity,
          a.purchase_price AS purchase_price,
          COALESCE(a.condition, 'N') AS condition,
          CASE WHEN a.id IS NULL THEN ''

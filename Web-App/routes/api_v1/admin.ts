@@ -25,6 +25,7 @@ import { DAILY_JOBS } from '../../jobs/dailyScheduler';
 import { getGlobalSetting, setGlobalSetting, setGlobalTrigger, deleteGlobalSetting } from '../../utils/settings';
 import { ausRetryWarteschlange } from '../../clients/brickset';
 import { sendeFehler } from '../../utils/fehlerTexte';
+import { mengeSkalar } from '../../utils/bestandsmenge';
 const router = express.Router();
 
 /**
@@ -1021,7 +1022,11 @@ router.get('/admin/price-probe', requireApiAdmin, async (req: AuthedRequest, res
   const uid = req.apiUser.user_id;
 
   const [setRow, acqs, cacheRows, histRows, currRow, ttlRow] = await Promise.all([
-    db.get('SELECT set_number, quantity FROM sets WHERE user_id=$1 AND set_number=$2', [uid, setNumber]),
+    // Die Menge aus den Erfassungen (Migration 0036 hat sets.quantity
+    // geloescht). Die Probe soll zeigen, was die Bewertung sieht — und die
+    // sieht seitdem genau diese Summe.
+    db.get(`SELECT s.set_number, ${mengeSkalar('s')} AS quantity
+              FROM sets s WHERE s.user_id=$1 AND s.set_number=$2`, [uid, setNumber]),
     // Spalte heisst created_at, nicht added_at — daran scheiterte die Probe
     // zuvor mit einem 500er.
     db.all('SELECT quantity, condition, purchase_price, created_at FROM set_acquisitions WHERE user_id=$1 AND set_number=$2 ORDER BY created_at', [uid, setNumber]),

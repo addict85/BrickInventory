@@ -24,6 +24,7 @@ process.env.WEB_WORKERS = '1';
 const _req = require('./helpers/sources').buildAndRequire();
 const db = _req('db/database.js');
 const express = require(path.join(ROOT, 'node_modules', 'express'));
+const { haeltSet, mengeVon } = require('./helpers/bestand');
 
 /**
  * Die ECHTE Verschiebe-Route aufrufen — mit injizierter Session, wie in
@@ -100,11 +101,12 @@ async function seed() {
 
 /** Set + Erfassung für ein Konto anlegen. */
 async function giveSet(uid, sn, qty, price, cond = 'N', day = null) {
-  await db.run(
-    `INSERT INTO sets (user_id, set_number, quantity)
-     VALUES ($1,$2,$3)
-     ON CONFLICT (user_id, set_number) DO UPDATE SET quantity = sets.quantity + $3`,
-    [uid, sn, qty]);
+  // Nur die Bestandszeile. Die Menge traegt die Erfassung weiter unten
+  // (recordAcquisitionForDay) — seit Migration 0036 der einzige Ort. Das
+  // frueher noetige `DO UPDATE SET quantity = sets.quantity + $3` faellt damit
+  // weg: Zwei Aufrufe fuer dasselbe Set addieren sich jetzt dadurch, dass
+  // ZWEI Erfassungen entstehen.
+  await haeltSet(db, uid, sn, 0, { egalWennDa: true });
   // Der Name gehoert seit Migration 0033 in den Katalog, und zu jedem Set im
   // Bestand MUSS dort eine Zeile stehen (die Migration traegt sie nach und
   // prueft das). Die Vorlage stellt also die Lage her, die es wirklich gibt.
@@ -467,8 +469,8 @@ test('Haushalt gegen echte Datenbank', async (t) => {
     assert.equal(body.source_emptied, false, 'die Quelle behält ein Exemplar');
 
     // Mengen stimmen auf beiden Seiten …
-    const qty = async uid => (await db.get(
-      'SELECT quantity FROM sets WHERE user_id=$1 AND set_number=$2', [uid, '21318-1']))?.quantity;
+    // Aus den Erfassungen (Migration 0036) — die Spalte gibt es nicht mehr.
+    const qty = async uid => await mengeVon(db, uid, '21318-1');
     assert.equal(await qty(U.kindA), 1, 'Quelle nicht heruntergezählt');
     assert.equal(await qty(U.eltern), 1);
 
@@ -627,11 +629,9 @@ test('Haushalt gegen echte Datenbank', async (t) => {
     // Ausgangslage nachstellen: kindB besitzt 10290-1, die Teile liegen aber
     // noch bei kindA — und ein FREMDES Konto besitzt dasselbe Set ebenfalls,
     // darf aber nichts abbekommen.
-    await db.run(`INSERT INTO sets (user_id, set_number, quantity) VALUES ($1,'10290-1',1)
-                  ON CONFLICT (user_id,set_number) DO NOTHING`, [U.kindB]);
+    await haeltSet(db, U.kindB, '10290-1', 1, { egalWennDa: true });
     await db.run(`DELETE FROM sets WHERE user_id=$1 AND set_number='10290-1'`, [U.kindA]);
-    await db.run(`INSERT INTO sets (user_id, set_number, quantity) VALUES ($1,'10290-1',1)
-                  ON CONFLICT (user_id,set_number) DO NOTHING`, [U.fremd]);
+    await haeltSet(db, U.fremd, '10290-1', 1, { egalWennDa: true });
     await db.run(`INSERT INTO parts (user_id,set_number,part_number,color_id,quantity,source)
                   VALUES ($1,'10290-1','3005',1,7,'set')`, [U.kindA]);
     await db.run(`INSERT INTO minifigs (user_id,set_number,fig_number,quantity,source)

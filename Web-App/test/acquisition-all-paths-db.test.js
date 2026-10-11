@@ -36,6 +36,7 @@ process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:t
 process.env.WEB_WORKERS = '1';
 
 const _req = require('./helpers/sources').buildAndRequire();
+const { haeltSet } = require('./helpers/bestand');
 const db = _req('db/database.js');
 const express = require(path.join(ROOT, 'node_modules', 'express'));
 
@@ -85,8 +86,7 @@ test('Erfassungen des Unterkontos: ändern und löschen auf allen drei Elementar
     await db.run(`DELETE FROM parts WHERE part_number=$1`, [PN]);
     await db.run(`DELETE FROM minifig_acquisitions WHERE fig_number=$1`, [FN]);
     await db.run(`DELETE FROM minifigs WHERE fig_number=$1`, [FN]);
-    await db.run(`INSERT INTO sets (user_id, set_number, quantity)
-                  VALUES ($1,$2,1)`, [subId, SN]);
+    await haeltSet(db, subId, SN, 0);  // Menge 0: die Erfassung dahinter traegt sie
     await db.run(`INSERT INTO set_acquisitions (user_id,set_number,purchase_price,condition,quantity)
                   VALUES ($1,$2,10,'N',1)`, [subId, SN]);
     await db.run(`INSERT INTO parts (user_id,part_number,color_id,quantity,source)

@@ -20,6 +20,7 @@ const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
 const { execFileSync } = require('node:child_process');
+const { haeltSet } = require('./helpers/bestand');
 
 const ROOT = path.join(__dirname, '..');
 const DB_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
@@ -123,7 +124,8 @@ test('Zusammenfassung stimmt mit der Live-Abfrage überein und veraltet nicht',
   await clean();
   await db.run("INSERT INTO users (id,username,password_hash,is_admin) VALUES ($1,'psum','x',0) ON CONFLICT DO NOTHING", [U]);
   // Zwei Sets, das zweite doppelt vorhanden — die Menge muss mitmultipliziert werden.
-  await db.run("INSERT INTO sets (user_id,set_number,quantity) VALUES ($1,'A-1',1),($1,'B-1',2)", [U]);
+  await haeltSet(db, U, 'A-1', 1);
+  await haeltSet(db, U, 'B-1', 2);
   // Farbbezeichnung und Name stehen seit Migration 0034 in den Katalogen.
   // Hier nicht nebensaechlich: Die Prüfungen unten suchen die Gruppe über
   // `color_name === 'Rot'`.
@@ -165,8 +167,11 @@ test('Zusammenfassung stimmt mit der Live-Abfrage überein und veraltet nicht',
   const r2 = await H.getParts(U, { exclude_manual: '1', page: 1, page_size: 50 });
   assert.equal(r2.total, 3, 'nach dem Aufbau muss die neue Gruppe enthalten sein');
 
-  // Änderung an sets → ebenfalls
-  await db.run("UPDATE sets SET quantity=3 WHERE user_id=$1 AND set_number='B-1'", [U]);
+  // Änderung an der SETMENGE → ebenfalls. Sie steht seit Migration 0036 in
+  // der Erfassung, nicht mehr in sets.quantity — und deshalb hängt der
+  // Entwertungs-Trigger jetzt auch an set_acquisitions (utils/partsSummary.ts).
+  // Ohne ihn bliebe die Zahl hier stehen und sähe dabei plausibel aus.
+  await db.run("UPDATE set_acquisitions SET quantity=3 WHERE user_id=$1 AND set_number='B-1'", [U]);
   await PS.rebuildNow(U);
   const r3 = await H.getParts(U, { exclude_manual: '1', page: 1, page_size: 50 });
   const rot3 = r3.parts.find(p => p.color_name === 'Rot');
@@ -189,10 +194,25 @@ test('Zusammenfassung stimmt mit der Live-Abfrage überein und veraltet nicht',
                 VALUES ($1,'9999',7,1,'manual')`, [FREMD]);
   assert.equal(await PS.ensureFresh(U, { strict: true }), true,
     'Ein fremdes Konto darf die eigene Zusammenfassung nicht entwerten');
-  // Die eigene Änderung dagegen schon.
-  await db.run("UPDATE sets SET quantity=quantity WHERE user_id=$1 AND set_number='A-1'", [U]);
+  // Die eigene Änderung dagegen schon. `updated_at=updated_at` schreibt
+  // nichts Neues — der Trigger hängt am UPDATE, nicht am Wert. Hier stand
+  // `quantity=quantity`; die Spalte ist mit Migration 0036 weg.
+  await db.run("UPDATE sets SET updated_at=updated_at WHERE user_id=$1 AND set_number='A-1'", [U]);
   assert.equal(await PS.ensureFresh(U, { strict: true }), false,
-    'Eine eigene Änderung muss die Zusammenfassung entwerten');
+    'Eine eigene Änderung an sets muss die Zusammenfassung entwerten');
+
+  // ── Und eine Änderung an den ERFASSUNGEN ebenso ─────────────────────────
+  //
+  // Neu mit Migration 0036: Die Setmenge steht dort. Ohne den Trigger auf
+  // set_acquisitions wäre diese Zusicherung die einzige Stelle, an der der
+  // Fehler auffiele — und sie ist genau deshalb hier.
+  await PS.rebuildNow(U);
+  assert.equal(await PS.ensureFresh(U, { strict: true }), true,
+    'Vorbedingung: nach dem Neuaufbau ist die Zusammenfassung frisch');
+  await db.run("UPDATE set_acquisitions SET quantity=quantity WHERE user_id=$1 AND set_number='A-1'", [U]);
+  assert.equal(await PS.ensureFresh(U, { strict: true }), false,
+    'Eine Änderung an den Erfassungen muss die Zusammenfassung entwerten — die ' +
+    'Setmenge steht dort (Migration 0036), und total_quantity rechnet mit ihr');
   await db.run('DELETE FROM parts WHERE user_id=$1', [FREMD]);
   await PS.rebuildNow(U);
 
@@ -296,7 +316,7 @@ test('beide Pfade der Kennzahlen zählen DASSELBE — auch mit manuellen Teilen'
   await db.run('DELETE FROM parts_summary_state WHERE user_id=$1', [U]);
   await db.run(
     "INSERT INTO users (id,username,password_hash,is_admin) VALUES ($1,'psum2','x',0) ON CONFLICT DO NOTHING", [U]);
-  await db.run("INSERT INTO sets (user_id,set_number,quantity) VALUES ($1,'A-1',1)", [U]);
+  await haeltSet(db, U, 'A-1', 1);
   await db.run(`INSERT INTO parts (user_id, set_number, part_number, color_id, quantity, source)
     VALUES ($1,'A-1','3001',5,3,'set'),
            ($1,NULL,'9999',7,11,'manual')`, [U]);

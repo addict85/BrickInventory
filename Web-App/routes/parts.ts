@@ -104,9 +104,14 @@ router.get('/categories', async (req, res) => {
       SELECT COALESCE(rc.id::text, rp_cat.id::text, pc.category_name) AS category_name,
              COALESCE(rc.name, rp_cat.name, 'Unbekannt')              AS label,
              COUNT(DISTINCT p.part_number) AS unique_parts,
-             SUM(p.quantity * COALESCE(s.quantity,1)) AS total_quantity
+             -- Der zweite Faktor ist die Zahl der Exemplare DES SETS. Er stand
+             -- als COALESCE(s.quantity,1) hier; die Spalte ist mit Migration
+             -- 0036 weg, die Menge kommt aus set_acquisitions. Die 1 bleibt
+             -- die Lesart „Set nicht im Bestand, Teil trotzdem zaehlen" —
+             -- dafuer steht der zweite Parameter von mengeAus().
+             SUM(p.quantity * ${mengeAus('sm', 1)}) AS total_quantity
       FROM parts p
-      LEFT JOIN sets s ON s.user_id = p.user_id AND s.set_number = p.set_number
+      ${mengeJoin('p')}
       LEFT JOIN part_catalog pc ON pc.part_number = p.part_number
       LEFT JOIN rb_part_categories rc
              ON rc.id = (CASE WHEN pc.category_name ~ '^[0-9]+$' THEN pc.category_name::int ELSE NULL END)
@@ -307,9 +312,9 @@ async function addManualPartIntern(uid: number, rawBody: any) {
     // Erfassung, und ein abweichendes Erfassungsdatum ging verloren — genau
     // das gemeldete Verhalten. Der CSV-Import macht an dieser Stelle seit
     // jeher beides.
-    await db.run('UPDATE parts SET quantity = quantity + $1 WHERE id = $2',
-      [quantity, existing.id]);
-
+    // Die Menge wird NICHT hier fortgeschrieben: Die Erfassung unten ist die
+    // Wahrheit, und mengeNeuRechnen() leitet die Spalte daraus ab
+    // (utils/bestandsmenge.ts). Hier stand `quantity = quantity + $1`.
     const reCond = ['N','U'].includes(condition) ? condition
       : await resolvePartCondition(uid, part_number, color_id).catch(() => 'N');
     const reEntered = (unit_price !== undefined && unit_price !== null && unit_price !== '')
@@ -324,6 +329,7 @@ async function addManualPartIntern(uid: number, rawBody: any) {
     await recordAcquisitionForDay('part', uid, [part_number, color_id || 0], {
       quantity, price: ((rePrice ?? 0) > 0 ? rePrice : null), condition: reCond, createdAt: acquiredAt,
     }).catch(e => console.error('[addManualPart] Zweiterfassung:', e.message));
+    await mengeNeuRechnen('part', uid, [part_number, color_id || 0]);
 
     return { action: 'updated', part_number };
   }
@@ -369,10 +375,12 @@ async function addManualPartIntern(uid: number, rawBody: any) {
   // stehen in der Erfassung, die recordAcquisitionForDay() gleich darunter
   // anlegt. effectiveUnitPrice/effectivePurchasePrice werden dort ueber
   // erfassungsPreis verwendet.
+  // Menge 0: Sie entsteht aus der Erfassung, die recordAcquisitionForDay()
+  // weiter unten anlegt (utils/bestandsmenge.ts).
   await db.run(`
     INSERT INTO parts (user_id, set_number, part_number, color_id, quantity, source)
-    VALUES ($1, NULL, $2, $3, $4, 'manual') ON CONFLICT DO NOTHING`,
-    [uid, part_number, color_id, quantity]
+    VALUES ($1, NULL, $2, $3, 0, 'manual') ON CONFLICT DO NOTHING`,
+    [uid, part_number, color_id]
   );
 
   // Gibt es das Teil schon, hat das INSERT oben nichts getan (ON CONFLICT DO
@@ -388,6 +396,7 @@ async function addManualPartIntern(uid: number, rawBody: any) {
     quantity, price: erfassungsPreis,
     condition: effectiveCondition, createdAt: acquiredAt,
   }).catch(e => console.error('[addManualPart] Erfassung:', e.message));
+  await mengeNeuRechnen('part', uid, [part_number, color_id || 0]);
 
   // `price_from_condition` sagt der Oberflaeche, dass der uebernommene
   // Marktpreis aus dem ANDEREN Zustand stammt (Nachtrag 167, Marcos
@@ -418,9 +427,19 @@ async function updateManualPart(uid: number, partNumber: string, colorId: number
 
   if (body.quantity !== undefined) {
     const newQty = parseInt(body.quantity) || 1;
-    await db.run('UPDATE parts SET quantity=$1 WHERE id=$2', [newQty, existing.id]);
-    // Acquisition tracking — wrapped separately so a missing table never breaks qty save
-    try {
+    // ── Erst die Erfassungen, dann die Menge daraus ────────────────────────
+    //
+    // Hier stand `UPDATE parts SET quantity=$1` VOR dem Angleichen der
+    // Erfassungen, und das Angleichen lag in einem try/catch, das seinen
+    // Fehler verschluckte („so a missing table never breaks qty save").
+    // Scheiterte es, standen Menge und Erfassungen dauerhaft verschieden da —
+    // lautlos.
+    //
+    // Jetzt ist die Reihenfolge umgekehrt und das Verschlucken weg: Geht das
+    // Angleichen schief, hat sich NICHTS geaendert, und der Fehler wird
+    // gemeldet. Die Spalte schreibt mengeNeuRechnen() danach aus den
+    // Erfassungen (utils/bestandsmenge.ts).
+    {
       const acqs = await db.all('SELECT id, quantity, created_at FROM part_acquisitions WHERE user_id=$1 AND part_number=$2 AND color_id=$3 ORDER BY created_at DESC, id DESC',
         [uid, partNumber, colorId]);
       const currentTotal = acqs.reduce((s,r)=>s+r.quantity,0);
@@ -463,7 +482,8 @@ async function updateManualPart(uid: number, partNumber: string, colorId: number
           rem -= take;
         }
       }
-    } catch(e) { console.error('[updateManualPart] acq tracking:', fehlertext(e)); }
+    }
+    await mengeNeuRechnen('part', uid, [partNumber, colorId]);
   }
   if (body.unit_price !== undefined) {
     // Die Regel („leer heisst Marktpreis", Zustand gestaffelt) steht in
@@ -525,6 +545,7 @@ import { csvEmpfang } from '../utils/dateiEmpfang';
 import { sendeFehler } from '../utils/fehlerTexte';
 import { normalisiereLagerort, setzeLagerort } from '../utils/lagerort';
 import { merkeTeil, merkeTeilFarbe } from '../utils/katalogPflege';
+import { mengeNeuRechnen, mengeJoin, mengeAus } from '../utils/bestandsmenge';
 
 
 router.post('/import/csv', csvEmpfang.single('file'), async (req: LoggedInRequest, res) => {
@@ -575,7 +596,8 @@ router.post('/import/csv', csvEmpfang.single('file'), async (req: LoggedInReques
           [uid, partNumber, colorId]
         );
         if (existing) {
-          await db.run('UPDATE parts SET quantity = quantity + $1 WHERE id = $2', [qty, existing.id]);
+          // Keine Mengenaenderung hier — die Erfassung unten ist die Wahrheit
+          // (utils/bestandsmenge.ts).
           // Erfassung auch beim Aufstocken anlegen, damit Zustand/Preis/Datum der
           // importierten Menge erhalten bleiben (und das Zustands-Aggregat stimmt).
           await recordAcquisitionForDay('part', uid, [partNumber, colorId],
@@ -584,6 +606,7 @@ router.post('/import/csv', csvEmpfang.single('file'), async (req: LoggedInReques
             { quantity: qty, price: erfassungsPreis,
               condition: csvCondition||'N', createdAt: acqDate }
           ).catch(logAndContinue(`teile:import ${partNumber}/${colorId} (aufgestockt)`));
+          await mengeNeuRechnen('part', uid, [partNumber, colorId]);
           updated++;
           results.push({ part_number: partNumber, action: 'updated' });
         } else {
@@ -596,15 +619,17 @@ router.post('/import/csv', csvEmpfang.single('file'), async (req: LoggedInReques
           await merkeTeilFarbe(partNumber, colorId, colorName, colorHex, imageUrl);
           // Preis und Zustand in die Erfassung, nicht an die Bestandszeile
           // (Migration 0035) — siehe addManualPart.
+          // Menge 0 — siehe addManualPart.
           await db.run(`INSERT INTO parts (user_id, set_number, part_number, color_id, quantity, source)
-            VALUES ($1, NULL, $2, $3, $4, 'manual') ON CONFLICT DO NOTHING`,
-            [uid, partNumber, colorId, qty]);
+            VALUES ($1, NULL, $2, $3, 0, 'manual') ON CONFLICT DO NOTHING`,
+            [uid, partNumber, colorId]);
           await recordAcquisitionForDay('part', uid, [partNumber, colorId],
             // > 0 wie beim Anlegen von Hand: Die 0 ist ein Anzeigewert fuer
             // die Stammzeile, in der Erfassung steht dafuer NULL.
             { quantity: qty, price: erfassungsPreis,
               condition: csvCondition||'N', createdAt: acqDate }
           ).catch(logAndContinue(`teile:import ${partNumber}/${colorId} (neu)`));
+          await mengeNeuRechnen('part', uid, [partNumber, colorId]);
           added++;
           results.push({ part_number: partNumber, action: 'added' });
         }

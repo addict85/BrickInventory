@@ -38,6 +38,7 @@ process.env.WEB_WORKERS = '1';
 
 const _req = require('./helpers/sources').buildAndRequire();
 const { testServer } = require('./helpers/server');
+const { haeltSet } = require('./helpers/bestand');
 const db = _req('db/database.js');
 
 test.after(async () => { await db.pool.end().catch(() => {}); });
@@ -66,8 +67,8 @@ test('Farb- und Kategorienliste sehen im Haushalt denselben Bestand',
     await db.run('INSERT INTO account_links (main_user_id, sub_user_id) VALUES ($1,$2)', [haupt, kind]);
 
     // Das Set traegt die Teile — beide Listen schliessen `source='manual'` aus.
-    await db.run(`INSERT INTO sets (user_id, set_number, quantity) VALUES
-        ($1,'0001-1',1), ($2,'0002-1',1)`, [haupt, kind]);
+    await haeltSet(db, haupt, '0001-1', 1);
+    await haeltSet(db, kind, '0002-1', 1);
     // Je Konto ein Teil, VERSCHIEDENE Farben: Waere die Farbe gleich, faenden
     // beide Zaehlungen zufaellig dieselbe Zahl und der Test pruefte nichts.
     // Name, Farbbezeichnung und Kategorie stehen seit Migration 0034 in den

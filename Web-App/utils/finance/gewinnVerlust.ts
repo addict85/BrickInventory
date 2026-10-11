@@ -46,7 +46,18 @@ async function computePnl(viewerId: number, ids: Blickfeld) {
   ]);
 
   const sets = await db.all(
-    `SELECT s.set_number, c.name, c.year, s.quantity, c.image_local, c.image_url, s.added_at,
+    `SELECT s.set_number, c.name, c.year,
+            -- Die Menge aus den Erfassungen (Migration 0036 hat s.quantity
+            -- geloescht) — und zwar aus der Gruppierung a weiter unten, die
+            -- diese Summe fuer total_price ohnehin schon bildet. Darum hier
+            -- KEIN zusaetzlicher JOIN ueber utils/bestandsmenge.ts: Der
+            -- rechnete dieselbe Summe ein zweites Mal im selben Satz.
+            --
+            -- (Keine Gegenstriche in diesem Kommentar — auch nicht um den
+            -- Alias a: Er steht in einem Template-Literal, und ein
+            -- Gegenstrich beendet es. Gemessen, tsc meldete „',' expected".)
+            COALESCE(a.total_qty, 0)::int AS quantity,
+            c.image_local, c.image_url, s.added_at,
             -- Ø-Kaufpreis pro Stück aus der Erfassungs-Historie. Frontend/Apps
             -- rechnen weiterhin purchase_price × quantity, die Summe stimmt damit
             -- auch bei unterschiedlich teuren Erfassungen.

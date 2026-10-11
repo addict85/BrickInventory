@@ -246,7 +246,11 @@ test('eine Mengenänderung läuft unter der Bestandssperre', () => {
   // Und die Differenz muss aus der GESAMTMENGE des Blickfelds kommen, nicht
   // aus der Zeile eines einzelnen Kontos — sonst zeigte das Detail eine
   // Haushaltszahl an, während das „+" gegen eine andere rechnete.
-  assert.match(fn, /SUM\(quantity\)[\s\S]{0,120}user_id = ANY/,
+  // Die Abfrage steht seit Migration 0036 in utils/bestandsmenge.ts; hier
+  // stand sie ausgeschrieben. Was sie daraus macht, prueft
+  // test/quantity-response-echo.test.js — diese Stelle prueft, dass der
+  // Aufruf das BLICKFELD nennt und nicht ein einzelnes Konto.
+  assert.match(fn, /mengeSummeSql\('blickfeld'\)/,
     'Die Ausgangsmenge muss über das Blickfeld summiert werden');
 });
 

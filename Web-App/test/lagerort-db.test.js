@@ -17,6 +17,7 @@ process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:t
 process.env.WEB_WORKERS = '1';
 
 const _req = require('./helpers/sources').buildAndRequire();
+const { haeltSet } = require('./helpers/bestand');
 const db = _req('db/database.js');
 
 const U = {};
@@ -39,8 +40,7 @@ async function seed() {
   // Dasselbe Teil in ZWEI Sets — daran hängt die wichtigste Aussage.
   for (const [uid, sn] of [[U.ich, '10179-1'], [U.ich, '75192-1'], [U.kind, '21318-1'],
                            [U.fremd, '10030-1']]) {
-    await db.run(`INSERT INTO sets (user_id, set_number, quantity) VALUES ($1,$2,1)`,
-      [uid, sn]);
+    await haeltSet(db, uid, sn, 1);
   }
   for (const [uid, sn, num, farbe] of [
     [U.ich, '10179-1', '3001', 4], [U.ich, '75192-1', '3001', 4],

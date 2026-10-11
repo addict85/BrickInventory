@@ -37,6 +37,7 @@ const ROOT = path.join(__dirname, '..');
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
 process.env.WEB_WORKERS = '1';
 const _req = require('./helpers/sources').buildAndRequire();
+const { haeltSet } = require('./helpers/bestand');
 const db = _req('db/database.js');
 
 after(() => db.pool.end().catch(() => {}));
@@ -115,7 +116,7 @@ test('die Antwort traegt einen echten Wahrheitswert', async (t) => {
 
   await db.run(`INSERT INTO users (username,password_hash) VALUES ('spare','x')`);
   const uid = (await db.get(`SELECT id FROM users WHERE username='spare'`)).id;
-  await db.run(`INSERT INTO sets (user_id, set_number, quantity) VALUES ($1,'75192-1',1)`, [uid]);
+  await haeltSet(db, uid, '75192-1', 1);
   // ── is_spare gehoert zur TEILELISTE des Sets, nicht zum Teil ────────────
   //
   // Seit Migration 0034 steht es in set_parts_catalog, und das ist die

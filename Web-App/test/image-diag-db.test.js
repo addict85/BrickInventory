@@ -31,6 +31,7 @@ process.env.WEB_WORKERS = '1';
 
 const _req = require('./helpers/sources').buildAndRequire();
 const { testServer } = require('./helpers/server');
+const { haeltSet } = require('./helpers/bestand');
 const db = _req('db/database.js');
 const express = require(path.join(ROOT, 'node_modules', 'express'));
 
@@ -62,10 +63,10 @@ test('die Bild-Diagnose beschreibt jede Lage im Klartext',
   await db.run(`DELETE FROM set_catalog WHERE set_number = ANY($1)`, [[MIT, OHNE]]);
   // Der Bestand sagt nur „dieses Konto haelt das Set"; Name und Bildpfad
   // stehen seit Migration 0033 im Katalog.
-  await db.run(`INSERT INTO sets (user_id, set_number, quantity) VALUES ($1,$2,1)`, [uid, MIT]);
+  await haeltSet(db, uid, MIT, 1);
   await db.run(`INSERT INTO set_catalog (set_number, name, image_local) VALUES ($1,'Mit Bild',$2)`,
                [MIT, `/images/sets/${MIT}.jpg`]);
-  await db.run(`INSERT INTO sets (user_id, set_number, quantity) VALUES ($1,$2,1)`, [uid, OHNE]);
+  await haeltSet(db, uid, OHNE, 1);
   await db.run(`INSERT INTO set_catalog (set_number, name) VALUES ($1,'Ohne alles')`, [OHNE]);
   await new Jimp({ width: 500, height: 400, color: 0x0000ffff }).write(original);
   fs.rmSync(vorschau, { force: true });

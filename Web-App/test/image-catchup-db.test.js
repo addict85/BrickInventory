@@ -37,6 +37,7 @@ process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:t
 process.env.WEB_WORKERS = '1';
 
 const _req = require('./helpers/sources').buildAndRequire();
+const { haeltSet } = require('./helpers/bestand');
 const db = _req('db/database.js');
 
 test('der Nachlauf erzeugt fehlende Vorschauen — auch für Set-Bilder',
@@ -66,7 +67,7 @@ test('der Nachlauf erzeugt fehlende Vorschauen — auch für Set-Bilder',
   const uid = (await db.get(`SELECT id FROM users WHERE username=$1`, [USER])).id;
   await db.run(`DELETE FROM sets WHERE set_number=$1`, [name]);
   await db.run(`DELETE FROM set_catalog WHERE set_number=$1`, [name]);
-  await db.run(`INSERT INTO sets (user_id, set_number, quantity) VALUES ($1,$2,1)`, [uid, name]);
+  await haeltSet(db, uid, name, 1);
   // Der Bildpfad steht seit Migration 0033 im Katalog — und genau von dort
   // sammelt der Nachlauf (jobs/partsCatalogEnrich.ts) die Pfade ein.
   await db.run(`INSERT INTO set_catalog (set_number, name, image_local) VALUES ($1,'Test',$2)`,

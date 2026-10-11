@@ -13,6 +13,7 @@ import { resolveImageLocal, proxyImageUrl } from '../images';
 import { valueSet, valueAcquisitionRows, weightedPurchase, pnlPct as calcPnlPct } from '../setValue';
 import { mitVersion } from '../setNummer';
 import { effectiveCondition } from './zustand';
+import { mengeJoin, mengeAus } from '../bestandsmenge';
 import {
   DEFAULT_PRICE_CONDITION, PRICE_CACHE_COLS, parallelLimit,
   fetchPrice, fetchPartPrice, fetchMinifigPrice, ladeBlNummernVor,
@@ -82,10 +83,13 @@ async function computeSetsValuation(viewerId: number, ids: Blickfeld) {
     // also nicht mehr geben.
     // Name, Jahr und Bilder stehen seit Migration 0033 in set_catalog —
     // deshalb der ausgeschriebene JOIN.
-    `SELECT s.set_number, c.name, c.year, s.quantity, c.image_local, c.image_url,
-            s.added_at
+    // Die Menge aus den Erfassungen (Migration 0036 hat s.quantity geloescht).
+    `SELECT s.set_number, c.name, c.year,
+            ${mengeAus('sm', 0)}::int AS quantity,
+            c.image_local, c.image_url, s.added_at
        FROM sets s
        LEFT JOIN set_catalog c ON c.set_number = s.set_number
+       ${mengeJoin('s')}
       WHERE s.user_id = ANY($1)`, [uids]);
   if (!sets.length) return { currency, condition: defaultCondition, guide_type: guideType, ttl_hours: ttlHours, sets: [], totals: { min:'0.00', avg:'0.00', max:'0.00', qty_avg:'0.00' } };
 

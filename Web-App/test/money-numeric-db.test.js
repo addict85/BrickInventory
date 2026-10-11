@@ -24,6 +24,7 @@ process.env.WEB_WORKERS = '1';
 
 const _req = require('./helpers/sources').buildAndRequire();
 const db   = _req('db/database.js');
+const { haeltSet } = require('./helpers/bestand');
 
 /**
  * Alle Spalten, die Geld führen.
@@ -137,7 +138,7 @@ test('Geldbeträge sind exakt', { concurrency: 1 }, async (t) => {
   await t.test('tausend Beträge summieren sich exakt', async () => {
     await db.run("INSERT INTO users (username,password_hash) VALUES ('geld','x')");
     const uid = (await db.get("SELECT id FROM users WHERE username='geld'")).id;
-    await db.run(`INSERT INTO sets (user_id, set_number, quantity) VALUES ($1,'99001-1',1)`, [uid]);
+    await haeltSet(db, uid, '99001-1', 0);  // Menge 0: die Erfassung dahinter traegt sie
     // 1000 Zeilen à 0.07 — in REAL ergab das 69.99974 statt 70.00.
     await db.run(
       `INSERT INTO set_acquisitions (user_id,set_number,quantity,purchase_price,condition,created_at)
@@ -151,8 +152,7 @@ test('Geldbeträge sind exakt', { concurrency: 1 }, async (t) => {
 
   await t.test('ein gespeicherter Kaufpreis kommt unverändert zurück', async () => {
     const uid = (await db.get("SELECT id FROM users WHERE username='geld'")).id;
-    await db.run(`INSERT INTO sets (user_id, set_number, quantity)
-                  VALUES ($1,'99002-1',1)`, [uid]);
+    await haeltSet(db, uid, '99002-1', 0);  // Menge 0: die Erfassung dahinter traegt sie
     await db.run(`INSERT INTO set_acquisitions (user_id,set_number,quantity,purchase_price,condition)
                   VALUES ($1,'99002-1',1,49.90,'N')`, [uid]);
 

@@ -116,7 +116,11 @@ test('nach dem vollständigen Schemaaufbau hat sets keinen Kaufpreis und keinen 
   try { await _req('db/migrate.js').runMigrations(client); } finally { client.release(); }
 
   const nachher = await spaltenVon('sets');
-  assert.ok(nachher.includes('quantity') && nachher.includes('set_number'),
+  // `quantity` stand hier mit — bis Migration 0036 sie geloescht hat. Geprueft
+  // wird jetzt `user_id` und `set_number`: Welches Konto haelt welches Set,
+  // das ist, was von der Zeile bleibt. (Dass quantity WEG ist, prueft
+  // test/setmenge-aus-erfassungen-db.test.js.)
+  assert.ok(nachher.includes('user_id') && nachher.includes('set_number'),
     `Die Spaltenliste von sets sieht falsch aus: ${nachher.join(', ')}`);
   for (const sp of ['purchase_price', 'condition']) {
     assert.ok(!nachher.includes(sp),

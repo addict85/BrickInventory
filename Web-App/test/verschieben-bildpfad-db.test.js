@@ -31,6 +31,7 @@ process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:t
 process.env.WEB_WORKERS = '1';
 
 const _req = require('./helpers/sources').buildAndRequire();
+const { haeltSet } = require('./helpers/bestand');
 const db = _req('db/database.js');
 const { moveSetBetweenAccounts } = _req('utils/setMove.js');
 
@@ -54,8 +55,7 @@ test('ein verschobenes Set nimmt die Bildpfade aller Bestandteile mit', { concur
   const nachId = (await db.get(`SELECT id FROM users WHERE username=$1`, [NACH])).id;
 
   try {
-    await db.run(`INSERT INTO sets (user_id, set_number, quantity) VALUES ($1,$2,1)`,
-      [vonId, SN]);
+    await haeltSet(db, vonId, SN, 0);  // Menge 0: die Erfassung dahinter traegt sie
     await db.run(`INSERT INTO set_acquisitions (user_id,set_number,quantity,purchase_price,condition)
                   VALUES ($1,$2,1,10,'N')`, [vonId, SN]);
     // Beide Bestandteile kommen AUS DEM SET (source='set') und haben ein
