@@ -48,7 +48,8 @@ const db = _req('db/database.js');
 // Ein Bestand ist seit Migration 0036 ZWEI Zeilen: eine in `sets` („dieses
 // Konto haelt dieses Set") und eine je Kauf in `set_acquisitions`. haeltSet()
 // legt beide an — siehe test/helpers/bestand.js.
-const { haeltSet } = require('./helpers/bestand');
+const { haeltSet, haeltTeil } = require('./helpers/bestand');
+const { testServer } = require('./helpers/server');
 
 test.after(async () => { await db.pool.end().catch(() => {}); });
 
@@ -185,5 +186,127 @@ test('Lagerort: Detail und Vorrat gegen echte Datenbank', async (t) => {
     assert.equal(detail.storage, 'Estrich, Keller',
       `Das Detail zeigt ${JSON.stringify(detail.storage)} — bei zwei Besitzern in ` +
       'zwei Kisten muss es beide nennen, wie die Liste es tut');
+  });
+});
+
+/**
+ * Befund 3: der Lagerortfilter der Set-Liste — über die ROUTE geprüft.
+ *
+ * ── Marcos Befund ───────────────────────────────────────────────────────────
+ *
+ *   „Der Filter mit dem Lagerort funktioniert nicht. Es werden immer alle
+ *    Sets angezeigt."
+ *
+ * NACHGEMESSEN im Quelltext: Der Filter in getSets() ist richtig, und das
+ * Frontend schickt ihn auch (`addLagerParam` in public/js/14-scope.js setzt
+ * `storage=`). Dazwischen liegt die Route, und die zerlegte die Anfrage:
+ *
+ *     const { search, theme, sort, page, page_size } = req.query;
+ *     const r = await getSets(…, { search, theme, sort, page, page_size });
+ *
+ * `storage` ist in dieser Liste nicht enthalten — es wurde stillschweigend
+ * weggelassen, und `query.storage` in getSets war immer undefined. Der Filter
+ * hat damit NIE funktioniert: Die Route (Commit 86f7228) zerlegte die Anfrage
+ * schon, als der Filter dazukam (93ff992, „Lagerort: wo liegt das
+ * eigentlich?"), und jener Commit hat sie nicht mitgezogen.
+ *
+ * ── Warum dieser Test über die Route geht und nicht über getSets() ──────────
+ *
+ * Weil getSets() nie kaputt war. Ein Test, der den Helfer direkt mit
+ * `{ storage: 'Estrich' }` ruft, wäre von Anfang an GRÜN gewesen und hätte
+ * Marcos Fehler nie gesehen — die Teile-Route reicht `req.query` als Ganzes
+ * weiter, die Set-Route nicht, und genau dieser Unterschied ist der Fehler.
+ * Geprüft werden muss also der Weg, den die Oberfläche nimmt.
+ *
+ * Dasselbe gilt für die Teileliste: Sie bekommt denselben Filter mit, und
+ * deshalb steht sie hier gleich daneben.
+ *
+ * ── Gegenproben (durchgeführt) ──────────────────────────────────────────────
+ *
+ *   a) `storage` aus der Weitergabe in routes/api_v1/sets.ts entfernt → der
+ *      Fall wird rot („2 Sets statt 1"). Das ist der Zustand, den Marco
+ *      gemeldet hat.
+ *   b) Der Fall OHNE Filter prüft, dass dann wirklich beide Sets kommen —
+ *      sonst wäre der Test auch grün, wenn die Liste immer leer wäre.
+ */
+test('der Lagerortfilter der Listen wirkt über die Route', async (t) => {
+  try { await db.get('SELECT 1 AS ok'); }
+  catch (e) {
+    if (process.env.REQUIRE_DB === '1')
+      throw new Error(`REQUIRE_DB=1, aber die Test-DB ist nicht erreichbar: ${e.message}`);
+    t.skip('Test-DB nicht erreichbar'); return;
+  }
+  await seed();
+
+  const L = _req('utils/lagerort.js');
+  // Ein zweites Set OHNE Lagerort — ohne es hätte der Filter nichts
+  // auszusieben, und „alle" wäre von „die richtigen" nicht zu unterscheiden.
+  const OHNE = '21058-1';
+  await db.run(`INSERT INTO set_catalog (set_number, name) VALUES ($1,'Cheops')
+                ON CONFLICT (set_number) DO NOTHING`, [OHNE]);
+  await haeltSet(db, HAUPT, OHNE, 1);
+  await L.setzeLagerort('set', [HAUPT], [SN], 'Estrich');
+
+  // Ein Teil in derselben Kiste und eines ohne — für die Teileliste daneben.
+  await db.run(`INSERT INTO part_catalog (part_number, part_name) VALUES
+                  ('3001','Brick 2x4'), ('3002','Brick 2x3')
+                ON CONFLICT (part_number) DO NOTHING`);
+  await db.run(`INSERT INTO part_color_catalog (part_number, color_id, color_name) VALUES
+                  ('3001',4,'Rot'), ('3002',4,'Rot')
+                ON CONFLICT (part_number, color_id) DO NOTHING`);
+  await haeltTeil(db, HAUPT, '3001', { setNumber: SN,   menge: 2, colorId: 4 });
+  await haeltTeil(db, HAUPT, '3002', { setNumber: OHNE, menge: 2, colorId: 4 });
+  // Die Schluessel sind eine FLACHE Liste in der Reihenfolge von BEDINGUNG
+  // (utils/lagerort.ts): fuer ein Teil Nummer UND Farbe, also zwei Einträge.
+  await L.setzeLagerort('part', [HAUPT], ['3001', 4], 'Estrich');
+
+  const { base } = testServer(_req, {
+    sitzung: { userId: HAUPT },
+    apiNutzer: { user_id: HAUPT, is_admin: 0 },
+    routen: { '/api/v1': 'routes/api_v1/index.js' },
+    t,
+  });
+  const hole = async (pfad) => {
+    const r = await fetch(base + pfad);
+    assert.equal(r.status, 200, `${pfad} antwortete ${r.status}`);
+    return r.json();
+  };
+
+  await t.test('Sets: ohne Filter kommen beide', async () => {
+    const d = await hole('/api/v1/sets?page=1&page_size=60');
+    const nummern = (d.sets || []).map(s => s.set_number).sort();
+    assert.deepEqual(nummern, [OHNE, SN].sort(),
+      `Vorbedingung: beide Sets müssen ohne Filter kommen, bekam ${JSON.stringify(nummern)}`);
+  });
+
+  await t.test('Sets: mit storage=Estrich kommt NUR das Set in der Kiste', async () => {
+    const d = await hole(`/api/v1/sets?page=1&page_size=60&storage=${encodeURIComponent('Estrich')}`);
+    const nummern = (d.sets || []).map(s => s.set_number);
+    assert.deepEqual(nummern, [SN],
+      `Erwartet nur ${SN}, bekam ${JSON.stringify(nummern)}. Kommen BEIDE, hat die ` +
+      'Route den Parameter weggelassen — der Filter in getSets() ist in Ordnung, ' +
+      'er bekommt ihn nur nie zu sehen.');
+    assert.equal(Number(d.total), 1,
+      `total sagt ${d.total} statt 1 — dann zählt die Gesamtzahl ungefiltert, und ` +
+      'die Oberfläche blättert in Sets, die sie nicht zeigt');
+  });
+
+  await t.test('Sets: ein Ort, den es nicht gibt, liefert nichts', async () => {
+    // Die Gegenrichtung: Ohne sie wäre der Fall darüber auch grün, wenn der
+    // Filter jeden Wert auf dasselbe eine Set abbildete.
+    const d = await hole('/api/v1/sets?page=1&page_size=60&storage=Dachboden');
+    assert.deepEqual((d.sets || []).map(s => s.set_number), [],
+      'Ein unbekannter Lagerort muss eine leere Liste ergeben');
+  });
+
+  await t.test('Teile: derselbe Filter, derselbe Weg', async () => {
+    const alle = await hole('/api/v1/parts?page=1&page_size=60');
+    const nummernAlle = (alle.parts || []).map(p => p.part_number).sort();
+    assert.deepEqual(nummernAlle, ['3001', '3002'],
+      `Vorbedingung: beide Teile ohne Filter, bekam ${JSON.stringify(nummernAlle)}`);
+
+    const d = await hole(`/api/v1/parts?page=1&page_size=60&storage=${encodeURIComponent('Estrich')}`);
+    assert.deepEqual((d.parts || []).map(p => p.part_number), ['3001'],
+      `Erwartet nur 3001, bekam ${JSON.stringify((d.parts || []).map(p => p.part_number))}`);
   });
 });

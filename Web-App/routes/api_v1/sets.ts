@@ -784,8 +784,29 @@ router.get('/sets', requireToken, async (req: AuthedRequest, res) => {
     // unbegrenzt — dieser Weg ist weiterhin offen für Aufrufer, die alles
     // wollen (Skripte, ältere App-Stände), und deshalb absichtlich nicht
     // abgeschaltet.
-    const { search, theme, sort, page, page_size } = req.query;
-    const r = await getSets(await scopeIds(req.apiUser.user_id, parseScopeMode(req.query.accounts)), { search, theme, sort, page, page_size });
+    // ── req.query als GANZES, keine zweite Liste ─────────────────────────
+    //
+    // Hier stand eine Auswahl:
+    //
+    //     const { search, theme, sort, page, page_size } = req.query;
+    //     getSets(…, { search, theme, sort, page, page_size })
+    //
+    // Marcos Befund: „Der Filter mit dem Lagerort funktioniert nicht. Es
+    // werden immer alle Sets angezeigt." Die Ursache war genau diese Liste:
+    // `storage` stand nicht darin. Das Frontend schickt es
+    // (addLagerParam in public/js/14-scope.js), getSets() filtert damit
+    // richtig — nur kam es nie an, und zwar stillschweigend.
+    //
+    // Es war damit NIE in Ordnung: Die Liste gab es schon, als der Filter
+    // dazukam, und jener Commit hat sie nicht mitgezogen. Eine Auswahl, die
+    // neben der Liste der gelesenen Parameter gepflegt werden muss, laeuft
+    // irgendwann auseinander — und die Teile-Route daneben macht es seit
+    // jeher richtig, sie reicht req.query weiter.
+    //
+    // Ungefiltert durchgereicht ist hier unbedenklich: getSets() bindet
+    // theme und storage als Parameter, laesst `sort` nur ueber ausTabelle()
+    // aus einer festen Zuordnung zu und ignoriert, was es nicht kennt.
+    const r = await getSets(await scopeIds(req.apiUser.user_id, parseScopeMode(req.query.accounts)), req.query);
     const sets = r.sets;
     res.json({ success: true, count: sets.length, total: r.total, sets, ...(r.themes ? { themes: r.themes } : {}) });
   } catch (e) { handleRouteError(res, e, undefined, req); }
