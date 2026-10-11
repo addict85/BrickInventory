@@ -90,6 +90,37 @@ import { merkpostenLoeschen } from './16-merkliste.js';
     document.addEventListener(type, ev => handle(type, ev), NEEDS_CAPTURE.has(type));
   }
 
+  // ── Formulare: absenden heisst hier „den Knopf druecken" ──────────────────
+  //
+  // Die Anmelde-, Registrier- und Passwortfelder liegen seit Nachtrag … in
+  // einem <form>. Nicht aus Formtreue: Ohne umgebendes Formular meldet Chrome
+  // „Password field is not contained in a form", und Passwortmanager bieten
+  // Speichern und Ausfuellen dann nur noch nach Heuristik an — mal ja, mal
+  // nein, ohne dass jemand sagen koennte warum.
+  //
+  // Abgesendet wird aber NICHTS: Die Oberflaeche spricht ueber fetch() mit dem
+  // Server, ein echtes Absenden wuerde die Seite neu laden und den Zustand
+  // verlieren. Deshalb hier abbrechen und stattdessen den Knopf ausloesen, den
+  // `data-submit` nennt. Nebeneffekt, und ein erwuenschter: Die EINGABETASTE
+  // im Passwortfeld meldet jetzt an, statt nichts zu tun.
+  //
+  // Warum kein onsubmit="…" im HTML: Das waere ein Inline-Handler, und die
+  // CSP dieses Projekts kommt ohne `unsafe-inline` aus (siehe den Kopf dieser
+  // Datei und test/csp-actions.test.js).
+  //
+  // Die Knoepfe tragen type="button". Ohne das waeren sie Absendeknoepfe, ihr
+  // Klick loeste wieder ein submit aus, und .click() hier drehte sich im
+  // Kreis.
+  document.addEventListener('submit', ev => {
+    const form = ev.target;
+    if (!form || form.tagName !== 'FORM') return;
+    ev.preventDefault();
+    const id = form.getAttribute('data-submit');
+    if (!id) return;
+    const knopf = document.getElementById(id);
+    if (knopf && !knopf.disabled) knopf.click();
+  });
+
   // ── Bilder: Fehler- und Ladezustand ───────────────────────────────────────
   // error und load steigen nicht auf, lassen sich aber in der Capture-Phase am
   // document abfangen. Ersetzt die zwölf onerror- und vier onload-Attribute in

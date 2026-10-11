@@ -99,11 +99,17 @@
     <!-- ── LOGIN ─────────────────────────────────────────────────────── -->
     <div id="panel-login">
       <div class="lerr" id="lerr"></div>
-      <div class="sform">
+      <!-- Ein FORM, damit Passwortmanager Speichern und Ausfuellen anbieten:
+           Chrome meldet sonst „Password field is not contained in a form", und
+           das Anbieten haengt dann an Heuristiken statt am Dokument.
+           data-submit nennt den Knopf, den die Eingabetaste ausloesen soll —
+           verdrahtet in js/11-actions.js. Der Knopf traegt type="button",
+           sonst sendet er das Formular ein zweites Mal ab. -->
+      <form class="sform" data-submit="btn-login">
         <div class="fg"><label for="lu" data-i18n="login.email_or_user">Benutzername oder E-Mail</label><input type="text" id="lu" autocomplete="username" /></div>
         <div class="fg"><label for="lp" data-i18n="login.password">Passwort</label><input type="password" id="lp" autocomplete="current-password" /></div>
-        <button class="btn bp" id="btn-login" style="width:100%;justify-content:center;padding:11px" data-i18n="login.submit">Anmelden</button>
-      </div>
+        <button type="button" class="btn bp" id="btn-login" style="width:100%;justify-content:center;padding:11px" data-i18n="login.submit">Anmelden</button>
+      </form>
       <div style="display:flex;justify-content:space-between;margin-top:.85rem;font-size:.82rem">
         <a href="#" id="link-forgot" style="color:var(--b600)" data-i18n="login.forgot">Passwort vergessen?</a>
         <span id="link-register-wrap" style="display:none"><span data-i18n="login.register_prompt">Neu hier?</span> <a href="#" id="link-register" style="color:var(--b600);font-weight:600">Registrieren</a></span>
@@ -117,7 +123,7 @@
       <p style="font-weight:600;margin-bottom:1rem;color:var(--s600);text-align:center" data-i18n="register.title">Neues Konto erstellen</p>
       <div class="lerr" id="reg-err"></div>
       <div id="reg-success" style="display:none;padding:.75rem;background:var(--g50);border:1px solid var(--g300);border-radius:8px;color:var(--g700);font-size:.88rem;margin-bottom:.75rem"></div>
-      <div class="sform" id="reg-form">
+      <form class="sform" id="reg-form" data-submit="btn-register">
         <div style="display:flex;gap:10px">
           <div class="fg"><label for="reg-first" data-i18n="register.firstname">Vorname</label><input type="text" id="reg-first" autocomplete="given-name" /></div>
           <div class="fg"><label for="reg-last" data-i18n="register.lastname">Nachname</label><input type="text" id="reg-last" autocomplete="family-name" /></div>
@@ -132,8 +138,8 @@
             <option value="en">English</option>
           </select>
         </div>
-        <button class="btn bp" id="btn-register" style="width:100%;justify-content:center;padding:11px" data-i18n="register.submit">Registrieren</button>
-      </div>
+        <button type="button" class="btn bp" id="btn-register" style="width:100%;justify-content:center;padding:11px" data-i18n="register.submit">Registrieren</button>
+      </form>
       <div style="text-align:center;margin-top:.85rem;font-size:.82rem">
         <a href="#" id="link-to-login" style="color:var(--b600)" data-i18n="auth.back_to_login">← Zurück zur Anmeldung</a>
       </div>
@@ -158,11 +164,11 @@
       <p style="font-weight:600;margin-bottom:1rem;color:var(--s600);text-align:center" data-i18n="reset.new_password">Neues Passwort setzen</p>
       <div class="lerr" id="reset-err"></div>
       <div id="reset-success" style="display:none;padding:.75rem;background:var(--g50);border:1px solid var(--g300);border-radius:8px;color:var(--g700);font-size:.88rem;margin-bottom:.75rem"></div>
-      <div class="sform" id="reset-form">
+      <form class="sform" id="reset-form" data-submit="btn-reset">
         <div class="fg"><label for="reset-pass" data-i18n="reset.new_password_label">Neues Passwort (min. 8 Zeichen)</label><input type="password" id="reset-pass" autocomplete="new-password" /></div>
         <div class="fg"><label for="reset-pass2" data-i18n="reset.repeat">Passwort wiederholen</label><input type="password" id="reset-pass2" autocomplete="new-password" /></div>
-        <button class="btn bp" id="btn-reset" style="width:100%;justify-content:center;padding:11px" data-i18n="reset.button">Passwort ändern</button>
-      </div>
+        <button type="button" class="btn bp" id="btn-reset" style="width:100%;justify-content:center;padding:11px" data-i18n="reset.button">Passwort ändern</button>
+      </form>
     </div>
   </div>
 </div>
@@ -776,6 +782,12 @@
           </div>
 
           <!-- Profil -->
+          <!-- Ein FORM um Profil UND Passwortfelder: Ohne es meldet Chrome
+               „Password field is not contained in a form", und der
+               Passwortmanager bietet Speichern und Ausfuellen nur noch nach
+               Heuristik an. display:contents haelt das Layout unveraendert,
+               data-submit nennt den Knopf fuer die Eingabetaste. -->
+          <form style="display:contents" data-submit="btn-sav-prof">
           <div class="sgrid2" style="gap:.75rem">
             <div class="fg"><label for="prof-first" data-i18n="settings.profile.firstname">Vorname</label><input type="text" id="prof-first" data-i18n="settings.profile.firstname" data-i18n-attr="placeholder" placeholder="Vorname" /></div>
             <div class="fg"><label for="prof-last" data-i18n="settings.profile.lastname">Nachname</label><input type="text" id="prof-last" data-i18n="settings.profile.lastname" data-i18n-attr="placeholder" placeholder="Nachname" /></div>
@@ -800,7 +812,8 @@
             </div>
           </div>
 
-          <button class="btn bp" id="btn-sav-prof" style="align-self:flex-start">💾 <span data-i18n="settings.save">Speichern</span></button>
+          <button type="button" class="btn bp" id="btn-sav-prof" style="align-self:flex-start">💾 <span data-i18n="settings.save">Speichern</span></button>
+          </form>
         </div>
       </div>
 
@@ -1048,6 +1061,9 @@
           <div id="users-tbl" style="margin-bottom:1.25rem"></div>
           <div style="border-top:1px solid var(--bdr);padding-top:1.1rem">
             <div class="ctitle" data-i18n="settings.users_new">Neuen Benutzer erstellen</div>
+            <!-- Formular wie bei den Anmeldefeldern; display:contents haelt die
+                 Zeile (.frow) unveraendert. -->
+            <form style="display:contents" data-submit="btn-cu">
             <div class="frow">
               <div class="fg"><label for="nu-n" data-i18n="settings.users_username">Benutzername</label><input type="text" id="nu-n" /></div>
               <div class="fg"><label for="nu-p" data-i18n="settings.users_password">Passwort</label><input type="password" id="nu-p" /></div>
@@ -1056,8 +1072,9 @@
                      (und zeigte hier versehentlich auf ein fremdes Feld). -->
                 <label style="display:flex;align-items:center;gap:6px;cursor:pointer;margin-bottom:9px"><input type="checkbox" id="nu-a" style="width:auto" /> Admin</label>
               </div>
-              <button class="btn bp" id="btn-cu" data-i18n="settings.users_create">➕ Erstellen</button>
+              <button type="button" class="btn bp" id="btn-cu" data-i18n="settings.users_create">➕ Erstellen</button>
             </div>
+            </form>
           </div>
         </div>
         <div class="ssec full">
@@ -1570,14 +1587,14 @@
 <div class="ovl" id="pw-modal" role="dialog" aria-modal="true">
   <div class="modal" style="max-width:360px">
     <div class="mhd"><div class="mtit" data-i18n="users.pw_reset_title">Passwort zurücksetzen</div><button class="btn bs btn-sm" data-click="closePwModal" aria-label="Schliessen" data-i18n="common.close" data-i18n-attr="aria-label">✕</button></div>
-    <div class="sform">
+    <form class="sform" data-submit="btn-rpw">
       <div class="fg"><label for="rpw-v" data-i18n="users.pw_modal.new_password">Neues Passwort</label><input type="password" id="rpw-v" /></div>
       <input type="hidden" id="rpw-uid" />
       <div style="display:flex;gap:10px;justify-content:flex-end;margin-top:.5rem">
-        <button class="btn bs" data-click="closePwModal" data-i18n="users.pw_modal.cancel">Abbrechen</button>
-        <button class="btn bp" id="btn-rpw" data-i18n="settings.save">Speichern</button>
+        <button type="button" class="btn bs" data-click="closePwModal" data-i18n="users.pw_modal.cancel">Abbrechen</button>
+        <button type="button" class="btn bp" id="btn-rpw" data-i18n="settings.save">Speichern</button>
       </div>
-    </div>
+    </form>
   </div>
 </div>
 
