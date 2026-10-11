@@ -649,6 +649,24 @@ test('Verschieben geht NUR über den Kaufpreis', () => {
   assert.doesNotMatch(read('public/index.html'), /m-move-box/);
 });
 
+/**
+ * ── Was diese Regel prüft, und was NICHT ────────────────────────────────────
+ *
+ * Sie prüft den QUELLTEXT. Das reicht für die Aussage „alle drei Arten gehen
+ * durch DIESELBE Umsetzung" — eine Einzige-Stelle-Regel, die kein Lauf
+ * beweisen kann, weil zwei Kopien sich ja gleich verhalten würden.
+ *
+ * Sie reicht NICHT für die Aussage „der Weg lebt". Genau daran ist sie einmal
+ * vorbeigegangen: `moveManualAcquisition` wurde gerufen, wie hier zugesichert
+ * — und löschte beim Absender den gesamten Bestand, weil sie eine Spalte las,
+ * die Migration 0038 entfernt hatte. Das Muster bestand, der Weg war kaputt.
+ *
+ * Der Lauf über die Route steht deshalb in
+ * test/kontowechsel-ueber-die-route-db.test.js (alle drei Arten, beide
+ * Abweisungen), die Mengenerhaltung in
+ * test/erfassung-verschieben-rest-bleibt-db.test.js. Diese Regel hier bleibt
+ * als Ergänzung — sie fängt, was ein Lauf nicht sieht.
+ */
 test('auch manuelle Teile und Minifiguren wandern über den Kaufpreis', () => {
   // Dieselbe Regel für alle drei Arten. Ein manuell erfasstes Teil hat keinen
   // Inhalt — es wandern nur Menge und Erfassung.
