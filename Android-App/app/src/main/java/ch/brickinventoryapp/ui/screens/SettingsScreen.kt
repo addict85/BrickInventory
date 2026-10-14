@@ -1357,7 +1357,14 @@ private fun KontoCard(
  * die ganze Zeile fuellt und damit jeder in seiner eigenen steht. Die Knoepfe
  * nehmen jetzt die Breite ihres Textes.
  */
-@OptIn(androidx.compose.foundation.layout.ExperimentalLayoutApi::class)
+// Kurzname, nicht vollqualifiziert: Die Datei hat oben
+// `import androidx.compose.foundation.layout.*`, also sind sowohl FlowRow als
+// auch diese Annotation bereits im Zugriff — und SplitFileImportsTest liest
+// aus @OptIn(...) genau den KURZEN Namen („ExperimentalLayoutApi"). Mit dem
+// vollen Paketpfad uebersetzt es zwar, aber die Regel sieht ihren Marker nicht
+// und meldet die Datei als „nutzt FlowRow ohne @OptIn". GEMESSEN: Genau daran
+// war die Android-CI im zweiten Lauf noch rot.
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 private fun CsvImportCard(
     csvZustand: ch.brickinventoryapp.ui.CsvHochladenUiState,
@@ -1392,7 +1399,7 @@ private fun CsvImportCard(
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant)
 
-        androidx.compose.foundation.layout.FlowRow(
+        FlowRow(
             horizontalArrangement = Arrangement.spacedBy(Abstaende.klein),
             verticalArrangement = Arrangement.spacedBy(Abstaende.klein),
             modifier = Modifier.fillMaxWidth()
