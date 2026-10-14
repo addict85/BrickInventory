@@ -13,6 +13,8 @@ import { scopeIds, parseScopeMode, resolveWriteTarget } from '../../utils/househ
 import { legeMerkpostenAn, loescheMerkposten, verschiebeMerkposten, uebernimm, merkpostenVon } from '../../utils/merkliste';
 import { getSetting } from '../../utils/settings';
 import { fetchPrice } from '../../utils/financeCalc';
+import { csvEmpfang } from '../../utils/dateiEmpfang';
+import { csvZeilenAusAnfrage, csvImportAntwort, parseCsvDate } from '../../utils/csvExport';
 
 const router = express.Router();
 type AuthedRequest = express.Request & { apiUser: { user_id: number } };
@@ -190,5 +192,80 @@ router.post('/wanted/:setNumber/:condition/uebernehmen', requireToken, async (re
     res.json({ success: true, ...r });
   } catch (e) { handleRouteError(res, e, undefined, req); }
 });
+
+// ── POST /api/v1/wanted/import/csv — eine Merkliste einlesen ────────────────
+/**
+ * Merkliste aus CSV — das Gegenstück zu buildMerklisteCsv().
+ *
+ * ── Warum hier und nicht in routes/ wie die anderen drei ────────────────────
+ *
+ * Sets, Teile und Minifiguren importieren in routes/sets|parts|minifigs.ts —
+ * den alten Routern, die nur die Webapp bedient. Die Merkliste hat solche
+ * Router nie gehabt: Sie lebt vollständig in dieser Datei und wird von BEIDEN
+ * Oberflächen über denselben Weg bedient. Der Import hier zu bauen heisst
+ * deshalb, dass die App ihn ohne weiteres Zutun auch hat — und nicht, dass es
+ * ihn demnächst zweimal gibt.
+ *
+ * ── Spaltennamen ────────────────────────────────────────────────────────────
+ *
+ * Erkannt werden die eigenen (set_number, condition, created_at) UND die
+ * deutschen Überschriften, die ein Tabellenprogramm hinterlässt. Dieselbe
+ * Nachsicht wie beim Teile- und Minifiguren-Import, aus demselben Grund: Die
+ * Datei kommt aus Excel zurück, nicht aus dem Export.
+ *
+ * Fehlt der Zustand, entscheidet NICHT diese Route, sondern zustandOder() in
+ * utils/merkliste.ts — also die Einstellung des Kontos. Eine Vorgabe 'N' hier
+ * wäre eine zweite Wahrheit über denselben Standardwert.
+ *
+ * ── Das Datum durch parseCsvDate ────────────────────────────────────────────
+ *
+ * Nicht roh weitergegeben: Postgres liest bei DateStyle MDY „01.02.2026" als
+ * 2. Januar, ohne Fehler zu melden. Der Fehler ist in diesem Baum schon
+ * dreimal aufgetreten (siehe csvGemeinsameFelder); hier steht er nicht noch
+ * einmal.
+ *
+ * ── Wessen Liste ────────────────────────────────────────────────────────────
+ *
+ * `owner` wie bei POST /wanted: Der Grossvater stellt die Liste des Enkels
+ * wieder her. resolveWriteTarget prüft die RICHTUNG — ohne das schriebe ein
+ * Unterkonto mit einer hochgeladenen Datei in jedes Konto des Haushalts.
+ */
+router.post('/wanted/import/csv', requireToken, csvEmpfang.single('file'),
+  async (req: AuthedRequest & { file?: { buffer: Buffer } }, res) => {
+    if (!req.file) return sendeFehler(req, res, 400, 'keine_datei');
+    try {
+      const owner = await resolveWriteTarget(req.apiUser.user_id, req.body?.owner_user_id);
+      if (owner === null) return sendeFehler(req, res, 403, 'kein_schreibrecht');
+
+      const { records, bereinigt, uebersprungen } =
+        csvZeilenAusAnfrage(req.file.buffer.toString('utf-8'));
+
+      let added = 0, updated = 0, errors = 0;
+      const results: any[] = [];
+
+      for (const row of bereinigt) {
+        // Object.values(row)[0] als letzter Rueckfall: eine Datei ohne
+        // Kopfzeile, bei der die erste Spalte die Setnummer ist. Dieselbe
+        // Nachsicht wie beim Minifiguren-Import.
+        const setNumber = String(row.set_number || row['Setnummer'] || row['set_num']
+                                 || Object.values(row)[0] || '').trim();
+        if (!setNumber) continue;
+
+        const condition = String(row.condition || row['zustand'] || row['Zustand'] || '').trim();
+        const am = parseCsvDate(row.created_at || row['aufgenommen_am'] || row['Auf der Liste seit']);
+
+        try {
+          const { war_neu } = await legeMerkpostenAn(owner, setNumber, condition, am);
+          if (war_neu) { added++; results.push({ set_number: setNumber, action: 'added' }); }
+          else         { updated++; results.push({ set_number: setNumber, action: 'exists' }); }
+        } catch (e: any) {
+          errors++;
+          results.push({ set_number: setNumber, action: 'error', error: e?.message });
+        }
+      }
+
+      csvImportAntwort(res, { added, updated, errors, records, results, uebersprungen });
+    } catch (e) { handleRouteError(res, e, undefined, req); }
+  });
 
 export default router;

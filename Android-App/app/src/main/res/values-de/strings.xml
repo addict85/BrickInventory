@@ -602,6 +602,7 @@
     <string name="csv_upload_sets">Sets</string>
     <string name="csv_upload_parts">Teile</string>
     <string name="csv_upload_figs">Minifiguren</string>
+    <string name="csv_upload_wanted">Merkliste</string>
     <string name="csv_upload_hint">Dieselben Dateien wie in der Webapp. Höchstens %1$d MB.</string>
     <string name="csv_upload_unreadable">Die gewählte Datei liess sich nicht lesen.</string>
     <string name="csv_upload_too_big">Die Datei ist grösser als %1$d MB.</string>

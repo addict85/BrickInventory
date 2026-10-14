@@ -34,6 +34,7 @@ import { nutzerStandardZustand } from './settings';
 import { meldeUndWeiter } from './httpError';
 import { fuerSet } from './preisvergleich';
 import { resolveIfExists } from './images';
+import { toCsv } from './csvExport';
 
 /** Ein Eintrag, wie ihn beide Oberflächen sehen. */
 export interface Merkposten {
@@ -150,19 +151,37 @@ export async function zustandOder(condition: unknown, userId: number): Promise<s
  * RETURNING für eine bestehende Zeile gar nichts, und `war_neu` wäre dann
  * nicht false, sondern unbekannt. Hier stand vorher die Notiz; seit sie
  * ausgebaut ist (Migration 0022), gibt es nichts mehr zu ändern.
+ *
+ * ── Das Aufnahmedatum als Parameter (Nachtrag: Import) ──────────────────────
+ *
+ * `aufgenommenAm` ist für den CSV-Import da und sonst für nichts: Eine
+ * wiederhergestellte Merkliste soll die ALTEN Daten tragen, nicht das Datum
+ * der Wiederherstellung. „Auf der Liste seit" ist die einzige Angabe, die ein
+ * Merkposten über sich selbst macht (dieselbe Begründung steht unten bei
+ * verschiebeMerkposten) — ein Import, der sie auf heute setzt, verliert sie
+ * für die ganze Liste auf einmal.
+ *
+ * COALESCE statt zweier Fassungen der Anweisung: NOW() lässt sich nicht als
+ * Parameter übergeben, und zwei Textfassungen desselben INSERT sind genau die
+ * Doppelung, die dieser Baum an einem Dutzend Stellen bekämpft. Dieselbe
+ * Lösung wie in test/helpers/bestand.js (erfasse).
+ *
+ * Bei einem Merkposten, den es SCHON gibt, bleibt das vorhandene Datum
+ * stehen: Der DO-UPDATE-Zweig fasst created_at nicht an. Ein Import darf eine
+ * bestehende Liste ergänzen, aber nicht deren Geschichte umschreiben.
  */
 export async function legeMerkpostenAn(
-  userId: number, setNumber: string, condition: unknown,
+  userId: number, setNumber: string, condition: unknown, aufgenommenAm?: string | null,
 ): Promise<{ merkposten: Merkposten | null; war_neu: boolean }> {
   const sn = sanitizeSetNumber(setNumber);
   const c  = await zustandOder(condition, userId);
   const r = await db.get(
-    `INSERT INTO wanted (user_id, set_number, condition)
-     VALUES ($1,$2,$3)
+    `INSERT INTO wanted (user_id, set_number, condition, created_at)
+     VALUES ($1,$2,$3, COALESCE($4::timestamptz, NOW()))
      ON CONFLICT (user_id, set_number, condition) DO UPDATE
         SET condition = wanted.condition
      RETURNING (xmax = 0) AS war_neu`,
-    [userId, sn, c]);
+    [userId, sn, c, aufgenommenAm ?? null]);
   const liste = await merkpostenVon([userId], sn);
   return { merkposten: liste.find(w => w.condition === c) ?? null, war_neu: !!r?.war_neu };
 }
@@ -529,4 +548,52 @@ export async function uebernimm(
   await loescheMerkposten(besitzerId, sn, merkpostenZustand);
   await loescheAlarm(besitzerId, sn, merkpostenZustand);
   return ergebnis as { action: string; set_number: string };
+}
+
+/**
+ * Die Merkliste EINES Kontos als CSV — für den ZIP-Export.
+ *
+ * ── Warum nur drei Spalten ──────────────────────────────────────────────────
+ *
+ * Ein Merkposten IST (Konto, Set, Zustand) plus das Aufnahmedatum; alles
+ * andere, was die Ansicht zeigt — Name, Jahr, Teilezahl, Marktpreis,
+ * Alarmschwelle —, gehört ihm nicht. Der Name steht in rb_sets, der Preis im
+ * price_cache, der Alarm in price_alerts. Sie mit zu exportieren sähe
+ * vollständiger aus und wäre es nicht: Beim Import müsste jede dieser Spalten
+ * entweder verworfen werden (dann war sie Zierde) oder in eine fremde Tabelle
+ * geschrieben (dann schreibt der Merklisten-Import den Katalog um).
+ *
+ * Der Preisalarm kommt deshalb als EIGENE Datei (preisalarme.csv, Stück 2 von
+ * Marcos Liste) und nicht als Spalte hier.
+ *
+ * ── Das Datumsformat ────────────────────────────────────────────────────────
+ *
+ * TO_CHAR(... AT TIME ZONE 'UTC','YYYY-MM-DD') — zeichengleich wie im
+ * Set-Export (SETS_CSV_SQL). Nicht die rohe Zeitmarke: Die trägt eine
+ * Zeitzone, und ein Tabellenprogramm macht daraus irgendetwas.
+ *
+ * ── Ein Konto, nicht das Blickfeld ──────────────────────────────────────────
+ *
+ * `user_id = $1` und nicht `= ANY($1)`: Der Export ist eine Sicherung der
+ * EIGENEN Liste. Nähme er den Kontenbaum mit, bekäme der Grossvater die
+ * Merkposten der Enkel in seine Datei und beim Import gehörten sie ihm. Die
+ * drei bestehenden Exporte sind genauso geschnitten (ein uid, siehe
+ * buildSetsCsv).
+ */
+export async function buildMerklisteCsv(uid: number): Promise<string> {
+  const rows = await db.all(
+    `SELECT w.set_number,
+            w.condition,
+            TO_CHAR(w.created_at AT TIME ZONE 'UTC','YYYY-MM-DD') AS created_at
+       FROM wanted w
+      WHERE w.user_id = $1
+      ORDER BY w.created_at DESC, w.set_number, w.condition`,
+    [uid])
+    // Wie beim Lesen oben: Ein Aufbau, der nur initSchema() gelaufen ist, hat
+    // die Tabelle nicht (die Begruendung steht in db/schema.sql). Eine leere
+    // Datei im Archiv ist dort die richtige Antwort — ein Fehler riss sonst
+    // den GANZEN ZIP-Export mit, samt Sets, Teilen und Minifiguren.
+    .catch((e: unknown) => { meldeUndWeiter('merkliste:export', e); return []; });
+
+  return toCsv(['set_number', 'condition', 'created_at'], rows);
 }

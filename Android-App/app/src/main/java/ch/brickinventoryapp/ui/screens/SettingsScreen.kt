@@ -1335,16 +1335,29 @@ private fun KontoCard(
 }
 
 /**
- * Eine CSV-Datei hochladen — Sets, Teile oder Minifiguren.
+ * Eine CSV-Datei hochladen — Sets, Teile, Minifiguren oder die Merkliste.
  *
- * Dieselben drei Adressen, die die Webapp anbietet. Die App konnte Importe
+ * Dieselben Adressen, die die Webapp anbietet. Die App konnte Importe
  * bisher nur beobachten (der Fortschrittsbalken oben in der Galerie); starten
  * konnte sie keinen, weil die Dateiauswahl fehlte und die Routen an einem
  * sitzungsgebundenen Waechter hingen (Nachtrag 127/128).
  *
  * Der Fortschritt DANACH kommt weiterhin ueber den bestehenden Kanal: Der
  * Import laeuft auf dem Server weiter, auch wenn die App zugeklappt wird.
+ *
+ * ── Warum FlowRow und nicht mehr Row ───────────────────────────────────────
+ *
+ * Mit der Merkliste sind es VIER Knoepfe. In einer Row mit weight(1f) teilen
+ * sie sich die Breite zu gleichen Teilen, und „Minifiguren" passt dann auf
+ * einem Telefon nicht mehr hinein — maxLines = 1 schneidet es ab, und was
+ * abgeschnitten dasteht, liest niemand richtig. FlowRow bricht stattdessen
+ * um; dieselbe Loesung wie bei den Netzschaltern in MonitoringSections.kt.
+ *
+ * Kein weight(1f) mehr: In einer FlowRow fuehrte es dazu, dass jeder Knopf
+ * die ganze Zeile fuellt und damit jeder in seiner eigenen steht. Die Knoepfe
+ * nehmen jetzt die Breite ihres Textes.
  */
+@OptIn(androidx.compose.foundation.layout.ExperimentalLayoutApi::class)
 @Composable
 private fun CsvImportCard(
     csvZustand: ch.brickinventoryapp.ui.CsvHochladenUiState,
@@ -1379,17 +1392,22 @@ private fun CsvImportCard(
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant)
 
-        Row(horizontalArrangement = Arrangement.spacedBy(Abstaende.klein), modifier = Modifier.fillMaxWidth()) {
+        androidx.compose.foundation.layout.FlowRow(
+            horizontalArrangement = Arrangement.spacedBy(Abstaende.klein),
+            verticalArrangement = Arrangement.spacedBy(Abstaende.klein),
+            modifier = Modifier.fillMaxWidth()
+        ) {
             listOf(
                 ch.brickinventoryapp.data.model.CsvArt.SETS to R.string.csv_upload_sets,
                 ch.brickinventoryapp.data.model.CsvArt.TEILE to R.string.csv_upload_parts,
                 ch.brickinventoryapp.data.model.CsvArt.MINIFIGUREN to R.string.csv_upload_figs,
+                ch.brickinventoryapp.data.model.CsvArt.MERKLISTE to R.string.csv_upload_wanted,
             ).forEach { (art, textId) ->
                 OutlinedButton(
                     onClick = { gewaehlteArt = art; auswahl.launch(typen) },
                     enabled = !csvZustand.laeuft,
-                    modifier = Modifier.weight(1f), shape = Formen.knopf,
-                    contentPadding = PaddingValues(horizontal = Abstaende.winzig)
+                    shape = Formen.knopf,
+                    contentPadding = PaddingValues(horizontal = Abstaende.klein)
                 ) {
                     if (csvZustand.laeuft && csvZustand.art == art) {
                         CircularProgressIndicator(Modifier.size(16.dp), strokeWidth = 2.dp)

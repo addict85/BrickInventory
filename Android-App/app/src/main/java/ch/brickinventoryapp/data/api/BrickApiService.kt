@@ -89,6 +89,13 @@ interface BrickApiService {
     @POST("api/v1/minifigs/import/csv")
     suspend fun importMinifigsCsv(@retrofit2.http.Part datei: okhttp3.MultipartBody.Part): Response<CsvImportErgebnis>
 
+    // Die Merkliste liegt NICHT unter einem eigenen alten Router wie Sets,
+    // Teile und Minifiguren, sondern vollstaendig in routes/api_v1/wanted.ts —
+    // deshalb steht ihr Import dort und nicht unter api/v1/merkliste/.
+    @Multipart
+    @POST("api/v1/wanted/import/csv")
+    suspend fun importMerklisteCsv(@retrofit2.http.Part datei: okhttp3.MultipartBody.Part): Response<CsvImportErgebnis>
+
     // ── Anleitungen: hinzufuegen und entfernen ──────────────────────────────
     //
     // Die App konnte Anleitungen bisher nur ANSEHEN. Beide Routen gab es

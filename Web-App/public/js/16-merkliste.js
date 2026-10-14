@@ -574,11 +574,60 @@ G('mks')?.addEventListener('input', () => {
   G('mks')._t = setTimeout(ladeMerkliste, 250);
 });
 
+/**
+ * Eine Merkliste aus einer CSV einlesen.
+ *
+ * ── Warum diese Funktion so aussieht wie importFigsCsv() ────────────────────
+ *
+ * Weil sie dasselbe tut, und weil beide Oberflächen dieselbe Antwort
+ * auswerten: `added`, `updated`, `errors`, `skipped_hint` kommen aus
+ * csvImportAntwort() — einer Stelle am Server. Die Übersetzungsschlüssel
+ * (import.running, import.summary) sind ebenfalls die bestehenden; ein
+ * eigener Satz Texte für dieselbe Aussage wäre nur eine zweite Fassung.
+ *
+ * `skipped_hint` wird angehängt und nicht verschluckt: Ein Import mit stillen
+ * Lücken sah sonst aus wie ein vollständiger — dieselbe Begründung steht bei
+ * den Minifiguren.
+ *
+ * Der Inhaber kommt aus demselben Auswahlfeld wie beim Erfassen
+ * (selectedOwner), nicht aus dem Filter oben: Importiert wird IN ein Konto,
+ * und das ist eine andere Frage als „wessen Liste sehe ich".
+ */
+async function importMerklisteCsv() {
+  const fi = G('mk-csv-file');
+  if (!fi?.files[0]) return;
+  const fd = new FormData();
+  fd.append('file', fi.files[0]);
+  const owner = selectedOwner();
+  if (owner) fd.append('owner_user_id', owner);
+
+  const status = G('mk-status');
+  if (status) status.textContent = tRaw('import.running');
+  try {
+    const r = await fetch('/api/v1/wanted/import/csv', { method: 'POST', body: fd });
+    const d = await r.json();
+    fi.value = '';
+    if (status) status.textContent = '';
+    if (d.success) {
+      const summary = t('import.summary', { added: d.added, updated: d.updated, errors: d.errors });
+      toast(summary + (d.skipped_hint ? ` — ${d.skipped_hint}` : ''),
+        (d.errors || d.skipped) ? 'info' : 'success');
+      ladeMerkliste();
+    } else {
+      toast(d.error || tRaw('settings.error'), 'error');
+    }
+  } catch (e) {
+    fi.value = '';
+    if (status) status.textContent = '';
+    toast(tRaw('settings.error'), 'error');
+  }
+}
+
 registerActions({ ladeMerkliste, merkpostenHinzufuegen, katalogAufMerkliste, merkpostenLoeschen,
                   merkpostenUebernehmen, schliesseUebernahme, bestaetigeUebernahme,
                   oeffneMerkpostenDetail, schliesseMerkpostenDetail,
                   merkpostenDetailLoeschen, merkpostenDetailUebernehmen,
-                  merkpostenInhaberGewaehlt });
+                  merkpostenInhaberGewaehlt, importMerklisteCsv });
 
 /**
  * `current` aus der Preis-Antwort in die Form, die renderMarketRows() liest.

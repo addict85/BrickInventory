@@ -11,6 +11,7 @@ import { getRateLimitStatus } from '../utils/financeCalc';
 import { buildSetsCsv } from '../utils/setService';
 import { buildPartsCsv } from './parts';
 import { buildFigsCsv } from './minifigs';
+import { buildMerklisteCsv } from '../utils/merkliste';
 import { DAILY_JOBS } from '../jobs/dailyScheduler';
 import { escapeLike, requireLoginOrToken, nutzerId, angemeldeteNutzerId, istVerwalter, nutzerName, hashToken, leereTokenCache } from '../utils/auth';
 import { bearerToken } from './api_v1/middleware';
@@ -254,8 +255,15 @@ router.get('/export/data', async (req: LoggedInRequest, res) => {
     const { ZipArchive } = require('archiver');
     const uid = angemeldeteNutzerId(req);
 
-    const [setsCsv, partsCsv, figsCsv] = await Promise.all([
-      buildSetsCsv(uid), buildPartsCsv(uid), buildFigsCsv(uid),
+    // merkliste.csv kam dazu (Marcos Liste, Stueck 1): „Merklisten sollen
+    // ebenfalls analog den anderen Seiten exportiert und importiert werden."
+    // Im SELBEN Archiv und nicht als eigene Route — die drei einzelnen
+    // /export/csv-Routen sind in diesem Baum ausdruecklich ENTFERNT worden
+    // („Kein Aufrufer; die Webapp exportiert ueber /api/settings/export/data",
+    // siehe routes/parts.ts und routes/minifigs.ts). Eine neue einzelne Route
+    // hiesse, diese Entscheidung rueckgaengig zu machen.
+    const [setsCsv, partsCsv, figsCsv, merkCsv] = await Promise.all([
+      buildSetsCsv(uid), buildPartsCsv(uid), buildFigsCsv(uid), buildMerklisteCsv(uid),
     ]);
 
     const dateStr = new Date().toISOString().substring(0, 10);
@@ -268,6 +276,7 @@ router.get('/export/data', async (req: LoggedInRequest, res) => {
     archive.append('\uFEFF' + setsCsv,  { name: 'sets.csv' });
     archive.append('\uFEFF' + partsCsv, { name: 'teile.csv' });
     archive.append('\uFEFF' + figsCsv,  { name: 'minifiguren.csv' });
+    archive.append('\uFEFF' + merkCsv,  { name: 'merkliste.csv' });
     await archive.finalize();
   } catch (e) { handleRouteError(res, e, undefined, req); }
 });

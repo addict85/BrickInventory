@@ -209,9 +209,17 @@ internal fun MainViewModel.ladeCsvHoch(art: ch.brickinventoryapp.data.model.CsvA
             is Result.Success ->
                 if (r.data.success) {
                     _csvHochladenState.value = CsvHochladenUiState(ergebnis = r.data)
-                    // Der Bestand hat sich geaendert — dieselben Nachladungen
-                    // wie am Ende eines vom Server gemeldeten Imports.
-                    loadSets(); loadStats()
+                    // Nachgeladen wird, was sich GEAENDERT hat — und das ist
+                    // bei der Merkliste etwas anderes als beim Bestand. Ein
+                    // loadSets() nach einem Merklisten-Import holte die
+                    // Galerie neu, die unberuehrt ist, und liesse die Liste
+                    // stehen, die gerade gewachsen ist: Der Nutzer sieht „12
+                    // hinzugefuegt" und davor eine unveraenderte Merkliste.
+                    if (art == ch.brickinventoryapp.data.model.CsvArt.MERKLISTE) {
+                        ladeMerkliste()
+                    } else {
+                        loadSets(); loadStats()
+                    }
                 } else {
                     _csvHochladenState.value = CsvHochladenUiState(
                         fehler = r.data.error ?: text(R.string.err_generic))

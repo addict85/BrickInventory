@@ -83,6 +83,7 @@ class AdminRepository @Inject constructor(
                 CsvArt.SETS      -> api.importSetsCsv(teil)
                 CsvArt.TEILE     -> api.importPartsCsv(teil)
                 CsvArt.MINIFIGUREN -> api.importMinifigsCsv(teil)
+                CsvArt.MERKLISTE -> api.importMerklisteCsv(teil)
             }
         }
     }

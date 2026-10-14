@@ -432,10 +432,15 @@ data class CsvImportErgebnis(
 /**
  * Welche Art CSV importiert wird.
  *
- * Drei Adressen, dieselbe Bedienung — deshalb ein Aufzaehlungstyp statt drei
- * Aufrufwegen durch die ganze Anwendung. Die Webapp bietet genau diese drei an.
+ * Vier Adressen, dieselbe Bedienung — deshalb ein Aufzaehlungstyp statt vier
+ * Aufrufwegen durch die ganze Anwendung. Die Webapp bietet genau diese vier an.
+ *
+ * MERKLISTE kam dazu (Marcos Liste, Stueck 1): „Merklisten sollen ebenfalls
+ * analog den anderen Seiten exportiert und importiert werden koennen." Dass die
+ * App nachzieht, ist nicht Zugabe, sondern Pflicht — test/webapp-endpunkte.test.js
+ * weist eine Adresse ab, die nur die Webapp ruft, ohne dass ein Grund dabeisteht.
  */
-enum class CsvArt { SETS, TEILE, MINIFIGUREN }
+enum class CsvArt { SETS, TEILE, MINIFIGUREN, MERKLISTE }
 
 // ═══════════════════════════════════════════════════════════════════════════
 // Preisalarm — sag Bescheid, wenn ein Set eine Schwelle reisst

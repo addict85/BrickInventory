@@ -395,6 +395,13 @@
           <div class="fg" style="max-width:110px"><label for="mk-cond" data-i18n="common.condition">Zustand</label><select id="mk-cond" style="padding:.45rem .7rem;border:1px solid var(--bdr);border-radius:var(--rad);background:var(--sur);color:var(--txt);font-size:.875rem"><option value="N" data-i18n="common.condition_new">Neu</option><option value="U" data-i18n="common.condition_used">Gebraucht</option></select></div>
           <div class="fg" id="mk-owner-box" style="max-width:150px;display:none"><label for="mk-owner" data-i18n="household.for_account">Für Konto</label><select id="mk-owner" style="padding:.45rem .7rem;border:1px solid var(--bdr);border-radius:var(--rad);background:var(--sur);color:var(--txt);font-size:.875rem"></select></div>
           <button class="btn bp" id="mk-add" data-click="merkpostenHinzufuegen" data-i18n="wanted.add.submit">Auf die Merkliste</button>
+          <!-- CSV-Einlesen, dieselbe Form wie bei Teilen und Minifiguren
+               (Marcos Liste: „analog den anderen Seiten"). Das Label traegt
+               KEIN for= : Es umschliesst sein Feld schon, und ein for= auf ein
+               fremdes Feld faellt in test/a11y.test.js auf („ein
+               umschliessendes Label traegt kein fremdes for="). Beschriftet
+               ist das Feld ueber aria-label. -->
+          <label class="btn bs" style="cursor:pointer">📥 CSV<input type="file" id="mk-csv-file" aria-label="CSV-Datei" data-i18n="import.csv_file" data-i18n-attr="aria-label" accept=".csv,.txt" style="display:none" data-change="importMerklisteCsv" /></label>
         </div>
         <div id="mk-status" style="margin-top:8px;font-size:.8rem"></div>
       </div>
@@ -1125,10 +1132,10 @@
             </div>
 
             <p style="font-size:.82rem;color:var(--mut);margin:0 0 .5rem 0">
-              <span data-i18n="settings.data_zip_hint">Sets, manuell erfasste Teile und Minifiguren als ZIP mit 3 CSV-Dateien exportieren — diese können danach über den entsprechenden CSV-Importer (Reiter Sets/Teile/Minifiguren) wieder importiert werden.</span>
+              <span data-i18n="settings.data_zip_hint">Sets, manuell erfasste Teile, Minifiguren und die Merkliste als ZIP mit 4 CSV-Dateien exportieren — diese können danach über den entsprechenden CSV-Importer (Reiter Sets/Teile/Minifiguren/Merkliste) wieder importiert werden.</span>
             </p>
             <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-bottom:1rem">
-              <a class="btn bs" href="/api/v1/settings/export/data" data-i18n="settings.data_zip_btn">📦 Sets, Teile &amp; Minifiguren exportieren (ZIP)</a>
+              <a class="btn bs" href="/api/v1/settings/export/data" data-i18n="settings.data_zip_btn">📦 Sets, Teile, Minifiguren &amp; Merkliste exportieren (ZIP)</a>
             </div>
 
             <p style="font-size:.82rem;color:var(--mut);margin:0 0 .5rem 0">
