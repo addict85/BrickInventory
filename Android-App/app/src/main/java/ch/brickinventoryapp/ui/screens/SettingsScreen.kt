@@ -1409,12 +1409,23 @@ private fun CsvImportCard(
                     shape = Formen.knopf,
                     contentPadding = PaddingValues(horizontal = Abstaende.klein)
                 ) {
+                    // Der Kreisel steht NEBEN der Beschriftung, nicht an ihrer
+                    // Stelle. Vorher tauschte ein if/else das eine gegen das
+                    // andere; das ging nur gut, solange weight(1f) die Breite
+                    // festhielt. Ohne weight (seit der FlowRow) schrumpfte der
+                    // Knopf waehrend des Imports auf Kreiselgroesse und schob
+                    // die drei anderen beiseite.
+                    //
+                    // Genau das faengt KnopfBreiteTest, und es hat es gefangen:
+                    // Die Android-CI war rot, und der Befund war richtig. Das
+                    // Muster hier steht dreissig Zeilen weiter unten in dieser
+                    // Datei schon einmal (Knopf „Nach Aktualisierung suchen").
                     if (csvZustand.laeuft && csvZustand.art == art) {
                         CircularProgressIndicator(Modifier.size(16.dp), strokeWidth = 2.dp)
-                    } else {
-                        Text(stringResource(textId), maxLines = 1,
-                            style = MaterialTheme.typography.labelLarge)
+                        Spacer(Modifier.width(Abstaende.winzig))
                     }
+                    Text(stringResource(textId), maxLines = 1,
+                        style = MaterialTheme.typography.labelLarge)
                 }
             }
         }
