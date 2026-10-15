@@ -895,8 +895,51 @@ async function loescheLagerort(id, name) {
   await ladeLagerortVerwaltung();
 }
 
+/**
+ * Preisalarme aus einer CSV einlesen.
+ *
+ * ── Warum der Währungshinweis gesondert gemeldet wird ───────────────────────
+ *
+ * Die Route übernimmt die Schwellen UNVERÄNDERT und setzt sie in die Währung
+ * des Kontos — sie rechnet nicht um (ein falscher Kurs wäre schlimmer als
+ * eine genannte Abweichung). Damit bedeutet dieselbe Zahl unter Umständen
+ * etwas anderes als in der Datei, und genau das darf nicht im Erfolgston
+ * untergehen. Steht `waehrung_hinweis` in der Antwort, wird daraus eine
+ * Meldung der Stufe „info" statt „success" — Form und Wort tragen die
+ * Aussage, nicht die Farbe.
+ */
+async function importAlarmeCsv() {
+  const fi = G('alerts-csv-file');
+  if (!fi?.files[0]) return;
+  const fd = new FormData();
+  fd.append('file', fi.files[0]);
+
+  const status = G('alerts-csv-status');
+  if (status) status.textContent = tRaw('import.running');
+  try {
+    const r = await fetch('/api/v1/alerts/import/csv', { method: 'POST', body: fd });
+    const d = await r.json();
+    fi.value = '';
+    if (status) status.textContent = '';
+    if (d.success) {
+      const summary = t('import.summary', { added: d.added, updated: d.updated, errors: d.errors });
+      const zusatz = [d.skipped_hint, d.waehrung_hinweis].filter(Boolean).join(' — ');
+      toast(summary + (zusatz ? ` — ${zusatz}` : ''),
+        (d.errors || d.skipped || d.waehrung_hinweis) ? 'info' : 'success');
+      await ladeAlarmUebersicht();
+    } else {
+      toast(d.error || tRaw('settings.error'), 'error');
+    }
+  } catch (e) {
+    fi.value = '';
+    if (status) status.textContent = '';
+    toast(tRaw('settings.error'), 'error');
+  }
+}
+
 registerActions({
   aendereAlarmSchwelle,
+  importAlarmeCsv,
   loescheAlarm,
   legeLagerortAn,
   lagerortTaste,

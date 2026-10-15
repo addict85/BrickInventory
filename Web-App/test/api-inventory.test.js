@@ -280,6 +280,7 @@ const C = {
   'DELETE /api/v1/wanted/:setNumber/:condition': 'nur-v1',
   'POST /api/v1/wanted/:setNumber/:condition/uebernehmen': 'nur-v1',
   'POST /api/v1/wanted/import/csv': 'nur-v1',
+  'POST /api/v1/alerts/import/csv': 'nur-v1',
 
   // ── Gutscheine ───────────────────────────────────────────────────────────
   //

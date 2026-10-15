@@ -508,3 +508,65 @@ async function verschicke(versende: Versender, a: AlarmZeile, preis: number, sch
   });
   await versende({ to: a.email!, ...mail });
 }
+
+/**
+ * Die Preisalarme EINES Kontos als CSV — für den ZIP-Export.
+ *
+ * ── Warum eine eigene Datei und keine Spalten an sets.csv ───────────────────
+ *
+ * So entschieden, und der Grund steht in der Tabelle selbst: Ein Alarm hängt
+ * an (Set, Zustand) und braucht das Set NICHT zu besitzen — die Notiz an
+ * alleAlarme() sagt es ausdrücklich („Ein Alarm braucht das Set nicht").
+ * Genau das ist der häufige Fall: Man setzt eine Schwelle auf ein Set, das man
+ * kaufen WILL. Als Spalten an sets.csv fielen diese Alarme stillschweigend
+ * heraus, weil es dort keine Zeile für sie gibt.
+ *
+ * Dasselbe gilt gegenüber merkliste.csv: Ein Alarm kann auf einem Merkposten
+ * sitzen, muss aber nicht. Die drei Tabellen treffen sich über
+ * (user_id, set_number, condition), ohne dass eine die andere kennen muss
+ * (siehe die Notiz in utils/merkliste.ts) — und genau so bleiben sie auch im
+ * Export getrennt.
+ *
+ * ── Fünf Spalten, und was BEWUSST fehlt ─────────────────────────────────────
+ *
+ * Drin: set_number, condition, richtung, schwelle, currency_code — die Frage,
+ * die der Alarm stellt.
+ *
+ * Draussen: `ausgeloest`, `zuletzt_am`, `zuletzt_preis`. Das ist Laufzeit­
+ * zustand, keine Angabe des Nutzers — es sagt, was der Job zuletzt gesehen
+ * hat. Dieselbe Entscheidung wie beim Konfigurations-Export, der
+ * `job_monitor_*` und die Sync-Marker ausnimmt („transiente Laufzeit-Zustände
+ * nicht mit exportieren", routes/settings.ts). Mit exportiert hätte es zwei
+ * Wirkungen, beide falsch: Ein `ausgeloest = true` aus der Datei unterdrückte
+ * die erste Meldung nach dem Wiederherstellen, und ein alter `zuletzt_preis`
+ * stünde in der Übersicht als aktueller Stand.
+ *
+ * ── Ein Konto, nicht das Blickfeld ──────────────────────────────────────────
+ *
+ * `user_id = $1`. Ein Alarm gehört ausdrücklich EINEM Konto und kennt kein
+ * Blickfeld — die Begründung steht an der Route („Das Elternkonto hat nichts
+ * davon, die Wünsche seiner Kinder per Mail zu bekommen"). Ein Export über
+ * scopeIds() wäre hier also nicht bloss weit, sondern falsch.
+ */
+export async function buildPreisalarmeCsv(uid: number): Promise<string> {
+  const { toCsv } = require('./csvExport');
+  const { meldeUndWeiter } = require('./httpError');
+  const rows = await db.all(
+    `SELECT set_number, condition, richtung, schwelle, currency_code
+       FROM price_alerts
+      WHERE user_id = $1
+      ORDER BY set_number, condition`,
+    [uid])
+    // price_alerts steht nur in db/migrations/0019-preisalarm.sql — ein Aufbau,
+    // der bloss initSchema() gelaufen ist, hat die Tabelle nicht (die
+    // Begruendung steht in db/schema.sql). Eine leere Datei im Archiv ist dort
+    // die richtige Antwort; ein Fehler riss sonst den GANZEN ZIP-Export mit.
+    .catch((e: unknown) => { meldeUndWeiter('preisalarm:export', e); return []; });
+
+  return toCsv(['set_number', 'condition', 'richtung', 'schwelle', 'currency_code'],
+    // schwelle kommt als NUMERIC, also als Zeichenkette aus dem Treiber. Ohne
+    // das Umwandeln stand im Export „200.0000" statt „200" — richtig, aber
+    // niemand schreibt eine Schwelle so hin, und beim Wiedereinlesen durch ein
+    // Tabellenprogramm wird daraus je nach Gebietseinstellung etwas anderes.
+    rows.map((r: any) => ({ ...r, schwelle: Number(r.schwelle) })));
+}

@@ -17,6 +17,8 @@ import { normalisiereLagerort, setzeLagerort, lagerorte,
          orteVon, legeOrtAn, benenneOrtUm, loescheOrt,
          vorgabeVon, setzeVorgabe } from '../../utils/lagerort';
 import { alarmeFuer, alleAlarme, ausgeloesteSeit, loescheAlarm, setzeAlarm } from '../../utils/preisalarm';
+import { csvEmpfang } from '../../utils/dateiEmpfang';
+import { csvZeilenAusAnfrage } from '../../utils/csvExport';
 import { istVermutung } from '../../utils/barcodeQuelle';
 import { setnummerKandidaten } from '../../utils/produkttitel';
 import { withInventoryLock } from '../../utils/txLock';
@@ -399,6 +401,119 @@ router.get('/alerts', requireToken, async (req: AuthedRequest, res) => {
     res.json({ success: true, alerts: await alleAlarme(req.apiUser.user_id) });
   } catch (e) { handleRouteError(res, e, undefined, req); }
 });
+
+// ── POST /api/v1/alerts/import/csv — Preisalarme einlesen ───────────────────
+/**
+ * Das Gegenstueck zu buildPreisalarmeCsv().
+ *
+ * ── Kein owner-Parameter, und das ist hier die Regel ────────────────────────
+ *
+ * Ueberall sonst im Baum nimmt ein Schreibweg `owner`/`owner_user_id` und
+ * prueft ihn mit resolveWriteTarget(). Ein Alarm NICHT: Er gehoert
+ * ausdruecklich dem eigenen Konto, weil er eine Mail an dessen Adresse
+ * ausloest. Die Begruendung steht oben an GET /sets/:setNumber/alert — „Das
+ * Elternkonto hat nichts davon, die Wuensche seiner Kinder per Mail zu
+ * bekommen — und duerfte sie schon gar nicht loeschen. Deshalb
+ * req.apiUser.user_id und nicht scopeIds()/writableIds(); im ganzen uebrigen
+ * Baum waere das ein Versehen, hier ist es die Regel."
+ *
+ * Derselbe Satz gilt fuer den Import. Ein owner-Parameter hier liesse ein
+ * Konto per hochgeladener Datei Alarme auf die Mailadresse eines anderen
+ * setzen.
+ *
+ * ── Die Waehrung kommt aus den Einstellungen, NICHT aus der Datei ───────────
+ *
+ * Das ist die Regel von PUT /sets/:setNumber/alert, woertlich: „Eine vom
+ * Klienten geschickte Waehrung waere eine zweite Quelle fuer dieselbe Angabe,
+ * und die beiden liefen beim naechsten Wechsel auseinander." Eine Importdatei
+ * IST der Klient.
+ *
+ * Nur: Die Datei TRAEGT eine Waehrung (currency_code), und sie kann eine
+ * andere sein als die heutige. Dann bedeutet dieselbe Zahl etwas anderes —
+ * „unter 200" in CHF ist eine andere Frage als „unter 200" in EUR. Umgerechnet
+ * wird NICHT (dafuer braeuchte es einen Kurs, und ein falscher Kurs ist
+ * schlimmer als eine genannte Abweichung), aber verschwiegen auch nicht: Jede
+ * solche Zeile kommt mit `waehrung_angepasst` zurueck, und die Antwort traegt
+ * einen Hinweis. Stillschweigend die Zahl uebernehmen UND die Waehrung
+ * wechseln waere die eine Sache, die hier niemand merken wuerde.
+ *
+ * ── Pruefung: setzeAlarm() und nicht ein eigenes INSERT ────────────────────
+ *
+ * setzeAlarm() bringt pruefeEingabe() mit (Richtung aus zwei Werten, Schwelle
+ * endlich und > 0, Zustand N oder U) und setzt `ausgeloest` zurueck. Ein
+ * eigenes INSERT hier waere die zweite Wahrheit ueber alle vier Regeln.
+ */
+router.post('/alerts/import/csv', requireToken, csvEmpfang.single('file'),
+  async (req: AuthedRequest & { file?: { buffer: Buffer } }, res) => {
+    if (!req.file) return sendeFehler(req, res, 400, 'keine_datei');
+    try {
+      const uid = req.apiUser.user_id;
+      const waehrung = String(await getSetting(uid, 'currency', 'EUR'));
+      const { records, bereinigt, uebersprungen } =
+        csvZeilenAusAnfrage(req.file.buffer.toString('utf-8'));
+
+      let added = 0, updated = 0, errors = 0, fremdeWaehrung = 0;
+      const results: any[] = [];
+
+      for (const row of bereinigt) {
+        const setNumber = String(row.set_number || row['Setnummer'] || row['set_num']
+                                 || Object.values(row)[0] || '').trim();
+        if (!setNumber) continue;
+
+        const sn = normalizeSetNumber(setNumber);
+        // Stand da schon einer? Das entscheidet added gegen updated, und
+        // fragen muss man VOR dem Schreiben — setzeAlarm() legt an oder
+        // aendert, ohne es zu verraten (ON CONFLICT DO UPDATE).
+        const schon = await alarmeFuer(uid, sn);
+        const zustandRoh = String(row.condition || row['zustand'] || row['Zustand'] || 'N')
+          .trim().toUpperCase();
+
+        const dateiWaehrung = String(row.currency_code || row['waehrung'] || '').trim().toUpperCase();
+        const abweichend = dateiWaehrung !== '' && dateiWaehrung !== waehrung.toUpperCase();
+
+        try {
+          const alarm = await setzeAlarm(uid, sn, waehrung, {
+            richtung: String(row.richtung || row['Richtung'] || '').trim().toLowerCase(),
+            // Komma als Dezimalzeichen zulassen: Dieselbe Nachsicht wie in
+            // csvGemeinsameFelder beim Preis — eine Datei aus einem deutschen
+            // Tabellenprogramm schreibt „24,90".
+            schwelle: String(row.schwelle || row['Schwelle'] || '').trim().replace(',', '.'),
+            condition: zustandRoh,
+          });
+          if (schon.some(a => a.condition === alarm.condition)) updated++; else added++;
+          if (abweichend) fremdeWaehrung++;
+          results.push({
+            set_number: sn, condition: alarm.condition,
+            action: schon.some(a => a.condition === alarm.condition) ? 'updated' : 'added',
+            ...(abweichend ? { waehrung_angepasst: true, waehrung_datei: dateiWaehrung,
+                               waehrung_konto: waehrung } : {}),
+          });
+        } catch (e: any) {
+          errors++;
+          results.push({ set_number: sn, action: 'error', error: e?.message });
+        }
+      }
+
+      // Ein Objektliteral statt `const antwort: any` samt nachtraeglicher
+      // Zuweisungen: test/ratschen.test.js zaehlt jedes `any` im Baum und
+      // laesst die Zahl nur SINKEN („any wird weniger, nie mehr"). Mein erster
+      // Entwurf hob sie von 398 auf 399, und die Ratsche hat das gemeldet.
+      // Hochsetzen waere die falsche Antwort gewesen — der bedingte Zusatz
+      // laesst sich als Spreizung schreiben und braucht den Typ nicht
+      // abzuschalten.
+      const { uebersprungenHinweis } = require('../../utils/csvExport');
+      res.json({
+        success: true, added, updated, errors,
+        total: records.length, results,
+        skipped: uebersprungen.length || undefined,
+        skipped_hint: uebersprungenHinweis(uebersprungen) || undefined,
+        ...(fremdeWaehrung ? { waehrung_hinweis:
+          `${fremdeWaehrung} Alarm(e) standen in einer anderen Währung als ${waehrung}. ` +
+          `Die Schwellen wurden unverändert übernommen und gelten jetzt in ${waehrung} — ` +
+          'die Zahlen bitte nachsehen.' } : {}),
+      });
+    } catch (e) { handleRouteError(res, e, undefined, req); }
+  });
 
 /**
  * /api/v1/storage/locations — der VORRAT an Lagerorten, je Konto.

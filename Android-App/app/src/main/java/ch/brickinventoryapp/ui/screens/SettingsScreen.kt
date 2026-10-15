@@ -1409,6 +1409,7 @@ private fun CsvImportCard(
                 ch.brickinventoryapp.data.model.CsvArt.TEILE to R.string.csv_upload_parts,
                 ch.brickinventoryapp.data.model.CsvArt.MINIFIGUREN to R.string.csv_upload_figs,
                 ch.brickinventoryapp.data.model.CsvArt.MERKLISTE to R.string.csv_upload_wanted,
+                ch.brickinventoryapp.data.model.CsvArt.PREISALARME to R.string.csv_upload_alerts,
             ).forEach { (art, textId) ->
                 OutlinedButton(
                     onClick = { gewaehlteArt = art; auswahl.launch(typen) },

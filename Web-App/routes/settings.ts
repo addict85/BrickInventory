@@ -12,6 +12,7 @@ import { buildSetsCsv } from '../utils/setService';
 import { buildPartsCsv } from './parts';
 import { buildFigsCsv } from './minifigs';
 import { buildMerklisteCsv } from '../utils/merkliste';
+import { buildPreisalarmeCsv } from '../utils/preisalarm';
 import { DAILY_JOBS } from '../jobs/dailyScheduler';
 import { escapeLike, requireLoginOrToken, nutzerId, angemeldeteNutzerId, istVerwalter, nutzerName, hashToken, leereTokenCache } from '../utils/auth';
 import { bearerToken } from './api_v1/middleware';
@@ -262,8 +263,23 @@ router.get('/export/data', async (req: LoggedInRequest, res) => {
     // („Kein Aufrufer; die Webapp exportiert ueber /api/settings/export/data",
     // siehe routes/parts.ts und routes/minifigs.ts). Eine neue einzelne Route
     // hiesse, diese Entscheidung rueckgaengig zu machen.
-    const [setsCsv, partsCsv, figsCsv, merkCsv] = await Promise.all([
+    // preisalarme.csv kam dazu (Marcos Liste, Stueck 2): „Preisalarme sollen in
+    // den bestehenden Exporten und Importen ergaenzt werden (in allen)."
+    //
+    // In ALLEN heisst hier: in diesem Archiv. Die beiden anderen Exporte des
+    // Baums koennen sie nicht tragen, und das ist kein Versaeumnis:
+    //
+    //   * /api/v1/settings/export ist die KONFIGURATION (Schluessel, Grenzen,
+    //     Job-Zeiten). Ein Preisalarm ist eine Angabe ueber ein Set, kein
+    //     Einstellungswert — er stuende dort als zweite Wahrheit neben dieser
+    //     Datei, und der Import dort arbeitet mit einer Whitelist von
+    //     Schluesselnamen, in die eine Tabelle nicht passt.
+    //   * /api/v1/sets/export/rebrickable schreibt das Listenformat einer
+    //     FREMDEN Firma („Set Number,Quantity"). Eine zusaetzliche Spalte
+    //     macht die Datei bei Rebrickable unbrauchbar.
+    const [setsCsv, partsCsv, figsCsv, merkCsv, alarmCsv] = await Promise.all([
       buildSetsCsv(uid), buildPartsCsv(uid), buildFigsCsv(uid), buildMerklisteCsv(uid),
+      buildPreisalarmeCsv(uid),
     ]);
 
     const dateStr = new Date().toISOString().substring(0, 10);
@@ -277,6 +293,7 @@ router.get('/export/data', async (req: LoggedInRequest, res) => {
     archive.append('\uFEFF' + partsCsv, { name: 'teile.csv' });
     archive.append('\uFEFF' + figsCsv,  { name: 'minifiguren.csv' });
     archive.append('\uFEFF' + merkCsv,  { name: 'merkliste.csv' });
+    archive.append('\uFEFF' + alarmCsv, { name: 'preisalarme.csv' });
     await archive.finalize();
   } catch (e) { handleRouteError(res, e, undefined, req); }
 });

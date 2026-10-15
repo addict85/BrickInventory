@@ -919,6 +919,20 @@
 
           <!-- Gefüllt von ladeAlarmUebersicht() -->
           <div id="alerts-list" style="font-size:.85rem"></div>
+
+          <!-- CSV-Einlesen (Marcos Liste, Stück 2). Kein eigener
+               EXPORT-Knopf: Die Alarme liegen in demselben ZIP wie Sets,
+               Teile, Minifiguren und Merkliste (weiter unten unter „Daten
+               exportieren"). Dieselbe Entscheidung wie bei der Merkliste, und
+               aus demselben Grund — die drei einzelnen /export/csv-Routen
+               sind in diesem Baum ausdrücklich entfernt worden.
+
+               Das Label trägt KEIN for= : Es umschliesst sein Feld schon, und
+               ein for= auf ein fremdes Feld fällt in test/a11y.test.js auf. -->
+          <div style="display:flex;gap:8px;align-items:center;margin-top:.75rem">
+            <label class="btn bs" style="cursor:pointer">📥 CSV<input type="file" id="alerts-csv-file" aria-label="CSV-Datei" data-i18n="import.csv_file" data-i18n-attr="aria-label" accept=".csv,.txt" style="display:none" data-change="importAlarmeCsv" /></label>
+            <span id="alerts-csv-status" style="font-size:.8rem;color:var(--mut)"></span>
+          </div>
         </div>
       </div>
 
@@ -1132,10 +1146,10 @@
             </div>
 
             <p style="font-size:.82rem;color:var(--mut);margin:0 0 .5rem 0">
-              <span data-i18n="settings.data_zip_hint">Sets, manuell erfasste Teile, Minifiguren und die Merkliste als ZIP mit 4 CSV-Dateien exportieren — diese können danach über den entsprechenden CSV-Importer (Reiter Sets/Teile/Minifiguren/Merkliste) wieder importiert werden.</span>
+              <span data-i18n="settings.data_zip_hint">Sets, manuell erfasste Teile, Minifiguren, die Merkliste und die Preisalarme als ZIP mit 5 CSV-Dateien exportieren — diese können danach über den entsprechenden CSV-Importer (Reiter Sets/Teile/Minifiguren/Merkliste bzw. Einstellungen → Preisalarme) wieder importiert werden.</span>
             </p>
             <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-bottom:1rem">
-              <a class="btn bs" href="/api/v1/settings/export/data" data-i18n="settings.data_zip_btn">📦 Sets, Teile, Minifiguren &amp; Merkliste exportieren (ZIP)</a>
+              <a class="btn bs" href="/api/v1/settings/export/data" data-i18n="settings.data_zip_btn">📦 Sets, Teile, Minifiguren, Merkliste &amp; Alarme exportieren (ZIP)</a>
             </div>
 
             <p style="font-size:.82rem;color:var(--mut);margin:0 0 .5rem 0">

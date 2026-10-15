@@ -96,6 +96,13 @@ interface BrickApiService {
     @POST("api/v1/wanted/import/csv")
     suspend fun importMerklisteCsv(@retrofit2.http.Part datei: okhttp3.MultipartBody.Part): Response<CsvImportErgebnis>
 
+    // Preisalarme. Die Adresse liegt unter /alerts und nicht unter
+    // /sets/<nr>/alert, weil die Datei VIELE Sets traegt — die Einzelroute
+    // nebenan setzt genau einen Alarm.
+    @Multipart
+    @POST("api/v1/alerts/import/csv")
+    suspend fun importAlarmeCsv(@retrofit2.http.Part datei: okhttp3.MultipartBody.Part): Response<CsvImportErgebnis>
+
     // ── Anleitungen: hinzufuegen und entfernen ──────────────────────────────
     //
     // Die App konnte Anleitungen bisher nur ANSEHEN. Beide Routen gab es

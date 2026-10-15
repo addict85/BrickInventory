@@ -215,10 +215,10 @@ internal fun MainViewModel.ladeCsvHoch(art: ch.brickinventoryapp.data.model.CsvA
                     // Galerie neu, die unberuehrt ist, und liesse die Liste
                     // stehen, die gerade gewachsen ist: Der Nutzer sieht „12
                     // hinzugefuegt" und davor eine unveraenderte Merkliste.
-                    if (art == ch.brickinventoryapp.data.model.CsvArt.MERKLISTE) {
-                        ladeMerkliste()
-                    } else {
-                        loadSets(); loadStats()
+                    when (art) {
+                        ch.brickinventoryapp.data.model.CsvArt.MERKLISTE -> ladeMerkliste()
+                        ch.brickinventoryapp.data.model.CsvArt.PREISALARME -> ladeAlarmUebersicht()
+                        else -> { loadSets(); loadStats() }
                     }
                 } else {
                     _csvHochladenState.value = CsvHochladenUiState(
