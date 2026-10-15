@@ -165,6 +165,44 @@ test('Guthaben-Abfrage', async (t) => {
     assert.equal(b.protokoll.length, 1, 'Danach wird nicht weitergefragt');
   });
 
+  await t.test('5b. nach Bot-Schutz beginnt der nächste Versuch mit frischer Sitzung', async () => {
+    // ── Woher dieser Fall kommt ───────────────────────────────────────────
+    //
+    // Marcos Frage: „schlägt cloudflare an, wenn ich 1nen Request pro 30sek
+    // für die Guthaben sende oder wird dies noch nicht als Bot eingestuft?"
+    // Beim Beantworten fiel diese Lücke auf: Der Sitzungsvorrat hält eine
+    // Sitzung, solange ihr Token lebt (~24 h). Die Cookies darin altern
+    // schneller — Cloudflares `__cf_bm` lebt etwa 30 Minuten. Ohne das
+    // Verwerfen nähme der Versuch NACH der Pause wieder dieselben alten
+    // Cookies, bekäme wieder 403 und pausierte wieder: eine Schleife, die nie
+    // eine frische Seite lädt.
+    G.vergesseSitzungen();
+
+    // 1. Eine Sitzung aufbauen und benutzen.
+    const a = doppel();
+    await G.holeGuthaben(NUMMER, PIN, { locale: 'de-CH', abruf: a.abruf });
+    assert.equal(a.protokoll.filter(p => p.url.includes('/Login')).length, 1,
+      'Selbstnachweis: es wurde eine Sitzung aufgebaut');
+
+    // 2. Der Bot-Schutz schlägt zu.
+    const b = doppel({ giftCardBalanceQuery: antwort({ status: 403, text: 'blocked' }) });
+    await assert.rejects(() => G.holeGuthaben(NUMMER, PIN, { locale: 'de-CH', abruf: b.abruf }),
+      (e) => e instanceof G.BotSchutz);
+    assert.equal(b.protokoll.filter(p => p.url.includes('/gift-cards/balance')).length, 0,
+      'Selbstnachweis: dieser Versuch lief noch über die GEMERKTE Sitzung');
+
+    // 3. Der nächste Versuch (nach der Pause, die hier nicht nachgestellt
+    //    wird — sie steht in der Schranke) muss die Seite neu laden.
+    const c = doppel();
+    await G.holeGuthaben(NUMMER, PIN, { locale: 'de-CH', abruf: c.abruf });
+    assert.equal(c.protokoll.filter(p => p.url.includes('/gift-cards/balance')).length, 1,
+      'Nach einem Bot-Schutz-Treffer wurde die alte Sitzung weiterbenutzt. Mit ' +
+      'abgelaufenen Cookies läuft der nächste Versuch in dieselbe Wand — und ' +
+      'die Pause beginnt von vorn, ohne dass je eine frische Seite geladen wird.');
+    assert.equal(c.protokoll.filter(p => p.url.includes('/Login')).length, 1,
+      'Zur frischen Seite gehört eine frische Anmeldung');
+  });
+
   await t.test('6. die PIN steht in KEINEM Text, der hinausgeht', async () => {
     G.vergesseSitzungen();
     // Der boeseste Fall: Die Gegenseite wirft die Eingabe in ihrer

@@ -414,7 +414,21 @@ async function frageAb(
  * nur dieselbe Antwort.
  *
  * Bei [BotSchutz] gibt es KEINEN Neuversuch — der zweite Aufruf wäre genau
- * der, den Marco nicht will.
+ * der, den Marco nicht will. Die gemerkte Sitzung wird dabei aber VERWORFEN,
+ * und das ist kein Nebenher:
+ *
+ * Marcos Frage am 15.10. war, ob ein Aufruf je 30 Sekunden den Bot-Schutz
+ * auslöst. Beim Nachdenken darüber fiel diese Lücke auf: Der Vorrat hält eine
+ * Sitzung, solange ihr Token lebt — bis zu 24 Stunden. Die Cookies darin
+ * altern schneller; `__cf_bm` von Cloudflare lebt etwa 30 Minuten. Nach einem
+ * 403 stand die alte Sitzung weiter im Vorrat, die Schranke pausierte eine
+ * halbe Stunde, und der nächste Versuch nahm WIEDER dieselben Cookies — bekam
+ * wieder 403, pausierte wieder. Das konnte sich festfressen, ohne je die
+ * Guthabenseite neu zu laden.
+ *
+ * Das Verwerfen kostet KEINEN zusätzlichen Aufruf: Es passiert im Speicher,
+ * und der nächste Seitenaufruf findet erst nach der Pause statt. Marcos
+ * Vorgabe „dass nicht mehr Aufrufe generiert werden" bleibt unberührt.
  *
  * Die Grenze „ein Aufruf je 30 Sekunden über alle Benutzer" steht NICHT hier,
  * sondern in utils/gutscheinGuthabenSchranke.ts; der Grund steht im Kopf
@@ -428,14 +442,24 @@ export async function holeGuthaben(
   if (!abruf) throw new Error('Kein fetch verfügbar');
 
   const warImVorrat = sitzungen.has(locale);
-  const s = await sitzung(abruf, locale);
   try {
-    return await frageAb(abruf, nummer, pin, locale, s);
-  } catch (e) {
-    if (e instanceof NichtAngemeldet && warImVorrat) {
+    const s = await sitzung(abruf, locale);
+    try {
+      return await frageAb(abruf, nummer, pin, locale, s);
+    } catch (e) {
+      if (!(e instanceof NichtAngemeldet) || !warImVorrat) throw e;
       console.warn(`[guthaben] Token abgelaufen, neue Sitzung für ${kurz(nummer)}`);
       const frisch = await sitzung(abruf, locale, true);
-      return frageAb(abruf, nummer, pin, locale, frisch);
+      return await frageAb(abruf, nummer, pin, locale, frisch);
+    }
+  } catch (e) {
+    // Die äussere Klammer fängt AUCH den Bot-Schutz beim Aufbau der Sitzung
+    // (die Guthabenseite selbst kann 403 geben) — deshalb zwei Ebenen und
+    // nicht ein einziges try um frageAb.
+    if (e instanceof BotSchutz) {
+      sitzungen.delete(locale);
+      console.warn(`[guthaben] Bot-Schutz — Sitzung für ${locale} verworfen, `
+                 + 'der nächste Versuch beginnt mit frischem Seitenaufruf');
     }
     throw e;
   }
