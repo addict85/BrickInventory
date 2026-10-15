@@ -1029,6 +1029,17 @@ data class GutscheinUiState(
      * kennt den NavController —, derselbe Weg wie bei MeldungsZielUiState.
      */
     val pdfZiel: Int? = null,
+    /**
+     * Ob der Export ALLER Gutscheine gezeigt werden soll.
+     *
+     * Ein zweites Feld neben [pdfZiel] und kein gemeinsamer Typ: Die beiden
+     * kommen von verschiedenen Knoepfen, werden einzeln quittiert, und ein
+     * versiegelter Typ darueber waere mehr Bauwerk als Auskunft. Der Weg
+     * dahinter ist derselbe — der Graph schickt beide in den PdfViewerScreen
+     * (Marcos Vorgabe: „Das erzeugte PDF soll analog den andere PDFs angezeigt
+     * werden").
+     */
+    val exportZeigen: Boolean = false,
     val speichert: Boolean = false,
     /**
      * Die id der Karte, deren Guthaben gerade abgefragt wird — oder null.

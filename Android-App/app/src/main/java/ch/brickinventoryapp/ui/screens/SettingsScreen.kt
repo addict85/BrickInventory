@@ -191,6 +191,7 @@ fun SettingsScreen(
                 vm.meldeGutscheinKopiert(istNummer)
             },
             onGuthaben = { vm.frageGuthabenAb(it) },
+            onExportieren = { vm.oeffneGutscheinExport() },
         )
 
         // Currency

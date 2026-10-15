@@ -308,6 +308,34 @@ internal fun MainViewModel.gutscheinPdfQuittieren() {
 }
 
 /**
+ * Alle Gutscheine als EIN PDF — Marcos Vorgabe vom 15.10.:
+ *
+ *   „Bitte auch den Button 'Alle Gutscheine als PDF exportieren' in der
+ *    Android-App einbauen. Das erzeugte PDF soll analog den andere PDFs
+ *    angezeigt werden."
+ *
+ * Hier wird NICHTS heruntergeladen. Wie beim einzelnen Gutschein-PDF bekommt
+ * der vorhandene PdfViewerScreen die ADRESSE und laedt sie mit dem
+ * angemeldeten Client der App; er bringt Drucken und Speichern selbst mit.
+ * Ein eigener Download waere eine zweite Fassung desselben Weges — und die
+ * Datei laege danach im Cache des Geraets, wo ein Stapel Gutscheine samt
+ * Nummern und PINs nichts zu suchen hat.
+ *
+ * Bis hierher stand in test/webapp-endpunkte.test.js, der Export sei
+ * ABSICHTLICH nicht in der App: Sie habe keinen Weg, eine Datei zu speichern
+ * oder weiterzugeben. Das Urteil war zu eng — angesehen werden kann sie sehr
+ * wohl, und genau das hat Marco verlangt.
+ */
+internal fun MainViewModel.oeffneGutscheinExport() {
+    _gutscheinState.update { it.copy(exportZeigen = true) }
+}
+
+/** Erledigt — wie beim Einzel-PDF. */
+internal fun MainViewModel.gutscheinExportQuittieren() {
+    _gutscheinState.update { it.copy(exportZeigen = false) }
+}
+
+/**
  * Die Adresse des hinterlegten PDFs — fuer den vorhandenen PDF-Betrachter.
  *
  * Marcos Vorgabe: „Das PDF soll jeweils auch wieder heruntergeladen, resp. in
@@ -323,3 +351,16 @@ internal fun MainViewModel.gutscheinPdfQuittieren() {
  */
 internal fun gutscheinPdfAdresse(serverUrl: String, id: Int): String =
     serverUrl.trimEnd('/') + "/api/v1/vouchers/" + id + "/pdf"
+
+/**
+ * Die Adresse des Sammel-PDFs.
+ *
+ * Dieselbe, die die Webapp holt. Die Antwort traegt dort zusaetzlich eine
+ * Kopfzeile mit den Befunden je Gutschein (ersetzt / stimmte schon /
+ * unveraendert mit Grund); der Betrachter liest sie NICHT — er bekommt die
+ * Datei. Das ist der Unterschied, der bleibt: Am Rechner sagt die Meldung,
+ * welcher Betrag nicht ersetzt werden konnte, auf dem Telefon steht es im
+ * PDF selbst (dort steht dann der alte Betrag).
+ */
+internal fun gutscheinExportAdresse(serverUrl: String): String =
+    serverUrl.trimEnd('/') + "/api/v1/vouchers/export/pdf"

@@ -217,6 +217,21 @@ fun NavGraphBuilder.toolsGraph(
                     ch.brickinventoryapp.ui.gutscheinPdfAdresse(state.serverUrl, id), nummer))
                 vm.gutscheinPdfQuittieren()
             }
+            // Dasselbe fuer den Export ALLER Gutscheine (Marcos Vorgabe vom
+            // 15.10.: „Das erzeugte PDF soll analog den andere PDFs angezeigt
+            // werden"). Derselbe Betrachter, dieselbe Mechanik — nur die
+            // Adresse ist eine andere.
+            //
+            // Der Titel wird AUSSERHALB des LaunchedEffect gelesen:
+            // stringResource ist @Composable und in einem Effekt nicht
+            // aufrufbar.
+            val exportTitel = stringResource(R.string.vouchers_export)
+            LaunchedEffect(gutscheine.exportZeigen) {
+                if (!gutscheine.exportZeigen) return@LaunchedEffect
+                navController.navigate(Screen.PdfViewer.createRoute(
+                    ch.brickinventoryapp.ui.gutscheinExportAdresse(state.serverUrl), exportTitel))
+                vm.gutscheinExportQuittieren()
+            }
             ReiterGeruest(stringResource(R.string.nav_settings), vm, navController, bottomNavItems, snackbarHostState) {
                 ch.brickinventoryapp.ui.ScrollPositionKeeper(
                     "settings", settingsScrollState, vm.scrollMemory)

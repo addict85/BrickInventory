@@ -737,6 +737,7 @@
     <string name="vouchers_pdf_chosen">File selected</string>
     <string name="vouchers_pdf_hint">The values are read from it. Anything you fill in yourself wins. A PDF with several pages yields several vouchers.</string>
     <string name="vouchers_pdf_open">Open PDF</string>
+    <string name="vouchers_export">Export all vouchers as PDF</string>
     <string name="vouchers_pin_show">Show PIN</string>
     <string name="vouchers_pin_hide">Hide PIN</string>
     <string name="vouchers_delete_confirm">Really delete voucher %1$s? The stored PDF goes with it.</string>

@@ -723,6 +723,7 @@
     <string name="vouchers_pdf_chosen">Datei gewählt</string>
     <string name="vouchers_pdf_hint">Die Werte werden daraus gelesen. Was du selbst einträgst, gilt. Ein PDF mit mehreren Seiten ergibt mehrere Gutscheine.</string>
     <string name="vouchers_pdf_open">PDF öffnen</string>
+    <string name="vouchers_export">Alle Gutscheine als PDF exportieren</string>
     <string name="vouchers_pin_show">PIN anzeigen</string>
     <string name="vouchers_pin_hide">PIN verbergen</string>
     <string name="vouchers_delete_confirm">Gutschein %1$s wirklich löschen? Das hinterlegte PDF wird mit gelöscht.</string>

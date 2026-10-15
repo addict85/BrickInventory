@@ -216,16 +216,18 @@ const NUR_WEB = new Map([
    'melden. Marco weiss es und kann es anfordern; bis dahin ist dies kein ' +
    'Versehen, sondern ein benannter Rest.'],
   ['/api/v1/vouchers/export/pdf',
-   'Alle Gutscheine als EIN PDF. Eine DATEI ZUM BEHALTEN — und die App hat ' +
-   'keinen Weg, eine Datei zu speichern oder weiterzugeben: Das vorhandene ' +
-   'Gutschein-PDF wird nur ANGESEHEN (gutscheinPdfAdresse() in ' +
-   'ui/GutscheinFeature.kt, und zu GET /vouchers/{id}/pdf steht in ' +
-   'BrickApiService.kt ausdruecklich, warum dort keine Methode liegt). ' +
-   'Dazu traegt die Antwort ihre Befunde in einer Kopfzeile — welcher Betrag ' +
-   'ersetzt wurde und welcher nicht, mit Grund —, und ein Betrachter hat ' +
-   'dafuer keinen Platz. Den IMPORT hat die App (POST ' +
-   '/vouchers/import/pdf); es fehlt nur die Richtung, fuer die ein ' +
-   'Dateisystem gebraucht wird.'],
+   'Alle Gutscheine als EIN PDF. Die App RUFT die Adresse sehr wohl auf — seit ' +
+   'Marcos Vorgabe vom 15.10. („Bitte auch den Button … in der Android-App ' +
+   'einbauen. Das erzeugte PDF soll analog den andere PDFs angezeigt werden") ' +
+   'steht der Knopf in GutscheineCard.kt. Sie ruft sie nur nicht ueber ' +
+   'Retrofit: Der PdfViewerScreen bekommt die ADRESSE ' +
+   '(gutscheinExportAdresse() in ui/GutscheinFeature.kt) und laedt sie mit ' +
+   'dem angemeldeten Client der App — genau wie beim einzelnen Gutschein-PDF, ' +
+   'zu dem in BrickApiService.kt steht, warum dort keine Methode liegt. ' +
+   'Dieses Muster sieht die Messung oben nicht, weil sie @GET/@POST sucht. ' +
+   'Was bleibt: Die Befunde in der Kopfzeile (welcher Betrag ersetzt wurde ' +
+   'und welcher nicht) liest nur die Webapp; im Betrachter steht das PDF, ' +
+   'nicht die Auskunft darueber.'],
   ['/api/v1/settings/import',
    'Spielt eine gesicherte Verwaltungs-Konfiguration aus einer JSON-Datei ' +
    'zurück. Dasselbe Urteil wie bei der Nutzerverwaltung: eine Aufgabe für ' +

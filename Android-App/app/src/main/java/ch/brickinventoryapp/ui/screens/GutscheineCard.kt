@@ -69,6 +69,8 @@ fun GutscheineCard(
      * taktet sich dafuer selbst; hier ist es der Knopf je Zeile.
      */
     onGuthaben: (Int) -> Unit,
+    /** Alle Gutscheine als EIN PDF — im Betrachter, nicht als Download. */
+    onExportieren: () -> Unit,
 ) {
     // Die gewaehlte Datei lebt nur, solange das Formular offen ist — sie
     // gehoert nicht in den geteilten Zustand, weil eine Uri eine Berechtigung
@@ -82,6 +84,30 @@ fun GutscheineCard(
         androidx.activity.result.contract.ActivityResultContracts.OpenDocument()
     ) { uri -> pdfUri = uri }
     SettingsCard(title = stringResource(R.string.vouchers_title), icon = Icons.Default.Redeem) {
+
+        // ── Alle Gutscheine als EIN PDF ───────────────────────────────────
+        //
+        // Marcos Vorgabe vom 15.10.: „Bitte auch den Button 'Alle Gutscheine
+        // als PDF exportieren' in der Android-App einbauen. Das erzeugte PDF
+        // soll analog den andere PDFs angezeigt werden."
+        //
+        // „Analog" heisst hier: der vorhandene PdfViewerScreen, derselbe, der
+        // Anleitungen und das einzelne Gutschein-PDF zeigt. Er bringt Drucken
+        // und Speichern mit; heruntergeladen wird hier nichts.
+        //
+        // Ohne Gutscheine ist der Knopf aus: Der Server antwortet dann mit
+        // 404 und einer Auskunft, und ein Betrachter, der eine Fehlermeldung
+        // rendert, ist der umstaendlichste Weg zu „du hast noch keine".
+        Row(verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(Abstaende.klein),
+            modifier = Modifier.padding(bottom = Abstaende.klein)) {
+            OutlinedButton(onClick = onExportieren,
+                           enabled = zustand.gutscheine.isNotEmpty()) {
+                Icon(Icons.Default.PictureAsPdf, null, Modifier.size(18.dp))
+                Spacer(Modifier.width(Abstaende.klein))
+                Text(stringResource(R.string.vouchers_export))
+            }
+        }
 
         // ── Kein eigener Knopf fuer den Stapel-Import mehr ─────────────────
         //
