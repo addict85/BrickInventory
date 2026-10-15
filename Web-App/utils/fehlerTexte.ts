@@ -221,6 +221,25 @@ export const FEHLER = {
   gutschein_existiert:         { de: 'Diesen Gutschein gibt es bereits.',
                                  en: 'This voucher already exists.' },
   nur_pdf:                     { de: 'Nur PDF-Dateien', en: 'PDF files only' },
+
+  // ── Export und Import der Gutscheine (Marcos Liste, Stueck 3) ────────────
+  //
+  // `keine_gutscheine` ist kein Fehler des Nutzers, sondern eine Auskunft:
+  // Wer auf „exportieren" klickt, ohne einen Gutschein zu haben, soll das
+  // lesen und nicht ein leeres PDF bekommen.
+  keine_gutscheine:            { de: 'Es sind keine Gutscheine erfasst.',
+                                 en: 'No vouchers have been added.' },
+  // Die Datei liess sich nicht als PDF oeffnen. Getrennt von
+  // `gutschein_unvollstaendig`: Dort war es ein PDF, nur ohne die Werte —
+  // zwei verschiedene Auskuenfte, und der Nutzer tut Verschiedenes.
+  pdf_unlesbar:                { de: 'Die Datei liess sich nicht als PDF lesen.',
+                                 en: 'The file could not be read as a PDF.' },
+  // Ein PDF ohne erkennbaren Gutschein. Der Text sagt, was zu tun ist —
+  // sonst sucht der Nutzer den Fehler bei sich.
+  kein_gutschein_im_pdf:       { de: 'In diesem PDF war kein Gutschein zu erkennen. '
+                                   + 'Bitte den Gutschein von Hand erfassen.',
+                                 en: 'No voucher could be recognised in this PDF. '
+                                   + 'Please add the voucher manually.' },
   id_ungueltig:                { de: 'Ungültige ID', en: 'Invalid ID' },
 
   // ── Betrieb und Verwaltung ───────────────────────────────────────────────

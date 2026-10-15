@@ -200,6 +200,49 @@ private suspend fun MainViewModel.behandleGutscheinAntwort(
     }
 }
 
+/**
+ * Ein PDF mit mehreren Gutscheinen einlesen.
+ *
+ * Getrennt von speichereGutschein(): Das legt EINEN Gutschein an und nimmt
+ * dabei die Formularfelder mit („was mitkommt, gewinnt"). Hier kommt nichts
+ * aus dem Formular — der Stapel sagt selbst, was er traegt.
+ */
+internal fun MainViewModel.importiereGutscheinePdf(uri: android.net.Uri?) {
+    if (uri == null) return
+    viewModelScope.launch {
+        _gutscheinState.update { it.copy(speichert = true) }
+        try {
+            val gelesen = withContext(kotlinx.coroutines.Dispatchers.IO) {
+                runCatching {
+                    val typ = ctx.contentResolver.getType(uri)
+                    val bytes = ctx.contentResolver.openInputStream(uri)?.use { it.readBytes() }
+                    if (bytes == null) null else Pair(typ ?: "application/pdf", bytes)
+                }.getOrNull()
+            }
+            if (gelesen == null) { _snackbar.value = text(R.string.csv_upload_unreadable); return@launch }
+            val (typ, bytes) = gelesen
+            // Vor dem Hochladen abweisen: Dieselbe Regel wie beim Einzel-PDF —
+            // ein Mobilfunknetz mit einer Datei zu belasten, die der Server
+            // ohnehin ablehnt, ist der teuerste Weg zur selben Auskunft.
+            if (typ != "application/pdf") { _snackbar.value = text(R.string.vouchers_only_pdf); return@launch }
+
+            when (val r = repo.gutscheine.importierePdf(bytes)) {
+                is Result.Success ->
+                    if (r.data.success) {
+                        _snackbar.value = text(R.string.vouchers_import_done,
+                            r.data.neuAngelegt, r.data.updated)
+                        ladeGutscheine()
+                    } else {
+                        _snackbar.value = r.data.error ?: text(R.string.err_generic)
+                    }
+                is Result.Error -> _snackbar.value = meldung(r)
+            }
+        } finally {
+            _gutscheinState.update { it.copy(speichert = false) }
+        }
+    }
+}
+
 internal fun MainViewModel.loescheGutschein(id: Int) {
     viewModelScope.launch {
         when (val r = repo.gutscheine.loeschen(id)) {

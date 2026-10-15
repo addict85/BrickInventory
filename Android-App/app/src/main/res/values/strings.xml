@@ -618,6 +618,8 @@
     <string name="csv_upload_figs">Minifigures</string>
     <string name="csv_upload_wanted">Watchlist</string>
     <string name="csv_upload_alerts">Price alerts</string>
+    <string name="vouchers_import">📥 Import PDF</string>
+    <string name="vouchers_import_done">%1$d added, %2$d updated</string>
     <string name="csv_upload_hint">Same files as in the web app. Maximum %1$d MB.</string>
     <string name="csv_upload_unreadable">The selected file could not be read.</string>
     <string name="csv_upload_too_big">The file is larger than %1$d MB.</string>

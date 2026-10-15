@@ -983,6 +983,27 @@ interface BrickApiService {
         @retrofit2.http.Part("currency") waehrung: okhttp3.RequestBody? = null,
     ): Response<GutscheinAntwort>
 
+    // ── Mehrere Gutscheine aus EINEM PDF ───────────────────────────────────
+    //
+    // Gegenstueck zu `ladeGutscheinPdfHoch`: Dort wird EIN Gutschein angelegt
+    // (mit dem Vertrag „422 samt gelesenen Werten", auf dem das Formular
+    // steht), hier ein ganzer Stapel. Die Antwort hat die Form der
+    // CSV-Importe, die beide Oberflaechen schon auswerten.
+    @Multipart
+    @POST("api/v1/vouchers/import/pdf")
+    suspend fun importiereGutscheinePdf(
+        @retrofit2.http.Part datei: okhttp3.MultipartBody.Part,
+    ): Response<CsvImportErgebnis>
+
+    // Eine Methode fuer `GET /vouchers/export/pdf` steht hier NICHT, und das
+    // ist dieselbe Entscheidung wie beim Einzel-PDF unten: Der Export ist eine
+    // DATEI ZUM BEHALTEN, und die App hat keinen Weg, eine Datei zu speichern
+    // oder weiterzugeben — das vorhandene Gutschein-PDF wird nur ANGESEHEN.
+    // Dazu traegt die Antwort des Exports ihre Befunde in einer Kopfzeile
+    // (welcher Betrag ersetzt wurde und welcher nicht), und dafuer gibt es in
+    // einem Betrachter keinen Platz. Der Eintrag steht begruendet in
+    // test/webapp-endpunkte.test.js (NUR_WEB).
+
     // Eine Methode fuer `GET /vouchers/{id}/pdf` steht hier mit Absicht NICHT:
     // Das PDF holt der PdfViewerScreen selbst ueber seine Adresse, mit dem
     // angemeldeten Client der App. Siehe gutscheinPdfAdresse() in

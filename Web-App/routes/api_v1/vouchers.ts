@@ -41,6 +41,8 @@ import { sendeFehler, type FehlerCode } from '../../utils/fehlerTexte';
 import { liefereDatei } from '../../utils/dateiAusliefern';
 import { requireToken } from './middleware';
 import { werteAusPdf } from '../../utils/gutscheinPdf';
+import { verbindeGutscheine, seitenweiseLesen } from '../../utils/gutscheinPdfSchreiben';
+import type { ExportGutschein } from '../../utils/gutscheinPdfSchreiben';
 
 const db = require('../../db/database') as typeof import('../../db/database');
 
@@ -242,6 +244,146 @@ router.post('/vouchers/pdf', requireToken, upload.single('file'), async (req: Au
     });
   } catch (e) { handleRouteError(res, e, undefined, req); }
 });
+
+// ── Die beiden Sammelwege stehen VOR den :id-Wegen ──────────────────────────
+//
+// Express nimmt die ERSTE Route, die passt. Stand `/vouchers/export/pdf`
+// hinter `/vouchers/:id/pdf`, fing `:id` das Wort „export", Number('export')
+// ergab NaN, und die Antwort war 400 „id_ungueltig". GEMESSEN, nicht
+// ueberlegt: Genau so ist der erste Lauf von
+// test/gutscheine-export-import-db.test.js gescheitert.
+//
+// Eine Ziffernpruefung in der :id-Route waere die andere Loesung. Die
+// Reihenfolge ist die bessere: Sie gilt fuer jeden weiteren Sammelweg, der
+// hier einmal dazukommt, ohne dass jemand daran denken muss.
+
+// ── GET /api/v1/vouchers/export/pdf — alle Gutscheine in EIN PDF ────────────
+/**
+ * Marcos Vorgabe: „Wenn alle Gutscheine exportiert werden sollen, ein PDF
+ * erstellen mit allen Gutscheinen."
+ *
+ * Die Arbeit steckt in utils/gutscheinPdfSchreiben.ts; diese Route tut, was
+ * eine Route tun soll: eigene Zeilen holen, Dateien dazulegen, ausliefern.
+ *
+ * ── Warum die Befunde in einen Kopf und nicht in den Rumpf ─────────────────
+ *
+ * Der Rumpf IST das PDF. Welche Gutscheine ersetzt wurden, welche unveraendert
+ * durchgingen und warum, steht deshalb als Kopfzeile `X-Gutschein-Befunde`
+ * dabei — die Oberflaeche liest sie und sagt es dem Nutzer. Ein zweiter Aufruf
+ * nur fuer die Befunde hiesse, alles zweimal zu rechnen.
+ *
+ * Nur eigene Gutscheine (`user_id = $1`), kein Blickfeld: Dieselbe Regel wie im
+ * ganzen Gutschein-Teil — die Karten liegen unter data/vouchers/<user>/ und
+ * sind AUSSCHLIESSLICH ueber die eigene Route erreichbar (die Begruendung steht
+ * in Migration 0026).
+ */
+router.get('/vouchers/export/pdf', requireToken, async (req: AuthedRequest, res) => {
+  try {
+    const uid = req.apiUser.user_id;
+    const zeilen = await db.all(
+      `SELECT ${SPALTEN} FROM vouchers WHERE user_id = $1 ORDER BY created_at, id`,
+      [uid]) as GutscheinZeile[];
+    if (!zeilen.length) return sendeFehler(req, res, 404, 'keine_gutscheine');
+
+    const gutscheine: ExportGutschein[] = [];
+    for (const z of zeilen) {
+      let pdf: Buffer | null = null;
+      if (z.pdf_path) {
+        // Fehlt die Datei (von Hand geloescht, Band nicht eingebunden), ist das
+        // kein Abbruch: Dann wird die Seite erzeugt. Ein Export, der an einer
+        // fehlenden Datei ganz scheitert, nimmt dem Nutzer auch die neunzehn
+        // anderen Gutscheine.
+        try { pdf = await fs.promises.readFile(path.join(VOUCHER_DIR, z.pdf_path)); }
+        catch { pdf = null; }
+      }
+      gutscheine.push({ id: z.id, number: z.number, pin: z.pin,
+                        amount: Number(z.amount), currency: z.currency, pdf });
+    }
+
+    const { daten, befunde } = await verbindeGutscheine(gutscheine);
+    const tag = new Date().toISOString().slice(0, 10);
+    res.setHeader('Content-Type', 'application/pdf');
+    res.setHeader('Content-Disposition',
+      `attachment; filename="brickinventory-gutscheine-${tag}.pdf"`);
+    // JSON in einem Kopf, base64: ASCII-sicher, damit ein Umlaut im Grund die
+    // Kopfzeile nicht zerlegt.
+    res.setHeader('X-Gutschein-Befunde',
+      Buffer.from(JSON.stringify(befunde), 'utf-8').toString('base64'));
+    res.setHeader('Access-Control-Expose-Headers', 'X-Gutschein-Befunde');
+    res.end(daten);
+  } catch (e) { handleRouteError(res, e, undefined, req); }
+});
+
+// ── POST /api/v1/vouchers/import/pdf — mehrere Gutscheine aus EINEM PDF ─────
+/**
+ * „Das PDF soll auch wieder importiert werden koennen (mehrere Seiten in einem
+ * PDF ergeben mehrere Gutschein-Eintraege)."
+ *
+ * ── Warum eine EIGENE Route und nicht POST /vouchers/pdf erweitert ─────────
+ *
+ * Die bestehende Route legt EINEN Gutschein an und hat dafuer einen festen
+ * Vertrag, auf dem beide Oberflaechen stehen: 422 mit `gelesen`, damit das
+ * Formular sich vorbelegen laesst. Daraus eine Route zu machen, die manchmal
+ * einen und manchmal zwanzig anlegt, hiesse diesen Vertrag aufzuweichen. Die
+ * neue Route hat die Form der anderen Importe (added/updated/errors/results),
+ * die beide Oberflaechen schon auswerten.
+ *
+ * ── Warum ON CONFLICT DO UPDATE und nicht DO NOTHING ──────────────────────
+ *
+ * Der Betrag ist genau das, was sich aendert: Ein Gutschein, von dem etwas
+ * abgebucht wurde, soll beim Wiedereinlesen den NEUEREN Stand tragen. Mit DO
+ * NOTHING waere der Import auf einem Konto, das die Karten schon kennt,
+ * wirkungslos — und genau dann braucht man ihn.
+ *
+ * Die PIN zieht nur mit, wenn die Datei eine hat (COALESCE): Ein Sammel-PDF
+ * ohne PIN darf eine gespeicherte nicht loeschen.
+ *
+ * Die Datei selbst wird NICHT gespeichert: Ein Sammel-PDF ist die Sicherung,
+ * nicht die Karte. Jede Seite als eigene Datei abzulegen hiesse, dasselbe
+ * Dokument zwanzigmal zu speichern.
+ */
+router.post('/vouchers/import/pdf', requireToken, upload.single('file'),
+  async (req: AuthedRequest, res) => {
+    try {
+      if (!req.file) return sendeFehler(req, res, 400, 'keine_datei');
+      const uid = req.apiUser.user_id;
+
+      let gefunden;
+      // Ein kaputtes PDF ist eine Aussage ueber die Datei, kein Serverfehler.
+      try { gefunden = await seitenweiseLesen(req.file.buffer); }
+      catch { return sendeFehler(req, res, 422, 'pdf_unlesbar'); }
+      if (!gefunden.length) return sendeFehler(req, res, 422, 'kein_gutschein_im_pdf');
+
+      let added = 0, updated = 0, errors = 0;
+      const results: { number: string; action: string; error?: string }[] = [];
+
+      for (const w of gefunden) {
+        const geprueft = pruefeWerte({
+          number: w.nummer, pin: w.pin, amount: w.betrag, currency: w.waehrung ?? 'CHF',
+        });
+        if (!geprueft.ok) {
+          errors++;
+          results.push({ number: String(w.nummer ?? ''), action: 'error', error: geprueft.code });
+          continue;
+        }
+        const neu = await db.get(
+          `INSERT INTO vouchers (user_id, number, pin, amount, currency)
+           VALUES ($1,$2,$3,$4,$5)
+           ON CONFLICT (user_id, number) DO UPDATE
+              SET pin = COALESCE(EXCLUDED.pin, vouchers.pin),
+                  amount = EXCLUDED.amount,
+                  currency = EXCLUDED.currency,
+                  updated_at = NOW()
+           RETURNING id, (xmax = 0) AS war_neu`,
+          [uid, geprueft.number, geprueft.pin, geprueft.amount, geprueft.currency]);
+        if (neu?.war_neu) added++; else updated++;
+        results.push({ number: geprueft.number, action: neu?.war_neu ? 'added' : 'updated' });
+      }
+
+      res.json({ success: true, added, updated, errors,
+                 total: gefunden.length, results });
+    } catch (e) { handleRouteError(res, e, undefined, req); }
+  });
 
 // ── PUT /api/v1/vouchers/:id — aendern ──────────────────────────────────────
 router.put('/vouchers/:id', requireToken, async (req: AuthedRequest, res) => {

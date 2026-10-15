@@ -844,6 +844,22 @@
             <strong id="vouchers-total"></strong>
           </div>
 
+          <!-- Export und Import (Marcos Liste, Stück 3).
+
+               Der Export ist KEIN einfacher href: Die Antwort trägt die
+               Befunde in einer Kopfzeile (welcher Gutschein ersetzt wurde und
+               welcher nicht, mit Grund), und die liest nur ein fetch. Ein
+               Download-Link bekäme das PDF und würde die Auskunft wegwerfen.
+
+               Das Label trägt KEIN for= : Es umschliesst sein Feld schon, und
+               ein for= auf ein fremdes Feld fällt in test/a11y.test.js auf. -->
+          <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-top:.75rem">
+            <button class="btn bs" type="button" data-click="gutscheineExportieren"
+                    data-i18n="vouchers.export">📄 Alle als PDF</button>
+            <label class="btn bs" style="cursor:pointer">📥 PDF<input type="file" id="vouchers-import-file" aria-label="PDF mit Gutscheinen" data-i18n="vouchers.import_label" data-i18n-attr="aria-label" accept="application/pdf" style="display:none" data-change="gutscheineImportieren" /></label>
+            <span id="vouchers-io-status" style="font-size:.8rem;color:var(--mut)"></span>
+          </div>
+
           <div style="border-top:1px solid var(--bdr);padding-top:13px">
             <div style="font-size:.73rem;font-weight:700;text-transform:uppercase;letter-spacing:.6px;color:var(--mut);margin-bottom:.6rem"
                  id="vouchers-form-title" data-i18n="vouchers.add">Gutschein hinzufügen</div>

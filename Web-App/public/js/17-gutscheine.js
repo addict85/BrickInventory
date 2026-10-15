@@ -1,6 +1,6 @@
 import { registerActions } from './00-registry.js';
 import { t, tRaw } from '../i18n.js';
-import { TRASH_ICON_SVG, api, esc, fmtN, toast } from './01-core.js';
+import { G, TRASH_ICON_SVG, api, esc, fmtN, toast } from './01-core.js';
 import { openPdfViewer } from './12-pdfviewer.js';
 
 // ═══ Gutscheine (LEGO-Geschenkkarten) ══════════════════════════════════════
@@ -317,7 +317,105 @@ export async function gutscheinKopieren(id, feld) {
     : 'vouchers.copy_error'), geklappt ? 'success' : 'error');
 }
 
+/**
+ * Alle Gutscheine als EIN PDF herunterladen.
+ *
+ * ── Warum fetch und kein Link ───────────────────────────────────────────────
+ *
+ * Die Antwort trägt neben dem PDF eine Kopfzeile `X-Gutschein-Befunde`: je
+ * Gutschein, ob der Betrag ersetzt wurde, unverändert blieb (mit Grund) oder
+ * die Seite erzeugt wurde. Ein `<a href>` bekäme die Datei und würde die
+ * Auskunft wegwerfen — und genau die ist hier wichtig: Ein Gutschein, dessen
+ * Betrag NICHT ersetzt werden konnte, zeigt auf dem Papier den alten Wert.
+ * Das muss dastehen, nicht verschwiegen werden.
+ */
+async function gutscheineExportieren() {
+  const status = G('vouchers-io-status');
+  if (status) status.textContent = tRaw('vouchers.export_running');
+  try {
+    const r = await fetch('/api/v1/vouchers/export/pdf');
+    if (!r.ok) {
+      const d = await r.json().catch(() => ({}));
+      if (status) status.textContent = '';
+      toast(d.error || tRaw('settings.error'), 'error');
+      return;
+    }
+    const blob = await r.blob();
+    let befunde = [];
+    try {
+      const kopf = r.headers.get('X-Gutschein-Befunde');
+      if (kopf) befunde = JSON.parse(atob(kopf));
+    } catch { /* ohne Befunde ist das PDF trotzdem gut */ }
+
+    // Herunterladen über ein kurzlebiges Objekt-URL: Der Name kommt aus dem
+    // Content-Disposition, falls er lesbar ist, sonst aus dem Datum.
+    const name = (r.headers.get('Content-Disposition') || '')
+      .match(/filename="([^"]+)"/)?.[1]
+      || `brickinventory-gutscheine-${new Date().toISOString().slice(0, 10)}.pdf`;
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url; a.download = name;
+    document.body.appendChild(a); a.click(); a.remove();
+    URL.revokeObjectURL(url);
+
+    // Die Befunde: Nicht ersetzte Gutscheine werden EINZELN genannt, mit
+    // Nummer und Grund. Form und Wort tragen die Aussage, nicht die Farbe.
+    const offen = befunde.filter(b => b.art === 'unveraendert' && b.grund);
+    if (status) status.textContent = '';
+    if (!offen.length) {
+      toast(tRaw('vouchers.export_done', { n: befunde.length }), 'success');
+    } else {
+      // tRaw und nicht t: Das Ziel ist ein TOAST, also reiner Text. t()
+      // maskiert die eingesetzten Werte, und die Maskierung erscheint dort
+      // WOERTLICH — aus 9'325 wurde im Katalog sichtbar „9&#39;325".
+      // test/frontend-escaping.test.js faengt genau das, und es hat es
+      // gefangen: Mein erster Entwurf stand hier mit t().
+      toast(tRaw('vouchers.export_done', { n: befunde.length }) + ' — '
+          + tRaw('vouchers.export_offen', { n: offen.length }), 'info');
+      if (status) {
+        status.innerHTML = offen
+          .map(b => `⚠ ${esc(b.number)}: ${esc(b.grund)}`).join('<br>');
+      }
+    }
+  } catch (e) {
+    if (status) status.textContent = '';
+    toast(tRaw('settings.error'), 'error');
+  }
+}
+
+/**
+ * Ein PDF mit Gutscheinen einlesen — mehrere Seiten ergeben mehrere Einträge.
+ *
+ * Der Server entscheidet, wie gelesen wird (Marke zuerst, Seiten raten als
+ * Rückfall); hier wird nur die Antwort gezeigt. Dieselben Felder wie bei den
+ * CSV-Importen (added/updated/errors), also dieselbe Meldung.
+ */
+async function gutscheineImportieren() {
+  const fi = G('vouchers-import-file');
+  if (!fi?.files[0]) return;
+  const fd = new FormData();
+  fd.append('file', fi.files[0]);
+  const status = G('vouchers-io-status');
+  if (status) status.textContent = tRaw('import.running');
+  try {
+    const r = await fetch('/api/v1/vouchers/import/pdf', { method: 'POST', body: fd });
+    const d = await r.json().catch(() => ({}));
+    fi.value = '';
+    if (status) status.textContent = '';
+    if (!d.success) { toast(d.error || tRaw('settings.error'), 'error'); return; }
+    toast(tRaw('import.summary', { added: d.added, updated: d.updated, errors: d.errors }),
+      d.errors ? 'info' : 'success');
+    await ladeGutscheine();
+  } catch (e) {
+    fi.value = '';
+    if (status) status.textContent = '';
+    toast(tRaw('settings.error'), 'error');
+  }
+}
+
 registerActions({
+  gutscheineExportieren,
+  gutscheineImportieren,
   ladeGutscheine,
   gutscheinSpeichern,
   gutscheinBearbeiten,

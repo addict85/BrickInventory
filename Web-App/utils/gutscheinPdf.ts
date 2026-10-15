@@ -126,6 +126,47 @@ function hexLesen(roh: string): string {
  * Doppelpunkt der Zeile davor und an „PIN" dahinter — und jede Suche muesste
  * raten, wo sie anfaengt.
  */
+/**
+ * Ein Textoperator im Inhaltsstrom: (…)Tj, […]TJ, (…)' und (…)".
+ *
+ * ── Warum das jetzt hier oben steht und exportiert wird ─────────────────────
+ *
+ * Der Ausdruck stand im Rumpf von pdfText(). Seit es einen SCHREIBER gibt
+ * (utils/gutscheinPdfSchreiben.ts, der den Betrag im Original ersetzt), brauchen
+ * zwei Stellen dieselbe Zerlegung. Zwei Abschriften desselben Ausdrucks wären
+ * genau die Bauart, an der in diesem Baum schon mehrfach etwas auseinander
+ * gelaufen ist: Der Leser fände einen Operator, den der Schreiber nicht
+ * anfasst — und dann stünde im Text ein anderer Betrag als auf dem Papier.
+ *
+ * `g` ist gesetzt, also trägt der Ausdruck einen Zustand (lastIndex). Jeder
+ * Benutzer setzt ihn vor der Schleife zurück.
+ */
+export const TEXT_OP_RE =
+  /(\[(?:[^\][\\]|\\[\s\S])*\]|\((?:[^()\\]|\\[\s\S])*\)|<[0-9A-Fa-f\s]*>)\s*(TJ|Tj|'|")/g;
+
+/**
+ * Der LOGISCHE Text eines Textoperator-Arguments.
+ *
+ * TJ-Array: Zeichenketten und Kerning-Zahlen im Wechsel. Die Zahlen sind
+ * Abstände, kein Inhalt — sie fliegen raus, die Ketten werden aneinander­
+ * gehängt. Genau so entsteht aus den Bruchstücken wieder „Ihre
+ * LEGO-Geschenkkarte im Wert von 400 CHF:".
+ */
+export function operatorText(arg: string): string {
+  if (arg.startsWith('[')) {
+    let text = '';
+    const teilRe = /\((?:[^()\\]|\\[\s\S])*\)|<[0-9A-Fa-f\s]*>/g;
+    let teil: RegExpExecArray | null;
+    while ((teil = teilRe.exec(arg)) !== null) {
+      text += teil[0].startsWith('<')
+        ? hexLesen(teil[0].slice(1, -1))
+        : literalLesen(teil[0].slice(1, -1));
+    }
+    return text;
+  }
+  return arg.startsWith('<') ? hexLesen(arg.slice(1, -1)) : literalLesen(arg.slice(1, -1));
+}
+
 export function pdfText(daten: Buffer): string {
   const roh = daten.toString('latin1');
   const zeilen: string[] = [];
@@ -145,27 +186,10 @@ export function pdfText(daten: Buffer): string {
       inhalt = m[1] ?? '';
     }
 
-    // Textoperatoren: (…)Tj, […]TJ, (…)' und (…)"
-    const opRe = /(\[(?:[^\][\\]|\\[\s\S])*\]|\((?:[^()\\]|\\[\s\S])*\)|<[0-9A-Fa-f\s]*>)\s*(TJ|Tj|'|")/g;
     let t: RegExpExecArray | null;
-    while ((t = opRe.exec(inhalt)) !== null) {
-      const arg = t[1] ?? '';
-      let text = '';
-      if (arg.startsWith('[')) {
-        // TJ-Array: Zeichenketten und Kerning-Zahlen im Wechsel. Die Zahlen
-        // sind Abstaende, kein Inhalt — sie fliegen raus, die Ketten werden
-        // aneinandergehaengt. Genau so entsteht aus den Bruchstuecken wieder
-        // „Ihre LEGO-Geschenkkarte im Wert von 400 CHF:".
-        const teilRe = /\((?:[^()\\]|\\[\s\S])*\)|<[0-9A-Fa-f\s]*>/g;
-        let teil: RegExpExecArray | null;
-        while ((teil = teilRe.exec(arg)) !== null) {
-          text += teil[0].startsWith('<') ? hexLesen(teil[0].slice(1, -1)) : literalLesen(teil[0].slice(1, -1));
-        }
-      } else if (arg.startsWith('<')) {
-        text = hexLesen(arg.slice(1, -1));
-      } else {
-        text = literalLesen(arg.slice(1, -1));
-      }
+    TEXT_OP_RE.lastIndex = 0;
+    while ((t = TEXT_OP_RE.exec(inhalt)) !== null) {
+      const text = operatorText(t[1] ?? '');
       if (text.trim()) zeilen.push(text);
     }
   }

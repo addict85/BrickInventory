@@ -58,6 +58,8 @@ fun GutscheineCard(
     onPdfOeffnen: (id: Int) -> Unit,
     /** Nummer oder PIN in die Zwischenablage; `istNummer` steuert die Meldung. */
     onKopieren: (wert: String, istNummer: Boolean) -> Unit,
+    /** Ein PDF mit MEHREREN Gutscheinen einlesen (Marcos Liste, Stueck 3). */
+    onImportieren: (android.net.Uri?) -> Unit,
 ) {
     // Die gewaehlte Datei lebt nur, solange das Formular offen ist — sie
     // gehoert nicht in den geteilten Zustand, weil eine Uri eine Berechtigung
@@ -70,8 +72,42 @@ fun GutscheineCard(
     val auswahl = androidx.activity.compose.rememberLauncherForActivityResult(
         androidx.activity.result.contract.ActivityResultContracts.OpenDocument()
     ) { uri -> pdfUri = uri }
+    // Ein ZWEITER Waehler fuer den Stapel-Import. Nicht derselbe: Der obere
+    // legt die Datei ins Formular („was mitkommt, gewinnt"), dieser schickt sie
+    // sofort los und fasst das Formular nicht an. Ein gemeinsamer Waehler
+    // braeuchte ein Merk-Feld fuer „welcher Knopf war es" — genau die Sorte
+    // Zustand, die BildschirmZustandTest beim Kippen des Telefons vermisst.
+    val importWaehler = androidx.activity.compose.rememberLauncherForActivityResult(
+        androidx.activity.result.contract.ActivityResultContracts.OpenDocument()
+    ) { uri -> onImportieren(uri) }
 
     SettingsCard(title = stringResource(R.string.vouchers_title), icon = Icons.Default.Redeem) {
+
+        // Der Stapel-Import steht OBEN, bei der Liste, und nicht unten im
+        // Erfassen-Formular: Er legt viele Gutscheine an und hat mit dem
+        // Formular fuer EINEN nichts zu tun.
+        //
+        // Kein Export-Knopf daneben: Der Export ist eine Datei zum Behalten,
+        // und die App hat keinen Weg, eine Datei zu speichern oder
+        // weiterzugeben. Die Begruendung steht in BrickApiService.kt und in
+        // test/webapp-endpunkte.test.js (NUR_WEB).
+        Row(verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(Abstaende.klein),
+            modifier = Modifier.padding(bottom = Abstaende.klein)) {
+            OutlinedButton(
+                onClick = { importWaehler.launch(arrayOf("application/pdf")) },
+                enabled = !zustand.speichert,
+            ) {
+                // Kreisel NEBEN der Beschriftung, nicht an ihrer Stelle:
+                // KnopfBreiteTest faengt das andere, und es ist auch das
+                // bessere Verhalten.
+                if (zustand.speichert) {
+                    CircularProgressIndicator(Modifier.size(16.dp), strokeWidth = 2.dp)
+                    Spacer(Modifier.width(Abstaende.winzig))
+                }
+                Text(stringResource(R.string.vouchers_import))
+            }
+        }
 
         if (zustand.gutscheine.isEmpty() && !zustand.laedt) {
             Text(

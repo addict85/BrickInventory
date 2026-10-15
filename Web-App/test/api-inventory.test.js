@@ -292,6 +292,8 @@ const C = {
   'GET /api/v1/vouchers': 'nur-v1',
   'POST /api/v1/vouchers': 'nur-v1',
   'POST /api/v1/vouchers/pdf': 'nur-v1',
+  'POST /api/v1/vouchers/import/pdf': 'nur-v1',
+  'GET /api/v1/vouchers/export/pdf': 'nur-web',
   'PUT /api/v1/vouchers/:id': 'nur-v1',
   'DELETE /api/v1/vouchers/:id': 'nur-v1',
   // Die PDF-Ausgabe ruft die Android-App nicht ueber Retrofit, sondern ueber
