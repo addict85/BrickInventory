@@ -229,8 +229,19 @@ internal fun MainViewModel.importiereGutscheinePdf(uri: android.net.Uri?) {
             when (val r = repo.gutscheine.importierePdf(bytes)) {
                 is Result.Success ->
                     if (r.data.success) {
+                        // Rahmen aus Platzhaltern plus zwei Mengenformen, und
+                        // zwar die BESTEHENDEN der CSV-Importe: Die Aussage ist
+                        // dieselbe („n neu, m aufgefrischt"), also braucht sie
+                        // keinen zweiten Satz Texte.
+                        //
+                        // Nicht „%1$d angelegt, %2$d aufgefrischt" in einem
+                        // Stueck: Android-Lint meldet das als PluralsCandidate
+                        // („Formatting %d followed by words"), und der Baum
+                        // zaehlt die Lint-Befunde. GEMESSEN — genau daran war
+                        // der dritte CI-Lauf von Stueck 3 rot.
                         _snackbar.value = text(R.string.vouchers_import_done,
-                            r.data.neuAngelegt, r.data.updated)
+                            menge(R.plurals.csv_upload_new, r.data.neuAngelegt, r.data.neuAngelegt),
+                            menge(R.plurals.csv_upload_updated, r.data.updated, r.data.updated))
                         ladeGutscheine()
                     } else {
                         _snackbar.value = r.data.error ?: text(R.string.err_generic)

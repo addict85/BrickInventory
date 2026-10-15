@@ -605,7 +605,7 @@
     <string name="csv_upload_wanted">Merkliste</string>
     <string name="csv_upload_alerts">Preisalarme</string>
     <string name="vouchers_import">📥 PDF einlesen</string>
-    <string name="vouchers_import_done">%1$d angelegt, %2$d aufgefrischt</string>
+    <string name="vouchers_import_done">%1$s, %2$s</string>
     <string name="csv_upload_hint">Dieselben Dateien wie in der Webapp. Höchstens %1$d MB.</string>
     <string name="csv_upload_unreadable">Die gewählte Datei liess sich nicht lesen.</string>
     <string name="csv_upload_too_big">Die Datei ist grösser als %1$d MB.</string>

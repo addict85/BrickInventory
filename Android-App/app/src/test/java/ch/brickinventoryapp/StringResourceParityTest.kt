@@ -196,6 +196,11 @@ class StringResourceParityTest {
             // Satz aus Mengenform-Bruchstuecken zusammen. Sie enthalten nur
             // Platzhalter und Satzzeichen — uebersetzt wird in den <plurals>.
             "partslist_summary", "csv_upload_result",
+            // Dazugekommen mit dem Gutschein-Import (Stueck 3): auch ein
+            // reiner Rahmen, „%1$s, %2$s". Die beiden Stuecke darin sind die
+            // BESTEHENDEN Mengenformen der CSV-Importe (csv_upload_new,
+            // csv_upload_updated) — uebersetzt wird dort.
+            "vouchers_import_done",
         )
 
         val en = texte("values/strings.xml")
