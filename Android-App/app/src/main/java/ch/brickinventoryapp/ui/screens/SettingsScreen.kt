@@ -190,7 +190,6 @@ fun SettingsScreen(
                 gutscheinZwischenablage.setText(androidx.compose.ui.text.AnnotatedString(wert))
                 vm.meldeGutscheinKopiert(istNummer)
             },
-            onImportieren = { vm.importiereGutscheinePdf(it) },
             onGuthaben = { vm.frageGuthabenAb(it) },
         )
 

@@ -192,75 +192,28 @@ private suspend fun MainViewModel.behandleGutscheinAntwort(
     when (r) {
         is Result.Success -> {
             if (!r.data.success) { _snackbar.value = r.data.error ?: text(R.string.vouchers_save_error); return }
-            _snackbar.value = text(R.string.vouchers_saved)
+            val stapel = r.data.mehrere
+            _snackbar.value = if (stapel == null) {
+                text(R.string.vouchers_saved)
+            } else {
+                // Rahmen aus Platzhaltern plus zwei Mengenformen, und zwar die
+                // BESTEHENDEN der CSV-Importe: Die Aussage ist dieselbe („n
+                // neu, m aufgefrischt"), also braucht sie keinen zweiten Satz
+                // Texte.
+                //
+                // Nicht „%1$d angelegt, %2$d aufgefrischt" in einem Stueck:
+                // Android-Lint meldet das als PluralsCandidate („Formatting %d
+                // followed by words"), und der Baum zaehlt die Lint-Befunde.
+                // GEMESSEN — genau daran war der dritte CI-Lauf von Stueck 3
+                // rot.
+                text(R.string.vouchers_import_done,
+                    menge(R.plurals.csv_upload_new, stapel.added, stapel.added),
+                    menge(R.plurals.csv_upload_updated, stapel.updated, stapel.updated))
+            }
             leereGutscheinFormular()
             ladeGutscheine()
         }
         is Result.Error -> _snackbar.value = meldungFuerSnackbar(r)
-    }
-}
-
-/**
- * Ein PDF mit mehreren Gutscheinen einlesen.
- *
- * Getrennt von speichereGutschein(): Das legt EINEN Gutschein an und nimmt
- * dabei die Formularfelder mit („was mitkommt, gewinnt"). Hier kommt nichts
- * aus dem Formular — der Stapel sagt selbst, was er traegt.
- */
-internal fun MainViewModel.importiereGutscheinePdf(uri: android.net.Uri?) {
-    if (uri == null) return
-    viewModelScope.launch {
-        _gutscheinState.update { it.copy(speichert = true) }
-        try {
-            val gelesen = withContext(kotlinx.coroutines.Dispatchers.IO) {
-                runCatching {
-                    val typ = ctx.contentResolver.getType(uri)
-                    val bytes = ctx.contentResolver.openInputStream(uri)?.use { it.readBytes() }
-                    if (bytes == null) null else Pair(typ ?: "application/pdf", bytes)
-                }.getOrNull()
-            }
-            if (gelesen == null) { _snackbar.value = text(R.string.csv_upload_unreadable); return@launch }
-            val (typ, bytes) = gelesen
-            // Vor dem Hochladen abweisen: Dieselbe Regel wie beim Einzel-PDF —
-            // ein Mobilfunknetz mit einer Datei zu belasten, die der Server
-            // ohnehin ablehnt, ist der teuerste Weg zur selben Auskunft.
-            if (typ != "application/pdf") { _snackbar.value = text(R.string.vouchers_only_pdf); return@launch }
-
-            when (val r = repo.gutscheine.importierePdf(bytes)) {
-                is Result.Success ->
-                    if (r.data.success) {
-                        // Rahmen aus Platzhaltern plus zwei Mengenformen, und
-                        // zwar die BESTEHENDEN der CSV-Importe: Die Aussage ist
-                        // dieselbe („n neu, m aufgefrischt"), also braucht sie
-                        // keinen zweiten Satz Texte.
-                        //
-                        // Nicht „%1$d angelegt, %2$d aufgefrischt" in einem
-                        // Stueck: Android-Lint meldet das als PluralsCandidate
-                        // („Formatting %d followed by words"), und der Baum
-                        // zaehlt die Lint-Befunde. GEMESSEN — genau daran war
-                        // der dritte CI-Lauf von Stueck 3 rot.
-                        _snackbar.value = text(R.string.vouchers_import_done,
-                            menge(R.plurals.csv_upload_new, r.data.neuAngelegt, r.data.neuAngelegt),
-                            menge(R.plurals.csv_upload_updated, r.data.updated, r.data.updated))
-                        ladeGutscheine()
-                    } else {
-                        _snackbar.value = r.data.error ?: text(R.string.err_generic)
-                    }
-                // meldungFuerSnackbar und NICHT meldung: Bei 401 gibt diese
-                // Fassung null zurueck, und der Kanal zeigt dann nichts — die
-                // Sitzungsschicht hat die Abmeldung schon gemeldet, und ein
-                // zweiter Satz daneben waere falsch.
-                //
-                // AbgewiesenTest faengt genau das („keine Snackbar bekommt den
-                // Satz an der Regel vorbei"), und es hat mich gefangen: Ich
-                // hatte meldung(r) von der CSV-Stelle uebernommen, die in einen
-                // UI-ZUSTAND schreibt und nicht in die Snackbar. Dort ist es
-                // richtig, hier nicht. Zeile 47 dieser Datei macht es vor.
-                is Result.Error -> _snackbar.value = meldungFuerSnackbar(r)
-            }
-        } finally {
-            _gutscheinState.update { it.copy(speichert = false) }
-        }
     }
 }
 

@@ -838,6 +838,41 @@
       <div class="ssec" style="margin-bottom:1.25rem" id="vouchers-card">
         <div class="sform">
 
+          <!-- Das Ausgabeland. Marcos Vorgaben:
+
+               „Wichtig das Ausgabeland soll in den Einstellungen bei den
+                Gutscheinen fuer alle erfasst werden koennen (wie in der
+                Prototyp-App)."
+               „Der rot umrandete Teil soll oberhalb der Tabelle sein."
+
+               Deshalb steht es VOR der Liste: Es ist die Einstellung, unter
+               der alles darunter abgefragt wird, und nicht ein Nachtrag
+               zwischen den Knoepfen.
+
+               „Fuer alle" heisst: EIN Wert fuer die ganze Installation, also
+               eine globale Einstellung — und die setzt in diesem Baum nur ein
+               Verwalter (routes/settings.ts). Deshalb `admin-only`: Ein
+               Auswahlfeld, dessen Speichern beim Nicht-Verwalter stillschweigend
+               nichts tut, waere schlimmer als keines. Gelesen wird der Wert
+               fuer alle, die Abfrage benutzt ihn also auch bei den uebrigen
+               Konten. -->
+          <div class="admin-only" style="display:none;margin-bottom:1rem">
+            <div class="fg" style="max-width:17rem">
+              <label for="gutschein-land" data-i18n="vouchers.country">Ausgabeland</label>
+              <select id="gutschein-land" data-change="gutscheinLandSpeichern">
+                <option value="de-CH" data-i18n="vouchers.country_de_ch">Schweiz</option>
+                <option value="de-DE" data-i18n="vouchers.country_de_de">Deutschland</option>
+                <option value="de-AT" data-i18n="vouchers.country_de_at">Österreich</option>
+                <option value="fr-FR" data-i18n="vouchers.country_fr_fr">Frankreich</option>
+                <option value="it-IT" data-i18n="vouchers.country_it_it">Italien</option>
+                <option value="nl-NL" data-i18n="vouchers.country_nl_nl">Niederlande</option>
+                <option value="en-GB" data-i18n="vouchers.country_en_gb">Grossbritannien</option>
+                <option value="en-US" data-i18n="vouchers.country_en_us">USA</option>
+              </select>
+              <div style="font-size:.72rem;color:var(--mut);margin-top:3px" data-i18n="vouchers.country_hint">Eine Karte gilt nur im Shop ihres Ausgabelandes. Die Einstellung gilt für alle Benutzer.</div>
+            </div>
+          </div>
+
           <div id="vouchers-list" class="voucher-list"></div>
           <div class="voucher-total-row">
             <span style="color:var(--mut)" data-i18n="vouchers.total">Summe</span>
@@ -863,48 +898,30 @@
             <span id="vouchers-balance-status" style="font-size:.8rem;color:var(--mut)"></span>
           </div>
 
-          <!-- Das Ausgabeland. Marcos Vorgabe: „Wichtig das Ausgabeland soll
-               in den Einstellungen bei den Gutscheinen fuer alle erfasst
-               werden koennen (wie in der Prototyp-App)."
 
-               „Fuer alle" heisst: EIN Wert fuer die ganze Installation, also
-               eine globale Einstellung — und die setzt in diesem Baum nur ein
-               Verwalter (routes/settings.ts). Deshalb `admin-only`: Ein
-               Auswahlfeld, dessen Speichern beim Nicht-Verwalter stillschweigend
-               nichts tut, waere schlimmer als keines. Gelesen wird der Wert
-               fuer alle, die Abfrage benutzt ihn also auch bei den uebrigen
-               Konten. -->
-          <div class="admin-only" style="display:none;margin-top:.75rem">
-            <div class="fg" style="max-width:17rem">
-              <label for="gutschein-land" data-i18n="vouchers.country">Ausgabeland</label>
-              <select id="gutschein-land" data-change="gutscheinLandSpeichern">
-                <option value="de-CH" data-i18n="vouchers.country_de_ch">Schweiz</option>
-                <option value="de-DE" data-i18n="vouchers.country_de_de">Deutschland</option>
-                <option value="de-AT" data-i18n="vouchers.country_de_at">Österreich</option>
-                <option value="fr-FR" data-i18n="vouchers.country_fr_fr">Frankreich</option>
-                <option value="it-IT" data-i18n="vouchers.country_it_it">Italien</option>
-                <option value="nl-NL" data-i18n="vouchers.country_nl_nl">Niederlande</option>
-                <option value="en-GB" data-i18n="vouchers.country_en_gb">Grossbritannien</option>
-                <option value="en-US" data-i18n="vouchers.country_en_us">USA</option>
-              </select>
-              <div style="font-size:.72rem;color:var(--mut);margin-top:3px" data-i18n="vouchers.country_hint">Eine Karte gilt nur im Shop ihres Ausgabelandes. Die Einstellung gilt für alle Benutzer.</div>
-            </div>
-          </div>
-
-          <!-- Export und Import (Marcos Liste, Stück 3).
+          <!-- Der Export (Marcos Liste, Stück 3).
 
                Der Export ist KEIN einfacher href: Die Antwort trägt die
                Befunde in einer Kopfzeile (welcher Gutschein ersetzt wurde und
                welcher nicht, mit Grund), und die liest nur ein fetch. Ein
                Download-Link bekäme das PDF und würde die Auskunft wegwerfen.
 
-               Das Label trägt KEIN for= : Es umschliesst sein Feld schon, und
-               ein for= auf ein fremdes Feld fällt in test/a11y.test.js auf. -->
+               ── Was hier NICHT mehr steht (Marcos Durchsicht vom 15.10.) ──
+
+               Ein zweiter Knopf „📥 PDF" für den Stapel-Import: Seine Aufgabe
+               hat jetzt das Dateifeld im Erfassen-Formular unten — ein PDF
+               mit mehreren Seiten ergibt dort mehrere Gutscheine, und der
+               Server entscheidet das, nicht der Mensch vor zwei Feldern.
+
+               Und die Befundliste, die hier stand. Sie zeigte „⚠ …: Der
+               Betrag im PDF stimmt schon" — eine Warnung vor einem Erfolg.
+               Der Fehler lag nicht in der Anzeige, sondern in der Einstufung
+               (siehe ExportBefund in utils/gutscheinPdfSchreiben.ts); was
+               wirklich nicht ersetzt werden konnte, sagt weiterhin die
+               Meldung. -->
           <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-top:.75rem">
             <button class="btn bs" type="button" data-click="gutscheineExportieren"
-                    data-i18n="vouchers.export">📄 Alle als PDF</button>
-            <label class="btn bs" style="cursor:pointer">📥 PDF<input type="file" id="vouchers-import-file" aria-label="PDF mit Gutscheinen" data-i18n="vouchers.import_label" data-i18n-attr="aria-label" accept="application/pdf" style="display:none" data-change="gutscheineImportieren" /></label>
-            <span id="vouchers-io-status" style="font-size:.8rem;color:var(--mut)"></span>
+                    data-i18n="vouchers.export">📄 Alle Gutscheine als PDF exportieren</button>
           </div>
 
           <div style="border-top:1px solid var(--bdr);padding-top:13px">
@@ -952,7 +969,7 @@
             <div class="fg voucher-upload">
               <label for="v-pdf" data-i18n="vouchers.pdf_label">PDF des Gutscheins (optional)</label>
               <input type="file" id="v-pdf" accept="application/pdf" />
-              <div style="font-size:.72rem;color:var(--mut);margin-top:3px" data-i18n="vouchers.pdf_hint">Die Werte werden daraus gelesen. Was du selbst einträgst, gilt.</div>
+              <div style="font-size:.72rem;color:var(--mut);margin-top:3px" data-i18n="vouchers.pdf_hint">Die Werte werden daraus gelesen. Was du selbst einträgst, gilt. Ein PDF mit mehreren Seiten ergibt mehrere Gutscheine.</div>
             </div>
 
             <div style="display:flex;gap:.5rem;align-items:center;margin-top:.5rem">

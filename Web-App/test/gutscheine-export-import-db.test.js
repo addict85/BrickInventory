@@ -4,7 +4,7 @@
  * ── Warum es diese Datei NEBEN gutschein-pdf-schreiben.test.js gibt ─────────
  *
  * Die dort prüft das Modul: ersetzen, verbinden, zurücklesen. Hier läuft der
- * WEG — GET /api/v1/vouchers/export/pdf und POST /api/v1/vouchers/import/pdf,
+ * WEG — GET /api/v1/vouchers/export/pdf und POST /api/v1/vouchers/pdf,
  * mit echter Datenbank und echten Dateien auf der Platte. Genau diese
  * Trennung ist in dieser Sitzung zweimal teuer geworden: Ein Modul kann
  * stimmen, während die Route es falsch oder gar nicht ruft.
@@ -129,10 +129,17 @@ test('Gutscheine: Export und Import über die echten Adressen', { concurrency: 1
                     'Kopf der einzige Platz, an dem stehen kann, was aus jedem Gutschein wurde.');
     befunde = JSON.parse(Buffer.from(kopf, 'base64').toString('utf-8'));
     assert.equal(befunde.length, 3, `${befunde.length} Befunde statt 3`);
-    assert.deepEqual(befunde.map(b => b.art), ['ersetzt', 'unveraendert', 'erzeugt'],
+    assert.deepEqual(befunde.map(b => b.art), ['ersetzt', 'stimmte_schon', 'erzeugt'],
       `Die Befunde lauten ${JSON.stringify(befunde.map(b => b.art))} — erwartet: der ` +
       'erste wird ersetzt (400→250), der zweite stimmt schon (150), der dritte hat ' +
       'kein Original');
+    // „stimmte_schon" ist eine eigene Art und KEIN offener Punkt. Bis zum
+    // 15.10. trug dieser Fall `unveraendert` samt Grund, und die Oberfläche
+    // zeigte ihn als Warnung — Marco las in seinem Export zweimal
+    // „⚠ …: Der Betrag im PDF stimmt schon", also eine Warnung vor einem
+    // Erfolg. Hier steht der Unterschied fest.
+    assert.equal(befunde.filter(b => b.art === 'unveraendert' && b.grund).length, 0,
+      'Ein „stimmt schon" darf nicht als offener Punkt zählen');
   });
 
   await t.test('2. der FREMDE Gutschein ist nicht dabei', async () => {
@@ -161,11 +168,18 @@ test('Gutscheine: Export und Import über die echten Adressen', { concurrency: 1
     await db.run('DELETE FROM vouchers WHERE user_id=$1', [HAUPT]);
     const fd = new FormData();
     fd.append('file', new Blob([pdf], { type: 'application/pdf' }), 'gutscheine.pdf');
-    const r = await fetch(`${srv.base}/api/v1/vouchers/import/pdf`, { method: 'POST', body: fd });
+    // DIESELBE Adresse wie fuer einen einzelnen Gutschein (Marcos Durchsicht
+    // vom 15.10.: ein Dateifeld, nicht zwei). Der Server sieht drei Seiten und
+    // antwortet mit `mehrere` statt mit `voucher`.
+    const r = await fetch(`${srv.base}/api/v1/vouchers/pdf`, { method: 'POST', body: fd });
     const b = await r.json();
     assert.equal(r.status, 200, `Der Import antwortete mit ${r.status}: ${JSON.stringify(b)}`);
-    assert.equal(b.added, 3, `${b.added} angelegt statt 3: ${JSON.stringify(b.results)}`);
-    assert.equal(b.errors, 0, `${b.errors} Fehler: ${JSON.stringify(b.results)}`);
+    assert.ok(b.mehrere, `Erwartet den Stapelfall, bekam ${JSON.stringify(b)}`);
+    assert.equal(b.voucher, undefined,
+      'Bei mehreren Gutscheinen darf kein einzelner „voucher" danebenstehen — ' +
+      'eine Oberfläche müsste sonst raten, welcher der drei gemeint ist');
+    assert.equal(b.mehrere.added, 3, `${b.mehrere.added} angelegt statt 3: ${JSON.stringify(b.mehrere.results)}`);
+    assert.equal(b.mehrere.errors, 0, `${b.mehrere.errors} Fehler: ${JSON.stringify(b.mehrere.results)}`);
 
     for (const k of KARTEN) {
       const z = await db.get(
@@ -191,8 +205,8 @@ test('Gutscheine: Export und Import über die echten Adressen', { concurrency: 1
     await db.run('UPDATE vouchers SET amount = 1 WHERE user_id=$1', [HAUPT]);
     const fd = new FormData();
     fd.append('file', new Blob([pdf], { type: 'application/pdf' }), 'gutscheine.pdf');
-    const b = await (await fetch(`${srv.base}/api/v1/vouchers/import/pdf`,
-      { method: 'POST', body: fd })).json();
+    const b = (await (await fetch(`${srv.base}/api/v1/vouchers/pdf`,
+      { method: 'POST', body: fd })).json()).mehrere;
     assert.equal(b.added, 0, `${b.added} neu angelegt — die Karten gab es schon`);
     assert.equal(b.updated, 3, `${b.updated} aufgefrischt statt 3`);
     assert.equal(Number((await db.get(
@@ -216,12 +230,37 @@ test('Gutscheine: Export und Import über die echten Adressen', { concurrency: 1
     const fd = new FormData();
     fd.append('file', new Blob([Buffer.from('kein PDF, nur Text')],
       { type: 'application/pdf' }), 'kaputt.pdf');
-    const r = await fetch(`${srv.base}/api/v1/vouchers/import/pdf`, { method: 'POST', body: fd });
+    const r = await fetch(`${srv.base}/api/v1/vouchers/pdf`, { method: 'POST', body: fd });
     assert.equal(r.status, 422,
       `Erwartet 422, bekam ${r.status}. Eine kaputte Datei ist eine Aussage über die ` +
       'Datei, kein Serverfehler.');
+    assert.equal((await r.json()).code, 'pdf_unlesbar',
+      'Seit beide Wege auf einer Adresse liegen, kommt die kaputte Datei beim ' +
+      'EINZELweg an. Ohne eigenen Code stünde dort „betrag_ungueltig" — eine ' +
+      'Auskunft über ein Feld, das es in dieser Datei gar nicht gibt.');
     assert.equal((await db.get(
       'SELECT COUNT(*)::int c FROM vouchers WHERE user_id=$1', [HAUPT])).c, 0,
       'Es wurde trotzdem etwas angelegt');
+  });
+
+  await t.test('8. EIN Gutschein im PDF bleibt der Einzelfall — mit Datei', async () => {
+    // Die Entscheidung „einer oder mehrere" trifft der Server, und sie muss in
+    // beide Richtungen stimmen. Bei einem einzigen Gutschein gilt der alte
+    // Vertrag unverändert: `voucher` statt `mehrere`, und die Datei wird als
+    // Original des Gutscheins GESPEICHERT (beim Stapel nicht — dort ist sie
+    // die Sicherung, nicht die Karte).
+    await db.run('DELETE FROM vouchers WHERE user_id=$1', [HAUPT]);
+    const eine = await baueGutschein('250', KARTEN[0].nr, KARTEN[0].pin);
+    const fd = new FormData();
+    fd.append('file', new Blob([eine], { type: 'application/pdf' }), 'einer.pdf');
+    const r = await fetch(`${srv.base}/api/v1/vouchers/pdf`, { method: 'POST', body: fd });
+    const b = await r.json();
+    assert.equal(r.status, 200, `Antwort ${r.status}: ${JSON.stringify(b)}`);
+    assert.equal(b.mehrere, undefined,
+      `Ein einzelner Gutschein darf nicht als Stapel gelten: ${JSON.stringify(b)}`);
+    assert.ok(b.voucher, 'Der Einzelfall antwortet mit `voucher`');
+    assert.equal(b.voucher.number, KARTEN[0].nr);
+    assert.equal(b.voucher.hat_pdf, true,
+      'Beim Einzelgutschein wird die Datei als sein Original gespeichert');
   });
 });

@@ -303,12 +303,31 @@ export interface ExportGutschein {
   pdf: Buffer | null;
 }
 
-/** Was aus einem Gutschein im Export geworden ist. */
+/**
+ * Was aus einem Gutschein im Export geworden ist.
+ *
+ * ── Warum es 'stimmte_schon' gibt (Marcos Befund vom 15.10.) ───────────────
+ *
+ * Es waren drei Arten, und „der Betrag stand schon richtig im PDF" fiel unter
+ * `unveraendert` — mit einem Grund daneben. Die Oberflaeche zeigte alles mit
+ * Grund als Warnung, und Marco las in seinem Export zweimal
+ * „⚠ …: Der Betrag im PDF stimmt schon". Das ist eine WARNUNG VOR EINEM
+ * ERFOLG: Nichts zu ersetzen, weil nichts falsch war, ist der beste Fall.
+ *
+ * Der Fehler lag nicht in der Anzeige, sondern hier: Zwei verschiedene
+ * Sachverhalte trugen dieselbe Art. Jetzt sind es vier, und 'unveraendert'
+ * heisst wieder genau eines — es haette ersetzt werden sollen und ging nicht.
+ */
 export interface ExportBefund {
   id: number;
   number: string;
-  /** 'ersetzt' | 'unveraendert' | 'erzeugt' */
-  art: 'ersetzt' | 'unveraendert' | 'erzeugt';
+  /**
+   * 'ersetzt'      — der Betrag im Original wurde auf den Stand der App gesetzt
+   * 'stimmte_schon' — es stand schon der richtige Betrag drin (kein Eingriff)
+   * 'unveraendert' — es haette ersetzt werden muessen und ging NICHT (mit Grund)
+   * 'erzeugt'      — kein Original vorhanden, die Seite wurde gebaut
+   */
+  art: 'ersetzt' | 'stimmte_schon' | 'unveraendert' | 'erzeugt';
   /** Warum nicht ersetzt wurde — nur bei 'unveraendert'. */
   grund: string | null;
 }
@@ -373,9 +392,10 @@ export async function verbindeGutscheine(gutscheine: ExportGutschein[]):
       const r = await ersetzeBetrag(g.pdf, g.amount);
       if (r.daten) {
         quelle = r.daten;
+        // Kein Treffer heisst hier NICHT „gescheitert": ersetzeBetrag hat die
+        // Datei zurueckgegeben, nur stand der gesuchte Betrag schon drin.
         befunde.push({ id: g.id, number: g.number,
-                       art: r.treffer ? 'ersetzt' : 'unveraendert',
-                       grund: r.treffer ? null : 'Der Betrag im PDF stimmt schon' });
+                       art: r.treffer ? 'ersetzt' : 'stimmte_schon', grund: null });
       } else {
         quelle = g.pdf;
         befunde.push({ id: g.id, number: g.number, art: 'unveraendert', grund: r.grund });

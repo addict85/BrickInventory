@@ -192,11 +192,81 @@ router.post('/vouchers', requireToken, async (req: AuthedRequest, res) => {
   } catch (e) { handleRouteError(res, e, undefined, req); }
 });
 
+/**
+ * Mehrere Gutscheine aus EINEM PDF anlegen — der Stapelfall von
+ * POST /vouchers/pdf.
+ *
+ * Marcos Vorgabe aus Stueck 3: „Das PDF soll auch wieder importiert werden
+ * koennen (mehrere Seiten in einem PDF ergeben mehrere Gutschein-Eintraege)."
+ * Das stand bis zum 15.10. in einer eigenen Route mit eigenem Knopf; seit
+ * Marcos Durchsicht der Seite gibt es EIN Dateifeld, und der Server
+ * entscheidet. Die Antwort hat die Form der CSV-Importe
+ * (added/updated/errors/results), die beide Oberflaechen schon auswerten.
+ *
+ * ── Warum ON CONFLICT DO UPDATE und nicht DO NOTHING ──────────────────────
+ *
+ * Der Betrag ist genau das, was sich aendert: Ein Gutschein, von dem etwas
+ * abgebucht wurde, soll beim Wiedereinlesen den NEUEREN Stand tragen. Mit DO
+ * NOTHING waere der Import auf einem Konto, das die Karten schon kennt,
+ * wirkungslos — und genau dann braucht man ihn.
+ *
+ * Die PIN zieht nur mit, wenn die Datei eine hat (COALESCE): Ein Sammel-PDF
+ * ohne PIN darf eine gespeicherte nicht loeschen.
+ *
+ * ── Was hier NICHT geschieht ──────────────────────────────────────────────
+ *
+ * Die Datei wird nicht gespeichert: Ein Sammel-PDF ist die Sicherung, nicht
+ * die Karte. Jede Seite als eigene Datei abzulegen hiesse, dasselbe Dokument
+ * zwanzigmal zu speichern.
+ *
+ * Und die Felder des Formulars (number, pin, amount, currency) werden NICHT
+ * angewandt. Sie beschreiben EINEN Gutschein; auf einen Stapel von zwanzig
+ * passen sie nicht, und „der erste bekommt sie" waere geraten. Das PDF
+ * entscheidet.
+ */
+async function stapelAnlegen(
+  req: AuthedRequest, res: express.Response,
+  gefunden: Awaited<ReturnType<typeof seitenweiseLesen>>,
+) {
+  const uid = req.apiUser.user_id;
+  let added = 0, updated = 0, errors = 0;
+  const results: { number: string; action: string; error?: string }[] = [];
+
+  for (const w of gefunden) {
+    const geprueft = pruefeWerte({
+      number: w.nummer, pin: w.pin, amount: w.betrag, currency: w.waehrung ?? 'CHF',
+    });
+    if (!geprueft.ok) {
+      errors++;
+      results.push({ number: String(w.nummer ?? ''), action: 'error', error: geprueft.code });
+      continue;
+    }
+    const neu = await db.get(
+      `INSERT INTO vouchers (user_id, number, pin, amount, currency)
+       VALUES ($1,$2,$3,$4,$5)
+       ON CONFLICT (user_id, number) DO UPDATE
+          SET pin = COALESCE(EXCLUDED.pin, vouchers.pin),
+              amount = EXCLUDED.amount,
+              currency = EXCLUDED.currency,
+              updated_at = NOW()
+       RETURNING id, (xmax = 0) AS war_neu`,
+      [uid, geprueft.number, geprueft.pin, geprueft.amount, geprueft.currency]);
+    if (neu?.war_neu) added++; else updated++;
+    results.push({ number: geprueft.number, action: neu?.war_neu ? 'added' : 'updated' });
+  }
+
+  // `mehrere` als eigener Block und nicht flach daneben: So kann eine
+  // Oberflaeche an EINEM Feld erkennen, welcher der beiden Faelle eingetreten
+  // ist, statt aus dem Fehlen von `voucher` zu schliessen.
+  return res.json({ success: true, mehrere: { added, updated, errors,
+                                              total: gefunden.length, results } });
+}
+
 // ── POST /api/v1/vouchers/pdf — aus dem PDF anlegen ─────────────────────────
 //
 // EIN Weg fuer beide Apps und fuer beide Ausgaenge. Die Felder number, pin,
 // amount und currency duerfen MITGESCHICKT werden; was mitkommt, gewinnt
-// gegen das Ausgelesene. Damit deckt dieselbe Route drei Faelle ab:
+// gegen das Ausgelesene. Damit deckt dieselbe Route vier Faelle ab:
 //
 //   1. Alles ausgelesen           → Gutschein wird angelegt.
 //   2. Teilweise ausgelesen       → der Nutzer ergaenzt und schickt die Datei
@@ -204,6 +274,28 @@ router.post('/vouchers', requireToken, async (req: AuthedRequest, res) => {
 //   3. Nichts ausgelesen          → 422 mit dem, was gefunden wurde (also
 //                                   nichts), und die Oberflaeche zeigt das
 //                                   Formular mit leeren Feldern.
+//   4. MEHRERE Gutscheine im PDF  → alle werden angelegt bzw. aktualisiert,
+//                                   die Antwort traegt `mehrere`.
+//
+// ── Der vierte Fall kam dazu, weil Marco ihn verlangt hat ──────────────────
+//
+//   „Die Funktionalitaet des blau umrandeten Buttons soll in den gruen
+//    umrandeten integriert werden. (Wenn ein PDF mit mehreren Seiten
+//    selektiert wird, sollen mehrere Gutscheine erfasst werden)"
+//
+// Dafuer gab es bis hierher eine zweite Route (POST /vouchers/import/pdf) und
+// einen zweiten Knopf. An DIESER Stelle stand mein Kommentar, warum das
+// getrennt gehoert: Die Einzelroute habe einen festen Vertrag (422 mit
+// `gelesen`), und eine Route, die manchmal einen und manchmal zwanzig anlegt,
+// weiche ihn auf.
+//
+// Der Einwand war nicht falsch, aber er hat das Falsche gewogen. Fuer den
+// Menschen davor sind es nicht zwei Vorgaenge, sondern einer: „ich habe ein
+// PDF, mach etwas damit". Zwei Dateifelder nebeneinander zwingen ihn, vorher
+// zu wissen, wie viele Gutscheine in seiner Datei stehen — das weiss der
+// SERVER, und zwar genauer. Der Vertrag bleibt ausserdem unberuehrt: Bei
+// EINEM Gutschein antwortet die Route Zeichen fuer Zeichen wie vorher, und
+// `mehrere` kommt nur dazu, wenn es wirklich mehrere sind.
 //
 // Die Datei wird ERST GESPEICHERT, WENN DIE ZEILE STEHT. Andersherum bliebe
 // nach jedem misslungenen Versuch eine Datei liegen, die niemandem gehoert
@@ -212,11 +304,38 @@ router.post('/vouchers/pdf', requireToken, upload.single('file'), async (req: Au
   try {
     if (!req.file) return sendeFehler(req, res, 400, 'keine_datei');
 
+    // ── Zuerst die Frage: Wie viele Gutscheine stehen in dieser Datei? ─────
+    //
+    // Seitenweise gelesen, weil ein Sammel-PDF je Seite einen Gutschein
+    // traegt. Erst ab ZWEI ist es ein Stapel; bei einem bleibt alles wie
+    // bisher — samt dem 422-Vertrag, auf dem beide Formulare stehen.
+    //
+    // Ein kaputtes PDF faellt hier NICHT durch: Das Auslesen darf scheitern,
+    // dann ist es eben kein Stapel, und der Einzelweg unten sagt mit seinem
+    // 422, was er lesen konnte (naemlich nichts). Zwei Absagen fuer dieselbe
+    // kaputte Datei waeren eine zu viel.
+    let seiten: Awaited<ReturnType<typeof seitenweiseLesen>> = [];
+    try { seiten = await seitenweiseLesen(req.file.buffer); } catch { seiten = []; }
+    if (seiten.length >= 2) return stapelAnlegen(req, res, seiten);
+
     // Scheitert das Auslesen (kaputtes PDF, Scan, fremdes Format), ist das
     // kein Fehler der Anfrage — es bleibt bei dem, was der Nutzer mitschickt.
+    // Ist das ueberhaupt ein PDF? Multer prueft den gemeldeten Medientyp, und
+    // der ist eine BEHAUPTUNG des Klienten — eine Textdatei mit
+    // `application/pdf` kommt hier an. Die ersten fuenf Zeichen sagen es
+    // sicher.
+    //
+    // GEMESSEN, nicht angenommen: `werteAusPdf` wirft bei einer solchen Datei
+    // NICHT, es liest sie bloss leer. Mein erster Entwurf hing die Absage an
+    // einen Fehler, der nie kommt, und der Lauf meldete
+    // „kein_gutschein_im_pdf" statt „pdf_unlesbar" — richtig im Status,
+    // falsch im Satz.
+    const istPdf = req.file.buffer.subarray(0, 5).toString('latin1') === '%PDF-';
+
     let gelesen: ReturnType<typeof werteAusPdf>;
+    let lesefehler = !istPdf;
     try { gelesen = werteAusPdf(req.file.buffer); }
-    catch { gelesen = { nummer: null, pin: null, betrag: null, waehrung: null }; }
+    catch { lesefehler = true; gelesen = { nummer: null, pin: null, betrag: null, waehrung: null }; }
 
     const zusammen = {
       number:   req.body?.number   ?? gelesen.nummer,
@@ -226,11 +345,25 @@ router.post('/vouchers/pdf', requireToken, upload.single('file'), async (req: Au
     };
     const w = pruefeWerte(zusammen);
     if (!w.ok) {
+      // ── Drei verschiedene Absagen, und der Nutzer tut bei jeder etwas
+      //    anderes ───────────────────────────────────────────────────────────
+      //
+      // Bis zum Zusammenlegen der beiden Dateifelder standen die ersten zwei
+      // Texte in der Stapel-Route; hier gab es nur den Feldcode, also etwa
+      // „betrag_ungueltig" fuer eine Datei, die gar kein PDF ist. Das war
+      // schon vorher schief, ist aber erst jetzt aufgefallen: Seit es EINEN
+      // Weg gibt, kommt auch die kaputte Datei hier an.
+      const nichtsGetippt = !req.body?.number && !req.body?.pin && !req.body?.amount;
+      const nichtsGelesen = gelesen.nummer == null && gelesen.betrag == null;
+      const code: FehlerCode =
+        lesefehler ? 'pdf_unlesbar'
+        : (nichtsGelesen && nichtsGetippt) ? 'kein_gutschein_im_pdf'
+        : w.code;
       // 422 und nicht 400: Die Anfrage war in Ordnung, nur das PDF hat nicht
       // hergegeben, was gebraucht wird. `gelesen` geht mit zurueck, damit die
       // Oberflaeche die Felder vorbelegen kann, die sehr wohl da waren.
       return res.status(422).json({
-        success: false, error: w.code,
+        success: false, code, error: fehlerText(code, antwortSprache(req)),
         gelesen: { number: gelesen.nummer, pin: gelesen.pin, amount: gelesen.betrag, currency: gelesen.waehrung },
       });
     }
@@ -333,77 +466,6 @@ router.get('/vouchers/export/pdf', requireToken, async (req: AuthedRequest, res)
     res.end(daten);
   } catch (e) { handleRouteError(res, e, undefined, req); }
 });
-
-// ── POST /api/v1/vouchers/import/pdf — mehrere Gutscheine aus EINEM PDF ─────
-/**
- * „Das PDF soll auch wieder importiert werden koennen (mehrere Seiten in einem
- * PDF ergeben mehrere Gutschein-Eintraege)."
- *
- * ── Warum eine EIGENE Route und nicht POST /vouchers/pdf erweitert ─────────
- *
- * Die bestehende Route legt EINEN Gutschein an und hat dafuer einen festen
- * Vertrag, auf dem beide Oberflaechen stehen: 422 mit `gelesen`, damit das
- * Formular sich vorbelegen laesst. Daraus eine Route zu machen, die manchmal
- * einen und manchmal zwanzig anlegt, hiesse diesen Vertrag aufzuweichen. Die
- * neue Route hat die Form der anderen Importe (added/updated/errors/results),
- * die beide Oberflaechen schon auswerten.
- *
- * ── Warum ON CONFLICT DO UPDATE und nicht DO NOTHING ──────────────────────
- *
- * Der Betrag ist genau das, was sich aendert: Ein Gutschein, von dem etwas
- * abgebucht wurde, soll beim Wiedereinlesen den NEUEREN Stand tragen. Mit DO
- * NOTHING waere der Import auf einem Konto, das die Karten schon kennt,
- * wirkungslos — und genau dann braucht man ihn.
- *
- * Die PIN zieht nur mit, wenn die Datei eine hat (COALESCE): Ein Sammel-PDF
- * ohne PIN darf eine gespeicherte nicht loeschen.
- *
- * Die Datei selbst wird NICHT gespeichert: Ein Sammel-PDF ist die Sicherung,
- * nicht die Karte. Jede Seite als eigene Datei abzulegen hiesse, dasselbe
- * Dokument zwanzigmal zu speichern.
- */
-router.post('/vouchers/import/pdf', requireToken, upload.single('file'),
-  async (req: AuthedRequest, res) => {
-    try {
-      if (!req.file) return sendeFehler(req, res, 400, 'keine_datei');
-      const uid = req.apiUser.user_id;
-
-      let gefunden;
-      // Ein kaputtes PDF ist eine Aussage ueber die Datei, kein Serverfehler.
-      try { gefunden = await seitenweiseLesen(req.file.buffer); }
-      catch { return sendeFehler(req, res, 422, 'pdf_unlesbar'); }
-      if (!gefunden.length) return sendeFehler(req, res, 422, 'kein_gutschein_im_pdf');
-
-      let added = 0, updated = 0, errors = 0;
-      const results: { number: string; action: string; error?: string }[] = [];
-
-      for (const w of gefunden) {
-        const geprueft = pruefeWerte({
-          number: w.nummer, pin: w.pin, amount: w.betrag, currency: w.waehrung ?? 'CHF',
-        });
-        if (!geprueft.ok) {
-          errors++;
-          results.push({ number: String(w.nummer ?? ''), action: 'error', error: geprueft.code });
-          continue;
-        }
-        const neu = await db.get(
-          `INSERT INTO vouchers (user_id, number, pin, amount, currency)
-           VALUES ($1,$2,$3,$4,$5)
-           ON CONFLICT (user_id, number) DO UPDATE
-              SET pin = COALESCE(EXCLUDED.pin, vouchers.pin),
-                  amount = EXCLUDED.amount,
-                  currency = EXCLUDED.currency,
-                  updated_at = NOW()
-           RETURNING id, (xmax = 0) AS war_neu`,
-          [uid, geprueft.number, geprueft.pin, geprueft.amount, geprueft.currency]);
-        if (neu?.war_neu) added++; else updated++;
-        results.push({ number: geprueft.number, action: neu?.war_neu ? 'added' : 'updated' });
-      }
-
-      res.json({ success: true, added, updated, errors,
-                 total: gefunden.length, results });
-    } catch (e) { handleRouteError(res, e, undefined, req); }
-  });
 
 // ── PUT /api/v1/vouchers/:id — aendern ──────────────────────────────────────
 router.put('/vouchers/:id', requireToken, async (req: AuthedRequest, res) => {

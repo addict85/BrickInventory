@@ -231,7 +231,24 @@ export async function gutscheinSpeichern() {
       return;
     }
     if (!d?.success) { toast(d?.error || tRaw('vouchers.save_error'), 'error'); return; }
-    toast(tRaw('vouchers.saved'), 'success');
+
+    // ── Ein PDF, zwei mögliche Antworten ────────────────────────────────────
+    //
+    // Marcos Vorgabe: „Wenn ein PDF mit mehreren Seiten selektiert wird,
+    // sollen mehrere Gutscheine erfasst werden." Welcher Fall es ist,
+    // entscheidet der SERVER — er liest die Datei. Hier wird nur die Antwort
+    // gezeigt, und `mehrere` sagt, welche es ist.
+    //
+    // Dieselben Felder wie bei den CSV-Importen (added/updated/errors), also
+    // dieselbe Meldung: Wer drei Gutscheine auf einmal erfasst, soll nicht
+    // „Gutschein gespeichert" lesen und raten, wie viele es wurden.
+    if (d.mehrere) {
+      toast(tRaw('import.summary', { added: d.mehrere.added, updated: d.mehrere.updated,
+                                     errors: d.mehrere.errors }),
+        d.mehrere.errors ? 'info' : 'success');
+    } else {
+      toast(tRaw('vouchers.saved'), 'success');
+    }
     formularLeeren();
     await ladeGutscheine();
     return;
@@ -338,20 +355,27 @@ export async function gutscheinKopieren(id, feld) {
  * ── Warum fetch und kein Link ───────────────────────────────────────────────
  *
  * Die Antwort trägt neben dem PDF eine Kopfzeile `X-Gutschein-Befunde`: je
- * Gutschein, ob der Betrag ersetzt wurde, unverändert blieb (mit Grund) oder
- * die Seite erzeugt wurde. Ein `<a href>` bekäme die Datei und würde die
- * Auskunft wegwerfen — und genau die ist hier wichtig: Ein Gutschein, dessen
- * Betrag NICHT ersetzt werden konnte, zeigt auf dem Papier den alten Wert.
- * Das muss dastehen, nicht verschwiegen werden.
+ * Gutschein, ob der Betrag ersetzt wurde, schon stimmte, unverändert blieb
+ * (mit Grund) oder die Seite erzeugt wurde. Ein `<a href>` bekäme die Datei
+ * und würde die Auskunft wegwerfen — und genau die ist hier wichtig: Ein
+ * Gutschein, dessen Betrag NICHT ersetzt werden konnte, zeigt auf dem Papier
+ * den alten Wert. Das muss dastehen, nicht verschwiegen werden.
+ *
+ * ── Was hier NICHT mehr steht (Marcos Durchsicht vom 15.10.) ───────────────
+ *
+ * Die Liste der Befunde unter den Knöpfen. Sie zeigte „⚠ …: Der Betrag im PDF
+ * stimmt schon" — also eine Warnung davor, dass alles in Ordnung ist. Der
+ * Fehler lag nicht in dieser Anzeige, sondern eine Schicht tiefer: „stimmte
+ * schon" und „liess sich nicht ersetzen" trugen dieselbe Art. Seit es
+ * 'stimmte_schon' gibt (utils/gutscheinPdfSchreiben.ts), zählt `offen` nur
+ * noch das, was wirklich offen ist — und das sagt die Meldung.
  */
 async function gutscheineExportieren() {
-  const status = G('vouchers-io-status');
-  if (status) status.textContent = tRaw('vouchers.export_running');
+  toast(tRaw('vouchers.export_running'), 'info');
   try {
     const r = await fetch('/api/v1/vouchers/export/pdf');
     if (!r.ok) {
       const d = await r.json().catch(() => ({}));
-      if (status) status.textContent = '';
       toast(d.error || tRaw('settings.error'), 'error');
       return;
     }
@@ -373,10 +397,10 @@ async function gutscheineExportieren() {
     document.body.appendChild(a); a.click(); a.remove();
     URL.revokeObjectURL(url);
 
-    // Die Befunde: Nicht ersetzte Gutscheine werden EINZELN genannt, mit
-    // Nummer und Grund. Form und Wort tragen die Aussage, nicht die Farbe.
+    // Die Befunde: 'unveraendert' heisst jetzt genau eines — es hätte
+    // ersetzt werden sollen und ging nicht. „Stimmte schon" ist eine eigene
+    // Art und kein offener Punkt mehr.
     const offen = befunde.filter(b => b.art === 'unveraendert' && b.grund);
-    if (status) status.textContent = '';
     if (!offen.length) {
       toast(tRaw('vouchers.export_done', { n: befunde.length }), 'success');
     } else {
@@ -385,45 +409,14 @@ async function gutscheineExportieren() {
       // WOERTLICH — aus 9'325 wurde im Katalog sichtbar „9&#39;325".
       // test/frontend-escaping.test.js faengt genau das, und es hat es
       // gefangen: Mein erster Entwurf stand hier mit t().
+      // Die Nummern stehen IN der Meldung: Ohne sie wüsste niemand, welche
+      // Karte auf dem Papier den alten Betrag trägt — und eine Liste, die
+      // dauerhaft unter den Knöpfen steht, will Marco nicht.
       toast(tRaw('vouchers.export_done', { n: befunde.length }) + ' — '
-          + tRaw('vouchers.export_offen', { n: offen.length }), 'info');
-      if (status) {
-        status.innerHTML = offen
-          .map(b => `⚠ ${esc(b.number)}: ${esc(b.grund)}`).join('<br>');
-      }
+          + tRaw('vouchers.export_offen', { n: offen.length }) + ': '
+          + offen.map(b => b.number).join(', '), 'info');
     }
   } catch (e) {
-    if (status) status.textContent = '';
-    toast(tRaw('settings.error'), 'error');
-  }
-}
-
-/**
- * Ein PDF mit Gutscheinen einlesen — mehrere Seiten ergeben mehrere Einträge.
- *
- * Der Server entscheidet, wie gelesen wird (Marke zuerst, Seiten raten als
- * Rückfall); hier wird nur die Antwort gezeigt. Dieselben Felder wie bei den
- * CSV-Importen (added/updated/errors), also dieselbe Meldung.
- */
-async function gutscheineImportieren() {
-  const fi = G('vouchers-import-file');
-  if (!fi?.files[0]) return;
-  const fd = new FormData();
-  fd.append('file', fi.files[0]);
-  const status = G('vouchers-io-status');
-  if (status) status.textContent = tRaw('import.running');
-  try {
-    const r = await fetch('/api/v1/vouchers/import/pdf', { method: 'POST', body: fd });
-    const d = await r.json().catch(() => ({}));
-    fi.value = '';
-    if (status) status.textContent = '';
-    if (!d.success) { toast(d.error || tRaw('settings.error'), 'error'); return; }
-    toast(tRaw('import.summary', { added: d.added, updated: d.updated, errors: d.errors }),
-      d.errors ? 'info' : 'success');
-    await ladeGutscheine();
-  } catch (e) {
-    fi.value = '';
-    if (status) status.textContent = '';
     toast(tRaw('settings.error'), 'error');
   }
 }
@@ -587,7 +580,6 @@ export async function gutscheinLandSpeichern() {
 
 registerActions({
   gutscheineExportieren,
-  gutscheineImportieren,
   ladeGutscheine,
   gutscheinSpeichern,
   gutscheinBearbeiten,

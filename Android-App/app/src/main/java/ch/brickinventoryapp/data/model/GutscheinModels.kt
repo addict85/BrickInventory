@@ -106,10 +106,32 @@ data class GelesenerGutschein(
     val currency: String? = null,
 )
 
+/**
+ * Was beim Hochladen eines SAMMEL-PDFs herauskam.
+ *
+ * Marcos Vorgabe vom 15.10.: „Wenn ein PDF mit mehreren Seiten selektiert
+ * wird, sollen mehrere Gutscheine erfasst werden." Es gibt deshalb kein
+ * zweites Dateifeld und keine zweite Adresse mehr — dieselbe Route antwortet
+ * je nach Datei mit `voucher` ODER mit diesem Block.
+ *
+ * Dieselben Felder wie bei den CSV-Importen (added/updated/errors), also
+ * dieselbe Meldung: Wer drei Gutscheine auf einmal erfasst, soll nicht
+ * „Gutschein gespeichert" lesen und raten, wie viele es wurden.
+ */
+@Serializable
+data class GutscheinStapel(
+    val added: Int = 0,
+    val updated: Int = 0,
+    val errors: Int = 0,
+    val total: Int = 0,
+)
+
 @Serializable
 data class GutscheinAntwort(
     val success: Boolean = false,
     val voucher: Gutschein? = null,
+    /** Gesetzt, wenn das PDF MEHRERE Gutscheine enthielt. */
+    val mehrere: GutscheinStapel? = null,
     val gelesen: GelesenerGutschein? = null,
     val error: String? = null,
     val code: String? = null,

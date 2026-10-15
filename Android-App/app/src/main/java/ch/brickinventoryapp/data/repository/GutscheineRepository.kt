@@ -71,20 +71,6 @@ class GutscheineRepository @Inject constructor(
      * geraten; dieselbe Regel wie beim Hochladen einer Anleitung. Der Server
      * nimmt ausschliesslich `application/pdf` an.
      */
-    /**
-     * Mehrere Gutscheine aus EINEM PDF — das Gegenstueck zum Export.
-     *
-     * Kein Dateiname und kein Typ als Parameter: Der Server liest die Datei
-     * und nimmt nur PDF; der Name taucht in keiner Antwort auf. Was `ausPdf`
-     * unten braucht (der Name geht ins Serverprotokoll, der Typ wird vorher
-     * geprueft), braucht dieser Weg nicht.
-     */
-    suspend fun importierePdf(inhalt: ByteArray): Result<CsvImportErgebnis> {
-        val koerper = inhalt.toRequestBody("application/pdf".toMediaType())
-        val teil = okhttp3.MultipartBody.Part.createFormData("file", "gutscheine.pdf", koerper)
-        return safeCall { api.importiereGutscheinePdf(teil) }
-    }
-
     suspend fun ausPdf(
         dateiname: String,
         typ: String,

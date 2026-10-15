@@ -972,6 +972,14 @@ interface BrickApiService {
      *
      * Die Teile sind optional (`RequestBody?`), weil ein LEERES Feld das
      * Gelesene ueberschreiben wuerde — mit nichts.
+     *
+     * ── Dieselbe Adresse legt auch MEHRERE an (Marcos Durchsicht, 15.10.) ──
+     *
+     * Dafuer gab es hier eine zweite Methode auf `POST /vouchers/import/pdf`.
+     * Sie ist weg, und zwar samt ihrer Route: Enthaelt die Datei mehrere
+     * Gutscheine, antwortet dieselbe Route mit `mehrere` statt mit `voucher`.
+     * Der Mensch davor soll nicht vorher wissen muessen, wie viele Gutscheine
+     * in seiner Datei stehen — das weiss der Server, und zwar genauer.
      */
     @Multipart
     @POST("api/v1/vouchers/pdf")
@@ -982,18 +990,6 @@ interface BrickApiService {
         @retrofit2.http.Part("amount") betrag: okhttp3.RequestBody? = null,
         @retrofit2.http.Part("currency") waehrung: okhttp3.RequestBody? = null,
     ): Response<GutscheinAntwort>
-
-    // ── Mehrere Gutscheine aus EINEM PDF ───────────────────────────────────
-    //
-    // Gegenstueck zu `ladeGutscheinPdfHoch`: Dort wird EIN Gutschein angelegt
-    // (mit dem Vertrag „422 samt gelesenen Werten", auf dem das Formular
-    // steht), hier ein ganzer Stapel. Die Antwort hat die Form der
-    // CSV-Importe, die beide Oberflaechen schon auswerten.
-    @Multipart
-    @POST("api/v1/vouchers/import/pdf")
-    suspend fun importiereGutscheinePdf(
-        @retrofit2.http.Part datei: okhttp3.MultipartBody.Part,
-    ): Response<CsvImportErgebnis>
 
     /**
      * Das Guthaben einer Karte bei LEGO abfragen und speichern.

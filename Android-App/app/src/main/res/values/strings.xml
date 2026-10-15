@@ -618,7 +618,6 @@
     <string name="csv_upload_figs">Minifigures</string>
     <string name="csv_upload_wanted">Watchlist</string>
     <string name="csv_upload_alerts">Price alerts</string>
-    <string name="vouchers_import">📥 Import PDF</string>
     <string name="vouchers_import_done">%1$s, %2$s</string>
     <string name="csv_upload_hint">Same files as in the web app. Maximum %1$d MB.</string>
     <string name="csv_upload_unreadable">The selected file could not be read.</string>
@@ -736,7 +735,7 @@
     <string name="vouchers_amount">Amount</string>
     <string name="vouchers_pick_pdf">Choose PDF</string>
     <string name="vouchers_pdf_chosen">File selected</string>
-    <string name="vouchers_pdf_hint">The values are read from it. Anything you fill in yourself wins.</string>
+    <string name="vouchers_pdf_hint">The values are read from it. Anything you fill in yourself wins. A PDF with several pages yields several vouchers.</string>
     <string name="vouchers_pdf_open">Open PDF</string>
     <string name="vouchers_pin_show">Show PIN</string>
     <string name="vouchers_pin_hide">Hide PIN</string>
