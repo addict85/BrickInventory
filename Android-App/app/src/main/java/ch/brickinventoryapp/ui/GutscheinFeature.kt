@@ -235,7 +235,17 @@ internal fun MainViewModel.importiereGutscheinePdf(uri: android.net.Uri?) {
                     } else {
                         _snackbar.value = r.data.error ?: text(R.string.err_generic)
                     }
-                is Result.Error -> _snackbar.value = meldung(r)
+                // meldungFuerSnackbar und NICHT meldung: Bei 401 gibt diese
+                // Fassung null zurueck, und der Kanal zeigt dann nichts — die
+                // Sitzungsschicht hat die Abmeldung schon gemeldet, und ein
+                // zweiter Satz daneben waere falsch.
+                //
+                // AbgewiesenTest faengt genau das („keine Snackbar bekommt den
+                // Satz an der Regel vorbei"), und es hat mich gefangen: Ich
+                // hatte meldung(r) von der CSV-Stelle uebernommen, die in einen
+                // UI-ZUSTAND schreibt und nicht in die Snackbar. Dort ist es
+                // richtig, hier nicht. Zeile 47 dieser Datei macht es vor.
+                is Result.Error -> _snackbar.value = meldungFuerSnackbar(r)
             }
         } finally {
             _gutscheinState.update { it.copy(speichert = false) }
