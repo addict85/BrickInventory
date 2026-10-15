@@ -241,6 +241,38 @@ export const FEHLER = {
                                  en: 'No voucher could be recognised in this PDF. '
                                    + 'Please add the voucher manually.' },
 
+  // ── Guthaben-Abfrage bei LEGO ────────────────────────────────────────────
+  //
+  // Vier verschiedene Auskuenfte, und sie sind deshalb vier Codes: Der Nutzer
+  // tut bei jeder etwas anderes — PIN nachtragen, kurz warten, lange warten,
+  // oder es ist etwas kaputt und er kann nichts tun.
+  guthaben_pin_fehlt:          { de: 'Für die Abfrage braucht es die PIN der Karte.',
+                                 en: 'The card PIN is required for the balance query.' },
+  // {sek} statt einer festen Zahl: Die Grenze steht in
+  // utils/gutscheinGuthabenSchranke.ts, und zwei Zahlen fuer eine Regel laufen
+  // auseinander.
+  guthaben_abstand:            { de: 'Es wird höchstens eine Karte alle {sek} Sekunden '
+                                   + 'abgefragt. Bitte noch {warten} Sekunden warten.',
+                                 en: 'At most one card is queried every {sek} seconds. '
+                                   + 'Please wait another {warten} seconds.' },
+  // Der Bot-Schutz. Der Text sagt ZWEI Dinge: dass es nicht an der Karte
+  // liegt, und wie lange die Abfrage ruht — sonst drueckt der Nutzer weiter.
+  guthaben_botschutz:          { de: 'LEGO hat die Abfrage abgewiesen (Bot-Schutz). '
+                                   + 'Die Abfrage ruht noch {min} Minuten.',
+                                 en: 'LEGO rejected the query (bot protection). '
+                                   + 'The query is paused for another {min} minutes.' },
+  // {grund} ist der Text der Gegenseite — er laeuft vorher durch verdecke(),
+  // damit Kartennummer und PIN darin nicht stehen koennen.
+  guthaben_fehlgeschlagen:     { de: 'Das Guthaben liess sich nicht abfragen: {grund}',
+                                 en: 'The balance could not be queried: {grund}' },
+  // Das Ausgabeland kommt aus den Einstellungen. Steht dort etwas, das nicht
+  // auf der Liste ist, wird NICHT gefragt: Aus dem Land wird eine Adresse
+  // gebaut.
+  guthaben_land_ungueltig:     { de: 'Das eingestellte Ausgabeland ist unbekannt. '
+                                   + 'Bitte in den Einstellungen bei den Gutscheinen wählen.',
+                                 en: 'The configured card country is unknown. '
+                                   + 'Please choose one in the voucher settings.' },
+
   // ── BrickLink-Wanted-Liste (Marcos Liste, Stueck 4) ──────────────────────
   //
   // Vor dem Zerlegen gesagt, nicht danach: „0 Posten gelesen" kann auch eine

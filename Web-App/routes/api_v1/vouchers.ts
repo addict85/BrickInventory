@@ -37,7 +37,10 @@ import path from 'path';
 import multer from 'multer';
 import { DATA_DIR } from '../../utils/appPaths';
 import { handleRouteError } from '../../utils/httpError';
-import { sendeFehler, type FehlerCode } from '../../utils/fehlerTexte';
+import { sendeFehler, fehlerText, antwortSprache, type FehlerCode } from '../../utils/fehlerTexte';
+import { getGlobalSetting } from '../../utils/settings';
+import { verdecke, landErlaubt, LAND_STANDARD } from '../../utils/gutscheinGuthaben';
+import { frageGuthabenAb, ABSTAND_SEK } from '../../utils/gutscheinGuthabenSchranke';
 import { liefereDatei } from '../../utils/dateiAusliefern';
 import { requireToken } from './middleware';
 import { werteAusPdf } from '../../utils/gutscheinPdf';
@@ -82,6 +85,8 @@ interface GutscheinZeile {
   pdf_path: string | null;
   created_at: string | Date;
   updated_at: string | Date;
+  /** Wann das Guthaben zuletzt bei LEGO abgefragt wurde, oder NULL. */
+  guthaben_geprueft_am: string | Date | null;
 }
 
 /**
@@ -104,10 +109,16 @@ function fuerAussen(z: GutscheinZeile) {
     hat_pdf: !!z.pdf_path,
     created_at: z.created_at,
     updated_at: z.updated_at,
+    // Geht MIT heraus, auch wenn es NULL ist: „250 CHF" allein ist keine
+    // Auskunft, „250 CHF, abgefragt am 15.10." ist eine — und ein Gutschein,
+    // dessen Guthaben nie abgefragt wurde, soll sich davon unterscheiden
+    // koennen. Die Begruendung steht in Migration 0039.
+    guthaben_geprueft_am: z.guthaben_geprueft_am,
   };
 }
 
-const SPALTEN = 'id, number, pin, amount, currency, pdf_path, created_at, updated_at';
+const SPALTEN = 'id, number, pin, amount, currency, pdf_path, created_at, updated_at, '
+              + 'guthaben_geprueft_am';
 
 /**
  * Die drei Pflichtwerte pruefen.
@@ -117,7 +128,8 @@ const SPALTEN = 'id, number, pin, amount, currency, pdf_path, created_at, update
  * und Aendern — und eine Pruefung, die an drei Stellen steht, steht bald in
  * drei Fassungen da.
  */
-function pruefeWerte(roh: { number?: unknown; pin?: unknown; amount?: unknown; currency?: unknown }):
+function pruefeWerte(roh: { number?: unknown; pin?: unknown; amount?: unknown; currency?: unknown },
+                     opt: { nullBetragErlaubt?: boolean } = {}):
   { ok: true; number: string; pin: string | null; amount: number; currency: string } | { ok: false; code: FehlerCode } {
   const number = String(roh.number ?? '').replace(/[\s-]/g, '');
   if (!/^\d{4,25}$/.test(number)) return { ok: false, code: 'nummer_ungueltig' };
@@ -129,7 +141,15 @@ function pruefeWerte(roh: { number?: unknown; pin?: unknown; amount?: unknown; c
   // Auch die Null faellt durch: Ein Gutschein ueber 0 ist keiner, und ein
   // leeres Feld wird von Number() zur Null — ohne diese Grenze haette ein
   // vergessenes Feld stillschweigend einen Gutschein ueber nichts angelegt.
-  if (!Number.isFinite(amount) || amount <= 0 || amount > 1_000_000) return { ok: false, code: 'betrag_ungueltig' };
+  //
+  // EINE Ausnahme, und sie kommt nicht aus der Eingabe: Eine ABGEFRAGTE Null
+  // ist eine Auskunft — die Karte ist aufgebraucht (siehe die Guthaben-Route
+  // unten, die `amount = 0` schreibt). Wer danach die PIN korrigiert, schickt
+  // keinen Betrag mit; dann wird der gespeicherte uebernommen, und ohne diese
+  // Ausnahme waere eine leergekaufte Karte nicht mehr aenderbar. Ein von Hand
+  // eingetippte 0 faellt weiterhin durch.
+  if (!Number.isFinite(amount) || amount > 1_000_000) return { ok: false, code: 'betrag_ungueltig' };
+  if (opt.nullBetragErlaubt ? amount < 0 : amount <= 0) return { ok: false, code: 'betrag_ungueltig' };
 
   const currency = String(roh.currency ?? 'CHF').toUpperCase();
   if (!/^[A-Z]{3}$/.test(currency)) return { ok: false, code: 'waehrung_ungueltig' };
@@ -401,7 +421,7 @@ router.put('/vouchers/:id', requireToken, async (req: AuthedRequest, res) => {
       pin:      req.body?.pin      ?? alt.pin,
       amount:   req.body?.amount   ?? alt.amount,
       currency: req.body?.currency ?? alt.currency,
-    });
+    }, { nullBetragErlaubt: req.body?.amount === undefined });
     if (!w.ok) return sendeFehler(req, res, 400, w.code);
 
     const zeile = await db.get(
@@ -482,6 +502,114 @@ router.get('/vouchers/:id/pdf', requireToken, async (req: AuthedRequest, res) =>
     // teilt — und auch nicht in den des Browsers, laenger als noetig.
     res.setHeader('Cache-Control', 'private, no-store');
     liefereDatei(res, datei);
+  } catch (e) { handleRouteError(res, e, undefined, req); }
+});
+
+// ── POST /api/v1/vouchers/:id/guthaben — das Guthaben bei LEGO abfragen ─────
+//
+// ── Marcos Vorgaben ─────────────────────────────────────────────────────────
+//
+//   „Kannst du dies bei den Gutscheinen einbauen, damit dies auf Knopfdruck
+//    abgefragt und gespeichert werden kann?"
+//
+//   „Wichtig das Ausgabeland soll in den Einstellungen bei den Gutscheinen
+//    fuer alle erfasst werden koennen (wie in der Prototyp-App). Der
+//    Zurueckgemeldete Betrag soll im Feld Betrag gespeichert werden."
+//
+// ── EINE Route, auch fuer „alle abfragen" ───────────────────────────────────
+//
+// Es gibt keinen zweiten Endpunkt, der alle Karten durchgeht. Das ist keine
+// Sparsamkeit, sondern die Folge von Marcos Grenze: hoechstens ein Aufruf je
+// 30 Sekunden ueber ALLE Benutzer. Eine Sammelroute muesste diese Wartezeit
+// INNERHALB einer HTTP-Anfrage absitzen — bei fuenf Karten gut zwei Minuten,
+// mit einer offenen Verbindung und einer Antwort, die niemand mehr abholt,
+// wenn der Browser vorher aufgibt.
+//
+// Stattdessen taktet die Oberflaeche: Sie ruft diese Route je Karte auf, und
+// wenn sie 429 bekommt, wartet sie die gemeldeten `wartenSek` ab. Die Grenze
+// bleibt dabei dort, wo sie hingehoert — auf dem Server
+// (utils/gutscheinGuthabenSchranke.ts). Ein Client, der sich nicht taktet,
+// bekommt 429 und sonst nichts.
+//
+// ── Was NICHT gespeichert wird ──────────────────────────────────────────────
+//
+// Der formatierte Text der Gegenseite („CHF 250.00") geht in die Antwort,
+// aber in keine Spalte: Er ist in der Sprache und Schreibweise des
+// Ausgabelandes, und die Anzeige formatiert selbst (fmtN). Gespeichert werden
+// Betrag, Waehrung und der Zeitpunkt — nicht mehr.
+router.post('/vouchers/:id/guthaben', requireToken, async (req: AuthedRequest, res) => {
+  try {
+    const id = Number(req.params.id);
+    if (!Number.isInteger(id)) return sendeFehler(req, res, 400, 'id_ungueltig');
+    const alt = await db.get(`SELECT ${SPALTEN} FROM vouchers WHERE id = $1 AND user_id = $2`,
+      [id, req.apiUser.user_id]) as GutscheinZeile | undefined;
+    if (!alt) return sendeFehler(req, res, 404, 'nicht_gefunden');
+
+    // Ohne PIN gibt es keine Antwort — LEGO fragt beides ab. Das VOR der
+    // Schranke pruefen: Ein Aufruf, der nicht stattfinden kann, soll den
+    // einen Platz je 30 Sekunden nicht verbrauchen.
+    if (!alt.pin) return sendeFehler(req, res, 400, 'guthaben_pin_fehlt');
+
+    // Das Ausgabeland: EINE Einstellung fuer die ganze Installation („fuer
+    // alle"), nicht je Nutzer. Eine Karte gilt nur im Shop ihres
+    // Ausgabelandes, und das Land geht als Adresse und als Keks mit.
+    const land = String(await getGlobalSetting('gutschein_land', LAND_STANDARD) || LAND_STANDARD);
+    if (!landErlaubt(land)) return sendeFehler(req, res, 400, 'guthaben_land_ungueltig');
+
+    let ergebnis;
+    try {
+      ergebnis = await frageGuthabenAb(alt.number, alt.pin, { locale: land });
+    } catch (e) {
+      // Ein Fehler der Gegenseite ist KEIN Serverfehler: Der Mensch, der
+      // gerade auf den Knopf gedrueckt hat, soll lesen, was los war —
+      // handleRouteError machte daraus ein nichtssagendes 500.
+      //
+      // verdecke() noch einmal, obwohl die fremden Texte es schon durchlaufen
+      // haben: Hier kommen auch Fehler durch, die NICHT aus
+      // gutscheinGuthaben.ts stammen (ein Netzfehler des Treibers etwa), und
+      // die Zusicherung „die PIN steht in keinem Protokoll" soll an der
+      // Stelle gelten, an der der Text die Anwendung verlaesst.
+      const grund = verdecke(String((e as Error)?.message || e), alt.number, alt.pin);
+      console.warn(`[guthaben] Abfrage gescheitert (Gutschein ${id}): ${grund}`);
+      return res.status(502).json({
+        success: false, code: 'guthaben_fehlgeschlagen',
+        error: fehlerText('guthaben_fehlgeschlagen', antwortSprache(req), { grund }),
+      });
+    }
+
+    if (ergebnis.art === 'gesperrt') {
+      const botschutz = ergebnis.grund === 'botschutz';
+      const code: FehlerCode = botschutz ? 'guthaben_botschutz' : 'guthaben_abstand';
+      const vars = botschutz
+        ? { min: Math.ceil(ergebnis.wartenSek / 60) }
+        : { sek: ABSTAND_SEK, warten: ergebnis.wartenSek };
+      // Eigenes json() statt sendeFehler(): `wartenSek` muss MIT in die
+      // Antwort, denn danach taktet sich die Oberflaeche (siehe oben).
+      // sendeFehler schickt nur success/error/code.
+      return res.status(429).json({
+        success: false, code, error: fehlerText(code, antwortSprache(req), vars),
+        grund: ergebnis.grund, wartenSek: ergebnis.wartenSek,
+      });
+    }
+
+    const g = ergebnis.guthaben;
+    // Die Waehrung der Gegenseite gewinnt — sie gehoert zur Karte. Nur wenn
+    // sie unbrauchbar ist, bleibt die bisherige stehen: Eine leere oder
+    // kaputte Angabe duerfte sonst `currency` zerstoeren, und die Summe in
+    // der Liste rechnet nur, wenn alle Gutscheine dieselbe Waehrung tragen.
+    const waehrung = /^[A-Z]{3}$/.test(g.waehrung) ? g.waehrung : alt.currency;
+    const zeile = await db.get(
+      `UPDATE vouchers SET amount = $1, currency = $2,
+              guthaben_geprueft_am = NOW(), updated_at = NOW()
+        WHERE id = $3 AND user_id = $4 RETURNING ${SPALTEN}`,
+      [g.betrag, waehrung, id, req.apiUser.user_id]);
+    res.json({
+      success: true, voucher: fuerAussen(zeile as GutscheinZeile),
+      angezeigt: g.angezeigt,
+      // Damit die Oberflaeche es SAGEN kann: Eine stillschweigend geaenderte
+      // Waehrung waere eine geaenderte Summe ohne Hinweis.
+      waehrung_geaendert: waehrung !== alt.currency,
+    });
   } catch (e) { handleRouteError(res, e, undefined, req); }
 });
 

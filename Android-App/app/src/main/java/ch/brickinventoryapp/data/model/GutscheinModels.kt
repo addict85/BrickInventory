@@ -46,6 +46,42 @@ data class Gutschein(
     @SerialName("hat_pdf") val hatPdf: Boolean = false,
     @SerialName("created_at") val createdAt: String? = null,
     @SerialName("updated_at") val updatedAt: String? = null,
+    /**
+     * Wann das Guthaben zuletzt bei LEGO abgefragt wurde, oder null.
+     *
+     * Getrennt von `updatedAt`, und das ist der ganze Zweck: `updatedAt`
+     * aendert sich auch, wenn jemand den Betrag von Hand korrigiert. Erst
+     * dieses Feld macht aus „250 CHF" die Auskunft „250 CHF, abgefragt am
+     * 15.10." — und ein null unterscheidet „noch nie gefragt" von „gefragt
+     * und es waren 250". Die Begruendung steht in Migration 0039.
+     */
+    @SerialName("guthaben_geprueft_am") val guthabenGeprueftAm: String? = null,
+)
+
+/**
+ * Die Antwort der Guthaben-Abfrage.
+ *
+ * `angezeigt` ist der formatierte Text der LEGO-Seite („CHF 250.00") — nur
+ * zur Anzeige, nicht gespeichert: Er steht in der Schreibweise des
+ * Ausgabelandes, und die App formatiert selbst.
+ *
+ * `wartenSek` und `grund` kommen bei HTTP 429 mit: Der Server erlaubt
+ * hoechstens eine Abfrage je 30 Sekunden ueber ALLE Benutzer (Marcos
+ * Vorgabe). Die App wartet damit nicht selbst — sie zeigt den Satz, den der
+ * Server schon in der richtigen Sprache mitschickt. Die Felder stehen hier
+ * trotzdem, weil `ignoreUnknownKeys` sie sonst stillschweigend wegwirft und
+ * die naechste Fassung sie suchen muesste.
+ */
+@Serializable
+data class GuthabenAntwort(
+    val success: Boolean = false,
+    val voucher: Gutschein? = null,
+    val angezeigt: String? = null,
+    @SerialName("waehrung_geaendert") val waehrungGeaendert: Boolean = false,
+    val grund: String? = null,
+    val wartenSek: Int? = null,
+    val error: String? = null,
+    val code: String? = null,
 )
 
 @Serializable

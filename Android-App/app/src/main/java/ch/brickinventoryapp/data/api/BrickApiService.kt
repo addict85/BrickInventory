@@ -995,6 +995,27 @@ interface BrickApiService {
         @retrofit2.http.Part datei: okhttp3.MultipartBody.Part,
     ): Response<CsvImportErgebnis>
 
+    /**
+     * Das Guthaben einer Karte bei LEGO abfragen und speichern.
+     *
+     * Marcos Vorgabe: „Kannst du dies bei den Gutscheinen einbauen, damit dies
+     * auf Knopfdruck abgefragt und gespeichert werden kann?" — und weiter:
+     * „Der Zurueckgemeldete Betrag soll im Feld Betrag gespeichert werden."
+     * Genau das tut der Server; die App bekommt die fertige Zeile zurueck.
+     *
+     * Kein Rumpf: Nummer und PIN stehen schon in der Datenbank, und sie noch
+     * einmal mitzuschicken hiesse, eine PIN ueber die Leitung zu schicken, die
+     * der Server ohnehin hat.
+     *
+     * Es gibt KEINE Methode fuer „alle Karten auf einmal" — der Server hat
+     * dafuer auch keine Route. Der Grund steht dort: Hoechstens eine Abfrage
+     * je 30 Sekunden ueber alle Benutzer, und das waere eine HTTP-Anfrage, die
+     * Minuten offen bliebe. Die Webapp taktet sich deshalb selbst durch diese
+     * Route; hier gibt es den Knopf je Karte.
+     */
+    @POST("api/v1/vouchers/{id}/guthaben")
+    suspend fun frageGuthabenAb(@Path("id") id: Int): Response<GuthabenAntwort>
+
     // Eine Methode fuer `GET /vouchers/export/pdf` steht hier NICHT, und das
     // ist dieselbe Entscheidung wie beim Einzel-PDF unten: Der Export ist eine
     // DATEI ZUM BEHALTEN, und die App hat keinen Weg, eine Datei zu speichern

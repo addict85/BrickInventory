@@ -191,6 +191,7 @@ fun SettingsScreen(
                 vm.meldeGutscheinKopiert(istNummer)
             },
             onImportieren = { vm.importiereGutscheinePdf(it) },
+            onGuthaben = { vm.frageGuthabenAb(it) },
         )
 
         // Currency

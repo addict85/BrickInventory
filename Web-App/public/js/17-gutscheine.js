@@ -1,5 +1,5 @@
 import { registerActions } from './00-registry.js';
-import { t, tRaw } from '../i18n.js';
+import { locale, t, tRaw } from '../i18n.js';
 import { G, TRASH_ICON_SVG, api, esc, fmtN, toast } from './01-core.js';
 import { openPdfViewer } from './12-pdfviewer.js';
 
@@ -77,6 +77,14 @@ function zeile(g) {
         </div>
         <div class="voucher-meta">
           <span class="voucher-amount">${fmtN(g.amount, g.currency)}</span>
+          <!-- Der Stand NEBEN dem Betrag, nicht statt ihm: „250 CHF" allein
+               ist keine Auskunft, „250 CHF, abgefragt am 15.10." ist eine.
+               Und eine Karte, deren Guthaben noch nie abgefragt wurde, sagt
+               das — im WORT, nicht durch eine Farbe. -->
+          <span class="voucher-stand">${g.guthaben_geprueft_am
+            ? t('vouchers.balance_as_of',
+                { datum: new Date(g.guthaben_geprueft_am).toLocaleDateString(locale()) })
+            : t('vouchers.balance_never')}</span>
         </div>
       </div>
       <div class="voucher-pin">
@@ -91,6 +99,13 @@ function zeile(g) {
                      aria-label="${tRaw('vouchers.copy_pin')}">${KOPIE_ICON_SVG}</button>` : ''}
       </div>
       <div class="voucher-actions">
+        <!-- Guthaben abfragen. NUR mit PIN: LEGO fragt Nummer UND PIN ab, und
+             ein Knopf, der ohne PIN immer dieselbe Absage erzeugt, waere eine
+             Falle. Ohne PIN steht in der Zeile ohnehin schon „–". -->
+        ${g.pin ? `
+          <button class="v-btn" data-click="guthabenAbfragen" data-arg="${g.id}"
+                  title="${tRaw('vouchers.balance_one')}"
+                  aria-label="${tRaw('vouchers.balance_one')}">🔄</button>` : ''}
         ${g.hat_pdf ? `
           <button class="v-btn" data-click="gutscheinPdfOeffnen" data-arg="${g.id}"
                   title="${tRaw('vouchers.pdf_open')}"
@@ -413,6 +428,163 @@ async function gutscheineImportieren() {
   }
 }
 
+// ═══ Guthaben bei LEGO abfragen ════════════════════════════════════════════
+//
+// ── Marcos Vorgaben ────────────────────────────────────────────────────────
+//
+// „Kannst du dies bei den Gutscheinen einbauen, damit dies auf Knopfdruck
+//  abgefragt und gespeichert werden kann?"
+//
+// „Bitte auch dafür sorgen dass maximal 1 Request pro 30sek abgesetzt werden
+//  kann. (über alle Benutzer)"
+//
+// ── Warum die OBERFLÄCHE taktet und nicht der Server ───────────────────────
+//
+// Die Grenze selbst steht auf dem Server (utils/gutscheinGuthabenSchranke.ts)
+// und gilt dort für alle Benutzer und alle Arbeitsprozesse — hier wird sie
+// nicht nachgebaut, sondern BEFOLGT: Kommt 429 mit `wartenSek`, wartet diese
+// Schleife die Zeit ab und fragt dieselbe Karte erneut.
+//
+// Eine Sammelroute auf dem Server hätte dieselbe Wartezeit innerhalb EINER
+// HTTP-Anfrage absitzen müssen — bei fünf Karten über zwei Minuten mit offener
+// Verbindung. Die Begründung steht ausführlich an der Route.
+//
+// Und deshalb zählt der Fortschritt mit: Wer „alle abfragen" drückt, wartet
+// Minuten, und ein Knopf, der nur ausgegraut ist, sagt ihm nicht, ob noch
+// etwas passiert.
+
+/** Höchstens so oft dieselbe Karte erneut versuchen, wenn die Schranke bremst. */
+const ABSTAND_VERSUCHE = 4;
+
+const _warte = (ms) => new Promise(r => setTimeout(r, ms));
+
+/**
+ * Sekunden abwarten und dabei herunterzählen.
+ *
+ * Der Text nennt die Karte: Bei „alle abfragen" ist sonst nicht zu sehen,
+ * wofür gewartet wird.
+ */
+async function warteSichtbar(sekunden, nummer) {
+  const status = G('vouchers-balance-status');
+  for (let rest = sekunden; rest > 0; rest--) {
+    if (status) status.textContent = tRaw('vouchers.balance_wait', { sek: rest, nummer });
+    await _warte(1000);
+  }
+}
+
+/**
+ * Eine Karte abfragen — ohne Takten, ohne Neuladen.
+ *
+ * Gibt zurück, was der Aufrufer wissen muss: ob es geklappt hat, und wenn
+ * nicht, ob es am Abstand lag (dann lohnt Warten) oder am Bot-Schutz (dann
+ * wird AUFGEHÖRT — weiterzufragen ist genau das, was nicht sein soll).
+ */
+async function eineAbfrage(id) {
+  const d = await api('POST', `/v1/vouchers/${id}/guthaben`);
+  if (d?.success) return { art: 'ok', antwort: d };
+  if (d?.grund === 'abstand' && Number(d.wartenSek) > 0) {
+    return { art: 'abstand', wartenSek: Number(d.wartenSek) };
+  }
+  if (d?.grund === 'botschutz') {
+    return { art: 'botschutz', fehler: d.error || tRaw('settings.error') };
+  }
+  return { art: 'fehler', fehler: d?.error || tRaw('settings.error') };
+}
+
+/** Was eine erfolgreiche Abfrage dem Nutzer sagt. */
+function meldeErfolg(antwort) {
+  const v = antwort.voucher;
+  toast(tRaw('vouchers.balance_done', {
+    nummer: v.number,
+    betrag: antwort.angezeigt || fmtN(v.amount, v.currency),
+  }), 'success');
+  // Eine stillschweigend geänderte Währung wäre eine geänderte Summe ohne
+  // Hinweis — die Liste rechnet nur, wenn alle Gutscheine dieselbe tragen.
+  if (antwort.waehrung_geaendert) {
+    toast(tRaw('vouchers.balance_currency', { waehrung: v.currency }), 'info');
+  }
+}
+
+/** Eine Karte, auf Knopfdruck in ihrer Zeile. */
+export async function guthabenAbfragen(id) {
+  const status = G('vouchers-balance-status');
+  const g = _gutscheine.find(x => String(x.id) === String(id));
+  if (status) status.textContent = tRaw('vouchers.balance_running');
+  for (let versuch = 1; ; versuch++) {
+    const r = await eineAbfrage(id);
+    if (r.art === 'ok') {
+      if (status) status.textContent = '';
+      meldeErfolg(r.antwort);
+      await ladeGutscheine();
+      return;
+    }
+    if (r.art === 'abstand' && versuch < ABSTAND_VERSUCHE) {
+      await warteSichtbar(r.wartenSek, g ? g.number : '');
+      continue;
+    }
+    if (status) status.textContent = '';
+    // Auch der Abstand wird hier zur Fehlermeldung: Nach vier Versuchen ist
+    // die Auskunft „es ist belegt" ehrlicher als weiteres Warten.
+    toast(r.fehler || tRaw('settings.error'), 'error');
+    return;
+  }
+}
+
+/** Alle Karten mit PIN, eine nach der anderen. */
+export async function guthabenAlleAbfragen() {
+  const status = G('vouchers-balance-status');
+  const dran = _gutscheine.filter(g => g.pin);
+  if (!dran.length) {
+    toast(tRaw('vouchers.balance_keine'), 'info');
+    return;
+  }
+  let fertig = 0, fehler = 0;
+  for (const g of dran) {
+    let erledigt = false;
+    for (let versuch = 1; !erledigt && versuch <= ABSTAND_VERSUCHE; versuch++) {
+      if (status) {
+        status.textContent = tRaw('vouchers.balance_progress',
+          { n: fertig + fehler + 1, total: dran.length, nummer: g.number });
+      }
+      const r = await eineAbfrage(g.id);
+      if (r.art === 'ok') { fertig++; meldeErfolg(r.antwort); erledigt = true; break; }
+      if (r.art === 'abstand') { await warteSichtbar(r.wartenSek, g.number); continue; }
+      fehler++;
+      toast(r.fehler, 'error');
+      erledigt = true;
+      // Bot-Schutz: HIER wird abgebrochen, nicht nur diese Karte übersprungen.
+      // Die übrigen Karten liefen in dieselbe Wand, und Marcos Vorgabe ist,
+      // dass dann „nicht mehr Aufrufe generiert werden".
+      if (r.art === 'botschutz') {
+        if (status) status.textContent = '';
+        await ladeGutscheine();
+        return;
+      }
+    }
+    if (!erledigt) { fehler++; toast(tRaw('vouchers.balance_belegt'), 'error'); }
+  }
+  if (status) status.textContent = '';
+  toast(tRaw('vouchers.balance_alle_fertig', { fertig, fehler }),
+    fehler ? 'info' : 'success');
+  await ladeGutscheine();
+}
+
+/**
+ * Das Ausgabeland speichern — eine globale Einstellung.
+ *
+ * Eigener Weg und nicht der große Speichern-Knopf der Einstellungsseite: Das
+ * Feld steht in der Gutschein-Rubrik, und wer dort etwas wählt, erwartet, dass
+ * es gilt. Der Server nimmt den Wert nur von einem Verwalter an — deshalb ist
+ * das Feld für alle anderen gar nicht sichtbar (`admin-only` in index.html).
+ */
+export async function gutscheinLandSpeichern() {
+  const feld = el('gutschein-land');
+  if (!feld) return;
+  const d = await api('POST', '/v1/settings', { gutschein_land: feld.value });
+  toast(d?.success ? tRaw('settings.saved') : (d?.error || tRaw('settings.error')),
+    d?.success ? 'success' : 'error');
+}
+
 registerActions({
   gutscheineExportieren,
   gutscheineImportieren,
@@ -424,4 +596,7 @@ registerActions({
   gutscheinPinUmschalten,
   gutscheinPdfOeffnen,
   gutscheinKopieren,
+  guthabenAbfragen,
+  guthabenAlleAbfragen,
+  gutscheinLandSpeichern,
 });

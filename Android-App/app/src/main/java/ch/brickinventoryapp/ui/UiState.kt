@@ -1030,6 +1030,15 @@ data class GutscheinUiState(
      */
     val pdfZiel: Int? = null,
     val speichert: Boolean = false,
+    /**
+     * Die id der Karte, deren Guthaben gerade abgefragt wird — oder null.
+     *
+     * Eine id und kein Boolean: Der Knopf steht in JEDER Zeile, und nur der
+     * gedrueckte soll sich ruehren. Ein gemeinsames „laedt" liesse alle
+     * Knoepfe zugleich arbeiten, was nicht stimmt — es laeuft immer nur eine
+     * Abfrage (der Server erlaubt eine je 30 Sekunden).
+     */
+    val guthabenLaeuft: Int? = null,
 )
 
 data class MerklisteUiState(

@@ -150,7 +150,14 @@ router.post('/', async (req: LoggedInRequest, res) => {
     'bricklink_token_secret','brickset_api_key','rebrickable_api_key','price_job_interval_minutes',
     'price_cache_ttl','api_limit_rebrickable','api_limit_bricklink','api_limit_brickset',
     'registration_enabled','smtp_host','smtp_port','smtp_user','smtp_pass','smtp_from','smtp_secure','smtp_insecure_tls',
-    'default_price_condition'];
+    'default_price_condition',
+    // Das Ausgabeland der Gutscheine. GLOBAL und nicht je Nutzer, weil Marco
+    // es so wollte: „das Ausgabeland soll in den Einstellungen bei den
+    // Gutscheinen fuer alle erfasst werden koennen". Damit liegt es hier und
+    // nicht in userKeys — und damit darf es, wie alle globalen Werte, nur ein
+    // Verwalter setzen. Lesen duerfen es alle (es ist kein Geheimnis, steht
+    // also nicht in SECRET_KEYS), sonst stuende im Auswahlfeld nichts.
+    'gutschein_land'];
   const userKeys = ['currency', 'language', 'user_default_condition'];
 
   try {
@@ -309,7 +316,7 @@ router.post('/import', importUpload.single('file'), async (req: LoggedInRequest,
     'bricklink_token_secret','brickset_api_key','rebrickable_api_key','price_job_interval_minutes',
     'price_cache_ttl','api_limit_rebrickable','api_limit_bricklink','api_limit_brickset',
     'registration_enabled','smtp_host','smtp_port','smtp_user','smtp_pass','smtp_from','smtp_secure','smtp_insecure_tls',
-    'default_price_condition',
+    'default_price_condition', 'gutschein_land',
     // konfigurierbare Job-Zeiten aus dem Monitoring (job_time_<name>)
     ...DAILY_JOBS.map((j: any) => `job_time_${j.name}`)];
   const userKeys = ['currency', 'user_default_condition'];

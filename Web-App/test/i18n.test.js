@@ -76,6 +76,13 @@ test('kein Text steht in beiden Sprachen unübersetzt', () => {
     'settings.users_admin_badge', 'users.admin_badge', 'users.role.admin',
     // PIN ist in beiden Sprachen PIN — ein Begriff, kein Satz.
     'vouchers.pin',
+    // Die Rückmeldung der Guthaben-Abfrage: „{nummer}: {betrag}" — ein reiner
+    // Rahmen aus zwei Platzhaltern, ohne ein eigenes Wort. Übersetzt ist daran
+    // nichts; der Betrag kommt formatiert von LEGO.
+    'vouchers.balance_done',
+    // USA heisst auf Deutsch USA. Die übrigen sieben Ausgabeländer
+    // (country_de_ch … country_en_gb) unterscheiden sich, dieses eine nicht.
+    'vouchers.country_en_us',
   ]);
 
   const { de, en } = loadTranslations();

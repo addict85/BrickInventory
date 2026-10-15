@@ -201,6 +201,10 @@ class StringResourceParityTest {
             // BESTEHENDEN Mengenformen der CSV-Importe (csv_upload_new,
             // csv_upload_updated) — uebersetzt wird dort.
             "vouchers_import_done",
+            // Die Rueckmeldung der Guthaben-Abfrage: „%1$s: %2$s" — Nummer und
+            // Betrag, kein eigenes Wort. Uebersetzt ist daran nichts, und der
+            // Betrag kommt formatiert von LEGO oder aus „%.2f %s".
+            "vouchers_balance_done",
         )
 
         val en = texte("values/strings.xml")

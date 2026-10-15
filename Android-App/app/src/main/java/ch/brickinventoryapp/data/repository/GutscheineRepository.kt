@@ -47,6 +47,18 @@ class GutscheineRepository @Inject constructor(
         safeCall { api.loescheGutschein(id) }
 
     /**
+     * Das Guthaben bei LEGO abfragen.
+     *
+     * Kein Sonderweg fuer HTTP 429 (die Abfrage ist belegt) oder 502 (die
+     * Gegenseite antwortete nicht): safeCall holt aus dem Fehlerrumpf den Satz
+     * `error`, und der steht dort schon fertig und in der Sprache der Anfrage
+     * — samt Restzeit. Ihn hier noch einmal zusammenzusetzen hiesse, dieselbe
+     * Auskunft zweimal zu formulieren.
+     */
+    suspend fun guthaben(id: Int): Result<GuthabenAntwort> =
+        safeCall { api.frageGuthabenAb(id) }
+
+    /**
      * Aus dem PDF anlegen — mit der Moeglichkeit, Werte von Hand beizusteuern.
      *
      * Leere Felder werden NICHT mitgeschickt (`alsTeil` gibt dafuer null

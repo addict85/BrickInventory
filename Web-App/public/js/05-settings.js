@@ -406,6 +406,12 @@ function applySettings(s){
   const _set = (id, v) => { const el=G(id); if(el) el.value=v; };
   _set('s-cur',          CURRENCY);
   _set('s-default-condition', s.user_default_condition || s.default_price_condition || 'N');
+  // Das Ausgabeland der Gutscheine. AUSSERHALB des isAdmin-Blocks: Der Wert
+  // ist kein Geheimnis und wird allen ausgeliefert (sanitizeGlobal laesst
+  // ihn durch) — gesetzt werden darf er nur von einem Verwalter, und
+  // deshalb ist das Feld selbst `admin-only` (index.html). Ohne diese Zeile
+  // stuende im Auswahlfeld immer der erste Eintrag, egal was gespeichert ist.
+  _set('gutschein-land', s.gutschein_land || 'de-CH');
   if(ME?.isAdmin){
     _set('bl-ck',  s.bricklink_consumer_key||'');
     _set('bl-cs',  s.bricklink_consumer_secret||'');

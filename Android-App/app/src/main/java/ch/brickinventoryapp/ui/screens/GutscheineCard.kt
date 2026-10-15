@@ -6,6 +6,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.PictureAsPdf
+import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Redeem
 import androidx.compose.material.icons.filled.UploadFile
 import androidx.compose.material.icons.filled.Visibility
@@ -24,6 +25,7 @@ import ch.brickinventoryapp.data.model.Gutschein
 import ch.brickinventoryapp.ui.GutscheinUiState
 import ch.brickinventoryapp.ui.theme.Abstaende
 import ch.brickinventoryapp.util.NumericInput
+import ch.brickinventoryapp.util.fmtDatum
 
 /**
  * Gutscheine — LEGO-Geschenkkarten im eigenen Profil.
@@ -60,6 +62,15 @@ fun GutscheineCard(
     onKopieren: (wert: String, istNummer: Boolean) -> Unit,
     /** Ein PDF mit MEHREREN Gutscheinen einlesen (Marcos Liste, Stueck 3). */
     onImportieren: (android.net.Uri?) -> Unit,
+    /**
+     * Das Guthaben dieser Karte bei LEGO abfragen und speichern.
+     *
+     * Kein Knopf fuer „alle Karten": Der Server erlaubt hoechstens eine
+     * Abfrage je 30 Sekunden ueber alle Benutzer (Marcos Vorgabe), und eine
+     * Reihe davon waere eine Minutenlange Folge von Absagen. Die Webapp
+     * taktet sich dafuer selbst; hier ist es der Knopf je Zeile.
+     */
+    onGuthaben: (Int) -> Unit,
 ) {
     // Die gewaehlte Datei lebt nur, solange das Formular offen ist — sie
     // gehoert nicht in den geteilten Zustand, weil eine Uri eine Berechtigung
@@ -126,6 +137,8 @@ fun GutscheineCard(
                 onLoeschen = { onLoeschen(g.id) },
                 onPdfOeffnen = { onPdfOeffnen(g.id) },
                 onKopieren = onKopieren,
+                onGuthaben = { onGuthaben(g.id) },
+                guthabenLaeuft = zustand.guthabenLaeuft == g.id,
             )
         }
 
@@ -272,6 +285,8 @@ private fun GutscheinZeile(
     onLoeschen: () -> Unit,
     onPdfOeffnen: () -> Unit,
     onKopieren: (wert: String, istNummer: Boolean) -> Unit,
+    onGuthaben: () -> Unit,
+    guthabenLaeuft: Boolean,
 ) {
     var loeschFrage by rememberSaveable { mutableStateOf(false) }
 
@@ -305,6 +320,23 @@ private fun GutscheinZeile(
                 style = MaterialTheme.typography.bodySmall,
                 fontWeight = FontWeight.Bold,
             )
+            Spacer(Modifier.width(Abstaende.klein))
+            // Der Stand der Guthaben-Abfrage. Im WORT und nicht in einer
+            // Farbe: Marco unterscheidet Rot und Gruen nicht (FarbeAlleinTest
+            // haelt die Regel fest) — „abgefragt am 15.10." und „noch nie
+            // abgefragt" sagen es selbst.
+            // `if` und nicht `?.let { stringResource(…) } ?: …`: stringResource
+            // ist @Composable, und ein Composable-Aufruf in einer fremden
+            // Lambda-Funktion ist eine Wette darauf, dass der Compose-Compiler
+            // sie einbettet. Hier kann ich Kotlin nicht uebersetzen, also die
+            // Form, bei der nichts zu wetten ist.
+            val stand = fmtDatum(g.guthabenGeprueftAm)
+            Text(
+                if (stand != null) stringResource(R.string.vouchers_balance_as_of, stand)
+                else stringResource(R.string.vouchers_balance_never),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
         }
         Row(verticalAlignment = Alignment.CenterVertically) {
             Text(
@@ -333,6 +365,26 @@ private fun GutscheinZeile(
                 }
             }
             Spacer(Modifier.weight(1f))
+            // Guthaben abfragen — NUR mit PIN: LEGO fragt Nummer UND PIN ab,
+            // und ein Knopf, der ohne PIN immer dieselbe Absage erzeugt, waere
+            // eine Falle. Ohne PIN steht in der Zeile ohnehin schon „–".
+            if (g.pin != null) {
+                // Kreisel AN DER STELLE des Symbols und nicht daneben: Anders
+                // als beim Knopf mit Beschriftung (KnopfBreiteTest) kann hier
+                // nichts wegrutschen — ein IconButton hat eine feste Groesse.
+                // Die Zeilen stehen VOR dem Knopf, damit zwischen `IconButton(`
+                // und `stringResource` nicht mehr als zehn Zeilen liegen; so weit
+                // schaut IconButtonLabelTest nach der Beschriftung.
+                IconButton(onClick = onGuthaben, enabled = !guthabenLaeuft) {
+                    if (guthabenLaeuft) {
+                        CircularProgressIndicator(Modifier.size(18.dp), strokeWidth = 2.dp)
+                    } else {
+                        Icon(Icons.Default.Refresh,
+                             stringResource(R.string.vouchers_balance_one),
+                             Modifier.size(18.dp))
+                    }
+                }
+            }
             if (g.hatPdf) {
                 IconButton(onClick = onPdfOeffnen) {
                     Icon(Icons.Default.PictureAsPdf, stringResource(R.string.vouchers_pdf_open),

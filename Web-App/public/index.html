@@ -844,6 +844,53 @@
             <strong id="vouchers-total"></strong>
           </div>
 
+          <!-- ── GUTHABEN BEI LEGO ABFRAGEN ──────────────────────────────────
+
+               Marcos Vorgabe: „Kannst du dies bei den Gutscheinen einbauen,
+               damit dies auf Knopfdruck abgefragt und gespeichert werden
+               kann?" — der Knopf je Karte steht in der Zeile selbst
+               (17-gutscheine.js), hier der fuer alle auf einmal.
+
+               „Alle" ruft dieselbe Route je Karte und WARTET zwischen den
+               Karten: Hoechstens eine Abfrage je 30 Sekunden, ueber alle
+               Benutzer (Marcos Vorgabe). Der Stand steht daneben im Text —
+               bei mehreren Karten dauert es Minuten, und ein Knopf, der nur
+               ausgegraut waere, liesse niemanden wissen, ob noch etwas
+               passiert. -->
+          <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-top:.75rem">
+            <button class="btn bs" type="button" data-click="guthabenAlleAbfragen"
+                    data-i18n="vouchers.balance_all">🔄 Guthaben aller Karten abfragen</button>
+            <span id="vouchers-balance-status" style="font-size:.8rem;color:var(--mut)"></span>
+          </div>
+
+          <!-- Das Ausgabeland. Marcos Vorgabe: „Wichtig das Ausgabeland soll
+               in den Einstellungen bei den Gutscheinen fuer alle erfasst
+               werden koennen (wie in der Prototyp-App)."
+
+               „Fuer alle" heisst: EIN Wert fuer die ganze Installation, also
+               eine globale Einstellung — und die setzt in diesem Baum nur ein
+               Verwalter (routes/settings.ts). Deshalb `admin-only`: Ein
+               Auswahlfeld, dessen Speichern beim Nicht-Verwalter stillschweigend
+               nichts tut, waere schlimmer als keines. Gelesen wird der Wert
+               fuer alle, die Abfrage benutzt ihn also auch bei den uebrigen
+               Konten. -->
+          <div class="admin-only" style="display:none;margin-top:.75rem">
+            <div class="fg" style="max-width:17rem">
+              <label for="gutschein-land" data-i18n="vouchers.country">Ausgabeland</label>
+              <select id="gutschein-land" data-change="gutscheinLandSpeichern">
+                <option value="de-CH" data-i18n="vouchers.country_de_ch">Schweiz</option>
+                <option value="de-DE" data-i18n="vouchers.country_de_de">Deutschland</option>
+                <option value="de-AT" data-i18n="vouchers.country_de_at">Österreich</option>
+                <option value="fr-FR" data-i18n="vouchers.country_fr_fr">Frankreich</option>
+                <option value="it-IT" data-i18n="vouchers.country_it_it">Italien</option>
+                <option value="nl-NL" data-i18n="vouchers.country_nl_nl">Niederlande</option>
+                <option value="en-GB" data-i18n="vouchers.country_en_gb">Grossbritannien</option>
+                <option value="en-US" data-i18n="vouchers.country_en_us">USA</option>
+              </select>
+              <div style="font-size:.72rem;color:var(--mut);margin-top:3px" data-i18n="vouchers.country_hint">Eine Karte gilt nur im Shop ihres Ausgabelandes. Die Einstellung gilt für alle Benutzer.</div>
+            </div>
+          </div>
+
           <!-- Export und Import (Marcos Liste, Stück 3).
 
                Der Export ist KEIN einfacher href: Die Antwort trägt die

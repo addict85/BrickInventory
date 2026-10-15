@@ -553,6 +553,11 @@ html::-webkit-scrollbar{width:0;height:0}
                  word-break:break-all}
     .voucher-meta{font-size:.76rem;color:var(--mut);margin-top:2px}
     .voucher-amount{font-weight:600;color:var(--txt)}
+    /* Der Stand der Guthaben-Abfrage. Eigene Zeile und KEINE eigene
+       Farbe: Die Aussage steht im Wort („abgefragt am …" bzw. „noch nie
+       abgefragt"), nicht in einem Farbton — Marco sieht Rot und Gruen
+       nicht auseinander. */
+    .voucher-stand{display:block;color:var(--mut);font-size:.72rem}
     .voucher-pin{display:flex;align-items:center;gap:.35rem;font-size:.78rem}
     .voucher-pin-label{color:var(--mut);text-transform:uppercase;
                        letter-spacing:.5px;font-size:.66rem}

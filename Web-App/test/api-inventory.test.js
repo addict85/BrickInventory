@@ -297,6 +297,9 @@ const C = {
   'GET /api/v1/vouchers/export/pdf': 'nur-web',
   'PUT /api/v1/vouchers/:id': 'nur-v1',
   'DELETE /api/v1/vouchers/:id': 'nur-v1',
+  // Guthaben bei LEGO abfragen. 'nur-v1' wie die uebrigen Gutschein-Wege:
+  // Beide Oberflaechen rufen sie, es gibt keine Alt-Adresse daneben.
+  'POST /api/v1/vouchers/:id/guthaben': 'nur-v1',
   // Die PDF-Ausgabe ruft die Android-App nicht ueber Retrofit, sondern ueber
   // die Adresse im PdfViewerScreen (derselbe angemeldete OkHttpClient). Fuer
   // dieses Inventar ist das derselbe Fall: eine Umsetzung, beide Apps.

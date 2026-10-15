@@ -264,6 +264,64 @@ internal fun MainViewModel.importiereGutscheinePdf(uri: android.net.Uri?) {
     }
 }
 
+/**
+ * Das Guthaben einer Karte bei LEGO abfragen und speichern.
+ *
+ * ── Marcos Vorgaben ────────────────────────────────────────────────────────
+ *
+ *   „Kannst du dies bei den Gutscheinen einbauen, damit dies auf Knopfdruck
+ *    abgefragt und gespeichert werden kann?"
+ *
+ *   „Der Zurueckgemeldete Betrag soll im Feld Betrag gespeichert werden."
+ *
+ * Gespeichert wird auf dem SERVER — er schreibt Betrag, Waehrung und den
+ * Zeitpunkt und gibt die fertige Zeile zurueck. Hier wird deshalb nichts
+ * gerechnet und nichts zusammengesetzt; `ladeGutscheine()` holt danach die
+ * Liste, damit Betrag, Summe und Stand in einem Zug stimmen.
+ *
+ * ── Keine Wartelogik hier ──────────────────────────────────────────────────
+ *
+ * Der Server erlaubt hoechstens eine Abfrage je 30 Sekunden ueber ALLE
+ * Benutzer und schickt bei einer Absage den fertigen Satz samt Restzeit mit.
+ * Ihn hier in eine Wiederholung umzubauen hiesse, die Grenze zu umgehen, die
+ * Marco gesetzt hat — die App zeigt die Auskunft und laesst den Menschen
+ * entscheiden.
+ */
+internal fun MainViewModel.frageGuthabenAb(id: Int) {
+    viewModelScope.launch {
+        _gutscheinState.update { it.copy(guthabenLaeuft = id) }
+        try {
+            when (val r = repo.gutscheine.guthaben(id)) {
+                is Result.Success -> {
+                    val d = r.data
+                    val v = d.voucher
+                    if (!d.success || v == null) {
+                        _snackbar.value = d.error ?: text(R.string.err_generic)
+                        return@launch
+                    }
+                    // Der formatierte Text der Gegenseite, wenn er da ist: Er
+                    // steht in der Schreibweise des Ausgabelandes und ist
+                    // genau das, was auf der LEGO-Seite stuende.
+                    val betrag = d.angezeigt ?: "%.2f %s".format(v.amount, v.currency)
+                    var satz = text(R.string.vouchers_balance_done, v.number, betrag)
+                    // Angehaengt und nicht als zweite Meldung: Der Snackbar
+                    // zeigt eine zur Zeit, die zweite ueberschriebe die erste.
+                    // Und verschwiegen werden darf es nicht — eine geaenderte
+                    // Waehrung ist eine geaenderte Summe.
+                    if (d.waehrungGeaendert) {
+                        satz += " " + text(R.string.vouchers_balance_currency, v.currency)
+                    }
+                    _snackbar.value = satz
+                    ladeGutscheine()
+                }
+                is Result.Error -> _snackbar.value = meldungFuerSnackbar(r)
+            }
+        } finally {
+            _gutscheinState.update { it.copy(guthabenLaeuft = null) }
+        }
+    }
+}
+
 internal fun MainViewModel.loescheGutschein(id: Int) {
     viewModelScope.launch {
         when (val r = repo.gutscheine.loeschen(id)) {

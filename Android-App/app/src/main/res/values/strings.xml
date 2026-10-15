@@ -747,4 +747,11 @@
     <string name="vouchers_amount_invalid">Please enter a valid amount</string>
     <string name="vouchers_only_pdf">Only PDF files can be read</string>
     <string name="vouchers_pdf_incomplete">Not all values could be read from the PDF. Please fill in the rest and save again.</string>
+    <!-- Guthaben bei LEGO abfragen. "%1$s: %2$s" ist Nummer und Betrag —
+         kein Zaehlwort darin, deshalb auch kein Plural-Fall. -->
+    <string name="vouchers_balance_one">Query balance</string>
+    <string name="vouchers_balance_as_of">queried on %1$s</string>
+    <string name="vouchers_balance_never">balance never queried</string>
+    <string name="vouchers_balance_done">%1$s: %2$s</string>
+    <string name="vouchers_balance_currency">Currency changed to %1$s.</string>
 </resources>
