@@ -509,5 +509,93 @@ async function lookupPart(partNumber: string, colorId?: number | null) {
   } catch (_) { return null; }
 }
 
+
+// ── BrickLink-Nummer → Rebrickable-Nummer ───────────────────────────────────
+//
+// Fuer den Import von BrickLink-Wanted-Listen (Marcos Liste, Stueck 4). Die
+// Richtung ist die UNGEWOHNTE: Der ganze uebrige Baum geht von Rebrickable
+// nach BrickLink (external_ids), weil Rebrickable die Heimatnummer fuehrt.
+//
+// ── Warum JEDE Antwort gegengeprueft wird ──────────────────────────────────
+//
+// Ob Rebrickables /lego/parts/ einen Filter `bricklink_id` annimmt, ist NICHT
+// belegt: Die Doku ist aus dieser Umgebung nicht erreichbar (ENOTFOUND), und
+// das Aenderungsprotokoll erwaehnt „external system filters in /lego/parts/"
+// ohne den Parameternamen zu nennen. Unbelegt heisst hier nicht „ausprobieren
+// und hoffen":
+//
+// Jeder Treffer muss in seinen external_ids.BrickLink die GESUCHTE Nummer
+// tragen. Damit ist das Ergebnis richtig, UNABHAENGIG davon, ob der Filter
+// wirkt. Nimmt die API ihn nicht an, ignoriert sie ihn und liefert die erste
+// Seite des ganzen Katalogs — und die Gegenpruefung weist sie ab.
+//
+// Dass der Filter ignoriert wird, ist ausserdem ERKENNBAR: Dann steht in
+// `count` die Groesse des ganzen Katalogs. Wird das einmal gesehen, bleibt
+// Weg 2 fuer den Rest des Laufs aus — sonst kostet jeder offene Posten einen
+// Abruf aus Marcos Tageskontingent, ohne je etwas zu finden.
+
+/**
+ * Traegt dieses Rebrickable-Teil die gesuchte BrickLink-Nummer?
+ *
+ * `unknown` und nicht `any`: test/ratschen.test.js laesst die Zahl der `any`
+ * im Baum nur sinken. Hier kostet es nichts — die Antwort wird ohnehin Feld um
+ * Feld abgetastet, und genau das verlangt `unknown` auch.
+ *
+ * Zwei Gestalten, weil Rebrickable sie beide liefert: Bei Teilen ist
+ * external_ids.BrickLink ein Feld von Nummern (so liest es
+ * utils/partsImport.ts), bei Farben steckt es eine Ebene tiefer in `ext_ids`
+ * (so liest es utils/blZuordnung.ts). Beide Schreibweisen stehen im Baum
+ * belegt, also fragt diese Pruefung beide.
+ */
+function traegtBlNummer(teil: unknown, blId: string): boolean {
+  const ext = (teil as { external_ids?: Record<string, unknown> } | null)?.external_ids;
+  const roh = ext?.['BrickLink'];
+  const liste: unknown[] = Array.isArray(roh) ? roh
+    : Array.isArray((roh as { ext_ids?: unknown[] } | undefined)?.ext_ids)
+      ? (roh as { ext_ids: unknown[] }).ext_ids : [];
+  return liste.some(x => String(x).toLowerCase() === blId.toLowerCase());
+}
+
+/**
+ * Wurde der Filter schon einmal als wirkungslos erkannt?
+ *
+ * Modulweit und nicht je Aufruf: Die Antwort gilt fuer den Dienst, nicht fuer
+ * die Nummer. Zuruecksetzen braucht es nicht — ein Neustart tut es, und bis
+ * dahin waere jeder weitere Versuch dieselbe verbrannte Abfrage.
+ */
+let filterWirkungslos = false;
+
+/**
+ * Eine BrickLink-Teilenummer auf eine Rebrickable-Nummer abbilden.
+ *
+ * @returns die Rebrickable-Nummer, oder null wenn sich keine BELEGEN liess.
+ */
+async function blTeilZuRb(blId: string): Promise<string | null> {
+  // ── Weg 1: die Nummer auf sich selbst pruefen ────────────────────────────
+  //
+  // Bei den meisten Teilen benutzen beide Dienste dieselbe Nummer. Dann
+  // liefert /lego/parts/{nr}/ den Treffer, und external_ids bestaetigt ihn —
+  // aus einer VERMUTUNG („die Nummern sind wohl gleich") wird eine Abbildung.
+  const direkt = await rbGet(`/lego/parts/${encodeURIComponent(blId)}/`).catch(() => null);
+  if (direkt && traegtBlNummer(direkt, blId)) return String(direkt.part_num);
+
+  // ── Weg 2: der Filter, mit Gegenpruefung ────────────────────────────────
+  if (filterWirkungslos) return null;
+  const gefiltert = await rbGet('/lego/parts/', { bricklink_id: blId, page_size: 20 })
+    .catch(() => null);
+  if (!gefiltert) return null;
+  // Mehr als tausend Treffer fuer EINE Nummer kann der Filter nicht gemeint
+  // haben — dann wurde er ignoriert.
+  if (Number(gefiltert.count) > 1000) { filterWirkungslos = true; return null; }
+  for (const t of gefiltert.results ?? []) {
+    if (traegtBlNummer(t, blId)) return String(t.part_num);
+  }
+  return null;
+}
+
+/** Ob der Filter inzwischen als wirkungslos erkannt wurde — fuer den Bericht. */
+function blFilterWirkungslos(): boolean { return filterWirkungslos; }
+
 export { lookupPart, getSetInfo, getAllSetParts, downloadFile, scrapeInstructions,
-  getSetMinifigs, getMinifigInfo, getBrickColors, getRbKey, sleep, httpsGetRobust, getMinifigParts };
+  getSetMinifigs, getMinifigInfo, getBrickColors, getRbKey, sleep, httpsGetRobust, getMinifigParts,
+  blTeilZuRb, blFilterWirkungslos };

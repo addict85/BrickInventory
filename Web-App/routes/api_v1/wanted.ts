@@ -15,6 +15,7 @@ import { getSetting } from '../../utils/settings';
 import { fetchPrice } from '../../utils/financeCalc';
 import { csvEmpfang } from '../../utils/dateiEmpfang';
 import { csvZeilenAusAnfrage, csvImportAntwort, parseCsvDate } from '../../utils/csvExport';
+import { importiereWantedListe } from '../../utils/wantedListe';
 
 const router = express.Router();
 type AuthedRequest = express.Request & { apiUser: { user_id: number } };
@@ -265,6 +266,75 @@ router.post('/wanted/import/csv', requireToken, csvEmpfang.single('file'),
       }
 
       csvImportAntwort(res, { added, updated, errors, records, results, uebersprungen });
+    } catch (e) { handleRouteError(res, e, undefined, req); }
+  });
+
+// ── POST /api/v1/wanted-list/import/xml — BrickLink-Wanted-Liste ────────────
+/**
+ * Marcos vierter Punkt.
+ *
+ * ── Die Vorschau ist die VORGABE ───────────────────────────────────────────
+ *
+ * Ohne `schreiben=1` wird NICHTS angelegt. Das ist nicht Vorsicht um ihrer
+ * selbst willen: Die Abbildung BrickLink → Rebrickable hat drei
+ * Sicherheitsstufen (siehe utils/wantedListe.ts), und die dritte ist eine
+ * Vermutung. Wer 224 Posten hochlädt, soll vorher lesen, wie viele davon auf
+ * einer Vermutung beruhen und wie viele offen bleiben — und dann entscheiden.
+ *
+ * Ein Import, der sofort schreibt, nimmt diese Entscheidung weg, und
+ * rückgängig machen hiesse 224 Teile von Hand löschen.
+ *
+ * ── Rebrickable nur auf Verlangen ──────────────────────────────────────────
+ *
+ * `rebrickable=1` fragt die OFFENEN Posten bei Rebrickable nach. Jeder Abruf
+ * kostet aus dem Tageskontingent, deshalb nicht von selbst. Marcos Vorgabe:
+ * „Zuerst die restlichen … mit der OPTION diese über Bricklink oder noch
+ * besser über Rebrickable versuchen aufzulösen."
+ *
+ * ── Das eigene Konto ───────────────────────────────────────────────────────
+ *
+ * Kein owner-Parameter: Der Import legt Bestand an, und `addManualPart` &
+ * Co. schreiben in das Konto, das sie bekommen. Ein owner hier bräuchte
+ * resolveWriteTarget und wäre eine Erweiterung, die niemand verlangt hat —
+ * bis dahin ist das eigene Konto die einzige Antwort, die nicht überrascht.
+ */
+router.post('/wanted-list/import/xml', requireToken, csvEmpfang.single('file'),
+  async (req: AuthedRequest & { file?: { buffer: Buffer } }, res) => {
+    if (!req.file) return sendeFehler(req, res, 400, 'keine_datei');
+    try {
+      const xml = req.file.buffer.toString('utf-8');
+      // Eine Datei, die kein <INVENTORY> trägt, ist keine Wanted-Liste. Das
+      // vor dem Zerlegen zu sagen ist eine bessere Auskunft als „0 Posten
+      // gelesen" — denn das kann auch eine LEERE Liste sein.
+      if (!/<INVENTORY[\s>]/i.test(xml))
+        return sendeFehler(req, res, 422, 'keine_wanted_liste');
+
+      // ── Die Anleger gibt DIESE Schicht herein ─────────────────────────────
+      //
+      // utils/wantedListe.ts darf nicht aus routes/ einfuehren
+      // (test/schichten.test.js, Ausnahmeliste leer). Hier ist der Ort, der
+      // beide Seiten kennen darf: eine Route, die andere Routen kennt.
+      //
+      // Dieselben drei Funktionen, die auch die Formulare benutzen — kein
+      // eigenes INSERT, denn daran haengen Lagerort, Preisregel,
+      // Katalognachtrag und die Erfassungszeile.
+      const { addManualPart } = require('../parts');
+      const { addManualFig } = require('../minifigs');
+      const { addSet } = require('../../utils/setService');
+      const bericht = await importiereWantedListe(req.apiUser.user_id, xml, {
+        // Geschrieben wird nur, wenn es ausdrücklich dasteht.
+        vorschau: String(req.query.schreiben ?? '') !== '1',
+        ueberRebrickable: String(req.query.rebrickable ?? '') === '1',
+        anleger: {
+          teil:  (u, body) => addManualPart(u, body),
+          figur: (u, body) => addManualFig(u, body),
+          // addSet nimmt die Setnummer zuerst und erwartet dazu einen
+          // Fortschrittsmelder (hier null: niemand sieht zu) und einen
+          // Kaufpreis (hier null — MAXPRICE ist eine Suchgrenze).
+          set:   (u, sn, menge, zustand) => addSet(sn, menge, u, null, null, zustand),
+        },
+      });
+      res.json({ success: true, ...bericht });
     } catch (e) { handleRouteError(res, e, undefined, req); }
   });
 

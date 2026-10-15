@@ -240,6 +240,16 @@ export const FEHLER = {
                                    + 'Bitte den Gutschein von Hand erfassen.',
                                  en: 'No voucher could be recognised in this PDF. '
                                    + 'Please add the voucher manually.' },
+
+  // ── BrickLink-Wanted-Liste (Marcos Liste, Stueck 4) ──────────────────────
+  //
+  // Vor dem Zerlegen gesagt, nicht danach: „0 Posten gelesen" kann auch eine
+  // LEERE Liste bedeuten. Dass die Datei gar keine Wanted-Liste ist, ist eine
+  // andere Auskunft, und der Nutzer tut etwas anderes damit.
+  keine_wanted_liste:          { de: 'Das ist keine BrickLink-Wanted-Liste '
+                                   + '(kein <INVENTORY> in der Datei).',
+                                 en: 'This is not a BrickLink wanted list '
+                                   + '(no <INVENTORY> in the file).' },
   id_ungueltig:                { de: 'Ungültige ID', en: 'Invalid ID' },
 
   // ── Betrieb und Verwaltung ───────────────────────────────────────────────

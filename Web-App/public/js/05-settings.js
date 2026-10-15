@@ -937,9 +937,99 @@ async function importAlarmeCsv() {
   }
 }
 
+/**
+ * Die gewählte Wanted-Liste — sie lebt zwischen Vorschau und Schreiben.
+ *
+ * Im Modul und nicht im Feld: Nach der Vorschau wird das Dateifeld geleert
+ * (sonst löst dieselbe Auswahl kein `change` mehr aus, wenn man sie
+ * wiederholt), und der Schreib-Knopf braucht die Datei noch.
+ */
+let _wantedDatei = null;
+
+/** Den Bericht zeichnen — Vorschau und Schreiben zeigen dasselbe. */
+function zeichneWantedBericht(d) {
+  const el = G('wanted-bericht');
+  if (!el) return;
+  // Die drei Stufen EINZELN, mit Worten statt Farben: Marco sieht Rot und
+  // Grün schlecht, und „wahrscheinlich" ist ohnehin eine Aussage, die
+  // dastehen muss und nicht angedeutet werden darf.
+  const stufe = (k, text) => (d.stufen?.[k]
+    ? `<div>• ${esc(text)}: <strong>${d.stufen[k]}</strong></div>` : '');
+  const offen = (d.offen || []).map(o => esc(o.blId)).join(', ');
+  el.innerHTML = `
+    <div style="border:1px solid var(--bdr);border-radius:8px;padding:.7rem;margin-bottom:.5rem">
+      <div><strong>${d.gelesen}</strong> ${esc(tRaw('settings.wanted_read'))}${
+        d.vorschau ? ` — ${esc(tRaw('settings.wanted_preview_only'))}` : ''}</div>
+      ${stufe('zuordnung', tRaw('settings.wanted_s1'))}
+      ${stufe('gleich_vermerkt', tRaw('settings.wanted_s2'))}
+      ${stufe('katalogtreffer', tRaw('settings.wanted_s3'))}
+      ${stufe('rebrickable', tRaw('settings.wanted_s4'))}
+      ${d.offen?.length ? `<div style="margin-top:.4rem">⚠ <strong>${d.offen.length}</strong> ${
+        esc(tRaw('settings.wanted_open'))}: ${offen}</div>` : ''}
+      ${d.farbeOffen ? `<div>⚠ <strong>${d.farbeOffen}</strong> ${
+        esc(tRaw('settings.wanted_color_open'))}</div>` : ''}
+      ${Object.keys(d.fremdeArten || {}).length ? `<div>⚠ ${
+        esc(tRaw('settings.wanted_other_kinds'))}: ${
+        esc(Object.entries(d.fremdeArten).map(([k, n]) => `${k}=${n}`).join(', '))}</div>` : ''}
+      ${d.rebrickable ? `<div style="margin-top:.4rem">${esc(tRaw('settings.wanted_rb_asked'))}: ${
+        d.rebrickable.gefragt} → ${d.rebrickable.gefunden}${
+        d.rebrickable.filterWirkungslos
+          ? ` (${esc(tRaw('settings.wanted_rb_nofilter'))})` : ''}</div>` : ''}
+      ${!d.vorschau ? `<div style="margin-top:.4rem"><strong>${d.angelegt}</strong> ${
+        esc(tRaw('settings.wanted_written'))}${d.fehler ? `, ${d.fehler} ${
+        esc(tRaw('settings.wanted_errors'))}` : ''}</div>` : ''}
+    </div>
+    ${d.vorschau && d.gelesen - (d.offen?.length || 0) > 0
+      ? `<button class="btn bp" type="button" data-click="wantedListeSchreiben">${
+          esc(tRaw('settings.wanted_write'))}</button>` : ''}`;
+}
+
+/** Schritt 1: lesen und rechnen, nichts schreiben. */
+async function wantedListeVorschau() {
+  const fi = G('wanted-xml-file');
+  if (!fi?.files[0]) return;
+  _wantedDatei = fi.files[0];
+  fi.value = '';
+  await wantedListeSenden(false);
+}
+
+/** Schritt 2: dasselbe noch einmal, diesmal mit schreiben=1. */
+async function wantedListeSchreiben() { await wantedListeSenden(true); }
+
+async function wantedListeSenden(schreiben) {
+  if (!_wantedDatei) return;
+  const el = G('wanted-bericht');
+  if (el) el.textContent = tRaw('import.running');
+  const fd = new FormData();
+  fd.append('file', _wantedDatei);
+  const p = new URLSearchParams();
+  if (schreiben) p.set('schreiben', '1');
+  if (G('wanted-rb')?.checked) p.set('rebrickable', '1');
+  try {
+    const r = await fetch(`/api/v1/wanted-list/import/xml?${p}`, { method: 'POST', body: fd });
+    const d = await r.json().catch(() => ({}));
+    if (!d.success) {
+      if (el) el.textContent = '';
+      toast(d.error || tRaw('settings.error'), 'error');
+      return;
+    }
+    zeichneWantedBericht(d);
+    if (schreiben) {
+      toast(tRaw('import.summary', { added: d.angelegt, updated: 0, errors: d.fehler }),
+        d.fehler ? 'info' : 'success');
+      _wantedDatei = null;
+    }
+  } catch (e) {
+    if (el) el.textContent = '';
+    toast(tRaw('settings.error'), 'error');
+  }
+}
+
 registerActions({
   aendereAlarmSchwelle,
   importAlarmeCsv,
+  wantedListeVorschau,
+  wantedListeSchreiben,
   loescheAlarm,
   legeLagerortAn,
   lagerortTaste,

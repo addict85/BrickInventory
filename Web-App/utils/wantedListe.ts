@@ -144,7 +144,14 @@ export type Sicherheit =
   | 'gleich_vermerkt'
   /** Die Nummer steht so im Rebrickable-Katalog — niemand hat BrickLink dazu
    *  nachgesehen. WAHRSCHEINLICH, nicht sicher. */
-  | 'katalogtreffer';
+  | 'katalogtreffer'
+  /**
+   * Rebrickable hat die Abbildung geliefert UND sie bestätigt: Der Treffer
+   * trägt die gesuchte Nummer in external_ids.BrickLink. Das ist so sicher wie
+   * Stufe 1, nur frisch geholt statt gespeichert — und deshalb eine eigene
+   * Stufe, damit im Bericht steht, was ein Abruf gekostet hat.
+   */
+  | 'rebrickable';
 
 export interface Aufloesung {
   posten: WantedPosten;
@@ -232,4 +239,228 @@ export async function loeseLokalAuf(posten: WantedPosten[]): Promise<Aufloesung[
       farbeOffen: rbId !== null && p.blFarbe !== null && rbFarbe === null,
     };
   });
+}
+
+/**
+ * Die offenen Posten über Rebrickable auflösen.
+ *
+ * ── Marcos Vorgabe zur Reihenfolge ──────────────────────────────────────────
+ *
+ *   „Zuerst die restlichen … mit der Option diese über Bricklink oder noch
+ *    besser über Rebrickable versuchen aufzulösen."
+ *
+ * „Noch besser über Rebrickable" ist nicht nur besser, sondern der einzige
+ * DIREKTE Weg: BrickLink kennt keine Rebrickable-Nummern. Über BrickLink
+ * ginge nur ein Umweg (Posten abfragen, Name und Alternativnummern holen, die
+ * bei Rebrickable suchen) — zwei Sprünge mit je eigener Fehlerquelle. Deshalb
+ * steht hier Rebrickable und nicht beides; käme der Umweg, wäre er eine
+ * eigene Funktion und keine stillere Hälfte dieser.
+ *
+ * ── Nur die OFFENEN, und nur auf Verlangen ──────────────────────────────────
+ *
+ * Jeder Abruf kostet aus Marcos Tageskontingent. Angefragt wird deshalb
+ * ausschliesslich, was lokal nichts ergab — bei seiner Datei wären das die
+ * Posten, die `loeseLokalAuf` offen lässt, nicht alle 224.
+ *
+ * Teile allein: Für Figuren und Sets führt Rebrickable keine BrickLink-IDs in
+ * external_ids (die Notiz steht in utils/bricklinkLink.ts: „Rebrickable hat
+ * external_ids nur bei Parts"). Eine Abfrage dafür wäre ein Abruf, der nichts
+ * finden KANN.
+ */
+export async function loeseUeberRebrickableAuf(
+  auf: Aufloesung[], grenze = 250,
+): Promise<{ auf: Aufloesung[]; gefragt: number; gefunden: number; filterWirkungslos: boolean }> {
+  const { blTeilZuRb, blFilterWirkungslos } = require('../clients/rebrickable');
+  let gefragt = 0, gefunden = 0;
+
+  const ergebnis = [...auf];
+  for (let i = 0; i < ergebnis.length; i++) {
+    const a = ergebnis[i]!;
+    if (a.rbId !== null) continue;
+    if (a.posten.art !== 'part') continue;
+    if (gefragt >= grenze) break;
+
+    gefragt++;
+    let rbId: string | null = null;
+    // Ein Abruf, der scheitert (Netz, Kontingent, 500), beendet NICHT den
+    // ganzen Lauf: Die übrigen Posten sind davon unberührt, und ein Import,
+    // der an Posten 150 von 224 abbricht, lässt den Nutzer im Dunkeln.
+    try { rbId = await blTeilZuRb(a.posten.blId); } catch { rbId = null; }
+    if (rbId) {
+      gefunden++;
+      ergebnis[i] = { ...a, rbId, sicherheit: 'rebrickable' };
+    }
+  }
+  return { auf: ergebnis, gefragt, gefunden, filterWirkungslos: blFilterWirkungslos() };
+}
+
+/** Was aus einem Posten geworden ist. */
+export interface PostenErgebnis {
+  blId: string;
+  art: WantedArt;
+  rbId: string | null;
+  rbFarbe: number | null;
+  sicherheit: Sicherheit | null;
+  /** 'angelegt' | 'aufgestockt' | 'offen' | 'fehler' */
+  ausgang: 'angelegt' | 'aufgestockt' | 'offen' | 'fehler';
+  grund?: string;
+}
+
+export interface WantedBericht {
+  gelesen: number;
+  fremdeArten: Record<string, number>;
+  ohneNummer: number;
+  /** Wie viele Posten je Sicherheitsstufe aufgelöst wurden. */
+  stufen: Record<string, number>;
+  /** Posten mit Nummer, aber ohne abbildbare Farbe. */
+  farbeOffen: number;
+  /** Nicht aufgelöst — mit ihren BrickLink-Nummern, damit man sie nachsehen kann. */
+  offen: { blId: string; art: WantedArt; blFarbe: number | null }[];
+  /** Nur gesetzt, wenn über Rebrickable gefragt wurde. */
+  rebrickable?: { gefragt: number; gefunden: number; filterWirkungslos: boolean };
+  angelegt: number;
+  aufgestockt: number;
+  fehler: number;
+  /** true = es wurde NICHTS geschrieben. */
+  vorschau: boolean;
+  posten: PostenErgebnis[];
+}
+
+/** Die Stufen zählen — eine Zeile, die sonst dreimal dastünde. */
+function zaehleStufen(auf: Aufloesung[]): Record<string, number> {
+  const z: Record<string, number> = {};
+  for (const a of auf) if (a.sicherheit) z[a.sicherheit] = (z[a.sicherheit] ?? 0) + 1;
+  return z;
+}
+
+/**
+ * Eine Wanted-Liste einlesen — als Vorschau oder wirklich.
+ *
+ * ── Warum die Vorschau derselbe Weg ist ─────────────────────────────────────
+ *
+ * Sie liest, löst auf und zählt genau wie der Ernstfall; nur das Schreiben
+ * bleibt aus. Zwei getrennte Wege hätten auseinanderlaufen können — und dann
+ * verspräche die Vorschau etwas, das der Import nicht tut. Das ist die Sorte
+ * Fehler, die niemand sieht, weil beide Zahlen plausibel aussehen.
+ *
+ * ── Was angelegt wird, und warum es HEREINGEGEBEN wird ──────────────────────
+ *
+ * „als manuell erfasste Parts und Minifiguren oder sets" — also über
+ * addManualPart(), addManualFig() und addSet(), die drei Wege, die auch das
+ * Formular benutzt. Kein eigenes INSERT: Dort hängen Lagerort, Preisregel,
+ * Katalognachtrag und die Erfassungszeile dran, und jede Abschrift davon
+ * verliert etwas (die Begründung steht an addManualPart).
+ *
+ * Nur: addManualPart und addManualFig liegen in routes/. Mein erster Entwurf
+ * holte sie mit require('../routes/parts') hierher — und test/schichten.test.js
+ * hat das abgewiesen: „Neue Abhaengigkeit von einer Fachdatei auf eine ROUTE.
+ * Die Funktion gehoert in die Schicht, die sie braucht — sonst zieht jeder
+ * Nutzer den HTTP-Apparat mit."
+ *
+ * Die Ausnahmeliste dieses Tests ist LEER, und das ist ein erarbeiteter Stand
+ * (der Kommentar dort sagt, dass zwei von acht Einträgen nur wegen eines
+ * Fehlers in der Regel dastanden). Der erste neue Eintrag wäre ein
+ * Rückschritt — also ist die Abhängigkeit umgedreht: Die ROUTE kennt die
+ * Routen und gibt die drei Anleger herein. Diese Datei kennt nur ihre Form.
+ *
+ * ── Kein Kaufpreis ──────────────────────────────────────────────────────────
+ *
+ * MAXPRICE ist eine SUCHGRENZE („bis so viel würde ich zahlen"), kein
+ * bezahlter Preis. Als Kaufpreis übernommen stünde in der Finanzansicht ein
+ * Betrag, den niemand ausgegeben hat. Die Posten kommen deshalb ohne Preis
+ * herein; was sie wert sind, holt der Marktpreis.
+ */
+/**
+ * Die drei Anleger, die der Import braucht.
+ *
+ * Als Schnittstelle und nicht als Einfuhr: So kennt diese Datei nur die FORM
+ * („etwas, das ein Teil anlegt") und nicht den Ort. Die Route steckt die
+ * echten Funktionen hinein; ein Test könnte Zähler hineinstecken.
+ *
+ * Die Reihenfolge der Parameter folgt den echten Funktionen, damit das
+ * Hereingeben eine Zuweisung bleibt und keine Übersetzung: addManualPart und
+ * addManualFig nehmen (uid, body), addSet nimmt die Setnummer zuerst — daher
+ * die eigene Form für `set`.
+ */
+export interface Anleger {
+  teil: (uid: number, body: Record<string, unknown>) => Promise<unknown>;
+  figur: (uid: number, body: Record<string, unknown>) => Promise<unknown>;
+  set: (uid: number, setNummer: string, menge: number,
+        zustand: string | null) => Promise<unknown>;
+}
+
+export async function importiereWantedListe(
+  uid: number, xml: string,
+  opt: { vorschau?: boolean; ueberRebrickable?: boolean; anleger?: Anleger } = {},
+): Promise<WantedBericht> {
+  const gelesen = leseWantedListe(xml);
+  let auf = await loeseLokalAuf(gelesen.posten);
+
+  let rebrickable: WantedBericht['rebrickable'];
+  if (opt.ueberRebrickable) {
+    const r = await loeseUeberRebrickableAuf(auf);
+    auf = r.auf;
+    rebrickable = { gefragt: r.gefragt, gefunden: r.gefunden,
+                    filterWirkungslos: r.filterWirkungslos };
+  }
+
+  const bericht: WantedBericht = {
+    gelesen: gelesen.posten.length,
+    fremdeArten: gelesen.fremdeArten,
+    ohneNummer: gelesen.ohneNummer,
+    stufen: zaehleStufen(auf),
+    farbeOffen: auf.filter(a => a.farbeOffen).length,
+    offen: auf.filter(a => a.rbId === null)
+              .map(a => ({ blId: a.posten.blId, art: a.posten.art, blFarbe: a.posten.blFarbe })),
+    ...(rebrickable ? { rebrickable } : {}),
+    angelegt: 0, aufgestockt: 0, fehler: 0,
+    vorschau: !!opt.vorschau,
+    posten: [],
+  };
+
+  for (const a of auf) {
+    const grund = a.rbId === null
+      ? 'Zu dieser BrickLink-Nummer ist keine Rebrickable-Nummer bekannt'
+      : undefined;
+    const zeile: PostenErgebnis = {
+      blId: a.posten.blId, art: a.posten.art, rbId: a.rbId, rbFarbe: a.rbFarbe,
+      sicherheit: a.sicherheit, ausgang: a.rbId === null ? 'offen' : 'angelegt',
+      ...(grund ? { grund } : {}),
+    };
+    if (a.rbId === null || opt.vorschau) {
+      // In der Vorschau steht „angelegt" fuer „wuerde angelegt" — geschrieben
+      // wird nichts, und `vorschau: true` im Bericht sagt das.
+      bericht.posten.push(zeile);
+      if (a.rbId === null) bericht.posten[bericht.posten.length - 1]!.ausgang = 'offen';
+      continue;
+    }
+
+    try {
+      if (!opt.anleger) throw new Error('Kein Anleger übergeben — siehe Anleger');
+      if (a.posten.art === 'part') {
+        await opt.anleger.teil(uid, {
+          part_number: a.rbId,
+          color_id: a.rbFarbe ?? 0,
+          quantity: a.posten.menge,
+          condition: a.posten.zustand ?? undefined,
+        });
+      } else if (a.posten.art === 'fig') {
+        await opt.anleger.figur(uid, {
+          fig_number: a.rbId,
+          quantity: a.posten.menge,
+          condition: a.posten.zustand ?? undefined,
+        });
+      } else {
+        await opt.anleger.set(uid, a.rbId, a.posten.menge, a.posten.zustand);
+      }
+      bericht.angelegt++;
+    } catch (e: unknown) {
+      bericht.fehler++;
+      zeile.ausgang = 'fehler';
+      zeile.grund = e instanceof Error ? e.message : String(e);
+    }
+    bericht.posten.push(zeile);
+  }
+
+  return bericht;
 }

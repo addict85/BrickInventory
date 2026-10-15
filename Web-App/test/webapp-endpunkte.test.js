@@ -202,6 +202,19 @@ const NUR_WEB = new Map([
   ['/api/v1/auth/users/:X',        'Nutzer löschen — siehe /auth/users.'],
   ['/api/v1/auth/users/:X/admin',  'Verwalterrecht umschalten — siehe /auth/users.'],
   ['/api/v1/auth/users/:X/password', 'Fremdes Passwort zurücksetzen — siehe /auth/users.'],
+  ['/api/v1/wanted-list/import/xml',
+   'BrickLink-Wanted-Liste einlesen. NOCH NICHT in der App, und der Grund ' +
+   'steht hier, damit ihn der Naechste nicht neu herleitet: Dieser Import ist ' +
+   'ZWEISTUFIG. Der erste Schritt schreibt nichts, sondern liefert einen ' +
+   'BERICHT — wie viele Posten sich ueber eine eingetragene Zuordnung ' +
+   'abbilden liessen, wie viele ueber einen blossen Katalogtreffer (also auf ' +
+   'einer Vermutung) und welche BrickLink-Nummern offen blieben, mit ihren ' +
+   'Nummern zum Nachsehen. Erst danach entscheidet der Mensch. Das ist eine ' +
+   'Tabelle zum Lesen und ein Knopf zum Bestaetigen, und dafuer braucht die ' +
+   'App einen eigenen Bildschirm — die Dateiauswahl allein genuegt hier ' +
+   'nicht, anders als bei den CSV-Importen, die einfach laufen und eine Zahl ' +
+   'melden. Marco weiss es und kann es anfordern; bis dahin ist dies kein ' +
+   'Versehen, sondern ein benannter Rest.'],
   ['/api/v1/vouchers/export/pdf',
    'Alle Gutscheine als EIN PDF. Eine DATEI ZUM BEHALTEN — und die App hat ' +
    'keinen Weg, eine Datei zu speichern oder weiterzugeben: Das vorhandene ' +

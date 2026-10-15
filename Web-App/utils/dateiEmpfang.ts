@@ -33,11 +33,19 @@ import multer from 'multer';
 export const CSV_MAX_BYTES = 15 * 1024 * 1024;
 
 /**
- * Die Annahme für CSV-Importe: Sets, Teile und Minifiguren.
+ * Die Annahme für Textdateien, die sofort zerlegt werden: die CSV-Importe
+ * (Sets, Teile, Minifiguren, Merkliste, Preisalarme) und die
+ * BrickLink-Wanted-Liste als XML.
  *
- * `memoryStorage`, weil alle drei Importe die Datei ohnehin sofort in Zeilen
- * zerlegen und nie auf die Platte legen. Das Feld heisst überall `file` —
- * dieselbe Schreibweise wie in der Webapp und in der App.
+ * `memoryStorage`, weil alle diese Importe die Datei ohnehin sofort zerlegen
+ * und nie auf die Platte legen. Das Feld heisst überall `file` — dieselbe
+ * Schreibweise wie in der Webapp und in der App.
+ *
+ * Der Name sagt „csv" und die Liste nennt jetzt auch XML: Hier steht KEIN
+ * Typfilter, und eine zweite Instanz mit derselben Einstellung anzulegen wäre
+ * dieselbe Sache zweimal. Richtiggestellt ist deshalb der Kommentar, nicht
+ * der Name — ein Umbenennen ginge durch sechs Dateien, ohne etwas zu
+ * verbessern.
  */
 export const csvEmpfang = multer({
   storage: multer.memoryStorage(),
