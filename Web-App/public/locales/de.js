@@ -141,7 +141,7 @@ window.I18N_DE = {
   'api.server_error':      'Der Server hat mit einem Fehler geantwortet ({status}).',
   'api.unexpected':        'Unerwarteter Fehler — Einzelheiten in der Browser-Konsole.',
   'settings.language':     'Sprache',
-  'settings.group.profile':   'Profil-Einstellungen',
+  'settings.group.profile':   '👤 Profil-Einstellungen',
   'settings.profile.firstname': 'Vorname',
   'settings.profile.lastname':  'Nachname',
 

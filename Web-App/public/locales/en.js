@@ -141,7 +141,7 @@ window.I18N_EN = {
   'api.server_error':      'The server responded with an error ({status}).',
   'api.unexpected':        'Unexpected error — see the browser console for details.',
   'settings.language':     'Language',
-  'settings.group.profile':   'Profile Settings',
+  'settings.group.profile':   '👤 Profile Settings',
   'settings.profile.firstname': 'First name',
   'settings.profile.lastname':  'Last name',
 
