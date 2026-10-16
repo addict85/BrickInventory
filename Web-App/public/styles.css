@@ -6,6 +6,13 @@
       --s50:#f8fafc;--s100:#f1f5f9;--s200:#e2e8f0;--s300:#cbd5e1;
       --s400:#94a3b8;--s500:#64748b;--s600:#475569;--s700:#334155;--s800:#1e293b;
       --r100:#fee2e2;--r500:#ef4444;
+      /* Ein DUNKLERES Rot fuer roten TEXT auf heller Flaeche.
+         GEMESSEN: --r500 (#ef4444) auf #fff steht bei 3,76:1 — noetig sind
+         4,5:1. Das fiel erst auf, als „Abmelden" in die Menueklappe zog und
+         damit in den Messbereich von test/kopfleiste-lesbar.test.js geriet.
+         #b91c1c auf #fff misst 6,47:1.
+         --r500 bleibt, was es war: die Farbe fuer FLAECHEN und Rahmen. */
+      --r700:#b91c1c;
       --g100:#dcfce7;--g500:#22c55e;
       --a100:#fef3c7;--a500:#f59e0b;
       /* Der Ton, den SCHRIFT auf --a100 traegt. --a500 ist dafuer zu hell:
@@ -95,9 +102,13 @@
        Reihe betrifft. Soll sie kleiner bleiben, fällt sie hier einfach aus
        der Aufzählung. */
     .umenu{display:flex;align-items:center;gap:8px;font-size:.85rem;--kopf-hoehe:28px}
+    /* `.umenu .btn` stand hier bis zum 17.10. und ist RAUS, weil der einzige
+       Knopf der Reihe — „Abmelden" — in die Klappe umgezogen ist (Marcos
+       Vorgabe: „Kannst du abmelden ebenfalls in das neue Menu integrieren?").
+       Eine Regel fuer ein Element, das es an dieser Stelle nicht mehr gibt,
+       sieht aus wie eine Zusicherung und ist eine Behauptung ins Leere. */
     .umenu .ubadge,
-    .umenu .abadge,
-    .umenu .btn{height:var(--kopf-hoehe)}
+    .umenu .abadge{height:var(--kopf-hoehe)}
     /* Das Menü hinter dem Benutzernamen (Marcos Vorgabe vom 16.10.).
        `position:relative` am Rahmen, damit die Klappe am Knopf hängt und
        nicht an der Seite; z-index über den Kopfzeilen-Inhalten, sonst
@@ -120,6 +131,19 @@
                 border-radius:8px;cursor:pointer;
                 padding:.5rem .7rem;font-size:.86rem}
     .umenu-item:hover{background:var(--b50,var(--s100))}
+    /* Der Strich trennt die sieben Sichten von der einen Handlung darunter.
+       `border:0` zuerst: ein <hr> bringt von sich aus einen Rahmen mit, und
+       mit beidem gaebe es zwei Striche uebereinander. */
+    .umenu-trenner{border:0;border-top:1px solid var(--bdr);margin:6px 4px}
+    /* Abmelden beendet die Sitzung — es sieht deshalb anders aus als die
+       sieben Punkte darueber, die nur die Sicht wechseln. Die Farbe steht
+       hier AUSDRUECKLICH, obwohl `.umenu-item` schon eine traegt:
+       test/kopfleiste-lesbar.test.js leitet die Textstellen der Kopfleiste
+       aus den Regeln ab und misst jede gegen ihren Grund — eine Stelle mit
+       eigener Farbe muss ihren Grund mitbringen, sonst misst die Pruefung
+       gegen den falschen. */
+    .umenu-abmelden{background:var(--sur);color:var(--r700)}
+    .umenu-abmelden:hover{background:var(--r100,var(--s100))}
     .umenu-item:focus-visible{outline:2px solid var(--b600);outline-offset:-2px}
     /* Der Namenszug ist jetzt der Menüknopf (Marcos Nachzug vom 17.10.).
        `.ubadge` bleibt der Name der Plakette, obwohl darunter ein <button>

@@ -188,7 +188,7 @@ window.I18N_EN = {
   'csv.errors':            'Errors',
   'rb_key.missing':        'Please add your Rebrickable API key in Settings first.',
   'gallery.title':         'My Collection',
-  'settings.logout':       'Sign out',
+  'settings.logout':       '🚪 Sign out',
   'gallery.template':      '📄 Template',
   'parts.add.price_placeholder': 'Empty = market price',
   // ── Addendum: previously hardcoded dynamic UI texts ──

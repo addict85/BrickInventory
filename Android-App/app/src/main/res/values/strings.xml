@@ -771,4 +771,5 @@
     <string name="settings_row_household">Link accounts into one household</string>
     <string name="settings_row_csv">Sets, parts, minifigures, wanted list, price alerts</string>
     <string name="settings_row_account">Profile, password and signed-in devices</string>
+    <string name="settings_row_logout">End this session on this device</string>
 </resources>

@@ -2,7 +2,6 @@ package ch.brickinventoryapp.ui.screens
 
 import ch.brickinventoryapp.ui.theme.Formen
 import ch.brickinventoryapp.ui.theme.AppKarte
-import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.ScrollState
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -171,6 +170,38 @@ fun SettingsScreen(
                           R.string.settings_row_account) {
                 onUnterseite(EinstellungsBereich.KONTO)
             }
+
+            // ── Abmelden steht in der Liste, abgesetzt ────────────────────
+            //
+            // Marcos Vorgabe vom 17.10.: „Kannst du abmelden ebenfalls in das
+            // neue Menu integrieren? Kannst du dies analog in der Android-App
+            // so umsetzen?"
+            //
+            // In der Webapp ist „das neue Menu" die Klappe hinter dem
+            // Benutzernamen. Ein solches Kopfmenue gibt es in der App NICHT —
+            // ihr Gegenstueck ist diese Liste. Dieselbe Form wie dort: die
+            // Punkte, ein Trenner, dann die Handlung.
+            //
+            // Der Trenner ist nicht Zierde. Die sechs Zeilen darueber wechseln
+            // die Sicht und sind folgenlos; diese hier beendet die Sitzung.
+            // Sie als siebte gleich aussehende Zeile einzureihen hiesse, beim
+            // Danebentippen abgemeldet zu werden.
+            //
+            // Vorher stand Abmelden als eigener roter Knopf ganz unten am
+            // Bildschirm — hinter Server- und Update-Karte, also an einer
+            // Stelle, an der man es nur beim Scrollen findet.
+            HorizontalDivider(
+                Modifier.padding(vertical = Abstaende.winzig),
+                color = MaterialTheme.colorScheme.outlineVariant,
+            )
+            BereichsZeile(
+                Icons.AutoMirrored.Filled.Logout,
+                R.string.settings_logout,
+                R.string.settings_row_logout,
+                tonung = MaterialTheme.colorScheme.error,
+                pfeil = false,
+                onKlick = onLogout,
+            )
         }
 
         // ── 2. Anzeige & Preise ─────────────────────────────────────────────
@@ -298,29 +329,19 @@ fun SettingsScreen(
             onLaden = { vm.ladeUpdate() },
             onInstallieren = { vm.starteInstallation() },
         )
-
-        Spacer(Modifier.height(Abstaende.klein))
-
-        OutlinedButton(
-            onClick = onLogout,
-            modifier = Modifier.fillMaxWidth().height(48.dp),
-            shape = Formen.knopf,
-            colors = ButtonDefaults.outlinedButtonColors(contentColor = MaterialTheme.colorScheme.error),
-            border = BorderStroke(1.dp, MaterialTheme.colorScheme.error.copy(alpha = 0.5f))
-        ) {
-            Icon(Icons.AutoMirrored.Filled.Logout, null, Modifier.size(18.dp))
-            Spacer(Modifier.width(Abstaende.klein))
-            Text(stringResource(R.string.settings_logout), fontWeight = FontWeight.SemiBold)
-        }
     }
 }
 
 /**
- * Eine Zeile, die auf eine Unterseite fuehrt.
+ * Eine Zeile der Verwalten-Liste.
  *
  * Symbol, Titel, eine Zeile Erklaerung, Pfeil. Die Erklaerung ist nicht
  * Zierde: „Haushalt" allein sagt niemandem, was dahinter passiert, und wer
- * eine Liste von sechs Woertern vor sich hat, tippt sonst auf gut Glueck.
+ * eine Liste von Woertern vor sich hat, tippt sonst auf gut Glueck.
+ *
+ * Seit dem 17.10. fuehrt nicht mehr jede Zeile auf eine Unterseite: „Abmelden"
+ * ist aus dem eigenen Knopf am Fuss hier hereingezogen (Marcos Vorgabe). Es
+ * traegt deshalb `tonung` und `pfeil = false` — siehe die beiden Parameter.
  *
  * Die Hoehe kommt aus dem Innenabstand (12 dp oben und unten plus zwei
  * Textzeilen), nicht aus einer festen Zahl: So waechst die Zeile mit, wenn
@@ -332,6 +353,22 @@ private fun BereichsZeile(
     icon: androidx.compose.ui.graphics.vector.ImageVector,
     titel: Int,
     hinweis: Int,
+    /**
+     * Die Farbe von Symbol und Titel.
+     *
+     * Vorgabe ist `primary` — damit bleiben die sechs bestehenden Aufrufe
+     * unveraendert. Abgewichen wird nur bei „Abmelden": Es beendet die
+     * Sitzung, waehrend die Zeilen darueber nur die Sicht wechseln.
+     */
+    tonung: androidx.compose.ui.graphics.Color = MaterialTheme.colorScheme.primary,
+    /**
+     * Zeigt die Zeile den Pfeil nach rechts?
+     *
+     * Der Pfeil verspricht „hier geht es weiter". Bei „Abmelden" stimmt das
+     * nicht — dort passiert etwas, es geht nicht weiter. Ein Pfeil waere eine
+     * Zusage, die die Zeile nicht einloest.
+     */
+    pfeil: Boolean = true,
     onKlick: () -> Unit,
 ) {
     Row(
@@ -343,15 +380,18 @@ private fun BereichsZeile(
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(Abstaende.mittel),
     ) {
-        Icon(icon, null, Modifier.size(20.dp), tint = MaterialTheme.colorScheme.primary)
+        Icon(icon, null, Modifier.size(20.dp), tint = tonung)
         Column(Modifier.weight(1f)) {
-            Text(stringResource(titel), fontSize = Schrift.normal, fontWeight = FontWeight.Medium)
+            Text(stringResource(titel), fontSize = Schrift.normal,
+                 fontWeight = FontWeight.Medium, color = tonung)
             Text(stringResource(hinweis),
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
-        Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, null,
-             tint = MaterialTheme.colorScheme.onSurfaceVariant)
+        if (pfeil) {
+            Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, null,
+                 tint = MaterialTheme.colorScheme.onSurfaceVariant)
+        }
     }
 }
 

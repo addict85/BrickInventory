@@ -752,4 +752,5 @@
     <string name="settings_row_household">Konten zu einem Haushalt verknüpfen</string>
     <string name="settings_row_csv">Sets, Teile, Minifiguren, Merkliste, Preisalarme</string>
     <string name="settings_row_account">Profil, Passwort und angemeldete Geräte</string>
+    <string name="settings_row_logout">Diese Sitzung auf diesem Gerät beenden</string>
 </resources>
