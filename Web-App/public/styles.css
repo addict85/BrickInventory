@@ -68,6 +68,29 @@
     .hs .v{font-family:var(--mono);font-size:.88rem;font-weight:500;color:var(--b600)}
     .hs .l{font-size:.62rem;color:var(--mut);text-transform:uppercase;letter-spacing:.4px}
     .umenu{display:flex;align-items:center;gap:8px;font-size:.85rem}
+    /* Das Menü hinter dem Benutzernamen (Marcos Vorgabe vom 16.10.).
+       `position:relative` am Rahmen, damit die Klappe am Knopf hängt und
+       nicht an der Seite; z-index über den Kopfzeilen-Inhalten, sonst
+       verschwindet sie hinter der Statistik daneben. */
+    .umenu-wrap{position:relative;display:inline-flex}
+    .umenu-pop{position:absolute;right:0;top:calc(100% + 6px);z-index:80;
+               min-width:14rem;padding:6px;background:var(--sur);
+               border:1px solid var(--bdr);border-radius:var(--rad);
+               box-shadow:0 10px 24px rgba(0,0,0,.14)}
+    /* Die Einträge sind Knöpfe und keine Links: Sie wechseln die Sicht
+       innerhalb der Seite, es gibt keine Adresse dahinter. */
+    /* Flaeche und Schrift stehen hier AUSDRUECKLICH, obwohl die Klappe schon
+       beides traegt: test/kopfleiste-lesbar.test.js leitet die Textstellen der
+       Kopfleiste aus den Regeln ab und misst sie gegen den Grund. Ohne eigenen
+       Grund gaelte hier der gestrichene Streifen der Leiste — und dagegen
+       gemessen waere dunkle Schrift auf dunklem Grund, was sie nie ist: Die
+       Eintraege liegen auf der Klappe. */
+    .umenu-item{display:block;width:100%;text-align:left;white-space:nowrap;
+                background:var(--sur);color:var(--txt);border:0;
+                border-radius:8px;cursor:pointer;
+                padding:.5rem .7rem;font-size:.86rem}
+    .umenu-item:hover{background:var(--b50,var(--s100))}
+    .umenu-item:focus-visible{outline:2px solid var(--b600);outline-offset:-2px}
     .ubadge{background:var(--b100);color:var(--b700);padding:3px 10px;border-radius:999px;font-weight:600;font-size:.75rem}
     .abadge{background:var(--a100);color:var(--a-schrift);padding:2px 7px;border-radius:999px;font-weight:600;font-size:.68rem}
 

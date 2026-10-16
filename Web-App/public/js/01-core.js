@@ -880,6 +880,11 @@ function showApp(){ bindTabs(); plInit(); setTimeout(()=>{ gibCheckOnLoad(); }, 
     }
     _updateLangSelect();
   });
+  // Der Reiter „Einstellungen" traegt seit dem 16.10. nur noch, was ein
+  // Verwalter setzt (Marcos Vorgabe) — er wird deshalb wie das Monitoring
+  // erst hier eingeblendet. Fuer alle anderen waere er leer, und ein leerer
+  // Reiter ist schlimmer als keiner: Man klickt ihn an und sucht.
+  if(ME.isAdmin){ const ns=G('ntab-settings'); if(ns) ns.style.display=''; }
   if(ME.isAdmin){ document.querySelectorAll('.admin-only').forEach(el=>el.style.display=''); const nm=G('ntab-monitor'); if(nm){ nm.style.display=''; const lbl=nm.querySelector('.tab-label'); if(lbl) lbl.textContent=tRaw('nav.monitoring'); } G('abadge').style.display='inline-flex'; G('usermgmt').style.display='block'; ['bl-ao','rb-ao','bs-ao'].forEach(id=>{ const el=G(id); if(el) el.style.display='none'; }); const gg=G('global-settings-grid'); if(gg) gg.style.display='grid'; const gl=G('global-settings-label'); if(gl) gl.style.display='block'; }
   else { ['bl-ck','bl-cs','bl-tok','bl-ts','rb-key','bs-key','lim-rb','lim-bl','lim-bs'].forEach(id=>{const el=G(id);if(el){el.disabled=true;if(el.type!=='number')el.placeholder=tRaw('settings.admins_only_ph')}}); G('btn-sav-bl').disabled=true; G('btn-sav-rb').disabled=true; G('btn-sav-bs').disabled=true; }
   // Admin: check if API keys are set, redirect to settings if not
@@ -932,6 +937,7 @@ G('btn-logout').onclick=async()=>{
   ME=null; setAllSets([]);
   // Reset all admin-only elements before showing login
   const nm=G('ntab-monitor'); if(nm) nm.style.display='none';
+  const ns=G('ntab-settings'); if(ns) ns.style.display='none';
   G('abadge').style.display='none';
   G('usermgmt').style.display='none';
 
