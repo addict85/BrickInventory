@@ -29,7 +29,13 @@ const KT_DIALOG = lies(path.join(APP, 'java', 'ch', 'brickinventoryapp', 'ui', '
 const KT_SETDET = lies(path.join(APP, 'java', 'ch', 'brickinventoryapp', 'ui', 'screens', 'SetDetailSections.kt'));
 const KT_CHIPS  = lies(path.join(APP, 'java', 'ch', 'brickinventoryapp', 'ui', 'screens', 'HouseholdComposables.kt'));
 const KT_FELD   = lies(path.join(APP, 'java', 'ch', 'brickinventoryapp', 'ui', 'screens', 'LagerortFeld.kt'));
-const KT_EINST  = lies(path.join(APP, 'java', 'ch', 'brickinventoryapp', 'ui', 'screens', 'SettingsScreen.kt'));
+// Die Einstellungen der App liegen seit dem 16.10. in ZWEI Dateien: Der
+// Bildschirm selbst traegt nur noch die Liste, jede Rubrik hat ihre eigene
+// Seite (EinstellungenUnterseiten.kt). Gelesen werden deshalb beide — die
+// Zusicherung lautet „die App tut das in ihren Einstellungen" und nicht
+// „in dieser Datei".
+const KT_EINST  = lies(path.join(APP, 'java', 'ch', 'brickinventoryapp', 'ui', 'screens', 'SettingsScreen.kt'))
+                + lies(path.join(APP, 'java', 'ch', 'brickinventoryapp', 'ui', 'screens', 'EinstellungenUnterseiten.kt'));
 const XML_EN    = lies(path.join(APP, 'res', 'values', 'strings.xml'));
 const XML_DE    = lies(path.join(APP, 'res', 'values-de', 'strings.xml'));
 

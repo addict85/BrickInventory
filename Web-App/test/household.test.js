@@ -229,7 +229,13 @@ test('die Oberfläche zeigt nur den passenden Kasten', () => {
     'Wer schon ein Elternkonto hat, braucht kein Eingabefeld');
 
   // Und beide Oberflächen müssen dasselbe tun (Marcos stehende Regel).
-  const kt = read('../Android-App/app/src/main/java/ch/brickinventoryapp/ui/screens/SettingsScreen.kt');
+  // Die Einstellungen der App liegen seit dem 16.10. in ZWEI Dateien: Der
+  // Bildschirm selbst traegt nur noch die Liste, jede Rubrik hat ihre eigene
+  // Seite (EinstellungenUnterseiten.kt). Gelesen werden deshalb beide — die
+  // Zusicherung lautet „die App tut das in ihren Einstellungen" und nicht
+  // „in dieser Datei".
+  const kt = read('../Android-App/app/src/main/java/ch/brickinventoryapp/ui/screens/SettingsScreen.kt')
+           + read('../Android-App/app/src/main/java/ch/brickinventoryapp/ui/screens/EinstellungenUnterseiten.kt');
   assert.match(kt, /Einladen darf JEDES Konto/,
     'Die App begründet die Regel nicht — steht dort noch die alte?');
   assert.match(kt, /if \(st != null && !st\.isSub\) \{/,

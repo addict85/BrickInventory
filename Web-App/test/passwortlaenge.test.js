@@ -168,7 +168,9 @@ test('beide Oberflaechen pruefen vor dem Absenden', () => {
   // Schleifenvariable — und wurde von jener Pruefung prompt gemeldet, zum
   // zweiten Mal in dieser Sitzung.
   for (const [voll, anzahl, name] of [
-    [path.join(KOTLIN, 'ui', 'screens', 'SettingsScreen.kt'), 3, 'Passwort aendern'],
+    // Seit dem 16.10. steht die Kontokarte auf ihrer eigenen Seite: Der
+    // Einstellungsbildschirm traegt nur noch die Liste dorthin.
+    [path.join(KOTLIN, 'ui', 'screens', 'EinstellungenUnterseiten.kt'), 3, 'Passwort aendern'],
     [path.join(KOTLIN, 'ui', 'screens', 'LoginScreen.kt'),    1, 'Registrieren'],
   ]) {
     const kurz = path.basename(voll);
