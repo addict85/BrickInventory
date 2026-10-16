@@ -238,26 +238,39 @@
         <span id="gib-chevron" style="font-size:.72rem;color:var(--mut);cursor:pointer" data-click="gibToggle">▾</span>
       </div>
       <div class="umenu">
-        <span class="ubadge" id="ubadge">—</span>
-        <span class="abadge" id="abadge" style="display:none" data-i18n="users.admin_badge">Admin</span>
-
-        <!-- ── DAS MENÜ HINTER DEM BENUTZERNAMEN ──────────────────────────────
+        <!-- ── DAS MENÜ IM BENUTZERNAMEN ─────────────────────────────────
 
              Marcos Vorgabe vom 16.10.: „die restlichen Seiten oben Rechts
              hinter dem Benutzernamen als Aufklappbares Menu mit 3 - anzeigen."
+             Einen Tag später nachgezogen: „kannst du die 3 Striche oben Rechts
+             in den Benutzernamen integrieren?" — der Namenszug IST jetzt der
+             Knopf, die Striche stehen darin. Vorher waren es zwei Dinge
+             nebeneinander: eine Plakette, die nichts tat, und ein Knopf, der
+             nicht sagte, wessen Menü er öffnet.
 
              Dahinter liegen die sieben Seiten, die vorher alle untereinander
              im Reiter „Einstellungen" standen. Der Reiter selbst trägt nur
              noch, was ein Verwalter setzt.
 
+             Warum die ID `ubadge` am INNEREN Feld hängt und nicht am Knopf:
+             01-core.js und 05-settings.js setzen `G('ubadge').textContent`.
+             Am Knopf würde das dessen GANZEN Inhalt ersetzen — die Striche
+             wären beim Anmelden weg. So schreibt der Name nur in sein eigenes
+             Feld, und beide Dateien bleiben unverändert.
+
              `aria-expanded` wird beim Auf- und Zuklappen mitgeführt (siehe
              benutzerMenue in js/02-gallery.js): Ein Bildschirmleser sagt sonst
-             nicht, ob das Menü offen ist. Und `aria-label` am Knopf, weil „☰"
-             vorgelesen nichts ergibt. -->
+             nicht, ob das Menü offen ist. Das Wort „Menü" steht als
+             vorgelesener Zusatz (.vh) IM Knopf und nicht mehr als
+             `aria-label`: Ein `aria-label` ERSETZT den sichtbaren Namen, der
+             Bildschirmleser hätte den Benutzernamen also gar nicht mehr
+             genannt. Jetzt lautet der Name des Knopfes „Benutzername, Menü".
+             Die Striche selbst sind `aria-hidden`, weil „☰" vorgelesen
+             nichts ergibt. -->
         <div class="umenu-wrap">
-          <button class="btn bs btn-sm" id="btn-umenu" data-click="benutzerMenue"
-                  aria-haspopup="true" aria-expanded="false" aria-controls="umenu-pop"
-                  aria-label="Menü" data-i18n="menu.open" data-i18n-attr="aria-label">☰</button>
+          <button class="ubadge ubadge-knopf" id="btn-umenu" data-click="benutzerMenue"
+                  aria-haspopup="true" aria-expanded="false"
+                  aria-controls="umenu-pop"><span class="ubadge-name" id="ubadge">—</span><span class="ubadge-striche" aria-hidden="true">☰</span><span class="vh" data-i18n="menu.open">Menü</span></button>
           <div class="umenu-pop" id="umenu-pop" role="menu" style="display:none">
             <button class="umenu-item" role="menuitem" data-click="oeffneSicht" data-arg="profil"
                     data-i18n="settings.group.profile">👤 Profil-Einstellungen</button>
@@ -276,6 +289,7 @@
           </div>
         </div>
 
+        <span class="abadge" id="abadge" style="display:none" data-i18n="users.admin_badge">Admin</span>
         <button class="btn bs btn-sm" id="btn-logout" data-i18n="settings.logout">Abmelden</button>
       </div>
     </div>

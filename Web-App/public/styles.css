@@ -72,7 +72,7 @@
        `position:relative` am Rahmen, damit die Klappe am Knopf hängt und
        nicht an der Seite; z-index über den Kopfzeilen-Inhalten, sonst
        verschwindet sie hinter der Statistik daneben. */
-    .umenu-wrap{position:relative;display:inline-flex}
+    .umenu-wrap{position:relative;display:inline-flex;min-width:0}
     .umenu-pop{position:absolute;right:0;top:calc(100% + 6px);z-index:80;
                min-width:14rem;padding:6px;background:var(--sur);
                border:1px solid var(--bdr);border-radius:var(--rad);
@@ -91,7 +91,30 @@
                 padding:.5rem .7rem;font-size:.86rem}
     .umenu-item:hover{background:var(--b50,var(--s100))}
     .umenu-item:focus-visible{outline:2px solid var(--b600);outline-offset:-2px}
+    /* Der Namenszug ist jetzt der Menüknopf (Marcos Nachzug vom 17.10.).
+       `.ubadge` bleibt der Name der Plakette, obwohl darunter ein <button>
+       liegt: themes/brick.css streicht `header .ubadge` eigens um, und
+       test/kopfleiste-lesbar.test.js misst die Schrift gegen genau diesen
+       Grund. Ein neuer Klassenname hätte beides stillschweigend verloren —
+       das Design wäre wieder blau statt weiß auf Rot, und die Lesbarkeit
+       niemandes Sorge mehr. */
     .ubadge{background:var(--b100);color:var(--b700);padding:3px 10px;border-radius:999px;font-weight:600;font-size:.75rem}
+    /* Was ein <button> von sich aus mitbringt und hier stört: eigener Rahmen,
+       eigene Schriftfamilie, eigene Schriftgröße. `font:inherit` würde auch
+       das `font-weight:600` und die `.75rem` von oben überschreiben, deshalb
+       nur die Familie. */
+    .ubadge-knopf{display:inline-flex;align-items:center;gap:7px;border:0;
+                  font-family:inherit;line-height:1.5;cursor:pointer;
+                  max-width:min(14rem,28vw)}
+    .ubadge-knopf:hover{filter:brightness(.96)}
+    .ubadge-knopf:focus-visible{outline:2px solid var(--b600);outline-offset:2px}
+    /* Ein langer Benutzername kürzt sich, die Striche bleiben: Sie stehen in
+       einem eigenen Feld, das nicht schrumpft. Lag das Überlaufen am Knopf,
+       verschwanden sie als Erstes — der Knopf sähe dann aus wie die alte
+       Plakette, die nichts tut. */
+    .ubadge-name{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0}
+    .ubadge-striche{flex:0 0 auto;font-size:.9rem;line-height:1;opacity:.75}
+    .ubadge-knopf[aria-expanded="true"] .ubadge-striche{opacity:1}
     .abadge{background:var(--a100);color:var(--a-schrift);padding:2px 7px;border-radius:999px;font-weight:600;font-size:.68rem}
 
     nav{background:var(--sur);border-bottom:1px solid var(--bdr);display:flex;padding:0 1rem;overflow-x:auto;position:sticky;top:58px;z-index:99;scrollbar-width:none;-ms-overflow-style:none}
