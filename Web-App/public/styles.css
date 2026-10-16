@@ -67,7 +67,37 @@
     .hs{display:flex;flex-direction:column;align-items:center;line-height:1.2}
     .hs .v{font-family:var(--mono);font-size:.88rem;font-weight:500;color:var(--b600)}
     .hs .l{font-size:.62rem;color:var(--mut);text-transform:uppercase;letter-spacing:.4px}
-    .umenu{display:flex;align-items:center;gap:8px;font-size:.85rem}
+    /* ── Die Bedienelemente der Kopfleiste sind gleich hoch ──────────────
+
+       Marcos Vorgabe vom 17.10.: „Der Abmeldebutton sollte gleich gross wie
+       die restlichen Buttons sein oben rechts (gleich hoch)."
+
+       NACHGERECHNET aus den Regeln (box-sizing: border-box, body
+       line-height 1.5) waren es drei verschiedene Höhen in einer Reihe:
+
+         Abmelden (.btn .bs .btn-sm)  2×5px + 2×1,5px Rahmen + 1,5×12,3px
+                                      ≈ 31,5 px
+         Namensknopf (.ubadge)        2×3px + 1,5×12px            = 24   px
+         Admin-Plakette (.abadge)     2×2px + 1,5×10,9px          ≈ 20   px
+
+       Die Höhe steht HIER und NICHT an `.btn-sm`. Diese Klasse hängt an 28
+       Stellen in index.html und in fünf JS-Dateien — sie anzufassen hätte
+       die halbe Oberfläche verschoben, um drei Elemente auszurichten. Die
+       Regel gehört zu der Reihe, in der sie gilt.
+
+       28 px ist MEINE Zahl: zwischen den 24 der Plakette und den 31,5 des
+       Knopfes. Keines der drei muss dafür seine Schriftgrösse ändern — alle
+       drei sind inline-flex und zentrieren ihren Inhalt selbst, die
+       senkrechte Polsterung wird damit bedeutungslos.
+
+       Die Admin-Plakette ist ein <span> und kein Knopf; sie steht trotzdem
+       mit in der Reihe, weil die Ungleichheit, die Marco sieht, die ganze
+       Reihe betrifft. Soll sie kleiner bleiben, fällt sie hier einfach aus
+       der Aufzählung. */
+    .umenu{display:flex;align-items:center;gap:8px;font-size:.85rem;--kopf-hoehe:28px}
+    .umenu .ubadge,
+    .umenu .abadge,
+    .umenu .btn{height:var(--kopf-hoehe)}
     /* Das Menü hinter dem Benutzernamen (Marcos Vorgabe vom 16.10.).
        `position:relative` am Rahmen, damit die Klappe am Knopf hängt und
        nicht an der Seite; z-index über den Kopfzeilen-Inhalten, sonst
@@ -115,7 +145,7 @@
     .ubadge-name{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0}
     .ubadge-striche{flex:0 0 auto;font-size:.9rem;line-height:1;opacity:.75}
     .ubadge-knopf[aria-expanded="true"] .ubadge-striche{opacity:1}
-    .abadge{background:var(--a100);color:var(--a-schrift);padding:2px 7px;border-radius:999px;font-weight:600;font-size:.68rem}
+    .abadge{background:var(--a100);color:var(--a-schrift);padding:2px 7px;border-radius:999px;font-weight:600;font-size:.68rem;display:inline-flex;align-items:center}
 
     nav{background:var(--sur);border-bottom:1px solid var(--bdr);display:flex;padding:0 1rem;overflow-x:auto;position:sticky;top:58px;z-index:99;scrollbar-width:none;-ms-overflow-style:none}
     nav::-webkit-scrollbar{display:none}

@@ -101,3 +101,113 @@ test('der Reiter „Einstellungen" ist Verwaltersache', () => {
   assert.match(core, /ntab-settings'\);\s*if\s*\(ns\)\s*ns\.style\.display\s*=\s*''/,
     'Niemand blendet den Reiter für Admins wieder ein — dann fehlt er auch dort.');
 });
+
+/**
+ * ── Nachtrag vom 17.10.: das Symbol, das zur Laufzeit verschwand ────────────
+ *
+ * Marcos Meldung, mit Bildschirmfoto: „Bitte bei Profil-Einstellungen auch
+ * noch ein Icon verwenden."
+ *
+ * Im Markup stand es längst:
+ *
+ *     <button … data-i18n="settings.group.profile">👤 Profil-Einstellungen</button>
+ *
+ * Nur zählt der Text im Markup nichts: `data-i18n` ERSETZT den Inhalt beim
+ * Übersetzen durch den Sprachtext, und `settings.group.profile` lautete
+ * schlicht „Profil-Einstellungen". Alle sechs Nachbareinträge tragen ihr
+ * Symbol IM Sprachtext ('🎟️ Gutscheine', '🔔 Preisalarme', …) — dieser eine
+ * nicht. Sichtbar war also nie, was dasteht.
+ *
+ * Dieselbe Falle wie bei `G('ubadge').textContent` (siehe
+ * test/benutzername-menueknopf.test.js): Ein Markup, das beim Laden richtig
+ * aussieht und beim ersten Zugriff überschrieben wird.
+ *
+ * i18n.test.js fängt das NICHT — es vergleicht Deutsch gegen Englisch, nicht
+ * Markup gegen Sprachtext. Beide Sprachen waren hier einträchtig symbollos.
+ *
+ * Gegenproben (durchgeführt, Ergebnisse abgeschrieben) — siehe unten an den
+ * Fällen selbst.
+ */
+
+/** Die Sprachtexte einer Datei als Map. */
+function texte(sprache) {
+  const roh = fs.readFileSync(path.join(ROOT, 'public', 'locales', sprache + '.js'), 'utf8');
+  const map = new Map();
+  for (const m of roh.matchAll(/^\s*'([^']+)':\s*'((?:[^'\\]|\\.)*)'/gm)) map.set(m[1], m[2]);
+  return map;
+}
+
+/** Schlüssel und Markup-Text der Menüeinträge, in der Reihenfolge des Menüs. */
+function eintragsTexte() {
+  const auf = HTML.indexOf('<div class="umenu-pop"');
+  const zu  = HTML.indexOf('</div>', auf);
+  assert.ok(auf > 0 && zu > auf, 'Die Menüklappe ist nicht mehr zu finden — umbenannt?');
+  return [...HTML.slice(auf, zu).matchAll(/data-i18n="([^"]+)">([^<]+)</g)]
+    .map(m => ({ schluessel: m[1], markup: m[2].trim() }));
+}
+
+test('jeder Menüeintrag trägt sein Symbol im SPRACHTEXT', () => {
+  const eintraege = eintragsTexte();
+  // Selbstbeweis: GEMESSEN sind es sieben. Findet die Ableitung nichts, wäre
+  // die Schleife darunter still grün.
+  assert.equal(eintraege.length, 7,
+    `${eintraege.length} Einträge abgeleitet statt sieben — greift die Ableitung noch?`);
+
+  // Ein Symbol ist hier: ein Zeichen jenseits von ASCII am Anfang des Textes.
+  // „Ü" aus „Übersicht" wäre eines — deshalb zusätzlich die Bedingung, dass
+  // ein Leerzeichen folgt und danach noch Text kommt.
+  const ohne = [];
+  for (const { schluessel } of eintraege) {
+    for (const sprache of ['de', 'en']) {
+      const wert = texte(sprache).get(schluessel);
+      assert.ok(wert, `${schluessel} fehlt in locales/${sprache}.js`);
+      if (!/^[^\u0000-\u007F]+️?\s+\S/u.test(wert)) ohne.push(`${sprache}:${schluessel} = "${wert}"`);
+    }
+  }
+  // Gegenprobe (durchgeführt): das 👤 wieder aus de.js entfernt → dieser Fall
+  // rot und nennt `de:settings.group.profile`.
+  assert.deepEqual(ohne, [],
+    'Diese Menüeinträge tragen kein Symbol im Sprachtext:\n  ' + ohne.join('\n  ') +
+    '\n\nDas Symbol im Markup zählt NICHT — `data-i18n` ersetzt den Inhalt ' +
+    'beim Übersetzen. Es gehört in locales/de.js und locales/en.js.');
+});
+
+test('das Markup eines Menüeintrags zeigt, was der Sprachtext sagt', () => {
+  // Die eigentliche Lehre aus dem Befund: Weichen Markup und Sprachtext
+  // voneinander ab, sieht man beim Entwickeln das eine und im Betrieb das
+  // andere. Geprüft wird gegen DEUTSCH — die Markup-Texte sind deutsch.
+  const de = texte('de');
+  const abweichend = [];
+  for (const { schluessel, markup } of eintragsTexte()) {
+    const wert = de.get(schluessel);
+    if (wert !== markup) abweichend.push(`${schluessel}: Markup "${markup}" ≠ Sprachtext "${wert}"`);
+  }
+  // Gegenprobe (durchgeführt): das 👤 nur im Markup gelassen und aus de.js
+  // genommen → dieser Fall rot mit genau dieser Zeile. Das ist der Zustand,
+  // den Marco im Bildschirmfoto gesehen hat.
+  assert.deepEqual(abweichend, [],
+    'Markup und Sprachtext laufen auseinander:\n  ' + abweichend.join('\n  ') +
+    '\n\nSichtbar ist der SPRACHTEXT. Der Text im Markup ist nur der Rückfall ' +
+    'für den Augenblick vor dem Übersetzen.');
+});
+
+test('die Bedienelemente der Kopfleiste sind gleich hoch', () => {
+  // Marcos Vorgabe: „Der Abmeldebutton sollte gleich gross wie die restlichen
+  // Buttons sein oben rechts (gleich hoch)." Nachgerechnet waren es drei
+  // Höhen: ≈31,5 px (Abmelden), 24 px (Namensknopf), ≈20 px (Admin).
+  const css = fs.readFileSync(path.join(ROOT, 'public', 'styles.css'), 'utf8');
+  assert.match(css, /\.umenu\{[^}]*--kopf-hoehe:\s*\d+px/,
+    'In `.umenu` steht keine gemeinsame Höhe mehr.');
+  for (const teil of ['.umenu .ubadge', '.umenu .abadge', '.umenu .btn']) {
+    assert.ok(css.includes(teil),
+      `${teil} bekommt die gemeinsame Höhe nicht mehr — dann steht dieses ` +
+      'Element wieder auf eigener Höhe in der Reihe.');
+  }
+  assert.match(css, /\.umenu \.ubadge,\s*\n\s*\.umenu \.abadge,\s*\n\s*\.umenu \.btn\{height:var\(--kopf-hoehe\)\}/,
+    'Die drei teilen sich die Höhe nicht mehr über dieselbe Regel.');
+  // Und NICHT an `.btn-sm`: die Klasse hängt an 28 Stellen in index.html und
+  // in fünf JS-Dateien. Eine Höhe dort verschöbe die halbe Oberfläche.
+  assert.doesNotMatch(css, /\.btn-sm\{[^}]*height:/,
+    '`.btn-sm` hat eine feste Höhe bekommen — diese Klasse trägt die halbe ' +
+    'Oberfläche, die Höhe gehört in die Kopfleiste.');
+});
