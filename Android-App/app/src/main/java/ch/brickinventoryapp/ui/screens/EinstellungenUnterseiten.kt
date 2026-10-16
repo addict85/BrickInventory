@@ -385,11 +385,29 @@ private fun PreisalarmeCard(
             val zeile = if (a.besitzt)
                 Modifier.fillMaxWidth().clickable { onSetClick(a.setNumber) }
             else Modifier.fillMaxWidth()
-            Column(zeile.padding(vertical = Abstaende.haar)) {
+            // ── Der Abstand INNERHALB eines Alarms (Marcos Befund vom 16.10.) ──
+            //
+            //   „Bei den Preisalarm kommt das label scharf noch immer direkt
+            //    am Feld an."
+            //
+            // Stimmt, und der Abstand, den SettingsCard seit dem Umbau
+            // zwischen seinen Kindern legt, kann hier nichts ausrichten: Ein
+            // Alarm ist EIN Kind — eine Spalte aus Kopfzeile und Zeile mit der
+            // Schwelle. Innerhalb davon stand gar nichts, und so klebte die
+            // Plakette „scharf" (letztes Stueck der Kopfzeile) unmittelbar auf
+            // dem Eingabefeld darunter.
+            //
+            // Der Abstand gehoert deshalb an BEIDE Spalten: an die aeussere
+            // zwischen Kopf und Schwelle, an die innere zwischen Nummer, Name
+            // und Plakette. Letzterer ist haarfein — die drei gehoeren
+            // zusammen und sollen eine Einheit bleiben, nur keine Masse.
+            Column(zeile.padding(vertical = Abstaende.winzig),
+                   verticalArrangement = Arrangement.spacedBy(Abstaende.klein)) {
                 Row(verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(Abstaende.klein)) {
                     FinanzBild(bildUrl, imageLoader, a.name)
-                    Column(Modifier.weight(1f)) {
+                    Column(Modifier.weight(1f),
+                           verticalArrangement = Arrangement.spacedBy(Abstaende.haar)) {
                         // Erst benennen, dann setzen: Eine Zeichenkette mit
                         // mehrzeiliger Interpolation ist gueltig und trotzdem
                         // die Zeile, die beim naechsten Anfassen kippt.

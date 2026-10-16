@@ -354,7 +354,12 @@ private fun GutscheinZeile(
 ) {
     var loeschFrage by rememberSaveable { mutableStateOf(false) }
 
-    Column(Modifier.fillMaxWidth().padding(vertical = Abstaende.klein)) {
+    // Dieselbe Luecke wie bei den Preisalarmen (Marcos Befund vom 16.10.):
+    // Eine Gutscheinzeile ist EIN Kind der Karte, und der Abstand, den die
+    // Karte zwischen ihren Kindern legt, wirkt darin nicht. Nummer, Betrag
+    // und PIN standen deshalb dicht aufeinander.
+    Column(Modifier.fillMaxWidth().padding(vertical = Abstaende.klein),
+           verticalArrangement = Arrangement.spacedBy(Abstaende.winzig)) {
         // ── Marcos Vorgabe ──────────────────────────────────────────────────
         //
         //   „Wenn ich in der Android-App den Gutscheincode oder den Pin
