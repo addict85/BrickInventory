@@ -129,9 +129,33 @@ test('der Reiter „Einstellungen" ist Verwaltersache', () => {
  * Fällen selbst.
  */
 
+/**
+ * Die Pfade AUSGESCHRIEBEN und nicht über `sprache + '.js'` zusammengesetzt.
+ *
+ * test/eigenbruecken.test.js zählt Pfade mit variablem Segment gegen eine
+ * Ratsche und sagt dazu: „Wo es geht, gehört der Pfad ausgeschrieben — ein
+ * variables Segment nimmt dieser Prüfung die Sicht." Die Ratsche von 74 auf
+ * 75 zu drehen wäre hier das Falsche: Sie rückt nach, wenn das Ausschreiben
+ * eine ZWEITE WAHRHEIT schüfe — bei Schleifen über die Migrationsdateien
+ * etwa, wo eine ausgeschriebene Liste beim nächsten Zuwachs veraltet.
+ *
+ * Hier gibt es genau zwei Sprachdateien, und `['de', 'en']` steht ohnehin
+ * schon im Fall darunter. Ausgeschrieben kostet nichts und bringt etwas:
+ * eigenbruecken prüft die beiden Pfade jetzt WIRKLICH, statt sie nur als
+ * uneinsehbar zu zählen.
+ *
+ * (Gemerkt hat das die Ratsche, nicht ich — sie schlug bei 75 an.)
+ */
+const SPRACHDATEI = {
+  de: path.join(ROOT, 'public', 'locales', 'de.js'),
+  en: path.join(ROOT, 'public', 'locales', 'en.js'),
+};
+
 /** Die Sprachtexte einer Datei als Map. */
 function texte(sprache) {
-  const roh = fs.readFileSync(path.join(ROOT, 'public', 'locales', sprache + '.js'), 'utf8');
+  const datei = SPRACHDATEI[sprache];
+  assert.ok(datei, `Keine Sprachdatei für "${sprache}" hinterlegt`);
+  const roh = fs.readFileSync(datei, 'utf8');
   const map = new Map();
   for (const m of roh.matchAll(/^\s*'([^']+)':\s*'((?:[^'\\]|\\.)*)'/gm)) map.set(m[1], m[2]);
   return map;
