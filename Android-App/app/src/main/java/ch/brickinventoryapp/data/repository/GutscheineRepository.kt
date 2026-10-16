@@ -49,14 +49,36 @@ class GutscheineRepository @Inject constructor(
     /**
      * Das Guthaben bei LEGO abfragen.
      *
-     * Kein Sonderweg fuer HTTP 429 (die Abfrage ist belegt) oder 502 (die
-     * Gegenseite antwortete nicht): safeCall holt aus dem Fehlerrumpf den Satz
-     * `error`, und der steht dort schon fertig und in der Sprache der Anfrage
-     * — samt Restzeit. Ihn hier noch einmal zusammenzusetzen hiesse, dieselbe
-     * Auskunft zweimal zu formulieren.
+     * ── Warum 429 hier umgebogen wird ──────────────────────────────────────
+     *
+     * Der Server laesst eine Abfrage je 30 Sekunden zu (ueber alle Benutzer)
+     * und antwortet sonst mit 429 — samt `grund` („abstand" oder
+     * „botschutz") und `wartenSek`. safeCall holt aus einem Fehlerrumpf nur
+     * `error`, also den Satz; die beiden Felder gingen verloren.
+     *
+     * Fuer den EINZELNEN Knopf waere das egal — dort wird der Satz gezeigt und
+     * fertig. Der Durchgang ueber ALLE Karten braucht aber die Zahl: Er wartet
+     * genau so lange, wie der Server sagt, und fragt dieselbe Karte dann noch
+     * einmal. Ohne `wartenSek` muesste er raten.
+     *
+     * Dieselbe Umbiegung wie bei `ausPdf` unten und aus demselben Grund: Der
+     * Transport hat geklappt, `success:false` im Rumpf sagt der Oberflaeche,
+     * woran sie ist — und die Transportbehandlung von safeCall (Zeitlimit,
+     * Abriss, 401) bleibt, wo sie ist.
+     *
+     * 502 (die Gegenseite antwortete nicht) bleibt ein Fehler: Daran ist
+     * nichts zu warten.
      */
-    suspend fun guthaben(id: Int): Result<GuthabenAntwort> =
-        safeCall { api.frageGuthabenAb(id) }
+    suspend fun guthaben(id: Int): Result<GuthabenAntwort> = safeCall {
+        val antwort = api.frageGuthabenAb(id)
+        if (antwort.code() == 429) {
+            val roh = antwort.errorBody()?.string()
+            val geparst = roh?.let {
+                runCatching { nachsichtigesJson.decodeFromString<GuthabenAntwort>(it) }.getOrNull()
+            }
+            if (geparst != null) retrofit2.Response.success(geparst) else antwort
+        } else antwort
+    }
 
     /**
      * Aus dem PDF anlegen — mit der Moeglichkeit, Werte von Hand beizusteuern.

@@ -192,6 +192,8 @@ fun SettingsScreen(
             },
             onGuthaben = { vm.frageGuthabenAb(it) },
             onExportieren = { vm.oeffneGutscheinExport() },
+            onGuthabenAlle = { vm.frageAlleGuthabenAb() },
+            onGuthabenAbbrechen = { vm.guthabenLaufAbbrechen() },
         )
 
         // Currency

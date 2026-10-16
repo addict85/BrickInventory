@@ -71,6 +71,10 @@ fun GutscheineCard(
     onGuthaben: (Int) -> Unit,
     /** Alle Gutscheine als EIN PDF — im Betrachter, nicht als Download. */
     onExportieren: () -> Unit,
+    /** Das Guthaben ALLER Karten abfragen, eine nach der anderen. */
+    onGuthabenAlle: () -> Unit,
+    /** Den laufenden Durchgang anhalten. */
+    onGuthabenAbbrechen: () -> Unit,
 ) {
     // Die gewaehlte Datei lebt nur, solange das Formular offen ist — sie
     // gehoert nicht in den geteilten Zustand, weil eine Uri eine Berechtigung
@@ -84,6 +88,60 @@ fun GutscheineCard(
         androidx.activity.result.contract.ActivityResultContracts.OpenDocument()
     ) { uri -> pdfUri = uri }
     SettingsCard(title = stringResource(R.string.vouchers_title), icon = Icons.Default.Redeem) {
+
+        // ── Guthaben aller Karten abfragen ────────────────────────────────
+        //
+        // Marcos Vorgabe: „Kannst du die Buttons für die abfrage des Wertes
+        // der Gutscheine auch in der Android-App einbauen?" Der Knopf je Karte
+        // steht in der Zeile selbst; dies ist der zweite.
+        //
+        // Der Fortschritt steht DANEBEN im Text: Eine Abfrage je 30 Sekunden
+        // (Marcos Grenze, ueber alle Benutzer) heisst bei vier Karten gut
+        // anderthalb Minuten. Ein Knopf, der so lange nur ausgegraut ist, sagt
+        // niemandem, ob noch etwas passiert.
+        //
+        // Und deshalb der Abbrechen-Knopf: So lange nur zusehen zu duerfen
+        // waere unhoeflich.
+        val lauf = zustand.guthabenLauf
+        Row(verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(Abstaende.klein),
+            modifier = Modifier.padding(bottom = Abstaende.klein)) {
+            OutlinedButton(
+                onClick = onGuthabenAlle,
+                enabled = lauf == null && zustand.gutscheine.any { !it.pin.isNullOrBlank() },
+            ) {
+                // Kreisel NEBEN der Beschriftung, nicht an ihrer Stelle:
+                // KnopfBreiteTest faengt das andere, und es ist auch das
+                // bessere Verhalten.
+                if (lauf != null) {
+                    CircularProgressIndicator(Modifier.size(16.dp), strokeWidth = 2.dp)
+                    Spacer(Modifier.width(Abstaende.winzig))
+                }
+                Text(stringResource(R.string.vouchers_balance_all))
+            }
+            if (lauf != null) {
+                TextButton(onClick = onGuthabenAbbrechen) {
+                    Text(stringResource(R.string.common_cancel))
+                }
+            }
+        }
+        if (lauf != null) {
+            // Zwei verschiedene Auskuenfte, und sie stehen nacheinander:
+            // welche Karte gerade dran ist — und, falls die Schranke bremst,
+            // wie lange es noch dauert.
+            Text(
+                if (lauf.wartenSek > 0) {
+                    stringResource(R.string.vouchers_balance_wait,
+                        lauf.wartenSek.toString(), lauf.nummer)
+                } else {
+                    stringResource(R.string.vouchers_balance_progress,
+                        (lauf.erledigt + 1).toString(), lauf.gesamt.toString(), lauf.nummer)
+                },
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.padding(bottom = Abstaende.klein),
+            )
+        }
 
         // ── Alle Gutscheine als EIN PDF ───────────────────────────────────
         //

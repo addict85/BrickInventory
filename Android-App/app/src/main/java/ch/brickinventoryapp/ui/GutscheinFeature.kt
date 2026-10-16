@@ -275,6 +275,130 @@ internal fun MainViewModel.frageGuthabenAb(id: Int) {
     }
 }
 
+/**
+ * Das Guthaben ALLER Karten abfragen — eine nach der anderen.
+ *
+ * ── Marcos Vorgabe ─────────────────────────────────────────────────────────
+ *
+ *   „Kannst du die Buttons für die abfrage des Wertes der Gutscheine auch in
+ *    der Android-App einbauen?"
+ *
+ * Der Knopf je Karte stand schon da; dies ist der zweite, den die Webapp
+ * hat — „Guthaben aller Karten abfragen".
+ *
+ * ── Warum hier eine Warteschleife steht und beim Einzelknopf nicht ─────────
+ *
+ * Der Server laesst hoechstens eine Abfrage je 30 Sekunden zu, ueber ALLE
+ * Benutzer (Marcos Vorgabe), und meldet eine Absage mit der Restzeit. Beim
+ * Einzelknopf wird die Absage einfach gezeigt — der Mensch hat gerade
+ * gedrueckt und kann selbst entscheiden. Hier nicht: „alle abfragen" heisst,
+ * dass nacheinander gefragt wird, und dazu gehoert das Warten. Die Grenze wird
+ * damit BEFOLGT, nicht umgangen — gewartet wird genau so lange, wie der Server
+ * sagt.
+ *
+ * Abgebrochen wird ueber den Job im ViewModel: Ein Durchgang ueber fuenf
+ * Karten dauert ueber zwei Minuten.
+ */
+internal fun MainViewModel.frageAlleGuthabenAb() {
+    // Zwei Durchgaenge nebeneinander waeren zwei Warteschlangen vor derselben
+    // Schranke — sie wuerden sich gegenseitig die Plaetze wegnehmen.
+    if (_gutscheinState.value.guthabenLauf != null) return
+    guthabenJob = viewModelScope.launch {
+        // Ohne PIN gibt es keine Antwort; das weiss schon der Server, aber ein
+        // Aufruf, der sicher abgewiesen wird, verbraucht trotzdem einen Platz.
+        val dran = _gutscheinState.value.gutscheine.filter { !it.pin.isNullOrBlank() }
+        if (dran.isEmpty()) {
+            _snackbar.value = text(R.string.vouchers_balance_keine)
+            return@launch
+        }
+        var fertig = 0
+        var fehler = 0
+        try {
+            for (g in dran) {
+                var erledigt = false
+                var versuch = 1
+                while (!erledigt && versuch <= ABSTAND_VERSUCHE) {
+                    _gutscheinState.update {
+                        it.copy(
+                            guthabenLaeuft = g.id,
+                            // Benannt und nicht nach Stellung: Vier Zahlen
+                            // hintereinander sind beim Lesen nicht zu
+                            // unterscheiden.
+                            guthabenLauf = GuthabenLauf(
+                                erledigt = fertig + fehler, gesamt = dran.size,
+                                nummer = g.number, wartenSek = 0),
+                        )
+                    }
+                    when (val r = repo.gutscheine.guthaben(g.id)) {
+                        is Result.Success -> {
+                            val d = r.data
+                            if (d.success) { fertig++; erledigt = true }
+                            // „abstand" ist keine Absage, sondern ein Termin:
+                            // Die Karte wird NICHT uebersprungen, es wird
+                            // gewartet und dieselbe noch einmal gefragt.
+                            else if (d.grund == "abstand" && (d.wartenSek ?: 0) > 0) {
+                                warteSichtbar(d.wartenSek ?: 0, g.number)
+                                versuch++
+                            } else {
+                                fehler++
+                                erledigt = true
+                                _snackbar.value = d.error ?: text(R.string.err_generic)
+                                // Bot-Schutz: HIER wird abgebrochen und nicht
+                                // nur diese Karte uebersprungen. Die uebrigen
+                                // liefen in dieselbe Wand, und Marcos Vorgabe
+                                // ist, dass dann „nicht mehr Aufrufe generiert
+                                // werden".
+                                if (d.grund == "botschutz") return@launch
+                            }
+                        }
+                        is Result.Error -> {
+                            fehler++
+                            erledigt = true
+                            _snackbar.value = meldungFuerSnackbar(r)
+                        }
+                    }
+                }
+                if (!erledigt) {
+                    fehler++
+                    _snackbar.value = text(R.string.vouchers_balance_belegt)
+                }
+            }
+        } finally {
+            // Auch beim Abbrechen: Der Zustand darf nicht mit laufendem
+            // Kreisel stehenbleiben. (Ein `finally` laeuft auch, wenn die
+            // Coroutine abgebrochen wird.)
+            _gutscheinState.update { it.copy(guthabenLaeuft = null, guthabenLauf = null) }
+            ladeGutscheine()
+            _snackbar.value = text(R.string.vouchers_balance_alle_fertig,
+                fertig.toString(), fehler.toString())
+        }
+    }
+}
+
+/** Den laufenden Durchgang anhalten. */
+internal fun MainViewModel.guthabenLaufAbbrechen() {
+    guthabenJob?.cancel()
+    guthabenJob = null
+}
+
+/**
+ * Sekunden abwarten und dabei herunterzaehlen.
+ *
+ * Die Karte steht im Text: Bei „alle abfragen" ist sonst nicht zu sehen,
+ * wofuer gewartet wird.
+ */
+private suspend fun MainViewModel.warteSichtbar(sekunden: Int, nummer: String) {
+    for (rest in sekunden downTo 1) {
+        _gutscheinState.update {
+            it.copy(guthabenLauf = it.guthabenLauf?.copy(wartenSek = rest, nummer = nummer))
+        }
+        kotlinx.coroutines.delay(1000)
+    }
+}
+
+/** Hoechstens so oft dieselbe Karte erneut versuchen, wenn die Schranke bremst. */
+private const val ABSTAND_VERSUCHE = 4
+
 internal fun MainViewModel.loescheGutschein(id: Int) {
     viewModelScope.launch {
         when (val r = repo.gutscheine.loeschen(id)) {

@@ -1000,6 +1000,26 @@ data class MeldungsZielUiState(
  * und soll genau das bleiben, was dort steht. Was die ANZEIGE gerade aufdeckt,
  * ist ein Zustand der Oberflaeche.
  */
+/**
+ * Der Stand eines Laufs ueber ALLE Karten.
+ *
+ * ── Warum das sichtbar sein muss ────────────────────────────────────────────
+ *
+ * Der Server erlaubt eine Abfrage je 30 Sekunden ueber alle Benutzer (Marcos
+ * Vorgabe). Vier Karten dauern also gut anderthalb Minuten. Ein Knopf, der so
+ * lange nur ausgegraut ist, sagt niemandem, ob noch etwas passiert — deshalb
+ * zaehlt der Lauf mit und nennt die Restzeit.
+ */
+data class GuthabenLauf(
+    /** Wie viele Karten schon durch sind (erfolgreich oder nicht). */
+    val erledigt: Int = 0,
+    val gesamt: Int = 0,
+    /** Die Karte, an der es gerade haengt. */
+    val nummer: String = "",
+    /** Sekunden bis zum naechsten Versuch, oder 0 waehrend der Abfrage. */
+    val wartenSek: Int = 0,
+)
+
 data class GutscheinUiState(
     val gutscheine: List<ch.brickinventoryapp.data.model.Gutschein> = emptyList(),
     val laedt: Boolean = false,
@@ -1050,6 +1070,15 @@ data class GutscheinUiState(
      * Abfrage (der Server erlaubt eine je 30 Sekunden).
      */
     val guthabenLaeuft: Int? = null,
+    /**
+     * Der Lauf ueber alle Karten, oder null.
+     *
+     * Getrennt von [guthabenLaeuft]: Das sagt, WELCHE Karte gerade dran ist
+     * (daran haengt der Kreisel in ihrer Zeile), dies sagt, dass ein ganzer
+     * Durchgang laeuft (daran haengen Fortschritt und Abbrechen-Knopf). Beides
+     * in ein Feld zu legen hiesse, aus zwei Fragen eine zu machen.
+     */
+    val guthabenLauf: GuthabenLauf? = null,
 )
 
 data class MerklisteUiState(

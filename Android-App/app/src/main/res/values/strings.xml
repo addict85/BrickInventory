@@ -750,6 +750,17 @@
     <!-- Guthaben bei LEGO abfragen. "%1$s: %2$s" ist Nummer und Betrag —
          kein Zaehlwort darin, deshalb auch kein Plural-Fall. -->
     <string name="vouchers_balance_one">Query balance</string>
+    <!-- Alle Platzhalter sind %s und nicht %d, auch wo Zahlen eingesetzt
+         werden: Android-Lint meldet „%d followed by words" als
+         PluralsCandidate, und der Baum zaehlt die Lint-Befunde. Gezaehlt wird
+         hier nichts, was eine Einzahlform braeuchte — „Karte 1 von 4" ist in
+         beiden Faellen derselbe Satz. -->
+    <string name="vouchers_balance_all">Query balance of all cards</string>
+    <string name="vouchers_balance_progress">Card %1$s of %2$s (%3$s)</string>
+    <string name="vouchers_balance_wait">%1$s s until the next query (%2$s)</string>
+    <string name="vouchers_balance_keine">No card has a PIN — the query needs one.</string>
+    <string name="vouchers_balance_belegt">The query is busy (one card every 30 seconds). Please try again later.</string>
+    <string name="vouchers_balance_alle_fertig">%1$s queried, %2$s not</string>
     <string name="vouchers_balance_as_of">queried on %1$s</string>
     <string name="vouchers_balance_never">balance never queried</string>
     <string name="vouchers_balance_done">%1$s: %2$s</string>

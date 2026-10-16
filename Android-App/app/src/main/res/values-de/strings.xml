@@ -736,6 +736,12 @@
     <!-- Guthaben bei LEGO abfragen. "%1$s: %2$s" ist Nummer und Betrag —
          kein Zaehlwort darin, deshalb auch kein Plural-Fall. -->
     <string name="vouchers_balance_one">Guthaben abfragen</string>
+    <string name="vouchers_balance_all">Guthaben aller Karten abfragen</string>
+    <string name="vouchers_balance_progress">Karte %1$s von %2$s (%3$s)</string>
+    <string name="vouchers_balance_wait">noch %1$s s bis zur nächsten Abfrage (%2$s)</string>
+    <string name="vouchers_balance_keine">Keine Karte mit PIN — für die Abfrage braucht es die PIN.</string>
+    <string name="vouchers_balance_belegt">Die Abfrage ist belegt (eine Karte alle 30 Sekunden). Bitte später erneut.</string>
+    <string name="vouchers_balance_alle_fertig">%1$s abgefragt, %2$s nicht</string>
     <string name="vouchers_balance_as_of">abgefragt am %1$s</string>
     <string name="vouchers_balance_never">Guthaben noch nie abgefragt</string>
     <string name="vouchers_balance_done">%1$s: %2$s</string>

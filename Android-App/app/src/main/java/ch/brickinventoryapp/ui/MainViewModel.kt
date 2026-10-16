@@ -231,6 +231,16 @@ class MainViewModel @Inject constructor(
     internal val _gutscheinState = MutableStateFlow(GutscheinUiState())
     val gutscheinState = _gutscheinState.asStateFlow()
 
+    /**
+     * Der laufende Durchgang „Guthaben aller Karten abfragen".
+     *
+     * Hier und nicht in GutscheinFeature.kt, weil eine Erweiterungsfunktion
+     * nichts halten kann. Er wird gebraucht, um den Lauf ABZUBRECHEN: Bei
+     * einer Abfrage je 30 Sekunden dauert ein Durchgang Minuten, und so lange
+     * nur zusehen zu duerfen waere unhoeflich.
+     */
+    internal var guthabenJob: kotlinx.coroutines.Job? = null
+
     // Ziel einer angetippten Preisalarm-Meldung. Begruendung an
     // MeldungsZielUiState (UiState.kt).
     internal val _meldungsZiel = MutableStateFlow(MeldungsZielUiState())
