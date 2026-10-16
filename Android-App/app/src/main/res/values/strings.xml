@@ -763,13 +763,5 @@
     <string name="vouchers_balance_never">balance never queried</string>
     <string name="vouchers_balance_done">%1$s: %2$s</string>
     <string name="vouchers_balance_currency">Currency changed to %1$s.</string>
-    <string name="settings_group_manage">Manage</string>
     <string name="settings_group_display">Display &amp; prices</string>
-    <string name="settings_row_vouchers">Cards, balance and PDF export</string>
-    <string name="settings_row_alerts">Thresholds and notifications</string>
-    <string name="settings_row_storage">Shelves and the preselection when adding</string>
-    <string name="settings_row_household">Link accounts into one household</string>
-    <string name="settings_row_csv">Sets, parts, minifigures, wanted list, price alerts</string>
-    <string name="settings_row_account">Profile, password and signed-in devices</string>
-    <string name="settings_row_logout">End this session on this device</string>
 </resources>

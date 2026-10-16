@@ -75,6 +75,3 @@ sealed class Screen(val route: String) {
  * statt sechs einzelner Rueckrufe haelt die Signatur von SettingsScreen
  * schmal (hoechstens sechs Parameter, ScreenViewModelWiringTest).
  */
-enum class EinstellungsBereich {
-    GUTSCHEINE, PREISALARME, LAGERORTE, HAUSHALT, CSV_IMPORT, KONTO
-}

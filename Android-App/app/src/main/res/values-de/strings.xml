@@ -744,13 +744,5 @@
     <string name="vouchers_balance_never">Guthaben noch nie abgefragt</string>
     <string name="vouchers_balance_done">%1$s: %2$s</string>
     <string name="vouchers_balance_currency">Währung auf %1$s geändert.</string>
-    <string name="settings_group_manage">Verwalten</string>
     <string name="settings_group_display">Anzeige &amp; Preise</string>
-    <string name="settings_row_vouchers">Karten, Guthaben und PDF-Export</string>
-    <string name="settings_row_alerts">Schwellen und Meldungen</string>
-    <string name="settings_row_storage">Regale und Vorauswahl beim Erfassen</string>
-    <string name="settings_row_household">Konten zu einem Haushalt verknüpfen</string>
-    <string name="settings_row_csv">Sets, Teile, Minifiguren, Merkliste, Preisalarme</string>
-    <string name="settings_row_account">Profil, Passwort und angemeldete Geräte</string>
-    <string name="settings_row_logout">Diese Sitzung auf diesem Gerät beenden</string>
 </resources>

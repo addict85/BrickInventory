@@ -209,28 +209,12 @@ fun NavGraphBuilder.toolsGraph(
                     vm = vm,
                     onLogout = { vm.logout(); navController.navigate(Screen.Login.route) { popUpTo(0) { inclusive = true } } },
                     onServerWechseln = { navController.navigate(Screen.Setup.route) },
-                    // Welche Route hinter welchem Bereich liegt, entscheidet
-                    // DER GRAPH — er ist der einzige mit einem NavController.
-                    // Ausgeschrieben und nicht zusammengesetzt: So sieht
-                    // ErreichbareRoutenTest jeden Weg (er sucht nach
-                    // `navigate(Screen.X.route)`), und ein Bildschirm, den
-                    // niemand mehr oeffnet, faellt auf.
-                    onUnterseite = { bereich ->
-                        when (bereich) {
-                            EinstellungsBereich.GUTSCHEINE ->
-                                navController.navigate(Screen.Gutscheine.route)
-                            EinstellungsBereich.PREISALARME ->
-                                navController.navigate(Screen.Preisalarme.route)
-                            EinstellungsBereich.LAGERORTE ->
-                                navController.navigate(Screen.Lagerorte.route)
-                            EinstellungsBereich.HAUSHALT ->
-                                navController.navigate(Screen.Haushalt.route)
-                            EinstellungsBereich.CSV_IMPORT ->
-                                navController.navigate(Screen.CsvImport.route)
-                            EinstellungsBereich.KONTO ->
-                                navController.navigate(Screen.Konto.route)
-                        }
-                    },
+                    // Die sechs Rubriken fuehren seit dem 17.10. nicht mehr
+                    // von hier aus weiter: Sie stehen in der Konto-Klappe
+                    // (MainScaffold.kt), eine Ebene weiter aussen. Mit ihnen
+                    // sind `onUnterseite` und EinstellungsBereich entfallen —
+                    // ein Parameter, den niemand mehr fuellt, waere sonst der
+                    // naechste tote Pfad.
                     scrollState = settingsScrollState,
                 )
             }
