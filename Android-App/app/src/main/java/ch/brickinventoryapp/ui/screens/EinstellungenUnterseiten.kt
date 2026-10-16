@@ -133,7 +133,14 @@ fun GutscheineUnterseite(
     snackbarHostState: SnackbarHostState,
     onZurueck: () -> Unit,
 ) {
-    val zustand by vm.gutscheinState.collectAsStateWithLifecycle()
+    // `gutscheinZustand` und nicht `zustand`: UiStateFieldsTest bestimmt den
+    // Typ eines Namens je DATEI, und in dieser steht weiter unten
+    // GeraeteCard(zustand: GeraeteUiState). Mit dem kurzen Namen hielt die
+    // Pruefung jedes `zustand.geraete` dort fuer einen Feldzugriff auf
+    // GutscheinUiState und meldete fuenf Felder, die es „nicht gibt".
+    // GEMESSEN, nicht vermutet: genau daran war der erste CI-Lauf dieses
+    // Umbaus rot (534 Tests, einer rot).
+    val gutscheinZustand by vm.gutscheinState.collectAsStateWithLifecycle()
     // Die Zwischenablage kommt aus Compose und nicht aus dem ViewModel: Sie
     // ist an die Komposition gebunden. Die Rueckmeldung laeuft ueber den
     // Snackbar des ViewModels, damit sie dort steht, wo alle anderen Meldungen
@@ -144,7 +151,7 @@ fun GutscheineUnterseite(
     LaunchedEffect(Unit) { vm.ladeGutscheine() }
     Unterseite(stringResource(R.string.vouchers_title), snackbarHostState, onZurueck) {
         GutscheineCard(
-            zustand = zustand,
+            zustand = gutscheinZustand,
             onFeld = { n, p, b, w -> vm.setzeGutscheinFeld(n, p, b, w) },
             onPinSchalten = { vm.schalteGutscheinPin(it) },
             onBearbeiten = { vm.bearbeiteGutschein(it) },
