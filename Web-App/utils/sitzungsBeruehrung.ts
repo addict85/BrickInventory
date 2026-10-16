@@ -44,8 +44,39 @@
  * 20 Anfragen ohne Cookie.
  */
 
-/** Frist zwischen zwei geschriebenen Ablaufzeiten derselben Sitzung. */
-export const BERUEHREN_MS = 5 * 60 * 1000;
+import { SITZUNG_LEERLAUF_MS } from './sitzungsFrist';
+
+/**
+ * Frist zwischen zwei geschriebenen Ablaufzeiten derselben Sitzung.
+ *
+ * ── Warum das nicht einfach „fünf Minuten" sein darf ─────────────────────────
+ *
+ * Seit die Sitzung eine LEERLAUF-Frist hat (utils/sitzungsFrist.ts, Marcos
+ * Vorgabe „nach ein paar Stunden Inaktivität ausloggen"), hängen die beiden
+ * Zahlen zusammen, und zwar scharf: Gedrosselt wird das NACHFÜHREN des
+ * Ablaufs. Ist die Drosselung länger als die Frist selbst, wird der Ablauf
+ * nie rechtzeitig nachgeführt — dann fällt jemand MITTEN IM BETRIEB aus der
+ * Sitzung. Also genau das Gegenteil dessen, was die Frist bewirken soll:
+ * nicht der untätige Browser würde abgemeldet, sondern der arbeitende.
+ *
+ * Bei der Vorgabe von vier Stunden fällt das nicht auf — fünf Minuten sind
+ * ein Achtzigstel davon. Es fällt auf, sobald jemand `SESSION_IDLE_MINUTES=2`
+ * setzt, um die Sache auszuprobieren: Mit einer starren Frist von fünf
+ * Minuten wäre die Sitzung dann nach zwei Minuten tot, Betrieb hin oder her,
+ * und es sähe nach einem Fehler in der Anmeldung aus.
+ *
+ * Deshalb ein Viertel der Frist als Obergrenze. Bei vier Stunden bleibt es
+ * damit bei genau den fünf Minuten wie bisher (eine Stunde ist mehr, es
+ * gewinnt das Minimum); bei zwei Minuten sind es dreissig Sekunden, und die
+ * Sitzung hält, solange jemand arbeitet.
+ *
+ * Die Rechnung steht HIER und nicht am Aufruf in server.ts: Dort stand sie
+ * als zweites Argument, und test/sitzung-beruehrung-db.test.js verlangt
+ * wörtlich `drossleBeruehren(sitzungsSpeicher)` — ein Aufruf mit Argument
+ * hätte diese Prüfung rot gemacht. Das war der richtige Hinweis: Die Regel
+ * gehört zur Berührung, nicht zu ihrem Aufrufer.
+ */
+export const BERUEHREN_MS = Math.min(5 * 60 * 1000, Math.floor(SITZUNG_LEERLAUF_MS / 4));
 
 /**
  * Deckel gegen unbegrenztes Wachstum. Beim Überlaufen wird geleert statt

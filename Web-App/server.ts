@@ -124,6 +124,7 @@ import { setzeTeilBildLokal, setzeFigurBildLokal } from './utils/katalogPflege';
 import { getGlobalSetting, deleteGlobalSetting } from './utils/settings';
 import { HAUSHALT_KANAL, leereHaushaltCache } from './utils/household';
 import { drossleBeruehren } from './utils/sitzungsBeruehrung';
+import { SITZUNG_LEERLAUF_SEK } from './utils/sitzungsFrist';
 import { antwortAufDateiFehler, liefereDatei } from './utils/dateiAusliefern';
 
 const WORKERS = parseInt(process.env.WEB_WORKERS || '0') || Math.max(2, os.cpus().length);
@@ -404,6 +405,34 @@ const sitzungsSpeicher = new pgSession({
   tableName: 'user_sessions',
   createTableIfMissing: false,  // table created in initSchema to avoid race condition
   pruneSessionInterval: 60 * 15,
+  // ── Die Leerlauf-Frist der Webapp-Sitzung ──────────────────────────────
+  //
+  // Marcos Vorgabe: „webapp-session sollten sich nach ein paar Stunden
+  // inaktivität bereits ausloggen."
+  //
+  // Bis hierher stand hier KEIN `ttl`. Dann gilt die Voreinstellung von
+  // connect-pg-simple — ein Tag —, und die war nie eine Entscheidung,
+  // sondern das, was übrig bleibt, weil das Cookie unten kein `maxAge`
+  // trägt. Die Zahl und ihre Begründung stehen jetzt in
+  // utils/sitzungsFrist.ts.
+  //
+  // Durchgesetzt wird die Frist an der Zeile in `user_sessions`: Ihr
+  // `expire` rückt bei Betrieb nach (gedrosselt, siehe unten), und eine
+  // abgelaufene Zeile liefert der Speicher beim Lesen nicht mehr aus. Daran
+  // kommt keine Anfrage vorbei. Die Webapp sieht dann einen 401 und zeigt
+  // die Anmeldemaske (js/01-core.js: `meldeSitzungBeendet`).
+  //
+  // Das Cookie bleibt ABSICHTLICH ohne `maxAge`. Sonst würde es zu einem
+  // dauerhaften Cookie, das einen Neustart des Browsers überlebt — die
+  // Frist hätte dann eine Eigenschaft hinzugefügt und eine weggenommen.
+  // So gilt beides: Schluss beim Schliessen des Browsers UND Schluss nach
+  // der Leerlauf-Frist.
+  //
+  // Die Android-App zahlt das nicht: Sie kommt mit Bearer-Token und ohne
+  // Cookie, dann fasst express-session den Speicher gar nicht erst an
+  // (nachgemessen in utils/sitzungsBeruehrung.ts: 0 Abfragen bei 20
+  // Anfragen ohne Cookie). Ihre eigene Frist ist TOKEN_IDLE_DAYS.
+  ttl: SITZUNG_LEERLAUF_SEK,
   errorLog: (err) => {
     if (!err.message?.includes('timeout') && !err.message?.includes('terminated')) {
       console.error('[session-store]', err.message);
