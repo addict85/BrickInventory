@@ -187,7 +187,7 @@ class StringResourceParityTest {
             "main_menu_monitoring", "monitoring_cache_subsets", "monitoring_theme",
             "monitoring_theme_noppe", "monitoring_title", "monitoring_vorwaermen_roaming",
             "nav_minifigs_short", "nav_monitoring", "partslist_ok", "partslist_rb_prefix",
-            "partslist_scan", "settings_current_summary", "setup_build",
+            "partslist_scan", "setup_build",
             "setup_url_placeholder",
             // PIN ist in beiden Sprachen PIN — ein Begriff, kein Satz.
             "vouchers_pin",

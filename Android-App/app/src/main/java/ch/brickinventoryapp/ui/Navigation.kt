@@ -25,6 +25,25 @@ sealed class Screen(val route: String) {
     object Minifigs : Screen("minifigs")
     object PartsList : Screen("partslist")
     object Settings : Screen("settings")
+
+    // ── Die Unterseiten der Einstellungen (Marcos Befund vom 16.10.) ────────
+    //
+    // „Generell wirkt dieser Dialog überladen und nicht liebevoll gestaltet.
+    //  […] Evtl. Auch Elemente aus den Einstellungen in eine eigene Sicht
+    //  verschieben?"
+    //
+    // Sieben Rubriken sind umgezogen; die Einstellungen zeigen nur noch eine
+    // Liste dorthin. Eigene Routen und KEINE Route mit Parameter
+    // („einstellungen/{bereich}"): ErreichbareRoutenTest sucht nach einem
+    // ausgeschriebenen `navigate(Screen.X.route)`, und ein Bildschirm, zu dem
+    // nur ein zusammengesetzter String fuehrt, waere fuer die Pruefung
+    // unerreichbar — also genau das, was sie finden soll.
+    object Gutscheine : Screen("einstellungen_gutscheine")
+    object Preisalarme : Screen("einstellungen_preisalarme")
+    object Lagerorte : Screen("einstellungen_lagerorte")
+    object Haushalt : Screen("einstellungen_haushalt")
+    object CsvImport : Screen("einstellungen_csv")
+    object Konto : Screen("einstellungen_konto")
     object BarcodeScanner : Screen("barcode_scanner")
     object Comparison : Screen("comparison")
     object Monitoring : Screen("monitoring")
@@ -46,4 +65,16 @@ sealed class Screen(val route: String) {
         fun createRoute(url: String, title: String) =
             "pdf_viewer/${encode(url)}/${encode(title)}"
     }
+}
+
+/**
+ * Welche Unterseite der Einstellungen gemeint ist.
+ *
+ * Der Bildschirm nennt den BEREICH, der Graph kennt die Route — er ist der
+ * einzige mit einem NavController. Ein einzelner Rueckruf mit diesem Wert
+ * statt sechs einzelner Rueckrufe haelt die Signatur von SettingsScreen
+ * schmal (hoechstens sechs Parameter, ScreenViewModelWiringTest).
+ */
+enum class EinstellungsBereich {
+    GUTSCHEINE, PREISALARME, LAGERORTE, HAUSHALT, CSV_IMPORT, KONTO
 }

@@ -115,13 +115,18 @@ class AbstandsskalaTest {
         // mit Namen; die drei neuen Stellen zaehlen damit nicht mit, und eine
         // alte faellt weg.
         //
+        // 178 -> 176: Der Umbau der Einstellungen (16.10.) hat zwei blanke
+        // Zahlen mitgenommen — die 10 dp zwischen den vierzehn Karten (jetzt
+        // Abstaende.gross zwischen vieren) und den Innenabstand des Kastens
+        // „Aktuelle Einstellungen", der ersatzlos entfallen ist.
+        //
         // Diese Zahl darf SINKEN, wenn jemand bewusst entscheidet, eine dieser
         // Gruppen auf die Skala zu ziehen. Sie darf nicht steigen: Ein neuer
         // Bildschirm hat keinen Grund, einen Abstand zu erfinden, den es noch
         // nicht gibt.
         val ist = zaehle(abstandsMuster)
-        assert(ist <= 178) {
-            "$ist Abstaende stehen noch als Zahl da, gemessen waren es 178. " +
+        assert(ist <= 176) {
+            "$ist Abstaende stehen noch als Zahl da, gemessen waren es 176. " +
                 "Ein neuer Wert ausserhalb von Abstaende gehoert begruendet — oder " +
                 "in die Skala. Sinkt die Zahl, gehoert sie hier nachgezogen."
         }

@@ -88,8 +88,12 @@ class AlarmUebersichtTest {
     }
 
     @Test
+    // Seit dem 16.10. liegt die Rubrik auf ihrer eigenen Seite
+    // (EinstellungenUnterseiten.kt) — die Einstellungen fuehren mit einer
+    // Zeile dorthin. Die Zusicherung ist dieselbe geblieben: Die Rubrik haengt
+    // irgendwo, und sie holt ihre Daten selbst.
     fun `die Rubrik steht in den Einstellungen und laedt sich selbst`() {
-        val s = quelle("ui/screens/SettingsScreen.kt")
+        val s = quelle("ui/screens/EinstellungenUnterseiten.kt")
         // Nur der Anfang des Aufrufs, nicht die ganze Zeile: Die Rubrik hat
         // inzwischen vier Parameter (Bild, Serveradresse, Klick), und eine
         // Regel, die an der Anzahl haengt, prueft nicht mehr das, was sie
@@ -147,7 +151,7 @@ class AlarmUebersichtTest {
      */
     @Test
     fun `die Zeile zeigt ein Bild und fuehrt in die Detailansicht`() {
-        val s = quelle("ui/screens/SettingsScreen.kt")
+        val s = quelle("ui/screens/EinstellungenUnterseiten.kt")
         assert(s.contains("FinanzBild(")) {
             "Die Zeile hat kein Vorschaubild — oder ein eigenes statt des der Finanzen."
         }
@@ -247,7 +251,7 @@ class AlarmUebersichtTest {
      */
     @Test
     fun `vor dem Loeschen wird gefragt`() {
-        val s = quelle("ui/screens/SettingsScreen.kt")
+        val s = quelle("ui/screens/EinstellungenUnterseiten.kt")
         assert(s.contains("R.string.alerts_confirm_delete")) {
             "Es gibt keine Rueckfrage vor dem Loeschen eines Preisalarms."
         }
@@ -271,7 +275,7 @@ class AlarmUebersichtTest {
      */
     @Test
     fun `der Alarmzustand steht als Plakette da`() {
-        val s = quelle("ui/screens/SettingsScreen.kt")
+        val s = quelle("ui/screens/EinstellungenUnterseiten.kt")
         assert(s.contains("fun AlarmZustandPlakette(")) { "Es gibt keine Plakette." }
         assert(s.contains("AlarmZustandPlakette(a.ausgeloest)")) {
             "Die Plakette wird nicht benutzt — sie steht da und niemand zeigt sie."

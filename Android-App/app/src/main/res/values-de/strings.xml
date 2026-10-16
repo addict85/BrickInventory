@@ -14,8 +14,6 @@
     <string name="settings_price_basis">Preisgrundlage für BrickLink-Bewertungen</string>
     <string name="settings_condition_new">Neu</string>
     <string name="settings_condition_used">Gebraucht</string>
-    <string name="settings_current_settings">Aktuelle Einstellungen</string>
-    <string name="settings_current_summary">%1$s · %2$s</string>
     <string name="settings_save">Speichern</string>
     <string name="settings_logout">Abmelden</string>
     <string name="settings_language">Sprache</string>
@@ -695,7 +693,7 @@
     <string name="wanted_threshold">Schwelle (optional)</string>
     <string name="detail_compare">📊 Preisvergleich</string>
     <string name="wanted_since">Auf der Liste seit</string>
-    <string name="alerts_group">🔔 Preisalarme</string>
+    <string name="alerts_group">Preisalarme</string>
     <string name="alerts_intro">Alle Schwellen, die du gesetzt hast. Der Wert lässt sich hier ändern, der Alarm entfernen. Gemeldet wird einmal je Übergang — erst wenn der Preis wieder auf die andere Seite wechselt, kann derselbe Alarm erneut auslösen.</string>
     <string name="alerts_empty">Noch kein Preisalarm gesetzt. Du setzt einen in der Detailansicht eines Sets.</string>
     <string name="alerts_below">fällt unter</string>
@@ -746,4 +744,12 @@
     <string name="vouchers_balance_never">Guthaben noch nie abgefragt</string>
     <string name="vouchers_balance_done">%1$s: %2$s</string>
     <string name="vouchers_balance_currency">Währung auf %1$s geändert.</string>
+    <string name="settings_group_manage">Verwalten</string>
+    <string name="settings_group_display">Anzeige &amp; Preise</string>
+    <string name="settings_row_vouchers">Karten, Guthaben und PDF-Export</string>
+    <string name="settings_row_alerts">Schwellen und Meldungen</string>
+    <string name="settings_row_storage">Regale und Vorauswahl beim Erfassen</string>
+    <string name="settings_row_household">Konten zu einem Haushalt verknüpfen</string>
+    <string name="settings_row_csv">Sets, Teile, Minifiguren, Merkliste, Preisalarme</string>
+    <string name="settings_row_account">Profil, Passwort und angemeldete Geräte</string>
 </resources>

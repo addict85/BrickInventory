@@ -195,43 +195,13 @@ fun NavGraphBuilder.toolsGraph(
             // Beim Öffnen der Einstellungen laden: Der Zustand ändert sich
             // ausserhalb dieser Ansicht kaum, und ein Dauerabo dafür wäre
             // Aufwand ohne Nutzen.
-            LaunchedEffect(state.serverUrl) { if (state.serverUrl.isNotBlank()) vm.loadHouseholdStatus() }
+            //
+            // Hier stand bis zum 16.10. auch das Laden von Haushalt,
+            // Gutscheinen, Profil und Geraeten. Es ist mit den Rubriken
+            // umgezogen: Jede Unterseite holt, was SIE zeigt, und zwar wenn
+            // man sie oeffnet. Wer die Sprache umstellt, braucht keine
+            // Gutscheinliste.
             LaunchedEffect(state.serverUrl) { if (state.serverUrl.isNotBlank()) vm.loadSettings() }
-            // Dieselbe Stelle wie die beiden darueber: Gutscheine werden beim
-            // Oeffnen der Einstellungen geholt, nicht im Dauerabo. Sie aendern
-            // sich ausserhalb dieser Ansicht nicht.
-            LaunchedEffect(state.serverUrl) { if (state.serverUrl.isNotBlank()) vm.ladeGutscheine() }
-            // Ein angetipptes Gutschein-PDF: Das Ziel steht im Zustand, die
-            // Navigation macht der Graph — SettingsScreen darf dafuer keinen
-            // siebten Parameter bekommen (ScreenViewModelWiringTest). Derselbe
-            // Weg wie beim Meldungsziel in AppNavigation.kt.
-            //
-            // Der Betrachter ist der vorhandene PdfViewerScreen: Er laedt die
-            // Adresse mit dem angemeldeten Client der App und kann drucken und
-            // speichern.
-            val gutscheine by vm.gutscheinState.collectAsStateWithLifecycle()
-            LaunchedEffect(gutscheine.pdfZiel) {
-                val id = gutscheine.pdfZiel ?: return@LaunchedEffect
-                val nummer = gutscheine.gutscheine.find { it.id == id }?.number.orEmpty()
-                navController.navigate(Screen.PdfViewer.createRoute(
-                    ch.brickinventoryapp.ui.gutscheinPdfAdresse(state.serverUrl, id), nummer))
-                vm.gutscheinPdfQuittieren()
-            }
-            // Dasselbe fuer den Export ALLER Gutscheine (Marcos Vorgabe vom
-            // 15.10.: „Das erzeugte PDF soll analog den andere PDFs angezeigt
-            // werden"). Derselbe Betrachter, dieselbe Mechanik — nur die
-            // Adresse ist eine andere.
-            //
-            // Der Titel wird AUSSERHALB des LaunchedEffect gelesen:
-            // stringResource ist @Composable und in einem Effekt nicht
-            // aufrufbar.
-            val exportTitel = stringResource(R.string.vouchers_export)
-            LaunchedEffect(gutscheine.exportZeigen) {
-                if (!gutscheine.exportZeigen) return@LaunchedEffect
-                navController.navigate(Screen.PdfViewer.createRoute(
-                    ch.brickinventoryapp.ui.gutscheinExportAdresse(state.serverUrl), exportTitel))
-                vm.gutscheinExportQuittieren()
-            }
             ReiterGeruest(stringResource(R.string.nav_settings), vm, navController, bottomNavItems, snackbarHostState) {
                 ch.brickinventoryapp.ui.ScrollPositionKeeper(
                     "settings", settingsScrollState, vm.scrollMemory)
@@ -239,15 +209,101 @@ fun NavGraphBuilder.toolsGraph(
                     vm = vm,
                     onLogout = { vm.logout(); navController.navigate(Screen.Login.route) { popUpTo(0) { inclusive = true } } },
                     onServerWechseln = { navController.navigate(Screen.Setup.route) },
-                    imageLoader = imageLoader,
-                    // Dieselbe Detailansicht wie aus Galerie und Finanzen — ein
-                    // zweiter Weg dorthin waere ein zweiter Ort fuer dieselben
-                    // Regeln.
-                    onSetClick = { navController.navigate(Screen.SetDetail.createRoute(it)) },
+                    // Welche Route hinter welchem Bereich liegt, entscheidet
+                    // DER GRAPH — er ist der einzige mit einem NavController.
+                    // Ausgeschrieben und nicht zusammengesetzt: So sieht
+                    // ErreichbareRoutenTest jeden Weg (er sucht nach
+                    // `navigate(Screen.X.route)`), und ein Bildschirm, den
+                    // niemand mehr oeffnet, faellt auf.
+                    onUnterseite = { bereich ->
+                        when (bereich) {
+                            EinstellungsBereich.GUTSCHEINE ->
+                                navController.navigate(Screen.Gutscheine.route)
+                            EinstellungsBereich.PREISALARME ->
+                                navController.navigate(Screen.Preisalarme.route)
+                            EinstellungsBereich.LAGERORTE ->
+                                navController.navigate(Screen.Lagerorte.route)
+                            EinstellungsBereich.HAUSHALT ->
+                                navController.navigate(Screen.Haushalt.route)
+                            EinstellungsBereich.CSV_IMPORT ->
+                                navController.navigate(Screen.CsvImport.route)
+                            EinstellungsBereich.KONTO ->
+                                navController.navigate(Screen.Konto.route)
+                        }
+                    },
                     scrollState = settingsScrollState,
                 )
             }
         }
+
+        // ── Die Unterseiten der Einstellungen ───────────────────────────────
+        //
+        // Marcos Befund vom 16.10.: „Generell wirkt dieser Dialog überladen
+        // […] Evtl. Auch Elemente aus den Einstellungen in eine eigene Sicht
+        // verschieben?" — sechs Rubriken, sechs Seiten.
+        //
+        // OHNE ReiterGeruest: Eine Unterseite traegt einen Zurueck-Pfeil, keine
+        // untere Leiste. Sie bringt ihren Snackbar-Halter selbst mit (siehe
+        // EinstellungenUnterseiten.kt); sonst gingen die Meldungen des
+        // ViewModels dort verloren.
+        composable(Screen.Gutscheine.route) {
+            val state by vm.state.collectAsStateWithLifecycle()
+            val gutscheine by vm.gutscheinState.collectAsStateWithLifecycle()
+            // Ein angetipptes Gutschein-PDF: Das Ziel steht im Zustand, die
+            // Navigation macht der Graph. Der Betrachter ist der vorhandene
+            // PdfViewerScreen — er laedt die Adresse mit dem angemeldeten
+            // Client der App und kann drucken und speichern.
+            LaunchedEffect(gutscheine.pdfZiel) {
+                val id = gutscheine.pdfZiel ?: return@LaunchedEffect
+                val nummer = gutscheine.gutscheine.find { it.id == id }?.number.orEmpty()
+                navController.navigate(Screen.PdfViewer.createRoute(
+                    ch.brickinventoryapp.ui.gutscheinPdfAdresse(state.serverUrl, id), nummer))
+                vm.gutscheinPdfQuittieren()
+            }
+            // Dasselbe fuer den Export ALLER Gutscheine. Der Titel wird
+            // AUSSERHALB des LaunchedEffect gelesen: stringResource ist
+            // @Composable und in einem Effekt nicht aufrufbar.
+            val exportTitel = stringResource(R.string.vouchers_export)
+            LaunchedEffect(gutscheine.exportZeigen) {
+                if (!gutscheine.exportZeigen) return@LaunchedEffect
+                navController.navigate(Screen.PdfViewer.createRoute(
+                    ch.brickinventoryapp.ui.gutscheinExportAdresse(state.serverUrl), exportTitel))
+                vm.gutscheinExportQuittieren()
+            }
+            GutscheineUnterseite(vm, snackbarHostState) { navController.popBackStack() }
+        }
+
+        composable(Screen.Preisalarme.route) {
+            val state by vm.state.collectAsStateWithLifecycle()
+            PreisalarmeUnterseite(
+                vm = vm,
+                imageLoader = imageLoader,
+                serverUrl = state.serverUrl,
+                snackbarHostState = snackbarHostState,
+                // Dieselbe Detailansicht wie aus Galerie und Finanzen — ein
+                // zweiter Weg dorthin waere ein zweiter Ort fuer dieselben
+                // Regeln.
+                onSetClick = { navController.navigate(Screen.SetDetail.createRoute(it)) },
+                onZurueck = { navController.popBackStack() },
+            )
+        }
+
+        composable(Screen.Lagerorte.route) {
+            LagerorteUnterseite(vm, snackbarHostState) { navController.popBackStack() }
+        }
+
+        composable(Screen.Haushalt.route) {
+            HaushaltUnterseite(vm, snackbarHostState) { navController.popBackStack() }
+        }
+
+        composable(Screen.CsvImport.route) {
+            CsvImportUnterseite(vm, snackbarHostState) { navController.popBackStack() }
+        }
+
+        composable(Screen.Konto.route) {
+            KontoUnterseite(vm, snackbarHostState) { navController.popBackStack() }
+        }
+
         composable(Screen.Monitoring.route) {
             ReiterGeruest(stringResource(R.string.nav_monitoring), vm, navController, bottomNavItems, snackbarHostState) {
                 MonitoringScreen(vm)

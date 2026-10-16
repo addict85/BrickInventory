@@ -160,28 +160,35 @@ class GutscheineContractTest {
     }
 
     /**
-     * Die Gutscheinkarte steht als ERSTE in den Einstellungen.
+     * Die Gutscheine stehen als ERSTES in den Einstellungen.
      *
      * Marco: „Kannst du in der Android-App auch noch gleich die Gutscheine in
      * den Einstellungen ganz an den Anfang verschieben?"
      *
      * Eine Reihenfolge ist das, was beim naechsten Einbau still verrutscht:
-     * Wer eine neue Karte hinzufuegt, setzt sie oben hin, weil dort Platz ist
-     * — und niemand merkt es, bis Marco wieder rollen muss.
+     * Wer etwas Neues hinzufuegt, setzt es oben hin, weil dort Platz ist — und
+     * niemand merkt es, bis Marco wieder rollen muss.
      *
-     * Geprueft wird der ERSTE Kartenaufruf im Rumpf und nicht bloss, DASS die
-     * Karte vorkommt: Eine Pruefung auf Vorkommen waere auch an der alten
-     * Stelle hinter dem Konto gruen gewesen und haette damit nichts von dem
-     * geprueft, was hier verlangt war.
+     * ── Was sich am 16.10. geaendert hat ────────────────────────────────────
+     *
+     * Bis dahin war es die erste KARTE einer sehr langen Rolle. Seit Marcos
+     * Befund („Generell wirkt dieser Dialog überladen […] Evtl. Auch Elemente
+     * aus den Einstellungen in eine eigene Sicht verschieben?") stehen die
+     * Rubriken als Liste da, und die Gutscheine sind deren erster Eintrag.
+     *
+     * Die Zusicherung ist damit dieselbe geblieben — „ohne Rollen erreichbar"
+     * —, nur ihr Gegenstand ist jetzt die erste ZEILE statt der ersten Karte.
+     * Geprueft wird weiterhin die Reihenfolge und nicht bloss das Vorkommen:
+     * Eine Pruefung auf Vorkommen waere auch an der letzten Stelle gruen.
      */
     @Test
-    fun `die Gutscheinkarte steht ganz oben in den Einstellungen`() {
+    fun `die Gutscheine stehen ganz oben in den Einstellungen`() {
         val rumpf = code(lies("src/main/java/ch/brickinventoryapp/ui/screens/SettingsScreen.kt"))
             .substringAfter(".verticalScroll(scrollState)")
-        val erste = Regex("""\b(\w*Card)\(""").find(rumpf)?.groupValues?.get(1)
-        assert(erste == "GutscheineCard") {
-            "Die erste Karte in den Einstellungen ist $erste statt GutscheineCard — " +
-                "dann muss Marco fuer seine Gutscheine wieder rollen."
+        val erste = Regex("""EinstellungsBereich\.(\w+)""").find(rumpf)?.groupValues?.get(1)
+        assert(erste == "GUTSCHEINE") {
+            "Der erste Eintrag in den Einstellungen fuehrt zu $erste statt zu den " +
+                "GUTSCHEINEN — dann muss Marco fuer seine Karten wieder suchen."
         }
     }
 
