@@ -58,7 +58,11 @@
   }
   header .logo span,
   .brand-sub          { display: none; }      /* Wortmarke kürzen */
-  .ubadge             { max-width: 9ch; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  /* Gekürzt wird der NAME, nicht der Knopf: Seit der Namenszug der
+     Menüknopf ist (17.10.), hängen die drei Striche im selben Element.
+     Stand die Breitengrenze weiter am Knopf, schnitt sie auf dem Telefon als
+     Erstes die Striche ab — also genau das, was der Knopf anzeigen soll. */
+  .ubadge-name        { max-width: 9ch; }
 
   /* Die Statistikzahlen in der Kopfzeile brauchen den Platz nicht */
   .hstats             { display: none; }
