@@ -9,7 +9,7 @@ import { SCOPE_VIEWS, addScopeParam, scopeMode, scopeQuery, setScopeMode,
 import { setScrollLabel } from './15-scrollbar.js';
 import { loadParts } from './03-parts.js';
 import { loadFinance } from './04-finance.js';
-import { loadApiLimits, loadCacheStats, loadCacheTtl, loadProfile, loadRateLimitStats, loadSettings, loadTokens, ladeAlarmUebersicht, ladeLagerortVerwaltung } from './05-settings.js';
+import { loadApiLimits, loadCacheStats, loadCacheTtl, loadHousehold, loadProfile, loadRateLimitStats, loadSettings, loadTokens, ladeAlarmUebersicht, ladeLagerortVerwaltung } from './05-settings.js';
 import { loadBrickColors, loadManualParts, loadMinifigs } from './06-minifigs.js';
 import { ladeGutscheine } from './17-gutscheine.js';
 import { _lastImportAt, confirmDelete, enrichGalleryWithPrices, jobPollTimer, ladeLagerorte, lagerortBlock, openModal, pollJobStatus, set_jobPollTimer, set_lastImportAt } from './07-admin.js';
@@ -71,7 +71,11 @@ export function bindTabs(){
       }
       if(tab==='finance')      { loadFinance(); } // loadFinance already fetches parts+minifigs valuation in parallel
       if(tab==='partslist')    { /* session-only, no server load needed */ }
-      if(tab==='settings')     { loadSettings(); loadProfile(); ladeGutscheine(); loadTokens(); ladeAlarmUebersicht(); ladeLagerortVerwaltung(); if(ME?.isAdmin) loadApiLimits(); }
+      // Der Reiter traegt seit dem 16.10. nur noch die Verwalter-Rubriken; was
+      // frueher hier alles mitgeladen wurde, holt jetzt die jeweilige Sicht
+      // beim Oeffnen (siehe oeffneSicht unten). Wer die API-Schluessel
+      // nachsieht, braucht keine Gutscheinliste.
+      if(tab==='settings')     { loadSettings(); if(ME?.isAdmin) loadApiLimits(); }
       if(tab==='monitor')      { loadMonitor(); loadCacheStats(); loadRateLimitStats(); loadCacheTtl(); if(jobPollTimer) clearTimeout(jobPollTimer); pollJobStatus(); }
       if(tab!=='monitor' && _monitorTimer) { clearInterval(_monitorTimer); set_monitorTimer(null); if(jobPollTimer){clearTimeout(jobPollTimer);set_jobPollTimer(null);} }
     });
@@ -87,6 +91,82 @@ export function bindTabs(){
 // gegenseitigen Importen ist das Übersetzungsobjekt aus i18n.js dann noch
 // nicht initialisiert, und t() wirft.
 
+
+// ── DIE SICHTEN HINTER DEM BENUTZERMENÜ ───────────────
+//
+// ── Marcos Vorgabe vom 16.10. ──────────────────────────────────────────────
+//
+//   „Kannst du in der Webapp die Punkte analog der Android-App in
+//    verschiedenen Sichten aufteilen? Gerne den Reiter Einstellungen mit den
+//    Punkten belassen die nur der Administrator setzen kann, und die
+//    restlichen Seiten oben Rechts hinter dem Benutzernamen als Aufklappbares
+//    Menu mit 3 - anzeigen."
+//
+// Die sieben Sichten sind gewöhnliche `.tab`-Flächen wie die der Reiter —
+// nur ohne Eintrag in der Leiste. Damit gelten für sie dieselben Regeln
+// (eine ist sichtbar, der Rest nicht), und bindTabs() oben schaltet sie
+// genauso wieder ab, wenn jemand einen Reiter anklickt.
+//
+// ── Warum jede Sicht ihr eigenes Laden mitbringt ───────────────────────────
+//
+// Vorher holte der Einstellungs-Reiter bei JEDEM Öffnen alles: Profil,
+// Gutscheine, Geräte, Alarme, Lagerorte. Das waren fünf Abfragen für eine
+// Seite, von der man meist nur eine Rubrik sehen wollte. Jetzt holt jede
+// Sicht, was sie zeigt — dieselbe Regel wie in der Android-App.
+const SICHTEN = {
+  profil:     () => { loadSettings(); loadProfile(); },
+  gutscheine: () => ladeGutscheine(),
+  alarme:     () => ladeAlarmUebersicht(),
+  lagerorte:  () => ladeLagerortVerwaltung(),
+  haushalt:   () => loadHousehold(),
+  daten:      () => {},
+  app:        () => loadTokens(),
+};
+
+/** Eine Sicht aus dem Menü öffnen. */
+export function oeffneSicht(name){
+  if(!SICHTEN[name]) return;
+  const flaeche = G('tab-'+name);
+  if(!flaeche) return;
+  document.querySelectorAll('.ntab').forEach(x=>x.classList.remove('active'));
+  document.querySelectorAll('.tab').forEach(x=>x.classList.remove('active'));
+  flaeche.classList.add('active');
+  menueSchliessen();
+  // Nach oben: Die Sicht öffnet sich sonst an der Stelle, an der die vorige
+  // gerollt war, und man sieht die Mitte einer fremden Seite.
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+  SICHTEN[name]();
+}
+
+function menueSchliessen(){
+  const pop = G('umenu-pop');
+  if(pop) pop.style.display = 'none';
+  const knopf = G('btn-umenu');
+  if(knopf) knopf.setAttribute('aria-expanded','false');
+}
+
+/** Das Menü auf- und zuklappen. */
+export function benutzerMenue(){
+  const pop = G('umenu-pop');
+  if(!pop) return;
+  const offen = pop.style.display !== 'none';
+  if(offen){ menueSchliessen(); return; }
+  pop.style.display = 'block';
+  G('btn-umenu')?.setAttribute('aria-expanded','true');
+}
+
+// Zuklappen, wenn jemand daneben tippt oder Escape drückt. Beides gehört zu
+// einem Menü wie der Knopf selbst — ein Aufklapper, der nur über denselben
+// Knopf wieder zugeht, fühlt sich klemmend an.
+document.addEventListener('click', (ev) => {
+  const pop = G('umenu-pop');
+  if(!pop || pop.style.display === 'none') return;
+  if(ev.target.closest?.('.umenu-wrap')) return;
+  menueSchliessen();
+});
+document.addEventListener('keydown', (ev) => {
+  if(ev.key === 'Escape') menueSchliessen();
+});
 
 // ── STATS ─────────────────────────────────────────────
 export async function loadStats(){
@@ -1279,7 +1359,15 @@ async function redownloadInstr(sn){ toast(tRaw('instr.loading'),'info'); const d
 
 
 // ── Handler beim Dispatcher anmelden (siehe js/00-registry.js) ──────────────
+// `benutzerMenue` und `oeffneSicht` sind das Menü hinter dem Benutzernamen.
+// Der Hinweis steht VOR dem Aufruf und nicht zwischen den Namen: Die Prüfung
+// in test/bundle-smoke.test.js liest die Schlüssel, indem sie den Inhalt an
+// Kommas trennt — ein Kommentar vor dem ersten Namen wandert dabei IN den
+// Namen, und der Handler gilt als nicht angemeldet. GEMESSEN: genau so ist
+// der erste Lauf dieses Umbaus rot geworden.
 registerActions({
+  benutzerMenue,
+  oeffneSicht,
   onScopeChange,
   onStorageChange,
   autosaveSet,

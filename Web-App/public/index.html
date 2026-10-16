@@ -240,6 +240,42 @@
       <div class="umenu">
         <span class="ubadge" id="ubadge">—</span>
         <span class="abadge" id="abadge" style="display:none" data-i18n="users.admin_badge">Admin</span>
+
+        <!-- ── DAS MENÜ HINTER DEM BENUTZERNAMEN ──────────────────────────────
+
+             Marcos Vorgabe vom 16.10.: „die restlichen Seiten oben Rechts
+             hinter dem Benutzernamen als Aufklappbares Menu mit 3 - anzeigen."
+
+             Dahinter liegen die sieben Seiten, die vorher alle untereinander
+             im Reiter „Einstellungen" standen. Der Reiter selbst trägt nur
+             noch, was ein Verwalter setzt.
+
+             `aria-expanded` wird beim Auf- und Zuklappen mitgeführt (siehe
+             benutzerMenue in js/02-gallery.js): Ein Bildschirmleser sagt sonst
+             nicht, ob das Menü offen ist. Und `aria-label` am Knopf, weil „☰"
+             vorgelesen nichts ergibt. -->
+        <div class="umenu-wrap">
+          <button class="btn bs btn-sm" id="btn-umenu" data-click="benutzerMenue"
+                  aria-haspopup="true" aria-expanded="false" aria-controls="umenu-pop"
+                  aria-label="Menü" data-i18n="menu.open" data-i18n-attr="aria-label">☰</button>
+          <div class="umenu-pop" id="umenu-pop" role="menu" style="display:none">
+            <button class="umenu-item" role="menuitem" data-click="oeffneSicht" data-arg="profil"
+                    data-i18n="settings.group.profile">👤 Profil-Einstellungen</button>
+            <button class="umenu-item" role="menuitem" data-click="oeffneSicht" data-arg="gutscheine"
+                    data-i18n="vouchers.group">🎟️ Gutscheine</button>
+            <button class="umenu-item" role="menuitem" data-click="oeffneSicht" data-arg="alarme"
+                    data-i18n="alerts.group">🔔 Preisalarme</button>
+            <button class="umenu-item" role="menuitem" data-click="oeffneSicht" data-arg="lagerorte"
+                    data-i18n="storage.group">📦 Lagerorte</button>
+            <button class="umenu-item" role="menuitem" data-click="oeffneSicht" data-arg="haushalt"
+                    data-i18n="household.group">👪 Haushalt</button>
+            <button class="umenu-item" role="menuitem" data-click="oeffneSicht" data-arg="daten"
+                    data-i18n="settings.data_export">📦 Daten exportieren</button>
+            <button class="umenu-item" role="menuitem" data-click="oeffneSicht" data-arg="app"
+                    data-i18n="menu.app">📱 Android-App</button>
+          </div>
+        </div>
+
         <button class="btn bs btn-sm" id="btn-logout" data-i18n="settings.logout">Abmelden</button>
       </div>
     </div>
@@ -253,7 +289,7 @@
     <div class="ntab" data-tab="finance" data-i18n-tab="nav.finance">💰 <span class="tab-label">Finanzen</span></div>
     <div class="ntab" data-tab="wanted" data-i18n-tab="nav.wanted">⭐ <span class="tab-label">Merkliste</span></div>
     <div class="ntab" data-tab="catalog" data-i18n-tab="nav.catalog">📚 <span class="tab-label">Katalog</span></div>
-    <div class="ntab" data-tab="settings" data-i18n-tab="nav.settings">⚙️ <span class="tab-label">Einstellungen</span></div>
+    <div class="ntab" id="ntab-settings" data-tab="settings" data-i18n-tab="nav.settings" style="display:none">⚙️ <span class="tab-label">Einstellungen</span></div>
     <div class="ntab" id="ntab-monitor" data-tab="monitor" data-i18n-tab="nav.monitoring" style="display:none">📊 <span class="tab-label">Monitoring</span></div>
   </nav>
 
@@ -748,11 +784,154 @@
     </div>
 
     <!-- ══ EINSTELLUNGEN ══ -->
+    <!-- ══ EINSTELLUNGEN — NUR, WAS EIN VERWALTER SETZT ══
+
+         Marcos Vorgabe vom 16.10.: „Gerne den Reiter Einstellungen mit den
+         Punkten belassen die nur der Administrator setzen kann, und die
+         restlichen Seiten oben Rechts hinter dem Benutzernamen als
+         Aufklappbares Menu mit 3 - anzeigen."
+
+         Hier standen neun Rubriken untereinander, acht davon gehen jeden
+         Benutzer an. Geblieben sind die beiden, die nur ein Verwalter
+         ueberhaupt bedienen kann: die globalen Einstellungen (API-Zugaenge,
+         Benutzerverwaltung, SMTP) und der Konfigurations-Export. Der Reiter
+         selbst ist fuer alle anderen ausgeblendet — ein Reiter, der leer
+         waere, ist schlimmer als keiner. -->
     <div class="tab" id="tab-settings">
       <div class="ph"><h2 class="ptitle" data-tab-title="settings"><span class="ptitle-icon"></span><span data-i18n="settings.title">Einstellungen</span></h2></div>
 
+
+      <!-- ── GLOBALE EINSTELLUNGEN (nur Admins) ─────────────────────────── -->
+      <div class="sgroup-label" id="global-settings-label" data-i18n="settings.global_title" style="display:none">🌐 Globale Einstellungen <span style="font-size:.72rem;color:var(--a500);font-weight:400">(Admin)</span></div>
+      <div class="sgrid2" id="global-settings-grid" style="display:none">
+        <div class="ssec">
+          <div class="stit" data-i18n="settings.general_title">⚙️ Einstellungen</div>
+          <div class="sform">
+            <div class="fg"><label for="mon-app-theme" data-i18n="settings.app_theme">App-Design</label>
+              <select id="mon-app-theme">
+                <option value="classic" data-i18n="settings.theme_classic">Klassisch</option>
+                <option value="brick" data-i18n="settings.theme_brick">Stein (Blau)</option>
+                <option value="werkbank" data-i18n="settings.theme_werkbank">Werkbank (dunkel)</option>
+                <option value="farbfaecher" data-i18n="settings.theme_farbfaecher">Farbfächer</option>
+                <option value="noppe" data-i18n="settings.theme_noppe">Noppe (poppig)</option>
+                <option value="hochglanz" data-i18n="settings.theme_hochglanz">Hochglanz</option>
+              </select>
+            </div>
+            <div style="font-size:.75rem;color:var(--mut);margin-top:-4px" data-i18n="settings.app_theme_hint">Gilt global für alle Benutzer (Web &amp; App).</div>
+            <button class="btn bp" id="btn-save-theme" data-i18n="settings.save">Speichern</button>
+          </div>
+        </div>
+        <div class="ssec">
+          <div class="stit">🔑 BrickLink API <span class="ao" id="bl-ao" data-i18n="settings.admins_only">⚠️ Nur Admins</span></div>
+          <div class="sform">
+            <div class="fg"><label for="bl-ck">Consumer Key</label><input type="text" id="bl-ck" autocomplete="off" /></div>
+            <div class="fg"><label for="bl-cs">Consumer Secret</label><input type="password" id="bl-cs" autocomplete="off" /></div>
+            <div class="fg"><label for="bl-tok">Token Value</label><input type="text" id="bl-tok" autocomplete="off" /></div>
+            <div class="fg"><label for="bl-ts">Token Secret</label><input type="password" id="bl-ts" autocomplete="off" /></div>
+            <div class="fg"><label for="lim-bl"><span data-i18n="settings.max_calls">Max. Aufrufe pro Tag</span> <span style="font-size:.72rem;color:var(--mut)" data-i18n="settings.default_n" data-i18n-vars='{"n":"4000"}'>(Standard: 4000)</span></label><input inputmode="numeric" type="number" id="lim-bl" min="1" max="100000" value="4000" style="max-width:160px" /></div>
+            <button class="btn bp" id="btn-sav-bl" data-i18n="settings.save_key">🔑 Speichern</button>
+          </div>
+        </div>
+        <div class="ssec">
+          <div class="stit">🔶 Rebrickable API <span class="ao" id="rb-ao" data-i18n="settings.admins_only">⚠️ Nur Admins</span></div>
+          <div class="sform">
+            <div class="ibox" style="margin-bottom:4px"><a href="https://rebrickable.com/api/" target="_blank" rel="noopener noreferrer">rebrickable.com → API → Generate Key</a><br><span style="font-size:.78rem" data-i18n="settings.rebrickable_hint">Set-Infos, Teile &amp; Bilder</span></div>
+            <div class="fg"><label for="rb-key">Rebrickable API Key</label><input type="text" id="rb-key" autocomplete="off" /></div>
+            <div class="fg"><label for="lim-rb"><span data-i18n="settings.max_calls">Max. Aufrufe pro Tag</span> <span style="font-size:.72rem;color:var(--mut)" data-i18n="settings.default_n" data-i18n-vars='{"n":"25000"}'>(Standard: 25000)</span></label><input inputmode="numeric" type="number" id="lim-rb" min="1" max="100000" value="25000" style="max-width:160px" /></div>
+            <button class="btn bp" id="btn-sav-rb" data-i18n="settings.save_key">🔑 Speichern</button>
+          </div>
+        </div>
+        <div class="ssec">
+          <div class="stit">📖 Brickset API <span class="ao" id="bs-ao" data-i18n="settings.admins_only">⚠️ Nur Admins</span></div>
+          <div class="sform">
+            <div class="ibox" style="margin-bottom:4px"><a href="https://brickset.com/tools/webservices/requestkey" target="_blank" rel="noopener noreferrer"><span data-i18n="settings.brickset_link">brickset.com → Tools → API Key anfordern</span></a><br><span style="font-size:.78rem" data-i18n="settings.brickset_hint">Anleitungen, Fallback Set-Infos</span></div>
+            <div class="fg"><label for="bs-key">Brickset API Key</label><input type="text" id="bs-key" autocomplete="off" /></div>
+            <div class="fg"><label for="lim-bs"><span data-i18n="settings.max_calls">Max. Aufrufe pro Tag</span> <span style="font-size:.72rem;color:var(--mut)" data-i18n="settings.default_n" data-i18n-vars='{"n":"100"}'>(Standard: 100)</span></label><input inputmode="numeric" type="number" id="lim-bs" min="1" max="100000" value="100" style="max-width:160px" /></div>
+            <button class="btn bp" id="btn-sav-bs" data-i18n="settings.save_key">🔑 Speichern</button>
+          </div>
+        </div>
+        <div class="ssec full" id="usermgmt" style="display:none">
+          <div class="stit">👥 <span data-i18n="settings.users_title">Benutzerverwaltung</span> <span style="color:var(--a500)" data-i18n="settings.users_admin_badge">(Admin)</span></div>
+          <div style="display:flex;align-items:center;justify-content:space-between;padding:.65rem .9rem;background:var(--s50);border:1px solid var(--bdr);border-radius:var(--rad);margin-bottom:1rem">
+            <div>
+              <!-- Umschliessendes Label (die Checkbox liegt darin) — kein for= nötig. -->
+                <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:.875rem">
+                <input type="checkbox" id="reg-enabled" aria-label="Registrierung erlauben" data-i18n="settings.registration_label" data-i18n-attr="aria-label" style="width:auto" data-change="saveRegEnabled" />
+                <span data-i18n="settings.public_reg">Öffentliche Registrierung erlauben</span>
+              </label>
+              <div style="font-size:.75rem;color:var(--mut);margin-left:24px" data-i18n="settings.public_reg.hint">Wenn deaktiviert, können nur Admins neue Benutzer anlegen.</div>
+            </div>
+          </div>
+          <div id="users-tbl" style="margin-bottom:1.25rem"></div>
+          <div style="border-top:1px solid var(--bdr);padding-top:1.1rem">
+            <div class="ctitle" data-i18n="settings.users_new">Neuen Benutzer erstellen</div>
+            <!-- Formular wie bei den Anmeldefeldern; display:contents haelt die
+                 Zeile (.frow) unveraendert. -->
+            <form style="display:contents" data-submit="btn-cu">
+            <div class="frow">
+              <div class="fg"><label for="nu-n" data-i18n="settings.users_username">Benutzername</label><input type="text" id="nu-n" /></div>
+              <div class="fg"><label for="nu-p" data-i18n="settings.users_password">Passwort</label><input type="password" id="nu-p" /></div>
+              <div class="fg" style="max-width:130px;justify-content:flex-end">
+                <!-- Umschliessendes Label: die Checkbox liegt darin, ein for= wäre falsch
+                     (und zeigte hier versehentlich auf ein fremdes Feld). -->
+                <label style="display:flex;align-items:center;gap:6px;cursor:pointer;margin-bottom:9px"><input type="checkbox" id="nu-a" style="width:auto" /> Admin</label>
+              </div>
+              <button type="button" class="btn bp" id="btn-cu" data-i18n="settings.users_create">➕ Erstellen</button>
+            </div>
+            </form>
+          </div>
+        </div>
+        <div class="ssec full">
+          <div class="stit">✉️ E-Mail / SMTP <span class="ao" style="display:none" data-i18n="settings.admins_only">⚠️ Nur Admins</span></div>
+          <div class="sform">
+            <div class="ibox" style="margin-bottom:.75rem" data-i18n="settings.smtp.hint">Für Registrierungsbestätigungen und Passwort-Rücksetzungen. Ohne SMTP-Konfiguration werden Links in der Server-Konsole ausgegeben.</div>
+            <div style="display:grid;grid-template-columns:1fr 120px;gap:10px">
+              <div class="fg"><label for="smtp-host">SMTP Host</label><input type="text" id="smtp-host" placeholder="mail.example.com" /></div>
+              <div class="fg"><label for="smtp-port">Port</label><input inputmode="numeric" type="number" id="smtp-port" placeholder="587" /></div>
+            </div>
+            <div class="fg"><label for="smtp-user" data-i18n="settings.smtp.user">Benutzername</label><input type="text" id="smtp-user" autocomplete="off" /></div>
+            <div class="fg"><label for="smtp-pass" data-i18n="settings.smtp.pass">Passwort</label><input type="password" id="smtp-pass" autocomplete="off" /></div>
+            <div class="fg"><label for="smtp-from" data-i18n="settings.smtp.from">Absender (Von)</label><input type="text" id="smtp-from" placeholder="BrickInventory Manager &lt;noreply@example.com&gt;" /></div>
+            <div class="fg"><label style="display:flex;align-items:center;gap:8px;cursor:pointer"><input type="checkbox" id="smtp-secure" aria-label="SMTP-Verschlüsselung" data-i18n="settings.smtp.secure_label" data-i18n-attr="aria-label" style="width:auto" /> TLS/SSL (Port 465)</label></div>
+            <div class="fg"><label style="display:flex;align-items:center;gap:8px;cursor:pointer"><input type="checkbox" id="smtp-insecure" aria-label="Zertifikat des Mailservers nicht prüfen" data-i18n="settings.smtp.insecure_tls" data-i18n-attr="aria-label" style="width:auto" /> <span data-i18n="settings.smtp.insecure_tls">Zertifikat nicht prüfen (selbst signiert)</span></label></div>
+            <div style="display:flex;gap:8px;flex-wrap:wrap">
+              <button class="btn bp" id="btn-sav-smtp" data-i18n="settings.smtp.save">💾 SMTP speichern</button>
+            </div>
+            <div style="display:flex;gap:8px;align-items:flex-end;flex-wrap:wrap;margin-top:.5rem">
+              <div class="fg" style="max-width:240px;margin:0"><label for="smtp-test-email" data-i18n="settings.smtp.test_to">Test-E-Mail senden an</label><input type="email" id="smtp-test-email" placeholder="deine@email.com" /></div>
+              <button class="btn bs" id="btn-test-smtp" style="margin-bottom:1px" data-i18n="smtp.test_btn">🔌 Verbindung testen</button>
+            </div>
+            <div id="smtp-test-result" style="display:none;font-size:.82rem;margin-top:.5rem;padding:.5rem .75rem;border-radius:6px"></div>
+          </div>
+        </div>
+
+
+      </div>
+
+      <!-- Konfiguration: stand bis zum 16.10. mitten in „Daten exportieren".
+           Dort war sie der einzige Admin-Teil zwischen lauter Knoepfen fuer
+           jeden — und wanderte deshalb beim Aufteilen hierher. -->
+      <div class="sgroup-label" data-i18n="settings.group_config">🔧 Konfiguration</div>
+      <div class="ssec full">
+        <div style="border-top:1px solid var(--bdr);padding-top:1.1rem">
+            <!-- Konfiguration-Export/-Import: nur für Admins sichtbar -->
+            <div class="admin-only" style="display:none">
+              <p style="font-size:.82rem;color:var(--mut);margin:0 0 .5rem 0" data-i18n="settings.cfg_hint">API-Keys und Einstellungen als JSON exportieren/importieren.</p>
+              <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-bottom:1rem">
+                <button class="btn bs" id="btn-cfg-export" data-i18n="settings.cfg_export">📥 Konfiguration exportieren</button>
+                <label for="mon-cache-ttl" class="btn bs" style="cursor:pointer"><span data-i18n="settings.cfg_import">📤 Konfiguration importieren</span><input type="file" id="cfg-import-file" accept=".json" style="display:none" data-change="importConfig" /></label>
+                <span id="cfg-import-status" style="font-size:.8rem;color:var(--mut)"></span>
+              </div>
+            </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ══ PROFIL (Menue) ══ -->
+    <div class="tab" id="tab-profil">
+      <div class="ph"><h2 class="ptitle"><span class="ptitle-icon"></span><span data-i18n="settings.group.profile">👤 Profil-Einstellungen</span></h2></div>
+
       <!-- ── PROFIL-EINSTELLUNGEN ─────────────────────────────────────────── -->
-      <div class="sgroup-label" data-i18n="settings.group.profile">👤 Profil-Einstellungen</div>
 
       <div class="ssec" style="margin-bottom:1.25rem" id="profile-settings-card">
         <div class="sform">
@@ -824,6 +1003,19 @@
         </div>
       </div>
 
+
+      <!-- Gefahrenzone — für alle Benutzer sichtbar -->
+      <div class="sgroup-label" style="color:var(--r500)" data-i18n="settings.danger_zone">⚠️ Gefahrenzone</div>
+      <div class="ssec" style="border:1px solid var(--r200);border-radius:var(--rad);padding:1rem;background:var(--r50,#fff5f5)">
+        <p style="font-size:.82rem;color:var(--mut);margin-bottom:.75rem" data-i18n="settings.danger.hint">Diese Aktionen können nicht rückgängig gemacht werden.</p>
+        <button class="btn bd" id="btn-dall" data-i18n="settings.delete_all_btn">🔥 Alle meine Sets löschen</button>
+      </div>
+    </div>
+
+    <!-- ══ GUTSCHEINE (Menue) ══ -->
+    <div class="tab" id="tab-gutscheine">
+      <div class="ph"><h2 class="ptitle"><span class="ptitle-icon"></span><span data-i18n="vouchers.group">🎟️ Gutscheine</span></h2></div>
+
       <!-- ── GUTSCHEINE ───────────────────────────────────────────────────── -->
       <!--
         Marcos Vorgabe: „Im Eigenen Profil sollen Lego-Gutscheine mit
@@ -833,7 +1025,6 @@
         Deshalb hier, direkt unter den Profil-Einstellungen, und nicht in
         einem eigenen Reiter: Es gehört zu dem, was einem selbst gehört.
       -->
-      <div class="sgroup-label" data-i18n="vouchers.group">🎟️ Gutscheine</div>
 
       <div class="ssec" style="margin-bottom:1.25rem" id="vouchers-card">
         <div class="sform">
@@ -979,6 +1170,11 @@
           </div>
         </div>
       </div>
+    </div>
+
+    <!-- ══ PREISALARME (Menue) ══ -->
+    <div class="tab" id="tab-alarme">
+      <div class="ph"><h2 class="ptitle"><span class="ptitle-icon"></span><span data-i18n="alerts.group">🔔 Preisalarme</span></h2></div>
 
       <!-- ── PREISALARME: ALLE AUF EINEN BLICK ───────────────────────────── -->
       <!--
@@ -987,7 +1183,6 @@
         schon gefunden hatte. Diese Rubrik ist der Ort, an dem sie zusammen
         stehen, sich ändern und abstellen lassen.
       -->
-      <div class="sgroup-label" data-i18n="alerts.group">🔔 Preisalarme</div>
 
       <div class="ssec" style="margin-bottom:1.25rem" id="alerts-card">
         <div class="sform">
@@ -1015,9 +1210,13 @@
           </div>
         </div>
       </div>
+    </div>
+
+    <!-- ══ LAGERORTE (Menue) ══ -->
+    <div class="tab" id="tab-lagerorte">
+      <div class="ph"><h2 class="ptitle"><span class="ptitle-icon"></span><span data-i18n="storage.group">📦 Lagerorte</span></h2></div>
 
       <!-- ── LAGERORTE: DER VORRAT, AUS DEM GEWÄHLT WIRD ─────────────────── -->
-      <div class="sgroup-label" data-i18n="storage.group">📦 Lagerorte</div>
 
       <div class="ssec" style="margin-bottom:1.25rem" id="storage-card">
         <div class="sform">
@@ -1042,9 +1241,13 @@
           </div>
         </div>
       </div>
+    </div>
+
+    <!-- ══ HAUSHALT (Menue) ══ -->
+    <div class="tab" id="tab-haushalt">
+      <div class="ph"><h2 class="ptitle"><span class="ptitle-icon"></span><span data-i18n="household.group">👪 Haushalt</span></h2></div>
 
       <!-- ── HAUSHALT: KONTEN VERKNÜPFEN ─────────────────────────────────── -->
-      <div class="sgroup-label" data-i18n="household.group">👪 Haushalt</div>
 
       <div class="ssec" style="margin-bottom:1.25rem" id="household-card">
         <div class="sform">
@@ -1100,130 +1303,18 @@
           </div>
         </div>
       </div>
+    </div>
 
-      <!-- ── GLOBALE EINSTELLUNGEN (nur Admins) ─────────────────────────── -->
-      <div class="sgroup-label" id="global-settings-label" data-i18n="settings.global_title" style="display:none">🌐 Globale Einstellungen <span style="font-size:.72rem;color:var(--a500);font-weight:400">(Admin)</span></div>
-      <div class="sgrid2" id="global-settings-grid" style="display:none">
-        <div class="ssec">
-          <div class="stit" data-i18n="settings.general_title">⚙️ Einstellungen</div>
-          <div class="sform">
-            <div class="fg"><label for="mon-app-theme" data-i18n="settings.app_theme">App-Design</label>
-              <select id="mon-app-theme">
-                <option value="classic" data-i18n="settings.theme_classic">Klassisch</option>
-                <option value="brick" data-i18n="settings.theme_brick">Stein (Blau)</option>
-                <option value="werkbank" data-i18n="settings.theme_werkbank">Werkbank (dunkel)</option>
-                <option value="farbfaecher" data-i18n="settings.theme_farbfaecher">Farbfächer</option>
-                <option value="noppe" data-i18n="settings.theme_noppe">Noppe (poppig)</option>
-                <option value="hochglanz" data-i18n="settings.theme_hochglanz">Hochglanz</option>
-              </select>
-            </div>
-            <div style="font-size:.75rem;color:var(--mut);margin-top:-4px" data-i18n="settings.app_theme_hint">Gilt global für alle Benutzer (Web &amp; App).</div>
-            <button class="btn bp" id="btn-save-theme" data-i18n="settings.save">Speichern</button>
-          </div>
-        </div>
-        <div class="ssec">
-          <div class="stit">🔑 BrickLink API <span class="ao" id="bl-ao" data-i18n="settings.admins_only">⚠️ Nur Admins</span></div>
-          <div class="sform">
-            <div class="fg"><label for="bl-ck">Consumer Key</label><input type="text" id="bl-ck" autocomplete="off" /></div>
-            <div class="fg"><label for="bl-cs">Consumer Secret</label><input type="password" id="bl-cs" autocomplete="off" /></div>
-            <div class="fg"><label for="bl-tok">Token Value</label><input type="text" id="bl-tok" autocomplete="off" /></div>
-            <div class="fg"><label for="bl-ts">Token Secret</label><input type="password" id="bl-ts" autocomplete="off" /></div>
-            <div class="fg"><label for="lim-bl"><span data-i18n="settings.max_calls">Max. Aufrufe pro Tag</span> <span style="font-size:.72rem;color:var(--mut)" data-i18n="settings.default_n" data-i18n-vars='{"n":"4000"}'>(Standard: 4000)</span></label><input inputmode="numeric" type="number" id="lim-bl" min="1" max="100000" value="4000" style="max-width:160px" /></div>
-            <button class="btn bp" id="btn-sav-bl" data-i18n="settings.save_key">🔑 Speichern</button>
-          </div>
-        </div>
-        <div class="ssec">
-          <div class="stit">🔶 Rebrickable API <span class="ao" id="rb-ao" data-i18n="settings.admins_only">⚠️ Nur Admins</span></div>
-          <div class="sform">
-            <div class="ibox" style="margin-bottom:4px"><a href="https://rebrickable.com/api/" target="_blank" rel="noopener noreferrer">rebrickable.com → API → Generate Key</a><br><span style="font-size:.78rem" data-i18n="settings.rebrickable_hint">Set-Infos, Teile &amp; Bilder</span></div>
-            <div class="fg"><label for="rb-key">Rebrickable API Key</label><input type="text" id="rb-key" autocomplete="off" /></div>
-            <div class="fg"><label for="lim-rb"><span data-i18n="settings.max_calls">Max. Aufrufe pro Tag</span> <span style="font-size:.72rem;color:var(--mut)" data-i18n="settings.default_n" data-i18n-vars='{"n":"25000"}'>(Standard: 25000)</span></label><input inputmode="numeric" type="number" id="lim-rb" min="1" max="100000" value="25000" style="max-width:160px" /></div>
-            <button class="btn bp" id="btn-sav-rb" data-i18n="settings.save_key">🔑 Speichern</button>
-          </div>
-        </div>
-        <div class="ssec">
-          <div class="stit">📖 Brickset API <span class="ao" id="bs-ao" data-i18n="settings.admins_only">⚠️ Nur Admins</span></div>
-          <div class="sform">
-            <div class="ibox" style="margin-bottom:4px"><a href="https://brickset.com/tools/webservices/requestkey" target="_blank" rel="noopener noreferrer"><span data-i18n="settings.brickset_link">brickset.com → Tools → API Key anfordern</span></a><br><span style="font-size:.78rem" data-i18n="settings.brickset_hint">Anleitungen, Fallback Set-Infos</span></div>
-            <div class="fg"><label for="bs-key">Brickset API Key</label><input type="text" id="bs-key" autocomplete="off" /></div>
-            <div class="fg"><label for="lim-bs"><span data-i18n="settings.max_calls">Max. Aufrufe pro Tag</span> <span style="font-size:.72rem;color:var(--mut)" data-i18n="settings.default_n" data-i18n-vars='{"n":"100"}'>(Standard: 100)</span></label><input inputmode="numeric" type="number" id="lim-bs" min="1" max="100000" value="100" style="max-width:160px" /></div>
-            <button class="btn bp" id="btn-sav-bs" data-i18n="settings.save_key">🔑 Speichern</button>
-          </div>
-        </div>
-        <div class="ssec full" id="usermgmt" style="display:none">
-          <div class="stit">👥 <span data-i18n="settings.users_title">Benutzerverwaltung</span> <span style="color:var(--a500)" data-i18n="settings.users_admin_badge">(Admin)</span></div>
-          <div style="display:flex;align-items:center;justify-content:space-between;padding:.65rem .9rem;background:var(--s50);border:1px solid var(--bdr);border-radius:var(--rad);margin-bottom:1rem">
-            <div>
-              <!-- Umschliessendes Label (die Checkbox liegt darin) — kein for= nötig. -->
-                <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:.875rem">
-                <input type="checkbox" id="reg-enabled" aria-label="Registrierung erlauben" data-i18n="settings.registration_label" data-i18n-attr="aria-label" style="width:auto" data-change="saveRegEnabled" />
-                <span data-i18n="settings.public_reg">Öffentliche Registrierung erlauben</span>
-              </label>
-              <div style="font-size:.75rem;color:var(--mut);margin-left:24px" data-i18n="settings.public_reg.hint">Wenn deaktiviert, können nur Admins neue Benutzer anlegen.</div>
-            </div>
-          </div>
-          <div id="users-tbl" style="margin-bottom:1.25rem"></div>
-          <div style="border-top:1px solid var(--bdr);padding-top:1.1rem">
-            <div class="ctitle" data-i18n="settings.users_new">Neuen Benutzer erstellen</div>
-            <!-- Formular wie bei den Anmeldefeldern; display:contents haelt die
-                 Zeile (.frow) unveraendert. -->
-            <form style="display:contents" data-submit="btn-cu">
-            <div class="frow">
-              <div class="fg"><label for="nu-n" data-i18n="settings.users_username">Benutzername</label><input type="text" id="nu-n" /></div>
-              <div class="fg"><label for="nu-p" data-i18n="settings.users_password">Passwort</label><input type="password" id="nu-p" /></div>
-              <div class="fg" style="max-width:130px;justify-content:flex-end">
-                <!-- Umschliessendes Label: die Checkbox liegt darin, ein for= wäre falsch
-                     (und zeigte hier versehentlich auf ein fremdes Feld). -->
-                <label style="display:flex;align-items:center;gap:6px;cursor:pointer;margin-bottom:9px"><input type="checkbox" id="nu-a" style="width:auto" /> Admin</label>
-              </div>
-              <button type="button" class="btn bp" id="btn-cu" data-i18n="settings.users_create">➕ Erstellen</button>
-            </div>
-            </form>
-          </div>
-        </div>
-        <div class="ssec full">
-          <div class="stit">✉️ E-Mail / SMTP <span class="ao" style="display:none" data-i18n="settings.admins_only">⚠️ Nur Admins</span></div>
-          <div class="sform">
-            <div class="ibox" style="margin-bottom:.75rem" data-i18n="settings.smtp.hint">Für Registrierungsbestätigungen und Passwort-Rücksetzungen. Ohne SMTP-Konfiguration werden Links in der Server-Konsole ausgegeben.</div>
-            <div style="display:grid;grid-template-columns:1fr 120px;gap:10px">
-              <div class="fg"><label for="smtp-host">SMTP Host</label><input type="text" id="smtp-host" placeholder="mail.example.com" /></div>
-              <div class="fg"><label for="smtp-port">Port</label><input inputmode="numeric" type="number" id="smtp-port" placeholder="587" /></div>
-            </div>
-            <div class="fg"><label for="smtp-user" data-i18n="settings.smtp.user">Benutzername</label><input type="text" id="smtp-user" autocomplete="off" /></div>
-            <div class="fg"><label for="smtp-pass" data-i18n="settings.smtp.pass">Passwort</label><input type="password" id="smtp-pass" autocomplete="off" /></div>
-            <div class="fg"><label for="smtp-from" data-i18n="settings.smtp.from">Absender (Von)</label><input type="text" id="smtp-from" placeholder="BrickInventory Manager &lt;noreply@example.com&gt;" /></div>
-            <div class="fg"><label style="display:flex;align-items:center;gap:8px;cursor:pointer"><input type="checkbox" id="smtp-secure" aria-label="SMTP-Verschlüsselung" data-i18n="settings.smtp.secure_label" data-i18n-attr="aria-label" style="width:auto" /> TLS/SSL (Port 465)</label></div>
-            <div class="fg"><label style="display:flex;align-items:center;gap:8px;cursor:pointer"><input type="checkbox" id="smtp-insecure" aria-label="Zertifikat des Mailservers nicht prüfen" data-i18n="settings.smtp.insecure_tls" data-i18n-attr="aria-label" style="width:auto" /> <span data-i18n="settings.smtp.insecure_tls">Zertifikat nicht prüfen (selbst signiert)</span></label></div>
-            <div style="display:flex;gap:8px;flex-wrap:wrap">
-              <button class="btn bp" id="btn-sav-smtp" data-i18n="settings.smtp.save">💾 SMTP speichern</button>
-            </div>
-            <div style="display:flex;gap:8px;align-items:flex-end;flex-wrap:wrap;margin-top:.5rem">
-              <div class="fg" style="max-width:240px;margin:0"><label for="smtp-test-email" data-i18n="settings.smtp.test_to">Test-E-Mail senden an</label><input type="email" id="smtp-test-email" placeholder="deine@email.com" /></div>
-              <button class="btn bs" id="btn-test-smtp" style="margin-bottom:1px" data-i18n="smtp.test_btn">🔌 Verbindung testen</button>
-            </div>
-            <div id="smtp-test-result" style="display:none;font-size:.82rem;margin-top:.5rem;padding:.5rem .75rem;border-radius:6px"></div>
-          </div>
-        </div>
-
-
-      </div>
+    <!-- ══ DATEN (Menue) ══ -->
+    <div class="tab" id="tab-daten">
+      <div class="ph"><h2 class="ptitle"><span class="ptitle-icon"></span><span data-i18n="settings.data_export">📦 Daten exportieren</span></h2></div>
 
       <!-- Daten exportieren: für alle Nutzer sichtbar -->
-      <div class="sgroup-label" data-i18n="settings.data_export">📦 Daten exportieren</div>
 
         <div class="ssec full">
           <div style="border-top:1px solid var(--bdr);padding-top:1.1rem">
             <div class="stit" style="display:flex;align-items:center;gap:6px"><svg width="18" height="18" viewBox="0 0 120 120" xmlns="http://www.w3.org/2000/svg" style="flex-shrink:0"><rect x="18" y="38" width="84" height="68" rx="3" fill="#e63329"/><polygon points="18,38 30,20 102,20 102,38" fill="#cc2a21"/><polygon points="102,20 118,30 118,86 102,106" fill="#b5231c"/><ellipse cx="43" cy="20" rx="6" ry="3" fill="#cc2a21"/><rect x="37" y="17" width="12" height="3" fill="#cc2a21"/><ellipse cx="43" cy="17" rx="6" ry="3" fill="#b5231c"/><ellipse cx="58" cy="20" rx="6" ry="3" fill="#cc2a21"/><rect x="52" y="17" width="12" height="3" fill="#cc2a21"/><ellipse cx="58" cy="17" rx="6" ry="3" fill="#b5231c"/><ellipse cx="73" cy="20" rx="6" ry="3" fill="#cc2a21"/><rect x="67" y="17" width="12" height="3" fill="#cc2a21"/><ellipse cx="73" cy="17" rx="6" ry="3" fill="#b5231c"/><ellipse cx="88" cy="20" rx="6" ry="3" fill="#cc2a21"/><rect x="82" y="17" width="12" height="3" fill="#cc2a21"/><ellipse cx="88" cy="17" rx="6" ry="3" fill="#b5231c"/><rect x="24" y="54" width="72" height="40" rx="2" fill="#fff"/><rect x="29" y="58" width="46" height="15" rx="2" fill="#f5a800"/><text x="52" y="69" text-anchor="middle" font-family="Arial,sans-serif" font-weight="800" font-size="11" fill="white">BIM</text></svg> <span data-i18n="settings.data_export_title">Daten exportieren / importieren</span></div>
 
-            <!-- Konfiguration-Export/-Import: nur für Admins sichtbar -->
-            <div class="admin-only" style="display:none">
-              <p style="font-size:.82rem;color:var(--mut);margin:0 0 .5rem 0" data-i18n="settings.cfg_hint">API-Keys und Einstellungen als JSON exportieren/importieren.</p>
-              <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-bottom:1rem">
-                <button class="btn bs" id="btn-cfg-export" data-i18n="settings.cfg_export">📥 Konfiguration exportieren</button>
-                <label for="mon-cache-ttl" class="btn bs" style="cursor:pointer"><span data-i18n="settings.cfg_import">📤 Konfiguration importieren</span><input type="file" id="cfg-import-file" accept=".json" style="display:none" data-change="importConfig" /></label>
-                <span id="cfg-import-status" style="font-size:.8rem;color:var(--mut)"></span>
-              </div>
-            </div>
 
             <p style="font-size:.82rem;color:var(--mut);margin:0 0 .5rem 0">
               <span data-i18n="settings.data_zip_hint">Sets, manuell erfasste Teile, Minifiguren, die Merkliste und die Preisalarme als ZIP mit 5 CSV-Dateien exportieren — diese können danach über den entsprechenden CSV-Importer (Reiter Sets/Teile/Minifiguren/Merkliste bzw. Einstellungen → Preisalarme) wieder importiert werden.</span>
@@ -1261,9 +1352,13 @@
             </div>
           </div>
         </div>
+    </div>
+
+    <!-- ══ ANDROID-APP (Menue) ══ -->
+    <div class="tab" id="tab-app">
+      <div class="ph"><h2 class="ptitle"><span class="ptitle-icon"></span><span data-i18n="menu.app">📱 Android-App</span></h2></div>
 
       <!-- QR-Code für Android App -->
-      <div class="sgroup-label">📱 Android App</div>
 
       <!-- ── Die App holen ────────────────────────────────────────────────────
            Steht VOR dem QR-Code, weil das die Reihenfolge ist: erst die App
@@ -1337,14 +1432,8 @@
           <button class="btn bd" data-click="revokeOtherTokens" data-i18n="tokens.revoke_others">🚪 Alle anderen abmelden</button>
         </div>
       </div>
-
-      <!-- Gefahrenzone — für alle Benutzer sichtbar -->
-      <div class="sgroup-label" style="color:var(--r500)" data-i18n="settings.danger_zone">⚠️ Gefahrenzone</div>
-      <div class="ssec" style="border:1px solid var(--r200);border-radius:var(--rad);padding:1rem;background:var(--r50,#fff5f5)">
-        <p style="font-size:.82rem;color:var(--mut);margin-bottom:.75rem" data-i18n="settings.danger.hint">Diese Aktionen können nicht rückgängig gemacht werden.</p>
-        <button class="btn bd" id="btn-dall" data-i18n="settings.delete_all_btn">🔥 Alle meine Sets löschen</button>
-      </div>
     </div>
+
 
 
     <!-- MONITOR TAB -->

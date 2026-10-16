@@ -250,14 +250,20 @@ function eigenschaftFuer(css, design, stelle, grundwert, eigenschaft) {
 
 test('jeder Text in einer gestrichenen Kopfleiste ist lesbar', () => {
   const stellen = kopfStellen();
-  // Selbstbeweis: GEMESSEN sind es fuenf — .logo h1 span, .hs .v und .hs .l
-  // auf der Leiste, dazu .ubadge und .abadge auf eigenem Grund. Findet die
-  // Ableitung nichts, waere die Schleife darunter still gruen.
-  assert.equal(stellen.length, 5,
-    `${stellen.length} Stellen abgeleitet statt fuenf: ` +
+  // Selbstbeweis: GEMESSEN sind es sechs — .logo h1 span, .hs .v und .hs .l
+  // auf der Leiste, dazu .ubadge, .abadge und .umenu-item auf eigenem Grund.
+  // Findet die Ableitung nichts, waere die Schleife darunter still gruen.
+  //
+  // Von fuenf auf sechs am 16.10.: Das Menue hinter dem Benutzernamen
+  // (Marcos Vorgabe) steht im <header> und faellt damit in die Ableitung. Es
+  // liegt aber auf der Klappe und nicht auf dem Streifen — deshalb traegt
+  // `.umenu-item` in styles.css ausdruecklich seinen eigenen Grund, und die
+  // Pruefung misst die richtige Paarung.
+  assert.equal(stellen.length, 6,
+    `${stellen.length} Stellen abgeleitet statt sechs: ` +
     stellen.map(s => s.sel).join(', ') + ' — greift die Ableitung noch?');
-  assert.equal(stellen.filter(s => s.eigenerGrund).length, 2,
-    'Die Stellen mit eigenem Grund sind nicht mehr zwei — greift die Ableitung noch?');
+  assert.equal(stellen.filter(s => s.eigenerGrund).length, 3,
+    'Die Stellen mit eigenem Grund sind nicht mehr drei — greift die Ableitung noch?');
 
   const alle = designs();
   assert.ok(alle.length >= 4, `Nur ${alle.length} Designs — greift die Suche noch?`);
