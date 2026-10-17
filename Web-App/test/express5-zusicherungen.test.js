@@ -51,11 +51,31 @@ test('1. die Startseite ist auch ohne Pfad erreichbar', async () => {
   // die app.get-Registrierung, die renderIndexHtml() ausliefert. Haenge die
   // Suche am Muster, muesste sie bei jeder Umbenennung mitgepflegt werden —
   // und dann prueft sie irgendwann die Schreibweise statt der Sache.
-  let muster = null;
+  // ── Nachtrag 17.10.: renderIndexHtml() liefert nicht mehr NUR der
+  //    Catch-all aus ──────────────────────────────────────────────────────
+  //
+  // Hier stand `break` beim ERSTEN Treffer. Das stimmte, solange genau eine
+  // Route die Seite rendert. Seit /reset-password über denselben Renderer
+  // geht (sonst gängen von dort die Assets OHNE Stempel hinaus, siehe
+  // utils/assetStempel.ts), findet die Suche den festen Pfad zuerst — und
+  // meldete einen 404 für `/`, obwohl der Catch-all heil war. Eine Prüfung,
+  // die die falsche Route misst, ist schlimmer als keine: Sie sieht nach
+  // einem Befund aus.
+  //
+  // Gesucht wird deshalb unter ALLEN rendernden Routen die mit einem
+  // Platzhalter. Das ist nicht dasselbe wie die Schreibweise festzunageln,
+  // wogegen der Absatz oben argumentiert: Ob `/*splat` oder `/{*splat}`
+  // dasteht, bleibt offen — gefordert ist nur, dass überhaupt eines
+  // ALLES fängt.
+  const kandidaten = [];
   for (const m of src.matchAll(/^app\.get\('([^']+)'/gm)) {
-    if (src.slice(m.index, m.index + 800).includes('renderIndexHtml')) { muster = m[1]; break; }
+    if (src.slice(m.index, m.index + 800).includes('renderIndexHtml')) kandidaten.push(m[1]);
   }
-  assert.ok(muster, 'Der SPA-Catch-all ist in server.ts nicht zu finden — Suche veraltet?');
+  assert.ok(kandidaten.length, 'Keine Route rendert mehr index.html — Suche veraltet?');
+  const muster = kandidaten.find(k => k.includes('*'));
+  assert.ok(muster,
+    `Keine der rendernden Routen (${kandidaten.join(', ')}) fängt noch alles ab. ` +
+    'Dann gibt es keinen SPA-Catch-all mehr.');
 
   // Dasselbe Muster auf einem leeren Express: Was die echte Route ausliefert,
   // ist hier egal — gefragt ist allein, OB sie trifft.

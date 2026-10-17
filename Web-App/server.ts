@@ -918,9 +918,17 @@ app.get('/verify', async (req, res) => {
 
 // ── Passwort zurücksetzen: /reset-password?token=... ──────────────────────────
 // Explizit registriert damit location.pathname === '/reset-password' stimmt.
-app.get('/reset-password', (_req, res) => {
+app.get('/reset-password', async (_req, res) => {
   res.set('Cache-Control', 'no-cache');
-  res.sendFile(path.join(PUBLIC_DIR, 'index.html'));
+  // Ueber den Renderer und nicht per sendFile: Sonst gingen von hier aus die
+  // Assets OHNE Stempel hinaus (utils/assetStempel.ts) und mit dem
+  // Standarddesign — wer seine Seite ueber den Link aus der Mail oeffnet,
+  // bekaeme sonst als einziger die alten Dateien aus dem Cache.
+  try {
+    res.type('html').send(await renderIndexHtml());
+  } catch {
+    res.sendFile(path.join(PUBLIC_DIR, 'index.html'));
+  }
 });
 
 // ── 404 für unbekannte API-Pfade ────────────────────────────────────────────
