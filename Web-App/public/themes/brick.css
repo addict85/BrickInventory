@@ -91,8 +91,35 @@
 [data-theme="brick"] header .hstats{display:none}
 [data-theme="brick"] header .ubadge{background:rgba(255,255,255,.16);color:#fff}
 [data-theme="brick"] header .abadge{background:var(--brick-petrol);color:#fff}
-[data-theme="brick"] header #btn-logout{
-  background:rgba(255,255,255,.14);color:#fff;border-color:rgba(255,255,255,.24)}
+/* ── Hier stand eine Regel fuer #btn-logout, und sie war der Fehler ────────
+
+   Marcos Befund, dreimal gemeldet: „Beim Logout-Eintrag fehlt der Text."
+
+       [data-theme="brick"] header #btn-logout{
+         background:rgba(255,255,255,.14);color:#fff;
+         border-color:rgba(255,255,255,.24)}
+
+   Sie stammt aus der Zeit, als „Abmelden" ein KNOPF IN DER KOPFLEISTE war.
+   Auf dem blauen Streifen des Steindesigns war weiss auf durchscheinend
+   genau richtig.
+
+   Am 17.10. ist der Knopf in die Menueklappe gezogen — und die ist WEISS.
+   Die Regel blieb stehen und malte seither weisse Schrift auf weissen Grund.
+   Das Symbol blieb sichtbar, weil Emoji ihre eigene Farbe mitbringen; der
+   Text verschwand. Genau das Bild, das Marco geschickt hat.
+
+   Sie zielt ueber die ID. Damit wiegt sie (1,1,1) und ueberstimmt jede
+   Klassenregel in styles.css — auch den Rueckfallwert
+   `color:var(--r700,#b91c1c)`, den ich vorher eingebaut hatte. Meine erste
+   Reparatur konnte deshalb gar nicht wirken.
+
+   GEMESSEN im echten Browser, angemeldet, Klappe offen:
+     classic/noppe/hochglanz  color rgb(185,28,28)  auf rgb(255,255,255)  ok
+     brick                    color rgb(255,255,255) auf rgba(255,255,255,.14)
+
+   Ersatzlos weg: Der Eintrag ist jetzt ein Menuepunkt wie die sieben
+   darueber und holt sich seine Farbe aus `.umenu-abmelden`. Eine eigene
+   Design-Regel braeuchte er nur, wenn er wieder auf dem Streifen saesse. */
 [data-theme="brick"] header #gib-text,
 [data-theme="brick"] header #gib-chevron{color:rgba(255,255,255,.85)}
 
