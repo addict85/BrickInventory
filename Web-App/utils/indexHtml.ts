@@ -13,9 +13,15 @@
  *
  * Zwei Caches, beide bewusst klein gehalten:
  *   • Der Dateiinhalt wird einmal gelesen. In Produktion ändert sich die Datei
- *     nur beim Deploy (und der Versions-Bumper läuft vor dem Serverstart);
- *     ausserhalb von Produktion wird die mtime geprüft, damit Änderungen ohne
- *     Neustart ankommen.
+ *     nur beim Deploy; ausserhalb von Produktion wird die mtime geprüft, damit
+ *     Änderungen ohne Neustart ankommen.
+ *
+ *     Hier stand „und der Versions-Bumper läuft vor dem Serverstart". Das war
+ *     eine ANNAHME, und sie ist gebrochen: scripts/bump-version.js hängt an
+ *     `npm postinstall` und am Docker-Build — wer `git pull` macht und neu
+ *     startet, bekommt ihn nicht. Marcos Browser hielt deshalb ein sechs Tage
+ *     altes styles.css fest. Seither leitet utils/assetStempel.ts den `?v=`
+ *     aus den Dateien selbst ab; die Annahme wird nicht mehr gebraucht.
  *   • Der Theme-Wert wird gecacht und beim Speichern invalidiert
  *     (invalidateTheme() in routes/settings.ts) — kein DB-Treffer pro Aufruf.
  */
@@ -24,6 +30,7 @@ import {  PUBLIC_DIR } from '../utils/appPaths';
 import path from 'path';
 import * as db from '../db/database';
 import { getGlobalSetting } from './settings';
+import { stempleAssetsGecacht } from './assetStempel';
 
 const INDEX_PATH = path.join(PUBLIC_DIR, 'index.html');
 const ALLOWED = ['classic', 'brick'];
@@ -110,7 +117,11 @@ export async function renderIndexHtml(userId?: number): Promise<string> {
       out = out.replace(/(<script src="\/locales\/)[a-z]{2}(\.js)/i, `$1${lang}$2`);
       out = out.replace(/(<html[^>]*\slang=")[^"]*(")/i, `$1${lang}$2`);
     }
-    return out;
+
+    // ZULETZT: Die Sprachdatei ist oben womoeglich ausgetauscht worden, und
+    // auch sie traegt einen `?v=`. Erst stempeln, dann tauschen hiesse, den
+    // Stempel der deutschen Datei an die englische zu haengen.
+    return stempleAssetsGecacht(out, PUBLIC_DIR);
   } catch (_) {
     return html;
   }
