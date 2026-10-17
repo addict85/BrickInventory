@@ -492,7 +492,7 @@ window.I18N_DE = {
   'settings.brickset_link': 'brickset.com → Tools → API Key anfordern',
   'settings.rebrickable_hint': 'Set-Infos, Teile & Bilder',
   'settings.rb_list_hint': 'Alle Sets im Rebrickable-Listenformat exportieren (Spalten "Set Number,Quantity"), um sie unter „My Sets → Add via List" bei Rebrickable zu importieren.',
-  'settings.data_export': '📦 Daten exportieren',
+  'settings.data_export': '📤 Daten exportieren',
   'settings.data_export_title': 'Daten exportieren / importieren',
   'settings.cfg_hint': 'API-Keys und Einstellungen als JSON exportieren/importieren.',
   'settings.cfg_export': '📥 Konfiguration exportieren',
