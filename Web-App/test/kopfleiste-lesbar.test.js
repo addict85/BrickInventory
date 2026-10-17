@@ -295,9 +295,24 @@ test('jeder Text in einer gestrichenen Kopfleiste ist lesbar', () => {
     for (const { sel: stelle, farbe: grundfarbe, eigenerGrund } of stellen) {
       // Gemessen wird gegen den Grund, auf dem der Text WIRKLICH steht: die
       // eigene Flaeche, wenn es eine gibt, sonst die Leiste. Eine
-      // halbdurchsichtige eigene Flaeche wird ueber die Leiste gerechnet.
+      // halbdurchsichtige eigene Flaeche wird ueber den Grund DARUNTER
+      // gerechnet.
+      //
+      // ── Und der Grund darunter ist nicht immer die Leiste ──────────────
+      //
+      // Bis zum 17.10. wurde IMMER ueber die Leiste gerechnet. Fuer die
+      // Eintraege der Menueklappe ist das falsch: Sie liegen auf der KLAPPE,
+      // und die ist weiss. GEMESSEN an einer Gegenprobe: Faerbt ein Design
+      // `.umenu-abmelden` weiss auf `rgba(255,255,255,.14)`, ergibt das ueber
+      // der blauen Leiste ein helles Blau — weisse Schrift darauf besteht.
+      // In Wahrheit liegt es ueber WEISS, und der Text ist unsichtbar. Genau
+      // diese Fehlerklasse hat Marco dreimal gemeldet, und genau hier ist sie
+      // durchgerutscht.
+      const unterlage = /\bumenu-(item|abmelden)\b/.test(stelle)
+        ? loese(eigenschaftFuer(css, design, '.umenu-pop', 'var(--sur)', 'background'), leiste)
+        : leiste;
       const grund = eigenerGrund
-        ? loese(eigenschaftFuer(css, design, stelle, eigenerGrund, 'background'), leiste)
+        ? loese(eigenschaftFuer(css, design, stelle, eigenerGrund, 'background'), unterlage)
         : leiste;
       if (!grund) continue;
       const farbe = loese(eigenschaftFuer(css, design, stelle, grundfarbe, 'color'), grund);
@@ -315,4 +330,91 @@ test('jeder Text in einer gestrichenen Kopfleiste ist lesbar', () => {
     'Diese Texte in der Kopfleiste stehen zu schwach (noetig 4.5:1). ' +
     'Bei 1.00 ist es exakt dieselbe Farbe — genau so standen die Kennzahlen im ' +
     'Steindesign. Das Design muss ihnen eine eigene Farbe geben.');
+});
+
+/**
+ * ── Nachtrag 17.10.: die Lücke, durch die der Fehler gegangen ist ───────────
+ *
+ * Marcos Befund, dreimal gemeldet: „Beim Logout-Eintrag fehlt der Text."
+ *
+ * Die Ursache war eine Regel in themes/brick.css:
+ *
+ *     [data-theme="brick"] header #btn-logout{
+ *       background:rgba(255,255,255,.14);color:#fff;…}
+ *
+ * Sie stammte aus der Zeit, als „Abmelden" ein Knopf IN DER KOPFLEISTE war —
+ * weiss auf dem blauen Streifen, richtig so. Seit der Knopf in die WEISSE
+ * Menüklappe gezogen ist, malt sie weisse Schrift auf weissen Grund.
+ * GEMESSEN im echten Browser: `rgb(255,255,255)` auf `rgba(255,255,255,.14)`.
+ *
+ * ── Warum die Prüfung darüber sie NICHT gefangen hat ────────────────────────
+ *
+ * `kopfStellen()` leitet die Textstellen aus den KLASSEN in styles.css ab und
+ * fragt dann jedes Design, ob es sie umfärbt (`eigenschaftFuer`). Eine
+ * Design-Regel, die über eine ID zielt, kommt in dieser Ableitung gar nicht
+ * vor — sie ist für die ganze Maschinerie unsichtbar.
+ *
+ * Darum diese Regel: In der Kopfleiste fassen Design-Regeln KLASSEN an, keine
+ * IDs. Das ist keine Stilfrage. Eine Klassenregel wird oben mitgemessen, eine
+ * ID-Regel nicht — und sie wiegt obendrein schwerer als alles, was styles.css
+ * setzen kann. Genau deshalb blieb auch der Rückfallwert
+ * `color:var(--r700,#b91c1c)` wirkungslos: (1,1,1) schlägt (0,1,0).
+ *
+ * ── Gegenproben (durchgeführt, Ergebnisse abgeschrieben) ────────────────────
+ *
+ *   A  die entfernte brick-Regel wieder eingesetzt
+ *      → rot, nennt `[data-theme="brick"] header #btn-logout`
+ *   B  stattdessen dieselbe Farbe über `.umenu-abmelden` gesetzt
+ *      → beim ersten Messen GRÜN in BEIDEN Fällen. Meine Behauptung „über
+ *        eine Klasse ist der Fehler wieder messbar" war also FALSCH, und die
+ *        Gegenprobe hat sie widerlegt.
+ *
+ *        Der Grund war ein Mangel in der Prüfung darüber: Sie rechnete einen
+ *        durchscheinenden Hintergrund IMMER über die Leiste. Weiss auf
+ *        `rgba(255,255,255,.14)` ergibt über dem blauen Streifen ein helles
+ *        Blau — und besteht. In Wahrheit liegt der Eintrag auf der weissen
+ *        Klappe. Seit dem 17.10. rechnet sie für Einträge der Klappe über die
+ *        KLAPPE, und B wird rot.
+ */
+/**
+ * IDs, die ein Design faerben DARF — mit Grund, und der Grund ist gemessen.
+ *
+ * Beide gehoeren zur Import-Leiste (`#global-import-bar`). NACHGESEHEN in
+ * index.html liegt sie im <header>, aber NICHT in der Menueklappe: Sie sitzt
+ * wirklich auf dem gestrichenen Streifen, und dort ist weisse Schrift richtig.
+ *
+ * Sie stehen trotzdem hier und nicht einfach ungeprueft da: Ein Eintrag in
+ * dieser Liste sieht aus wie eine Entscheidung und ist doch nur eine
+ * Vermutung, sobald niemand mehr nachsieht. Wer hier etwas eintraegt, muss
+ * NACHGESEHEN haben, wo das Element wirklich sitzt.
+ *
+ * Gemessen bleiben beide damit NICHT — die Ableitung oben sieht keine IDs.
+ * Das ist der Preis dafuer, dass sie als IDs dastehen; er faellt nur deshalb
+ * nicht ins Gewicht, weil ihr Grund derselbe ist wie der der Leiste.
+ */
+const ID_ERLAUBT = new Set(['#gib-text', '#gib-chevron']);
+
+test('Design-Regeln in der Kopfleiste fassen Klassen an, keine IDs', () => {
+  const ordner = P('public', 'themes');
+  const treffer = [];
+  for (const name of fs.readdirSync(ordner).filter(n => n.endsWith('.css'))) {
+    const css = fs.readFileSync(path.join(ordner, name), 'utf8');
+    for (const [sels, rumpf] of regeln(css)) {
+      if (!/(?:^|[;\s])color:/.test(rumpf)) continue;
+      for (const sel of sels) {
+        if (!/\bheader\b/.test(sel)) continue;
+        const ids = sel.match(/#[\w-]+/g) || [];
+        if (!ids.length) continue;
+        if (ids.every(id => ID_ERLAUBT.has(id))) continue;
+        treffer.push(`${name}: ${sel.trim()}`);
+      }
+    }
+  }
+  assert.deepEqual(treffer, [],
+    'Diese Design-Regeln färben Text in der Kopfleiste über eine ID:\n  ' +
+    treffer.join('\n  ') +
+    '\n\nDie Prüfung oben leitet ihre Stellen aus KLASSEN ab und sieht solche ' +
+    'Regeln nicht — und eine ID wiegt schwerer als jede Klasse in styles.css. ' +
+    'Genau so ist der weisse „Abmelden"-Text auf weissem Grund entstanden. ' +
+    'Über eine Klasse zielen, dann wird sie mitgemessen.');
 });
