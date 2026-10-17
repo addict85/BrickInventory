@@ -188,6 +188,62 @@ fun MainScaffold(
                         // Ueberschrift des Bildschirms: Ein zweiter Schluessel
                         // mit demselben Wort waere eine Stelle, an der Menue
                         // und Ziel auseinanderlaufen koennen.
+                        // ── Die sechs Rubriken stehen HIER, nicht eine Ebene tiefer ──
+                        //
+                        // Marcos Vorgabe vom 17.10.: „in der Android-App sollten
+                        // die Punkte unter Einstellungen eine ebene nach aussen
+                        // wandern wo heute Einstellungen und Abmelden und
+                        // Monitoring zu finden sind."
+                        //
+                        // Bis dahin lagen sie als Liste IM Einstellungs-
+                        // bildschirm: Konto-Menue, Einstellungen, Liste,
+                        // Unterseite — drei Tipper bis zu den Gutscheinen.
+                        // Jetzt sind es zwei, und die Klappe liest sich wie das
+                        // Menue der Webapp hinter dem Benutzernamen: erst die
+                        // Seiten, dann die Einstellungen, dann die Handlung.
+                        //
+                        // Die Reihenfolge ist NICHT alphabetisch, sondern nach
+                        // Haeufigkeit — sie kommt unveraendert aus der Liste
+                        // mit: Gutscheine werden im Laden gebraucht (Marcos
+                        // „moeglichst einfach erreichbar"), Preisalarme beim
+                        // Stoebern, der Rest selten. GutscheineContractTest
+                        // haelt fest, dass die Gutscheine erster Eintrag
+                        // bleiben.
+                        //
+                        // Jede Route steht AUSGESCHRIEBEN da und wird nicht
+                        // zusammengesetzt: ErreichbareRoutenTest sucht nach
+                        // `navigate(Screen.X.route)`, und ein Bildschirm, zu
+                        // dem nur ein gebauter String fuehrt, waere fuer die
+                        // Pruefung unerreichbar — also genau das, was sie
+                        // finden soll.
+                        MenuZiel(R.string.vouchers_title, Icons.Default.Redeem) {
+                            showLogoutMenu = false
+                            navController.navigate(Screen.Gutscheine.route)
+                        }
+                        MenuZiel(R.string.alerts_group, Icons.Default.NotificationsActive) {
+                            showLogoutMenu = false
+                            navController.navigate(Screen.Preisalarme.route)
+                        }
+                        MenuZiel(R.string.storage_manage, Icons.Default.Inventory2) {
+                            showLogoutMenu = false
+                            navController.navigate(Screen.Lagerorte.route)
+                        }
+                        MenuZiel(R.string.household_title, Icons.Default.Group) {
+                            showLogoutMenu = false
+                            navController.navigate(Screen.Haushalt.route)
+                        }
+                        MenuZiel(R.string.csv_upload_title, Icons.Default.UploadFile) {
+                            showLogoutMenu = false
+                            navController.navigate(Screen.CsvImport.route)
+                        }
+                        MenuZiel(R.string.konto_title, Icons.Default.AccountCircle) {
+                            showLogoutMenu = false
+                            navController.navigate(Screen.Konto.route)
+                        }
+                        // Ein Strich zwischen den Rubriken und dem, was in den
+                        // Einstellungen uebrig bleibt: Anzeige & Preise,
+                        // Server, Update.
+                        HorizontalDivider()
                         DropdownMenuItem(
                             text = { Text(stringResource(R.string.nav_settings)) },
                             onClick = {
@@ -339,5 +395,30 @@ fun ReiterGeruest(
         // Der stille Start-Test hat ein Ergebnis — hier bekommt es einen Ort.
         updateVerfuegbar = updateZustand.neuereFassung != null,
         content = content
+    )
+}
+
+/**
+ * Ein Eintrag der Konto-Klappe, der auf eine Seite fuehrt.
+ *
+ * Sechsmal dasselbe Geruest auszuschreiben hiesse, dass der siebte Eintrag
+ * irgendwann anders aussieht — und zwar erst dann, wenn jemand an einem der
+ * sechs etwas aendert.
+ *
+ * Das Zuklappen steht ABSICHTLICH im Aufrufer und nicht hier drin: Die beiden
+ * Eintraege darunter (Einstellungen, Monitoring) machen es genauso, und ein
+ * Helfer, der es heimlich mit erledigt, waere der Grund dafuer, dass der
+ * naechste Eintrag es vergisst.
+ */
+@Composable
+private fun MenuZiel(
+    titel: Int,
+    icon: androidx.compose.ui.graphics.vector.ImageVector,
+    onKlick: () -> Unit,
+) {
+    DropdownMenuItem(
+        text = { Text(stringResource(titel)) },
+        onClick = onKlick,
+        leadingIcon = { Icon(icon, null) },
     )
 }

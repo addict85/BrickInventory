@@ -26,7 +26,6 @@ import ch.brickinventoryapp.ui.theme.Abstaende
 import ch.brickinventoryapp.ui.theme.Schrift
 import androidx.compose.ui.draw.clip
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
-import ch.brickinventoryapp.ui.EinstellungsBereich
 
 /**
  * Die Einstellungen — eine Liste, kein Stapel.
@@ -74,20 +73,6 @@ fun SettingsScreen(
      * MainScaffold.kt (Nachtrag 114).
      */
     onServerWechseln: () -> Unit,
-    /**
-     * Eine Unterseite oeffnen.
-     *
-     * EIN Rueckruf mit einem Aufzaehlungswert statt sechs einzelner: Der
-     * Bildschirm darf hoechstens sechs Parameter haben
-     * (ScreenViewModelWiringTest), und sechs Navigations-Rueckrufe waeren
-     * genau die breite Signatur, gegen die diese Regel gebaut ist. Welche
-     * Route hinter welchem Bereich liegt, entscheidet der Graph — er ist der
-     * einzige, der den NavController kennt.
-     *
-     * `imageLoader` und `onSetClick` sind dabei ENTFALLEN: Beide gehoerten zur
-     * Preisalarm-Uebersicht, und die steht jetzt auf ihrer eigenen Seite.
-     */
-    onUnterseite: (EinstellungsBereich) -> Unit,
     /**
      * Rollposition — von AUSSEN, aus demselben Grund wie bei den Finanzen:
      * Der Weg in die Detailansicht verwirft dieses Ziel, und ein
@@ -140,39 +125,20 @@ fun SettingsScreen(
         // wenige und gross, und zwischen ihnen soll Luft sein.
         verticalArrangement = Arrangement.spacedBy(Abstaende.gross)
     ) {
-        // ── 1. Verwalten ────────────────────────────────────────────────────
+        // ── Die Rubriken stehen seit dem 17.10. eine Ebene weiter aussen ──
         //
-        // Die Reihenfolge ist nicht alphabetisch, sondern nach Haeufigkeit:
-        // Gutscheine werden im Laden gebraucht (Marcos „möglichst einfach
-        // erreichbar"), Preisalarme beim Stoebern, der Rest selten.
-        SettingsCard(title = stringResource(R.string.settings_group_manage),
-                     icon = Icons.Default.Tune) {
-            BereichsZeile(Icons.Default.Redeem, R.string.vouchers_title,
-                          R.string.settings_row_vouchers) {
-                onUnterseite(EinstellungsBereich.GUTSCHEINE)
-            }
-            BereichsZeile(Icons.Default.NotificationsActive, R.string.alerts_group,
-                          R.string.settings_row_alerts) {
-                onUnterseite(EinstellungsBereich.PREISALARME)
-            }
-            BereichsZeile(Icons.Default.Inventory2, R.string.storage_manage,
-                          R.string.settings_row_storage) {
-                onUnterseite(EinstellungsBereich.LAGERORTE)
-            }
-            BereichsZeile(Icons.Default.Group, R.string.household_title,
-                          R.string.settings_row_household) {
-                onUnterseite(EinstellungsBereich.HAUSHALT)
-            }
-            BereichsZeile(Icons.Default.UploadFile, R.string.csv_upload_title,
-                          R.string.settings_row_csv) {
-                onUnterseite(EinstellungsBereich.CSV_IMPORT)
-            }
-            BereichsZeile(Icons.Default.AccountCircle, R.string.konto_title,
-                          R.string.settings_row_account) {
-                onUnterseite(EinstellungsBereich.KONTO)
-            }
-        }
-
+        // Marcos Vorgabe: „in der Android-App sollten die Punkte unter
+        // Einstellungen eine ebene nach aussen wandern wo heute Einstellungen
+        // und Abmelden und Monitoring zu finden sind."
+        //
+        // Hier stand bis dahin die Karte „Verwalten" mit sechs Zeilen
+        // (Gutscheine, Preisalarme, Lagerorte, Haushalt, CSV-Import, Konto).
+        // Sie liegen jetzt in der Konto-Klappe oben rechts (MainScaffold.kt),
+        // neben Einstellungen, Monitoring und Abmelden — ein Tipper naeher.
+        //
+        // Was bleibt, ist das, was eine EINSTELLUNG im engeren Sinn ist:
+        // Anzeige & Preise, der Server, die Update-Pruefung. Also nichts, was
+        // eine eigene Seite braucht.
         // ── 2. Anzeige & Preise ─────────────────────────────────────────────
         SettingsCard(title = stringResource(R.string.settings_group_display),
                      icon = Icons.Default.Euro) {
@@ -312,46 +278,6 @@ fun SettingsScreen(
             Spacer(Modifier.width(Abstaende.klein))
             Text(stringResource(R.string.settings_logout), fontWeight = FontWeight.SemiBold)
         }
-    }
-}
-
-/**
- * Eine Zeile, die auf eine Unterseite fuehrt.
- *
- * Symbol, Titel, eine Zeile Erklaerung, Pfeil. Die Erklaerung ist nicht
- * Zierde: „Haushalt" allein sagt niemandem, was dahinter passiert, und wer
- * eine Liste von sechs Woertern vor sich hat, tippt sonst auf gut Glueck.
- *
- * Die Hoehe kommt aus dem Innenabstand (12 dp oben und unten plus zwei
- * Textzeilen), nicht aus einer festen Zahl: So waechst die Zeile mit, wenn
- * jemand die Schrift des Geraets vergroessert — eine feste Hoehe schnitte den
- * zweiten Satz dann ab.
- */
-@Composable
-private fun BereichsZeile(
-    icon: androidx.compose.ui.graphics.vector.ImageVector,
-    titel: Int,
-    hinweis: Int,
-    onKlick: () -> Unit,
-) {
-    Row(
-        Modifier
-            .fillMaxWidth()
-            .clip(Formen.leiste)
-            .clickable(onClick = onKlick)
-            .padding(vertical = Abstaende.mittel, horizontal = Abstaende.klein),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(Abstaende.mittel),
-    ) {
-        Icon(icon, null, Modifier.size(20.dp), tint = MaterialTheme.colorScheme.primary)
-        Column(Modifier.weight(1f)) {
-            Text(stringResource(titel), fontSize = Schrift.normal, fontWeight = FontWeight.Medium)
-            Text(stringResource(hinweis),
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant)
-        }
-        Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, null,
-             tint = MaterialTheme.colorScheme.onSurfaceVariant)
     }
 }
 

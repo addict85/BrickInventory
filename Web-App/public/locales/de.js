@@ -188,7 +188,7 @@ window.I18N_DE = {
   'csv.errors':            'Fehler',
   'rb_key.missing':        'Bitte zuerst die Rebrickable API-Key in den Einstellungen hinterlegen.',
   'gallery.title':          'Meine Sammlung',
-  'settings.logout':        'Abmelden',
+  'settings.logout':        '🚪 Abmelden',
 
   'gallery.template':      '📄 Vorlage',
   'parts.add.price_placeholder': 'Leer = Marktpreis',

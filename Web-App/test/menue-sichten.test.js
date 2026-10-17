@@ -36,7 +36,24 @@ const fs     = require('node:fs');
 const path   = require('node:path');
 
 const ROOT = path.join(__dirname, '..');
-const HTML = fs.readFileSync(path.join(ROOT, 'public', 'index.html'), 'utf8');
+/**
+ * index.html OHNE Kommentare.
+ *
+ * GEMESSEN am 17.10.: Ein Erklaerkommentar INNERHALB der Menueklappe enthielt
+ * die Zeichenfolge eines schliessenden div-Tags — und `eintragsTexte()`
+ * schneidet die Klappe genau am ersten solchen Tag aus. Der Ausschnitt endete
+ * damit im Kommentar, die Pruefung sah sieben Eintraege statt acht und blieb
+ * GRUEN. Sie hat nicht falsch gemessen, sondern still weniger, und das ist
+ * schlimmer: Ein roter Fall meldet sich, ein verkuerzter nicht.
+ *
+ * Ironischerweise war es der Kommentar, der vor genau diesem Schnitt warnte.
+ *
+ * Dieselbe Entscheidung wie in test/bedienelement-name.test.js und
+ * test/dom-ids.test.js: Gesucht wird im MARKUP. Was ein Kommentar beschreibt,
+ * ist keine Oberflaeche.
+ */
+const HTML = fs.readFileSync(path.join(ROOT, 'public', 'index.html'), 'utf8')
+  .replace(/<!--[\s\S]*?-->/g, '');
 const NAV  = fs.readFileSync(path.join(ROOT, 'public', 'js', '02-gallery.js'), 'utf8');
 
 /** Die Namen aus dem Menü — `data-click="oeffneSicht" data-arg="…"`. */
@@ -172,10 +189,17 @@ function eintragsTexte() {
 
 test('jeder Menüeintrag trägt sein Symbol im SPRACHTEXT', () => {
   const eintraege = eintragsTexte();
-  // Selbstbeweis: GEMESSEN sind es sieben. Findet die Ableitung nichts, wäre
-  // die Schleife darunter still grün.
-  assert.equal(eintraege.length, 7,
-    `${eintraege.length} Einträge abgeleitet statt sieben — greift die Ableitung noch?`);
+  // Selbstbeweis: GEMESSEN sind es acht — die sieben Sichten und „Abmelden",
+  // das am 17.10. aus der Kopfleiste in die Klappe gezogen ist (Marcos
+  // Vorgabe: „Kannst du abmelden ebenfalls in das neue Menu integrieren?").
+  // Findet die Ableitung nichts, wäre die Schleife darunter still grün.
+  //
+  // Von sieben auf acht ist hier KEINE blosse Nachführung: Beim Umzug stand
+  // die Zahl eine Weile auf sieben, OBWOHL acht Einträge dastanden — ein
+  // Kommentar in der Klappe hatte den Ausschnitt verkürzt (siehe HTML oben).
+  // Die Pruefung war grün und blind. Genau dafür steht diese Zusicherung.
+  assert.equal(eintraege.length, 8,
+    `${eintraege.length} Einträge abgeleitet statt acht — greift die Ableitung noch?`);
 
   // Ein Symbol ist hier: ein Zeichen jenseits von ASCII am Anfang des Textes.
   // „Ü" aus „Übersicht" wäre eines — deshalb zusätzlich die Bedingung, dass
@@ -222,16 +246,47 @@ test('die Bedienelemente der Kopfleiste sind gleich hoch', () => {
   const css = fs.readFileSync(path.join(ROOT, 'public', 'styles.css'), 'utf8');
   assert.match(css, /\.umenu\{[^}]*--kopf-hoehe:\s*\d+px/,
     'In `.umenu` steht keine gemeinsame Höhe mehr.');
-  for (const teil of ['.umenu .ubadge', '.umenu .abadge', '.umenu .btn']) {
+  // `.umenu .btn` ist seit dem 17.10. NICHT mehr dabei: Der einzige Knopf der
+  // Reihe — „Abmelden" — ist in die Klappe umgezogen. Eine Zusicherung auf
+  // ein Element, das es an dieser Stelle nicht mehr gibt, pinnt toten Code.
+  for (const teil of ['.umenu .ubadge', '.umenu .abadge']) {
     assert.ok(css.includes(teil),
       `${teil} bekommt die gemeinsame Höhe nicht mehr — dann steht dieses ` +
       'Element wieder auf eigener Höhe in der Reihe.');
   }
-  assert.match(css, /\.umenu \.ubadge,\s*\n\s*\.umenu \.abadge,\s*\n\s*\.umenu \.btn\{height:var\(--kopf-hoehe\)\}/,
-    'Die drei teilen sich die Höhe nicht mehr über dieselbe Regel.');
+  assert.match(css, /\.umenu \.ubadge,\s*\n\s*\.umenu \.abadge\{height:var\(--kopf-hoehe\)\}/,
+    'Namensknopf und Admin-Plakette teilen sich die Höhe nicht mehr über dieselbe Regel.');
   // Und NICHT an `.btn-sm`: die Klasse hängt an 28 Stellen in index.html und
   // in fünf JS-Dateien. Eine Höhe dort verschöbe die halbe Oberfläche.
   assert.doesNotMatch(css, /\.btn-sm\{[^}]*height:/,
     '`.btn-sm` hat eine feste Höhe bekommen — diese Klasse trägt die halbe ' +
     'Oberfläche, die Höhe gehört in die Kopfleiste.');
+});
+
+test('Abmelden steht in der Klappe und nicht mehr in der Kopfleiste', () => {
+  // Marcos Vorgabe vom 17.10.: „Kannst du abmelden ebenfalls in das neue Menu
+  // integrieren?"
+  //
+  // Geprueft wird BEIDES. Nur „steht in der Klappe" waere gruen geblieben,
+  // haette ich den Knopf verdoppelt statt verschoben — und zwei Abmeldeknoepfe
+  // sieht man im Markup nicht, wohl aber auf dem Bildschirm.
+  const kopfAuf = HTML.indexOf('<header');
+  const kopfZu  = HTML.indexOf('</header>');
+  const kopf    = HTML.slice(kopfAuf, kopfZu);
+  const klappeAuf = HTML.indexOf('<div class="umenu-pop"');
+  const klappe    = HTML.slice(klappeAuf, HTML.indexOf('</div>', klappeAuf));
+
+  assert.ok(klappe.includes('id="btn-logout"'),
+    'Abmelden steht nicht in der Menueklappe.');
+  assert.equal((kopf.match(/id="btn-logout"/g) || []).length, 1,
+    'Abmelden kommt in der Kopfleiste nicht genau einmal vor — verdoppelt oder verschwunden? '
+    + '(Die Klappe liegt INNERHALB des <header>, der eine Treffer ist der in der Klappe.)');
+  assert.ok(klappe.includes('umenu-trenner'),
+    'Der Trenner vor „Abmelden" fehlt — dann steht die Handlung als achter Punkt '
+    + 'in einer Reihe mit sieben Sichtwechseln.');
+
+  // Und 01-core.js haengt seinen Handler weiterhin an diese ID.
+  const core = fs.readFileSync(path.join(ROOT, 'public', 'js', '01-core.js'), 'utf8');
+  assert.match(core, /G\('btn-logout'\)\.onclick/,
+    'Niemand verdrahtet btn-logout mehr — der Eintrag taete dann nichts.');
 });

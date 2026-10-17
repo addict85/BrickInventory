@@ -173,22 +173,55 @@ class GutscheineContractTest {
      *
      * Bis dahin war es die erste KARTE einer sehr langen Rolle. Seit Marcos
      * Befund („Generell wirkt dieser Dialog überladen […] Evtl. Auch Elemente
-     * aus den Einstellungen in eine eigene Sicht verschieben?") stehen die
-     * Rubriken als Liste da, und die Gutscheine sind deren erster Eintrag.
+     * aus den Einstellungen in eine eigene Sicht verschieben?") standen die
+     * Rubriken als Liste da, und die Gutscheine waren deren erster Eintrag.
      *
-     * Die Zusicherung ist damit dieselbe geblieben — „ohne Rollen erreichbar"
-     * —, nur ihr Gegenstand ist jetzt die erste ZEILE statt der ersten Karte.
-     * Geprueft wird weiterhin die Reihenfolge und nicht bloss das Vorkommen:
-     * Eine Pruefung auf Vorkommen waere auch an der letzten Stelle gruen.
+     * ── Und am 17.10. ───────────────────────────────────────────────────────
+     *
+     * „in der Android-App sollten die Punkte unter Einstellungen eine ebene
+     * nach aussen wandern wo heute Einstellungen und Abmelden und Monitoring
+     * zu finden sind." Die Liste ist damit ganz aus den Einstellungen heraus
+     * und sitzt in der Konto-Klappe (MainScaffold.kt).
+     *
+     * Die Zusicherung ist DIESELBE geblieben — „ohne Suchen erreichbar" —,
+     * nur ihr Ort ist zum zweiten Mal umgezogen: erste Karte, erste Zeile,
+     * jetzt erster Eintrag der Klappe. Geprueft wird weiterhin die
+     * REIHENFOLGE und nicht bloss das Vorkommen: Eine Pruefung auf Vorkommen
+     * waere auch an letzter Stelle gruen.
      */
     @Test
-    fun `die Gutscheine stehen ganz oben in den Einstellungen`() {
-        val rumpf = code(lies("src/main/java/ch/brickinventoryapp/ui/screens/SettingsScreen.kt"))
-            .substringAfter(".verticalScroll(scrollState)")
-        val erste = Regex("""EinstellungsBereich\.(\w+)""").find(rumpf)?.groupValues?.get(1)
-        assert(erste == "GUTSCHEINE") {
-            "Der erste Eintrag in den Einstellungen fuehrt zu $erste statt zu den " +
+    fun `die Gutscheine stehen ganz oben im Konto-Menue`() {
+        val rumpf = code(lies("src/main/java/ch/brickinventoryapp/MainScaffold.kt"))
+            .substringAfter("DropdownMenu(showLogoutMenu")
+        val erste = Regex("""MenuZiel\(R\.string\.(\w+)""").find(rumpf)?.groupValues?.get(1)
+        assert(erste == "vouchers_title") {
+            "Der erste Eintrag der Konto-Klappe fuehrt zu $erste statt zu den " +
                 "GUTSCHEINEN — dann muss Marco fuer seine Karten wieder suchen."
+        }
+    }
+
+    /**
+     * Die Rubriken liegen NICHT mehr in den Einstellungen.
+     *
+     * Die Gegenrichtung zur Zusicherung darueber. Ohne sie waere beides
+     * gleichzeitig gruen: die Eintraege in der Klappe UND eine vergessene
+     * Kopie im Einstellungsbildschirm. Zwei Wege zu derselben Seite sieht man
+     * im Quelltext nicht, wohl aber auf dem Bildschirm — und hier gibt es
+     * keinen Emulator, in dem das auffiele.
+     */
+    @Test
+    fun `die Einstellungen fuehren nicht mehr selbst zu den Rubriken`() {
+        val einst = code(lies("src/main/java/ch/brickinventoryapp/ui/screens/SettingsScreen.kt"))
+        for (route in listOf("Screen.Gutscheine", "Screen.Preisalarme", "Screen.Lagerorte",
+                             "Screen.Haushalt", "Screen.CsvImport", "Screen.Konto")) {
+            assert(!einst.contains(route)) {
+                "SettingsScreen.kt fuehrt noch selbst zu $route — dann gibt es die " +
+                    "Rubrik zweimal, in der Klappe und in den Einstellungen."
+            }
+        }
+        assert(!einst.contains("EinstellungsBereich")) {
+            "EinstellungsBereich steht noch in den Einstellungen — der Weg ueber " +
+                "die Liste ist nicht vollstaendig zurueckgebaut."
         }
     }
 

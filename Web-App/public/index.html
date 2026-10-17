@@ -286,11 +286,21 @@
                     data-i18n="settings.data_export">📦 Daten exportieren</button>
             <button class="umenu-item" role="menuitem" data-click="oeffneSicht" data-arg="app"
                     data-i18n="menu.app">📱 Android-App</button>
+            <!-- Abmelden steht abgesetzt, nicht als achter Punkt in einer
+                 Reihe: Die sieben darueber wechseln die Sicht, dieses hier
+                 beendet die Sitzung. Ein `hr` und KEIN verschachteltes div —
+                 test/menue-sichten.test.js schneidet die Klappe am ersten
+                 schliessenden div-Tag aus, ein zweites div haette ihr den Rest
+                 der Liste weggeschnitten. (Die Pruefung streift Kommentare
+                 inzwischen ab, denn dieser Text hier enthielt den Tag
+                 ausgeschrieben und hat GENAU DAS ausgeloest.) -->
+            <hr class="umenu-trenner">
+            <button class="umenu-item umenu-abmelden" role="menuitem" id="btn-logout"
+                    data-i18n="settings.logout">🚪 Abmelden</button>
           </div>
         </div>
 
         <span class="abadge" id="abadge" style="display:none" data-i18n="users.admin_badge">Admin</span>
-        <button class="btn bs btn-sm" id="btn-logout" data-i18n="settings.logout">Abmelden</button>
       </div>
     </div>
   </header>
