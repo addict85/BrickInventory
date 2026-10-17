@@ -593,7 +593,7 @@ window.I18N_DE = {
   'settings.smtp.from': 'Absender (Von)',
   'settings.smtp.save': '💾 SMTP speichern',
   'settings.smtp.test_to': 'Test-E-Mail senden an',
-  'settings.global_title': 'Globale Einstellungen',
+  'settings.global_title': '🌐 Globale Einstellungen',
   'settings.danger_zone': '⚠️ Gefahrenzone',
   'monitor.logs_btn': '🗒️ Logs anzeigen',
   'monitor.api_calls': '📊 API-Aufrufe heute',
