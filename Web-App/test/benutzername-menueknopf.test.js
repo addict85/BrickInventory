@@ -159,3 +159,68 @@ test('der Knopf sagt einem Bildschirmleser, dass er ein Menü ist', () => {
   assert.equal(glyphe.getAttribute('aria-hidden'), 'true',
     '„☰" vorgelesen ergibt nichts — die Glyphe gehört versteckt');
 });
+
+/**
+ * ── Nachtrag vom 17.10.: der Verwalter-Hinweis steht IM Namen ───────────────
+ *
+ * Marcos Vorgabe: „Kannst du das \"Admin\" nicht als eigene Kachel anzeigen
+ * sondern in () hinter dem Benuzter? Also z.b. marco.bigolin (Admin) oder
+ * marco.bigolin sofern der User kein Admin ist. Das menu soll dann ganz
+ * rechts sein."
+ *
+ * Die eigene Plakette (`#abadge`) ist damit aus der Kopfleiste verschwunden.
+ * Sie stand ZWISCHEN dem Namensknopf und dem rechten Rand — deshalb sass das
+ * Menü nicht ganz rechts. Mit ihr ist der Knopf das letzte Element der Reihe.
+ *
+ * ── Warum hier zwei Fälle stehen und nicht einer ────────────────────────────
+ *
+ * „(Admin) steht dahinter" allein wäre auch grün, wenn es IMMER dahinter
+ * stünde — und dann trüge jeder Gast einen Verwalter-Hinweis. Der zweite Fall
+ * ist der wichtigere.
+ *
+ * Gegenproben (durchgeführt): `ME.isAdmin` in der Bedingung durch `true`
+ * ersetzt → „ohne Verwalterrecht steht nur der Name" rot. Den Zusatz ganz
+ * entfernt → „mit Verwalterrecht steht (Admin) dahinter" rot.
+ */
+test('der Namenszug trägt den Verwalter-Hinweis, die Kachel ist weg', () => {
+  const { document } = kopfleiste().window;
+  assert.equal(document.getElementById('abadge'), null,
+    'Die Admin-Plakette steht wieder in der Kopfleiste — dann sagt sie dasselbe ' +
+    'wie der Name daneben, und das Menü sitzt nicht mehr ganz rechts.');
+
+  // Der Namensknopf ist das LETZTE Element der Reihe.
+  const reihe = document.querySelector('.umenu');
+  assert.ok(reihe, 'Keine .umenu in der Kopfleiste');
+  const letztes = [...reihe.children].at(-1);
+  assert.ok(letztes.contains(document.getElementById('btn-umenu')),
+    'Nach dem Menüknopf steht noch etwas in der Reihe — dann ist er nicht ganz rechts.');
+});
+
+test('mit Verwalterrecht steht (Admin) dahinter, ohne nur der Name', () => {
+  // Geprüft wird die QUELLE und nicht ein nachgebauter Ablauf: zeigeBenutzernamen()
+  // hängt an ME und am Sprachtext, beides gibt es hier nicht. Was zählt, ist,
+  // dass die Regel beide Fälle unterscheidet — und dass sie nur EINMAL dasteht.
+  const core = fs.readFileSync(path.join(ROOT, 'public', 'js', '01-core.js'), 'utf8');
+  const fn = core.slice(core.indexOf('export function zeigeBenutzernamen'));
+  const rumpf = fn.slice(0, fn.indexOf('\n}'));
+  assert.ok(rumpf.includes('ME.isAdmin'),
+    'zeigeBenutzernamen() unterscheidet nicht nach Verwalterrecht — dann trägt ' +
+    'entweder jeder den Hinweis oder niemand.');
+  assert.match(rumpf, /\$\{ME\.username\} \(\$\{tRaw\('users\.admin_badge'\)\}\)/,
+    'Der Zusatz steht nicht als „Name (Admin)" da.');
+  assert.match(rumpf, /:\s*ME\.username/,
+    'Ohne Verwalterrecht steht nicht nur der Name da.');
+  assert.ok(rumpf.includes("tRaw('users.admin_badge')"),
+    'Der Zusatz ist ein Literal statt eines Sprachtextes — eine englische ' +
+    'Oberfläche zeigte dann deutsches „Admin".');
+
+  // EINE Stelle, die schreibt. 05-settings.js rief früher von Hand
+  // `uel.textContent = username` auf — und hatte dabei schon einmal den
+  // falschen Elementnamen, jahrelang unbemerkt.
+  const settings = fs.readFileSync(path.join(ROOT, 'public', 'js', '05-settings.js'), 'utf8');
+  assert.ok(settings.includes('zeigeBenutzernamen()'),
+    'Die Profilseite setzt den Namen wieder selbst — dann schneidet sie den ' +
+    'Verwalter-Hinweis beim Speichern ab.');
+  assert.doesNotMatch(settings, /uel\.textContent\s*=/,
+    'In 05-settings.js steht wieder eine eigene Fassung der Regel.');
+});

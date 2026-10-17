@@ -107,8 +107,11 @@
        Vorgabe: „Kannst du abmelden ebenfalls in das neue Menu integrieren?").
        Eine Regel fuer ein Element, das es an dieser Stelle nicht mehr gibt,
        sieht aus wie eine Zusicherung und ist eine Behauptung ins Leere. */
-    .umenu .ubadge,
-    .umenu .abadge{height:var(--kopf-hoehe)}
+    /* Nur noch der Namensknopf: Die Admin-Plakette ist am 17.10. aus der
+       Kopfleiste verschwunden — der Hinweis steht jetzt IM Namen
+       („marco.bigolin (Admin)"), auf Marcos Vorgabe. Damit ist der Knopf das
+       letzte Element der Reihe und steht ganz rechts. */
+    .umenu .ubadge{height:var(--kopf-hoehe)}
     /* Das Menü hinter dem Benutzernamen (Marcos Vorgabe vom 16.10.).
        `position:relative` am Rahmen, damit die Klappe am Knopf hängt und
        nicht an der Seite; z-index über den Kopfzeilen-Inhalten, sonst
@@ -142,7 +145,23 @@
        aus den Regeln ab und misst jede gegen ihren Grund — eine Stelle mit
        eigener Farbe muss ihren Grund mitbringen, sonst misst die Pruefung
        gegen den falschen. */
-    .umenu-abmelden{background:var(--sur);color:var(--r700)}
+    /* Die Farbe MIT Rueckfall, und das ist kein Zierrat.
+       Marcos Befund vom 17.10.: „Beim Logout-Eintrag fehlt der Text."
+       Im Quelltext ist alles richtig — der Text wird gesetzt (gemessen mit
+       jsdom: textContent = „🚪 Abmelden"), `--r700` steht in :root, die
+       Regelreihenfolge stimmt. Nachstellen liess es sich hier NICHT; einen
+       Browser gibt es in dieser Umgebung nicht.
+       Es gibt aber genau EINEN Mechanismus, der dieses Bild erzeugt — Symbol
+       sichtbar, Text nicht: Laesst sich `var(--r700)` nicht aufloesen, ist die
+       Deklaration ungueltig, `color` faellt auf GEERBT zurueck, und geerbt
+       wird aus der Kopfleiste. Die faerbt ihre Schrift in drei Designs weiss
+       (themes/noppe.css: `[data-theme=...] header{color:#fff}`). Weisser Text
+       auf weisser Klappe. Das Emoji bliebe sichtbar, weil Emoji ihre eigene
+       Farbe mitbringen.
+       Der Rueckfallwert schliesst diesen Weg, egal woran es lag: eine
+       veraltete Fassung im Zwischenspeicher, eine Datei, die nicht
+       mitausgeliefert wurde, ein Design, das die Variable nicht kennt. */
+    .umenu-abmelden{background:var(--sur);color:var(--r700,#b91c1c)}
     .umenu-abmelden:hover{background:var(--r100,var(--s100))}
     .umenu-item:focus-visible{outline:2px solid var(--b600);outline-offset:-2px}
     /* Der Namenszug ist jetzt der Menüknopf (Marcos Nachzug vom 17.10.).

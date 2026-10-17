@@ -266,11 +266,20 @@ test('jeder Text in einer gestrichenen Kopfleiste ist lesbar', () => {
   // nur die Sicht wechseln. Eine eigene Farbe heisst: eine eigene Stelle,
   // die gegen ihren eigenen Grund gemessen werden muss. Deshalb traegt
   // `.umenu-abmelden` in styles.css ausdruecklich auch einen Hintergrund.
-  assert.equal(stellen.length, 7,
-    `${stellen.length} Stellen abgeleitet statt sieben: ` +
+  //
+  // Und von sieben auf SECHS, noch am 17.10.: Die Admin-Plakette ist aus der
+  // Kopfleiste verschwunden. Der Hinweis steht jetzt IM Namen —
+  // „marco.bigolin (Admin)" —, auf Marcos Vorgabe. Damit faellt `.abadge`
+  // aus der Ableitung: Die Klasse steht nicht mehr im <header>.
+  //
+  // Die REGEL in styles.css bleibt stehen, und das ist Absicht:
+  // themes/brick.css faerbt `header .abadge` eigens um, und die
+  // Benutzerverwaltung zeigt dieselbe Plakette weiter an.
+  assert.equal(stellen.length, 6,
+    `${stellen.length} Stellen abgeleitet statt sechs: ` +
     stellen.map(s => s.sel).join(', ') + ' — greift die Ableitung noch?');
-  assert.equal(stellen.filter(s => s.eigenerGrund).length, 4,
-    'Die Stellen mit eigenem Grund sind nicht mehr vier — greift die Ableitung noch?');
+  assert.equal(stellen.filter(s => s.eigenerGrund).length, 3,
+    'Die Stellen mit eigenem Grund sind nicht mehr drei — greift die Ableitung noch?');
 
   const alle = designs();
   assert.ok(alle.length >= 4, `Nur ${alle.length} Designs — greift die Suche noch?`);
