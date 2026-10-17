@@ -822,9 +822,43 @@ async function checkRegistrationEnabled(){
 
 
 
+/**
+ * Den Namenszug in der Kopfleiste schreiben — mit dem Verwalter-Zusatz.
+ *
+ * ── Marcos Vorgabe vom 17.10. ───────────────────────────────────────────────
+ *
+ * „Kannst du das \"Admin\" nicht als eigene Kachel anzeigen sondern in ()
+ * hinter dem Benuzter? Also z.b. marco.bigolin (Admin) oder marco.bigolin
+ * sofern der User kein Admin ist."
+ *
+ * Die eigene Plakette (`#abadge`) ist damit aus der Kopfleiste verschwunden.
+ * Sie war ein zweites Element, das dasselbe sagte wie der Name daneben — und
+ * sie stand zwischen dem Namensknopf und dem rechten Rand, weshalb das Menü
+ * nicht ganz rechts sass.
+ *
+ * ── Warum als EINE Funktion und nicht zweimal hingeschrieben ────────────────
+ *
+ * Geschrieben wird der Name an ZWEI Stellen: hier beim Anmelden und in
+ * js/05-settings.js nach dem Ändern des Profils. Genau dort stand die Zeile
+ * schon einmal falsch („uname" statt „ubadge") und lief ins Leere, ohne dass
+ * es jemand merkte. Zwei Fassungen derselben Regel laufen auseinander; diese
+ * hier ist die einzige.
+ *
+ * Der Zusatz kommt aus dem Sprachtext (`users.admin_badge`) und nicht als
+ * Literal: Er stand schon übersetzt in der Plakette, und eine englische
+ * Oberfläche soll nicht plötzlich „Admin" auf Deutsch zeigen.
+ */
+export function zeigeBenutzernamen(){
+  const el = G('ubadge');
+  if (!el || !ME) return;
+  el.textContent = ME.isAdmin
+    ? `${ME.username} (${tRaw('users.admin_badge')})`
+    : ME.username;
+}
+
 function showApp(){ bindTabs(); plInit(); setTimeout(()=>{ gibCheckOnLoad(); }, 1000);
   G('login-screen').style.display='none'; G('app').style.display='block';
-  G('ubadge').textContent=ME.username;
+  zeigeBenutzernamen();
   initDefaultCondition();
   // Kontoauswahl beim Erfassen — bleibt verborgen, wenn es nichts zu wählen
   // gibt. Import aus 02-gallery.js gäbe einen Zyklus (dort wird api() aus
@@ -885,7 +919,7 @@ function showApp(){ bindTabs(); plInit(); setTimeout(()=>{ gibCheckOnLoad(); }, 
   // erst hier eingeblendet. Fuer alle anderen waere er leer, und ein leerer
   // Reiter ist schlimmer als keiner: Man klickt ihn an und sucht.
   if(ME.isAdmin){ const ns=G('ntab-settings'); if(ns) ns.style.display=''; }
-  if(ME.isAdmin){ document.querySelectorAll('.admin-only').forEach(el=>el.style.display=''); const nm=G('ntab-monitor'); if(nm){ nm.style.display=''; const lbl=nm.querySelector('.tab-label'); if(lbl) lbl.textContent=tRaw('nav.monitoring'); } G('abadge').style.display='inline-flex'; G('usermgmt').style.display='block'; ['bl-ao','rb-ao','bs-ao'].forEach(id=>{ const el=G(id); if(el) el.style.display='none'; }); const gg=G('global-settings-grid'); if(gg) gg.style.display='grid'; const gl=G('global-settings-label'); if(gl) gl.style.display='block'; }
+  if(ME.isAdmin){ document.querySelectorAll('.admin-only').forEach(el=>el.style.display=''); const nm=G('ntab-monitor'); if(nm){ nm.style.display=''; const lbl=nm.querySelector('.tab-label'); if(lbl) lbl.textContent=tRaw('nav.monitoring'); } G('usermgmt').style.display='block'; ['bl-ao','rb-ao','bs-ao'].forEach(id=>{ const el=G(id); if(el) el.style.display='none'; }); const gg=G('global-settings-grid'); if(gg) gg.style.display='grid'; const gl=G('global-settings-label'); if(gl) gl.style.display='block'; }
   else { ['bl-ck','bl-cs','bl-tok','bl-ts','rb-key','bs-key','lim-rb','lim-bl','lim-bs'].forEach(id=>{const el=G(id);if(el){el.disabled=true;if(el.type!=='number')el.placeholder=tRaw('settings.admins_only_ph')}}); G('btn-sav-bl').disabled=true; G('btn-sav-rb').disabled=true; G('btn-sav-bs').disabled=true; }
   // Admin: check if API keys are set, redirect to settings if not
   // Re-use the already-fetched cache (populated above); if not ready yet, wait briefly
@@ -938,7 +972,6 @@ G('btn-logout').onclick=async()=>{
   // Reset all admin-only elements before showing login
   const nm=G('ntab-monitor'); if(nm) nm.style.display='none';
   const ns=G('ntab-settings'); if(ns) ns.style.display='none';
-  G('abadge').style.display='none';
   G('usermgmt').style.display='none';
 
   ['bl-ao','rb-ao','bs-ao'].forEach(id=>{ const el=G(id); if(el) el.style.display=''; });

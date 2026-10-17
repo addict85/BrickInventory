@@ -1,6 +1,6 @@
 import { registerActions } from './00-registry.js';
 import { I18N, LANG, applyLang, locale, t, tRaw} from '../i18n.js';
-import { CURRENCY, G, ME, _settingsCache, _updateLangSelect, api, applyTheme, esc, escUrl, imgUrl, initDefaultCondition, knopfBesetzt, thumbUrl, toast , set_CURRENCY, set_settingsCache, passwortZuKurz, passwortZuKurzText} from './01-core.js';
+import { CURRENCY, G, ME, _settingsCache, _updateLangSelect, api, applyTheme, esc, escUrl, imgUrl, initDefaultCondition, knopfBesetzt, thumbUrl, toast, zeigeBenutzernamen , set_CURRENCY, set_settingsCache, passwortZuKurz, passwortZuKurzText} from './01-core.js';
 import { loadGallery, loadStats } from './02-gallery.js';
 import { loadParts } from './03-parts.js';
 import { loadMinifigs } from './06-minifigs.js';
@@ -372,7 +372,10 @@ G('btn-sav-prof').onclick = async () => {
     // 01-core.js) und truege bis zum naechsten Neuladen den alten Namen.
     // Das Element heisst `ubadge`; hier stand `uname`, das es im HTML nicht
     // gibt — die Zeile lief seither ins Leere.
-    if (ME) { ME.username = username; const uel = G('ubadge'); if (uel) uel.textContent = username; }
+    // Ueber zeigeBenutzernamen() und nicht von Hand: Seit dem 17.10. traegt
+    // der Namenszug den Verwalter-Zusatz, und eine zweite Fassung dieser
+    // Regel hier wuerde ihn beim Speichern des Profils wieder abschneiden.
+    if (ME) { ME.username = username; zeigeBenutzernamen(); }
 
     // Passwort (optional)
     if (wantsPwChange) {

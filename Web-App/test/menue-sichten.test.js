@@ -239,28 +239,36 @@ test('das Markup eines Menüeintrags zeigt, was der Sprachtext sagt', () => {
     'für den Augenblick vor dem Übersetzen.');
 });
 
-test('die Bedienelemente der Kopfleiste sind gleich hoch', () => {
-  // Marcos Vorgabe: „Der Abmeldebutton sollte gleich gross wie die restlichen
-  // Buttons sein oben rechts (gleich hoch)." Nachgerechnet waren es drei
-  // Höhen: ≈31,5 px (Abmelden), 24 px (Namensknopf), ≈20 px (Admin).
+test('die Kopfleiste behaelt ihre bewusste Hoehe', () => {
+  // ── Was dieser Fall einmal war, und was aus ihm geworden ist ────────────
+  //
+  // Marcos Vorgabe vom 17.10., frueh: „Der Abmeldebutton sollte gleich gross
+  // wie die restlichen Buttons sein oben rechts (gleich hoch)." Nachgerechnet
+  // waren es drei Hoehen — ≈31,5 px (Abmelden), 24 px (Namensknopf),
+  // ≈20 px (Admin-Plakette). Sie bekamen eine gemeinsame.
+  //
+  // Am selben Tag, spaeter: „Abmelden" zog in die Klappe und die
+  // Admin-Plakette in den Namen. In der Reihe steht nur noch EIN Element.
+  //
+  // „Gleich hoch" ist damit keine Beziehung mehr, die man pruefen koennte —
+  // ein Element ist immer gleich hoch wie es selbst. Der Fall heisst deshalb
+  // jetzt anders und sichert, was uebrig bleibt und weiterhin eine
+  // Entscheidung ist: Die 28 px stehen als Wert da, der Namensknopf nimmt
+  // sie, und sie stehen NICHT an `.btn-sm`.
+  //
+  // Den Fall einfach zu loeschen waere die andere Moeglichkeit gewesen. Dann
+  // haette niemand mehr gemerkt, wenn die Hoehe an `.btn-sm` wandert — und
+  // genau das ist die Falle, gegen die er gebaut wurde.
   const css = fs.readFileSync(path.join(ROOT, 'public', 'styles.css'), 'utf8');
   assert.match(css, /\.umenu\{[^}]*--kopf-hoehe:\s*\d+px/,
-    'In `.umenu` steht keine gemeinsame Höhe mehr.');
-  // `.umenu .btn` ist seit dem 17.10. NICHT mehr dabei: Der einzige Knopf der
-  // Reihe — „Abmelden" — ist in die Klappe umgezogen. Eine Zusicherung auf
-  // ein Element, das es an dieser Stelle nicht mehr gibt, pinnt toten Code.
-  for (const teil of ['.umenu .ubadge', '.umenu .abadge']) {
-    assert.ok(css.includes(teil),
-      `${teil} bekommt die gemeinsame Höhe nicht mehr — dann steht dieses ` +
-      'Element wieder auf eigener Höhe in der Reihe.');
-  }
-  assert.match(css, /\.umenu \.ubadge,\s*\n\s*\.umenu \.abadge\{height:var\(--kopf-hoehe\)\}/,
-    'Namensknopf und Admin-Plakette teilen sich die Höhe nicht mehr über dieselbe Regel.');
-  // Und NICHT an `.btn-sm`: die Klasse hängt an 28 Stellen in index.html und
-  // in fünf JS-Dateien. Eine Höhe dort verschöbe die halbe Oberfläche.
+    'In `.umenu` steht keine Hoehe mehr.');
+  assert.match(css, /\.umenu \.ubadge\{height:var\(--kopf-hoehe\)\}/,
+    'Der Namensknopf nimmt die Hoehe nicht mehr.');
+  // Nicht an `.btn-sm`: die Klasse haengt an 28 Stellen in index.html und in
+  // fuenf JS-Dateien. Eine Hoehe dort verschoebe die halbe Oberflaeche.
   assert.doesNotMatch(css, /\.btn-sm\{[^}]*height:/,
-    '`.btn-sm` hat eine feste Höhe bekommen — diese Klasse trägt die halbe ' +
-    'Oberfläche, die Höhe gehört in die Kopfleiste.');
+    '`.btn-sm` hat eine feste Hoehe bekommen — diese Klasse traegt die halbe ' +
+    'Oberflaeche, die Hoehe gehoert in die Kopfleiste.');
 });
 
 test('Abmelden steht in der Klappe und nicht mehr in der Kopfleiste', () => {
