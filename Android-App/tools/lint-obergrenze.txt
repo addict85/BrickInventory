@@ -127,3 +127,30 @@
 #                             es ab Android 12 auch die Geraet-zu-Geraet-
 #                             Uebertragung steuert, und die ist von allowBackup
 #                             unabhaengig.
+#
+# ── 19.10.: zwei Befunde, die am KALENDER hingen ───────────────────────────
+#
+# Die Zahl blieb 26, aber die Zaehlung hat eine Trennung bekommen. GEMESSEN:
+# Der letzte gruene Lauf auf main (296d761) zaehlte 26. Derselbe Baum, einen
+# Tag spaeter und mit genau EINER neuen Zeile in values-de/strings.xml,
+# zaehlte 28. Die zwei Neuen:
+#
+#   1x AndroidGradlePluginVersion  Gradle 9.8.1 -> 9.8.2 verfuegbar
+#   1x NewerVersionAvailable       kotlinx-serialization-json 1.11.0 -> 1.12.0
+#
+# Beide sagen nichts ueber diesen Baum. Sie entstehen, wenn ein FREMDES
+# Projekt etwas veroeffentlicht — sie haetten jeden Zweig rot gemacht, main
+# eingeschlossen, und mit dem Umbau, waehrend dessen sie auftraten, hatten sie
+# nichts zu tun.
+#
+# Die Grenze deshalb von 26 auf 28 zu heben waere der falsche Handgriff
+# gewesen: Dann waere Platz fuer zwei ECHTE neue Warnungen entstanden, und beim
+# naechsten Mal faellt dasselbe wieder an. tools/lint-zaehlen.py zaehlt die
+# beiden Prueferkennungen jetzt getrennt (FASSUNGSHINWEISE) — genannt mit
+# Fundort, aber ausserhalb der Obergrenze. Dieselbe Auskunft gibt der Schritt
+# „Fassungen" im Arbeitsablauf ohnehin schon, und dort ist sie die Aufgabe.
+#
+# Gegengeprobt an einem nachgebauten Bericht (26 echte + die zwei Hinweise):
+#   ohne die Trennung   -> „Warnungen 28, Obergrenze 26 — ueberschritten", rot
+#   mit der Trennung    -> „Warnungen 26 — genau eingehalten", gruen
+#   eine ECHTE 27. dazu -> wieder rot. Der Riegel greift weiter.

@@ -70,6 +70,33 @@ def kurzname(pfad, zeile=None):
     return name + (":" + zeile if zeile else "")
 
 
+# ── Befunde, die am KALENDER haengen und nicht an diesem Baum ──────────────
+#
+# Lint prueft auch, ob es von Gradle und von einzelnen Bibliotheken neuere
+# Fassungen gibt. Das ist eine nuetzliche Auskunft — aber keine Aussage ueber
+# den Code hier: Sie aendert sich, wenn ein fremdes Projekt etwas
+# veroeffentlicht, und zwar OHNE dass jemand diesen Baum angefasst haette.
+#
+# GEMESSEN am 19.10.: Der letzte gruene Lauf auf main (296d761) zaehlte 26
+# Warnungen. Derselbe Baum, einen Tag spaeter und mit einer einzigen neuen
+# Zeile in values-de/strings.xml, zaehlte 28 — die zwei Neuen waren:
+#
+#     1x AndroidGradlePluginVersion  Gradle 9.8.1 -> 9.8.2 verfuegbar
+#     1x NewerVersionAvailable       kotlinx-serialization-json 1.11.0 -> 1.12.0
+#
+# Beide haetten jeden Zweig rot gemacht, main eingeschlossen, und mit dem
+# Umbau, waehrend dessen sie auftraten, hatten sie nichts zu tun. Ein Riegel,
+# der zuschlaegt, weil JetBrains etwas veroeffentlicht hat, meldet nicht, was
+# er zu melden vorgibt — und wer ihn ein paarmal so erlebt, hebt die Zahl an,
+# ohne noch hinzusehen. Genau das soll diese Datei verhindern.
+#
+# Sie werden deshalb NICHT versteckt, sondern getrennt: eigene Ueberschrift,
+# volle Nennung mit Fundort, aber ausserhalb der Obergrenze. Dieselbe Auskunft
+# gibt im Arbeitsablauf ohnehin schon der Schritt „Fassungen" (
+# tools/fassungen-pruefen.py), und zwar als seine eigentliche Aufgabe.
+FASSUNGSHINWEISE = ("AndroidGradlePluginVersion", "NewerVersionAvailable")
+
+
 def obergrenze(pfad):
     if not os.path.exists(pfad):
         return None
@@ -116,7 +143,9 @@ def main(argv):
         print("::error::%s ist nicht lesbar (%s)." % (bericht, e))
         return 1
 
-    warnungen = nach_stufe.get("Warning", [])
+    alle_warnungen = nach_stufe.get("Warning", [])
+    warnungen = [w for w in alle_warnungen if w[0] not in FASSUNGSHINWEISE]
+    fassungen = [w for w in alle_warnungen if w[0] in FASSUNGSHINWEISE]
     schlimme = nach_stufe.get("Error", []) + nach_stufe.get("Fatal", [])
     rest = {s: len(v) for s, v in nach_stufe.items()
             if s not in ("Warning", "Error", "Fatal")}
@@ -156,7 +185,18 @@ def main(argv):
                                        + (" …" if len(orte) > 6 else "")))
             print("       %s" % text)
 
+    if fassungen:
+        print("\nFassungshinweise (NICHT unter der Obergrenze — siehe FASSUNGSHINWEISE):")
+        for kennung, text, orte in fassungen:
+            print("  %-28s %s [%s]" % (kennung, text, ", ".join(orte[:3])))
+
     zeile = ["Warnungen %d" % len(warnungen)]
+    if fassungen:
+        # Genannt, nicht verschwiegen: Die Zahl steht in derselben Zeile wie
+        # die Warnungen, nur ausserhalb der Summe.
+        zeile.append("Fassungshinweise %d (nicht in der Summe): %s"
+                     % (len(fassungen),
+                        ", ".join(sorted({k for k, _, _ in fassungen}))))
     if rest:
         zeile.append("ausserdem: " + ", ".join("%s %d" % (s, n) for s, n in sorted(rest.items())))
     # ── Die Liste auf MEHRERE Annotationen verteilen ────────────────────────
