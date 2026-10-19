@@ -92,6 +92,121 @@ class SplitFileImportsTest {
         }
     }
 
+    /**
+     * Die Gegenrichtung: ein Name, der NICHT importierbar ist.
+     *
+     * ── Gemessen am 19.10., in der CI ───────────────────────────────────────
+     *
+     *     > Task :app:compileDebugKotlin FAILED
+     *     Unresolved reference 'ExposedDropdownMenu'.
+     *     Location: .../ui/screens/FarbWahlFeld.kt:11
+     *
+     * `ExposedDropdownMenu` ist in Material 3 kein Composable auf oberster
+     * Ebene, sondern ein MITGLIED von `ExposedDropdownMenuBoxScope`. Innerhalb
+     * des Box-Rumpfs ist es damit ohnehin da — ein Import darauf zeigt ins
+     * Leere, auch wenn er wie die drei Zeilen darueber aussieht
+     * (ExposedDropdownMenuBox, -Defaults und -AnchorType sind sehr wohl
+     * importierbar). Genau diese Nachbarschaft macht den Fehler leicht.
+     *
+     * Die beiden bestehenden Nutzer belegen es: LagerortFeld.kt ruft
+     * `ExposedDropdownMenu` ohne Import, PartsDialogs.kt unter `material3.*`.
+     * Beide uebersetzen.
+     *
+     * Hier wird in dieser Umgebung nicht uebersetzt (dl.google.com ist
+     * gesperrt), die Uebersetzung macht die CI — und das dauert Minuten. Diese
+     * Pruefung dauert Millisekunden, dieselbe Begruendung wie beim Fall
+     * darueber.
+     *
+     * Die Liste ist bewusst KURZ: Jeder Eintrag ist ein Name, der einmal
+     * wirklich so gescheitert ist. Geraten wird hier nichts.
+     */
+    @Test
+    fun `kein Import auf ein Bereichs-Mitglied`() {
+        val nichtImportierbar = mapOf(
+            "androidx.compose.material3.ExposedDropdownMenu" to
+                "Mitglied von ExposedDropdownMenuBoxScope — im Rumpf der Box ohnehin da",
+        )
+        val wurzel = java.io.File("src/main/java/ch/brickinventoryapp")
+        val dateien = wurzel.walkTopDown().filter { it.extension == "kt" }.toList()
+        check(dateien.size >= 20) {
+            "Zu wenige Kotlin-Dateien unter ${'$'}{wurzel.path} — Pfad veraltet? Ohne " +
+                "Treffer waere diese Pruefung stillschweigend gruen."
+        }
+        val fehler = mutableListOf<String>()
+        for (f in dateien) {
+            val importe = Regex("""^import ([\w.]+)${'$'}""", RegexOption.MULTILINE)
+                .findAll(f.readText()).map { it.groupValues[1] }.toSet()
+            for ((name, grund) in nichtImportierbar) {
+                if (name in importe) fehler += "${'$'}{f.name}: import ${'$'}name — ${'$'}grund"
+            }
+        }
+        assert(fehler.isEmpty()) {
+            "Importe, die ins Leere zeigen:\n  " + fehler.joinToString("\n  ") +
+                "\nDie Zeile ersatzlos streichen — der Name steht im Rumpf schon zur " +
+                "Verfuegung. Genau daran ist die CI am 19.10. gescheitert."
+        }
+    }
+
+    /**
+     * Ein deutsches Anfuehrungszeichen, das die Zeichenkette aus Versehen beendet.
+     *
+     * ── Gemessen am 19.10., in der CI ───────────────────────────────────────
+     *
+     *     > Task :app:compileDebugUnitTestKotlin FAILED
+     *     Unresolved reference 'Verlangt' on receiver of type 'String'.
+     *     Location: .../TeilFarbeAendernTest.kt:157
+     *
+     * Die Zeile lautete:
+     *
+     *     "… hinter der Bedingung „$bedingung". Verlangt sie " +
+     *
+     * Das deutsche Paar ist `„ … "`. Wer das schliessende Zeichen als
+     * schlichtes `"` tippt, beendet damit die KOTLIN-Zeichenkette, und alles
+     * dahinter liest der Uebersetzer als Code — hier `.Verlangt` als
+     * Feldzugriff auf einen String. Der Baum schreibt es deshalb ueberall als
+     * `\"`; GEMESSEN sind das 14 Stellen, und alle 14 machen es richtig.
+     *
+     * ── Warum die Regel so eng ist ──────────────────────────────────────────
+     *
+     * Ein `„` gefolgt von einem unmaskierten `"` ist fuer sich NOCH kein
+     * Fehler: Eine Zeichenkette darf dort enden und auf der naechsten Zeile
+     * mit `+` weitergehen (so steht es in TokenVorDerSchreibungTest.kt, und
+     * das ist richtig). Erst wenn direkt hinter dem `"` ein BUCHSTABE oder ein
+     * PUNKT steht, kann es keine Fortsetzung mehr sein.
+     *
+     * Mit dieser Fassung GEMESSEN: genau ein Treffer im ganzen Baum, naemlich
+     * der oben. Die weitere Fassung ohne die letzte Bedingung meldete 2, davon
+     * einen gesunden; die ganz weite (ohne Kommentarfilter) 724.
+     *
+     * ── Auch der TESTbaum, und das ist hier der Punkt ───────────────────────
+     *
+     * Quellen.alle() liest nur src/main. Der Fehler, um den es geht, stand in
+     * einer TESTdatei — eine Pruefung, die nur src/main liest, haette genau
+     * ihn nicht gefunden. Beide Baeume werden uebersetzt, also werden beide
+     * gelesen.
+     */
+    @Test
+    fun `kein deutsches Anfuehrungszeichen beendet eine Zeichenkette`() {
+        val muster = Regex("""\u201e[^"\n]*(?<!\\)"[A-Za-z.]""")
+        val dateien = (Quellen.alle() + java.io.File("src/test/java")
+            .walkTopDown().filter { it.isFile && it.extension == "kt" }).toList()
+        check(dateien.size >= 100) {
+            "Nur ${'$'}{dateien.size} Kotlin-Dateien gelesen — Pfad veraltet? Ohne Treffer " +
+                "waere diese Pruefung stillschweigend gruen."
+        }
+        val fehler = dateien.flatMap { f ->
+            Quellen.ohneKommentare(f.readText()).lines().withIndex()
+                .filter { (_, z) -> muster.containsMatchIn(z) }
+                .map { (i, z) -> "${'$'}{f.name}:${'$'}{i + 1}: ${'$'}{z.trim()}" }
+        }
+        assert(fehler.isEmpty()) {
+            "Hier beendet ein schliessendes Anfuehrungszeichen die Zeichenkette:\n  " +
+                fehler.joinToString("\n  ") +
+                "\nDas schliessende Zeichen des deutschen Paares gehoert als \\\" " +
+                "geschrieben. Genau daran ist die CI am 19.10. gescheitert."
+        }
+    }
+
     /** Kommentare und Zeichenketten durch Leerzeichen ersetzen, Zeilen erhalten. */
     private fun entkleide(src: String): String {
         val out = StringBuilder()

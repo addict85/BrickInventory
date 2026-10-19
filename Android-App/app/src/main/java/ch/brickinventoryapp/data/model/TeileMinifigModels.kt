@@ -380,6 +380,41 @@ data class BestandResponse(
 )
 
 // ═══════════════════════════════════════════════════════════════════════════
+// Farbe eines manuell erfassten Teils nachtraeglich aendern
+// ═══════════════════════════════════════════════════════════════════════════
+
+/**
+ * Marcos Bitte vom 19.10.: „Weiter moechte ich die Farbe nachtraeglich
+ * anpassen koennen fuer den Fall dass diese nicht korrekt geladen wurde."
+ *
+ * `colorName` und `colorHex` reisen mit, weil die Teileliste den Namen aus der
+ * Zeile liest — ohne ihn bliebe ein Farbpunkt ohne Beschriftung. Der Server
+ * holt sie aus rb_colors, wenn sie fehlen (utils/teilFarbeAendern.ts).
+ */
+@Serializable
+data class TeilFarbeRequest(
+    @SerialName("color_id")   val colorId: Int,
+    @SerialName("color_name") val colorName: String? = null,
+    @SerialName("color_hex")  val colorHex: String? = null,
+)
+
+/**
+ * Was die Aenderung getan hat.
+ *
+ * `zusammengelegt` ist bei Marco der Normalfall: Dasselbe Teil stand DANEBEN
+ * schon in der richtigen Farbe — das war ja sein Befund. Dann bleibt die
+ * Zielzeile und die falsche geht, statt dass eine zweite entsteht.
+ */
+@Serializable
+data class TeilFarbeResponse(
+    val success: Boolean = false,
+    val zusammengelegt: Boolean = false,
+    val verschoben: Int = 0,
+    val vereint: Int = 0,
+    val error: String? = null,
+)
+
+// ═══════════════════════════════════════════════════════════════════════════
 // Lagerort — wo liegt das eigentlich?
 // ═══════════════════════════════════════════════════════════════════════════
 

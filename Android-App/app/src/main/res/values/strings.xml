@@ -250,6 +250,7 @@
     <string name="parts_part_number_placeholder">e.g. 3001</string>
     <string name="parts_no_color">No color</string>
     <string name="parts_color_label">Color (optional)</string>
+    <string name="parts_color_unknown">Colour %1$d</string>
     <string name="parts_add_button">Add</string>
 
     <!-- ══════════════ Monitoring screen ══════════════ -->

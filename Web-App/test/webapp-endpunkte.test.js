@@ -24,7 +24,7 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
-const { ohneKommentare, routerEinhaengungen } = require('./helpers/sources');
+const { ohneKommentare, routerEinhaengungen, pfadForm, leseLiteral } = require('./helpers/sources');
 
 const ROOT = path.join(__dirname, '..');
 const JS = path.join(ROOT, 'public', 'js');
@@ -37,27 +37,15 @@ function form(p) {
 /**
  * Template-Ausdrücke auflösen, dann den Abfrageteil abschneiden.
  *
- * Ein `${…}` ist nur dann ein PFADABSCHNITT, wenn direkt ein `/` davorsteht:
- *
- *     `/v1/parts/${nr}/${farbe}`            → /v1/parts/:X/:X
- *     `/v1/minifigs/${nr}${owner ? …: ''}`  → /v1/minifigs/:X
- *
- * Im zweiten Fall hängt der Ausdruck am Segment und liefert einen
- * Abfrageteil oder gar nichts. Ohne diese Unterscheidung entstand
- * `/v1/minifigs/:X:X` — ein Pfad, den es nirgends gibt, und vier falsche
- * Treffer beim Nachmessen.
+ * Die Auflösung selbst steht seit dem 19.10. in test/helpers/sources.js —
+ * test/frontend-api-paths.test.js brauchte sie auch und hatte eine eigene,
+ * naive Fassung, die bei verschachtelten Ausdrücken Müll lieferte und
+ * trotzdem grün war. Die Begründung, die früher hier stand (drei Anläufe, die
+ * danebenlagen), steht jetzt beim Helfer; hier bleibt nur das Formen der
+ * Platzhalter.
  */
-function pfadForm(roh) {
-  let s = String(roh);
-  let vor = null;
-  while (vor !== s) { vor = s; s = s.replace(/\$\{[^{}]*\}/g, '\u0000'); }
-  let out = '';
-  for (let i = 0; i < s.length; i++) {
-    if (s[i] !== '\u0000') { out += s[i]; continue; }
-    if (out.endsWith('/')) { out += ':X'; continue; }
-    break;                       // Anhängsel, kein Abschnitt → hier endet der Pfad
-  }
-  return form(out.split('?')[0].replace(/'\s*\+.*$/, ''));
+function pfadFormV1(roh) {
+  return form(pfadForm(roh));
 }
 
 function serverRouten() {
@@ -86,40 +74,6 @@ function serverRouten() {
   return alle;
 }
 
-/**
- * Ein Zeichenketten-Literal ab Position `i` lesen — mit VERSCHACHTELTEN
- * Template-Ausdrücken.
- *
- * Ein einzelner regulärer Ausdruck kann das nicht: Der Pfad
- * `/v1/parts/${nr}${owner ? `?owner=${owner}` : ''}` enthält BACKTICKS in
- * seinem eigenen Inneren. Jedes `[^`]+` bricht dort ab und liefert einen
- * halben Ausdruck — beim Nachmessen kamen so fünf falsche Treffer heraus.
- */
-function leseLiteral(src, i) {
-  const anf = src[i];
-  if (anf !== '`' && anf !== "'" && anf !== '"') return null;
-  let j = i + 1, tiefe = 0;
-  while (j < src.length) {
-    const c = src[j];
-    if (c === '\\') { j += 2; continue; }
-    if (anf === '`' && c === '$' && src[j + 1] === '{') { tiefe++; j += 2; continue; }
-    if (tiefe > 0) {
-      if (c === '{') tiefe++;
-      else if (c === '}') tiefe--;
-      // Innerhalb eines ${…} darf ein weiteres Literal stehen; es wird
-      // mitgelesen, damit sein Inhalt die Zählung nicht durcheinanderbringt.
-      else if (c === '`' || c === "'" || c === '"') {
-        const inner = leseLiteral(src, j);
-        if (inner) { j = inner.ende; continue; }
-      }
-      j++; continue;
-    }
-    if (c === anf) return { text: src.slice(i + 1, j), ende: j + 1 };
-    j++;
-  }
-  return null;
-}
-
 /** Alle Aufrufe der Webapp: api('VERB', pfad) und fetch(pfad, { method }). */
 function webAufrufe() {
   const out = [];
@@ -131,7 +85,7 @@ function webAufrufe() {
     for (const m of src.matchAll(/api\(\s*'(GET|POST|PUT|DELETE)'\s*,\s*/g)) {
       const lit = leseLiteral(src, m.index + m[0].length);
       if (!lit || !lit.text.startsWith('/')) continue;
-      out.push({ datei, zeile: zeileVon(m.index), verb: m[1], pfad: pfadForm('/api' + lit.text) });
+      out.push({ datei, zeile: zeileVon(m.index), verb: m[1], pfad: pfadFormV1('/api' + lit.text) });
     }
     for (const m of src.matchAll(/fetch\(\s*/g)) {
       const lit = leseLiteral(src, m.index + m[0].length);
@@ -139,7 +93,7 @@ function webAufrufe() {
       // Die Methode steht im zweiten Argument; ohne Angabe ist es GET.
       const rest = src.slice(lit.ende, lit.ende + 300);
       const verb = (rest.match(/method\s*:\s*['"`](\w+)['"`]/) || [, 'GET'])[1].toUpperCase();
-      out.push({ datei, zeile: zeileVon(m.index), verb, pfad: pfadForm(lit.text) });
+      out.push({ datei, zeile: zeileVon(m.index), verb, pfad: pfadFormV1(lit.text) });
     }
   }
   return out;

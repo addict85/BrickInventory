@@ -316,6 +316,45 @@ internal fun MainViewModel.updatePart(partNumber: String, colorId: Int, quantity
 }
 
 /**
+ * Die Farbe eines manuell erfassten Teils nachtraeglich aendern.
+ *
+ * Marcos Bitte vom 19.10., nach dem Import mehrerer Wanted-Listen: „Weiter
+ * moechte ich die Farbe nachtraeglich anpassen koennen fuer den Fall dass
+ * diese nicht korrekt geladen wurde."
+ *
+ * Was in der Datenbank passiert — Umziehen oder ZUSAMMENLEGEN, und was mit den
+ * Erfassungen geschieht — steht an einer Stelle: Web-App/utils/
+ * teilFarbeAendern.ts. Bei Marco ist das Zusammenlegen der Normalfall, denn
+ * dasselbe Teil stand daneben schon in der richtigen Farbe.
+ *
+ * @param colorId   die ALTE Farbe; sie sagt, welche Zeile gemeint ist.
+ * @param neueFarbe die NEUE Farbe.
+ * @param owner     Besitzer der Karte — siehe [deletePart].
+ * @param onFertig  wird NUR bei Erfolg gerufen, mit der neuen Farbe. Der
+ *   Detailbildschirm haengt an (Nummer, Farbe); nach der Aenderung zeigt er
+ *   sonst auf eine Zeile, die es nicht mehr gibt, und bleibt leer.
+ */
+internal fun MainViewModel.setzeTeilFarbe(
+    partNumber: String, colorId: Int, neueFarbe: Int,
+    farbName: String? = null, farbHex: String? = null,
+    owner: Int? = null, onFertig: (Int) -> Unit = {},
+) {
+    if (neueFarbe == colorId) return
+    viewModelScope.launch {
+        when (val r = repo.teile.setPartColor(partNumber, colorId, neueFarbe, farbName, farbHex, owner)) {
+            is Result.Success -> {
+                if (r.data.success) {
+                    _snackbar.value = text(R.string.vm_saved)
+                    reloadItemList("part")
+                    onFertig(neueFarbe)
+                } else _snackbar.value = r.data.error ?: text(R.string.err_unknown)
+            }
+            is Result.Error -> _snackbar.value = meldungFuerSnackbar(r)
+        }
+    }
+}
+
+/**
  * Manuelles Teil loeschen.
  *
  * @param owner Besitzer der KARTE. Im Haushalt zeigt der manuelle Bereich die

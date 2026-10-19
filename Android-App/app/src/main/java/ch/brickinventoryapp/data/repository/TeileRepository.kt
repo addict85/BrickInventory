@@ -178,6 +178,19 @@ class TeileRepository @Inject constructor(
     suspend fun deletePart(partNumber: String, colorId: Int, owner: Int? = null): Result<GenericResponse> =
         safeCall { api.deletePart(partNumber, colorId, owner) }
 
+    /**
+     * Die Farbe eines manuell erfassten Teils nachtraeglich aendern.
+     *
+     * @param colorId   die ALTE Farbe — sie sagt, welche Zeile gemeint ist.
+     * @param neueFarbe die NEUE Farbe.
+     * @param owner     Besitzer der Karte; null = eigenes Konto.
+     */
+    suspend fun setPartColor(partNumber: String, colorId: Int, neueFarbe: Int,
+                             farbName: String? = null, farbHex: String? = null,
+                             owner: Int? = null): Result<TeilFarbeResponse> =
+        safeCall { api.setPartColor(partNumber, colorId,
+                                    TeilFarbeRequest(neueFarbe, farbName, farbHex), owner) }
+
     suspend fun addMinifig(figNumber: String, blFigNumber: String? = null, quantity: Int = 1,
                            unitPrice: Double? = null, condition: String? = null,
                            ownerUserId: Int? = null,

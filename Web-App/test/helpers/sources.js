@@ -615,3 +615,113 @@ function abschnitt(quelle, ab, bis, wozu = '') {
 }
 
 module.exports.abschnitt = abschnitt;
+
+/**
+ * Ein Pfad-Literal des Frontends auf seine FORM bringen.
+ *
+ * ── Warum das hier steht und nicht zweimal daneben (19.10.) ─────────────────
+ *
+ * Zwei Prüfungen lesen dieselben Pfade und hatten dafür zwei Fassungen:
+ * test/webapp-endpunkte.test.js eine sorgfältige (ihr Kopf zählt drei
+ * Anläufe auf, die danebenlagen) und test/frontend-api-paths.test.js eine
+ * naive:
+ *
+ *     roh.replace(/\$\{[^}]*\}/g, ':x')
+ *
+ * `[^}]*` kann über ein VERSCHACHTELTES `${…}` nicht hinweg. Bei
+ *
+ *     `/v1/parts/${nr}/${farbe}${owner ? `?owner=${encodeURIComponent(owner)}` : ''}`
+ *
+ * endet der Ersatz am `}` von `encodeURIComponent(owner)`, und übrig bleibt
+ * GEMESSEN:
+ *
+ *     /api/v1/parts/:x/:x:x` : ''}
+ *
+ * Das ist kein Pfad. Die Prüfung war trotzdem grün — und zwar aus Zufall: Ihr
+ * Vergleich läuft Segment für Segment und nimmt jedes Routensegment hin, das
+ * mit `:` beginnt. Der Müll landete im Segment der Farb-ID, also an einer
+ * Stelle, wo die Route `:colorId` erwartet. Derselbe Aufruf mit einem Segment
+ * DAHINTER (`…/${farbe}/color${owner ? …}`) trifft dort ein Literal und fällt
+ * sofort auf.
+ *
+ * Eine Prüfung, die bei kaputtem Werkzeug schweigt, ist schlimmer als keine.
+ * Deshalb gibt es die Auflösung jetzt EINMAL, hier, mit der Fassung, die
+ * nachgemessen ist.
+ *
+ * Ein `${…}` ist nur dann ein PFADABSCHNITT, wenn direkt ein `/` davorsteht:
+ *
+ *     `/v1/parts/${nr}/${farbe}`            → /v1/parts/:X/:X
+ *     `/v1/minifigs/${nr}${owner ? …: ''}`  → /v1/minifigs/:X
+ *
+ * Im zweiten Fall hängt der Ausdruck am Segment und liefert einen Abfrageteil
+ * oder gar nichts; dort endet der Pfad.
+ *
+ * @param {string} roh       das Literal, ohne Backticks
+ * @param {string} [marke]   Platzhalter je Abschnitt — ':X' oder ':x'
+ */
+function pfadForm(roh, marke = ':X') {
+  let s = String(roh);
+  let vor = null;
+  // Innerste zuerst, bis nichts mehr passt — so verschwindet auch ein
+  // verschachtelter Ausdruck vollstaendig.
+  while (vor !== s) { vor = s; s = s.replace(/\$\{[^{}]*\}/g, '\u0000'); }
+  let out = '';
+  for (let i = 0; i < s.length; i++) {
+    if (s[i] !== '\u0000') { out += s[i]; continue; }
+    if (out.endsWith('/')) { out += marke; continue; }
+    break;                       // Anhängsel, kein Abschnitt → hier endet der Pfad
+  }
+  return out.split('?')[0].replace(/'\s*\+.*$/, '');
+}
+
+module.exports.pfadForm = pfadForm;
+
+/**
+ * Ein Zeichenketten-Literal ab Position `i` lesen — mit VERSCHACHTELTEN
+ * Template-Ausdrücken.
+ *
+ * ── Warum das hier steht (19.10.) ───────────────────────────────────────────
+ *
+ * Dieselbe Geschichte wie bei pfadForm() darüber, nur eine Ebene davor: Ein
+ * einzelner regulärer Ausdruck kann ein solches Literal nicht lesen. Der Pfad
+ *
+ *     `/v1/parts/${nr}/${farbe}/color${owner ? `?owner=${owner}` : ''}`
+ *
+ * enthält BACKTICKS in seinem eigenen Inneren. Jedes `[^`]*` bricht dort ab
+ * und liefert einen halben Ausdruck.
+ *
+ * test/webapp-endpunkte.test.js hatte diese Fassung (ihr Kopf nennt fünf
+ * falsche Treffer beim Nachmessen), test/frontend-api-paths.test.js daneben
+ * ein nacktes ``(`[^`]*`|'[^']*')``. GEMESSEN lieferte das für den Pfad oben
+ * den Text ``/v1/parts/${…}/${…}/color${owner `` — die Prüfung meldete einen
+ * Pfad, den niemand aufruft, und die Route dahinter gab es sehr wohl.
+ *
+ * @returns {{text: string, ende: number}|null} Inhalt ohne Anführungszeichen
+ *   und die Position NACH dem Literal; null, wenn an `i` keines beginnt.
+ */
+function leseLiteral(src, i) {
+  const anf = src[i];
+  if (anf !== '`' && anf !== "'" && anf !== '"') return null;
+  let j = i + 1, tiefe = 0;
+  while (j < src.length) {
+    const c = src[j];
+    if (c === '\\') { j += 2; continue; }
+    if (anf === '`' && c === '$' && src[j + 1] === '{') { tiefe++; j += 2; continue; }
+    if (tiefe > 0) {
+      if (c === '{') tiefe++;
+      else if (c === '}') tiefe--;
+      // Innerhalb eines ${…} darf ein weiteres Literal stehen; es wird
+      // mitgelesen, damit sein Inhalt die Zählung nicht durcheinanderbringt.
+      else if (c === '`' || c === "'" || c === '"') {
+        const inner = leseLiteral(src, j);
+        if (inner) { j = inner.ende; continue; }
+      }
+      j++; continue;
+    }
+    if (c === anf) return { text: src.slice(i + 1, j), ende: j + 1 };
+    j++;
+  }
+  return null;
+}
+
+module.exports.leseLiteral = leseLiteral;

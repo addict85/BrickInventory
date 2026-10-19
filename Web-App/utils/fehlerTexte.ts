@@ -181,6 +181,12 @@ export const FEHLER = {
                                  en: 'No set found for “{barcode}”. Please enter the set number manually.' },
   teil_nicht_manuell:          { de: 'Teil nicht gefunden oder nicht manuell hinzugefügt',
                                  en: 'Part not found, or not added manually' },
+  // Absichtlich eine ABSAGE statt der 0 aus V.colorId(): Beim Anlegen heisst
+  // „keine Angabe" zu Recht 0, beim KORRIGIEREN einer Farbe wäre dieselbe
+  // Umdeutung ein stilles Löschen der Farbe — und der Aufrufer bekäme
+  // „success" zu sehen.
+  farbe_erforderlich:          { de: 'color_id erforderlich (die neue Farbe)',
+                                 en: 'color_id is required (the new colour)' },
   minifig_nicht_manuell:       { de: 'Minifigur nicht gefunden oder nicht manuell hinzugefügt',
                                  en: 'Minifigure not found, or not added manually' },
   keine_teile:                 { de: 'Keine Teile', en: 'No parts' },
@@ -278,6 +284,11 @@ export const FEHLER = {
   // Vor dem Zerlegen gesagt, nicht danach: „0 Posten gelesen" kann auch eine
   // LEERE Liste bedeuten. Dass die Datei gar keine Wanted-Liste ist, ist eine
   // andere Auskunft, und der Nutzer tut etwas anderes damit.
+  // Eine ABSAGE statt eines stillen „dann eben ohne Korrekturen": Wer in der
+  // Vorschau Farben und Nummern geradegezogen hat und den Bestand danach ohne
+  // sie bekommt, merkt es erst an den Karten — und hat die Arbeit zweimal.
+  korrekturen_ungueltig:       { de: 'Die Korrekturen sind nicht lesbar (kein gültiges JSON-Array).',
+                                 en: 'The corrections could not be read (not a valid JSON array).' },
   keine_wanted_liste:          { de: 'Das ist keine BrickLink-Wanted-Liste '
                                    + '(kein <INVENTORY> in der Datei).',
                                  en: 'This is not a BrickLink wanted list '

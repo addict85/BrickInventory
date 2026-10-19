@@ -22,6 +22,34 @@
  * ist der einzige Teil dieses Lesers, der sich an seinem Beispiel nicht
  * prüfen lässt, und er steht deshalb hier ausdrücklich.
  *
+ * ── Warum über eine DATEI und nicht über die BrickLink-API ──────────────────
+ *
+ * Marcos Frage vom 19.10.: „Kannst du auch prüfen ob es nicht eine api mit
+ * bricklink gibt damit die wanted listen direkt gelesen und Importiert werden
+ * können".
+ *
+ * Geprüft, und die Antwort ist nein. Die BrickLink-Store-API
+ * (api.bricklink.com/api/store/v1 — dieselbe, die clients/bricklink.ts für
+ * Preise anspricht, mit denselben vier Zugangsdaten) führt Bestellungen,
+ * Ladeninventar, Katalog, Preisführer, Farben, Kategorien, Feedback, Coupons,
+ * Mitglied und Item-Mapping. WANTED-LISTEN SIND NICHT DABEI.
+ *
+ * Drei unabhängige Belege, die in dieselbe Richtung zeigen: Keine der
+ * verbreiteten Bibliotheken (Python, C#, Java, der Rust-Nachbau) kennt solche
+ * Endpunkte; der API-Changelog nennt keine; und in BrickLinks Forum steht ein
+ * Wunsch vom Dezember 2024, der genau sie fordert. Anbieter, die
+ * „get_wanted_lists" bewerben, verlangen dafür eine SITZUNG mit dem
+ * BrickLink-Login — das ist Abgreifen, nicht die API.
+ *
+ * Die Prüfung hatte eine Grenze, und die gehört dazu: bricklink.com war aus
+ * der Arbeitsumgebung gesperrt (getaddrinfo ENOTFOUND), die Doku-Seite selbst
+ * liess sich also nicht öffnen. Das obige stützt sich auf übereinstimmende
+ * Zweitquellen.
+ *
+ * Darum bleibt der Weg, den Marco ohnehin geht: die Liste bei BrickLink als
+ * XML herunterladen und hier einlesen. Wer diese Frage erneut stellt, möge
+ * zuerst nachsehen, ob sich seit Oktober 2026 etwas geändert hat.
+ *
  * ── Warum ohne XML-Bibliothek ───────────────────────────────────────────────
  *
  * Eine Wanted-Liste ist flach: <INVENTORY> mit <ITEM>-Kindern, in jedem
@@ -151,7 +179,17 @@ export type Sicherheit =
    * Stufe 1, nur frisch geholt statt gespeichert — und deshalb eine eigene
    * Stufe, damit im Bericht steht, was ein Abruf gekostet hat.
    */
-  | 'rebrickable';
+  | 'rebrickable'
+  /**
+   * Der Mensch hat sie in der Vorschau EINGETRAGEN.
+   *
+   * Eine eigene Stufe und nicht 'zuordnung': Dort steht etwas, das im Katalog
+   * nachgesehen wurde; hier steht, was Marco von Hand hingeschrieben hat.
+   * Beide sind so gut wie ihre Quelle, aber sie haben verschiedene Quellen —
+   * und der Bericht soll nicht behaupten, der Katalog habe geliefert, was
+   * jemand getippt hat.
+   */
+  | 'korrigiert';
 
 export interface Aufloesung {
   posten: WantedPosten;
@@ -159,6 +197,17 @@ export interface Aufloesung {
   rbId: string | null;
   /** Die Rebrickable-Farbnummer — null bei Sets und wenn nichts zu finden war. */
   rbFarbe: number | null;
+  /**
+   * Name und Farbwert zur Nummer — beide aus rb_colors.
+   *
+   * Sie reisen MIT, statt spaeter nachgeschlagen zu werden: Der Anleger
+   * schreibt `color_name` an die Zeile, und die Teileliste liest den Namen
+   * von dort. Bis zum 19.10. wurden sie nicht uebergeben; der Hex-Wert fiel
+   * in der Anzeige auf den Katalog zurueck, der NAME nicht. Marcos Befund:
+   * ein Farbpunkt ohne Beschriftung.
+   */
+  rbFarbName: string | null;
+  rbFarbHex: string | null;
   /** Woher die Nummer kommt. */
   sicherheit: Sicherheit | null;
   /** Die Farbe liess sich nicht abbilden, die Nummer schon. */
@@ -220,10 +269,12 @@ export async function loeseLokalAuf(posten: WantedPosten[]): Promise<Aufloesung[
     for (const z of await db.all(sql, [nummern]).catch(() => [])) katalog.add(`${art}:${z.n}`);
   }
 
-  const farbMap = new Map<number, number>();
+  const farbMap = new Map<number, { id: number; name: string | null; hex: string | null }>();
   for (const z of await db.all(
-    'SELECT id, bl_color_id FROM rb_colors WHERE bl_color_id = ANY($1)', [farben]).catch(() => [])) {
-    farbMap.set(Number(z.bl_color_id), Number(z.id));
+    'SELECT id, name, rgb, bl_color_id FROM rb_colors WHERE bl_color_id = ANY($1)', [farben]).catch(() => [])) {
+    farbMap.set(Number(z.bl_color_id), {
+      id: Number(z.id), name: z.name ?? null, hex: z.rgb ?? null,
+    });
   }
 
   return posten.map((p) => {
@@ -233,10 +284,12 @@ export async function loeseLokalAuf(posten: WantedPosten[]): Promise<Aufloesung[
     if (treffer) { rbId = treffer.rbId; sicherheit = treffer.sicherheit; }
     else if (katalog.has(`${p.art}:${p.blId}`)) { rbId = p.blId; sicherheit = 'katalogtreffer'; }
 
-    const rbFarbe = p.blFarbe === null ? null : (farbMap.get(p.blFarbe) ?? null);
+    const farbe = p.blFarbe === null ? null : (farbMap.get(p.blFarbe) ?? null);
     return {
-      posten: p, rbId, rbFarbe, sicherheit,
-      farbeOffen: rbId !== null && p.blFarbe !== null && rbFarbe === null,
+      posten: p, rbId, rbFarbe: farbe?.id ?? null,
+      rbFarbName: farbe?.name ?? null, rbFarbHex: farbe?.hex ?? null,
+      sicherheit,
+      farbeOffen: rbId !== null && p.blFarbe !== null && farbe === null,
     };
   });
 }
@@ -294,16 +347,84 @@ export async function loeseUeberRebrickableAuf(
   return { auf: ergebnis, gefragt, gefunden, filterWirkungslos: blFilterWirkungslos() };
 }
 
-/** Was aus einem Posten geworden ist. */
+/**
+ * Was aus einem Posten geworden ist.
+ *
+ * ── Warum hier Bild und Name mitreisen (Marcos Vorschau) ───────────────────
+ *
+ *   „noch besser wäre wenn es beim Import die zu importierende Liste
+ *    vorgängig anzeigen wurde analog der Teileliste mit Bild, Farbe,
+ *    Bezeichnung und ich dort noch Korrekturen vornehmen kann oder z.b.
+ *    rebrickable ids ergänzen könnte"
+ *
+ * Eine Vorschau, die nur Nummern zeigt, ist keine. Wer 224 Posten prüfen
+ * soll, erkennt am BILD in einer Sekunde, dass Posten 57 der falsche Stein
+ * ist — an „3001 → 3001, katalogtreffer" erkennt er es nie.
+ *
+ * Die Beschreibung kommt aus den KATALOGEN dieses Baums, ohne jeden Abruf
+ * (siehe beschreibePosten). Was dort fehlt, bleibt leer statt geraten.
+ */
 export interface PostenErgebnis {
   blId: string;
   art: WantedArt;
+  /** Die BrickLink-Farbnummer aus der Datei — die Vorschau zeigt sie an. */
+  blFarbe: number | null;
+  menge: number;
+  zustand: string | null;
   rbId: string | null;
   rbFarbe: number | null;
   sicherheit: Sicherheit | null;
   /** 'angelegt' | 'aufgestockt' | 'offen' | 'fehler' */
   ausgang: 'angelegt' | 'aufgestockt' | 'offen' | 'fehler';
   grund?: string;
+  /**
+   * Derselbe Grund als Kennung, für die Oberfläche.
+   *
+   * `grund` ist ein deutscher Satz — richtig fürs Protokoll, falsch in einer
+   * englischen Tabelle. Die Kennung lässt die Oberfläche den Text in der
+   * Sprache des Betrachters setzen; `blFarbe` steht in der Zeile und kann
+   * dort eingesetzt werden.
+   *
+   * Ein Fehler beim Anlegen hat keine Kennung: Dort steht die Meldung der
+   * Ausnahme, und die lässt sich nicht in Fälle einteilen.
+   */
+  grundCode?: 'nummer_unbekannt' | 'farbe_unbekannt';
+  /** Beschreibung aus dem Katalog — leer, wenn er die Nummer nicht kennt. */
+  name?: string | null;
+  bild?: string | null;
+  /**
+   * Name und Bild wurden unter der BRICKLINK-Nummer gefunden, nicht über eine
+   * Abbildung. Die Oberfläche muss das kennzeichnen — siehe beschreibePosten.
+   */
+  nameGeraten?: boolean;
+  farbName?: string | null;
+  farbHex?: string | null;
+}
+
+/**
+ * Eine Korrektur aus der Vorschau.
+ *
+ * ── Warum der INDEX und nicht die Nummer ────────────────────────────────────
+ *
+ * Eine Wanted-Liste darf denselben Posten zweimal enthalten (Marcos Datei hat
+ * 3001 in 24 Farben, und BrickLink hindert niemanden daran, ihn in derselben
+ * Farbe zweimal aufzuführen). Ein Schlüssel aus Art, Nummer und Farbe träfe
+ * dann zwei Zeilen, und die Korrektur landete auf der falschen — oder auf
+ * beiden.
+ *
+ * Der Index ist eindeutig, weil der Leser die Datei in einer festen Reihen-
+ * folge zerlegt (leseWantedListe geht Posten für Posten durch). Damit er
+ * nicht ins Leere zeigt, wenn zwischen Vorschau und Schreiben eine ANDERE
+ * Datei gewählt wurde, reisen Art und Nummer als Gegenprobe mit: Stimmen sie
+ * nicht, wird die Korrektur abgewiesen statt angewandt.
+ */
+export interface Korrektur {
+  index: number;
+  /** Gegenprobe — muss zu dem Posten an [index] passen. */
+  blId: string;
+  art: WantedArt;
+  rbId?: string | null;
+  rbFarbe?: number | null;
 }
 
 export interface WantedBericht {
@@ -318,12 +439,209 @@ export interface WantedBericht {
   offen: { blId: string; art: WantedArt; blFarbe: number | null }[];
   /** Nur gesetzt, wenn über Rebrickable gefragt wurde. */
   rebrickable?: { gefragt: number; gefunden: number; filterWirkungslos: boolean };
+  /**
+   * Nur gesetzt, wenn Korrekturen mitkamen.
+   *
+   * `abgewiesen` ist nicht leer, wenn eine Korrektur auf einen Posten zeigte,
+   * der dort nicht steht — dann wurde zwischen Vorschau und Schreiben eine
+   * andere Datei gewählt. Sie wird GENANNT und nicht übergangen.
+   */
+  korrekturen?: { angewandt: number; abgewiesen: Korrektur[] };
   angelegt: number;
   aufgestockt: number;
   fehler: number;
   /** true = es wurde NICHTS geschrieben. */
   vorschau: boolean;
   posten: PostenErgebnis[];
+}
+
+/**
+ * Zu jedem aufgelösten Posten Name, Bild und Farbbezeichnung holen.
+ *
+ * ── Woraus, und was NICHT ───────────────────────────────────────────────────
+ *
+ * Aus den Katalogen dieses Baums, in DREI Abfragen für die ganze Liste (eine
+ * je Art) — nicht eine je Posten. Marcos Datei hat 224 Zeilen; 224 Abfragen
+ * wären eine Vorschau, auf die man wartet.
+ *
+ * Je Art zwei Quellen, in dieser Reihenfolge:
+ *
+ *   Teile    part_catalog / part_color_catalog  (hier gepflegt, mit Bild je
+ *            Teil UND Farbe), sonst rb_parts    (aus dem CSV-Abgleich)
+ *   Figuren  minifigs_catalog,                  sonst nichts
+ *   Sets     set_catalog,                       sonst rb_sets
+ *
+ * Kein Abruf bei Rebrickable oder BrickLink: Die Vorschau soll SOFORT da sein
+ * und auch ohne Netz etwas zeigen. Was der Katalog nicht kennt, bleibt leer —
+ * eine leere Zelle ist eine ehrliche Auskunft, ein geratener Name nicht.
+ *
+ * Das Farbbild haengt an Teil UND Farbe (ein roter 2x4 sieht anders aus als
+ * ein blauer, siehe merkeTeilFarbe); gibt es keines fuer diese Farbe, faellt
+ * es auf das allgemeine Teilebild zurueck.
+ *
+ * ── Auch fuer die OFFENEN Posten, und warum das trotzdem ehrlich ist ───────
+ *
+ * Ein Posten ohne Rebrickable-Nummer wird unter seiner BRICKLINK-Nummer
+ * nachgesehen. Das ist keine Abbildung und wird auch nicht als eine
+ * ausgegeben: `geraten: true` sagt es, die Zeile bleibt `offen`, und ihr
+ * Grund bleibt stehen.
+ *
+ * Es ist aber genau die Auskunft, die Marco zum Entscheiden braucht. Steht in
+ * der Zeile „9999 — (nichts bekannt)", kann er nur raten; steht dort
+ * „9999 — Brick 2 x 2 (Name unter der BrickLink-Nummer gefunden)", sieht er,
+ * worum es geht und kann die Nummer eintragen. Die Information
+ * wegzuwerfen, weil sie nicht aus einer Abbildung stammt, hilft niemandem —
+ * sie muss nur als das dastehen, was sie ist.
+ */
+export async function beschreibePosten(
+  auf: Aufloesung[],
+): Promise<Map<number, { name: string | null; bild: string | null; geraten: boolean }>> {
+  const raus = new Map<number, { name: string | null; bild: string | null; geraten: boolean }>();
+
+  // Die Nummern je Art sammeln. Ohne Rebrickable-Nummer gilt die
+  // BrickLink-Nummer als Schluessel — siehe oben.
+  const teile: { i: number; nr: string; farbe: number | null; geraten: boolean }[] = [];
+  const figuren: { i: number; nr: string; geraten: boolean }[] = [];
+  const sets: { i: number; nr: string; geraten: boolean }[] = [];
+  auf.forEach((a, i) => {
+    const nr = a.rbId ?? a.posten.blId;
+    const geraten = a.rbId === null;
+    if (!nr) return;
+    if (a.posten.art === 'part') teile.push({ i, nr, farbe: a.rbFarbe, geraten });
+    else if (a.posten.art === 'fig') figuren.push({ i, nr, geraten });
+    else sets.push({ i, nr, geraten });
+  });
+
+  if (teile.length) {
+    const nummern = [...new Set(teile.map(t => t.nr))];
+    const zeilen = await db.all(`
+      SELECT p.part_number,
+             COALESCE(pc.part_name, rp.name)        AS name,
+             COALESCE(rp.part_img_url, '')          AS bild_allgemein
+        FROM (SELECT UNNEST($1::text[]) AS part_number) p
+        LEFT JOIN part_catalog pc ON pc.part_number = p.part_number
+        LEFT JOIN rb_parts     rp ON rp.part_num    = p.part_number`,
+      [nummern]).catch(() => []);
+    const nachNummer = new Map(zeilen.map(z => [z.part_number, z]));
+    // Die Farbbilder in EINER Abfrage: (Nummer, Farbe) als Paare.
+    const paare = teile.filter(t => t.farbe !== null);
+    const bilder = new Map<string, string>();
+    if (paare.length) {
+      const farbZeilen = await db.all(`
+        SELECT part_number, color_id, COALESCE(image_local, image_url) AS bild
+          FROM part_color_catalog
+         WHERE (part_number, color_id) IN (
+                 SELECT UNNEST($1::text[]), UNNEST($2::int[]))`,
+        [paare.map(t => t.nr), paare.map(t => t.farbe)]).catch(() => []);
+      for (const z of farbZeilen) if (z.bild) bilder.set(`${z.part_number}|${z.color_id}`, z.bild);
+    }
+    for (const t of teile) {
+      const z = nachNummer.get(t.nr);
+      const name = z?.name ?? null;
+      const bild = bilder.get(`${t.nr}|${t.farbe}`) || z?.bild_allgemein || null;
+      // `geraten` nur dann, wenn ueberhaupt etwas gefunden wurde: Eine leere
+      // Zeile „geraten" zu nennen waere eine Behauptung ueber nichts.
+      raus.set(t.i, { name, bild, geraten: t.geraten && !!(name || bild) });
+    }
+  }
+
+  if (figuren.length) {
+    const zeilen = await db.all(
+      `SELECT fig_number, fig_name, COALESCE(image_local, image_url) AS bild
+         FROM minifigs_catalog WHERE fig_number = ANY($1)`,
+      [[...new Set(figuren.map(f => f.nr))]]).catch(() => []);
+    const nach = new Map(zeilen.map(z => [z.fig_number, z]));
+    for (const f of figuren) {
+      const z = nach.get(f.nr);
+      const name = z?.fig_name ?? null, bild = z?.bild ?? null;
+      raus.set(f.i, { name, bild, geraten: f.geraten && !!(name || bild) });
+    }
+  }
+
+  if (sets.length) {
+    const nummern = [...new Set(sets.map(x => x.nr))];
+    const zeilen = await db.all(`
+      SELECT s.set_number,
+             COALESCE(sc.name, rs.name)                                AS name,
+             COALESCE(sc.image_local, sc.image_url, rs.set_img_url)     AS bild
+        FROM (SELECT UNNEST($1::text[]) AS set_number) s
+        LEFT JOIN set_catalog sc ON sc.set_number = s.set_number
+        LEFT JOIN rb_sets     rs ON rs.set_num    = s.set_number`,
+      [nummern]).catch(() => []);
+    const nach = new Map(zeilen.map(z => [z.set_number, z]));
+    for (const x of sets) {
+      const z = nach.get(x.nr);
+      const name = z?.name ?? null, bild = z?.bild ?? null;
+      raus.set(x.i, { name, bild, geraten: x.geraten && !!(name || bild) });
+    }
+  }
+
+  return raus;
+}
+
+/**
+ * Die Korrekturen aus der Vorschau auf die Auflösung legen.
+ *
+ * Jede wird GEGENGEPRÜFT: Art und BrickLink-Nummer am angegebenen Index
+ * müssen passen. Sonst wurde zwischen Vorschau und Schreiben eine andere
+ * Datei gewählt, und die Korrektur würde auf einen fremden Posten wirken —
+ * lautlos, denn beide Zahlen sähen plausibel aus.
+ *
+ * Eine abgewiesene Korrektur wird GEMELDET, nicht übergangen (siehe
+ * `korrekturenAbgewiesen` im Bericht).
+ */
+function wendeKorrekturenAn(
+  auf: Aufloesung[], korrekturen: Korrektur[],
+): { auf: Aufloesung[]; angewandt: number; abgewiesen: Korrektur[] } {
+  const ergebnis = [...auf];
+  const abgewiesen: Korrektur[] = [];
+  let angewandt = 0;
+  for (const k of korrekturen) {
+    const a = ergebnis[k.index];
+    if (!a || a.posten.art !== k.art || a.posten.blId !== k.blId) { abgewiesen.push(k); continue; }
+    // Nur was DASTEHT wird geändert: `undefined` heisst „nicht angefasst",
+    // `null` heisst „ausdrücklich geleert". Ohne die Unterscheidung löschte
+    // eine Korrektur, die nur die Farbe setzt, die Nummer mit.
+    const rbId    = k.rbId    === undefined ? a.rbId    : (k.rbId || null);
+    const rbFarbe = k.rbFarbe === undefined ? a.rbFarbe : (k.rbFarbe ?? null);
+    if (rbId === a.rbId && rbFarbe === a.rbFarbe) continue;   // nichts geändert
+    ergebnis[k.index] = {
+      ...a, rbId, rbFarbe,
+      // Der Name der Farbe gilt nicht mehr: Er gehoerte zur alten Nummer.
+      // Er wird unten neu geholt (farbenNachtragen), damit die Zeile nicht
+      // mit „Red" an einer blauen Farbnummer herausgeht.
+      rbFarbName: rbFarbe === a.rbFarbe ? a.rbFarbName : null,
+      rbFarbHex:  rbFarbe === a.rbFarbe ? a.rbFarbHex  : null,
+      sicherheit: 'korrigiert',
+      // Eine eingetragene Farbe ist nicht mehr offen.
+      farbeOffen: rbId !== null && a.posten.blFarbe !== null && rbFarbe === null,
+    };
+    angewandt++;
+  }
+  return { auf: ergebnis, angewandt, abgewiesen };
+}
+
+/**
+ * Farbbezeichnung und Farbwert zu den korrigierten Farben nachholen.
+ *
+ * Die Auflösung holt sie für die Farben aus der DATEI; eine von Hand
+ * eingetragene Farbnummer war dort nicht dabei. Ohne diesen Schritt ginge sie
+ * ohne Namen an den Anleger — und das ist genau der Farbpunkt ohne
+ * Beschriftung, der am 19.10. behoben wurde.
+ */
+async function farbenNachtragen(auf: Aufloesung[]): Promise<Aufloesung[]> {
+  const offen = auf.filter(a => a.rbFarbe !== null && a.rbFarbName === null)
+                   .map(a => a.rbFarbe as number);
+  if (!offen.length) return auf;
+  const zeilen = await db.all(
+    'SELECT id, name, rgb FROM rb_colors WHERE id = ANY($1)', [[...new Set(offen)]])
+    .catch(() => []);
+  const nach = new Map(zeilen.map(z => [Number(z.id), z]));
+  return auf.map(a => {
+    if (a.rbFarbe === null || a.rbFarbName !== null) return a;
+    const z = nach.get(a.rbFarbe);
+    return z ? { ...a, rbFarbName: z.name ?? null, rbFarbHex: z.rgb ?? null } : a;
+  });
 }
 
 /** Die Stufen zählen — eine Zeile, die sonst dreimal dastünde. */
@@ -391,7 +709,24 @@ export interface Anleger {
 
 export async function importiereWantedListe(
   uid: number, xml: string,
-  opt: { vorschau?: boolean; ueberRebrickable?: boolean; anleger?: Anleger } = {},
+  opt: {
+    vorschau?: boolean; ueberRebrickable?: boolean; anleger?: Anleger;
+    /** Was der Mensch in der Vorschau geändert hat. */
+    korrekturen?: Korrektur[];
+    /**
+     * Eine eingetragene Rebrickable-Nummer MERKEN.
+     *
+     * Hereingegeben und nicht hier gerufen — dieselbe Begründung wie beim
+     * Anleger, nur milder: merkeBlNummer liegt unter utils/ und wäre von hier
+     * aus erreichbar. Sie als Rückruf zu nehmen hält diese Funktion aber
+     * schreibfrei bis auf den Anleger, und ein Test kann zählen, was gemerkt
+     * wurde, ohne eine Datenbank dafür zu brauchen.
+     *
+     * Nur beim ECHTEN Import, nie in der Vorschau: Eine Vorschau, die etwas
+     * speichert, ist keine.
+     */
+    merkeNummer?: (art: WantedArt, rbId: string, blId: string) => Promise<unknown>;
+  } = {},
 ): Promise<WantedBericht> {
   const gelesen = leseWantedListe(xml);
   let auf = await loeseLokalAuf(gelesen.posten);
@@ -404,6 +739,18 @@ export async function importiereWantedListe(
                     filterWirkungslos: r.filterWirkungslos };
   }
 
+  // ── Korrekturen NACH dem Auflösen, VOR dem Zählen ──────────────────────
+  //
+  // Nach dem Auflösen, weil sie es überstimmen sollen. Vor dem Zählen, weil
+  // der Bericht sonst die Zahlen von vor der Korrektur nennt — und Marco
+  // liest ihn, um zu entscheiden.
+  let korrekturen: WantedBericht['korrekturen'];
+  if (opt.korrekturen?.length) {
+    const k = wendeKorrekturenAn(auf, opt.korrekturen);
+    auf = await farbenNachtragen(k.auf);
+    korrekturen = { angewandt: k.angewandt, abgewiesen: k.abgewiesen };
+  }
+
   const bericht: WantedBericht = {
     gelesen: gelesen.posten.length,
     fremdeArten: gelesen.fremdeArten,
@@ -413,47 +760,141 @@ export async function importiereWantedListe(
     offen: auf.filter(a => a.rbId === null)
               .map(a => ({ blId: a.posten.blId, art: a.posten.art, blFarbe: a.posten.blFarbe })),
     ...(rebrickable ? { rebrickable } : {}),
+    ...(korrekturen ? { korrekturen } : {}),
     angelegt: 0, aufgestockt: 0, fehler: 0,
     vorschau: !!opt.vorschau,
     posten: [],
   };
 
+  // Beschreibung NUR für die Vorschau holen: Beim echten Import sieht sie
+  // niemand, und drei Abfragen über 224 Posten umsonst zu machen wäre eine
+  // Verzögerung ohne Gegenwert.
+  const beschreibung = opt.vorschau ? await beschreibePosten(auf)
+                                    : new Map<number, { name: string | null; bild: string | null; geraten: boolean }>();
+  let lfd = -1;
+
   for (const a of auf) {
+    // ── Eine Farbe, die sich nicht abbilden laesst, wird NICHT erfunden ────
+    //
+    // Marcos Befund vom 19.10.: „Die Farbe wurde nicht immer uebernommen und
+    // die Teile sind nun mehrfach vorhanden (bsp 3001)."
+    //
+    // Hier stand `color_id: a.rbFarbe ?? 0`. Die 0 ist bei Rebrickable aber
+    // SCHWARZ und nicht „keine Farbe" — die Warnung steht woertlich in
+    // routes/parts.ts („fuer die Bildsuche fatal: 0 ist bei Rebrickable
+    // SCHWARZ"). Ein Posten mit unbekannter Farbe landete damit als
+    // schwarzes Teil im Bestand, NEBEN demselben Teil in seiner richtigen
+    // Farbe. Das ist das Doppelte, das Marco sieht.
+    //
+    // NACHGESTELLT: Liste mit 3001 in BL-Farbe 5 (abbildbar) und BL-Farbe 85
+    // (nicht abbildbar) ergab zwei Zeilen, color_id 4 und color_id 0.
+    //
+    // Der Bericht wusste es die ganze Zeit — `farbeOffen` zaehlt genau diese
+    // Posten — und schrieb sie trotzdem. Jetzt bleiben sie OFFEN, mit Grund.
+    // Damit fehlt der Posten im Bestand, statt falsch darin zu stehen; die
+    // Vorschau (Stufe 3) gibt Marco die Gelegenheit, die Farbe zu setzen.
+    // ── Der Grund kommt ZWEIMAL: als Satz und als Kennung ─────────────────
+    //
+    // Der Satz ist für das Protokoll und für jeden Aufrufer, der nur lesen
+    // will. Die Kennung ist für die Oberfläche: Sie zeigt den Grund in der
+    // Sprache des Betrachters, und ein deutscher Satz in einer englischen
+    // Tabelle ist genau das, was dabei herauskam, bevor es sie gab (am
+    // laufenden Server gesehen: „open / BrickLink-Farbe 85 ist im Katalog
+    // keiner Rebrickable-Farbe zugeordnet" zwischen lauter englischen
+    // Spalten).
+    //
+    // Dieselbe Teilung wie bei utils/fehlerTexte.ts: EINE Entscheidung, zwei
+    // Sprachen am Rand.
     const grund = a.rbId === null
       ? 'Zu dieser BrickLink-Nummer ist keine Rebrickable-Nummer bekannt'
-      : undefined;
+      : a.farbeOffen
+        ? `BrickLink-Farbe ${a.posten.blFarbe} ist im Katalog keiner Rebrickable-Farbe zugeordnet`
+        : undefined;
+    const grundCode: PostenErgebnis['grundCode'] = a.rbId === null
+      ? 'nummer_unbekannt'
+      : a.farbeOffen ? 'farbe_unbekannt' : undefined;
+    // Eigene Bindung statt nur eines Wahrheitswerts: Der Pruefer verengt
+    // `a.rbId` ueber eine Hilfsvariable NICHT, und `rbId` ist weiter unten als
+    // `string` gebraucht.
+    const rbId = a.rbId;
+    const offen = rbId === null || a.farbeOffen;
+    lfd++;
+    const b = beschreibung.get(lfd);
     const zeile: PostenErgebnis = {
-      blId: a.posten.blId, art: a.posten.art, rbId: a.rbId, rbFarbe: a.rbFarbe,
+      blId: a.posten.blId, art: a.posten.art,
+      blFarbe: a.posten.blFarbe, menge: a.posten.menge, zustand: a.posten.zustand ?? null,
+      rbId: a.rbId, rbFarbe: a.rbFarbe,
       sicherheit: a.sicherheit, ausgang: a.rbId === null ? 'offen' : 'angelegt',
       ...(grund ? { grund } : {}),
+      ...(grundCode ? { grundCode } : {}),
+      // Die Farbangaben stehen auch ohne Vorschau da — sie kosten nichts, die
+      // Auflösung hat sie ohnehin geholt.
+      farbName: a.rbFarbName, farbHex: a.rbFarbHex,
+      ...(b ? { name: b.name, bild: b.bild, nameGeraten: b.geraten } : {}),
     };
-    if (a.rbId === null || opt.vorschau) {
+    if (rbId === null || a.farbeOffen || opt.vorschau) {
       // In der Vorschau steht „angelegt" fuer „wuerde angelegt" — geschrieben
       // wird nichts, und `vorschau: true` im Bericht sagt das.
+      if (offen) zeile.ausgang = 'offen';
       bericht.posten.push(zeile);
-      if (a.rbId === null) bericht.posten[bericht.posten.length - 1]!.ausgang = 'offen';
       continue;
     }
 
     try {
       if (!opt.anleger) throw new Error('Kein Anleger übergeben — siehe Anleger');
+      let rueckmeldung: unknown;
       if (a.posten.art === 'part') {
-        await opt.anleger.teil(uid, {
-          part_number: a.rbId,
+        // `color_name`/`color_hex` reisen MIT. Ohne sie bleibt die Spalte
+        // leer, und die Teileliste liest den Namen von dort — der Hex-Wert
+        // faellt auf den Katalog zurueck, der Name NICHT. Ergebnis war ein
+        // Farbpunkt ohne Beschriftung (Marcos Bildschirmfoto).
+        //
+        // `a.rbFarbe` ist hier nie null: Ein Posten ohne abbildbare Farbe ist
+        // oben schon als offen ausgeschieden.
+        rueckmeldung = await opt.anleger.teil(uid, {
+          part_number: rbId,
           color_id: a.rbFarbe ?? 0,
+          ...(a.rbFarbName ? { color_name: a.rbFarbName } : {}),
+          ...(a.rbFarbHex ? { color_hex: a.rbFarbHex } : {}),
           quantity: a.posten.menge,
           condition: a.posten.zustand ?? undefined,
         });
       } else if (a.posten.art === 'fig') {
-        await opt.anleger.figur(uid, {
-          fig_number: a.rbId,
+        rueckmeldung = await opt.anleger.figur(uid, {
+          fig_number: rbId,
           quantity: a.posten.menge,
           condition: a.posten.zustand ?? undefined,
         });
       } else {
-        await opt.anleger.set(uid, a.rbId, a.posten.menge, a.posten.zustand);
+        rueckmeldung = await opt.anleger.set(uid, rbId, a.posten.menge, a.posten.zustand);
       }
-      bericht.angelegt++;
+      // Angelegt oder aufgestockt — der Anleger weiss es, und bis zum 19.10.
+      // wurde es nicht gefragt: Ein zweiter Import derselben Liste meldete
+      // `angelegt: 2, aufgestockt: 0`, obwohl beide Posten nur aufgestockt
+      // wurden (nachgestellt). Die Zahl, die Marco liest, war falsch.
+      const wieAngelegt = (rueckmeldung as { action?: string } | null | undefined)?.action !== 'updated';
+      if (wieAngelegt) bericht.angelegt++; else bericht.aufgestockt++;
+      zeile.ausgang = wieAngelegt ? 'angelegt' : 'aufgestockt';
+
+      // ── Eine eingetragene Nummer wird GEMERKT ─────────────────────────
+      //
+      // Marcos Bitte war „rebrickable ids ergänzen" — und wer sie einmal
+      // eingetragen hat, soll sie beim nächsten Import nicht wieder
+      // eintippen. Gemerkt wird in bl_zuordnung; dort liest loeseLokalAuf
+      // sie als Stufe 1 ('zuordnung') wieder, also als Abbildung und nicht
+      // als Vermutung. Genau das ist sie: nachgesehen, von Hand.
+      //
+      // Nur bei 'korrigiert': Die anderen Stufen kommen schon von dort oder
+      // aus dem Katalog, und ein Katalogtreffer ist eine VERMUTUNG — die als
+      // Zuordnung einzutragen würde sie zur Abbildung befördern, ohne dass
+      // jemand nachgesehen hat.
+      //
+      // Ein Fehlschlag hier bricht den Import nicht ab: Der Posten steht im
+      // Bestand, und das ist die Hauptsache. Die Notiz ist Bequemlichkeit.
+      if (a.sicherheit === 'korrigiert' && opt.merkeNummer) {
+        await opt.merkeNummer(a.posten.art, rbId, a.posten.blId)
+          .catch(() => { /* siehe oben */ });
+      }
     } catch (e: unknown) {
       bericht.fehler++;
       zeile.ausgang = 'fehler';

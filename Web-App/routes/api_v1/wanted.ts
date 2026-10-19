@@ -16,6 +16,8 @@ import { fetchPrice } from '../../utils/financeCalc';
 import { csvEmpfang } from '../../utils/dateiEmpfang';
 import { csvZeilenAusAnfrage, csvImportAntwort, parseCsvDate } from '../../utils/csvExport';
 import { importiereWantedListe } from '../../utils/wantedListe';
+import type { Korrektur } from '../../utils/wantedListe';
+import { merkeBlNummer } from '../../utils/blZuordnung';
 
 const router = express.Router();
 type AuthedRequest = express.Request & { apiUser: { user_id: number } };
@@ -321,10 +323,33 @@ router.post('/wanted-list/import/xml', requireToken, csvEmpfang.single('file'),
       const { addManualPart } = require('../parts');
       const { addManualFig } = require('../minifigs');
       const { addSet } = require('../../utils/setService');
+      // ── Korrekturen aus der Vorschau ──────────────────────────────────────
+      //
+      // Als FELD der Multipart-Anfrage und nicht als Abfrageparameter: Bei 224
+      // Posten wäre die Adresse länger als jeder Proxy durchlässt — dieselbe
+      // Begründung wie bei POST /parts/owned.
+      //
+      // JSON.parse in try/catch, und ein Fehlschlag ist eine ABSAGE statt
+      // eines stillen „keine Korrekturen": Wer korrigiert hat und dann den
+      // Bestand ohne seine Korrekturen bekommt, merkt es erst an den Karten.
+      let korrekturen: Korrektur[] | undefined;
+      const rohKorr = (req.body as { korrekturen?: unknown } | undefined)?.korrekturen;
+      if (typeof rohKorr === 'string' && rohKorr.trim() !== '') {
+        let geparst: unknown;
+        try { geparst = JSON.parse(rohKorr); }
+        catch { return sendeFehler(req, res, 400, 'korrekturen_ungueltig'); }
+        if (!Array.isArray(geparst)) return sendeFehler(req, res, 400, 'korrekturen_ungueltig');
+        korrekturen = geparst as Korrektur[];
+      }
+
       const bericht = await importiereWantedListe(req.apiUser.user_id, xml, {
         // Geschrieben wird nur, wenn es ausdrücklich dasteht.
         vorschau: String(req.query.schreiben ?? '') !== '1',
         ueberRebrickable: String(req.query.rebrickable ?? '') === '1',
+        ...(korrekturen ? { korrekturen } : {}),
+        // Eine von Hand eingetragene Nummer wird gemerkt — Begründung an der
+        // Aufrufstelle in utils/wantedListe.ts.
+        merkeNummer: (art, rbId, blId) => merkeBlNummer(art, rbId, blId),
         anleger: {
           teil:  (u, body) => addManualPart(u, body),
           figur: (u, body) => addManualFig(u, body),
