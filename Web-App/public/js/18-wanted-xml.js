@@ -10,28 +10,17 @@
 //   „Bitte auch den Import der xml Files für wanted listen in den Sets,
 //    teilen und Minifiguren ergänzen und aus den Einstellungen entfernen."
 //
-//   „oder aus den Teileliste direkt die Teile in eine existierende oder neue
-//    wanted list exportiert werden können"
 //
 // ── Warum eigene Datei ──────────────────────────────────────────────────────
 //
 // Der Import lag in 05-settings.js, weil der Knopf dort stand. Jetzt steht er
 // in DREI Reitern, und der Dialog gehört in keinen von ihnen — er gehört zu
-// der Sache, um die es geht. Der Export kommt dazu, und beide teilen das
-// Format und die halbe Begründung.
-//
-// ── Warum der Export keine API benutzt ──────────────────────────────────────
-//
-// Weil es keine gibt. Die BrickLink-Store-API hat keine Wanted-Listen; die
-// ganze Prüfung samt Quellen steht im Kopf von utils/wantedListeSchreiben.ts.
-// Der dokumentierte Weg ist BrickLinks Massen-Upload, und der nimmt die Datei,
-// die hier herauskommt.
+// der Sache, um die es geht.
 import { registerActions } from './00-registry.js';
 import { t, tRaw, colorName } from '../i18n.js';
 import { G, api, esc, escHex, escUrl, fullUrl, hexZiffern, imgUrl, toast } from './01-core.js';
 import { loadBrickColors, loadManualParts, loadManualFigsTable } from './06-minifigs.js';
 import { loadGallery } from './02-gallery.js';
-import { teileFilterJetzt } from './03-parts.js';
 
 /**
  * Die gewählte Datei bleibt im Speicher, bis importiert oder geschlossen wird.
@@ -294,85 +283,10 @@ function setzeKorrektur(i, k) {
   }
 }
 
-// ── EXPORT ─────────────────────────────────────────────────────────────────
-
-function wantedExportOeffnen() {
-  const el = this instanceof HTMLElement ? this : null;
-  _art = el?.dataset?.art || 'part';
-  G('wanted-export-bericht').innerHTML = '';
-  G('wanted-export-modal').classList.add('open');
-}
-
-function wantedExportSchliessen() { G('wanted-export-modal').classList.remove('open'); }
-
-async function wantedExportBauen() {
-  const el = G('wanted-export-bericht');
-  el.textContent = tRaw('import.running');
-  const d = await api('POST', '/v1/wanted-list/export/xml', {
-    art: _art,
-    wanted_list_id: G('wanted-export-id')?.value.trim() || '',
-    mit_lagerort: !!G('wanted-export-lagerort')?.checked,
-    // Derselbe Filter, den die Liste gerade benutzt — Marco exportiert, was er
-    // vor sich sieht. Die Herleitung steht an teileFilterJetzt().
-    filter: _art === 'part' ? teileFilterJetzt() : {},
-  }).catch(() => null);
-  if (!d?.success) {
-    el.textContent = '';
-    toast(d?.error || tRaw('settings.error'), 'error');
-    return;
-  }
-  const stuecke = d.stuecke || [];
-  el.innerHTML = `
-    <div><strong>${d.enthalten}</strong> ${esc(tRaw('wanted.export_included'))}${
-      stuecke.length > 1 ? ` — ${stuecke.length} ${esc(tRaw('wanted.export_parts'))}` : ''}</div>
-    ${d.ohne_farbe?.length ? `<div style="margin-top:.4rem">⚠ <strong>${
-      d.ohne_farbe.length}</strong> ${esc(tRaw('wanted.export_no_color'))}:
-      <div style="color:var(--mut);font-size:.76rem;max-height:7rem;overflow:auto">${
-        d.ohne_farbe.map(o => esc(`${o.blId} (${o.farbName || o.farbe})`)).join(', ')}</div></div>` : ''}
-    <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:.6rem">${
-      stuecke.map((_, i) => `<button class="btn bs btn-sm" type="button"
-        data-click="wantedExportLaden" data-i="${i}">⬇ ${
-        esc(tRaw('wanted.export_download'))}${stuecke.length > 1 ? ` ${i + 1}/${stuecke.length}` : ''}
-      </button>`).join('')}</div>`;
-  _stuecke = stuecke;
-}
-
-/** Die erzeugten Dateien, bis der Dialog zugeht. */
-let _stuecke = [];
-
-/**
- * Ein Stück als Datei herunterladen.
- *
- * Über einen Blob und nicht über eine Adresse am Server: Die Datei ist schon
- * da (sie kam mit der Antwort), und ein zweiter Weg dafür hiesse, sie auf dem
- * Server zu halten oder ein zweites Mal zu bauen.
- */
-function wantedExportLaden() {
-  const el = this instanceof HTMLElement ? this : null;
-  const i = Number(el?.dataset?.i ?? 0);
-  const xml = _stuecke[i];
-  if (!xml) return;
-  const a = document.createElement('a');
-  const url = URL.createObjectURL(new Blob([xml], { type: 'application/xml' }));
-  a.href = url;
-  a.download = _stuecke.length > 1
-    ? `wanted-${_art}-${i + 1}.xml` : `wanted-${_art}.xml`;
-  a.click();
-  // Die Adresse freigeben — sonst bleibt der Inhalt bis zum Neuladen der
-  // Seite im Speicher, und bei 200 KB je Stück summiert sich das.
-  setTimeout(() => URL.revokeObjectURL(url), 1000);
-}
-
 G('wanted-xml-modal')?.addEventListener('click',
   e => e.target.id === 'wanted-xml-modal' && wantedXmlSchliessen());
-G('wanted-export-modal')?.addEventListener('click',
-  e => e.target.id === 'wanted-export-modal' && wantedExportSchliessen());
 
 registerActions({
-  wantedExportBauen,
-  wantedExportLaden,
-  wantedExportOeffnen,
-  wantedExportSchliessen,
   wantedKorrekturFarbe,
   wantedKorrekturNummer,
   wantedXmlGewaehlt,

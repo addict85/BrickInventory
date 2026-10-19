@@ -22,6 +22,34 @@
  * ist der einzige Teil dieses Lesers, der sich an seinem Beispiel nicht
  * prüfen lässt, und er steht deshalb hier ausdrücklich.
  *
+ * ── Warum über eine DATEI und nicht über die BrickLink-API ──────────────────
+ *
+ * Marcos Frage vom 19.10.: „Kannst du auch prüfen ob es nicht eine api mit
+ * bricklink gibt damit die wanted listen direkt gelesen und Importiert werden
+ * können".
+ *
+ * Geprüft, und die Antwort ist nein. Die BrickLink-Store-API
+ * (api.bricklink.com/api/store/v1 — dieselbe, die clients/bricklink.ts für
+ * Preise anspricht, mit denselben vier Zugangsdaten) führt Bestellungen,
+ * Ladeninventar, Katalog, Preisführer, Farben, Kategorien, Feedback, Coupons,
+ * Mitglied und Item-Mapping. WANTED-LISTEN SIND NICHT DABEI.
+ *
+ * Drei unabhängige Belege, die in dieselbe Richtung zeigen: Keine der
+ * verbreiteten Bibliotheken (Python, C#, Java, der Rust-Nachbau) kennt solche
+ * Endpunkte; der API-Changelog nennt keine; und in BrickLinks Forum steht ein
+ * Wunsch vom Dezember 2024, der genau sie fordert. Anbieter, die
+ * „get_wanted_lists" bewerben, verlangen dafür eine SITZUNG mit dem
+ * BrickLink-Login — das ist Abgreifen, nicht die API.
+ *
+ * Die Prüfung hatte eine Grenze, und die gehört dazu: bricklink.com war aus
+ * der Arbeitsumgebung gesperrt (getaddrinfo ENOTFOUND), die Doku-Seite selbst
+ * liess sich also nicht öffnen. Das obige stützt sich auf übereinstimmende
+ * Zweitquellen.
+ *
+ * Darum bleibt der Weg, den Marco ohnehin geht: die Liste bei BrickLink als
+ * XML herunterladen und hier einlesen. Wer diese Frage erneut stellt, möge
+ * zuerst nachsehen, ob sich seit Oktober 2026 etwas geändert hat.
+ *
  * ── Warum ohne XML-Bibliothek ───────────────────────────────────────────────
  *
  * Eine Wanted-Liste ist flach: <INVENTORY> mit <ITEM>-Kindern, in jedem

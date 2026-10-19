@@ -18,11 +18,6 @@ import { csvZeilenAusAnfrage, csvImportAntwort, parseCsvDate } from '../../utils
 import { importiereWantedListe } from '../../utils/wantedListe';
 import type { Korrektur } from '../../utils/wantedListe';
 import { merkeBlNummer } from '../../utils/blZuordnung';
-import { baueWantedXmlStuecke, teileZuXmlPosten, uebersetzeFarben } from '../../utils/wantedListeSchreiben';
-import type { XmlPosten } from '../../utils/wantedListeSchreiben';
-import { getParts } from '../../utils/handlers/parts';
-import { getMinifigs } from '../../utils/handlers/minifigs';
-import { getSets } from '../../utils/handlers/sets';
 
 const router = express.Router();
 type AuthedRequest = express.Request & { apiUser: { user_id: number } };
@@ -367,106 +362,5 @@ router.post('/wanted-list/import/xml', requireToken, csvEmpfang.single('file'),
       res.json({ success: true, ...bericht });
     } catch (e) { handleRouteError(res, e, undefined, req); }
   });
-
-/**
- * POST /api/v1/wanted-list/export/xml — aus dem Bestand eine Wanted-Liste.
- *
- * ── Marcos Frage, und die Antwort darauf ────────────────────────────────────
- *
- *   „oder aus den Teileliste direkt die Teile in eine existierende oder neue
- *    wanted list exportiert werden können"
- *
- * Direkt in seine Liste schreiben kann niemand: Die BrickLink-Store-API hat
- * keine Wanted-Listen-Endpunkte (die Prüfung steht im Kopf von
- * utils/wantedListeSchreiben.ts). Der dokumentierte Weg ist BrickLinks
- * Massen-Upload, und der nimmt genau das XML, das hier entsteht — mit
- * `WANTEDLISTID` für „in DIESE bestehende Liste".
- *
- * ── Warum POST, obwohl nichts geändert wird ─────────────────────────────────
- *
- * Zwei Gründe, und beide hängen zusammen. Erstens kommt eine Antwort heraus,
- * die mehr ist als eine Datei: die Posten, die NICHT mitkonnten. Ein
- * Download kann die nicht nebenbei melden, und eine Wanted-Liste, in der 40
- * Teile stillschweigend fehlen, ist schlimmer als keine. Zweitens reisen
- * dieselben Filter mit wie bei der Liste selbst — wer nach Lagerort und
- * Suchtext filtert, hat sie als Nutzlast, nicht in der Adresse (dieselbe
- * Begründung wie bei POST /parts/owned).
- *
- * ── Dieselben Filter wie die Liste ──────────────────────────────────────────
- *
- * `filter` wird 1:1 an getParts/getMinifigs/getSets weitergegeben. Damit
- * exportiert Marco, was er vor sich sieht — und nicht eine zweite,
- * ähnliche Menge.
- */
-router.post('/wanted-list/export/xml', requireToken, async (req: AuthedRequest, res) => {
-  try {
-    const art = String((req.body as { art?: unknown })?.art ?? 'part');
-    if (art !== 'part' && art !== 'fig' && art !== 'set')
-      return sendeFehler(req, res, 400, 'art_ungueltig');
-    const koerper = (req.body ?? {}) as {
-      wanted_list_id?: unknown; filter?: Record<string, unknown>; mit_lagerort?: unknown;
-    };
-    // BrickLink nimmt die Nummer als Text in <WANTEDLISTID>. Geprüft wird nur
-    // die Form (Ziffern), nicht die Existenz — die kennt nur BrickLink, und
-    // eine falsche Nummer meldet der Upload dort.
-    const listeRoh = String(koerper.wanted_list_id ?? '').trim();
-    if (listeRoh !== '' && !/^\d{1,12}$/.test(listeRoh))
-      return sendeFehler(req, res, 400, 'wanted_list_id_ungueltig');
-    const wantedListId = listeRoh || null;
-
-    const ids = await scopeIds(req.apiUser.user_id, parseScopeMode(req.query.accounts));
-    // page_size NICHT gesetzt: Dann gilt UNPAGED_LIMIT, und das ist für einen
-    // Export die richtige Grenze — er soll alles mitnehmen, was die Liste
-    // zeigt, und nicht die erste Seite.
-    const filter = { ...(koerper.filter ?? {}), page: 1, page_size: null };
-
-    let posten: XmlPosten[];
-    if (art === 'part') {
-      const r = await getParts(ids, filter);
-      posten = teileZuXmlPosten(r.parts ?? [], { mitLagerort: koerper.mit_lagerort === true });
-    } else if (art === 'fig') {
-      const r = await getMinifigs(ids, filter);
-      // `bl_fig_number` ist die BrickLink-Nummer aus der Zuordnung; ohne
-      // Eintrag ist sie die Rebrickable-Nummer (COALESCE in blNummerSql).
-      // Eine Figur hat keine Farbe — deshalb blFarbe: null.
-      posten = (r.figs ?? []).map((f: { bl_fig_number?: string; fig_number: string;
-                                        quantity?: number }) => ({
-        art: 'fig' as const,
-        blId: String(f.bl_fig_number || f.fig_number),
-        blFarbe: null,
-        menge: Number(f.quantity ?? 1) || 1,
-      }));
-    } else {
-      const r = await getSets(ids, filter);
-      // Setnummern sind bei BrickLink dieselben wie bei Rebrickable — die
-      // Notiz dazu steht an BlArt in utils/blZuordnung.ts („GEMESSEN hat kein
-      // Set irgendwo eine eigene BrickLink-Nummer").
-      posten = (r.sets ?? []).map((x: { set_number: string; quantity?: number }) => ({
-        art: 'set' as const,
-        blId: String(x.set_number),
-        blFarbe: null,
-        menge: Number(x.quantity ?? 1) || 1,
-      }));
-    }
-
-    const { posten: fertig, ohneFarbe } = await uebersetzeFarben(posten);
-    const stuecke = baueWantedXmlStuecke(fertig, wantedListId);
-    res.json({
-      success: true,
-      art,
-      wanted_list_id: wantedListId,
-      enthalten: fertig.length,
-      ohne_farbe: ohneFarbe,
-      // Die Stücke EINZELN: BrickLink nimmt höchstens 204 800 Bytes je
-      // Upload, und eine Datei, die darüber liegt, lehnt es wortlos ab.
-      //
-      // Die GRENZE selbst reist NICHT mit. Sie stand hier als `max_bytes` und
-      // hatte keinen Verbraucher — test/antwortfelder.test.js hat es gemeldet,
-      // und mit Recht: Geschnitten wird auf dem Server, der Client zählt
-      // nichts nach. Ein Feld, das niemand liest, sieht aus wie eine Zusage.
-      stuecke,
-    });
-  } catch (e) { handleRouteError(res, e, undefined, req); }
-});
 
 export default router;

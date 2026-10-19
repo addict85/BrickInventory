@@ -119,42 +119,6 @@ function partsParams(page){
   return p;
 }
 
-/**
- * Der Filter, den der Teile-Reiter GERADE zeigt — ohne Blätterangaben.
- *
- * ── Warum aus partsParams() abgeleitet und nicht daneben gebaut ─────────────
- *
- * Der Export der Teileliste als BrickLink-Wanted-Liste (18-wanted-xml.js)
- * soll genau das mitnehmen, was Marco vor sich sieht: Farbe, Kategorie,
- * Suchtext, Ersatzteilschalter, Blickfeld, Lagerort. Eine zweite Sammelstelle
- * dafür wäre dieselbe Liste in zweiter Fassung — und beim nächsten neuen
- * Filter stünde er in einer von beiden.
- *
- * ── Drei Angaben fallen weg, und jede aus einem eigenen Grund ──────────────
- *
- *   page/page_size   Ein Export ist nicht eine Seite. Der Server setzt dafür
- *                    UNPAGED_LIMIT.
- *   exclude_manual   Das ist eine ANSICHTSSACHE: Der Reiter zeigt die manuell
- *                    erfassten Teile in einer eigenen Box oben und schliesst
- *                    sie deshalb aus der Kachelwand aus. Für eine
- *                    Wanted-Liste wäre das eine willkürliche Hälfte —
- *                    GEMESSEN am laufenden Server kamen mit dem Schalter
- *                    `0 Posten in der Datei` heraus, obwohl zwei Teile im
- *                    Bestand standen (beide manuell).
- *   with_sets        Nur die Tabellenansicht hat eine Spalte dafür, und sie
- *                    kostet bei 380 Sets rund 155 ms und 2 MB. In einer
- *                    Wanted-Liste steht nicht, aus welchem Set ein Teil
- *                    stammt.
- *
- * Alles andere bleibt: Farbe, Kategorie, Suchtext, Ersatzteilschalter,
- * Blickfeld, Lagerort.
- */
-export function teileFilterJetzt() {
-  const p = partsParams(1);
-  for (const weg of ['page', 'page_size', 'exclude_manual', 'with_sets']) p.delete(weg);
-  return Object.fromEntries(p.entries());
-}
-
 /** Vollständiger Neuaufbau — bei jedem Filter-, Such- oder Moduswechsel. */
 async function loadPartsData(){
   _partsGen++;

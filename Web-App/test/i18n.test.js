@@ -83,10 +83,6 @@ test('kein Text steht in beiden Sprachen unübersetzt', () => {
     // USA heisst auf Deutsch USA. Die übrigen sieben Ausgabeländer
     // (country_de_ch … country_en_gb) unterscheiden sich, dieses eine nicht.
     'vouchers.country_en_us',
-    // „🧱 → BL" — ein Stein, ein Pfeil und das Kürzel von BrickLink. Kein
-    // Wort, also nichts zu übersetzen. Der lange Text daneben
-    // (wanted.export_title) trägt die Bedeutung und ist übersetzt.
-    'wanted.export_short',
   ]);
 
   const { de, en } = loadTranslations();

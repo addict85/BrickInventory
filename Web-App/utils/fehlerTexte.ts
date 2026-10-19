@@ -289,13 +289,6 @@ export const FEHLER = {
   // sie bekommt, merkt es erst an den Karten — und hat die Arbeit zweimal.
   korrekturen_ungueltig:       { de: 'Die Korrekturen sind nicht lesbar (kein gültiges JSON-Array).',
                                  en: 'The corrections could not be read (not a valid JSON array).' },
-  art_ungueltig:               { de: 'art muss „part", „fig" oder „set" sein.',
-                                 en: 'art must be “part”, “fig” or “set”.' },
-  // Die Nummer wird nur auf ihre FORM geprüft. Ob es die Liste gibt, weiss
-  // allein BrickLink — und sagt es beim Upload. Hier abzulehnen, was dort
-  // vielleicht gilt, wäre eine Grenze, die wir uns ausdenken.
-  wanted_list_id_ungueltig:    { de: 'Die Wanted-Listen-Nummer besteht aus Ziffern (sie steht bei BrickLink in der Adresse der Liste).',
-                                 en: 'A wanted list ID consists of digits (BrickLink shows it in the list’s URL).' },
   keine_wanted_liste:          { de: 'Das ist keine BrickLink-Wanted-Liste '
                                    + '(kein <INVENTORY> in der Datei).',
                                  en: 'This is not a BrickLink wanted list '

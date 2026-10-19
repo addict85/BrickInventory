@@ -169,16 +169,6 @@ const NUR_WEB = new Map([
    'nicht, anders als bei den CSV-Importen, die einfach laufen und eine Zahl ' +
    'melden. Marco weiss es und kann es anfordern; bis dahin ist dies kein ' +
    'Versehen, sondern ein benannter Rest.'],
-  ['/api/v1/wanted-list/export/xml',
-   'Aus dem Bestand eine BrickLink-Wanted-Liste bauen (Marcos Frage vom ' +
-   '19.10.). NOCH NICHT in der App, und der Grund steht hier: Heraus kommt ' +
-   'eine DATEI, die der Mensch anschliessend bei BrickLink hochlaedt — eine ' +
-   'API fuer Wanted-Listen gibt es dort nicht (die Pruefung samt Quellen ' +
-   'steht im Kopf von utils/wantedListeSchreiben.ts). Dazu eine Meldung ' +
-   'darueber, welche Posten keine BrickLink-Farbe haben und deshalb fehlen. ' +
-   'Am Rechner ist das ein Weg; auf dem Telefon waere „Datei erzeugen, in ' +
-   'den Browser wechseln, dort hochladen" der unbequemere Teil des ' +
-   'Vorgangs. Marco weiss es und kann es anfordern.'],
   ['/api/v1/vouchers/export/pdf',
    'Alle Gutscheine als EIN PDF. Die App RUFT die Adresse sehr wohl auf — seit ' +
    'Marcos Vorgabe vom 15.10. („Bitte auch den Button … in der Android-App ' +

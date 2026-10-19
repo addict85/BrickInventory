@@ -282,15 +282,6 @@ const C = {
   'POST /api/v1/wanted/import/csv': 'nur-v1',
   'POST /api/v1/alerts/import/csv': 'nur-v1',
   'POST /api/v1/wanted-list/import/xml': 'nur-web',
-  // Der Weg ZURÜCK: aus dem Bestand eine BrickLink-Wanted-Liste bauen (Marcos
-  // Frage vom 19.10.). nur-web wie der Import darüber, und aus demselben
-  // Grund: Es ist eine Tabelle zum Lesen und eine Datei zum Hochladen, und
-  // das Hochladen passiert von Hand bei BrickLink — eine API für
-  // Wanted-Listen gibt es dort nicht (die Prüfung steht im Kopf von
-  // utils/wantedListeSchreiben.ts). Auf einem Telefon wäre der Weg „Datei
-  // erzeugen, in den Browser wechseln, bei BrickLink hochladen" der
-  // unbequemere Teil; am Rechner ist er einer.
-  'POST /api/v1/wanted-list/export/xml': 'nur-web',
 
   // ── Gutscheine ───────────────────────────────────────────────────────────
   //

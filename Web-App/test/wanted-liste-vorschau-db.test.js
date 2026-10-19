@@ -45,16 +45,17 @@
  *        Vermutung — würde als Zuordnung eingetragen.
  *   E  `opt.vorschau` aus der Abbruchbedingung des Schreibwegs entfernt
  *      → `pass 7 / fail 2`. Rot ist Fall 6: Die Vorschau merkt sich etwas.
- *   F  unbekannte BrickLink-Farbe als 0 exportiert
- *      → `pass 7 / fail 2`. Rot ist Fall 7. Das ist der Fehler vom 19.10.
- *        spiegelbildlich: 0 heisst bei BrickLink „not applicable", bei
- *        Rebrickable SCHWARZ.
- *   G  in beschreibePosten eine Abfrage je Posten davorgesetzt
- *      → `pass 7 / fail 2`. Rot ist Fall 8: „64 Abfragen für 100 Posten."
+ *   F  in beschreibePosten eine Abfrage je Posten davorgesetzt
+ *      → `pass 7 / fail 2`. Rot ist Fall 7: „64 Abfragen für 100 Posten."
  *        Diese Gegenprobe hat zuerst NICHTS gemeldet (`pass 9 / fail 0`) —
- *        der Grund und die Lehre stehen bei Fall 8 selbst.
- *   H  Name und Bild nicht in den Bericht gelegt
+ *        der Grund und die Lehre stehen bei Fall 7 selbst.
+ *   G  Name und Bild nicht in den Bericht gelegt
  *      → `pass 7 / fail 2`. Rot ist Fall 1.
+ *
+ * Die Zahlen stammen aus dem Lauf mit acht Unterfällen; der damalige Fall 7
+ * („der Export erfindet keine BrickLink-Farbe") ist entfallen, weil Marco den
+ * Export nicht braucht. Die übrigen Fälle und ihre Gegenproben sind
+ * unverändert — nachgerechnet wurde nach dem Ausbau erneut.
  *
  * Voraussetzung: Test-DB via TEST_DATABASE_URL. Ohne DB: skip, ausser
  * REQUIRE_DB=1.
@@ -69,7 +70,6 @@ const _req = require('./helpers/sources').buildAndRequire();
 const db = _req('db/database.js');
 const { importiereWantedListe, beschreibePosten, loeseLokalAuf, leseWantedListe } =
   _req('utils/wantedListe.js');
-const { uebersetzeFarben, teileZuXmlPosten } = _req('utils/wantedListeSchreiben.js');
 
 test.after(async () => { await db.pool.end().catch(() => {}); });
 
@@ -104,11 +104,10 @@ test('Vorschau, Korrekturen und Farbübersetzung', { concurrency: 1 }, async (t)
                 VALUES ('3001',4,'Red','C91A09','https://cdn.example/3001-rot.png')`);
   await db.run(`INSERT INTO rb_parts (part_num, name, part_img_url)
                 VALUES ('3002','Brick 2 x 2','https://cdn.example/3002.png')`);
-  // bl_color_id: 5 → Rot(4), 11 → Schwarz(0). Farbe 85 hat KEINE — genau
-  // Marcos Lage.
+  // bl_color_id: 5 → Rot(4), 11 → Schwarz(0), 7 → Blau(7). Die BrickLink-Farbe
+  // 85 ist KEINER zugeordnet — genau Marcos Lage.
   await db.run(`INSERT INTO rb_colors (id, name, rgb, bl_color_id)
-                VALUES (4,'Red','C91A09',5), (0,'Black','05131D',11), (7,'Blue','0055BF',7),
-                       (1001,'Eigenbau','ABCDEF',NULL)`);
+                VALUES (4,'Red','C91A09',5), (0,'Black','05131D',11), (7,'Blue','0055BF',7)`);
 
   await t.test('1. die Vorschau trägt Name, Bild und Farbe — und erfindet nichts', async () => {
     const xml = liste(item('P', '3001', 5, 10), item('P', '3002', 5, 3), item('P', '9999', 5, 1));
@@ -277,30 +276,7 @@ test('Vorschau, Korrekturen und Farbübersetzung', { concurrency: 1 }, async (t)
     assert.deepEqual(gemerkt, [], 'In der Vorschau darf nichts gemerkt werden');
   });
 
-  await t.test('7. der Export erfindet keine BrickLink-Farbe', async () => {
-    // Die Spiegelung des Fehlers vom 19.10.: Dort hat `color_id: 0` beim
-    // IMPORT ein Teil als schwarz erfunden. Hier wäre eine geratene
-    // BrickLink-Farbe ein Posten, den Marco in der falschen Farbe kauft.
-    const posten = teileZuXmlPosten([
-      { part_number: '3001', color_id: 4,    total_quantity: 10 },  // → BL 5
-      { part_number: '3002', color_id: 1001, total_quantity: 3  },  // keine BL-Farbe
-      { part_number: '3003', color_id: 0,    total_quantity: 1  },  // „ohne Angabe"
-    ]);
-    const r = await uebersetzeFarben(posten);
-    assert.equal(r.posten.length, 2,
-      `${r.posten.length} Posten gingen durch. Erwartet sind 2 — der mit der ` +
-      'unbekannten Farbe darf NICHT mit einer geratenen Nummer hinausgehen.');
-    assert.equal(r.posten[0].blFarbe, 5, 'Rebrickable 4 ist bei BrickLink 5');
-    assert.equal(r.posten[1].blFarbe, null,
-      'Farbe 0 heisst im Baum „ohne Angabe" und bei BrickLink „not applicable" — ' +
-      'also keine COLOR, und kein Mangel.');
-    assert.deepEqual(r.ohneFarbe.map(o => ({ blId: o.blId, farbe: o.farbe, name: o.farbName })),
-      [{ blId: '3002', farbe: 1001, name: 'Eigenbau' }],
-      'Der ausgelassene Posten muss GENANNT werden, mit dem Namen seiner Farbe — ' +
-      'sonst fehlt er in der Wanted-Liste und es fällt erst beim Zählen auf.');
-  });
-
-  await t.test('8. beschreibePosten macht nicht eine Abfrage je Posten', async () => {
+  await t.test('7. beschreibePosten macht nicht eine Abfrage je Posten', async () => {
     // Marcos Datei hat 224 Zeilen. Eine Abfrage je Zeile wäre eine Vorschau,
     // auf die man wartet.
     //
