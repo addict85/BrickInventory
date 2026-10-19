@@ -137,3 +137,58 @@ test('2. req.body ist immer ein Objekt, auch ohne passenden Parser', async () =>
   assert.ok(beiJson >= 0 && nachParser > beiJson,
     'Die Zusicherung steht vor den Parsern — dort ist sie wirkungslos.');
 });
+
+/**
+ * Die Startseite geht durch den Renderer — nicht an ihm vorbei.
+ *
+ * ── Der Befund, am laufenden Server gemessen ────────────────────────────────
+ *
+ * `express.static` liefert index.html fuer `/` von sich aus aus (Option
+ * `index`, Vorgabe `index.html`) und kommt damit dem SPA-Catch-all zuvor.
+ * GEMESSEN am 17.10., bevor das abgestellt wurde:
+ *
+ *   /           <html lang="de">                       ?v=2026.10.17.1217
+ *   /irgendwas  <html data-theme="classic" lang="de">   ?v=mvccag5c-14dl
+ *
+ * Auf der Startseite fielen damit ZWEI Dinge aus:
+ *
+ *   • das serverseitig gesetzte `data-theme`. Genau dafuer gibt es
+ *     utils/indexHtml.ts: Ohne den Wert startet ein frischer Browser im
+ *     Standarddesign und springt nach dem Abgleich sichtbar um. Der Kopf
+ *     jener Datei beschreibt diesen Sprung als geloest — auf `/` war er es
+ *     nie.
+ *   • der Dateistempel (utils/assetStempel.ts). Deshalb blieb die
+ *     Cache-Reparatur bei Marco wirkungslos: Sie kam an seiner Adresse gar
+ *     nicht zum Einsatz.
+ *
+ * ── Warum hier die SCHREIBWEISE gepruefte wird ──────────────────────────────
+ *
+ * Der Absatz oben argumentiert, man solle die Wirkung pruefen und nicht das
+ * Muster. Hier ist die Option selbst die Wirkung: `index: false` sagt genau
+ * „liefere keine Verzeichnis-Startdatei aus", und etwas anderes gibt es dafuer
+ * nicht. Die Wirkung am echten Server zu pruefen hiesse, ihn samt Datenbank
+ * hochzufahren — das tut keine Pruefung dieser Reihe.
+ *
+ * Gegenproben (durchgefuehrt, Ergebnisse abgeschrieben):
+ *   `index: false` entfernt → dieser Fall rot.
+ *   Beim ERSTEN Versuch blieb er gruen: Die Pruefung las den Quelltext samt
+ *   Kommentaren, und der Kommentar ueber der Option nennt sie beim Namen.
+ *   Dieselbe Falle wie bei scripts/check-global-settings.js, das Erwaehnungen
+ *   in Kommentaren mitzaehlt.
+ */
+test('3. die Startseite geht durch den Renderer', () => {
+  // OHNE KOMMENTARE, und das ist nicht Zierde: Der Erklaerkommentar ueber der
+  // Option nennt `index: false` selbst. Die erste Fassung las den Quelltext
+  // samt Kommentaren — GEMESSEN blieb die Gegenprobe deshalb gruen, obwohl
+  // die Option entfernt war. Eine Pruefung, die ihre eigene Begruendung
+  // mitliest, bestaetigt sich selbst.
+  const src = ohneKommentare(serverAll());
+  const auf = src.indexOf('express.static(PUBLIC_DIR');
+  assert.ok(auf > 0, 'Die statische Auslieferung ist nicht mehr zu finden.');
+  const block = src.slice(auf, src.indexOf('}));', auf));
+  assert.match(block, /index:\s*false/,
+    'express.static liefert die index.html fuer `/` wieder selbst aus. Dann ' +
+    'geht die Startseite am Renderer vorbei: kein serverseitiges data-theme ' +
+    '(sichtbarer Designsprung beim ersten Aufruf) und kein Dateistempel an ' +
+    'den Assets (der Browser behaelt seine alten Kopien).');
+});

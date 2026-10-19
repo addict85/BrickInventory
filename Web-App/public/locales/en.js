@@ -607,7 +607,7 @@ window.I18N_EN = {
   'settings.smtp.from': 'Sender (From)',
   'settings.smtp.save': '💾 Save SMTP',
   'settings.smtp.test_to': 'Send test e-mail to',
-  'settings.global_title': 'Global settings',
+  'settings.global_title': '🌐 Global settings',
   'settings.danger_zone': '⚠️ Danger zone',
   'monitor.logs_btn': '🗒️ View logs',
   'monitor.api_calls': '📊 API calls today',

@@ -789,6 +789,32 @@ app.get('/data/uploads/*pfad',      serveDataFile('uploads'));
 // deshalb jetzt unter /assets/ statt unter /images/.
 
 app.use(express.static(PUBLIC_DIR, {
+  // ── `index: false` — und das ist der Punkt, nicht eine Kleinigkeit ───────
+  //
+  // Ohne diese Zeile liefert express.static die index.html fuer `/` SELBST
+  // aus und kommt damit dem SPA-Catch-all zuvor. Die Startseite ging also am
+  // Renderer (utils/indexHtml.ts) vorbei — an genau der Adresse, die jeder
+  // Lesezeichen- und Erstbesuch benutzt.
+  //
+  // GEMESSEN am 17.10. am laufenden Server:
+  //
+  //   /           <html lang="de">                       ?v=2026.10.17.1217
+  //   /irgendwas  <html data-theme="classic" lang="de">   ?v=mvccag5c-14dl
+  //
+  // Zwei Dinge fielen damit auf der Startseite aus:
+  //
+  //   • das serverseitig gesetzte `data-theme`. Dafuer gibt es den Renderer
+  //     ueberhaupt: Ohne den Wert startet ein frischer Browser im
+  //     Standarddesign und springt nach dem Abgleich sichtbar um. Der Kopf
+  //     von utils/indexHtml.ts beschreibt genau diesen Sprung als das
+  //     Problem, das geloest sei — auf `/` war er nie geloest.
+  //   • der Dateistempel (utils/assetStempel.ts). Deshalb blieb meine
+  //     Cache-Reparatur bei Marco wirkungslos: Sie kam an seiner Adresse gar
+  //     nicht zum Einsatz.
+  //
+  // `/index.html` liefert express.static weiterhin direkt aus — das ist ein
+  // ausgeschriebener Dateipfad und niemandes Startseite.
+  index: false,
   // Assets (Bilder, SVG, CSS/JS mit ?v=-Cache-Busting) dürfen lange gecacht werden.
   // index.html bekommt no-cache, damit Deploys sofort sichtbar sind — die
   // versionierten Referenzen darin ziehen dann frische Assets nach.
