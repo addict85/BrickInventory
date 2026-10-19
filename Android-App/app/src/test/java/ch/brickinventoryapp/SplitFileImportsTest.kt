@@ -92,6 +92,61 @@ class SplitFileImportsTest {
         }
     }
 
+    /**
+     * Die Gegenrichtung: ein Name, der NICHT importierbar ist.
+     *
+     * ── Gemessen am 19.10., in der CI ───────────────────────────────────────
+     *
+     *     > Task :app:compileDebugKotlin FAILED
+     *     Unresolved reference 'ExposedDropdownMenu'.
+     *     Location: .../ui/screens/FarbWahlFeld.kt:11
+     *
+     * `ExposedDropdownMenu` ist in Material 3 kein Composable auf oberster
+     * Ebene, sondern ein MITGLIED von `ExposedDropdownMenuBoxScope`. Innerhalb
+     * des Box-Rumpfs ist es damit ohnehin da — ein Import darauf zeigt ins
+     * Leere, auch wenn er wie die drei Zeilen darueber aussieht
+     * (ExposedDropdownMenuBox, -Defaults und -AnchorType sind sehr wohl
+     * importierbar). Genau diese Nachbarschaft macht den Fehler leicht.
+     *
+     * Die beiden bestehenden Nutzer belegen es: LagerortFeld.kt ruft
+     * `ExposedDropdownMenu` ohne Import, PartsDialogs.kt unter `material3.*`.
+     * Beide uebersetzen.
+     *
+     * Hier wird in dieser Umgebung nicht uebersetzt (dl.google.com ist
+     * gesperrt), die Uebersetzung macht die CI — und das dauert Minuten. Diese
+     * Pruefung dauert Millisekunden, dieselbe Begruendung wie beim Fall
+     * darueber.
+     *
+     * Die Liste ist bewusst KURZ: Jeder Eintrag ist ein Name, der einmal
+     * wirklich so gescheitert ist. Geraten wird hier nichts.
+     */
+    @Test
+    fun `kein Import auf ein Bereichs-Mitglied`() {
+        val nichtImportierbar = mapOf(
+            "androidx.compose.material3.ExposedDropdownMenu" to
+                "Mitglied von ExposedDropdownMenuBoxScope — im Rumpf der Box ohnehin da",
+        )
+        val wurzel = java.io.File("src/main/java/ch/brickinventoryapp")
+        val dateien = wurzel.walkTopDown().filter { it.extension == "kt" }.toList()
+        check(dateien.size >= 20) {
+            "Zu wenige Kotlin-Dateien unter ${'$'}{wurzel.path} — Pfad veraltet? Ohne " +
+                "Treffer waere diese Pruefung stillschweigend gruen."
+        }
+        val fehler = mutableListOf<String>()
+        for (f in dateien) {
+            val importe = Regex("""^import ([\w.]+)${'$'}""", RegexOption.MULTILINE)
+                .findAll(f.readText()).map { it.groupValues[1] }.toSet()
+            for ((name, grund) in nichtImportierbar) {
+                if (name in importe) fehler += "${'$'}{f.name}: import ${'$'}name — ${'$'}grund"
+            }
+        }
+        assert(fehler.isEmpty()) {
+            "Importe, die ins Leere zeigen:\n  " + fehler.joinToString("\n  ") +
+                "\nDie Zeile ersatzlos streichen — der Name steht im Rumpf schon zur " +
+                "Verfuegung. Genau daran ist die CI am 19.10. gescheitert."
+        }
+    }
+
     /** Kommentare und Zeichenketten durch Leerzeichen ersetzen, Zeilen erhalten. */
     private fun entkleide(src: String): String {
         val out = StringBuilder()
