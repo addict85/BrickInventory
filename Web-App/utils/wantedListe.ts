@@ -159,6 +159,17 @@ export interface Aufloesung {
   rbId: string | null;
   /** Die Rebrickable-Farbnummer — null bei Sets und wenn nichts zu finden war. */
   rbFarbe: number | null;
+  /**
+   * Name und Farbwert zur Nummer — beide aus rb_colors.
+   *
+   * Sie reisen MIT, statt spaeter nachgeschlagen zu werden: Der Anleger
+   * schreibt `color_name` an die Zeile, und die Teileliste liest den Namen
+   * von dort. Bis zum 19.10. wurden sie nicht uebergeben; der Hex-Wert fiel
+   * in der Anzeige auf den Katalog zurueck, der NAME nicht. Marcos Befund:
+   * ein Farbpunkt ohne Beschriftung.
+   */
+  rbFarbName: string | null;
+  rbFarbHex: string | null;
   /** Woher die Nummer kommt. */
   sicherheit: Sicherheit | null;
   /** Die Farbe liess sich nicht abbilden, die Nummer schon. */
@@ -220,10 +231,12 @@ export async function loeseLokalAuf(posten: WantedPosten[]): Promise<Aufloesung[
     for (const z of await db.all(sql, [nummern]).catch(() => [])) katalog.add(`${art}:${z.n}`);
   }
 
-  const farbMap = new Map<number, number>();
+  const farbMap = new Map<number, { id: number; name: string | null; hex: string | null }>();
   for (const z of await db.all(
-    'SELECT id, bl_color_id FROM rb_colors WHERE bl_color_id = ANY($1)', [farben]).catch(() => [])) {
-    farbMap.set(Number(z.bl_color_id), Number(z.id));
+    'SELECT id, name, rgb, bl_color_id FROM rb_colors WHERE bl_color_id = ANY($1)', [farben]).catch(() => [])) {
+    farbMap.set(Number(z.bl_color_id), {
+      id: Number(z.id), name: z.name ?? null, hex: z.rgb ?? null,
+    });
   }
 
   return posten.map((p) => {
@@ -233,10 +246,12 @@ export async function loeseLokalAuf(posten: WantedPosten[]): Promise<Aufloesung[
     if (treffer) { rbId = treffer.rbId; sicherheit = treffer.sicherheit; }
     else if (katalog.has(`${p.art}:${p.blId}`)) { rbId = p.blId; sicherheit = 'katalogtreffer'; }
 
-    const rbFarbe = p.blFarbe === null ? null : (farbMap.get(p.blFarbe) ?? null);
+    const farbe = p.blFarbe === null ? null : (farbMap.get(p.blFarbe) ?? null);
     return {
-      posten: p, rbId, rbFarbe, sicherheit,
-      farbeOffen: rbId !== null && p.blFarbe !== null && rbFarbe === null,
+      posten: p, rbId, rbFarbe: farbe?.id ?? null,
+      rbFarbName: farbe?.name ?? null, rbFarbHex: farbe?.hex ?? null,
+      sicherheit,
+      farbeOffen: rbId !== null && p.blFarbe !== null && farbe === null,
     };
   });
 }
@@ -419,41 +434,83 @@ export async function importiereWantedListe(
   };
 
   for (const a of auf) {
+    // ── Eine Farbe, die sich nicht abbilden laesst, wird NICHT erfunden ────
+    //
+    // Marcos Befund vom 19.10.: „Die Farbe wurde nicht immer uebernommen und
+    // die Teile sind nun mehrfach vorhanden (bsp 3001)."
+    //
+    // Hier stand `color_id: a.rbFarbe ?? 0`. Die 0 ist bei Rebrickable aber
+    // SCHWARZ und nicht „keine Farbe" — die Warnung steht woertlich in
+    // routes/parts.ts („fuer die Bildsuche fatal: 0 ist bei Rebrickable
+    // SCHWARZ"). Ein Posten mit unbekannter Farbe landete damit als
+    // schwarzes Teil im Bestand, NEBEN demselben Teil in seiner richtigen
+    // Farbe. Das ist das Doppelte, das Marco sieht.
+    //
+    // NACHGESTELLT: Liste mit 3001 in BL-Farbe 5 (abbildbar) und BL-Farbe 85
+    // (nicht abbildbar) ergab zwei Zeilen, color_id 4 und color_id 0.
+    //
+    // Der Bericht wusste es die ganze Zeit — `farbeOffen` zaehlt genau diese
+    // Posten — und schrieb sie trotzdem. Jetzt bleiben sie OFFEN, mit Grund.
+    // Damit fehlt der Posten im Bestand, statt falsch darin zu stehen; die
+    // Vorschau (Stufe 3) gibt Marco die Gelegenheit, die Farbe zu setzen.
     const grund = a.rbId === null
       ? 'Zu dieser BrickLink-Nummer ist keine Rebrickable-Nummer bekannt'
-      : undefined;
+      : a.farbeOffen
+        ? `BrickLink-Farbe ${a.posten.blFarbe} ist im Katalog keiner Rebrickable-Farbe zugeordnet`
+        : undefined;
+    // Eigene Bindung statt nur eines Wahrheitswerts: Der Pruefer verengt
+    // `a.rbId` ueber eine Hilfsvariable NICHT, und `rbId` ist weiter unten als
+    // `string` gebraucht.
+    const rbId = a.rbId;
+    const offen = rbId === null || a.farbeOffen;
     const zeile: PostenErgebnis = {
       blId: a.posten.blId, art: a.posten.art, rbId: a.rbId, rbFarbe: a.rbFarbe,
       sicherheit: a.sicherheit, ausgang: a.rbId === null ? 'offen' : 'angelegt',
       ...(grund ? { grund } : {}),
     };
-    if (a.rbId === null || opt.vorschau) {
+    if (rbId === null || a.farbeOffen || opt.vorschau) {
       // In der Vorschau steht „angelegt" fuer „wuerde angelegt" — geschrieben
       // wird nichts, und `vorschau: true` im Bericht sagt das.
+      if (offen) zeile.ausgang = 'offen';
       bericht.posten.push(zeile);
-      if (a.rbId === null) bericht.posten[bericht.posten.length - 1]!.ausgang = 'offen';
       continue;
     }
 
     try {
       if (!opt.anleger) throw new Error('Kein Anleger übergeben — siehe Anleger');
+      let rueckmeldung: unknown;
       if (a.posten.art === 'part') {
-        await opt.anleger.teil(uid, {
-          part_number: a.rbId,
+        // `color_name`/`color_hex` reisen MIT. Ohne sie bleibt die Spalte
+        // leer, und die Teileliste liest den Namen von dort — der Hex-Wert
+        // faellt auf den Katalog zurueck, der Name NICHT. Ergebnis war ein
+        // Farbpunkt ohne Beschriftung (Marcos Bildschirmfoto).
+        //
+        // `a.rbFarbe` ist hier nie null: Ein Posten ohne abbildbare Farbe ist
+        // oben schon als offen ausgeschieden.
+        rueckmeldung = await opt.anleger.teil(uid, {
+          part_number: rbId,
           color_id: a.rbFarbe ?? 0,
+          ...(a.rbFarbName ? { color_name: a.rbFarbName } : {}),
+          ...(a.rbFarbHex ? { color_hex: a.rbFarbHex } : {}),
           quantity: a.posten.menge,
           condition: a.posten.zustand ?? undefined,
         });
       } else if (a.posten.art === 'fig') {
-        await opt.anleger.figur(uid, {
-          fig_number: a.rbId,
+        rueckmeldung = await opt.anleger.figur(uid, {
+          fig_number: rbId,
           quantity: a.posten.menge,
           condition: a.posten.zustand ?? undefined,
         });
       } else {
-        await opt.anleger.set(uid, a.rbId, a.posten.menge, a.posten.zustand);
+        rueckmeldung = await opt.anleger.set(uid, rbId, a.posten.menge, a.posten.zustand);
       }
-      bericht.angelegt++;
+      // Angelegt oder aufgestockt — der Anleger weiss es, und bis zum 19.10.
+      // wurde es nicht gefragt: Ein zweiter Import derselben Liste meldete
+      // `angelegt: 2, aufgestockt: 0`, obwohl beide Posten nur aufgestockt
+      // wurden (nachgestellt). Die Zahl, die Marco liest, war falsch.
+      const wieAngelegt = (rueckmeldung as { action?: string } | null | undefined)?.action !== 'updated';
+      if (wieAngelegt) bericht.angelegt++; else bericht.aufgestockt++;
+      zeile.ausgang = wieAngelegt ? 'angelegt' : 'aufgestockt';
     } catch (e: unknown) {
       bericht.fehler++;
       zeile.ausgang = 'fehler';
