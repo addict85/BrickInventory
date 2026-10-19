@@ -313,6 +313,13 @@ const C = {
   // 404 antwortet, wenn einem das Set nicht gehoert — Begruendung an der Route.
   'GET /api/v1/wanted/:setNumber/preise': 'nur-v1',
   'PUT /api/v1/parts/:partNumber/:colorId/storage': 'nur-v1',
+  // Die Farbe eines manuell erfassten Teils nachtraeglich aendern (Marcos
+  // Bitte vom 19.10., nach dem Import mehrerer Wanted-Listen). nur-v1 wie der
+  // Lagerort darueber: Beide Oberflaechen rufen dieselbe Adresse, eine
+  // Sitzungs-Entsprechung gibt es nicht. Was sie TUT — Umziehen oder
+  // Zusammenlegen, Erfassungen vom gleichen Tag addieren, ein Set-Teil
+  // abweisen — prueft test/teil-farbe-aendern-db.test.js gegen die Datenbank.
+  'PUT /api/v1/parts/:partNumber/:colorId/color': 'nur-v1',
   'PUT /api/v1/sets/:setNumber/storage': 'nur-v1',
   // Seit Migration 0024 traegt auch eine Minifigur einen Lagerort. Dieselbe
   // Form und derselbe Grund wie die beiden Zeilen darueber: Die Webapp setzt

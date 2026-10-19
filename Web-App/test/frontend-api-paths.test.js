@@ -28,6 +28,7 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
+const { pfadForm, leseLiteral } = require('./helpers/sources');
 
 const ROOT = path.join(__dirname, '..');
 
@@ -74,9 +75,22 @@ function passt(methode, pfad) {
   });
 }
 
-/** `${…}` wird zu einem Platzhalter-Segment, Abfrageteil fällt weg. */
+/**
+ * `${…}` wird zu einem Platzhalter-Segment, Abfrageteil fällt weg.
+ *
+ * Die Auflösung steht in test/helpers/sources.js und NICHT mehr hier: Diese
+ * Datei hatte eine eigene, naive Fassung (`[^}]*`), die über ein
+ * VERSCHACHTELTES `${…}` nicht hinwegkam. GEMESSEN lieferte sie für
+ *
+ *     `/v1/parts/${nr}/${farbe}${owner ? `?owner=${…}` : ''}`
+ *
+ * den Text `/api/v1/parts/:x/:x:x` : ''}` — und diese Prüfung blieb trotzdem
+ * grün, weil der Müll zufällig in einem Segment landete, wo die Route `:colorId`
+ * erwartet. Der Vergleich unten nimmt jedes `:`-Segment hin. Begründung und
+ * Messung stehen beim Helfer.
+ */
 function normieren(roh) {
-  return '/api' + roh.replace(/\$\{[^}]*\}/g, ':x').split('?')[0].replace(/\/$/, '');
+  return ('/api' + pfadForm(roh, ':x')).replace(/\/$/, '');
 }
 
 test('jeder API-Pfad des Frontends trifft eine Route', () => {
@@ -115,8 +129,19 @@ test('jeder API-Pfad des Frontends trifft eine Route', () => {
     const s = fs.readFileSync(voll, 'utf8');
 
     const direkt = new Map();
-    for (const m of s.matchAll(/api\(\s*'(GET|POST|PUT|DELETE|PATCH)'\s*,\s*(`[^`]*`|'[^']*')/g)) {
-      const p = normieren(m[2].slice(1, -1));
+    // Das Literal wird GELESEN, nicht mit einem Muster geschnitten: Hier
+    // stand ``(`[^`]*`|'[^']*')``, und das bricht an einem Backtick IM
+    // Inneren ab. GEMESSEN lieferte es für
+    //
+    //     `/v1/parts/${nr}/${farbe}/color${owner ? `?owner=${owner}` : ''}`
+    //
+    // den Text `/v1/parts/${nr}/${farbe}/color${owner ` — gemeldet wurde ein
+    // Pfad, den niemand aufruft, und die Route dahinter gab es sehr wohl.
+    // leseLiteral() zählt die Verschachtelung mit (test/helpers/sources.js).
+    for (const m of s.matchAll(/api\(\s*'(GET|POST|PUT|DELETE|PATCH)'\s*,\s*/g)) {
+      const lit = leseLiteral(s, m.index + m[0].length);
+      if (!lit || !lit.text.startsWith('/')) continue;
+      const p = normieren(lit.text);
       if (!direkt.has(p)) direkt.set(p, new Set());
       direkt.get(p).add(m[1]);
     }
@@ -127,8 +152,10 @@ test('jeder API-Pfad des Frontends trifft eine Route', () => {
     }
 
     // Pfade, die erst in eine Variable gebaut werden.
-    for (const m of s.matchAll(/`(\/[^`]*)`/g)) {
-      const p = normieren(m[1]);
+    for (const m of s.matchAll(/`\//g)) {
+      const lit = leseLiteral(s, m.index);
+      if (!lit) continue;
+      const p = normieren(lit.text);
       const seg = p.replace(/^\/api\/?/, '').split('/')[0];
       if (!segmente.has(seg) || direkt.has(p)) continue;
       if (!['GET', 'POST', 'PUT', 'DELETE', 'PATCH'].some(me => passt(me, p))) {

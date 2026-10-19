@@ -269,7 +269,21 @@ fun NavGraphBuilder.collectionGraph(
                 onBack = { navController.popBackStack() },
                 onNavigateToAcqMgmt = { t, i, c, title ->
                     navController.navigate(Screen.AcquisitionManagement.createRoute(t, i, c, title))
-                }
+                },
+                // Die Farbe ist Teil der Route (manual_detail/.../{colorId}/...)
+                // und der Suche im Screen. Nach einer Aenderung muss der
+                // Screen deshalb mit der NEUEN Farbe neu geoeffnet werden,
+                // sonst sucht er eine Zeile, die es nicht mehr gibt, und
+                // bleibt leer.
+                //
+                // Erst zurueck, dann hin: Der alte Eintrag darf nicht im
+                // Rueckweg stehenbleiben — ein Zurueck-Tipp landete sonst auf
+                // genau der Farbe, die gerade korrigiert wurde.
+                onFarbeGeaendert = { neueFarbe ->
+                    navController.popBackStack()
+                    navController.navigate(Screen.ManualItemDetail.createRoute(
+                        itemType, itemId, neueFarbe, itemTitle))
+                },
             )
         }
 

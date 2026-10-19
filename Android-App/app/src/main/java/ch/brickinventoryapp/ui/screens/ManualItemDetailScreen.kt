@@ -28,6 +28,8 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.core.graphics.toColorInt
+import ch.brickinventoryapp.data.model.BrickColor
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import ch.brickinventoryapp.R
 import ch.brickinventoryapp.ui.setzeManuellenLagerort
@@ -37,6 +39,8 @@ import ch.brickinventoryapp.ui.deletePart
 import ch.brickinventoryapp.ui.loadManualAcquisitions
 import ch.brickinventoryapp.ui.loadMinifigs
 import ch.brickinventoryapp.ui.loadParts
+import ch.brickinventoryapp.ui.loadPartsColors
+import ch.brickinventoryapp.ui.setzeTeilFarbe
 import ch.brickinventoryapp.ui.updateMinifig
 import ch.brickinventoryapp.ui.updatePart
 import ch.brickinventoryapp.ui.components.ZoomableImageDialog
@@ -86,7 +90,18 @@ fun ManualItemDetailScreen(
     fallbackTitle: String,
     imageLoader: ImageLoader,
     onBack: () -> Unit,
-    onNavigateToAcqMgmt: (type: String, id: String, colorId: Int, title: String) -> Unit
+    onNavigateToAcqMgmt: (type: String, id: String, colorId: Int, title: String) -> Unit,
+    /**
+     * Die Farbe wurde geaendert — der Screen muss mit der NEUEN Farbe neu
+     * geoeffnet werden. Sie ist Teil der Kennung des Eintrags (Route
+     * manual_detail/{type}/{id}/{colorId}/{title}) und steckt in der Suche
+     * weiter unten (`it.colorId == colorId`); ohne das steht der Screen leer
+     * da, obwohl die Aenderung geklappt hat.
+     *
+     * Vorgabe leer, damit ein Aufrufer, der nur Figuren zeigt, nichts
+     * mitgeben muss — eine Figur hat keine Farbe.
+     */
+    onFarbeGeaendert: (neueFarbe: Int) -> Unit = {},
 ) {
     val state by vm.state.collectAsStateWithLifecycle()
     val partsState by vm.partsState.collectAsStateWithLifecycle()
@@ -110,6 +125,10 @@ fun ManualItemDetailScreen(
         if (partsState.manualParts == null && partsState.manualFigs == null) {
             if (isFig) vm.loadMinifigs() else vm.loadParts()
         }
+        // Die Farbliste fuer die Auswahl weiter unten. Dieselbe Quelle wie im
+        // Erfassungsdialog (/parts/brick-colors) — und nur fuer Teile: Eine
+        // Figur hat keine Farbe.
+        if (!isFig && partsState.partsColors.isEmpty()) vm.loadPartsColors()
     }
 
     val fig  = if (isFig) partsState.manualFigs?.find { it.figNumber == id } else null
@@ -284,6 +303,40 @@ fun ManualItemDetailScreen(
                                 },
                                 modifier = Modifier.size(32.dp), shape = Formen.etikett
                             ) { Icon(Icons.Default.Add, stringResource(R.string.cd_qty_increase), Modifier.size(14.dp)) }
+                        }
+                    }
+
+                    // ── Farbe (nur Teile) — AENDERBAR ─────────────────────────
+                    //
+                    // Marcos Bitte vom 19.10.: „Weiter moechte ich die Farbe
+                    // nachtraeglich anpassen koennen fuer den Fall dass diese
+                    // nicht korrekt geladen wurde."
+                    //
+                    // Die Farbe stand bisher nur als Chip oben — und zwar nur,
+                    // wenn ein Farbname DA war. Ausgerechnet das Teil ohne
+                    // Farbnamen, also genau der Fall, der korrigiert werden
+                    // muss, zeigte gar nichts an.
+                    if (!isFig) {
+                        HorizontalDivider(Modifier.padding(vertical = Abstaende.winzig),
+                            color = MaterialTheme.colorScheme.outlineVariant)
+                        Row(Modifier.fillMaxWidth().padding(vertical = Abstaende.haar),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically) {
+                            Text(stringResource(R.string.detail_color),
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            FarbWahlFeld(
+                                farben = partsState.partsColors,
+                                aktuell = colorId,
+                                aktuellerName = part?.colorName,
+                                aktuellerHex = part?.colorHex,
+                                onWahl = { c ->
+                                    vm.setzeTeilFarbe(id, colorId, c.id, c.name, c.hex,
+                                        owner = part?.userId, onFertig = onFarbeGeaendert)
+                                },
+                                modifier = Modifier.padding(start = Abstaende.gross)
+                                    .widthIn(max = 180.dp),
+                            )
                         }
                     }
 

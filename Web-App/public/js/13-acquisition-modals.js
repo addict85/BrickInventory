@@ -15,11 +15,11 @@
 // ohne irgendetwas umzubauen.
 import { detailZeile, ladeAnzeige } from './01-bausteine.js';
 import { registerActions } from './00-registry.js';
-import { locale, t, tRaw } from '../i18n.js';
-import { escHex, CURRENCY, G, ME, api, esc, escJs, escUrl, fmtN, fullUrl, imgUrl, thumbUrl, toast } from './01-core.js';
+import { colorName, locale, t, tRaw } from '../i18n.js';
+import { escHex, CURRENCY, G, ME, api, esc, escJs, escUrl, fmtN, fullUrl, hexZiffern, imgUrl, thumbUrl, toast } from './01-core.js';
 import { allSets, applySetAggregate, closeModal, curSet, loadGallery, pnlBadge, updateGalleryPrices } from './02-gallery.js';
 import { loadFinance } from './04-finance.js';
-import { deleteManualFig, deleteManualPart, loadManualFigsTable, loadManualParts, manualFigsCache, manualPartsCache, updateManualFig, updateManualPart } from './06-minifigs.js';
+import { deleteManualFig, deleteManualPart, loadBrickColors, loadManualFigsTable, loadManualParts, manualFigsCache, manualPartsCache, updateManualFig, updateManualPart } from './06-minifigs.js';
 import { confirmDelete, ladeLagerorte, lagerortBlock, openModal, priceChartSVG, renderMarketRows, ladeOrtAuswahl } from './07-admin.js';
 import { scopeQuery } from './14-scope.js';
 import { blurOnEnter, mQtyDec, mQtyInc, saveManualFigBl } from './11-actions.js';
@@ -398,10 +398,29 @@ export async function openManDetail(type, id, colorId) {
     `));
   }
 
-  // Colour (parts only, read-only)
-  if (type === 'part' && item.color_name) {
-    const swatch = item.color_hex ? `<span style="display:inline-block;width:12px;height:12px;border-radius:50%;background:${escHex(item.color_hex, 'var(--s300)')};border:1px solid rgba(0,0,0,.15);margin-right:4px;vertical-align:middle"></span>` : '';
-    rows.push(detailZeile(t('parts.color_label'), `${swatch}${esc(item.color_name)}`));
+  // ── Farbe (nur Teile) — ÄNDERBAR ────────────────────────────────────────
+  //
+  // Marcos Bitte vom 19.10.: „Weiter möchte ich die Farbe nachträglich
+  // anpassen können für den Fall dass diese nicht korrekt geladen wurde."
+  //
+  // Hier stand die Farbe als Text, mit dem Kommentar „read-only". Die Bedingung
+  // war dazu `item.color_name` — ausgerechnet ein Teil OHNE Farbbezeichnung,
+  // also genau der Fall, der korrigiert werden muss, zeigte die Zeile gar
+  // nicht an.
+  //
+  // Die Auswahlliste ist dieselbe wie beim Erfassen (loadBrickColors, aus
+  // /v1/parts/brick-colors). Sie wird NACH dem Zeichnen gefüllt: Der Abruf
+  // geht übers Netz, und der Dialog soll nicht darauf warten — bis dahin
+  // steht die heutige Farbe als einzige Möglichkeit da.
+  if (type === 'part') {
+    const swatch = `<span id="man-farb-punkt" style="display:inline-block;width:12px;height:12px;border-radius:50%;background:${escHex(item.color_hex, 'var(--s300)')};border:1px solid rgba(0,0,0,.15);vertical-align:middle;flex:0 0 auto"></span>`;
+    rows.push(detailZeile(t('parts.color_label'), `${swatch}
+      <select id="man-farb-wahl" style="max-width:150px;border:1px solid var(--bdr);border-radius:6px;padding:2px 4px;font-size:.82rem"
+        data-change="speichereTeilFarbe" data-part="${escJs(id)}" data-color="${_manItem.colorId}"
+        data-owner="${esc(item?.user_id ?? '')}">
+        <option value="${_manItem.colorId}">${esc(item.color_name || tRaw('parts.no_color_dash'))}</option>
+      </select>`,
+      { wertStil: 'display:flex;align-items:center;gap:6px;justify-content:flex-end' }));
   }
 
   // ── Lagerort ─────────────────────────────────────────────────────────────
@@ -448,6 +467,9 @@ export async function openManDetail(type, id, colorId) {
 
   bodyEl.innerHTML = rows.join('');
   modal.classList.add('open');
+
+  // Farbauswahl nachfüllen — siehe die Begründung an der Zeile oben.
+  if (type === 'part') fuelleFarbwahl(_manItem.colorId).catch(() => {});
 
   // Verlauf nachladen. Derselbe Renderer wie beim Set — die Endpunkte liefern
   // dieselbe Diagrammstruktur (utils/chartData.ts), also braucht es hier keine
@@ -698,6 +720,71 @@ async function speichereTeilLagerort() {
   // Ein frisch getippter Ort ist jetzt im Vorrat — ohne das stünde er am Teil,
   // fehlte aber in der Liste, aus der er beim nächsten Mal gewählt wird.
   await ladeOrtAuswahl(el.dataset.owners ? el.dataset.owners.split(',') : []);
+}
+
+/**
+ * Die Auswahlliste der Farben im Detaildialog füllen.
+ *
+ * Getrennt vom Zeichnen, weil /v1/parts/brick-colors beim ERSTEN Mal über das
+ * Netz geht (Rebrickable, danach im Modul gehalten). Der Dialog steht
+ * derweil schon offen und zeigt die heutige Farbe.
+ *
+ * Schlägt der Abruf fehl, bleibt die eine Möglichkeit stehen: eine Liste mit
+ * nur der aktuellen Farbe ändert nichts — besser als eine leere Liste, in der
+ * die Farbe des Teils gar nicht mehr vorkommt.
+ */
+async function fuelleFarbwahl(aktuell) {
+  const sel = G('man-farb-wahl');
+  if (!sel) return;
+  const farben = await loadBrickColors();
+  if (!farben?.length || !G('man-farb-wahl')) return;
+  // data-name bleibt der englische Rebrickable-Name — er reist als
+  // color_name mit und wird für BrickLink-Abgleiche gebraucht. Übersetzt wird
+  // nur der sichtbare Text, mit derselben Funktion wie im Teile-Reiter
+  // (renderColorDropdown in 06-minifigs.js).
+  sel.innerHTML = farben.map(c =>
+    `<option value="${c.id}" data-name="${esc((c.name || '').replace(/"/g, '&quot;'))}" ` +
+    `data-hex="${hexZiffern(c.hex)}"${Number(c.id) === Number(aktuell) ? ' selected' : ''}>` +
+    `${esc(colorName(c.name))}</option>`).join('');
+  // Kennt die Liste die heutige Farbe nicht (ältere Bestände, eine Farbe, die
+  // Rebrickable zurückgezogen hat), wäre sie nach dem Ersetzen verschwunden
+  // und die Auswahl stünde auf einer FREMDEN Farbe — ohne dass jemand etwas
+  // geändert hätte. Dann kommt sie vorne wieder dazu.
+  if (!farben.some(c => Number(c.id) === Number(aktuell))) {
+    sel.insertAdjacentHTML('afterbegin',
+      `<option value="${Number(aktuell) || 0}" selected>${esc(String(aktuell))}</option>`);
+  }
+}
+
+/**
+ * Die Farbe eines manuell erfassten Teils ändern.
+ *
+ * Was dabei in der Datenbank passiert — Umziehen oder Zusammenlegen, und was
+ * mit den Erfassungen geschieht — steht an einer Stelle:
+ * utils/teilFarbeAendern.ts.
+ *
+ * Danach wird der Dialog mit der NEUEN Farbe neu geöffnet. Die Farbe ist Teil
+ * der Kennung des Eintrags (Adresse: /parts/:nr/:farbe); ohne das zeigte der
+ * offene Dialog weiter auf eine Zeile, die es nicht mehr gibt, und der
+ * nächste Klick darin ginge ins Leere.
+ */
+async function speichereTeilFarbe() {
+  const el = this instanceof HTMLElement ? this : G('man-farb-wahl');
+  if (!el) return;
+  const nummer = el.dataset.part;
+  const alt    = parseInt(el.dataset.color) || 0;
+  const neu    = parseInt(el.value);
+  if (!Number.isFinite(neu) || neu === alt) return;
+  const wahl   = el.options[el.selectedIndex];
+  const owner  = el.dataset.owner;
+  const d = await api('PUT',
+    `/v1/parts/${encodeURIComponent(nummer)}/${alt}/color${owner ? `?owner=${encodeURIComponent(owner)}` : ''}`,
+    { color_id: neu, color_name: wahl?.dataset.name || null, color_hex: wahl?.dataset.hex || null });
+  if (!d?.success) { toast(d?.error || tRaw('settings.error'), 'error'); return; }
+  toast(tRaw('settings.saved'), 'success');
+  await loadManualParts().catch(() => {});
+  if (document.querySelector('.ntab.active')?.dataset?.tab === 'finance') loadFinance();
+  await openManDetail('part', nummer, neu);
 }
 
 function closeSetItemDetail() {
@@ -1002,5 +1089,6 @@ registerActions({
   openSetAusItem,
   openSetItemDetail,
   closeSetItemDetail,
+  speichereTeilFarbe,
   speichereTeilLagerort,
 });

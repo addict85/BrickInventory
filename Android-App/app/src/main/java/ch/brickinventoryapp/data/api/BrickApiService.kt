@@ -444,6 +444,25 @@ interface BrickApiService {
         @Query("condition") condition: String = "N",
     ): Response<PreisalarmResponse>
 
+    /**
+     * Die Farbe eines manuell erfassten Teils nachtraeglich aendern.
+     *
+     * Die ALTE Farbe steht im Pfad, die NEUE im Koerper. Beide gehoeren dazu:
+     * Der Pfad sagt, welche Zeile gemeint ist (die Farbe ist Teil ihrer
+     * Kennung), der Koerper, wohin sie soll.
+     *
+     * `owner` ist der Besitzer der KARTE, nicht der Betrachter — im Haushalt
+     * zeigt der manuelle Bereich die Eintraege aller Konten. Ohne die Angabe
+     * schreibt der Server in die Zeile des Aufrufers (siehe setPartStorage).
+     */
+    @PUT("api/v1/parts/{partNumber}/{colorId}/color")
+    suspend fun setPartColor(
+        @Path("partNumber") partNumber: String,
+        @Path("colorId") colorId: Int,
+        @Body request: TeilFarbeRequest,
+        @Query("owner") owner: Int? = null,
+    ): Response<TeilFarbeResponse>
+
     // ── Lagerort ────────────────────────────────────────────────────────────
     //
     // Setzen trifft ALLE Zeilen des Teil-Farb-Paares bzw. des Sets im

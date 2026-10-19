@@ -181,6 +181,12 @@ export const FEHLER = {
                                  en: 'No set found for “{barcode}”. Please enter the set number manually.' },
   teil_nicht_manuell:          { de: 'Teil nicht gefunden oder nicht manuell hinzugefügt',
                                  en: 'Part not found, or not added manually' },
+  // Absichtlich eine ABSAGE statt der 0 aus V.colorId(): Beim Anlegen heisst
+  // „keine Angabe" zu Recht 0, beim KORRIGIEREN einer Farbe wäre dieselbe
+  // Umdeutung ein stilles Löschen der Farbe — und der Aufrufer bekäme
+  // „success" zu sehen.
+  farbe_erforderlich:          { de: 'color_id erforderlich (die neue Farbe)',
+                                 en: 'color_id is required (the new colour)' },
   minifig_nicht_manuell:       { de: 'Minifigur nicht gefunden oder nicht manuell hinzugefügt',
                                  en: 'Minifigure not found, or not added manually' },
   keine_teile:                 { de: 'Keine Teile', en: 'No parts' },

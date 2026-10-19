@@ -9,6 +9,8 @@ import { addManualPart, getPartColorList, updateManualPart } from '../parts';
 import { getSetting } from '../../utils/settings';
 import { getPartPriceHistory } from '../../utils/priceHistory';
 import { einzelwert } from '../../utils/validate';
+import * as V from '../../utils/validate';
+import { aendereTeilFarbe } from '../../utils/teilFarbeAendern';
 import { verwendendeSets, loescheManuellesTeil } from '../../utils/handlers/shared';
 import { sendeFehler } from '../../utils/fehlerTexte';
 import { normalisiereLagerort, setzeLagerort } from '../../utils/lagerort';
@@ -66,6 +68,41 @@ router.put('/parts/:partNumber/:colorId', requireToken, async (req: AuthedReques
     if (besitzer === null) return sendeFehler(req, res, 403, 'kein_zugriff_konto');
     await updateManualPart(besitzer, String(req.params.partNumber), parseInt(String(req.params.colorId)), req.body);
     res.json({ success: true });
+  } catch (e) { handleRouteError(res, e, undefined, req); }
+});
+
+/**
+ * PUT /api/v1/parts/:partNumber/:colorId/color — die Farbe nachträglich ändern.
+ *
+ * Marcos Bitte vom 19.10.: „Weiter möchte ich die Farbe nachträglich anpassen
+ * können für den Fall dass diese nicht korrekt geladen wurde." Begründung,
+ * Zusammenlegen und die Behandlung der Erfassungen stehen an einer Stelle:
+ * utils/teilFarbeAendern.ts.
+ *
+ * Eine eigene Adresse und nicht ein Feld in PUT /parts/:nr/:farbe: Dort IST
+ * die Farbe Teil der Adresse. Ein `color_id` im Körper derselben Anfrage
+ * hiesse, dass Adresse und Nutzlast dasselbe Ding verschieden benennen.
+ */
+router.put('/parts/:partNumber/:colorId/color', requireToken, async (req: AuthedRequest, res) => {
+  try {
+    const besitzer = await resolveWriteTarget(req.apiUser.user_id, req.query.owner);
+    if (besitzer === null) return sendeFehler(req, res, 403, 'kein_zugriff_konto');
+    // Die neue Farbe muss DASTEHEN. V.colorId() macht aus fehlend/unsinnig
+    // eine 0, und 0 ist eine Farbe („ohne Angabe") — beim Korrigieren wäre
+    // das ein stilles Leeren mit Erfolgsmeldung.
+    const roh = req.body?.color_id;
+    const neueFarbe = parseInt(String(roh ?? ''), 10);
+    if (roh === undefined || roh === null || String(roh).trim() === ''
+        || !Number.isFinite(neueFarbe) || neueFarbe < 0) {
+      return sendeFehler(req, res, 400, 'farbe_erforderlich');
+    }
+    const ergebnis = await aendereTeilFarbe(
+      besitzer, String(req.params.partNumber),
+      parseInt(String(req.params.colorId)) || 0,
+      neueFarbe,
+      { color_name: V.optionalText(req.body?.color_name, 100),
+        color_hex:  V.optionalHex(req.body?.color_hex) });
+    res.json({ success: true, ...ergebnis });
   } catch (e) { handleRouteError(res, e, undefined, req); }
 });
 
