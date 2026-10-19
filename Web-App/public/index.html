@@ -337,6 +337,7 @@
           <div style="display:flex;gap:8px;flex-wrap:wrap">
             <label for="add-num" class="btn bs" style="cursor:pointer">📥 CSV<input type="file" id="csv-file" aria-label="CSV-Datei" data-i18n="import.csv_file" data-i18n-attr="aria-label" accept=".csv" style="display:none" data-change="startSetCsvImport" /></label>
             <a class="btn bs" id="btn-set-csv-template" href="#" data-i18n="gallery.template">📄 Vorlage</a>
+            <label class="btn bs" style="cursor:pointer" title="BrickLink-Wanted-Liste (.xml)"><span data-i18n="wanted.pick_short">🧱 BL-XML</span><input type="file" id="wanted-xml-set" aria-label="BrickLink-Wanted-Liste" data-i18n="wanted.pick" data-i18n-attr="aria-label" accept=".xml,text/xml,application/xml" style="display:none" data-change="wantedXmlGewaehlt" data-art="set" /></label>
           </div>
         </div>
         <div class="frow">
@@ -519,6 +520,8 @@
           <div style="display:flex;gap:8px;flex-wrap:wrap">
             <label for="ap-num-inline" class="btn bs" style="cursor:pointer">📥 CSV<input type="file" id="part-csv-file" aria-label="CSV-Datei" data-i18n="import.csv_file" data-i18n-attr="aria-label" accept=".csv,.txt" style="display:none" data-change="importPartsCsv" /></label>
             <a class="btn bs" id="btn-csv-template" href="#" data-i18n="gallery.template">📄 Vorlage</a>
+            <label class="btn bs" style="cursor:pointer" title="BrickLink-Wanted-Liste (.xml)"><span data-i18n="wanted.pick_short">🧱 BL-XML</span><input type="file" id="wanted-xml-part" aria-label="BrickLink-Wanted-Liste" data-i18n="wanted.pick" data-i18n-attr="aria-label" accept=".xml,text/xml,application/xml" style="display:none" data-change="wantedXmlGewaehlt" data-art="part" /></label>
+            <button class="btn bs" type="button" data-click="wantedExportOeffnen" data-art="part" title="Diese Teileliste als BrickLink-Wanted-Liste"><span data-i18n="wanted.export_short">🧱 → BL</span></button>
           </div>
         </div>
         <div id="part-csv-status" style="display:none;font-size:.85rem;margin-bottom:1rem;padding:.55rem .8rem;border-radius:8px"></div>
@@ -624,6 +627,7 @@
           <div style="display:flex;gap:8px;flex-wrap:wrap">
             <label for="af-num-inline" class="btn bs" style="cursor:pointer">📥 CSV<input type="file" id="fig-csv-file" aria-label="CSV-Datei" data-i18n="import.csv_file" data-i18n-attr="aria-label" accept=".csv,.txt" style="display:none" data-change="importFigsCsv" /></label>
             <a class="btn bs" id="btn-fig-csv-template" href="#" data-i18n="gallery.template">📄 Vorlage</a>
+            <label class="btn bs" style="cursor:pointer" title="BrickLink-Wanted-Liste (.xml)"><span data-i18n="wanted.pick_short">🧱 BL-XML</span><input type="file" id="wanted-xml-fig" aria-label="BrickLink-Wanted-Liste" data-i18n="wanted.pick" data-i18n-attr="aria-label" accept=".xml,text/xml,application/xml" style="display:none" data-change="wantedXmlGewaehlt" data-art="fig" /></label>
           </div>
         </div>
         <div id="fig-csv-status" style="display:none;font-size:.85rem;margin-bottom:1rem;padding:.55rem .8rem;border-radius:8px"></div>
@@ -1346,26 +1350,16 @@
               <a class="btn bs" href="/api/v1/settings/export/data" data-i18n="settings.data_zip_btn">📦 Sets, Teile, Minifiguren, Merkliste &amp; Alarme exportieren (ZIP)</a>
             </div>
 
-            <!-- ── BrickLink-Wanted-Liste (Marcos Liste, Stück 4) ──────────
-                 Zwei Schritte, nicht einer: Die Datei trägt BrickLink-Nummern,
-                 und deren Abbildung auf Rebrickable hat drei
-                 Sicherheitsstufen — die dritte ist eine Vermutung. Die
-                 Vorschau zeigt sie getrennt, erst danach gibt es den
-                 Schreib-Knopf. Ein Import, der sofort schreibt, nähme die
-                 Entscheidung weg, und rückgängig machen hiesse 224 Teile von
-                 Hand löschen.
+            <!-- ── Die BrickLink-Wanted-Liste ist UMGEZOGEN (19.10.) ───────
+                 Marcos Vorgabe: „Bitte auch den Import der xml Files für
+                 wanted listen in den Sets, teilen und Minifiguren ergänzen und
+                 aus den Einstellungen entfernen."
 
-                 Das Label trägt KEIN for= : Es umschliesst sein Feld schon
-                 (test/a11y.test.js). -->
-            <p style="font-size:.82rem;color:var(--mut);margin:1rem 0 .5rem 0"
-               data-i18n="settings.wanted_hint">BrickLink-Wanted-Liste (.xml) einlesen — als manuell erfasste Teile, Minifiguren und Sets. Die Datei trägt BrickLink-Nummern; die Vorschau zeigt, wie viele sich auf Rebrickable abbilden lassen.</p>
-            <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-bottom:.5rem">
-              <label class="btn bs" style="cursor:pointer"><span data-i18n="settings.wanted_pick">🧱 Wanted-Liste wählen (Vorschau)</span><input type="file" id="wanted-xml-file" aria-label="BrickLink-Wanted-Liste" data-i18n="settings.wanted_pick" data-i18n-attr="aria-label" accept=".xml,text/xml,application/xml" style="display:none" data-change="wantedListeVorschau" /></label>
-              <label style="display:flex;align-items:center;gap:5px;font-size:.82rem;cursor:pointer">
-                <input type="checkbox" id="wanted-rb" /><span data-i18n="settings.wanted_rb">Offene über Rebrickable nachfragen</span>
-              </label>
-            </div>
-            <div id="wanted-bericht" style="font-size:.82rem"></div>
+                 Und das ist auch der richtige Ort: Eine Wanted-Liste wird zu
+                 Teilen, Minifiguren und Sets — sie gehört neben den
+                 CSV-Importer in genau diese drei Reiter, nicht in eine
+                 Einstellungsseite. Der Dialog dafür steht bei den anderen
+                 Dialogen (#wanted-xml-modal). -->
 
             <p style="font-size:.82rem;color:var(--mut);margin:0 0 .5rem 0">
               <span data-i18n="settings.rb_list_hint">Alle Sets im Rebrickable-Listenformat exportieren (Spalten "Set Number,Quantity"), um sie unter „My Sets → Add via List" bei Rebrickable zu importieren.</span>
@@ -1718,6 +1712,69 @@
 </div>
 
 <!-- Manual Item Detail Modal (Teile + Minifiguren) -->
+<!-- ══ BRICKLINK-WANTED-LISTE: VORSCHAU VOR DEM IMPORT ══════════════════════
+     Marcos Vorgabe vom 19.10.: „noch besser wäre wenn es beim Import die zu
+     importierende Liste vorgängig anzeigen wurde analog der Teileliste mit
+     Bild, Farbe, Bezeichnung und ich dort noch Korrekturen vornehmen kann oder
+     z.b. rebrickable ids ergänzen könnte"
+
+     Breiter als die übrigen Dialoge (960px): Hier steht eine Tabelle mit Bild,
+     Nummer, Name, Farbe und zwei Eingabefeldern je Zeile. In 480px wäre jede
+     Spalte zu schmal zum Lesen — und gelesen werden muss sie, das ist ihr
+     ganzer Zweck. -->
+<div class="ovl" id="wanted-xml-modal" role="dialog" aria-modal="true">
+  <div class="modal" style="max-width:960px">
+    <div class="mhd">
+      <div>
+        <div class="mtit" data-i18n="wanted.preview_title">Wanted-Liste prüfen</div>
+        <div id="wanted-xml-sub" style="font-size:.78rem;color:var(--mut);margin-top:2px"></div>
+      </div>
+      <button class="btn bs btn-sm" data-click="wantedXmlSchliessen" aria-label="Schliessen" data-i18n="common.close" data-i18n-attr="aria-label">✕</button>
+    </div>
+    <div id="wanted-xml-bericht" style="font-size:.82rem;margin-bottom:.6rem"></div>
+    <div id="wanted-xml-tabelle" style="max-height:52vh;overflow:auto"></div>
+    <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-top:.8rem">
+      <label style="display:flex;align-items:center;gap:5px;font-size:.82rem;cursor:pointer">
+        <input type="checkbox" id="wanted-rb" /><span data-i18n="settings.wanted_rb">Offene über Rebrickable nachfragen</span>
+      </label>
+      <button class="btn bs" type="button" data-click="wantedXmlNeuLesen" data-i18n="wanted.reload">Neu einlesen</button>
+      <button class="btn bp" type="button" id="wanted-xml-schreiben" data-click="wantedXmlSchreiben" data-i18n="settings.wanted_write">Importieren</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══ BRICKLINK-WANTED-LISTE: EXPORT ═══════════════════════════════════════
+     Marcos Frage vom 19.10.: „oder aus den Teileliste direkt die Teile in eine
+     existierende oder neue wanted list exportiert werden können"
+
+     Direkt in seine Liste schreiben kann niemand — die BrickLink-Store-API hat
+     keine Wanted-Listen-Endpunkte (die Prüfung steht im Kopf von
+     utils/wantedListeSchreiben.ts). Der dokumentierte Weg ist BrickLinks
+     Massen-Upload, und der nimmt genau diese Datei. Die Listennummer ist das
+     „existierende"; ohne sie landet alles in der Standardliste. -->
+<div class="ovl" id="wanted-export-modal" role="dialog" aria-modal="true">
+  <div class="modal" style="max-width:640px">
+    <div class="mhd">
+      <div class="mtit" data-i18n="wanted.export_title">Als BrickLink-Wanted-Liste</div>
+      <button class="btn bs btn-sm" data-click="wantedExportSchliessen" aria-label="Schliessen" data-i18n="common.close" data-i18n-attr="aria-label">✕</button>
+    </div>
+    <p style="font-size:.82rem;color:var(--mut);margin:0 0 .7rem 0" data-i18n="wanted.export_hint">Erzeugt eine Datei im BrickLink-XML-Format. Bei BrickLink unter „Wanted List → Upload" hochladen — eine API für Wanted-Listen gibt es dort nicht. Exportiert wird der ganze Teilebestand (manuell erfasste UND Set-Teile) mit den Filtern, die der Reiter gerade benutzt: Farbe, Kategorie, Suche, Lagerort, Blickfeld.</p>
+    <div class="frow">
+      <div class="fg">
+        <label for="wanted-export-id" data-i18n="wanted.export_list_id">Wanted-Listen-Nummer (leer = Standardliste)</label>
+        <input inputmode="numeric" type="text" id="wanted-export-id" placeholder="z.B. 1234567" />
+      </div>
+    </div>
+    <label style="display:flex;align-items:center;gap:5px;font-size:.82rem;cursor:pointer;margin:.3rem 0 .8rem 0">
+      <input type="checkbox" id="wanted-export-lagerort" /><span data-i18n="wanted.export_storage">Lagerort als Bemerkung mitgeben</span>
+    </label>
+    <div id="wanted-export-bericht" style="font-size:.82rem;margin-bottom:.7rem"></div>
+    <div style="display:flex;gap:10px;flex-wrap:wrap">
+      <button class="btn bp" type="button" data-click="wantedExportBauen" data-i18n="wanted.export_build">Datei erzeugen</button>
+    </div>
+  </div>
+</div>
+
 <div class="ovl" id="man-detail-modal" role="dialog" aria-modal="true">
   <div class="modal" style="max-width:480px">
     <div class="mhd">

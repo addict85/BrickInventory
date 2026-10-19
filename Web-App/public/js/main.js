@@ -39,6 +39,7 @@ import './14-scope.js';
 import './15-scrollbar.js';
 import './16-merkliste.js';
 import './17-gutscheine.js';
+import './18-wanted-xml.js';
 
 // ── Start ────────────────────────────────────────────────────────────────────
 // Erst NACH der Auswertung aller Module. Vorher lag der Aufruf im Rumpf von
