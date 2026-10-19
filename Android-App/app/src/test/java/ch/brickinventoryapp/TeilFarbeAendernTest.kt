@@ -154,7 +154,7 @@ class TeilFarbeAendernTest {
             ?.groupValues?.get(1)
             ?: Regex("""if \(([^)\n]*)\)""").findAll(davor).lastOrNull()?.groupValues?.get(1) ?: ""
         assertTrue(
-            "Die Farbzeile steht hinter der Bedingung „$letzteBedingung". Verlangt sie " +
+            "Die Farbzeile steht hinter der Bedingung „$letzteBedingung\". Verlangt sie " +
                 "einen Farbnamen, zeigt ausgerechnet das Teil ohne Farbnamen nichts an — " +
                 "und genau das ist der Fall, der korrigiert werden muss.",
             !letzteBedingung.contains("colorName")

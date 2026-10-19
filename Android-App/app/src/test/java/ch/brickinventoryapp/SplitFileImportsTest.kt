@@ -147,6 +147,66 @@ class SplitFileImportsTest {
         }
     }
 
+    /**
+     * Ein deutsches Anfuehrungszeichen, das die Zeichenkette aus Versehen beendet.
+     *
+     * ── Gemessen am 19.10., in der CI ───────────────────────────────────────
+     *
+     *     > Task :app:compileDebugUnitTestKotlin FAILED
+     *     Unresolved reference 'Verlangt' on receiver of type 'String'.
+     *     Location: .../TeilFarbeAendernTest.kt:157
+     *
+     * Die Zeile lautete:
+     *
+     *     "… hinter der Bedingung „$bedingung". Verlangt sie " +
+     *
+     * Das deutsche Paar ist `„ … "`. Wer das schliessende Zeichen als
+     * schlichtes `"` tippt, beendet damit die KOTLIN-Zeichenkette, und alles
+     * dahinter liest der Uebersetzer als Code — hier `.Verlangt` als
+     * Feldzugriff auf einen String. Der Baum schreibt es deshalb ueberall als
+     * `\"`; GEMESSEN sind das 14 Stellen, und alle 14 machen es richtig.
+     *
+     * ── Warum die Regel so eng ist ──────────────────────────────────────────
+     *
+     * Ein `„` gefolgt von einem unmaskierten `"` ist fuer sich NOCH kein
+     * Fehler: Eine Zeichenkette darf dort enden und auf der naechsten Zeile
+     * mit `+` weitergehen (so steht es in TokenVorDerSchreibungTest.kt, und
+     * das ist richtig). Erst wenn direkt hinter dem `"` ein BUCHSTABE oder ein
+     * PUNKT steht, kann es keine Fortsetzung mehr sein.
+     *
+     * Mit dieser Fassung GEMESSEN: genau ein Treffer im ganzen Baum, naemlich
+     * der oben. Die weitere Fassung ohne die letzte Bedingung meldete 2, davon
+     * einen gesunden; die ganz weite (ohne Kommentarfilter) 724.
+     *
+     * ── Auch der TESTbaum, und das ist hier der Punkt ───────────────────────
+     *
+     * Quellen.alle() liest nur src/main. Der Fehler, um den es geht, stand in
+     * einer TESTdatei — eine Pruefung, die nur src/main liest, haette genau
+     * ihn nicht gefunden. Beide Baeume werden uebersetzt, also werden beide
+     * gelesen.
+     */
+    @Test
+    fun `kein deutsches Anfuehrungszeichen beendet eine Zeichenkette`() {
+        val muster = Regex("""\u201e[^"\n]*(?<!\\)"[A-Za-z.]""")
+        val dateien = (Quellen.alle() + java.io.File("src/test/java")
+            .walkTopDown().filter { it.isFile && it.extension == "kt" }).toList()
+        check(dateien.size >= 100) {
+            "Nur ${'$'}{dateien.size} Kotlin-Dateien gelesen — Pfad veraltet? Ohne Treffer " +
+                "waere diese Pruefung stillschweigend gruen."
+        }
+        val fehler = dateien.flatMap { f ->
+            Quellen.ohneKommentare(f.readText()).lines().withIndex()
+                .filter { (_, z) -> muster.containsMatchIn(z) }
+                .map { (i, z) -> "${'$'}{f.name}:${'$'}{i + 1}: ${'$'}{z.trim()}" }
+        }
+        assert(fehler.isEmpty()) {
+            "Hier beendet ein schliessendes Anfuehrungszeichen die Zeichenkette:\n  " +
+                fehler.joinToString("\n  ") +
+                "\nDas schliessende Zeichen des deutschen Paares gehoert als \\\" " +
+                "geschrieben. Genau daran ist die CI am 19.10. gescheitert."
+        }
+    }
+
     /** Kommentare und Zeichenketten durch Leerzeichen ersetzen, Zeilen erhalten. */
     private fun entkleide(src: String): String {
         val out = StringBuilder()
