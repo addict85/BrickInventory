@@ -103,6 +103,18 @@ unangetastet.
 Ohne `--ja` wird nichts geändert. Vorher `./scripts/backup.sh` — Löschen lässt
 sich nicht zurücknehmen.
 
+Das Skript läuft auf dem **Host** (neben der `compose.yaml`) und spricht über
+`docker compose exec` mit der Datenbank — der App-Container enthält weder
+`scripts/` noch `psql`. Soll es **im Datenbank-Container** laufen, wird es
+hineingereicht; Argumente stehen nach `--`:
+
+```bash
+docker compose exec -T postgres sh -s -- 31000 31001 \
+  < scripts/manuelle-teile-loeschen.sh
+```
+Ohne compose-Verzeichnis genügt der Containername:
+`DB_CONTAINER=brickinventory-db ./scripts/manuelle-teile-loeschen.sh 31000 31001`.
+
 ## Datenbank im Browser ansehen (pgweb)
 
 Optionales Werkzeug, startet **nicht** mit `docker compose up -d`:

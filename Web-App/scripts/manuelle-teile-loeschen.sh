@@ -14,6 +14,40 @@
 # leerer „ausser"-Teil würde alles löschen, und das soll niemand aus Versehen
 # tippen können.
 #
+# ── Drei Wege zur Datenbank, dieselbe Arbeit ────────────────────────────────
+#
+# Das Skript läuft NICHT im App-Container: Das Laufzeit-Image enthält weder
+# scripts/ (Dockerfile kopiert es nur in das Build-Stage) noch psql noch die
+# Docker-CLI. Es gehört an die Stelle, von der aus auch `docker compose up`
+# läuft — oder in den DATENBANK-Container, denn dort liegt psql.
+#
+#   1. Auf dem Host, neben der compose.yaml (Vorgabe, nichts einzurichten):
+#
+#        ./scripts/manuelle-teile-loeschen.sh 31000 31001
+#
+#      Jede Abfrage geht über `docker compose exec -T postgres psql` — genau
+#      wie in scripts/backup.sh.
+#
+#   2. IM Datenbank-Container, ohne eine Datei dorthin zu kopieren: Das Skript
+#      wird über die Standardeingabe hineingereicht (`sh -s --` gibt die
+#      Argumente weiter).
+#
+#        docker compose exec -T postgres sh -s -- 31000 31001 \
+#          < scripts/manuelle-teile-loeschen.sh
+#
+#      Drinnen gibt es keine Docker-CLI; das Skript merkt das und ruft psql
+#      direkt auf. Erzwingen lässt sich das mit PSQL_DIREKT=1.
+#
+#   3. Ohne compose-Verzeichnis, nur mit dem Containernamen (z. B. auf einem
+#      NAS, oder wenn das Projekt anders heisst):
+#
+#        DB_CONTAINER=brickinventory-db ./scripts/manuelle-teile-loeschen.sh 31000 31001
+#
+# Ein Passwort braucht keiner der drei Wege: Über den lokalen Socket im
+# Container ist die Anmeldung vertraut (`local all all trust` im offiziellen
+# Postgres-Image) — dieselbe Voraussetzung, unter der scripts/backup.sh seit
+# Monaten läuft.
+#
 # ── Was gelöscht wird ───────────────────────────────────────────────────────
 #
 # Genau das, was auch der Löschknopf an der Kachel löscht (routes/api_v1/
@@ -134,11 +168,38 @@ AUSWAHL="
      AND LOWER(COALESCE(z.bl_id, p.part_number)) NOT IN (SELECT LOWER(nr) FROM behalten)
 "
 
+# Welcher der drei Wege gilt (siehe Kopf)? Die Entscheidung fällt EINMAL, damit
+# die Meldung darunter sagt, was wirklich passiert — und nicht etwas, das bei
+# der nächsten Abfrage anders gemacht wird.
+#
+# Die Erkennung ist absichtlich eine Frage nach dem WERKZEUG, nicht nach der
+# Umgebung: „Gibt es hier eine Docker-CLI?" ist nachprüfbar, „läuft das in
+# einem Container?" wäre geraten (/.dockerenv gibt es nicht in jeder Laufzeit).
+if [ "${PSQL_DIREKT:-0}" = "1" ] || ! command -v docker >/dev/null 2>&1; then
+  WEG="direkt"
+elif [ -n "${DB_CONTAINER:-}" ]; then
+  WEG="container"
+else
+  WEG="compose"
+fi
+
+# `command psql` und nicht `psql`: Die Funktion heisst selbst psql und riefe
+# sich sonst endlos auf.
 psql() {
-  docker compose exec -T "$DB_SERVICE" psql -v ON_ERROR_STOP=1 -U "$DB_USER" "$DB_NAME" "$@"
+  case "$WEG" in
+    direkt)    command psql   -v ON_ERROR_STOP=1 -U "$DB_USER" "$DB_NAME" "$@" ;;
+    container) docker exec -i "$DB_CONTAINER" \
+                 psql -v ON_ERROR_STOP=1 -U "$DB_USER" "$DB_NAME" "$@" ;;
+    *)         docker compose exec -T "$DB_SERVICE" \
+                 psql -v ON_ERROR_STOP=1 -U "$DB_USER" "$DB_NAME" "$@" ;;
+  esac
 }
 
-echo "[teile] Datenbank $DB_NAME im Dienst $DB_SERVICE"
+case "$WEG" in
+  direkt)    echo "[teile] Datenbank $DB_NAME, psql direkt (im Container oder auf dem Host)" ;;
+  container) echo "[teile] Datenbank $DB_NAME im Container $DB_CONTAINER" ;;
+  *)         echo "[teile] Datenbank $DB_NAME im Dienst $DB_SERVICE (docker compose)" ;;
+esac
 echo "[teile] Es BLEIBEN:$BEHALTEN"
 echo
 
