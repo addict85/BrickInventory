@@ -78,6 +78,17 @@ async function hochladen(base, xml, abfrage = '') {
   return { status: r.status, body: await r.json().catch(() => ({})) };
 }
 
+/** Dieselbe Adresse, aber die Antwort ZEILENWEISE (NDJSON) gelesen. */
+async function hochladenStrom(base, xml, abfrage) {
+  const fd = new FormData();
+  fd.append('file', new Blob([xml], { type: 'text/xml' }), 'wanted.xml');
+  const r = await fetch(`${base}/api/v1/wanted-list/import/xml${abfrage}`,
+    { method: 'POST', body: fd });
+  const roh = await r.text();
+  const zeilen = roh.split('\n').filter(z => z.trim()).map(z => JSON.parse(z));
+  return { status: r.status, typ: r.headers.get('content-type') || '', zeilen };
+}
+
 async function aufbau() {
   await db.run('DROP SCHEMA public CASCADE');
   await db.run('CREATE SCHEMA public');
@@ -200,5 +211,56 @@ test('Wanted-Liste: Vorschau und Schreiben über die echte Adresse', { concurren
     const { body } = await hochladen(srv.base, mit);
     assert.deepEqual(body.fremdeArten, { B: 1, G: 1 },
       `fremdeArten: ${JSON.stringify(body.fremdeArten)} — ein Buch und ein Zubehör`);
+  });
+
+  // ── Der Fortschritt (Marcos Wunsch vom 20.10.) ────────────────────────────
+  //
+  // „kannst du beim Import auch den Fortschritt mit einem Fortschrittsbalken
+  //  anzeigen?"
+  //
+  // Geprüft wird, was die Oberfläche tatsächlich liest: die ANTWORT, Zeile für
+  // Zeile. Ein Test gegen den Rückruf im Kern wäre leichter zu schreiben und
+  // sagte nichts darüber, ob die Meldungen durch die Leitung kommen.
+
+  await t.test('7. mit strom=1 kommen Fortschrittszeilen, zuletzt der Bericht', async () => {
+    const { status, typ, zeilen } = await hochladenStrom(srv.base, XML, '?schreiben=1&strom=1');
+    assert.equal(status, 200);
+    assert.match(typ, /ndjson/,
+      `Content-Type „${typ}" — eine Zeilen-Antwort darf nicht als application/json ` +
+      'ausgegeben werden, sonst versucht der Browser sie als EIN Dokument zu lesen');
+
+    const melde = zeilen.filter(z => z.fortschritt);
+    assert.equal(melde.length, 3,
+      `${melde.length} Fortschrittszeilen für drei Posten — erwartet drei. Eine je ` +
+      'Posten, auch für den offenen (sonst bliebe der Balken vor dem Ende stehen).');
+    assert.deepEqual(melde.map(z => z.fortschritt.fertig), [1, 2, 3],
+      'Die Zählung muss lückenlos und aufsteigend sein');
+    for (const z of melde) {
+      assert.equal(z.fortschritt.gesamt, 3, 'Der Nenner ist die Zahl der Posten');
+      assert.equal(z.fortschritt.phase, 'schreiben');
+    }
+
+    const letzte = zeilen[zeilen.length - 1];
+    assert.equal(letzte.success, true, 'Die letzte Zeile ist der Bericht');
+    assert.equal(letzte.vorschau, false, 'mit schreiben=1 ist es kein Probelauf');
+    assert.equal(letzte.gelesen, 3);
+    assert.ok(!letzte.fortschritt, 'Der Bericht ist keine Fortschrittszeile');
+  });
+
+  await t.test('8. ohne strom=1 antwortet die Adresse unverändert als JSON', async () => {
+    // Der Weg der Android-App und aller übrigen Prüfungen. Er darf sich durch
+    // den Strom NICHT geändert haben.
+    const r = await (async () => {
+      const fd = new FormData();
+      fd.append('file', new Blob([XML], { type: 'text/xml' }), 'wanted.xml');
+      return fetch(`${srv.base}/api/v1/wanted-list/import/xml`, { method: 'POST', body: fd });
+    })();
+    assert.match(r.headers.get('content-type') || '', /application\/json/);
+    const roh = await r.text();
+    assert.ok(!roh.includes('"fortschritt"'),
+      'Ohne strom=1 darf keine Fortschrittszeile in der Antwort stehen');
+    const body = JSON.parse(roh);
+    assert.equal(body.success, true);
+    assert.equal(body.gelesen, 3);
   });
 });
