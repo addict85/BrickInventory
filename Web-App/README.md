@@ -97,26 +97,21 @@ Teile aus Sets und die Kataloge (Name, Farbe, Bild, BrickLink-Nummer) bleiben
 unangetastet.
 
 ```bash
-./scripts/manuelle-teile-loeschen.sh 31000 31001        # nur anzeigen
-./scripts/manuelle-teile-loeschen.sh --ja 31000 31001   # wirklich löschen
+docker exec -i brickinventory-db \
+  psql -U brickinventory -d brickinventory < scripts/korrektur-manuelle-teile-loeschen.sql
 ```
-Ohne `--ja` wird nichts geändert. Vorher `./scripts/backup.sh` — Löschen lässt
-sich nicht zurücknehmen.
+Vorgabe sind die Nummern 31000 und 31001; andere mit `-v behalten=3001,3002`.
+Verglichen wird gegen Teilenummer **und** BrickLink-Nummer — auf der Kachel
+steht die BrickLink-Nummer, wenn sie abweicht.
 
-Die Aufrufe oben gehen über `docker compose exec`. **Nur mit `docker`**, ohne
-compose, gibt es zwei Wege — der Containername steht in der `compose.yaml` fest
-(`docker ps --format '{{.Names}}'` zeigt ihn):
+**Probelauf:** im Skript die letzte Zeile von `COMMIT` auf `ROLLBACK` ändern.
+Die Zählungen kommen trotzdem, geändert wird nichts. Vorher
+`./scripts/backup.sh` — Löschen lässt sich nicht zurücknehmen.
 
-```bash
-# a) Skript bleibt auf dem Host, spricht per docker exec mit der Datenbank
-DB_CONTAINER=brickinventory-db ./scripts/manuelle-teile-loeschen.sh 31000 31001
-
-# b) Skript läuft IM Datenbank-Container (hineingereicht, Argumente nach --)
-docker exec -i brickinventory-db sh -s -- 31000 31001 \
-  < scripts/manuelle-teile-loeschen.sh
-```
-Der **App**-Container ist der falsche Ort: Das Laufzeit-Image enthält weder
-`scripts/` noch `psql`. `psql` liegt im Datenbank-Container.
+Der Containername steht in der `compose.yaml` fest (`docker ps --format
+'{{.Names}}'` zeigt ihn). Der **App**-Container ist der falsche Ort: Das
+Laufzeit-Image enthält weder `scripts/` noch `psql`; `psql` liegt im
+Datenbank-Container.
 
 ## Datenbank im Browser ansehen (pgweb)
 
