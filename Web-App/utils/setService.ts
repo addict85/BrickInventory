@@ -15,7 +15,7 @@ import { getItemImageUrl } from '../clients/bricklink';
 import { generateThumb } from './thumbs';
 import * as nachErfassung from '../jobs/nachErfassung';
 import { normalisiereSetNummer } from './setNummer';
-import { normalisiereLagerort, setzeLagerort } from './lagerort';
+import { setzeLagerort, ortFuerNeuerfassung } from './lagerort';
 import { mengeSummeSql } from './bestandsmenge';
 
 /**
@@ -287,7 +287,10 @@ async function addSet(setNumber: string, quantity: number, userId: number,
                       sendProgress: ((n: { step: string; set: string }) => void) | null,
                       purchasePrice: number | null, condition: string | null = null,
                       storage: string | null = null) {
-  const ort = normalisiereLagerort(storage);
+  // Siehe addManualPart in routes/parts.ts: ohne mitgegebenen Ort gilt
+  // Marcos Stern. Betrifft hier vor allem den CSV-Import und den
+  // Wanted-Listen-Import, die beide kein Lagerortfeld haben.
+  const ort = await ortFuerNeuerfassung(userId, storage);
   const ergebnis = await addSetIntern(setNumber, quantity, userId, sendProgress, purchasePrice, condition);
   if (ort && ergebnis?.set_number) {
     await setzeLagerort('set', [userId], [ergebnis.set_number], ort);

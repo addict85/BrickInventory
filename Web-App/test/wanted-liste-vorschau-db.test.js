@@ -57,6 +57,29 @@
  * Export nicht braucht. Die übrigen Fälle und ihre Gegenproben sind
  * unverändert — nachgerechnet wurde nach dem Ausbau erneut.
  *
+ * Am 20.10. ist Fall 2b dazugekommen (Marcos Zustandsspalte). Damit sind es
+ * wieder acht Unterfälle, und die Zahlen oben gelten unverändert — NACHGEZÄHLT,
+ * nicht angenommen: `# tests 9 / # pass 9`, und der Lauf mit einem absichtlich
+ * falschen 2b meldete `pass 7 / fail 2`, also dieselbe Form wie A bis G.
+ *
+ * Eigene Gegenprobe zu 2b: `standardZustand: await nutzerStandardZustand(uid)`
+ * durch das feste `'N'` ersetzt → `pass 7 / fail 2`, rot ist 2b mit
+ * „'N' statt 'U' — die Einstellung des Kontos gewinnt".
+ *
+ * Ebenfalls am 20.10. ist Fall 5b dazugekommen (Marcos Frage nach dem zweiten
+ * Lauf). Ausgangslage damit `# pass 10 / # fail 0` — neun Unterfälle plus der
+ * Rahmen; die Zahlen von A bis G verschieben sich entsprechend um eins.
+ *
+ *   H  `|| a.sicherheit === 'rebrickable'` aus der Merk-Bedingung entfernt
+ *      (also der Stand von Marcos Frage)
+ *      → `pass 8 / fail 2`. Rot ist 5b: „Gemerkt wurde []".
+ *   I  dieselbe Bedingung auf JEDE Stufe geweitet (`if (a.sicherheit …)`)
+ *      → `pass 8 / fail 2`. Rot ist 5: Ein Katalogtreffer — eine Vermutung —
+ *        wird als Abbildung eingetragen.
+ *
+ * H und I fassen die Regel von beiden Seiten: zu eng und zu weit. Fall 5
+ * allein hätte H nie gemeldet, Fall 5b allein nicht I.
+ *
  * Voraussetzung: Test-DB via TEST_DATABASE_URL. Ohne DB: skip, ausser
  * REQUIRE_DB=1.
  */
@@ -66,18 +89,48 @@ const assert = require('node:assert/strict');
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
 process.env.WEB_WORKERS = '1';
 
+const path = require('node:path');
 const _req = require('./helpers/sources').buildAndRequire();
 const db = _req('db/database.js');
+
+// Rebrickable vorgeben, BEVOR wantedListe die Funktionen herauszieht. esbuild
+// exportiert ueber Getter, ein `rb.blTeilZuRb = …` liefe ins Leere — deshalb
+// der Eintrag im require-Zwischenspeicher (dasselbe Vorgehen wie in
+// test/preis-schreibweg-db.test.js). Erst laden, dann ersetzen: Vor dem
+// require gibt es den Eintrag nicht.
+const rbPfad = require.resolve(path.join(__dirname, '..', 'dist', 'clients', 'rebrickable.js'));
+const echtRb = require(rbPfad);
+require.cache[rbPfad].exports = Object.assign({}, echtRb, {
+  // 98765 heisst bei Rebrickable 12345 — eine ABWEICHENDE Nummer, wie sie nur
+  // dort steht. Alles andere kennt dieses Doppel nicht.
+  blTeilZuRb: async (blId) => (blId === '98765' ? '12345' : null),
+  blFilterWirkungslos: () => false,
+  lookupPart: async () => null,
+  getMinifigInfo: async () => null,
+});
 const { importiereWantedListe, beschreibePosten, loeseLokalAuf, leseWantedListe } =
   _req('utils/wantedListe.js');
 
 test.after(async () => { await db.pool.end().catch(() => {}); });
 
 /** Ein ITEM-Block in Marcos Schreibweise (wie in wanted-liste-db.test.js). */
-function item(typ, id, farbe, menge = 1) {
+/**
+ * `zustand` seit dem 20.10. — vorher stand hier fest `X`.
+ *
+ * Es gibt einen Zwilling dieses Helfers in test/wanted-liste-db.test.js, der
+ * zusaetzlich MAXPRICE kann. Die beiden sind NICHT zusammengelegt: Das waere
+ * eine Aenderung an einem gruenen Test ohne Gewinn fuer die Sache hier. Wer
+ * einen dritten braucht, legt sie besser zusammen, statt einen dritten zu
+ * schreiben.
+ *
+ * `null` laesst CONDITION ganz weg — das ist der Fall „die Datei sagt nichts",
+ * und er ist ein anderer als `X` („egal"), auch wenn beide zum Standard des
+ * Kontos fuehren.
+ */
+function item(typ, id, farbe, menge = 1, zustand = 'X') {
   return `<ITEM>\n<ITEMTYPE>${typ}</ITEMTYPE>\n<ITEMID>${id}</ITEMID>\n` +
     `${farbe === null ? '' : `<COLOR>${farbe}</COLOR>\n`}<MINQTY>${menge}</MINQTY>\n` +
-    `<CONDITION>X</CONDITION>\n</ITEM>`;
+    `${zustand === null ? '' : `<CONDITION>${zustand}</CONDITION>\n`}</ITEM>`;
 }
 const liste = (...items) => `<INVENTORY>\n${items.join('\n')}\n</INVENTORY>\n`;
 
@@ -177,6 +230,41 @@ test('Vorschau, Korrekturen und Farbübersetzung', { concurrency: 1 }, async (t)
     assert.match(p.grund || '', /BrickLink-Farbe 85/);
   });
 
+  await t.test('2b. der Standardzustand des Kontos reist EINMAL je Bericht mit', async () => {
+    // ── Marcos Bitte vom 20.10. ─────────────────────────────────────────────
+    //
+    //   „ja, bitte die Zustandsspalte noch in die Vorschau"
+    //
+    // Je Posten steht der Zustand AUS DER DATEI, und der ist bei CONDITION=X
+    // und bei fehlender Angabe null. Angelegt wird dann der Standard des
+    // Kontos — die Vorschau soll zeigen, was ANGELEGT wird.
+    //
+    // Der Standard gehoert an den BERICHT, nicht an den Posten: Er ist je
+    // Konto derselbe, und 224-mal dieselbe Zeichenkette waere eine Abschrift.
+    // Und er kommt vom SERVER, nicht aus dem Browser — dort steht er nirgends
+    // verlaesslich, und ein geratener Zustand in einer Vorschau waere genau
+    // die Sorte Behauptung, die hier schon einmal falsch war.
+    const ohne = await importiereWantedListe(1, liste(item('P', '3001', 5, 1, 'X')),
+                                             { vorschau: true });
+    assert.equal(ohne.standardZustand, 'N',
+      'Ohne Einstellung gilt die Vorgabe des Baums (nutzerStandardZustand)');
+    assert.equal(ohne.posten[0].zustand, null,
+      'Am POSTEN steht weiterhin, was in der Datei stand — nicht der Standard');
+
+    await db.run(`INSERT INTO user_settings (user_id, key, value)
+                  VALUES (1,'user_default_condition','U')
+                  ON CONFLICT (user_id, key) DO UPDATE SET value='U'`);
+    const mit = await importiereWantedListe(
+      1, liste(item('P', '3001', 5, 1, 'N'), item('P', '3001', 5, 1, 'U'),
+               item('P', '3001', 5, 1, 'X'), item('P', '3001', 5, 1, null)),
+      { vorschau: true });
+    assert.equal(mit.standardZustand, 'U', 'Die Einstellung des Kontos gewinnt');
+    assert.deepEqual(mit.posten.map(x => x.zustand), ['N', 'U', null, null],
+      'N und U bleiben, X bleibt null — der Standard ersetzt sie NICHT im Posten. ' +
+      'Die Vorschau setzt beides zusammen (zeile() in public/js/18-wanted-xml.js)');
+    await db.run(`DELETE FROM user_settings WHERE user_id=1 AND key='user_default_condition'`);
+  });
+
   await t.test('3. eine Korrektur trifft den Posten am Index, nicht die Nummer', async () => {
     // Dieselbe Nummer und dieselbe Farbe ZWEIMAL — ein Schlüssel aus Art,
     // Nummer und Farbe träfe beide Zeilen.
@@ -251,6 +339,41 @@ test('Vorschau, Korrekturen und Farbübersetzung', { concurrency: 1 }, async (t)
       `Gemerkt wurde ${JSON.stringify(gemerkt)}. Erwartet ist GENAU die ` +
       'eingetragene Zuordnung 9999→3002. Steht 3001 mit dabei, wird ein ' +
       'Katalogtreffer — also eine Vermutung — als Abbildung eingetragen.');
+  });
+
+  await t.test('5b. auch eine bei Rebrickable nachgeschlagene Nummer wird gemerkt',
+    async () => {
+    // ── Marcos Frage vom 20.10. ─────────────────────────────────────────────
+    //
+    //   „wenn das gleiche xml-File 2x importiere sollte der 2. Lauf massiv
+    //    schneller sein korrekt?" … „Wieso wird das Mapping BL zu Rebr. nicht
+    //    gespeichert?"
+    //
+    // Die Regel merkte nur 'korrigiert', begruendet damit, die anderen Stufen
+    // kaemen „schon von dort oder aus dem Katalog". Das trifft auf
+    // 'rebrickable' nicht zu: Sie steht nirgends, und sie ist nicht geraten
+    // (blTeilZuRb prueft jeden Treffer gegen external_ids.BrickLink). Die
+    // Stufe war beim Aufzaehlen unter „die anderen" gefallen.
+    //
+    // Fall 5 allein haette das nie gemeldet — dort kommt die Stufe gar nicht
+    // vor. Genau deshalb steht dieser Fall daneben und nicht darin.
+    const gemerkt = [];
+    const xml = liste(item('P', '98765', 5, 1));
+    const b = await importiereWantedListe(1, xml, {
+      vorschau: false, ueberRebrickable: true,
+      anleger: {
+        teil: async () => ({ action: 'created' }),
+        figur: async () => ({ action: 'created' }), set: async () => ({ action: 'created' }),
+      },
+      merkeNummer: async (art, rbId, blId) => { gemerkt.push({ art, rbId, blId }); },
+    });
+    assert.deepEqual(b.stufen, { rebrickable: 1 },
+      'Der Posten muss ueber Rebrickable aufgeloest worden sein — sonst sagt ' +
+      'der Fall nichts ueber diese Stufe');
+    assert.deepEqual(gemerkt, [{ art: 'part', rbId: '12345', blId: '98765' }],
+      `Gemerkt wurde ${JSON.stringify(gemerkt)}. Ohne diesen Eintrag fragt der ` +
+      'naechste Import dieselbe Nummer wieder bei Rebrickable — 1,5 Sekunden ' +
+      'und ein Abruf aus dem Tageskontingent je Posten, bei jedem Lauf');
   });
 
   await t.test('6. eine Vorschau merkt sich nichts', async () => {

@@ -525,6 +525,7 @@ window.I18N_EN = {
   'wanted.keep': '— unchanged —',
   'wanted.rb_id_ph': 'Rebrickable no.',
   'wanted.col_outcome': 'Outcome',
+  'wanted.cond_default': 'from your settings',
   'wanted.col_rb_id': 'Enter a Rebrickable no.',
   'wanted.col_set_color': 'Set a colour',
   'wanted.grund_nummer_unbekannt': 'No Rebrickable number is known for this BrickLink number',

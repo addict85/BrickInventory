@@ -354,6 +354,28 @@ function zeile(p, i) {
   const grund = p.grundCode
     ? t(`wanted.grund_${p.grundCode}`, { farbe: p.blFarbe })
     : (p.grund ? esc(p.grund) : '');
+  // ── Der Zustand, und woher er kommt (Marcos Bitte vom 20.10.) ────────────
+  //
+  //   „ja, bitte die Zustandsspalte noch in die Vorschau"
+  //
+  // `p.zustand` ist der Wert AUS DER DATEI: 'N', 'U' oder null. Null heisst
+  // CONDITION=X („egal") oder gar keine Angabe — dann gilt der Standard des
+  // Kontos, und genau DER wird angelegt. Die Spalte zeigt deshalb den
+  // angelegten Zustand und sagt dazu, wenn er aus den Einstellungen stammt:
+  // Ein „Gebraucht" ohne diesen Zusatz waere eine Aussage ueber die Datei,
+  // die dort nicht steht.
+  //
+  // Der Standard kommt vom SERVER (bericht.standardZustand). Im Browser steht
+  // er nirgends verlaesslich, und raten ist in einer Vorschau das Falsche.
+  const zustandWert = p.zustand === 'N' || p.zustand === 'U'
+    ? p.zustand : (_bericht?.standardZustand || null);
+  const ausStandard = p.zustand !== 'N' && p.zustand !== 'U';
+  const zustandZelle = zustandWert
+    ? `<span class="cond-badge ${zustandWert === 'U' ? 'cond-used' : 'cond-new'}">${
+        esc(tRaw(zustandWert === 'U' ? 'common.condition_used' : 'common.condition_new'))}</span>${
+        ausStandard ? `<div style="color:var(--mut);font-size:.72rem">${
+          esc(tRaw('wanted.cond_default'))}</div>` : ''}`
+    : '';
   const korr = _korrekturen.get(i) || {};
   return `<tr${p.ausgang === 'offen' ? ' style="background:var(--s50)"' : ''}>
     <td>${bild}</td>
@@ -366,6 +388,7 @@ function zeile(p, i) {
       p.blFarbe !== null && !p.farbName
         ? `<span style="color:var(--mut)">BL ${p.blFarbe}</span>` : ''}</td>
     <td style="text-align:right;font-size:.8rem">${p.menge}</td>
+    <td style="font-size:.78rem;white-space:nowrap">${zustandZelle}</td>
     <td style="font-size:.78rem">${ausgang}${
       grund ? `<div style="color:var(--mut);font-size:.72rem">${grund}</div>` : ''}</td>
     <td><input type="text" value="${esc(korr.rbId ?? '')}" placeholder="${
@@ -389,6 +412,7 @@ function zeichneTabelle(d) {
       <th>${t('col.name')}</th>
       <th>${t('col.color')}</th>
       <th>${t('detail.qty')}</th>
+      <th>${t('common.condition')}</th>
       <th>${t('wanted.col_outcome')}</th>
       <th>${t('wanted.col_rb_id')}</th>
       <th>${t('wanted.col_set_color')}</th>

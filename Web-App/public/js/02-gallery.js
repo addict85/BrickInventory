@@ -703,10 +703,27 @@ export function leereLagerortFeld(id) {
   if (sel) sel.selectedIndex = 0;
 }
 
-/** Der gewaehlte Lagerort eines Formulars — undefined, wenn keiner gesetzt ist. */
+/**
+ * Der gewaehlte Lagerort eines Formulars — `''`, wenn keiner dasteht.
+ *
+ * ── Warum `''` und nicht `undefined` (Marcos Befund vom 20.10.) ─────────────
+ *
+ * Hier stand `wert || undefined`. Damit fiel der Schluessel aus dem Rumpf, und
+ * der Server sah zwei voellig verschiedene Lagen gleich:
+ *
+ *   - ein Formular, in dem jemand die vorbefuellte Vorgabe weggeraeumt hat,
+ *   - ein Import, der von Lagerorten ueberhaupt nichts weiss.
+ *
+ * Seit ortFuerNeuerfassung() (utils/lagerort.ts) die Vorgabe auch
+ * serverseitig einsetzt, ist das ein Unterschied: Die zweite Lage SOLL die
+ * Vorgabe bekommen, die erste nicht. Ein leeres Feld sagt es deshalb
+ * ausdruecklich, statt zu schweigen.
+ *
+ * Fuer das Anlegen selbst aendert sich nichts: normalisiereLagerort('') ist
+ * weiterhin null, und bei null wird kein Ort geschrieben.
+ */
 export function selectedStorage(id) {
-  const wert = (G(id)?.value || '').trim();
-  return wert || undefined;
+  return (G(id)?.value || '').trim();
 }
 
 /** Gewähltes Zielkonto eines Formulars — undefined, solange es keines gibt. */

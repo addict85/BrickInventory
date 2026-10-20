@@ -2,7 +2,7 @@ import * as db from '../db/database';
 import type { DbSchnittstelle } from '../db/database';
 import { lookupPart } from '../clients/rebrickable';
 import { meldeUndWeiter } from './httpError';
-import { merkeTeilFarbe } from './katalogPflege';
+import { merkeTeilFarbe, katalogTeil } from './katalogPflege';
 
 /**
  * Die Farbe eines manuell erfassten Teils NACHTRÄGLICH ändern.
@@ -106,6 +106,10 @@ export type BildQuelle = 'vorhanden' | 'katalog' | 'rebrickable' | null;
  *    UND Farbe, nur zusätzlich je Set. Steckt der Stein in dieser Farbe in
  *    einem eingespielten Set, ist es dasselbe Bild — lokal, ohne Abruf, und
  *    oft sogar schon als Datei (`image_local`). Zeilen mit Datei zuerst.
+ *    Diese Reihenfolge steht seit dem 20.10. in katalogTeil()
+ *    (utils/katalogPflege.ts) und nicht mehr hier: addManualPartIntern()
+ *    braucht dieselbe, und zwei Fassungen derselben Staffelung laufen
+ *    auseinander.
  * 2. `lookupPart()`. Derselbe Weg wie beim Erfassen von Hand (routes/parts.ts)
  *    und beim Nachtrag in jobs/purchasePriceBackfill.ts: Für eine angegebene
  *    Farbe fragt er den Parts/Colors-Endpunkt, der das FARBBILD liefert. Ohne
@@ -129,21 +133,16 @@ export type BildQuelle = 'vorhanden' | 'katalog' | 'rebrickable' | null;
  * schreibt bewusst ÜBERSCHREIBEND und ist genau dafür entstanden.
  */
 async function bildNachtragen(partNumber: string, farbe: number): Promise<BildQuelle> {
-  const steht = await db.get(
-    `SELECT COALESCE(image_local, image_url) AS bild FROM part_color_catalog
-      WHERE part_number = $1 AND color_id = $2`,
-    [partNumber, farbe]).catch(() => null);
-  if (steht?.bild) return 'vorhanden';
+  // Die beiden lokalen Abfragen standen hier einzeln; sie stehen jetzt in
+  // katalogTeil() (utils/katalogPflege.ts), weil addManualPartIntern()
+  // dieselbe Reihenfolge braucht. Die Übersetzung der Quelle in `BildQuelle`
+  // bleibt hier: 'vorhanden' und 'katalog' sind die Worte DIESES Weges.
+  const lokal = await katalogTeil(partNumber, farbe);
+  if (lokal?.bildQuelle === 'farbe') return 'vorhanden';
 
-  const ausSet = await db.get(
-    `SELECT image_url, image_local FROM set_parts_catalog
-      WHERE part_number = $1 AND color_id = $2
-        AND (image_local IS NOT NULL OR image_url IS NOT NULL)
-      ORDER BY (image_local IS NULL), set_number LIMIT 1`,
-    [partNumber, farbe]).catch(() => null);
-  if (ausSet) {
+  if (lokal?.bildQuelle === 'set') {
     try {
-      await merkeTeilFarbe(partNumber, farbe, null, null, ausSet.image_url, ausSet.image_local);
+      await merkeTeilFarbe(partNumber, farbe, null, null, lokal.bild, lokal.bildDatei);
       return 'katalog';
     } catch (e) {
       // Die Farbe IST geändert — der Aufrufer darf das nicht als Fehlschlag

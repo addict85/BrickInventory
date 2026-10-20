@@ -3,7 +3,7 @@ import { G, fullUrl, setLang } from './01-core.js';
 import { saveJobSchedule } from './01-monitor.js';
 import { openPdfViewer } from './12-pdfviewer.js';
 import { autosaveSet, closeImageLightbox, delSet, hideProgress, openImageLightbox } from './02-gallery.js';
-import { allFigsCache, deleteManualFig, renderFigs, updateManualFig, deleteManualPart} from './06-minifigs.js';
+import { allFigsCache, deleteManualFig, renderFigs, renderManualFigsTable, updateManualFig, deleteManualPart} from './06-minifigs.js';
 import { merkpostenLoeschen } from './16-merkliste.js';
 
 // ═══ AKTIONEN OHNE INLINE-HANDLER ═══════════════════════════════════════════
@@ -242,7 +242,16 @@ function openImageLightboxFromEl() {
 function setLangFromEl() { setLang(this.value); }
 
 /** War: onchange="renderFigs(allFigsCache)" */
-function renderFigsAll() { renderFigs(allFigsCache); }
+/**
+ * Der Ansichtsumschalter des Figuren-Reiters — fuer BEIDE Listen.
+ *
+ * Dieselbe Luecke wie bei den Teilen (Marcos Befund vom 20.10.) und aus
+ * demselben Grund: Hier stand allein renderFigs(), also nur die Figuren aus
+ * Sets. Die manuell erfassten darunter blieben Kacheln, obwohl der Umschalter
+ * ueber beiden steht. Marco hat es an den Teilen gesehen; die Figuren trugen
+ * es unbemerkt mit.
+ */
+function renderFigsAll() { renderFigs(allFigsCache); renderManualFigsTable(); }
 
 // ── Wrapper für Handler, die vorher als Ausdruck im Attribut standen ────────
 // Alle bekommen `this` = auslösendes Element und das Ereignis als letztes

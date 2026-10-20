@@ -249,7 +249,9 @@ async function resolveManualPartPurchase(uid: number, { partNumber, colorId, uni
  */
 async function addManualPart(uid: number, rawBody: Record<string, unknown>) {
   const V0 = require('../utils/validate');
-  const ort = normalisiereLagerort(rawBody?.storage);
+  // ortFuerNeuerfassung statt normalisiereLagerort: Kommt kein Ort mit, gilt
+  // Marcos Stern (die Begruendung samt Messung steht dort in utils/lagerort.ts).
+  const ort = await ortFuerNeuerfassung(uid, rawBody?.storage);
   // DIESELBE Umwandlung wie im Rumpf, auf derselben Eingabe — sie kann also
   // nicht auseinanderlaufen. Der Rumpf gibt sie nicht zurueck, weil die
   // Antwort der Route sonst eine Form mehr haette, die niemand liest.
@@ -293,8 +295,44 @@ async function addManualPartIntern(uid: number, rawBody: any) {
     // weitergereicht werden.
     const rawColor = rawBody?.color_id;
     const hasColor = rawColor !== null && rawColor !== undefined && String(rawColor).trim() !== '';
-    const info = await lookupPart(part_number, hasColor ? color_id : null);
-    if (info) { part_name = info.part_name; image_url = info.image_url; category_name = info.category_name; }
+
+    // ── Erst der EIGENE Katalog, dann der fremde Dienst ─────────────────────
+    //
+    // Hier stand nur der lookupPart()-Aufruf, und das war Marcos Befund vom
+    // 20.10.: „Wird jedes Teil bei Rebrickable abgefragt auch wenn es lokal
+    // bereits vorhanden ist?" — ja, wurde es. GEMESSEN am laufenden Server
+    // ging fuer Teil 3001 in Farbe 4 ein Abruf an
+    // rebrickable.com/api/v3/lego/parts/, obwohl Name UND Farbbild im Katalog
+    // standen. lookupPart macht zwei Abrufe (Teil, dann Farbbild), jeder durch
+    // die Hintergrunddrossel mit 1,5 Sekunden Abstand: beim Import einer
+    // Wanted-Liste mit 224 Posten elf Minuten Warten und 448 Abrufe aus dem
+    // Tageskontingent, fuer Daten, die dalagen.
+    //
+    // Der Import ist dabei nur der Auffaellige. Die Luecke war in DIESER
+    // Funktion, und sie gilt fuer jeden Weg, der ohne Namen hereinkommt —
+    // auch POST /api/v1/parts. Deshalb steht die Staffelung hier und nicht
+    // in utils/wantedListe.ts.
+    const lokal = await katalogTeil(part_number, hasColor ? color_id : null);
+    if (lokal) {
+      part_name     = part_name     || lokal.name;
+      category_name = category_name || lokal.kategorie;
+      image_url     = image_url     || lokal.bild;
+    }
+
+    // Nur fragen, wenn danach noch etwas fehlt. `hatBild` statt `image_url`:
+    // Ein bereits heruntergeladenes Bild (`image_local`) darf nicht hierher
+    // durchreisen — es ist ein Pfad und faellt bei V.optionalImageUrl durch —,
+    // es beweist aber, dass der Abruf nichts mehr zu holen hat.
+    if (!part_name || !(image_url || lokal?.hatBild)) {
+      const info = await lookupPart(part_number, hasColor ? color_id : null);
+      // `||`, nicht Zuweisung: Was der Katalog schon wusste, bleibt stehen.
+      // Gefragt wird oft nur noch, weil EIN Stueck fehlte.
+      if (info) {
+        part_name     = part_name     || info.part_name;
+        image_url     = image_url     || info.image_url;
+        category_name = category_name || info.category_name;
+      }
+    }
   }
 
   // Gibt es die Position schon? Nur die EXISTENZ wird gebraucht — die
@@ -549,8 +587,8 @@ import { csvGemeinsameFelder, csvImportAntwort, csvZeilenAusAnfrage, toCsv } fro
 import { angemeldeteNutzerId } from '../utils/auth';
 import { csvEmpfang } from '../utils/dateiEmpfang';
 import { sendeFehler } from '../utils/fehlerTexte';
-import { normalisiereLagerort, setzeLagerort } from '../utils/lagerort';
-import { merkeTeil, merkeTeilFarbe } from '../utils/katalogPflege';
+import { setzeLagerort, ortFuerNeuerfassung } from '../utils/lagerort';
+import { merkeTeil, merkeTeilFarbe, katalogTeil } from '../utils/katalogPflege';
 import { mengeJoin, mengeAus, teilmengeJoin, teilmengeAus } from '../utils/bestandsmenge';
 
 router.post('/import/csv', csvEmpfang.single('file'), async (req: LoggedInRequest, res) => {
