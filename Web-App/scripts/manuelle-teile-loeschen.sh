@@ -38,10 +38,19 @@
 #      Drinnen gibt es keine Docker-CLI; das Skript merkt das und ruft psql
 #      direkt auf. Erzwingen lässt sich das mit PSQL_DIREKT=1.
 #
-#   3. Ohne compose-Verzeichnis, nur mit dem Containernamen (z. B. auf einem
-#      NAS, oder wenn das Projekt anders heisst):
+#   3. NUR MIT DOCKER, ohne compose — Marcos Weg. Entweder das Skript bleibt
+#      auf dem Host und spricht über `docker exec` mit der Datenbank:
 #
 #        DB_CONTAINER=brickinventory-db ./scripts/manuelle-teile-loeschen.sh 31000 31001
+#
+#      … oder es wird in den Container gereicht (dann braucht es nicht einmal
+#      den Containernamen im Skript, weil es drinnen schon ist):
+#
+#        docker exec -i brickinventory-db sh -s -- 31000 31001 \
+#          < scripts/manuelle-teile-loeschen.sh
+#
+#      Den Namen des Datenbank-Containers zeigt `docker ps --format '{{.Names}}'`;
+#      compose.yaml setzt ihn fest auf brickinventory-db.
 #
 # Ein Passwort braucht keiner der drei Wege: Über den lokalen Socket im
 # Container ist die Anmeldung vertraut (`local all all trust` im offiziellen
@@ -247,10 +256,19 @@ psql -c "
               IN (SELECT user_id, part_number, color_id FROM weg)) AS stueck"
 
 if [ "$JA" -ne 1 ]; then
+  # Der vorgeschlagene Aufruf trägt den Weg mit, auf dem dieser Lauf gearbeitet
+  # hat. Ohne das stünde hier ein Befehl, der über die VORGABE (docker compose)
+  # geht — wer mit DB_CONTAINER gearbeitet hat, bekäme den Vorschlag, es anders
+  # zu machen als gerade eben, und im schlimmsten Fall eine andere Datenbank.
+  VORSATZ=""
+  case "$WEG" in
+    container) VORSATZ="DB_CONTAINER=$DB_CONTAINER " ;;
+    direkt)    [ "${PSQL_DIREKT:-0}" = "1" ] && VORSATZ="PSQL_DIREKT=1 " ;;
+  esac
   echo
   echo "[teile] NUR ANGEZEIGT — es wurde nichts geändert."
   echo "[teile] Zum Löschen denselben Aufruf mit --ja wiederholen:"
-  echo "        $0 --ja$BEHALTEN"
+  echo "        $VORSATZ$0 --ja$BEHALTEN"
   echo "[teile] Vorher sichern:  ./scripts/backup.sh"
   exit 0
 fi

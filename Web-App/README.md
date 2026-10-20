@@ -103,17 +103,20 @@ unangetastet.
 Ohne `--ja` wird nichts geändert. Vorher `./scripts/backup.sh` — Löschen lässt
 sich nicht zurücknehmen.
 
-Das Skript läuft auf dem **Host** (neben der `compose.yaml`) und spricht über
-`docker compose exec` mit der Datenbank — der App-Container enthält weder
-`scripts/` noch `psql`. Soll es **im Datenbank-Container** laufen, wird es
-hineingereicht; Argumente stehen nach `--`:
+Die Aufrufe oben gehen über `docker compose exec`. **Nur mit `docker`**, ohne
+compose, gibt es zwei Wege — der Containername steht in der `compose.yaml` fest
+(`docker ps --format '{{.Names}}'` zeigt ihn):
 
 ```bash
-docker compose exec -T postgres sh -s -- 31000 31001 \
+# a) Skript bleibt auf dem Host, spricht per docker exec mit der Datenbank
+DB_CONTAINER=brickinventory-db ./scripts/manuelle-teile-loeschen.sh 31000 31001
+
+# b) Skript läuft IM Datenbank-Container (hineingereicht, Argumente nach --)
+docker exec -i brickinventory-db sh -s -- 31000 31001 \
   < scripts/manuelle-teile-loeschen.sh
 ```
-Ohne compose-Verzeichnis genügt der Containername:
-`DB_CONTAINER=brickinventory-db ./scripts/manuelle-teile-loeschen.sh 31000 31001`.
+Der **App**-Container ist der falsche Ort: Das Laufzeit-Image enthält weder
+`scripts/` noch `psql`. `psql` liegt im Datenbank-Container.
 
 ## Datenbank im Browser ansehen (pgweb)
 
