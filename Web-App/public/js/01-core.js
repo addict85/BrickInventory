@@ -1,4 +1,5 @@
 import { registerActions } from './00-registry.js';
+import { esc } from './00-escapen.js';
 import { resetScopeModes } from './14-scope.js';
 import { I18N, LANG, applyLang, locale, t , setLangValue, tRaw} from '../i18n.js';
 import { setAllSets, bindTabs, loadGallery, loadStats } from './02-gallery.js';
@@ -61,11 +62,11 @@ export function passwortZuKurzText(){
   return tRaw('settings.password.too_short', { n: PASSWORT_MIN_ZEICHEN });
 }
 
-export function esc(s){
-  return String(s ?? '')
-    .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
-    .replace(/"/g,'&quot;').replace(/'/g,'&#39;');
-}
+// esc() steht seit dem 20.10. in js/00-escapen.js — DOM-frei, damit auch der
+// BrickLink-Export es benutzen kann, ohne diese Datei zu laden. Die Begründung
+// steht dort. Weitergereicht wird es hier, damit jeder bestehende
+// `import { esc } from './01-core.js'` unverändert gilt.
+export { esc };
 
 /**
  * Wert in einem einfach-gequoteten JS-String innerhalb eines doppelt-gequoteten

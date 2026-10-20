@@ -3,6 +3,7 @@ import { registerActions } from './00-registry.js';
 import { locale, t, tRaw} from '../i18n.js';
 import { escHex, G, api, checkAuth, esc, escUrl, imgUrl, knopfBesetzt, thumbUrl, toast } from './01-core.js';
 import { initScrollbalken } from './15-scrollbar.js';
+import { baueWantedXmlStuecke } from './19-bricklink-xml.js';
 
 // ═══ App-Initialisierung + temporaere Teileliste ═══
 //
@@ -369,8 +370,18 @@ function plRenderTable() {
           : PARTS_ICON_SVG
       }</div>`;
       const pkey = `${esc(p.part_number)}__${p.color_id||0}`;
-      const blColorId = p.bl_color_id ?? _rbToBlColor[p.color_id] ?? p.color_id ?? 0;
-      html += `<div style="display:flex;align-items:center;gap:10px;padding:5px 4px;border-bottom:1px solid var(--bdr)">${img}<span style="font-family:monospace;font-size:.82rem;color:var(--b600);min-width:65px;flex-shrink:0" title="Rebrickable: ${esc(p.part_number)}">${esc(p.bl_part_number||p.part_number)}</span><span style="flex:1;font-size:.875rem">${esc(p.part_name)}</span><span style="font-weight:700;font-size:.875rem;width:70px;text-align:right;flex-shrink:0">${p.quantity.toLocaleString(locale())}×</span><span style="width:70px;flex-shrink:0;padding-left:6px"><input inputmode="numeric" type="number" min="0" value="0" data-key="${pkey}" data-need="${p.quantity}" data-part="${esc(p.bl_part_number||p.part_number)}" data-color="${blColorId}" data-rb-color="${p.color_id||0}" data-type="${(p.bl_part_number||p.part_number||'P').startsWith('fig-')?'M':'P'}" class="pl-have-input" style="width:58px;height:28px;border:1px solid var(--bdr);border-radius:5px;padding:0 6px;font-size:.82rem;text-align:center" /></span></div>`;
+      // ── Kein Rückfall auf die REBRICKABLE-Nummer ─────────────────────────
+      //
+      // Hier stand `… ?? p.color_id ?? 0`. Fehlte die Zuordnung, ging damit
+      // die Rebrickable-Farbnummer als BrickLink-Farbnummer hinaus — eine
+      // gültige Datei mit der FALSCHEN Farbe. Das ist der Fehler vom 19.10.
+      // spiegelverkehrt: Dort wurde beim Import eine Farbe erfunden, hier
+      // würde eine falsche bestellt.
+      //
+      // Leer heisst jetzt „unbekannt". plExportBricklink lässt solche Posten
+      // weg und NENNT sie, statt zu raten.
+      const blColorId = p.bl_color_id ?? _rbToBlColor[p.color_id] ?? '';
+      html += `<div style="display:flex;align-items:center;gap:10px;padding:5px 4px;border-bottom:1px solid var(--bdr)">${img}<span style="font-family:monospace;font-size:.82rem;color:var(--b600);min-width:65px;flex-shrink:0" title="Rebrickable: ${esc(p.part_number)}">${esc(p.bl_part_number||p.part_number)}</span><span style="flex:1;font-size:.875rem">${esc(p.part_name)}</span><span style="font-weight:700;font-size:.875rem;width:70px;text-align:right;flex-shrink:0">${p.quantity.toLocaleString(locale())}×</span><span style="width:70px;flex-shrink:0;padding-left:6px"><input inputmode="numeric" type="number" min="0" value="0" data-key="${pkey}" data-need="${p.quantity}" data-part="${esc(p.bl_part_number||p.part_number)}" data-color="${blColorId}" data-rb-color="${p.color_id||0}" data-color-name="${esc(p.color_name||'')}" data-type="${(p.bl_part_number||p.part_number||'P').startsWith('fig-')?'M':'P'}" class="pl-have-input" style="width:58px;height:28px;border:1px solid var(--bdr);border-radius:5px;padding:0 6px;font-size:.82rem;text-align:center" /></span></div>`;
     }
     html += '</div></div>';
   }
@@ -504,11 +515,17 @@ async function plExportBricklink() {
     const diff = need - have;
     if (diff > 0) {
       const rbColor = parseInt(inp.dataset.rbColor) || 0;
-      const blColor = _rbToBlColor[rbColor] ?? parseInt(inp.dataset.color) ?? 0;
+      // `data-color` ist leer, wenn der Katalog keine BrickLink-Farbe kennt
+      // (siehe plRenderTable). Die Karte wird noch einmal befragt, weil sie
+      // beim Zeichnen der Tabelle vielleicht noch nicht geladen war.
+      const roh = inp.dataset.color;
+      const ausKarte = _rbToBlColor[rbColor];
+      const blColor = ausKarte ?? (roh === '' || roh === undefined ? null : parseInt(roh));
       missing.push({
         type:    inp.dataset.type || 'P',
         part:    inp.dataset.part,
-        color:   blColor,
+        color:   Number.isFinite(blColor) ? blColor : null,
+        colorName: inp.dataset.colorName || '',
         qty:     diff
       });
     }
@@ -524,7 +541,9 @@ async function plExportBricklink() {
         if (dp?.success && dp.parts?.length) {
           for (const p of dp.parts) {
             const blNum  = p.bl_part_number || p.part_number;
-            const blColId = p.bl_color_id ?? _rbToBlColor[p.color_id] ?? p.color_id ?? 0;
+            // Dieselbe Regel wie in der Tabelle: keine Zuordnung heisst
+            // UNBEKANNT, nicht „nimm die Rebrickable-Nummer".
+            const blColId = p.bl_color_id ?? _rbToBlColor[p.color_id] ?? null;
             const key    = `P|${blNum}|${blColId}`;
             const qty    = parseInt(p.quantity || 1) * m.qty;
             if (blMap[key]) blMap[key].qty += qty;
@@ -545,50 +564,59 @@ async function plExportBricklink() {
   }
   const expanded = Object.values(blMap);
 
-  // Build BrickLink Wanted List XML
-  let xml = '<?xml version="1.0" encoding="UTF-8"?>\n<INVENTORY>\n';
-  for (const m of expanded) {
-    xml += '  <ITEM>\n';
-    // ── Warum hier esc() steht ────────────────────────────────────────────
-    //
-    // Der Wert kommt aus dem Bestand, und bei einem MANUELL erfassten Teil
-    // hat ihn der Mensch getippt. Ein `&` im Teil ist dann kein Sonderfall,
-    // sondern ein gueltiges Zeichen — und macht aus der Wunschliste eine
-    // XML-Datei, die BrickLink nicht liest. Ein `<` kann Elemente einfuegen,
-    // die niemand geschrieben hat.
-    //
-    // esc() und kein eigener XML-Maskierer: Es ersetzt genau die fuenf
-    // Entitaeten, um die es geht (& < > " '). Ein zweiter Escaper daneben
-    // waere eine zweite Wahrheit — und die Android-App hat schon eine
-    // (BrickLinkWunschliste.kt, maskiert()). Genau deren Fehlen auf DIESER
-    // Seite ist der Befund gewesen: dieselbe Regel, zwei Orte, nur einer
-    // kannte sie.
-    xml += `    <ITEMTYPE>${esc(m.type)}</ITEMTYPE>\n`;
-    xml += `    <ITEMID>${esc(m.part)}</ITEMID>\n`;
-    // m.color is the BL color ID — only omit for minifigs (type M) where color is N/A
-    // For parts, always include color (even 0 = "(Not Applicable)" for uncolored parts)
-    if (m.type !== 'M' && m.color !== null && m.color !== undefined) {
-      xml += `    <COLOR>${m.color}</COLOR>\n`;
-    }
-    xml += `    <MINQTY>${m.qty}</MINQTY>\n`;
-    xml += `    <CONDITION>${esc(condition)}</CONDITION>\n`;
-    xml += '  </ITEM>\n';
-  }
-  xml += '</INVENTORY>';
+  // ── Posten OHNE bekannte BrickLink-Farbe gehen NICHT mit ────────────────
+  //
+  // Sie werden genannt. Eine geratene Farbnummer ergibt eine gültige Datei,
+  // die das falsche Teil bestellt — und das fällt erst auf, wenn das Paket da
+  // ist. Dieselbe Regel wie beim Import (utils/wantedListe.ts): Was sich
+  // nicht abbilden lässt, bleibt offen und wird gesagt.
+  //
+  // Minifiguren (Typ M) haben keine Farbe und sind deshalb nie betroffen.
+  const ohneFarbe = expanded.filter(m => m.type !== 'M' && (m.color === null || m.color === undefined));
+  const exportierbar = expanded.filter(m => !ohneFarbe.includes(m));
 
-  // Open XML in new tab
-  const blob = new Blob([xml], { type: 'text/plain; charset=utf-8' });
-  const url = URL.createObjectURL(blob);
-  const tab = window.open(url, '_blank');
-  if (!tab) {
-    // Popup blocked — fallback to download
-    const a = document.createElement('a');
-    a.href = url; a.download = 'bricklink-wanted.xml'; a.click();
-    toast(tRaw('pdf.popup_blocked'), 'info');
+  const stuecke = baueWantedXmlStuecke(
+    exportierbar.map(m => ({ ...m, condition })));
+
+  // ── Eine Datei oder mehrere ─────────────────────────────────────────────
+  //
+  // BrickLink nimmt höchstens BL_UPLOAD_MAX_BYTES je Upload und weist eine
+  // grössere Datei GANZ ab. Passt alles in ein Stück, bleibt es beim alten
+  // Verhalten: in einem neuen Tab öffnen, damit man den Text kopieren kann.
+  // Sonst werden die Stücke heruntergeladen — ein Tab je Stück wäre ein
+  // Popup-Gewitter.
+  if (stuecke.length === 1) {
+    const blob = new Blob([stuecke[0]], { type: 'text/plain; charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const tab = window.open(url, '_blank');
+    if (!tab) {
+      const a = document.createElement('a');
+      a.href = url; a.download = 'bricklink-wanted.xml'; a.click();
+      toast(tRaw('pdf.popup_blocked'), 'info');
+    } else {
+      setTimeout(() => URL.revokeObjectURL(url), 5000);
+    }
   } else {
-    setTimeout(() => URL.revokeObjectURL(url), 5000);
+    for (const [i, teil] of stuecke.entries()) {
+      const url = URL.createObjectURL(new Blob([teil], { type: 'text/plain; charset=utf-8' }));
+      const a = document.createElement('a');
+      a.href = url; a.download = `bricklink-wanted-${i + 1}.xml`; a.click();
+      setTimeout(() => URL.revokeObjectURL(url), 5000);
+    }
   }
-  toast(`✅ ${missing.length} fehlende Teiletypen exportiert`, 'success');
+
+  toast(tRaw('pl.bl_exported', { n: exportierbar.length }), 'success');
+  if (stuecke.length > 1) toast(tRaw('pl.bl_split', { n: stuecke.length }), 'info');
+  // Zuletzt und als eigene Meldung, damit sie nicht neben der Erfolgsmeldung
+  // untergeht: Was fehlt, muss man lesen.
+  if (ohneFarbe.length) {
+    toast(tRaw('pl.bl_no_color', {
+      n: ohneFarbe.length,
+      liste: ohneFarbe.slice(0, 5).map(m => m.colorName
+        ? `${m.part} (${m.colorName})` : m.part).join(', ')
+        + (ohneFarbe.length > 5 ? ' …' : ''),
+    }), 'error');
+  }
 }
 
 function plReset() {

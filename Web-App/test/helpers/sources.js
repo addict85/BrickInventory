@@ -396,7 +396,15 @@ module.exports.portfolioQuelle = portfolioQuelle;
 function coreQuelle() {
   const path = require('path'), fs = require('fs');
   const dir = path.join(__dirname, '..', '..', 'public', 'js');
-  return ['01-core.js', '01-fortschritt.js', '01-monitor.js', '14-scope.js', '15-scrollbar.js']
+  // 00-escapen.js steht VORNE: Seit dem 20.10. liegt esc() dort (DOM-frei,
+  // damit der BrickLink-Export es benutzen kann, ohne js/01-core.js zu laden).
+  // Wer die Grundausstattung liest, meint esc() mit — test/
+  // frontend-escaping.test.js schneidet sich seinen Sandkasten genau ab
+  // `function esc(s)` heraus und fand nach dem Umzug nichts mehr
+  // („esc is not defined", vier Fälle rot). Derselbe Grund wie fuer diesen
+  // Helfer ueberhaupt: den GEGENSTAND nennen, nicht den Ablageort.
+  return ['00-escapen.js', '01-core.js', '01-fortschritt.js', '01-monitor.js',
+          '14-scope.js', '15-scrollbar.js']
     .map(f => fs.readFileSync(path.join(dir, f), 'utf8')).join('\n');
 }
 module.exports.coreQuelle = coreQuelle;
