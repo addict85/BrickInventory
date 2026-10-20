@@ -32,6 +32,23 @@ const path = require('node:path');
  * ── Warum kein zweiter Escaper in der Webapp ────────────────────────────────
  * esc() ersetzt genau die fuenf Entitaeten, um die es geht (& < > " ').
  * Ein eigener XML-Maskierer daneben waere eine zweite Fassung derselben Regel.
+ *
+ * ── Zwei Umzuege am 20.10., und warum sie noetig waren ──────────────────────
+ *
+ * 1. Der XML-Aufbau liegt nicht mehr in js/08-init.js, sondern in
+ *    js/19-bricklink-xml.js. Diese Datei greift NICHT auf das Dokument zu —
+ *    deshalb kann test/bricklink-wanted-xml.test.js sie einlesen und das
+ *    FORMAT pruefen (keine XML-Deklaration, Groessengrenze, keine erfundene
+ *    Farbe). In js/08-init.js ging das nicht: Sie laedt die Teileliste und
+ *    braucht dafuer `document`.
+ *
+ * 2. esc() liegt nicht mehr in js/01-core.js, sondern in js/00-escapen.js.
+ *    Das ist die Folge aus 1.: Der Aufbau muss maskieren, js/01-core.js
+ *    laesst sich aber ohne Dokument nicht laden (GEMESSEN: „document is not
+ *    defined"). Die Wahl war, esc() zu KOPIEREN — also genau die zweite
+ *    Fassung, die dieser Test verbietet — oder es dorthin zu legen, wo beide
+ *    Seiten es erreichen. js/01-core.js reicht es weiter, jeder bestehende
+ *    `import { esc } from './01-core.js'` gilt unveraendert.
  */
 
 const WURZEL = path.join(__dirname, '..');
@@ -41,10 +58,21 @@ const ohneKommentare = (s) => s
 
 test('die Webapp maskiert jedes Textfeld der Wunschliste', () => {
   const src = ohneKommentare(
-    fs.readFileSync(path.join(WURZEL, 'public', 'js', '08-init.js'), 'utf8'));
-  const ab = src.indexOf('<INVENTORY>');
-  assert.ok(ab > 0, 'Der XML-Aufbau der Wunschliste ist nicht mehr zu finden');
-  const block = src.slice(ab, src.indexOf('</INVENTORY>', ab));
+    fs.readFileSync(path.join(WURZEL, 'public', 'js', '19-bricklink-xml.js'), 'utf8'));
+  // ── Kein Ausschnitt zwischen <INVENTORY> und </INVENTORY> mehr ──────────
+  //
+  // Hier stand genau das, und es passte zum alten Aufbau: EIN Template, das
+  // den Rahmen und die Felder in einem Zug zusammensetzte. Seit dem Umzug
+  // baut item() die Felder und baueWantedXml() den Rahmen — zwischen den
+  // beiden INVENTORY-Marken steht also nichts mehr, und der Ausschnitt war
+  // LEER. Die Prüfung meldete „<ITEMTYPE> steht nicht mehr im Aufbau", und
+  // das war richtig gemeldet: Sie hatte nichts mehr zu lesen.
+  //
+  // Gelesen wird deshalb die ganze Datei. Sie enthält nur dieses eine
+  // Format; ein Ausschnitt gewinnt hier nichts und kann ins Leere zeigen.
+  assert.ok(src.includes('<INVENTORY>'),
+    'Der XML-Aufbau der Wunschliste ist nicht mehr zu finden');
+  const block = src;
 
   for (const feld of ['ITEMTYPE', 'ITEMID', 'CONDITION']) {
     const m = new RegExp(`<${feld}>\\$\\{([^}]+)\\}</${feld}>`).exec(block);
@@ -60,9 +88,14 @@ test('esc() deckt die fuenf XML-Entitaeten ab', () => {
   // Der Grund, warum die Webapp KEINEN eigenen XML-Maskierer bekommt. Faellt
   // eine der fuenf Ersetzungen aus esc() heraus, ist diese Entscheidung falsch
   // — und das soll hier auffallen und nicht in einer kaputten Wunschliste.
-  const core = fs.readFileSync(path.join(WURZEL, 'public', 'js', '01-core.js'), 'utf8');
-  const fn = core.slice(core.indexOf('export function esc('),
-                        core.indexOf('export function escJs('));
+  //
+  // Gelesen wird js/00-escapen.js (siehe Umzug 2 im Kopf). Die Datei enthaelt
+  // NUR esc(), deshalb braucht es hier keinen Ausschnitt mehr — und damit
+  // auch keinen Anker auf die naechste Funktion, der beim naechsten Umbau
+  // ins Leere zeigt.
+  const fn = fs.readFileSync(path.join(WURZEL, 'public', 'js', '00-escapen.js'), 'utf8');
+  assert.ok(fn.includes('export function esc('),
+    'js/00-escapen.js enthaelt kein esc() mehr — dann prueft der Rest hier nichts.');
   for (const [zeichen, entitaet] of
        [['&', '&amp;'], ['<', '&lt;'], ['>', '&gt;'], ['"', '&quot;'], ["'", '&#39;']]) {
     assert.ok(fn.includes(entitaet),

@@ -18,6 +18,7 @@
 // Top-Level-Auswertung zu lesen. Solche Stellen gibt es hier nicht; die
 // Top-Level-Arbeit der Module beschränkt sich auf das Anhängen von
 // Ereignisbehandlern und die Registrierung beim Dispatcher.
+import './00-escapen.js';
 import '../i18n.js';
 import './01-core.js';
 import './01-fortschritt.js';
@@ -40,6 +41,11 @@ import './15-scrollbar.js';
 import './16-merkliste.js';
 import './17-gutscheine.js';
 import './18-wanted-xml.js';
+// Reines Bauteil ohne Zugriff auf das Dokument; eingehängt wird es von
+// js/08-init.js. Hier steht es, weil die Vollständigkeitsprüfung in
+// scripts/build-frontend.js den EINSTIEG liest und nicht den Graphen —
+// jede Datei unter js/ muss also hier genannt sein.
+import './19-bricklink-xml.js';
 
 // ── Start ────────────────────────────────────────────────────────────────────
 // Erst NACH der Auswertung aller Module. Vorher lag der Aufruf im Rumpf von

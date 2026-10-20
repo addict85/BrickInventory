@@ -30,8 +30,19 @@ function loadHelpers() {
   // Seit der Umstellung auf ES-Module tragen die Deklarationen ein
   // vorangestelltes `export`. Das wird für die Sandbox entfernt — dort läuft
   // der Ausschnitt als klassisches Skript, und `export` wäre ein Syntaxfehler.
+  // `export` UND `import` heraus: In der Sandbox laeuft der Ausschnitt als
+  // klassisches Skript, beide waeren dort ein Syntaxfehler.
+  //
+  // Die import-Zeilen kamen am 20.10. dazu: esc() liegt seither in
+  // js/00-escapen.js (DOM-frei, damit der BrickLink-Export es benutzen kann),
+  // und der Ausschnitt unten laeuft deshalb ueber eine Dateigrenze hinweg —
+  // mitten in den Kopf von js/01-core.js mit seinen Einfuhren. GEMESSEN:
+  // „Cannot use import statement outside a module", vier Faelle rot.
+  // Gebraucht werden sie nicht: Der Ausschnitt enthaelt nur die vier Helfer,
+  // und die kommen ohne aus.
   const src = require('./helpers/sources').coreQuelle()
-    .replace(/^export /gm, '');
+    .replace(/^export /gm, '')
+    .replace(/^import .*;$/gm, '');
   const block = src.slice(src.indexOf('function esc(s)'), src.indexOf('const escHtml'));
   const ctx = {};
   vm.createContext(ctx);
@@ -114,12 +125,27 @@ test('kein onXxx-Handler mit ungeprüftem Datenfeld', () => {
   assert.deepEqual(bad, [], 'Werte in Inline-Handlern müssen durch escJs()');
 });
 
-test('esc/escJs/escUrl/escHex sind genau einmal definiert (in 01-core.js)', () => {
-  for (const name of ['esc', 'escJs', 'escUrl', 'escHex']) {
+test('esc/escJs/escUrl/escHex sind genau einmal definiert', () => {
+  // ── Die Regel ist „EINMAL", nicht „in 01-core.js" ───────────────────────
+  //
+  // esc() liegt seit dem 20.10. in js/00-escapen.js. Der Grund steht dort:
+  // Der BrickLink-Export (js/19-bricklink-xml.js) muss maskieren und ist
+  // bewusst DOM-frei, js/01-core.js laesst sich aber ohne Dokument nicht
+  // laden. Die Wahl war, esc() zu KOPIEREN — also genau das, was diese
+  // Pruefung verbietet — oder es dorthin zu legen, wo beide es erreichen.
+  //
+  // Was NICHT nachgegeben wurde: die Zahl. Jeder dieser vier Namen hat
+  // weiterhin GENAU EINE Deklaration; js/01-core.js reicht esc() nur weiter.
+  const zuhause = { esc: '00-escapen.js', escJs: '01-core.js',
+                    escUrl: '01-core.js', escHex: '01-core.js' };
+  for (const [name, datei] of Object.entries(zuhause)) {
     const defs = FILES.filter(f =>
       new RegExp(`function\\s+${name}\\s*\\(`).test(fs.readFileSync(path.join(JS_DIR, f), 'utf8')));
-    assert.deepEqual(defs, ['01-core.js'],
-      `${name}() muss zentral in 01-core.js liegen — sonst hängt das Escaping an der Ladereihenfolge der <script>-Tags`);
+    assert.deepEqual(defs, [datei],
+      `${name}() muss genau einmal deklariert sein (in ${datei}) — sonst haengt ` +
+      'das Escaping an der Ladereihenfolge, und zwei Fassungen laufen ' +
+      'auseinander. Genau das hat test/wunschliste-xml.test.js schon einmal ' +
+      'gemeldet: Die App maskierte, die Webapp nicht.');
   }
 });
 
