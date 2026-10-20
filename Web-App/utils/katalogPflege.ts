@@ -11,7 +11,12 @@ import * as db from '../db/database';
 type Schreiber = { run: (sql: string, params?: unknown[]) => Promise<unknown> };
 
 /**
- * Teile- und Figurenkatalog schreiben.
+ * Teile- und Figurenkatalog — schreiben, und seit dem 20.10. auch LESEN.
+ *
+ * Das Lesen ist hier dazugekommen, weil es dieselbe Frage von der anderen
+ * Seite ist: Wer Bestand anlegt, muss die Beschreibung mitschreiben — und
+ * sollte vorher nachsehen, ob sie nicht schon dasteht. Die Begruendung steht
+ * bei katalogTeil() am Dateiende.
  *
  * ── Warum eine eigene Stelle (Migration 0034) ───────────────────────────────
  *
@@ -152,4 +157,146 @@ export async function setzeFigurBildLokal(
     ON CONFLICT (fig_number) DO UPDATE
       SET image_local = EXCLUDED.image_local, updated_at = NOW()`,
     [figNumber, imageLocal]);
+}
+
+/**
+ * Was der EIGENE Katalog ueber ein Teil weiss — Name, Kategorie, Bild.
+ *
+ * ── Marcos Frage vom 20.10. ─────────────────────────────────────────────────
+ *
+ *   „Wieso ist der Import so langsam? Wird jedes Teil bei Rebrickable
+ *    abgefragt auch wenn es lokal bereits vorhanden ist, resp. das Mapping
+ *    vorhanden ist?"
+ *
+ * Fuers MAPPING lautete die Antwort nein: loeseLokalAuf() in
+ * utils/wantedListe.ts loest zuerst lokal auf und fragt nur die offenen
+ * Nummern nach. Fuer Name und Bild lautete sie JA, und zwar GEMESSEN am
+ * laufenden Server: addManualPartIntern() fragte lookupPart(), sobald kein
+ * Name mitkam — auch bei Teil 3001 in Farbe 4, das mit Namen UND Farbbild im
+ * Katalog stand. Jeder Abruf geht durch die Hintergrunddrossel, eine Anfrage
+ * je 1,5 Sekunden (utils/rateLimiter.ts), und lookupPart macht zwei: das Teil
+ * und das Farbbild. Bei 224 Posten sind das elf Minuten Warten und 448
+ * Abrufe aus dem Tageskontingent — fuer Daten, die dalagen.
+ *
+ * Die Regel dort hiess „kein Name mitgegeben ⇒ fremden Dienst fragen". Richtig
+ * ist „⇒ erst den eigenen Katalog fragen". Genau diese Staffelung stand
+ * nebenan schon einmal, fuer das Bild allein (bildNachtragen in
+ * utils/teilFarbeAendern.ts: set_parts_catalog vor Rebrickable) — sie holt sie
+ * jetzt von hier, damit es bei EINER Fassung bleibt.
+ *
+ * ── Was als „Bild vorhanden" gilt, und was nicht ────────────────────────────
+ *
+ * Nur FARBRICHTIGE Quellen: `part_color_catalog` und `set_parts_catalog`
+ * fuehren das Bild je Teil UND Farbe. `rb_parts.part_img_url` ist das
+ * ALLGEMEINE Teilebild — bei vielen Teilen die weisse Fassung. Es als Treffer
+ * zu zaehlen hiesse, den Farb-Abruf zu sparen und dafuer das falsche Bild zu
+ * behalten. Gespart werden soll der UEBERFLUESSIGE Abruf, nicht der noetige.
+ *
+ * Ohne angegebene Farbe (`colorId` null) gibt es keine farbrichtige
+ * Erwartung — lookupPart holt dann selbst nur das allgemeine Bild. Deshalb
+ * zaehlt es in diesem Fall. Die beiden Farb-Joins greifen dabei von sich aus
+ * nicht: `color_id = NULL` ist nie wahr.
+ */
+export interface KatalogTeil {
+  /** Name aus `part_catalog`, Rueckfall `rb_parts`. */
+  name: string | null;
+  kategorie: string | null;
+  /**
+   * Das Bild als https-URL — und NUR als URL.
+   *
+   * `image_local` ist ein Pfad im eigenen Baum und faellt bei der
+   * Eingangspruefung durch (V.optionalImageUrl verlangt https). Es steht
+   * deshalb nicht hier, zaehlt aber bei `hatBild` mit: Dass eine Datei
+   * dasteht, ist der beste Beleg dafuer, dass kein Abruf noetig ist.
+   */
+  bild: string | null;
+  /** Steht ein Bild da — gleich ob als URL oder als Datei? */
+  hatBild: boolean;
+  /**
+   * Woher das Bild stammt, und die Datei dazu.
+   *
+   * Beide stehen hier fuer bildNachtragen() in utils/teilFarbeAendern.ts: Es
+   * unterscheidet, ob das Bild schon an der Farbe steht (dann ist nichts zu
+   * tun) oder aus einem eingespielten Set kommt (dann traegt es es nach) —
+   * und dabei SCHREIBT es `image_local` mit, denn eine bereits
+   * heruntergeladene Datei ist der bessere Wert.
+   *
+   * Sie sind der Preis dafuer, dass die Quellenreihenfolge nur EINMAL
+   * dasteht. Sie zweimal zu fuehren waere der bequemere Weg und genau der,
+   * an dem in diesem Baum schon mehrfach zwei Fassungen auseinandergelaufen
+   * sind.
+   */
+  bildQuelle: 'farbe' | 'set' | 'allgemein' | null;
+  bildDatei: string | null;
+}
+
+export async function katalogTeil(
+  partNumber: string, colorId: number | null,
+): Promise<KatalogTeil | null> {
+  if (!partNumber) return null;
+  const z = await db.get(`
+    SELECT COALESCE(pc.part_name, rp.name) AS name,
+           pc.category_name                AS kategorie,
+           rp.part_img_url                 AS bild_allgemein,
+           pcc.image_url                   AS farb_url,
+           pcc.image_local                 AS farb_datei,
+           spc.image_url                   AS set_url,
+           spc.image_local                 AS set_datei
+      FROM (SELECT $1::text AS nr) q
+      LEFT JOIN part_catalog       pc  ON pc.part_number  = q.nr
+      LEFT JOIN rb_parts           rp  ON rp.part_num     = q.nr
+      LEFT JOIN part_color_catalog pcc ON pcc.part_number = q.nr AND pcc.color_id = $2
+      LEFT JOIN LATERAL (
+        SELECT image_url, image_local FROM set_parts_catalog
+         WHERE part_number = q.nr AND color_id = $2
+           AND (image_local IS NOT NULL OR image_url IS NOT NULL)
+         ORDER BY (image_local IS NULL), set_number LIMIT 1) spc ON TRUE`,
+    [partNumber, colorId]).catch(() => null);
+  if (!z) return null;
+
+  // Die Reihenfolge ist die von bildNachtragen(): Farbe vor Set, Datei vor
+  // URL. Ohne Farbe bleibt nur das allgemeine Bild — siehe oben, warum es
+  // genau dann zaehlt.
+  const quelle: KatalogTeil['bildQuelle'] =
+      (z.farb_datei || z.farb_url) ? 'farbe'
+    : (z.set_datei  || z.set_url)  ? 'set'
+    : (colorId === null && z.bild_allgemein) ? 'allgemein'
+    : null;
+  const url   = quelle === 'farbe' ? z.farb_url
+              : quelle === 'set'   ? z.set_url
+              : quelle === 'allgemein' ? z.bild_allgemein : null;
+  const datei = quelle === 'farbe' ? z.farb_datei
+              : quelle === 'set'   ? z.set_datei : null;
+
+  return {
+    name: z.name ?? null,
+    kategorie: z.kategorie ?? null,
+    bild: url && String(url).startsWith('https:') ? String(url) : null,
+    hatBild: quelle !== null,
+    bildQuelle: quelle,
+    bildDatei: datei ?? null,
+  };
+}
+
+/**
+ * Was der eigene Katalog ueber eine Figur weiss.
+ *
+ * Zwilling zu katalogTeil() — und aus demselben Befund: addManualFigIntern()
+ * fragt getMinifigInfo(), sobald kein Name mitkommt, obwohl
+ * `minifigs_catalog` Name und Bild fuehrt. Hier gibt es keine Farbe und
+ * deshalb auch keine Unterscheidung farbrichtig/allgemein.
+ */
+export async function katalogFigur(
+  figNumber: string,
+): Promise<{ name: string | null; bild: string | null; hatBild: boolean } | null> {
+  if (!figNumber) return null;
+  const z = await db.get(
+    'SELECT fig_name, image_url, image_local FROM minifigs_catalog WHERE fig_number = $1',
+    [figNumber]).catch(() => null);
+  if (!z) return null;
+  return {
+    name: z.fig_name ?? null,
+    bild: z.image_url && String(z.image_url).startsWith('https:') ? String(z.image_url) : null,
+    hatBild: !!(z.image_local || z.image_url),
+  };
 }

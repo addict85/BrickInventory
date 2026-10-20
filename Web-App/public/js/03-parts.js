@@ -4,7 +4,7 @@ import { colorName, locale, t } from '../i18n.js';
 import { G, api, esc, escHex, escHtml, escJs, escUrl, fmtBig, fullUrl, imgUrl, observeLazyImages, thumbUrl } from './01-core.js';
 import { addScopeParam, addLagerParam, scopeQuery } from './14-scope.js';
 import { PARTS_ICON_SVG, allSets } from './02-gallery.js';
-import { loadManualParts } from './06-minifigs.js';
+import { loadManualParts, renderManualParts } from './06-minifigs.js';
 
 /**
  * Ziegel-Symbol des Reiters „Teile" für die Leer-Anzeige.
@@ -379,7 +379,24 @@ function teileFilterGeaendert() {
 }
 G('parts-search').addEventListener('input', ()=>{ clearTimeout(G('parts-search')._t); G('parts-search')._t=setTimeout(teileFilterGeaendert,350); });
 G('parts-spare').addEventListener('change', loadPartsData);
-G('parts-view').addEventListener('change', loadPartsData);
+/**
+ * Der Ansichtsumschalter — fuer BEIDE Listen des Reiters.
+ *
+ * Marcos Befund vom 20.10.: „Wenn ich bei den Teilen auf Tabelle umschalte,
+ * werden nur die Teile aus den Sets als Tabelle angezeigt. Die manuell
+ * erfassten sind immer Kacheln." Hier stand allein loadPartsData() — derselbe
+ * halbe Anschluss wie beim Suchtext darueber.
+ *
+ * Neu GEZEICHNET, nicht neu geladen: Die Wand der Set-Teile braucht in der
+ * Tabellenansicht andere Daten (`with_sets=1`, siehe partsQuery) und muss
+ * deshalb neu abrufen. Die manuelle Liste braucht dieselben Daten in einer
+ * anderen Form — ein zweiter Abruf waere nur Wartezeit.
+ */
+function teileAnsichtGeaendert() {
+  loadPartsData();
+  renderManualParts();
+}
+G('parts-view').addEventListener('change', teileAnsichtGeaendert);
 
 
 

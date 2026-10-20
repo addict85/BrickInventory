@@ -471,6 +471,54 @@ export async function vorgabeVon(userId: number): Promise<Lagerort | null> {
 }
 
 /**
+ * Der Ort, unter dem ein NEU erfasstes Stueck landet.
+ *
+ * ── Marcos Befund vom 20.10. ────────────────────────────────────────────────
+ *
+ *   „Der Default Lagerort wird nicht gesetzt."
+ *
+ * GEMESSEN: Vorgabe auf „Kiste 7" gesetzt (vorgabeVon liefert sie), dann ein
+ * Teil und eine Figur so angelegt, wie der Wanted-Import es tut — also ohne
+ * `storage`. Beide landeten mit Lagerort `null`.
+ *
+ * Marcos Stern wurde bis hierher ALLEIN im Browser eingelöst: ladeLagerortVorgabe()
+ * in public/js/02-gallery.js befuellt die Felder der fuenf Erfassungsformulare
+ * vor. Wer kein Formular benutzt, bekam nichts — der Wanted-Listen-Import, der
+ * CSV-Import, die API mit Token. Sein Wunsch lautete aber „bei einer
+ * Neuerfassung", nicht „in einem Formular".
+ *
+ * ── Warum `undefined` und `''` verschieden sind ─────────────────────────────
+ *
+ * Fehlt das Feld GANZ, hat niemand etwas zu diesem Ort gesagt — dann gilt die
+ * Vorgabe. Kommt es LEER herein, hat jemand sie weggeraeumt, und das ist eine
+ * Aussage: Sie hinterher wieder einzusetzen waere gegen den Stern, nicht fuer
+ * ihn.
+ *
+ * Diese Unterscheidung konnte der Server vorher nicht treffen, weil
+ * selectedStorage() in 02-gallery.js fuer ein leeres Feld `undefined` lieferte
+ * und der Schluessel damit aus dem Rumpf fiel — ein geleertes Feld sah aus wie
+ * ein Import. Es gibt dort jetzt `''` zurueck, damit „ausdruecklich keiner"
+ * auch gesagt wird.
+ *
+ * NUR beim Anlegen: Die drei PUT-Wege …/storage setzen und loeschen einen Ort
+ * und rufen weiterhin normalisiereLagerort() direkt. Dort heisst leer
+ * „loeschen" — eine Vorgabe, die sich in ein Loeschen hineindraengt, waere ein
+ * Ort, den niemand wegbekommt.
+ */
+export async function ortFuerNeuerfassung(
+  userId: number, mitgegeben: unknown,
+): Promise<string | null> {
+  // Die Laengengrenze zuerst, und zwar an DEM Wert, der hereinkam: Ein zu
+  // langer Ort soll absagen, bevor irgendetwas angelegt ist (die Begruendung
+  // steht an den drei Anlegehuellen).
+  const ort = normalisiereLagerort(mitgegeben);
+  if (ort) return ort;
+  if (mitgegeben !== undefined && mitgegeben !== null) return null;
+  // Eine Vorgabe, deren Ort geloescht wurde, ist keine — das prueft vorgabeVon().
+  return (await vorgabeVon(userId))?.name ?? null;
+}
+
+/**
  * Die Vorgabe setzen oder abschalten.
  *
  * `null` löscht sie — das ist der zweite Druck auf denselben Stern. Ein Ort,

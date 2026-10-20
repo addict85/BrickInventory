@@ -300,7 +300,7 @@ export async function loadManualFigsTable() {
   renderManualFigsTable();
 }
 
-function renderManualFigsTable() {
+export function renderManualFigsTable() {
   const el = G('manual-figs-list');
   if (!el) return;
   if (!manualFigsCache.length) {
@@ -309,6 +309,12 @@ function renderManualFigsTable() {
       <div style="font-weight:600">${t('figs.none_manual')}</div>
       <div style="color:var(--mut);font-size:.85rem">${t('figs.from_csv_hint')}</div>
     </div>`;
+    return;
+  }
+  if (tabellenAnsicht('figs-view')) {
+    el.innerHTML = manuelleTabelle(manualFigsCache, 'fig');
+    if (typeof window.__bimLabelTables === 'function')
+      window.__bimLabelTables(el.querySelector('table'));
     return;
   }
   el.innerHTML = `<div class="man-grid">
@@ -503,6 +509,97 @@ function manuellQuery(view, sucheId) {
   return s ? '?' + s : '';
 }
 
+/**
+ * Die manuell erfassten Posten als TABELLE — Teile und Figuren.
+ *
+ * ── Marcos Befund vom 20.10. ────────────────────────────────────────────────
+ *
+ *   „Wenn ich bei den Teilen auf Tabelle umschalte, werden nur die Teile aus
+ *    den Sets als Tabelle angezeigt. Die manuell erfassten sind immer
+ *    Kacheln."
+ *
+ * Das stimmte, und zwar doppelt: renderManualParts() zeichnete unbedingt
+ * `man-grid`, und der Umschalter hing allein an loadPartsData() — derselbe
+ * halbe Anschluss wie beim Suchtext (siehe teileFilterGeaendert in
+ * public/js/03-parts.js und test/manuelle-listen-filter-db.test.js). Die
+ * Filterleiste MIT dem Umschalter steht ueber beiden Listen; was dort
+ * eingestellt wird, gilt fuer beide.
+ *
+ * ── EIN Bauer fuer Teile und Figuren ────────────────────────────────────────
+ *
+ * Dieselbe Luecke bestand in beiden Reitern (figs-view rief renderFigsAll(),
+ * also nur die Figuren aus Sets). Zwei Fassungen waeren zwei Stellen, an denen
+ * die naechste Spalte vergisst, dass es die andere Liste gibt — genau die
+ * Begruendung, die schon an manuellQuery() oben steht.
+ *
+ * ── Was die Tabelle zeigt ───────────────────────────────────────────────────
+ *
+ * Alles, was auch auf der Kachel steht, und den Lagerort dazu: Beide
+ * Abfragen liefern ihn langst (`lo.name AS storage`), die Kachel hat nur
+ * keinen Platz dafuer. Eine Tabelle ist der Ort, an dem eine solche Spalte
+ * etwas nutzt — Marco hat den Lagerort am selben Tag zum Thema gemacht.
+ *
+ * Die Handlungen sind dieselben wie auf der Kachel — Zeile klicken oeffnet das
+ * Detail, der Papierkorb loescht. Eine Ansicht darf nicht koennen, was die
+ * andere nicht kann; der Satz steht so schon an partsTableRow()
+ * (public/js/03-parts.js), und dort steht auch, dass in diesem Projekt genau
+ * daran mehrfach etwas auseinandergelaufen ist.
+ *
+ * @param {Array}  posten  Die Einträge aus dem jeweiligen Cache.
+ * @param {'part'|'fig'} art
+ */
+function manuelleTabelle(posten, art) {
+  const istTeil = art === 'part';
+  const kopf = [
+    t('col.image_th'),
+    istTeil ? t('col.part_nr') : t('col.number'),
+    t('col.name'),
+    ...(istTeil ? [t('col.color')] : []),
+    t('detail.qty'),
+    t('common.condition'),
+    t('detail.purchase_price'),
+    t('detail.storage'),
+    '',
+  ];
+  const zeile = (p) => {
+    const nummer = istTeil ? p.part_number : p.fig_number;
+    const blNummer = (istTeil ? p.bl_part_number : p.bl_fig_number) || nummer;
+    const name = istTeil ? p.part_name : p.fig_name;
+    const imgSrc = imgUrl(thumbUrl(p.image_local || p.image_url) || p.image_local || p.image_url || '', true);
+    const preis = p.avg_purchase_price ?? p.unit_price ?? p.purchase_price;
+    const loeschKlick = istTeil ? 'deleteManualPartStop' : 'deleteManualFigStop';
+    const loeschTitel = tRaw(istTeil ? 'parts.delete.title' : 'figs.delete');
+    // Beim Teil traegt der Papierkorb (Nummer, Farbe, Besitzer), bei der Figur
+    // (Nummer, Besitzer) — dieselbe Reihenfolge wie auf den Kacheln.
+    const loeschArgs = istTeil
+      ? `data-arg="${esc(nummer)}" data-arg2="${p.color_id || 0}" data-arg3="${p.user_id || ''}"`
+      : `data-arg="${esc(nummer)}" data-arg2="${p.user_id || ''}"`;
+    return `<tr style="cursor:pointer" data-click="openManDetail" data-arg="${art}" data-arg2="${esc(nummer)}" data-arg3="${istTeil ? (p.color_id || 0) : 0}">
+      <td>${imgSrc
+        ? `<img src="${escUrl(imgSrc)}" loading="lazy" decoding="async" data-onerror="clear" style="width:36px;height:36px;object-fit:contain;background:var(--s50);border-radius:5px" />`
+        : ''}</td>
+      <td><span style="font-family:var(--mono);font-size:.77rem;color:var(--b600)" title="${esc(nummer)}">${esc(blNummer)}</span></td>
+      <td style="max-width:200px">${esc(name) || '—'}</td>
+      ${istTeil ? `<td><div style="display:flex;align-items:center;gap:5px">${
+        p.color_hex ? `<div class="color-dot" style="background:${escHex(p.color_hex, 'var(--s300)')}"></div>` : ''
+      }${esc(colorName(p.color_name))}</div></td>` : ''}
+      <td><span style="font-family:var(--mono);font-weight:600;color:var(--b700)">${p.quantity || 0}</span></td>
+      <td>${condBadges(p)}</td>
+      <td style="font-weight:600;color:var(--b600)">${preis != null ? fmtN(preis, CURRENCY) : '—'}</td>
+      <td style="font-size:.78rem;color:var(--mut)">${esc(p.storage || '')}</td>
+      <td><button class="delbtn" data-click="${loeschKlick}" ${loeschArgs} title="${esc(loeschTitel)}" aria-label="${esc(loeschTitel)}">${TRASH_ICON_SVG}</button>${ownerBadges(p)}</td>
+    </tr>`;
+  };
+  return `<div class="tw"><table class="dt" style="font-size:.8rem"><thead><tr>${
+    kopf.map(h => `<th>${h}</th>`).join('')
+  }</tr></thead><tbody>${posten.map(zeile).join('')}</tbody></table></div>`;
+}
+
+/** Steht der Umschalter des Reiters auf „Tabelle"? */
+function tabellenAnsicht(id) {
+  return G(id)?.value === 'table';
+}
+
 // ── MANUAL PARTS ─────────────────────────────────────────────────────────────
 export let manualPartsCache = [];
 
@@ -523,7 +620,7 @@ export async function loadManualParts() {
   }
 }
 
-function renderManualParts() {
+export function renderManualParts() {
   const el = G('manual-parts-list');
   if (!manualPartsCache.length) {
     el.innerHTML = `<div class="empty" style="padding:3rem;text-align:center">
@@ -531,6 +628,12 @@ function renderManualParts() {
       <div style="font-weight:600">${t('parts.none_manual')}</div>
       <div style="color:var(--mut);font-size:.85rem">${t('parts.none_manual_hint')}</div>
     </div>`;
+    return;
+  }
+  if (tabellenAnsicht('parts-view')) {
+    el.innerHTML = manuelleTabelle(manualPartsCache, 'part');
+    if (typeof window.__bimLabelTables === 'function')
+      window.__bimLabelTables(el.querySelector('table'));
     return;
   }
   el.innerHTML = `<div class="man-grid">

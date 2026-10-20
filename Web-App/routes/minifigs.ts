@@ -54,8 +54,8 @@ import { csvGemeinsameFelder, csvImportAntwort, csvZeilenAusAnfrage, toCsv } fro
 import { angemeldeteNutzerId } from '../utils/auth';
 import { csvEmpfang } from '../utils/dateiEmpfang';
 import { sendeFehler } from '../utils/fehlerTexte';
-import { normalisiereLagerort, setzeLagerort } from '../utils/lagerort';
-import { merkeFigur } from '../utils/katalogPflege';
+import { setzeLagerort, ortFuerNeuerfassung } from '../utils/lagerort';
+import { merkeFigur, katalogFigur } from '../utils/katalogPflege';
 
 import { merkeBlNummer, blJoin, blNummerSql } from '../utils/blZuordnung';
 
@@ -196,7 +196,8 @@ async function resolveManualFigPurchase(uid: number, { figNumber, blFigNumber = 
  * Spalte gab es nicht (Migration 0024).
  */
 async function addManualFig(uid: number, body: Record<string, unknown>) {
-  const ort = normalisiereLagerort(body?.storage);
+  // Siehe addManualPart: ohne mitgegebenen Ort gilt Marcos Stern.
+  const ort = await ortFuerNeuerfassung(uid, body?.storage);
   const ergebnis = await addManualFigIntern(uid, body);
   if (ort && ergebnis?.fig_number) {
     await setzeLagerort('fig', [uid], [String(ergebnis.fig_number)], ort);
@@ -219,8 +220,29 @@ async function addManualFigIntern(uid: number, body: any) {
   let image_url = V.optionalImageUrl(body?.image_url);
 
   if (!fig_name) {
-    const info = await getMinifigInfo(num);
-    if (info) { fig_name = info.fig_name; image_url = info.image_url; }
+    // ── Erst der EIGENE Katalog, dann der fremde Dienst ─────────────────────
+    //
+    // Dieselbe Luecke wie bei den Teilen, und aus demselben Befund (Marco,
+    // 20.10.: „Wird jedes Teil bei Rebrickable abgefragt auch wenn es lokal
+    // bereits vorhanden ist?"). Hier stand nur getMinifigInfo() — ein Abruf je
+    // Figur, obwohl `minifigs_catalog` Name und Bild fuehrt. Die Begruendung
+    // samt Messung steht bei katalogTeil() in utils/katalogPflege.ts.
+    const lokal = await katalogFigur(num);
+    if (lokal) {
+      fig_name  = fig_name  || lokal.name;
+      image_url = image_url || lokal.bild;
+    }
+    // `hatBild` statt `image_url`: Eine heruntergeladene Datei (`image_local`)
+    // ist ein Pfad und darf nicht durch V.optionalImageUrl — sie beweist aber,
+    // dass der Abruf nichts mehr zu holen hat.
+    if (!fig_name || !(image_url || lokal?.hatBild)) {
+      const info = await getMinifigInfo(num);
+      // `||`, nicht Zuweisung: Was der Katalog schon wusste, bleibt stehen.
+      if (info) {
+        fig_name  = fig_name  || info.fig_name;
+        image_url = image_url || info.image_url;
+      }
+    }
   }
 
   const existing = await db.get(
