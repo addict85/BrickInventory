@@ -335,6 +335,37 @@ export function fullUrl(src) {
  * Log-Fensters gebraucht: Token, Basis-URL und die Übersetzungen als JSON.
  */
 /**
+ * Symbol für die BrickLink-Wanted-Listen-Knöpfe: ein XML-Dokument.
+ *
+ * ── Warum dieses Bild (Marcos Wunsch vom 20.10.) ────────────────────────────
+ *
+ * „Kannst du das Icon der Bricklink xml-Buttons ersetzen durch ein sprechendes
+ *  Icon für Bricklink oder xml?"
+ *
+ * Dort stand ein Ziegelstein (🧱) — dasselbe Zeichen, das in diesem Baum für
+ * Teile, Sets und die Marke steht; es sagte über diesen Knopf nichts.
+ *
+ * Gezeichnet ist jetzt, was der Knopf TUT: eine Datei mit Eselsohr und den
+ * spitzen Klammern `<` `>` darin. Das ist das übliche Bild für eine
+ * XML-Datei und braucht keine Erklärung.
+ *
+ * BEWUSST NICHT das BrickLink-Logo: Es ist eine fremde Marke. Dass die Liste
+ * von dort kommt, sagt die Beschriftung daneben („BL-XML") und der Titel des
+ * Knopfes — ein nachgezeichnetes Logo wäre eine Anmassung, die dieser Baum
+ * nirgends sonst begeht.
+ *
+ * Form und Bauart wie beim Papierkorb darunter: 24er-Raster, `currentColor`,
+ * `aria-hidden` (die Beschriftung steht daneben, das Symbol ist Zierde).
+ */
+export const XML_ICON_SVG = '<svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" '
+  + 'style="width:1.05em;height:1.05em;display:inline-block;vertical-align:-.18em" '
+  + 'fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" '
+  + 'stroke-linejoin="round" aria-hidden="true">'
+  + '<path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/>'
+  + '<path d="M14 3v5h5"/>'
+  + '<path d="M10 12.5 8 14.5l2 2"/><path d="M14 12.5l2 2-2 2"/></svg>';
+
+/**
  * Papierkorb-Symbol für Löschknöpfe auf Kacheln und in Listenzeilen.
  *
  * `currentColor` statt fester Farbe: Der Knopf bestimmt die Farbe über sein

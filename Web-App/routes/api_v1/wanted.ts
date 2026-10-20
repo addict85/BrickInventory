@@ -6,7 +6,7 @@
  * übersetzen.
  */
 import express from 'express';
-import { handleRouteError, pfadParam } from '../../utils/httpError';
+import { fehlertext, handleRouteError, pfadParam } from '../../utils/httpError';
 import { sendeFehler } from '../../utils/fehlerTexte';
 import { requireToken } from './middleware';
 import { scopeIds, parseScopeMode, resolveWriteTarget } from '../../utils/household';
@@ -342,6 +342,46 @@ router.post('/wanted-list/import/xml', requireToken, csvEmpfang.single('file'),
         korrekturen = geparst as Korrektur[];
       }
 
+      // ── Der Fortschritt als STROM (Marcos Wunsch vom 20.10.) ────────────
+      //
+      // „kannst du beim Import auch den Fortschritt mit einem
+      //  Fortschrittsbalken anzeigen?"
+      //
+      // Ohne `strom=1` verhält sich die Route wie bisher: eine Anfrage, eine
+      // JSON-Antwort. Das ist der Weg der Android-App und aller Prüfungen, und
+      // er bleibt unangetastet.
+      //
+      // Mit `strom=1` kommen Zeile für Zeile JSON-Objekte (NDJSON): erst die
+      // Fortschrittsmeldungen, zuletzt der Bericht. Warum so und nicht als
+      // SSE-Auftrag wie beim Set-Import:
+      //
+      //   • EventSource kann kein POST, und die Datei muss mit. Ein Auftrag
+      //     mit eigener Kennung hiesse, die fremde Datei auf dem Server zu
+      //     halten, bis jemand den Strom abholt — genau das lehnt der Kopf von
+      //     public/js/18-wanted-xml.js ab.
+      //   • Eine Antwort, zwei Phasen: Der zweistufige Ablauf (Vorschau,
+      //     dann Schreiben) bleibt, wie er ist.
+      //
+      // res.flush() nach jeder Zeile ist tragend: server.ts hängt compression
+      // vor ALLE Antworten (nur text/event-stream ist ausgenommen). Ohne das
+      // Durchdrücken sammelt gzip die Zeilen und schickt sie am Ende zusammen
+      // — der Balken spränge von 0 auf 100, und zwar genau dann, wenn er nicht
+      // mehr gebraucht wird.
+      const strom = String(req.query.strom ?? '') === '1';
+      if (strom) {
+        res.setHeader('Content-Type', 'application/x-ndjson; charset=utf-8');
+        res.setHeader('Cache-Control', 'no-store');
+        // Für Proxys, die ihrerseits puffern (nginx & Verwandte).
+        res.setHeader('X-Accel-Buffering', 'no');
+        res.flushHeaders?.();
+      }
+      /** Eine Zeile in den Strom. Ohne Strom: nichts. */
+      const schreibeZeile = (o: unknown) => {
+        if (!strom || res.writableEnded) return;
+        res.write(JSON.stringify(o) + '\n');
+        (res as unknown as { flush?: () => void }).flush?.();
+      };
+
       const bericht = await importiereWantedListe(req.apiUser.user_id, xml, {
         // Geschrieben wird nur, wenn es ausdrücklich dasteht.
         vorschau: String(req.query.schreiben ?? '') !== '1',
@@ -350,6 +390,9 @@ router.post('/wanted-list/import/xml', requireToken, csvEmpfang.single('file'),
         // Eine von Hand eingetragene Nummer wird gemerkt — Begründung an der
         // Aufrufstelle in utils/wantedListe.ts.
         merkeNummer: (art, rbId, blId) => merkeBlNummer(art, rbId, blId),
+        // Nur wenn jemand zusieht: Ohne Strom ist der Rückruf gar nicht
+        // gesetzt, und der Kern spart sich das Zusammenbauen der Meldungen.
+        ...(strom ? { fortschritt: (stand) => schreibeZeile({ fortschritt: stand }) } : {}),
         anleger: {
           teil:  (u, body) => addManualPart(u, body),
           figur: (u, body) => addManualFig(u, body),
@@ -359,8 +402,24 @@ router.post('/wanted-list/import/xml', requireToken, csvEmpfang.single('file'),
           set:   (u, sn, menge, zustand) => addSet(sn, menge, u, null, null, zustand),
         },
       });
+      if (strom) {
+        // Die LETZTE Zeile ist der Bericht — dieselbe Nutzlast wie ohne Strom,
+        // damit beide Wege dasselbe liefern und der Client nur eine Form kennt.
+        schreibeZeile({ success: true, ...bericht });
+        return res.end();
+      }
       res.json({ success: true, ...bericht });
-    } catch (e) { handleRouteError(res, e, undefined, req); }
+    } catch (e) {
+      // Ist der Strom schon offen, sind die Kopfzeilen raus: Ein Statuscode
+      // geht nicht mehr. Dann muss der Fehler als letzte ZEILE kommen, sonst
+      // endet die Leitung stumm und der Client wartet auf einen Bericht, der
+      // nie kommt.
+      if (res.headersSent && !res.writableEnded) {
+        res.write(JSON.stringify({ success: false, error: fehlertext(e) }) + '\n');
+        return res.end();
+      }
+      handleRouteError(res, e, undefined, req);
+    }
   });
 
 export default router;

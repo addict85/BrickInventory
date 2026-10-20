@@ -320,13 +320,47 @@ export async function loeseLokalAuf(posten: WantedPosten[]): Promise<Aufloesung[
  * external_ids nur bei Parts"). Eine Abfrage dafür wäre ein Abruf, der nichts
  * finden KANN.
  */
+/**
+ * Wie weit ist der Import? — für den Balken in der Oberfläche.
+ *
+ * ── Marcos Wunsch vom 20.10. ────────────────────────────────────────────────
+ *
+ * „kannst du beim Import auch den Fortschritt mit einem Fortschrittsbalken
+ *  anzeigen?"
+ *
+ * Zwei Phasen, weil zwei verschiedene Dinge dauern — und die eine dauert
+ * ungleich länger:
+ *
+ *   rebrickable  Die offenen Nummern bei Rebrickable nachfragen. Jeder Abruf
+ *                geht durch die Hintergrunddrossel: EINE Anfrage je 1,5
+ *                Sekunden (utils/rateLimiter.ts). Fünfzig offene Posten sind
+ *                also über eine Minute, in der ohne Balken nichts passiert.
+ *   schreiben    Die Posten in den Bestand legen. Je Posten ein paar
+ *                Abfragen, dazu beim ersten Mal die Katalogpflege.
+ *
+ * `gesamt` ist die Zahl, die für DIESE Phase gilt — bei `rebrickable` die der
+ * offenen Teile, bei `schreiben` die aller Posten. Ein gemeinsamer Nenner über
+ * beide Phasen wäre eine Zahl, die niemand nachrechnen kann; zwei ehrliche
+ * Abschnitte sind besser als ein geschätzter Balken.
+ */
+export type WantedFortschritt = {
+  phase: 'rebrickable' | 'schreiben';
+  fertig: number;
+  gesamt: number;
+};
+
 export async function loeseUeberRebrickableAuf(
   auf: Aufloesung[], grenze = 250,
+  fortschritt?: (stand: WantedFortschritt) => void,
 ): Promise<{ auf: Aufloesung[]; gefragt: number; gefunden: number; filterWirkungslos: boolean }> {
   const { blTeilZuRb, blFilterWirkungslos } = require('../clients/rebrickable');
   let gefragt = 0, gefunden = 0;
 
   const ergebnis = [...auf];
+  // Wie viele Abrufe es HÖCHSTENS werden. Genau die Bedingungen der Schleife
+  // darunter, sonst zählt der Balken gegen eine andere Zahl als er füllt.
+  const gesamt = Math.min(grenze,
+    ergebnis.filter(a => a.rbId === null && a.posten.art === 'part').length);
   for (let i = 0; i < ergebnis.length; i++) {
     const a = ergebnis[i]!;
     if (a.rbId !== null) continue;
@@ -343,6 +377,9 @@ export async function loeseUeberRebrickableAuf(
       gefunden++;
       ergebnis[i] = { ...a, rbId, sicherheit: 'rebrickable' };
     }
+    // NACH dem Abruf melden, nicht davor: „37 von 50" soll heissen, dass 37
+    // erledigt sind — nicht, dass der 37. gerade anfängt.
+    fortschritt?.({ phase: 'rebrickable', fertig: gefragt, gesamt });
   }
   return { auf: ergebnis, gefragt, gefunden, filterWirkungslos: blFilterWirkungslos() };
 }
@@ -726,6 +763,16 @@ export async function importiereWantedListe(
      * speichert, ist keine.
      */
     merkeNummer?: (art: WantedArt, rbId: string, blId: string) => Promise<unknown>;
+    /**
+     * Wie weit es ist — für den Balken in der Oberfläche (siehe
+     * WantedFortschritt). Wird SYNCHRON gerufen und darf nichts werfen; der
+     * Aufrufer schreibt damit eine Zeile in seinen Strom.
+     *
+     * Hereingegeben und nicht hier geschrieben, aus demselben Grund wie beim
+     * Anleger: Diese Funktion kennt keine HTTP-Antwort, und ein Test kann die
+     * Meldungen einsammeln, ohne eine Leitung dafür zu brauchen.
+     */
+    fortschritt?: (stand: WantedFortschritt) => void;
   } = {},
 ): Promise<WantedBericht> {
   const gelesen = leseWantedListe(xml);
@@ -733,7 +780,7 @@ export async function importiereWantedListe(
 
   let rebrickable: WantedBericht['rebrickable'];
   if (opt.ueberRebrickable) {
-    const r = await loeseUeberRebrickableAuf(auf);
+    const r = await loeseUeberRebrickableAuf(auf, 250, opt.fortschritt);
     auf = r.auf;
     rebrickable = { gefragt: r.gefragt, gefunden: r.gefunden,
                     filterWirkungslos: r.filterWirkungslos };
@@ -772,6 +819,9 @@ export async function importiereWantedListe(
   const beschreibung = opt.vorschau ? await beschreibePosten(auf)
                                     : new Map<number, { name: string | null; bild: string | null; geraten: boolean }>();
   let lfd = -1;
+  /** Ein Posten ist durch. `lfd` zählt ab 0, der Balken ab 1. */
+  const melde = () => opt.fortschritt?.(
+    { phase: 'schreiben', fertig: lfd + 1, gesamt: auf.length });
 
   for (const a of auf) {
     // ── Eine Farbe, die sich nicht abbilden laesst, wird NICHT erfunden ────
@@ -837,6 +887,10 @@ export async function importiereWantedListe(
       // wird nichts, und `vorschau: true` im Bericht sagt das.
       if (offen) zeile.ausgang = 'offen';
       bericht.posten.push(zeile);
+      // Auch der übersprungene Posten ist ERLEDIGT. Zählte der Balken nur die
+      // geschriebenen, bliebe er bei einer Liste mit vielen offenen Posten vor
+      // dem Ende stehen — und sähe aus wie ein hängender Import.
+      melde();
       continue;
     }
 
@@ -901,6 +955,10 @@ export async function importiereWantedListe(
       zeile.grund = e instanceof Error ? e.message : String(e);
     }
     bericht.posten.push(zeile);
+    // Nach dem Anlegen UND nach einem Fehlschlag: Der Posten ist in beiden
+    // Fällen abgearbeitet. Stünde die Meldung im try, bliebe der Balken bei
+    // einer Liste mit Fehlern stehen.
+    melde();
   }
 
   return bericht;

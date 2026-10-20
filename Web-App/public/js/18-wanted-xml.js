@@ -18,7 +18,7 @@
 // der Sache, um die es geht.
 import { registerActions } from './00-registry.js';
 import { t, tRaw, colorName } from '../i18n.js';
-import { G, api, esc, escHex, escUrl, fullUrl, hexZiffern, imgUrl, toast } from './01-core.js';
+import { G, XML_ICON_SVG, api, esc, escHex, escUrl, fullUrl, hexZiffern, imgUrl, toast } from './01-core.js';
 import { loadBrickColors, loadManualParts, loadManualFigsTable } from './06-minifigs.js';
 import { loadGallery } from './02-gallery.js';
 
@@ -38,6 +38,51 @@ let _art = 'part';
 let _korrekturen = new Map();
 /** Der letzte Bericht, für die Tabelle. */
 let _bericht = null;
+/**
+ * Läuft gerade eine Anfrage an den Server?
+ *
+ * ── Marcos Vorgabe vom 20.10. ───────────────────────────────────────────────
+ *
+ * „Wenn der Import der Wanted-Liste läuft, soll der Button nicht nochmals
+ *  geklickt werden können."
+ *
+ * Das ist nicht nur Kosmetik. Der zweite Schritt SCHREIBT, und er schreibt
+ * über recordAcquisitionForDay() — eine zweite Anfrage mit derselben Datei
+ * legt für denselben Tag keine zweite Erfassung an, sondern ADDIERT auf die
+ * bestehende (idx_part_acq_tag, utils/acquisitions.ts). Zwei Klicks auf
+ * „Jetzt in den Bestand übernehmen" hätten also die doppelte Stückzahl
+ * ergeben, und zwar lautlos: Beide Antworten melden Erfolg.
+ *
+ * Der Riegel liegt an ZWEI Stellen, weil ein Klick auf zwei Wegen ankommen
+ * kann: `disabled` am Knopf (ein deaktivierter Knopf löst gar kein
+ * click-Ereignis aus) und diese Abfrage in lies() selbst — gegen die
+ * Tastatur-Eingabetaste, gegen den Dateiknopf daneben und gegen jeden
+ * späteren Aufrufer, der den Knopf nicht kennt.
+ */
+let _laeuft = false;
+
+/**
+ * Welche Knöpfe sind jetzt bedienbar? EINE Stelle für die Regel.
+ *
+ * Vorher stand `schreibKnopf.disabled = !d.vorschau` mitten im Zeichnen des
+ * Berichts. Käme der Riegel für „läuft gerade" als zweite Zuweisung daneben,
+ * gäbe es zwei Stellen, die denselben Knopf schalten — und die eine würde die
+ * andere irgendwann überschreiben (genau das passiert, wenn das Freigeben nach
+ * dem Lauf den Knopf wieder einschaltet, den der Bericht gerade ausgeschaltet
+ * hat).
+ *
+ * Deshalb: Der Zustand wird aus `_laeuft`, `_datei` und `_bericht` BERECHNET,
+ * und jeder, der einen davon ändert, ruft diese Funktion.
+ */
+function knoepfeStand() {
+  const schreiben = G('wanted-xml-schreiben');
+  const neu = G('wanted-xml-neu');
+  // Schreiben nur, wenn eine Vorschau dasteht: Nach dem Schreiben ist
+  // `vorschau` false, und ein zweiter Klick wäre ein zweiter Import.
+  if (schreiben) schreiben.disabled = _laeuft || !_bericht?.vorschau;
+  // Neu einlesen braucht die Datei — nach dem Schreiben ist sie weg.
+  if (neu) neu.disabled = _laeuft || !_datei;
+}
 
 // ── IMPORT ─────────────────────────────────────────────────────────────────
 
@@ -45,6 +90,11 @@ let _bericht = null;
 async function wantedXmlGewaehlt() {
   const el = this instanceof HTMLElement ? this : null;
   if (!el?.files?.[0]) return;
+  // Während ein Import läuft, keine neue Datei annehmen: Sie würde _datei
+  // mitten im laufenden Schreiben austauschen. Der Knopf daneben lässt sich
+  // sperren, dieser hier ist ein <label> um ein verstecktes Feld — er wird
+  // nicht grau, also wird die Eingabe hier abgewiesen.
+  if (_laeuft) { toast(tRaw('import.running'), 'info'); el.value = ''; return; }
   _datei = el.files[0];
   _art = el.dataset.art || 'part';
   // Das Feld leeren: Sonst löst die GLEICHE Datei beim zweiten Mal kein
@@ -58,6 +108,9 @@ async function wantedXmlGewaehlt() {
 function wantedXmlSchliessen() {
   G('wanted-xml-modal').classList.remove('open');
   _datei = null; _bericht = null; _korrekturen = new Map();
+  // Ohne Datei und ohne Bericht sind beide Knöpfe tot — beim nächsten Öffnen
+  // schaltet die Vorschau sie wieder frei.
+  knoepfeStand();
 }
 
 /** Nochmal lesen — z. B. nachdem „über Rebrickable nachfragen" gesetzt wurde. */
@@ -74,7 +127,102 @@ async function wantedXmlSchreiben() { await lies(true); }
  * serverseitig an importiereWantedListe().
  */
 async function lies(schreiben) {
-  if (!_datei) return;
+  if (!_datei || _laeuft) return;
+  _laeuft = true;
+  knoepfeStand();
+  try {
+    await liesWirklich(schreiben);
+  } finally {
+    // IMMER freigeben, auch wenn etwas geworfen hat: Ein Riegel, der nach
+    // einem Fehler liegen bleibt, macht den Dialog unbrauchbar, bis man ihn
+    // schliesst — und sieht aus wie ein hängender Import.
+    _laeuft = false;
+    knoepfeStand();
+  }
+}
+
+/** Der eigentliche Lauf. Getrennt, damit der Riegel oben ein try/finally hat. */
+/**
+ * Den Fortschrittsbalken setzen — oder verstecken.
+ *
+ * ── Marcos Wunsch vom 20.10. ────────────────────────────────────────────────
+ *
+ * „kannst du beim Import auch den Fortschritt mit einem Fortschrittsbalken
+ *  anzeigen?"
+ *
+ * Der Balken sagt ZWEI Dinge, weil zwei verschiedene Dinge dauern: das
+ * Nachfragen bei Rebrickable (eine Anfrage je 1,5 Sekunden) und das Schreiben
+ * der Posten. Welche Phase läuft, steht als Satz darunter — ein Balken ohne
+ * Beschriftung liesse offen, worauf man wartet.
+ *
+ * @param {{phase:string,fertig:number,gesamt:number}|null} stand
+ *   null blendet ihn aus (vor dem ersten Lauf, nach dem letzten).
+ */
+function zeichneFortschritt(stand) {
+  const box = G('wanted-xml-fortschritt');
+  if (!box) return;
+  if (!stand || !stand.gesamt) { box.style.display = 'none'; return; }
+  const anteil = Math.max(0, Math.min(100, Math.round(stand.fertig / stand.gesamt * 100)));
+  box.style.display = '';
+  const balken = G('wanted-xml-balken');
+  if (balken) balken.style.width = anteil + '%';
+  // Dieselbe Zahl auch für Screenreader: Ein Balken, der nur breiter wird,
+  // ist für sie gar keine Auskunft.
+  G('wanted-xml-balken-wrap')?.setAttribute('aria-valuenow', String(anteil));
+  const txt = G('wanted-xml-fortschritt-text');
+  if (txt) {
+    // tRaw und nicht t: Das Ziel ist textContent, und t() maskiert für HTML —
+    // die Maskierung stünde als Zeichenfolge da (test/frontend-escaping.test.js).
+    txt.textContent = tRaw(
+      stand.phase === 'rebrickable' ? 'wanted.progress_rb' : 'wanted.progress_write',
+      { done: stand.fertig, total: stand.gesamt });
+  }
+}
+
+/**
+ * Die Antwort ZEILENWEISE lesen (NDJSON) und dabei den Balken füllen.
+ *
+ * Der Server schickt mit `strom=1` erst Fortschrittszeilen und zuletzt den
+ * Bericht — dieselbe Nutzlast wie ohne Strom (routes/api_v1/wanted.ts).
+ *
+ * ── Warum hier ein Rückfall steht ───────────────────────────────────────────
+ *
+ * `response.body` ist in jedem Browser da, den diese App bedient, aber nicht
+ * in jeder Laufzeit, die diesen Code ausführt — die Prüfungen laden das Bündel
+ * in eine Sandbox, und ein `fetch`-Ersatz dort liefert nur `json()`. Fehlt der
+ * Strom, wird die letzte Zeile am Ende in einem Stück gelesen; der Balken
+ * bleibt dann aus, der Import läuft trotzdem.
+ *
+ * @returns {Promise<object>} der Bericht (die letzte Zeile)
+ */
+async function liesStrom(r) {
+  if (!r.body?.getReader) return await r.json().catch(() => ({}));
+  const leser = r.body.getReader();
+  const entpacker = new TextDecoder();
+  let rest = '';
+  let letzte = null;
+  for (;;) {
+    const { value, done } = await leser.read();
+    if (done) break;
+    rest += entpacker.decode(value, { stream: true });
+    // Die letzte Zeile eines Stücks ist oft angeschnitten — sie bleibt in
+    // `rest` liegen, bis ihr Zeilenumbruch kommt. Ohne das zerbricht ein
+    // Bericht, der über zwei TCP-Pakete geht, mitten im JSON.
+    const zeilen = rest.split('\n');
+    rest = zeilen.pop() ?? '';
+    for (const z of zeilen) {
+      if (!z.trim()) continue;
+      let o;
+      try { o = JSON.parse(z); } catch { continue; }
+      if (o.fortschritt) { zeichneFortschritt(o.fortschritt); continue; }
+      letzte = o;
+    }
+  }
+  if (rest.trim()) { try { letzte = JSON.parse(rest); } catch { /* unvollständig */ } }
+  return letzte ?? {};
+}
+
+async function liesWirklich(schreiben) {
   const tab = G('wanted-xml-tabelle');
   const ber = G('wanted-xml-bericht');
   if (ber) ber.textContent = tRaw('import.running');
@@ -96,12 +244,17 @@ async function lies(schreiben) {
   const p = new URLSearchParams();
   if (schreiben) p.set('schreiben', '1');
   if (G('wanted-rb')?.checked) p.set('rebrickable', '1');
+  // Der Fortschritt kostet nichts, wenn niemand hinsieht — aber hier sieht
+  // jemand hin, also immer.
+  p.set('strom', '1');
 
+  zeichneFortschritt(null);
   let d;
   try {
     const r = await fetch(`/api/v1/wanted-list/import/xml?${p}`, { method: 'POST', body: fd });
-    d = await r.json().catch(() => ({}));
+    d = await liesStrom(r);
   } catch { d = {}; }
+  zeichneFortschritt(null);
   if (!d?.success) {
     if (ber) ber.textContent = '';
     toast(d?.error || tRaw('settings.error'), 'error');
@@ -135,8 +288,8 @@ function zeichneBericht(d) {
   const stufe = (k, text) => (d.stufen?.[k]
     ? `<div>• ${esc(text)}: <strong>${d.stufen[k]}</strong></div>` : '');
   G('wanted-xml-sub').textContent = _datei?.name || '';
-  const schreibKnopf = G('wanted-xml-schreiben');
-  if (schreibKnopf) schreibKnopf.disabled = !d.vorschau;
+  // Der Knopfzustand kommt aus knoepfeStand() — siehe die Begründung dort.
+  knoepfeStand();
   el.innerHTML = `
     <div style="border:1px solid var(--bdr);border-radius:8px;padding:.6rem">
       <div><strong>${d.gelesen}</strong> ${esc(tRaw('settings.wanted_read'))}${
@@ -177,7 +330,22 @@ function zeile(p, i) {
     : '';
   // Der Ausgang mit WORTEN. „offen" ist die Aussage, auf die es ankommt — sie
   // darf nicht nur eine Farbe sein.
-  const ausgang = esc(tRaw(`wanted.out_${p.ausgang}`) || p.ausgang);
+  //
+  // ── Vorschau und Import sagen dasselbe Wort verschieden ──────────────────
+  //
+  // `angelegt` heisst in der Vorschau „wird angelegt" und NACH dem Import
+  // „angelegt". Hier stand nur die erste Fassung, und sie blieb auch dann
+  // stehen, wenn geschrieben war: GEMESSEN am laufenden Server stand nach
+  // einem Import von 60 Posten in jeder Zeile „will be added", während die
+  // Zusammenfassung darüber „60 added" meldete. Zwei Sätze über dieselbe
+  // Tatsache, und einer davon war falsch.
+  //
+  // Dieselbe Unterscheidung, die der Kern schon trifft (`vorschau` im
+  // Bericht); nur dort, wo das Wort eine Zukunft behauptet.
+  const kuenftig = !!_bericht?.vorschau;
+  const ausgang = esc(tRaw(
+    p.ausgang === 'angelegt' && !kuenftig ? 'wanted.out_angelegt_fertig'
+                                          : `wanted.out_${p.ausgang}`) || p.ausgang);
   // Der Grund in der Sprache des Betrachters. `grund` vom Server ist ein
   // deutscher Satz — richtig fürs Protokoll, falsch in einer englischen
   // Tabelle (genau so am laufenden Server gesehen). Fehlt die Kennung (beim
@@ -285,6 +453,17 @@ function setzeKorrektur(i, k) {
 
 G('wanted-xml-modal')?.addEventListener('click',
   e => e.target.id === 'wanted-xml-modal' && wantedXmlSchliessen());
+
+// ── Das Symbol an die drei Knöpfe hängen ───────────────────────────────────
+//
+// EINE Fassung für alle drei Reiter. Die Alternative wäre, das SVG dreimal in
+// index.html zu schreiben — dieselbe Zeichnung an drei Stellen, von denen bei
+// der nächsten Änderung zwei nachgezogen werden.
+//
+// Ein eigenes <span> ohne data-i18n: Die Übersetzung setzt textContent (siehe
+// public/i18n.js) und würde ein Symbol im selben Element wieder herauswerfen,
+// sobald die Sprache wechselt.
+for (const el of document.querySelectorAll('[data-wanted-icon]')) el.innerHTML = XML_ICON_SVG;
 
 registerActions({
   wantedKorrekturFarbe,

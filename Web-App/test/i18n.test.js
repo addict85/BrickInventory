@@ -83,6 +83,10 @@ test('kein Text steht in beiden Sprachen unübersetzt', () => {
     // USA heisst auf Deutsch USA. Die übrigen sieben Ausgabeländer
     // (country_de_ch … country_en_gb) unterscheiden sich, dieses eine nicht.
     'vouchers.country_en_us',
+    // Die Beschriftung des Knopfes, der eine BrickLink-Wanted-Liste einliest:
+    // ein Eigenname und ein Dateiformat. „BrickLink XML" ist in beiden
+    // Sprachen dasselbe, und eine eingedeutschte Marke wäre falsch.
+    'wanted.pick_short',
   ]);
 
   const { de, en } = loadTranslations();
