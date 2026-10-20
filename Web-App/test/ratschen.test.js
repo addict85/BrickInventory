@@ -101,7 +101,12 @@ test('stille Faenge werden weniger, nie mehr', () => {
   // GEMESSEN am 18.09.2026: 340 Stellen in 97 Dateien.
   // GEMESSEN am 19.09.2026 nach Nachtrag 175: 325. Die Schranke stand auf
   // 340, solange der Zaehler auch Kommentare las.
-  const SCHRANKE = 325;
+  // GEMESSEN am 20.10.2026: 323. Die Ratsche hatte beim Auftragsdatensatz des
+  // Wanted-Imports angeschlagen (327 gegen 325); statt die Schranke zu heben
+  // sind die vier neuen Faenge sprechend gemacht worden — zwei brauchte es gar
+  // nicht (die Meldekette traegt ihr logAndContinue schon), zwei melden jetzt
+  // ueber meldeUndWeiter. Die Schranke zieht nach, wie die Regel es vorsieht.
+  const SCHRANKE = 323;
   const ist = zaehle(STILLE_FAENGE);
   assert.ok(ist <= SCHRANKE,
     `${ist} stille Faenge, erlaubt sind ${SCHRANKE}. Ein neuer \`catch {}\` ` +

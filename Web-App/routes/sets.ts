@@ -63,14 +63,20 @@ import { importPartsForSet } from './parts';
 
 
 
-// ── CSV-Import Fortschritt: In-Process Event-Bus ──────────────────────────────
-// Der Import-Worker läuft im selben Prozess und feuert bei jedem Fortschritt
-// ein Event pro User. Der SSE-Endpoint (/import/csv/stream) hört darauf und
-// schiebt den Stand an verbundene Clients (Webapp + Android), ganz ohne
-// Polling. Der bestehende /status-Endpoint bleibt als Fallback erhalten.
-import EventEmitter from 'events';
-const csvImportBus = new EventEmitter();
-csvImportBus.setMaxListeners(0); // beliebig viele gleichzeitige Streams
+// ── Fortschritt eines Imports: Zustand und Signal ───────────────────────────
+//
+// Der Import-Worker läuft im selben Prozess und meldet bei jedem Fortschritt
+// einen Stand je Konto. Der SSE-Endpunkt (/import/csv/stream) weiter unten
+// hört darauf und schiebt ihn an die verbundenen Clients (Webapp + Android),
+// ganz ohne Polling; der /status-Endpunkt bleibt als Rückfall.
+//
+// Der Datensatz, seine Form nach aussen und der Bus stehen seit dem 20.10. in
+// utils/importAuftrag.ts — DIESELBE Stelle benutzt jetzt auch der
+// Wanted-Listen-Import, damit er in denselben Balken läuft (Marcos Wunsch:
+// „analog den Set-Importen"). Hier bleibt die HTTP-Oberfläche.
+import {
+  csvImportBus, buildJobStatus, emitJobStatus, jobGet, jobSet, jobUpdate,
+} from '../utils/importAuftrag';
 
 /**
  * Offene SSE-Verbindungen je Nutzer, für die Obergrenze weiter unten.
@@ -128,71 +134,10 @@ import { csvEinlesen, entschaerfungRueckgaengig, parseCsvDate, sendCsv, ueberspr
 import { ausTabelle } from '../utils/validate';
 import { mitVersion } from '../utils/setNummer';
 import { csvEmpfang } from '../utils/dateiEmpfang';
-import { sendeFehler, fehlerText, antwortSprache } from '../utils/fehlerTexte';
+import { sendeFehler } from '../utils/fehlerTexte';
 import { mengeSkalar } from '../utils/bestandsmenge';
 
 const requireLoginOrToken = loginOrTokenGuard({ timeoutMs: 3000 });
-
-// Baut das Status-Objekt aus einem Job-Datensatz — gemeinsam genutzt von
-/**
- * Ein Ergebnis je Set im CSV-Import — nur die drei Felder, nach denen hier
- * gezaehlt wird. `isWarning` trennt „hat nicht geklappt" von „ist eine
- * Anmerkung"; ohne die Unterscheidung stuende jede Anmerkung als Fehler da.
- */
-type ImportErgebnis = { success?: boolean; isWarning?: boolean; [k: string]: any };
-
-/** Ein Auftragsdatensatz aus import_jobs, soweit buildJobStatus ihn liest. */
-type ImportAuftrag = {
-  status?: string | null;
-  total?: number | null;
-  done?: number | null;
-  current?: string | null;
-  error?: string | null;
-  results?: ImportErgebnis[] | null;
-} | null | undefined;
-
-// /status (Polling-Fallback) und /stream (SSE).
-function buildJobStatus(job: ImportAuftrag, req?: any) {
-  if (!job || !job.status) {
-    return { success: false, code: 'kein_import_laeuft',
-             error: fehlerText('kein_import_laeuft', antwortSprache(req)) };
-  }
-  const results = Array.isArray(job.results) ? job.results : [];
-  const ok   = results.filter((r: ImportErgebnis)=>r.success).length;
-  const err  = results.filter((r: ImportErgebnis)=>!r.success && !r.isWarning).length;
-  const warn = results.filter((r: ImportErgebnis)=>!r.success &&  r.isWarning).length;
-  return {
-    success: true,
-    status:  job.status,
-    total:   job.total  || 0,
-    done:    job.done   || 0,
-    current: job.current || null,
-    ok, err, warn,
-    results,
-    error:   job.error  || null,
-  };
-}
-
-// Wird vom Import-Worker nach jedem jobUpdate aufgerufen: liest den frischen
-// Stand und feuert ihn an alle SSE-Listener dieses Users.
-async function emitJobStatus(userId: number) {
-  try {
-    const job = await jobGet(userId);
-    // Ohne Request: Diese Meldung geht an den Ereignisbus, nicht an eine
-    // bestimmte Anfrage — die Sprache des Empfaengers ist hier unbekannt. Sie
-    // traegt aber `code`, und der Client kann daraus selbst etwas machen.
-    csvImportBus.emit(`progress:${userId}`, buildJobStatus(job));
-  } catch (_) { /* Fortschritt geht notfalls über den Nachzieh-Timer im Stream */ }
-  // Über Prozessgrenzen hinweg signalisieren.
-  //
-  // csvImportBus ist ein prozesslokaler EventEmitter — im Cluster sieht ihn nur
-  // der Worker, der den Import ausführt. Ein Client, dessen SSE-Verbindung in
-  // einem ANDEREN Worker liegt, bekam davon nichts mit; deshalb gab es einen
-  // 10-Sekunden-Poller auf die Datenbank, dauerhaft, pro offener Verbindung.
-  // LISTEN/NOTIFY erledigt genau das, wofür der Poller da war — und die
-  // Infrastruktur dafür steht bereits (utils/pgNotify.ts).
-  require('../utils/pgNotify').notify('csv_import_progress', String(userId)).catch(() => {});
-}
 
 router.get('/import/csv/status', requireLoginOrToken, async (req, res) => {
   const uid = angemeldeteNutzerId(req);
@@ -470,67 +415,6 @@ router.post('/add-stream', async (req: LoggedInRequest, res) => {
 //
 // Entfernen ist sicher, weil server.ts app.listen() erst im then() von
 // initSchemaOnce() aufruft: Wenn die erste Anfrage ankommt, steht das Schema.
-
-async function jobGet(userId: number) {
-  const row = await db.get('SELECT * FROM csv_import_jobs WHERE user_id = $1', [userId]);
-  if (!row) return null;
-  return { ...row, results: row.results || [] };
-}
-
-/**
- * Spalten, die jobSet()/jobUpdate() schreiben dürfen.
- *
- * Beide Funktionen bauen ihre SET-/VALUES-Liste aus Object.keys(fields) — die
- * Spaltennamen gehen also UNPARAMETRISIERT ins Statement (Bezeichner lassen
- * sich in SQL nicht binden). Heute rufen nur interne Stellen mit fest
- * verdrahteten Objektliteralen auf, es ist also keine Lücke. Aber es ist genau
- * die Sorte Helfer, die irgendwann jemand mit `...req.body` füttert, und dann
- * ist es eine. Die Prüfung kostet nichts und macht den Fall unmöglich statt
- * unwahrscheinlich.
- */
-const JOB_COLUMNS = new Set(['status', 'total', 'done', 'current', 'results', 'error', 'started_at']);
-
-/**
- * @param {Record<string, unknown>} fields
- * @returns {string[]} geprüfte Spaltennamen
- */
-// Der Injektionsschutz dieser Datei: Die Schluessel landen als SPALTENNAMEN
-// im Abfragetext (dort hilft keine Parameterbindung), deshalb die
-// Positivliste. Der Typ sagt, dass beliebige Schluessel hereinkommen
-// duerfen — genau darum wird hier geprueft.
-function assertJobColumns(fields: Record<string, unknown>): string[] {
-  const keys = Object.keys(fields);
-  for (const k of keys) {
-    if (!JOB_COLUMNS.has(k)) throw new Error(`jobSet: unerlaubte Spalte "${k}"`);
-  }
-  return keys;
-}
-
-async function jobSet(userId: number, fields: Record<string, unknown>) {
-  const keys   = assertJobColumns(fields);
-  const values = keys.map(k => fields[k]);
-  // Build: INSERT ... ON CONFLICT (user_id) DO UPDATE SET k=$n, ...
-  const setClauses = keys.map((k, i) => `${k} = $${i + 2}`).join(', ');
-  const colList    = keys.join(', ');
-  const valPlaces  = keys.map((_, i) => `$${i + 2}`).join(', ');
-  await db.run(
-    `INSERT INTO csv_import_jobs (user_id, ${colList}, updated_at)
-     VALUES ($1, ${valPlaces}, NOW())
-     ON CONFLICT (user_id) DO UPDATE SET ${setClauses}, updated_at = NOW()`,
-    [userId, ...values]
-  );
-}
-
-async function jobUpdate(userId: number, fields: Record<string, unknown>) {
-  if (!fields || !Object.keys(fields).length) return;
-  const keys   = assertJobColumns(fields);
-  const values = keys.map(k => fields[k]);
-  const setClauses = keys.map((k, i) => `${k} = $${i + 2}`).join(', ');
-  await db.run(
-    `UPDATE csv_import_jobs SET ${setClauses}, updated_at = NOW() WHERE user_id = $1`,
-    [userId, ...values]
-  );
-}
 
 router.post('/import/csv', csvEmpfang.single('file'), async (req, res) => {
   if (!req.file) return sendeFehler(req, res, 400, 'keine_datei');

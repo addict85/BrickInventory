@@ -311,6 +311,7 @@ function zeichneBericht(d) {
       ${d.korrekturen?.abgewiesen?.length ? `<div>⚠ <strong>${
         d.korrekturen.abgewiesen.length}</strong> ${
         esc(tRaw('wanted.corrections_rejected'))}</div>` : ''}
+      ${d.abgebrochen ? `<div>⚠ ${esc(tRaw('wanted.cancelled'))}</div>` : ''}
       ${!d.vorschau ? `<div style="margin-top:.4rem"><strong>${d.angelegt}</strong> ${
         esc(tRaw('settings.wanted_written'))}${d.aufgestockt ? `, ${d.aufgestockt} ${
         esc(tRaw('wanted.topped_up'))}` : ''}${d.fehler ? `, ${d.fehler} ${

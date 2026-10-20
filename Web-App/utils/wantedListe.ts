@@ -489,6 +489,13 @@ export interface WantedBericht {
   fehler: number;
   /** true = es wurde NICHTS geschrieben. */
   vorschau: boolean;
+  /**
+   * true = jemand hat abgebrochen, der Rest der Liste blieb liegen.
+   *
+   * Steht nur dann da. Die Zahlen oben (angelegt/aufgestockt/fehler) gelten
+   * für das, was BIS dahin geschehen ist — und das bleibt stehen.
+   */
+  abgebrochen?: boolean;
   posten: PostenErgebnis[];
 }
 
@@ -773,6 +780,20 @@ export async function importiereWantedListe(
      * Meldungen einsammeln, ohne eine Leitung dafür zu brauchen.
      */
     fortschritt?: (stand: WantedFortschritt) => void;
+    /**
+     * „Soll ich aufhören?" — alle zehn Posten gefragt.
+     *
+     * Der Fortschritt steht seit dem 20.10. auch im Auftragsdatensatz, den
+     * beide Oberflächen als Balken zeigen (utils/importAuftrag.ts), und dieser
+     * Balken trägt ein Kreuz. Ein Import, der das Kreuz nicht beachtet, hätte
+     * einen Abbrechen-Knopf, der lügt.
+     *
+     * Alle zehn Posten und nicht bei jedem: Die Frage ist eine Abfrage an die
+     * Datenbank. Derselbe Takt wie beim CSV-Import (routes/sets.ts), und
+     * dieselbe Zusage: Was schon angelegt ist, bleibt — Abbrechen nimmt nichts
+     * zurück, es hört nur auf.
+     */
+    abbruch?: () => Promise<boolean>;
   } = {},
 ): Promise<WantedBericht> {
   const gelesen = leseWantedListe(xml);
@@ -824,6 +845,12 @@ export async function importiereWantedListe(
     { phase: 'schreiben', fertig: lfd + 1, gesamt: auf.length });
 
   for (const a of auf) {
+    // Alle zehn Posten nachsehen, ob jemand abgebrochen hat. Die Zählung geht
+    // über `lfd`, also über ALLE Posten — auch die übersprungenen; sonst hinge
+    // der Takt daran, wie viele Posten auflösbar waren.
+    if (opt.abbruch && !opt.vorschau && lfd >= 0 && (lfd + 1) % 10 === 0) {
+      if (await opt.abbruch()) { bericht.abgebrochen = true; break; }
+    }
     // ── Eine Farbe, die sich nicht abbilden laesst, wird NICHT erfunden ────
     //
     // Marcos Befund vom 19.10.: „Die Farbe wurde nicht immer uebernommen und

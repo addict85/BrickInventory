@@ -247,6 +247,72 @@ test('Wanted-Liste: Vorschau und Schreiben über die echte Adresse', { concurren
     assert.ok(!letzte.fortschritt, 'Der Bericht ist keine Fortschrittszeile');
   });
 
+  // ── Derselbe Balken wie beim Set-Import (Marcos Wunsch vom 20.10.) ───────
+  //
+  // „bitte auch noch umsetzen, dass der Import der BL-XML Importe in der
+  //  Android-App angezeigt werden (analog den Set-Importen)."
+  //
+  // Die App und der Kopf der Webapp lesen `csv_import_jobs` über den Strom
+  // /api/v1/sets/import/csv/stream. Hier wird deshalb genau das geprüft: was
+  // in diesem Datensatz steht, wenn ein Wanted-Import läuft und wenn er durch
+  // ist. Dass der Strom ihn ausliefert, steht schon — das ist der Weg, den der
+  // CSV-Import seit jeher geht.
+
+  await t.test('9. ein Import hinterlässt einen abgeschlossenen Auftrag', async () => {
+    await db.run('DELETE FROM csv_import_jobs WHERE user_id = $1', [HAUPT]);
+    const { body } = await hochladen(srv.base, XML, '?schreiben=1');
+    assert.equal(body.success, true);
+
+    const job = await db.get('SELECT * FROM csv_import_jobs WHERE user_id=$1', [HAUPT]);
+    assert.ok(job, 'Ohne Auftragszeile zeigt weder die App noch eine zweite ' +
+      'Sitzung etwas an — genau darum geht es');
+    assert.equal(job.status, 'done',
+      `Status „${job.status}" — nach dem Import muss der Auftrag ZU sein, sonst ` +
+      'steht der Balken in der App auf „läuft", bis jemand einen neuen startet');
+    assert.equal(Number(job.total), 3, 'Der Nenner ist die Zahl der Posten');
+    assert.equal(Number(job.done), Number(job.total),
+      'Am Ende muss der Balken voll sein');
+    assert.equal(job.current, null, 'Was „gerade dran" ist, gibt es nicht mehr');
+    // ok/warn/err rechnet buildJobStatus aus `results` — ohne die Liste stünde
+    // im Balken nach dem Ende „0 ok", obwohl zwei Posten angelegt wurden.
+    const results = Array.isArray(job.results) ? job.results : JSON.parse(job.results || '[]');
+    assert.equal(results.filter(r => r.success).length, body.angelegt + body.aufgestockt,
+      `results zählt ${results.length} Einträge, der Bericht nennt ` +
+      `${body.angelegt} angelegt und ${body.aufgestockt} aufgestockt`);
+  });
+
+  await t.test('10. eine VORSCHAU legt keinen Auftrag an', async () => {
+    await db.run('DELETE FROM csv_import_jobs WHERE user_id = $1', [HAUPT]);
+    const { body } = await hochladen(srv.base, XML);
+    assert.equal(body.vorschau, true, 'Vorbedingung: das ist eine Vorschau');
+    const job = await db.get('SELECT * FROM csv_import_jobs WHERE user_id=$1', [HAUPT]);
+    assert.equal(job, undefined,
+      'Eine Vorschau ändert nichts. Ein Balken „Import läuft" dafür wäre eine ' +
+      'Lüge in drei Oberflächen gleichzeitig.');
+  });
+
+  await t.test('11. ein laufender CSV-Import wird nicht verdrängt', async () => {
+    // Der CSV-Import über 380 Sets ist das, worauf jemand wartet. Ihn aus dem
+    // Balken zu werfen, weil nebenher eine Wanted-Liste eingelesen wird, wäre
+    // der falsche Tausch — der Wanted-Import läuft trotzdem, nur ohne Balken.
+    await db.run(
+      `INSERT INTO csv_import_jobs (user_id, status, total, done, current, results, updated_at)
+       VALUES ($1,'running',380,42,'10256-1','[]', NOW())
+       ON CONFLICT (user_id) DO UPDATE SET status='running', total=380, done=42,
+         current='10256-1', results='[]'`, [HAUPT]);
+
+    const { body } = await hochladen(srv.base, XML, '?schreiben=1');
+    assert.equal(body.success, true, 'Der Import selbst läuft weiter');
+
+    const job = await db.get('SELECT * FROM csv_import_jobs WHERE user_id=$1', [HAUPT]);
+    assert.equal(job.status, 'running', 'Der fremde Auftrag muss unberührt bleiben');
+    assert.equal(Number(job.total), 380,
+      `total=${job.total} — der Wanted-Import hat den CSV-Auftrag überschrieben`);
+    assert.equal(Number(job.done), 42, 'auch die Zählung gehört dem anderen Import');
+    assert.equal(job.current, '10256-1');
+    await db.run('DELETE FROM csv_import_jobs WHERE user_id = $1', [HAUPT]);
+  });
+
   await t.test('8. ohne strom=1 antwortet die Adresse unverändert als JSON', async () => {
     // Der Weg der Android-App und aller übrigen Prüfungen. Er darf sich durch
     // den Strom NICHT geändert haben.
