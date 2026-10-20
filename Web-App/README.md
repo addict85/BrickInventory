@@ -91,27 +91,42 @@ Den Restore-Weg einmal ausprobieren — die Befehle stehen am Ende des Skripts.
 
 ## Manuell erfasste Teile löschen
 
-Aufräumen nach einem schiefgegangenen Import: löscht die von Hand erfassten
-Teile samt ihren Kaufpreis-Erfassungen. Die genannten Nummern **bleiben**,
-Teile aus Sets und die Kataloge (Name, Farbe, Bild, BrickLink-Nummer) bleiben
-unangetastet.
+Aufräumen nach einem schiefgegangenen Import — zwei Anweisungen, kein Skript:
 
 ```bash
-docker exec -i brickinventory-db \
-  psql -U brickinventory -d brickinventory < scripts/korrektur-manuelle-teile-loeschen.sql
+docker exec -i brickinventory-db psql -U brickinventory -d brickinventory <<'SQL'
+BEGIN;
+-- 1. Die Kaufpreis-Erfassungen ZUERST. part_acquisitions hat keine Spalte
+--    source; welche Erfassung zu einer MANUELL erfassten Position gehört,
+--    sagt nur die Bestandszeile. Ist die zuerst weg, bleiben die Kaufpreise
+--    liegen und zählen in den Finanzsummen weiter mit.
+DELETE FROM part_acquisitions a
+ WHERE EXISTS (SELECT 1 FROM parts p
+                WHERE p.user_id = a.user_id AND p.part_number = a.part_number
+                  AND COALESCE(p.color_id, 0) = COALESCE(a.color_id, 0)
+                  AND p.source = 'manual'
+                  AND p.part_number NOT IN ('31000', '31001'));
+-- 2. Dann die Bestandszeilen. `source = 'manual'` ist die Eintrittskarte:
+--    Teile AUS Sets hängen am Set und verschwinden mit ihm.
+DELETE FROM parts
+ WHERE source = 'manual' AND part_number NOT IN ('31000', '31001');
+COMMIT;
+SQL
 ```
-Vorgabe sind die Nummern 31000 und 31001; andere mit `-v behalten=3001,3002`.
-Verglichen wird gegen Teilenummer **und** BrickLink-Nummer — auf der Kachel
-steht die BrickLink-Nummer, wenn sie abweicht.
+Die Nummern in den beiden `NOT IN`-Listen **bleiben** stehen. Vorher
+`./scripts/backup.sh` — Löschen lässt sich nicht zurücknehmen; zum Nachsehen
+`BEGIN;` … `ROLLBACK;` statt `COMMIT;` laufen lassen, die Zeilenzahlen kommen
+trotzdem.
 
-**Probelauf:** im Skript die letzte Zeile von `COMMIT` auf `ROLLBACK` ändern.
-Die Zählungen kommen trotzdem, geändert wird nichts. Vorher
-`./scripts/backup.sh` — Löschen lässt sich nicht zurücknehmen.
+Nicht angetastet werden die Kataloge (`part_catalog`, `part_color_catalog`,
+`bl_zuordnung`, Preis-Cache und -Verlauf): Sie gelten für alle Konten und für
+Set-Teile, und jede Zeile darin hat einmal einen API-Abruf gekostet.
 
-Der Containername steht in der `compose.yaml` fest (`docker ps --format
-'{{.Names}}'` zeigt ihn). Der **App**-Container ist der falsche Ort: Das
-Laufzeit-Image enthält weder `scripts/` noch `psql`; `psql` liegt im
-Datenbank-Container.
+Ein Hinweis zum Vergleich: Die Anweisungen prüfen die **Rebrickable**-Nummer.
+Auf der Kachel steht die BrickLink-Nummer, wenn sie abweicht — wer „31000" von
+einer Kachel abliest, deren Teil intern `3002` heisst, muss `3002` eintragen
+(`SELECT rb_id, bl_id FROM bl_zuordnung WHERE art='part'` zeigt die
+Abweichungen).
 
 ## Datenbank im Browser ansehen (pgweb)
 
