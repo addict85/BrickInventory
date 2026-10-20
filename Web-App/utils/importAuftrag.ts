@@ -1,4 +1,5 @@
 import * as db from '../db/database';
+import { meldeUndWeiter } from './httpError';
 import { fehlerText, antwortSprache } from './fehlerTexte';
 
 /**
@@ -192,7 +193,11 @@ const MELDE_ABSTAND_MS = 300;
 export async function starteAuftrag(
   userId: number, angaben: { total: number; current?: string | null },
 ): Promise<boolean> {
-  const laufend = await jobGet(userId).catch(() => null);
+  // Scheitert das Lesen, wird es GEMELDET und der Auftrag NICHT gestartet:
+  // Ohne den Stand wissen wir nicht, ob gerade ein fremder Import läuft, und
+  // ihn im Zweifel zu überschreiben ist der teurere Fehler.
+  const laufend = await jobGet(userId)
+    .catch((e) => { meldeUndWeiter('import-auftrag:stand lesen', e); return { status: 'running' }; });
   if (laufend && (laufend.status === 'running' || laufend.status === 'pending')) return false;
   await jobSet(userId, {
     status: 'running',
@@ -284,7 +289,8 @@ export async function beendeAuftrag(
  * sie ersetzt), gehört die Anzeige nicht mehr uns.
  */
 export async function istAbgebrochen(userId: number): Promise<boolean> {
-  const stand = await jobGet(userId).catch(() => null);
+  const stand = await jobGet(userId)
+    .catch((e) => { meldeUndWeiter('import-auftrag:abbruch pruefen', e); return null; });
   return !stand || stand.status !== 'running';
 }
 

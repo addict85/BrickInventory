@@ -479,7 +479,12 @@ router.post('/wanted-list/import/xml', requireToken, csvEmpfang.single('file'),
       // ERST die Kette abwarten, DANN fragen, ob der Auftrag uns gehört: Der
       // Start läuft in der Kette, und vorher steht in `auftragLaeuft` noch
       // nichts Belastbares.
-      await kette.catch(() => {});
+      //
+      // Ohne eigenes .catch(): Jedes Glied der Kette trägt bereits
+      // logAndContinue, `kette` kann also gar nicht mehr ablehnen. Ein
+      // zusätzliches leeres catch wäre ein stiller Fang, der nichts fängt —
+      // und test/ratschen.test.js zählt genau die.
+      await kette;
       if (auftragLaeuft) {
         await beendeAuftrag(uid, {
           ok: bericht.angelegt + bericht.aufgestockt,
@@ -505,7 +510,7 @@ router.post('/wanted-list/import/xml', requireToken, csvEmpfang.single('file'),
       // Der Auftrag MUSS zu sein, auch wenn der Import geworfen hat. Bliebe er
       // auf „läuft", zeigte der Balken in der App und in jeder anderen Sitzung
       // einen Import, den es nicht mehr gibt — bis jemand einen neuen startet.
-      await kette.catch(() => {});
+      await kette;
       if (auftragLaeuft) {
         await beendeAuftrag(uid, { ok: 0, fehler: 0, done: 0, abgebrochen: true })
           .catch(logAndContinue('wanted-import:auftrag-ende (Fehler)'));
