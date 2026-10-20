@@ -4,6 +4,7 @@ import { colorName, locale, t } from '../i18n.js';
 import { G, api, esc, escHex, escHtml, escJs, escUrl, fmtBig, fullUrl, imgUrl, observeLazyImages, thumbUrl } from './01-core.js';
 import { addScopeParam, addLagerParam, scopeQuery } from './14-scope.js';
 import { PARTS_ICON_SVG, allSets } from './02-gallery.js';
+import { loadManualParts } from './06-minifigs.js';
 
 /**
  * Ziegel-Symbol des Reiters „Teile" für die Leer-Anzeige.
@@ -360,7 +361,23 @@ function maybeLoadMoreParts(){
   loadPartsPage(false);
 }
 
-G('parts-search').addEventListener('input', ()=>{ clearTimeout(G('parts-search')._t); G('parts-search')._t=setTimeout(loadPartsData,350); });
+/**
+ * Suchtext — und zwar fuer BEIDE Listen des Reiters.
+ *
+ * Marcos Befund vom 20.10.: „Wenn ich im Filter z.b. nach 3001 suche passiert
+ * nichts." Hier stand allein loadPartsData(), also nur die Wand der Set-Teile.
+ * Die manuell erfassten Kacheln darueber blieben unberuehrt, obwohl die
+ * Filterleiste ausdruecklich UEBER ihnen steht (public/index.html, geprueft in
+ * test/tab-layout.test.js).
+ *
+ * Eine Entprellung fuer beide: Zwei Zeitgeber auf demselben Feld waeren zwei
+ * Stellen, an denen die naechste Liste vergessen wird.
+ */
+function teileFilterGeaendert() {
+  loadPartsData();
+  loadManualParts();
+}
+G('parts-search').addEventListener('input', ()=>{ clearTimeout(G('parts-search')._t); G('parts-search')._t=setTimeout(teileFilterGeaendert,350); });
 G('parts-spare').addEventListener('change', loadPartsData);
 G('parts-view').addEventListener('change', loadPartsData);
 

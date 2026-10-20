@@ -10,7 +10,7 @@ import { setScrollLabel } from './15-scrollbar.js';
 import { loadParts } from './03-parts.js';
 import { loadFinance } from './04-finance.js';
 import { loadApiLimits, loadCacheStats, loadCacheTtl, loadHousehold, loadProfile, loadRateLimitStats, loadSettings, loadTokens, ladeAlarmUebersicht, ladeLagerortVerwaltung } from './05-settings.js';
-import { loadBrickColors, loadManualParts, loadMinifigs } from './06-minifigs.js';
+import { loadBrickColors, loadManualFigsTable, loadManualParts, loadMinifigs } from './06-minifigs.js';
 import { ladeGutscheine } from './17-gutscheine.js';
 import { _lastImportAt, confirmDelete, enrichGalleryWithPrices, jobPollTimer, ladeLagerorte, lagerortBlock, openModal, pollJobStatus, set_jobPollTimer, set_lastImportAt } from './07-admin.js';
 import { openAcqModal, renderAcqModalBody, renderAcquisitionSummary } from './13-acquisition-modals.js';
@@ -498,13 +498,20 @@ export function initStorageSelects(orte) {
   }
 }
 
-/** Umschalten — lädt NUR die betroffene Ansicht neu, wie beim Kontofilter. */
+/**
+ * Umschalten — lädt NUR die betroffene Ansicht neu, wie beim Kontofilter.
+ *
+ * Im Reiter Teile BEIDE Listen: Seit der Lagerortfilter auch die manuell
+ * erfassten Teile trifft (getManualParts), waere ein Umschalten ohne
+ * loadManualParts() ein halb angewandter Filter — oben ungefiltert, unten
+ * gefiltert. Dieselbe Begruendung wie bei onScopeChange() darunter.
+ */
 export function onStorageChange(view) {
   const el = G('storage-' + view);
   if (!el) return;
   setLagerModus(view, el.value);
   if (view === 'gallery') loadGallery();
-  if (view === 'parts')   loadParts();
+  if (view === 'parts')   { loadParts(); loadManualParts(); }
 }
 
 /**
@@ -523,7 +530,12 @@ export function onScopeChange(view) {
   // die manuell erfassten. Nur loadParts() neu zu laden liess den manuellen
   // Bereich ungefiltert stehen — er lädt über einen eigenen Endpunkt.
   if (view === 'parts')    { loadParts(); loadManualParts(); }
-  if (view === 'minifigs') loadMinifigs();
+  // Der Reiter Minifiguren hat dieselben zwei Listen — hier stand trotzdem nur
+  // loadMinifigs(). Die manuellen Karten hingen damit am Kontofilter des
+  // LETZTEN Ladens: loadManualFigsTable() schickt den Filter mit, wurde beim
+  // Umschalten aber nie gerufen. Genau die Luecke, die der Satz darueber fuer
+  // beide Reiter beschreibt.
+  if (view === 'minifigs') { loadMinifigs(); loadManualFigsTable(); }
   if (view === 'finance')  loadFinance();
   // Die Merkliste laedt EINE Liste und hat keine Kennzahlen darueber — anders
   // als die Galerie, wo loadStats() mitmuss.

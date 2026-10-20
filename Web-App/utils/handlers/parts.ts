@@ -94,6 +94,35 @@ async function getPartsColors(userId: Blickfeld) {
 }
 
 /**
+ * Volltextsuche über Teilenummer, Name und BrickLink-Nummer.
+ *
+ * EINE Formulierung für die drei Listen, die danach suchen: die Set-Teile aus
+ * der Live-Abfrage (teileFilter), dieselben aus der vorberechneten
+ * Zusammenfassung (tryPartsSummary) und die manuell erfassten (getManualParts).
+ *
+ * ── Warum zusammengelegt (NACHGEMESSEN) ─────────────────────────────────────
+ *
+ * Die beiden Wege für die Set-Teile suchten VERSCHIEDEN: Die Zusammenfassung
+ * sah in `bl_part_number` mit, die Live-Abfrage nicht. Welcher Weg antwortet,
+ * entscheidet aber nicht der Mensch, sondern ob die Zusammenfassung frisch ist
+ * (ensureFresh) — dieselbe Suche fand also je nach Tageszeit etwas anderes.
+ * Beide Listen zeigen die BrickLink-Nummer an (blNummerSql), und wer sie auf
+ * der Kachel liest, tippt sie auch ein.
+ *
+ * ILIKE statt LOWER(...) LIKE: Dasselbe Ergebnis, aber ohne dass jeder
+ * Aufrufer daran denken muss, auch den Suchtext kleinzuschreiben — genau
+ * dieses Paar stand vorher in beiden Fassungen einmal so und einmal anders.
+ *
+ * @param nummer    Spalte mit der Rebrickable-Teilenummer
+ * @param name      Spalte mit dem Teilenamen (darf NULL sein)
+ * @param blNummer  Ausdruck für die BrickLink-Nummer (blNummerSql oder Spalte)
+ * @param pi        Nummer des Platzhalters; der Aufrufer schiebt `%text%` hinein
+ */
+function teileSuche(nummer: string, name: string, blNummer: string, pi: number) {
+  return `(${nummer} ILIKE $${pi} OR ${name} ILIKE $${pi} OR ${blNummer} ILIKE $${pi})`;
+}
+
+/**
  * WHERE-Klausel und Parameter der Teileliste aus den Abfrageparametern.
  *
  * ── Warum eigenständig (Nachtrag 148) ───────────────────────────────────────
@@ -145,8 +174,8 @@ function teileFilter(uids: number[], query: any) {
     where += " AND COALESCE(p.source,'set') <> 'manual'";
   }
   if (search) {
-    where += ` AND (LOWER(p.part_number) LIKE $${pi} OR LOWER(pc.part_name) LIKE $${pi})`;
-    params.push(`%${search.toLowerCase()}%`); pi++;
+    where += ` AND ${teileSuche('p.part_number', 'pc.part_name', blNummerSql('p.part_number'), pi)}`;
+    params.push(`%${search}%`); pi++;
   }
   // Lagerort als eigener Filter, nicht als Teil der Volltextsuche: „Kiste 3"
   // soll genau die Teile in Kiste 3 zeigen und nicht zusaetzlich jedes Teil,
@@ -293,8 +322,7 @@ async function tryPartsSummary(userId: Blickfeld, o: any) {
     cond.push(`COALESCE(is_spare, 0) = $${params.length + 1}`);         params.push(parseInt(o.spare));
   }
   if (o.search) {
-    const i = params.length + 1;
-    cond.push(`(part_name ILIKE $${i} OR part_number ILIKE $${i} OR bl_part_number ILIKE $${i})`);
+    cond.push(teileSuche('part_number', 'part_name', 'bl_part_number', params.length + 1));
     params.push(`%${o.search}%`);
   }
   const where = cond.join(' AND ');
@@ -739,14 +767,48 @@ async function getBlColorMap() {
 /**
  * @param viewerId Wessen EINSTELLUNGEN gelten (Waehrung fuer den Marktpreis) —
  *   getrennt von `userId`, das sagt, wessen DATEN gelesen werden.
+ * @param search  Suchtext der Filterleiste. Siehe die Begruendung unten.
  */
-async function getManualParts(userId: Blickfeld, viewerId: number, { page = 1, page_size = null }: any = {}) {
+async function getManualParts(userId: Blickfeld, viewerId: number,
+                              { page = 1, page_size = null, search = null, storage = null }: any = {}) {
   // Blickfeld statt einer einzelnen ID: Ein Hauptkonto sieht (und ändert)
   // auch die Daten seiner Unterkonten, alle anderen nur ihre eigenen. Die
   // Liste kommt von scopeIds() in utils/household.ts — hier wird sie nur
   // normalisiert, damit ältere Aufrufer mit einer nackten ID weiter gehen.
   const uids = asIds(userId);
   const params: any[] = [uids];
+  // ── Der Suchtext wirkt auch hier (Marcos Befund vom 20.10.) ──────────────
+  //
+  // „Wenn ich im Filter z.b. nach 3001 suche passiert nichts."
+  //
+  // NACHGEMESSEN am laufenden Server: Nach der Eingabe standen dieselben zwei
+  // Kacheln da wie vorher. Der Suchtext ging ueber partsParams() ausschliesslich
+  // an die Set-Teile-Wand (mit exclude_manual=1); diese Liste kannte ihn nicht.
+  //
+  // Dass er BEIDE Listen trifft, ist keine Auslegung: public/index.html stellt
+  // die Filterleiste ueber den manuellen Bereich und begruendet es dort
+  // ausdruecklich damit („Der Filter wirkt auf beide Listen"), und
+  // test/tab-layout.test.js prueft diese Anordnung. Die Anordnung versprach
+  // also etwas, das die Abfrage nicht hielt.
+  //
+  // Gefiltert wird am SERVER, wie beim Konto- und Lagerortfilter daneben
+  // (public/js/14-scope.js nennt den Grund) — nicht clientseitig im Cache.
+  //
+  // Der Platzhalter kommt VOR LIMIT/OFFSET in die Liste: Die beiden haengen
+  // sich hinten an und beziehen ihre Nummern aus params.length.
+  let filter = '';
+  if (search) {
+    params.push(`%${search}%`);
+    filter = ` AND ${teileSuche('t.part_number', 'pc.part_name', blNummerSql('t.part_number'), params.length)}`;
+  }
+  // Der Lagerortfilter steht in derselben Leiste und gehoert zum gleichen
+  // Versprechen. Ueber den NAMEN aus dem Vorrat (lo), nicht ueber eine Spalte
+  // an der Zeile — die traegt seit Migration 0031 die ID; dieselbe Form wie in
+  // teileFilter(), wo der Grund ausgeschrieben steht.
+  if (storage) {
+    params.push(String(storage));
+    filter += ` AND lo.name = $${params.length}`;
+  }
   let limit = '';
   if (page_size) {
     const size = clampPageSize(page_size, 60);
@@ -834,7 +896,7 @@ async function getManualParts(userId: Blickfeld, viewerId: number, { page = 1, p
        ORDER BY a.created_at DESC, a.id DESC
        LIMIT 1
     ) neu ON TRUE
-    WHERE t.user_id = ANY($1) AND t.source = 'manual'
+    WHERE t.user_id = ANY($1) AND t.source = 'manual'${filter}
     ORDER BY pc.part_name ASC, t.part_number ASC${limit}`, params)
     .then(async (rows) => {
       const mitZustand = await applyManualCondition(uids, rows, 'part');

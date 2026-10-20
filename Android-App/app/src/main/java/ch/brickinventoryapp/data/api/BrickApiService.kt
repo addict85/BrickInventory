@@ -697,14 +697,40 @@ interface BrickApiService {
         @Path("setNumber") setNumber: String
     ): Response<MinifigsResponse>
 
+    /**
+     * Die manuell erfassten Teile — mit SUCHTEXT und Lagerort.
+     *
+     * ── Warum die beiden Filter dazugehoeren (Marcos Befund vom 20.10.) ─────
+     *
+     * „Wenn ich im Filter z.b. nach 3001 suche passiert nichts." Gemeldet hat
+     * er es an der Webapp; hier stand dieselbe Luecke. Der Bildschirm der App
+     * hat EIN Suchfeld, und darunter steht erst der Abschnitt „Manuell
+     * erfasst" und dann die Set-Teile (PartsScreen.kt, eine LazyVerticalGrid).
+     * Der Text ging nur an /parts, die Kacheln darueber blieben stehen.
+     *
+     * Gefiltert wird am Server (die Liste ist nicht seitenweise, aber die
+     * Regel soll an EINER Stelle stehen — utils/handlers/parts.ts). Beide
+     * Parameter sind optional; wer sie nicht schickt, bekommt wie bisher alles.
+     */
     @GET("api/v1/parts/manual")
     suspend fun getManualParts(
-        @Query("accounts") accounts: String? = null
+        @Query("accounts") accounts: String? = null,
+        @Query("search") search: String? = null,
+        @Query("storage") storage: String? = null
     ): Response<ch.brickinventoryapp.data.model.ManualPartsResponse>
 
+    /**
+     * Die manuell erfassten Figuren — mit Suchtext, siehe getManualParts.
+     *
+     * Ohne Lagerort: Den Filter gibt es im Reiter Minifiguren nicht, in beiden
+     * Oberflaechen nicht (LAGER_VIEWS in public/js/14-scope.js nennt Galerie
+     * und Teile). Ein Parameter, den niemand setzt, waere nur eine Zeile, die
+     * etwas verspricht.
+     */
     @GET("api/v1/minifigs/manual")
     suspend fun getManualMinifigs(
-        @Query("accounts") accounts: String? = null
+        @Query("accounts") accounts: String? = null,
+        @Query("search") search: String? = null
     ): Response<ch.brickinventoryapp.data.model.ManualFigsResponse>
 
     @GET("api/v1/catalog/year-verteilung")

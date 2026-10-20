@@ -72,10 +72,53 @@ test('späte Antworten verworfener Filter landen nicht in der Liste', () => {
   assert.match(SRC, /_partsGen\+\+/, 'ein Neuaufbau muss die Generation hochzählen');
 });
 
+/**
+ * Was ein Bedienelement tatsaechlich auslöst: seine Registrierungszeile plus
+ * die Rümpfe der darin genannten Funktionen.
+ *
+ * ── Warum nicht mehr mit einem Abstandsmuster (NACHGEMESSEN) ────────────────
+ *
+ * Hier stand `G('<id>')[\s\S]{0,160}?loadPartsData` über die GANZE Datei. Das
+ * traf den NACHBARN: Unter der Zeile für parts-search steht die für
+ * parts-spare, und die nennt loadPartsData. Als der Auslöser von parts-search
+ * auf einen benannten Handler umgestellt wurde (er lädt jetzt beide Listen des
+ * Reiters), blieb die Prüfung grün — gemessen an einer Zeile, die ihn nicht
+ * betrifft. Ein Muster, das über Zeilengrenzen greift, prüft irgendwann das
+ * Nachbarelement.
+ */
+function wirkungVon(id) {
+  const { funktionsRumpf } = require('./helpers/sources');
+  const i = SRC.indexOf(`G('${id}').addEventListener`);
+  assert.ok(i > 0, `${id}: keine Registrierung mit addEventListener gefunden`);
+  const zeile = SRC.slice(i, SRC.indexOf('\n', i) + 1);
+  let raus = zeile;
+  // Nennt die Zeile einen Handler, gehoert sein Rumpf dazu. Geschnitten wird
+  // mit funktionsRumpf() (test/helpers/sources.js) statt mit einem eigenen
+  // indexOf: Dieselbe Regel an einer Stelle — und der Helfer WIRFT, wenn es
+  // die Funktion nicht gibt, deshalb die Abfrage davor.
+  for (const name of zeile.match(/[A-Za-z_]\w*/g) || []) {
+    if (!SRC.includes(`function ${name}(`)) continue;
+    raus += funktionsRumpf(SRC, name);
+  }
+  return raus;
+}
+
 test('jeder Filter- und Moduswechsel baut neu auf', () => {
-  for (const trigger of ['parts-search', 'parts-spare', 'parts-view']) {
-    const re = new RegExp(`G\\('${trigger}'\\)[\\s\\S]{0,160}?loadPartsData`);
-    assert.match(SRC, re, `${trigger} löst keinen Neuaufbau aus`);
+  // parts-search trifft BEIDE Listen des Reiters: die Wand der Set-Teile und
+  // die manuell erfassten Kacheln darueber (Marcos Befund vom 20.10.).
+  // parts-spare und parts-view gelten nur fuer die Set-Teile — ein
+  // Ersatzteilkennzeichen hat ein manuell erfasstes Teil nicht, und die
+  // Tabellenansicht gibt es nur dort.
+  const faelle = [
+    ['parts-search', ['loadPartsData', 'loadManualParts']],
+    ['parts-spare',  ['loadPartsData']],
+    ['parts-view',   ['loadPartsData']],
+  ];
+  for (const [trigger, erwartet] of faelle) {
+    const wirkung = wirkungVon(trigger);
+    for (const fn of erwartet) {
+      assert.ok(wirkung.includes(fn), `${trigger} löst ${fn}() nicht aus`);
+    }
   }
   assert.match(SRC, /function setColorFilter[\s\S]{0,120}loadPartsData/, 'Farbfilter baut nicht neu auf');
   assert.match(SRC, /function setCatFilter[\s\S]{0,120}loadPartsData/, 'Kategoriefilter baut nicht neu auf');

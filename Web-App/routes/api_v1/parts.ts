@@ -181,7 +181,15 @@ router.put('/parts/:partNumber/:colorId/storage', requireToken, async (req: Auth
 
 router.get('/parts/manual', requireToken, async (req: AuthedRequest, res) => {
   try {
-    res.json({ success: true, parts: await getManualParts(await scopeIds(req.apiUser.user_id, parseScopeMode(req.query.accounts)), req.apiUser.user_id) });
+    // NUR `search` wird durchgereicht, nicht req.query als Ganzes: Die Liste
+    // antwortet hier ohne Blaetterung (die Webapp zeigt alle manuellen Teile in
+    // einem Raster), und ein durchgereichtes page_size wuerde sie unbemerkt
+    // deckeln. Der Suchtext kommt aus derselben Filterleiste wie bei den
+    // Set-Teilen — die Begruendung steht an getManualParts.
+    res.json({ success: true, parts: await getManualParts(
+      await scopeIds(req.apiUser.user_id, parseScopeMode(req.query.accounts)),
+      req.apiUser.user_id,
+      { search: einzelwert(req.query.search), storage: einzelwert(req.query.storage) }) });
   } catch (e) { handleRouteError(res, e, undefined, req); }
 });
 

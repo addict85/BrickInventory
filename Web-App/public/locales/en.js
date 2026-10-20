@@ -308,6 +308,7 @@ window.I18N_EN = {
   'parts.hint_add_sets': 'Add sets first.',
   'parts.deleted': 'Part deleted',
   'parts.no_color_dash': '— No color —',
+  'parts.color.saved_no_image': 'Colour changed — no image known for this colour.',
   'history.none_title': 'No history data for this period yet.',
   'history.none_hint': 'Price history is recorded from the first price load.',
   'finance.fetch_prices': 'Fetching prices…',

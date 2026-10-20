@@ -19,6 +19,22 @@ import { blJoin, blNummerSql } from '../blZuordnung';
  */
 
 /**
+ * Volltextsuche über Figurennummer und Name.
+ *
+ * EINE Formulierung für beide Listen des Reiters: die Figuren aus Sets
+ * (getMinifigs) und die manuell erfassten (getManualMinifigs). Gegenstück zu
+ * teileSuche() in utils/handlers/parts.ts — dort steht die ausführliche
+ * Begründung.
+ *
+ * Die BrickLink-Nummer ist hier NICHT dabei, anders als bei den Teilen: Beide
+ * Figuren-Listen zeigen `fig_number` auf der Kachel, nicht die
+ * BrickLink-Nummer. Gesucht wird, was dasteht.
+ */
+function figurenSuche(nummer: string, name: string, pi: number) {
+  return `(${nummer} ILIKE $${pi} OR ${name} ILIKE $${pi})`;
+}
+
+/**
  * Filter lagen hier schon serverseitig; ergänzt sind nur page/page_size.
  * Ohne page_size unverändertes Verhalten — die Android-App ruft so auf.
  */
@@ -39,8 +55,8 @@ async function getMinifigs(userId: number | number[], { search, source, set_numb
   if (search) {
     // Der Figurenname steht seit Migration 0034 im Katalog; der Alias mc
     // haengt an jeder Abfrage, die diese Bedingung benutzt.
-    where += ` AND (LOWER(m.fig_number) LIKE $${pi} OR LOWER(mc.fig_name) LIKE $${pi})`;
-    params.push(`%${search.toLowerCase()}%`); pi++;
+    where += ` AND ${figurenSuche('m.fig_number', 'mc.fig_name', pi)}`;
+    params.push(`%${search}%`); pi++;
   }
   // Gruppierung pro Figur (und Quelle): Dieselbe Figur aus mehreren Sets
   // erscheint EINMAL mit aufsummierter Gesamtmenge — analog Teile/Sets.
@@ -249,13 +265,26 @@ async function getMinifigStats(userId: number | number[]) {
  *   Getrennt von `userId`, das sagt, WESSEN DATEN gelesen werden — dieselbe
  *   Unterscheidung wie in computeMinifigsValuation.
  */
-async function getManualMinifigs(userId: number | number[], viewerId: number, { page = 1, page_size = null }: any = {}) {
+async function getManualMinifigs(userId: number | number[], viewerId: number,
+                                 { page = 1, page_size = null, search = null }: any = {}) {
   // Blickfeld statt einer einzelnen ID: Ein Hauptkonto sieht (und ändert)
   // auch die Daten seiner Unterkonten, alle anderen nur ihre eigenen. Die
   // Liste kommt von scopeIds() in utils/household.ts — hier wird sie nur
   // normalisiert, damit ältere Aufrufer mit einer nackten ID weiter gehen.
   const uids = asIds(userId as any);
   const params: any[] = [uids];
+  // Der Suchtext der Filterleiste wirkt auch hier — dieselbe Luecke wie bei den
+  // manuell erfassten Teilen (die Begruendung steht an getManualParts in
+  // utils/handlers/parts.ts). Marco hat sie an den Teilen gemeldet; der Reiter
+  // Minifiguren trug sie unbemerkt mit, bis zum gleichen Versprechen in
+  // public/index.html und zur gleichen Pruefung in test/tab-layout.test.js.
+  //
+  // Platzhalter vor LIMIT/OFFSET — siehe dort.
+  let suche = '';
+  if (search) {
+    params.push(`%${search}%`);
+    suche = ` AND ${figurenSuche('m.fig_number', 'mc.fig_name', params.length)}`;
+  }
   let limit = '';
   if (page_size) {
     const size = clampPageSize(page_size, 60);
@@ -304,7 +333,7 @@ async function getManualMinifigs(userId: number | number[], viewerId: number, { 
           ORDER BY a.created_at DESC, a.id DESC
           LIMIT 1
        ) neu ON TRUE
-      WHERE m.user_id = ANY($1) AND m.source = 'manual'
+      WHERE m.user_id = ANY($1) AND m.source = 'manual'${suche}
       ORDER BY mc.fig_name ASC, m.fig_number ASC${limit}`,
     params);
   const mapped = figs.map(f => ({ ...f, image_local: resolveImageLocal(f.image_local) }));

@@ -133,6 +133,23 @@ test('jeder Abruf hinter dem Kontofilter gibt den Kontofilter mit', () => {
   }
 
   /**
+   * Der Aufruf selbst — von `api(` bis zur passenden schliessenden Klammer.
+   *
+   * Geklammert gezählt, nicht nach Zeichenzahl geschnitten: siehe rumpf()
+   * weiter oben und die Begründung an funktionsRumpf() in
+   * test/helpers/sources.js. Ein Fenster endet irgendwo; ein Aufruf endet dort,
+   * wo er endet.
+   */
+  function aufrufText(src, ab) {
+    let k = src.indexOf('(', ab), tiefe = 1;
+    for (k++; k < src.length && tiefe > 0; k++) {
+      if (src[k] === '(') tiefe++;
+      else if (src[k] === ')') tiefe--;
+    }
+    return src.slice(ab, k);
+  }
+
+  /**
    * Trägt dieser Aufruf den Filter?
    *
    * Geprüft wird JE AUFRUF, nicht je Ladefunktion. Die erste Fassung dieses
@@ -152,12 +169,25 @@ test('jeder Abruf hinter dem Kontofilter gibt den Kontofilter mit', () => {
       const pfad = m[1].split('?')[0].split('${')[0].replace(/\/+$/, '');
       if (!konten.has(pfad.replace(/^\/v1/, ''))) continue;
       // Der Filter darf im Aufruf selbst stehen (scopeQuery/scopeMode) oder in
-      // der Params-Funktion, deren Ergebnis angehängt wird.
-      const zeile = treffer.koerper.slice(m.index, m.index + 220);
-      if (/scopeQuery\(|scopeMode\(|accounts/.test(zeile)) continue;
-      const viaParams = [...zeile.matchAll(/\b(\w*[Pp]arams)\s*\(/g)]
-        .some(p => { const t2 = suche(p[1]); return t2 && /addScopeParam\(|scopeQuery\(|scopeMode\(/.test(t2.koerper); });
-      if (viaParams) continue;
+      // einem Helfer, dessen Ergebnis angehängt wird.
+      //
+      // ── Zwei Verschärfungen vom 20.10. (GEMESSEN) ────────────────────────
+      //
+      // 1. Geprüft wird der AUFRUF, nicht die nächsten 220 Zeichen. Hier stand
+      //    `koerper.slice(m.index, m.index + 220)`, und das Fenster reichte in
+      //    die NÄCHSTE Zeile: In loadManualParts() stehen zwei Abrufe im selben
+      //    Promise.all, und der zweite trug `scopeQuery('parts')`. Der erste
+      //    galt damit als geprüft, obwohl in ihm nichts davon stand — er war
+      //    grün durch seinen Nachbarn.
+      // 2. Der Helfer wird am INHALT erkannt, nicht am Namen. Hier stand
+      //    `\w*[Pp]arams\(`. manuellQuery() baut denselben Filter für die
+      //    manuellen Listen und heisst nur anders — die Regel hätte einen
+      //    Umbau gemeldet, der sie erfüllt.
+      const aufruf = aufrufText(treffer.koerper, m.index);
+      if (/scopeQuery\(|scopeMode\(|accounts/.test(aufruf)) continue;
+      const viaHelfer = [...aufruf.matchAll(/\b([a-zA-Z_]\w*)\s*\(/g)]
+        .some(h => { const t2 = suche(h[1]); return t2 && /addScopeParam\(|scopeQuery\(|scopeMode\(/.test(t2.koerper); });
+      if (viaHelfer) continue;
       fehlt.push(`${treffer.datei}: ${name}() -> ${pfad}`);
     }
     for (const m of treffer.koerper.matchAll(/\b([a-z]\w*)\s*\(/g))

@@ -81,11 +81,13 @@ class TeileRepository @Inject constructor(
      * Webapp. Vorher kamen sie aus der BEWERTUNG, also aus einer zweiten
      * Quelle fuer dieselbe Liste; siehe ManualPartsResponse.
      */
-    suspend fun getManualParts(accounts: String? = null): Result<ManualPartsResponse> =
-        safeCall { api.getManualParts(accounts) }
+    suspend fun getManualParts(accounts: String? = null, search: String? = null,
+                               storage: String? = null): Result<ManualPartsResponse> =
+        safeCall { api.getManualParts(accounts, search, storage) }
 
-    suspend fun getManualMinifigs(accounts: String? = null): Result<ManualFigsResponse> =
-        safeCall { api.getManualMinifigs(accounts) }
+    suspend fun getManualMinifigs(accounts: String? = null,
+                                  search: String? = null): Result<ManualFigsResponse> =
+        safeCall { api.getManualMinifigs(accounts, search) }
 
     /**
      * „Kann ich das bauen?" — welche Teile einer Liste schon da sind.
