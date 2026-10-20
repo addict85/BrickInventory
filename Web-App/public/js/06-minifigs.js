@@ -1,7 +1,7 @@
 import { registerActions } from './00-registry.js';
 import { colorName, locale, t, tRaw} from '../i18n.js';
 import { escHex, hexZiffern, CURRENCY, G, TRASH_ICON_SVG, api, esc, escJs, escUrl, fmtN, fullUrl, imgUrl, thumbUrl, toast } from './01-core.js';
-import { addScopeParam, scopeQuery } from './14-scope.js';
+import { addLagerParam, addScopeParam, scopeQuery } from './14-scope.js';
 import { condBadges, leereLagerortFeld, ownerBadges, selectedOwner, selectedStorage, PARTS_ICON_SVG } from './02-gallery.js';
 import { loadFinance } from './04-finance.js';
 import { confirmDelete } from './07-admin.js';
@@ -122,8 +122,13 @@ export async function loadMinifigs() {
  * Suche und Quellenfilter liegen auf dem Server (getMinifigs kannte beide
  * schon). Hier wird deshalb neu GELADEN statt clientseitig gefiltert — sonst
  * durchsuchte der Filter nur die bereits geladene Seite.
+ *
+ * BEIDE Listen des Reiters, nicht nur die aus Sets: Die manuell erfassten
+ * Figuren stehen unter derselben Filterleiste (public/index.html begruendet
+ * die Anordnung genau damit, test/tab-layout.test.js prueft sie). Vorher lief
+ * nur loadMinifigs() — dieselbe Luecke, die Marco bei den Teilen gemeldet hat.
  */
-function filterFigs() { loadMinifigs(); }
+function filterFigs() { loadMinifigs(); loadManualFigsTable(); }
 
 /**
  * Hängt eine nachgeladene Seite an, statt die Liste neu zu bauen.
@@ -289,7 +294,7 @@ export async function deleteManualFig(figNumber, owner) {
 
 export let manualFigsCache = [];
 export async function loadManualFigsTable() {
-  const d = await api('GET', '/v1/minifigs/manual'+scopeQuery('minifigs'));
+  const d = await api('GET', '/v1/minifigs/manual'+manuellQuery('minifigs', 'fig-search'));
   if (!d.success) return;
   manualFigsCache = d.figs || [];
   renderManualFigsTable();
@@ -460,12 +465,50 @@ async function loadMinifigsValuation() {
   }
 }
 
+/**
+ * Abfrageteil für die MANUELL erfassten Listen: Kontofilter und Suchtext.
+ *
+ * ── Warum nicht scopeQuery() allein (Marcos Befund vom 20.10.) ──────────────
+ *
+ * „Wenn ich im Filter z.b. nach 3001 suche passiert nichts."
+ *
+ * Hier stand `scopeQuery('parts')` — nur der Kontofilter. Der Suchtext ging
+ * über partsParams() (03-parts.js) ausschliesslich an die Set-Teile-Wand, und
+ * die manuellen Kacheln blieben unberührt. public/index.html stellt die
+ * Filterleiste aber über den manuellen Bereich und begründet das dort
+ * ausdrücklich damit, dass der Filter auf BEIDE Listen wirkt.
+ *
+ * Gefiltert wird am Server (die Begründung steht in 14-scope.js beim
+ * Lagerortfilter), deshalb reist der Text als Abfrageparameter mit — und
+ * deshalb muss jeder Weg, der eine dieser Listen neu lädt, hier vorbei.
+ *
+ * EIN Helfer für Teile und Figuren: Dieselbe Lücke bestand in beiden Reitern,
+ * und zwei Fassungen wären zwei Stellen, an denen der nächste Filter vergessen
+ * wird.
+ *
+ * @param {string} view     Name des Blickfelds ('parts' | 'minifigs')
+ * @param {string} sucheId  ID des Suchfelds der Filterleiste
+ */
+function manuellQuery(view, sucheId) {
+  const p = new URLSearchParams();
+  addScopeParam(p, view);
+  // Der Lagerortfilter steht in derselben Leiste und gehoert damit zum
+  // gleichen Versprechen. Es gibt ihn nur fuer Galerie und Teile (LAGER_VIEWS
+  // in 14-scope.js); fuer 'minifigs' haengt addLagerParam nichts an, und
+  // deshalb kennt getManualMinifigs ihn auch nicht.
+  addLagerParam(p, view);
+  const q = G(sucheId)?.value?.trim();
+  if (q) p.set('search', q);
+  const s = p.toString();
+  return s ? '?' + s : '';
+}
+
 // ── MANUAL PARTS ─────────────────────────────────────────────────────────────
 export let manualPartsCache = [];
 
 export async function loadManualParts() {
   const [d, v] = await Promise.all([
-    api('GET', '/v1/parts/manual'+scopeQuery('parts')),
+    api('GET', '/v1/parts/manual'+manuellQuery('parts', 'parts-search')),
     // Derselbe Filter wie die Liste darüber: Sonst stünden Zähler und Menge
     // aus dem einen Blickfeld neben einer Summe aus einem anderen.
     api('GET', '/v1/finance/parts-valuation'+scopeQuery('parts')),

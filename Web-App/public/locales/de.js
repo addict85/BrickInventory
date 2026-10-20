@@ -309,6 +309,7 @@ window.I18N_DE = {
   'parts.hint_add_sets': 'Füge zuerst Sets hinzu.',
   'parts.deleted': 'Teil gelöscht',
   'parts.no_color_dash': '— Keine Farbe —',
+  'parts.color.saved_no_image': 'Farbe geändert — für diese Farbe ist kein Bild bekannt.',
   'history.none_title': 'Noch keine Verlaufsdaten für diesen Zeitraum.',
   'history.none_hint': 'Preisverlauf wird ab dem ersten Laden der Preise aufgezeichnet.',
   'finance.fetch_prices': 'Preise abrufen…',

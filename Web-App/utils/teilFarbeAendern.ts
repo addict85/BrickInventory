@@ -1,5 +1,7 @@
 import * as db from '../db/database';
 import type { DbSchnittstelle } from '../db/database';
+import { lookupPart } from '../clients/rebrickable';
+import { meldeUndWeiter } from './httpError';
 import { merkeTeilFarbe } from './katalogPflege';
 
 /**
@@ -34,14 +36,37 @@ import { merkeTeilFarbe } from './katalogPflege';
  * vom gleichen Tag — eine in der falschen, eine in der richtigen Farbe —
  * müssen zu einer addiert werden, nicht nebeneinander stehen.
  *
- * ── Was NICHT passiert ──────────────────────────────────────────────────────
+ * ── Das Bild der neuen Farbe ────────────────────────────────────────────────
  *
- * Das BILD wird hier nicht geholt. `part_color_catalog` führt es je Teil UND
- * Farbe (ein roter 2x4 sieht anders aus als ein blauer), und für eine Farbe,
- * die noch kein Import gesehen hat, steht dort keines. Ein Rebrickable-Abruf
- * mitten in einer Transaktion wäre der falsche Ort dafür: Er dauert, er kann
- * scheitern, und die Farbe soll sich auch ohne Netz ändern lassen. Der
- * Bildabgleich (jobs/imageQueue.ts) holt es nach.
+ * `part_color_catalog` führt das Bild je Teil UND Farbe (ein roter 2x4 sieht
+ * anders aus als ein blauer). Für eine Farbe, die noch kein Import gesehen
+ * hat, steht dort keines — die Kachel zeigte nach der Änderung also den
+ * Platzhalter.
+ *
+ * Marcos Befund vom 20.10.: „Wenn ich die Farbe der manuell erfassten Teile
+ * ändere wird das Bild nicht aktualisiert." NACHGEMESSEN am laufenden Server:
+ * Vor dem Wechsel trug die Kachel von 3001/Rot das Bild 300121.jpg, nach dem
+ * Wechsel auf Blau keines mehr, und `part_color_catalog` hatte für (3001, 7)
+ * eine Zeile ohne image_url.
+ *
+ * Hier stand, der Bildabgleich (jobs/imageQueue.ts) hole es nach. Das war
+ * FALSCH und ist die Korrektur, die dieser Nachtrag am eigenen Kommentar
+ * vornimmt: Jener Job arbeitet Notizen über ANGEFRAGTE Adressen ab
+ * (`image_wanted`) und legt sie lokal ab. Wo gar keine Adresse steht, hat er
+ * nichts zu holen. Die einzige Stelle im Baum, die ein fehlendes Farbbild je
+ * nachgetragen hat, ist backfillPartImages() in
+ * jobs/purchasePriceBackfill.ts — ein Nachlauf beim Serverstart, also nichts,
+ * was eine Farbänderung begleitet.
+ *
+ * Deshalb trägt bildNachtragen() es jetzt nach, NACH der Transaktion und in
+ * zwei Schritten: erst aus den eingespielten Set-Teilelisten (lokal, kostet
+ * nichts), dann über Rebrickable (dieselbe Abfrage, die auch das Erfassen von
+ * Hand macht — lookupPart liefert für eine Farbe das Farbbild). Beides
+ * ausserhalb der Transaktion, weil ein Netzabruf darin der falsche Ort wäre:
+ * Er dauert, er kann scheitern, und die Farbe soll sich auch ohne Netz ändern
+ * lassen. Findet sich keines, bleibt es leer und das Ergebnis SAGT das
+ * (`bild: null`) — die Oberfläche schreibt es in die Meldung, statt Marco ein
+ * zweites Mal vor einem leeren Platz stehen zu lassen.
  *
  * Teile AUS SETS (`source='set'`) sind ausgenommen. Ihre Farbe kommt aus der
  * Set-Teileliste von Rebrickable; sie dort zu ändern hiesse, die Teileliste
@@ -54,7 +79,90 @@ export type FarbWechsel = {
   verschoben: number;
   /** Erfassungen, die in eine Erfassung desselben Tages addiert wurden. */
   vereint: number;
+  /**
+   * Woher das Bild der NEUEN Farbe kommt — siehe bildNachtragen().
+   *
+   * `null` heisst: Für diese Farbe kennt weder der eigene Katalog noch
+   * Rebrickable ein Bild. Das ist eine Auskunft und kein Fehler; die
+   * Oberfläche nennt es in der Meldung.
+   */
+  bild: BildQuelle;
 };
+
+/**
+ * `vorhanden`    Das Farbbild stand schon da — nichts zu holen.
+ * `katalog`      Aus einer eingespielten Set-Teileliste (lokal).
+ * `rebrickable`  Über die Rebrickable-API geholt.
+ * `null`         Nirgends eines gefunden.
+ */
+export type BildQuelle = 'vorhanden' | 'katalog' | 'rebrickable' | null;
+
+/**
+ * Das Bild der ZIELFARBE nachtragen — nach der Transaktion, nie darin.
+ *
+ * ── Die Reihenfolge der Quellen ─────────────────────────────────────────────
+ *
+ * 1. `set_parts_catalog`. Dieselbe Tabelle führt das Bild ebenfalls je Teil
+ *    UND Farbe, nur zusätzlich je Set. Steckt der Stein in dieser Farbe in
+ *    einem eingespielten Set, ist es dasselbe Bild — lokal, ohne Abruf, und
+ *    oft sogar schon als Datei (`image_local`). Zeilen mit Datei zuerst.
+ * 2. `lookupPart()`. Derselbe Weg wie beim Erfassen von Hand (routes/parts.ts)
+ *    und beim Nachtrag in jobs/purchasePriceBackfill.ts: Für eine angegebene
+ *    Farbe fragt er den Parts/Colors-Endpunkt, der das FARBBILD liefert. Ohne
+ *    Rebrickable-Schlüssel gibt er sofort null zurück — ohne Netz kostet
+ *    dieser Schritt also nichts.
+ *
+ * Geschrieben wird über merkeTeilFarbe(), und das heisst: COALESCE. Ein
+ * bereits dastehendes Bild wird NICHT überschrieben — darum fragt der Schritt
+ * davor auch zuerst, ob überhaupt eines fehlt.
+ *
+ * ── Was dabei in Kauf genommen wird ─────────────────────────────────────────
+ *
+ * Scheitert in lookupPart() der Farb-Abruf, fällt es intern auf
+ * `part_img_url` zurück — das ALLGEMEINE Teilebild, bei vielen Teilen die
+ * weisse Fassung. Das landet dann hier, und wegen des COALESCE bleibt es auch
+ * stehen. Hier KEIN zweites Urteil darüber zu fällen ist Absicht: Dieselbe
+ * Antwort nimmt auch das Erfassen von Hand (routes/parts.ts, addManualPart),
+ * und ein Bild, das wir anders bewerten als die Stelle daneben, wäre eine
+ * zweite Regel für dieselbe Frage. Wieder herauskommt ein solches Bild über
+ * backfillPartImages() in jobs/purchasePriceBackfill.ts — der Nachlauf
+ * schreibt bewusst ÜBERSCHREIBEND und ist genau dafür entstanden.
+ */
+async function bildNachtragen(partNumber: string, farbe: number): Promise<BildQuelle> {
+  const steht = await db.get(
+    `SELECT COALESCE(image_local, image_url) AS bild FROM part_color_catalog
+      WHERE part_number = $1 AND color_id = $2`,
+    [partNumber, farbe]).catch(() => null);
+  if (steht?.bild) return 'vorhanden';
+
+  const ausSet = await db.get(
+    `SELECT image_url, image_local FROM set_parts_catalog
+      WHERE part_number = $1 AND color_id = $2
+        AND (image_local IS NOT NULL OR image_url IS NOT NULL)
+      ORDER BY (image_local IS NULL), set_number LIMIT 1`,
+    [partNumber, farbe]).catch(() => null);
+  if (ausSet) {
+    try {
+      await merkeTeilFarbe(partNumber, farbe, null, null, ausSet.image_url, ausSet.image_local);
+      return 'katalog';
+    } catch (e) {
+      // Die Farbe IST geändert — der Aufrufer darf das nicht als Fehlschlag
+      // sehen, nur weil das Bild nicht dazugekommen ist.
+      meldeUndWeiter('farbwechsel:bild aus set_parts_catalog', e);
+      return null;
+    }
+  }
+
+  const info = await lookupPart(partNumber, farbe).catch(() => null);
+  if (!info?.image_url) return null;
+  try {
+    await merkeTeilFarbe(partNumber, farbe, null, null, info.image_url, null);
+    return 'rebrickable';
+  } catch (e) {
+    meldeUndWeiter('farbwechsel:bild von Rebrickable', e);
+    return null;
+  }
+}
 
 /**
  * @param uid        Besitzer der Zeile — NICHT der Betrachter. Wer in wessen
@@ -82,7 +190,9 @@ export async function aendereTeilFarbe(
   const farbName = angaben.color_name || katalogFarbe?.name || null;
   const farbHex  = angaben.color_hex  || katalogFarbe?.rgb  || null;
 
-  return db.transaction(async (tx: DbSchnittstelle) => {
+  // Die Transaktion liefert alles AUSSER dem Bild: Das wird danach geholt,
+  // weil der Abruf dauern und scheitern darf, ohne die Änderung mitzunehmen.
+  const wechsel = await db.transaction(async (tx: DbSchnittstelle): Promise<Omit<FarbWechsel, 'bild'>> => {
     const quelle = await tx.get(
       `SELECT id, storage_id FROM parts
         WHERE user_id = $1 AND part_number = $2 AND COALESCE(color_id, 0) = $3
@@ -160,4 +270,9 @@ export async function aendereTeilFarbe(
       vereint: vereint.changes ?? 0,
     };
   });
+
+  // Auch bei alt === neu: Die Frage „hat diese Farbe ein Bild?" ist dann
+  // dieselbe, und der Dialog öffnet danach genauso neu. Eine Ausnahme hier
+  // wäre ein zweiter Weg, der nur manchmal ein Bild nachträgt.
+  return { ...wechsel, bild: await bildNachtragen(partNumber, neu) };
 }

@@ -188,8 +188,17 @@ test('der Minifiguren-Filter lädt neu statt clientseitig zu filtern', () => {
 });
 
 test('auch die manuellen Listen können seitenweise', () => {
+  // ── Der Rumpf GANZ, nicht die ersten 900 Zeichen (20.10., GEMESSEN) ──────
+  //
+  // Hier stand `H_SRC.slice(i, i + 900)`. Am 20.10. bekam getManualParts einen
+  // Suchfilter samt Begründung, und diese Prüfung meldete „LIMIT/OFFSET müssen
+  // gebunden werden, nicht interpoliert" — die Zeile stand unverändert da, nur
+  // ab Zeichen 1100. Eine Prüfung, die richtigen Code anmeckert, wird
+  // abgeschaltet statt befolgt; funktionsRumpf() schneidet deshalb an der
+  // schliessenden Klammer (test/helpers/sources.js, dort steht die Lehre).
+  const { funktionsRumpf } = require('./helpers/sources');
   for (const f of ['getManualParts', 'getManualMinifigs']) {
-    const fn = H_SRC.slice(H_SRC.indexOf(`async function ${f}(`), H_SRC.indexOf(`async function ${f}(`) + 900);
+    const fn = funktionsRumpf(H_SRC, f);
     assert.match(fn, /page_size/, `${f} kennt kein page_size`);
     assert.match(fn, /LIMIT \$\$\{params\.length - 1\} OFFSET \$\$\{params\.length\}/,
       `${f}: LIMIT/OFFSET müssen gebunden werden, nicht interpoliert`);

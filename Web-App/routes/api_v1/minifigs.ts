@@ -86,7 +86,11 @@ router.delete('/minifigs/:figNumber', requireToken, async (req: AuthedRequest, r
 // Manuell erfasste Minifiguren — gleicher Handler wie /api/minifigs/manual.
 router.get('/minifigs/manual', requireToken, async (req: AuthedRequest, res) => {
   try {
-    res.json({ success: true, figs: await getManualMinifigs(await scopeIds(req.apiUser.user_id, parseScopeMode(req.query.accounts)), req.apiUser.user_id) });
+    // `search` wie bei /parts/manual — und aus demselben Grund nur dieses Feld.
+    res.json({ success: true, figs: await getManualMinifigs(
+      await scopeIds(req.apiUser.user_id, parseScopeMode(req.query.accounts)),
+      req.apiUser.user_id,
+      { search: einzelwert(req.query.search) }) });
   } catch (e) { handleRouteError(res, e, undefined, req); }
 });
 

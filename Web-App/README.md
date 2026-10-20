@@ -89,6 +89,20 @@ Nach Änderungen an `public/js/*` oder `public/i18n.js` muss
 Ein Dateikopie-Backup von `pgdata/` bei laufendem PostgreSQL ist **wertlos**.
 Den Restore-Weg einmal ausprobieren — die Befehle stehen am Ende des Skripts.
 
+## Manuell erfasste Teile löschen
+
+Aufräumen nach einem schiefgegangenen Import: löscht die von Hand erfassten
+Teile samt ihren Kaufpreis-Erfassungen. Die genannten Nummern **bleiben**,
+Teile aus Sets und die Kataloge (Name, Farbe, Bild, BrickLink-Nummer) bleiben
+unangetastet.
+
+```bash
+./scripts/manuelle-teile-loeschen.sh 31000 31001        # nur anzeigen
+./scripts/manuelle-teile-loeschen.sh --ja 31000 31001   # wirklich löschen
+```
+Ohne `--ja` wird nichts geändert. Vorher `./scripts/backup.sh` — Löschen lässt
+sich nicht zurücknehmen.
+
 ## Datenbank im Browser ansehen (pgweb)
 
 Optionales Werkzeug, startet **nicht** mit `docker compose up -d`:

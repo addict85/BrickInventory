@@ -29,7 +29,8 @@
  *
  * ── Gegenproben (am 19.10. GEMESSEN, Zahlen abgeschrieben) ──────────────────
  *
- * Ausgangslage: `# pass 8 / # fail 0`. Jede Gegenprobe ist EINE Änderung,
+ * Ausgangslage: `# pass 8 / # fail 0` (vor den drei Bild-Fällen vom 20.10.,
+ * seither `# pass 11 / # fail 0`). Jede Gegenprobe ist EINE Änderung,
  * danach zurückgenommen (die Dateien wurden gegen ihre Sicherung verglichen).
  *
  *   A  das Addieren gleicher Tage weggelassen (`vereint = { changes: 0 }`,
@@ -64,6 +65,30 @@
  *            nachher parts: [ ]                   erf: [ ]
  *
  *        Ein Verklicken auf dieselbe Farbe hätte das Teil gelöscht.
+ *
+ * ── Die drei Bild-Fälle, Gegenproben vom 20.10. ─────────────────────────────
+ *
+ * Marcos Befund: „Wenn ich die Farbe der manuell erfassten Teile ändere wird
+ * das Bild nicht aktualisiert." Ausgangslage `# pass 11 / # fail 0`.
+ *
+ *   G  den Schritt „aus den Set-Teilelisten" weggelassen (`const ausSet =
+ *      null`)
+ *      → `pass 9 / fail 2`. Rot ist „das Bild der neuen Farbe kommt aus den
+ *        Set-Teilelisten": „Die Antwort sagt „null" — erwartet „katalog"".
+ *        Ohne diesen Schritt bliebe die Kachel leer, sobald Rebrickable nicht
+ *        erreichbar ist oder kein Schlüssel hinterlegt wurde.
+ *   H  die Frage, ob schon ein Bild dasteht, abgeschaltet
+ *      (`if (false && steht?.bild)`)
+ *      → `pass 9 / fail 2`. Rot ist „ein schon vorhandenes Farbbild wird
+ *        nicht überschrieben": „Die Antwort sagt „katalog" — erwartet
+ *        „vorhanden"". Das Bild selbst bleibt dabei stehen (merkeTeilFarbe
+ *        schreibt mit COALESCE) — die ANTWORT wäre falsch, und die Oberfläche
+ *        hängt ihren Hinweis daran.
+ *   I  bei „nichts gefunden" trotzdem `'vorhanden'` gemeldet
+ *      → `pass 9 / fail 2`. Rot ist „kennt niemand ein Bild, sagt die Antwort
+ *        das": Ein geratenes „vorhanden" nimmt der Oberfläche den Hinweis, und
+ *        Marco stünde ein zweites Mal vor einem leeren Platz, ohne zu wissen,
+ *        warum.
  *
  * Voraussetzung: Test-DB via TEST_DATABASE_URL. Ohne DB: skip, ausser
  * REQUIRE_DB=1.
@@ -132,7 +157,13 @@ test('die Farbe eines manuellen Teils lässt sich nachträglich ändern',
     await db.run(`DELETE FROM part_acquisitions`);
     await db.run(`DELETE FROM parts`);
     await db.run(`DELETE FROM part_color_catalog`);
+    // Die Set-Teilelisten sind seit dem 20.10. die erste Bildquelle der
+    // Farbänderung — ohne Leeren trüge der nächste Fall das Bild des vorigen.
+    await db.run(`DELETE FROM set_parts_catalog`);
   };
+  const farbBild = async (farbe) => db.get(
+    `SELECT image_url, image_local FROM part_color_catalog
+      WHERE part_number='3001' AND color_id=$1`, [farbe]);
 
   await t.test('ohne Zielzeile zieht die Zeile samt Erfassungen um', async () => {
     await leeren();
@@ -274,5 +305,83 @@ test('die Farbe eines manuellen Teils lässt sich nachträglich ändern',
       'Gleiche Farbe heisst: nichts verschoben, nichts vereint, nichts zusammengelegt');
     assert.deepEqual((await erfassungen()).map(e => e.menge), [5],
       'Die Erfassung muss unverändert dastehen');
+  });
+
+  // ── Das Bild der neuen Farbe (Marcos Befund vom 20.10.) ────────────────────
+  //
+  // „Wenn ich die Farbe der manuell erfassten Teile ändere wird das Bild nicht
+  //  aktualisiert."
+  //
+  // part_color_catalog führt das Bild je Teil UND Farbe. Vorher schrieb die
+  // Änderung die Zielzeile ohne Bild und verliess sich auf einen Job, der
+  // dafür nie zuständig war — die Kachel zeigte danach den Platzhalter.
+
+  await t.test('das Bild der neuen Farbe kommt aus den Set-Teilelisten', async () => {
+    await leeren();
+    await db.run(`INSERT INTO parts (user_id,part_number,color_id,source)
+                  VALUES ($1,'3001',4,'manual')`, [UID]);
+    // Zwei Sets führen denselben Stein in Blau. Eines hat nur die
+    // CDN-Adresse, das andere zusätzlich die lokale Datei — die soll gewinnen,
+    // denn sie lädt ohne Netz.
+    await db.run(`INSERT INTO set_parts_catalog
+                    (set_number,part_number,color_id,image_url,image_local)
+                  VALUES ('10497-1','3001',7,'https://cdn.example/nur-url.jpg',NULL),
+                         ('60337-1','3001',7,'https://cdn.example/mit-datei.jpg','/images/parts/3001_7.jpg')`);
+
+    const a = await aendere('3001', 4, { color_id: 7 });
+    assert.equal(a.status, 200, JSON.stringify(a.body));
+    assert.equal(a.body.bild, 'katalog',
+      `Die Antwort sagt „${a.body.bild}" — erwartet „katalog": Das Bild stand ` +
+      'in einer eingespielten Set-Teileliste und kostete keinen Abruf.');
+    const b = await farbBild(7);
+    assert.equal(b?.image_local, '/images/parts/3001_7.jpg',
+      `Im Farbkatalog steht image_local=${JSON.stringify(b?.image_local)} — erwartet ` +
+      'die lokale Datei aus 60337-1. Ohne sie zeigt die Kachel nach der ' +
+      'Farbänderung weiter den Platzhalter (Marcos Befund).');
+    assert.equal(b?.image_url, 'https://cdn.example/mit-datei.jpg',
+      'Adresse und Datei müssen aus DERSELBEN Zeile kommen — sonst zeigt der ' +
+      'Rückfall auf die CDN-Adresse ein anderes Bild als die Datei daneben');
+  });
+
+  await t.test('ein schon vorhandenes Farbbild wird nicht überschrieben', async () => {
+    await leeren();
+    await db.run(`INSERT INTO parts (user_id,part_number,color_id,source)
+                  VALUES ($1,'3001',4,'manual')`, [UID]);
+    await db.run(`INSERT INTO part_color_catalog (part_number,color_id,color_name,image_url)
+                  VALUES ('3001',7,'Blue','https://cdn.example/schon-da.jpg')`);
+    await db.run(`INSERT INTO set_parts_catalog (set_number,part_number,color_id,image_url)
+                  VALUES ('10497-1','3001',7,'https://cdn.example/aus-dem-set.jpg')`);
+
+    const a = await aendere('3001', 4, { color_id: 7 });
+    assert.equal(a.status, 200, JSON.stringify(a.body));
+    assert.equal(a.body.bild, 'vorhanden',
+      `Die Antwort sagt „${a.body.bild}" — erwartet „vorhanden"`);
+    assert.equal((await farbBild(7))?.image_url, 'https://cdn.example/schon-da.jpg',
+      'Das dastehende Bild gilt. Es bei jeder Farbänderung zu ersetzen hiesse, ' +
+      'ein genau für diese Farbe geholtes Bild gegen das erste beliebige aus ' +
+      'einer Set-Teileliste zu tauschen.');
+  });
+
+  await t.test('kennt niemand ein Bild, sagt die Antwort das — die Farbe ändert sich trotzdem', async () => {
+    await leeren();
+    await db.run(`INSERT INTO parts (user_id,part_number,color_id,source)
+                  VALUES ($1,'3001',4,'manual')`, [UID]);
+    await db.run(`INSERT INTO part_acquisitions
+                    (user_id,part_number,color_id,quantity,condition,created_at)
+                  VALUES ($1,'3001',4,5,'N', NOW())`, [UID]);
+
+    const a = await aendere('3001', 4, { color_id: 7 });
+    assert.equal(a.status, 200, JSON.stringify(a.body));
+    // Ohne Rebrickable-Schlüssel gibt lookupPart() sofort null zurück; in
+    // dieser Umgebung gibt es keinen. Gemessen wird also der Fall „nichts
+    // gefunden" — und der darf die Änderung NICHT mitnehmen.
+    assert.equal(a.body.bild, null,
+      `Die Antwort sagt „${a.body.bild}" — erwartet null. Ein geratenes ` +
+      '„vorhanden" würde die Oberfläche um ihren Hinweis bringen.');
+    assert.deepEqual((await bestand()).map(r => r.color_id), [7],
+      'Die Farbe muss geändert sein, auch wenn kein Bild zu finden war — ' +
+      'ein fehlendes Bild ist kein Grund, die Korrektur zurückzunehmen');
+    assert.deepEqual((await erfassungen()).map(e => ({ farbe: e.farbe, menge: e.menge })),
+      [{ farbe: 7, menge: 5 }], 'Die Erfassung zieht mit');
   });
 });

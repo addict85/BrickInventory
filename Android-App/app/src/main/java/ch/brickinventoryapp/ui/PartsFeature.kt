@@ -67,7 +67,14 @@ internal fun MainViewModel.loadParts(page: Int = 1, debounce: Boolean = false) {
                     // der Bewertung — dieselbe wie die Webapp. Nur auf Seite 1:
                     // Die Liste ist nicht seitenweise, sie steht als Abschnitt
                     // ueber den Set-Teilen.
-                    (repo.teile.getManualParts(scopeFor(ScopeFilter.View.PARTS)) as? Result.Success)
+                    // MIT Suchtext und Lagerort: Der Bildschirm hat EIN
+                    // Suchfeld fuer beide Abschnitte (PartsScreen.kt). Hier
+                    // stand nur der Kontofilter — der Text filterte also die
+                    // Set-Teile, und die manuellen Kacheln darueber blieben
+                    // unveraendert stehen. Marcos Befund vom 20.10., in der
+                    // Webapp gemeldet und hier genauso vorhanden.
+                    (repo.teile.getManualParts(scopeFor(ScopeFilter.View.PARTS), suche,
+                                               lagerFor(ScopeFilter.View.PARTS)) as? Result.Success)
                         ?.let { m -> _partsState.update { it.copy(manualParts = m.data.parts) } }
                     when (val s = repo.teile.getPartsStats(scopeFor(ScopeFilter.View.PARTS))) {
                         is Result.Success -> _partsState.update { it.copy(partsStats = s.data.stats) }
@@ -449,7 +456,9 @@ internal fun MainViewModel.loadMinifigs(debounce: Boolean = false) {
                 _partsState.update { it.copy(minifigs = r.data.figs, minifigsLoading = false) }
                 // Die manuell erfassten Figuren aus IHRER Quelle, nicht aus der
                 // Bewertung — dieselbe wie die Webapp.
-                (repo.teile.getManualMinifigs(scopeFor(ScopeFilter.View.MINIFIGS)) as? Result.Success)
+                // Mit Suchtext, aus demselben Grund wie bei den Teilen: EIN
+                // Suchfeld, zwei Abschnitte darunter (MinifigsScreen).
+                (repo.teile.getManualMinifigs(scopeFor(ScopeFilter.View.MINIFIGS), suche) as? Result.Success)
                     ?.let { m -> _partsState.update { it.copy(manualFigs = m.data.figs) } }
             }
             is Result.Error   -> {

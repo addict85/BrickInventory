@@ -781,7 +781,12 @@ async function speichereTeilFarbe() {
     `/v1/parts/${encodeURIComponent(nummer)}/${alt}/color${owner ? `?owner=${encodeURIComponent(owner)}` : ''}`,
     { color_id: neu, color_name: wahl?.dataset.name || null, color_hex: wahl?.dataset.hex || null });
   if (!d?.success) { toast(d?.error || tRaw('settings.error'), 'error'); return; }
-  toast(tRaw('settings.saved'), 'success');
+  // `bild` sagt, woher das Bild der neuen Farbe kommt (utils/teilFarbeAendern.ts).
+  // null heisst: keines gefunden — dann steht nach dem Neuöffnen der
+  // Platzhalter da, und genau das war Marcos Befund. Die Meldung sagt es,
+  // statt ihn ein zweites Mal vor einem leeren Platz stehen zu lassen.
+  if (d.bild === null) toast(tRaw('parts.color.saved_no_image'), 'info');
+  else                 toast(tRaw('settings.saved'), 'success');
   await loadManualParts().catch(() => {});
   if (document.querySelector('.ntab.active')?.dataset?.tab === 'finance') loadFinance();
   await openManDetail('part', nummer, neu);
