@@ -57,6 +57,15 @@
  * Export nicht braucht. Die übrigen Fälle und ihre Gegenproben sind
  * unverändert — nachgerechnet wurde nach dem Ausbau erneut.
  *
+ * Am 20.10. ist Fall 2b dazugekommen (Marcos Zustandsspalte). Damit sind es
+ * wieder acht Unterfälle, und die Zahlen oben gelten unverändert — NACHGEZÄHLT,
+ * nicht angenommen: `# tests 9 / # pass 9`, und der Lauf mit einem absichtlich
+ * falschen 2b meldete `pass 7 / fail 2`, also dieselbe Form wie A bis G.
+ *
+ * Eigene Gegenprobe zu 2b: `standardZustand: await nutzerStandardZustand(uid)`
+ * durch das feste `'N'` ersetzt → `pass 7 / fail 2`, rot ist 2b mit
+ * „'N' statt 'U' — die Einstellung des Kontos gewinnt".
+ *
  * Voraussetzung: Test-DB via TEST_DATABASE_URL. Ohne DB: skip, ausser
  * REQUIRE_DB=1.
  */
@@ -74,10 +83,23 @@ const { importiereWantedListe, beschreibePosten, loeseLokalAuf, leseWantedListe 
 test.after(async () => { await db.pool.end().catch(() => {}); });
 
 /** Ein ITEM-Block in Marcos Schreibweise (wie in wanted-liste-db.test.js). */
-function item(typ, id, farbe, menge = 1) {
+/**
+ * `zustand` seit dem 20.10. — vorher stand hier fest `X`.
+ *
+ * Es gibt einen Zwilling dieses Helfers in test/wanted-liste-db.test.js, der
+ * zusaetzlich MAXPRICE kann. Die beiden sind NICHT zusammengelegt: Das waere
+ * eine Aenderung an einem gruenen Test ohne Gewinn fuer die Sache hier. Wer
+ * einen dritten braucht, legt sie besser zusammen, statt einen dritten zu
+ * schreiben.
+ *
+ * `null` laesst CONDITION ganz weg — das ist der Fall „die Datei sagt nichts",
+ * und er ist ein anderer als `X` („egal"), auch wenn beide zum Standard des
+ * Kontos fuehren.
+ */
+function item(typ, id, farbe, menge = 1, zustand = 'X') {
   return `<ITEM>\n<ITEMTYPE>${typ}</ITEMTYPE>\n<ITEMID>${id}</ITEMID>\n` +
     `${farbe === null ? '' : `<COLOR>${farbe}</COLOR>\n`}<MINQTY>${menge}</MINQTY>\n` +
-    `<CONDITION>X</CONDITION>\n</ITEM>`;
+    `${zustand === null ? '' : `<CONDITION>${zustand}</CONDITION>\n`}</ITEM>`;
 }
 const liste = (...items) => `<INVENTORY>\n${items.join('\n')}\n</INVENTORY>\n`;
 
@@ -175,6 +197,41 @@ test('Vorschau, Korrekturen und Farbübersetzung', { concurrency: 1 }, async (t)
     assert.equal(p.menge, 7);
     assert.equal(p.ausgang, 'offen', 'Farbe 85 ist nicht abbildbar — der Posten bleibt offen');
     assert.match(p.grund || '', /BrickLink-Farbe 85/);
+  });
+
+  await t.test('2b. der Standardzustand des Kontos reist EINMAL je Bericht mit', async () => {
+    // ── Marcos Bitte vom 20.10. ─────────────────────────────────────────────
+    //
+    //   „ja, bitte die Zustandsspalte noch in die Vorschau"
+    //
+    // Je Posten steht der Zustand AUS DER DATEI, und der ist bei CONDITION=X
+    // und bei fehlender Angabe null. Angelegt wird dann der Standard des
+    // Kontos — die Vorschau soll zeigen, was ANGELEGT wird.
+    //
+    // Der Standard gehoert an den BERICHT, nicht an den Posten: Er ist je
+    // Konto derselbe, und 224-mal dieselbe Zeichenkette waere eine Abschrift.
+    // Und er kommt vom SERVER, nicht aus dem Browser — dort steht er nirgends
+    // verlaesslich, und ein geratener Zustand in einer Vorschau waere genau
+    // die Sorte Behauptung, die hier schon einmal falsch war.
+    const ohne = await importiereWantedListe(1, liste(item('P', '3001', 5, 1, 'X')),
+                                             { vorschau: true });
+    assert.equal(ohne.standardZustand, 'N',
+      'Ohne Einstellung gilt die Vorgabe des Baums (nutzerStandardZustand)');
+    assert.equal(ohne.posten[0].zustand, null,
+      'Am POSTEN steht weiterhin, was in der Datei stand — nicht der Standard');
+
+    await db.run(`INSERT INTO user_settings (user_id, key, value)
+                  VALUES (1,'user_default_condition','U')
+                  ON CONFLICT (user_id, key) DO UPDATE SET value='U'`);
+    const mit = await importiereWantedListe(
+      1, liste(item('P', '3001', 5, 1, 'N'), item('P', '3001', 5, 1, 'U'),
+               item('P', '3001', 5, 1, 'X'), item('P', '3001', 5, 1, null)),
+      { vorschau: true });
+    assert.equal(mit.standardZustand, 'U', 'Die Einstellung des Kontos gewinnt');
+    assert.deepEqual(mit.posten.map(x => x.zustand), ['N', 'U', null, null],
+      'N und U bleiben, X bleibt null — der Standard ersetzt sie NICHT im Posten. ' +
+      'Die Vorschau setzt beides zusammen (zeile() in public/js/18-wanted-xml.js)');
+    await db.run(`DELETE FROM user_settings WHERE user_id=1 AND key='user_default_condition'`);
   });
 
   await t.test('3. eine Korrektur trifft den Posten am Index, nicht die Nummer', async () => {

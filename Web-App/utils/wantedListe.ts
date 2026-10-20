@@ -63,6 +63,7 @@
  * seitenweiseLesen in utils/gutscheinPdfSchreiben.ts.)
  */
 import * as db from '../db/database';
+import { nutzerStandardZustand } from './settings';
 
 /** Die drei Arten, die diese Anwendung führt. */
 export type WantedArt = 'part' | 'fig' | 'set';
@@ -496,6 +497,29 @@ export interface WantedBericht {
    * für das, was BIS dahin geschehen ist — und das bleibt stehen.
    */
   abgebrochen?: boolean;
+  /**
+   * Der Standardzustand des Kontos — fuer die Vorschau.
+   *
+   * ── Marcos Bitte vom 20.10. ───────────────────────────────────────────────
+   *
+   *   „ja, bitte die Zustandsspalte noch in die Vorschau"
+   *
+   * Je Posten steht der Zustand AUS DER DATEI (`zustand`), und der ist bei
+   * CONDITION=X und bei fehlender Angabe null — dann gilt der Standard des
+   * Kontos. Die Vorschau soll aber zeigen, was ANGELEGT wird, nicht was in der
+   * Datei steht.
+   *
+   * Aufgeloest wird der Zustand erst beim Schreiben (zustandFuerPreis in
+   * utils/settings.ts). In der Vorschau ist er noch nicht gefallen — deshalb
+   * reist der Standard EINMAL je Bericht mit, nicht je Posten: Er ist je Konto
+   * derselbe, und 224-mal dieselbe Zeichenkette waere eine Abschrift.
+   *
+   * Warum nicht im Browser nachschlagen: Dort steht er nirgends verlaesslich
+   * (initDefaultCondition in 01-core.js setzt nur die Formularfelder). Der
+   * Server weiss ihn sicher; ein geratener Zustand in einer Vorschau waere
+   * genau die Sorte Behauptung, die hier schon einmal falsch war.
+   */
+  standardZustand: 'N' | 'U';
   posten: PostenErgebnis[];
 }
 
@@ -831,6 +855,7 @@ export async function importiereWantedListe(
     ...(korrekturen ? { korrekturen } : {}),
     angelegt: 0, aufgestockt: 0, fehler: 0,
     vorschau: !!opt.vorschau,
+    standardZustand: await nutzerStandardZustand(uid),
     posten: [],
   };
 

@@ -528,6 +528,10 @@ window.I18N_DE = {
   'wanted.keep': '— unverändert —',
   'wanted.rb_id_ph': 'Rebrickable-Nr.',
   'wanted.col_outcome': 'Ergebnis',
+  // Steht unter der Zustandsplakette, wenn die Datei fuer diesen Posten
+  // keinen Zustand nennt (CONDITION=X oder gar nichts) — dann wird der
+  // Standard des Kontos angelegt, und die Vorschau sagt es dazu.
+  'wanted.cond_default': 'aus deinen Einstellungen',
   'wanted.col_rb_id': 'Rebrickable-Nr. eintragen',
   'wanted.col_set_color': 'Farbe setzen',
   'wanted.grund_nummer_unbekannt': 'Zu dieser BrickLink-Nummer ist keine Rebrickable-Nummer bekannt',
