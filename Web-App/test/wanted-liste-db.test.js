@@ -322,4 +322,67 @@ test('der Import erfindet keine Farbe und schreibt ihren Namen', { concurrency: 
     assert.equal(bericht.vorschau, false, 'Dieser Lauf war keine Vorschau');
     assert.equal(bericht.angelegt, 1, 'Der abbildbare Posten muss angelegt werden');
   });
+
+  // ── Abbrechen (Marcos Wunsch vom 20.10., indirekt) ───────────────────────
+  //
+  // Der Fortschritt steht seit dem 20.10. auch im Auftragsdatensatz, den beide
+  // Oberflächen als Balken zeigen — und dieser Balken trägt ein Kreuz. Ein
+  // Import, der das Kreuz nicht beachtet, hätte einen Abbrechen-Knopf, der
+  // lügt.
+  //
+  // Geprüft wird der TAKT: alle zehn Posten wird gefragt, nicht bei jedem
+  // (die Frage ist eine Datenbankabfrage) und nicht nie.
+
+  await t.test('ein Abbruch hält nach spätestens zehn Posten an', async () => {
+    // 25 abbildbare Posten derselben Nummer in verschiedenen Mengen; die
+    // Abbildung steht in der Datenbank (siehe oben, 3001 → Farbe 4).
+    const viele = `<INVENTORY>${Array.from({ length: 25 }, (_, i) =>
+      `<ITEM><ITEMTYPE>P</ITEMTYPE><ITEMID>3001</ITEMID><COLOR>5</COLOR>` +
+      `<MINQTY>${i + 1}</MINQTY></ITEM>`).join('')}</INVENTORY>`;
+    const z = zaehler();
+    let gefragt = 0;
+    const b = await importiereWantedListe(1, viele, {
+      anleger: z.anleger,
+      abbruch: async () => { gefragt++; return true; },
+    });
+    assert.equal(b.abgebrochen, true,
+      'Der Bericht muss sagen, dass abgebrochen wurde — sonst sieht ein ' +
+      'halber Import aus wie ein vollständiger');
+    assert.equal(z.gesehen.length, 10,
+      `Der Anleger bekam ${z.gesehen.length} Posten. Erwartet sind zehn: ` +
+      'Gefragt wird nach jedem zehnten, und beim ersten Ja ist Schluss.');
+    assert.equal(gefragt, 1, `Die Frage fiel ${gefragt}-mal statt einmal`);
+    assert.equal(b.posten.length, 10,
+      'Der Bericht führt nur, was bearbeitet wurde — der Rest blieb liegen');
+  });
+
+  await t.test('ohne Abbruch läuft die Liste durch', async () => {
+    // Die Gegenrichtung: Der Fall oben wäre auch grün, wenn der Import nach
+    // zehn Posten IMMER anhielte.
+    const viele = `<INVENTORY>${Array.from({ length: 25 }, (_, i) =>
+      `<ITEM><ITEMTYPE>P</ITEMTYPE><ITEMID>3001</ITEMID><COLOR>5</COLOR>` +
+      `<MINQTY>${i + 1}</MINQTY></ITEM>`).join('')}</INVENTORY>`;
+    const z = zaehler();
+    const b = await importiereWantedListe(1, viele, {
+      anleger: z.anleger,
+      abbruch: async () => false,
+    });
+    assert.equal(b.abgebrochen, undefined, 'Nichts wurde abgebrochen');
+    assert.equal(z.gesehen.length, 25, `Der Anleger bekam ${z.gesehen.length} statt 25 Posten`);
+  });
+
+  await t.test('in der VORSCHAU wird gar nicht erst gefragt', async () => {
+    // Eine Vorschau schreibt nichts; es gibt nichts abzubrechen, und eine
+    // Datenbankabfrage alle zehn Posten wäre reine Last.
+    const viele = `<INVENTORY>${Array.from({ length: 25 }, (_, i) =>
+      `<ITEM><ITEMTYPE>P</ITEMTYPE><ITEMID>3001</ITEMID><COLOR>5</COLOR>` +
+      `<MINQTY>${i + 1}</MINQTY></ITEM>`).join('')}</INVENTORY>`;
+    let gefragt = 0;
+    const b = await importiereWantedListe(1, viele, {
+      vorschau: true,
+      abbruch: async () => { gefragt++; return true; },
+    });
+    assert.equal(gefragt, 0, `Die Vorschau fragte ${gefragt}-mal nach dem Abbruch`);
+    assert.equal(b.posten.length, 25, 'Die Vorschau zeigt die ganze Liste');
+  });
 });

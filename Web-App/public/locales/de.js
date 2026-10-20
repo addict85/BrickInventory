@@ -519,6 +519,7 @@ window.I18N_DE = {
   'settings.wanted_errors': 'Fehler',
   'wanted.pick': 'BrickLink-Wanted-Liste (.xml) einlesen — die Vorschau zeigt sie vor dem Import',
   'wanted.pick_short': 'BrickLink XML',
+  'wanted.cancelled': 'Abgebrochen — der Rest der Liste wurde nicht übernommen. Was schon angelegt ist, bleibt.',
   'wanted.progress_write': 'Posten {done} von {total}',
   'wanted.progress_rb': 'Nummern bei Rebrickable nachgefragt: {done} von {total}',
 

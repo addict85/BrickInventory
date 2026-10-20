@@ -6,7 +6,7 @@
  * übersetzen.
  */
 import express from 'express';
-import { fehlertext, handleRouteError, pfadParam } from '../../utils/httpError';
+import { fehlertext, handleRouteError, logAndContinue, pfadParam } from '../../utils/httpError';
 import { sendeFehler } from '../../utils/fehlerTexte';
 import { requireToken } from './middleware';
 import { scopeIds, parseScopeMode, resolveWriteTarget } from '../../utils/household';
@@ -18,6 +18,7 @@ import { csvZeilenAusAnfrage, csvImportAntwort, parseCsvDate } from '../../utils
 import { importiereWantedListe } from '../../utils/wantedListe';
 import type { Korrektur } from '../../utils/wantedListe';
 import { merkeBlNummer } from '../../utils/blZuordnung';
+import { starteAuftrag, meldeAuftrag, beendeAuftrag, istAbgebrochen } from '../../utils/importAuftrag';
 
 const router = express.Router();
 type AuthedRequest = express.Request & { apiUser: { user_id: number } };
@@ -301,8 +302,30 @@ router.post('/wanted/import/csv', requireToken, csvEmpfang.single('file'),
  * bis dahin ist das eigene Konto die einzige Antwort, die nicht überrascht.
  */
 router.post('/wanted-list/import/xml', requireToken, csvEmpfang.single('file'),
-  async (req: AuthedRequest & { file?: { buffer: Buffer } }, res) => {
+  async (req: AuthedRequest & { file?: { buffer: Buffer; originalname?: string } }, res) => {
     if (!req.file) return sendeFehler(req, res, 400, 'keine_datei');
+    // Vor dem try: Der catch-Zweig muss den Auftrag schliessen können, und
+    // was im try entsteht, sieht er nicht.
+    const uid = req.apiUser.user_id;
+    // ZWEI Merker, und das ist kein Luxus (GEMESSEN):
+    //
+    //   angefragt — „der Start ist unterwegs". Verhindert, dass die zweite
+    //               Fortschrittsmeldung einen zweiten Start auslöst.
+    //   laeuft    — „der Auftrag gehört UNS". Erst wenn starteAuftrag das
+    //               bestätigt hat.
+    //
+    // Mit nur einem Merker war beides dasselbe, und der Abschluss unten lief
+    // auf dem Merker „angefragt": Der Wanted-Import hat damit den Auftrag
+    // eines FREMDEN, laufenden CSV-Imports auf „done" gesetzt — genau das,
+    // was er nicht anfassen soll. Der Fall steht als Prüfung in
+    // test/wanted-liste-route-db.test.js.
+    let auftragAngefragt = false;
+    let auftragLaeuft = false;
+    // Die Meldungen laufen über eine Kette: Der Rückruf aus dem Kern ist
+    // synchron, das Schreiben in die Datenbank ist es nicht. Ohne die Kette
+    // überholen sich zwei Meldungen, und im Balken stünde eine kleinere Zahl
+    // nach einer grösseren.
+    let kette: Promise<unknown> = Promise.resolve();
     try {
       const xml = req.file.buffer.toString('utf-8');
       // Eine Datei, die kein <INVENTORY> trägt, ist keine Wanted-Liste. Das
@@ -367,6 +390,10 @@ router.post('/wanted-list/import/xml', requireToken, csvEmpfang.single('file'),
       // Durchdrücken sammelt gzip die Zeilen und schickt sie am Ende zusammen
       // — der Balken spränge von 0 auf 100, und zwar genau dann, wenn er nicht
       // mehr gebraucht wird.
+      // Was im Balken als „gerade dran" steht. Der CSV-Import zeigt dort die
+      // Setnummer; hier gibt es keine einzelne Nummer, die etwas sagt — also
+      // der Dateiname, damit in der anderen Sitzung erkennbar ist, WAS läuft.
+      const dateiName = String(req.file.originalname || 'wanted.xml').slice(0, 120);
       const strom = String(req.query.strom ?? '') === '1';
       if (strom) {
         res.setHeader('Content-Type', 'application/x-ndjson; charset=utf-8');
@@ -382,9 +409,31 @@ router.post('/wanted-list/import/xml', requireToken, csvEmpfang.single('file'),
         (res as unknown as { flush?: () => void }).flush?.();
       };
 
-      const bericht = await importiereWantedListe(req.apiUser.user_id, xml, {
+      // ── Derselbe Balken wie beim Set-Import (Marcos Wunsch vom 20.10.) ──
+      //
+      // „bitte auch noch umsetzen, dass der Import der BL-XML Importe in der
+      //  Android-App angezeigt werden (analog den Set-Importen)."
+      //
+      // Der Strom oben versorgt den Tab, der die Datei geschickt hat. Der
+      // Auftragsdatensatz hier versorgt ALLE ANDEREN: die Android-App zeigt
+      // ihren Balken auf jedem Reiter, die Webapp ihren im Kopf, und auch eine
+      // zweite Browser-Sitzung desselben Kontos sieht ihn — der Datensatz
+      // hängt am Konto, nicht an dieser Anfrage (utils/importAuftrag.ts).
+      //
+      // NUR beim echten Schreiben: Eine Vorschau ändert nichts, und ein
+      // Balken „Import läuft" für eine Vorschau wäre eine Lüge in drei
+      // Oberflächen gleichzeitig.
+      const schreiben = String(req.query.schreiben ?? '') === '1';
+      const anDenAuftrag = (stand: { fertig: number; gesamt: number }, unbedingt = false) => {
+        if (!auftragLaeuft) return;
+        kette = kette
+          .then(() => meldeAuftrag(uid, { done: stand.fertig, total: stand.gesamt }, unbedingt))
+          .catch(logAndContinue('wanted-import:auftrag'));
+      };
+
+      const bericht = await importiereWantedListe(uid, xml, {
         // Geschrieben wird nur, wenn es ausdrücklich dasteht.
-        vorschau: String(req.query.schreiben ?? '') !== '1',
+        vorschau: !schreiben,
         ueberRebrickable: String(req.query.rebrickable ?? '') === '1',
         ...(korrekturen ? { korrekturen } : {}),
         // Eine von Hand eingetragene Nummer wird gemerkt — Begründung an der
@@ -392,7 +441,29 @@ router.post('/wanted-list/import/xml', requireToken, csvEmpfang.single('file'),
         merkeNummer: (art, rbId, blId) => merkeBlNummer(art, rbId, blId),
         // Nur wenn jemand zusieht: Ohne Strom ist der Rückruf gar nicht
         // gesetzt, und der Kern spart sich das Zusammenbauen der Meldungen.
-        ...(strom ? { fortschritt: (stand) => schreibeZeile({ fortschritt: stand }) } : {}),
+        //
+        // EIN Rückruf, zwei Empfänger: der Strom für den eigenen Tab, der
+        // Auftragsdatensatz für alle anderen Sitzungen. Zwei getrennte
+        // Rückrufe wären zwei Zählungen, die auseinanderlaufen können.
+        fortschritt: (stand) => {
+          schreibeZeile({ fortschritt: stand });
+          // Der Auftrag wird beim ERSTEN Fortschritt angelegt: Vorher ist die
+          // Zahl der Posten nicht bekannt, und ein Balken ohne Nenner steht
+          // bei 0 %, bis die Datei gelesen ist.
+          if (schreiben && !auftragAngefragt && stand.phase === 'schreiben') {
+            auftragAngefragt = true;
+            kette = kette
+              .then(async () => {
+                auftragLaeuft = await starteAuftrag(uid, {
+                  total: stand.gesamt, current: dateiName,
+                });
+              })
+              .catch((e) => { auftragLaeuft = false; logAndContinue('wanted-import:auftrag')(e); });
+          }
+          anDenAuftrag(stand);
+        },
+        // Abbrechen über den Balken — siehe die Begründung an `abbruch`.
+        ...(schreiben ? { abbruch: async () => auftragLaeuft && await istAbgebrochen(uid) } : {}),
         anleger: {
           teil:  (u, body) => addManualPart(u, body),
           figur: (u, body) => addManualFig(u, body),
@@ -402,6 +473,27 @@ router.post('/wanted-list/import/xml', requireToken, csvEmpfang.single('file'),
           set:   (u, sn, menge, zustand) => addSet(sn, menge, u, null, null, zustand),
         },
       });
+      // Den Auftrag schliessen, bevor geantwortet wird: Sonst steht der Balken
+      // in den anderen Sitzungen noch auf „läuft", während dieser Tab längst
+      // den Bericht zeigt.
+      // ERST die Kette abwarten, DANN fragen, ob der Auftrag uns gehört: Der
+      // Start läuft in der Kette, und vorher steht in `auftragLaeuft` noch
+      // nichts Belastbares.
+      await kette.catch(() => {});
+      if (auftragLaeuft) {
+        await beendeAuftrag(uid, {
+          ok: bericht.angelegt + bericht.aufgestockt,
+          // Offen gebliebene Posten sind weder angelegt noch gescheitert —
+          // der Balken führt sie als Anmerkung (⚠), so wie der CSV-Import
+          // eine Zeitüberschreitung.
+          warn: bericht.posten.filter(p => p.ausgang === 'offen').length,
+          fehler: bericht.fehler,
+          // Die BEARBEITETEN Posten, nicht die geschriebenen: Sonst bliebe der
+          // Balken bei einer Liste mit offenen Posten vor dem Ende stehen.
+          done: bericht.posten.length,
+          abgebrochen: !!bericht.abgebrochen,
+        }).catch(logAndContinue('wanted-import:auftrag-ende'));
+      }
       if (strom) {
         // Die LETZTE Zeile ist der Bericht — dieselbe Nutzlast wie ohne Strom,
         // damit beide Wege dasselbe liefern und der Client nur eine Form kennt.
@@ -410,6 +502,14 @@ router.post('/wanted-list/import/xml', requireToken, csvEmpfang.single('file'),
       }
       res.json({ success: true, ...bericht });
     } catch (e) {
+      // Der Auftrag MUSS zu sein, auch wenn der Import geworfen hat. Bliebe er
+      // auf „läuft", zeigte der Balken in der App und in jeder anderen Sitzung
+      // einen Import, den es nicht mehr gibt — bis jemand einen neuen startet.
+      await kette.catch(() => {});
+      if (auftragLaeuft) {
+        await beendeAuftrag(uid, { ok: 0, fehler: 0, done: 0, abgebrochen: true })
+          .catch(logAndContinue('wanted-import:auftrag-ende (Fehler)'));
+      }
       // Ist der Strom schon offen, sind die Kopfzeilen raus: Ein Statuscode
       // geht nicht mehr. Dann muss der Fehler als letzte ZEILE kommen, sonst
       // endet die Leitung stumm und der Client wartet auf einen Bericht, der

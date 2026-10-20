@@ -516,6 +516,7 @@ window.I18N_EN = {
   'settings.wanted_errors': 'errors',
   'wanted.pick': 'Read a BrickLink wanted list (.xml) — the preview shows it before importing',
   'wanted.pick_short': 'BrickLink XML',
+  'wanted.cancelled': 'Cancelled — the rest of the list was not imported. What is already added stays.',
   'wanted.progress_write': 'Item {done} of {total}',
   'wanted.progress_rb': 'Numbers looked up at Rebrickable: {done} of {total}',
 
