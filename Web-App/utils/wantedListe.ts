@@ -982,22 +982,49 @@ export async function importiereWantedListe(
       if (wieAngelegt) bericht.angelegt++; else bericht.aufgestockt++;
       zeile.ausgang = wieAngelegt ? 'angelegt' : 'aufgestockt';
 
-      // ── Eine eingetragene Nummer wird GEMERKT ─────────────────────────
+      // ── Eine NACHGESCHLAGENE Nummer wird GEMERKT ──────────────────────
       //
       // Marcos Bitte war „rebrickable ids ergänzen" — und wer sie einmal
       // eingetragen hat, soll sie beim nächsten Import nicht wieder
       // eintippen. Gemerkt wird in bl_zuordnung; dort liest loeseLokalAuf
       // sie als Stufe 1 ('zuordnung') wieder, also als Abbildung und nicht
-      // als Vermutung. Genau das ist sie: nachgesehen, von Hand.
+      // als Vermutung.
       //
-      // Nur bei 'korrigiert': Die anderen Stufen kommen schon von dort oder
-      // aus dem Katalog, und ein Katalogtreffer ist eine VERMUTUNG — die als
-      // Zuordnung einzutragen würde sie zur Abbildung befördern, ohne dass
-      // jemand nachgesehen hat.
+      // ── Warum 'rebrickable' dazugehört (Marcos Frage vom 20.10.) ──────
+      //
+      //   „wenn das gleiche xml-File 2x importiere sollte der 2. Lauf massiv
+      //    schneller sein korrekt?" … „Wieso wird das Mapping BL zu Rebr.
+      //    nicht gespeichert?"
+      //
+      // Hier stand allein 'korrigiert', begründet mit: „Die anderen Stufen
+      // kommen schon von dort oder aus dem Katalog." Das trifft auf drei der
+      // vier anderen zu — 'zuordnung' und 'gleich_vermerkt' stehen schon in
+      // bl_zuordnung, 'katalogtreffer' ist wirklich geraten. Auf
+      // 'rebrickable' trifft KEINES von beidem zu: Sie steht nirgends, und
+      // sie ist nicht geraten. Die Stufe ist beim Aufzählen schlicht unter
+      // „die anderen" gefallen.
+      //
+      // GEMESSEN: dieselbe Datei zweimal importiert, mit einem Zähler auf
+      // dem Rebrickable-Client. Lauf 1 zwei Abrufe, Lauf 2 noch EINER —
+      // `blTeilZuRb 98765`, obwohl die Antwort beim ersten Mal schon dastand.
+      // bl_zuordnung war nach beiden Läufen leer. Bei einer Liste mit 224
+      // Posten kostet jeder weitere Lauf dieselben 1,5 Sekunden je Posten
+      // mit abweichender Nummer, und jedes Mal aus dem Tageskontingent.
+      //
+      // Dass es eine Abbildung ist und keine Vermutung, steht an blTeilZuRb
+      // selbst: „Jeder Treffer muss in seinen external_ids.BrickLink die
+      // GESUCHTE Nummer tragen" — nachgeschlagen und gegengeprüft, nur von
+      // Rebrickable statt von Hand.
+      //
+      // NICHT gemerkt wird weiterhin ein Posten, den auch Rebrickable nicht
+      // auflösen konnte: Er steht gar nicht hier (er ist 'offen' und wird
+      // nie angelegt), und ein „nachgesehen, nichts gefunden" kennt
+      // bl_zuordnung nicht — die Tabelle führt Abbildungen, keine
+      // Fehlanzeigen. Diese Posten kosten jeden Lauf erneut einen Abruf.
       //
       // Ein Fehlschlag hier bricht den Import nicht ab: Der Posten steht im
       // Bestand, und das ist die Hauptsache. Die Notiz ist Bequemlichkeit.
-      if (a.sicherheit === 'korrigiert' && opt.merkeNummer) {
+      if ((a.sicherheit === 'korrigiert' || a.sicherheit === 'rebrickable') && opt.merkeNummer) {
         await opt.merkeNummer(a.posten.art, rbId, a.posten.blId)
           .catch(() => { /* siehe oben */ });
       }

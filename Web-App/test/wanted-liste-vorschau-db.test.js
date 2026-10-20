@@ -66,6 +66,20 @@
  * durch das feste `'N'` ersetzt → `pass 7 / fail 2`, rot ist 2b mit
  * „'N' statt 'U' — die Einstellung des Kontos gewinnt".
  *
+ * Ebenfalls am 20.10. ist Fall 5b dazugekommen (Marcos Frage nach dem zweiten
+ * Lauf). Ausgangslage damit `# pass 10 / # fail 0` — neun Unterfälle plus der
+ * Rahmen; die Zahlen von A bis G verschieben sich entsprechend um eins.
+ *
+ *   H  `|| a.sicherheit === 'rebrickable'` aus der Merk-Bedingung entfernt
+ *      (also der Stand von Marcos Frage)
+ *      → `pass 8 / fail 2`. Rot ist 5b: „Gemerkt wurde []".
+ *   I  dieselbe Bedingung auf JEDE Stufe geweitet (`if (a.sicherheit …)`)
+ *      → `pass 8 / fail 2`. Rot ist 5: Ein Katalogtreffer — eine Vermutung —
+ *        wird als Abbildung eingetragen.
+ *
+ * H und I fassen die Regel von beiden Seiten: zu eng und zu weit. Fall 5
+ * allein hätte H nie gemeldet, Fall 5b allein nicht I.
+ *
  * Voraussetzung: Test-DB via TEST_DATABASE_URL. Ohne DB: skip, ausser
  * REQUIRE_DB=1.
  */
@@ -75,8 +89,25 @@ const assert = require('node:assert/strict');
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
 process.env.WEB_WORKERS = '1';
 
+const path = require('node:path');
 const _req = require('./helpers/sources').buildAndRequire();
 const db = _req('db/database.js');
+
+// Rebrickable vorgeben, BEVOR wantedListe die Funktionen herauszieht. esbuild
+// exportiert ueber Getter, ein `rb.blTeilZuRb = …` liefe ins Leere — deshalb
+// der Eintrag im require-Zwischenspeicher (dasselbe Vorgehen wie in
+// test/preis-schreibweg-db.test.js). Erst laden, dann ersetzen: Vor dem
+// require gibt es den Eintrag nicht.
+const rbPfad = require.resolve(path.join(__dirname, '..', 'dist', 'clients', 'rebrickable.js'));
+const echtRb = require(rbPfad);
+require.cache[rbPfad].exports = Object.assign({}, echtRb, {
+  // 98765 heisst bei Rebrickable 12345 — eine ABWEICHENDE Nummer, wie sie nur
+  // dort steht. Alles andere kennt dieses Doppel nicht.
+  blTeilZuRb: async (blId) => (blId === '98765' ? '12345' : null),
+  blFilterWirkungslos: () => false,
+  lookupPart: async () => null,
+  getMinifigInfo: async () => null,
+});
 const { importiereWantedListe, beschreibePosten, loeseLokalAuf, leseWantedListe } =
   _req('utils/wantedListe.js');
 
@@ -308,6 +339,41 @@ test('Vorschau, Korrekturen und Farbübersetzung', { concurrency: 1 }, async (t)
       `Gemerkt wurde ${JSON.stringify(gemerkt)}. Erwartet ist GENAU die ` +
       'eingetragene Zuordnung 9999→3002. Steht 3001 mit dabei, wird ein ' +
       'Katalogtreffer — also eine Vermutung — als Abbildung eingetragen.');
+  });
+
+  await t.test('5b. auch eine bei Rebrickable nachgeschlagene Nummer wird gemerkt',
+    async () => {
+    // ── Marcos Frage vom 20.10. ─────────────────────────────────────────────
+    //
+    //   „wenn das gleiche xml-File 2x importiere sollte der 2. Lauf massiv
+    //    schneller sein korrekt?" … „Wieso wird das Mapping BL zu Rebr. nicht
+    //    gespeichert?"
+    //
+    // Die Regel merkte nur 'korrigiert', begruendet damit, die anderen Stufen
+    // kaemen „schon von dort oder aus dem Katalog". Das trifft auf
+    // 'rebrickable' nicht zu: Sie steht nirgends, und sie ist nicht geraten
+    // (blTeilZuRb prueft jeden Treffer gegen external_ids.BrickLink). Die
+    // Stufe war beim Aufzaehlen unter „die anderen" gefallen.
+    //
+    // Fall 5 allein haette das nie gemeldet — dort kommt die Stufe gar nicht
+    // vor. Genau deshalb steht dieser Fall daneben und nicht darin.
+    const gemerkt = [];
+    const xml = liste(item('P', '98765', 5, 1));
+    const b = await importiereWantedListe(1, xml, {
+      vorschau: false, ueberRebrickable: true,
+      anleger: {
+        teil: async () => ({ action: 'created' }),
+        figur: async () => ({ action: 'created' }), set: async () => ({ action: 'created' }),
+      },
+      merkeNummer: async (art, rbId, blId) => { gemerkt.push({ art, rbId, blId }); },
+    });
+    assert.deepEqual(b.stufen, { rebrickable: 1 },
+      'Der Posten muss ueber Rebrickable aufgeloest worden sein — sonst sagt ' +
+      'der Fall nichts ueber diese Stufe');
+    assert.deepEqual(gemerkt, [{ art: 'part', rbId: '12345', blId: '98765' }],
+      `Gemerkt wurde ${JSON.stringify(gemerkt)}. Ohne diesen Eintrag fragt der ` +
+      'naechste Import dieselbe Nummer wieder bei Rebrickable — 1,5 Sekunden ' +
+      'und ein Abruf aus dem Tageskontingent je Posten, bei jedem Lauf');
   });
 
   await t.test('6. eine Vorschau merkt sich nichts', async () => {
