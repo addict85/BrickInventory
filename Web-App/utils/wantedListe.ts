@@ -409,6 +409,14 @@ export interface PostenErgebnis {
   blFarbe: number | null;
   menge: number;
   zustand: string | null;
+  /**
+   * MAXPRICE aus der Datei, je Stück — oder null.
+   *
+   * Steht im Bericht, seit die Vorschau eine Preisspalte hat (Marcos Wunsch
+   * vom 21.10.). Vorher wurde der Wert gelesen und weitergereicht, aber nie
+   * gezeigt; wer ihn in der Vorschau ändern soll, muss ihn erst einmal sehen.
+   */
+  maxPreis: number | null;
   rbId: string | null;
   rbFarbe: number | null;
   sicherheit: Sicherheit | null;
@@ -463,6 +471,31 @@ export interface Korrektur {
   art: WantedArt;
   rbId?: string | null;
   rbFarbe?: number | null;
+  /**
+   * Die Werte AUS DER DATEI, von Hand geändert — Marcos Wunsch vom 21.10.:
+   * „Alle Spalten sollen bearbeitbar sein in der Vorschau, damit der Inhalt
+   * vor dem Import korrigiert werden kann."
+   *
+   * Bis dahin liessen sich nur Nummer und Farbe ändern. Das waren die beiden
+   * Felder, die der Import AUFLÖST — die übrigen standen in der Datei und
+   * galten als gesetzt. Wer sich bei der Menge vertippt oder den Preis erst
+   * nachträglich kennt, musste die Datei ändern und neu einlesen.
+   *
+   * Nicht dabei sind Bild, Name und die BrickLink-Nummer selbst:
+   *   - Bild und Name stehen im KATALOG und gelten für alle Konten. Sie aus
+   *     einem Import-Dialog zu überschreiben wäre Katalogpflege an der
+   *     falschen Stelle; dafür gibt es den Detaildialog.
+   *   - Die BrickLink-Nummer ist die Quellangabe und zugleich die Gegenprobe
+   *     (`blId` oben). Sie zu ändern hiesse „ich meine ein anderes Teil" —
+   *     und genau dafür ist `rbId` da, die zusätzlich die Zuordnung merkt.
+   *
+   * `undefined` heisst „nicht angefasst", wie bei rbId/rbFarbe.
+   */
+  menge?: number;
+  /** 'N' | 'U' | null — null heisst „Standard des Kontos". */
+  zustand?: string | null;
+  /** Preis je Stück; null heisst „keiner, hol den Marktpreis". */
+  kaufpreis?: number | null;
 }
 
 export interface WantedBericht {
@@ -672,15 +705,64 @@ function wendeKorrekturenAn(
     // eine Korrektur, die nur die Farbe setzt, die Nummer mit.
     const rbId    = k.rbId    === undefined ? a.rbId    : (k.rbId || null);
     const rbFarbe = k.rbFarbe === undefined ? a.rbFarbe : (k.rbFarbe ?? null);
-    if (rbId === a.rbId && rbFarbe === a.rbFarbe) continue;   // nichts geändert
+
+    // ── Die Werte aus der Datei (Marcos Wunsch vom 21.10.) ─────────────────
+    //
+    // Eine UNBRAUCHBARE Angabe weist die ganze Korrektur ab, statt sie still
+    // zurechtzubiegen: Eine Menge 0 ist ein Vertipper, und ein Posten, der
+    // danach mit Menge 1 im Bestand steht, sagt das niemandem. Abgewiesene
+    // Korrekturen stehen im Bericht (`korrekturen.abgewiesen`) — die
+    // Oberfläche zeigt sie, und zwar seit es sie gibt.
+    let menge = a.posten.menge;
+    if (k.menge !== undefined) {
+      const m = Math.trunc(Number(k.menge));
+      if (!Number.isFinite(m) || m < 1) { abgewiesen.push(k); continue; }
+      menge = m;
+    }
+    let zustand = a.posten.zustand;
+    if (k.zustand !== undefined) {
+      // null/'' heisst ausdrücklich „Standard des Kontos" — dieselbe Lesart
+      // wie CONDITION=X in der Datei. Alles andere als N/U ist ein Fehler
+      // und nicht etwa „egal": Wer 'X' tippt, meint den Standard und
+      // schreibt dann auch nichts hin.
+      if (k.zustand === null || k.zustand === '') zustand = null;
+      else if (k.zustand === 'N' || k.zustand === 'U') zustand = k.zustand;
+      else { abgewiesen.push(k); continue; }
+    }
+    let maxPreis = a.posten.maxPreis;
+    if (k.kaufpreis !== undefined) {
+      if (k.kaufpreis === null || (k.kaufpreis as unknown) === '') maxPreis = null;
+      else {
+        const p = Number(k.kaufpreis);
+        // 0 ist hier KEIN Preis, sondern „keiner" — dieselbe Lesart wie beim
+        // Leser (`preisRoh > 0`), wo MAXPRICE=-1 und 0 zu null werden.
+        if (!Number.isFinite(p) || p < 0) { abgewiesen.push(k); continue; }
+        maxPreis = p > 0 ? p : null;
+      }
+    }
+
+    const nummerGeaendert = rbId !== a.rbId || rbFarbe !== a.rbFarbe;
+    const postenGeaendert = menge !== a.posten.menge || zustand !== a.posten.zustand
+                            || maxPreis !== a.posten.maxPreis;
+    if (!nummerGeaendert && !postenGeaendert) continue;   // nichts geändert
+
     ergebnis[k.index] = {
       ...a, rbId, rbFarbe,
+      // Der POSTEN selbst ändert sich mit — das ist neu. Bis zum 21.10.
+      // betraf eine Korrektur nur die AUFLÖSUNG (Nummer, Farbe); Menge,
+      // Zustand und Preis galten als das, was in der Datei stand.
+      ...(postenGeaendert ? { posten: { ...a.posten, menge, zustand, maxPreis } } : {}),
       // Der Name der Farbe gilt nicht mehr: Er gehoerte zur alten Nummer.
       // Er wird unten neu geholt (farbenNachtragen), damit die Zeile nicht
       // mit „Red" an einer blauen Farbnummer herausgeht.
       rbFarbName: rbFarbe === a.rbFarbe ? a.rbFarbName : null,
       rbFarbHex:  rbFarbe === a.rbFarbe ? a.rbFarbHex  : null,
-      sicherheit: 'korrigiert',
+      // `korrigiert` NUR bei einer geänderten Nummer: Diese Stufe entscheidet,
+      // ob die Zuordnung gemerkt wird (siehe merkeNummer beim Anlegen). Eine
+      // geänderte Menge sagt nichts über die Nummer aus — sie als
+      // „nachgeschlagen" einzutragen wäre eine Behauptung über etwas, das
+      // niemand angesehen hat.
+      sicherheit: nummerGeaendert ? 'korrigiert' : a.sicherheit,
       // Eine eingetragene Farbe ist nicht mehr offen.
       farbeOffen: rbId !== null && a.posten.blFarbe !== null && rbFarbe === null,
     };
@@ -943,6 +1025,7 @@ export async function importiereWantedListe(
     const zeile: PostenErgebnis = {
       blId: a.posten.blId, art: a.posten.art,
       blFarbe: a.posten.blFarbe, menge: a.posten.menge, zustand: a.posten.zustand ?? null,
+      maxPreis: a.posten.maxPreis ?? null,
       rbId: a.rbId, rbFarbe: a.rbFarbe,
       sicherheit: a.sicherheit, ausgang: a.rbId === null ? 'offen' : 'angelegt',
       ...(grund ? { grund } : {}),

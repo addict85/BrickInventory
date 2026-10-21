@@ -535,6 +535,10 @@ window.I18N_DE = {
   // keinen Zustand nennt (CONDITION=X oder gar nichts) — dann wird der
   // Standard des Kontos angelegt, und die Vorschau sagt es dazu.
   'wanted.cond_default': 'aus deinen Einstellungen',
+  // Die erste Wahl der Zustandsspalte in der Vorschau. Kein leerer Eintrag:
+  // „Standard" ist eine Aussage und keine Lücke — dieselbe wie CONDITION=X.
+  'wanted.cond_default_opt': '— Standard —',
+  'wanted.price_ph': 'Marktpreis',
   'wanted.col_rb_id': 'Rebrickable-Nr. eintragen',
   'wanted.col_set_color': 'Farbe setzen',
   'wanted.grund_nummer_unbekannt': 'Zu dieser BrickLink-Nummer ist keine Rebrickable-Nummer bekannt',
