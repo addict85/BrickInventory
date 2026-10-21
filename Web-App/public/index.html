@@ -1717,12 +1717,22 @@
      Bild, Farbe, Bezeichnung und ich dort noch Korrekturen vornehmen kann oder
      z.b. rebrickable ids ergänzen könnte"
 
-     Breiter als die übrigen Dialoge (960px): Hier steht eine Tabelle mit Bild,
-     Nummer, Name, Farbe und zwei Eingabefeldern je Zeile. In 480px wäre jede
-     Spalte zu schmal zum Lesen — und gelesen werden muss sie, das ist ihr
-     ganzer Zweck. -->
+     Breiter als die übrigen Dialoge: Hier steht eine Tabelle mit Bild,
+     Nummer, Name, Farbe und mehreren Eingabefeldern je Zeile. In 480px wäre
+     jede Spalte zu schmal zum Lesen — und gelesen werden muss sie, das ist
+     ihr ganzer Zweck.
+
+     960 -> 1360 (21.10.): Marcos Bitte „Kannst du den Dialog etwas breiter
+     machen, damit man alles in der Breite sehen kann?" Seit die Spalten
+     Zustand und Kaufpreis dazugekommen sind und Anzahl, Zustand und Preis
+     Eingabefelder tragen, sind es zehn. GEMESSEN bei 960px: Rahmen 902px,
+     Tabelle 958px — sie scrollte waagrecht, und die Spalte „Name" war auf
+     60px gequetscht, zu wenig für „Brick 2 x 4" in einer Zeile.
+
+     `width:92%` bleibt daneben stehen und gilt weiterhin zuerst: Auf einem
+     schmalen Fenster ändert diese Zahl nichts. -->
 <div class="ovl" id="wanted-xml-modal" role="dialog" aria-modal="true">
-  <div class="modal" style="max-width:960px">
+  <div class="modal" style="max-width:1360px">
     <div class="mhd">
       <div>
         <div class="mtit" style="display:flex;align-items:center;gap:7px"><span data-wanted-icon="1"></span><span data-i18n="wanted.preview_title">Wanted-Liste prüfen</span></div>
@@ -1743,7 +1753,21 @@
       <div id="wanted-xml-fortschritt-text" style="font-size:.78rem;color:var(--mut)"></div>
     </div>
     <div id="wanted-xml-bericht" style="font-size:.82rem;margin-bottom:.6rem"></div>
-    <div id="wanted-xml-tabelle" style="max-height:52vh;overflow:auto"></div>
+    <!-- `padding-right` statt nichts: Die Tabelle ist 100% breit, und die
+         letzte Spalte („Farbe setzen") klebte damit an der Kante des
+         Rahmens — Marcos Befund vom 21.10.: „laut deinem Screenshot ist die
+         letzte Spalte abgeschnitten. Ich hätte dort gerne auch noch etwas
+         Leerraum bevor der Dialog fertig ist."
+
+         Dass die Breitenmessung davor „passt" sagte (Rahmen 1302, Tabelle
+         1302, scrollt nicht), war kein Widerspruch, sondern genau das
+         Problem: gleich breit heisst null Luft. Gemessen wurde die Zahl, zu
+         sehen war der Rand erst auf dem Bild.
+
+         Am RAHMEN und nicht an der letzten Zelle: So gilt der Abstand auch,
+         wenn die Tabelle doch einmal waagrecht scrollt (schmales Fenster),
+         und er trifft keine andere Tabelle mit Klasse `dt`. -->
+    <div id="wanted-xml-tabelle" style="max-height:52vh;overflow:auto;padding-right:14px"></div>
     <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-top:.8rem">
       <label style="display:flex;align-items:center;gap:5px;font-size:.82rem;cursor:pointer">
         <input type="checkbox" id="wanted-rb" /><span data-i18n="settings.wanted_rb">Offene über Rebrickable nachfragen</span>

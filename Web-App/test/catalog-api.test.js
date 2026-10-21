@@ -89,7 +89,7 @@ async function seed() {
   // antwortete sie 0 (gemessen: „expected 2, actual 0").
   //
   // Diese Tabelle wird deshalb ECHT benutzt und NICHT nachgebaut: Ihr
-  // eindeutiger Index idx_set_acq_tag („je Konto, Set und Tag eine
+  // eindeutiger Index idx_set_acq_tag_zustand („je Konto, Set und Tag eine
   // Erfassung") steht nur in Migration 0008. Eine Attrappe haette ihn nicht,
   // und weil initSchema() ihn auch nicht anlegt, waere er fuer jede spaetere
   // Datei dieses Laufs weg — die Tagesregel still ausgeschaltet. Genau die

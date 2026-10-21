@@ -10,7 +10,7 @@
  *
  * Der zweite Schritt SCHREIBT, und er schreibt über recordAcquisitionForDay().
  * Eine zweite Anfrage mit derselben Datei legt für denselben Tag keine zweite
- * Erfassung an, sondern ADDIERT auf die bestehende (idx_part_acq_tag). Zwei
+ * Erfassung an, sondern ADDIERT auf die bestehende (idx_part_acq_tag_zustand). Zwei
  * Klicks ergäben also die doppelte Stückzahl — lautlos, denn beide Antworten
  * melden Erfolg.
  *

@@ -31,9 +31,12 @@
  * @param opt.preis    Kaufpreis der Erfassung (Standard: keiner)
  * @param opt.zustand  'N' oder 'U' (Standard 'N')
  * @param opt.am       Aufnahmedatum der Erfassung (Standard: jetzt).
- *                     idx_set_acq_tag erlaubt je Konto, Set und TAG nur eine
- *                     Erfassung — mehrere Käufe desselben Sets brauchen also
- *                     verschiedene Tage.
+ *                     idx_set_acq_tag_zustand erlaubt je Konto, Set, TAG und
+ *                     ZUSTAND nur eine Erfassung — mehrere Käufe desselben
+ *                     Sets im selben Zustand brauchen also verschiedene Tage.
+ *                     (Der Zustand steht seit Migration 0040 im Schlüssel;
+ *                     davor galt die Regel ohne ihn, und zwei Käufe eines
+ *                     Tages wurden zu einer Zeile mit Mischpreis.)
  * @param opt.egalWennDa  true: eine schon vorhandene sets-Zeile ist in Ordnung
  */
 async function haeltSet(db, userId, setNumber, menge = 1, opt = {}) {
@@ -113,13 +116,14 @@ async function haltZeile(db, userId, setNumber) {
  * @param opt.colorId    Farbe (Standard 0)
  * @param opt.preis      Kaufpreis der Erfassung — nur fuer manuelle Teile
  * @param opt.zustand    'N' oder 'U' (Standard 'N'), nur fuer manuelle Teile
- * @param opt.am         Aufnahmedatum der Erfassung. idx_part_acq_tag
- *                       (Migration 0008) erlaubt je Konto, Teil, Farbe und
- *                       TAG nur eine Erfassung — genau wie bei den Sets.
+ * @param opt.am         Aufnahmedatum der Erfassung. idx_part_acq_tag_zustand
+ *                       (Migration 0008, erweitert in 0040) erlaubt je Konto,
+ *                       Teil, Farbe, TAG und ZUSTAND nur eine Erfassung —
+ *                       genau wie bei den Sets.
  *                       Hier stand das Gegenteil, und es war falsch:
  *                       GEMESSEN brachen fuenf Testdateien mit „duplicate
  *                       key value violates unique constraint
- *                       idx_part_acq_tag" ab.
+ *                       idx_part_acq_tag_zustand" ab.
  * @param opt.storageId  Lagerort
  */
 async function haeltTeil(db, userId, partNumber, opt = {}) {
@@ -143,10 +147,23 @@ async function haeltTeil(db, userId, partNumber, opt = {}) {
     // Das ist die Zusage dieser Funktion — „dieses Konto haelt N davon",
     // nicht „kauf N dazu". Wer zwei Kaeufe braucht, gibt zwei Daten mit
     // (opt.am) oder ruft erfasseTeil() zweimal.
+    //
+    // ── `COALESCE(condition,'N')` seit Migration 0040 ────────────────────
+    //
+    // Die Spaltenliste muss den Index WOERTLICH treffen; der Name genuegt
+    // nicht. Ohne diese Ergaenzung sagt Postgres „there is no unique or
+    // exclusion constraint matching the ON CONFLICT specification" — und
+    // zwar in 25 Tests auf einmal, weil fast jeder DB-Test ueber diesen
+    // Helfer Bestand anlegt. Genau so ist es passiert.
+    //
+    // Die Zusage aendert sich dadurch leicht: „N davon" gilt jetzt je
+    // ZUSTAND. Zweimal mit verschiedenem `opt.zustand` am selben Tag ergibt
+    // zwei Zeilen — was der Sache entspricht, seit zwei Zustaende zwei
+    // Kaeufe sind.
     await db.run(
       `INSERT INTO part_acquisitions (user_id, part_number, color_id, quantity, unit_price, condition, created_at)
        VALUES ($1,$2,$3,$4,$5,$6, COALESCE($7::timestamptz, NOW()))
-       ON CONFLICT (user_id, part_number, color_id, ((created_at AT TIME ZONE 'UTC')::date))
+       ON CONFLICT (user_id, part_number, color_id, ((created_at AT TIME ZONE 'UTC')::date), (COALESCE(condition, 'N')))
        DO UPDATE SET quantity = EXCLUDED.quantity,
                      unit_price = COALESCE(EXCLUDED.unit_price, part_acquisitions.unit_price),
                      condition = EXCLUDED.condition`,
@@ -176,7 +193,7 @@ async function haeltFigur(db, userId, figNumber, opt = {}) {
     await db.run(
       `INSERT INTO minifig_acquisitions (user_id, fig_number, quantity, unit_price, condition, created_at)
        VALUES ($1,$2,$3,$4,$5, COALESCE($6::timestamptz, NOW()))
-       ON CONFLICT (user_id, fig_number, ((created_at AT TIME ZONE 'UTC')::date))
+       ON CONFLICT (user_id, fig_number, ((created_at AT TIME ZONE 'UTC')::date), (COALESCE(condition, 'N')))
        DO UPDATE SET quantity = EXCLUDED.quantity,
                      unit_price = COALESCE(EXCLUDED.unit_price, minifig_acquisitions.unit_price),
                      condition = EXCLUDED.condition`,

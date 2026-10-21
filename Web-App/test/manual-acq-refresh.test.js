@@ -74,12 +74,27 @@ test('die LIFO-Reduktion entfernt die neueste Erfassung zuerst', () => {
 // ═══════════════════════════════════════════════════════════════════════════
 test('die Tagesregel steht an genau einer Stelle', () => {
   const acq = read('utils/acquisitions.ts');
-  // Schlüssel: Benutzer + Eintrag + Tag. AUSDRÜCKLICH OHNE Zustand — zwei
-  // Erfassungen mit verschiedenen Zuständen am selben Tag sollen gar nicht
-  // erst entstehen können. Die Datums-Endpunkte aller drei Arten weisen einen
-  // zweiten Eintrag am selben Tag ebenfalls ohne Blick auf den Zustand ab.
-  assert.doesNotMatch(strip(acq), /WHERE[\s\S]{0,200}COALESCE\(condition, 'N'\) = \$/,
-    'Der Zustand darf NICHT im Schlüssel stehen');
+  // ── Schlüssel: Benutzer + Eintrag + Tag + ZUSTAND (seit dem 21.10.) ───────
+  //
+  // Hier stand das Gegenteil, und zwar als ausdrückliche Zusicherung: „Der
+  // Zustand darf NICHT im Schlüssel stehen", begründet damit, dass die
+  // Datums-Endpunkte einen zweiten Eintrag am selben Tag ohnehin ohne Blick
+  // auf den Zustand abweisen.
+  //
+  // Marcos Befund vom 21.10.: „wenn das Teil und Farbe bereits existiert und
+  // nur der Zustand anders ist, einen neuen Preis erzeugen mit einem anderen
+  // Zustand." GEMESSEN vorher, eine Wanted-Liste mit 3 Stück NEU zu 1.50 und
+  // 2 Stück GEBRAUCHT zu 0.50 desselben Teils: EINE Zeile, quantity 5,
+  // unit_price 1.10, condition 'U'. Der Mischpreis, und die neuen Teile als
+  // gebraucht verbucht.
+  //
+  // Die alte Begründung war gut und gilt weiter — deshalb ist BEIDES
+  // geändert: Der Datums-Endpunkt sieht den Zustand jetzt ebenfalls an (der
+  // Fall darunter prüft das). Die Zusicherung dreht sich damit um, statt zu
+  // verschwinden: Die neue Regel verdient dieselbe Wachsamkeit wie die alte.
+  assert.match(strip(acq), /WHERE[\s\S]{0,300}COALESCE\(condition, 'N'\) = \$/,
+    'Der Zustand MUSS im Schlüssel stehen — sonst nimmt ein neuer Kauf einen ' +
+    'gebrauchten vom selben Tag mit, samt Mischpreis aus zwei Käufen');
   // Verglichen wird der TAG, nicht der Zeitstempel — und zwar in UTC.
   //
   // Die Prüfung verlangte wörtlich `created_at::date`. Seit die Regel als
@@ -92,9 +107,16 @@ test('die Tagesregel steht an genau einer Stelle', () => {
   // Beim Zusammenfassen trägt die Zeile einen Preis — mengengewichtet.
   assert.match(acq, /\(oldPrice \* oldQty \+ price \* qty\) \/ \(newQty \|\| 1\)/,
     'Zwei Käufe am selben Tag ergeben den gewichteten Preis');
-  // …und EINEN Zustand: gebraucht gewinnt, wie überall sonst im Projekt.
-  assert.match(acq, /existing\.condition === 'U' \|\| cond === 'U'/,
-    'Eine gebrauchte Erfassung macht die Tageszeile gebraucht');
+  // …und ihren EIGENEN Zustand: Gefunden wird die Zeile genau über ihn, also
+  // gibt es beim Aufstocken nichts mehr zu verschmelzen. Hier stand
+  // `existing.condition === 'U' || cond === 'U'` — „gebraucht gewinnt" —, und
+  // das war die Stelle, an der ein neuer Kauf einen gebrauchten mitnahm.
+  //
+  // Für die ANSICHT eines Eintrags gilt die Regel weiter
+  // (conditionFromAcquisitions in utils/handlers.ts); sie gehört dorthin und
+  // nicht in die Erfassung, die festhält, was wirklich gekauft wurde.
+  assert.doesNotMatch(strip(acq), /existing\.condition === 'U' \|\| cond === 'U'/,
+    'Der Zustand der Tageszeile darf sich beim Aufstocken nicht mehr ändern');
 
   // Und kein Anlege-Pfad schreibt mehr direkt in eine Erfassungstabelle.
   for (const f of ['routes/parts.ts', 'routes/minifigs.ts', 'routes/sets.ts']) {

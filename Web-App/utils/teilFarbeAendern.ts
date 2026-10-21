@@ -31,7 +31,7 @@ import { merkeTeilFarbe, katalogTeil } from './katalogPflege';
  * Also: Gibt es die Zielfarbe schon, werden die beiden ZUSAMMENGELEGT, sonst
  * zieht die Zeile um.
  *
- * Dasselbe gilt für die Erfassungen, nur eine Ebene feiner: `idx_part_acq_tag`
+ * Dasselbe gilt für die Erfassungen, nur eine Ebene feiner: `idx_part_acq_tag_zustand`
  * ist eindeutig über (user_id, part_number, color_id, Tag). Zwei Erfassungen
  * vom gleichen Tag — eine in der falschen, eine in der richtigen Farbe —
  * müssen zu einer addiert werden, nicht nebeneinander stehen.
@@ -222,7 +222,7 @@ export async function aendereTeilFarbe(
     // ── Erfassungen: erst addieren, was auf denselben Tag fällt ────────────
     //
     // Die Reihenfolge ist zwingend. Zöge das UPDATE unten zuerst um, liefe es
-    // in `idx_part_acq_tag` — und zwar nur manchmal, nämlich wenn beide Farben
+    // in `idx_part_acq_tag_zustand` — und zwar nur manchmal, nämlich wenn beide Farben
     // am gleichen Tag erfasst wurden. Ein Fehler, der von der Uhr abhängt.
     const vereint = await tx.run(
       `UPDATE part_acquisitions z

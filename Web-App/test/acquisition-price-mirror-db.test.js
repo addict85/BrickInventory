@@ -122,7 +122,7 @@ test('der geänderte Kaufpreis erreicht die Kachel — Webapp UND App',
     // Exemplaren für zusammen 250 war schlicht falsch.
     const alt = await aufbauen();
     // Ein anderer TAG, nicht bloss eine Stunde später: Der Index
-    // idx_set_acq_tag lässt pro Tag und Set nur EINE Erfassung zu. Mit
+    // idx_set_acq_tag_zustand lässt pro Tag und Set nur EINE Erfassung zu. Mit
     // „+1 hour" hing der Test an der Uhrzeit des Laufs — abends fiel die
     // zweite Zeile auf denselben Tag und der Aufbau scheiterte am Index
     // (in der Suite um 23:xx aufgefallen, mittags wäre es durchgegangen).

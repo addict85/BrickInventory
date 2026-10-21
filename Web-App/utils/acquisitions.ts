@@ -18,23 +18,43 @@
  * nicht besser sagte — und in der Finanztabelle stünden sie seit hardened-90
  * auch zweimal.
  *
- * ── Der Schlüssel ist Eintrag + Tag, OHNE Zustand ───────────────────────────
- * Ein Tag, eine Zeile — auch wenn am selben Tag einmal neu und einmal
- * gebraucht gekauft wurde. Das ist eine bewusste Festlegung: Zwei Zeilen mit
- * demselben Datum sollen gar nicht erst entstehen können.
+ * ── Der Schlüssel ist Eintrag + Tag + ZUSTAND (seit dem 21.10.) ─────────────
+ * Ein Tag und ein Zustand, eine Zeile. Wer am selben Tag dasselbe Stück
+ * einmal neu und einmal gebraucht kauft, bekommt ZWEI Zeilen — mit ihren
+ * eigenen Preisen.
  *
- * (Eine frühere Fassung hatte den Zustand im Schlüssel, damit beide Käufe
- * getrennt bewertet werden können. Verworfen — die Datums-Endpunkte für Sets,
- * Teile und Minifiguren weisen einen zweiten Eintrag am selben Tag ohnehin
- * alle drei ab, ohne den Zustand anzusehen. Zwei Regeln, die sich
- * widersprechen, sind schlimmer als die weniger feine von beiden.)
+ * ── Warum das eine verworfene Fassung zurückholt ────────────────────────────
  *
- * ── Was beim Zusammenfassen aus Zustand und Preis wird ───────────────────────
- * Eine Zeile trägt EINEN Zustand und EINEN Preis.
+ * Marcos Befund vom 21.10.: „wenn das Teil und Farbe bereits existiert und nur
+ * der Zustand anders ist, einen neuen Preis erzeugen mit einem anderen
+ * Zustand."
  *
- * Zustand: „gebraucht" gewinnt, sobald einer der beiden Käufe gebraucht war —
- * dieselbe Regel wie überall sonst im Projekt (conditionFromAcquisitions in
- * utils/handlers.ts: eine U-Erfassung macht den Eintrag gebraucht).
+ * Hier stand das Gegenteil, und der Absatz nannte auch den Grund: Eine frühere
+ * Fassung mit Zustand im Schlüssel war verworfen worden, „weil die
+ * Datums-Endpunkte für Sets, Teile und Minifiguren einen zweiten Eintrag am
+ * selben Tag ohnehin alle drei abweisen, ohne den Zustand anzusehen. Zwei
+ * Regeln, die sich widersprechen, sind schlimmer als die weniger feine von
+ * beiden."
+ *
+ * Der Satz stimmt — deshalb ist diesmal BEIDES geändert:
+ * findSameDayAcquisition() sieht den Zustand jetzt an, und damit gilt die
+ * feinere Regel überall. Ohne diesen zweiten Schritt entstünde genau der
+ * Widerspruch, den der Abschnitt „Warum an einer Stelle" weiter unten als
+ * Altlast beschreibt: ein Anlege-Pfad, der einen Zustand herstellt, den der
+ * Bearbeiten-Pfad ablehnt.
+ *
+ * GEMESSEN vorher, eine Wanted-Liste mit zweimal 3001 in Rot (3 Stück NEU zu
+ * 1.50 und 2 Stück GEBRAUCHT zu 0.50): EINE Zeile, quantity 5, unit_price
+ * 1.10, condition 'U'. Der Mischpreis, und die drei neuen Teile als gebraucht
+ * verbucht.
+ *
+ * ── Was beim Aufstocken aus Zustand und Preis wird ──────────────────────────
+ * Zusammengefasst wird nur noch, was denselben Zustand hat — der Zustand der
+ * Zeile ändert sich dabei also nicht mehr. Die Regel „gebraucht gewinnt" gilt
+ * weiterhin für die ANSICHT eines Eintrags (conditionFromAcquisitions in
+ * utils/handlers.ts: eine U-Erfassung macht den Eintrag gebraucht); sie gehört
+ * dorthin und nicht in die Erfassung, die festhält, was wirklich gekauft
+ * wurde.
  *
  * Preis: mengengewichtet gemittelt, wenn beide einen haben — dieselbe
  * Rechnung, mit der die Zeilen später ohnehin verdichtet werden
@@ -103,7 +123,13 @@ export async function recordAcquisitionForDay(
 
   const keyWhere = shape.keys.map((c, i) => `${c} = $${i + 2}`).join(' AND ');
 
-  // Bestehende Zeile dieses Tages — unabhängig vom Zustand.
+  // Bestehende Zeile dieses Tages IM SELBEN ZUSTAND.
+  //
+  // Der Zustand steht seit dem 21.10. in der Bedingung (Marcos Befund, siehe
+  // Modulkopf) und seit Migration 0040 auch im Unique-Index. COALESCE auf
+  // beiden Seiten: Die Spalte ist nullbar, und NULL ist in SQL nie gleich
+  // NULL — ohne das fände diese Abfrage eine Zeile ohne Zustand nie wieder.
+  // `cond` oben ist bereits auf 'N'/'U' festgelegt.
   //
   // Der Tag wird in UTC bestimmt, nicht in der Zeitzone der Sitzung. Grund:
   // Nur so lässt sich die Regel als Unique-Index festnageln (siehe
@@ -116,8 +142,9 @@ export async function recordAcquisitionForDay(
       WHERE user_id = $1 AND ${keyWhere}
         AND (created_at AT TIME ZONE 'UTC')::date
             = COALESCE($${shape.keys.length + 2}::date, (NOW() AT TIME ZONE 'UTC')::date)
+        AND COALESCE(condition, 'N') = $${shape.keys.length + 3}
       ORDER BY id ASC LIMIT 1`,
-    [userId, ...keyValues, day]
+    [userId, ...keyValues, day, cond]
   ).catch(() => null);
 
   if (existing) {
@@ -129,12 +156,15 @@ export async function recordAcquisitionForDay(
     const mergedPrice = (oldPrice != null && price != null)
       ? Math.round(((oldPrice * oldQty + price * qty) / (newQty || 1)) * 10000) / 10000
       : (price ?? oldPrice);
-    // „Gebraucht" gewinnt — siehe Modulkommentar.
-    const mergedCond = (existing.condition === 'U' || cond === 'U') ? 'U' : 'N';
-
+    // Der Zustand bleibt, wie er ist: Gefunden wurde die Zeile GENAU über ihn
+    // (siehe oben). Hier stand `gebraucht gewinnt`, und das war die Stelle, an
+    // der ein neuer Kauf einen gebrauchten aus demselben Tag mitnahm —
+    // zusammen mit einem Mischpreis aus zwei verschiedenen Käufen. Er wird
+    // trotzdem mitgeschrieben, damit eine Altzeile ohne Zustand den Vorgabewert
+    // bekommt, unter dem sie gefunden wurde.
     await dbh.run(
       `UPDATE ${shape.table} SET quantity = $1, ${shape.price} = $2, condition = $3 WHERE id = $4`,
-      [newQty, mergedPrice, mergedCond, existing.id]
+      [newQty, mergedPrice, cond, existing.id]
     );
     return { merged: true };
   }
@@ -153,14 +183,29 @@ export async function recordAcquisitionForDay(
 
 
 /**
- * Gibt es für diesen Tag schon eine Erfassung — ausser der angegebenen?
+ * Gibt es für diesen Tag und Zustand schon eine Erfassung — ausser der
+ * angegebenen?
  *
  * Für die Bearbeiten-Pfade: Wer das Kaufdatum einer Erfassung auf einen Tag
  * setzt, an dem bereits eine liegt, würde die Regel brechen. Die drei Routen
  * (Sets, Teile, Minifiguren) hatten dafür je eine eigene, wortgleiche Abfrage
  * — drei Kopien derselben Regel, von denen jede einzeln hätte veralten können.
  *
+ * ── `condition` seit dem 21.10. ─────────────────────────────────────────────
+ *
+ * Das ist der zweite Schritt zu Marcos Befund (siehe Modulkopf). Ohne ihn
+ * wiese dieser Prüfer ab, was recordAcquisitionForDay() gerade anlegen darf:
+ * zwei Zeilen desselben Tages mit verschiedenem Zustand. Genau diesen
+ * Widerspruch — Anlege-Pfad erlaubt, Bearbeiten-Pfad verbietet — beschreibt
+ * der Abschnitt „Warum an einer Stelle" als die Altlast, aus der dieser Helfer
+ * entstanden ist.
+ *
+ * Fehlt `condition`, gilt der Vorgabewert 'N' — derselbe, unter dem
+ * recordAcquisitionForDay() eine Zeile ohne Zustand findet, und derselbe, den
+ * der Unique-Index aus Migration 0040 einsetzt.
+ *
  * @param excludeId die Erfassung, die gerade bearbeitet wird
+ * @param condition der Zustand, den die Zeile NACH der Bearbeitung hat
  * @returns die kollidierende id, oder null
  */
 export async function findSameDayAcquisition(
@@ -169,17 +214,20 @@ export async function findSameDayAcquisition(
   keyValues: any[],
   day: string,
   excludeId: number | null,
+  condition: string | null = null,
   dbh: any = db
 ): Promise<number | null> {
   const shape = SHAPES[kind];
   const keyWhere = shape.keys.map((c, i) => `${c} = $${i + 2}`).join(' AND ');
   const n = shape.keys.length;
+  const cond = ['N', 'U'].includes(String(condition)) ? String(condition) : 'N';
   const row = await dbh.get(
     `SELECT id FROM ${shape.table}
       WHERE user_id = $1 AND ${keyWhere}
         AND id <> $${n + 2} AND (created_at AT TIME ZONE 'UTC')::date = $${n + 3}::date
+        AND COALESCE(condition, 'N') = $${n + 4}
       LIMIT 1`,
-    [userId, ...keyValues, excludeId ?? -1, day]
+    [userId, ...keyValues, excludeId ?? -1, day, cond]
   ).catch(() => null);
   return row ? parseInt(row.id) : null;
 }

@@ -386,10 +386,10 @@ test('die Lesewege liefern die Stückzahl aus den Erfassungen',
     [haupt.id, SN, kind.id]);
   // Drei Erfassungen: zwei beim Hauptkonto (2+1), eine beim Kind (3).
   //
-  // Verschiedene TAGE, und das ist keine Kosmetik: idx_set_acq_tag (Migration
+  // Verschiedene TAGE, und das ist keine Kosmetik: idx_set_acq_tag_zustand (Migration
   // 0004) erlaubt je Konto, Set und Tag genau eine Erfassung. Mit demselben
   // Datum brach das INSERT ab — gemessen, „duplicate key value violates
-  // unique constraint idx_set_acq_tag".
+  // unique constraint idx_set_acq_tag_zustand".
   await db.run(`INSERT INTO set_acquisitions (user_id,set_number,quantity,purchase_price,condition,created_at)
                 VALUES ($1,$2,2,100,'N', NOW() - INTERVAL '3 days'),
                        ($1,$2,1, 80,'U', NOW() - INTERVAL '1 day'),

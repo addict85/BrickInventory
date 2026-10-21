@@ -49,7 +49,7 @@ let _bericht = null;
  * Das ist nicht nur Kosmetik. Der zweite Schritt SCHREIBT, und er schreibt
  * über recordAcquisitionForDay() — eine zweite Anfrage mit derselben Datei
  * legt für denselben Tag keine zweite Erfassung an, sondern ADDIERT auf die
- * bestehende (idx_part_acq_tag, utils/acquisitions.ts). Zwei Klicks auf
+ * bestehende (idx_part_acq_tag_zustand, utils/acquisitions.ts). Zwei Klicks auf
  * „Jetzt in den Bestand übernehmen" hätten also die doppelte Stückzahl
  * ergeben, und zwar lautlos: Beide Antworten melden Erfolg.
  *
@@ -377,6 +377,44 @@ function zeile(p, i) {
           esc(tRaw('wanted.cond_default'))}</div>` : ''}`
     : '';
   const korr = _korrekturen.get(i) || {};
+
+  // ── Die Werte aus der Datei, bearbeitbar (Marcos Wunsch vom 21.10.) ──────
+  //
+  //   „Alle Spalten sollen bearbeitbar sein in der Vorschau, damit der Inhalt
+  //    vor dem Import korrigiert werden kann."
+  //
+  // Diese drei Felder sind VORBEFÜLLT — anders als die beiden Korrekturfelder
+  // rechts, die leer anfangen. Daraus folgt eine andere Lesart: Dort heisst
+  // leer „nicht angefasst", hier heisst JEDE Abweichung vom Ausgangswert eine
+  // Korrektur (wantedKorrekturWert vergleicht mit dem Bericht).
+  //
+  // Nicht bearbeitbar bleiben Bild, Name, BrickLink-Nummer und Ergebnis — die
+  // Begründung steht am Typ `Korrektur` in utils/wantedListe.ts.
+  // `breit` wegen des Platzhalters „Marktpreis": In 72px stand dort „Marktpr"
+  // — am Bildschirm gesehen.
+  const feld = (name, wert, extra = '', breit = 72) =>
+    `<input data-change="wantedKorrekturWert" data-feld="${name}" data-i="${i}"
+       value="${esc(wert)}" ${extra}
+       style="width:${breit}px;font-size:.78rem;padding:2px 4px;border:1px solid var(--bdr);
+              border-radius:5px;text-align:right" />`;
+  const mengeZelle = feld('menge', korr.menge ?? p.menge, 'type="number" min="1" step="1"');
+  // Der Preis je Stück. Leer heisst „keiner" — dann holt der Import den
+  // Marktpreis, wie bei MAXPRICE=-1 in der Datei.
+  const preisWert = korr.kaufpreis !== undefined ? (korr.kaufpreis ?? '') : (p.maxPreis ?? '');
+  const preisZelle = feld('kaufpreis', preisWert,
+    `type="number" min="0" step="0.0001" placeholder="${esc(tRaw('wanted.price_ph'))}"`, 96);
+  // Der Zustand als Auswahl mit DREI Möglichkeiten: Der leere Wert ist keine
+  // Lücke, sondern „Standard des Kontos" — dieselbe Aussage wie CONDITION=X.
+  const zustandJetzt = korr.zustand !== undefined ? (korr.zustand ?? '') : (p.zustand ?? '');
+  const wahl = (w, text) =>
+    `<option value="${w}"${zustandJetzt === w ? ' selected' : ''}>${esc(text)}</option>`;
+  const zustandWahl = `<select data-change="wantedKorrekturWert" data-feld="zustand" data-i="${i}"
+      style="font-size:.78rem;padding:2px;border:1px solid var(--bdr);border-radius:5px">
+      ${wahl('', tRaw('wanted.cond_default_opt'))}
+      ${wahl('N', tRaw('common.condition_new'))}
+      ${wahl('U', tRaw('common.condition_used'))}
+    </select>`;
+
   return `<tr${p.ausgang === 'offen' ? ' style="background:var(--s50)"' : ''}>
     <td>${bild}</td>
     <td style="font-family:monospace;font-size:.78rem">${esc(p.blId)}${
@@ -387,8 +425,15 @@ function zeile(p, i) {
     <td style="font-size:.8rem;white-space:nowrap">${punkt}${esc(p.farbName || '')}${
       p.blFarbe !== null && !p.farbName
         ? `<span style="color:var(--mut)">BL ${p.blFarbe}</span>` : ''}</td>
-    <td style="text-align:right;font-size:.8rem">${p.menge}</td>
-    <td style="font-size:.78rem;white-space:nowrap">${zustandZelle}</td>
+    <td style="text-align:right">${mengeZelle}</td>
+    <td style="font-size:.78rem;white-space:nowrap">${zustandWahl}${
+      // Die Plakette NUR bei „Standard": Dann sagt sie, was wirklich angelegt
+      // wird — den Wert aus den Einstellungen, den die Auswahl nicht zeigen
+      // kann. Steht dort N oder U, wiederholte sie bloss das Wort daneben
+      // (am Bildschirm gesehen: „Gebraucht" über „Gebraucht").
+      zustandJetzt === '' && zustandZelle
+        ? `<div style="margin-top:2px">${zustandZelle}</div>` : ''}</td>
+    <td style="text-align:right">${preisZelle}</td>
     <td style="font-size:.78rem">${ausgang}${
       grund ? `<div style="color:var(--mut);font-size:.72rem">${grund}</div>` : ''}</td>
     <td><input type="text" value="${esc(korr.rbId ?? '')}" placeholder="${
@@ -413,6 +458,7 @@ function zeichneTabelle(d) {
       <th>${t('col.color')}</th>
       <th>${t('detail.qty')}</th>
       <th>${t('common.condition')}</th>
+      <th>${t('detail.purchase_price')}</th>
       <th>${t('wanted.col_outcome')}</th>
       <th>${t('wanted.col_rb_id')}</th>
       <th>${t('wanted.col_set_color')}</th>
@@ -463,6 +509,69 @@ function wantedKorrekturFarbe() {
   setzeKorrektur(i, k);
 }
 
+/**
+ * Ein VORBEFÜLLTES Feld der Vorschau — Menge, Zustand oder Kaufpreis.
+ *
+ * ── Marcos Wunsch vom 21.10. ───────────────────────────────────────────────
+ *
+ *   „Alle Spalten sollen bearbeitbar sein in der Vorschau, damit der Inhalt
+ *    vor dem Import korrigiert werden kann."
+ *
+ * ── Warum ein EIGENER Handler neben den beiden darüber ─────────────────────
+ *
+ * wantedKorrekturNummer/-Farbe bedienen Felder, die LEER anfangen: Dort heisst
+ * ein leeres Feld „nicht angefasst", und jeder Inhalt ist eine Eintragung.
+ * Diese drei sind vorbefüllt mit dem, was in der Datei steht — da gibt es
+ * kein „leer" als Nicht-Aussage. Was zählt, ist die ABWEICHUNG vom
+ * Ausgangswert; tippt jemand den alten Wert wieder hin, verschwindet die
+ * Korrektur.
+ *
+ * Beides in einen Handler zu zwingen hiesse, die Unterscheidung in eine
+ * Tabelle zu verstecken, die man beim Lesen erst auflösen muss. Zwei Lesarten
+ * sind hier zwei Funktionen.
+ *
+ * Beim Zustand ist der leere Wert eine AUSSAGE („Standard des Kontos",
+ * dieselbe wie CONDITION=X) und wird deshalb als `null` geschickt, nicht
+ * weggelassen. Beim Preis ebenso: leer heisst „keiner, hol den Marktpreis".
+ */
+function wantedKorrekturWert() {
+  const el = this instanceof HTMLElement ? this : null;
+  if (!el) return;
+  const i = Number(el.dataset.i);
+  const name = el.dataset.feld;
+  const p = _bericht?.posten?.[i];
+  if (!p) return;
+  const k = { ..._korrekturen.get(i) };
+  const roh = el.value.trim();
+
+  if (name === 'menge') {
+    const m = parseInt(roh, 10);
+    // Unbrauchbares nicht schicken: Der Server wiese die ganze Korrektur ab,
+    // und die Farbe daneben ginge mit verloren. Das Feld zeigt stattdessen
+    // wieder, was gilt.
+    if (!Number.isFinite(m) || m < 1) { el.value = String(k.menge ?? p.menge); return; }
+    if (m === p.menge) delete k.menge; else k.menge = m;
+  } else if (name === 'zustand') {
+    const w = roh === '' ? null : roh;
+    if (w === (p.zustand ?? null)) delete k.zustand; else k.zustand = w;
+  } else if (name === 'kaufpreis') {
+    const alt = p.maxPreis ?? null;
+    let w = null;
+    if (roh !== '') {
+      const z = Number(roh);
+      if (!Number.isFinite(z) || z < 0) {
+        el.value = String(k.kaufpreis ?? alt ?? '');
+        return;
+      }
+      // 0 ist „keiner", wie MAXPRICE=-1 in der Datei.
+      w = z > 0 ? z : null;
+    }
+    if (w === alt) delete k.kaufpreis; else k.kaufpreis = w;
+  } else return;
+
+  setzeKorrektur(i, k);
+}
+
 function setzeKorrektur(i, k) {
   if (Object.keys(k).length === 0) _korrekturen.delete(i);
   else _korrekturen.set(i, k);
@@ -492,6 +601,7 @@ for (const el of document.querySelectorAll('[data-wanted-icon]')) el.innerHTML =
 
 registerActions({
   wantedKorrekturFarbe,
+  wantedKorrekturWert,
   wantedKorrekturNummer,
   wantedXmlGewaehlt,
   wantedXmlNeuLesen,
