@@ -469,8 +469,16 @@ router.post('/wanted-list/import/xml', requireToken, csvEmpfang.single('file'),
           figur: (u, body) => addManualFig(u, body),
           // addSet nimmt die Setnummer zuerst und erwartet dazu einen
           // Fortschrittsmelder (hier null: niemand sieht zu) und einen
-          // Kaufpreis (hier null — MAXPRICE ist eine Suchgrenze).
-          set:   (u, sn, menge, zustand) => addSet(sn, menge, u, null, null, zustand),
+          // Kaufpreis. Der ist seit dem 21.10. MAXPRICE aus der Datei —
+          // Marcos Entscheidung; die Begründung samt der alten, falschen
+          // steht in utils/wantedListe.ts bei den Anlegern.
+          //
+          // Je Stück, nicht für die ganze Menge: Dasselbe meint `purchasePrice`
+          // in addSet (der Rückfall dort ist getCurrentMarketPrice, und der
+          // liefert den Preis EINES Sets), und dasselbe meint MAXPRICE bei
+          // BrickLink.
+          set:   (u, sn, menge, zustand, kaufpreis) =>
+                   addSet(sn, menge, u, null, kaufpreis, zustand),
         },
       });
       // Den Auftrag schliessen, bevor geantwortet wird: Sonst steht der Balken

@@ -248,6 +248,20 @@ test('die lokale Auflösung trennt Abbildung von Vermutung', { concurrency: 1 },
  *   C  `action` des Anlegers ignoriert (`const wieAngelegt = true`)
  *      → `# pass 15 / # fail 2`. Rot ist genau „ein zweiter Lauf stockt
  *        auf, statt anzulegen": `angelegt: 1`, erwartet 0.
+ *
+ * Am 21.10. ist „MAXPRICE wird zum Kaufpreis" dazugekommen (Marcos
+ * Entscheidung, den Betrag zu übernehmen). Ausgangslage damit
+ * `# pass 21 / # fail 0`; die Zahlen von A bis C verschieben sich
+ * entsprechend.
+ *
+ *   M  `unit_price` wieder weggelassen (der Stand vor Marcos Wunsch)
+ *      → `# pass 19 / # fail 2`. Rot: „MAXPRICE wird zum Kaufpreis".
+ *   N  `unit_price: a.posten.maxPreis` ohne die Bedingung, also auch bei
+ *      MAXPRICE=-1 ein Feld mit `null`
+ *      → `# pass 19 / # fail 2`. Rot: derselbe Fall, zweite Hälfte. Das
+ *        Feld muss FEHLEN und nicht null sein — die Anleger unterscheiden
+ *        „nichts angegeben" (dann gilt der Marktpreis) von einer
+ *        ausdrücklichen Null, und nur das Weglassen führt zum Marktpreis.
  */
 test('der Import erfindet keine Farbe und schreibt ihren Namen', { concurrency: 1 }, async (t) => {
   try { await db.get('SELECT 1'); }
@@ -304,6 +318,36 @@ test('der Import erfindet keine Farbe und schreibt ihren Namen', { concurrency: 
       'Namen von dort — der Hex-Wert fällt auf den Katalog zurück, der Name ' +
       'NICHT. Ergebnis ist ein Farbpunkt ohne Beschriftung.');
     assert.equal(z1.gesehen[0].color_hex, 'C91A09');
+  });
+
+  await t.test('MAXPRICE wird zum Kaufpreis — und -1 bleibt keiner', async () => {
+    // ── Marcos Entscheidung vom 21.10. ──────────────────────────────────────
+    //
+    //   „Kannst du bei der Bricklink-Wanted-Listen xml-Import das Attribut:
+    //    <MAXPRICE>0.8578</MAXPRICE> auf den Kaufpreis mappen."
+    //
+    // Hier galt das Gegenteil, begründet damit, MAXPRICE sei eine Suchgrenze
+    // und kein bezahlter Preis. Das war eine Annahme über Marcos Arbeitsweise
+    // — er trägt dort den bezahlten Preis ein.
+    //
+    // Die zweite Hälfte bleibt, wie sie war: `-1.0000` ist KEIN Preis (Fall 3
+    // oben prüft das am Leser), und ohne Preis holt weiterhin der Marktpreis
+    // den Wert. Beides zusammen ist der Fall hier — eine Prüfung nur auf den
+    // Preis wäre auch grün, wenn jede -1 als Betrag durchginge.
+    const z = zaehler();
+    await importiereWantedListe(1, liste(
+      item('P', '3001', 5, 2, 'N', '0.8578'),
+      item('P', '3001', 5, 2, 'N', '-1.0000'),
+    ), { anleger: z.anleger });
+    assert.equal(z.gesehen.length, 2, 'Beide Posten müssen beim Anleger ankommen');
+    assert.equal(z.gesehen[0].unit_price, 0.8578,
+      `unit_price war ${JSON.stringify(z.gesehen[0].unit_price)}. Ohne den Wert ` +
+      'holt der Anleger den Marktpreis — und in der Finanzansicht steht dann ' +
+      'nicht, was Marco bezahlt hat.');
+    assert.ok(!('unit_price' in z.gesehen[1]),
+      `Bei MAXPRICE=-1 steht ${JSON.stringify(z.gesehen[1].unit_price)} im Rumpf. ` +
+      'Das Feld muss FEHLEN, nicht null sein: Die Anleger unterscheiden ' +
+      '„nichts angegeben" (dann gilt der Marktpreis) von einer ausdrücklichen Null.');
   });
 
   await t.test('ein zweiter Lauf stockt auf, statt anzulegen', async () => {
