@@ -80,6 +80,21 @@
  * H und I fassen die Regel von beiden Seiten: zu eng und zu weit. Fall 5
  * allein hätte H nie gemeldet, Fall 5b allein nicht I.
  *
+ * Am 21.10. sind die Fälle 8 und 9 dazugekommen (Marcos leere Bild- und
+ * Namensspalte nach dem Import). Ausgangslage damit `# pass 12 / # fail 0` —
+ * elf Unterfälle plus der Rahmen.
+ *
+ *   J  beschreibePosten() wieder nur für die Vorschau gerufen (der Stand von
+ *      Marcos Befund)
+ *      → `pass 9 / fail 3`. Rot sind BEIDE neuen Fälle: „Name und Bild
+ *        stehen AUCH nach dem Schreiben im Bericht" und „ein beim Anlegen
+ *        geholtes Bild steht im Bericht".
+ *   K  den Aufruf VOR die Schleife gelegt statt dahinter
+ *      → `pass 10 / fail 2`. Rot ist nur Fall 9. Das ist der Beleg, dass die
+ *        Stelle zählt und nicht bloss der Aufruf: Vor der Schleife sind die
+ *        eben angelegten Teile noch nicht im Katalog, und gerade um die geht
+ *        es beim Import.
+ *
  * Voraussetzung: Test-DB via TEST_DATABASE_URL. Ohne DB: skip, ausser
  * REQUIRE_DB=1.
  */
@@ -432,5 +447,69 @@ test('Vorschau, Korrekturen und Farbübersetzung', { concurrency: 1 }, async (t)
         `${abfragen} Abfragen für 100 Posten. Erlaubt sind höchstens 4 (Teile, ` +
         'Farbbilder, Figuren, Sets). Eine je Posten wären 100.');
     } finally { db.pool.query = echt; }
+  });
+
+  await t.test('8. Name und Bild stehen AUCH nach dem Schreiben im Bericht', async () => {
+    // ── Marcos Befund vom 21.10. ────────────────────────────────────────────
+    //
+    //   „Nach dem XML-Import verschwinden die Bilder im Importdialog. vor und
+    //    während dem Import sind diese sichtbar."
+    //
+    // beschreibePosten() wurde nur für die Vorschau gerufen, begründet mit
+    // „Beim echten Import sieht sie niemand". Der Dialog bleibt aber offen
+    // und zeichnet dieselbe Tabelle mit der ANTWORT neu — auf Marcos
+    // Bildschirmfoto sind Bild UND Name über alle 24 Zeilen leer.
+    //
+    // GEMESSEN vor der Änderung:
+    //     VORSCHAU   : {"name":"Brick 2 x 4","bild":"https://…/3001-rot.png"}
+    //     NACH IMPORT: {}
+    const anleger = {
+      teil: async () => ({ action: 'created' }),
+      figur: async () => ({ action: 'created' }), set: async () => ({ action: 'created' }),
+    };
+    const b = await importiereWantedListe(1, liste(item('P', '3001', 5, 1)), {
+      vorschau: false, anleger,
+    });
+    assert.equal(b.posten[0].ausgang, 'angelegt',
+      'Der Posten muss wirklich geschrieben worden sein — sonst sagt der Fall ' +
+      'nichts über den Weg NACH dem Schreiben');
+    assert.equal(b.posten[0].name, 'Brick 2 x 4');
+    assert.equal(b.posten[0].bild, 'https://cdn.example/3001-rot.png',
+      'Ohne das zeichnet der Dialog nach dem Import leere Zellen — genau ' +
+      'Marcos Befund');
+  });
+
+  await t.test('9. ein beim Anlegen geholtes Bild steht im Bericht', async () => {
+    // Der Gewinn daraus, dass beschreibePosten NACH der Schleife läuft: Ein
+    // Teil, dessen Farbbild der Katalog noch nicht hatte, bekommt es beim
+    // Anlegen (addManualPart → lookupPart → merkeTeilFarbe). Ein Aufruf VOR
+    // der Schleife zeigte für genau diese Posten nichts.
+    //
+    // 7777 steht im part_catalog (also auflösbar, Stufe 3), hat aber keine
+    // Zeile in part_color_catalog. Ohne Katalogeintrag wäre es NICHT der
+    // Fall: Es bliebe 'offen' und würde nie angelegt — erst gemessen, dann
+    // gemerkt.
+    await db.run(`INSERT INTO part_catalog (part_number, part_name)
+                  VALUES ('7777','Noch ohne Bild') ON CONFLICT DO NOTHING`);
+    const vorher = await importiereWantedListe(1, liste(item('P', '7777', 5, 1)),
+                                               { vorschau: true });
+    assert.equal(vorher.posten[0].bild, null,
+      'In der Vorschau gibt es das Bild noch nicht — sonst sagt der Fall nichts');
+
+    const b = await importiereWantedListe(1, liste(item('P', '7777', 5, 1)), {
+      vorschau: false,
+      anleger: {
+        // So, wie addManualPart es täte: erst den Katalog füllen, dann melden.
+        teil: async () => {
+          await db.run(`INSERT INTO part_color_catalog (part_number, color_id, image_url)
+                        VALUES ('7777',4,'https://cdn.example/7777.png')
+                        ON CONFLICT DO NOTHING`);
+          return { action: 'created' };
+        },
+        figur: async () => ({ action: 'created' }), set: async () => ({ action: 'created' }),
+      },
+    });
+    assert.equal(b.posten[0].bild, 'https://cdn.example/7777.png',
+      'Das beim Anlegen geschriebene Bild muss im Bericht ankommen');
   });
 });
