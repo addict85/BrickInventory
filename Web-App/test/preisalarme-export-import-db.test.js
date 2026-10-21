@@ -127,7 +127,7 @@ async function aufbau(kontoWaehrung = 'CHF') {
                 ON CONFLICT (user_id,key) DO UPDATE SET value=$2`, [HAUPT, kontoWaehrung]);
   // Der Bestand gehoert je SET, der Alarm je (Set, Zustand): 75192-1 traegt
   // beide Zustaende. Zwei Erfassungen fuer dasselbe Set am selben TAG verletzt
-  // idx_set_acq_tag (Migration 0008) — genau daran ist der erste Lauf dieses
+  // idx_set_acq_tag_zustand (Migration 0008) — genau daran ist der erste Lauf dieses
   // Tests gescheitert. Deshalb die Bestandszeile nur einmal je Nummer.
   const gelegt = new Set();
   for (const a of ALARME) {

@@ -21,7 +21,7 @@
  * eindeutigen Index, an dem ein naives UPDATE abbricht:
  *
  *     idx_parts_eindeutig   (user_id, set_number, part_number, color_id)
- *     idx_part_acq_tag      (user_id, part_number, color_id, Tag)
+ *     idx_part_acq_tag_zustand      (user_id, part_number, color_id, Tag)
  *
  * Der zweite ist der unangenehmere: Er schlägt nur zu, wenn beide Farben am
  * GLEICHEN Tag erfasst wurden. Ein Fehler, der von der Uhr abhängt — deshalb
@@ -37,7 +37,7 @@
  *      UPDATE und DELETE davor gestrichen)
  *      → `pass 6 / fail 2`. Rot ist genau Fall 3, mit dem echten Grund:
  *        `500 duplicate key value violates unique constraint
- *        "idx_part_acq_tag"`.
+ *        "idx_part_acq_tag_zustand"`.
  *   B  kein Zusammenlegen der Bestandszeilen (immer `UPDATE parts SET
  *      color_id`)
  *      → `pass 4 / fail 4`. Rot sind die Fälle 2, 3 und 4, alle drei mit
@@ -200,7 +200,7 @@ test('die Farbe eines manuellen Teils lässt sich nachträglich ändern',
     await leeren();
     await db.run(`INSERT INTO parts (user_id,part_number,color_id,source)
                   VALUES ($1,'3001',0,'manual'), ($1,'3001',4,'manual')`, [UID]);
-    // Verschiedene Tage: idx_part_acq_tag lässt je Position und Tag nur eine
+    // Verschiedene Tage: idx_part_acq_tag_zustand lässt je Position und Tag nur eine
     // Erfassung zu, der Aufbau wäre sonst nicht herzustellen.
     await db.run(`INSERT INTO part_acquisitions
                     (user_id,part_number,color_id,quantity,unit_price,condition,created_at)
@@ -234,7 +234,7 @@ test('die Farbe eines manuellen Teils lässt sich nachträglich ändern',
                          ($1,'3001',4,10,0.50,'N', NOW())`, [UID]);
 
     const a = await aendere('3001', 0, { color_id: 4 });
-    // Ohne das Addieren VOR dem Umzug läuft das UPDATE in idx_part_acq_tag
+    // Ohne das Addieren VOR dem Umzug läuft das UPDATE in idx_part_acq_tag_zustand
     // und die ganze Anfrage scheitert mit 500 — aber nur an einem Tag, an dem
     // beide Erfassungen zufällig zusammenfallen.
     assert.equal(a.status, 200,

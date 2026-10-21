@@ -204,7 +204,7 @@ test('beide Bewertungen fuehren den Besitzer mit', async (t) => {
   // Der Preis steht seit Migration 0035 in der Erfassung, nicht an der
   // Bestandszeile.
   // Menge UND Preis in einem Aufruf: haeltTeil/haeltFigur legen die Erfassung
-  // selbst an. Ein zweites INSERT daneben verstiesse gegen idx_part_acq_tag
+  // selbst an. Ein zweites INSERT daneben verstiesse gegen idx_part_acq_tag_zustand
   // (Migration 0008 — je Konto, Position und TAG eine Erfassung) und zaehlte,
   // wo es durchkaeme, die Menge doppelt.
   await haeltTeil(db, haupt, '3001', { menge: 5, colorId: 4, preis: 0.5 });

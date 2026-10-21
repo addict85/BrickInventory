@@ -659,7 +659,7 @@ test('die Lesewege liefern die Stückzahl aus Katalog und Erfassungen',
                 ON CONFLICT (set_number) DO NOTHING`, [SN]);
   await db.run(`INSERT INTO sets (user_id,set_number) VALUES ($1,$2),($3,$2)`,
     [haupt, SN, kind]);
-  // Verschiedene Tage: idx_set_acq_tag (Migration 0008) erlaubt je Konto, Set
+  // Verschiedene Tage: idx_set_acq_tag_zustand (Migration 0008) erlaubt je Konto, Set
   // und TAG nur eine Erfassung.
   await db.run(`INSERT INTO set_acquisitions (user_id,set_number,quantity,purchase_price,condition,created_at)
                 VALUES ($1,$2,2,100,'N', NOW() - INTERVAL '3 days'),

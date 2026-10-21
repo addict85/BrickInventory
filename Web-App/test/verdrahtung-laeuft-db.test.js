@@ -164,7 +164,7 @@ test('die fünf Verdrahtungen über ihre echten Adressen', { concurrency: 1 }, a
     // findSameDayAcquisition() sitzt im ÄNDERN-Weg: Wer das Datum einer
     // Erfassung auf einen Tag schiebt, an dem für dieselbe Position schon
     // eine steht, bekommt 409. Ohne die Prüfung liefe es in den eindeutigen
-    // Index (idx_set_acq_tag, Migration 0008) und käme als 500 zurück.
+    // Index (idx_set_acq_tag_zustand, Migration 0008) und käme als 500 zurück.
     //
     // Zugesichert war bisher, dass `kind: 'set'|'part'|'fig'` im Quelltext
     // der Fabrik steht — nicht, dass die Prüfung für eine davon greift.

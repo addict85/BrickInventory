@@ -163,7 +163,7 @@ test('letzter Kaufpreis gelöscht → der Eintrag verschwindet ganz',
     await t.test('eine von mehreren Erfassungen zu löschen ändert nichts am Bestand', async () => {
       // Die Regel greift NUR, wenn keine Erfassung mehr übrig ist.
       // Anderer TAG: Je Konto, Set und Tag ist genau eine Erfassung erlaubt
-      // (idx_set_acq_tag) — zwei am selben Tag legt die Datenbank ab.
+      // (idx_set_acq_tag_zustand) — zwei am selben Tag legt die Datenbank ab.
       await db.run(`INSERT INTO set_acquisitions (user_id,set_number,purchase_price,condition,quantity,created_at)
                     VALUES ($1,$2,9,'U',2, NOW() - INTERVAL '1 day')`, [uid, BLEIBT]);
       const l = await (await fetch(`${base}/api/v1/sets/${BLEIBT}/acquisitions`)).json();

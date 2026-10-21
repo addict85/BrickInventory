@@ -83,7 +83,7 @@ test('eine von zwei Erfassungen verschieben laesst den Rest beim Absender',
   /**
    * Eine manuelle Position mit zwei Erfassungen an VERSCHIEDENEN Tagen.
    *
-   * Verschiedene Tage, weil idx_part_acq_tag (Migration 0008) je Konto,
+   * Verschiedene Tage, weil idx_part_acq_tag_zustand (Migration 0008) je Konto,
    * Position und Tag nur eine Erfassung erlaubt — mit demselben Datum braeche
    * das zweite INSERT ab, und der Aufbau waere gar nicht erst herzustellen.
    */

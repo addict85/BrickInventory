@@ -49,7 +49,7 @@ let _bericht = null;
  * Das ist nicht nur Kosmetik. Der zweite Schritt SCHREIBT, und er schreibt
  * über recordAcquisitionForDay() — eine zweite Anfrage mit derselben Datei
  * legt für denselben Tag keine zweite Erfassung an, sondern ADDIERT auf die
- * bestehende (idx_part_acq_tag, utils/acquisitions.ts). Zwei Klicks auf
+ * bestehende (idx_part_acq_tag_zustand, utils/acquisitions.ts). Zwei Klicks auf
  * „Jetzt in den Bestand übernehmen" hätten also die doppelte Stückzahl
  * ergeben, und zwar lautlos: Beide Antworten melden Erfolg.
  *
