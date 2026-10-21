@@ -182,8 +182,14 @@ test('kein Test liest eine Quelldatei, die es nicht gibt', () => {
   // bei jeder solchen Migration um eins steigt, ist kein Schleifen der Regel:
   // Jeder Schritt steht hier mit Datei und Grund, und ein Zuwachs OHNE Grund
   // faellt genau deshalb auf.
-  assert.ok(offen.length <= 74,
-    `${offen.length} Pfade mit variablem Segment (gemessen waren es 74):\n  ` +
+  //
+  // 74 -> 75 (21.10.): test/import-protokoll.test.js geht alle Dateien in
+  // public/js durch, um zu pruefen, dass protokollZeile() dort genau EINMAL
+  // steht — dieselbe Lage wie bei 70 -> 71. Die Liste auszuschreiben waere
+  // eine zweite Wahrheit, die beim naechsten neuen Baustein veraltet, und
+  // genau dann wuerde die Pruefung die neue Datei nicht mehr ansehen.
+  assert.ok(offen.length <= 75,
+    `${offen.length} Pfade mit variablem Segment (gemessen waren es 75):\n  ` +
     offen.join('\n  ') + '\nWo es geht, gehoert der Pfad ausgeschrieben — ein ' +
     'variables Segment nimmt dieser Pruefung die Sicht.');
 });
