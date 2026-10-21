@@ -859,11 +859,6 @@ export async function importiereWantedListe(
     posten: [],
   };
 
-  // Beschreibung NUR für die Vorschau holen: Beim echten Import sieht sie
-  // niemand, und drei Abfragen über 224 Posten umsonst zu machen wäre eine
-  // Verzögerung ohne Gegenwert.
-  const beschreibung = opt.vorschau ? await beschreibePosten(auf)
-                                    : new Map<number, { name: string | null; bild: string | null; geraten: boolean }>();
   let lfd = -1;
   /** Ein Posten ist durch. `lfd` zählt ab 0, der Balken ab 1. */
   const melde = () => opt.fortschritt?.(
@@ -921,7 +916,7 @@ export async function importiereWantedListe(
     const rbId = a.rbId;
     const offen = rbId === null || a.farbeOffen;
     lfd++;
-    const b = beschreibung.get(lfd);
+    // Name und Bild kommen NACH der Schleife dazu — siehe dort, warum.
     const zeile: PostenErgebnis = {
       blId: a.posten.blId, art: a.posten.art,
       blFarbe: a.posten.blFarbe, menge: a.posten.menge, zustand: a.posten.zustand ?? null,
@@ -932,7 +927,6 @@ export async function importiereWantedListe(
       // Die Farbangaben stehen auch ohne Vorschau da — sie kosten nichts, die
       // Auflösung hat sie ohnehin geholt.
       farbName: a.rbFarbName, farbHex: a.rbFarbHex,
-      ...(b ? { name: b.name, bild: b.bild, nameGeraten: b.geraten } : {}),
     };
     if (rbId === null || a.farbeOffen || opt.vorschau) {
       // In der Vorschau steht „angelegt" fuer „wuerde angelegt" — geschrieben
@@ -1039,6 +1033,51 @@ export async function importiereWantedListe(
     // einer Liste mit Fehlern stehen.
     melde();
   }
+
+  // ── Name und Bild an die Posten — IMMER, nicht nur in der Vorschau ───────
+  //
+  // ── Marcos Befund vom 21.10. ──────────────────────────────────────────────
+  //
+  //   „Nach dem XML-Import verschwinden die Bilder im Importdialog. vor und
+  //    während dem Import sind diese sichtbar."
+  //
+  // Hier stand der Aufruf WEIT OBEN und nur für die Vorschau, begründet mit:
+  // „Beim echten Import sieht sie niemand, und drei Abfragen über 224 Posten
+  // umsonst zu machen wäre eine Verzögerung ohne Gegenwert."
+  //
+  // Die Annahme war falsch. Der Dialog bleibt nach dem Schreiben offen und
+  // zeichnet dieselbe Tabelle mit der ANTWORT neu (zeichneTabelle in
+  // public/js/18-wanted-xml.js). Wer dort hinsieht, sieht also sehr wohl
+  // etwas — und seit es diese Regel gab, sah er leere Zellen. GEMESSEN:
+  //
+  //     VORSCHAU   : {"name":"Brick 2 x 4","bild":"https://…/3001-rot.png"}
+  //     NACH IMPORT: {}
+  //
+  // Nicht nur das Bild fehlte, auch der Name; auf Marcos Bildschirmfoto ist
+  // die Spalte NAME über alle 24 Zeilen leer.
+  //
+  // ── Warum NACH der Schleife und nicht davor ──────────────────────────────
+  //
+  // Davor wären die eben angelegten Teile noch nicht im Katalog: merkeTeil()
+  // und merkeTeilFarbe() schreiben Name und Bild erst beim Anlegen (über
+  // addManualPart). Ein Aufruf vorher zeigte für genau die Posten nichts, um
+  // die es beim Import geht. Hier stehen sie drin.
+  //
+  // Die drei Abfragen sind drei für die GANZE Liste, nicht drei je Posten —
+  // darauf ist beschreibePosten gebaut, und test/wanted-liste-vorschau-db
+  // prüft es eigens („macht nicht eine Abfrage je Posten").
+  //
+  // Bei einem Abbruch trägt `bericht.posten` weniger Zeilen als `auf`; die
+  // Zuordnung über den Index gilt trotzdem, weil die Schleife von vorne
+  // zählt und nur früher aufhört.
+  const beschreibung = await beschreibePosten(auf);
+  bericht.posten.forEach((zeile, i) => {
+    const b = beschreibung.get(i);
+    if (!b) return;
+    zeile.name = b.name;
+    zeile.bild = b.bild;
+    zeile.nameGeraten = b.geraten;
+  });
 
   return bericht;
 }
