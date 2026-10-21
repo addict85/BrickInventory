@@ -2,7 +2,7 @@ import { ladeAnzeige } from './01-bausteine.js';
 import { registerActions } from './00-registry.js';
 import { locale, t, tRaw} from '../i18n.js';
 import { CURRENCY, G, ME, TRASH_ICON_SVG, api, esc, escJs, escUrl, fmtBig, fmtN, imgUrl, observeLazyImages, thumbUrl, toast } from './01-core.js';
-import { _gibSse, _gibTimer, gibStart } from './01-fortschritt.js';
+import { _gibSse, _gibTimer, gibStart, protokollZeile } from './01-fortschritt.js';
 import { _monitorTimer, loadMonitor, set_monitorTimer } from './01-monitor.js';
 import { SCOPE_VIEWS, addScopeParam, scopeMode, scopeQuery, setScopeMode,
          LAGER_VIEWS, addLagerParam, lagerModus, setLagerModus } from './14-scope.js';
@@ -1007,7 +1007,7 @@ async function startSetCsvImport(){
     // Übersprungene Zeilen nennen — der Import läuft trotzdem weiter, aber wer
     // 500 Zeilen schickt und 498 importiert bekommt, soll es erfahren.
     if (startData.skipped_hint) toast(startData.skipped_hint, 'info');
-    G('prog-footer').textContent=tRaw('csv.sets_progress',{done:0,total});
+    G('prog-footer').textContent=tRaw('csv.items_progress',{done:0,total});
 
     _csvPollActive = true;
     gibStart(); // globalen Balken zeigen (dieses + andere Fenster)
@@ -1062,7 +1062,7 @@ function csvApplyOverlayStatus(s, ctx, fi){
     const done = s.done;
     const pct = total>0 ? (done/total)*95 : 0;
     setProgBar(pct);
-    G('prog-footer').textContent=`${t('csv.sets_progress',{done,total})} (${s.ok} ok${s.warn?', '+s.warn+' '+t('csv.warnings'):''}${s.err?', '+s.err+' '+t('csv.errors'):''})`;
+    G('prog-footer').textContent=`${t('csv.items_progress',{done,total})} (${s.ok} ok${s.warn?', '+s.warn+' '+t('csv.warnings'):''}${s.err?', '+s.err+' '+t('csv.errors'):''})`;
     if(s.current) G('prog-set-name').textContent=`Verarbeite: ${s.current} (${done}/${total})`;
     // Update header progress bar directly
     { const _p=total>0?Math.round(done/total*100):0; const _b=G('global-import-bar'); if(_b){_b.style.display='flex';G('gib-fill').style.width=_p+'%';G('gib-text').textContent=done+'/'+total+' ('+_p+'%)';} }
@@ -1070,9 +1070,9 @@ function csvApplyOverlayStatus(s, ctx, fi){
     if(s.results && s.results.length > ctx.prevResultCount) {
       const newResults = s.results.slice(ctx.prevResultCount);
       newResults.forEach(r => {
-        if(r.success) addCsvLog('✅ '+r.set_number+' – '+(r.action==='added'?t('common.added'):t('common.updated')), true);
-        else if(r.isWarning) addCsvLog('⚠️ '+r.set_number+': '+r.error, false);
-        else addCsvLog('❌ '+r.set_number+': '+(r.error||t('settings.error')), false);
+        // Derselbe Bauer wie in 01-fortschritt.js — die Begruendung steht dort.
+        const z = protokollZeile(r);
+        if (z) addCsvLog(z.text, z.ok);
       });
       ctx.prevResultCount = s.results.length;
     }
@@ -1087,9 +1087,17 @@ function csvApplyOverlayStatus(s, ctx, fi){
       if(s.results) {
         const remaining = s.results.slice(ctx.prevResultCount);
         remaining.forEach(r=>{
-          if(r.success) addCsvLog(`✅ ${esc(r.set_number)} – ${r.action==='added'?t('common.added'):t('common.updated')}`,true);
-          else if(r.isWarning) addCsvLog(`⚠️ ${esc(r.set_number)}: ${esc(r.error)} (${t('csv.timeout_retry')})`,false);
-          else addCsvLog(`❌ ${esc(r.set_number)}: ${r.error||t('common.unknown_error')}`,false);
+          // Derselbe Bauer wie oben und in 01-fortschritt.js. Hier war die
+          // DRITTE Fassung derselben drei Zeilen — und es ist die, die Marco
+          // am 21.10. fotografiert hat: der Dialog NACH dem Import, in der
+          // Sitzung, die ihn gestartet hat.
+          //
+          // Ohne esc(): addCsvLog setzt textContent, nicht innerHTML. Eine
+          // Maskierung davor wird dort nicht aufgeloest, sondern sichtbar
+          // („Brick &amp; Co"). Der Zeitueberschreitungs-Hinweis bleibt — er
+          // gilt nur fuer den CSV-Import und reist deshalb als Zusatz mit.
+          const z = protokollZeile(r, t('csv.timeout_retry'));
+          if (z) addCsvLog(z.text, z.ok);
         });
         ctx.prevResultCount = s.results.length;
       }
