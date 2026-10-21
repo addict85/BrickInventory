@@ -279,6 +279,41 @@ test('Wanted-Liste: Vorschau und Schreiben über die echte Adresse', { concurren
     assert.equal(results.filter(r => r.success).length, body.angelegt + body.aufgestockt,
       `results zählt ${results.length} Einträge, der Bericht nennt ` +
       `${body.angelegt} angelegt und ${body.aufgestockt} aufgestockt`);
+
+    // ── Jede Zeile BENENNT ihren Posten (Marcos Befund vom 21.10.) ──────────
+    //
+    //   „Nach dem Import erscheint dann ganz viele Zeilen mit
+    //    Undefined - aktualisiert"
+    //
+    // Dieselbe Liste, aus der oben ok/warn/err gerechnet wird, füllt in der
+    // zweiten Sitzung auch das PROTOKOLL: public/js/01-fortschritt.js schreibt
+    // je Eintrag eine Zeile und liest dafür `set_number`. Hier standen reine
+    // Zähl-Platzhalter (`{ success: true }`) — gebaut, damit die Zahlen
+    // stimmen, und ohne Blick darauf, wer sie sonst noch liest. Bei Marco
+    // wurden daraus 322 Zeilen „undefined – aktualisiert".
+    //
+    // Geprüft wird deshalb BEIDES: dass die Zahlen stimmen (oben) und dass
+    // jede Zeile etwas benennt (hier). Die erste Prüfung allein war grün,
+    // während die Anzeige unbrauchbar war.
+    assert.equal(results.length, 3, 'Je Posten eine Zeile, auch für den offenen');
+    for (const r of results) {
+      assert.ok(r.set_number,
+        `Ein Eintrag ohne set_number: ${JSON.stringify(r)}. Daraus wird im ` +
+        'Protokoll „undefined – aktualisiert"');
+    }
+    assert.deepEqual(results.map(r => r.set_number).sort(), ['3001', '4162', '99999'],
+      'Die BrickLink-Nummern aus der Datei — das sind die Zeilen, die Marco ' +
+      'hochgeladen hat. 4162 trägt bei Rebrickable eine ANDERE Nummer; im ' +
+      'Protokoll steht die aus seiner Datei');
+    const angelegt = results.filter(r => r.success);
+    assert.ok(angelegt.every(r => r.action === 'added' || r.action === 'updated'),
+      `action muss 'added' oder 'updated' sein, sonst schreibt die Anzeige ` +
+      `„aktualisiert" für alles: ${JSON.stringify(angelegt)}`);
+    const offen = results.find(r => r.set_number === '99999');
+    assert.equal(offen.isWarning, true,
+      'Ein offener Posten ist eine Anmerkung, kein Fehler — dieselbe ' +
+      'Einteilung wie bei den Zahlen darüber');
+    assert.ok(offen.error, 'Ohne Grund steht in der Zeile nur die Nummer');
   });
 
   await t.test('10. eine VORSCHAU legt keinen Auftrag an', async () => {

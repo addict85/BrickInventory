@@ -448,7 +448,10 @@ window.I18N_DE = {
   'instr.choose_file': '📎 Datei wählen',
   'instr.badge_manual': '📎 Manuell',
   'csv.import_title': 'CSV Import',
-  'csv.sets_progress': '{done} / {total} Sets',
+  // „Elemente" und nicht „Sets": Derselbe Balken traegt seit dem 20.10.
+  // auch den Wanted-Listen-Import, und der legt Teile und Minifiguren an.
+  // Marcos Befund vom 21.10.: „steht unten x/y Sets anstelle 'Elementen'".
+  'csv.items_progress': '{done} / {total} Elemente',
   'gallery.loading': 'Lade Sets…',
   'log.reload': '↻ Neu laden',
   'filter.all': 'Alle',

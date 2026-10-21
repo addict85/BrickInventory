@@ -258,12 +258,30 @@ export async function meldeAuftrag(
  * stand `ok + fehler`, und dann blieb der Balken stehen: Eine Liste mit drei
  * Posten, von denen einer offen blieb, endete bei „2 von 3" — 67 %, für immer.
  * Beim Abbrechen ist dieselbe Zahl richtig: Sie sagt, wie weit es kam.
+ *
+ * ── `zeilen`: echte Posten statt blosser Zähler (Marcos Befund vom 21.10.) ──
+ *
+ *   „Nach dem Import erscheint dann ganz viele Zeilen mit
+ *    Undefined - aktualisiert"
+ *
+ * Die Liste unten war ein reiner ZÄHLER: `{ success: true }`, so oft wie nötig,
+ * damit buildJobStatus daraus ok/warn/err rechnet. Das war alles, wofür ich
+ * sie gebaut hatte — und ich hatte übersehen, dass dieselbe Liste in der
+ * zweiten Sitzung auch das PROTOKOLL füllt: public/js/01-fortschritt.js
+ * schreibt je Eintrag eine Zeile und liest dafür `r.set_number`. Die gab es
+ * nicht, und so stand dort 322-mal „undefined – aktualisiert".
+ *
+ * Wer echte Angaben hat, gibt sie als `zeilen` mit; sie müssen `success`
+ * (und bei einer Anmerkung `isWarning`) tragen, damit die Zählung dieselbe
+ * bleibt. Ohne `zeilen` bleibt es beim Zähler — dann schreibt das Protokoll
+ * keine Zeile mehr, statt eine falsche (die Schranke steht dort).
  */
 export async function beendeAuftrag(
   userId: number,
   angaben: { ok: number; warn?: number; fehler: number; done: number; abgebrochen?: boolean },
+  zeilen?: ImportErgebnis[],
 ): Promise<void> {
-  const results = [
+  const results = zeilen ?? [
     ...Array.from({ length: angaben.ok }, () => ({ success: true })),
     ...Array.from({ length: angaben.warn ?? 0 }, () => ({ success: false, isWarning: true })),
     ...Array.from({ length: angaben.fehler }, () => ({ success: false })),

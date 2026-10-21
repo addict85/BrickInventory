@@ -497,7 +497,32 @@ router.post('/wanted-list/import/xml', requireToken, csvEmpfang.single('file'),
           // Balken bei einer Liste mit offenen Posten vor dem Ende stehen.
           done: bericht.posten.length,
           abgebrochen: !!bericht.abgebrochen,
-        }).catch(logAndContinue('wanted-import:auftrag-ende'));
+        },
+        // Je Posten eine echte Zeile fürs Protokoll des Balkens — Marcos
+        // Befund vom 21.10. („ganz viele Zeilen mit Undefined - aktualisiert").
+        // Die Begründung steht bei beendeAuftrag; hier nur, WAS drinsteht:
+        //
+        //   set_number  die BrickLink-Nummer. Sie steht in Marcos Datei, und
+        //               das Protokoll soll von den Zeilen sprechen, die er
+        //               hochgeladen hat. Der Feldname kommt vom CSV-Import,
+        //               über dessen Anzeige das hier mitläuft.
+        //   action      'added' oder 'updated' — der Unterschied, den die
+        //               Anzeige in Worte fasst. 'aufgestockt' ist 'updated'.
+        //   error       der Grund, wenn es keiner wurde. `grund` ist ein
+        //               deutscher Satz; die Oberfläche kann ihn hier nicht
+        //               übersetzen (anders als in der Vorschau-Tabelle, die
+        //               `grundCode` hat) — besser ein Satz in einer Sprache
+        //               als eine leere Zeile.
+        bericht.posten.map(p => {
+          if (p.ausgang === 'angelegt' || p.ausgang === 'aufgestockt') {
+            return { success: true, set_number: p.blId,
+                     action: p.ausgang === 'angelegt' ? 'added' : 'updated' };
+          }
+          // Offen ist eine Anmerkung, kein Fehler — dieselbe Einteilung wie
+          // bei `warn` oben.
+          return { success: false, isWarning: p.ausgang === 'offen',
+                   set_number: p.blId, error: p.grund || '' };
+        })).catch(logAndContinue('wanted-import:auftrag-ende'));
       }
       if (strom) {
         // Die LETZTE Zeile ist der Bericht — dieselbe Nutzlast wie ohne Strom,

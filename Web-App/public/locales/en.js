@@ -445,7 +445,7 @@ window.I18N_EN = {
   'instr.choose_file': '📎 Choose file',
   'instr.badge_manual': '📎 Manual',
   'csv.import_title': 'CSV import',
-  'csv.sets_progress': '{done} / {total} sets',
+  'csv.items_progress': '{done} / {total} items',
   'gallery.loading': 'Loading sets…',
   'log.reload': '↻ Reload',
   'filter.all': 'All',

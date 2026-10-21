@@ -56,7 +56,7 @@ function gibApplyStatus(s) {
     G('prog-title-txt').textContent = tRaw('csv.import_title');
     G('prog-bar').style.width = pct + '%';
     if (running) {
-      G('prog-footer').textContent = `${t('csv.sets_progress',{done,total})} (${s.ok} ok${s.warn ? ', '+s.warn+' ⚠️' : ''}${s.err ? ', '+s.err+' ❌' : ''})`;
+      G('prog-footer').textContent = `${t('csv.items_progress',{done,total})} (${s.ok} ok${s.warn ? ', '+s.warn+' ⚠️' : ''}${s.err ? ', '+s.err+' ❌' : ''})`;
       if (s.current) G('prog-set-name').textContent = `Verarbeite: ${s.current} (${done}/${total})`;
     } else {
       G('prog-footer').textContent = `${t('csv.finished')} ${s.ok} ok${s.warn ? ', '+s.warn+' '+t('csv.warnings') : ''}${s.err ? ', '+s.err+' '+t('csv.errors') : ''}`;
@@ -70,7 +70,7 @@ function gibApplyStatus(s) {
   if (gpw && running) {
     gpw.style.display = 'block';
     G('gib-panel-fill').style.width = pct + '%';
-    G('gib-panel-footer').textContent = `${t('csv.sets_progress',{done,total})} (${pct}%)`;
+    G('gib-panel-footer').textContent = `${t('csv.items_progress',{done,total})} (${pct}%)`;
     if(s.current) G('gib-panel-set').textContent = `Verarbeite: ${s.current}`;
   }
   G('gib-stats').textContent = `${s.ok || 0} ok · ${s.warn || 0} ${t('csv.warnings')} · ${s.err || 0} ${t('csv.errors')}`;
@@ -79,9 +79,8 @@ function gibApplyStatus(s) {
   // (_csvPollActive = true means this window started the import and the CSV loop handles logs)
   if (!_csvPollActive && s.results && s.results.length > _gibLastCount) {
     s.results.slice(_gibLastCount).forEach(r => {
-      if (r.success) gibAddLog('✅ ' + r.set_number + ' – ' + (r.action === 'added' ? t('common.added') : t('common.updated')), true);
-      else if (r.isWarning) gibAddLog('⚠️ ' + r.set_number + ': ' + r.error, false);
-      else gibAddLog('❌ ' + r.set_number + ': ' + (r.error || t('settings.error')), false);
+      const z = protokollZeile(r);
+      if (z) gibAddLog(z.text, z.ok);
     });
   }
   if (s.results) _gibLastCount = s.results.length;
@@ -132,6 +131,51 @@ function gibToggle() {
   }
 }
 
+
+/**
+ * Eine Zeile fuers Import-Protokoll — oder null, wenn es nichts zu sagen gibt.
+ *
+ * ── Marcos Befund vom 21.10. ────────────────────────────────────────────────
+ *
+ *   „Nach dem Import erscheint dann ganz viele Zeilen mit
+ *    Undefined - aktualisiert"
+ *
+ * `results` traegt zweierlei: beim CSV-Import je Set ein echtes Ergebnis, beim
+ * Wanted-Listen-Import bis zum 21.10. nur Zaehl-Platzhalter (`{success:true}`),
+ * aus denen buildJobStatus ok/warn/err rechnet. Die hatten kein `set_number` —
+ * und daraus wurde 322-mal „undefined – aktualisiert".
+ *
+ * Die Platzhalter sind weg (beendeAuftrag bekommt jetzt echte Zeilen, siehe
+ * utils/importAuftrag.ts), aber die Schranke bleibt: Eine Zeile, die nichts
+ * benennt, sagt dem Betrachter nichts und kostet ihn das Vertrauen in die
+ * uebrigen. Die ZAEHLUNG darueber ist davon unberuehrt — sie kommt aus
+ * `s.ok`/`s.warn`/`s.err` und nicht von hier.
+ *
+ * ── Warum EINE Fassung ──────────────────────────────────────────────────────
+ *
+ * Diese drei Zeilen standen zweimal: hier fuer die zuschauende Sitzung und in
+ * public/js/02-gallery.js fuer die, die den Import gestartet hat. Zwei
+ * Fassungen heissen zwei Stellen, an denen die naechste Schranke fehlt — und
+ * genau das war hier der Fall. Der SCHREIBER bleibt verschieden (gibAddLog
+ * schreibt in beide Protokolle, addCsvLog nur in das des Dialogs); gemeinsam
+ * ist, WAS dasteht.
+ */
+export function protokollZeile(r, warnZusatz = '') {
+  if (!r?.set_number) return null;
+  if (r.success) {
+    return { ok: true, text: '✅ ' + r.set_number + ' – '
+      + (r.action === 'added' ? t('common.added') : t('common.updated')) };
+  }
+  // `warnZusatz` nur fuer den CSV-Import: Dort heisst eine Anmerkung
+  // „Zeitueberschreitung, wird erneut versucht". Beim Wanted-Listen-Import
+  // heisst sie „offen, keine Rebrickable-Nummer" — derselbe Satz waere dort
+  // schlicht falsch. Der Zusatz kommt deshalb vom Aufrufer und nicht von hier.
+  if (r.isWarning) {
+    return { ok: false, text: '⚠️ ' + r.set_number + ': ' + (r.error || '')
+      + (warnZusatz ? ' (' + warnZusatz + ')' : '') };
+  }
+  return { ok: false, text: '❌ ' + r.set_number + ': ' + (r.error || t('settings.error')) };
+}
 
 function gibAddLog(text, ok) {
   // Write to both the overlay csv-log AND the gib detail log
