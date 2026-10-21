@@ -82,32 +82,50 @@ test('aufstocken ohne Zustandsangabe folgt dem Standard des Nutzers', { concurre
     // ── Den Aufstock-Weg ISOLIEREN ──────────────────────────────────────
     //
     // Zwei addSet()-Aufrufe hintereinander messen ihn NICHT: Beide fallen auf
-    // denselben Tag, und recordAcquisitionForDay() führt die Tageszeile
-    // zusammen — „unabhängig vom Zustand", wie der Kommentar dort sagt. Die
-    // erste, korrekt geschriebene Zeile überdeckt dann die zweite, und der
-    // Test ist grün, ohne den Pfad berührt zu haben. (Genau das ist mir beim
-    // ersten Entwurf passiert.)
+    // denselben Tag und denselben Zustand, die Tageszeile wird also
+    // zusammengefasst. Die erste, korrekt geschriebene Zeile überdeckt dann
+    // die zweite, und der Test ist grün, ohne den Pfad berührt zu haben.
+    // (Genau das ist mir beim ersten Entwurf passiert.)
     //
-    // Also die Set-Zeile direkt anlegen, ohne Erfassung. Der nächste Aufruf
-    // nimmt damit den „existing"-Zweig und schreibt die erste Tageszeile.
-    await haeltSet(db, uid, SET, 1);
+    // Deshalb eine Vorbedingung mit AUSDRÜCKLICH anderem Zustand: Der
+    // nächste Aufruf nimmt damit den „existing"-Zweig von addSetIntern (die
+    // sets-Zeile ist da) und schreibt seine eigene Tageszeile.
+    //
+    // ── Was sich am 21.10. geändert hat ─────────────────────────────────
+    //
+    // Hier stand `haeltSet(db, uid, SET, 1)` ohne Zustand — der Helfer legt
+    // dann eine Erfassung mit 'N' an, anders als der Kommentar daneben
+    // behauptete („ohne Erfassung"). Der Test war trotzdem grün, aber aus
+    // dem falschen Grund: recordAcquisitionForDay() fasste beide Zeilen zu
+    // EINER zusammen, und „gebraucht gewinnt" machte daraus 'U'. Geprüft
+    // war damit die Verschmelzung, nicht der Aufstock-Weg.
+    //
+    // Seit Migration 0040 ist der Zustand Teil des Schlüssels: Zwei
+    // Zustände sind zwei Zeilen (Marcos Befund, siehe
+    // test/erfassung-je-zustand-db.test.js). Die Prüfung gilt deshalb jetzt
+    // der Zeile, die der GEPRÜFTE Pfad geschrieben hat — nicht allen.
+    await haeltSet(db, uid, SET, 1, { zustand: 'N' });
 
     // Erfassung OHNE Zustandsangabe. Preis mitgeben, damit kein Netzaufruf
     // nötig ist; um den Preis geht es hier nicht.
     await addSet(SET, 1, uid, null, 20, null);
 
     const zeilen = await db.all(
-      `SELECT quantity, condition FROM set_acquisitions
+      `SELECT id, quantity, condition FROM set_acquisitions
         WHERE user_id=$1 AND set_number=$2 ORDER BY id`, [uid, SET]);
-    assert.ok(zeilen.length >= 1, 'es wurde gar keine Erfassung geschrieben');
+    assert.equal(zeilen.length, 2,
+      `${zeilen.length} Erfassung(en): ${JSON.stringify(zeilen)}. Erwartet sind ` +
+      'ZWEI — die Vorbedingung mit "N" und die des Aufstock-Wegs mit dem ' +
+      'Standard "U". Eine einzige hiesse, dass die beiden Zustände wieder ' +
+      'verschmolzen werden.');
+    assert.equal(zeilen[0].condition, 'N', 'Vorbedingung: die Zeile des Helfers');
 
-    for (const z of zeilen) {
-      assert.equal(z.condition, 'U',
-        `Eine Erfassung steht als "${z.condition}" in der Datenbank, obwohl der ` +
-        'Standard des Nutzers "U" ist und der Preis genau dafür geholt wurde. ' +
-        'Preis und Vermerk müssen denselben Zustand meinen — sonst zählt der ' +
-        'Eintrag in der Finanzansicht in der falschen Gruppe.');
-    }
+    const neue = zeilen[1];
+    assert.equal(neue.condition, 'U',
+      `Die Erfassung des Aufstock-Wegs steht als "${neue.condition}" in der ` +
+      'Datenbank, obwohl der Standard des Nutzers "U" ist und der Preis genau ' +
+      'dafür geholt wurde. Preis und Vermerk müssen denselben Zustand meinen — ' +
+      'sonst zählt der Eintrag in der Finanzansicht in der falschen Gruppe.');
   } finally {
     await db.run(`DELETE FROM set_acquisitions WHERE user_id=$1`, [uid]).catch(() => {});
     await db.run(`DELETE FROM sets WHERE user_id=$1`, [uid]).catch(() => {});
