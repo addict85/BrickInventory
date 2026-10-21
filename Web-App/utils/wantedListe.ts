@@ -749,12 +749,35 @@ function zaehleStufen(auf: Aufloesung[]): Record<string, number> {
  * Rückschritt — also ist die Abhängigkeit umgedreht: Die ROUTE kennt die
  * Routen und gibt die drei Anleger herein. Diese Datei kennt nur ihre Form.
  *
- * ── Kein Kaufpreis ──────────────────────────────────────────────────────────
+ * ── MAXPRICE IST der Kaufpreis — Marcos Entscheidung vom 21.10. ─────────────
  *
- * MAXPRICE ist eine SUCHGRENZE („bis so viel würde ich zahlen"), kein
- * bezahlter Preis. Als Kaufpreis übernommen stünde in der Finanzansicht ein
- * Betrag, den niemand ausgegeben hat. Die Posten kommen deshalb ohne Preis
- * herein; was sie wert sind, holt der Marktpreis.
+ *   „Kannst du bei der Bricklink-Wanted-Listen xml-Import das Attribut:
+ *    <MAXPRICE>0.8578</MAXPRICE> auf den Kaufpreis mappen. Der Betrag
+ *    entspricht der Währung in den Einstellungen des Users."
+ *
+ * Hier stand das Gegenteil, und zwar begründet: „MAXPRICE ist eine SUCHGRENZE
+ * („bis so viel würde ich zahlen"), kein bezahlter Preis. Als Kaufpreis
+ * übernommen stünde in der Finanzansicht ein Betrag, den niemand ausgegeben
+ * hat."
+ *
+ * Das war eine Annahme über Marcos Arbeitsweise, keine Tatsache über das
+ * Format — und sie stimmte nicht. Er trägt dort den bezahlten Preis ein. Wer
+ * die Daten führt, bestimmt ihre Bedeutung; die alte Begründung steht hier,
+ * damit der Nächste sie nicht erneut herleitet.
+ *
+ * ── Was dabei NICHT geprüft werden kann ─────────────────────────────────────
+ *
+ * Die WÄHRUNG. Eine BrickLink-Wanted-Liste führt keine, und der Wert reist
+ * als blosse Zahl. Übernommen wird er deshalb in der Währung des Kontos
+ * (`currency` in den Einstellungen) — so, wie Marco es gesagt hat. Eine
+ * Umrechnung gibt es nicht und kann es nicht geben: Es ist nicht bekannt, aus
+ * welcher Währung umzurechnen wäre.
+ *
+ * Unverändert bleibt, was der Leser schon tut: `-1.0000` und `0` sind KEIN
+ * Preis und werden null (leseWantedListe, `preisRoh > 0`). Marcos erste Datei
+ * trug in allen 224 Posten `-1.0000`; für solche Listen holt weiterhin der
+ * Marktpreis den Wert. Steht ein Preis da, entfällt dieser Abruf — ein Posten
+ * weniger, der auf BrickLink warten muss.
  */
 /**
  * Die drei Anleger, die der Import braucht.
@@ -772,7 +795,7 @@ export interface Anleger {
   teil: (uid: number, body: Record<string, unknown>) => Promise<unknown>;
   figur: (uid: number, body: Record<string, unknown>) => Promise<unknown>;
   set: (uid: number, setNummer: string, menge: number,
-        zustand: string | null) => Promise<unknown>;
+        zustand: string | null, kaufpreis: number | null) => Promise<unknown>;
 }
 
 export async function importiereWantedListe(
@@ -958,15 +981,21 @@ export async function importiereWantedListe(
           ...(a.rbFarbHex ? { color_hex: a.rbFarbHex } : {}),
           quantity: a.posten.menge,
           condition: a.posten.zustand ?? undefined,
+          // MAXPRICE als Preis/Stück — siehe oben. `undefined` und nicht
+          // `null`: Die Anleger unterscheiden „nichts angegeben" (dann gilt
+          // der Marktpreis) von einer ausdrücklichen Null.
+          ...(a.posten.maxPreis !== null ? { unit_price: a.posten.maxPreis } : {}),
         });
       } else if (a.posten.art === 'fig') {
         rueckmeldung = await opt.anleger.figur(uid, {
           fig_number: rbId,
           quantity: a.posten.menge,
           condition: a.posten.zustand ?? undefined,
+          ...(a.posten.maxPreis !== null ? { unit_price: a.posten.maxPreis } : {}),
         });
       } else {
-        rueckmeldung = await opt.anleger.set(uid, rbId, a.posten.menge, a.posten.zustand);
+        rueckmeldung = await opt.anleger.set(uid, rbId, a.posten.menge,
+                                             a.posten.zustand, a.posten.maxPreis);
       }
       // Angelegt oder aufgestockt — der Anleger weiss es, und bis zum 19.10.
       // wurde es nicht gefragt: Ein zweiter Import derselben Liste meldete
