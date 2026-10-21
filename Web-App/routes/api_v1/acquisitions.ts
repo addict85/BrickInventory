@@ -251,7 +251,15 @@ async function withSetAggregate(uid: number, cfgTable: string, keys: any[], payl
           if (!/^\d{4}-\d{2}-\d{2}$/.test(String(date))) {
             fehlerWerfen('datum_ungueltig', 400);
           }
-          const clash = await findSameDayAcquisition(cfg.kind, ownerId, keys, date, id, tx);
+          // Gegen den Zustand, den die Zeile NACHHER hat: Kommt in derselben
+          // Anfrage ein neuer mit, gilt der — die Zustandsänderung steht
+          // weiter unten und wäre sonst noch nicht angewandt. Seit Migration
+          // 0040 belegt ein Tag nicht mehr für alle Zustände.
+          const zielZustand = (condition !== undefined && condition !== null)
+            ? (['N', 'U'].includes(condition) ? condition : 'N')
+            : (acq.condition || 'N');
+          const clash = await findSameDayAcquisition(
+            cfg.kind, ownerId, keys, date, id, zielZustand, tx);
           if (clash) {
             fehlerWerfen('datum_belegt', 409);
           }
@@ -404,7 +412,7 @@ registerAcquisitionRoutes({
   kind:      'set',
   priceCol:  'purchase_price',
   keyVals:   req => [req.params.setNumber],
-  existsSql: 'SELECT id, user_id FROM set_acquisitions WHERE id=$1 AND user_id = ANY($2) AND set_number=$3',
+  existsSql: 'SELECT id, user_id, condition FROM set_acquisitions WHERE id=$1 AND user_id = ANY($2) AND set_number=$3',
   existsWithKeys: true,
   notFound:  'erfassung_nicht_gefunden',
   deleteChecksExistence: true,
@@ -463,7 +471,7 @@ registerAcquisitionRoutes({
   kind:      'part',
   priceCol:  'unit_price',
   keyVals:   req => [req.params.partNumber, parseInt(req.params.colorId) || 0],
-  existsSql: 'SELECT id, user_id FROM part_acquisitions WHERE id=$1 AND user_id = ANY($2)',
+  existsSql: 'SELECT id, user_id, condition FROM part_acquisitions WHERE id=$1 AND user_id = ANY($2)',
   existsWithKeys: false,
   notFound:  'nicht_gefunden',
   deleteChecksExistence: false,
@@ -514,7 +522,7 @@ registerAcquisitionRoutes({
   kind:      'fig',
   priceCol:  'unit_price',
   keyVals:   req => [req.params.figNumber],
-  existsSql: 'SELECT id, user_id FROM minifig_acquisitions WHERE id=$1 AND user_id = ANY($2)',
+  existsSql: 'SELECT id, user_id, condition FROM minifig_acquisitions WHERE id=$1 AND user_id = ANY($2)',
   existsWithKeys: false,
   notFound:  'nicht_gefunden',
   deleteChecksExistence: false,
