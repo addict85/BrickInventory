@@ -9,6 +9,7 @@ import { sendeFehler } from '../../utils/fehlerTexte';
 import { writableIds } from '../../utils/household';
 import { listePapierkorb, stelleWiederHer, loescheEndgueltig, leerePapierkorb } from '../../utils/papierkorb';
 import { requireToken } from './middleware';
+import { loescheAllesEigene } from '../../utils/loeschen';
 
 const router = express.Router();
 
@@ -35,6 +36,13 @@ router.delete('/papierkorb/:id', requireToken, async (req: AuthedRequest, res) =
     if (!await loescheEndgueltig(await writableIds(req.apiUser.user_id), id))
       return sendeFehler(req, res, 404, 'nicht_gefunden');
     res.json({ success: true });
+  } catch (e) { handleRouteError(res, e, undefined, req); }
+});
+
+// Den ganzen EIGENEN Bestand in den Papierkorb — „Alle meine Daten löschen".
+router.delete('/bestand', requireToken, async (req: AuthedRequest, res) => {
+  try {
+    res.json({ success: true, ...(await loescheAllesEigene(req.apiUser.user_id)) });
   } catch (e) { handleRouteError(res, e, undefined, req); }
 });
 

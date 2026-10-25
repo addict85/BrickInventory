@@ -157,6 +157,41 @@ test('Papierkorb', { concurrency: 1 }, async (t) => {
       assert.equal(r.status, 200, 'unbekannte Spalte: ' + JSON.stringify(r.body));
     });
 
+    await t.test('„Alle meine Daten löschen": alles Eigene in den Papierkorb, nichts Fremdes', async () => {
+      await db.run('DELETE FROM papierkorb WHERE user_id = ANY($1)', [ids]);
+      await haeltSet(db, haupt, SN, 1, { preis: 5 });
+      await haeltTeil(db, haupt, '3001', { setNumber: SN, menge: 2, colorId: 4 });
+      await haeltTeil(db, haupt, PN, { colorId: 5, menge: 3 });
+      await haeltFigur(db, haupt, FN, { menge: 1 });
+      // Ein Set des Unterkontos: Das Hauptkonto sieht es, „meine Daten" ist es nicht.
+      const SN2 = `${SN}-sub`;
+      await haeltSet(db, sub, SN2, 1);
+      const vorher = await zeilen(haupt);
+
+      const r = await api(H, 'DELETE', '/bestand');
+      assert.equal(r.status, 200, JSON.stringify(r.body));
+      assert.deepEqual([r.body.sets, r.body.teile, r.body.figuren], [1, 1, 1]);
+      const nachher = await zeilen(haupt);
+      for (const k of ['sets', 'setTeile', 'setKauf', 'teil', 'teilKauf', 'figur', 'figKauf'])
+        assert.deepEqual(nachher[k], [], `${k} ist nicht weg`);
+      assert.ok(await db.get('SELECT 1 FROM sets WHERE user_id=$1 AND set_number=$2', [sub, SN2]),
+        'Das Set des Unterkontos wurde mitgelöscht');
+
+      const liste = await eintraege(H);
+      const arten = liste.filter(e => e.user_id === haupt).map(e => e.art).sort();
+      assert.deepEqual(arten, ['figur', 'set', 'teil'], 'Figur fehlt (oder Set/Teil) im Papierkorb');
+      assert.deepEqual(r.body.papierkorb.sort(), liste.filter(e => e.user_id === haupt).map(e => e.id).sort());
+
+      // Und alles kommt einzeln zurück, wie vorher.
+      for (const e of liste.filter(e => e.user_id === haupt))
+        assert.equal((await api(H, 'POST', `/papierkorb/${e.id}/wiederherstellen`)).status, 200);
+      assert.deepEqual(await zeilen(haupt), vorher);
+      await db.run('DELETE FROM set_acquisitions WHERE set_number = ANY($1)', [[SN, SN2]]);
+      // Teil und Figur bleiben: Der nächste Fall löscht sie selbst.
+      await db.run('DELETE FROM parts WHERE set_number = ANY($1)', [[SN, SN2]]);
+      await db.run('DELETE FROM sets WHERE set_number = ANY($1)', [[SN, SN2]]);
+    });
+
     await t.test('nach 30 Tagen räumt der Hintergrundlauf ab, vorher nicht', async () => {
       assert.equal((await api(H, 'DELETE', `/parts/${PN}/5`)).status, 200);
       assert.equal((await api(H, 'DELETE', `/minifigs/${FN}`)).status, 200);

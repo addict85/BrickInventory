@@ -567,25 +567,13 @@ G('btn-clr-all-cache').onclick=async()=>{
   toast(tRaw('settings.all_cache.cleared'),'success'); loadCacheStats();
 };
 G('btn-dall').onclick=async()=>{
-  // Two-step confirmation for destructive action
-  if(!await confirmDelete(tRaw('settings.delete_all.title'),t('settings.delete_all.text'),'🔥')) return;
-  const confirm2 = window.prompt(t('settings.delete_all.prompt'));
-  if(confirm2 !== t('settings.delete_all.confirm')) { toast(tRaw('settings.delete_all.cancelled'),'info'); return; }
-  toast(tRaw('settings.delete_all.deleting'),'info');
-  // accounts=own, zweimal — beim Auflisten UND beim Löschen.
-  //
-  // Ohne das listete der Knopf im Haushalt auch die Sets der verknüpften
-  // Konten, und DELETE löschte jede Nummer im vollen Schreib-Blickfeld.
-  // NACHGEMESSEN mit zwei Konten: Das Unterkonto verlor Sets, Teile und
-  // Minifiguren vollständig — darunter ein Set, das das Hauptkonto nie besass.
-  // Der Knopf heisst „Alle MEINE Sets löschen" und der Text verspricht
-  // „Deine gesamte Sammlung".
-  //
-  // Fest 'own' und nicht scopeQuery(): Das Versprechen des Knopfes hängt nicht
-  // davon ab, welchen Kontofilter jemand zuletzt in der Galerie stehen hatte.
-  const s=await api('GET','/v1/sets?accounts=own');
-  for(const set of s.sets||[]) await api('DELETE',`/v1/sets/${esc(set.set_number)}?accounts=own`);
-  toast(tRaw('settings.delete_all.done'),'success'); loadGallery(); loadParts(); loadMinifigs(); loadStats();
+  // Alles in den Papierkorb: 30 Tage wiederherstellbar, deshalb eine Rückfrage
+  // statt des früheren Eintippens von „LÖSCHEN". Nur das EIGENE Konto (Server).
+  if(!await confirmDelete(tRaw('settings.delete_all.title'),t('settings.delete_all.text'),'🗑️')) return;
+  const d=await api('DELETE','/v1/bestand');
+  if(!d?.success){ toast(d?.error||tRaw('settings.error'),'error'); return; }
+  toast(tRaw('settings.delete_all.done',{n:d.sets+d.teile+d.figuren}),'success');
+  loadGallery(); loadParts(); loadMinifigs(); loadStats();
 };
 
 // ── USER MGMT ─────────────────────────────────────────

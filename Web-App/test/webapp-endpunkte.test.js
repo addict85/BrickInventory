@@ -149,6 +149,11 @@ const EINRICHTUNG =
   'Schlüssel der Quellen) — das geschieht am Rechner, bevor jemand die App ' +
   'verbindet; die Schlüssel stehen dort auch in den Einstellungen.';
 
+const ALLES_LOESCHEN =
+  '„Alle meine Daten löschen" steht in der Gefahrenzone der Webapp. Auf dem ' +
+  'Telefon gibt es den Knopf absichtlich nicht — ein Fehlgriff dort träfe die ' +
+  'ganze Sammlung; einzelne Elemente löscht die App wie bisher.';
+
 const NUR_WEB = new Map([
   ['/api/v1/admin/job-status',
    'Stand des Preis-Jobs samt BrickLink-Kontingent. Die App zeigt BEIDES ' +
@@ -252,6 +257,8 @@ const NUR_WEB = new Map([
    EINRICHTUNG],
   ['/api/v1/settings/quelle-testen',
    EINRICHTUNG],
+  ['/api/v1/bestand',
+   ALLES_LOESCHEN],
 ]);
 
 test('was nur die Webapp kann, hat einen Grund', () => {

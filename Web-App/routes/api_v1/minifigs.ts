@@ -10,12 +10,12 @@ import { getSetting } from '../../utils/settings';
 import { ersatzteilSql } from '../../utils/validate';
 import { getMinifigPriceHistory } from '../../utils/priceHistory';
 import { einzelwert } from '../../utils/validate';
-import { verwendendeSets, loescheManuelleFigur } from '../../utils/handlers/shared';
+import { verwendendeSets } from '../../utils/handlers/shared';
 import { inventarNachKandidaten } from '../../utils/rbInventar';
 import { sendeFehler } from '../../utils/fehlerTexte';
 import { normalisiereLagerort, setzeLagerort } from '../../utils/lagerort';
 import { blJoin, blNummerSql } from '../../utils/blZuordnung';
-import { legeInPapierkorb } from '../../utils/papierkorb';
+import { loescheFigur } from '../../utils/loeschen';
 const router = express.Router();
 
 // ── MINIFIGS ─────────────────────────────────────────────────────────────────
@@ -67,15 +67,7 @@ router.delete('/minifigs/:figNumber', requireToken, async (req: AuthedRequest, r
     // Wie bei den Teilen: Ohne den Parameter das eigene Konto.
     const besitzer = await resolveWriteTarget(req.apiUser.user_id, req.query.owner);
     if (besitzer === null) return sendeFehler(req, res, 403, 'kein_zugriff_konto');
-    const fn = String(req.params.figNumber);
-    const geloescht = await db.transaction(async (tx) => {
-      const id = await legeInPapierkorb(tx, 'figur', besitzer, fn);
-      const r = await loescheManuelleFigur(tx, besitzer, fn);
-      if (r.changes === 0) return null;
-      // Wie bei den Teilen: verwaiste Erfassungen zählten in den Finanzsummen weiter.
-      await tx.run('DELETE FROM minifig_acquisitions WHERE user_id=$1 AND fig_number=$2', [besitzer, fn]);
-      return id;
-    });
+    const geloescht = await loescheFigur(besitzer, String(req.params.figNumber));
     if (geloescht === null) return sendeFehler(req, res, 404, 'minifig_nicht_manuell');
     res.json({ success: true, papierkorb: [geloescht] });
   } catch (e) { handleRouteError(res, e, undefined, req); }

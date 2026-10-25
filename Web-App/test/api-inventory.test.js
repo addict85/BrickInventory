@@ -319,6 +319,7 @@ const C = {
   'POST /api/v1/papierkorb/:id/wiederherstellen': 'nur-v1',
   'DELETE /api/v1/papierkorb/:id': 'nur-v1',
   'DELETE /api/v1/papierkorb': 'nur-v1',
+  'DELETE /api/v1/bestand': 'nur-v1',
   // Der Inhaberwechsel (Marcos „auf dem Detail-Dialog kann der Inhaber nicht
   // geaendert werden"). Ebenfalls nur-v1: Beide Oberflaechen rufen dieselbe
   // Adresse. Die Regel dahinter — Aufnahmedatum bleibt, Preisalarm zieht mit,

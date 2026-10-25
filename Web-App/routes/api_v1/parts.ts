@@ -1,6 +1,5 @@
 /** /api/v1/parts — CRUD, Farben, Statistiken (Erfassungen: ./acquisitions.ts). */
 import express from 'express';
-import * as db from '../../db/database';
 import { handleRouteError } from '../../utils/httpError';
 import { requireToken } from './middleware';
 import { scopeIds, parseScopeMode, resolveWriteTarget } from '../../utils/household';
@@ -11,11 +10,11 @@ import { getPartPriceHistory } from '../../utils/priceHistory';
 import { einzelwert } from '../../utils/validate';
 import * as V from '../../utils/validate';
 import { aendereTeilFarbe } from '../../utils/teilFarbeAendern';
-import { verwendendeSets, loescheManuellesTeil } from '../../utils/handlers/shared';
+import { verwendendeSets } from '../../utils/handlers/shared';
 import { sendeFehler } from '../../utils/fehlerTexte';
 import { normalisiereLagerort, setzeLagerort } from '../../utils/lagerort';
 import { writableIds } from '../../utils/household';
-import { legeInPapierkorb } from '../../utils/papierkorb';
+import { loescheTeil } from '../../utils/loeschen';
 const router = express.Router();
 
 // ── PARTS ─────────────────────────────────────────────────────────────────────
@@ -101,17 +100,7 @@ router.delete('/parts/:partNumber/:colorId', requireToken, async (req: AuthedReq
     // erlaubt ist, entscheidet der Server über canWriteFor() — nie der Client.
     const besitzer = await resolveWriteTarget(req.apiUser.user_id, req.query.owner);
     if (besitzer === null) return sendeFehler(req, res, 403, 'kein_zugriff_konto');
-    const pn = String(req.params.partNumber), cid = parseInt(String(req.params.colorId));
-    const geloescht = await db.transaction(async (tx) => {
-      const id = await legeInPapierkorb(tx, 'teil', besitzer, pn, cid);
-      const r = await loescheManuellesTeil(tx, besitzer, pn, cid);
-      if (r.changes === 0) return null;
-      // Erfassungen mitlöschen: Die Finanzsummen lesen sie und zählten das
-      // gelöschte Teil sonst weiter.
-      await tx.run('DELETE FROM part_acquisitions WHERE user_id=$1 AND part_number=$2 AND color_id=$3',
-        [besitzer, pn, cid || 0]);
-      return id;
-    });
+    const geloescht = await loescheTeil(besitzer, String(req.params.partNumber), parseInt(String(req.params.colorId)));
     if (geloescht === null) return sendeFehler(req, res, 404, 'teil_nicht_manuell');
     res.json({ success: true, papierkorb: [geloescht] });
   } catch (e) { handleRouteError(res, e, undefined, req); }
