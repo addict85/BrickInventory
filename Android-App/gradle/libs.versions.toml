@@ -145,7 +145,7 @@ graphicsPath                = "1.1.0"   # 16-KB-Versuch, siehe app/build.gradle.
 # sondern am gebauten APK: tools/apk-ausrichtung.py liest die ELF-Kopfe
 # aller mitgelieferten .so und meldet jede Ausrichtung unter 16 KB. Faellt
 # eine Fassung zurueck, wird der Lauf rot — egal welche Nummer sie traegt.
-datastore                   = "1.2.1"
+datastore                   = "1.3.0"
 appcompat                   = "1.8.0"
 profileinstaller            = "1.4.1"
 # ── Auch hier war der Deckel compileSdk ────────────────────────────────
