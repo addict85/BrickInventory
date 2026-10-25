@@ -71,6 +71,16 @@ class AdminRepository @Inject constructor(
 
     suspend fun getProfil(): Result<ProfilResponse> = safeCall { api.getProfil() }
 
+    suspend fun zweiterFaktorStand(): Result<ZweiterFaktorStand> = safeCall { api.zweiterFaktorStand() }
+    suspend fun zweiterFaktorEinrichten(passwort: String): Result<ZweiterFaktorEinrichtung> =
+        safeCall { api.zweiterFaktorEinrichten(ZweiterFaktorAnfrage(password = passwort)) }
+    suspend fun zweiterFaktorBestaetigen(code: String): Result<ZweiterFaktorCodes> =
+        safeCall { api.zweiterFaktorBestaetigen(ZweiterFaktorAnfrage(code = code)) }
+    suspend fun zweiterFaktorAbschalten(passwort: String, code: String): Result<GenericResponse> =
+        safeCall { api.zweiterFaktorAbschalten(ZweiterFaktorAnfrage(password = passwort, code = code)) }
+    suspend fun zweiterFaktorNeueCodes(code: String): Result<ZweiterFaktorCodes> =
+        safeCall { api.zweiterFaktorNeueCodes(ZweiterFaktorAnfrage(code = code)) }
+
     suspend fun updateProfil(aenderung: ProfilAenderung): Result<GenericResponse> =
         safeCall { api.updateProfil(aenderung) }
 

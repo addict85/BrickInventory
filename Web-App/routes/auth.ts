@@ -524,7 +524,9 @@ router.post('/change-password', requireLogin, async (req: LoggedInRequest, res) 
   try {
     const user = await db.get('SELECT * FROM users WHERE id = $1', [uid]);
     if (!(await bcrypt.compare(current, user.password_hash)))
-      return sendeFehler(req, res, 401, 'aktuelles_passwort_falsch');
+      // 400 statt 401: Beide Clients deuten 401 als „Sitzung abgelaufen" und
+      // melden ab — ein Tippfehler im alten Passwort warf einen hinaus.
+      return sendeFehler(req, res, 400, 'aktuelles_passwort_falsch');
     // NACH der Pruefung des alten Passworts: Wer das aktuelle nicht kennt, soll
     // ueber das neue auch nichts erfahren — die Antwort fuer einen Fremden
     // bleibt dieselbe.
@@ -638,7 +640,7 @@ router.get('/zweiter-faktor', requireLogin, async (req, res) => {
 router.post('/zweiter-faktor/einrichten', requireLogin, async (req, res) => {
   try {
     const uid = angemeldeteNutzerId(req);
-    if (!await passwortStimmt(uid, req.body?.password)) return sendeFehler(req, res, 401, 'aktuelles_passwort_falsch');
+    if (!await passwortStimmt(uid, req.body?.password)) return sendeFehler(req, res, 400, 'aktuelles_passwort_falsch');
     const geheimnis = await zf.beginneEinrichtung(uid);
     if (!geheimnis) return sendeFehler(req, res, 409, 'zweiter_faktor_schon_aktiv');
     const u = await db.get('SELECT username FROM users WHERE id = $1', [uid]);
@@ -658,7 +660,7 @@ router.post('/zweiter-faktor/abschalten', requireLogin, async (req, res) => {
   try {
     const uid = angemeldeteNutzerId(req);
     if (!await zf.istAktiv(uid)) return sendeFehler(req, res, 409, 'zweiter_faktor_nicht_aktiv');
-    if (!await passwortStimmt(uid, req.body?.password)) return sendeFehler(req, res, 401, 'aktuelles_passwort_falsch');
+    if (!await passwortStimmt(uid, req.body?.password)) return sendeFehler(req, res, 400, 'aktuelles_passwort_falsch');
     if (!await zf.pruefeCode(uid, req.body?.code)) return sendeFehler(req, res, 400, 'zweiter_faktor_falsch');
     await zf.schalteAb(uid);
     res.json({ success: true });

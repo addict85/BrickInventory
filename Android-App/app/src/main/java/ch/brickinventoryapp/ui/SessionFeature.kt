@@ -261,6 +261,7 @@ internal fun MainViewModel.logout() {
         _erfassungState.value = ErfassungUiState()
         _householdState.value = HouseholdUiState()
         _geraeteState.value = GeraeteUiState()
+        _zweiterFaktorState.value = ZweiterFaktorUiState()
         _anmeldeState.value = AnmeldeUiState()
         _kontoState.value = KontoUiState()
         _csvHochladenState.value = CsvHochladenUiState()

@@ -234,14 +234,24 @@ fun KontoUnterseite(
 ) {
     val kontoZustand by vm.kontoState.collectAsStateWithLifecycle()
     val geraeteZustand by vm.geraeteState.collectAsStateWithLifecycle()
+    val zfZustand by vm.zweiterFaktorState.collectAsStateWithLifecycle()
     LaunchedEffect(Unit) { vm.ladeProfil() }
     LaunchedEffect(Unit) { vm.ladeGeraete() }
+    LaunchedEffect(Unit) { vm.ladeZweitenFaktor() }
     Unterseite(stringResource(R.string.konto_title), snackbarHostState, onZurueck) {
         KontoCard(
             kontoZustand = kontoZustand,
             onSpeichern = { b, e, v, n -> vm.speichereProfil(b, e, v, n) },
             onPasswort = { alt, neu -> vm.aenderePasswort(alt, neu) },
             onMeldungWeg = { vm.kontoMeldungWeg() },
+        )
+        ZweiterFaktorCard(
+            zfZustand = zfZustand,
+            onEinrichten = { vm.richteZweitenFaktorEin(it) },
+            onBestaetigen = { vm.bestaetigeZweitenFaktor(it) },
+            onNeueCodes = { vm.erneuereZweiterFaktorCodes(it) },
+            onAbschalten = { pw, code -> vm.schalteZweitenFaktorAb(pw, code) },
+            onZurueck = { vm.zweiterFaktorZurueck() },
         )
         GeraeteCard(
             zustand = geraeteZustand,
@@ -1175,6 +1185,128 @@ private fun KontoCard(
                 enabled = !kontoZustand.speichert && pwAktuell.isNotBlank() && !passwortZuKurz(pwNeu),
                 modifier = Modifier.fillMaxWidth().height(44.dp), shape = Formen.knopf
             ) { Text(stringResource(R.string.konto_password_button), fontWeight = FontWeight.SemiBold) }
+        }
+    }
+}
+
+/**
+ * Zweiter Faktor: einrichten, abschalten, neue Wiederherstellungscodes.
+ *
+ * Auf dem Telefon braucht es keinen QR-Code: Der otpauth-Link oeffnet die
+ * Authenticator-App direkt. Fehlt eine, bleibt der Schluessel zum Kopieren.
+ */
+@Composable
+private fun ZweiterFaktorCard(
+    zfZustand: ch.brickinventoryapp.ui.ZweiterFaktorUiState,
+    onEinrichten: (String) -> Unit,
+    onBestaetigen: (String) -> Unit,
+    onNeueCodes: (String) -> Unit,
+    onAbschalten: (String, String) -> Unit,
+    onZurueck: () -> Unit,
+) {
+    var zfPasswort by rememberSaveable { mutableStateOf("") }
+    var zfCode     by rememberSaveable { mutableStateOf("") }
+    var ohneApp    by rememberSaveable { mutableStateOf(false) }
+    val uriHandler = androidx.compose.ui.platform.LocalUriHandler.current
+    val clipboard = androidx.compose.ui.platform.LocalClipboard.current
+    val kopierBereich = rememberCoroutineScope()
+    val schluesselEtikett = stringResource(R.string.zf_clip_label)
+    val kopieren: (String) -> Unit = { text ->
+        kopierBereich.launch {
+            clipboard.setClipEntry(
+                androidx.compose.ui.platform.ClipEntry(
+                    android.content.ClipData.newPlainText(schluesselEtikett, text)))
+        }
+    }
+    // Felder leeren, sobald ein Schritt gelungen ist — sonst stuende das
+    // Passwort beim naechsten Schritt noch da.
+    LaunchedEffect(zfZustand.aktiv, zfZustand.geheimnis, zfZustand.codes) { zfPasswort = ""; zfCode = "" }
+
+    SettingsCard(title = stringResource(R.string.zf_title), icon = Icons.Default.Security) {
+        Text(stringResource(R.string.zf_hint), style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant)
+        if (zfZustand.laedt) LinearProgressIndicator(Modifier.fillMaxWidth())
+        if (zfZustand.fehler != null) {
+            Text(zfZustand.fehler, style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.error)
+        }
+
+        val passwortFeld: @Composable () -> Unit = {
+            OutlinedTextField(
+                value = zfPasswort, onValueChange = { zfPasswort = it },
+                label = { Text(stringResource(R.string.konto_password_current)) },
+                visualTransformation = PasswordVisualTransformation(),
+                modifier = Modifier.fillMaxWidth(), singleLine = true, shape = Formen.knopf,
+                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password))
+        }
+        val codeFeld: @Composable (String) -> Unit = { beschriftung ->
+            OutlinedTextField(
+                value = zfCode, onValueChange = { zfCode = it.take(12) },
+                label = { Text(beschriftung) },
+                modifier = Modifier.fillMaxWidth(), singleLine = true, shape = Formen.knopf,
+                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Ascii))
+        }
+
+        when {
+            // 1. Frische Codes: einmal zeigen, dann wegraeumen.
+            zfZustand.codes.isNotEmpty() -> {
+                Text(stringResource(R.string.zf_codes_title), fontWeight = FontWeight.SemiBold)
+                Text(stringResource(R.string.zf_codes_hint), style = MaterialTheme.typography.bodySmall)
+                Text(zfZustand.codes.joinToString("\n"),
+                    fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace)
+                Row(horizontalArrangement = Arrangement.spacedBy(Abstaende.klein)) {
+                    OutlinedButton(onClick = { kopieren(zfZustand.codes.joinToString("\n")) },
+                        shape = Formen.knopf) { Text(stringResource(R.string.zf_copy)) }
+                    Button(onClick = onZurueck, shape = Formen.knopf) { Text(stringResource(R.string.zf_codes_done)) }
+                }
+            }
+            // 2. Einrichtung laeuft: Schluessel in die App, Code bestaetigen.
+            zfZustand.geheimnis != null -> {
+                Text(stringResource(R.string.zf_step_app), style = MaterialTheme.typography.bodySmall)
+                Button(
+                    onClick = {
+                        val uri = zfZustand.otpauth
+                        ohneApp = uri == null || runCatching { uriHandler.openUri(uri) }.isFailure
+                    },
+                    modifier = Modifier.fillMaxWidth(), shape = Formen.knopf
+                ) { Text(stringResource(R.string.zf_open_app)) }
+                if (ohneApp) {
+                    Text(stringResource(R.string.zf_no_app), style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.error)
+                }
+                Text(zfZustand.geheimnis.chunked(4).joinToString(" "),
+                    fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace)
+                OutlinedButton(onClick = { kopieren(zfZustand.geheimnis) }, shape = Formen.knopf) {
+                    Text(stringResource(R.string.zf_copy_key))
+                }
+                codeFeld(stringResource(R.string.zf_confirm_code))
+                Row(horizontalArrangement = Arrangement.spacedBy(Abstaende.klein)) {
+                    Button(onClick = { onBestaetigen(zfCode) }, enabled = zfCode.isNotBlank() && !zfZustand.laedt,
+                        shape = Formen.knopf) { Text(stringResource(R.string.zf_confirm)) }
+                    OutlinedButton(onClick = onZurueck, shape = Formen.knopf) { Text(stringResource(R.string.common_cancel)) }
+                }
+            }
+            // 3. Aktiv: neue Codes oder abschalten.
+            zfZustand.aktiv == true -> {
+                Text(pluralStringResource(R.plurals.zf_active, zfZustand.codesUebrig, zfZustand.codesUebrig),
+                    color = MaterialTheme.colorScheme.primary)
+                passwortFeld()
+                codeFeld(stringResource(R.string.login_code))
+                Row(horizontalArrangement = Arrangement.spacedBy(Abstaende.klein)) {
+                    OutlinedButton(onClick = { onNeueCodes(zfCode) }, enabled = zfCode.isNotBlank() && !zfZustand.laedt,
+                        shape = Formen.knopf) { Text(stringResource(R.string.zf_new_codes)) }
+                    OutlinedButton(onClick = { onAbschalten(zfPasswort, zfCode) },
+                        enabled = zfPasswort.isNotBlank() && zfCode.isNotBlank() && !zfZustand.laedt,
+                        shape = Formen.knopf) { Text(stringResource(R.string.zf_disable)) }
+                }
+            }
+            // 4. Nicht eingerichtet.
+            zfZustand.aktiv == false -> {
+                passwortFeld()
+                Button(onClick = { onEinrichten(zfPasswort) }, enabled = zfPasswort.isNotBlank() && !zfZustand.laedt,
+                    modifier = Modifier.fillMaxWidth().height(44.dp), shape = Formen.knopf
+                ) { Text(stringResource(R.string.zf_setup), fontWeight = FontWeight.SemiBold) }
+            }
         }
     }
 }

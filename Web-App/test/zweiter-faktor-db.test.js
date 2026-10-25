@@ -7,6 +7,7 @@
  *   B  `letzter_schritt < $2` in pruefeCode() entfernt   → rot: „derselbe Code zweimal"
  *   C  recordLoginFailure beim falschen Code entfernt    → rot: „keine Sperre"
  *   D  hotp(): Offset aus dem ersten statt letzten Byte  → rot: RFC-Vektoren
+ *   E  change-password wieder mit 401                    → rot: „die Clients melden dann ab"
  *
  * Voraussetzung: Test-DB via TEST_DATABASE_URL.
  */
@@ -94,7 +95,7 @@ test('Anmeldung mit zweitem Faktor — durchgespielt', { concurrency: 1 }, async
   /** Einrichten bis aktiv; gibt den Token und die Wiederherstellungscodes zurück. */
   const einrichten = async (name) => {
     const token = (await anmelden(name)).body.token;
-    assert.equal((await ruf('/zweiter-faktor/einrichten', { password: 'falsch' }, token)).status, 401,
+    assert.equal((await ruf('/zweiter-faktor/einrichten', { password: 'falsch' }, token)).status, 400,
       'Einrichten ohne richtiges Passwort');
     const e = await ruf('/zweiter-faktor/einrichten', { password: PASS }, token);
     assert.equal(e.status, 200, JSON.stringify(e.body));
@@ -137,7 +138,10 @@ test('Anmeldung mit zweitem Faktor — durchgespielt', { concurrency: 1 }, async
 
     // Abschalten verlangt Passwort UND Code.
     assert.equal((await ruf('/zweiter-faktor/abschalten', { password: PASS, code: '000000' }, token)).status, 400);
-    assert.equal((await ruf('/zweiter-faktor/abschalten', { password: 'falsch', code: codes[1] }, token)).status, 401);
+    assert.equal((await ruf('/zweiter-faktor/abschalten', { password: 'falsch', code: codes[1] }, token)).status, 400);
+    // Und beim Passwortwechsel: Ein 401 hiesse für Web und App „abgemeldet".
+    const pw = await ruf('/change-password', { current: 'falsch', newPassword: 'neuesPasswort123' }, token);
+    assert.equal(pw.status, 400, 'falsches aktuelles Passwort beim Wechsel ist ein 401 — die Clients melden dann ab');
     assert.equal((await ruf('/zweiter-faktor/abschalten', { password: PASS, code: codes[1] }, token)).status, 200);
     assert.equal((await anmelden(NAME)).status, 200, 'nach dem Abschalten wieder ohne Code');
     assert.equal((await db.get('SELECT COUNT(*)::int n FROM zweiter_faktor_codes f JOIN users u ON u.id=f.user_id WHERE u.username=$1', [NAME])).n, 0);

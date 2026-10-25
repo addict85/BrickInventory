@@ -315,3 +315,35 @@ data class ProtokollResponse(
     val logs: List<ProtokollZeile> = emptyList(),
     val error: String? = null,
 )
+
+// ── Zweiter Faktor (Server: utils/zweiterFaktor.ts) ──────────────────────────
+@Serializable
+data class ZweiterFaktorStand(
+    val success: Boolean,
+    val aktiv: Boolean = false,
+    @SerialName("codes_uebrig") val codesUebrig: Int = 0,
+    val error: String? = null,
+)
+
+@Serializable
+data class ZweiterFaktorEinrichtung(
+    val success: Boolean,
+    /** Base32-Schlüssel zum Abtippen. */
+    val geheimnis: String? = null,
+    /** otpauth://-Adresse; öffnet auf dem Telefon direkt die Authenticator-App. */
+    val otpauth: String? = null,
+    val error: String? = null,
+)
+
+@Serializable
+data class ZweiterFaktorCodes(
+    val success: Boolean,
+    val codes: List<String> = emptyList(),
+    val error: String? = null,
+)
+
+@Serializable
+data class ZweiterFaktorAnfrage(
+    val password: String? = null,
+    val code: String? = null,
+)
