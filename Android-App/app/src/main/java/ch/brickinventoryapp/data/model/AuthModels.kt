@@ -39,6 +39,8 @@ data class LoginRequest(
     val password: String,
     val label: String = "Android App",
     @SerialName("never_expires") val neverExpires: Boolean = true,
+    /** Code des zweiten Faktors — nur, wenn der Server danach gefragt hat. */
+    val code: String? = null,
 )
 
 @Serializable
@@ -49,7 +51,9 @@ data class LoginResponse(
     val success: Boolean,
     val token: String? = null,
     val user: User? = null,
-    val error: String? = null
+    val error: String? = null,
+    /** Passwort stimmt, der Server verlangt den Code aus der Authenticator-App. */
+    @SerialName("zweiter_faktor") val zweiterFaktor: Boolean = false,
 )
 
 @Serializable

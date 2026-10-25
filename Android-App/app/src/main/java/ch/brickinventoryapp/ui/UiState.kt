@@ -259,6 +259,8 @@ data class AppUiState(
      * Gesichert durch ErrorChannelTest.
      */
     val loginError: String? = null,
+    /** Der Server verlangt beim Anmelden den Code des zweiten Faktors. */
+    val loginCodeNoetig: Boolean = false,
     val serverUrl: String = "",
     val isLoggedIn: Boolean = false,
     val isAdmin: Boolean = false,

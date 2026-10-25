@@ -26,6 +26,8 @@
     <string name="login_username">Benutzername</string>
     <string name="login_password">Passwort</string>
     <string name="login_button">Anmelden</string>
+    <string name="login_code">Code aus der Authenticator-App</string>
+    <string name="login_code_hint">Oder einer deiner Wiederherstellungscodes</string>
 
     <!-- ══════════════ CSV import banner ══════════════ -->
     <string name="csv_ok_count">✅ %1$d OK</string>

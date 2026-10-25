@@ -42,6 +42,8 @@
     <string name="login_username">Username</string>
     <string name="login_password">Password</string>
     <string name="login_button">Sign in</string>
+    <string name="login_code">Code from your authenticator app</string>
+    <string name="login_code_hint">Or one of your recovery codes</string>
 
     <!-- ══════════════ CSV import banner ══════════════ -->
     <string name="csv_ok_count">✅ %1$d OK</string>

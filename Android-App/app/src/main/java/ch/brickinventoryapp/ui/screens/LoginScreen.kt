@@ -54,12 +54,13 @@ fun LoginScreen(
     serverUrl: String,
     isLoading: Boolean,
     error: String?,
+    codeNoetig: Boolean,
     formular: AnmeldeFormular,
     registrierungOffen: Boolean?,
     kontoLaeuft: Boolean,
     kontoMeldung: String?,
     kontoFehler: String?,
-    onLogin: (String, String) -> Unit,
+    onLogin: (String, String, String?) -> Unit,
     onFormular: (AnmeldeFormular) -> Unit,
     onRegistrieren: (String, String, String, String, String) -> Unit,
     onPasswortVergessen: (String) -> Unit,
@@ -68,6 +69,7 @@ fun LoginScreen(
     var username by rememberSaveable { mutableStateOf("") }
     var password by rememberSaveable { mutableStateOf("") }
     var showPw   by rememberSaveable { mutableStateOf(false) }
+    var code     by rememberSaveable { mutableStateOf("") }
     val focusMgr = LocalFocusManager.current
 
     Box(
@@ -128,6 +130,7 @@ fun LoginScreen(
                             username = username, onUsername = { username = it },
                             password = password, onPassword = { password = it },
                             showPw = showPw, onShowPw = { showPw = it },
+                            codeNoetig = codeNoetig, code = code, onCode = { code = it },
                             isLoading = isLoading, error = error,
                             registrierungOffen = registrierungOffen,
                             focusMgr = focusMgr,
@@ -206,10 +209,11 @@ private fun AnmeldeFelder(
     username: String, onUsername: (String) -> Unit,
     password: String, onPassword: (String) -> Unit,
     showPw: Boolean, onShowPw: (Boolean) -> Unit,
+    codeNoetig: Boolean, code: String, onCode: (String) -> Unit,
     isLoading: Boolean, error: String?,
     registrierungOffen: Boolean?,
     focusMgr: androidx.compose.ui.focus.FocusManager,
-    onLogin: (String, String) -> Unit,
+    onLogin: (String, String, String?) -> Unit,
     onFormular: (AnmeldeFormular) -> Unit,
 ) {
     Text(
@@ -245,20 +249,40 @@ private fun AnmeldeFelder(
         visualTransformation = if (showPw) VisualTransformation.None else PasswordVisualTransformation(),
         modifier = Modifier.fillMaxWidth(), singleLine = true,
         shape = Formen.knopf,
-        keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done, keyboardType = KeyboardType.Password),
-        keyboardActions = KeyboardActions(onDone = {
-            focusMgr.clearFocus()
-            if (username.isNotBlank() && password.isNotBlank()) onLogin(username, password)
-        })
+        keyboardOptions = KeyboardOptions(
+            imeAction = if (codeNoetig) ImeAction.Next else ImeAction.Done,
+            keyboardType = KeyboardType.Password),
+        keyboardActions = KeyboardActions(
+            onNext = { focusMgr.moveFocus(FocusDirection.Down) },
+            onDone = {
+                focusMgr.clearFocus()
+                if (username.isNotBlank() && password.isNotBlank()) onLogin(username, password, null)
+            })
     )
+
+    // Erst sichtbar, wenn der Server den zweiten Faktor verlangt.
+    // Text statt Zahl: Auch ein Wiederherstellungscode (Buchstaben) passt hinein.
+    if (codeNoetig) {
+        val absenden = { if (username.isNotBlank() && password.isNotBlank() && code.isNotBlank()) onLogin(username, password, code) }
+        OutlinedTextField(
+            value = code, onValueChange = { onCode(it.take(12)) },
+            label = { Text(stringResource(R.string.login_code)) },
+            supportingText = { Text(stringResource(R.string.login_code_hint)) },
+            leadingIcon = { Icon(Icons.Default.Key, null) },
+            modifier = Modifier.fillMaxWidth(), singleLine = true,
+            shape = Formen.knopf,
+            keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done, keyboardType = KeyboardType.Ascii),
+            keyboardActions = KeyboardActions(onDone = { focusMgr.clearFocus(); absenden() })
+        )
+    }
 
     if (error != null) FormularMeldung(error, fehler = true)
 
     LadeKnopf(
         stringResource(R.string.login_button),
         laeuft = isLoading,
-        aktiv = username.isNotBlank() && password.isNotBlank()
-    ) { onLogin(username, password) }
+        aktiv = username.isNotBlank() && password.isNotBlank() && (!codeNoetig || code.isNotBlank())
+    ) { onLogin(username, password, code.takeIf { codeNoetig }) }
 
     // Der Registrier-Link erscheint NUR bei einem ausdruecklichen `true`.
     // `null` heisst „noch nicht gefragt" oder „der Server hat nicht
