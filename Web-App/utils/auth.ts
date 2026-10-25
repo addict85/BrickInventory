@@ -280,25 +280,45 @@ function _touchLastUsed(token: string, entry: CacheEintrag): void {
 }
 
 /**
- * Beim Logout/Token-Löschen aufrufen, damit der Token sofort ungültig wird.
- * @param {string|null|undefined} token
+ * Ein Widerruf muss in JEDEM Worker wirken, nicht nur im eigenen.
+ *
+ * Jeder Worker hat seinen eigenen Cache. Ohne Signal bediente ein anderer
+ * einen widerrufenen Token noch bis zu TOKEN_TTL_MS. Die Empfänger leeren
+ * ganz: Den Klartext schicken wir nicht über die Datenbank, und nach ihm ist
+ * der Cache indiziert.
  */
-function invalidateToken(token: string | null | undefined): void { if (token) _tokenCache.delete(token); }
+export const TOKEN_KANAL = 'tokens_geaendert';
+
+function meldeTokenWiderruf(): void {
+  require('./pgNotify').notify(TOKEN_KANAL).catch(() => {});
+}
+
+/** Nur der eigene Cache — für den Empfang des Signals, das nicht zurückfunken darf. */
+function leereTokenCacheLokal(): void { _tokenCache.clear(); }
 
 /**
- * Den ganzen Token-Cache verwerfen.
- *
- * Für den Fall, dass eine Zeile ohne ihren KLARTEXT gelöscht wird — etwa aus
- * der Token-Verwaltung, die nur den Hash-Anfang kennt. Gezielt geht dort
- * nichts: Der Cache ist nach dem Klartext indiziert, und den hat der Server
- * nach der Ausgabe nie wieder gesehen.
- *
- * Er baut sich innerhalb weniger Anfragen wieder auf. Im Cluster wirkt das
- * nur im eigenen Arbeitsprozess; die übrigen bedienen den gelöschten Token
- * noch bis zu TOKEN_TTL_MS. Dieselbe Einschränkung wie bei revokeAllTokens,
- * und aus demselben Grund vertretbar.
+ * Den Empfang anmelden. Beim (Wieder-)Verbinden ruft pgNotify den Handler
+ * einmal ohne Signal auf — dann wird ebenfalls geleert, die sichere Seite.
  */
-function leereTokenCache(): void { _tokenCache.clear(); }
+function horcheAufTokenWiderruf(): void {
+  require('./pgNotify').listen(TOKEN_KANAL, () => leereTokenCacheLokal());
+}
+
+/** Beim Logout/Token-Löschen aufrufen, damit der Token sofort ungültig wird. */
+function invalidateToken(token: string | null | undefined): void {
+  if (!token) return;
+  _tokenCache.delete(token);
+  meldeTokenWiderruf();
+}
+
+/**
+ * Den ganzen Token-Cache verwerfen — für Löschungen ohne Klartext (die
+ * Token-Verwaltung kennt nur den Hash-Anfang). Gilt für alle Worker.
+ */
+function leereTokenCache(): void {
+  leereTokenCacheLokal();
+  meldeTokenWiderruf();
+}
 
 /**
  * Ist diese Datenbank-Flagge gesetzt?
@@ -997,7 +1017,7 @@ async function revokeAllTokens(userId: number): Promise<void> {
   // Erfolg, während die alten Tokens weitergelten — und der geleerte Cache
   // lässt sie beim nächsten Request sogar frisch aus der DB nachladen.
   await db.run('DELETE FROM api_tokens WHERE user_id = $1', [userId]);
-  _tokenCache.clear();
+  leereTokenCache();
 }
 
 /**
@@ -1128,7 +1148,7 @@ async function purgeExpiredTokens() {
 }
 
 export {
-  validateToken, invalidateToken, leereTokenCache, flaggeGesetzt, resolveUserId, requireLoginOrToken, nutzerId, angemeldeteNutzerId, istVerwalter, nutzerName, hashToken, deleteToken,
+  validateToken, invalidateToken, leereTokenCache, horcheAufTokenWiderruf, flaggeGesetzt, resolveUserId, requireLoginOrToken, nutzerId, angemeldeteNutzerId, istVerwalter, nutzerName, hashToken, deleteToken,
   verifiziereEmailToken,
   revokeAllTokens, revokeAllSessions, purgeExpiredTokens, loginOrTokenGuard, TOKEN_IDLE_DAYS, appTokenOhneAblauf,
   laufzeitTage,

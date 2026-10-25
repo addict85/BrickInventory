@@ -1205,6 +1205,10 @@ db.initSchemaOnce().then(async () => {
   (require('./utils/pgNotify') as typeof import('./utils/pgNotify'))
     .listen(HAUSHALT_KANAL, () => leereHaushaltCache());
 
+  // Derselbe Gedanke für den Token-Cache: Ein Widerruf (Abmelden,
+  // Passwortwechsel, Token gelöscht) gilt sofort in allen Workern.
+  (require('./utils/auth') as typeof import('./utils/auth')).horcheAufTokenWiderruf();
+
   // CSV-Sync auf Zuruf statt im 5-Sekunden-Takt.
   // Der Eintrag in global_settings bleibt die belastbare Quelle; das
   // NOTIFY-Signal weckt nur sofort. Beim Verbinden prüft der Handler den
