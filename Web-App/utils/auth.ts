@@ -19,6 +19,7 @@ import bcrypt from 'bcryptjs';
 import type { Request, Response, NextFunction } from 'express';
 import { checkLoginAllowed, recordLoginFailure, recordLoginSuccess } from './loginLimiter';
 import { sendeFehler } from './fehlerTexte';
+import { logAndContinue } from './httpError';
 import { ausTabelle } from './validate';
 import type { FehlerCode } from './fehlerTexte';
 
@@ -290,7 +291,7 @@ function _touchLastUsed(token: string, entry: CacheEintrag): void {
 export const TOKEN_KANAL = 'tokens_geaendert';
 
 function meldeTokenWiderruf(): void {
-  require('./pgNotify').notify(TOKEN_KANAL).catch(() => {});
+  require('./pgNotify').notify(TOKEN_KANAL).catch(logAndContinue('tokens:widerruf melden'));
 }
 
 /** Nur der eigene Cache — für den Empfang des Signals, das nicht zurückfunken darf. */
