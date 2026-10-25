@@ -35,22 +35,22 @@ function openLogViewer() {
     '*{box-sizing:border-box;margin:0;padding:0}',
     'body{font-family:monospace;background:#0d1117;color:#e6edf3;display:flex;flex-direction:column;height:100vh;overflow:hidden}',
     'header{background:#161b22;border-bottom:1px solid #30363d;padding:10px 16px;display:flex;align-items:center;gap:10px;flex-wrap:wrap;flex-shrink:0}',
-    'h1{font-size:.95rem;font-weight:700;color:#58a6ff;white-space:nowrap}',
-    'select,input[type=text]{font-family:monospace;font-size:.8rem;padding:4px 8px;border-radius:5px;border:1px solid #30363d;background:#21262d;color:#e6edf3}',
+    'h1{font-size:var(--fs-4);font-weight:700;color:#58a6ff;white-space:nowrap}',
+    'select,input[type=text]{font-family:monospace;font-size:var(--fs-2);padding:4px 8px;border-radius:5px;border:1px solid #30363d;background:#21262d;color:#e6edf3}',
     'input[type=text]{width:200px}input[type=text]::placeholder{color:#8b949e}',
-    'button{font-family:monospace;font-size:.8rem;padding:4px 10px;border-radius:5px;border:1px solid #30363d;background:#21262d;color:#e6edf3;cursor:pointer;white-space:nowrap}',
+    'button{font-family:monospace;font-size:var(--fs-2);padding:4px 10px;border-radius:5px;border:1px solid #30363d;background:#21262d;color:#e6edf3;cursor:pointer;white-space:nowrap}',
     'button:hover{background:#30363d}button.active{background:#1f6feb;border-color:#388bfd;color:#fff}',
-    '.sep{color:#30363d;font-size:.8rem}#status{font-size:.75rem;color:#8b949e;white-space:nowrap}',
+    '.sep{color:#30363d;font-size:var(--fs-2)}#status{font-size:var(--fs-1);color:#8b949e;white-space:nowrap}',
     '#log-wrap{flex:1;overflow-y:auto;padding:4px 0}',
-    '.ll{padding:1px 14px;font-size:.76rem;line-height:1.55;white-space:pre-wrap;word-break:break-all;border-left:3px solid transparent;display:flex;gap:8px}',
+    '.ll{padding:1px 14px;font-size:var(--fs-1);line-height:1.55;white-space:pre-wrap;word-break:break-all;border-left:3px solid transparent;display:flex;gap:8px}',
     '.ll:hover{background:#161b22}.ll.warn{color:#e3b341;border-left-color:#e3b341}',
     '.ll.error{color:#f85149;border-left-color:#f85149;background:#16040a}',
     '.ll.info{color:#c9d1d9;border-left-color:#21262d}',
-    '.ts{color:#8b949e;flex-shrink:0;user-select:none}.lv{flex-shrink:0;width:38px;font-weight:700;text-transform:uppercase;font-size:.68rem}',
+    '.ts{color:#8b949e;flex-shrink:0;user-select:none}.lv{flex-shrink:0;width:38px;font-weight:700;text-transform:uppercase;font-size:var(--fs-0)}',
     '.lv.info{color:#58a6ff}.lv.warn{color:#e3b341}.lv.error{color:#f85149}.msg{flex:1}',
     'mark{background:#e3b34133;color:inherit;border-radius:2px}',
     '.toolbar{display:flex;align-items:center;gap:8px;flex-wrap:wrap}',
-    '.lvbtn{padding:3px 9px;font-size:.75rem}',
+    '.lvbtn{padding:3px 9px;font-size:var(--fs-1)}',
     '.lvbtn.info-btn.active{background:#1f3b6e;border-color:#58a6ff;color:#58a6ff}',
     '.lvbtn.warn-btn.active{background:#3b2f0e;border-color:#e3b341;color:#e3b341}',
     '.lvbtn.error-btn.active{background:#3b0f0f;border-color:#f85149;color:#f85149}',
@@ -164,10 +164,10 @@ export async function loadMonitor() {
       const sc = schedules?.[k];
       if (!sc) return '';
       if (sc.type === 'daily') {
-        return `<input type="time" class="job-sched-input" value="${esc(sc.time)}" title="${t('monitor.sched.daily_hint')}" data-change="saveJobTime" data-arg="${esc(k)}" style="font-size:.75rem;padding:2px 5px;border:1px solid var(--bdr);border-radius:6px;background:var(--sur);color:var(--txt)">`;
+        return `<input type="time" class="job-sched-input" value="${esc(sc.time)}" title="${t('monitor.sched.daily_hint')}" data-change="saveJobTime" data-arg="${esc(k)}" style="font-size:var(--fs-1);padding:2px 5px;border:1px solid var(--bdr);border-radius:6px;background:var(--sur);color:var(--txt)">`;
       }
       if (sc.type === 'interval') {
-        return `<span style="display:inline-flex;align-items:center;gap:3px;font-size:.72rem;color:var(--mut)" title="${t('monitor.sched.interval_hint')}"><input inputmode="numeric" type="number" min="5" class="job-sched-input" value="${esc(sc.minutes)}" data-change="saveJobMinutes" data-arg="${esc(k)}" style="width:54px;font-size:.75rem;padding:2px 5px;border:1px solid var(--bdr);border-radius:6px;background:var(--sur);color:var(--txt)"> ${t('monitor.sched.min')}</span>`;
+        return `<span style="display:inline-flex;align-items:center;gap:3px;font-size:var(--fs-1);color:var(--mut)" title="${t('monitor.sched.interval_hint')}"><input inputmode="numeric" type="number" min="5" class="job-sched-input" value="${esc(sc.minutes)}" data-change="saveJobMinutes" data-arg="${esc(k)}" style="width:54px;font-size:var(--fs-1);padding:2px 5px;border:1px solid var(--bdr);border-radius:6px;background:var(--sur);color:var(--txt)"> ${t('monitor.sched.min')}</span>`;
       }
       return '';
     };
@@ -207,27 +207,27 @@ export async function loadMonitor() {
         ${Object.entries(jobs).map(([k,j])=>`
           <div class="card" style="padding:1rem;min-width:0">
             <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:.5rem;margin-bottom:.5rem">
-              <span style="font-weight:600;font-size:.9rem;display:inline-flex;align-items:center;gap:6px">${k==='bricksetRetry' ? '<svg width="16" height="16" viewBox="0 0 120 120" xmlns="http://www.w3.org/2000/svg" style="flex-shrink:0"><rect x="10" y="48" width="28" height="24" rx="3" fill="#0055BF"/><circle cx="24" cy="48" r="4.5" fill="#0055BF"/><rect x="46" y="48" width="28" height="24" rx="3" fill="#F2CD37"/><circle cx="60" cy="48" r="4.5" fill="#F2CD37"/><rect x="82" y="48" width="28" height="24" rx="3" fill="#E63329"/><circle cx="96" cy="48" r="4.5" fill="#E63329"/></svg>' : jobIconSvg(k)}${t('monitor.job.'+k, {}) !== 'monitor.job.'+k ? t('monitor.job.'+k) : (j.label||'')}</span>
+              <span style="font-weight:600;font-size:var(--fs-3);display:inline-flex;align-items:center;gap:6px">${k==='bricksetRetry' ? '<svg width="16" height="16" viewBox="0 0 120 120" xmlns="http://www.w3.org/2000/svg" style="flex-shrink:0"><rect x="10" y="48" width="28" height="24" rx="3" fill="#0055BF"/><circle cx="24" cy="48" r="4.5" fill="#0055BF"/><rect x="46" y="48" width="28" height="24" rx="3" fill="#F2CD37"/><circle cx="60" cy="48" r="4.5" fill="#F2CD37"/><rect x="82" y="48" width="28" height="24" rx="3" fill="#E63329"/><circle cx="96" cy="48" r="4.5" fill="#E63329"/></svg>' : jobIconSvg(k)}${t('monitor.job.'+k, {}) !== 'monitor.job.'+k ? t('monitor.job.'+k) : (j.label||'')}</span>
               <div style="display:flex;align-items:center;flex-wrap:wrap;gap:.5rem">
                 ${schedInput(k)}
-                ${k==='priceJob' ? `<button class="btn bs btn-sm" style="padding:2px 10px;font-size:.75rem" data-click="clickJobTrigger">${t('monitor.run_now')}</button>` : ''}
-                ${k==='instrQueue' ? `<button class="btn bs btn-sm" style="padding:2px 10px;font-size:.75rem" data-click="reimportMissingInstructions" data-self="1">${t('monitor.import_missing')}</button>` : ''}
-                ${k==='csvImport' ? `<button class="btn bs btn-sm" style="padding:2px 10px;font-size:.75rem" data-click="triggerCsvSync" data-self="1">${t('monitor.sync_now')}</button>` : ''}
-                ${k==='imgDl' && j.canRedownload ? `<button class="btn bs btn-sm" style="padding:2px 10px;font-size:.75rem" data-click="redownloadMissingImages" data-self="1">${t('monitor.redownload_missing')}</button>` : ''}
-                ${k==='imgDl' ? `<button class="btn bs btn-sm" style="padding:2px 10px;font-size:.75rem" data-click="queueCatalogImages" data-self="1">${t('monitor.catalog_images')}</button>` : ''}
-                ${k==='bricksetRetry' && j.total > 0 ? `<button class="btn bs btn-sm" style="padding:2px 10px;font-size:.75rem;display:inline-flex;align-items:center;gap:5px" data-click="toggleBricksetQueue" data-self="1"><svg width="14" height="14" viewBox="0 0 120 120" xmlns="http://www.w3.org/2000/svg" style="flex-shrink:0"><rect x="10" y="48" width="28" height="24" rx="3" fill="#0055BF"/><circle cx="24" cy="48" r="4.5" fill="#0055BF"/><rect x="46" y="48" width="28" height="24" rx="3" fill="#F2CD37"/><circle cx="60" cy="48" r="4.5" fill="#F2CD37"/><rect x="82" y="48" width="28" height="24" rx="3" fill="#E63329"/><circle cx="96" cy="48" r="4.5" fill="#E63329"/></svg> ${t('monitor.show')}</button>` : ''}
+                ${k==='priceJob' ? `<button class="btn bs btn-sm" style="padding:2px 10px;font-size:var(--fs-1)" data-click="clickJobTrigger">${t('monitor.run_now')}</button>` : ''}
+                ${k==='instrQueue' ? `<button class="btn bs btn-sm" style="padding:2px 10px;font-size:var(--fs-1)" data-click="reimportMissingInstructions" data-self="1">${t('monitor.import_missing')}</button>` : ''}
+                ${k==='csvImport' ? `<button class="btn bs btn-sm" style="padding:2px 10px;font-size:var(--fs-1)" data-click="triggerCsvSync" data-self="1">${t('monitor.sync_now')}</button>` : ''}
+                ${k==='imgDl' && j.canRedownload ? `<button class="btn bs btn-sm" style="padding:2px 10px;font-size:var(--fs-1)" data-click="redownloadMissingImages" data-self="1">${t('monitor.redownload_missing')}</button>` : ''}
+                ${k==='imgDl' ? `<button class="btn bs btn-sm" style="padding:2px 10px;font-size:var(--fs-1)" data-click="queueCatalogImages" data-self="1">${t('monitor.catalog_images')}</button>` : ''}
+                ${k==='bricksetRetry' && j.total > 0 ? `<button class="btn bs btn-sm" style="padding:2px 10px;font-size:var(--fs-1);display:inline-flex;align-items:center;gap:5px" data-click="toggleBricksetQueue" data-self="1"><svg width="14" height="14" viewBox="0 0 120 120" xmlns="http://www.w3.org/2000/svg" style="flex-shrink:0"><rect x="10" y="48" width="28" height="24" rx="3" fill="#0055BF"/><circle cx="24" cy="48" r="4.5" fill="#0055BF"/><rect x="46" y="48" width="28" height="24" rx="3" fill="#F2CD37"/><circle cx="60" cy="48" r="4.5" fill="#F2CD37"/><rect x="82" y="48" width="28" height="24" rx="3" fill="#E63329"/><circle cx="96" cy="48" r="4.5" fill="#E63329"/></svg> ${t('monitor.show')}</button>` : ''}
                 <span title="${esc(j.status)}">${statusIcon(j.status, j)}</span>
               </div>
             </div>
-            ${j.sub ? `<div style="font-size:.8rem;color:var(--mut)">${translateJobSub(j.sub)}</div>` : ''}
+            ${j.sub ? `<div style="font-size:var(--fs-2);color:var(--mut)">${translateJobSub(j.sub)}</div>` : ''}
             ${j.total > 0 ? bar(j.progress, j.total) : ''}
-            ${j.lastRun ? `<div style="font-size:.72rem;color:var(--mut);margin-top:.4rem">${t('monitor.last_run')} ${new Date(j.lastRun).toLocaleTimeString(locale())}</div>` : ''}
+            ${j.lastRun ? `<div style="font-size:var(--fs-1);color:var(--mut);margin-top:.4rem">${t('monitor.last_run')} ${new Date(j.lastRun).toLocaleTimeString(locale())}</div>` : ''}
             ${k==='bricksetRetry' ? `<div id="brickset-queue-panel" style="display:none;margin-top:.75rem"></div>` : ''}
           </div>`).join('')}
       </div>
       <div class="card" style="padding:1rem;margin-top:.5rem">
         <div style="font-weight:600;margin-bottom:.75rem">${t('monitor.db')}</div>
-        <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:.5rem;font-size:.83rem">
+        <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:.5rem;font-size:var(--fs-2)">
           <div><div style="color:var(--mut)">${t('monitor.last_sync')}</div><div style="font-weight:600">${dbStats.csvCache.lastSync||'–'}</div></div>
           <div><div style="color:var(--mut)">${t('monitor.parts_cached')}</div><div style="font-weight:600">${(dbStats.csvCache.parts||0).toLocaleString(locale())}</div></div>
           <div><div style="color:var(--mut)">${t('monitor.inventory_parts')}</div><div style="font-weight:600">${(dbStats.csvCache.inventoryParts||0).toLocaleString(locale())}</div></div>

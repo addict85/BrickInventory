@@ -717,17 +717,17 @@ export async function ladeAlarmUebersicht() {
       ${bild}
       <div style="flex:1;min-width:180px">
         <div><strong>${esc(a.set_number)}</strong> <span style="color:var(--mut)">${esc(zustand)}</span></div>
-        <div style="font-size:.78rem;color:var(--mut)">${esc(a.name || '')}</div>
+        <div style="font-size:var(--fs-1);color:var(--mut)">${esc(a.name || '')}</div>
       </div>
-      <span style="font-size:.78rem;white-space:nowrap">${esc(richtung)}</span>
+      <span style="font-size:var(--fs-1);white-space:nowrap">${esc(richtung)}</span>
       <input inputmode="decimal" type="number" step="0.01" min="0.01" value="${a.schwelle}"
              data-change="aendereAlarmSchwelle" data-arg="${esc(schluessel)}" data-val="1"
              data-click="stopEvent"
-             style="width:90px;border:1px solid var(--bdr);border-radius:6px;padding:3px 7px;font-size:.85rem;background:var(--sur);color:var(--txt)" />
-      <span style="font-size:.78rem;color:var(--mut);white-space:nowrap">${esc(a.currency_code)}</span>
+             style="width:90px;border:1px solid var(--bdr);border-radius:6px;padding:3px 7px;font-size:var(--fs-3);background:var(--sur);color:var(--txt)" />
+      <span style="font-size:var(--fs-1);color:var(--mut);white-space:nowrap">${esc(a.currency_code)}</span>
       <div style="display:flex;flex-direction:column;align-items:flex-end;min-width:110px">
         ${marke}
-        <span style="font-size:.7rem;color:var(--mut);white-space:nowrap">${esc(stand)}</span>
+        <span style="font-size:var(--fs-0);color:var(--mut);white-space:nowrap">${esc(stand)}</span>
       </div>
       <button class="btn bs btn-sm" data-click="loescheAlarm" data-arg="${esc(schluessel)}"
               data-arg2="${esc(a.set_number)}" style="padding:2px 8px">🗑️</button>
@@ -804,7 +804,7 @@ export async function ladeLagerortVerwaltung() {
   // keinen Kasten und kann keinen Rahmen tragen — er liegt deshalb an jeder
   // Zelle und ergibt zusammen dieselbe durchgehende Linie.
   const zelle = 'padding:4px 0;border-bottom:1px solid var(--bdr);display:flex;align-items:center';
-  el.innerHTML = `<div style="font-size:.72rem;color:var(--mut);margin-bottom:6px">` +
+  el.innerHTML = `<div style="font-size:var(--fs-1);color:var(--mut);margin-bottom:6px">` +
                  `${esc(tRaw('storage.default_hint'))}</div>` +
                  `<div style="display:grid;grid-template-columns:minmax(0,1fr) max-content max-content max-content;align-items:center;column-gap:8px">` +
                  orte.map(o => {
@@ -817,8 +817,8 @@ export async function ladeLagerortVerwaltung() {
     return `<div style="display:contents">
       <span style="${zelle}"><input type="text" maxlength="60" value="${esc(o.name)}"
              data-change="benenneLagerortUm" data-arg="${o.id}" data-val="1"
-             style="width:100%;border:1px solid var(--bdr);border-radius:6px;padding:3px 7px;font-size:.85rem;background:var(--sur);color:var(--txt)" /></span>
-      <span style="${zelle};font-size:.72rem;color:var(--mut);white-space:nowrap;justify-content:flex-end">${wie}</span>
+             style="width:100%;border:1px solid var(--bdr);border-radius:6px;padding:3px 7px;font-size:var(--fs-3);background:var(--sur);color:var(--txt)" /></span>
+      <span style="${zelle};font-size:var(--fs-1);color:var(--mut);white-space:nowrap;justify-content:flex-end">${wie}</span>
       <span style="${zelle}"><button class="btn bs btn-sm" data-click="schalteLagerortVorgabe" data-arg="${o.id}"
               data-arg2="${o.id === vorgabeId ? 1 : 0}" style="padding:2px 8px"
               title="${esc(tRaw(o.id === vorgabeId ? 'storage.default_is' : 'storage.default_set'))}"

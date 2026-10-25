@@ -937,7 +937,7 @@ function gridCard(s){
       <div class="snum">${esc(s.set_number)}</div>
       <div class="sname">${esc(s.name)||'Unbekannt'}</div>
       <div class="smeta">
-        <span style="font-size:.68rem">${s.year||'—'}${s.theme?' · '+esc(s.theme.substring(0,12)):''}</span>
+        <span style="font-size:var(--fs-0)">${s.year||'—'}${s.theme?' · '+esc(s.theme.substring(0,12)):''}</span>
         <div style="display:flex;gap:3px;align-items:center;flex-wrap:wrap">
           ${s.instructions?.length?`<span class="ibadge">📋${s.instructions.length}</span>`:''}
           ${s.quantity>1?`<span class="qbadge">×${s.quantity}</span>`:''}
@@ -946,7 +946,7 @@ function gridCard(s){
         </div>
       </div>
       <div class="price-badge" data-price-for="${esc(s.set_number)}"${priceStr||pnl ? '' : ' hidden'}><span style="font-weight:600;color:var(--b600)">${priceStr}</span>${pnl}</div>
-      ${addedFmt ? `<div style="font-size:.65rem;color:var(--mut);margin-top:.2rem">📅 ${addedFmt}</div>` : ''}
+      ${addedFmt ? `<div style="font-size:var(--fs-0);color:var(--mut);margin-top:.2rem">📅 ${addedFmt}</div>` : ''}
     </div>
   </div>`;
 }
@@ -955,11 +955,11 @@ function tableRow(s){
   const addedFmt = s.added_at ? new Date(s.added_at).toLocaleDateString(locale()) : '—';
   return `<tr style="cursor:pointer" data-click="openModal" data-arg="${escJs(s.set_number)}">
     <td>${src?`<img src="${escUrl(imgUrl(thumbUrl(src)||src, true)||'')}" loading="lazy" decoding="async" data-onerror="clear" />`:'—'}</td>
-    <td><span style="font-family:var(--mono);color:var(--b600);font-size:.77rem">${esc(s.set_number)}</span></td>
+    <td><span style="font-family:var(--mono);color:var(--b600);font-size:var(--fs-1)">${esc(s.set_number)}</span></td>
     <td>${esc(s.name)||'—'}</td><td>${s.year||'—'}</td><td>${esc(s.theme)||'—'}</td>
     <td>${s.pieces?s.pieces.toLocaleString(locale()):'—'}</td><td>${s.minifigs||'—'}</td>
     <td><span class="qbadge">×${s.quantity}</span></td>
-    <td style="font-size:.75rem;color:var(--mut)">${addedFmt}</td>
+    <td style="font-size:var(--fs-1);color:var(--mut)">${addedFmt}</td>
     <td>${s.instructions?.length?`<span class="ibadge">📋${s.instructions.length}</span>`:'—'}</td>
     <td data-click="stopEvent"><button class="btn bs btn-sm" data-click="reimportParts" data-arg="${escJs(s.set_number)}">${PARTS_ICON_SVG}</button></td>
     <td data-click="stopEvent"><button class="btn bd btn-sm" data-click="delSet" data-arg="${escJs(s.set_number)}" title="${esc(t('detail.delete'))}" aria-label="${esc(t('detail.delete'))}">${TRASH_ICON_SVG}</button></td>
@@ -1307,31 +1307,31 @@ export function renderInstructions(instr, sn) {
     return `<div class="ii" id="instr-${i.id}">
       ${link}
       ${isUpload ? `<span class="lv" style="background:var(--p100);color:var(--p600)">${t('instr.badge_manual')}</span>` : isLocal ? '<span class="lc">💾</span>' : '<span class="lv">🌐</span>'}
-      ${isUpload ? `<button data-click="delInstr" data-arg="${esc(sn)}" data-arg2="${i.id}" title="${t('instr.delete_tooltip')}" style="background:none;border:none;cursor:pointer;color:var(--s400);font-size:.85rem;padding:0 2px">✕</button>` : ''}
+      ${isUpload ? `<button data-click="delInstr" data-arg="${esc(sn)}" data-arg2="${i.id}" title="${t('instr.delete_tooltip')}" style="background:none;border:none;cursor:pointer;color:var(--s400);font-size:var(--fs-3);padding:0 2px">✕</button>` : ''}
     </div>`;
   }).join('');
 
   const uploadForm = `
     <div id="instr-upload-form" style="margin-top:10px;padding:10px;background:var(--s50);border:1px dashed var(--bdr);border-radius:8px">
-      <div style="font-size:.75rem;font-weight:600;color:var(--mut);margin-bottom:7px">${t('instr.upload_title')}</div>
+      <div style="font-size:var(--fs-1);font-weight:600;color:var(--mut);margin-bottom:7px">${t('instr.upload_title')}</div>
       <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:flex-end">
         <div style="flex:1;min-width:140px">
-          <input type="text" id="instr-desc" placeholder="${t('instr.desc_placeholder')}" style="font-size:.8rem;padding:6px 10px" />
+          <input type="text" id="instr-desc" placeholder="${t('instr.desc_placeholder')}" style="font-size:var(--fs-2);padding:6px 10px" />
         </div>
         <label class="btn bs btn-sm" style="cursor:pointer">
           ${t('instr.choose_file')}
           <input type="file" id="instr-file" accept=".pdf,.jpg,.jpeg,.png" style="display:none" data-change="uploadInstr" data-arg="${escJs(sn)}" />
         </label>
       </div>
-      <div id="instr-upload-status" style="font-size:.78rem;margin-top:6px;color:var(--mut)"></div>
+      <div id="instr-upload-status" style="font-size:var(--fs-1);margin-top:6px;color:var(--mut)"></div>
     </div>`;
 
   G('m-instr').innerHTML = `
-    <div style="font-size:.72rem;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--mut);margin:12px 0 7px">
+    <div style="font-size:var(--fs-1);font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--mut);margin:12px 0 7px">
       ${t('instr.section_title')} ${instr.length ? `(${instr.length})` : ''}
-      <button data-click="redownloadInstr" data-arg="${escJs(sn)}" class="btn bs btn-sm" style="margin-left:8px;font-size:.7rem;padding:3px 8px">${t('instr.reload')}</button>
+      <button data-click="redownloadInstr" data-arg="${escJs(sn)}" class="btn bs btn-sm" style="margin-left:8px;font-size:var(--fs-0);padding:3px 8px">${t('instr.reload')}</button>
     </div>
-    ${items || `<div style="color:var(--mut);font-size:.82rem">${t('instr.none_auto')}</div>`}
+    ${items || `<div style="color:var(--mut);font-size:var(--fs-2)">${t('instr.none_auto')}</div>`}
     ${uploadForm}`;
 }
 
@@ -1408,7 +1408,7 @@ export function autosaveSet(){
           if (!ad?.success) return;
           const sumEl = G('m-acq-summary');
           if (sumEl) sumEl.innerHTML = renderAcquisitionSummary(ad.acquisitions, curSet.set_number) +
-            `<button class="btn bs btn-sm" data-click="openAcqModal" data-arg="${escJs(curSet.set_number)}" style="margin-top:4px;font-size:.75rem;padding:2px 10px">✏️ ${t('detail.edit_prices')}</button>`;
+            `<button class="btn bs btn-sm" data-click="openAcqModal" data-arg="${escJs(curSet.set_number)}" style="margin-top:4px;font-size:var(--fs-1);padding:2px 10px">✏️ ${t('detail.edit_prices')}</button>`;
           if (G('acq-modal').classList.contains('open') && typeof renderAcqModalBody === 'function') {
             renderAcqModalBody(curSet.set_number, ad.acquisitions);
           }

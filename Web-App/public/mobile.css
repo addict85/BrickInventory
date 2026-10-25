@@ -93,7 +93,7 @@
     flex-direction: column;
     gap: 3px;
     padding: 8px 2px 7px;                       /* ≥ 44px Trefferfläche */
-    font-size: .68rem;
+    font-size: var(--fs-0);
     border-bottom: none;
     border-top: 2px solid transparent;
     margin: -1px 0 0;
@@ -106,7 +106,7 @@
 
   /* ─ Flächen und Karten ──────────────────────────────────────────────── */
   .card, .sc, .ssec  { padding: 1rem .85rem; border-radius: 12px; }
-  .ptitle            { font-size: 1.15rem; }
+  .ptitle            { font-size: var(--fs-5); }
 
   .sgrid       { grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: .7rem; }
   .parts-grid  { grid-template-columns: repeat(auto-fill, minmax(108px, 1fr)); gap: .6rem; }
@@ -137,7 +137,7 @@
   .dr select, .dr input { max-width: 100%; }
 
   /* Kennzahl-Kacheln: Zahl in einer Zeile */
-  .pstat .v           { font-size: .95rem; overflow-wrap: anywhere; }
+  .pstat .v           { font-size: var(--fs-4); overflow-wrap: anywhere; }
   input, select, textarea, .btn {
     font-size: 16px;              /* < 16px lässt iOS beim Fokus hineinzoomen */
     min-height: 42px;
@@ -190,7 +190,7 @@
     content: attr(data-label);
     flex: 0 0 auto;
     text-align: left;
-    font-size: .68rem;
+    font-size: var(--fs-0);
     font-weight: 700;
     text-transform: uppercase;
     letter-spacing: .4px;
@@ -245,7 +245,7 @@
     border-radius: 14px;
   }
   .llogo       { margin-bottom: 1.4rem; }
-  .llogo h1    { font-size: 1.25rem; }
+  .llogo h1    { font-size: var(--fs-5); }
   .lc          { gap: .7rem; }
   #startup-screen > div { width: 100%; max-width: 420px; }
 }
@@ -256,7 +256,7 @@
   .sgrid      { grid-template-columns: 1fr 1fr; gap: .5rem; }
   .parts-grid { grid-template-columns: repeat(auto-fill, minmax(96px, 1fr)); }
   .fgrid      { grid-template-columns: 1fr; }
-  .ntab       { font-size: .64rem; }
+  .ntab       { font-size: var(--fs-0); }
 }
 
 

@@ -373,7 +373,7 @@ function zeile(p, i) {
   const zustandZelle = zustandWert
     ? `<span class="cond-badge ${zustandWert === 'U' ? 'cond-used' : 'cond-new'}">${
         esc(tRaw(zustandWert === 'U' ? 'common.condition_used' : 'common.condition_new'))}</span>${
-        ausStandard ? `<div style="color:var(--mut);font-size:.72rem">${
+        ausStandard ? `<div style="color:var(--mut);font-size:var(--fs-1)">${
           esc(tRaw('wanted.cond_default'))}</div>` : ''}`
     : '';
   const korr = _korrekturen.get(i) || {};
@@ -395,7 +395,7 @@ function zeile(p, i) {
   const feld = (name, wert, extra = '', breit = 72) =>
     `<input data-change="wantedKorrekturWert" data-feld="${name}" data-i="${i}"
        value="${esc(wert)}" ${extra}
-       style="width:${breit}px;font-size:.78rem;padding:2px 4px;border:1px solid var(--bdr);
+       style="width:${breit}px;font-size:var(--fs-1);padding:2px 4px;border:1px solid var(--bdr);
               border-radius:5px;text-align:right" />`;
   const mengeZelle = feld('menge', korr.menge ?? p.menge, 'type="number" min="1" step="1"');
   // Der Preis je Stück. Leer heisst „keiner" — dann holt der Import den
@@ -409,7 +409,7 @@ function zeile(p, i) {
   const wahl = (w, text) =>
     `<option value="${w}"${zustandJetzt === w ? ' selected' : ''}>${esc(text)}</option>`;
   const zustandWahl = `<select data-change="wantedKorrekturWert" data-feld="zustand" data-i="${i}"
-      style="font-size:.78rem;padding:2px;border:1px solid var(--bdr);border-radius:5px">
+      style="font-size:var(--fs-1);padding:2px;border:1px solid var(--bdr);border-radius:5px">
       ${wahl('', tRaw('wanted.cond_default_opt'))}
       ${wahl('N', tRaw('common.condition_new'))}
       ${wahl('U', tRaw('common.condition_used'))}
@@ -417,16 +417,16 @@ function zeile(p, i) {
 
   return `<tr${p.ausgang === 'offen' ? ' style="background:var(--s50)"' : ''}>
     <td>${bild}</td>
-    <td style="font-family:monospace;font-size:.78rem">${esc(p.blId)}${
+    <td style="font-family:monospace;font-size:var(--fs-1)">${esc(p.blId)}${
       p.rbId && p.rbId !== p.blId ? `<div style="color:var(--mut)">→ ${esc(p.rbId)}</div>` : ''}</td>
-    <td style="font-size:.8rem">${esc(p.name || '')}${
-      p.nameGeraten ? `<div style="color:var(--mut);font-size:.72rem">${
+    <td style="font-size:var(--fs-2)">${esc(p.name || '')}${
+      p.nameGeraten ? `<div style="color:var(--mut);font-size:var(--fs-1)">${
         esc(tRaw('wanted.name_guessed'))}</div>` : ''}</td>
-    <td style="font-size:.8rem;white-space:nowrap">${punkt}${esc(p.farbName || '')}${
+    <td style="font-size:var(--fs-2);white-space:nowrap">${punkt}${esc(p.farbName || '')}${
       p.blFarbe !== null && !p.farbName
         ? `<span style="color:var(--mut)">BL ${p.blFarbe}</span>` : ''}</td>
     <td style="text-align:right">${mengeZelle}</td>
-    <td style="font-size:.78rem;white-space:nowrap">${zustandWahl}${
+    <td style="font-size:var(--fs-1);white-space:nowrap">${zustandWahl}${
       // Die Plakette NUR bei „Standard": Dann sagt sie, was wirklich angelegt
       // wird — den Wert aus den Einstellungen, den die Auswahl nicht zeigen
       // kann. Steht dort N oder U, wiederholte sie bloss das Wort daneben
@@ -434,14 +434,14 @@ function zeile(p, i) {
       zustandJetzt === '' && zustandZelle
         ? `<div style="margin-top:2px">${zustandZelle}</div>` : ''}</td>
     <td style="text-align:right">${preisZelle}</td>
-    <td style="font-size:.78rem">${ausgang}${
-      grund ? `<div style="color:var(--mut);font-size:.72rem">${grund}</div>` : ''}</td>
+    <td style="font-size:var(--fs-1)">${ausgang}${
+      grund ? `<div style="color:var(--mut);font-size:var(--fs-1)">${grund}</div>` : ''}</td>
     <td><input type="text" value="${esc(korr.rbId ?? '')}" placeholder="${
-      esc(tRaw('wanted.rb_id_ph'))}" style="width:104px;font-size:.78rem;padding:2px 4px;
+      esc(tRaw('wanted.rb_id_ph'))}" style="width:104px;font-size:var(--fs-1);padding:2px 4px;
       border:1px solid var(--bdr);border-radius:5px"
       data-change="wantedKorrekturNummer" data-i="${i}" /></td>
     <td><select data-change="wantedKorrekturFarbe" data-i="${i}"
-      style="max-width:140px;font-size:.78rem;padding:2px;border:1px solid var(--bdr);border-radius:5px">
+      style="max-width:140px;font-size:var(--fs-1);padding:2px;border:1px solid var(--bdr);border-radius:5px">
       <option value="">${esc(tRaw('wanted.keep'))}</option></select></td>
   </tr>`;
 }
@@ -451,7 +451,7 @@ function zeichneTabelle(d) {
   if (!el) return;
   const posten = d.posten || [];
   if (!posten.length) { el.innerHTML = ''; return; }
-  el.innerHTML = `<table class="dt" style="font-size:.8rem"><thead><tr>
+  el.innerHTML = `<table class="dt" style="font-size:var(--fs-2)"><thead><tr>
       <th>${t('col.image_th')}</th>
       <th>BrickLink</th>
       <th>${t('col.name')}</th>

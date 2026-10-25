@@ -32,7 +32,7 @@ export function openAcqModal(sn) {
   // Header
   G('acq-modal-tit').textContent = tRaw('detail.purchase_price');
   G('acq-modal-sub').textContent = sn + (curSet?.name ? ' – ' + curSet.name : '');
-  G('acq-modal-body').innerHTML = `<div style="color:var(--mut);font-size:.82rem">${t('common.loading')}</div>`;
+  G('acq-modal-body').innerHTML = `<div style="color:var(--mut);font-size:var(--fs-2)">${t('common.loading')}</div>`;
   G('set-modal').classList.remove('open');
   G('acq-modal').classList.add('open');
   loadAcqModal(sn);
@@ -71,7 +71,7 @@ function acqSummary(totals) {
   const menge  = totals?.quantity ?? 0;
   const betrag = totals?.amount;
   return `<div id="acq-summary" style="display:flex;justify-content:space-between;padding:.75rem .5rem 0;border-top:2px solid var(--bdr);margin-top:.25rem">
-    <span style="font-size:.82rem;color:var(--mut)">${t('detail.qty')}: <strong id="acq-total-qty">${menge}</strong></span>
+    <span style="font-size:var(--fs-2);color:var(--mut)">${t('detail.qty')}: <strong id="acq-total-qty">${menge}</strong></span>
     <span id="acq-total-price" style="font-weight:700;color:var(--b600)">${betrag != null ? fmtN(betrag, CURRENCY) : '—'}</span>
   </div>`;
 }
@@ -89,17 +89,17 @@ async function loadAcqModal(sn) {
 
 export function renderAcqModalBody(sn, acqs, totals) {
   if (!acqs.length) {
-    G('acq-modal-body').innerHTML = `<div style="color:var(--mut);font-size:.85rem;padding:.5rem 0">—</div>`;
+    G('acq-modal-body').innerHTML = `<div style="color:var(--mut);font-size:var(--fs-3);padding:.5rem 0">—</div>`;
     return;
   }
-  const th = s => `<th style="padding:6px 8px;font-weight:600;color:var(--mut);font-size:.75rem;text-transform:uppercase;letter-spacing:.4px">${s}</th>`;
-  let html = `<div class="tw"><table class="dt" style="width:100%;border-collapse:collapse;font-size:.875rem">
+  const th = s => `<th style="padding:6px 8px;font-weight:600;color:var(--mut);font-size:var(--fs-1);text-transform:uppercase;letter-spacing:.4px">${s}</th>`;
+  let html = `<div class="tw"><table class="dt" style="width:100%;border-collapse:collapse;font-size:var(--fs-3)">
     <thead>
       <tr style="border-bottom:2px solid var(--bdr)">
         ${th(t('detail.qty'))}
         ${th(t('detail.added'))}
-        <th style="padding:6px 8px;font-weight:600;color:var(--mut);font-size:.75rem;text-transform:uppercase;letter-spacing:.4px;text-align:center">${t('common.condition')}</th>
-        <th style="padding:6px 8px;font-weight:600;color:var(--mut);font-size:.75rem;text-transform:uppercase;letter-spacing:.4px;text-align:right">${t('detail.purchase_price')}</th>
+        <th style="padding:6px 8px;font-weight:600;color:var(--mut);font-size:var(--fs-1);text-transform:uppercase;letter-spacing:.4px;text-align:center">${t('common.condition')}</th>
+        <th style="padding:6px 8px;font-weight:600;color:var(--mut);font-size:var(--fs-1);text-transform:uppercase;letter-spacing:.4px;text-align:right">${t('detail.purchase_price')}</th>
         ${_householdMembers.length > 1 ? th(t('household.owner')) : ''}
         <th style="width:32px"></th>
       </tr>
@@ -115,16 +115,16 @@ export function renderAcqModalBody(sn, acqs, totals) {
         <input inputmode="numeric" type="number" min="1" value="${a.quantity}"
           data-blur="acqSave" data-arg="${esc(sn)}" data-arg2="${a.id}" data-arg3="qty" data-val="1"
           data-keydown="blurOnEnter"
-          style="width:48px;text-align:center;border:1px solid var(--bdr);border-radius:6px;padding:4px 6px;font-size:.875rem;font-weight:700;background:var(--sur);color:var(--txt)" />
+          style="width:48px;text-align:center;border:1px solid var(--bdr);border-radius:6px;padding:4px 6px;font-size:var(--fs-3);font-weight:700;background:var(--sur);color:var(--txt)" />
       </td>
       <td style="padding:6px 8px;white-space:nowrap">
         <input type="date" value="${dateIso}"
           data-change="acqSave" data-arg="${esc(sn)}" data-arg2="${a.id}" data-arg3="date" data-val="1"
-          style="border:1px solid var(--bdr);border-radius:6px;padding:3px 6px;font-size:.82rem;background:var(--sur);color:var(--txt)" />
+          style="border:1px solid var(--bdr);border-radius:6px;padding:3px 6px;font-size:var(--fs-2);background:var(--sur);color:var(--txt)" />
       </td>
       <td style="padding:6px 4px;text-align:center">
         <select data-change="acqSave" data-arg="${esc(sn)}" data-arg2="${a.id}" data-arg3="cond" data-val="1"
-          style="font-size:.82rem;border:1px solid var(--bdr);border-radius:6px;padding:3px 6px;background:var(--sur);color:var(--txt)">
+          style="font-size:var(--fs-2);border:1px solid var(--bdr);border-radius:6px;padding:3px 6px;background:var(--sur);color:var(--txt)">
           <option value="N" ${a.condition!=='U'?'selected':''}>${t('common.condition_new')}</option>
           <option value="U" ${a.condition==='U'?'selected':''}>${t('common.condition_used')}</option>
         </select>
@@ -133,17 +133,17 @@ export function renderAcqModalBody(sn, acqs, totals) {
         <input type="text" inputmode="decimal" value="${priceVal}"
           data-blur="acqSave" data-arg="${esc(sn)}" data-arg2="${a.id}" data-arg3="price" data-val="1"
           data-keydown="blurOnEnter"
-          style="width:84px;text-align:right;border:1px solid var(--bdr);border-radius:6px;padding:4px 8px;font-size:.875rem;font-weight:600;background:var(--sur);color:var(--txt)" />
+          style="width:84px;text-align:right;border:1px solid var(--bdr);border-radius:6px;padding:4px 8px;font-size:var(--fs-3);font-weight:600;background:var(--sur);color:var(--txt)" />
       </td>
       ${_householdMembers.length > 1 ? `<td style="padding:6px 4px">
         <select data-change="acqSave" data-arg="${esc(sn)}" data-arg2="${a.id}" data-arg3="owner" data-val="1"
-          style="font-size:.82rem;border:1px solid var(--bdr);border-radius:6px;padding:3px 6px;background:var(--sur);color:var(--txt)">
+          style="font-size:var(--fs-2);border:1px solid var(--bdr);border-radius:6px;padding:3px 6px;background:var(--sur);color:var(--txt)">
           ${_householdMembers.map(m => `<option value="${m.id}"${m.id === (a.owner_user_id ?? _acqOwnerId) ? ' selected' : ''}>${esc(m.username)}</option>`).join('')}
         </select>
       </td>` : ''}
       <td style="padding:6px 4px;text-align:center">
         <button data-click="acqDelete" data-arg="${esc(sn)}" data-arg2="${a.id}"
-          style="background:none;border:none;cursor:pointer;font-size:1rem;color:var(--r500);padding:2px 4px;border-radius:4px;line-height:1"
+          style="background:none;border:none;cursor:pointer;font-size:var(--fs-4);color:var(--r500);padding:2px 4px;border-radius:4px;line-height:1"
           title="${t('gallery.delete.title')}">🗑️</button>
       </td>
     </tr>`;
@@ -227,7 +227,7 @@ async function acqSave(sn, id, field, value) {
       if (ad?.success && curSet?.set_number === sn) {
         const summaryEl = G('m-acq-summary');
         if (summaryEl) summaryEl.innerHTML = renderAcquisitionSummary(ad.acquisitions, sn) +
-          `<button class="btn bs btn-sm" data-click="openAcqModal" data-arg="${escJs(sn)}" style="margin-top:4px;font-size:.75rem;padding:2px 10px">✏️ ${t('detail.edit_prices')}</button>`;
+          `<button class="btn bs btn-sm" data-click="openAcqModal" data-arg="${escJs(sn)}" style="margin-top:4px;font-size:var(--fs-1);padding:2px 10px">✏️ ${t('detail.edit_prices')}</button>`;
       }
     }).catch(()=>{});
     return;
@@ -245,7 +245,7 @@ async function acqSave(sn, id, field, value) {
       if (!ad?.success) return;
       const sumEl = G('m-acq-summary');
       if (sumEl) sumEl.innerHTML = renderAcquisitionSummary(ad.acquisitions, sn) +
-        `<button class="btn bs btn-sm" data-click="openAcqModal" data-arg="${escJs(sn)}" style="margin-top:4px;font-size:.75rem;padding:2px 10px">✏️ ${t('detail.edit_prices')}</button>`;
+        `<button class="btn bs btn-sm" data-click="openAcqModal" data-arg="${escJs(sn)}" style="margin-top:4px;font-size:var(--fs-1);padding:2px 10px">✏️ ${t('detail.edit_prices')}</button>`;
     }).catch(()=>{});
   }
   // If qty changed → reload whole modal to update summary + refresh set-detail qty
@@ -256,7 +256,7 @@ async function acqSave(sn, id, field, value) {
       if (ad.success && curSet?.set_number === sn) {
         const summaryEl = G('m-acq-summary');
         if (summaryEl) summaryEl.innerHTML = renderAcquisitionSummary(ad.acquisitions, sn) +
-          `<button class="btn bs btn-sm" data-click="openAcqModal" data-arg="${escJs(sn)}" style="margin-top:4px;font-size:.75rem;padding:2px 10px">✏️ ${t('detail.edit_prices')}</button>`;
+          `<button class="btn bs btn-sm" data-click="openAcqModal" data-arg="${escJs(sn)}" style="margin-top:4px;font-size:var(--fs-1);padding:2px 10px">✏️ ${t('detail.edit_prices')}</button>`;
       }
     }).catch(()=>{});
     return;
@@ -280,7 +280,7 @@ async function acqDelete(sn, id) {
   // Refresh compact summary in set-detail modal
   const dvEl = G('m-acq-summary');
   if (dvEl) dvEl.innerHTML = renderAcquisitionSummary(ad.acquisitions, sn) +
-    `<button class="btn bs btn-sm" data-click="openAcqModal" data-arg="${escJs(sn)}" style="margin-top:4px;font-size:.75rem;padding:2px 10px">✏️ ${t('detail.edit_prices')}</button>`;
+    `<button class="btn bs btn-sm" data-click="openAcqModal" data-arg="${escJs(sn)}" style="margin-top:4px;font-size:var(--fs-1);padding:2px 10px">✏️ ${t('detail.edit_prices')}</button>`;
   // Wie in acqSave(): Eine gelöschte Erfassung verändert Bestand und Wert —
   // und lässt eine Zustands-Zeile verschwinden, wenn es die letzte war.
   api('GET', `/v1/sets/${sn}/price-history`).then(renderMarketRows).catch(()=>{});
@@ -290,17 +290,17 @@ async function acqDelete(sn, id) {
 
 // Compact link shown in set-detail-modal → opens the full acq-modal
 export function renderAcquisitionSummary(acqs, sn) {
-  if (!acqs?.length) return `<div style="color:var(--mut);font-size:.82rem">—</div>`;
+  if (!acqs?.length) return `<div style="color:var(--mut);font-size:var(--fs-2)">—</div>`;
   return acqs.map(a => {
-    const cond = a.condition === 'U' ? `<span style="font-size:.7rem;padding:1px 5px;background:var(--s100);color:var(--s600);border-radius:8px;font-weight:600">${t('common.condition_used')}</span>`
-      : `<span style="font-size:.7rem;padding:1px 5px;background:var(--g100);color:var(--g600);border-radius:8px;font-weight:600">${t('common.condition_new')}</span>`;
+    const cond = a.condition === 'U' ? `<span style="font-size:var(--fs-0);padding:1px 5px;background:var(--s100);color:var(--s600);border-radius:8px;font-weight:600">${t('common.condition_used')}</span>`
+      : `<span style="font-size:var(--fs-0);padding:1px 5px;background:var(--g100);color:var(--g600);border-radius:8px;font-weight:600">${t('common.condition_new')}</span>`;
     const price = a.purchase_price != null ? `<strong>${fmtN(a.purchase_price, CURRENCY)}</strong>` : '';
     const dateFmt = a.created_at ? new Date(a.created_at).toLocaleDateString(locale()) : '';
     return `<div style="display:flex;align-items:center;gap:6px;padding:2px 0">
-      <span style="color:var(--mut);font-size:.78rem;min-width:24px">×${a.quantity}</span>
+      <span style="color:var(--mut);font-size:var(--fs-1);min-width:24px">×${a.quantity}</span>
       ${cond}
       ${price}
-      ${dateFmt ? `<span style="font-size:.72rem;color:var(--mut)">${dateFmt}</span>` : ''}
+      ${dateFmt ? `<span style="font-size:var(--fs-1);color:var(--mut)">${dateFmt}</span>` : ''}
     </div>`;
   }).join('');
 }
@@ -310,20 +310,20 @@ let _manItem = null; // { type:'part'|'fig', id, colorId:int, owner:int|undefine
 
 // Compact acquisition summary for parts/minifigs (uses unit_price, not purchase_price)
 function renderManAcqSummary(acqs, type, id, colorId) {
-  if (!acqs?.length) return `<div style="color:var(--mut);font-size:.82rem">—</div>`;
+  if (!acqs?.length) return `<div style="color:var(--mut);font-size:var(--fs-2)">—</div>`;
   return acqs.map(a => {
     const cond = a.condition === 'U'
-      ? `<span style="font-size:.7rem;padding:1px 5px;background:var(--s100);color:var(--s600);border-radius:8px;font-weight:600">${t('common.condition_used')}</span>`
-      : `<span style="font-size:.7rem;padding:1px 5px;background:var(--g100);color:var(--g600);border-radius:8px;font-weight:600">${t('common.condition_new')}</span>`;
+      ? `<span style="font-size:var(--fs-0);padding:1px 5px;background:var(--s100);color:var(--s600);border-radius:8px;font-weight:600">${t('common.condition_used')}</span>`
+      : `<span style="font-size:var(--fs-0);padding:1px 5px;background:var(--g100);color:var(--g600);border-radius:8px;font-weight:600">${t('common.condition_new')}</span>`;
     const price = a.unit_price != null
       ? `<strong>${fmtN(a.unit_price, CURRENCY)}</strong>`
       : '';
     const dateFmt = a.created_at ? new Date(a.created_at).toLocaleDateString(locale()) : '';
     return `<div style="display:flex;align-items:center;gap:6px;padding:2px 0">
-      <span style="color:var(--mut);font-size:.78rem;min-width:24px">×${a.quantity}</span>
+      <span style="color:var(--mut);font-size:var(--fs-1);min-width:24px">×${a.quantity}</span>
       ${cond}
       ${price}
-      ${dateFmt ? `<span style="font-size:.72rem;color:var(--mut)">${dateFmt}</span>` : ''}
+      ${dateFmt ? `<span style="font-size:var(--fs-1);color:var(--mut)">${dateFmt}</span>` : ''}
     </div>`;
   }).join('');
 }
@@ -385,9 +385,9 @@ export async function openManDetail(type, id, colorId) {
   const totalQty = ad?.totals?.priced_rows !== undefined && acqs.length
     ? ad.totals.quantity : item.quantity;
   rows.push(detailZeile(t('detail.qty'), `
-    <button class="btn bs btn-sm" data-click="manQtyChange" data-arg="-1" style="font-size:1rem;padding:2px 8px;line-height:1">−</button>
+    <button class="btn bs btn-sm" data-click="manQtyChange" data-arg="-1" style="font-size:var(--fs-4);padding:2px 8px;line-height:1">−</button>
     <input inputmode="numeric" type="number" id="man-det-qty" min="1" value="${totalQty}" style="width:46px;text-align:center;border:1px solid var(--bdr);border-radius:6px;padding:2px;font-weight:600" data-change="manQtySave" />
-    <button class="btn bs btn-sm" data-click="manQtyChange" data-arg="1" style="font-size:1rem;padding:2px 8px;line-height:1">+</button>
+    <button class="btn bs btn-sm" data-click="manQtyChange" data-arg="1" style="font-size:var(--fs-4);padding:2px 8px;line-height:1">+</button>
   `, { wertStil: 'display:flex;align-items:center;gap:6px' }));
 
   // BrickLink-Nr (minifigs only, editable)
@@ -415,7 +415,7 @@ export async function openManDetail(type, id, colorId) {
   if (type === 'part') {
     const swatch = `<span id="man-farb-punkt" style="display:inline-block;width:12px;height:12px;border-radius:50%;background:${escHex(item.color_hex, 'var(--s300)')};border:1px solid rgba(0,0,0,.15);vertical-align:middle;flex:0 0 auto"></span>`;
     rows.push(detailZeile(t('parts.color_label'), `${swatch}
-      <select id="man-farb-wahl" style="max-width:150px;border:1px solid var(--bdr);border-radius:6px;padding:2px 4px;font-size:.82rem"
+      <select id="man-farb-wahl" style="max-width:150px;border:1px solid var(--bdr);border-radius:6px;padding:2px 4px;font-size:var(--fs-2)"
         data-change="speichereTeilFarbe" data-part="${escJs(id)}" data-color="${_manItem.colorId}"
         data-owner="${esc(item?.user_id ?? '')}">
         <option value="${_manItem.colorId}">${esc(item.color_name || tRaw('parts.no_color_dash'))}</option>
@@ -446,7 +446,7 @@ export async function openManDetail(type, id, colorId) {
   // Acquisition summary — compact, like set-detail
   rows.push(detailZeile(t('detail.purchase_price'), `
       ${renderManAcqSummary(acqs, type, id, colorId)}
-      <button class="btn bs btn-sm" data-click="openManAcqModal" style="margin-top:4px;font-size:.75rem;padding:2px 10px">✏️ ${t('detail.edit_prices')}</button>
+      <button class="btn bs btn-sm" data-click="openManAcqModal" style="margin-top:4px;font-size:var(--fs-1);padding:2px 10px">✏️ ${t('detail.edit_prices')}</button>
     `, { zeilenStil: 'align-items:flex-start',
          wertId: 'man-acq-summary',
          wertStil: 'flex-direction:column;align-items:flex-end;gap:3px' }));
@@ -461,8 +461,8 @@ export async function openManDetail(type, id, colorId) {
   rows.push('<div id="man-market-rows"></div>');
 
   rows.push(`<div style="margin-top:10px">
-    <div style="font-size:.73rem;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--mut);margin-bottom:4px">${t('detail.price_history')}</div>
-    <div id="man-chart-content"><span style="color:var(--mut);font-size:.78rem">${t('common.loading')}</span></div>
+    <div style="font-size:var(--fs-1);font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--mut);margin-bottom:4px">${t('detail.price_history')}</div>
+    <div id="man-chart-content"><span style="color:var(--mut);font-size:var(--fs-1)">${t('common.loading')}</span></div>
   </div>`);
 
   bodyEl.innerHTML = rows.join('');
@@ -485,10 +485,10 @@ export async function openManDetail(type, id, colorId) {
     if (!el) return;
     el.innerHTML = ph?.success
       ? priceChartSVG(ph, `man-${String(id).replace(/[^a-zA-Z0-9]/g, '')}-${colorId || 0}`)
-      : `<span style="color:var(--mut);font-size:.78rem">${t('detail.no_history')}</span>`;
+      : `<span style="color:var(--mut);font-size:var(--fs-1)">${t('detail.no_history')}</span>`;
   }).catch(() => {
     const el = G('man-chart-content');
-    if (el) el.innerHTML = `<span style="color:var(--mut);font-size:.78rem">${t('detail.no_history')}</span>`;
+    if (el) el.innerHTML = `<span style="color:var(--mut);font-size:var(--fs-1)">${t('detail.no_history')}</span>`;
   });
 
   // Wire delete button — deleteManualFig/deleteManualPart already have their own confirmDelete
@@ -661,11 +661,11 @@ export async function openSetItemDetail(type, id, colorId) {
         <tr data-click="openSetAusItem" data-arg="${escJs(s.set_number)}"
             title="${esc(t('setitem.open_set'))}" style="cursor:pointer">
           <td style="width:34px;padding:4px 8px 4px 0">${setBild(s)}</td>
-          <td style="width:1%;white-space:nowrap;padding:4px 10px 4px 0;font-family:var(--mono);font-size:.78rem;color:var(--b600)">${esc(s.set_number)}</td>
+          <td style="width:1%;white-space:nowrap;padding:4px 10px 4px 0;font-family:var(--mono);font-size:var(--fs-1);color:var(--b600)">${esc(s.set_number)}</td>
           <td style="padding:4px 0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:0">${esc(s.set_name || '')}</td>
-          <td style="width:1%;white-space:nowrap;padding:4px 0 4px 10px;text-align:right;color:var(--mut);font-size:.78rem">×${(s.quantity || 0).toLocaleString(locale())}</td>
+          <td style="width:1%;white-space:nowrap;padding:4px 0 4px 10px;text-align:right;color:var(--mut);font-size:var(--fs-1)">×${(s.quantity || 0).toLocaleString(locale())}</td>
         </tr>`).join('')}</tbody></table>`
-    : `<span style="color:var(--mut);font-size:.83rem">${esc(t('setitem.used_in_none'))}</span>`;
+    : `<span style="color:var(--mut);font-size:var(--fs-2)">${esc(t('setitem.used_in_none'))}</span>`;
   // ── Warum die Tabelle UNTER der Beschriftung steht ────────────────────────
   //
   // Marcos Befund am Bild: „Der Text 'Verwendet in' kommt in das erste Bild
@@ -861,7 +861,7 @@ async function manQtySave() {
     const acqs2 = ad2?.acquisitions || [];
     const sumEl = G('man-acq-summary');
     if (sumEl) sumEl.innerHTML = renderManAcqSummary(acqs2, type, id, colorId) +
-      `<button class="btn bs btn-sm" data-click="openManAcqModal" style="margin-top:4px;font-size:.75rem;padding:2px 10px">✏️ ${t('detail.edit_prices')}</button>`;
+      `<button class="btn bs btn-sm" data-click="openManAcqModal" style="margin-top:4px;font-size:var(--fs-1);padding:2px 10px">✏️ ${t('detail.edit_prices')}</button>`;
     if (G('acq-modal').classList.contains('open')) renderManAcqBody(type, id, colorId, acqs2, ad2?.totals);
   }).catch(()=>{});
 
@@ -879,7 +879,7 @@ function openManAcqModal() {
     : ((manualPartsCache||[]).find(p=>p.part_number===id)?.part_name || id);
   G('acq-modal-tit').textContent = tRaw('detail.edit_prices');
   G('acq-modal-sub').textContent = title;
-  G('acq-modal-body').innerHTML = `<div style="color:var(--mut);font-size:.82rem">${t('common.loading')}</div>`;
+  G('acq-modal-body').innerHTML = `<div style="color:var(--mut);font-size:var(--fs-2)">${t('common.loading')}</div>`;
   G('man-detail-modal').classList.remove('open');
   G('acq-modal').classList.add('open');
   // Override close to return to man-detail-modal
@@ -908,7 +908,7 @@ function closeAcqModal() {
       if (!ad?.success) return;
       const sumEl = G('m-acq-summary');
       if (sumEl) sumEl.innerHTML = renderAcquisitionSummary(ad.acquisitions, sn) +
-        `<button class="btn bs btn-sm" data-click="openAcqModal" data-arg="${escJs(sn)}" style="margin-top:4px;font-size:.75rem;padding:2px 10px">✏️ ${t('detail.edit_prices')}</button>`;
+        `<button class="btn bs btn-sm" data-click="openAcqModal" data-arg="${escJs(sn)}" style="margin-top:4px;font-size:var(--fs-1);padding:2px 10px">✏️ ${t('detail.edit_prices')}</button>`;
       const total = ad.totals?.quantity ?? 0;
       const qEl = G('m-qty');
       if (qEl && total > 0) { qEl.value = total; if(curSet) curSet.quantity = total; }
@@ -934,15 +934,15 @@ async function loadManAcqModal(type, id, colorId) {
 function renderManAcqBody(type, id, colorId, acqs, totals) {
   // Reuse the same table renderer with type-specific save/delete
   if (!acqs.length) {
-    G('acq-modal-body').innerHTML = `<div style="color:var(--mut);font-size:.85rem;padding:.5rem 0">—</div>`;
+    G('acq-modal-body').innerHTML = `<div style="color:var(--mut);font-size:var(--fs-3);padding:.5rem 0">—</div>`;
     return;
   }
-  const th = s => `<th style="padding:6px 8px;font-weight:600;color:var(--mut);font-size:.75rem;text-transform:uppercase;letter-spacing:.4px">${s}</th>`;
-  let html = `<div class="tw"><table class="dt" style="width:100%;border-collapse:collapse;font-size:.875rem">
+  const th = s => `<th style="padding:6px 8px;font-weight:600;color:var(--mut);font-size:var(--fs-1);text-transform:uppercase;letter-spacing:.4px">${s}</th>`;
+  let html = `<div class="tw"><table class="dt" style="width:100%;border-collapse:collapse;font-size:var(--fs-3)">
     <thead><tr style="border-bottom:2px solid var(--bdr)">
       ${th(t('detail.qty'))}${th(t('detail.added'))}
-      <th style="padding:6px 8px;font-weight:600;color:var(--mut);font-size:.75rem;text-transform:uppercase;letter-spacing:.4px;text-align:center">${t('common.condition')}</th>
-      <th style="padding:6px 8px;font-weight:600;color:var(--mut);font-size:.75rem;text-transform:uppercase;letter-spacing:.4px;text-align:right">${t('figs.price_label')}</th>
+      <th style="padding:6px 8px;font-weight:600;color:var(--mut);font-size:var(--fs-1);text-transform:uppercase;letter-spacing:.4px;text-align:center">${t('common.condition')}</th>
+      <th style="padding:6px 8px;font-weight:600;color:var(--mut);font-size:var(--fs-1);text-transform:uppercase;letter-spacing:.4px;text-align:right">${t('figs.price_label')}</th>
       ${_householdMembers.length > 1 ? th(t('household.owner')) : ''}
       <th style="width:32px"></th>
     </tr></thead><tbody>`;
@@ -958,16 +958,16 @@ function renderManAcqBody(type, id, colorId, acqs, totals) {
         <input inputmode="numeric" type="number" min="1" value="${a.quantity}"
           data-blur="manAcqSave" data-arg="${esc(t_)}" data-arg2="${i_}" data-arg3="${c_}" data-arg4="${ai_}" data-arg5="qty" data-val="1"
           data-keydown="blurOnEnter"
-          style="width:48px;text-align:center;border:1px solid var(--bdr);border-radius:6px;padding:4px 6px;font-size:.875rem;font-weight:700;background:var(--sur);color:var(--txt)" />
+          style="width:48px;text-align:center;border:1px solid var(--bdr);border-radius:6px;padding:4px 6px;font-size:var(--fs-3);font-weight:700;background:var(--sur);color:var(--txt)" />
       </td>
       <td style="padding:6px 8px;white-space:nowrap">
         <input type="date" value="${dateIso}"
           data-change="manAcqSave" data-arg="${esc(t_)}" data-arg2="${i_}" data-arg3="${c_}" data-arg4="${ai_}" data-arg5="date" data-val="1"
-          style="border:1px solid var(--bdr);border-radius:6px;padding:3px 6px;font-size:.82rem;background:var(--sur);color:var(--txt)" />
+          style="border:1px solid var(--bdr);border-radius:6px;padding:3px 6px;font-size:var(--fs-2);background:var(--sur);color:var(--txt)" />
       </td>
       <td style="padding:6px 4px;text-align:center">
         <select data-change="manAcqSave" data-arg="${esc(t_)}" data-arg2="${i_}" data-arg3="${c_}" data-arg4="${ai_}" data-arg5="cond" data-val="1"
-          style="font-size:.82rem;border:1px solid var(--bdr);border-radius:6px;padding:3px 6px;background:var(--sur);color:var(--txt)">
+          style="font-size:var(--fs-2);border:1px solid var(--bdr);border-radius:6px;padding:3px 6px;background:var(--sur);color:var(--txt)">
           <option value="N" ${a.condition!=='U'?'selected':''}>${t('common.condition_new')}</option>
           <option value="U" ${a.condition==='U'?'selected':''}>${t('common.condition_used')}</option>
         </select>
@@ -976,17 +976,17 @@ function renderManAcqBody(type, id, colorId, acqs, totals) {
         <input type="text" inputmode="decimal" value="${priceVal}"
           data-blur="manAcqSave" data-arg="${esc(t_)}" data-arg2="${i_}" data-arg3="${c_}" data-arg4="${ai_}" data-arg5="price" data-val="1"
           data-keydown="blurOnEnter"
-          style="width:84px;text-align:right;border:1px solid var(--bdr);border-radius:6px;padding:4px 8px;font-size:.875rem;font-weight:600;background:var(--sur);color:var(--txt)" />
+          style="width:84px;text-align:right;border:1px solid var(--bdr);border-radius:6px;padding:4px 8px;font-size:var(--fs-3);font-weight:600;background:var(--sur);color:var(--txt)" />
       </td>
       ${_householdMembers.length > 1 ? `<td style="padding:6px 4px">
         <select data-change="manAcqSave" data-arg="${esc(t_)}" data-arg2="${i_}" data-arg3="${c_}" data-arg4="${ai_}" data-arg5="owner" data-val="1"
-          style="font-size:.82rem;border:1px solid var(--bdr);border-radius:6px;padding:3px 6px;background:var(--sur);color:var(--txt)">
+          style="font-size:var(--fs-2);border:1px solid var(--bdr);border-radius:6px;padding:3px 6px;background:var(--sur);color:var(--txt)">
           ${_householdMembers.map(m => `<option value="${m.id}"${m.id === (a.owner_user_id ?? _acqOwnerId) ? ' selected' : ''}>${esc(m.username)}</option>`).join('')}
         </select>
       </td>` : ''}
       <td style="padding:6px 4px;text-align:center">
         <button data-click="manAcqDelete" data-arg="${esc(t_)}" data-arg2="${i_}" data-arg3="${c_}" data-arg4="${ai_}"
-          style="background:none;border:none;cursor:pointer;font-size:1rem;color:var(--r500);padding:2px 4px;border-radius:4px">🗑️</button>
+          style="background:none;border:none;cursor:pointer;font-size:var(--fs-4);color:var(--r500);padding:2px 4px;border-radius:4px">🗑️</button>
       </td>
     </tr>`;
   });
@@ -1065,7 +1065,7 @@ async function manAcqDelete(type, id, colorId, acqId) {
   // Refresh inline summary in detail modal
   const sumEl = G('man-acq-summary');
   if (sumEl) sumEl.innerHTML = renderManAcqSummary(acqs, type, id, colorId) +
-    `<button class="btn bs btn-sm" data-click="openManAcqModal" style="margin-top:4px;font-size:.75rem;padding:2px 10px">✏️ ${t('detail.edit_prices')}</button>`;
+    `<button class="btn bs btn-sm" data-click="openManAcqModal" style="margin-top:4px;font-size:var(--fs-1);padding:2px 10px">✏️ ${t('detail.edit_prices')}</button>`;
   if (!acqs.length) { closeAcqModal(); return; }
   renderManAcqBody(type, id, colorId, acqs, ad?.totals);
   if (type==='fig') loadManualFigsTable();

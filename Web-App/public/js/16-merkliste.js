@@ -137,7 +137,7 @@ function zeile(w) {
       ${bild}
       <div style="flex:1;min-width:0">
         <div style="font-weight:600">${titel}</div>
-        <div style="font-size:.78rem;color:var(--mut)">${unter}</div>
+        <div style="font-size:var(--fs-1);color:var(--mut)">${unter}</div>
       </div>
       <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap">
         ${alarm}${schon}${preis}
@@ -379,7 +379,7 @@ export async function oeffneMerkpostenDetail(arg) {
   G('mk-m-img').src = bild;
   G('mk-m-img').dataset.orig = bild;
   G('mk-m-sparkline-content').innerHTML =
-    `<span style="color:var(--mut);font-size:.78rem">${esc(tRaw('common.loading'))}</span>`;
+    `<span style="color:var(--mut);font-size:var(--fs-1)">${esc(tRaw('common.loading'))}</span>`;
   G('mk-m-market-rows').innerHTML = '';
   G('mk-m-det').innerHTML = zeilen(w);
   G('mk-m-bricklink').style.display = 'none';
@@ -427,7 +427,7 @@ export async function oeffneMerkpostenDetail(arg) {
     if (_detail !== arg) return;
     G('mk-m-sparkline-content').innerHTML = ph?.success
       ? priceChartSVG(ph, 'wl' + set_number.replace(/[^a-zA-Z0-9]/g, ''))
-      : `<span style="color:var(--mut);font-size:.78rem">${esc(tRaw('detail.no_history'))}</span>`;
+      : `<span style="color:var(--mut);font-size:var(--fs-1)">${esc(tRaw('detail.no_history'))}</span>`;
   }).catch(() => {});
 }
 

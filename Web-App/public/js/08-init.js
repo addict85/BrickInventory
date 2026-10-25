@@ -145,13 +145,13 @@ G('pl-setnr')?.addEventListener('keydown', e => e.key === 'Enter' && plAddSet())
 
 function plRenderSets() {
   const c = G('pl-sets'); if (!c) return;
-  if (!_plSets.length) { c.innerHTML = `<span style="color:var(--mut);font-size:.85rem">${t('pl.no_sets')}</span>`; G('btn-pl-gen').disabled = true; return; }
+  if (!_plSets.length) { c.innerHTML = `<span style="color:var(--mut);font-size:var(--fs-3)">${t('pl.no_sets')}</span>`; G('btn-pl-gen').disabled = true; return; }
   G('btn-pl-gen').disabled = false;
   c.innerHTML = _plSets.map((s,i) => `
-    <div style="display:inline-flex;align-items:center;gap:6px;background:var(--b50);border:1px solid var(--b200);border-radius:20px;padding:3px 10px 3px 8px;font-size:.85rem">
+    <div style="display:inline-flex;align-items:center;gap:6px;background:var(--b50);border:1px solid var(--b200);border-radius:20px;padding:3px 10px 3px 8px;font-size:var(--fs-3)">
       <span style="font-weight:600;color:var(--b700)">${esc(s.set_number)}</span>
       <span style="color:var(--mut)">${s.name !== s.set_number ? '— '+esc(s.name) : ''}</span>
-      <button data-click="plRemoveSet" data-arg="${i}" style="background:none;border:none;cursor:pointer;color:var(--mut);padding:0;font-size:.9rem;line-height:1">✕</button>
+      <button data-click="plRemoveSet" data-arg="${i}" style="background:none;border:none;cursor:pointer;color:var(--mut);padding:0;font-size:var(--fs-3);line-height:1">✕</button>
     </div>`).join('');
 }
 // Aufruf verschoben nach startApp() (js/08-init.js), das js/main.js NACH der
@@ -358,8 +358,8 @@ function plRenderTable() {
   let totalParts = 0;
   for (const grp of sorted) {
     const colorDot = grp.color_hex ? `<span style="display:inline-block;width:14px;height:14px;border-radius:50%;background:${escHex(grp.color_hex, 'var(--s300)')};border:1px solid rgba(0,0,0,.15);vertical-align:middle;margin-right:6px"></span>` : '';
-    html += `<div style="margin-bottom:1.5rem"><div style="font-weight:700;font-size:.95rem;padding:6px 0;border-bottom:2px solid var(--b200);margin-bottom:.5rem;color:var(--b700)">${colorDot}${esc(grp.color_name)} <span style="font-weight:400;color:var(--mut);font-size:.85rem">${t('pl.types',{n:grp.parts.length})}</span></div><div>`;
-      html += `<div style="display:flex;align-items:center;gap:10px;padding:3px 4px;font-size:.7rem;font-weight:700;color:var(--mut);text-transform:uppercase;letter-spacing:.4px;border-bottom:1.5px solid var(--b200)"><span style="width:44px;flex-shrink:0"></span><span style="min-width:65px;flex-shrink:0">Nr.</span><span style="flex:1">${t('pl.col_name')}</span><span style="width:70px;text-align:right;flex-shrink:0">${t('pl.col_needed')}</span><span style="width:70px;padding-left:6px;flex-shrink:0">${t('pl.col_have')}</span></div>`;
+    html += `<div style="margin-bottom:1.5rem"><div style="font-weight:700;font-size:var(--fs-4);padding:6px 0;border-bottom:2px solid var(--b200);margin-bottom:.5rem;color:var(--b700)">${colorDot}${esc(grp.color_name)} <span style="font-weight:400;color:var(--mut);font-size:var(--fs-3)">${t('pl.types',{n:grp.parts.length})}</span></div><div>`;
+      html += `<div style="display:flex;align-items:center;gap:10px;padding:3px 4px;font-size:var(--fs-0);font-weight:700;color:var(--mut);text-transform:uppercase;letter-spacing:.4px;border-bottom:1.5px solid var(--b200)"><span style="width:44px;flex-shrink:0"></span><span style="min-width:65px;flex-shrink:0">Nr.</span><span style="flex:1">${t('pl.col_name')}</span><span style="width:70px;text-align:right;flex-shrink:0">${t('pl.col_needed')}</span><span style="width:70px;padding-left:6px;flex-shrink:0">${t('pl.col_have')}</span></div>`;
     for (const p of grp.parts.sort((a,b) => (a.bl_part_number||a.part_number).localeCompare(b.bl_part_number||b.part_number, undefined, { numeric: true }))) {
       totalParts += p.quantity;
       // Build image source: prefer local cached file, then stored URL, then Rebrickable CDN
@@ -381,7 +381,7 @@ function plRenderTable() {
       // Leer heisst jetzt „unbekannt". plExportBricklink lässt solche Posten
       // weg und NENNT sie, statt zu raten.
       const blColorId = p.bl_color_id ?? _rbToBlColor[p.color_id] ?? '';
-      html += `<div style="display:flex;align-items:center;gap:10px;padding:5px 4px;border-bottom:1px solid var(--bdr)">${img}<span style="font-family:monospace;font-size:.82rem;color:var(--b600);min-width:65px;flex-shrink:0" title="Rebrickable: ${esc(p.part_number)}">${esc(p.bl_part_number||p.part_number)}</span><span style="flex:1;font-size:.875rem">${esc(p.part_name)}</span><span style="font-weight:700;font-size:.875rem;width:70px;text-align:right;flex-shrink:0">${p.quantity.toLocaleString(locale())}×</span><span style="width:70px;flex-shrink:0;padding-left:6px"><input inputmode="numeric" type="number" min="0" value="0" data-key="${pkey}" data-need="${p.quantity}" data-part="${esc(p.bl_part_number||p.part_number)}" data-color="${blColorId}" data-rb-color="${p.color_id||0}" data-color-name="${esc(p.color_name||'')}" data-type="${(p.bl_part_number||p.part_number||'P').startsWith('fig-')?'M':'P'}" class="pl-have-input" style="width:58px;height:28px;border:1px solid var(--bdr);border-radius:5px;padding:0 6px;font-size:.82rem;text-align:center" /></span></div>`;
+      html += `<div style="display:flex;align-items:center;gap:10px;padding:5px 4px;border-bottom:1px solid var(--bdr)">${img}<span style="font-family:monospace;font-size:var(--fs-2);color:var(--b600);min-width:65px;flex-shrink:0" title="Rebrickable: ${esc(p.part_number)}">${esc(p.bl_part_number||p.part_number)}</span><span style="flex:1;font-size:var(--fs-3)">${esc(p.part_name)}</span><span style="font-weight:700;font-size:var(--fs-3);width:70px;text-align:right;flex-shrink:0">${p.quantity.toLocaleString(locale())}×</span><span style="width:70px;flex-shrink:0;padding-left:6px"><input inputmode="numeric" type="number" min="0" value="0" data-key="${pkey}" data-need="${p.quantity}" data-part="${esc(p.bl_part_number||p.part_number)}" data-color="${blColorId}" data-rb-color="${p.color_id||0}" data-color-name="${esc(p.color_name||'')}" data-type="${(p.bl_part_number||p.part_number||'P').startsWith('fig-')?'M':'P'}" class="pl-have-input" style="width:58px;height:28px;border:1px solid var(--bdr);border-radius:5px;padding:0 6px;font-size:var(--fs-2);text-align:center" /></span></div>`;
     }
     html += '</div></div>';
   }

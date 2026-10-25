@@ -310,12 +310,12 @@ function partsTableRow(p){
   // etwas auseinandergelaufen.
   return `<tr style="cursor:pointer" data-click="openSetItemDetail" data-arg="part" data-arg2="${escJs(p.part_number)}" data-arg3="${p.color_id||0}">
     <td><img src="${escUrl(imgUrl(thumbUrl(p.image_local||p.image_url)||p.image_local||p.image_url||'', true)||'')}" loading="lazy" decoding="async" data-onerror="clear" style="width:36px;height:36px;object-fit:contain;background:var(--s50);border-radius:5px" /></td>
-    <td><span style="font-family:var(--mono);font-size:.77rem;color:var(--b600)" title="${esc(p.part_number)}">${esc(p.bl_part_number||p.part_number)}</span></td>
+    <td><span style="font-family:var(--mono);font-size:var(--fs-1);color:var(--b600)" title="${esc(p.part_number)}">${esc(p.bl_part_number||p.part_number)}</span></td>
     <td style="max-width:200px">${esc(p.part_name)||'—'} ${ersatzteilPlakette(p)}</td>
     <td><div style="display:flex;align-items:center;gap:5px"><div class="color-dot" style="background:${escHex(p.color_hex, 'var(--s300)')}"></div>${esc(colorName(p.color_name))}</div></td>
     <td>${esc(catLabel(p.category_name))}</td>
     <td><span style="font-family:var(--mono);font-weight:600;color:var(--b700)">${(p.total_quantity||0).toLocaleString(locale())}</span></td>
-    <td style="font-size:.75rem;color:var(--mut)">${esc((p.in_sets||'').replace(/,/g,', '))}</td>
+    <td style="font-size:var(--fs-1);color:var(--mut)">${esc((p.in_sets||'').replace(/,/g,', '))}</td>
   </tr>`;
 }
 
@@ -325,7 +325,7 @@ function updatePartsSentinel(){
   if (!s) return;
   if (_partsDone){
     s.innerHTML = _partsTotal
-      ? `<div style="text-align:center;color:var(--mut);font-size:.8rem;padding:1rem">${_partsTotal.toLocaleString(locale())} ${t('parts.stat.types')}</div>`
+      ? `<div style="text-align:center;color:var(--mut);font-size:var(--fs-2);padding:1rem">${_partsTotal.toLocaleString(locale())} ${t('parts.stat.types')}</div>`
       : '';
   } else {
     s.innerHTML = ladeAnzeige('', { stil: 'padding:1rem' });
