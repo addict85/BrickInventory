@@ -614,6 +614,8 @@ window.I18N_DE = {
   'finance.not_loaded': 'Preise noch nicht geladen',
   'finance.price_status': 'Preisstatus',
   'finance.price_loaded': 'Marktpreis vorhanden',
+  'finance.price_none': 'Kein Marktpreis bekannt — BrickLink meldet für diesen Zustand weder Verkäufe noch Angebote',
+  'finance.price_unknown_bl': 'BrickLink führt dieses Set (noch) nicht — wird nach 7 Tagen erneut geprüft',
   'finance.price_failed': 'Marktpreis konnte nicht geladen werden',
   'finance.figs_label': '👷 Minifiguren',
   'finance.figs_section': 'Manuell erfasste Minifiguren',

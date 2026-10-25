@@ -601,6 +601,8 @@ window.I18N_EN = {
   'finance.not_loaded': 'Prices not yet loaded',
   'finance.price_status': 'Price status',
   'finance.price_loaded': 'Market price available',
+  'finance.price_none': 'No market price known — BrickLink reports neither sales nor listings for this condition',
+  'finance.price_unknown_bl': 'BrickLink does not list this set (yet) — checked again after 7 days',
   'finance.price_failed': 'Market price could not be loaded',
   'finance.figs_label': '👷 Minifigures',
   'finance.figs_section': 'Manually added minifigures',

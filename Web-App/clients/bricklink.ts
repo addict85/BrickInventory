@@ -168,7 +168,7 @@ async function getPriceGuideRaw(setNumber: string, condition = 'N', guideType = 
         } catch (e3) {
           const f3 = alsAbrufFehler(e3);
           if (f3.detail?.meta?.code !== 404 && f3.detail?.meta?.code !== 400) throw e3;
-          await db.run('INSERT INTO catalog_cache (set_number, name, bl_type, is_gear) VALUES ($1,$2,$3,1) ON CONFLICT (set_number) DO UPDATE SET bl_type=$3, is_gear=1', [n, `Set ${n}`, 'NONE']);
+          await db.run('INSERT INTO catalog_cache (set_number, name, bl_type, is_gear) VALUES ($1,$2,$3,1) ON CONFLICT (set_number) DO UPDATE SET bl_type=$3, is_gear=1, fetched_at=NOW()', [n, `Set ${n}`, 'NONE']);
           throw new Error(`${n} nicht auf BrickLink gefunden (Set/Gear/Book) — kein Preis`);
         }
       }

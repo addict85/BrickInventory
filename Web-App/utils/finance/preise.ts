@@ -218,7 +218,7 @@ async function fetchPrice(setNumber: string, condition: string, guideType: strin
     ? (pre.catalog.get(mitVersion(setNumber)) || null)
     : await katalogEintrag(setNumber);
   if (ohneBricklinkPreis(catalogRow))
-    return { min_price:0, avg_price:0, max_price:0, qty_avg_price:0, from_cache:true, no_price:true };
+    return { min_price:0, avg_price:0, max_price:0, qty_avg_price:0, from_cache:true, no_price:true, bl_unbekannt:true };
 
   const ttl = Math.max(1, parseInt(String(ttlHours)));
   const fallbackCondition = condition === 'N' ? 'U' : 'N';
