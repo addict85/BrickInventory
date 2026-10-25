@@ -20,6 +20,7 @@ import type { Request, Response, NextFunction } from 'express';
 import { checkLoginAllowed, recordLoginFailure, recordLoginSuccess } from './loginLimiter';
 import { sendeFehler } from './fehlerTexte';
 import { logAndContinue } from './httpError';
+import * as zf from './zweiterFaktor';
 import { ausTabelle } from './validate';
 import type { FehlerCode } from './fehlerTexte';
 
@@ -506,6 +507,8 @@ export interface AnmeldeAbsage {
   vars?: Record<string, string | number>;
   /** Nur bei unbestätigter E-Mail: Der Client blendet dann das Erneut-senden an. */
   unverified?: boolean;
+  /** Passwort stimmt, es fehlt (oder scheiterte) der Code des zweiten Faktors. */
+  zweiterFaktor?: boolean;
 }
 
 /** Ergebnis von pruefeAnmeldedaten(): entweder die Konto-Zeile oder eine Absage. */
@@ -546,6 +549,8 @@ export type AnmeldeErgebnis =
  * 5. Konto-Vorbedingungen (assertLoginAllowed) NACH dem Passwort — sonst
  *    verrät die Antwort „Konto deaktiviert" die Existenz des Kontos an jeden,
  *    der nur den Namen kennt.
+ * 6. Zweiter Faktor, falls eingerichtet. Ein falscher Code zählt als
+ *    Fehlversuch, sonst liessen sich die 10^6 Codes durchprobieren.
  *
  * Was NICHT hierher gehört: Sitzung anlegen bzw. Token ausstellen. Genau das
  * unterscheidet die beiden Aufrufer, und es ist der einzige Unterschied.
@@ -553,14 +558,17 @@ export type AnmeldeErgebnis =
  * @param req      Für den Brute-Force-Zähler (IP) gebraucht.
  * @param username Benutzername ODER E-Mail-Adresse.
  * @param password Klartext-Passwort aus dem Request.
+ * @param code     Einmal- oder Wiederherstellungscode (utils/zweiterFaktor.ts).
  */
-async function pruefeAnmeldedaten(req: Request, username: unknown, password: unknown): Promise<AnmeldeErgebnis> {
+async function pruefeAnmeldedaten(req: Request, username: unknown, password: unknown, code?: unknown): Promise<AnmeldeErgebnis> {
   // Die Absage traegt einen CODE und keinen Satz (Nachtrag 130): Welche
   // Sprache der Anfragende sieht, weiss die Route.
   const absage = (status: number, code: FehlerCode,
-                  vars?: Record<string, string | number>, unverified?: boolean): AnmeldeErgebnis =>
+                  vars?: Record<string, string | number>, unverified?: boolean,
+                  zweiterFaktor?: boolean): AnmeldeErgebnis =>
     ({ ok: false, absage: { status, code, ...(vars ? { vars } : {}),
-                            ...(unverified ? { unverified: true } : {}) } });
+                            ...(unverified ? { unverified: true } : {}),
+                            ...(zweiterFaktor ? { zweiterFaktor: true } : {}) } });
 
   if (!username || !password)
     return absage(400, 'benutzername_passwort');
@@ -581,10 +589,17 @@ async function pruefeAnmeldedaten(req: Request, username: unknown, password: unk
     await recordLoginFailure(req, name);
     return absage(401, 'anmeldedaten_ungueltig');
   }
-  await recordLoginSuccess(req, name);
-
   const blockiert = assertLoginAllowed(user);
-  if (blockiert) return absage(blockiert.status, blockiert.code, undefined, blockiert.unverified);
+  if (blockiert) { await recordLoginSuccess(req, name); return absage(blockiert.status, blockiert.code, undefined, blockiert.unverified); }
+
+  if (await zf.istAktiv(user.id)) {
+    if (!String(code ?? '').trim()) return absage(401, 'zweiter_faktor_noetig', undefined, false, true);
+    if (!await zf.pruefeCode(user.id, code)) {
+      await recordLoginFailure(req, name);
+      return absage(401, 'zweiter_faktor_falsch', undefined, false, true);
+    }
+  }
+  await recordLoginSuccess(req, name);
   return { ok: true, user };
 }
 

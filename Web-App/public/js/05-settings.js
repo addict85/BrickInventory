@@ -589,7 +589,7 @@ G('btn-dall').onclick=async()=>{
 };
 
 // ── USER MGMT ─────────────────────────────────────────
-async function loadUsers(){
+export async function loadUsers(){
   const d=await api('GET','/v1/auth/users'); if(!d.success) return;
   G('users-tbl').innerHTML=`<div class="tw"><table class="dt user-tbl"><thead><tr><th>ID</th><th>${t('users.col.username')}</th><th>${t('users.col.role')}</th><th>${t('users.col.created')}</th><th>${t('users.col.actions')}</th></tr></thead><tbody>${
     d.users.map(u=>`<tr><td>${u.id}</td><td><strong>${esc(u.username)}</strong></td>
@@ -598,6 +598,7 @@ async function loadUsers(){
       <td style="display:flex;gap:5px">
         <button class="btn bs btn-sm" data-click="openRpw" data-arg="${u.id}">🔑</button>
         <button class="btn bs btn-sm" data-click="toggleAdmin" data-arg="${u.id}" data-arg2="${u.is_admin}">${u.is_admin?'⬇️':'⬆️'}</button>
+        ${u.zweiter_faktor?`<button class="btn bs btn-sm" data-click="zfZuruecksetzen" data-arg="${u.id}" data-arg2="${esc(u.username)}" title="${esc(tRaw('zf.reset_title'))}">🔐</button>`:''}
         <button class="btn bd btn-sm" data-click="delUser" data-arg="${u.id}" data-arg2="${esc(u.username)}">🗑️</button>
       </td></tr>`).join('')
   }</tbody></table></div>`;

@@ -13,6 +13,7 @@ import { loadApiLimits, loadCacheStats, loadCacheTtl, loadHousehold, loadProfile
 import { loadBrickColors, loadManualFigsTable, loadManualParts, loadMinifigs } from './06-minifigs.js';
 import { ladeGutscheine } from './17-gutscheine.js';
 import { geloeschtMitRueckgaengig, ladePapierkorb } from './20-papierkorb.js';
+import { ladeZweitenFaktor } from './21-zweiter-faktor.js';
 import { _lastImportAt, confirmDelete, enrichGalleryWithPrices, jobPollTimer, ladeLagerorte, lagerortBlock, openModal, pollJobStatus, set_jobPollTimer, set_lastImportAt } from './07-admin.js';
 import { openAcqModal, renderAcqModalBody, renderAcquisitionSummary } from './13-acquisition-modals.js';
 import { ladeMerkliste } from './16-merkliste.js';
@@ -115,7 +116,7 @@ export function bindTabs(){
 // Seite, von der man meist nur eine Rubrik sehen wollte. Jetzt holt jede
 // Sicht, was sie zeigt — dieselbe Regel wie in der Android-App.
 const SICHTEN = {
-  profil:     () => { loadSettings(); loadProfile(); },
+  profil:     () => { loadSettings(); loadProfile(); ladeZweitenFaktor(); },
   gutscheine: () => ladeGutscheine(),
   alarme:     () => ladeAlarmUebersicht(),
   lagerorte:  () => ladeLagerortVerwaltung(),

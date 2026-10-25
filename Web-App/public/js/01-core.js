@@ -985,11 +985,19 @@ function showApp(){ bindTabs(); plInit(); setTimeout(()=>{ gibCheckOnLoad(); }, 
   loadStats();
 }
 G('btn-login').onclick=doLogin;
-['lu','lp'].forEach(id=>G(id).addEventListener('keydown',e=>e.key==='Enter'&&doLogin()));
+['lu','lp','lc'].forEach(id=>G(id).addEventListener('keydown',e=>e.key==='Enter'&&doLogin()));
 async function doLogin(){
   const b=G('btn-login'); const frei=knopfBesetzt(b);
-  const d=await api('POST','/v1/auth/login',{username:G('lu').value,password:G('lp').value});
+  const code=G('lc').value.trim();
+  const d=await api('POST','/v1/auth/login',{username:G('lu').value,password:G('lp').value,...(code?{code}:{})});
   frei();
+  // Zweiter Faktor verlangt: Codefeld zeigen und dort weitermachen.
+  if(d.zweiter_faktor){
+    G('lc-zeile').style.display=''; G('lc').value=''; G('lc').focus();
+    G('lerr').textContent=d.error||''; G('lerr').style.display=code?'block':'none';
+    return;
+  }
+  G('lc-zeile').style.display='none'; G('lc').value='';
   if(d.success){ ME = { ...d, ...(d.user||{}), isAdmin: d.user?.is_admin === true }; if(d.token) sessionStorage.setItem('webToken',d.token);
     // Jede Anmeldung beginnt mit „Alle Konten" (Nachtrag 46) — VOR showApp(),
     // damit die Auswahlfelder gleich mit dem zurückgesetzten Wert entstehen.

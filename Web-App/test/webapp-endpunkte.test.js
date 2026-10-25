@@ -139,6 +139,11 @@ const PAPIERKORB =
   'darin (der Schnappschuss entsteht im Server), zurückholen geht über die ' +
   'Webapp. Eine App-Ansicht ist als Nachzug vorgesehen.';
 
+const ZWEITER_FAKTOR =
+  'Zweiten Faktor einrichten und verwalten: in der Webapp, weil man dafür den ' +
+  'QR-Code mit einem ZWEITEN Gerät abscannt — meist dem Telefon, auf dem die ' +
+  'App läuft. Die App fragt den Code beim Anmelden ab (LoginScreen).';
+
 const NUR_WEB = new Map([
   ['/api/v1/admin/job-status',
    'Stand des Preis-Jobs samt BrickLink-Kontingent. Die App zeigt BEIDES ' +
@@ -234,6 +239,18 @@ const NUR_WEB = new Map([
    PAPIERKORB],
   ['/api/v1/papierkorb/:X/wiederherstellen',
    PAPIERKORB],
+  ['/api/v1/auth/zweiter-faktor',
+   ZWEITER_FAKTOR],
+  ['/api/v1/auth/zweiter-faktor/einrichten',
+   ZWEITER_FAKTOR],
+  ['/api/v1/auth/zweiter-faktor/bestaetigen',
+   ZWEITER_FAKTOR],
+  ['/api/v1/auth/zweiter-faktor/abschalten',
+   ZWEITER_FAKTOR],
+  ['/api/v1/auth/zweiter-faktor/codes',
+   ZWEITER_FAKTOR],
+  ['/api/v1/auth/users/:X/zweiter-faktor',
+   ZWEITER_FAKTOR],
 ]);
 
 test('was nur die Webapp kann, hat einen Grund', () => {

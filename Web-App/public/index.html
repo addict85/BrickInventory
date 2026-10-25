@@ -108,6 +108,8 @@
       <form class="sform" data-submit="btn-login">
         <div class="fg"><label for="lu" data-i18n="login.email_or_user">Benutzername oder E-Mail</label><input type="text" id="lu" autocomplete="username" /></div>
         <div class="fg"><label for="lp" data-i18n="login.password">Passwort</label><input type="password" id="lp" autocomplete="current-password" /></div>
+        <!-- Erst sichtbar, wenn der Server einen zweiten Faktor verlangt (utils/zweiterFaktor.ts). -->
+        <div class="fg" id="lc-zeile" style="display:none"><label for="lc" data-i18n="login.code">Code aus der Authenticator-App</label><input type="text" id="lc" inputmode="numeric" autocomplete="one-time-code" maxlength="12" /><div style="font-size:.72rem;color:var(--mut);margin-top:3px" data-i18n="login.code_hint">Oder einer deiner Wiederherstellungscodes.</div></div>
         <button type="button" class="btn bp" id="btn-login" style="width:100%;justify-content:center;padding:11px" data-i18n="login.submit">Anmelden</button>
       </form>
       <div style="display:flex;justify-content:space-between;margin-top:.85rem;font-size:.82rem">
@@ -1036,6 +1038,13 @@
         </div>
       </div>
 
+
+      <!-- Zweiter Faktor (TOTP) — Inhalt zeichnet js/21-zweiter-faktor.js -->
+      <div class="ssec" style="margin-bottom:1.25rem">
+        <div class="stit" data-i18n="zf.title">🔐 Zweiter Faktor</div>
+        <p style="font-size:.82rem;color:var(--mut);margin:0 0 .75rem 0" data-i18n="zf.hint">Zusätzlich zum Passwort ein Code aus einer Authenticator-App (z. B. Aegis, Google Authenticator, 1Password). Schützt, falls jemand dein Passwort kennt.</p>
+        <div id="zf-flaeche"></div>
+      </div>
 
       <!-- Gefahrenzone — für alle Benutzer sichtbar -->
       <div class="sgroup-label" style="color:var(--r500)" data-i18n="settings.danger_zone">⚠️ Gefahrenzone</div>

@@ -228,6 +228,16 @@ export const FEHLER = {
                                  en: 'This voucher already exists.' },
   nur_pdf:                     { de: 'Nur PDF-Dateien', en: 'PDF files only' },
 
+  // ── Zweiter Faktor ───────────────────────────────────────────────────────
+  zweiter_faktor_noetig:       { de: 'Bitte den Code aus der Authenticator-App eingeben.',
+                                 en: 'Please enter the code from your authenticator app.' },
+  zweiter_faktor_falsch:       { de: 'Der Code stimmt nicht oder wurde schon benutzt.',
+                                 en: 'The code is wrong or has already been used.' },
+  zweiter_faktor_schon_aktiv:  { de: 'Der zweite Faktor ist bereits eingerichtet.',
+                                 en: 'Two-factor authentication is already set up.' },
+  zweiter_faktor_nicht_aktiv:  { de: 'Der zweite Faktor ist nicht eingerichtet.',
+                                 en: 'Two-factor authentication is not set up.' },
+
   // ── Papierkorb ───────────────────────────────────────────────────────────
   papierkorb_schon_vorhanden:  { de: 'Wurde inzwischen neu angelegt — erst den neuen Eintrag löschen, dann wiederherstellen.',
                                  en: 'Has been added again since — delete the new entry first, then restore.' },

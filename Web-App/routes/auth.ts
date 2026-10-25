@@ -15,6 +15,7 @@ import { getGlobalSetting, getSetting } from '../utils/settings';
 import { requireApiAdmin } from './api_v1/middleware';
 import { sendeFehler, fehlerText, antwortSprache } from '../utils/fehlerTexte';
 import { basisUrl, hinweisOhneBasisUrl } from '../utils/basisUrl';
+import * as zf from '../utils/zweiterFaktor';
 
 // ── „Angemeldet" gibt es nur noch in EINER Fassung ──────────────────────────
 //
@@ -65,13 +66,20 @@ const requireAdmin = requireApiAdmin;
  * Adresse. Begruendung siehe createToken().
  */
 router.post('/login', async (req, res) => {
-  const { username, password, label, never_expires } = req.body;
+  const { username, password, label, never_expires, code: zweiterCode } = req.body;
   try {
-    // Form des Namens, Brute-Force-Sperre, Passwortvergleich und die
-    // Konto-Vorbedingungen stehen in utils/auth.ts.
-    const pruefung = await pruefeAnmeldedaten(req, username, password);
+    // Form des Namens, Brute-Force-Sperre, Passwortvergleich, die
+    // Konto-Vorbedingungen und der zweite Faktor stehen in utils/auth.ts.
+    const pruefung = await pruefeAnmeldedaten(req, username, password, zweiterCode);
     if (!pruefung.ok) {
-      const { status, code, vars, unverified } = pruefung.absage;
+      const { status, code, vars, unverified, zweiterFaktor } = pruefung.absage;
+      // `zweiter_faktor` sagt dem Client: Codefeld zeigen und erneut senden.
+      if (zweiterFaktor) {
+        return res.status(status).json({
+          success: false, code, zweiter_faktor: true,
+          error: fehlerText(code, antwortSprache(req), vars),
+        });
+      }
       // `unverified` haengt zusaetzlich dran — die Oberflaeche blendet daran
       // das „E-Mail erneut senden?" ein. sendeFehler kennt das Feld nicht, es
       // gehoert zu genau diesem einen Fall.
@@ -338,7 +346,10 @@ router.put('/profile', requireLogin, async (req, res) => {
 // Admin: list users
 router.get('/users', requireAdmin, async (_req, res) => {
   try {
-    const users = await db.all('SELECT id, username, is_admin, created_at FROM users ORDER BY id');
+    const users = await db.all(
+      `SELECT u.id, u.username, u.is_admin, u.created_at,
+              EXISTS (SELECT 1 FROM zweiter_faktor z WHERE z.user_id = u.id AND z.aktiv) AS zweiter_faktor
+         FROM users u ORDER BY u.id`);
     res.json({ success: true, users });
   } catch (e) { handleRouteError(res, e, undefined, _req); }
 });
@@ -608,6 +619,70 @@ const QR_TTL_MS = 5 * 60 * 1000;
 // NOT EXISTS, aufgerufen bei JEDER Token-Erzeugung und JEDER Einlösung — obwohl
 // der zentrale Kommentar dort das Gegenteil behauptet. Siehe die ausführliche
 // Begründung in routes/sets.ts an derselben Stelle.
+
+// ── Zweiter Faktor (utils/zweiterFaktor.ts) ─────────────────────────────────
+//
+// Einrichten und Abschalten verlangen das Passwort: Wer nur eine offene
+// Sitzung erbeutet, soll das Konto weder aussperren noch den Schutz abbauen.
+async function passwortStimmt(uid: number, passwort: unknown): Promise<boolean> {
+  const u = await db.get('SELECT password_hash FROM users WHERE id = $1', [uid]);
+  return !!u && typeof passwort === 'string' && passwort !== '' && await bcrypt.compare(passwort, u.password_hash);
+}
+
+router.get('/zweiter-faktor', requireLogin, async (req, res) => {
+  try {
+    res.json({ success: true, ...(await zf.stand(angemeldeteNutzerId(req))) });
+  } catch (e) { handleRouteError(res, e, undefined, req); }
+});
+
+router.post('/zweiter-faktor/einrichten', requireLogin, async (req, res) => {
+  try {
+    const uid = angemeldeteNutzerId(req);
+    if (!await passwortStimmt(uid, req.body?.password)) return sendeFehler(req, res, 401, 'aktuelles_passwort_falsch');
+    const geheimnis = await zf.beginneEinrichtung(uid);
+    if (!geheimnis) return sendeFehler(req, res, 409, 'zweiter_faktor_schon_aktiv');
+    const u = await db.get('SELECT username FROM users WHERE id = $1', [uid]);
+    res.json({ success: true, geheimnis, otpauth: zf.otpauthAdresse(geheimnis, u?.username ?? String(uid)) });
+  } catch (e) { handleRouteError(res, e, undefined, req); }
+});
+
+router.post('/zweiter-faktor/bestaetigen', requireLogin, async (req, res) => {
+  try {
+    const codes = await zf.bestaetigeEinrichtung(angemeldeteNutzerId(req), String(req.body?.code ?? ''));
+    if (!codes) return sendeFehler(req, res, 400, 'zweiter_faktor_falsch');
+    res.json({ success: true, codes });
+  } catch (e) { handleRouteError(res, e, undefined, req); }
+});
+
+router.post('/zweiter-faktor/abschalten', requireLogin, async (req, res) => {
+  try {
+    const uid = angemeldeteNutzerId(req);
+    if (!await zf.istAktiv(uid)) return sendeFehler(req, res, 409, 'zweiter_faktor_nicht_aktiv');
+    if (!await passwortStimmt(uid, req.body?.password)) return sendeFehler(req, res, 401, 'aktuelles_passwort_falsch');
+    if (!await zf.pruefeCode(uid, req.body?.code)) return sendeFehler(req, res, 400, 'zweiter_faktor_falsch');
+    await zf.schalteAb(uid);
+    res.json({ success: true });
+  } catch (e) { handleRouteError(res, e, undefined, req); }
+});
+
+router.post('/zweiter-faktor/codes', requireLogin, async (req, res) => {
+  try {
+    const uid = angemeldeteNutzerId(req);
+    if (!await zf.istAktiv(uid)) return sendeFehler(req, res, 409, 'zweiter_faktor_nicht_aktiv');
+    if (!await zf.pruefeCode(uid, req.body?.code)) return sendeFehler(req, res, 400, 'zweiter_faktor_falsch');
+    res.json({ success: true, codes: await zf.erneuereCodes(uid) });
+  } catch (e) { handleRouteError(res, e, undefined, req); }
+});
+
+// Notausgang, wenn Telefon UND Wiederherstellungscodes weg sind.
+router.delete('/users/:id/zweiter-faktor', requireAdmin, async (req, res) => {
+  try {
+    const id = parseInt(pfadParam(req, 'id'));
+    if (!Number.isInteger(id)) return sendeFehler(req, res, 400, 'id_ungueltig');
+    await zf.schalteAb(id);
+    res.json({ success: true });
+  } catch (e) { handleRouteError(res, e, undefined, req); }
+});
 
 // POST /api/v1/auth/qr-token — Nonce erzeugen (nur für die eigene Session)
 // ── POST statt GET (Nachtrag 154) ────────────────────────────────────────────

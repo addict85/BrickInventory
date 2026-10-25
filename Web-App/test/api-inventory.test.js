@@ -303,6 +303,13 @@ const C = {
   // die Adresse im PdfViewerScreen (derselbe angemeldete OkHttpClient). Fuer
   // dieses Inventar ist das derselbe Fall: eine Umsetzung, beide Apps.
   'GET /api/v1/vouchers/:id/pdf': 'nur-v1',
+  // Zweiter Faktor (utils/zweiterFaktor.ts): nur unter v1, kein Alt-Pfad.
+  'GET /api/v1/auth/zweiter-faktor': 'nur-v1',
+  'POST /api/v1/auth/zweiter-faktor/einrichten': 'nur-v1',
+  'POST /api/v1/auth/zweiter-faktor/bestaetigen': 'nur-v1',
+  'POST /api/v1/auth/zweiter-faktor/abschalten': 'nur-v1',
+  'POST /api/v1/auth/zweiter-faktor/codes': 'nur-v1',
+  'DELETE /api/v1/auth/users/:id/zweiter-faktor': 'nur-v1',
   // Papierkorb (utils/papierkorb.ts): nur unter v1, kein Alt-Pfad daneben.
   'GET /api/v1/papierkorb': 'nur-v1',
   'POST /api/v1/papierkorb/:id/wiederherstellen': 'nur-v1',
