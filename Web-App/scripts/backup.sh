@@ -16,7 +16,13 @@
 #
 # Cron-Beispiel (täglich um 3 Uhr):
 #   0 3 * * * cd /opt/brickinventory && ./scripts/backup.sh >> backup.log 2>&1
+#
+# Eine Sicherung ist ein GEHEIMNIS: Der Dump enthält die API-Schlüssel
+# (Bricklink, Brickset, Rebrickable) und das SMTP-Passwort im Klartext, dazu
+# alle Passwort-Hashes. Darum entstehen Dateien und Verzeichnis nur für den
+# Besitzer lesbar (umask 077), und ein offenes Ziel wird gemeldet.
 set -eu
+umask 077
 
 TARGET="${1:-./backups}"
 STAMP="$(date +%Y-%m-%d_%H%M)"
@@ -28,6 +34,14 @@ DB_USER="${PGUSER:-brickinventory}"
 DB_NAME="${PGDATABASE:-brickinventory}"
 
 mkdir -p "$TARGET"
+# mkdir -p lässt ein bestehendes Verzeichnis, wie es ist — nur melden, nicht
+# umstellen: Das Ziel kann ein geteiltes Laufwerk sein.
+# (ls statt find -perm: dessen Schreibweise unterscheidet sich zwischen GNU,
+# BusyBox und macOS.)
+case "$(ls -ld "$TARGET")" in
+  ???????---*) ;;
+  *) echo "[backup] Warnung: $TARGET ist für andere Benutzer zugänglich — die Sicherung enthält Klartext-Schlüssel (chmod 700 \"$TARGET\")" >&2 ;;
+esac
 
 echo "[backup] Datenbank → $TARGET/db_$STAMP.sql.gz"
 # --clean --if-exists: Der Dump lässt sich in eine bestehende Datenbank
