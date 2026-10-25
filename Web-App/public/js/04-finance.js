@@ -60,8 +60,8 @@ async function loadPortfolioChart(){
     } else {
       // Fallback: first chart point vs current
       const purchaseBaseline = parseFloat(d.purchase_total || 0);
-      const firstVal = (purchaseBaseline > 0 && chartData.length <= 2)
-        ? purchaseBaseline : chartData[0].total;
+      const firstVal = (purchaseBaseline > 0 && finalChartData.length <= 2)
+        ? purchaseBaseline : finalChartData[0].total;
       if(firstVal > 0 && grandTotal > 0){
         const pct = ((grandTotal - firstVal) / firstVal * 100).toFixed(1);
         pnlEl.innerHTML = pnlBadge(pct);
@@ -133,10 +133,10 @@ export async function loadFinance(){
   // und Marktpreis ist seit der Preisumstellung avg_price. qty_avg ist der
   // mengengewichtete Schnitt und liegt systematisch darunter.
   const currentTotal = parseFloat(d.totals.avg||0) + extra;
-  if(pnlData.success && pnlData.totals?.pnl_pct != null){
-    G('fin-stat-pnl').style.display='';
-    G('fin-total-pnl').innerHTML = pnlBadge(pnlData.totals.pnl_pct);
-  }
+  // Ohne vergleichbaren Posten keine Kachel — auch nicht die vom letzten Filter.
+  const gesamtGuv = pnlData.success ? pnlData.totals?.pnl_pct : null;
+  G('fin-stat-pnl').style.display = gesamtGuv != null ? '' : 'none';
+  if(gesamtGuv != null) G('fin-total-pnl').innerHTML = pnlBadge(gesamtGuv);
 
   // ── Teile & Minifiguren: einzeln auflisten, analog zur Sets-Tabelle ─────────
   // (fliesst bereits in "extra"/Gesamtsumme oben ein — hier zusätzlich transparent

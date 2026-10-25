@@ -967,14 +967,14 @@ async function doAddSet(){
         // Set steht schon im Blickfeld — der Server hat NICHTS geschrieben
         // (Marcos Festlegung, utils/setAdd.ts). Statt einer Meldung öffnet
         // sich die Detailansicht, genau wie in der App.
-        _activeAbort=null; G('btn-cancel-import').style.display='none';
+        streamFertig();
         hideProgress();
         G('add-num').value='';
         openModal(ev.set_number);
         return;
       }
       if(ev.step==='done'){
-        _activeAbort=null; G('btn-cancel-import').style.display='none';
+        streamFertig();
         setTimeout(()=>{
           hideProgress(); loadGallery(); loadStats();
           G('add-num').value=''; if(G('add-price')) G('add-price').value='';
@@ -990,7 +990,7 @@ async function doAddSet(){
           }, delay));
         },800);
       }
-      else if(ev.step==='error'){ _activeAbort=null; G('btn-cancel-import').style.display='none'; setTimeout(()=>{hideProgress();toast(ev.error,'error');},1500); }
+      else if(ev.step==='error'){ streamFertig(); setTimeout(()=>{hideProgress();toast(ev.error,'error');},1500); }
     });
   }catch(e){if(e.name!=='AbortError'){hideProgress();toast(e.message,'error');}}
 }
@@ -1138,8 +1138,14 @@ async function csvPollLoop(ctx, fi){
 // ── CSV import polling state ─────────────────────────────────────────────────
 export let _csvPollActive = false;
 
+/** Der laufende Ereignisstrom (Set erfassen) — damit „Abbrechen" ihn beenden kann. */
+let _activeAbort = null;
+export function streamFertig(){ _activeAbort = null; G('btn-cancel-import').style.display='none'; }
+
 function cancelImport(){
   _csvPollActive = false;
+  _activeAbort?.abort();
+  _activeAbort = null;
   api('POST','/v1/sets/import/csv/cancel').catch(()=>{});
   G('btn-cancel-import').style.display='none';
   hideProgress();
@@ -1150,22 +1156,22 @@ G('btn-cancel-import').onclick = cancelImport;
 
 // SSE helper for JSON body — abortable
 export function streamRequest(url, body, onEvent){
-  _activeAbort = new AbortController();
+  const ac = _activeAbort = new AbortController();
   G('btn-cancel-import').style.display='inline-flex';
   return new Promise((resolve,reject)=>{
-    fetch(url,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body),signal:_activeAbort.signal})
-      .then(res=>readSSE(res,onEvent,_activeAbort.signal)).then(resolve).catch(e=>{
+    fetch(url,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body),signal:ac.signal})
+      .then(res=>readSSE(res,onEvent,ac.signal)).then(resolve).catch(e=>{
         if(e.name==='AbortError') resolve(); else reject(e);
       });
   });
 }
 // SSE helper for FormData — abortable
 function streamRequestForm(url, formData, onEvent){
-  _activeAbort = new AbortController();
+  const ac = _activeAbort = new AbortController();
   G('btn-cancel-import').style.display='inline-flex';
   return new Promise((resolve,reject)=>{
-    fetch(url,{method:'POST',body:formData,signal:_activeAbort.signal})
-      .then(res=>readSSE(res,onEvent,_activeAbort.signal)).then(resolve).catch(e=>{
+    fetch(url,{method:'POST',body:formData,signal:ac.signal})
+      .then(res=>readSSE(res,onEvent,ac.signal)).then(resolve).catch(e=>{
         if(e.name==='AbortError') resolve(); else reject(e);
       });
   });

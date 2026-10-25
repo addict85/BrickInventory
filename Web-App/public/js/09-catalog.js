@@ -3,7 +3,7 @@ import { registerActions } from './00-registry.js';
 import { locale, t, tRaw} from '../i18n.js';
 import { G, api, esc, escUrl, fullUrl, imgUrl, thumbUrl, toast } from './01-core.js';
 import { setScrollLabel } from './15-scrollbar.js';
-import { PARTS_ICON_SVG, handleSseEvent, hideProgress, leereLagerortFeld, loadGallery, loadStats, selectedOwner, selectedStorage, showProgress, streamRequest } from './02-gallery.js';
+import { PARTS_ICON_SVG, handleSseEvent, hideProgress, leereLagerortFeld, loadGallery, loadStats, selectedOwner, selectedStorage, showProgress, streamFertig, streamRequest } from './02-gallery.js';
 import { _lastImportAt , set_lastImportAt} from './07-admin.js';
 
 // ═══ Katalog: Rebrickable-Set-Katalog browsen, suchen, filtern ═══
@@ -461,7 +461,7 @@ async function addCatalogSetToGallery(){
     await streamRequest('/api/v1/sets/add-stream', { set_number: num, quantity: qty, purchase_price, condition, owner_user_id, storage }, (ev)=>{
       handleSseEvent(ev, num);
       if (ev.step === 'done') {
-        _activeAbort = null; G('btn-cancel-import').style.display = 'none';
+        streamFertig();
         setTimeout(()=>{
           hideProgress();
           toast(`Set ${esc(ev.set_number)} ${ev.action==='added'?t('common.added'):t('common.updated')}!`, 'success');
@@ -470,7 +470,7 @@ async function addCatalogSetToGallery(){
           loadGallery(); loadStats();   // Galerie-Daten im Hintergrund auffrischen
         }, 800);
       } else if (ev.step === 'error') {
-        _activeAbort = null; G('btn-cancel-import').style.display = 'none';
+        streamFertig();
         setTimeout(()=>{ hideProgress(); toast(ev.error, 'error'); }, 1500);
       }
     });

@@ -221,7 +221,7 @@ async function computePnl(viewerId: number, ids: Blickfeld) {
     setResults.reduce((s,r) => s + (r.current_price||0)*(r.quantity||1), 0) +
     partsResults.reduce((s,r) => s + (r.current_price||0)*(r.quantity||1), 0) +
     figsResults.reduce((s,r) => s + (r.current_price||0)*(r.quantity||1), 0);
-  const totalPnlPct = totalPurchase > 0 ? ((totalCurrent - totalPurchase) / totalPurchase * 100).toFixed(1) : null;
+  const totalPnlPct = gesamtGuvProzent([...setResults, ...partsResults, ...figsResults]);
 
   return {
     currency, sets: setResults,
@@ -240,4 +240,18 @@ async function computePnl(viewerId: number, ids: Blickfeld) {
   };
 }
 
-export { computePnl };
+/**
+ * Gesamt-G&V in Prozent — nur über Posten mit Kaufpreis UND Marktpreis. Ein
+ * fehlender Marktpreis ist kein Wert 0; mitgezählt ergäbe er −100 %.
+ * @returns null, wenn kein Posten beides hat
+ */
+function gesamtGuvProzent(zeilen: { purchase_price: number | null; current_price: number; quantity: number }[]): string | null {
+  let kauf = 0, markt = 0;
+  for (const z of zeilen) {
+    const k = z.purchase_price || 0, m = z.current_price || 0, n = z.quantity || 1;
+    if (k > 0 && m > 0) { kauf += k * n; markt += m * n; }
+  }
+  return kauf > 0 ? ((markt - kauf) / kauf * 100).toFixed(1) : null;
+}
+
+export { computePnl, gesamtGuvProzent };

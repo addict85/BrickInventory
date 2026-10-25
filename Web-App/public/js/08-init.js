@@ -630,8 +630,6 @@ function plReset() {
   plRenderSets();
 }
 
-// Auto-reset when navigating away from the tab
-const _origShowTab = typeof showTab === 'function' ? showTab : null;
 
 
 
