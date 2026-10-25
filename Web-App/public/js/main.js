@@ -21,6 +21,7 @@
 import './00-escapen.js';
 import '../i18n.js';
 import './01-core.js';
+import './01-dialoge.js';
 import './01-fortschritt.js';
 import './01-monitor.js';
 import './01-bausteine.js';

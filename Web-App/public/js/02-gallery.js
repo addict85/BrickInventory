@@ -1344,7 +1344,7 @@ export function openImageLightbox(src){
 // Schliessen des Zooms `[img] konnte nicht geladen werden: https://<host>/`.
 // Ohne Attribut laedt der Browser gar nichts.
 export function closeImageLightbox(){ G('img-lightbox').classList.remove('open'); G('lightbox-img').removeAttribute('src'); }
-document.addEventListener('keydown', e => { if(e.key==='Escape' && G('img-lightbox').classList.contains('open')) closeImageLightbox(); });
+// Escape schliesst den Zoom über js/01-dialoge.js, wie jeden Dialog.
 G('set-modal').addEventListener('click',e=>e.target.id==='set-modal'&&closeModal());
 
 let _autosaveTimer=null;
