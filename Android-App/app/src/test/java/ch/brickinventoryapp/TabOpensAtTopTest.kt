@@ -38,7 +38,8 @@ class TabOpensAtTopTest {
         // Er muss VOR der Navigation laufen — danach ist der Bildschirm unter
         // Umständen schon zusammengesetzt und hat die alte Stelle gelesen.
         val ruf = ms.indexOf("onTabAngetippt(screen)")
-        val nav = ms.indexOf("navController.navigate(screen.route)")
+        val nav = ms.indexOf("navController.zuReiter(screen.route)")
+        assert(nav > 0) { "Die Leiste navigiert nicht mehr über zuReiter() — Test veraltet?" }
         assert(ruf in 0 until nav) {
             "onTabAngetippt läuft nicht VOR der Navigation — dann kann der " +
                 "Bildschirm die alte Stelle bereits wiederhergestellt haben."

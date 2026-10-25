@@ -302,7 +302,10 @@ fun MainScaffold(
                 }
             )
             if (currentDest?.route?.let { it in SAMMLUNG } == true) {
-                SammlungUmschalter(currentDest?.route) { ziel -> navController.zuReiter(ziel.route) }
+                SammlungUmschalter(currentDest?.route) { ziel ->
+                    onTabAngetippt(ziel)
+                    navController.zuReiter(ziel.route)
+                }
             }
           }
         },
