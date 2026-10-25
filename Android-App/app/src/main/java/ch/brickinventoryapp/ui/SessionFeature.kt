@@ -34,7 +34,8 @@ internal fun MainViewModel.login(username: String, password: String, code: Strin
             is Result.Success -> {
                 if (r.data.zweiterFaktor) {
                     // Erstes Mal: nur das Codefeld zeigen. Mit Code: der Satz des Servers.
-                    _state.update { it.copy(loginLaeuft = false, loginCodeNoetig = true,
+                    _anmeldeState.update { it.copy(codeNoetig = true) }
+                    _state.update { it.copy(loginLaeuft = false,
                         loginError = if (code.isNullOrBlank()) null else r.data.error) }
                 } else if (r.data.success && r.data.token != null) {
                     prefs.saveAuthToken(r.data.token)
@@ -45,7 +46,8 @@ internal fun MainViewModel.login(username: String, password: String, code: Strin
                     // etwas auf den Filter hinwies. Dieselbe Regel wie in der
                     // Webapp.
                     ch.brickinventoryapp.data.ScopeFilter.resetAll(ctx)
-                    _state.update { it.copy(loginLaeuft = false, loginCodeNoetig = false, isLoggedIn = true, isAdmin = r.data.user?.isAdmin == true) }
+                    _anmeldeState.update { it.copy(codeNoetig = false) }
+                    _state.update { it.copy(loginLaeuft = false, isLoggedIn = true, isAdmin = r.data.user?.isAdmin == true) }
                     loadDashboard()
                 } else {
                     _state.update { it.copy(loginLaeuft = false, loginError = r.data.error ?: text(R.string.err_login_failed)) }

@@ -118,7 +118,7 @@ fun NavGraphBuilder.authGraph(
                 serverUrl = state.serverUrl,
                 isLoading = state.loginLaeuft,
                 error = state.loginError,
-                codeNoetig = state.loginCodeNoetig,
+                codeNoetig = anmeldung.codeNoetig,
                 formular = anmeldung.formular,
                 registrierungOffen = anmeldung.registrierungOffen,
                 kontoLaeuft = anmeldung.laeuft,
