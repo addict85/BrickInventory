@@ -6,7 +6,7 @@
 import express from 'express';
 import {  DATA_DIR } from '../../utils/appPaths';
 import * as db from '../../db/database';
-import { handleRouteError, meldeUndWeiter } from '../../utils/httpError';
+import { fehlertext, handleRouteError, meldeUndWeiter } from '../../utils/httpError';
 import { requireApiAdmin } from './middleware';
 import { PDF_JOB_DIR } from './pdf';
 import { fetchPrice, getLimitForApi, getRateLimitStatus } from '../../utils/financeCalc';
@@ -904,11 +904,11 @@ router.get('/admin/price-probe', requireApiAdmin, async (req: AuthedRequest, res
   // andere Cache-Zeilen als die, die Finanzen liest.
   out.currency = await getSetting(uid, 'currency', 'EUR');
   // „BrickLink kennt das Set nicht": Steht sie, liefert fetchPrice still 0.
-  const katalog = await katalogEintrag(setNumber).catch(() => null);
+  const katalog = await katalogEintrag(setNumber);
   out.katalog = katalog ? { ...katalog, gilt_als_unbekannt: ohneBricklinkPreis(katalog) } : null;
   // Was Finanzen für den gewählten Zustand bekommt — genau dieser Aufruf.
   try { out.finanzen_preis = await fetchPrice(setNumber, chosen, 'sold', out.currency, out.ttl_hours); }
-  catch (e: any) { out.finanzen_preis = { error: e.message }; }
+  catch (e) { out.finanzen_preis = { error: fehlertext(e) }; }
 
   if (req.query.live === '1') {
     const cur = out.currency;
