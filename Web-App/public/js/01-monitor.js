@@ -203,12 +203,12 @@ export async function loadMonitor() {
     const panelHTML     = panelOpen ? existingPanel.innerHTML : null;
 
     el.innerHTML = `
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem">
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,320px),1fr));gap:1rem">
         ${Object.entries(jobs).map(([k,j])=>`
-          <div class="card" style="padding:1rem">
-            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:.5rem">
+          <div class="card" style="padding:1rem;min-width:0">
+            <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:.5rem;margin-bottom:.5rem">
               <span style="font-weight:600;font-size:.9rem;display:inline-flex;align-items:center;gap:6px">${k==='bricksetRetry' ? '<svg width="16" height="16" viewBox="0 0 120 120" xmlns="http://www.w3.org/2000/svg" style="flex-shrink:0"><rect x="10" y="48" width="28" height="24" rx="3" fill="#0055BF"/><circle cx="24" cy="48" r="4.5" fill="#0055BF"/><rect x="46" y="48" width="28" height="24" rx="3" fill="#F2CD37"/><circle cx="60" cy="48" r="4.5" fill="#F2CD37"/><rect x="82" y="48" width="28" height="24" rx="3" fill="#E63329"/><circle cx="96" cy="48" r="4.5" fill="#E63329"/></svg>' : jobIconSvg(k)}${t('monitor.job.'+k, {}) !== 'monitor.job.'+k ? t('monitor.job.'+k) : (j.label||'')}</span>
-              <div style="display:flex;align-items:center;gap:.5rem">
+              <div style="display:flex;align-items:center;flex-wrap:wrap;gap:.5rem">
                 ${schedInput(k)}
                 ${k==='priceJob' ? `<button class="btn bs btn-sm" style="padding:2px 10px;font-size:.75rem" data-click="clickJobTrigger">${t('monitor.run_now')}</button>` : ''}
                 ${k==='instrQueue' ? `<button class="btn bs btn-sm" style="padding:2px 10px;font-size:.75rem" data-click="reimportMissingInstructions" data-self="1">${t('monitor.import_missing')}</button>` : ''}

@@ -66,6 +66,12 @@
 
   /* Die Statistikzahlen in der Kopfzeile brauchen den Platz nicht */
   .hstats             { display: none; }
+  /* Kopfzeile: Name und Importleiste geben nach, das Benutzermenü nie. */
+  header .logo        { min-width: 0; flex: 0 1 auto; }
+  header .logo h1     { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .hright             { min-width: 0; flex: 1 1 auto; justify-content: flex-end; gap: .5rem; }
+  .umenu              { flex: 0 0 auto; }
+  #global-import-bar  { min-width: 0 !important; max-width: none !important; flex: 1 1 60px; }
 
   /* ─ Navigation ──────────────────────────────────────────────────────── */
   /* Bleibt eine horizontal scrollbare Leiste statt einer Bottom-Bar: Bei acht
@@ -101,6 +107,25 @@
     gap: .5rem;
   }
   .frow > *, .gctrl > * { min-width: 0; }
+  /* Formularfelder zu zweit je Zeile, das erste und der Knopf über die volle
+     Breite. Die max-width aus den Inline-Styles passt nur auf den Desktop. */
+  .frow > .fg         { flex: 1 1 calc(50% - .25rem); max-width: none !important; }
+  .frow > .fg:first-child, .frow > .btn { flex: 1 1 100%; }
+  /* In Rastern gibt die Spalte die Breite vor, nicht die Mindestbreite von .fg */
+  [style*="display:grid"] > .fg { min-width: 0; }
+
+  /* Zeilen ohne Umbruch (Inline-Styles der Vorlagen) dürfen umbrechen, statt
+     die Seite zu verbreitern. Ausgenommen, was ausdrücklich einzeilig bleibt. */
+  main [style*="display:flex"]:not([style*="nowrap"]):not([style*="column"]),
+  .modal [style*="display:flex"]:not([style*="nowrap"]):not([style*="column"]) { flex-wrap: wrap; }
+
+  /* Detailzeilen: Beschriftung oben, Bedienelemente darunter, wenn es eng wird */
+  .dr                 { flex-wrap: wrap; gap: .35rem .75rem; }
+  .dr > *             { min-width: 0; }
+  .dr select, .dr input { max-width: 100%; }
+
+  /* Kennzahl-Kacheln: Zahl in einer Zeile */
+  .pstat .v           { font-size: .95rem; overflow-wrap: anywhere; }
   input, select, textarea, .btn {
     font-size: 16px;              /* < 16px lässt iOS beim Fokus hineinzoomen */
     min-height: 42px;
