@@ -46,6 +46,7 @@ class PreferencesManager @Inject constructor(
         val ERLAUBTE_DESIGNS = setOf("classic", "brick", "werkbank", "farbfaecher", "noppe", "hochglanz")
 
         const val DESIGN_SPIEGEL_DATEI = "design_spiegel"
+        const val DUNKEL_NACH_SYSTEM = "dunkel_nach_system"
         const val APP_THEME_SPIEGEL = "app_theme"
 
         /**
@@ -422,6 +423,16 @@ class PreferencesManager @Inject constructor(
      */
     fun gemerktesDesign(): String =
         designSpiegel.getString(APP_THEME_SPIEGEL, null) ?: "classic"
+
+    /**
+     * „Dunkel, wenn das System dunkel ist" — je Gerät, nicht vom Server. Im
+     * Spiegel statt im DataStore, weil es wie das Design schon das erste Bild
+     * bestimmt. Vorgabe aus: Niemand bekommt ungefragt ein anderes Design.
+     */
+    fun dunkelNachSystem(): Boolean = designSpiegel.getBoolean(DUNKEL_NACH_SYSTEM, false)
+    fun setzeDunkelNachSystem(an: Boolean) {
+        designSpiegel.edit().putBoolean(DUNKEL_NACH_SYSTEM, an).apply()
+    }
     suspend fun clearSession() {
         context.dataStore.edit {
             // BEIDE Schlüssel: Bliebe der alte stehen, wäre man nach dem

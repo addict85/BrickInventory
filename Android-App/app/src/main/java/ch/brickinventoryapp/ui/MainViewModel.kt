@@ -351,6 +351,14 @@ class MainViewModel @Inject constructor(
         .distinctUntilChanged()
         .stateIn(viewModelScope, SharingStarted.Eagerly, _state.value.appTheme)
 
+    /** Je Gerät: Werkbank, solange das System dunkel ist (siehe wirksamesDesign). */
+    private val _dunkelNachSystem = MutableStateFlow(prefs.dunkelNachSystem())
+    val dunkelNachSystem: StateFlow<Boolean> = _dunkelNachSystem.asStateFlow()
+    fun setDunkelNachSystem(an: Boolean) {
+        prefs.setzeDunkelNachSystem(an)
+        _dunkelNachSystem.value = an
+    }
+
     /**
      * Wie viel belegt die Vorschau-Ablage? Fuer die Anzeige in den
      * Einstellungen — 150 MB auf einem Telefon soll man sehen koennen.
