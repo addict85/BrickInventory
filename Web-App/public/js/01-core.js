@@ -677,6 +677,7 @@ G('btn-forgot')?.addEventListener('click', async () => {
   const btn=G('btn-forgot'); const frei=knopfBesetzt(btn);
   const d=await api('POST','/v1/auth/forgot-password',{email});
   frei();
+  if(d && d.success===false){ err.textContent=d.error||tRaw('common.network_error'); err.style.display='block'; return; }
   G('forgot-form').style.display='none';
   G('forgot-success').style.display='block';
   G('forgot-success').textContent = d.message || 'Falls die E-Mail existiert, wurde ein Link gesendet.';

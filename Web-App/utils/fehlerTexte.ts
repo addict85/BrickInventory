@@ -54,6 +54,9 @@ export const FEHLER = {
                                  en: 'Current password required' },
   aktuelles_passwort_falsch:   { de: 'Aktuelles Passwort falsch', en: 'Current password is wrong' },
   alle_felder_erforderlich:    { de: 'Alle Felder erforderlich', en: 'All fields are required' },
+  passwort_reset_nicht_eingerichtet: {
+    de: 'Passwort-Zurücksetzen per E-Mail ist auf diesem Server nicht eingerichtet (APP_BASE_URL fehlt). Bitte den Verwalter fragen.',
+    en: 'Password reset by email is not set up on this server (APP_BASE_URL is missing). Please ask the administrator.' },
   token_passwort_erforderlich: { de: 'Token und Passwort erforderlich.',
                                  en: 'Token and password are required.' },
   eigenes_konto_passwort:      { de: 'Für das eigene Konto bitte „Passwort ändern" benutzen.',
