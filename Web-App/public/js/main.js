@@ -46,6 +46,7 @@ import './18-wanted-xml.js';
 // scripts/build-frontend.js den EINSTIEG liest und nicht den Graphen —
 // jede Datei unter js/ muss also hier genannt sein.
 import './19-bricklink-xml.js';
+import './20-papierkorb.js';
 
 // ── Start ────────────────────────────────────────────────────────────────────
 // Erst NACH der Auswertung aller Module. Vorher lag der Aufruf im Rumpf von

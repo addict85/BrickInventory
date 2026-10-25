@@ -283,7 +283,7 @@
             <button class="umenu-item" role="menuitem" data-click="oeffneSicht" data-arg="haushalt"
                     data-i18n="household.group">👪 Haushalt</button>
             <button class="umenu-item" role="menuitem" data-click="oeffneSicht" data-arg="daten"
-                    data-i18n="settings.data_export">📤 Daten exportieren</button>
+                    data-i18n="settings.data_export">📤 Daten und Papierkorb</button>
             <button class="umenu-item" role="menuitem" data-click="oeffneSicht" data-arg="app"
                     data-i18n="menu.app">📱 Android-App</button>
             <!-- Abmelden steht abgesetzt, nicht als achter Punkt in einer
@@ -1040,7 +1040,7 @@
       <!-- Gefahrenzone — für alle Benutzer sichtbar -->
       <div class="sgroup-label" style="color:var(--r500)" data-i18n="settings.danger_zone">⚠️ Gefahrenzone</div>
       <div class="ssec" style="border:1px solid var(--r200);border-radius:var(--rad);padding:1rem;background:var(--r50,#fff5f5)">
-        <p style="font-size:.82rem;color:var(--mut);margin-bottom:.75rem" data-i18n="settings.danger.hint">Diese Aktionen können nicht rückgängig gemacht werden.</p>
+        <p style="font-size:.82rem;color:var(--mut);margin-bottom:.75rem" data-i18n="settings.danger.hint">Gelöschte Sets liegen danach 30 Tage im Papierkorb (Menü → Daten und Papierkorb).</p>
         <button class="btn bd" id="btn-dall" data-i18n="settings.delete_all_btn">🔥 Alle meine Sets löschen</button>
       </div>
     </div>
@@ -1333,7 +1333,7 @@
 
     <!-- ══ DATEN (Menue) ══ -->
     <div class="tab" id="tab-daten">
-      <div class="ph"><h2 class="ptitle"><span class="ptitle-icon"></span><span data-i18n="settings.data_export">📤 Daten exportieren</span></h2></div>
+      <div class="ph"><h2 class="ptitle"><span class="ptitle-icon"></span><span data-i18n="settings.data_export">📤 Daten und Papierkorb</span></h2></div>
 
       <!-- Daten exportieren: für alle Nutzer sichtbar -->
 
@@ -1365,6 +1365,18 @@
             </p>
             <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center">
               <a class="btn bs" href="/api/v1/sets/export/rebrickable" style="display:inline-flex;align-items:center;gap:6px"><svg width="16" height="16" viewBox="0 0 120 120" xmlns="http://www.w3.org/2000/svg" style="flex-shrink:0"><rect x="18" y="38" width="84" height="68" rx="3" fill="#e63329"/><polygon points="18,38 30,20 102,20 102,38" fill="#cc2a21"/><polygon points="102,20 118,30 118,86 102,106" fill="#b5231c"/><ellipse cx="43" cy="20" rx="6" ry="3" fill="#cc2a21"/><rect x="37" y="17" width="12" height="3" fill="#cc2a21"/><ellipse cx="43" cy="17" rx="6" ry="3" fill="#b5231c"/><ellipse cx="58" cy="20" rx="6" ry="3" fill="#cc2a21"/><rect x="52" y="17" width="12" height="3" fill="#cc2a21"/><ellipse cx="58" cy="17" rx="6" ry="3" fill="#b5231c"/><ellipse cx="73" cy="20" rx="6" ry="3" fill="#cc2a21"/><rect x="67" y="17" width="12" height="3" fill="#cc2a21"/><ellipse cx="73" cy="17" rx="6" ry="3" fill="#b5231c"/><ellipse cx="88" cy="20" rx="6" ry="3" fill="#cc2a21"/><rect x="82" y="17" width="12" height="3" fill="#cc2a21"/><ellipse cx="88" cy="17" rx="6" ry="3" fill="#b5231c"/><rect x="24" y="54" width="72" height="40" rx="2" fill="#fff"/><rect x="29" y="58" width="46" height="15" rx="2" fill="#f5a800"/><text x="52" y="69" text-anchor="middle" font-family="Arial,sans-serif" font-weight="800" font-size="11" fill="white">BIM</text></svg> <span data-i18n="settings.export_rb">Sets für Rebrickable exportieren</span></a>
+            </div>
+          </div>
+        </div>
+
+        <!-- Papierkorb: gelöschte Sets, manuelle Teile und Figuren (utils/papierkorb.ts) -->
+        <div class="ssec full">
+          <div style="border-top:1px solid var(--bdr);padding-top:1.1rem">
+            <div class="stit" data-i18n="trash.title">🗑️ Papierkorb</div>
+            <p style="font-size:.82rem;color:var(--mut);margin:0 0 .5rem 0" data-i18n="trash.hint">Gelöschte Sets, manuell erfasste Teile und Minifiguren bleiben 30 Tage hier und lassen sich zurückholen. Danach werden sie endgültig entfernt.</p>
+            <div id="papierkorb-liste" class="papierkorb-liste"></div>
+            <div style="margin-top:.6rem">
+              <button class="btn bs btn-sm" id="papierkorb-leeren" data-click="papierkorbLeeren" data-i18n="trash.clear" style="display:none">Papierkorb leeren</button>
             </div>
           </div>
         </div>

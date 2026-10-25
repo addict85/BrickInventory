@@ -9,6 +9,7 @@ import { clampPageSize, conditionFromAcquisitions, conditionsFromAcquisitions, w
 import { ausTabelle } from '../validate';
 import { anleitungenZuSet, anleitungenZusammenlegen } from '../instructions';
 import { mengeJoin, mengeAus } from '../bestandsmenge';
+import { legeInPapierkorb } from '../papierkorb';
 
 /**
  * Leseabfragen für Sets, samt der Ableitung des Zustands aus den Erfassungen.
@@ -590,10 +591,16 @@ async function deleteSet(userId: Blickfeld, setNumber: string) {
   // Teile und Minifiguren ohne zugehöriges Set in der DB zurück und tauchen
   // in Teileliste und Finanzsummen weiter auf.
   return db.transaction(async (tx) => {
-    const set = await tx.get('SELECT 1 FROM sets WHERE user_id = ANY($1) AND set_number = $2', [uids, setNumber]);
-    if (!set) return false;
+    const besitzer = await tx.all('SELECT user_id FROM sets WHERE user_id = ANY($1) AND set_number = $2', [uids, setNumber]);
+    if (!besitzer.length) return false;
+    // Ein Eintrag je Konto: Wiederhergestellt wird in das Konto, dem es gehörte.
+    const papierkorb: number[] = [];
+    for (const b of besitzer) {
+      const id = await legeInPapierkorb(tx, 'set', b.user_id, setNumber);
+      if (id !== null) papierkorb.push(id);
+    }
     await deleteSetRows(tx, uids, setNumber);
-    return true;
+    return papierkorb;
   });
 }
 

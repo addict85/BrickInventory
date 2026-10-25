@@ -1109,10 +1109,10 @@ router.delete('/sets/:setNumber', requireToken, async (req: AuthedRequest, res) 
     const schreibbar = await writableIds(req.apiUser.user_id);
     const gewaehlt = req.query.accounts === undefined ? schreibbar
       : await scopeIds(req.apiUser.user_id, parseScopeMode(req.query.accounts));
-    const ok = await deleteSet(gewaehlt.filter(id => schreibbar.includes(id)),
-                               pfadParam(req, 'setNumber'));
-    if (!ok) return sendeFehler(req, res, 404, 'set_nicht_gefunden');
-    res.json({ success: true });
+    const papierkorb = await deleteSet(gewaehlt.filter(id => schreibbar.includes(id)),
+                                       pfadParam(req, 'setNumber'));
+    if (!papierkorb) return sendeFehler(req, res, 404, 'set_nicht_gefunden');
+    res.json({ success: true, papierkorb });
   } catch (e) { handleRouteError(res, e, undefined, req); }
 });
 

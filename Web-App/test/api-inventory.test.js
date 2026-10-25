@@ -303,6 +303,11 @@ const C = {
   // die Adresse im PdfViewerScreen (derselbe angemeldete OkHttpClient). Fuer
   // dieses Inventar ist das derselbe Fall: eine Umsetzung, beide Apps.
   'GET /api/v1/vouchers/:id/pdf': 'nur-v1',
+  // Papierkorb (utils/papierkorb.ts): nur unter v1, kein Alt-Pfad daneben.
+  'GET /api/v1/papierkorb': 'nur-v1',
+  'POST /api/v1/papierkorb/:id/wiederherstellen': 'nur-v1',
+  'DELETE /api/v1/papierkorb/:id': 'nur-v1',
+  'DELETE /api/v1/papierkorb': 'nur-v1',
   // Der Inhaberwechsel (Marcos „auf dem Detail-Dialog kann der Inhaber nicht
   // geaendert werden"). Ebenfalls nur-v1: Beide Oberflaechen rufen dieselbe
   // Adresse. Die Regel dahinter — Aufnahmedatum bleibt, Preisalarm zieht mit,

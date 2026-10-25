@@ -134,6 +134,11 @@ test('jede Adresse der Webapp existiert auf dem Server', () => {
  * NACHGEMESSEN sind es genau diese sieben. Jede ist geprüft worden, nicht
  * vermutet:
  */
+const PAPIERKORB =
+  'Papierkorb: vorerst nur in der Webapp. Löschen in der App landet trotzdem ' +
+  'darin (der Schnappschuss entsteht im Server), zurückholen geht über die ' +
+  'Webapp. Eine App-Ansicht ist als Nachzug vorgesehen.';
+
 const NUR_WEB = new Map([
   ['/api/v1/admin/job-status',
    'Stand des Preis-Jobs samt BrickLink-Kontingent. Die App zeigt BEIDES ' +
@@ -223,6 +228,12 @@ const NUR_WEB = new Map([
    'Die Einzelteile einer Minifigur. Dieselbe Herkunft: Der Export löste ' +
    'fehlende Figuren in ihre Teile auf, weil man die Figur oft nicht als ' +
    'Ganzes kaufen kann. Mit dem Export entfiel der einzige Aufrufer.'],
+  ['/api/v1/papierkorb',
+   PAPIERKORB],
+  ['/api/v1/papierkorb/:X',
+   PAPIERKORB],
+  ['/api/v1/papierkorb/:X/wiederherstellen',
+   PAPIERKORB],
 ]);
 
 test('was nur die Webapp kann, hat einen Grund', () => {

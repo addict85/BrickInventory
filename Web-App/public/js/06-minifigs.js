@@ -6,6 +6,7 @@ import { condBadges, leereLagerortFeld, ownerBadges, selectedOwner, selectedStor
 import { loadFinance } from './04-finance.js';
 import { confirmDelete } from './07-admin.js';
 import { openManDetail } from './13-acquisition-modals.js';
+import { geloeschtMitRueckgaengig } from './20-papierkorb.js';
 
 // ═══ Minifiguren + manuelle Teile (Erfassung, Bewertung) ═══
 // Teil von app.js — die Dateien in public/js/ werden in nummerierter
@@ -288,7 +289,7 @@ export function renderFigs(list, target) {
 export async function deleteManualFig(figNumber, owner) {
   if (!await confirmDelete(tRaw('figs.delete.title'), t('gallery.delete.text',{name:figNumber}), '👷')) return false;
   const d = await api('DELETE', `/v1/minifigs/${encodeURIComponent(figNumber)}${owner ? `?owner=${encodeURIComponent(owner)}` : ''}`);
-  if (d.success) { toast(tRaw('figs.deleted'), 'success'); loadMinifigs(); loadManualFigsTable(); return true; }
+  if (d.success) { geloeschtMitRueckgaengig(tRaw('figs.deleted'), d); loadMinifigs(); loadManualFigsTable(); return true; }
   else { toast(d.error || t('settings.error'), 'error'); return false; }
 }
 
@@ -687,7 +688,7 @@ export async function updateManualPart(partNumber, colorId, body, owner) {
 export async function deleteManualPart(partNumber, colorId, owner) {
   if (!await confirmDelete(tRaw('parts.delete.title'), t('gallery.delete.text',{name:partNumber}), '🔩')) return false;
   const d = await api('DELETE', `/v1/parts/${encodeURIComponent(partNumber)}/${colorId}${owner ? `?owner=${encodeURIComponent(owner)}` : ''}`);
-  if (d.success) { toast(tRaw('parts.deleted'), 'success'); loadManualParts(); return true; }
+  if (d.success) { geloeschtMitRueckgaengig(tRaw('parts.deleted'), d); loadManualParts(); return true; }
   else { toast(d.error || t('settings.error'), 'error'); return false; }
 }
 

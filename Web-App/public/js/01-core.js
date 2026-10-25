@@ -457,7 +457,8 @@ export function observeLazyImages(root) {
   }
   imgs.forEach(img => { img.classList.add('observed'); window._imgObserver.observe(img); });
 }
-export function toast(msg, type='info') {
+/** @param {{text: string, fn: () => any}} [aktion] Knopf in der Meldung, z. B. „Rückgängig" */
+export function toast(msg, type='info', aktion) {
   const c = G('toasts'), el = document.createElement('div');
   el.className=`toast ${type}`;
   // textContent statt innerHTML: msg enthält regelmässig Server-Fehlermeldungen
@@ -467,7 +468,16 @@ export function toast(msg, type='info') {
   const text = document.createElement('span');
   text.textContent = String(msg ?? '');
   el.append(icon, text);
-  c.appendChild(el); setTimeout(()=>el.remove(),4500);
+  if (aktion) {
+    const knopf = document.createElement('button');
+    knopf.type = 'button';
+    knopf.className = 'toast-aktion';
+    knopf.textContent = aktion.text;
+    knopf.onclick = () => { el.remove(); aktion.fn(); };
+    el.append(knopf);
+  }
+  // Mit Knopf länger: Man muss ihn lesen UND treffen können.
+  c.appendChild(el); setTimeout(()=>el.remove(), aktion ? 9000 : 4500);
 }
 /**
  * Aufruf der eigenen API. Liefert IMMER ein Objekt — nie eine Ausnahme.

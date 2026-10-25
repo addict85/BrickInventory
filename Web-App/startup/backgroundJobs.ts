@@ -13,6 +13,8 @@ import * as catalogSync from '../jobs/catalogSync';
 import * as nachlaeufe from '../jobs/startNachlaeufe';
 import { purgeAltePreise } from '../utils/priceHistory';
 import { purgeExpiredTokens } from '../utils/auth';
+import { raeumePapierkorbAuf } from '../utils/papierkorb';
+import { logAndContinue } from '../utils/httpError';
 import { startImgCacheCleanup } from '../routes/imgProxy';
 import { startPdfJobCleanup } from '../routes/api_v1/pdf';
 
@@ -61,6 +63,16 @@ export async function starteHintergrundlaeufe(): Promise<void> {
     };
     purge();
     setInterval(purge, 60 * 60 * 1000).unref();
+  }
+
+  // Papierkorb-Einträge nach Ablauf der 30 Tage entfernen.
+  {
+    const leeren = async () => {
+      const n = await raeumePapierkorbAuf().catch(logAndContinue('papierkorb:aufräumen'));
+      if (n) console.log(`[papierkorb] ${n} abgelaufene Einträge entfernt`);
+    };
+    leeren();
+    setInterval(leeren, 60 * 60 * 1000).unref();
   }
 
   // Bild-Cache aufräumen — hier statt in registerImgProxy(), weil das in

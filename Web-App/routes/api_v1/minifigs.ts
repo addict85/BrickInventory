@@ -15,6 +15,7 @@ import { inventarNachKandidaten } from '../../utils/rbInventar';
 import { sendeFehler } from '../../utils/fehlerTexte';
 import { normalisiereLagerort, setzeLagerort } from '../../utils/lagerort';
 import { blJoin, blNummerSql } from '../../utils/blZuordnung';
+import { legeInPapierkorb } from '../../utils/papierkorb';
 const router = express.Router();
 
 // ── MINIFIGS ─────────────────────────────────────────────────────────────────
@@ -73,13 +74,17 @@ router.delete('/minifigs/:figNumber', requireToken, async (req: AuthedRequest, r
     // Wie bei den Teilen: Ohne den Parameter das eigene Konto.
     const besitzer = await resolveWriteTarget(req.apiUser.user_id, req.query.owner);
     if (besitzer === null) return sendeFehler(req, res, 403, 'kein_zugriff_konto');
-    const r = await loescheManuelleFigur(db, besitzer, String(req.params.figNumber));
-    if (r.changes === 0) return sendeFehler(req, res, 404, 'minifig_nicht_manuell');
-    // OHNE .catch(() => {}) — siehe Session-Route: verwaiste Erfassungen
-    // zählen in den Finanzsummen weiter, ohne dass eine Ansicht sie zeigt.
-    await db.run('DELETE FROM minifig_acquisitions WHERE user_id=$1 AND fig_number=$2',
-      [besitzer, req.params.figNumber]);
-    res.json({ success: true });
+    const fn = String(req.params.figNumber);
+    const geloescht = await db.transaction(async (tx) => {
+      const id = await legeInPapierkorb(tx, 'figur', besitzer, fn);
+      const r = await loescheManuelleFigur(tx, besitzer, fn);
+      if (r.changes === 0) return null;
+      // Wie bei den Teilen: verwaiste Erfassungen zählten in den Finanzsummen weiter.
+      await tx.run('DELETE FROM minifig_acquisitions WHERE user_id=$1 AND fig_number=$2', [besitzer, fn]);
+      return id;
+    });
+    if (geloescht === null) return sendeFehler(req, res, 404, 'minifig_nicht_manuell');
+    res.json({ success: true, papierkorb: [geloescht] });
   } catch (e) { handleRouteError(res, e, undefined, req); }
 });
 

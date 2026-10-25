@@ -228,6 +228,10 @@ export const FEHLER = {
                                  en: 'This voucher already exists.' },
   nur_pdf:                     { de: 'Nur PDF-Dateien', en: 'PDF files only' },
 
+  // ── Papierkorb ───────────────────────────────────────────────────────────
+  papierkorb_schon_vorhanden:  { de: 'Wurde inzwischen neu angelegt — erst den neuen Eintrag löschen, dann wiederherstellen.',
+                                 en: 'Has been added again since — delete the new entry first, then restore.' },
+
   // ── Export und Import der Gutscheine (Marcos Liste, Stueck 3) ────────────
   //
   // `keine_gutscheine` ist kein Fehler des Nutzers, sondern eine Auskunft:
