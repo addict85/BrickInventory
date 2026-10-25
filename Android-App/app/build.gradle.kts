@@ -211,11 +211,11 @@ android {
 
 // ── DataStore auf EINE Fassung festnageln ─────────────────────────────────────
 //
-// Der Riegel bleibt, die Zahl wandert: 1.1.7 → 1.2.1. Sein Zweck war nie die
+// Der Riegel bleibt, die Zahl wandert: 1.1.7 → 1.2.1 → 1.3.0. Sein Zweck war nie die
 // bestimmte Nummer, sondern dass eine TRANSITIVE Anhebung (über eine andere
 // Abhängigkeit) die 16-KB-Tauglichkeit nicht still wieder kaputt macht.
 //
-// Ob 1.2.1 ausgerichtet ist, war in dieser Umgebung nicht nachzusehen —
+// Ob eine Fassung ausgerichtet ist, war in dieser Umgebung nicht nachzusehen —
 // dl.google.com ist gesperrt, das AAR also nicht herunterladbar. Statt es zu
 // hoffen, misst es jetzt die Action am GEBAUTEN APK:
 // tools/apk-ausrichtung.py liest die ELF-Köpfe aller mitgelieferten .so und
@@ -223,12 +223,12 @@ android {
 // Kommentar hier vorher nur verlangt hat.
 configurations.configureEach {
     resolutionStrategy {
-        force("androidx.datastore:datastore:1.2.1")
-        force("androidx.datastore:datastore-android:1.2.1")
-        force("androidx.datastore:datastore-core:1.2.1")
-        force("androidx.datastore:datastore-core-android:1.2.1")
-        force("androidx.datastore:datastore-preferences:1.2.1")
-        force("androidx.datastore:datastore-preferences-android:1.2.1")
+        force("androidx.datastore:datastore:1.3.0")
+        force("androidx.datastore:datastore-android:1.3.0")
+        force("androidx.datastore:datastore-core:1.3.0")
+        force("androidx.datastore:datastore-core-android:1.3.0")
+        force("androidx.datastore:datastore-preferences:1.3.0")
+        force("androidx.datastore:datastore-preferences-android:1.3.0")
     }
 }
 
