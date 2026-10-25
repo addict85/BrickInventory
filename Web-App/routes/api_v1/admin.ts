@@ -9,7 +9,8 @@ import * as db from '../../db/database';
 import { handleRouteError, meldeUndWeiter } from '../../utils/httpError';
 import { requireApiAdmin } from './middleware';
 import { PDF_JOB_DIR } from './pdf';
-import { getLimitForApi, getRateLimitStatus } from '../../utils/financeCalc';
+import { fetchPrice, getLimitForApi, getRateLimitStatus } from '../../utils/financeCalc';
+import { katalogEintrag, ohneBricklinkPreis } from '../../utils/setNummer';
 import { scrapeInstructionsFromFallback, loescheAnleitungen } from '../../utils/instructions';
 import { imgProxyFailures } from '../../utils/imgProxyStats';
 import { getPoolStats } from '../../db/database';
@@ -22,7 +23,7 @@ import { getJobStatus, triggerNow } from '../../jobs/priceJob';
 import { SET_IMAGES_DIR } from '../../utils/appPaths';
 import { anfragenJeMinute } from '../../jobs/imageQueue';
 import { DAILY_JOBS } from '../../jobs/dailyScheduler';
-import { getGlobalSetting, setGlobalSetting, setGlobalTrigger, deleteGlobalSetting } from '../../utils/settings';
+import { getGlobalSetting, getSetting, setGlobalSetting, setGlobalTrigger, deleteGlobalSetting } from '../../utils/settings';
 import { ausRetryWarteschlange } from '../../clients/brickset';
 import { sendeFehler } from '../../utils/fehlerTexte';
 import { mengeSkalar } from '../../utils/bestandsmenge';
@@ -897,6 +898,17 @@ router.get('/admin/price-probe', requireApiAdmin, async (req: AuthedRequest, res
     price_cache: cacheRows,
     price_history_last5: histRows,
   };
+
+  // Dieselbe Währung wie die Bewertung (getSetting fällt auf die globale
+  // Vorgabe zurück, user_settings allein nicht) — sonst zeigte die Probe
+  // andere Cache-Zeilen als die, die Finanzen liest.
+  out.currency = await getSetting(uid, 'currency', 'EUR');
+  // „BrickLink kennt das Set nicht": Steht sie, liefert fetchPrice still 0.
+  const katalog = await katalogEintrag(setNumber).catch(() => null);
+  out.katalog = katalog ? { ...katalog, gilt_als_unbekannt: ohneBricklinkPreis(katalog) } : null;
+  // Was Finanzen für den gewählten Zustand bekommt — genau dieser Aufruf.
+  try { out.finanzen_preis = await fetchPrice(setNumber, chosen, 'sold', out.currency, out.ttl_hours); }
+  catch (e: any) { out.finanzen_preis = { error: e.message }; }
 
   if (req.query.live === '1') {
     const cur = out.currency;
