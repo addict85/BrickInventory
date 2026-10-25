@@ -109,15 +109,17 @@ class BarcodeDoubleAddGuardTest {
         }
     }
 
-    /** Reihenfolge der unteren Reiter — Vergleich steht hinter Katalog. */
+    /**
+     * Die untere Leiste: fünf Ziele wie in der Webapp, Merkliste vor Katalog
+     * (Marcos Vorgabe). Bis zum 25.10. stand hier „Vergleich hinter Katalog" —
+     * der Vergleich ist seither im Konto-Menü.
+     */
     @Test
-    fun `Vergleich steht in der Navigationsleiste hinter Katalog`() {
+    fun `die Leiste hat fuenf Ziele, die Merkliste steht vor dem Katalog`() {
         val src = code(read("AppNavigation.kt"))
-        val katalog = src.indexOf("Screen.Catalog,")
-        val vergleich = src.indexOf("Screen.Comparison,")
-        assert(katalog >= 0 && vergleich >= 0) { "Reiter-Einträge nicht gefunden — Test veraltet?" }
-        assert(katalog < vergleich) {
-            "Der Reiter Vergleich muss rechts von Katalog stehen (Nutzerwunsch)"
+        val ziele = Regex("""add\(Triple\(Screen\.(\w+)""").findAll(src).map { it.groupValues[1] }.toList()
+        assert(ziele == listOf("Gallery", "PartsList", "Finance", "Wanted", "Catalog")) {
+            "Die Leiste zeigt $ziele — erwartet sind fünf Ziele in der Reihenfolge der Webapp"
         }
     }
 
