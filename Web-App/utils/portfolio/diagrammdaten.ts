@@ -4,18 +4,7 @@ import { buildChart } from '../chartData';
  * Aus den rekonstruierten Rohpunkten die fertigen Diagrammdaten machen:
  * Wertebereich mit Rand, fünf Y-Beschriftungen, X-Beschriftungen und die
  * Prozentänderung über den Zeitraum.
- *
- * ── Warum eigene Datei (Nachtrag 135) ───────────────────────────────────────
- *
- * getPortfolioHistory() war 449 Zeilen und tat drei Dinge nacheinander:
- * entscheiden, in welcher Auflösung gerechnet wird; die Kurve aus dem
- * Preisverlauf JE SET rekonstruieren; und daraus Achsen und Beschriftungen
- * machen. Nur das dritte ist reine Rechnung ohne Datenbank — und damit der
- * Teil, den man beim Suchen nach einem Achsenfehler nicht in zweihundert
- * Zeilen SQL-Rekonstruktion suchen sollte.
- *
- * Die Schnittstelle ist schmal: rein die Rohpunkte und die Währung, raus die
- * fertigen Diagrammdaten. Keine Datenbank, kein Zustand.
+ * Ausführlich: docs/begruendungen/utils/portfolio/diagrammdaten.ts.md#bauediagrammdaten
  */
 export function baueDiagrammdaten(rawPoints: any[], currency: string, downsampled: boolean) {
 // X-label formatter — all label logic lives here on the server

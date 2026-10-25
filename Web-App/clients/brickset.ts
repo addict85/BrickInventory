@@ -29,12 +29,8 @@ function httpsGetOnce(url: string): Promise<{ status: number; body: string }> {
           // Eine Umleitung OHNE Location-Kopfzeile ist nicht befolgbar, und
           // hier waere sie teuer: `attempt(undefined)` liefe in
           // https.get(undefined, …), das wirft — AUS EINEM ANTWORT-RUECKRUF
-          // heraus, also nicht mehr im Promise-Rumpf. Damit waere es eine
-          // uncaughtException, und der Handler in server.ts beendet den Worker
-          // (Code 1, der Cluster forkt Ersatz). Also hier abweisen, wo es
-          // entsteht. Zweiter Fundort desselben Musters — der erste war
-          // clients/rebrickable.ts, dort fing ein `new URL()` in einem try
-          // den Fall noch ab.
+          // heraus, also nicht mehr im Promise-Rumpf. Damit waere es eine …
+          // Ausführlich: docs/begruendungen/clients/brickset.ts.md#httpsgetonce
           if (!ziel) return reject(new Error(
             `Brickset: Umleitung ${res.statusCode} ohne Location-Kopfzeile`));
           return attempt(ziel);
@@ -219,16 +215,7 @@ async function getInstructions(setNumber: string) {
     const { status, body } = await httpsGet(`${BASE}/getInstructions2?apiKey=${encodeURIComponent(key)}&setNumber=${encodeURIComponent(n)}`);
     if (status !== 200) {
       // 5xx ist ein Fehler der Gegenseite, kein Kontingentproblem.
-      //
-      // VORHER wurde JEDER Nicht-200-Status wie eine Kontingentüberschreitung
-      // behandelt: ab in die Warteschlange, nächster Versuch MORGEN. Ein
-      // "502 Bad Gateway" von Cloudflare — Brickset war für ein paar Sekunden
-      // nicht erreichbar — blockierte damit einen Tag lang, und im Monitoring
-      // stand eine Fehlermeldung, die nach einem dauerhaften Problem aussah.
-      //
-      // 5xx: heute erneut versuchen. 4xx (ausser den oben schon behandelten
-      // 429): kein Wiederholversuch, direkt auf die Ersatzquelle — ein
-      // "400 Bad Request" wird morgen nicht besser.
+      // Ausführlich: docs/begruendungen/clients/brickset.ts.md#getinstructions-errmsg
       const errMsg = `HTTP ${status}: ${body?.substring(0, 500)}`;
       console.log(`  Brickset getInstructions HTTP ${status} for ${n}: ${body?.substring(0, 200)}`);
       if (status >= 500) {
@@ -272,12 +259,7 @@ async function getInstructions(setNumber: string) {
 
 /**
  * Set über eine freie Suchanfrage finden — EAN, Barcode oder Bestellnummer.
- *
- * Es gab diese Funktion zweimal (getSetByEan und getSetByBarcode), Zeichen für
- * Zeichen gleich bis auf die Beschriftung in der Logzeile: Brickset kennt für
- * beides keinen eigenen Parameter, beide schickten dieselbe Volltextsuche.
- * Jetzt eine Umsetzung mit einer Herkunftsangabe fürs Log; die beiden alten
- * Namen bleiben als dünne Hüllen erhalten, damit Aufrufer lesbar bleiben.
+ * Ausführlich: docs/begruendungen/clients/brickset.ts.md#findsetbyquery
  */
 async function findSetByQuery(query: string, herkunft: string) {
   const key = await getApiKey();

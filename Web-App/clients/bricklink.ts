@@ -115,27 +115,13 @@ function getItemImageUrl(setNumber: string) {
 
 /**
  * Enthält die Antwort einen brauchbaren Preis?
- *
- * Die Regel steht in utils/preisRegel.ts — und zwar dieselbe, die beim LESEN
- * gilt. Vorher genügte hier ein qty_avg_price > 0; damit galt eine Antwort
- * ohne avg_price als brauchbar, der Rückfall auf `stock` unterblieb, und der
- * Leser meldete danach trotzdem „kein Preis". Die Begründung im Einzelnen
- * steht in preisRegel.ts.
+ * Ausführlich: docs/begruendungen/clients/bricklink.ts.md#hasusableprice
  */
 const hasUsablePrice = hatPreis;
 
 /**
  * Preisabfrage mit Rückfall von 'sold' auf 'stock'.
- *
- * 'sold' (verkauft, letzte sechs Monate) ist die ehrlichere Grundlage für „was
- * ist meine Sammlung wert" — Angebotspreise enthalten auch das, was niemand
- * zahlt. Aber: Für selten gehandelte Artikel gibt es in sechs Monaten
- * schlicht keinen Verkauf, und BrickLink liefert dann eine Antwort mit
- * avg_price = 0. Ohne Rückfall stünde dort dauerhaft kein Marktpreis.
- *
- * Reihenfolge deshalb: erst 'sold'; liefert das keinen Preis, 'stock'. Das
- * Ergebnis trägt `guide_used`, damit nachvollziehbar bleibt, woher der Wert
- * kommt (und die Anzeige es später kennzeichnen könnte).
+ * Ausführlich: docs/begruendungen/clients/bricklink.ts.md#getpriceguide
  */
 async function getPriceGuide(setNumber: string, condition = 'N', guideType = 'sold', currencyCode = 'EUR') {
   const first = await getPriceGuideRaw(setNumber, condition, guideType, currencyCode);
@@ -193,12 +179,7 @@ async function getPriceGuideRaw(setNumber: string, condition = 'N', guideType = 
 
 /**
  * Zwischenspeicher leeren — ohne Setnummer den ganzen.
- *
- * Der Parameter war ohne Vorgabe deklariert, obwohl der else-Zweig genau den
- * Aufruf OHNE Argument bedient (Verwaltung → „Alle Caches leeren"). Solange der
- * Aufrufer die Funktion per spätem `require()` holte, fiel das niemandem auf:
- * `require()` liefert `any`, und `any` prüft keine Argumentzahl. Mit dem echten
- * Import meldete tsc es sofort (Nachtrag 132).
+ * Ausführlich: docs/begruendungen/clients/bricklink.ts.md#clearsubsetscache
  */
 async function clearSubsetsCache(sn: string | null = null) {
   if (sn) await db.run('DELETE FROM subsets_cache WHERE set_number = $1', [mitVersion(sn)]);

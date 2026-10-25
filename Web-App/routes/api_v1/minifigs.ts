@@ -50,14 +50,7 @@ router.put('/minifigs/:figNumber', requireToken, async (req: AuthedRequest, res)
 
 /**
  * PUT /api/v1/minifigs/:figNumber/storage — Lagerort setzen.
- *
- * Wortgleich zum Gegenstueck bei den Teilen (routes/api_v1/parts.ts) und aus
- * demselben Grund: Trifft ALLE Zeilen dieser Figur im Schreibbereich.
- * Dieselbe Figur steckt in mehreren Sets und damit in mehreren Zeilen; wer in
- * der Ansicht „Kiste 3" eintraegt, meint die Figur, nicht eine ihrer Zeilen.
- *
- * Neu seit Marcos Befund vom 24.09. — bis dahin konnte eine Minifigur
- * ueberhaupt keinen Lagerort tragen (Migration 0024).
+ * Ausführlich: docs/begruendungen/routes/api_v1/minifigs.ts.md#put-minifigs-fignumber-storage
  */
 router.put('/minifigs/:figNumber/storage', requireToken, async (req: AuthedRequest, res) => {
   try {
@@ -105,9 +98,7 @@ router.get('/minifigs/manual', requireToken, async (req: AuthedRequest, res) => 
  * und benutzt dieselbe Gruppierung wie die Liste — vorher hatte die Webapp
  * eine eigene Abfrage (ohne Blickfeld, mit anderer Gruppierung) und die App
  * rechnete aus ihrer geladenen Liste.
- *
- * Die Route steht VOR /minifigs/:figNumber/… — sonst nähme Express `stats`
- * für eine Figurennummer.
+ * Ausführlich: docs/begruendungen/routes/api_v1/minifigs.ts.md#get-minifigs-stats
  */
 router.get('/minifigs/stats', requireToken, async (req: AuthedRequest, res) => {
   try {
@@ -225,15 +216,7 @@ router.get('/minifigs/:figNumber/parts', requireToken, async (req: AuthedRequest
 // ── GET /api/v1/minifigs/:figNumber/sets ─────────────────────────────────────
 /**
  * In welchen Sets steckt diese Figur?
- *
- * Gegenstück zu /api/v1/parts/:partNumber/:colorId/sets. Beide rufen dieselbe
- * Funktion in utils/handlers/shared.ts auf — die Frage ist zweimal dieselbe,
- * nur Tabelle und Schlüssel wechseln. Zwei getrennte Abfragen waeren genau die
- * Sorte Doppelung, die in diesem Projekt schon mehrfach auseinandergelaufen
- * ist (zuletzt routes/minifigs.ts gegen routes/parts.ts).
- *
- * Blickfeld, nicht eigenes Konto: Im Haushalt soll auch das Set des
- * Geschwisterkontos auftauchen, in dem dieselbe Figur steckt.
+ * Ausführlich: docs/begruendungen/routes/api_v1/minifigs.ts.md#get-minifigs-fignumber-sets
  */
 router.get('/minifigs/:figNumber/sets', requireToken, async (req: AuthedRequest, res) => {
   try {

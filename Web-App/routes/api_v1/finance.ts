@@ -14,19 +14,11 @@ const router = express.Router();
 router.get('/finance/valuation', requireToken, async (req: AuthedRequest, res) => {
   try {
     const data = await computeSetsValuation(req.apiUser.user_id, await scopeIds(req.apiUser.user_id, parseScopeMode(req.query.accounts)));
-    // ── Kein `rate_limit` mehr in dieser Antwort ────────────────────────────
-    //
-    // Hier stand `rate_limit: await getRateLimitStatus('bricklink')`, mit der
-    // Begründung „wie in /api/finance/valuation (Parität) — die Webapp zeigt
-    // damit den API-Verbrauch an". Beides stimmte nicht: routes/finance.ts hat
-    // das Feld gar nicht, und was Einstellungsseite und Android anzeigen, ist
-    // `rate_limits` (Plural) aus /v1/admin/cache-stats. Den Singular las kein
-    // einziger Verbraucher — nachgemessen über beide Clients in diesem Ablagen.
-    //
+    // Kein `rate_limit` mehr in dieser Antwort
     // Gekostet hat er drei Datenbankabfragen JE AUFRUF (gemessen, nicht
     // geschätzt: getRateLimitStatus holt Zähler, Datum und Grenze einzeln) —
-    // bei jedem Öffnen des Finanzreiters und nach jedem Erfassen, weil
-    // loadValuation() daran hängt.
+    // bei jedem Öffnen des Finanzreiters und nach jedem Erfassen, weil …
+    // Ausführlich: docs/begruendungen/routes/api_v1/finance.ts.md#get-finance-valuation
     res.json({ success:true, total_value: data.totals.qty_avg, ...data });
   } catch (e) { handleRouteError(res, e, undefined, req); }
 });

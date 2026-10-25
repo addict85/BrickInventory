@@ -12,8 +12,13 @@ Gemessen am 25.10.2026: 50,5 % der Zeilen in `server.ts`, `routes/` und
 40 Zeilen Logik und 200 Zeilen Erzählung ist nicht prüfbar.
 
 - Neue Kommentare halten sich daran.
-- Bestehende lange Kommentare werden gekürzt, **wenn** die Stelle ohnehin
-  angefasst wird — nicht in eigenen Aufräum-Commits.
+- Die langen Kommentare des Servers stehen seit dem 25.10.2026 wörtlich in
+  `Web-App/docs/begruendungen/<datei>.md`; im Code steht je Stelle der erste
+  Absatz und ein Verweis `Ausführlich: docs/begruendungen/…#anker`. Die
+  Kurzfassung ist maschinell gewählt — wer die Stelle anfasst, schreibt sie zu
+  einem echten *Warum* um. Neues kommt nicht dorthin, sondern in den Commit.
+- Ein Test prüft Code, nicht Kommentartext. Wo eine Begründung im Code stehen
+  muss (z. B. eine bewusste Ausnahme), gehört sie in die Kurzfassung.
 - Testdateien dürfen im Kopf die Gegenproben aufzählen; das ist dort Teil
   der Prüfung, nicht Geschichte.
 

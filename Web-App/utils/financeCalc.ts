@@ -1,17 +1,6 @@
 /**
  * Der Finanzteil — eine Tuer fuer alle Aufrufstellen.
- *
- * ── Warum die Datei nur noch weiterreicht (Nachtrag 171) ────────────────────
- *
- * Sie trug 1529 Zeilen und drei Aufgaben zugleich: Preisbeschaffung,
- * Bewertung und Gewinnrechnung. Wer am Anfragekontingent etwas aenderte,
- * arbeitete in derselben Datei wie die Gewinnrechnung.
- *
- * Jetzt liegen sie unter utils/finance/ in der Reihenfolge, in der sie
- * aufeinander stehen — die Schichtung hat `tsc` beim Trennen aufgedeckt, nicht
- * ich (siehe den Kopf von preise.ts). Sechzehn Aufrufstellen zeigen weiterhin
- * hierher; keine einzige musste angefasst werden. Genau dafuer ist diese Datei
- * geblieben.
+ * Ausführlich: docs/begruendungen/utils/financeCalc.ts.md#abschnitt
  */
 
 export {
