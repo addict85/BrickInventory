@@ -49,11 +49,11 @@ export function beideSchreibweisen(setNumber: string | number): [string, string]
 // unter der Nummer MIT Anhang; zwei der drei suchten unter der rohen.
 import * as db from '../db/database';
 
-export interface KatalogEintrag { is_gear?: number | null; bl_type?: string | null; }
+export interface KatalogEintrag { is_gear?: number | null; bl_type?: string | null; fetched_at?: string | Date | null; }
 
 /** Der Katalog-Eintrag zu einem Set — unter der Schreibweise, unter der er abgelegt wird. */
 export async function katalogEintrag(setNumber: string): Promise<KatalogEintrag | null> {
-  return db.get('SELECT is_gear, bl_type FROM catalog_cache WHERE set_number = $1',
+  return db.get('SELECT is_gear, bl_type, fetched_at FROM catalog_cache WHERE set_number = $1',
                 [mitVersion(setNumber)]);
 }
 
@@ -62,6 +62,13 @@ export async function katalogEintrag(setNumber: string): Promise<KatalogEintrag 
  * gibt? Dann braucht es den Abruf nicht — er kostet nur das Tageskontingent
  * und endet ohnehin im Fehler.
  */
-export function ohneBricklinkPreis(eintrag: KatalogEintrag | null | undefined): boolean {
-  return eintrag?.is_gear === 1 && eintrag?.bl_type === 'NONE';
+export function ohneBricklinkPreis(eintrag: KatalogEintrag | null | undefined, jetzt = Date.now()): boolean {
+  if (!(eintrag?.is_gear === 1 && eintrag?.bl_type === 'NONE')) return false;
+  // Nur eine Weile: Ein neues Set steht oft erst Tage nach dem Erscheinen im
+  // BrickLink-Katalog. Ohne Frist bliebe es fuer immer ohne Marktpreis.
+  const seit = eintrag.fetched_at ? new Date(eintrag.fetched_at).getTime() : NaN;
+  return Number.isFinite(seit) && jetzt - seit < UNBEKANNT_GILT_TAGE * 86_400_000;
 }
+
+/** Wie lange „BrickLink kennt dieses Set nicht" gilt, bevor erneut gefragt wird. */
+export const UNBEKANNT_GILT_TAGE = 7;

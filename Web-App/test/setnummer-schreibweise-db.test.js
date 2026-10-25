@@ -151,7 +151,7 @@ test('die Schreibweise wird nirgends noch einmal ausgerechnet', () => {
                      /\?\s*[\w.]+\s*:\s*`\$\{[^}]+\}-1`/,     // die Ergaenzung selbst
                      /\.replace\(\/-(?:\\\\d|\[0-9\])\+\$\//])  // und das Abschneiden
       if (m.test(code)) { eigene.push(rel); break; }
-    if (/SELECT is_gear, bl_type FROM catalog_cache/.test(code)) vorpruefer.push(rel);
+    if (/SELECT is_gear, bl_type(?:, fetched_at)? FROM catalog_cache/.test(code)) vorpruefer.push(rel);
   }
   // KEINE Ausnahmen mehr. utils/setAdd.ts und utils/setService.ts trugen den
   // Normalisierer zuletzt noch absichtlich doppelt, mit zwei Begruendungen:

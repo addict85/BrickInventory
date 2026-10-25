@@ -98,14 +98,16 @@ test('bedeutungstragende Zeichen in der Finanztabelle sind erklärt', () => {
     .replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/[^\n]*$/gm, '');
 
   const badges = [...src.matchAll(/<span class="pst[^"]*"([^>]*)>/g)].map(m => m[1]);
-  assert.equal(badges.length, 2, `Erwartet genau zwei Zustände (Preis da / Preis fehlt), gefunden: ${badges.length}`);
+  // Drei seit dem 25.10.: Preis da, Abruf gescheitert, kein Preis bekannt.
+  assert.equal(badges.length, 3, `Erwartet genau drei Zustände (Preis da / Abruf gescheitert / kein Preis), gefunden: ${badges.length}`);
   for (const attrs of badges) {
     assert.match(attrs, /\btitle="/,      `Plakette ohne title: ${attrs}`);
     assert.match(attrs, /\baria-label="/, `Plakette ohne aria-label: ${attrs}`);
   }
 
   // Die Texte kommen aus den Sprachdateien, nicht als Literal im Code.
-  for (const key of ['finance.price_loaded', 'finance.price_failed', 'finance.price_status']) {
+  for (const key of ['finance.price_loaded', 'finance.price_failed', 'finance.price_status',
+                     'finance.price_none', 'finance.price_unknown_bl']) {
     assert.ok(src.includes(`'${key}'`), `Schlüssel ${key} wird nicht verwendet`);
   }
 });

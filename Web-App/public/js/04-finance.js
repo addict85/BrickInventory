@@ -93,6 +93,11 @@ function priceStatusBadge(s){
     const titel = `${t('finance.price_failed')}: ${s.error}`;
     return `<span class="pst pst-err" title="${esc(titel)}" role="img" aria-label="${esc(titel)}">⚠</span>`;
   }
+  // Ohne Marktpreis kein Haken: Er sagte „vorhanden" über einer leeren Spalte.
+  if (s.no_price) {
+    const titel = t(s.bl_unbekannt ? 'finance.price_unknown_bl' : 'finance.price_none');
+    return `<span class="pst pst-leer" title="${esc(titel)}" role="img" aria-label="${esc(titel)}">–</span>`;
+  }
   const titel = t('finance.price_loaded');
   return `<span class="pst pst-ok" title="${esc(titel)}" role="img" aria-label="${esc(titel)}">✓</span>`;
 }

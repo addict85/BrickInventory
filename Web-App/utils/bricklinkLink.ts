@@ -145,7 +145,7 @@ export async function resolveViaApi(setNumber: string): Promise<BlLink> {
 
   await db.run(
     `INSERT INTO catalog_cache (set_number, name, bl_type, is_gear) VALUES ($1,$2,$3,$4)
-     ON CONFLICT (set_number) DO UPDATE SET bl_type = $3`,
+     ON CONFLICT (set_number) DO UPDATE SET bl_type = $3, fetched_at = NOW()`,
     [n, `Set ${n}`, found, found === 'NONE' ? 1 : 0]
   ).catch(() => {});
   return toLink(n, found);

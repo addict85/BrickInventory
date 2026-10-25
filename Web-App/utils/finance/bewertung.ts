@@ -97,7 +97,7 @@ async function computeSetsValuation(viewerId: number, ids: Blickfeld) {
     // Aufrufer mitgibt. Die beiden Tabellen haben also VERSCHIEDENE
     // Schluesselgewohnheiten — deshalb wird hier normalisiert und in der
     // Abfrage darunter nicht.
-    db.all('SELECT set_number, is_gear, bl_type FROM catalog_cache WHERE set_number = ANY($1)',
+    db.all('SELECT set_number, is_gear, bl_type, fetched_at FROM catalog_cache WHERE set_number = ANY($1)',
            [setNumbers.map(mitVersion)]),
     db.all(
       `SELECT ${PRICE_CACHE_COLS} FROM price_cache
@@ -200,6 +200,8 @@ async function computeSetsValuation(viewerId: number, ids: Blickfeld) {
       from_cache: anyPrice ? !!anyPrice.from_cache : true,
       is_fallback: anyPrice ? !!anyPrice.is_fallback : false,
       no_price: !failedAll && valued.unit_price == null,
+      // Grund für die Anzeige: BrickLink führt das Set (noch) nicht.
+      bl_unbekannt: needed.some(c => priceByCond[c]?.bl_unbekannt === true),
       ...(failedAll ? { error: errors[0] } : {}),
     };
   });

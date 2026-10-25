@@ -578,6 +578,7 @@
     .pst{display:inline-flex;align-items:center;justify-content:center;width:20px;height:20px;border-radius:999px;font-size:var(--fs-1);font-weight:700;cursor:help}
     .pst-ok{background:var(--g100);color:#15803d}
     .pst-err{background:var(--r100);color:var(--r500)}
+    .pst-leer{background:var(--s100);color:var(--mut)}
     /* Nur für Vorleseprogramme: Spaltenköpfe, die sichtbar leer bleiben sollen.
        Kein display:none — das nähme der Ausgabe auch den Text. */
     .vh{position:absolute;width:1px;height:1px;margin:-1px;padding:0;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap;border:0}
