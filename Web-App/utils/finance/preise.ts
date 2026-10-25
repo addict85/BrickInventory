@@ -241,6 +241,14 @@ async function fetchPrice(setNumber: string, condition: string, guideType: strin
     // auch der Leser anwendet (utils/preisRegel.ts).
     if (hatPreis(cachedFb))
       return { min_price: cachedFb.min_price, avg_price: cachedFb.avg_price, max_price: cachedFb.max_price, qty_avg_price: cachedFb.qty_avg_price, from_cache: true, condition_used: fallbackCondition, is_fallback: true };
+    // Nur wenn auch der andere Zustand frisch geprüft ist, gilt das Set als
+    // preislos. Sonst wird er geholt: Ein älterer Preis dafür liegt oft vor
+    // (die Detailansicht zeigt ihn), und ohne Abruf bliebe Finanzen leer.
+    if (!cacheUsable(cachedFb, ttl)) {
+      const rl = await checkAndIncrementRateLimit('bricklink');
+      const fb = rl.allowed ? await tryFetch(fallbackCondition) : null;
+      if (hatPreis(fb)) return { ...fb, condition_used: fallbackCondition, is_fallback: true };
+    }
     return { min_price:0, avg_price:0, max_price:0, qty_avg_price:0, from_cache:true, no_price:true };
   }
 
