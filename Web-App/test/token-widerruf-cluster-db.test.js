@@ -11,16 +11,16 @@
  *      widerrufenen Token weiter"
  *   B  meldeTokenWiderruf() in revokeAllTokens weg → rot: „kein NOTIFY"
  *
+ * Dass server.ts den Empfang in jedem Worker anmeldet, prüft
+ * signale-zwei-worker-db.test.js am echten Cluster.
+ *
  * Voraussetzung: Test-DB via TEST_DATABASE_URL.
  */
 const test   = require('node:test');
 const assert = require('node:assert/strict');
-const path   = require('node:path');
-const fs     = require('node:fs');
 
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
 
-const ROOT = path.join(__dirname, '..');
 const _req = require('./helpers/sources').buildAndRequire();
 const db     = _req('db/database.js');
 const auth   = _req('utils/auth.js');
@@ -99,11 +99,6 @@ test('Token-Widerruf gilt clusterweit', { concurrency: 1 }, async (t) => {
         'Nach dem Signal bedient dieser Worker den widerrufenen Token weiter');
     });
 
-    await t.test('server.ts meldet den Empfang an', () => {
-      const quelle = fs.readFileSync(path.join(ROOT, 'server.ts'), 'utf8');
-      assert.match(quelle, /horcheAufTokenWiderruf\(\)/,
-        'Ohne Anmeldung liefe das Signal ins Leere');
-    });
   } finally {
     if (lauscher) await lauscher.end().catch(() => {});
     await notify.close().catch(() => {});

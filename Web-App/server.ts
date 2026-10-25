@@ -794,6 +794,14 @@ db.initSchemaOnce().then(async () => {
 
   await electPrimaryWorker(db);
 
+  // Cache-Signale in JEDEM Worker anmelden, also vor jeder Primär-Prüfung:
+  // Jeder Worker hält eigene Caches für Haushalt und Token, und jeder muss
+  // erfahren, wenn sie veraltet sind.
+  // Ausführlich: docs/begruendungen/server.ts.md#electprimaryworker-2
+  (require('./utils/pgNotify') as typeof import('./utils/pgNotify'))
+    .listen(HAUSHALT_KANAL, () => leereHaushaltCache());
+  (require('./utils/auth') as typeof import('./utils/auth')).horcheAufTokenWiderruf();
+
   // Only primary worker clears stale startup_status — secondaries read it from DB
   if (isPrimaryWorker) {
     await deleteGlobalSetting('startup_status').catch(() => {});
@@ -845,16 +853,6 @@ db.initSchemaOnce().then(async () => {
       .then(() => csvSync.run())
       .catch(e => console.error('[rb-csv-sync daily]', e.message)));
   scheduler.startTriggerPoll();
-
-  // Das Blickfeld eines Kontos wird gemerkt (utils/household.ts) — hier kommt
-  // die Nachricht an, dass es sich geaendert hat.
-  // Ausführlich: docs/begruendungen/server.ts.md#electprimaryworker-2
-  (require('./utils/pgNotify') as typeof import('./utils/pgNotify'))
-    .listen(HAUSHALT_KANAL, () => leereHaushaltCache());
-
-  // Derselbe Gedanke für den Token-Cache: Ein Widerruf (Abmelden,
-  // Passwortwechsel, Token gelöscht) gilt sofort in allen Workern.
-  (require('./utils/auth') as typeof import('./utils/auth')).horcheAufTokenWiderruf();
 
   // CSV-Sync auf Zuruf statt im 5-Sekunden-Takt.
   // Der Eintrag in global_settings bleibt die belastbare Quelle; das

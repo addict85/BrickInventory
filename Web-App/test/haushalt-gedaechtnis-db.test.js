@@ -34,9 +34,7 @@
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const path = require('node:path');
 
-const ROOT = path.join(__dirname, '..');
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
 
 const { buildAndRequire } = require('./helpers/sources');
@@ -112,14 +110,8 @@ test('Blickfeld: gemerkt, und bei Änderung sofort vergessen', async (t) => {
     const meldung = await angekommen;
     assert.equal(meldung.channel, hh.HAUSHALT_KANAL);
 
-    // ── 5. Und jemand hört auf dem Kanal zu ────────────────────────────────
-    // Ein Signal ohne Empfänger wäre die teuerste Art, nichts zu tun: Die
-    // Zusicherung darüber bliebe grün, und die anderen Worker erführen
-    // trotzdem nichts. Die Anmeldung steht in server.ts, wo auch die übrigen
-    // Kanäle angemeldet werden — nachgesehen wird deshalb dort.
-    const serverQuelle = require('node:fs').readFileSync(path.join(ROOT, 'server.ts'), 'utf8');
-    assert.match(serverQuelle, /listen\(HAUSHALT_KANAL/,
-      'server.ts meldet sich nicht auf dem Haushalts-Kanal an — das NOTIFY liefe ins Leere');
+    // Dass jeder Worker auf dem Kanal lauscht, prüft
+    // signale-zwei-worker-db.test.js am echten Cluster.
 
     // ── GEGENPROBE ────────────────────────────────────────────────────────
     // Sieht der Zähler die Abfragen überhaupt? Nach dem Leeren muss der
