@@ -1210,7 +1210,7 @@ private fun ZweiterFaktorCard(
     val uriHandler = androidx.compose.ui.platform.LocalUriHandler.current
     val clipboard = androidx.compose.ui.platform.LocalClipboard.current
     val kopierBereich = rememberCoroutineScope()
-    val schluesselEtikett = stringResource(R.string.zf_clip_label)
+    val schluesselEtikett = stringResource(R.string.app_name)
     val kopieren: (String) -> Unit = { text ->
         kopierBereich.launch {
             clipboard.setClipEntry(

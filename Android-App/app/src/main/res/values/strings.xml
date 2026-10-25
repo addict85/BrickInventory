@@ -774,7 +774,6 @@
     <string name="zf_open_app">Open in authenticator app</string>
     <string name="zf_no_app">No authenticator app found — copy the key and enter it manually.</string>
     <string name="zf_copy_key">Copy key</string>
-    <string name="zf_clip_label">BrickInventory</string>
     <string name="zf_confirm_code">Code from the app to confirm</string>
     <string name="zf_confirm">Confirm</string>
     <string name="zf_codes_title">Your recovery codes</string>
