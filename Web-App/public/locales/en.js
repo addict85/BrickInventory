@@ -146,6 +146,8 @@ window.I18N_EN = {
   'settings.dark.label':    'Appearance on this device',
   'settings.dark.server':   'Server design',
   'settings.dark.system':   'Dark when the system is dark',
+  'parts.add_title':        'Add part',
+  'figs.add_title':         'Add minifigure',
   'settings.group.profile':   'Profile Settings',
   'settings.profile.firstname': 'First name',
   'settings.profile.lastname':  'Last name',

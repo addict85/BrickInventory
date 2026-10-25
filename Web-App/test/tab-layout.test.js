@@ -25,10 +25,10 @@ const html = fs.readFileSync(path.join(__dirname, '..', 'public', 'index.html'),
 
 const REITER = [
   // [Name, Erfassen-Kennung, Filter-Kennung, Listen-Kennung]
-  // Die Galerie erfasst seit dem 25.10. im Dialog; davor steht der Knopf dazu.
-  ['Galerie',     'data-click="oeffneErfassen"', 'id="gs"',  '<div id="gallery"></div>'],
-  ['Teile',       'id="btn-add-part"',  'id="parts-search"', '<div class="parts-layout">'],
-  ['Minifiguren', 'id="af-num-inline"', 'id="fig-search"',   '<div id="figs-list"></div>'],
+  // Alle drei erfassen seit dem 25.10. im Dialog; davor steht der Knopf dazu.
+  ['Galerie',     'data-click="oeffneErfassen" data-arg="set"', 'id="gs"',  '<div id="gallery"></div>'],
+  ['Teile',       'data-click="oeffneErfassen" data-arg="part"', 'id="parts-search"', '<div class="parts-layout">'],
+  ['Minifiguren', 'data-click="oeffneErfassen" data-arg="fig"', 'id="fig-search"',   '<div id="figs-list"></div>'],
 ];
 
 test('Erfassen steht vor den Filtern, die Filter stehen vor der Liste', () => {
@@ -72,8 +72,8 @@ test('die manuell erfassten Listen stehen unter der Filterleiste (Nachtrag 34)',
   // manuelle Liste über der Filterleiste, sah es aus, als beträfe der Filter
   // nur die Set-Einträge.
   const faelle = [
-    ['Teile',       'id="btn-add-part"',  'id="parts-search"', 'id="manual-parts-list"', '<div class="parts-layout">'],
-    ['Minifiguren', 'id="af-num-inline"', 'id="fig-search"',   'id="manual-figs-list"',  '<div id="figs-list"></div>'],
+    ['Teile',       'data-click="oeffneErfassen" data-arg="part"', 'id="parts-search"', 'id="manual-parts-list"', '<div class="parts-layout">'],
+    ['Minifiguren', 'data-click="oeffneErfassen" data-arg="fig"',  'id="fig-search"',   'id="manual-figs-list"',  '<div id="figs-list"></div>'],
   ];
   for (const [name, erfassen, filter, manuelleListe, setListe] of faelle) {
     const a = html.indexOf(erfassen), b = html.indexOf(filter);

@@ -361,7 +361,7 @@
       <!-- Inhalt zuerst: Erfassen ist eine Handlung, kein Dauerformular.
            Das Formular steht im Dialog #add-set-modal. -->
       <div class="erfassen-leiste">
-        <button class="btn bp" type="button" data-click="oeffneErfassen"><svg class="ico" aria-hidden="true"><use href="#i-plus"/></svg><span data-i18n="gallery.add.title">Set hinzufügen</span></button>
+        <button class="btn bp" type="button" data-click="oeffneErfassen" data-arg="set"><svg class="ico" aria-hidden="true"><use href="#i-plus"/></svg><span data-i18n="gallery.add.title">Set hinzufügen</span></button>
         <label for="csv-file" class="btn bs" style="cursor:pointer">📥 CSV<input type="file" id="csv-file" aria-label="CSV-Datei" data-i18n="import.csv_file" data-i18n-attr="aria-label" accept=".csv" style="display:none" data-change="startSetCsvImport" /></label>
         <a class="btn bs" id="btn-set-csv-template" href="#" data-i18n="gallery.template">📄 Vorlage</a>
         <label class="btn bs" style="cursor:pointer" title="BrickLink-Wanted-Liste (.xml)"><span data-wanted-icon="1"></span><span data-i18n="wanted.pick_short">BrickLink XML</span><input type="file" id="wanted-xml-set" aria-label="BrickLink-Wanted-Liste" data-i18n="wanted.pick" data-i18n-attr="aria-label" accept=".xml,text/xml,application/xml" style="display:none" data-change="wantedXmlGewaehlt" data-art="set" /></label>
@@ -530,42 +530,18 @@
         <div class="bstat bstat-light"><div class="bstat-l" data-i18n="parts.stat.colors">Farben</div><div class="bstat-v" id="ps-colors">—</div></div>
       </div>
       <!-- ── Manuell erfasste Teile — vor den Set-Teilen ──────────────────── -->
-      <div style="background:var(--sur);border:1px solid var(--bdr);border-radius:var(--rad);padding:1.25rem;margin-bottom:1.25rem;box-shadow:var(--sh0)">
-        <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;margin-bottom:1rem">
-          <h3 style="margin:0;font-size:var(--fs-4);font-weight:700;display:flex;align-items:center;gap:6px"><svg width="18" height="18" viewBox="0 0 120 120" xmlns="http://www.w3.org/2000/svg" style="flex-shrink:0"><rect x="18" y="62" width="56" height="26" rx="2.5" fill="#0055BF"/><circle cx="28" cy="62" r="5.5" fill="#0055BF"/><circle cx="46" cy="62" r="5.5" fill="#0055BF"/><circle cx="64" cy="62" r="5.5" fill="#0055BF"/><g transform="rotate(-9 66 55)"><rect x="38" y="42" width="52" height="24" rx="2.5" fill="#F2CD37"/><circle cx="49" cy="42" r="5" fill="#F2CD37"/><circle cx="64" cy="42" r="5" fill="#F2CD37"/><circle cx="79" cy="42" r="5" fill="#F2CD37"/></g><g transform="rotate(7 58 80)"><rect x="26" y="76" width="58" height="26" rx="2.5" fill="#E63329"/><circle cx="37" cy="76" r="5.5" fill="#E63329"/><circle cx="55" cy="76" r="5.5" fill="#E63329"/><circle cx="73" cy="76" r="5.5" fill="#E63329"/></g></svg> <span data-i18n="parts.new_section">Neues Teil erfassen</span></h3>
-          <div style="display:flex;gap:8px;flex-wrap:wrap">
-            <label for="ap-num-inline" class="btn bs" style="cursor:pointer">📥 CSV<input type="file" id="part-csv-file" aria-label="CSV-Datei" data-i18n="import.csv_file" data-i18n-attr="aria-label" accept=".csv,.txt" style="display:none" data-change="importPartsCsv" /></label>
-            <a class="btn bs" id="btn-csv-template" href="#" data-i18n="gallery.template">📄 Vorlage</a>
-            <label class="btn bp" style="cursor:pointer" title="BrickLink-Wanted-Liste (.xml)"><span data-wanted-icon="1"></span><span data-i18n="wanted.pick_short">BrickLink XML</span><input type="file" id="wanted-xml-part" aria-label="BrickLink-Wanted-Liste" data-i18n="wanted.pick" data-i18n-attr="aria-label" accept=".xml,text/xml,application/xml" style="display:none" data-change="wantedXmlGewaehlt" data-art="part" /></label>
-          </div>
-        </div>
+      <div class="erfassen-leiste">
+        <button class="btn bp" type="button" data-click="oeffneErfassen" data-arg="part"><svg class="ico" aria-hidden="true"><use href="#i-plus"/></svg><span data-i18n="parts.add_title">Teil hinzufügen</span></button>
+        <label for="part-csv-file" class="btn bs" style="cursor:pointer">📥 CSV<input type="file" id="part-csv-file" aria-label="CSV-Datei" data-i18n="import.csv_file" data-i18n-attr="aria-label" accept=".csv,.txt" style="display:none" data-change="importPartsCsv" /></label>
+        <a class="btn bs" id="btn-csv-template" href="#" data-i18n="gallery.template">📄 Vorlage</a>
+        <label class="btn bs" style="cursor:pointer" title="BrickLink-Wanted-Liste (.xml)"><span data-wanted-icon="1"></span><span data-i18n="wanted.pick_short">BrickLink XML</span><input type="file" id="wanted-xml-part" aria-label="BrickLink-Wanted-Liste" data-i18n="wanted.pick" data-i18n-attr="aria-label" accept=".xml,text/xml,application/xml" style="display:none" data-change="wantedXmlGewaehlt" data-art="part" /></label>
+      </div>
         <div id="part-csv-status" style="display:none;font-size:var(--fs-3);margin-bottom:1rem;padding:.55rem .8rem;border-radius:8px"></div>
         <!-- mp stats hidden, kept for JS -->
         <span id="mp-count" style="display:none"></span>
         <span id="mp-qty" style="display:none"></span>
         <span id="mp-val" style="display:none"></span>
 
-        <div id="add-part-inline" style="background:var(--s50);border:1px solid var(--bdr);border-radius:var(--rad);padding:1rem;margin-bottom:1.25rem">
-          <div style="font-size:var(--fs-1);font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--mut);margin-bottom:.75rem" data-i18n="parts.new_section">Neues Teil erfassen</div>
-          <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:10px;align-items:end">
-            <div class="fg"><label data-i18n="parts.num_label">Teilenummer *</label><input type="text" id="ap-num-inline" placeholder="z.B. 3001" /></div>
-            <div class="fg"><label for="ap-qty-inline" data-i18n="parts.color_label">Farbe</label>
-              <div style="display:flex;gap:6px;align-items:center">
-                <div id="ap-color-dot" style="width:20px;height:20px;border-radius:50%;background:var(--s200);border:1px solid var(--bdr);flex-shrink:0"></div>
-                <select id="ap-color-select" aria-label="Farbe" data-i18n="parts.color_label" data-i18n-attr="aria-label" style="height:38px;padding:.45rem .7rem;flex:1" data-change="updateColorDot">
-                  <option value="" data-i18n="parts.add.no_color">Keine Farbe</option>
-                </select>
-              </div>
-            </div>
-            <div class="fg"><label data-i18n="parts.add.qty">Anzahl</label><input inputmode="numeric" type="number" id="ap-qty-inline" value="1" min="1" style="height:38px" /></div>
-            <div class="fg"><label for="ap-price-inline" data-i18n="parts.add.price">Kaufpreis/Stk (optional)</label><input inputmode="decimal" type="number" id="ap-price-inline" placeholder="Leer = Marktpreis" data-i18n="parts.add.price_placeholder" data-i18n-attr="placeholder" step="0.01" style="height:38px" /></div>
-            <div class="fg"><label for="ap-condition" data-i18n="common.condition">Zustand</label><select id="ap-condition" style="height:38px;padding:.45rem .7rem;border:1px solid var(--bdr);border-radius:var(--rad);background:var(--sur);color:var(--txt);font-size:var(--fs-3)"><option value="N" data-i18n="common.condition_new">Neu</option><option value="U" data-i18n="common.condition_used">Gebraucht</option></select></div>
-            <div class="fg" id="ap-owner-box" style="max-width:150px;display:none"><label for="ap-owner" data-i18n="household.for_account">Für Konto</label><select id="ap-owner" style="height:38px;padding:.45rem .7rem;border:1px solid var(--bdr);border-radius:var(--rad);background:var(--sur);color:var(--txt);font-size:var(--fs-3)"></select></div><div class="fg" id="ap-storage-box" style="max-width:220px"><label id="ap-storage-label" data-i18n="detail.storage">Lagerort</label><span id="ap-storage-slot" style="display:flex;gap:6px;align-items:center"></span></div>
-            <div class="fg" style="align-self:end"><button class="btn bp" id="btn-add-part" style="width:100%;height:38px" data-i18n="adding.button">+ Hinzufügen</button></div>
-          </div>
-          <div id="ap-inline-result" style="font-size:var(--fs-2);margin-top:.5rem;min-height:1rem"></div>
-        </div>
-      </div>
 
       <!-- Suche/Filter/Sortierung — BEWUSST unter der Erfassen-Box statt im
            Kopf (Nachtrag 32, Marcos Wunsch): Die Bedienelemente stehen damit
@@ -637,39 +613,14 @@
       <span id="mf-val" style="display:none"></span>
 
       <!-- ── Manuell erfasste Minifiguren — grosse Box wie bei Teilen ──────── -->
-      <div style="background:var(--sur);border:1px solid var(--bdr);border-radius:var(--rad);padding:1.25rem;margin-bottom:1.25rem;box-shadow:var(--sh0)">
-        <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;margin-bottom:1rem">
-          <h3 style="margin:0;font-size:var(--fs-4);font-weight:700" data-i18n="figs.new_section">➕ Neue Minifigur erfassen</h3>
-          <div style="display:flex;gap:8px;flex-wrap:wrap">
-            <label for="af-num-inline" class="btn bs" style="cursor:pointer">📥 CSV<input type="file" id="fig-csv-file" aria-label="CSV-Datei" data-i18n="import.csv_file" data-i18n-attr="aria-label" accept=".csv,.txt" style="display:none" data-change="importFigsCsv" /></label>
-            <a class="btn bs" id="btn-fig-csv-template" href="#" data-i18n="gallery.template">📄 Vorlage</a>
-            <label class="btn bp" style="cursor:pointer" title="BrickLink-Wanted-Liste (.xml)"><span data-wanted-icon="1"></span><span data-i18n="wanted.pick_short">BrickLink XML</span><input type="file" id="wanted-xml-fig" aria-label="BrickLink-Wanted-Liste" data-i18n="wanted.pick" data-i18n-attr="aria-label" accept=".xml,text/xml,application/xml" style="display:none" data-change="wantedXmlGewaehlt" data-art="fig" /></label>
-          </div>
-        </div>
+      <div class="erfassen-leiste">
+        <button class="btn bp" type="button" data-click="oeffneErfassen" data-arg="fig"><svg class="ico" aria-hidden="true"><use href="#i-plus"/></svg><span data-i18n="figs.add_title">Minifigur hinzufügen</span></button>
+        <label for="fig-csv-file" class="btn bs" style="cursor:pointer">📥 CSV<input type="file" id="fig-csv-file" aria-label="CSV-Datei" data-i18n="import.csv_file" data-i18n-attr="aria-label" accept=".csv,.txt" style="display:none" data-change="importFigsCsv" /></label>
+        <a class="btn bs" id="btn-fig-csv-template" href="#" data-i18n="gallery.template">📄 Vorlage</a>
+        <label class="btn bs" style="cursor:pointer" title="BrickLink-Wanted-Liste (.xml)"><span data-wanted-icon="1"></span><span data-i18n="wanted.pick_short">BrickLink XML</span><input type="file" id="wanted-xml-fig" aria-label="BrickLink-Wanted-Liste" data-i18n="wanted.pick" data-i18n-attr="aria-label" accept=".xml,text/xml,application/xml" style="display:none" data-change="wantedXmlGewaehlt" data-art="fig" /></label>
+      </div>
         <div id="fig-csv-status" style="display:none;font-size:var(--fs-3);margin-bottom:1rem;padding:.55rem .8rem;border-radius:8px"></div>
 
-      <!-- Inline add form -->
-      <div style="background:var(--s50);border:1px solid var(--bdr);border-radius:var(--rad);padding:1rem;margin-bottom:1.25rem">
-        <div style="font-size:var(--fs-1);font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--mut);margin-bottom:.75rem" data-i18n="figs.new_section">Neue Minifigur erfassen</div>
-        <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:10px;align-items:end">
-          <div class="fg"><label><span data-i18n="figs.num_label">Figur-Nummer *</span> <span style="font-size:var(--fs-1);color:var(--mut)">(Rebrickable, z.B. fig-007357)</span></label>
-            <input type="text" id="af-num-inline" placeholder="fig-007357" /></div>
-          <div class="fg"><label for="af-blnum-inline"><span data-i18n="figs.blnum_label">BrickLink-Nr. (opt.)</span> <span style="font-size:var(--fs-1);color:var(--mut)" data-i18n="parts.add.bl_hint">für Marktpreis</span></label>
-            <input type="text" id="af-blnum-inline" placeholder="z.B. sw0001" /></div>
-          <div class="fg"><label for="af-qty-inline" data-i18n="figs.qty_label">Anzahl</label>
-            <input inputmode="numeric" type="number" id="af-qty-inline" value="1" min="1" style="height:38px" /></div>
-          <div class="fg"><label for="af-price-inline" data-i18n="figs.price_label">Kaufpreis/Stk (opt.)</label>
-            <input inputmode="decimal" type="number" id="af-price-inline" placeholder="Leer = Marktpreis" data-i18n="parts.add.price_placeholder" data-i18n-attr="placeholder" step="0.01" style="height:38px" /></div>
-          <div class="fg"><label for="af-condition" data-i18n="common.condition">Zustand</label><select id="af-condition" style="height:38px;padding:.45rem .7rem;border:1px solid var(--bdr);border-radius:var(--rad);background:var(--sur);color:var(--txt);font-size:var(--fs-3)"><option value="N" data-i18n="common.condition_new">Neu</option><option value="U" data-i18n="common.condition_used">Gebraucht</option></select></div>
-            <div class="fg" id="af-owner-box" style="max-width:150px;display:none"><label for="af-owner" data-i18n="household.for_account">Für Konto</label><select id="af-owner" style="height:38px;padding:.45rem .7rem;border:1px solid var(--bdr);border-radius:var(--rad);background:var(--sur);color:var(--txt);font-size:var(--fs-3)"></select></div><div class="fg" id="af-storage-box" style="max-width:220px"><label id="af-storage-label" data-i18n="detail.storage">Lagerort</label><span id="af-storage-slot" style="display:flex;gap:6px;align-items:center"></span></div>
-          <div class="fg" style="align-self:end">
-            <button class="btn bp" id="btn-add-fig" style="width:100%;height:38px" data-i18n="adding.button">+ Hinzufügen</button></div>
-        </div>
-        <div style="font-size:var(--fs-1);color:var(--mut);margin-top:.5rem" data-i18n="figs.add.hint">💡 Rebrickable- und BrickLink-Nummern unterscheiden sich meist. Ohne BrickLink-Nr. wird der Marktpreis aus den Teilen geschätzt.</div>
-        <div id="af-inline-result" style="font-size:var(--fs-2);margin-top:.5rem;min-height:1rem"></div>
-      </div>
-
-      </div>
 
       <!-- Suche/Filter/Sortierung — BEWUSST unter der Erfassen-Box statt im
            Kopf (Nachtrag 32, Marcos Wunsch): Die Bedienelemente stehen damit
@@ -1577,9 +1528,56 @@
 </div>
 
 <!-- Set Detail Modal -->
+<div class="ovl" id="add-part-modal" role="dialog" aria-modal="true" aria-labelledby="add-part-tit">
+  <div class="modal" style="max-width:720px">
+    <div class="mhd"><div class="mtit" id="add-part-tit" data-i18n="parts.add_title">Teil hinzufügen</div><button class="btn bs btn-sm" data-click="schliesseErfassen" data-arg="part" data-dialog-zu aria-label="Schliessen" data-i18n="common.close" data-i18n-attr="aria-label">✕</button></div>
+    <div id="add-part-inline">
+          <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:10px;align-items:end">
+            <div class="fg"><label for="ap-num-inline" data-i18n="parts.num_label">Teilenummer *</label><input type="text" id="ap-num-inline" data-erstfokus placeholder="z.B. 3001" /></div>
+            <div class="fg"><label for="ap-qty-inline" data-i18n="parts.color_label">Farbe</label>
+              <div style="display:flex;gap:6px;align-items:center">
+                <div id="ap-color-dot" style="width:20px;height:20px;border-radius:50%;background:var(--s200);border:1px solid var(--bdr);flex-shrink:0"></div>
+                <select id="ap-color-select" aria-label="Farbe" data-i18n="parts.color_label" data-i18n-attr="aria-label" style="height:38px;padding:.45rem .7rem;flex:1" data-change="updateColorDot">
+                  <option value="" data-i18n="parts.add.no_color">Keine Farbe</option>
+                </select>
+              </div>
+            </div>
+            <div class="fg"><label data-i18n="parts.add.qty">Anzahl</label><input inputmode="numeric" type="number" id="ap-qty-inline" value="1" min="1" style="height:38px" /></div>
+            <div class="fg"><label for="ap-price-inline" data-i18n="parts.add.price">Kaufpreis/Stk (optional)</label><input inputmode="decimal" type="number" id="ap-price-inline" placeholder="Leer = Marktpreis" data-i18n="parts.add.price_placeholder" data-i18n-attr="placeholder" step="0.01" style="height:38px" /></div>
+            <div class="fg"><label for="ap-condition" data-i18n="common.condition">Zustand</label><select id="ap-condition" style="height:38px;padding:.45rem .7rem;border:1px solid var(--bdr);border-radius:var(--rad);background:var(--sur);color:var(--txt);font-size:var(--fs-3)"><option value="N" data-i18n="common.condition_new">Neu</option><option value="U" data-i18n="common.condition_used">Gebraucht</option></select></div>
+            <div class="fg" id="ap-owner-box" style="max-width:150px;display:none"><label for="ap-owner" data-i18n="household.for_account">Für Konto</label><select id="ap-owner" style="height:38px;padding:.45rem .7rem;border:1px solid var(--bdr);border-radius:var(--rad);background:var(--sur);color:var(--txt);font-size:var(--fs-3)"></select></div><div class="fg" id="ap-storage-box" style="max-width:220px"><label id="ap-storage-label" data-i18n="detail.storage">Lagerort</label><span id="ap-storage-slot" style="display:flex;gap:6px;align-items:center"></span></div>
+            <div class="fg" style="align-self:end"><button class="btn bp" id="btn-add-part" style="width:100%;height:38px" data-i18n="gallery.add.submit">Hinzufügen</button></div>
+          </div>
+          <div id="ap-inline-result" style="font-size:var(--fs-2);margin-top:.5rem;min-height:1rem"></div>
+        </div>
+  </div>
+</div>
+<div class="ovl" id="add-fig-modal" role="dialog" aria-modal="true" aria-labelledby="add-fig-tit">
+  <div class="modal" style="max-width:720px">
+    <div class="mhd"><div class="mtit" id="add-fig-tit" data-i18n="figs.add_title">Minifigur hinzufügen</div><button class="btn bs btn-sm" data-click="schliesseErfassen" data-arg="fig" data-dialog-zu aria-label="Schliessen" data-i18n="common.close" data-i18n-attr="aria-label">✕</button></div>
+    <div id="add-fig-inline">
+        <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:10px;align-items:end">
+          <div class="fg"><label for="af-num-inline"><span data-i18n="figs.num_label">Figur-Nummer *</span> <span style="font-size:var(--fs-1);color:var(--mut)">(Rebrickable, z.B. fig-007357)</span></label>
+            <input type="text" id="af-num-inline" data-erstfokus placeholder="fig-007357" /></div>
+          <div class="fg"><label for="af-blnum-inline"><span data-i18n="figs.blnum_label">BrickLink-Nr. (opt.)</span> <span style="font-size:var(--fs-1);color:var(--mut)" data-i18n="parts.add.bl_hint">für Marktpreis</span></label>
+            <input type="text" id="af-blnum-inline" placeholder="z.B. sw0001" /></div>
+          <div class="fg"><label for="af-qty-inline" data-i18n="figs.qty_label">Anzahl</label>
+            <input inputmode="numeric" type="number" id="af-qty-inline" value="1" min="1" style="height:38px" /></div>
+          <div class="fg"><label for="af-price-inline" data-i18n="figs.price_label">Kaufpreis/Stk (opt.)</label>
+            <input inputmode="decimal" type="number" id="af-price-inline" placeholder="Leer = Marktpreis" data-i18n="parts.add.price_placeholder" data-i18n-attr="placeholder" step="0.01" style="height:38px" /></div>
+          <div class="fg"><label for="af-condition" data-i18n="common.condition">Zustand</label><select id="af-condition" style="height:38px;padding:.45rem .7rem;border:1px solid var(--bdr);border-radius:var(--rad);background:var(--sur);color:var(--txt);font-size:var(--fs-3)"><option value="N" data-i18n="common.condition_new">Neu</option><option value="U" data-i18n="common.condition_used">Gebraucht</option></select></div>
+            <div class="fg" id="af-owner-box" style="max-width:150px;display:none"><label for="af-owner" data-i18n="household.for_account">Für Konto</label><select id="af-owner" style="height:38px;padding:.45rem .7rem;border:1px solid var(--bdr);border-radius:var(--rad);background:var(--sur);color:var(--txt);font-size:var(--fs-3)"></select></div><div class="fg" id="af-storage-box" style="max-width:220px"><label id="af-storage-label" data-i18n="detail.storage">Lagerort</label><span id="af-storage-slot" style="display:flex;gap:6px;align-items:center"></span></div>
+          <div class="fg" style="align-self:end">
+            <button class="btn bp" id="btn-add-fig" style="width:100%;height:38px" data-i18n="gallery.add.submit">Hinzufügen</button></div>
+        </div>
+        <div style="font-size:var(--fs-1);color:var(--mut);margin-top:.5rem" data-i18n="figs.add.hint">💡 Rebrickable- und BrickLink-Nummern unterscheiden sich meist. Ohne BrickLink-Nr. wird der Marktpreis aus den Teilen geschätzt.</div>
+        <div id="af-inline-result" style="font-size:var(--fs-2);margin-top:.5rem;min-height:1rem"></div>
+      </div>
+  </div>
+</div>
 <div class="ovl" id="add-set-modal" role="dialog" aria-modal="true" aria-labelledby="add-set-tit">
   <div class="modal" style="max-width:620px">
-    <div class="mhd"><div class="mtit" id="add-set-tit" data-i18n="gallery.add.title">Set hinzufügen</div><button class="btn bs btn-sm" data-click="schliesseErfassen" data-dialog-zu aria-label="Schliessen" data-i18n="common.close" data-i18n-attr="aria-label">✕</button></div>
+    <div class="mhd"><div class="mtit" id="add-set-tit" data-i18n="gallery.add.title">Set hinzufügen</div><button class="btn bs btn-sm" data-click="schliesseErfassen" data-arg="set" data-dialog-zu aria-label="Schliessen" data-i18n="common.close" data-i18n-attr="aria-label">✕</button></div>
     <div class="frow">
       <div class="fg"><label for="add-num" data-i18n="gallery.add.number">Set-Nummer</label><input inputmode="numeric" type="text" id="add-num" data-erstfokus placeholder="z.B. 75192" data-i18n="gallery.add.number" data-i18n-attr="placeholder" /></div>
       <div class="fg" style="max-width:82px"><label for="add-qty" data-i18n="gallery.add.qty">Anzahl</label><input inputmode="numeric" type="number" id="add-qty" value="1" min="1" /></div>
