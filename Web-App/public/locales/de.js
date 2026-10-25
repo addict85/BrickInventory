@@ -146,6 +146,8 @@ window.I18N_DE = {
   'settings.dark.label':    'Darstellung auf diesem Gerät',
   'settings.dark.server':   'Design des Servers',
   'settings.dark.system':   'Dunkel, wenn das System dunkel ist',
+  'parts.add_title':        'Teil hinzufügen',
+  'figs.add_title':         'Minifigur hinzufügen',
   'settings.group.profile':   'Profil-Einstellungen',
   'settings.profile.firstname': 'Vorname',
   'settings.profile.lastname':  'Nachname',

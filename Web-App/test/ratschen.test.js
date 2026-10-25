@@ -180,8 +180,8 @@ function emojiInDerOberflaeche() {
 
 test('Emoji in der Oberfläche werden weniger, nie mehr', () => {
   // GEMESSEN am 25.10.2026: 275, nachdem Leiste und Benutzermenü auf die
-  // Symbolfamilie umgestellt waren.
-  const SCHRANKE = 275;
+  // Symbolfamilie umgestellt waren; 274 nach den Erfassen-Dialogen.
+  const SCHRANKE = 274;
   const ist = emojiInDerOberflaeche();
   assert.ok(ist > 50, `Nur ${ist} Emoji gefunden — greift die Suche noch?`);
   assert.ok(ist <= SCHRANKE,

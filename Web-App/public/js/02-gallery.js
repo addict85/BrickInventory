@@ -969,9 +969,11 @@ function tableRow(s){
 // Add set via SSE stream
 G('btn-add').onclick=doAddSet;
 G('add-num').addEventListener('keydown',e=>e.key==='Enter'&&doAddSet());
-/** Den Erfassen-Dialog öffnen (Erstfokus: die Set-Nummer, data-erstfokus). */
-export function oeffneErfassen(){ G('add-set-modal').classList.add('open'); }
-export function schliesseErfassen(){ G('add-set-modal').classList.remove('open'); }
+/** Erfassen-Dialoge der Sammlung: set, part, fig — gleich aufgebaut (Erstfokus: data-erstfokus). */
+// Ohne data-arg reicht der Dispatcher das Ereignis als erstes Argument.
+const erfassenDialog = (art) => G(`add-${typeof art === 'string' ? art : 'set'}-modal`);
+export function oeffneErfassen(art){ erfassenDialog(art)?.classList.add('open'); }
+export function schliesseErfassen(art){ erfassenDialog(art)?.classList.remove('open'); }
 
 async function doAddSet(){
   const num=G('add-num').value.trim(), qty=parseInt(G('add-qty').value)||1;
