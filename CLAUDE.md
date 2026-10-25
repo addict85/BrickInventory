@@ -26,6 +26,20 @@ Gemessen am 25.10.2026: 50,5 % der Zeilen in `server.ts`, `routes/` und
 
 Commit-Nachrichten, Kommentare, Testnamen und Oberflächentexte sind Deutsch.
 
+## Tests
+
+- Ein Test prüft **Verhalten**: Er führt den Code aus (`buildAndRequire`,
+  `testServer`, notfalls der echte Server) und sieht auf das Ergebnis. Eine
+  Regex auf den Quelltext bestätigt nur, dass eine Zeile dasteht — nicht, dass
+  sie an der richtigen Stelle steht und wirkt.
+- Quelltext-Prüfungen bleiben für **Struktur** (Dateien, Abhängigkeiten,
+  Verbote). Wie viele Testdateien nur Quelltext lesen, hält
+  `test/ratschen.test.js` fest: Die Zahl darf sinken, nie steigen.
+- Jeder neue Test nennt im Kopf seine **Gegenprobe**: was kaputt gemacht wurde
+  und welcher Teil dann rot war. Ein Test, der nie rot war, ist unbewiesen.
+- Leere Listen prüfen nichts: Testdaten so anlegen, dass die geprüften Felder
+  in der Antwort vorkommen.
+
 ## Prüfen vor dem Push
 
 - `npm test` im Verzeichnis `Web-App/` braucht eine Test-Datenbank
