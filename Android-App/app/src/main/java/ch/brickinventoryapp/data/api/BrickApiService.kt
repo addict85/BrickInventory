@@ -63,6 +63,23 @@ interface BrickApiService {
     @POST("api/v1/auth/change-password")
     suspend fun changePassword(@Body request: PasswortAenderung): Response<GenericResponse>
 
+    // Zweiter Faktor. Das Zurücksetzen durch einen Verwalter fehlt hier
+    // absichtlich — die Nutzerverwaltung steht nur in der Webapp.
+    @GET("api/v1/auth/zweiter-faktor")
+    suspend fun zweiterFaktorStand(): Response<ZweiterFaktorStand>
+
+    @POST("api/v1/auth/zweiter-faktor/einrichten")
+    suspend fun zweiterFaktorEinrichten(@Body request: ZweiterFaktorAnfrage): Response<ZweiterFaktorEinrichtung>
+
+    @POST("api/v1/auth/zweiter-faktor/bestaetigen")
+    suspend fun zweiterFaktorBestaetigen(@Body request: ZweiterFaktorAnfrage): Response<ZweiterFaktorCodes>
+
+    @POST("api/v1/auth/zweiter-faktor/abschalten")
+    suspend fun zweiterFaktorAbschalten(@Body request: ZweiterFaktorAnfrage): Response<GenericResponse>
+
+    @POST("api/v1/auth/zweiter-faktor/codes")
+    suspend fun zweiterFaktorNeueCodes(@Body request: ZweiterFaktorAnfrage): Response<ZweiterFaktorCodes>
+
     // ── CSV-Import: dieselben drei Adressen wie in der Webapp ───────────────
     //
     // `@retrofit2.http.Part` ausgeschrieben, nicht `@Part`: Diese Datei oeffnet

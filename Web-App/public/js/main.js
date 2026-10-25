@@ -21,6 +21,7 @@
 import './00-escapen.js';
 import '../i18n.js';
 import './01-core.js';
+import './01-dialoge.js';
 import './01-fortschritt.js';
 import './01-monitor.js';
 import './01-bausteine.js';
@@ -46,6 +47,9 @@ import './18-wanted-xml.js';
 // scripts/build-frontend.js den EINSTIEG liest und nicht den Graphen —
 // jede Datei unter js/ muss also hier genannt sein.
 import './19-bricklink-xml.js';
+import './20-papierkorb.js';
+import './21-zweiter-faktor.js';
+import './22-einrichtung.js';
 
 // ── Start ────────────────────────────────────────────────────────────────────
 // Erst NACH der Auswertung aller Module. Vorher lag der Aufruf im Rumpf von

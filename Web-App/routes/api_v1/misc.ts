@@ -27,6 +27,8 @@ router.get('/', requireToken, (_req: AuthedRequest, res) => res.json({
     finance:{ 'GET /api/v1/finance/valuation':'portfolio value' },
     settings:{ 'GET /api/v1/settings':'user settings', 'PUT /api/v1/settings':'update settings' },
     stats:{ 'GET /api/v1/stats':'dashboard stats' },
+    papierkorb:{ 'GET /api/v1/papierkorb':'gelöschte Elemente (30 Tage)', 'POST /api/v1/papierkorb/:id/wiederherstellen':'zurückholen',
+      'DELETE /api/v1/papierkorb/:id':'endgültig löschen', 'DELETE /api/v1/papierkorb':'leeren' },
   }
 }));
 

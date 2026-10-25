@@ -535,6 +535,8 @@
     .toast.success{border-left:3px solid var(--g500)}
     .toast.error{border-left:3px solid var(--r500)}
     .toast.info{border-left:3px solid var(--b500)}
+    .toast-aktion{margin-left:auto;background:none;border:1px solid var(--bdr);border-radius:6px;padding:3px 10px;font:inherit;font-weight:600;color:var(--b500);cursor:pointer;white-space:nowrap}
+    .toast-aktion:hover{background:var(--b50)}
     @keyframes tIn{from{transform:translateX(100%);opacity:0}to{transform:none;opacity:1}}
     .spin{width:28px;height:28px;border:3px solid var(--s200);border-top-color:var(--b500);border-radius:50%;animation:sp .7s linear infinite;display:inline-block}
     @keyframes sp{to{transform:rotate(360deg)}}
@@ -694,6 +696,15 @@ html::-webkit-scrollbar{width:0;height:0}
        als Klasse gedacht — den Namen gibt es in diesem Baum aber nur als
        FARBVARIABLE (var(--mut)), nicht als Regel. */
     .voucher-leer{color:var(--mut);font-size:.8rem}
+    .papierkorb-liste{display:flex;flex-direction:column;gap:4px}
+    .ew-schritt{display:none}
+    .ew-schritt.aktiv{display:block}
+    .ew-quelle{display:flex;flex-direction:column;gap:.4rem;align-items:flex-start;border-top:1px solid var(--bdr);padding-top:.75rem;margin-top:.75rem}
+    .ew-quelle .fg,.ew-quelle .sgrid2{width:100%}
+    .pk-zeile{display:flex;flex-wrap:wrap;align-items:center;gap:.5rem;padding:.45rem .6rem;border:1px solid var(--bdr);border-radius:8px;font-size:.85rem}
+    .pk-zeile .pk-name{flex:1 1 14rem;min-width:0}
+    .pk-zeile .pk-nr{font-weight:600}
+    .pk-zeile .pk-frist{color:var(--mut);font-size:.75rem;white-space:nowrap}
 
     /* ── Das Dateifeld des Gutschein-Uploads ────────────────────────────────
        `.fg input` setzt height:38px und einen senkrechten Innenabstand. Auf

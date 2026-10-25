@@ -39,6 +39,8 @@ data class LoginRequest(
     val password: String,
     val label: String = "Android App",
     @SerialName("never_expires") val neverExpires: Boolean = true,
+    /** Code des zweiten Faktors — nur, wenn der Server danach gefragt hat. */
+    val code: String? = null,
 )
 
 @Serializable
@@ -49,7 +51,9 @@ data class LoginResponse(
     val success: Boolean,
     val token: String? = null,
     val user: User? = null,
-    val error: String? = null
+    val error: String? = null,
+    /** Passwort stimmt, der Server verlangt den Code aus der Authenticator-App. */
+    @SerialName("zweiter_faktor") val zweiterFaktor: Boolean = false,
 )
 
 @Serializable
@@ -310,4 +314,36 @@ data class ProtokollResponse(
     val count: Int = 0,
     val logs: List<ProtokollZeile> = emptyList(),
     val error: String? = null,
+)
+
+// ── Zweiter Faktor (Server: utils/zweiterFaktor.ts) ──────────────────────────
+@Serializable
+data class ZweiterFaktorStand(
+    val success: Boolean,
+    val aktiv: Boolean = false,
+    @SerialName("codes_uebrig") val codesUebrig: Int = 0,
+    val error: String? = null,
+)
+
+@Serializable
+data class ZweiterFaktorEinrichtung(
+    val success: Boolean,
+    /** Base32-Schlüssel zum Abtippen. */
+    val geheimnis: String? = null,
+    /** otpauth://-Adresse; öffnet auf dem Telefon direkt die Authenticator-App. */
+    val otpauth: String? = null,
+    val error: String? = null,
+)
+
+@Serializable
+data class ZweiterFaktorCodes(
+    val success: Boolean,
+    val codes: List<String> = emptyList(),
+    val error: String? = null,
+)
+
+@Serializable
+data class ZweiterFaktorAnfrage(
+    val password: String? = null,
+    val code: String? = null,
 )

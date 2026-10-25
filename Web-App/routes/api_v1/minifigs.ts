@@ -10,11 +10,12 @@ import { getSetting } from '../../utils/settings';
 import { ersatzteilSql } from '../../utils/validate';
 import { getMinifigPriceHistory } from '../../utils/priceHistory';
 import { einzelwert } from '../../utils/validate';
-import { verwendendeSets, loescheManuelleFigur } from '../../utils/handlers/shared';
+import { verwendendeSets } from '../../utils/handlers/shared';
 import { inventarNachKandidaten } from '../../utils/rbInventar';
 import { sendeFehler } from '../../utils/fehlerTexte';
 import { normalisiereLagerort, setzeLagerort } from '../../utils/lagerort';
 import { blJoin, blNummerSql } from '../../utils/blZuordnung';
+import { loescheFigur } from '../../utils/loeschen';
 const router = express.Router();
 
 // ── MINIFIGS ─────────────────────────────────────────────────────────────────
@@ -49,14 +50,7 @@ router.put('/minifigs/:figNumber', requireToken, async (req: AuthedRequest, res)
 
 /**
  * PUT /api/v1/minifigs/:figNumber/storage — Lagerort setzen.
- *
- * Wortgleich zum Gegenstueck bei den Teilen (routes/api_v1/parts.ts) und aus
- * demselben Grund: Trifft ALLE Zeilen dieser Figur im Schreibbereich.
- * Dieselbe Figur steckt in mehreren Sets und damit in mehreren Zeilen; wer in
- * der Ansicht „Kiste 3" eintraegt, meint die Figur, nicht eine ihrer Zeilen.
- *
- * Neu seit Marcos Befund vom 24.09. — bis dahin konnte eine Minifigur
- * ueberhaupt keinen Lagerort tragen (Migration 0024).
+ * Ausführlich: docs/begruendungen/routes/api_v1/minifigs.ts.md#put-minifigs-fignumber-storage
  */
 router.put('/minifigs/:figNumber/storage', requireToken, async (req: AuthedRequest, res) => {
   try {
@@ -73,13 +67,9 @@ router.delete('/minifigs/:figNumber', requireToken, async (req: AuthedRequest, r
     // Wie bei den Teilen: Ohne den Parameter das eigene Konto.
     const besitzer = await resolveWriteTarget(req.apiUser.user_id, req.query.owner);
     if (besitzer === null) return sendeFehler(req, res, 403, 'kein_zugriff_konto');
-    const r = await loescheManuelleFigur(db, besitzer, String(req.params.figNumber));
-    if (r.changes === 0) return sendeFehler(req, res, 404, 'minifig_nicht_manuell');
-    // OHNE .catch(() => {}) — siehe Session-Route: verwaiste Erfassungen
-    // zählen in den Finanzsummen weiter, ohne dass eine Ansicht sie zeigt.
-    await db.run('DELETE FROM minifig_acquisitions WHERE user_id=$1 AND fig_number=$2',
-      [besitzer, req.params.figNumber]);
-    res.json({ success: true });
+    const geloescht = await loescheFigur(besitzer, String(req.params.figNumber));
+    if (geloescht === null) return sendeFehler(req, res, 404, 'minifig_nicht_manuell');
+    res.json({ success: true, papierkorb: [geloescht] });
   } catch (e) { handleRouteError(res, e, undefined, req); }
 });
 
@@ -100,9 +90,7 @@ router.get('/minifigs/manual', requireToken, async (req: AuthedRequest, res) => 
  * und benutzt dieselbe Gruppierung wie die Liste — vorher hatte die Webapp
  * eine eigene Abfrage (ohne Blickfeld, mit anderer Gruppierung) und die App
  * rechnete aus ihrer geladenen Liste.
- *
- * Die Route steht VOR /minifigs/:figNumber/… — sonst nähme Express `stats`
- * für eine Figurennummer.
+ * Ausführlich: docs/begruendungen/routes/api_v1/minifigs.ts.md#get-minifigs-stats
  */
 router.get('/minifigs/stats', requireToken, async (req: AuthedRequest, res) => {
   try {
@@ -220,15 +208,7 @@ router.get('/minifigs/:figNumber/parts', requireToken, async (req: AuthedRequest
 // ── GET /api/v1/minifigs/:figNumber/sets ─────────────────────────────────────
 /**
  * In welchen Sets steckt diese Figur?
- *
- * Gegenstück zu /api/v1/parts/:partNumber/:colorId/sets. Beide rufen dieselbe
- * Funktion in utils/handlers/shared.ts auf — die Frage ist zweimal dieselbe,
- * nur Tabelle und Schlüssel wechseln. Zwei getrennte Abfragen waeren genau die
- * Sorte Doppelung, die in diesem Projekt schon mehrfach auseinandergelaufen
- * ist (zuletzt routes/minifigs.ts gegen routes/parts.ts).
- *
- * Blickfeld, nicht eigenes Konto: Im Haushalt soll auch das Set des
- * Geschwisterkontos auftauchen, in dem dieselbe Figur steckt.
+ * Ausführlich: docs/begruendungen/routes/api_v1/minifigs.ts.md#get-minifigs-fignumber-sets
  */
 router.get('/minifigs/:figNumber/sets', requireToken, async (req: AuthedRequest, res) => {
   try {

@@ -257,6 +257,8 @@ test('Sicherung und Wiederherstellung', async (t) => {
       'restore.sh prüft die Endmarke nicht, BEVOR es etwas überschreibt');
     assert.match(rCode, /ON_ERROR_STOP=1/,
       'Ohne ON_ERROR_STOP meldet ein halber Restore Erfolg');
+    assert.match(bCode, /^umask 077$/m,
+      'Die Sicherung enthält Klartext-Schlüssel — sie darf nur für den Besitzer lesbar entstehen');
   });
 
   await t.test('aufräumen', async () => {

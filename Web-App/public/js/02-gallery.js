@@ -12,6 +12,8 @@ import { loadFinance } from './04-finance.js';
 import { loadApiLimits, loadCacheStats, loadCacheTtl, loadHousehold, loadProfile, loadRateLimitStats, loadSettings, loadTokens, ladeAlarmUebersicht, ladeLagerortVerwaltung } from './05-settings.js';
 import { loadBrickColors, loadManualFigsTable, loadManualParts, loadMinifigs } from './06-minifigs.js';
 import { ladeGutscheine } from './17-gutscheine.js';
+import { geloeschtMitRueckgaengig, ladePapierkorb } from './20-papierkorb.js';
+import { ladeZweitenFaktor } from './21-zweiter-faktor.js';
 import { _lastImportAt, confirmDelete, enrichGalleryWithPrices, jobPollTimer, ladeLagerorte, lagerortBlock, openModal, pollJobStatus, set_jobPollTimer, set_lastImportAt } from './07-admin.js';
 import { openAcqModal, renderAcqModalBody, renderAcquisitionSummary } from './13-acquisition-modals.js';
 import { ladeMerkliste } from './16-merkliste.js';
@@ -114,12 +116,12 @@ export function bindTabs(){
 // Seite, von der man meist nur eine Rubrik sehen wollte. Jetzt holt jede
 // Sicht, was sie zeigt — dieselbe Regel wie in der Android-App.
 const SICHTEN = {
-  profil:     () => { loadSettings(); loadProfile(); },
+  profil:     () => { loadSettings(); loadProfile(); ladeZweitenFaktor(); },
   gutscheine: () => ladeGutscheine(),
   alarme:     () => ladeAlarmUebersicht(),
   lagerorte:  () => ladeLagerortVerwaltung(),
   haushalt:   () => loadHousehold(),
-  daten:      () => {},
+  daten:      () => ladePapierkorb(),
   app:        () => loadTokens(),
 };
 
@@ -1240,7 +1242,7 @@ export async function delSet(sn){
   if(!await confirmDelete(tRaw('gallery.delete.title'), t('gallery.delete.name_parts',{name}))) return false;
   const d=await api('DELETE',`/v1/sets/${sn}`);
   if(!d.success){ toast(d.error,'error'); return false; }
-  toast(tRaw('users.deleted',{name:sn}),'success');
+  geloeschtMitRueckgaengig(tRaw('users.deleted',{name:sn}), d);
   // Alles nachladen, was mitgelöscht wurde. loadStats() fehlte: Die Kennzahlen
   // im Kopf (Sets, Einheiten, Teile, Minifiguren) blieben nach dem Löschen auf
   // dem alten Stand, obwohl die Teile und Minifiguren des Sets mit weg sind.
@@ -1343,7 +1345,7 @@ export function openImageLightbox(src){
 // Schliessen des Zooms `[img] konnte nicht geladen werden: https://<host>/`.
 // Ohne Attribut laedt der Browser gar nichts.
 export function closeImageLightbox(){ G('img-lightbox').classList.remove('open'); G('lightbox-img').removeAttribute('src'); }
-document.addEventListener('keydown', e => { if(e.key==='Escape' && G('img-lightbox').classList.contains('open')) closeImageLightbox(); });
+// Escape schliesst den Zoom über js/01-dialoge.js, wie jeden Dialog.
 G('set-modal').addEventListener('click',e=>e.target.id==='set-modal'&&closeModal());
 
 let _autosaveTimer=null;

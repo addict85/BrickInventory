@@ -24,13 +24,7 @@ import { mengeJoin, mengeAus, teilmengeJoin, teilmengeAus } from '../bestandsmen
 /**
  * Leseabfragen für Teile — inklusive der Ausweichebenen (CSV-Zwischenspeicher,
  * Rebrickable), wenn der eigene Bestand ein Set nicht kennt.
- *
- * ── Warum aufgeteilt (Nachtrag 133) ────────────────────────────────────────
- * utils/handlers.ts fasste Sets, Teile und Minifiguren in 1313 Zeilen zusammen
- * — benannt nach seiner Rolle („handlers"), nicht nach seinem Inhalt, wie
- * zuvor schon js/07-admin.js. Die drei Domänen berühren sich kaum: Nur
- * getSets() liest Teile, und die Minifiguren-Kennzahlen lesen Sets. Beides
- * geht in EINE Richtung, es entsteht also kein Kreis.
+ * Ausführlich: docs/begruendungen/utils/handlers/parts.ts.md#abschnitt
  */
 
 /**
@@ -53,15 +47,8 @@ async function getPartsColors(userId: Blickfeld) {
   // Aus der Zusammenfassung: dieselbe Gruppierung, aber über 66'000 statt
   // 171'000 Zeilen und ohne den Join auf sets — die Mengen sind dort bereits
   // mit der Set-Anzahl multipliziert.
-  // strict: Kennzahlen müssen zwischen Webapp und App übereinstimmen — ein
-  // veralteter Stand darf hier nicht benutzt werden (siehe partsSummary.ts).
-  // ::int an JEDEM Zählwert BEIDER Zweige: Ohne die Casts hing der JSON-TYP
-  // am Cache-Zustand — SUM(BIGINT) im Zusammenfassungs-Zweig ergibt NUMERIC
-  // (der Parser in db/database.ts macht daraus eine ZAHL), SUM(INTEGER) im
-  // Live-Zweig ergibt BIGINT (bleibt TEXT). Dieselbe Route lieferte also mal
-  // total_quantity: 20, mal "20", je nachdem, ob die Zusammenfassung gerade
-  // frisch war. Aufgeflogen im Paritätstest, der die beiden Aufrufe zufällig
-  // über eine Frische-Grenze hinweg machte — einzeln war er grün.
+  // strict: Kennzahlen müssen zwischen Webapp und App übereinstimmen — ein …
+  // Ausführlich: docs/begruendungen/utils/handlers/parts.ts.md#getpartscolors
   if (await ensureFresh(uids, { strict: true })) {
     return db.all(`
       SELECT ps.color_name, COALESCE(ps.color_hex, rc.rgb) AS color_hex,
@@ -95,24 +82,7 @@ async function getPartsColors(userId: Blickfeld) {
 
 /**
  * Volltextsuche über Teilenummer, Name und BrickLink-Nummer.
- *
- * EINE Formulierung für die drei Listen, die danach suchen: die Set-Teile aus
- * der Live-Abfrage (teileFilter), dieselben aus der vorberechneten
- * Zusammenfassung (tryPartsSummary) und die manuell erfassten (getManualParts).
- *
- * ── Warum zusammengelegt (NACHGEMESSEN) ─────────────────────────────────────
- *
- * Die beiden Wege für die Set-Teile suchten VERSCHIEDEN: Die Zusammenfassung
- * sah in `bl_part_number` mit, die Live-Abfrage nicht. Welcher Weg antwortet,
- * entscheidet aber nicht der Mensch, sondern ob die Zusammenfassung frisch ist
- * (ensureFresh) — dieselbe Suche fand also je nach Tageszeit etwas anderes.
- * Beide Listen zeigen die BrickLink-Nummer an (blNummerSql), und wer sie auf
- * der Kachel liest, tippt sie auch ein.
- *
- * ILIKE statt LOWER(...) LIKE: Dasselbe Ergebnis, aber ohne dass jeder
- * Aufrufer daran denken muss, auch den Suchtext kleinzuschreiben — genau
- * dieses Paar stand vorher in beiden Fassungen einmal so und einmal anders.
- *
+ * Ausführlich: docs/begruendungen/utils/handlers/parts.ts.md#teilesuche
  * @param nummer    Spalte mit der Rebrickable-Teilenummer
  * @param name      Spalte mit dem Teilenamen (darf NULL sein)
  * @param blNummer  Ausdruck für die BrickLink-Nummer (blNummerSql oder Spalte)
@@ -124,16 +94,7 @@ function teileSuche(nummer: string, name: string, blNummer: string, pi: number) 
 
 /**
  * WHERE-Klausel und Parameter der Teileliste aus den Abfrageparametern.
- *
- * ── Warum eigenständig (Nachtrag 148) ───────────────────────────────────────
- * getParts() war 256 Zeilen und tat drei Dinge: Filter bauen, Abfragen
- * ausführen, und bei einem leeren Ergebnis auf Katalog bzw. Rebrickable
- * ausweichen. Der Filterteil ist der einzige davon, der ohne Datenbank
- * nachvollziehbar ist — er nimmt Werte entgegen und gibt eine Zeichenkette
- * zurück.
- *
- * Die laufende Nummer `pi` kommt mit zurück, weil der Aufrufer LIMIT/OFFSET
- * danach anhängt.
+ * Ausführlich: docs/begruendungen/utils/handlers/parts.ts.md#teilefilter
  */
 function teileFilter(uids: number[], query: any) {
   const { color, category, search, spare, set_number } = query;
@@ -194,14 +155,7 @@ function teileFilter(uids: number[], query: any) {
 
 /**
  * Teileliste EINES Sets, wenn der Nutzer selbst keine Zeilen dazu hat.
- *
- * Zwei Ersatzquellen in dieser Reihenfolge: der eingespielte Rebrickable-CSV-
- * Katalog (lokal, kostet nichts) und erst danach die Rebrickable-API (zählt
- * auf das Tageskontingent). Geblättert wird hier nicht — die Menge ist durch
- * das Set begrenzt, page_size ist deshalb die Zeilenzahl.
- *
- * Gibt null zurück, wenn auch dort nichts zu finden war; dann bleibt es beim
- * leeren Ergebnis aus der Datenbank.
+ * Ausführlich: docs/begruendungen/utils/handlers/parts.ts.md#teileersatzquelle
  */
 async function teileErsatzquelle(set_number: string) {
     // Hier standen n und alt einzeln, und alt war
@@ -245,21 +199,7 @@ async function teileErsatzquelle(set_number: string) {
     }
 
     // Rebrickable-Rückfallebene.
-    //
-    // VORHER stand hier `require('../../routes/parts').fetchRebrickableParts` —
-    // einen Namen, den routes/parts.ts NIE exportiert hat (die Exportliste am
-    // Dateiende führt ihn nicht). Der Ausdruck war also `undefined(…)`, und
-    // weil der TypeError SYNCHRON fliegt, fing ihn auch das `.catch(() => [])`
-    // daneben nicht ab: Die Anfrage endete mit einem 500er statt mit einer
-    // leeren Liste. Aufgefallen ist das nie, weil der Zweig nur greift, wenn
-    // ein Set weder eigene Teile noch einen CSV-Eintrag hat.
-    //
-    // Statt den Namen zu exportieren, geht der Weg jetzt über getAllSetParts()
-    // in clients/rebrickable.ts. Die Funktion kann längst alles, was die
-    // 90-zeilige Zweitfassung nachbaute — und zwar besser: CSV zuerst,
-    // Tageskontingent über consumeRebrickableDaily(), Drossel über den
-    // Limiter, Antwort im subsets_cache. Die Zweitfassung holte ohne all das
-    // und ist entfallen.
+    // Ausführlich: docs/begruendungen/utils/handlers/parts.ts.md#teileersatzquelle-rbkey
     const rbKey = await getGlobalSetting('rebrickable_api_key');
     if (rbKey) {
       for (const sn of [n, alt]) {
@@ -365,23 +305,11 @@ async function tryPartsSummary(userId: Blickfeld, o: any) {
   const groupSql = multi ? ' GROUP BY part_key, color_id' : '';
   const orderSql = multi ? 'MIN(color_name) ASC, MIN(part_name) ASC' : 'color_name ASC, part_name ASC';
 
-  // ── Scheitert die Abfrage, ist das ein RUECKFALL, kein Fehler ───────────
-  //
-  // Marcos Befund vom 25.09.: Der Teile-Reiter antwortete mit 500,
-  // „column storage does not exist". Die Spalte fehlte auf seiner laufenden
-  // Datenbank (siehe db/migrations/0025-parts-summary-lagerort.sql) — und
-  // damit war der ganze Reiter tot, obwohl es die Live-Abfrage zwanzig Zeilen
-  // weiter unten noch gibt und sie dieselbe Antwort gegeben haette.
-  //
+  // Scheitert die Abfrage, ist das ein RUECKFALL, kein Fehler
   // Das ist der Kern des Fehlers, nicht die fehlende Spalte: Diese Funktion
   // heisst `try…` und gibt sonst ueberall `null` zurueck, wenn die
-  // Zusammenfassung nicht benutzbar ist — bei fehlender Frische, bei einem
-  // Kategorie-Filter. Nur der Fall „die Tabelle sieht anders aus als erwartet"
-  // fiel durch und riss die Anfrage mit.
-  //
-  // Eine Zusammenfassung ist eine BESCHLEUNIGUNG. Wenn sie nicht geht, soll es
-  // langsamer gehen, nicht gar nicht. Gemeldet wird es trotzdem: Ein stiller
-  // Rueckfall verstecke, dass jede Anfrage jetzt den teuren Weg nimmt.
+  // Zusammenfassung nicht benutzbar ist — bei fehlender Frische, bei einem …
+  // Ausführlich: docs/begruendungen/utils/handlers/parts.ts.md#trypartssummary-countrow
   let countRow, rows;
   try {
     [countRow, rows] = await Promise.all([
@@ -398,29 +326,11 @@ async function tryPartsSummary(userId: Blickfeld, o: any) {
     return null;
   }
 
-  // ── is_spare als echter Wahrheitswert — wie im Live-Zweig ────────────────
-  //
-  // Marcos Befund, mit der genauen Meldung aus der App:
-  //
-  //     Expected valid boolean literal prefix, but had '0'
-  //     at path: $.parts[0].is_spare     →   "is_spare":0
-  //
+  // is_spare als echter Wahrheitswert — wie im Live-Zweig
   // Die Teileliste der Android-App blieb LEER. Ein einziger solcher Wert
   // laesst die ganze Seite scheitern; das Kotlin-Modell fuehrt is_spare als
   // Boolean, und `coerceInputValues` faengt nur null, keinen Typwechsel.
-  //
-  // Der Live-Zweig macht es seit jeher richtig (`istErsatzteil(p.is_spare)`,
-  // getParts weiter unten) — parts_summary fuehrt die Spalte aber als INTEGER,
-  // und hier ging sie ROH hinaus. Welcher Zweig antwortet, haengt allein davon
-  // ab, ob die Zusammenfassung frisch ist: Ein neues Konto bekam den
-  // Live-Zweig und korrektes JSON, ein gewachsenes den Zusammenfassungs-Zweig
-  // und eine Zahl. Genau deshalb war der Fehler auf keiner Testinstallation zu
-  // sehen und trat beim ersten Neuaufbau der Zusammenfassung ploetzlich auf.
-  //
-  // Die Regel steht schon zwei Funktionen weiter unten, angewandt auf ein
-  // anderes Feld: „Der JSON-Typ von total_quantity darf nicht vom Zweig
-  // abhaengen." Genau das gilt fuer JEDES Feld — hier war es fuer eines
-  // vergessen worden.
+  // Ausführlich: docs/begruendungen/utils/handlers/parts.ts.md#trypartssummary
   return {
     parts: rows.map(r => ({ ...r, total_quantity: parseInt(r.total_quantity) || 0,
                             is_spare: istErsatzteil(r.is_spare),
@@ -452,12 +362,7 @@ async function getParts(userId: Blickfeld, query: any = {}) {
   // Der JSON-Typ von total_quantity darf nicht vom Zweig abhängen —
   // SUM(BIGINT) käme als Zahl, SUM(INTEGER) und die rohe BIGINT-Spalte als
   // Text. Haushalt, Einzelkonto und Live-Abfrage liefern jetzt dieselbe Form.
-  // Die Set-Menge als Faktor, aus den Erfassungen (Migration 0036). Mit
-  // set_number-Filter entfaellt der Faktor: Dort geht es um die Teile EINES
-  // Sets, nicht um den Bestand.
-  // Die Stückzahl der Bestandszeile stand als p.quantity hier; Migration
-  // 0038 hat die Spalte geloescht (teilmengeAus unterscheidet jetzt
-  // Katalogzahl und Erfassungssumme).
+  // Ausführlich: docs/begruendungen/utils/handlers/parts.ts.md#getparts-qtyexpr
   const qtyExpr   = set_number
     ? `SUM(${teilmengeAus('p', 'part')})::int`
     : `SUM(${teilmengeAus('p', 'part')} * ${mengeAus('sm', 1)})::int`;
@@ -465,17 +370,11 @@ async function getParts(userId: Blickfeld, query: any = {}) {
   // die Zeile eine ID, der Name steht in storage_locations. LEFT JOIN, damit
   // ein Teil ohne Ort nicht aus der Liste faellt.
   const lagerJoin = ' LEFT JOIN storage_locations lo ON lo.id = p.storage_id';
-  // ── Die Beschreibung kommt aus den Katalogen (Migration 0034) ───────────
-  //
+  // Die Beschreibung kommt aus den Katalogen (Migration 0034)
   // pc  je Teilenummer:          Name, Kategorie
   // pcc je Teilenummer + Farbe:  Farbbezeichnung, Farbcode, Bild
   // spc je Set + Teil + Farbe:   Ersatzteilkennzeichen
-  //
-  // Alle drei ueber ihren Primaerschluessel verbunden, also hoechstens eine
-  // Zeile je Treffer — die Gruppierung und damit die Gesamtzahl bleiben
-  // unberuehrt. LEFT JOIN durchweg: Ein manuell erfasstes Teil hat keine
-  // Set-Nummer und damit keine spc-Zeile, und ein Teil ohne Katalogzeile
-  // soll in der Liste stehen, statt aus ihr zu fallen.
+  // Ausführlich: docs/begruendungen/utils/handlers/parts.ts.md#getparts-katalogjoin
   const katalogJoin =
     ' LEFT JOIN part_catalog pc ON pc.part_number = p.part_number'
   + ' LEFT JOIN part_color_catalog pcc ON pcc.part_number = p.part_number'
@@ -485,13 +384,7 @@ async function getParts(userId: Blickfeld, query: any = {}) {
   + '                                AND spc.color_id    = p.color_id';
   // Ohne set_number-Filter haengt die Set-Menge mit dran (der Faktor in
   // qtyExpr). Mit Filter nicht: Dort geht es um die Teile EINES Sets.
-  //
-  // Hier stand ein LEFT JOIN auf `sets` — er diente allein der Spalte
-  // s.quantity, und die ist mit Migration 0036 weg.
-  // blJoin() ist in BEIDEN Zweigen dabei, auch bei set_number: Der
-  // Gruppierungsschluessel unten ist die BrickLink-Nummer, und die kommt
-  // seit Migration 0037 aus bl_zuordnung. Ohne den Join gaebe es den Alias
-  // blz nicht — ein harter Fehler, keine stille 500.
+  // Ausführlich: docs/begruendungen/utils/handlers/parts.ts.md#getparts-joinclause
   const joinClause = (set_number ? 'FROM parts p' : `FROM parts p ${mengeJoin('p')}`)
     + ` ${teilmengeJoin('p', 'part')}`
     + ` ${blJoin('p.part_number', 'part')}`
@@ -500,13 +393,8 @@ async function getParts(userId: Blickfeld, query: any = {}) {
   // Count for pagination.
   // Vorher COUNT(DISTINCT <concat>) — das baut pro Zeile einen String und
   // sortiert ihn anschliessend. COUNT(*) über dieselbe Gruppierung nutzt den
-  // HashAggregate und ist bei 171'000 Zeilen gemessen rund 2,7× schneller
-  // (176 ms → 65 ms).
-  // ── Schneller Weg: vorberechnete Zusammenfassung ───────────────────────
-  // Sie deckt genau den Fall der Teileansicht ab (Set-Teile, gruppiert nach
-  // Teil und Farbe). Der Filter set_number ist bewusst ausgenommen: Dort geht
-  // es um die Teile EINES Sets, nicht um die Sammlung — dafür ist die
-  // Live-Abfrage sowohl passend als auch schnell genug.
+  // HashAggregate und ist bei 171'000 Zeilen gemessen rund 2,7× schneller …
+  // Ausführlich: docs/begruendungen/utils/handlers/parts.ts.md#getparts-excludesmanual
   const excludesManual = query.exclude_manual === '1' || query.exclude_manual === true;
   // `storage` ist wie `set_number` ausgenommen: Die Zusammenfassung kennt den
   // Lagerort nur VERDICHTET („Kiste 3, Regal B" fuer ein Teil aus zwei Sets)
@@ -519,18 +407,10 @@ async function getParts(userId: Blickfeld, query: any = {}) {
     if (summary) return summary;
   }
 
-  // ── Dieselben Joins wie die Hauptabfrage, nicht nur `FROM parts p` ──────
-  //
-  // Hier stand `FROM parts p` allein. Die Filterbedingung kann aber auf lo
-  // zeigen (?storage=) und seit Migration 0034 auch auf pc/pcc/spc — ohne die
-  // Joins ist das ein harter Fehler, und der Aufruf antwortete mit 500.
-  //
-  // GEMESSEN am Lagerortfilter, der schon vor dieser Aenderung so lief:
-  // „missing FROM-clause entry for table lo". Siehe die Gegenprobe in
-  // test/teile-katalogspalten-db.test.js.
-  //
+  // Dieselben Joins wie die Hauptabfrage, nicht nur `FROM parts p`
   // Die zusaetzlichen Joins aendern die Zahl nicht: Jeder haengt am
   // Primaerschluessel seiner Tabelle, liefert also hoechstens eine Zeile.
+  // Ausführlich: docs/begruendungen/utils/handlers/parts.ts.md#getparts-countsql
   const countSql = `SELECT COUNT(*)::int AS c FROM (
        SELECT 1 ${joinClause} WHERE ${where}
        GROUP BY ${blNummerSql('p.part_number')}, p.color_id
@@ -597,20 +477,9 @@ async function getParts(userId: Blickfeld, query: any = {}) {
     GROUP BY ${blNummerSql('p.part_number')}, p.color_id
     ORDER BY MIN(pcc.color_name) ASC, MIN(pc.part_name) ASC${limitClause}`;
 
-  // ── Angezeigter Zustand: nur noch aus den Erfassungen ───────────────────
-  //
+  // Angezeigter Zustand: nur noch aus den Erfassungen
   // Sobald eine Erfassung „Gebraucht" ist, gilt das Teil als gebraucht.
-  //
-  // Hier stand daneben `MAX(p.condition) AS stored_condition` als Rueckfall
-  // fuer Teile OHNE Erfassung. Die Spalte ist mit Migration 0035 weg, und der
-  // Rueckfall war fuer Set-Teile ohnehin wirkungslos: parts.condition stand
-  // bei ihnen seit jeher auf dem Vorgabewert 'N' und wurde nie geschrieben
-  // (gemessen an allen Schreibwegen — beide fassen nur source='manual' an).
-  // Fuer manuelle Teile garantiert Migration 0035 eine Erfassung.
-  //
-  // Entfällt komplett, wenn manuelle Teile ohnehin ausgefiltert sind — dann
-  // kann keine Zeile des Ergebnisses davon betroffen sein. Genau so ruft die
-  // Teile-Seite den Endpunkt auf (exclude_manual=1).
+  // Ausführlich: docs/begruendungen/utils/handlers/parts.ts.md#getparts-usedsql
   const usedSql =
     `SELECT ${blNummerSql('p.part_number')} AS pid, p.color_id,
             MAX(CASE WHEN pa.condition='U' THEN 1 ELSE 0 END) AS any_used
@@ -696,19 +565,11 @@ async function getPartsStats(userId: Blickfeld) {
       total_parts:   parseInt(r.total_parts   || 0),
     };
   }
-  // ── Derselbe Filter wie in der Zusammenfassung, und warum er gefehlt hat ──
-  //
+  // Derselbe Filter wie in der Zusammenfassung, und warum er gefehlt hat
   // Der Kommentar oben sagt es schon: „Die Kennzahlen beziehen sich wie die
   // Liste auf Set-Teile; manuell erfasste haben ihren eigenen Bereich." Die
-  // Zusammenfassung setzt das um (`COALESCE(p.source, 'set') <> 'manual'` in
-  // utils/partsSummary.ts) — dieser Rückfall tat es nicht und zählte die
-  // manuellen mit.
-  //
-  // Damit gab es ZWEI Antworten auf dieselbe Frage, und welche man bekam,
-  // hing davon ab, ob die Zusammenfassung gerade frisch war. Genau so ist es
-  // aufgefallen: api-parity vergleicht denselben Endpunkt mit Sitzung und mit
-  // Token; der erste Aufruf baute die Zusammenfassung, der zweite benutzte
-  // sie — zwei verschiedene Zahlen, sporadisch, ohne erkennbaren Grund.
+  // Zusammenfassung setzt das um (`COALESCE(p.source, 'set') <> 'manual'` in …
+  // Ausführlich: docs/begruendungen/utils/handlers/parts.ts.md#getpartsstats-row
   const row = await db.get(`
     SELECT COUNT(DISTINCT p.part_number) AS unique_parts,
            COUNT(DISTINCT p.color_id)    AS unique_colors,
@@ -777,25 +638,11 @@ async function getManualParts(userId: Blickfeld, viewerId: number,
   // normalisiert, damit ältere Aufrufer mit einer nackten ID weiter gehen.
   const uids = asIds(userId);
   const params: any[] = [uids];
-  // ── Der Suchtext wirkt auch hier (Marcos Befund vom 20.10.) ──────────────
-  //
-  // „Wenn ich im Filter z.b. nach 3001 suche passiert nichts."
-  //
-  // NACHGEMESSEN am laufenden Server: Nach der Eingabe standen dieselben zwei
-  // Kacheln da wie vorher. Der Suchtext ging ueber partsParams() ausschliesslich
-  // an die Set-Teile-Wand (mit exclude_manual=1); diese Liste kannte ihn nicht.
-  //
+  // Der Suchtext wirkt auch hier
   // Dass er BEIDE Listen trifft, ist keine Auslegung: public/index.html stellt
   // die Filterleiste ueber den manuellen Bereich und begruendet es dort
-  // ausdruecklich damit („Der Filter wirkt auf beide Listen"), und
-  // test/tab-layout.test.js prueft diese Anordnung. Die Anordnung versprach
-  // also etwas, das die Abfrage nicht hielt.
-  //
-  // Gefiltert wird am SERVER, wie beim Konto- und Lagerortfilter daneben
-  // (public/js/14-scope.js nennt den Grund) — nicht clientseitig im Cache.
-  //
-  // Der Platzhalter kommt VOR LIMIT/OFFSET in die Liste: Die beiden haengen
-  // sich hinten an und beziehen ihre Nummern aus params.length.
+  // ausdruecklich damit („Der Filter wirkt auf beide Listen"), und …
+  // Ausführlich: docs/begruendungen/utils/handlers/parts.ts.md#getmanualparts-filter
   let filter = '';
   if (search) {
     params.push(`%${search}%`);
@@ -917,31 +764,7 @@ export { getPartsColors, tryPartsSummary, getParts, getPartsStats, getBlColorMap
 
 /**
  * Wie viele der angefragten Teile im Blickfeld tatsächlich vorhanden sind.
- *
- * ── Wofür (Nachtrag 174, „Kann ich das bauen?") ─────────────────────────────
- *
- * Die Teileliste eines Sets zeigt seit jeher eine Spalte „Habe" — bisher ein
- * leeres Zahlenfeld, in das man von Hand eintrug, was man schon besitzt. Die
- * BrickLink-Wunschliste zieht diese Zahl vom Bedarf ab. Das funktionierte,
- * nur musste man dafür seine eigene Sammlung im Kopf haben.
- *
- * Diese Funktion füllt die Spalte. Sie speichert nichts und ändert nichts —
- * sie ist eine Frage an den bestehenden Bestand.
- *
- * ── Warum zwei Zahlen ───────────────────────────────────────────────────────
- *
- * `gesamt` zählt alles, `lose` nur, was nicht in einem Set steckt
- * (source='manual'). Der Unterschied ist für die Antwort entscheidend: Ein
- * Teil, das in einem aufgebauten Set sitzt, besitzt man zwar, aber man müsste
- * dafür ein anderes Set zerlegen. Welche der beiden Zahlen gilt, entscheidet
- * der Mensch vor dem Bildschirm — deshalb liefert der Server beide, statt sich
- * für eine zu entscheiden.
- *
- * ── Warum POST und keine Liste im Pfad ──────────────────────────────────────
- *
- * Gefragt wird nach den Teilen EINER Teileliste; ein grosses Set hat weit über
- * tausend Teil-Farb-Paare. Als Abfrageparameter gäbe das eine Adresse, die
- * jeder Proxy abschneidet.
+ * Ausführlich: docs/begruendungen/utils/handlers/parts.ts.md#bestand-max-teile
  */
 export const BESTAND_MAX_TEILE = 5000;
 
@@ -972,28 +795,7 @@ export async function getOwnedQuantities(
   // Schachtel und lässt sich verbauen. Die Bedarfsseite schliesst sie aus
   // (parts-list), die Bestandsseite nicht — das ist kein Widerspruch, sondern
   // genau der Unterschied zwischen „braucht man" und „hat man".
-  //
-  // ── Die STÜCKZAHL des Sets zählt mit (Marcos Befund) ──────────────────────
-  //
-  // „Ich besitze das Set 2x wie kann es dann sein, dass Teile fehlen?"
-  //
-  // Weil hier `SUM(p.quantity)` stand — die Menge aus EINEM Bausatz. Der
-  // Teile-Import legt je (user_id, set_number) genau einen Satz Zeilen ab
-  // (utils/partsImport.ts: DELETE, dann INSERT mit `part.quantity`); wie oft
-  // jemand das Set besitzt, steht ausschliesslich in `sets.quantity`. Diese
-  // Zahl kam im Abgleich nirgends vor. Wer ein Set zweimal hatte, sah den
-  // Inhalt von einem.
-  //
-  // Der LEFT JOIN multipliziert sie hinein. Er ist LEFT und nicht INNER, weil
-  // `parts` Zeilen ohne passendes Set enthalten kann: manuell erfasste Teile
-  // haben gar keine set_number, und eine Zeile, deren Set später gelöscht
-  // wurde, hätte sonst den ganzen Posten aus der Antwort geworfen.
-  // Die Set-Menge kommt seit Migration 0036 aus den Erfassungen; mengeAus()
-  // mit `fehlt = 1` heisst dann „einmal" — dieselbe Rechnung wie vorher mit
-  // COALESCE(s.quantity, 1).
-  //
-  // `lose` bleibt unberührt: Manuell erfasste Teile hängen an keinem Set, und
-  // eine Stückzahl gibt es dort nicht zu multiplizieren.
+  // Ausführlich: docs/begruendungen/utils/handlers/parts.ts.md#getownedquantities-rows
   const rows = await db.all(
     `SELECT p.part_number,
             COALESCE(p.color_id, 0)                                   AS color_id,
@@ -1023,24 +825,9 @@ export async function getOwnedQuantities(
       { gesamt: parseInt(r.gesamt) || 0, lose: parseInt(r.lose) || 0 };
   }
 
-  // ── Minifiguren zaehlen mit (Marcos „die Teile sollten in meinem Bestand
-  //    liegen") ──────────────────────────────────────────────────────────────
-  //
-  // Eine Teileliste enthaelt nicht nur Teile: Der Zusammenbau (08-init.js,
-  // plGenerate) haengt jede Minifigur des Sets als eigene Zeile an, mit der
-  // FIGURENNUMMER als `part_number` und Farbe 0. Gefragt wurde damit hier —
-  // und `parts` kennt keine Figuren. Jede Minifigur einer Liste galt deshalb
-  // IMMER als fehlend, auch wenn sie im Bestand stand. Stillschweigend, denn
-  // „nicht gefunden" sieht aus wie „habe ich nicht".
-  //
-  // Verwechseln kann sich dabei nichts: Figurennummern (trn241, sw0123) und
-  // Teilenummern (3001) kommen aus verschiedenen Nummernkreisen, und die
-  // Anfrage schickt fuer eine Figur ohnehin Farbe 0. Sollte eine Nummer doch
-  // einmal in beiden Tabellen stehen, gewinnt das TEIL — deshalb steht diese
-  // Schleife hinter der oberen und ueberschreibt nichts.
-  //
-  // `lose` ist bei Figuren dasselbe wie bei Teilen: was nicht in einem Set
-  // steckt, also source='manual'.
+  //  Minifiguren zaehlen mit (Marcos „die Teile sollten in meinem Bestand
+  //    liegen")
+  // Ausführlich: docs/begruendungen/utils/handlers/parts.ts.md#getownedquantities-figrows
   const figRows = await db.all(
     `SELECT m.fig_number                                                AS part_number,
             COALESCE(SUM(CASE WHEN COALESCE(m.source,'set') = 'manual'

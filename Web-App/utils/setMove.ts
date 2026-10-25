@@ -1,32 +1,7 @@
 /**
  * Ein Set (oder einzelne Kaufpreise davon) in ein anderes Konto des Haushalts
  * verschieben.
- *
- * ── Warum das nicht nur ein UPDATE der user_id ist ──────────────────────────
- *
- * 1. ERFASSUNGEN. Es gilt „pro Tag, Element und Benutzer genau EIN Kaufpreis"
- *    (utils/acquisitions.ts). Ein direktes Umhängen könnte im Zielkonto zwei
- *    Zeilen desselben Tages hinterlassen — genau den Zustand, den der
- *    Bearbeiten-Pfad ablehnt. Deshalb wandern sie einzeln durch
- *    recordAcquisitionForDay(), das bei Bedarf mengengewichtet zusammenfasst.
- *
- * 2. TEILE UND MINIFIGUREN hängen an (Konto, Setnummer) — NICHT am einzelnen
- *    Exemplar. `parts.quantity` ist die Menge für EIN Set; die Gesamtmenge
- *    entsteht erst durch Multiplikation mit `sets.quantity`
- *    (siehe utils/partsSummary.ts).
- *
- *    Daraus folgt für eine TEILVERSCHIEBUNG: Das Zielkonto braucht eine
- *    KOPIE der Zeilen, keine Verschiebung — die Quelle behält ja Exemplare
- *    und damit auch deren Teile. Erst wenn dort das letzte Exemplar geht,
- *    verschwinden Set und Inhalt beim Absender.
- *
- *    Ein blosses Umhängen (wie es die erste Fassung tat) wäre für den
- *    Teilfall falsch gewesen: Die Quelle hätte Exemplare ohne Teile behalten.
- *
- * 3. ANLEITUNGEN hängen ebenfalls an (Konto, Setnummer). Die Galerie zeigt sie
- *    nur zu Sets, die das Konto besitzt — eine zurückgebliebene Zeile wäre
- *    unsichtbar, während die Datei auf der Platte liegt. Auch sie werden
- *    kopiert bzw. beim letzten Exemplar mitgenommen.
+ * Ausführlich: docs/begruendungen/utils/setMove.ts.md#abschnitt
  */
 import { recordAcquisitionForDay } from './acquisitions';
 
@@ -45,17 +20,7 @@ export interface MoveResult {
 
 /**
  * Inhaltszeilen ins Zielkonto spiegeln, sofern dort noch keine liegen.
- *
- * Geprüft wird JE TABELLE, ob das Zielkonto für dieses Set schon Zeilen hat —
- * nicht, ob es das Set hat. Der Unterschied ist nicht theoretisch: Ein Set
- * kann durchaus ohne Teile im Bestand stehen (Erfassung ohne Teile-Import,
- * abgebrochener Import, ein zuvor bewusst geleerter Bestand). Wer vom Set auf
- * die Teile schliesst, kopiert dann nichts — und löscht anschliessend beim
- * Absender, wenn dort das letzte Exemplar geht. Die Teile wären weg.
- *
- * Umgekehrt darf nicht doppelt kopiert werden: Die Menge steckt in
- * sets.quantity, nicht in der Zahl der Zeilen; doppelte Zeilen zählte die
- * Zusammenfassung zweimal.
+ * Ausführlich: docs/begruendungen/utils/setMove.ts.md#copycontents
  */
 async function copyContents(tx: any, sn: string, fromId: number, toId: number) {
   const has = async (table: string) => {
@@ -64,17 +29,7 @@ async function copyContents(tx: any, sn: string, fromId: number, toId: number) {
     return !!r;
   };
   // NACHEINANDER, nicht per Promise.all.
-  //
-  // `tx` ist EINE Verbindung. Drei gleichzeitige Abfragen darauf sind kein
-  // Parallelbetrieb, sondern ein Fehler: pg warnt mit „Calling client.query()
-  // when the client is already executing a query is deprecated and will be
-  // removed in pg@9.0" — genau diese Meldung stand im Serverprotokoll beim
-  // Verschieben eines Sets. Ab pg 9 wäre es kein Warnhinweis mehr, und in
-  // einer Transaktion ist verschachteltes Abfragen ohnehin heikel: Die
-  // Reihenfolge von BEGIN, Abfrage und COMMIT auf derselben Verbindung ist
-  // dann nicht mehr die, die hier im Code steht.
-  //
-  // Zeitlich kostet es nichts — drei Indexzugriffe auf LIMIT 1.
+  // Ausführlich: docs/begruendungen/utils/setMove.ts.md#copycontents-hasparts
   const hasParts = await has('parts');
   const hasFigs  = await has('minifigs');
   const hasInstr = await has('instructions');
@@ -101,17 +56,11 @@ async function copyContents(tx: any, sn: string, fromId: number, toId: number) {
        FROM parts
       WHERE user_id = $2 AND set_number = $3 AND COALESCE(source,'set') <> 'manual'`,
     [toId, fromId, sn]);
-  // ── Was hier einmal schiefging, kann jetzt nicht mehr schiefgehen ───────
-  //
-  // Vorher nahmen die Teile 14 Spalten mit und die Figuren 7 — und das war
-  // kein Stilunterschied: image_local fehlte im Figurenzweig. Ein verschobenes
-  // Set verlor im Zielkonto die zwischengespeicherten Figuren-Bilder, die
-  // Teile behielten ihre. Bis zum naechsten Durchlauf des Bild-Jobs (der nur
-  // beim Serverstart laeuft) kam jedes Bild wieder ueber den Proxy vom CDN.
-  //
+  // Was hier einmal schiefging, kann jetzt nicht mehr schiefgehen
   // Mit Migration 0034 steht das Bild im Katalog und nicht an der Zeile. Es
   // gibt nichts mitzunehmen, also auch nichts zu vergessen — die Fehlerquelle
   // ist weg, nicht nur der Fehler.
+  // Ausführlich: docs/begruendungen/utils/setMove.ts.md#copycontents-m
   const m = hasFigs ? { changes: 0 } : await tx.run(
     // Ohne quantity — siehe den Teile-Zweig darueber (Migration 0038).
     `INSERT INTO minifigs (user_id, set_number, fig_number, source)
@@ -140,11 +89,7 @@ export async function moveSetBetweenAccounts(
   // eine geloeschte Spalte und gewinnt stillschweigend eine neue. Beides ist
   // in diesem Baum schon passiert — der Lagerort verschwand so aus der
   // Set-Detailansicht (handlers/sets.ts).
-  //
-  // Die Menge kommt nicht mehr von hier: Migration 0036 hat die Spalte
-  // geloescht, sie wird aus den Erfassungen gerechnet (utils/bestandsmenge.ts).
-  // Hier sind die Erfassungen gleich darunter ohnehin zur Hand — die Summe
-  // steht in `all`.
+  // Ausführlich: docs/begruendungen/utils/setMove.ts.md#movesetbetweenaccounts-src
   const src = await tx.get(
     'SELECT id, user_id, set_number, added_at, updated_at, storage_id FROM sets WHERE user_id=$1 AND set_number=$2',
     [fromId, sn]);
@@ -182,23 +127,8 @@ export async function moveSetBetweenAccounts(
   } else {
     // Stammdaten mitnehmen (Name, Jahr, Bild …) — sie beschreiben das Set,
     // nicht das Exemplar, und ein erneuter Katalogabruf wäre unnötig.
-    // ── Was hier NICHT mehr mitwandert ────────────────────────────────────
-    //
-    // Kaufpreis und Zustand: Sie wandern mit den Erfassungen eine Schleife
-    // weiter unten; die sets-Zeile hat die Spalten seit Migration 0032 nicht
-    // mehr. Vorher wurden sie an beiden Stellen übertragen — mit dem Risiko,
-    // dass die kopierte Spalte und die kopierten Erfassungen beim
-    // Teilverschieben auseinanderliefen.
-    //
-    // Die Stammdaten („Name, Jahr, Bild … sie beschreiben das Set, nicht das
-    // Exemplar, und ein erneuter Katalogabruf wäre unnötig") stehen seit
-    // Migration 0033 im Katalog. Hier gab es nie etwas zu holen: Die Setnummer
-    // bleibt dieselbe, also ist es dieselbe Katalogzeile. Der Satz war richtig
-    // und die Abschrift trotzdem unnötig.
-    //
-    // `added_at` wandert weiter mit: Es beschreibt, seit wann DIESER Bestand
-    // da ist, nicht das Set.
-    // Ohne Menge: Sie steht in den Erfassungen, die gleich darunter wandern.
+    //  Was hier NICHT mehr mitwandert
+    // Ausführlich: docs/begruendungen/utils/setMove.ts.md#movesetbetweenaccounts
     await tx.run(
       `INSERT INTO sets (user_id, set_number, added_at)
        VALUES ($1,$2,$3)`,
@@ -221,19 +151,11 @@ export async function moveSetBetweenAccounts(
   const counts = await copyContents(tx, sn, fromId, toId);
 
   if (remaining > 0) {
-    // ── TEILVERSCHIEBUNG: alles steht danach in BEIDEN Konten ──────────────
-    //
+    // TEILVERSCHIEBUNG: alles steht danach in BEIDEN Konten
     // Wird einer von mehreren Kaufpreisen umgehängt, behält der Absender
     // Exemplare. Set, Teile, Minifiguren und Anleitungen bleiben deshalb bei
-    // ihm — beim Ziel liegen inzwischen Kopien (copyContents oben), und die
-    // Stückzahl hier sinkt nur um die gewanderten Exemplare.
-    //
-    // Ein Exemplar ohne Teile wäre ein halber Bestand: Die Teileliste des
-    // Absenders verlöre die Zeilen, obwohl er das Set noch besitzt.
-    //
-    // Die Stueckzahl des Absenders ist oben schon aus seinen Erfassungen
-    // gerechnet; hier stand dafuer `UPDATE sets SET quantity=$1` mit dem von
-    // Hand ausgerechneten Rest.
+    // ihm — beim Ziel liegen inzwischen Kopien (copyContents oben), und die …
+    // Ausführlich: docs/begruendungen/utils/setMove.ts.md#movesetbetweenaccounts-2
     return { quantity: movingQty, acquisitions: wanted.length, merged: !!dst,
              ...counts, source_emptied: false };
   }
@@ -257,18 +179,7 @@ export async function moveSetBetweenAccounts(
 // ═══════════════════════════════════════════════════════════════════════════
 /**
  * Wie beim Set: Verschoben wird über den KAUFPREIS, nicht über den Eintrag.
- *
- * ── Warum das hier einfacher ist als bei Sets ───────────────────────────────
- * Ein manuell erfasstes Teil hat keinen Inhalt: keine Unterteile, keine
- * Minifiguren, keine Anleitungen. Es wandern also nur die Menge und die
- * Erfassung selbst. Der Rest ist dieselbe Regel wie oben — die Erfassung geht
- * durch recordAcquisitionForDay(), damit im Zielkonto nicht zwei Zeilen
- * desselben Tages entstehen.
- *
- * ── Was der Absender behält ─────────────────────────────────────────────────
- * Bleiben ihm Exemplare, sinkt nur die Stückzahl. Geht das letzte, verschwindet
- * die Stammzeile bei ihm — bei einem manuell erfassten Eintrag ist eine Zeile
- * mit Menge 0 kein Bestand, sondern Ballast.
+ * Ausführlich: docs/begruendungen/utils/setMove.ts.md#movemanualacquisition
  */
 export async function moveManualAcquisition(
   tx: any, kind: 'part' | 'fig', keyValues: any[], acquisitionId: number,
@@ -290,20 +201,11 @@ export async function moveManualAcquisition(
   if (!src) fehlerWerfen('nicht_gefunden', 404);
 
   const movingQty = Math.max(1, parseInt(String(acq.quantity)) || 1);
-  // ── Wieviel bleibt: aus den ERFASSUNGEN, nicht von der Zeile ────────────
-  //
-  // Hier stand `(src.quantity || 1) - movingQty`. Die Spalte gibt es seit
-  // Migration 0038 nicht mehr, `src.quantity` war also `undefined` — und weil
-  // movingQty mindestens 1 ist, war `remaining` IMMER 0. Jedes Verschieben
-  // einer einzelnen Erfassung loeschte damit unten ALLE Erfassungen des
-  // Absenders fuer diese Position und seine Bestandszeile dazu, auch wenn er
-  // zehn hatte. Ohne Fehlermeldung.
-  //
+  // Wieviel bleibt: aus den ERFASSUNGEN, nicht von der Zeile
   // Der Set-Zweig daneben (moveSetAcquisition) rechnet genau so, und dort
   // steht sogar der Kommentar, dass dieser Rueckfall entfernt wurde — im
-  // manuellen Zweig blieb er stehen. Gemessen an
-  // test/erfassung-verschieben-rest-bleibt-db.test.js: „Der Absender hat 0
-  // Erfassungen uebrig, erwartet 1 mit Menge 3".
+  // manuellen Zweig blieb er stehen. Gemessen an …
+  // Ausführlich: docs/begruendungen/utils/setMove.ts.md#movemanualacquisition-gesamt
   const gesamt = Number((await tx.get(
     `SELECT COALESCE(SUM(quantity), 0)::int AS summe FROM ${acqTab}
       WHERE user_id = $1 AND ${keySql}`, [fromId, ...keyValues]))?.summe ?? 0);
@@ -317,19 +219,11 @@ export async function moveManualAcquisition(
     // Keine Mengenaenderung hier: Die Erfassung wandert gleich darunter, und
     // mengeNeuRechnen() leitet die Spalte daraus ab (utils/bestandsmenge.ts).
   } else if (isPart) {
-    // ── Nur noch Menge und Nummer ───────────────────────────────────────
-    //
+    // Nur noch Menge und Nummer
     // Die Beschreibung — Name, Farbe, Bild — stand hier einmal mit in der
     // Spaltenliste. Sie beschreibt das Teil und nicht das Exemplar und liegt
-    // seit Migration 0034 im Katalog; sie ist also schon da, denn das Teil
-    // existiert im Absenderkonto und damit im Katalog.
-    //
-    // Preis und Zustand sind mit Migration 0035 gefolgt: Sie reisen in der
-    // ERFASSUNG mit, und die legt recordAcquisitionForDay() gleich darunter
-    // an — mit acq.unit_price und acq.condition, also den Werten DER
-    // verschobenen Erfassung. Sie hier noch einmal mitzunehmen hiesse, den
-    // Wert der NEUESTEN Erfassung des Absenders zu kopieren; das war schon
-    // vorher eine andere Zahl als die verschobene.
+    // seit Migration 0034 im Katalog; sie ist also schon da, denn das Teil …
+    // Ausführlich: docs/begruendungen/utils/setMove.ts.md#movemanualacquisition-2
     await tx.run(
       // Menge 0: Sie entsteht aus der Erfassung, die gleich darunter wandert.
       // Ohne bl_part_number: Die BrickLink-Nummer steht seit Migration 0037

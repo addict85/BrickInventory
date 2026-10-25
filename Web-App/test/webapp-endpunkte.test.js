@@ -134,6 +134,26 @@ test('jede Adresse der Webapp existiert auf dem Server', () => {
  * NACHGEMESSEN sind es genau diese sieben. Jede ist geprüft worden, nicht
  * vermutet:
  */
+const PAPIERKORB =
+  'Papierkorb: vorerst nur in der Webapp. Löschen in der App landet trotzdem ' +
+  'darin (der Schnappschuss entsteht im Server), zurückholen geht über die ' +
+  'Webapp. Eine App-Ansicht ist als Nachzug vorgesehen.';
+
+const ZWEITER_FAKTOR =
+  'Den zweiten Faktor eines ANDEREN Kontos zurücksetzen gehört zur ' +
+  'Nutzerverwaltung, und die steht absichtlich nur in der Webapp ' +
+  '(BrickApiService.kt, Abschnitt Server-Protokoll).';
+
+const EINRICHTUNG =
+  'Der Einrichtungs-Assistent richtet den SERVER ein (Startpasswort, ' +
+  'Schlüssel der Quellen) — das geschieht am Rechner, bevor jemand die App ' +
+  'verbindet; die Schlüssel stehen dort auch in den Einstellungen.';
+
+const ALLES_LOESCHEN =
+  '„Alle meine Daten löschen" steht in der Gefahrenzone der Webapp. Auf dem ' +
+  'Telefon gibt es den Knopf absichtlich nicht — ein Fehlgriff dort träfe die ' +
+  'ganze Sammlung; einzelne Elemente löscht die App wie bisher.';
+
 const NUR_WEB = new Map([
   ['/api/v1/admin/job-status',
    'Stand des Preis-Jobs samt BrickLink-Kontingent. Die App zeigt BEIDES ' +
@@ -223,6 +243,22 @@ const NUR_WEB = new Map([
    'Die Einzelteile einer Minifigur. Dieselbe Herkunft: Der Export löste ' +
    'fehlende Figuren in ihre Teile auf, weil man die Figur oft nicht als ' +
    'Ganzes kaufen kann. Mit dem Export entfiel der einzige Aufrufer.'],
+  ['/api/v1/papierkorb',
+   PAPIERKORB],
+  ['/api/v1/papierkorb/:X',
+   PAPIERKORB],
+  ['/api/v1/papierkorb/:X/wiederherstellen',
+   PAPIERKORB],
+  ['/api/v1/auth/users/:X/zweiter-faktor',
+   ZWEITER_FAKTOR],
+  ['/api/v1/settings/einrichtung',
+   EINRICHTUNG],
+  ['/api/v1/settings/einrichtung/fertig',
+   EINRICHTUNG],
+  ['/api/v1/settings/quelle-testen',
+   EINRICHTUNG],
+  ['/api/v1/bestand',
+   ALLES_LOESCHEN],
 ]);
 
 test('was nur die Webapp kann, hat einen Grund', () => {

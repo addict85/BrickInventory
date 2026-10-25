@@ -1,15 +1,6 @@
 /**
  * /api/v1 — Kompositions-Router.
- *
- * Der frühere Monolith routes/api_v1.ts (~1.800 Zeilen) ist in Fach-Module
- * aufgeteilt; jedes Modul bringt seine eigenen Routen mit und nutzt die
- * gemeinsame Middleware aus ./middleware.ts. Die Mount-Reihenfolge ist
- * unkritisch (keine überlappenden Pfad-Muster zwischen den Modulen).
- *
- * Die Anmeldung ist NICHT dabei. Sie hängt als eigener Router unter
- * /api/v1/auth (routes/auth.ts) — dort steht sie vollständig, statt auf zwei
- * Dateien verteilt zu sein. Siehe die Begründung an der Einhängung in
- * server.ts.
+ * Ausführlich: docs/begruendungen/routes/api_v1/index.ts.md#abschnitt
  */
 import express from 'express';
 import setsRouter from './sets';
@@ -24,6 +15,7 @@ import miscRouter from './misc';
 import catalogRouter from './catalog';
 import wantedRouter from './wanted';
 import vouchersRouter from './vouchers';
+import papierkorbRouter from './papierkorb';
 
 const router = express.Router();
 
@@ -38,6 +30,7 @@ router.use(adminRouter);
 router.use(catalogRouter);      // /catalog/* — Rebrickable-Katalog (Browsen/Suchen)
 router.use(wantedRouter);     // /wanted — Merkliste (eigene Tabelle, siehe 0021)
 router.use(vouchersRouter);     // /vouchers — Gutscheine (eigene Tabelle, siehe 0026)
+router.use(papierkorbRouter);   // /papierkorb — gelöschte Elemente (siehe 0041)
 router.use(miscRouter);         // /stats + Endpoint-Übersicht unter /
 
 export = router;

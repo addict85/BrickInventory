@@ -27,6 +27,12 @@
  * Der Schaden entsteht aber erst aus dem Zusammenspiel von Auflisten und
  * Löschen — und genau das prüft nur ein Durchlauf gegen die Datenbank.
  *
+ * ── Seit dem Papierkorb ─────────────────────────────────────────────────────
+ * Der Knopf ruft jetzt EINEN Endpunkt (DELETE /api/v1/bestand), der Sets,
+ * manuelle Teile und Figuren des EIGENEN Kontos in den Papierkorb legt. Die
+ * Regel „nur meine" steht damit am Server; geprüft wird sie hier am selben
+ * Haushalt wie zuvor.
+ *
  * Voraussetzung: Test-DB über TEST_DATABASE_URL (Inhalt wird geleert!).
  */
 const test = require('node:test');
@@ -87,6 +93,10 @@ test('Alles-Loeschen fasst die verknuepften Konten nicht an', async (t) => {
   await haeltSet(db, kind, '21318-1', 1);
   await haeltTeil(db, kind, '3001', { setNumber: '21318-1', menge: 10, colorId: 4 });
   await haeltFigur(db, kind, 'fig1', { setNumber: '21318-1', menge: 1 });
+  // Manuelle Elemente auf beiden Seiten: Die des Kindes müssen bleiben.
+  await haeltTeil(db, kind, '3003', { colorId: 1, menge: 2 });
+  await haeltFigur(db, kind, 'fig2', { menge: 1 });
+  await haeltTeil(db, haupt, '3004', { colorId: 1, menge: 2 });
 
   const { base } = testServer(_req, {
     sitzung: { userId: haupt },
@@ -97,12 +107,10 @@ test('Alles-Loeschen fasst die verknuepften Konten nicht an', async (t) => {
   const hole = async (pfad, methode = 'GET') =>
     (await fetch(base + pfad, { method: methode })).json();
 
-  // Genau der Ablauf aus public/js/05-settings.js (btn-dall).
-  const liste = await hole('/api/v1/sets?accounts=own');
-  const nummern = (liste.sets || []).map(s => s.set_number);
-  assert.deepEqual(nummern, ['75192-1'],
-    'Die Liste zum Löschen muss NUR die eigenen Sets enthalten, nicht die des Haushalts');
-  for (const nr of nummern) await hole(`/api/v1/sets/${nr}?accounts=own`, 'DELETE');
+  // Genau der Aufruf aus public/js/05-settings.js (btn-dall).
+  const r = await hole('/api/v1/bestand', 'DELETE');
+  assert.equal(r.success, true, JSON.stringify(r));
+  assert.deepEqual([r.sets, r.teile, r.figuren], [1, 1, 0], 'Gezählt wird nur das eigene Konto');
 
   const meine = await db.all(`SELECT set_number FROM sets WHERE user_id=$1`, [haupt]);
   assert.deepEqual(meine, [], 'Die eigenen Sets müssen weg sein');
@@ -112,8 +120,10 @@ test('Alles-Loeschen fasst die verknuepften Konten nicht an', async (t) => {
     'Das verknüpfte Konto behält ALLE seine Sets — auch die gemeinsame Nummer');
   const teile = await db.get(`SELECT COUNT(*)::int c FROM parts WHERE user_id=$1`, [kind]);
   const figuren = await db.get(`SELECT COUNT(*)::int c FROM minifigs WHERE user_id=$1`, [kind]);
-  assert.equal(teile.c, 1, 'Teile des verknüpften Kontos bleiben');
-  assert.equal(figuren.c, 1, 'Minifiguren des verknüpften Kontos bleiben');
+  assert.equal(teile.c, 2, 'Teile des verknüpften Kontos bleiben (aus dem Set und manuell)');
+  assert.equal(figuren.c, 2, 'Minifiguren des verknüpften Kontos bleiben (aus dem Set und manuell)');
+  const meineTeile = await db.get(`SELECT COUNT(*)::int c FROM parts WHERE user_id=$1`, [haupt]);
+  assert.equal(meineTeile.c, 0, 'Das eigene manuelle Teil muss weg sein');
 });
 
 test('accounts kann das Loesch-Blickfeld nur einschraenken, nie erweitern', () => {
@@ -127,14 +137,17 @@ test('accounts kann das Loesch-Blickfeld nur einschraenken, nie erweitern', () =
     'Die gewählte Menge muss gegen writableIds() geschnitten werden');
 });
 
-test('der Knopf gibt accounts=own beim Auflisten UND beim Loeschen mit', () => {
-  // Eines von beiden allein genügt nicht: Ohne den ersten löscht der Knopf
-  // fremde Setnummern, ohne den zweiten löscht er die eigene Nummer auch beim
-  // verknüpften Konto.
+test('der Knopf überlässt die Auswahl dem Server', () => {
+  // Früher listete der Knopf selbst und löschte Nummer für Nummer — mit der
+  // Falle, dass ein fehlendes accounts=own den Haushalt mitlöschte. Jetzt
+  // entscheidet der Server, und zwar nur über das eigene Konto.
   const src = fs.readFileSync(path.join(ROOT, 'public', 'js', '05-settings.js'), 'utf8');
   const i = src.indexOf("G('btn-dall')");
   assert.ok(i > 0, 'Knopf btn-dall nicht gefunden');
   const block = src.slice(i, src.indexOf('\n};', i));
-  assert.match(block, /'\/v1\/sets\?accounts=own'/, 'Das Auflisten braucht accounts=own');
-  assert.match(block, /\/v1\/sets\/\$\{[^}]+\}\?accounts=own/, 'Das Löschen braucht accounts=own');
+  assert.match(block, /api\('DELETE','\/v1\/bestand'\)/, 'Der Knopf ruft DELETE /v1/bestand');
+  assert.doesNotMatch(block, /\/v1\/sets/, 'Der Knopf listet und löscht wieder selbst');
+  const loeschen = fs.readFileSync(path.join(ROOT, 'utils', 'loeschen.ts'), 'utf8');
+  assert.match(loeschen, /deleteSet\(\[uid\]/, 'Sets werden nur im EIGENEN Konto gelöscht');
 });
+

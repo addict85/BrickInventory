@@ -87,7 +87,14 @@ Nach Änderungen an `public/js/*` oder `public/i18n.js` muss
 ./scripts/backup.sh            # pg_dump + data/ nach ./backups
 ```
 Ein Dateikopie-Backup von `pgdata/` bei laufendem PostgreSQL ist **wertlos**.
-Den Restore-Weg einmal ausprobieren — die Befehle stehen am Ende des Skripts.
+Den Restore-Weg einmal ausprobieren: `./scripts/restore.sh`.
+
+**Sicherungen sind Geheimnisse.** Der Dump enthält die API-Schlüssel
+(Bricklink, Brickset, Rebrickable) und das SMTP-Passwort im Klartext sowie
+alle Passwort-Hashes. `backup.sh` legt die Dateien deshalb nur für den
+Besitzer lesbar an (`umask 077`) und warnt, wenn das Zielverzeichnis für
+andere offen ist. Wer `backups/` auf ein NAS oder in eine Cloud kopiert,
+verschlüsselt es vorher (z. B. `gpg -c` oder `age`).
 
 ## Manuell erfasste Teile löschen
 

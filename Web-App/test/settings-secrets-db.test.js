@@ -75,6 +75,9 @@ const AUSGENOMMEN = new Map([
              'ohne Login erreichbar, damit der Login-Bildschirm passt.'],
   ['/tokens', 'Listet App-Token, keine Einstellungen. Die Token selbst stehen ' +
               'nur als Hash in der Datenbank.'],
+  ['/einrichtung', 'Stand des Einrichtungs-Assistenten: je Quelle nur ja/nein, ' +
+                   'keine Werte, und nur für Verwalter. Dass kein Schlüssel ' +
+                   'herauskommt, prüft test/einrichtung-db.test.js.'],
 ]);
 
 function leserouten() {

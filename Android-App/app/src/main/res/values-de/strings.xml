@@ -26,6 +26,8 @@
     <string name="login_username">Benutzername</string>
     <string name="login_password">Passwort</string>
     <string name="login_button">Anmelden</string>
+    <string name="login_code">Code aus der Authenticator-App</string>
+    <string name="login_code_hint">Oder einer deiner Wiederherstellungscodes</string>
 
     <!-- ══════════════ CSV import banner ══════════════ -->
     <string name="csv_ok_count">✅ %1$d OK</string>
@@ -746,4 +748,25 @@
     <string name="vouchers_balance_done">%1$s: %2$s</string>
     <string name="vouchers_balance_currency">Währung auf %1$s geändert.</string>
     <string name="settings_group_display">Anzeige &amp; Preise</string>
+    <string name="zf_title">Zweiter Faktor</string>
+    <string name="zf_hint">Zusätzlich zum Passwort ein Code aus einer Authenticator-App. Schützt, falls jemand dein Passwort kennt.</string>
+    <string name="zf_setup">Einrichten</string>
+    <string name="zf_step_app">Den Schlüssel in die Authenticator-App übernehmen und den Code eingeben, den sie zeigt.</string>
+    <string name="zf_open_app">In Authenticator-App öffnen</string>
+    <string name="zf_no_app">Keine Authenticator-App gefunden — den Schlüssel kopieren und von Hand eingeben.</string>
+    <string name="zf_copy_key">Schlüssel kopieren</string>
+    <string name="zf_confirm_code">Code aus der App zur Bestätigung</string>
+    <string name="zf_confirm">Bestätigen</string>
+    <string name="zf_codes_title">Deine Wiederherstellungscodes</string>
+    <string name="zf_codes_hint">Jeder gilt einmal, falls das Telefon fehlt. Jetzt sicher ablegen — sie werden nicht noch einmal angezeigt.</string>
+    <string name="zf_copy">Kopieren</string>
+    <string name="zf_codes_done">Gespeichert</string>
+    <string name="zf_new_codes">Neue Wiederherstellungscodes</string>
+    <string name="zf_disable">Abschalten</string>
+    <string name="zf_enabled">Zweiter Faktor eingerichtet</string>
+    <string name="zf_disabled">Zweiter Faktor abgeschaltet</string>
+    <plurals name="zf_active">
+        <item quantity="one">Eingerichtet · %d Wiederherstellungscode übrig</item>
+        <item quantity="other">Eingerichtet · %d Wiederherstellungscodes übrig</item>
+    </plurals>
 </resources>

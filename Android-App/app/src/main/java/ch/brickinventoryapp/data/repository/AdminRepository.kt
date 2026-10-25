@@ -35,8 +35,24 @@ class AdminRepository @Inject constructor(
     // Read pro Call mehr). Einzige Ausnahme: getCsvImportStatusDirect, wo der
     // Foreground-Service den Token explizit mitgibt.
 
-    suspend fun login(serverUrl: String, username: String, password: String): Result<LoginResponse> =
-        safeCall { api.login(LoginRequest(username, password)) }
+    /**
+     * Verlangt der Server den zweiten Faktor, antwortet er mit 401 und
+     * `zweiter_faktor: true`. Das wird hier zu einer gewöhnlichen Antwort mit
+     * success=false umgebogen (wie GutscheineRepository.guthaben), sonst gingen
+     * Kennzeichen und Satz in safeCall verloren.
+     */
+    suspend fun login(serverUrl: String, username: String, password: String, code: String? = null): Result<LoginResponse> =
+        safeCall {
+            val antwort = api.login(LoginRequest(username, password, code = code))
+            if (antwort.code() == 401) {
+                val geparst = antwort.errorBody()?.string()?.let {
+                    runCatching { nachsichtigesJson.decodeFromString<LoginResponse>(it) }.getOrNull()
+                }
+                if (geparst?.zweiterFaktor == true) retrofit2.Response.success(geparst) else antwort
+            } else antwort
+        }
+
+    private val nachsichtigesJson = kotlinx.serialization.json.Json { ignoreUnknownKeys = true }
 
     suspend fun qrLogin(token: String): Result<LoginResponse> =
         safeCall { api.qrLogin(ch.brickinventoryapp.data.model.QrLoginRequest(token)) }
@@ -54,6 +70,16 @@ class AdminRepository @Inject constructor(
         safeCall { api.forgotPassword(ForgotPasswordRequest(email)) }
 
     suspend fun getProfil(): Result<ProfilResponse> = safeCall { api.getProfil() }
+
+    suspend fun zweiterFaktorStand(): Result<ZweiterFaktorStand> = safeCall { api.zweiterFaktorStand() }
+    suspend fun zweiterFaktorEinrichten(passwort: String): Result<ZweiterFaktorEinrichtung> =
+        safeCall { api.zweiterFaktorEinrichten(ZweiterFaktorAnfrage(password = passwort)) }
+    suspend fun zweiterFaktorBestaetigen(code: String): Result<ZweiterFaktorCodes> =
+        safeCall { api.zweiterFaktorBestaetigen(ZweiterFaktorAnfrage(code = code)) }
+    suspend fun zweiterFaktorAbschalten(passwort: String, code: String): Result<GenericResponse> =
+        safeCall { api.zweiterFaktorAbschalten(ZweiterFaktorAnfrage(password = passwort, code = code)) }
+    suspend fun zweiterFaktorNeueCodes(code: String): Result<ZweiterFaktorCodes> =
+        safeCall { api.zweiterFaktorNeueCodes(ZweiterFaktorAnfrage(code = code)) }
 
     suspend fun updateProfil(aenderung: ProfilAenderung): Result<GenericResponse> =
         safeCall { api.updateProfil(aenderung) }

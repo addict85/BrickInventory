@@ -26,13 +26,18 @@ internal fun MainViewModel.saveServerUrl(url: String) {
 }
 
 // ── Auth ─────────────────────────────────────────────────────────────────
-internal fun MainViewModel.login(username: String, password: String) {
+internal fun MainViewModel.login(username: String, password: String, code: String? = null) {
     viewModelScope.launch {
         _state.update { it.copy(loginLaeuft = true, loginError = null) }
         val url = prefs.serverUrlJetzt()
-        when (val r = repo.admin.login(url, username, password)) {
+        when (val r = repo.admin.login(url, username, password, code?.trim()?.takeIf { it.isNotEmpty() })) {
             is Result.Success -> {
-                if (r.data.success && r.data.token != null) {
+                if (r.data.zweiterFaktor) {
+                    // Erstes Mal: nur das Codefeld zeigen. Mit Code: der Satz des Servers.
+                    _anmeldeState.update { it.copy(codeNoetig = true) }
+                    _state.update { it.copy(loginLaeuft = false,
+                        loginError = if (code.isNullOrBlank()) null else r.data.error) }
+                } else if (r.data.success && r.data.token != null) {
                     prefs.saveAuthToken(r.data.token)
                     prefs.saveUsername(r.data.user?.username ?: username)
                     // Jede Anmeldung beginnt mit „Alle Konten" (Nachtrag 46):
@@ -41,6 +46,7 @@ internal fun MainViewModel.login(username: String, password: String) {
                     // etwas auf den Filter hinwies. Dieselbe Regel wie in der
                     // Webapp.
                     ch.brickinventoryapp.data.ScopeFilter.resetAll(ctx)
+                    _anmeldeState.update { it.copy(codeNoetig = false) }
                     _state.update { it.copy(loginLaeuft = false, isLoggedIn = true, isAdmin = r.data.user?.isAdmin == true) }
                     loadDashboard()
                 } else {
@@ -255,6 +261,7 @@ internal fun MainViewModel.logout() {
         _erfassungState.value = ErfassungUiState()
         _householdState.value = HouseholdUiState()
         _geraeteState.value = GeraeteUiState()
+        _zweiterFaktorState.value = ZweiterFaktorUiState()
         _anmeldeState.value = AnmeldeUiState()
         _kontoState.value = KontoUiState()
         _csvHochladenState.value = CsvHochladenUiState()

@@ -68,14 +68,11 @@ async function apiGet(url: string, rbKey: string) {
 // Download image to local file, return local path or null
 /**
  * Bild herunterladen und lokal ablegen.
- *
+ * Ausführlich: docs/begruendungen/jobs/partsCatalogEnrich.ts.md#abschnitt
  * @param {string} imgUrl
  * @param {string} partNum Teile- oder Figurennummer
  * @param {number} colorId
  * @param {'part'|'minifig'} kind Bestimmt Zielverzeichnis und Web-Pfad.
- *        Bewusst OHNE Vorgabewert: Ein stiller Standard 'part' hätte einen
- *        vergessenen Aufruf für Minifiguren unbemerkt in den falschen Ordner
- *        schreiben lassen — genau der Fehler, den die Trennung beheben sollte.
  */
 // Rueckgabetyp ausgeschrieben (Nachtrag 155): Das `new Promise(...)` weiter
 // unten hatte keinen Typparameter, damit leitete TypeScript `unknown` ab und
@@ -538,17 +535,11 @@ async function enrichSetMinifigs(setNumber: string) {
 
   if (!allPartNums.size) return;
 
-  // ── Die Abfrage auf set_parts_catalog ist WEG ──────────────────────────
-  //
+  // Die Abfrage auf set_parts_catalog ist WEG
   // Sie las dort `bl_part_number` — eine Abschrift je Set-Teile-Zeile, also
   // fuer dasselbe Teil so oft, wie es Sets damit gibt. Migration 0037 hat die
-  // Spalte geloescht; die Abfrage auf bl_zuordnung darunter liest dieselbe
-  // Aussage einmal je Teil.
-  //
-  // Und sie war TOT: Ihr Ergebnis landete in einer Abbildung existingBlMap,
-  // die nirgends gelesen wurde (nachgemessen am Stand vor dieser Aenderung —
-  // zwei Vorkommen, Deklaration und Zuweisung). Aufgefallen ist das erst beim
-  // Umzug der Spalte. Sie ist deshalb ersatzlos weg, nicht umgestellt.
+  // Spalte geloescht; die Abfrage auf bl_zuordnung darunter liest dieselbe …
+  // Ausführlich: docs/begruendungen/jobs/partsCatalogEnrich.ts.md#rbblrows
 
   // bl_zuordnung: die Nummer, einmal je Teil
   const rbBlRows = await db.all(
@@ -608,38 +599,18 @@ async function enrichSetMinifigs(setNumber: string) {
   
 }
 
-// ── Fehlende Bilder neu laden ─────────────────────────────────────────────
+//  Fehlende Bilder neu laden
 // "Fehlend" = image_local ist in der DB gesetzt, die Datei fehlt aber physisch.
 // Solche Einträge werden über image_url neu geladen (rate-limited) und das
-// Thumbnail neu erzeugt. Schlägt der Download fehl (oder fehlt image_url), wird
-// image_local geleert, damit Web + Android auf die CDN-URL zurückfallen.
-// Fortschritt liegt für das Monitoring in global_settings (Key imgredl_status).
-//
-// ── Warum eine prozessübergreifende Sperre ──────────────────────────────────
-// Ausgelöst wird der Lauf AUSSCHLIESSLICH aus einem Request-Handler heraus
-// (POST /api/v1/admin/redownload-missing-images), also im bearbeitenden
-// Cluster-Worker. `_redlRunning` liegt im Speicher eines Prozesses: Zwei Klicks
-// auf den Knopf im Monitoring landeten in verschiedenen Workern, und beide
-// starteten einen vollständigen Lauf — dieselben Dateien zweimal vom CDN
-// geladen (nebenläufig auf denselben Dateinamen geschrieben) und zwei Läufe,
-// die im Sekundentakt dasselbe Feld `imgredl_status` überschrieben, sodass die
-// Fortschrittsanzeige zwischen zwei Ständen hin und her sprang.
-//
-// downloadSetImages() hat für genau dieses Problem längst einen Lock (42 je
-// Set); dieser Weg lädt aber über downloadFile() direkt und lief ungeschützt.
+// Thumbnail neu erzeugt. Schlägt der Download fehl (oder fehlt image_url), wird …
+// Ausführlich: docs/begruendungen/jobs/partsCatalogEnrich.ts.md#abschnitt-2
 const { LOCKS } = require('../utils/lockNamespaces');
 const REDL_LOCK = LOCKS.BILDER_NACHLAUF;
 let _redlRunning = false;
 
 /**
- * Web-Pfad → Dateipfad, für ALLE drei Bildarten (Nachtrag 49).
- *
- * Vorher liess diese Funktion alles ausser `/images/parts/` fallen und gab
- * null zurück. Damit war der Bilder-Nachlauf faktisch auf Teilebilder
- * beschränkt: Set- und Minifiguren-Bilder wurden schon beim Auflösen des
- * Pfades verworfen — noch bevor irgendetwas geprüft werden konnte. Genau
- * deshalb blieb Marcos Set-Bild ohne Vorschau, obwohl der Lauf durchlief und
- * „fertig" meldete.
+ * Web-Pfad → Dateipfad, für ALLE drei Bildarten.
+ * Ausführlich: docs/begruendungen/jobs/partsCatalogEnrich.ts.md#fspathfromlocal
  */
 function _fsPathFromLocal(imageLocal: string) {
   if (!imageLocal) return null;
@@ -661,27 +632,7 @@ function _fsPathFromLocal(imageLocal: string) {
 
 /**
  * Den Fortschritt des Bilder-Nachlaufs ablegen.
- *
- * ── Das `await` hat gefehlt ─────────────────────────────────────────────────
- *
- * Hier stand `setGlobalSetting(...).catch(() => {})` OHNE await. Die Funktion
- * ist `async` und war damit sofort fertig, obwohl die Zeile noch gar nicht
- * geschrieben war. Alle sieben Aufrufer schreiben `await _redlSetStatus(...)`
- * und warteten auf nichts.
- *
- * Folgenreich ist genau der LETZTE Aufruf, `{ running: false, phase: 'done' }`:
- * Danach kehrt der Lauf zurueck, der Handler antwortet — und wird der Prozess
- * in diesem Fenster beendet (Neustart, Auslieferung, Container gestoppt),
- * ist der zuletzt WIRKLICH geschriebene Stand `{ running: true }`. Der bleibt
- * dann fuer immer stehen, und die Kachel „Bild-Download (CDN)" meldet Betrieb,
- * bis jemand den Schluessel von Hand loescht.
- *
- * Das ist Marcos alter Befund an der Nachbarstelle („Der Job scheint zu laufen
- * laut Monitoring, aber im Log sind keine Eintraege dazu zu finden"). Fuer den
- * Katalog-Job ist er behoben worden, fuer diesen hier nicht.
- *
- * Das `.catch` bleibt: Ein misslungenes Schreiben des Fortschritts soll den
- * Lauf nicht abbrechen. Gewartet wird jetzt trotzdem.
+ * Ausführlich: docs/begruendungen/jobs/partsCatalogEnrich.ts.md#redlsetstatus
  */
 async function _redlSetStatus(obj: Record<string, unknown>) {
   await setGlobalSetting('imgredl_status', JSON.stringify({ ...obj, at: Date.now() }))
@@ -801,23 +752,11 @@ async function _redownloadMissingImages() {
           await generateThumb(m.image_local).catch(() => {});
           redownloaded++;
         } else {
-          // ── Nicht wiederherstellbar -> image_local leeren ─────────────
-          //
+          // Nicht wiederherstellbar -> image_local leeren
           // Damit fallen beide Oberflaechen auf die CDN-URL zurueck. Die
           // Liste MUSS zu den Tabellen passen, die die Spalte wirklich haben,
           // und das tat sie nicht mehr:
-          //
-          //   'sets'  — Migration 0033 hat sets.image_local geloescht. Der
-          //             Aufruf lief seither in einen Fehler, den das
-          //             .catch(() => {}) verschluckte: Ein verlorenes
-          //             Set-Bild blieb als toter Pfad stehen, und die Galerie
-          //             zeigte eine Luecke statt des CDN-Bildes.
-          //   'parts' — dasselbe seit Migration 0034.
-          //
-          // Jetzt die vier Tabellen, die die Spalte fuehren. Ohne .catch an
-          // dieser Stelle gaebe es keinen Grund mehr — aber ein fehlgeschlagenes
-          // Leeren soll den Lauf nicht abbrechen, also bleibt es, und der
-          // Fehler kommt wenigstens ins Protokoll.
+          // Ausführlich: docs/begruendungen/jobs/partsCatalogEnrich.ts.md#redownloadmissingimages
           for (const tbl of ['set_parts_catalog', 'set_minifigs_catalog',
                              'part_color_catalog', 'minifigs_catalog', 'set_catalog']) {
             await db.run(`UPDATE ${tbl} SET image_local=NULL WHERE image_local=$1`, [m.image_local])

@@ -315,6 +315,9 @@ class MainViewModel @Inject constructor(
     internal val _geraeteState = MutableStateFlow(GeraeteUiState())
     val geraeteState = _geraeteState.asStateFlow()
 
+    internal val _zweiterFaktorState = MutableStateFlow(ZweiterFaktorUiState())
+    val zweiterFaktorState = _zweiterFaktorState.asStateFlow()
+
     // Konto anlegen und „Passwort vergessen" — eigener Fluss aus demselben
     // Grund wie die Geraeteliste darueber: Nur EIN Bildschirm liest ihn, und
     // in AppUiState laege er sechzehn Dateien im Weg (ZustandsflussBreiteTest).

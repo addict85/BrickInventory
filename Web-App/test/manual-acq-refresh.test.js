@@ -290,8 +290,9 @@ test('das Löschen eines manuellen Eintrags räumt die Kaufpreise mit ab', () =>
   const stellen = [
     ['routes/parts.ts',           'DELETE FROM part_acquisitions'],
     ['routes/minifigs.ts',        'DELETE FROM minifig_acquisitions'],
-    ['routes/api_v1/parts.ts',    'DELETE FROM part_acquisitions'],
-    ['routes/api_v1/minifigs.ts', 'DELETE FROM minifig_acquisitions'],
+    // Die beiden v1-Routen und „alles löschen" gehen über utils/loeschen.ts.
+    ['utils/loeschen.ts',         'DELETE FROM part_acquisitions'],
+    ['utils/loeschen.ts',         'DELETE FROM minifig_acquisitions'],
   ];
   for (const [datei, stmt] of stellen) {
     const src = strip(read(datei));

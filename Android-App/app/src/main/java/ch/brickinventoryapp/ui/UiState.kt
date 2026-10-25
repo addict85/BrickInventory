@@ -64,6 +64,20 @@ data class UpdateUiState(
     val fehler: String? = null,
 )
 
+/** Zweiter Faktor im Konto: Stand, laufende Einrichtung, frische Codes. */
+data class ZweiterFaktorUiState(
+    val laedt: Boolean = false,
+    /** null = noch nicht geladen. */
+    val aktiv: Boolean? = null,
+    val codesUebrig: Int = 0,
+    /** Gesetzt während der Einrichtung, bis der erste Code bestätigt ist. */
+    val geheimnis: String? = null,
+    val otpauth: String? = null,
+    /** Die Wiederherstellungscodes — nur unmittelbar nach dem Erzeugen. */
+    val codes: List<String> = emptyList(),
+    val fehler: String? = null,
+)
+
 data class GeraeteUiState(
     val laedt: Boolean = false,
     val geraete: List<ch.brickinventoryapp.data.model.AppToken> = emptyList(),
@@ -198,6 +212,8 @@ data class AnmeldeUiState(
     val meldung: String? = null,
     val fehler: String? = null,
     val laeuft: Boolean = false,
+    /** Der Server verlangt beim Anmelden den Code des zweiten Faktors. */
+    val codeNoetig: Boolean = false,
 )
 
 data class AppUiState(

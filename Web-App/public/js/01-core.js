@@ -457,7 +457,8 @@ export function observeLazyImages(root) {
   }
   imgs.forEach(img => { img.classList.add('observed'); window._imgObserver.observe(img); });
 }
-export function toast(msg, type='info') {
+/** @param {{text: string, fn: () => any}} [aktion] Knopf in der Meldung, z. B. „Rückgängig" */
+export function toast(msg, type='info', aktion) {
   const c = G('toasts'), el = document.createElement('div');
   el.className=`toast ${type}`;
   // textContent statt innerHTML: msg enthält regelmässig Server-Fehlermeldungen
@@ -467,7 +468,16 @@ export function toast(msg, type='info') {
   const text = document.createElement('span');
   text.textContent = String(msg ?? '');
   el.append(icon, text);
-  c.appendChild(el); setTimeout(()=>el.remove(),4500);
+  if (aktion) {
+    const knopf = document.createElement('button');
+    knopf.type = 'button';
+    knopf.className = 'toast-aktion';
+    knopf.textContent = aktion.text;
+    knopf.onclick = () => { el.remove(); aktion.fn(); };
+    el.append(knopf);
+  }
+  // Mit Knopf länger: Man muss ihn lesen UND treffen können.
+  c.appendChild(el); setTimeout(()=>el.remove(), aktion ? 9000 : 4500);
 }
 /**
  * Aufruf der eigenen API. Liefert IMMER ein Objekt — nie eine Ausnahme.
@@ -901,6 +911,8 @@ function showApp(){ bindTabs(); plInit(); setTimeout(()=>{ gibCheckOnLoad(); }, 
   // in 07-admin.js; der spaete dynamische Import aus demselben Grund wie eine
   // Zeile darueber (07-admin.js holt api() aus dieser Datei).
   import('./07-admin.js').then(m => m.zeigeOffeneAlarme?.()).catch(() => {});
+  // Einrichtungs-Assistent für eine frische Installation (nur Verwalter).
+  if (ME?.isAdmin) import('./22-einrichtung.js').then(m => m.pruefeEinrichtung?.()).catch(() => {});
   // ── Direktlink aus der Preisalarm-Mail: ?set=<nummer> ────────────────────
   //
   // Marcos Wunsch vom 25.09.: „Bei den Mails waere es schoen wenn es ebenfalls
@@ -975,11 +987,19 @@ function showApp(){ bindTabs(); plInit(); setTimeout(()=>{ gibCheckOnLoad(); }, 
   loadStats();
 }
 G('btn-login').onclick=doLogin;
-['lu','lp'].forEach(id=>G(id).addEventListener('keydown',e=>e.key==='Enter'&&doLogin()));
+['lu','lp','lc'].forEach(id=>G(id).addEventListener('keydown',e=>e.key==='Enter'&&doLogin()));
 async function doLogin(){
   const b=G('btn-login'); const frei=knopfBesetzt(b);
-  const d=await api('POST','/v1/auth/login',{username:G('lu').value,password:G('lp').value});
+  const code=G('lc').value.trim();
+  const d=await api('POST','/v1/auth/login',{username:G('lu').value,password:G('lp').value,...(code?{code}:{})});
   frei();
+  // Zweiter Faktor verlangt: Codefeld zeigen und dort weitermachen.
+  if(d.zweiter_faktor){
+    G('lc-zeile').style.display=''; G('lc').value=''; G('lc').focus();
+    G('lerr').textContent=d.error||''; G('lerr').style.display=code?'block':'none';
+    return;
+  }
+  G('lc-zeile').style.display='none'; G('lc').value='';
   if(d.success){ ME = { ...d, ...(d.user||{}), isAdmin: d.user?.is_admin === true }; if(d.token) sessionStorage.setItem('webToken',d.token);
     // Jede Anmeldung beginnt mit „Alle Konten" (Nachtrag 46) — VOR showApp(),
     // damit die Auswahlfelder gleich mit dem zurückgesetzten Wert entstehen.

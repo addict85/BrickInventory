@@ -42,6 +42,8 @@
     <string name="login_username">Username</string>
     <string name="login_password">Password</string>
     <string name="login_button">Sign in</string>
+    <string name="login_code">Code from your authenticator app</string>
+    <string name="login_code_hint">Or one of your recovery codes</string>
 
     <!-- ══════════════ CSV import banner ══════════════ -->
     <string name="csv_ok_count">✅ %1$d OK</string>
@@ -765,4 +767,25 @@
     <string name="vouchers_balance_done">%1$s: %2$s</string>
     <string name="vouchers_balance_currency">Currency changed to %1$s.</string>
     <string name="settings_group_display">Display &amp; prices</string>
+    <string name="zf_title">Two-factor authentication</string>
+    <string name="zf_hint">A code from an authenticator app in addition to your password. Protects you if someone knows your password.</string>
+    <string name="zf_setup">Set up</string>
+    <string name="zf_step_app">Add the key to your authenticator app, then enter the code it shows.</string>
+    <string name="zf_open_app">Open in authenticator app</string>
+    <string name="zf_no_app">No authenticator app found — copy the key and enter it manually.</string>
+    <string name="zf_copy_key">Copy key</string>
+    <string name="zf_confirm_code">Code from the app to confirm</string>
+    <string name="zf_confirm">Confirm</string>
+    <string name="zf_codes_title">Your recovery codes</string>
+    <string name="zf_codes_hint">Each works once if your phone is missing. Store them safely now — they will not be shown again.</string>
+    <string name="zf_copy">Copy</string>
+    <string name="zf_codes_done">Saved</string>
+    <string name="zf_new_codes">New recovery codes</string>
+    <string name="zf_disable">Turn off</string>
+    <string name="zf_enabled">Two-factor authentication set up</string>
+    <string name="zf_disabled">Two-factor authentication turned off</string>
+    <plurals name="zf_active">
+        <item quantity="one">Set up · %d recovery code left</item>
+        <item quantity="other">Set up · %d recovery codes left</item>
+    </plurals>
 </resources>

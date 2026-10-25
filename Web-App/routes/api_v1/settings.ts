@@ -17,15 +17,7 @@ const router = express.Router();
 
 /**
  * Was die App aus den Einstellungen liest — ausdrücklich aufgezählt.
- *
- * Gegenstück zu `UserSettings` in AuthModels.kt der Android-App. Die Liste
- * hier IST die Kuratierung: Die Webapp bekommt unter /api/settings zusätzlich
- * die globalen und die Admin-Felder; die App braucht sie nicht und soll sie
- * nicht bekommen. Das war schon vor diesem Umbau die Entscheidung (siehe
- * test/api-parity.test.js) und bleibt es.
- *
- * Neu ist nur, WOHER die Werte kommen: aus readSettings(), also aus derselben
- * Quelle wie die Webapp.
+ * Ausführlich: docs/begruendungen/routes/api_v1/settings.ts.md#app-felder
  */
 const APP_FELDER = ['currency', 'price_condition', 'price_cache_ttl',
                     'default_price_condition', 'user_default_condition'] as const;
@@ -86,11 +78,7 @@ router.get('/settings/default-condition', requireToken, async (_req: AuthedReque
 /**
  * GET /api/v1/settings/user/default-condition — der EFFEKTIVE Wert des
  * Nutzers, zum Vorbelegen der Erfassungsformulare.
- *
- * Etappe 6: Vorher gab es diesen Wert nur auf zwei ganz verschiedenen Wegen —
- * die Webapp über eine eigene Route mit eigener Abfrage, die App als Feld in
- * GET /settings. Die Route hier bedient jetzt beide; das Feld in /settings
- * bleibt, weil die App es in derselben Antwort mitliest.
+ * Ausführlich: docs/begruendungen/routes/api_v1/settings.ts.md#get-settings-user-default-condition
  */
 router.get('/settings/user/default-condition', requireToken, async (req: AuthedRequest, res) => {
   try {

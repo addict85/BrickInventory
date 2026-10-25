@@ -15,13 +15,7 @@ import { merkeFigur } from './katalogPflege';
 // ── Import minifigs from a set (called during set import) ─────────────────────
 /**
  * Die Figuren eines Sets aus dem gemeinsamen Katalog.
- *
- * Stand zweimal da — hier und in routes/api_v1/sets.ts. Nicht wortgleich: Der
- * zweite Kandidat war hier `setNumber` (die ROHE Eingabe) statt der blanken
- * Nummer. Fuer eine Eingabe MIT Versionsanhang ergab das zweimal denselben
- * Wert, und die blanke Schreibweise wurde nie geprueft — dieselbe entartete
- * Paarbildung wie schon in utils/handlers/parts.ts und jobs/catalogSync.ts.
- * beideSchreibweisen() liefert immer zwei verschiedene.
+ * Ausführlich: docs/begruendungen/utils/minifigsImport.ts.md#figurenauskatalog
  */
 export async function figurenAusKatalog(setNumber: string) {
   return db.all(

@@ -58,18 +58,15 @@ const ERLAUBT = new Map([
  *     hoch als eine echte Fundstelle uebersehen.
  */
 const OFFEN = new Map([
-  ['jobs/dailyScheduler.ts', 2],
-  ['jobs/imageQueue.ts', 2],
+  ['jobs/dailyScheduler.ts', 1],
+  ['jobs/imageQueue.ts', 1],
   ['jobs/instructionQueue.ts', 1],
-  ['jobs/partsCatalogEnrich.ts', 1],
   ['jobs/priceJob.ts', 1],
-  ['routes/api_v1/admin.ts', 3],
-  ['utils/mailer.ts', 1],
+  ['routes/api_v1/admin.ts', 2],
   ['routes/settings.ts', 1],
   ['server.ts', 1],
   ['utils/finance/preise.ts', 5],
   ['utils/jobMonitor.ts', 3],
-  ['utils/pgNotify.ts', 3],
   ['utils/rateLimiter.ts', 1],
   ['utils/setService.ts', 1],
 ]);
