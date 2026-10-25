@@ -48,6 +48,7 @@
 <!-- Die Symbolfamilie: Strichsymbole auf 24er-Raster, Farbe aus dem Text.
      Verwendung: <svg class="ico" aria-hidden="true"><use href="#i-NAME"/></svg> -->
 <svg xmlns="http://www.w3.org/2000/svg" style="display:none" aria-hidden="true">
+  <symbol id="i-plus" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></symbol>
   <symbol id="i-sammlung" viewBox="0 0 24 24"><path d="M21 8l-9-5-9 5 9 5 9-5z"/><path d="M3 8v8l9 5 9-5V8"/><path d="M12 13v8"/></symbol>
   <symbol id="i-set" viewBox="0 0 24 24"><path d="M21 8l-9-5-9 5 9 5 9-5z"/><path d="M3 8v8l9 5 9-5V8"/><path d="M12 13v8"/></symbol>
   <symbol id="i-teil" viewBox="0 0 24 24"><rect x="3" y="10" width="18" height="9" rx="1.5"/><path d="M6.5 10V7.5h4V10M13.5 10V7.5h4V10"/></symbol>
@@ -357,26 +358,13 @@
         <div class="bstat bstat-light"><div class="bstat-l" data-i18n="nav.minifigs">Minifiguren</div><div class="bstat-v" id="bstat-minifigs">—</div></div>
       </div>
 
-      <!-- Grosse Box: Set hinzufügen (Titel links, CSV-Import rechts) — analog Teile -->
-      <div style="background:var(--sur);border:1px solid var(--bdr);border-radius:var(--rad);padding:1.25rem;margin-bottom:1.25rem;box-shadow:var(--sh0)">
-        <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;margin-bottom:1rem">
-          <h3 style="margin:0;font-size:1rem;font-weight:700" data-i18n="gallery.add.title">Set hinzufügen</h3>
-          <div style="display:flex;gap:8px;flex-wrap:wrap">
-            <label for="add-num" class="btn bs" style="cursor:pointer">📥 CSV<input type="file" id="csv-file" aria-label="CSV-Datei" data-i18n="import.csv_file" data-i18n-attr="aria-label" accept=".csv" style="display:none" data-change="startSetCsvImport" /></label>
-            <a class="btn bs" id="btn-set-csv-template" href="#" data-i18n="gallery.template">📄 Vorlage</a>
-            <label class="btn bp" style="cursor:pointer" title="BrickLink-Wanted-Liste (.xml)"><span data-wanted-icon="1"></span><span data-i18n="wanted.pick_short">BrickLink XML</span><input type="file" id="wanted-xml-set" aria-label="BrickLink-Wanted-Liste" data-i18n="wanted.pick" data-i18n-attr="aria-label" accept=".xml,text/xml,application/xml" style="display:none" data-change="wantedXmlGewaehlt" data-art="set" /></label>
-          </div>
-        </div>
-        <div class="frow">
-          <div class="fg"><label data-i18n="gallery.add.number">Set-Nummer</label><input inputmode="numeric" type="text" id="add-num" placeholder="z.B. 75192" data-i18n="gallery.add.number" data-i18n-attr="placeholder" /></div>
-          <div class="fg" style="max-width:82px"><label for="add-qty" data-i18n="gallery.add.qty">Anzahl</label><input inputmode="numeric" type="number" id="add-qty" value="1" min="1" /></div>
-          <div class="fg" style="max-width:120px"><label for="add-price" data-i18n="gallery.add.price">Kaufpreis (optional)</label><input inputmode="decimal" type="number" id="add-price" placeholder="Marktpreis" data-i18n="detail.market_price" data-i18n-attr="placeholder" step="0.01" min="0" /></div>
-          <div class="fg" style="max-width:110px"><label for="add-condition" data-i18n="common.condition">Zustand</label><select id="add-condition" style="padding:.45rem .7rem;border:1px solid var(--bdr);border-radius:var(--rad);background:var(--sur);color:var(--txt);font-size:.875rem"><option value="N" data-i18n="common.condition_new">Neu</option><option value="U" data-i18n="common.condition_used">Gebraucht</option></select></div>
-          <!-- Kontoauswahl: nur im Haushalt sichtbar (siehe loadHouseholdMembers) -->
-          <div class="fg" id="add-owner-box" style="max-width:150px;display:none"><label for="add-owner" data-i18n="household.for_account">Für Konto</label><select id="add-owner" style="padding:.45rem .7rem;border:1px solid var(--bdr);border-radius:var(--rad);background:var(--sur);color:var(--txt);font-size:.875rem"></select></div><div class="fg" id="add-storage-box" style="max-width:220px"><label id="add-storage-label" data-i18n="detail.storage">Lagerort</label><span id="add-storage-slot" style="display:flex;gap:6px;align-items:center"></span></div>
-          <button class="btn bp" id="btn-add" data-i18n="gallery.add.submit">Hinzufügen</button>
-        </div>
-        <div id="add-status" style="margin-top:8px;font-size:.8rem"></div>
+      <!-- Inhalt zuerst: Erfassen ist eine Handlung, kein Dauerformular.
+           Das Formular steht im Dialog #add-set-modal. -->
+      <div class="erfassen-leiste">
+        <button class="btn bp" type="button" data-click="oeffneErfassen"><svg class="ico" aria-hidden="true"><use href="#i-plus"/></svg><span data-i18n="gallery.add.title">Set hinzufügen</span></button>
+        <label for="csv-file" class="btn bs" style="cursor:pointer">📥 CSV<input type="file" id="csv-file" aria-label="CSV-Datei" data-i18n="import.csv_file" data-i18n-attr="aria-label" accept=".csv" style="display:none" data-change="startSetCsvImport" /></label>
+        <a class="btn bs" id="btn-set-csv-template" href="#" data-i18n="gallery.template">📄 Vorlage</a>
+        <label class="btn bs" style="cursor:pointer" title="BrickLink-Wanted-Liste (.xml)"><span data-wanted-icon="1"></span><span data-i18n="wanted.pick_short">BrickLink XML</span><input type="file" id="wanted-xml-set" aria-label="BrickLink-Wanted-Liste" data-i18n="wanted.pick" data-i18n-attr="aria-label" accept=".xml,text/xml,application/xml" style="display:none" data-change="wantedXmlGewaehlt" data-art="set" /></label>
       </div>
 
       <!-- Suche/Filter/Sortierung — BEWUSST unter der Erfassen-Box statt im
@@ -1580,6 +1568,21 @@
 </div>
 
 <!-- Set Detail Modal -->
+<div class="ovl" id="add-set-modal" role="dialog" aria-modal="true" aria-labelledby="add-set-tit">
+  <div class="modal" style="max-width:620px">
+    <div class="mhd"><div class="mtit" id="add-set-tit" data-i18n="gallery.add.title">Set hinzufügen</div><button class="btn bs btn-sm" data-click="schliesseErfassen" data-dialog-zu aria-label="Schliessen" data-i18n="common.close" data-i18n-attr="aria-label">✕</button></div>
+    <div class="frow">
+      <div class="fg"><label for="add-num" data-i18n="gallery.add.number">Set-Nummer</label><input inputmode="numeric" type="text" id="add-num" data-erstfokus placeholder="z.B. 75192" data-i18n="gallery.add.number" data-i18n-attr="placeholder" /></div>
+      <div class="fg" style="max-width:82px"><label for="add-qty" data-i18n="gallery.add.qty">Anzahl</label><input inputmode="numeric" type="number" id="add-qty" value="1" min="1" /></div>
+      <div class="fg" style="max-width:120px"><label for="add-price" data-i18n="gallery.add.price">Kaufpreis (optional)</label><input inputmode="decimal" type="number" id="add-price" placeholder="Marktpreis" data-i18n="detail.market_price" data-i18n-attr="placeholder" step="0.01" min="0" /></div>
+      <div class="fg" style="max-width:110px"><label for="add-condition" data-i18n="common.condition">Zustand</label><select id="add-condition" style="padding:.45rem .7rem;border:1px solid var(--bdr);border-radius:var(--rad);background:var(--sur);color:var(--txt);font-size:.875rem"><option value="N" data-i18n="common.condition_new">Neu</option><option value="U" data-i18n="common.condition_used">Gebraucht</option></select></div>
+      <!-- Kontoauswahl: nur im Haushalt sichtbar (siehe loadHouseholdMembers) -->
+      <div class="fg" id="add-owner-box" style="max-width:150px;display:none"><label for="add-owner" data-i18n="household.for_account">Für Konto</label><select id="add-owner" style="padding:.45rem .7rem;border:1px solid var(--bdr);border-radius:var(--rad);background:var(--sur);color:var(--txt);font-size:.875rem"></select></div><div class="fg" id="add-storage-box" style="max-width:220px"><label id="add-storage-label" data-i18n="detail.storage">Lagerort</label><span id="add-storage-slot" style="display:flex;gap:6px;align-items:center"></span></div>
+      <button class="btn bp" id="btn-add" data-i18n="gallery.add.submit">Hinzufügen</button>
+    </div>
+    <div id="add-status" style="margin-top:8px;font-size:.8rem"></div>
+  </div>
+</div>
 <div class="ovl" id="set-modal" role="dialog" aria-modal="true">
   <div class="modal">
     <div class="mhd"><div class="mtit" id="m-tit">Set</div><button class="btn bs btn-sm" data-click="closeModal" data-dialog-zu aria-label="Schliessen" data-i18n="common.close" data-i18n-attr="aria-label">✕</button></div>

@@ -10,6 +10,8 @@
  *   B  Tab-Zweig in tasteGedrueckt() entfernt       → rot: „Tab verlässt den Dialog"
  *   C  Fokus-Rückgabe entfernt                      → rot: „Fokus kehrt nicht zurück"
  *   D  Ausnahme für Eingabefelder entfernt          → rot: „Escape im Feld schliesst"
+ *   E  nach dem Verlassen des Felds wieder fokussiereHinein() statt der
+ *      Fläche → rot: „Escape kommt nicht aus dem Erfassen-Dialog"
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -119,5 +121,23 @@ test('Escape in einem Eingabefeld verlässt zuerst nur das Feld', async () => {
     taste(w, 'Escape');
     await takt();
     assert.equal(modal.classList.contains('open'), false, 'Das zweite Escape schliesst nicht');
+  } finally { w.close(); }
+});
+
+test('Escape kommt auch aus einem Dialog, dessen Erstfokus ein Eingabefeld ist', async () => {
+  // Erfassen-Dialog: data-erstfokus sitzt auf der Set-Nummer. Führte das
+  // Verlassen des Felds zurück zum Erstfokus, stünde man wieder darin.
+  const w = await fenster();
+  try {
+    const d = w.document, modal = d.getElementById('add-set-modal');
+    modal.classList.add('open');
+    await takt();
+    assert.equal(d.activeElement?.id, 'add-num', 'Der Erstfokus liegt nicht auf der Set-Nummer');
+    taste(w, 'Escape');
+    await takt();
+    assert.ok(modal.classList.contains('open'), 'Das erste Escape schliesst schon');
+    taste(w, 'Escape');
+    await takt();
+    assert.equal(modal.classList.contains('open'), false, 'Escape kommt nicht aus dem Erfassen-Dialog');
   } finally { w.close(); }
 });

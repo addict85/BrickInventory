@@ -43,6 +43,10 @@ function fokussiereHinein(dialog) {
   if (dialog.contains(document.activeElement)) return;
   const ziel = dialog.querySelector('[data-erstfokus]');
   if (ziel && sichtbar(ziel)) { ziel.focus(); return; }
+  fokussiereFlaeche(dialog);
+}
+
+function fokussiereFlaeche(dialog) {
   const flaeche = dialog.firstElementChild || dialog;
   if (!flaeche.hasAttribute('tabindex')) flaeche.setAttribute('tabindex', '-1');
   flaeche.focus({ preventScroll: true });
@@ -80,7 +84,9 @@ function tasteGedrueckt(ev) {
     if (aktiv && dialog.contains(aktiv) && /^(INPUT|TEXTAREA|SELECT)$/.test(aktiv.tagName)) {
       ev.preventDefault();
       aktiv.blur();
-      fokussiereHinein(dialog);
+      // Auf die Fläche, nicht zum Erstfokus: Ist der ein Eingabefeld, stünde
+      // man wieder darin, und Escape käme nie aus dem Dialog heraus.
+      fokussiereFlaeche(dialog);
       return;
     }
     const zu = dialog.querySelector('[data-dialog-zu]');

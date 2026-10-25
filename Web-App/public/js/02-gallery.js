@@ -969,6 +969,10 @@ function tableRow(s){
 // Add set via SSE stream
 G('btn-add').onclick=doAddSet;
 G('add-num').addEventListener('keydown',e=>e.key==='Enter'&&doAddSet());
+/** Den Erfassen-Dialog öffnen (Erstfokus: die Set-Nummer, data-erstfokus). */
+export function oeffneErfassen(){ G('add-set-modal').classList.add('open'); }
+export function schliesseErfassen(){ G('add-set-modal').classList.remove('open'); }
+
 async function doAddSet(){
   const num=G('add-num').value.trim(), qty=parseInt(G('add-qty').value)||1;
   const priceVal = G('add-price')?.value;
@@ -990,11 +994,13 @@ async function doAddSet(){
         streamFertig();
         hideProgress();
         G('add-num').value='';
+        schliesseErfassen();
         openModal(ev.set_number);
         return;
       }
       if(ev.step==='done'){
         streamFertig();
+        schliesseErfassen();
         setTimeout(()=>{
           hideProgress(); loadGallery(); loadStats();
           G('add-num').value=''; if(G('add-price')) G('add-price').value='';
@@ -1434,6 +1440,8 @@ registerActions({
   benutzerMenue,
   oeffneSicht,
   oeffneReiter,
+  oeffneErfassen,
+  schliesseErfassen,
   onScopeChange,
   onStorageChange,
   autosaveSet,

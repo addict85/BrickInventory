@@ -1,6 +1,7 @@
 import { registerActions } from './00-registry.js';
 import { t, tRaw } from '../i18n.js';
 import { G, api, toast, passwortZuKurz, passwortZuKurzText } from './01-core.js';
+import { oeffneErfassen } from './02-gallery.js';
 
 // ═══ Einrichtung beim ersten Start (Server: routes/settings.ts /einrichtung) ═
 // Nur für Verwalter, nur solange etwas fehlt. „Später" schliesst bloss — beim
@@ -97,7 +98,7 @@ export function einrichtungZiel(ziel) {
     reiter('gallery');
     // Die Dateiauswahl muss im selben Klick aufgehen, sonst blockt der Browser sie.
     if (ziel === 'csv') G('csv-file')?.click();
-    else G('add-num')?.focus();
+    else oeffneErfassen();
   }
   abschliessen();
 }
