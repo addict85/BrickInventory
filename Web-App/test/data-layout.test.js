@@ -16,6 +16,9 @@
  * sind die Zusicherungen über den ZIELZUSTAND: dass keine Quelle mehr die alten
  * Pfade schreibt, dass Teile und Figuren getrennt landen und dass die
  * Bildroute Anmeldepflicht und Heilung behält.
+ *
+ * Gegenprobe (am 25.10. gemessen): in downloadImage() immer PART_IMAGES_DIR
+ * → rot: „Figurenbild nicht im Figurenordner".
  */
 const test   = require('node:test');
 const assert = require('node:assert/strict');
@@ -42,12 +45,31 @@ test('keine Quelle schreibt mehr die alten Pfade', () => {
   }
 });
 
-test('Teile- und Figurenbilder landen in getrennten Ordnern', () => {
-  const enrich = read('jobs/partsCatalogEnrich.ts');
-  assert.match(enrich, /kind === 'minifig' \? MINIFIG_IMAGES_DIR : PART_IMAGES_DIR/,
-    'downloadImage muss die Art unterscheiden');
-  assert.match(enrich, /kind === 'minifig' \? '\/images\/minifigs\/' : '\/images\/parts\/'/,
-    'Auch der Web-Pfad muss der Art folgen');
+test('Teile- und Figurenbilder landen in getrennten Ordnern', async (t) => {
+  // Am Verhalten: downloadImage() mit nachgestelltem https.get (ohne Netz).
+  process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
+  const _req = require('./helpers/sources').buildAndRequire();
+  const { downloadImage } = _req('jobs/partsCatalogEnrich.js');
+  const { PART_IMAGES_DIR, MINIFIG_IMAGES_DIR } = _req('utils/appPaths.js');
+  const https = require('node:https');
+  const { Readable } = require('node:stream');
+  const { EventEmitter } = require('node:events');
+  const echt = https.get;
+  https.get = (_a, _o, cb) => {
+    const req = Object.assign(new EventEmitter(), { setTimeout: () => req, destroy: () => {} });
+    setImmediate(() => cb(Object.assign(Readable.from([Buffer.from('PNG')]), { statusCode: 200, headers: { 'content-type': 'image/png' } })));
+    return req;
+  };
+  const NUM = `ordnertest${process.pid}`;
+  t.after(() => {
+    https.get = echt;
+    for (const d of [PART_IMAGES_DIR, MINIFIG_IMAGES_DIR]) fs.rmSync(path.join(d, `${NUM}_0.png`), { force: true });
+  });
+  const cdn = 'https://cdn.rebrickable.com/media/x.png';
+  assert.equal(await downloadImage(cdn, NUM, 0, 'minifig'), `/images/minifigs/${NUM}_0.png`, 'Web-Pfad folgt der Art nicht');
+  assert.ok(fs.existsSync(path.join(MINIFIG_IMAGES_DIR, `${NUM}_0.png`)), 'Figurenbild nicht im Figurenordner');
+  assert.equal(await downloadImage(cdn, NUM, 0, 'part'), `/images/parts/${NUM}_0.png`);
+  assert.ok(fs.existsSync(path.join(PART_IMAGES_DIR, `${NUM}_0.png`)), 'Teilebild nicht im Teileordner');
   // Der einzige Aufruf für Figuren sitzt im Bild-Hintergrundlauf.
   assert.match(read('server.ts'), /downloadImage\(f\.image_url, f\.fig_number, 0, 'minifig'\)/,
     'Der Figuren-Download muss die Art mitgeben — sonst landen Figuren wieder bei den Teilen');

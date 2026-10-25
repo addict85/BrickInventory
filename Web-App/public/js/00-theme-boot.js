@@ -36,9 +36,33 @@
    */
   function apply(theme) {
     if (ALLOWED.indexOf(theme) === -1) return null;
-    document.documentElement.setAttribute('data-theme', theme);
+    serverDesign = theme;
+    document.documentElement.setAttribute('data-theme', wirksam(theme));
     return theme;
   }
+
+  // ── Dunkel nach System, je Gerät (Profil-Einstellungen) ────────────────────
+  // Das Design gilt global; ob ein GERÄT dunkel will, weiss nur das Gerät. Wer
+  // „system" wählt, bekommt Werkbank, solange das System dunkel ist. Gecacht
+  // wird weiter das Design des Servers, nicht das angezeigte.
+  var DUNKEL_KEY = 'bim_dunkel';
+  var systemDunkel = window.matchMedia ? window.matchMedia('(prefers-color-scheme: dark)') : null;
+  var serverDesign = null;
+  function folgtSystem() {
+    try { return localStorage.getItem(DUNKEL_KEY) === 'system'; } catch (_) { return false; }
+  }
+  function wirksam(theme) {
+    return folgtSystem() && systemDunkel && systemDunkel.matches ? 'werkbank' : theme;
+  }
+  function neuAnwenden() {
+    if (serverDesign) document.documentElement.setAttribute('data-theme', wirksam(serverDesign));
+  }
+  if (systemDunkel && systemDunkel.addEventListener) systemDunkel.addEventListener('change', neuAnwenden);
+  window.__bimDunkel = function (wert) {
+    try { localStorage.setItem(DUNKEL_KEY, wert === 'system' ? 'system' : 'server'); } catch (_) {}
+    neuAnwenden();
+  };
+  window.__bimDunkelWert = function () { return folgtSystem() ? 'system' : 'server'; };
 
   /**
    * Setter für 01-core.js und den Admin-Speichern-Handler. Nur gültige Werte
@@ -59,6 +83,8 @@
   var served = document.documentElement.getAttribute('data-theme');
   if (ALLOWED.indexOf(served) !== -1) {
     try { localStorage.setItem(KEY, served); } catch (_) {}
+    serverDesign = served;
+    neuAnwenden();
     window.__bimApplyTheme = applier;
     return;
   }

@@ -160,6 +160,25 @@ fun SettingsScreen(
                 }
             }
 
+            // Darstellung je Gerät — wirkt sofort wie die Sprache.
+            Unterschrift(stringResource(R.string.settings_dark_label))
+            val dunkel by vm.dunkelNachSystem.collectAsStateWithLifecycle()
+            Row(horizontalArrangement = Arrangement.spacedBy(Abstaende.klein),
+                modifier = Modifier.fillMaxWidth()) {
+                FilterChip(
+                    selected = !dunkel,
+                    onClick = { vm.setDunkelNachSystem(false) },
+                    label = { Text(stringResource(R.string.settings_dark_server)) },
+                    shape = Formen.chip
+                )
+                FilterChip(
+                    selected = dunkel,
+                    onClick = { vm.setDunkelNachSystem(true) },
+                    label = { Text(stringResource(R.string.settings_dark_system)) },
+                    shape = Formen.chip
+                )
+            }
+
             // Die Linie trennt, was SOFORT wirkt (Sprache), von dem, was der
             // Knopf darunter speichert. Ohne sie stuenden vier Wahlmoeglichkeiten
             // da, von denen drei erst spaeter gelten — und niemand saehe, welche.

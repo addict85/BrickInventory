@@ -56,6 +56,9 @@ class ErreichbareRoutenTest {
         val registriert = namen(Regex("""composable\(\s*Screen\.(\w+)\.route"""))
         val angesteuert = namen(Regex("""navigate\(\s*Screen\.(\w+)\.route"""))
         val inDerLeiste  = namen(Regex("""Triple\(\s*Screen\.(\w+)\s*,"""))
+        // Dritter Weg seit dem 25.10.: der Umschalter der Sammlung (Sets | Teile |
+        // Minifiguren) in MainScaffold, eine Liste `Screen.X to R.string.…`.
+        val imUmschalter = namen(Regex("""Screen\.(\w+)\s+to\s+R\.string\."""))
 
         // ── Untergrenzen, damit ein kaputtes Suchmuster nicht still gruen ist ──
         //
@@ -73,7 +76,9 @@ class ErreichbareRoutenTest {
             inDerLeiste.size >= 5
         )
 
-        val ohneWeg = (registriert - angesteuert - inDerLeiste).sorted()
+        assertTrue("Der Umschalter der Sammlung ist nicht zu finden — umbenannt?", imUmschalter.size >= 3)
+
+        val ohneWeg = (registriert - angesteuert - inDerLeiste - imUmschalter).sorted()
         assertTrue(
             "Diese Bildschirme sind im Navigationsgraphen eingehaengt, aber von nirgendwo " +
                 "erreichbar: $ohneWeg. Entweder fehlt der Menuepunkt/Reiter dorthin, oder der " +

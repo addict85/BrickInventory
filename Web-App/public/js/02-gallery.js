@@ -45,6 +45,25 @@ function syncTabTitleIcon(tab){
   slot.innerHTML = html.trim();
 }
 
+/**
+ * Sets, Teile und Minifiguren teilen sich in der Leiste EIN Ziel („Sammlung");
+ * umgeschaltet wird oben auf der Seite. Teile und Minifiguren behalten ihren
+ * unsichtbaren Reiter — Code und Wiederherstellung sprechen sie darüber an.
+ */
+const SAMMLUNG = ['gallery', 'parts', 'minifigs'];
+function markiereGruppe(tab){
+  // Eigene Klasse statt .active: `.ntab.active` nennt überall den offenen Reiter.
+  document.querySelector('.ntab[data-tab="gallery"]')?.classList.toggle('gruppe-aktiv', SAMMLUNG.includes(tab));
+  document.querySelectorAll('.sammlung-wahl [data-arg]').forEach(b =>
+    b.setAttribute('aria-selected', String(b.dataset.arg === tab)));
+}
+
+/** Einen Reiter öffnen — aus dem Umschalter der Sammlung oder dem Menü. */
+export function oeffneReiter(name){
+  menueSchliessen();
+  document.querySelector(`.ntab[data-tab="${name}"]`)?.click();
+}
+
 export function bindTabs(){
   document.querySelectorAll('.ntab').forEach(t=>{
     // Avoid duplicate listeners
@@ -54,6 +73,7 @@ export function bindTabs(){
       document.querySelectorAll('.tab').forEach(x=>x.classList.remove('active'));
       t.classList.add('active'); G('tab-'+t.dataset.tab).classList.add('active');
       const tab = t.dataset.tab;
+      markiereGruppe(tab);
       syncTabTitleIcon(tab);
       // Das Jahres-Etikett am Scrollbalken gehört NUR in den Katalog. Ohne
       // dieses Abmelden lieferte die dort angemeldete Funktion weiterhin ein
@@ -917,7 +937,7 @@ function gridCard(s){
       <div class="snum">${esc(s.set_number)}</div>
       <div class="sname">${esc(s.name)||'Unbekannt'}</div>
       <div class="smeta">
-        <span style="font-size:.68rem">${s.year||'—'}${s.theme?' · '+esc(s.theme.substring(0,12)):''}</span>
+        <span style="font-size:var(--fs-0)">${s.year||'—'}${s.theme?' · '+esc(s.theme.substring(0,12)):''}</span>
         <div style="display:flex;gap:3px;align-items:center;flex-wrap:wrap">
           ${s.instructions?.length?`<span class="ibadge">📋${s.instructions.length}</span>`:''}
           ${s.quantity>1?`<span class="qbadge">×${s.quantity}</span>`:''}
@@ -926,7 +946,7 @@ function gridCard(s){
         </div>
       </div>
       <div class="price-badge" data-price-for="${esc(s.set_number)}"${priceStr||pnl ? '' : ' hidden'}><span style="font-weight:600;color:var(--b600)">${priceStr}</span>${pnl}</div>
-      ${addedFmt ? `<div style="font-size:.65rem;color:var(--mut);margin-top:.2rem">📅 ${addedFmt}</div>` : ''}
+      ${addedFmt ? `<div style="font-size:var(--fs-0);color:var(--mut);margin-top:.2rem">📅 ${addedFmt}</div>` : ''}
     </div>
   </div>`;
 }
@@ -935,11 +955,11 @@ function tableRow(s){
   const addedFmt = s.added_at ? new Date(s.added_at).toLocaleDateString(locale()) : '—';
   return `<tr style="cursor:pointer" data-click="openModal" data-arg="${escJs(s.set_number)}">
     <td>${src?`<img src="${escUrl(imgUrl(thumbUrl(src)||src, true)||'')}" loading="lazy" decoding="async" data-onerror="clear" />`:'—'}</td>
-    <td><span style="font-family:var(--mono);color:var(--b600);font-size:.77rem">${esc(s.set_number)}</span></td>
+    <td><span style="font-family:var(--mono);color:var(--b600);font-size:var(--fs-1)">${esc(s.set_number)}</span></td>
     <td>${esc(s.name)||'—'}</td><td>${s.year||'—'}</td><td>${esc(s.theme)||'—'}</td>
     <td>${s.pieces?s.pieces.toLocaleString(locale()):'—'}</td><td>${s.minifigs||'—'}</td>
     <td><span class="qbadge">×${s.quantity}</span></td>
-    <td style="font-size:.75rem;color:var(--mut)">${addedFmt}</td>
+    <td style="font-size:var(--fs-1);color:var(--mut)">${addedFmt}</td>
     <td>${s.instructions?.length?`<span class="ibadge">📋${s.instructions.length}</span>`:'—'}</td>
     <td data-click="stopEvent"><button class="btn bs btn-sm" data-click="reimportParts" data-arg="${escJs(s.set_number)}">${PARTS_ICON_SVG}</button></td>
     <td data-click="stopEvent"><button class="btn bd btn-sm" data-click="delSet" data-arg="${escJs(s.set_number)}" title="${esc(t('detail.delete'))}" aria-label="${esc(t('detail.delete'))}">${TRASH_ICON_SVG}</button></td>
@@ -949,6 +969,10 @@ function tableRow(s){
 // Add set via SSE stream
 G('btn-add').onclick=doAddSet;
 G('add-num').addEventListener('keydown',e=>e.key==='Enter'&&doAddSet());
+/** Den Erfassen-Dialog öffnen (Erstfokus: die Set-Nummer, data-erstfokus). */
+export function oeffneErfassen(){ G('add-set-modal').classList.add('open'); }
+export function schliesseErfassen(){ G('add-set-modal').classList.remove('open'); }
+
 async function doAddSet(){
   const num=G('add-num').value.trim(), qty=parseInt(G('add-qty').value)||1;
   const priceVal = G('add-price')?.value;
@@ -967,14 +991,16 @@ async function doAddSet(){
         // Set steht schon im Blickfeld — der Server hat NICHTS geschrieben
         // (Marcos Festlegung, utils/setAdd.ts). Statt einer Meldung öffnet
         // sich die Detailansicht, genau wie in der App.
-        _activeAbort=null; G('btn-cancel-import').style.display='none';
+        streamFertig();
         hideProgress();
         G('add-num').value='';
+        schliesseErfassen();
         openModal(ev.set_number);
         return;
       }
       if(ev.step==='done'){
-        _activeAbort=null; G('btn-cancel-import').style.display='none';
+        streamFertig();
+        schliesseErfassen();
         setTimeout(()=>{
           hideProgress(); loadGallery(); loadStats();
           G('add-num').value=''; if(G('add-price')) G('add-price').value='';
@@ -990,7 +1016,7 @@ async function doAddSet(){
           }, delay));
         },800);
       }
-      else if(ev.step==='error'){ _activeAbort=null; G('btn-cancel-import').style.display='none'; setTimeout(()=>{hideProgress();toast(ev.error,'error');},1500); }
+      else if(ev.step==='error'){ streamFertig(); setTimeout(()=>{hideProgress();toast(ev.error,'error');},1500); }
     });
   }catch(e){if(e.name!=='AbortError'){hideProgress();toast(e.message,'error');}}
 }
@@ -1138,8 +1164,14 @@ async function csvPollLoop(ctx, fi){
 // ── CSV import polling state ─────────────────────────────────────────────────
 export let _csvPollActive = false;
 
+/** Der laufende Ereignisstrom (Set erfassen) — damit „Abbrechen" ihn beenden kann. */
+let _activeAbort = null;
+export function streamFertig(){ _activeAbort = null; G('btn-cancel-import').style.display='none'; }
+
 function cancelImport(){
   _csvPollActive = false;
+  _activeAbort?.abort();
+  _activeAbort = null;
   api('POST','/v1/sets/import/csv/cancel').catch(()=>{});
   G('btn-cancel-import').style.display='none';
   hideProgress();
@@ -1150,22 +1182,22 @@ G('btn-cancel-import').onclick = cancelImport;
 
 // SSE helper for JSON body — abortable
 export function streamRequest(url, body, onEvent){
-  _activeAbort = new AbortController();
+  const ac = _activeAbort = new AbortController();
   G('btn-cancel-import').style.display='inline-flex';
   return new Promise((resolve,reject)=>{
-    fetch(url,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body),signal:_activeAbort.signal})
-      .then(res=>readSSE(res,onEvent,_activeAbort.signal)).then(resolve).catch(e=>{
+    fetch(url,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body),signal:ac.signal})
+      .then(res=>readSSE(res,onEvent,ac.signal)).then(resolve).catch(e=>{
         if(e.name==='AbortError') resolve(); else reject(e);
       });
   });
 }
 // SSE helper for FormData — abortable
 function streamRequestForm(url, formData, onEvent){
-  _activeAbort = new AbortController();
+  const ac = _activeAbort = new AbortController();
   G('btn-cancel-import').style.display='inline-flex';
   return new Promise((resolve,reject)=>{
-    fetch(url,{method:'POST',body:formData,signal:_activeAbort.signal})
-      .then(res=>readSSE(res,onEvent,_activeAbort.signal)).then(resolve).catch(e=>{
+    fetch(url,{method:'POST',body:formData,signal:ac.signal})
+      .then(res=>readSSE(res,onEvent,ac.signal)).then(resolve).catch(e=>{
         if(e.name==='AbortError') resolve(); else reject(e);
       });
   });
@@ -1275,31 +1307,31 @@ export function renderInstructions(instr, sn) {
     return `<div class="ii" id="instr-${i.id}">
       ${link}
       ${isUpload ? `<span class="lv" style="background:var(--p100);color:var(--p600)">${t('instr.badge_manual')}</span>` : isLocal ? '<span class="lc">💾</span>' : '<span class="lv">🌐</span>'}
-      ${isUpload ? `<button data-click="delInstr" data-arg="${esc(sn)}" data-arg2="${i.id}" title="${t('instr.delete_tooltip')}" style="background:none;border:none;cursor:pointer;color:var(--s400);font-size:.85rem;padding:0 2px">✕</button>` : ''}
+      ${isUpload ? `<button data-click="delInstr" data-arg="${esc(sn)}" data-arg2="${i.id}" title="${t('instr.delete_tooltip')}" style="background:none;border:none;cursor:pointer;color:var(--s400);font-size:var(--fs-3);padding:0 2px">✕</button>` : ''}
     </div>`;
   }).join('');
 
   const uploadForm = `
     <div id="instr-upload-form" style="margin-top:10px;padding:10px;background:var(--s50);border:1px dashed var(--bdr);border-radius:8px">
-      <div style="font-size:.75rem;font-weight:600;color:var(--mut);margin-bottom:7px">${t('instr.upload_title')}</div>
+      <div style="font-size:var(--fs-1);font-weight:600;color:var(--mut);margin-bottom:7px">${t('instr.upload_title')}</div>
       <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:flex-end">
         <div style="flex:1;min-width:140px">
-          <input type="text" id="instr-desc" placeholder="${t('instr.desc_placeholder')}" style="font-size:.8rem;padding:6px 10px" />
+          <input type="text" id="instr-desc" placeholder="${t('instr.desc_placeholder')}" style="font-size:var(--fs-2);padding:6px 10px" />
         </div>
         <label class="btn bs btn-sm" style="cursor:pointer">
           ${t('instr.choose_file')}
           <input type="file" id="instr-file" accept=".pdf,.jpg,.jpeg,.png" style="display:none" data-change="uploadInstr" data-arg="${escJs(sn)}" />
         </label>
       </div>
-      <div id="instr-upload-status" style="font-size:.78rem;margin-top:6px;color:var(--mut)"></div>
+      <div id="instr-upload-status" style="font-size:var(--fs-1);margin-top:6px;color:var(--mut)"></div>
     </div>`;
 
   G('m-instr').innerHTML = `
-    <div style="font-size:.72rem;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--mut);margin:12px 0 7px">
+    <div style="font-size:var(--fs-1);font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--mut);margin:12px 0 7px">
       ${t('instr.section_title')} ${instr.length ? `(${instr.length})` : ''}
-      <button data-click="redownloadInstr" data-arg="${escJs(sn)}" class="btn bs btn-sm" style="margin-left:8px;font-size:.7rem;padding:3px 8px">${t('instr.reload')}</button>
+      <button data-click="redownloadInstr" data-arg="${escJs(sn)}" class="btn bs btn-sm" style="margin-left:8px;font-size:var(--fs-0);padding:3px 8px">${t('instr.reload')}</button>
     </div>
-    ${items || `<div style="color:var(--mut);font-size:.82rem">${t('instr.none_auto')}</div>`}
+    ${items || `<div style="color:var(--mut);font-size:var(--fs-2)">${t('instr.none_auto')}</div>`}
     ${uploadForm}`;
 }
 
@@ -1376,7 +1408,7 @@ export function autosaveSet(){
           if (!ad?.success) return;
           const sumEl = G('m-acq-summary');
           if (sumEl) sumEl.innerHTML = renderAcquisitionSummary(ad.acquisitions, curSet.set_number) +
-            `<button class="btn bs btn-sm" data-click="openAcqModal" data-arg="${escJs(curSet.set_number)}" style="margin-top:4px;font-size:.75rem;padding:2px 10px">✏️ ${t('detail.edit_prices')}</button>`;
+            `<button class="btn bs btn-sm" data-click="openAcqModal" data-arg="${escJs(curSet.set_number)}" style="margin-top:4px;font-size:var(--fs-1);padding:2px 10px">✏️ ${t('detail.edit_prices')}</button>`;
           if (G('acq-modal').classList.contains('open') && typeof renderAcqModalBody === 'function') {
             renderAcqModalBody(curSet.set_number, ad.acquisitions);
           }
@@ -1407,6 +1439,9 @@ async function redownloadInstr(sn){ toast(tRaw('instr.loading'),'info'); const d
 registerActions({
   benutzerMenue,
   oeffneSicht,
+  oeffneReiter,
+  oeffneErfassen,
+  schliesseErfassen,
   onScopeChange,
   onStorageChange,
   autosaveSet,

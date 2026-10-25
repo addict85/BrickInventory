@@ -66,29 +66,47 @@
 
   /* Die Statistikzahlen in der Kopfzeile brauchen den Platz nicht */
   .hstats             { display: none; }
+  /* Kopfzeile: Name und Importleiste geben nach, das Benutzermenü nie. */
+  header .logo        { min-width: 0; flex: 0 1 auto; }
+  header .logo h1     { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .hright             { min-width: 0; flex: 1 1 auto; justify-content: flex-end; gap: .5rem; }
+  .umenu              { flex: 0 0 auto; }
+  #global-import-bar  { min-width: 0 !important; max-width: none !important; flex: 1 1 60px; }
 
   /* ─ Navigation ──────────────────────────────────────────────────────── */
-  /* Bleibt eine horizontal scrollbare Leiste statt einer Bottom-Bar: Bei acht
-     Reitern müsste auch eine Bottom-Bar scrollen, womit ihr einziger Vorteil
-     entfällt. Stattdessen grössere Touch-Ziele, Snap-Punkte und ein
-     Rand-Fade, das andeutet, dass es weitergeht. 10-mobile.js scrollt den
-     aktiven Reiter zusätzlich in den sichtbaren Bereich. */
+  /* Fünf Ziele passen nebeneinander: Leiste unten, in Daumenreichweite,
+     Symbol über Beschriftung. */
   nav {
-    top: 52px;
-    padding: 0 .5rem;
-    scroll-snap-type: x proximity;
-    -webkit-overflow-scrolling: touch;
-    mask-image: linear-gradient(to right, transparent 0, #000 12px, #000 calc(100% - 12px), transparent 100%);
+    position: fixed;
+    top: auto; bottom: 0; left: 0; right: 0;
+    z-index: 100;
+    padding: 0 0 env(safe-area-inset-bottom);
+    border-top: 1px solid var(--bdr);
+    border-bottom: none;
+    justify-content: space-around;
+    overflow: visible;
+    box-shadow: 0 -2px 10px rgba(15, 23, 42, .06);
   }
   .ntab {
-    padding: 14px 12px;                        /* ≥ 44px Trefferfläche */
-    font-size: .82rem;
-    scroll-snap-align: center;
+    flex: 1 1 0;
+    min-width: 0;
+    flex-direction: column;
+    gap: 3px;
+    padding: 8px 2px 7px;                       /* ≥ 44px Trefferfläche */
+    font-size: var(--fs-0);
+    border-bottom: none;
+    border-top: 2px solid transparent;
+    margin: -1px 0 0;
   }
+  .ntab .tab-label { max-width: 100%; overflow: hidden; text-overflow: ellipsis; }
+  .ntab .ico { width: 22px; height: 22px; }
+  .ntab.active, .ntab.gruppe-aktiv { border-top-color: var(--b600); }
+  .sammlung-wahl { display: flex; width: 100%; }
+  .sammlung-wahl button { flex: 1 1 0; justify-content: center; padding: 8px 4px; }
 
   /* ─ Flächen und Karten ──────────────────────────────────────────────── */
   .card, .sc, .ssec  { padding: 1rem .85rem; border-radius: 12px; }
-  .ptitle            { font-size: 1.15rem; }
+  .ptitle            { font-size: var(--fs-5); }
 
   .sgrid       { grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: .7rem; }
   .parts-grid  { grid-template-columns: repeat(auto-fill, minmax(108px, 1fr)); gap: .6rem; }
@@ -101,6 +119,25 @@
     gap: .5rem;
   }
   .frow > *, .gctrl > * { min-width: 0; }
+  /* Formularfelder zu zweit je Zeile, das erste und der Knopf über die volle
+     Breite. Die max-width aus den Inline-Styles passt nur auf den Desktop. */
+  .frow > .fg         { flex: 1 1 calc(50% - .25rem); max-width: none !important; }
+  .frow > .fg:first-child, .frow > .btn { flex: 1 1 100%; }
+  /* In Rastern gibt die Spalte die Breite vor, nicht die Mindestbreite von .fg */
+  [style*="display:grid"] > .fg { min-width: 0; }
+
+  /* Zeilen ohne Umbruch (Inline-Styles der Vorlagen) dürfen umbrechen, statt
+     die Seite zu verbreitern. Ausgenommen, was ausdrücklich einzeilig bleibt. */
+  main [style*="display:flex"]:not([style*="nowrap"]):not([style*="column"]),
+  .modal [style*="display:flex"]:not([style*="nowrap"]):not([style*="column"]) { flex-wrap: wrap; }
+
+  /* Detailzeilen: Beschriftung oben, Bedienelemente darunter, wenn es eng wird */
+  .dr                 { flex-wrap: wrap; gap: .35rem .75rem; }
+  .dr > *             { min-width: 0; }
+  .dr select, .dr input { max-width: 100%; }
+
+  /* Kennzahl-Kacheln: Zahl in einer Zeile */
+  .pstat .v           { font-size: var(--fs-4); overflow-wrap: anywhere; }
   input, select, textarea, .btn {
     font-size: 16px;              /* < 16px lässt iOS beim Fokus hineinzoomen */
     min-height: 42px;
@@ -153,7 +190,7 @@
     content: attr(data-label);
     flex: 0 0 auto;
     text-align: left;
-    font-size: .68rem;
+    font-size: var(--fs-0);
     font-weight: 700;
     text-transform: uppercase;
     letter-spacing: .4px;
@@ -197,7 +234,7 @@
   .prog-steps { flex-wrap: wrap; gap: .4rem; }
 
   /* ─ Toasts über die volle Breite ────────────────────────────────────── */
-  #toasts { left: .6rem; right: .6rem; bottom: .6rem; }
+  #toasts { left: .6rem; right: .6rem; bottom: calc(68px + env(safe-area-inset-bottom)); }
   .toast  { width: auto; }
 
   /* ─ Login-, Registrierungs- und Startup-Screen ──────────────────────── */
@@ -208,7 +245,7 @@
     border-radius: 14px;
   }
   .llogo       { margin-bottom: 1.4rem; }
-  .llogo h1    { font-size: 1.25rem; }
+  .llogo h1    { font-size: var(--fs-5); }
   .lc          { gap: .7rem; }
   #startup-screen > div { width: 100%; max-width: 420px; }
 }
@@ -219,9 +256,7 @@
   .sgrid      { grid-template-columns: 1fr 1fr; gap: .5rem; }
   .parts-grid { grid-template-columns: repeat(auto-fill, minmax(96px, 1fr)); }
   .fgrid      { grid-template-columns: 1fr; }
-  .ntab       { padding: 14px 9px; font-size: .78rem; }
-  .ntab .tab-label { display: none; }          /* nur noch Icons */
-  .ntab.active .tab-label { display: inline; } /* ausser beim aktiven Reiter */
+  .ntab       { font-size: var(--fs-0); }
 }
 
 
@@ -234,6 +269,15 @@
 @media (max-width: 640px) {
 
   [data-theme="brick"] .brick-stats { grid-template-columns: 1fr; gap: .6rem; }
+
+  /* Die Pills des Stein-Designs werden unten zur Leiste wie in den anderen. */
+  [data-theme="brick"] nav {
+    position: fixed; top: auto; bottom: 0; left: 0; right: 0; margin: 0;
+    flex-wrap: nowrap; gap: 2px; padding: 4px 4px calc(4px + env(safe-area-inset-bottom));
+    background: var(--sur); border-top: 1px solid var(--bdr);
+    box-shadow: 0 -2px 10px rgba(15, 23, 42, .06);
+  }
+  [data-theme="brick"] .ntab { border: none; background: none; padding: 6px 2px; }
 
   /* Noppenreihen schmaler skalieren, sonst wirken sie auf dem Telefon grob */
   [data-theme="brick"] .sc::after,

@@ -239,10 +239,11 @@ app.use(express.urlencoded({ extended: true, limit: '256kb' }));
  */
 app.use((req, _res, next) => { if (req.body === undefined) req.body = {}; next(); });
 
-// Hinter einem TLS-terminierenden Reverse-Proxy (Docker/nginx/traefik/caddy)
-// muss Express dem X-Forwarded-Proto vertrauen, sonst wird das secure-Cookie
-// nie gesetzt (Express hält die Verbindung fälschlich für HTTP).
-if (process.env.NODE_ENV === 'production') app.set('trust proxy', 1);
+// Hinter einem TLS-terminierenden Reverse-Proxy muss Express X-Forwarded-Proto
+// glauben, sonst setzt es das secure-Cookie nie. Wem genau: utils/proxyVertrauen.ts.
+if (process.env.NODE_ENV === 'production')
+  app.set('trust proxy', (require('./utils/proxyVertrauen') as typeof import('./utils/proxyVertrauen'))
+    .proxyVertrauen(process.env.TRUST_PROXY));
 
 // Doppelte Schrägstriche im Pfad zusammenfassen
 // `//api/img-proxy?url=…` trifft in Express NICHT auf `/api/img-proxy`. Die
@@ -794,6 +795,14 @@ db.initSchemaOnce().then(async () => {
 
   await electPrimaryWorker(db);
 
+  // Cache-Signale in JEDEM Worker anmelden, also vor jeder Primär-Prüfung:
+  // Jeder Worker hält eigene Caches für Haushalt und Token, und jeder muss
+  // erfahren, wenn sie veraltet sind.
+  // Ausführlich: docs/begruendungen/server.ts.md#electprimaryworker-2
+  (require('./utils/pgNotify') as typeof import('./utils/pgNotify'))
+    .listen(HAUSHALT_KANAL, () => leereHaushaltCache());
+  (require('./utils/auth') as typeof import('./utils/auth')).horcheAufTokenWiderruf();
+
   // Only primary worker clears stale startup_status — secondaries read it from DB
   if (isPrimaryWorker) {
     await deleteGlobalSetting('startup_status').catch(() => {});
@@ -845,16 +854,6 @@ db.initSchemaOnce().then(async () => {
       .then(() => csvSync.run())
       .catch(e => console.error('[rb-csv-sync daily]', e.message)));
   scheduler.startTriggerPoll();
-
-  // Das Blickfeld eines Kontos wird gemerkt (utils/household.ts) — hier kommt
-  // die Nachricht an, dass es sich geaendert hat.
-  // Ausführlich: docs/begruendungen/server.ts.md#electprimaryworker-2
-  (require('./utils/pgNotify') as typeof import('./utils/pgNotify'))
-    .listen(HAUSHALT_KANAL, () => leereHaushaltCache());
-
-  // Derselbe Gedanke für den Token-Cache: Ein Widerruf (Abmelden,
-  // Passwortwechsel, Token gelöscht) gilt sofort in allen Workern.
-  (require('./utils/auth') as typeof import('./utils/auth')).horcheAufTokenWiderruf();
 
   // CSV-Sync auf Zuruf statt im 5-Sekunden-Takt.
   // Der Eintrag in global_settings bleibt die belastbare Quelle; das

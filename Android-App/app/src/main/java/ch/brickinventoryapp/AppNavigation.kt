@@ -1,10 +1,14 @@
 package ch.brickinventoryapp
 
 import androidx.compose.foundation.layout.*
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.CompareArrows
+import androidx.compose.material.icons.automirrored.filled.ListAlt
+import androidx.compose.material.icons.automirrored.filled.MenuBook
+import androidx.compose.material.icons.automirrored.filled.ShowChart
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
-import androidx.compose.ui.unit.sp
 import androidx.navigation.compose.*
 import ch.brickinventoryapp.nav.authGraph
 import ch.brickinventoryapp.nav.collectionGraph
@@ -15,9 +19,6 @@ import ch.brickinventoryapp.ui.*
 import ch.brickinventoryapp.ui.screens.*
 import coil3.ImageLoader
 import ch.brickinventoryapp.R
-import androidx.compose.ui.res.vectorResource
-import androidx.compose.ui.graphics.vector.ImageVector
-import androidx.compose.ui.graphics.Color
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.Lifecycle
@@ -127,28 +128,26 @@ fun BrickInventoryManagerApp(
     }
 
     // Nav-Labels hier auflösen (direkt im @Composable-Scope, nicht im remember-Lambda)
-    val labelGallery    = stringResource(R.string.nav_gallery)
+    val labelCollection = stringResource(R.string.nav_collection)
     val labelCatalog    = stringResource(R.string.nav_catalog)
-    val labelParts      = stringResource(R.string.nav_parts)
-    val labelMinifigs   = stringResource(R.string.nav_minifigs_short)
     val labelPartslist  = stringResource(R.string.nav_partslist)
     val labelFinance    = stringResource(R.string.nav_finance)
+    val labelWanted     = stringResource(R.string.nav_wanted)
     val labelComparison = stringResource(R.string.nav_comparison)
-    val labelWanted   = stringResource(R.string.nav_wanted)
 
-    val bottomNavItems = remember(labelGallery, labelCatalog, labelParts, labelMinifigs, labelPartslist, labelFinance, labelComparison, labelWanted) {
+    // Die fünf Ziele der Webapp und der Vergleich, den es nur in der App gibt —
+    // unten, damit er schnell erreichbar ist. Teile und Minifiguren erreicht man
+    // über den Umschalter der Sammlung (MainScaffold).
+    val bottomNavItems = remember(labelCollection, labelCatalog, labelPartslist, labelFinance, labelWanted, labelComparison) {
         buildList<Triple<Screen, @Composable () -> Unit, String>> {
-            add(Triple(Screen.Gallery,    { Icon(ImageVector.vectorResource(R.drawable.ic_brand_brick), labelGallery, tint = Color.Unspecified) },    labelGallery))
-            add(Triple(Screen.Parts,      { Icon(ImageVector.vectorResource(R.drawable.ic_parts_bricks), labelParts, tint = Color.Unspecified) },     labelParts))
-            add(Triple(Screen.Minifigs,   { Text("👷", fontSize = 20.sp) },        labelMinifigs))
-            add(Triple(Screen.PartsList,  { Text("📋", fontSize = 20.sp) },        labelPartslist))
-            add(Triple(Screen.Finance,    { Text("💰", fontSize = 20.sp) },        labelFinance))
-            // Merkliste VOR dem Katalog (Marcos Vorgabe). Beide Reiter gehoeren
-            // zusammen — man merkt sich, was man im Katalog findet —, und die
-            // Webapp fuehrt sie seit derselben Aenderung in derselben Folge.
-            add(Triple(Screen.Wanted,     { Text("⭐", fontSize = 20.sp) },        labelWanted))
-            add(Triple(Screen.Catalog,    { Text("📚", fontSize = 20.sp) },        labelCatalog))
-            add(Triple(Screen.Comparison, { Icon(ImageVector.vectorResource(R.drawable.ic_compare_scale), labelComparison, tint = Color.Unspecified) }, labelComparison))
+            add(Triple(Screen.Gallery,   { Icon(Icons.Default.ViewInAr, labelCollection) },               labelCollection))
+            add(Triple(Screen.PartsList, { Icon(Icons.AutoMirrored.Filled.ListAlt, labelPartslist) },     labelPartslist))
+            add(Triple(Screen.Finance,   { Icon(Icons.AutoMirrored.Filled.ShowChart, labelFinance) },     labelFinance))
+            // Merkliste VOR dem Katalog (Marcos Vorgabe), wie in der Webapp.
+            add(Triple(Screen.Wanted,    { Icon(Icons.Default.StarBorder, labelWanted) },                 labelWanted))
+            add(Triple(Screen.Catalog,   { Icon(Icons.AutoMirrored.Filled.MenuBook, labelCatalog) },      labelCatalog))
+            // Vergleich rechts vom Katalog (Marcos Vorgabe).
+            add(Triple(Screen.Comparison, { Icon(Icons.AutoMirrored.Filled.CompareArrows, labelComparison) }, labelComparison))
         }
     }
 

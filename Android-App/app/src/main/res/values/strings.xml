@@ -307,6 +307,10 @@
     <string name="detail_price_high">High</string>
 
     <!-- ══════════════ Navigation & Main ══════════════ -->
+    <string name="settings_dark_label">Appearance on this device</string>
+    <string name="settings_dark_server">Server design</string>
+    <string name="settings_dark_system">Dark with system</string>
+    <string name="nav_collection">Collection</string>
     <string name="nav_gallery">Gallery</string>
     <string name="nav_parts">Parts</string>
     <string name="nav_minifigs">Minifigures</string>

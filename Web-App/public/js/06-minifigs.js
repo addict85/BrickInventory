@@ -178,9 +178,9 @@ export function renderFigs(list, target) {
   const el = target || G('figs-list');
   if (!list.length) {
     el.innerHTML = `<div class="empty" style="padding:3rem;text-align:center">
-      <div style="font-size:2.5rem;margin-bottom:.5rem">👷</div>
+      <div style="font-size:var(--fs-8);margin-bottom:.5rem">👷</div>
       <div style="font-weight:600">${t('figs.none')}</div>
-      <div style="color:var(--mut);font-size:.85rem">${t('figs.auto_hint')}</div>
+      <div style="color:var(--mut);font-size:var(--fs-3)">${t('figs.auto_hint')}</div>
     </div>`;
     return;
   }
@@ -211,10 +211,10 @@ export function renderFigs(list, target) {
         // Ansichten (Marcos Detail-Dialog fuer automatisch erfasste Figuren).
         return `<tr style="cursor:pointer" data-click="${f.source==='manual'?'openManDetail':'openSetItemDetail'}" data-arg="fig" data-arg2="${escJs(f.fig_number)}" data-arg3="0">
           <td>${imgSrc?`<img src="${escUrl(imgSrc)}" loading="lazy" decoding="async" data-onerror="hide" style="width:36px;height:36px;object-fit:contain;background:var(--s50);border-radius:5px" />`:'—'}</td>
-          <td><span style="font-family:var(--mono);font-size:.77rem;color:var(--b600)">${esc(f.fig_number)}</span></td>
+          <td><span style="font-family:var(--mono);font-size:var(--fs-1);color:var(--b600)">${esc(f.fig_number)}</span></td>
           <td style="max-width:200px">${esc(f.fig_name)||'—'}</td>
           <td><span style="font-family:var(--mono);font-weight:600;color:var(--b700)">${f.total_quantity||f.quantity}</span></td>
-          <td style="font-size:.75rem;color:var(--mut)">${erfasst}</td>
+          <td style="font-size:var(--fs-1);color:var(--mut)">${erfasst}</td>
         </tr>`;
       }).join('')}</tbody></table></div>`;
     return;
@@ -278,7 +278,7 @@ export function renderFigs(list, target) {
             <div class="part-qty">${f.total_quantity||f.quantity}×</div>
             ${condBadge}
             ${besitzer}
-            ${erfasst ? `<div style="font-size:.65rem;color:var(--mut)">${erfasst}</div>` : ''}
+            ${erfasst ? `<div style="font-size:var(--fs-0);color:var(--mut)">${erfasst}</div>` : ''}
           </div>`;
         }).join('')}
       </div>
@@ -306,9 +306,9 @@ export function renderManualFigsTable() {
   if (!el) return;
   if (!manualFigsCache.length) {
     el.innerHTML = `<div class="empty" style="padding:2rem;text-align:center">
-      <div style="font-size:2rem;margin-bottom:.4rem">👷</div>
+      <div style="font-size:var(--fs-7);margin-bottom:.4rem">👷</div>
       <div style="font-weight:600">${t('figs.none_manual')}</div>
-      <div style="color:var(--mut);font-size:.85rem">${t('figs.from_csv_hint')}</div>
+      <div style="color:var(--mut);font-size:var(--fs-3)">${t('figs.from_csv_hint')}</div>
     </div>`;
     return;
   }
@@ -338,7 +338,7 @@ export function renderManualFigsTable() {
         <div style="display:flex;gap:4px;align-items:center;flex-wrap:wrap;margin-top:2px">
           <span class="qbadge">×${f.quantity}</span>${condBadge}${ownerBadges(f)}
         </div>
-        <div style="font-weight:700;font-size:.82rem;color:var(--b600);margin-top:3px">${priceStr}</div>
+        <div style="font-weight:700;font-size:var(--fs-2);color:var(--b600);margin-top:3px">${priceStr}</div>
       </div>`;
     }).join('')}
   </div>`;
@@ -417,7 +417,7 @@ function csvImportStatus(elId, state, msg) {
     warn:    'background:var(--s100);color:var(--s600)',
     error:   'background:var(--r100);color:var(--r500)',
   };
-  el.style.cssText = `display:block;font-size:.85rem;margin-bottom:1rem;padding:.55rem .8rem;border-radius:8px;font-weight:600;${styles[state] || styles.running}`;
+  el.style.cssText = `display:block;font-size:var(--fs-3);margin-bottom:1rem;padding:.55rem .8rem;border-radius:8px;font-weight:600;${styles[state] || styles.running}`;
   el.textContent = msg;
 }
 
@@ -579,7 +579,7 @@ function manuelleTabelle(posten, art) {
       <td>${imgSrc
         ? `<img src="${escUrl(imgSrc)}" loading="lazy" decoding="async" data-onerror="clear" style="width:36px;height:36px;object-fit:contain;background:var(--s50);border-radius:5px" />`
         : ''}</td>
-      <td><span style="font-family:var(--mono);font-size:.77rem;color:var(--b600)" title="${esc(nummer)}">${esc(blNummer)}</span></td>
+      <td><span style="font-family:var(--mono);font-size:var(--fs-1);color:var(--b600)" title="${esc(nummer)}">${esc(blNummer)}</span></td>
       <td style="max-width:200px">${esc(name) || '—'}</td>
       ${istTeil ? `<td><div style="display:flex;align-items:center;gap:5px">${
         p.color_hex ? `<div class="color-dot" style="background:${escHex(p.color_hex, 'var(--s300)')}"></div>` : ''
@@ -587,11 +587,11 @@ function manuelleTabelle(posten, art) {
       <td><span style="font-family:var(--mono);font-weight:600;color:var(--b700)">${p.quantity || 0}</span></td>
       <td>${condBadges(p)}</td>
       <td style="font-weight:600;color:var(--b600)">${preis != null ? fmtN(preis, CURRENCY) : '—'}</td>
-      <td style="font-size:.78rem;color:var(--mut)">${esc(p.storage || '')}</td>
+      <td style="font-size:var(--fs-1);color:var(--mut)">${esc(p.storage || '')}</td>
       <td><button class="delbtn" data-click="${loeschKlick}" ${loeschArgs} title="${esc(loeschTitel)}" aria-label="${esc(loeschTitel)}">${TRASH_ICON_SVG}</button>${ownerBadges(p)}</td>
     </tr>`;
   };
-  return `<div class="tw"><table class="dt" style="font-size:.8rem"><thead><tr>${
+  return `<div class="tw"><table class="dt" style="font-size:var(--fs-2)"><thead><tr>${
     kopf.map(h => `<th>${h}</th>`).join('')
   }</tr></thead><tbody>${posten.map(zeile).join('')}</tbody></table></div>`;
 }
@@ -625,9 +625,9 @@ export function renderManualParts() {
   const el = G('manual-parts-list');
   if (!manualPartsCache.length) {
     el.innerHTML = `<div class="empty" style="padding:3rem;text-align:center">
-      <div style="font-size:2.5rem;margin-bottom:.5rem;display:flex;justify-content:center">${PARTS_ICON_SVG.replace('style="width:1em;height:1em;vertical-align:middle"','style="width:1.2em;height:1.2em"')}</div>
+      <div style="font-size:var(--fs-8);margin-bottom:.5rem;display:flex;justify-content:center">${PARTS_ICON_SVG.replace('style="width:1em;height:1em;vertical-align:middle"','style="width:1.2em;height:1.2em"')}</div>
       <div style="font-weight:600">${t('parts.none_manual')}</div>
-      <div style="color:var(--mut);font-size:.85rem">${t('parts.none_manual_hint')}</div>
+      <div style="color:var(--mut);font-size:var(--fs-3)">${t('parts.none_manual_hint')}</div>
     </div>`;
     return;
   }
@@ -663,7 +663,7 @@ export function renderManualParts() {
         <div style="display:flex;gap:4px;align-items:center;flex-wrap:wrap;margin-top:2px">
           <span class="qbadge">×${p.quantity}</span>${condBadge}${ownerBadges(p)}
         </div>
-        <div style="font-weight:700;font-size:.82rem;color:var(--b600);margin-top:3px">${priceStr}</div>
+        <div style="font-weight:700;font-size:var(--fs-2);color:var(--b600);margin-top:3px">${priceStr}</div>
       </div>`;
     }).join('')}
   </div>`;

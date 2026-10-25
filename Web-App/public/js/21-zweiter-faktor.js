@@ -32,7 +32,7 @@ export async function ladeZweitenFaktor() {
     </form>`);
     return;
   }
-  zeichne(`<p style="font-size:.85rem;margin:0 0 .75rem 0">✅ ${esc(tRaw('zf.active', { n: d.codes_uebrig }))}</p>
+  zeichne(`<p style="font-size:var(--fs-3);margin:0 0 .75rem 0">✅ ${esc(tRaw('zf.active', { n: d.codes_uebrig }))}</p>
     <form class="sform" style="max-width:420px">
       ${PASSWORTFELD()}
       ${CODEFELD(t('login.code'))}
@@ -49,9 +49,9 @@ export async function zfEinrichten() {
   // Gruppiert lesbar, falls jemand den Schlüssel von Hand eintippt.
   const lesbar = d.geheimnis.replace(/(.{4})/g, '$1 ').trim();
   zeichne(`<div class="sform" style="max-width:420px">
-      <p style="font-size:.82rem;margin:0">${t('zf.scan')}</p>
+      <p style="font-size:var(--fs-2);margin:0">${t('zf.scan')}</p>
       <div id="zf-qr" style="background:#fff;padding:8px;align-self:flex-start;border-radius:8px"></div>
-      <div style="font-size:.75rem;color:var(--mut)">${t('zf.manual')}<br><code style="user-select:all;font-size:.85rem">${esc(lesbar)}</code></div>
+      <div style="font-size:var(--fs-1);color:var(--mut)">${t('zf.manual')}<br><code style="user-select:all;font-size:var(--fs-3)">${esc(lesbar)}</code></div>
       ${CODEFELD(t('zf.confirm_code'), 6)}
       <div style="display:flex;gap:.5rem">
         <button type="button" class="btn bp btn-sm" data-click="zfBestaetigen">${t('zf.confirm')}</button>
@@ -67,8 +67,8 @@ export async function zfEinrichten() {
 
 function zeigeCodes(codes) {
   zeichne(`<div class="sform" style="max-width:420px">
-      <p style="font-size:.82rem;margin:0"><strong>${t('zf.codes_title')}</strong><br>${t('zf.codes_hint')}</p>
-      <pre id="zf-codes" style="font-size:.9rem;line-height:1.6;background:var(--s50,#f8fafc);border:1px solid var(--bdr);border-radius:8px;padding:.6rem .9rem;margin:0;user-select:all">${codes.map(esc).join('\n')}</pre>
+      <p style="font-size:var(--fs-2);margin:0"><strong>${t('zf.codes_title')}</strong><br>${t('zf.codes_hint')}</p>
+      <pre id="zf-codes" style="font-size:var(--fs-3);line-height:1.6;background:var(--s50,#f8fafc);border:1px solid var(--bdr);border-radius:8px;padding:.6rem .9rem;margin:0;user-select:all">${codes.map(esc).join('\n')}</pre>
       <div style="display:flex;gap:.5rem;flex-wrap:wrap">
         ${knopf('zfCodesKopieren', t('zf.copy'))}
         <button type="button" class="btn bp btn-sm" data-click="ladeZweitenFaktor">${t('zf.codes_done')}</button>

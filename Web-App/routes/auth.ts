@@ -457,6 +457,11 @@ function getBaseUrl(req: Request): string {
   return `${proto}://${host}`;
 }
 
+/** Reset-Links nur mit APP_BASE_URL — ausser ausserhalb des Betriebs, wo es keinen Angreifer gibt. */
+function resetLinkMoeglich(): boolean {
+  return !!basisUrl() || process.env.NODE_ENV !== 'production';
+}
+
 //  QR-Login
 // VORHER: Der QR-Code enthielt den bcrypt-Hash des Nutzers (`h: password_hash`)
 // in einem base64-Payload, HMAC-signiert mit dem SESSION_SECRET. Der Kommentar
@@ -708,6 +713,13 @@ router.post('/register', ipThrottle('register', 5, 60 * 60 * 1000), async (req, 
 router.post('/forgot-password', ipThrottle('forgot-password', 5, 60 * 60 * 1000), async (req, res) => {
   const { email } = req.body;
   if (!email) return sendeFehler(req, res, 400, 'email_erforderlich');
+  // Ohne feste Adresse käme der Link aus dem Host-Header — wer den fälscht,
+  // bekäme den Reset-Code des Opfers zugeschickt. Vor der Nutzersuche, damit
+  // die Antwort nichts über die E-Mail verrät.
+  if (!resetLinkMoeglich()) {
+    hinweisOhneBasisUrl('passwort-reset', 'Passwort-vergessen-Mails werden nicht versendet.');
+    return sendeFehler(req, res, 503, 'passwort_reset_nicht_eingerichtet');
+  }
   try {
     // LOWER auf beiden Seiten wie an JEDER anderen E-Mail-Suche (Login,
     // Registrierung, Profil). Hier stand der einzige case-SENSITIVE Vergleich:

@@ -132,6 +132,7 @@ fun MainScaffold(
 
     Scaffold(
         topBar = {
+          Column {
             TopAppBar(
                 title = {
                     Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -140,7 +141,7 @@ fun MainScaffold(
                         // oben und unten konsistent sind. Das frühere feste App-Logo
                         // entfällt, damit oben links nur noch das Reiter-Icon steht.
                         val currentTabIcon = bottomNavItems.firstOrNull { (screen, _, _) ->
-                            currentDest?.hierarchy?.any { it.route == screen.route } == true
+                            currentDest?.hierarchy?.any { d -> d.route?.let { it in zieleVon(screen) } == true } == true
                         }?.second
                         if (currentTabIcon != null) {
                             Box(Modifier.size(28.dp), contentAlignment = Alignment.Center) {
@@ -293,6 +294,13 @@ fun MainScaffold(
                     }
                 }
             )
+            if (currentDest?.route?.let { it in SAMMLUNG } == true) {
+                SammlungUmschalter(currentDest?.route) { ziel ->
+                    onTabAngetippt(ziel)
+                    navController.zuReiter(ziel.route)
+                }
+            }
+          }
         },
         bottomBar = {
             NavigationBar(
@@ -303,7 +311,7 @@ fun MainScaffold(
                     NavigationBarItem(
                         icon = icon,
                         label = { Text(label, style = MaterialTheme.typography.labelSmall) },
-                        selected = currentDest?.hierarchy?.any { it.route == screen.route } == true,
+                        selected = currentDest?.hierarchy?.any { d -> d.route?.let { it in zieleVon(screen) } == true } == true,
                         onClick = {
                             // Rollposition dieses Reiters verwerfen — siehe
                             // onTabAngetippt oben (Nachtrag 114).
@@ -312,11 +320,7 @@ fun MainScaffold(
                             if (navController.currentBackStackEntry?.destination?.route == Screen.Monitoring.route) {
                                 navController.popBackStack()
                             }
-                            navController.navigate(screen.route) {
-                                popUpTo(navController.graph.findStartDestination().id) { saveState = true }
-                                launchSingleTop = true
-                                restoreState = true
-                            }
+                            navController.zuReiter(screen.route)
                         }
                     )
                 }
@@ -421,4 +425,43 @@ private fun MenuZiel(
         onClick = onKlick,
         leadingIcon = { Icon(icon, null) },
     )
+}
+
+/** Sets, Teile und Minifiguren teilen sich in der Leiste EIN Ziel. */
+private val SAMMLUNG = setOf(Screen.Gallery.route, Screen.Parts.route, Screen.Minifigs.route)
+
+/** Die Routen, bei denen ein Ziel der Leiste als gewaehlt gilt. */
+private fun zieleVon(screen: Screen): Set<String> =
+    if (screen == Screen.Gallery) SAMMLUNG else setOf(screen.route)
+
+/** Wie ein Reiter: Zustand der anderen sichern, nicht doppelt stapeln. */
+private fun androidx.navigation.NavController.zuReiter(route: String) =
+    navigate(route) {
+        popUpTo(graph.findStartDestination().id) { saveState = true }
+        launchSingleTop = true
+        restoreState = true
+    }
+
+/** Sets | Teile | Minifiguren — derselbe Umschalter wie oben in der Webapp. */
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun SammlungUmschalter(aktuell: String?, onWahl: (Screen) -> Unit) {
+    val ziele = listOf(
+        Screen.Gallery to R.string.gallery_stat_sets,
+        Screen.Parts to R.string.nav_parts,
+        Screen.Minifigs to R.string.nav_minifigs_short,
+    )
+    SingleChoiceSegmentedButtonRow(
+        Modifier
+            .fillMaxWidth()
+            .padding(horizontal = ch.brickinventoryapp.ui.theme.Abstaende.mittel, vertical = ch.brickinventoryapp.ui.theme.Abstaende.winzig)
+    ) {
+        ziele.forEachIndexed { i, (screen, text) ->
+            SegmentedButton(
+                selected = aktuell == screen.route,
+                onClick = { onWahl(screen) },
+                shape = SegmentedButtonDefaults.itemShape(index = i, count = ziele.size),
+            ) { Text(stringResource(text)) }
+        }
+    }
 }

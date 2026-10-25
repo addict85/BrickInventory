@@ -9,7 +9,7 @@
  */
 const db    = require('../db/database');
 import { cdnImageLimiter } from '../utils/rateLimiter';
-import { meldeUndWeiter, fehlertext, vorDem, logAndContinue } from '../utils/httpError';
+import { meldeUndWeiter, fehlertext, logAndContinue } from '../utils/httpError';
 import { setGlobalSetting } from '../utils/settings';
 import { neuestesInventar, inventarKandidaten } from '../utils/rbInventar';
 import { mitVersion, ohneVersion } from '../utils/setNummer';
@@ -30,6 +30,15 @@ type JobHttpResult = { status: number; body: string };
 // vorher landete beides im selben Ordner "part_images", was den Namen für die
 // Hälfte des Inhalts falsch machte.
 const { PART_IMAGES_DIR, MINIFIG_IMAGES_DIR, SET_IMAGES_DIR } = require('../utils/appPaths');
+import { bildEndung, dateiTeil, zielImOrdner, ladeBild } from '../utils/bildDatei';
+import { ERLAUBTE_BILD_HOSTS } from '../utils/fremdeAdressen';
+
+/** Ohne Browser-Kennung und Referer weist das Rebrickable-CDN Bildabrufe ab. */
+const BILD_KOPFZEILEN = {
+  'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+  'Referer':    'https://rebrickable.com/',
+  'Accept':     'image/avif,image/webp,image/apng,image/*,*/*;q=0.8',
+};
 
 
 async function apiGet(url: string, rbKey: string) {
@@ -74,13 +83,6 @@ async function apiGet(url: string, rbKey: string) {
  * @param {number} colorId
  * @param {'part'|'minifig'} kind Bestimmt Zielverzeichnis und Web-Pfad.
  */
-// Rueckgabetyp ausgeschrieben (Nachtrag 155): Das `new Promise(...)` weiter
-// unten hatte keinen Typparameter, damit leitete TypeScript `unknown` ab und
-// die Funktion lieferte in der Summe `string | null | {}`. Aufgefallen ist das
-// erst, als server.ts diese Datei nicht mehr als rohes require() (also `any`)
-// holte: Dort wird das Ergebnis an generateThumb(webPfad: string) gereicht.
-// Jedes resolve() hier drin liefert entweder den Web-Pfad oder null — genau
-// das steht jetzt da.
 async function downloadImage(
   imgUrl: string | null | undefined,
   partNum: string,
@@ -90,33 +92,19 @@ async function downloadImage(
   if (!imgUrl) return null;
   const IMG_DIR = kind === 'minifig' ? MINIFIG_IMAGES_DIR : PART_IMAGES_DIR;
   const webBase = kind === 'minifig' ? '/images/minifigs/' : '/images/parts/';
-  fs.mkdirSync(IMG_DIR, { recursive: true });
-  // ?. statt Behauptung: pop() liefert laut Typ `string | undefined`. Bei einem
-  // nicht-leeren imgUrl (die Wache oben) kann das nie eintreten — beweisen
-  // laesst es sich aber nicht, und der Rueckfall auf 'jpg' stand ohnehin schon da.
-  const ext  = (imgUrl.split('.').pop()?.split('/')[0] || 'jpg').substring(0, 4);
-  const file = `${partNum}_${colorId}.${ext}`;
-  const dest = path.join(IMG_DIR, file);
+  // Nummer und Adresse kommen bei manuellen Teilen vom Nutzer: Sie dürfen
+  // weder einen Pfad bilden noch die Endung bestimmen (siehe utils/bildDatei.ts).
+  const nummer = dateiTeil(partNum), farbe = dateiTeil(colorId);
+  if (!nummer || !farbe) return null;
+  const file = `${nummer}_${farbe}.${bildEndung(imgUrl)}`;
+  const dest = zielImOrdner(IMG_DIR, file);
+  if (!dest) return null;
   const rel  = `${webBase}${file}`;
   if (fs.existsSync(dest)) return rel;
-  return new Promise<string | null>(resolve => {
-    const req = https.get(imgUrl, { family: 4, headers: {
-      'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-      'Referer':    'https://rebrickable.com/',
-      'Accept':     'image/avif,image/webp,image/apng,image/*,*/*;q=0.8',
-    } }, (r: import('http').IncomingMessage) => {
-      if (r.statusCode !== 200) { r.resume(); return resolve(null); }
-      const out = fs.createWriteStream(dest);
-      r.pipe(out);
-      out.on('finish', async () => {
-        try { await require('../utils/thumbs').generateThumb(rel).catch(() => {}); } catch (e) { meldeUndWeiter('teile-enrich:vorschau', e); }
-        resolve(rel);
-      });
-      out.on('error', () => resolve(null));
-    });
-    req.on('error', () => resolve(null));
-    req.setTimeout(15000, () => { req.destroy(); resolve(null); });
-  });
+  fs.mkdirSync(IMG_DIR, { recursive: true });
+  if (!await ladeBild(imgUrl, dest, ERLAUBTE_BILD_HOSTS, BILD_KOPFZEILEN)) return null;
+  try { await require('../utils/thumbs').generateThumb(rel).catch(() => {}); } catch (e) { meldeUndWeiter('teile-enrich:vorschau', e); }
+  return rel;
 }
 
 async function enrichSetParts(setNumber: string) {
@@ -395,40 +383,24 @@ async function downloadSetImages(setNumber: string, waitIfBusy = false) {
         return;
       }
 
-      // `?? ''` ist unerreichbar und trotzdem richtig: String.split gibt nie
-      // ein leeres Array zurueck (''.split('.') ist ['']), pop() kann hier
-      // also nicht undefined werden. Der Uebersetzer weiss das nicht, und
-      // ein `!` waere eine Behauptung statt einer Ableitung.
-      const ext  = (vorDem(vorDem(cdnUrl.split('.').pop() ?? '', '?'), '/') || 'jpg').substring(0, 4).toLowerCase();
+      const nummer = dateiTeil(p.id), farbe = dateiTeil(p.color_id);
+      if (!nummer || (p.kind !== 'fig' && !farbe)) {
+        console.warn(`[img-dl] skipping unsafe number ${String(p.id).substring(0, 40)}`);
+        return;
+      }
       const file = p.kind === 'fig'
-        ? `${p.id.replace(/[^a-z0-9-]/gi, '_')}.${ext}`
-        : `${p.id}_${p.color_id}.${ext}`;
-      const dest = path.join(PART_IMAGES_DIR, file);
+        ? `${nummer}.${bildEndung(cdnUrl)}`
+        : `${nummer}_${farbe}.${bildEndung(cdnUrl)}`;
+      const dest = zielImOrdner(PART_IMAGES_DIR, file);
+      if (!dest) return;
       const rel  = `/images/parts/${file}`;
 
       if (!fs.existsSync(dest)) {
         await cdnImageLimiter.acquire();
-        const ok = await new Promise(resolve => {
-          const req = https.get(cdnUrl, { family: 4, headers: {
-            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-            'Referer':    'https://rebrickable.com/',
-            'Accept':     'image/avif,image/webp,image/apng,image/*,*/*;q=0.8',
-          } }, (r: import('http').IncomingMessage) => {
-            if (r.statusCode !== 200) {
-              r.resume();
-              console.warn(`[img-dl] HTTP ${r.statusCode} for ${p.id}: ${cdnUrl.substring(0, 80)}`);
-              cdnImageLimiter.release();
-              return resolve(false);
-            }
-            fs.mkdirSync(PART_IMAGES_DIR, { recursive: true });
-            const out = fs.createWriteStream(dest);
-            r.pipe(out);
-            out.on('finish', () => { cdnImageLimiter.release(); resolve(true); });
-            out.on('error',  (e: Error) => { console.warn(`[img-dl] write error for ${p.id}: ${e.message}`); cdnImageLimiter.release(); resolve(false); });
-          });
-          req.on('error', (e: Error) => { console.warn(`[img-dl] request error for ${p.id}: ${e.message}`); cdnImageLimiter.release(); resolve(false); });
-          req.setTimeout(15000, () => { req.destroy(); console.warn(`[img-dl] timeout for ${p.id}`); cdnImageLimiter.release(); resolve(false); });
-        });
+        fs.mkdirSync(PART_IMAGES_DIR, { recursive: true });
+        const ok = await ladeBild(cdnUrl, dest, ERLAUBTE_BILD_HOSTS, BILD_KOPFZEILEN,
+          (text) => console.warn(`[img-dl] ${p.id}: ${text}`))
+          .finally(() => cdnImageLimiter.release());
         if (!ok) return;
       }
 

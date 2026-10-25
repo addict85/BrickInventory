@@ -31,6 +31,8 @@ import ch.brickinventoryapp.ui.*
 import ch.brickinventoryapp.ui.AppUiState
 import ch.brickinventoryapp.ui.screens.*
 import ch.brickinventoryapp.ui.theme.BrickInventoryManagerTheme
+import ch.brickinventoryapp.ui.theme.wirksamesDesign
+import androidx.compose.foundation.isSystemInDarkTheme
 import coil3.ImageLoader
 import androidx.compose.foundation.Image
 import androidx.compose.ui.res.painterResource
@@ -140,7 +142,8 @@ class MainActivity : ComponentActivity() {
             // jeder Zustandsänderung die Wurzel der Composition invalidiert
             // und darüber die ganze App rekomponiert.
             val theme by vm.appTheme.collectAsStateWithLifecycle()
-            BrickInventoryManagerTheme(theme = theme) {
+            val dunkel by vm.dunkelNachSystem.collectAsStateWithLifecycle()
+            BrickInventoryManagerTheme(theme = wirksamesDesign(theme, dunkel, isSystemInDarkTheme())) {
                 BrickInventoryManagerApp(vm, katalogVm, imageLoader)
             }
         }

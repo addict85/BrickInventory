@@ -25,7 +25,8 @@ const html = fs.readFileSync(path.join(__dirname, '..', 'public', 'index.html'),
 
 const REITER = [
   // [Name, Erfassen-Kennung, Filter-Kennung, Listen-Kennung]
-  ['Galerie',     'id="btn-add"',       'id="gs"',           '<div id="gallery"></div>'],
+  // Die Galerie erfasst seit dem 25.10. im Dialog; davor steht der Knopf dazu.
+  ['Galerie',     'data-click="oeffneErfassen"', 'id="gs"',  '<div id="gallery"></div>'],
   ['Teile',       'id="btn-add-part"',  'id="parts-search"', '<div class="parts-layout">'],
   ['Minifiguren', 'id="af-num-inline"', 'id="fig-search"',   '<div id="figs-list"></div>'],
 ];

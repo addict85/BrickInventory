@@ -30,14 +30,14 @@ function setChartPeriod(period){
 async function loadPortfolioChart(){
   const el  = G('portfolio-chart');
   if(!el) return;
-  el.innerHTML = '<div style="color:var(--mut);font-size:.82rem;padding:1rem;text-align:center"><div class="spin" style="width:18px;height:18px;border-width:2px;margin:0 auto 6px"></div>'+t('common.loading')+'</div>';
+  el.innerHTML = '<div style="color:var(--mut);font-size:var(--fs-2);padding:1rem;text-align:center"><div class="spin" style="width:18px;height:18px;border-width:2px;margin:0 auto 6px"></div>'+t('common.loading')+'</div>';
 
   const d = await api('GET', `/v1/finance/portfolio-history?period=${_chartPeriod}${scopeMode('finance') !== 'all' ? '&accounts=' + scopeMode('finance') : ''}`);
   if(!d.success){
-    el.innerHTML='<span style="color:var(--r500);font-size:.82rem;padding:.5rem;display:block">'+t('toast.error')+': '+( d.error||t('common.unknown'))+'</span>'; return;
+    el.innerHTML='<span style="color:var(--r500);font-size:var(--fs-2);padding:.5rem;display:block">'+t('toast.error')+': '+( d.error||t('common.unknown'))+'</span>'; return;
   }
   if(!d.points?.length){
-    el.innerHTML='<div style="color:var(--mut);font-size:.82rem;padding:1.5rem;text-align:center">'+t('history.none_title')+'<br><span style="font-size:.75rem">'+t('history.none_hint')+'</span></div>'; return;
+    el.innerHTML='<div style="color:var(--mut);font-size:var(--fs-2);padding:1.5rem;text-align:center">'+t('history.none_title')+'<br><span style="font-size:var(--fs-1)">'+t('history.none_hint')+'</span></div>'; return;
   }
 
   const cur = d.currency || CURRENCY;
@@ -60,8 +60,8 @@ async function loadPortfolioChart(){
     } else {
       // Fallback: first chart point vs current
       const purchaseBaseline = parseFloat(d.purchase_total || 0);
-      const firstVal = (purchaseBaseline > 0 && chartData.length <= 2)
-        ? purchaseBaseline : chartData[0].total;
+      const firstVal = (purchaseBaseline > 0 && finalChartData.length <= 2)
+        ? purchaseBaseline : finalChartData[0].total;
       if(firstVal > 0 && grandTotal > 0){
         const pct = ((grandTotal - firstVal) / firstVal * 100).toFixed(1);
         pnlEl.innerHTML = pnlBadge(pct);
@@ -133,10 +133,10 @@ export async function loadFinance(){
   // und Marktpreis ist seit der Preisumstellung avg_price. qty_avg ist der
   // mengengewichtete Schnitt und liegt systematisch darunter.
   const currentTotal = parseFloat(d.totals.avg||0) + extra;
-  if(pnlData.success && pnlData.totals?.pnl_pct != null){
-    G('fin-stat-pnl').style.display='';
-    G('fin-total-pnl').innerHTML = pnlBadge(pnlData.totals.pnl_pct);
-  }
+  // Ohne vergleichbaren Posten keine Kachel — auch nicht die vom letzten Filter.
+  const gesamtGuv = pnlData.success ? pnlData.totals?.pnl_pct : null;
+  G('fin-stat-pnl').style.display = gesamtGuv != null ? '' : 'none';
+  if(gesamtGuv != null) G('fin-total-pnl').innerHTML = pnlBadge(gesamtGuv);
 
   // ── Teile & Minifiguren: einzeln auflisten, analog zur Sets-Tabelle ─────────
   // (fliesst bereits in "extra"/Gesamtsumme oben ein — hier zusätzlich transparent
@@ -179,7 +179,7 @@ export async function loadFinance(){
       <td>${img}</td>
       <td><span style="display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:380px">${label}${acq?` ${condBadge(acq.condition)}`:''} ${ownerBadges(it)}</span></td>
       <td><span class="qbadge">×${qty}</span></td>
-      <td style="font-size:.75rem;color:var(--mut)">${acq?.created_at?new Date(acq.created_at).toLocaleDateString(locale()):''}</td>
+      <td style="font-size:var(--fs-1);color:var(--mut)">${acq?.created_at?new Date(acq.created_at).toLocaleDateString(locale()):''}</td>
       <td class="price-cell">${purchase!=null?fmtN(purchase,cur):'<span style="color:var(--mut)">—</span>'}</td>
       <td class="price-cell">${current>0?fmtN(current,cur):'<span style="color:var(--mut)">—</span>'}</td>
       <td class="price-total">${fmtN(total,cur)}</td>
@@ -196,7 +196,7 @@ export async function loadFinance(){
   }
   const partsItems = partsVal.success ? partsVal.parts : [];
   const figsItems  = figsVal.success  ? figsVal.figs   : [];
-  const partsRows = partsItems.map(p => pmRows(p, `${esc(p.part_name||p.part_number)}${p.color_name?` <span style="color:var(--mut);font-size:.75rem">(${esc(colorName(p.color_name))})</span>`:''}`)).join('');
+  const partsRows = partsItems.map(p => pmRows(p, `${esc(p.part_name||p.part_number)}${p.color_name?` <span style="color:var(--mut);font-size:var(--fs-1)">(${esc(colorName(p.color_name))})</span>`:''}`)).join('');
   const figsRows  = figsItems.map(f => pmRows(f, esc(f.fig_name||f.fig_number))).join('');
   // Die vierte Spalte war ein reiner Platzhalter, damit die Preisspalten an
   // derselben Stelle wie in der Sets-Tabelle beginnen. Sie trägt jetzt dasselbe
@@ -208,15 +208,15 @@ export async function loadFinance(){
   // zeigen die beiden Clients verschiedene Zahlen (Nachtrag 145).
   const partsTotal = parseFloat(partsVal?.total_value || 0);
   const figsTotal  = parseFloat(figsVal?.total_value || 0);
-  const pmFoot = total => `<tfoot><tr><td colspan="6" style="text-align:right;padding:11px 13px;font-weight:600">Total:</td><td class="price-total" style="font-size:.95rem;padding:11px 13px">${fmtN(total,cur)}</td><td colspan="2"></td></tr></tfoot>`;
+  const pmFoot = total => `<tfoot><tr><td colspan="6" style="text-align:right;padding:11px 13px;font-weight:600">Total:</td><td class="price-total" style="font-size:var(--fs-4);padding:11px 13px">${fmtN(total,cur)}</td><td colspan="2"></td></tr></tfoot>`;
   const partsSectionHtml = partsItems.length ? `
     <div class="tw" data-fin-art="parts" style="margin-top:1.25rem">
-      <div style="font-size:.75rem;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--mut);margin-bottom:6px;display:flex;align-items:center;gap:5px">${PARTS_ICON_SVG} ${t('parts.manual_section')}</div>
+      <div style="font-size:var(--fs-1);font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--mut);margin-bottom:6px;display:flex;align-items:center;gap:5px">${PARTS_ICON_SVG} ${t('parts.manual_section')}</div>
       <table class="dt" style="table-layout:fixed;width:1065px">${pmColgroup}${pmTableHead}<tbody>${partsRows}</tbody>${pmFoot(partsTotal)}</table>
     </div>` : '';
   const figsSectionHtml = figsItems.length ? `
     <div class="tw" data-fin-art="figs" style="margin-top:1.25rem">
-      <div style="font-size:.75rem;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--mut);margin-bottom:6px">${t('finance.figs_section')}</div>
+      <div style="font-size:var(--fs-1);font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--mut);margin-bottom:6px">${t('finance.figs_section')}</div>
       <table class="dt" style="table-layout:fixed;width:1065px">${pmColgroup}${pmTableHead}<tbody>${figsRows}</tbody>${pmFoot(figsTotal)}</table>
     </div>` : '';
 
@@ -256,10 +256,10 @@ export async function loadFinance(){
     const dateSrc  = acq ? acq.created_at : s.added_at;
     return `<tr style="cursor:pointer" data-click="openModal" data-arg="${escJs(s.set_number)}">
     <td>${s.image_local||s.image_url?`<img src="${escUrl(imgUrl(thumbUrl(s.image_local||s.image_url)||s.image_local||s.image_url||'', true))}" loading="lazy" decoding="async" data-orig="${escUrl(imgUrl(s.image_url||''))}" />`:'—'}</td>
-    <td><span style="font-family:var(--mono);color:var(--b600);font-size:.77rem">${esc(s.set_number)}</span></td>
+    <td><span style="font-family:var(--mono);color:var(--b600);font-size:var(--fs-1)">${esc(s.set_number)}</span></td>
     <td>${esc(s.name)||'—'}${acq?` ${condBadge(acq.condition)}`:''} ${ownerBadges(s)}</td><td>${s.year||'—'}</td>
     <td><span class="qbadge">×${qty}</span></td>
-    <td style="font-size:.75rem;color:var(--mut)">${dateSrc?new Date(dateSrc).toLocaleDateString(locale()):'—'}</td>
+    <td style="font-size:var(--fs-1);color:var(--mut)">${dateSrc?new Date(dateSrc).toLocaleDateString(locale()):'—'}</td>
     <td class="price-cell">${purchase!=null?fmtN(purchase,cur):'—'}</td>
     <td class="${s.error?'':'price-cell'}">${s.error?'—':fmtN(market,cur)}</td>
     <td class="${s.error?'':'price-total'}">${s.error?esc(s.error):fmtN(total,cur)}</td>
@@ -298,10 +298,10 @@ export async function loadFinance(){
           <tr><td style="color:var(--mut)">${t('finance.grand.parts')}</td><td class="price-total">${fmtN(partsTotal,cur)}</td><td></td></tr>
           <tr><td style="color:var(--mut)">${t('finance.figs_section')}</td><td class="price-total">${fmtN(figsTotal,cur)}</td><td></td></tr>
         </tbody>
-        <tfoot><tr><td style="font-weight:700;padding:11px 13px">Total</td><td class="price-total" style="font-size:1.05rem;padding:11px 13px">${fmtN(grandTotal,cur)}</td><td></td></tr></tfoot>
+        <tfoot><tr><td style="font-weight:700;padding:11px 13px">Total</td><td class="price-total" style="font-size:var(--fs-4);padding:11px 13px">${fmtN(grandTotal,cur)}</td><td></td></tr></tfoot>
       </table>
     </div>`;
-  G('fin-tbl').innerHTML=`<div class="tw" data-fin-art="sets"><table class="dt" style="table-layout:fixed;width:1065px"><colgroup><col style="width:60px"><col style="width:90px"><col style="width:250px"><col style="width:55px"><col style="width:70px"><col style="width:90px"><col style="width:110px"><col style="width:110px"><col style="width:110px"><col style="width:80px"><col style="width:40px"></colgroup><thead><tr><th></th><th>Nr.</th><th>${t('gallery.sort.name')}</th><th>${t('detail.year')}</th><th>${t('detail.qty')}</th><th>${t('detail.added')}</th><th>${t('detail.purchase_price')}</th><th>${t('detail.market_price')}</th><th>${t('finance.grand.total')}</th><th>${t('finance.total_pnl')}</th><th title="${esc(t('finance.price_status'))}"><span class="vh">${esc(t('finance.price_status'))}</span></th></tr></thead><tbody>${rows}</tbody><tfoot><tr><td colspan="8" style="text-align:right;padding:11px 13px;font-weight:600">${t('finance.total_sets_avg')}</td><td class="price-total" style="font-size:.95rem;padding:11px 13px">${fmtN(setsQtyAvg,cur)}</td><td colspan="2"></td></tr></tfoot></table></div>${partsSectionHtml}${figsSectionHtml}${grandTotalHtml}`;
+  G('fin-tbl').innerHTML=`<div class="tw" data-fin-art="sets"><table class="dt" style="table-layout:fixed;width:1065px"><colgroup><col style="width:60px"><col style="width:90px"><col style="width:250px"><col style="width:55px"><col style="width:70px"><col style="width:90px"><col style="width:110px"><col style="width:110px"><col style="width:110px"><col style="width:80px"><col style="width:40px"></colgroup><thead><tr><th></th><th>Nr.</th><th>${t('gallery.sort.name')}</th><th>${t('detail.year')}</th><th>${t('detail.qty')}</th><th>${t('detail.added')}</th><th>${t('detail.purchase_price')}</th><th>${t('detail.market_price')}</th><th>${t('finance.grand.total')}</th><th>${t('finance.total_pnl')}</th><th title="${esc(t('finance.price_status'))}"><span class="vh">${esc(t('finance.price_status'))}</span></th></tr></thead><tbody>${rows}</tbody><tfoot><tr><td colspan="8" style="text-align:right;padding:11px 13px;font-weight:600">${t('finance.total_sets_avg')}</td><td class="price-total" style="font-size:var(--fs-4);padding:11px 13px">${fmtN(setsQtyAvg,cur)}</td><td colspan="2"></td></tr></tfoot></table></div>${partsSectionHtml}${figsSectionHtml}${grandTotalHtml}`;
   // Der Filter ueberlebt das Neuzeichnen. Ohne diesen Aufruf stuenden nach
   // jedem „Preise laden" wieder alle drei Abschnitte da, waehrend die Chips
   // daneben weiter eine Auswahl anzeigen — die Anzeige waere dann eine
