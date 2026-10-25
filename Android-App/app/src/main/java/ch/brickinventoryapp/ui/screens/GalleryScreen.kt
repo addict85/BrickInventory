@@ -112,7 +112,10 @@ fun GalleryScreen(
     val lagerorte = lagerState.orte
     val lagerModus = lagerState.modi[ch.brickinventoryapp.data.ScopeFilter.View.GALLERY.key] ?: ""
     val onLagerChange: (String) -> Unit = { vm.setLagerFilter(ch.brickinventoryapp.data.ScopeFilter.View.GALLERY, it) }
-    val onRefresh: () -> Unit = { vm.loadSets(); vm.loadStats() }
+    // Auch die Filterlisten: Sie werden sonst nur beim Start geladen, und eine
+    // dort gescheiterte Anfrage liesse Konto- und Lagerortfilter bis zum
+    // naechsten Start verschwinden.
+    val onRefresh: () -> Unit = { vm.loadSets(); vm.loadStats(); vm.loadHouseholdMembers(); vm.loadLagerorte() }
     val onAddSet: (String, Int, Double?, String?, Int?, String?) -> Unit =
         { sn, qty, price, cond, owner, ort -> vm.addSet(sn, qty, price, cond, owner, ort) }
     // Der VORRAT, nicht die belegten Orte: `lagerorte` eine Zeile weiter oben

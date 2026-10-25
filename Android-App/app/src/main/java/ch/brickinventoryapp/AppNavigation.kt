@@ -115,6 +115,10 @@ fun BrickInventoryManagerApp(
         val observer = LifecycleEventObserver { _, event ->
             if (event == Lifecycle.Event.ON_RESUME && state.isLoggedIn) {
                 vm.loadSettings()
+                // Die Filterlisten mit: Scheiterte ihr einziger Abruf beim Start,
+                // fehlten Konto- und Lagerortfilter sonst bis zum Neustart.
+                vm.loadHouseholdMembers()
+                vm.loadLagerorte()
             }
         }
         lifecycleOwner.lifecycle.addObserver(observer)
