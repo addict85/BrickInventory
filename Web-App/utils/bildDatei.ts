@@ -60,7 +60,9 @@ export function ladeBild(
     warnen(`Bildadresse nicht erlaubt: ${adresse.slice(0, 80)}`);
     return Promise.resolve(false);
   }
-  const zwischen = `${ziel}.${process.pid}.teil`;
+  // Eindeutig je Abruf: Zwei gleichzeitige Downloads desselben Bildes (Stundenlauf
+  // und PDF) schrieben sonst in dieselbe Zwischendatei.
+  const zwischen = `${ziel}.${process.pid}.${(require('crypto') as typeof import('crypto')).randomBytes(4).toString('hex')}.teil`;
   return new Promise<boolean>(fertig => {
     let erledigt = false;
     const ende = (ok: boolean) => {
