@@ -239,10 +239,11 @@ app.use(express.urlencoded({ extended: true, limit: '256kb' }));
  */
 app.use((req, _res, next) => { if (req.body === undefined) req.body = {}; next(); });
 
-// Hinter einem TLS-terminierenden Reverse-Proxy (Docker/nginx/traefik/caddy)
-// muss Express dem X-Forwarded-Proto vertrauen, sonst wird das secure-Cookie
-// nie gesetzt (Express hält die Verbindung fälschlich für HTTP).
-if (process.env.NODE_ENV === 'production') app.set('trust proxy', 1);
+// Hinter einem TLS-terminierenden Reverse-Proxy muss Express X-Forwarded-Proto
+// glauben, sonst setzt es das secure-Cookie nie. Wem genau: utils/proxyVertrauen.ts.
+if (process.env.NODE_ENV === 'production')
+  app.set('trust proxy', (require('./utils/proxyVertrauen') as typeof import('./utils/proxyVertrauen'))
+    .proxyVertrauen(process.env.TRUST_PROXY));
 
 // Doppelte Schrägstriche im Pfad zusammenfassen
 // `//api/img-proxy?url=…` trifft in Express NICHT auf `/api/img-proxy`. Die

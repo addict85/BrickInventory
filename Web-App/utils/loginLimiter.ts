@@ -24,16 +24,20 @@ interface Zaehlerstand {
 
 
 const MAX_ATTEMPTS = 5;
+/**
+ * Fehlversuche je Benutzername über ALLE Adressen. Wer viele IPs hat, kommt am
+ * Zähler je IP vorbei, an diesem nicht. Höher als MAX_ATTEMPTS, weil ein
+ * Angreifer damit auch den echten Nutzer für das Fenster aussperren kann.
+ */
+const MAX_JE_NAME  = 20;
 const WINDOW_MS    = 15 * 60 * 1000;
 const WINDOW_MIN   = WINDOW_MS / 60000;
 
 /** Rückfallebene, falls die DB klemmt. key → { count, firstAt } */
 const _attempts = new Map();
 
-// server.ts setzt bereits `app.set('trust proxy', 1)` in Produktion — Express
-// wertet X-Forwarded-For damit selbst aus (genau ein Hop, der eigene
-// Reverse-Proxy) und legt das Ergebnis in req.ip ab. req.ip ist deshalb die
-// vertrauenswürdige Quelle; der Header-Zugriff bleibt nur als Fallback für …
+// req.ip statt X-Forwarded-For: Express wertet den Kopf nur aus, wenn er von
+// einem vertrauten Proxy kommt (utils/proxyVertrauen.ts).
 // Ausführlich: docs/begruendungen/utils/loginLimiter.ts.md#ipof
 function _ipOf(req: Request): string {
   return req.ip || req.socket?.remoteAddress || '?';
@@ -46,6 +50,10 @@ function _key(req: Request, username: unknown): string {
   // Sperrpruefung; mit `unknown` als Typ hat TypeScript es sichtbar gemacht.
   // einzelwert() nimmt in dem Fall den ERSTEN Wert, wie ueberall sonst im Baum.
   return `login|${_ipOf(req)}|${einzelwert(username).toLowerCase()}`;
+}
+
+function _nameKey(username: unknown): string {
+  return `login-name|${einzelwert(username).toLowerCase()}`;
 }
 
 function _prune() {
@@ -114,17 +122,22 @@ async function checkLoginAllowed(
   const st = await _read(_key(req, username), WINDOW_MIN);
   if (st && st.count >= MAX_ATTEMPTS)
     return { code: 'zu_viele_fehlversuche', vars: { minuten: st.waitMin } };
+  const jeName = await _read(_nameKey(username), WINDOW_MIN);
+  if (jeName && jeName.count >= MAX_JE_NAME)
+    return { code: 'zu_viele_fehlversuche', vars: { minuten: jeName.waitMin } };
   return null;
 }
 
 /** Nach einem fehlgeschlagenen Login aufrufen. */
 async function recordLoginFailure(req: Request, username: unknown): Promise<void> {
   await _bump(_key(req, username), WINDOW_MIN);
+  await _bump(_nameKey(username), WINDOW_MIN);
 }
 
 /** Nach einem erfolgreichen Login aufrufen. */
 async function recordLoginSuccess(req: Request, username: unknown): Promise<void> {
   await _clear(_key(req, username));
+  await _clear(_nameKey(username));
 }
 
 /**
@@ -144,4 +157,4 @@ function ipThrottle(bucket: string, max: number, windowMs: number) {
   };
 }
 
-export { checkLoginAllowed, recordLoginFailure, recordLoginSuccess, ipThrottle };
+export { checkLoginAllowed, recordLoginFailure, recordLoginSuccess, ipThrottle, MAX_ATTEMPTS, MAX_JE_NAME };
