@@ -1025,6 +1025,9 @@ G('btn-logout').onclick=async()=>{
   // Reset all admin-only elements before showing login
   const nm=G('ntab-monitor'); if(nm) nm.style.display='none';
   const ns=G('ntab-settings'); if(ns) ns.style.display='none';
+  // Auch die Verwaltereinträge im Menü: Meldet sich danach ein anderes Konto an,
+  // stünden sie sonst noch da.
+  document.querySelectorAll('.admin-only').forEach(el=>{ el.style.display='none'; });
   G('usermgmt').style.display='none';
 
   ['bl-ao','rb-ao','bs-ao'].forEach(id=>{ const el=G(id); if(el) el.style.display=''; });

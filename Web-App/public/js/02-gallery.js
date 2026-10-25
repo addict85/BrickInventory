@@ -45,6 +45,25 @@ function syncTabTitleIcon(tab){
   slot.innerHTML = html.trim();
 }
 
+/**
+ * Sets, Teile und Minifiguren teilen sich in der Leiste EIN Ziel („Sammlung");
+ * umgeschaltet wird oben auf der Seite. Teile und Minifiguren behalten ihren
+ * unsichtbaren Reiter — Code und Wiederherstellung sprechen sie darüber an.
+ */
+const SAMMLUNG = ['gallery', 'parts', 'minifigs'];
+function markiereGruppe(tab){
+  // Eigene Klasse statt .active: `.ntab.active` nennt überall den offenen Reiter.
+  document.querySelector('.ntab[data-tab="gallery"]')?.classList.toggle('gruppe-aktiv', SAMMLUNG.includes(tab));
+  document.querySelectorAll('.sammlung-wahl [data-arg]').forEach(b =>
+    b.setAttribute('aria-selected', String(b.dataset.arg === tab)));
+}
+
+/** Einen Reiter öffnen — aus dem Umschalter der Sammlung oder dem Menü. */
+export function oeffneReiter(name){
+  menueSchliessen();
+  document.querySelector(`.ntab[data-tab="${name}"]`)?.click();
+}
+
 export function bindTabs(){
   document.querySelectorAll('.ntab').forEach(t=>{
     // Avoid duplicate listeners
@@ -54,6 +73,7 @@ export function bindTabs(){
       document.querySelectorAll('.tab').forEach(x=>x.classList.remove('active'));
       t.classList.add('active'); G('tab-'+t.dataset.tab).classList.add('active');
       const tab = t.dataset.tab;
+      markiereGruppe(tab);
       syncTabTitleIcon(tab);
       // Das Jahres-Etikett am Scrollbalken gehört NUR in den Katalog. Ohne
       // dieses Abmelden lieferte die dort angemeldete Funktion weiterhin ein
@@ -1413,6 +1433,7 @@ async function redownloadInstr(sn){ toast(tRaw('instr.loading'),'info'); const d
 registerActions({
   benutzerMenue,
   oeffneSicht,
+  oeffneReiter,
   onScopeChange,
   onStorageChange,
   autosaveSet,

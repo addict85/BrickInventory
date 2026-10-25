@@ -16,6 +16,8 @@ window.I18N_DE = {
   'reset.title':           'Neues Passwort',
 
   // Navigation tabs
+  'nav.collection':        'Sammlung',
+  'nav.main':              'Hauptnavigation',
   'nav.gallery':           'Galerie',
   'nav.catalog':           'Katalog',
 
@@ -141,7 +143,7 @@ window.I18N_DE = {
   'api.server_error':      'Der Server hat mit einem Fehler geantwortet ({status}).',
   'api.unexpected':        'Unerwarteter Fehler — Einzelheiten in der Browser-Konsole.',
   'settings.language':     'Sprache',
-  'settings.group.profile':   '👤 Profil-Einstellungen',
+  'settings.group.profile':   'Profil-Einstellungen',
   'settings.profile.firstname': 'Vorname',
   'settings.profile.lastname':  'Nachname',
 
@@ -184,7 +186,7 @@ window.I18N_DE = {
   'csv.errors':            'Fehler',
   'rb_key.missing':        'Bitte zuerst die Rebrickable API-Key in den Einstellungen hinterlegen.',
   'gallery.title':          'Meine Sammlung',
-  'settings.logout':        '🚪 Abmelden',
+  'settings.logout':        'Abmelden',
 
   'gallery.template':      '📄 Vorlage',
   'parts.add.price_placeholder': 'Leer = Marktpreis',
@@ -397,7 +399,7 @@ window.I18N_DE = {
   'detail.storage_ph': 'z. B. Kiste 3',
   'detail.storage_none': '— kein Lagerort —',
   'detail.storage_new': '＋ neuer Lagerort …',
-  'alerts.group': '🔔 Preisalarme',
+  'alerts.group': 'Preisalarme',
   'alerts.intro': 'Alle Schwellen, die du gesetzt hast. Der Wert lässt sich hier ändern, der Alarm entfernen. Gemeldet wird einmal je Übergang — erst wenn der Preis wieder auf die andere Seite wechselt, kann derselbe Alarm erneut auslösen.',
   'alerts.empty': 'Noch kein Preisalarm gesetzt. Du setzt einen im Detaildialog eines Sets.',
   'alerts.below': 'fällt unter',
@@ -407,7 +409,7 @@ window.I18N_DE = {
   'alerts.last': 'zuletzt {preis}',
   'alerts.bad_value': 'Die Schwelle muss grösser als 0 sein.',
   'alerts.confirm_delete': 'Preisalarm für {set} wirklich entfernen?',
-  'storage.group': '📦 Lagerorte',
+  'storage.group': 'Lagerorte',
   'storage.intro': 'Die Orte, die beim Set und beim Teil zur Auswahl stehen. Neue Orte lassen sich auch direkt dort eintragen; hier kannst du sie umbenennen oder entfernen.',
   'storage.new_ph': 'Neuer Lagerort',
   'storage.add': 'Hinzufügen',
@@ -495,7 +497,7 @@ window.I18N_DE = {
   'settings.brickset_link': 'brickset.com → Tools → API Key anfordern',
   'settings.rebrickable_hint': 'Set-Infos, Teile & Bilder',
   'settings.rb_list_hint': 'Alle Sets im Rebrickable-Listenformat exportieren (Spalten "Set Number,Quantity"), um sie unter „My Sets → Add via List" bei Rebrickable zu importieren.',
-  'settings.data_export': '📤 Daten und Papierkorb',
+  'settings.data_export': 'Daten und Papierkorb',
   'settings.data_export_title': 'Daten exportieren / importieren',
   'settings.cfg_hint': 'API-Keys und Einstellungen als JSON exportieren/importieren.',
   'settings.cfg_export': '📥 Konfiguration exportieren',
@@ -673,7 +675,7 @@ window.I18N_DE = {
   'household.scope_label': 'Konten',
   'household.scope_all': 'Alle Konten',
   'household.scope_own': 'Eigene',
-  'household.group': '👪 Haushalt',
+  'household.group': 'Haushalt',
   'household.intro': 'Verknüpfe Konten zu einem Haushalt: Das Hauptkonto sieht alle Sets, Teile und Minifiguren der verknüpften Konten zusammengefasst. Beide Konten müssen dieselbe Währung verwenden.',
   'household.state_none': 'Dieses Konto ist mit keinem anderen verknüpft. Währung: {cur}',
   'household.state_main': 'Verknüpfte Konten ({n}):',
@@ -756,12 +758,12 @@ window.I18N_DE = {
   'price.from_other_condition_used': 'Kaufpreis aus dem Marktpreis „Gebraucht" übernommen — für „Neu" führt BrickLink keinen Preis.',
 
   // ── Gutscheine (LEGO-Geschenkkarten im eigenen Profil) ─────────────────────
-  'vouchers.group': '🎟️ Gutscheine',
+  'vouchers.group': 'Gutscheine',
   'vouchers.add': 'Gutschein hinzufügen',
   'vouchers.edit': 'Gutschein ändern',
   'vouchers.number': 'Gutscheinnummer',
   'menu.open': 'Menü',
-  'menu.app': '📱 Android-App',
+  'menu.app': 'Android-App',
   'settings.group_config': '🔧 Konfiguration',
   'vouchers.pin': 'PIN',
   'vouchers.copy_number': 'Gutscheinnummer kopieren',

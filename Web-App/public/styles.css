@@ -129,7 +129,7 @@
        Grund gaelte hier der gestrichene Streifen der Leiste — und dagegen
        gemessen waere dunkle Schrift auf dunklem Grund, was sie nie ist: Die
        Eintraege liegen auf der Klappe. */
-    .umenu-item{display:block;width:100%;text-align:left;white-space:nowrap;
+    .umenu-item{display:flex;align-items:center;gap:10px;width:100%;text-align:left;white-space:nowrap;
                 background:var(--sur);color:var(--txt);border:0;
                 border-radius:8px;cursor:pointer;
                 padding:.5rem .7rem;font-size:.86rem}
@@ -194,7 +194,20 @@
     nav::-webkit-scrollbar{display:none}
     .ntab{padding:12px 13px;cursor:pointer;font-size:.875rem;font-weight:600;color:var(--mut);border-bottom:2px solid transparent;transition:all .15s;display:flex;align-items:center;gap:6px;white-space:nowrap;margin-bottom:-1px}
     .ntab:hover{color:var(--txt)}
-    .ntab.active{color:var(--b600);border-bottom-color:var(--b600)}
+    .ntab.active,.ntab.gruppe-aktiv{color:var(--b600);border-bottom-color:var(--b600)}
+    /* Teile, Minifiguren und die Verwalterseiten haben einen Reiter, aber keinen
+       Platz in der Leiste: erreichbar über den Umschalter bzw. das Menü. */
+    .ntab.ntab-unter{display:none!important}
+
+    /* Die Symbolfamilie (Sprite am Anfang von index.html) */
+    .ico{width:18px;height:18px;flex-shrink:0;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;vertical-align:middle}
+    .ptitle-icon .ico{width:22px;height:22px;color:var(--b600)}
+
+    /* Umschalter der Sammlung: Sets | Teile | Minifiguren */
+    .sammlung-wahl{display:inline-flex;gap:2px;padding:3px;background:var(--s100);border:1px solid var(--bdr);border-radius:10px}
+    .sammlung-wahl button{display:inline-flex;align-items:center;gap:6px;border:0;background:none;color:var(--mut);font:inherit;font-size:.85rem;font-weight:600;padding:6px 12px;border-radius:8px;cursor:pointer}
+    .sammlung-wahl button[aria-selected="true"]{background:var(--sur);color:var(--b600);box-shadow:var(--sh0)}
+    .sammlung-wahl button:focus-visible{outline:2px solid var(--b600);outline-offset:1px}
     /* Mittlere Fenster: schmalere Reiter, damit alle neun auf EINE Zeile
        passen, statt seitlich wegzuscrollen. Unterhalb von 640px uebernimmt
        mobile.css — dort ist Scrollen richtig, weil dann ohnehin nichts mehr

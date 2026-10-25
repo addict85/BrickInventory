@@ -162,3 +162,30 @@ test('reine Quelltext-Tests werden weniger, nie mehr', () => {
     console.log(`  ℹ reine Quelltext-Tests: ${ist.length} (Schranke ${SCHRANKE}) — Schranke nachziehen`);
   }
 });
+
+/**
+ * Emoji in der Oberfläche. Seit dem 25.10. gibt es eine Symbolfamilie (Sprite
+ * in index.html); Emoji sehen je Gerät anders aus und passen weder in Grösse
+ * noch Farbe dazu. Gezählt werden Markup, deutsche Sprachtexte und die
+ * Vorlagen in public/js — ohne Kommentare.
+ */
+function emojiInDerOberflaeche() {
+  const web = path.join(WEB, 'public');
+  const ohne = s => s.replace(/<!--[\s\S]*?-->/g, '').replace(/\/\*[\s\S]*?\*\//g, '')
+    .replace(/(^|[^:'"`])\/\/[^\n]*/g, '$1');
+  const dateien = [path.join(web, 'index.html'), path.join(web, 'locales', 'de.js'),
+    ...fs.readdirSync(path.join(web, 'js')).filter(n => /^\d\d-.*\.js$/.test(n)).map(n => path.join(web, 'js', n))];
+  return dateien.reduce((n, f) => n + (ohne(fs.readFileSync(f, 'utf8')).match(/\p{Extended_Pictographic}/gu) || []).length, 0);
+}
+
+test('Emoji in der Oberfläche werden weniger, nie mehr', () => {
+  // GEMESSEN am 25.10.2026: 275, nachdem Leiste und Benutzermenü auf die
+  // Symbolfamilie umgestellt waren.
+  const SCHRANKE = 275;
+  const ist = emojiInDerOberflaeche();
+  assert.ok(ist > 50, `Nur ${ist} Emoji gefunden — greift die Suche noch?`);
+  assert.ok(ist <= SCHRANKE,
+    `${ist} Emoji in der Oberfläche, erlaubt sind ${SCHRANKE}. Für Symbole gibt es ` +
+    'die Symbolfamilie: <svg class="ico" aria-hidden="true"><use href="#i-…"/></svg>.');
+  if (ist < SCHRANKE) console.log(`  ℹ Emoji: ${ist} (Schranke ${SCHRANKE}) — Schranke nachziehen`);
+});

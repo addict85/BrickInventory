@@ -187,37 +187,30 @@ function eintragsTexte() {
     .map(m => ({ schluessel: m[1], markup: m[2].trim() }));
 }
 
-test('jeder Menüeintrag trägt sein Symbol im SPRACHTEXT', () => {
-  const eintraege = eintragsTexte();
-  // Selbstbeweis: GEMESSEN sind es acht — die sieben Sichten und „Abmelden",
-  // das am 17.10. aus der Kopfleiste in die Klappe gezogen ist (Marcos
-  // Vorgabe: „Kannst du abmelden ebenfalls in das neue Menu integrieren?").
-  // Findet die Ableitung nichts, wäre die Schleife darunter still grün.
-  //
-  // Von sieben auf acht ist hier KEINE blosse Nachführung: Beim Umzug stand
-  // die Zahl eine Weile auf sieben, OBWOHL acht Einträge dastanden — ein
-  // Kommentar in der Klappe hatte den Ausschnitt verkürzt (siehe HTML oben).
-  // Die Pruefung war grün und blind. Genau dafür steht diese Zusicherung.
-  assert.equal(eintraege.length, 8,
-    `${eintraege.length} Einträge abgeleitet statt acht — greift die Ableitung noch?`);
-
-  // Ein Symbol ist hier: ein Zeichen jenseits von ASCII am Anfang des Textes.
-  // „Ü" aus „Übersicht" wäre eines — deshalb zusätzlich die Bedingung, dass
-  // ein Leerzeichen folgt und danach noch Text kommt.
-  const ohne = [];
-  for (const { schluessel } of eintraege) {
-    for (const sprache of ['de', 'en']) {
-      const wert = texte(sprache).get(schluessel);
-      assert.ok(wert, `${schluessel} fehlt in locales/${sprache}.js`);
-      if (!/^[^\u0000-\u007F]+️?\s+\S/u.test(wert)) ohne.push(`${sprache}:${schluessel} = "${wert}"`);
-    }
+test('jeder Menüeintrag trägt sein Symbol — NEBEN dem Sprachtext', () => {
+  // Seit dem 25.10. kommt das Symbol aus der Symbolfamilie (Sprite in
+  // index.html) statt als Emoji aus dem Sprachtext. Die Falle von oben bleibt
+  // dieselbe: `data-i18n` ersetzt beim Übersetzen den INHALT seines Elements.
+  // Steht es am Knopf, ist das Symbol nach dem Übersetzen weg — es gehört an
+  // ein eigenes Element neben dem Symbol.
+  const auf = HTML.indexOf('<div class="umenu-pop"');
+  const zu  = HTML.indexOf('</div>', auf);
+  const knoepfe = [...HTML.slice(auf, zu).matchAll(/<button([^>]*)>([\s\S]*?)<\/button>/g)];
+  // Selbstbeweis: sieben Sichten, zwei Verwalterseiten, Abmelden.
+  assert.equal(knoepfe.length, 10,
+    `${knoepfe.length} Einträge abgeleitet statt zehn — greift die Ableitung noch?`);
+  const symbole = new Set([...HTML.matchAll(/<symbol id="([\w-]+)"/g)].map(m => m[1]));
+  const falsch = [];
+  for (const [, attr, inhalt] of knoepfe) {
+    const name = (/data-i18n="([^"]+)"/.exec(inhalt) || /data-i18n="([^"]+)"/.exec(attr) || [])[1] || attr;
+    if (/data-i18n=/.test(attr)) falsch.push(`${name}: data-i18n am Knopf — das Übersetzen löscht das Symbol`);
+    const use = /<svg class="ico"[^>]*>\s*<use href="#([\w-]+)"/.exec(inhalt);
+    if (!use) falsch.push(`${name}: kein Symbol`);
+    else if (!symbole.has(use[1])) falsch.push(`${name}: #${use[1]} fehlt im Sprite`);
   }
-  // Gegenprobe (durchgeführt): das 👤 wieder aus de.js entfernt → dieser Fall
-  // rot und nennt `de:settings.group.profile`.
-  assert.deepEqual(ohne, [],
-    'Diese Menüeinträge tragen kein Symbol im Sprachtext:\n  ' + ohne.join('\n  ') +
-    '\n\nDas Symbol im Markup zählt NICHT — `data-i18n` ersetzt den Inhalt ' +
-    'beim Übersetzen. Es gehört in locales/de.js und locales/en.js.');
+  // Gegenprobe (am 25.10. gemessen): data-i18n beim Profil-Eintrag zurück an
+  // den Knopf → rot mit „settings.group.profile: data-i18n am Knopf".
+  assert.deepEqual(falsch, [], 'Menüeinträge ohne sichtbares Symbol:\n  ' + falsch.join('\n  '));
 });
 
 test('das Markup eines Menüeintrags zeigt, was der Sprachtext sagt', () => {

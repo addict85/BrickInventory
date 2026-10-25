@@ -8,10 +8,12 @@
  *
  * ── Was dabei NICHT geht, und warum es trotzdem eine Prüfung gibt ───────────
  *
- * Buchstäblich dieselben Zeichen können es nicht sein: Die Webapp schreibt
- * Emoji in den Sprachtext, die App zeichnet Material-Symbole als Vektor. Ein
- * 🎟️ und ein `Icons.Default.Redeem` sind verschiedene Dateien aus
- * verschiedenen Systemen — gleich ist das GEMEINTE, nicht das Glyph.
+ * Buchstäblich dieselben Zeichen können es nicht sein: Die Webapp zeichnet
+ * ihre eigene Symbolfamilie (das Sprite in index.html), die App
+ * Material-Symbole. `#i-gutschein` und `Icons.Default.Redeem` sind
+ * verschiedene Dateien aus verschiedenen Systemen — gleich ist das GEMEINTE.
+ * (Bis zum 25.10. stand im Web ein Emoji im Sprachtext; die Tabelle hält
+ * seither die Symbol-IDs.)
  *
  * Genau deshalb braucht es hier eine Tabelle und keine Gleichheitsprüfung:
  * Die Zuordnung „welcher Eintrag trägt welches Sinnbild" ist eine
@@ -33,12 +35,11 @@
  *
  * ── Gegenproben (durchgeführt, Ergebnisse abgeschrieben) ────────────────────
  *
- *   A  das 📤 wieder auf 📦 zurückgedreht (die Lage, die Marco gemeldet hat)
- *      → ZWEI Fälle rot, und beide zu Recht:
- *        „jeder Eintrag trägt beiderseits dasselbe Sinnbild" — Web zeigt 📦
- *        „kein Sinnbild steht für zwei Dinge" — „📦 steht für storage.group
- *        UND settings.data_export"
- *   B  in der App `Redeem` durch `Settings` ersetzt
+ *   A  „Daten" mit #i-lagerort statt #i-daten (die Lage, die Marco gemeldet
+ *      hat, damals mit 📦) → ZWEI Fälle rot, und beide zu Recht:
+ *        „jeder Eintrag trägt beiderseits dasselbe Sinnbild"
+ *        „kein Sinnbild steht für zwei Dinge"
+ *   B  in der App `Redeem` durch `Star` ersetzt
  *      → nur „jeder Eintrag trägt beiderseits dasselbe Sinnbild" rot
  *   C  einen Web-Eintrag ohne Zuordnung hinzugefügt
  *      → nur „jeder Menüeintrag ist zugeordnet" rot
@@ -71,34 +72,33 @@ const lies = p => fs.readFileSync(p, 'utf8');
  * rechts sieht — und ein Zahnrad soll in beiden Oberflächen ein Zahnrad sein.
  */
 const ZUORDNUNG = [
-  { web: 'settings.group.profile', app: 'konto_title',          sinnbild: 'Person',     glyph: '👤',  vektor: 'Icons.Default.AccountCircle' },
-  { web: 'vouchers.group',         app: 'vouchers_title',       sinnbild: 'Gutschein',  glyph: '🎟️', vektor: 'Icons.Default.Redeem' },
-  { web: 'alerts.group',           app: 'alerts_group',         sinnbild: 'Glocke',     glyph: '🔔',  vektor: 'Icons.Default.NotificationsActive' },
-  { web: 'storage.group',          app: 'storage_manage',       sinnbild: 'Kiste',      glyph: '📦',  vektor: 'Icons.Default.Inventory2' },
-  { web: 'household.group',        app: 'household_title',      sinnbild: 'Gruppe',     glyph: '👪',  vektor: 'Icons.Default.Group' },
-  { web: 'settings.data_export',   app: 'csv_upload_title',     sinnbild: 'Datei+Pfeil', glyph: '📤', vektor: 'Icons.Default.UploadFile' },
-  { web: 'settings.logout',        app: 'main_menu_logout',     sinnbild: 'Hinausgehen', glyph: '🚪', vektor: 'Icons.AutoMirrored.Filled.Logout' },
+  { web: 'settings.group.profile', app: 'konto_title',          sinnbild: 'Person',       symbol: 'i-profil',        vektor: 'Icons.Default.AccountCircle' },
+  { web: 'vouchers.group',         app: 'vouchers_title',       sinnbild: 'Gutschein',    symbol: 'i-gutschein',     vektor: 'Icons.Default.Redeem' },
+  { web: 'alerts.group',           app: 'alerts_group',         sinnbild: 'Glocke',       symbol: 'i-alarm',         vektor: 'Icons.Default.NotificationsActive' },
+  { web: 'storage.group',          app: 'storage_manage',       sinnbild: 'Kiste',        symbol: 'i-lagerort',      vektor: 'Icons.Default.Inventory2' },
+  { web: 'household.group',        app: 'household_title',      sinnbild: 'Gruppe',       symbol: 'i-haushalt',      vektor: 'Icons.Default.Group' },
+  { web: 'settings.data_export',   app: 'csv_upload_title',     sinnbild: 'Datei+Pfeil',  symbol: 'i-daten',         vektor: 'Icons.Default.UploadFile' },
+  { web: 'nav.settings',           app: 'nav_settings',         sinnbild: 'Zahnrad',      symbol: 'i-einstellungen', vektor: 'Icons.Default.Settings' },
+  { web: 'nav.monitoring',         app: 'main_menu_monitoring', sinnbild: 'Diagramm',     symbol: 'i-monitoring',    vektor: 'Icons.Default.Assessment' },
+  { web: 'settings.logout',        app: 'main_menu_logout',     sinnbild: 'Hinausgehen',  symbol: 'i-abmelden',      vektor: 'Icons.AutoMirrored.Filled.Logout' },
 ];
 
 /** Einträge, die es nur auf EINER Seite gibt — ausdrücklich, mit Grund. */
 const NUR_WEB = {
   'menu.app': 'Der Verweis auf die Android-App. In der App selbst wäre er sinnlos.',
 };
-const NUR_APP = {
-  nav_settings: 'In der Webapp ein REITER (⚙️), kein Menüeintrag — er trägt dort, was nur ein Verwalter setzt.',
-  main_menu_monitoring: 'In der Webapp ebenfalls ein Reiter (📊), und ebenfalls nur für Verwalter.',
-};
+const NUR_APP = {};
 
-/** Webapp: Schlüssel → Text des Menüeintrags (aus dem SPRACHTEXT, nicht dem Markup). */
+/** Webapp: Schlüssel → Symbol-ID jedes Menüeintrags, aus dem Markup. */
 function webMenue() {
   const html = ohneHtmlKommentare(lies(path.join(ROOT, 'public', 'index.html')));
   const auf = html.indexOf('<div class="umenu-pop"');
   const zu = html.indexOf('</div>', auf);
   assert.ok(auf > 0 && zu > auf, 'Die Menüklappe ist nicht mehr zu finden.');
-  const de = lies(path.join(ROOT, 'public', 'locales', 'de.js'));
-  const texte = new Map([...de.matchAll(/^\s*'([^']+)':\s*'((?:[^'\\]|\\.)*)'/gm)].map(m => [m[1], m[2]]));
-  return [...html.slice(auf, zu).matchAll(/data-i18n="([^"]+)"/g)]
-    .map(m => ({ schluessel: m[1], text: texte.get(m[1]) }));
+  return [...html.slice(auf, zu).matchAll(/<button[^>]*>([\s\S]*?)<\/button>/g)].map(m => ({
+    schluessel: (/data-i18n="([^"]+)"/.exec(m[1]) || [])[1],
+    symbol: (/<use href="#([\w-]+)"/.exec(m[1]) || [])[1],
+  }));
 }
 
 /** App: R.string-Schlüssel → Symbol, in der Reihenfolge der Klappe. */
@@ -119,7 +119,7 @@ test('jeder Menüeintrag ist zugeordnet — auf beiden Seiten', () => {
   const web = webMenue();
   const app = appMenue();
   // Selbstbeweis: Findet die Ableitung nichts, wären die Schleifen still grün.
-  assert.equal(web.length, 8, `${web.length} Web-Einträge abgeleitet statt acht — greift die Ableitung noch?`);
+  assert.equal(web.length, 10, `${web.length} Web-Einträge abgeleitet statt zehn — greift die Ableitung noch?`);
   assert.equal(app.length, 9, `${app.length} App-Einträge abgeleitet statt neun — greift die Ableitung noch?`);
 
   const webZu = new Set(ZUORDNUNG.map(z => z.web));
@@ -134,20 +134,20 @@ test('jeder Menüeintrag ist zugeordnet — auf beiden Seiten', () => {
 });
 
 test('jeder Eintrag trägt beiderseits dasselbe Sinnbild', () => {
-  const web = new Map(webMenue().map(e => [e.schluessel, e.text]));
+  const web = new Map(webMenue().map(e => [e.schluessel, e.symbol]));
   const app = new Map(appMenue().map(e => [e.schluessel, e.symbol]));
   const falsch = [];
   for (const z of ZUORDNUNG) {
-    const text = web.get(z.web);
-    if (text === undefined) { falsch.push(`${z.web}: fehlt im Web-Menü`); continue; }
-    if (!text.startsWith(z.glyph)) falsch.push(`${z.web} (${z.sinnbild}): Web zeigt "${text.split(' ')[0]}" statt ${z.glyph}`);
+    if (!web.has(z.web)) { falsch.push(`${z.web}: fehlt im Web-Menü`); continue; }
+    const symbol = web.get(z.web);
+    if (symbol !== z.symbol) falsch.push(`${z.web} (${z.sinnbild}): Web zeigt #${symbol} statt #${z.symbol}`);
     const sym = app.get(z.app);
     if (sym === undefined) { falsch.push(`${z.app}: fehlt im App-Menü`); continue; }
     if (sym !== z.vektor) falsch.push(`${z.app} (${z.sinnbild}): App zeigt ${sym} statt ${z.vektor}`);
   }
   assert.deepEqual(falsch, [],
     'Die beiden Menüs zeigen nicht mehr dasselbe:\n  ' + falsch.join('\n  ') +
-    '\n\nBuchstäblich gleich können Emoji und Material-Symbol nie sein — gleich ' +
+    '\n\nBuchstäblich gleich können Web- und Material-Symbol nie sein — gleich ' +
     'ist das GEMEINTE. Wer eines ändert, ändert beide, oder die Tabelle.');
 });
 
@@ -162,7 +162,7 @@ test('kein Sinnbild steht für zwei Dinge', () => {
     }
     return null;
   };
-  const w = doppelt(webMenue().map(e => [e.schluessel, e.text.split(' ')[0]]), 'Webapp');
+  const w = doppelt(webMenue().map(e => [e.schluessel, e.symbol]), 'Webapp');
   const a = doppelt(appMenue().map(e => [e.schluessel, e.symbol]), 'App');
   assert.deepEqual([w, a].filter(Boolean), [],
     'Ein Sinnbild steht für zwei verschiedene Dinge. Wer es sieht, kann die ' +
