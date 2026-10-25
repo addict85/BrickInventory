@@ -1901,6 +1901,65 @@
   <img id="lightbox-img" alt="" data-onerror="keep" style="max-width:92vw;max-height:92vh;object-fit:contain;border-radius:8px" />
 </div>
 
+<!-- Einrichtung beim ersten Start — Ablauf in js/22-einrichtung.js -->
+<div class="ovl" id="einrichtung-modal" role="dialog" aria-modal="true" aria-labelledby="ew-titel">
+  <div class="modal" style="max-width:560px">
+    <div class="mhd"><div class="mtit" id="ew-titel" data-i18n="setup.title">Willkommen — BrickInventory einrichten</div><button class="btn bs btn-sm" data-click="einrichtungSpaeter" data-dialog-zu aria-label="Schliessen" data-i18n="common.close" data-i18n-attr="aria-label">✕</button></div>
+    <div id="ew-schritte" style="font-size:.78rem;color:var(--mut);margin-bottom:.75rem"></div>
+
+    <section class="ew-schritt" data-schritt="passwort">
+      <p style="font-size:.85rem" data-i18n="setup.pw_hint">Das Startpasswort stand nur im Protokoll des Servers. Bitte jetzt ein eigenes setzen.</p>
+      <form class="sform" data-submit="ew-pw-setzen">
+        <div class="fg"><label for="ew-pw-alt" data-i18n="settings.password.current">Aktuelles Passwort</label><input type="password" id="ew-pw-alt" autocomplete="current-password" data-erstfokus /></div>
+        <div class="fg"><label for="ew-pw-neu" data-i18n="settings.password.new">Neues Passwort</label><input type="password" id="ew-pw-neu" autocomplete="new-password" /></div>
+        <div class="fg"><label for="ew-pw-wdh" data-i18n="settings.password.repeat">Passwort wiederholen</label><input type="password" id="ew-pw-wdh" autocomplete="new-password" /></div>
+        <div><button type="button" class="btn bp btn-sm" id="ew-pw-setzen" data-click="einrichtungPasswort" data-i18n="setup.pw_set">Passwort setzen</button></div>
+      </form>
+    </section>
+
+    <section class="ew-schritt" data-schritt="quellen">
+      <p style="font-size:.85rem" data-i18n="setup.sources_hint">Ohne diese Schlüssel bleibt die Sammlung leer: Rebrickable liefert Sets, Teile und Bilder, BrickLink die Preise, Brickset Anleitungen. Alle drei sind kostenlos; Rebrickable ist das Wichtigste.</p>
+      <div class="ew-quelle">
+        <div class="stit">Rebrickable <span id="ew-stand-rebrickable"></span></div>
+        <a href="https://rebrickable.com/api/" target="_blank" rel="noopener noreferrer" style="font-size:.78rem" data-i18n="setup.where_rb">Wo bekomme ich den Schlüssel? rebrickable.com → API → Generate Key</a>
+        <div class="fg"><label for="ew-rb" data-i18n="setup.key">API-Schlüssel</label><input type="text" id="ew-rb" autocomplete="off" spellcheck="false" /></div>
+        <button type="button" class="btn bs btn-sm" data-click="einrichtungQuelle" data-arg="rebrickable" data-i18n="setup.save_test">Speichern und testen</button>
+      </div>
+      <div class="ew-quelle">
+        <div class="stit">BrickLink <span id="ew-stand-bricklink"></span></div>
+        <a href="https://www.bricklink.com/v2/api/register_consumer.page" target="_blank" rel="noopener noreferrer" style="font-size:.78rem" data-i18n="setup.where_bl">Wo bekomme ich die Schlüssel? bricklink.com → API-Zugang registrieren (vier Werte)</a>
+        <div class="sgrid2" style="gap:.5rem">
+          <div class="fg"><label for="ew-bl-ck">Consumer Key</label><input type="text" id="ew-bl-ck" autocomplete="off" spellcheck="false" /></div>
+          <div class="fg"><label for="ew-bl-cs">Consumer Secret</label><input type="text" id="ew-bl-cs" autocomplete="off" spellcheck="false" /></div>
+          <div class="fg"><label for="ew-bl-tv">Token Value</label><input type="text" id="ew-bl-tv" autocomplete="off" spellcheck="false" /></div>
+          <div class="fg"><label for="ew-bl-ts">Token Secret</label><input type="text" id="ew-bl-ts" autocomplete="off" spellcheck="false" /></div>
+        </div>
+        <button type="button" class="btn bs btn-sm" data-click="einrichtungQuelle" data-arg="bricklink" data-i18n="setup.save_test">Speichern und testen</button>
+      </div>
+      <div class="ew-quelle">
+        <div class="stit">Brickset <span id="ew-stand-brickset"></span></div>
+        <a href="https://brickset.com/tools/webservices/requestkey" target="_blank" rel="noopener noreferrer" style="font-size:.78rem" data-i18n="setup.where_bs">Wo bekomme ich den Schlüssel? brickset.com → Tools → API-Schlüssel anfordern</a>
+        <div class="fg"><label for="ew-bs" data-i18n="setup.key">API-Schlüssel</label><input type="text" id="ew-bs" autocomplete="off" spellcheck="false" /></div>
+        <button type="button" class="btn bs btn-sm" data-click="einrichtungQuelle" data-arg="brickset" data-i18n="setup.save_test">Speichern und testen</button>
+      </div>
+    </section>
+
+    <section class="ew-schritt" data-schritt="erstes-set">
+      <p style="font-size:.85rem" data-i18n="setup.first_hint">Fast fertig. Wie kommt das erste Set in die Sammlung?</p>
+      <div style="display:flex;flex-direction:column;gap:.5rem;align-items:flex-start">
+        <button type="button" class="btn bs" data-click="einrichtungZiel" data-arg="nummer" data-i18n="setup.first_number">🔢 Set-Nummer eingeben</button>
+        <button type="button" class="btn bs" data-click="einrichtungZiel" data-arg="csv" data-i18n="setup.first_csv">📥 Liste als CSV importieren</button>
+        <button type="button" class="btn bs" data-click="einrichtungZiel" data-arg="katalog" data-i18n="setup.first_catalog">📚 Im Katalog stöbern</button>
+      </div>
+    </section>
+
+    <div style="display:flex;gap:.5rem;justify-content:flex-end;margin-top:1rem">
+      <button type="button" class="btn bs btn-sm" id="ew-zurueck" data-click="einrichtungZurueck" data-i18n="setup.back">Zurück</button>
+      <button type="button" class="btn bp btn-sm" id="ew-weiter" data-click="einrichtungWeiter" data-i18n="setup.next">Weiter</button>
+    </div>
+  </div>
+</div>
+
 <!-- Reset PW Modal -->
 <div class="ovl" id="pw-modal" role="dialog" aria-modal="true">
   <div class="modal" style="max-width:360px">

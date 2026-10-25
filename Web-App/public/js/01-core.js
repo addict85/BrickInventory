@@ -911,6 +911,8 @@ function showApp(){ bindTabs(); plInit(); setTimeout(()=>{ gibCheckOnLoad(); }, 
   // in 07-admin.js; der spaete dynamische Import aus demselben Grund wie eine
   // Zeile darueber (07-admin.js holt api() aus dieser Datei).
   import('./07-admin.js').then(m => m.zeigeOffeneAlarme?.()).catch(() => {});
+  // Einrichtungs-Assistent für eine frische Installation (nur Verwalter).
+  if (ME?.isAdmin) import('./22-einrichtung.js').then(m => m.pruefeEinrichtung?.()).catch(() => {});
   // ── Direktlink aus der Preisalarm-Mail: ?set=<nummer> ────────────────────
   //
   // Marcos Wunsch vom 25.09.: „Bei den Mails waere es schoen wenn es ebenfalls

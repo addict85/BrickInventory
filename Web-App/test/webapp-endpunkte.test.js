@@ -144,6 +144,11 @@ const ZWEITER_FAKTOR =
   'Nutzerverwaltung, und die steht absichtlich nur in der Webapp ' +
   '(BrickApiService.kt, Abschnitt Server-Protokoll).';
 
+const EINRICHTUNG =
+  'Der Einrichtungs-Assistent richtet den SERVER ein (Startpasswort, ' +
+  'Schlüssel der Quellen) — das geschieht am Rechner, bevor jemand die App ' +
+  'verbindet; die Schlüssel stehen dort auch in den Einstellungen.';
+
 const NUR_WEB = new Map([
   ['/api/v1/admin/job-status',
    'Stand des Preis-Jobs samt BrickLink-Kontingent. Die App zeigt BEIDES ' +
@@ -241,6 +246,12 @@ const NUR_WEB = new Map([
    PAPIERKORB],
   ['/api/v1/auth/users/:X/zweiter-faktor',
    ZWEITER_FAKTOR],
+  ['/api/v1/settings/einrichtung',
+   EINRICHTUNG],
+  ['/api/v1/settings/einrichtung/fertig',
+   EINRICHTUNG],
+  ['/api/v1/settings/quelle-testen',
+   EINRICHTUNG],
 ]);
 
 test('was nur die Webapp kann, hat einen Grund', () => {

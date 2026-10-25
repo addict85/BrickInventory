@@ -3,7 +3,10 @@ import express from 'express';
 const router  = express.Router();
 import multer from 'multer';
 import * as db from '../db/database';
-import { handleRouteError, logAndContinue, meldeUndWeiter } from '../utils/httpError';
+import { handleRouteError, logAndContinue, meldeUndWeiter, fehlertext } from '../utils/httpError';
+import { pruefeRebrickableZugang } from '../clients/rebrickable';
+import { pruefeBricksetZugang } from '../clients/brickset';
+import { pruefeBricklinkZugang } from '../clients/bricklink';
 import { requireLogin, requireAdmin } from './auth';
 
 import { setUserSetting, setGlobalSetting, setGlobalTrigger, getGlobalSetting, SECRET_KEYS, isMaskedValue, readSettings, nutzerEinstellungen } from '../utils/settings';
@@ -405,6 +408,52 @@ router.post('/smtp-test', async (req, res) => {
     });
     res.json(result);
   } catch (e) { handleRouteError(res, e, undefined, req); }
+});
+
+// ── Einrichtung beim ersten Start (public/js/22-einrichtung.js) ─────────────
+// Offen, solange der Verwalter sie nicht abgeschlossen hat UND noch etwas
+// fehlt — eine eingerichtete Installation sieht den Assistenten nie.
+router.get('/einrichtung', async (req, res) => {
+  if (!istVerwalter(req)) return sendeFehler(req, res, 403, 'nur_admins');
+  try {
+    const wert = async (k: string) => !!(await getGlobalSetting(k));
+    const ich = await db.get('SELECT must_change_password FROM users WHERE id = $1', [nutzerId(req)]);
+    const passwort = ich?.must_change_password === 1 || ich?.must_change_password === true;
+    const quellen = {
+      rebrickable: await wert('rebrickable_api_key'),
+      brickset:    await wert('brickset_api_key'),
+      bricklink:   (await Promise.all(['bricklink_consumer_key', 'bricklink_consumer_secret',
+                     'bricklink_token', 'bricklink_token_secret'].map(wert))).every(Boolean),
+    };
+    const erledigt = await wert('einrichtung_erledigt');
+    res.json({ success: true, offen: !erledigt && (passwort || !quellen.rebrickable),
+               passwort_aendern: passwort, quellen });
+  } catch (e) { handleRouteError(res, e, undefined, req); }
+});
+
+router.post('/einrichtung/fertig', async (req, res) => {
+  if (!istVerwalter(req)) return sendeFehler(req, res, 403, 'nur_admins');
+  try {
+    await setGlobalSetting('einrichtung_erledigt', '1');
+    res.json({ success: true });
+  } catch (e) { handleRouteError(res, e, undefined, req); }
+});
+
+// Testknopf je Quelle: prüft den GESPEICHERTEN Zugang mit einem kleinen Abruf.
+router.post('/quelle-testen', async (req, res) => {
+  if (!istVerwalter(req)) return sendeFehler(req, res, 403, 'nur_admins');
+  const pruefer: Record<string, () => Promise<void>> = {
+    rebrickable: pruefeRebrickableZugang, brickset: pruefeBricksetZugang, bricklink: pruefeBricklinkZugang,
+  };
+  const quelle = String(req.body?.quelle ?? '');
+  const pruefe = Object.hasOwn(pruefer, quelle) ? pruefer[quelle] : undefined;
+  if (!pruefe) return sendeFehler(req, res, 400, 'quelle_unbekannt');
+  try {
+    await pruefe();
+    res.json({ success: true });
+  } catch (e) {
+    sendeFehler(req, res, 400, 'quelle_test_fehlgeschlagen', { grund: fehlertext(e).slice(0, 200) });
+  }
 });
 
 // GET /api/settings/admin/cache-ttl

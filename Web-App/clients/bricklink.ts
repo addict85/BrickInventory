@@ -218,4 +218,9 @@ async function getCacheStats() {
   return { subsets: parseInt(s.c), catalog: parseInt(c.c), prices: parseInt(p.c) };
 }
 
-export { bricklinkRequest, getItemImageUrl, getPriceGuide, clearSubsetsCache, clearCatalogCache, getCacheStats };
+/** Ein kleiner signierter Abruf — für den Testknopf der Einrichtung. */
+async function pruefeBricklinkZugang(): Promise<void> {
+  await bricklinkRequest('GET', '/colors/1');
+}
+
+export { pruefeBricklinkZugang, bricklinkRequest, getItemImageUrl, getPriceGuide, clearSubsetsCache, clearCatalogCache, getCacheStats };

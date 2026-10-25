@@ -228,6 +228,10 @@ export const FEHLER = {
                                  en: 'This voucher already exists.' },
   nur_pdf:                     { de: 'Nur PDF-Dateien', en: 'PDF files only' },
 
+  // ── Einrichtung ──────────────────────────────────────────────────────────
+  quelle_unbekannt:            { de: 'Unbekannte Quelle', en: 'Unknown source' },
+  quelle_test_fehlgeschlagen:  { de: 'Verbindung fehlgeschlagen: {grund}', en: 'Connection failed: {grund}' },
+
   // ── Zweiter Faktor ───────────────────────────────────────────────────────
   zweiter_faktor_noetig:       { de: 'Bitte den Code aus der Authenticator-App eingeben.',
                                  en: 'Please enter the code from your authenticator app.' },

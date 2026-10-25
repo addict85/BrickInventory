@@ -301,4 +301,13 @@ async function findSetByQuery(query: string, herkunft: string) {
 const getSetByEan     = (ean: string)     => findSetByQuery(ean, 'EAN');
 const getSetByBarcode = (barcode: string) => findSetByQuery(barcode, 'barcode');
 
-export { getSetInfo, getInstructions, getSetByEan, getSetByBarcode };
+/** Den gespeicherten Schlüssel bei Brickset prüfen (checkKey zählt nicht gegen das Kontingent). */
+async function pruefeBricksetZugang(): Promise<void> {
+  const key = await getApiKey();
+  if (!key) throw new Error('Brickset API Key nicht konfiguriert.');
+  const { status, body } = await httpsGet(`${BASE}/checkKey?apiKey=${encodeURIComponent(key)}`);
+  if (status !== 200) throw new Error(`Brickset HTTP ${status}`);
+  parseResponse(body);
+}
+
+export { pruefeBricksetZugang, getSetInfo, getInstructions, getSetByEan, getSetByBarcode };

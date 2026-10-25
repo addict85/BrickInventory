@@ -596,6 +596,11 @@ async function blTeilZuRb(blId: string): Promise<string | null> {
 /** Ob der Filter inzwischen als wirkungslos erkannt wurde — fuer den Bericht. */
 function blFilterWirkungslos(): boolean { return filterWirkungslos; }
 
-export { lookupPart, getSetInfo, getAllSetParts, downloadFile, scrapeInstructions,
+/** Ein kleiner Abruf mit dem gespeicherten Schlüssel — für den Testknopf der Einrichtung. */
+async function pruefeRebrickableZugang(): Promise<void> {
+  await rbGet('/lego/themes/', { page_size: 1 });
+}
+
+export { pruefeRebrickableZugang, lookupPart, getSetInfo, getAllSetParts, downloadFile, scrapeInstructions,
   getSetMinifigs, getMinifigInfo, getBrickColors, getRbKey, sleep, httpsGetRobust, getMinifigParts,
   blTeilZuRb, blFilterWirkungslos };
