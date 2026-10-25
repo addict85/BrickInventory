@@ -240,6 +240,8 @@ function openImageLightboxFromEl() {
 
 /** War: onchange="setLang(this.value)" */
 function setLangFromEl() { setLang(this.value); }
+/** Darstellung je Gerät — die Logik steht in 00-theme-boot.js. */
+function setzeDunkel() { window.__bimDunkel?.(this.value); }
 
 /** War: onchange="renderFigs(allFigsCache)" */
 /**
@@ -354,5 +356,6 @@ registerActions({
   saveJobTime,
   saveManualFigBl,
   setLangFromEl,
+  setzeDunkel,
   stopEvent,
 });

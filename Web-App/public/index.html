@@ -986,6 +986,15 @@
       <div class="ssec" style="margin-bottom:1.25rem" id="profile-settings-card">
         <div class="sform">
 
+          <!-- Darstellung: je Gerät, nicht je Konto (siehe 00-theme-boot.js) -->
+          <div>
+            <label for="dunkel-wahl" style="font-weight:600;font-size:var(--fs-3)" data-i18n="settings.dark.label">Darstellung auf diesem Gerät</label>
+            <select id="dunkel-wahl" data-change="setzeDunkel" style="margin-top:4px">
+              <option value="server" data-i18n="settings.dark.server">Design des Servers</option>
+              <option value="system" data-i18n="settings.dark.system">Dunkel, wenn das System dunkel ist</option>
+            </select>
+          </div>
+
           <!-- Sprache -->
           <div>
             <label for="lang-select" style="font-weight:600;font-size:var(--fs-3)" data-i18n="settings.language">Sprache</label>

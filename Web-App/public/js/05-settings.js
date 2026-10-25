@@ -312,6 +312,8 @@ async function revokeOtherTokens() {
 }
 
 export async function loadProfile() {
+  const dw = G('dunkel-wahl');
+  if (dw && window.__bimDunkelWert) dw.value = window.__bimDunkelWert();
   const d = await api('GET', '/v1/auth/profile');
   if (!d.success) return;
   const u = d.user;
