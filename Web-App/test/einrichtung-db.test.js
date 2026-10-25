@@ -63,6 +63,7 @@ test('Einrichtungs-Assistent', { concurrency: 1 }, async (t) => {
       const r = await ruf(V, '/einrichtung');
       assert.equal(r.body.offen, false);
       assert.equal(r.body.quellen.rebrickable, true);
+      assert.ok(!JSON.stringify(r.body).includes('abc'), 'Der Stand gibt den Schlüssel heraus');
     });
 
     await t.test('„Fertig" schliesst ihn auch, wenn noch etwas fehlt', async () => {
