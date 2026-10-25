@@ -4,7 +4,6 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.CompareArrows
 import androidx.compose.material.icons.automirrored.filled.Logout
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
@@ -241,12 +240,6 @@ fun MainScaffold(
                         MenuZiel(R.string.konto_title, Icons.Default.AccountCircle) {
                             showLogoutMenu = false
                             navController.navigate(Screen.Konto.route)
-                        }
-                        // Der Vergleich hatte einen eigenen Reiter; die Leiste traegt seit
-                        // dem 25.10. fuenf Ziele wie die Webapp.
-                        MenuZiel(R.string.nav_comparison, Icons.AutoMirrored.Filled.CompareArrows) {
-                            showLogoutMenu = false
-                            navController.navigate(Screen.Comparison.route)
                         }
                         // Ein Strich zwischen den Rubriken und dem, was in den
                         // Einstellungen uebrig bleibt: Anzeige & Preise,

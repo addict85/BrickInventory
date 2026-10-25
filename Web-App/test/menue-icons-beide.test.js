@@ -87,9 +87,7 @@ const ZUORDNUNG = [
 const NUR_WEB = {
   'menu.app': 'Der Verweis auf die Android-App. In der App selbst wäre er sinnlos.',
 };
-const NUR_APP = {
-  nav_comparison: 'Den Preisvergleich zwischen Sets gibt es nur in der App; bis zum 25.10. war er dort ein Reiter.',
-};
+const NUR_APP = {};
 
 /** Webapp: Schlüssel → Symbol-ID jedes Menüeintrags, aus dem Markup. */
 function webMenue() {
@@ -122,7 +120,7 @@ test('jeder Menüeintrag ist zugeordnet — auf beiden Seiten', () => {
   const app = appMenue();
   // Selbstbeweis: Findet die Ableitung nichts, wären die Schleifen still grün.
   assert.equal(web.length, 10, `${web.length} Web-Einträge abgeleitet statt zehn — greift die Ableitung noch?`);
-  assert.equal(app.length, 10, `${app.length} App-Einträge abgeleitet statt zehn — greift die Ableitung noch?`);
+  assert.equal(app.length, 9, `${app.length} App-Einträge abgeleitet statt neun — greift die Ableitung noch?`);
 
   const webZu = new Set(ZUORDNUNG.map(z => z.web));
   const appZu = new Set(ZUORDNUNG.map(z => z.app));
