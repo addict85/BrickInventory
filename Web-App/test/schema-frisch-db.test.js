@@ -18,6 +18,9 @@
  *   C  der zweite Start über initSchema() statt initSchemaOnce() → rot: „ein
  *      zweiter Start ändert am Schema nichts" — initSchema legt die von 0036
  *      bis 0038 gelöschten Spalten wieder an. Darum läuft es nur einmal.
+ *   F  in db/schema-stand.sql eine Spalte gelöscht → rot: „db/schema-stand.sql
+ *      zeigt das Schema, das entsteht"; ebenso eine neue Migration ohne neu
+ *      erzeugte Datei
  *   D  in initSchemaOnce den Aufruf abgeloestesEntfernen() entfernt → rot:
  *      „auch ein erzwungener Lauf holt Gelöschtes nicht zurück" (elf Spalten
  *      und rb_bl_mapping kamen zurück)
@@ -122,6 +125,13 @@ test('frische Datenbank', { concurrency: 1, timeout: 180_000 }, async (t) => {
          AND NOT EXISTS (SELECT 1 FROM pg_index i WHERE i.indrelid = k.conrelid AND i.indkey[0] = k.conkey[1])
        ORDER BY 1`);
     assert.deepEqual(ohne.map(r => r.t), [], 'Ohne Index durchsucht jedes Löschen eines Kontos die ganze Tabelle');
+  });
+
+  await t.test('db/schema-stand.sql zeigt das Schema, das entsteht', async () => {
+    const { schemaText, DATEI } = require(path.join(ROOT, 'scripts', 'schema-stand.js'));
+    const eingecheckt = require('node:fs').readFileSync(DATEI, 'utf8');
+    assert.equal(await schemaText(db), eingecheckt,
+      'db/schema-stand.sql ist veraltet — neu erzeugen: npm run build && npm run schema:stand');
   });
 
   await t.test('ein zweiter Start ändert am Schema nichts', async () => {
