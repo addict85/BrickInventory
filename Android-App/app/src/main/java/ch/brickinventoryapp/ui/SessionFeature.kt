@@ -244,8 +244,9 @@ internal fun MainViewModel.logout() {
         // davon sind mehr als eine Unschoenheit:
         //
         //     _householdState   die Mitglieder des fremden Haushalts
-        //     _geraeteState     dessen angemeldete Geraete samt Etiketten
-        //     _kontoState       dessen Profil: Benutzername und E-Mail
+        //
+        // Konto, Geraete und zweiter Faktor stehen im KontoViewModel, das mit
+        // der Konto-Seite verschwindet.
         //
         // Der Kommentar darueber sagt seit jeher, warum das nicht sein darf.
         // Er galt nur fuer die Haelfte. Gefunden beim Entfernen der
@@ -260,10 +261,7 @@ internal fun MainViewModel.logout() {
         _setItemState.value = SetItemUiState()
         _erfassungState.value = ErfassungUiState()
         _householdState.value = HouseholdUiState()
-        _geraeteState.value = GeraeteUiState()
-        _zweiterFaktorState.value = ZweiterFaktorUiState()
         _anmeldeState.value = AnmeldeUiState()
-        _kontoState.value = KontoUiState()
         _csvHochladenState.value = CsvHochladenUiState()
         _verwaltungState.value = VerwaltungUiState()
         // Auch der Update-Zustand: Er traegt zwar keine Kontodaten, aber einen
@@ -284,96 +282,4 @@ internal fun MainViewModel.logout() {
         // abgebrochen, nicht nur ausgeblendet.
         brichPruefungAb()
     }
-}
-
-// ── Das eigene Konto ─────────────────────────────────────────────────────
-//
-// Beides konnte die Webapp seit jeher und die App nicht — nicht weil es
-// fehlte, sondern weil /auth/profile und /auth/change-password an einem
-// sitzungsgebundenen Waechter hingen. Die App hat keine Sitzung. Seit beide
-// Waechter dieselbe Frage stellen (Nachtrag 127), sind es normale Aufrufe.
-
-internal fun MainViewModel.ladeProfil() {
-    viewModelScope.launch {
-        _kontoState.update { it.copy(laedt = true, fehler = null) }
-        when (val r = repo.admin.getProfil()) {
-            is Result.Success -> _kontoState.update {
-                it.copy(laedt = false, profil = r.data.user,
-                        fehler = if (r.data.user == null) r.data.error ?: text(R.string.err_generic) else null) }
-            is Result.Error -> _kontoState.update { it.copy(laedt = false, fehler = meldung(r)) }
-        }
-    }
-}
-
-internal fun MainViewModel.speichereProfil(
-    benutzername: String, email: String, vorname: String, nachname: String, passwort: String? = null,
-) {
-    viewModelScope.launch {
-        _kontoState.update { it.copy(speichert = true, fehler = null, meldung = null) }
-        val aenderung = ProfilAenderung(
-            username = benutzername.trim(),
-            email = email.trim(),
-            // Leer heisst „nicht angegeben", nicht „leerer Vorname".
-            firstName = vorname.trim().ifBlank { null },
-            lastName = nachname.trim().ifBlank { null },
-            passwordCurrent = passwort?.ifBlank { null },
-        )
-        when (val r = repo.admin.updateProfil(aenderung)) {
-            is Result.Success ->
-                if (r.data.success) {
-                    _kontoState.update { it.copy(speichert = false, meldung = text(R.string.konto_saved)) }
-                    // Neu holen statt den eingetippten Stand zu uebernehmen:
-                    // Der Server normalisiert (und koennte die
-                    // E-Mail-Bestaetigung zuruecksetzen, wenn die Adresse
-                    // wechselt). Was die Karte zeigt, soll der Serverstand sein.
-                    ladeProfil()
-                } else {
-                    _kontoState.update { it.copy(speichert = false,
-                        fehler = r.data.error ?: text(R.string.err_generic)) }
-                }
-            is Result.Error -> _kontoState.update { it.copy(speichert = false, fehler = meldung(r)) }
-        }
-    }
-}
-
-/**
- * Passwort aendern — und danach ist die App abgemeldet.
- *
- * Der Server verwirft bei Erfolg ALLE Bearer-Token des Kontos, auch den dieser
- * Anfrage. Das ist gewollt: Wer sein Passwort aendert, will bestehende Zugaenge
- * loswerden. Die App raeumt deshalb den gespeicherten Token selbst weg, statt
- * ihn liegen zu lassen und beim naechsten Abruf kommentarlos an einem 401 zu
- * scheitern.
- */
-internal fun MainViewModel.aenderePasswort(aktuell: String, neu: String) {
-    viewModelScope.launch {
-        _kontoState.update { it.copy(speichert = true, fehler = null, meldung = null) }
-        when (val r = repo.admin.changePassword(aktuell, neu)) {
-            is Result.Success ->
-                if (r.data.success) {
-                    // Derselbe Weg wie beim Abmelden von Hand: Token weg,
-                    // Zwischenspeicher weg, alle Fluesse zurueck. Ihn hier
-                    // NICHT zu gehen hiesse, mit einem Token weiterzulaufen,
-                    // den der Server soeben verworfen hat — und die Sets des
-                    // Kontos im Plattenspeicher liegen zu lassen.
-                    logout()
-                    // In den Snackbar und NICHT in _kontoState: logout() setzt
-                    // alle Fluesse zurueck und der Anmeldebildschirm erscheint
-                    // — eine Meldung in der Kontokarte saehe niemand mehr. Sie
-                    // ist aber die Erklaerung dafuer, warum man ploetzlich
-                    // wieder vor der Anmeldung steht, und muss deshalb bleiben.
-                    _snackbar.value = text(R.string.konto_password_changed)
-                    _kontoState.value = KontoUiState()
-                } else {
-                    _kontoState.update { it.copy(speichert = false,
-                        fehler = r.data.error ?: text(R.string.err_generic)) }
-                }
-            is Result.Error -> _kontoState.update { it.copy(speichert = false, fehler = meldung(r)) }
-        }
-    }
-}
-
-/** Meldung/Fehler der Kontokarte wegraeumen, wenn der Nutzer weitertippt. */
-internal fun MainViewModel.kontoMeldungWeg() {
-    _kontoState.update { it.copy(meldung = null, fehler = null) }
 }

@@ -25,8 +25,13 @@ import javax.inject.Inject
 interface Texte {
     fun text(id: Int, vararg args: Any?): String
     fun menge(id: Int, anzahl: Int, vararg args: Any?): String
+    /** Für Fehlerfelder in Formularen — dort ist „nichts zu sagen" keine Antwort. */
+    fun meldung(fehler: Result.Error): String
     /** Null heisst: Die Sitzungsschicht hat den Fehler schon gemeldet. */
-    fun meldungFuerSnackbar(fehler: Result.Error): String?
+    fun meldungFuerSnackbar(fehler: Result.Error): String? =
+        if (meldetDieSitzungsschicht(fehler.unauthorized, angemeldet())) null else meldung(fehler)
+    /** Liegt ein Token vor? Dieselbe Quelle, die der Interceptor liest. */
+    fun angemeldet(): Boolean
 }
 
 /** In der Sprache der App, nicht des Systems — siehe MainViewModel.text(). */
@@ -42,8 +47,9 @@ class AppTexte @Inject constructor(
     override fun menge(id: Int, anzahl: Int, vararg args: Any?): String =
         LanguageManager.localizedContext(ctx).resources.getQuantityString(id, anzahl, *args)
 
-    override fun meldungFuerSnackbar(fehler: Result.Error): String? {
-        if (meldetDieSitzungsschicht(fehler.unauthorized, prefs.authTokenState.value?.isNotBlank() == true)) return null
+    override fun angemeldet() = prefs.authTokenState.value?.isNotBlank() == true
+
+    override fun meldung(fehler: Result.Error): String {
         if (fehler.message.isNotBlank()) return fehler.message
         val id = fehlerTextId(fehler.art)
         val satz = if (fehlerTextBrauchtCode(fehler.art)) text(id, fehler.httpCode ?: 0) else text(id)

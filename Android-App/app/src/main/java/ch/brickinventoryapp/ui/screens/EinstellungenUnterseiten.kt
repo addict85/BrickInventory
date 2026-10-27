@@ -36,6 +36,7 @@ import ch.brickinventoryapp.ui.theme.Abstaende
 import ch.brickinventoryapp.ui.theme.Schrift
 import kotlinx.coroutines.launch
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 
 /**
  * Die Unterseiten der Einstellungen.
@@ -230,34 +231,37 @@ fun HaushaltUnterseite(
 fun KontoUnterseite(
     vm: MainViewModel,
     snackbarHostState: SnackbarHostState,
+    // An das Ziel gebunden: Profil, Geräte und ein halb eingerichteter
+    // zweiter Faktor leben nur, solange die Seite offen ist.
+    konto: ch.brickinventoryapp.ui.viewmodel.KontoViewModel = hiltViewModel(),
     onZurueck: () -> Unit,
 ) {
-    val kontoZustand by vm.kontoState.collectAsStateWithLifecycle()
-    val geraeteZustand by vm.geraeteState.collectAsStateWithLifecycle()
-    val zfZustand by vm.zweiterFaktorState.collectAsStateWithLifecycle()
-    LaunchedEffect(Unit) { vm.ladeProfil() }
-    LaunchedEffect(Unit) { vm.ladeGeraete() }
-    LaunchedEffect(Unit) { vm.ladeZweitenFaktor() }
+    val kontoZustand by konto.kontoState.collectAsStateWithLifecycle()
+    val geraeteZustand by konto.geraeteState.collectAsStateWithLifecycle()
+    val zfZustand by konto.zweiterFaktorState.collectAsStateWithLifecycle()
+    LaunchedEffect(Unit) { konto.ladeProfil() }
+    LaunchedEffect(Unit) { konto.ladeGeraete() }
+    LaunchedEffect(Unit) { konto.ladeZweitenFaktor() }
     Unterseite(stringResource(R.string.konto_title), snackbarHostState, onZurueck) {
         KontoCard(
             kontoZustand = kontoZustand,
-            onSpeichern = { b, e, v, n, p -> vm.speichereProfil(b, e, v, n, p) },
-            onPasswort = { alt, neu -> vm.aenderePasswort(alt, neu) },
-            onMeldungWeg = { vm.kontoMeldungWeg() },
+            onSpeichern = { b, e, v, n, p -> konto.speichereProfil(b, e, v, n, p) },
+            onPasswort = { alt, neu -> konto.aenderePasswort(alt, neu) { vm.logout() } },
+            onMeldungWeg = { konto.kontoMeldungWeg() },
         )
         ZweiterFaktorCard(
             zfZustand = zfZustand,
-            onEinrichten = { vm.richteZweitenFaktorEin(it) },
-            onBestaetigen = { vm.bestaetigeZweitenFaktor(it) },
-            onNeueCodes = { vm.erneuereZweiterFaktorCodes(it) },
-            onAbschalten = { pw, code -> vm.schalteZweitenFaktorAb(pw, code) },
-            onZurueck = { vm.zweiterFaktorZurueck() },
+            onEinrichten = { konto.richteZweitenFaktorEin(it) },
+            onBestaetigen = { konto.bestaetigeZweitenFaktor(it) },
+            onNeueCodes = { konto.erneuereZweiterFaktorCodes(it) },
+            onAbschalten = { pw, code -> konto.schalteZweitenFaktorAb(pw, code) },
+            onZurueck = { konto.zweiterFaktorZurueck() },
         )
         GeraeteCard(
             zustand = geraeteZustand,
-            onReload = { vm.ladeGeraete() },
-            onRevoke = { vm.entwerteGeraet(it) },
-            onRevokeOthers = { vm.entwerteAndereGeraete() },
+            onReload = { konto.ladeGeraete() },
+            onRevoke = { konto.entwerteGeraet(it) },
+            onRevokeOthers = { konto.entwerteAndereGeraete() },
         )
     }
 }
