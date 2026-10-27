@@ -241,8 +241,20 @@ class MainViewModel @Inject constructor(
      * Als Teil von AppUiState loeste jedes Blaettern und jede Suche eine
      * Rekomposition in allen sechzehn aus. Siehe GalleryUiState.
      */
-    internal val _galleryState = MutableStateFlow(GalleryUiState())
-    val galleryState = _galleryState.asStateFlow()
+    internal val galerie = Galerie(
+        scope = viewModelScope,
+        holeSeite = { g, seite ->
+            retryOnNetwork {
+                repo.sets.getSets(scopeFor(ch.brickinventoryapp.data.ScopeFilter.View.GALLERY),
+                    search = g.galleryQuery, theme = g.galleryTheme, sort = g.gallerySort, page = seite,
+                    storage = lagerFor(ch.brickinventoryapp.data.ScopeFilter.View.GALLERY))
+            }
+        },
+        holeKennzahlen = { repo.finanzen.getStats(scopeFor(ch.brickinventoryapp.data.ScopeFilter.View.GALLERY)) },
+        meldeFehler = { _snackbar.value = meldungFuerSnackbar(it) },
+        vergissScroll = { scrollMemory.vergiss("gallery") },
+    )
+    val galleryState: kotlinx.coroutines.flow.StateFlow<GalleryUiState> = galerie.state
 
     /**
      * Läuft gerade eine Prüfung vor dem Erfassen? Siehe ErfassungUiState.
@@ -460,14 +472,10 @@ class MainViewModel @Inject constructor(
     // nicht fuenf halbe Orte im Vorrat hinterlassen.
     internal var lagerJob: kotlinx.coroutines.Job? = null
 
-    internal var gallerySearchJob: kotlinx.coroutines.Job? = null
-
-    // Eigener Auftrag und nicht gallerySearchJob mitbenutzt: Beide Suchfelder
+    // Eigener Auftrag und nicht der Suchauftrag der Galerie: Beide Suchfelder
     // koennen gleichzeitig einen Wert tragen, und ein gemeinsamer Auftrag
     // haette das Tippen in der Merkliste die Galerie-Suche abbrechen lassen.
     internal var merklisteSearchJob: kotlinx.coroutines.Job? = null
-    internal var galleryListJob: kotlinx.coroutines.Job? = null
-    internal var galleryGeneration = 0
 
     /**
      * Die EINE Stelle, an der ein Fehler einen Satz bekommt (Nachtrag 116).
@@ -580,7 +588,7 @@ class MainViewModel @Inject constructor(
         }
 
         // Sets nachlagen falls Erstladung beim App-Start scheiterte
-        if (_galleryState.value.sets.isEmpty() && !_galleryState.value.galleryLoading) loadDashboard()
+        if (galerie.state.value.sets.isEmpty() && !galerie.state.value.galleryLoading) loadDashboard()
     }
 
     /** Import abgeschlossen: Daten neu laden, Banner kurz sichtbar lassen, dann ausblenden. */

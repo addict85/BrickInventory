@@ -85,21 +85,18 @@ internal fun MainViewModel.applySetAggregate(agg: SetAggregate?) {
     if (agg == null || agg.setNumber.isBlank()) return
     // Die Liste liegt seit der Aufteilung im Galerie-Fluss, nicht mehr in
     // AppUiState — der Kommentar oben nennt sie noch `_state.sets`.
-    _galleryState.update { st ->
-        st.copy(sets = st.sets.map { s ->
-            if (s.setNumber != agg.setNumber) s
-            else s.copy(
-                condition        = agg.condition ?: s.condition,
-                // Ohne diese Zeile behielte die Kachel nach einer
-                // Zustandsänderung die alten Plaketten, bis die Liste neu
-                // geladen wird — derselbe Fehler, für den das Aggregat
-                // ursprünglich eingeführt wurde, nur eine Ebene tiefer.
-                conditions       = agg.conditions.ifEmpty { s.conditions },
-                usedCount        = agg.usedCount ?: s.usedCount,
-                maxPurchasePrice = agg.maxPurchasePrice ?: s.maxPurchasePrice,
-                avgPurchasePrice = agg.avgPurchasePrice ?: s.avgPurchasePrice
-            )
-        })
+    galerie.aendereSet(agg.setNumber) { s ->
+        s.copy(
+            condition        = agg.condition ?: s.condition,
+            // Ohne diese Zeile behielte die Kachel nach einer
+            // Zustandsänderung die alten Plaketten, bis die Liste neu
+            // geladen wird — derselbe Fehler, für den das Aggregat
+            // ursprünglich eingeführt wurde, nur eine Ebene tiefer.
+            conditions       = agg.conditions.ifEmpty { s.conditions },
+            usedCount        = agg.usedCount ?: s.usedCount,
+            maxPurchasePrice = agg.maxPurchasePrice ?: s.maxPurchasePrice,
+            avgPurchasePrice = agg.avgPurchasePrice ?: s.avgPurchasePrice
+        )
     }
 }
 

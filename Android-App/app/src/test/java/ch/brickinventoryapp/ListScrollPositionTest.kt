@@ -214,16 +214,18 @@ class ListScrollPositionTest {
 
         // Ein Filterwechsel muss die gemerkte Stelle verwerfen: Sie zeigt sonst
         // auf Sets, die in der neuen Liste woanders oder gar nicht stehen.
-        val gal = code(read("ui/GalleryFeature.kt"))
-        for (fn in listOf("setGalleryQuery", "setGalleryTheme", "setGallerySort")) {
+        val gal = code(read("ui/Galerie.kt"))
+        for (fn in listOf("setzeSuche", "setzeThema", "setzeSortierung")) {
             // Funktionsrumpf statt eines festen Zeichenfensters (Nachtrag
-            // 115): Ein Absatz Erklärung mehr über der Fundstelle schob die
-            // gesuchte Zeile sonst aus dem Fenster. Siehe Quellen.kt.
-            val rumpf = Quellen.funktion(gal, "fun MainViewModel.$fn(")
+            // 115). Siehe Quellen.kt.
+            val rumpf = Quellen.funktion(gal, "fun $fn(")
             assert(rumpf.isNotEmpty()) { "$fn fehlt" }
-            assert(rumpf.contains("scrollMemory.vergiss")) {
+            assert(rumpf.contains("vergissScroll()")) {
                 "$fn verwirft die gemerkte Rollposition nicht"
             }
+        }
+        assert(code(read("ui/MainViewModel.kt")).contains("vergissScroll = { scrollMemory.vergiss(\"gallery\") }")) {
+            "Die Galerie vergisst beim Filterwechsel nicht die Rollposition der Galerie"
         }
     }
 

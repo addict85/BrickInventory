@@ -46,166 +46,16 @@ internal fun MainViewModel.loadDashboard() {
 }
 
 // ── Sets ─────────────────────────────────────────────────────────────────
-// Entprellte Suche und Filter-Generation stehen als FELDER im MainViewModel
-// (wie partsJob dort seit jeher). Auf Dateiebene waren sie prozessweit: Zwei
-// Instanzen haetten sich Abbruch-Job und Generation geteilt, und die eine
-// Ladung haette die andere abgebrochen.
 
-/**
- * Erste Seite der Galerie laden — mit den aktuell eingestellten Filtern.
- *
- * ── Warum serverseitig (Marcos Vorgabe) ─────────────────────────────────────
- * Vorher holte die App ALLE Sets und filterte im Gerät. Das war eine zweite
- * Fassung der Suche neben der des Servers, und sie konnte weniger: kein Jahr
- * im Suchtext, keine Sortierung, und die Themenliste entstand aus der
- * geladenen Liste statt aus dem Bestand. Dieselbe Eingabe fand im Browser
- * etwas, am Telefon nicht.
- *
- * Jetzt reicht die App `search`, `theme`, `sort` und `page` durch und zeigt,
- * was zurückkommt. Die Abfrage ist dieselbe wie in der Webapp
- * (utils/handlers.ts, getSets).
- */
-internal fun MainViewModel.loadSets() {
-    val gen = ++galleryGeneration
-    galleryListJob?.cancel()
-    galleryListJob = viewModelScope.launch {
-        // Ein Fluss, eine Domaene: Seit `isLoading` aufgeteilt ist (siehe
-        // AppUiState.loginLaeuft), steht der Ladezustand der Galerie in der
-        // Galerie — und ein Abruf der Teileliste kann ihn nicht mehr beenden.
-        _galleryState.update {
-            it.copy(galleryLoading = true, galleryLoadingMore = false, galleryPage = 1)
-        }
-        val g = _galleryState.value
-        val r = retryOnNetwork {
-            repo.sets.getSets(scopeFor(ScopeFilter.View.GALLERY),
-                search = g.galleryQuery, theme = g.galleryTheme, sort = g.gallerySort, page = 1,
-                storage = lagerFor(ScopeFilter.View.GALLERY))
-        }
-        if (gen != galleryGeneration) return@launch   // inzwischen neuer Filter
-        when (r) {
-            is Result.Success -> {
-                _galleryState.update {
-                    it.copy(sets = r.data.sets, galleryTotal = r.data.total,
-                        galleryPage = 1,
-                        // Themen nur übernehmen, wenn welche kommen: Der Server
-                        // schickt sie ausschliesslich mit der ersten Seite, und
-                        // eine leere Liste würde die Auswahl sonst leerräumen.
-                        galleryThemes = if (r.data.themes.isNotEmpty()) r.data.themes else it.galleryThemes,
-                        galleryLoading = false)
-                }
-            }
-            is Result.Error   -> {
-                _galleryState.update { it.copy(galleryLoading = false) }
-                _snackbar.value = meldungFuerSnackbar(r)
-            }
-        }
-    }
-}
+/** Erste Seite mit den eingestellten Filtern — Regeln und Zustand stehen in [Galerie]. */
+internal fun MainViewModel.loadSets() = galerie.laden()
 
-/**
- * Nächste Seite anhängen (Endlos-Scroll).
- *
- * Antworten einer älteren Filter-Generation werden verworfen — sonst hinge
- * eine späte Seite 2 des ALTEN Filters an der neuen Liste, mit gemischtem
- * Inhalt und doppelten Schlüsseln im Raster.
- */
-internal fun MainViewModel.loadMoreSets() {
-    // Beide Ladezustaende der Galerie, und nur die: Vorher stand der erste in
-    // AppUiState.isLoading, und damit sperrte JEDER fremde Abruf — Anmeldung,
-    // Teileliste, Bewertung — das Nachladen hier (siehe AppUiState.loginLaeuft).
-    val g = _galleryState.value
-    if (g.galleryLoading || g.galleryLoadingMore) return
-    if (g.galleryTotal > 0 && g.sets.size >= g.galleryTotal) return
-    val gen = galleryGeneration
+/** Nächste Seite anhängen (Endlos-Scroll). */
+internal fun MainViewModel.loadMoreSets() = galerie.mehrLaden()
 
-    // ── Die Sperre MUSS vor dem launch stehen (Nachtrag 106) ─────────────────
-    //
-    // Marcos Befund: „Wenn ich schnell nach unten scrolle, springt die Liste
-    // nach einer Sekunde wieder nach oben — immer auf dieselbe Zeile."
-    //
-    // Der Endlos-Scroll in GalleryScreen hängt an einem snapshotFlow, dessen
-    // LaunchedEffect bei JEDER Änderung von `sets.size` neu startet und sofort
-    // wieder auswertet. Beim schnellen Wischen feuert er mehrfach kurz
-    // hintereinander.
-    //
-    // `galleryLoadingMore` wurde bisher INNERHALB der Koroutine gesetzt, also
-    // erst beim nächsten Ablaufschritt. Zwei Aufrufe im selben Frame lasen
-    // deshalb beide `false`, kamen beide am Wächter vorbei und forderten beide
-    // `s.galleryPage + 1` an — DIESELBE Seite. Die 100 Sets landeten zweimal in
-    // der Liste, und `items(sets, key = { it.setNumber })` bekam doppelte
-    // Schlüssel. Ein Raster löst eine Position dann auf das ERSTE Vorkommen des
-    // Schlüssels auf — daher der Sprung, und daher immer auf dieselbe Zeile.
-    //
-    // Synchron gesetzt, vor dem launch: Der zweite Aufruf sieht `true` und
-    // kehrt um.
-    _galleryState.update { it.copy(galleryLoadingMore = true) }
-
-    viewModelScope.launch {
-        val next = g.galleryPage + 1
-        val r = retryOnNetwork {
-            repo.sets.getSets(scopeFor(ScopeFilter.View.GALLERY),
-                search = g.galleryQuery, theme = g.galleryTheme, sort = g.gallerySort, page = next,
-                storage = lagerFor(ScopeFilter.View.GALLERY))
-        }
-        if (gen != galleryGeneration) {
-            // Sperre lösen, sonst bleibt der Endlos-Scroll für immer blockiert:
-            // Sie wird jetzt VOR dem launch gesetzt, also auch dann, wenn diese
-            // Antwort verworfen wird (Nachtrag 106).
-            _galleryState.update { it.copy(galleryLoadingMore = false) }
-            return@launch
-        }
-        when (r) {
-            is Result.Success -> _galleryState.update {
-                // ── Zweite Sicherung: keine doppelten Schlüssel (Nachtrag 106)
-                //
-                // Der Wächter oben schliesst das Wettrennen im Client. Der
-                // Server kann Überschneidungen aber auch von sich aus liefern:
-                // Bei einer Sortierung mit gleichen Werten (etwa nach Jahr)
-                // steht die Reihenfolge innerhalb einer Gruppe nicht fest, und
-                // zwischen zwei Seitenabfragen kann derselbe Datensatz erneut
-                // auftauchen.
-                //
-                // Ein doppelter Schlüssel im Raster ist keine Kleinigkeit:
-                // LazyVerticalGrid löst Positionen über den Schlüssel auf und
-                // landet beim ersten Vorkommen — genau Marcos Sprung.
-                val vorhanden = it.sets.mapTo(HashSet()) { s2 -> s2.setNumber }
-                val neue = r.data.sets.filterNot { s2 -> s2.setNumber in vorhanden }
-                it.copy(galleryLoadingMore = false, sets = it.sets + neue,
-                    galleryTotal = r.data.total, galleryPage = next)
-            }
-            is Result.Error   -> _galleryState.update { it.copy(galleryLoadingMore = false) }
-        }
-    }
-}
-
-/** Suchtext: entprellt, damit nicht jeder Tastendruck eine Abfrage auslöst. */
-internal fun MainViewModel.setGalleryQuery(q: String) {
-    // Suchtext gewechselt: Die gemerkte Stelle zeigt auf Sets, die in der neuen
-    // Liste woanders oder gar nicht stehen (ScrollMemory.kt).
-    scrollMemory.vergiss("gallery")
-    _galleryState.update { it.copy(galleryQuery = q) }
-    gallerySearchJob?.cancel()
-    gallerySearchJob = viewModelScope.launch {
-        delay(350)
-        loadSets()
-    }
-}
-
-internal fun MainViewModel.setGalleryTheme(theme: String) {
-    // Thema gewechselt: Die gemerkte Stelle zeigt auf Sets, die in der neuen
-    // Liste woanders oder gar nicht stehen (ScrollMemory.kt).
-    scrollMemory.vergiss("gallery")
-    _galleryState.update { it.copy(galleryTheme = theme) }
-    loadSets()
-}
-
-internal fun MainViewModel.setGallerySort(sort: String) {
-    // Sortierung gewechselt: Die gemerkte Stelle zeigt auf Sets, die in der neuen
-    // Liste woanders oder gar nicht stehen (ScrollMemory.kt).
-    scrollMemory.vergiss("gallery")
-    _galleryState.update { it.copy(gallerySort = sort) }
-    loadSets()
-}
+internal fun MainViewModel.setGalleryQuery(q: String) = galerie.setzeSuche(q)
+internal fun MainViewModel.setGalleryTheme(theme: String) = galerie.setzeThema(theme)
+internal fun MainViewModel.setGallerySort(sort: String) = galerie.setzeSortierung(sort)
 
 internal fun MainViewModel.addSet(setNumber: String, quantity: Int = 1, purchasePrice: Double? = null,
                                   condition: String? = null, ownerUserId: Int? = null,
@@ -328,7 +178,7 @@ internal fun MainViewModel.addSet(setNumber: String, quantity: Int = 1, purchase
                     // gleich darüber), es räumte also nur eine Anzeige ab, die
                     // einer ANDEREN Domäne gehörte — im Zweifel dem laufenden
                     // Galerie-Abruf.
-                    _galleryState.update { it.copy(gallerySearchFoundSetNumber = r.data.setNumber ?: sn) }
+                    galerie.zeigeDetail(r.data.setNumber ?: sn)
                 } else if (r.data.success) {
                     _snackbar.value = text(if (r.data.action == "added") R.string.vm_added else R.string.vm_updated, r.data.setNumber)
                     loadSets()
@@ -447,7 +297,7 @@ internal fun MainViewModel.deleteSet(setNumber: String) {
             is Result.Success -> {
                 // Sofort aus dem State entfernen, damit die Kachel nicht bis zum
                 // Neuladen der Liste sichtbar bleibt; danach mit dem Server syncen.
-                _galleryState.update { st -> st.copy(sets = st.sets.filterNot { it.setNumber == setNumber }) }
+                galerie.entferne(setNumber)
                 _snackbar.value = text(R.string.vm_set_deleted, setNumber)
                 loadSets()
                 loadStats()
@@ -467,18 +317,7 @@ internal fun MainViewModel.deleteSet(setNumber: String) {
 }
 
 // ── Stats ────────────────────────────────────────────────────────────────
-internal fun MainViewModel.loadStats() {
-    viewModelScope.launch {
-        when (val r = repo.finanzen.getStats(scopeFor(ScopeFilter.View.GALLERY))) {
-            is Result.Success -> _galleryState.update { it.copy(stats = r.data.stats) }
-            // Bewusst ohne Meldung: Die Kennzahlen sind Beiwerk — scheitern sie,
-            // bleibt die Galerie stehen, und eine Meldung über eine Zahlenreihe
-            // am Kopf der Seite wäre lauter als der Verlust. Dieselbe Begründung
-            // wie bei den Teile-Kennzahlen in PartsFeature.kt.
-            is Result.Error -> {}
-        }
-    }
-}
+internal fun MainViewModel.loadStats() = galerie.ladeKennzahlen()
 
 // Hier stand loadGallery(): ein ZWEITER Lader fuer dieselbe Liste, der
 // `repo.sets.getSets()` ohne jedes Argument rief.

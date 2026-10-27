@@ -66,7 +66,7 @@ class AddExistingSetTest {
             "Der exists-Zweig muss VOR dem Normalfall stehen — sonst läuft das " +
                 "Nachladen samt Erfolgsmeldung für einen Vorgang, der nichts geschrieben hat"
         }
-        assert(addSetBlock.contains("gallerySearchFoundSetNumber")) {
+        assert(addSetBlock.contains("galerie.zeigeDetail(")) {
             "Bei vorhandenem Set muss der Auslöser für die Detailansicht gesetzt werden"
         }
     }

@@ -52,9 +52,9 @@ class GalerieLaedtGefiltertTest {
         }
 
         // Selbstbeweis: Findet das Muster nichts, waere die Liste leer und der
-        // Test gruen, ohne etwas geprueft zu haben. Erwartet werden mindestens
-        // loadSets() und loadMoreSets().
-        assert(gefunden >= 2) {
+        // Test gruen, ohne etwas geprueft zu haben. Erste Seite und Nachladen
+        // gehen seit der Klasse Galerie durch DENSELBEN Abruf (MainViewModel).
+        assert(gefunden >= 1) {
             "Nur $gefunden Aufruf(e) von '$AUFRUF' gefunden — Muster veraltet?"
         }
 
