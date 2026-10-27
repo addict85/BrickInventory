@@ -41,6 +41,7 @@ fun BrickInventoryManagerApp(
     // Der Katalog haelt seinen Zustand selbst; die Activity haelt beide, damit
     // Liste und Detail dieselbe Instanz sehen (siehe CatalogViewModel).
     katalog: CatalogViewModel,
+    gutscheine: ch.brickinventoryapp.ui.viewmodel.GutscheinViewModel,
     imageLoader: coil3.ImageLoader,
 ) {
     // collectAsStateWithLifecycle: Collection stoppt, wenn die App im
@@ -222,7 +223,7 @@ fun BrickInventoryManagerApp(
         collectionGraph(vm, navController, imageLoader, bottomNavItems, snackbarHostState,
             galleryGridState, partsGridState, minifigsGridState)
         catalogGraph(vm, katalog, navController, imageLoader, bottomNavItems, snackbarHostState)
-        toolsGraph(vm, navController, imageLoader, bottomNavItems, snackbarHostState, activity,
+        toolsGraph(vm, gutscheine, navController, imageLoader, bottomNavItems, snackbarHostState, activity,
             financeListState, partsListState, settingsScrollState)
     }
 }

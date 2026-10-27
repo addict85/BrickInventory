@@ -107,7 +107,7 @@ class SpracheDerMeldungenTest {
     @Test
     fun `die ViewModels haben den Helfer und benutzen ihn`() {
         // Ohne den Helfer schreibt der naechste Aufrufer wieder ctx.getString().
-        for (datei in listOf("ui/MainViewModel.kt", "ui/viewmodel/CatalogViewModel.kt")) {
+        for (datei in listOf("ui/MainViewModel.kt", "ui/viewmodel/CatalogViewModel.kt", "ui/viewmodel/Texte.kt")) {
             val s = Quellen.ohneKommentare(Quellen.lies(datei))
             assert(Regex("""fun text\(id: Int, vararg args: Any\?\)""").containsMatchIn(s)) {
                 "$datei hat keinen text()-Helfer mehr"
@@ -124,7 +124,7 @@ class SpracheDerMeldungenTest {
         // einzelnen Prozentzeichen — etwa eine Prozentangabe — wuerde dort eine
         // Ausnahme werfen statt angezeigt zu werden, und zwar erst zur Laufzeit
         // und nur fuer genau diesen Text.
-        for (datei in listOf("ui/MainViewModel.kt", "ui/viewmodel/CatalogViewModel.kt")) {
+        for (datei in listOf("ui/MainViewModel.kt", "ui/viewmodel/CatalogViewModel.kt", "ui/viewmodel/Texte.kt")) {
             val s = Quellen.ohneKommentare(Quellen.lies(datei))
             assert(s.contains("if (args.isEmpty()) c.getString(id) else c.getString(id, *args)")) {
                 "$datei formatiert auch ohne Argumente — siehe MainViewModel.text()"

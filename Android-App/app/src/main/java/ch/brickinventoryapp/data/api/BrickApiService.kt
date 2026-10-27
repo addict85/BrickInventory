@@ -1086,5 +1086,5 @@ interface BrickApiService {
     // Eine Methode fuer `GET /vouchers/{id}/pdf` steht hier mit Absicht NICHT:
     // Das PDF holt der PdfViewerScreen selbst ueber seine Adresse, mit dem
     // angemeldeten Client der App. Siehe gutscheinPdfAdresse() in
-    // ui/GutscheinFeature.kt.
+    // ui/viewmodel/GutscheinViewModel.kt.
 }

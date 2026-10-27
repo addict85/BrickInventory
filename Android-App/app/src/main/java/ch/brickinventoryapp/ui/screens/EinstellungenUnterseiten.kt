@@ -129,7 +129,7 @@ private fun Unterseite(
  */
 @Composable
 fun GutscheineUnterseite(
-    vm: MainViewModel,
+    gvm: ch.brickinventoryapp.ui.viewmodel.GutscheinViewModel,
     snackbarHostState: SnackbarHostState,
     onZurueck: () -> Unit,
 ) {
@@ -140,7 +140,7 @@ fun GutscheineUnterseite(
     // GutscheinUiState und meldete fuenf Felder, die es „nicht gibt".
     // GEMESSEN, nicht vermutet: genau daran war der erste CI-Lauf dieses
     // Umbaus rot (534 Tests, einer rot).
-    val gutscheinZustand by vm.gutscheinState.collectAsStateWithLifecycle()
+    val gutscheinZustand by gvm.state.collectAsStateWithLifecycle()
     // Die Zwischenablage kommt aus Compose und nicht aus dem ViewModel: Sie
     // ist an die Komposition gebunden. Die Rueckmeldung laeuft ueber den
     // Snackbar des ViewModels, damit sie dort steht, wo alle anderen Meldungen
@@ -148,25 +148,25 @@ fun GutscheineUnterseite(
     val zwischenablage = androidx.compose.ui.platform.LocalClipboardManager.current
     // Beim Oeffnen DIESER Seite laden und nicht mehr beim Oeffnen der
     // Einstellungen: Wer die Sprache umstellt, braucht keine Gutscheinliste.
-    LaunchedEffect(Unit) { vm.ladeGutscheine() }
+    LaunchedEffect(Unit) { gvm.ladeGutscheine() }
     Unterseite(stringResource(R.string.vouchers_title), snackbarHostState, onZurueck) {
         GutscheineCard(
             zustand = gutscheinZustand,
-            onFeld = { n, p, b, w -> vm.setzeGutscheinFeld(n, p, b, w) },
-            onPinSchalten = { vm.schalteGutscheinPin(it) },
-            onBearbeiten = { vm.bearbeiteGutschein(it) },
-            onAbbrechen = { vm.leereGutscheinFormular() },
-            onSpeichern = { vm.speichereGutschein(it) },
-            onLoeschen = { vm.loescheGutschein(it) },
-            onPdfOeffnen = { vm.oeffneGutscheinPdf(it) },
+            onFeld = { n, p, b, w -> gvm.setzeGutscheinFeld(n, p, b, w) },
+            onPinSchalten = { gvm.schalteGutscheinPin(it) },
+            onBearbeiten = { gvm.bearbeiteGutschein(it) },
+            onAbbrechen = { gvm.leereGutscheinFormular() },
+            onSpeichern = { gvm.speichereGutschein(it) },
+            onLoeschen = { gvm.loescheGutschein(it) },
+            onPdfOeffnen = { gvm.oeffneGutscheinPdf(it) },
             onKopieren = { wert, istNummer ->
                 zwischenablage.setText(androidx.compose.ui.text.AnnotatedString(wert))
-                vm.meldeGutscheinKopiert(istNummer)
+                gvm.meldeGutscheinKopiert(istNummer)
             },
-            onGuthaben = { vm.frageGuthabenAb(it) },
-            onExportieren = { vm.oeffneGutscheinExport() },
-            onGuthabenAlle = { vm.frageAlleGuthabenAb() },
-            onGuthabenAbbrechen = { vm.guthabenLaufAbbrechen() },
+            onGuthaben = { gvm.frageGuthabenAb(it) },
+            onExportieren = { gvm.oeffneGutscheinExport() },
+            onGuthabenAlle = { gvm.frageAlleGuthabenAb() },
+            onGuthabenAbbrechen = { gvm.guthabenLaufAbbrechen() },
         )
     }
 }

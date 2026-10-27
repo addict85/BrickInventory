@@ -640,4 +640,12 @@ object AppModule {
     @Singleton
     fun provideApiService(retrofit: Retrofit): BrickApiService =
         retrofit.create(BrickApiService::class.java)
+
+    // Die herausgelösten ViewModels sehen Texte und Dateien nur über diese
+    // Schnittstellen — so laufen sie im JVM-Test ohne Context.
+    @Provides
+    fun provideTexte(t: ch.brickinventoryapp.ui.viewmodel.AppTexte): ch.brickinventoryapp.ui.viewmodel.Texte = t
+
+    @Provides
+    fun provideDateiLeser(l: ch.brickinventoryapp.ui.viewmodel.AppDateiLeser): ch.brickinventoryapp.ui.viewmodel.DateiLeser = l
 }

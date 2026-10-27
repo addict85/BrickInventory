@@ -40,7 +40,7 @@ class GutscheineContractTest {
 
     private val api by lazy { code(lies("src/main/java/ch/brickinventoryapp/data/api/BrickApiService.kt")) }
     private val repo by lazy { code(lies("src/main/java/ch/brickinventoryapp/data/repository/GutscheineRepository.kt")) }
-    private val feature by lazy { code(lies("src/main/java/ch/brickinventoryapp/ui/GutscheinFeature.kt")) }
+    private val feature by lazy { code(lies("src/main/java/ch/brickinventoryapp/ui/viewmodel/GutscheinViewModel.kt")) }
     private val karte by lazy { code(lies("src/main/java/ch/brickinventoryapp/ui/screens/GutscheineCard.kt")) }
 
     @Test

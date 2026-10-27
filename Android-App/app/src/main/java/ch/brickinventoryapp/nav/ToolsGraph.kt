@@ -66,6 +66,7 @@ import ch.brickinventoryapp.ui.ManualItemDetailUiState
  */
 fun NavGraphBuilder.toolsGraph(
     vm: MainViewModel,
+    gutscheinVm: ch.brickinventoryapp.ui.viewmodel.GutscheinViewModel,
     navController: NavHostController,
     imageLoader: coil3.ImageLoader,
     bottomNavItems: List<Triple<Screen, @Composable () -> Unit, String>>,
@@ -232,7 +233,7 @@ fun NavGraphBuilder.toolsGraph(
         // ViewModels dort verloren.
         composable(Screen.Gutscheine.route) {
             val state by vm.state.collectAsStateWithLifecycle()
-            val gutscheine by vm.gutscheinState.collectAsStateWithLifecycle()
+            val gutscheine by gutscheinVm.state.collectAsStateWithLifecycle()
             // Ein angetipptes Gutschein-PDF: Das Ziel steht im Zustand, die
             // Navigation macht der Graph. Der Betrachter ist der vorhandene
             // PdfViewerScreen — er laedt die Adresse mit dem angemeldeten
@@ -241,8 +242,8 @@ fun NavGraphBuilder.toolsGraph(
                 val id = gutscheine.pdfZiel ?: return@LaunchedEffect
                 val nummer = gutscheine.gutscheine.find { it.id == id }?.number.orEmpty()
                 navController.navigate(Screen.PdfViewer.createRoute(
-                    ch.brickinventoryapp.ui.gutscheinPdfAdresse(state.serverUrl, id), nummer))
-                vm.gutscheinPdfQuittieren()
+                    ch.brickinventoryapp.ui.viewmodel.gutscheinPdfAdresse(state.serverUrl, id), nummer))
+                gutscheinVm.gutscheinPdfQuittieren()
             }
             // Dasselbe fuer den Export ALLER Gutscheine. Der Titel wird
             // AUSSERHALB des LaunchedEffect gelesen: stringResource ist
@@ -251,10 +252,10 @@ fun NavGraphBuilder.toolsGraph(
             LaunchedEffect(gutscheine.exportZeigen) {
                 if (!gutscheine.exportZeigen) return@LaunchedEffect
                 navController.navigate(Screen.PdfViewer.createRoute(
-                    ch.brickinventoryapp.ui.gutscheinExportAdresse(state.serverUrl), exportTitel))
-                vm.gutscheinExportQuittieren()
+                    ch.brickinventoryapp.ui.viewmodel.gutscheinExportAdresse(state.serverUrl), exportTitel))
+                gutscheinVm.gutscheinExportQuittieren()
             }
-            GutscheineUnterseite(vm, snackbarHostState) { navController.popBackStack() }
+            GutscheineUnterseite(gutscheinVm, snackbarHostState) { navController.popBackStack() }
         }
 
         composable(Screen.Preisalarme.route) {

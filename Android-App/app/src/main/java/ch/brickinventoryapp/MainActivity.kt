@@ -64,6 +64,10 @@ class MainActivity : ComponentActivity() {
     // und die Liste bekaeme es nie zu sehen.
     private val katalogVm: CatalogViewModel by viewModels()
 
+    // Ebenso: Eine Guthabenabfrage über alle Karten soll weiterlaufen, wenn
+    // man die Gutschein-Seite verlässt.
+    private val gutscheinVm: ch.brickinventoryapp.ui.viewmodel.GutscheinViewModel by viewModels()
+
     // ImageLoader kommt jetzt als Hilt-Singleton aus AppModule — eine
     // Instanz für die gesamte Prozesslaufzeit statt einer pro Activity
     // (siehe Kommentar dort: sonst verlor jede Bildschirmdrehung den
@@ -144,7 +148,7 @@ class MainActivity : ComponentActivity() {
             val theme by vm.appTheme.collectAsStateWithLifecycle()
             val dunkel by vm.dunkelNachSystem.collectAsStateWithLifecycle()
             BrickInventoryManagerTheme(theme = wirksamesDesign(theme, dunkel, isSystemInDarkTheme())) {
-                BrickInventoryManagerApp(vm, katalogVm, imageLoader)
+                BrickInventoryManagerApp(vm, katalogVm, gutscheinVm, imageLoader)
             }
         }
     }
