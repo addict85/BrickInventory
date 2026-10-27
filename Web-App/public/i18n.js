@@ -269,7 +269,17 @@ export function applyLang(lang, persist) {
     if (el.dataset.i18nVars) { try { vars = JSON.parse(el.dataset.i18nVars); } catch (_) {} }
     const val = t(key, vars);
     if (attr) el.setAttribute(attr, val);
-    else el.textContent = val;
+    else if (el.dataset.ico) {
+      // Symbol vor dem Text: data-ico nennt es, der Text bleibt übersetzbar.
+      const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+      svg.setAttribute('class', 'ico'); svg.setAttribute('aria-hidden', 'true');
+      const use = document.createElementNS('http://www.w3.org/2000/svg', 'use');
+      use.setAttribute('href', '#i-' + el.dataset.ico);
+      svg.appendChild(use);
+      const text = document.createElement('span');
+      text.className = 'ico-text'; text.textContent = val;
+      el.replaceChildren(svg, text);
+    } else el.textContent = val;
   });
 
   // Re-render nav tab labels

@@ -13,7 +13,7 @@
 // Seiten der Überwachung beieinander — die Liste, die zeigt, was läuft, und
 // das Fenster, das zeigt, was dabei protokolliert wurde.
 import { registerActions } from './00-registry.js';
-import { G, api, esc, escHtmlAttr, toast } from './01-core.js';
+import { ico, G, api, esc, escHtmlAttr, toast } from './01-core.js';
 import { LANG, locale, t, tRaw } from '../i18n.js';
 
 /**
@@ -118,7 +118,7 @@ function translateJobSub(sub) {
   if (sub === 'Alle erledigt') return t('monitor.sub.all_done');
   m = sub.match(/^Alle (\d+) Bilder gecacht$/);
   if (m) return t('monitor.sub.imgs_cached', {n: m[1]});
-  if (sub === 'Alle Bilder gecacht') return t('monitor.sub.imgs_cached', {n: '✓'});
+  if (sub === 'Alle Bilder gecacht') return t('monitor.sub.imgs_cached', {n: ''}).trim();
   if (/^Keine aktiven/.test(sub)) return t('monitor.sub.no_active');
   m = sub.match(/^(\d+) Sets bereit zum Retry, (\d+) warten$/);
   if (m) return t('monitor.sub.retry_ready', {n: m[1], w: m[2]});
@@ -185,12 +185,12 @@ export async function loadMonitor() {
       return svgs[k] ? `<svg width="16" height="16" viewBox="0 0 120 120" xmlns="http://www.w3.org/2000/svg" style="flex-shrink:0">${svgs[k]}</svg>` : '';
     };
     const statusIcon = (s, j) => {
-      if (s === 'running') return '⏳';
-      if (s === 'done')    return '✅';
-      if (s === 'error')   return '❌';
+      if (s === 'running') return ico('uhr');
+      if (s === 'done')    return ico('ok');
+      if (s === 'error')   return ico('fehler');
       // idle: show warning if there's pending work (total > progress or sub mentions pending)
-      if (s === 'idle' && j.total > 0 && j.progress < j.total) return '⚠️';
-      return '💤';
+      if (s === 'idle' && j.total > 0 && j.progress < j.total) return ico('warnung');
+      return ico('pause');
     };
     const bar = (v,t) => {
       if (!t) return '';

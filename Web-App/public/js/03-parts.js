@@ -1,7 +1,7 @@
 import { ladeAnzeige } from './01-bausteine.js';
 import { registerActions } from './00-registry.js';
 import { colorName, locale, t } from '../i18n.js';
-import { G, api, esc, escHex, escHtml, escJs, escUrl, fmtBig, fullUrl, imgUrl, observeLazyImages, thumbUrl } from './01-core.js';
+import { ico, G, api, esc, escHex, escHtml, escJs, escUrl, fmtBig, fullUrl, imgUrl, observeLazyImages, thumbUrl } from './01-core.js';
 import { addScopeParam, addLagerParam, scopeQuery } from './14-scope.js';
 import { PARTS_ICON_SVG, allSets } from './02-gallery.js';
 import { loadManualParts, renderManualParts } from './06-minifigs.js';
@@ -144,7 +144,7 @@ async function loadPartsPage(isFirst){
   } catch (_) {
     _partsLoading = false;
     if (isFirst) G('parts-main').innerHTML =
-      `<div class="no-parts"><div class="icon">⚠️</div><h3>${t('settings.error')}</h3></div>`;
+      `<div class="no-parts"><div class="icon">${ico('warnung')}</div><h3>${t('settings.error')}</h3></div>`;
     return;
   }
   // Antwort einer inzwischen verworfenen Filterkombination — verwerfen.

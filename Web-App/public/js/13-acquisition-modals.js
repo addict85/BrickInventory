@@ -16,7 +16,7 @@
 import { detailZeile, ladeAnzeige } from './01-bausteine.js';
 import { registerActions } from './00-registry.js';
 import { colorName, locale, t, tRaw } from '../i18n.js';
-import { escHex, CURRENCY, G, ME, api, esc, escJs, escUrl, fmtN, fullUrl, hexZiffern, imgUrl, thumbUrl, toast } from './01-core.js';
+import { ico, escHex, CURRENCY, G, ME, api, esc, escJs, escUrl, fmtN, fullUrl, hexZiffern, imgUrl, thumbUrl, toast } from './01-core.js';
 import { allSets, applySetAggregate, closeModal, curSet, loadGallery, pnlBadge, updateGalleryPrices } from './02-gallery.js';
 import { loadFinance } from './04-finance.js';
 import { deleteManualFig, deleteManualPart, loadBrickColors, loadManualFigsTable, loadManualParts, manualFigsCache, manualPartsCache, updateManualFig, updateManualPart } from './06-minifigs.js';
@@ -144,7 +144,7 @@ export function renderAcqModalBody(sn, acqs, totals) {
       <td style="padding:6px 4px;text-align:center">
         <button data-click="acqDelete" data-arg="${esc(sn)}" data-arg2="${a.id}"
           style="background:none;border:none;cursor:pointer;font-size:var(--fs-4);color:var(--r500);padding:2px 4px;border-radius:4px;line-height:1"
-          title="${t('gallery.delete.title')}">🗑️</button>
+          title="${t('gallery.delete.title')}">${ico('loeschen')}</button>
       </td>
     </tr>`;
   });
@@ -227,7 +227,7 @@ async function acqSave(sn, id, field, value) {
       if (ad?.success && curSet?.set_number === sn) {
         const summaryEl = G('m-acq-summary');
         if (summaryEl) summaryEl.innerHTML = renderAcquisitionSummary(ad.acquisitions, sn) +
-          `<button class="btn bs btn-sm" data-click="openAcqModal" data-arg="${escJs(sn)}" style="margin-top:4px;font-size:var(--fs-1);padding:2px 10px">✏️ ${t('detail.edit_prices')}</button>`;
+          `<button class="btn bs btn-sm" data-click="openAcqModal" data-arg="${escJs(sn)}" style="margin-top:4px;font-size:var(--fs-1);padding:2px 10px">${ico('bearbeiten')} ${t('detail.edit_prices')}</button>`;
       }
     }).catch(()=>{});
     return;
@@ -245,7 +245,7 @@ async function acqSave(sn, id, field, value) {
       if (!ad?.success) return;
       const sumEl = G('m-acq-summary');
       if (sumEl) sumEl.innerHTML = renderAcquisitionSummary(ad.acquisitions, sn) +
-        `<button class="btn bs btn-sm" data-click="openAcqModal" data-arg="${escJs(sn)}" style="margin-top:4px;font-size:var(--fs-1);padding:2px 10px">✏️ ${t('detail.edit_prices')}</button>`;
+        `<button class="btn bs btn-sm" data-click="openAcqModal" data-arg="${escJs(sn)}" style="margin-top:4px;font-size:var(--fs-1);padding:2px 10px">${ico('bearbeiten')} ${t('detail.edit_prices')}</button>`;
     }).catch(()=>{});
   }
   // If qty changed → reload whole modal to update summary + refresh set-detail qty
@@ -256,7 +256,7 @@ async function acqSave(sn, id, field, value) {
       if (ad.success && curSet?.set_number === sn) {
         const summaryEl = G('m-acq-summary');
         if (summaryEl) summaryEl.innerHTML = renderAcquisitionSummary(ad.acquisitions, sn) +
-          `<button class="btn bs btn-sm" data-click="openAcqModal" data-arg="${escJs(sn)}" style="margin-top:4px;font-size:var(--fs-1);padding:2px 10px">✏️ ${t('detail.edit_prices')}</button>`;
+          `<button class="btn bs btn-sm" data-click="openAcqModal" data-arg="${escJs(sn)}" style="margin-top:4px;font-size:var(--fs-1);padding:2px 10px">${ico('bearbeiten')} ${t('detail.edit_prices')}</button>`;
       }
     }).catch(()=>{});
     return;
@@ -264,7 +264,7 @@ async function acqSave(sn, id, field, value) {
 }
 
 async function acqDelete(sn, id) {
-  if (!await confirmDelete(tRaw('acq.delete_title'), t('acq.delete_text'), '🗑️')) return;
+  if (!await confirmDelete(tRaw('acq.delete_title'), t('acq.delete_text'), 'loeschen')) return;
   const d = await api('DELETE', `/v1/sets/${sn}/acquisitions/${id}`);
   if (!d.success) { toast(tRaw('settings.error'), 'error'); return; }
   // Update curSet + qty input in set-detail modal
@@ -280,7 +280,7 @@ async function acqDelete(sn, id) {
   // Refresh compact summary in set-detail modal
   const dvEl = G('m-acq-summary');
   if (dvEl) dvEl.innerHTML = renderAcquisitionSummary(ad.acquisitions, sn) +
-    `<button class="btn bs btn-sm" data-click="openAcqModal" data-arg="${escJs(sn)}" style="margin-top:4px;font-size:var(--fs-1);padding:2px 10px">✏️ ${t('detail.edit_prices')}</button>`;
+    `<button class="btn bs btn-sm" data-click="openAcqModal" data-arg="${escJs(sn)}" style="margin-top:4px;font-size:var(--fs-1);padding:2px 10px">${ico('bearbeiten')} ${t('detail.edit_prices')}</button>`;
   // Wie in acqSave(): Eine gelöschte Erfassung verändert Bestand und Wert —
   // und lässt eine Zustands-Zeile verschwinden, wenn es die letzte war.
   api('GET', `/v1/sets/${sn}/price-history`).then(renderMarketRows).catch(()=>{});
@@ -446,7 +446,7 @@ export async function openManDetail(type, id, colorId) {
   // Acquisition summary — compact, like set-detail
   rows.push(detailZeile(t('detail.purchase_price'), `
       ${renderManAcqSummary(acqs, type, id, colorId)}
-      <button class="btn bs btn-sm" data-click="openManAcqModal" style="margin-top:4px;font-size:var(--fs-1);padding:2px 10px">✏️ ${t('detail.edit_prices')}</button>
+      <button class="btn bs btn-sm" data-click="openManAcqModal" style="margin-top:4px;font-size:var(--fs-1);padding:2px 10px">${ico('bearbeiten')} ${t('detail.edit_prices')}</button>
     `, { zeilenStil: 'align-items:flex-start',
          wertId: 'man-acq-summary',
          wertStil: 'flex-direction:column;align-items:flex-end;gap:3px' }));
@@ -603,7 +603,7 @@ export async function openSetItemDetail(type, id, colorId) {
     zeilen.push(detailZeile(t('parts.color_label'), `${punkt}${esc(item.color_name)}`));
   }
   if (item?.category_name) zeilen.push(detailZeile(t('setitem.category'), esc(item.category_name)));
-  if (item?.is_spare) zeilen.push(detailZeile(t('parts.spare_tag'), '✓'));
+  if (item?.is_spare) zeilen.push(detailZeile(t('parts.spare_tag'), ico('ok')));
 
   // ── Lagerort ──────────────────────────────────────────────────────────────
   //
@@ -861,7 +861,7 @@ async function manQtySave() {
     const acqs2 = ad2?.acquisitions || [];
     const sumEl = G('man-acq-summary');
     if (sumEl) sumEl.innerHTML = renderManAcqSummary(acqs2, type, id, colorId) +
-      `<button class="btn bs btn-sm" data-click="openManAcqModal" style="margin-top:4px;font-size:var(--fs-1);padding:2px 10px">✏️ ${t('detail.edit_prices')}</button>`;
+      `<button class="btn bs btn-sm" data-click="openManAcqModal" style="margin-top:4px;font-size:var(--fs-1);padding:2px 10px">${ico('bearbeiten')} ${t('detail.edit_prices')}</button>`;
     if (G('acq-modal').classList.contains('open')) renderManAcqBody(type, id, colorId, acqs2, ad2?.totals);
   }).catch(()=>{});
 
@@ -908,7 +908,7 @@ function closeAcqModal() {
       if (!ad?.success) return;
       const sumEl = G('m-acq-summary');
       if (sumEl) sumEl.innerHTML = renderAcquisitionSummary(ad.acquisitions, sn) +
-        `<button class="btn bs btn-sm" data-click="openAcqModal" data-arg="${escJs(sn)}" style="margin-top:4px;font-size:var(--fs-1);padding:2px 10px">✏️ ${t('detail.edit_prices')}</button>`;
+        `<button class="btn bs btn-sm" data-click="openAcqModal" data-arg="${escJs(sn)}" style="margin-top:4px;font-size:var(--fs-1);padding:2px 10px">${ico('bearbeiten')} ${t('detail.edit_prices')}</button>`;
       const total = ad.totals?.quantity ?? 0;
       const qEl = G('m-qty');
       if (qEl && total > 0) { qEl.value = total; if(curSet) curSet.quantity = total; }
@@ -986,7 +986,7 @@ function renderManAcqBody(type, id, colorId, acqs, totals) {
       </td>` : ''}
       <td style="padding:6px 4px;text-align:center">
         <button data-click="manAcqDelete" data-arg="${esc(t_)}" data-arg2="${i_}" data-arg3="${c_}" data-arg4="${ai_}"
-          style="background:none;border:none;cursor:pointer;font-size:var(--fs-4);color:var(--r500);padding:2px 4px;border-radius:4px">🗑️</button>
+          style="background:none;border:none;cursor:pointer;font-size:var(--fs-4);color:var(--r500);padding:2px 4px;border-radius:4px">${ico('loeschen')}</button>
       </td>
     </tr>`;
   });
@@ -1048,7 +1048,7 @@ async function manAcqSave(type, id, colorId, acqId, field, value) {
 }
 
 async function manAcqDelete(type, id, colorId, acqId) {
-  if (!await confirmDelete(tRaw('acq.delete_title'), t('acq.delete_text'), '🗑️')) return;
+  if (!await confirmDelete(tRaw('acq.delete_title'), t('acq.delete_text'), 'loeschen')) return;
   const delUrl = type === 'fig'
     ? `/v1/minifigs/${encodeURIComponent(id)}/acquisitions/${acqId}`
     : `/v1/parts/${encodeURIComponent(id)}/${colorId}/acquisitions/${acqId}`;
@@ -1065,7 +1065,7 @@ async function manAcqDelete(type, id, colorId, acqId) {
   // Refresh inline summary in detail modal
   const sumEl = G('man-acq-summary');
   if (sumEl) sumEl.innerHTML = renderManAcqSummary(acqs, type, id, colorId) +
-    `<button class="btn bs btn-sm" data-click="openManAcqModal" style="margin-top:4px;font-size:var(--fs-1);padding:2px 10px">✏️ ${t('detail.edit_prices')}</button>`;
+    `<button class="btn bs btn-sm" data-click="openManAcqModal" style="margin-top:4px;font-size:var(--fs-1);padding:2px 10px">${ico('bearbeiten')} ${t('detail.edit_prices')}</button>`;
   if (!acqs.length) { closeAcqModal(); return; }
   renderManAcqBody(type, id, colorId, acqs, ad?.totals);
   if (type==='fig') loadManualFigsTable();

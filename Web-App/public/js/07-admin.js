@@ -2,7 +2,7 @@ import { registerActions } from './00-registry.js';
 import { detailZeile, oderStrich, textOderStrich } from './01-bausteine.js';
 import { renderAcquisitionSummary } from './13-acquisition-modals.js';
 import { locale, t, tRaw} from '../i18n.js';
-import { CURRENCY, G, ME, _settingsCache, api, esc, escJs, fmtN, fullUrl, imgUrl, toast , set_settingsCache} from './01-core.js';
+import { ico, CURRENCY, G, ME, _settingsCache, api, esc, escJs, fmtN, fullUrl, imgUrl, toast , set_settingsCache} from './01-core.js';
 import { initStorageSelects } from './02-gallery.js';
 import { PARTS_ICON_SVG, _pnlCache, allSets, setAllSets, applySetAggregate, autosaveSet, closeModal, curSet, loadGallery, pnlBadge, reimportParts, renderInstructions, updateGalleryPrices , set_pnlCache, set_curSet} from './02-gallery.js';
 import { loadFinance } from './04-finance.js';
@@ -25,7 +25,7 @@ export function confirmDelete(title, msg, icon) {
     const modal = G('confirm-modal');
     G('cd-title').textContent = title || t('common.delete_title');
     G('cd-msg').textContent   = msg   || t('common.delete_text');
-    G('cd-icon').textContent  = icon  || '🗑️';
+    G('cd-icon').innerHTML  = ico(icon || 'loeschen');
     modal.style.display = 'flex';
     const btnYes = G('cd-confirm');
     const btnNo  = G('cd-cancel');
@@ -67,10 +67,10 @@ async function importConfig() {
       set_settingsCache(null); // invalidate cache so next loadSettings fetches fresh
       if (ME?.isAdmin) { loadCacheTtl(); loadApiLimits(); }
     } else {
-      st.textContent = '❌ ' + (d.error || t('settings.error'));
+      st.textContent = d.error || t('settings.error');
       st.style.color = 'var(--r500)';
     }
-  } catch(e) { st.textContent = '❌ ' + tRaw('common.network_error'); }
+  } catch(e) { st.textContent = tRaw('common.network_error'); }
   fi.value = '';
 }
 
@@ -955,7 +955,7 @@ export async function openModal(sn){
   const acqs = ad?.acquisitions || [];
   const acqRows = detailZeile(t('detail.purchase_price'), `
       ${renderAcquisitionSummary(acqs, sn)}
-      <button class="btn bs btn-sm" data-click="openAcqModal" data-arg="${escJs(sn)}" style="margin-top:4px;font-size:var(--fs-1);padding:2px 10px">✏️ ${t('detail.edit_prices')}</button>
+      <button class="btn bs btn-sm" data-click="openAcqModal" data-arg="${escJs(sn)}" style="margin-top:4px;font-size:var(--fs-1);padding:2px 10px">${ico('bearbeiten')} ${t('detail.edit_prices')}</button>
     `, { zeilenStil: 'align-items:flex-start',
          wertId: 'm-acq-summary',
          wertStil: 'flex-direction:column;align-items:flex-end;gap:3px' });
@@ -967,7 +967,7 @@ export async function openModal(sn){
     ${qtyRow}
     ${detailZeile(t('detail.pieces'), `${curSet.pieces ? curSet.pieces.toLocaleString(locale()) : '—'} <button class="btn bs btn-sm" data-click="reimportParts" data-arg="${escJs(sn)}" title="${t('detail.reimport_parts')}" style="padding:1px 6px;font-size:var(--fs-1);margin-left:4px">${PARTS_ICON_SVG}</button>`)}
     ${detailZeile(t('detail.minifigs'), oderStrich(curSet.minifigs), { wertId: 'm-minifigs-val' })}
-    ${detailZeile(t('detail.added'), `📅 ${addedFmt}`)}
+    ${detailZeile(t('detail.added'), `${ico('kalender')} ${addedFmt}`)}
     ${detailZeile(t('detail.alert'), alarmBlock(sn), {
          zeilenStil: 'align-items:flex-start',
          wertStil: 'display:flex;align-items:center;gap:6px;flex-wrap:wrap;justify-content:flex-end' })}
@@ -1137,7 +1137,7 @@ export async function queueCatalogImages(btn) {
       teile.push(tRaw('monitor.catalog_images_eta',
                       { n: d.dauer_minuten.toLocaleString(locale()) }));
     toast(teile.join(' · '), 'success');
-    btn.textContent = '✅';
+    btn.innerHTML = ico('ok');
     setTimeout(() => { btn.disabled = false; btn.textContent = tRaw('monitor.catalog_images'); }, 5000);
   } else {
     toast(d?.error || t('settings.error'), 'error');
@@ -1150,7 +1150,7 @@ export async function redownloadMissingImages(btn) {
   const d = await api('POST', '/v1/admin/redownload-missing-images').catch(() => null);
   if (d?.success) {
     toast(tRaw('monitor.redownload_started'), 'success');
-    btn.textContent = '✅';
+    btn.innerHTML = ico('ok');
     setTimeout(() => { btn.disabled = false; btn.textContent = tRaw('monitor.redownload_missing'); }, 5000);
   } else {
     toast(d?.error || t('settings.error'), 'error');
@@ -1159,7 +1159,7 @@ export async function redownloadMissingImages(btn) {
 }
 
 export async function reimportMissingInstructions(btn) {
-  btn.disabled = true; btn.textContent = '⏳ '+t('common.loading');
+  btn.disabled = true; btn.textContent = tRaw('common.loading');
   const d = await api('POST', '/v1/admin/reimport-instructions').catch(() => null);
   if (d?.success) {
     toast(tRaw('monitor.enqueued',{n:d.enqueued}), 'success');
@@ -1179,7 +1179,7 @@ export async function toggleBricksetQueue(btn) {
     const lbl = btn.querySelector('span') || btn; lbl.textContent = tRaw('monitor.show');
     return;
   }
-  btn.textContent = '⏳ '+t('common.loading');
+  btn.textContent = tRaw('common.loading');
   await loadBricksetQueue();
   btn.textContent = tRaw('monitor.collapse');
 }
@@ -1214,9 +1214,9 @@ export async function loadBricksetQueue() {
           </div>
           <div style="display:flex;flex-direction:column;gap:.3rem;flex-shrink:0">
             <button class="btn bs btn-sm" style="padding:2px 8px;font-size:var(--fs-1)"
-              data-click="retryBricksetQueueEntry" data-arg="${esc(e.set_number)}" data-self="1">🔄</button>
+              data-click="retryBricksetQueueEntry" data-arg="${esc(e.set_number)}" data-self="1">${ico('aktualisieren')}</button>
             <button class="btn bd btn-sm" style="padding:2px 8px;font-size:var(--fs-1)"
-              data-click="deleteBricksetQueueEntry" data-arg="${esc(e.set_number)}" data-self="1">🗑️</button>
+              data-click="deleteBricksetQueueEntry" data-arg="${esc(e.set_number)}" data-self="1">${ico('loeschen')}</button>
           </div>
         </div>`).join('')}
     </div>`;
@@ -1242,18 +1242,18 @@ export async function loadBricksetQueue() {
  * kein data-arg und waren deshalb nie betroffen.
  */
 async function retryBricksetQueueEntry(btn, setNumber) {
-  btn.disabled = true; btn.textContent = '⏳';
+  btn.disabled = true; btn.innerHTML = ico('uhr');
   const d = await api('POST', `/v1/admin/brickset-queue/${setNumber}/retry`).catch(() => null);
   if (d?.success) {
-    btn.textContent = '✅';
+    btn.innerHTML = ico('ok');
     toast(tRaw('monitor.retrying',{set:setNumber}), 'success');
     // Warteschlange neu zeichnen — retry_after und Versuchszähler haben sich
     // geändert. Vorher blieb der Eintrag mit den alten Werten stehen, was wie
     // ein wirkungsloser Klick aussah.
     loadBricksetQueue();
-    setTimeout(() => { btn.disabled = false; btn.textContent = '🔄'; }, 3000);
+    setTimeout(() => { btn.disabled = false; btn.innerHTML = ico('aktualisieren'); }, 3000);
   } else {
-    btn.disabled = false; btn.textContent = '🔄';
+    btn.disabled = false; btn.innerHTML = ico('aktualisieren');
     toast(tRaw('monitor.retry_error'), 'error');
   }
 }
@@ -1263,14 +1263,14 @@ async function deleteBricksetQueueEntry(btn, setNumber) {
   const row = G(`bsq-${setNumber}`);
   // Remove immediately from UI
   if (row) row.style.opacity = '0.4';
-  btn.disabled = true; btn.textContent = '⏳';
+  btn.disabled = true; btn.innerHTML = ico('uhr');
   const d = await api('DELETE', `/v1/admin/brickset-queue/${setNumber}`).catch(() => null);
   if (d?.success) {
     if (row) row.remove();
     toast(tRaw('monitor.removed_fallback',{set:setNumber}), 'success');
   } else {
     if (row) row.style.opacity = '1';
-    btn.disabled = false; btn.textContent = '🗑️';
+    btn.disabled = false; btn.innerHTML = ico('loeschen');
     toast(tRaw('monitor.delete_error'), 'error');
   }
 }

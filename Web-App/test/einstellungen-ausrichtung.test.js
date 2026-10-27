@@ -147,6 +147,7 @@ test('die Lagerorte stehen wie in einer Tabelle', () => {
     document: d,
     G: (id) => d.getElementById(id),
     esc: (s) => String(s ?? ''),
+    ico: (n) => `<svg class="ico"><use href="#i-${n}"/></svg>`,
     t: (k, v) => k + ' ' + JSON.stringify(v || {}),
     tRaw: (k) => k,
     // success: true, sonst kehrt die Funktion gleich am Anfang um. Und die

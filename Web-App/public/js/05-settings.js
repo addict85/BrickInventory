@@ -1,6 +1,6 @@
 import { registerActions } from './00-registry.js';
 import { I18N, LANG, applyLang, locale, t, tRaw} from '../i18n.js';
-import { CURRENCY, G, ME, _settingsCache, _updateLangSelect, api, applyTheme, esc, escUrl, imgUrl, initDefaultCondition, knopfBesetzt, thumbUrl, toast, zeigeBenutzernamen , set_CURRENCY, set_settingsCache, passwortZuKurz, passwortZuKurzText} from './01-core.js';
+import { ico, CURRENCY, G, ME, _settingsCache, _updateLangSelect, api, applyTheme, esc, escUrl, imgUrl, initDefaultCondition, knopfBesetzt, thumbUrl, toast, zeigeBenutzernamen , set_CURRENCY, set_settingsCache, passwortZuKurz, passwortZuKurzText} from './01-core.js';
 import { loadGallery, loadStats } from './02-gallery.js';
 import { loadParts } from './03-parts.js';
 import { loadMinifigs } from './06-minifigs.js';
@@ -44,10 +44,10 @@ G('btn-test-smtp')?.addEventListener('click', async()=>{
   res.style.display = 'block';
   if(d.success) {
     res.style.background = 'var(--g50)'; res.style.color = 'var(--g700)'; res.style.border = '1px solid var(--g300)';
-    res.textContent = d.mode === 'console' ? t('smtp.console') : '✅ ' + (d.message || t('smtp.ok'));
+    res.textContent = d.mode === 'console' ? t('smtp.console') : (d.message || t('smtp.ok'));
   } else {
     res.style.background = 'var(--r100)'; res.style.color = 'var(--r500)'; res.style.border = '1px solid var(--r300)';
-    res.textContent = '❌ ' + (d.error || t('settings.error'));
+    res.textContent = d.error || t('settings.error');
   }
 });
 
@@ -263,13 +263,13 @@ export async function loadTokens() {
         // Benutzung nach; die feste, die beim QR-Code gewaehlt wurde, nicht.
         tk.hard_expires_at ? ` <span class="rb ra" title="${esc(tokenDatum(tk.hard_expires_at))}">${t('tokens.fixed')}</span>` : ''}</td>
       <td>${tk.aktuell ? '' :
-        `<button class="btn bd btn-sm" data-click="revokeToken" data-arg="${esc(tk.token_id)}" data-arg2="${esc(tk.label || '')}">🗑️</button>`}</td>
+        `<button class="btn bd btn-sm" data-click="revokeToken" data-arg="${esc(tk.token_id)}" data-arg2="${esc(tk.label || '')}" aria-label="${esc(tRaw('common.delete'))}">${ico('loeschen')}</button>`}</td>
     </tr>`).join('')
   }</tbody></table></div>`;
 }
 
 async function revokeToken(tokenId, label) {
-  if (!await confirmDelete(tRaw('tokens.revoke.title'), tRaw('tokens.revoke.text', { name: label || '—' }), '🔑')) return;
+  if (!await confirmDelete(tRaw('tokens.revoke.title'), tRaw('tokens.revoke.text', { name: label || '—' }), 'schluessel')) return;
   const d = await tokenRuf('/tokens/' + encodeURIComponent(tokenId), 'DELETE');
   if (d.success) { toast(tRaw('tokens.revoked'), 'success'); loadTokens(); }
   else toast(d.error || t('settings.error'), 'error');
@@ -291,7 +291,7 @@ async function revokeOtherTokens() {
   if (!d.success) { toast(d.error || t('settings.error'), 'error'); return; }
   const andere = d.tokens.filter(tk => !tk.aktuell);
   if (!await confirmDelete(tRaw('tokens.revoke_others.title'),
-                           tRaw('tokens.revoke_others.text', { n: andere.length }), '🚪')) return;
+                           tRaw('tokens.revoke_others.text', { n: andere.length }), 'abmelden')) return;
   let weg = 0;
   for (const tk of andere) {
     const r = await tokenRuf('/tokens/' + encodeURIComponent(tk.token_id), 'DELETE');
@@ -551,7 +551,7 @@ export async function redeemHouseholdInvite(){
 }
 
 export async function unlinkHousehold(subUserId){
-  if(!await confirmDelete(tRaw('household.unlink_confirm_title'), t('household.unlink_confirm_text'), '🔗')) return;
+  if(!await confirmDelete(tRaw('household.unlink_confirm_title'), t('household.unlink_confirm_text'), 'link')) return;
   const d = await api('POST','/v1/settings/household/unlink', subUserId ? { sub_user_id: parseInt(subUserId) } : {});
   if(!d.success){ toast(d.error || t('settings.error'),'error'); return; }
   toast(tRaw('household.unlink_ok'),'success');
@@ -563,14 +563,14 @@ G('btn-sav-bs').onclick=async()=>{ const d=await api('POST','/v1/settings',{bric
 G('btn-save-theme').onclick=async()=>{ const theme=G('mon-app-theme')?.value||'classic'; const d=await api('POST','/v1/settings/admin/theme',{theme}); if(d.success){ if(typeof applyTheme==='function') applyTheme(theme); if(_settingsCache) _settingsCache.app_theme=theme; } toast(d.success?t('settings.theme_saved'):t('settings.error'),d.success?'success':'error'); };
 G('btn-clr-prices').onclick=async()=>{ await api('POST','/v1/admin/cache-clear'); toast(tRaw('settings.cache_cleared'),'success'); loadCacheStats(); };
 G('btn-clr-all-cache').onclick=async()=>{
-  if(!await confirmDelete(tRaw('settings.all_cache.clear'),t('settings.all_cache.clear'),'🗄️')) return;
+  if(!await confirmDelete(tRaw('settings.all_cache.clear'),t('settings.all_cache.clear'),'daten')) return;
   await api('POST','/v1/admin/cache-clear',{all:true});
   toast(tRaw('settings.all_cache.cleared'),'success'); loadCacheStats();
 };
 G('btn-dall').onclick=async()=>{
   // Alles in den Papierkorb: 30 Tage wiederherstellbar, deshalb eine Rückfrage
   // statt des früheren Eintippens von „LÖSCHEN". Nur das EIGENE Konto (Server).
-  if(!await confirmDelete(tRaw('settings.delete_all.title'),t('settings.delete_all.text'),'🗑️')) return;
+  if(!await confirmDelete(tRaw('settings.delete_all.title'),t('settings.delete_all.text'),'loeschen')) return;
   const d=await api('DELETE','/v1/bestand');
   if(!d?.success){ toast(d?.error||tRaw('settings.error'),'error'); return; }
   toast(tRaw('settings.delete_all.done',{n:d.sets+d.teile+d.figuren}),'success');
@@ -585,10 +585,10 @@ export async function loadUsers(){
       <td><span class="rb ${u.is_admin?'ra':'ru'}">${u.is_admin?t('users.role.admin'):t('users.role.user')}</span></td>
       <td>${new Date(u.created_at).toLocaleDateString(locale())}</td>
       <td style="display:flex;gap:5px">
-        <button class="btn bs btn-sm" data-click="openRpw" data-arg="${u.id}">🔑</button>
-        <button class="btn bs btn-sm" data-click="toggleAdmin" data-arg="${u.id}" data-arg2="${u.is_admin}">${u.is_admin?'⬇️':'⬆️'}</button>
-        ${u.zweiter_faktor?`<button class="btn bs btn-sm" data-click="zfZuruecksetzen" data-arg="${u.id}" data-arg2="${esc(u.username)}" title="${esc(tRaw('zf.reset_title'))}">🔐</button>`:''}
-        <button class="btn bd btn-sm" data-click="delUser" data-arg="${u.id}" data-arg2="${esc(u.username)}">🗑️</button>
+        <button class="btn bs btn-sm" data-click="openRpw" data-arg="${u.id}" aria-label="${esc(tRaw('users.pw_reset_title'))}">${ico('schluessel')}</button>
+        <button class="btn bs btn-sm" data-click="toggleAdmin" data-arg="${u.id}" data-arg2="${u.is_admin}">${ico(u.is_admin?'runter':'hoch')}</button>
+        ${u.zweiter_faktor?`<button class="btn bs btn-sm" data-click="zfZuruecksetzen" data-arg="${u.id}" data-arg2="${esc(u.username)}" title="${esc(tRaw('zf.reset_title'))}">${ico('schloss')}</button>`:''}
+        <button class="btn bd btn-sm" data-click="delUser" data-arg="${u.id}" data-arg2="${esc(u.username)}" aria-label="${esc(tRaw('common.delete'))}">${ico('loeschen')}</button>
       </td></tr>`).join('')
   }</tbody></table></div>`;
 }
@@ -611,7 +611,7 @@ async function toggleAdmin(uid,isAdmin){
   // false — das Umschalten hätte damit IMMER auf "kein Admin" gesetzt.
   const cur = isAdmin === true || isAdmin === 1 || isAdmin === '1';
   const d=await api('PUT',`/v1/auth/users/${uid}/admin`,{is_admin:!cur}); if(d.success){toast(tRaw('users.role_changed'),'success');loadUsers();} else toast(d.error||t('settings.error'),'error'); }
-async function delUser(uid,name){ if(!await confirmDelete(tRaw('users.delete.title'),t('users.delete.text'),'👤')) return; const d=await api('DELETE',`/v1/auth/users/${uid}`); if(d.success){toast(name+' '+t('common.updated'),'success');loadUsers();} else toast(d.error||t('settings.error'),'error'); }
+async function delUser(uid,name){ if(!await confirmDelete(tRaw('users.delete.title'),t('users.delete.text'),'profil')) return; const d=await api('DELETE',`/v1/auth/users/${uid}`); if(d.success){toast(name+' '+t('common.updated'),'success');loadUsers();} else toast(d.error||t('settings.error'),'error'); }
 
 
 
@@ -731,7 +731,7 @@ export async function ladeAlarmUebersicht() {
         <span style="font-size:var(--fs-0);color:var(--mut);white-space:nowrap">${esc(stand)}</span>
       </div>
       <button class="btn bs btn-sm" data-click="loescheAlarm" data-arg="${esc(schluessel)}"
-              data-arg2="${esc(a.set_number)}" style="padding:2px 8px">🗑️</button>
+              data-arg2="${esc(a.set_number)}" style="padding:2px 8px">${ico('loeschen')}</button>
     </div>`;
   }).join('');
 }
@@ -824,9 +824,9 @@ export async function ladeLagerortVerwaltung() {
               data-arg2="${o.id === vorgabeId ? 1 : 0}" style="padding:2px 8px"
               title="${esc(tRaw(o.id === vorgabeId ? 'storage.default_is' : 'storage.default_set'))}"
               aria-label="${esc(tRaw(o.id === vorgabeId ? 'storage.default_is' : 'storage.default_set'))}"
-              aria-pressed="${o.id === vorgabeId ? 'true' : 'false'}">${o.id === vorgabeId ? '★' : '☆'}</button></span>
+              aria-pressed="${o.id === vorgabeId ? 'true' : 'false'}">${ico(o.id === vorgabeId ? 'stern-voll' : 'merkliste')}</button></span>
       <span style="${zelle}"><button class="btn bs btn-sm" data-click="loescheLagerort" data-arg="${o.id}"
-              data-arg2="${esc(o.name)}" style="padding:2px 8px">🗑️</button></span>
+              data-arg2="${esc(o.name)}" style="padding:2px 8px">${ico('loeschen')}</button></span>
     </div>`;
   }).join('') + `</div>`;
 }
@@ -888,7 +888,7 @@ async function schalteLagerortVorgabe(id, war) {
 
 async function loescheLagerort(id, name) {
   if (!await confirmDelete(tRaw('storage.delete_title'),
-                           `${name} — ${tRaw('storage.delete_text')}`, '📦')) return;
+                           `${name} — ${tRaw('storage.delete_text')}`, 'lagerort')) return;
   const d = await api('DELETE', `/v1/storage/locations/${encodeURIComponent(id)}`);
   if (!d?.success) { toast(d?.error || tRaw('settings.error'), 'error'); return; }
   await ladeLagerortVerwaltung();

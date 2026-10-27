@@ -18,7 +18,7 @@
 // der Sache, um die es geht.
 import { registerActions } from './00-registry.js';
 import { t, tRaw, colorName } from '../i18n.js';
-import { G, XML_ICON_SVG, api, esc, escHex, escUrl, fullUrl, hexZiffern, imgUrl, toast } from './01-core.js';
+import { ico, G, XML_ICON_SVG, api, esc, escHex, escUrl, fullUrl, hexZiffern, imgUrl, toast } from './01-core.js';
 import { loadBrickColors, loadManualParts, loadManualFigsTable } from './06-minifigs.js';
 import { loadGallery } from './02-gallery.js';
 
@@ -299,19 +299,19 @@ function zeichneBericht(d) {
       ${stufe('katalogtreffer', tRaw('settings.wanted_s3'))}
       ${stufe('rebrickable', tRaw('settings.wanted_s4'))}
       ${stufe('korrigiert', tRaw('wanted.s_corrected'))}
-      ${d.offen?.length ? `<div>⚠ <strong>${d.offen.length}</strong> ${
+      ${d.offen?.length ? `<div>${ico('warnung')} <strong>${d.offen.length}</strong> ${
         esc(tRaw('settings.wanted_open'))}</div>` : ''}
-      ${d.farbeOffen ? `<div>⚠ <strong>${d.farbeOffen}</strong> ${
+      ${d.farbeOffen ? `<div>${ico('warnung')} <strong>${d.farbeOffen}</strong> ${
         esc(tRaw('settings.wanted_color_open'))}</div>` : ''}
-      ${Object.keys(d.fremdeArten || {}).length ? `<div>⚠ ${
+      ${Object.keys(d.fremdeArten || {}).length ? `<div>${ico('warnung')} ${
         esc(tRaw('settings.wanted_other_kinds'))}: ${
         esc(Object.entries(d.fremdeArten).map(([k, n]) => `${k}=${n}`).join(', '))}</div>` : ''}
       ${d.rebrickable ? `<div>${esc(tRaw('settings.wanted_rb_asked'))}: ${
         d.rebrickable.gefragt} → ${d.rebrickable.gefunden}</div>` : ''}
-      ${d.korrekturen?.abgewiesen?.length ? `<div>⚠ <strong>${
+      ${d.korrekturen?.abgewiesen?.length ? `<div>${ico('warnung')} <strong>${
         d.korrekturen.abgewiesen.length}</strong> ${
         esc(tRaw('wanted.corrections_rejected'))}</div>` : ''}
-      ${d.abgebrochen ? `<div>⚠ ${esc(tRaw('wanted.cancelled'))}</div>` : ''}
+      ${d.abgebrochen ? `<div>${ico('warnung')} ${esc(tRaw('wanted.cancelled'))}</div>` : ''}
       ${!d.vorschau ? `<div style="margin-top:.4rem"><strong>${d.angelegt}</strong> ${
         esc(tRaw('settings.wanted_written'))}${d.aufgestockt ? `, ${d.aufgestockt} ${
         esc(tRaw('wanted.topped_up'))}` : ''}${d.fehler ? `, ${d.fehler} ${

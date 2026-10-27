@@ -129,6 +129,17 @@ export const escHtml = escJs;
 // Todeszone und wirft "G is not a function". Funktionsdeklarationen sind
 // dagegen schon beim Instanziieren initialisiert und sofort erreichbar.
 export function G(id) { return document.getElementById(id); }
+/** Ein Symbol aus der Symbolfamilie (Sprite in index.html) als HTML. */
+export function ico(name) { return `<svg class="ico" aria-hidden="true"><use href="#i-${esc(name)}"/></svg>`; }
+/**
+ * Ein leerer Zustand: Symbol, ein Satz, und wenn es einen gibt, der nächste
+ * Schritt als Knopf. Texte kommen fertig übersetzt; maskiert wird hier.
+ * @param {{ ico: string, titel: string, text?: string, knopf?: { text: string, click: string, arg?: string } }} o
+ */
+export function leerZustand(o) {
+  const knopf = o.knopf ? `<button type="button" class="btn bp" data-click="${esc(o.knopf.click)}"${o.knopf.arg ? ` data-arg="${esc(o.knopf.arg)}"` : ''}>${ico('plus')}<span>${esc(o.knopf.text)}</span></button>` : '';
+  return `<div class="empty leer"><div class="leer-ico">${ico(o.ico)}</div><h3>${esc(o.titel)}</h3>${o.text ? `<p>${esc(o.text)}</p>` : ''}${knopf}</div>`;
+}
 
 /**
  * Einen Knopf für die Dauer eines Aufrufs sperren.
@@ -464,7 +475,8 @@ export function toast(msg, type='info', aktion) {
   // textContent statt innerHTML: msg enthält regelmässig Server-Fehlermeldungen
   // und Set-/Teilenummern aus Nutzereingaben.
   const icon = document.createElement('span');
-  icon.textContent = {success:'✅',error:'❌',info:'ℹ️'}[type] || 'ℹ️';
+  icon.className = 'toast-ico';
+  icon.innerHTML = ico({ success: 'ok', error: 'fehler' }[type] || 'info');
   const text = document.createElement('span');
   text.textContent = String(msg ?? '');
   el.append(icon, text);

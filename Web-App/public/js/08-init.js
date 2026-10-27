@@ -1,7 +1,7 @@
 import { PARTS_ICON_SVG, bindTabs } from './02-gallery.js';
 import { registerActions } from './00-registry.js';
 import { locale, t, tRaw} from '../i18n.js';
-import { escHex, G, api, checkAuth, esc, escUrl, imgUrl, knopfBesetzt, thumbUrl, toast } from './01-core.js';
+import { ico, escHex, G, api, checkAuth, esc, escUrl, imgUrl, knopfBesetzt, thumbUrl, toast } from './01-core.js';
 import { initScrollbalken } from './15-scrollbar.js';
 import { baueWantedXmlStuecke } from './19-bricklink-xml.js';
 
@@ -151,7 +151,7 @@ function plRenderSets() {
     <div style="display:inline-flex;align-items:center;gap:6px;background:var(--b50);border:1px solid var(--b200);border-radius:20px;padding:3px 10px 3px 8px;font-size:var(--fs-3)">
       <span style="font-weight:600;color:var(--b700)">${esc(s.set_number)}</span>
       <span style="color:var(--mut)">${s.name !== s.set_number ? '— '+esc(s.name) : ''}</span>
-      <button data-click="plRemoveSet" data-arg="${i}" style="background:none;border:none;cursor:pointer;color:var(--mut);padding:0;font-size:var(--fs-3);line-height:1">✕</button>
+      <button data-click="plRemoveSet" data-arg="${i}" style="background:none;border:none;cursor:pointer;color:var(--mut);padding:0;font-size:var(--fs-3);line-height:1" aria-label="${esc(tRaw('common.remove'))}">${ico('schliessen')}</button>
     </div>`).join('');
 }
 // Aufruf verschoben nach startApp() (js/08-init.js), das js/main.js NACH der

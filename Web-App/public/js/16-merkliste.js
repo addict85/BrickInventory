@@ -1,6 +1,6 @@
 import { registerActions } from './00-registry.js';
 import { locale, t, tRaw } from '../i18n.js';
-import { CURRENCY, G, TRASH_ICON_SVG, api, esc, escJs, escUrl, fmtN, fullUrl, imgUrl, knopfBesetzt, thumbUrl, toast } from './01-core.js';
+import { ico, CURRENCY, G, TRASH_ICON_SVG, api, esc, escJs, escUrl, fmtN, fullUrl, imgUrl, knopfBesetzt, thumbUrl, toast } from './01-core.js';
 import { detailZeile } from './01-bausteine.js';
 import { alarmBlock, ladeAlarm, priceChartSVG, renderMarketRows, setzeAlarmFeld } from './07-admin.js';
 import { leereLagerortFeld, selectedOwner, selectedStorage, haushaltsKonten, loadGallery, loadStats } from './02-gallery.js';
@@ -82,7 +82,7 @@ function zeile(w) {
 
   const alarm = w.alarm
     ? `<span style="background:var(--bg);border:1px solid var(--bdr)">
-         ${w.alarm.ausgeloest ? '🔔' : '⏰'}
+         ${ico(w.alarm.ausgeloest ? 'alarm' : 'uhr')}
          ${esc(tRaw(w.alarm.richtung === 'ueber' ? 'detail.alert_above' : 'detail.alert_below'))}
          ${esc(String(w.alarm.schwelle))}
        </span>` : '';
@@ -467,7 +467,7 @@ function zeilen(w) {
     ['detail.minifigs', STRICH, 'mk-m-minifigs'],
     ['common.condition', esc(zustandText(w.condition)), null],
     ['household.for_account', inhaberWahl(w), null],
-    ['wanted.since',  w.created_at ? `📅 ${esc(new Date(w.created_at).toLocaleDateString(locale()))}` : STRICH, null],
+    ['wanted.since',  w.created_at ? `${ico('kalender')} ${esc(new Date(w.created_at).toLocaleDateString(locale()))}` : STRICH, null],
     // Derselbe Block wie im Set-Dialog, nicht ein zweiter: Es ist derselbe
     // Eintrag in price_alerts, am selben Schlüssel (Konto, Set, Zustand).
     // Gefüllt wird er von ladeAlarm() beim Öffnen.

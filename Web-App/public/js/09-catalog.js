@@ -1,7 +1,7 @@
 import { detailZeile, ladeAnzeige } from './01-bausteine.js';
 import { registerActions } from './00-registry.js';
 import { locale, t, tRaw} from '../i18n.js';
-import { G, api, esc, escUrl, fullUrl, imgUrl, thumbUrl, toast } from './01-core.js';
+import { ico, G, api, esc, escUrl, fullUrl, imgUrl, thumbUrl, toast } from './01-core.js';
 import { setScrollLabel } from './15-scrollbar.js';
 import { PARTS_ICON_SVG, handleSseEvent, hideProgress, leereLagerortFeld, loadGallery, loadStats, selectedOwner, selectedStorage, showProgress, streamFertig, streamRequest } from './02-gallery.js';
 import { _lastImportAt , set_lastImportAt} from './07-admin.js';
@@ -168,7 +168,7 @@ async function loadCatalogSets(){
   _catTotal = d.total || 0;
   _catPageCount = Math.max(1, Math.ceil(_catTotal / CAT_LIMIT));
   _catItems = d.sets || [];
-  G('cat-count').textContent = tRaw('catalog.result_count', { count: _catTotal.toLocaleString(locale()) });
+  G('cat-count').textContent = tRaw(_catTotal === 1 ? 'catalog.result_count_one' : 'catalog.result_count', { count: _catTotal.toLocaleString(locale()) });
 
   if (!_catItems.length) {
     grid.innerHTML = `<div class="empty"><img src="/assets/set-placeholder.svg" style="width:64px;height:64px;opacity:.4;margin:0 auto 12px;display:block" /><h3>${t('catalog.no_results')}</h3></div>`;
@@ -351,7 +351,7 @@ function catCard(s){
     : window._catPlaceholderImg;
   const themeShort = s.theme_name ? s.theme_name.split(' › ').pop() : '';
   const ownedBadge = s.owned
-    ? `<span class="ibadge" title="${t('catalog.owned')}">✓${s.owned_quantity>1?'×'+s.owned_quantity:''}</span>`
+    ? `<span class="ibadge" title="${t('catalog.owned')}">${ico('ok')}${s.owned_quantity>1?'×'+s.owned_quantity:''}</span>`
     : '';
   // Der Thementon fuer das Design "farbfaecher" (themes/farbfaecher.css liest
   // ihn als --faecher-ton). Immer gesetzt, nicht nur bei aktivem Design: Die
@@ -400,7 +400,7 @@ async function openCatModal(setNumber){
     [t('detail.pieces'),   s.num_parts ? s.num_parts.toLocaleString(locale()) : '—'],
     [t('detail.minifigs'), s.minifigs || '—'],
   ];
-  if (s.owned) rows.push([t('catalog.owned'), '✓ ×' + s.owned_quantity]);
+  if (s.owned) rows.push([t('catalog.owned'), '×' + s.owned_quantity]);
   G('cat-m-det').innerHTML = rows.map(([k, v]) => detailZeile(k, esc(String(v)))).join('');
   // Kauf-Link kommt fertig vom Server (utils/bricklinkLink.ts). Vorher wurde er
   // hier aus der Rebrickable-Nummer gebaut und immer als Set verlinkt (S=…) —
