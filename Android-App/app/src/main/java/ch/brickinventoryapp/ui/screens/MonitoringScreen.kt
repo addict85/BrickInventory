@@ -92,7 +92,7 @@ fun MonitoringScreen(vm: MainViewModel) {
             // Header
             item {
                 Row(Modifier.fillMaxWidth(), Arrangement.SpaceBetween, Alignment.CenterVertically) {
-                    Text(stringResource(R.string.monitoring_title), fontWeight = FontWeight.Bold, fontSize = 18.sp)
+                    Text(stringResource(R.string.monitoring_title), fontWeight = FontWeight.Bold, style = MaterialTheme.typography.titleLarge)
                     if (isRefreshing) CircularProgressIndicator(Modifier.size(20.dp), strokeWidth = 2.dp)
                     else IconButton(onClick = { scope.launch { mon.ladeJobs() } }) {
                         Icon(Icons.Default.Refresh, stringResource(R.string.monitoring_refresh))

@@ -1,5 +1,5 @@
 import { registerActions } from './00-registry.js';
-import { detailZeile, oderStrich, textOderStrich } from './01-bausteine.js';
+import { detailZeile, oderStrich } from './01-bausteine.js';
 import { renderAcquisitionSummary } from './13-acquisition-modals.js';
 import { locale, t, tRaw} from '../i18n.js';
 import { ico, CURRENCY, G, ME, _settingsCache, api, esc, escJs, fmtN, fullUrl, imgUrl, toast , set_settingsCache} from './01-core.js';
@@ -929,7 +929,8 @@ export async function openModal(sn){
   ]);
   if(!d?.success){toast(tRaw('settings.error'),'error');return;}
   set_curSet(d.set);
-  G('m-tit').textContent=curSet.set_number;
+  G('m-tit').textContent=curSet.name||curSet.set_number;
+  G('m-untertit').textContent=curSet.name?curSet.set_number:'';
   // fullUrl(): volle Auflösung, auch wenn image_local auf die _thumb-Datei zeigt
   const img=G('m-img'); img.src=fullUrl(curSet.image_local||curSet.image_url)||'/assets/set-placeholder.svg'; img.style.display='block';
 
@@ -961,7 +962,6 @@ export async function openModal(sn){
          wertStil: 'flex-direction:column;align-items:flex-end;gap:3px' });
 
   G('m-det').innerHTML = `
-    ${detailZeile('Name', textOderStrich(curSet.name))}
     ${detailZeile(t('detail.year'), oderStrich(curSet.year))}
     ${detailZeile(t('detail.theme'), esc(oderStrich(curSet.theme)))}
     ${qtyRow}

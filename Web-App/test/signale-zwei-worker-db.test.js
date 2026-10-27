@@ -19,6 +19,8 @@
  *      rot: „jede API-Antwort nennt die Schnittstellenfassung"
  *   E  (27.10.) in haltePrimaerSperre das setTimeout(sperreNeuHolen) entfernt →
  *      rot: „die Primär-Sperre kommt nach einem Verbindungsabbruch zurück"
+ *   G  (27.10.) app.use('/api', …) ohne appFassungPruefen → rot: „eine zu alte
+ *      App wird mit 426 abgewiesen"
  *
  * Voraussetzung: Test-DB via TEST_DATABASE_URL.
  */
@@ -195,6 +197,17 @@ test('Cache-Signale erreichen jeden Worker', { concurrency: 1, timeout: 180_000 
       const { API_VERSION, API_MIN_APP } = _req('utils/apiVersion.js');
       assert.equal(r['x-api-version'], String(API_VERSION), 'Ohne die Kopfzeile kann die App nicht sagen, wer zu alt ist');
       assert.equal(r['x-api-min-app'], String(API_MIN_APP));
+    });
+
+    await t.test('eine zu alte App wird mit 426 abgewiesen', async () => {
+      const { API_MIN_APP } = _req('utils/apiVersion.js');
+      const status = (fassung) => new Promise((auf, ab) => {
+        const q = http.request({ host: '127.0.0.1', port, path: '/api/v1/health', agent: false,
+          headers: { 'X-App-Api': String(fassung) } }, res => { res.resume(); auf(res.statusCode); });
+        q.on('error', ab); q.end();
+      });
+      assert.equal(await status(API_MIN_APP - 1), 426, 'Der Server liest X-App-Api nicht');
+      assert.equal(await status(API_MIN_APP), 200);
     });
 
     await t.test('/health verrät ohne Verwalter nur den Startzustand', async () => {

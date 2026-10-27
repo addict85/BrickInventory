@@ -1,5 +1,7 @@
 package ch.brickinventoryapp.ui.screens
 
+import androidx.compose.ui.semantics.heading
+import androidx.compose.ui.semantics.semantics
 import ch.brickinventoryapp.ui.theme.Formen
 import ch.brickinventoryapp.ui.theme.AppKarte
 import androidx.compose.foundation.BorderStroke
@@ -356,7 +358,8 @@ internal fun SettingsCard(
                     style = MaterialTheme.typography.labelSmall,
                     fontWeight = FontWeight.Bold,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    letterSpacing = 0.8.sp)
+                    letterSpacing = 0.8.sp,
+                    modifier = Modifier.semantics { heading() })
             }
             content()
         }

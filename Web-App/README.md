@@ -52,9 +52,16 @@ DB_PASSWORD=mein-sicheres-passwort
 nach aussen veröffentlicht — das Standardpasswort ist deshalb kein offener
 Zugang, aber ein eigenes ist besser.
 
+Läuft die Datenbank noch mit dem Beispielpasswort, schreibt der Server beim
+Start eine Warnung ins Protokoll (Verwaltung → Logs). Für eine bestehende
+Datenbank: `docker compose exec postgres psql -U brickinventory -c "ALTER USER
+brickinventory PASSWORD 'neues-passwort'"`, dann `DB_PASSWORD` in `.env`
+setzen und `docker compose up -d` ausführen.
+
 ### DB-Pool-Größe anpassen
 Normalerweise **nicht nötig**: Die App rechnet `min(15, 80 / Anzahl Worker)`
-selbst aus. Nur wenn die PostgreSQL-Instanz ein abweichendes `max_connections`
+selbst aus; `WEB_WORKERS: 0` heisst „ein Worker je Kern, mindestens zwei",
+und mit derselben Zahl rechnet der Pool. Nur wenn die PostgreSQL-Instanz ein abweichendes `max_connections`
 hat, in `compose.yaml`:
 ```yaml
 environment:
@@ -113,6 +120,27 @@ alle Passwort-Hashes. `backup.sh` legt die Dateien deshalb nur für den
 Besitzer lesbar an (`umask 077`) und warnt, wenn das Zielverzeichnis für
 andere offen ist. Wer `backups/` auf ein NAS oder in eine Cloud kopiert,
 verschlüsselt es vorher (z. B. `gpg -c` oder `age`).
+
+### Automatische Kopie vor einem Update
+
+Bringt ein Update neue Migrationen mit, kopiert der Server vorher alle
+Tabellen mit Nutzerdaten (`users` und jede Tabelle mit `user_id`) in ein
+eigenes Schema `vor_migration_<Datum Uhrzeit>` derselben Datenbank. Die drei
+jüngsten bleiben. Das ersetzt `backup.sh` nicht — Katalog und Bilder fehlen
+darin —, aber ein misslungenes Update lässt sich damit zurücknehmen:
+
+```bash
+docker compose exec postgres psql -U brickinventory -c '\dn vor_migration_*'
+# eine Tabelle zurückholen, z. B. die Set-Erfassungen:
+docker compose exec postgres psql -U brickinventory -c "
+  BEGIN;
+  DELETE FROM set_acquisitions;
+  INSERT INTO set_acquisitions SELECT * FROM vor_migration_20261027190312345.set_acquisitions;
+  COMMIT;"
+```
+
+Hat die Migration Spalten der Tabelle geändert, im `INSERT` die Spalten
+ausdrücklich nennen (`INSERT INTO t (a, b) SELECT a, b FROM …`).
 
 ## Manuell erfasste Teile löschen
 
@@ -183,7 +211,8 @@ neu starten.
 | Variable | Wirkung |
 |---|---|
 | `APP_BASE_URL` | Die Adresse, unter der der Server von **aussen** erreichbar ist (z. B. `https://lego.example.org`). Sie steckt in den Links der E-Mails und im **QR-Code zur Verknüpfung der App**. Ohne sie übernehmen die Bestätigungs-Links den Host aus dem Request-Header, und **Passwort-vergessen-Mails werden im Betrieb gar nicht versendet** (ein gefälschter Host-Header bekäme sonst den Reset-Link); der QR-Code wird **gar nicht erst erzeugt** — er trüge sonst die Adresse aus der Browserzeile, und die App fände den Server ausserhalb des Heimnetzes nie wieder. |
-| `TRUST_PROXY` | Wem der Server `X-Forwarded-For`/`-Proto` glaubt. Ohne Angabe nur Loopback und den Docker-Netzen (`172.16.0.0/12`) — das passt für nginx/Caddy/Traefik im selben Docker-Netz. Steht der Proxy auf einem anderen Rechner im Heimnetz, seine Adresse angeben (z. B. `192.168.1.5`). `false`, wenn kein Proxy davorsteht; sonst die Adresse oder das Netz des Proxys (z. B. `203.0.113.7`). Sonst könnte ein Client seine Absenderadresse selbst angeben und die Anmeldesperre umgehen. |
+| `TRUST_PROXY` | Wem der Server `X-Forwarded-For`/`-Proto` glaubt. Ohne Angabe nur Loopback und den Docker-Netzen (`172.16.0.0/12`) ausser deren Gateway (`x.y.0.1`, dort kommen per docker-proxy die Clients selbst herein) — das passt für nginx/Caddy/Traefik im selben Docker-Netz. Steht der Proxy auf einem anderen Rechner im Heimnetz, seine Adresse angeben (z. B. `192.168.1.5`). `false`, wenn kein Proxy davorsteht; sonst die Adresse oder das Netz des Proxys (z. B. `203.0.113.7`). Sonst könnte ein Client seine Absenderadresse selbst angeben und die Anmeldesperre umgehen. |
+| `UPLOAD_KONTINGENT_MB` | Wie viel Platz eigene Anleitungen (PDF/JPG/PNG) je Konto belegen dürfen, in MB (Vorgabe `2048`). Der Inhalt jeder Datei wird geprüft; eine Datei, deren Inhalt nicht zum Typ passt, wird abgewiesen. |
 | `ADMIN_PASSWORD` | Passwort des beim ersten Start angelegten Admins. Sonst wird ein Zufallspasswort erzeugt und **einmalig** ins Log geschrieben. |
 | `SESSION_SECRET` | Pflicht in Produktion (der Start bricht sonst ab). |
 | `TOKEN_IDLE_DAYS` | Tage ohne Nutzung, nach denen ein App-Token verfällt (Vorgabe `90`, `0` schaltet die Regel ab). Betrifft nur Tokens ohne Ablaufdatum — Android-App und QR-Login. Ein Telefon, das die App regelmässig öffnet, ist nie betroffen; ausgesperrt wird nur, was ohnehin niemand mehr benutzt. |

@@ -4,9 +4,7 @@ import androidx.lifecycle.viewModelScope
 import ch.brickinventoryapp.R
 import ch.brickinventoryapp.data.model.*
 import ch.brickinventoryapp.data.repository.Result
-import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
-import ch.brickinventoryapp.data.ScopeFilter
 
 
 /**
@@ -20,191 +18,20 @@ import ch.brickinventoryapp.data.ScopeFilter
  */
 
 /**
- * Die Teileliste laden — den Suchtext holt sie sich SELBST aus dem Zustand.
- *
- * Frueher war `search` ein Parameter. Damit kannte ihn nur, wer aus dem
- * Suchfeld heraus lud; `onLoadMore(page)` gab ihn nicht mit und bekam eine
- * ungefilterte Seite 2, die an eine gefilterte Seite 1 gehaengt wurde (siehe
- * PartsUiState.partsQuery). Wer den Filter aendern will, ruft
- * [setPartsQuery] — genau wie in der Galerie.
+ * Teile- und Figurenliste: Zustand und Regeln stehen in [Teile]. Diese
+ * Einzeiler halten die Aufrufe der Bildschirme unverändert.
  */
-internal fun MainViewModel.loadParts(page: Int = 1, debounce: Boolean = false) {
-    partsJob?.cancel()
-    partsJob = viewModelScope.launch {
-        if (debounce) kotlinx.coroutines.delay(350)
-        _partsState.update { it.copy(partsLoading = true) }
-        // Nach dem Entprellen gelesen: Bei schneller Eingabe gewinnt der
-        // zuletzt gestartete Auftrag, und der soll den NEUESTEN Text sehen.
-        // Leer heisst "kein Filter" — die API erwartet dafuer null, nicht "".
-        val suche = _partsState.value.partsQuery.ifBlank { null }
-        // Ebenfalls aus dem Zustand, aus demselben Grund wie der Suchtext:
-        // Als Parameter kaeme er beim Nachladen von Seite 2 nicht mit.
-        val ersatzteile = _partsState.value.partsSpare.ifBlank { null }
-        // „In Sets" nur, wenn die Tabelle es zeigt — die Spalte kostet eine
-        // eigene Abfrage. Dieselbe Bedingung wie in der Webapp.
-        val mitSets = if (_partsState.value.partsView == "table") "1" else null
-        // Aus demselben Grund aus dem Zustand wie Suchtext und Ersatzteilfilter:
-        // Als Parameter kaemen sie beim Nachladen von Seite 2 nicht mit, und
-        // eine ungefilterte Seite 2 haenge sich an eine gefilterte Seite 1.
-        val farbe = _partsState.value.partsColorFilter.ifBlank { null }
-        val kategorie = _partsState.value.partsCategoryFilter.ifBlank { null }
-        when (val r = retryOnNetwork { repo.teile.getParts(search = suche, color = farbe,
-                                                     category = kategorie, page = page,
-                                                     accounts = scopeFor(ScopeFilter.View.PARTS),
-                                                     spare = ersatzteile, withSets = mitSets,
-                                                     storage = lagerFor(ScopeFilter.View.PARTS)) }) {
-            is Result.Success -> {
-                _partsState.update {
-                    it.copy(
-                        partsLoading = false,
-                        parts = if (page == 1) r.data.parts else it.parts + r.data.parts,
-                        partsTotal = r.data.total,
-                        partsPage = page
-                    )
-                }
-                if (page == 1) {
-                    // Die manuell erfassten Teile aus IHRER Quelle, nicht aus
-                    // der Bewertung — dieselbe wie die Webapp. Nur auf Seite 1:
-                    // Die Liste ist nicht seitenweise, sie steht als Abschnitt
-                    // ueber den Set-Teilen.
-                    // MIT Suchtext und Lagerort: Der Bildschirm hat EIN
-                    // Suchfeld fuer beide Abschnitte (PartsScreen.kt). Hier
-                    // stand nur der Kontofilter — der Text filterte also die
-                    // Set-Teile, und die manuellen Kacheln darueber blieben
-                    // unveraendert stehen. Marcos Befund vom 20.10., in der
-                    // Webapp gemeldet und hier genauso vorhanden.
-                    (repo.teile.getManualParts(scopeFor(ScopeFilter.View.PARTS), suche,
-                                               lagerFor(ScopeFilter.View.PARTS)) as? Result.Success)
-                        ?.let { m -> _partsState.update { it.copy(manualParts = m.data.parts) } }
-                    when (val s = repo.teile.getPartsStats(scopeFor(ScopeFilter.View.PARTS))) {
-                        is Result.Success -> _partsState.update { it.copy(partsStats = s.data.stats) }
-                        // Statistik ist Beiwerk: Scheitert sie, bleibt die
-                        // Teileliste trotzdem stehen.
-                        is Result.Error -> {}
-                    }
-                }
-            }
-            is Result.Error -> {
-                _partsState.update { it.copy(partsLoading = false) }
-                _snackbar.value = meldungFuerSnackbar(r)
-            }
-        }
-    }
-}
+internal fun MainViewModel.loadParts(page: Int = 1, debounce: Boolean = false) =
+    teile.laden(seite = page, entprellt = debounce)
 
-/**
- * Suchtext der Teileliste setzen: entprellt, damit nicht jeder Tastendruck
- * eine Abfrage ausloest. Gegenstueck zu setGalleryQuery.
- */
-internal fun MainViewModel.setPartsQuery(q: String) {
-    // Suchtext gewechselt: Die gemerkte Stelle zeigt auf Teile, die in der
-    // neuen Liste woanders oder gar nicht stehen (ScrollMemory.kt). Die
-    // Galerie vergisst sie bei jedem Filterwechsel; hier fehlte das, solange
-    // der Suchtext gar nicht im Zustand stand.
-    scrollMemory.vergiss("parts")
-    _partsState.update { it.copy(partsQuery = q) }
-    // Kein eigener Auftrag noetig: loadParts bricht partsJob selbst ab, ein
-    // zweiter Tastendruck loescht also den entprellten ersten.
-    loadParts(page = 1, debounce = true)
-}
-
-/**
- * Ersatzteil-Filter setzen: "" alle, "0" ohne Ersatzteile, "1" nur
- * Ersatzteile — dieselben Werte wie das Auswahlfeld der Webapp.
- *
- * Nicht entprellt: Anders als beim Tippen ist ein Klick ein fertiger Wunsch,
- * und 350 ms Warten waeren nur Traegheit.
- */
-internal fun MainViewModel.setPartsSpare(wert: String) {
-    // Wie beim Suchtext: Die gemerkte Scrollstelle zeigt auf Teile, die in der
-    // neuen Liste woanders oder gar nicht stehen (ScrollMemory.kt).
-    scrollMemory.vergiss("parts")
-    _partsState.update { it.copy(partsSpare = wert) }
-    loadParts(page = 1)
-}
-
-/**
- * Karten oder Tabelle fuer die Teileliste.
- *
- * Laedt neu, weil die Tabelle eine Spalte mehr braucht („In Sets"), die der
- * Server nur auf Anfrage mitschickt. Ohne Neuladen blieben die Zellen leer,
- * bis irgendein anderer Weg die Liste erneuert.
- */
-internal fun MainViewModel.setPartsView(wert: String) {
-    if (_partsState.value.partsView == wert) return
-    _partsState.update { it.copy(partsView = wert) }
-    loadParts(page = 1)
-}
-
-/**
- * Karten oder Tabelle fuer die Figurenliste. Ohne Neuladen: Die Tabelle zeigt
- * nur Felder, die schon da sind.
- */
-internal fun MainViewModel.setMinifigsView(wert: String) {
-    _partsState.update { it.copy(minifigsView = wert) }
-}
-
-/**
- * Farbfilter setzen — "" heisst „alle".
- *
- * Wie beim Ersatzteil-Filter daneben: Ein Klick ist ein fertiger Wunsch, also
- * ohne Entprellen. Und die gemerkte Scrollstelle zeigt auf Teile, die in der
- * neuen Liste woanders oder gar nicht stehen.
- */
-internal fun MainViewModel.setPartsColorFilter(wert: String) {
-    if (_partsState.value.partsColorFilter == wert) return
-    scrollMemory.vergiss("parts")
-    _partsState.update { it.copy(partsColorFilter = wert) }
-    loadParts(page = 1)
-    // Die Zaehlwerte der ANDEREN Liste haengen an dieser Auswahl nicht — der
-    // Server filtert die Kategorienliste nicht nach Farbe, und die Webapp laedt
-    // trotzdem beide neu (loadPartsFilters in 03-parts.js). Hier bleibt es
-    // dabei, sie NICHT neu zu holen: zwei Abfragen fuer unveraenderte Zahlen.
-}
-
-/** Kategoriefilter setzen — "" heisst „alle". Siehe [setPartsColorFilter]. */
-internal fun MainViewModel.setPartsCategoryFilter(wert: String) {
-    if (_partsState.value.partsCategoryFilter == wert) return
-    scrollMemory.vergiss("parts")
-    _partsState.update { it.copy(partsCategoryFilter = wert) }
-    loadParts(page = 1)
-}
-
-/**
- * Die beiden Filterlisten holen — Farbe und Kategorie, mit ihren Zaehlwerten.
- *
- * Beide zusammen, weil sie zusammen angezeigt werden. Scheitert eine, bleibt
- * die andere stehen: Ein fehlender Filter ist unangenehm, aber kein Grund, die
- * Teileliste selbst zurueckzuhalten. Aus demselben Grund meldet auch keiner der
- * beiden Faelle einen Fehler — genau wie loadPartsColors darunter.
- */
-internal fun MainViewModel.loadPartsFilters() {
-    viewModelScope.launch {
-        val blickfeld = scopeFor(ScopeFilter.View.PARTS)
-        when (val r = repo.teile.getPartsFilterColors(blickfeld)) {
-            is Result.Success -> if (r.data.success)
-                _partsState.update { it.copy(partsFilterColors = r.data.colors) }
-            is Result.Error -> {}
-        }
-        when (val r = repo.teile.getPartsCategories(blickfeld)) {
-            is Result.Success -> if (r.data.success)
-                _partsState.update { it.copy(partsCategories = r.data.categories) }
-            is Result.Error -> {}
-        }
-    }
-}
-
-internal fun MainViewModel.loadPartsColors() {
-    viewModelScope.launch {
-        when (val r = repo.teile.getBrickColors()) {
-            is Result.Success -> if (r.data.success) _partsState.update { it.copy(partsColors = r.data.colors) }
-            // Bewusst ohne Meldung: Die Farbliste füllt nur die Auswahl im
-            // Erfassungsdialog. Fehlt sie, tippt der Nutzer die Farb-ID — eine
-            // Meldung beim Öffnen des Bildschirms hülfe ihm dabei nicht.
-            is Result.Error -> {}
-        }
-    }
-}
+internal fun MainViewModel.setPartsQuery(q: String) = teile.setzeSuche(q)
+internal fun MainViewModel.setPartsSpare(wert: String) = teile.setzeErsatzteile(wert)
+internal fun MainViewModel.setPartsView(wert: String) = teile.setzeAnsicht(wert)
+internal fun MainViewModel.setMinifigsView(wert: String) = teile.setzeFigurAnsicht(wert)
+internal fun MainViewModel.setPartsColorFilter(wert: String) = teile.setzeFarbe(wert)
+internal fun MainViewModel.setPartsCategoryFilter(wert: String) = teile.setzeKategorie(wert)
+internal fun MainViewModel.loadPartsFilters() = teile.ladeFilter()
+internal fun MainViewModel.loadPartsColors() = teile.ladeFarben()
 
 /**
  * Teil erfassen.
@@ -416,66 +243,5 @@ internal fun MainViewModel.deleteMinifig(figNumber: String, owner: Int? = null) 
     }
 }
 
-/**
- * Figurenliste laden. Der Suchtext kommt aus dem Zustand, nicht als Parameter —
- * dieselbe Regel wie bei [loadParts] und der Galerie: Wer als Parameter laedt,
- * kennt den Filter nur beim Tippen; jeder andere Ladeweg (Aktualisieren,
- * Erfassen, Kontowechsel) reicht ihn nicht mit und liefert eine ungefilterte
- * Liste in eine Ansicht, deren Suchfeld weiter den alten Text zeigt.
- */
-internal fun MainViewModel.loadMinifigs(debounce: Boolean = false) {
-    // Kennzahlen NEBENHER holen, nicht aus der Liste rechnen: Die Liste unten
-    // ist gefiltert (ohne manuell erfasste), die Kacheln sollen aber den
-    // ganzen Bestand nennen — genau wie in der Webapp. Eigener Aufruf, damit
-    // die Liste nicht auf die Zählung wartet.
-    //
-    // Beim Tippen NICHT: Die Kacheln zeigen den ganzen Bestand, den aendert ein
-    // Suchtext nicht. Ohne diese Bedingung schickte jeder Tastendruck eine
-    // eigene Zaehlabfrage los — und die haengt an keinem Auftrag, waere also
-    // auch nicht abgebrochen worden.
-    if (!debounce) viewModelScope.launch {
-        when (val r = repo.teile.getMinifigStats(scopeFor(ScopeFilter.View.MINIFIGS))) {
-            is Result.Success -> _partsState.update { it.copy(minifigStats = r.data.stats) }
-            is Result.Error   -> Unit   // Kacheln behalten den letzten Stand
-        }
-    }
-    minifigsJob?.cancel()
-    minifigsJob = viewModelScope.launch {
-        if (debounce) kotlinx.coroutines.delay(350)
-        _partsState.update { it.copy(minifigsLoading = true) }
-        // Nach dem Entprellen gelesen: Bei schneller Eingabe gewinnt der zuletzt
-        // gestartete Auftrag, und der soll den NEUESTEN Text sehen.
-        val suche = _partsState.value.minifigsQuery.ifBlank { null }
-        when (val r = repo.teile.getMinifigs(scopeFor(ScopeFilter.View.MINIFIGS), suche)) {
-            // Manuell erfasste Figuren schliesst jetzt der SERVER aus
-            // (source=set im Repository) — sie haben ihren eigenen Bereich mit
-            // editierbaren Karten. Vorher stand der Ausschluss hier als
-            // `filter { it.source != "manual" }`, also ein zweites Mal neben
-            // der Regel im Server-Handler.
-            is Result.Success -> {
-                _partsState.update { it.copy(minifigs = r.data.figs, minifigsLoading = false) }
-                // Die manuell erfassten Figuren aus IHRER Quelle, nicht aus der
-                // Bewertung — dieselbe wie die Webapp.
-                // Mit Suchtext, aus demselben Grund wie bei den Teilen: EIN
-                // Suchfeld, zwei Abschnitte darunter (MinifigsScreen).
-                (repo.teile.getManualMinifigs(scopeFor(ScopeFilter.View.MINIFIGS), suche) as? Result.Success)
-                    ?.let { m -> _partsState.update { it.copy(manualFigs = m.data.figs) } }
-            }
-            is Result.Error   -> {
-                _snackbar.value = meldungFuerSnackbar(r)
-                _partsState.update { it.copy(minifigsLoading = false) }
-            }
-        }
-    }
-}
-
-/**
- * Suchtext der Figurenliste setzen: entprellt, damit nicht jeder Tastendruck
- * eine Abfrage ausloest. Gegenstueck zu [setPartsQuery] und setGalleryQuery.
- */
-internal fun MainViewModel.setMinifigsQuery(q: String) {
-    _partsState.update { it.copy(minifigsQuery = q) }
-    // Kein eigener Auftrag noetig: loadMinifigs bricht minifigsJob selbst ab,
-    // ein zweiter Tastendruck loescht also den entprellten ersten.
-    loadMinifigs(debounce = true)
-}
+internal fun MainViewModel.loadMinifigs(debounce: Boolean = false) = teile.ladeFiguren(entprellt = debounce)
+internal fun MainViewModel.setMinifigsQuery(q: String) = teile.setzeFigurSuche(q)

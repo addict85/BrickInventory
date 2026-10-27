@@ -1,6 +1,7 @@
 package ch.brickinventoryapp.ui.screens
 
 import androidx.compose.foundation.clickable
+import androidx.compose.ui.semantics.Role
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.material.icons.Icons
@@ -178,7 +179,7 @@ fun MerkpostenDetailScreen(
                     // Antippen oeffnet den Zoom — dasselbe Verhalten wie im
                     // Set- und im Katalog-Detail.
                     modifier = Modifier.fillMaxWidth().height(Abstaende.riesig * 5)
-                        .clickable(enabled = bildUrl != null) { zoomOffen = true },
+                        .clickable(enabled = bildUrl != null, role = Role.Button) { zoomOffen = true },
                 )
             }
 

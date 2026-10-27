@@ -19,35 +19,37 @@ BrickLink verfolgen, Anleitungen automatisch von Brickset holen.
 
 ## Die Oberfläche
 
-<img src="docs/screenshots/02-galerie.png" alt="Galerie mit der eigenen Sammlung">
+<img src="docs/screenshots/01-sammlung.png" alt="Die Sammlung: Sets als Kacheln mit Bild, Zustand, Konto und Marktwert">
 
-*Die Sammlung: suchen, filtern, sortieren. Sets einzeln oder per CSV anlegen,
-je mit Anzahl, Kaufpreis und Zustand.*
+*Die Sammlung: Sets als Kacheln mit Bild, Zustand, Konto und Wertentwicklung.
+Suchen, nach Thema, Konto und Lagerort filtern, sortieren; anlegen einzeln, per
+CSV oder aus einer BrickLink-XML-Liste.*
 
 <table>
 <tr>
-<td width="50%"><img src="docs/screenshots/03-teile.png" alt="Teile-Ansicht"></td>
-<td width="50%"><img src="docs/screenshots/04-einstellungen.png" alt="Einstellungen"></td>
+<td width="50%"><img src="docs/screenshots/04-finanzen.png" alt="Finanzen: Portfolio-Wert mit Verlauf und Tabelle"></td>
+<td width="50%"><img src="docs/screenshots/05-set-detail.png" alt="Set-Detail mit Kaufpreis, Marktpreis, Preisalarm und Lagerort"></td>
 </tr>
 <tr>
-<td><b>Teile</b> — einzeln erfassen oder aus Sets übernehmen, nach Farbe filtern.</td>
-<td><b>Einstellungen</b> — Sprache, Währung, Zustand, API-Schlüssel, Haushalt.</td>
+<td><b>Finanzen</b> — Portfolio-Wert über BrickLink-Preise, Verlauf nach Woche,
+Monat, Jahr; Kaufpreis gegen Marktwert je Set, Teil und Minifigur.</td>
+<td><b>Set-Detail</b> — Anzahl, Lagerort, Kaufpreise je Erfassung,
+Marktpreis mit Verlauf, Preisalarm und die Anleitungen.</td>
+</tr>
+<tr>
+<td><img src="docs/screenshots/02-teile.png" alt="Teile mit Farbe, Zustand und Konto"></td>
+<td><img src="docs/screenshots/03-minifiguren.png" alt="Minifiguren, manuell erfasst und aus Sets"></td>
+</tr>
+<tr>
+<td><b>Teile</b> — einzeln erfasst oder aus Sets übernommen, mit Farbe,
+Zustand, Konto und Lagerort.</td>
+<td><b>Minifiguren</b> — manuell erfasst oder aus den Sets der Sammlung
+abgeleitet.</td>
 </tr>
 </table>
 
-<details>
-<summary>Anmeldung</summary>
-
-<img src="docs/screenshots/01-login.png" alt="Anmeldung">
-
-</details>
-
-> Die Aufnahmen zeigen einen Demo-Bestand auf einer frisch aufgesetzten
-> Installation. Die Bilder der Sets sind der eingebaute Platzhalter — auf einer
-> Installation mit hinterlegten API-Schlüsseln stehen dort die echten
-> Set-Abbildungen. Die Ansicht **Finanzen** fehlt bewusst: Ohne
-> BrickLink-Zugangsdaten zeigt sie nur leere Marktpreise und wäre als
-> Aushängeschild irreführend.
+> Die Aufnahmen stammen aus einer echten Sammlung. Alle Beträge sind
+> unkenntlich gemacht.
 
 ---
 
@@ -55,12 +57,17 @@ je mit Anzahl, Kaufpreis und Zustand.*
 
 | | |
 | --- | --- |
-| **Galerie** | Sets anlegen (einzeln, per CSV oder Barcode), suchen, filtern, verschieben |
-| **Teile & Minifiguren** | aus Sets übernommen oder manuell erfasst, nach Farbe und Herkunft filterbar |
-| **Finanzen** | Portfolio-Wert über BrickLink-Preise, Kaufpreis gegen Marktwert, Verlauf |
+| **Sammlung** | Sets, Teile und Minifiguren — einzeln, per CSV, per BrickLink-XML oder per Barcode in der App; Lagerorte, Zustand Neu/Gebraucht, mehrere Erfassungen mit eigenem Kaufpreis |
+| **Finanzen** | Portfolio-Wert über BrickLink-Preise, Kaufpreis gegen Marktwert, Verlauf, Preisalarme, Gutscheine |
+| **Merkliste** | gesuchte Sets und Teile, Import der BrickLink-Wanted-Liste |
 | **Katalog** | Set-Suche über Rebrickable, mit Jahres-Regler |
-| **Anleitungen** | automatisch von Brickset geholt, eigene PDFs hochladbar |
+| **Teileliste** | alle Teile eines Sets, Abgleich mit dem eigenen Bestand, PDF-Export |
+| **Anleitungen** | automatisch geholt (Rebrickable, Brickset und weitere Quellen), eigene PDFs und Bilder hochladbar |
 | **Haushalt** | mehrere Konten mit gemeinsamem Blickfeld (Eltern sehen die Sammlungen der Kinder) |
+| **Papierkorb** | Gelöschtes bleibt 30 Tage wiederherstellbar |
+| **Sicherheit** | zweiter Faktor (TOTP) mit Wiederherstellungscodes, Anmeldesperre je Adresse und Konto, App-Tokens mit Ablauf |
+| **Einrichtung** | Assistent beim ersten Start; Verwaltung mit Monitoring der Hintergrundläufe und Protokoll |
+| **Aussehen** | fünf Designs, hell und dunkel, für Telefon und Desktop |
 | **Mehrsprachig** | Deutsch und Englisch, Währung frei wählbar |
 
 ---
@@ -106,15 +113,16 @@ docker compose pull && docker compose up -d
 
 <img src="docs/screenshots/android-icon.png" width="64" align="left" alt="App-Symbol">
 
-Kotlin und Jetpack Compose, `minSdk 26`, `compileSdk`/`targetSdk` 36.
+Kotlin und Jetpack Compose, `minSdk 26`, `compileSdk`/`targetSdk` 37.
 Spricht ausschliesslich über `/api/v1/` mit Bearer-Token — die
-Token-Verwaltung liegt in der Weboberfläche unter *Einstellungen → Mobile API*.
-Anmeldung wahlweise über QR-Code aus der Web-Oberfläche.
+Geräteverwaltung liegt in der Weboberfläche unter *Einstellungen → Angemeldete Geräte*.
+Anmeldung wahlweise über den QR-Code für die Android-App aus den Einstellungen.
 
 <br clear="left">
 
-Barcode- und Texterkennung für das Erfassen unterwegs, Galerie, Teileliste,
-Finanzen und PDF-Export der Anleitungen.
+Barcode- und Texterkennung für das Erfassen unterwegs, Sammlung, Teileliste,
+Merkliste, Katalog, Finanzen, Anleitungen als PDF und die Verwaltung des
+zweiten Faktors.
 
 > **Screenshots der App fehlen hier noch.** Sie lassen sich nur auf einem Gerät
 > oder Emulator aufnehmen; in der Umgebung, in der dieses README entstanden
@@ -149,8 +157,8 @@ Android-App/   Kotlin + Jetpack Compose, Hilt, Retrofit, CameraX + ML Kit
 
 | | Web-App | Android-App |
 | --- | --- | --- |
-| Sprache | TypeScript (~24 700 Zeilen) | Kotlin (78 Dateien) |
-| Tests | 119 Testdateien, 785 Prüfungen | 58 Testdateien, 289 Prüfungen |
+| Sprache | TypeScript (~31 700 Zeilen) | Kotlin (138 Dateien) |
+| Tests | 332 Testdateien | 120 Testdateien, 575 Prüfungen |
 | Laufzeit | Node 26, PostgreSQL 18 | Android 8.0+ (API 26) |
 
 Beide Bäume tragen eine ausführliche Änderungshistorie mit Begründungen:

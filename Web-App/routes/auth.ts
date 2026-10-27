@@ -6,11 +6,11 @@ import * as db from '../db/database';
 import { meldeHaushaltsaenderung } from '../utils/household';
 import { handleRouteError, logAndContinue, meldeUndWeiter, fehlerCode, fehlertext, pfadParam } from '../utils/httpError';
 import { hashToken, pruefeAnmeldedaten, createToken, validateToken, assertLoginAllowed, establishSession, revokeAllTokens, revokeAllSessions, deleteToken, BCRYPT_ROUNDS, USERNAME_RE, EMAIL_RE, requireLoginOrToken, nutzerId, angemeldeteNutzerId, appTokenOhneAblauf, passwortZuKurz, flaggeGesetzt, leereTokenCache, laufzeitTage } from '../utils/auth';
-import { ipThrottle } from '../utils/loginLimiter';
+import { ipThrottle, bestaetigungGesperrt, bestaetigungFehlgeschlagen, bestaetigungGelungen } from '../utils/loginLimiter';
 import crypto from 'crypto';
 import { strictBool } from '../utils/validate';
 import { sendEmailGeaendertMail, sendPasswordResetMail, sendVerificationMail } from '../utils/mailer';
-import type { Request } from 'express';
+import type { Request, Response } from 'express';
 import { getGlobalSetting, getSetting } from '../utils/settings';
 import { requireApiAdmin } from './api_v1/middleware';
 import { sendeFehler, fehlerText, antwortSprache } from '../utils/fehlerTexte';
@@ -146,19 +146,15 @@ router.get('/me', async (req, res) => {
 /**
  * POST /api/v1/auth/token-create — einen zusaetzlichen Token ausstellen.
  *
- * Fuer den Fall, dass ein bereits angemeldeter Client einen zweiten Ausweis
- * braucht (die App holt sich so einen nach der QR-Anmeldung). Sitzung ODER
- * Token genuegt als Nachweis — wer schon drin ist, darf sich einen weiteren
- * Schluessel machen.
+ * Nur aus einer Sitzung und mit dem Passwort: Sonst koennte sich ein erbeuteter
+ * Token beliebig viele dauerhafte Nachfolger praegen, die einen Passwortwechsel
+ * ueberleben muessten. Keiner der beiden Clients ruft das heute auf.
  */
 router.post('/token-create', requireLogin, async (req, res) => {
   try {
-    // Hier stand die VIERTE Schreibweise von „wer fragt hier": Der Header wurde
-    // von Hand zerlegt, der Token selbst geprueft und das Ergebnis mit der
-    // Sitzung verodert — wortgleich zu dem, was requireLoginOrToken ohnehin
-    // tut. Jetzt steht der Waechter in der Kette und die Antwort kommt aus dem
-    // einen Helfer.
+    if (!req.session?.userId) return sendeFehler(req, res, 403, 'nur_mit_sitzung');
     const userId = angemeldeteNutzerId(req);
+    if (!await bestaetigePasswort(req, res, userId, req.body?.password)) return;
     const label = req.body?.label || 'Android App';
     const neu = await createToken(userId, label, true);
     res.json({ success: true, token: neu, label, never_expires: appTokenOhneAblauf() });
@@ -218,8 +214,7 @@ router.put('/profile', requireLogin, async (req, res) => {
       // Über die neue Adresse liesse sich danach das Passwort zurücksetzen —
       // wer kurz eine fremde Sitzung hat, übernähme so das Konto.
       if (!password_current) return sendeFehler(req, res, 400, 'aktuelles_passwort_erforderlich');
-      if (!(await bcrypt.compare(String(password_current), user.password_hash)))
-        return sendeFehler(req, res, 400, 'aktuelles_passwort_falsch');
+      if (!await bestaetigePasswort(req, res, user.id, String(password_current))) return;
     }
 
     // Build update
@@ -245,9 +240,10 @@ router.put('/profile', requireLogin, async (req, res) => {
       // Ausführlich: docs/begruendungen/routes/auth.ts.md#put-profile-emailsent
       let emailSent = false;
       const lang = String(await getSetting(user.id, 'language', 'de').catch(() => 'de'));
+      const basis = getBaseUrl(req);
       try {
-        emailSent = (await sendVerificationMail(email, first_name || username || user.username,
-                                                token, getBaseUrl(req), lang)).success;
+        if (basis) emailSent = (await sendVerificationMail(email, first_name || username || user.username,
+                                                           token, basis, lang)).success;
       } catch (e) { meldeUndWeiter('anmeldung:bestaetigungsmail', e); }
       // Die alte Adresse erfährt davon — war es nicht der Inhaber, merkt er es so.
       if (user.email) await sendEmailGeaendertMail(user.email, user.username, email, lang)
@@ -397,11 +393,7 @@ router.post('/change-password', requireLogin, async (req: LoggedInRequest, res) 
   const uid = nutzerId(req);
   if (uid == null) return sendeFehler(req, res, 401, 'nicht_angemeldet');
   try {
-    const user = await db.get('SELECT * FROM users WHERE id = $1', [uid]);
-    if (!(await bcrypt.compare(current, user.password_hash)))
-      // 400 statt 401: Beide Clients deuten 401 als „Sitzung abgelaufen" und
-      // melden ab — ein Tippfehler im alten Passwort warf einen hinaus.
-      return sendeFehler(req, res, 400, 'aktuelles_passwort_falsch');
+    if (!await bestaetigePasswort(req, res, uid, String(current))) return;
     // NACH der Pruefung des alten Passworts: Wer das aktuelle nicht kennt, soll
     // ueber das neue auch nichts erfahren — die Antwort fuer einen Fremden
     // bleibt dieselbe.
@@ -437,19 +429,18 @@ router.post('/change-password', requireLogin, async (req: LoggedInRequest, res) 
 });
 
 
-// Helper: get base URL from request
-// Fix: APP_BASE_URL aus der Umgebung, wenn gesetzt — dann zählt NUR das.
-// Ohne die Variable fällt die Funktion auf den alten (unsicheren) Header-Pfad
-// zurück, damit bestehende Installationen ohne Konfiguration weiterlaufen; …
-// Ausführlich: docs/begruendungen/routes/auth.ts.md#getbaseurl
-function getBaseUrl(req: Request): string {
+/**
+ * Die Adresse für Links in E-Mails. APP_BASE_URL zählt allein; ohne sie in
+ * Produktion gibt es KEINE (null) — ein Link aus dem Host-Kopf liesse sich von
+ * aussen auf eine fremde Seite lenken. Ausserhalb des Betriebs bleibt der Kopf
+ * erlaubt, dort gibt es keinen Angreifer.
+ */
+function getBaseUrl(req: Request): string | null {
   const basis = basisUrl();
   if (basis) return basis;
-  // Der Hinweis nur in Produktion: In der Entwicklung ist die Variable
-  // regelmaessig nicht gesetzt, und dort ist der Host-Header auch kein Angriff.
   if (process.env.NODE_ENV === 'production') {
-    hinweisOhneBasisUrl('auth',
-      'Links in E-Mails uebernehmen den Host-Header ungeprueft (Host-Header-Injection moeglich).');
+    hinweisOhneBasisUrl('auth', 'Links in E-Mails werden nicht verschickt.');
+    return null;
   }
   const proto = req.headers['x-forwarded-proto'] || req.protocol || 'http';
   const host  = req.headers['x-forwarded-host'] || req.headers.host || 'localhost:3000';
@@ -478,9 +469,24 @@ const QR_TTL_MS = 5 * 60 * 1000;
 //
 // Einrichten und Abschalten verlangen das Passwort: Wer nur eine offene
 // Sitzung erbeutet, soll das Konto weder aussperren noch den Schutz abbauen.
-async function passwortStimmt(uid: number, passwort: unknown): Promise<boolean> {
+/**
+ * Das aktuelle Passwort eines angemeldeten Kontos prüfen — die eine Stelle für
+ * Passwortwechsel, E-Mail-Wechsel und zweiten Faktor, mit Bremse je Konto
+ * (utils/loginLimiter.ts). Antwortet selbst, wenn es nicht stimmt.
+ */
+async function bestaetigePasswort(req: Request, res: Response, uid: number, passwort: unknown): Promise<boolean> {
+  const gesperrt = await bestaetigungGesperrt(uid);
+  if (gesperrt) { sendeFehler(req, res, 429, gesperrt.code, gesperrt.vars); return false; }
   const u = await db.get('SELECT password_hash FROM users WHERE id = $1', [uid]);
-  return !!u && typeof passwort === 'string' && passwort !== '' && await bcrypt.compare(passwort, u.password_hash);
+  const ok = !!u && typeof passwort === 'string' && passwort !== '' && await bcrypt.compare(passwort, u.password_hash);
+  if (!ok) {
+    await bestaetigungFehlgeschlagen(uid);
+    // 400 statt 401: Beide Clients deuten 401 als „Sitzung abgelaufen".
+    sendeFehler(req, res, 400, 'aktuelles_passwort_falsch');
+    return false;
+  }
+  await bestaetigungGelungen(uid);
+  return true;
 }
 
 router.get('/zweiter-faktor', requireLogin, async (req, res) => {
@@ -492,7 +498,7 @@ router.get('/zweiter-faktor', requireLogin, async (req, res) => {
 router.post('/zweiter-faktor/einrichten', requireLogin, async (req, res) => {
   try {
     const uid = angemeldeteNutzerId(req);
-    if (!await passwortStimmt(uid, req.body?.password)) return sendeFehler(req, res, 400, 'aktuelles_passwort_falsch');
+    if (!await bestaetigePasswort(req, res, uid, req.body?.password)) return;
     const geheimnis = await zf.beginneEinrichtung(uid);
     if (!geheimnis) return sendeFehler(req, res, 409, 'zweiter_faktor_schon_aktiv');
     const u = await db.get('SELECT username FROM users WHERE id = $1', [uid]);
@@ -512,7 +518,7 @@ router.post('/zweiter-faktor/abschalten', requireLogin, async (req, res) => {
   try {
     const uid = angemeldeteNutzerId(req);
     if (!await zf.istAktiv(uid)) return sendeFehler(req, res, 409, 'zweiter_faktor_nicht_aktiv');
-    if (!await passwortStimmt(uid, req.body?.password)) return sendeFehler(req, res, 400, 'aktuelles_passwort_falsch');
+    if (!await bestaetigePasswort(req, res, uid, req.body?.password)) return;
     if (!await zf.pruefeCode(uid, req.body?.code)) return sendeFehler(req, res, 400, 'zweiter_faktor_falsch');
     await zf.schalteAb(uid);
     res.json({ success: true });
@@ -686,11 +692,16 @@ router.post('/register', ipThrottle('register', 5, 60 * 60 * 1000), async (req, 
       ).catch(logAndContinue(`registrierung:sprache ${newUser.id}`));
     }
 
-    const result = await sendVerificationMail(email, first_name || username, token, getBaseUrl(req), lang);
+    const basis = getBaseUrl(req);
+    const result = basis
+      ? await sendVerificationMail(email, first_name || username, token, basis, lang)
+      : { success: false, mode: 'ohne_basis' as const };
 
     res.json({
       success: true,
-      message: result.mode === 'console'
+      message: result.mode === 'ohne_basis'
+        ? 'Konto erstellt. Eine Bestätigung per E-Mail ist auf diesem Server nicht eingerichtet (APP_BASE_URL fehlt) — bitte den Verwalter fragen.'
+        : result.mode === 'console'
         ? 'Konto erstellt. Da SMTP nicht konfiguriert ist, steht der Bestätigungslink in der Server-Konsole.'
         : 'Konto erstellt. Bitte bestätige deine E-Mail-Adresse.',
       email_sent: result.success,
@@ -743,7 +754,8 @@ router.post('/forgot-password', ipThrottle('forgot-password', 5, 60 * 60 * 1000)
     getSetting(user.id, 'language', 'de')
       .catch(() => 'de')
       .then((lang: unknown) => sendPasswordResetMail(
-        email, user.first_name || user.username, token, getBaseUrl(req), String(lang ?? 'de')))
+        // resetLinkMoeglich() oben sichert die Adresse zu.
+        email, user.first_name || user.username, token, getBaseUrl(req)!, String(lang ?? 'de')))
       .catch((e: any) => console.error('[forgot-password] Mailversand fehlgeschlagen:', e?.message));
 
     res.json({ success: true, message: 'Falls die E-Mail existiert, wurde ein Link gesendet.' });

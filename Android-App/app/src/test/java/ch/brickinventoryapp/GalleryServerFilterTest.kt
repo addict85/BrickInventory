@@ -101,20 +101,14 @@ class GalleryServerFilterTest {
 
     @Test
     fun `das ViewModel schickt die Filter mit und blaettert seitenweise`() {
-        val f = code(read("ui/GalleryFeature.kt"))
-        assert(f.contains("search = ") && f.contains("theme = ") && f.contains("sort = ")) {
-            "loadSets reicht die Filter nicht durch — der Server bekäme sie nie zu sehen"
+        // Generation, Entprellung und Nachladen prüft GalerieTest am Verhalten;
+        // hier bleibt, dass der eine Abruf die Filter mitschickt.
+        val f = code(read("ui/MainViewModel.kt"))
+        assert(f.contains("search = g.galleryQuery") && f.contains("theme = g.galleryTheme") &&
+               f.contains("sort = g.gallerySort")) {
+            "Der Abruf der Galerie reicht die Filter nicht durch — der Server bekäme sie nie zu sehen"
         }
-        assert(f.contains("loadMoreSets")) { "Endlos-Scroll fehlt" }
-        // Generationszähler: Ohne ihn hängt eine späte Seite 2 des ALTEN
-        // Filters an der neuen Liste — gemischter Inhalt und doppelte
-        // Schlüssel im Raster. Dieselbe Falle wie im Katalog.
-        assert(f.contains("galleryGeneration")) {
-            "Ohne Filter-Generation landen Antworten eines alten Filters in der neuen Liste"
-        }
-        assert(f.contains("delay(350)")) {
-            "Ohne Entprellung löst jeder Tastendruck eine Abfrage aus"
-        }
+        assert(code(read("ui/GalleryFeature.kt")).contains("loadMoreSets")) { "Endlos-Scroll fehlt" }
     }
 
     @Test

@@ -4,6 +4,7 @@
  */
 import * as db from '../db/database';
 import type { DbSchnittstelle } from '../db/database';
+import { LOCKS } from './lockNamespaces';
 
 /**
  * Führt fn in einer Transaktion aus, die exklusiven Zugriff auf den
@@ -19,11 +20,11 @@ async function withInventoryLock(userId: number, scopeKey: string | number, fn: 
   // tx: DbSchnittstelle statt any — der Typ steht seit Nachtrag 155 in
   // db/database. Mit `any` war jeder Aufruf hier drin ungeprueft.
   return db.transaction(async (tx: DbSchnittstelle) => {
-    // hashtext() liefert int4 — zusammen mit der userId ergibt das den
-    // zweiteiligen Lock-Schlüssel. Kollisionen zweier verschiedener Sets
-    // desselben Nutzers sind theoretisch möglich und harmlos: Dann
-    // serialisieren zwei Vorgänge, die es nicht müssten.
-    await tx.run('SELECT pg_advisory_xact_lock($1, hashtext($2))', [userId, String(scopeKey)]);
+    // Eine eigene Klasse statt der user_id als erstem Wert: Sonst sperrte
+    // Konto 42 beim Verschieben eines Sets den Bild-Download desselben Sets
+    // (LOCKS.BILD_DOWNLOAD = 42, hashtext(Setnummer)). Gleiche Streuwerte
+    // verschiedener Schlüssel serialisieren nur, was es nicht müsste.
+    await tx.run('SELECT pg_advisory_xact_lock($1, hashtext($2))', [LOCKS.INVENTAR, `${userId}|${scopeKey}`]);
     return fn(tx);
   });
 }

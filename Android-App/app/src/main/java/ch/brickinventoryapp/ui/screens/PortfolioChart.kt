@@ -166,7 +166,7 @@ fun PortfolioChart(
                     FilterChip(
                         selected  = selectedPeriod == p,
                         onClick   = { onPeriodChange(p) },
-                        label     = { Text(label, fontSize = 11.sp) },
+                        label     = { Text(label, style = MaterialTheme.typography.labelSmall) },
                         modifier  = Modifier.height(28.dp)
                     )
                 }

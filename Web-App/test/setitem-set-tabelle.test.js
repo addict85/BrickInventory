@@ -121,7 +121,8 @@ test('die gemeinsame Tabellenzeile sagt der Sprachausgabe, was das Antippen tut'
     fs.readFileSync(path.join(APP, 'ui', 'screens', 'TabellenZeile.kt'), 'utf8'));
   assert.match(zeile, /onClickLabel: String\? = null/,
     'TabellenZeile nimmt keine Beschriftung für die Sprachausgabe entgegen');
-  assert.match(zeile, /clickable\(onClickLabel = onClickLabel, onClick = onClick\)/,
+  // Weitere Argumente (role = Role.Button) dürfen dazwischen stehen.
+  assert.match(zeile, /clickable\(onClickLabel = onClickLabel,[^)]*\bonClick = onClick\)/,
     'TabellenZeile nimmt die Beschriftung entgegen, reicht sie aber nicht an ' +
     'clickable weiter — sie hätte dann keine Wirkung');
 });

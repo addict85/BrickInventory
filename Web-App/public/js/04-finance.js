@@ -55,7 +55,10 @@ async function loadPortfolioChart(){
   // P&L: use server-computed period_change_pct (compares period start vs current)
   const pnlEl = G('portfolio-pnl');
   if(pnlEl){
-    if(d.period_change_pct != null){
+    // Ohne Marktwert keine Entwicklung: Der Verlauf trägt dann nur den
+    // Kaufpreis, und „0.0 %" neben „—" behauptete Stillstand.
+    if(!(window._finGrandTotal > 0)) pnlEl.innerHTML = '';
+    else if(d.period_change_pct != null){
       pnlEl.innerHTML = pnlBadge(d.period_change_pct.toFixed(1));
     } else {
       // Fallback: first chart point vs current
@@ -116,7 +119,6 @@ export async function loadFinance(){
   ]);
   if(!d.success){ toast(d.error||t('settings.error'),'error'); G('fin-tbl').innerHTML=`<div class="empty"><div class="icon">${ico('warnung')}</div><h3>${t('toast.error')}</h3><p>${esc(d.error)}</p></div>`; return; }
   const cur=d.currency;
-  G('fin-sum').style.display='grid';
   const partsExtra = parseFloat(partsVal.success ? partsVal.total_value||0 : 0);
   const figsExtra  = parseFloat(figsVal.success  ? figsVal.total_value||0  : 0);
   const extra = partsExtra + figsExtra;
@@ -142,6 +144,10 @@ export async function loadFinance(){
   // Ohne vergleichbaren Posten keine Kachel — auch nicht die vom letzten Filter.
   const gesamtGuv = pnlData.success ? pnlData.totals?.pnl_pct : null;
   G('fin-stat-pnl').style.display = gesamtGuv != null ? '' : 'none';
+  // Kennzahlen nur mit mindestens einem Wert: vier Kacheln mit „—" füllten am
+  // Telefon den ganzen ersten Bildschirm.
+  const mitWert = gesamtGuv != null || ['min','avg','max'].some(k => parseFloat(d.totals[k]||0) + extra > 0);
+  G('fin-sum').style.display = mitWert ? 'grid' : 'none';
   if(gesamtGuv != null) G('fin-total-pnl').innerHTML = pnlBadge(gesamtGuv);
 
   // ── Teile & Minifiguren: einzeln auflisten, analog zur Sets-Tabelle ─────────
@@ -262,14 +268,14 @@ export async function loadFinance(){
     const dateSrc  = acq ? acq.created_at : s.added_at;
     // Die Fehlermeldung steht im Status-Symbol (Tooltip), nicht in der Summe:
     // Dort brach sie die Spalte fünfzeilig um.
-    return `<tr style="cursor:pointer" data-click="openModal" data-arg="${escJs(s.set_number)}">
-    <td class="fin-bild">${s.image_local||s.image_url?`<img src="${escUrl(imgUrl(thumbUrl(s.image_local||s.image_url)||s.image_local||s.image_url||'', true))}" loading="lazy" decoding="async" data-orig="${escUrl(imgUrl(s.image_url||''))}" alt="" />`:`<span class="fin-ph">${ico('set')}</span>`}</td>
+    return `<tr style="cursor:pointer" tabindex="0" data-click="openModal" data-arg="${escJs(s.set_number)}">
+    <td class="fin-bild">${s.image_local||s.image_url?`<img src="${escUrl(imgUrl(thumbUrl(s.image_local||s.image_url)||s.image_local||s.image_url||'', true))}" loading="lazy" decoding="async" data-onerror="symbol" alt="" />`:`<span class="fin-ph">${ico('set')}</span>`}</td>
     <td class="fin-detail"><span style="font-family:var(--mono);color:var(--b600);font-size:var(--fs-1)">${esc(s.set_number)}</span></td>
     <td class="fin-name">${esc(s.name)||'—'}${acq?` ${condBadge(acq.condition)}`:''} ${ownerBadges(s)}<span class="fin-unter">${esc(s.set_number)}${s.year?` · ${s.year}`:''} · ×${qty}</span></td><td class="fin-detail">${s.year||'—'}</td>
     <td class="fin-detail"><span class="qbadge">×${qty}</span></td>
     <td class="fin-detail" style="font-size:var(--fs-1);color:var(--mut)">${dateSrc?new Date(dateSrc).toLocaleDateString(locale()):'—'}</td>
     <td class="fin-detail price-cell">${purchase!=null?fmtN(purchase,cur):'—'}</td>
-    <td class="fin-detail ${s.error?'':'price-cell'}">${s.error?'—':fmtN(market,cur)}</td>
+    <td class="fin-detail ${s.error?'':'price-cell'}">${s.error?`<span class="fin-fehlt" title="${esc(t('finance.price_failed'))}: ${esc(s.error)}">${t('finance.price_missing_short')}</span>`:fmtN(market,cur)}</td>
     <td class="fin-wert ${s.error?'':'price-total'}">${s.error?'<span style="color:var(--mut)">—</span>':fmtN(total,cur)}</td>
     <td class="fin-guv">${pnl!=null?pnlBadge(pnl):'<span style="color:var(--mut)">—</span>'}</td>
     <td class="fin-status">${priceStatusBadge(s)}</td>

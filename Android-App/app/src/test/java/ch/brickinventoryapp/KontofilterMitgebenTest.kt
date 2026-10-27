@@ -24,6 +24,11 @@ import org.junit.Test
  * WELCHE Lader der Filterwechsel anstoesst, steht in setScope() selbst und
  * wird von dort gelesen. Kommt eine Ansicht dazu oder laedt ein Wechsel etwas
  * Weiteres nach, ist es von selbst mitgeprueft.
+ *
+ * Gegenprobe zu den Zustandsklassen (am 27.10. gemessen): im MainViewModel
+ * `getMinifigs(null, suche)` statt mit dem Blickfeld → rot mit
+ * „teile -> repo.teile.getMinifigs()"; ebenso `getStats()` ohne Blickfeld
+ * beim Bau der Galerie.
  */
 class KontofilterMitgebenTest {
 
@@ -43,6 +48,38 @@ class KontofilterMitgebenTest {
 
         val fehlend = mutableListOf<String>()
         var geprueft = 0
+
+        fun pruefeBau(feld: String, gesehen: MutableSet<String>) {
+            if (!gesehen.add("bau:$feld")) return
+            val vm = quellen.getValue("MainViewModel.kt")
+            val ab = Regex("""val $feld\s*=\s*\w+\(""").find(vm)
+            assert(ab != null) { "MainViewModel baut $feld nicht mehr — Muster veraltet?" }
+            var i = ab!!.range.last + 1
+            var tiefe = 1
+            while (i < vm.length && tiefe > 0) {
+                if (vm[i] == '(') tiefe++ else if (vm[i] == ')') tiefe--
+                i++
+            }
+            val bau = vm.substring(ab.range.first, i)
+            val vars = Regex("""val (\w+)\s*(?:get\(\)\s*)?=\s*scopeFor\(""").findAll(bau)
+                .map { it.groupValues[1] }.toSet()
+            for (t in Regex("""repo\.(\w+)\.(\w+)\s*\(""").findAll(bau)) {
+                if (t.groupValues[2] in ohneBlickfeld) continue
+                geprueft++
+                // Genau bis zur schliessenden Klammer des Aufrufs: Ein festes
+                // Fenster sähe das Blickfeld des NÄCHSTEN Abrufs in der Zeile darunter.
+                var k = t.range.last + 1
+                var offen = 1
+                while (k < bau.length && offen > 0) {
+                    if (bau[k] == '(') offen++ else if (bau[k] == ')') offen--
+                    k++
+                }
+                val stelle = bau.substring(t.range.first, k)
+                val traegt = stelle.contains("scopeFor(") || stelle.contains("accounts") ||
+                    vars.any { v -> Regex("""\W$v\W""").containsMatchIn(stelle) }
+                if (!traegt) fehlend += "MainViewModel.kt: $feld -> repo.${t.groupValues[1]}.${t.groupValues[2]}()"
+            }
+        }
 
         fun pruefe(name: String, tiefe: Int, gesehen: MutableSet<String>) {
             if (tiefe > 3 || !gesehen.add(name)) return
@@ -68,6 +105,10 @@ class KontofilterMitgebenTest {
             }
             for (m in Regex("""\b(load[A-Z]\w*)\s*\(""").findAll(koerper))
                 if (m.groupValues[1] != name) pruefe(m.groupValues[1], tiefe + 1, gesehen)
+            // Lader, die an eine Zustandsklasse weiterreichen (Galerie, Teile):
+            // Deren Abrufe stehen im MainViewModel, wo die Klasse gebaut wird.
+            for (m in Regex("""\b(galerie|teile)\.\w+\(""").findAll(koerper))
+                pruefeBau(m.groupValues[1], gesehen)
         }
 
         for (l in lader) pruefe(l, 0, mutableSetOf())
@@ -82,13 +123,16 @@ class KontofilterMitgebenTest {
 
         assert(fehlend.isEmpty()) {
             "Diese Abrufe haengen am Kontofilter, geben ihn aber nicht mit:\n  " +
-                fehlend.joinToString("\n  ") +
+                fehlend.distinct().joinToString("\n  ") +
                 "\nSie werden beim Wechsel neu geladen und liefern trotzdem jedesmal " +
                 "dasselbe — eine gefilterte Liste neben ungefilterten Zahlen."
         }
     }
 
     private companion object {
+        /** Stammdaten, die für jedes Konto gleich sind: Der Farbkatalog gehört niemandem. */
+        val ohneBlickfeld = setOf("getBrickColors")
+
         /** Rumpf einer Funktion, in welcher Datei auch immer sie steht. */
         fun rumpf(name: String, quellen: Map<String, String>): Pair<String, String>? {
             for ((datei, src) in quellen) {
@@ -101,6 +145,16 @@ class KontofilterMitgebenTest {
                 while (i < src.length && tiefe > 0) {
                     if (src[i] == '(') tiefe++ else if (src[i] == ')') tiefe--
                     i++
+                }
+                // Ausdrucksrumpf (`fun x() = galerie.laden()`): bis zur letzten
+                // eingerückten Folgezeile. Sonst griffe die Suche nach `{` in
+                // die NÄCHSTE Funktion und prüfte deren Abrufe unter falschem Namen.
+                val rest = src.substring(i).trimStart()
+                if (rest.startsWith("=")) {
+                    var ende = src.indexOf('\n', i).let { if (it < 0) src.length else it }
+                    while (ende + 1 < src.length && src[ende + 1].isWhitespace() && src[ende + 1] != '\n')
+                        ende = src.indexOf('\n', ende + 1).let { if (it < 0) src.length else it }
+                    return datei to src.substring(m.range.first, ende)
                 }
                 val start = src.indexOf('{', i)
                 if (start < 0) continue

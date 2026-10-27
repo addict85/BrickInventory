@@ -3,6 +3,7 @@ package ch.brickinventoryapp.ui.screens
 import ch.brickinventoryapp.ui.theme.Formen
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.ui.semantics.Role
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
@@ -197,7 +198,7 @@ fun ManualItemDetailScreen(
                                 .fillMaxWidth()
                                 .height(200.dp)
                                 .clip(Formen.chip)
-                                .clickable { showImageZoom = true }
+                                .clickable(role = Role.Button) { showImageZoom = true }
                                 .padding(Abstaende.mittel),
                             contentScale = ContentScale.Fit
                         )
@@ -292,7 +293,7 @@ fun ManualItemDetailScreen(
                                         else vm.updatePart(id, colorId, qty, part?.unitPrice, part?.condition, owner = part?.userId)
                                     }
                                 },
-                                modifier = Modifier.size(32.dp), shape = Formen.etikett
+                                shape = Formen.etikett
                             ) { Icon(Icons.Default.Remove, stringResource(R.string.cd_qty_decrease), Modifier.size(14.dp)) }
                             Text("$qty", fontWeight = FontWeight.Bold, fontSize = Schrift.gross,
                                 modifier = Modifier.widthIn(min = 24.dp), textAlign = TextAlign.Center)
@@ -302,7 +303,7 @@ fun ManualItemDetailScreen(
                                     if (isFig) vm.updateMinifig(id, qty, fig?.unitPrice, fig?.blFigNumber, owner = fig?.userId)
                                     else vm.updatePart(id, colorId, qty, part?.unitPrice, part?.condition, owner = part?.userId)
                                 },
-                                modifier = Modifier.size(32.dp), shape = Formen.etikett
+                                shape = Formen.etikett
                             ) { Icon(Icons.Default.Add, stringResource(R.string.cd_qty_increase), Modifier.size(14.dp)) }
                         }
                     }

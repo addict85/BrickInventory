@@ -1,7 +1,5 @@
 package ch.brickinventoryapp.ui
 
-import kotlinx.coroutines.flow.update
-
 /**
  * Sichtbare Prüfung vor dem Erfassen eines Sets.
  *
@@ -12,7 +10,7 @@ import kotlinx.coroutines.flow.update
  * Dauer-Dialog: Ein einziger übersehener Rückweg lässt ihn stehen, und die App
  * wirkt eingefroren.
  *
- * Deshalb sind es benannte Funktionen und kein `_erfassungState.update { … }`
+ * Deshalb sind es benannte Funktionen und kein Schreiben in den Zustand
  * an vierzehn Stellen: Der Wächter (SetPruefungAnzeigeTest) kann so prüfen,
  * dass jeder Aufruf von `zeigePruefung()` in einem `finally` landet — das ist
  * der einzige Rückweg, den man nicht vergessen kann.
@@ -23,12 +21,12 @@ import kotlinx.coroutines.flow.update
  * in den Hintergrund — wer darauf wartet, wartet auf nichts.
  */
 internal fun MainViewModel.zeigePruefung(bezeichner: String, phase: Pruefphase) {
-    _erfassungState.update { it.copy(pruefung = Pruefschritt(bezeichner, phase)) }
+    erfassung.zeige(bezeichner, phase)
 }
 
 /** Prüfung beendet — egal ob erfolgreich, erfolglos oder abgebrochen. */
 internal fun MainViewModel.pruefungFertig() {
-    _erfassungState.update { it.copy(pruefung = null) }
+    erfassung.fertig()
 }
 
 /**

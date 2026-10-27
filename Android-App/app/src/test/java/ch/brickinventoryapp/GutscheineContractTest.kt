@@ -134,10 +134,10 @@ class GutscheineContractTest {
     fun `Nummer und PIN lassen sich durch Antippen kopieren`() {
         // Marcos Vorgabe: „Wenn ich in der Android-App den Gutscheincode oder
         // den Pin anklicke, soll dieser kopiert werden."
-        assert(karte.contains("clickable { onKopieren(g.number, true) }")) {
+        assert(karte.contains("clickable(role = Role.Button) { onKopieren(g.number, true) }")) {
             "Die Gutscheinnummer laesst sich nicht durch Antippen kopieren."
         }
-        assert(karte.contains("clickable { onKopieren(g.pin, false) }")) {
+        assert(karte.contains("clickable(role = Role.Button) { onKopieren(g.pin, false) }")) {
             "Der PIN laesst sich nicht durch Antippen kopieren."
         }
         // Die ROHE Nummer, nicht die in Vierergruppen gezeigte: Die

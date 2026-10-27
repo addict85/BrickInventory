@@ -154,7 +154,7 @@ fun BarcodeScannerScreen(
                                 contentColor   = if (torchOn) Color.Black else Color.White
                             )
                         ) {
-                            Text(if (torchOn) stringResource(R.string.scanner_torch_off) else stringResource(R.string.scanner_torch_on), fontSize = 13.sp)
+                            Text(if (torchOn) stringResource(R.string.scanner_torch_off) else stringResource(R.string.scanner_torch_on), style = MaterialTheme.typography.bodyMedium)
                         }
                     },
                 ) {

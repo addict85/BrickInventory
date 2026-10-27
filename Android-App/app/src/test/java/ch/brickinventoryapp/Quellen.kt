@@ -140,10 +140,14 @@ object Quellen {
      * Bewusst abgeleitet statt in den Tests aufgezählt: Eine Liste dort wäre
      * eine zweite Wahrheit, die beim nächsten neuen Zustand still veraltet.
      */
-    fun zustandsFluesse(): Map<String, String> =
-        Regex("""_(\w+)\s*=\s*MutableStateFlow\((\w+UiState)\(""")
-            .findAll(lies("ui/MainViewModel.kt"))
+    fun zustandsFluesse(): Map<String, String> {
+        val src = lies("ui/MainViewModel.kt")
+        // Zweite Form: ein Fluss, den eine eigene Klasse hält (Galerie), steht
+        // mit seinem Typ da — `val galleryState: StateFlow<GalleryUiState> = …`.
+        return (Regex("""_(\w+)\s*=\s*MutableStateFlow\((\w+UiState)\(""").findAll(src) +
+                Regex("""val\s+(\w+)\s*:\s*[\w.]*StateFlow<(\w+UiState)>""").findAll(src))
             .associate { it.groupValues[1] to it.groupValues[2] }
+    }
 
     /**
      * Dasselbe für JEDES ViewModel: Klasse → (öffentlicher Flussname → Typ).

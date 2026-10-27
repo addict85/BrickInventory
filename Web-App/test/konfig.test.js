@@ -8,6 +8,8 @@
  *      → rot: „niemand sonst liest die Verbindungsvariablen"
  *   B  in datenbankVerbindung die Zeile für DATABASE_URL entfernt →
  *      rot: „DATABASE_URL geht vor"
+ *   C  in standardPasswortInBenutzung den Zweig für connectionString auf
+ *      `return false` gesetzt → rot: „das Beispielpasswort wird erkannt"
  */
 const test   = require('node:test');
 const assert = require('node:assert/strict');
@@ -16,12 +18,20 @@ const path   = require('node:path');
 
 const ROOT = path.join(__dirname, '..');
 const _req = require('./helpers/sources').buildAndRequire();
-const { datenbankVerbindung } = _req('utils/konfig.js');
+const { datenbankVerbindung, standardPasswortInBenutzung } = _req('utils/konfig.js');
 
 test('ohne Angaben dieselben Standardwerte wie compose.yaml', () => {
   assert.deepEqual(datenbankVerbindung({}), {
     host: 'postgres', port: 5432, user: 'brickinventory',
     password: 'brickinventory_secret', database: 'brickinventory' });
+});
+
+test('das Beispielpasswort wird erkannt — einzeln und in DATABASE_URL', () => {
+  assert.equal(standardPasswortInBenutzung({}), true);
+  assert.equal(standardPasswortInBenutzung({ PGPASSWORD: 'eigenes' }), false);
+  assert.equal(standardPasswortInBenutzung({ DATABASE_URL: 'postgres://brickinventory:brickinventory_secret@db/x' }), true);
+  assert.equal(standardPasswortInBenutzung({ DATABASE_URL: 'postgres://brickinventory:anderes@db/x' }), false);
+  assert.equal(standardPasswortInBenutzung({ DATABASE_URL: 'kaputt' }), false);
 });
 
 test('DATABASE_URL geht vor', () => {

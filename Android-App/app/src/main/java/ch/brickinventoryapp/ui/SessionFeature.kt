@@ -19,8 +19,10 @@ import kotlinx.coroutines.launch
  */
 
 // ── Server Setup ─────────────────────────────────────────────────────────
-internal fun MainViewModel.saveServerUrl(url: String) {
+internal fun MainViewModel.saveServerUrl(url: String, klartextBestaetigt: Boolean = false) {
     viewModelScope.launch {
+        // Zuerst die Erlaubnis, dann die Adresse: Die ersten Anfragen folgen sofort.
+        if (klartextBestaetigt) ch.brickinventoryapp.util.NetworkPolicy.klartextHost(url)?.let { prefs.bestaetigeKlartext(it) }
         prefs.saveServerUrl(url)
     }
 }
@@ -252,14 +254,14 @@ internal fun MainViewModel.logout() {
         // Er galt nur fuer die Haelfte. Gefunden beim Entfernen der
         // Nutzerverwaltung, nicht von einer Pruefung — deshalb prueft
         // felder.py das jetzt: Jeder Fluss des MainViewModel muss hier stehen.
-        _galleryState.value = GalleryUiState()
-        _partsState.value = PartsUiState()
+        galerie.zuruecksetzen()
+        teile.zuruecksetzen()
         _financeState.value = FinanceUiState()
         _csvImportState.value = CsvImportUiState()
         _setDetailState.value = SetDetailUiState()
         _manDetailState.value = ManualItemDetailUiState()
         _setItemState.value = SetItemUiState()
-        _erfassungState.value = ErfassungUiState()
+        erfassung.fertig()
         _householdState.value = HouseholdUiState()
         _anmeldeState.value = AnmeldeUiState()
         _csvHochladenState.value = CsvHochladenUiState()

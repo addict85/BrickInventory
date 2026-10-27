@@ -76,7 +76,7 @@ internal fun BricksetQueueRow(
         Column(Modifier.padding(10.dp), verticalArrangement = Arrangement.spacedBy(Abstaende.winzig)) {
             Row(Modifier.fillMaxWidth(), Arrangement.SpaceBetween, Alignment.CenterVertically) {
                 Column(Modifier.weight(1f)) {
-                    Text(entry.setNumber, fontWeight = FontWeight.Bold, fontSize = 13.sp)
+                    Text(entry.setNumber, fontWeight = FontWeight.Bold, style = MaterialTheme.typography.bodyMedium)
                     entry.name?.let {
                         Text(it, style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant)
@@ -86,13 +86,11 @@ internal fun BricksetQueueRow(
                         color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
                 Row(horizontalArrangement = Arrangement.spacedBy(Abstaende.winzig)) {
-                    FilledTonalIconButton(onClick = { onRetry(entry.setNumber) },
-                        modifier = Modifier.size(32.dp)) {
+                    FilledTonalIconButton(onClick = { onRetry(entry.setNumber) }) {
                         Icon(Icons.Default.Refresh, stringResource(R.string.monitoring_icon_retry), Modifier.size(14.dp))
                     }
                     FilledTonalIconButton(
                         onClick = { onDelete(entry.setNumber) },
-                        modifier = Modifier.size(32.dp),
                         colors = IconButtonDefaults.filledTonalIconButtonColors(
                             containerColor = MaterialTheme.colorScheme.errorContainer
                         )
@@ -426,7 +424,6 @@ fun CacheAndLimitsSection(vm: MainViewModel, onSnack: (String) -> Unit = {}) {
                         Text(stringResource(R.string.monitoring_cache_ttl_hours, cacheTtl), fontWeight = FontWeight.SemiBold, fontSize = Schrift.normal)
                         FilledTonalIconButton(
                             onClick = { editingTtl = true },
-                            modifier = Modifier.size(30.dp)
                         ) { Icon(Icons.Default.Edit, stringResource(R.string.cd_edit_cache_ttl), Modifier.size(14.dp)) }
                     }
                 }
@@ -497,7 +494,6 @@ fun CacheAndLimitsSection(vm: MainViewModel, onSnack: (String) -> Unit = {}) {
                     letterSpacing = 0.8.sp)
                 FilledTonalIconButton(
                     onClick = { editingLimits = !editingLimits },
-                    modifier = Modifier.size(30.dp)
                 ) { Icon(if (editingLimits) Icons.Default.Close else Icons.Default.Edit, stringResource(R.string.cd_edit_limits), Modifier.size(14.dp)) }
             }
 
@@ -525,7 +521,7 @@ fun CacheAndLimitsSection(vm: MainViewModel, onSnack: (String) -> Unit = {}) {
                 ) {
                     Icon(Icons.Default.Save, null, Modifier.size(16.dp))
                     Spacer(Modifier.width(6.dp))
-                    Text(stringResource(R.string.monitoring_limits_save), fontSize = 13.sp)
+                    Text(stringResource(R.string.monitoring_limits_save), style = MaterialTheme.typography.bodyMedium)
                 }
             }
         }
@@ -535,7 +531,7 @@ fun CacheAndLimitsSection(vm: MainViewModel, onSnack: (String) -> Unit = {}) {
 @Composable
 private fun CacheStatCell(label: String, value: String) {
     Column(horizontalAlignment = Alignment.CenterHorizontally) {
-        Text(value, fontWeight = FontWeight.Bold, fontSize = 15.sp)
+        Text(value, fontWeight = FontWeight.Bold, style = MaterialTheme.typography.titleMedium)
         Text(label, style = MaterialTheme.typography.labelSmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = Schrift.winzig)
     }
@@ -581,7 +577,7 @@ private fun RateLimitRow(
                         modifier = Modifier.width(80.dp),
                         singleLine = true,
                         shape = Formen.etikett,
-                        textStyle = LocalTextStyle.current.copy(fontSize = 13.sp),
+                        textStyle = MaterialTheme.typography.bodyMedium,
                     keyboardOptions = NumericInput.ganzzahlTastatur()
                 )
                 }
@@ -633,7 +629,7 @@ internal fun ProtokollSection(mon: MonitoringViewModel) {
         Column(Modifier.padding(Abstaende.gross), verticalArrangement = Arrangement.spacedBy(Abstaende.klein)) {
             Row(Modifier.fillMaxWidth(), Arrangement.SpaceBetween, Alignment.CenterVertically) {
                 Text(stringResource(R.string.admin_log_title),
-                    fontWeight = FontWeight.Bold, fontSize = 15.sp)
+                    fontWeight = FontWeight.Bold, style = MaterialTheme.typography.titleMedium)
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     if (verwaltung.protokollLaden) {
                         CircularProgressIndicator(Modifier.size(18.dp), strokeWidth = 2.dp)
@@ -851,11 +847,10 @@ fun ZeitplanZeile(
                 Text(
                     if (taeglich) plan.time.orEmpty()
                     else stringResource(R.string.monitoring_schedule_minutes, plan.minutes ?: 60),
-                    fontWeight = FontWeight.SemiBold, fontSize = 13.sp,
+                    fontWeight = FontWeight.SemiBold, style = MaterialTheme.typography.bodyMedium,
                 )
                 FilledTonalIconButton(
                     onClick = { bearbeiten = true },
-                    modifier = Modifier.size(30.dp),
                 ) { Icon(Icons.Default.Edit, stringResource(R.string.cd_edit_schedule), Modifier.size(14.dp)) }
             }
         }

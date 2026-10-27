@@ -147,6 +147,7 @@ test('Merkliste gegen echte Datenbank', { concurrency: 1 }, async (t) => {
     assert.equal(alleinOpa[0].owned, false);
     const imBlickfeld = await W.merkpostenVon([U.opa, U.enkel], '75192-1');
     assert.ok(imBlickfeld.every(w => w.owned === true), 'owned sieht nur das eigene Konto an');
+    await db.run(`DELETE FROM set_acquisitions WHERE user_id=$1`, [U.enkel]);
     await db.run(`DELETE FROM sets WHERE user_id=$1`, [U.enkel]);
   });
 

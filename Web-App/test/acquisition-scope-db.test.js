@@ -62,6 +62,7 @@ test('das Hauptkonto kann den Kaufpreis einer Unterkonto-Erfassung ändern',
   const subId   = (await db.get(`SELECT id FROM users WHERE username=$1`, [SUB])).id;
   await db.run(`INSERT INTO account_links (main_user_id,sub_user_id) VALUES ($1,$2) ON CONFLICT DO NOTHING`, [hauptId, subId]);
 
+  await db.run(`DELETE FROM set_acquisitions WHERE set_number=$1`, [SET]);
   await db.run(`DELETE FROM sets WHERE set_number=$1`, [SET]);
   // Set UND Erfassung gehören dem Unterkonto — wie im gemeldeten Fall.
   await haeltSet(db, subId, SET, 0);  // Menge 0: die Erfassung dahinter traegt sie
@@ -120,6 +121,7 @@ test('das Hauptkonto kann den Kaufpreis einer Unterkonto-Erfassung ändern',
     // 3. „Lesen weit, Schreiben eng": Das UNTERKONTO darf NICHT rückwärts in
     //    eine Erfassung des Hauptkontos schreiben. Diese Asymmetrie ist der
     //    Grund, warum hier writableIds() steht und nicht scopeIds().
+    await db.run(`INSERT INTO sets (user_id,set_number) VALUES ($1,$2) ON CONFLICT DO NOTHING`, [hauptId, SET]);
     await db.run(`INSERT INTO set_acquisitions (user_id,set_number,purchase_price,condition,quantity)
                   VALUES ($1,$2,99.00,'N',1)`, [hauptId, SET]);
     const fremdeId = (await db.get(
@@ -134,6 +136,7 @@ test('das Hauptkonto kann den Kaufpreis einer Unterkonto-Erfassung ändern',
     assert.equal(parseFloat(unveraendert.purchase_price), 99.00, 'und sie darf sich nicht geändert haben');
   } finally {
     await db.run(`DELETE FROM users WHERE username IN ($1,$2)`, [HAUPT, SUB]).catch(() => {});
+    await db.run(`DELETE FROM set_acquisitions WHERE set_number=$1`, [SET]).catch(() => {});
     await db.run(`DELETE FROM sets WHERE set_number=$1`, [SET]).catch(() => {});
     await new Promise(r2 => srvHaupt.close(r2));
     await new Promise(r2 => srvSub.close(r2));

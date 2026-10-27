@@ -2,6 +2,7 @@ package ch.brickinventoryapp.ui.screens
 
 import ch.brickinventoryapp.ui.theme.Formen
 import androidx.compose.foundation.clickable
+import androidx.compose.ui.semantics.Role
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -352,7 +353,7 @@ private fun AcquisitionManagementRow(
         color = MaterialTheme.colorScheme.primary,
         modifier = Modifier
             .padding(top = Abstaende.klein, bottom = Abstaende.haar)
-            .clickable { showDatePicker = true }
+            .clickable(role = Role.Button) { showDatePicker = true }
     )
     if (showDatePicker) {
         val initialMillis = remember(acquisition.createdAt) {
@@ -430,7 +431,7 @@ private fun AcquisitionManagementRow(
                 .weight(1f)
                 .onFocusChanged { st -> if (!st.isFocused) flushPending() },
             singleLine = true,
-            placeholder = { Text(stringResource(R.string.detail_price_placeholder), fontSize = 11.sp) },
+            placeholder = { Text(stringResource(R.string.detail_price_placeholder), style = MaterialTheme.typography.labelSmall) },
             keyboardOptions = NumericInput.preisTastatur(),
             keyboardActions = KeyboardActions(
                 onDone = { focusManager.clearFocus(); flushPending() }
@@ -439,7 +440,7 @@ private fun AcquisitionManagementRow(
         )
 
         // Delete
-        IconButton(onClick = { showDeleteConfirm = true }, modifier = Modifier.size(36.dp)) {
+        IconButton(onClick = { showDeleteConfirm = true }) {
             Icon(Icons.Default.Delete, stringResource(R.string.acq_delete_title),
                 tint = MaterialTheme.colorScheme.error, modifier = Modifier.size(20.dp))
         }

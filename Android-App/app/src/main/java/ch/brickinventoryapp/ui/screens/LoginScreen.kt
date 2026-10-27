@@ -99,7 +99,7 @@ fun LoginScreen(
             Text(
                 "Manager",
                 fontWeight = FontWeight.Light,
-                fontSize = 18.sp,
+                style = MaterialTheme.typography.titleLarge,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
             Spacer(Modifier.height(Abstaende.klein))
@@ -199,7 +199,7 @@ private fun LadeKnopf(text: String, laeuft: Boolean, aktiv: Boolean, onClick: ()
             CircularProgressIndicator(Modifier.size(18.dp),
                 color = MaterialTheme.colorScheme.onPrimary, strokeWidth = 2.dp)
         } else {
-            Text(text, fontWeight = FontWeight.SemiBold, fontSize = 15.sp)
+            Text(text, fontWeight = FontWeight.SemiBold, style = MaterialTheme.typography.titleMedium)
         }
     }
 }

@@ -1,7 +1,7 @@
 import { PARTS_ICON_SVG, bindTabs } from './02-gallery.js';
 import { registerActions } from './00-registry.js';
 import { locale, t, tRaw} from '../i18n.js';
-import { ico, escHex, G, api, checkAuth, esc, escUrl, imgUrl, knopfBesetzt, thumbUrl, toast } from './01-core.js';
+import { leerZustand, ico, escHex, G, api, checkAuth, esc, escUrl, imgUrl, knopfBesetzt, thumbUrl, toast } from './01-core.js';
 import { initScrollbalken } from './15-scrollbar.js';
 import { baueWantedXmlStuecke } from './19-bricklink-xml.js';
 
@@ -145,7 +145,12 @@ G('pl-setnr')?.addEventListener('keydown', e => e.key === 'Enter' && plAddSet())
 
 function plRenderSets() {
   const c = G('pl-sets'); if (!c) return;
-  if (!_plSets.length) { c.innerHTML = `<span style="color:var(--mut);font-size:var(--fs-3)">${t('pl.no_sets')}</span>`; G('btn-pl-gen').disabled = true; return; }
+  // Zurücksetzen hat erst etwas zu tun, wenn Sets oder eine fertige Liste da sind.
+  G('btn-pl-reset').disabled = !_plSets.length && !_plParts;
+  if (!_plSets.length) {
+    c.innerHTML = leerZustand({ ico: 'liste', titel: tRaw('pl.no_sets'), text: tRaw('pl.no_sets_hint') });
+    G('btn-pl-gen').disabled = true; return;
+  }
   G('btn-pl-gen').disabled = false;
   c.innerHTML = _plSets.map((s,i) => `
     <div style="display:inline-flex;align-items:center;gap:6px;background:var(--b50);border:1px solid var(--b200);border-radius:20px;padding:3px 10px 3px 8px;font-size:var(--fs-3)">

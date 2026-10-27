@@ -82,26 +82,22 @@ object NetworkPolicy {
     /**
      * Darf diese Anfrage unverschlüsselt rausgehen?
      *
-     * Blockiert wird nur noch der eindeutige Fall: eine ÖFFENTLICHE
-     * IP-Adresse über http. Dort ist sicher, dass der Bearer-Token das lokale
-     * Netz verlässt.
-     *
-     * Bei Hostnamen wird nicht mehr blockiert, sondern nur gewarnt. Die erste
-     * Fassung hat hier hart abgebrochen und damit selbstgehostete Setups
-     * lahmgelegt, die ihren Server über einen Namen ansprechen. Ein
-     * Sicherheitsgewinn, der die App unbenutzbar macht, ist keiner.
+     * Eine öffentliche IP über http nie. Ein öffentlich aussehender NAME nur,
+     * wenn der Nutzer genau diesen Host in der Einrichtung bestätigt hat — ein
+     * Heimnetz-Name kann öffentlich aussehen (brick.meinname.ch), darum kein
+     * hartes Verbot, aber auch kein stilles Durchlassen mehr.
      */
-    fun isCleartextAllowed(url: HttpUrl): Boolean {
+    fun isCleartextAllowed(url: HttpUrl, bestaetigt: Set<String> = emptySet()): Boolean {
         if (url.isHttps) return true
         if (isPrivateHost(url.host)) return true
-        // Öffentliche IP-Adresse im Klartext → das ist der Fall, den es zu
-        // verhindern gilt.
         if (isIpLiteral(url.host)) return false
-        // Öffentlich aussehender Name: durchlassen, aber sichtbar machen.
-        android.util.Log.w("NetworkPolicy",
-            "Unverschlüsselte Verbindung zu ${url.host} — der Zugangstoken geht im " +
-            "Klartext raus. Wenn der Server aus dem Internet erreichbar ist, bitte https verwenden.")
-        return true
+        return url.host.lowercase() in bestaetigt
+    }
+
+    /** Der Host, den die Einrichtung bestätigen lassen muss — oder null. */
+    fun klartextHost(serverUrl: String): String? {
+        val url = serverUrl.trim().toHttpUrlOrNull() ?: return null
+        return if (!url.isHttps && !isPrivateHost(url.host) && !isIpLiteral(url.host)) url.host.lowercase() else null
     }
 
     /**

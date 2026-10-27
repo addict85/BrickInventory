@@ -364,7 +364,7 @@ fun GalleryStatChip(value: String, label: String) {
             horizontalAlignment = Alignment.CenterHorizontally,
             modifier = Modifier.padding(horizontal = 14.dp, vertical = 6.dp)
         ) {
-            Text(value, fontWeight = FontWeight.ExtraBold, fontSize = 15.sp,
+            Text(value, fontWeight = FontWeight.ExtraBold, style = MaterialTheme.typography.titleMedium,
                 color = MaterialTheme.colorScheme.onPrimaryContainer)
             Text(label, style = MaterialTheme.typography.labelSmall, fontSize = Schrift.winzig,
                 color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.7f))
@@ -540,9 +540,9 @@ fun SetCard(
                         OwnerBadges(set.owners)
                     }
                     Box(Modifier.align(Alignment.TopStart).padding(Abstaende.haar)) {
-                        IconButton(onClick = { showMenu = true }, Modifier.size(28.dp)) {
-                            Icon(Icons.Default.MoreVert, stringResource(R.string.cd_set_menu), Modifier.size(16.dp),
-                                tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f))
+                        IconButton(onClick = { showMenu = true }) {
+                            Icon(Icons.Default.MoreVert, stringResource(R.string.cd_set_menu), Modifier.size(20.dp),
+                                tint = MaterialTheme.colorScheme.onSurfaceVariant)
                         }
                         DropdownMenu(showMenu, { showMenu = false }) {
                             DropdownMenuItem(
@@ -562,7 +562,7 @@ fun SetCard(
                     Text(set.setNumber, style = MaterialTheme.typography.labelSmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant)
                     Text(set.name ?: set.setNumber, fontWeight = FontWeight.SemiBold,
-                        maxLines = 2, overflow = TextOverflow.Ellipsis, fontSize = 13.sp,
+                        maxLines = 2, overflow = TextOverflow.Ellipsis, style = MaterialTheme.typography.bodyMedium,
                         lineHeight = 16.sp)
                     if (set.theme != null) Text(set.theme,
                         style = MaterialTheme.typography.labelSmall,

@@ -82,7 +82,7 @@ fun AcquisitionSummarySection(
                             ConditionBadge(acq.condition)
                             if (acq.effectivePrice != null) {
                                 Text(fmtMoney(acq.effectivePrice ?: 0.0, currency),
-                                    fontWeight = FontWeight.SemiBold, fontSize = 13.sp)
+                                    fontWeight = FontWeight.SemiBold, style = MaterialTheme.typography.bodyMedium)
                             }
                         }
                     }
@@ -411,7 +411,7 @@ fun ManuelleKachel(
                         .clip(CircleShape).background(farbe))
                 }
                 Row(Modifier.align(Alignment.TopStart).padding(Abstaende.haar)) {
-                    IconButton(onClick = onEdit, modifier = Modifier.size(24.dp)) {
+                    IconButton(onClick = onEdit) {
                         Icon(Icons.Default.Edit, stringResource(R.string.common_edit),
                             Modifier.size(14.dp), tint = MaterialTheme.colorScheme.primary)
                     }

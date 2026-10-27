@@ -80,8 +80,8 @@ test('Löschen im Haushalt: vorwärts erlaubt, rückwärts nicht',
 
   // Set mit Inhalt anlegen — der Besitzer wird je Fall gewählt.
   const anlegen = async (besitzer) => {
-    await db.run(`DELETE FROM sets WHERE set_number=$1`, [SN]);
     await db.run(`DELETE FROM set_acquisitions WHERE set_number=$1`, [SN]);
+    await db.run(`DELETE FROM sets WHERE set_number=$1`, [SN]);
     await db.run(`DELETE FROM parts WHERE set_number=$1`, [SN]);
     await haeltSet(db, besitzer, SN, 0);  // Menge 0: die Erfassung dahinter traegt sie
     await db.run(`INSERT INTO set_acquisitions (user_id,set_number,purchase_price,condition,quantity)
@@ -129,9 +129,9 @@ test('Löschen im Haushalt: vorwärts erlaubt, rückwärts nicht',
     }
   } finally {
     await db.run(`DELETE FROM users WHERE username IN ($1,$2)`, [HAUPT, SUB]).catch(() => {});
+    await db.run(`DELETE FROM set_acquisitions WHERE set_number=$1`, [SN]).catch(() => {});
     await db.run(`DELETE FROM sets WHERE set_number=$1`, [SN]).catch(() => {});
     await db.run(`DELETE FROM parts WHERE set_number=$1`, [SN]).catch(() => {});
-    await db.run(`DELETE FROM set_acquisitions WHERE set_number=$1`, [SN]).catch(() => {});
     await new Promise(r => srvHaupt.close(r));
     await new Promise(r => srvSub.close(r));
     await db.pool.end().catch(() => {});

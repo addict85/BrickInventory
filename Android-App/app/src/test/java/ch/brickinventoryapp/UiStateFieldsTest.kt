@@ -43,10 +43,7 @@ class UiStateFieldsTest {
      * zweite Wahrheit, die beim nächsten neuen Zustand still veraltet.
      */
     private fun fluesse(): Map<String, String> {
-        val quelle = java.io.File(wurzel, "ui/MainViewModel.kt").readText()
-        return Regex("""_(\w+)\s*=\s*MutableStateFlow\((\w+UiState)\(""")
-            .findAll(quelle)
-            .associate { it.groupValues[1] to it.groupValues[2] }
+        return Quellen.zustandsFluesse()
     }
 
     /**
@@ -156,7 +153,6 @@ class UiStateFieldsTest {
         val flows = mapOf(
             "_catalogState" to "CatalogUiState",
             "_state" to "AppUiState",
-            "_partsState" to "PartsUiState",
             "_setDetailState" to "SetDetailUiState",
             "_manDetailState" to "ManualItemDetailUiState",
         )
@@ -277,7 +273,10 @@ class UiStateFieldsTest {
             .findAll(mvm).associate { it.groupValues[1] to it.groupValues[2] }
         val oeffentlich = Regex("""val\s+(\w+)\s*=\s*_(\w+)\.asStateFlow\(\)""")
             .findAll(mvm).mapNotNull { m -> privGlobal[m.groupValues[2]]?.let { m.groupValues[1] to it } }
-            .toMap()
+            .toMap() +
+            // Flüsse, die eine eigene Klasse hält (Galerie), stehen mit ihrem Typ da.
+            Regex("""val\s+(\w+)\s*:\s*[\w.]*StateFlow<(\w+UiState)>""")
+                .findAll(mvm).associate { it.groupValues[1] to it.groupValues[2] }
 
         // Bildschirm-ViewModels: Klasse → {öffentlicher Flussname: Zustandstyp}
         val jeVm = java.io.File(wurzel, "ui/viewmodel").listFiles { f -> f.extension == "kt" }

@@ -6,6 +6,7 @@ import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.booleanPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
+import androidx.datastore.preferences.core.stringSetPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
 import ch.brickinventoryapp.util.TokenVerschluesselung
 import dagger.hilt.android.qualifiers.ApplicationContext
@@ -76,6 +77,9 @@ class PreferencesManager @Inject constructor(
         val VORWAERMEN_ROAMING = booleanPreferencesKey("vorwaermen_roaming")
 
         val SERVER_URL   = stringPreferencesKey("server_url")
+        /** Hosts, zu denen der Nutzer Klartext ausdrücklich erlaubt hat (NetworkPolicy). */
+        val KLARTEXT_HOSTS = stringSetPreferencesKey("klartext_hosts")
+        val KLARTEXT_ALT_UEBERNOMMEN = booleanPreferencesKey("klartext_alt_uebernommen")
         /**
          * Der ALTE Klartext-Schlüssel. Bleibt bestehen, weil auf jedem Gerät,
          * das die App schon benutzt hat, genau dort das Token liegt. Er wird
@@ -271,12 +275,46 @@ class PreferencesManager @Inject constructor(
     /** Dieselbe Regel fuer die Server-Adresse — aus demselben Grund. */
     suspend fun serverUrlJetzt(): String = _serverUrlState.value ?: serverUrl.first()
 
+    /** Synchron lesbar für den Interceptor, wie serverUrlState; null = noch nicht gelesen. */
+    private val _klartextHosts = MutableStateFlow<Set<String>?>(null)
+    val klartextHostsState: StateFlow<Set<String>?> = _klartextHosts.asStateFlow()
+
+    /** Für den Kaltstart: erst die einmalige Übernahme, dann die Platte. */
+    suspend fun klartextHostsJetzt(): Set<String> = _klartextHosts.value ?: run {
+        uebernimmAltenKlartextHost()
+        context.dataStore.data.first()[KLARTEXT_HOSTS] ?: emptySet()
+    }
+
+    suspend fun bestaetigeKlartext(host: String) {
+        val h = host.lowercase()
+        _klartextHosts.value = (_klartextHosts.value ?: emptySet()) + h
+        context.dataStore.edit { it[KLARTEXT_HOSTS] = (it[KLARTEXT_HOSTS] ?: emptySet()) + h }
+    }
+
+    /**
+     * Einmalig beim ersten Start mit der Bestätigungsregel: Die schon
+     * eingerichtete Adresse gilt als bestätigt — sie wurde mit der Warnung
+     * gewählt, und ein Update soll die App nicht vom eigenen Server trennen.
+     */
+    private suspend fun uebernimmAltenKlartextHost() {
+        context.dataStore.edit { prefs ->
+            if (prefs[KLARTEXT_ALT_UEBERNOMMEN] == true) return@edit
+            prefs[KLARTEXT_ALT_UEBERNOMMEN] = true
+            val host = ch.brickinventoryapp.util.NetworkPolicy.klartextHost(prefs[SERVER_URL] ?: "") ?: return@edit
+            prefs[KLARTEXT_HOSTS] = (prefs[KLARTEXT_HOSTS] ?: emptySet()) + host
+        }
+    }
+
     init {
         // Der Nachlauf aus dem DataStore: fuer den Kaltstart und fuer
         // Aenderungen, die NICHT ueber die beiden save-Funktionen kamen (etwa
         // die einmalige Uebernahme eines alten Klartext-Tokens).
         prefsScope.launch { serverUrl.collect { _serverUrlState.value = it } }
         prefsScope.launch { authToken.collect { _authTokenState.value = it } }
+        prefsScope.launch {
+            uebernimmAltenKlartextHost()
+            context.dataStore.data.map { it[KLARTEXT_HOSTS] ?: emptySet() }.collect { _klartextHosts.value = it }
+        }
     }
 
     suspend fun saveServerUrl(url: String) {

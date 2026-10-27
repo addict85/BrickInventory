@@ -63,6 +63,7 @@ test('Erfassen unter Last', { concurrency: 1 }, async (t) => {
   });
 
   await t.test('der Index lässt eine zweite Tageszeile gar nicht erst zu', async () => {
+    await haeltSet(db, uid, '70002-1', 0);
     // Das Netz unter der Sperre: Ein Weg, der die Sperre vergisst, scheitert
     // an der Datenbank statt still eine zweite Zeile anzulegen.
     await db.run(`INSERT INTO set_acquisitions (user_id,set_number,quantity,purchase_price,condition)

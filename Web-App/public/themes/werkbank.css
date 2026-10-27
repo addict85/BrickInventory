@@ -28,6 +28,9 @@
   --txt:#e6e9ed;
   --mut:#8d96a3;
   --screen-bg:#14181d;      /* Login-/Startup-Screen, vor dem Login */
+  /* Text auf --b600: Weiss auf #4d9fff kam auf 2,7:1; dunkel wie in der App
+     (onPrimary) auf 6,3:1. */
+  --auf-primaer:#0b1a2e;
   --rad:12px;
 
   /* Zustands- und Meldefarben: auf dunklem Grund gedaempft, sonst leuchten

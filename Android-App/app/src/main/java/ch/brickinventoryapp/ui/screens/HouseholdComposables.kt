@@ -273,7 +273,7 @@ fun OwnerPicker(
                             Text(m.username,
                                 fontWeight = if (m.id == current.id) FontWeight.Bold else FontWeight.Normal)
                             if (m.isSelf) Text(stringResource(R.string.household_self),
-                                fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                         }
                     },
                     onClick = { open = false; onSelect(m.id) }

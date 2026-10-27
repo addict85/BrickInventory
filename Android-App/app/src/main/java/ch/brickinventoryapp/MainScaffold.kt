@@ -1,5 +1,7 @@
 package ch.brickinventoryapp
 
+import androidx.compose.ui.semantics.heading
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -137,7 +139,9 @@ fun MainScaffold(
           Column {
             TopAppBar(
                 title = {
-                    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    // Der Seitentitel ist die Überschrift der Ansicht — Vorleseprogramme springen dorthin.
+                    Row(Modifier.semantics(mergeDescendants = true) { heading() },
+                        verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                         // Icon des aktuell gewählten Tabs links vom Namen anzeigen —
                         // dasselbe Icon wie in der unteren Navigationsleiste, damit
                         // oben und unten konsistent sind. Das frühere feste App-Logo
@@ -161,7 +165,7 @@ fun MainScaffold(
                 actions = {
                     IconButton(onClick = { showLogoutMenu = true }) {
                         BadgedBox(badge = { if (updateVerfuegbar) Badge() }) {
-                            Icon(Icons.Default.AccountCircle, stringResource(R.string.main_account), tint = if (isBrick) MaterialTheme.colorScheme.onPrimary else ch.brickinventoryapp.ui.theme.ChartNewClassic)
+                            Icon(Icons.Default.AccountCircle, stringResource(R.string.main_account), tint = if (isBrick) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.primary)
                         }
                     }
                     DropdownMenu(showLogoutMenu, { showLogoutMenu = false }) {

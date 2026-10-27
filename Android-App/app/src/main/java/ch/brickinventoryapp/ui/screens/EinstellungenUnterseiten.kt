@@ -3,6 +3,7 @@ package ch.brickinventoryapp.ui.screens
 import ch.brickinventoryapp.ui.theme.Formen
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.clickable
+import androidx.compose.ui.semantics.Role
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
@@ -397,7 +398,7 @@ private fun PreisalarmeCard(
             // ohne `clickable` heisst zugleich: kein Wellenschlag beim Tippen, also
             // sieht man dem Eintrag an, dass da nichts kommt.
             val zeile = if (a.besitzt)
-                Modifier.fillMaxWidth().clickable { onSetClick(a.setNumber) }
+                Modifier.fillMaxWidth().clickable(role = Role.Button) { onSetClick(a.setNumber) }
             else Modifier.fillMaxWidth()
             // ── Der Abstand INNERHALB eines Alarms (Marcos Befund vom 16.10.) ──
             //

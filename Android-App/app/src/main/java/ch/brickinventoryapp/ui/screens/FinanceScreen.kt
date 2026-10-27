@@ -308,7 +308,7 @@ fun PriceColumn(label: String, value: String) {
     Column(horizontalAlignment = Alignment.CenterHorizontally) {
         Text(label, style = MaterialTheme.typography.labelSmall,
             color = MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.7f))
-        Text(value, fontWeight = FontWeight.SemiBold, fontSize = 13.sp,
+        Text(value, fontWeight = FontWeight.SemiBold, style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.onPrimary)
     }
 }

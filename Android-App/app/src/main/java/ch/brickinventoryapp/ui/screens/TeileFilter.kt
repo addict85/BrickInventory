@@ -110,7 +110,7 @@ fun TeileFilterZeile(
                 label = {
                     Text(farben.firstOrNull { it.wert == farbeGewaehlt }?.text
                         ?: stringResource(R.string.parts_filter_color),
-                        fontSize = 13.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                        style = MaterialTheme.typography.bodyMedium, maxLines = 1, overflow = TextOverflow.Ellipsis)
                 },
                 trailingIcon = { Icon(Icons.Default.ArrowDropDown, null, Modifier.size(18.dp)) },
             )
@@ -122,7 +122,7 @@ fun TeileFilterZeile(
                 label = {
                     Text(kategorien.firstOrNull { it.wert == kategorieGewaehlt }?.text
                         ?: stringResource(R.string.parts_filter_category),
-                        fontSize = 13.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                        style = MaterialTheme.typography.bodyMedium, maxLines = 1, overflow = TextOverflow.Ellipsis)
                 },
                 trailingIcon = { Icon(Icons.Default.ArrowDropDown, null, Modifier.size(18.dp)) },
             )
@@ -165,7 +165,7 @@ private fun FilterBlatt(
 ) {
     ModalBottomSheet(onDismissRequest = onSchliessen) {
         Column(Modifier.padding(horizontal = Abstaende.gross).padding(bottom = Abstaende.sehrGross)) {
-            Text(titel, fontWeight = FontWeight.Bold, fontSize = 17.sp)
+            Text(titel, fontWeight = FontWeight.Bold, style = MaterialTheme.typography.titleMedium)
             LazyColumn(Modifier.heightIn(max = 420.dp)) {
                 item {
                     FilterZeile(alleText, null, null, gewaehlt.isBlank()) { onWahl("") }

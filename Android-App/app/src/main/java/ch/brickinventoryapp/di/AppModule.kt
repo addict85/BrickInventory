@@ -154,10 +154,12 @@ object AppModule {
                 // cleartext weiterhin (die Server-URL ist frei konfigurierbar
                 // und meist eine LAN-Adresse), aber ein nie ablaufender Bearer
                 // Token darf nicht unverschlüsselt über das Internet gehen.
-                if (!NetworkPolicy.isCleartextAllowed(outgoing.url)) {
+                val klartextHosts = prefs.klartextHostsState.value ?: runBlocking { prefs.klartextHostsJetzt() }
+                if (!NetworkPolicy.isCleartextAllowed(outgoing.url, klartextHosts)) {
                     throw IOException(
                         "Unverschlüsselte Verbindung zu ${outgoing.url.host} abgebrochen — " +
-                        "bitte https verwenden (oder eine Adresse im lokalen Netz)."
+                        "bitte https verwenden, eine Adresse im lokalen Netz, oder den Server " +
+                        "in der Einrichtung ausdrücklich für Klartext bestätigen."
                     )
                 }
 

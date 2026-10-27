@@ -86,4 +86,21 @@ class IconButtonLabelTest {
             assert(de.contains("\"$name\"")) { "values-de/strings.xml: $name fehlt" }
         }
     }
+
+    // Gegenprobe (am 27.10. gemessen): in MerklisteScreen.kt das
+    // `role = Role.Button` wieder entfernt → rot mit genau dieser Stelle.
+    @Test
+    fun `jedes clickable nennt seine Rolle`() {
+        // Ohne Rolle sagt TalkBack bei einer anklickbaren Karte nichts darüber,
+        // dass man sie antippen kann.
+        val ohneRolle = mutableListOf<String>()
+        for (f in screens()) {
+            // Importzeilen leeren statt entfernen: die Zeilennummern bleiben stimmig.
+            val s = f.readText().lines().joinToString("\n") { if (it.startsWith("import ")) "" else it }
+            Regex("""\.clickable(\((?:[^()]|\([^()]*\))*\))?""").findAll(s).forEach { m ->
+                if (!m.value.contains("role =")) ohneRolle += "${f.name}:${s.substring(0, m.range.first).count { it == '\n' } + 1}"
+            }
+        }
+        assert(ohneRolle.isEmpty()) { "clickable ohne role: $ohneRolle" }
+    }
 }

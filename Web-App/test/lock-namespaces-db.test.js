@@ -19,6 +19,9 @@
  * und sie lässt sich nicht durch eine Umbenennung, ein neues Zahlenformat
  * (918_273_645) oder eine vergessene Listenpflege aushebeln.
  *
+ * Gegenprobe (am 27.10. gemessen): txLock wieder mit der user_id als erstem
+ * Wert → rot: „die Bestandssperre eines Kontos trifft keinen Job".
+ *
  * Voraussetzung: Test-DB via TEST_DATABASE_URL. Ohne DB: skip (ausser
  * REQUIRE_DB=1).
  */
@@ -126,6 +129,23 @@ test('Sperr-Namensräume gegen echte Datenbank', async (t) => {
       assert.equal(await nochFrei(LOCKS.BILD_DOWNLOAD, 111), false,
         'Dasselbe Set darf NICHT zweimal gleichzeitig laden');
     } finally { await frei(); }
+  });
+
+  await t.test('die Bestandssperre eines Kontos trifft keinen Job', async () => {
+    // Konto-ID = Nummer eines Jobs, Schlüssel = Setnummer: Mit der user_id als
+    // erstem Wert war das genau die Sperre des Bild-Downloads für dieses Set.
+    const { withInventoryLock } = _req('utils/txLock.js');
+    const SET = '60511-1';
+    const zweiter = (await db.get('SELECT hashtext($1) AS h', [SET])).h;
+    const frei = {};
+    await withInventoryLock(LOCKS.BILD_DOWNLOAD, SET, async () => {
+      frei.bild = await nochFrei(LOCKS.BILD_DOWNLOAD, zweiter);
+      frei.selbst = (await db.get(`SELECT pg_try_advisory_lock($1, hashtext($2)) AS ok`,
+        [LOCKS.INVENTAR, `${LOCKS.BILD_DOWNLOAD}|${SET}`])).ok;
+      if (frei.selbst) await db.get(`SELECT pg_advisory_unlock($1, hashtext($2))`, [LOCKS.INVENTAR, `${LOCKS.BILD_DOWNLOAD}|${SET}`]);
+    });
+    assert.equal(frei.bild, true, 'Die Bestandssperre von Konto 42 hält den Bild-Download des Sets auf');
+    assert.equal(frei.selbst, false, 'Die Bestandssperre liegt nicht unter LOCKS.INVENTAR — dann prüft der Fall oben nichts');
   });
 
   await t.test('keine blanke Zahl mehr in einem Sperr-Aufruf', () => {

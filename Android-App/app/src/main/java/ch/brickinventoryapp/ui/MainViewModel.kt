@@ -241,8 +241,20 @@ class MainViewModel @Inject constructor(
      * Als Teil von AppUiState loeste jedes Blaettern und jede Suche eine
      * Rekomposition in allen sechzehn aus. Siehe GalleryUiState.
      */
-    internal val _galleryState = MutableStateFlow(GalleryUiState())
-    val galleryState = _galleryState.asStateFlow()
+    internal val galerie = Galerie(
+        scope = viewModelScope,
+        holeSeite = { g, seite ->
+            retryOnNetwork {
+                repo.sets.getSets(scopeFor(ch.brickinventoryapp.data.ScopeFilter.View.GALLERY),
+                    search = g.galleryQuery, theme = g.galleryTheme, sort = g.gallerySort, page = seite,
+                    storage = lagerFor(ch.brickinventoryapp.data.ScopeFilter.View.GALLERY))
+            }
+        },
+        holeKennzahlen = { repo.finanzen.getStats(scopeFor(ch.brickinventoryapp.data.ScopeFilter.View.GALLERY)) },
+        meldeFehler = { _snackbar.value = meldungFuerSnackbar(it) },
+        vergissScroll = { scrollMemory.vergiss("gallery") },
+    )
+    val galleryState: kotlinx.coroutines.flow.StateFlow<GalleryUiState> = galerie.state
 
     /**
      * Läuft gerade eine Prüfung vor dem Erfassen? Siehe ErfassungUiState.
@@ -250,16 +262,15 @@ class MainViewModel @Inject constructor(
      * Eigener Fluss, weil ihn alle vier Erfassungswege speisen (Barcode,
      * Texterkennung, Galerie, Katalog) und nur der Anzeige-Dialog ihn liest.
      */
-    internal val _erfassungState = MutableStateFlow(ErfassungUiState())
-    val erfassungState = _erfassungState.asStateFlow()
+    internal val erfassung = Erfassung()
+    val erfassungState: kotlinx.coroutines.flow.StateFlow<ErfassungUiState> = erfassung.state
 
     /**
      * Die laufende Prüfung, damit sie abgebrochen werden kann.
      *
      * Ohne den Merker wäre der Dialog eine Sackgasse: Hängt die Gegenstelle,
      * bliebe er stehen, bis das Zeitlimit der Verbindung greift — und genau in
-     * dieser Zeit will man weiterscannen können. Neben partsJob und den
-     * Galerie-Jobs, gleiches Muster.
+     * dieser Zeit will man weiterscannen können.
      */
     internal var erfassungsJob: kotlinx.coroutines.Job? = null
 
@@ -271,8 +282,30 @@ class MainViewModel @Inject constructor(
     // Muster wie oben. Nur die Screens, die diese Daten tatsächlich anzeigen,
     // sammeln sie; ein Ladevorgang in der Teileliste rekomponiert damit nicht
     // mehr Galerie und Navigationsleiste mit.
-    internal val _partsState = MutableStateFlow(PartsUiState())
-    val partsState = _partsState.asStateFlow()
+    internal val teile = Teile(
+        scope = viewModelScope,
+        quelle = object : TeileQuelle {
+            private val teileSicht get() = scopeFor(ch.brickinventoryapp.data.ScopeFilter.View.PARTS)
+            private val teileLager get() = lagerFor(ch.brickinventoryapp.data.ScopeFilter.View.PARTS)
+            private val figurenSicht get() = scopeFor(ch.brickinventoryapp.data.ScopeFilter.View.MINIFIGS)
+            override suspend fun seite(abfrage: TeileAbfrage) = retryOnNetwork {
+                repo.teile.getParts(search = abfrage.suche, color = abfrage.farbe,
+                    category = abfrage.kategorie, page = abfrage.seite, accounts = teileSicht,
+                    spare = abfrage.ersatzteile, withSets = abfrage.mitSets, storage = teileLager)
+            }
+            override suspend fun manuelleTeile(suche: String?) = repo.teile.getManualParts(teileSicht, suche, teileLager)
+            override suspend fun teileKennzahlen() = repo.teile.getPartsStats(teileSicht)
+            override suspend fun filterFarben() = repo.teile.getPartsFilterColors(teileSicht)
+            override suspend fun kategorien() = repo.teile.getPartsCategories(teileSicht)
+            override suspend fun alleFarben() = repo.teile.getBrickColors()
+            override suspend fun figurKennzahlen() = repo.teile.getMinifigStats(figurenSicht)
+            override suspend fun figuren(suche: String?) = repo.teile.getMinifigs(figurenSicht, suche)
+            override suspend fun manuelleFiguren(suche: String?) = repo.teile.getManualMinifigs(figurenSicht, suche)
+        },
+        meldeFehler = { _snackbar.value = meldungFuerSnackbar(it) },
+        vergissScroll = { scrollMemory.vergiss("parts") },
+    )
+    val partsState: kotlinx.coroutines.flow.StateFlow<PartsUiState> = teile.state
 
     internal val _financeState = MutableStateFlow(FinanceUiState())
     val financeState = _financeState.asStateFlow()
@@ -428,24 +461,10 @@ class MainViewModel @Inject constructor(
     // brauchte nichts aus dieser Klasse, und die Bildschirm-ViewModels
     // ausserhalb von ui/ sollen sie ebenfalls benutzen koennen.
 
-    // ── Parts ────────────────────────────────────────────────────────────────
-    // Suche wird debounced (350 ms) und der vorherige Request abgebrochen:
-    // Ohne das feuert jeder Tastendruck einen vollen Netzwerk-Request (500er-Page),
-    // und eine langsame alte Antwort kann eine neuere überschreiben (Race).
-    internal var partsJob: kotlinx.coroutines.Job? = null
-
-    // ── Minifiguren ──────────────────────────────────────────────────────────
-    // Dieselbe Mechanik aus demselben Grund: Seit die Suche zum Server geht
-    // (loadMinifigs), loest jeder Tastendruck sonst eine eigene Abfrage aus,
-    // und eine langsame alte Antwort koennte eine neuere ueberschreiben.
-    internal var minifigsJob: kotlinx.coroutines.Job? = null
-
-    // ── Galerie ──────────────────────────────────────────────────────────────
-    // Dieselbe Mechanik, und sie gehoert aus demselben Grund hierher: Als
-    // `private var` auf Dateiebene in GalleryFeature.kt war sie prozessweit
-    // statt je Instanz. Die Filter-Generation verwirft Antworten eines alten
-    // Filters — eine geteilte Generation liesse zwei Instanzen einander die
-    // Ergebnisse wegwerfen.
+    // ── Laufende Aufträge ────────────────────────────────────────────────────
+    // Teile, Figuren und Galerie halten ihre Aufträge selbst (Teile.kt,
+    // Galerie.kt): Ein neuer Abruf bricht den alten ab, sonst überschriebe
+    // eine langsame alte Antwort eine neuere.
     // ── Preisalarm ───────────────────────────────────────────────────────────
     // Dieselbe Mechanik, aber aus einem zusaetzlichen Grund: Der Auftrag muss
     // das VERLASSEN des Bildschirms ueberleben. Stuende die Ruhezeit in einem
@@ -460,14 +479,10 @@ class MainViewModel @Inject constructor(
     // nicht fuenf halbe Orte im Vorrat hinterlassen.
     internal var lagerJob: kotlinx.coroutines.Job? = null
 
-    internal var gallerySearchJob: kotlinx.coroutines.Job? = null
-
-    // Eigener Auftrag und nicht gallerySearchJob mitbenutzt: Beide Suchfelder
+    // Eigener Auftrag und nicht der Suchauftrag der Galerie: Beide Suchfelder
     // koennen gleichzeitig einen Wert tragen, und ein gemeinsamer Auftrag
     // haette das Tippen in der Merkliste die Galerie-Suche abbrechen lassen.
     internal var merklisteSearchJob: kotlinx.coroutines.Job? = null
-    internal var galleryListJob: kotlinx.coroutines.Job? = null
-    internal var galleryGeneration = 0
 
     /**
      * Die EINE Stelle, an der ein Fehler einen Satz bekommt (Nachtrag 116).
@@ -580,7 +595,7 @@ class MainViewModel @Inject constructor(
         }
 
         // Sets nachlagen falls Erstladung beim App-Start scheiterte
-        if (_galleryState.value.sets.isEmpty() && !_galleryState.value.galleryLoading) loadDashboard()
+        if (galerie.state.value.sets.isEmpty() && !galerie.state.value.galleryLoading) loadDashboard()
     }
 
     /** Import abgeschlossen: Daten neu laden, Banner kurz sichtbar lassen, dann ausblenden. */

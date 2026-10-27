@@ -51,14 +51,14 @@ async function loadPartsFilters(){
   const [cd,catd]=await Promise.all([api('GET','/v1/parts/colors'+scopeQuery('parts')),api('GET','/v1/parts/categories')]);
   partsColors=cd.colors||[]; partsCats=catd.categories||[];
 
-  G('color-filter').innerHTML=`<div class="filter-item ${!activeColor?'active':''}" data-click="setColorFilter" data-arg=""><span>${t('gallery.filter.all')}</span></div>`
-    +partsColors.map(c=>`<div class="filter-item ${activeColor===c.color_name?'active':''}" data-click="setColorFilter" data-arg="${escHtml(c.color_name)}">
+  G('color-filter').innerHTML=`<div class="filter-item ${!activeColor?'active':''}" tabindex="0" role="button" data-click="setColorFilter" data-arg=""><span>${t('gallery.filter.all')}</span></div>`
+    +partsColors.map(c=>`<div class="filter-item ${activeColor===c.color_name?'active':''}" tabindex="0" role="button" data-click="setColorFilter" data-arg="${escHtml(c.color_name)}">
       <div style="display:flex;align-items:center;gap:6px"><div class="color-dot" style="background:${escHex(c.color_hex, 'var(--s300)')}"></div><span>${esc(colorName(c.color_name))}</span></div>
       <span class="cnt">${c.unique_parts} ${t('parts.stat.types')}</span>
     </div>`).join('');
 
-  G('cat-filter').innerHTML=`<div class="filter-item ${!activeCat?'active':''}" data-click="setCatFilter" data-arg=""><span>${t('filter.all')}</span></div>`
-    +partsCats.map(c=>`<div class="filter-item ${activeCat===c.category_name?'active':''}" data-click="setCatFilter" data-arg="${escHtml(c.category_name)}">
+  G('cat-filter').innerHTML=`<div class="filter-item ${!activeCat?'active':''}" tabindex="0" role="button" data-click="setCatFilter" data-arg=""><span>${t('filter.all')}</span></div>`
+    +partsCats.map(c=>`<div class="filter-item ${activeCat===c.category_name?'active':''}" tabindex="0" role="button" data-click="setCatFilter" data-arg="${escHtml(c.category_name)}">
       <span>${esc(c.label||c.category_name)||'Unbekannt'}</span><span class="cnt">${(c.total_quantity||0).toLocaleString(locale())}</span>
     </div>`).join('');
 }
@@ -293,7 +293,7 @@ function partsCard(p){
   // tot: Anders als bei manuell erfassten Teilen gab es zu einem Teil aus einem
   // Set nichts zu sehen — kein Bild in voller Groesse, keine Angabe, aus
   // welchem Set es stammt.
-  return `<div class="part-card" style="cursor:pointer" data-click="openSetItemDetail" data-arg="part" data-arg2="${escJs(p.part_number)}" data-arg3="${p.color_id||0}">
+  return `<div class="part-card" style="cursor:pointer" tabindex="0" role="button" data-click="openSetItemDetail" data-arg="part" data-arg2="${escJs(p.part_number)}" data-arg3="${p.color_id||0}">
     <img src="${escUrl(imgUrl(thumbUrl(p.image_local||p.image_url)||p.image_local||p.image_url||'', true)||'')}" class="part-img" loading="lazy" decoding="async" data-fade="1" data-orig="${escUrl(rawSrc ? imgUrl(fullUrl(rawSrc), false) : '')}" />
     <div class="part-img-ph" style="display:none">${partsIconLarge()}</div>
     <div class="part-num" title="${esc(p.part_number)}">${esc(p.bl_part_number||p.part_number)}</div>
@@ -308,7 +308,7 @@ function partsTableRow(p){
   // Dieselbe Handlung wie auf der Kachel — eine Ansicht darf nicht koennen,
   // was die andere nicht kann. Genau daran ist in diesem Projekt schon mehrfach
   // etwas auseinandergelaufen.
-  return `<tr style="cursor:pointer" data-click="openSetItemDetail" data-arg="part" data-arg2="${escJs(p.part_number)}" data-arg3="${p.color_id||0}">
+  return `<tr style="cursor:pointer" tabindex="0" data-click="openSetItemDetail" data-arg="part" data-arg2="${escJs(p.part_number)}" data-arg3="${p.color_id||0}">
     <td><img src="${escUrl(imgUrl(thumbUrl(p.image_local||p.image_url)||p.image_local||p.image_url||'', true)||'')}" loading="lazy" decoding="async" data-onerror="clear" style="width:36px;height:36px;object-fit:contain;background:var(--s50);border-radius:5px" /></td>
     <td><span style="font-family:var(--mono);font-size:var(--fs-1);color:var(--b600)" title="${esc(p.part_number)}">${esc(p.bl_part_number||p.part_number)}</span></td>
     <td style="max-width:200px">${esc(p.part_name)||'—'} ${ersatzteilPlakette(p)}</td>

@@ -63,6 +63,8 @@ import com.google.mlkit.vision.common.InputImage
 import androidx.compose.ui.res.stringResource
 import ch.brickinventoryapp.R
 import ch.brickinventoryapp.util.NetworkPolicy
+import androidx.compose.foundation.selection.toggleable
+import androidx.compose.ui.semantics.Role
 import ch.brickinventoryapp.ui.theme.Abstaende
 import ch.brickinventoryapp.ui.theme.Schrift
 
@@ -81,18 +83,23 @@ fun parseQrPayload(raw: String): QrLoginPayload? {
 @Composable
 fun SetupScreen(
     currentUrl: String,
-    onSave: (String) -> Unit,
+    onSave: (url: String, klartextBestaetigt: Boolean) -> Unit,
     onQrScanned: ((url: String, token: String) -> Unit)? = null
 ) {
     var url          by rememberSaveable { mutableStateOf(currentUrl) }
     var showScanner  by rememberSaveable { mutableStateOf(false) }
     var scanError    by remember { mutableStateOf<String?>(null) }
+    // Klartext zu einem öffentlich aussehenden Host nur nach ausdrücklicher
+    // Bestätigung (NetworkPolicy.isCleartextAllowed).
+    val klartextHost = NetworkPolicy.klartextHost(url)
+    var klartextOk   by rememberSaveable(klartextHost) { mutableStateOf(false) }
     val invalidQrMsg = stringResource(R.string.setup_invalid_qr)
     val keyboard     = LocalSoftwareKeyboardController.current
 
     fun save() {
         val cleaned = url.trim().trimEnd('/')
-        if (cleaned.isNotBlank()) { keyboard?.hide(); onSave(cleaned) }
+        if (cleaned.isBlank() || (klartextHost != null && !klartextOk)) return
+        keyboard?.hide(); onSave(cleaned, klartextHost != null && klartextOk)
     }
 
     if (showScanner) {
@@ -186,9 +193,22 @@ fun SetupScreen(
                     },
                     isError = NetworkPolicy.klartextNachAussen(url),
                 )
+                if (klartextHost != null) {
+                    Row(
+                        Modifier.fillMaxWidth().toggleable(value = klartextOk, role = Role.Checkbox,
+                            onValueChange = { klartextOk = it }),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Checkbox(checked = klartextOk, onCheckedChange = null)
+                        Spacer(Modifier.width(Abstaende.klein))
+                        Text(stringResource(R.string.setup_url_klartext_bestaetigen, klartextHost),
+                            style = MaterialTheme.typography.bodySmall)
+                    }
+                }
                 Spacer(Modifier.height(Abstaende.gross))
                 Button(
-                    onClick = ::save, modifier = Modifier.fillMaxWidth(), enabled = url.isNotBlank(),
+                    onClick = ::save, modifier = Modifier.fillMaxWidth(),
+                    enabled = url.isNotBlank() && (klartextHost == null || klartextOk),
                     colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary)
                 ) { Text(stringResource(R.string.setup_continue), fontWeight = FontWeight.Bold) }
             }

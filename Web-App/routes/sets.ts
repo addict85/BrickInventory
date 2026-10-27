@@ -86,7 +86,7 @@ import { loginOrTokenGuard, angemeldeteNutzerId, istVerwalter } from '../utils/a
 import { csvEinlesen, entschaerfungRueckgaengig, parseCsvDate, sendCsv, uebersprungenHinweis } from '../utils/csvExport';
 import { ausTabelle } from '../utils/validate';
 import { mitVersion } from '../utils/setNummer';
-import { csvEmpfang } from '../utils/dateiEmpfang';
+import { csvEmpfang, inhaltPasstZuTyp, uploadKontingentBytes, belegterPlatz } from '../utils/dateiEmpfang';
 import { sendeFehler } from '../utils/fehlerTexte';
 import { mengeSkalar } from '../utils/bestandsmenge';
 
@@ -570,6 +570,13 @@ const uploadInstr = multer({
 });
 router.post('/:setNumber/instructions/upload', uploadInstr.single('file'), async (req, res) => {
   if (!req.file) return sendeFehler(req, res, 400, 'keine_datei');
+  const verwerfen = () => fs.rmSync(req.file!.path, { force: true });
+  if (!inhaltPasstZuTyp(req.file.path, req.file.mimetype)) { verwerfen(); return sendeFehler(req, res, 400, 'datei_inhalt_falsch'); }
+  const kontingent = uploadKontingentBytes();
+  if (belegterPlatz(path.dirname(req.file.path)) > kontingent) {
+    verwerfen();
+    return sendeFehler(req, res, 413, 'upload_kontingent_voll', { mb: Math.round(kontingent / 1024 / 1024) });
+  }
   const uid=angemeldeteNutzerId(req), sn=req.params.setNumber;
   const desc=(req.body.description||req.file.originalname).substring(0,200);
   const relPath=`/data/uploads/${uid}/${req.file.filename}`;

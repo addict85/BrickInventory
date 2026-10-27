@@ -3,8 +3,11 @@
  * andere geht durch. Dass server.ts die Wache einhängt, prüft
  * signale-zwei-worker-db am echten Server.
  *
- * Gegenprobe (am 27.10. gemessen): nur 'cross-site' abgewiesen statt alles
- * ausser same-origin/none → rot: „eine Nachbar-Subdomain".
+ * Gegenproben (am 27.10. gemessen):
+ *   A  nur 'cross-site' abgewiesen statt alles ausser same-origin/none → rot:
+ *      „eine Nachbar-Subdomain"
+ *   B  die Cookie-Bedingung an der Bearer-Ausnahme entfernt → rot: „ein
+ *      Bearer-Kopf neben dem Sitzungs-Cookie schaltet nichts ab"
  */
 const test   = require('node:test');
 const assert = require('node:assert/strict');
@@ -40,5 +43,12 @@ test('Herkunft schreibender Anfragen', async (t) => {
   await t.test('lesend und mit Token', async () => {
     assert.equal(await ruf('GET', { 'sec-fetch-site': 'cross-site' }), 200);
     assert.equal(await ruf('POST', { 'sec-fetch-site': 'cross-site', authorization: 'Bearer abc' }), 200);
+  });
+  await t.test('ein Bearer-Kopf neben dem Sitzungs-Cookie schaltet nichts ab', async () => {
+    // Mit Cookie gilt die Sitzung, nicht das Token — die Herkunft zählt also.
+    assert.equal(await ruf('POST', { 'sec-fetch-site': 'same-site', authorization: 'Bearer x',
+                                     cookie: 'theme=dunkel; connect.sid=s%3Aabc' }), 403);
+    assert.equal(await ruf('POST', { 'sec-fetch-site': 'same-origin', authorization: 'Bearer x',
+                                     cookie: 'connect.sid=s%3Aabc' }), 200);
   });
 });

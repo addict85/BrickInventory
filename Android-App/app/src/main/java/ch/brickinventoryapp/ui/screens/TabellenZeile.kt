@@ -1,6 +1,7 @@
 package ch.brickinventoryapp.ui.screens
 
 import androidx.compose.foundation.clickable
+import androidx.compose.ui.semantics.Role
 import androidx.compose.foundation.layout.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -96,7 +97,7 @@ fun TabellenZeile(
     Surface(
         modifier = modifier.fillMaxWidth()
             .let {
-                if (onClick != null) it.clickable(onClickLabel = onClickLabel, onClick = onClick)
+                if (onClick != null) it.clickable(onClickLabel = onClickLabel, role = Role.Button, onClick = onClick)
                 else it
             },
         color = MaterialTheme.colorScheme.surface,
@@ -162,7 +163,7 @@ fun TabellenZeile(
                     "$menge",
                     fontFamily = FontFamily.Monospace,
                     fontWeight = FontWeight.Bold,
-                    fontSize = 13.sp,
+                    style = MaterialTheme.typography.bodyMedium,
                 )
             }
             HorizontalDivider(color = MaterialTheme.colorScheme.outline.copy(alpha = 0.15f))
@@ -189,7 +190,7 @@ fun AnsichtUmschalter(
             FilterChip(
                 selected = aktuell == wert,
                 onClick = { onWechsel(wert) },
-                label = { Text(stringResource(text), fontSize = 13.sp) },
+                label = { Text(stringResource(text), style = MaterialTheme.typography.bodyMedium) },
             )
         }
     }

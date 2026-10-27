@@ -130,7 +130,7 @@ automatisieren:
 - **Store-Eintrag**: Kurz- und Vollbeschreibung, App-Symbol (512×512),
   Grafikbanner (1024×500), mindestens 2 Screenshots je Formfaktor.
 
-> Zu den Screenshots: Im Repository liegen unter `docs/screenshots/` bisher nur
+> Zu den Screenshots: Im Repository liegen unter `docs/screenshots/` nur
 > Aufnahmen der **Web-App**. Für den Store braucht es Aufnahmen der **App auf
 > einem Gerät** — die lassen sich nur dort erzeugen.
 

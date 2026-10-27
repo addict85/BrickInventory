@@ -97,7 +97,7 @@ test('Sets-Export: eine Zeile je Erfassung, ohne Erfassung die Set-Zeile',
       `INSERT INTO set_acquisitions (user_id, set_number, quantity, purchase_price, condition, created_at)
        VALUES ($1,'0002-1',1,10.00,'N', NOW() - INTERVAL '2 days'),
               ($1,'0002-1',4,20.00,'U', NOW() - INTERVAL '1 day'),
-              ($1,'0003-1',1,NULL,NULL, NOW())`, [uid]);
+              ($1,'0003-1',1,NULL,'N', NOW())`, [uid]);
 
     const csv = await _req('utils/setService.js').buildSetsCsv(uid);
     const r = zeilen(csv);

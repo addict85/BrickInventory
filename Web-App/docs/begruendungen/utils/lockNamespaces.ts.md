@@ -33,25 +33,3 @@ behindern und derselbe sich sehr wohl behindert.
 Eine neue Zeile hier, den Namen im aufrufenden Modul importieren. Keine
 blanke Zahl in einem `pg_*advisory*`-Aufruf — der Test verbietet sie.
 ```
-
-<a id="abschnitt-2"></a>
-## Abschnitt
-
-```text
-Der Namensraum von utils/txLock.ts ist die USER-ID selbst, nicht eine Zahl
-aus der Liste oben — dort sperrt jeder Nutzer nur gegen sich selbst.
-
-Damit kollidiert er im Grundsatz mit jeder festen Zahl, die zufällig einer
-user_id entspricht. Praktisch nicht: txLock benutzt
-`pg_advisory_xact_lock(userId, hashtext(scope))`, der zweite Wert ist also
-ein Streuwert über den Vorgangsnamen und trifft die 0 bzw. hashtext(set) der
-Einträge oben nicht. Es steht hier, damit die nächste Person das nicht neu
-herleiten muss.
-
-── Warum hier kein `export const … = true` mehr steht ──────────────────────
-Der Absatz oben hing an einer Konstanten (TXLOCK_NAMENSRAUM_IST_DIE_USER_ID),
-die niemand las — sie war eine Anmerkung in der Form eines Wertes. Das ist
-nicht bloss ueberfluessig: Ein exportierter Wert sieht aus wie eine
-Zusicherung, die jemand pruefen koennte, und diese hier prueft nichts. Die
-Auskunft ist der Kommentar; der braucht nichts, woran er haengt.
-```
