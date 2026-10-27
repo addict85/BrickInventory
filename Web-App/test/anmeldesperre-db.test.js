@@ -8,6 +8,7 @@
  *   B  server.ts wieder mit `trust proxy` 1 statt proxyVertrauen() → rot:
  *      „TRUST_PROXY=false wird nicht beachtet"
  *   C  proxyVertrauen('') liefert true → rot: „öffentliche Adresse vertraut"
+ *   D  (27.10.) Standard wieder mit uniquelocal → rot: „Heimnetz-Rechner vertraut"
  *
  * Voraussetzung: Test-DB via TEST_DATABASE_URL.
  */
@@ -59,10 +60,14 @@ test('proxyVertrauen: wem X-Forwarded-For geglaubt wird', () => {
     app.set('trust proxy', proxyVertrauen(einstellung));
     return app.get('trust proxy fn')(adresse, 0);
   };
-  for (const eigen of ['127.0.0.1', '::1', '172.18.0.2', '10.1.2.3', '192.168.1.10', 'fd00::5'])
+  for (const eigen of ['127.0.0.1', '::1', '172.18.0.2', '172.31.255.1', 'fd00::5'])
     assert.equal(vertraut(undefined, eigen), true, `${eigen} ist der eigene Proxy`);
   for (const fremd of ['203.0.113.5', '8.8.8.8', '2001:db8::1'])
     assert.equal(vertraut(undefined, fremd), false, `öffentliche Adresse vertraut: ${fremd}`);
+  // Rechner im Heimnetz geben ihre Adresse nicht selbst an.
+  for (const lan of ['192.168.1.10', '10.1.2.3', '169.254.1.1'])
+    assert.equal(vertraut(undefined, lan), false, `Heimnetz-Rechner vertraut: ${lan}`);
+  assert.equal(vertraut('192.168.1.5', '192.168.1.5'), true, 'ein Proxy im Heimnetz lässt sich nennen');
   assert.equal(vertraut('false', '127.0.0.1'), false);
   assert.equal(vertraut('203.0.113.5', '203.0.113.5'), true);
   assert.equal(vertraut('203.0.113.5', '127.0.0.1'), false);

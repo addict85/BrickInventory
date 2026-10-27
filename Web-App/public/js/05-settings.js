@@ -321,6 +321,7 @@ export async function loadProfile() {
   G('prof-last').value  = u.last_name  || '';
   G('prof-user').value  = u.username   || '';
   G('prof-email').value = u.email      || '';
+  G('prof-email').dataset.bisher = u.email || '';
   const vEl = G('prof-email-verified');
   if (vEl) vEl.innerHTML = u.email_verified
     ? `<span style="color:var(--g500)">${t('profile.verified')}</span>`
@@ -333,11 +334,14 @@ G('btn-sav-prof').onclick = async () => {
   const username   = G('prof-user').value.trim();
   const email      = G('prof-email').value.trim();
   const pwC = G('pw-c').value, pwN = G('pw-n').value, pwR = G('pw-r').value;
-  const wantsPwChange = !!(pwC || pwN || pwR);
+  // Eine neue E-Mail-Adresse verlangt das aktuelle Passwort (Server).
+  const emailChanged = email.toLowerCase() !== (G('prof-email').dataset.bisher || '').toLowerCase();
+  const wantsPwChange = !!(pwN || pwR || (pwC && !emailChanged));
 
   // Erst ALLES validieren, dann speichern — sonst würde bei einem Passwort-
   // Fehler das Profil trotzdem schon geändert (halber Speichervorgang).
   if (!username) { toast(tRaw('profile.username_empty'), 'error'); return; }
+  if (emailChanged && !pwC) { toast(tRaw('profile.email_needs_password'), 'error'); G('pw-c').focus(); return; }
   if (wantsPwChange) {
     if (!pwC || !pwN) { toast(tRaw('settings.password.fill_all'), 'error'); return; }
     if (pwN !== pwR)  { toast(tRaw('settings.password.mismatch'), 'error'); return; }
@@ -363,11 +367,13 @@ G('btn-sav-prof').onclick = async () => {
     if (typeof initDefaultCondition === 'function') initDefaultCondition();
 
     // Profil
-    const d = await api('PUT', '/v1/auth/profile', { username, email, first_name, last_name });
+    const d = await api('PUT', '/v1/auth/profile', { username, email, first_name, last_name,
+                                                      ...(emailChanged ? { password_current: pwC } : {}) });
     if (!d.success) { toast(d.error || t('profile.save_error'), 'error'); return; }
     if (d.emailChanged) {
       const hint = G('prof-email-hint');
       if (hint) hint.textContent = tRaw('profile.mail_sent_hint');
+      if (!wantsPwChange) G('pw-c').value = '';
     }
     await loadProfile();
     // Der Namenszug in der Kopfzeile wird sonst nur EINMAL gesetzt (showApp,

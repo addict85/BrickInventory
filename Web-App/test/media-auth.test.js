@@ -80,12 +80,13 @@ test('kein statischer Mount liefert Dateien aus dem Datenverzeichnis aus', () =>
 test('jede Datei-Route prüft die Anmeldung', () => {
   // Alle Routen, die Dateien aus data/ ausliefern. serveDataFile() prüft
   // intern (resolveUserId + Besitzerabgleich), deshalb zählt es als Prüfung.
-  const routes = [...CODE.matchAll(/app\.get\(\s*(\[[^\]]*\]|'[^']*')\s*,\s*([\s\S]*?)\n\}\);/g)];
+  const quellen = CODE + '\n' + ohneKommentare(read('routes/datenDateien.ts'));
+  const routes = [...quellen.matchAll(/(?:app|router)\.get\(\s*(\[[^\]]*\]|'[^']*')\s*,\s*([\s\S]*?)\n\}\);/g)];
   const fileRoutes = routes.filter(m => /\/data\/|\/images\//.test(m[1]));
   assert.ok(fileRoutes.length >= 3, `Nur ${fileRoutes.length} Datei-Routen gefunden — Prüfung liefe ins Leere`);
   for (const m of fileRoutes) {
     const [, pattern, body] = m;
-    assert.ok(/resolveUserId\(req\)|serveDataFile\(/.test(body),
+    assert.ok(/resolveUserId\(req\)|requireLoginOrToken/.test(body + pattern),
       `${pattern}: keine Anmeldeprüfung`);
   }
 });
@@ -271,39 +272,7 @@ test('Adressen auf den eigenen Server gehen nicht durch den Proxy', () => {
     'CDN-Adressen müssen weiterhin über das Backend laufen');
 });
 
-test('der Haushalt darf hochgeladene Anleitungen lesen — das Unterkonto nicht rückwärts', () => {
-  // ── Woher dieser Test kommt ─────────────────────────────────────────────
-  // serveDataFile() verglich das erste Pfadsegment stur mit der eigenen ID.
-  // Richtig, solange ein Konto für sich stand — nach dem Haushalt an zwei
-  // Stellen falsch:
-  //
-  //   • getSet listet Anleitungen mit user_id = ANY(uids), also
-  //     haushaltsweit. Das Hauptkonto SAH die Anleitung des Unterkontos und
-  //     bekam beim Klick 403.
-  //   • moveSetBetweenAccounts kopiert local_path wörtlich. Nach dem
-  //     Verschieben gehörte die Zeile dem neuen Konto, der Pfad zeigte aber in
-  //     den Ordner des alten — 403 auf die EIGENE Zeile.
-  //
-  // Gegen echte Daten nachgestellt (vorher/nachher):
-  //   Hauptkonto liest Anleitung des Unterkontos   403 → 200
-  //   Hauptkonto liest seine verschobene Zeile     403 → 200
-  //   Unterkonto liest Datei des Hauptkontos       403 → 403   (unverändert)
-  const fn = CODE.slice(CODE.indexOf('function serveDataFile'),
-                        CODE.indexOf('// Geteilte Bauanleitungen'));
-  assert.match(fn, /scopeIds\(userId\)/,
-    'Wessen Daten jemand sehen darf, beantwortet utils/household.ts — nicht der Dateipfad');
-  assert.match(fn, /erlaubt\.includes\(besitzer\)/,
-    'Geprüft wird gegen die Liste des Haushalts, nicht gegen „irgendwer"');
-  assert.doesNotMatch(fn, /parseInt\(segments\[0\]\) !== userId/,
-    'Der starre Vergleich mit der eigenen ID ist die Ursache, nicht die Lösung');
-  // Die Asymmetrie hängt an scopeIds: Ein Unterkonto hat nur sich selbst im
-  // Blickfeld (resolveHousehold), kommt also nicht an die Uploads des
-  // Hauptkontos. Hier festgehalten, damit niemand auf memberIds des MAIN
-  // umstellt.
-  const hh = fs.readFileSync(path.join(ROOT, 'utils', 'household.ts'), 'utf8');
-  assert.match(hh, /if \(!h\.isMain\) return h\.memberIds;/,
-    'Ohne diese Zeile sähe ein Unterkonto plötzlich nach oben');
-});
+// Wer hochgeladene Anleitungen lesen darf, prüft test/daten-dateien-db.test.js am Handler.
 
 test('eine geteilte Anleitungsdatei überlebt, bis die letzte Zeile weg ist', () => {
   // Beim Verschieben eines Sets wird die Anleitungs-Zeile KOPIERT und der Pfad

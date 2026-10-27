@@ -104,4 +104,15 @@ class NetworkPolicyTest {
         // blockiert — sonst legt eine Fehleinschätzung die ganze App still.
         assertTrue(NetworkPolicy.isCleartextAllowed("http://brick.example.com/api/v1/sets".toHttpUrl()))
     }
+
+    // Gegenprobe (am 27.10. mit kotlinc gemessen): klartextNachAussen ohne die
+    // isPrivateHost-Prüfung → rot, die Heimnetz-Adressen warnten mit.
+    @Test
+    fun `die Einrichtung warnt bei Klartext nach aussen, nicht im Heimnetz`() {
+        for (url in listOf("http://brick.example.com", "http://203.0.113.5:3000", "HTTP://lego.example.org/brick"))
+            assertTrue("$url muss warnen", NetworkPolicy.klartextNachAussen(url))
+        for (url in listOf("https://brick.example.com", "http://192.168.1.50:3000", "http://nas:3000",
+                           "http://brick.fritz.box", "http://localhost:3000", "", "kein url"))
+            assertFalse("$url darf nicht warnen", NetworkPolicy.klartextNachAussen(url))
+    }
 }

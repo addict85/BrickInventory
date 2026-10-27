@@ -350,71 +350,18 @@ app.use(session({
   }
 }));
 
-// Helper: serve a file under /data/... with session auth
 // resolveUserId kommt aus utils/auth.js — nutzt den Token-Cache, statt pro
 // Request die api_tokens-Tabelle zu befragen.
 const { resolveUserId } = require('./utils/auth') as typeof import('./utils/auth');
 // Pfade zentral — NICHT aus __dirname ableiten, siehe utils/appPaths.ts.
-const {  DATA_DIR, PUBLIC_DIR } = require('./utils/appPaths') as typeof import('./utils/appPaths');
+const { PUBLIC_DIR } = require('./utils/appPaths') as typeof import('./utils/appPaths');
 // Die Adresse des Bild-Proxys steht in utils/images.ts — EINMAL, samt der
 // Begruendung, warum es die alte Schreibweise weiterhin gibt.
 const { IMG_PROXY_PFAD } = require('./utils/images') as typeof import('./utils/images');
 
-// Path-Traversal-Schutz: Segmente wie ".." oder absolute Pfade könnten sonst
-// aus dem data/-Verzeichnis ausbrechen (z.B. /data/uploads/..%2f..%2fserver.js).
-// Wir prüfen deshalb, dass der aufgelöste Pfad innerhalb des Basis-Verzeichnisses bleibt.
-// segments: string[] — der Typ ist hier kein Beiwerk. Diese Funktion IST der
-// Path-Traversal-Schutz; wer ihr etwas anderes als Zeichenketten reicht, laesst
-// `s === '..'` ins Leere laufen und die Wache mit.
-function safeDataPath(subDir: string, segments: string[]): string | null {
-  if (segments.some((s: string) => s === '..' || s === '.' || s.includes('\0'))) return null;
-  const baseDir  = path.resolve(DATA_DIR, subDir);
-  const filePath = path.resolve(baseDir, ...segments);
-  if (filePath !== baseDir && !filePath.startsWith(baseDir + path.sep)) return null;
-  return filePath;
-}
-
-/**
- * Ausliefern einer Datei unter data/<subDir>/<benutzer-id>/…
- *  Wer darf das lesen?
- * Hier stand `parseInt(segments[0]) !== userId` — also „nur deine eigene ID".
- * Das war richtig, solange ein Konto für sich allein stand, und passte nach dem …
- * Ausführlich: docs/begruendungen/server.ts.md#servedatafile
- */
-function serveDataFile(subDir: string) {
-  return async (req: WildcardRequest, res: Response) => {
-    const userId = await resolveUserId(req);
-    if (!userId) return res.status(401).send('Nicht angemeldet');
-    const segments = req.params.pfad.filter(Boolean);
-    const besitzer = segments[0] ? parseInt(segments[0]) : NaN;
-    if (Number.isFinite(besitzer) && besitzer !== userId && !req.session?.isAdmin) {
-      const { scopeIds } = require('./utils/household') as typeof import('./utils/household');
-      const erlaubt = await scopeIds(userId).catch(() => [userId]);
-      if (!erlaubt.includes(besitzer)) return res.status(403).send('Kein Zugriff');
-    }
-    const filePath = safeDataPath(subDir, segments);
-    if (!filePath) return res.status(404).send('Datei nicht gefunden');
-    // Kein fs.existsSync mehr (blockiert den Event-Loop) — sendFile prüft
-    // die Existenz selbst. Die Antwort auf einen Fehler steht in
-    // utils/dateiAusliefern.ts: Nicht jeder Fehler ist ein „nicht gefunden".
-    liefereDatei(res, filePath);
-  };
-}
-
-// Geteilte Bauanleitungen.
-//
-// data/instructions/ enthält ausschliesslich benutzerübergreifende PDFs —
-// benutzereigene Anleitungen liegen unter data/uploads/<benutzer-id>/. Deshalb
-// KEIN serveDataFile(): dessen Prüfung des ersten Pfadsegments gegen die
-// Benutzer-ID kann hier nie passen.
-app.get('/data/instructions/*pfad', async (req: WildcardRequest, res: Response) => {
-  const userId = await resolveUserId(req);
-  if (!userId) return res.status(401).send('Nicht angemeldet');
-  const segments = req.params.pfad.filter(Boolean);
-  const filePath = safeDataPath('instructions', segments);
-  if (!filePath) return res.status(404).send('Datei nicht gefunden');
-  liefereDatei(res, filePath);
-});
+// Eigene und geteilte Anleitungen unter /data/ — samt Pfad- und Besitzerprüfung.
+app.use(require('./routes/datenDateien') as typeof import('./routes/datenDateien'));
+const { safeDataPath } = require('./utils/datenPfad') as typeof import('./utils/datenPfad');
 // Bild-Proxy: eigene Datei (routes/imgProxy.ts).
 //
 // Der Block stand hier als ~440 Zeilen zwischen Session-Aufbau und
@@ -525,7 +472,6 @@ app.get('/images/*pfad', async (req: WildcardRequest, res: Response) => {
   });
 });
 
-app.get('/data/uploads/*pfad',      serveDataFile('uploads'));
 
 // Kein express.static für /images mehr.
 // Ausführlich: docs/begruendungen/server.ts.md#abschnitt-5

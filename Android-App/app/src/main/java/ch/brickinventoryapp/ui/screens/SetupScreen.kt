@@ -62,6 +62,7 @@ import com.google.accompanist.permissions.rememberPermissionState
 import com.google.mlkit.vision.common.InputImage
 import androidx.compose.ui.res.stringResource
 import ch.brickinventoryapp.R
+import ch.brickinventoryapp.util.NetworkPolicy
 import ch.brickinventoryapp.ui.theme.Abstaende
 import ch.brickinventoryapp.ui.theme.Schrift
 
@@ -178,7 +179,12 @@ fun SetupScreen(
                     singleLine = true,
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Uri, imeAction = ImeAction.Done),
                     keyboardActions = KeyboardActions(onDone = { save() }),
-                    supportingText = { Text(stringResource(R.string.setup_url_supporting)) }
+                    supportingText = {
+                        if (NetworkPolicy.klartextNachAussen(url))
+                            Text(stringResource(R.string.setup_url_klartext), color = MaterialTheme.colorScheme.error)
+                        else Text(stringResource(R.string.setup_url_supporting))
+                    },
+                    isError = NetworkPolicy.klartextNachAussen(url),
                 )
                 Spacer(Modifier.height(Abstaende.gross))
                 Button(

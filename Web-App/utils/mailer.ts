@@ -359,6 +359,28 @@ async function sendVerificationMail(to: string, username: string, token: string,
   });
 }
 
+/** Hinweis an die BISHERIGE Adresse, dass das Konto eine neue bekommen hat. */
+async function sendEmailGeaendertMail(to: string, username: string, neueAdresse: string, lang = 'de') {
+  const theme = await getMailTheme();
+  const L = lang === 'en' ? {
+    subject: 'BrickInventory Manager — Your email address was changed',
+    title: 'Email address changed',
+    text: `Hello ${username},\n\nthe email address of your account was changed to ${neueAdresse}.\n\nIf this was not you, sign in, change your password and set the old address again — or ask the administrator.\n\nBrickInventory Manager`,
+    html: `<p style="margin:0 0 8px">Hello <strong>${esc(username)}</strong>,</p>
+       <p style="margin:0 0 16px">the email address of your account was changed to <strong>${esc(neueAdresse)}</strong>.</p>`,
+    note: 'If this was not you, sign in, change your password and set the old address again — or ask the administrator.',
+  } : {
+    subject: 'BrickInventory Manager — Deine E-Mail-Adresse wurde geändert',
+    title: 'E-Mail-Adresse geändert',
+    text: `Hallo ${username},\n\ndie E-Mail-Adresse deines Kontos wurde auf ${neueAdresse} geändert.\n\nWarst du das nicht, melde dich an, ändere dein Passwort und trage die alte Adresse wieder ein — oder wende dich an den Verwalter.\n\nBrickInventory Manager`,
+    html: `<p style="margin:0 0 8px">Hallo <strong>${esc(username)}</strong>,</p>
+       <p style="margin:0 0 16px">die E-Mail-Adresse deines Kontos wurde auf <strong>${esc(neueAdresse)}</strong> geändert.</p>`,
+    note: 'Warst du das nicht, melde dich an, ändere dein Passwort und trage die alte Adresse wieder ein — oder wende dich an den Verwalter.',
+  };
+  return sendMail({ to, subject: L.subject, text: L.text,
+    html: emailTemplate(L.title, L.subject, `${L.html}${infoBox(L.note, theme)}`, theme) });
+}
+
 // Bis hierher: nein. Diese Mail war die einzige, die gar keine Sprache kannte
 // — sie ging IMMER auf Deutsch hinaus, auch an ein Konto, das die Oberflaeche
 // auf Englisch fuehrt. Die Bestaetigungsmail konnte es laengst (`lang`), die
@@ -542,6 +564,6 @@ async function testSmtp() {
 
 // emailTemplate/getMailTheme mitexportieren: Damit lässt sich das Design einer
 // E-Mail prüfen, ohne eine zu versenden (test/mail-theme.test.js).
-export { sendMail, sendVerificationMail, sendPasswordResetMail, testSmtp,
+export { sendMail, sendVerificationMail, sendEmailGeaendertMail, sendPasswordResetMail, testSmtp,
          emailTemplate, getMailTheme, MAIL_THEMES, baueAlarmMail };
 export type { AlarmMailDaten };

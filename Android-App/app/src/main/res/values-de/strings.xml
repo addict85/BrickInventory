@@ -80,6 +80,7 @@
     <string name="setup_url_label">URL der BrickInventory Manager Webapp</string>
     <string name="setup_url_placeholder">http://192.168.1.100:3000</string>
     <string name="setup_url_supporting">z.B. http://192.168.1.100:3000 oder https://brick.example.com</string>
+    <string name="setup_url_klartext">Unverschlüsselt: Dein Zugang geht im Klartext übers Netz. Ist der Server aus dem Internet erreichbar, bitte https verwenden.</string>
     <string name="setup_continue">Weiter</string>
     <string name="setup_qr_detected">✅ QR-Code erkannt</string>
     <string name="setup_qr_scan_hint">BrickInventory QR-Code scannen</string>
@@ -593,6 +594,7 @@
     <!-- ══════════════ Kontokarte (Profil / Passwort) ══════════════ -->
     <string name="konto_title">Konto</string>
     <string name="konto_email_unverified">E-Mail-Adresse nicht bestätigt</string>
+    <string name="konto_email_password">Aktuelles Passwort (für die neue E-Mail-Adresse)</string>
     <string name="konto_save">Profil speichern</string>
     <string name="konto_saved">Profil gespeichert</string>
     <string name="konto_password_title">Passwort ändern</string>

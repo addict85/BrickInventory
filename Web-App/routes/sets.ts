@@ -547,7 +547,8 @@ const uploadInstr = multer({
       // "function Object() { [native code] }". Siehe utils/validate.ausTabelle.
       const ext  = ausTabelle(INSTR_EXT_BY_MIME, file.mimetype);
       if (!ext) return cb(new Error('Nur PDF, JPG oder PNG'), '');
-      cb(null, `${safe}_${Date.now()}${ext}`);
+      // Zufällig statt Zeitstempel: Der Name soll sich nicht erraten lassen.
+      cb(null, `${safe}_${(require('crypto') as typeof import('crypto')).randomBytes(12).toString('hex')}${ext}`);
     }
   }),
   limits: { fileSize: 50*1024*1024 },

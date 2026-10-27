@@ -123,8 +123,9 @@ object AppModule {
                 // hätte den Token auch an "https://<serverUrl>.angreifer.tld"
                 // geschickt (siehe util/NetworkPolicy.kt).
                 val finalUrl = reqBuilder.build().url
-                val isOurServer = (serverUrl.isNotBlank() && NetworkPolicy.isSameOrigin(finalUrl, serverUrl)) ||
-                    (finalUrl.host == "localhost" && finalUrl.port == 3000)
+                // Kein Sonderfall für localhost:3000: Der Bild-Client schreibt
+                // diese Adresse nicht um, der Token ginge sonst an das Gerät selbst.
+                val isOurServer = serverUrl.isNotBlank() && NetworkPolicy.isSameOrigin(finalUrl, serverUrl)
                 if (token.isNotBlank() && isOurServer && original.header("Authorization") == null) {
                     reqBuilder.header("Authorization", "Bearer $token")
                 }

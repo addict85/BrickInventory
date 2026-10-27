@@ -323,6 +323,7 @@ window.I18N_DE = {
   'qr.generate': '🔄 QR-Code generieren',
   'profile.username_empty': 'Benutzername darf nicht leer sein',
   'profile.mail_sent_hint': 'Bestätigungsmail gesendet — bitte E-Mail verifizieren.',
+  'profile.email_needs_password': 'Zum Ändern der E-Mail-Adresse bitte unten das aktuelle Passwort eingeben.',
   'profile.saved_mail': 'Profil gespeichert — Bestätigungsmail gesendet',
   'profile.save_error': 'Fehler beim Speichern',
   'figs.auto_hint': 'Minifiguren werden beim Set-Import automatisch geladen',

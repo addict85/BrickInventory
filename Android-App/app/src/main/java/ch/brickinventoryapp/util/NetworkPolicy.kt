@@ -104,6 +104,16 @@ object NetworkPolicy {
         return true
     }
 
+    /**
+     * Geht der Zugang zu dieser Server-Adresse unverschlüsselt aus dem lokalen
+     * Netz? Die Einrichtung zeigt dann eine Warnung; blockiert wird nicht, weil
+     * ein Heimnetz-Name auch öffentlich aussehen kann.
+     */
+    fun klartextNachAussen(serverUrl: String): Boolean {
+        val url = serverUrl.trim().toHttpUrlOrNull() ?: return false
+        return !url.isHttps && !isPrivateHost(url.host)
+    }
+
     /** Ist der Host eine numerische IPv4/IPv6-Adresse (kein Name)? */
     fun isIpLiteral(host: String): Boolean {
         val h = host.trim('[', ']')

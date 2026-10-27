@@ -322,6 +322,7 @@ window.I18N_EN = {
   'qr.generate': '🔄 Generate QR code',
   'profile.username_empty': 'Username must not be empty',
   'profile.mail_sent_hint': 'Confirmation e-mail sent — please verify your e-mail.',
+  'profile.email_needs_password': 'To change the email address, enter your current password below.',
   'profile.saved_mail': 'Profile saved — confirmation e-mail sent',
   'profile.save_error': 'Error while saving',
   'figs.auto_hint': 'Minifigures are loaded automatically on set import',

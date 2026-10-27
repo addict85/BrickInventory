@@ -52,6 +52,8 @@ export const FEHLER = {
                                  en: 'The password must be at least 8 characters long.' },
   aktuelles_passwort_erforderlich: { de: 'Aktuelles Passwort erforderlich',
                                  en: 'Current password required' },
+  passwort_ueber_change_password: { de: 'Das Passwort wird über „Passwort ändern" geändert.',
+                                 en: 'Change the password via "Change password".' },
   aktuelles_passwort_falsch:   { de: 'Aktuelles Passwort falsch', en: 'Current password is wrong' },
   alle_felder_erforderlich:    { de: 'Alle Felder erforderlich', en: 'All fields are required' },
   passwort_reset_nicht_eingerichtet: {

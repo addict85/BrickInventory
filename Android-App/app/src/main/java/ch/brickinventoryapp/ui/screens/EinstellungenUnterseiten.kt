@@ -241,7 +241,7 @@ fun KontoUnterseite(
     Unterseite(stringResource(R.string.konto_title), snackbarHostState, onZurueck) {
         KontoCard(
             kontoZustand = kontoZustand,
-            onSpeichern = { b, e, v, n -> vm.speichereProfil(b, e, v, n) },
+            onSpeichern = { b, e, v, n, p -> vm.speichereProfil(b, e, v, n, p) },
             onPasswort = { alt, neu -> vm.aenderePasswort(alt, neu) },
             onMeldungWeg = { vm.kontoMeldungWeg() },
         )
@@ -1078,7 +1078,7 @@ private fun KontoCard(
     // Dieselbe Falle steht zweimal im Kopf dieser Datei beschrieben — und ich
     // bin trotzdem hineingelaufen.
     kontoZustand: ch.brickinventoryapp.ui.KontoUiState,
-    onSpeichern: (String, String, String, String) -> Unit,
+    onSpeichern: (String, String, String, String, String?) -> Unit,
     onPasswort: (String, String) -> Unit,
     onMeldungWeg: () -> Unit,
 ) {
@@ -1092,8 +1092,10 @@ private fun KontoCard(
     var vorname      by remember(profil) { mutableStateOf(profil?.firstName.orEmpty()) }
     var nachname     by remember(profil) { mutableStateOf(profil?.lastName.orEmpty()) }
     var pwAktuell    by rememberSaveable { mutableStateOf("") }
+    var pwFuerEmail  by remember(profil) { mutableStateOf("") }
     var pwNeu        by rememberSaveable { mutableStateOf("") }
 
+    val emailNeu = profil != null && !email.trim().equals(profil.email.orEmpty(), ignoreCase = true)
     val geaendert = profil != null && (
         benutzername != profil.username.orEmpty() || email != profil.email.orEmpty() ||
         vorname != profil.firstName.orEmpty() || nachname != profil.lastName.orEmpty())
@@ -1142,9 +1144,19 @@ private fun KontoCard(
                     label = { Text(stringResource(R.string.register_last_name)) },
                     modifier = Modifier.weight(1f), singleLine = true, shape = Formen.knopf)
             }
+            // Über eine neue Adresse liesse sich das Passwort zurücksetzen —
+            // darum fragt der Server dann nach dem aktuellen.
+            if (emailNeu) {
+                OutlinedTextField(
+                    value = pwFuerEmail, onValueChange = { pwFuerEmail = it; tippen(it) },
+                    label = { Text(stringResource(R.string.konto_email_password)) },
+                    visualTransformation = PasswordVisualTransformation(),
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
+                    modifier = Modifier.fillMaxWidth(), singleLine = true, shape = Formen.knopf)
+            }
             Button(
-                onClick = { onSpeichern(benutzername, email, vorname, nachname) },
-                enabled = geaendert && !kontoZustand.speichert,
+                onClick = { onSpeichern(benutzername, email, vorname, nachname, pwFuerEmail.takeIf { emailNeu }) },
+                enabled = geaendert && !kontoZustand.speichert && (!emailNeu || pwFuerEmail.isNotEmpty()),
                 modifier = Modifier.fillMaxWidth().height(44.dp), shape = Formen.knopf
             ) { Text(stringResource(R.string.konto_save), fontWeight = FontWeight.SemiBold) }
 

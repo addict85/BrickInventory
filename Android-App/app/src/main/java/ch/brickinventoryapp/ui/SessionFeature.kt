@@ -306,7 +306,7 @@ internal fun MainViewModel.ladeProfil() {
 }
 
 internal fun MainViewModel.speichereProfil(
-    benutzername: String, email: String, vorname: String, nachname: String,
+    benutzername: String, email: String, vorname: String, nachname: String, passwort: String? = null,
 ) {
     viewModelScope.launch {
         _kontoState.update { it.copy(speichert = true, fehler = null, meldung = null) }
@@ -316,6 +316,7 @@ internal fun MainViewModel.speichereProfil(
             // Leer heisst „nicht angegeben", nicht „leerer Vorname".
             firstName = vorname.trim().ifBlank { null },
             lastName = nachname.trim().ifBlank { null },
+            passwordCurrent = passwort?.ifBlank { null },
         )
         when (val r = repo.admin.updateProfil(aenderung)) {
             is Result.Success ->

@@ -88,8 +88,8 @@ services:
       # Adresse, unter der der Server von aussen erreichbar ist. Nötig für
       # Passwort-vergessen-Mails und den QR-Code der App (siehe README.md).
       # APP_BASE_URL: https://lego.example.org
-      # Wem X-Forwarded-For geglaubt wird. Leer = Proxy im eigenen Netz;
-      # „false" ohne Proxy davor (siehe README.md).
+      # Wem X-Forwarded-For geglaubt wird. Leer = Proxy im Docker-Netz;
+      # „false" ohne Proxy davor, sonst seine Adresse (siehe README.md).
       # TRUST_PROXY: false
       # PORT: 3000
       # NODE_ENV: production

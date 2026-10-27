@@ -67,7 +67,7 @@ test('die Regel selbst haelt auch das, was kein String ist', () => {
   assert.equal(passwortZuKurz(123456789), false);
 });
 
-test('alle sechs Routen, die ein Passwort setzen, pruefen die Laenge', () => {
+test('alle fuenf Routen, die ein Passwort setzen, pruefen die Laenge', () => {
   const quelle = ohneKommentare(read('routes/auth.ts'));
 
   // Gezaehlt wird ueber das HASHEN, nicht ueber die Routennamen: Jede Stelle,
@@ -75,7 +75,7 @@ test('alle sechs Routen, die ein Passwort setzen, pruefen die Laenge', () => {
   // neue Route kann diesem Test also nicht entgehen, indem sie anders heisst.
   const hashes = (quelle.match(/bcrypt\.hash\(/g) || []).length;
   const pruefungen = (quelle.match(/passwortZuKurz\(/g) || []).length;
-  assert.equal(hashes, 6,
+  assert.equal(hashes, 5,   // PUT /profile setzt seit dem 27.10. keines mehr
     `${hashes} Stellen hashen ein Passwort — die Zahl hat sich geaendert, der Test muss mit`);
   assert.equal(pruefungen, hashes,
     `Nur ${pruefungen} von ${hashes} Stellen pruefen die Laenge. Genau so entstand die ` +
