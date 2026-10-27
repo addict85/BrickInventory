@@ -160,9 +160,22 @@
   .pstat .v           { font-size: var(--fs-4); overflow-wrap: anywhere; }
   input, select, textarea, .btn {
     font-size: 16px;              /* < 16px lässt iOS beim Fokus hineinzoomen */
-    min-height: 42px;
+    min-height: 44px;
   }
-  .btn-sm { min-height: 34px; }
+  /* 44 px ist das Mass für einen Fingertipp (Apple HIG, WCAG 2.5.5). Die
+     kleinen Varianten bleiben am Desktop klein; am Telefon gilt es für alle. */
+  .btn-sm, .vb, .period-btn, .ubadge-knopf, .sammlung-wahl button { min-height: 44px; }
+  .vb, .btn-sm, .ubadge-knopf { min-width: 44px; }
+  /* Häkchen: grösser gezeichnet, die Beschriftung daneben fängt den Rest. */
+  /* !important: Einige Häkchen tragen inline `width:auto`. */
+  input[type="checkbox"], input[type="radio"] { width: 22px !important; height: 22px; min-height: 0; }
+  /* Der Löschknopf auf der Kachel bleibt optisch klein; seine Tippfläche
+     reicht unsichtbar auf 44 px hinaus. */
+  .ca { top: 5px; right: 5px; z-index: 2; }
+  .delbtn { position: relative; width: 36px; height: 36px; }
+  .delbtn::after { content: ""; position: absolute; inset: -5px; }
+  /* Ein Häkchen in seiner Beschriftung: Die ganze Zeile ist die Tippfläche. */
+  label:has(> input[type="checkbox"]), label:has(> input[type="radio"]) { min-height: 44px; display: flex; align-items: center; }
 
   /* Feste px-Breiten aus den Inline-Styles der Templates neutralisieren */
   [style*="width:"][style*="px"]:not(img):not(svg):not(.color-dot):not(.man-tile-swatch) {
@@ -242,7 +255,6 @@
   .dt-fin td.fin-wert { grid-area: wert; text-align: right; font-weight: 700; }
   .dt-fin td.fin-guv  { grid-area: guv;  text-align: right; }
   .fin-unter { display: block !important; font-size: var(--fs-0); font-weight: 400; color: var(--mut); margin-top: 2px; }
-  .period-btn { min-height: 40px; }
   .dt-summe tr { display: flex; justify-content: space-between; align-items: center; padding: .45rem .7rem; }
   .dt-summe td { display: block; border: none; padding: 0 !important; }
   .dt-summe td::before { content: none; }
