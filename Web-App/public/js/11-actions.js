@@ -90,6 +90,19 @@ import { merkpostenLoeschen } from './16-merkliste.js';
     document.addEventListener(type, ev => handle(type, ev), NEEDS_CAPTURE.has(type));
   }
 
+  // Karten und Zeilen mit data-click sind keine Knöpfe; mit tabindex und
+  // dieser Zeile bedient die Tastatur sie wie einen (Eingabe, bei role=button
+  // auch Leertaste).
+  const NATIV = new Set(['BUTTON', 'A', 'INPUT', 'SELECT', 'TEXTAREA', 'LABEL', 'SUMMARY']);
+  document.addEventListener('keydown', ev => {
+    const el = ev.target;
+    if (!el || NATIV.has(el.tagName) || !el.hasAttribute?.('data-click') || !el.hasAttribute('tabindex')) return;
+    const leer = ev.key === ' ' && el.getAttribute('role') === 'button';
+    if (ev.key !== 'Enter' && !leer) return;
+    ev.preventDefault();
+    el.click();
+  });
+
   // ── Formulare: absenden heisst hier „den Knopf druecken" ──────────────────
   //
   // Die Anmelde-, Registrier- und Passwortfelder liegen seit Nachtrag … in
@@ -153,6 +166,10 @@ import { merkpostenLoeschen } from './16-merkliste.js';
     switch (el.dataset.onerror) {
       case 'hide':  el.style.display = 'none'; return;
       case 'clear': el.removeAttribute('src'); return;
+      case 'symbol':
+        // Statt des kaputten Bildes das Set-Symbol, wie in Zeilen ohne Bild.
+        el.outerHTML = '<span class="fin-ph"><svg class="ico" aria-hidden="true"><use href="#i-set"/></svg></span>';
+        return;
       case 'placeholder':
         if (window._catPlaceholderImg) el.outerHTML = window._catPlaceholderImg;
         return;

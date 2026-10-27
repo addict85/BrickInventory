@@ -84,6 +84,11 @@ export function bindTabs(){
     t.addEventListener('click',()=>{
       document.querySelectorAll('.ntab').forEach(x=>x.classList.remove('active'));
       document.querySelectorAll('.tab').forEach(x=>x.classList.remove('active'));
+      // Unsichtbare Reiter (Einstellungen, Monitoring) öffnet das Kontomenü —
+      // dann markiert der Menüknopf, wo man ist.
+      const unter = t.classList.contains('ntab-unter');
+      G('btn-umenu')?.classList.toggle('aktiv', unter);
+      if (unter) G('btn-umenu')?.setAttribute('aria-current', 'page'); else G('btn-umenu')?.removeAttribute('aria-current');
       t.classList.add('active'); G('tab-'+t.dataset.tab).classList.add('active');
       const tab = t.dataset.tab;
       markiereGruppe(tab);
@@ -167,6 +172,10 @@ export function oeffneSicht(name){
   document.querySelectorAll('.tab').forEach(x=>x.classList.remove('active'));
   flaeche.classList.add('active');
   menueSchliessen();
+  // Die Sichten liegen im Kontomenü, nicht in der Leiste: Dann zeigt der
+  // Menüknopf, wo man ist — sonst wäre kein Reiter als aktiv markiert.
+  G('btn-umenu')?.classList.add('aktiv');
+  G('btn-umenu')?.setAttribute('aria-current', 'page');
   // Nach oben: Die Sicht öffnet sich sonst an der Stelle, an der die vorige
   // gerollt war, und man sieht die Mitte einer fremden Seite.
   window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -949,14 +958,14 @@ function gridCard(s){
   // Zustand: Der Server liefert die vorkommenden Zustände als Aggregat —
   // eine Plakette je Zustand, siehe condBadges().
   const condBadge = condBadges(s);
-  return `<div class="sc" data-click="openModal" data-arg="${escJs(s.set_number)}">
+  return `<div class="sc" tabindex="0" role="button" aria-label="${esc((s.name||'')+' '+s.set_number)}" data-click="openModal" data-arg="${escJs(s.set_number)}">
     <div class="ca"><button class="delbtn" data-click="delSetStop" data-arg="${esc(s.set_number)}" title="${esc(t('detail.delete'))}" aria-label="${esc(t('detail.delete'))}">${TRASH_ICON_SVG}</button></div>
     <div class="sci">${img}</div>
     <div class="scb">
       <div class="snum">${esc(s.set_number)}</div>
       <div class="sname">${esc(s.name)||'Unbekannt'}</div>
       <div class="smeta">
-        <span style="font-size:var(--fs-0)">${s.year||'—'}${s.theme?' · '+esc(s.theme.substring(0,12)):''}</span>
+        <span style="font-size:var(--fs-1)">${s.year||'—'}${s.theme?' · '+esc(s.theme.substring(0,12)):''}</span>
         <div style="display:flex;gap:3px;align-items:center;flex-wrap:wrap">
           ${s.instructions?.length?`<span class="ibadge">${ico('liste')}${s.instructions.length}</span>`:''}
           ${s.quantity>1?`<span class="qbadge">×${s.quantity}</span>`:''}
@@ -965,14 +974,14 @@ function gridCard(s){
         </div>
       </div>
       <div class="price-badge" data-price-for="${esc(s.set_number)}"${priceStr||pnl ? '' : ' hidden'}><span style="font-weight:600;color:var(--b600)">${priceStr}</span>${pnl}</div>
-      ${addedFmt ? `<div style="font-size:var(--fs-0);color:var(--mut);margin-top:.2rem">${ico('kalender')} ${addedFmt}</div>` : ''}
+      ${addedFmt ? `<div style="font-size:var(--fs-1);color:var(--mut);margin-top:.2rem">${ico('kalender')} ${addedFmt}</div>` : ''}
     </div>
   </div>`;
 }
 function tableRow(s){
   const src=s.image_local||s.image_url||'';
   const addedFmt = s.added_at ? new Date(s.added_at).toLocaleDateString(locale()) : '—';
-  return `<tr style="cursor:pointer" data-click="openModal" data-arg="${escJs(s.set_number)}">
+  return `<tr style="cursor:pointer" tabindex="0" data-click="openModal" data-arg="${escJs(s.set_number)}">
     <td>${src?`<img src="${escUrl(imgUrl(thumbUrl(src)||src, true)||'')}" loading="lazy" decoding="async" data-onerror="clear" />`:'—'}</td>
     <td><span style="font-family:var(--mono);color:var(--b600);font-size:var(--fs-1)">${esc(s.set_number)}</span></td>
     <td>${esc(s.name)||'—'}</td><td>${s.year||'—'}</td><td>${esc(s.theme)||'—'}</td>

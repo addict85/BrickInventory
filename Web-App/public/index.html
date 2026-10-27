@@ -396,9 +396,9 @@
            Das Formular steht im Dialog #add-set-modal. -->
       <div class="erfassen-leiste">
         <button class="btn bp" type="button" data-click="oeffneErfassen" data-arg="set"><svg class="ico" aria-hidden="true"><use href="#i-plus"/></svg><span data-i18n="gallery.add.title">Set hinzufügen</span></button>
-        <label for="csv-file" class="btn bs" style="cursor:pointer"><svg class="ico" aria-hidden="true"><use href="#i-import"/></svg><span class="ico-text">CSV</span><input type="file" id="csv-file" aria-label="CSV-Datei" data-i18n="import.csv_file" data-i18n-attr="aria-label" accept=".csv" style="display:none" data-change="startSetCsvImport" /></label>
+        <label for="csv-file" class="btn bs" style="cursor:pointer"><svg class="ico" aria-hidden="true"><use href="#i-import"/></svg><span>CSV</span><input type="file" id="csv-file" aria-label="CSV-Datei" data-i18n="import.csv_file" data-i18n-attr="aria-label" accept=".csv" class="datei-versteckt" data-change="startSetCsvImport" /></label>
         <a class="btn bs" id="btn-set-csv-template" href="#" data-i18n="gallery.template" data-ico="datei">Vorlage</a>
-        <label class="btn bs" style="cursor:pointer" title="BrickLink-Wanted-Liste (.xml)"><span data-wanted-icon="1"></span><span data-i18n="wanted.pick_short">BrickLink XML</span><input type="file" id="wanted-xml-set" aria-label="BrickLink-Wanted-Liste" data-i18n="wanted.pick" data-i18n-attr="aria-label" accept=".xml,text/xml,application/xml" style="display:none" data-change="wantedXmlGewaehlt" data-art="set" /></label>
+        <label class="btn bs" style="cursor:pointer" title="BrickLink-Wanted-Liste (.xml)"><span data-wanted-icon="1"></span><span data-i18n="wanted.pick_short">BrickLink XML</span><input type="file" id="wanted-xml-set" aria-label="BrickLink-Wanted-Liste" data-i18n="wanted.pick" data-i18n-attr="aria-label" accept=".xml,text/xml,application/xml" class="datei-versteckt" data-change="wantedXmlGewaehlt" data-art="set" /></label>
       </div>
 
       <!-- Suche/Filter/Sortierung — BEWUSST unter der Erfassen-Box statt im
@@ -511,7 +511,7 @@
                fremdes Feld faellt in test/a11y.test.js auf („ein
                umschliessendes Label traegt kein fremdes for="). Beschriftet
                ist das Feld ueber aria-label. -->
-          <label class="btn bs" style="cursor:pointer"><svg class="ico" aria-hidden="true"><use href="#i-import"/></svg><span class="ico-text">CSV</span><input type="file" id="mk-csv-file" aria-label="CSV-Datei" data-i18n="import.csv_file" data-i18n-attr="aria-label" accept=".csv,.txt" style="display:none" data-change="importMerklisteCsv" /></label>
+          <label class="btn bs" style="cursor:pointer"><svg class="ico" aria-hidden="true"><use href="#i-import"/></svg><span>CSV</span><input type="file" id="mk-csv-file" aria-label="CSV-Datei" data-i18n="import.csv_file" data-i18n-attr="aria-label" accept=".csv,.txt" class="datei-versteckt" data-change="importMerklisteCsv" /></label>
         </div>
         <div id="mk-status" style="margin-top:8px;font-size:var(--fs-2)"></div>
       </div>
@@ -567,9 +567,9 @@
       <!-- ── Manuell erfasste Teile — vor den Set-Teilen ──────────────────── -->
       <div class="erfassen-leiste">
         <button class="btn bp" type="button" data-click="oeffneErfassen" data-arg="part"><svg class="ico" aria-hidden="true"><use href="#i-plus"/></svg><span data-i18n="parts.add_title">Teil hinzufügen</span></button>
-        <label for="part-csv-file" class="btn bs" style="cursor:pointer"><svg class="ico" aria-hidden="true"><use href="#i-import"/></svg><span class="ico-text">CSV</span><input type="file" id="part-csv-file" aria-label="CSV-Datei" data-i18n="import.csv_file" data-i18n-attr="aria-label" accept=".csv,.txt" style="display:none" data-change="importPartsCsv" /></label>
+        <label for="part-csv-file" class="btn bs" style="cursor:pointer"><svg class="ico" aria-hidden="true"><use href="#i-import"/></svg><span>CSV</span><input type="file" id="part-csv-file" aria-label="CSV-Datei" data-i18n="import.csv_file" data-i18n-attr="aria-label" accept=".csv,.txt" class="datei-versteckt" data-change="importPartsCsv" /></label>
         <a class="btn bs" id="btn-csv-template" href="#" data-i18n="gallery.template" data-ico="datei">Vorlage</a>
-        <label class="btn bs" style="cursor:pointer" title="BrickLink-Wanted-Liste (.xml)"><span data-wanted-icon="1"></span><span data-i18n="wanted.pick_short">BrickLink XML</span><input type="file" id="wanted-xml-part" aria-label="BrickLink-Wanted-Liste" data-i18n="wanted.pick" data-i18n-attr="aria-label" accept=".xml,text/xml,application/xml" style="display:none" data-change="wantedXmlGewaehlt" data-art="part" /></label>
+        <label class="btn bs" style="cursor:pointer" title="BrickLink-Wanted-Liste (.xml)"><span data-wanted-icon="1"></span><span data-i18n="wanted.pick_short">BrickLink XML</span><input type="file" id="wanted-xml-part" aria-label="BrickLink-Wanted-Liste" data-i18n="wanted.pick" data-i18n-attr="aria-label" accept=".xml,text/xml,application/xml" class="datei-versteckt" data-change="wantedXmlGewaehlt" data-art="part" /></label>
       </div>
         <div id="part-csv-status" style="display:none;font-size:var(--fs-3);margin-bottom:1rem;padding:.55rem .8rem;border-radius:8px"></div>
         <!-- mp stats hidden, kept for JS -->
@@ -650,9 +650,9 @@
       <!-- ── Manuell erfasste Minifiguren — grosse Box wie bei Teilen ──────── -->
       <div class="erfassen-leiste">
         <button class="btn bp" type="button" data-click="oeffneErfassen" data-arg="fig"><svg class="ico" aria-hidden="true"><use href="#i-plus"/></svg><span data-i18n="figs.add_title">Minifigur hinzufügen</span></button>
-        <label for="fig-csv-file" class="btn bs" style="cursor:pointer"><svg class="ico" aria-hidden="true"><use href="#i-import"/></svg><span class="ico-text">CSV</span><input type="file" id="fig-csv-file" aria-label="CSV-Datei" data-i18n="import.csv_file" data-i18n-attr="aria-label" accept=".csv,.txt" style="display:none" data-change="importFigsCsv" /></label>
+        <label for="fig-csv-file" class="btn bs" style="cursor:pointer"><svg class="ico" aria-hidden="true"><use href="#i-import"/></svg><span>CSV</span><input type="file" id="fig-csv-file" aria-label="CSV-Datei" data-i18n="import.csv_file" data-i18n-attr="aria-label" accept=".csv,.txt" class="datei-versteckt" data-change="importFigsCsv" /></label>
         <a class="btn bs" id="btn-fig-csv-template" href="#" data-i18n="gallery.template" data-ico="datei">Vorlage</a>
-        <label class="btn bs" style="cursor:pointer" title="BrickLink-Wanted-Liste (.xml)"><span data-wanted-icon="1"></span><span data-i18n="wanted.pick_short">BrickLink XML</span><input type="file" id="wanted-xml-fig" aria-label="BrickLink-Wanted-Liste" data-i18n="wanted.pick" data-i18n-attr="aria-label" accept=".xml,text/xml,application/xml" style="display:none" data-change="wantedXmlGewaehlt" data-art="fig" /></label>
+        <label class="btn bs" style="cursor:pointer" title="BrickLink-Wanted-Liste (.xml)"><span data-wanted-icon="1"></span><span data-i18n="wanted.pick_short">BrickLink XML</span><input type="file" id="wanted-xml-fig" aria-label="BrickLink-Wanted-Liste" data-i18n="wanted.pick" data-i18n-attr="aria-label" accept=".xml,text/xml,application/xml" class="datei-versteckt" data-change="wantedXmlGewaehlt" data-art="fig" /></label>
       </div>
         <div id="fig-csv-status" style="display:none;font-size:var(--fs-3);margin-bottom:1rem;padding:.55rem .8rem;border-radius:8px"></div>
 
@@ -750,13 +750,13 @@
       <div class="ph" style="display:flex;flex-direction:column;gap:.5rem;align-items:flex-start">
         <h2 class="ptitle" data-tab-title="partslist"><span class="ptitle-icon"></span><span data-i18n="nav.partslist">Teileliste</span></h2>
         <div style="display:flex;align-items:center;gap:.5rem;flex-wrap:wrap">
-        <input type="text" id="pl-setnr" placeholder="Set-Nr." data-i18n="pl.set_nr" data-i18n-attr="placeholder" style="height:30px;border:1px solid var(--brd);border-radius:6px;padding:0 8px;font-size:var(--fs-3);width:110px;flex-shrink:0" / aria-label="Set-Nr.">
-        <button class="btn bp btn-sm" data-click="plAddSet" style="white-space:nowrap;flex-shrink:0" data-i18n="adding.button">+ Hinzufügen</button>
-        <button class="btn bs btn-sm" data-click="plGenerate" id="btn-pl-gen" disabled style="white-space:nowrap;flex-shrink:0" data-i18n="pl.generate" data-ico="werkzeug">Erstellen</button>
-        <button class="btn bp btn-sm" data-click="plExportPdf" id="btn-pl-pdf" style="display:none;white-space:nowrap;flex-shrink:0;width:200px;box-sizing:border-box;justify-content:center"><svg class="ico" aria-hidden="true"><use href="#i-datei"/></svg> PDF</button>
-        <select id="pl-bl-condition" aria-label="Zustand" data-i18n="detail.condition" data-i18n-attr="aria-label" style="display:none;height:30px;border:1px solid var(--brd);border-radius:6px;padding:0 4px;font-size:var(--fs-2);background:var(--sur);width:90px;flex-shrink:0"><option value="X" data-i18n="pl.condition.any">Beliebig</option><option value="N" data-i18n="pl.condition.new">Neu</option><option value="U" data-i18n="pl.condition.used">Gebraucht</option></select>
-        <button class="btn bs btn-sm" data-click="plExportBricklink" id="btn-pl-bl" style="display:none;white-space:nowrap;flex-shrink:0"><svg width="14" height="14" viewBox="0 0 120 120" xmlns="http://www.w3.org/2000/svg" style="vertical-align:middle;margin-right:4px;flex-shrink:0"><rect x="18" y="38" width="84" height="68" rx="3" fill="#e63329"/><polygon points="18,38 30,20 102,20 102,38" fill="#cc2a21"/><polygon points="102,20 118,30 118,86 102,106" fill="#b5231c"/><ellipse cx="43" cy="20" rx="6" ry="3" fill="#cc2a21"/><rect x="37" y="17" width="12" height="3" fill="#cc2a21"/><ellipse cx="43" cy="17" rx="6" ry="3" fill="#b5231c"/><ellipse cx="58" cy="20" rx="6" ry="3" fill="#cc2a21"/><rect x="52" y="17" width="12" height="3" fill="#cc2a21"/><ellipse cx="58" cy="17" rx="6" ry="3" fill="#b5231c"/><ellipse cx="73" cy="20" rx="6" ry="3" fill="#cc2a21"/><rect x="67" y="17" width="12" height="3" fill="#cc2a21"/><ellipse cx="73" cy="17" rx="6" ry="3" fill="#b5231c"/><ellipse cx="88" cy="20" rx="6" ry="3" fill="#cc2a21"/><rect x="82" y="17" width="12" height="3" fill="#cc2a21"/><ellipse cx="88" cy="17" rx="6" ry="3" fill="#b5231c"/><rect x="24" y="54" width="72" height="40" rx="2" fill="#fff"/><rect x="29" y="58" width="46" height="15" rx="2" fill="#f5a800"/><text x="52" y="69" text-anchor="middle" font-family="Arial,sans-serif" font-weight="800" font-size="11" fill="white">BIM</text></svg>BrickLink XML</button>
-        <button class="btn bd btn-sm" data-click="plReset" style="white-space:nowrap;flex-shrink:0;margin-left:auto" data-i18n="partslist.reset" data-ico="loeschen">Zurücksetzen</button>
+        <input type="text" id="pl-setnr" placeholder="Set-Nr." data-i18n="pl.set_nr" data-i18n-attr="placeholder" style="width:140px;flex-shrink:0" aria-label="Set-Nr." />
+        <button class="btn bp" data-click="plAddSet" style="white-space:nowrap;flex-shrink:0" data-i18n="adding.button">+ Hinzufügen</button>
+        <button class="btn bs" data-click="plGenerate" id="btn-pl-gen" disabled style="white-space:nowrap;flex-shrink:0" data-i18n="pl.generate" data-ico="werkzeug">Erstellen</button>
+        <button class="btn bs" data-click="plExportPdf" id="btn-pl-pdf" style="display:none;white-space:nowrap;flex-shrink:0"><svg class="ico" aria-hidden="true"><use href="#i-datei"/></svg> PDF</button>
+        <select id="pl-bl-condition" aria-label="Zustand" data-i18n="detail.condition" data-i18n-attr="aria-label" style="display:none;width:auto;flex-shrink:0"><option value="X" data-i18n="pl.condition.any">Beliebig</option><option value="N" data-i18n="pl.condition.new">Neu</option><option value="U" data-i18n="pl.condition.used">Gebraucht</option></select>
+        <button class="btn bs" data-click="plExportBricklink" id="btn-pl-bl" style="display:none;white-space:nowrap;flex-shrink:0"><svg width="14" height="14" viewBox="0 0 120 120" xmlns="http://www.w3.org/2000/svg" style="vertical-align:middle;margin-right:4px;flex-shrink:0"><rect x="18" y="38" width="84" height="68" rx="3" fill="#e63329"/><polygon points="18,38 30,20 102,20 102,38" fill="#cc2a21"/><polygon points="102,20 118,30 118,86 102,106" fill="#b5231c"/><ellipse cx="43" cy="20" rx="6" ry="3" fill="#cc2a21"/><rect x="37" y="17" width="12" height="3" fill="#cc2a21"/><ellipse cx="43" cy="17" rx="6" ry="3" fill="#b5231c"/><ellipse cx="58" cy="20" rx="6" ry="3" fill="#cc2a21"/><rect x="52" y="17" width="12" height="3" fill="#cc2a21"/><ellipse cx="58" cy="17" rx="6" ry="3" fill="#b5231c"/><ellipse cx="73" cy="20" rx="6" ry="3" fill="#cc2a21"/><rect x="67" y="17" width="12" height="3" fill="#cc2a21"/><ellipse cx="73" cy="17" rx="6" ry="3" fill="#b5231c"/><ellipse cx="88" cy="20" rx="6" ry="3" fill="#cc2a21"/><rect x="82" y="17" width="12" height="3" fill="#cc2a21"/><ellipse cx="88" cy="17" rx="6" ry="3" fill="#b5231c"/><rect x="24" y="54" width="72" height="40" rx="2" fill="#fff"/><rect x="29" y="58" width="46" height="15" rx="2" fill="#f5a800"/><text x="52" y="69" text-anchor="middle" font-family="Arial,sans-serif" font-weight="800" font-size="11" fill="white">BIM</text></svg>BrickLink XML</button>
+        <button class="btn bd" data-click="plReset" id="btn-pl-reset" disabled style="white-space:nowrap;flex-shrink:0;margin-left:auto" data-i18n="partslist.reset" data-ico="loeschen">Zurücksetzen</button>
         </div>
         <!--
           Eigene ZEILE (Marcos Vorgabe): „Diese gehören thematisch nicht zum
@@ -780,7 +780,7 @@
           die alten Namen benennen die Wirkung.
         -->
         <div id="pl-bestand-zeile" style="display:none;align-items:center;gap:.5rem;flex-wrap:wrap">
-          <button class="btn bs btn-sm" data-click="plFuelleBestand" id="btn-pl-bestand" style="white-space:nowrap;flex-shrink:0" data-i18n="pl.fill_owned" data-ico="set">Bereits vorhandene Teile eintragen</button>
+          <button class="btn bs" data-click="plFuelleBestand" id="btn-pl-bestand" style="white-space:nowrap;flex-shrink:0" data-i18n="pl.fill_owned" data-ico="set">Bereits vorhandene Teile eintragen</button>
           <label id="pl-bestand-lose-box" style="display:inline-flex;align-items:center;gap:5px;font-size:var(--fs-2);color:var(--mut);white-space:nowrap;flex-shrink:0">
             <input type="checkbox" id="pl-bestand-lose" data-change="plFuelleBestand" style="margin:0"><span data-i18n="pl.only_loose">nur manuell erfasste Teile berücksichtigen</span></label>
           <!--
@@ -854,7 +854,7 @@
               </select>
             </div>
             <div style="font-size:var(--fs-1);color:var(--mut);margin-top:-4px" data-i18n="settings.app_theme_hint">Gilt global für alle Benutzer (Web &amp; App).</div>
-            <button class="btn bp" id="btn-save-theme" data-i18n="settings.save">Speichern</button>
+            <button class="btn bp" id="btn-save-theme" style="align-self:flex-start" data-i18n="settings.save">Speichern</button>
           </div>
         </div>
         <div class="ssec">
@@ -865,7 +865,7 @@
             <div class="fg"><label for="bl-tok">Token Value</label><input type="text" id="bl-tok" autocomplete="off" /></div>
             <div class="fg"><label for="bl-ts">Token Secret</label><input type="password" id="bl-ts" autocomplete="off" /></div>
             <div class="fg"><label for="lim-bl"><span data-i18n="settings.max_calls">Max. Aufrufe pro Tag</span> <span style="font-size:var(--fs-1);color:var(--mut)" data-i18n="settings.default_n" data-i18n-vars='{"n":"4000"}'>(Standard: 4000)</span></label><input inputmode="numeric" type="number" id="lim-bl" min="1" max="100000" value="4000" style="max-width:160px" /></div>
-            <button class="btn bp" id="btn-sav-bl" data-i18n="settings.save_key" data-ico="schluessel">Speichern</button>
+            <button class="btn bp" id="btn-sav-bl" style="align-self:flex-start" data-i18n="settings.save_key" data-ico="schluessel">Speichern</button>
           </div>
         </div>
         <div class="ssec">
@@ -874,7 +874,7 @@
             <div class="ibox" style="margin-bottom:4px"><a href="https://rebrickable.com/api/" target="_blank" rel="noopener noreferrer">rebrickable.com → API → Generate Key</a><br><span style="font-size:var(--fs-1)" data-i18n="settings.rebrickable_hint">Set-Infos, Teile &amp; Bilder</span></div>
             <div class="fg"><label for="rb-key">Rebrickable API Key</label><input type="text" id="rb-key" autocomplete="off" /></div>
             <div class="fg"><label for="lim-rb"><span data-i18n="settings.max_calls">Max. Aufrufe pro Tag</span> <span style="font-size:var(--fs-1);color:var(--mut)" data-i18n="settings.default_n" data-i18n-vars='{"n":"25000"}'>(Standard: 25000)</span></label><input inputmode="numeric" type="number" id="lim-rb" min="1" max="100000" value="25000" style="max-width:160px" /></div>
-            <button class="btn bp" id="btn-sav-rb" data-i18n="settings.save_key" data-ico="schluessel">Speichern</button>
+            <button class="btn bp" id="btn-sav-rb" style="align-self:flex-start" data-i18n="settings.save_key" data-ico="schluessel">Speichern</button>
           </div>
         </div>
         <div class="ssec">
@@ -883,7 +883,7 @@
             <div class="ibox" style="margin-bottom:4px"><a href="https://brickset.com/tools/webservices/requestkey" target="_blank" rel="noopener noreferrer"><span data-i18n="settings.brickset_link">brickset.com → Tools → API Key anfordern</span></a><br><span style="font-size:var(--fs-1)" data-i18n="settings.brickset_hint">Anleitungen, Fallback Set-Infos</span></div>
             <div class="fg"><label for="bs-key">Brickset API Key</label><input type="text" id="bs-key" autocomplete="off" /></div>
             <div class="fg"><label for="lim-bs"><span data-i18n="settings.max_calls">Max. Aufrufe pro Tag</span> <span style="font-size:var(--fs-1);color:var(--mut)" data-i18n="settings.default_n" data-i18n-vars='{"n":"100"}'>(Standard: 100)</span></label><input inputmode="numeric" type="number" id="lim-bs" min="1" max="100000" value="100" style="max-width:160px" /></div>
-            <button class="btn bp" id="btn-sav-bs" data-i18n="settings.save_key" data-ico="schluessel">Speichern</button>
+            <button class="btn bp" id="btn-sav-bs" style="align-self:flex-start" data-i18n="settings.save_key" data-ico="schluessel">Speichern</button>
           </div>
         </div>
         <div class="ssec full" id="usermgmt" style="display:none">
@@ -955,7 +955,7 @@
               <p style="font-size:var(--fs-2);color:var(--mut);margin:0 0 .5rem 0" data-i18n="settings.cfg_hint">API-Keys und Einstellungen als JSON exportieren/importieren.</p>
               <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-bottom:1rem">
                 <button class="btn bs" id="btn-cfg-export" data-i18n="settings.cfg_export" data-ico="import">Konfiguration exportieren</button>
-                <label for="mon-cache-ttl" class="btn bs" style="cursor:pointer"><span data-i18n="settings.cfg_import" data-ico="export">Konfiguration importieren</span><input type="file" id="cfg-import-file" accept=".json" style="display:none" data-change="importConfig" /></label>
+                <label for="cfg-import-file" class="btn bs" style="cursor:pointer"><span data-i18n="settings.cfg_import" data-ico="export">Konfiguration importieren</span><input type="file" id="cfg-import-file" accept=".json" class="datei-versteckt" data-change="importConfig" /></label>
                 <span id="cfg-import-status" style="font-size:var(--fs-2);color:var(--mut)"></span>
               </div>
             </div>
@@ -1255,7 +1255,7 @@
                Das Label trägt KEIN for= : Es umschliesst sein Feld schon, und
                ein for= auf ein fremdes Feld fällt in test/a11y.test.js auf. -->
           <div style="display:flex;gap:8px;align-items:center;margin-top:.75rem">
-            <label class="btn bs" style="cursor:pointer"><svg class="ico" aria-hidden="true"><use href="#i-import"/></svg><span class="ico-text">CSV</span><input type="file" id="alerts-csv-file" aria-label="CSV-Datei" data-i18n="import.csv_file" data-i18n-attr="aria-label" accept=".csv,.txt" style="display:none" data-change="importAlarmeCsv" /></label>
+            <label class="btn bs" style="cursor:pointer"><svg class="ico" aria-hidden="true"><use href="#i-import"/></svg><span>CSV</span><input type="file" id="alerts-csv-file" aria-label="CSV-Datei" data-i18n="import.csv_file" data-i18n-attr="aria-label" accept=".csv,.txt" class="datei-versteckt" data-change="importAlarmeCsv" /></label>
             <span id="alerts-csv-status" style="font-size:var(--fs-2);color:var(--mut)"></span>
           </div>
         </div>
@@ -1517,7 +1517,7 @@
         <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:.75rem">
           <div style="font-weight:600;font-size:var(--fs-3)" data-i18n="monitor.cache_status" data-ico="monitoring">Cache-Status</div>
           <div style="display:flex;align-items:center;gap:.5rem">
-            <label style="font-size:var(--fs-1);color:var(--mut)" data-i18n="monitor.cache_duration">Cache-Dauer:</label>
+            <label for="mon-cache-ttl" style="font-size:var(--fs-1);color:var(--mut)" data-i18n="monitor.cache_duration">Cache-Dauer:</label>
             <select id="mon-cache-ttl" style="font-size:var(--fs-1);padding:3px 6px;border:1px solid var(--bdr);border-radius:6px;background:var(--sur)">
               <option value="12" data-i18n="settings.job.h12">12 Stunden</option>
               <option value="24" selected data-i18n="monitor.cache_day">1 Tag</option>
@@ -1627,9 +1627,11 @@
 </div>
 <div class="ovl" id="set-modal" role="dialog" aria-modal="true">
   <div class="modal">
-    <div class="mhd"><div class="mtit" id="m-tit">Set</div><button class="btn bs btn-sm" data-click="closeModal" data-dialog-zu aria-label="Schliessen" data-i18n="common.close" data-i18n-attr="aria-label"><svg class="ico" aria-hidden="true"><use href="#i-schliessen"/></svg></button></div>
-    <img id="m-img" alt="" class="mimg" style="cursor:zoom-in" data-orig="/assets/set-placeholder.svg" data-click="openImageLightboxFromEl" />
-    <div id="m-det"></div>
+    <div class="mhd"><div><div class="mtit" id="m-tit">Set</div><div class="muntertit" id="m-untertit"></div></div><button class="btn bs btn-sm" data-click="closeModal" data-dialog-zu aria-label="Schliessen" data-i18n="common.close" data-i18n-attr="aria-label"><svg class="ico" aria-hidden="true"><use href="#i-schliessen"/></svg></button></div>
+    <div class="m-kopfteil">
+      <img id="m-img" alt="" class="mimg" style="cursor:zoom-in" data-orig="/assets/set-placeholder.svg" data-click="openImageLightboxFromEl" />
+      <div id="m-det"></div>
+    </div>
     <div id="m-instr" class="il"></div>
     <!--
       Keine Kaufadressen hier (Marcos Vorgabe): „Im Detaildialog der Sets
@@ -1647,7 +1649,7 @@
       draussen liest sie noch.
     -->
     <div class="mfooter" style="justify-content:space-between;flex-wrap:wrap;gap:8px">
-      <button class="btn bd" id="btn-md" aria-label="Set löschen" data-i18n="detail.delete" data-i18n-attr="aria-label"><svg class="ico" aria-hidden="true"><use href="#i-loeschen"/></svg></button>
+      <button class="btn bd" id="btn-md" aria-label="Set löschen" data-i18n="detail.delete" data-i18n-attr="aria-label"><svg class="ico" aria-hidden="true"><use href="#i-loeschen"/></svg><span data-i18n="common.delete">Löschen</span></button>
     </div>
   </div>
 </div>
@@ -1689,7 +1691,7 @@
       <div class="sparkline-wrap" id="mk-m-sparkline-content"></div>
     </div>
     <div class="mfooter" style="justify-content:space-between;flex-wrap:wrap;gap:8px">
-      <button class="btn bd" id="mk-m-del" data-click="merkpostenDetailLoeschen" aria-label="Merkposten entfernen" data-i18n="wanted.remove" data-i18n-attr="aria-label"><svg class="ico" aria-hidden="true"><use href="#i-loeschen"/></svg></button>
+      <button class="btn bd" id="mk-m-del" data-click="merkpostenDetailLoeschen" aria-label="Merkposten entfernen" data-i18n="wanted.remove" data-i18n-attr="aria-label"><svg class="ico" aria-hidden="true"><use href="#i-loeschen"/></svg><span data-i18n="common.delete">Löschen</span></button>
       <!-- Marcos Vorgabe: die beiden Kaufadressen NEBENEINANDER, und darunter
            mit ABSTAND die Uebernahme. Der groessere Abstand ist die ganze
            Aussage: Oben zwei Wege nach draussen, unten der eine Griff, der
@@ -1889,7 +1891,7 @@
          Damit steht in der Fusszeile nur noch der Papierkorb — wie im
          Set-Detail. -->
     <div class="mfooter" style="justify-content:space-between">
-      <button class="btn bd" id="man-detail-del" aria-label="Eintrag löschen" data-i18n="common.delete_item" data-i18n-attr="aria-label"><svg class="ico" aria-hidden="true"><use href="#i-loeschen"/></svg></button>
+      <button class="btn bd" id="man-detail-del" aria-label="Eintrag löschen" data-i18n="common.delete_item" data-i18n-attr="aria-label"><svg class="ico" aria-hidden="true"><use href="#i-loeschen"/></svg><span data-i18n="common.delete">Löschen</span></button>
     </div>
   </div>
 </div>

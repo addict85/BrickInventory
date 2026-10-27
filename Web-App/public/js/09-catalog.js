@@ -1,7 +1,7 @@
 import { detailZeile, ladeAnzeige } from './01-bausteine.js';
 import { registerActions } from './00-registry.js';
 import { locale, t, tRaw} from '../i18n.js';
-import { ico, G, api, esc, escUrl, fullUrl, imgUrl, thumbUrl, toast } from './01-core.js';
+import { leerZustand, ico, G, api, esc, escUrl, fullUrl, imgUrl, thumbUrl, toast } from './01-core.js';
 import { setScrollLabel } from './15-scrollbar.js';
 import { PARTS_ICON_SVG, handleSseEvent, hideProgress, leereLagerortFeld, loadGallery, loadStats, selectedOwner, selectedStorage, showProgress, streamFertig, streamRequest } from './02-gallery.js';
 import { _lastImportAt , set_lastImportAt} from './07-admin.js';
@@ -171,7 +171,10 @@ async function loadCatalogSets(){
   G('cat-count').textContent = tRaw(_catTotal === 1 ? 'catalog.result_count_one' : 'catalog.result_count', { count: _catTotal.toLocaleString(locale()) });
 
   if (!_catItems.length) {
-    grid.innerHTML = `<div class="empty"><img src="/assets/set-placeholder.svg" style="width:64px;height:64px;opacity:.4;margin:0 auto 12px;display:block" /><h3>${t('catalog.no_results')}</h3></div>`;
+    // Ohne Filter heisst „leer": der Katalog ist noch nicht abgeglichen.
+    const gefiltert = !!(_catState.q || _catState.theme || _catState.yearFrom || _catState.yearTo);
+    grid.innerHTML = leerZustand({ ico: gefiltert ? 'suche' : 'katalog', titel: tRaw('catalog.no_results'),
+      text: tRaw(gefiltert ? 'catalog.no_results_hint' : 'catalog.empty_hint') });
     setScrollLabel(null);
     return;
   }
@@ -360,7 +363,7 @@ function catCard(s){
   // dann zeigt der Streifen nichts statt etwas Falsches.
   const ton = Number.isInteger(s.theme_id)
     ? ` style="--faecher-ton:var(--faecher-${((s.theme_id % 12) + 12) % 12})"` : '';
-  return `<div class="sc"${ton} data-sn="${esc(s.set_number)}" data-year="${s.year||''}" data-click="openCatModal" data-arg="${esc(s.set_number)}">
+  return `<div class="sc"${ton} tabindex="0" role="button" data-sn="${esc(s.set_number)}" data-year="${s.year||''}" data-click="openCatModal" data-arg="${esc(s.set_number)}">
     <div class="sci">${img}</div>
     <div class="scb">
       <div class="snum">${esc(s.set_number)}</div>

@@ -327,7 +327,7 @@ export function renderManualFigsTable() {
       const figPrice = f.avg_purchase_price ?? f.unit_price ?? f.purchase_price;
       const priceStr = figPrice!=null ? fmtN(figPrice, CURRENCY) : '—';
       const condBadge = condBadges(f);
-      return `<div class="man-tile" data-click="openManDetail" data-arg="fig" data-arg2="${esc(f.fig_number)}" data-arg3="0" style="cursor:pointer">
+      return `<div class="man-tile" tabindex="0" role="button" data-click="openManDetail" data-arg="fig" data-arg2="${esc(f.fig_number)}" data-arg3="0" style="cursor:pointer">
         <div class="ca"><button class="delbtn" data-click="deleteManualFigStop" data-arg="${esc(f.fig_number)}" data-arg2="${f.user_id||''}" title="${esc(t('figs.delete'))}" aria-label="${esc(t('figs.delete'))}">${TRASH_ICON_SVG}</button></div>
         ${img}
         <div class="man-tile-num">${esc(f.fig_number)}</div>
@@ -574,7 +574,7 @@ function manuelleTabelle(posten, art) {
     const loeschArgs = istTeil
       ? `data-arg="${esc(nummer)}" data-arg2="${p.color_id || 0}" data-arg3="${p.user_id || ''}"`
       : `data-arg="${esc(nummer)}" data-arg2="${p.user_id || ''}"`;
-    return `<tr style="cursor:pointer" data-click="openManDetail" data-arg="${art}" data-arg2="${esc(nummer)}" data-arg3="${istTeil ? (p.color_id || 0) : 0}">
+    return `<tr style="cursor:pointer" tabindex="0" data-click="openManDetail" data-arg="${art}" data-arg2="${esc(nummer)}" data-arg3="${istTeil ? (p.color_id || 0) : 0}">
       <td>${imgSrc
         ? `<img src="${escUrl(imgSrc)}" loading="lazy" decoding="async" data-onerror="clear" style="width:36px;height:36px;object-fit:contain;background:var(--s50);border-radius:5px" />`
         : ''}</td>
@@ -650,7 +650,7 @@ export function renderManualParts() {
       const partPrice = p.avg_purchase_price ?? p.unit_price ?? p.purchase_price;
       const priceStr = partPrice!=null ? fmtN(partPrice, CURRENCY) : '—';
       const condBadge = condBadges(p);
-      return `<div class="man-tile" data-click="openManDetail" data-arg="part" data-arg2="${esc(p.part_number)}" data-arg3="${p.color_id||0}" style="cursor:pointer">
+      return `<div class="man-tile" tabindex="0" role="button" data-click="openManDetail" data-arg="part" data-arg2="${esc(p.part_number)}" data-arg3="${p.color_id||0}" style="cursor:pointer">
         <div class="ca"><button class="delbtn" data-click="deleteManualPartStop" data-arg="${esc(p.part_number)}" data-arg2="${p.color_id||0}" data-arg3="${p.user_id||''}" title="${esc(t('parts.delete.title'))}" aria-label="${esc(t('parts.delete.title'))}">${TRASH_ICON_SVG}</button></div>
         ${img}
         <div class="man-tile-num" title="${esc(p.part_number)}">${esc(p.bl_part_number||p.part_number)}</div>

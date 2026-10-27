@@ -1,6 +1,6 @@
 import { registerActions } from './00-registry.js';
 import { locale, t, tRaw } from '../i18n.js';
-import { ico, CURRENCY, G, TRASH_ICON_SVG, api, esc, escJs, escUrl, fmtN, fullUrl, imgUrl, knopfBesetzt, thumbUrl, toast } from './01-core.js';
+import { leerZustand, ico, CURRENCY, G, TRASH_ICON_SVG, api, esc, escJs, escUrl, fmtN, fullUrl, imgUrl, knopfBesetzt, thumbUrl, toast } from './01-core.js';
 import { detailZeile } from './01-bausteine.js';
 import { alarmBlock, ladeAlarm, priceChartSVG, renderMarketRows, setzeAlarmFeld } from './07-admin.js';
 import { leereLagerortFeld, selectedOwner, selectedStorage, haushaltsKonten, loadGallery, loadStats } from './02-gallery.js';
@@ -129,7 +129,7 @@ function zeile(w) {
          Template-Literals und wuerde es sonst beenden. Genau daran ist der
          erste Entwurf gescheitert — dieselbe Falle wie in
          utils/handlers/parts.ts, wo derselbe Hinweis steht. -->
-    <div class="mk-zeile" data-click="oeffneMerkpostenDetail" data-arg="${arg}"
+    <div class="mk-zeile" tabindex="0" role="button" data-click="oeffneMerkpostenDetail" data-arg="${arg}"
          style="position:relative;display:flex;gap:12px;align-items:center;padding:10px;border:1px solid var(--bdr);
                 border-radius:var(--rad);background:var(--sur);margin-bottom:8px;cursor:pointer">
       <div class="ca"><button class="delbtn" data-click="merkpostenLoeschenStop" data-arg="${arg}"
@@ -183,11 +183,14 @@ export async function ladeMerkliste() {
   // immer die erste, saehe eine Suche ohne Treffer wie eine geleerte Merkliste
   // aus — genau die Verwechslung, wegen der der Kontofilter beim Anmelden
   // zurueckgesetzt wird (14-scope.js).
-  const gefiltert = !!merklisteParams();
+  // Die Sortierung ist kein Filter: Sie steht immer in den Parametern.
+  const filter = new URLSearchParams(merklisteParams()); filter.delete('sort');
+  const gefiltert = !!filter.toString();
   ziel.innerHTML = _merkposten.length
     ? _merkposten.map(zeile).join('')
-    : `<div style="padding:2rem;text-align:center;color:var(--mut)">${
-        esc(tRaw(gefiltert ? 'wanted.no_results' : 'wanted.empty'))}</div>`;
+    : (gefiltert
+      ? leerZustand({ ico: 'suche', titel: tRaw('wanted.no_results') })
+      : leerZustand({ ico: 'merkliste', titel: tRaw('wanted.empty'), text: tRaw('wanted.empty_hint') }));
 }
 
 /**

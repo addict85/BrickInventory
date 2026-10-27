@@ -658,7 +658,7 @@ export async function openSetItemDetail(type, id, colorId) {
   };
   const liste = sets.length
     ? `<table style="width:100%;border-collapse:collapse"><tbody>${sets.map(s => `
-        <tr data-click="openSetAusItem" data-arg="${escJs(s.set_number)}"
+        <tr tabindex="0" data-click="openSetAusItem" data-arg="${escJs(s.set_number)}"
             title="${esc(t('setitem.open_set'))}" style="cursor:pointer">
           <td style="width:34px;padding:4px 8px 4px 0">${setBild(s)}</td>
           <td style="width:1%;white-space:nowrap;padding:4px 10px 4px 0;font-family:var(--mono);font-size:var(--fs-1);color:var(--b600)">${esc(s.set_number)}</td>

@@ -67,15 +67,16 @@
   .ubadge .ubadge-name { display: none; }
   .ubadge .ubadge-ico  { display: inline-block; width: 20px; height: 20px; }
 
-  /* Erfassen-Leiste: der Hauptknopf mit Text, die Nebenknöpfe als Symbol.
-     Die Beschriftung bleibt für Vorleseprogramme da, nur nicht sichtbar. */
-  .erfassen-leiste { flex-wrap: nowrap; }
-  .erfassen-leiste .btn.bp { flex: 1 1 auto; justify-content: center; }
-  .erfassen-leiste .btn.bs { flex: 0 0 auto; min-width: 44px; justify-content: center; padding-left: 10px; padding-right: 10px; }
-  .erfassen-leiste .btn.bs .ico-text,
-  .erfassen-leiste .btn.bs > span[data-i18n] {
-    position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap;
-  }
+  /* Erfassen-Leiste: der Hauptknopf über die ganze Breite, darunter die
+     Nebenknöpfe MIT Beschriftung — drei gleich aussehende Symbole (Import,
+     Vorlage, XML) liessen sich nicht auseinanderhalten. */
+  .erfassen-leiste { flex-wrap: wrap; }
+  .erfassen-leiste .btn.bp { flex: 1 1 100%; justify-content: center; }
+  .erfassen-leiste .btn.bs { flex: 1 1 0; min-width: 0; justify-content: center; padding-left: 8px; padding-right: 8px; font-size: var(--fs-2); }
+
+  /* Kachel: Jahr und Thema in einer Zeile, die Plaketten darunter. */
+  .smeta { flex-direction: column; align-items: flex-start; gap: 4px; }
+  .smeta > span { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
   /* Filter hinter einem Knopf: Suche und Ansicht bleiben, die Auswahlfelder
      klappen auf. Vorher belegten fünf Felder den halben Bildschirm. */
