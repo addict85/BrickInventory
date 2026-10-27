@@ -478,7 +478,7 @@ class SplitFileImportsTest {
             val paket = Regex("""^package ([\w.]+)""", RegexOption.MULTILINE)
                 .find(src)?.groupValues?.get(1) ?: continue
             for (m in Regex(
-                """^(?:@\w+\s+)?(?:internal |public |private )?(?:const )?(?:suspend )?""" +
+                """^(?:@\w+\s+)?(?:internal |public |private )?(?:const )?(?:suspend |inline )?""" +
                 """(?:fun|val|var|class|object|interface|enum class|data class|sealed class|typealias)""" +
                 """\s+(?:<[^>]*>\s*)?(?:\w+\.)?(\w+)""",
                 RegexOption.MULTILINE).findAll(src)) {

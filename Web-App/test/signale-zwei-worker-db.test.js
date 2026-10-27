@@ -166,14 +166,16 @@ test('Cache-Signale erreichen jeden Worker', { concurrency: 1, timeout: 180_000 
     });
 
     await t.test('die Primär-Sperre kommt nach einem Verbindungsabbruch zurück', async () => {
+      // pg_locks gilt für den ganzen Cluster: Ohne die Datenbank fände die
+      // Abfrage auch die Sperre eines anderen Servers auf derselben Instanz.
       const halter = () => db.get(`SELECT pid FROM pg_locks WHERE locktype = 'advisory' AND classid = 0
-                                     AND objid = 99999999 AND granted`);
+                                     AND objid = 99999999 AND granted
+                                     AND database = (SELECT oid FROM pg_database WHERE datname = current_database())`);
       const vorher = await halter();
       assert.ok(vorher, 'Vorbedingung: ein Worker hält die Primär-Sperre');
       await db.run('SELECT pg_terminate_backend($1)', [vorher.pid]);
       let nachher;
-      // Auf beides warten: Die Logzeile des alten Halters kommt über die Pipe
-      // des Kindprozesses und kann nach der neuen Sperre eintreffen.
+      // Auf beides warten: Die Warnung kommt über die Pipe des Kindprozesses.
       for (let i = 0; i < 40; i++) {
         await warte(250);
         nachher = await halter();
