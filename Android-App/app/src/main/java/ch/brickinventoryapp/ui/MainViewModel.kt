@@ -310,9 +310,6 @@ class MainViewModel @Inject constructor(
     internal val _csvHochladenState = MutableStateFlow(CsvHochladenUiState())
     val csvHochladenState = _csvHochladenState.asStateFlow()
 
-    // Nutzerverwaltung und Server-Protokoll — siehe VerwaltungUiState.
-    internal val _verwaltungState = MutableStateFlow(VerwaltungUiState())
-    val verwaltungState = _verwaltungState.asStateFlow()
 
     /**
      * Nur das App-Design, entkoppelt vom übrigen Zustand.

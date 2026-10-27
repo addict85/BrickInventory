@@ -263,7 +263,6 @@ internal fun MainViewModel.logout() {
         _householdState.value = HouseholdUiState()
         _anmeldeState.value = AnmeldeUiState()
         _csvHochladenState.value = CsvHochladenUiState()
-        _verwaltungState.value = VerwaltungUiState()
         // Auch der Update-Zustand: Er traegt zwar keine Kontodaten, aber einen
         // Fortschritt und ein „bereit zur Installation" — beides wuerde dem
         // naechsten Nutzer auf demselben Geraet als sein eigener Vorgang

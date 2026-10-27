@@ -118,7 +118,7 @@ fun MonitoringScreen(vm: MainViewModel) {
             // entschieden wird, waere genau die Sorte zweite Wahrheit, die
             // diese Sitzung an anderer Stelle einundzwanzig Routen gekostet
             // hat.
-            item { ProtokollSection(vm) }
+            item { ProtokollSection(mon) }
 
             // Job cards
             items(jobs.entries.toList(), key = { it.key }) { (key, job) ->

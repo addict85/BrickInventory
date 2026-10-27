@@ -620,8 +620,9 @@ private fun RateLimitRow(
 // ergeben.
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
-internal fun ProtokollSection(vm: MainViewModel) {
-    val verwaltung by vm.verwaltungState.collectAsStateWithLifecycle()
+internal fun ProtokollSection(mon: MonitoringViewModel) {
+    val verwaltung by mon.verwaltungState.collectAsStateWithLifecycle()
+    val protokollScope = rememberCoroutineScope()
     var offen by rememberSaveable { mutableStateOf(false) }
     // Beides gehoert dem Menschen und uebersteht deshalb eine Drehung — die
     // Zeilen selbst kommen ohnehin vom Server nach.
@@ -637,14 +638,14 @@ internal fun ProtokollSection(vm: MainViewModel) {
                     if (verwaltung.protokollLaden) {
                         CircularProgressIndicator(Modifier.size(18.dp), strokeWidth = 2.dp)
                     } else if (offen) {
-                        IconButton(onClick = { vm.ladeProtokoll() }) {
+                        IconButton(onClick = { protokollScope.launch { mon.ladeProtokoll() } }) {
                             Icon(Icons.Default.Refresh, stringResource(R.string.admin_log_reload),
                                 Modifier.size(18.dp))
                         }
                     }
                     IconButton(onClick = {
                         offen = !offen
-                        if (offen && verwaltung.protokoll.isEmpty()) vm.ladeProtokoll()
+                        if (offen && verwaltung.protokoll.isEmpty()) protokollScope.launch { mon.ladeProtokoll() }
                     }) {
                         // Beschreibt die WIRKUNG des Tippens, nicht das
                         // gezeigte Zeichen — genau das braucht TalkBack.
@@ -664,7 +665,7 @@ internal fun ProtokollSection(vm: MainViewModel) {
                         listOf(15, 60, 240, 1440).forEach { min ->
                             FilterChip(
                                 selected = verwaltung.protokollMinuten == min,
-                                onClick = { vm.ladeProtokoll(min) },
+                                onClick = { protokollScope.launch { mon.ladeProtokoll(min) } },
                                 label = { Text(stringResource(R.string.admin_log_minutes, min),
                                                style = MaterialTheme.typography.labelSmall) },
                                 shape = Formen.chip)
