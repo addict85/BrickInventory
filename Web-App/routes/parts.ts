@@ -410,7 +410,7 @@ async function updateManualPart(uid: number, partNumber: string, colorId: number
     // Leseabfrage mit COALESCE(..., 0). In der Erfassung bedeutet 0 „fuer …
     // Ausführlich: docs/begruendungen/routes/parts.ts.md#updatemanualpart-3
     await db.run(
-      `UPDATE part_acquisitions SET unit_price = NULLIF($1, 0)
+      `UPDATE part_acquisitions SET unit_price = NULLIF($1::numeric, 0)
         WHERE id = (SELECT a.id FROM part_acquisitions a
                      WHERE a.user_id=$2 AND a.part_number=$3
                        AND COALESCE(a.color_id, 0) = COALESCE($4, 0)

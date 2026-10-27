@@ -380,10 +380,13 @@ router.post('/import/csv', csvEmpfang.single('file'), async (req, res) => {
         let attempt = 0;
         while (attempt < 2) {
           try {
+            // Der Wecker wird weggeräumt, sobald das Set da ist — sonst hielte
+            // jede Zeile zwei Minuten lang einen Zeitgeber am Leben.
+            let wecker: NodeJS.Timeout | undefined;
             const r = await Promise.race([
               addSetWithDate(sn, qty, userId, purchasePrice, condition, acquiredAt),
-              new Promise<never>((_,rej) => setTimeout(() => rej(new Error('Timeout')), 120000))
-            ]);
+              new Promise<never>((_,rej) => { wecker = setTimeout(() => rej(new Error('Timeout')), 120000); })
+            ]).finally(() => clearTimeout(wecker));
             results.push({ set_number:sn, success:true, action:r.action });
             break;
           } catch(e) {

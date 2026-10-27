@@ -148,6 +148,25 @@ function apiRouten(serviceDatei) {
 }
 
 /**
+ * Die schreibenden Routen der App: Methode, Pfad und Antworttyp.
+ * @param {string} serviceDatei
+ * @returns {{ methode: string, pfad: string, typ: string | null }[]}
+ */
+function schreibRouten(serviceDatei) {
+  const src = entschaerfe(fs.readFileSync(serviceDatei, 'utf8'));
+  const roh = fs.readFileSync(serviceDatei, 'utf8');
+  /** @type {{ methode: string, pfad: string, typ: string | null }[]} */
+  const aus = [];
+  for (const m of roh.matchAll(/@(POST|PUT|DELETE|PATCH)\("([^"]+)"\)/g)) {
+    const fn = src.indexOf('suspend fun', m.index);
+    const zu = bisZu(src, src.indexOf('(', fn));
+    const r = /^\s*:\s*(?:retrofit2\.)?Response<\s*([\w.]+)\s*>/.exec(roh.slice(zu + 1, zu + 200));
+    aus.push({ methode: m[1] ?? '', pfad: '/' + m[2], typ: r ? (r[1] ?? '').split('.').pop() ?? null : null });
+  }
+  return aus;
+}
+
+/**
  * Passt `wert` zum Kotlin-Typ? Liefert die Abweichungen als Text.
  * Strenger als die App selbst: null in einem nicht-nullbaren Feld zählt
  * auch dann, wenn coerceInputValues es zur Laufzeit auf den Standard setzt —
@@ -191,4 +210,4 @@ const art = (w) => Array.isArray(w) ? 'Liste' : typeof w;
 /** @param {KTyp} t */
 const beschreibe = (t) => t.art === 'klasse' ? t.name : t.art;
 
-module.exports = { kotlinModelle, apiRouten, pruefe, typ };
+module.exports = { kotlinModelle, apiRouten, schreibRouten, pruefe, typ };

@@ -19,10 +19,7 @@ object TestApi {
     fun fuer(server: MockWebServer): BrickApiService {
         val client = OkHttpClient.Builder()
             .readTimeout(2, TimeUnit.SECONDS).connectTimeout(2, TimeUnit.SECONDS).build()
-        val json = Json {
-            ignoreUnknownKeys = true; isLenient = true
-            encodeDefaults = true; coerceInputValues = true
-        }
+        val json = ch.brickinventoryapp.data.api.ApiJson
         return Retrofit.Builder()
             .baseUrl(server.url("/"))
             .client(client)

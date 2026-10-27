@@ -352,7 +352,7 @@ async function updateManualFig(uid: number, figNumber: string, body: any) {
     // In die NEUESTE Erfassung (Migration 0035) — dieselbe Begruendung und
     // dieselbe Form wie bei den Teilen.
     await db.run(
-      `UPDATE minifig_acquisitions SET unit_price = NULLIF($1, 0)
+      `UPDATE minifig_acquisitions SET unit_price = NULLIF($1::numeric, 0)
         WHERE id = (SELECT a.id FROM minifig_acquisitions a
                      WHERE a.user_id=$2 AND a.fig_number=$3
                      ORDER BY a.created_at DESC, a.id DESC LIMIT 1)`,

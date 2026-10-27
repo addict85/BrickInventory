@@ -48,16 +48,7 @@ object AppModule {
 
     @Provides
     @Singleton
-    fun provideJson() = Json {
-        // Beide bleiben an — als Netz für die Laufzeit: Ohne sie verwürfe ein
-        // einziges abweichendes Feld die ganze Antwort. Dass der Server keine
-        // Zahlen als Text und keine Nullen in Pflichtfeldern schickt, prüft
-        // test/api-vertrag-kotlin-db.test.js der Web-App für jede GET-Route.
-        ignoreUnknownKeys = true
-        isLenient = true
-        encodeDefaults = true
-        coerceInputValues = true
-    }
+    fun provideJson(): Json = ch.brickinventoryapp.data.api.ApiJson
 
     /**
      * Shared interceptor logic:

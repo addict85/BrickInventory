@@ -74,10 +74,7 @@ class MonitoringViewModelVerhaltenTest {
             .readTimeout(2, TimeUnit.SECONDS).connectTimeout(2, TimeUnit.SECONDS).build()
         // Dieselbe Json-Konfiguration wie in di/AppModule — sonst prüfte der
         // Test eine Nachsicht, die es in der App nicht gibt.
-        val json = Json {
-            ignoreUnknownKeys = true; isLenient = true
-            encodeDefaults = true; coerceInputValues = true
-        }
+        val json = ch.brickinventoryapp.data.api.ApiJson
         val api = Retrofit.Builder()
             .baseUrl(server.url("/"))
             .client(client)
