@@ -67,24 +67,7 @@ class MainViewModel @Inject constructor(
     // Nur fürs Abmelden: Der Bild-Cache enthält Thumbnails des angemeldeten
     // Kontos und wird zusammen mit dem API-Cache geleert (SessionFeature.kt).
     internal val imageLoader: coil3.ImageLoader,
-    /**
-     * Selbstaktualisierung — ein EIGENER, blanker Client (siehe AppModule).
-     * Nicht der api-Client: Der kennt Server, Token und Anzeigesprache, und
-     * nichts davon geht GitHub etwas an.
-     */
-    @param:javax.inject.Named("update") internal val updateHttpClient: okhttp3.OkHttpClient
 ) : ViewModel() {
-
-    /**
-     * Zustand der Selbstaktualisierung — siehe UpdateUiState und
-     * ui/UpdateFeature.kt.
-     *
-     * Eigener Fluss aus demselben Grund wie beim Barcode: Ein Download
-     * erzeugt viele Zwischenstaende (Fortschritt im Prozentschritt), und die
-     * gingen als Teil von AppUiState jeden Reiter an.
-     */
-    internal val _updateState = MutableStateFlow(UpdateUiState())
-    val updateState = _updateState.asStateFlow()
 
     /**
      * Gemerkte Rollpositionen der Reiter (siehe ScrollMemory.kt). Kein

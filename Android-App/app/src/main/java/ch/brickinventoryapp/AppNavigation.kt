@@ -24,6 +24,8 @@ import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.compose.ui.res.stringResource
+import ch.brickinventoryapp.ui.viewmodel.aktivitaetsViewModel
+import ch.brickinventoryapp.ui.viewmodel.UpdateViewModel
 
 // Die Navigationsziele liegen seit der Aufteilung in nav/ (eigenes Paket).
 
@@ -48,6 +50,7 @@ fun BrickInventoryManagerApp(
     // Hintergrund ist — kein unnötiges Recomposition-/State-Processing mehr.
     val state by vm.state.collectAsStateWithLifecycle()
     val barcodeState by vm.barcodeState.collectAsStateWithLifecycle()
+    val selbstUpdate: UpdateViewModel = aktivitaetsViewModel()
     val navController = rememberNavController()
     val snackbarHostState = remember { SnackbarHostState() }
     // ── Scroll-Zustände oberhalb des NavHost ────────────────────────────────
@@ -99,12 +102,12 @@ fun BrickInventoryManagerApp(
             // Genau das tut `still = true` — ein kleiner HTTPS-Abruf ohne
             // Ladebalken, und im Fehlerfall ohne Meldung. Wer ohne Netz
             // startet, soll keine rote Zeile sehen; wer den Knopf in den
-            // Einstellungen drueckt, sehr wohl (ui/UpdateFeature.kt).
+            // Einstellungen drueckt, sehr wohl (UpdateViewModel).
             //
             // Hier und nicht im Einstellungs-Bildschirm: Die Frage „gibt es
             // etwas Neueres?" gilt der ganzen App. Im Bildschirm gestellt,
             // bekaeme sie nur, wer ohnehin schon in den Einstellungen sitzt.
-            vm.pruefeAufUpdate(still = true)
+            selbstUpdate.pruefeAufUpdate(still = true)
         }
     }
 
@@ -181,7 +184,7 @@ fun BrickInventoryManagerApp(
     // Hier und nicht in einem Bildschirm, aus demselben Grund wie bei den
     // beiden darueber: Die Frage gilt der ganzen App. Die Pruefung, die ihn
     // ausloest, steht ein paar Zeilen weiter oben.
-    ch.brickinventoryapp.ui.dialogs.UpdateDialog(vm)
+    ch.brickinventoryapp.ui.dialogs.UpdateDialog(selbstUpdate)
 
 
     // ── Eine angetippte Preisalarm-Meldung oeffnet ihr Set ─────────────────

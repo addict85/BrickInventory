@@ -12,10 +12,8 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import ch.brickinventoryapp.R
 import ch.brickinventoryapp.ui.MainViewModel
-import ch.brickinventoryapp.ui.ladeUpdate
-import ch.brickinventoryapp.ui.starteInstallation
-import ch.brickinventoryapp.ui.updateHinweisSchliessen
 import ch.brickinventoryapp.ui.theme.Abstaende
+import ch.brickinventoryapp.ui.viewmodel.UpdateViewModel
 
 /**
  * „Es gibt eine neue Fassung — jetzt aktualisieren?"
@@ -54,14 +52,14 @@ import ch.brickinventoryapp.ui.theme.Abstaende
  * Vorgang waere schlechter als ein Dialog, der stehen bleibt.
  */
 @Composable
-fun UpdateDialog(vm: MainViewModel) {
-    val zustand by vm.updateState.collectAsStateWithLifecycle()
+fun UpdateDialog(selbstUpdate: UpdateViewModel) {
+    val zustand by selbstUpdate.updateState.collectAsStateWithLifecycle()
     val neuere = zustand.neuereFassung ?: return
     if (zustand.dialogAbgelehnt) return
     val ctx = LocalContext.current
 
     val laedt = zustand.fortschritt != null
-    val schliessen = { vm.updateHinweisSchliessen() }
+    val schliessen = { selbstUpdate.updateHinweisSchliessen() }
 
     AlertDialog(
         // Waehrend des Ladens nicht wegtippbar — siehe der Kopf dieser Datei.
@@ -103,11 +101,11 @@ fun UpdateDialog(vm: MainViewModel) {
                 }) { Text(stringResource(R.string.update_permission_grant)) }
                 // Liegt schon auf der Platte (etwa weil der System-Installer
                 // abgebrochen wurde): nicht noch einmal laden.
-                zustand.bereitZurInstallation -> TextButton(onClick = { vm.starteInstallation() }) {
+                zustand.bereitZurInstallation -> TextButton(onClick = { selbstUpdate.starteInstallation() }) {
                     Text(stringResource(R.string.update_install))
                 }
                 laedt -> {}
-                else -> TextButton(onClick = { vm.ladeUpdate() }) {
+                else -> TextButton(onClick = { selbstUpdate.ladeUpdate() }) {
                     Text(stringResource(R.string.update_dialog_now))
                 }
             }

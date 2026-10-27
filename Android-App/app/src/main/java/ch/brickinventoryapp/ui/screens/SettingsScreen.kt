@@ -26,6 +26,8 @@ import ch.brickinventoryapp.ui.theme.Abstaende
 import ch.brickinventoryapp.ui.theme.Schrift
 import androidx.compose.ui.draw.clip
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
+import ch.brickinventoryapp.ui.viewmodel.aktivitaetsViewModel
+import ch.brickinventoryapp.ui.viewmodel.UpdateViewModel
 
 /**
  * Die Einstellungen — eine Liste, kein Stapel.
@@ -88,7 +90,8 @@ fun SettingsScreen(
     // angeblich fehlende Felder.
     val appState by vm.state.collectAsStateWithLifecycle()
     // `updateZustand`, nicht `update`: dieselbe Namensfalle.
-    val updateZustand by vm.updateState.collectAsStateWithLifecycle()
+    val selbstUpdate: UpdateViewModel = aktivitaetsViewModel()
+    val updateZustand by selbstUpdate.updateState.collectAsStateWithLifecycle()
 
     val currency = appState.currency
     val priceCondition = appState.priceCondition
@@ -279,9 +282,9 @@ fun SettingsScreen(
 
         UpdateCard(
             updateZustand = updateZustand,
-            onPruefen = { vm.pruefeAufUpdate() },
-            onLaden = { vm.ladeUpdate() },
-            onInstallieren = { vm.starteInstallation() },
+            onPruefen = { selbstUpdate.pruefeAufUpdate() },
+            onLaden = { selbstUpdate.ladeUpdate() },
+            onInstallieren = { selbstUpdate.starteInstallation() },
         )
 
         Spacer(Modifier.height(Abstaende.klein))
