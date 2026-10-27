@@ -11,8 +11,12 @@ const LESEND = new Set(['GET', 'HEAD', 'OPTIONS']);
 
 export function nurEigeneHerkunft(req: Request, res: Response, next: NextFunction) {
   if (LESEND.has(req.method)) return next();
-  // Ein Bearer-Token schickt kein Browser von selbst mit.
-  if (String(req.headers.authorization || '').startsWith('Bearer ')) return next();
+  // Ein Bearer-Token schickt kein Browser von selbst mit — aber nur ohne
+  // Sitzungs-Cookie gilt die Anfrage als Token-Anfrage. Mit Cookie entscheidet
+  // die Sitzung (resolveUserId), und ein beliebiger Bearer-Kopf daneben darf
+  // die Prüfung nicht abschalten.
+  const mitSitzung = /(?:^|;\s*)connect\.sid=/.test(String(req.headers.cookie || ''));
+  if (!mitSitzung && String(req.headers.authorization || '').startsWith('Bearer ')) return next();
   const herkunft = String(req.headers['sec-fetch-site'] || '');
   if (herkunft && herkunft !== 'same-origin' && herkunft !== 'none')
     return sendeFehler(req, res, 403, 'fremde_herkunft');

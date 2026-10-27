@@ -56,6 +56,8 @@ export const FEHLER = {
                                  en: 'Change the password via "Change password".' },
   fremde_herkunft:             { de: 'Diese Anfrage kam nicht von dieser Seite.',
                                  en: 'This request did not come from this site.' },
+  nur_mit_sitzung:             { de: 'Das geht nur aus einer angemeldeten Browser-Sitzung.',
+                                 en: 'This is only possible from a signed-in browser session.' },
   import_unterbrochen:         { de: 'Der Import wurde unterbrochen — der Server wurde neu gestartet oder der Import hing. Bitte erneut starten.',
                                  en: 'The import was interrupted — the server restarted or the import stalled. Please start it again.' },
   aktuelles_passwort_falsch:   { de: 'Aktuelles Passwort falsch', en: 'Current password is wrong' },
@@ -157,6 +159,9 @@ export const FEHLER = {
 
   // ── Dateien, Import, Export ──────────────────────────────────────────────
   keine_datei:                 { de: 'Keine Datei', en: 'No file' },
+  datei_inhalt_falsch:         { de: 'Der Inhalt ist kein PDF, JPG oder PNG', en: 'The content is not a PDF, JPG or PNG' },
+  upload_kontingent_voll:      { de: 'Der Platz für eigene Anleitungen ({mb} MB) ist belegt — bitte erst alte löschen',
+                                 en: 'The space for your own instructions ({mb} MB) is full — please delete old ones first' },
   datei_nicht_verfuegbar:      { de: 'Datei nicht verfügbar', en: 'File not available' },
   json_ungueltig:              { de: 'Ungültige JSON-Datei', en: 'Invalid JSON file' },
   csv_parse_fehler:            { de: 'CSV Parse Fehler: {grund}', en: 'CSV parse error: {grund}' },

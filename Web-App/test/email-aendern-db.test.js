@@ -11,6 +11,8 @@
  *      (keine Mail an die alte Adresse)
  *   C  `password` in PUT /profile wieder angenommen → rot: „Passwort nur über
  *      change-password"
+ *   D  getBaseUrl() fällt in Produktion wieder auf den Host-Kopf zurück → rot:
+ *      „in Produktion ohne APP_BASE_URL kein Link aus dem Host-Kopf"
  *
  * Voraussetzung: Test-DB via TEST_DATABASE_URL.
  */
@@ -27,11 +29,12 @@ const { testServer } = require('./helpers/server');
 
 // Versandte Hinweise mitschreiben, bevor routes/auth die Mail-Funktionen bindet.
 const gesendet = [];
+const bestaetigt = [];
 const mailerPfad = require.resolve(path.join(require('./helpers/sources').DIST, 'utils', 'mailer.js'));
 const echt = _req('utils/mailer.js');
 require.cache[mailerPfad].exports = Object.assign({}, echt, {
   sendEmailGeaendertMail: async (an, name, neu) => { gesendet.push({ an, name, neu }); return { success: true }; },
-  sendVerificationMail: async () => ({ success: true }),
+  sendVerificationMail: async (an, name, token, basis) => { bestaetigt.push(basis); return { success: true }; },
 });
 
 const db = _req('db/database.js');
@@ -94,6 +97,25 @@ test('E-Mail ändern', { concurrency: 1 }, async (t) => {
   await t.test('ohne neue Adresse kein Passwort nötig', async () => {
     const r = await profil({ email: `${NAME}@neu.example`, first_name: 'Neu' });
     assert.equal(r.status, 200, JSON.stringify(r.body));
+  });
+
+  await t.test('in Produktion ohne APP_BASE_URL kein Link aus dem Host-Kopf', async () => {
+    const vorher = { env: process.env.NODE_ENV, basis: process.env.APP_BASE_URL };
+    process.env.NODE_ENV = 'production';
+    delete process.env.APP_BASE_URL;
+    try {
+      bestaetigt.length = 0;
+      const r = await profil({ email: `${NAME}@drei.example`, password_current: PASS });
+      assert.equal(r.status, 200, JSON.stringify(r.body));
+      assert.equal(r.body.emailSent, false);
+      assert.deepEqual(bestaetigt, [], 'ohne feste Adresse darf kein Link verschickt werden');
+      process.env.APP_BASE_URL = 'https://lego.example.org/';
+      await profil({ email: `${NAME}@vier.example`, password_current: PASS });
+      assert.deepEqual(bestaetigt, ['https://lego.example.org']);
+    } finally {
+      process.env.NODE_ENV = vorher.env;
+      if (vorher.basis === undefined) delete process.env.APP_BASE_URL; else process.env.APP_BASE_URL = vorher.basis;
+    }
   });
 
   await t.test('Passwort nur über change-password', async () => {

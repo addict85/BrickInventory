@@ -11,6 +11,8 @@
  *   D  (27.10.) Standard wieder mit uniquelocal → rot: „Heimnetz-Rechner vertraut"
  *   E  (27.10.) Ausnahme für bekannte Adressen entfernt → rot: „der Inhaber
  *      kommt von seiner bekannten Adresse weiter herein"
+ *   F  (27.10.) die Gateway-Ausnahme (x.y.0.1) entfernt → rot: „Docker-Gateway vertraut"
+ *   G  (27.10.) app.disable('x-powered-by') entfernt → rot: „verrät X-Powered-By"
  *
  * Voraussetzung: Test-DB via TEST_DATABASE_URL.
  */
@@ -64,6 +66,10 @@ test('proxyVertrauen: wem X-Forwarded-For geglaubt wird', () => {
   };
   for (const eigen of ['127.0.0.1', '::1', '172.18.0.2', '172.31.255.1', 'fd00::5'])
     assert.equal(vertraut(undefined, eigen), true, `${eigen} ist der eigene Proxy`);
+  // Das Gateway des Docker-Netzes ist kein Proxy: Über docker-proxy kommen dort
+  // die Clients selbst herein und könnten ihre Adresse sonst frei angeben.
+  for (const gateway of ['172.17.0.1', '172.18.0.1', '::ffff:172.18.0.1', 'fd00::1'])
+    assert.equal(vertraut(undefined, gateway), false, `Docker-Gateway vertraut: ${gateway}`);
   for (const fremd of ['203.0.113.5', '8.8.8.8', '2001:db8::1'])
     assert.equal(vertraut(undefined, fremd), false, `öffentliche Adresse vertraut: ${fremd}`);
   // Rechner im Heimnetz geben ihre Adresse nicht selbst an.
@@ -164,6 +170,8 @@ test('server.ts: TRUST_PROXY=false — X-Forwarded-For wird ignoriert', { concur
   };
   for (let i = 0; i < 240 && !/is PRIMARY|Startup complete/.test(log); i++) await warte(250);
   for (let i = 0; i < 40 && (await fetch(`http://127.0.0.1:${port}/api/v1/`).catch(() => null)) === null; i++) await warte(250);
+  assert.equal((await fetch(`http://127.0.0.1:${port}/api/v1/`)).headers.get('x-powered-by'), null,
+    'Der Server verrät X-Powered-By');
 
   // Wechselnde X-Forwarded-For, aber derselbe Absender: Ohne Vertrauen zählt
   // alles auf 127.0.0.1, die Sperre greift nach MAX_ATTEMPTS.

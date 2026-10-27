@@ -151,6 +151,8 @@ const pgSession   = (require('connect-pg-simple') as typeof import('connect-pg-s
 const { pool }    = require('./db/database') as typeof import('./db/database');
 
 const app  = express();
+// Verrät nur, womit der Server gebaut ist — wer sucht, soll es nicht geschenkt bekommen.
+app.disable('x-powered-by');
 const PORT = process.env.PORT || 3000;
 
 // Gzip/Brotli compression for all responses — index.html is ~189KB, saves ~80%
@@ -801,6 +803,11 @@ db.initSchemaOnce().then(async () => {
   // Only primary worker clears stale startup_status — secondaries read it from DB
   if (isPrimaryWorker) {
     await deleteGlobalSetting('startup_status').catch(() => {});
+    // Über console.warn landet der Hinweis in app_logs, also im Protokoll der Verwaltung.
+    if (process.env.NODE_ENV === 'production'
+        && (require('./utils/konfig') as typeof import('./utils/konfig')).standardPasswortInBenutzung())
+      console.warn('⚠️ [sicherheit] Die Datenbank benutzt das Beispielpasswort aus compose.yaml. '
+        + 'Bitte ändern (ALTER USER brickinventory PASSWORD …) und DB_PASSWORD in .env setzen — siehe README.md.');
   }
 
   (async () => {

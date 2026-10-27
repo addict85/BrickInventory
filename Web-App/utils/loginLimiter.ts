@@ -167,4 +167,19 @@ function ipThrottle(bucket: string, max: number, windowMs: number) {
   };
 }
 
-export { checkLoginAllowed, recordLoginFailure, recordLoginSuccess, ipThrottle, MAX_ATTEMPTS, MAX_JE_NAME };
+/**
+ * Bestätigung des aktuellen Passworts in einer laufenden Sitzung (Passwort
+ * ändern, E-Mail ändern, zweiter Faktor). Gezählt je KONTO, nicht je Adresse:
+ * Wer ein Token erbeutet hat, soll das Passwort auch von wechselnden Adressen
+ * aus nicht unbegrenzt raten können.
+ */
+const _bestaetigungKey = (uid: number) => `passwort-bestaetigen|${uid}`;
+async function bestaetigungGesperrt(uid: number): Promise<{ code: FehlerCode; vars: { minuten: number } } | null> {
+  const st = await _read(_bestaetigungKey(uid), WINDOW_MIN);
+  return st && st.count >= MAX_ATTEMPTS ? { code: 'zu_viele_fehlversuche', vars: { minuten: st.waitMin } } : null;
+}
+async function bestaetigungFehlgeschlagen(uid: number): Promise<void> { await _bump(_bestaetigungKey(uid), WINDOW_MIN); }
+async function bestaetigungGelungen(uid: number): Promise<void> { await _clear(_bestaetigungKey(uid)); }
+
+export { checkLoginAllowed, recordLoginFailure, recordLoginSuccess, ipThrottle, MAX_ATTEMPTS, MAX_JE_NAME,
+         bestaetigungGesperrt, bestaetigungFehlgeschlagen, bestaetigungGelungen };

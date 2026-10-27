@@ -1,6 +1,6 @@
 {
   "name": "brickinventory-manager",
-  "version": "2026.10.17.1217",
+  "version": "2026.10.27.1901",
   "description": "BrickInventory Manager",
   "main": "dist/server.js",
   "scripts": {
@@ -56,7 +56,7 @@
     "typescript": "^7.0.2"
   },
   "overrides": {
-    "qs": "^6.16.0",
+    "qs": "^6.17.0",
     "zod": "^4.6.6"
   }
 }
