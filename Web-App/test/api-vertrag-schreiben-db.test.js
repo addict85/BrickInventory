@@ -117,8 +117,11 @@ test('die Schreibantworten passen zu den Kotlin-Modellen', { concurrency: 1, tim
   // Die Drosseln für Registrieren & Co. zählen je IP über Läufe hinweg.
   await db.run(`DELETE FROM rate_limit_attempts WHERE key ~ '^(register|forgot-password|qr-login)\\|'`);
   // Die Währung steht schon: Ein Wechsel stiesse den Preisauftrag samt Zeitgeber an.
-  await db.run(`INSERT INTO user_settings (user_id, key, value) VALUES ($1, 'currency', 'EUR')
-                ON CONFLICT (user_id, key) DO UPDATE SET value = 'EUR'`, [uid]);
+  // Für alle drei: Der Haushaltsbeitritt verlangt dieselbe Währung, und die
+  // Vorgabe des Servers kann ein anderer Test verstellt haben.
+  for (const k of [uid, sub, neu])
+    await db.run(`INSERT INTO user_settings (user_id, key, value) VALUES ($1, 'currency', 'EUR')
+                  ON CONFLICT (user_id, key) DO UPDATE SET value = 'EUR'`, [k]);
 
   // ── Katalog, damit Anlegen ohne Netz geht ──────────────────────────────
   for (const s of [SET, SET2])

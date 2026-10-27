@@ -172,10 +172,12 @@ test('Cache-Signale erreichen jeden Worker', { concurrency: 1, timeout: 180_000 
       assert.ok(vorher, 'Vorbedingung: ein Worker hält die Primär-Sperre');
       await db.run('SELECT pg_terminate_backend($1)', [vorher.pid]);
       let nachher;
+      // Auf beides warten: Die Logzeile des alten Halters kommt über die Pipe
+      // des Kindprozesses und kann nach der neuen Sperre eintreffen.
       for (let i = 0; i < 40; i++) {
         await warte(250);
         nachher = await halter();
-        if (nachher && nachher.pid !== vorher.pid) break;
+        if (nachher && nachher.pid !== vorher.pid && /Primär-Sperre verloren/.test(log)) break;
       }
       assert.ok(nachher && nachher.pid !== vorher.pid,
         'Nach dem Abbruch hält niemand mehr die Sperre — die Jobs liefen ohne Primär weiter');
