@@ -400,7 +400,7 @@ fun LazyListScope.financeSummaryCards(valuation: ValuationResponse, partsValuati
                         else stringResource(R.string.finance_load_prompt),
                         color = MaterialTheme.colorScheme.onPrimary,
                         fontWeight = FontWeight.ExtraBold,
-                        fontSize = 28.sp
+                        style = MaterialTheme.typography.headlineMedium
                     )
                     val pnlPct = pnl?.totals?.pnlPct?.toDoubleOrNull()
                     if (pnlPct != null) {
@@ -413,7 +413,7 @@ fun LazyListScope.financeSummaryCards(valuation: ValuationResponse, partsValuati
                                 stringResource(R.string.finance_total_pnl, sign, pnlPct),
                                 color = MaterialTheme.colorScheme.onPrimary,
                                 fontWeight = FontWeight.Bold,
-                                fontSize = 13.sp,
+                                style = MaterialTheme.typography.bodyMedium,
                                 modifier = Modifier.padding(horizontal = 10.dp, vertical = 3.dp)
                             )
                         }

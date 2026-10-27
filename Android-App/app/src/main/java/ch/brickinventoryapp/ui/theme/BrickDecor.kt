@@ -270,7 +270,7 @@ fun BrickStatTile(
             Text(
                 value,
                 color = onContainer,
-                fontSize = 22.sp,
+                style = MaterialTheme.typography.titleLarge,
                 fontWeight = FontWeight.Bold
             )
         }

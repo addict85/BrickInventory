@@ -4,6 +4,7 @@ package ch.brickinventoryapp.ui.dialogs
 // SetPruefungDialog.kt): `Modifier.size` steckt in foundation.layout, und das
 // `by` vor collectAsStateWithLifecycle braucht runtime.getValue.
 import androidx.compose.foundation.clickable
+import androidx.compose.ui.semantics.Role
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -145,7 +146,7 @@ fun SetItemDetailDialog(
                                 modifier = Modifier
                                     .fillMaxWidth()
                                     .height(140.dp)
-                                    .clickable { zeigeZoom = true },
+                                    .clickable(role = Role.Button) { zeigeZoom = true },
                             )
                             Spacer(Modifier.height(Abstaende.mittel))
                         }

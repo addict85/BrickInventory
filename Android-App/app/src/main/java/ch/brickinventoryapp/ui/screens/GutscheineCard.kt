@@ -1,6 +1,7 @@
 package ch.brickinventoryapp.ui.screens
 
 import androidx.compose.foundation.clickable
+import androidx.compose.ui.semantics.Role
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Delete
@@ -380,7 +381,7 @@ private fun GutscheinZeile(
             fontWeight = FontWeight.Medium,
             modifier = Modifier
                 .fillMaxWidth()
-                .clickable { onKopieren(g.number, true) }
+                .clickable(role = Role.Button) { onKopieren(g.number, true) }
                 .padding(vertical = Abstaende.winzig),
         )
         Row(verticalAlignment = Alignment.CenterVertically) {
@@ -416,7 +417,7 @@ private fun GutscheinZeile(
                 // ansehen, und wer ihn einfuegen will, muss ihn dafuer nicht
                 // erst aufdecken.
                 modifier = if (g.pin != null)
-                    Modifier.clickable { onKopieren(g.pin, false) }
+                    Modifier.clickable(role = Role.Button) { onKopieren(g.pin, false) }
                             .padding(vertical = Abstaende.winzig)
                 else Modifier,
             )

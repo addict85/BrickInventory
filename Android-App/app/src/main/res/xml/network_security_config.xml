@@ -7,10 +7,9 @@
   LAN-Adresse wie http://192.168.1.50:3000. Android kann RFC1918-Bereiche in
   <domain> nicht per Wildcard ausdrücken, ein Whitelist-Ansatz ist hier also
   nicht möglich. Die Einschränkung passiert deshalb eine Ebene höher, im
-  OkHttp-Interceptor (siehe util/NetworkPolicy.kt): Klartext ist nur noch zu
-  privaten Adressen erlaubt, zu öffentlichen Hosts wird die Anfrage abgebrochen.
-  Vorher ging der nie ablaufende Bearer-Token unbemerkt auch über das offene
-  Internet im Klartext.
+  OkHttp-Interceptor (siehe util/NetworkPolicy.kt): Klartext geht zu privaten
+  Adressen; zu einer öffentlichen IP nie, zu einem öffentlich aussehenden
+  Namen nur, wenn der Nutzer genau diesen Host in der Einrichtung bestätigt hat.
 
   <trust-anchors> mit "user": damit funktioniert HTTPS mit einem selbst
   ausgestellten Zertifikat, sobald der Nutzer die eigene CA im System

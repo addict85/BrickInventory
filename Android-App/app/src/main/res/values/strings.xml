@@ -99,6 +99,7 @@
     <string name="api_app_zu_alt">This app is too old for the server. Please update the app (Settings → Update).</string>
     <string name="api_server_zu_alt">The server is older than this app. Some functions may be missing — please update the server.</string>
     <string name="setup_url_klartext">Unencrypted: your access goes over the network in plain text. If the server is reachable from the internet, use https.</string>
+    <string name="setup_url_klartext_bestaetigen">I understand that access to %1$s is sent unencrypted — connect anyway.</string>
     <string name="setup_continue">Continue</string>
     <string name="setup_qr_detected">QR code detected</string>
     <string name="setup_qr_scan_hint">Scan the BrickInventory QR code</string>

@@ -1,7 +1,10 @@
 package ch.brickinventoryapp.ui.screens
 
+import androidx.compose.ui.semantics.heading
+import androidx.compose.ui.semantics.semantics
 import ch.brickinventoryapp.ui.theme.Formen
 import androidx.compose.foundation.clickable
+import androidx.compose.ui.semantics.Role
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.grid.*
@@ -184,7 +187,7 @@ fun PartsScreen(
                 FilterChip(
                     selected = partsState.partsSpare == wert,
                     onClick = { vm.setPartsSpare(wert) },
-                    label = { Text(stringResource(text), fontSize = 13.sp) },
+                    label = { Text(stringResource(text), style = MaterialTheme.typography.bodyMedium) },
                 )
             }
         }
@@ -391,7 +394,7 @@ fun PartCard(part: Part, serverUrl: String, imageLoader: ImageLoader,
         // die Kachel eines Teils aus einem Set tot — anders als bei manuell
         // erfassten Teilen gab es dazu nichts zu sehen.
         modifier = Modifier.fillMaxWidth().height(164.dp)
-            .let { if (onClick != null) it.clickable(onClick = onClick) else it },
+            .let { if (onClick != null) it.clickable(role = Role.Button, onClick = onClick) else it },
         shape = Formen.leiste,
         elevation = CardDefaults.cardElevation(defaultElevation = Formen.karteErhebung),
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
@@ -438,7 +441,6 @@ fun PartCard(part: Part, serverUrl: String, imageLoader: ImageLoader,
                     fontWeight = FontWeight.SemiBold)
                 Text(part.partName ?: "—",
                     style = MaterialTheme.typography.labelSmall,
-                    fontSize = 11.sp,
                     maxLines = 2, overflow = TextOverflow.Ellipsis)
                 if (part.colorName != null)
                     Text(part.colorName, style = MaterialTheme.typography.labelSmall,
@@ -460,7 +462,7 @@ fun SectionHeader(text: String) {
         fontWeight = FontWeight.Bold,
         color = MaterialTheme.colorScheme.onSurfaceVariant,
         letterSpacing = 0.8.sp,
-        modifier = Modifier.padding(horizontal = Abstaende.haar, vertical = Abstaende.winzig))
+        modifier = Modifier.padding(horizontal = Abstaende.haar, vertical = Abstaende.winzig).semantics { heading() })
 }
 
 /**

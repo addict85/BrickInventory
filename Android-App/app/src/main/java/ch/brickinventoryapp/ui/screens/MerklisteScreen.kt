@@ -1,6 +1,7 @@
 package ch.brickinventoryapp.ui.screens
 
 import androidx.compose.foundation.clickable
+import androidx.compose.ui.semantics.Role
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
@@ -427,7 +428,7 @@ private fun MerkpostenZeile(
     // Seit dem 24.09. traegt sie GAR KEINEN Knopf mehr (Marcos Vorgabe: der
     // Uebernahme- und der Loeschknopf sind beide entfallen), tut also auf
     // ihrer ganzen Flaeche dasselbe.
-    Card(Modifier.fillMaxWidth().clickable(onClick = onOeffnen)) {
+    Card(Modifier.fillMaxWidth().clickable(role = Role.Button, onClick = onOeffnen)) {
         Column(Modifier.padding(Abstaende.mittel), verticalArrangement = Arrangement.spacedBy(Abstaende.winzig)) {
             Row(horizontalArrangement = Arrangement.spacedBy(Abstaende.klein),
                 verticalAlignment = Alignment.CenterVertically) {

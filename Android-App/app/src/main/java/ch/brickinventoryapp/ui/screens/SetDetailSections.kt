@@ -262,7 +262,6 @@ fun LazyListScope.setDetailInstructionsSection(
                                 if (id != null && instr.isManual) {
                                     IconButton(
                                         onClick = { onAnleitungLoeschen(id) },
-                                        modifier = Modifier.size(36.dp)
                                     ) {
                                         Icon(
                                             Icons.Default.Delete,
@@ -467,7 +466,6 @@ fun LazyListScope.setDetailDetailsSection(set: SetItem, setNumber: String, vm: M
                 ) {
                     FilledTonalIconButton(
                         onClick = { if (qty > 1) { qty--; vm.updateQuantity(set.setNumber, qty) } },
-                        modifier = Modifier.size(32.dp),
                         shape = Formen.etikett
                     ) {
                         Icon(Icons.Default.Remove, stringResource(R.string.cd_qty_decrease), Modifier.size(14.dp))
@@ -481,7 +479,6 @@ fun LazyListScope.setDetailDetailsSection(set: SetItem, setNumber: String, vm: M
                     )
                     FilledTonalIconButton(
                         onClick = { qty++; vm.updateQuantity(set.setNumber, qty) },
-                        modifier = Modifier.size(32.dp),
                         shape = Formen.etikett
                     ) {
                         Icon(Icons.Default.Add, stringResource(R.string.cd_qty_increase), Modifier.size(14.dp))
@@ -611,7 +608,7 @@ fun LazyListScope.setDetailHeroImage(
                         .fillMaxWidth()
                         .height(200.dp)
                         .clip(Formen.chip)
-                        .clickable { onZoom() },
+                        .clickable(role = Role.Button) { onZoom() },
                     contentScale = ContentScale.Fit
                 )
             } else {

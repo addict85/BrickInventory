@@ -121,7 +121,7 @@ fun CatalogYearSheet(state: CatalogUiState, showYearSheet: androidx.compose.runt
     if (showYearSheet.value) {
         ModalBottomSheet(onDismissRequest = { showYearSheet.value = false }) {
             Column(Modifier.padding(horizontal = Abstaende.gross).padding(bottom = Abstaende.sehrGross)) {
-                Text(stringResource(R.string.catalog_filter_year), fontWeight = FontWeight.Bold, fontSize = 17.sp)
+                Text(stringResource(R.string.catalog_filter_year), fontWeight = FontWeight.Bold, style = MaterialTheme.typography.titleMedium)
                 Spacer(Modifier.height(Abstaende.klein))
                 val years = remember(state.yearMin, state.yearMax) {
                     val max = state.yearMax ?: 0; val min = state.yearMin ?: 0
@@ -153,7 +153,7 @@ fun CatalogThemeSheet(state: CatalogUiState, showThemeSheet: androidx.compose.ru
         ModalBottomSheet(onDismissRequest = { showThemeSheet.value = false }) {
             var themeFilter by rememberSaveable { mutableStateOf("") }
             Column(Modifier.padding(horizontal = Abstaende.gross).padding(bottom = Abstaende.sehrGross)) {
-                Text(stringResource(R.string.catalog_filter_theme), fontWeight = FontWeight.Bold, fontSize = 17.sp)
+                Text(stringResource(R.string.catalog_filter_theme), fontWeight = FontWeight.Bold, style = MaterialTheme.typography.titleMedium)
                 // Der gemeinsame Baustein (Nachtrag 134). Vorher stand hier ein
                 // eigenes Feld — das SIEBTE der App und das einzige ganz OHNE
                 // Leeren-Knopf: Wer sich vertippt hatte, musste Zeichen fuer

@@ -74,8 +74,8 @@ fun NavGraphBuilder.authGraph(
             val state by vm.state.collectAsStateWithLifecycle()
             SetupScreen(
                 currentUrl = state.serverUrl,
-                onSave = { url ->
-                    vm.saveServerUrl(url)
+                onSave = { url, klartextBestaetigt ->
+                    vm.saveServerUrl(url, klartextBestaetigt)
                     navController.navigate(Screen.Login.route) {
                         popUpTo(Screen.Setup.route) { inclusive = true }
                     }

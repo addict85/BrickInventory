@@ -267,31 +267,46 @@ private val NunitoFamilie = FontFamily(
 )
 
 /**
- * Die Typografie des Designs "noppe": dieselbe Skala, andere Schrift.
- *
- * Nur die Familie wird getauscht, keine Groesse und kein Gewicht — sonst
- * verschoebe ein Designwechsel die ganze Oberflaeche, und AbstandsskalaTest
- * haette recht damit, das zu melden.
+ * Plus Jakarta Sans — die Schrift der Webapp (styles.css --font) für alle
+ * Designs ausser "noppe". Statische Schnitte aus dem Variablen Schnitt der
+ * Webapp, aus demselben Grund wie bei Nunito oben.
  */
-private val NoppeTypografie: Typography = Typography().let { t ->
+private val JakartaFamilie = FontFamily(
+    Font(R.font.plus_jakarta_sans_regular, FontWeight.Normal),
+    Font(R.font.plus_jakarta_sans_medium, FontWeight.Medium),
+    Font(R.font.plus_jakarta_sans_semibold, FontWeight.SemiBold),
+    Font(R.font.plus_jakarta_sans_bold, FontWeight.Bold),
+    Font(R.font.plus_jakarta_sans_extrabold, FontWeight.ExtraBold),
+)
+
+/**
+ * Die Material-Skala mit einer anderen Familie. Nur die Familie wird
+ * getauscht, keine Grösse und kein Gewicht — sonst verschöbe ein Designwechsel
+ * die ganze Oberfläche, und AbstandsskalaTest hätte recht damit, das zu melden.
+ */
+private fun mitFamilie(f: FontFamily): Typography = Typography().let { t ->
     Typography(
-        displayLarge = t.displayLarge.copy(fontFamily = NunitoFamilie),
-        displayMedium = t.displayMedium.copy(fontFamily = NunitoFamilie),
-        displaySmall = t.displaySmall.copy(fontFamily = NunitoFamilie),
-        headlineLarge = t.headlineLarge.copy(fontFamily = NunitoFamilie),
-        headlineMedium = t.headlineMedium.copy(fontFamily = NunitoFamilie),
-        headlineSmall = t.headlineSmall.copy(fontFamily = NunitoFamilie),
-        titleLarge = t.titleLarge.copy(fontFamily = NunitoFamilie),
-        titleMedium = t.titleMedium.copy(fontFamily = NunitoFamilie),
-        titleSmall = t.titleSmall.copy(fontFamily = NunitoFamilie),
-        bodyLarge = t.bodyLarge.copy(fontFamily = NunitoFamilie),
-        bodyMedium = t.bodyMedium.copy(fontFamily = NunitoFamilie),
-        bodySmall = t.bodySmall.copy(fontFamily = NunitoFamilie),
-        labelLarge = t.labelLarge.copy(fontFamily = NunitoFamilie),
-        labelMedium = t.labelMedium.copy(fontFamily = NunitoFamilie),
-        labelSmall = t.labelSmall.copy(fontFamily = NunitoFamilie),
+        displayLarge = t.displayLarge.copy(fontFamily = f),
+        displayMedium = t.displayMedium.copy(fontFamily = f),
+        displaySmall = t.displaySmall.copy(fontFamily = f),
+        headlineLarge = t.headlineLarge.copy(fontFamily = f),
+        headlineMedium = t.headlineMedium.copy(fontFamily = f),
+        headlineSmall = t.headlineSmall.copy(fontFamily = f),
+        titleLarge = t.titleLarge.copy(fontFamily = f),
+        titleMedium = t.titleMedium.copy(fontFamily = f),
+        titleSmall = t.titleSmall.copy(fontFamily = f),
+        bodyLarge = t.bodyLarge.copy(fontFamily = f),
+        bodyMedium = t.bodyMedium.copy(fontFamily = f),
+        bodySmall = t.bodySmall.copy(fontFamily = f),
+        labelLarge = t.labelLarge.copy(fontFamily = f),
+        labelMedium = t.labelMedium.copy(fontFamily = f),
+        labelSmall = t.labelSmall.copy(fontFamily = f),
     )
 }
+
+/** Die Typografie des Designs "noppe": dieselbe Skala, andere Schrift. */
+private val NoppeTypografie: Typography = mitFamilie(NunitoFamilie)
+private val MarkenTypografie: Typography = mitFamilie(JakartaFamilie)
 
 /**
  * Die Deckelfarbe einer Kachel im Design "noppe".
@@ -412,7 +427,7 @@ fun BrickInventoryManagerTheme(theme: String = "classic", content: @Composable (
     ) {
         MaterialTheme(
             colorScheme = colors,
-            typography  = if (theme == "noppe" || theme == "hochglanz") NoppeTypografie else Typography(),
+            typography  = if (theme == "noppe" || theme == "hochglanz") NoppeTypografie else MarkenTypografie,
             content     = content
         )
     }

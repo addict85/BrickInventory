@@ -153,9 +153,14 @@ class AbstandsskalaTest {
         // gemeldet. Beide stehen jetzt auf Schrift.klein — ein Punkt kleiner,
         // dafuer gleich. Die Ratsche zieht nach, sonst waere der gewonnene
         // Platz sofort wieder frei fuer die naechste rohe Zahl.
+        //
+        // 51 -> 2 (27.10.): Die rohen Groessen sind auf Rollen der Material-
+        // Skala umgestellt (bodyMedium, labelSmall, titleMedium …). Uebrig
+        // sind die beiden Achsenbeschriftungen im Portfolio-Diagramm, die auf
+        // die Zeichenflaeche geschrieben werden und keinen Textstil haben.
         val ist = zaehle(listOf(schriftMuster))
-        assert(ist <= 51) {
-            "$ist Schriftgroessen stehen noch als Zahl da, zuletzt waren es 54. " +
+        assert(ist <= 2) {
+            "$ist Schriftgroessen stehen noch als Zahl da, zuletzt waren es 2. " +
                 "Siehe die Abstandsregel daneben."
         }
     }

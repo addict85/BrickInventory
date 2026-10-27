@@ -19,8 +19,10 @@ import kotlinx.coroutines.launch
  */
 
 // ── Server Setup ─────────────────────────────────────────────────────────
-internal fun MainViewModel.saveServerUrl(url: String) {
+internal fun MainViewModel.saveServerUrl(url: String, klartextBestaetigt: Boolean = false) {
     viewModelScope.launch {
+        // Zuerst die Erlaubnis, dann die Adresse: Die ersten Anfragen folgen sofort.
+        if (klartextBestaetigt) ch.brickinventoryapp.util.NetworkPolicy.klartextHost(url)?.let { prefs.bestaetigeKlartext(it) }
         prefs.saveServerUrl(url)
     }
 }

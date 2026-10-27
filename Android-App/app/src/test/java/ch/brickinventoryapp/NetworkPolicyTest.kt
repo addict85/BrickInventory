@@ -100,9 +100,25 @@ class NetworkPolicyTest {
     fun `http im lokalen Netz ist erlaubt`() {
         assertTrue(NetworkPolicy.isCleartextAllowed("http://192.168.1.50:3000/api/v1/sets".toHttpUrl()))
         assertTrue(NetworkPolicy.isCleartextAllowed("http://localhost:3000/api/v1/sets".toHttpUrl()))
-        // Ein öffentlich aussehender NAME wird nur noch protokolliert, nicht
-        // blockiert — sonst legt eine Fehleinschätzung die ganze App still.
-        assertTrue(NetworkPolicy.isCleartextAllowed("http://brick.example.com/api/v1/sets".toHttpUrl()))
+    }
+
+    // Gegenprobe (am 27.10. mit kotlinc gemessen): in isCleartextAllowed wieder
+    // `return true` für Namen → rot, der unbestätigte Host ging durch.
+    @Test
+    fun `ein oeffentlicher Name im Klartext nur nach Bestaetigung genau dieses Hosts`() {
+        val url = "http://brick.example.com/api/v1/sets".toHttpUrl()
+        assertFalse(NetworkPolicy.isCleartextAllowed(url))
+        assertFalse(NetworkPolicy.isCleartextAllowed(url, setOf("anderer.example.com")))
+        assertTrue(NetworkPolicy.isCleartextAllowed(url, setOf("brick.example.com")))
+        // Eine öffentliche IP bleibt gesperrt, auch bestätigt.
+        assertFalse(NetworkPolicy.isCleartextAllowed("http://8.8.8.8/x".toHttpUrl(), setOf("8.8.8.8")))
+    }
+
+    @Test
+    fun `die Einrichtung fragt nur fuer oeffentliche Namen nach`() {
+        assertTrue(NetworkPolicy.klartextHost("http://Brick.Example.com:3000") == "brick.example.com")
+        for (url in listOf("https://brick.example.com", "http://192.168.1.50:3000", "http://nas:3000", "http://8.8.8.8", ""))
+            assertTrue("$url braucht keine Bestätigung", NetworkPolicy.klartextHost(url) == null)
     }
 
     // Gegenprobe (am 27.10. mit kotlinc gemessen): klartextNachAussen ohne die

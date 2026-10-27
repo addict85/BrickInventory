@@ -26,6 +26,7 @@ import androidx.compose.material.icons.filled.Print
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.ui.semantics.Role
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.gestures.rememberTransformableState
 import androidx.compose.foundation.gestures.transformable
@@ -390,6 +391,7 @@ private fun ZoomLeiste(zoom: Float, setzeZoom: (Float) -> Unit, modifier: Modifi
                 // passiert, bliebe offen.
                 .clickable(
                     onClickLabel = stringResource(R.string.pdfview_zoom_reset),
+                    role = Role.Button,
                     onClick = { setzeZoom(PDF_ZOOM_MIN) }
                 )
                 .defaultMinSize(minWidth = 56.dp, minHeight = 48.dp),

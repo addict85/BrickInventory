@@ -453,7 +453,7 @@ private fun YearScrubber(
                 ) {
                     Text(
                         "$etikett",
-                        fontWeight = FontWeight.SemiBold, fontSize = 13.sp,
+                        fontWeight = FontWeight.SemiBold, style = MaterialTheme.typography.bodyMedium,
                         modifier = Modifier.padding(horizontal = 10.dp, vertical = 3.dp)
                     )
                 }
@@ -657,7 +657,7 @@ fun CatalogSetCard(
                             Text(
                                 if (set.ownedQuantity > 1) "✓ ×${set.ownedQuantity}" else "✓",
                                 color = MaterialTheme.colorScheme.onPrimary,
-                                fontSize = 11.sp, fontWeight = FontWeight.Bold,
+                                style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.Bold,
                                 modifier = Modifier.padding(horizontal = 7.dp, vertical = 3.dp)
                             )
                         }
@@ -671,11 +671,11 @@ fun CatalogSetCard(
                 Column(Modifier.padding(horizontal = 10.dp, vertical = 7.dp)) {
                     Text(set.setNumber, style = MaterialTheme.typography.labelSmall,
                         color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold)
-                    Text(set.name ?: "—", fontSize = 13.sp, fontWeight = FontWeight.SemiBold,
+                    Text(set.name ?: "—", style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.SemiBold,
                         maxLines = 2, overflow = TextOverflow.Ellipsis, lineHeight = 16.sp)
                     Spacer(Modifier.weight(1f))
                     Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                        Text("${set.year ?: "—"}", fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        Text("${set.year ?: "—"}", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                         if ((set.numParts ?: 0) > 0) {
                             // Dasselbe Teile-Symbol wie im Reiter „Teile" und in der
                             // Webapp, statt des Puzzleteil-Emojis: Ein Puzzleteil hat
@@ -687,7 +687,7 @@ fun CatalogSetCard(
                                 tint = Color.Unspecified,
                                 modifier = Modifier.size(13.dp)
                             )
-                            Text("${set.numParts}", fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            Text("${set.numParts}", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                         }
                     }
                 }

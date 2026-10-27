@@ -1,5 +1,7 @@
 package ch.brickinventoryapp.ui.screens
 
+import androidx.compose.ui.semantics.heading
+import androidx.compose.ui.semantics.semantics
 import ch.brickinventoryapp.ui.theme.Formen
 import ch.brickinventoryapp.ui.theme.AppKarte
 import ch.brickinventoryapp.ui.theme.LocalStatusFarben
@@ -110,7 +112,7 @@ internal fun SectionCard(title: String, content: @Composable ColumnScope.() -> U
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 fontWeight = FontWeight.Bold,
                 letterSpacing = 0.8.sp,
-                modifier = Modifier.padding(bottom = 10.dp)
+                modifier = Modifier.padding(bottom = 10.dp).semantics { heading() }
             )
             content()
         }
@@ -261,8 +263,7 @@ fun PriceChart(chart: PriceChartData) {
                 }
                 Text(labelFor(line.condition),
                     style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.onSurface,
-                    fontSize = 11.sp)
+                    color = MaterialTheme.colorScheme.onSurface)
             }
         }
     }
@@ -379,7 +380,7 @@ fun PnlBadge(pct: Double) {
 @Composable
 internal fun PriceStatCell(label: String, value: String) {
     Column(horizontalAlignment = Alignment.CenterHorizontally) {
-        Text(value, fontWeight = FontWeight.Bold, fontSize = 13.sp)
+        Text(value, fontWeight = FontWeight.Bold, style = MaterialTheme.typography.bodyMedium)
         Text(label, style = MaterialTheme.typography.labelSmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = Schrift.winzig)
     }

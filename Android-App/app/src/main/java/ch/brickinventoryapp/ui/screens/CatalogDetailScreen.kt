@@ -26,6 +26,7 @@ import ch.brickinventoryapp.util.NumericInput
 import ch.brickinventoryapp.data.model.CatalogSetDetail
 import ch.brickinventoryapp.util.BrickLinkUrls
 import androidx.compose.foundation.clickable
+import androidx.compose.ui.semantics.Role
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.mutableStateOf
@@ -135,7 +136,7 @@ fun CatalogDetailScreen(
                                 // Antippen öffnet den Zoom — gleiches Verhalten wie im
                                 // Set-Detail des eigenen Bestands.
                                 modifier = Modifier.fillMaxSize().padding(10.dp)
-                                    .clickable { showImageZoom = true },
+                                    .clickable(role = Role.Button) { showImageZoom = true },
                                 contentScale = androidx.compose.ui.layout.ContentScale.Fit
                             )
                         } else {

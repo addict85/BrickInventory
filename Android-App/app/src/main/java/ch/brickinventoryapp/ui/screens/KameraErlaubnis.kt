@@ -1,5 +1,6 @@
 package ch.brickinventoryapp.ui.screens
 
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -100,7 +101,7 @@ fun KameraUeberlagerung(
             Text(
                 hinweis,
                 Modifier.padding(horizontal = 18.dp, vertical = 10.dp),
-                color = Color.White, fontSize = 13.sp,
+                color = Color.White, style = MaterialTheme.typography.bodyMedium,
                 textAlign = TextAlign.Center,
             )
         }

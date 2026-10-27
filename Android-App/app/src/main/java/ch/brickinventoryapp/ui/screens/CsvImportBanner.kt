@@ -1,6 +1,7 @@
 package ch.brickinventoryapp.ui.screens
 
 import androidx.compose.foundation.clickable
+import androidx.compose.ui.semantics.Role
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
@@ -43,7 +44,7 @@ fun CsvImportBanner(
     Column {
         Surface(
             color = bg,
-            modifier = Modifier.fillMaxWidth().clickable { expanded = !expanded }
+            modifier = Modifier.fillMaxWidth().clickable(role = Role.Button) { expanded = !expanded }
         ) {
             Column(Modifier.padding(horizontal = Abstaende.gross, vertical = Abstaende.klein)) {
                 Row(
