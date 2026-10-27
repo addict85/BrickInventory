@@ -368,7 +368,7 @@ test('die Bild-Tabellen kommen aus einer MIGRATION, nicht aus initSchema', () =>
   // Die init-Funktionen müssen NACH den Migrationen laufen (sonst gibt es die
   // Tabelle beim Laden des Bestands noch nicht) …
   const dbSrc = fs.readFileSync(path.join(ROOT, 'db', 'database.ts'), 'utf8');
-  const nachMigration = dbSrc.indexOf('const applied = await runMigrations(client)');
+  const nachMigration = dbSrc.indexOf('const applied = await runMigrations(client');
   // Gesucht wird der AUFRUF, nicht seine Schreibweise (Nachtrag 155).
   //
   // Vorher stand hier die Zeichenkette

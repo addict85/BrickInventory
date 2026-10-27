@@ -33,11 +33,10 @@ import { fehlerCode } from '../utils/httpError';
 pgTypes.setTypeParser(pgTypes.builtins.NUMERIC, (v: any) => (v === null ? null : parseFloat(v)));
 
 // ── Connection pool ───────────────────────────────────────────────────────────
-// With clustering, each worker has its own pool.
-// Total connections = workers × max_per_worker must stay under PG max_connections (100).
-// With 4 workers × 10 connections = 40, leaving headroom for admin tools.
-const NUM_WORKERS = parseInt(String(process.env.WEB_WORKERS || require('os').cpus().length));
-const MAX_PER_WORKER = Math.max(5, Math.min(15, Math.floor(80 / Math.max(1, NUM_WORKERS))));
+// Jeder Worker hat einen eigenen Pool; zusammen müssen sie unter
+// max_connections bleiben, mit Luft für Werkzeuge.
+const { workerZahl, poolJeWorker } = require('../utils/workerZahl') as typeof import('../utils/workerZahl');
+const MAX_PER_WORKER = poolJeWorker(workerZahl());
 
 const POOL_CONFIG = {
   max:                    parseInt(process.env.PG_POOL_MAX    || String(MAX_PER_WORKER)),
@@ -633,8 +632,6 @@ async function indizesUndZusammenfassung() {
   // tionen durchgelaufen sind. So referenziert ein Index garantiert nur bereits
   // existierende Spalten/Tabellen — das verhindert "relation/column does not
   // exist" bei Neuinstallationen, selbst wenn später ALTERs ergänzt werden.
-  await pool.query(`CREATE INDEX IF NOT EXISTS idx_part_acq_user_part ON part_acquisitions(user_id, part_number, color_id)`).catch(schlucke('idx_part_acq'));
-  await pool.query(`CREATE INDEX IF NOT EXISTS idx_minifig_acq_user_fig ON minifig_acquisitions(user_id, fig_number)`).catch(schlucke('idx_minifig_acq'));
   await pool.query(`CREATE INDEX IF NOT EXISTS idx_rb_inv_setnum ON rb_inventories(set_num)`).catch(schlucke('idx_rb_inv_setnum'));
 
   // Drei Nachschläge im Anfragepfad, die keinen passenden Index hatten
@@ -715,8 +712,8 @@ async function initSchemaOnce() {
     } else {
       if (erzwungen && schonAngelegt) {
         console.warn('⚠️  FORCE_SCHEMA_INIT=1 — initSchema() laeuft auf einer bestehenden ' +
-          'Datenbank. Das traegt geloeschte Erst-Erfassungen fuer manuelle Teile, ' +
-          'Minifiguren und Sets WIEDER EIN. Das Schema selbst ist davon unberuehrt.');
+          'Datenbank. Spalten, die Migrationen geloescht haben, entstehen kurz neu und ' +
+          'werden danach wieder entfernt. Daten fuellt es nur dort, wo sie fehlen.');
       }
       _geschluckt = [];
       await initSchema();
@@ -740,7 +737,7 @@ async function initSchemaOnce() {
     // übersprungen wurde.
     // Ausführlich: docs/begruendungen/db/database.ts.md#applied
 
-    const applied = await runMigrations(client);
+    const applied = await runMigrations(client, { sichern: schonAngelegt });
     if (applied.length) console.log(`✅ ${applied.length} Migration(en) angewandt`);
     if (erzwungen && schonAngelegt) await abgeloestesEntfernen(client);
 

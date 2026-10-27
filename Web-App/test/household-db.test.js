@@ -624,6 +624,7 @@ test('Haushalt gegen echte Datenbank', async (t) => {
     // noch bei kindA — und ein FREMDES Konto besitzt dasselbe Set ebenfalls,
     // darf aber nichts abbekommen.
     await haeltSet(db, U.kindB, '10290-1', 1, { egalWennDa: true });
+    await db.run(`DELETE FROM set_acquisitions WHERE user_id=$1 AND set_number='10290-1'`, [U.kindA]);
     await db.run(`DELETE FROM sets WHERE user_id=$1 AND set_number='10290-1'`, [U.kindA]);
     await haeltSet(db, U.fremd, '10290-1', 1, { egalWennDa: true });
     await haeltTeil(db, U.kindA, '3005', { setNumber: '10290-1', menge: 7, colorId: 1 });

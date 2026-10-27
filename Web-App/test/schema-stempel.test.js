@@ -63,7 +63,7 @@ test('1. jede Schluckstelle geht über den Zähler', () => {
   // Selbstbeweis: Findet die Suche überhaupt Schluckstellen? Ohne ihn wäre die
   // Regel grün, sobald jemand den Helfer umbenennt.
   //
-  // GEMESSEN im Code OHNE Kommentare (das ist, was CODE enthält): 9. Die
+  // GEMESSEN im Code OHNE Kommentare (das ist, was CODE enthält): 7. Die
   // Datei trägt zehn Aufrufe; einer davon steht in einem Erklärblock und
   // zählt hier zu Recht nicht mit.
   //
@@ -73,8 +73,8 @@ test('1. jede Schluckstelle geht über den Zähler', () => {
   // Schwellwert liegt bewusst knapp unter der Messung — er soll ein
   // umbenanntes Muster fangen, nicht jede einzelne Schemaänderung.
   const gezaehlt = (CODE.match(/\.catch\(schlucke\('/g) || []).length;
-  assert.ok(gezaehlt >= 8,
-    `Nur ${gezaehlt} gezählte Schluckstellen gefunden (gemessen waren es 9) — Helfer umbenannt?`);
+  assert.ok(gezaehlt >= 6,
+    `Nur ${gezaehlt} gezählte Schluckstellen gefunden (gemessen waren es 7) — Helfer umbenannt?`);
 });
 
 test('2. der Vermerk hängt am Zähler', () => {

@@ -47,6 +47,7 @@ test('ein Lauf des Preis-Jobs stellt genau einen Intervall-Timer',
   await db.run(`INSERT INTO global_settings (key, value)
                 VALUES ('bricklink_consumer_key','test-nur-fuer-diesen-test')
                 ON CONFLICT (key) DO UPDATE SET value='test-nur-fuer-diesen-test'`);
+  await db.run(`DELETE FROM set_acquisitions`);
   await db.run(`DELETE FROM sets`);
 
   const priceJob = _req('jobs/priceJob.js');

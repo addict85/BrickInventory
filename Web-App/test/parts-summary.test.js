@@ -117,6 +117,7 @@ test('Zusammenfassung stimmt mit der Live-Abfrage überein und veraltet nicht',
   const U = 990501;
   const clean = async () => {
     await db.run('DELETE FROM parts WHERE user_id=$1', [U]);
+    await db.run('DELETE FROM set_acquisitions WHERE user_id=$1', [U]);
     await db.run('DELETE FROM sets WHERE user_id=$1', [U]);
     await db.run('DELETE FROM parts_summary WHERE user_id=$1', [U]);
     await db.run('DELETE FROM parts_summary_state WHERE user_id=$1', [U]);
@@ -308,6 +309,7 @@ test('beide Pfade der Kennzahlen zählen DASSELBE — auch mit manuellen Teilen'
 
   const U = 990502;
   await db.run('DELETE FROM parts WHERE user_id=$1', [U]);
+  await db.run('DELETE FROM set_acquisitions WHERE user_id=$1', [U]);
   await db.run('DELETE FROM sets WHERE user_id=$1', [U]);
   await db.run('DELETE FROM parts_summary WHERE user_id=$1', [U]);
   await db.run('DELETE FROM parts_summary_state WHERE user_id=$1', [U]);
@@ -337,6 +339,7 @@ test('beide Pfade der Kennzahlen zählen DASSELBE — auch mit manuellen Teilen'
   assert.equal(ausSummary.total_parts, 3, 'Die Menge des manuellen Teils steckt in der Summe');
 
   await db.run('DELETE FROM parts WHERE user_id=$1', [U]);
+  await db.run('DELETE FROM set_acquisitions WHERE user_id=$1', [U]);
   await db.run('DELETE FROM sets WHERE user_id=$1', [U]);
 });
 

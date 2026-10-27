@@ -21,6 +21,8 @@ export const LOCKS = {
   CSV_IMPORT:         58,
   /** Teile-Zusammenfassung je Nutzer — zweiter Wert: user_id. */
   TEILE_SUMMARY:      77,
+  /** Bestandszeile je Nutzer (utils/txLock.ts) — zweiter Wert: hashtext('<user_id>|<schlüssel>'). */
+  INVENTAR:           61,
   /** Brickset-Wiedervorlage. */
   BRICKSET_RETRY:     11223344,
   /** Vorschaubilder des Bild-Proxys. */
@@ -30,9 +32,3 @@ export const LOCKS = {
   /** Wahl des Primärprozesses beim Start. */
   PRIMARY_WORKER:     99999999,
 } as const;
-
-/**
- * Der Namensraum von utils/txLock.ts ist die USER-ID selbst, nicht eine Zahl
- * aus der Liste oben — dort sperrt jeder Nutzer nur gegen sich selbst.
- * Ausführlich: docs/begruendungen/utils/lockNamespaces.ts.md#abschnitt-2
- */

@@ -134,6 +134,8 @@ const SN_A = '75192-1', SN_B = '10179-1', SN_C = '21309-1';
  * gibt.
  */
 const SPERR_SQL = 'SELECT pg_advisory_xact_lock($1, hashtext($2))';
+const { LOCKS } = _req('utils/lockNamespaces.js');
+const schluessel = (userId, scopeKey) => [LOCKS.INVENTAR, `${userId}|${scopeKey}`];
 
 async function sperrZeilen(userId, scopeKey, erteilt) {
   const z = await db.get(
@@ -141,7 +143,7 @@ async function sperrZeilen(userId, scopeKey, erteilt) {
       WHERE locktype = 'advisory' AND classid = $1::oid
         AND objid = hashtext($2)::oid AND objsubid = 2
         AND granted = $3`,
-    [userId, scopeKey, erteilt]);
+    [...schluessel(userId, scopeKey), erteilt]);
   return Number(z.c);
 }
 
@@ -237,7 +239,7 @@ test('die Verschiebung sperrt auf (Quellkonto, Set)', { concurrency: 1 }, async 
     const halter = await db.pool.connect();
     try {
       await halter.query('BEGIN');
-      await halter.query(SPERR_SQL, [userId, scopeKey]);
+      await halter.query(SPERR_SQL, schluessel(userId, scopeKey));
       assert.equal(await sperrZeilen(userId, scopeKey, true), 1,
         `Vorbedingung: der Halter hat die Sperre (${userId}, ${scopeKey}) nicht bekommen — ` +
         'dann sagt dieser Fall nichts über die Route');

@@ -88,7 +88,6 @@ global.startupStatus = { ready: false, step: 'Datenbank wird initialisiert...', 
 // ── Cluster: fork one worker per CPU so multiple requests run in parallel ─────
 import { fehlertext, logAndContinue, meldeUndWeiter } from './utils/httpError';
 import cluster from 'cluster';
-import os from 'os';
 import { starteHintergrundlaeufe } from './startup/backgroundJobs';
 import { getGlobalSetting, deleteGlobalSetting } from './utils/settings';
 import { HAUSHALT_KANAL, leereHaushaltCache } from './utils/household';
@@ -96,15 +95,21 @@ import { drossleBeruehren } from './utils/sitzungsBeruehrung';
 import { SITZUNG_LEERLAUF_SEK } from './utils/sitzungsFrist';
 import { antwortAufDateiFehler, liefereDatei } from './utils/dateiAusliefern';
 
-const WORKERS = parseInt(process.env.WEB_WORKERS || '0') || Math.max(2, os.cpus().length);
+const WORKERS = (require('./utils/workerZahl') as typeof import('./utils/workerZahl')).workerZahl();
 
 if (cluster.isPrimary && process.env.NODE_ENV === 'production') {
   console.log(`[cluster] Primary ${process.pid} starting ${WORKERS} workers`);
   for (let i = 0; i < WORKERS; i++) cluster.fork();
+  const { neustartPause } = require('./utils/workerZahl') as typeof import('./utils/workerZahl');
+  const abstuerze: number[] = [];
   cluster.on('exit', (worker, code) => {
     if (code !== 0) {
-      console.warn(`[cluster] Worker ${worker.process.pid} died (code ${code}) — restarting`);
-      cluster.fork();
+      const jetzt = Date.now();
+      abstuerze.push(jetzt);
+      while (abstuerze.length && jetzt - abstuerze[0]! > 60_000) abstuerze.shift();
+      const pause = neustartPause(abstuerze.length);
+      console.warn(`[cluster] Worker ${worker.process.pid} died (code ${code}) — Neustart in ${pause / 1000} s`);
+      setTimeout(() => cluster.fork(), pause);
     }
   });
 } else {
