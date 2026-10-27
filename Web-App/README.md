@@ -60,7 +60,8 @@ setzen und `docker compose up -d` ausführen.
 
 ### DB-Pool-Größe anpassen
 Normalerweise **nicht nötig**: Die App rechnet `min(15, 80 / Anzahl Worker)`
-selbst aus. Nur wenn die PostgreSQL-Instanz ein abweichendes `max_connections`
+selbst aus; `WEB_WORKERS: 0` heisst „ein Worker je Kern, mindestens zwei",
+und mit derselben Zahl rechnet der Pool. Nur wenn die PostgreSQL-Instanz ein abweichendes `max_connections`
 hat, in `compose.yaml`:
 ```yaml
 environment:
@@ -119,6 +120,27 @@ alle Passwort-Hashes. `backup.sh` legt die Dateien deshalb nur für den
 Besitzer lesbar an (`umask 077`) und warnt, wenn das Zielverzeichnis für
 andere offen ist. Wer `backups/` auf ein NAS oder in eine Cloud kopiert,
 verschlüsselt es vorher (z. B. `gpg -c` oder `age`).
+
+### Automatische Kopie vor einem Update
+
+Bringt ein Update neue Migrationen mit, kopiert der Server vorher alle
+Tabellen mit Nutzerdaten (`users` und jede Tabelle mit `user_id`) in ein
+eigenes Schema `vor_migration_<Datum Uhrzeit>` derselben Datenbank. Die drei
+jüngsten bleiben. Das ersetzt `backup.sh` nicht — Katalog und Bilder fehlen
+darin —, aber ein misslungenes Update lässt sich damit zurücknehmen:
+
+```bash
+docker compose exec postgres psql -U brickinventory -c '\dn vor_migration_*'
+# eine Tabelle zurückholen, z. B. die Set-Erfassungen:
+docker compose exec postgres psql -U brickinventory -c "
+  BEGIN;
+  DELETE FROM set_acquisitions;
+  INSERT INTO set_acquisitions SELECT * FROM vor_migration_20261027190312345.set_acquisitions;
+  COMMIT;"
+```
+
+Hat die Migration Spalten der Tabelle geändert, im `INSERT` die Spalten
+ausdrücklich nennen (`INSERT INTO t (a, b) SELECT a, b FROM …`).
 
 ## Manuell erfasste Teile löschen
 

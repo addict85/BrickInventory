@@ -120,34 +120,6 @@ if (cluster.isPrimary && process.env.NODE_ENV === 'production') {
 // Ausführlich: docs/begruendungen/server.ts.md#express
 const express = require('express') as typeof import('express');
 
-//  Async-Handler absichern
-// Express 4 kennt keine Promises: Wirft ein `async (req, res) => …`-Handler,
-// landet die Rejection nirgends — die Antwort bleibt aus, die Verbindung offen.
-// Ein Reverse-Proxy davor wartet auf sein Timeout und liefert dann 502. Genau …
-// Ausführlich: docs/begruendungen/server.ts.md#router
-const _Router = express.Router;
-function _wrapAsync(fn: any) {
-  if (typeof fn !== 'function' || fn.length >= 4) return fn;   // Fehler-Middleware unangetastet
-  // `this: unknown` benennt nur, was Express ohnehin uebergibt — der Wrapper
-  // reicht es unveraendert an fn.call() weiter und liest es selbst nie.
-  const wrapped = function (this: unknown, req: any, res: any, next: any) {
-    let out;
-    try { out = fn.call(this, req, res, next); }
-    catch (e) { return next(e); }                              // synchroner Wurf
-    if (out && typeof out.then === 'function') out.catch(next); // asynchroner
-    return out;
-  };
-  Object.defineProperty(wrapped, 'length', { value: fn.length });
-  return wrapped;
-}
-(express as any).Router = function (...args: any[]) {
-  const router = (_Router as any).apply(this, args);
-  for (const method of ['get', 'post', 'put', 'delete', 'patch', 'all', 'use']) {
-    const original = router[method].bind(router);
-    router[method] = (...handlers: any[]) => original(...handlers.map(_wrapAsync));
-  }
-  return router;
-};
 const session = require('express-session') as typeof import('express-session');
 const path    = require('path') as typeof import('path');
 const fs      = require('fs') as typeof import('fs');
@@ -269,12 +241,12 @@ app.use((req, _res, next) => {
 
 app.use((require('./utils/herkunft') as typeof import('./utils/herkunft')).nurEigeneHerkunft);
 {
-  const { API_VERSION, API_MIN_APP } = require('./utils/apiVersion') as typeof import('./utils/apiVersion');
+  const { API_VERSION, API_MIN_APP, appFassungPruefen } = require('./utils/apiVersion') as typeof import('./utils/apiVersion');
   app.use('/api', (_req, res, next) => {
     res.setHeader('X-Api-Version', String(API_VERSION));
     res.setHeader('X-Api-Min-App', String(API_MIN_APP));
     next();
-  });
+  }, appFassungPruefen);
 }
 
 // Jede Anfrage bekommt eine kurze Kennung, die in allen Logzeilen dieser
@@ -652,6 +624,9 @@ const { renderIndexHtml } = require('./utils/indexHtml') as typeof import('./uti
 // If it dies and restarts, it will re-acquire on next startup.
 let isPrimaryWorker = false;
 let _primaryLockClient: any = null; // dedizierte Verbindung, die den Advisory-Lock hält
+// Geordnet beenden mit Code 1, damit der Cluster neu startet; gesetzt, sobald
+// shutdown() steht. Ohne Cluster (Entwicklung) bleibt es bei der Warnung.
+let neuStarten: ((grund: string) => void) | null = null;
 
 /**
  * Die Verbindung mit der Primär-Sperre offen halten. Reisst sie ab (Neustart
@@ -683,9 +658,12 @@ async function sperreNeuHolen(db: typeof import('./db/database')) {
       [(require('./utils/lockNamespaces') as typeof import('./utils/lockNamespaces')).LOCKS.PRIMARY_WORKER]);
     if (rows[0]?.ok) { haltePrimaerSperre(db, client); return; }
     client.release();
-    // Ein anderer Worker hält sie jetzt; dann laufen die Jobs dort.
+    // Ein anderer Worker hält sie jetzt; dann laufen die Jobs dort — und die
+    // Planer dieses Prozesses dürfen nicht weiterlaufen. Ein Neustart macht
+    // ihn zum Sekundär-Worker.
     isPrimaryWorker = false;
     console.warn(`[cluster] Worker ${process.pid}: Primär-Sperre hält jetzt ein anderer Worker`);
+    if (cluster.isWorker) neuStarten?.('Primär-Sperre an einen anderen Worker verloren');
   } catch (e) {
     try { client?.release(e instanceof Error ? e : true); } catch (f) { meldeUndWeiter('cluster:sperre-verbindung', f); }
     setTimeout(() => sperreNeuHolen(db), SPERRE_NEU_MS).unref();
@@ -738,7 +716,7 @@ db.initSchemaOnce().then(async () => {
   const SHUTDOWN_TIMEOUT_MS = 8000;
   let shuttingDown = false;
 
-  async function shutdown(signal: string) {
+  async function shutdown(signal: string, code = 0) {
     if (shuttingDown) return;
     shuttingDown = true;
     console.log(`[shutdown] ${signal} empfangen — Server wird geordnet beendet`);
@@ -752,7 +730,7 @@ db.initSchemaOnce().then(async () => {
       // einen Fehlschlag. Ein echter Fehler wird unten weiterhin mit 1
       // quittiert.
       console.warn('[shutdown] Frist abgelaufen — Beenden wird erzwungen');
-      process.exit(0);
+      process.exit(code);
     }, SHUTDOWN_TIMEOUT_MS);
     force.unref();
 
@@ -781,7 +759,7 @@ db.initSchemaOnce().then(async () => {
       await (require('./db/database') as typeof import('./db/database')).pool.end().catch(() => {});
       console.log('[shutdown] Datenbankverbindungen geschlossen');
       clearTimeout(force);
-      process.exit(0);
+      process.exit(code);
     } catch (e: any) {
       console.error('[shutdown] Fehler beim Beenden:', e.message);
       process.exit(1);
@@ -790,12 +768,26 @@ db.initSchemaOnce().then(async () => {
 
   process.on('SIGTERM', () => shutdown('SIGTERM'));
   process.on('SIGINT',  () => shutdown('SIGINT'));
+  neuStarten = (grund) => { void shutdown(grund, 1); };
 
   global._enableLogPersistence((require('./db/database') as typeof import('./db/database')).pool);
   global.startupStatus = { ready: false, step: 'CSV wird geladen...', progress: 0, total: 6 };
   const csvSync = require('./jobs/rebrickableCsvSync') as typeof import('./jobs/rebrickableCsvSync');
 
   await electPrimaryWorker(db);
+
+  // Sekundär-Worker sehen nach, ob noch jemand Primär ist. Fehlt er zweimal
+  // hintereinander, startet dieser Worker neu und bewirbt sich dabei; der
+  // frühere Primär holt seine Sperre nach einem Abriss binnen Sekunden zurück.
+  if (!isPrimaryWorker && cluster.isWorker) {
+    const { primaerFehlt } = require('./utils/primaerWache') as typeof import('./utils/primaerWache');
+    let fehlt = 0;
+    setInterval(async () => {
+      try { fehlt = (await primaerFehlt(db)) ? fehlt + 1 : 0; }
+      catch (e) { meldeUndWeiter('cluster:primaer-wache', e); return; }
+      if (fehlt >= 2) neuStarten?.('kein Primär-Worker mehr');
+    }, 60_000).unref();
+  }
 
   // Cache-Signale in JEDEM Worker anmelden, also vor jeder Primär-Prüfung:
   // Jeder Worker hält eigene Caches für Haushalt und Token, und jeder muss

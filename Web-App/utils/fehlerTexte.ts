@@ -56,6 +56,8 @@ export const FEHLER = {
                                  en: 'Change the password via "Change password".' },
   fremde_herkunft:             { de: 'Diese Anfrage kam nicht von dieser Seite.',
                                  en: 'This request did not come from this site.' },
+  app_zu_alt:                  { de: 'Diese App ist zu alt für den Server (nötig: Schnittstelle {min}) — bitte die App aktualisieren.',
+                                 en: 'This app is too old for the server (needs interface {min}) — please update the app.' },
   nur_mit_sitzung:             { de: 'Das geht nur aus einer angemeldeten Browser-Sitzung.',
                                  en: 'This is only possible from a signed-in browser session.' },
   import_unterbrochen:         { de: 'Der Import wurde unterbrochen — der Server wurde neu gestartet oder der Import hing. Bitte erneut starten.',

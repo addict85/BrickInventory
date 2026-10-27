@@ -205,6 +205,11 @@ async function exec(sql: string): Promise<any> {
  */
 async function transaction<T>(fn: (tx: DbSchnittstelle) => Promise<T>): Promise<T> {
   const client = await pool.connect();
+  let kaputt: Error | undefined;
+  // Reisst die Verbindung mitten in der Transaktion ab, meldet der Client das
+  // als 'error'-Ereignis; ohne Zuhörer beendete es den ganzen Prozess.
+  const abriss = (e: Error) => { kaputt = e; };
+  client.on('error', abriss);
   try {
     await client.query('BEGIN');
     // Provide a client-bound db interface for the transaction
@@ -218,10 +223,14 @@ async function transaction<T>(fn: (tx: DbSchnittstelle) => Promise<T>): Promise<
     await client.query('COMMIT');
     return result;
   } catch (e) {
-    await client.query('ROLLBACK');
+    // Scheitert auch das ROLLBACK, ist die Verbindung kaputt: Sie darf nicht
+    // in den Pool zurück, und gemeldet wird der Fehler, der es ausgelöst hat.
+    try { await client.query('ROLLBACK'); }
+    catch (r) { kaputt = r instanceof Error ? r : new Error(String(r)); }
     throw e;
   } finally {
-    client.release();
+    client.off('error', abriss);
+    client.release(kaputt);
   }
 }
 
