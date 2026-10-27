@@ -11,6 +11,10 @@
  *      → rot: nach dem Widerruf „200,401,200,401,…" und Haushalt halb veraltet
  *   B  ohne `agent: false` (Keep-Alive) → alles beim selben Worker; das fängt
  *      der erste Teiltest („Anfragen erreichen beide Worker") ab
+ *   C  (27.10.) die Zeile app.use(nurEigeneHerkunft) in server.ts entfernt →
+ *      rot: „weist schreibende Anfragen fremder Seiten ab" (200)
+ *   D  (27.10.) /health liefert db_pool wieder immer → rot: „verrät ohne
+ *      Verwalter nur den Startzustand"
  *
  * Voraussetzung: Test-DB via TEST_DATABASE_URL.
  */
@@ -155,6 +159,29 @@ test('Cache-Signale erreichen jeden Worker', { concurrency: 1, timeout: 180_000 
       const nachher = await runde('/api/v1/settings/raw');
       assert.deepEqual(nachher.map(r => r.status), Array(RUNDE).fill(401),
         'Ein Worker bedient den widerrufenen Token weiter — er lauscht nicht auf dem Kanal');
+    });
+
+    await t.test('/health verrät ohne Verwalter nur den Startzustand', async () => {
+      const offen = await hole(port, '/api/v1/health');
+      assert.equal(offen.status, 200);
+      assert.ok(offen.body.status && offen.body.startup, 'Der Ladebildschirm braucht den Startzustand');
+      assert.equal(offen.body.db_pool, undefined, 'Pool-Zahlen ohne Anmeldung');
+      const frisch = (await hole(port, '/api/v1/auth/login', { methode: 'POST', body: { username: HAUPT, password: PASS } })).body.token;
+      assert.equal((await hole(port, '/api/v1/settings/raw', { token: frisch })).status, 200, 'Vorbedingung: ein gültiger Token');
+      assert.equal((await hole(port, '/api/v1/health', { token: frisch })).body.db_pool, undefined, 'Pool-Zahlen für jedes Konto');
+      await db.run('UPDATE users SET is_admin = 1 WHERE id = $1', [ids[HAUPT]]);
+      await db.run(`SELECT pg_notify('tokens_geaendert', '')`);
+      await warte(300);
+      assert.ok((await hole(port, '/api/v1/health', { token: frisch })).body.db_pool, 'Der Verwalter sieht den Pool');
+    });
+
+    await t.test('server.ts weist schreibende Anfragen fremder Seiten ab', async () => {
+      const r = await new Promise((auf, ab) => {
+        const q = http.request({ host: '127.0.0.1', port, path: '/api/v1/auth/logout', method: 'POST',
+          agent: false, headers: { 'sec-fetch-site': 'cross-site' } }, res => { res.resume(); auf(res.statusCode); });
+        q.on('error', ab); q.end();
+      });
+      assert.equal(r, 403, 'utils/herkunft.ts hängt nicht in server.ts');
     });
 
   } finally {

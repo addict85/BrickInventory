@@ -30,7 +30,7 @@ const requireAdmin = requireApiAdmin;
  * Ausführlich: docs/begruendungen/routes/auth.ts.md#post-login
  */
 router.post('/login', async (req, res) => {
-  const { username, password, label, never_expires, code: zweiterCode } = req.body;
+  const { username, password, label, never_expires, code: zweiterCode, ohne_token } = req.body;
   try {
     // Form des Namens, Brute-Force-Sperre, Passwortvergleich, die
     // Konto-Vorbedingungen und der zweite Faktor stehen in utils/auth.ts.
@@ -73,7 +73,9 @@ router.post('/login', async (req, res) => {
     // Erfolgs.
     const dauerhaft = never_expires === true;
     let token: string | null = null;
-    try {
+    // Die Webapp arbeitet nur mit dem httpOnly-Cookie: Ein Token im Browser
+    // wäre per eingeschleustem Skript auslesbar und gälte über die Sitzung hinaus.
+    if (ohne_token !== true) try {
       token = await createToken(user.id, label || 'webapp-session', dauerhaft);
     } catch (e) {
       console.warn('[login] Token konnte nicht gespeichert werden:', fehlertext(e));

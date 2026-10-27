@@ -262,6 +262,8 @@ app.use((req, _res, next) => {
   next();
 });
 
+app.use((require('./utils/herkunft') as typeof import('./utils/herkunft')).nurEigeneHerkunft);
+
 // Jede Anfrage bekommt eine kurze Kennung, die in allen Logzeilen dieser
 // Anfrage erscheint (siehe _intercept oben). Ein vom Reverse-Proxy gesetzter
 // X-Request-Id-Header wird übernommen, damit sich Proxy- und App-Log
@@ -352,7 +354,7 @@ app.use(session({
 
 // resolveUserId kommt aus utils/auth.js — nutzt den Token-Cache, statt pro
 // Request die api_tokens-Tabelle zu befragen.
-const { resolveUserId } = require('./utils/auth') as typeof import('./utils/auth');
+const { resolveUserId, istVerwalter } = require('./utils/auth') as typeof import('./utils/auth');
 // Pfade zentral — NICHT aus __dirname ableiten, siehe utils/appPaths.ts.
 const { PUBLIC_DIR } = require('./utils/appPaths') as typeof import('./utils/appPaths');
 // Die Adresse des Bild-Proxys steht in utils/images.ts — EINMAL, samt der
@@ -524,15 +526,18 @@ app.get('/api/v1/startup-status', async (_req, res) => {
 });
 
 // Gesundheitscheck samt Verbindungspool — ohne Anmeldung (compose.yaml).
-app.get('/api/v1/health', (_req, res) => {
-  const db = require('./db/database') as typeof import('./db/database');
-  const { getPoolStats } = db;
-  const pool = getPoolStats ? getPoolStats() : {};
+// Der Startzustand ist öffentlich (der Ladebildschirm vor der Anmeldung
+// braucht ihn); Pool und Laufzeit verraten Last und Neustarts — nur für den
+// Verwalter.
+app.get('/api/v1/health', async (req, res) => {
+  // Klemmt die Datenbank, bleibt der Bericht trotzdem erreichbar — nur ohne Details.
+  const verwalter = !!(await resolveUserId(req).catch(logAndContinue('health:anmeldung'))) && istVerwalter(req);
+  const { getPoolStats } = require('./db/database') as typeof import('./db/database');
   res.json({
     status: global.startupStatus?.ready ? 'ok' : 'starting',
     startup: global.startupStatus,
-    db_pool: pool,
-    uptime_seconds: Math.floor(process.uptime()),
+    ...(verwalter ? { db_pool: getPoolStats ? getPoolStats() : {},
+                      uptime_seconds: Math.floor(process.uptime()) } : {}),
   });
 });
 

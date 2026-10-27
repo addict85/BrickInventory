@@ -82,7 +82,7 @@ if (!fs.existsSync(SET_IMAGES_DIR)) fs.mkdirSync(SET_IMAGES_DIR, { recursive: tr
 //  Zugang zum Fortschrittskanal des CSV-Imports
 // Ausführlich: docs/begruendungen/routes/sets.ts.md#abschnitt-3
 import { findSetInScope } from '../utils/setAdd';
-import { loginOrTokenGuard, angemeldeteNutzerId } from '../utils/auth';
+import { loginOrTokenGuard, angemeldeteNutzerId, istVerwalter } from '../utils/auth';
 import { csvEinlesen, entschaerfungRueckgaengig, parseCsvDate, sendCsv, uebersprungenHinweis } from '../utils/csvExport';
 import { ausTabelle } from '../utils/validate';
 import { mitVersion } from '../utils/setNummer';
@@ -515,9 +515,14 @@ router.post('/import/csv/cancel', requireLogin, async (req, res) => {
 
 
 
+// Die Anleitungen sind geteilt: Neu laden darf, wer das Set im Haushalt hat
+// (oder der Verwalter) — sonst leerte jeder fremde Sets und verbrauchte das
+// Kontingent der Quellen.
 router.post('/:setNumber/instructions', async (req, res) => {
   try {
     const sn = req.params.setNumber;
+    if (!istVerwalter(req) && !(await findSetInScope(angemeldeteNutzerId(req), sn)))
+      return sendeFehler(req, res, 404, 'set_nicht_gefunden');
     await loescheAnleitungen(sn);
     // Download synchronously so we can return the actual results
     await downloadSetInstructions(sn).catch(() => {});

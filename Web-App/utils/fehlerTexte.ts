@@ -54,6 +54,8 @@ export const FEHLER = {
                                  en: 'Current password required' },
   passwort_ueber_change_password: { de: 'Das Passwort wird über „Passwort ändern" geändert.',
                                  en: 'Change the password via "Change password".' },
+  fremde_herkunft:             { de: 'Diese Anfrage kam nicht von dieser Seite.',
+                                 en: 'This request did not come from this site.' },
   aktuelles_passwort_falsch:   { de: 'Aktuelles Passwort falsch', en: 'Current password is wrong' },
   alle_felder_erforderlich:    { de: 'Alle Felder erforderlich', en: 'All fields are required' },
   passwort_reset_nicht_eingerichtet: {

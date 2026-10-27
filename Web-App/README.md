@@ -41,16 +41,16 @@ jeweils als `<name>_thumb.jpg` daneben. Ein Backup von `data/` erfasst damit
 alles.
 
 ### Datenbankpasswort ändern
-In `compose.yaml` und im `Dockerfile` (oder als `environment`-Override):
-```yaml
-# postgres-Service
-environment:
-  POSTGRES_PASSWORD: mein-sicheres-passwort
-
-# app-Service
-environment:
-  PGPASSWORD: mein-sicheres-passwort
+Für eine **neue** Installation vor dem ersten Start eine Datei `.env` neben
+`compose.yaml` anlegen:
 ```
+DB_PASSWORD=mein-sicheres-passwort
+```
+`compose.yaml` gibt es an die Datenbank, die App und pgweb weiter. Eine
+**bestehende** Datenbank behält ihr Passwort aus dem ersten Start; dort
+`DB_PASSWORD` weglassen oder auf das bisherige setzen. Die Datenbank ist nicht
+nach aussen veröffentlicht — das Standardpasswort ist deshalb kein offener
+Zugang, aber ein eigenes ist besser.
 
 ### DB-Pool-Größe anpassen
 Normalerweise **nicht nötig**: Die App rechnet `min(15, 80 / Anzahl Worker)`

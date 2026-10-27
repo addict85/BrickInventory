@@ -40,7 +40,7 @@ const ERLAUBT = new Map([
   // Diagnose-Endpunkte: für Betreiber und curl, nicht für die Oberfläche.
   ['body_check', 'Selbstprüfung /v1/admin'], ['datenbank', 'Selbstprüfung'],
   ['db_pool', 'Verbindungspool im Gesundheitsbericht'], ['probes', 'Selbstprüfung'],
-  ['proxy_failures', 'Selbstprüfung'], ['uptime_seconds', 'Gesundheitsbericht'],
+  ['proxy_failures', 'Selbstprüfung'],
   ['merker', 'Selbstprüfung'], ['hinweis', 'Selbstprüfung'],
   ['rate_limit', 'nur noch im Admin-Bericht, nicht mehr in der Bewertung'],
   // Export-Datei: gelesen wird sie vom Import DIESES Servers, nicht von einem Client.

@@ -31,6 +31,8 @@ const MAX_ATTEMPTS = 5;
  */
 const MAX_JE_NAME  = 20;
 const WINDOW_MS    = 15 * 60 * 1000;
+/** So lange gilt eine Adresse nach einer erfolgreichen Anmeldung als bekannt. */
+const BEKANNT_MIN  = 30 * 24 * 60;
 const WINDOW_MIN   = WINDOW_MS / 60000;
 
 /** Rückfallebene, falls die DB klemmt. key → { count, firstAt } */
@@ -54,6 +56,10 @@ function _key(req: Request, username: unknown): string {
 
 function _nameKey(username: unknown): string {
   return `login-name|${einzelwert(username).toLowerCase()}`;
+}
+
+function _bekanntKey(req: Request, username: unknown): string {
+  return `login-bekannt|${_ipOf(req)}|${einzelwert(username).toLowerCase()}`;
 }
 
 function _prune() {
@@ -122,8 +128,11 @@ async function checkLoginAllowed(
   const st = await _read(_key(req, username), WINDOW_MIN);
   if (st && st.count >= MAX_ATTEMPTS)
     return { code: 'zu_viele_fehlversuche', vars: { minuten: st.waitMin } };
+  // Die Sperre je Name liesse sich von aussen gegen den Inhaber richten. Von
+  // einer Adresse, an der er sich schon angemeldet hat, gilt deshalb nur die
+  // Sperre je Adresse.
   const jeName = await _read(_nameKey(username), WINDOW_MIN);
-  if (jeName && jeName.count >= MAX_JE_NAME)
+  if (jeName && jeName.count >= MAX_JE_NAME && !(await _read(_bekanntKey(req, username), BEKANNT_MIN)))
     return { code: 'zu_viele_fehlversuche', vars: { minuten: jeName.waitMin } };
   return null;
 }
@@ -138,6 +147,7 @@ async function recordLoginFailure(req: Request, username: unknown): Promise<void
 async function recordLoginSuccess(req: Request, username: unknown): Promise<void> {
   await _clear(_key(req, username));
   await _clear(_nameKey(username));
+  await _bump(_bekanntKey(req, username), BEKANNT_MIN);
 }
 
 /**

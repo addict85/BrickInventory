@@ -104,9 +104,7 @@ function gibApplyStatus(s) {
 // Polling-Fallback: einmalig den Status holen und rendern.
 async function gibPoll() {
   try {
-    const wt = sessionStorage.getItem('webToken');
-    const headers = wt ? { 'Authorization': 'Bearer ' + wt } : {};
-    const s = await fetch('/api/v1/sets/import/csv/status', { headers, credentials: 'include' }).then(r=>r.json());
+    const s = await fetch('/api/v1/sets/import/csv/status', { credentials: 'include' }).then(r=>r.json());
     gibApplyStatus(s);
   } catch(_) {}
 }
@@ -247,9 +245,7 @@ export async function gibCheckOnLoad() {
     // auf dem Login-Screen im Drei-Sekunden-Takt weiter.
     if (!ME) return;
     try {
-      const wt = sessionStorage.getItem('webToken');
-      const headers = wt ? { 'Authorization': 'Bearer ' + wt } : {};
-      const r = await fetch('/api/v1/sets/import/csv/status', { headers, credentials: 'include' });
+      const r = await fetch('/api/v1/sets/import/csv/status', { credentials: 'include' });
 
       // Antwort erst prüfen, dann parsen. Steht ein Reverse-Proxy oder Tunnel
       // davor, liefert der bei Neustart oder Aussetzer eine HTML-Fehlerseite —

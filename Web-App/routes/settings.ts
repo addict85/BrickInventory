@@ -90,6 +90,16 @@ router.delete('/tokens/:tokenId', requireLoginOrToken, async (req: LoggedInReque
   } catch (e) { handleRouteError(res, e, undefined, req); }
 });
 
+/** Die übrigen Browser-Sitzungen beenden; die eigene bleibt. */
+router.post('/sessions/andere-beenden', requireLogin, async (req: LoggedInRequest, res) => {
+  try {
+    const r = await db.run(
+      "DELETE FROM user_sessions WHERE sess::jsonb->>'userId' = $1 AND sid <> $2",
+      [String(angemeldeteNutzerId(req)), req.sessionID]);
+    res.json({ success: true, deleted: r.changes });
+  } catch (e) { handleRouteError(res, e, undefined, req); }
+});
+
 router.use(requireLogin);
 
 // GET /api/settings ist ENTFERNT

@@ -230,17 +230,10 @@ G('btn-gen-qr').onclick = generateQrCode;
 // (das verwirft ALLE Zugänge). Wer nur eines aussperren wollte, sperrte alle
 // aus.
 //
-// Der eigene Zugang wird MITGESCHICKT — anders kann der Server nicht sagen,
-// welche Zeile zu diesem Browser gehört, und der Knopf „alle anderen
-// abmelden" wüsste nicht, wovon er absehen soll. api() setzt den
-// Authorization-Header nicht (die Webapp arbeitet über die Sitzung), deshalb
-// hier ein eigener fetch — dieselbe Stelle wie beim Abmelden in 01-core.js.
+// Der Browser selbst ist kein Token, sondern die Sitzung; die Liste zeigt die
+// Geräte mit Token (App, ältere Browser-Anmeldungen).
 async function tokenRuf(pfad, method = 'GET') {
-  const wt = sessionStorage.getItem('webToken');
-  const r = await fetch('/api/v1/settings' + pfad, {
-    method,
-    headers: wt ? { 'Authorization': 'Bearer ' + wt } : {},
-  });
+  const r = await fetch('/api/v1/settings' + pfad, { method, credentials: 'include' });
   return r.json().catch(() => ({ success: false, error: 'HTTP ' + r.status }));
 }
 
@@ -290,16 +283,13 @@ async function revokeToken(tokenId, label) {
  * nur mehrfach" wäre genau die Art Doppelung, die dieses Projekt sonst
  * abbaut. Gezählt wird, was WIRKLICH weg ist — nicht, wie oft geklickt wurde.
  *
- * Ohne den eigenen Zugang in der Liste (kein webToken im sessionStorage, etwa
- * weil das INSERT beim Anmelden scheiterte) wäre „alle anderen" nicht
- * bestimmbar — dann lieber gar nichts tun als den eigenen mit abräumen.
+ * Dieser Browser hängt an der Sitzung, nicht an einem Token — „alle anderen"
+ * sind darum alle Token und alle übrigen Sitzungen.
  */
 async function revokeOtherTokens() {
   const d = await tokenRuf('/tokens');
   if (!d.success) { toast(d.error || t('settings.error'), 'error'); return; }
   const andere = d.tokens.filter(tk => !tk.aktuell);
-  if (!andere.length) { toast(tRaw('tokens.no_others'), 'success'); return; }
-  if (!d.tokens.some(tk => tk.aktuell)) { toast(tRaw('tokens.self_unknown'), 'error'); return; }
   if (!await confirmDelete(tRaw('tokens.revoke_others.title'),
                            tRaw('tokens.revoke_others.text', { n: andere.length }), '🚪')) return;
   let weg = 0;
@@ -307,7 +297,10 @@ async function revokeOtherTokens() {
     const r = await tokenRuf('/tokens/' + encodeURIComponent(tk.token_id), 'DELETE');
     weg += r.deleted || 0;
   }
-  toast(tRaw('tokens.revoked_n', { n: weg }), weg === andere.length ? 'success' : 'error');
+  // Dazu die übrigen Browser — sie melden sich per Sitzung an, nicht per Token.
+  const s = await api('POST', '/v1/settings/sessions/andere-beenden');
+  toast(tRaw('tokens.revoked_n', { n: weg + (s.deleted || 0) }),
+        weg === andere.length && s.success ? 'success' : 'error');
   loadTokens();
 }
 

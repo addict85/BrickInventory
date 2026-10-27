@@ -264,8 +264,6 @@ window.I18N_EN = {
   'tokens.revoke_others.title': 'Sign out all others?',
   'tokens.revoke_others.text': '{n} other tokens lose access. This device stays signed in.',
   'tokens.revoked_n': '{n} tokens signed out',
-  'tokens.no_others': 'There are no other tokens.',
-  'tokens.self_unknown': 'This device’s own token is not identifiable — without it there is no way to tell which ones are “the others”. Sign in again and retry.',
   'apk.title': '📥 Download the app',
   'apk.hint': 'Always the latest build, straight from the release on GitHub. Android will ask for permission to install apps from this source when you open the file.',
   'apk.badge_small': 'Direct download',

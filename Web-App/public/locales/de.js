@@ -265,8 +265,6 @@ window.I18N_DE = {
   'tokens.revoke_others.title': 'Alle anderen abmelden?',
   'tokens.revoke_others.text': '{n} andere Zugänge verlieren ihre Berechtigung. Dieses Gerät bleibt angemeldet.',
   'tokens.revoked_n': '{n} Zugänge abgemeldet',
-  'tokens.no_others': 'Es gibt keine anderen Zugänge.',
-  'tokens.self_unknown': 'Der eigene Zugang ist nicht erkennbar — ohne ihn liesse sich nicht sagen, welche die „anderen" sind. Melde dich neu an und versuche es noch einmal.',
   'apk.title': '📥 App herunterladen',
   'apk.hint': 'Immer die neuste Fassung, direkt aus der Ablage auf GitHub. Android fragt beim Öffnen der Datei nach der Erlaubnis, Apps aus dieser Quelle zu installieren.',
   'apk.badge_small': 'Direkt herunterladen',

@@ -992,7 +992,7 @@ G('btn-login').onclick=doLogin;
 async function doLogin(){
   const b=G('btn-login'); const frei=knopfBesetzt(b);
   const code=G('lc').value.trim();
-  const d=await api('POST','/v1/auth/login',{username:G('lu').value,password:G('lp').value,...(code?{code}:{})});
+  const d=await api('POST','/v1/auth/login',{username:G('lu').value,password:G('lp').value,ohne_token:true,...(code?{code}:{})});
   frei();
   // Zweiter Faktor verlangt: Codefeld zeigen und dort weitermachen.
   if(d.zweiter_faktor){
@@ -1001,21 +1001,14 @@ async function doLogin(){
     return;
   }
   G('lc-zeile').style.display='none'; G('lc').value='';
-  if(d.success){ ME = { ...d, ...(d.user||{}), isAdmin: d.user?.is_admin === true }; if(d.token) sessionStorage.setItem('webToken',d.token);
+  if(d.success){ ME = { ...d, ...(d.user||{}), isAdmin: d.user?.is_admin === true };
     // Jede Anmeldung beginnt mit „Alle Konten" (Nachtrag 46) — VOR showApp(),
     // damit die Auswahlfelder gleich mit dem zurückgesetzten Wert entstehen.
     resetScopeModes();
     showApp(); } else { const err=d.error||t('settings.error'); G('lerr').textContent=err; G('lerr').style.display='block'; if(d.unverified){ G('lerr').innerHTML=err+' <a href="#" data-click="showPanel" data-arg="login" style="color:var(--b600)">E-Mail erneut senden?</a>'; } }
 }
 G('btn-logout').onclick=async()=>{
-  // Den webToken MITSCHICKEN, sonst kann der Server ihn nicht entwerten.
-  //
-  // POST /api/v1/auth/logout beendet die Sitzung UND löscht den Bearer-Token —
-  // aber nur, wenn er im Authorization-Header steht. api() setzt den Header
-  // nicht (die Webapp arbeitet sonst per Session-Cookie), die Löschung lief
-  // deshalb ins Leere: Der Token blieb nach dem Abmelden volle sieben Tage
-  // gültig. Da er im sessionStorage liegt und damit per XSS auslesbar ist, ist
-  // genau das der Fall, den ein bewusstes Abmelden ausschliessen soll.
+  // Ein Token aus einer älteren Anmeldung wird mit entwertet.
   const _wt = sessionStorage.getItem('webToken');
   await fetch('/api/v1/auth/logout', {
     method: 'POST',

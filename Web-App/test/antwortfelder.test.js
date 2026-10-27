@@ -8,7 +8,8 @@
  *
  * Gegenproben (durchgeführt):
  *   a) `rate_limit_neu` in die Bewertungsantwort gelegt → rot.
- *   b) Die Ausnahme für `uptime_seconds` gestrichen → rot.
+ *   b) Die Ausnahme für `db_pool` gestrichen → rot (27.10.; vorher `uptime_seconds`,
+ *      das seit /health nur für Verwalter nicht mehr oben in einer Antwort steht).
  *   c) Eine Ausnahme für einen Schlüssel eingetragen, den es nicht gibt → rot
  *      ("tote Ausnahme").
  *   d) Den Pfad zu den Verbrauchern verbogen → rot mit eigener Meldung. Das ist

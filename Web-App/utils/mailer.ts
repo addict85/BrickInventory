@@ -44,6 +44,17 @@ async function getFrom() {
 }
 
 /**
+ * Der Link einer Mail für die Konsole. In Produktion ohne Token: Die Konsole
+ * landet in app_logs, die jeder Verwalter 48 Stunden lang sieht, und ein
+ * Reset-Link ist ein Zugang zum Konto.
+ */
+export function linkFuerKonsole(text?: string, umgebung = process.env.NODE_ENV): string | null {
+  const url = (text || '').match(/https?:\/\/\S+/)?.[0];
+  if (!url) return null;
+  return umgebung === 'production' ? url.replace(/([?&]token=)[^&#\s]+/g, '$1…') : url;
+}
+
+/**
  * Eine E-Mail verschicken — oder, ohne SMTP, auf der Konsole zeigen.
  *
  * `html` und `text` sind optional, weil beide Aufrufwege vorkommen: Die
@@ -55,12 +66,12 @@ async function sendMail({ to, subject, html, text }: {
   const transporter = await getTransporter();
   const from = await getFrom();
   if (!transporter) {
-    const urlMatch = (text || '').match(/https?:\/\/\S+/);
+    const link = linkFuerKonsole(text);
     console.log('\n══════════════════════════════════════════════════');
     console.log('📧  E-Mail (SMTP nicht konfiguriert):');
     console.log(`    An:      ${to}`);
     console.log(`    Betreff: ${subject}`);
-    if (urlMatch) console.log(`    Link:    ${urlMatch[0]}`);
+    if (link) console.log(`    Link:    ${link}`);
     console.log('══════════════════════════════════════════════════\n');
     return { success: true, mode: 'console' };
   }
