@@ -29,6 +29,7 @@ import coil3.compose.AsyncImage
 import coil3.ImageLoader
 import androidx.compose.ui.res.stringResource
 import ch.brickinventoryapp.ui.theme.Abstaende
+import ch.brickinventoryapp.ui.components.LeerSymbol
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -87,7 +88,7 @@ fun FinanceScreen(
     if (valuation == null) {
         Box(Modifier.fillMaxSize(), Alignment.Center) {
             Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(Abstaende.gross)) {
-                Text("💰", fontSize = 48.sp)
+                LeerSymbol(Icons.Default.Savings, 48.dp)
                 Text(stringResource(R.string.finance_no_data), fontWeight = FontWeight.SemiBold)
                 Button(onClick = onRefresh, shape = Formen.knopf) {
                     Icon(Icons.Default.Refresh, null, Modifier.size(16.dp))

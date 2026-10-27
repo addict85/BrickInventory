@@ -414,7 +414,9 @@ fun CacheAndLimitsSection(vm: MainViewModel, onSnack: (String) -> Unit = {}) {
                             shape = Formen.kachel,
                             contentPadding = PaddingValues(horizontal = 10.dp, vertical = 6.dp)
                         ) { Text("OK", fontSize = Schrift.klein) }
-                        TextButton(onClick = { editingTtl = false }) { Text("✕") }
+                        IconButton(onClick = { editingTtl = false }) {
+                            Icon(Icons.Default.Close, stringResource(R.string.common_cancel))
+                        }
                     }
                 } else {
                     Row(
@@ -584,10 +586,15 @@ private fun RateLimitRow(
                 )
                 }
             } else {
-                Text(if (eng) "\u26A0 ${rl.count} / ${rl.limit}" else "${rl.count} / ${rl.limit}",
-                    style = MaterialTheme.typography.bodySmall,
-                    fontWeight = FontWeight.SemiBold,
-                    color = color)
+                Row(verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(Abstaende.winzig)) {
+                    if (eng) Icon(Icons.Default.Warning, stringResource(R.string.monitoring_kontingent_eng),
+                        Modifier.size(14.dp), tint = color)
+                    Text("${rl.count} / ${rl.limit}",
+                        style = MaterialTheme.typography.bodySmall,
+                        fontWeight = FontWeight.SemiBold,
+                        color = color)
+                }
             }
         }
         LinearProgressIndicator(
@@ -833,7 +840,9 @@ fun ZeitplanZeile(
                     shape = Formen.kachel,
                     contentPadding = PaddingValues(horizontal = 10.dp, vertical = 6.dp),
                 ) { Text("OK", fontSize = Schrift.klein) }
-                TextButton(onClick = { bearbeiten = false }) { Text("✕") }
+                IconButton(onClick = { bearbeiten = false }) {
+                    Icon(Icons.Default.Close, stringResource(R.string.common_cancel))
+                }
             }
         } else {
             Row(horizontalArrangement = Arrangement.spacedBy(Abstaende.klein),

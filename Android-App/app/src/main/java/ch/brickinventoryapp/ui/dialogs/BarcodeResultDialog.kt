@@ -14,7 +14,6 @@ import androidx.compose.ui.window.Dialog
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.navigation.NavDestination.Companion.hierarchy
@@ -55,7 +54,6 @@ import ch.brickinventoryapp.util.NumericInput
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import ch.brickinventoryapp.ui.MainViewModel
 import ch.brickinventoryapp.ui.theme.Abstaende
-import ch.brickinventoryapp.ui.theme.Schrift
 
 /**
  * Der Dialog nach einem erfolgreichen Barcode-Scan: Set (oder Teileliste)
@@ -149,7 +147,8 @@ AlertDialog(
                         horizontalArrangement = Arrangement.spacedBy(Abstaende.klein),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Text("⚠️", fontSize = Schrift.gross)
+                        Icon(Icons.Default.Warning, null, Modifier.size(20.dp),
+                            tint = MaterialTheme.colorScheme.onErrorContainer)
                         Text(
                             stringResource(R.string.main_barcode_unsure),
                             style = MaterialTheme.typography.bodySmall,
@@ -186,18 +185,18 @@ AlertDialog(
             HorizontalDivider()
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceAround) {
                 if (barcodeState.year != null) Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                    Text("📅", fontSize = 18.sp)
+                    Icon(Icons.Default.CalendarMonth, null, Modifier.size(18.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant)
                     Text("${barcodeState.year}", style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.Bold)
                     Text(stringResource(R.string.main_barcode_year), style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
                 if (barcodeState.pieces != null) Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                    Text("⚙️", fontSize = 18.sp)
+                    Icon(ImageVector.vectorResource(R.drawable.ic_parts_bricks), null, Modifier.size(18.dp), tint = Color.Unspecified)
                     Text(ch.brickinventoryapp.util.fmtInt(barcodeState.pieces!!), style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.Bold)
                     Text(stringResource(R.string.main_barcode_pieces), style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
                 if (barcodeState.minifigs != null && barcodeState.minifigs!! > 0)
                     Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                        Text("👷", fontSize = 18.sp)
+                        Icon(Icons.Default.Person, null, Modifier.size(18.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant)
                         Text("${barcodeState.minifigs}", style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.Bold)
                         Text(stringResource(R.string.main_barcode_figs), style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                     }
@@ -290,7 +289,9 @@ AlertDialog(
                 Spacer(Modifier.width(Abstaende.klein))
                 Text(stringResource(R.string.barcode_add))
             } else {
-                Text("✅ " + stringResource(R.string.barcode_add))
+                Icon(Icons.Default.Check, null, Modifier.size(18.dp))
+                Spacer(Modifier.width(Abstaende.klein))
+                Text(stringResource(R.string.barcode_add))
             }
         }
     },

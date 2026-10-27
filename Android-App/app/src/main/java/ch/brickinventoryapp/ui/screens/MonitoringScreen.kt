@@ -201,10 +201,10 @@ private fun JobCard(
         else      -> MaterialTheme.colorScheme.onSurfaceVariant
     }
     val statusIcon = when (job.status) {
-        "running" -> "⏳"
-        "done"    -> "✅"
-        "error"   -> "❌"
-        else      -> "⏸"
+        "running" -> Icons.Default.HourglassTop
+        "done"    -> Icons.Default.CheckCircle
+        "error"   -> Icons.Default.Error
+        else      -> Icons.Default.PauseCircle
     }
     val pct = if (job.total > 0) (job.progress.toFloat() / job.total).coerceIn(0f, 1f) else 0f
 
@@ -214,8 +214,12 @@ private fun JobCard(
             Row(Modifier.fillMaxWidth(), Arrangement.SpaceBetween, Alignment.CenterVertically) {
                 Text(job.label.ifBlank { jobKey }, fontWeight = FontWeight.SemiBold, fontSize = Schrift.normal,
                     modifier = Modifier.weight(1f))
-                Text("$statusIcon ${job.status}", color = statusColor,
-                    style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.Bold)
+                Row(verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(Abstaende.winzig)) {
+                    Icon(statusIcon, null, Modifier.size(14.dp), tint = statusColor)
+                    Text(job.status, color = statusColor,
+                        style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.Bold)
+                }
             }
 
             // Progress bar

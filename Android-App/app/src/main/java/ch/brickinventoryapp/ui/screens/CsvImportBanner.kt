@@ -13,10 +13,14 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import ch.brickinventoryapp.R
 import ch.brickinventoryapp.ui.theme.Abstaende
 import ch.brickinventoryapp.ui.theme.Schrift
+import androidx.compose.material.icons.filled.UploadFile
+import androidx.compose.material.icons.filled.CheckCircle
+import androidx.compose.material.icons.filled.Warning
+import androidx.compose.material.icons.filled.Error
+import ch.brickinventoryapp.ui.theme.LocalStatusFarben
 
 @Composable
 fun CsvImportBanner(
@@ -46,7 +50,9 @@ fun CsvImportBanner(
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(Abstaende.klein)
                 ) {
-                    Text("📦", fontSize = Schrift.normal)
+                    Icon(Icons.Default.UploadFile, null, Modifier.size(16.dp),
+                        tint = if (running) MaterialTheme.colorScheme.onPrimary
+                               else MaterialTheme.colorScheme.onSecondaryContainer)
                     LinearProgressIndicator(
                         progress = { pct },
                         modifier = Modifier.weight(1f).height(6.dp).clip(MaterialTheme.shapes.small),
@@ -100,13 +106,18 @@ fun CsvImportBanner(
                     Modifier.padding(horizontal = Abstaende.gross, vertical = 10.dp),
                     horizontalArrangement = Arrangement.spacedBy(Abstaende.gross)
                 ) {
+                    val farben = LocalStatusFarben.current
                     listOf(
-                        "✅ $ok" to stringResource(R.string.csv_stat_success),
-                        "⚠️ $warn" to stringResource(R.string.csv_stat_warnings),
-                        "❌ $err" to stringResource(R.string.csv_stat_errors)
-                    ).forEach { (v, l) ->
+                        Triple(ok, Icons.Default.CheckCircle to farben.erfolg, stringResource(R.string.csv_stat_success)),
+                        Triple(warn, Icons.Default.Warning to farben.warnung, stringResource(R.string.csv_stat_warnings)),
+                        Triple(err, Icons.Default.Error to farben.fehler, stringResource(R.string.csv_stat_errors))
+                    ).forEach { (v, symbol, l) ->
                         Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                            Text(v, fontWeight = FontWeight.Bold, fontSize = Schrift.normal)
+                            Row(verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(Abstaende.winzig)) {
+                                Icon(symbol.first, null, Modifier.size(16.dp), tint = symbol.second)
+                                Text("$v", fontWeight = FontWeight.Bold, fontSize = Schrift.normal)
+                            }
                             Text(l, style = MaterialTheme.typography.labelSmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant)
                         }

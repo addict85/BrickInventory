@@ -62,6 +62,7 @@ import androidx.compose.ui.graphics.Color
 import ch.brickinventoryapp.data.repository.CATALOG_PAGE_SIZE
 import ch.brickinventoryapp.ui.theme.Abstaende
 import ch.brickinventoryapp.ui.theme.Schrift
+import ch.brickinventoryapp.ui.components.LeerSymbol
 
 /**
  * Wie lange die Liste ruhig stehen muss, bevor ihre sichtbaren Seiten geholt
@@ -300,14 +301,14 @@ fun CatalogScreen(
                 }
                 fehlertext != null && state.total == 0 -> Box(Modifier.fillMaxSize(), Alignment.Center) {
                     Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(Abstaende.klein)) {
-                        Text("⚠️", fontSize = 40.sp)
+                        LeerSymbol(Icons.Default.ErrorOutline)
                         Text(fehlertext, fontWeight = FontWeight.SemiBold)
                         Button(onClick = onRefresh, shape = Formen.knopf) { Text(stringResource(R.string.gallery_refresh)) }
                     }
                 }
                 state.total == 0 -> Box(Modifier.fillMaxSize(), Alignment.Center) {
                     Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(Abstaende.klein)) {
-                        Text("🔍", fontSize = 40.sp)
+                        LeerSymbol(Icons.Default.SearchOff)
                         Text(stringResource(R.string.catalog_no_results), fontWeight = FontWeight.SemiBold)
                     }
                 }

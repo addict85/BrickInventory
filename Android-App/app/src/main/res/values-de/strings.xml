@@ -30,7 +30,7 @@
     <string name="login_code_hint">Oder einer deiner Wiederherstellungscodes</string>
 
     <!-- ══════════════ CSV import banner ══════════════ -->
-    <string name="csv_ok_count">✅ %1$d OK</string>
+    <string name="csv_ok_count">%1$d OK</string>
     <string name="csv_stat_success">Erfolg</string>
     <string name="csv_stat_warnings">Warnungen</string>
     <string name="csv_stat_errors">Fehler</string>
@@ -39,7 +39,7 @@
     <string name="csv_import_done">Import abgeschlossen</string>
 
     <!-- ══════════════ Portfolio chart ══════════════ -->
-    <string name="chart_portfolio_value">📈 Wertentwicklung Portfolio</string>
+    <string name="chart_portfolio_value">Wertentwicklung Portfolio</string>
     <string name="chart_no_history">Noch keine Verlaufsdaten</string>
     <string name="chart_period_week">Woche</string>
     <string name="chart_period_month">Monat</string>
@@ -61,12 +61,12 @@
 
     <!-- ══════════════ Barcode scanner screen ══════════════ -->
     <string name="scanner_hint_default">Halte die Kamera auf den Barcode der Schachtel</string>
-    <string name="scanner_hint_detected">✅ Erkannt: %1$s</string>
+    <string name="scanner_hint_detected">Erkannt: %1$s</string>
     <string name="scanner_hint_confirming">Barcode erkannt, bestätige…</string>
     <string name="scanner_hint_aim">Kamera auf Barcode richten</string>
     <string name="scanner_hint_error">Scan-Fehler — bitte nochmals versuchen</string>
-    <string name="scanner_torch_off">🔦 Licht aus</string>
-    <string name="scanner_torch_on">🔦 Licht ein</string>
+    <string name="scanner_torch_off">Licht aus</string>
+    <string name="scanner_torch_on">Licht ein</string>
     <string name="scanner_camera_needed">Kamerazugriff benötigt</string>
     <string name="scanner_allow">Erlauben</string>
     <string name="scanner_close">Schließen</string>
@@ -84,7 +84,7 @@
     <string name="api_server_zu_alt">Der Server ist älter als diese App. Manches fehlt womöglich — bitte den Server aktualisieren.</string>
     <string name="setup_url_klartext">Unverschlüsselt: Dein Zugang geht im Klartext übers Netz. Ist der Server aus dem Internet erreichbar, bitte https verwenden.</string>
     <string name="setup_continue">Weiter</string>
-    <string name="setup_qr_detected">✅ QR-Code erkannt</string>
+    <string name="setup_qr_detected">QR-Code erkannt</string>
     <string name="setup_qr_scan_hint">BrickInventory QR-Code scannen</string>
 
     <!-- ══════════════ Gallery screen ══════════════ -->
@@ -309,7 +309,7 @@
     <string name="nav_finance">Finanzen</string>
     <string name="nav_comparison">Vergleich</string>
     <string name="nav_settings">Einstellungen</string>
-    <string name="nav_monitoring">📊 Monitoring</string>
+    <string name="nav_monitoring">Monitoring</string>
     <string name="main_barcode_add_partslist">Zur Teileliste hinzufügen?</string>
     <string name="main_barcode_add_set">Set hinzufügen?</string>
     <string name="main_barcode_unsure">Nicht sicher erkannt — bitte Bild und Namen prüfen</string>
@@ -360,16 +360,16 @@
     <string name="pruef_anlegen_bild">Bild zu %1$s wird geladen…</string>
     <string name="pruef_anlegen_abschluss">%1$s wird abgeschlossen…</string>
     <string name="pruef_hinweis">Das Hinzufügen läuft danach im Hintergrund — kurz warten vor dem nächsten Scan.</string>
-    <string name="vm_barcode_no_set">❌ Kein Set gefunden für: %1$s</string>
-    <string name="vm_set_added">✅ %1$s hinzugefügt!</string>
+    <string name="vm_barcode_no_set">Kein Set gefunden für: %1$s</string>
+    <string name="vm_set_added">%1$s hinzugefügt!</string>
     <string name="vm_error">Fehler: %1$s</string>
-    <string name="vm_session_expired">⚠️ Sitzung abgelaufen — bitte erneut anmelden</string>
+    <string name="vm_session_expired">Sitzung abgelaufen — bitte erneut anmelden</string>
 
     <!-- Foreground-Service-Benachrichtigungen (CSV-Import / PDF-Export) -->
     <string name="notif_csv_title">BrickInventory – CSV-Import</string>
     <string name="notif_csv_running">CSV-Import läuft…</string>
     <string name="notif_csv_importing">Importiere…</string>
-    <string name="notif_csv_done">Import abgeschlossen ✓</string>
+    <string name="notif_csv_done">Import abgeschlossen</string>
     <string name="notif_csv_channel_name">CSV-Import Fortschritt</string>
     <string name="notif_csv_channel_desc">Zeigt den Fortschritt des CSV-Imports</string>
     <string name="notif_pdf_title">BrickInventory – PDF-Export</string>
@@ -398,8 +398,9 @@
     <string name="detail_edit_prices">Kaufpreise bearbeiten</string>
     <string name="common_condition">Zustand</string>
     <string name="monitoring_starting">Wird gestartet…</string>
-    <string name="monitoring_started">✅ Gestartet</string>
-    <string name="monitoring_sync_started_short">✅ Sync gestartet</string>
+    <string name="monitoring_kontingent_eng">Kontingent fast aufgebraucht</string>
+    <string name="monitoring_started">Gestartet</string>
+    <string name="monitoring_sync_started_short">Sync gestartet</string>
     <string name="monitoring_price_update">Preise aktualisieren</string>
     <string name="monitoring_schedule_daily">Täglich um</string>
     <string name="monitoring_schedule_every">Alle</string>
@@ -426,8 +427,8 @@
     <string name="monitoring_loading">Lädt…</string>
     <string name="monitoring_reimport_error">Fehler beim Reimport</string>
     <plurals name="monitoring_reimport_enqueued">
-        <item quantity="one">✅ %1$d Set eingereiht</item>
-        <item quantity="other">✅ %1$d Sets eingereiht</item>
+        <item quantity="one">%1$d Set eingereiht</item>
+        <item quantity="other">%1$d Sets eingereiht</item>
     </plurals>
     <!-- Katalog -->
     <string name="nav_catalog">Katalog</string>
@@ -702,7 +703,7 @@
     <string name="wanted_taken_existing">War schon in der Galerie — von der Merkliste genommen</string>
     <string name="wanted_need_number">Bitte Set-Nummer eingeben</string>
     <string name="wanted_threshold">Schwelle (optional)</string>
-    <string name="detail_compare">📊 Preisvergleich</string>
+    <string name="detail_compare">Preisvergleich</string>
     <string name="wanted_since">Auf der Liste seit</string>
     <string name="alerts_group">Preisalarme</string>
     <string name="alerts_intro">Alle Schwellen, die du gesetzt hast. Der Wert lässt sich hier ändern, der Alarm entfernen. Gemeldet wird einmal je Übergang — erst wenn der Preis wieder auf die andere Seite wechselt, kann derselbe Alarm erneut auslösen.</string>

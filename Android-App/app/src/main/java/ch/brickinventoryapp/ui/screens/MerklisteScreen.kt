@@ -39,6 +39,8 @@ import ch.brickinventoryapp.ui.theme.Schrift
 import ch.brickinventoryapp.ui.theme.LocalIsBrickTheme
 import ch.brickinventoryapp.util.NumericInput
 import ch.brickinventoryapp.util.resolveThumbUrl
+import androidx.compose.material.icons.filled.NotificationsActive
+import androidx.compose.material.icons.filled.Alarm
 
 /**
  * Die Merkliste.
@@ -455,9 +457,11 @@ private fun MerkpostenZeile(
             Row(horizontalArrangement = Arrangement.spacedBy(Abstaende.klein),
                 verticalAlignment = Alignment.CenterVertically) {
                 w.alarm?.let { a ->
-                    AssistChip(onClick = {}, label = {
-                        Text("${if (a.ausgeloest) "🔔" else "⏰"} " +
-                             stringResource(if (a.richtung == "ueber") R.string.detail_alert_above
+                    AssistChip(onClick = {}, leadingIcon = {
+                        Icon(if (a.ausgeloest) Icons.Default.NotificationsActive else Icons.Default.Alarm,
+                            null, Modifier.size(AssistChipDefaults.IconSize))
+                    }, label = {
+                        Text(stringResource(if (a.richtung == "ueber") R.string.detail_alert_above
                                             else R.string.detail_alert_below) +
                              " ${a.schwelle}")
                     })

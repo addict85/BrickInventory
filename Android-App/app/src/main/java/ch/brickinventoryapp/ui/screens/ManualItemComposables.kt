@@ -91,7 +91,9 @@ fun AcquisitionSummarySection(
                 OutlinedButton(onClick = onEditPrices,
                     contentPadding = PaddingValues(horizontal = 10.dp, vertical = Abstaende.haar),
                     modifier = Modifier.height(28.dp)) {
-                    Text("✏️ ${stringResource(R.string.detail_edit_prices)}", fontSize = Schrift.klein)
+                    Icon(Icons.Default.Edit, null, Modifier.size(14.dp))
+                    Spacer(Modifier.width(Abstaende.winzig))
+                    Text(stringResource(R.string.detail_edit_prices), fontSize = Schrift.klein)
                 }
             }
         }

@@ -347,7 +347,7 @@ private fun AcquisitionManagementRow(
         }
     }
     Text(
-        "📅 ${dateLabel ?: "—"}",
+        dateLabel ?: "—",
         style = MaterialTheme.typography.labelSmall,
         color = MaterialTheme.colorScheme.primary,
         modifier = Modifier

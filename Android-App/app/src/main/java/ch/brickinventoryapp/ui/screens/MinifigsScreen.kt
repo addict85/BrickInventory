@@ -19,7 +19,6 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import ch.brickinventoryapp.data.model.Minifig
 import ch.brickinventoryapp.util.fmtInt
 import ch.brickinventoryapp.data.model.FigValuationItem
@@ -38,7 +37,7 @@ import ch.brickinventoryapp.ui.MainViewModel
 import ch.brickinventoryapp.ui.*  // Feature-Extensions (loadSets, setScope, …)
 import ch.brickinventoryapp.util.NumericInput
 import ch.brickinventoryapp.ui.theme.Abstaende
-import ch.brickinventoryapp.ui.theme.Schrift
+import ch.brickinventoryapp.ui.components.LeerSymbol
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
 @Composable
@@ -150,7 +149,7 @@ fun MinifigsScreen(
             }
             figs.isEmpty() && manualFigs.isEmpty() -> Box(Modifier.fillMaxSize(), Alignment.Center) {
                 Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(Abstaende.klein)) {
-                    Text("👷", fontSize = 40.sp)
+                    LeerSymbol(Icons.Default.Person)
                     Text(stringResource(R.string.minifigs_none), fontWeight = FontWeight.SemiBold)
                     Text(stringResource(R.string.minifigs_loaded_on_import),
                         style = MaterialTheme.typography.bodySmall,
@@ -159,7 +158,7 @@ fun MinifigsScreen(
             }
             figs.isEmpty() && manualFigs.isEmpty() -> Box(Modifier.fillMaxSize(), Alignment.Center) {
                 Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(Abstaende.klein)) {
-                    Text("🔍", fontSize = 40.sp)
+                    LeerSymbol(Icons.Default.SearchOff)
                     Text(stringResource(R.string.minifigs_no_results), fontWeight = FontWeight.SemiBold)
                 }
             }
@@ -265,7 +264,7 @@ fun ManualFigTile(fig: FigValuationItem, serverUrl: String, imageLoader: ImageLo
         preis = fig.avgPurchasePrice ?: fig.unitPrice ?: fig.purchasePrice,
         waehrung = waehrung,
         onEdit = onEdit,
-        platzhalter = { Text("👷", fontSize = Schrift.riesig) },
+        platzhalter = { LeerSymbol(Icons.Default.Person, 32.dp) },
     )
 }
 
@@ -383,7 +382,7 @@ fun MinifigCard(fig: Minifig, serverUrl: String, imageLoader: ImageLoader,
                         modifier = Modifier.fillMaxSize()
                             .clip(Formen.kachelBildEcken)
                     ) {
-                        Box(Modifier.fillMaxSize(), Alignment.Center) { Text("👷", fontSize = 36.sp) }
+                        Box(Modifier.fillMaxSize(), Alignment.Center) { LeerSymbol(Icons.Default.Person, 36.dp) }
                     }
                 }
                 if (qty > 1) {

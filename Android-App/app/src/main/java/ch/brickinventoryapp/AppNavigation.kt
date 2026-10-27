@@ -140,18 +140,19 @@ fun BrickInventoryManagerApp(
     val labelComparison = stringResource(R.string.nav_comparison)
 
     // Die fünf Ziele der Webapp und der Vergleich, den es nur in der App gibt —
-    // unten, damit er schnell erreichbar ist. Teile und Minifiguren erreicht man
-    // über den Umschalter der Sammlung (MainScaffold).
+    // unten, damit er schnell erreichbar ist. Teile und Minifiguren erreicht
+    // man über den Umschalter der Sammlung (MainScaffold). Symbole ohne
+    // Beschreibung: Die Beschriftung steht daneben, sonst liest TalkBack doppelt.
     val bottomNavItems = remember(labelCollection, labelCatalog, labelPartslist, labelFinance, labelWanted, labelComparison) {
         buildList<Triple<Screen, @Composable () -> Unit, String>> {
-            add(Triple(Screen.Gallery,   { Icon(Icons.Default.ViewInAr, labelCollection) },               labelCollection))
-            add(Triple(Screen.PartsList, { Icon(Icons.AutoMirrored.Filled.ListAlt, labelPartslist) },     labelPartslist))
-            add(Triple(Screen.Finance,   { Icon(Icons.AutoMirrored.Filled.ShowChart, labelFinance) },     labelFinance))
+            add(Triple(Screen.Gallery,   { Icon(Icons.Default.ViewInAr, null) },               labelCollection))
+            add(Triple(Screen.PartsList, { Icon(Icons.AutoMirrored.Filled.ListAlt, null) },     labelPartslist))
+            add(Triple(Screen.Finance,   { Icon(Icons.AutoMirrored.Filled.ShowChart, null) },     labelFinance))
             // Merkliste VOR dem Katalog (Marcos Vorgabe), wie in der Webapp.
-            add(Triple(Screen.Wanted,    { Icon(Icons.Default.StarBorder, labelWanted) },                 labelWanted))
-            add(Triple(Screen.Catalog,   { Icon(Icons.AutoMirrored.Filled.MenuBook, labelCatalog) },      labelCatalog))
+            add(Triple(Screen.Wanted,    { Icon(Icons.Default.StarBorder, null) },                 labelWanted))
+            add(Triple(Screen.Catalog,   { Icon(Icons.AutoMirrored.Filled.MenuBook, null) },      labelCatalog))
             // Vergleich rechts vom Katalog (Marcos Vorgabe).
-            add(Triple(Screen.Comparison, { Icon(Icons.AutoMirrored.Filled.CompareArrows, labelComparison) }, labelComparison))
+            add(Triple(Screen.Comparison, { Icon(Icons.AutoMirrored.Filled.CompareArrows, null) }, labelComparison))
         }
     }
 
