@@ -87,7 +87,25 @@ Nach Änderungen an `public/js/*` oder `public/i18n.js` muss
 ./scripts/backup.sh            # pg_dump + data/ nach ./backups
 ```
 Ein Dateikopie-Backup von `pgdata/` bei laufendem PostgreSQL ist **wertlos**.
-Den Restore-Weg einmal ausprobieren: `./scripts/restore.sh`.
+
+**Regelmässig sichern** — der Server tut es nicht von selbst. Ein Eintrag in
+der crontab des Rechners (`crontab -e`), täglich um 3:10 Uhr:
+```
+10 3 * * * cd /opt/brickinventory && ./scripts/backup.sh >> backups/backup.log 2>&1
+```
+Ältere Sicherungen als `BACKUP_KEEP_DAYS` (Standard 30) räumt das Skript selbst weg.
+
+**Das Wiederherstellen einmal ausprobieren**, solange nichts passiert ist —
+eine Sicherung, die sich nicht einspielen lässt, merkt man sonst erst im
+Ernstfall: `./scripts/restore.sh <db_….sql.gz> <data_….tar.gz>` auf einer
+Testinstallation (eigenes Verzeichnis, eigene `compose.yaml`), danach
+anmelden und eine Sammlung durchsehen.
+
+Dump und `data/`-Archiv entstehen nacheinander, nicht im selben Augenblick.
+Wer während der Sicherung ein Bild oder eine Anleitung hochlädt, findet nach
+dem Wiederherstellen schlimmstenfalls eine Datei ohne Eintrag oder einen
+Eintrag ohne Datei; die Sammlung selbst ist davon nicht betroffen. Nachts
+gesichert, kommt das praktisch nicht vor.
 
 **Sicherungen sind Geheimnisse.** Der Dump enthält die API-Schlüssel
 (Bricklink, Brickset, Rebrickable) und das SMTP-Passwort im Klartext sowie

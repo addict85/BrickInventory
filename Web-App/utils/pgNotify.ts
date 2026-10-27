@@ -22,15 +22,12 @@ let _reconnectTimer: any = null;
 /** Nach close() wird nicht wieder verbunden — bis ein neues listen() kommt. */
 let _closed = false;
 
-function connectionString() {
-  return process.env.DATABASE_URL;
-}
 
 async function connect() {
   if (_connecting || _client || _closed) return;
   _connecting = true;
   try {
-    const c = new Client({ connectionString: connectionString() });
+    const c = new Client((require('./konfig') as typeof import('./konfig')).datenbankVerbindung());
     c.on('error', () => { retire(c); });
     c.on('end',   () => { retire(c); });
     c.on('notification', (msg: any) => {

@@ -15,6 +15,8 @@
  *      rot: „weist schreibende Anfragen fremder Seiten ab" (200)
  *   D  (27.10.) /health liefert db_pool wieder immer → rot: „verrät ohne
  *      Verwalter nur den Startzustand"
+ *   E  (27.10.) in haltePrimaerSperre das setTimeout(sperreNeuHolen) entfernt →
+ *      rot: „die Primär-Sperre kommt nach einem Verbindungsabbruch zurück"
  *
  * Voraussetzung: Test-DB via TEST_DATABASE_URL.
  */
@@ -159,6 +161,23 @@ test('Cache-Signale erreichen jeden Worker', { concurrency: 1, timeout: 180_000 
       const nachher = await runde('/api/v1/settings/raw');
       assert.deepEqual(nachher.map(r => r.status), Array(RUNDE).fill(401),
         'Ein Worker bedient den widerrufenen Token weiter — er lauscht nicht auf dem Kanal');
+    });
+
+    await t.test('die Primär-Sperre kommt nach einem Verbindungsabbruch zurück', async () => {
+      const halter = () => db.get(`SELECT pid FROM pg_locks WHERE locktype = 'advisory' AND classid = 0
+                                     AND objid = 99999999 AND granted`);
+      const vorher = await halter();
+      assert.ok(vorher, 'Vorbedingung: ein Worker hält die Primär-Sperre');
+      await db.run('SELECT pg_terminate_backend($1)', [vorher.pid]);
+      let nachher;
+      for (let i = 0; i < 40; i++) {
+        await warte(250);
+        nachher = await halter();
+        if (nachher && nachher.pid !== vorher.pid) break;
+      }
+      assert.ok(nachher && nachher.pid !== vorher.pid,
+        'Nach dem Abbruch hält niemand mehr die Sperre — die Jobs liefen ohne Primär weiter');
+      assert.match(log, /Primär-Sperre verloren/);
     });
 
     await t.test('/health verrät ohne Verwalter nur den Startzustand', async () => {

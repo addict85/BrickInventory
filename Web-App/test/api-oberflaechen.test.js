@@ -42,10 +42,10 @@ const path = require('node:path');
 
 const ROOT = path.join(__dirname, '..');
 
-/** Kommentare entfernen — sonst zählen auskommentierte Routen mit. */
-function ohneKommentare(src) {
-  return src.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');
-}
+// Kommentare entfernen — sonst zählen auskommentierte Routen mit. Der Helfer
+// statt eines naiven /\*…\*\/: `'/images/*pfad'` in server.ts eröffnete für
+// diesen sonst einen Kommentar bis zum nächsten echten Kommentarende.
+const { ohneKommentare } = require('./helpers/sources');
 
 /** Alle `router.<verb>('<pfad>'` einer Datei, mit vorangestelltem Mountpunkt. */
 function routenAus(datei, mount) {

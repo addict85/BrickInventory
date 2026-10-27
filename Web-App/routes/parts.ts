@@ -380,14 +380,18 @@ async function updateManualPart(uid: number, partNumber: string, colorId: number
         await recordAcquisitionForDay('part', uid, [partNumber, colorId],
           { quantity: delta, price: mp, condition: cond });
       } else if (delta < 0) {
-        let rem = -delta;
-        for (const a of acqs) {
-          if (rem<=0) break;
-          const take = Math.min(a.quantity, rem);
-          if (take>=a.quantity) await db.run('DELETE FROM part_acquisitions WHERE id=$1', [a.id]);
-          else await db.run('UPDATE part_acquisitions SET quantity=quantity-$1 WHERE id=$2', [take, a.id]);
-          rem -= take;
-        }
+        // Eine Transaktion: Scheitert ein Schritt, wären sonst nur einige
+        // Erfassungen gekürzt und die Menge stimmte nicht mehr.
+        await db.transaction(async (tx) => {
+          let rem = -delta;
+          for (const a of acqs) {
+            if (rem<=0) break;
+            const take = Math.min(a.quantity, rem);
+            if (take>=a.quantity) await tx.run('DELETE FROM part_acquisitions WHERE id=$1', [a.id]);
+            else await tx.run('UPDATE part_acquisitions SET quantity=quantity-$1 WHERE id=$2', [take, a.id]);
+            rem -= take;
+          }
+        });
       }
     }
   }

@@ -78,7 +78,18 @@ async function emitJobStatus(userId: number) {
 }
 
 
+/** Ohne Lebenszeichen seit so vielen Minuten gilt ein laufender Auftrag als verwaist. */
+export const VERWAIST_MIN = 10;
+
 async function jobGet(userId: number) {
+  // Lief der Auftrag in einem Prozess, den es nicht mehr gibt (Neustart,
+  // Absturz), schreibt niemand mehr. „running" bliebe sonst stehen und sperrte
+  // jeden weiteren Import. Ein Set braucht höchstens gut vier Minuten.
+  await db.run(
+    `UPDATE csv_import_jobs SET status = 'error', current = NULL, error = $2, updated_at = NOW()
+      WHERE user_id = $1 AND status IN ('running', 'pending')
+        AND updated_at < NOW() - make_interval(mins => $3)`,
+    [userId, fehlerText('import_unterbrochen', 'de'), VERWAIST_MIN]);
   const row = await db.get('SELECT * FROM csv_import_jobs WHERE user_id = $1', [userId]);
   if (!row) return null;
   return { ...row, results: row.results || [] };

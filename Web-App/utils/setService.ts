@@ -219,7 +219,7 @@ async function addSetIntern(setNumber: string, quantity: number, userId: number,
     // Der Rumpf steht seit dem Herausziehen in jobs/nachErfassung.ts — als
     // anonymer Block im setTimeout war er in Tests nicht abfangbar und lief
     // dort echt, gegen einen meist schon geschlossenen Pool.
-    if (!global._csvImportRunning) nachErfassung.zieheNach(normalized, userId);
+    if (!global._csvImportLaeufe) nachErfassung.zieheNach(normalized, userId);
     return { action:'updated', set_number:normalized };
   }
 
@@ -234,7 +234,7 @@ async function addSetIntern(setNumber: string, quantity: number, userId: number,
   // Fetch from Brickset (secondary) — enrich but never block import
   // Skip during CSV bulk import to preserve quota and reduce DB pool pressure
   let bsInfo: any = null;
-  if (!global._csvImportRunning) {
+  if (!global._csvImportLaeufe) {
     try {
       bsInfo = await brickset.getSetInfo(normalized);
     } catch (e) { meldeUndWeiter('set-anlegen:brickset-info', e); }
@@ -302,7 +302,7 @@ async function addSetIntern(setNumber: string, quantity: number, userId: number,
   // Dialog zeigte dadurch einen Punkt, der auf „aktiv" sprang und nie fertig
   // wurde. Der Hinweis auf die Hintergrundarbeit steht jetzt fest im Dialog.
   // Skip instructions during CSV bulk import — instructionQueue handles it after
-  if (!global._csvImportRunning) {
+  if (!global._csvImportLaeufe) {
     setImmediate(() => downloadSetInstructions(normalized).catch(()=>{}));
   }
 
@@ -311,7 +311,7 @@ async function addSetIntern(setNumber: string, quantity: number, userId: number,
   // Rumpf in jobs/nachErfassung.ts — dort steht er neben dem Nachzug des
   // Zweiterfassungs-Zweigs, und der Unterschied zwischen beiden ist damit an
   // einer Stelle zu sehen statt vierzig Zeilen auseinander.
-  if (!global._csvImportRunning) nachErfassung.zieheNachNeuanlage(normalized, userId);
+  if (!global._csvImportLaeufe) nachErfassung.zieheNachNeuanlage(normalized, userId);
   return { action:'added', set_number:normalized, name };
 }
 

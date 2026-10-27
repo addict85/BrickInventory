@@ -21,17 +21,7 @@ function send(msg: any) {
   else console.error('[csv-worker] kein IPC-Kanal — Meldung verworfen:', JSON.stringify(msg).slice(0, 200));
 }
 
-const pool = new Pool(
-  process.env.DATABASE_URL
-    ? { connectionString: process.env.DATABASE_URL }
-    : {
-        host:     process.env.PGHOST     || 'postgres',
-        port:     parseInt(process.env.PGPORT || '5432'),
-        user:     process.env.PGUSER     || 'brickinv',
-        password: process.env.PGPASSWORD || 'brickinv',
-        database: process.env.PGDATABASE || 'brickinv'
-      }
-);
+const pool = new Pool((require('../utils/konfig') as typeof import('../utils/konfig')).datenbankVerbindung());
 
 /**
  * Eine Spalte einer CSV-Zeile, die fehlen darf.
