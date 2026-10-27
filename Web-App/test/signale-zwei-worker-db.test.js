@@ -15,6 +15,8 @@
  *      rot: „weist schreibende Anfragen fremder Seiten ab" (200)
  *   D  (27.10.) /health liefert db_pool wieder immer → rot: „verrät ohne
  *      Verwalter nur den Startzustand"
+ *   F  (27.10.) die /api-Middleware für X-Api-Version in server.ts entfernt →
+ *      rot: „jede API-Antwort nennt die Schnittstellenfassung"
  *   E  (27.10.) in haltePrimaerSperre das setTimeout(sperreNeuHolen) entfernt →
  *      rot: „die Primär-Sperre kommt nach einem Verbindungsabbruch zurück"
  *
@@ -178,6 +180,17 @@ test('Cache-Signale erreichen jeden Worker', { concurrency: 1, timeout: 180_000 
       assert.ok(nachher && nachher.pid !== vorher.pid,
         'Nach dem Abbruch hält niemand mehr die Sperre — die Jobs liefen ohne Primär weiter');
       assert.match(log, /Primär-Sperre verloren/);
+    });
+
+    await t.test('jede API-Antwort nennt die Schnittstellenfassung', async () => {
+      const r = await new Promise((auf, ab) => {
+        const q = http.request({ host: '127.0.0.1', port, path: '/api/v1/health', agent: false },
+          res => { res.resume(); auf(res.headers); });
+        q.on('error', ab); q.end();
+      });
+      const { API_VERSION, API_MIN_APP } = _req('utils/apiVersion.js');
+      assert.equal(r['x-api-version'], String(API_VERSION), 'Ohne die Kopfzeile kann die App nicht sagen, wer zu alt ist');
+      assert.equal(r['x-api-min-app'], String(API_MIN_APP));
     });
 
     await t.test('/health verrät ohne Verwalter nur den Startzustand', async () => {

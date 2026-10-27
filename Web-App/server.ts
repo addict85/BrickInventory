@@ -261,6 +261,14 @@ app.use((req, _res, next) => {
 });
 
 app.use((require('./utils/herkunft') as typeof import('./utils/herkunft')).nurEigeneHerkunft);
+{
+  const { API_VERSION, API_MIN_APP } = require('./utils/apiVersion') as typeof import('./utils/apiVersion');
+  app.use('/api', (_req, res, next) => {
+    res.setHeader('X-Api-Version', String(API_VERSION));
+    res.setHeader('X-Api-Min-App', String(API_MIN_APP));
+    next();
+  });
+}
 
 // Jede Anfrage bekommt eine kurze Kennung, die in allen Logzeilen dieser
 // Anfrage erscheint (siehe _intercept oben). Ein vom Reverse-Proxy gesetzter

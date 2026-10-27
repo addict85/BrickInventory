@@ -72,7 +72,7 @@ router.get('/categories', async (req, res) => {
       -- vorher stand sie je Konto in parts.
       SELECT COALESCE(rc.id::text, rp_cat.id::text, pc.category_name) AS category_name,
              COALESCE(rc.name, rp_cat.name, 'Unbekannt')              AS label,
-             COUNT(DISTINCT p.part_number) AS unique_parts,
+             COUNT(DISTINCT p.part_number)::int AS unique_parts,
              -- Der zweite Faktor ist die Zahl der Exemplare DES SETS. Er stand
              -- als COALESCE(s.quantity,1) hier; die Spalte ist mit Migration
              -- 0036 weg, die Menge kommt aus set_acquisitions. Die 1 bleibt
@@ -83,7 +83,7 @@ router.get('/categories', async (req, res) => {
              -- geloescht. Fuer ein Set-Teil ist es die Katalogzahl, fuer
              -- ein manuelles die Summe der Erfassungen — die
              -- Fallunterscheidung steht in utils/bestandsmenge.ts.
-             SUM(${teilmengeAus('p', 'part')} * ${mengeAus('sm', 1)}) AS total_quantity
+             SUM(${teilmengeAus('p', 'part')} * ${mengeAus('sm', 1)})::int AS total_quantity
       FROM parts p
       ${mengeJoin('p')}
       ${teilmengeJoin('p', 'part')}

@@ -190,7 +190,7 @@ async function getSets(userId: Blickfeld, query: any = {}) {
     // Arbeit ab ein paar hundert Sets.
     db.all(`SELECT ${SET_COLS}${SET_OWNER_COL},
       a.max_purchase_price, a.avg_purchase_price,
-      COALESCE(a.acq_count, 0) AS acq_count, COALESCE(a.used_count, 0) AS used_count
+      COALESCE(a.acq_count, 0)::int AS acq_count, COALESCE(a.used_count, 0)::int AS used_count
       FROM ${setsFrom}
       LEFT JOIN (
         SELECT set_number,

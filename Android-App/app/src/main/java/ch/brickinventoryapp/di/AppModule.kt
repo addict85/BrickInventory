@@ -49,10 +49,14 @@ object AppModule {
     @Provides
     @Singleton
     fun provideJson() = Json {
+        // Beide bleiben an — als Netz für die Laufzeit: Ohne sie verwürfe ein
+        // einziges abweichendes Feld die ganze Antwort. Dass der Server keine
+        // Zahlen als Text und keine Nullen in Pflichtfeldern schickt, prüft
+        // test/api-vertrag-kotlin-db.test.js der Web-App für jede GET-Route.
         ignoreUnknownKeys = true
         isLenient = true
         encodeDefaults = true
-        coerceInputValues = true  // handles type mismatches (e.g. "f" for Int field)
+        coerceInputValues = true
     }
 
     /**
@@ -71,7 +75,10 @@ object AppModule {
         sessionExpired: ch.brickinventoryapp.data.SessionExpiredSignal,
         /** Nur, um die Anzeigesprache aus den Ressourcen zu lesen (Nachtrag 130). */
         ctx: android.content.Context,
+        /** Wohin ein Versionshinweis geht; nur der API-Client meldet. */
+        meldungen: ch.brickinventoryapp.data.MeldungsKanal? = null,
     ): OkHttpClient {
+        val versionGemeldet = java.util.concurrent.atomic.AtomicBoolean(false)
         return OkHttpClient.Builder()
             .apply {
                 // Vorher nur für den API-Client (isApiClient) protokolliert.
@@ -144,6 +151,7 @@ object AppModule {
                 //
                 // Nur an unseren Server: Ein Bildabruf bei BrickLink hat mit
                 // unserer Anzeigesprache nichts zu tun.
+                if (isOurServer) reqBuilder.header("X-App-Api", ch.brickinventoryapp.util.APP_API_VERSION.toString())
                 if (isOurServer && original.header("Accept-Language") == null) {
                     val sprache = ch.brickinventoryapp.util.LanguageManager
                         .localizedContext(ctx).getString(ch.brickinventoryapp.R.string.lang_code)
@@ -205,6 +213,22 @@ object AppModule {
                     sessionExpired.notifyExpired()
                 }
 
+                // Passen App und Server nicht zusammen, sagt die App es einmal je
+                // Start, statt an fehlenden Feldern stumm zu scheitern.
+                if (isOurServer && meldungen != null && !versionGemeldet.get()) {
+                    ch.brickinventoryapp.util.versionsHinweis(
+                        response.header("X-Api-Version")?.toIntOrNull(),
+                        response.header("X-Api-Min-App")?.toIntOrNull(),
+                    )?.let { hinweis ->
+                        if (versionGemeldet.compareAndSet(false, true)) {
+                            meldungen.fluss.value = ch.brickinventoryapp.util.LanguageManager.localizedContext(ctx)
+                                .getString(if (hinweis == ch.brickinventoryapp.util.VersionsHinweis.APP_ZU_ALT)
+                                    ch.brickinventoryapp.R.string.api_app_zu_alt
+                                    else ch.brickinventoryapp.R.string.api_server_zu_alt)
+                        }
+                    }
+                }
+
                 response
             }
             .connectTimeout(15, TimeUnit.SECONDS)
@@ -221,9 +245,11 @@ object AppModule {
     fun provideApiOkHttpClient(
         @dagger.hilt.android.qualifiers.ApplicationContext context: android.content.Context,
         prefs: PreferencesManager,
-        sessionExpired: ch.brickinventoryapp.data.SessionExpiredSignal
+        sessionExpired: ch.brickinventoryapp.data.SessionExpiredSignal,
+        meldungen: ch.brickinventoryapp.data.MeldungsKanal,
     ): OkHttpClient =
-        buildInterceptorClient(prefs, isApiClient = true, sessionExpired = sessionExpired, ctx = context)
+        buildInterceptorClient(prefs, isApiClient = true, sessionExpired = sessionExpired, ctx = context,
+            meldungen = meldungen)
 
     /**
      * Der Client fuer die Selbstaktualisierung — bewusst BLANK.
