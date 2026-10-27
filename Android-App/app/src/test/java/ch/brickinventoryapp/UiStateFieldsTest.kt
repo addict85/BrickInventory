@@ -153,7 +153,6 @@ class UiStateFieldsTest {
         val flows = mapOf(
             "_catalogState" to "CatalogUiState",
             "_state" to "AppUiState",
-            "_partsState" to "PartsUiState",
             "_setDetailState" to "SetDetailUiState",
             "_manDetailState" to "ManualItemDetailUiState",
         )

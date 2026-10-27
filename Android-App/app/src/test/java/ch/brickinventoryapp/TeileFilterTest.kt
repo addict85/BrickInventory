@@ -27,7 +27,8 @@ import org.junit.Test
  * es dafuer nicht. Deshalb dieser Test — er haelt fest, dass die beiden Werte
  * auch WIRKLICH mitgeschickt werden.
  *
- * Der Test liest nur Quelltext: kein Geraet, kein Compose.
+ * Der Test liest nur Quelltext: kein Geraet, kein Compose. Dass die Filter
+ * aus dem Zustand mitreisen und die Scrollstelle vergessen, prüft TeileTest.
  */
 class TeileFilterTest {
 
@@ -47,42 +48,6 @@ class TeileFilterTest {
         val ausschnitt = api.substringAfter("api/v1/parts/colors").take(600)
         assert(ausschnitt.contains("@Query(\"accounts\")")) {
             "Die Farbliste reist ohne Blickfeld — im Haushalt zaehlt sie dann anders als die Liste"
-        }
-    }
-
-    @Test
-    fun `die gewaehlten Filter reisen mit der Teileliste mit`() {
-        val s = code(read("ui/PartsFeature.kt"))
-        // Aus dem ZUSTAND gelesen, nicht als Parameter: Sonst kaemen sie beim
-        // Nachladen von Seite 2 nicht mit, und eine ungefilterte Seite haengt
-        // sich an eine gefilterte.
-        assert(s.contains("_partsState.value.partsColorFilter.ifBlank { null }")) {
-            "Der Farbfilter wird nicht aus dem Zustand gelesen"
-        }
-        assert(s.contains("_partsState.value.partsCategoryFilter.ifBlank { null }")) {
-            "Der Kategoriefilter wird nicht aus dem Zustand gelesen"
-        }
-        assert(s.contains("color = farbe")) { "Der Farbfilter wird nicht mitgeschickt" }
-        assert(s.contains("category = kategorie")) { "Der Kategoriefilter wird nicht mitgeschickt" }
-    }
-
-    @Test
-    fun `ein Filterwechsel vergisst die Scrollstelle`() {
-        // Dieselbe Regel wie beim Ersatzteil-Filter daneben: Die gemerkte
-        // Stelle zeigt auf Teile, die in der neuen Liste woanders oder gar
-        // nicht stehen.
-        val s = code(read("ui/PartsFeature.kt"))
-        val setzer = listOf("setPartsColorFilter", "setPartsCategoryFilter")
-        for (name in setzer) {
-            val ab = s.indexOf("fun MainViewModel.$name(")
-            assert(ab > 0) { "$name fehlt" }
-            val rumpf = s.substring(ab, minOf(ab + 400, s.length))
-            assert(rumpf.contains("scrollMemory.vergiss(\"parts\")")) {
-                "$name vergisst die Scrollstelle nicht"
-            }
-            assert(rumpf.contains("loadParts(page = 1)")) {
-                "$name laedt nicht ab Seite 1 — sonst bliebe die alte Seitenzahl stehen"
-            }
         }
     }
 }

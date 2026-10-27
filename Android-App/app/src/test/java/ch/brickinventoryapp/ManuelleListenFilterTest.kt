@@ -59,8 +59,10 @@ class ManuelleListenFilterTest {
     private val repo by lazy {
         Quellen.ohneKommentare(Quellen.lies("data/repository/TeileRepository.kt"))
     }
+    // Die Abrufe stehen dort, wo das MainViewModel die Teile-Quelle baut;
+    // dass der Suchtext dort ankommt, prüft TeileTest am Ablauf.
     private val feature by lazy {
-        Quellen.ohneKommentare(Quellen.lies("ui/PartsFeature.kt"))
+        Quellen.ohneKommentare(Quellen.lies("ui/MainViewModel.kt"))
     }
 
     /**
@@ -118,7 +120,7 @@ class ManuelleListenFilterTest {
 
     @Test
     fun `die Teileliste schickt Suchtext und Lagerort an die manuelle Liste`() {
-        val aufruf = abschnitt(feature, "repo.teile.getManualParts(", "as? Result.Success")
+        val aufruf = abschnitt(feature, "repo.teile.getManualParts(", ")")
         assertTrue(
             "Der Aufruf von getManualParts schickt den Suchtext nicht — genau das " +
                 "war der Zustand, den Marco gemeldet hat: Der Text filtert die " +
@@ -128,7 +130,7 @@ class ManuelleListenFilterTest {
         assertTrue(
             "Der Aufruf von getManualParts schickt den Lagerort nicht — dann " +
                 "waere der Filter halb angewandt: unten gefiltert, oben nicht.",
-            aufruf.contains("lagerFor")
+            aufruf.contains("teileLager") && feature.contains("teileLager get() = lagerFor(")
         )
     }
 
@@ -137,7 +139,7 @@ class ManuelleListenFilterTest {
         assertTrue(
             "Der Aufruf von getManualMinifigs schickt den Suchtext nicht. Marco hat " +
                 "es an den Teilen gesehen; dieser Bildschirm trug es unbemerkt mit.",
-            abschnitt(feature, "repo.teile.getManualMinifigs(", "as? Result.Success")
+            abschnitt(feature, "repo.teile.getManualMinifigs(", ")")
                 .contains("suche")
         )
     }

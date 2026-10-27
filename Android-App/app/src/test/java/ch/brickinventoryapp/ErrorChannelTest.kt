@@ -84,9 +84,7 @@ class ErrorChannelTest {
         // Feldnamen geprüft, nicht auf den qualifizierten Zugriff.
         // Felder, die BEWUSST nur im ViewModel leben. Kurz halten: Jeder
         // Eintrag ist ein Feld, dessen Nutzen niemand mehr nachprüft.
-        val nurIntern = mapOf(
-            "galleryPage" to "Seitenzähler des Endlos-Scrolls; die Oberfläche sieht nur die Liste",
-        )
+        val nurIntern = mapOf<String, String>()
         val ungelesen = felder.filter { feld ->
             feld !in nurIntern && !Regex("""\b$feld\b""").containsMatchIn(leserQuellen)
         }

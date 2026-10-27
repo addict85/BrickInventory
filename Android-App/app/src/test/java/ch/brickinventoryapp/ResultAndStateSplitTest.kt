@@ -143,7 +143,7 @@ class ResultAndStateSplitTest {
     @Test
     fun `die neuen Flows sind im ViewModel veroeffentlicht`() {
         val src = code(read("ui/MainViewModel.kt"))
-        for (name in listOf("_partsState", "partsState", "_financeState", "financeState",
+        for (name in listOf("partsState", "_financeState", "financeState",
                             "_barcodeState", "barcodeState")) {
             assert(src.contains(name)) { "$name fehlt im MainViewModel" }
         }
@@ -169,7 +169,7 @@ class ResultAndStateSplitTest {
     fun `beim Abmelden werden alle Zustands-Flows zurueckgesetzt`() {
         val src = code(read("ui/SessionFeature.kt"))
         for (reset in listOf(
-            "AppUiState(serverUrl", "PartsUiState()", "FinanceUiState()", "CsvImportUiState()",
+            "AppUiState(serverUrl", "teile.zuruecksetzen()", "FinanceUiState()", "CsvImportUiState()",
             // Ein offener Barcode-Dialog trägt Setname, Bild und Nummer des
             // vorigen Kontos.
             "BarcodeUiState()",

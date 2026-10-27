@@ -255,13 +255,13 @@ internal fun MainViewModel.logout() {
         // Nutzerverwaltung, nicht von einer Pruefung — deshalb prueft
         // felder.py das jetzt: Jeder Fluss des MainViewModel muss hier stehen.
         galerie.zuruecksetzen()
-        _partsState.value = PartsUiState()
+        teile.zuruecksetzen()
         _financeState.value = FinanceUiState()
         _csvImportState.value = CsvImportUiState()
         _setDetailState.value = SetDetailUiState()
         _manDetailState.value = ManualItemDetailUiState()
         _setItemState.value = SetItemUiState()
-        _erfassungState.value = ErfassungUiState()
+        erfassung.fertig()
         _householdState.value = HouseholdUiState()
         _anmeldeState.value = AnmeldeUiState()
         _csvHochladenState.value = CsvHochladenUiState()
