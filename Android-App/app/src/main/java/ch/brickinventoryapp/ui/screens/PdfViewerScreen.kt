@@ -44,10 +44,12 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.input.pointer.PointerEventPass
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.layout.layout
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.stringResource
@@ -188,7 +190,12 @@ fun PdfViewerScreen(
     // Kopfzeile, die Geste in der Liste, und der Faktor wird unten angezeigt —
     // drei Stellen, eine Wahrheit. Zurueck auf 1x bei einem anderen PDF.
     var zoom by remember(pdfUrl) { mutableFloatStateOf(PDF_ZOOM_MIN) }
-    val setzeZoom = { neu: Float -> zoom = neu.coerceIn(PDF_ZOOM_MIN, PDF_ZOOM_MAX) }
+    val anker = remember(pdfUrl) { ZoomAnker() }
+    // Geste und Doppeltipp zoomen um ihren Punkt, die Knoepfe (null) um die Mitte.
+    val setzeZoom = { neu: Float, punkt: Offset? ->
+        anker.punkt = punkt
+        zoom = neu.coerceIn(PDF_ZOOM_MIN, PDF_ZOOM_MAX)
+    }
 
     // Bildschirm WÄHREND DES LADENS anlassen: Geht das Display aus, trennt Android
     // (je nach Gerät/WLAN-Sleep) kurz das Netzwerk, was zu DNS-Fehlern führt
@@ -261,7 +268,7 @@ fun PdfViewerScreen(
             when (val s = state) {
                 is PdfLoadState.Downloading -> DownloadProgress(s)
                 is PdfLoadState.Rendering -> CenteredLoading(stringResource(R.string.pdfview_rendering))
-                is PdfLoadState.Ready -> PdfPages(s.file, s.pageCount, zoom, setzeZoom)
+                is PdfLoadState.Ready -> PdfPages(s.file, s.pageCount, zoom, anker, setzeZoom)
                 is PdfLoadState.Error -> Box(Modifier.fillMaxSize(), Alignment.Center) {
                     Text(
                         stringResource(R.string.pdfview_load_failed, s.message),
@@ -273,7 +280,7 @@ fun PdfViewerScreen(
             if (state is PdfLoadState.Ready) {
                 ZoomLeiste(
                     zoom = zoom,
-                    setzeZoom = setzeZoom,
+                    setzeZoom = { setzeZoom(it, null) },
                     modifier = Modifier
                         .align(Alignment.BottomCenter)
                         .padding(bottom = Abstaende.gross)
@@ -454,12 +461,29 @@ private fun ZoomLeiste(zoom: Float, setzeZoom: (Float) -> Unit, modifier: Modifi
  * statt zu zoomen — unschoen, aber nichts geht kaputt. Dagegen stehen der
  * Doppeltipp und die beiden Knoepfe in der Kopfzeile.
  */
+/**
+ * Was ein Zoomschritt von der Geste bis zur naechsten Messung braucht. Kein
+ * Compose-Zustand: Nur das Messen liest es, neu zeichnen soll es nichts.
+ */
+private class ZoomAnker {
+    /** Wo im Sichtfeld der naechste Schritt ansetzt; null = Mitte. */
+    var punkt: Offset? = null
+    /** Mitte der aufliegenden Finger im Sichtfeld, laufend nachgefuehrt. */
+    var finger: Offset? = null
+    /** Bei welchem Zoom die Liste zuletzt gemessen wurde. */
+    var gemessenBei = 0f
+    /** Waagerechtes Ziel, gesetzt beim Messen, eingeloest beim Platzieren. */
+    var ausstehendX: Int? = null
+}
+
 @Composable
-private fun PdfPages(file: File, pageCount: Int, zoom: Float, setzeZoom: (Float) -> Unit) {
+private fun PdfPages(
+    file: File, pageCount: Int, zoom: Float, anker: ZoomAnker, setzeZoom: (Float, Offset?) -> Unit,
+) {
     val dichte = LocalDensity.current
     val waagrecht = rememberScrollState()
     val senkrecht = rememberLazyListState()
-    val geste = rememberTransformableState { zoomChange, _, _ -> setzeZoom(zoom * zoomChange) }
+    val geste = rememberTransformableState { zoomChange, _, _ -> setzeZoom(zoom * zoomChange, anker.finger) }
 
     // ── Solange zwei Finger aufliegen, rollt die Liste nicht ─────────────────
     //
@@ -497,50 +521,39 @@ private fun PdfPages(file: File, pageCount: Int, zoom: Float, setzeZoom: (Float)
             ((this@BoxWithConstraints.maxWidth - Abstaende.klein * 2).toPx() * renderStufe(zoom))
                 .toInt().coerceAtLeast(1)
         }
-        // ── Der Zoom haelt die Stelle fest ──────────────────────────────────
-        //
-        // Ohne das waechst die Seite aus der oberen linken Ecke heraus: Wer bei
-        // Seite 12 in eine Teilenummer hineinzoomt, sieht danach einen anderen
-        // Ausschnitt und muss sie suchen. Genau das ist der Unterschied
-        // zwischen „es zoomt" und „es laesst sich damit arbeiten".
-        //
-        // Senkrecht ueber scrollToItem(index, offset): Der Versatz wird mit dem
-        // Zoomfaktor mitgerechnet, damit dieselbe Stelle oben bleibt. Diese
-        // Form ist unabhaengig davon, WANN das neue Layout fertig ist — sie
-        // sagt „setze Seite i um n Pixel versetzt nach oben", nicht „rolle um n
-        // Pixel". Ein Delta waere gegen die alte oder die neue Groesse
-        // gerechnet, je nach Zeitpunkt, und genau daran scheitern solche Anker
-        // sonst.
-        //
-        // Waagerecht bleibt die Mitte des Sichtfelds stehen. Beim Hineinzoomen
-        // aus 1x waechst die Seite sonst nach rechts aus dem Bild.
-        //
-        // snapshotFlow in EINEM langlebigen Effekt statt LaunchedEffect(zoom):
-        // Waehrend einer Geste aendert sich der Faktor mit jedem Bild. Ein
-        // Effekt mit dem Zoom als Schluessel wuerde dabei staendig abgebrochen
-        // und neu gestartet — und jede abgebrochene Nachfuehrung ist ein
-        // Stueck Abdrift.
-        val sichtBreitePx = with(dichte) { this@BoxWithConstraints.maxWidth.toPx() }
-        LaunchedEffect(Unit) {
-            var vorher = zoomJetzt
-            snapshotFlow { zoomJetzt }.collect { neu ->
-                val f = if (vorher > 0f) neu / vorher else 1f
-                vorher = neu
-                if (f == 1f) return@collect
-                senkrecht.scrollToItem(
-                    senkrecht.firstVisibleItemIndex,
-                    (senkrecht.firstVisibleItemScrollOffset * f).roundToInt().coerceAtLeast(0)
-                )
-                val mitte = sichtBreitePx / 2f
-                waagrecht.scrollTo(
-                    ((waagrecht.value + mitte) * f - mitte).roundToInt().coerceAtLeast(0)
-                )
-            }
-        }
-
         Box(
             Modifier
                 .fillMaxSize()
+                // Der Zoom haelt den Punkt zwischen den Fingern fest. Gerechnet wird
+                // hier, beim Messen: Nur hier liegen das Layout des alten Zooms und
+                // der neue Zoom zugleich vor, und die neue Breite gilt schon fuer
+                // die Rollgrenze. Ein Effekt danach kaeme ein Bild zu spaet.
+                .layout { messbar, grenzen ->
+                    val f = if (anker.gemessenBei > 0f) zoom / anker.gemessenBei else 1f
+                    anker.gemessenBei = zoom
+                    if (f != 1f) {
+                        val p = anker.punkt ?: Offset(grenzen.maxWidth / 2f, grenzen.maxHeight / 2f)
+                        anker.punkt = null
+                        val info = senkrecht.layoutInfo
+                        zoomZielY(
+                            info.visibleItemsInfo.map {
+                                SeitenLage(it.index, it.offset + info.beforeContentPadding, it.size)
+                            },
+                            p.y, f, info.beforeContentPadding, info.mainAxisItemSpacing,
+                        )?.let { (index, versatz) -> senkrecht.requestScrollToItem(index, versatz) }
+                        anker.ausstehendX = zoomZielX(waagrecht.value, p.x, Abstaende.klein.toPx(), f)
+                    }
+                    val platz = messbar.measure(grenzen)
+                    layout(platz.width, platz.height) {
+                        // Erst jetzt kennt horizontalScroll die neue Breite; vorher
+                        // kappte es das Ziel an der alten.
+                        anker.ausstehendX?.let { ziel ->
+                            anker.ausstehendX = null
+                            waagrecht.dispatchRawDelta((ziel - waagrecht.value).toFloat())
+                        }
+                        platz.place(0, 0)
+                    }
+                }
                 // Reihenfolge: transformable steht HINTER horizontalScroll und
                 // ist damit das tiefere Glied — es sieht die Bewegung zuerst.
                 // Andersherum koennte das waagerechte Rollen eine Zwei-Finger-
@@ -553,7 +566,13 @@ private fun PdfPages(file: File, pageCount: Int, zoom: Float, setzeZoom: (Float)
                     awaitPointerEventScope {
                         while (true) {
                             val e = awaitPointerEvent(PointerEventPass.Initial)
-                            zweiFinger = e.changes.count { it.pressed } >= 2
+                            val auf = e.changes.filter { it.pressed }
+                            zweiFinger = auf.size >= 2
+                            // Diese Ebene rollt waagerecht mit; ins Sichtfeld umgerechnet.
+                            anker.finger = if (!zweiFinger) null else Offset(
+                                auf.map { it.position.x }.average().toFloat() - waagrecht.value,
+                                auf.map { it.position.y }.average().toFloat(),
+                            )
                         }
                     }
                 }
@@ -561,9 +580,10 @@ private fun PdfPages(file: File, pageCount: Int, zoom: Float, setzeZoom: (Float)
                     // Doppeltipp: der verlaessliche Weg mit einem Finger. Tipp-
                     // Erkenner beanspruchen keine Zuege (sie brechen beim
                     // Schwellwert ab), streiten also mit dem Rollen nicht.
-                    detectTapGestures(onDoubleTap = {
+                    detectTapGestures(onDoubleTap = { p ->
                         setzeZoomJetzt(
-                            if (zoomJetzt > PDF_ZOOM_MIN + 0.01f) PDF_ZOOM_MIN else PDF_ZOOM_DOPPELTIPP
+                            if (zoomJetzt > PDF_ZOOM_MIN + 0.01f) PDF_ZOOM_MIN else PDF_ZOOM_DOPPELTIPP,
+                            Offset(p.x - waagrecht.value, p.y),
                         )
                     })
                 }
